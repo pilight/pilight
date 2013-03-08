@@ -5,5 +5,6 @@ all:
 	gcc -Wall -pedantic -o sendElro sendElro.cpp -L/usr/local/lib -lwiringPi -lstdc++
 	gcc -Wall -pedantic -o genLirc genLirc.cpp -L/usr/local/lib -lwiringPi -lstdc++
 	gcc -Wall -pedantic -o learn learn.cpp -L/usr/local/lib -lwiringPi -lstdc++ 
+	gcc -Wall -pedantic -o sendKakuOld sendKakuOld.cpp -L/usr/local/lib -lwiringPi -lstdc++ 
 clean:
-	rm -rf send receive receiveElro sendElro genLirc
+	rm -rf send receive receiveElro sendElro genLirc sendKakuOld

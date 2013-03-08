@@ -17,7 +17,7 @@ Receiver:
 - GND - 0v
 - Data 1 - Pin 13 (GPIO 2 in wiringPi)
 
-The sender and receiver are (for now) only compatible with Klik Aan Klik Uit and Elro devices.
+The sender and receiver are (for now) only compatible with Elro devices, self learning Klik Aan Klik Uit devices (eg. model APA2-2300R) and older Klik Aan Klik Uit devices (eg. model PAT-103).
 
 Receive:
  -s Change the interval speed
@@ -60,5 +60,10 @@ Lamp Aan
 root@XBian:/# ./sendElro -i 1 -u 15 -t
 Lamp Aan
 root@XBian:/# ./sendElro -i 1 -u 15 -f
+Lamp Uit
+
+root@XBian:/# ./sendKakuOld -i 1 -u 15 -t
+Lamp Aan
+root@XBian:/# ./sendKakuOld -i 1 -u 15 -f
 Lamp Uit
 </pre>
