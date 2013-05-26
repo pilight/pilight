@@ -1,10 +1,4 @@
 all:
-	gcc -Wall -pedantic -o receive receive.cpp -L/usr/local/lib -lwiringPi -lstdc++
-	gcc -Wall -pedantic -o send send.cpp -L/usr/local/lib -lwiringPi -lstdc++
-	gcc -Wall -pedantic -o receiveElro receiveElro.cpp -L/usr/local/lib -lwiringPi -lstdc++
-	gcc -Wall -pedantic -o sendElro sendElro.cpp -L/usr/local/lib -lwiringPi -lstdc++
-	gcc -Wall -pedantic -o genLirc genLirc.cpp -L/usr/local/lib -lwiringPi -lstdc++
-	gcc -Wall -pedantic -o learn learn.cpp -L/usr/local/lib -lwiringPi -lstdc++ 
-	gcc -Wall -pedantic -o sendKakuOld sendKakuOld.cpp -L/usr/local/lib -lwiringPi -lstdc++ 
+	gcc -O2 -g -Wall -I. -I.. -o receive *.c protocols/* daemons/libhw_module.a
 clean:
-	rm -rf send receive receiveElro sendElro genLirc sendKakuOld
+	rm -rf receive
