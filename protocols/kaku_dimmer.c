@@ -37,7 +37,7 @@ void kakuDimInit() {
 	kaku_dimmer.footer = 11000;
 	kaku_dimmer.multiplier[0] = 0.1;
 	kaku_dimmer.multiplier[1] = 0.3;
-	kaku_dimmer.rawLength = 149;
+	kaku_dimmer.rawLength = 148;
 	kaku_dimmer.binaryLength = 37;	
 	kaku_dimmer.repeats = 2;
 	

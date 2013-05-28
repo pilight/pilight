@@ -32,7 +32,7 @@ void kakuSwInit() {
 	kaku_switch.footer = 11000;
 	kaku_switch.multiplier[0] = 0.1;
 	kaku_switch.multiplier[1] = 0.3;
-	kaku_switch.rawLength = 133;
+	kaku_switch.rawLength = 132;
 	kaku_switch.binaryLength = 33;	
 	kaku_switch.repeats = 2;
 	

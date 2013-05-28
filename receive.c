@@ -36,15 +36,15 @@
 #include <syslog.h>
 #include <time.h>
 
-#include "drivers/lirc.h"
-#include "daemons/ir_remote.h"
-#include "daemons/hardware.h"
-#include "daemons/hw-types.h"
+#include "lirc.h"
+#include "ir_remote.h"
+#include "hardware.h"
+#include "hw-types.h"
 
 #include "protocol.h"
-#include "protocols/kaku_switch.h"
-#include "protocols/kaku_dimmer.h"
-#include "protocols/elro.h"
+#include "kaku_switch.h"
+#include "kaku_dimmer.h"
+#include "elro.h"
 
 /*
 Start of the original (but stripped) code of mode2
@@ -187,6 +187,16 @@ End of the original (but stripped) code of mode2
 		for(i=0; i<protos.nr; ++i) {
 			device = protos.listeners[i];
 			
+			/* If we are recording, keep recording until the footer has been matched */
+			if(device->recording == 1) {
+				if(device->bit < 255) {
+					device->raw[device->bit++] = duration;
+				} else {
+					device->bit = 0;
+					device->recording = 0;
+				}
+			}			
+			
 			/* Try to catch the header of the code */
 			if(duration > (device->header[0]-(device->header[0]*device->multiplier[0])) 
 			   && duration < (device->header[0]+(device->header[0]*device->multiplier[0])) 
@@ -197,16 +207,6 @@ End of the original (but stripped) code of mode2
 			   && device->bit == 1) {
 				device->raw[device->bit++] = duration;
 				device->recording = 1;
-			}
-			
-			/* If we are recording, keep recording until the footer has been matched */
-			if(device->recording == 1) {
-				if(device->bit < 255) {
-					device->raw[device->bit++] = duration;
-				} else {
-					device->bit = 0;
-					device->recording = 0;
-				}
 			}
 			
 			/* Try to catch the footer of the code */
@@ -239,13 +239,13 @@ End of the original (but stripped) code of mode2
 						
 						/* Convert the one's and zero's into binary */
 						for(x=2; x<device->bit; x+=4) {
-							if(device->code[x+2] == 1) {
+							if(device->code[x+1] == 1) {
 								device->binary[x/4]=1;
 							} else {
 								device->binary[x/4]=0;
 							}
-						}
-						
+						}			   
+				
 						/* Check if the binary matches the binary length */
 						if((x/4) == device->binaryLength)
 							device->parseBinary();

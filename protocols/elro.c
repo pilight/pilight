@@ -11,11 +11,11 @@ void elroParseBinary() {
 	int state = elro.binary[10];
 	int id = binToDec(elro.binary,5,9);
 	
-	printf("id: %d, unit: %d, state: ",id,unit);
+	printf("id: %d, unit: %d, state:",id,unit);
 	if(state==1)
-		printf("on\n");
+		printf(" on\n");
 	else
-		printf("off\n");
+		printf(" off\n");
 }
 
 void elroInit() {
@@ -27,8 +27,8 @@ void elroInit() {
 	elro.footer = 13000;
 	elro.multiplier[0] = 0.1;
 	elro.multiplier[1] = 0.3;
-	elro.rawLength = 51;
-	elro.binaryLength = 13;	
+	elro.rawLength = 50;
+	elro.binaryLength = 12;	
 	elro.repeats = 2;	
 
 	elro.bit = 0;	
