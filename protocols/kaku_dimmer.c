@@ -142,7 +142,7 @@ void kakuDimCreateCode(int id, int unit, int state, int all, int dimlevel) {
 	kakuDimCreateStart();
 	kakuDimClearCode();
 	kakuDimCreateId(id);
-	kakuDimCreateAll(unit);
+	kakuDimCreateAll(all);
 	kakuDimCreateState(state);
 	kakuDimCreateUnit(unit);
 	kakuDimCreateDimlevel(dimlevel);

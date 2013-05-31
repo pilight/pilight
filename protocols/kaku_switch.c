@@ -122,7 +122,7 @@ void kakuSwCreateCode(int id, int unit, int state, int all, int dimlevel) {
 	kakuSwCreateStart();
 	kakuSwClearCode();
 	kakuSwCreateId(id);
-	kakuSwCreateAll(unit);
+	kakuSwCreateAll(all);
 	kakuSwCreateState(state);
 	kakuSwCreateUnit(unit);
 	kakuSwCreateFooter();

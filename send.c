@@ -230,7 +230,7 @@ int main(int argc, char **argv) {
 		device->createCode(id, unit, state, all, dimlevel);
 		code.length = (device->rawLength+1);
 		code.signals = device->raw;
-		
+
 		for(i=0;i<repeat;i++) {	
 			if((success = send_ir_ncode(&code)) != 1)
 				return EXIT_FAILURE;
