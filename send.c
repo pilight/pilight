@@ -76,6 +76,7 @@ int waitfordata(long maxusec) {
 int main(int argc, char **argv) {
 	char *socket = NULL;
 	struct ir_ncode code;
+	
 	int i;
 	int match = 0;
 	int success = 0;
@@ -107,7 +108,7 @@ int main(int argc, char **argv) {
 			{"off", no_argument, NULL, 'f'},
 			{"unit", required_argument, NULL, 'u'},
 			{"id", required_argument, NULL, 'i'},
-			{"dimlevel", required_argument, NULL, 'i'},
+			{"dimlevel", required_argument, NULL, 'd'},
 			{"repeat", required_argument, NULL, 'r'},
 			{0, 0, 0, 0}
 		};
