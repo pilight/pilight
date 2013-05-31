@@ -44,6 +44,7 @@
 #include "protocol.h"
 #include "protocols/kaku_switch.h"
 #include "protocols/kaku_dimmer.h"
+#include "protocols/kaku_old.h"
 #include "protocols/elro.h"
 
 /*
@@ -178,6 +179,7 @@ End of the original (but stripped) code of mode2
 	/* Initialize peripheral modules */
 	kakuSwInit();
 	kakuDimInit();
+	kakuOldInit();
 	elroInit();	
 	
 	while (1) {
@@ -248,7 +250,8 @@ End of the original (but stripped) code of mode2
 				
 						/* Check if the binary matches the binary length */
 						if((x/4) == device->binaryLength)
-							device->parseBinary();
+							if(device->parseBinary() == 1)
+								continue;
 					}
 				}
 				device->recording = 0;

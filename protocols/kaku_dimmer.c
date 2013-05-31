@@ -26,7 +26,7 @@ void kakuDimParseRaw() {
 void kakuDimParseCode() {
 }
 
-void kakuDimParseBinary() {
+int kakuDimParseBinary() {
 	int dim = binToDecRev(kaku_dimmer.binary,32,35);
 	int unit = binToDecRev(kaku_dimmer.binary,28,31);
 	int state = kaku_dimmer.binary[27];
@@ -46,6 +46,7 @@ void kakuDimParseBinary() {
 			printf(" off");
 	}
 	printf("\n");
+	return 1;
 }
 
 void kakuDimCreateLow(int s, int e) {

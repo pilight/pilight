@@ -9,7 +9,7 @@ protocol kaku_switch;
 void kakuSwInit();
 void kakuSwParseRaw();
 void kakuSwParseCode();
-void kakuSwParseBinary();
+int kakuSwParseBinary();
 void kakuSwCreateCode(int id, int unit, int state, int all, int dimlevel);
 void kakuSwCreateLow(int s, int e);
 void kakuSwCreateHigh(int s, int e);

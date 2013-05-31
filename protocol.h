@@ -45,7 +45,7 @@ typedef struct {
 	
 	void (*parseRaw)();
 	void (*parseCode)();
-	void (*parseBinary)();
+	int (*parseBinary)();
 	void (*createCode)(int id, int unit, int state, int all, int dimlevel);
 } protocol;
 

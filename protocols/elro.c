@@ -26,16 +26,22 @@ void elroParseRaw() {
 void elroParseCode() {
 }
 
-void elroParseBinary() {
+int elroParseBinary() {
 	int unit = binToDec(elro.binary,0,4);
 	int state = elro.binary[10];
+	int check = elro.binary[11];
 	int id = binToDec(elro.binary,5,9);
-	
-	printf("id: %d, unit: %d, state:",id,unit);
-	if(state==1)
-		printf(" on\n");
-	else
-		printf(" off\n");
+
+	if(check != state) {
+		printf("id: %d, unit: %d, state:",id,unit);
+		if(state==1)
+			printf(" on\n");
+		else
+			printf(" off\n");
+		return 1;
+	} else {
+		return 0;
+	}
 }
 
 void elroCreateLow(int s, int e) {

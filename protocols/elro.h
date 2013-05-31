@@ -9,7 +9,7 @@ protocol elro;
 void elroInit();
 void elroParseRaw();
 void elroParseCode();
-void elroParseBinary();
+int elroParseBinary();
 void elroCreateCode(int id, int unit, int state, int all, int dimlevel);
 void elroCreateUnit(int unit);
 void elroCreateId(int id);

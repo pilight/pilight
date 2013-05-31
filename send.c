@@ -41,6 +41,7 @@
 #include "protocol.h"
 #include "protocols/kaku_switch.h"
 #include "protocols/kaku_dimmer.h"
+#include "protocols/kaku_old.h"
 #include "protocols/elro.h"
 
 extern struct hardware hw;
@@ -92,6 +93,7 @@ int main(int argc, char **argv) {
 	/* Initialize peripheral modules */
 	kakuSwInit();
 	kakuDimInit();
+	kakuOldInit();
 	elroInit();		
 	
 	while (1) {
@@ -147,7 +149,7 @@ int main(int argc, char **argv) {
 				for(i=0; i<protos.nr; ++i) {
 					device = protos.listeners[i];
 					printf("\t- %s:\t",device->id);
-					if(strlen(device->id) < 10)
+					if(strlen(device->id) < 8)
 						printf("\t");
 					printf("%s\n", device->desc);
 				}

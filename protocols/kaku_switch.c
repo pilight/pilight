@@ -26,7 +26,7 @@ void kakuSwParseRaw() {
 void kakuSwParseCode() {
 }
 
-void kakuSwParseBinary() {
+int kakuSwParseBinary() {
 	int unit = binToDecRev(kaku_switch.binary,28,31);
 	int state = kaku_switch.binary[27];
 	int group = kaku_switch.binary[26];
@@ -41,6 +41,7 @@ void kakuSwParseBinary() {
 		printf(" off");
 	
 	printf("\n");
+	return 1;
 }
 
 void kakuSwCreateLow(int s, int e) {

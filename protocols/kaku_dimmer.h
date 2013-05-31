@@ -9,7 +9,7 @@ protocol kaku_dimmer;
 void kakuDimInit();
 void kakuDimParseRaw();
 void kakuDimParseCode();
-void kakuDimParseBinary();
+int kakuDimParseBinary();
 void kakuDimCreateCode(int id, int unit, int state, int all, int dimlevel);
 void kakuDimCreateLow(int s, int e);
 void kakuDimCreateHigh(int s, int e);
