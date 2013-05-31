@@ -58,7 +58,7 @@ static __u32 supported_rec_modes[] = {
 };
 
 struct hardware hw_default = {
-	"/dev/lirc1",	/* default device */
+	"/dev/lirc0",	/* default device */
 	-1,			/* fd */
 	0,			/* features */
 	0,			/* send_mode */
