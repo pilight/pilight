@@ -8,6 +8,7 @@
  *
  * Copyright (C) 1996,97 Ralph Metzler <rjkm@thp.uni-koeln.de>
  * Copyright (C) 1998 Christoph Bartelmus <lirc@bartelmus.de>
+ * Copyright (C) 2013 CurlyMo
  *
  */
 
@@ -21,7 +22,7 @@
 #include <math.h>
 #include <stdlib.h>
 
-#include "../drivers/lirc.h"
+#include "lirc.h"
 
 typedef __u64 ir_code;
 
@@ -35,13 +36,8 @@ struct ir_code_node {
 */
 
 struct ir_ncode {
-	char *name;
-	ir_code code;
 	int length;
 	lirc_t *signals;
-	struct ir_code_node *next;
-	struct ir_code_node *current;
-	struct ir_code_node *transmit_state;
 };
 
 /*

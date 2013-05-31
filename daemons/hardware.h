@@ -7,13 +7,14 @@
  * hardware.h - internal hardware interface
  *
  * Copyright (C) 1999 Christoph Bartelmus <lirc@bartelmus.de>
+ * Copyright (C) 2013 CurlyMo
  *
  */
 
 #ifndef _HARDWARE_H
 #define _HARDWARE_H
 
-#include "../drivers/lirc.h"
+#include "lirc.h"
 #include "ir_remote_types.h"
 
 struct hardware {
@@ -25,7 +26,7 @@ struct hardware {
 	__u32 code_length;
 	int (*init_func) (void);
 	int (*deinit_func) (void);
-	int (*send_func) (struct ir_remote * remote, struct ir_ncode * code);
+	int (*send_func) (struct ir_ncode * code);
 	char *(*rec_func) (struct ir_remote * remotes);
 	int (*decode_func) (struct ir_remote * remote, ir_code * prep, ir_code * codep, ir_code * postp,
 			    int *repeat_flag, lirc_t * min_remaining_gapp, lirc_t * max_remaining_gapp);
@@ -35,4 +36,6 @@ struct hardware {
 
 	unsigned int resolution;
 };
+
+extern struct hardware hw;
 #endif

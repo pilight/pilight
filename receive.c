@@ -37,14 +37,14 @@
 #include <time.h>
 
 #include "lirc.h"
-#include "ir_remote.h"
-#include "hardware.h"
-#include "hw-types.h"
+#include "daemons/ir_remote.h"
+#include "daemons/hardware.h"
+#include "daemons/hw-types.h"
 
 #include "protocol.h"
-#include "kaku_switch.h"
-#include "kaku_dimmer.h"
-#include "elro.h"
+#include "protocols/kaku_switch.h"
+#include "protocols/kaku_dimmer.h"
+#include "protocols/elro.h"
 
 /*
 Start of the original (but stripped) code of mode2
@@ -127,7 +127,7 @@ int main(int argc, char **argv) {
 		static struct option long_options[] = {
 			{"help", no_argument, NULL, 'h'},
 			{"version", no_argument, NULL, 'v'},
-			{"device", required_argument, NULL, 'd'},
+			{"socket", required_argument, NULL, 'd'},
 			{0, 0, 0, 0}
 		};
 		c = getopt_long(argc, argv, "hvd:", long_options, NULL);
@@ -138,7 +138,7 @@ int main(int argc, char **argv) {
 				printf("Usage: %s [options]\n", progname);
 				printf("\t -h --help\t\tdisplay usage summary\n");
 				printf("\t -v --version\t\tdisplay version\n");
-				printf("\t -d --device=device\tread from given device\n");
+				printf("\t -d --socket=socket\tread from given socket\n");
 				return (EXIT_SUCCESS);
 			break;
 			case 'v':
@@ -224,7 +224,7 @@ End of the original (but stripped) code of mode2
 						if(device->pCode[x]!=device->code[x])
 							y=0;
 						device->pCode[x]=device->code[x];
-						if(device->raw[x] > device->crossing) {	
+						if(device->raw[x] > ((device->high-device->low)/2)) {	
 							device->code[x]=1;
 						} else {
 							device->code[x]=0;

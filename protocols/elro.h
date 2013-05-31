@@ -10,5 +10,9 @@ void elroInit();
 void elroParseRaw();
 void elroParseCode();
 void elroParseBinary();
+void elroCreateCode(int id, int unit, int state, int all, int dimlevel);
+void elroCreateUnit(int unit);
+void elroCreateId(int id);
+void elroCreateState(int state);
 
 #endif

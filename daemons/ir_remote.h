@@ -8,6 +8,7 @@
  *
  * Copyright (C) 1996,97 Ralph Metzler <rjkm@thp.uni-koeln.de>
  * Copyright (C) 1998 Christoph Bartelmus <lirc@bartelmus.de>
+ * Copyright (C) 2013 CurlyMo
  *
  */
 
@@ -21,26 +22,12 @@
 #include <math.h>
 #include <stdlib.h>
 
-#include "../drivers/lirc.h"
+#include "lirc.h"
 #include "hardware.h"
 
 #include "ir_remote_types.h"
 
 extern struct hardware hw;
-
-static inline ir_code get_ir_code(struct ir_ncode *ncode, struct ir_code_node *node)
-{
-	if (ncode->next && node != NULL)
-		return node->code;
-	return ncode->code;
-}
-
-static inline struct ir_code_node *get_next_ir_code_node(struct ir_ncode *ncode, struct ir_code_node *node)
-{
-	if (node == NULL)
-		return ncode->next;
-	return node->next;
-}
 
 static inline int bit_count(struct ir_remote *remote)
 {
@@ -389,6 +376,6 @@ __u64 set_code(struct ir_remote *remote, struct ir_ncode *found, ir_code toggle_
 int write_message(char *buffer, size_t size, const char *remote_name, const char *button_name,
 		  const char *button_suffix, ir_code code, int reps);
 char *decode_all(struct ir_remote *remotes);
-int send_ir_ncode(struct ir_remote *remote, struct ir_ncode *code);
+int send_ir_ncode(struct ir_ncode *code);
 
 #endif

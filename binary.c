@@ -1,3 +1,23 @@
+/*	
+	Copyright 2013 CurlyMo
+	
+	This file is part of the Raspberry Pi 433.92Mhz transceiver.
+
+    Raspberry Pi 433.92Mhz transceiver is free software: you can redistribute 
+	it and/or modify it under the terms of the GNU General Public License as 
+	published by the Free Software Foundation, either version 3 of the License, 
+	or (at your option) any later version.
+
+    Raspberry Pi 433.92Mhz transceiver is distributed in the hope that it will 
+	be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Raspberry Pi 433.92Mhz transceiver. If not, see 
+	<http://www.gnu.org/licenses/>
+*/
+
 #include "binary.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -23,4 +43,48 @@ int binToDec(int *binary, int s, int e) {
 		x*=2;
 	}
 	return dec;
+}
+
+int decToBin(int n, int binary[]) {
+	int i=1;
+	int x=0;
+	int y=0;
+	while(i<=n) {
+		i*=2;
+		x++;
+	}
+	i/=2;
+	x--;
+	for(y=x;y>=0;y--) {
+		if((n-i)>=0) {
+			n-=i;
+			binary[x-y]=1;
+		} else {
+			binary[x-y]=0;
+		}
+		i/=2;		
+	}
+	return x;
+}
+
+int decToBinRev(int n, int binary[]) {
+	int i=1;
+	int x=0;
+	int y=0;
+	while(i<=n) {
+		i*=2;
+		x++;
+	}
+	i/=2;
+	x--;
+	for(y=x;y>=0;y--) {
+		if((n-i)>=0) {
+			n-=i;
+			binary[y]=1;
+		} else {
+			binary[y]=0;
+		}
+		i/=2;		
+	}
+	return x;
 }
