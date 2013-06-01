@@ -92,8 +92,8 @@ int default_readdata(lirc_t timeout)
 {
 	int data, ret;
 
-	if (!waitfordata((long)timeout))
-		return 0;
+	// if (!waitfordata((long)timeout))
+		// return 0;
 
 #if defined(SIM_REC) && !defined(DAEMONIZE)
 	while (1) {

@@ -53,62 +53,9 @@ Start of the original (but stripped) code of mode2
 
 char *progname = "receive";
 
-void logprintf(int prio, char *format_str, ...) {
-	va_list ap;
+void logprintf(int prio, char *format_str, ...) { }
 
-	fprintf(stderr, "%s: ", progname);
-	va_start(ap, format_str);
-	if (prio == LOG_WARNING)
-		fprintf(stderr, "WARNING: ");
-	vfprintf(stderr, format_str, ap);
-	fputc('\n', stderr);
-	fflush(stderr);
-	va_end(ap);
-}
-
-void logperror(int prio, const char *s) {
-	if (s != NULL) {
-		logprintf(prio, "%s: %s", s, strerror(errno));
-	} else {
-		logprintf(prio, "%s", strerror(errno));
-	}
-} 
-
-int waitfordata(unsigned long maxusec) {
-	fd_set fds;
-	int ret;
-	struct timeval tv;
-
-	while (1) {
-		FD_ZERO(&fds);
-		FD_SET(hw.fd, &fds);
-		do {
-			do {
-				if (maxusec > 0) {
-					tv.tv_sec = maxusec / 1000000;
-					tv.tv_usec = maxusec % 1000000;
-					ret = select(hw.fd + 1, &fds, NULL, NULL, &tv);
-					if (ret == 0)
-						return (0);
-				} else {
-					ret = select(hw.fd + 1, &fds, NULL, NULL, NULL);
-				}
-			}
-			while (ret == -1 && errno == EINTR);
-			if (ret == -1) {
-				logprintf(LOG_ERR, "select() failed\n");
-				logperror(LOG_ERR, NULL);
-				continue;
-			}
-		}
-		while (ret == -1);
-
-		if (FD_ISSET(hw.fd, &fds)) {
-			/* we will read later */
-			return (1);
-		}
-	}
-}
+void logperror(int prio, const char *s) { } 
 
 int main(int argc, char **argv) {
 	lirc_t data;
@@ -128,10 +75,10 @@ int main(int argc, char **argv) {
 		static struct option long_options[] = {
 			{"help", no_argument, NULL, 'h'},
 			{"version", no_argument, NULL, 'v'},
-			{"socket", required_argument, NULL, 'd'},
+			{"socket", required_argument, NULL, 's'},
 			{0, 0, 0, 0}
 		};
-		c = getopt_long(argc, argv, "hvd:", long_options, NULL);
+		c = getopt_long(argc, argv, "hvs:", long_options, NULL);
 		if (c == -1)
 			break;
 		switch (c) {
@@ -139,14 +86,14 @@ int main(int argc, char **argv) {
 				printf("Usage: %s [options]\n", progname);
 				printf("\t -h --help\t\tdisplay usage summary\n");
 				printf("\t -v --version\t\tdisplay version\n");
-				printf("\t -d --socket=socket\tread from given socket\n");
+				printf("\t -s --socket=socket\tread from given socket\n");
 				return (EXIT_SUCCESS);
 			break;
 			case 'v':
 				printf("%s %s\n", progname, "1.0");
 				return (EXIT_SUCCESS);
 			break;
-			case 'd':
+			case 's':
 				socket = optarg;
 				have_device = 1;
 			break;

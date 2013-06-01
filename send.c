@@ -48,30 +48,9 @@ extern struct hardware hw;
 
 char *progname = "send";
 
-void logprintf(int prio, char *format_str, ...) {
-	va_list ap;
+void logprintf(int prio, char *format_str, ...) { }
 
-	fprintf(stderr, "%s: ", progname);
-	va_start(ap, format_str);
-	if (prio == LOG_WARNING)
-		fprintf(stderr, "WARNING: ");
-	vfprintf(stderr, format_str, ap);
-	fputc('\n', stderr);
-	fflush(stderr);
-	va_end(ap);
-}
-
-void logperror(int prio, const char *s) {
-	if (s != NULL) {
-		logprintf(prio, "%s: %s", s, strerror(errno));
-	} else {
-		logprintf(prio, "%s", strerror(errno));
-	}
-} 
-
-int waitfordata(long maxusec) { 
-	return 1;
-}
+void logperror(int prio, const char *s) { } 
 
 int main(int argc, char **argv) {
 	char *socket = NULL;
@@ -102,7 +81,7 @@ int main(int argc, char **argv) {
 		static struct option long_options[] = {
 			{"help", no_argument, NULL, 'h'},
 			{"version", no_argument, NULL, 'v'},
-			{"socket", required_argument, NULL, 'd'},
+			{"socket", required_argument, NULL, 's'},
 			{"protocol", required_argument, NULL, 'p'},
 			{"on", no_argument, NULL, 't'},
 			{"off", no_argument, NULL, 'f'},
