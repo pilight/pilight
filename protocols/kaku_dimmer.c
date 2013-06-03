@@ -145,8 +145,10 @@ void kakuDimCreateCode(struct options *options) {
 	int state = atoi(getOption(options,'f')) || 1;
 	int all = atoi(getOption(options,'a'));
 	int dimlevel = atoi(getOption(options,'d')) || 15;
-	if(id == 0)
+	if(id == 0) {
 		fprintf(stderr, "kaku_dimmer: insufficient number of arguments\n");
+		exit(0);
+	}
 		
 	kakuDimCreateStart();
 	kakuDimClearCode();

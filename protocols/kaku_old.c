@@ -116,8 +116,10 @@ void kakuOldCreateCode(struct options *options) {
 	int id = atoi(getOption(options,'i'));
 	int unit = atoi(getOption(options,'u'));
 	int state = atoi(getOption(options,'f')) || 1;
-	if(id == 0 || unit == 0)
+	if(id == 0 || unit == 0) {
 		fprintf(stderr, "kaku_old: insufficient number of arguments\n");
+		exit(0);
+	}
 		
 	kakuOldCreateStart();
 	kakuOldClearCode();
