@@ -1,6 +1,6 @@
 SUBDIRS = daemons protocols
 
-all: subdirs protocol.o binary.o options.o libs.o send receive
+all: subdirs protocol.o binary.o options.o libs.o send receive debug
 	
 subdirs:
 	make -C protocols/
@@ -23,6 +23,9 @@ send: send.c lirc.h
 	
 receive: receive.c lirc.h
 	gcc -O2 -g -Wall -I. -I.. -static -o receive receive.c libs.o
+
+debug: debug.c lirc.h
+	gcc -O2 -g -Wall -I. -I.. -static -o debug debug.c libs.o
 	
 clean:
 	rm -f libs.o protocols/*.o daemons/*.o *.o send receive

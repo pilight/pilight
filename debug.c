@@ -1,0 +1,238 @@
+/*	
+	Copyright (C) 1998 Trent Piepho <xyzzy@u.washington.edu>
+	Copyright (C) 1998 Christoph Bartelmus <lirc@bartelmus.de>
+	Copyright (C) 2013 CurlyMo
+	
+	This file is part of the Raspberry Pi 433.92Mhz transceiver,
+	and based on mode2 as part of the package Lirc.
+
+    Raspberry Pi 433.92Mhz transceiver is free software: you can redistribute 
+	it and/or modify it under the terms of the GNU General Public License as 
+	published by the Free Software Foundation, either version 3 of the License, 
+	or (at your option) any later version.
+
+    Raspberry Pi 433.92Mhz transceiver is distributed in the hope that it will 
+	be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Raspberry Pi 433.92Mhz transceiver. If not, see 
+	<http://www.gnu.org/licenses/>
+	
+*/
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdarg.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <getopt.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <sys/ioctl.h>
+#include <limits.h>
+#include <errno.h>
+#include <syslog.h>
+#include <time.h>
+
+#include "lirc.h"
+#include "daemons/ir_remote.h"
+#include "daemons/hardware.h"
+#include "daemons/hw-types.h"
+
+#include "protocol.h"
+#include "protocols/kaku_switch.h"
+#include "protocols/kaku_dimmer.h"
+#include "protocols/kaku_old.h"
+#include "protocols/elro.h"
+
+/*
+Start of the original (but stripped) code of mode2
+*/
+
+void logprintf(int prio, char *format_str, ...) { }
+
+void logperror(int prio, const char *s) { } 
+
+int main(int argc, char **argv) {
+	char *progname = "debug";
+	
+	lirc_t data;
+	char *socket = "/dev/lirc0";
+	int have_device = 0;
+	
+	int duration = 0;
+	int i = 0;
+	int y = 0;
+	
+	int recording = 1;
+	int bit = 0;
+	int raw[255];
+	int pRaw[255];
+	int code[255];
+	int binary[255];
+	int footer = 0;
+	int header[2] = {0};
+	int low = 0;
+	int high = 0;
+	int rawLength = 0;
+	int binaryLength = 0;	
+	
+	hw_choose_driver(NULL);
+	while (1) {
+		int c;
+		static struct option long_options[] = {
+			{"help", no_argument, NULL, 'h'},
+			{"version", no_argument, NULL, 'v'},
+			{"socket", required_argument, NULL, 's'},
+			{0, 0, 0, 0}
+		};
+		c = getopt_long(argc, argv, "hvs:", long_options, NULL);
+		if (c == -1)
+			break;
+		switch (c) {
+			case 'h':
+				printf("Usage: %s [options]\n", progname);
+				printf("\t -h --help\t\tdisplay usage summary\n");
+				printf("\t -v --version\t\tdisplay version\n");
+				printf("\t -s --socket=socket\tread from given socket\n");
+				return (EXIT_SUCCESS);
+			break;
+			case 'v':
+				printf("%s %s\n", progname, "1.0");
+				return (EXIT_SUCCESS);
+			break;
+			case 's':
+				socket = optarg;
+				have_device = 1;
+			break;
+			default:
+				printf("Usage: %s [options]\n", progname);
+				return (EXIT_FAILURE);
+			break;
+		}
+	}
+	if(optind < argc) {
+		fprintf(stderr, "%s: too many arguments\n", progname);
+		return EXIT_FAILURE;
+	}
+	
+	if(strcmp(socket, "/var/lirc/lircd") == 0) {
+		fprintf(stderr, "%s: refusing to connect to lircd socket\n", progname);
+		return EXIT_FAILURE;
+	}
+
+	if(have_device)
+		hw.device = socket;
+		
+	if(!hw.init_func()) {
+		fprintf(stderr, "%s: could not open %s\n", progname, hw.device);
+		fprintf(stderr, "%s: default_init(): Device or resource busy\n", progname);
+		return EXIT_FAILURE;
+	}
+	
+/*
+End of the original (but stripped) code of mode2
+*/	
+	
+	/* Initialize peripheral modules */
+	kakuSwInit();
+	kakuDimInit();
+	kakuOldInit();
+	elroInit();	
+	
+	while (1) {
+		data = hw.readdata(0);		
+		duration = (data & PULSE_MASK);				
+		
+		/* If we are recording, keep recording until the next footer has been matched */
+		if(recording == 1) {
+			if(bit < 255) {
+				raw[bit++] = duration;
+			} else {
+				bit = 0;
+				recording = 0;
+			}
+		}			
+			
+		/* First try to catch code that seems to be a footer.
+		   If a real footer has been recognized, start using that as the new footer */
+		if((duration > 10000 
+		   && duration < 100000 && footer == 0) || ((footer-(footer*0.1)<duration) && (footer+(footer*0.1)>duration))) {
+			recording = 1;
+			
+			/* Check if we are recording similar codes */
+			for(i=0;i<(bit-1);i++) {
+				if(!(((pRaw[i]-(pRaw[i]*0.3)) < raw[i]) && ((pRaw[i]+(pRaw[i]*0.3)) > raw[i]))) {
+					y=0;
+					recording=0;
+				}
+				pRaw[i]=raw[i];
+			}
+			y++;
+			
+			/* Continue if we have 4 matches with a footer or 2 without */
+			if(y>2) {
+				/* If we are certain we are recording similar codes.
+				   Save the header values and the raw code length */
+				if(footer>0) {
+					if(header[0] == 0 && header[1] == 0) {
+						header[0]=raw[0];
+						header[1]=raw[1];
+					}
+					if(rawLength == 0)
+						rawLength=bit;
+				}
+				/* Try to catch the footer, and the low and high values */
+				for(i=0;i<bit;i++) {
+					if((i+1)<bit && i > 2 && footer > 0) {
+						if((raw[i]/raw[i+1]) > 3) {
+							high=raw[i];
+							low=raw[i+1];
+						}
+					}				
+					if(duration > 10000 && duration < 100000)
+						footer=raw[i];
+				}
+			/* If we have gathered all data, stop with the loop */
+			if(header[0] > 0 && header[1] > 0 && footer > 0 && high > 0 && low > 0 && rawLength > 0)
+				break;
+			}			
+			bit=0;
+		}
+		
+		fflush(stdout);
+	};
+	
+	/* Convert the raw code into binary code */
+	for(i=0;i<rawLength;i++) {
+		if(raw[i] > ((high-low)/2)) {	
+			code[i]=1;
+		} else {
+			code[i]=0;
+		}
+	}
+	for(i=2;i<rawLength; i+=4) {
+		if(code[i+1] == 1) {
+			binary[i/4]=1;
+		} else {
+			binary[i/4]=0;
+		}
+	}
+	binaryLength = i/4;
+	
+	/* Print everything */
+	printf("header[0]:\t%d\nheader[1]:\t%d\nlow:\t\t%d\nhigh:\t\t%d\nfooter:\t\t%d\nrawLength:\t%d\nbinaryLength:\t%d\n",header[0],header[1],low,high,footer,rawLength,binaryLength);
+	printf("Raw code:\n");
+	for(i=0;i<rawLength;i++) {
+		printf("%d ",raw[i]);
+	}
+	printf("\n");
+	printf("Binary code:\n");
+	for(i=0;i<binaryLength;i++) {
+		printf("%d",binary[i]);
+	}
+	printf("\n");
+	return (EXIT_SUCCESS);
+}

@@ -2,6 +2,10 @@
 Made the CLI arguments modular so each device can specify
 what CLI arguments it can handle / requires
 
+Added a small debugger which tries to print out all necessary
+codes to create a custom protocol. If will also help to figure
+out how the protocol works.
+
 31 may 2013
 Added support for older kaku devices
 
