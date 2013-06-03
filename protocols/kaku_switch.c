@@ -124,7 +124,7 @@ void kakuSwCreateCode(struct options *options) {
 	int unit = atoi(getOption(options,'u'));
 	int state = atoi(getOption(options,'f')) || 1;
 	int all = atoi(getOption(options,'a'));
-	if(id == 0 || unit == 0)
+	if(id == 0)
 		fprintf(stderr, "kaku_switch: insufficient number of arguments\n");
 
 	kakuSwCreateStart();

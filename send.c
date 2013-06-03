@@ -61,7 +61,7 @@ int main(int argc, char **argv) {
 	
 	/* Hold the name of the protocol */
 	char protobuffer[255];
-	int i, x;
+	int i;
 	/* Does this protocol exists */
 	int match = 0;
 	/* Did the sending succeed */
