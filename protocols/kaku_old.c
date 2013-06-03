@@ -29,7 +29,6 @@ void kakuOldParseCode() {
 int kakuOldParseBinary() {
 	int unit = binToDec(kaku_old.binary,0,4);
 	int state = kaku_old.binary[11];
-	int check = kaku_old.binary[10];
 	int id = binToDec(kaku_old.binary,5,9);
 
 	printf("id: %d, unit: %d, state:",id,unit);
@@ -113,12 +112,25 @@ void kakuOldCreateState(int state) {
 	}
 }
 
-void kakuOldCreateCode(int id, int unit, int state, int all, int dimlevel) {
+void kakuOldCreateCode(struct options *options) {
+	int id = atoi(getOption(options,'i'));
+	int unit = atoi(getOption(options,'u'));
+	int state = atoi(getOption(options,'f')) || 1;
+	if(id == 0 || unit == 0)
+		fprintf(stderr, "kaku_old: insufficient number of arguments\n");
+		
 	kakuOldCreateStart();
 	kakuOldClearCode();
 	kakuOldCreateUnit(unit);
 	kakuOldCreateId(id);
 	kakuOldCreateState(state);
+}
+
+void kakuOldPrintHelp() {
+	printf("\t -t --on\t\t\tsend an on signal\n");
+	printf("\t -t --off\t\t\tsend an off signal\n");
+	printf("\t -u --unit=unit\t\t\tcontrol a device with this unit code\n");
+	printf("\t -i --id=id\t\t\tcontrol a device with this id\n");
 }
 
 void kakuOldInit() {
@@ -139,10 +151,20 @@ void kakuOldInit() {
 	kaku_old.bit = 0;	
 	kaku_old.recording = 0;	
 	
+	struct option kakuOldOptions[] = {
+		{"on", no_argument, NULL, 't'},
+		{"off", no_argument, NULL, 'f'},
+		{"unit", required_argument, NULL, 'u'},
+		{"id", required_argument, NULL, 'i'},
+		{0,0,0,0}
+	};
+
+	kaku_old.options=setOptions(kakuOldOptions);		
 	kaku_old.parseRaw=&kakuOldParseRaw;
 	kaku_old.parseCode=&kakuOldParseCode;
 	kaku_old.parseBinary=&kakuOldParseBinary;
 	kaku_old.createCode=&kakuOldCreateCode;
+	kaku_old.printHelp=&kakuOldPrintHelp;
 	
 	protocol_register(&kaku_old);
 }

@@ -118,12 +118,26 @@ void elroCreateState(int state) {
 	}
 }
 
-void elroCreateCode(int id, int unit, int state, int all, int dimlevel) {
+void elroCreateCode(struct options *options) {
+
+	int id = atoi(getOption(options,'i'));
+	int unit = atoi(getOption(options,'u'));
+	int state = atoi(getOption(options,'f')) || 1;
+	if(id == 0 || unit == 0)
+		fprintf(stderr, "elro: insufficient number of arguments\n");
+		
 	elroCreateStart();
 	elroClearCode();
 	elroCreateUnit(unit);
 	elroCreateId(id);
 	elroCreateState(state);
+}
+
+void elroPrintHelp() {
+	printf("\t -t --on\t\t\tsend an on signal\n");
+	printf("\t -t --off\t\t\tsend an off signal\n");
+	printf("\t -u --unit=unit\t\t\tcontrol a device with this unit code\n");
+	printf("\t -i --id=id\t\t\tcontrol a device with this id\n");
 }
 
 void elroInit() {
@@ -144,10 +158,20 @@ void elroInit() {
 	elro.bit = 0;	
 	elro.recording = 0;	
 	
+	struct option elroOptions[] = {
+		{"on", no_argument, NULL, 't'},
+		{"off", no_argument, NULL, 'f'},
+		{"unit", required_argument, NULL, 'u'},
+		{"id", required_argument, NULL, 'i'},
+		{0,0,0,0}
+	};
+
+	elro.options=setOptions(elroOptions);	
 	elro.parseRaw=&elroParseRaw;
 	elro.parseCode=&elroParseCode;
 	elro.parseBinary=&elroParseBinary;
 	elro.createCode=&elroCreateCode;
+	elro.printHelp=&elroPrintHelp;
 	
 	protocol_register(&elro);
 }

@@ -22,7 +22,10 @@
 #define PROTOCOL_H_
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+#include <getopt.h>
+#include "options.h"
 
 typedef struct {
 	char id[25];
@@ -35,7 +38,8 @@ typedef struct {
 	int rawLength;
 	int binaryLength;
 	int repeats;
-	
+	struct option *options;
+		
 	int bit;
 	int recording;
 	int raw[255];
@@ -46,7 +50,8 @@ typedef struct {
 	void (*parseRaw)();
 	void (*parseCode)();
 	int (*parseBinary)();
-	void (*createCode)(int id, int unit, int state, int all, int dimlevel);
+	void (*createCode)(struct options *options);
+	void (*printHelp)();
 } protocol;
 
 typedef struct {

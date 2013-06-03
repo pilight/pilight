@@ -1,0 +1,12 @@
+3 june 2013
+Made the CLI arguments modular so each device can specify
+what CLI arguments it can handle / requires
+
+31 may 2013
+Added support for older kaku devices
+
+28 may 2013
+First version of the sender based on the lirc gpio kernel module
+
+26 may 2013
+New receiver that runs on the lirc gpio kernel module

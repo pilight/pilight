@@ -119,7 +119,14 @@ void kakuSwCreateFooter() {
 	kaku_switch.raw[131]=kaku_switch.footer;
 }
 
-void kakuSwCreateCode(int id, int unit, int state, int all, int dimlevel) {
+void kakuSwCreateCode(struct options *options) {
+	int id = atoi(getOption(options,'i'));
+	int unit = atoi(getOption(options,'u'));
+	int state = atoi(getOption(options,'f')) || 1;
+	int all = atoi(getOption(options,'a'));
+	if(id == 0 || unit == 0)
+		fprintf(stderr, "kaku_switch: insufficient number of arguments\n");
+
 	kakuSwCreateStart();
 	kakuSwClearCode();
 	kakuSwCreateId(id);
@@ -127,6 +134,14 @@ void kakuSwCreateCode(int id, int unit, int state, int all, int dimlevel) {
 	kakuSwCreateState(state);
 	kakuSwCreateUnit(unit);
 	kakuSwCreateFooter();
+}
+
+void kakuSwPrintHelp() {
+	printf("\t -t --on\t\t\tsend an on signal\n");
+	printf("\t -t --off\t\t\tsend an off signal\n");
+	printf("\t -u --unit=unit\t\t\tcontrol a device with this unit code\n");
+	printf("\t -i --id=id\t\t\tcontrol a device with this id\n");
+	printf("\t -a --all\t\t\tsend command to all devices with this id\n");
 }
 
 void kakuSwInit() {
@@ -145,12 +160,23 @@ void kakuSwInit() {
 	kaku_switch.repeats = 2;
 	
 	kaku_switch.bit = 0;	
-	kaku_switch.recording = 0;	
+	kaku_switch.recording = 0;
 	
+	struct option kakuSwOptions[] = {
+		{"on", no_argument, NULL, 't'},
+		{"off", no_argument, NULL, 'f'},
+		{"unit", required_argument, NULL, 'u'},
+		{"id", required_argument, NULL, 'i'},
+		{"all", required_argument, NULL, 'a'},
+		{0,0,0,0}
+	};
+
+	kaku_switch.options=setOptions(kakuSwOptions);
 	kaku_switch.parseRaw=&kakuSwParseRaw;
 	kaku_switch.parseCode=&kakuSwParseCode;
 	kaku_switch.parseBinary=&kakuSwParseBinary;
 	kaku_switch.createCode=kakuSwCreateCode;
+	kaku_switch.printHelp=kakuSwPrintHelp;
 	
-	protocol_register(&kaku_switch);
+	protocol_register(&kaku_switch);	
 }

@@ -139,7 +139,15 @@ void kakuDimCreateFooter() {
 	kaku_dimmer.raw[147]=kaku_dimmer.footer;
 }
 
-void kakuDimCreateCode(int id, int unit, int state, int all, int dimlevel) {
+void kakuDimCreateCode(struct options *options) {
+	int id = atoi(getOption(options,'i'));
+	int unit = atoi(getOption(options,'u'));
+	int state = atoi(getOption(options,'f')) || 1;
+	int all = atoi(getOption(options,'a'));
+	int dimlevel = atoi(getOption(options,'d')) || 15;
+	if(id == 0 || unit == 0)
+		fprintf(stderr, "elro: insufficient number of arguments\n");
+		
 	kakuDimCreateStart();
 	kakuDimClearCode();
 	kakuDimCreateId(id);
@@ -149,6 +157,14 @@ void kakuDimCreateCode(int id, int unit, int state, int all, int dimlevel) {
 	kakuDimCreateDimlevel(dimlevel);
 	kakuDimCreateFooter();
 }
+
+void kakuDimPrintHelp() {
+	printf("\t -u --unit=unit\t\t\tcontrol a device with this unit code\n");
+	printf("\t -i --id=id\t\t\tcontrol a device with this id\n");
+	printf("\t -a --all\t\t\tsend command to all devices with this id\n");
+	printf("\t -d --dimlevel=dimlevel\t\tsend a specific dimlevel\n");
+}
+
 
 void kakuDimInit() {
 		
@@ -168,10 +184,20 @@ void kakuDimInit() {
 	kaku_dimmer.bit = 0;	
 	kaku_dimmer.recording = 0;	
 	
+	struct option kakuDimOptions[] = {
+		{"unit", required_argument, NULL, 'u'},
+		{"id", required_argument, NULL, 'i'},
+		{"all", required_argument, NULL, 'a'},
+		{"dimlevel", required_argument, NULL, 'd'},
+		{0,0,0,0}
+	};
+
+	kaku_dimmer.options=setOptions(kakuDimOptions);
 	kaku_dimmer.parseRaw=&kakuDimParseRaw;
 	kaku_dimmer.parseCode=&kakuDimParseCode;
 	kaku_dimmer.parseBinary=&kakuDimParseBinary;
 	kaku_dimmer.createCode=&kakuDimCreateCode;
+	kaku_dimmer.printHelp=&kakuDimPrintHelp;
 	
 	protocol_register(&kaku_dimmer);
 }

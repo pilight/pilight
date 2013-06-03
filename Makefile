@@ -1,6 +1,6 @@
 SUBDIRS = daemons protocols
 
-all: subdirs protocol.o binary.o libs.o send receive
+all: subdirs protocol.o binary.o options.o libs.o send receive
 	
 subdirs:
 	make -C protocols/
@@ -9,11 +9,14 @@ subdirs:
 protocol.o: protocol.c protocol.h
 	make trunc && gcc -Wall -I. -I.. -c protocol.c
 
+options.o: options.c options.h
+	make trunc && gcc -Wall -I. -I.. -c options.c	
+	
 binary.o: binary.c binary.h
 	make trunc && gcc -Wall -I. -I.. -c binary.c
 
 libs.o:
-	ld -r binary.o protocol.o protocols/protocols.o daemons/lirc.o -o libs.o
+	ld -r binary.o protocol.o options.o protocols/protocols.o daemons/lirc.o -o libs.o
 
 send: send.c lirc.h
 	gcc -O2 -g -Wall -I. -I.. -static -o send send.c libs.o

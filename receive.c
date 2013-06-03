@@ -51,15 +51,15 @@
 Start of the original (but stripped) code of mode2
 */
 
-char *progname = "receive";
-
 void logprintf(int prio, char *format_str, ...) { }
 
 void logperror(int prio, const char *s) { } 
 
 int main(int argc, char **argv) {
+	char *progname = "receive";
+	
 	lirc_t data;
-	char *socket = "/dev/lircd";
+	char *socket = "/dev/lirc0";
 	int have_device = 0;
 	
 	int duration = 0;
@@ -103,21 +103,24 @@ int main(int argc, char **argv) {
 			break;
 		}
 	}
-	if (optind < argc) {
+	if(optind < argc) {
 		fprintf(stderr, "%s: too many arguments\n", progname);
 		return EXIT_FAILURE;
 	}
 	
-	if (strcmp(socket, "/var/lirc/lircd") == 0) {
+	if(strcmp(socket, "/var/lirc/lircd") == 0) {
 		fprintf(stderr, "%s: refusing to connect to lircd socket\n", progname);
 		return EXIT_FAILURE;
 	}
 
-	if (have_device)
+	if(have_device)
 		hw.device = socket;
 		
-	if (!hw.init_func())
+	if(!hw.init_func()) {
+		fprintf(stderr, "%s: could not open %s\n", progname, hw.device);
+		fprintf(stderr, "%s: default_init(): Device or resource busy\n", progname);
 		return EXIT_FAILURE;
+	}
 	
 /*
 End of the original (but stripped) code of mode2

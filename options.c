@@ -18,29 +18,37 @@
 	<http://www.gnu.org/licenses/>
 */
 
-#ifndef KAKU_DIMMER_H_
-#define KAKU_DIMMER_H_
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include "options.h"
 
-#include "protocol.h"
-#include "binary.h"
+struct option *setOptions(struct option *option) {
+	int nr = 0, i = 0;
+	struct option *backup_options;
+	backup_options=option;
+	while(backup_options->name != NULL) {
+		backup_options++;
+		nr++;
+	}
+	backup_options=option;
+	struct option *new_options = malloc(sizeof(struct option)*nr);
+	for(i=0;i<nr;i++) {
+		new_options[i].name=backup_options->name;
+		new_options[i].flag=backup_options->flag;
+		new_options[i].has_arg=backup_options->has_arg;
+		new_options[i].val=backup_options->val;
+		backup_options++;
+	}
+	return new_options;
+}
 
-protocol kaku_dimmer;
-
-void kakuDimInit();
-void kakuDimParseRaw();
-void kakuDimParseCode();
-int kakuDimParseBinary();
-void kakuDimCreateCode(struct options *options);
-void kakuDimCreateLow(int s, int e);
-void kakuDimCreateHigh(int s, int e);
-void kakuDimClearCode();
-void kakuDimCreateStart();
-void kakuDimCreateId(int id);
-void kakuDimCreateAll(int all);
-void kakuDimCreateState(int state);
-void kakuDimCreateUnit(int unit);
-void kakuDimCreateDimlevel(int dimlevel);
-void kakuDimCreateFooter();
-void kakuDimPrintHelp();
-
-#endif
+char *getOption(struct options *options, int id) {
+	while(options != NULL) {
+		if(options->id == id) {
+			return options->value;
+		}
+		options = options->next;
+	}
+	return "\0";
+}
