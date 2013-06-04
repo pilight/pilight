@@ -69,25 +69,62 @@ The sender will send from `/dev/lirc0` by default, but if you want it to read ot
 ```
 root@pi:~# send --socket=/dev/lirc1
 ```
-The command line arguments are as follows:
+The command line arguments depend on the protocol used e.g.::
 ```
 root@pi:~# ./send -h
-Usage: send [options]
+Usage: send -p protocol [options]
          -h --help                      display this message
          -v --version                   display version
+         -p --protocol=protocol         the device that you want to control
          -s --socket=socket             read from given socket
-         -p --protocol=protocol         which device are you trying to control
+         -r --repeat=repeat             number of times the command is send
+
+The supported protocols are:
+         kaku_switch                    KlikAanKlikUit Switches
+         kaku_dimmer                    KlikAanKlikUit Dimmers
+         kaku_old                       Old KlikAanKlikUit Switches
+         elro                           Elro Switches
+         raw                            Raw codes
+root@pi:~# ./send -p kaku_switch -h
+Usage: send -p kaku_switch [options]
+         -h --help                      display this message
+         -v --version                   display version
+         -p --protocol=protocol         the device that you want to control
+         -s --socket=socket             read from given socket
+         -r --repeat=repeat             number of times the command is send
+
+        [kaku_switch]
          -t --on                        send an on signal
          -t --off                       send an off signal
          -u --unit=unit                 control a device with this unit code
          -i --id=id                     control a device with this id
          -a --all                       send command to all devices with this id
-         -d --dimlevel                  send a specific dimlevel
-         -r --repeat=repeat             number of times the command is send
 ```
 Examples are:
 ```
 root@pi:~# ./send -p kaku_switch -t 1 -u 1 -t
 root@pi:~# ./send -p kaku_dimmer -t 1 -u 1 -d 15
 root@pi:~# ./send -p elro -t 1 -u 1 -t
+```
+To control devices that are not yet supported one can use the `raw` protocol. This protocol allows the sending of raw codes.
+To figure out what the raw codes of your devices are you can run the debugger first. When you run the debugger if will wait
+for you to press a button for the device you want to control. Once you held the button long enough, the debugger will
+print all necessary information in order to create a new protocol, or to control the device using the raw codes.
+```
+root@pi:~# ./debug
+header[0]:      286
+header[1]:      2825
+low:            271
+high:           1355
+footer:         11302
+rawLength:      132
+binaryLength:   33
+Raw code:
+286 2825 286 201 289 1337 287 209 283 1351 287 204 289 1339 288 207 288 1341 289 207 281 1343 284 205 292 1346 282 212 283 1348 282 213 279 1352 282 211 281 1349 282 210 283 1347 284 211 288 1348 281 211 285 1353 278 213 280 1351 280 232 282 1356 279 213 285 1351 276 215 285 1348 277 216 278 1359 278 216 279 1353 272 214 283 1358 276 216 276 1351 278 214 284 1357 275 217 276 1353 270 217 277 1353 272 220 277 1351 275 220 272 1356 275 1353 273 224 277 236 282 1355 272 1353 273 233 273 222 268 1358 270 219 277 1361 274 218 280 1358 272 1355 271 243 251 11302
+Binary code:
+000000000000000000000000010100011
+```
+You can now use the raw code to control your device:
+```
+root@pi:~# ./send -p raw -c "286 2825 286 201 289 1337 287 209 283 1351 287 204 289 1339 288 207 288 1341 289 207 281 1343 284 205 292 1346 282 212 283 1348 282 213 279 1352 282 211 281 1349 282 210 283 1347 284 211 288 1348 281 211 285 1353 278 213 280 1351 280 232 282 1356 279 213 285 1351 276 215 285 1348 277 216 278 1359 278 216 279 1353 272 214 283 1358 276 216 276 1351 278 214 284 1357 275 217 276 1353 270 217 277 1353 272 220 277 1351 275 220 272 1356 275 1353 273 224 277 236 282 1355 272 1353 273 233 273 222 268 1358 270 219 277 1361 274 218 280 1358 272 1355 271 243 251 11302"
 ```
