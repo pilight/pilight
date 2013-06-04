@@ -158,7 +158,7 @@ End of the original (but stripped) code of mode2
 			
 		/* First try to catch code that seems to be a footer.
 		   If a real footer has been recognized, start using that as the new footer */
-		if((duration > 10000 
+		if((duration > 5000 
 		   && duration < 100000 && footer == 0) || ((footer-(footer*0.1)<duration) && (footer+(footer*0.1)>duration))) {
 			recording = 1;
 			
@@ -172,7 +172,7 @@ End of the original (but stripped) code of mode2
 			}
 			y++;
 			
-			/* Continue if we have 4 matches with a footer or 2 without */
+			/* Continue if we have 4 matches */
 			if(y>2) {
 				/* If we are certain we are recording similar codes.
 				   Save the header values and the raw code length */
@@ -187,17 +187,20 @@ End of the original (but stripped) code of mode2
 				/* Try to catch the footer, and the low and high values */
 				for(i=0;i<bit;i++) {
 					if((i+1)<bit && i > 2 && footer > 0) {
-						if((raw[i]/raw[i+1]) > 3) {
+						if((raw[i]/raw[i+1]) >= 2) {
 							high=raw[i];
 							low=raw[i+1];
 						}
 					}				
-					if(duration > 10000 && duration < 100000)
+					if(duration > 5000 && duration < 100000) {
 						footer=raw[i];
+					}
 				}
-			/* If we have gathered all data, stop with the loop */
-			if(header[0] > 0 && header[1] > 0 && footer > 0 && high > 0 && low > 0 && rawLength > 0)
-				break;
+				
+				/* If we have gathered all data, stop with the loop */
+				if(header[0] > 0 && header[1] > 0 && footer > 0 && high > 0 && low > 0 && rawLength > 0) {
+					break;
+				}
 			}			
 			bit=0;
 		}
@@ -207,7 +210,7 @@ End of the original (but stripped) code of mode2
 	
 	/* Convert the raw code into binary code */
 	for(i=0;i<rawLength;i++) {
-		if(raw[i] > ((high-low)/2)) {	
+		if(raw[i] > (high-low)) {	
 			code[i]=1;
 		} else {
 			code[i]=0;

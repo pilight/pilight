@@ -176,7 +176,7 @@ End of the original (but stripped) code of mode2
 						if(device->pCode[x]!=device->code[x])
 							y=0;
 						device->pCode[x]=device->code[x];
-						if(device->raw[x] > ((device->high-device->low)/2)) {	
+						if(device->raw[x] > (device->high-device->low)) {	
 							device->code[x]=1;
 						} else {
 							device->code[x]=0;

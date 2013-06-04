@@ -107,7 +107,7 @@ root@pi:~# ./send -p kaku_dimmer -t 1 -u 1 -d 15
 root@pi:~# ./send -p elro -t 1 -u 1 -t
 ```
 To control devices that are not yet supported one can use the `raw` protocol. This protocol allows the sending of raw codes.
-To figure out what the raw codes of your devices are you can run the debugger first. When you run the debugger if will wait
+To figure out what the raw codes of your devices are you can run the debugger first. When you run the debugger it will wait
 for you to press a button for the device you want to control. Once you held the button long enough, the debugger will
 print all necessary information in order to create a new protocol, or to control the device using the raw codes.
 ```
