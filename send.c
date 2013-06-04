@@ -45,6 +45,7 @@
 #include "protocols/kaku_dimmer.h"
 #include "protocols/kaku_old.h"
 #include "protocols/elro.h"
+#include "protocols/raw.h"
 
 extern struct hardware hw;
 
@@ -80,13 +81,14 @@ int main(int argc, char **argv) {
 	protocol *device = NULL;
 	
 	/* The short CLI arguments the main program has */
-	char optstr[255]={'h','v','s',':','p',':','\0'};
+	char optstr[255]={'h','v','s',':','p',':','r',':','\0'};
 	/* The long CLI arguments the program has */
 	struct option mainOptions[] = {
 		{"help", no_argument, NULL, 'h'},
 		{"version", no_argument, NULL, 'v'},
 		{"socket", required_argument, NULL, 's'},
 		{"protocol", required_argument, NULL, 'p'},
+		{"repeat", required_argument, NULL, 'r'},
 		{0,0,0,0}
 	};
 	/* Make sure the long options are a static array to prevent unexpected behavior */
@@ -116,6 +118,7 @@ int main(int argc, char **argv) {
 	kakuDimInit();
 	kakuOldInit();
 	elroInit();			
+	rawInit();			
 	
 	/* Clear the argument holders */
 	memset(longarg,'\0',11);

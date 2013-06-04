@@ -1,3 +1,8 @@
+4 june 2013
+Added a raw protocol. This enables the sending of raw codes like
+they are outputted by the debugger. This is especially handy for
+protocols that aren't available yet.
+
 3 june 2013
 Made the CLI arguments modular so each device can specify
 what CLI arguments it can handle / requires
