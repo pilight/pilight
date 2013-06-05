@@ -1,3 +1,7 @@
+5 june 2013
+Added a learner. Basicly, the learner does the same as the
+debugger, but the learner prints more extensive information.
+
 4 june 2013
 Added a raw protocol. This enables the sending of raw codes like
 they are outputted by the debugger. This is especially handy for

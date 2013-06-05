@@ -172,7 +172,7 @@ End of the original (but stripped) code of mode2
 			}
 			y++;
 			
-			/* Continue if we have 4 matches */
+			/* Continue if we have 2 matches */
 			if(y>2) {
 				/* If we are certain we are recording similar codes.
 				   Save the header values and the raw code length */

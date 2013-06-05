@@ -1,6 +1,6 @@
 SUBDIRS = daemons protocols
 
-all: subdirs protocol.o binary.o options.o libs.o send receive debug
+all: subdirs protocol.o binary.o options.o libs.o send receive debug learn
 	
 subdirs:
 	make -C protocols/
@@ -27,10 +27,16 @@ receive: receive.c lirc.h
 debug: debug.c lirc.h
 	gcc -O2 -g -Wall -I. -I.. -static -o debug debug.c libs.o
 	
+learn: learn.c lirc.h
+	gcc -O2 -g -Wall -I. -I.. -static -o learn learn.c libs.o
+	
+	
 clean:
 	rm -f libs.o protocols/*.o daemons/*.o *.o send receive
 	
 trunc:
 	test ! -s send || rm send
 	test ! -s receive || rm receive
+	test ! -s debug || rm debug
+	test ! -s learn || rm learn
 	test ! -s libs.o || rm libs.o

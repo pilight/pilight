@@ -20,6 +20,4 @@ protocols.o:
 	
 trunc:
 	test ! -s protocols.o || rm protocols.o
-	test ! -s ../libs.o || rm ../libs.o
-	test ! -s ../send || rm ../send
-	test ! -s ../receive || rm ../receive
+	make trunc -C ../
