@@ -18,29 +18,24 @@
 	<http://www.gnu.org/licenses/>
 */
 
-#ifndef KAKU_DIMMER_H_
-#define KAKU_DIMMER_H_
+#ifndef GC_H_
+#define GC_H_
 
-#include "protocol.h"
-#include "binary.h"
+#include <string.h>
+#include <stdlib.h>
+#include <signal.h>
+#include <setjmp.h>
 
-protocol kaku_dimmer;
+typedef struct {
+	int nr;
+	int (*listeners[10])();
+} collectors;
 
-void kakuDimInit();
-void kakuDimParseRaw();
-void kakuDimParseCode();
-char *kakuDimParseBinary();
-void kakuDimCreateCode(struct options *options);
-void kakuDimCreateLow(int s, int e);
-void kakuDimCreateHigh(int s, int e);
-void kakuDimClearCode();
-void kakuDimCreateStart();
-void kakuDimCreateId(int id);
-void kakuDimCreateAll(int all);
-void kakuDimCreateState(int state);
-void kakuDimCreateUnit(int unit);
-void kakuDimCreateDimlevel(int dimlevel);
-void kakuDimCreateFooter();
-void kakuDimPrintHelp();
+collectors gc;
+
+void gc_handler(int signal);
+void gc_attach(int (*fp)());
+void gc_detach(int (*fp)());
+void gc_catch();
 
 #endif

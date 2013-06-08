@@ -22,6 +22,10 @@
 	
 */
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
@@ -35,11 +39,12 @@
 #include <errno.h>
 #include <syslog.h>
 #include <time.h>
+#include <math.h>
 
 #include "lirc.h"
-#include "daemons/ir_remote.h"
-#include "daemons/hardware.h"
-#include "daemons/hw-types.h"
+#include "lirc/ir_remote.h"
+#include "lirc/hardware.h"
+#include "lirc/hw-types.h"
 
 #include "protocol.h"
 #include "protocols/kaku_switch.h"
@@ -55,8 +60,15 @@ void logprintf(int prio, char *format_str, ...) { }
 
 void logperror(int prio, const char *s) { } 
 
+int normalize(int i) {
+	double x;
+	x=(double)i/PULSE_LENGTH;
+
+	return (int)(round(x));
+}
+
 int main(int argc, char **argv) {
-	char *progname = "debug";
+	char *progname = "433-debug";
 	
 	lirc_t data;
 	char *socket = "/dev/lirc0";
@@ -73,9 +85,8 @@ int main(int argc, char **argv) {
 	int code[255];
 	int binary[255];
 	int footer = 0;
-	int header[2] = {0};
-	int low = 0;
-	int high = 0;
+	int header = 0;
+	int pulse = 0;
 	int rawLength = 0;
 	int binaryLength = 0;	
 	
@@ -145,7 +156,7 @@ End of the original (but stripped) code of mode2
 	while (1) {
 		data = hw.readdata(0);		
 		duration = (data & PULSE_MASK);				
-		
+
 		/* If we are recording, keep recording until the next footer has been matched */
 		if(recording == 1) {
 			if(bit < 255) {
@@ -177,9 +188,8 @@ End of the original (but stripped) code of mode2
 				/* If we are certain we are recording similar codes.
 				   Save the header values and the raw code length */
 				if(footer>0) {
-					if(header[0] == 0 && header[1] == 0) {
-						header[0]=raw[0];
-						header[1]=raw[1];
+					if(header == 0) {
+						header=raw[1];
 					}
 					if(rawLength == 0)
 						rawLength=bit;
@@ -187,9 +197,8 @@ End of the original (but stripped) code of mode2
 				/* Try to catch the footer, and the low and high values */
 				for(i=0;i<bit;i++) {
 					if((i+1)<bit && i > 2 && footer > 0) {
-						if((raw[i]/raw[i+1]) >= 2) {
-							high=raw[i];
-							low=raw[i+1];
+						if((raw[i]/PULSE_LENGTH) >= 2) {
+							pulse=raw[i];
 						}
 					}				
 					if(duration > 5000 && duration < 100000) {
@@ -198,7 +207,7 @@ End of the original (but stripped) code of mode2
 				}
 				
 				/* If we have gathered all data, stop with the loop */
-				if(header[0] > 0 && header[1] > 0 && footer > 0 && high > 0 && low > 0 && rawLength > 0) {
+				if(header > 0 && footer > 0 && pulse > 0 && rawLength > 0) {
 					break;
 				}
 			}			
@@ -210,7 +219,7 @@ End of the original (but stripped) code of mode2
 	
 	/* Convert the raw code into binary code */
 	for(i=0;i<rawLength;i++) {
-		if(raw[i] > (high-low)) {	
+		if(raw[i] > (pulse-PULSE_LENGTH)) {	
 			code[i]=1;
 		} else {
 			code[i]=0;
@@ -226,10 +235,17 @@ End of the original (but stripped) code of mode2
 	binaryLength = i/4;
 	
 	/* Print everything */
-	printf("header[0]:\t%d\nheader[1]:\t%d\nlow:\t\t%d\nhigh:\t\t%d\nfooter:\t\t%d\nrawLength:\t%d\nbinaryLength:\t%d\n",header[0],header[1],low,high,footer,rawLength,binaryLength);
+	printf("--[RESULTS]--\n");
+	printf("\n");
+	printf("header:\t%d\n",normalize(header));
+	printf("pulse:\t\t%d\n",normalize(pulse));
+	printf("footer:\t\t%d\n",normalize(footer));
+	printf("rawLength:\t%d\n",rawLength);
+	printf("binaryLength:\t%d\n",binaryLength);
+	printf("\n");
 	printf("Raw code:\n");
 	for(i=0;i<rawLength;i++) {
-		printf("%d ",raw[i]);
+		printf("%d ",normalize(raw[i])*PULSE_LENGTH);
 	}
 	printf("\n");
 	printf("Binary code:\n");

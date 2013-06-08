@@ -1,22 +1,26 @@
-/*	
+/*
 	Copyright (C) 2013 CurlyMo
-	
+
 	This file is part of the Raspberry Pi 433.92Mhz transceiver.
 
-    Raspberry Pi 433.92Mhz transceiver is free software: you can redistribute 
-	it and/or modify it under the terms of the GNU General Public License as 
-	published by the Free Software Foundation, either version 3 of the License, 
+    Raspberry Pi 433.92Mhz transceiver is free software: you can redistribute
+	it and/or modify it under the terms of the GNU General Public License as
+	published by the Free Software Foundation, either version 3 of the License,
 	or (at your option) any later version.
 
-    Raspberry Pi 433.92Mhz transceiver is distributed in the hope that it will 
+    Raspberry Pi 433.92Mhz transceiver is distributed in the hope that it will
 	be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with Raspberry Pi 433.92Mhz transceiver. If not, see 
+    along with Raspberry Pi 433.92Mhz transceiver. If not, see
 	<http://www.gnu.org/licenses/>
 */
+
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
 
 #include "kaku_old.h"
 
@@ -26,55 +30,53 @@ void kakuOldParseRaw() {
 void kakuOldParseCode() {
 }
 
-int kakuOldParseBinary() {
+char *kakuOldParseBinary() {
+	char *message = malloc((50*sizeof(char))+1);
+	memset(message,'0',sizeof(message));
+
 	int unit = binToDec(kaku_old.binary,0,4);
 	int state = kaku_old.binary[11];
 	int id = binToDec(kaku_old.binary,5,9);
 
-	printf("id: %d, unit: %d, state:",id,unit);
+	sprintf(message,"id %d unit %d state",id,unit);
 	if(state==0)
-		printf(" on\n");
+		strcat(message," on");
 	else
-		printf(" off\n");
-	return 1;
+		strcat(message," off");
+	return message;
 }
 
 void kakuOldCreateLow(int s, int e) {
 	int i;
-	
+
 	for(i=s;i<=e;i+=4) {
-		kaku_old.raw[i]=kaku_old.high;
-		kaku_old.raw[i+1]=kaku_old.low;
-		kaku_old.raw[i+2]=kaku_old.low;
-		kaku_old.raw[i+3]=kaku_old.high;
-	}	
+		kaku_old.raw[i]=(PULSE_LENGTH);
+		kaku_old.raw[i+1]=(kaku_old.pulse*PULSE_LENGTH);
+		kaku_old.raw[i+2]=(kaku_old.pulse*PULSE_LENGTH);
+		kaku_old.raw[i+3]=(PULSE_LENGTH);
+	}
 }
 
 void kakuOldCreateHigh(int s, int e) {
 	int i;
-	
+
 	for(i=s;i<=e;i+=4) {
-		kaku_old.raw[i]=kaku_old.low;
-		kaku_old.raw[i+1]=kaku_old.high;
-		kaku_old.raw[i+2]=kaku_old.low;
-		kaku_old.raw[i+3]=kaku_old.high;
+		kaku_old.raw[i]=(PULSE_LENGTH);
+		kaku_old.raw[i+1]=(kaku_old.pulse*PULSE_LENGTH);
+		kaku_old.raw[i+2]=(PULSE_LENGTH);
+		kaku_old.raw[i+3]=(kaku_old.pulse*PULSE_LENGTH);
 	}
 }
 
-void kakuOldCreateStart() {
-	kaku_old.raw[0]=kaku_old.header[0];
-	kaku_old.raw[1]=kaku_old.header[1];
-}
-
 void kakuOldClearCode() {
-	kakuOldCreateLow(2,49);
+	kakuOldCreateLow(0,49);
 }
 
 void kakuOldCreateUnit(int unit) {
 	int binary[255];
 	int length = 0;
 	int i=0, x=0;
-	
+
 	length = decToBinRev(unit, binary);
 	for(i=0;i<=length;i++) {
 		if(binary[i]==1) {
@@ -88,7 +90,7 @@ void kakuOldCreateId(int id) {
 	int binary[255];
 	int length = 0;
 	int i=0, x=0;
-	
+
 	length = decToBinRev(id, binary);
 	for(i=0;i<=length;i++) {
 		if(binary[i]==1) {
@@ -99,33 +101,40 @@ void kakuOldCreateId(int id) {
 }
 
 void kakuOldCreateState(int state) {
-	if(state == 1) {
-		kaku_old.raw[46]=kaku_old.high;
-		kaku_old.raw[47]=kaku_old.low;
-		kaku_old.raw[48]=kaku_old.low;
-		kaku_old.raw[49]=kaku_old.footer;
-	} else {
-		kaku_old.raw[46]=kaku_old.low;
-		kaku_old.raw[47]=kaku_old.high;
-		kaku_old.raw[48]=kaku_old.low;
-		kaku_old.raw[49]=kaku_old.footer;
+	if(state == 0) {
+		kakuOldCreateHigh(44,47);
 	}
 }
 
+void kakuOldCreateFooter() {
+	kaku_old.raw[48]=(PULSE_LENGTH);
+	kaku_old.raw[49]=(kaku_old.footer*PULSE_LENGTH);
+}
+
+
 void kakuOldCreateCode(struct options *options) {
-	int id = atoi(getOption(options,'i'));
-	int unit = atoi(getOption(options,'u'));
-	int state = atoi(getOption(options,'f')) || 1;
-	if(id == 0 || unit == 0) {
+	int id = -1;
+	int unit = -1;
+	int state = -1;
+
+	if(atoi(getOption(options,'i')) > 0)
+		id=atoi(getOption(options,'i'));
+	if(atoi(getOption(options,'f')) == 1)
+		state=0;
+	else if(atoi(getOption(options,'t')) == 1)
+		state=1;
+	if(atoi(getOption(options,'u')) > -1)
+		unit = atoi(getOption(options,'u'));
+
+	if(id == -1 || unit == -1 || state == -1) {
 		fprintf(stderr, "kaku_old: insufficient number of arguments\n");
-		exit(0);
+	} else {
+		kakuOldClearCode();
+		kakuOldCreateUnit(unit);
+		kakuOldCreateId(id);
+		kakuOldCreateState(state);
+		kakuOldCreateFooter();
 	}
-		
-	kakuOldCreateStart();
-	kakuOldClearCode();
-	kakuOldCreateUnit(unit);
-	kakuOldCreateId(id);
-	kakuOldCreateState(state);
 }
 
 void kakuOldPrintHelp() {
@@ -136,37 +145,35 @@ void kakuOldPrintHelp() {
 }
 
 void kakuOldInit() {
-		
+
 	strcpy(kaku_old.id,"kaku_old");
 	strcpy(kaku_old.desc,"Old KlikAanKlikUit Switches");
-	kaku_old.header[0] = 300;
-	kaku_old.header[1] = 1000;
-	kaku_old.low = 300;
-	kaku_old.high = 1000;
-	kaku_old.footer = 13000;
+	kaku_old.header = 3;
+	kaku_old.pulse = 4;
+	kaku_old.footer = 45;
 	kaku_old.multiplier[0] = 0.1;
 	kaku_old.multiplier[1] = 0.3;
 	kaku_old.rawLength = 50;
-	kaku_old.binaryLength = 12;	
-	kaku_old.repeats = 2;	
+	kaku_old.binaryLength = 12;
+	kaku_old.repeats = 2;
 
-	kaku_old.bit = 0;	
-	kaku_old.recording = 0;	
-	
+	kaku_old.bit = 0;
+	kaku_old.recording = 0;
+
 	struct option kakuOldOptions[] = {
+		{"id", required_argument, NULL, 'i'},
+		{"unit", required_argument, NULL, 'u'},
 		{"on", no_argument, NULL, 't'},
 		{"off", no_argument, NULL, 'f'},
-		{"unit", required_argument, NULL, 'u'},
-		{"id", required_argument, NULL, 'i'},
 		{0,0,0,0}
 	};
 
-	kaku_old.options=setOptions(kakuOldOptions);		
+	kaku_old.options=setOptions(kakuOldOptions);
 	kaku_old.parseRaw=&kakuOldParseRaw;
 	kaku_old.parseCode=&kakuOldParseCode;
-	kaku_old.parseBinary=&kakuOldParseBinary;
+	kaku_old.parseBinary=kakuOldParseBinary;
 	kaku_old.createCode=&kakuOldCreateCode;
 	kaku_old.printHelp=&kakuOldPrintHelp;
-	
+
 	protocol_register(&kaku_old);
 }

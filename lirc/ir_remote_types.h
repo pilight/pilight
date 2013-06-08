@@ -42,7 +42,7 @@ struct ir_ncode {
 
 /*
   struct ir_remote
-  defines the encoding of a remote control 
+  defines the encoding of a remote control
 */
 
 /* definitions for flags */

@@ -5,7 +5,7 @@
  ****************************************************************************
  *
  * functions that decode IR codes
- * 
+ *
  * Copyright (C) 1999 Christoph Bartelmus <lirc@bartelmus.de>
  * Copyright (C) 2013 CurlyMo
  *

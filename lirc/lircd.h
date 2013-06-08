@@ -39,7 +39,6 @@ void add_client(int);
 int add_peer_connection(char *server);
 void connect_to_peers();
 int get_peer_message(struct peer_connection *peer);
-void start_server(mode_t permission, int nodaemon);
 
 #ifdef DEBUG
 #define LOGPRINTF(level,fmt,args...)	\

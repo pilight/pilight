@@ -22,6 +22,10 @@
 	
 */
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
@@ -35,11 +39,12 @@
 #include <errno.h>
 #include <syslog.h>
 #include <time.h>
+#include <math.h>
 
 #include "lirc.h"
-#include "daemons/ir_remote.h"
-#include "daemons/hardware.h"
-#include "daemons/hw-types.h"
+#include "lirc/ir_remote.h"
+#include "lirc/hardware.h"
+#include "lirc/hw-types.h"
 
 #include "protocol.h"
 #include "protocols/kaku_switch.h"
@@ -65,8 +70,41 @@ void logprintf(int prio, char *format_str, ...) { }
 
 void logperror(int prio, const char *s) { } 
 
+void rmDup(int *a, int *b) {
+	int x=0, y=0, i=0;
+	int temp[75];
+	int match = 0;
+	
+	/* Remove all ALL bits that are also stores as the ON/OFF bits */
+	memset(temp,-1,75);
+	for(i=0;i<75;i++) {
+		match=0;
+		if(a[i] == -1)
+			break;
+		for(y=0;y<75;y++) {
+			if(b[y] == -1)
+				break;
+			if(a[i] == b[y])
+				match=1;
+		}
+		if(match == 0)
+			temp[x++]=a[i];
+	}
+	memset(a,-1,75);
+	for(i=0;i<x;i++) {
+		a[i]=temp[i];
+	}
+}
+
+int normalize(int i) {
+	double x;
+	x=(double)i/PULSE_LENGTH;
+
+	return (int)(round(x));
+}
+
 int main(int argc, char **argv) {
-	char *progname = "learn";
+	char *progname = "433-learn";
 	
 	lirc_t data;
 	char *socket = "/dev/lirc0";
@@ -102,9 +140,8 @@ int main(int argc, char **argv) {
 	
 	int temp[75];	
 	int footer = 0;
-	int header[2] = {0};
-	int low = 0;
-	int high = 0;
+	int header = 0;
+	int pulse = 0;
 	int onoff[75];
 	int all[75];
 	int unit[75];
@@ -181,7 +218,7 @@ End of the original (but stripped) code of mode2
 	while (1) {
 		data = hw.readdata(0);		
 		duration = (data & PULSE_MASK);				
-		
+
 		/* If we are recording, keep recording until the next footer has been matched */
 		if(recording == 1) {
 			if(bit < 255) {
@@ -213,9 +250,8 @@ End of the original (but stripped) code of mode2
 				/* If we are certain we are recording similar codes.
 				   Save the header values and the raw code length */
 				if(footer>0) {
-					if(header[0] == 0 && header[1] == 0) {
-						header[0]=raw[0];
-						header[1]=raw[1];
+					if(header == 0) {
+						header=raw[1];
 					}
 					if(rawLength == 0)
 						rawLength=bit;
@@ -228,19 +264,18 @@ End of the original (but stripped) code of mode2
 					/* Try to catch the footer, and the low and high values */
 					for(i=0;i<bit;i++) {
 						if((i+1)<bit && i > 2 && footer > 0) {
-							if((raw[i]/raw[i+1]) > 3) {
-								high=raw[i];
-								low=raw[i+1];
+							if((raw[i]/PULSE_LENGTH) >= 2) {
+								pulse=raw[i];
 							}
 						}				
 						if(duration > 5000 && duration < 100000)
 							footer=raw[i];
 					}
 					/* If we have gathered all data, stop with the loop */
-					if(header[0] > 0 && header[1] > 0 && footer > 0 && high > 0 && low > 0 && rawLength > 0) {
+					if(header > 0 && footer > 0 && pulse > 0 && rawLength > 0) {
 						/* Convert the raw code into binary code */				
 						for(i=0;i<rawLength;i++) {
-							if(raw[i] > (high-low)) {	
+							if(raw[i] > (pulse-PULSE_LENGTH)) {	
 								code[i]=1;
 							} else {
 								code[i]=0;
@@ -417,81 +452,16 @@ End of the original (but stripped) code of mode2
 		state=WAIT;
 	}
 	
-	int match=0;
-	int a=0;
-	z=0;
-	y=0;
-	
-	/* Remove all ALL bits that are also stores as the ON/OFF bits */
-	memset(temp,-1,75);
-	for(i=0;i<75;i++) {
-		match=0;
-		if(all[i] == -1)
-			break;
-		for(y=0;y<75;y++) {
-			if(onoff[y] == -1)
-				break;
-			if(all[i] == onoff[y])
-				match=1;
-		}
-		if(match == 0)
-			temp[a++]=all[i];
-	}
-	memset(all,-1,75);
-	for(i=0;i<a;i++) {
-		all[i]=temp[i];
-	}
-	
-	/* Remove all UNIT bits that are also stores as the ON/OFF bits */
-	a=0;
-	memset(temp,-1,75);
-	for(i=0;i<75;i++) {
-		match=0;
-		if(unit[i] == -1)
-			break;
-		for(y=0;y<75;y++) {
-			if(onoff[y] == -1)
-				break;
-			if(unit[i] == onoff[y])
-				match=1;
-		}
-		if(match == 0)
-			temp[a++]=unit[i];
-	}
-	memset(unit,-1,75);
-	for(i=0;i<a;i++) {
-		unit[i]=temp[i];
-	}
-	
-	/* Remove all ALL bits that are also stores as the UNIT bits */
-	a=0;
-	memset(temp,-1,75);
-	for(i=0;i<75;i++) {
-		match=0;
-		if(all[i] == -1)
-			break;
-		for(y=0;y<75;y++) {
-			if(unit[y] == -1)
-				break;
-			if(all[i] == unit[y])
-				match=1;
-		}
-		if(match == 0)
-			temp[a++]=all[i];
-	}
-	memset(all,-1,75);
-	for(i=0;i<a;i++) {
-		all[i]=temp[i];
-	}			
+	rmDup(all, onoff);
+	rmDup(unit, onoff);
+	rmDup(all, unit);
 	
 	/* Print everything */
 	printf("--[RESULTS]--\n");
 	printf("\n");
-	printf("header[0]:\t%d\n",header[0]);
-	printf("header[1]:\t%d\n",header[1]);
-	printf("low:\t\t%d\n",low);
-	printf("high:\t\t%d\n",high);
-	printf("footer:\t\t%d\n",footer);
+	printf("header:\t%d\n",normalize(header));
+	printf("pulse:\t\t%d\n",normalize(pulse));
+	printf("footer:\t\t%d\n",normalize(footer));
 	printf("rawLength:\t%d\n",rawLength);
 	printf("binaryLength:\t%d\n",binaryLength);
 	printf("\n");
@@ -515,7 +485,7 @@ End of the original (but stripped) code of mode2
 	printf("\n\n");
 	printf("Raw code:\n");
 	for(i=0;i<rawLength;i++) {
-		printf("%d ",raw[i]);
+		printf("%d ",normalize(raw[i])*PULSE_LENGTH);
 	}
 	printf("\n");
 	printf("Raw simplified:\n");

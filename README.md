@@ -26,13 +26,17 @@ crw-rw---T 1 root video 249, 0 jan  1  1970 /dev/lirc0
 crw-rw---T 1 root video 249, 1 jan  1  1970 /dev/lirc1
 lrwxrwxrwx 1 root root      21 jan  1  1970 /dev/lircd -> ../var/run/lirc/lircd
 ```
-The receiver will read from `/dev/lirc0` by default, but if you want it to read other sockets, run the receiver as follows:
+The core of this program is the 433-daemon. This will run itself in the background. You can then the 433-receiver or the 433-sender
+to connect to the 433-daemon to receive of send codes. The 433-daemon also has the possibility to automatically invoke another script.
+So you can use the 433-daemon to log incoming codes.
+The 433-daemon will read from `/dev/lirc0` by default, but if you want it to read other sockets, run the receiver as follows:
 ```
-root@pi:~# receive --socket=/dev/lirc1
+root@pi:~# ./433-daemon --socket=/dev/lirc1
+root@pi:~# ./433-receiver
 ```
 The output of the receiver will be as follow:
 ```
-root@pi:~# receive
+root@pi:~# ./433-receiver
 # KaKu: ./send -p kaku_switch -i 100 -u 15 -f
 id: 100, unit: 15, state: off
 id: 100, unit: 15, state: off
@@ -40,14 +44,14 @@ id: 100, unit: 15, state: off
 id: 100, unit: 15, state: off
 id: 100, unit: 15, state: off
 
-# KaKu: ./send -p kaku_dimmer -i 100 -u 15 -d 15
+# KaKu: ./433-send -p kaku_dimmer -i 100 -u 15 -d 15
 id: 100, unit: 15, dim: 15
 id: 100, unit: 15, dim: 15
 id: 100, unit: 15, dim: 15
 id: 100, unit: 15, dim: 15
 id: 100, unit: 15, dim: 15
 
-# Elro: ./send -p elro -i 10 -u 15 -t
+# Elro: ./433-send -p elro -i 10 -u 15 -t
 id: 10, unit: 15, state: on
 id: 10, unit: 15, state: on
 id: 10, unit: 15, state: on
@@ -57,26 +61,17 @@ id: 10, unit: 15, state: on
 id: 10, unit: 15, state: on
 id: 10, unit: 15, state: on
 ```
-The command line arguments are as follows:
+The sender will 433-send will send codes to the 433-daemon:
 ```
-root@pi:~# ./receive -h
-Usage: receive [options]
-         -h --help              display usage summary
-         -v --version           display version
-         -d --socket=socket     read from given socket
+root@pi:~# ./433-send -p kaku_switch -i 1 -u 1 -t
 ```
-The sender will send from `/dev/lirc0` by default, but if you want it to read other sockets, run the sender as follows:
+The command line arguments depend on the protocol used e.g.:
 ```
-root@pi:~# send --socket=/dev/lirc1
-```
-The command line arguments depend on the protocol used e.g.::
-```
-root@pi:~# ./send -h
+root@pi:~# ./433-send -h
 Usage: send -p protocol [options]
          -h --help                      display this message
          -v --version                   display version
          -p --protocol=protocol         the device that you want to control
-         -s --socket=socket             read from given socket
          -r --repeat=repeat             number of times the command is send
 
 The supported protocols are:
@@ -85,7 +80,7 @@ The supported protocols are:
          kaku_old                       Old KlikAanKlikUit Switches
          elro                           Elro Switches
          raw                            Raw codes
-root@pi:~# ./send -p kaku_switch -h
+root@pi:~# ./433-send -p kaku_switch -h
 Usage: send -p kaku_switch [options]
          -h --help                      display this message
          -v --version                   display version
@@ -102,21 +97,19 @@ Usage: send -p kaku_switch [options]
 ```
 Examples are:
 ```
-root@pi:~# ./send -p kaku_switch -t 1 -u 1 -t
-root@pi:~# ./send -p kaku_dimmer -t 1 -u 1 -d 15
-root@pi:~# ./send -p elro -t 1 -u 1 -t
+root@pi:~# ./433-send -p kaku_switch -t 1 -u 1 -t
+root@pi:~# ./433-send -p kaku_dimmer -t 1 -u 1 -d 15
+root@pi:~# ./433-send -p elro -t 1 -u 1 -t
 ```
 To control devices that are not yet supported one can use the `raw` protocol. This protocol allows the sending of raw codes.
 To figure out what the raw codes of your devices are you can run the debugger first. When you run the debugger it will wait
 for you to press a button for the device you want to control. Once you held the button long enough to control the device 
 using the raw codes.
 ```
-root@pi:~# ./debug
-header[0]:      286
-header[1]:      2825
-low:            271
-high:           1355
-footer:         11302
+root@pi:~# ./433-debug
+header:      	 10
+pulse:          5
+footer:         38
 rawLength:      132
 binaryLength:   33
 Raw code:
@@ -126,13 +119,13 @@ Binary code:
 ```
 You can now use the raw code to control your device:
 ```
-root@pi:~# ./send -p raw -c "286 2825 286 201 289 1337 287 209 283 1351 287 204 289 1339 288 207 288 1341 289 207 281 1343 284 205 292 1346 282 212 283 1348 282 213 279 1352 282 211 281 1349 282 210 283 1347 284 211 288 1348 281 211 285 1353 278 213 280 1351 280 232 282 1356 279 213 285 1351 276 215 285 1348 277 216 278 1359 278 216 279 1353 272 214 283 1358 276 216 276 1351 278 214 284 1357 275 217 276 1353 270 217 277 1353 272 220 277 1351 275 220 272 1356 275 1353 273 224 277 236 282 1355 272 1353 273 233 273 222 268 1358 270 219 277 1361 274 218 280 1358 272 1355 271 243 251 11302"
+root@pi:~# ./433-send -p raw -c "286 2825 286 201 289 1337 287 209 283 1351 287 204 289 1339 288 207 288 1341 289 207 281 1343 284 205 292 1346 282 212 283 1348 282 213 279 1352 282 211 281 1349 282 210 283 1347 284 211 288 1348 281 211 285 1353 278 213 280 1351 280 232 282 1356 279 213 285 1351 276 215 285 1348 277 216 278 1359 278 216 279 1353 272 214 283 1358 276 216 276 1351 278 214 284 1357 275 217 276 1353 270 217 277 1353 272 220 277 1351 275 220 272 1356 275 1353 273 224 277 236 282 1355 272 1353 273 233 273 222 268 1358 270 219 277 1361 274 218 280 1358 272 1355 271 243 251 11302"
 ```
 The learner does the same as the debugger but it more extensive. It will try to figure out as much as possible about your protocol.
 At this moment only switches are supported, so not dimmers or others devices. Just follow the steps of the learner and when you
 where successfull, it will print the following information (in case of Klik Aan Klik Uit):
 ```
-root@pi:~# ./learn
+root@pi:~# ./433-learn
 1. Please send and hold one of the OFF buttons. Done.
 
 2. Please send and hold the ON button for the same device
@@ -151,11 +144,9 @@ root@pi:~# ./learn
 
 --[RESULTS]--
 
-header[0]:      291
-header[1]:      2828
-low:            259
-high:           1363
-footer:         11306
+header:         10
+pulse:          5
+footer:         38
 rawLength:      132
 binaryLength:   33
 

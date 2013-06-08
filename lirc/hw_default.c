@@ -5,7 +5,7 @@
  ****************************************************************************
  *
  * routines for hardware that supports ioctl() interface
- * 
+ *
  * Copyright (C) 1999 Christoph Bartelmus <lirc@bartelmus.de>
  * Copyright (C) 2013 CurlyMo
  *

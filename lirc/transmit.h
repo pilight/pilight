@@ -5,7 +5,7 @@
  ****************************************************************************
  *
  * functions that prepare IR codes for transmitting
- * 
+ *
  * Copyright (C) 1999 Christoph Bartelmus <lirc@bartelmus.de>
  * Copyright (C) 2013 CurlyMo
  *

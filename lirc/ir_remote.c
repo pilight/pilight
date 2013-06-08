@@ -5,7 +5,7 @@
  ****************************************************************************
  *
  * ir_remote.c - sends and decodes the signals from IR remotes
- * 
+ *
  * Copyright (C) 1996,97 Ralph Metzler (rjkm@thp.uni-koeln.de)
  * Copyright (C) 1998 Christoph Bartelmus (lirc@bartelmus.de)
  * Copyright (C) 2013 CurlyMo

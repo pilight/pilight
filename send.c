@@ -1,27 +1,28 @@
-/*	
+/*
 	Copyright (C) 1998 Trent Piepho <xyzzy@u.washington.edu>
 	Copyright (C) 1998 Christoph Bartelmus <lirc@bartelmus.de>
 	Copyright (C) 2013 CurlyMo
-	
+
 	This file is part of the Raspberry Pi 433.92Mhz transceiver.
 
-    Raspberry Pi 433.92Mhz transceiver is free software: you can redistribute 
-	it and/or modify it under the terms of the GNU General Public License as 
-	published by the Free Software Foundation, either version 3 of the License, 
+    Raspberry Pi 433.92Mhz transceiver is free software: you can redistribute
+	it and/or modify it under the terms of the GNU General Public License as
+	published by the Free Software Foundation, either version 3 of the License,
 	or (at your option) any later version.
 
-    Raspberry Pi 433.92Mhz transceiver is distributed in the hope that it will 
+    Raspberry Pi 433.92Mhz transceiver is distributed in the hope that it will
 	be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with Raspberry Pi 433.92Mhz transceiver. If not, see 
+    along with Raspberry Pi 433.92Mhz transceiver. If not, see
 	<http://www.gnu.org/licenses/>
 */
 
-#define _GNU_SOURCE
-#define _BSD_SOURCE
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -30,14 +31,21 @@
 #include <signal.h>
 #include <unistd.h>
 #include <getopt.h>
+#include <fcntl.h>
 #include <errno.h>
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <netinet/in.h>
+#include <netdb.h>
+#include <arpa/inet.h>
+#include <sys/time.h>
 
 #include "lirc.h"
-#include "daemons/lircd.h"
-#include "daemons/hardware.h"
-#include "daemons/hw-types.h"
-#include "daemons/transmit.h"
-#include "daemons/hw_default.h"
+#include "lirc/lircd.h"
+#include "lirc/hardware.h"
+#include "lirc/hw-types.h"
+#include "lirc/transmit.h"
+#include "lirc/hw_default.h"
 
 #include "protocol.h"
 #include "options.h"
@@ -51,42 +59,38 @@ extern struct hardware hw;
 
 void logprintf(int prio, char *format_str, ...) { }
 
-void logperror(int prio, const char *s) { } 
+void logperror(int prio, const char *s) { }
 
 int main(int argc, char **argv) {
-	char *progname = "send";
-	char *socket = "/dev/lirc0";
-	int have_device = 0;
-	/* The code that is send to the hardware wrapper */
-	struct ir_ncode code;	
-	
+	char *progname = "433-send";
+	int sockfd = 0, n = 0, connected = 0;
+    char recvBuff[BUFFER_SIZE];
+    char message[BUFFER_SIZE];
+
+	struct sockaddr_in serv_addr;
+
 	/* Hold the name of the protocol */
 	char protobuffer[255];
 	int i;
 	/* Does this protocol exists */
 	int match = 0;
-	/* Did the sending succeed */
-	int success = 0;		
-	/* How many times does to keep need to be resend */
-	int repeat = 5;
-	
+
 	/* Do we need to print the help */
 	int help = 0;
 	/* Do we need to print the version */
 	int version = 0;
 	/* Do we need to print the protocol help */
-	int protohelp=0;	
-	
+	int protohelp = 0;
+
 	/* Hold the final protocol struct */
 	protocol *device = NULL;
-	
+
 	/* The short CLI arguments the main program has */
-	char optstr[255]={'h','v','s',':','p',':','r',':','\0'};
+	char optstr[255] = {'h','v','p',':','r',':','\0'};
 	/* The long CLI arguments the program has */
 	struct option mainOptions[] = {
 		{"help", no_argument, NULL, 'h'},
 		{"version", no_argument, NULL, 'v'},
-		{"socket", required_argument, NULL, 's'},
 		{"protocol", required_argument, NULL, 'p'},
 		{"repeat", required_argument, NULL, 'r'},
 		{0,0,0,0}
@@ -94,36 +98,33 @@ int main(int argc, char **argv) {
 	/* Make sure the long options are a static array to prevent unexpected behavior */
 	struct option *long_options=setOptions(mainOptions);
 	/* Number of main options */
-	int long_opt_nr = (sizeof(long_options)/sizeof(long_options[0])-1);
+	int long_opt_nr = (sizeof(mainOptions)/sizeof(mainOptions[0])-1);
 	/* Number of option from the protocol */
 	int proto_opt_nr;
-	
+
 	/* Temporary pointer to the protocol options */
-	struct option *backup_options;	
-	
+	struct option *backup_options;
+
 	/* Structs holding all CLI arguments and their values */
-	struct options *options = NULL;
-	struct options *node = NULL;
-	
+	struct options *options = malloc(25*sizeof(struct options));
+	struct options *node = malloc(sizeof(struct options));
+
 	/* The long CLI argument holder */
 	char longarg[10];
 	/* The abbreviated CLI argument holder */
-	char shortarg[2];	
-	
-	/* Initialize the default HW driver */
-	hw_choose_driver(NULL);
-	
+	char shortarg[2];
+
 	/* Initialize peripheral modules */
 	kakuSwInit();
 	kakuDimInit();
 	kakuOldInit();
-	elroInit();			
-	rawInit();			
-	
+	elroInit();
+	rawInit();
+
 	/* Clear the argument holders */
 	memset(longarg,'\0',11);
 	memset(shortarg,'\0',3);
-	
+
 	/* Check if the basic CLI arguments are given before the protocol arguments are appended */
 	for(i=0;i<argc;i++) {
 		memcpy(longarg, &argv[i][0], 10);
@@ -141,7 +142,7 @@ int main(int argc, char **argv) {
 		if(strcmp(shortarg,"-v") == 0 || strcmp(longarg,"--version") == 0)
 			version=1;
 	}
-	
+
 	/* Check if a protocol was given */
 	if(strlen(protobuffer) > 0 && strcmp(protobuffer,"-v") != 0) {
 		if(strlen(protobuffer) > 0 && version) {
@@ -185,11 +186,11 @@ int main(int argc, char **argv) {
 			}
 		}
 	}
-	
+
 	/* Display help or version information */
 	if(version == 1) {
 		printf("%s %s\n", progname, "1.0");
-		return (EXIT_SUCCESS);	
+		return (EXIT_SUCCESS);
 	} else if(help == 1 || protohelp == 1 || match == 0) {
 		if(protohelp == 1 && match == 1 && device->printHelp != NULL)
 			printf("Usage: %s -p %s [options]\n", progname, device->id);
@@ -199,7 +200,6 @@ int main(int argc, char **argv) {
 			printf("\t -h --help\t\t\tdisplay this message\n");
 			printf("\t -v --version\t\t\tdisplay version\n");
 			printf("\t -p --protocol=protocol\t\tthe device that you want to control\n");
-			printf("\t -s --socket=socket\t\tread from given socket\n");
 			printf("\t -r --repeat=repeat\t\tnumber of times the command is send\n");
 		}
 		if(protohelp == 1 && match == 1 && device->printHelp != NULL) {
@@ -215,59 +215,97 @@ int main(int argc, char **argv) {
 				printf("%s\n", device->desc);
 			}
 		}
-		return (EXIT_SUCCESS);		
+		return (EXIT_SUCCESS);
 	}
-	
+
 	/* Store all CLI arguments for later usage */
 	while (1) {
 		int c;
 		c = getopt_long(argc, argv, optstr, long_options, NULL);
 		if(c == -1)
 			break;
-		if(c == 's') {
-			socket = optarg;
-			have_device=1;
-		}
-		if(c == 'r') {
-			repeat = atoi(optarg);
-		}
 		if(strchr(optstr,c)) {
 			node = malloc(sizeof(struct options));
 			node->id = c;
 			node->value = optarg;
 			node->next = options;
 			options = node;
+		} else {
+			exit(EXIT_FAILURE);
 		}
 	}
-	
-	if(strcmp(socket, "/var/lirc/lircd") == 0) {
-		fprintf(stderr, "%s: refusing to connect to lircd socket\n", progname);
-		return EXIT_FAILURE;
-	}
 
-	if(have_device)
-		hw.device = socket;
+	memset(recvBuff, '0',sizeof(recvBuff));
 
-	if(!hw.init_func()) {
-		fprintf(stderr, "%s: could not open %s\n", progname, hw.device);
-		fprintf(stderr, "%s: default_init(): Device or resource busy\n", progname);
-		return EXIT_FAILURE;
-	}
-		
-	if(hw.send_mode == 0)
-		return EXIT_FAILURE;
-	
-	/* Send the final code */
-	if(match) {
-		device->createCode(node);
-		code.length = (device->rawLength+1);
-		code.signals = device->raw;
+    if((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+        printf("\n Error : Could not create socket \n");
+        return 1;
+    }
 
-		for(i=0;i<repeat;i++) {	
-			if((success = send_ir_ncode(&code)) != 1)
-				return EXIT_FAILURE;
-			usleep(25000);
+    memset(&serv_addr, '0', sizeof(serv_addr));
+
+    serv_addr.sin_family = AF_INET;
+    serv_addr.sin_port = htons(5000);
+    inet_pton(AF_INET, "127.0.0.1", &serv_addr.sin_addr);
+
+    if(connect(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
+       perror("connect");
+       exit(EXIT_FAILURE);
+    }
+
+	while(1) {
+		bzero(recvBuff,1025);
+		if((n = read(sockfd, recvBuff, sizeof(recvBuff)-1)) < 1) {
+			//perror("read");
+			goto close;
+		}
+
+		if(n > 0) {
+			recvBuff[n]='\0';
+			if(connected == 0) {
+				if(strcmp(recvBuff,"ACCEPT CONNECTION") == 0) {
+					strcpy(message,"CLIENT SENDER");
+					if((n = write(sockfd, message, strlen(message))) < 0) {
+						perror("write");
+						goto close;
+					}
+				}
+				if(strcmp(recvBuff,"ACCEPT CLIENT") == 0) {
+					connected=1;
+				}
+				if(strcmp(recvBuff,"REJECT CLIENT") == 0) {
+					goto close;
+				}
+			}
+		}
+		if(connected) {
+			while(node->id != 0) {
+				memset(message,'0',BUFFER_SIZE);
+				sprintf(message,"%d ",node->id);
+				if(node->value != NULL) {
+					strcat(message,node->value);
+					strcat(message," ");
+				} else {
+					strcat(message,"1");
+					strcat(message," ");
+				}
+				if((n = write(sockfd, message, BUFFER_SIZE-1)) < 0) {
+					perror("write");
+					goto close;
+				}
+				node = node->next;
+			}
+			memset(message,'0',BUFFER_SIZE);
+			strcpy(message,"SEND");
+			if((n = write(sockfd, message, BUFFER_SIZE-1)) < 0) {
+				perror("write");
+				goto close;
+			}
+		goto close;
 		}
 	}
-	return (EXIT_SUCCESS);
+close:
+	shutdown(sockfd, SHUT_WR);
+	close(sockfd);
+return 0;
 }

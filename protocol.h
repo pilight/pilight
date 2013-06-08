@@ -1,20 +1,20 @@
-/*	
+/*
 	Copyright (C) 2013 CurlyMo
-	
+
 	This file is part of the Raspberry Pi 433.92Mhz transceiver.
 
-    Raspberry Pi 433.92Mhz transceiver is free software: you can redistribute 
-	it and/or modify it under the terms of the GNU General Public License as 
-	published by the Free Software Foundation, either version 3 of the License, 
+    Raspberry Pi 433.92Mhz transceiver is free software: you can redistribute
+	it and/or modify it under the terms of the GNU General Public License as
+	published by the Free Software Foundation, either version 3 of the License,
 	or (at your option) any later version.
 
-    Raspberry Pi 433.92Mhz transceiver is distributed in the hope that it will 
+    Raspberry Pi 433.92Mhz transceiver is distributed in the hope that it will
 	be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with Raspberry Pi 433.92Mhz transceiver. If not, see 
+    along with Raspberry Pi 433.92Mhz transceiver. If not, see
 	<http://www.gnu.org/licenses/>
 */
 
@@ -30,26 +30,25 @@
 typedef struct {
 	char id[25];
 	char desc[50];
-	int header[2];
-	int high;
-	int low;
+	int header;
+	int pulse;
 	int footer;
 	float multiplier[2];
 	int rawLength;
 	int binaryLength;
 	int repeats;
 	struct option *options;
-		
+
 	int bit;
 	int recording;
 	int raw[255];
 	int code[255];
 	int pCode[255];
 	int binary[255];
-	
+
 	void (*parseRaw)();
 	void (*parseCode)();
-	int (*parseBinary)();
+	char *(*parseBinary)();
 	void (*createCode)(struct options *options);
 	void (*printHelp)();
 } protocol;

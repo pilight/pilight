@@ -18,20 +18,20 @@
 	<http://www.gnu.org/licenses/>
 */
 
-#ifndef OPTIONS_H_
-#define OPTIONS_H_
+#ifndef _CONFIG_H_
+#define _CONFIG_H_
 
-#include <getopt.h>
+//#define PULSE_LENGTH 	165 // wiringPi pulse length
+#define PULSE_LENGTH	295
 
-typedef struct options options;
+#define PORT 			5000
+#define MAX_CLIENTS		30
+#define BUFFER_SIZE		1025
 
-struct options {
-	int id;
-	char *value;
-	struct options *next;
-};
+#define SEND_REPEATS	10
+#define PIDFILE			"/var/run/433-deamon.pid"
 
-struct option *setOptions(struct option *option);
-char *getOption(struct options *options, int id);
+#define FREQ433			433920
+#define FREQ38			38000
 
 #endif

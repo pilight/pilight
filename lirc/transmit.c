@@ -5,7 +5,7 @@
  ****************************************************************************
  *
  * functions that prepare IR codes for transmitting
- * 
+ *
  * Copyright (C) 1999-2004 Christoph Bartelmus <lirc@bartelmus.de>
  * Copyright (C) 2013	   CurlyMo
  *
@@ -41,7 +41,7 @@ inline void clear_send_buffer(void) {
 }
 
 
-int init_sim(struct ir_remote *remote, struct ir_ncode *code, int repeat_preset) { 
+int init_sim(struct ir_remote *remote, struct ir_ncode *code, int repeat_preset) {
 	return 1;
 }
 
@@ -49,6 +49,6 @@ int init_send(struct ir_ncode *code) {
 	clear_send_buffer();
 	send_buffer.data = code->signals;
 	send_buffer.wptr = code->length;
-	
+
 	return 1;
 }
