@@ -183,6 +183,7 @@ void send_code(struct options *options) {
 	struct option *backup_options;
 	struct options *node = options;
 	extern FILE *popen();
+	FILE *f;
 	char message[BUFFER_SIZE];
 	char cmd[255];
 	memset(message,'0',BUFFER_SIZE);
@@ -261,7 +262,8 @@ void send_code(struct options *options) {
 					strcpy(cmd,file);
 					strcat(cmd," sender ");
 					strcat(cmd,message);
-					popen(cmd, "r");
+					f=popen(cmd, "r");
+					pclose(f);
 				}
 			}
 		}
@@ -417,6 +419,7 @@ void receive() {
 	protocol *device;
 	char message[BUFFER_SIZE];
 	extern FILE *popen();
+	FILE *f;
 
 	while(1) {
 		/* Only initialize the hardware receive the data when there are receivers connected */
@@ -507,7 +510,8 @@ void receive() {
 											strcpy(cmd,file);
 											strcat(cmd," receiver ");
 											strcat(cmd,message);
-											popen(cmd, "r");
+											f=popen(cmd, "r");
+											pclose(f);
 										}
 
 										continue;

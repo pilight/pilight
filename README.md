@@ -26,41 +26,50 @@ crw-rw---T 1 root video 249, 0 jan  1  1970 /dev/lirc0
 crw-rw---T 1 root video 249, 1 jan  1  1970 /dev/lirc1
 lrwxrwxrwx 1 root root      21 jan  1  1970 /dev/lircd -> ../var/run/lirc/lircd
 ```
-The core of this program is the 433-daemon. This will run itself in the background. You can then the 433-receiver or the 433-sender
-to connect to the 433-daemon to receive of send codes. The 433-daemon also has the possibility to automatically invoke another script.
+The core of this program is the 433-daemon. This will run itself in the background. You can then use the 433-receiver or the 433-sender
+to connect to the 433-daemon to receive or send codes. The 433-daemon also has the possibility to automatically invoke another script.
 So you can use the 433-daemon to log incoming codes.
 The 433-daemon will read from `/dev/lirc0` by default, but if you want it to read other sockets, run the receiver as follows:
 ```
 root@pi:~# ./433-daemon --socket=/dev/lirc1
-root@pi:~# ./433-receiver
 ```
+To parse the data that is send or received, an external script can be called:
+```
+root@pi:~# ./433-daemon --socket=/dev/lirc1 -f /home/pi/log433.sh
+```
+This script can be anything you like. The 433-daemon will pass the same arguments to this script as the receiver, but with the addition
+the action that occured when the value was processed e.g.:
+```
+receiver id 100 unit 15 state off
+```
+or
+```
+sender id 100 unit 15 state off
+```
+=======
 The output of the receiver will be as follow:
 ```
-root@pi:~# ./433-receiver
-# KaKu: ./send -p kaku_switch -i 100 -u 15 -f
-id: 100, unit: 15, state: off
-id: 100, unit: 15, state: off
-id: 100, unit: 15, state: off
-id: 100, unit: 15, state: off
-id: 100, unit: 15, state: off
-
-# KaKu: ./433-send -p kaku_dimmer -i 100 -u 15 -d 15
-id: 100, unit: 15, dim: 15
-id: 100, unit: 15, dim: 15
-id: 100, unit: 15, dim: 15
-id: 100, unit: 15, dim: 15
-id: 100, unit: 15, dim: 15
-
-# Elro: ./433-send -p elro -i 10 -u 15 -t
-id: 10, unit: 15, state: on
-id: 10, unit: 15, state: on
-id: 10, unit: 15, state: on
-id: 10, unit: 15, state: on
-id: 10, unit: 15, state: on
-id: 10, unit: 15, state: on
-id: 10, unit: 15, state: on
-id: 10, unit: 15, state: on
+root@pi:~# ./send -p kaku_switch -i 100 -u 15 -f
 ```
+```
+root@pi:~# ./433-receiver
+id 100 unit 15 state off
+```
+```
+root@pi:~# ./433-send -p kaku_dimmer -i 100 -u 15 -d 15
+```
+```
+root@pi:~# ./433-receiver
+id 100 unit 15 dim 15
+```
+```
+root@pi:~# ./433-send -p elro -i 10 -u 15 -t
+```
+```
+root@pi:~# ./433-receiver
+id 10 unit 15 state on
+```
+=======
 The sender will 433-send will send codes to the 433-daemon:
 ```
 root@pi:~# ./433-send -p kaku_switch -i 1 -u 1 -t
@@ -101,6 +110,7 @@ root@pi:~# ./433-send -p kaku_switch -t 1 -u 1 -t
 root@pi:~# ./433-send -p kaku_dimmer -t 1 -u 1 -d 15
 root@pi:~# ./433-send -p elro -t 1 -u 1 -t
 ```
+=======
 To control devices that are not yet supported one can use the `raw` protocol. This protocol allows the sending of raw codes.
 To figure out what the raw codes of your devices are you can run the debugger first. When you run the debugger it will wait
 for you to press a button for the device you want to control. Once you held the button long enough to control the device 
@@ -121,7 +131,8 @@ You can now use the raw code to control your device:
 ```
 root@pi:~# ./433-send -p raw -c "286 2825 286 201 289 1337 287 209 283 1351 287 204 289 1339 288 207 288 1341 289 207 281 1343 284 205 292 1346 282 212 283 1348 282 213 279 1352 282 211 281 1349 282 210 283 1347 284 211 288 1348 281 211 285 1353 278 213 280 1351 280 232 282 1356 279 213 285 1351 276 215 285 1348 277 216 278 1359 278 216 279 1353 272 214 283 1358 276 216 276 1351 278 214 284 1357 275 217 276 1353 270 217 277 1353 272 220 277 1351 275 220 272 1356 275 1353 273 224 277 236 282 1355 272 1353 273 233 273 222 268 1358 270 219 277 1361 274 218 280 1358 272 1355 271 243 251 11302"
 ```
-The learner does the same as the debugger but it more extensive. It will try to figure out as much as possible about your protocol.
+=======
+The learner does the same as the debugger but is more extensive. It will try to figure out as much as possible about your protocol.
 At this moment only switches are supported, so not dimmers or others devices. Just follow the steps of the learner and when you
 where successfull, it will print the following information (in case of Klik Aan Klik Uit):
 ```
