@@ -4,13 +4,14 @@
 <br />
 I bought one of these Arduino 433.92Mhz sender and receiver kits for controlling my Klik Aan Klik Uit and Elro devices. 
 They are called "433MHz Superheterodyne 3400 RF Transmitter and Receiver link kit" and can be found on ebay for about $10.
-<br />
+<br /><br />
 Please make sure to use a low-pass filter when you connect the receiver to your Raspberry Pi. A low-pass filter, will filter
 all noise so only the actual signals are passed through to the GPIO pins. This code will also work without a low-pass filter,
 but then you can't use it together with lirc and/or XBMC while receiving. A low-pass filter is created like this:
+<br />
 <img src="http://provideyourown.com/wp-content/uploads/tech/CRLowPass1.png" alt="Low-pass filter" title="Low-pass filter" border="0" /><br />
-I used a 220 Ohm resistor and a 100uF capacitor. I haven't experimented with other values.
-<br /><br />
+I used a 220 Ohm resistor and a 100uF capacitor (220uF also works). I haven't experimented with other values.
+<hr>
 This new code uses lirc for the interaction with the hardware. The advantage is that we can now use reliable existing code to build 
 the 433.92Mhz programs on. The downside is that this new code is not entirely standalone.
 To control the new receiver, you have to have the lirc_rpi kernel module loaded. This kernel
@@ -52,7 +53,7 @@ or
 ```
 sender id 100 unit 15 state off
 ```
-=======
+<hr>
 The output of the receiver will be as follow:
 ```
 root@pi:~# ./send -p kaku_switch -i 100 -u 15 -f
@@ -75,7 +76,7 @@ root@pi:~# ./433-send -p elro -i 10 -u 15 -t
 root@pi:~# ./433-receiver
 id 10 unit 15 state on
 ```
-=======
+<hr>
 The sender will 433-send will send codes to the 433-daemon:
 ```
 root@pi:~# ./433-send -p kaku_switch -i 1 -u 1 -t
@@ -116,7 +117,7 @@ root@pi:~# ./433-send -p kaku_switch -t 1 -u 1 -t
 root@pi:~# ./433-send -p kaku_dimmer -t 1 -u 1 -d 15
 root@pi:~# ./433-send -p elro -t 1 -u 1 -t
 ```
-=======
+<hr>
 To control devices that are not yet supported one can use the `raw` protocol. This protocol allows the sending of raw codes.
 To figure out what the raw codes of your devices are you can run the debugger first. When you run the debugger it will wait
 for you to press a button for the device you want to control. Once you held the button long enough to control the device 
@@ -137,7 +138,7 @@ You can now use the raw code to control your device:
 ```
 root@pi:~# ./433-send -p raw -c "286 2825 286 201 289 1337 287 209 283 1351 287 204 289 1339 288 207 288 1341 289 207 281 1343 284 205 292 1346 282 212 283 1348 282 213 279 1352 282 211 281 1349 282 210 283 1347 284 211 288 1348 281 211 285 1353 278 213 280 1351 280 232 282 1356 279 213 285 1351 276 215 285 1348 277 216 278 1359 278 216 279 1353 272 214 283 1358 276 216 276 1351 278 214 284 1357 275 217 276 1353 270 217 277 1353 272 220 277 1351 275 220 272 1356 275 1353 273 224 277 236 282 1355 272 1353 273 233 273 222 268 1358 270 219 277 1361 274 218 280 1358 272 1355 271 243 251 11302"
 ```
-=======
+<hr>
 The learner does the same as the debugger but is more extensive. It will try to figure out as much as possible about your protocol.
 At this moment only switches are supported, so not dimmers or others devices. Just follow the steps of the learner and when you
 where successfull, it will print the following information (in case of Klik Aan Klik Uit):
