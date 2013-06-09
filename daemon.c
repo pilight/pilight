@@ -427,8 +427,9 @@ void receive() {
 			module_init();
 
 			data = hw.readdata(0);
-			if(sending == 0) {
-				duration = (data & PULSE_MASK);
+			duration = (data & PULSE_MASK);
+			/* A space is normally for 295 long, so filter spaces less then 200 */
+			if(sending == 0 && duration > 200) {
 
 				for(i=0; i<protos.nr; ++i) {
 					device = protos.listeners[i];

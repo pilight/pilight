@@ -148,7 +148,7 @@ void kakuOldInit() {
 
 	strcpy(kaku_old.id,"kaku_old");
 	strcpy(kaku_old.desc,"Old KlikAanKlikUit Switches");
-	kaku_old.header = 3;
+	kaku_old.header = 4;
 	kaku_old.pulse = 4;
 	kaku_old.footer = 45;
 	kaku_old.multiplier[0] = 0.1;

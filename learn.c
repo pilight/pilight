@@ -459,7 +459,7 @@ End of the original (but stripped) code of mode2
 	/* Print everything */
 	printf("--[RESULTS]--\n");
 	printf("\n");
-	printf("header:\t%d\n",normalize(header));
+	printf("header:\t\t%d\n",normalize(header));
 	printf("pulse:\t\t%d\n",normalize(pulse));
 	printf("footer:\t\t%d\n",normalize(footer));
 	printf("rawLength:\t%d\n",rawLength);

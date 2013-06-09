@@ -4,6 +4,12 @@
 <br />
 I bought one of these Arduino 433.92Mhz sender and receiver kits for controlling my Klik Aan Klik Uit and Elro devices. 
 They are called "433MHz Superheterodyne 3400 RF Transmitter and Receiver link kit" and can be found on ebay for about $10.
+<br />
+Please make sure to use a low-pass filter when you connect the receiver to your Raspberry Pi. A low-pass filter, will filter
+all noise so only the actual signals are passed through to the GPIO pins. This code will also work without a low-pass filter,
+but then you can't use it together with lirc and/or XBMC while receiving. A low-pass filter is created like this:
+<img src="http://provideyourown.com/wp-content/uploads/tech/CRLowPass1.png" alt="Low-pass filter" title="Low-pass filter" border="0" /><br />
+I used a 220 Ohm resistor and a 100uF capacitor. I haven't experimented with other values.
 <br /><br />
 This new code uses lirc for the interaction with the hardware. The advantage is that we can now use reliable existing code to build 
 the 433.92Mhz programs on. The downside is that this new code is not entirely standalone.

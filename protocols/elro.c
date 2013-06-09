@@ -154,7 +154,7 @@ void elroInit() {
 
 	strcpy(elro.id,"elro");
 	strcpy(elro.desc,"Elro Switches");
-	elro.header = 3;
+	elro.header = 4;
 	elro.pulse = 4;
 	elro.footer = 45;
 	elro.multiplier[0] = 0.1;
