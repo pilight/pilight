@@ -155,8 +155,8 @@ End of the original (but stripped) code of mode2
 	
 	while (1) {
 		data = hw.readdata(0);		
-		duration = (data & PULSE_MASK);				
-
+		duration = (data & PULSE_MASK);
+		
 		/* If we are recording, keep recording until the next footer has been matched */
 		if(recording == 1) {
 			if(bit < 255) {

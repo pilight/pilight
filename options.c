@@ -31,6 +31,8 @@ struct option *setOptions(struct option *option) {
 		backup_options++;
 		nr++;
 	}
+	if(backup_options->val == 0)
+		nr++;
 	backup_options=option;
 	struct option *new_options = malloc(sizeof(struct option)*nr);
 	for(i=0;i<nr;i++) {

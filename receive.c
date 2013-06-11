@@ -37,7 +37,7 @@
 
 int main() {
     int sockfd = 0, n = 0, connected = 0;
-    char recvBuff[1025];
+    char recvBuff[BUFFER_SIZE];
     char *message;
 
     struct sockaddr_in serv_addr;
@@ -52,7 +52,7 @@ int main() {
     memset(&serv_addr, '0', sizeof(serv_addr));
 
     serv_addr.sin_family = AF_INET;
-    serv_addr.sin_port = htons(5000);
+    serv_addr.sin_port = htons(PORT);
     inet_pton(AF_INET, "127.0.0.1", &serv_addr.sin_addr);
 
     if(connect(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
@@ -61,7 +61,7 @@ int main() {
     }
 
 	while(1) {
-		bzero(recvBuff,1025);
+		bzero(recvBuff,BUFFER_SIZE);
 		if((n = read(sockfd, recvBuff, sizeof(recvBuff)-1)) < 1) {
 			//perror("read");
 			goto close;
@@ -70,14 +70,14 @@ int main() {
 		if(n > 0) {
 			recvBuff[n]='\0';
 			if(connected == 0) {
-				if(strcmp(recvBuff,"ACCEPT CONNECTION") == 0) {
-					message="CLIENT RECEIVER";
+				if(strcmp(recvBuff,"ACCEPT CONNECTION\n") == 0) {
+					message="CLIENT RECEIVER\n";
 					if((n = write(sockfd, message, strlen(message))) < 0) {
 						perror("write");
 						goto close;
 					}
 				}
-				if(strcmp(recvBuff,"ACCEPT CLIENT") == 0) {
+				if(strcmp(recvBuff,"ACCEPT CLIENT\n") == 0) {
 					connected=1;
 				}
 			} else {

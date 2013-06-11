@@ -169,6 +169,9 @@ int main(int argc, char **argv) {
 							optstr[y++]=long_options[long_opt_nr].val;
 							if(long_options[long_opt_nr].has_arg == 1) {
 								optstr[y++]=':';
+							} else if(long_options[long_opt_nr].has_arg == 2) {
+								optstr[y++]=':';
+								optstr[y++]=':';
 							}
 							backup_options++;
 							proto_opt_nr++;
@@ -245,7 +248,7 @@ int main(int argc, char **argv) {
     memset(&serv_addr, '0', sizeof(serv_addr));
 
     serv_addr.sin_family = AF_INET;
-    serv_addr.sin_port = htons(5000);
+    serv_addr.sin_port = htons(PORT);
     inet_pton(AF_INET, "127.0.0.1", &serv_addr.sin_addr);
 
     if(connect(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
@@ -254,7 +257,7 @@ int main(int argc, char **argv) {
     }
 
 	while(1) {
-		bzero(recvBuff,1025);
+		bzero(recvBuff,BUFFER_SIZE);
 		if((n = read(sockfd, recvBuff, sizeof(recvBuff)-1)) < 1) {
 			//perror("read");
 			goto close;
@@ -263,40 +266,43 @@ int main(int argc, char **argv) {
 		if(n > 0) {
 			recvBuff[n]='\0';
 			if(connected == 0) {
-				if(strcmp(recvBuff,"ACCEPT CONNECTION") == 0) {
-					strcpy(message,"CLIENT SENDER");
+				if(strcmp(recvBuff,"ACCEPT CONNECTION\n") == 0) {
+					strcpy(message,"CLIENT SENDER\n");
 					if((n = write(sockfd, message, strlen(message))) < 0) {
 						perror("write");
 						goto close;
 					}
 				}
-				if(strcmp(recvBuff,"ACCEPT CLIENT") == 0) {
+				if(strcmp(recvBuff,"ACCEPT CLIENT\n") == 0) {
 					connected=1;
 				}
-				if(strcmp(recvBuff,"REJECT CLIENT") == 0) {
+				if(strcmp(recvBuff,"REJECT CLIENT\n") == 0) {
 					goto close;
 				}
 			}
 		}
 		if(connected) {
+			memset(message,'0',BUFFER_SIZE);
+			int x=0;
 			while(node->id != 0) {
-				memset(message,'0',BUFFER_SIZE);
-				sprintf(message,"%d ",node->id);
+				x+=sprintf(message+x,"%d ",node->id);
 				if(node->value != NULL) {
-					strcat(message,node->value);
-					strcat(message," ");
+					x+=sprintf(message+x,"%s",node->value);
 				} else {
-					strcat(message,"1");
-					strcat(message," ");
-				}
-				if((n = write(sockfd, message, BUFFER_SIZE-1)) < 0) {
-					perror("write");
-					goto close;
+					x+=sprintf(message+x,"1");
 				}
 				node = node->next;
+				if(node->id != 0)
+					x+=sprintf(message+x," ");
+				else
+					x+=sprintf(message+x,"\n");					
 			}
+			if((n = write(sockfd, message, BUFFER_SIZE-1)) < 0) {
+				perror("write");
+				goto close;
+			}			
 			memset(message,'0',BUFFER_SIZE);
-			strcpy(message,"SEND");
+			strcpy(message,"SEND\n");
 			if((n = write(sockfd, message, BUFFER_SIZE-1)) < 0) {
 				perror("write");
 				goto close;

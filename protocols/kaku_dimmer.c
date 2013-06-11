@@ -151,7 +151,7 @@ void kakuDimCreateCode(struct options *options) {
 	int unit = -1;
 	int state = -1;
 	int all = 0;
-	int dimlevel = -1;
+	int dimlevel = 15;
 
 	if(atoi(getOption(options,'i')) > 0)
 		id=atoi(getOption(options,'i'));
@@ -166,7 +166,7 @@ void kakuDimCreateCode(struct options *options) {
 	if(atoi(getOption(options,'a')) == 1)
 		all = 1;
 
-	if(id == -1 || unit == -1 || dimlevel == -1) {
+	if(id == -1 || unit == -1) {
 		fprintf(stderr, "kaku_dimmer: insufficient number of arguments\n");
 	} else {
 		kakuDimCreateStart();
@@ -207,8 +207,8 @@ void kakuDimInit() {
 	struct option kakuDimOptions[] = {
 		{"id", required_argument, NULL, 'i'},
 		{"unit", required_argument, NULL, 'u'},
-		{"all", required_argument, NULL, 'a'},
-		{"dimlevel", required_argument, NULL, 'd'},
+		{"all", no_argument, NULL, 'a'},
+		{"dimlevel", optional_argument, NULL, 'd'},
 		{0,0,0,0}
 	};
 

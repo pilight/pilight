@@ -37,6 +37,7 @@
 #include <netinet/in.h>
 #include <sys/time.h>
 #include <pthread.h>
+#include <libconfig.h>
 
 #include "lirc.h"
 #include "lirc/lircd.h"
@@ -213,7 +214,7 @@ void send_code(struct options *options) {
 						}
 						node = node->next;
 					}
-					 backup_options++;
+					backup_options++;
 				}
 			}
 			break;
@@ -278,9 +279,11 @@ void send_code(struct options *options) {
 int parse_data(int i, char buffer[BUFFER_SIZE]) {
     char message[BUFFER_SIZE];
 	int sd = clients[i];
-
+	char *pch = NULL;
+	bzero(message,BUFFER_SIZE);
+	//printf("%s\n",buffer);
 	if(handshakes[i] == SENDER) {
-		if(strcmp(buffer,"SEND") == 0) {
+		if(strcmp(buffer,"SEND\n") == 0) {
 			/* Don't let the sender wait until we have send the code */
 			close(sd);
 			clients[i] = 0;
@@ -288,32 +291,40 @@ int parse_data(int i, char buffer[BUFFER_SIZE]) {
 			send_code(node);
 			sendOptions = malloc(25*sizeof(struct options));
 		} else {
-			/* Rebuild the CLI arguments struct */
-			node = malloc(sizeof(struct options));
-			node->id = atoi(strtok(buffer," "));
-			node->value = strdup(strtok(NULL," "));
-			node->next = sendOptions;
-			sendOptions = node;
+			pch = strtok(buffer," \n");
+			while(pch != NULL) {
+				/* Rebuild the CLI arguments struct */
+				node = malloc(sizeof(struct options));
+				node->id = atoi(pch);
+				pch = strtok(NULL," \n");
+				if(pch != NULL) {
+					node->value = strdup(pch);
+					node->next = sendOptions;
+					sendOptions = node;
+					pch = strtok(NULL," \n");
+				} else {
+					break;
+				}
+			}
 		}
 	}
-	if(strcmp(buffer,"CLIENT RECEIVER") == 0) {
-		strcpy(message,"ACCEPT CLIENT");
+	if(strcmp(buffer,"CLIENT RECEIVER\n") == 0) {
+		strcpy(message,"ACCEPT CLIENT\n");
 		handshakes[i] = RECEIVER;
 		receivers++;
-		send(sd, message, strlen(message), 0);
 	}
-	if(strcmp(buffer,"CLIENT SENDER") == 0 && sending == 0) {
-		strcpy(message,"ACCEPT CLIENT");
+	if(strcmp(buffer,"CLIENT SENDER\n") == 0 && sending == 0) {
+		strcpy(message,"ACCEPT CLIENT\n");
 		handshakes[i] = SENDER;
-		send(sd, message, strlen(message), 0);
 	}
 	if(handshakes[i] == 0) {
-		strcpy(message,"REJECT CLIENT");
-		send(sd, message, strlen(message), 0);
+		strcpy(message,"REJECT CLIENT\n");
+	}
+	if(strlen(message) > 0 && send(sd, message, strlen(message), MSG_NOSIGNAL) == -1) {
 		close(sd);
 		clients[i] = 0;
 		handshakes[i] = 0;
-	}
+	}	
 	return 1;
 }
 
@@ -325,7 +336,7 @@ void *wait_for_data(void *param) {
 	int addrlen = sizeof(address);
     char readBuff[BUFFER_SIZE];
 	fd_set readfds;
-    char *message = "ACCEPT CONNECTION";
+    char *message = "ACCEPT CONNECTION\n";
 
 	while(1) {
 		do {
@@ -405,7 +416,9 @@ void *wait_for_data(void *param) {
                 } else {
                     //set the string terminating NULL byte on the end of the data read
                     readBuff[n] = '\0';
-					parse_data(i, readBuff);
+					
+					if(n > -1)
+						parse_data(i, readBuff);
                 }
             }
         }
@@ -678,7 +691,7 @@ int main(int argc , char **argv) {
 	kakuSwInit();
 	kakuDimInit();
 	kakuOldInit();
-	elroInit();
+	elroInit();	
 
     start_server(PORT);
 	if(nodaemon == 0)
