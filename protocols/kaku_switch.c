@@ -33,7 +33,7 @@ void kakuSwParseRaw() {
 void kakuSwParseCode() {
 }
 
-char *kakuSwParseBinary() {
+void kakuSwParseBinary() {
 	memset(kaku_switch.message,'0',sizeof(kaku_switch.message));
 	int unit = binToDecRev(kaku_switch.binary,28,31);
 	int state = kaku_switch.binary[27];
@@ -47,8 +47,6 @@ char *kakuSwParseBinary() {
 		strcat(kaku_switch.message," on");
 	else
 		strcat(kaku_switch.message," off");
-
-	return kaku_switch.message;
 }
 
 void kakuSwCreateLow(int s, int e) {
@@ -194,7 +192,7 @@ void kakuSwInit() {
 	kaku_switch.options=setOptions(kakuSwOptions);
 	kaku_switch.parseRaw=&kakuSwParseRaw;
 	kaku_switch.parseCode=&kakuSwParseCode;
-	kaku_switch.parseBinary=kakuSwParseBinary;
+	kaku_switch.parseBinary=&kakuSwParseBinary;
 	kaku_switch.createCode=&kakuSwCreateCode;
 	kaku_switch.printHelp=&kakuSwPrintHelp;
 

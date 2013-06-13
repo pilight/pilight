@@ -33,7 +33,7 @@ void elroParseRaw() {
 void elroParseCode() {
 }
 
-char *elroParseBinary() {
+void elroParseBinary() {
 	memset(elro.message,'0',sizeof(elro.message));
 
 	int unit = binToDec(elro.binary,0,4);
@@ -47,9 +47,6 @@ char *elroParseBinary() {
 			strcat(elro.message," on");
 		else
 			strcat(elro.message," off");
-		return elro.message;
-	} else {
-		return (0);
 	}
 }
 
@@ -181,7 +178,7 @@ void elroInit() {
 	elro.options=setOptions(elroOptions);
 	elro.parseRaw=&elroParseRaw;
 	elro.parseCode=&elroParseCode;
-	elro.parseBinary=elroParseBinary;
+	elro.parseBinary=&elroParseBinary;
 	elro.createCode=&elroCreateCode;
 	elro.printHelp=&elroPrintHelp;
 

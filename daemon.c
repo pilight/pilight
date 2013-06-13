@@ -171,6 +171,33 @@ int start_server(int port) {
     return 0;
 }
 
+int broadcast(char *message) {
+	extern FILE *popen();
+	FILE *f;
+	int i;
+	
+	if(strlen(message) > 0) {
+		/* Write the message to all receivers */
+		for(i=0;i<MAX_CLIENTS;i++) {
+			if(handshakes[i] == RECEIVER) {
+				send(clients[i], message, strlen(message), 0);
+			}
+		}
+
+		/* Call the external file */
+		if(strlen(logfile) > 0) {
+			char cmd[255];
+			strcpy(cmd,logfile);
+			strcat(cmd," receiver ");
+			strcat(cmd,message);
+			f=popen(cmd, "r");
+			pclose(f);
+		}
+		return 1;
+	}
+	return 0;
+}
+
 /* Send a specific code */
 void send_code(struct options_t *options) {
 	int i=0, match = 0, x = 0, logged = 1;
@@ -182,10 +209,8 @@ void send_code(struct options_t *options) {
 	/* Temporary pointer to the protocol options */
 	struct option *backup_options;
 	struct options_t *node = options;
-	extern FILE *popen();
-	FILE *f;
+	
 	char message[BUFFER_SIZE];
-	char cmd[255];
 	memset(message,'0',BUFFER_SIZE);
 
 	if(getOption(options,'p') != NULL)
@@ -250,21 +275,7 @@ void send_code(struct options_t *options) {
 			if(receivers > 0 && logged == 0) {
 				logged = 1;
 				/* Write the message to all receivers */
-				for(x=0;x<MAX_CLIENTS;x++) {
-					if(handshakes[x] == RECEIVER) {
-						send(clients[x], message, strlen(message), 0);
-					}
-				}
-
-				/* Call the external file */
-				if(strlen(logfile) > 0) {
-					memset(cmd,'0',255);
-					strcpy(cmd,logfile);
-					strcat(cmd," sender ");
-					strcat(cmd,message);
-					f=popen(cmd, "r");
-					pclose(f);
-				}
+				broadcast(message);
 			}
 		}
 		/* Release the hardware to spare resources */
@@ -330,10 +341,8 @@ int parse_data(int i, char buffer[BUFFER_SIZE]) {
 void receive() {
 	lirc_t data;
 	int x, y = 0, i;
+	char message[BUFFER_SIZE];	
 	protocol_t *device = malloc(sizeof(protocol_t));
-	char message[BUFFER_SIZE];
-	extern FILE *popen();
-	FILE *f;
 
 	while(1) {
 		/* Only initialize the hardware receive the data when there are receivers connected */
@@ -376,7 +385,11 @@ void receive() {
 
 						/* Check if the code matches the raw length */
 						if(device->bit == device->rawLength) {
+							memset(message,'0',BUFFER_SIZE);
 							device->parseRaw();
+							memcpy(message,device->message,BUFFER_SIZE);
+							if(broadcast(message))
+								continue;
 
 							/* Convert the raw codes to one's and zero's */
 							for(x=0;x<device->bit;x++) {
@@ -396,7 +409,11 @@ void receive() {
 
 							/* Continue if we have recognized enough repeated codes */
 							if(y >= device->repeats) {
+								memset(message,'0',BUFFER_SIZE);
 								device->parseCode();
+								memcpy(message,device->message,BUFFER_SIZE);
+								if(broadcast(message))
+									continue;
 
 								/* Convert the one's and zero's into binary */
 								for(x=2; x<device->bit; x+=4) {
@@ -410,27 +427,10 @@ void receive() {
 								/* Check if the binary matches the binary length */
 								if((x/4) == device->binaryLength) {
 									memset(message,'0',BUFFER_SIZE);
-									memcpy(message,device->parseBinary(),BUFFER_SIZE);
-									if(message != NULL) {
-										/* Write the message to all receivers */
-										for(i=0;i<MAX_CLIENTS;i++) {
-											if(handshakes[i] == RECEIVER) {
-												send(clients[i], message, strlen(message), 0);
-											}
-										}
-
-										/* Call the external file */
-										if(strlen(logfile) > 0) {
-											char cmd[255];
-											strcpy(cmd,logfile);
-											strcat(cmd," receiver ");
-											strcat(cmd,message);
-											f=popen(cmd, "r");
-											pclose(f);
-										}
-
+									device->parseBinary();
+									memcpy(message,device->message,BUFFER_SIZE);
+									if(broadcast(message))
 										continue;
-									}
 								}
 							}
 						}

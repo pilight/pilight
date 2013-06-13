@@ -33,7 +33,7 @@ void kakuOldParseRaw() {
 void kakuOldParseCode() {
 }
 
-char *kakuOldParseBinary() {
+void kakuOldParseBinary() {
 	memset(kaku_old.message,'0',sizeof(kaku_old.message));
 	
 	int unit = binToDec(kaku_old.binary,0,4);
@@ -45,7 +45,6 @@ char *kakuOldParseBinary() {
 		strcat(kaku_old.message," on");
 	else
 		strcat(kaku_old.message," off");
-	return kaku_old.message;
 }
 
 void kakuOldCreateLow(int s, int e) {

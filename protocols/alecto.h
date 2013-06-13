@@ -25,7 +25,9 @@ protocol_t alecto;
 
 void alectoParseRaw();
 void alectoParseCode();
-char *alectoParseBinary();
+void alectoParseBinary();
+void alectoCreateCode();
+void alectoPrintHelp();
 void alectoInit();
 
 #endif

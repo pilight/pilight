@@ -51,11 +51,13 @@ void alectoParseRaw() {
 void alectoParseCode() {
 }
 
-char *alectoParseBinary() {
-	if(strlen(alecto.message) > 0)
-		return alecto.message;
-	else
-		return (0);
+void alectoParseBinary() {
+}
+
+void alectoCreateCode() {
+}
+
+void alectoPrintHelp() {
 }
 
 void alectoInit() {
@@ -83,7 +85,9 @@ void alectoInit() {
 	alecto.options=setOptions(alectoOptions);
 	alecto.parseRaw=&alectoParseRaw;
 	alecto.parseCode=&alectoParseCode;
-	alecto.parseBinary=alectoParseBinary;
+	alecto.parseBinary=&alectoParseBinary;
+	alecto.createCode=&alectoCreateCode;
+	alecto.printHelp=&alectoPrintHelp;
 
 	protocol_register(&alecto);
 }

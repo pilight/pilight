@@ -51,7 +51,7 @@ typedef struct {
 
 	void (*parseRaw)();
 	void (*parseCode)();
-	char *(*parseBinary)();
+	void (*parseBinary)();
 	void (*createCode)(struct options_t *options);
 	void (*printHelp)();
 } protocol_t;

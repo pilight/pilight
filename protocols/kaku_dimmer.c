@@ -33,7 +33,7 @@ void kakuDimParseRaw() {
 void kakuDimParseCode() {
 }
 
-char *kakuDimParseBinary() {
+void kakuDimParseBinary() {
 	memset(kaku_dimmer.message,'0',sizeof(kaku_dimmer.message));
 
 	int i = 0;
@@ -55,7 +55,6 @@ char *kakuDimParseBinary() {
 		else
 			strcat(kaku_dimmer.message," off");
 	}
-	return kaku_dimmer.message;
 }
 
 void kakuDimCreateLow(int s, int e) {
@@ -219,7 +218,7 @@ void kakuDimInit() {
 	kaku_dimmer.options=setOptions(kakuDimOptions);
 	kaku_dimmer.parseRaw=&kakuDimParseRaw;
 	kaku_dimmer.parseCode=&kakuDimParseCode;
-	kaku_dimmer.parseBinary=kakuDimParseBinary;
+	kaku_dimmer.parseBinary=&kakuDimParseBinary;
 	kaku_dimmer.createCode=&kakuDimCreateCode;
 	kaku_dimmer.printHelp=&kakuDimPrintHelp;
 

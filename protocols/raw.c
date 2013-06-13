@@ -33,8 +33,7 @@ void rawParseRaw() {
 void rawParseCode() {
 }
 
-char *rawParseBinary() {
-	return NULL;
+void rawParseBinary() {
 }
 
 void rawCreateCode(struct options_t *options) {
