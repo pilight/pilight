@@ -31,6 +31,10 @@
 #include <arpa/inet.h>
 #include "config.h"
 
+void logprintf(int prio, char *format_str, ...) { }
+
+void logperror(int prio, const char *s) { } 
+
 int main() {
     int sockfd = 0, n = 0, connected = 0;
     char recvBuff[BUFFER_SIZE];

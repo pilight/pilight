@@ -1,25 +1,16 @@
-includes = $(wildcard *.h)
+CC = gcc
+CFLAGS = -Wall -I. -I..
+SRC = $(wildcard *.c)
+OBJS = $(SRC:.c=.o)
+HEADERS := $(SRC:.c=.h)
 
-all: hw_default.o hw-types.o ir_remote.o receive.o transmit.o lirc.o
+all: $(OBJS) lirc.o
 
-hw_default.o: hw_default.c $(includes)
-	make trunc && gcc -Wall -I. -I.. -c hw_default.c
+%.o: %.c %.h
+	$(CC) $(CFLAGS) -c $(patsubst %.o,%.c,$@)
 
-hw-types.o: hw-types.c $(includes)
-	make trunc && gcc -Wall -I. -I.. -c hw-types.c
+lirc.o:
+	ld -L/usr/local/lib -r $(OBJS) -o lirc.o
 
-ir_remote.o: ir_remote.c $(includes)
-	make trunc && gcc -Wall -I. -I.. -c ir_remote.c	
-
-receive.o: receive.c $(includes)
-	make trunc && gcc -Wall -I. -I.. -c receive.c	
-
-transmit.o: transmit.c $(includes)
-	make trunc && gcc -Wall -I. -I.. -c transmit.c	
-	
-lirc.o: hardware.h $(includes)
-	ld -r hw_default.o hw-types.o ir_remote.o receive.o transmit.o -o lirc.o
-	
-trunc:
-	test ! -s lirc.o || rm lirc.o
-	make trunc -C ../
+clean:
+	rm *.o >/dev/null 2>&1 || true
