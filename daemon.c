@@ -176,7 +176,7 @@ int broadcast(char *message) {
 	FILE *f;
 	int i;
 	
-	if(strlen(message) > 0) {
+	if(strlen(message) > 0 && strcmp(message,"0000") != 0) {
 		/* Write the message to all receivers */
 		for(i=0;i<MAX_CLIENTS;i++) {
 			if(handshakes[i] == RECEIVER) {
@@ -221,7 +221,7 @@ void send_code(struct options_t *options) {
 		/* Check if the protocol exists */
 		if(strcmp(device->id,name) == 0 && match == 0) {
 			match = 1;
-			if(device->options != NULL) {
+			if(device->options != NULL && device->createCode != NULL) {
 				/* Copy all CLI options from the specific protocol */
 				backup_options=device->options;
 				x=0;
@@ -247,7 +247,7 @@ void send_code(struct options_t *options) {
 	logged = 0;
 
 	/* If we matched a protocol and are not already sending, continue */
-	if(match == 1 && sending == 0) {
+	if(match == 1 && sending == 0 && device->createCode != NULL) {
 		/* Let the protocol create his code */
 		device->createCode(options);
 
@@ -356,86 +356,95 @@ void receive() {
 
 				for(i=0; i<protocols.nr; ++i) {
 					device = protocols.listeners[i];
-
-					/* If we are recording, keep recording until the footer has been matched */
-					if(device->recording == 1) {
-						if(device->bit < 255) {
-							device->raw[device->bit++] = duration;
-						} else {
-							device->bit = 0;
-							device->recording = 0;
-						}
-					}
-
-					/* Try to catch the header of the code */
-					if(duration > (PULSE_LENGTH-(PULSE_LENGTH*device->multiplier[0]))
-					   && duration < (PULSE_LENGTH+(PULSE_LENGTH*device->multiplier[0]))
-					   && device->bit == 0) {
-						device->raw[device->bit++] = duration;
-					} else if(duration > ((device->header*PULSE_LENGTH)-((device->header*PULSE_LENGTH)*device->multiplier[0]))
-					   && duration < ((device->header*PULSE_LENGTH)+((device->header*PULSE_LENGTH)*device->multiplier[0]))
-					   && device->bit == 1) {
-						device->raw[device->bit++] = duration;
-						device->recording = 1;
-					}
-
-					/* Try to catch the footer of the code */
-					if(duration > ((device->footer*PULSE_LENGTH)-((device->footer*PULSE_LENGTH)*device->multiplier[1]))
-					   && duration < ((device->footer*PULSE_LENGTH)+((device->footer*PULSE_LENGTH)*device->multiplier[1]))) {
-
-						/* Check if the code matches the raw length */
-						if(device->bit == device->rawLength) {
-							memset(message,'0',BUFFER_SIZE);
-							device->parseRaw();
-							memcpy(message,device->message,BUFFER_SIZE);
-							if(broadcast(message))
-								continue;
-
-							/* Convert the raw codes to one's and zero's */
-							for(x=0;x<device->bit;x++) {
-
-								/* Check if the current code matches the previous one */
-								if(device->pCode[x]!=device->code[x])
-									y=0;
-								device->pCode[x]=device->code[x];
-								if(device->raw[x] > ((device->pulse*PULSE_LENGTH)-PULSE_LENGTH)) {
-									device->code[x]=1;
-								} else {
-									device->code[x]=0;
-								}
+					/* Lots of checks if the protocol can actually receive anything */
+					if((((device->parseRaw != NULL || device->parseCode != NULL) && device->rawLength > 0) 
+					    || (device->parseBinary != NULL && device->binaryLength > 0))
+						&& device->header > 0 && device->footer > 0
+						&& device->pulse > 0 && device->multiplier != NULL) {
+						/* If we are recording, keep recording until the footer has been matched */
+						if(device->recording == 1) {
+							if(device->bit < 255) {
+								device->raw[device->bit++] = duration;
+							} else {
+								device->bit = 0;
+								device->recording = 0;
 							}
+						}
 
-							y++;
+						/* Try to catch the header of the code */
+						if(duration > (PULSE_LENGTH-(PULSE_LENGTH*device->multiplier[0]))
+						   && duration < (PULSE_LENGTH+(PULSE_LENGTH*device->multiplier[0]))
+						   && device->bit == 0) {
+							device->raw[device->bit++] = duration;
+						} else if(duration > ((device->header*PULSE_LENGTH)-((device->header*PULSE_LENGTH)*device->multiplier[0]))
+						   && duration < ((device->header*PULSE_LENGTH)+((device->header*PULSE_LENGTH)*device->multiplier[0]))
+						   && device->bit == 1) {
+							device->raw[device->bit++] = duration;
+							device->recording = 1;
+						}
 
-							/* Continue if we have recognized enough repeated codes */
-							if(y >= device->repeats) {
+						/* Try to catch the footer of the code */
+						if(duration > ((device->footer*PULSE_LENGTH)-((device->footer*PULSE_LENGTH)*device->multiplier[1]))
+						   && duration < ((device->footer*PULSE_LENGTH)+((device->footer*PULSE_LENGTH)*device->multiplier[1]))) {
+
+							/* Check if the code matches the raw length */
+							if((device->bit == device->rawLength)) {
 								memset(message,'0',BUFFER_SIZE);
-								device->parseCode();
+								device->parseRaw();
 								memcpy(message,device->message,BUFFER_SIZE);
 								if(broadcast(message))
 									continue;
+									
+								if((device->parseCode != NULL || device->parseBinary != NULL) && device->pulse > 0) {
+									/* Convert the raw codes to one's and zero's */
+									for(x=0;x<device->bit;x++) {
 
-								/* Convert the one's and zero's into binary */
-								for(x=2; x<device->bit; x+=4) {
-									if(device->code[x+1] == 1) {
-										device->binary[x/4]=1;
-									} else {
-										device->binary[x/4]=0;
+										/* Check if the current code matches the previous one */
+										if(device->pCode[x]!=device->code[x])
+											y=0;
+										device->pCode[x]=device->code[x];
+										if(device->raw[x] > ((device->pulse*PULSE_LENGTH)-PULSE_LENGTH)) {
+											device->code[x]=1;
+										} else {
+											device->code[x]=0;
+										}
+									}
+
+									y++;
+
+									/* Continue if we have recognized enough repeated codes */
+									if(device->repeats > 0 && y >= device->repeats) {
+										memset(message,'0',BUFFER_SIZE);
+										device->parseCode();
+										memcpy(message,device->message,BUFFER_SIZE);
+										if(broadcast(message))
+											continue;
+
+										if(device->parseBinary != NULL) {
+											/* Convert the one's and zero's into binary */
+											for(x=2; x<device->bit; x+=4) {
+												if(device->code[x+1] == 1) {
+													device->binary[x/4]=1;
+												} else {
+													device->binary[x/4]=0;
+												}
+											}
+
+											/* Check if the binary matches the binary length */
+											if(device->binaryLength > 0 && (x/4) == device->binaryLength) {
+												memset(message,'0',BUFFER_SIZE);
+												device->parseBinary();
+												memcpy(message,device->message,BUFFER_SIZE);
+												if(broadcast(message))
+													continue;
+											}
+										}
 									}
 								}
-
-								/* Check if the binary matches the binary length */
-								if((x/4) == device->binaryLength) {
-									memset(message,'0',BUFFER_SIZE);
-									device->parseBinary();
-									memcpy(message,device->message,BUFFER_SIZE);
-									if(broadcast(message))
-										continue;
-								}
 							}
+							device->recording = 0;
+							device->bit = 0;
 						}
-						device->recording = 0;
-						device->bit = 0;
 					}
 				}
 			}
@@ -573,12 +582,14 @@ int main_gc() {
 
 	module_init();
 	/* Only restore the frequency when we stop the daemon */
-	freq = FREQ38;
-	if(hw.ioctl_func(LIRC_SET_SEND_CARRIER, &freq) == -1) {
-		perror("ioctl");
-		return EXIT_FAILURE;
+	if(initialized == 1) {
+		freq = FREQ38;
+		if(hw.ioctl_func(LIRC_SET_SEND_CARRIER, &freq) == -1) {
+			perror("ioctl");
+			return EXIT_FAILURE;
+		}
+		module_deinit();
 	}
-	module_deinit();
 	/* Remove the stale pid file */
 	if(access(pidfile, F_OK) != -1) {
 		remove(pidfile);
@@ -695,6 +706,13 @@ int main(int argc , char **argv) {
 	close(f);
 	if(running == 1) {
 		fprintf(stderr, "%s: already active (pid %d)\n", progname, atoi(buffer));
+		return EXIT_FAILURE;
+	}
+	
+	module_init();
+	if(initialized == 1) {
+		module_deinit();
+	} else {
 		return EXIT_FAILURE;
 	}
 

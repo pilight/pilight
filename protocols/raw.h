@@ -24,9 +24,6 @@
 protocol_t raw;
 
 void rawInit();
-void rawParseRaw();
-void rawParseCode();
-void rawParseBinary();
 void rawCreateCode(struct options_t *options);
 void rawPrintHelp();
 

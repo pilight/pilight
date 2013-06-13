@@ -27,12 +27,6 @@
 #include "binary.h"
 #include "kaku_old.h"
 
-void kakuOldParseRaw() {
-}
-
-void kakuOldParseCode() {
-}
-
 void kakuOldParseBinary() {
 	memset(kaku_old.message,'0',sizeof(kaku_old.message));
 	
@@ -172,8 +166,6 @@ void kakuOldInit() {
 	};
 
 	kaku_old.options=setOptions(kakuOldOptions);
-	kaku_old.parseRaw=&kakuOldParseRaw;
-	kaku_old.parseCode=&kakuOldParseCode;
 	kaku_old.parseBinary=kakuOldParseBinary;
 	kaku_old.createCode=&kakuOldCreateCode;
 	kaku_old.printHelp=&kakuOldPrintHelp;

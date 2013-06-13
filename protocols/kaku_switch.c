@@ -27,12 +27,6 @@
 #include "binary.h"
 #include "kaku_switch.h"
 
-void kakuSwParseRaw() {
-}
-
-void kakuSwParseCode() {
-}
-
 void kakuSwParseBinary() {
 	memset(kaku_switch.message,'0',sizeof(kaku_switch.message));
 	int unit = binToDecRev(kaku_switch.binary,28,31);
@@ -190,8 +184,6 @@ void kakuSwInit() {
 	};
 
 	kaku_switch.options=setOptions(kakuSwOptions);
-	kaku_switch.parseRaw=&kakuSwParseRaw;
-	kaku_switch.parseCode=&kakuSwParseCode;
 	kaku_switch.parseBinary=&kakuSwParseBinary;
 	kaku_switch.createCode=&kakuSwCreateCode;
 	kaku_switch.printHelp=&kakuSwPrintHelp;

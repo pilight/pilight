@@ -27,12 +27,6 @@
 #include "binary.h"
 #include "elro.h"
 
-void elroParseRaw() {
-}
-
-void elroParseCode() {
-}
-
 void elroParseBinary() {
 	memset(elro.message,'0',sizeof(elro.message));
 
@@ -176,8 +170,6 @@ void elroInit() {
 	};
 
 	elro.options=setOptions(elroOptions);
-	elro.parseRaw=&elroParseRaw;
-	elro.parseCode=&elroParseCode;
 	elro.parseBinary=&elroParseBinary;
 	elro.createCode=&elroCreateCode;
 	elro.printHelp=&elroPrintHelp;

@@ -48,46 +48,22 @@ void alectoParseRaw() {
 	}
 }
 
-void alectoParseCode() {
-}
-
-void alectoParseBinary() {
-}
-
-void alectoCreateCode() {
-}
-
-void alectoPrintHelp() {
-}
-
 void alectoInit() {
 
 	strcpy(alecto.id,"alecto");
 	strcpy(alecto.desc,"Alecto based Weather stations");
 	alecto.type = WEATHER;
 	alecto.header = 14;
-	alecto.pulse = 7;
 	alecto.footer = 30;
 	alecto.multiplier[0] = 0.1;
 	alecto.multiplier[1] = 0.3;
 	alecto.rawLength = 74;
-	alecto.binaryLength = 18;
-	alecto.repeats = 2;
 	alecto.message = malloc((50*sizeof(char))+1);
 	
 	alecto.bit = 0;
 	alecto.recording = 0;
-
-	struct option alectoOptions[] = {
-		{0,0,0,0}
-	};
-
-	alecto.options=setOptions(alectoOptions);
+	
 	alecto.parseRaw=&alectoParseRaw;
-	alecto.parseCode=&alectoParseCode;
-	alecto.parseBinary=&alectoParseBinary;
-	alecto.createCode=&alectoCreateCode;
-	alecto.printHelp=&alectoPrintHelp;
 
 	protocol_register(&alecto);
 }

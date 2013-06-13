@@ -27,12 +27,6 @@
 #include "binary.h"
 #include "kaku_dimmer.h"
 
-void kakuDimParseRaw() {
-}
-
-void kakuDimParseCode() {
-}
-
 void kakuDimParseBinary() {
 	memset(kaku_dimmer.message,'0',sizeof(kaku_dimmer.message));
 
@@ -215,8 +209,6 @@ void kakuDimInit() {
 	};
 
 	kaku_dimmer.options=setOptions(kakuDimOptions);
-	kaku_dimmer.parseRaw=&kakuDimParseRaw;
-	kaku_dimmer.parseCode=&kakuDimParseCode;
 	kaku_dimmer.parseBinary=&kakuDimParseBinary;
 	kaku_dimmer.createCode=&kakuDimCreateCode;
 	kaku_dimmer.printHelp=&kakuDimPrintHelp;

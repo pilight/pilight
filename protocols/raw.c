@@ -27,15 +27,6 @@
 #include "binary.h"
 #include "raw.h"
 
-void rawParseRaw() {
-}
-
-void rawParseCode() {
-}
-
-void rawParseBinary() {
-}
-
 void rawCreateCode(struct options_t *options) {
 	char *code = getOption(options,'C');
 	char *pch;
@@ -58,15 +49,6 @@ void rawInit() {
 	strcpy(raw.id,"raw");
 	strcpy(raw.desc,"Raw codes");
 	raw.type = RAW;
-	raw.header = 0;
-	raw.pulse = 0;
-	raw.footer = 0;
-	raw.multiplier[0] = 0;
-	raw.multiplier[1] = 0;
-	raw.rawLength = 0;
-	raw.binaryLength = 0;
-	raw.repeats = 0;
-	raw.message = NULL;
 
 	raw.bit = 0;
 	raw.recording = 0;
@@ -77,9 +59,6 @@ void rawInit() {
 	};
 
 	raw.options=setOptions(rawOptions);
-	raw.parseRaw=&rawParseRaw;
-	raw.parseCode=&rawParseCode;
-	raw.parseBinary=&rawParseBinary;
 	raw.createCode=&rawCreateCode;
 	raw.printHelp=&rawPrintHelp;
 
