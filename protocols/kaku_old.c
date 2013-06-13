@@ -40,7 +40,7 @@ void kakuOldParseBinary() {
 	int state = kaku_old.binary[11];
 	int id = binToDec(kaku_old.binary,5,9);
 
-	sprintf(kaku_old.message,"id %d unit %d state",id,unit);
+	sprintf(kaku_old.message,"id %d unit %d",id,unit);
 	if(state==0)
 		strcat(kaku_old.message," on");
 	else

@@ -42,7 +42,7 @@ void elroParseBinary() {
 	int id = binToDec(elro.binary,5,9);
 
 	if(check != state) {
-		sprintf(elro.message,"id %d unit %d state",id,unit);
+		sprintf(elro.message,"id %d unit %d",id,unit);
 		if(state==1)
 			strcat(elro.message," on");
 		else

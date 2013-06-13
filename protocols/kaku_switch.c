@@ -40,7 +40,7 @@ void kakuSwParseBinary() {
 	int group = kaku_switch.binary[26];
 	int id = binToDecRev(kaku_switch.binary,0,25);
 
-	sprintf(kaku_switch.message,"id %d unit %d state",id,unit);
+	sprintf(kaku_switch.message,"id %d unit %d",id,unit);
 	if(group == 1)
 		strcat(kaku_switch.message," all");
 	if(state == 1)

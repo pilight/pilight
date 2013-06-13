@@ -47,7 +47,6 @@ void kakuDimParseBinary() {
 	if(dim > 0) {
 		sprintf(kaku_dimmer.message+i," dim %d",dim);
 	} else {
-		strcat(kaku_dimmer.message," state");
 		if(group == 1)
 			strcat(kaku_dimmer.message," all");	
 		if(state == 1)
