@@ -1,3 +1,6 @@
+13 june 2013
+Tried to add alecto weather station support
+
 8 june 2013
 Added the main daemon. This is the core of the 433.92Mhz
 functionality. It will run in the background and allows

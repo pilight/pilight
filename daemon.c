@@ -19,10 +19,6 @@
 	<http://www.gnu.org/licenses/>
 */
 
-#ifdef HAVE_CONFIG_H
-#include <config.h>
-#endif
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -37,7 +33,7 @@
 #include <netinet/in.h>
 #include <sys/time.h>
 #include <pthread.h>
-#include <libconfig.h>
+#include <getopt.h>
 
 #include "lirc.h"
 #include "lirc/lircd.h"
@@ -53,6 +49,9 @@
 #include "protocols/kaku_dimmer.h"
 #include "protocols/kaku_old.h"
 #include "protocols/elro.h"
+#include "protocols/raw.h"
+#include "protocols/alecto.h"
+#include "config.h"
 
 /* ID's or the clients */
 #define RECEIVER		1
@@ -65,10 +64,12 @@ int	clients[MAX_CLIENTS];
 int handshakes[MAX_CLIENTS];
 
 /* The pidfile and pid of this daemon */
-char *pidfile = PIDFILE;
+char *pidfile = PID_FILE;
 pid_t pid;
+/* The default config file location */
+char *configfile = CONFIG_FILE;
 /* The to call when a new code is send or received */
-char file[255];
+char logfile[1024];
 /* The duration of the received pulse */
 int duration = 0;
 /* The number of receivers connected */
@@ -86,11 +87,9 @@ int initialized = 0;
 /* Is the right frequency set */
 int setfreq = 0;
 
-char *progname;
-
 /* The CLI options of the specific protocol */
-struct options *sendOptions;
-struct options *node;
+struct options_t *sendOptions;
+struct options_t *node;
 
 void logprintf(int prio, char *format_str, ...) { }
 
@@ -173,16 +172,16 @@ int start_server(int port) {
 }
 
 /* Send a specific code */
-void send_code(struct options *options) {
+void send_code(struct options_t *options) {
 	int i=0, match = 0, x = 0, logged = 1;
 	char name[255];
 	/* Hold the final protocol struct */
-	protocol *device = NULL;
+	protocol_t *device = malloc(sizeof(protocol_t));
 	/* The code that is send to the hardware wrapper */
 	struct ir_ncode code;
 	/* Temporary pointer to the protocol options */
 	struct option *backup_options;
-	struct options *node = options;
+	struct options_t *node = options;
 	extern FILE *popen();
 	FILE *f;
 	char message[BUFFER_SIZE];
@@ -192,8 +191,8 @@ void send_code(struct options *options) {
 	if(getOption(options,'p') != NULL)
 		strcpy(name,getOption(options,'p'));
 
-	for(i=0; i<protos.nr; ++i) {
-		device = protos.listeners[i];
+	for(i=0; i<protocols.nr; ++i) {
+		device = protocols.listeners[i];
 		/* Check if the protocol exists */
 		if(strcmp(device->id,name) == 0 && match == 0) {
 			match = 1;
@@ -258,9 +257,9 @@ void send_code(struct options *options) {
 				}
 
 				/* Call the external file */
-				if(strlen(file) > 0) {
+				if(strlen(logfile) > 0) {
 					memset(cmd,'0',255);
-					strcpy(cmd,file);
+					strcpy(cmd,logfile);
 					strcat(cmd," sender ");
 					strcat(cmd,message);
 					f=popen(cmd, "r");
@@ -281,7 +280,7 @@ int parse_data(int i, char buffer[BUFFER_SIZE]) {
 	int sd = clients[i];
 	char *pch = NULL;
 	bzero(message,BUFFER_SIZE);
-	//printf("%s\n",buffer);
+	
 	if(handshakes[i] == SENDER) {
 		if(strcmp(buffer,"SEND\n") == 0) {
 			/* Don't let the sender wait until we have send the code */
@@ -289,12 +288,12 @@ int parse_data(int i, char buffer[BUFFER_SIZE]) {
 			clients[i] = 0;
 			handshakes[i] = 0;
 			send_code(node);
-			sendOptions = malloc(25*sizeof(struct options));
+			sendOptions = malloc(25*sizeof(struct options_t));
 		} else {
 			pch = strtok(buffer," \n");
 			while(pch != NULL) {
 				/* Rebuild the CLI arguments struct */
-				node = malloc(sizeof(struct options));
+				node = malloc(sizeof(struct options_t));
 				node->id = atoi(pch);
 				pch = strtok(NULL," \n");
 				if(pch != NULL) {
@@ -326,6 +325,124 @@ int parse_data(int i, char buffer[BUFFER_SIZE]) {
 		handshakes[i] = 0;
 	}	
 	return 1;
+}
+
+void receive() {
+	lirc_t data;
+	int x, y = 0, i;
+	protocol_t *device = malloc(sizeof(protocol_t));
+	char message[BUFFER_SIZE];
+	extern FILE *popen();
+	FILE *f;
+
+	while(1) {
+		/* Only initialize the hardware receive the data when there are receivers connected */
+		if(receivers > 0) {
+			module_init();
+
+			data = hw.readdata(0);
+			duration = (data & PULSE_MASK);
+			/* A space is normally for 295 long, so filter spaces less then 200 */
+			if(sending == 0 && duration > 200) {
+
+				for(i=0; i<protocols.nr; ++i) {
+					device = protocols.listeners[i];
+
+					/* If we are recording, keep recording until the footer has been matched */
+					if(device->recording == 1) {
+						if(device->bit < 255) {
+							device->raw[device->bit++] = duration;
+						} else {
+							device->bit = 0;
+							device->recording = 0;
+						}
+					}
+
+					/* Try to catch the header of the code */
+					if(duration > (PULSE_LENGTH-(PULSE_LENGTH*device->multiplier[0]))
+					   && duration < (PULSE_LENGTH+(PULSE_LENGTH*device->multiplier[0]))
+					   && device->bit == 0) {
+						device->raw[device->bit++] = duration;
+					} else if(duration > ((device->header*PULSE_LENGTH)-((device->header*PULSE_LENGTH)*device->multiplier[0]))
+					   && duration < ((device->header*PULSE_LENGTH)+((device->header*PULSE_LENGTH)*device->multiplier[0]))
+					   && device->bit == 1) {
+						device->raw[device->bit++] = duration;
+						device->recording = 1;
+					}
+
+					/* Try to catch the footer of the code */
+					if(duration > ((device->footer*PULSE_LENGTH)-((device->footer*PULSE_LENGTH)*device->multiplier[1]))
+					   && duration < ((device->footer*PULSE_LENGTH)+((device->footer*PULSE_LENGTH)*device->multiplier[1]))) {
+
+						/* Check if the code matches the raw length */
+						if(device->bit == device->rawLength) {
+							device->parseRaw();
+
+							/* Convert the raw codes to one's and zero's */
+							for(x=0;x<device->bit;x++) {
+
+								/* Check if the current code matches the previous one */
+								if(device->pCode[x]!=device->code[x])
+									y=0;
+								device->pCode[x]=device->code[x];
+								if(device->raw[x] > ((device->pulse*PULSE_LENGTH)-PULSE_LENGTH)) {
+									device->code[x]=1;
+								} else {
+									device->code[x]=0;
+								}
+							}
+
+							y++;
+
+							/* Continue if we have recognized enough repeated codes */
+							if(y >= device->repeats) {
+								device->parseCode();
+
+								/* Convert the one's and zero's into binary */
+								for(x=2; x<device->bit; x+=4) {
+									if(device->code[x+1] == 1) {
+										device->binary[x/4]=1;
+									} else {
+										device->binary[x/4]=0;
+									}
+								}
+
+								/* Check if the binary matches the binary length */
+								if((x/4) == device->binaryLength) {
+									memset(message,'0',BUFFER_SIZE);
+									memcpy(message,device->parseBinary(),BUFFER_SIZE);
+									if(message != NULL) {
+										/* Write the message to all receivers */
+										for(i=0;i<MAX_CLIENTS;i++) {
+											if(handshakes[i] == RECEIVER) {
+												send(clients[i], message, strlen(message), 0);
+											}
+										}
+
+										/* Call the external file */
+										if(strlen(logfile) > 0) {
+											char cmd[255];
+											strcpy(cmd,logfile);
+											strcat(cmd," receiver ");
+											strcat(cmd,message);
+											f=popen(cmd, "r");
+											pclose(f);
+										}
+
+										continue;
+									}
+								}
+							}
+						}
+						device->recording = 0;
+						device->bit = 0;
+					}
+				}
+			}
+		} else {
+			sleep(1);
+		}
+	}
 }
 
 void *wait_for_data(void *param) {
@@ -426,124 +543,6 @@ void *wait_for_data(void *param) {
 	return 0;
 }
 
-void receive() {
-	lirc_t data;
-	int x, y = 0, i;
-	protocol *device;
-	char message[BUFFER_SIZE];
-	extern FILE *popen();
-	FILE *f;
-
-	while(1) {
-		/* Only initialize the hardware receive the data when there are receivers connected */
-		if(receivers > 0) {
-			module_init();
-
-			data = hw.readdata(0);
-			duration = (data & PULSE_MASK);
-			/* A space is normally for 295 long, so filter spaces less then 200 */
-			if(sending == 0 && duration > 200) {
-
-				for(i=0; i<protos.nr; ++i) {
-					device = protos.listeners[i];
-
-					/* If we are recording, keep recording until the footer has been matched */
-					if(device->recording == 1) {
-						if(device->bit < 255) {
-							device->raw[device->bit++] = duration;
-						} else {
-							device->bit = 0;
-							device->recording = 0;
-						}
-					}
-
-					/* Try to catch the header of the code */
-					if(duration > (PULSE_LENGTH-(PULSE_LENGTH*device->multiplier[0]))
-					   && duration < (PULSE_LENGTH+(PULSE_LENGTH*device->multiplier[0]))
-					   && device->bit == 0) {
-						device->raw[device->bit++] = duration;
-					} else if(duration > ((device->header*PULSE_LENGTH)-((device->header*PULSE_LENGTH)*device->multiplier[0]))
-					   && duration < ((device->header*PULSE_LENGTH)+((device->header*PULSE_LENGTH)*device->multiplier[0]))
-					   && device->bit == 1) {
-						device->raw[device->bit++] = duration;
-						device->recording = 1;
-					}
-
-					/* Try to catch the footer of the code */
-					if(duration > ((device->footer*PULSE_LENGTH)-((device->footer*PULSE_LENGTH)*device->multiplier[1]))
-					   && duration < ((device->footer*PULSE_LENGTH)+((device->footer*PULSE_LENGTH)*device->multiplier[1]))) {
-
-						/* Check if the code matches the raw length */
-						if(device->bit == device->rawLength) {
-							device->parseRaw();
-
-							/* Convert the raw codes to one's and zero's */
-							for(x=0;x<device->bit;x++) {
-
-								/* Check if the current code matches the previous one */
-								if(device->pCode[x]!=device->code[x])
-									y=0;
-								device->pCode[x]=device->code[x];
-								if(device->raw[x] > ((device->pulse*PULSE_LENGTH)-PULSE_LENGTH)) {
-									device->code[x]=1;
-								} else {
-									device->code[x]=0;
-								}
-							}
-
-							y++;
-
-							/* Continue if we have recognized enough repeated codes */
-							if(y >= device->repeats) {
-								device->parseCode();
-
-								/* Convert the one's and zero's into binary */
-								for(x=2; x<device->bit; x+=4) {
-									if(device->code[x+1] == 1) {
-										device->binary[x/4]=1;
-									} else {
-										device->binary[x/4]=0;
-									}
-								}
-
-								/* Check if the binary matches the binary length */
-								if((x/4) == device->binaryLength) {
-									memset(message,'0',BUFFER_SIZE);
-									memcpy(message,device->parseBinary(),BUFFER_SIZE);
-									if(message != NULL) {
-										/* Write the message to all receivers */
-										for(i=0;i<MAX_CLIENTS;i++) {
-											if(handshakes[i] == RECEIVER) {
-												send(clients[i], message, strlen(message), 0);
-											}
-										}
-
-										/* Call the external file */
-										if(strlen(file) > 0) {
-											char cmd[255];
-											strcpy(cmd,file);
-											strcat(cmd," receiver ");
-											strcat(cmd,message);
-											f=popen(cmd, "r");
-											pclose(f);
-										}
-
-										continue;
-									}
-								}
-							}
-						}
-						device->recording = 0;
-						device->bit = 0;
-					}
-				}
-			}
-		} else {
-			sleep(1);
-		}
-	}
-}
-
 void deamonize() {
 	int f;
 	char buffer[BUFFER_SIZE];
@@ -601,9 +600,10 @@ int main(int argc , char **argv) {
 	char *lsocket = "/dev/lirc0";
 	char buffer[BUFFER_SIZE];
 	int have_device = 0;
+	int have_config = 0;
 	int f;
 	int running = 1;
-	sendOptions = malloc(25*sizeof(struct options));
+	sendOptions = malloc(25*sizeof(struct options_t));
 
 	hw_choose_driver(NULL);
 	while (1) {
@@ -612,11 +612,12 @@ int main(int argc , char **argv) {
 			{"help", no_argument, NULL, 'h'},
 			{"version", no_argument, NULL, 'v'},
 			{"socket", required_argument, NULL, 's'},
-			{"file", required_argument, NULL, 'f'},
+			{"log", required_argument, NULL, 'l'},
 			{"nodaemon", required_argument, NULL, 'f'},
+			{"config", required_argument, NULL, 'c'},
 			{0, 0, 0, 0}
 		};
-		c = getopt_long(argc, argv, "hvs:f:d", long_options, NULL);
+		c = getopt_long(argc, argv, "hvs:l:dc:", long_options, NULL);
 		if (c == -1)
 			break;
 		switch (c) {
@@ -625,7 +626,8 @@ int main(int argc , char **argv) {
 				printf("\t -h --help\t\tdisplay usage summary\n");
 				printf("\t -v --version\t\tdisplay version\n");
 				printf("\t -s --socket=socket\tread from given socket\n");
-				printf("\t -f --file=file\tfile to call after received / send code\n");
+				printf("\t -l --log=file\tfile to call after received / send code\n");
+				printf("\t -c --config=file\tconfig file\n");
 				printf("\t -d --nodaemon\tdo not daemonize\n");
 				return (EXIT_SUCCESS);
 			break;
@@ -637,15 +639,24 @@ int main(int argc , char **argv) {
 				lsocket = optarg;
 				have_device = 1;
 			break;
+			case 'c':
+				if(access(optarg, F_OK) != -1) {
+					strcpy(configfile, optarg);
+					have_config = 1;
+				} else {
+					fprintf(stderr, "%s: the config file %s does not exists\n", progname, optarg);
+					return EXIT_FAILURE;
+				}
+			break;
 			case 'd':
 				nodaemon=1;
 			break;
-			case 'f':
+			case 'l':
 				if(access(optarg, F_OK) != -1) {
-					strcpy(file, optarg);
+					strcpy(logfile, optarg);
 					receivers++;
 				} else {
-					fprintf(stderr, "%s: the file %s does not exists\n", progname, optarg);
+					fprintf(stderr, "%s: the log file %s does not exists\n", progname, optarg);
 					return EXIT_FAILURE;
 				}
 			break;
@@ -691,9 +702,30 @@ int main(int argc , char **argv) {
 	kakuSwInit();
 	kakuDimInit();
 	kakuOldInit();
-	elroInit();	
+	elroInit();
+	rawInit();
+	alectoInit();
 
-    start_server(PORT);
+	if(have_config == 1 || access(configfile, F_OK) != -1) {
+		if(read_config(configfile) != 0) {	
+			return EXIT_FAILURE;
+		}
+	}
+	
+	// while(locations != NULL) {
+		// printf("%s\t\t%s\n", locations->id, locations->name);
+		// while(locations->devices != NULL) {
+			// printf("- %s\t\t%s\t%s\n",locations->devices->id,locations->devices->name,locations->devices->protocol->id);
+			// while(locations->devices->settings != NULL) {
+				// printf("  *%s: %s\n",locations->devices->settings->name, locations->devices->settings->value);
+				// locations->devices->settings = locations->devices->settings->next;
+			// }
+			// locations->devices = locations->devices->next;			
+		// }
+		// locations = locations->next;
+	// }
+
+	start_server(PORT);
 	if(nodaemon == 0)
 		deamonize();
 
@@ -701,5 +733,6 @@ int main(int argc , char **argv) {
 	pthread_create(&pth, NULL, wait_for_data, NULL);
 	receive();
 	pthread_join(pth,NULL);
-	return 1;
+
+	return EXIT_FAILURE;
 }

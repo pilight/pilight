@@ -18,20 +18,25 @@
 	<http://www.gnu.org/licenses/>
 */
 
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <getopt.h>
+#include "options.h"
 #include "protocol.h"
 
-void protocol_unregister(protocol *proto) {
+void protocol_unregister(protocol_t *proto) {
 	unsigned i;
 
-	for(i=0; i<protos.nr; ++i) {
-		if(strcmp(protos.listeners[i]->id,proto->id) == 0) {
-		  protos.nr--;
-		  protos.listeners[i] = protos.listeners[protos.nr];
+	for(i=0; i<protocols.nr; ++i) {
+		if(strcmp(protocols.listeners[i]->id,proto->id) == 0) {
+		  protocols.nr--;
+		  protocols.listeners[i] = protocols.listeners[protocols.nr];
 		}
 	}
 }
 
-void protocol_register(protocol *proto) {
+void protocol_register(protocol_t *proto) {
 	protocol_unregister(proto);
-	protos.listeners[protos.nr++] = proto;
+	protocols.listeners[protocols.nr++] = proto;
 }

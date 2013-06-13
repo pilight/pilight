@@ -18,19 +18,16 @@
 	<http://www.gnu.org/licenses/>
 */
 
-#ifndef ELRO_H_
-#define ELRO_H_
+#ifndef PROTOCOL_ELRO_H_
+#define PROTOCOL_ELRO_H_
 
-#include "protocol.h"
-#include "binary.h"
-
-protocol elro;
+protocol_t elro;
 
 void elroInit();
 void elroParseRaw();
 void elroParseCode();
 char *elroParseBinary();
-void elroCreateCode(struct options *options);
+void elroCreateCode(struct options_t *options);
 void elroCreateUnit(int unit);
 void elroCreateId(int id);
 void elroCreateState(int state);

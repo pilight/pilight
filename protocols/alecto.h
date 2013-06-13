@@ -18,19 +18,14 @@
 	<http://www.gnu.org/licenses/>
 */
 
-#ifndef GC_H_
-#define GC_H_
+#ifndef PROTOCOL_ALECTO_H_
+#define PROTOCOL_ALECTO_H_
 
-typedef struct {
-	int nr;
-	int (*listeners[10])();
-} collectors_t;
+protocol_t alecto;
 
-collectors_t gc;
-
-void gc_handler(int signal);
-void gc_attach(int (*fp)());
-void gc_detach(int (*fp)());
-void gc_catch();
+void alectoParseRaw();
+void alectoParseCode();
+char *alectoParseBinary();
+void alectoInit();
 
 #endif

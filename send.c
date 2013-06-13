@@ -20,10 +20,6 @@
 	<http://www.gnu.org/licenses/>
 */
 
-#ifdef HAVE_CONFIG_H
-#include <config.h>
-#endif
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
@@ -49,6 +45,7 @@
 
 #include "protocol.h"
 #include "options.h"
+#include "config.h"
 #include "protocols/kaku_switch.h"
 #include "protocols/kaku_dimmer.h"
 #include "protocols/kaku_old.h"
@@ -62,7 +59,8 @@ void logprintf(int prio, char *format_str, ...) { }
 void logperror(int prio, const char *s) { }
 
 int main(int argc, char **argv) {
-	char *progname = "433-send";
+	progname = malloc((10*sizeof(char))+1);
+	progname = "433-send";
 	int sockfd = 0, n = 0, connected = 0;
     char recvBuff[BUFFER_SIZE];
     char message[BUFFER_SIZE];
@@ -83,7 +81,7 @@ int main(int argc, char **argv) {
 	int protohelp = 0;
 
 	/* Hold the final protocol struct */
-	protocol *device = NULL;
+	protocol_t *device = NULL;
 
 	/* The short CLI arguments the main program has */
 	char optstr[255] = {'h','v','p',':','r',':','\0'};
@@ -106,8 +104,8 @@ int main(int argc, char **argv) {
 	struct option *backup_options;
 
 	/* Structs holding all CLI arguments and their values */
-	struct options *options = malloc(25*sizeof(struct options));
-	struct options *node = malloc(sizeof(struct options));
+	struct options_t *options = malloc(25*sizeof(struct options_t));
+	struct options_t *node = malloc(sizeof(struct options_t));
 
 	/* The long CLI argument holder */
 	char longarg[10];
@@ -148,8 +146,8 @@ int main(int argc, char **argv) {
 		if(strlen(protobuffer) > 0 && version) {
 			printf("-p and -v cannot be combined\n");
 		} else {
-			for(i=0; i<protos.nr; ++i) {
-				device = protos.listeners[i];
+			for(i=0; i<protocols.nr; ++i) {
+				device = protocols.listeners[i];
 				/* Check if the protocol exists */
 				if(strcmp(device->id,protobuffer) == 0 && match == 0) {
 					match=1;
@@ -210,8 +208,8 @@ int main(int argc, char **argv) {
 			device->printHelp();
 		} else {
 			printf("\nThe supported protocols are:\n");
-			for(i=0; i<protos.nr; ++i) {
-				device = protos.listeners[i];
+			for(i=0; i<protocols.nr; ++i) {
+				device = protocols.listeners[i];
 				printf("\t %s\t\t\t",device->id);
 				if(strlen(device->id)<5)
 					printf("\t");
@@ -228,7 +226,7 @@ int main(int argc, char **argv) {
 		if(c == -1)
 			break;
 		if(strchr(optstr,c)) {
-			node = malloc(sizeof(struct options));
+			node = malloc(sizeof(struct options_t));
 			node->id = c;
 			node->value = optarg;
 			node->next = options;

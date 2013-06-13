@@ -18,19 +18,16 @@
 	<http://www.gnu.org/licenses/>
 */
 
-#ifndef KAKU_SWITCH_H_
-#define KAKU_SWITCH_H_
+#ifndef PROTOCOL_KAKU_SWITCH_H_
+#define PROTOCOL_KAKU_SWITCH_H_
 
-#include "protocol.h"
-#include "binary.h"
-
-protocol kaku_switch;
+protocol_t kaku_switch;
 
 void kakuSwInit();
 void kakuSwParseRaw();
 void kakuSwParseCode();
 char *kakuSwParseBinary();
-void kakuSwCreateCode(struct options *options);
+void kakuSwCreateCode(struct options_t *options);
 void kakuSwCreateLow(int s, int e);
 void kakuSwCreateHigh(int s, int e);
 void kakuSwClearCode();

@@ -21,17 +21,15 @@
 #ifndef OPTIONS_H_
 #define OPTIONS_H_
 
-#include <getopt.h>
+typedef struct options_t options_t;
 
-typedef struct options options;
-
-struct options {
+struct options_t {
 	int id;
 	char *value;
-	struct options *next;
+	struct options_t *next;
 };
 
 struct option *setOptions(struct option *option);
-char *getOption(struct options *options, int id);
+char *getOption(struct options_t *options, int id);
 
 #endif

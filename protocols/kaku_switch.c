@@ -18,10 +18,13 @@
 	<http://www.gnu.org/licenses/>
 */
 
-#ifdef HAVE_CONFIG_H
-#include <config.h>
-#endif
-
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <getopt.h>
+#include "config.h"
+#include "protocol.h"
+#include "binary.h"
 #include "kaku_switch.h"
 
 void kakuSwParseRaw() {
@@ -31,23 +34,21 @@ void kakuSwParseCode() {
 }
 
 char *kakuSwParseBinary() {
-	char *message = malloc((50*sizeof(char))+1);
-	memset(message,'0',sizeof(message));
-
+	memset(kaku_switch.message,'0',sizeof(kaku_switch.message));
 	int unit = binToDecRev(kaku_switch.binary,28,31);
 	int state = kaku_switch.binary[27];
 	int group = kaku_switch.binary[26];
 	int id = binToDecRev(kaku_switch.binary,0,25);
 
-	sprintf(message,"id %d unit %d state",id,unit);
+	sprintf(kaku_switch.message,"id %d unit %d state",id,unit);
 	if(group == 1)
-		strcat(message," all");
+		strcat(kaku_switch.message," all");
 	if(state == 1)
-		strcat(message," on");
+		strcat(kaku_switch.message," on");
 	else
-		strcat(message," off");
+		strcat(kaku_switch.message," off");
 
-	return message;
+	return kaku_switch.message;
 }
 
 void kakuSwCreateLow(int s, int e) {
@@ -125,7 +126,7 @@ void kakuSwCreateFooter() {
 	kaku_switch.raw[131]=(kaku_switch.footer*PULSE_LENGTH);
 }
 
-void kakuSwCreateCode(struct options *options) {
+void kakuSwCreateCode(struct options_t *options) {
 	int id = -1;
 	int unit = -1;
 	int state = -1;
@@ -167,6 +168,7 @@ void kakuSwInit() {
 
 	strcpy(kaku_switch.id,"kaku_switch");
 	strcpy(kaku_switch.desc,"KlikAanKlikUit Switches");
+	kaku_switch.type = SWITCH;
 	kaku_switch.header = 10;
 	kaku_switch.pulse = 5;
 	kaku_switch.footer = 38;
@@ -175,7 +177,8 @@ void kakuSwInit() {
 	kaku_switch.rawLength = 132;
 	kaku_switch.binaryLength = 33;
 	kaku_switch.repeats = 2;
-
+	kaku_switch.message = malloc((50*sizeof(char))+1);
+	
 	kaku_switch.bit = 0;
 	kaku_switch.recording = 0;
 

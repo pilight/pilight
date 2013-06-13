@@ -18,6 +18,10 @@
 	<http://www.gnu.org/licenses/>
 */
 
+#include <string.h>
+#include <stdlib.h>
+#include <signal.h>
+#include <setjmp.h>
 #include "gc.h"
 
 static jmp_buf gc_cleanup;

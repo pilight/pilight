@@ -21,6 +21,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <getopt.h>
 #include "options.h"
 
 struct option *setOptions(struct option *option) {
@@ -45,7 +46,7 @@ struct option *setOptions(struct option *option) {
 	return new_options;
 }
 
-char *getOption(struct options *options, int id) {
+char *getOption(struct options_t *options, int id) {
 	while(options != NULL) {
 		if(options->id == id) {
 			if(options->value != NULL)

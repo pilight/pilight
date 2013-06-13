@@ -18,10 +18,13 @@
 	<http://www.gnu.org/licenses/>
 */
 
-#ifdef HAVE_CONFIG_H
-#include <config.h>
-#endif
-
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <getopt.h>
+#include "config.h"
+#include "protocol.h"
+#include "binary.h"
 #include "elro.h"
 
 void elroParseRaw() {
@@ -31,8 +34,7 @@ void elroParseCode() {
 }
 
 char *elroParseBinary() {
-	char *message = malloc((50*sizeof(char))+1);
-	memset(message,'0',sizeof(message));
+	memset(elro.message,'0',sizeof(elro.message));
 
 	int unit = binToDec(elro.binary,0,4);
 	int state = elro.binary[10];
@@ -40,12 +42,12 @@ char *elroParseBinary() {
 	int id = binToDec(elro.binary,5,9);
 
 	if(check != state) {
-		sprintf(message,"id %d unit %d state",id,unit);
+		sprintf(elro.message,"id %d unit %d state",id,unit);
 		if(state==1)
-			strcat(message," on");
+			strcat(elro.message," on");
 		else
-			strcat(message," off");
-		return message;
+			strcat(elro.message," off");
+		return elro.message;
 	} else {
 		return (0);
 	}
@@ -118,7 +120,7 @@ void elroCreateFooter() {
 	elro.raw[49]=(elro.footer*PULSE_LENGTH);
 }
 
-void elroCreateCode(struct options *options) {
+void elroCreateCode(struct options_t *options) {
 	int id = -1;
 	int unit = -1;
 	int state = -1;
@@ -154,6 +156,7 @@ void elroInit() {
 
 	strcpy(elro.id,"elro");
 	strcpy(elro.desc,"Elro Switches");
+	elro.type = SWITCH;
 	elro.header = 4;
 	elro.pulse = 4;
 	elro.footer = 45;
@@ -162,6 +165,7 @@ void elroInit() {
 	elro.rawLength = 50;
 	elro.binaryLength = 12;
 	elro.repeats = 2;
+	elro.message = malloc((50*sizeof(char))+1);
 
 	elro.bit = 0;
 	elro.recording = 0;

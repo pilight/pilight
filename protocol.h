@@ -21,15 +21,17 @@
 #ifndef PROTOCOL_H_
 #define PROTOCOL_H_
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <getopt.h>
 #include "options.h"
+
+#define RAW			0
+#define SWITCH		1
+#define DIMMER		2
+#define WEATHER		3
 
 typedef struct {
 	char id[25];
 	char desc[50];
+	int type;
 	int header;
 	int pulse;
 	int footer;
@@ -38,6 +40,7 @@ typedef struct {
 	int binaryLength;
 	int repeats;
 	struct option *options;
+	char *message;
 
 	int bit;
 	int recording;
@@ -49,18 +52,18 @@ typedef struct {
 	void (*parseRaw)();
 	void (*parseCode)();
 	char *(*parseBinary)();
-	void (*createCode)(struct options *options);
+	void (*createCode)(struct options_t *options);
 	void (*printHelp)();
-} protocol;
+} protocol_t;
 
 typedef struct {
 	int nr;
-	protocol *listeners[255];
-} protocols;
+	protocol_t *listeners[255];
+} protocols_t;
 
-protocols protos;
+protocols_t protocols;
 
-void protocol_register(protocol *proto);
-void protocol_unregister(protocol *proto);
+void protocol_register(protocol_t *proto);
+void protocol_unregister(protocol_t *proto);
 
 #endif

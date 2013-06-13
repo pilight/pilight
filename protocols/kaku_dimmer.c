@@ -18,10 +18,13 @@
 	<http://www.gnu.org/licenses/>
 */
 
-#ifdef HAVE_CONFIG_H
-#include <config.h>
-#endif
-
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <getopt.h>
+#include "config.h"
+#include "protocol.h"
+#include "binary.h"
 #include "kaku_dimmer.h"
 
 void kakuDimParseRaw() {
@@ -31,8 +34,7 @@ void kakuDimParseCode() {
 }
 
 char *kakuDimParseBinary() {
-	char *message = malloc((50*sizeof(char))+1);
-	memset(message,'0',sizeof(message));
+	memset(kaku_dimmer.message,'0',sizeof(kaku_dimmer.message));
 
 	int i = 0;
 	int dim = binToDecRev(kaku_dimmer.binary,32,35);
@@ -41,19 +43,19 @@ char *kakuDimParseBinary() {
 	int group = kaku_dimmer.binary[26];
 	int id = binToDecRev(kaku_dimmer.binary,0,25);
 
-	i = sprintf(message,"id %d unit %d",id,unit);
+	i = sprintf(kaku_dimmer.message,"id %d unit %d",id,unit);
 	if(dim > 0) {
-		sprintf(message+i," dim %d",dim);
+		sprintf(kaku_dimmer.message+i," dim %d",dim);
 	} else {
-		strcat(message," state");
+		strcat(kaku_dimmer.message," state");
 		if(group == 1)
-			strcat(message," all");	
+			strcat(kaku_dimmer.message," all");	
 		if(state == 1)
-			strcat(message," on");
+			strcat(kaku_dimmer.message," on");
 		else
-			strcat(message," off");
+			strcat(kaku_dimmer.message," off");
 	}
-	return message;
+	return kaku_dimmer.message;
 }
 
 void kakuDimCreateLow(int s, int e) {
@@ -146,7 +148,7 @@ void kakuDimCreateFooter() {
 	kaku_dimmer.raw[147]=(kaku_dimmer.footer*PULSE_LENGTH);
 }
 
-void kakuDimCreateCode(struct options *options) {
+void kakuDimCreateCode(struct options_t *options) {
 	int id = -1;
 	int unit = -1;
 	int state = -1;
@@ -192,6 +194,7 @@ void kakuDimInit() {
 
 	strcpy(kaku_dimmer.id,"kaku_dimmer");
 	strcpy(kaku_dimmer.desc,"KlikAanKlikUit Dimmers");
+	kaku_dimmer.type = DIMMER;
 	kaku_dimmer.header = 10;
 	kaku_dimmer.pulse = 5;
 	kaku_dimmer.footer = 38;
@@ -200,6 +203,7 @@ void kakuDimInit() {
 	kaku_dimmer.rawLength = 148;
 	kaku_dimmer.binaryLength = 37;
 	kaku_dimmer.repeats = 2;
+	kaku_dimmer.message = malloc((50*sizeof(char))+1);
 
 	kaku_dimmer.bit = 0;
 	kaku_dimmer.recording = 0;

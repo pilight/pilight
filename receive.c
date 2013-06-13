@@ -18,11 +18,6 @@
 	<http://www.gnu.org/licenses/>
 */
 
-#ifdef HAVE_CONFIG_H
-#include <config.h>
-#endif
-
-
 #include <getopt.h>
 #include <sys/socket.h>
 #include <sys/types.h>
@@ -34,6 +29,7 @@
 #include <unistd.h>
 #include <errno.h>
 #include <arpa/inet.h>
+#include "config.h"
 
 int main() {
     int sockfd = 0, n = 0, connected = 0;

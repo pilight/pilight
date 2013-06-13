@@ -18,10 +18,13 @@
 	<http://www.gnu.org/licenses/>
 */
 
-#ifdef HAVE_CONFIG_H
-#include <config.h>
-#endif
-
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <getopt.h>
+#include "config.h"
+#include "protocol.h"
+#include "binary.h"
 #include "kaku_old.h"
 
 void kakuOldParseRaw() {
@@ -31,19 +34,18 @@ void kakuOldParseCode() {
 }
 
 char *kakuOldParseBinary() {
-	char *message = malloc((50*sizeof(char))+1);
-	memset(message,'0',sizeof(message));
-
+	memset(kaku_old.message,'0',sizeof(kaku_old.message));
+	
 	int unit = binToDec(kaku_old.binary,0,4);
 	int state = kaku_old.binary[11];
 	int id = binToDec(kaku_old.binary,5,9);
 
-	sprintf(message,"id %d unit %d state",id,unit);
+	sprintf(kaku_old.message,"id %d unit %d state",id,unit);
 	if(state==0)
-		strcat(message," on");
+		strcat(kaku_old.message," on");
 	else
-		strcat(message," off");
-	return message;
+		strcat(kaku_old.message," off");
+	return kaku_old.message;
 }
 
 void kakuOldCreateLow(int s, int e) {
@@ -112,7 +114,7 @@ void kakuOldCreateFooter() {
 }
 
 
-void kakuOldCreateCode(struct options *options) {
+void kakuOldCreateCode(struct options_t *options) {
 	int id = -1;
 	int unit = -1;
 	int state = -1;
@@ -148,6 +150,7 @@ void kakuOldInit() {
 
 	strcpy(kaku_old.id,"kaku_old");
 	strcpy(kaku_old.desc,"Old KlikAanKlikUit Switches");
+	kaku_old.type = SWITCH;
 	kaku_old.header = 4;
 	kaku_old.pulse = 4;
 	kaku_old.footer = 45;
@@ -156,6 +159,7 @@ void kakuOldInit() {
 	kaku_old.rawLength = 50;
 	kaku_old.binaryLength = 12;
 	kaku_old.repeats = 2;
+	kaku_old.message = malloc((50*sizeof(char))+1);
 
 	kaku_old.bit = 0;
 	kaku_old.recording = 0;

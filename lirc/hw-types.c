@@ -1,7 +1,3 @@
-#ifdef HAVE_CONFIG_H
-# include <config.h>
-#endif
-
 #if defined(SIM_REC) || defined (SIM_SEND)
 #undef HW_DEFAULT
 #undef LIRC_DRIVER_ANY

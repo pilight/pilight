@@ -18,6 +18,13 @@
 	<http://www.gnu.org/licenses/>
 */
 
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <getopt.h>
+#include "config.h"
+#include "protocol.h"
+#include "binary.h"
 #include "raw.h"
 
 void rawParseRaw() {
@@ -30,8 +37,8 @@ char *rawParseBinary() {
 	return NULL;
 }
 
-void rawCreateCode(struct options *options) {
-	char *code = getOption(options,'c');
+void rawCreateCode(struct options_t *options) {
+	char *code = getOption(options,'C');
 	char *pch;
 	int i=0;
 	pch = strtok(code," ");
@@ -44,13 +51,14 @@ void rawCreateCode(struct options *options) {
 }
 
 void rawPrintHelp() {
-	printf("\t -c --code=\"raw\"\t\traw code devided by spaces\n\t\t\t\t\t(just like the output of debug)\n");
+	printf("\t -C --code=\"raw\"\t\traw code devided by spaces\n\t\t\t\t\t(just like the output of debug)\n");
 }
 
 void rawInit() {
 
 	strcpy(raw.id,"raw");
 	strcpy(raw.desc,"Raw codes");
+	raw.type = RAW;
 	raw.header = 0;
 	raw.pulse = 0;
 	raw.footer = 0;
@@ -59,6 +67,7 @@ void rawInit() {
 	raw.rawLength = 0;
 	raw.binaryLength = 0;
 	raw.repeats = 0;
+	raw.message = NULL;
 
 	raw.bit = 0;
 	raw.recording = 0;

@@ -22,10 +22,6 @@
 	
 */
 
-#ifdef HAVE_CONFIG_H
-#include <config.h>
-#endif
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
@@ -47,6 +43,7 @@
 #include "lirc/hw-types.h"
 
 #include "protocol.h"
+#include "config.h"
 #include "protocols/kaku_switch.h"
 #include "protocols/kaku_dimmer.h"
 #include "protocols/kaku_old.h"
@@ -68,7 +65,8 @@ int normalize(int i) {
 }
 
 int main(int argc, char **argv) {
-	char *progname = "433-debug";
+	progname = malloc((10*sizeof(char))+1);
+	progname = "433-debug";
 	
 	lirc_t data;
 	char *socket = "/dev/lirc0";

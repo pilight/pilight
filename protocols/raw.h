@@ -18,19 +18,16 @@
 	<http://www.gnu.org/licenses/>
 */
 
-#ifndef RAW_H_
-#define RAW_H_
+#ifndef PROTOCOL_RAW_H_
+#define PROTOCOL_RAW_H_
 
-#include "protocol.h"
-#include "binary.h"
-
-protocol raw;
+protocol_t raw;
 
 void rawInit();
 void rawParseRaw();
 void rawParseCode();
 char *rawParseBinary();
-void rawCreateCode(struct options *options);
+void rawCreateCode(struct options_t *options);
 void rawPrintHelp();
 
 #endif

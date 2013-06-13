@@ -18,19 +18,16 @@
 	<http://www.gnu.org/licenses/>
 */
 
-#ifndef KAKU_OLD_H_
-#define KAKU_OLD_H_
+#ifndef PROTOCOL_KAKU_OLD_H_
+#define PROTOCOL_KAKU_OLD_H_
 
-#include "protocol.h"
-#include "binary.h"
-
-protocol kaku_old;
+protocol_t kaku_old;
 
 void kakuOldInit();
 void kakuOldParseRaw();
 void kakuOldParseCode();
 char *kakuOldParseBinary();
-void kakuOldCreateCode(struct options *options);
+void kakuOldCreateCode(struct options_t *options);
 void kakuOldCreateUnit(int unit);
 void kakuOldCreateId(int id);
 void kakuOldCreateState(int state);

@@ -11,10 +11,6 @@
  *
  */
 
-#ifdef HAVE_CONFIG_H
-# include <config.h>
-#endif
-
 /* if the gap is lower than this value, we will concatenate the
    signals and send the signal chain at a single blow */
 #define LIRCD_EXACT_GAP_THRESHOLD 10000

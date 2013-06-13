@@ -22,10 +22,6 @@
 	
 */
 
-#ifdef HAVE_CONFIG_H
-#include <config.h>
-#endif
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
@@ -51,6 +47,7 @@
 #include "protocols/kaku_dimmer.h"
 #include "protocols/kaku_old.h"
 #include "protocols/elro.h"
+#include "config.h"
 
 #define WAIT	 		-1
 #define CAPTURE 		0
@@ -104,7 +101,8 @@ int normalize(int i) {
 }
 
 int main(int argc, char **argv) {
-	char *progname = "433-learn";
+	progname = malloc((10*sizeof(char))+1);
+	progname = "433-learn";
 	
 	lirc_t data;
 	char *socket = "/dev/lirc0";

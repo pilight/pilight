@@ -18,19 +18,16 @@
 	<http://www.gnu.org/licenses/>
 */
 
-#ifndef KAKU_DIMMER_H_
-#define KAKU_DIMMER_H_
+#ifndef PROTOCOL_KAKU_DIMMER_H_
+#define PROTOCOL_KAKU_DIMMER_H_
 
-#include "protocol.h"
-#include "binary.h"
-
-protocol kaku_dimmer;
+protocol_t kaku_dimmer;
 
 void kakuDimInit();
 void kakuDimParseRaw();
 void kakuDimParseCode();
 char *kakuDimParseBinary();
-void kakuDimCreateCode(struct options *options);
+void kakuDimCreateCode(struct options_t *options);
 void kakuDimCreateLow(int s, int e);
 void kakuDimCreateHigh(int s, int e);
 void kakuDimClearCode();

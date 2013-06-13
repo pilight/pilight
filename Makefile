@@ -1,6 +1,6 @@
 SUBDIRS = lirc protocols
 
-all: subdirs protocol.o binary.o options.o gc.o libs.o 433-send 433-receive 433-debug 433-learn 433-daemon
+all: subdirs protocol.o binary.o options.o gc.o config.o libs.o 433-send 433-receive 433-debug 433-learn 433-daemon
 	
 subdirs:
 	make -C protocols/
@@ -17,24 +17,27 @@ binary.o: binary.c binary.h
 	
 gc.o: gc.c gc.h
 	make trunc && gcc -Wall -I. -I.. -c gc.c
+
+config.o: config.c config.h
+	make trunc && gcc -Wall -I. -I.. -c config.c -lconfig
 	
 libs.o:
-	ld -r binary.o protocol.o options.o gc.o protocols/protocols.o lirc/lirc.o -o libs.o
+	ld -r binary.o protocol.o options.o gc.o config.o protocols/protocols.o lirc/lirc.o -o libs.o
 
 433-send: send.c lirc.h
-	gcc -O2 -g -Wall -static -I. -I.. -DHAVE_CONFIG_H -o 433-send send.c libs.o
+	gcc -O2 -g -Wall -static -I. -I.. -o 433-send send.c libs.o -lconfig
 	
 433-receive: receive.c
-	gcc -O2 -g -Wall -static -I. -I.. -DHAVE_CONFIG_H -o 433-receive receive.c
+	gcc -O2 -g -Wall -static -I. -I.. -o 433-receive receive.c
 
 433-debug: debug.c lirc.h
-	gcc -O2 -g -Wall -static -I. -I.. -DHAVE_CONFIG_H -o 433-debug debug.c libs.o -lm
+	gcc -O2 -g -Wall -static -I. -I.. -o 433-debug debug.c libs.o -lm -lconfig
 	
 433-learn: learn.c lirc.h
-	gcc -O2 -g -Wall -static -I. -I.. -DHAVE_CONFIG_H -o 433-learn learn.c libs.o -lm
+	gcc -O2 -g -Wall -static -I. -I.. -o 433-learn learn.c libs.o -lm -lconfig
 	
 433-daemon: daemon.c lirc.h
-	gcc -O2 -g -Wall -static -I. -I.. -DHAVE_CONFIG_H -o 433-daemon daemon.c libs.o -lpthread
+	gcc -O2 -g -Wall -static -I. -I.. -o 433-daemon daemon.c libs.o -lpthread -lconfig
 	
 clean:
 	rm -f libs.o protocols/*.o lirc/*.o *.o send receive
