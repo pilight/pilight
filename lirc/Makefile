@@ -9,7 +9,7 @@ all: $(OBJS) lirc.o
 %.o: %.c %.h
 	$(CC) $(CFLAGS) -c $(patsubst %.o,%.c,$@)
 
-lirc.o:
+lirc.o: $(OBJS)
 	ld -L/usr/local/lib -r $(OBJS) -o lirc.o
 
 clean:

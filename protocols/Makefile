@@ -10,7 +10,7 @@ all: $(OBJS) protocols.o
 %.o: %.c %.h $(INCLUDES)
 	$(CC) $(CFLAGS) -c $(patsubst %.o,%.c,$@)
 
-protocols.o:
+protocols.o: $(OBJS)
 	ld -L/usr/local/lib -r $(OBJS) -o protocols.o
 	
 clean:

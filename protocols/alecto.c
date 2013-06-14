@@ -31,6 +31,7 @@ void alectoParseRaw() {
 	int i = 0, x = 0, a = 0xf;
 	int id;
 	int temperature;
+	int negative;
 	int humidity;
 	int battery;
 	
@@ -54,12 +55,19 @@ void alectoParseRaw() {
 			battery = 1;
 		else
 			battery = 0;
-		temperature = binToDec(alecto.binary,12,23);
+		temperature = binToDec(alecto.binary,12,22);
+		if(alecto.binary[23] == 1)
+			negative=1;
+		else
+			negative=0;
 		humidity = ((binToDec(alecto.binary,24,27)*10)+binToDec(alecto.binary,28,31));
 		i=0;
 		i+=sprintf(alecto.message+i,"id %d ",id);
 		i+=sprintf(alecto.message+i,"battery %d ",battery);
-		i+=sprintf(alecto.message+i,"temperature %d ",temperature);
+		if(negative==1)
+			i+=sprintf(alecto.message+i,"temperature -%d ",temperature);
+		else
+			i+=sprintf(alecto.message+i,"temperature %d ",temperature);
 		i+=sprintf(alecto.message+i,"humidity %d",humidity);
 	}
 }
