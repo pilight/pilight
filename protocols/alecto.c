@@ -28,7 +28,12 @@
 #include "alecto.h"
 
 void alectoParseRaw() {
-	int i, x = 0, a = 0xf;
+	int i = 0, x = 0, a = 0xf;
+	int id;
+	int temperature;
+	int humidity;
+	int battery;
+	
 	memset(alecto.message,'0',sizeof(alecto.message));
 	
 	for(i=1;i<alecto.rawLength-1;i++) {
@@ -43,8 +48,19 @@ void alectoParseRaw() {
 	for(i=0;i<x-4;i+=4) {
 		a-=binToDec(alecto.binary,i,i+3);
 	}
-	if(binToDec(alecto.binary,32,35) == (a&0xf)) {	
-		sprintf(alecto.message,"id %d battery %d temperature %d humidity %d",binToDecRev(alecto.binary,0,7),alecto.binary[8],binToDecRev(alecto.binary,12,23),((binToDecRev(alecto.binary,24,27)*10)+binToDecRev(alecto.binary,28,31)));
+	if(binToDec(alecto.binary,32,35) == (a&0xf)) {
+		id = binToDec(alecto.binary,0,7);
+		if(binToDec(alecto.binary,8,11) == 4)
+			battery = 1;
+		else
+			battery = 0;
+		temperature = binToDec(alecto.binary,12,23);
+		humidity = ((binToDec(alecto.binary,24,27)*10)+binToDec(alecto.binary,28,31));
+		i=0;
+		i+=sprintf(alecto.message+i,"id %d ",id);
+		i+=sprintf(alecto.message+i,"battery %d ",battery);
+		i+=sprintf(alecto.message+i,"temperature %d ",temperature);
+		i+=sprintf(alecto.message+i,"humidity %d",humidity);
 	}
 }
 

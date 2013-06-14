@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -O2 -g -Wall -I. -I.. -Ilibs/ -Iprotocols/ -Ilirc/ -lconfig -lpthread -lm
+CFLAGS = -O3 -g -Wall -I. -I.. -Ilibs/ -Iprotocols/ -Ilirc/ -lconfig -lpthread -lm
 SUBDIRS = libs protocols lirc
 SRC = $(wildcard *.c)
 INCLUDES = $(wildcard protocols/*.o) $(wildcard lirc/*.o) $(wildcard libs/*.h) $(wildcard libs/*.o)
