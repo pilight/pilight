@@ -27,7 +27,7 @@
 #include "binary.h"
 #include "alecto.h"
 
-void alectoParseRaw() {
+void alectoParseCode() {
 	int i = 0, x = 0, a = 0xf;
 	int id;
 	int temperature;
@@ -37,13 +37,8 @@ void alectoParseRaw() {
 	
 	memset(alecto.message,'0',sizeof(alecto.message));
 	
-	for(i=1;i<alecto.rawLength-1;i++) {
-		if(alecto.raw[i]>(PULSE_LENGTH*3)) {
-			if(alecto.raw[i]>(PULSE_LENGTH*9))
-				alecto.binary[x++] = 1;
-			else
-				alecto.binary[x++] = 0;
-		}
+	for(i=1;i<alecto.rawLength-1;i+=2) {
+		alecto.binary[x++] = alecto.code[i];
 	}
 	
 	for(i=0;i<x-4;i+=4) {
@@ -78,16 +73,18 @@ void alectoInit() {
 	strcpy(alecto.desc,"Alecto based weather stations");
 	alecto.type = WEATHER;
 	alecto.header = 14;
+	alecto.pulse = 10;
 	alecto.footer = 30;
 	alecto.multiplier[0] = 0.1;
 	alecto.multiplier[1] = 0.3;
 	alecto.rawLength = 74;
+	alecto.repeats = 2;
 	alecto.message = malloc((50*sizeof(char))+1);
 	
 	alecto.bit = 0;
 	alecto.recording = 0;
 	
-	alecto.parseRaw=&alectoParseRaw;
+	alecto.parseCode=&alectoParseCode;
 
 	protocol_register(&alecto);
 }
