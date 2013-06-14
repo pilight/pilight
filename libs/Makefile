@@ -1,13 +1,12 @@
 CC = gcc
-CFLAGS = -Wall -I. -I..
+CFLAGS = -O2 -g -Wall -static -I. -I..
 SRC = $(wildcard *.c)
 OBJS = $(SRC:.c=.o)
 HEADERS := $(SRC:.c=.h)
-INCLUDES = $(wildcard ../*.h)
 
 all: $(OBJS) libs.o
 
-%.o: %.c %.h $(INCLUDES)
+%.o: %.c %.h
 	$(CC) $(CFLAGS) -c $(patsubst %.o,%.c,$@)
 
 libs.o:

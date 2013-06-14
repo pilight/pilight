@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -Wall -I. -I..
+CFLAGS = -O2 -g -Wall -static -I. -I..
 SRC = $(wildcard *.c)
 OBJS = $(SRC:.c=.o)
 HEADERS := $(SRC:.c=.h)

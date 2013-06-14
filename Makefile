@@ -1,8 +1,8 @@
 CC = gcc
-CFLAGS = -Wall -I. -I.. -Ilibs/ -Iprotocols/ -Ilirc/ -lconfig -lpthread -lm
+CFLAGS = -O2 -g -Wall -I. -I.. -Ilibs/ -Iprotocols/ -Ilirc/ -lconfig -lpthread -lm
 SUBDIRS = libs protocols lirc
 SRC = $(wildcard *.c)
-INCLUDES = $(wildcard protocols/*.o) $(wildcard lirc/*.o) $(libs/*.h) $(libs/*.o)
+INCLUDES = $(wildcard protocols/*.o) $(wildcard lirc/*.o) $(wildcard libs/*.h) $(wildcard libs/*.o)
 PROGAMS = $(patsubst %.c,433-%,$(SRC))
 LIBS = libs/libs.o protocols/protocols.o lirc/lirc.o
 
