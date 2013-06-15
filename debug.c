@@ -1,25 +1,25 @@
-/*	
+/*
 	Copyright (C) 1998 Trent Piepho <xyzzy@u.washington.edu>
 	Copyright (C) 1998 Christoph Bartelmus <lirc@bartelmus.de>
 	Copyright (C) 2013 CurlyMo
-	
+
 	This file is part of the Raspberry Pi 433.92Mhz transceiver,
 	and based on mode2 as part of the package Lirc.
 
-    Raspberry Pi 433.92Mhz transceiver is free software: you can redistribute 
-	it and/or modify it under the terms of the GNU General Public License as 
-	published by the Free Software Foundation, either version 3 of the License, 
+    Raspberry Pi 433.92Mhz transceiver is free software: you can redistribute
+	it and/or modify it under the terms of the GNU General Public License as
+	published by the Free Software Foundation, either version 3 of the License,
 	or (at your option) any later version.
 
-    Raspberry Pi 433.92Mhz transceiver is distributed in the hope that it will 
+    Raspberry Pi 433.92Mhz transceiver is distributed in the hope that it will
 	be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with Raspberry Pi 433.92Mhz transceiver. If not, see 
+    along with Raspberry Pi 433.92Mhz transceiver. If not, see
 	<http://www.gnu.org/licenses/>
-	
+
 */
 
 #include <stdio.h>
@@ -53,9 +53,40 @@
 Start of the original (but stripped) code of mode2
 */
 
-void logprintf(int prio, char *format_str, ...) { }
+/* Enable log */
+int logging = 1;
+int loglevel = LOG_INFO;
 
-void logperror(int prio, const char *s) { } 
+void logprintf(int prio, char *format_str, ...) {
+	int save_errno = errno;
+	va_list ap;
+
+	if(logging == 0)
+		return;
+
+	if(loglevel >= prio) {
+		fprintf(stderr, "%s: ", progname);
+		va_start(ap, format_str);
+
+		if(prio==LOG_WARNING)
+			fprintf(stderr, "WARNING: ");
+		if(prio==LOG_ERR)
+			fprintf(stderr, "ERROR: ");
+		if(prio==LOG_INFO)
+			fprintf(stderr, "INFO: ");
+		if(prio==LOG_NOTICE)
+			fprintf(stderr, "NOTICE: ");
+		if(prio==LOG_DEBUG)
+			fprintf(stderr, "LOG_DEBUG: ");
+		vfprintf(stderr, format_str, ap);
+		fputc('\n',stderr);
+		fflush(stderr);
+		va_end(ap);
+	}
+	errno = save_errno;
+}
+
+void logperror(int prio, const char *s) { }
 
 int normalize(int i) {
 	double x;
@@ -67,15 +98,15 @@ int normalize(int i) {
 int main(int argc, char **argv) {
 	progname = malloc((10*sizeof(char))+1);
 	progname = "433-debug";
-	
+
 	lirc_t data;
 	char *socket = "/dev/lirc0";
 	int have_device = 0;
-	
+
 	int duration = 0;
 	int i = 0;
 	int y = 0;
-	
+
 	int recording = 1;
 	int bit = 0;
 	int raw[255];
@@ -86,8 +117,8 @@ int main(int argc, char **argv) {
 	int header = 0;
 	int pulse = 0;
 	int rawLength = 0;
-	int binaryLength = 0;	
-	
+	int binaryLength = 0;
+
 	hw_choose_driver(NULL);
 	while (1) {
 		int c;
@@ -123,38 +154,36 @@ int main(int argc, char **argv) {
 		}
 	}
 	if(optind < argc) {
-		fprintf(stderr, "%s: too many arguments\n", progname);
+		logprintf(LOG_ERR, "too many arguments");
 		return EXIT_FAILURE;
 	}
-	
+
 	if(strcmp(socket, "/var/lirc/lircd") == 0) {
-		fprintf(stderr, "%s: refusing to connect to lircd socket\n", progname);
+		logprintf(LOG_ERR, "refusing to connect to lircd socket");
 		return EXIT_FAILURE;
 	}
 
 	if(have_device)
 		hw.device = socket;
-		
+
 	if(!hw.init_func()) {
-		fprintf(stderr, "%s: could not open %s\n", progname, hw.device);
-		fprintf(stderr, "%s: default_init(): Device or resource busy\n", progname);
 		return EXIT_FAILURE;
 	}
-	
+
 /*
 End of the original (but stripped) code of mode2
-*/	
-	
+*/
+
 	/* Initialize peripheral modules */
 	kakuSwInit();
 	kakuDimInit();
 	kakuOldInit();
-	elroInit();	
-	
+	elroInit();
+
 	while (1) {
-		data = hw.readdata(0);		
+		data = hw.readdata(0);
 		duration = (data & PULSE_MASK);
-		
+
 		/* If we are recording, keep recording until the next footer has been matched */
 		if(recording == 1) {
 			if(bit < 255) {
@@ -163,14 +192,14 @@ End of the original (but stripped) code of mode2
 				bit = 0;
 				recording = 0;
 			}
-		}			
-			
+		}
+
 		/* First try to catch code that seems to be a footer.
 		   If a real footer has been recognized, start using that as the new footer */
-		if((duration > 5000 
+		if((duration > 5000
 		   && duration < 100000 && footer == 0) || ((footer-(footer*0.1)<duration) && (footer+(footer*0.1)>duration))) {
 			recording = 1;
-			
+
 			/* Check if we are recording similar codes */
 			for(i=0;i<(bit-1);i++) {
 				if(!(((pRaw[i]-(pRaw[i]*0.3)) < raw[i]) && ((pRaw[i]+(pRaw[i]*0.3)) > raw[i]))) {
@@ -180,7 +209,7 @@ End of the original (but stripped) code of mode2
 				pRaw[i]=raw[i];
 			}
 			y++;
-			
+
 			/* Continue if we have 2 matches */
 			if(y>2) {
 				/* If we are certain we are recording similar codes.
@@ -198,26 +227,26 @@ End of the original (but stripped) code of mode2
 						if((raw[i]/PULSE_LENGTH) >= 2) {
 							pulse=raw[i];
 						}
-					}				
+					}
 					if(duration > 5000 && duration < 100000) {
 						footer=raw[i];
 					}
 				}
-				
+
 				/* If we have gathered all data, stop with the loop */
 				if(header > 0 && footer > 0 && pulse > 0 && rawLength > 0) {
 					break;
 				}
-			}			
+			}
 			bit=0;
 		}
-		
+
 		fflush(stdout);
 	};
-	
+
 	/* Convert the raw code into binary code */
 	for(i=0;i<rawLength;i++) {
-		if(raw[i] > (pulse-PULSE_LENGTH)) {	
+		if(raw[i] > (pulse-PULSE_LENGTH)) {
 			code[i]=1;
 		} else {
 			code[i]=0;
@@ -231,7 +260,7 @@ End of the original (but stripped) code of mode2
 		}
 	}
 	binaryLength = i/4;
-	
+
 	/* Print everything */
 	printf("--[RESULTS]--\n");
 	printf("\n");

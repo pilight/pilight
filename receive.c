@@ -29,11 +29,44 @@
 #include <unistd.h>
 #include <errno.h>
 #include <arpa/inet.h>
+#include <stdarg.h>
+#include <syslog.h>
 #include "config.h"
 
-void logprintf(int prio, char *format_str, ...) { }
+/* Enable log */
+int logging = 1;
+int loglevel = LOG_INFO;
 
-void logperror(int prio, const char *s) { } 
+void logprintf(int prio, char *format_str, ...) {
+	int save_errno = errno;
+	va_list ap;
+
+	if(logging == 0)
+		return;
+
+	if(loglevel >= prio) {
+		fprintf(stderr, "%s: ", progname);
+		va_start(ap, format_str);
+
+		if(prio==LOG_WARNING)
+			fprintf(stderr, "WARNING: ");
+		if(prio==LOG_ERR)
+			fprintf(stderr, "ERROR: ");
+		if(prio==LOG_INFO)
+			fprintf(stderr, "INFO: ");
+		if(prio==LOG_NOTICE)
+			fprintf(stderr, "NOTICE: ");
+		if(prio==LOG_DEBUG)
+			fprintf(stderr, "LOG_DEBUG: ");
+		vfprintf(stderr, format_str, ap);
+		fputc('\n',stderr);
+		fflush(stderr);
+		va_end(ap);
+	}
+	errno = save_errno;
+}
+
+void logperror(int prio, const char *s) { }
 
 int main() {
     int sockfd = 0, n = 0, connected = 0;
@@ -45,8 +78,8 @@ int main() {
 	memset(recvBuff, '0',sizeof(recvBuff));
 
     if((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
-        printf("\n Error : Could not create socket \n");
-        return 1;
+        logprintf(LOG_ERR, "could not create socket");
+		return EXIT_FAILURE;
     }
 
     memset(&serv_addr, '0', sizeof(serv_addr));
@@ -56,14 +89,14 @@ int main() {
     inet_pton(AF_INET, "127.0.0.1", &serv_addr.sin_addr);
 
     if(connect(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
-       perror("connect");
-       exit(EXIT_FAILURE);
+		logprintf(LOG_ERR, "could not connect to 433-daemon");
+		return EXIT_FAILURE;
     }
 
 	while(1) {
 		bzero(recvBuff,BUFFER_SIZE);
 		if((n = read(sockfd, recvBuff, sizeof(recvBuff)-1)) < 1) {
-			//perror("read");
+			logprintf(LOG_ERR, "could not read from socket");
 			goto close;
 		}
 
@@ -73,7 +106,7 @@ int main() {
 				if(strcmp(recvBuff,"ACCEPT CONNECTION\n") == 0) {
 					message="CLIENT RECEIVER\n";
 					if((n = write(sockfd, message, strlen(message))) < 0) {
-						perror("write");
+						logprintf(LOG_ERR, "could not write to socket");
 						goto close;
 					}
 				}
@@ -88,5 +121,5 @@ int main() {
 close:
 	shutdown(sockfd, SHUT_WR);
 	close(sockfd);
-return 0;
+return EXIT_SUCCESS;
 }

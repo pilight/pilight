@@ -35,6 +35,7 @@
 #include <netdb.h>
 #include <arpa/inet.h>
 #include <sys/time.h>
+#include <syslog.h>
 
 #include "lirc.h"
 #include "lirc/lircd.h"
@@ -54,7 +55,38 @@
 
 extern struct hardware hw;
 
-void logprintf(int prio, char *format_str, ...) { }
+/* Enable log */
+int logging = 1;
+int loglevel = LOG_INFO;
+
+void logprintf(int prio, char *format_str, ...) {
+	int save_errno = errno;
+	va_list ap;
+
+	if(logging == 0)
+		return;
+
+	if(loglevel >= prio) {
+		fprintf(stderr, "%s: ", progname);
+		va_start(ap, format_str);
+
+		if(prio==LOG_WARNING)
+			fprintf(stderr, "WARNING: ");
+		if(prio==LOG_ERR)
+			fprintf(stderr, "ERROR: ");
+		if(prio==LOG_INFO)
+			fprintf(stderr, "INFO: ");
+		if(prio==LOG_NOTICE)
+			fprintf(stderr, "NOTICE: ");
+		if(prio==LOG_DEBUG)
+			fprintf(stderr, "LOG_DEBUG: ");
+		vfprintf(stderr, format_str, ap);
+		fputc('\n',stderr);
+		fflush(stderr);
+		va_end(ap);
+	}
+	errno = save_errno;
+}
 
 void logperror(int prio, const char *s) { }
 
@@ -183,7 +215,7 @@ int main(int argc, char **argv) {
 			}
 			/* If no protocols matches the requested protocol */
 			if(!match) {
-				fprintf(stderr, "%s: this protocol is not supported\n", progname);
+				logprintf(LOG_ERR, "this protocol is not supported");
 			}
 		}
 	}
@@ -239,8 +271,8 @@ int main(int argc, char **argv) {
 	memset(recvBuff, '0',sizeof(recvBuff));
 
     if((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
-        printf("\n Error : Could not create socket \n");
-        return 1;
+        logprintf(LOG_ERR, "could not create socket");
+		return EXIT_FAILURE;
     }
 
     memset(&serv_addr, '0', sizeof(serv_addr));
@@ -250,14 +282,14 @@ int main(int argc, char **argv) {
     inet_pton(AF_INET, "127.0.0.1", &serv_addr.sin_addr);
 
     if(connect(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
-       perror("connect");
-       exit(EXIT_FAILURE);
+		logprintf(LOG_ERR, "could not connect to 433-daemon");
+		return EXIT_FAILURE;
     }
 
 	while(1) {
 		bzero(recvBuff,BUFFER_SIZE);
 		if((n = read(sockfd, recvBuff, sizeof(recvBuff)-1)) < 1) {
-			//perror("read");
+			logprintf(LOG_ERR, "could not read from socket");
 			goto close;
 		}
 
@@ -267,7 +299,7 @@ int main(int argc, char **argv) {
 				if(strcmp(recvBuff,"ACCEPT CONNECTION\n") == 0) {
 					strcpy(message,"CLIENT SENDER\n");
 					if((n = write(sockfd, message, strlen(message))) < 0) {
-						perror("write");
+						logprintf(LOG_ERR, "could not write to socket");
 						goto close;
 					}
 				}
@@ -293,16 +325,16 @@ int main(int argc, char **argv) {
 				if(node->id != 0)
 					x+=sprintf(message+x," ");
 				else
-					x+=sprintf(message+x,"\n");					
+					x+=sprintf(message+x,"\n");
 			}
 			if((n = write(sockfd, message, BUFFER_SIZE-1)) < 0) {
-				perror("write");
+				logprintf(LOG_ERR, "could not write to socket");
 				goto close;
-			}			
+			}
 			memset(message,'0',BUFFER_SIZE);
 			strcpy(message,"SEND\n");
 			if((n = write(sockfd, message, BUFFER_SIZE-1)) < 0) {
-				perror("write");
+				logprintf(LOG_ERR, "could not write to socket");
 				goto close;
 			}
 		goto close;
@@ -311,5 +343,5 @@ int main(int argc, char **argv) {
 close:
 	shutdown(sockfd, SHUT_WR);
 	close(sockfd);
-return 0;
+return EXIT_SUCCESS;
 }

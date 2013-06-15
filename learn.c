@@ -1,25 +1,25 @@
-/*	
+/*
 	Copyright (C) 1998 Trent Piepho <xyzzy@u.washington.edu>
 	Copyright (C) 1998 Christoph Bartelmus <lirc@bartelmus.de>
 	Copyright (C) 2013 CurlyMo
-	
+
 	This file is part of the Raspberry Pi 433.92Mhz transceiver,
 	and based on mode2 as part of the package Lirc.
 
-    Raspberry Pi 433.92Mhz transceiver is free software: you can redistribute 
-	it and/or modify it under the terms of the GNU General Public License as 
-	published by the Free Software Foundation, either version 3 of the License, 
+    Raspberry Pi 433.92Mhz transceiver is free software: you can redistribute
+	it and/or modify it under the terms of the GNU General Public License as
+	published by the Free Software Foundation, either version 3 of the License,
 	or (at your option) any later version.
 
-    Raspberry Pi 433.92Mhz transceiver is distributed in the hope that it will 
+    Raspberry Pi 433.92Mhz transceiver is distributed in the hope that it will
 	be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with Raspberry Pi 433.92Mhz transceiver. If not, see 
+    along with Raspberry Pi 433.92Mhz transceiver. If not, see
 	<http://www.gnu.org/licenses/>
-	
+
 */
 
 #include <stdio.h>
@@ -63,15 +63,46 @@
 Start of the original (but stripped) code of mode2
 */
 
-void logprintf(int prio, char *format_str, ...) { }
+/* Enable log */
+int logging = 1;
+int loglevel = LOG_INFO;
 
-void logperror(int prio, const char *s) { } 
+void logprintf(int prio, char *format_str, ...) {
+	int save_errno = errno;
+	va_list ap;
+
+	if(logging == 0)
+		return;
+
+	if(loglevel >= prio) {
+		fprintf(stderr, "%s: ", progname);
+		va_start(ap, format_str);
+
+		if(prio==LOG_WARNING)
+			fprintf(stderr, "WARNING: ");
+		if(prio==LOG_ERR)
+			fprintf(stderr, "ERROR: ");
+		if(prio==LOG_INFO)
+			fprintf(stderr, "INFO: ");
+		if(prio==LOG_NOTICE)
+			fprintf(stderr, "NOTICE: ");
+		if(prio==LOG_DEBUG)
+			fprintf(stderr, "LOG_DEBUG: ");
+		vfprintf(stderr, format_str, ap);
+		fputc('\n',stderr);
+		fflush(stderr);
+		va_end(ap);
+	}
+	errno = save_errno;
+}
+
+void logperror(int prio, const char *s) { }
 
 void rmDup(int *a, int *b) {
 	int x=0, y=0, i=0;
 	int temp[75];
 	int match = 0;
-	
+
 	/* Remove all ALL bits that are also stores as the ON/OFF bits */
 	memset(temp,-1,75);
 	for(i=0;i<75;i++) {
@@ -103,19 +134,19 @@ int normalize(int i) {
 int main(int argc, char **argv) {
 	progname = malloc((10*sizeof(char))+1);
 	progname = "433-learn";
-	
+
 	lirc_t data;
 	char *socket = "/dev/lirc0";
 	int have_device = 0;
-	
+
 	int duration = 0;
 	int i = 0;
 	int y = 0;
 	int z = 0;
-	
+
 	int state = CAPTURE;
 	int pState = WAIT;
-	
+
 	int recording = 1;
 	int bit = 0;
 	int raw[255];
@@ -135,8 +166,8 @@ int main(int argc, char **argv) {
 	int unit1Binary[255];
 	int unit2Binary[255];
 	int unit3Binary[255];
-	
-	int temp[75];	
+
+	int temp[75];
 	int footer = 0;
 	int header = 0;
 	int pulse = 0;
@@ -144,12 +175,12 @@ int main(int argc, char **argv) {
 	int all[75];
 	int unit[75];
 	int rawLength = 0;
-	int binaryLength = 0;	
-	
+	int binaryLength = 0;
+
 	memset(onoff,-1,75);
 	memset(all,-1,75);
 	memset(unit,-1,75);
-	
+
 	hw_choose_driver(NULL);
 	while (1) {
 		int c;
@@ -185,37 +216,35 @@ int main(int argc, char **argv) {
 		}
 	}
 	if(optind < argc) {
-		fprintf(stderr, "%s: too many arguments\n", progname);
+		logprintf(LOG_ERR, "too many arguments");
 		return EXIT_FAILURE;
 	}
-	
+
 	if(strcmp(socket, "/var/lirc/lircd") == 0) {
-		fprintf(stderr, "%s: refusing to connect to lircd socket\n", progname);
+		logprintf(LOG_ERR, "refusing to connect to lircd socket");
 		return EXIT_FAILURE;
 	}
 
 	if(have_device)
 		hw.device = socket;
-		
+
 	if(!hw.init_func()) {
-		fprintf(stderr, "%s: could not open %s\n", progname, hw.device);
-		fprintf(stderr, "%s: default_init(): Device or resource busy\n", progname);
 		return EXIT_FAILURE;
 	}
-	
+
 /*
 End of the original (but stripped) code of mode2
-*/	
-	
+*/
+
 	/* Initialize peripheral modules */
 	kakuSwInit();
 	kakuDimInit();
 	kakuOldInit();
-	elroInit();	
-	
+	elroInit();
+
 	while (1) {
-		data = hw.readdata(0);		
-		duration = (data & PULSE_MASK);				
+		data = hw.readdata(0);
+		duration = (data & PULSE_MASK);
 
 		/* If we are recording, keep recording until the next footer has been matched */
 		if(recording == 1) {
@@ -225,14 +254,14 @@ End of the original (but stripped) code of mode2
 				bit = 0;
 				recording = 0;
 			}
-		}			
-			
+		}
+
 		/* First try to catch code that seems to be a footer.
 		   If a real footer has been recognized, start using that as the new footer */
-		if((duration > 5000 
+		if((duration > 5000
 		   && duration < 100000 && footer == 0) || ((footer-(footer*0.1)<duration) && (footer+(footer*0.1)>duration))) {
 			recording = 1;
-			
+
 			/* Check if we are recording similar codes */
 			for(i=0;i<(bit-1);i++) {
 				if(!(((pRaw[i]-(pRaw[i]*0.3)) < raw[i]) && ((pRaw[i]+(pRaw[i]*0.3)) > raw[i]))) {
@@ -256,7 +285,7 @@ End of the original (but stripped) code of mode2
 				}
 				if(rawLength == 0 || rawLength == bit) {
 				   /*|| ((((raw[0]-(raw[0]*0.3)) < header[0]) || ((raw[0]+(raw[0]*0.3)) > header[0]))
- 				       && (((raw[1]-(raw[1]*0.3)) < header[1]) || ((raw[1]+(raw[1]*0.3)) > header[1])) 
+ 				       && (((raw[1]-(raw[1]*0.3)) < header[1]) || ((raw[1]+(raw[1]*0.3)) > header[1]))
 					   && (((raw[bit-1]-(raw[bit-1]*0.1)) < footer) || ((raw[bit-1]+(raw[bit-1]*0.1)) > footer)))) {*/
 
 					/* Try to catch the footer, and the low and high values */
@@ -265,15 +294,15 @@ End of the original (but stripped) code of mode2
 							if((raw[i]/PULSE_LENGTH) >= 2) {
 								pulse=raw[i];
 							}
-						}				
+						}
 						if(duration > 5000 && duration < 100000)
 							footer=raw[i];
 					}
 					/* If we have gathered all data, stop with the loop */
 					if(header > 0 && footer > 0 && pulse > 0 && rawLength > 0) {
-						/* Convert the raw code into binary code */				
+						/* Convert the raw code into binary code */
 						for(i=0;i<rawLength;i++) {
-							if(raw[i] > (pulse-PULSE_LENGTH)) {	
+							if(raw[i] > (pulse-PULSE_LENGTH)) {
 								code[i]=1;
 							} else {
 								code[i]=0;
@@ -288,7 +317,7 @@ End of the original (but stripped) code of mode2
 						}
 						if(binaryLength == 0)
 							binaryLength = i/4;
-							
+
 						/* Check if the subsequent binary code matches
 						   to check if the same button was still held */
 						if(binaryLength == (i/4)) {
@@ -297,7 +326,7 @@ End of the original (but stripped) code of mode2
 									z=1;
 								}
 							}
-							
+
 							/* If we are capturing a different button
 							   continue to the next step */
 							if(z==1 || state == CAPTURE) {
@@ -324,24 +353,24 @@ End of the original (but stripped) code of mode2
 										state=STOP;
 									break;
 								}
-							printf(" Done.\n\n");						
+							printf(" Done.\n\n");
 							pState=WAIT;
 							}
 						}
 					}
 				}
-			}	
+			}
 			bit=0;
 		}
-		
+
 		/* Reset the button repeat counter */
 		if(z==1) {
 			z=0;
-			for(i=0;i<binaryLength;i++) {							
-				pBinary[i]=binary[i];						
+			for(i=0;i<binaryLength;i++) {
+				pBinary[i]=binary[i];
 			}
 		}
-		
+
 		switch(state) {
 			case CAPTURE:
 				printf("1. Please send and hold one of the OFF buttons.");
@@ -363,7 +392,7 @@ End of the original (but stripped) code of mode2
 					onCode[i] = code[i];
 				}
 				z=0;
-				
+
 				/* Compare the ON and OFF codes and save bit that are different */
 				for(i=0;i<binaryLength;i++) {
 					if(offBinary[i] != onBinary[i]) {
@@ -414,7 +443,7 @@ End of the original (but stripped) code of mode2
 					unit1Code[i] = code[i];
 				}
 				printf("5. Please send and hold the ON button with the second to lowest ID.");
-			break;	
+			break;
 			case UNIT2:
 				/* Store the second to lowest unit code */
 				for(i=0;i<binaryLength;i++) {
@@ -424,7 +453,7 @@ End of the original (but stripped) code of mode2
 					unit2Code[i] = code[i];
 				}
 				printf("6. Please send and hold the ON button with the highest ID.");
-			break;				
+			break;
 			case PROCESSUNIT:
 				z=0;
 				/* Store the highest unit code and compare the three codes. Store all
@@ -449,11 +478,11 @@ End of the original (but stripped) code of mode2
 	else
 		state=WAIT;
 	}
-	
+
 	rmDup(all, onoff);
 	rmDup(unit, onoff);
 	rmDup(all, unit);
-	
+
 	/* Print everything */
 	printf("--[RESULTS]--\n");
 	printf("\n");
@@ -479,7 +508,7 @@ End of the original (but stripped) code of mode2
 	z=0;
 	while(unit[z] > -1) {
 		printf("%d ",unit[z++]);
-	}		
+	}
 	printf("\n\n");
 	printf("Raw code:\n");
 	for(i=0;i<rawLength;i++) {
@@ -515,8 +544,8 @@ End of the original (but stripped) code of mode2
 	printf("Unit 3:\t");
 	for(i=0;i<rawLength;i++) {
 		printf("%d",unit3Code[i]);
-	}			
-	printf("\n");	
+	}
+	printf("\n");
 	printf("Binary code:\n");
 	printf("On:\t");
 	for(i=0;i<binaryLength;i++) {
@@ -546,7 +575,7 @@ End of the original (but stripped) code of mode2
 	printf("Unit 3:\t");
 	for(i=0;i<binaryLength;i++) {
 		printf("%d",unit3Binary[i]);
-	}			
+	}
 	printf("\n");
 	return (EXIT_SUCCESS);
 }

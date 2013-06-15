@@ -386,7 +386,7 @@ int parse_data(int i, char buffer[BUFFER_SIZE]) {
 			clients[i] = 0;
 			handshakes[i] = 0;
 			send_code(node);
-			logprintf(LOG_INFO, "Client disconnected, ip %s, port %d", inet_ntoa(address.sin_addr), ntohs(address.sin_port));	
+			logprintf(LOG_INFO, "Client disconnected, ip %s, port %d", inet_ntoa(address.sin_addr), ntohs(address.sin_port));
 			sendOptions = malloc(25*sizeof(struct options_t));
 		} else {
 			pch = strtok(buffer," \n");
@@ -425,7 +425,7 @@ int parse_data(int i, char buffer[BUFFER_SIZE]) {
 			close(sd);
 			clients[i] = 0;
 			handshakes[i] = 0;
-			logprintf(LOG_INFO, "Client disconnected, ip %s, port %d", inet_ntoa(address.sin_addr), ntohs(address.sin_port));	
+			logprintf(LOG_INFO, "Client disconnected, ip %s, port %d", inet_ntoa(address.sin_addr), ntohs(address.sin_port));
 		} else {
 			logprintf(LOG_DEBUG,"Socket send: %s", message);
 		}
@@ -452,7 +452,7 @@ void receive() {
 				for(i=0; i<protocols.nr; ++i) {
 					device = protocols.listeners[i];
 					/* Lots of checks if the protocol can actually receive anything */
-					if((((device->parseRaw != NULL || device->parseCode != NULL) && device->rawLength > 0) 
+					if((((device->parseRaw != NULL || device->parseCode != NULL) && device->rawLength > 0)
 					    || (device->parseBinary != NULL && device->binaryLength > 0))
 						&& device->header > 0 && device->footer > 0
 						&& device->pulse > 0 && device->multiplier != NULL) {
