@@ -32,6 +32,7 @@
 
 #define PID_FILE		"/var/run/433-deamon.pid"
 #define CONFIG_FILE		"./433-daemon.conf"
+#define LOG_FILE		"/var/log/433-daemon.log"
 
 #define SEND_REPEATS	10
 #define FREQ433			433920

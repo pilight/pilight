@@ -15,7 +15,19 @@ $(SUBDIRS):
  
 all: $(LIBS) $(OBJS) $(PROGAMS) 
  
-$(PROGAMS): $(INCLUDES) $(LIBS)
+433-daemon: daemon.c $(INCLUDES) $(LIBS)
+	$(CC) $(CFLAGS) -o $@ $(patsubst 433-%,%.c,$@) $(LIBS)
+
+433-send: send.c $(INCLUDES) $(LIBS)
+	$(CC) $(CFLAGS) -o $@ $(patsubst 433-%,%.c,$@) $(LIBS)
+
+433-receive: receive.c $(INCLUDES) $(LIBS)
+	$(CC) $(CFLAGS) -o $@ $(patsubst 433-%,%.c,$@) $(LIBS)
+
+433-debug: debug.c $(INCLUDES) $(LIBS)
+	$(CC) $(CFLAGS) -o $@ $(patsubst 433-%,%.c,$@) $(LIBS)	
+
+433-learn: learn.c $(INCLUDES) $(LIBS)
 	$(CC) $(CFLAGS) -o $@ $(patsubst 433-%,%.c,$@) $(LIBS)
 	
 clean:

@@ -34,16 +34,17 @@ void alectoParseCode() {
 	int negative;
 	int humidity;
 	int battery;
-	
+
 	memset(alecto.message,'0',sizeof(alecto.message));
-	
+
 	for(i=1;i<alecto.rawLength-1;i+=2) {
 		alecto.binary[x++] = alecto.code[i];
 	}
-	
+
 	for(i=0;i<x-4;i+=4) {
 		a-=binToDec(alecto.binary,i,i+3);
 	}
+
 	if(binToDec(alecto.binary,32,35) == (a&0xf)) {
 		id = binToDec(alecto.binary,0,7);
 		if(binToDec(alecto.binary,8,11) == 4)
