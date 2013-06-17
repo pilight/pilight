@@ -47,7 +47,7 @@ void alectoParseCode() {
 
 	if(binToDec(alecto.binary,32,35) == (a&0xf)) {
 		id = binToDec(alecto.binary,0,7);
-		if(binToDec(alecto.binary,8,11) == 4)
+		if(alecto.binary[11] == 1)
 			battery = 1;
 		else
 			battery = 0;
@@ -56,7 +56,7 @@ void alectoParseCode() {
 			negative=1;
 		else
 			negative=0;
-		humidity = ((binToDec(alecto.binary,24,27)*10)+binToDec(alecto.binary,28,31));
+		humidity = ((binToDec(alecto.binary,28,31)*10)+binToDec(alecto.binary,24,27));
 		i=0;
 		i+=sprintf(alecto.message+i,"id %d ",id);
 		i+=sprintf(alecto.message+i,"battery %d ",battery);
@@ -74,12 +74,12 @@ void alectoInit() {
 	strcpy(alecto.desc,"Alecto based weather stations");
 	alecto.type = WEATHER;
 	alecto.header = 14;
-	alecto.pulse = 10;
+	alecto.pulse = 14;
 	alecto.footer = 30;
 	alecto.multiplier[0] = 0.1;
 	alecto.multiplier[1] = 0.3;
 	alecto.rawLength = 74;
-	alecto.repeats = 2;
+	alecto.repeats = 1;
 	alecto.message = malloc((50*sizeof(char))+1);
 	
 	alecto.bit = 0;
