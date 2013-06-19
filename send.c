@@ -154,6 +154,7 @@ int main(int argc, char **argv) {
 	/* Clear the argument holders */
 	memset(longarg,'\0',11);
 	memset(shortarg,'\0',3);
+	memset(protobuffer,'\0',255);
 
 	/* Check if the basic CLI arguments are given before the protocol arguments are appended */
 	for(i=0;i<argc;i++) {
