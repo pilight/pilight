@@ -21,14 +21,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <getopt.h>
 #include "config.h"
+#include "log.h"
 #include "protocol.h"
 #include "binary.h"
 #include "kaku_old.h"
 
 void kakuOldParseBinary() {
-	memset(kaku_old.message,'0',sizeof(kaku_old.message));
+	memset(kaku_old.message,'\0',sizeof(kaku_old.message));
 	
 	int unit = binToDec(kaku_old.binary,0,4);
 	int state = kaku_old.binary[11];
@@ -112,17 +112,24 @@ void kakuOldCreateCode(struct options_t *options) {
 	int unit = -1;
 	int state = -1;
 
-	if(atoi(getOption(options,'i')) > 0)
-		id=atoi(getOption(options,'i'));
-	if(atoi(getOption(options,'f')) == 1)
+	if(getOptionValById(&options,'i') != NULL)
+		id=atoi(getOptionValById(&options,'i'));
+	if(getOptionValById(&options,'f') != NULL)
 		state=0;
-	else if(atoi(getOption(options,'t')) == 1)
+	else if(getOptionValById(&options,'t') != NULL)
 		state=1;
-	if(atoi(getOption(options,'u')) > -1)
-		unit = atoi(getOption(options,'u'));
+	if(getOptionValById(&options,'u') != NULL)
+		unit = atoi(getOptionValById(&options,'u'));
 
 	if(id == -1 || unit == -1 || state == -1) {
-		fprintf(stderr, "kaku_old: insufficient number of arguments\n");
+		logprintf(LOG_ERR, "kaku_old: insufficient number of arguments");
+		exit(EXIT_FAILURE);
+	} else if(id > 32 || id < 0) {
+		logprintf(LOG_ERR, "kaku_old: invalid id range");
+		exit(EXIT_FAILURE);
+	} else if(unit > 32 || unit < 0) {
+		logprintf(LOG_ERR, "kaku_old: invalid unit range");
+		exit(EXIT_FAILURE);
 	} else {
 		kakuOldClearCode();
 		kakuOldCreateUnit(unit);
@@ -157,15 +164,12 @@ void kakuOldInit() {
 	kaku_old.bit = 0;
 	kaku_old.recording = 0;
 
-	struct option kakuOldOptions[] = {
-		{"id", required_argument, NULL, 'i'},
-		{"unit", required_argument, NULL, 'u'},
-		{"on", no_argument, NULL, 't'},
-		{"off", no_argument, NULL, 'f'},
-		{0,0,0,0}
-	};
+	kaku_old.options = malloc(4*sizeof(struct options_t));
+	addOption(&kaku_old.options, 't', "on", no_argument, 0, 1, NULL);	
+	addOption(&kaku_old.options, 'f', "off", no_argument, 0, 1, NULL);	
+	addOption(&kaku_old.options, 'u', "unit", required_argument, config_required, 1, "[0-9]");
+	addOption(&kaku_old.options, 'i', "id", required_argument, config_required, 1, "[0-9]");
 
-	kaku_old.options=setOptions(kakuOldOptions);
 	kaku_old.parseBinary=kakuOldParseBinary;
 	kaku_old.createCode=&kakuOldCreateCode;
 	kaku_old.printHelp=&kakuOldPrintHelp;

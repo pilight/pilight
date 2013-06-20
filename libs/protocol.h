@@ -39,7 +39,7 @@ typedef struct {
 	int rawLength;
 	int binaryLength;
 	int repeats;
-	struct option *options;
+	struct options_t *options;
 	char *message;
 
 	int bit;

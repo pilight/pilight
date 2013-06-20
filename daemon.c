@@ -33,8 +33,11 @@
 #include <netinet/in.h>
 #include <sys/time.h>
 #include <pthread.h>
-#include <getopt.h>
 #include <stdarg.h>
+#include "config.h"
+#include "gc.h"
+#include "log.h"
+#include "options.h"
 
 #include "lirc.h"
 #include "lirc/lircd.h"
@@ -44,15 +47,12 @@
 #include "lirc/hw_default.h"
 
 #include "protocol.h"
-#include "options.h"
-#include "gc.h"
 #include "protocols/kaku_switch.h"
 #include "protocols/kaku_dimmer.h"
 #include "protocols/kaku_old.h"
 #include "protocols/elro.h"
 #include "protocols/raw.h"
 #include "protocols/alecto.h"
-#include "config.h"
 
 /* ID's or the clients */
 #define RECEIVER		1
@@ -79,10 +79,6 @@ int receivers = 0;
 int nodaemon = 0;
 /* Are we already running */
 int running = 1;
-/* Enable log */
-int logging = 1;
-int loglevel = LOG_INFO;
-char logfile[1024] = LOG_FILE;
 /* How many times does to keep need to be resend */
 int repeat = SEND_REPEATS;
 /* The frequency on which the lirc module needs to send 433.92Mhz*/
@@ -98,76 +94,6 @@ int setfreq = 0;
 struct options_t *sendOptions;
 struct options_t *node;
 
-FILE *lf=NULL;
-
-void logprintf(int prio, char *format_str, ...) {
-	int save_errno = errno;
-	va_list ap;
-
-	if(logging == 0)
-		return;
-
-	if(loglevel >= prio) {
-		if(nodaemon == 0 && lf != NULL && loglevel < LOG_DEBUG) {
-			time_t current;
-			char *currents;
-
-			current=time(&current);
-			currents=ctime(&current);
-
-			fprintf(lf,"%15.15s %s: ",currents+4, progname);
-			va_start(ap, format_str);
-			if(prio==LOG_WARNING)
-				fprintf(lf,"WARNING: ");
-			if(prio==LOG_ERR)
-				fprintf(lf,"ERROR: ");
-			if(prio==LOG_INFO)
-				fprintf(lf, "LOG_INFO: ");
-			if(prio==LOG_NOTICE)
-				fprintf(lf, "LOG_NOTICE: ");
-			vfprintf(lf, format_str, ap);
-			fputc('\n',lf);
-			fflush(lf);
-			va_end(ap);
-		}
-
-		if(nodaemon == 1) {
-
-			fprintf(stderr, "%s: ", progname);
-			va_start(ap, format_str);
-
-			if(prio==LOG_WARNING)
-				fprintf(stderr, "WARNING: ");
-			if(prio==LOG_ERR)
-				fprintf(stderr, "ERROR: ");
-			if(prio==LOG_INFO)
-				fprintf(stderr, "INFO: ");
-			if(prio==LOG_NOTICE)
-				fprintf(stderr, "NOTICE: ");
-			if(prio==LOG_DEBUG)
-				fprintf(stderr, "LOG_DEBUG: ");
-			vfprintf(stderr, format_str, ap);
-			fputc('\n',stderr);
-			fflush(stderr);
-			va_end(ap);
-		}
-	}
-	errno = save_errno;
-}
-
-void logperror(int prio, const char *s) {
-	// int save_errno = errno;
-	// if(logging == 0)
-		// return;
-
-	// if(s != NULL) {
-		// logprintf(prio, "%s: %s", s, strerror(errno));
-	// } else {
-		// logprintf(prio, "%s", strerror(errno));
-	// }
-	// errno = save_errno;
-}
-
 /* Initialize the hardware module lirc_rpi */
 int module_init() {
 	if(initialized == 0) {
@@ -181,12 +107,12 @@ int module_init() {
 			freq = FREQ433;
 			/* Set the lirc_rpi frequency to 433.92Mhz */
 			if(hw.ioctl_func(LIRC_SET_SEND_CARRIER, &freq) == -1) {
-				logprintf(LOG_ERR, "Could not set lirc_rpi send frequency");
+				logprintf(LOG_ERR, "could not set lirc_rpi send frequency");
 				return EXIT_FAILURE;
 			}
 			setfreq = 1;
 		}
-		logprintf(LOG_DEBUG, "Initialized lirc_rpi module");
+		logprintf(LOG_DEBUG, "initialized lirc_rpi module");
 		initialized = 1;
 	}
 	return EXIT_SUCCESS;
@@ -197,7 +123,7 @@ int module_deinit() {
 	if(initialized == 1) {
 		/* Restore the lirc_rpi frequency to its default value */
 		hw.deinit_func();
-		logprintf(LOG_DEBUG, "Deinitialized lirc_rpi module");
+		logprintf(LOG_DEBUG, "deinitialized lirc_rpi module");
 		initialized	= 0;
 	}
 	return EXIT_SUCCESS;
@@ -214,13 +140,13 @@ int start_server(int port) {
 
     //create a master socket
     if((serverSocket = socket(AF_INET , SOCK_STREAM , 0)) == 0)  {
-        logprintf(LOG_ERR, "Could not create new socket");
+        logprintf(LOG_ERR, "could not create new socket");
         exit(EXIT_FAILURE);
     }
 
     //set master socket to allow multiple connections , this is just a good habit, it will work without this
     if(setsockopt(serverSocket, SOL_SOCKET, SO_REUSEADDR, (char *)&opt, sizeof(opt)) < 0 ) {
-        logprintf(LOG_ERR, "Could not set proper socket options");
+        logprintf(LOG_ERR, "could not set proper socket options");
         exit(EXIT_FAILURE);
     }
 
@@ -231,17 +157,17 @@ int start_server(int port) {
 
     //bind the socket to localhost
     if (bind(serverSocket, (struct sockaddr *)&address, sizeof(address))<0) {
-        logprintf(LOG_ERR, "Cannot bind to socket port %d, address already in use?", address);
+        logprintf(LOG_ERR, "cannot bind to socket port %d, address already in use?", address);
         exit(EXIT_FAILURE);
     }
 
     //try to specify maximum of 3 pending connections for the master socket
     if(listen(serverSocket, 3) < 0) {
-        logprintf(LOG_ERR, "Failed to listen to socket");
+        logprintf(LOG_ERR, "failed to listen to socket");
         exit(EXIT_FAILURE);
     }
 
-	logprintf(LOG_INFO, "Server started at port %d", port);
+	logprintf(LOG_INFO, "server started at port %d", port);
 
     return 0;
 }
@@ -270,7 +196,7 @@ int broadcast(char *message) {
 			pclose(f);
 		}
 
-		logprintf(LOG_DEBUG, "Broadcasted: %s", message);
+		logprintf(LOG_DEBUG, "broadcasted: %s", message);
 		return 1;
 	}
 	return 0;
@@ -285,14 +211,13 @@ void send_code(struct options_t *options) {
 	/* The code that is send to the hardware wrapper */
 	struct ir_ncode code;
 	/* Temporary pointer to the protocol options */
-	struct option *backup_options;
-	struct options_t *node = options;
+	struct options_t *backup_options;
 
 	char message[BUFFER_SIZE];
-	memset(message,'0',BUFFER_SIZE);
-
-	if(getOption(options,'p') != NULL)
-		strcpy(name,getOption(options,'p'));
+	memset(message, '\0', sizeof(message));
+	
+	if(getOptionValById(&options,'p') != NULL)
+		strcpy(name,getOptionValById(&options,'p'));
 
 	for(i=0; i<protocols.nr; ++i) {
 		device = protocols.listeners[i];
@@ -302,22 +227,20 @@ void send_code(struct options_t *options) {
 			if(device->options != NULL && device->createCode != NULL) {
 				/* Copy all CLI options from the specific protocol */
 				backup_options=device->options;
-				x=0;
+				strcat(message, "sender ");
 				/* Get the full CLI argument name to send to the receivers */
-				while(backup_options->name != NULL) {
-					node = options;
-					while(node->id != 0) {
-						if(node->id == backup_options->val) {
-							if(backup_options->has_arg == 1) {
-								x+=sprintf(message+x,"%s %s ",backup_options->name,getOption(options,node->id));
-							} else {
-								x+=sprintf(message+x,"%s ",backup_options->name);
-							}
+				while(backup_options != NULL && backup_options->name != NULL) {
+					if(getOptionValById(&options, backup_options->id) != NULL) {
+						strcat(message, backup_options->name);
+						strcat(message, " ");
+						if(getOptionArgTypeById(&backup_options, backup_options->id) == required_argument) {
+							strcat(message, getOptionValById(&options, backup_options->id));
+							strcat(message, " ");
 						}
-						node = node->next;
 					}
-					backup_options++;
+				backup_options = backup_options->next;
 				}
+				strcat(message, "\n");
 			}
 			break;
 		}
@@ -330,9 +253,10 @@ void send_code(struct options_t *options) {
 		device->createCode(options);
 
 		/* Check if we need to repeat the code other than the default repeat */
-		if(atoi(getOption(options,'r')) > 0)
-			repeat=atoi(getOption(options,'r'));
-		logprintf(LOG_DEBUG, "Set send repeat to %d time(s)", repeat);
+		if(getOptionValById(&options,'r') != NULL) {
+			repeat=atoi(getOptionValById(&options,'r'));
+			logprintf(LOG_DEBUG, "set send repeat to %d time(s)", repeat);
+		}
 
 		sending = 1;
 		/* Create a single code with all repeats included */
@@ -351,14 +275,14 @@ void send_code(struct options_t *options) {
 
 		/* Send the code, if we succeeded, inform the receiver */
 		if(send_ir_ncode(&code) == 1) {
-			logprintf(LOG_DEBUG, "Successfully send %s code", device->id);
+			logprintf(LOG_DEBUG, "successfully send %s code", device->id);
 			if(receivers > 0 && logged == 0) {
 				logged = 1;
 				/* Write the message to all receivers */
 				broadcast(message);
 			}
 		} else {
-			logprintf(LOG_ERR, "Failed to send code");
+			logprintf(LOG_ERR, "failed to send code");
 		}
 		/* Release the hardware to spare resources */
 		if(receivers == 0)
@@ -378,7 +302,7 @@ int parse_data(int i, char buffer[BUFFER_SIZE]) {
 	bzero(message,BUFFER_SIZE);
 	getpeername(sd, (struct sockaddr*)&address, (socklen_t*)&addrlen);
 
-	logprintf(LOG_DEBUG,"Socket recv: %s", buffer);
+	logprintf(LOG_DEBUG,"socket recv: %s", buffer);
 	if(handshakes[i] == SENDER) {
 		if(strcmp(buffer,"SEND\n") == 0) {
 			/* Don't let the sender wait until we have send the code */
@@ -386,12 +310,12 @@ int parse_data(int i, char buffer[BUFFER_SIZE]) {
 			clients[i] = 0;
 			handshakes[i] = 0;
 			send_code(node);
-			logprintf(LOG_INFO, "Client disconnected, ip %s, port %d", inet_ntoa(address.sin_addr), ntohs(address.sin_port));
+			logprintf(LOG_INFO, "client disconnected, ip %s, port %d", inet_ntoa(address.sin_addr), ntohs(address.sin_port));
 			sendOptions = malloc(25*sizeof(struct options_t));
 		} else {
 			pch = strtok(buffer," \n");
 			while(pch != NULL) {
-				/* Rebuild the CLI arguments struct */
+				/* Rebuild the a basic CLI arguments struct */
 				node = malloc(sizeof(struct options_t));
 				node->id = atoi(pch);
 				pch = strtok(NULL," \n");
@@ -408,13 +332,13 @@ int parse_data(int i, char buffer[BUFFER_SIZE]) {
 	}
 	if(strcmp(buffer,"CLIENT RECEIVER\n") == 0) {
 		strcpy(message,"ACCEPT CLIENT\n");
-		logprintf(LOG_INFO, "Client recognized as receiver");
+		logprintf(LOG_INFO, "client recognized as receiver");
 		handshakes[i] = RECEIVER;
 		receivers++;
 	}
 	if(strcmp(buffer,"CLIENT SENDER\n") == 0 && sending == 0) {
 		strcpy(message,"ACCEPT CLIENT\n");
-		logprintf(LOG_INFO, "Client recognized as sender");
+		logprintf(LOG_INFO, "client recognized as sender");
 		handshakes[i] = SENDER;
 	}
 	if(handshakes[i] == 0) {
@@ -425,9 +349,9 @@ int parse_data(int i, char buffer[BUFFER_SIZE]) {
 			close(sd);
 			clients[i] = 0;
 			handshakes[i] = 0;
-			logprintf(LOG_INFO, "Client disconnected, ip %s, port %d", inet_ntoa(address.sin_addr), ntohs(address.sin_port));
+			logprintf(LOG_INFO, "client disconnected, ip %s, port %d", inet_ntoa(address.sin_addr), ntohs(address.sin_port));
 		} else {
-			logprintf(LOG_DEBUG,"Socket send: %s", message);
+			logprintf(LOG_DEBUG,"socket send: %s", message);
 		}
 	}
 	return 1;
@@ -481,16 +405,22 @@ void receive() {
 						/* Try to catch the footer of the code */
 						if(duration > ((device->footer*PULSE_LENGTH)-((device->footer*PULSE_LENGTH)*device->multiplier[1]))
 						   && duration < ((device->footer*PULSE_LENGTH)+((device->footer*PULSE_LENGTH)*device->multiplier[1]))) {
-							//logprintf(LOG_DEBUG, "Catched %s header and footer", device->id);
+							//logprintf(LOG_DEBUG, "catched %s header and footer", device->id);
 							/* Check if the code matches the raw length */
 							if((device->bit == device->rawLength)) {
 								if(device->parseRaw != NULL) {
-									logprintf(LOG_DEBUG, "Called %s parseRaw()", device->id);
-									memset(message,'0',BUFFER_SIZE);
+									logprintf(LOG_DEBUG, "called %s parseRaw()", device->id);
+									memset(message, '\0', sizeof(message));
 									device->parseRaw();
-									memcpy(message,device->message,BUFFER_SIZE);
-									if(broadcast(message))
+									if(strlen(device->message) > 0) {
+										strcat(message, "receiver ");
+										strcat(message, device->message);
+										strcat(message, "\n");
+										if(broadcast(message))
+											continue;
+									} else {
 										continue;
+									}
 								}
 
 								if((device->parseCode != NULL || device->parseBinary != NULL) && device->pulse > 0) {
@@ -513,13 +443,19 @@ void receive() {
 									/* Continue if we have recognized enough repeated codes */
 									if(device->repeats > 0 && y >= device->repeats) {
 										if(device->parseCode != NULL) {
-											logprintf(LOG_DEBUG, "Catched minimum # of repeats %s of %s", y, device->id);
-											logprintf(LOG_DEBUG, "Called %s parseCode()", device->id);
-											memset(message,'0',BUFFER_SIZE);
+											logprintf(LOG_DEBUG, "catched minimum # of repeats %s of %s", y, device->id);
+											logprintf(LOG_DEBUG, "called %s parseCode()", device->id);
+											memset(message, '\0', sizeof(message));
 											device->parseCode();
-											memcpy(message,device->message,BUFFER_SIZE);
-											if(broadcast(message))
+											if(strlen(device->message) > 0) {
+												strcat(message, "receiver ");
+												strcat(message, device->message);
+												strcat(message, "\n");
+												if(broadcast(message))
+													continue;
+											} else {
 												continue;
+											}
 										}
 
 										if(device->parseBinary != NULL) {
@@ -534,12 +470,18 @@ void receive() {
 
 											/* Check if the binary matches the binary length */
 											if(device->binaryLength > 0 && (x/4) == device->binaryLength) {
-												logprintf(LOG_DEBUG, "Called %s parseBinary()", device->id);
-												memset(message,'0',BUFFER_SIZE);
+												logprintf(LOG_DEBUG, "called %s parseBinary()", device->id);
+												memset(message, '\0', sizeof(message));
 												device->parseBinary();
-												memcpy(message,device->message,BUFFER_SIZE);
-												if(broadcast(message))
+												if(strlen(device->message) > 0) {
+													strcat(message, "receiver ");
+													strcat(message, device->message);
+													strcat(message, "\n");
+													if(broadcast(message))
+														continue;
+												} else {
 													continue;
+												}
 											}
 										}
 									}
@@ -596,16 +538,16 @@ void *wait_for_data(void *param) {
         //If something happened on the master socket , then its an incoming connection
         if(FD_ISSET(serverSocket, &readfds)) {
             if((clientSocket = accept(serverSocket, (struct sockaddr *)&address, (socklen_t*)&addrlen))<0) {
-                logprintf(LOG_ERR, "Failed to accept client");
+                logprintf(LOG_ERR, "failed to accept client");
                 exit(EXIT_FAILURE);
             }
 
             //inform user of socket number - used in send and receive commands
-            logprintf(LOG_INFO, "New client, ip: %s, port: %d", inet_ntoa(address.sin_addr), ntohs(address.sin_port));
-			logprintf(LOG_DEBUG, "Client fd: %d", clientSocket);
+            logprintf(LOG_INFO, "new client, ip: %s, port: %d", inet_ntoa(address.sin_addr), ntohs(address.sin_port));
+			logprintf(LOG_DEBUG, "client fd: %d", clientSocket);
             //send new connection accept message
             if(send(clientSocket, message, strlen(message), 0) != strlen(message)) {
-                logprintf(LOG_NOTICE, "%s: Failed to send welcome message to client");
+                logprintf(LOG_NOTICE, "failed to send welcome message to client");
             }
 
             //add new socket to array of sockets
@@ -613,12 +555,12 @@ void *wait_for_data(void *param) {
                 //if position is empty
                 if(clients[i] == 0) {
                     clients[i] = clientSocket;
-                    logprintf(LOG_DEBUG, "Client id: %d", i);
+                    logprintf(LOG_DEBUG, "client id: %d", i);
                     break;
                 }
             }
         }
-        memset(readBuff,'0',BUFFER_SIZE);
+        memset(readBuff,'\0',BUFFER_SIZE);
         //else its some IO operation on some other socket :)
         for(i=0;i<MAX_CLIENTS;i++) {
 			sd = clients[i];
@@ -628,7 +570,7 @@ void *wait_for_data(void *param) {
                 if ((n = read(sd ,readBuff, sizeof(readBuff)-1)) == 0) {
                     //Somebody disconnected, get his details and print
                     getpeername(sd, (struct sockaddr*)&address, (socklen_t*)&addrlen);
-                    logprintf(LOG_INFO, "Client disconnected, ip %s, port %d", inet_ntoa(address.sin_addr), ntohs(address.sin_port));
+                    logprintf(LOG_INFO, "client disconnected, ip %s, port %d", inet_ntoa(address.sin_addr), ntohs(address.sin_port));
 
 					if(handshakes[i] == RECEIVER)
 						receivers--;
@@ -657,13 +599,16 @@ void deamonize() {
 	int f;
 	char buffer[BUFFER_SIZE];
 
+	enable_file_log();
+	disable_shell_log();	
+
 	//Get the pid of the fork
 	pid_t npid = fork();
 	switch(npid) {
 		case 0:
 		break;
 		case -1:
-			logprintf(LOG_ERR, "Could not daemonize program");
+			logprintf(LOG_ERR, "could not daemonize program");
 			exit(1);
 		break;
 		default:
@@ -673,7 +618,7 @@ void deamonize() {
 				write(f,buffer,strlen(buffer));
 			}
 			close(f);
-			logprintf(LOG_INFO, "Started daemon with pid %d", npid);
+			logprintf(LOG_INFO, "started daemon with pid %d", npid);
 			exit(0);
 		break;
 	}
@@ -687,10 +632,10 @@ int main_gc() {
 	if(initialized == 1) {
 		freq = FREQ38;
 		if(hw.ioctl_func(LIRC_SET_SEND_CARRIER, &freq) == -1) {
-			logprintf(LOG_ERR, "Could not restore default freq of the lirc_rpi module");
+			logprintf(LOG_ERR, "could not restore default freq of the lirc_rpi module");
 			return EXIT_FAILURE;
 		} else {
-			logprintf(LOG_DEBUG, "Default freq of the lirc_rpi module set");
+			logprintf(LOG_DEBUG, "default freq of the lirc_rpi module set");
 		}
 		module_deinit();
 	}
@@ -698,14 +643,12 @@ int main_gc() {
 		/* Remove the stale pid file */
 		if(access(pidfile, F_OK) != -1) {
 			if(remove(pidfile) != -1) {
-				logprintf(LOG_DEBUG, "Removed stale pidfile %s", pidfile);
+				logprintf(LOG_DEBUG, "removed stale pidfile %s", pidfile);
 			} else {
-				logprintf(LOG_ERR, "Could not remove stale pid file %s", pidfile);
+				logprintf(LOG_ERR, "could not remove stale pid file %s", pidfile);
 			}
 		}
 	}
-	if(nodaemon == 0)
-		fclose(lf);
 	return 0;
 }
 
@@ -716,6 +659,9 @@ int main(int argc , char **argv) {
 
 	/* Catch all exit signals for gc */
 	gc_catch();
+
+	disable_file_log();
+	enable_shell_log(); 	
 
 	progname = malloc((10*sizeof(char))+1);
 	progname = "433-daemon";
@@ -729,24 +675,22 @@ int main(int argc , char **argv) {
 
 	sendOptions = malloc(25*sizeof(struct options_t));
 
+	addOption(&options, 'h', "help", no_argument, 0, 1, NULL);
+	addOption(&options, 'v', "version", no_argument, 0, 1, NULL);
+	addOption(&options, 's', "socket", required_argument, 0, 1, "^/dev/([A-Za-z]+)([0-9]+)");
+	addOption(&options, 'p', "process", required_argument, 0, 1, NULL);
+	addOption(&options, 'd', "nodaemon", no_argument, 0, 1, NULL);
+	addOption(&options, 'L', "loglevel", required_argument, 0, 1, "[0-5]");
+	addOption(&options, 'l', "logfile", required_argument, 0, 1, NULL);
+	addOption(&options, 'c', "config", required_argument, 0, 1, NULL);
+	
 	hw_choose_driver(NULL);
 	while (1) {
 		int c;
-		static struct option long_options[] = {
-			{"help", no_argument, NULL, 'h'},
-			{"version", no_argument, NULL, 'v'},
-			{"socket", required_argument, NULL, 's'},
-			{"process", required_argument, NULL, 'p'},
-			{"nodaemon", required_argument, NULL, 'd'},
-			{"loglevel", required_argument, NULL, 'L'},
-			{"logfile", required_argument, NULL, 'l'},
-			{"config", required_argument, NULL, 'c'},
-			{0, 0, 0, 0}
-		};
-		c = getopt_long(argc, argv, "hvs:p:dc:l:L:", long_options, NULL);
+		c = getOptions(&options, argc, argv, 1);
 		if (c == -1)
 			break;
-		switch (c) {
+		switch(c) {
 			case 'h':
 				printf("Usage: %s [options]\n", progname);
 				printf("\t -h --help\t\tdisplay usage summary\n");
@@ -795,7 +739,7 @@ int main(int argc , char **argv) {
 			break;
 			case 'l':
 				if(access(optarg, F_OK) != -1) {
-					strcpy(logfile, optarg);
+					set_logfile(optarg);
 				} else {
 					fprintf(stderr, "%s: the log file %s does not exists\n", progname, optarg);
 					return EXIT_FAILURE;
@@ -803,7 +747,7 @@ int main(int argc , char **argv) {
 			break;
 			case 'L':
 				if(atoi(optarg) <=5 && atoi(optarg) >= 1) {
-					loglevel = atoi(optarg)+2;
+					set_loglevel(atoi(optarg)+2);
 				} else {
 					fprintf(stderr, "%s: invalid loglevel specified\n", progname);
 					return EXIT_FAILURE;
@@ -814,17 +758,6 @@ int main(int argc , char **argv) {
 				return (EXIT_FAILURE);
 			break;
 		}
-	}
-
-	if(nodaemon == 0) {
-		if((lf=fopen(logfile,"a")) == NULL) {
-			logprintf(LOG_WARNING, "Could not open logfile %s", logfile);
-		}
-	}
-
-	if(optind < argc) {
-		logprintf(LOG_ERR, "too many arguments");
-		return EXIT_FAILURE;
 	}
 
 	if(strcmp(lsocket, "/var/lirc/lircd") == 0) {
@@ -880,7 +813,7 @@ int main(int argc , char **argv) {
 		}
 	}
 
-	logprintf(LOG_DEBUG, "-- Start config file --");
+	logprintf(LOG_DEBUG, "-- start config file --");
 	while(locations != NULL) {
 		logprintf(LOG_DEBUG, "%s %s", locations->id, locations->name);
 		while(locations->devices != NULL) {
@@ -893,7 +826,7 @@ int main(int argc , char **argv) {
 		}
 		locations = locations->next;
 	}
-	logprintf(LOG_DEBUG, "--Start config file --");
+	logprintf(LOG_DEBUG, "-- end config file --");
 
 	start_server(PORT);
 	if(nodaemon == 0)

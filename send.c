@@ -26,7 +26,6 @@
 #include <string.h>
 #include <signal.h>
 #include <unistd.h>
-#include <getopt.h>
 #include <fcntl.h>
 #include <errno.h>
 #include <sys/socket.h>
@@ -36,63 +35,28 @@
 #include <arpa/inet.h>
 #include <sys/time.h>
 #include <syslog.h>
-
-#include "lirc.h"
-#include "lirc/lircd.h"
-#include "lirc/hardware.h"
-#include "lirc/hw-types.h"
-#include "lirc/transmit.h"
-#include "lirc/hw_default.h"
+#include "config.h"
+#include "log.h"
+#include "options.h"
 
 #include "protocol.h"
-#include "options.h"
-#include "config.h"
 #include "protocols/kaku_switch.h"
 #include "protocols/kaku_dimmer.h"
 #include "protocols/kaku_old.h"
 #include "protocols/elro.h"
 #include "protocols/raw.h"
 
-extern struct hardware hw;
-
-/* Enable log */
-int logging = 1;
-int loglevel = LOG_INFO;
-
-void logprintf(int prio, char *format_str, ...) {
-	int save_errno = errno;
-	va_list ap;
-
-	if(logging == 0)
-		return;
-
-	if(loglevel >= prio) {
-		fprintf(stderr, "%s: ", progname);
-		va_start(ap, format_str);
-
-		if(prio==LOG_WARNING)
-			fprintf(stderr, "WARNING: ");
-		if(prio==LOG_ERR)
-			fprintf(stderr, "ERROR: ");
-		if(prio==LOG_INFO)
-			fprintf(stderr, "INFO: ");
-		if(prio==LOG_NOTICE)
-			fprintf(stderr, "NOTICE: ");
-		if(prio==LOG_DEBUG)
-			fprintf(stderr, "LOG_DEBUG: ");
-		vfprintf(stderr, format_str, ap);
-		fputc('\n',stderr);
-		fflush(stderr);
-		va_end(ap);
-	}
-	errno = save_errno;
-}
-
-void logperror(int prio, const char *s) { }
-
 int main(int argc, char **argv) {
+
+	disable_file_log();
+	enable_shell_log();
+	set_loglevel(LOG_INFO); 
+
 	progname = malloc((10*sizeof(char))+1);
 	progname = "433-send";
+	
+	options = malloc(255*sizeof(struct options_t));
+	
 	int sockfd = 0, n = 0, connected = 0;
     char recvBuff[BUFFER_SIZE];
     char message[BUFFER_SIZE];
@@ -114,35 +78,12 @@ int main(int argc, char **argv) {
 
 	/* Hold the final protocol struct */
 	protocol_t *device = NULL;
-
-	/* The short CLI arguments the main program has */
-	char optstr[255] = {'h','v','p',':','r',':','\0'};
-	/* The long CLI arguments the program has */
-	struct option mainOptions[] = {
-		{"help", no_argument, NULL, 'h'},
-		{"version", no_argument, NULL, 'v'},
-		{"protocol", required_argument, NULL, 'p'},
-		{"repeat", required_argument, NULL, 'r'},
-		{0,0,0,0}
-	};
-	/* Make sure the long options are a static array to prevent unexpected behavior */
-	struct option *long_options=setOptions(mainOptions);
-	/* Number of main options */
-	int long_opt_nr = (sizeof(mainOptions)/sizeof(mainOptions[0])-1);
-	/* Number of option from the protocol */
-	int proto_opt_nr;
-
-	/* Temporary pointer to the protocol options */
-	struct option *backup_options;
-
-	/* Structs holding all CLI arguments and their values */
-	struct options_t *options = malloc(25*sizeof(struct options_t));
-	struct options_t *node = malloc(sizeof(struct options_t));
-
-	/* The long CLI argument holder */
-	char longarg[10];
-	/* The abbreviated CLI argument holder */
-	char shortarg[2];
+	
+	/* Define all CLI arguments of this program */
+	addOption(&options, 'h', "help", no_argument, 0, 1, NULL);
+	addOption(&options, 'v', "version", no_argument, 0, 1, NULL);
+	addOption(&options, 'p', "protocol", required_argument, 0, 1, NULL);
+	addOption(&options, 'r', "repeat", required_argument, 0, 1, "[0-9]");
 
 	/* Initialize peripheral modules */
 	kakuSwInit();
@@ -150,28 +91,29 @@ int main(int argc, char **argv) {
 	kakuOldInit();
 	elroInit();
 	rawInit();
-
-	/* Clear the argument holders */
-	memset(longarg,'\0',11);
-	memset(shortarg,'\0',3);
-	memset(protobuffer,'\0',255);
-
-	/* Check if the basic CLI arguments are given before the protocol arguments are appended */
-	for(i=0;i<argc;i++) {
-		memcpy(longarg, &argv[i][0], 10);
-		memcpy(shortarg, &argv[i][0], 2);
-
-		if(strcmp(shortarg,"-h") == 0 || strcmp(longarg,"--help") == 0)
-			help=1;
-		if(strcmp(shortarg,"-p") == 0 || strcmp(longarg,"--protocol") == 0) {
-			if(strcmp(longarg,"--protocol") == 0)
-				memcpy(protobuffer,&argv[i][11],strlen(argv[i]));
-			else if(i<argc-1)
-				memcpy(protobuffer,argv[i+1],strlen(argv[i+1]));
-			continue;
+	
+	/* Get the protocol to be used */
+	while (1) {
+		int c;
+		c = getOptions(&options, argc, argv, 0);
+		if (c == -1)
+			break;
+		switch(c) {
+			case 'p':
+				if(strlen(optarg) == 0) {
+					logprintf(LOG_ERR, "options '-p' and '--protocol' require an argument");
+					exit(EXIT_FAILURE);
+				} else {
+					strcpy(protobuffer,optarg);
+				}
+			break;
+			case 'v':
+				version = 1;
+			break;
+			case 'h':
+				help = 1;
+			break;
 		}
-		if(strcmp(shortarg,"-v") == 0 || strcmp(longarg,"--version") == 0)
-			version=1;
 	}
 
 	/* Check if a protocol was given */
@@ -184,30 +126,10 @@ int main(int argc, char **argv) {
 				/* Check if the protocol exists */
 				if(strcmp(device->id,protobuffer) == 0 && match == 0) {
 					match=1;
-					/* Check if the protocol requires specific CLI arguments */
+					/* Check if the protocol requires specific CLI arguments
+					   and merge them with the main CLI arguments */
 					if(device->options != NULL && help == 0) {
-
-						/* Copy all CLI options from the specific protocol */
-						backup_options=device->options;
-						size_t y=strlen(optstr);
-						proto_opt_nr = long_opt_nr;
-						while(backup_options->name != NULL) {
-							long_options[long_opt_nr].name=backup_options->name;
-							long_options[long_opt_nr].flag=backup_options->flag;
-							long_options[long_opt_nr].has_arg=backup_options->has_arg;
-							long_options[long_opt_nr].val=backup_options->val;
-
-							optstr[y++]=long_options[long_opt_nr].val;
-							if(long_options[long_opt_nr].has_arg == 1) {
-								optstr[y++]=':';
-							} else if(long_options[long_opt_nr].has_arg == 2) {
-								optstr[y++]=':';
-								optstr[y++]=':';
-							}
-							backup_options++;
-							proto_opt_nr++;
-						}
-						optstr[y++]='\0';
+						mergeOptions(&options, &device->options);
 					} else if(help == 1) {
 						protohelp=1;
 					}
@@ -252,48 +174,52 @@ int main(int argc, char **argv) {
 		return (EXIT_SUCCESS);
 	}
 
-	/* Store all CLI arguments for later usage */
-	while (1) {
+	/* Store all CLI arguments for later usage 
+	   and also check if the CLI arguments where
+	   used correctly by the user. This will also
+	   fill all necessary values in the options struct */
+	while(1) {
 		int c;
-		c = getopt_long(argc, argv, optstr, long_options, NULL);
+		c = getOptions(&options, argc, argv, 1);
 		if(c == -1)
 			break;
-		if(strchr(optstr,c)) {
-			node = malloc(sizeof(struct options_t));
-			node->id = c;
-			node->value = optarg;
-			node->next = options;
-			options = node;
-		} else {
-			exit(EXIT_FAILURE);
-		}
 	}
 
-	memset(recvBuff, '0',sizeof(recvBuff));
+	/* Check if we got sufficient arguments from this protocol */
+	device->createCode(options);
+	
+	/* Clear the receive buffer */
+	memset(recvBuff, '\0',sizeof(recvBuff));
 
+	/* Try to open a new socket */
     if((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
         logprintf(LOG_ERR, "could not create socket");
 		return EXIT_FAILURE;
     }
 
-    memset(&serv_addr, '0', sizeof(serv_addr));
+	/* Clear the server address */
+    memset(&serv_addr, '\0', sizeof(serv_addr));
 
     serv_addr.sin_family = AF_INET;
     serv_addr.sin_port = htons(PORT);
     inet_pton(AF_INET, "127.0.0.1", &serv_addr.sin_addr);
 
+	/* Connect to the 433-daemon */
     if(connect(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
 		logprintf(LOG_ERR, "could not connect to 433-daemon");
 		return EXIT_FAILURE;
     }
 
+
 	while(1) {
+		/* Clear the receive buffer again and read the welcome message */
 		bzero(recvBuff,BUFFER_SIZE);
 		if((n = read(sockfd, recvBuff, sizeof(recvBuff)-1)) < 1) {
 			logprintf(LOG_ERR, "could not read from socket");
 			goto close;
 		}
 
+		/* If we have received, identify ourselves */
 		if(n > 0) {
 			recvBuff[n]='\0';
 			if(connected == 0) {
@@ -312,27 +238,27 @@ int main(int argc, char **argv) {
 				}
 			}
 		}
+		/* If we have a valid connection send the arguments for this protocol */
 		if(connected) {
-			memset(message,'0',BUFFER_SIZE);
+			memset(message,'\0',BUFFER_SIZE);
 			int x=0;
-			while(node->id != 0) {
-				x+=sprintf(message+x,"%d ",node->id);
-				if(node->value != NULL) {
-					x+=sprintf(message+x,"%s",node->value);
-				} else {
-					x+=sprintf(message+x,"1");
+			while(options->name != NULL) {
+				/* Only send the CLI arguments that belong to this protocol, the protocol name 
+				   and those that are called by the user */
+				if((getOptionIdByName(&device->options, options->name) != -1 || strcmp(options->name,"protocol") == 0) 
+				   && options->value != NULL) {
+					x+=sprintf(message+x,"%d %s ",options->id, options->value);
 				}
-				node = node->next;
-				if(node->id != 0)
-					x+=sprintf(message+x," ");
-				else
-					x+=sprintf(message+x,"\n");
+				options = options->next;
 			}
+			/* Remove the last space and replace it with a newline */
+			sprintf(message+(x-1),"\n");	
+
 			if((n = write(sockfd, message, BUFFER_SIZE-1)) < 0) {
 				logprintf(LOG_ERR, "could not write to socket");
 				goto close;
 			}
-			memset(message,'0',BUFFER_SIZE);
+			memset(message,'\0',BUFFER_SIZE);
 			strcpy(message,"SEND\n");
 			if((n = write(sockfd, message, BUFFER_SIZE-1)) < 0) {
 				logprintf(LOG_ERR, "could not write to socket");

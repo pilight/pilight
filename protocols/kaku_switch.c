@@ -21,18 +21,18 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <getopt.h>
 #include "config.h"
+#include "log.h"
 #include "protocol.h"
 #include "binary.h"
 #include "kaku_switch.h"
 
 void kakuSwParseBinary() {
-	memset(kaku_switch.message,'0',sizeof(kaku_switch.message));
-	int unit = binToDecRev(kaku_switch.binary,28,31);
+	memset(kaku_switch.message, '\0', sizeof(kaku_switch.message));
+	int unit = binToDecRev(kaku_switch.binary, 28, 31);
 	int state = kaku_switch.binary[27];
 	int group = kaku_switch.binary[26];
-	int id = binToDecRev(kaku_switch.binary,0,25);
+	int id = binToDecRev(kaku_switch.binary, 0, 25);
 
 	sprintf(kaku_switch.message,"id %d unit %d",id,unit);
 	if(group == 1)
@@ -66,7 +66,7 @@ void kakuSwCreateHigh(int s, int e) {
 }
 
 void kakuSwClearCode() {
-	kakuSwCreateLow(2,132);
+	kakuSwCreateLow(2, 132);
 }
 
 void kakuSwCreateStart() {
@@ -83,20 +83,20 @@ void kakuSwCreateId(int id) {
 	for(i=0;i<=length;i++) {
 		if(binary[i]==1) {
 			x=((length-i)+1)*4;
-			kakuSwCreateHigh(106-x,106-(x-3));
+			kakuSwCreateHigh(106-x, 106-(x-3));
 		}
 	}
 }
 
 void kakuSwCreateAll(int all) {
 	if(all == 1) {
-		kakuSwCreateHigh(106,109);
+		kakuSwCreateHigh(106, 109);
 	}
 }
 
 void kakuSwCreateState(int state) {
 	if(state == 1) {
-		kakuSwCreateHigh(110,113);
+		kakuSwCreateHigh(110, 113);
 	}
 }
 
@@ -109,7 +109,7 @@ void kakuSwCreateUnit(int unit) {
 	for(i=0;i<=length;i++) {
 		if(binary[i]==1) {
 			x=((length-i)+1)*4;
-			kakuSwCreateHigh(130-x,130-(x-3));
+			kakuSwCreateHigh(130-x, 130-(x-3));
 		}
 	}
 }
@@ -124,19 +124,26 @@ void kakuSwCreateCode(struct options_t *options) {
 	int state = -1;
 	int all = 0;
 
-	if(atoi(getOption(options,'i')) > 0)
-		id=atoi(getOption(options,'i'));
-	if(atoi(getOption(options,'f')) == 1)
+	if(getOptionValById(&options, 'i') != NULL)
+		id=atoi(getOptionValById(&options, 'i'));
+	if(getOptionValById(&options, 'f') != NULL)
 		state=0;
-	else if(atoi(getOption(options,'t')) == 1)
+	else if(getOptionValById(&options, 't') != NULL)
 		state=1;
-	if(atoi(getOption(options,'u')) > -1)
-		unit = atoi(getOption(options,'u'));
-	if(atoi(getOption(options,'a')) == 1)
+	if(getOptionValById(&options, 'u') != NULL)
+		unit = atoi(getOptionValById(&options, 'u'));
+	if(getOptionValById(&options, 'a') != NULL)
 		all = 1;
 
 	if(id == -1 || unit == -1 || state == -1) {
-		fprintf(stderr, "kaku_switch: insufficient number of arguments\n");
+		logprintf(LOG_ERR, "kaku_switch: insufficient number of arguments");
+		exit(EXIT_FAILURE);
+	} else if(id > 67108863 || id < 1) {
+		logprintf(LOG_ERR, "kaku_switch: invalid id range");
+		exit(EXIT_FAILURE);
+	} else if(unit > 16 || unit < 0) {
+		logprintf(LOG_ERR, "kaku_switch: invalid unit range");
+		exit(EXIT_FAILURE);
 	} else {
 		kakuSwCreateStart();
 		kakuSwClearCode();
@@ -174,16 +181,13 @@ void kakuSwInit() {
 	kaku_switch.bit = 0;
 	kaku_switch.recording = 0;
 
-	struct option kakuSwOptions[] = {
-		{"id", required_argument, NULL, 'i'},
-		{"unit", required_argument, NULL, 'u'},
-		{"all", no_argument, NULL, 'a'},
-		{"on", no_argument, NULL, 't'},
-		{"off", no_argument, NULL, 'f'},
-		{0,0,0,0}
-	};
+	kaku_switch.options = malloc(5*sizeof(struct options_t));
+	addOption(&kaku_switch.options, 'a', "all", no_argument, 0, 1, NULL);
+	addOption(&kaku_switch.options, 't', "on", no_argument, 0, 1, NULL);
+	addOption(&kaku_switch.options, 'f', "off", no_argument, 0, 1, NULL);
+	addOption(&kaku_switch.options, 'u', "unit", required_argument, config_required, 1, "[0-9]");
+	addOption(&kaku_switch.options, 'i', "id", required_argument, config_required, 1, "[0-9]");
 
-	kaku_switch.options=setOptions(kakuSwOptions);
 	kaku_switch.parseBinary=&kakuSwParseBinary;
 	kaku_switch.createCode=&kakuSwCreateCode;
 	kaku_switch.printHelp=&kakuSwPrintHelp;

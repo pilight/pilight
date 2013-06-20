@@ -27,7 +27,6 @@
 #include <stdarg.h>
 #include <unistd.h>
 #include <fcntl.h>
-#include <getopt.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/ioctl.h>
@@ -36,57 +35,14 @@
 #include <syslog.h>
 #include <time.h>
 #include <math.h>
+#include "config.h"
+#include "log.h"
+#include "options.h"
 
 #include "lirc.h"
 #include "lirc/ir_remote.h"
 #include "lirc/hardware.h"
 #include "lirc/hw-types.h"
-
-#include "protocol.h"
-#include "config.h"
-#include "protocols/kaku_switch.h"
-#include "protocols/kaku_dimmer.h"
-#include "protocols/kaku_old.h"
-#include "protocols/elro.h"
-
-/*
-Start of the original (but stripped) code of mode2
-*/
-
-/* Enable log */
-int logging = 1;
-int loglevel = LOG_INFO;
-
-void logprintf(int prio, char *format_str, ...) {
-	int save_errno = errno;
-	va_list ap;
-
-	if(logging == 0)
-		return;
-
-	if(loglevel >= prio) {
-		fprintf(stderr, "%s: ", progname);
-		va_start(ap, format_str);
-
-		if(prio==LOG_WARNING)
-			fprintf(stderr, "WARNING: ");
-		if(prio==LOG_ERR)
-			fprintf(stderr, "ERROR: ");
-		if(prio==LOG_INFO)
-			fprintf(stderr, "INFO: ");
-		if(prio==LOG_NOTICE)
-			fprintf(stderr, "NOTICE: ");
-		if(prio==LOG_DEBUG)
-			fprintf(stderr, "LOG_DEBUG: ");
-		vfprintf(stderr, format_str, ap);
-		fputc('\n',stderr);
-		fflush(stderr);
-		va_end(ap);
-	}
-	errno = save_errno;
-}
-
-void logperror(int prio, const char *s) { }
 
 int normalize(int i) {
 	double x;
@@ -96,6 +52,11 @@ int normalize(int i) {
 }
 
 int main(int argc, char **argv) {
+
+	enable_shell_log();
+	disable_file_log();
+	set_loglevel(LOG_INFO);
+	
 	progname = malloc((10*sizeof(char))+1);
 	progname = "433-debug";
 
@@ -120,16 +81,15 @@ int main(int argc, char **argv) {
 	int binaryLength = 0;
 
 	hw_choose_driver(NULL);
+	
+	addOption(&options, 'h', "help", no_argument, 0, 1, NULL);
+	addOption(&options, 'v', "version", no_argument, 0, 1, NULL);
+	addOption(&options, 's', "socket", required_argument, 0, 1, "^/dev/([A-Za-z]+)([0-9]+)");
+
 	while (1) {
 		int c;
-		static struct option long_options[] = {
-			{"help", no_argument, NULL, 'h'},
-			{"version", no_argument, NULL, 'v'},
-			{"socket", required_argument, NULL, 's'},
-			{0, 0, 0, 0}
-		};
-		c = getopt_long(argc, argv, "hvs:", long_options, NULL);
-		if (c == -1)
+		c = getOptions(&options, argc, argv, 1);
+		if(c == -1)
 			break;
 		switch (c) {
 			case 'h':
@@ -153,10 +113,6 @@ int main(int argc, char **argv) {
 			break;
 		}
 	}
-	if(optind < argc) {
-		logprintf(LOG_ERR, "too many arguments");
-		return EXIT_FAILURE;
-	}
 
 	if(strcmp(socket, "/var/lirc/lircd") == 0) {
 		logprintf(LOG_ERR, "refusing to connect to lircd socket");
@@ -173,12 +129,6 @@ int main(int argc, char **argv) {
 /*
 End of the original (but stripped) code of mode2
 */
-
-	/* Initialize peripheral modules */
-	kakuSwInit();
-	kakuDimInit();
-	kakuOldInit();
-	elroInit();
 
 	while (1) {
 		data = hw.readdata(0);

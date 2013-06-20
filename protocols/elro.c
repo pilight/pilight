@@ -21,14 +21,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <getopt.h>
 #include "config.h"
+#include "log.h"
 #include "protocol.h"
 #include "binary.h"
 #include "elro.h"
 
 void elroParseBinary() {
-	memset(elro.message,'0',sizeof(elro.message));
+	memset(elro.message,'\0',sizeof(elro.message));
 
 	int unit = binToDec(elro.binary,0,4);
 	int state = elro.binary[10];
@@ -116,17 +116,24 @@ void elroCreateCode(struct options_t *options) {
 	int unit = -1;
 	int state = -1;
 
-	if(atoi(getOption(options,'i')) > 0)
-		id=atoi(getOption(options,'i'));
-	if(atoi(getOption(options,'f')) == 1)
+	if(getOptionValById(&options,'i') != NULL)
+		id=atoi(getOptionValById(&options,'i'));
+	if(getOptionValById(&options,'f') != NULL)
 		state=0;
-	else if(atoi(getOption(options,'t')) == 1)
+	else if(getOptionValById(&options,'t') != NULL)
 		state=1;
-	if(atoi(getOption(options,'u')) > -1)
-		unit = atoi(getOption(options,'u'));
+	if(getOptionValById(&options,'u') != NULL)
+		unit = atoi(getOptionValById(&options,'u'));
 
 	if(id == -1 || unit == -1 || state == -1) {
-		fprintf(stderr, "elro: insufficient number of arguments\n");
+		logprintf(LOG_ERR, "elro: insufficient number of arguments");
+		exit(EXIT_FAILURE);
+	} else if(id > 32 || id < 0) {
+		logprintf(LOG_ERR, "elro: invalid id range");
+		exit(EXIT_FAILURE);
+	} else if(unit > 32 || unit < 0) {
+		logprintf(LOG_ERR, "elro: invalid unit range");
+		exit(EXIT_FAILURE);
 	} else {
 		elroClearCode();
 		elroCreateUnit(unit);
@@ -138,7 +145,7 @@ void elroCreateCode(struct options_t *options) {
 
 void elroPrintHelp() {
 	printf("\t -t --on\t\t\tsend an on signal\n");
-	printf("\t -t --off\t\t\tsend an off signal\n");
+	printf("\t -f --off\t\t\tsend an off signal\n");
 	printf("\t -u --unit=unit\t\t\tcontrol a device with this unit code\n");
 	printf("\t -i --id=id\t\t\tcontrol a device with this id\n");
 }
@@ -161,15 +168,12 @@ void elroInit() {
 	elro.bit = 0;
 	elro.recording = 0;
 
-	struct option elroOptions[] = {
-		{"id", required_argument, NULL, 'i'},
-		{"unit", required_argument, NULL, 'u'},
-		{"on", no_argument, NULL, 't'},
-		{"off", no_argument, NULL, 'f'},
-		{0,0,0,0}
-	};
+	elro.options = malloc(4*sizeof(struct options_t));
+	addOption(&elro.options, 't', "on", no_argument, 0, 1, NULL);	
+	addOption(&elro.options, 'f', "off", no_argument, 0, 1, NULL);
+	addOption(&elro.options, 'u', "unit", required_argument, config_required, 1, "[0-9]");
+	addOption(&elro.options, 'i', "id", required_argument, config_required, 1, "[0-9]");
 
-	elro.options=setOptions(elroOptions);
 	elro.parseBinary=&elroParseBinary;
 	elro.createCode=&elroCreateCode;
 	elro.printHelp=&elroPrintHelp;

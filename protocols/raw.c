@@ -21,14 +21,20 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <getopt.h>
 #include "config.h"
+#include "log.h"
 #include "protocol.h"
 #include "binary.h"
 #include "raw.h"
 
 void rawCreateCode(struct options_t *options) {
-	char *code = getOption(options,'C');
+	char *code = NULL;
+	if(getOptionValById(&options,'C') != NULL) 
+		code = getOptionValById(&options,'C');
+	else {
+		logprintf(LOG_ERR, "raw: insufficient number of arguments");
+		exit(EXIT_FAILURE);
+	}
 	char *pch;
 	int i=0;
 	pch = strtok(code," ");
@@ -50,15 +56,9 @@ void rawInit() {
 	strcpy(raw.desc,"Raw codes");
 	raw.type = RAW;
 
-	raw.bit = 0;
-	raw.recording = 0;
+	raw.options = malloc(sizeof(struct options_t));
+	addOption(&raw.options, 'c', "code", required_argument, 0, 1, NULL);
 
-	struct option rawOptions[] = {
-		{"code", required_argument, NULL, 'c'},
-		{0,0,0,0}
-	};
-
-	raw.options=setOptions(rawOptions);
 	raw.createCode=&rawCreateCode;
 	raw.printHelp=&rawPrintHelp;
 

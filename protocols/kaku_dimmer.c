@@ -21,25 +21,25 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <getopt.h>
 #include "config.h"
+#include "log.h"
 #include "protocol.h"
 #include "binary.h"
 #include "kaku_dimmer.h"
 
 void kakuDimParseBinary() {
-	memset(kaku_dimmer.message,'0',sizeof(kaku_dimmer.message));
+	memset(kaku_dimmer.message, '\0', sizeof(kaku_dimmer.message));
 
 	int i = 0;
-	int dim = binToDecRev(kaku_dimmer.binary,32,35);
-	int unit = binToDecRev(kaku_dimmer.binary,28,31);
+	int dim = binToDecRev(kaku_dimmer.binary, 32, 35);
+	int unit = binToDecRev(kaku_dimmer.binary, 28, 31);
 	int state = kaku_dimmer.binary[27];
 	int group = kaku_dimmer.binary[26];
-	int id = binToDecRev(kaku_dimmer.binary,0,25);
+	int id = binToDecRev(kaku_dimmer.binary, 0, 25);
 
-	i = sprintf(kaku_dimmer.message,"id %d unit %d",id,unit);
+	i = sprintf(kaku_dimmer.message,"id %d unit %d", id, unit);
 	if(dim > 0) {
-		sprintf(kaku_dimmer.message+i," dim %d",dim);
+		sprintf(kaku_dimmer.message+i," dim %d", dim);
 	} else {
 		if(group == 1)
 			strcat(kaku_dimmer.message," all");	
@@ -145,23 +145,33 @@ void kakuDimCreateCode(struct options_t *options) {
 	int unit = -1;
 	int state = -1;
 	int all = 0;
-	int dimlevel = 15;
+	int dimlevel = -1;
 
-	if(atoi(getOption(options,'i')) > 0)
-		id=atoi(getOption(options,'i'));
-	if(atoi(getOption(options,'f')) == 1)
+	if(getOptionValById(&options,'i') != NULL)
+		id=atoi(getOptionValById(&options,'i'));
+	if(getOptionValById(&options,'f') != NULL)
 		state=0;
-	else if(atoi(getOption(options,'t')) == 1)
+	else if(getOptionValById(&options,'t') != NULL)
 		state=1;
-	if(atoi(getOption(options,'d')) == 1)
-		state=atoi(getOption(options,'d'));
-	if(atoi(getOption(options,'u')) > -1)
-		unit = atoi(getOption(options,'u'));
-	if(atoi(getOption(options,'a')) == 1)
+	if(getOptionValById(&options,'d') != NULL)
+		dimlevel=atoi(getOptionValById(&options,'d'));
+	if(getOptionValById(&options,'u') != NULL)
+		unit = atoi(getOptionValById(&options,'u'));
+	if(getOptionValById(&options,'a') != NULL)
 		all = 1;
 
-	if(id == -1 || unit == -1) {
-		fprintf(stderr, "kaku_dimmer: insufficient number of arguments\n");
+	if(id == -1 || unit == -1 || dimlevel == -1) {
+		logprintf(LOG_ERR, "kaku_dimmer: insufficient number of arguments");
+		exit(EXIT_FAILURE);
+	} else if(id > 67108863 || id < 1) {
+		logprintf(LOG_ERR, "kaku_dimmer: invalid id range");
+		exit(EXIT_FAILURE);
+	} else if(unit > 16 || unit < 0) {
+		logprintf(LOG_ERR, "kaku_dimmer: invalid unit range");
+		exit(EXIT_FAILURE);
+	} else if(dimlevel > 16 || dimlevel < 0) {
+		logprintf(LOG_ERR, "kaku_dimmer: invalid dimlevel range");
+		exit(EXIT_FAILURE);
 	} else {
 		kakuDimCreateStart();
 		kakuDimClearCode();
@@ -200,15 +210,12 @@ void kakuDimInit() {
 	kaku_dimmer.bit = 0;
 	kaku_dimmer.recording = 0;
 
-	struct option kakuDimOptions[] = {
-		{"id", required_argument, NULL, 'i'},
-		{"unit", required_argument, NULL, 'u'},
-		{"all", no_argument, NULL, 'a'},
-		{"dimlevel", optional_argument, NULL, 'd'},
-		{0,0,0,0}
-	};
+	kaku_dimmer.options = malloc(4*sizeof(struct options_t));
+	addOption(&kaku_dimmer.options, 'd', "dimlevel", required_argument, 0, 1, "[0-9]");
+	addOption(&kaku_dimmer.options, 'a', "all", no_argument, 0, 1, NULL);
+	addOption(&kaku_dimmer.options, 'u', "unit", required_argument, config_required, 1, "[0-9]");
+	addOption(&kaku_dimmer.options, 'i', "id", required_argument, config_required, 1, "[0-9]");
 
-	kaku_dimmer.options=setOptions(kakuDimOptions);
 	kaku_dimmer.parseBinary=&kakuDimParseBinary;
 	kaku_dimmer.createCode=&kakuDimCreateCode;
 	kaku_dimmer.printHelp=&kakuDimPrintHelp;

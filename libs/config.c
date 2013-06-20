@@ -24,12 +24,12 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <unistd.h>
-#include <getopt.h>
 #include <libconfig.h>
 
-#include "protocol.h"
 #include "config.h"
+#include "log.h"
 #include "options.h"
+#include "protocol.h"
 
 int read_config(char *configfile) {
 	config_t cfg, *cf = NULL;
@@ -90,14 +90,14 @@ int read_config(char *configfile) {
 	protocol_t *device = malloc(sizeof(protocol_t));
 
 	/* Temporarily options pointer */
-	struct option *backup_options;	
+	struct options_t *backup_options;	
 
 	/* Initialize and open config file */
 	cf = &cfg;
 	config_init(cf);
 	
 	if(!config_read_file(cf, configfile)) {
-		fprintf(stderr, "%s:%d - %s\n", config_error_file(cf), config_error_line(cf), config_error_text(cf));
+		logprintf(LOG_ERR, "%s:%d - %s\n", config_error_file(cf), config_error_line(cf), config_error_text(cf));
 		config_destroy(cf);
 		return (EXIT_FAILURE);
 	}
@@ -111,7 +111,7 @@ int read_config(char *configfile) {
 		for(a=nrlocations-1;a>=0;a--) {
 			conf_locations = config_setting_get_elem(config_setting_get_elem(conf_root, 0), a);
 			if(config_setting_lookup_string(conf_locations, "name", &locname) != CONFIG_TRUE) {
-				printf("%s: location #%d does not have a name\n", progname, (a+1));
+				logprintf(LOG_ERR, "location #%d does not have a name", (a+1));
 				return (EXIT_FAILURE);
 			}
 			
@@ -133,17 +133,17 @@ int read_config(char *configfile) {
 				if(b > 0) {
 					/* Check if the device has a name */
 					if(config_setting_lookup_string(conf_node, "name", &devname) != CONFIG_TRUE) {
-						printf("%s: device #%d of \"%s\", name field missing\n", progname, b, locname);
+						logprintf(LOG_ERR, "device #%d of \"%s\", name field missing", b, locname);
 						errors++;
 					}
 					/* Check if the device has a value field */
 					if(config_setting_lookup_int(conf_node, "value", &itemp) != CONFIG_TRUE) {
-						printf("%s: device #%d of \"%s\", value field missing\n", progname, b, locname);
+						logprintf(LOG_ERR, "device #%d of \"%s\", value field missing", b, locname);
 						errors++;
 					}
 					/* Check if the device has a protocol defined */
 					if(config_setting_lookup_string(conf_node, "protocol", &protoname) != CONFIG_TRUE) {
-						printf("%s: device #%d of \"%s\", protocol field missing\n", progname, b, locname);
+						logprintf(LOG_ERR, "device #%d of \"%s\", protocol field missing", b, locname);
 						errors++;
 					} else {
 
@@ -169,7 +169,7 @@ int read_config(char *configfile) {
 									
 									/* Check if all required values are present, and all non-required values are not present */
 									backup_options=device->options;
-									while(backup_options->name != NULL) {
+									while(backup_options != NULL && backup_options->name != NULL) {
 										valid_setting = 0;
 										for(c=0;c<nrvalues;c++) {
 											/* Copy all CLI options from the specific protocol */
@@ -186,9 +186,9 @@ int read_config(char *configfile) {
 										conf_type = config_setting_type(conf_value);
 										if(conf_type != 2 && conf_type != 5 && valid_setting == 1) {
 											valid_setting = 0;
-											printf("%s: in \"%s\", %s is of an incorrect type\n", progname, devname, backup_options->name);
+											logprintf(LOG_ERR, "in \"%s\", %s is of an incorrect type\n", devname, backup_options->name);
 											errors++;
-										} else if(valid_setting == 1 && backup_options->has_arg == 1) {
+										} else if(valid_setting == 1 && backup_options->conftype == config_required) {
 											/* Store settings their device */
 											snode = malloc(sizeof(struct settings_t));
 											snode->name = strdup(setting);
@@ -210,17 +210,16 @@ int read_config(char *configfile) {
 											snode->next = settings;
 											settings = snode;
 										/* If settings is not valid but required */
-										} else if(valid_setting == 0 && backup_options->has_arg == 1) {
-											printf("%s: in \"%s\", missing %s field for %s\n", progname, devname, backup_options->name, protoname);
+										} else if(valid_setting == 0 && backup_options->conftype == config_required) {
+											logprintf(LOG_ERR, "in \"%s\", missing %s field for %s\n", devname, backup_options->name, protoname);
 											errors++;
 										/* If settings is valid but not required */
-										} else if(valid_setting == 1 && backup_options->has_arg != 1) {
-											printf("%s: in \"%s\", field %s is invalid for %s\n", progname, devname, backup_options->name, protoname);
+										} else if(valid_setting == 1 && backup_options->argtype != config_required) {
+											logprintf(LOG_ERR, "in \"%s\", field %s is invalid for %s\n", devname, backup_options->name, protoname);
 											errors++;
 										}
-										backup_options++;
+										backup_options = backup_options->next;
 									}
-									
 									/* Check if the device contains settings unknown to this protocol */
 									for(c=0;c<nrvalues;c++) {
 										
@@ -230,15 +229,15 @@ int read_config(char *configfile) {
 										if(!(strcmp(setting,"protocol") == 0 || strcmp(setting,"value") == 0 || strcmp(setting,"name") == 0)) {
 											valid_setting = 0;
 											backup_options=device->options;
-											while(backup_options->name != NULL) {
+											while(backup_options != NULL) {
 												if(strcmp(setting,backup_options->name) == 0) {
 													valid_setting = 1;
 													break;
 												}
-											backup_options++;
+											backup_options = backup_options->next;
 											}
 											if(valid_setting == 0) {
-												printf("%s: in \"%s\", %s is an invalid setting for %s\n", progname, devname, setting, protoname);
+												logprintf(LOG_ERR, "in \"%s\", %s is an invalid setting for %s\n", devname, setting, protoname);
 												errors++;
 											}
 										}
@@ -249,7 +248,7 @@ int read_config(char *configfile) {
 						}
 						/* No valid protoocol was given */
 						if(match == 0) {
-							printf("%s: in \"%s\", %s is an invalid protocol\n", progname, devname, protoname);
+							logprintf(LOG_ERR, "in \"%s\", %s is an invalid protocol\n", devname, protoname);
 							errors++;
 						} else if(errors == 0) {							
 							dnode->protocol = device;

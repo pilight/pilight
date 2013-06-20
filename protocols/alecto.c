@@ -21,8 +21,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <getopt.h>
 #include "config.h"
+#include "log.h"
 #include "protocol.h"
 #include "binary.h"
 #include "alecto.h"
@@ -35,7 +35,7 @@ void alectoParseCode() {
 	int humidity;
 	int battery;
 
-	memset(alecto.message,'0',sizeof(alecto.message));
+	memset(alecto.message, '\0', sizeof(alecto.message));
 
 	for(i=1;i<alecto.rawLength-1;i+=2) {
 		alecto.binary[x++] = alecto.code[i];

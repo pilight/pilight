@@ -3,7 +3,7 @@ CFLAGS = -O3 -g -Wall -static -I. -I.. -I../libs/
 SRC = $(wildcard *.c)
 OBJS = $(SRC:.c=.o)
 HEADERS := $(SRC:.c=.h)
-INCLUDES = $(wildcard ../libs/*.h)
+INCLUDES = $(wildcard ../libs/*.h) ../libs/libs.o
 
 all: $(OBJS) protocols.o
 
