@@ -18,8 +18,8 @@
 	<http://www.gnu.org/licenses/>
 */
 
-#ifndef OPTIONS_H_
-#define OPTIONS_H_
+#ifndef _OPTIONS_H_
+#define _OPTIONS_H_
 
 #define no_argument			1
 #define required_argument 	2
@@ -32,13 +32,11 @@ typedef struct options_t options_t;
 
 struct options_t {
 	int id;
-	char *name;
-	char *value;
+	char name[255];
+	char value[255];
+	char mask[255];
 	int argtype;
 	int conftype;
-	int child;
-	int order;
-	char *mask;
 	struct options_t *next;
 };
 
@@ -52,7 +50,7 @@ char *getOptionNameById(struct options_t **options, int id);
 int getOptionIdByName(struct options_t **options, char *name);
 char *getOptionValByName(struct options_t **options, char *name);
 int getOptions(struct options_t **options, int argc, char **argv, int error_check);
-void addOption(struct options_t **options, int id, char *name, int argtype, int conftype, int child, char *mask);
+void addOption(struct options_t **options, int id, char *name, int argtype, int conftype, char *mask);
 void mergeOptions(struct options_t **a, struct options_t **b);
 
 #endif

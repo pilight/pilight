@@ -27,20 +27,24 @@
 #include "binary.h"
 #include "kaku_switch.h"
 
-void kakuSwParseBinary() {
+void kakuSwCreateMessage(int id, int unit, int state, int all) {
 	memset(kaku_switch.message, '\0', sizeof(kaku_switch.message));
+
+	sprintf(kaku_switch.message, "id %d unit %d", id, unit);
+	if(all == 1)
+		strcat(kaku_switch.message, " all");
+	if(state == 1)
+		strcat(kaku_switch.message, " on");
+	else
+		strcat(kaku_switch.message, " off");
+}
+
+void kakuSwParseBinary() {
 	int unit = binToDecRev(kaku_switch.binary, 28, 31);
 	int state = kaku_switch.binary[27];
-	int group = kaku_switch.binary[26];
+	int all = kaku_switch.binary[26];
 	int id = binToDecRev(kaku_switch.binary, 0, 25);
-
-	sprintf(kaku_switch.message,"id %d unit %d",id,unit);
-	if(group == 1)
-		strcat(kaku_switch.message," all");
-	if(state == 1)
-		strcat(kaku_switch.message," on");
-	else
-		strcat(kaku_switch.message," off");
+	kakuSwCreateMessage(id, unit, state, all);
 }
 
 void kakuSwCreateLow(int s, int e) {
@@ -145,6 +149,7 @@ void kakuSwCreateCode(struct options_t *options) {
 		logprintf(LOG_ERR, "kaku_switch: invalid unit range");
 		exit(EXIT_FAILURE);
 	} else {
+		kakuSwCreateMessage(id, unit, state, all);	
 		kakuSwCreateStart();
 		kakuSwClearCode();
 		kakuSwCreateId(id);
@@ -165,8 +170,8 @@ void kakuSwPrintHelp() {
 
 void kakuSwInit() {
 
-	strcpy(kaku_switch.id,"kaku_switch");
-	strcpy(kaku_switch.desc,"KlikAanKlikUit Switches");
+	strcpy(kaku_switch.id, "kaku_switch");
+	strcpy(kaku_switch.desc, "KlikAanKlikUit Switches");
 	kaku_switch.type = SWITCH;
 	kaku_switch.header = 10;
 	kaku_switch.pulse = 5;
@@ -181,12 +186,11 @@ void kakuSwInit() {
 	kaku_switch.bit = 0;
 	kaku_switch.recording = 0;
 
-	kaku_switch.options = malloc(5*sizeof(struct options_t));
-	addOption(&kaku_switch.options, 'a', "all", no_argument, 0, 1, NULL);
-	addOption(&kaku_switch.options, 't', "on", no_argument, 0, 1, NULL);
-	addOption(&kaku_switch.options, 'f', "off", no_argument, 0, 1, NULL);
-	addOption(&kaku_switch.options, 'u', "unit", required_argument, config_required, 1, "[0-9]");
-	addOption(&kaku_switch.options, 'i', "id", required_argument, config_required, 1, "[0-9]");
+	addOption(&kaku_switch.options, 'a', "all", no_argument, 0, NULL);
+	addOption(&kaku_switch.options, 't', "on", no_argument, 0, NULL);
+	addOption(&kaku_switch.options, 'f', "off", no_argument, 0, NULL);
+	addOption(&kaku_switch.options, 'u', "unit", required_argument, config_required, "[0-9]");
+	addOption(&kaku_switch.options, 'i', "id", required_argument, config_required, "[0-9]");
 
 	kaku_switch.parseBinary=&kakuSwParseBinary;
 	kaku_switch.createCode=&kakuSwCreateCode;

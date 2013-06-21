@@ -24,6 +24,7 @@
 protocol_t kaku_switch;
 
 void kakuSwInit();
+void kakuSwCreateMessage(int id, int unit, int state, int all);
 void kakuSwParseBinary();
 void kakuSwCreateCode(struct options_t *options);
 void kakuSwCreateLow(int s, int e);

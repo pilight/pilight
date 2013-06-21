@@ -39,7 +39,7 @@ void setOptionValById(struct options_t **options, int id, char *val) {
 	struct options_t *temp = *options;
 	while(temp != NULL) {
 		if(temp->id == id) {
-			temp->value = strdup(val);
+			strcpy(temp->value,val);
 			break;
 		}
 		temp = temp->next;
@@ -153,7 +153,7 @@ int getOptions(struct options_t **options, int argc, char **argv, int error_chec
 	regex_t regex;
 	int reti;
 	char *mask;
-	
+
 	/* Reservate enough memory to store all variables */
 	longarg = malloc(sizeof(char)*255);
 	shortarg = malloc(sizeof(char)*3);
@@ -163,14 +163,14 @@ int getOptions(struct options_t **options, int argc, char **argv, int error_chec
 	memset(longarg,'\0',sizeof(longarg));
 	memset(shortarg,'\0',sizeof(shortarg));	
 	memset(optarg,'\0',sizeof(optarg));	
-	
+
 	/* If have readed all arguments, exit and reset */
 	if(getOptPos>=(argc-1)) {
 		getOptPos=0;
 		return -1;
 	} else {
 		getOptPos++;
-		
+
 		/* Check if the CLI character contains an equals to (=) sign.
 		   If it does, we have probably encountered a long argument */
 		if(strchr(argv[getOptPos],'=') != NULL) {
@@ -281,7 +281,7 @@ int getOptions(struct options_t **options, int argc, char **argv, int error_chec
 			else {
 				/* If the argument has a regex mask, check if it passes */
 				mask = getOptionMaskById(options, c);
-				if(mask != NULL) {
+				if(strlen(mask) > 0) {
 					reti = regcomp(&regex, mask, REG_EXTENDED);
 					if(reti) {
 						logprintf(LOG_ERR, "could not compile regex");
@@ -307,11 +307,9 @@ int getOptions(struct options_t **options, int argc, char **argv, int error_chec
 }
 
 /* Add a new option to the options struct */
-void addOption(struct options_t **options, int id, char *name, int argtype, int conftype, int child, char *mask) {
+void addOption(struct options_t **options, int id, char *name, int argtype, int conftype, char *mask) {
 	if(!(argtype >= 0 && argtype <= 3)) {
 		logprintf(LOG_ERR, "tying to add an invalid option type");
-	} else if(!(child >= 0 && child <= 1)) {
-		logprintf(LOG_ERR, "trying to add an option from an invalid parent");
 	} else if(!(conftype >= 0 && conftype <= 2)) {
 		logprintf(LOG_ERR, "tying to add an option with an invalid config type");
 	} else if(name == NULL) {
@@ -323,15 +321,14 @@ void addOption(struct options_t **options, int id, char *name, int argtype, int 
 	} else {
 		optnode = malloc(sizeof(struct options_t));	
 		optnode->id = id;
-		optnode->name=strdup(name);
-		optnode->value = '\0';
+		strcpy(optnode->name, name);
+		memset(optnode->value, '\0', sizeof(optnode->value));
 		optnode->argtype = argtype;
 		optnode->conftype = conftype;
-		optnode->child = child;
 		if(mask == NULL)
-			optnode->mask = '\0';
+			memset(optnode->value, '\0', sizeof(optnode->mask));
 		else
-			optnode->mask = strdup(mask);
+			strcpy(optnode->mask, mask);
 		optnode->next = *options;
 		*options = optnode;
 	}
@@ -340,23 +337,22 @@ void addOption(struct options_t **options, int id, char *name, int argtype, int 
 /* Merge two options structs */
 void mergeOptions(struct options_t **a, struct options_t **b) {
 	struct options_t *temp = *b;
-	while(temp->name != NULL) {
-		optnode = malloc(sizeof(struct options_t));	
+	while(temp != NULL && temp->name != NULL) {
+		optnode = malloc(sizeof(struct options_t));
 		optnode->id = temp->id;
-		optnode->name=strdup(temp->name);
+		strcpy(optnode->name, temp->name);
 		if(temp->value == NULL)
-			optnode->value='\0';
+			memset(optnode->value, '\0', sizeof(optnode->value));
 		else
-			optnode->value=strdup(temp->value);
+			strcpy(optnode->value, temp->value);
 		if(temp->mask == NULL)
-			optnode->mask='\0';
+			memset(optnode->value, '\0', sizeof(optnode->mask));
 		else
-			optnode->mask=strdup(temp->mask);
+			strcpy(optnode->mask, temp->mask);
 		optnode->argtype = temp->argtype;
 		optnode->conftype = temp->conftype;
-		optnode->child = temp->child;
 		optnode->next = *a;
 		*a = optnode;
 		temp = temp->next;
-	}	
+	}
 }

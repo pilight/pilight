@@ -12,6 +12,6 @@ all: $(OBJS) protocols.o
 
 protocols.o: $(OBJS)
 	ld -L/usr/local/lib -r $(OBJS) -o protocols.o
-	
+
 clean:
 	rm *.o >/dev/null 2>&1 || true

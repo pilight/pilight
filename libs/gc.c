@@ -40,10 +40,10 @@ void gc_detach(int (*fp)()) {
 
 	for(i=0; i<gc.nr; ++i) {
 		if(gc.listeners[i] == fp) {
-		  gc.nr--;
-		  gc.listeners[i] = gc.listeners[gc.nr];
+			gc.nr--;
+			gc.listeners[i] = gc.listeners[gc.nr];
 		}
-	  }
+	}
 }
 
 /* Add function to gc */

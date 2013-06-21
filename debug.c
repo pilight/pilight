@@ -82,9 +82,9 @@ int main(int argc, char **argv) {
 
 	hw_choose_driver(NULL);
 	
-	addOption(&options, 'h', "help", no_argument, 0, 1, NULL);
-	addOption(&options, 'v', "version", no_argument, 0, 1, NULL);
-	addOption(&options, 's', "socket", required_argument, 0, 1, "^/dev/([A-Za-z]+)([0-9]+)");
+	addOption(&options, 'h', "help", no_argument, 0, NULL);
+	addOption(&options, 'v', "version", no_argument, 0, NULL);
+	addOption(&options, 's', "socket", required_argument, 0, "^/dev/([A-Za-z]+)([0-9]+)");
 
 	while (1) {
 		int c;

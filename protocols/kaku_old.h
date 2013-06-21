@@ -24,6 +24,7 @@
 protocol_t kaku_old;
 
 void kakuOldInit();
+void kakuOldCreateMessage(int id, int unit, int state);
 void kakuOldParseBinary();
 void kakuOldCreateCode(struct options_t *options);
 void kakuOldCreateUnit(int unit);

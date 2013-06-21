@@ -18,12 +18,13 @@
 	<http://www.gnu.org/licenses/>
 */
 
-#ifndef BINARY_H_
-#define BINARY_H_
+#ifndef _BINARY_H_
+#define _BINARY_H_
 
 int binToDecRev(int *binary, int s, int e);
 int binToDec(int *binary, int s, int e);
 int devToBinRev(int nr, int *binary);
 int decToBin(int n, int binary[]);
 int decToBinRev(int n, int binary[]);
+
 #endif

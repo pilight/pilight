@@ -27,27 +27,31 @@
 #include "binary.h"
 #include "kaku_dimmer.h"
 
-void kakuDimParseBinary() {
+void kakuDimCreateMessage(int id, int unit, int state, int all, int dimlevel) {
+	int i = 0;
+
 	memset(kaku_dimmer.message, '\0', sizeof(kaku_dimmer.message));
 
-	int i = 0;
-	int dim = binToDecRev(kaku_dimmer.binary, 32, 35);
+	i = sprintf(kaku_dimmer.message, "id %d unit %d", id, unit);
+	if(dimlevel > 0) {
+		sprintf(kaku_dimmer.message+i, " dim %d", dimlevel);
+	} else {
+		if(all == 1)
+			strcat(kaku_dimmer.message, " all");	
+		if(state == 1)
+			strcat(kaku_dimmer.message, " on");
+		else
+			strcat(kaku_dimmer.message, " off");
+	}
+}
+
+void kakuDimParseBinary() {
+	int dimlevel = binToDecRev(kaku_dimmer.binary, 32, 35);
 	int unit = binToDecRev(kaku_dimmer.binary, 28, 31);
 	int state = kaku_dimmer.binary[27];
-	int group = kaku_dimmer.binary[26];
+	int all = kaku_dimmer.binary[26];
 	int id = binToDecRev(kaku_dimmer.binary, 0, 25);
-
-	i = sprintf(kaku_dimmer.message,"id %d unit %d", id, unit);
-	if(dim > 0) {
-		sprintf(kaku_dimmer.message+i," dim %d", dim);
-	} else {
-		if(group == 1)
-			strcat(kaku_dimmer.message," all");	
-		if(state == 1)
-			strcat(kaku_dimmer.message," on");
-		else
-			strcat(kaku_dimmer.message," off");
-	}
+	kakuDimCreateMessage(id, unit, state, all, dimlevel);
 }
 
 void kakuDimCreateLow(int s, int e) {
@@ -90,14 +94,14 @@ void kakuDimCreateId(int id) {
 	for(i=0;i<=length;i++) {
 		if(binary[i]==1) {
 			x=((length-i)+1)*4;
-			kakuDimCreateHigh(106-x,106-(x-3));
+			kakuDimCreateHigh(106-x, 106-(x-3));
 		}
 	}
 }
 
 void kakuDimCreateAll(int all) {
 	if(all == 1) {
-		kakuDimCreateHigh(106,109);
+		kakuDimCreateHigh(106, 109);
 	}
 }
 
@@ -117,7 +121,7 @@ void kakuDimCreateUnit(int unit) {
 	for(i=0;i<=length;i++) {
 		if(binary[i]==1) {
 			x=((length-i)+1)*4;
-			kakuDimCreateHigh(130-x,130-(x-3));
+			kakuDimCreateHigh(130-x, 130-(x-3));
 		}
 	}
 }
@@ -131,7 +135,7 @@ void kakuDimCreateDimlevel(int dimlevel) {
 	for(i=0;i<=length;i++) {
 		if(binary[i]==1) {
 			x=((length-i)+1)*4;
-			kakuDimCreateHigh(146-x,146-(x-3));
+			kakuDimCreateHigh(146-x, 146-(x-3));
 		}
 	}
 }
@@ -147,17 +151,17 @@ void kakuDimCreateCode(struct options_t *options) {
 	int all = 0;
 	int dimlevel = -1;
 
-	if(getOptionValById(&options,'i') != NULL)
-		id=atoi(getOptionValById(&options,'i'));
-	if(getOptionValById(&options,'f') != NULL)
+	if(getOptionValById(&options, 'i') != NULL)
+		id=atoi(getOptionValById(&options, 'i'));
+	if(getOptionValById(&options, 'f') != NULL)
 		state=0;
-	else if(getOptionValById(&options,'t') != NULL)
+	else if(getOptionValById(&options, 't') != NULL)
 		state=1;
-	if(getOptionValById(&options,'d') != NULL)
-		dimlevel=atoi(getOptionValById(&options,'d'));
-	if(getOptionValById(&options,'u') != NULL)
-		unit = atoi(getOptionValById(&options,'u'));
-	if(getOptionValById(&options,'a') != NULL)
+	if(getOptionValById(&options, 'd') != NULL)
+		dimlevel=atoi(getOptionValById(&options, 'd'));
+	if(getOptionValById(&options, 'u') != NULL)
+		unit = atoi(getOptionValById(&options, 'u'));
+	if(getOptionValById(&options, 'a') != NULL)
 		all = 1;
 
 	if(id == -1 || unit == -1 || dimlevel == -1) {
@@ -173,6 +177,7 @@ void kakuDimCreateCode(struct options_t *options) {
 		logprintf(LOG_ERR, "kaku_dimmer: invalid dimlevel range");
 		exit(EXIT_FAILURE);
 	} else {
+		kakuDimCreateMessage(id, unit, state, all, dimlevel);
 		kakuDimCreateStart();
 		kakuDimClearCode();
 		kakuDimCreateId(id);
@@ -194,8 +199,8 @@ void kakuDimPrintHelp() {
 
 void kakuDimInit() {
 
-	strcpy(kaku_dimmer.id,"kaku_dimmer");
-	strcpy(kaku_dimmer.desc,"KlikAanKlikUit Dimmers");
+	strcpy(kaku_dimmer.id, "kaku_dimmer");
+	strcpy(kaku_dimmer.desc, "KlikAanKlikUit Dimmers");
 	kaku_dimmer.type = DIMMER;
 	kaku_dimmer.header = 10;
 	kaku_dimmer.pulse = 5;
@@ -210,11 +215,10 @@ void kakuDimInit() {
 	kaku_dimmer.bit = 0;
 	kaku_dimmer.recording = 0;
 
-	kaku_dimmer.options = malloc(4*sizeof(struct options_t));
-	addOption(&kaku_dimmer.options, 'd', "dimlevel", required_argument, 0, 1, "[0-9]");
-	addOption(&kaku_dimmer.options, 'a', "all", no_argument, 0, 1, NULL);
-	addOption(&kaku_dimmer.options, 'u', "unit", required_argument, config_required, 1, "[0-9]");
-	addOption(&kaku_dimmer.options, 'i', "id", required_argument, config_required, 1, "[0-9]");
+	addOption(&kaku_dimmer.options, 'd', "dimlevel", required_argument, 0, "[0-9]");
+	addOption(&kaku_dimmer.options, 'a', "all", no_argument, 0, NULL);
+	addOption(&kaku_dimmer.options, 'u', "unit", required_argument, config_required, "[0-9]");
+	addOption(&kaku_dimmer.options, 'i', "id", required_argument, config_required, "[0-9]");
 
 	kaku_dimmer.parseBinary=&kakuDimParseBinary;
 	kaku_dimmer.createCode=&kakuDimCreateCode;

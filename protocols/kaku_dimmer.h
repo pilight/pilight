@@ -24,6 +24,7 @@
 protocol_t kaku_dimmer;
 
 void kakuDimInit();
+void kakuDimCreateMessage(int id, int unit, int state, int all, int dimlevel);
 void kakuDimParseBinary();
 void kakuDimCreateCode(struct options_t *options);
 void kakuDimCreateLow(int s, int e);

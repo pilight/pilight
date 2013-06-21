@@ -27,21 +27,23 @@
 #include "binary.h"
 #include "elro.h"
 
-void elroParseBinary() {
-	memset(elro.message,'\0',sizeof(elro.message));
+void elroCreateMessage(int id, int unit, int state) {
+	memset(elro.message, '\0', sizeof(elro.message));
 
-	int unit = binToDec(elro.binary,0,4);
+	sprintf(elro.message, "id %d unit %d", id, unit);
+	if(state==1)
+		strcat(elro.message, " on");
+	else
+		strcat(elro.message, " off");
+}
+
+void elroParseBinary() {
+	int unit = binToDec(elro.binary, 0, 4);
 	int state = elro.binary[10];
 	int check = elro.binary[11];
-	int id = binToDec(elro.binary,5,9);
-
-	if(check != state) {
-		sprintf(elro.message,"id %d unit %d",id,unit);
-		if(state==1)
-			strcat(elro.message," on");
-		else
-			strcat(elro.message," off");
-	}
+	int id = binToDec(elro.binary, 5, 9);
+	if(check != state)
+		elroCreateMessage(id, unit, state);
 }
 
 void elroCreateLow(int s, int e) {
@@ -79,7 +81,7 @@ void elroCreateUnit(int unit) {
 	for(i=0;i<=length;i++) {
 		if(binary[i]==1) {
 			x=(i+1)*4;
-			elroCreateHigh(1+(x-3),1+x);
+			elroCreateHigh(1+(x-3), 1+x);
 		}
 	}
 }
@@ -93,16 +95,16 @@ void elroCreateId(int id) {
 	for(i=0;i<=length;i++) {
 		if(binary[i]==1) {
 			x=(i+1)*4;
-			elroCreateHigh(21+(x-3),21+x);
+			elroCreateHigh(21+(x-3), 21+x);
 		}
 	}
 }
 
 void elroCreateState(int state) {
 	if(state == 0) {
-		elroCreateHigh(44,47);
+		elroCreateHigh(44, 47);
 	} else {
-		elroCreateHigh(40,43);
+		elroCreateHigh(40, 43);
 	}
 }
 
@@ -116,14 +118,14 @@ void elroCreateCode(struct options_t *options) {
 	int unit = -1;
 	int state = -1;
 
-	if(getOptionValById(&options,'i') != NULL)
-		id=atoi(getOptionValById(&options,'i'));
-	if(getOptionValById(&options,'f') != NULL)
+	if(getOptionValById(&options, 'i') != NULL)
+		id=atoi(getOptionValById(&options, 'i'));
+	if(getOptionValById(&options, 'f') != NULL)
 		state=0;
-	else if(getOptionValById(&options,'t') != NULL)
+	else if(getOptionValById(&options, 't') != NULL)
 		state=1;
-	if(getOptionValById(&options,'u') != NULL)
-		unit = atoi(getOptionValById(&options,'u'));
+	if(getOptionValById(&options, 'u') != NULL)
+		unit = atoi(getOptionValById(&options, 'u'));
 
 	if(id == -1 || unit == -1 || state == -1) {
 		logprintf(LOG_ERR, "elro: insufficient number of arguments");
@@ -135,6 +137,7 @@ void elroCreateCode(struct options_t *options) {
 		logprintf(LOG_ERR, "elro: invalid unit range");
 		exit(EXIT_FAILURE);
 	} else {
+		elroCreateMessage(id, unit, state);	
 		elroClearCode();
 		elroCreateUnit(unit);
 		elroCreateId(id);
@@ -152,8 +155,8 @@ void elroPrintHelp() {
 
 void elroInit() {
 
-	strcpy(elro.id,"elro");
-	strcpy(elro.desc,"Elro Switches");
+	strcpy(elro.id, "elro");
+	strcpy(elro.desc, "Elro Switches");
 	elro.type = SWITCH;
 	elro.header = 4;
 	elro.pulse = 4;
@@ -168,11 +171,10 @@ void elroInit() {
 	elro.bit = 0;
 	elro.recording = 0;
 
-	elro.options = malloc(4*sizeof(struct options_t));
-	addOption(&elro.options, 't', "on", no_argument, 0, 1, NULL);	
-	addOption(&elro.options, 'f', "off", no_argument, 0, 1, NULL);
-	addOption(&elro.options, 'u', "unit", required_argument, config_required, 1, "[0-9]");
-	addOption(&elro.options, 'i', "id", required_argument, config_required, 1, "[0-9]");
+	addOption(&elro.options, 't', "on", no_argument, 0, NULL);	
+	addOption(&elro.options, 'f', "off", no_argument, 0, NULL);
+	addOption(&elro.options, 'u', "unit", required_argument, config_required, "[0-9]");
+	addOption(&elro.options, 'i', "id", required_argument, config_required, "[0-9]");
 
 	elro.parseBinary=&elroParseBinary;
 	elro.createCode=&elroCreateCode;

@@ -18,8 +18,8 @@
 	<http://www.gnu.org/licenses/>
 */
 
-#ifndef GC_H_
-#define GC_H_
+#ifndef _GC_H_
+#define _GC_H_
 
 typedef struct {
 	int nr;

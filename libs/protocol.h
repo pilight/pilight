@@ -18,8 +18,8 @@
 	<http://www.gnu.org/licenses/>
 */
 
-#ifndef PROTOCOL_H_
-#define PROTOCOL_H_
+#ifndef _PROTOCOL_H_
+#define _PROTOCOL_H_
 
 #include "options.h"
 

@@ -41,7 +41,7 @@ void logprintf(int prio, char *format_str, ...) {
 				gc_attach(log_gc);
 			}
 		}
-	
+
 		if(filelog == 0 && lf != NULL && loglevel < LOG_DEBUG) {
 			time_t current;
 			char *currents;

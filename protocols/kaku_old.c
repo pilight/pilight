@@ -27,18 +27,21 @@
 #include "binary.h"
 #include "kaku_old.h"
 
-void kakuOldParseBinary() {
-	memset(kaku_old.message,'\0',sizeof(kaku_old.message));
-	
-	int unit = binToDec(kaku_old.binary,0,4);
-	int state = kaku_old.binary[11];
-	int id = binToDec(kaku_old.binary,5,9);
+void kakuOldCreateMessage(int id, int unit, int state) {
+	memset(kaku_old.message, '\0', sizeof(kaku_old.message));
 
-	sprintf(kaku_old.message,"id %d unit %d",id,unit);
+	sprintf(kaku_old.message, "id %d unit %d", id, unit);
 	if(state==0)
 		strcat(kaku_old.message," on");
 	else
 		strcat(kaku_old.message," off");
+}
+
+void kakuOldParseBinary() {
+	int unit = binToDec(kaku_old.binary, 0, 4);
+	int state = kaku_old.binary[11];
+	int id = binToDec(kaku_old.binary, 5, 9);
+	kakuOldCreateMessage(id, unit, state);
 }
 
 void kakuOldCreateLow(int s, int e) {
@@ -90,7 +93,7 @@ void kakuOldCreateId(int id) {
 	for(i=0;i<=length;i++) {
 		if(binary[i]==1) {
 			x=(i+1)*4;
-			kakuOldCreateHigh(21+(x-3),21+x);
+			kakuOldCreateHigh(21+(x-3), 21+x);
 		}
 	}
 }
@@ -112,14 +115,14 @@ void kakuOldCreateCode(struct options_t *options) {
 	int unit = -1;
 	int state = -1;
 
-	if(getOptionValById(&options,'i') != NULL)
-		id=atoi(getOptionValById(&options,'i'));
-	if(getOptionValById(&options,'f') != NULL)
+	if(getOptionValById(&options, 'i') != NULL)
+		id=atoi(getOptionValById(&options, 'i'));
+	if(getOptionValById(&options, 'f') != NULL)
 		state=0;
-	else if(getOptionValById(&options,'t') != NULL)
+	else if(getOptionValById(&options, 't') != NULL)
 		state=1;
-	if(getOptionValById(&options,'u') != NULL)
-		unit = atoi(getOptionValById(&options,'u'));
+	if(getOptionValById(&options, 'u') != NULL)
+		unit = atoi(getOptionValById(&options, 'u'));
 
 	if(id == -1 || unit == -1 || state == -1) {
 		logprintf(LOG_ERR, "kaku_old: insufficient number of arguments");
@@ -131,6 +134,7 @@ void kakuOldCreateCode(struct options_t *options) {
 		logprintf(LOG_ERR, "kaku_old: invalid unit range");
 		exit(EXIT_FAILURE);
 	} else {
+		kakuOldCreateMessage(id, unit, state);
 		kakuOldClearCode();
 		kakuOldCreateUnit(unit);
 		kakuOldCreateId(id);
@@ -148,8 +152,8 @@ void kakuOldPrintHelp() {
 
 void kakuOldInit() {
 
-	strcpy(kaku_old.id,"kaku_old");
-	strcpy(kaku_old.desc,"Old KlikAanKlikUit Switches");
+	strcpy(kaku_old.id, "kaku_old");
+	strcpy(kaku_old.desc, "Old KlikAanKlikUit Switches");
 	kaku_old.type = SWITCH;
 	kaku_old.header = 4;
 	kaku_old.pulse = 4;
@@ -164,11 +168,10 @@ void kakuOldInit() {
 	kaku_old.bit = 0;
 	kaku_old.recording = 0;
 
-	kaku_old.options = malloc(4*sizeof(struct options_t));
-	addOption(&kaku_old.options, 't', "on", no_argument, 0, 1, NULL);	
-	addOption(&kaku_old.options, 'f', "off", no_argument, 0, 1, NULL);	
-	addOption(&kaku_old.options, 'u', "unit", required_argument, config_required, 1, "[0-9]");
-	addOption(&kaku_old.options, 'i', "id", required_argument, config_required, 1, "[0-9]");
+	addOption(&kaku_old.options, 't', "on", no_argument, 0, NULL);	
+	addOption(&kaku_old.options, 'f', "off", no_argument, 0, NULL);	
+	addOption(&kaku_old.options, 'u', "unit", required_argument, config_required, "[0-9]");
+	addOption(&kaku_old.options, 'i', "id", required_argument, config_required, "[0-9]");
 
 	kaku_old.parseBinary=kakuOldParseBinary;
 	kaku_old.createCode=&kakuOldCreateCode;

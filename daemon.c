@@ -177,7 +177,7 @@ int broadcast(char *message) {
 	FILE *f;
 	int i;
 
-	if(strlen(message) > 0 && strcmp(message,"0000") != 0) {
+	if(strlen(message) > 0) {
 
 		/* Write the message to all receivers */
 		for(i=0;i<MAX_CLIENTS;i++) {
@@ -210,38 +210,18 @@ void send_code(struct options_t *options) {
 	protocol_t *device = malloc(sizeof(protocol_t));
 	/* The code that is send to the hardware wrapper */
 	struct ir_ncode code;
-	/* Temporary pointer to the protocol options */
-	struct options_t *backup_options;
 
 	char message[BUFFER_SIZE];
 	memset(message, '\0', sizeof(message));
-	
+
 	if(getOptionValById(&options,'p') != NULL)
 		strcpy(name,getOptionValById(&options,'p'));
 
 	for(i=0; i<protocols.nr; ++i) {
 		device = protocols.listeners[i];
 		/* Check if the protocol exists */
-		if(strcmp(device->id,name) == 0 && match == 0) {
+		if(strcmp(device->id, name) == 0 && match == 0) {
 			match = 1;
-			if(device->options != NULL && device->createCode != NULL) {
-				/* Copy all CLI options from the specific protocol */
-				backup_options=device->options;
-				strcat(message, "sender ");
-				/* Get the full CLI argument name to send to the receivers */
-				while(backup_options != NULL && backup_options->name != NULL) {
-					if(getOptionValById(&options, backup_options->id) != NULL) {
-						strcat(message, backup_options->name);
-						strcat(message, " ");
-						if(getOptionArgTypeById(&backup_options, backup_options->id) == required_argument) {
-							strcat(message, getOptionValById(&options, backup_options->id));
-							strcat(message, " ");
-						}
-					}
-				backup_options = backup_options->next;
-				}
-				strcat(message, "\n");
-			}
 			break;
 		}
 	}
@@ -252,9 +232,15 @@ void send_code(struct options_t *options) {
 		/* Let the protocol create his code */
 		device->createCode(options);
 
+		if(device->message != NULL) {
+			strcat(message, "sender ");
+			strcat(message, device->message);
+			strcat(message, "\n");
+		}
+
 		/* Check if we need to repeat the code other than the default repeat */
-		if(getOptionValById(&options,'r') != NULL) {
-			repeat=atoi(getOptionValById(&options,'r'));
+		if(getOptionValById(&options, 'r') != NULL) {
+			repeat=atoi(getOptionValById(&options, 'r'));
 			logprintf(LOG_DEBUG, "set send repeat to %d time(s)", repeat);
 		}
 
@@ -320,7 +306,7 @@ int parse_data(int i, char buffer[BUFFER_SIZE]) {
 				node->id = atoi(pch);
 				pch = strtok(NULL," \n");
 				if(pch != NULL) {
-					node->value = strdup(pch);
+					strcpy(node->value, pch);
 					node->next = sendOptions;
 					sendOptions = node;
 					pch = strtok(NULL," \n");
@@ -600,7 +586,7 @@ void deamonize() {
 	char buffer[BUFFER_SIZE];
 
 	enable_file_log();
-	disable_shell_log();	
+	disable_shell_log();
 
 	//Get the pid of the fork
 	pid_t npid = fork();
@@ -661,7 +647,7 @@ int main(int argc , char **argv) {
 	gc_catch();
 
 	disable_file_log();
-	enable_shell_log(); 	
+	enable_shell_log();
 
 	progname = malloc((10*sizeof(char))+1);
 	progname = "433-daemon";
@@ -675,15 +661,15 @@ int main(int argc , char **argv) {
 
 	sendOptions = malloc(25*sizeof(struct options_t));
 
-	addOption(&options, 'h', "help", no_argument, 0, 1, NULL);
-	addOption(&options, 'v', "version", no_argument, 0, 1, NULL);
-	addOption(&options, 's', "socket", required_argument, 0, 1, "^/dev/([A-Za-z]+)([0-9]+)");
-	addOption(&options, 'p', "process", required_argument, 0, 1, NULL);
-	addOption(&options, 'd', "nodaemon", no_argument, 0, 1, NULL);
-	addOption(&options, 'L', "loglevel", required_argument, 0, 1, "[0-5]");
-	addOption(&options, 'l', "logfile", required_argument, 0, 1, NULL);
-	addOption(&options, 'c', "config", required_argument, 0, 1, NULL);
-	
+	addOption(&options, 'h', "help", no_argument, 0, NULL);
+	addOption(&options, 'v', "version", no_argument, 0, NULL);
+	addOption(&options, 's', "socket", required_argument, 0, "^/dev/([A-Za-z]+)([0-9]+)");
+	addOption(&options, 'p', "process", required_argument, 0, NULL);
+	addOption(&options, 'd', "nodaemon", no_argument, 0, NULL);
+	addOption(&options, 'L', "loglevel", required_argument, 0, "[0-5]");
+	addOption(&options, 'l', "logfile", required_argument, 0, NULL);
+	addOption(&options, 'c', "config", required_argument, 0, NULL);
+
 	hw_choose_driver(NULL);
 	while (1) {
 		int c;

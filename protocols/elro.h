@@ -24,6 +24,7 @@
 protocol_t elro;
 
 void elroInit();
+void elroCreateMessage(int id, int unit, int state);
 void elroParseBinary();
 void elroCreateCode(struct options_t *options);
 void elroCreateUnit(int unit);

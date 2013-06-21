@@ -29,7 +29,7 @@ all: $(LIBS) $(OBJS) $(PROGAMS)
 
 433-learn: learn.c $(INCLUDES) $(LIBS)
 	$(CC) $(CFLAGS) -o $@ $(patsubst 433-%,%.c,$@) $(LIBS)
-	
+
 clean:
 	rm 433-* >/dev/null 2>&1 || true
 	for dir in $(SUBDIRS); do \

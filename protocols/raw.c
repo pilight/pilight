@@ -29,15 +29,15 @@
 
 void rawCreateCode(struct options_t *options) {
 	char *code = NULL;
-	if(getOptionValById(&options,'C') != NULL) 
-		code = getOptionValById(&options,'C');
+	if(getOptionValById(&options, 'C') != NULL) 
+		code = getOptionValById(&options, 'C');
 	else {
 		logprintf(LOG_ERR, "raw: insufficient number of arguments");
 		exit(EXIT_FAILURE);
 	}
 	char *pch;
 	int i=0;
-	pch = strtok(code," ");
+	pch = strtok(code, " ");
 	while(pch != NULL) {
 		raw.raw[i]=atoi(pch);
 		pch = strtok(NULL, " ");
@@ -52,12 +52,11 @@ void rawPrintHelp() {
 
 void rawInit() {
 
-	strcpy(raw.id,"raw");
-	strcpy(raw.desc,"Raw codes");
+	strcpy(raw.id, "raw");
+	strcpy(raw.desc, "Raw codes");
 	raw.type = RAW;
 
-	raw.options = malloc(sizeof(struct options_t));
-	addOption(&raw.options, 'c', "code", required_argument, 0, 1, NULL);
+	addOption(&raw.options, 'c', "code", required_argument, 0, NULL);
 
 	raw.createCode=&rawCreateCode;
 	raw.printHelp=&rawPrintHelp;

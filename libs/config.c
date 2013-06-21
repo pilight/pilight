@@ -214,7 +214,7 @@ int read_config(char *configfile) {
 											logprintf(LOG_ERR, "in \"%s\", missing %s field for %s\n", devname, backup_options->name, protoname);
 											errors++;
 										/* If settings is valid but not required */
-										} else if(valid_setting == 1 && backup_options->argtype != config_required) {
+										} else if(valid_setting == 1 && backup_options->conftype != config_required) {
 											logprintf(LOG_ERR, "in \"%s\", field %s is invalid for %s\n", devname, backup_options->name, protoname);
 											errors++;
 										}

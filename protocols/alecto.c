@@ -42,36 +42,36 @@ void alectoParseCode() {
 	}
 
 	for(i=0;i<x-4;i+=4) {
-		a-=binToDec(alecto.binary,i,i+3);
+		a-=binToDec(alecto.binary, i, i+3);
 	}
 
-	if(binToDec(alecto.binary,32,35) == (a&0xf)) {
-		id = binToDec(alecto.binary,0,7);
+	if(binToDec(alecto.binary, 32, 35) == (a&0xf)) {
+		id = binToDec(alecto.binary, 0, 7);
 		if(alecto.binary[11] == 1)
 			battery = 1;
 		else
 			battery = 0;
-		temperature = binToDec(alecto.binary,12,22);
+		temperature = binToDec(alecto.binary, 12, 22);
 		if(alecto.binary[23] == 1)
 			negative=1;
 		else
 			negative=0;
-		humidity = ((binToDec(alecto.binary,28,31)*10)+binToDec(alecto.binary,24,27));
+		humidity = ((binToDec(alecto.binary, 28, 31)*10)+binToDec(alecto.binary, 24, 27));
 		i=0;
-		i+=sprintf(alecto.message+i,"id %d ",id);
-		i+=sprintf(alecto.message+i,"battery %d ",battery);
+		i+=sprintf(alecto.message+i, "id %d ", id);
+		i+=sprintf(alecto.message+i, "battery %d ", battery);
 		if(negative==1)
-			i+=sprintf(alecto.message+i,"temperature -%d ",temperature);
+			i+=sprintf(alecto.message+i, "temperature -%d ", temperature);
 		else
-			i+=sprintf(alecto.message+i,"temperature %d ",temperature);
-		i+=sprintf(alecto.message+i,"humidity %d",humidity);
+			i+=sprintf(alecto.message+i, "temperature %d ", temperature);
+		i+=sprintf(alecto.message+i, "humidity %d", humidity);
 	}
 }
 
 void alectoInit() {
 
-	strcpy(alecto.id,"alecto");
-	strcpy(alecto.desc,"Alecto based weather stations");
+	strcpy(alecto.id, "alecto");
+	strcpy(alecto.desc, "Alecto based weather stations");
 	alecto.type = WEATHER;
 	alecto.header = 14;
 	alecto.pulse = 14;
@@ -81,10 +81,10 @@ void alectoInit() {
 	alecto.rawLength = 74;
 	alecto.repeats = 1;
 	alecto.message = malloc((50*sizeof(char))+1);
-	
+
 	alecto.bit = 0;
 	alecto.recording = 0;
-	
+
 	alecto.parseCode=&alectoParseCode;
 
 	protocol_register(&alecto);

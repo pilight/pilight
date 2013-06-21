@@ -80,10 +80,10 @@ int main(int argc, char **argv) {
 	protocol_t *device = NULL;
 	
 	/* Define all CLI arguments of this program */
-	addOption(&options, 'h', "help", no_argument, 0, 1, NULL);
-	addOption(&options, 'v', "version", no_argument, 0, 1, NULL);
-	addOption(&options, 'p', "protocol", required_argument, 0, 1, NULL);
-	addOption(&options, 'r', "repeat", required_argument, 0, 1, "[0-9]");
+	addOption(&options, 'h', "help", no_argument, 0, NULL);
+	addOption(&options, 'v', "version", no_argument, 0, NULL);
+	addOption(&options, 'p', "protocol", required_argument, 0, NULL);
+	addOption(&options, 'r', "repeat", required_argument, 0, "[0-9]");
 
 	/* Initialize peripheral modules */
 	kakuSwInit();
@@ -104,7 +104,7 @@ int main(int argc, char **argv) {
 					logprintf(LOG_ERR, "options '-p' and '--protocol' require an argument");
 					exit(EXIT_FAILURE);
 				} else {
-					strcpy(protobuffer,optarg);
+					strcpy(protobuffer, optarg);
 				}
 			break;
 			case 'v':
@@ -187,7 +187,7 @@ int main(int argc, char **argv) {
 
 	/* Check if we got sufficient arguments from this protocol */
 	device->createCode(options);
-	
+
 	/* Clear the receive buffer */
 	memset(recvBuff, '\0',sizeof(recvBuff));
 
@@ -209,7 +209,6 @@ int main(int argc, char **argv) {
 		logprintf(LOG_ERR, "could not connect to 433-daemon");
 		return EXIT_FAILURE;
     }
-
 
 	while(1) {
 		/* Clear the receive buffer again and read the welcome message */
@@ -242,11 +241,11 @@ int main(int argc, char **argv) {
 		if(connected) {
 			memset(message,'\0',BUFFER_SIZE);
 			int x=0;
-			while(options->name != NULL) {
+			while(options != NULL && strlen(options->name) > 0) {
 				/* Only send the CLI arguments that belong to this protocol, the protocol name 
 				   and those that are called by the user */
 				if((getOptionIdByName(&device->options, options->name) != -1 || strcmp(options->name,"protocol") == 0) 
-				   && options->value != NULL) {
+				   && strlen(options->value) > 0) {
 					x+=sprintf(message+x,"%d %s ",options->id, options->value);
 				}
 				options = options->next;
