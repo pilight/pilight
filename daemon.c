@@ -190,6 +190,7 @@ int broadcast(char *message) {
 		if(strlen(processfile) > 0) {
 			char cmd[255];
 			strcpy(cmd,processfile);
+			strcat(cmd," ");
 			strcat(cmd,message);
 			f=popen(cmd, "r");
 			pclose(f);
