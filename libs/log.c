@@ -58,9 +58,9 @@ void logprintf(int prio, char *format_str, ...) {
 			if(prio==LOG_ERR)
 				fprintf(lf,"ERROR: ");
 			if(prio==LOG_INFO)
-				fprintf(lf, "LOG_INFO: ");
+				fprintf(lf, "INFO: ");
 			if(prio==LOG_NOTICE)
-				fprintf(lf, "LOG_NOTICE: ");
+				fprintf(lf, "NOTICE: ");
 			vfprintf(lf, format_str, ap);
 			fputc('\n',lf);
 			fflush(lf);
@@ -81,7 +81,7 @@ void logprintf(int prio, char *format_str, ...) {
 			if(prio==LOG_NOTICE)
 				fprintf(stderr, "NOTICE: ");
 			if(prio==LOG_DEBUG)
-				fprintf(stderr, "LOG_DEBUG: ");
+				fprintf(stderr, "DEBUG: ");
 			vfprintf(stderr, format_str, ap);
 			fputc('\n',stderr);
 			fflush(stderr);
