@@ -25,8 +25,8 @@
 #define required_argument 	2
 #define optional_argument 	3
 
-#define config_required		1
-#define config_value		2
+#define config_id			1
+#define config_state		2
 
 typedef struct options_t options_t;
 

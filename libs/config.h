@@ -40,31 +40,71 @@
 
 #define MAX_DEVICES		255 	// Per location
 #define MAX_SETTINGS	10  	// Per protocol
+#define MAX_VALUES		25  	// Per values list
 
-typedef struct locations_t locations_t;
-typedef struct devices_t devices_t;
-typedef struct settings_t settings_t;
+typedef struct conf_locations_t conf_locations_t;
+typedef struct conf_devices_t conf_devices_t;
+typedef struct conf_settings_t conf_settings_t;
+typedef struct conf_values_t conf_values_t;
 
-struct settings_t {
-	char *name;
+/*
+|------------------|
+| conf_locations_t |
+|------------------|
+| id               |
+| name		       |
+| devices	       | ---
+|------------------|   |
+				       |
+|------------------|   |
+|  conf_devices_t  | <--
+|------------------|
+| id               |
+| name		       |
+| protocol	       | --> protocol_t <protocol.h>
+| settings	       | ---
+|------------------|   |
+				       |
+|------------------|   |
+| conf_settings_t  | <--
+|------------------|
+| name             |
+| values	       | ---
+|------------------|   |
+				       |
+|------------------|   |
+|  conf_values_t   | <--
+|------------------|
+| value            |
+| type		       |
+|------------------|
+*/
+
+struct conf_values_t {
 	char *value;
 	int type;
-	struct settings_t *next;
+	struct conf_values_t *next;
 };
 
-struct devices_t {
-	char *id;
+struct conf_settings_t {
 	char *name;
-	protocol_t *protocol;
-	struct settings_t *settings;
-	struct devices_t *next;
+	struct conf_values_t *values;
+	struct conf_settings_t *next;
 };
 
-struct locations_t {
+struct conf_devices_t {
 	char *id;
 	char *name;
-	struct devices_t *devices;
-	struct locations_t *next;
+	char *protocol;
+	struct conf_settings_t *settings;
+	struct conf_devices_t *next;
+};
+
+struct conf_locations_t {
+	char *id;
+	char *name;
+	struct conf_devices_t *devices;
+	struct conf_locations_t *next;
 };
 
 int read_config(char *configfile);
@@ -72,10 +112,12 @@ int read_config(char *configfile);
 char *progname;
 
 /* Struct to store the locations */
-struct locations_t *locations;
+struct conf_locations_t *locations;
 /* Struct to store the devices per location */
-struct devices_t *devices;
+struct conf_devices_t *devices;
 /* Struct to store the device specific settings */
-struct settings_t *settings;
+struct conf_settings_t *settings;
+/* Struct to store the device values list settings */
+struct conf_values_t *values;
 
 #endif

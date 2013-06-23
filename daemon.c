@@ -47,10 +47,10 @@
 #include "lirc/hw_default.h"
 
 #include "protocol.h"
-#include "protocols/kaku_switch.h"
-#include "protocols/kaku_dimmer.h"
-#include "protocols/kaku_old.h"
-#include "protocols/elro.h"
+#include "protocols/arctech_switch.h"
+#include "protocols/arctech_dimmer.h"
+#include "protocols/arctech_old.h"
+#include "protocols/sartano.h"
 #include "protocols/raw.h"
 #include "protocols/alecto.h"
 
@@ -220,7 +220,7 @@ void send_code(struct options_t *options) {
 	for(i=0; i<protocols.nr; ++i) {
 		device = protocols.listeners[i];
 		/* Check if the protocol exists */
-		if(strcmp(device->id, name) == 0 && match == 0) {
+		if(providesDevice(&device, name) == 0 && match == 0) {
 			match = 1;
 			break;
 		}
@@ -598,10 +598,12 @@ void deamonize() {
 			exit(1);
 		break;
 		default:
-			if((f = open(pidfile, O_RDWR | O_CREAT | O_TRUNC)) != -1) {
+			if((f = open(pidfile, O_RDWR | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR)) != -1) {
 				lseek(f, 0, SEEK_SET);
 				sprintf(buffer,"%d",npid);
-				write(f,buffer,strlen(buffer));
+				if(write(f,buffer,strlen(buffer)) != -1) {
+					logprintf(LOG_ERR, "could not store pid in %s", pidfile);
+				}
 			}
 			close(f);
 			logprintf(LOG_INFO, "started daemon with pid %d", npid);
@@ -724,12 +726,7 @@ int main(int argc , char **argv) {
 				}
 			break;
 			case 'l':
-				if(access(optarg, F_OK) != -1) {
-					set_logfile(optarg);
-				} else {
-					fprintf(stderr, "%s: the log file %s does not exists\n", progname, optarg);
-					return EXIT_FAILURE;
-				}
+				set_logfile(optarg);
 			break;
 			case 'L':
 				if(atoi(optarg) <=5 && atoi(optarg) >= 1) {
@@ -754,16 +751,16 @@ int main(int argc , char **argv) {
 	if(have_device)
 		hw.device = lsocket;
 
-	if((f = open(pidfile, O_RDWR | O_CREAT)) != -1) {
-		read(f, buffer, BUFFER_SIZE);
-
-		//If the file is empty, create a new process
-		if(!atoi(buffer)) {
-			running = 0;
-		} else {
-			//Check if the process is running
-			if(errno == ESRCH) {
+	if((f = open(pidfile, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR)) != -1) {
+		if(read(f, buffer, BUFFER_SIZE) != -1) {
+			//If the file is empty, create a new process
+			if(!atoi(buffer)) {
 				running = 0;
+			} else {
+				//Check if the process is running
+				if(errno == ESRCH) {
+					running = 0;
+				}
 			}
 		}
 	} else {
@@ -786,10 +783,10 @@ int main(int argc , char **argv) {
 	}
 
 	/* Initialize peripheral modules */
-	kakuSwInit();
-	kakuDimInit();
-	kakuOldInit();
-	elroInit();
+	arctechSwInit();
+	arctechDimInit();
+	arctechOldInit();
+	sartanoInit();
 	rawInit();
 	alectoInit();
 
@@ -799,13 +796,22 @@ int main(int argc , char **argv) {
 		}
 	}
 
+	/* Show the parsed log file */
 	logprintf(LOG_DEBUG, "-- start config file --");
 	while(locations != NULL) {
 		logprintf(LOG_DEBUG, "%s %s", locations->id, locations->name);
 		while(locations->devices != NULL) {
-			logprintf(LOG_DEBUG, "- %s %s %s",locations->devices->id,locations->devices->name,locations->devices->protocol->id);
+			logprintf(LOG_DEBUG, "- %s %s %s",locations->devices->id,locations->devices->name,locations->devices->protocol);
 			while(locations->devices->settings != NULL) {
-				logprintf(LOG_DEBUG, " *%s %s",locations->devices->settings->name, locations->devices->settings->value);
+				if(locations->devices->settings->values->next == NULL) {
+					logprintf(LOG_DEBUG, " *%s %s",locations->devices->settings->name, locations->devices->settings->values->value);
+				} else {
+					logprintf(LOG_DEBUG, " *%s",locations->devices->settings->name);
+					while(locations->devices->settings->values != NULL) {
+						logprintf(LOG_DEBUG, "  - %s",locations->devices->settings->values->value);
+						locations->devices->settings->values = locations->devices->settings->values->next;
+					}
+				}
 				locations->devices->settings = locations->devices->settings->next;
 			}
 			locations->devices = locations->devices->next;

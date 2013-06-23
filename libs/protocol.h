@@ -28,9 +28,16 @@
 #define DIMMER		2
 #define WEATHER		3
 
-typedef struct {
+typedef struct devices_t devices_t;
+
+struct devices_t {
 	char id[25];
 	char desc[50];
+	struct devices_t *next;
+};
+
+typedef struct {
+	char id[25];
 	int type;
 	int header;
 	int pulse;
@@ -47,7 +54,9 @@ typedef struct {
 	int raw[255];
 	int code[255];
 	int pCode[255];
-	int binary[255];
+	int binary[128]; // Max. the half the raw length
+
+	struct devices_t *devices;
 
 	void (*parseRaw)();
 	void (*parseCode)();
@@ -58,12 +67,14 @@ typedef struct {
 
 typedef struct {
 	int nr;
-	protocol_t *listeners[255];
+	protocol_t *listeners[6]; // Change this to the number of available protocols
 } protocols_t;
 
 protocols_t protocols;
 
 void protocol_register(protocol_t *proto);
 void protocol_unregister(protocol_t *proto);
+void addDevice(protocol_t *proto, char *id, char *desc);
+int providesDevice(protocol_t **proto, char *id);
 
 #endif

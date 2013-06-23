@@ -40,10 +40,10 @@
 #include "options.h"
 
 #include "protocol.h"
-#include "protocols/kaku_switch.h"
-#include "protocols/kaku_dimmer.h"
-#include "protocols/kaku_old.h"
-#include "protocols/elro.h"
+#include "protocols/arctech_switch.h"
+#include "protocols/arctech_dimmer.h"
+#include "protocols/arctech_old.h"
+#include "protocols/sartano.h"
 #include "protocols/raw.h"
 
 int main(int argc, char **argv) {
@@ -86,10 +86,10 @@ int main(int argc, char **argv) {
 	addOption(&options, 'r', "repeat", required_argument, 0, "[0-9]");
 
 	/* Initialize peripheral modules */
-	kakuSwInit();
-	kakuDimInit();
-	kakuOldInit();
-	elroInit();
+	arctechSwInit();
+	arctechDimInit();
+	arctechOldInit();
+	sartanoInit();
 	rawInit();
 	
 	/* Get the protocol to be used */
@@ -124,7 +124,7 @@ int main(int argc, char **argv) {
 			for(i=0; i<protocols.nr; ++i) {
 				device = protocols.listeners[i];
 				/* Check if the protocol exists */
-				if(strcmp(device->id,protobuffer) == 0 && match == 0) {
+				if(providesDevice(&device, protobuffer) == 0 && match == 0) {
 					match=1;
 					/* Check if the protocol requires specific CLI arguments
 					   and merge them with the main CLI arguments */
@@ -149,7 +149,7 @@ int main(int argc, char **argv) {
 		return (EXIT_SUCCESS);
 	} else if(help == 1 || protohelp == 1 || match == 0) {
 		if(protohelp == 1 && match == 1 && device->printHelp != NULL)
-			printf("Usage: %s -p %s [options]\n", progname, device->id);
+			printf("Usage: %s -p %s [options]\n", progname, protobuffer);
 		else
 			printf("Usage: %s -p protocol [options]\n", progname);
 		if(help == 1) {
@@ -159,16 +159,20 @@ int main(int argc, char **argv) {
 			printf("\t -r --repeat=repeat\t\tnumber of times the command is send\n");
 		}
 		if(protohelp == 1 && match == 1 && device->printHelp != NULL) {
-			printf("\n\t[%s]\n",device->id);
+			printf("\n\t[%s]\n", protobuffer);
 			device->printHelp();
 		} else {
 			printf("\nThe supported protocols are:\n");
 			for(i=0; i<protocols.nr; ++i) {
 				device = protocols.listeners[i];
-				printf("\t %s\t\t\t",device->id);
-				if(strlen(device->id)<5)
-					printf("\t");
-				printf("%s\n", device->desc);
+
+				while(device->devices != NULL) {
+					printf("\t %s\t\t\t",device->devices->id);
+					if(strlen(device->devices->id)<5)
+						printf("\t");
+					printf("%s\n", device->devices->desc);
+					device->devices = device->devices->next;
+				}
 			}
 		}
 		return (EXIT_SUCCESS);

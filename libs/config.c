@@ -39,15 +39,19 @@ int read_config(char *configfile) {
 	config_setting_t *conf_locations = NULL;
 	/* Holds the device nodes settings pointer */
 	config_setting_t *conf_node = NULL;
-	/* Hold the device settings value pointer */
+	/* Hold the device settings pointer */
+	config_setting_t *conf_setting = NULL;
+	/* Hold the device settings value list pointer */
 	config_setting_t *conf_value = NULL;
 
 	/* Struct to store the locations */
-	struct locations_t *lnode = NULL;
+	struct conf_locations_t *lnode = NULL;
 	/* Struct to store the devices per location */
-	struct devices_t *dnode = NULL;
+	struct conf_devices_t *dnode = NULL;
 	/* Struct to store the device specific settings */
-	struct settings_t *snode = NULL;	
+	struct conf_settings_t *snode = NULL;	
+	/* Struct to store the setting specific values */
+	struct conf_values_t *vnode = NULL;	
 	
 	/* Location id */
 	const char *locid = NULL;
@@ -72,7 +76,9 @@ int read_config(char *configfile) {
 	/* The number of device nodes per location */
 	int nrnodes = 0;
 	/* The number of settings per device node */
-	int nrvalues = 0;
+	int nrsettings = 0;
+	/* The number of values of the values list */
+	int nrvalues = 0;	
 	/* The type of the settings value */
 	int conf_type = 0;	
 	/* Did we match a protocol */
@@ -84,8 +90,11 @@ int read_config(char *configfile) {
 	/* Integer pointer for temporary usage */
 	int itemp = 0;
 	/* For loop integers */
-	int a = 0, b = 0, i = 0, c = 0;
-
+	int a = 0, b = 0, i = 0, c = 0, y = 0;
+	/* Check if the device has a values list */
+	int has_values = 0;
+	/* Check if the device has a state setting*/
+	int has_state = 0;
 	/* Pointer to the match protocol */
 	protocol_t *device = malloc(sizeof(protocol_t));
 
@@ -120,7 +129,7 @@ int read_config(char *configfile) {
 			/* Store location in locations struct */
 			locid = config_setting_name(conf_locations);
 		
-			lnode = malloc(sizeof(struct locations_t));
+			lnode = malloc(sizeof(struct conf_locations_t));
 			lnode->id = strdup(locid);
 			lnode->name = strdup(locname);
 			lnode->next = locations;
@@ -136,9 +145,10 @@ int read_config(char *configfile) {
 						logprintf(LOG_ERR, "device #%d of \"%s\", name field missing", b, locname);
 						errors++;
 					}
-					/* Check if the device has a value field */
-					if(config_setting_lookup_int(conf_node, "value", &itemp) != CONFIG_TRUE) {
-						logprintf(LOG_ERR, "device #%d of \"%s\", value field missing", b, locname);
+					/* Check if the device has a state field */
+					if(config_setting_lookup_string(conf_node, "state", &stemp) != CONFIG_TRUE && 
+					   config_setting_lookup_int(conf_node, "state", &itemp) != CONFIG_TRUE) {
+						logprintf(LOG_ERR, "device #%d of \"%s\", state field missing", b, locname);
 						errors++;
 					}
 					/* Check if the device has a protocol defined */
@@ -150,20 +160,22 @@ int read_config(char *configfile) {
 						/* Store devices in their locations */
 						devid = config_setting_name(conf_node);
 
-						dnode = malloc(sizeof(struct devices_t));
+						dnode = malloc(sizeof(struct conf_devices_t));
 						dnode->id = strdup(devid);
 						dnode->name = strdup(devname);
 						dnode->next = devices;
 
 						match=0;
-						
+						has_values = 0;
+						has_state = 0;
 						/* Check settings against protocols */
-						nrvalues = config_setting_length(conf_node);
+						nrsettings = config_setting_length(conf_node);
 						for(i=0;i<protocols.nr; ++i) {
 							device = protocols.listeners[i];
 							
+							strcpy(temp, protoname);
 							/* Check if the protocol exists */
-							if(strcmp(device->id,protoname) == 0 && match == 0) {
+							if(providesDevice(&device, temp) == 0 && match == 0) {
 								match = 1;
 								if(device->options != NULL) {
 									
@@ -171,66 +183,181 @@ int read_config(char *configfile) {
 									backup_options=device->options;
 									while(backup_options != NULL && backup_options->name != NULL) {
 										valid_setting = 0;
-										for(c=0;c<nrvalues;c++) {
+										for(c=0;c<nrsettings;c++) {
 											/* Copy all CLI options from the specific protocol */
-											conf_value = config_setting_get_elem(conf_node, c);
-											setting = config_setting_name(conf_value);
-											if(!(strcmp(setting,"protocol") == 0 || strcmp(setting,"value") == 0 || strcmp(setting,"name") == 0)) {
-												if(strcmp(setting,backup_options->name) == 0) {
+											conf_setting = config_setting_get_elem(conf_node, c);
+											setting = config_setting_name(conf_setting);
+											if(strcmp(setting,"values") == 0 && has_values == 0) {
+												if(config_setting_is_list(conf_setting) == CONFIG_TRUE) {
+													has_values = 1;
+													nrvalues = config_setting_length(conf_setting);
+													if(nrvalues > 0) {
+														/* Store settings of device */
+														snode = malloc(sizeof(struct conf_settings_t));
+														snode->name = strdup(setting);
+
+														for(y=0;y<nrvalues;y++) {
+															conf_value = config_setting_get_elem(conf_setting, y);
+															conf_type = config_setting_type(conf_value);
+															if(conf_type != 2 && conf_type != 5 && valid_setting == 1) {
+																logprintf(LOG_ERR, "in \"%s\", value #%d of values list is of an incorrect type\n", devname, y);
+																errors++;
+															} else {
+																vnode = malloc(sizeof(struct conf_values_t));
+																/* Store and cast the specific settings values */
+																switch(conf_type) {
+																	case 2:
+																		sprintf(temp,"%d",config_setting_get_int(conf_value));
+																		vnode->value = strdup(temp);
+																		vnode->type = CONFIG_TYPE_INT;
+																	break;
+																	case 5:
+																		vnode->value = strdup(config_setting_get_string(conf_value));
+																		vnode->type = CONFIG_TYPE_STRING;
+																	break;
+																}
+																vnode->next = values;
+																values = vnode;
+															}
+														}
+
+														snode->values = malloc(MAX_VALUES*sizeof(struct conf_values_t));
+														/* Only store values if they are present */
+														if(values != NULL) {
+															memcpy(snode->values,values,(MAX_VALUES*sizeof(struct conf_values_t)));
+														} else {
+															snode->values = NULL;
+														}											
+														snode->next = settings;
+														settings = snode;
+
+														values = NULL;
+														if(vnode != NULL && vnode->next != NULL)
+															vnode->next = NULL;
+													}
+												}
+												break;
+											} else if(strcmp(setting, "state") == 0 && has_state == 0) {
+												has_state = 1;
+												conf_type = config_setting_type(conf_setting);
+												if(conf_type != 2 && conf_type != 5) {
+													valid_setting = 0;
+													logprintf(LOG_ERR, "in \"%s\", %s is of an incorrect type\n", devname, setting);
+													errors++;
+												} else {
+													/* Store settings of device */
+													snode = malloc(sizeof(struct conf_settings_t));
+													snode->name = strdup(setting);
+
+													vnode = malloc(sizeof(struct conf_values_t));
+													
+													/* Store and cast the specific settings values */
+													switch(conf_type) {
+														case 2:
+															config_setting_lookup_int(conf_node, setting, &itemp);
+															sprintf(temp,"%d",itemp);
+															vnode->value = strdup(temp);
+															vnode->type = CONFIG_TYPE_INT;
+														break;
+														case 5:
+															config_setting_lookup_string(conf_node, setting, &stemp);
+															vnode->value = strdup(stemp);
+															vnode->type = CONFIG_TYPE_STRING;
+														break;
+													}
+													vnode->next = values;
+													values = vnode;
+
+													snode->values = malloc(MAX_VALUES*sizeof(struct conf_values_t));
+													/* Only store values if they are present */
+													if(values != NULL) {
+														memcpy(snode->values,values,(MAX_VALUES*sizeof(struct conf_values_t)));
+													} else {
+														snode->values = NULL;
+													}											
+													snode->next = settings;
+													settings = snode;
+
+													values = NULL;
+													if(vnode != NULL && vnode->next != NULL)
+														vnode->next = NULL;
+												}
+												break;
+											} else if(!(strcmp(setting, "protocol") == 0 || strcmp(setting, "name") == 0)) {
+												if(strcmp(setting, backup_options->name) == 0) {
 													valid_setting = 1;
 													break;
 												}
 											}
 										}
 										/* Check if the settings value types are either int or string */
-										conf_type = config_setting_type(conf_value);
+										conf_type = config_setting_type(conf_setting);
 										if(conf_type != 2 && conf_type != 5 && valid_setting == 1) {
 											valid_setting = 0;
-											logprintf(LOG_ERR, "in \"%s\", %s is of an incorrect type\n", devname, backup_options->name);
+											logprintf(LOG_ERR, "in \"%s\", %s is of an incorrect type\n", devname, setting);
 											errors++;
-										} else if(valid_setting == 1 && backup_options->conftype == config_required) {
+										} else if(valid_setting == 1 && backup_options->conftype == config_id) {
 											/* Store settings their device */
-											snode = malloc(sizeof(struct settings_t));
+											snode = malloc(sizeof(struct conf_settings_t));
 											snode->name = strdup(setting);
+
+											vnode = malloc(sizeof(struct conf_values_t));
 
 											/* Store and cast the specific settings values */
 											switch(conf_type) {
 												case 2:
-													config_setting_lookup_int(conf_node,setting,&itemp);
+													config_setting_lookup_int(conf_node, setting, &itemp);
 													sprintf(temp,"%d",itemp);
-													snode->value = strdup(temp);
-													snode->type = CONFIG_TYPE_INT;
+													vnode->value = strdup(temp);
+													vnode->type = CONFIG_TYPE_INT;
 												break;
 												case 5:
-													config_setting_lookup_string(conf_node,setting,&stemp);
-													snode->value = strdup(stemp);
-													snode->type = CONFIG_TYPE_STRING;
+													config_setting_lookup_string(conf_node, setting, &stemp);
+													vnode->value = strdup(stemp);
+													vnode->type = CONFIG_TYPE_STRING;
 												break;
 											}
+											vnode->next = values;
+											values = vnode;
+
+											snode->values = malloc(MAX_VALUES*sizeof(struct conf_values_t));
+											/* Only store values if they are present */
+											if(values != NULL) {
+												memcpy(snode->values, values, (MAX_VALUES*sizeof(struct conf_values_t)));
+											} else {
+												snode->values = NULL;
+											}											
 											snode->next = settings;
 											settings = snode;
+
+											values = NULL;
+											if(vnode != NULL && vnode->next != NULL)
+												vnode->next = NULL;
+											
 										/* If settings is not valid but required */
-										} else if(valid_setting == 0 && backup_options->conftype == config_required) {
-											logprintf(LOG_ERR, "in \"%s\", missing %s field for %s\n", devname, backup_options->name, protoname);
+										} else if(valid_setting == 0 && backup_options->conftype == config_id) {
+											logprintf(LOG_ERR, "in \"%s\", missing %s field for %s\n", devname, setting, protoname);
 											errors++;
 										/* If settings is valid but not required */
-										} else if(valid_setting == 1 && backup_options->conftype != config_required) {
-											logprintf(LOG_ERR, "in \"%s\", field %s is invalid for %s\n", devname, backup_options->name, protoname);
+										} else if(valid_setting == 1 &&
+												(backup_options->conftype != config_id || 
+												 backup_options->conftype != config_state)) {
+											logprintf(LOG_ERR, "in \"%s\", field %s is invalid for %s\n", devname, setting, protoname);
 											errors++;
 										}
 										backup_options = backup_options->next;
 									}
 									/* Check if the device contains settings unknown to this protocol */
-									for(c=0;c<nrvalues;c++) {
+									for(c=0;c<nrsettings;c++) {
 										
-										conf_value = config_setting_get_elem(conf_node, c);
-										setting = config_setting_name(conf_value);
+										conf_setting = config_setting_get_elem(conf_node, c);
+										setting = config_setting_name(conf_setting);
 
-										if(!(strcmp(setting,"protocol") == 0 || strcmp(setting,"value") == 0 || strcmp(setting,"name") == 0)) {
+										if(!(strcmp(setting, "protocol") == 0 || strcmp(setting, "values") == 0 || strcmp(setting, "name") == 0 || strcmp(setting, "state") == 0)) {
 											valid_setting = 0;
 											backup_options=device->options;
 											while(backup_options != NULL) {
-												if(strcmp(setting,backup_options->name) == 0) {
+												if(strcmp(setting, backup_options->name) == 0) {
 													valid_setting = 1;
 													break;
 												}
@@ -250,12 +377,13 @@ int read_config(char *configfile) {
 						if(match == 0) {
 							logprintf(LOG_ERR, "in \"%s\", %s is an invalid protocol\n", devname, protoname);
 							errors++;
-						} else if(errors == 0) {							
-							dnode->protocol = device;
-							dnode->settings = malloc(MAX_SETTINGS*sizeof(struct settings_t));
+						} else if(errors == 0) {
+							strcpy(temp, protoname);
+							dnode->protocol = temp;
+							dnode->settings = malloc(MAX_SETTINGS*sizeof(struct conf_settings_t));
 							/* Only store settings if they are present */
 							if(settings != NULL) {
-								memcpy(dnode->settings,settings,(MAX_SETTINGS*sizeof(struct settings_t)));
+								memcpy(dnode->settings,settings,(MAX_SETTINGS*sizeof(struct conf_settings_t)));
 							} else {
 								dnode->settings = NULL;
 							}
@@ -266,13 +394,18 @@ int read_config(char *configfile) {
 								snode->next = NULL;
 						}
 					}
+					/* Check if the device has a values list defined */
+					if(has_values == 0) {
+						logprintf(LOG_ERR, "device #%d of \"%s\", values field missing", b, locname);
+						errors++;
+					}
 				}
 			}
 			if(errors == 0) {
-				lnode->devices = malloc(MAX_DEVICES*sizeof(struct devices_t));
+				lnode->devices = malloc(MAX_DEVICES*sizeof(struct conf_devices_t));
 				/* Only store devices if they are present */
 				if(devices != NULL) {
-					memcpy(lnode->devices,devices,(MAX_DEVICES*sizeof(struct devices_t)));
+					memcpy(lnode->devices,devices,(MAX_DEVICES*sizeof(struct conf_devices_t)));
 				} else {
 					lnode->devices = NULL;
 				}
@@ -288,6 +421,8 @@ int read_config(char *configfile) {
 
 	if(errors == 0)
 		return (EXIT_SUCCESS);
-	else
-		return (EXIT_FAILURE);
+	else {
+		exit(EXIT_FAILURE);
+		return 0;
+	}
 }

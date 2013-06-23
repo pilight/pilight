@@ -18,18 +18,25 @@
 	<http://www.gnu.org/licenses/>
 */
 
-#ifndef PROTOCOL_ELRO_H_
-#define PROTOCOL_ELRO_H_
+#ifndef PROTOCOL_ARCTECH_DIMMER_H_
+#define PROTOCOL_ARCTECH_DIMMER_H_
 
-protocol_t elro;
+protocol_t arctech_dimmer;
 
-void elroInit();
-void elroCreateMessage(int id, int unit, int state);
-void elroParseBinary();
-void elroCreateCode(struct options_t *options);
-void elroCreateUnit(int unit);
-void elroCreateId(int id);
-void elroCreateState(int state);
-void elroPrintHelp();
+void arctechDimInit();
+void arctechDimCreateMessage(int id, int unit, int state, int all, int dimlevel);
+void arctechDimParseBinary();
+void arctechDimCreateCode(struct options_t *options);
+void arctechDimCreateLow(int s, int e);
+void arctechDimCreateHigh(int s, int e);
+void arctechDimClearCode();
+void arctechDimCreateStart();
+void arctechDimCreateId(int id);
+void arctechDimCreateAll(int all);
+void arctechDimCreateState(int state);
+void arctechDimCreateUnit(int unit);
+void arctechDimCreateDimlevel(int dimlevel);
+void arctechDimCreateFooter();
+void arctechDimPrintHelp();
 
 #endif

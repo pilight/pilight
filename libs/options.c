@@ -38,7 +38,7 @@ int getOptPos = 0;
 void setOptionValById(struct options_t **options, int id, char *val) {
 	struct options_t *temp = *options;
 	while(temp != NULL) {
-		if(temp->id == id) {
+		if(temp->id == id && temp->id > 0) {
 			strcpy(temp->value,val);
 			break;
 		}
@@ -50,7 +50,7 @@ void setOptionValById(struct options_t **options, int id, char *val) {
 char *getOptionValById(struct options_t **options, int id) {
 	struct options_t *temp = *options;
 	while(temp != NULL) {
-		if(temp->id == id) {
+		if(temp->id == id && temp->id > 0) {
 			if(temp->value != NULL && strlen(temp->value) > 0) {
 				return temp->value;
 			} else {
@@ -67,7 +67,7 @@ char *getOptionValById(struct options_t **options, int id) {
 int getOptionArgTypeById(struct options_t **options, int id) {
 	struct options_t *temp = *options;
 	while(temp != NULL) {
-		if(temp->id == id) {
+		if(temp->id == id && temp->id > 0) {
 			if(temp->argtype != 0)
 				return temp->argtype;
 			else
@@ -83,7 +83,7 @@ int getOptionArgTypeById(struct options_t **options, int id) {
 char *getOptionNameById(struct options_t **options, int id) {
 	struct options_t *temp = *options;
 	while(temp != NULL) {
-		if(temp->id == id) {
+		if(temp->id == id && temp->id > 0) {
 			if(temp->name != NULL)
 				return temp->name;
 			else
@@ -99,7 +99,7 @@ char *getOptionNameById(struct options_t **options, int id) {
 char *getOptionMaskById(struct options_t **options, int id) {
 	struct options_t *temp = *options;
 	while(temp != NULL) {
-		if(temp->id == id) {
+		if(temp->id == id && temp->id > 0) {
 			if(temp->mask != NULL)
 				return temp->mask;
 			else
@@ -160,9 +160,9 @@ int getOptions(struct options_t **options, int argc, char **argv, int error_chec
 	optarg = malloc(sizeof(char)*255);
 
 	/* Clear the argument holders */
-	memset(longarg,'\0',sizeof(longarg));
-	memset(shortarg,'\0',sizeof(shortarg));	
-	memset(optarg,'\0',sizeof(optarg));	
+	memset(longarg, '\0', sizeof(char)*255);
+	memset(shortarg, '\0', sizeof(char)*3);	
+	memset(optarg, '\0', sizeof(char)*255);	
 
 	/* If have readed all arguments, exit and reset */
 	if(getOptPos>=(argc-1)) {
@@ -310,10 +310,10 @@ int getOptions(struct options_t **options, int argc, char **argv, int error_chec
 void addOption(struct options_t **options, int id, char *name, int argtype, int conftype, char *mask) {
 	if(!(argtype >= 0 && argtype <= 3)) {
 		logprintf(LOG_ERR, "tying to add an invalid option type");
-	} else if(!(conftype >= 0 && conftype <= 2)) {
-		logprintf(LOG_ERR, "tying to add an option with an invalid config type");
+	} else if(!(conftype >= 0 && conftype <= 5)) {
+		logprintf(LOG_ERR, "trying to add an option with an invalid config type");
 	} else if(name == NULL) {
-		logprintf(LOG_ERR, "tying to add an option without name");
+		logprintf(LOG_ERR, "trying to add an option without name");
 	} else if(getOptionNameById(options, id) != NULL) {
 		logprintf(LOG_ERR, "duplicate option id: %s", id);
 	} else if(getOptionIdByName(options, name) != -1) {

@@ -6,6 +6,8 @@
 #include <time.h>
 #include <string.h>
 #include <unistd.h>
+#include <sys/stat.h>
+#include <libgen.h>
 #include "config.h"
 #include "gc.h"
 #include "log.h"
@@ -35,8 +37,8 @@ void logprintf(int prio, char *format_str, ...) {
 
 	if(loglevel >= prio) {
 		if(lf == NULL) {
-			if((lf=fopen(logfile,"a")) == NULL) {
-				logprintf(LOG_WARNING, "Could not open logfile %s", logfile);
+			if((lf = fopen(logfile, "a+")) == NULL) {
+				logprintf(LOG_WARNING, "could not open logfile %s", logfile);
 			} else {
 				gc_attach(log_gc);
 			}
@@ -118,11 +120,35 @@ void disable_shell_log() {
 	shelllog = 0;
 }
 
-void set_logfile(char *file) {
-	if(access(file, F_OK) != -1) {
-		strcpy(logfile,file);
+void set_logfile(char *log) {
+	struct stat s;
+	char *filename = basename(log);
+	char path[1024];
+	int i = (strlen(log)-strlen(filename));
+	
+	memset(path, '\0', sizeof(path));
+	memcpy(path, log, i);
+
+	if(strcmp(basename(log), log) != 0) {
+		int err = stat(path, &s);
+		if(err == -1) {
+			if(ENOENT == errno) {
+				logprintf(LOG_ERR, "the log file folder does not exist", optarg);
+				exit(EXIT_FAILURE);
+			} else {
+				logprintf(LOG_ERR, "failed to run stat on log folder", optarg);
+				exit(EXIT_FAILURE);
+			}
+		} else {
+			if(S_ISDIR(s.st_mode)) {
+				strcpy(logfile,log);
+			} else {
+				logprintf(LOG_ERR, "the log file folder does not exist", optarg);
+				exit(EXIT_FAILURE);
+			}
+		}
 	} else {
-		fprintf(stderr, "%s: the log file %s does not exists\n", progname, optarg);
+		strcpy(logfile,log);
 	}
 }
 

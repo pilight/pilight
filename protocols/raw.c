@@ -53,7 +53,7 @@ void rawPrintHelp() {
 void rawInit() {
 
 	strcpy(raw.id, "raw");
-	strcpy(raw.desc, "Raw codes");
+	addDevice(&raw, "raw", "Raw codes");
 	raw.type = RAW;
 
 	addOption(&raw.options, 'c', "code", required_argument, 0, NULL);

@@ -18,18 +18,24 @@
 	<http://www.gnu.org/licenses/>
 */
 
-#ifndef PROTOCOL_KAKU_OLD_H_
-#define PROTOCOL_KAKU_OLD_H_
+#ifndef PROTOCOL_ARCTECH_SWITCH_H_
+#define PROTOCOL_ARCTECH_SWITCH_H_
 
-protocol_t kaku_old;
+protocol_t arctech_switch;
 
-void kakuOldInit();
-void kakuOldCreateMessage(int id, int unit, int state);
-void kakuOldParseBinary();
-void kakuOldCreateCode(struct options_t *options);
-void kakuOldCreateUnit(int unit);
-void kakuOldCreateId(int id);
-void kakuOldCreateState(int state);
-void kakuOldPrintHelp();
+void arctechSwInit();
+void arctechSwCreateMessage(int id, int unit, int state, int all);
+void arctechSwParseBinary();
+void arctechSwCreateCode(struct options_t *options);
+void arctechSwCreateLow(int s, int e);
+void arctechSwCreateHigh(int s, int e);
+void arctechSwClearCode();
+void arctechSwCreateStart();
+void arctechSwCreateId(int id);
+void arctechSwCreateAll(int all);
+void arctechSwCreateState(int state);
+void arctechSwCreateUnit(int unit);
+void arctechSwCreateFooter();
+void arctechSwPrintHelp();
 
 #endif

@@ -71,7 +71,7 @@ void alectoParseCode() {
 void alectoInit() {
 
 	strcpy(alecto.id, "alecto");
-	strcpy(alecto.desc, "Alecto based weather stations");
+	addDevice(&alecto, "alecto", "Alecto based weather stations");
 	alecto.type = WEATHER;
 	alecto.header = 14;
 	alecto.pulse = 14;

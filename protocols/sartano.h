@@ -18,24 +18,18 @@
 	<http://www.gnu.org/licenses/>
 */
 
-#ifndef PROTOCOL_KAKU_SWITCH_H_
-#define PROTOCOL_KAKU_SWITCH_H_
+#ifndef PROTOCOL_SARTANO_H_
+#define PROTOCOL_SARTANO_H_
 
-protocol_t kaku_switch;
+protocol_t sartano;
 
-void kakuSwInit();
-void kakuSwCreateMessage(int id, int unit, int state, int all);
-void kakuSwParseBinary();
-void kakuSwCreateCode(struct options_t *options);
-void kakuSwCreateLow(int s, int e);
-void kakuSwCreateHigh(int s, int e);
-void kakuSwClearCode();
-void kakuSwCreateStart();
-void kakuSwCreateId(int id);
-void kakuSwCreateAll(int all);
-void kakuSwCreateState(int state);
-void kakuSwCreateUnit(int unit);
-void kakuSwCreateFooter();
-void kakuSwPrintHelp();
+void sartanoInit();
+void sartanoCreateMessage(int id, int unit, int state);
+void sartanoParseBinary();
+void sartanoCreateCode(struct options_t *options);
+void sartanoCreateUnit(int unit);
+void sartanoCreateId(int id);
+void sartanoCreateState(int state);
+void sartanoPrintHelp();
 
 #endif

@@ -18,25 +18,18 @@
 	<http://www.gnu.org/licenses/>
 */
 
-#ifndef PROTOCOL_KAKU_DIMMER_H_
-#define PROTOCOL_KAKU_DIMMER_H_
+#ifndef PROTOCOL_ARCTECH_OLD_H_
+#define PROTOCOL_ARCTECH_OLD_H_
 
-protocol_t kaku_dimmer;
+protocol_t arctech_old;
 
-void kakuDimInit();
-void kakuDimCreateMessage(int id, int unit, int state, int all, int dimlevel);
-void kakuDimParseBinary();
-void kakuDimCreateCode(struct options_t *options);
-void kakuDimCreateLow(int s, int e);
-void kakuDimCreateHigh(int s, int e);
-void kakuDimClearCode();
-void kakuDimCreateStart();
-void kakuDimCreateId(int id);
-void kakuDimCreateAll(int all);
-void kakuDimCreateState(int state);
-void kakuDimCreateUnit(int unit);
-void kakuDimCreateDimlevel(int dimlevel);
-void kakuDimCreateFooter();
-void kakuDimPrintHelp();
+void arctechOldInit();
+void arctechOldCreateMessage(int id, int unit, int state);
+void arctechOldParseBinary();
+void arctechOldCreateCode(struct options_t *options);
+void arctechOldCreateUnit(int unit);
+void arctechOldCreateId(int id);
+void arctechOldCreateState(int state);
+void arctechOldPrintHelp();
 
 #endif

@@ -1,10 +1,10 @@
-CC = gcc
-CFLAGS = -O3 -g -Wall -I. -I.. -Ilibs/ -Iprotocols/ -Ilirc/ -lconfig -lpthread -lm
+CC = $(CROSS_COMPILE)gcc
+CFLAGS = -O3 -g -Wall -I. -I.. -Ilibs/ -Iprotocols/ -Ilirc/ -I/usr/include/ -L/usr/lib/arm-linux-gnueabihf/
 SUBDIRS = libs protocols lirc
 SRC = $(wildcard *.c)
 INCLUDES = $(wildcard protocols/*.o) $(wildcard lirc/*.o) $(wildcard libs/*.h) $(wildcard libs/*.o)
 PROGAMS = $(patsubst %.c,433-%,$(SRC))
-LIBS = libs/libs.o protocols/protocols.o lirc/lirc.o
+LIBS = libs/libs.o protocols/protocols.o lirc/lirc.o -lconfig -lpthread -lm
 
 .PHONY: subdirs $(SUBDIRS)
 
@@ -31,7 +31,7 @@ all: $(LIBS) $(OBJS) $(PROGAMS)
 	$(CC) $(CFLAGS) -o $@ $(patsubst 433-%,%.c,$@) $(LIBS)
 
 clean:
-	rm 433-* >/dev/null 2>&1 || true
+	rm $(PROGRAMS) >/dev/null 2>&1 || true
 	for dir in $(SUBDIRS); do \
 		$(MAKE) -C $$dir $@; \
 	done

@@ -39,3 +39,23 @@ void protocol_register(protocol_t *proto) {
 	protocol_unregister(proto);
 	protocols.listeners[protocols.nr++] = proto;
 }
+
+void addDevice(protocol_t *proto, char *id, char *desc) {
+	struct devices_t *dnode = malloc(sizeof(struct devices_t));
+	strcpy(dnode->id,id);
+	strcpy(dnode->desc,desc);
+	dnode->next	= proto->devices;
+	proto->devices = dnode;
+}
+
+int providesDevice(protocol_t **proto, char *id) {
+	struct devices_t *temp = (*proto)->devices;
+
+	while(temp != NULL) {
+		if(strcmp(temp->id, id) == 0) {
+			return 0;
+		}
+		temp = temp->next;
+	}
+	return 1;
+}
