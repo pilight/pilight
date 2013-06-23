@@ -43,14 +43,14 @@ void logprintf(int prio, char *format_str, ...) {
 				gc_attach(log_gc);
 			}
 		}
+		
+		time_t current;
+		char *currents;
+
+		current=time(&current);
+		currents=ctime(&current);		
 
 		if(filelog == 0 && lf != NULL && loglevel < LOG_DEBUG) {
-			time_t current;
-			char *currents;
-
-			current=time(&current);
-			currents=ctime(&current);
-
 			fprintf(lf,"%15.15s %s: ",currents+4, progname);
 			va_start(ap, format_str);
 			if(prio==LOG_WARNING)
@@ -69,7 +69,7 @@ void logprintf(int prio, char *format_str, ...) {
 
 		if(shelllog == 1) {
 
-			fprintf(stderr, "%s: ", progname);
+			fprintf(stderr, "%15.15s %s: ",currents+4, progname);
 			va_start(ap, format_str);
 
 			if(prio==LOG_WARNING)
