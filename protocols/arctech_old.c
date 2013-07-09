@@ -28,16 +28,16 @@
 #include "arctech_old.h"
 
 void arctechOldCreateMessage(int id, int unit, int state) {
-	memset(arctech_old.message, '\0', sizeof(arctech_old.message));
-
-	sprintf(arctech_old.message, "id %d unit %d", id, unit);
-	if(state==0)
-		strcat(arctech_old.message," on");
+	arctech_old.message = json_mkobject();
+	json_append_member(arctech_old.message, "id", json_mknumber(id));
+	json_append_member(arctech_old.message, "unit", json_mknumber(unit));
+	if(state == 1)
+		json_append_member(arctech_old.message, "state", json_mkstring("on"));
 	else
-		strcat(arctech_old.message," off");
+		json_append_member(arctech_old.message, "state", json_mkstring("off"));
 }
 
-void arctechOldParseBinary() {
+void arctechOldParseBinary(void) {
 	int unit = binToDec(arctech_old.binary, 0, 4);
 	int state = arctech_old.binary[11];
 	int id = binToDec(arctech_old.binary, 5, 9);
@@ -66,7 +66,7 @@ void arctechOldCreateHigh(int s, int e) {
 	}
 }
 
-void arctechOldClearCode() {
+void arctechOldClearCode(void) {
 	arctechOldCreateLow(0,49);
 }
 
@@ -104,35 +104,36 @@ void arctechOldCreateState(int state) {
 	}
 }
 
-void arctechOldCreateFooter() {
+void arctechOldCreateFooter(void) {
 	arctech_old.raw[48]=(PULSE_LENGTH);
 	arctech_old.raw[49]=(arctech_old.footer*PULSE_LENGTH);
 }
 
 
-void arctechOldCreateCode(struct options_t *options) {
+int arctechOldCreateCode(JsonNode *code) {
 	int id = -1;
 	int unit = -1;
 	int state = -1;
+	char *tmp;
 
-	if(getOptionValById(&options, 'i') != NULL)
-		id=atoi(getOptionValById(&options, 'i'));
-	if(getOptionValById(&options, 'f') != NULL)
+	if(json_find_string(code, "id", &tmp) == 0)
+		id=atoi(tmp);
+	if(json_find_string(code, "off", &tmp) == 0)
 		state=0;
-	else if(getOptionValById(&options, 't') != NULL)
+	else if(json_find_string(code, "on", &tmp) == 0)
 		state=1;
-	if(getOptionValById(&options, 'u') != NULL)
-		unit = atoi(getOptionValById(&options, 'u'));
+	if(json_find_string(code, "unit", &tmp) == 0)
+		unit = atoi(tmp);	
 
 	if(id == -1 || unit == -1 || state == -1) {
 		logprintf(LOG_ERR, "arctech_old: insufficient number of arguments");
-		exit(EXIT_FAILURE);
+		return EXIT_FAILURE;
 	} else if(id > 32 || id < 0) {
 		logprintf(LOG_ERR, "arctech_old: invalid id range");
-		exit(EXIT_FAILURE);
+		return EXIT_FAILURE;
 	} else if(unit > 32 || unit < 0) {
 		logprintf(LOG_ERR, "arctech_old: invalid unit range");
-		exit(EXIT_FAILURE);
+		return EXIT_FAILURE;
 	} else {
 		arctechOldCreateMessage(id, unit, state);
 		arctechOldClearCode();
@@ -141,16 +142,17 @@ void arctechOldCreateCode(struct options_t *options) {
 		arctechOldCreateState(state);
 		arctechOldCreateFooter();
 	}
+	return EXIT_SUCCESS;
 }
 
-void arctechOldPrintHelp() {
+void arctechOldPrintHelp(void) {
 	printf("\t -t --on\t\t\tsend an on signal\n");
-	printf("\t -t --off\t\t\tsend an off signal\n");
+	printf("\t -f --off\t\t\tsend an off signal\n");
 	printf("\t -u --unit=unit\t\t\tcontrol a device with this unit code\n");
 	printf("\t -i --id=id\t\t\tcontrol a device with this id\n");
 }
 
-void arctechOldInit() {
+void arctechOldInit(void) {
 
 	strcpy(arctech_old.id, "archtech_old");
 	addDevice(&arctech_old, "kaku_old", "Old KlikAanKlikUit Switches");
@@ -168,10 +170,10 @@ void arctechOldInit() {
 	arctech_old.bit = 0;
 	arctech_old.recording = 0;
 
-	addOption(&arctech_old.options, 't', "on", no_argument, 0, NULL);	
-	addOption(&arctech_old.options, 'f', "off", no_argument, 0, NULL);	
-	addOption(&arctech_old.options, 'u', "unit", required_argument, config_id, "[0-9]");
-	addOption(&arctech_old.options, 'i', "id", required_argument, config_id, "[0-9]");
+	addOption(&arctech_old.options, 't', "on", no_value, config_state, NULL);	
+	addOption(&arctech_old.options, 'f', "off", no_value, config_state, NULL);	
+	addOption(&arctech_old.options, 'u', "unit", has_value, config_id, "[0-9]");
+	addOption(&arctech_old.options, 'i', "id", has_value, config_id, "[0-9]");
 
 	arctech_old.parseBinary=arctechOldParseBinary;
 	arctech_old.createCode=&arctechOldCreateCode;

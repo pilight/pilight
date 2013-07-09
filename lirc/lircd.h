@@ -37,7 +37,7 @@ void nolinger(int sock);
 void remove_client(int fd);
 void add_client(int);
 int add_peer_connection(char *server);
-void connect_to_peers();
+void connect_to_peers(void);
 int get_peer_message(struct peer_connection *peer);
 
 #ifdef DEBUG
@@ -52,7 +52,7 @@ int get_peer_message(struct peer_connection *peer);
   do {} while(0)
 #endif
 
-void logprintf(int prio, char *format_str, ...);
+void logprintf(int prio, const char *format_str, ...);
 void logperror(int prio, const char *s);
 
 void daemonize(void);

@@ -22,11 +22,14 @@
 #define _PROTOCOL_H_
 
 #include "options.h"
+#include "json.h"
 
-#define RAW			0
-#define SWITCH		1
-#define DIMMER		2
-#define WEATHER		3
+typedef enum {
+	RAW,
+	SWITCH,
+	DIMMER,
+	WEATHER
+} devtype_t;
 
 typedef struct devices_t devices_t;
 
@@ -36,18 +39,20 @@ struct devices_t {
 	struct devices_t *next;
 };
 
-typedef struct {
+typedef struct protocol_t protocol_t;
+
+struct protocol_t {
 	char id[25];
-	int type;
+	devtype_t type;
 	int header;
 	int pulse;
 	int footer;
-	float multiplier[2];
+	double multiplier[2];
 	int rawLength;
 	int binaryLength;
 	int repeats;
 	struct options_t *options;
-	char *message;
+	JsonNode *message;
 
 	int bit;
 	int recording;
@@ -58,12 +63,12 @@ typedef struct {
 
 	struct devices_t *devices;
 
-	void (*parseRaw)();
-	void (*parseCode)();
-	void (*parseBinary)();
-	void (*createCode)(struct options_t *options);
-	void (*printHelp)();
-} protocol_t;
+	void (*parseRaw)(void);
+	void (*parseCode)(void);
+	void (*parseBinary)(void);
+	int (*createCode)(JsonNode *code);
+	void (*printHelp)(void);
+};
 
 typedef struct {
 	int nr;
@@ -74,7 +79,7 @@ protocols_t protocols;
 
 void protocol_register(protocol_t *proto);
 void protocol_unregister(protocol_t *proto);
-void addDevice(protocol_t *proto, char *id, char *desc);
-int providesDevice(protocol_t **proto, char *id);
+void addDevice(protocol_t *proto, const char *id, const char *desc);
+int providesDevice(protocol_t **proto, const char *id);
 
 #endif

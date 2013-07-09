@@ -23,7 +23,7 @@
 
 protocol_t alecto;
 
-void alectoParseRaw();
-void alectoInit();
+void alectoParseRaw(void);
+void alectoInit(void);
 
 #endif

@@ -23,8 +23,7 @@
 
 int binToDecRev(int *binary, int s, int e);
 int binToDec(int *binary, int s, int e);
-int devToBinRev(int nr, int *binary);
+int decToBinRev(int nr, int *binary);
 int decToBin(int n, int binary[]);
-int decToBinRev(int n, int binary[]);
 
 #endif

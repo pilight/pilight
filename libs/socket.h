@@ -18,25 +18,30 @@
 	<http://www.gnu.org/licenses/>
 */
 
-#ifndef PROTOCOL_ARCTECH_DIMMER_H_
-#define PROTOCOL_ARCTECH_DIMMER_H_
+#ifndef _SOCKETS_H_
+#define _SOCKETS_H_
 
-protocol_t arctech_dimmer;
+typedef struct socket_callback_t socket_callback_t;
 
-void arctechDimInit(void);
-void arctechDimCreateMessage(int id, int unit, int state, int all, int dimlevel);
-void arctechDimParseBinary(void);
-int arctechDimCreateCode(JsonNode *code);
-void arctechDimCreateLow(int s, int e);
-void arctechDimCreateHigh(int s, int e);
-void arctechDimClearCode(void);
-void arctechDimCreateStart(void);
-void arctechDimCreateId(int id);
-void arctechDimCreateAll(int all);
-void arctechDimCreateState(int state);
-void arctechDimCreateUnit(int unit);
-void arctechDimCreateDimlevel(int dimlevel);
-void arctechDimCreateFooter(void);
-void arctechDimPrintHelp(void);
+struct socket_callback_t {
+    void (*client_connected_callback)(int);
+    void (*client_disconnected_callback)(int);
+    void (*client_data_callback)(int, char*);
+};
+
+int serverSocket;
+int clientSocket;
+int socket_clients[MAX_CLIENTS];
+
+/* Start the socket server */
+int start_server(unsigned short port);
+int connect_to_server(char *address, unsigned short port);
+void socket_close(int i);
+void socket_write(int sockfd, const char *msg, ...);
+void socket_write_big(int sockfd, const char *msg, ...);
+char *socket_read(int sockfd);
+char *socket_read_big(int sockfd);
+int socket_msgcmp(char *a, char *b);
+void *wait_for_data(void *param);
 
 #endif

@@ -35,8 +35,8 @@ extern char *optarg;
 int getOptPos = 0;
 
 /* Add a value to the specific struct id */
-void setOptionValById(struct options_t **options, int id, char *val) {
-	struct options_t *temp = *options;
+void setOptionValById(struct options_t **opt, int id, const char *val) {
+	struct options_t *temp = *opt;
 	while(temp != NULL) {
 		if(temp->id == id && temp->id > 0) {
 			strcpy(temp->value,val);
@@ -47,111 +47,130 @@ void setOptionValById(struct options_t **options, int id, char *val) {
 }
 
 /* Get a certain option value identified by the id */
-char *getOptionValById(struct options_t **options, int id) {
-	struct options_t *temp = *options;
+int getOptionValById(struct options_t **opt, int id, char **out) {
+	struct options_t *temp = *opt;
+	*out = NULL;	
 	while(temp != NULL) {
 		if(temp->id == id && temp->id > 0) {
 			if(temp->value != NULL && strlen(temp->value) > 0) {
-				return temp->value;
+				*out = temp->value;
+				return 0;
 			} else {
-				return '\0';
+				return 1;
 			}
 		}
 		temp = temp->next;
 	}
 
-	return '\0';
+	return 1;
 }
 
 /* Get a certain option argument type identified by the id */
-int getOptionArgTypeById(struct options_t **options, int id) {
-	struct options_t *temp = *options;
+int getOptionArgTypeById(struct options_t **opt, int id, int *out) {
+	struct options_t *temp = *opt;
+	*out = 0;
 	while(temp != NULL) {
 		if(temp->id == id && temp->id > 0) {
-			if(temp->argtype != 0)
-				return temp->argtype;
-			else
-				return -1;
+			if(temp->argtype != 0) {
+				*out = temp->argtype;
+				return 0;
+			} else {
+				return 1;
+			}
 		}
 		temp = temp->next;
 	}
 
-	return -1;
+	return 1;
 }
 
 /* Get a certain option name identified by the id */
-char *getOptionNameById(struct options_t **options, int id) {
-	struct options_t *temp = *options;
+int getOptionNameById(struct options_t **opt, int id, char **out) {
+	struct options_t *temp = *opt;
+	*out = NULL;
 	while(temp != NULL) {
 		if(temp->id == id && temp->id > 0) {
-			if(temp->name != NULL)
-				return temp->name;
-			else
-				return '\0';
+			if(temp->name != NULL) {
+				*out = temp->name;
+				return 0;
+			} else {
+				return 1;
+			}
 		}
 		temp = temp->next;
 	}
 
-	return '\0';
+	return 1;
 }
 
 /* Get a certain regex mask identified by the name */
-char *getOptionMaskById(struct options_t **options, int id) {
-	struct options_t *temp = *options;
+int getOptionMaskById(struct options_t **opt, int id, char **out) {
+	struct options_t *temp = *opt;
+	*out = NULL;
 	while(temp != NULL) {
 		if(temp->id == id && temp->id > 0) {
-			if(temp->mask != NULL)
-				return temp->mask;
-			else
-				return '\0';
+			if(temp->mask != NULL) {
+				*out = temp->mask;
+				return 0;
+			} else {
+				return 1;
+			}
 		}
 		temp = temp->next;
 	}
 
-	return '\0';
+	return 1;
 }
 
 /* Get a certain option id identified by the name */
-int getOptionIdByName(struct options_t **options, char *name) {
-	struct options_t *temp = *options;
+int getOptionIdByName(struct options_t **opt, char *name, int *out) {
+	struct options_t *temp = *opt;
+	*out = 0;
 	while(temp != NULL) {
 		if(temp->name != NULL) {
 			if(strcmp(temp->name,name) == 0) {
-				if(temp->id > 0)
-					return temp->id;
-				else
-					return -1;
+				if(temp->id > 0) {
+					*out = temp->id;
+					return 0;
+				} else {
+					return 1;
+				}
 			}
 		}
 		temp = temp->next;
 	}
 
-	return -1;
+	return 1;
 }
 
 /* Get a certain option value identified by the name */
-char *getOptionValByName(struct options_t **options, char *name) {
-	struct options_t *temp = *options;
+int getOptionValByName(struct options_t **opt, char *name, char **out) {
+	struct options_t *temp = *opt;
+	*out = NULL;
 	while(temp != NULL) {
 		if(temp->name != NULL) {
 			if(strcmp(temp->name,name) == 0) {
-				if(temp->value != NULL && strlen(temp->value) > 0)
-					return temp->value;
-				else
-					return '\0';
+				if(temp->value != NULL && strlen(temp->value) > 0) {
+					*out = temp->value;
+					return 0;
+				} else {
+					return 1;
+				}
 			}
 		}
 		temp = temp->next;
 	}
 
-	return '\0';
+	return 1;
 }
 
 /* Parse all CLI arguments */
-int getOptions(struct options_t **options, int argc, char **argv, int error_check) {
+int getOptions(struct options_t **opt, int argc, char **argv, int error_check) {
 	int c = 0;
 	regex_t regex;
 	int reti;
+	char *ctmp = NULL;
+	int itmp;
 	char *mask;
 
 	/* Reservate enough memory to store all variables */
@@ -205,15 +224,14 @@ int getOptions(struct options_t **options, int argc, char **argv, int error_chec
 		} else {
 			/* If the short argument and the long argument are not equal,
 			    then we probably encountered a long argument. */
-			char *tmp = malloc(strlen(longarg));
-			int tmp1 = -1;
+			ctmp = malloc(strlen(longarg));
 			if(longarg[0] == '-' && longarg[1] == '-') {
-				memcpy(tmp,&longarg[2],strlen(longarg));
-				tmp[strlen(longarg)] = '\0';
+				memcpy(ctmp, &longarg[2], strlen(longarg));
+				ctmp[strlen(longarg)] = '\0';
 
 				/* Retrieve the short identifier for the logn argument */
-				if((tmp1 = getOptionIdByName(options, tmp)) > -1) {
-					c=tmp1;
+				if(getOptionIdByName(opt, ctmp, &itmp) == 0) {
+					c=itmp;
 				} else if(argv[getOptPos][0] == '-') {
 					c=shortarg[1];
 				}
@@ -223,7 +241,7 @@ int getOptions(struct options_t **options, int argc, char **argv, int error_chec
 		}
 
 		/* Check if the argument was expected */
-		if(getOptionNameById(options, c) == NULL && c > 0) {
+		if(getOptionNameById(opt, c, &ctmp) != 0 && c > 0) {
 			if(error_check == 1) {
 				if(strcmp(longarg,shortarg) == 0) {
 					if(shortarg[0] == '-') {
@@ -239,7 +257,7 @@ int getOptions(struct options_t **options, int argc, char **argv, int error_chec
 				return 0;
 			}
 		/* Check if an argument cannot have an argument that was set */
-		} else if(strlen(optarg) != 0 && getOptionArgTypeById(options, c) == 1) {
+		} else if(strlen(optarg) != 0 && getOptionArgTypeById(opt, c, &itmp) == 0 && itmp == 1) {
 			if(error_check == 1) {
 				if(strcmp(longarg,shortarg) == 0) {
 					logprintf(LOG_ERR, "option '-%c' doesn't take an argument", c);
@@ -251,7 +269,7 @@ int getOptions(struct options_t **options, int argc, char **argv, int error_chec
 				return 0;
 			}
 		/* Check if an argument required a value that wasn't set */
-		} else if(strlen(optarg) == 0 && getOptionArgTypeById(options, c) == 2) {
+		} else if(strlen(optarg) == 0 && getOptionArgTypeById(opt, c, &itmp) == 2 && itmp == 2) {
 			if(error_check == 1) {
 				if(strcmp(longarg, shortarg) == 0) {
 					logprintf(LOG_ERR, "option '-%c' requires an argument", c);
@@ -277,11 +295,10 @@ int getOptions(struct options_t **options, int argc, char **argv, int error_chec
 		} else {
 			/* If the argument didn't have a value, set it to 1 */
 			if(strlen(optarg) == 0)
-				setOptionValById(options, c, "1");
+				setOptionValById(opt, c, "1");
 			else {
 				/* If the argument has a regex mask, check if it passes */
-				mask = getOptionMaskById(options, c);
-				if(strlen(mask) > 0) {
+				if(getOptionMaskById(opt, c, &mask) == 0) {
 					reti = regcomp(&regex, mask, REG_EXTENDED);
 					if(reti) {
 						logprintf(LOG_ERR, "could not compile regex");
@@ -298,7 +315,7 @@ int getOptions(struct options_t **options, int argc, char **argv, int error_chec
 						exit(EXIT_FAILURE);
 					}
 				}
-				setOptionValById(options, c, optarg);
+				setOptionValById(opt, c, optarg);
 			}
 			return c;
 		}
@@ -307,16 +324,18 @@ int getOptions(struct options_t **options, int argc, char **argv, int error_chec
 }
 
 /* Add a new option to the options struct */
-void addOption(struct options_t **options, int id, char *name, int argtype, int conftype, char *mask) {
+void addOption(struct options_t **opt, int id, const char *name, int argtype, int conftype, const char *mask) {
+	char *ctmp = NULL;
+	int itmp;
 	if(!(argtype >= 0 && argtype <= 3)) {
 		logprintf(LOG_ERR, "tying to add an invalid option type");
 	} else if(!(conftype >= 0 && conftype <= 5)) {
 		logprintf(LOG_ERR, "trying to add an option with an invalid config type");
 	} else if(name == NULL) {
 		logprintf(LOG_ERR, "trying to add an option without name");
-	} else if(getOptionNameById(options, id) != NULL) {
-		logprintf(LOG_ERR, "duplicate option id: %s", id);
-	} else if(getOptionIdByName(options, name) != -1) {
+	} else if(getOptionNameById(opt, id, &ctmp) == 0) {
+		logprintf(LOG_ERR, "duplicate option id: %c", id);
+	} else if(getOptionIdByName(opt, strdup(name), &itmp) == 0) {
 		logprintf(LOG_ERR, "duplicate option name: %s", name);
 	} else {
 		optnode = malloc(sizeof(struct options_t));	
@@ -329,8 +348,8 @@ void addOption(struct options_t **options, int id, char *name, int argtype, int 
 			memset(optnode->value, '\0', sizeof(optnode->mask));
 		else
 			strcpy(optnode->mask, mask);
-		optnode->next = *options;
-		*options = optnode;
+		optnode->next = *opt;
+		*opt = optnode;
 	}
 }
 

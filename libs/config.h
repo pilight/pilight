@@ -26,9 +26,10 @@
 //#define PULSE_LENGTH 	165 	// wiringPi pulse length
 #define PULSE_LENGTH	295
 
-#define PORT 			5000
-#define MAX_CLIENTS		30
-#define BUFFER_SIZE		1025
+#define PORT 				5000
+#define MAX_CLIENTS			30
+#define BUFFER_SIZE			1025
+#define BIG_BUFFER_SIZE		1025000
 
 #define PID_FILE		"/var/run/433-deamon.pid"
 #define CONFIG_FILE		"./433-daemon.conf"
@@ -80,9 +81,15 @@ typedef struct conf_values_t conf_values_t;
 |------------------|
 */
 
+typedef enum {
+	CONFIG_TYPE_UNDEFINED,
+	CONFIG_TYPE_NUMBER,
+	CONFIG_TYPE_STRING
+} config_type_t;
+
 struct conf_values_t {
 	char *value;
-	int type;
+	config_type_t type;
 	struct conf_values_t *next;
 };
 
@@ -95,7 +102,9 @@ struct conf_settings_t {
 struct conf_devices_t {
 	char *id;
 	char *name;
-	char *protocol;
+	char *state;
+	char *protoname;
+	struct protocol_t *protopt;
 	struct conf_settings_t *settings;
 	struct conf_devices_t *next;
 };
@@ -107,8 +116,6 @@ struct conf_locations_t {
 	struct conf_locations_t *next;
 };
 
-int read_config(char *configfile);
-
 char *progname;
 
 /* Struct to store the locations */
@@ -119,5 +126,22 @@ struct conf_devices_t *devices;
 struct conf_settings_t *settings;
 /* Struct to store the device values list settings */
 struct conf_values_t *values;
+
+/* The default config file location */
+char *configfile;
+
+void config_update(char *protoname, JsonNode *message);
+int config_get_location(char *id, struct conf_locations_t **loc);
+int config_get_device(char *lid, char *sid, struct conf_devices_t **dev);
+JsonNode *config2json(void);
+void config_print(void);
+void config_save_setting(int i, JsonNode *jsetting, struct conf_settings_t *snode);
+int config_check_state(int i, JsonNode *jsetting, struct conf_devices_t *device);
+int config_parse_devices(JsonNode *jdevices, struct conf_devices_t *device);
+int config_parse_locations(JsonNode *jlocations, struct conf_locations_t *location);
+int config_parse(JsonNode *root);
+int config_write(char *content);
+int config_read(void);
+int config_set_file(char *cfgfile);
 
 #endif

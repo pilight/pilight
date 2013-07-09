@@ -30,12 +30,12 @@ static jmp_buf gc_cleanup;
    easily call function when exiting
    the daemon */
 
-void gc_handler(int signal) {
-    siglongjmp(gc_cleanup,signal);
+void gc_handler(int sig) {
+    siglongjmp(gc_cleanup,sig);
 }
 
 /* Removed function from GC */
-void gc_detach(int (*fp)()) {
+void gc_detach(int (*fp)(void)) {
 	unsigned i;
 
 	for(i=0; i<gc.nr; ++i) {
@@ -47,13 +47,13 @@ void gc_detach(int (*fp)()) {
 }
 
 /* Add function to gc */
-void gc_attach(int (*fp)()) {
+void gc_attach(int (*fp)(void)) {
 	gc_detach(fp);
 	gc.listeners[gc.nr++] = fp;
 }
 
 /* Initialize the catch all gc */
-void gc_catch() {
+void gc_catch(void) {
 
     struct sigaction act, old;
     unsigned i, s;

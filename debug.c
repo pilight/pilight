@@ -27,14 +27,13 @@
 #include <stdarg.h>
 #include <unistd.h>
 #include <fcntl.h>
-#include <sys/types.h>
-#include <sys/stat.h>
 #include <sys/ioctl.h>
 #include <limits.h>
 #include <errno.h>
 #include <syslog.h>
 #include <time.h>
 #include <math.h>
+
 #include "config.h"
 #include "log.h"
 #include "options.h"
@@ -55,13 +54,13 @@ int main(int argc, char **argv) {
 
 	enable_shell_log();
 	disable_file_log();
-	set_loglevel(LOG_INFO);
+	set_loglevel(LOG_NOTICE);
 	
 	progname = malloc((10*sizeof(char))+1);
-	progname = "433-debug";
+	strcpy(progname, "433-debug");
 
 	lirc_t data;
-	char *socket = "/dev/lirc0";
+	char *socket = strdup("/dev/lirc0");
 	int have_device = 0;
 
 	int duration = 0;
@@ -82,9 +81,9 @@ int main(int argc, char **argv) {
 
 	hw_choose_driver(NULL);
 	
-	addOption(&options, 'h', "help", no_argument, 0, NULL);
-	addOption(&options, 'v', "version", no_argument, 0, NULL);
-	addOption(&options, 's', "socket", required_argument, 0, "^/dev/([A-Za-z]+)([0-9]+)");
+	addOption(&options, 'h', "help", no_value, 0, NULL);
+	addOption(&options, 'v', "version", no_value, 0, NULL);
+	addOption(&options, 's', "socket", has_value, 0, "^/dev/([A-Za-z]+)([0-9]+)");
 
 	while (1) {
 		int c;
@@ -196,7 +195,7 @@ End of the original (but stripped) code of mode2
 
 	/* Convert the raw code into binary code */
 	for(i=0;i<rawLength;i++) {
-		if(raw[i] > (pulse-PULSE_LENGTH)) {
+		if((unsigned int)raw[i] > (pulse-PULSE_LENGTH)) {
 			code[i]=1;
 		} else {
 			code[i]=0;

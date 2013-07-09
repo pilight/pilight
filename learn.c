@@ -24,17 +24,15 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdarg.h>
 #include <unistd.h>
 #include <fcntl.h>
-#include <sys/types.h>
-#include <sys/stat.h>
 #include <sys/ioctl.h>
 #include <limits.h>
 #include <errno.h>
 #include <syslog.h>
 #include <time.h>
 #include <math.h>
+
 #include "config.h"
 #include "log.h"
 #include "options.h"
@@ -44,15 +42,17 @@
 #include "lirc/hardware.h"
 #include "lirc/hw-types.h"
 
-#define WAIT	 		-1
-#define CAPTURE 		0
-#define ON				1
-#define OFF				2
-#define ALL				3
-#define UNIT1			4
-#define UNIT2			5
-#define PROCESSUNIT		6
-#define STOP			999
+typedef enum {
+	WAIT,
+	CAPTURE,
+	ON,
+	OFF,
+	ALL,
+	UNIT1,
+	UNIT2,
+	PROCESSUNIT,
+	STOP
+} steps_t;
 
 void rmDup(int *a, int *b) {
 	int x=0, y=0, i=0;
@@ -91,13 +91,13 @@ int main(int argc, char **argv) {
 
 	enable_shell_log();
 	disable_shell_log();
-	set_loglevel(LOG_INFO);
+	set_loglevel(LOG_NOTICE);
 
 	progname = malloc((10*sizeof(char))+1);
-	progname = "433-learn";
+	strcpy(progname, "433-learn");
 
 	lirc_t data;
-	char *socket = "/dev/lirc0";
+	char *socket = strdup("/dev/lirc0");
 	int have_device = 0;
 
 	int duration = 0;
@@ -105,8 +105,8 @@ int main(int argc, char **argv) {
 	int y = 0;
 	int z = 0;
 
-	int state = CAPTURE;
-	int pState = WAIT;
+	steps_t state = CAPTURE;
+	steps_t pState = WAIT;
 
 	int recording = 1;
 	int bit = 0;
@@ -144,9 +144,9 @@ int main(int argc, char **argv) {
 
 	hw_choose_driver(NULL);
 
-	addOption(&options, 'h', "help", no_argument, 0, NULL);
-	addOption(&options, 'v', "version", no_argument, 0, NULL);
-	addOption(&options, 's', "socket", required_argument, 0, "^/dev/([A-Za-z]+)([0-9]+)");
+	addOption(&options, 'h', "help", no_value, 0, NULL);
+	addOption(&options, 'v', "version", no_value, 0, NULL);
+	addOption(&options, 's', "socket", has_value, 0, "^/dev/([A-Za-z]+)([0-9]+)");
 
 	while (1) {
 		int c;
@@ -248,7 +248,7 @@ int main(int argc, char **argv) {
 					if(header > 0 && footer > 0 && pulse > 0 && rawLength > 0) {
 						/* Convert the raw code into binary code */
 						for(i=0;i<rawLength;i++) {
-							if(raw[i] > (pulse-PULSE_LENGTH)) {
+							if((unsigned int)raw[i] > (pulse-PULSE_LENGTH)) {
 								code[i]=1;
 							} else {
 								code[i]=0;
@@ -298,6 +298,9 @@ int main(int argc, char **argv) {
 									case PROCESSUNIT:
 										state=STOP;
 									break;
+									case WAIT:
+									case STOP:
+									default:;
 								}
 							printf(" Done.\n\n");
 							pState=WAIT;
@@ -373,7 +376,7 @@ int main(int argc, char **argv) {
 						all[y++] = i;
 					}
 				}
-				if(z<y) {
+				if((unsigned int)z < y) {
 					for(i=0;i<z;i++) {
 						all[z]=temp[z];
 					}
@@ -415,6 +418,9 @@ int main(int argc, char **argv) {
 				}
 				state=STOP;
 			break;
+			case WAIT:
+			case STOP:
+			default:;
 		}
 	fflush(stdout);
 	if(state!=WAIT)

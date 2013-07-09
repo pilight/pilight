@@ -20,7 +20,7 @@ int shelllog = 1;
 int loglevel = LOG_INFO;
 char logfile[1024] = LOG_FILE;
 
-int log_gc() {
+int log_gc(void) {
 	if(lf != NULL) {
 		if(fclose(lf) != 0)
 			return 0;
@@ -28,7 +28,7 @@ int log_gc() {
 	return 1;
 }
 
-void logprintf(int prio, char *format_str, ...) {
+void logprintf(int prio, const char *format_str, ...) {
 	int save_errno = errno;
 	va_list ap;
 
@@ -51,7 +51,7 @@ void logprintf(int prio, char *format_str, ...) {
 		currents=ctime(&current);		
 
 		if(filelog == 0 && lf != NULL && loglevel < LOG_DEBUG) {
-			fprintf(lf,"%15.15s %s: ",currents+4, progname);
+			fprintf(lf,"[%15.15s] %s: ",currents+4, progname);
 			va_start(ap, format_str);
 			if(prio==LOG_WARNING)
 				fprintf(lf,"WARNING: ");
@@ -69,7 +69,7 @@ void logprintf(int prio, char *format_str, ...) {
 
 		if(shelllog == 1) {
 
-			fprintf(stderr, "%15.15s %s: ",currents+4, progname);
+			fprintf(stderr, "[%15.15s] %s: ",currents+4, progname);
 			va_start(ap, format_str);
 
 			if(prio==LOG_WARNING)
@@ -104,19 +104,19 @@ void logperror(int prio, const char *s) {
 	// errno = save_errno;
 }
 
-void enable_file_log() {
+void enable_file_log(void) {
 	filelog = 1;
 }
 
-void disable_file_log() {
+void disable_file_log(void) {
 	filelog = 0;
 }
 
-void enable_shell_log() {
+void enable_shell_log(void) {
 	shelllog = 1;
 }
 
-void disable_shell_log() {
+void disable_shell_log(void) {
 	shelllog = 0;
 }
 
@@ -124,7 +124,7 @@ void set_logfile(char *log) {
 	struct stat s;
 	char *filename = basename(log);
 	char path[1024];
-	int i = (strlen(log)-strlen(filename));
+	size_t i = (strlen(log)-strlen(filename));
 	
 	memset(path, '\0', sizeof(path));
 	memcpy(path, log, i);
@@ -154,4 +154,8 @@ void set_logfile(char *log) {
 
 void set_loglevel(int level) {
 	loglevel = level;
+}
+
+int get_loglevel(void) {
+	return loglevel;
 }

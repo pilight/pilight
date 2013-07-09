@@ -23,13 +23,13 @@
 
 protocol_t sartano;
 
-void sartanoInit();
+void sartanoInit(void);
 void sartanoCreateMessage(int id, int unit, int state);
-void sartanoParseBinary();
-void sartanoCreateCode(struct options_t *options);
+void sartanoParseBinary(void);
+int sartanoCreateCode(JsonNode *code);
 void sartanoCreateUnit(int unit);
 void sartanoCreateId(int id);
 void sartanoCreateState(int state);
-void sartanoPrintHelp();
+void sartanoPrintHelp(void);
 
 #endif

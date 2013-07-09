@@ -18,25 +18,13 @@
 	<http://www.gnu.org/licenses/>
 */
 
-#ifndef PROTOCOL_ARCTECH_DIMMER_H_
-#define PROTOCOL_ARCTECH_DIMMER_H_
+#ifndef _HARDWARE_H_
+#define _HARDWARE_H_
 
-protocol_t arctech_dimmer;
+#include "config.h"
 
-void arctechDimInit(void);
-void arctechDimCreateMessage(int id, int unit, int state, int all, int dimlevel);
-void arctechDimParseBinary(void);
-int arctechDimCreateCode(JsonNode *code);
-void arctechDimCreateLow(int s, int e);
-void arctechDimCreateHigh(int s, int e);
-void arctechDimClearCode(void);
-void arctechDimCreateStart(void);
-void arctechDimCreateId(int id);
-void arctechDimCreateAll(int all);
-void arctechDimCreateState(int state);
-void arctechDimCreateUnit(int unit);
-void arctechDimCreateDimlevel(int dimlevel);
-void arctechDimCreateFooter(void);
-void arctechDimPrintHelp(void);
+void hw_init(void);
+int module_init(void);
+int module_deinit(void);
 
 #endif

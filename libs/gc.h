@@ -23,14 +23,14 @@
 
 typedef struct {
 	int nr;
-	int (*listeners[10])();
+	int (*listeners[10])(void);
 } collectors_t;
 
 collectors_t gc;
 
 void gc_handler(int signal);
-void gc_attach(int (*fp)());
-void gc_detach(int (*fp)());
-void gc_catch();
+void gc_attach(int (*fp)(void));
+void gc_detach(int (*fp)(void));
+void gc_catch(void);
 
 #endif

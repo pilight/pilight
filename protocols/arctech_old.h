@@ -23,13 +23,13 @@
 
 protocol_t arctech_old;
 
-void arctechOldInit();
+void arctechOldInit(void);
 void arctechOldCreateMessage(int id, int unit, int state);
-void arctechOldParseBinary();
-void arctechOldCreateCode(struct options_t *options);
+void arctechOldParseBinary(void);
+int arctechOldCreateCode(JsonNode *code);
 void arctechOldCreateUnit(int unit);
 void arctechOldCreateId(int id);
 void arctechOldCreateState(int state);
-void arctechOldPrintHelp();
+void arctechOldPrintHelp(void);
 
 #endif

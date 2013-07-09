@@ -27,36 +27,39 @@
 #include "binary.h"
 #include "raw.h"
 
-void rawCreateCode(struct options_t *options) {
-	char *code = NULL;
-	if(getOptionValById(&options, 'C') != NULL) 
-		code = getOptionValById(&options, 'C');
-	else {
-		logprintf(LOG_ERR, "raw: insufficient number of arguments");
-		exit(EXIT_FAILURE);
-	}
-	char *pch;
+int rawCreateCode(JsonNode *code) {
+	char *rcode = NULL;
+	char *rncode = NULL;
+	char *pch = NULL;
 	int i=0;
-	pch = strtok(code, " ");
+
+	if(json_find_string(code, "code", &rcode) != 0) {
+		logprintf(LOG_ERR, "raw: insufficient number of arguments");
+		return EXIT_FAILURE;
+	}
+
+	rncode = strdup(rcode);
+	pch = strtok(rncode, " ");
 	while(pch != NULL) {
 		raw.raw[i]=atoi(pch);
 		pch = strtok(NULL, " ");
 		i++;
 	}
 	raw.rawLength=i;
+	return EXIT_SUCCESS;
 }
 
-void rawPrintHelp() {
+void rawPrintHelp(void) {
 	printf("\t -C --code=\"raw\"\t\traw code devided by spaces\n\t\t\t\t\t(just like the output of debug)\n");
 }
 
-void rawInit() {
+void rawInit(void) {
 
 	strcpy(raw.id, "raw");
 	addDevice(&raw, "raw", "Raw codes");
 	raw.type = RAW;
 
-	addOption(&raw.options, 'c', "code", required_argument, 0, NULL);
+	addOption(&raw.options, 'C', "code", has_value, 0, NULL);
 
 	raw.createCode=&rawCreateCode;
 	raw.printHelp=&rawPrintHelp;

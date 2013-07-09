@@ -27,16 +27,14 @@
 #include "binary.h"
 #include "alecto.h"
 
-void alectoParseCode() {
+void alectoParseCode(void) {
 	int i = 0, x = 0, a = 0xf;
-	int id;
 	int temperature;
 	int negative;
 	int humidity;
 	int battery;
-
-	memset(alecto.message, '\0', sizeof(alecto.message));
-
+	int id;
+	
 	for(i=1;i<alecto.rawLength-1;i+=2) {
 		alecto.binary[x++] = alecto.code[i];
 	}
@@ -57,18 +55,19 @@ void alectoParseCode() {
 		else
 			negative=0;
 		humidity = ((binToDec(alecto.binary, 28, 31)*10)+binToDec(alecto.binary, 24, 27));
-		i=0;
-		i+=sprintf(alecto.message+i, "id %d ", id);
-		i+=sprintf(alecto.message+i, "battery %d ", battery);
+
+		alecto.message = json_mkobject();
+		json_append_member(alecto.message, "id", json_mknumber(id));
+		json_append_member(alecto.message, "battery", json_mknumber(battery));
 		if(negative==1)
-			i+=sprintf(alecto.message+i, "temperature -%d ", temperature);
+			json_append_member(alecto.message, "temperature", json_mknumber(temperature));
 		else
-			i+=sprintf(alecto.message+i, "temperature %d ", temperature);
-		i+=sprintf(alecto.message+i, "humidity %d", humidity);
+			json_append_member(alecto.message, "temperature", json_mknumber(temperature/-1));
+		json_append_member(alecto.message, "humidity", json_mknumber(humidity));
 	}
 }
 
-void alectoInit() {
+void alectoInit(void) {
 
 	strcpy(alecto.id, "alecto");
 	addDevice(&alecto, "alecto", "Alecto based weather stations");
@@ -80,11 +79,15 @@ void alectoInit() {
 	alecto.multiplier[1] = 0.3;
 	alecto.rawLength = 74;
 	alecto.repeats = 1;
-	alecto.message = malloc((50*sizeof(char))+1);
-
+	
 	alecto.bit = 0;
 	alecto.recording = 0;
 
+	addOption(&alecto.options, 'h', "humidity", has_value, config_value, "[0-9]");
+	addOption(&alecto.options, 't', "temperature", has_value, config_value, "[0-9]");
+	addOption(&alecto.options, 'b', "battery", has_value, config_value, "[0-9]");
+	addOption(&alecto.options, 'i', "id", has_value, config_id, "[0-9]");
+	
 	alecto.parseCode=&alectoParseCode;
 
 	protocol_register(&alecto);

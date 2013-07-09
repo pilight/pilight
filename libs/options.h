@@ -21,12 +21,13 @@
 #ifndef _OPTIONS_H_
 #define _OPTIONS_H_
 
-#define no_argument			1
-#define required_argument 	2
-#define optional_argument 	3
+#define no_value		1
+#define has_value	 	2
+#define opt_value	 	3
 
-#define config_id			1
-#define config_state		2
+#define config_id		1
+#define config_state	2
+#define config_value	3
 
 typedef struct options_t options_t;
 
@@ -43,14 +44,15 @@ struct options_t {
 options_t *options;
 options_t *optnode;
 
-void setOptionValById(struct options_t **options, int id, char *val);
-char *getOptionValById(struct options_t **options, int id);
-int getOptionArgTypeById(struct options_t **options, int id);
-char *getOptionNameById(struct options_t **options, int id);
-int getOptionIdByName(struct options_t **options, char *name);
-char *getOptionValByName(struct options_t **options, char *name);
+void setOptionValById(struct options_t **options, int id, const char *val);
+int getOptionValById(struct options_t **options, int id, char **out);
+int getOptionArgTypeById(struct options_t **options, int id, int *out);
+int getOptionNameById(struct options_t **options, int id, char **out);
+int getOptionIdByName(struct options_t **options, char *name, int *out);
+int getOptionValByName(struct options_t **options, char *name, char **out);
+int getOptionMaskById(struct options_t **options, int id, char **out);
 int getOptions(struct options_t **options, int argc, char **argv, int error_check);
-void addOption(struct options_t **options, int id, char *name, int argtype, int conftype, char *mask);
+void addOption(struct options_t **options, int id, const char *name, int argtype, int conftype, const char *mask);
 void mergeOptions(struct options_t **a, struct options_t **b);
 
 #endif

@@ -23,19 +23,19 @@
 
 protocol_t arctech_switch;
 
-void arctechSwInit();
+void arctechSwInit(void);
 void arctechSwCreateMessage(int id, int unit, int state, int all);
-void arctechSwParseBinary();
-void arctechSwCreateCode(struct options_t *options);
+void arctechSwParseBinary(void);
+int arctechSwCreateCode(JsonNode *code);
 void arctechSwCreateLow(int s, int e);
 void arctechSwCreateHigh(int s, int e);
-void arctechSwClearCode();
-void arctechSwCreateStart();
+void arctechSwClearCode(void);
+void arctechSwCreateStart(void);
 void arctechSwCreateId(int id);
 void arctechSwCreateAll(int all);
 void arctechSwCreateState(int state);
 void arctechSwCreateUnit(int unit);
-void arctechSwCreateFooter();
-void arctechSwPrintHelp();
+void arctechSwCreateFooter(void);
+void arctechSwPrintHelp(void);
 
 #endif

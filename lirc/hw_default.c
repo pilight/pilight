@@ -139,10 +139,10 @@ int default_readdata(lirc_t timeout)
   interface functions
 */
 
-int default_init()
+int default_init(void)
 {
 #if defined(SIM_SEND) && !defined(DAEMONIZE)
-	hw.fd = STDOUT_FILENO;
+	hw.fd = STDOUT_FdILENO;
 	hw.features = LIRC_CAN_SEND_PULSE;
 	hw.send_mode = LIRC_MODE_PULSE;
 	hw.rec_mode = 0;

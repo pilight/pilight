@@ -23,8 +23,8 @@
 
 protocol_t raw;
 
-void rawInit();
-void rawCreateCode(struct options_t *options);
-void rawPrintHelp();
+void rawInit(void);
+int rawCreateCode(JsonNode *code);
+void rawPrintHelp(void);
 
 #endif

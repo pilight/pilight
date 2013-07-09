@@ -23,31 +23,33 @@
 #include <stdlib.h>
 
 int binToDecRev(int *binary, int s, int e) {
-	int dec = 0, x = 1, i;
+	int dec = 0, i = 0;
+	unsigned int x = 1;
 	for(i=s;i<=e;i++) {
 		x*=2;
 	}
 	for(i=s;i<=e;i++) {
 		x/=2;
 		if(binary[i] == 1)
-			dec += x;
+			dec += (int)x;
 	}
 	return dec;
 }
 
 int binToDec(int *binary, int s, int e) {
-	int dec = 0, x = 1, i;
+	int dec = 0, i = 0;
+	unsigned int x = 1;
 	for(i=s;i<=e;i++) {
 		if(binary[i] == 1)
-			dec += x;
+			dec += (int)x;
 		x*=2;
 	}
 	return dec;
 }
 
 int decToBin(int n, int binary[]) {
-	int i=1;
-	int x=0;
+	unsigned int i=1;
+	unsigned int x=0;
 	int y=0;
 	while(i<=n) {
 		i*=2;
@@ -55,21 +57,21 @@ int decToBin(int n, int binary[]) {
 	}
 	i/=2;
 	x--;
-	for(y=x;y>=0;y--) {
-		if((n-i)>=0) {
-			n-=i;
-			binary[x-y]=1;
+	for(y=(int)x;y>=0;y--) {
+		if((n-(int)i)>=0) {
+			n-=(int)i;
+			binary[(int)x-y]=1;
 		} else {
-			binary[x-y]=0;
+			binary[(int)x-y]=0;
 		}
 		i/=2;		
 	}
-	return x;
+	return (int)x;
 }
 
 int decToBinRev(int n, int binary[]) {
-	int i=1;
-	int x=0;
+	unsigned int i=1;
+	unsigned int x=0;
 	int y=0;
 	while(i<=n) {
 		i*=2;
@@ -77,14 +79,14 @@ int decToBinRev(int n, int binary[]) {
 	}
 	i/=2;
 	x--;
-	for(y=x;y>=0;y--) {
-		if((n-i)>=0) {
-			n-=i;
+	for(y=(int)x;y>=0;y--) {
+		if((n-(int)i)>=0) {
+			n-=(int)i;
 			binary[y]=1;
 		} else {
 			binary[y]=0;
 		}
 		i/=2;		
 	}
-	return x;
+	return (int)x;
 }

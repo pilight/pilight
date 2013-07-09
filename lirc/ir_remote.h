@@ -250,7 +250,7 @@ static inline int has_toggle_mask(struct ir_remote *remote)
 		return (0);
 }
 
-static inline lirc_t min_gap(struct ir_remote *remote)
+static inline __u32 min_gap(struct ir_remote *remote)
 {
 	if (remote->gap2 != 0 && remote->gap2 < remote->gap) {
 		return remote->gap2;
@@ -259,7 +259,7 @@ static inline lirc_t min_gap(struct ir_remote *remote)
 	}
 }
 
-static inline lirc_t max_gap(struct ir_remote *remote)
+static inline __u32 max_gap(struct ir_remote *remote)
 {
 	if (remote->gap2 > remote->gap) {
 		return remote->gap2;
@@ -272,7 +272,7 @@ static inline lirc_t max_gap(struct ir_remote *remote)
 
 static inline int expect(struct ir_remote *remote, lirc_t delta, lirc_t exdelta)
 {
-	int aeps = hw.resolution > remote->aeps ? hw.resolution : remote->aeps;
+	int aeps = hw.resolution > remote->aeps ? (int)hw.resolution : (int)remote->aeps;
 
 	if (abs(exdelta - delta) <= exdelta * remote->eps / 100 || abs(exdelta - delta) <= aeps)
 		return 1;
@@ -281,7 +281,7 @@ static inline int expect(struct ir_remote *remote, lirc_t delta, lirc_t exdelta)
 
 static inline int expect_at_least(struct ir_remote *remote, lirc_t delta, lirc_t exdelta)
 {
-	int aeps = hw.resolution > remote->aeps ? hw.resolution : remote->aeps;
+	int aeps = hw.resolution > remote->aeps ? (int)hw.resolution : (int)remote->aeps;
 
 	if (delta + exdelta * remote->eps / 100 >= exdelta || delta + aeps >= exdelta) {
 		return 1;
@@ -291,7 +291,7 @@ static inline int expect_at_least(struct ir_remote *remote, lirc_t delta, lirc_t
 
 static inline int expect_at_most(struct ir_remote *remote, lirc_t delta, lirc_t exdelta)
 {
-	int aeps = hw.resolution > remote->aeps ? hw.resolution : remote->aeps;
+	int aeps = hw.resolution > remote->aeps ? (int)hw.resolution : (int)remote->aeps;
 
 	if (delta <= exdelta + exdelta * remote->eps / 100 || delta <= exdelta + aeps) {
 		return 1;
@@ -301,7 +301,7 @@ static inline int expect_at_most(struct ir_remote *remote, lirc_t delta, lirc_t 
 
 static inline lirc_t upper_limit(struct ir_remote *remote, lirc_t val)
 {
-	int aeps = hw.resolution > remote->aeps ? hw.resolution : remote->aeps;
+	int aeps = hw.resolution > remote->aeps ? (int)hw.resolution : (int)remote->aeps;
 	lirc_t eps_val = val * (100 + remote->eps) / 100;
 	lirc_t aeps_val = val + aeps;
 	return eps_val > aeps_val ? eps_val : aeps_val;
@@ -309,7 +309,7 @@ static inline lirc_t upper_limit(struct ir_remote *remote, lirc_t val)
 
 static inline lirc_t lower_limit(struct ir_remote *remote, lirc_t val)
 {
-	int aeps = hw.resolution > remote->aeps ? hw.resolution : remote->aeps;
+	int aeps = hw.resolution > remote->aeps ? (int)hw.resolution : (int)remote->aeps;
 	lirc_t eps_val = val * (100 - remote->eps) / 100;
 	lirc_t aeps_val = val - aeps;
 
@@ -326,9 +326,9 @@ static inline unsigned long time_elapsed(struct timeval *last, struct timeval *c
 {
 	unsigned long secs, diff;
 
-	secs = current->tv_sec - last->tv_sec;
+	secs = (unsigned long)current->tv_sec - (unsigned long)last->tv_sec;
 
-	diff = 1000000 * secs + current->tv_usec - last->tv_usec;
+	diff = 1000000 * secs + (unsigned long)current->tv_usec - (unsigned long)last->tv_usec;
 
 	return (diff);
 }

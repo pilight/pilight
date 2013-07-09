@@ -1,5 +1,5 @@
 CC = $(CROSS_COMPILE)gcc
-CFLAGS = -O3 -g -Wall -static -I. -I.. -I../libs/
+CFLAGS = -Ofast -ffast-math -mfloat-abi=hard -mfpu=vfp -march=armv6 -Wfloat-equal -Wshadow -Wpointer-arith -Wcast-align -Wstrict-prototypes -Wstrict-overflow=5 -Wwrite-strings -Waggregate-return -Wcast-qual -Wswitch-default -Wswitch-enum -Wconversion -Wunreachable-code -Wformat=2 -g -Wall -static -I. -I.. -I../libs/
 SRC = $(wildcard *.c)
 OBJS = $(SRC:.c=.o)
 HEADERS := $(SRC:.c=.h)

@@ -28,40 +28,38 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <errno.h>
-#include <sys/socket.h>
-#include <sys/types.h>
-#include <netinet/in.h>
-#include <netdb.h>
-#include <arpa/inet.h>
-#include <sys/time.h>
 #include <syslog.h>
+
 #include "config.h"
 #include "log.h"
 #include "options.h"
+#include "socket.h"
+#include "json.h"
 
-#include "protocol.h"
-#include "protocols/arctech_switch.h"
-#include "protocols/arctech_dimmer.h"
-#include "protocols/arctech_old.h"
-#include "protocols/sartano.h"
-#include "protocols/raw.h"
+#include "hardware.h"
+
+typedef enum {
+	WELCOME,
+	IDENTIFY,
+	REJECT,
+	SEND
+} steps_t;
 
 int main(int argc, char **argv) {
 
 	disable_file_log();
 	enable_shell_log();
-	set_loglevel(LOG_INFO); 
+	set_loglevel(LOG_NOTICE); 
 
 	progname = malloc((10*sizeof(char))+1);
-	progname = "433-send";
+	strcpy(progname, "433-send");
 	
 	options = malloc(255*sizeof(struct options_t));
 	
-	int sockfd = 0, n = 0, connected = 0;
-    char recvBuff[BUFFER_SIZE];
-    char message[BUFFER_SIZE];
-
-	struct sockaddr_in serv_addr;
+	int sockfd = 0;
+    char *recvBuff = NULL;
+    char *message;
+	steps_t steps = WELCOME;
 
 	/* Hold the name of the protocol */
 	char protobuffer[255];
@@ -77,20 +75,19 @@ int main(int argc, char **argv) {
 	int protohelp = 0;
 
 	/* Hold the final protocol struct */
-	protocol_t *device = NULL;
+	protocol_t *protocol = NULL;
+
+	JsonNode *json = json_mkobject();
+	JsonNode *code = json_mkobject();
 	
 	/* Define all CLI arguments of this program */
-	addOption(&options, 'h', "help", no_argument, 0, NULL);
-	addOption(&options, 'v', "version", no_argument, 0, NULL);
-	addOption(&options, 'p', "protocol", required_argument, 0, NULL);
-	addOption(&options, 'r', "repeat", required_argument, 0, "[0-9]");
+	addOption(&options, 'h', "help", no_value, 0, NULL);
+	addOption(&options, 'v', "version", no_value, 0, NULL);
+	addOption(&options, 'p', "protocol", has_value, 0, NULL);
+	addOption(&options, 'r', "repeat", has_value, 0, "[0-9]");
 
 	/* Initialize peripheral modules */
-	arctechSwInit();
-	arctechDimInit();
-	arctechOldInit();
-	sartanoInit();
-	rawInit();
+	hw_init();
 	
 	/* Get the protocol to be used */
 	while (1) {
@@ -113,6 +110,7 @@ int main(int argc, char **argv) {
 			case 'h':
 				help = 1;
 			break;
+			default:;
 		}
 	}
 
@@ -122,14 +120,14 @@ int main(int argc, char **argv) {
 			printf("-p and -v cannot be combined\n");
 		} else {
 			for(i=0; i<protocols.nr; ++i) {
-				device = protocols.listeners[i];
+				protocol = protocols.listeners[i];
 				/* Check if the protocol exists */
-				if(providesDevice(&device, protobuffer) == 0 && match == 0) {
+				if(providesDevice(&protocol, protobuffer) == 0 && match == 0 && protocol->createCode != NULL) {
 					match=1;
 					/* Check if the protocol requires specific CLI arguments
 					   and merge them with the main CLI arguments */
-					if(device->options != NULL && help == 0) {
-						mergeOptions(&options, &device->options);
+					if(protocol->options != NULL && help == 0) {
+						mergeOptions(&options, &protocol->options);
 					} else if(help == 1) {
 						protohelp=1;
 					}
@@ -148,30 +146,31 @@ int main(int argc, char **argv) {
 		printf("%s %s\n", progname, "1.0");
 		return (EXIT_SUCCESS);
 	} else if(help == 1 || protohelp == 1 || match == 0) {
-		if(protohelp == 1 && match == 1 && device->printHelp != NULL)
+		if(protohelp == 1 && match == 1 && protocol->printHelp != NULL)
 			printf("Usage: %s -p %s [options]\n", progname, protobuffer);
 		else
 			printf("Usage: %s -p protocol [options]\n", progname);
 		if(help == 1) {
 			printf("\t -h --help\t\t\tdisplay this message\n");
 			printf("\t -v --version\t\t\tdisplay version\n");
-			printf("\t -p --protocol=protocol\t\tthe device that you want to control\n");
+			printf("\t -p --protocol=protocol\t\tthe protocol that you want to control\n");
 			printf("\t -r --repeat=repeat\t\tnumber of times the command is send\n");
 		}
-		if(protohelp == 1 && match == 1 && device->printHelp != NULL) {
+		if(protohelp == 1 && match == 1 && protocol->printHelp != NULL) {
 			printf("\n\t[%s]\n", protobuffer);
-			device->printHelp();
+			protocol->printHelp();
 		} else {
 			printf("\nThe supported protocols are:\n");
 			for(i=0; i<protocols.nr; ++i) {
-				device = protocols.listeners[i];
-
-				while(device->devices != NULL) {
-					printf("\t %s\t\t\t",device->devices->id);
-					if(strlen(device->devices->id)<5)
-						printf("\t");
-					printf("%s\n", device->devices->desc);
-					device->devices = device->devices->next;
+				protocol = protocols.listeners[i];
+				if(protocol->createCode != NULL) {
+					while(protocol->devices != NULL) {
+						printf("\t %s\t\t\t",protocol->devices->id);
+						if(strlen(protocol->devices->id)<5)
+							printf("\t");
+						printf("%s\n", protocol->devices->desc);
+						protocol->devices = protocol->devices->next;
+					}
 				}
 			}
 		}
@@ -185,93 +184,69 @@ int main(int argc, char **argv) {
 	while(1) {
 		int c;
 		c = getOptions(&options, argc, argv, 1);
+
 		if(c == -1)
 			break;
 	}
 
+	int itmp;
 	/* Check if we got sufficient arguments from this protocol */
-	device->createCode(options);
+	while(options != NULL && strlen(options->name) > 0) {
+		/* Only send the CLI arguments that belong to this protocol, the protocol name 
+		   and those that are called by the user */
+		if((getOptionIdByName(&protocol->options, options->name, &itmp) == 0 || strcmp(options->name, "protocol") == 0 || strcmp(options->name, "repeat") == 0) 
+		   && strlen(options->value) > 0) {
+			json_append_member(code, options->name, json_mkstring(options->value));
+		}
+		options = options->next;
+	}	
 
-	/* Clear the receive buffer */
-	memset(recvBuff, '\0',sizeof(recvBuff));
+	if(protocol->createCode(code) == 0) {
 
-	/* Try to open a new socket */
-    if((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
-        logprintf(LOG_ERR, "could not create socket");
-		return EXIT_FAILURE;
-    }
-
-	/* Clear the server address */
-    memset(&serv_addr, '\0', sizeof(serv_addr));
-
-    serv_addr.sin_family = AF_INET;
-    serv_addr.sin_port = htons(PORT);
-    inet_pton(AF_INET, "127.0.0.1", &serv_addr.sin_addr);
-
-	/* Connect to the 433-daemon */
-    if(connect(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
-		logprintf(LOG_ERR, "could not connect to 433-daemon");
-		return EXIT_FAILURE;
-    }
-
-	while(1) {
-		/* Clear the receive buffer again and read the welcome message */
-		bzero(recvBuff,BUFFER_SIZE);
-		if((n = read(sockfd, recvBuff, sizeof(recvBuff)-1)) < 1) {
-			logprintf(LOG_ERR, "could not read from socket");
+		if((sockfd = connect_to_server(strdup("127.0.0.1"), 5000)) == -1) {
+			logprintf(LOG_ERR, "could not connect to 433-daemon");
 			goto close;
 		}
 
-		/* If we have received, identify ourselves */
-		if(n > 0) {
-			recvBuff[n]='\0';
-			if(connected == 0) {
-				if(strcmp(recvBuff,"ACCEPT CONNECTION\n") == 0) {
-					strcpy(message,"CLIENT SENDER\n");
-					if((n = write(sockfd, message, strlen(message))) < 0) {
-						logprintf(LOG_ERR, "could not write to socket");
-						goto close;
-					}
-				}
-				if(strcmp(recvBuff,"ACCEPT CLIENT\n") == 0) {
-					connected=1;
-				}
-				if(strcmp(recvBuff,"REJECT CLIENT\n") == 0) {
-					goto close;
-				}
+		while(1) {
+			/* Clear the receive buffer again and read the welcome message */
+			if((recvBuff = socket_read(sockfd)) != NULL) {
+				json = json_decode(recvBuff);
+				json_find_string(json, "message", &message);
+			} else {
+				goto close;
 			}
-		}
-		/* If we have a valid connection send the arguments for this protocol */
-		if(connected) {
-			memset(message,'\0',BUFFER_SIZE);
-			int x=0;
-			while(options != NULL && strlen(options->name) > 0) {
-				/* Only send the CLI arguments that belong to this protocol, the protocol name 
-				   and those that are called by the user */
-				if((getOptionIdByName(&device->options, options->name) != -1 || strcmp(options->name,"protocol") == 0) 
-				   && strlen(options->value) > 0) {
-					x+=sprintf(message+x,"%d %s ",options->id, options->value);
-				}
-				options = options->next;
-			}
-			/* Remove the last space and replace it with a newline */
-			sprintf(message+(x-1),"\n");	
 
-			if((n = write(sockfd, message, BUFFER_SIZE-1)) < 0) {
-				logprintf(LOG_ERR, "could not write to socket");
-				goto close;
+			switch(steps) {
+				case WELCOME:
+					if(strcmp(message, "accept connection") == 0) {
+						socket_write(sockfd, "{\"message\":\"client sender\"}");
+						steps=IDENTIFY;
+					}
+				case IDENTIFY:
+					if(strcmp(message, "accept client") == 0) {
+						steps=SEND;
+					}
+					if(strcmp(message, "reject client") == 0) {
+						steps=REJECT;
+					}
+				case SEND:
+					json_delete(json);
+					json = json_mkobject();
+					json_append_member(json, "message", json_mkstring("send"));
+					json_append_member(json, "code", code);
+					socket_write(sockfd, json_stringify(json, NULL));
+					goto close;
+				break;
+				case REJECT:
+				default:
+					goto close;
+				break;
 			}
-			memset(message,'\0',BUFFER_SIZE);
-			strcpy(message,"SEND\n");
-			if((n = write(sockfd, message, BUFFER_SIZE-1)) < 0) {
-				logprintf(LOG_ERR, "could not write to socket");
-				goto close;
-			}
-		goto close;
 		}
 	}
 close:
-	shutdown(sockfd, SHUT_WR);
-	close(sockfd);
+	json_delete(json);
+	socket_close(sockfd);
 return EXIT_SUCCESS;
 }

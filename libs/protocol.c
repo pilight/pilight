@@ -25,7 +25,7 @@
 #include "protocol.h"
 
 void protocol_unregister(protocol_t *proto) {
-	unsigned i;
+	int i;
 
 	for(i=0; i<protocols.nr; ++i) {
 		if(strcmp(protocols.listeners[i]->id,proto->id) == 0) {
@@ -40,7 +40,7 @@ void protocol_register(protocol_t *proto) {
 	protocols.listeners[protocols.nr++] = proto;
 }
 
-void addDevice(protocol_t *proto, char *id, char *desc) {
+void addDevice(protocol_t *proto, const char *id, const char *desc) {
 	struct devices_t *dnode = malloc(sizeof(struct devices_t));
 	strcpy(dnode->id,id);
 	strcpy(dnode->desc,desc);
@@ -48,7 +48,7 @@ void addDevice(protocol_t *proto, char *id, char *desc) {
 	proto->devices = dnode;
 }
 
-int providesDevice(protocol_t **proto, char *id) {
+int providesDevice(protocol_t **proto, const char *id) {
 	struct devices_t *temp = (*proto)->devices;
 
 	while(temp != NULL) {

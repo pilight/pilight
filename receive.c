@@ -18,78 +18,81 @@
 	<http://www.gnu.org/licenses/>
 */
 
-#include <sys/socket.h>
-#include <sys/types.h>
-#include <netinet/in.h>
-#include <netdb.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <errno.h>
-#include <arpa/inet.h>
-#include <stdarg.h>
 #include <syslog.h>
+
 #include "config.h"
 #include "log.h"
 #include "options.h"
+#include "socket.h"
 
-int main() {
+typedef enum {
+	WELCOME,
+	IDENTIFY,
+	REJECT,
+	RECEIVE
+} steps_t;
+
+int main(void) {
 	enable_shell_log();
-	disable_shell_log();
-	set_loglevel(LOG_INFO);
+	disable_file_log();
 
-    int sockfd = 0, n = 0, connected = 0;
-    char recvBuff[BUFFER_SIZE];
-    char *message;
+	set_loglevel(LOG_NOTICE);
 
-    struct sockaddr_in serv_addr;
+	progname = malloc((10*sizeof(char))+1);
+	strcpy(progname, "433-receive");
+	
+	JsonNode *json = json_mkobject();
+	
+    int sockfd = 0;
+    char *recvBuff;
+	char *message = NULL;
+	steps_t steps = WELCOME;
 
-	memset(recvBuff, '\0', sizeof(recvBuff));
-
-    if((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
-        logprintf(LOG_ERR, "could not create socket");
-		return EXIT_FAILURE;
-    }
-
-    memset(&serv_addr, '\0', sizeof(serv_addr));
-
-    serv_addr.sin_family = AF_INET;
-    serv_addr.sin_port = htons(PORT);
-    inet_pton(AF_INET, "127.0.0.1", &serv_addr.sin_addr);
-
-    if(connect(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
+    if((sockfd = connect_to_server(strdup("127.0.0.1"), 5000)) == -1) {
 		logprintf(LOG_ERR, "could not connect to 433-daemon");
 		return EXIT_FAILURE;
-    }
+	}
 
 	while(1) {
-		bzero(recvBuff,BUFFER_SIZE);
-		if((n = read(sockfd, recvBuff, sizeof(recvBuff)-1)) < 1) {
-			logprintf(LOG_ERR, "could not read from socket");
+		/* Clear the receive buffer again and read the welcome message */
+		if((recvBuff = socket_read(sockfd)) != NULL) {
+
+			json = json_decode(recvBuff);
+			json_find_string(json, "message", &message);
+		} else {
 			goto close;
 		}
 
-		if(n > 0) {
-			recvBuff[n]='\0';
-			if(connected == 0) {
-				if(strcmp(recvBuff,"ACCEPT CONNECTION\n") == 0) {
-					message="CLIENT RECEIVER\n";
-					if((n = write(sockfd, message, strlen(message))) < 0) {
-						logprintf(LOG_ERR, "could not write to socket");
-						goto close;
-					}
+		switch(steps) {
+			case WELCOME:
+				if(strcmp(message, "accept connection") == 0) {
+					socket_write(sockfd, "{\"message\":\"client receiver\"}");
+					steps=IDENTIFY;
 				}
-				if(strcmp(recvBuff,"ACCEPT CLIENT\n") == 0) {
-					connected=1;
+			break;
+			case IDENTIFY:
+				if(strcmp(message, "accept client") == 0) {
+					steps=RECEIVE;
 				}
-			} else {
-				printf("%s\n",recvBuff);
-			}
+				if(strcmp(message, "reject client") == 0) {
+					steps=REJECT;
+				}
+			break;
+			case RECEIVE:
+				printf("%s\n", json_stringify(json, "\t"));
+			break;
+			case REJECT:
+			default:
+				goto close;
+			break;
 		}
 	}
 close:
-	shutdown(sockfd, SHUT_WR);
-	close(sockfd);
+	socket_close(sockfd);
 return EXIT_SUCCESS;
 }

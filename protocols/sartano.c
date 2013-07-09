@@ -28,16 +28,16 @@
 #include "sartano.h"
 
 void sartanoCreateMessage(int id, int unit, int state) {
-	memset(sartano.message, '\0', sizeof(sartano.message));
-
-	sprintf(sartano.message, "id %d unit %d", id, unit);
-	if(state==1)
-		strcat(sartano.message, " on");
+	sartano.message = json_mkobject();
+	json_append_member(sartano.message, "id", json_mknumber(id));
+	json_append_member(sartano.message, "unit", json_mknumber(unit));
+	if(state == 1)
+		json_append_member(sartano.message, "state", json_mkstring("on"));
 	else
-		strcat(sartano.message, " off");
+		json_append_member(sartano.message, "state", json_mkstring("off"));
 }
 
-void sartanoParseBinary() {
+void sartanoParseBinary(void) {
 	int unit = binToDec(sartano.binary, 0, 4);
 	int state = sartano.binary[10];
 	int check = sartano.binary[11];
@@ -68,7 +68,7 @@ void sartanoCreateHigh(int s, int e) {
 		sartano.raw[i+3]=(sartano.pulse*PULSE_LENGTH);
 	}
 }
-void sartanoClearCode() {
+void sartanoClearCode(void) {
 	sartanoCreateLow(0,49);
 }
 
@@ -108,52 +108,54 @@ void sartanoCreateState(int state) {
 	}
 }
 
-void sartanoCreateFooter() {
+void sartanoCreateFooter(void) {
 	sartano.raw[48]=(PULSE_LENGTH);
 	sartano.raw[49]=(sartano.footer*PULSE_LENGTH);
 }
 
-void sartanoCreateCode(struct options_t *options) {
+int sartanoCreateCode(JsonNode *code) {
 	int id = -1;
 	int unit = -1;
 	int state = -1;
+	char *tmp;
 
-	if(getOptionValById(&options, 'i') != NULL)
-		id=atoi(getOptionValById(&options, 'i'));
-	if(getOptionValById(&options, 'f') != NULL)
+	if(json_find_string(code, "id", &tmp) == 0)
+		id=atoi(tmp);
+	if(json_find_string(code, "off", &tmp) == 0)
 		state=0;
-	else if(getOptionValById(&options, 't') != NULL)
+	else if(json_find_string(code, "on", &tmp) == 0)
 		state=1;
-	if(getOptionValById(&options, 'u') != NULL)
-		unit = atoi(getOptionValById(&options, 'u'));
+	if(json_find_string(code, "unit", &tmp) == 0)
+		unit = atoi(tmp);
 
 	if(id == -1 || unit == -1 || state == -1) {
 		logprintf(LOG_ERR, "sartano: insufficient number of arguments");
-		exit(EXIT_FAILURE);
+		return EXIT_FAILURE;
 	} else if(id > 32 || id < 0) {
 		logprintf(LOG_ERR, "sartano: invalid id range");
-		exit(EXIT_FAILURE);
+		return EXIT_FAILURE;
 	} else if(unit > 32 || unit < 0) {
 		logprintf(LOG_ERR, "sartano: invalid unit range");
-		exit(EXIT_FAILURE);
+		return EXIT_FAILURE;
 	} else {
 		sartanoCreateMessage(id, unit, state);	
 		sartanoClearCode();
 		sartanoCreateUnit(unit);
 		sartanoCreateId(id);
 		sartanoCreateState(state);
-		sartanoCreateFooter(state);
+		sartanoCreateFooter();
 	}
+	return EXIT_SUCCESS;
 }
 
-void sartanoPrintHelp() {
+void sartanoPrintHelp(void) {
 	printf("\t -t --on\t\t\tsend an on signal\n");
 	printf("\t -f --off\t\t\tsend an off signal\n");
 	printf("\t -u --unit=unit\t\t\tcontrol a device with this unit code\n");
 	printf("\t -i --id=id\t\t\tcontrol a device with this id\n");
 }
 
-void sartanoInit() {
+void sartanoInit(void) {
 
 	strcpy(sartano.id, "sartano");
 	addDevice(&sartano, "elro", "Elro Switches");
@@ -171,10 +173,10 @@ void sartanoInit() {
 	sartano.bit = 0;
 	sartano.recording = 0;
 
-	addOption(&sartano.options, 't', "on", no_argument, 0, NULL);	
-	addOption(&sartano.options, 'f', "off", no_argument, 0, NULL);
-	addOption(&sartano.options, 'u', "unit", required_argument, config_id, "[0-9]");
-	addOption(&sartano.options, 'i', "id", required_argument, config_id, "[0-9]");
+	addOption(&sartano.options, 't', "on", no_value, config_state, NULL);	
+	addOption(&sartano.options, 'f', "off", no_value, config_state, NULL);
+	addOption(&sartano.options, 'u', "unit", has_value, config_id, "[0-9]");
+	addOption(&sartano.options, 'i', "id", has_value, config_id, "[0-9]");
 
 	sartano.parseBinary=&sartanoParseBinary;
 	sartano.createCode=&sartanoCreateCode;
