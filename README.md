@@ -44,15 +44,8 @@ To parse the data that is send or received, an external script can be called:
 ```
 root@pi:~# ./433-daemon --socket=/dev/lirc1 -f /home/pi/log433.sh
 ```
-This script can be anything you like. The 433-daemon will pass the same arguments to this script as the receiver, but with the addition
-the action that occured when the value was processed e.g.:
-```
-receiver id 100 unit 15 state off
-```
-or
-```
-sender id 100 unit 15 state off
-```
+This script can be anything you like. The 433-daemon will pass the same JSON object to this script as the receiver, but with the addition
+without any formatting. You can than parse the JSON object for further processing.
 <hr>
 The output of the receiver will be as follow:
 ```
@@ -192,3 +185,47 @@ Unit 3: 000000000000000000000000010111111
 If may be possible that the learner prints out different values as shown here. This may happen in your device is limited in the amount of values it can send.
 The only variable that isn't recorded, is the ID. Most of the times, the ID is stored in the remaining (sequence) of bits. In case of Klik Aan Klik Uit, the ID is stored
 in bits 0 till 25. Also notice that both the debugger and the learner are highly experimental.
+<hr>
+To use the controller, a confil file is needed. This looks like this:<br />
+_The type setting will automatically be added by the 433-daemon_
+```
+{
+         "living": {
+		"name": "Living",
+		"bookshelve": {
+			"name": "Book Shelve Light",
+			"protocol": "kaku_switch",
+			"type": 1,
+			"id": 1234,
+			"unit": 0,
+			"state": "off",
+			"values": [ "on", "off" ]
+		},
+		"main": {
+			"name": "main",
+			"protocol": "kaku_dimmer",
+			"type": 1,
+			"id": 1234,
+			"unit": 1,
+			"state": 0,
+			"values": [ 0, 3, 5, 7, 9, 11, 13, 15 ]
+		}
+	},
+	"bedroom": {
+		"main": {
+			"name": "main",
+			"protocol": "elro",
+			"type": 1,
+			"id": 5678,
+			"unit": 0,
+			"state": "on",
+			"values": [ "on", "off" ]
+		}
+	}
+}
+```
+To control a device, you can know easily use the `433-control`:
+```
+root@pi:~# ./433-control -l living -d bookshelve
+```
+The config file will automatically be updated with the status of the configured devices. So while sending, but also while receiving.
