@@ -224,9 +224,6 @@ void send_code(JsonNode *json) {
 				/* Send this single big code at once */
 				code.length = (x+(protocol->rawLength*(i-1)))+1;
 				code.signals = longCode;
-				/* If we have no receiver, we need to initialize the hardware first */
-				if(receivers == 0)
-					module_init();
 
 				/* Send the code, if we succeeded, inform the receiver */
 				if(send_ir_ncode(&code) == 1) {
@@ -239,9 +236,7 @@ void send_code(JsonNode *json) {
 				} else {
 					logprintf(LOG_ERR, "failed to send code");
 				}
-				/* Release the hardware to spare resources */
-				if(receivers == 0)
-					module_deinit();
+
 				sending = 0;
 			}
 		}
@@ -426,9 +421,6 @@ void socket_parse_data(int i, char buffer[BUFFER_SIZE]) {
 void socket_client_disconnected(int i) {
 	if(handshakes[i] == RECEIVER)
 		receivers--;
-	/* Release the hardware when no receiver are connected */
-	if(receivers == 0 && sending == 0)
-		module_deinit();
 
 	handshakes[i] = 0;
 }
@@ -606,7 +598,6 @@ void deamonize(void) {
 /* Garbage collector of main program */
 int main_gc(void) {
 
-	module_init();
 	module_deinit();
 	if(running == 0) {
 		/* Remove the stale pid file */
