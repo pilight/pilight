@@ -202,7 +202,7 @@ _The type setting will automatically be added by the 433-daemon_
 			"values": [ "on", "off" ]
 		},
 		"main": {
-			"name": "main",
+			"name": "Main",
 			"protocol": "kaku_dimmer",
 			"type": 1,
 			"id": 1234,
@@ -213,7 +213,7 @@ _The type setting will automatically be added by the 433-daemon_
 	},
 	"bedroom": {
 		"main": {
-			"name": "main",
+			"name": "Main",
 			"protocol": "elro",
 			"type": 1,
 			"id": 5678,
@@ -221,7 +221,18 @@ _The type setting will automatically be added by the 433-daemon_
 			"state": "on",
 			"values": [ "on", "off" ]
 		}
-	}
+	},
+	"garden": {
+		"weather": {
+			"name": "Weather Station",
+			"protocol": "alecto",
+			"type": 3,
+			"id": 100,
+			"humidity": 50,
+			"temperature": 1530,
+			"battery": 1
+		}
+	}		
 }
 ```
 To control a device, you can know easily use the `433-control`:
