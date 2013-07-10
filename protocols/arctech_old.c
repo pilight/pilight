@@ -123,7 +123,7 @@ int arctechOldCreateCode(JsonNode *code) {
 	else if(json_find_string(code, "on", &tmp) == 0)
 		state=1;
 	if(json_find_string(code, "unit", &tmp) == 0)
-		unit = atoi(tmp);	
+		unit = atoi(tmp);
 
 	if(id == -1 || unit == -1 || state == -1) {
 		logprintf(LOG_ERR, "arctech_old: insufficient number of arguments");
@@ -170,8 +170,8 @@ void arctechOldInit(void) {
 	arctech_old.bit = 0;
 	arctech_old.recording = 0;
 
-	addOption(&arctech_old.options, 't', "on", no_value, config_state, NULL);	
-	addOption(&arctech_old.options, 'f', "off", no_value, config_state, NULL);	
+	addOption(&arctech_old.options, 't', "on", no_value, config_state, NULL);
+	addOption(&arctech_old.options, 'f', "off", no_value, config_state, NULL);
 	addOption(&arctech_old.options, 'u', "unit", has_value, config_id, "[0-9]");
 	addOption(&arctech_old.options, 'i', "id", has_value, config_id, "[0-9]");
 

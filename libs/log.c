@@ -43,12 +43,12 @@ void logprintf(int prio, const char *format_str, ...) {
 				gc_attach(log_gc);
 			}
 		}
-		
+
 		time_t current;
 		char *currents;
 
 		current=time(&current);
-		currents=ctime(&current);		
+		currents=ctime(&current);
 
 		if(filelog == 0 && lf != NULL && loglevel < LOG_DEBUG) {
 			fprintf(lf,"[%15.15s] %s: ",currents+4, progname);
@@ -125,7 +125,7 @@ void set_logfile(char *log) {
 	char *filename = basename(log);
 	char path[1024];
 	size_t i = (strlen(log)-strlen(filename));
-	
+
 	memset(path, '\0', sizeof(path));
 	memcpy(path, log, i);
 

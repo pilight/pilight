@@ -21,7 +21,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <regex.h> 
+#include <regex.h>
 #include "log.h"
 #include "options.h"
 
@@ -180,8 +180,8 @@ int getOptions(struct options_t **opt, int argc, char **argv, int error_check) {
 
 	/* Clear the argument holders */
 	memset(longarg, '\0', sizeof(char)*255);
-	memset(shortarg, '\0', sizeof(char)*3);	
-	memset(optarg, '\0', sizeof(char)*255);	
+	memset(shortarg, '\0', sizeof(char)*3);
+	memset(optarg, '\0', sizeof(char)*255);
 
 	/* If have readed all arguments, exit and reset */
 	if(getOptPos>=(argc-1)) {
@@ -338,7 +338,7 @@ void addOption(struct options_t **opt, int id, const char *name, int argtype, in
 	} else if(getOptionIdByName(opt, strdup(name), &itmp) == 0) {
 		logprintf(LOG_ERR, "duplicate option name: %s", name);
 	} else {
-		optnode = malloc(sizeof(struct options_t));	
+		optnode = malloc(sizeof(struct options_t));
 		optnode->id = id;
 		strcpy(optnode->name, name);
 		memset(optnode->value, '\0', sizeof(optnode->value));

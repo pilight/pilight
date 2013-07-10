@@ -85,7 +85,7 @@ int module_deinit(void) {
 			exit(EXIT_FAILURE);
 		} else {
 			logprintf(LOG_DEBUG, "default freq of the lirc_rpi module set");
-		}	
+		}
 		/* Restore the lirc_rpi frequency to its default value */
 		hw.deinit_func();
 		logprintf(LOG_DEBUG, "deinitialized lirc_rpi module");

@@ -1,20 +1,20 @@
-/*	
+/*
 	Copyright 2013 CurlyMo
-	
+
 	This file is part of the Raspberry Pi 433.92Mhz transceiver.
 
-    Raspberry Pi 433.92Mhz transceiver is free software: you can redistribute 
-	it and/or modify it under the terms of the GNU General Public License as 
-	published by the Free Software Foundation, either version 3 of the License, 
+    Raspberry Pi 433.92Mhz transceiver is free software: you can redistribute
+	it and/or modify it under the terms of the GNU General Public License as
+	published by the Free Software Foundation, either version 3 of the License,
 	or (at your option) any later version.
 
-    Raspberry Pi 433.92Mhz transceiver is distributed in the hope that it will 
+    Raspberry Pi 433.92Mhz transceiver is distributed in the hope that it will
 	be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with Raspberry Pi 433.92Mhz transceiver. If not, see 
+    along with Raspberry Pi 433.92Mhz transceiver. If not, see
 	<http://www.gnu.org/licenses/>
 */
 
@@ -42,7 +42,7 @@ void config_update(char *protoname, JsonNode *json) {
 	/* The pointer to the registered protocols */
 	struct protocol_t *protocol = NULL;
 	/* The pointer to the protocol options */
-	struct options_t *opt = NULL;	
+	struct options_t *opt = NULL;
 	/* Get the code part of the sended code */
 	JsonNode *code = json_find_member(json, "code");
 
@@ -58,11 +58,11 @@ void config_update(char *protoname, JsonNode *json) {
 	unsigned short update = 0;
 	/* The new state value */
 	char state[10];
-	
+
 	/* Make sure the character poinrter are empty */
 	memset(state, '\0', sizeof(state));
 	memset(ctmp, '\0', sizeof(ctmp));
-	
+
 	/* Check if the found settings matches the send code */
 	int match1 = 0;
 	int match2 = 0;
@@ -72,6 +72,7 @@ void config_update(char *protoname, JsonNode *json) {
 		protocol = protocols.listeners[i];
 
 		/* Check if the protocol exists */
+
 		if(strcmp(protocol->id, protoname) == 0) {
 			break;
 		}
@@ -79,12 +80,13 @@ void config_update(char *protoname, JsonNode *json) {
 
 	/* Only loop through all locations if the protocol has options */
 	if((opt = protocol->options) != NULL) {
-		/* Loop through all location */	
+		/* Loop through all location */
 		while(lptr) {
 			dptr = lptr->devices;
 			/* Loop through all devices of this location */
 			while(dptr) {
 				match1 = 0; match2 = 0;
+
 				if(providesDevice(&protocol, dptr->protoname) == 0) {
 					opt = protocol->options;
 					/* Loop through all protocol options */
@@ -92,6 +94,7 @@ void config_update(char *protoname, JsonNode *json) {
 						sptr = dptr->settings;
 						/* Loop through all settings */
 						while(sptr) {
+
 							/* Check the config id's to match a device */
 							if(opt->conftype == config_id && strcmp(sptr->name, opt->name) == 0) {
 								match1++;
@@ -101,7 +104,7 @@ void config_update(char *protoname, JsonNode *json) {
 								if(json_find_number(code, opt->name, &itmp) == 0) {
 									sprintf(ctmp, "%d", itmp);
 								}
-								
+
 								if(strcmp(ctmp, sptr->values->value) == 0) {
 									match2++;
 								}
@@ -130,8 +133,28 @@ void config_update(char *protoname, JsonNode *json) {
 					}
 					/* If we matched a config device, update it's state */
 					if(match1 > 0 && match2 > 0 && match1 == match2) {
-						sptr = dptr->settings;					
+						sptr = dptr->settings;
 						while(sptr) {
+							opt = protocol->options;
+							/* Loop through all protocol options */
+							while(opt) {
+								/* Check if there are values that can be updated */
+								if(strcmp(sptr->name, opt->name) == 0 && opt->conftype == config_value && opt->argtype == has_value) {
+									if(json_find_string(code, opt->name, &stmp) == 0) {
+										strcpy(ctmp, stmp);
+									}
+									if(json_find_number(code, opt->name, &itmp) == 0) {
+										sprintf(ctmp, "%d", itmp);
+									}
+									if(strcmp(sptr->values->value, ctmp) != 0) {
+										sptr->values->value = strdup(ctmp);
+										update = 1;
+										break;
+									}
+								}
+								opt = opt->next;
+							}
+							/* Check if we need to update the state */
 							if(strcmp(sptr->name, "state") == 0 && strcmp(sptr->values->value, state) != 0) {
 								sptr->values->value = strdup(state);
 								update = 1;
@@ -168,7 +191,7 @@ int config_get_location(char *id, struct conf_locations_t **loc) {
 int config_get_device(char *lid, char *sid, struct conf_devices_t **dev) {
 	struct conf_locations_t *lptr = NULL;
 	struct conf_devices_t *dptr = NULL;
-	
+
 	if(config_get_location(lid, &lptr) == 0) {
 		while(lptr) {
 			dptr = lptr->devices;
@@ -224,7 +247,7 @@ void config_reverse_struct(struct conf_locations_t **loc) {
 			sptr = NULL;
 			sprev = NULL;
 			snext = NULL;
-			
+
 			dnext = dptr->next;
 			dptr->next = dprev;
 			dprev = dptr;
@@ -236,7 +259,7 @@ void config_reverse_struct(struct conf_locations_t **loc) {
 		dnext = NULL;
 
         lnext = lptr->next;
-        lptr->next = lprev;		
+        lptr->next = lprev;
         lprev = lptr;
         lptr = lnext;
     }
@@ -250,19 +273,19 @@ JsonNode *config2json(void) {
 	struct conf_devices_t *tmp_devices;
 	struct conf_settings_t *tmp_settings;
 	struct conf_values_t *tmp_values;
-	
+
 	/* Pointers to the newly created JSON object */
 	struct JsonNode *root = json_mkobject();
 	struct JsonNode *location = json_mkobject();
 	struct JsonNode *device = json_mkobject();
 	struct JsonNode *setting = json_mkobject();
-	
-	/* Make sure we preserve the order of the original file */	
+
+	/* Make sure we preserve the order of the original file */
 	tmp_locations = locations;
 
 	/* Show the parsed log file */
 	while(tmp_locations != NULL) {
-		location = json_mkobject();	
+		location = json_mkobject();
 		json_append_member(location, "name", json_mkstring(tmp_locations->name));
 
 		tmp_devices = tmp_locations->devices;
@@ -283,7 +306,7 @@ JsonNode *config2json(void) {
 						json_append_member(device, tmp_settings->name, json_mkstring(tmp_values->value));
 					}
 				} else {
-					setting = json_mkarray();	
+					setting = json_mkarray();
 					while(tmp_values != NULL) {
 						if(tmp_values->type == CONFIG_TYPE_NUMBER) {
 							json_append_element(setting, json_mknumber(atoi(tmp_values->value)));
@@ -302,7 +325,7 @@ JsonNode *config2json(void) {
 		json_append_member(root, tmp_locations->id, location);
 		tmp_locations = tmp_locations->next;
 	}
-	
+
 	return root;
 }
 
@@ -351,13 +374,13 @@ void config_save_setting(int i, JsonNode *jsetting, struct conf_settings_t *snod
 				sprintf(ctmp, "%d", (int)jtmp->number_);
 				vnode->value = strdup(ctmp);
 				vnode->type = CONFIG_TYPE_NUMBER;
-			}			
+			}
 			jtmp = jtmp->next;
 			vnode->next = values;
-			values = vnode;				
+			values = vnode;
 		}
 	} else {
-		vnode = malloc(sizeof(struct conf_values_t));	
+		vnode = malloc(sizeof(struct conf_values_t));
 
 		/* Cast and store the new value */
 		if(jsetting->tag == JSON_STRING && json_find_string(jsetting->parent, jsetting->key, &stmp) == 0) {
@@ -369,7 +392,7 @@ void config_save_setting(int i, JsonNode *jsetting, struct conf_settings_t *snod
 			vnode->type = CONFIG_TYPE_NUMBER;
 		}
 		vnode->next = values;
-		values = vnode;	
+		values = vnode;
 	}
 
 	snode->values = malloc(MAX_VALUES*sizeof(struct conf_values_t));
@@ -391,23 +414,23 @@ void config_save_setting(int i, JsonNode *jsetting, struct conf_settings_t *snod
 int config_check_state(int i, JsonNode *jsetting, struct conf_devices_t *device) {
 	/* Temporary options pointer */
 	struct options_t *tmp_options;
-	
+
 	/* Temporary JSON pointer */
 	struct JsonNode *jtmp;
 	/* JSON pointer to the values array */
 	struct JsonNode *jvalues = NULL;
-	
+
 	int valid_state = 0, valid_value = 0, have_error = 0, has_values = 0;
-	
+
 	/* Variable holders for casting */
 	int itmp = 0;
 	char ctmp[256], ctmp1[256];
 	char *stmp = NULL;
-	
+
 	/* Regex variables */
 	regex_t regex;
-	int reti;	
-	
+	int reti;
+
 	/* Cast the different values */
 	if(jsetting->tag == JSON_NUMBER && json_find_number(jsetting->parent, jsetting->key, &itmp) == 0) {
 		sprintf(ctmp, "%d", itmp);
@@ -433,9 +456,9 @@ int config_check_state(int i, JsonNode *jsetting, struct conf_devices_t *device)
 		if(has_values == 0) {
 			logprintf(LOG_ERR, "setting \"%s\" of \"%s\", missing", "values", device->id);
 			have_error = 1;
-			goto clear;			
+			goto clear;
 		}
-	
+
 		tmp_options = device->protopt->options;
 
 		while(tmp_options != NULL && tmp_options->name != NULL) {
@@ -459,7 +482,7 @@ int config_check_state(int i, JsonNode *jsetting, struct conf_devices_t *device)
 							have_error = 1;
 							goto clear;
 						} else {
-							/* Also check if the values in the values array 
+							/* Also check if the values in the values array
 							   and the state value matches */
 							jtmp = json_first_child(jvalues);
 							while(jtmp != NULL) {
@@ -532,7 +555,7 @@ clear:
 }
 
 int config_parse_devices(JsonNode *jdevices, struct conf_devices_t *device) {
-	/* Struct to store the settings */	
+	/* Struct to store the settings */
 	struct conf_settings_t *snode = NULL;
 	/* Temporary settings holder */
 	struct conf_settings_t *tmp_settings = NULL;
@@ -540,11 +563,11 @@ int config_parse_devices(JsonNode *jdevices, struct conf_devices_t *device) {
 	JsonNode *jsettings = json_mkobject();
 	/* Temporarily options pointer */
 	struct options_t *tmp_options;
-	
+
 	int i = 0, have_error = 0, valid_setting = 0, match = 0, has_state = 0;
 	/* Check for any duplicate fields */
 	int nrname = 0, nrprotocol = 0, nrstate = 0, nrvalues = 0;
-	
+
 	jsettings = json_first_child(jdevices);
 	while(jsettings != NULL) {
 		i++;
@@ -553,18 +576,18 @@ int config_parse_devices(JsonNode *jdevices, struct conf_devices_t *device) {
 			nrname++;
 		}
 		if(strcmp(jsettings->key, "protocol") == 0) {
-			nrprotocol++;			
+			nrprotocol++;
 		}
 		if(strcmp(jsettings->key, "state") == 0) {
-			nrstate++;			
+			nrstate++;
 		}
 		if(strcmp(jsettings->key, "values") == 0) {
-			nrvalues++;			
+			nrvalues++;
 		}
 		if(nrstate > 1 || nrvalues > 1 || nrprotocol > 1 || nrname > 1) {
 			logprintf(LOG_ERR, "settting #%d \"%s\" of \"%s\", duplicate", i, jsettings->key, device->id);
 			have_error = 1;
-			goto clear;			
+			goto clear;
 		}
 		/* Parse the state setting separately from the other settings.
 		   Any errors in the values array will be found in the state check */
@@ -577,7 +600,7 @@ int config_parse_devices(JsonNode *jdevices, struct conf_devices_t *device) {
 		} else if(strcmp(jsettings->key, "values") == 0 && jsettings->tag == JSON_ARRAY) {
 			config_save_setting(i, jsettings, snode);
 		/* The protocol and name settings are already saved in the device struct */
-		} else if(!((strcmp(jsettings->key, "name") == 0 && jsettings->tag == JSON_STRING) 
+		} else if(!((strcmp(jsettings->key, "name") == 0 && jsettings->tag == JSON_STRING)
 			|| (strcmp(jsettings->key, "protocol") == 0 && jsettings->tag == JSON_STRING)
 			|| (strcmp(jsettings->key, "type") == 0 && jsettings->tag == JSON_NUMBER))) {
 
@@ -604,7 +627,7 @@ int config_parse_devices(JsonNode *jdevices, struct conf_devices_t *device) {
 					tmp_options = tmp_options->next;
 				}
 			}
-			
+
 			/* If the settings are valid, store them */
 			if(valid_setting == 1) {
 				config_save_setting(i, jsettings, snode);
@@ -616,13 +639,13 @@ int config_parse_devices(JsonNode *jdevices, struct conf_devices_t *device) {
 		}
 		jsettings = jsettings->next;
 	}
-	
+
 	/* Check if required options by this protocol are missing
 	   in the config file */
 	if(device->protopt->options != NULL) {
 		tmp_options = device->protopt->options;
 		while(tmp_options != NULL && tmp_options->name != NULL) {
-			match = 0;		
+			match = 0;
 			jsettings = json_first_child(jdevices);
 			while(jsettings != NULL) {
 				if(strcmp(jsettings->key, tmp_options->name) == 0) {
@@ -658,10 +681,10 @@ int config_parse_devices(JsonNode *jdevices, struct conf_devices_t *device) {
 				have_error = 1;
 				goto clear;
 			}
-			
+
 		}
 	}
-	
+
 	device->settings = malloc(MAX_SETTINGS*sizeof(struct conf_settings_t));
 	/* Only store devices if they are present */
 	if(settings != NULL) {
@@ -673,7 +696,7 @@ int config_parse_devices(JsonNode *jdevices, struct conf_devices_t *device) {
 	/* Clear the locations struct for the next location */
 	settings = NULL;
 	if(snode != NULL && snode->next != NULL)
-		snode->next = NULL;	
+		snode->next = NULL;
 
 clear:
 	if(have_error == 1) {
@@ -696,7 +719,7 @@ int config_parse_locations(JsonNode *jlocations, struct conf_locations_t *locati
 	char *pname = NULL;
 	/* Pointer to the match protocol */
 	protocol_t *protocol = malloc(sizeof(protocol_t));
-	
+
 	int i = 0, have_error = 0, match = 0;
 	/* Check for duplicate name setting */
 	int nrname = 0;
@@ -711,14 +734,14 @@ int config_parse_locations(JsonNode *jlocations, struct conf_locations_t *locati
 			if(nrname > 1) {
 				logprintf(LOG_ERR, "device #%d \"%s\" of \"%s\", duplicate", i, jdevices->key, location->id);
 				have_error = 1;
-				goto clear;			
+				goto clear;
 			}
 		}
 		/* Check if all fields of the devices are of the right type */
 		if(!((strcmp(jdevices->key, "name") == 0 && jdevices->tag == JSON_STRING) || (jdevices->tag == JSON_OBJECT))) {
 			logprintf(LOG_ERR, "device #%d \"%s\" of \"%s\", invalid field(s)", i, jdevices->key, location->id);
 			have_error = 1;
-			goto clear;		
+			goto clear;
 		} else if(jdevices->tag == JSON_OBJECT) {
 			/* Save the name of the device */
 			if(json_find_string(jdevices, "name", &name) != 0) {
@@ -742,7 +765,7 @@ int config_parse_locations(JsonNode *jlocations, struct conf_locations_t *locati
 					}
 					tmp_devices = tmp_devices->next;
 				}
-				
+
 				match = 0;
 				for(i=0;i<protocols.nr; ++i) {
 					protocol = protocols.listeners[i];
@@ -753,7 +776,7 @@ int config_parse_locations(JsonNode *jlocations, struct conf_locations_t *locati
 						break;
 					}
 				}
-				
+
 				if(match == 0) {
 					logprintf(LOG_ERR, "device #%d \"%s\" of \"%s\", invalid protocol", i, jdevices->key, location->id);
 					have_error = 1;
@@ -772,7 +795,7 @@ int config_parse_locations(JsonNode *jlocations, struct conf_locations_t *locati
 					have_error = 1;
 					goto clear;
 				}
-				
+
 				devices = dnode;
 			}
 		}
@@ -782,9 +805,9 @@ int config_parse_locations(JsonNode *jlocations, struct conf_locations_t *locati
 
 	location->devices = malloc(MAX_DEVICES*sizeof(struct conf_devices_t));
 	/* Only store devices if they are present */
-	if(devices != NULL) {	
+	if(devices != NULL) {
 		memcpy(location->devices, devices, (MAX_DEVICES*sizeof(struct conf_devices_t)));
-	} else {	
+	} else {
 		location->devices = NULL;
 	}
 	/* Clear the locations struct for the next location */
@@ -808,9 +831,9 @@ int config_parse(JsonNode *root) {
 	JsonNode *jlocations = json_mkobject();
 	/* Location name */
 	char *name = NULL;
-	
+
 	int i = 0, have_error = 0;
-	
+
 	jlocations = json_first_child(root);
 
 	while(jlocations != NULL) {
@@ -836,7 +859,7 @@ int config_parse(JsonNode *root) {
 				}
 				tmp_locations = tmp_locations->next;
 			}
-			
+
 			lnode = malloc(sizeof(struct conf_locations_t));
 			lnode->id = strdup(jlocations->key);
 			lnode->name = strdup(name);
@@ -871,10 +894,10 @@ int config_write(char *content) {
 		logprintf(LOG_ERR, "cannot write config file: %s", configfile);
 		return EXIT_FAILURE;
 	}
-	fseek(fp, 0L, SEEK_SET);	
+	fseek(fp, 0L, SEEK_SET);
  	fwrite(content, sizeof(char), strlen(content), fp);
 	fclose(fp);
-	
+
 	return EXIT_SUCCESS;
 }
 
@@ -893,21 +916,21 @@ int config_read() {
 
 	fstat(fileno(fp), &st);
 	bytes = (size_t)st.st_size;
- 
+
 	if((content = calloc(bytes+1, sizeof(char))) == NULL) {
 		logprintf(LOG_ERR, "out of memory", configfile);
 		return EXIT_FAILURE;
 	}
-	
+
 	fread(content, sizeof(char), bytes, fp);
 	fclose(fp);
 
 	/* Validate JSON and turn into JSON object */
 	if(json_validate(content) == false) {
 		logprintf(LOG_ERR, "config is not in a valid json format", content);
-		free(content);		
+		free(content);
 		return EXIT_FAILURE;
-	}		
+	}
 	root = json_decode(content);
 
 	free(content);

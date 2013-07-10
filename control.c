@@ -47,13 +47,13 @@ int main(int argc, char **argv) {
 
 	disable_file_log();
 	enable_shell_log();
-	set_loglevel(LOG_NOTICE); 
+	set_loglevel(LOG_NOTICE);
 
 	progname = malloc((10*sizeof(char))+1);
 	strcpy(progname, "433-control");
-	
+
 	options = malloc(255*sizeof(struct options_t));
-	
+
 	int sockfd = 0;
     char *recvBuff = NULL;
 	char *message;
@@ -64,17 +64,17 @@ int main(int argc, char **argv) {
 	struct conf_locations_t *slocation = NULL;
 	struct conf_devices_t *sdevice = NULL;
 
-	JsonNode *json = json_mkobject();	
-	JsonNode *config = json_mkobject();	
-	JsonNode *code = json_mkobject();	
-	
+	JsonNode *json = json_mkobject();
+	JsonNode *config = json_mkobject();
+	JsonNode *code = json_mkobject();
+
 	/* Define all CLI arguments of this program */
 	addOption(&options, 'h', "help", no_value, 0, NULL);
 	addOption(&options, 'v', "version", no_value, 0, NULL);
 	addOption(&options, 'l', "location", has_value, 0, NULL);
 	addOption(&options, 'd', "device", has_value, 0,  NULL);
 
-	/* Store all CLI arguments for later usage 
+	/* Store all CLI arguments for later usage
 	   and also check if the CLI arguments where
 	   used correctly by the user. This will also
 	   fill all necessary values in the options struct */
@@ -98,14 +98,14 @@ int main(int argc, char **argv) {
 				strcpy(device, optarg);
 			break;
 			default:
-				printf("Usage: %s -l location -d device\n", progname); 
+				printf("Usage: %s -l location -d device\n", progname);
 				exit(EXIT_SUCCESS);
 			break;
 		}
 	}
-	
+
 	if(strlen(location) == 0 || strlen(device) == 0) {
-		printf("Usage: %s -l location -d device\n", progname); 
+		printf("Usage: %s -l location -d device\n", progname);
 		exit(EXIT_SUCCESS);
 	}
 
@@ -115,8 +115,8 @@ int main(int argc, char **argv) {
 	}
 
 	/* Initialize peripheral modules */
-	hw_init();	
-	
+	hw_init();
+
 	while(1) {
 		/* Clear the receive buffer again and read the welcome message */
 		if(steps == REQUEST) {
@@ -125,7 +125,7 @@ int main(int argc, char **argv) {
 				json_find_string(json, "message", &message);
 			} else {
 				goto close;
-			}				
+			}
 		} else {
 			if((recvBuff = socket_read(sockfd)) != NULL) {
 				json = json_decode(recvBuff);
@@ -153,7 +153,7 @@ int main(int argc, char **argv) {
 				socket_write(sockfd, "{\"message\":\"request config\"}");
 				steps=CONFIG;
 			break;
-			case CONFIG:	
+			case CONFIG:
 				if((config = json_find_member(json, "config")) != NULL) {
 					config_parse(config);
 					if(config_get_location(location, &slocation) == 0) {
@@ -178,7 +178,7 @@ int main(int argc, char **argv) {
 						logprintf(LOG_ERR, "the location \"%s\" does not exist", location);
 						goto close;
 					}
-				}			
+				}
 				goto close;
 			case REJECT:
 			default:

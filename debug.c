@@ -55,7 +55,7 @@ int main(int argc, char **argv) {
 	enable_shell_log();
 	disable_file_log();
 	set_loglevel(LOG_NOTICE);
-	
+
 	progname = malloc((10*sizeof(char))+1);
 	strcpy(progname, "433-debug");
 
@@ -80,7 +80,7 @@ int main(int argc, char **argv) {
 	int binaryLength = 0;
 
 	hw_choose_driver(NULL);
-	
+
 	addOption(&options, 'h', "help", no_value, 0, NULL);
 	addOption(&options, 'v', "version", no_value, 0, NULL);
 	addOption(&options, 's', "socket", has_value, 0, "^/dev/([A-Za-z]+)([0-9]+)");

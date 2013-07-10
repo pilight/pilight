@@ -49,13 +49,13 @@ int main(int argc, char **argv) {
 
 	disable_file_log();
 	enable_shell_log();
-	set_loglevel(LOG_NOTICE); 
+	set_loglevel(LOG_NOTICE);
 
 	progname = malloc((10*sizeof(char))+1);
 	strcpy(progname, "433-send");
-	
+
 	options = malloc(255*sizeof(struct options_t));
-	
+
 	int sockfd = 0;
     char *recvBuff = NULL;
     char *message;
@@ -79,7 +79,7 @@ int main(int argc, char **argv) {
 
 	JsonNode *json = json_mkobject();
 	JsonNode *code = json_mkobject();
-	
+
 	/* Define all CLI arguments of this program */
 	addOption(&options, 'h', "help", no_value, 0, NULL);
 	addOption(&options, 'v', "version", no_value, 0, NULL);
@@ -88,7 +88,7 @@ int main(int argc, char **argv) {
 
 	/* Initialize peripheral modules */
 	hw_init();
-	
+
 	/* Get the protocol to be used */
 	while (1) {
 		int c;
@@ -177,7 +177,7 @@ int main(int argc, char **argv) {
 		return (EXIT_SUCCESS);
 	}
 
-	/* Store all CLI arguments for later usage 
+	/* Store all CLI arguments for later usage
 	   and also check if the CLI arguments where
 	   used correctly by the user. This will also
 	   fill all necessary values in the options struct */
@@ -192,14 +192,14 @@ int main(int argc, char **argv) {
 	int itmp;
 	/* Check if we got sufficient arguments from this protocol */
 	while(options != NULL && strlen(options->name) > 0) {
-		/* Only send the CLI arguments that belong to this protocol, the protocol name 
+		/* Only send the CLI arguments that belong to this protocol, the protocol name
 		   and those that are called by the user */
-		if((getOptionIdByName(&protocol->options, options->name, &itmp) == 0 || strcmp(options->name, "protocol") == 0 || strcmp(options->name, "repeat") == 0) 
+		if((getOptionIdByName(&protocol->options, options->name, &itmp) == 0 || strcmp(options->name, "protocol") == 0 || strcmp(options->name, "repeat") == 0)
 		   && strlen(options->value) > 0) {
 			json_append_member(code, options->name, json_mkstring(options->value));
 		}
 		options = options->next;
-	}	
+	}
 
 	if(protocol->createCode(code) == 0) {
 

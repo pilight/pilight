@@ -54,9 +54,9 @@ typedef enum {
 
 typedef struct clients_t clients_t;
 
-char clients[3][10] = { 
-	"receiver", 
-	"sender", 
+char clients[3][10] = {
+	"receiver",
+	"sender",
 	"controller"
 };
 
@@ -86,39 +86,39 @@ void escape_characters(char* dest, const char* src) {
 
 	while((c = *(src++))) {
 		switch(c) {
-			case '\a': 
+			case '\a':
 				*(dest++) = '\\';
 				*(dest++) = 'a';
 			break;
-			case '\b': 
+			case '\b':
 				*(dest++) = '\\';
 				*(dest++) = 'b';
 			break;
-			case '\t': 
+			case '\t':
 				*(dest++) = '\\';
 				*(dest++) = 't';
 			break;
-			case '\n': 
+			case '\n':
 				*(dest++) = '\\';
 				*(dest++) = 'n';
 			break;
-			case '\v': 
+			case '\v':
 				*(dest++) = '\\';
 				*(dest++) = 'v';
 			break;
-			case '\f': 
+			case '\f':
 				*(dest++) = '\\';
 				*(dest++) = 'f';
 			break;
-			case '\r': 
+			case '\r':
 				*(dest++) = '\\';
 				*(dest++) = 'r';
 			break;
-			case '\\': 
+			case '\\':
 				*(dest++) = '\\';
 				*(dest++) = '\\';
 			break;
-			case '\"': 
+			case '\"':
 				*(dest++) = '\\';
 				*(dest++) = '\"';
 			break;
@@ -137,9 +137,8 @@ int broadcast(char *protoname, JsonNode *json) {
 
 	/* Update the config file */
 	config_update(protoname, json);
-	
 	if(json_validate(message) == true && receivers > 0) {
-			
+
 		/* Write the message to all receivers */
 		for(i=0;i<MAX_CLIENTS;i++) {
 			if(handshakes[i] == RECEIVER) {
@@ -148,7 +147,7 @@ int broadcast(char *protoname, JsonNode *json) {
 		}
 
 		escape_characters(escaped, message);
-		
+
 		/* Call the external file */
 		if(strlen(processfile) > 0) {
 			char cmd[255];
@@ -172,12 +171,12 @@ void send_code(JsonNode *json) {
 	int i=0, match = 0, x = 0, logged = 1;
 	char *name;
 	char *temp;
-	
+
 	/* Hold the final protocol struct */
 	protocol_t *protocol = malloc(sizeof(protocol_t));
 	/* The code that is send to the hardware wrapper */
 	struct ir_ncode code;
-	
+
 	JsonNode *jcode = json_mkobject();
 	JsonNode *message = json_mkobject();
 
@@ -252,7 +251,7 @@ void client_sender_parse_code(int i, JsonNode *json) {
 
 	/* Don't let the sender wait until we have send the code */
 	socket_close(sd);
-	handshakes[i] = -1;	
+	handshakes[i] = -1;
 
 	send_code(json);
 }
@@ -269,7 +268,7 @@ void control_device(struct conf_devices_t *dev) {
 
 	/* Check all protocol options */
 	if(dev->protopt->options != NULL) {
-		opt = dev->protopt->options;	
+		opt = dev->protopt->options;
 		while(opt) {
 			sett = dev->settings;
 			while(sett) {
@@ -308,7 +307,7 @@ void control_device(struct conf_devices_t *dev) {
 	}
 	/* Send the new device state */
 	if(dev->protopt->options != NULL) {
-		opt = dev->protopt->options;	
+		opt = dev->protopt->options;
 		while(opt) {
 			if(opt->conftype == config_state && opt->argtype == no_value && strcmp(opt->name, nstate) == 0) {
 				json_append_member(code, opt->name, json_mkstring("1"));
@@ -339,7 +338,7 @@ void client_controller_parse_code(int i, JsonNode *json) {
 	struct conf_locations_t *slocation;
 	struct conf_devices_t *sdevice;
 	JsonNode *code = NULL;
-	
+
 	if(json_find_string(json, "message", &message) == 0) {
 		/* Send the config file to the controller */
 		if(strcmp(message, "request config") == 0) {
@@ -372,7 +371,7 @@ void client_controller_parse_code(int i, JsonNode *json) {
 				handshakes[i] = -1;
 			}
 		}
-	}	
+	}
 }
 
 /* Parse the incoming buffer from the client */
@@ -399,7 +398,7 @@ void socket_parse_data(int i, char buffer[BUFFER_SIZE]) {
 			/* Check if we matched a know client type */
 			for(x=0;x<(sizeof(clients)/sizeof(clients[0]));x++) {
 				memset(tmp, '\0', 25);
-				
+
 				strcat(tmp, "client ");
 				strcat(tmp, clients[x]);
 
@@ -434,7 +433,7 @@ void socket_client_disconnected(int i) {
 void receive_code(void) {
 	lirc_t data;
 	unsigned int x, y = 0, i;
-	protocol_t *protocol = malloc(sizeof(protocol_t));	
+	protocol_t *protocol = malloc(sizeof(protocol_t));
 
 	while(1) {
 		/* Only initialize the hardware receive the data when there are receivers connected */
@@ -488,7 +487,7 @@ void receive_code(void) {
 									if(protocol->message != NULL && json_validate(json_stringify(message, NULL)) == true) {
 										json_append_member(message, "origin", json_mkstring("receiver"));
 										json_append_member(message, "code", protocol->message);
-										broadcast(protocol->id, message);										
+										broadcast(protocol->id, message);
 										continue;
 									} else {
 										continue;
@@ -522,7 +521,7 @@ void receive_code(void) {
 											if(protocol->message != NULL && json_validate(json_stringify(message, NULL)) == true) {
 												json_append_member(message, "origin", json_mkstring("receiver"));
 												json_append_member(message, "code", protocol->message);
-												broadcast(protocol->id, message);									
+												broadcast(protocol->id, message);
 												continue;
 											} else {
 												continue;
@@ -547,7 +546,7 @@ void receive_code(void) {
 												if(protocol->message != NULL && json_validate(json_stringify(message, NULL)) == true) {
 													json_append_member(message, "origin", json_mkstring("receiver"));
 													json_append_member(message, "code", protocol->message);
-													broadcast(protocol->id, message);									
+													broadcast(protocol->id, message);
 													continue;
 												} else {
 													continue;
@@ -563,7 +562,7 @@ void receive_code(void) {
 					}
 				}
 			}
-			json_delete(message);			
+			json_delete(message);
 		} else {
 			sleep(1);
 		}
@@ -629,12 +628,12 @@ int main(int argc , char **argv) {
 
 	disable_file_log();
 	enable_shell_log();
-	
+
 	progname = malloc((10*sizeof(char))+1);
 	strcpy(progname, "433-daemon");
-	
+
 	pidfile = strdup(PID_FILE);
-	configfile = strdup(CONFIG_FILE);	
+	configfile = strdup(CONFIG_FILE);
 
 	struct socket_callback_t socket_callback;
 	pthread_t pth;
@@ -776,7 +775,7 @@ int main(int argc , char **argv) {
 
     //initialise all socket_clients and handshakes to 0 so not checked
 	memset(socket_clients, 0, sizeof(socket_clients));
-	memset(handshakes, -1, sizeof(handshakes));		
+	memset(handshakes, -1, sizeof(handshakes));
 
     socket_callback.client_disconnected_callback = &socket_client_disconnected;
     socket_callback.client_connected_callback = NULL;

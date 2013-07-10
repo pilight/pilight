@@ -75,7 +75,7 @@ void arctechSwClearCode(void) {
 
 void arctechSwCreateStart(void) {
 	arctech_switch.raw[0]=(PULSE_LENGTH);
-	arctech_switch.raw[1]=(arctech_switch.header*PULSE_LENGTH);	
+	arctech_switch.raw[1]=(arctech_switch.header*PULSE_LENGTH);
 }
 
 void arctechSwCreateId(int id) {
@@ -138,7 +138,7 @@ int arctechSwCreateCode(JsonNode *code) {
 	if(json_find_string(code, "unit", &tmp) == 0)
 		unit = atoi(tmp);
 	if(json_find_string(code, "all", &tmp) == 0)
-		all = 1;	
+		all = 1;
 
 	if(id == -1 || unit == -1 || state == -1) {
 		logprintf(LOG_ERR, "arctech_switch: insufficient number of arguments");
@@ -150,7 +150,7 @@ int arctechSwCreateCode(JsonNode *code) {
 		logprintf(LOG_ERR, "arctech_switch: invalid unit range");
 		return EXIT_FAILURE;
 	} else {
-		arctechSwCreateMessage(id, unit, state, all);	
+		arctechSwCreateMessage(id, unit, state, all);
 		arctechSwCreateStart();
 		arctechSwClearCode();
 		arctechSwCreateId(id);
@@ -187,7 +187,7 @@ void arctechSwInit(void) {
 	arctech_switch.binaryLength = 33;
 	arctech_switch.repeats = 2;
 	arctech_switch.message = malloc((50*sizeof(char))+1);
-	
+
 	arctech_switch.bit = 0;
 	arctech_switch.recording = 0;
 

@@ -138,7 +138,7 @@ int sartanoCreateCode(JsonNode *code) {
 		logprintf(LOG_ERR, "sartano: invalid unit range");
 		return EXIT_FAILURE;
 	} else {
-		sartanoCreateMessage(id, unit, state);	
+		sartanoCreateMessage(id, unit, state);
 		sartanoClearCode();
 		sartanoCreateUnit(unit);
 		sartanoCreateId(id);
@@ -173,7 +173,7 @@ void sartanoInit(void) {
 	sartano.bit = 0;
 	sartano.recording = 0;
 
-	addOption(&sartano.options, 't', "on", no_value, config_state, NULL);	
+	addOption(&sartano.options, 't', "on", no_value, config_state, NULL);
 	addOption(&sartano.options, 'f', "off", no_value, config_state, NULL);
 	addOption(&sartano.options, 'u', "unit", has_value, config_id, "[0-9]");
 	addOption(&sartano.options, 'i', "id", has_value, config_id, "[0-9]");

@@ -45,9 +45,9 @@ int main(void) {
 
 	progname = malloc((10*sizeof(char))+1);
 	strcpy(progname, "433-receive");
-	
+
 	JsonNode *json = json_mkobject();
-	
+
     int sockfd = 0;
     char *recvBuff;
 	char *message = NULL;

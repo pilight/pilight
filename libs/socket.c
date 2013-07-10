@@ -116,10 +116,10 @@ void socket_close(int sockfd) {
 				break;
 			}
 		}
-		
+
 		shutdown(sockfd, SHUT_WR);
 		close(sockfd);
-		logprintf(LOG_INFO, "client disconnected, ip %s, port %d", inet_ntoa(address.sin_addr), ntohs(address.sin_port));	
+		logprintf(LOG_INFO, "client disconnected, ip %s, port %d", inet_ntoa(address.sin_addr), ntohs(address.sin_port));
 	}
 }
 
@@ -173,7 +173,7 @@ char *socket_read(int sockfd) {
 
 	if(read(sockfd, recvBuff, BUFFER_SIZE) < 1) {
 		return NULL;
-	} else {	
+	} else {
 		return recvBuff;
 	}
 
@@ -186,7 +186,7 @@ char *socket_read_big(int sockfd) {
 
 	if(read(sockfd, recvBuff, BIG_BUFFER_SIZE) < 1) {
 		return NULL;
-	} else {	
+	} else {
 		return recvBuff;
 	}
 
@@ -279,7 +279,7 @@ void *wait_for_data(void *param) {
 						socket_callback->client_disconnected_callback(i);
 					//Close the socket and mark as 0 in list for reuse
 					close(sd);
-					socket_clients[i] = 0;					
+					socket_clients[i] = 0;
                 } else {
                     //set the string terminating NULL byte on the end of the data read
                     readBuff[n] = '\0';

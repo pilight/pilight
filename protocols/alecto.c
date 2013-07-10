@@ -34,7 +34,7 @@ void alectoParseCode(void) {
 	int humidity;
 	int battery;
 	int id;
-	
+
 	for(i=1;i<alecto.rawLength-1;i+=2) {
 		alecto.binary[x++] = alecto.code[i];
 	}
@@ -79,7 +79,7 @@ void alectoInit(void) {
 	alecto.multiplier[1] = 0.3;
 	alecto.rawLength = 74;
 	alecto.repeats = 1;
-	
+
 	alecto.bit = 0;
 	alecto.recording = 0;
 
@@ -87,7 +87,7 @@ void alectoInit(void) {
 	addOption(&alecto.options, 't', "temperature", has_value, config_value, "[0-9]");
 	addOption(&alecto.options, 'b', "battery", has_value, config_value, "[0-9]");
 	addOption(&alecto.options, 'i', "id", has_value, config_id, "[0-9]");
-	
+
 	alecto.parseCode=&alectoParseCode;
 
 	protocol_register(&alecto);
