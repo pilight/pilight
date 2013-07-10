@@ -49,15 +49,17 @@
 typedef enum {
 	RECEIVER,
 	SENDER,
-	CONTROLLER
+	CONTROLLER,
+	NODE
 } client_type_t;
 
 typedef struct clients_t clients_t;
 
-char clients[3][10] = {
-	"receiver",
-	"sender",
-	"controller"
+char clients[4][11] = {
+	"receiver\0",
+	"sender\0",
+	"controller\0",
+	"node\0"
 };
 
 /* The pidfile and pid of this daemon */
@@ -395,6 +397,7 @@ void socket_parse_data(int i, char buffer[BUFFER_SIZE]) {
 		} else if(handshakes[i] == CONTROLLER) {
 			client_controller_parse_code(i, json);
 		} else {
+
 			/* Check if we matched a know client type */
 			for(x=0;x<(sizeof(clients)/sizeof(clients[0]));x++) {
 				memset(tmp, '\0', 25);
@@ -630,7 +633,7 @@ int main(int argc , char **argv) {
 	enable_shell_log();
 
 	progname = malloc((10*sizeof(char))+1);
-	strcpy(progname, "433-daemon");
+	progname = strdup("433-daemon");
 
 	pidfile = strdup(PID_FILE);
 	configfile = strdup(CONFIG_FILE);

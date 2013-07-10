@@ -94,7 +94,7 @@ int main(int argc, char **argv) {
 	set_loglevel(LOG_NOTICE);
 
 	progname = malloc((10*sizeof(char))+1);
-	strcpy(progname, "433-learn");
+	progname = strdup("433-learn");
 
 	lirc_t data;
 	char *socket = strdup("/dev/lirc0");

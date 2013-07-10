@@ -57,7 +57,7 @@ int main(int argc, char **argv) {
 	set_loglevel(LOG_NOTICE);
 
 	progname = malloc((10*sizeof(char))+1);
-	strcpy(progname, "433-debug");
+	progname = strdup("433-debug");
 
 	lirc_t data;
 	char *socket = strdup("/dev/lirc0");

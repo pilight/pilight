@@ -37,23 +37,65 @@ typedef enum {
 	RECEIVE
 } steps_t;
 
-int main(void) {
+int main(int argc, char **argv) {
 	enable_shell_log();
 	disable_file_log();
 
 	set_loglevel(LOG_NOTICE);
 
 	progname = malloc((10*sizeof(char))+1);
-	strcpy(progname, "433-receive");
+	progname = strdup("433-receive");
 
 	JsonNode *json = json_mkobject();
 
+	char server[16] = "127.0.0.1";
+	unsigned short port = PORT;	
+	
     int sockfd = 0;
     char *recvBuff;
 	char *message = NULL;
 	steps_t steps = WELCOME;
 
-    if((sockfd = connect_to_server(strdup("127.0.0.1"), 5000)) == -1) {
+	addOption(&options, 'h', "help", no_value, 0, NULL);
+	addOption(&options, 'v', "version", no_value, 0, NULL);	
+	addOption(&options, 'S', "server", has_value, 0, "^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]).){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$");
+	addOption(&options, 'P', "port", has_value, 0, "[0-9]{1,4}");	
+	
+	/* Store all CLI arguments for later usage
+	   and also check if the CLI arguments where
+	   used correctly by the user. This will also
+	   fill all necessary values in the options struct */
+	while(1) {
+		int c;
+		c = getOptions(&options, argc, argv, 1);
+		if(c == -1)
+			break;
+		switch(c) {
+			case 'h':
+				printf("\t -h --help\t\t\tdisplay this message\n");
+				printf("\t -v --version\t\t\tdisplay version\n");				
+				printf("\t -S --server=%s\t\tconnect to server address\n", server);
+				printf("\t -P --port=%d\t\t\tconnect to server port\n", port);				
+				exit(EXIT_SUCCESS);
+			break;
+			case 'v':
+				printf("%s %s\n", progname, "1.0");
+				exit(EXIT_SUCCESS);
+			break;
+			case 'S':
+				strcpy(server, optarg);
+			break;
+			case 'P':
+				port = (unsigned short)atoi(optarg);
+			break;			
+			default:
+				printf("Usage: %s -l location -d device\n", progname);
+				exit(EXIT_SUCCESS);
+			break;
+		}
+	}	
+	
+    if((sockfd = connect_to_server(strdup(server), port)) == -1) {
 		logprintf(LOG_ERR, "could not connect to 433-daemon");
 		return EXIT_FAILURE;
 	}

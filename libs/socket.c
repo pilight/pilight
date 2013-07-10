@@ -218,7 +218,7 @@ void *wait_for_data(void *param) {
 			FD_ZERO(&readfds);
 
 			//add master socket to set
-			FD_SET(serverSocket, &readfds);
+			FD_SET((long unsigned int)serverSocket, &readfds);
 			max_sd = serverSocket;
 
 			//add child sockets to set
@@ -228,7 +228,7 @@ void *wait_for_data(void *param) {
 
 				//if valid socket descriptor then add to read list
 				if(sd > 0)
-					FD_SET(sd, &readfds);
+					FD_SET((long unsigned int)sd, &readfds);
 
 				//highest file descriptor number, need it for the select function
 				if(sd > max_sd)
@@ -239,7 +239,7 @@ void *wait_for_data(void *param) {
 		} while(activity == -1 && errno == EINTR);
 
         //If something happened on the master socket , then its an incoming connection
-        if(FD_ISSET(serverSocket, &readfds)) {
+        if(FD_ISSET((long unsigned int)serverSocket, &readfds)) {
             if((clientSocket = accept(serverSocket, (struct sockaddr *)&address, (socklen_t*)&addrlen))<0) {
                 logprintf(LOG_ERR, "failed to accept client");
                 exit(EXIT_FAILURE);
@@ -268,9 +268,9 @@ void *wait_for_data(void *param) {
         for(i=0;i<MAX_CLIENTS;i++) {
 			sd = socket_clients[i];
 
-            if(FD_ISSET(sd , &readfds)) {
+            if(FD_ISSET((long unsigned int)sd , &readfds)) {
                 //Check if it was for closing, and also read the incoming message
-                if ((n = read(sd ,readBuff, sizeof(readBuff)-1)) == 0) {
+                if((n = (int)read(sd, readBuff, sizeof(readBuff)-1)) == 0) {
                     //Somebody disconnected, get his details and print
                     getpeername(sd, (struct sockaddr*)&address, (socklen_t*)&addrlen);
                     logprintf(LOG_INFO, "client disconnected, ip %s, port %d", inet_ntoa(address.sin_addr), ntohs(address.sin_port));

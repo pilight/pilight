@@ -52,7 +52,7 @@ int main(int argc, char **argv) {
 	set_loglevel(LOG_NOTICE);
 
 	progname = malloc((10*sizeof(char))+1);
-	strcpy(progname, "433-send");
+	progname = strdup("433-send");
 
 	options = malloc(255*sizeof(struct options_t));
 
@@ -62,7 +62,7 @@ int main(int argc, char **argv) {
 	steps_t steps = WELCOME;
 
 	/* Hold the name of the protocol */
-	char protobuffer[255];
+	char protobuffer[25] = "\0";
 	int i;
 	/* Does this protocol exists */
 	int match = 0;
@@ -74,6 +74,9 @@ int main(int argc, char **argv) {
 	/* Do we need to print the protocol help */
 	int protohelp = 0;
 
+	char server[16] = "127.0.0.1";
+	unsigned short port = PORT;
+	
 	/* Hold the final protocol struct */
 	protocol_t *protocol = NULL;
 
@@ -85,6 +88,8 @@ int main(int argc, char **argv) {
 	addOption(&options, 'v', "version", no_value, 0, NULL);
 	addOption(&options, 'p', "protocol", has_value, 0, NULL);
 	addOption(&options, 'r', "repeat", has_value, 0, "[0-9]");
+	addOption(&options, 'S', "server", has_value, 0, "^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]).){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$");
+	addOption(&options, 'P', "port", has_value, 0, "[0-9]{1,4}");
 
 	/* Initialize peripheral modules */
 	hw_init();
@@ -109,6 +114,12 @@ int main(int argc, char **argv) {
 			break;
 			case 'h':
 				help = 1;
+			break;
+			case 'S':
+				strcpy(server, optarg);
+			break;
+			case 'P':
+				port = (unsigned short)atoi(optarg);
 			break;
 			default:;
 		}
@@ -153,6 +164,8 @@ int main(int argc, char **argv) {
 		if(help == 1) {
 			printf("\t -h --help\t\t\tdisplay this message\n");
 			printf("\t -v --version\t\t\tdisplay version\n");
+			printf("\t -S --server=%s\t\tconnect to server address\n", server);
+			printf("\t -P --port=%d\t\t\tconnect to server port\n", port);
 			printf("\t -p --protocol=protocol\t\tthe protocol that you want to control\n");
 			printf("\t -r --repeat=repeat\t\tnumber of times the command is send\n");
 		}
@@ -203,7 +216,7 @@ int main(int argc, char **argv) {
 
 	if(protocol->createCode(code) == 0) {
 
-		if((sockfd = connect_to_server(strdup("127.0.0.1"), 5000)) == -1) {
+		if((sockfd = connect_to_server(strdup(server), port)) == -1) {
 			logprintf(LOG_ERR, "could not connect to 433-daemon");
 			goto close;
 		}
@@ -216,7 +229,7 @@ int main(int argc, char **argv) {
 			} else {
 				goto close;
 			}
-
+			usleep(100);
 			switch(steps) {
 				case WELCOME:
 					if(strcmp(message, "accept connection") == 0) {

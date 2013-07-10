@@ -922,7 +922,9 @@ int config_read() {
 		return EXIT_FAILURE;
 	}
 
-	fread(content, sizeof(char), bytes, fp);
+	if(fread(content, sizeof(char), bytes, fp) == -1) {
+		logprintf(LOG_ERR, "cannot read config file: %s", configfile);
+	}
 	fclose(fp);
 
 	/* Validate JSON and turn into JSON object */
