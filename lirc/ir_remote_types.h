@@ -24,6 +24,11 @@
 
 #include "lirc.h"
 
+#ifdef __FreeBSD__
+	typedef unsigned long long __u64;
+	typedef unsigned long __u32;
+#endif
+
 typedef __u64 ir_code;
 
 struct ir_code_node {

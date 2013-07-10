@@ -547,11 +547,7 @@ int config_check_state(int i, JsonNode *jsetting, struct conf_devices_t *device)
 	}
 
 clear:
-	if(have_error == 1) {
-		return EXIT_FAILURE;
-	} else {
-		return EXIT_SUCCESS;
-	}
+	return have_error;
 }
 
 int config_parse_devices(JsonNode *jdevices, struct conf_devices_t *device) {
@@ -699,11 +695,7 @@ int config_parse_devices(JsonNode *jdevices, struct conf_devices_t *device) {
 		snode->next = NULL;
 
 clear:
-	if(have_error == 1) {
-		return EXIT_FAILURE;
-	} else {
-		return EXIT_SUCCESS;
-	}
+	return have_error;
 }
 
 int config_parse_locations(JsonNode *jlocations, struct conf_locations_t *location) {
@@ -816,11 +808,7 @@ int config_parse_locations(JsonNode *jlocations, struct conf_locations_t *locati
 		dnode->next = NULL;
 
 clear:
-	if(have_error == 1) {
-		return EXIT_FAILURE;
-	} else {
-		return EXIT_SUCCESS;
-	}
+	return have_error;
 }
 
 int config_parse(JsonNode *root) {
@@ -878,12 +866,7 @@ int config_parse(JsonNode *root) {
 	/* Preverse the original order inside the structs as in the config file */
 	config_reverse_struct(&locations);
 clear:
-	if(have_error == 1) {
-		config_clear();
-		return EXIT_FAILURE;
-	} else {
-		return EXIT_SUCCESS;
-	}
+	return have_error;
 }
 
 int config_write(char *content) {

@@ -24,14 +24,14 @@
 #include <setjmp.h>
 #include "gc.h"
 
-static jmp_buf gc_cleanup;
+static sigjmp_buf gc_cleanup;
 
 /* The gc uses a observer pattern to
    easily call function when exiting
    the daemon */
 
 void gc_handler(int sig) {
-    siglongjmp(gc_cleanup,sig);
+    siglongjmp(gc_cleanup, sig);
 }
 
 /* Removed function from GC */
@@ -56,7 +56,7 @@ void gc_attach(int (*fp)(void)) {
 void gc_catch(void) {
 
     struct sigaction act, old;
-    unsigned i, s;
+    unsigned int i;
 
     memset(&act,0,sizeof(act));
     act.sa_handler = gc_handler;
@@ -77,12 +77,6 @@ void gc_catch(void) {
 
 	/* Call all GC functions */
 	for(i=0; i<gc.nr; ++i) {
-		if(gc.listeners[i]() != 0) {
-			s=1;
-		}
+		gc.listeners[i]();
 	}
-	if(s)
-		exit(255);
-	else
-		exit(0);
 }

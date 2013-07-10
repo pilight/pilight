@@ -18,10 +18,10 @@
 	<http://www.gnu.org/licenses/>
 */
 
+#include <regex.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <regex.h>
 #include "log.h"
 #include "options.h"
 
@@ -167,12 +167,14 @@ int getOptionValByName(struct options_t **opt, char *name, char **out) {
 /* Parse all CLI arguments */
 int getOptions(struct options_t **opt, int argc, char **argv, int error_check) {
 	int c = 0;
-	regex_t regex;
-	int reti;
 	char *ctmp = NULL;
 	int itmp;
+#ifndef __FreeBSD__	
 	char *mask;
-
+	regex_t regex;
+	int reti;
+#endif
+	
 	/* Reservate enough memory to store all variables */
 	longarg = malloc(sizeof(char)*255);
 	shortarg = malloc(sizeof(char)*3);
@@ -269,7 +271,7 @@ int getOptions(struct options_t **opt, int argc, char **argv, int error_check) {
 				return 0;
 			}
 		/* Check if an argument required a value that wasn't set */
-		} else if(strlen(optarg) == 0 && getOptionArgTypeById(opt, c, &itmp) == 2 && itmp == 2) {
+		} else if(strlen(optarg) == 0 && getOptionArgTypeById(opt, c, &itmp) == 0 && itmp == 2) {
 			if(error_check == 1) {
 				if(strcmp(longarg, shortarg) == 0) {
 					logprintf(LOG_ERR, "option '-%c' requires an argument", c);
@@ -297,6 +299,7 @@ int getOptions(struct options_t **opt, int argc, char **argv, int error_check) {
 			if(strlen(optarg) == 0)
 				setOptionValById(opt, c, "1");
 			else {
+#ifndef __FreeBSD__			
 				/* If the argument has a regex mask, check if it passes */
 				if(getOptionMaskById(opt, c, &mask) == 0) {
 					reti = regcomp(&regex, mask, REG_EXTENDED);
@@ -315,12 +318,12 @@ int getOptions(struct options_t **opt, int argc, char **argv, int error_check) {
 						exit(EXIT_FAILURE);
 					}
 				}
+#endif
 				setOptionValById(opt, c, optarg);
 			}
 			return c;
 		}
 	}
-	return 0;
 }
 
 /* Add a new option to the options struct */

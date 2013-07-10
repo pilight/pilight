@@ -1,20 +1,23 @@
 GCC = $(CROSS_COMPILE)gcc
 SYS := $(shell $(GCC) -dumpmachine)
 ifneq (, $(findstring x86_64, $(SYS)))
-	OSFLAGS=-march=native -mtune=native -mfpmath=sse
+	OSFLAGS = -Ofast -march=native -mtune=native -mfpmath=sse -Wconversion -Wunreachable-code -Wstrict-prototypes 
 endif
 ifneq (, $(findstring arm, $(SYS)))
 	ifneq (, $(findstring gnueabihf, $(SYS)))
-		OSFLAGS=-mfloat-abi=hard -mfpu=vfp -march=armv6
+		OSFLAGS = -Ofast -mfloat-abi=hard -mfpu=vfp -march=armv6 -Wconversion -Wunreachable-code -Wstrict-prototypes 
 	endif
 	ifneq (, $(findstring gnueabi, $(SYS)))
-		OSFLAGS=-mfloat-abi=hard -mfpu=vfp -march=armv6
+		OSFLAGS = -Ofast -mfloat-abi=hard -mfpu=vfp -march=armv6 -Wconversion -Wunreachable-code -Wstrict-prototypes 
 	endif	
 	ifneq (, $(findstring gnueabisf, $(SYS)))
-		OSFLAGS=-mfloat-abi=soft -mfpu=vfp -march=armv6
+		OSFLAGS = -Ofast -mfloat-abi=soft -mfpu=vfp -march=armv6 -Wconversion -Wunreachable-code -Wstrict-prototypes 
 	endif
 endif
-CFLAGS = -Ofast -ffast-math $(OSFLAGS) -Wfloat-equal -Wshadow -Wpointer-arith -Wcast-align -Wstrict-prototypes -Wstrict-overflow=5 -Wwrite-strings -Waggregate-return -Wcast-qual -Wswitch-default -Wswitch-enum -Wconversion -Wunreachable-code -Wformat=2 -g -Wall -I. -I.. -Ilibs/ -Iprotocols/ -Ilirc/ -I/usr/include/ -L/usr/lib/arm-linux-gnueabihf/
+ifneq (, $(findstring amd64, $(SYS)))
+	OSFLAGS = -O3 -march=native -mtune=native -mfpmath=sse -Wno-conversion
+endif
+CFLAGS = -ffast-math $(OSFLAGS) -Wfloat-equal -Wshadow -Wpointer-arith -Wcast-align -Wstrict-overflow=5 -Wwrite-strings -Waggregate-return -Wcast-qual -Wswitch-default -Wswitch-enum -Wformat=2 -g -Wall -I. -I.. -Ilibs/ -Iprotocols/ -Ilirc/ -I/usr/include/ -L/usr/lib/arm-linux-gnueabihf/
 SUBDIRS = libs protocols lirc
 SRC = $(wildcard *.c)
 INCLUDES = $(wildcard protocols/*.o) $(wildcard lirc/*.o) $(wildcard libs/*.h) $(wildcard libs/*.o)

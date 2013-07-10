@@ -34,7 +34,6 @@
 #include "config.h"
 #include "log.h"
 #include "socket.h"
-#include "socket.h"
 
 /* Start the socket server */
 int start_server(unsigned short port) {
@@ -98,7 +97,6 @@ int connect_to_server(char *address, unsigned short port) {
     } else {
 		return sockfd;
 	}
-	return -1;
 }
 
 
@@ -176,8 +174,6 @@ char *socket_read(int sockfd) {
 	} else {
 		return recvBuff;
 	}
-
-	return NULL;
 }
 
 char *socket_read_big(int sockfd) {
@@ -189,8 +185,6 @@ char *socket_read_big(int sockfd) {
 	} else {
 		return recvBuff;
 	}
-
-	return NULL;
 }
 
 int socket_msgcmp(char *a, char *b) {
@@ -273,8 +267,7 @@ void *wait_for_data(void *param) {
                 if((n = (int)read(sd, readBuff, sizeof(readBuff)-1)) == 0) {
                     //Somebody disconnected, get his details and print
                     getpeername(sd, (struct sockaddr*)&address, (socklen_t*)&addrlen);
-                    logprintf(LOG_INFO, "client disconnected, ip %s, port %d", inet_ntoa(address.sin_addr), ntohs(address.sin_port));
-
+					logprintf(LOG_INFO, "client disconnected, ip %s, port %d", inet_ntoa(address.sin_addr), ntohs(address.sin_port));
 					if(socket_callback->client_disconnected_callback != NULL)
 						socket_callback->client_disconnected_callback(i);
 					//Close the socket and mark as 0 in list for reuse
@@ -298,5 +291,4 @@ void *wait_for_data(void *param) {
             }
         }
     }
-	return 0;
 }

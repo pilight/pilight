@@ -11,6 +11,8 @@
 #include <linux/ioctl.h>
 #elif defined(_NetBSD_)
 #include <sys/ioctl.h>
+#elif defined(__FreeBSD__)
+#include <sys/ioctl.h>
 #elif defined(_CYGWIN_)
 #define __USE_LINUX_IOCTL_DEFS
 #include <sys/ioctl.h>
