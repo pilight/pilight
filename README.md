@@ -53,21 +53,43 @@ root@pi:~# ./send -p kaku_switch -i 100 -u 15 -f
 ```
 ```
 root@pi:~# ./433-receiver
-id 100 unit 15 state off
+{
+	"origin": "sender",
+	"code": {
+		"id": 100,
+		"unit": 15,
+		"state": off
+	}
+}
+
 ```
 ```
 root@pi:~# ./433-send -p kaku_dimmer -i 100 -u 15 -d 15
 ```
 ```
 root@pi:~# ./433-receiver
-id 100 unit 15 dim 15
+{
+	"origin": "sender",
+	"code": {
+		"id": 100,
+		"unit": 15,
+		"dimlevel": 15
+	}
+}
 ```
 ```
 root@pi:~# ./433-send -p elro -i 10 -u 15 -t
 ```
 ```
 root@pi:~# ./433-receiver
-id 10 unit 15 state on
+{
+	"origin": "sender",
+	"code": {
+		"id": 10,
+		"unit": 15,
+		"state": off
+	}
+}
 ```
 <hr>
 The sender will 433-send will send codes to the 433-daemon:
@@ -77,29 +99,35 @@ root@pi:~# ./433-send -p kaku_switch -i 1 -u 1 -t
 The command line arguments depend on the protocol used e.g.:
 ```
 root@pi:~# ./433-send -h
-Usage: send -p protocol [options]
+Usage: 433-send -p protocol [options]
          -h --help                      display this message
          -v --version                   display version
-         -p --protocol=protocol         the device that you want to control
+         -S --server=127.0.0.1          connect to server address
+         -P --port=5000                 connect to server port
+         -p --protocol=protocol         the protocol that you want to control
          -r --repeat=repeat             number of times the command is send
 
 The supported protocols are:
+         coco_switch                    CoCo Technologies Switches
+         nexa_switch                    Nexa Switches
+         dio_switch                     D-IO (Chacon) Switches
          kaku_switch                    KlikAanKlikUit Switches
          kaku_dimmer                    KlikAanKlikUit Dimmers
          kaku_old                       Old KlikAanKlikUit Switches
          elro                           Elro Switches
          raw                            Raw codes
 root@pi:~# ./433-send -p kaku_switch -h
-Usage: send -p kaku_switch [options]
+Usage: 433-send -p kaku_switch [options]
          -h --help                      display this message
          -v --version                   display version
-         -p --protocol=protocol         the device that you want to control
-         -s --socket=socket             read from given socket
+         -S --server=127.0.0.1          connect to server address
+         -P --port=5000                 connect to server port
+         -p --protocol=protocol         the protocol that you want to control
          -r --repeat=repeat             number of times the command is send
 
         [kaku_switch]
          -t --on                        send an on signal
-         -t --off                       send an off signal
+         -f --off                       send an off signal
          -u --unit=unit                 control a device with this unit code
          -i --id=id                     control a device with this id
          -a --all                       send command to all devices with this id
@@ -117,7 +145,7 @@ for you to press a button for the device you want to control. Once you held the 
 using the raw codes.
 ```
 root@pi:~# ./433-debug
-header:      	 10
+header:      	10
 pulse:          5
 footer:         38
 rawLength:      132
