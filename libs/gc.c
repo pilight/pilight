@@ -56,27 +56,33 @@ void gc_attach(int (*fp)(void)) {
 void gc_catch(void) {
 
     struct sigaction act, old;
-    unsigned int i;
+    unsigned int i, s;
 
     memset(&act,0,sizeof(act));
     act.sa_handler = gc_handler;
     sigemptyset(&act.sa_mask);
-    sigaction(SIGINT, &act,&old);
-    sigaction(SIGQUIT,&act,&old);
-    sigaction(SIGTERM,&act,&old);
+    sigaction(SIGINT,  &act, &old);
+    sigaction(SIGQUIT, &act, &old);
+    sigaction(SIGTERM, &act, &old);
 
-    sigaction(SIGABRT,&act,&old);
-    sigaction(SIGTSTP,&act,&old);
+    sigaction(SIGABRT, &act, &old);
+    sigaction(SIGTSTP, &act, &old);
 
-    sigaction(SIGBUS, &act,&old);
-    sigaction(SIGILL, &act,&old);
-    sigaction(SIGSEGV,&act,&old);
+    sigaction(SIGBUS,  &act, &old);
+    sigaction(SIGILL,  &act, &old);
+    sigaction(SIGSEGV, &act, &old);
 
-    if(sigsetjmp(gc_cleanup,0) == 0)
+    if(sigsetjmp(gc_cleanup, 0) == 0)
 		return;
 
 	/* Call all GC functions */
 	for(i=0; i<gc.nr; ++i) {
-		gc.listeners[i]();
+		if(gc.listeners[i]() != 0) {
+			s=1;
+		}
 	}
+	if(s)
+		exit(255);
+	else
+		exit(0);
 }
