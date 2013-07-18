@@ -17,6 +17,10 @@ I used a 220 Ohm resistor and a 100nF capacitor. I haven't experimented with oth
 <hr>
 __Don't forget to use the command `sudo` prior to all commands below when you're not logged in as root__
 <hr>
+To fully benifit from my code, you should build a low-pass filter to make sure no noise is being received by the receiver.
+This filter only costs about $1 and works absolutely perfect. All components are commonly used and can be found on ebay or at a local DIY shops.<br />
+<img src="http://img5.imageshack.us/img5/9937/pd3c.jpg" alt="Low-pass filter" title="Low-pass filter" border="0" />
+<hr>
 This new code uses lirc for the interaction with the hardware. The advantage is that we can now use reliable existing code to build 
 the 433.92Mhz programs on. The downside is that this new code is not entirely standalone.
 To control the new receiver, you have to have the lirc_rpi kernel module loaded. This kernel
