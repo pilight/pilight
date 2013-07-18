@@ -160,11 +160,10 @@ void arctechOldInit(void) {
 	arctech_old.header = 4;
 	arctech_old.pulse = 4;
 	arctech_old.footer = 45;
-	arctech_old.multiplier[0] = 0.1;
-	arctech_old.multiplier[1] = 0.3;
+	arctech_old.multiplier = 0.3;
 	arctech_old.rawLength = 50;
 	arctech_old.binaryLength = 12;
-	arctech_old.repeats = 2;
+	arctech_old.repeats = 1;
 	arctech_old.message = malloc((50*sizeof(char))+1);
 
 	arctech_old.bit = 0;

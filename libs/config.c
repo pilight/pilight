@@ -32,7 +32,7 @@
 #include "options.h"
 #include "protocol.h"
 
-void config_update(char *protoname, JsonNode *json) {
+JsonNode *config_update(char *protoname, JsonNode *json) {
 	/* The pointer to the config locations */
 	struct conf_locations_t *lptr = locations;
 	/* The pointer to the config devices */
@@ -45,6 +45,11 @@ void config_update(char *protoname, JsonNode *json) {
 	struct options_t *opt = NULL;
 	/* Get the code part of the sended code */
 	JsonNode *code = json_find_member(json, "code");
+	/* The return JSON object will all updated devices */
+	JsonNode *rroot = json_mkobject();
+	JsonNode *rdev = json_mkobject();
+	JsonNode *rloc = json_mkarray();
+	JsonNode *rval = json_mkobject();
 
 	/* Temporarily char pointer */
 	char *stmp = NULL;
@@ -66,6 +71,9 @@ void config_update(char *protoname, JsonNode *json) {
 	/* Check if the found settings matches the send code */
 	int match1 = 0;
 	int match2 = 0;
+	
+	/* Was this device added to the return struct */
+	int have_device = 0;
 
 	/* Retrieve the used protocol */
 	for(i=0;i<protocols.nr; ++i) {
@@ -84,6 +92,8 @@ void config_update(char *protoname, JsonNode *json) {
 		while(lptr) {
 			dptr = lptr->devices;
 			/* Loop through all devices of this location */
+			have_device = 0;
+			rloc = json_mkarray();
 			while(dptr) {
 				match1 = 0; match2 = 0;
 
@@ -140,24 +150,45 @@ void config_update(char *protoname, JsonNode *json) {
 							while(opt) {
 								/* Check if there are values that can be updated */
 								if(strcmp(sptr->name, opt->name) == 0 && opt->conftype == config_value && opt->argtype == has_value) {
+								
 									if(json_find_string(code, opt->name, &stmp) == 0) {
 										strcpy(ctmp, stmp);
 									}
+
 									if(json_find_number(code, opt->name, &itmp) == 0) {
 										sprintf(ctmp, "%d", itmp);
 									}
+
 									if(strcmp(sptr->values->value, ctmp) != 0) {
 										sptr->values->value = strdup(ctmp);
-										update = 1;
-										break;
 									}
+									
+									if(json_find_string(rval, sptr->name, &stmp) != 0) {
+										json_append_member(rval, sptr->name, json_mkstring(sptr->values->value));
+										update = 1;
+									}
+
+									if(have_device == 0) {
+										json_append_element(rloc, json_mkstring(dptr->id));
+										have_device = 1;
+									}
+									break;
 								}
 								opt = opt->next;
 							}
 							/* Check if we need to update the state */
-							if(strcmp(sptr->name, "state") == 0 && strcmp(sptr->values->value, state) != 0) {
-								sptr->values->value = strdup(state);
-								update = 1;
+							if(strcmp(sptr->name, "state") == 0) {
+								if(strcmp(sptr->values->value, state) != 0) {
+									sptr->values->value = strdup(state);
+									update = 1;
+								}
+								
+								if(json_find_string(rval, sptr->name, &stmp) != 0) {
+									json_append_member(rval, sptr->name, json_mkstring(sptr->values->value));
+								}
+
+								json_append_element(rloc, json_mkstring(dptr->id));
+								have_device = 1;
 								break;
 							}
 							sptr = sptr->next;
@@ -166,14 +197,22 @@ void config_update(char *protoname, JsonNode *json) {
 				}
 				dptr = dptr->next;
 			}
+			if(have_device == 1) {
+				json_append_member(rdev, lptr->id, rloc);
+			}
 			lptr = lptr->next;
 		}
 	}
+	json_append_member(rroot, "origin", json_mkstring("config"));
+	json_append_member(rroot, "devices", rdev);
+	json_append_member(rroot, "values", rval);
+
 	/* Only update the config file, if a state change occured */
 	if(update == 1) {
 		config_write(json_stringify(config2json(), "\t"));
 	}
 	json_delete(json);
+	return rroot;
 }
 
 int config_get_location(char *id, struct conf_locations_t **loc) {
@@ -203,6 +242,30 @@ int config_get_device(char *lid, char *sid, struct conf_devices_t **dev) {
 				dptr = dptr->next;
 			}
 			lptr = lptr->next;
+		}
+	}
+	return 1;
+}
+
+int config_valid_state(char *lid, char *sid, char *state) {
+	struct conf_devices_t *dptr = NULL;
+	struct conf_settings_t *sptr = NULL;
+	struct conf_values_t *vptr = NULL;
+	if(config_get_device(lid, sid, &dptr) == 0) {
+		sptr = dptr->settings;
+		while(sptr) {
+			if(strcmp(sptr->name, "values") == 0) {
+				vptr = sptr->values;
+				while(vptr) {
+					if(strcmp(vptr->value, state) == 0) {
+						return 0;
+						break;
+					}
+					vptr = vptr->next;
+				}
+				break;
+			}
+			sptr = sptr->next;
 		}
 	}
 	return 1;

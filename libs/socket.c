@@ -136,7 +136,9 @@ void socket_write(int sockfd, const char *msg, ...) {
 			logprintf(LOG_DEBUG, "socket write failed: %s", message);
 			socket_close(sockfd);
 		} else {
-			logprintf(LOG_DEBUG, "socket write succeeded: %s", message);
+			if(strcmp(message, "BEAT\n") != 0) {
+				logprintf(LOG_DEBUG, "socket write succeeded: %s", message);
+			}
 			// Prevent buffering of messages
 			usleep(100);
 		}
@@ -158,7 +160,9 @@ void socket_write_big(int sockfd, const char *msg, ...) {
 			logprintf(LOG_DEBUG, "socket write failed: %s", message);
 			socket_close(sockfd);
 		} else {
-			logprintf(LOG_DEBUG, "socket write succeeded: %s", message);
+			if(strcmp(message, "BEAT\n") != 0) {
+				logprintf(LOG_DEBUG, "socket write succeeded: %s", message);
+			}
 			// Prevent buffering of messages
 			usleep(100);
 		}

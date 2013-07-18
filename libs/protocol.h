@@ -47,7 +47,7 @@ struct protocol_t {
 	int header;
 	int pulse;
 	int footer;
-	double multiplier[2];
+	double multiplier;
 	int rawLength;
 	int binaryLength;
 	int repeats;

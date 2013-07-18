@@ -75,8 +75,7 @@ void alectoInit(void) {
 	alecto.header = 14;
 	alecto.pulse = 14;
 	alecto.footer = 30;
-	alecto.multiplier[0] = 0.1;
-	alecto.multiplier[1] = 0.3;
+	alecto.multiplier = 0.3;
 	alecto.rawLength = 74;
 	alecto.repeats = 1;
 

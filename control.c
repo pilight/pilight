@@ -59,8 +59,9 @@ int main(int argc, char **argv) {
 	char *message;
 	steps_t steps = WELCOME;
 
-	char device[255];
-	char location[255];
+	char device[50];
+	char location[50];
+	char state[10];
 	struct conf_locations_t *slocation = NULL;
 	struct conf_devices_t *sdevice = NULL;
 	
@@ -76,6 +77,7 @@ int main(int argc, char **argv) {
 	addOption(&options, 'v', "version", no_value, 0, NULL);
 	addOption(&options, 'l', "location", has_value, 0, NULL);
 	addOption(&options, 'd', "device", has_value, 0,  NULL);
+	addOption(&options, 's', "state", has_value, 0,  NULL);
 	addOption(&options, 'S', "server", has_value, 0, "^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]).){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$");
 	addOption(&options, 'P', "port", has_value, 0, "[0-9]{1,4}");
 
@@ -94,8 +96,9 @@ int main(int argc, char **argv) {
 				printf("\t -v --version\t\t\tdisplay version\n");
 				printf("\t -S --server=%s\t\tconnect to server address\n", server);
 				printf("\t -P --port=%d\t\t\tconnect to server port\n", port);
-				printf("\t -l --location=location\t\tthe device that you want to control\n");
-				printf("\t -d --device=device\t\tnumber of times the command is send\n");
+				printf("\t -l --location=location\t\tthe location in which the device resides\n");
+				printf("\t -d --device=device\t\tthe device that you want to control\n");
+				printf("\t -s --state=state\t\tthe new state of the device\n");
 				exit(EXIT_SUCCESS);
 			break;
 			case 'v':
@@ -107,6 +110,9 @@ int main(int argc, char **argv) {
 			break;
 			case 'd':
 				strcpy(device, optarg);
+			break;
+			case 's':
+				strcpy(state, optarg);
 			break;
 			case 'S':
 				strcpy(server, optarg);
@@ -182,7 +188,15 @@ int main(int argc, char **argv) {
 
 							json_append_member(code, "location", json_mkstring(location));
 							json_append_member(code, "device", json_mkstring(device));
-
+							if(strlen(state) > 0) {
+								if(config_valid_state(location, device, state) == 0) {
+									json_append_member(code, "state", json_mkstring(state));
+								} else {
+									logprintf(LOG_ERR, "\"%s\" is an invalid state for device \"%s\"", state, device);
+									goto close;
+								}
+							}
+							
 							json_append_member(json, "message", json_mkstring("send"));
 							json_append_member(json, "code", code);
 

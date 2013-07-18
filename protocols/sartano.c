@@ -163,11 +163,10 @@ void sartanoInit(void) {
 	sartano.header = 4;
 	sartano.pulse = 4;
 	sartano.footer = 45;
-	sartano.multiplier[0] = 0.1;
-	sartano.multiplier[1] = 0.3;
+	sartano.multiplier = 0.3;
 	sartano.rawLength = 50;
 	sartano.binaryLength = 12;
-	sartano.repeats = 2;
+	sartano.repeats = 1;
 	sartano.message = malloc((50*sizeof(char))+1);
 
 	sartano.bit = 0;

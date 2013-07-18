@@ -44,6 +44,7 @@ void arctechSwParseBinary(void) {
 	int state = arctech_switch.binary[27];
 	int all = arctech_switch.binary[26];
 	int id = binToDecRev(arctech_switch.binary, 0, 25);
+
 	arctechSwCreateMessage(id, unit, state, all);
 }
 
@@ -178,14 +179,13 @@ void arctechSwInit(void) {
 	addDevice(&arctech_switch, "nexa_switch", "Nexa Switches");
 	addDevice(&arctech_switch, "coco_switch", "CoCo Technologies Switches");
 	arctech_switch.type = SWITCH;
-	arctech_switch.header = 10;
+	arctech_switch.header = 9;
 	arctech_switch.pulse = 5;
-	arctech_switch.footer = 38;
-	arctech_switch.multiplier[0] = 0.1;
-	arctech_switch.multiplier[1] = 0.3;
+	arctech_switch.footer = 35;
+	arctech_switch.multiplier = 0.3;
 	arctech_switch.rawLength = 132;
 	arctech_switch.binaryLength = 33;
-	arctech_switch.repeats = 2;
+	arctech_switch.repeats = 1;
 	arctech_switch.message = malloc((50*sizeof(char))+1);
 
 	arctech_switch.bit = 0;

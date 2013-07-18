@@ -53,16 +53,18 @@ typedef enum {
 	RECEIVER,
 	SENDER,
 	CONTROLLER,
-	NODE
+	NODE,
+	GUI
 } client_type_t;
 
 typedef struct clients_t clients_t;
 
-char clients[4][11] = {
+char clients[5][11] = {
 	"receiver\0",
 	"sender\0",
 	"controller\0",
-	"node\0"
+	"node\0",
+	"gui\0"
 };
 
 /* The pidfile and pid of this daemon */
@@ -136,18 +138,36 @@ void escape_characters(char* dest, const char* src) {
 
 int broadcast(char *protoname, JsonNode *json) {
 	FILE *f;
-	int i;
+	int i = 0, broadcasted = 0;
 	char *message = json_stringify(json, NULL);
-	char *escaped = malloc(2 * strlen(message) + 1);
 
+	char *escaped = malloc(2 * strlen(message) + 1);
+	JsonNode *jret = json_mkobject();
+	
 	/* Update the config file */
-	config_update(protoname, json);
+	jret = config_update(protoname, json);
+	
+	char *conf = json_stringify(jret, NULL);
+	
+	for(i=0;i<MAX_CLIENTS;i++) {
+		if(handshakes[i] == GUI) {
+			socket_write(socket_clients[i], conf);
+			broadcasted = 1;
+		}
+	}
+	if(broadcasted == 1) {
+		logprintf(LOG_DEBUG, "broadcasted: %s", conf);
+	}
+
+	broadcasted = 0;
+
 	if(json_validate(message) == true && receivers > 0) {
 
 		/* Write the message to all receivers */
 		for(i=0;i<MAX_CLIENTS;i++) {
 			if(handshakes[i] == RECEIVER) {
 				socket_write(socket_clients[i], message);
+				broadcasted = 1;
 			}
 		}
 
@@ -161,13 +181,16 @@ int broadcast(char *protoname, JsonNode *json) {
 			strcat(cmd, escaped);
 			f=popen(cmd, "r");
 			pclose(f);
+			broadcasted = 1;
 		}
-		free(escaped);
-		logprintf(LOG_DEBUG, "broadcasted: %s", message);
+		//free(escaped);
+		if(broadcasted) {
+			logprintf(LOG_DEBUG, "broadcasted: %s", message);
+		}
 		return 1;
 	}
-	free(escaped);
-	free(message);
+	json_delete(jret);
+	//free(message);
 	return 0;
 }
 
@@ -199,7 +222,6 @@ void send_code(JsonNode *json) {
 			}
 		}
 		logged = 0;
-
 		/* If we matched a protocol and are not already sending, continue */
 		if(match == 1 && sending == 0 && protocol->createCode != NULL && repeat > 0) {
 			/* Let the protocol create his code */
@@ -256,7 +278,7 @@ void client_sender_parse_code(int i, JsonNode *json) {
 	send_code(json);
 }
 
-void control_device(struct conf_devices_t *dev) {
+void control_device(struct conf_devices_t *dev, char *state) {
 	struct conf_settings_t *sett = NULL;
 	struct conf_values_t *val = NULL;
 	struct options_t *opt = NULL;
@@ -266,6 +288,10 @@ void control_device(struct conf_devices_t *dev) {
 	JsonNode *code = json_mkobject();
 	JsonNode *json = json_mkobject();
 
+	if(strlen(state) > 0) {
+		nstate = strdup(state);
+	}
+	
 	/* Check all protocol options */
 	if(dev->protopt->options != NULL) {
 		opt = dev->protopt->options;
@@ -277,7 +303,7 @@ void control_device(struct conf_devices_t *dev) {
 					json_append_member(code, sett->name, json_mkstring(sett->values->value));
 				}
 				/* Retrieve the current state */
-				if(strcmp(sett->name, "state") == 0) {
+				if(strcmp(sett->name, "state") == 0 && strlen(state) == 0) {
 					cstate = strdup(sett->values->value);
 				}
 				/* Retrieve the possible device values */
@@ -290,21 +316,24 @@ void control_device(struct conf_devices_t *dev) {
 		}
 	}
 
-	/* Get the next state value */
-	while(val) {
-		if(fval == NULL) {
-			fval = strdup(val->value);
-		}
-		if(strcmp(val->value, cstate) == 0) {
-			if(val->next) {
-				nstate = val->next->value;
-			} else {
-				nstate = strdup(fval);
+	if(strlen(state) == 0) {
+		/* Get the next state value */
+		while(val) {
+			if(fval == NULL) {
+				fval = strdup(val->value);
 			}
-			break;
+			if(strcmp(val->value, cstate) == 0) {
+				if(val->next) {
+					nstate = val->next->value;
+				} else {
+					nstate = strdup(fval);
+				}
+				break;
+			}
+			val = val->next;
 		}
-		val = val->next;
 	}
+
 	/* Send the new device state */
 	if(dev->protopt->options != NULL) {
 		opt = dev->protopt->options;
@@ -319,7 +348,6 @@ void control_device(struct conf_devices_t *dev) {
 			opt = opt->next;
 		}
 	}
-
 	/* Construct the right json object */
 	json_append_member(code, "protocol", json_mkstring(dev->protoname));
 	json_append_member(json, "message", json_mkstring("sender"));
@@ -335,6 +363,8 @@ void client_controller_parse_code(int i, JsonNode *json) {
 	char *message = NULL;
 	char *location = NULL;
 	char *device = NULL;
+	char *state = NULL;
+	char *tmp = NULL;
 	struct conf_locations_t *slocation;
 	struct conf_devices_t *sdevice;
 	JsonNode *code = NULL;
@@ -359,16 +389,23 @@ void client_controller_parse_code(int i, JsonNode *json) {
 				/* Check if the device and location exists in the config file */
 				} else if(config_get_location(location, &slocation) == 0) {
 					if(config_get_device(location, device, &sdevice) == 0) {
+						if(json_find_string(code, "state", &tmp) == 0) {
+							state = strdup(tmp);
+						} else {
+							state = strdup("\0");
+						}
 						/* Send the device code */
-						control_device(sdevice);
+						control_device(sdevice, state);
 					} else {
 						logprintf(LOG_ERR, "the device \"%s\" does not exist", device);
 					}
 				} else {
 					logprintf(LOG_ERR, "the location \"%s\" does not exist", location);
 				}
-				socket_close(sd);
-				handshakes[i] = -1;
+				if(handshakes[i] == CONTROLLER) {
+					socket_close(sd);
+					handshakes[i] = -1;
+				}
 			}
 		}
 	}
@@ -386,31 +423,38 @@ void socket_parse_data(int i, char buffer[BUFFER_SIZE]) {
 
 	getpeername(sd, (struct sockaddr*)&address, (socklen_t*)&addrlen);
 
-	logprintf(LOG_DEBUG, "socket recv: %s", buffer);
+	if(strcmp(buffer, "HEART\n") != 0) {
+		logprintf(LOG_DEBUG, "socket recv: %s", buffer);
+	}
 
 	json = json_decode(buffer);
-	if(json_find_string(json, "message", &message) == 0) {
-		if(handshakes[i] == SENDER) {
-			client_sender_parse_code(i, json);
-		} else if(handshakes[i] == CONTROLLER) {
-			client_controller_parse_code(i, json);
-		} else {
 
-			/* Check if we matched a know client type */
-			for(x=0;x<(sizeof(clients)/sizeof(clients[0]));x++) {
-				memset(tmp, '\0', 25);
+	if(strcmp(buffer, "HEART\n") == 0) {
+		socket_write(sd, "BEAT");
+	} else {
+		if(json_find_string(json, "message", &message) == 0) {
+			if(handshakes[i] == SENDER) {
+				client_sender_parse_code(i, json);
+			} else if(handshakes[i] == CONTROLLER || handshakes[i] == GUI) {
+				client_controller_parse_code(i, json);
+			} else {
 
-				strcat(tmp, "client ");
-				strcat(tmp, clients[x]);
+				/* Check if we matched a know client type */
+				for(x=0;x<(sizeof(clients)/sizeof(clients[0]));x++) {
+					memset(tmp, '\0', 25);
 
-				if(strcmp(message, tmp) == 0) {
-					socket_write(sd, "{\"message\":\"accept client\"}");
-					logprintf(LOG_INFO, "client recognized as %s", clients[x]);
-					handshakes[i] = x;
+					strcat(tmp, "client ");
+					strcat(tmp, clients[x]);
 
-					if(handshakes[i] == RECEIVER)
-						receivers++;
-					break;
+					if(strcmp(message, tmp) == 0) {
+						socket_write(sd, "{\"message\":\"accept client\"}");
+						logprintf(LOG_INFO, "client recognized as %s", clients[x]);
+						handshakes[i] = x;
+
+						if(handshakes[i] == RECEIVER || handshakes[i] == GUI)
+							receivers++;
+						break;
+					}
 				}
 			}
 		}
@@ -422,7 +466,7 @@ void socket_parse_data(int i, char buffer[BUFFER_SIZE]) {
 }
 
 void socket_client_disconnected(int i) {
-	if(handshakes[i] == RECEIVER)
+	if(handshakes[i] == RECEIVER || handshakes[i] == GUI)
 		receivers--;
 
 	handshakes[i] = 0;
@@ -432,24 +476,23 @@ void receive_code(void) {
 	lirc_t data;
 	unsigned int x, y = 0, i;
 	protocol_t *protocol = malloc(sizeof(protocol_t));
+	JsonNode *message = NULL;
 
 	while(1) {
 		/* Only initialize the hardware receive the data when there are receivers connected */
 		if(receivers > 0) {
-			module_init();
-			JsonNode *message = json_mkobject();
+			message = json_mkobject();
 			data = hw.readdata(0);
 			duration = (data & PULSE_MASK);
 			/* A space is normally for 295 long, so filter spaces less then 200 */
 			if(sending == 0 && duration > 200) {
-
 				for(i=0; i<protocols.nr; ++i) {
 					protocol = protocols.listeners[i];
 					/* Lots of checks if the protocol can actually receive anything */
 					if((((protocol->parseRaw != NULL || protocol->parseCode != NULL) && protocol->rawLength > 0)
 					    || (protocol->parseBinary != NULL && protocol->binaryLength > 0))
 						&& protocol->header > 0 && protocol->footer > 0
-						&& protocol->pulse > 0 && protocol->multiplier != NULL) {
+						&& protocol->pulse > 0 && protocol->multiplier > 0) {
 						/* If we are recording, keep recording until the footer has been matched */
 						if(protocol->recording == 1) {
 							if(protocol->bit < 255) {
@@ -461,20 +504,20 @@ void receive_code(void) {
 						}
 
 						/* Try to catch the header of the code */
-						if(duration > (PULSE_LENGTH-(PULSE_LENGTH*protocol->multiplier[0]))
-						   && duration < (PULSE_LENGTH+(PULSE_LENGTH*protocol->multiplier[0]))
+						if(duration > (PULSE_LENGTH-(PULSE_LENGTH*protocol->multiplier))
+						   && duration < (PULSE_LENGTH+(PULSE_LENGTH*protocol->multiplier))
 						   && protocol->bit == 0) {
 							protocol->raw[protocol->bit++] = duration;
-						} else if(duration > ((protocol->header*PULSE_LENGTH)-((protocol->header*PULSE_LENGTH)*protocol->multiplier[0]))
-						   && duration < ((protocol->header*PULSE_LENGTH)+((protocol->header*PULSE_LENGTH)*protocol->multiplier[0]))
+						} else if(duration > ((protocol->header*PULSE_LENGTH)-((protocol->header*PULSE_LENGTH)*protocol->multiplier))
+						   && duration < ((protocol->header*PULSE_LENGTH)+((protocol->header*PULSE_LENGTH)*protocol->multiplier))
 						   && protocol->bit == 1) {
 							protocol->raw[protocol->bit++] = duration;
 							protocol->recording = 1;
 						}
 
 						/* Try to catch the footer of the code */
-						if(duration > ((protocol->footer*PULSE_LENGTH)-((protocol->footer*PULSE_LENGTH)*protocol->multiplier[1]))
-						   && duration < ((protocol->footer*PULSE_LENGTH)+((protocol->footer*PULSE_LENGTH)*protocol->multiplier[1]))) {
+						if(duration > ((protocol->footer*PULSE_LENGTH)-((protocol->footer*PULSE_LENGTH)*protocol->multiplier))
+						   && duration < ((protocol->footer*PULSE_LENGTH)+((protocol->footer*PULSE_LENGTH)*protocol->multiplier))) {
 							//logprintf(LOG_DEBUG, "catched %s header and footer", protocol->id);
 							/* Check if the code matches the raw length */
 							if((protocol->bit == protocol->rawLength)) {
@@ -497,7 +540,7 @@ void receive_code(void) {
 									for(x=0;x<protocol->bit;x++) {
 
 										/* Check if the current code matches the previous one */
-										if(protocol->pCode[x]!=protocol->code[x])
+										if(protocol->pCode[x] != protocol->code[x])
 											y=0;
 										protocol->pCode[x]=protocol->code[x];
 										if(protocol->raw[x] > ((protocol->pulse*PULSE_LENGTH)-PULSE_LENGTH)) {
@@ -560,7 +603,7 @@ void receive_code(void) {
 					}
 				}
 			}
-			json_delete(message);
+			//json_delete(message);
 		} else {
 			sleep(1);
 		}
@@ -760,6 +803,8 @@ int main(int argc , char **argv) {
 	if(have_config == 1 && config_read() != 0) {
 		logprintf(LOG_ERR, "could not open config file %s", configfile);
 		return EXIT_FAILURE;
+	} else {
+		receivers++;
 	}
 
 	if(get_loglevel() >= LOG_DEBUG) {
