@@ -249,6 +249,7 @@ _The type setting will automatically be added by the 433-daemon_
 		}
 	},
 	"bedroom": {
+		"name": "Bedroom",
 		"main": {
 			"name": "Main",
 			"protocol": "elro",
@@ -260,6 +261,7 @@ _The type setting will automatically be added by the 433-daemon_
 		}
 	},
 	"garden": {
+		"name": "Garden",	
 		"weather": {
 			"name": "Weather Station",
 			"protocol": "alecto",
