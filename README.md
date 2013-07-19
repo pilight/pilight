@@ -227,7 +227,7 @@ To use the controller, a confil file is needed. This looks like this:<br />
 _The type setting will automatically be added by the 433-daemon_
 ```
 {
-         "living": {
+	"living": {
 		"name": "Living",
 		"bookshelve": {
 			"name": "Book Shelve Light",
