@@ -61,7 +61,7 @@ int main(int argc, char **argv) {
 
 	char device[50];
 	char location[50];
-	char state[10];
+	char state[10] = {'\0'};
 	struct conf_locations_t *slocation = NULL;
 	struct conf_devices_t *sdevice = NULL;
 	
@@ -188,6 +188,7 @@ int main(int argc, char **argv) {
 
 							json_append_member(code, "location", json_mkstring(location));
 							json_append_member(code, "device", json_mkstring(device));
+
 							if(strlen(state) > 0) {
 								if(config_valid_state(location, device, state) == 0) {
 									json_append_member(code, "state", json_mkstring(state));

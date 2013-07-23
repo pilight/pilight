@@ -140,7 +140,6 @@ int broadcast(char *protoname, JsonNode *json) {
 	FILE *f;
 	int i = 0, broadcasted = 0;
 	char *message = json_stringify(json, NULL);
-
 	char *escaped = malloc(2 * strlen(message) + 1);
 	JsonNode *jret = json_mkobject();
 	

@@ -80,7 +80,6 @@ JsonNode *config_update(char *protoname, JsonNode *json) {
 		protocol = protocols.listeners[i];
 
 		/* Check if the protocol exists */
-
 		if(strcmp(protocol->id, protoname) == 0) {
 			break;
 		}
@@ -204,6 +203,7 @@ JsonNode *config_update(char *protoname, JsonNode *json) {
 		}
 	}
 	json_append_member(rroot, "origin", json_mkstring("config"));
+	json_append_member(rroot, "type",  json_mknumber((int)protocol->type));
 	json_append_member(rroot, "devices", rdev);
 	json_append_member(rroot, "values", rval);
 
