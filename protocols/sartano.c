@@ -167,7 +167,7 @@ void sartanoInit(void) {
 	sartano.rawLength = 50;
 	sartano.binaryLength = 12;
 	sartano.repeats = 1;
-	sartano.message = malloc((50*sizeof(char))+1);
+	sartano.message = malloc(sizeof(JsonNode));
 
 	sartano.bit = 0;
 	sartano.recording = 0;

@@ -1,5 +1,5 @@
 =======
-### If you like my program, then don't hesitate to donate:
+### If you like my solutions, then don't hesitate to donate:
 <a href="https://www.paypal.com/cgi-bin/webscr?cmd=_donations&business=curlymoo1%40gmail%2ecom&lc=NL&item_name=CurlyMoo&no_note=1&no_shipping=1&currency_code=EUR&bn=PP%2dDonationsBF%3abtn_donateCC_LG%2egif%3aNonHosted" target="_blank">
 <img alt="PayPal" title="PayPal" border="0" src="https://www.paypalobjects.com/nl_NL/NL/i/btn/btn_donateCC_LG.gif" ></a><br />
 <a href="http://flattr.com/thing/1106962/" target="_blank">
@@ -166,7 +166,7 @@ Binary code:
 ```
 You can now use the raw code to control your device:
 ```
-root@pi:~# ./433-send -p raw -c "286 2825 286 201 289 1337 287 209 283 1351 287 204 289 1339 288 207 288 1341 289 207 281 1343 284 205 292 1346 282 212 283 1348 282 213 279 1352 282 211 281 1349 282 210 283 1347 284 211 288 1348 281 211 285 1353 278 213 280 1351 280 232 282 1356 279 213 285 1351 276 215 285 1348 277 216 278 1359 278 216 279 1353 272 214 283 1358 276 216 276 1351 278 214 284 1357 275 217 276 1353 270 217 277 1353 272 220 277 1351 275 220 272 1356 275 1353 273 224 277 236 282 1355 272 1353 273 233 273 222 268 1358 270 219 277 1361 274 218 280 1358 272 1355 271 243 251 11302"
+root@pi:~# ./433-send -p raw -C "286 2825 286 201 289 1337 287 209 283 1351 287 204 289 1339 288 207 288 1341 289 207 281 1343 284 205 292 1346 282 212 283 1348 282 213 279 1352 282 211 281 1349 282 210 283 1347 284 211 288 1348 281 211 285 1353 278 213 280 1351 280 232 282 1356 279 213 285 1351 276 215 285 1348 277 216 278 1359 278 216 279 1353 272 214 283 1358 276 216 276 1351 278 214 284 1357 275 217 276 1353 270 217 277 1353 272 220 277 1351 275 220 272 1356 275 1353 273 224 277 236 282 1355 272 1353 273 233 273 222 268 1358 270 219 277 1361 274 218 280 1358 272 1355 271 243 251 11302"
 ```
 <hr>
 The learner does the same as the debugger but is more extensive. It will try to figure out as much as possible about your protocol.
@@ -279,3 +279,4 @@ To control a device, you can know easily use the `433-control`:
 root@pi:~# ./433-control -l living -d bookshelve
 ```
 The config file will automatically be updated with the status of the configured devices. So while sending, but also while receiving.
+

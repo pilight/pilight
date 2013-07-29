@@ -212,6 +212,7 @@ int main(int argc, char **argv) {
 					}
 				}
 				goto close;
+			break;
 			case REJECT:
 			default:
 				goto close;

@@ -22,7 +22,7 @@ SUBDIRS = libs protocols lirc
 SRC = $(wildcard *.c)
 INCLUDES = $(wildcard protocols/*.o) $(wildcard lirc/*.o) $(wildcard libs/*.h) $(wildcard libs/*.o)
 PROGAMS = $(patsubst %.c,433-%,$(SRC))
-LIBS = libs/libs.o protocols/protocols.o lirc/lirc.o -lpthread -lm
+LIBS = libs/libs.o protocols/protocols.o lirc/lirc.o
 
 .PHONY: subdirs $(SUBDIRS)
 
@@ -34,7 +34,7 @@ $(SUBDIRS):
 all: $(LIBS) $(OBJS) $(PROGAMS) 
  
 433-daemon: daemon.c $(INCLUDES) $(LIBS)
-	$(GCC) $(CFLAGS) -o $@ $(patsubst 433-%,%.c,$@) $(LIBS)
+	$(GCC) $(CFLAGS) -lpthread -lm -o $@ $(patsubst 433-%,%.c,$@) $(LIBS)
 
 433-send: send.c $(INCLUDES) $(LIBS)
 	$(GCC) $(CFLAGS) -o $@ $(patsubst 433-%,%.c,$@) $(LIBS)
@@ -43,10 +43,10 @@ all: $(LIBS) $(OBJS) $(PROGAMS)
 	$(GCC) $(CFLAGS) -o $@ $(patsubst 433-%,%.c,$@) $(LIBS)
 
 433-debug: debug.c $(INCLUDES) $(LIBS)
-	$(GCC) $(CFLAGS) -o $@ $(patsubst 433-%,%.c,$@) $(LIBS)	
+	$(GCC) $(CFLAGS) -lm -o $@ $(patsubst 433-%,%.c,$@) $(LIBS)	
 
 433-learn: learn.c $(INCLUDES) $(LIBS)
-	$(GCC) $(CFLAGS) -o $@ $(patsubst 433-%,%.c,$@) $(LIBS)
+	$(GCC) $(CFLAGS) -lm -o $@ $(patsubst 433-%,%.c,$@) $(LIBS)
 
 433-control: control.c $(INCLUDES) $(LIBS)
 	$(GCC) $(CFLAGS) -o $@ $(patsubst 433-%,%.c,$@) $(LIBS)

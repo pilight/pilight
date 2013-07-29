@@ -186,7 +186,7 @@ void arctechSwInit(void) {
 	arctech_switch.rawLength = 132;
 	arctech_switch.binaryLength = 33;
 	arctech_switch.repeats = 1;
-	arctech_switch.message = malloc((50*sizeof(char))+1);
+	arctech_switch.message = malloc(sizeof(JsonNode));
 
 	arctech_switch.bit = 0;
 	arctech_switch.recording = 0;
