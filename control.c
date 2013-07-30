@@ -1,20 +1,21 @@
 /*
 	Copyright (C) 2013 CurlyMo
 
-	This file is part of the QPido.
+	This file is part of the Raspberry Pi 433.92Mhz transceiver.
 
-    QPido is free software: you can redistribute it and/or modify it 
-	under the terms of the GNU General Public License as published by 
-	the Free Software Foundation, either version 3 of the License, or 
-	(at your option) any later version.
+    Raspberry Pi 433.92Mhz transceiver is free software: you can redistribute
+	it and/or modify it under the terms of the GNU General Public License as
+	published by the Free Software Foundation, either version 3 of the License,
+	or (at your option) any later version.
 
-    QPido is distributed in the hope that it will be useful, but 
-	WITHOUT ANY WARRANTY; without even the implied warranty of 
-	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU 
-	General Public License for more details.
+    Raspberry Pi 433.92Mhz transceiver is distributed in the hope that it will
+	be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
 
-    You should have received a copy of the GNU General Public License 
-	along with QPido. If not, see <http://www.gnu.org/licenses/>
+    You should have received a copy of the GNU General Public License
+    along with Raspberry Pi 433.92Mhz transceiver. If not, see
+	<http://www.gnu.org/licenses/>
 */
 
 #include <stdio.h>
@@ -49,8 +50,8 @@ int main(int argc, char **argv) {
 	enable_shell_log();
 	set_loglevel(LOG_NOTICE);
 
-	progname = malloc((13*sizeof(char))+1);
-	progname = strdup("qpido-control");
+	progname = malloc((10*sizeof(char))+1);
+	progname = strdup("433-control");
 
 	options = malloc(255*sizeof(struct options_t));
 
@@ -133,7 +134,7 @@ int main(int argc, char **argv) {
 	}
 
 	if((sockfd = connect_to_server(strdup(server), port)) == -1) {
-		logprintf(LOG_ERR, "could not connect to qpido-daemon");
+		logprintf(LOG_ERR, "could not connect to 433-daemon");
 		exit(EXIT_FAILURE);
 	}
 

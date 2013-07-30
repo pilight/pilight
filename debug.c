@@ -3,20 +3,22 @@
 	Copyright (C) 1998 Christoph Bartelmus <lirc@bartelmus.de>
 	Copyright (C) 2013 CurlyMo
 
-	This file is part of the QPido.
+	This file is part of the Raspberry Pi 433.92Mhz transceiver,
+	and based on mode2 as part of the package Lirc.
 
-    QPido is free software: you can redistribute it and/or modify it 
-	under the terms of the GNU General Public License as published by 
-	the Free Software Foundation, either version 3 of the License, or 
-	(at your option) any later version.
+    Raspberry Pi 433.92Mhz transceiver is free software: you can redistribute
+	it and/or modify it under the terms of the GNU General Public License as
+	published by the Free Software Foundation, either version 3 of the License,
+	or (at your option) any later version.
 
-    QPido is distributed in the hope that it will be useful, but 
-	WITHOUT ANY WARRANTY; without even the implied warranty of 
-	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU 
-	General Public License for more details.
+    Raspberry Pi 433.92Mhz transceiver is distributed in the hope that it will
+	be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
 
-    You should have received a copy of the GNU General Public License 
-	along with QPido. If not, see <http://www.gnu.org/licenses/>
+    You should have received a copy of the GNU General Public License
+    along with Raspberry Pi 433.92Mhz transceiver. If not, see
+	<http://www.gnu.org/licenses/>
 
 */
 
@@ -54,11 +56,11 @@ int main(int argc, char **argv) {
 	disable_file_log();
 	set_loglevel(LOG_NOTICE);
 
-	progname = malloc((11*sizeof(char))+1);
-	progname = strdup("qpido-debug");
+	progname = malloc((10*sizeof(char))+1);
+	progname = strdup("433-debug");
 
 	lirc_t data;
-	char *socket = strdup(DEFAULT_LIRC_SOCKET);
+	char *socket = strdup("/dev/lirc0");
 	int have_device = 0;
 
 	int duration = 0;

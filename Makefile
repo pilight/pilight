@@ -21,7 +21,7 @@ CFLAGS = -ffast-math $(OSFLAGS) -Wfloat-equal -Wshadow -Wpointer-arith -Wcast-al
 SUBDIRS = libs protocols lirc
 SRC = $(wildcard *.c)
 INCLUDES = $(wildcard protocols/*.o) $(wildcard lirc/*.o) $(wildcard libs/*.h) $(wildcard libs/*.o)
-PROGAMS = $(patsubst %.c,qpido-%,$(SRC))
+PROGAMS = $(patsubst %.c,433-%,$(SRC))
 LIBS = libs/libs.o protocols/protocols.o lirc/lirc.o
 
 .PHONY: subdirs $(SUBDIRS)
@@ -31,37 +31,37 @@ subdirs: $(SUBDIRS) all
 $(SUBDIRS):
 	$(MAKE) -C $@
 
-all: $(LIBS) libqpido.so.1 libqpido.a $(PROGAMS) 
+all: $(LIBS) lib433.so.1 lib433.a $(PROGAMS) 
 
-libqpido.so.1:
-	$(GCC) $(LIBS) -shared -o libqpido.so.1 -lpthread -lm
-	cp libqpido.so.1 /usr/local/lib/
+lib433.so.1:
+	$(GCC) $(LIBS) -shared -o lib433.so.1 -lpthread -lm
+	cp lib433.so.1 /usr/local/lib/
 	ldconfig
 	
-libqpido.a:
-	$(CROSS_COMPILE)ar -rsc libqpido.a $(LIBS)
-	cp libqpido.a /usr/local/lib/
+lib433.a:
+	ar -rsc lib433.a $(LIBS)
+	cp lib433.a /usr/local/lib/
 
-qpido-daemon: daemon.c $(INCLUDES) libqpido.so.1
-	$(GCC) $(CFLAGS) -pthread -lm -o $@ $(patsubst qpido-%,%.c,$@) libqpido.so.1
+433-daemon: daemon.c $(INCLUDES) $(LIBS)
+	$(GCC) $(CFLAGS) -lpthread -lm -o $@ $(patsubst 433-%,%.c,$@) lib433.so.1 
 
-qpido-send: send.c $(INCLUDES) libqpido.so.1
-	$(GCC) $(CFLAGS) -o $@ $(patsubst qpido-%,%.c,$@) libqpido.so.1
+433-send: send.c $(INCLUDES) lib433.so.1 
+	$(GCC) $(CFLAGS) -o $@ $(patsubst 433-%,%.c,$@) lib433.so.1 
 
-qpido-receive: receive.c $(INCLUDES) libqpido.so.1
-	$(GCC) $(CFLAGS) -o $@ $(patsubst qpido-%,%.c,$@) libqpido.so.1
+433-receive: receive.c $(INCLUDES) lib433.so.1 
+	$(GCC) $(CFLAGS) -o $@ $(patsubst 433-%,%.c,$@) lib433.so.1 
 
-qpido-debug: debug.c $(INCLUDES) libqpido.so.1
-	$(GCC) $(CFLAGS) -lm -o $@ $(patsubst qpido-%,%.c,$@) libqpido.so.1
+433-debug: debug.c $(INCLUDES) lib433.so.1 
+	$(GCC) $(CFLAGS) -lm -o $@ $(patsubst 433-%,%.c,$@) lib433.so.1 
 
-qpido-learn: learn.c $(INCLUDES) libqpido.so.1
-	$(GCC) $(CFLAGS) -lm -o $@ $(patsubst qpido-%,%.c,$@) libqpido.so.1
+433-learn: learn.c $(INCLUDES) lib433.so.1 
+	$(GCC) $(CFLAGS) -lm -o $@ $(patsubst 433-%,%.c,$@) lib433.so.1 
 
-qpido-control: control.c $(INCLUDES) libqpido.so.1
-	$(GCC) $(CFLAGS) -o $@ $(patsubst qpido-%,%.c,$@) libqpido.so.1
+433-control: control.c $(INCLUDES) lib433.so.1 
+	$(GCC) $(CFLAGS) -o $@ $(patsubst 433-%,%.c,$@) lib433.so.1 
 
 clean:
-	rm qpido-* >/dev/null 2>&1 || true
+	rm 433-* >/dev/null 2>&1 || true
 	rm *.so* || true
 	rm *.a* || true
 	for dir in $(SUBDIRS); do \

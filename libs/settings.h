@@ -1,20 +1,21 @@
 /*
 	Copyright (C) 2013 CurlyMo
 
-	This file is part of the QPido.
+	This file is part of the Raspberry Pi 433.92Mhz transceiver.
 
-    QPido is free software: you can redistribute it and/or modify it 
-	under the terms of the GNU General Public License as published by 
-	the Free Software Foundation, either version 3 of the License, or 
-	(at your option) any later version.
+    Raspberry Pi 433.92Mhz transceiver is free software: you can redistribute
+	it and/or modify it under the terms of the GNU General Public License as
+	published by the Free Software Foundation, either version 3 of the License,
+	or (at your option) any later version.
 
-    QPido is distributed in the hope that it will be useful, but 
-	WITHOUT ANY WARRANTY; without even the implied warranty of 
-	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU 
-	General Public License for more details.
+    Raspberry Pi 433.92Mhz transceiver is distributed in the hope that it will
+	be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
 
-    You should have received a copy of the GNU General Public License 
-	along with QPido. If not, see <http://www.gnu.org/licenses/>
+    You should have received a copy of the GNU General Public License
+    along with Raspberry Pi 433.92Mhz transceiver. If not, see
+	<http://www.gnu.org/licenses/>
 */
 
 #ifndef _SETTINGS_H_
@@ -30,16 +31,16 @@
 #define BUFFER_SIZE			1025
 #define BIG_BUFFER_SIZE		1025000
 
-#define PID_FILE			"/var/run/qpido-daemon.pid"
-#define CONFIG_FILE			"/etc/qpido-daemon/config.json"
-#define LOG_FILE			"/var/log/qpido-daemon.log"
-#define SETTINGS_FILE		"/etc/qpido-daemon/settings.json"
+#define PID_FILE			"/var/run/433-daemon.pid"
+#define CONFIG_FILE			"/etc/433-daemon/config.json"
+#define LOG_FILE			"/var/log/433-daemon.log"
+#define SETTINGS_FILE		"/etc/433-daemon/settings.json"
 #define DEFAULT_LIRC_SOCKET "/dev/lirc0"
 
-#define SEND_REPEATS		10
-#define RECEIVE_REPEATS		1
-#define FREQ433				433920
-#define FREQ38				38000
+#define SEND_REPEATS	10
+#define RECEIVE_REPEATS	1
+#define FREQ433			433920
+#define FREQ38			38000
 
 typedef union value_t {
 	int ivalue;

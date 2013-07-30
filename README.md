@@ -42,20 +42,20 @@ crw-rw---T 1 root video 249, 0 jan  1  1970 /dev/lirc0
 crw-rw---T 1 root video 249, 1 jan  1  1970 /dev/lirc1
 lrwxrwxrwx 1 root root      21 jan  1  1970 /dev/lircd -> ../var/run/lirc/lircd
 ```
-The core of this program is the qpido-daemon. This will run itself in the background. You can then use the qpido-receiver or the qpido-sender
-to connect to the qpido-daemon to receive or send codes. The qpido-daemon also has the possibility to automatically invoke another script.
-So you can use the qpido-daemon to log incoming codes.<br />
+The core of this program is the 433-daemon. This will run itself in the background. You can then use the 433-receiver or the 433-sender
+to connect to the 433-daemon to receive or send codes. The 433-daemon also has the possibility to automatically invoke another script.
+So you can use the 433-daemon to log incoming codes.<br />
 To alter the default behavior of the daemon, a settings file can be created.<br />
-The default location to where this file needs to be stores is `/etc/qpido-daemon/settings.json`.<br />
+The default location to where this file needs to be stores is `/etc/433-daemon/settings.json`.<br />
 All options and its default values are show below:<br />
 ```
 {
 	"port": 5000,
 	"mode": "daemon",
 	"log-level": 4,
-	"pid-file": "/var/log/daemon/qpido-daemon.pid",
-	"config-file": "/etc/qpido-daemon/config.json",
-	"log-file": "/var/log/qpido-daemon.log",
+	"pid-file": "/var/log/daemon/433-daemon.pid",
+	"config-file": "/etc/433-daemon/config.json",
+	"log-file": "/var/log/433-daemon.log",
 	"process-file": "",
 	"send-repeats": 10,
 	"receive-repeats": 1,
@@ -72,14 +72,14 @@ __send-repeats__: How many times should a code be send<br />
 __receive-repeats__: How many times should a code be recieved before marked valid<br />
 __socket__: what socket should we read from<br />
 <br />
-__process file__: This script can be anything you like. The qpido-daemon will pass the same JSON object to this script as the receiver, but without any formatting. You can than parse the JSON object for further processing.
+__process file__: This script can be anything you like. The 433-daemon will pass the same JSON object to this script as the receiver, but without any formatting. You can than parse the JSON object for further processing.
 <hr>
 The output of the receiver will be as follow:
 ```
-root@pi:~# ./qpido-send -p kaku_switch -i 100 -u 15 -f
+root@pi:~# ./433-send -p kaku_switch -i 100 -u 15 -f
 ```
 ```
-root@pi:~# ./qpido-receiver
+root@pi:~# ./433-receiver
 {
 	"origin": "sender",
 	"code": {
@@ -91,10 +91,10 @@ root@pi:~# ./qpido-receiver
 
 ```
 ```
-root@pi:~# ./qpido-send -p kaku_dimmer -i 100 -u 15 -d 15
+root@pi:~# ./433-send -p kaku_dimmer -i 100 -u 15 -d 15
 ```
 ```
-root@pi:~# ./qpido-receiver
+root@pi:~# ./433-receiver
 {
 	"origin": "sender",
 	"code": {
@@ -105,10 +105,10 @@ root@pi:~# ./qpido-receiver
 }
 ```
 ```
-root@pi:~# ./qpido-send -p elro -i 10 -u 15 -t
+root@pi:~# ./433-send -p elro -i 10 -u 15 -t
 ```
 ```
-root@pi:~# ./qpido-receiver
+root@pi:~# ./433-receiver
 {
 	"origin": "sender",
 	"code": {
@@ -119,14 +119,14 @@ root@pi:~# ./qpido-receiver
 }
 ```
 <hr>
-The sender will qpido-send will send codes to the qpido-daemon:
+The sender will 433-send will send codes to the 433-daemon:
 ```
-root@pi:~# ./qpido-send -p kaku_switch -i 1 -u 1 -t
+root@pi:~# ./433-send -p kaku_switch -i 1 -u 1 -t
 ```
 The command line arguments depend on the protocol used e.g.:
 ```
-root@pi:~# ./qpido-send -H
-Usage: qpido-send -p protocol [options]
+root@pi:~# ./433-send -H
+Usage: 433-send -p protocol [options]
          -H --help                      display this message
          -V --version                   display version
          -S --server=127.0.0.1          connect to server address
@@ -143,8 +143,8 @@ The supported protocols are:
          kaku_old                       Old KlikAanKlikUit Switches
          elro                           Elro Switches
          raw                            Raw codes
-root@pi:~# ./qpido-send -p kaku_switch -h
-Usage: qpido-send -p kaku_switch [options]
+root@pi:~# ./433-send -p kaku_switch -h
+Usage: 433-send -p kaku_switch [options]
          -H --help                      display this message
          -V --version                   display version
          -S --server=127.0.0.1          connect to server address
@@ -160,9 +160,9 @@ Usage: qpido-send -p kaku_switch [options]
 ```
 Examples are:
 ```
-root@pi:~# ./qpido-send -p kaku_switch -t 1 -u 1 -t
-root@pi:~# ./qpido-send -p kaku_dimmer -t 1 -u 1 -d 15
-root@pi:~# ./qpido-send -p elro -t 1 -u 1 -t
+root@pi:~# ./433-send -p kaku_switch -t 1 -u 1 -t
+root@pi:~# ./433-send -p kaku_dimmer -t 1 -u 1 -d 15
+root@pi:~# ./433-send -p elro -t 1 -u 1 -t
 ```
 <hr>
 To control devices that are not yet supported one can use the `raw` protocol. This protocol allows the sending of raw codes.
@@ -170,7 +170,7 @@ To figure out what the raw codes of your devices are you can run the debugger fi
 for you to press a button for the device you want to control. Once you held the button long enough to control the device 
 using the raw codes.
 ```
-root@pi:~# ./qpido-debug
+root@pi:~# ./433-debug
 header:      	10
 pulse:          5
 footer:         38
@@ -183,14 +183,14 @@ Binary code:
 ```
 You can now use the raw code to control your device:
 ```
-root@pi:~# ./qpido-send -p raw -c "286 2825 286 201 289 1337 287 209 283 1351 287 204 289 1339 288 207 288 1341 289 207 281 1343 284 205 292 1346 282 212 283 1348 282 213 279 1352 282 211 281 1349 282 210 283 1347 284 211 288 1348 281 211 285 1353 278 213 280 1351 280 232 282 1356 279 213 285 1351 276 215 285 1348 277 216 278 1359 278 216 279 1353 272 214 283 1358 276 216 276 1351 278 214 284 1357 275 217 276 1353 270 217 277 1353 272 220 277 1351 275 220 272 1356 275 1353 273 224 277 236 282 1355 272 1353 273 233 273 222 268 1358 270 219 277 1361 274 218 280 1358 272 1355 271 243 251 11302"
+root@pi:~# ./433-send -p raw -c "286 2825 286 201 289 1337 287 209 283 1351 287 204 289 1339 288 207 288 1341 289 207 281 1343 284 205 292 1346 282 212 283 1348 282 213 279 1352 282 211 281 1349 282 210 283 1347 284 211 288 1348 281 211 285 1353 278 213 280 1351 280 232 282 1356 279 213 285 1351 276 215 285 1348 277 216 278 1359 278 216 279 1353 272 214 283 1358 276 216 276 1351 278 214 284 1357 275 217 276 1353 270 217 277 1353 272 220 277 1351 275 220 272 1356 275 1353 273 224 277 236 282 1355 272 1353 273 233 273 222 268 1358 270 219 277 1361 274 218 280 1358 272 1355 271 243 251 11302"
 ```
 <hr>
 The learner does the same as the debugger but is more extensive. It will try to figure out as much as possible about your protocol.
 At this moment only switches are supported, so not dimmers or others devices. Just follow the steps of the learner and when you
 where successfull, it will print the following information (in case of Klik Aan Klik Uit):
 ```
-root@pi:~# ./qpido-learn
+root@pi:~# ./433-learn
 1. Please send and hold one of the OFF buttons. Done.
 
 2. Please send and hold the ON button for the same device
@@ -241,7 +241,7 @@ The only variable that isn't recorded, is the ID. Most of the times, the ID is s
 in bits 0 till 25. Also notice that both the debugger and the learner are highly experimental.
 <hr>
 To use the controller, a confil file is needed. This looks like this:<br />
-_The type setting will automatically be added by the qpido-daemon_
+_The type setting will automatically be added by the 433-daemon_
 ```
 {
 	"living": {
@@ -291,9 +291,9 @@ _The type setting will automatically be added by the qpido-daemon_
 	}		
 }
 ```
-To control a device, you can know easily use the `qpido-control`:
+To control a device, you can know easily use the `433-control`:
 ```
-root@pi:~# ./qpido-control -l living -d bookshelve
+root@pi:~# ./433-control -l living -d bookshelve
 ```
 The config file will automatically be updated with the status of the configured devices. So while sending, but also while receiving.
 
