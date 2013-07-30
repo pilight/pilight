@@ -1,7 +1,7 @@
 GCC = $(CROSS_COMPILE)gcc
 SYS := $(shell $(GCC) -dumpmachine)
 ifneq (, $(findstring x86_64, $(SYS)))
-	OSFLAGS = -Ofast -march=native -mtune=native -mfpmath=sse -Wconversion -Wunreachable-code -Wstrict-prototypes 
+	OSFLAGS = -Ofast -fPIC -march=native -mtune=native -mfpmath=sse -Wconversion -Wunreachable-code -Wstrict-prototypes 
 endif
 ifneq (, $(findstring arm, $(SYS)))
 	ifneq (, $(findstring gnueabihf, $(SYS)))
@@ -15,7 +15,7 @@ ifneq (, $(findstring arm, $(SYS)))
 	endif
 endif
 ifneq (, $(findstring amd64, $(SYS)))
-	OSFLAGS = -O3 -march=native -mtune=native -mfpmath=sse -Wno-conversion
+	OSFLAGS = -O3 -fPIC -march=native -mtune=native -mfpmath=sse -Wno-conversion
 endif
 CFLAGS = -ffast-math $(OSFLAGS) -Wfloat-equal -Wshadow -Wpointer-arith -Wcast-align -Wstrict-overflow=5 -Wwrite-strings -Waggregate-return -Wcast-qual -Wswitch-default -Wswitch-enum -Wformat=2 -g -Wall -I. -I.. -Ilibs/ -Iprotocols/ -Ilirc/ -I/usr/include/ -L/usr/lib/arm-linux-gnueabihf/
 SUBDIRS = libs protocols lirc
@@ -39,11 +39,11 @@ libqpido.so.1:
 	ldconfig
 	
 libqpido.a:
-	ar -rsc libqpido.a $(LIBS)
+	$(CROSS_COMPILE)ar -rsc libqpido.a $(LIBS)
 	cp libqpido.a /usr/local/lib/
 
 qpido-daemon: daemon.c $(INCLUDES) libqpido.so.1
-	$(GCC) $(CFLAGS) -lpthread -lm -o $@ $(patsubst qpido-%,%.c,$@) libqpido.so.1
+	$(GCC) $(CFLAGS) -pthread -lm -o $@ $(patsubst qpido-%,%.c,$@) libqpido.so.1
 
 qpido-send: send.c $(INCLUDES) libqpido.so.1
 	$(GCC) $(CFLAGS) -o $@ $(patsubst qpido-%,%.c,$@) libqpido.so.1
