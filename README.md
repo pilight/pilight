@@ -76,7 +76,7 @@ __process file__: This script can be anything you like. The qpido-daemon will pa
 <hr>
 The output of the receiver will be as follow:
 ```
-root@pi:~# ./send -p kaku_switch -i 100 -u 15 -f
+root@pi:~# ./qpido-send -p kaku_switch -i 100 -u 15 -f
 ```
 ```
 root@pi:~# ./qpido-receiver

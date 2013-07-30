@@ -676,6 +676,7 @@ int main(int argc , char **argv) {
 	char buffer[BUFFER_SIZE];
 	int f;
 	int itmp;
+	char *stmp = NULL;
 
 	addOption(&options, 'H', "help", no_value, 0, NULL);
 	addOption(&options, 'V', "version", no_value, 0, NULL);
@@ -758,6 +759,10 @@ int main(int argc , char **argv) {
 	if(settings_find_number("log-level", &itmp) == 0) {
 		itmp += 2;
 		set_loglevel(itmp);
+	}
+	
+	if(settings_find_string("log-file", &stmp) == 0) {
+		set_logfile(stmp);
 	}
 	
 	if(nodaemon == 1 || running == 1) {
