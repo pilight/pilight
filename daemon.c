@@ -1,21 +1,20 @@
 /*
 	Copyright (C) 2013 CurlyMo
 
-	This file is part of the Raspberry Pi 433.92Mhz transceiver.
+	This file is part of the QPido.
 
-    Raspberry Pi 433.92Mhz transceiver is free software: you can redistribute
-	it and/or modify it under the terms of the GNU General Public License as
-	published by the Free Software Foundation, either version 3 of the License,
-	or (at your option) any later version.
+    QPido is free software: you can redistribute it and/or modify it 
+	under the terms of the GNU General Public License as published by 
+	the Free Software Foundation, either version 3 of the License, or 
+	(at your option) any later version.
 
-    Raspberry Pi 433.92Mhz transceiver is distributed in the hope that it will
-	be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
+    QPido is distributed in the hope that it will be useful, but 
+	WITHOUT ANY WARRANTY; without even the implied warranty of 
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU 
+	General Public License for more details.
 
-    You should have received a copy of the GNU General Public License
-    along with Raspberry Pi 433.92Mhz transceiver. If not, see
-	<http://www.gnu.org/licenses/>
+    You should have received a copy of the GNU General Public License 
+	along with QPido. If not, see <http://www.gnu.org/licenses/>
 */
 
 #include <stdio.h>
@@ -667,8 +666,8 @@ int main(int argc , char **argv) {
 	disable_file_log();
 	enable_shell_log();
 
-	progname = malloc((10*sizeof(char))+1);
-	progname = strdup("433-daemon");
+	progname = malloc((12*sizeof(char))+1);
+	progname = strdup("qpido-daemon");
 
 	settingsfile = strdup(SETTINGS_FILE);
 	
