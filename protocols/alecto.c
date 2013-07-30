@@ -21,7 +21,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "config.h"
+
+#include "settings.h"
 #include "log.h"
 #include "protocol.h"
 #include "binary.h"
@@ -77,7 +78,6 @@ void alectoInit(void) {
 	alecto.footer = 30;
 	alecto.multiplier = 0.3;
 	alecto.rawLength = 74;
-	alecto.repeats = 1;
 	alecto.message = malloc(sizeof(JsonNode));
 
 	alecto.bit = 0;

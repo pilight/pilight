@@ -33,7 +33,7 @@
 #include <time.h>
 #include <math.h>
 
-#include "config.h"
+#include "settings.h"
 #include "log.h"
 #include "options.h"
 
@@ -144,9 +144,9 @@ int main(int argc, char **argv) {
 
 	hw_choose_driver(NULL);
 
-	addOption(&options, 'h', "help", no_value, 0, NULL);
-	addOption(&options, 'v', "version", no_value, 0, NULL);
-	addOption(&options, 's', "socket", has_value, 0, "^/dev/([A-Za-z]+)([0-9]+)");
+	addOption(&options, 'H', "help", no_value, 0, NULL);
+	addOption(&options, 'V', "version", no_value, 0, NULL);
+	addOption(&options, 'S', "socket", has_value, 0, "^/dev/([A-Za-z]+)([0-9]+)");
 
 	while (1) {
 		int c;
@@ -156,9 +156,9 @@ int main(int argc, char **argv) {
 		switch (c) {
 			case 'h':
 				printf("Usage: %s [options]\n", progname);
-				printf("\t -h --help\t\tdisplay usage summary\n");
-				printf("\t -v --version\t\tdisplay version\n");
-				printf("\t -s --socket=socket\tread from given socket\n");
+				printf("\t -H --help\t\tdisplay usage summary\n");
+				printf("\t -V --version\t\tdisplay version\n");
+				printf("\t -S --socket=socket\tread from given socket\n");
 				return (EXIT_SUCCESS);
 			break;
 			case 'v':

@@ -44,17 +44,35 @@ lrwxrwxrwx 1 root root      21 jan  1  1970 /dev/lircd -> ../var/run/lirc/lircd
 ```
 The core of this program is the 433-daemon. This will run itself in the background. You can then use the 433-receiver or the 433-sender
 to connect to the 433-daemon to receive or send codes. The 433-daemon also has the possibility to automatically invoke another script.
-So you can use the 433-daemon to log incoming codes.
-The 433-daemon will read from `/dev/lirc0` by default, but if you want it to read other sockets, run the receiver as follows:
+So you can use the 433-daemon to log incoming codes.<br />
+To alter the default behavior of the daemon, a settings file can be created.<br />
+The default location to where this file needs to be stores is `/etc/433-daemon/settings.json`.<br />
+All options and its default values are show below:<br />
 ```
-root@pi:~# ./433-daemon --socket=/dev/lirc1
+{
+	"port": 5000,
+	"mode": "daemon",
+	"log-level": 4,
+	"pid-file": "/var/log/daemon/433-daemon.pid",
+	"config-file": "/etc/433-daemon/config.json",
+	"log-file": "/var/log/433-daemon.log",
+	"process-file": "",
+	"send-repeats": 10,
+	"receive-repeats": 1,
+	"socket": "/dev/lirc0"
+}
 ```
-To parse the data that is send or received, an external script can be called:
-```
-root@pi:~# ./433-daemon --socket=/dev/lirc1 -f /home/pi/log433.sh
-```
-This script can be anything you like. The 433-daemon will pass the same JSON object to this script as the receiver, but with the addition
-without any formatting. You can than parse the JSON object for further processing.
+__port__: change the default port the daemon will run at<br />
+__mode__: should the daemon be ran as main daemon or as a node (not implemented yet)<br />
+__log-level__: The default log level of the daemon 1 till 5<br />
+__pid-file__: The default location of the process id file<br />
+__log-file__: The default location of the log id file<br />
+__process-file__: The optional process file<br />
+__send-repeats__: How many times should a code be send<br />
+__receive-repeats__: How many times should a code be recieved before marked valid<br />
+__socket__: what socket should we read from<br />
+<br />
+__process file__: This script can be anything you like. The 433-daemon will pass the same JSON object to this script as the receiver, but without any formatting. You can than parse the JSON object for further processing.
 <hr>
 The output of the receiver will be as follow:
 ```
@@ -107,14 +125,13 @@ root@pi:~# ./433-send -p kaku_switch -i 1 -u 1 -t
 ```
 The command line arguments depend on the protocol used e.g.:
 ```
-root@pi:~# ./433-send -h
+root@pi:~# ./433-send -H
 Usage: 433-send -p protocol [options]
-         -h --help                      display this message
-         -v --version                   display version
+         -H --help                      display this message
+         -V --version                   display version
          -S --server=127.0.0.1          connect to server address
          -P --port=5000                 connect to server port
          -p --protocol=protocol         the protocol that you want to control
-         -r --repeat=repeat             number of times the command is send
 
 The supported protocols are:
          coco_switch                    CoCo Technologies Switches
@@ -127,12 +144,11 @@ The supported protocols are:
          raw                            Raw codes
 root@pi:~# ./433-send -p kaku_switch -h
 Usage: 433-send -p kaku_switch [options]
-         -h --help                      display this message
-         -v --version                   display version
+         -H --help                      display this message
+         -V --version                   display version
          -S --server=127.0.0.1          connect to server address
          -P --port=5000                 connect to server port
          -p --protocol=protocol         the protocol that you want to control
-         -r --repeat=repeat             number of times the command is send
 
         [kaku_switch]
          -t --on                        send an on signal
@@ -166,7 +182,7 @@ Binary code:
 ```
 You can now use the raw code to control your device:
 ```
-root@pi:~# ./433-send -p raw -C "286 2825 286 201 289 1337 287 209 283 1351 287 204 289 1339 288 207 288 1341 289 207 281 1343 284 205 292 1346 282 212 283 1348 282 213 279 1352 282 211 281 1349 282 210 283 1347 284 211 288 1348 281 211 285 1353 278 213 280 1351 280 232 282 1356 279 213 285 1351 276 215 285 1348 277 216 278 1359 278 216 279 1353 272 214 283 1358 276 216 276 1351 278 214 284 1357 275 217 276 1353 270 217 277 1353 272 220 277 1351 275 220 272 1356 275 1353 273 224 277 236 282 1355 272 1353 273 233 273 222 268 1358 270 219 277 1361 274 218 280 1358 272 1355 271 243 251 11302"
+root@pi:~# ./433-send -p raw -c "286 2825 286 201 289 1337 287 209 283 1351 287 204 289 1339 288 207 288 1341 289 207 281 1343 284 205 292 1346 282 212 283 1348 282 213 279 1352 282 211 281 1349 282 210 283 1347 284 211 288 1348 281 211 285 1353 278 213 280 1351 280 232 282 1356 279 213 285 1351 276 215 285 1348 277 216 278 1359 278 216 279 1353 272 214 283 1358 276 216 276 1351 278 214 284 1357 275 217 276 1353 270 217 277 1353 272 220 277 1351 275 220 272 1356 275 1353 273 224 277 236 282 1355 272 1353 273 233 273 222 268 1358 270 219 277 1361 274 218 280 1358 272 1355 271 243 251 11302"
 ```
 <hr>
 The learner does the same as the debugger but is more extensive. It will try to figure out as much as possible about your protocol.

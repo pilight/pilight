@@ -21,13 +21,13 @@
   THE SOFTWARE.
 */
 
-#include "json.h"
-
 #include <assert.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#include "json.h"
 
 #define out_of_memory() do {                    \
 		fprintf(stderr, "Out of memory.\n");    \

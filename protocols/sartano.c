@@ -21,7 +21,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "config.h"
+
+#include "settings.h"
 #include "log.h"
 #include "protocol.h"
 #include "binary.h"
@@ -166,7 +167,6 @@ void sartanoInit(void) {
 	sartano.multiplier = 0.3;
 	sartano.rawLength = 50;
 	sartano.binaryLength = 12;
-	sartano.repeats = 1;
 	sartano.message = malloc(sizeof(JsonNode));
 
 	sartano.bit = 0;

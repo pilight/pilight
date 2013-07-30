@@ -50,7 +50,6 @@ struct protocol_t {
 	double multiplier;
 	int rawLength;
 	int binaryLength;
-	int repeats;
 	struct options_t *options;
 	JsonNode *message;
 

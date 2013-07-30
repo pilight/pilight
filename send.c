@@ -30,7 +30,7 @@
 #include <errno.h>
 #include <syslog.h>
 
-#include "config.h"
+#include "settings.h"
 #include "log.h"
 #include "options.h"
 #include "socket.h"
@@ -84,10 +84,9 @@ int main(int argc, char **argv) {
 	JsonNode *code = json_mkobject();
 
 	/* Define all CLI arguments of this program */
-	addOption(&options, 'h', "help", no_value, 0, NULL);
-	addOption(&options, 'v', "version", no_value, 0, NULL);
+	addOption(&options, 'H', "help", no_value, 0, NULL);
+	addOption(&options, 'V', "version", no_value, 0, NULL);
 	addOption(&options, 'p', "protocol", has_value, 0, NULL);
-	addOption(&options, 'r', "repeat", has_value, 0, "[0-9]");
 	addOption(&options, 'S', "server", has_value, 0, "^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]).){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$");
 	addOption(&options, 'P', "port", has_value, 0, "[0-9]{1,4}");
 
@@ -109,10 +108,10 @@ int main(int argc, char **argv) {
 					strcpy(protobuffer, optarg);
 				}
 			break;
-			case 'v':
+			case 'V':
 				version = 1;
 			break;
-			case 'h':
+			case 'H':
 				help = 1;
 			break;
 			case 'S':
@@ -128,7 +127,7 @@ int main(int argc, char **argv) {
 	/* Check if a protocol was given */
 	if(strlen(protobuffer) > 0 && strcmp(protobuffer,"-v") != 0) {
 		if(strlen(protobuffer) > 0 && version) {
-			printf("-p and -v cannot be combined\n");
+			printf("-p and -V cannot be combined\n");
 		} else {
 			for(i=0; i<protocols.nr; ++i) {
 				protocol = protocols.listeners[i];
@@ -162,12 +161,11 @@ int main(int argc, char **argv) {
 		else
 			printf("Usage: %s -p protocol [options]\n", progname);
 		if(help == 1) {
-			printf("\t -h --help\t\t\tdisplay this message\n");
-			printf("\t -v --version\t\t\tdisplay version\n");
+			printf("\t -H --help\t\t\tdisplay this message\n");
+			printf("\t -V --version\t\t\tdisplay version\n");
 			printf("\t -S --server=%s\t\tconnect to server address\n", server);
 			printf("\t -P --port=%d\t\t\tconnect to server port\n", port);
 			printf("\t -p --protocol=protocol\t\tthe protocol that you want to control\n");
-			printf("\t -r --repeat=repeat\t\tnumber of times the command is send\n");
 		}
 		if(protohelp == 1 && match == 1 && protocol->printHelp != NULL) {
 			printf("\n\t[%s]\n", protobuffer);
@@ -207,7 +205,7 @@ int main(int argc, char **argv) {
 	while(options != NULL && strlen(options->name) > 0) {
 		/* Only send the CLI arguments that belong to this protocol, the protocol name
 		   and those that are called by the user */
-		if((getOptionIdByName(&protocol->options, options->name, &itmp) == 0 || strcmp(options->name, "protocol") == 0 || strcmp(options->name, "repeat") == 0)
+		if((getOptionIdByName(&protocol->options, options->name, &itmp) == 0 || strcmp(options->name, "protocol") == 0)
 		   && strlen(options->value) > 0) {
 			json_append_member(code, options->name, json_mkstring(options->value));
 		}

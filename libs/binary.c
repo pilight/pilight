@@ -18,9 +18,10 @@
 	<http://www.gnu.org/licenses/>
 */
 
-#include "binary.h"
 #include <stdio.h>
 #include <stdlib.h>
+
+#include "binary.h"
 
 int binToDecRev(int *binary, int s, int e) {
 	int dec = 0, i = 0;

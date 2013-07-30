@@ -21,7 +21,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "config.h"
+
+#include "settings.h"
 #include "log.h"
 #include "protocol.h"
 #include "binary.h"
@@ -50,7 +51,7 @@ int rawCreateCode(JsonNode *code) {
 }
 
 void rawPrintHelp(void) {
-	printf("\t -C --code=\"raw\"\t\traw code devided by spaces\n\t\t\t\t\t(just like the output of debug)\n");
+	printf("\t -c --code=\"raw\"\t\traw code devided by spaces\n\t\t\t\t\t(just like the output of debug)\n");
 }
 
 void rawInit(void) {
@@ -59,7 +60,7 @@ void rawInit(void) {
 	addDevice(&raw, "raw", "Raw codes");
 	raw.type = RAW;
 
-	addOption(&raw.options, 'C', "code", has_value, 0, NULL);
+	addOption(&raw.options, 'c', "code", has_value, 0, NULL);
 
 	raw.createCode=&rawCreateCode;
 	raw.printHelp=&rawPrintHelp;

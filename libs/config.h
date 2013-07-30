@@ -23,26 +23,6 @@
 
 #include "protocol.h"
 
-//#define PULSE_LENGTH 	165 	// wiringPi pulse length
-#define PULSE_LENGTH	295
-
-#define PORT 				5000
-#define MAX_CLIENTS			30
-#define BUFFER_SIZE			1025
-#define BIG_BUFFER_SIZE		1025000
-
-#define PID_FILE		"/var/run/433-deamon.pid"
-#define CONFIG_FILE		"./433-daemon.conf"
-#define LOG_FILE		"/var/log/433-daemon.log"
-
-#define SEND_REPEATS	10
-#define FREQ433			433920
-#define FREQ38			38000
-
-#define MAX_DEVICES		255 	// Per location
-#define MAX_SETTINGS	10  	// Per protocol
-#define MAX_VALUES		25  	// Per values list
-
 typedef struct conf_locations_t conf_locations_t;
 typedef struct conf_devices_t conf_devices_t;
 typedef struct conf_settings_t conf_settings_t;
@@ -119,13 +99,13 @@ struct conf_locations_t {
 char *progname;
 
 /* Struct to store the locations */
-struct conf_locations_t *locations;
+struct conf_locations_t *conf_locations;
 /* Struct to store the devices per location */
-struct conf_devices_t *devices;
+struct conf_devices_t *conf_devices;
 /* Struct to store the device specific settings */
-struct conf_settings_t *settings;
+struct conf_settings_t *conf_settings;
 /* Struct to store the device values list settings */
-struct conf_values_t *values;
+struct conf_values_t *conf_values;
 
 /* The default config file location */
 char *configfile;

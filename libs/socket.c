@@ -31,7 +31,7 @@
 #include <netdb.h>
 #include <arpa/inet.h>
 
-#include "config.h"
+#include "settings.h"
 #include "log.h"
 #include "socket.h"
 

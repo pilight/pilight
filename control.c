@@ -27,6 +27,7 @@
 #include <errno.h>
 #include <syslog.h>
 
+#include "settings.h"
 #include "config.h"
 #include "log.h"
 #include "options.h"
@@ -73,8 +74,8 @@ int main(int argc, char **argv) {
 	JsonNode *code = json_mkobject();
 
 	/* Define all CLI arguments of this program */
-	addOption(&options, 'h', "help", no_value, 0, NULL);
-	addOption(&options, 'v', "version", no_value, 0, NULL);
+	addOption(&options, 'H', "help", no_value, 0, NULL);
+	addOption(&options, 'V', "version", no_value, 0, NULL);
 	addOption(&options, 'l', "location", has_value, 0, NULL);
 	addOption(&options, 'd', "device", has_value, 0,  NULL);
 	addOption(&options, 's', "state", has_value, 0,  NULL);
@@ -91,9 +92,9 @@ int main(int argc, char **argv) {
 		if(c == -1)
 			break;
 		switch(c) {
-			case 'h':
-				printf("\t -h --help\t\t\tdisplay this message\n");
-				printf("\t -v --version\t\t\tdisplay version\n");
+			case 'H':
+				printf("\t -H --help\t\t\tdisplay this message\n");
+				printf("\t -V --version\t\t\tdisplay version\n");
 				printf("\t -S --server=%s\t\tconnect to server address\n", server);
 				printf("\t -P --port=%d\t\t\tconnect to server port\n", port);
 				printf("\t -l --location=location\t\tthe location in which the device resides\n");
@@ -101,7 +102,7 @@ int main(int argc, char **argv) {
 				printf("\t -s --state=state\t\tthe new state of the device\n");
 				exit(EXIT_SUCCESS);
 			break;
-			case 'v':
+			case 'V':
 				printf("%s %s\n", progname, "1.0");
 				exit(EXIT_SUCCESS);
 			break;

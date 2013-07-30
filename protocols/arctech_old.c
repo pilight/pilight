@@ -21,7 +21,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "config.h"
+
+#include "settings.h"
 #include "log.h"
 #include "protocol.h"
 #include "binary.h"
@@ -163,7 +164,6 @@ void arctechOldInit(void) {
 	arctech_old.multiplier = 0.3;
 	arctech_old.rawLength = 50;
 	arctech_old.binaryLength = 12;
-	arctech_old.repeats = 1;
 	arctech_old.message = malloc(sizeof(JsonNode));
 
 	arctech_old.bit = 0;

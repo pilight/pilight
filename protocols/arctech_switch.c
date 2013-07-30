@@ -21,7 +21,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "config.h"
+
+#include "settings.h"
 #include "log.h"
 #include "protocol.h"
 #include "binary.h"
@@ -185,7 +186,6 @@ void arctechSwInit(void) {
 	arctech_switch.multiplier = 0.3;
 	arctech_switch.rawLength = 132;
 	arctech_switch.binaryLength = 33;
-	arctech_switch.repeats = 1;
 	arctech_switch.message = malloc(sizeof(JsonNode));
 
 	arctech_switch.bit = 0;

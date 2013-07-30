@@ -33,6 +33,7 @@
 #include <pthread.h>
 #include <ctype.h>
 
+#include "settings.h"
 #include "config.h"
 #include "gc.h"
 #include "log.h"
@@ -67,11 +68,11 @@ char clients[5][11] = {
 	"gui\0"
 };
 
-/* The pidfile and pid of this daemon */
-char *pidfile;
+/* The pid_file and pid of this daemon */
+char *pid_file;
 pid_t pid;
 /* The to call when a new code is send or received */
-char processfile[1024];
+char *process_file;
 /* The duration of the received pulse */
 int duration = 0;
 /* The number of receivers connected */
@@ -80,12 +81,16 @@ int receivers = 0;
 int nodaemon = 0;
 /* Are we already running */
 int running = 1;
-/* How many times does to keep need to be resend */
-int repeat = SEND_REPEATS;
+/* How many times does the code need to be resend */
+int send_repeat;
+/* How many times does a code need to received*/
+int receive_repeat;
 /* Are we currently sending code */
 int sending = 0;
 /* If we have accepted a client, handshakes will store the type of client */
 short handshakes[MAX_CLIENTS];
+/* Server port */
+int port = 0;
 
 /* http://stackoverflow.com/a/3535143 */
 void escape_characters(char* dest, const char* src) {
@@ -143,12 +148,12 @@ int broadcast(char *protoname, JsonNode *json) {
 
 	char *escaped = malloc(2 * strlen(message) + 1);
 	JsonNode *jret = json_mkobject();
-	
+
 	/* Update the config file */
 	jret = config_update(protoname, json);
-	
+
 	char *conf = json_stringify(jret, NULL);
-	
+
 	for(i=0;i<MAX_CLIENTS;i++) {
 		if(handshakes[i] == GUI) {
 			socket_write(socket_clients[i], conf);
@@ -174,9 +179,9 @@ int broadcast(char *protoname, JsonNode *json) {
 		escape_characters(escaped, message);
 
 		/* Call the external file */
-		if(strlen(processfile) > 0) {
+		if(strlen(process_file) > 0) {
 			char cmd[255];
-			strcpy(cmd, processfile);
+			strcpy(cmd, process_file);
 			strcat(cmd," ");
 			strcat(cmd, escaped);
 			f=popen(cmd, "r");
@@ -198,7 +203,6 @@ int broadcast(char *protoname, JsonNode *json) {
 void send_code(JsonNode *json) {
 	int i=0, match = 0, x = 0, logged = 1;
 	char *name;
-	char *temp;
 
 	/* Hold the final protocol struct */
 	protocol_t *protocol = malloc(sizeof(protocol_t));
@@ -223,7 +227,7 @@ void send_code(JsonNode *json) {
 		}
 		logged = 0;
 		/* If we matched a protocol and are not already sending, continue */
-		if(match == 1 && sending == 0 && protocol->createCode != NULL && repeat > 0) {
+		if(match == 1 && sending == 0 && protocol->createCode != NULL && send_repeat > 0) {
 			/* Let the protocol create his code */
 			if(protocol->createCode(jcode) == 0) {
 
@@ -232,16 +236,10 @@ void send_code(JsonNode *json) {
 					json_append_member(message, "code", protocol->message);
 				}
 
-				/* Check if we need to repeat the code other than the default repeat */
-				if(json_find_string(jcode, "repeat", &temp) == 0) {
-					repeat=atoi(temp);
-					logprintf(LOG_DEBUG, "set send repeat to %d time(s)", repeat);
-				}
-
 				sending = 1;
 				/* Create a single code with all repeats included */
-				int longCode[(protocol->rawLength*repeat)+1];
-				for(i=0;i<repeat;i++) {
+				int longCode[(protocol->rawLength*send_repeat)+1];
+				for(i=0;i<send_repeat;i++) {
 					for(x=0;x<protocol->rawLength;x++) {
 						longCode[x+(protocol->rawLength*i)]=protocol->raw[x];
 					}
@@ -291,7 +289,7 @@ void control_device(struct conf_devices_t *dev, char *state) {
 	if(strlen(state) > 0) {
 		nstate = strdup(state);
 	}
-	
+
 	/* Check all protocol options */
 	if(dev->protopt->options != NULL) {
 		opt = dev->protopt->options;
@@ -553,7 +551,7 @@ void receive_code(void) {
 									y++;
 
 									/* Continue if we have recognized enough repeated codes */
-									if(protocol->repeats > 0 && y >= protocol->repeats) {
+									if(y >= receive_repeat) {
 										if(protocol->parseCode != NULL) {
 											logprintf(LOG_DEBUG, "catched minimum # of repeats %s of %s", y, protocol->id);
 											logprintf(LOG_DEBUG, "called %s parseCode()", protocol->id);
@@ -616,7 +614,6 @@ void deamonize(void) {
 
 	enable_file_log();
 	disable_shell_log();
-
 	//Get the pid of the fork
 	pid_t npid = fork();
 	switch(npid) {
@@ -627,11 +624,11 @@ void deamonize(void) {
 			exit(1);
 		break;
 		default:
-			if((f = open(pidfile, O_RDWR | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR)) != -1) {
+			if((f = open(pid_file, O_RDWR | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR)) != -1) {
 				lseek(f, 0, SEEK_SET);
 				sprintf(buffer, "%d", npid);
 				if(write(f, buffer, strlen(buffer)) != -1) {
-					logprintf(LOG_ERR, "could not store pid in %s", pidfile);
+					logprintf(LOG_ERR, "could not store pid in %s", pid_file);
 				}
 			}
 			close(f);
@@ -647,11 +644,11 @@ int main_gc(void) {
 	module_deinit();
 	if(running == 0) {
 		/* Remove the stale pid file */
-		if(access(pidfile, F_OK) != -1) {
-			if(remove(pidfile) != -1) {
-				logprintf(LOG_DEBUG, "removed stale pidfile %s", pidfile);
+		if(access(pid_file, F_OK) != -1) {
+			if(remove(pid_file) != -1) {
+				logprintf(LOG_DEBUG, "removed stale pid_file %s", pid_file);
 			} else {
-				logprintf(LOG_ERR, "could not remove stale pid file %s", pidfile);
+				logprintf(LOG_ERR, "could not remove stale pid file %s", pid_file);
 			}
 		}
 	}
@@ -659,7 +656,6 @@ int main_gc(void) {
 }
 
 int main(int argc , char **argv) {
-
 	/* Run main garbage collector when quiting the daemon */
 	gc_attach(main_gc);
 
@@ -672,25 +668,18 @@ int main(int argc , char **argv) {
 	progname = malloc((10*sizeof(char))+1);
 	progname = strdup("433-daemon");
 
-	pidfile = strdup(PID_FILE);
-	configfile = strdup(CONFIG_FILE);
-
+	settingsfile = strdup(SETTINGS_FILE);
+	
 	struct socket_callback_t socket_callback;
 	pthread_t pth;
-	char *lsocket = strdup("/dev/lirc0");
 	char buffer[BUFFER_SIZE];
-	int have_device = 0;
-	int have_config = 0;
 	int f;
+	int itmp;
 
-	addOption(&options, 'h', "help", no_value, 0, NULL);
-	addOption(&options, 'v', "version", no_value, 0, NULL);
-	addOption(&options, 's', "socket", has_value, 0, "^/dev/([A-Za-z]+)([0-9]+)");
-	addOption(&options, 'p', "process", has_value, 0, NULL);
-	addOption(&options, 'd', "nodaemon", no_value, 0, NULL);
-	addOption(&options, 'L', "loglevel", has_value, 0, "[0-5]");
-	addOption(&options, 'l', "logfile", has_value, 0, NULL);
-	addOption(&options, 'c', "config", has_value, 0, NULL);
+	addOption(&options, 'H', "help", no_value, 0, NULL);
+	addOption(&options, 'V', "version", no_value, 0, NULL);
+	addOption(&options, 'D', "nodaemon", no_value, 0, NULL);
+	addOption(&options, 'S', "settings", has_value, 0, NULL);
 
 	hw_choose_driver(NULL);
 	while (1) {
@@ -699,62 +688,30 @@ int main(int argc , char **argv) {
 		if (c == -1)
 			break;
 		switch(c) {
-			case 'h':
+			case 'H':
 				printf("Usage: %s [options]\n", progname);
-				printf("\t -h --help\t\tdisplay usage summary\n");
-				printf("\t -v --version\t\tdisplay version\n");
-				printf("\t -s --socket=socket\tread from given socket\n");
-				printf("\t -p --process=file\tfile to call after received / send code\n");
-				printf("\t -l --logfile=file\tlogfile\n");
-				printf("\t -L --loglevel=[1-5]\t1 only errors\n");
-				printf("\t\t\t\t2 warnings + previous\n");
-				printf("\t\t\t\t3 notices  + previous \n");
-				printf("\t\t\t\t4 info     + previous (default)\n");
-				printf("\t\t\t\t5 debug    + previous\n");
-				printf("\t\t\t\t  only works when not daemonized\n");
-				printf("\t -c --config=file\tconfig file\n");
-				printf("\t -d --nodaemon\t\tdo not daemonize\n");
+				printf("\t -H --help\t\tdisplay usage summary\n");
+				printf("\t -V --version\t\tdisplay version\n");
+				printf("\t -S --settings\t\tsettings file\n");
+				printf("\t -D --nodaemon\t\tdo not daemonize and\n");
+				printf("\t\t\t\tshow debug information\n");
 				return (EXIT_SUCCESS);
 			break;
-			case 'v':
+			case 'V':
 				printf("%s %s\n", progname, "1.0");
 				return (EXIT_SUCCESS);
 			break;
-			case 's':
-				lsocket = optarg;
-				have_device = 1;
-			break;
-			case 'c':
+			case 'S': 
 				if(access(optarg, F_OK) != -1) {
-					have_config = 1;
-					config_set_file(optarg);
+					settingsfile = strdup(optarg);
+					settings_set_file(optarg);
 				} else {
-					fprintf(stderr, "%s: the config file %s does not exists\n", progname, optarg);
+					fprintf(stderr, "%s: the settings file %s does not exists\n", progname, optarg);
 					return EXIT_FAILURE;
 				}
 			break;
-			case 'd':
+			case 'D':
 				nodaemon=1;
-			break;
-			case 'p':
-				if(access(optarg, F_OK) != -1) {
-					strcpy(processfile, optarg);
-					receivers++;
-				} else {
-					fprintf(stderr, "%s: the process file %s does not exists\n", progname, optarg);
-					return EXIT_FAILURE;
-				}
-			break;
-			case 'l':
-				set_logfile(optarg);
-			break;
-			case 'L':
-				if(atoi(optarg) <=5 && atoi(optarg) >= 1) {
-					set_loglevel(atoi(optarg)+2);
-				} else {
-					fprintf(stderr, "%s: invalid loglevel specified\n", progname);
-					return EXIT_FAILURE;
-				}
 			break;
 			default:
 				printf("Usage: %s [options]\n", progname);
@@ -762,33 +719,65 @@ int main(int argc , char **argv) {
 			break;
 		}
 	}
-
-	if(strcmp(lsocket, "/var/lirc/lircd") == 0) {
-		logprintf(LOG_ERR, "refusing to connect to lircd socket");
-		return EXIT_FAILURE;
+	
+	if(access(settingsfile, F_OK) != -1) {
+		if(settings_read() != 0) {
+			return EXIT_FAILURE;
+		}
+	}
+	
+	if(settings_find_string("pid-file", &pid_file) != 0) {
+		pid_file = strdup(PID_FILE);
 	}
 
-	if(have_device)
-		hw.device = lsocket;
-
-	if((f = open(pidfile, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR)) != -1) {
+	if((f = open(pid_file, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR)) != -1) {
 		if(read(f, buffer, BUFFER_SIZE) != -1) {
 			//If the file is empty, create a new process
 			if(!atoi(buffer)) {
 				running = 0;
 			} else {
 				//Check if the process is running
+				kill(atoi(buffer), 0);
+				//If not, create a new process
 				if(errno == ESRCH) {
 					running = 0;
 				}
 			}
 		}
 	} else {
-		logprintf(LOG_ERR, "could not open / create pidfile %s", pidfile);
+		logprintf(LOG_ERR, "could not open / create pid_file %s", pid_file);
 		return EXIT_FAILURE;
 	}
-	close(f);
+	close(f);	
 
+	if(settings_find_string("socket", &hw.device) != 0) {
+		hw.device = strdup(DEFAULT_LIRC_SOCKET);
+	}
+
+	if(settings_find_number("log-level", &itmp) == 0) {
+		itmp += 2;
+		set_loglevel(itmp);
+	}
+	
+	if(nodaemon == 1 || running == 1) {
+		set_loglevel(LOG_DEBUG);
+	}
+
+	settings_find_string("process-file", &process_file);
+
+	if(strcmp(hw.device, "/var/lirc/lircd") == 0) {
+		logprintf(LOG_ERR, "refusing to connect to lircd socket");
+		return EXIT_FAILURE;
+	}
+
+	if(settings_find_number("send-repeats", &send_repeat) != 0) {
+		send_repeat = SEND_REPEATS;
+	}
+
+	if(settings_find_number("receive-repeats", &receive_repeat) != 0) {
+		receive_repeat = RECEIVE_REPEATS;
+	}	
+	
 	if(running == 1) {
 		nodaemon=1;
 		logprintf(LOG_NOTICE, "already active (pid %d)", atoi(buffer));
@@ -800,20 +789,28 @@ int main(int argc , char **argv) {
 	/* Initialize peripheral modules */
 	hw_init();
 
-	if(have_config == 1 && config_read() != 0) {
-		logprintf(LOG_ERR, "could not open config file %s", configfile);
-		return EXIT_FAILURE;
-	} else {
-		receivers++;
+	if(settings_find_string("config-file", &configfile) == 0) {
+		if(config_set_file(configfile) == 0) {
+			if(config_read() != 0) {
+				return EXIT_FAILURE;
+			} else {
+				receivers++;
+			}
+
+			if(get_loglevel() >= LOG_DEBUG) {
+				config_print();
+			}
+		}
 	}
 
-	if(get_loglevel() >= LOG_DEBUG) {
-		config_print();
+	if(settings_find_number("port", &port) != 0) {
+		port = PORT;
 	}
 
-	start_server(PORT);
-	if(nodaemon == 0)
+	start_server((short unsigned int)port);
+	if(nodaemon == 0) {
 		deamonize();
+	}
 
     //initialise all socket_clients and handshakes to 0 so not checked
 	memset(socket_clients, 0, sizeof(socket_clients));

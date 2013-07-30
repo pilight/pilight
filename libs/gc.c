@@ -22,6 +22,7 @@
 #include <stdlib.h>
 #include <signal.h>
 #include <setjmp.h>
+
 #include "gc.h"
 
 static sigjmp_buf gc_cleanup;

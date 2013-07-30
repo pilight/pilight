@@ -31,8 +31,17 @@ subdirs: $(SUBDIRS) all
 $(SUBDIRS):
 	$(MAKE) -C $@
 
-all: $(LIBS) $(OBJS) $(PROGAMS) 
- 
+all: $(LIBS) $(PROGAMS) 
+
+# lib433daemon.so.1:
+	# $(GCC) $(LIBS) -shared -o lib433daemon.so.1 -lpthread -lm
+	# cp lib433daemon.so.1 /usr/local/lib/
+	# ldconfig
+	
+# lib433daemon.a:
+	# ar -rsc lib433daemon.a $(LIBS)
+	# cp lib433daemon.a /usr/local/lib/
+
 433-daemon: daemon.c $(INCLUDES) $(LIBS)
 	$(GCC) $(CFLAGS) -lpthread -lm -o $@ $(patsubst 433-%,%.c,$@) $(LIBS)
 
@@ -43,7 +52,7 @@ all: $(LIBS) $(OBJS) $(PROGAMS)
 	$(GCC) $(CFLAGS) -o $@ $(patsubst 433-%,%.c,$@) $(LIBS)
 
 433-debug: debug.c $(INCLUDES) $(LIBS)
-	$(GCC) $(CFLAGS) -lm -o $@ $(patsubst 433-%,%.c,$@) $(LIBS)	
+	$(GCC) $(CFLAGS) -lm -o $@ $(patsubst 433-%,%.c,$@) $(LIBS)
 
 433-learn: learn.c $(INCLUDES) $(LIBS)
 	$(GCC) $(CFLAGS) -lm -o $@ $(patsubst 433-%,%.c,$@) $(LIBS)
@@ -52,7 +61,9 @@ all: $(LIBS) $(OBJS) $(PROGAMS)
 	$(GCC) $(CFLAGS) -o $@ $(patsubst 433-%,%.c,$@) $(LIBS)
 
 clean:
-	rm $(PROGRAMS) >/dev/null 2>&1 || true
+	rm 433-* >/dev/null 2>&1 || true
+	rm *.so* || true
+	rm *.a* || true
 	for dir in $(SUBDIRS); do \
 		$(MAKE) -C $$dir $@; \
 	done

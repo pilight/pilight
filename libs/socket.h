@@ -21,6 +21,8 @@
 #ifndef _SOCKETS_H_
 #define _SOCKETS_H_
 
+#include "settings.h"
+
 typedef struct socket_callback_t socket_callback_t;
 
 struct socket_callback_t {

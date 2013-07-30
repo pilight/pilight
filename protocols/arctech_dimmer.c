@@ -21,7 +21,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "config.h"
+
+#include "settings.h"
 #include "log.h"
 #include "protocol.h"
 #include "binary.h"
@@ -199,7 +200,6 @@ void arctechDimInit(void) {
 	arctech_dimmer.multiplier = 0.3;
 	arctech_dimmer.rawLength = 148;
 	arctech_dimmer.binaryLength = 37;
-	arctech_dimmer.repeats = 1;
 	arctech_dimmer.message = malloc(sizeof(JsonNode));
 
 	arctech_dimmer.bit = 0;

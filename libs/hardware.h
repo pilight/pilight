@@ -21,7 +21,7 @@
 #ifndef _HARDWARE_H_
 #define _HARDWARE_H_
 
-#include "config.h"
+#include "settings.h"
 
 void hw_init(void);
 int module_init(void);

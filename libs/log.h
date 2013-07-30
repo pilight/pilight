@@ -2,7 +2,7 @@
 #define _LOG_H_
 
 #include <syslog.h>
-#include "config.h"
+#include "settings.h"
 
 void logprintf(int prio, const char *format_str, ...);
 void logperror(int prio, const char *s);

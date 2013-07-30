@@ -34,7 +34,7 @@
 
 JsonNode *config_update(char *protoname, JsonNode *json) {
 	/* The pointer to the config locations */
-	struct conf_locations_t *lptr = locations;
+	struct conf_locations_t *lptr = conf_locations;
 	/* The pointer to the config devices */
 	struct conf_devices_t *dptr = NULL;
 	/* The pointer to the device settings */
@@ -216,7 +216,7 @@ JsonNode *config_update(char *protoname, JsonNode *json) {
 }
 
 int config_get_location(char *id, struct conf_locations_t **loc) {
-	struct conf_locations_t *lptr = locations;
+	struct conf_locations_t *lptr = conf_locations;
 	while(lptr) {
 		if(strcmp(lptr->id, id) == 0) {
 			*loc = lptr;
@@ -344,7 +344,7 @@ JsonNode *config2json(void) {
 	struct JsonNode *setting = json_mkobject();
 
 	/* Make sure we preserve the order of the original file */
-	tmp_locations = locations;
+	tmp_locations = conf_locations;
 
 	/* Show the parsed log file */
 	while(tmp_locations != NULL) {
@@ -400,10 +400,10 @@ void config_print(void) {
 
 /* If a fault was found in the config file, clear everything */
 void config_clear(void) {
-	values = NULL;
-	settings = NULL;
-	devices = NULL;
-	locations = NULL;
+	conf_values = NULL;
+	conf_settings = NULL;
+	conf_devices = NULL;
+	conf_locations = NULL;
 }
 
 /* Save the device settings to the device struct */
@@ -439,8 +439,8 @@ void config_save_setting(int i, JsonNode *jsetting, struct conf_settings_t *snod
 				vnode->type = CONFIG_TYPE_NUMBER;
 			}
 			jtmp = jtmp->next;
-			vnode->next = values;
-			values = vnode;
+			vnode->next = conf_values;
+			conf_values = vnode;
 		}
 	} else {
 		vnode = malloc(sizeof(struct conf_values_t));
@@ -454,22 +454,22 @@ void config_save_setting(int i, JsonNode *jsetting, struct conf_settings_t *snod
 			vnode->value = strdup(ctmp);
 			vnode->type = CONFIG_TYPE_NUMBER;
 		}
-		vnode->next = values;
-		values = vnode;
+		vnode->next = conf_values;
+		conf_values = vnode;
 	}
 
-	snode->values = malloc(MAX_VALUES*sizeof(struct conf_values_t));
+	snode->values = malloc(sizeof(struct conf_values_t));
 	/* Only store values if they are present */
-	if(values != NULL) {
-		memcpy(snode->values, values, (MAX_VALUES*sizeof(struct conf_values_t)));
+	if(conf_values != NULL) {
+		memcpy(snode->values, conf_values, (sizeof(struct conf_values_t)));
 	} else {
 		snode->values = NULL;
 	}
-	snode->next = settings;
-	settings = snode;
+	snode->next = conf_settings;
+	conf_settings = snode;
 
 	/* Make sure to clean all pointer so values don't end up in subsequent structure */
-	values = NULL;
+	conf_values = NULL;
 	if(vnode != NULL && vnode->next != NULL)
 		vnode->next = NULL;
 }
@@ -664,7 +664,7 @@ int config_parse_devices(JsonNode *jdevices, struct conf_devices_t *device) {
 			|| (strcmp(jsettings->key, "type") == 0 && jsettings->tag == JSON_NUMBER))) {
 
 			/* Check for duplicate settings */
-			tmp_settings = settings;
+			tmp_settings = conf_settings;
 			while(tmp_settings != NULL) {
 				if(strcmp(tmp_settings->name, jsettings->key) == 0) {
 					logprintf(LOG_ERR, "settting #%d \"%s\" of \"%s\", duplicate", i, jsettings->key, device->id);
@@ -744,16 +744,16 @@ int config_parse_devices(JsonNode *jdevices, struct conf_devices_t *device) {
 		}
 	}
 
-	device->settings = malloc(MAX_SETTINGS*sizeof(struct conf_settings_t));
+	device->settings = malloc(sizeof(struct conf_settings_t));
 	/* Only store devices if they are present */
-	if(settings != NULL) {
-		memcpy(device->settings, settings, (MAX_SETTINGS*sizeof(struct conf_settings_t)));
+	if(conf_settings != NULL) {
+		memcpy(device->settings, conf_settings, (sizeof(struct conf_settings_t)));
 	} else {
 		device->settings = NULL;
 	}
 
 	/* Clear the locations struct for the next location */
-	settings = NULL;
+	conf_settings = NULL;
 	if(snode != NULL && snode->next != NULL)
 		snode->next = NULL;
 
@@ -811,7 +811,7 @@ int config_parse_locations(JsonNode *jlocations, struct conf_locations_t *locati
 			} else {
 
 				/* Check for duplicate fields */
-				tmp_devices = devices;
+				tmp_devices = conf_devices;
 				while(tmp_devices != NULL) {
 					if(strcmp(tmp_devices->id, jdevices->key) == 0) {
 						logprintf(LOG_ERR, "device #%d \"%s\" of \"%s\", duplicate", i, jdevices->key, location->id);
@@ -844,29 +844,29 @@ int config_parse_locations(JsonNode *jlocations, struct conf_locations_t *locati
 				/* Save both the protocol pointer and the protocol name */
 				dnode->protoname = strdup(pname);
 				dnode->protopt = protocol;
-				dnode->next = devices;
+				dnode->next = conf_devices;
 
 				if(config_parse_devices(jdevices, dnode) != 0) {
 					have_error = 1;
 					goto clear;
 				}
 
-				devices = dnode;
+				conf_devices = dnode;
 			}
 		}
 
 		jdevices = jdevices->next;
 	}
 
-	location->devices = malloc(MAX_DEVICES*sizeof(struct conf_devices_t));
+	location->devices = malloc(sizeof(struct conf_devices_t));
 	/* Only store devices if they are present */
-	if(devices != NULL) {
-		memcpy(location->devices, devices, (MAX_DEVICES*sizeof(struct conf_devices_t)));
+	if(conf_devices != NULL) {
+		memcpy(location->devices, conf_devices, (sizeof(struct conf_devices_t)));
 	} else {
 		location->devices = NULL;
 	}
 	/* Clear the locations struct for the next location */
-	devices = NULL;
+	conf_devices = NULL;
 	if(dnode != NULL && dnode->next != NULL)
 		dnode->next = NULL;
 
@@ -901,7 +901,7 @@ int config_parse(JsonNode *root) {
 			goto clear;
 		} else {
 			/* Check for duplicate locations */
-			tmp_locations = locations;
+			tmp_locations = conf_locations;
 			while(tmp_locations != NULL) {
 				if(strcmp(tmp_locations->id, jlocations->key) == 0) {
 					logprintf(LOG_ERR, "location #%d \"%s\", duplicate", i, jlocations->key);
@@ -914,20 +914,20 @@ int config_parse(JsonNode *root) {
 			lnode = malloc(sizeof(struct conf_locations_t));
 			lnode->id = strdup(jlocations->key);
 			lnode->name = strdup(name);
-			lnode->next = locations;
+			lnode->next = conf_locations;
 
 			if(config_parse_locations(jlocations, lnode) != 0) {
 				have_error = 1;
 				goto clear;
 			}
 
-			locations = lnode;
+			conf_locations = lnode;
 
 			jlocations = jlocations->next;
 		}
 	}
 	/* Preverse the original order inside the structs as in the config file */
-	config_reverse_struct(&locations);
+	config_reverse_struct(&conf_locations);
 clear:
 	return have_error;
 }

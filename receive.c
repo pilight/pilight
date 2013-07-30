@@ -25,7 +25,7 @@
 #include <errno.h>
 #include <syslog.h>
 
-#include "config.h"
+#include "settings.h"
 #include "log.h"
 #include "options.h"
 #include "socket.h"
@@ -56,8 +56,8 @@ int main(int argc, char **argv) {
 	char *message = NULL;
 	steps_t steps = WELCOME;
 
-	addOption(&options, 'h', "help", no_value, 0, NULL);
-	addOption(&options, 'v', "version", no_value, 0, NULL);	
+	addOption(&options, 'H', "help", no_value, 0, NULL);
+	addOption(&options, 'V', "version", no_value, 0, NULL);	
 	addOption(&options, 'S', "server", has_value, 0, "^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]).){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$");
 	addOption(&options, 'P', "port", has_value, 0, "[0-9]{1,4}");	
 	
@@ -72,8 +72,8 @@ int main(int argc, char **argv) {
 			break;
 		switch(c) {
 			case 'h':
-				printf("\t -h --help\t\t\tdisplay this message\n");
-				printf("\t -v --version\t\t\tdisplay version\n");				
+				printf("\t -H --help\t\t\tdisplay this message\n");
+				printf("\t -V --version\t\t\tdisplay version\n");				
 				printf("\t -S --server=%s\t\tconnect to server address\n", server);
 				printf("\t -P --port=%d\t\t\tconnect to server port\n", port);				
 				exit(EXIT_SUCCESS);
