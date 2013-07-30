@@ -139,6 +139,7 @@ The supported protocols are:
          dio_switch                     D-IO (Chacon) Switches
          kaku_switch                    KlikAanKlikUit Switches
          kaku_dimmer                    KlikAanKlikUit Dimmers
+         Cogex                          Cogex Switches
          kaku_old                       Old KlikAanKlikUit Switches
          elro                           Elro Switches
          raw                            Raw codes

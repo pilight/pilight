@@ -157,6 +157,7 @@ void arctechOldInit(void) {
 
 	strcpy(arctech_old.id, "archtech_old");
 	addDevice(&arctech_old, "kaku_old", "Old KlikAanKlikUit Switches");
+	addDevice(&arctech_old, "cogex", "Cogex Switches");
 	arctech_old.type = SWITCH;
 	arctech_old.header = 4;
 	arctech_old.pulse = 4;

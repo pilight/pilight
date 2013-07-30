@@ -34,7 +34,7 @@
 #include "log.h"
 
 /* Add a string value to the settings struct */
-void settings_add_string_node(char *name, char *value) {
+void settings_add_string_node(const char *name, char *value) {
 	struct settings_t *snode = malloc(sizeof(struct settings_t));
 	strcpy(snode->name, name);
 	snode->value = malloc(sizeof(union value_t));
@@ -47,7 +47,7 @@ void settings_add_string_node(char *name, char *value) {
 }
 
 /* Add an int value to the settings struct */
-void settings_add_number_node(char *name, int value) {
+void settings_add_number_node(const char *name, int value) {
 	struct settings_t *snode = malloc(sizeof(struct settings_t));
 	strcpy(snode->name, name);
 	snode->value = malloc(sizeof(union value_t));
@@ -122,6 +122,9 @@ int settings_file_exists(char *filename) {
 
 int settings_parse(JsonNode *root) {
 	int have_error = 0;
+	int is_node = 0;
+	char *server = NULL;
+	int port = 0;
 
 	JsonNode *jsettings = json_first_child(root);
 
@@ -140,6 +143,9 @@ int settings_parse(JsonNode *root) {
 				have_error = 1;
 				goto clear;
 			} else {
+				if(strcmp(jsettings->string_, "node") == 0) {
+					is_node = 1;
+				}
 				if(strcmp(jsettings->string_, "daemon") == 0 || strcmp(jsettings->string_, "node") == 0) {
 					settings_add_string_node(jsettings->key, jsettings->string_);
 				} else {
@@ -191,6 +197,35 @@ int settings_parse(JsonNode *root) {
 				goto clear;
 			} else if(strlen(jsettings->string_) > 0) {
 				settings_add_string_node(jsettings->key, jsettings->string_);
+			}
+		} else if(strcmp(jsettings->key, "server") == 0) {
+			JsonNode *jserver = json_find_member(root, "server");
+			JsonNode *jtmp = json_first_child(jserver);
+			int i = 0;
+			while(jtmp != NULL) {
+				i++;
+				if(jtmp->tag == JSON_STRING) {
+					server = strdup(jtmp->string_);
+				} else if(jtmp->tag == JSON_NUMBER) {
+					port = (int)jtmp->number_;
+				}
+				if(i > 2) {
+					i++;
+					break;
+				}
+				jtmp = jtmp->next;
+			}
+			if(i > 2) {
+				logprintf(LOG_ERR, "setting \"%s\" must be in the format of [ \"x.x.x.x\", xxxx ]", jsettings->key);
+				have_error = 1;
+				goto clear;
+			} else if(server != NULL && port > 0 && is_node == 1) {
+				settings_add_string_node("server-ip", server);
+				settings_add_number_node("server-port", port);
+			} else {	
+				logprintf(LOG_ERR, "setting \"%s\" must be in the format of [ \"x.x.x.x\", xxxx ]", jsettings->key);
+				have_error = 1;
+				goto clear;
 			}
 		}
 		jsettings = jsettings->next;

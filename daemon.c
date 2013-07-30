@@ -178,24 +178,26 @@ int broadcast(char *protoname, JsonNode *json) {
 
 		escape_characters(escaped, message);
 
-		/* Call the external file */
-		if(strlen(process_file) > 0) {
-			char cmd[255];
-			strcpy(cmd, process_file);
-			strcat(cmd," ");
-			strcat(cmd, escaped);
-			f=popen(cmd, "r");
-			pclose(f);
-			broadcasted = 1;
-		}
-		//free(escaped);
-		if(broadcasted) {
-			logprintf(LOG_DEBUG, "broadcasted: %s", message);
+		if(process_file != NULL && strlen(process_file) > 0) {
+			/* Call the external file */
+			if(strlen(process_file) > 0) {
+				char cmd[255];
+				strcpy(cmd, process_file);
+				strcat(cmd," ");
+				strcat(cmd, escaped);
+				f=popen(cmd, "r");
+				pclose(f);
+				broadcasted = 1;
+			}
+			free(escaped);
+			if(broadcasted) {
+				logprintf(LOG_DEBUG, "broadcasted: %s", message);
+			}
 		}
 		return 1;
 	}
 	json_delete(jret);
-	//free(message);
+	free(message);
 	return 0;
 }
 
@@ -802,7 +804,7 @@ int main(int argc , char **argv) {
 			}
 		}
 	}
-
+	
 	if(settings_find_number("port", &port) != 0) {
 		port = PORT;
 	}
