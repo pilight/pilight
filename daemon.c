@@ -264,7 +264,7 @@ void send_code(JsonNode *json) {
 				code.signals = longCode;
 
 				/* Send the code, if we succeeded, inform the receiver */
-				if(send_ir_ncode(&code) == 1) {
+				if(((int)strlen(hw.device) > 0 && send_ir_ncode(&code) == 1) || (int)strlen(hw.device) == 0) {
 					logprintf(LOG_DEBUG, "successfully send %s code", protocol->id);
 					if(logged == 0) {
 						logged = 1;
@@ -768,7 +768,9 @@ void deamonize(void) {
 /* Garbage collector of main program */
 int main_gc(void) {
 
-	module_deinit();
+	if((int)strlen(hw.device) > 0) {
+		module_deinit();
+	}
 	if(running == 0) {
 		/* Remove the stale pid file */
 		if(access(pid_file, F_OK) != -1) {
@@ -924,8 +926,10 @@ int main(int argc , char **argv) {
 		logprintf(LOG_NOTICE, "already active (pid %d)", atoi(buffer));
 		return EXIT_FAILURE;
 	}
-
-	module_init();
+	
+	if((int)strlen(hw.device) > 0) {
+		module_init();
+	}
 
 	/* Initialize peripheral modules */
 	hw_init();

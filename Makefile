@@ -43,7 +43,7 @@ all: $(LIBS) $(PROGAMS)
 	# cp lib433.a /usr/local/lib/
 
 433-daemon: daemon.c $(INCLUDES) $(LIBS)
-	$(GCC) $(CFLAGS) -lpthread -lm -o $@ $(patsubst 433-%,%.c,$@) $(LIBS)
+	$(GCC) $(CFLAGS) -pthread -lm -o $@ $(patsubst 433-%,%.c,$@) $(LIBS)
 
 433-send: send.c $(INCLUDES) $(LIBS)
 	$(GCC) $(CFLAGS) -o $@ $(patsubst 433-%,%.c,$@) $(LIBS)

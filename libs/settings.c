@@ -201,8 +201,12 @@ int settings_parse(JsonNode *root) {
 				logprintf(LOG_ERR, "setting \"%s\" must point an existing socket", jsettings->key);
 				have_error = 1;
 				goto clear;
-			} else if(strlen(jsettings->string_) > 0) {
-				settings_add_string_node(jsettings->key, jsettings->string_);
+			} else {
+				if(strlen(jsettings->string_) > 0) {
+					settings_add_string_node(jsettings->key, jsettings->string_);
+				} else {
+					settings_add_string_node(jsettings->key, jsettings->string_);
+				}
 			}
 		} else if(strcmp(jsettings->key, "server") == 0) {
 			JsonNode *jserver = json_find_member(root, "server");
