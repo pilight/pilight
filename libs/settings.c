@@ -123,8 +123,10 @@ int settings_file_exists(char *filename) {
 int settings_parse(JsonNode *root) {
 	int have_error = 0;
 	int is_node = 0;
-	char *server = NULL;
-	int port = 0;
+	char *server_ip = NULL;
+	int server_port = 0;
+	int own_port = 0;
+	int has_config = 0;
 
 	JsonNode *jsettings = json_first_child(root);
 
@@ -135,21 +137,24 @@ int settings_parse(JsonNode *root) {
 				have_error = 1;
 				goto clear;
 			} else {
+				if(strcmp(jsettings->key, "port") == 0) {
+					own_port = (int)jsettings->number_;
+				}
 				settings_add_number_node(jsettings->key, (int)jsettings->number_);
 			}
 		} else if(strcmp(jsettings->key, "mode") == 0) {
 			if(jsettings->string_ == NULL) {
-				logprintf(LOG_ERR, "setting \"%s\" must be \"daemon\" or \"node\"", jsettings->key);
+				logprintf(LOG_ERR, "setting \"%s\" must be \"server\" or \"client\"", jsettings->key);
 				have_error = 1;
 				goto clear;
 			} else {
-				if(strcmp(jsettings->string_, "node") == 0) {
+				if(strcmp(jsettings->string_, "client") == 0) {
 					is_node = 1;
 				}
-				if(strcmp(jsettings->string_, "daemon") == 0 || strcmp(jsettings->string_, "node") == 0) {
+				if(strcmp(jsettings->string_, "server") == 0 || strcmp(jsettings->string_, "client") == 0) {
 					settings_add_string_node(jsettings->key, jsettings->string_);
 				} else {
-					logprintf(LOG_ERR, "setting \"%s\" must be \"daemon\" or \"node\"", jsettings->key);
+					logprintf(LOG_ERR, "setting \"%s\" must be \"server\" or \"client\"", jsettings->key);
 					have_error = 1;
 					goto clear;
 				}
@@ -183,6 +188,7 @@ int settings_parse(JsonNode *root) {
 				goto clear;
 			} else if(strlen(jsettings->string_) > 0) {
 				if(settings_file_exists(jsettings->string_) == 0) {
+					has_config = 1;
 					settings_add_string_node(jsettings->key, jsettings->string_);
 				} else {
 					logprintf(LOG_ERR, "setting \"%s\" must point to an existing file", jsettings->key);
@@ -205,9 +211,9 @@ int settings_parse(JsonNode *root) {
 			while(jtmp != NULL) {
 				i++;
 				if(jtmp->tag == JSON_STRING) {
-					server = strdup(jtmp->string_);
+					server_ip = strdup(jtmp->string_);
 				} else if(jtmp->tag == JSON_NUMBER) {
-					port = (int)jtmp->number_;
+					server_port = (int)jtmp->number_;
 				}
 				if(i > 2) {
 					i++;
@@ -219,9 +225,9 @@ int settings_parse(JsonNode *root) {
 				logprintf(LOG_ERR, "setting \"%s\" must be in the format of [ \"x.x.x.x\", xxxx ]", jsettings->key);
 				have_error = 1;
 				goto clear;
-			} else if(server != NULL && port > 0 && is_node == 1) {
-				settings_add_string_node("server-ip", server);
-				settings_add_number_node("server-port", port);
+			} else if(server_ip != NULL && server_port > 0 && is_node == 1) {
+				settings_add_string_node("server-ip", server_ip);
+				settings_add_number_node("server-port", server_port);
 			} else {	
 				logprintf(LOG_ERR, "setting \"%s\" must be in the format of [ \"x.x.x.x\", xxxx ]", jsettings->key);
 				have_error = 1;
@@ -229,6 +235,17 @@ int settings_parse(JsonNode *root) {
 			}
 		}
 		jsettings = jsettings->next;
+	}
+
+	if(server_port > 0 && server_port == own_port && is_node == 1) {
+		logprintf(LOG_ERR, "setting \"port\" and server port cannot be the same");
+		have_error = 1;
+		goto clear;
+	}
+	if(is_node == 1 && has_config == 1) {
+		logprintf(LOG_ERR, "a daemon running as client cannot have a config file defined");
+		have_error = 1;
+		goto clear;		
 	}
 clear:
 	return have_error;

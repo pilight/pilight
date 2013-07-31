@@ -53,11 +53,24 @@ void gc_attach(int (*fp)(void)) {
 	gc.listeners[gc.nr++] = fp;
 }
 
+/* Run the GC manually */
+int gc_run(void) {
+    unsigned int i, s;
+	for(i=0; i<gc.nr; ++i) {
+		if(gc.listeners[i]() != 0) {
+			s=1;
+		}
+	}
+	if(s)
+		return EXIT_FAILURE;
+	else
+		return EXIT_SUCCESS;
+}
+
 /* Initialize the catch all gc */
 void gc_catch(void) {
 
     struct sigaction act, old;
-    unsigned int i, s;
 
     memset(&act,0,sizeof(act));
     act.sa_handler = gc_handler;
@@ -77,13 +90,5 @@ void gc_catch(void) {
 		return;
 
 	/* Call all GC functions */
-	for(i=0; i<gc.nr; ++i) {
-		if(gc.listeners[i]() != 0) {
-			s=1;
-		}
-	}
-	if(s)
-		exit(255);
-	else
-		exit(0);
+	exit(gc_run());
 }

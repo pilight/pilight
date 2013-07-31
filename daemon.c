@@ -58,8 +58,6 @@ typedef enum {
 	GUI
 } client_type_t;
 
-typedef struct clients_t clients_t;
-
 char clients[5][11] = {
 	"receiver\0",
 	"sender\0",
@@ -67,6 +65,15 @@ char clients[5][11] = {
 	"node\0",
 	"gui\0"
 };
+
+typedef enum {
+	WELCOME,
+	IDENTIFY,
+	REJECT,
+	REQUEST,
+	CONFIG,
+	FORWARD
+} steps_t;
 
 /* The pid_file and pid of this daemon */
 char *pid_file;
@@ -89,8 +96,13 @@ int receive_repeat;
 int sending = 0;
 /* If we have accepted a client, handshakes will store the type of client */
 short handshakes[MAX_CLIENTS];
-/* Server port */
-int port = 0;
+/* Which mode are we running in: 1 = server, 2 = client */
+unsigned short runmode = 1;
+/* Socket identifier to the server if we are running as client */
+int sockfd = 0;
+/* In the client running in incognito mode */
+unsigned short incognito_mode = 0;
+
 
 /* http://stackoverflow.com/a/3535143 */
 void escape_characters(char* dest, const char* src) {
@@ -170,7 +182,7 @@ int broadcast(char *protoname, JsonNode *json) {
 
 		/* Write the message to all receivers */
 		for(i=0;i<MAX_CLIENTS;i++) {
-			if(handshakes[i] == RECEIVER) {
+			if(handshakes[i] == RECEIVER || handshakes[i] == NODE) {
 				socket_write(socket_clients[i], message);
 				broadcasted = 1;
 			}
@@ -235,6 +247,7 @@ void send_code(JsonNode *json) {
 
 				if(protocol->message != NULL && json_validate(json_stringify(message, NULL)) == true && json_validate(json_stringify(message, NULL)) == true) {
 					json_append_member(message, "origin", json_mkstring("sender"));
+					json_append_member(message, "protocol", json_mkstring(protocol->id));
 					json_append_member(message, "code", protocol->message);
 				}
 
@@ -271,9 +284,11 @@ void send_code(JsonNode *json) {
 void client_sender_parse_code(int i, JsonNode *json) {
 	int sd = socket_clients[i];
 
-	/* Don't let the sender wait until we have send the code */
-	socket_close(sd);
-	handshakes[i] = -1;
+	if(incognito_mode == 0) {
+		/* Don't let the sender wait until we have send the code */
+		socket_close(sd);
+		handshakes[i] = -1;
+	}
 
 	send_code(json);
 }
@@ -358,6 +373,20 @@ void control_device(struct conf_devices_t *dev, char *state) {
 	json_delete(json);
 }
 
+void client_node_parse_code(int i, JsonNode *json) {
+	int sd = socket_clients[i];
+	char *message = NULL;
+
+	if(json_find_string(json, "message", &message) == 0) {
+		/* Send the config file to the controller */
+		if(strcmp(message, "request config") == 0) {
+			json = json_mkobject();
+			json_append_member(json, "config", config2json());
+			socket_write_big(sd, json_stringify(json, NULL));
+		}
+	}
+}
+
 void client_controller_parse_code(int i, JsonNode *json) {
 	int sd = socket_clients[i];
 	char *message = NULL;
@@ -402,7 +431,7 @@ void client_controller_parse_code(int i, JsonNode *json) {
 				} else {
 					logprintf(LOG_ERR, "the location \"%s\" does not exist", location);
 				}
-				if(handshakes[i] == CONTROLLER) {
+				if(incognito_mode == 0 && handshakes[i] != GUI) {
 					socket_close(sd);
 					handshakes[i] = -1;
 				}
@@ -418,6 +447,7 @@ void socket_parse_data(int i, char buffer[BUFFER_SIZE]) {
 	int addrlen = sizeof(address);
 	char tmp[25];
 	char *message;
+	char *incognito;
 	JsonNode *json = json_mkobject();
 	short x = 0;
 
@@ -432,13 +462,30 @@ void socket_parse_data(int i, char buffer[BUFFER_SIZE]) {
 	if(strcmp(buffer, "HEART\n") == 0) {
 		socket_write(sd, "BEAT");
 	} else {
-		if(json_find_string(json, "message", &message) == 0) {
-			if(handshakes[i] == SENDER) {
+		if(json_find_string(json, "incognito", &incognito) == 0) {
+			incognito_mode = 1;
+			for(x=0;x<(sizeof(clients)/sizeof(clients[0]));x++) {
+				if(strcmp(clients[x], incognito) == 0) {
+					handshakes[i] = x;
+					break;
+				}
+			}
+		} else if(json_find_string(json, "message", &message) == 0) {
+			if(handshakes[i] != NODE && handshakes[i] != RECEIVER && handshakes[i] > -1) {
+				if(runmode == 2 && sockfd > 0 && strcmp(message, "request config") != 0) {
+					printf("\n\n%d\n\n", i);
+					socket_write(sockfd, "{\"incognito\":\"%s\"}", clients[handshakes[i]]);
+					socket_write(sockfd, buffer);
+					socket_write(sockfd, "{\"incognito\":\"node\"}");
+				}
+			}
+			if(handshakes[i] == NODE) {
+				client_node_parse_code(i, json);
+			} else if(handshakes[i] == SENDER) {
 				client_sender_parse_code(i, json);
 			} else if(handshakes[i] == CONTROLLER || handshakes[i] == GUI) {
 				client_controller_parse_code(i, json);
 			} else {
-
 				/* Check if we matched a know client type */
 				for(x=0;x<(sizeof(clients)/sizeof(clients[0]));x++) {
 					memset(tmp, '\0', 25);
@@ -451,7 +498,7 @@ void socket_parse_data(int i, char buffer[BUFFER_SIZE]) {
 						logprintf(LOG_INFO, "client recognized as %s", clients[x]);
 						handshakes[i] = x;
 
-						if(handshakes[i] == RECEIVER || handshakes[i] == GUI)
+						if(handshakes[i] == RECEIVER || handshakes[i] == GUI || handshakes[i] == NODE)
 							receivers++;
 						break;
 					}
@@ -466,7 +513,7 @@ void socket_parse_data(int i, char buffer[BUFFER_SIZE]) {
 }
 
 void socket_client_disconnected(int i) {
-	if(handshakes[i] == RECEIVER || handshakes[i] == GUI)
+	if(handshakes[i] == RECEIVER || handshakes[i] == GUI || handshakes[i] == NODE)
 		receivers--;
 
 	handshakes[i] = 0;
@@ -527,12 +574,11 @@ void receive_code(void) {
 									protocol->parseRaw();
 									if(protocol->message != NULL && json_validate(json_stringify(message, NULL)) == true) {
 										json_append_member(message, "origin", json_mkstring("receiver"));
+										json_append_member(message, "protocol", json_mkstring(protocol->id));
 										json_append_member(message, "code", protocol->message);
 										broadcast(protocol->id, message);
-										continue;
-									} else {
-										continue;
 									}
+									continue;
 								}
 
 								if((protocol->parseCode != NULL || protocol->parseBinary != NULL) && protocol->pulse > 0) {
@@ -561,12 +607,11 @@ void receive_code(void) {
 											protocol->parseCode();
 											if(protocol->message != NULL && json_validate(json_stringify(message, NULL)) == true) {
 												json_append_member(message, "origin", json_mkstring("receiver"));
+												json_append_member(message, "protocol", json_mkstring(protocol->id));
 												json_append_member(message, "code", protocol->message);
 												broadcast(protocol->id, message);
-												continue;
-											} else {
-												continue;
 											}
+											continue;
 										}
 
 										if(protocol->parseBinary != NULL) {
@@ -586,12 +631,11 @@ void receive_code(void) {
 												protocol->parseBinary();
 												if(protocol->message != NULL && json_validate(json_stringify(message, NULL)) == true) {
 													json_append_member(message, "origin", json_mkstring("receiver"));
+													json_append_member(message, "protocol", json_mkstring(protocol->id));
 													json_append_member(message, "code", protocol->message);
 													broadcast(protocol->id, message);
-													continue;
-												} else {
-													continue;
 												}
+												continue;
 											}
 										}
 									}
@@ -608,6 +652,88 @@ void receive_code(void) {
 			sleep(1);
 		}
 	}
+}
+
+void *clientize(void *param) {
+	char *server = NULL;
+	int port = 0;
+	steps_t steps = WELCOME;
+    char *recvBuff;
+	char *message = NULL;
+	char *protocol = NULL;
+	JsonNode *json = NULL;
+	JsonNode *jconfig = NULL;
+
+	settings_find_string("server-ip", &server);
+	settings_find_number("server-port", &port);
+
+	if((sockfd = connect_to_server(strdup(server), (short unsigned int)port)) == -1) {
+		logprintf(LOG_ERR, "could not connect to 433-daemon");
+		exit(EXIT_FAILURE);
+	}
+		
+	while(1) {
+		/* Clear the receive buffer again and read the welcome message */
+		if(steps == REQUEST) {
+			if((recvBuff = socket_read_big(sockfd)) != NULL) {
+				json = json_decode(recvBuff);
+				json_find_string(json, "message", &message);
+			} else {
+				goto close;
+			}
+		} else {
+			if((recvBuff = socket_read(sockfd)) != NULL) {
+				json = json_decode(recvBuff);
+				json_find_string(json, "message", &message);
+			} else {
+				goto close;
+			}
+		}
+		usleep(100);
+		switch(steps) {
+			case WELCOME:
+				if(strcmp(message, "accept connection") == 0) {
+					socket_write(sockfd, "{\"message\":\"client node\"}");
+					steps=IDENTIFY;
+				}
+			break;
+			case IDENTIFY:
+				if(strcmp(message, "accept client") == 0) {
+					steps=FORWARD;
+				}
+				if(strcmp(message, "reject client") == 0) {
+					steps=REJECT;
+				}
+			case REQUEST:
+				socket_write(sockfd, "{\"message\":\"request config\"}");
+				steps=CONFIG;
+			break;
+			case CONFIG:
+				if((jconfig = json_find_member(json, "config")) != NULL) {
+					config_parse(jconfig);
+					steps=FORWARD;
+				}
+			break;
+			case FORWARD:
+				if(strcmp(message, "request config") != 0 && json_find_member(json, "config") == NULL) {
+					if(json_find_string(json, "origin", &message) == 0 && 
+					   json_find_string(json, "protocol", &protocol) == 0) {
+						broadcast(protocol, json);
+					}
+				}
+			break;
+			case REJECT:
+			default:
+				goto close;
+			break;
+		}
+	}
+close:
+	json_delete(json);
+	json_delete(jconfig);
+	socket_close(sockfd);
+	gc_run();
+	exit(EXIT_SUCCESS);
 }
 
 void deamonize(void) {
@@ -673,11 +799,12 @@ int main(int argc , char **argv) {
 	settingsfile = strdup(SETTINGS_FILE);
 	
 	struct socket_callback_t socket_callback;
-	pthread_t pth;
+	pthread_t pth1, pth2;
 	char buffer[BUFFER_SIZE];
 	int f;
 	int itmp;
 	char *stmp = NULL;
+	int port = 0;
 
 	addOption(&options, 'H', "help", no_value, 0, NULL);
 	addOption(&options, 'V', "version", no_value, 0, NULL);
@@ -766,6 +893,14 @@ int main(int argc , char **argv) {
 		set_logfile(stmp);
 	}
 	
+	if(settings_find_string("mode", &stmp) == 0) {
+		if(strcmp(stmp, "client") == 0) {
+			runmode = 2;
+		} else if(strcmp(stmp, "server") == 0) {
+			runmode = 1;
+		}
+	}
+
 	if(nodaemon == 1 || running == 1) {
 		set_loglevel(LOG_DEBUG);
 	}
@@ -813,12 +948,12 @@ int main(int argc , char **argv) {
 	if(settings_find_number("port", &port) != 0) {
 		port = PORT;
 	}
-
+	
 	start_server((short unsigned int)port);
 	if(nodaemon == 0) {
 		deamonize();
 	}
-
+	
     //initialise all socket_clients and handshakes to 0 so not checked
 	memset(socket_clients, 0, sizeof(socket_clients));
 	memset(handshakes, -1, sizeof(handshakes));
@@ -827,10 +962,14 @@ int main(int argc , char **argv) {
     socket_callback.client_connected_callback = NULL;
     socket_callback.client_data_callback = &socket_parse_data;
 
+	if(runmode == 2) {
+		pthread_create(&pth1, NULL, &clientize, (void *)NULL);
+	}
 	/* Make sure the server part is non-blocking by creating a new thread */
-	pthread_create(&pth, NULL, &wait_for_data, (void *)&socket_callback);
+	pthread_create(&pth2, NULL, &wait_for_data, (void *)&socket_callback);
 	receive_code();
-	pthread_join(pth, NULL);
+	pthread_join(pth1, NULL);
+	pthread_join(pth2, NULL);
 
 	return EXIT_FAILURE;
 }

@@ -31,34 +31,34 @@ subdirs: $(SUBDIRS) all
 $(SUBDIRS):
 	$(MAKE) -C $@
 
-all: $(LIBS) lib433.so.1 lib433.a $(PROGAMS) 
+all: $(LIBS) $(PROGAMS) 
 
-lib433.so.1:
-	$(GCC) $(LIBS) -shared -o lib433.so.1 -lpthread -lm
-	cp lib433.so.1 /usr/local/lib/
-	ldconfig
+# lib433.so.1:
+	# $(GCC) $(LIBS) -shared -o lib433.so.1 -lpthread -lm
+	# cp lib433.so.1 /usr/local/lib/
+	# ldconfig
 	
-lib433.a:
-	ar -rsc lib433.a $(LIBS)
-	cp lib433.a /usr/local/lib/
+# lib433.a:
+	# ar -rsc lib433.a $(LIBS)
+	# cp lib433.a /usr/local/lib/
 
 433-daemon: daemon.c $(INCLUDES) $(LIBS)
-	$(GCC) $(CFLAGS) -lpthread -lm -o $@ $(patsubst 433-%,%.c,$@) lib433.so.1 
+	$(GCC) $(CFLAGS) -lpthread -lm -o $@ $(patsubst 433-%,%.c,$@) $(LIBS)
 
-433-send: send.c $(INCLUDES) lib433.so.1 
-	$(GCC) $(CFLAGS) -o $@ $(patsubst 433-%,%.c,$@) lib433.so.1 
+433-send: send.c $(INCLUDES) $(LIBS)
+	$(GCC) $(CFLAGS) -o $@ $(patsubst 433-%,%.c,$@) $(LIBS)
 
-433-receive: receive.c $(INCLUDES) lib433.so.1 
-	$(GCC) $(CFLAGS) -o $@ $(patsubst 433-%,%.c,$@) lib433.so.1 
+433-receive: receive.c $(INCLUDES) $(LIBS)
+	$(GCC) $(CFLAGS) -o $@ $(patsubst 433-%,%.c,$@) $(LIBS)
 
-433-debug: debug.c $(INCLUDES) lib433.so.1 
-	$(GCC) $(CFLAGS) -lm -o $@ $(patsubst 433-%,%.c,$@) lib433.so.1 
+433-debug: debug.c $(INCLUDES) $(LIBS)
+	$(GCC) $(CFLAGS) -lm -o $@ $(patsubst 433-%,%.c,$@) $(LIBS)
 
-433-learn: learn.c $(INCLUDES) lib433.so.1 
-	$(GCC) $(CFLAGS) -lm -o $@ $(patsubst 433-%,%.c,$@) lib433.so.1 
+433-learn: learn.c $(INCLUDES) $(LIBS)
+	$(GCC) $(CFLAGS) -lm -o $@ $(patsubst 433-%,%.c,$@) $(LIBS)
 
-433-control: control.c $(INCLUDES) lib433.so.1 
-	$(GCC) $(CFLAGS) -o $@ $(patsubst 433-%,%.c,$@) lib433.so.1 
+433-control: control.c $(INCLUDES) $(LIBS)
+	$(GCC) $(CFLAGS) -o $@ $(patsubst 433-%,%.c,$@) $(LIBS)
 
 clean:
 	rm 433-* >/dev/null 2>&1 || true

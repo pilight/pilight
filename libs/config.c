@@ -208,7 +208,7 @@ JsonNode *config_update(char *protoname, JsonNode *json) {
 	json_append_member(rroot, "values", rval);
 
 	/* Only update the config file, if a state change occured */
-	if(update == 1) {
+	if(update == 1 && configfile != NULL) {
 		config_write(json_stringify(config2json(), "\t"));
 	}
 	json_delete(json);
