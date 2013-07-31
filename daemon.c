@@ -473,7 +473,6 @@ void socket_parse_data(int i, char buffer[BUFFER_SIZE]) {
 		} else if(json_find_string(json, "message", &message) == 0) {
 			if(handshakes[i] != NODE && handshakes[i] != RECEIVER && handshakes[i] > -1) {
 				if(runmode == 2 && sockfd > 0 && strcmp(message, "request config") != 0) {
-					printf("\n\n%d\n\n", i);
 					socket_write(sockfd, "{\"incognito\":\"%s\"}", clients[handshakes[i]]);
 					socket_write(sockfd, buffer);
 					socket_write(sockfd, "{\"incognito\":\"node\"}");
