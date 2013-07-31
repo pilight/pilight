@@ -63,9 +63,11 @@ All options and its default values are show below:<br />
 }
 ```
 __port__: change the default port the daemon will run at<br />
-__mode__: should the daemon be ran as main daemon or as a node (not implemented yet)<br />
+__mode__: should the daemon be ran as main server or as a client<br />
+__server__: the server the client should connect to [ x.x.x.x, xxxx ] (only in client mode)<br />
 __log-level__: The default log level of the daemon 1 till 5<br />
 __pid-file__: The default location of the process id file<br />
+__config-file__: The default location of the config file (only in server mode)<br />
 __log-file__: The default location of the log id file<br />
 __process-file__: The optional process file<br />
 __send-repeats__: How many times should a code be send<br />
@@ -82,6 +84,7 @@ root@pi:~# ./433-send -p kaku_switch -i 100 -u 15 -f
 root@pi:~# ./433-receiver
 {
 	"origin": "sender",
+	"protocol": "arctech_switches",
 	"code": {
 		"id": 100,
 		"unit": 15,
@@ -97,6 +100,7 @@ root@pi:~# ./433-send -p kaku_dimmer -i 100 -u 15 -d 15
 root@pi:~# ./433-receiver
 {
 	"origin": "sender",
+	"protocol": "arctech_dimmers",
 	"code": {
 		"id": 100,
 		"unit": 15,
@@ -111,6 +115,7 @@ root@pi:~# ./433-send -p elro -i 10 -u 15 -t
 root@pi:~# ./433-receiver
 {
 	"origin": "sender",
+	"protocol": "sartano",
 	"code": {
 		"id": 10,
 		"unit": 15,
@@ -296,4 +301,7 @@ To control a device, you can know easily use the `433-control`:
 root@pi:~# ./433-control -l living -d bookshelve
 ```
 The config file will automatically be updated with the status of the configured devices. So while sending, but also while receiving.
-
+<hr>
+## NODES
+One major feature of this program is that the daemon can run in `client` mode. This means the daemon will connect to another daemon that is considered the `server`.
+Every action that happens to one of the daemons is automatically communicated to the others. That means that areas with low coverages can be covered by putting multiple "nodes" throughout the house / office.
