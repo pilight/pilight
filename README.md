@@ -245,7 +245,7 @@ If may be possible that the learner prints out different values as shown here. T
 The only variable that isn't recorded, is the ID. Most of the times, the ID is stored in the remaining (sequence) of bits. In case of Klik Aan Klik Uit, the ID is stored
 in bits 0 till 25. Also notice that both the debugger and the learner are highly experimental.
 <hr>
-To use the controller, a confil file is needed. This looks like this:<br />
+To use the controller, a config file is needed. This looks like this:<br />
 _The type setting will automatically be added by the 433-daemon_
 ```
 {
