@@ -141,7 +141,7 @@ int arctechSwCreateCode(JsonNode *code) {
 		unit = atoi(tmp);
 	if(json_find_string(code, "all", &tmp) == 0)
 		all = 1;
-
+	
 	if(id == -1 || (unit == -1 && all == 0) || state == -1) {
 		logprintf(LOG_ERR, "arctech_switch: insufficient number of arguments");
 		return EXIT_FAILURE;
@@ -152,6 +152,9 @@ int arctechSwCreateCode(JsonNode *code) {
 		logprintf(LOG_ERR, "arctech_switch: invalid unit range");
 		return EXIT_FAILURE;
 	} else {
+		if(unit == -1 && all == 1) {
+			unit = 0;
+		}
 		arctechSwCreateMessage(id, unit, state, all);
 		arctechSwCreateStart();
 		arctechSwClearCode();

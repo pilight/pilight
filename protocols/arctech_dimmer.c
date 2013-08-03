@@ -168,6 +168,9 @@ int arctechDimCreateCode(JsonNode *code) {
 		logprintf(LOG_ERR, "arctech_dimmer: invalid dimlevel range");
 		return EXIT_FAILURE;
 	} else {
+		if(unit == -1 && all == 1) {
+			unit = 0;
+		}	
 		arctechDimCreateMessage(id, unit, state, all, dimlevel);
 		arctechDimCreateStart();
 		arctechDimClearCode();
