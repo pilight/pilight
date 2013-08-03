@@ -102,7 +102,7 @@ int main(int argc, char **argv) {
 				printf("%s %s\n", progname, "1.0");
 				return (EXIT_SUCCESS);
 			break;
-			case 's':
+			case 'S':
 				socket = optarg;
 				have_device = 1;
 			break;
