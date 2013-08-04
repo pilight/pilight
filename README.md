@@ -104,6 +104,7 @@ root@pi:~# ./433-receiver
 	"code": {
 		"id": 100,
 		"unit": 15,
+		"state": on,		
 		"dimlevel": 15
 	}
 }
@@ -266,8 +267,9 @@ _The type setting will automatically be added by the 433-daemon_
 			"type": 1,
 			"id": 1234,
 			"unit": 1,
-			"state": 0,
-			"values": [ 0, 3, 5, 7, 9, 11, 13, 15 ]
+			"state": "on",
+			"dimlevel", 0,
+			"values": [ "on", "off" ]
 		}
 	},
 	"bedroom": {
