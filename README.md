@@ -19,7 +19,7 @@ __Don't forget to use the command `sudo` prior to all commands below when you're
 <hr>
 To fully benifit from my code, you should build a low-pass filter to make sure no noise is being received by the receiver.
 This filter only costs about $1 and works absolutely perfect. All components are commonly used and can be found on ebay or at a local DIY shops.<br />
-<img src="http://img594.imageshack.us/img594/7328/i0ci.jpg" alt="Low-pass filter" title="Low-pass filter" border="0" />
+<img src="http://i.imgur.com/yRp532m.jpg" alt="Low-pass filter" title="Low-pass filter" border="0" />
 <hr>
 This new code uses lirc for the interaction with the hardware. The advantage is that we can now use reliable existing code to build 
 the 433.92Mhz programs on. The downside is that this new code is not entirely standalone.
@@ -245,7 +245,7 @@ If may be possible that the learner prints out different values as shown here. T
 The only variable that isn't recorded, is the ID. Most of the times, the ID is stored in the remaining (sequence) of bits. In case of Klik Aan Klik Uit, the ID is stored
 in bits 0 till 25. Also notice that both the debugger and the learner are highly experimental.
 <hr>
-To use the controller, a confil file is needed. This looks like this:<br />
+To use the controller, a config file is needed. This looks like this:<br />
 _The type setting will automatically be added by the 433-daemon_
 ```
 {
