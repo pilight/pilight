@@ -57,7 +57,7 @@ void logprintf(int prio, const char *format_str, ...) {
 		return;
 
 	if(loglevel >= prio) {
-		if(lf == NULL) {
+		if(lf == NULL && filelog == 1) {
 			if((lf = fopen(logfile, "a+")) == NULL) {
 				logprintf(LOG_WARNING, "could not open logfile %s", logfile);
 			} else {
@@ -71,7 +71,7 @@ void logprintf(int prio, const char *format_str, ...) {
 		current=time(&current);
 		currents=ctime(&current);
 
-		if(filelog == 0 && lf != NULL && loglevel < LOG_DEBUG) {
+		if(filelog == 1 && lf != NULL && loglevel < LOG_DEBUG) {
 			fprintf(lf,"[%15.15s] %s: ",currents+4, progname);
 			va_start(ap, format_str);
 			if(prio==LOG_WARNING)

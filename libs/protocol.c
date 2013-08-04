@@ -29,7 +29,7 @@ void protocol_unregister(protocol_t *proto) {
 	int i;
 
 	for(i=0; i<protocols.nr; ++i) {
-		if(strcmp(protocols.listeners[i]->id,proto->id) == 0) {
+		if(strcmp(protocols.listeners[i]->id, proto->id) == 0) {
 		  protocols.nr--;
 		  protocols.listeners[i] = protocols.listeners[protocols.nr];
 		}
@@ -41,12 +41,19 @@ void protocol_register(protocol_t *proto) {
 	protocols.listeners[protocols.nr++] = proto;
 }
 
-void addDevice(protocol_t *proto, const char *id, const char *desc) {
+void protocol_add_device(protocol_t *proto, const char *id, const char *desc) {
 	struct devices_t *dnode = malloc(sizeof(struct devices_t));
-	strcpy(dnode->id,id);
-	strcpy(dnode->desc,desc);
+	strcpy(dnode->id, id);
+	strcpy(dnode->desc, desc);
 	dnode->next	= proto->devices;
 	proto->devices = dnode;
+}
+
+void protocol_add_conflict(protocol_t *proto, const char *id) {
+	struct conflicts_t *cnode = malloc(sizeof(struct conflicts_t));
+	strcpy(cnode->id, id);
+	cnode->next	= proto->conflicts;
+	proto->conflicts = cnode;
 }
 
 int providesDevice(protocol_t **proto, const char *id) {

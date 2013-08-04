@@ -159,7 +159,8 @@ void sartanoPrintHelp(void) {
 void sartanoInit(void) {
 
 	strcpy(sartano.id, "sartano");
-	addDevice(&sartano, "elro", "Elro Switches");
+	protocol_add_device(&sartano, "elro", "Elro Switches");
+	protocol_add_conflict(&sartano, "arctech_old");
 	sartano.type = SWITCH;
 	sartano.header = 4;
 	sartano.pulse = 4;

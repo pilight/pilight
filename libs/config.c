@@ -149,29 +149,32 @@ JsonNode *config_update(char *protoname, JsonNode *json) {
 							while(opt) {
 								/* Check if there are values that can be updated */
 								if(strcmp(sptr->name, opt->name) == 0 && opt->conftype == config_value && opt->argtype == has_value) {
-								
+
+									memset(ctmp, '\0', sizeof(ctmp));
 									if(json_find_string(code, opt->name, &stmp) == 0) {
 										strcpy(ctmp, stmp);
 									}
-
+									
 									if(json_find_number(code, opt->name, &itmp) == 0) {
 										sprintf(ctmp, "%d", itmp);
 									}
 
-									if(strcmp(sptr->values->value, ctmp) != 0) {
-										sptr->values->value = strdup(ctmp);
-									}
-									
-									if(json_find_string(rval, sptr->name, &stmp) != 0) {
-										json_append_member(rval, sptr->name, json_mkstring(sptr->values->value));
-										update = 1;
-									}
+									if(strlen(ctmp) > 0) {
+										if(strcmp(sptr->values->value, ctmp) != 0) {
+											sptr->values->value = strdup(ctmp);
+										}
 
-									if(have_device == 0) {
-										json_append_element(rloc, json_mkstring(dptr->id));
-										have_device = 1;
+										if(json_find_string(rval, sptr->name, &stmp) != 0) {
+											json_append_member(rval, sptr->name, json_mkstring(sptr->values->value));
+											update = 1;
+										}
+
+										if(have_device == 0) {
+											json_append_element(rloc, json_mkstring(dptr->id));
+											have_device = 1;
+										}
 									}
-									break;
+									//break;
 								}
 								opt = opt->next;
 							}
@@ -188,7 +191,7 @@ JsonNode *config_update(char *protoname, JsonNode *json) {
 
 								json_append_element(rloc, json_mkstring(dptr->id));
 								have_device = 1;
-								break;
+								//break;
 							}
 							sptr = sptr->next;
 						}
@@ -211,7 +214,7 @@ JsonNode *config_update(char *protoname, JsonNode *json) {
 	if(update == 1 && configfile != NULL) {
 		config_write(json_stringify(config2json(), "\t"));
 	}
-	json_delete(json);
+	//json_delete(json);
 	return rroot;
 }
 

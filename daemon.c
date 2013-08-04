@@ -293,10 +293,11 @@ void client_sender_parse_code(int i, JsonNode *json) {
 	send_code(json);
 }
 
-void control_device(struct conf_devices_t *dev, char *state) {
+void control_device(struct conf_devices_t *dev, char *state, char *value) {
 	struct conf_settings_t *sett = NULL;
 	struct conf_values_t *val = NULL;
 	struct options_t *opt = NULL;
+	char *vname = NULL;
 	char *fval = NULL;
 	char *cstate = NULL;
 	char *nstate = NULL;
@@ -321,6 +322,10 @@ void control_device(struct conf_devices_t *dev, char *state) {
 				if(strcmp(sett->name, "state") == 0 && strlen(state) == 0) {
 					cstate = strdup(sett->values->value);
 				}
+				if(opt->conftype == config_value && vname == NULL) {
+					vname = strdup(opt->name);
+				}
+				
 				/* Retrieve the possible device values */
 				if(strcmp(sett->name, "values") == 0) {
 					val = sett->values;
@@ -330,7 +335,7 @@ void control_device(struct conf_devices_t *dev, char *state) {
 			opt = opt->next;
 		}
 	}
-
+	
 	if(strlen(state) == 0) {
 		/* Get the next state value */
 		while(val) {
@@ -363,6 +368,9 @@ void control_device(struct conf_devices_t *dev, char *state) {
 			opt = opt->next;
 		}
 	}
+	if(vname != NULL && strlen(value) > 0) {
+		json_append_member(code, vname, json_mkstring(value));
+	}
 	/* Construct the right json object */
 	json_append_member(code, "protocol", json_mkstring(dev->protoname));
 	json_append_member(json, "message", json_mkstring("sender"));
@@ -393,6 +401,7 @@ void client_controller_parse_code(int i, JsonNode *json) {
 	char *location = NULL;
 	char *device = NULL;
 	char *state = NULL;
+	char *value = NULL;
 	char *tmp = NULL;
 	struct conf_locations_t *slocation;
 	struct conf_devices_t *sdevice;
@@ -423,8 +432,13 @@ void client_controller_parse_code(int i, JsonNode *json) {
 						} else {
 							state = strdup("\0");
 						}
+						if(json_find_string(code, "value", &tmp) == 0) {
+							value = strdup(tmp);
+						} else {
+							value = strdup("\0");
+						}						
 						/* Send the device code */
-						control_device(sdevice, state);
+						control_device(sdevice, state, value);
 					} else {
 						logprintf(LOG_ERR, "the device \"%s\" does not exist", device);
 					}
@@ -522,12 +536,11 @@ void receive_code(void) {
 	lirc_t data;
 	unsigned int x, y = 0, i;
 	protocol_t *protocol = malloc(sizeof(protocol_t));
-	JsonNode *message = NULL;
+	struct conflicts_t *tmp_conflicts = NULL;
 
 	while(1) {
 		/* Only initialize the hardware receive the data when there are receivers connected */
 		if(receivers > 0) {
-			message = json_mkobject();
 			data = hw.readdata(0);
 			duration = (data & PULSE_MASK);
 			/* A space is normally for 295 long, so filter spaces less then 200 */
@@ -571,11 +584,20 @@ void receive_code(void) {
 									logprintf(LOG_DEBUG, "called %s parseRaw()", protocol->id);
 
 									protocol->parseRaw();
-									if(protocol->message != NULL && json_validate(json_stringify(message, NULL)) == true) {
+									if(protocol->message != NULL && json_validate(json_stringify(protocol->message, NULL)) == true) {
+										tmp_conflicts = protocol->conflicts;
+										JsonNode *message = json_mkobject();
+										json_append_member(message, "code", protocol->message);
 										json_append_member(message, "origin", json_mkstring("receiver"));
 										json_append_member(message, "protocol", json_mkstring(protocol->id));
-										json_append_member(message, "code", protocol->message);
-										broadcast(protocol->id, message);
+										broadcast(protocol->id, message);													
+										while(tmp_conflicts != NULL) {
+											json_remove_from_parent(json_find_member(message, "protocol"));
+											json_append_member(message, "protocol", json_mkstring(tmp_conflicts->id));
+											broadcast(tmp_conflicts->id, message);
+											tmp_conflicts = tmp_conflicts->next;
+										}
+										json_delete(message);
 									}
 									continue;
 								}
@@ -604,11 +626,20 @@ void receive_code(void) {
 											logprintf(LOG_DEBUG, "called %s parseCode()", protocol->id);
 
 											protocol->parseCode();
-											if(protocol->message != NULL && json_validate(json_stringify(message, NULL)) == true) {
+											if(protocol->message != NULL && json_validate(json_stringify(protocol->message, NULL)) == true) {
+												tmp_conflicts = protocol->conflicts;
+												JsonNode *message = json_mkobject();
+												json_append_member(message, "code", protocol->message);
 												json_append_member(message, "origin", json_mkstring("receiver"));
 												json_append_member(message, "protocol", json_mkstring(protocol->id));
-												json_append_member(message, "code", protocol->message);
-												broadcast(protocol->id, message);
+												broadcast(protocol->id, message);													
+												while(tmp_conflicts != NULL) {
+													json_remove_from_parent(json_find_member(message, "protocol"));
+													json_append_member(message, "protocol", json_mkstring(tmp_conflicts->id));
+													broadcast(tmp_conflicts->id, message);
+													tmp_conflicts = tmp_conflicts->next;
+												}
+												json_delete(message);
 											}
 											continue;
 										}
@@ -628,11 +659,20 @@ void receive_code(void) {
 												logprintf(LOG_DEBUG, "called %s parseBinary()", protocol->id);
 
 												protocol->parseBinary();
-												if(protocol->message != NULL && json_validate(json_stringify(message, NULL)) == true) {
+												if(protocol->message != NULL && json_validate(json_stringify(protocol->message, NULL)) == true) {
+													tmp_conflicts = protocol->conflicts;
+													JsonNode *message = json_mkobject();
+													json_append_member(message, "code", protocol->message);
 													json_append_member(message, "origin", json_mkstring("receiver"));
 													json_append_member(message, "protocol", json_mkstring(protocol->id));
-													json_append_member(message, "code", protocol->message);
-													broadcast(protocol->id, message);
+													broadcast(protocol->id, message);													
+													while(tmp_conflicts != NULL) {
+														json_remove_from_parent(json_find_member(message, "protocol"));
+														json_append_member(message, "protocol", json_mkstring(tmp_conflicts->id));
+														broadcast(tmp_conflicts->id, message);
+														tmp_conflicts = tmp_conflicts->next;
+													}
+													json_delete(message);
 												}
 												continue;
 											}

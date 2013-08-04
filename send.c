@@ -213,7 +213,6 @@ int main(int argc, char **argv) {
 	}
 
 	if(protocol->createCode(code) == 0) {
-
 		if((sockfd = connect_to_server(strdup(server), port)) == -1) {
 			logprintf(LOG_ERR, "could not connect to 433-daemon");
 			goto close;

@@ -57,7 +57,7 @@ void rawPrintHelp(void) {
 void rawInit(void) {
 
 	strcpy(raw.id, "raw");
-	addDevice(&raw, "raw", "Raw codes");
+	protocol_add_device(&raw, "raw", "Raw codes");
 	raw.type = RAW;
 
 	addOption(&raw.options, 'c', "code", has_value, 0, NULL);

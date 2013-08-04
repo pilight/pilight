@@ -39,6 +39,13 @@ struct devices_t {
 	struct devices_t *next;
 };
 
+typedef struct conflicts_t conflicts_t;
+
+struct conflicts_t {
+	char id[25];
+	struct conflicts_t *next;
+};
+
 typedef struct protocol_t protocol_t;
 
 struct protocol_t {
@@ -61,6 +68,7 @@ struct protocol_t {
 	int binary[128]; // Max. the half the raw length
 
 	struct devices_t *devices;
+	struct conflicts_t *conflicts;
 
 	void (*parseRaw)(void);
 	void (*parseCode)(void);
@@ -78,7 +86,8 @@ protocols_t protocols;
 
 void protocol_register(protocol_t *proto);
 void protocol_unregister(protocol_t *proto);
-void addDevice(protocol_t *proto, const char *id, const char *desc);
+void protocol_add_device(protocol_t *proto, const char *id, const char *desc);
+void protocol_add_conflict(protocol_t *proto, const char *id);
 int providesDevice(protocol_t **proto, const char *id);
 
 #endif

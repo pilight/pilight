@@ -178,10 +178,11 @@ void arctechSwPrintHelp(void) {
 void arctechSwInit(void) {
 
 	strcpy(arctech_switch.id, "archtech_switches");
-	addDevice(&arctech_switch, "kaku_switch", "KlikAanKlikUit Switches");
-	addDevice(&arctech_switch, "dio_switch", "D-IO (Chacon) Switches");
-	addDevice(&arctech_switch, "nexa_switch", "Nexa Switches");
-	addDevice(&arctech_switch, "coco_switch", "CoCo Technologies Switches");
+	protocol_add_device(&arctech_switch, "kaku_switch", "KlikAanKlikUit Switches");
+	protocol_add_device(&arctech_switch, "dio_switch", "D-IO (Chacon) Switches");
+	protocol_add_device(&arctech_switch, "nexa_switch", "Nexa Switches");
+	protocol_add_device(&arctech_switch, "coco_switch", "CoCo Technologies Switches");
+	protocol_add_conflict(&arctech_switch, "archtech_dimmers");
 	arctech_switch.type = SWITCH;
 	arctech_switch.header = 9;
 	arctech_switch.pulse = 5;
