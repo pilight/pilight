@@ -56,7 +56,7 @@ void protocol_add_conflict(protocol_t *proto, const char *id) {
 	proto->conflicts = cnode;
 }
 
-int providesDevice(protocol_t **proto, const char *id) {
+int protocol_has_device(protocol_t **proto, const char *id) {
 	struct devices_t *temp = (*proto)->devices;
 
 	while(temp != NULL) {

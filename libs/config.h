@@ -114,6 +114,7 @@ JsonNode *config_update(char *protoname, JsonNode *message);
 int config_get_location(char *id, struct conf_locations_t **loc);
 int config_get_device(char *lid, char *sid, struct conf_devices_t **dev);
 int config_valid_state(char *lid, char *sid, char *state);
+int config_valid_value(char *lid, char *sid, char *name, char *value);
 JsonNode *config2json(void);
 void config_print(void);
 void config_save_setting(int i, JsonNode *jsetting, struct conf_settings_t *snode);

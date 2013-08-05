@@ -96,7 +96,7 @@ JsonNode *config_update(char *protoname, JsonNode *json) {
 			while(dptr) {
 				match1 = 0; match2 = 0;
 
-				if(providesDevice(&protocol, dptr->protoname) == 0) {
+				if(protocol_has_device(&protocol, dptr->protoname) == 0) {
 					opt = protocol->options;
 					/* Loop through all protocol options */
 					while(opt) {
@@ -154,7 +154,7 @@ JsonNode *config_update(char *protoname, JsonNode *json) {
 									if(json_find_string(code, opt->name, &stmp) == 0) {
 										strcpy(ctmp, stmp);
 									}
-									
+
 									if(json_find_number(code, opt->name, &itmp) == 0) {
 										sprintf(ctmp, "%d", itmp);
 									}
@@ -274,6 +274,37 @@ int config_valid_state(char *lid, char *sid, char *state) {
 	return 1;
 }
 
+int config_valid_value(char *lid, char *sid, char *name, char *value) {
+	struct conf_devices_t *dptr = NULL;
+	struct options_t *opt = NULL;
+#ifndef __FreeBSD__	
+	regex_t regex;
+	int reti;
+#endif
+	
+	if(config_get_device(lid, sid, &dptr) == 0) {
+		opt = dptr->protopt->options;
+		while(opt) {
+			if(opt->conftype == config_value && strcmp(name, opt->name) == 0) {
+#ifndef __FreeBSD__				
+				reti = regcomp(&regex, opt->mask, REG_EXTENDED);
+				if(reti) {
+					logprintf(LOG_ERR, "could not compile regex");
+					exit(EXIT_FAILURE);
+				}
+				reti = regexec(&regex, value, 0, NULL, 0);
+				if(reti == REG_NOMATCH || reti != 0) {
+					return 1;
+				}
+#endif
+				return 0;
+			}
+			opt = opt->next;
+		}
+	}
+	return 1;
+}
+
 /* http://stackoverflow.com/a/13654646 */
 void config_reverse_struct(struct conf_locations_t **loc) {
     if(!loc || !*loc)
@@ -345,19 +376,25 @@ JsonNode *config2json(void) {
 	struct JsonNode *location = json_mkobject();
 	struct JsonNode *device = json_mkobject();
 	struct JsonNode *setting = json_mkobject();
-
+	int lorder = 0;
+	int dorder = 0;
 	/* Make sure we preserve the order of the original file */
 	tmp_locations = conf_locations;
 
 	/* Show the parsed log file */
 	while(tmp_locations != NULL) {
+		lorder++;
 		location = json_mkobject();
 		json_append_member(location, "name", json_mkstring(tmp_locations->name));
+		json_append_member(location, "order", json_mknumber(lorder));
 
+		dorder = 0;
 		tmp_devices = tmp_locations->devices;
 		while(tmp_devices != NULL) {
+			dorder++;
 			device = json_mkobject();
 			json_append_member(device, "name", json_mkstring(tmp_devices->name));
+			json_append_member(device, "order", json_mknumber(dorder));
 			json_append_member(device, "protocol", json_mkstring(tmp_devices->protoname));
 			json_append_member(device, "type", json_mknumber(tmp_devices->protopt->type));
 
@@ -628,7 +665,7 @@ int config_parse_devices(JsonNode *jdevices, struct conf_devices_t *device) {
 
 	int i = 0, have_error = 0, valid_setting = 0, match = 0, has_state = 0;
 	/* Check for any duplicate fields */
-	int nrname = 0, nrprotocol = 0, nrstate = 0, nrvalues = 0;
+	int nrname = 0, nrprotocol = 0, nrstate = 0, nrvalues = 0, nrorder = 0;
 
 	jsettings = json_first_child(jdevices);
 	while(jsettings != NULL) {
@@ -637,6 +674,9 @@ int config_parse_devices(JsonNode *jdevices, struct conf_devices_t *device) {
 		if(strcmp(jsettings->key, "name") == 0) {
 			nrname++;
 		}
+		if(strcmp(jsettings->key, "order") == 0) {
+			nrorder++;
+		}		
 		if(strcmp(jsettings->key, "protocol") == 0) {
 			nrprotocol++;
 		}
@@ -646,7 +686,7 @@ int config_parse_devices(JsonNode *jdevices, struct conf_devices_t *device) {
 		if(strcmp(jsettings->key, "values") == 0) {
 			nrvalues++;
 		}
-		if(nrstate > 1 || nrvalues > 1 || nrprotocol > 1 || nrname > 1) {
+		if(nrstate > 1 || nrvalues > 1 || nrprotocol > 1 || nrname > 1 || nrorder > 1) {
 			logprintf(LOG_ERR, "settting #%d \"%s\" of \"%s\", duplicate", i, jsettings->key, device->id);
 			have_error = 1;
 			goto clear;
@@ -664,7 +704,8 @@ int config_parse_devices(JsonNode *jdevices, struct conf_devices_t *device) {
 		/* The protocol and name settings are already saved in the device struct */
 		} else if(!((strcmp(jsettings->key, "name") == 0 && jsettings->tag == JSON_STRING)
 			|| (strcmp(jsettings->key, "protocol") == 0 && jsettings->tag == JSON_STRING)
-			|| (strcmp(jsettings->key, "type") == 0 && jsettings->tag == JSON_NUMBER))) {
+			|| (strcmp(jsettings->key, "type") == 0 && jsettings->tag == JSON_NUMBER)
+			|| (strcmp(jsettings->key, "order") == 0 && jsettings->tag == JSON_NUMBER))) {
 
 			/* Check for duplicate settings */
 			tmp_settings = conf_settings;
@@ -781,6 +822,8 @@ int config_parse_locations(JsonNode *jlocations, struct conf_locations_t *locati
 	int i = 0, have_error = 0, match = 0;
 	/* Check for duplicate name setting */
 	int nrname = 0;
+	/* Check for duplicate order setting */
+	int nrorder = 0;
 
 	jdevices = json_first_child(jlocations);
 	while(jdevices != NULL) {
@@ -795,8 +838,17 @@ int config_parse_locations(JsonNode *jlocations, struct conf_locations_t *locati
 				goto clear;
 			}
 		}
+		/* Check for duplicate name setting */
+		if(strcmp(jdevices->key, "order") == 0) {
+			nrorder++;
+			if(nrorder > 1) {
+				logprintf(LOG_ERR, "device #%d \"%s\" of \"%s\", duplicate", i, jdevices->key, location->id);
+				have_error = 1;
+				goto clear;
+			}
+		}		
 		/* Check if all fields of the devices are of the right type */
-		if(!((strcmp(jdevices->key, "name") == 0 && jdevices->tag == JSON_STRING) || (jdevices->tag == JSON_OBJECT))) {
+		if(!((strcmp(jdevices->key, "name") == 0 && jdevices->tag == JSON_STRING) || (strcmp(jdevices->key, "order") == 0 && jdevices->tag == JSON_NUMBER) || (jdevices->tag == JSON_OBJECT))) {
 			logprintf(LOG_ERR, "device #%d \"%s\" of \"%s\", invalid field(s)", i, jdevices->key, location->id);
 			have_error = 1;
 			goto clear;
@@ -829,7 +881,7 @@ int config_parse_locations(JsonNode *jlocations, struct conf_locations_t *locati
 					protocol = protocols.listeners[i];
 
 					/* Check if the protocol exists */
-					if(providesDevice(&protocol, pname) == 0 && match == 0) {
+					if(protocol_has_device(&protocol, pname) == 0 && match == 0) {
 						match = 1;
 						break;
 					}

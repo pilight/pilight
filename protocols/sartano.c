@@ -175,8 +175,8 @@ void sartanoInit(void) {
 
 	addOption(&sartano.options, 't', "on", no_value, config_state, NULL);
 	addOption(&sartano.options, 'f', "off", no_value, config_state, NULL);
-	addOption(&sartano.options, 'u', "unit", has_value, config_id, "[0-9]");
-	addOption(&sartano.options, 'i', "id", has_value, config_id, "[0-9]");
+	addOption(&sartano.options, 'u', "unit", has_value, config_id, "^(3[12]?|[012][0-9]|[0-9]{1})$");
+	addOption(&sartano.options, 'i', "id", has_value, config_id, "^(3[12]?|[012][0-9]|[0-9]{1})$");
 
 	sartano.parseBinary=&sartanoParseBinary;
 	sartano.createCode=&sartanoCreateCode;

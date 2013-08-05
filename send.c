@@ -132,7 +132,7 @@ int main(int argc, char **argv) {
 			for(i=0; i<protocols.nr; ++i) {
 				protocol = protocols.listeners[i];
 				/* Check if the protocol exists */
-				if(providesDevice(&protocol, protobuffer) == 0 && match == 0 && protocol->createCode != NULL) {
+				if(protocol_has_device(&protocol, protobuffer) == 0 && match == 0 && protocol->createCode != NULL) {
 					match=1;
 					/* Check if the protocol requires specific CLI arguments
 					   and merge them with the main CLI arguments */

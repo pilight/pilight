@@ -57,21 +57,25 @@ int main(int argc, char **argv) {
 
 	int sockfd = 0;
     char *recvBuff = NULL;
-	char *message;
+	char *message = NULL;
+	char *pch = NULL;
 	steps_t steps = WELCOME;
 
 	char device[50];
 	char location[50];
 	char state[10] = {'\0'};
+	char values[255] = {'\0'};
 	struct conf_locations_t *slocation = NULL;
 	struct conf_devices_t *sdevice = NULL;
+	int has_values = 0;
 	
 	char server[16] = "127.0.0.1";
 	unsigned short port = PORT;
 	
 	JsonNode *json = json_mkobject();
-	JsonNode *config = json_mkobject();
-	JsonNode *code = json_mkobject();
+	JsonNode *jconfig = json_mkobject();
+	JsonNode *jcode = json_mkobject();
+	JsonNode *jvalues = json_mkobject();
 
 	/* Define all CLI arguments of this program */
 	addOption(&options, 'H', "help", no_value, 0, NULL);
@@ -79,6 +83,7 @@ int main(int argc, char **argv) {
 	addOption(&options, 'l', "location", has_value, 0, NULL);
 	addOption(&options, 'd', "device", has_value, 0,  NULL);
 	addOption(&options, 's', "state", has_value, 0,  NULL);
+	addOption(&options, 'v', "values", has_value, 0,  NULL);
 	addOption(&options, 'S', "server", has_value, 0, "^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]).){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$");
 	addOption(&options, 'P', "port", has_value, 0, "[0-9]{1,4}");
 
@@ -100,6 +105,8 @@ int main(int argc, char **argv) {
 				printf("\t -l --location=location\t\tthe location in which the device resides\n");
 				printf("\t -d --device=device\t\tthe device that you want to control\n");
 				printf("\t -s --state=state\t\tthe new state of the device\n");
+				printf("\t -v --values=values\t\tspecific comma separated values, e.g.:\n");
+				printf("\t\t\t\t\t-v dimlevel=10\n");
 				exit(EXIT_SUCCESS);
 			break;
 			case 'V':
@@ -115,6 +122,9 @@ int main(int argc, char **argv) {
 			case 's':
 				strcpy(state, optarg);
 			break;
+			case 'v':
+				strcpy(values, optarg);
+			break;			
 			case 'S':
 				strcpy(server, optarg);
 			break;
@@ -178,29 +188,61 @@ int main(int argc, char **argv) {
 				steps=CONFIG;
 			break;
 			case CONFIG:
-				if((config = json_find_member(json, "config")) != NULL) {
-					config_parse(config);
+				if((jconfig = json_find_member(json, "config")) != NULL) {
+					config_parse(jconfig);
 					if(config_get_location(location, &slocation) == 0) {
 						if(config_get_device(location, device, &sdevice) == 0) {
 							json_delete(json);
 
 							json = json_mkobject();
-							code = json_mkobject();
+							jcode = json_mkobject();
+							jvalues = json_mkobject();
 
-							json_append_member(code, "location", json_mkstring(location));
-							json_append_member(code, "device", json_mkstring(device));
+							json_append_member(jcode, "location", json_mkstring(location));
+							json_append_member(jcode, "device", json_mkstring(device));
 
+							pch = strtok(values, ",=");
+							while(pch != NULL) {
+								char *name = strdup(pch);
+								pch = strtok(NULL, ",=");
+								if(pch == NULL) {
+									break;
+								} else {
+									char *val = strdup(pch);
+									if(pch != NULL) {
+										if(config_valid_value(location, device, name, val) == 0) {
+											json_append_member(jvalues, name, json_mkstring(val));
+											has_values = 1;
+										} else {
+											logprintf(LOG_ERR, "\"%s\" is an invalid value for device \"%s\"", name, device);
+											goto close;
+										}
+									} else {
+										logprintf(LOG_ERR, "\"%s\" is an invalid value for device \"%s\"", name, device);
+										goto close;
+									}
+									pch = strtok(NULL, ",=");
+									if(pch == NULL) {
+										break;
+									}
+								}
+							}							
+							
 							if(strlen(state) > 0) {
 								if(config_valid_state(location, device, state) == 0) {
-									json_append_member(code, "state", json_mkstring(state));
+									json_append_member(jcode, "state", json_mkstring(state));
 								} else {
 									logprintf(LOG_ERR, "\"%s\" is an invalid state for device \"%s\"", state, device);
 									goto close;
 								}
 							}
 							
+							if(has_values == 1) {
+								json_append_member(jcode, "values", jvalues);
+							}
+							
 							json_append_member(json, "message", json_mkstring("send"));
-							json_append_member(json, "code", code);
+							json_append_member(json, "code", jcode);
 
 							socket_write(sockfd, json_stringify(json, NULL));
 						} else {

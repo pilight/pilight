@@ -234,7 +234,7 @@ void send_code(JsonNode *json) {
 		for(i=0; i<protocols.nr; ++i) {
 			protocol = protocols.listeners[i];
 			/* Check if the protocol exists */
-			if(providesDevice(&protocol, name) == 0 && match == 0) {
+			if(protocol_has_device(&protocol, name) == 0 && match == 0) {
 				match = 1;
 				break;
 			}
@@ -293,11 +293,10 @@ void client_sender_parse_code(int i, JsonNode *json) {
 	send_code(json);
 }
 
-void control_device(struct conf_devices_t *dev, char *state, char *value) {
+void control_device(struct conf_devices_t *dev, char *state, JsonNode *values) {
 	struct conf_settings_t *sett = NULL;
 	struct conf_values_t *val = NULL;
 	struct options_t *opt = NULL;
-	char *vname = NULL;
 	char *fval = NULL;
 	char *cstate = NULL;
 	char *nstate = NULL;
@@ -322,9 +321,6 @@ void control_device(struct conf_devices_t *dev, char *state, char *value) {
 				if(strcmp(sett->name, "state") == 0 && strlen(state) == 0) {
 					cstate = strdup(sett->values->value);
 				}
-				if(opt->conftype == config_value && vname == NULL) {
-					vname = strdup(opt->name);
-				}
 				
 				/* Retrieve the possible device values */
 				if(strcmp(sett->name, "values") == 0) {
@@ -334,8 +330,18 @@ void control_device(struct conf_devices_t *dev, char *state, char *value) {
 			}
 			opt = opt->next;
 		}
+		while(values) {
+			opt = dev->protopt->options;		
+			while(opt) {		
+				if(opt->conftype == config_value && strcmp(values->key, opt->name) == 0) {
+					json_append_member(code, values->key, json_mkstring(values->string_));
+				}
+				opt = opt->next;
+			}
+			values = values->next;
+		}			
 	}
-	
+
 	if(strlen(state) == 0) {
 		/* Get the next state value */
 		while(val) {
@@ -368,14 +374,12 @@ void control_device(struct conf_devices_t *dev, char *state, char *value) {
 			opt = opt->next;
 		}
 	}
-	if(vname != NULL && strlen(value) > 0) {
-		json_append_member(code, vname, json_mkstring(value));
-	}
+	
 	/* Construct the right json object */
 	json_append_member(code, "protocol", json_mkstring(dev->protoname));
 	json_append_member(json, "message", json_mkstring("sender"));
 	json_append_member(json, "code", code);
-
+	
 	send_code(json);
 	json_delete(code);
 	json_delete(json);
@@ -401,12 +405,12 @@ void client_controller_parse_code(int i, JsonNode *json) {
 	char *location = NULL;
 	char *device = NULL;
 	char *state = NULL;
-	char *value = NULL;
 	char *tmp = NULL;
 	struct conf_locations_t *slocation;
 	struct conf_devices_t *sdevice;
 	JsonNode *code = NULL;
-
+	JsonNode *values = NULL;
+	
 	if(json_find_string(json, "message", &message) == 0) {
 		/* Send the config file to the controller */
 		if(strcmp(message, "request config") == 0) {
@@ -432,13 +436,12 @@ void client_controller_parse_code(int i, JsonNode *json) {
 						} else {
 							state = strdup("\0");
 						}
-						if(json_find_string(code, "value", &tmp) == 0) {
-							value = strdup(tmp);
-						} else {
-							value = strdup("\0");
-						}						
-						/* Send the device code */
-						control_device(sdevice, state, value);
+						/* Send the device code */						
+						values = json_find_member(code, "values");
+						if(values != NULL) {
+							values = json_first_child(values);
+						}
+						control_device(sdevice, state, values);
 					} else {
 						logprintf(LOG_ERR, "the device \"%s\" does not exist", device);
 					}

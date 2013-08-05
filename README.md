@@ -246,13 +246,15 @@ The only variable that isn't recorded, is the ID. Most of the times, the ID is s
 in bits 0 till 25. Also notice that both the debugger and the learner are highly experimental.
 <hr>
 To use the controller, a config file is needed. This looks like this:<br />
-_The type setting will automatically be added by the 433-daemon_
+_The `type` and the `order` setting will automatically be added by the 433-daemon_
 ```
 {
 	"living": {
 		"name": "Living",
+		"order": 1,
 		"bookshelve": {
 			"name": "Book Shelve Light",
+			"order": 1,
 			"protocol": "kaku_switch",
 			"type": 1,
 			"id": 1234,
@@ -262,18 +264,22 @@ _The type setting will automatically be added by the 433-daemon_
 		},
 		"main": {
 			"name": "Main",
+			"order": 2,
 			"protocol": "kaku_dimmer",
 			"type": 1,
 			"id": 1234,
 			"unit": 1,
 			"state": 0,
-			"values": [ 0, 3, 5, 7, 9, 11, 13, 15 ]
+			"dimlevel": 0,
+			"values": [ "on", "off" ]
 		}
 	},
 	"bedroom": {
 		"name": "Bedroom",
+		"order": 2,
 		"main": {
 			"name": "Main",
+			"order": 1,
 			"protocol": "elro",
 			"type": 1,
 			"id": 5678,
@@ -283,9 +289,11 @@ _The type setting will automatically be added by the 433-daemon_
 		}
 	},
 	"garden": {
-		"name": "Garden",	
+		"name": "Garden",
+		"order": 3,
 		"weather": {
 			"name": "Weather Station",
+			"order": 1,
 			"protocol": "alecto",
 			"type": 3,
 			"id": 100,
@@ -300,7 +308,15 @@ To control a device, you can know easily use the `433-control`:
 ```
 root@pi:~# ./433-control -l living -d bookshelve
 ```
-The config file will automatically be updated with the status of the configured devices. So while sending, but also while receiving.
+The config file will automatically be updated with the status of the configured devices. So while sending, but also while receiving.<br />
+To force the device in a specific state:
+```
+root@pi:~# ./433-control -l living -d bookshelve -s on
+```
+To also simultaniously change the value a device such as a dimmer you can use:
+```
+root@pi:~# ./433-control -l living -d main -s on -v dimlevel=1
+```
 <hr>
 ## NODES
 One major feature of this program is that the daemon can run in `client` mode. This means the daemon will connect to another daemon that is considered the `server`.
