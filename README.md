@@ -104,6 +104,7 @@ root@pi:~# ./433-receiver
 	"code": {
 		"id": 100,
 		"unit": 15,
+		"state": on,		
 		"dimlevel": 15
 	}
 }
@@ -269,8 +270,8 @@ _The `type` and the `order` setting will automatically be added by the 433-daemo
 			"type": 1,
 			"id": 1234,
 			"unit": 1,
-			"state": 0,
-			"dimlevel": 0,
+			"state": "on",
+			"dimlevel", 0,
 			"values": [ "on", "off" ]
 		}
 	},
