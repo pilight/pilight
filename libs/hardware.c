@@ -18,12 +18,24 @@
 	<http://www.gnu.org/licenses/>
 */
 
+#include <stdlib.h>
+#include "settings.h"
+
+#ifdef USE_LIRC
+
 #include "../lirc/lirc.h"
 #include "../lirc/lircd.h"
 #include "../lirc/hardware.h"
 #include "../lirc/transmit.h"
 #include "../lirc/hw-types.h"
 #include "../lirc/hw_default.h"
+
+#else
+
+#include "gpio.h"
+#include "irq.h"
+
+#endif
 
 #include "protocol.h"
 #include "protocols/arctech_switch.h"
@@ -35,9 +47,10 @@
 
 #include "hardware.h"
 
-
+#ifdef USE_LIRC
 /* The frequency on which the lirc module needs to send 433.92Mhz*/
 int freq = FREQ433; // Khz
+#endif
 /* Is the module initialized */
 int initialized = 0;
 /* Is the right frequency set */
@@ -54,8 +67,8 @@ void hw_init(void) {
 
 /* Initialize the hardware module lirc_rpi */
 int module_init(void) {
+#ifdef USE_LIRC
 	if(initialized == 0) {
-
 		if(!hw.init_func()) {
 			exit(EXIT_FAILURE);
 		}
@@ -72,12 +85,22 @@ int module_init(void) {
 		}
 		logprintf(LOG_DEBUG, "initialized lirc_rpi module");
 		initialized = 1;
+	
 	}
+#else
+	if(gpio_request(GPIO_IN_PIN) == 0) {
+		/* Attach an interrupt to the requested pin */
+		irq_attach(GPIO_IN_PIN, CHANGE);
+	} else {
+		return EXIT_FAILURE;		
+	}
+#endif
 	return EXIT_SUCCESS;
 }
 
 /* Release the hardware module lirc_rpi */
 int module_deinit(void) {
+#ifdef USE_LIRC
 	if(initialized == 1) {
 		freq = FREQ38;
 		if(hw.ioctl_func(LIRC_SET_SEND_CARRIER, &freq) == -1) {
@@ -92,5 +115,6 @@ int module_deinit(void) {
 		logprintf(LOG_DEBUG, "deinitialized lirc_rpi module");
 		initialized	= 0;
 	}
+#endif
 	return EXIT_SUCCESS;
 }

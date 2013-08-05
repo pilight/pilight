@@ -23,7 +23,32 @@
 
 #include "protocol.h"
 
-//#define PULSE_LENGTH 	165 	// wiringPi pulse length
+/* Uncomment this line if you want to use the this
+ * program with the lirc_rpi module.
+ * This is adviced when running the daemon without
+ * the low-pass filter.
+ *
+ * #define USE_LIRC
+ *
+ */
+
+#ifndef USE_LIRC
+
+	#define GPIO_IN_PIN			1
+	#define GPIO_OUT_PIN		0
+
+	#define POLL_TIMEOUT		1000
+	#define RDBUF_LEN			5
+	#define GPIO_FN_MAXLEN		32
+
+#else
+
+	#define DEFAULT_LIRC_SOCKET	"/dev/lirc0"
+	#define FREQ433				433920
+	#define FREQ38				38000
+
+#endif
+
 #define PULSE_LENGTH		295
 
 #define PORT 				5000
@@ -35,12 +60,10 @@
 #define CONFIG_FILE			"/etc/433-daemon/config.json"
 #define LOG_FILE			"/var/log/433-daemon.log"
 #define SETTINGS_FILE		"/etc/433-daemon/settings.json"
-#define DEFAULT_LIRC_SOCKET "/dev/lirc0"
 
-#define SEND_REPEATS	10
-#define RECEIVE_REPEATS	1
-#define FREQ433			433920
-#define FREQ38			38000
+#define SEND_REPEATS		10
+#define RECEIVE_REPEATS		1
+
 
 typedef union value_t {
 	int ivalue;

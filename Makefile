@@ -1,5 +1,6 @@
 GCC = $(CROSS_COMPILE)gcc
 SYS := $(shell $(GCC) -dumpmachine)
+USE_LIRC := `grep -c '^#define USE_LIRC' libs/settings.h`
 ifneq (, $(findstring x86_64, $(SYS)))
 	OSFLAGS = -Ofast -fPIC -march=native -mtune=native -mfpmath=sse -Wconversion -Wunreachable-code -Wstrict-prototypes 
 endif
@@ -17,12 +18,21 @@ endif
 ifneq (, $(findstring amd64, $(SYS)))
 	OSFLAGS = -O3 -fPIC -march=native -mtune=native -mfpmath=sse -Wno-conversion
 endif
-CFLAGS = -ffast-math $(OSFLAGS) -Wfloat-equal -Wshadow -Wpointer-arith -Wcast-align -Wstrict-overflow=5 -Wwrite-strings -Waggregate-return -Wcast-qual -Wswitch-default -Wswitch-enum -Wformat=2 -g -Wall -I. -I.. -Ilibs/ -Iprotocols/ -Ilirc/ -I/usr/include/ -L/usr/lib/arm-linux-gnueabihf/
-SUBDIRS = libs protocols lirc
-SRC = $(wildcard *.c)
-INCLUDES = $(wildcard protocols/*.o) $(wildcard lirc/*.o) $(wildcard libs/*.h) $(wildcard libs/*.o)
-PROGAMS = $(patsubst %.c,433-%,$(SRC))
-LIBS = libs/libs.o protocols/protocols.o lirc/lirc.o
+CFLAGS = -ffast-math $(OSFLAGS) -Wfloat-equal -Wshadow -Wpointer-arith -Wcast-align -Wstrict-overflow=5 -Wwrite-strings -Waggregate-return -Wcast-qual -Wswitch-default -Wswitch-enum -Wformat=2 -g -Wall -I. -I.. -Ilibs/ -Iprotocols/ -Ilirc/ -I/usr/include/ -L/usr/lib/arm-linux-gnueabihf/ -pthread -lm
+
+ifneq (, $(findstring 1, $(USE_LIRC)))
+	SUBDIRS = libs protocols lirc
+	SRC = $(wildcard *.c)
+	INCLUDES = $(wildcard protocols/*.o) $(wildcard lirc/*.o) $(wildcard libs/*.h) $(wildcard libs/*.o)
+	PROGAMS = $(patsubst %.c,433-%,$(SRC))
+	LIBS = libs/libs.o protocols/protocols.o lirc/lirc.o
+else
+	SUBDIRS = libs protocols
+	SRC = $(wildcard *.c)
+	INCLUDES = $(wildcard protocols/*.o) $(wildcard libs/*.o)
+	PROGAMS = $(patsubst %.c,433-%,$(SRC))
+	LIBS = libs/libs.o protocols/protocols.o
+endif
 
 .PHONY: subdirs $(SUBDIRS)
 
@@ -43,7 +53,7 @@ all: $(LIBS) $(PROGAMS)
 	# cp lib433.a /usr/local/lib/
 
 433-daemon: daemon.c $(INCLUDES) $(LIBS)
-	$(GCC) $(CFLAGS) -pthread -lm -o $@ $(patsubst 433-%,%.c,$@) $(LIBS)
+	$(GCC) $(CFLAGS) -o $@ $(patsubst 433-%,%.c,$@) $(LIBS)
 
 433-send: send.c $(INCLUDES) $(LIBS)
 	$(GCC) $(CFLAGS) -o $@ $(patsubst 433-%,%.c,$@) $(LIBS)
@@ -52,10 +62,10 @@ all: $(LIBS) $(PROGAMS)
 	$(GCC) $(CFLAGS) -o $@ $(patsubst 433-%,%.c,$@) $(LIBS)
 
 433-debug: debug.c $(INCLUDES) $(LIBS)
-	$(GCC) $(CFLAGS) -lm -o $@ $(patsubst 433-%,%.c,$@) $(LIBS)
+	$(GCC) $(CFLAGS) -o $@ $(patsubst 433-%,%.c,$@) $(LIBS)
 
 433-learn: learn.c $(INCLUDES) $(LIBS)
-	$(GCC) $(CFLAGS) -lm -o $@ $(patsubst 433-%,%.c,$@) $(LIBS)
+	$(GCC) $(CFLAGS) -o $@ $(patsubst 433-%,%.c,$@) $(LIBS)
 
 433-control: control.c $(INCLUDES) $(LIBS)
 	$(GCC) $(CFLAGS) -o $@ $(patsubst 433-%,%.c,$@) $(LIBS)

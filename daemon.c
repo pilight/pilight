@@ -41,12 +41,23 @@
 #include "socket.h"
 #include "json.h"
 
+#ifdef USE_LIRC
+
 #include "lirc.h"
 #include "lirc/lircd.h"
 #include "lirc/hardware.h"
 #include "lirc/transmit.h"
 #include "lirc/hw-types.h"
 #include "lirc/hw_default.h"
+
+#else
+
+#include <wiringPi.h>
+#include "gpio.h"
+#include "irq.h"
+
+#endif
+
 
 #include "hardware.h"
 
@@ -221,7 +232,9 @@ void send_code(JsonNode *json) {
 	/* Hold the final protocol struct */
 	protocol_t *protocol = malloc(sizeof(protocol_t));
 	/* The code that is send to the hardware wrapper */
+#ifdef USE_LIRC
 	struct ir_ncode code;
+#endif
 
 	JsonNode *jcode = json_mkobject();
 	JsonNode *message = json_mkobject();
@@ -252,6 +265,7 @@ void send_code(JsonNode *json) {
 				}
 
 				sending = 1;
+#ifdef USE_LIRC				
 				/* Create a single code with all repeats included */
 				int longCode[(protocol->rawLength*send_repeat)+1];
 				for(i=0;i<send_repeat;i++) {
@@ -274,7 +288,23 @@ void send_code(JsonNode *json) {
 				} else {
 					logprintf(LOG_ERR, "failed to send code");
 				}
+#else
 
+				for(i=0;i<send_repeat;i++) {
+					for(x=0;x<protocol->rawLength;x+=2) {
+						digitalWrite(GPIO_OUT_PIN, 1);
+						usleep((__useconds_t)protocol->raw[x]);
+						digitalWrite(GPIO_OUT_PIN, 0);
+						usleep((__useconds_t)protocol->raw[x+1]);
+					}
+				}
+				logprintf(LOG_DEBUG, "successfully send %s code", protocol->id);
+				if(logged == 0) {
+					logged = 1;
+					/* Write the message to all receivers */
+					broadcast(protocol->id, message);
+				}				
+#endif
 				sending = 0;
 			}
 		}
@@ -379,7 +409,7 @@ void control_device(struct conf_devices_t *dev, char *state, JsonNode *values) {
 	json_append_member(code, "protocol", json_mkstring(dev->protoname));
 	json_append_member(json, "message", json_mkstring("sender"));
 	json_append_member(json, "code", code);
-	
+
 	send_code(json);
 	json_delete(code);
 	json_delete(json);
@@ -536,16 +566,42 @@ void socket_client_disconnected(int i) {
 }
 
 void receive_code(void) {
+#ifdef USE_LIRC
 	lirc_t data;
-	unsigned int x, y = 0, i;
+#else
+	int newDuration;
+#endif
+
+	unsigned int x = 0, y = 0, i = 0;
 	protocol_t *protocol = malloc(sizeof(protocol_t));
 	struct conflicts_t *tmp_conflicts = NULL;
+	
 
 	while(1) {
 		/* Only initialize the hardware receive the data when there are receivers connected */
 		if(receivers > 0) {
+#ifdef USE_LIRC
 			data = hw.readdata(0);
 			duration = (data & PULSE_MASK);
+#else
+
+			unsigned short a = 0;
+
+			if((newDuration = irq_read()) == 1) {
+				continue;
+			}
+
+			for(a=0;a<2;a++) {
+				if(a==0) {
+					duration = PULSE_LENGTH;
+				} else {
+					duration = newDuration;
+					if(duration < 750) {
+						duration = PULSE_LENGTH;
+					}
+				}
+#endif
+
 			/* A space is normally for 295 long, so filter spaces less then 200 */
 			if(sending == 0 && duration > 200) {
 				for(i=0; i<protocols.nr; ++i) {
@@ -581,6 +637,7 @@ void receive_code(void) {
 						if(duration > ((protocol->footer*PULSE_LENGTH)-((protocol->footer*PULSE_LENGTH)*protocol->multiplier))
 						   && duration < ((protocol->footer*PULSE_LENGTH)+((protocol->footer*PULSE_LENGTH)*protocol->multiplier))) {
 							//logprintf(LOG_DEBUG, "catched %s header and footer", protocol->id);
+
 							/* Check if the code matches the raw length */
 							if((protocol->bit == protocol->rawLength)) {
 								if(protocol->parseRaw != NULL) {
@@ -689,6 +746,10 @@ void receive_code(void) {
 					}
 				}
 			}
+
+#ifndef USE_LIRC
+			}
+#endif
 			//json_delete(message);
 		} else {
 			sleep(1);
@@ -811,9 +872,13 @@ void deamonize(void) {
 /* Garbage collector of main program */
 int main_gc(void) {
 
+#ifdef USE_LIRC
 	if((int)strlen(hw.device) > 0) {
+#endif	
 		module_deinit();
+#ifdef USE_LIRC		
 	}
+#endif
 	if(running == 0) {
 		/* Remove the stale pid file */
 		if(access(pid_file, F_OK) != -1) {
@@ -855,7 +920,9 @@ int main(int argc , char **argv) {
 	addOption(&options, 'D', "nodaemon", no_value, 0, NULL);
 	addOption(&options, 'S', "settings", has_value, 0, NULL);
 
+#ifdef USE_LIRC
 	hw_choose_driver(NULL);
+#endif
 	while (1) {
 		int c;
 		c = getOptions(&options, argc, argv, 1);
@@ -924,9 +991,11 @@ int main(int argc , char **argv) {
 	}
 	close(f);	
 
+#ifdef USE_LIRC
 	if(settings_find_string("socket", &hw.device) != 0) {
 		hw.device = strdup(DEFAULT_LIRC_SOCKET);
 	}
+#endif
 
 	if(settings_find_number("log-level", &itmp) == 0) {
 		itmp += 2;
@@ -951,11 +1020,13 @@ int main(int argc , char **argv) {
 
 	settings_find_string("process-file", &process_file);
 
+#ifdef USE_LIRC
 	if(strcmp(hw.device, "/var/lirc/lircd") == 0) {
 		logprintf(LOG_ERR, "refusing to connect to lircd socket");
 		return EXIT_FAILURE;
 	}
-
+#endif
+	
 	if(settings_find_number("send-repeats", &send_repeat) != 0) {
 		send_repeat = SEND_REPEATS;
 	}
@@ -969,10 +1040,20 @@ int main(int argc , char **argv) {
 		logprintf(LOG_NOTICE, "already active (pid %d)", atoi(buffer));
 		return EXIT_FAILURE;
 	}
-	
+
+#ifdef USE_LIRC
 	if((int)strlen(hw.device) > 0) {
+#else
+		if(wiringPiSetup() == -1)
+			return EXIT_FAILURE;
+
+		pinMode(GPIO_OUT_PIN, OUTPUT);
+		gpio_register(GPIO_OUT_PIN);
+#endif
 		module_init();
+#ifdef USE_LIRC
 	}
+#endif
 
 	/* Initialize peripheral modules */
 	hw_init();
