@@ -20,7 +20,7 @@ ifneq (, $(findstring amd64, $(SYS)))
 endif
 CFLAGS = -ffast-math $(OSFLAGS) -Wfloat-equal -Wshadow -Wpointer-arith -Wcast-align -Wstrict-overflow=5 -Wwrite-strings -Waggregate-return -Wcast-qual -Wswitch-default -Wswitch-enum -Wformat=2 -g -Wall -I. -I.. -Ilibs/ -Iprotocols/ -Ilirc/ -I/usr/include/ -L/usr/lib/arm-linux-gnueabihf/ -pthread -lm
 
-ifneq (, $(findstring 1, $(USE_LIRC)))
+ifeq (, $(findstring 1, $(USE_LIRC)))
 	SUBDIRS = libs protocols lirc
 	SRC = $(wildcard *.c)
 	INCLUDES = $(wildcard protocols/*.o) $(wildcard lirc/*.o) $(wildcard libs/*.h) $(wildcard libs/*.o)

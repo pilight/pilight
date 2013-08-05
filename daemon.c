@@ -1049,6 +1049,7 @@ int main(int argc , char **argv) {
 
 		pinMode(GPIO_OUT_PIN, OUTPUT);
 		gpio_register(GPIO_OUT_PIN);
+
 #endif
 		module_init();
 #ifdef USE_LIRC
