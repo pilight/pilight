@@ -153,6 +153,7 @@ The supported protocols are:
          Cogex                          Cogex Switches
          kaku_old                       Old KlikAanKlikUit Switches
          elro                           Elro Switches
+         relay                          Control connected relay's         
          raw                            Raw codes
 root@pi:~# ./433-send -p kaku_switch -h
 Usage: 433-send -p kaku_switch [options]
@@ -278,7 +279,16 @@ _The `type` and the `order` setting will automatically be added by the 433-daemo
 			"state": "on",
 			"dimlevel", 0,
 			"values": [ "on", "off" ]
-		}
+		},
+		"television": {
+			"name": "Television",
+			"order": 3,
+			"protocol": "relay",
+			"type": 1,
+			"gpio": 3,
+			"state": "off",
+			"values": [ "on", "off" ]
+		} 
 	},
 	"bedroom": {
 		"name": "Bedroom",
