@@ -163,9 +163,7 @@ void arctechOldInit(void) {
 	arctech_old.header = 4;
 	arctech_old.pulse = 4;
 	arctech_old.footer = 45;
-	arctech_old.multiplier = 0.3;
-	arctech_old.rawLength = 50;
-	arctech_old.binaryLength = 12;
+	arctech_old.length = 48;
 	arctech_old.message = malloc(sizeof(JsonNode));
 
 	arctech_old.bit = 0;

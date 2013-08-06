@@ -18,32 +18,14 @@
 	<http://www.gnu.org/licenses/>
 */
 
-#ifndef _GPIO_H_
-#define _GPIO_H_
+#ifndef _PROTOCOL_RELAY_H_
+#define _PROTOCOL_RELAY_H_
 
-#define HIGH	1
-#define LOW		0
+protocol_t relay;
 
-#ifndef INPUT
-#define INPUT	0
-#endif
-
-#ifndef OUTPUT
-#define OUTPUT	1
-#endif
-
-typedef struct {
-	int nr;
-	int pins[27];
-} pins_t;
-
-pins_t pins;
-
-void gpio_register(int gpio_pin);
-void gpio_deregister(int gpio_pin);
-int gpio_request(int gpio_pin);
-int gpio_pinmode(int gpio_pin, int mode);
-int gpio_free(void);
-int gpio_wiringPi2BCM(int gpio_pin);
+void relayInit(void);
+int relayCreateCode(JsonNode *code);
+void relayCreateMessage(int gpio, int state);
+void relayPrintHelp(void);
 
 #endif

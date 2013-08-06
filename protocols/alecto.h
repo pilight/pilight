@@ -18,8 +18,8 @@
 	<http://www.gnu.org/licenses/>
 */
 
-#ifndef PROTOCOL_ALECTO_H_
-#define PROTOCOL_ALECTO_H_
+#ifndef _PROTOCOL_ALECTO_H_
+#define _PROTOCOL_ALECTO_H_
 
 protocol_t alecto;
 

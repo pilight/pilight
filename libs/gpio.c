@@ -62,7 +62,7 @@ int gpio_request(int gpio_pin) {
 	/* Frees GPIO pins on exit */
 	gc_attach(gpio_free);
 	
-	sprintf(command, "echo %d > /sys/class/gpio/export", gpio_wiringPi2BCM(gpio_pin));
+	sprintf(command, "echo %d > /sys/class/gpio/export 2>/dev/null", gpio_wiringPi2BCM(gpio_pin));
 	system(command);
 
 	sprintf(folder, "/sys/class/gpio/gpio%d", gpio_wiringPi2BCM(gpio_pin));
@@ -76,17 +76,18 @@ int gpio_request(int gpio_pin) {
 }
 
 /* Set the pinmode for a certain GPIO pin */
-int gpio_pinmode(int gpio_pin, char mode[6]) {
+int gpio_pinmode(int gpio_pin, int mode) {
 	char command[50], folder[32];
 	int err;
 	struct stat s;
 
 	sprintf(folder, "/sys/class/gpio/gpio%d", gpio_wiringPi2BCM(gpio_pin));
 	if((err = stat(folder, &s)) != -1 && S_ISDIR(s.st_mode)) {
-		if(strcmp(mode,"input"))
-			sprintf(command, "echo in > /sys/class/gpio/gpio%d/direction", gpio_wiringPi2BCM(gpio_pin));
-		else
-			sprintf(command, "echo out > /sys/class/gpio/gpio%d/direction", gpio_wiringPi2BCM(gpio_pin));
+		if(mode == INPUT) {
+			sprintf(command, "echo in > /sys/class/gpio/gpio%d/direction 2>/dev/null", gpio_wiringPi2BCM(gpio_pin));
+		} else {
+			sprintf(command, "echo out > /sys/class/gpio/gpio%d/direction 2>/dev/null", gpio_wiringPi2BCM(gpio_pin));
+		}
 	} else {
 		logprintf(LOG_ERR, "can't claim gpio pin %d", gpio_pin);
 		return EXIT_FAILURE;
@@ -103,7 +104,7 @@ int gpio_free(void) {
 
 	int i;
 	for(i=0;i<pins.nr;i++) {
-		sprintf(command, "echo %d > /sys/class/gpio/unexport", gpio_wiringPi2BCM(pins.pins[i]));
+		sprintf(command, "echo %d > /sys/class/gpio/unexport 2>/dev/null", gpio_wiringPi2BCM(pins.pins[i]));
 		system(command);
 		sprintf(folder, "/sys/class/gpio/gpio%d", gpio_wiringPi2BCM(pins.pins[i]));
 		if((err = stat(folder, &s)) != -1 && S_ISDIR(s.st_mode)) {

@@ -18,8 +18,8 @@
 	<http://www.gnu.org/licenses/>
 */
 
-#ifndef PROTOCOL_ARCTECH_SWITCH_H_
-#define PROTOCOL_ARCTECH_SWITCH_H_
+#ifndef _PROTOCOL_ARCTECH_SWITCH_H_
+#define _PROTOCOL_ARCTECH_SWITCH_H_
 
 protocol_t arctech_switch;
 

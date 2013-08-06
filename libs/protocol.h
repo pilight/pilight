@@ -54,9 +54,7 @@ struct protocol_t {
 	int header;
 	int pulse;
 	int footer;
-	double multiplier;
-	int rawLength;
-	int binaryLength;
+	int length;
 	struct options_t *options;
 	JsonNode *message;
 

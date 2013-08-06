@@ -63,6 +63,7 @@
 
 #define SEND_REPEATS		10
 #define RECEIVE_REPEATS		1
+#define MULTIPLIER			0.3
 
 
 typedef union value_t {

@@ -18,8 +18,8 @@
 	<http://www.gnu.org/licenses/>
 */
 
-#ifndef PROTOCOL_SARTANO_H_
-#define PROTOCOL_SARTANO_H_
+#ifndef _PROTOCOL_SARTANO_H_
+#define _PROTOCOL_SARTANO_H_
 
 protocol_t sartano;
 

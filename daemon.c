@@ -267,14 +267,14 @@ void send_code(JsonNode *json) {
 				sending = 1;
 #ifdef USE_LIRC				
 				/* Create a single code with all repeats included */
-				int longCode[(protocol->rawLength*send_repeat)+1];
+				int longCode[(protocol->length*send_repeat)+1];
 				for(i=0;i<send_repeat;i++) {
-					for(x=0;x<protocol->rawLength;x++) {
-						longCode[x+(protocol->rawLength*i)]=protocol->raw[x];
+					for(x=0;x<protocol->length;x++) {
+						longCode[x+(protocol->length*i)]=protocol->raw[x];
 					}
 				}
 				/* Send this single big code at once */
-				code.length = (x+(protocol->rawLength*(i-1)))+1;
+				code.length = (x+(protocol->length*(i-1)))+1;
 				code.signals = longCode;
 
 				/* Send the code, if we succeeded, inform the receiver */
@@ -289,15 +289,16 @@ void send_code(JsonNode *json) {
 					logprintf(LOG_ERR, "failed to send code");
 				}
 #else
-
+				piHiPri(99);
 				for(i=0;i<send_repeat;i++) {
-					for(x=0;x<protocol->rawLength;x+=2) {
+					for(x=0;x<protocol->length;x+=2) {
 						digitalWrite(GPIO_OUT_PIN, 1);
 						usleep((__useconds_t)protocol->raw[x]);
 						digitalWrite(GPIO_OUT_PIN, 0);
 						usleep((__useconds_t)protocol->raw[x+1]);
 					}
 				}
+				piHiPri(0);
 				logprintf(LOG_DEBUG, "successfully send %s code", protocol->id);
 				if(logged == 0) {
 					logged = 1;
@@ -607,10 +608,10 @@ void receive_code(void) {
 				for(i=0; i<protocols.nr; ++i) {
 					protocol = protocols.listeners[i];
 					/* Lots of checks if the protocol can actually receive anything */
-					if((((protocol->parseRaw != NULL || protocol->parseCode != NULL) && protocol->rawLength > 0)
-					    || (protocol->parseBinary != NULL && protocol->binaryLength > 0))
+					if((((protocol->parseRaw != NULL || protocol->parseCode != NULL) && protocol->length > 0)
+					    || protocol->parseBinary != NULL)
 						&& protocol->header > 0 && protocol->footer > 0
-						&& protocol->pulse > 0 && protocol->multiplier > 0) {
+						&& protocol->pulse > 0) {
 						/* If we are recording, keep recording until the footer has been matched */
 						if(protocol->recording == 1) {
 							if(protocol->bit < 255) {
@@ -622,24 +623,24 @@ void receive_code(void) {
 						}
 
 						/* Try to catch the header of the code */
-						if(duration > (PULSE_LENGTH-(PULSE_LENGTH*protocol->multiplier))
-						   && duration < (PULSE_LENGTH+(PULSE_LENGTH*protocol->multiplier))
+						if(duration > (PULSE_LENGTH-(PULSE_LENGTH*MULTIPLIER))
+						   && duration < (PULSE_LENGTH+(PULSE_LENGTH*MULTIPLIER))
 						   && protocol->bit == 0) {
 							protocol->raw[protocol->bit++] = duration;
-						} else if(duration > ((protocol->header*PULSE_LENGTH)-((protocol->header*PULSE_LENGTH)*protocol->multiplier))
-						   && duration < ((protocol->header*PULSE_LENGTH)+((protocol->header*PULSE_LENGTH)*protocol->multiplier))
+						} else if(duration > ((protocol->header*PULSE_LENGTH)-((protocol->header*PULSE_LENGTH)*MULTIPLIER))
+						   && duration < ((protocol->header*PULSE_LENGTH)+((protocol->header*PULSE_LENGTH)*MULTIPLIER))
 						   && protocol->bit == 1) {
 							protocol->raw[protocol->bit++] = duration;
 							protocol->recording = 1;
 						}
 
 						/* Try to catch the footer of the code */
-						if(duration > ((protocol->footer*PULSE_LENGTH)-((protocol->footer*PULSE_LENGTH)*protocol->multiplier))
-						   && duration < ((protocol->footer*PULSE_LENGTH)+((protocol->footer*PULSE_LENGTH)*protocol->multiplier))) {
+						if(duration > ((protocol->footer*PULSE_LENGTH)-((protocol->footer*PULSE_LENGTH)*MULTIPLIER))
+						   && duration < ((protocol->footer*PULSE_LENGTH)+((protocol->footer*PULSE_LENGTH)*MULTIPLIER))) {
 							//logprintf(LOG_DEBUG, "catched %s header and footer", protocol->id);
 
 							/* Check if the code matches the raw length */
-							if((protocol->bit == protocol->rawLength)) {
+							if((protocol->bit == protocol->length)) {
 								if(protocol->parseRaw != NULL) {
 									logprintf(LOG_DEBUG, "called %s parseRaw()", protocol->id);
 
@@ -715,7 +716,7 @@ void receive_code(void) {
 											}
 
 											/* Check if the binary matches the binary length */
-											if((protocol->binaryLength > 0) && ((x/4) == protocol->binaryLength)) {
+											if((x/4) == (protocol->length/4)) {
 												logprintf(LOG_DEBUG, "called %s parseBinary()", protocol->id);
 
 												protocol->parseBinary();

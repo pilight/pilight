@@ -18,8 +18,8 @@
 	<http://www.gnu.org/licenses/>
 */
 
-#ifndef PROTOCOL_RAW_H_
-#define PROTOCOL_RAW_H_
+#ifndef _PROTOCOL_RAW_H_
+#define _PROTOCOL_RAW_H_
 
 protocol_t raw;
 

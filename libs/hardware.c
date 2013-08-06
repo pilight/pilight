@@ -44,6 +44,7 @@
 #include "protocols/sartano.h"
 #include "protocols/alecto.h"
 #include "protocols/raw.h"
+#include "protocols/relay.h"
 
 #include "hardware.h"
 
@@ -61,6 +62,7 @@ void hw_init(void) {
 	arctechDimInit();
 	arctechOldInit();
 	//sartanoInit();
+	relayInit();
 	rawInit();
 	alectoInit();
 }

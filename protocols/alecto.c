@@ -36,7 +36,7 @@ void alectoParseCode(void) {
 	int battery;
 	int id;
 
-	for(i=1;i<alecto.rawLength-1;i+=2) {
+	for(i=1;i<alecto.length-1;i+=2) {
 		alecto.binary[x++] = alecto.code[i];
 	}
 
@@ -76,8 +76,7 @@ void alectoInit(void) {
 	alecto.header = 14;
 	alecto.pulse = 14;
 	alecto.footer = 30;
-	alecto.multiplier = 0.3;
-	alecto.rawLength = 74;
+	alecto.length = 74;
 	alecto.message = malloc(sizeof(JsonNode));
 
 	alecto.bit = 0;

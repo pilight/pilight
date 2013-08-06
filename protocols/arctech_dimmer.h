@@ -18,8 +18,8 @@
 	<http://www.gnu.org/licenses/>
 */
 
-#ifndef PROTOCOL_ARCTECH_DIMMER_H_
-#define PROTOCOL_ARCTECH_DIMMER_H_
+#ifndef _PROTOCOL_ARCTECH_DIMMER_H_
+#define _PROTOCOL_ARCTECH_DIMMER_H_
 
 protocol_t arctech_dimmer;
 
