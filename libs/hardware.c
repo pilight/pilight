@@ -94,7 +94,7 @@ int module_init(void) {
 		/* Attach an interrupt to the requested pin */
 		irq_attach(GPIO_IN_PIN, CHANGE);
 	} else {
-		return EXIT_FAILURE;		
+		exit(EXIT_FAILURE);
 	}
 #endif
 	return EXIT_SUCCESS;
