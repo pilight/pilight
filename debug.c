@@ -163,6 +163,13 @@ End of the original (but stripped) code of mode2
 	} else {
 		return EXIT_FAILURE;		
 	}
+	
+	printf("Please make sure the daemon is not running when using this debugger.\n\n");
+	printf("Now press and hold one of the button on your remote or wait until\n");
+	printf("another device such as a weather station has send new codes\n");
+	printf("It is possible that the debugger needs to be restarted when it does.\n");
+	printf("not show anything. This is because it's then following a wrong lead.\n");
+
 #endif
 
 	while(loop) {

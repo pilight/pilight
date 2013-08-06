@@ -44,6 +44,7 @@ void alectoParseCode(void) {
 		a-=binToDec(alecto.binary, i, i+3);
 	}
 
+	alecto.message = NULL;
 	if(binToDec(alecto.binary, 32, 35) == (a&0xf)) {
 		id = binToDec(alecto.binary, 0, 7);
 		if(alecto.binary[11] == 1)

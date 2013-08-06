@@ -61,9 +61,11 @@ int relayCreateCode(JsonNode *code) {
 	} else if(gpio > 7 || gpio < 0) {
 		logprintf(LOG_ERR, "relay: invalid gpio range");
 		return EXIT_FAILURE;
+#ifndef USE_LIRC
 	} else if(gpio == GPIO_IN_PIN || gpio == GPIO_OUT_PIN) {
 		logprintf(LOG_ERR, "relay: gpio's already in use");
 		return EXIT_FAILURE;
+#endif
 	} else {
 		if(strstr(progname, "daemon") != 0) {
 			sprintf(folder, "/sys/class/gpio/gpio%d 2>/dev/null", gpio_wiringPi2BCM(gpio));

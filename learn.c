@@ -221,6 +221,7 @@ int main(int argc, char **argv) {
 	} else {
 		return EXIT_FAILURE;		
 	}
+	printf("Please make sure the daemon is not running when using this debugger.\n\n");
 #endif
 
 	while(loop) {
