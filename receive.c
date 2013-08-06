@@ -45,7 +45,8 @@ int main(int argc, char **argv) {
 
 	progname = malloc((10*sizeof(char))+1);
 	progname = strdup("433-receive");
-
+	struct options_t *options = malloc(sizeof(struct options_t));
+	
 	JsonNode *json = json_mkobject();
 
 	char server[16] = "127.0.0.1";
@@ -71,14 +72,14 @@ int main(int argc, char **argv) {
 		if(c == -1)
 			break;
 		switch(c) {
-			case 'h':
+			case 'H':
 				printf("\t -H --help\t\t\tdisplay this message\n");
 				printf("\t -V --version\t\t\tdisplay version\n");				
 				printf("\t -S --server=%s\t\tconnect to server address\n", server);
 				printf("\t -P --port=%d\t\t\tconnect to server port\n", port);				
 				exit(EXIT_SUCCESS);
 			break;
-			case 'v':
+			case 'V':
 				printf("%s %s\n", progname, "1.0");
 				exit(EXIT_SUCCESS);
 			break;

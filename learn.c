@@ -107,7 +107,8 @@ int main(int argc, char **argv) {
 
 	progname = malloc((10*sizeof(char))+1);
 	progname = strdup("433-learn");
-
+	struct options_t *options = malloc(sizeof(struct options_t));
+	
 #ifdef USE_LIRC
 	lirc_t data;
 	char *socket = strdup("/dev/lirc0");
@@ -174,7 +175,7 @@ int main(int argc, char **argv) {
 		if (c == -1)
 			break;
 		switch (c) {
-			case 'h':
+			case 'H':
 				printf("Usage: %s [options]\n", progname);
 				printf("\t -H --help\t\tdisplay usage summary\n");
 				printf("\t -V --version\t\tdisplay version\n");
@@ -183,7 +184,7 @@ int main(int argc, char **argv) {
 #endif
 				return (EXIT_SUCCESS);
 			break;
-			case 'v':
+			case 'V':
 				printf("%s %s\n", progname, "1.0");
 				return (EXIT_SUCCESS);
 			break;

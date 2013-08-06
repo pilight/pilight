@@ -41,9 +41,6 @@ struct options_t {
 	struct options_t *next;
 };
 
-options_t *options;
-options_t *optnode;
-
 void setOptionValById(struct options_t **options, int id, const char *val);
 int getOptionValById(struct options_t **options, int id, char **out);
 int getOptionArgTypeById(struct options_t **options, int id, int *out);
@@ -53,6 +50,6 @@ int getOptionValByName(struct options_t **options, char *name, char **out);
 int getOptionMaskById(struct options_t **options, int id, char **out);
 int getOptions(struct options_t **options, int argc, char **argv, int error_check);
 void addOption(struct options_t **options, int id, const char *name, int argtype, int conftype, const char *mask);
-void mergeOptions(struct options_t **a, struct options_t **b);
+struct options_t *mergeOptions(struct options_t **a, struct options_t **b);
 
 #endif

@@ -909,6 +909,7 @@ int main(int argc , char **argv) {
 	settingsfile = strdup(SETTINGS_FILE);
 	
 	struct socket_callback_t socket_callback;
+	struct options_t *options = malloc(sizeof(options_t));
 	pthread_t pth1, pth2;
 	char buffer[BUFFER_SIZE];
 	int f;

@@ -54,7 +54,7 @@ int main(int argc, char **argv) {
 	progname = malloc((10*sizeof(char))+1);
 	progname = strdup("433-send");
 
-	options = malloc(255*sizeof(struct options_t));
+	struct options_t *options = malloc(sizeof(struct options_t));
 
 	int sockfd = 0;
     char *recvBuff = NULL;
@@ -97,6 +97,7 @@ int main(int argc, char **argv) {
 	while (1) {
 		int c;
 		c = getOptions(&options, argc, argv, 0);
+
 		if (c == -1)
 			break;
 		switch(c) {
@@ -122,7 +123,7 @@ int main(int argc, char **argv) {
 			break;
 			default:;
 		}
-	}
+	}	
 
 	/* Check if a protocol was given */
 	if(strlen(protobuffer) > 0 && strcmp(protobuffer,"-V") != 0) {
@@ -137,7 +138,7 @@ int main(int argc, char **argv) {
 					/* Check if the protocol requires specific CLI arguments
 					   and merge them with the main CLI arguments */
 					if(protocol->options != NULL && help == 0) {
-						mergeOptions(&options, &protocol->options);
+						options = mergeOptions(&options, &protocol->options);
 					} else if(help == 1) {
 						protohelp=1;
 					}
@@ -150,7 +151,7 @@ int main(int argc, char **argv) {
 			}
 		}
 	}
-
+	
 	/* Display help or version information */
 	if(version == 1) {
 		printf("%s %s\n", progname, "1.0");
@@ -202,12 +203,14 @@ int main(int argc, char **argv) {
 
 	int itmp;
 	/* Check if we got sufficient arguments from this protocol */
-	while(options != NULL && strlen(options->name) > 0) {
-		/* Only send the CLI arguments that belong to this protocol, the protocol name
-		   and those that are called by the user */
-		if((getOptionIdByName(&protocol->options, options->name, &itmp) == 0 || strcmp(options->name, "protocol") == 0)
-		   && strlen(options->value) > 0) {
-			json_append_member(code, options->name, json_mkstring(options->value));
+	while(options != NULL) {
+		if(strlen(options->name) > 0) {
+			/* Only send the CLI arguments that belong to this protocol, the protocol name
+			and those that are called by the user */
+			if((getOptionIdByName(&protocol->options, options->name, &itmp) == 0 || strcmp(options->name, "protocol") == 0)
+			&& strlen(options->value) > 0) {
+				json_append_member(code, options->name, json_mkstring(options->value));
+			}
 		}
 		options = options->next;
 	}

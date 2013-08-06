@@ -342,7 +342,10 @@ void addOption(struct options_t **opt, int id, const char *name, int argtype, in
 	} else if(getOptionIdByName(opt, strdup(name), &itmp) == 0) {
 		logprintf(LOG_ERR, "duplicate option name: %s", name);
 	} else {
-		optnode = malloc(sizeof(struct options_t));
+		if(*opt == NULL) {
+			*opt = malloc(sizeof(struct options_t));
+		}
+		struct options_t *optnode = malloc(sizeof(struct options_t));
 		optnode->id = id;
 		strcpy(optnode->name, name);
 		memset(optnode->value, '\0', sizeof(optnode->value));
@@ -358,10 +361,11 @@ void addOption(struct options_t **opt, int id, const char *name, int argtype, in
 }
 
 /* Merge two options structs */
-void mergeOptions(struct options_t **a, struct options_t **b) {
+struct options_t *mergeOptions(struct options_t **a, struct options_t **b) {
 	struct options_t *temp = *b;
+	struct options_t *c = malloc(sizeof(struct options_t));
 	while(temp != NULL && temp->name != NULL) {
-		optnode = malloc(sizeof(struct options_t));
+		struct options_t *optnode = malloc(sizeof(struct options_t));
 		optnode->id = temp->id;
 		strcpy(optnode->name, temp->name);
 		if(temp->value == NULL)
@@ -374,8 +378,28 @@ void mergeOptions(struct options_t **a, struct options_t **b) {
 			strcpy(optnode->mask, temp->mask);
 		optnode->argtype = temp->argtype;
 		optnode->conftype = temp->conftype;
-		optnode->next = *a;
-		*a = optnode;
+		optnode->next = c;
+		c = optnode;
 		temp = temp->next;
 	}
+	temp = *a;
+	while(temp != NULL && temp->name != NULL) {
+		struct options_t *optnode = malloc(sizeof(struct options_t));
+		optnode->id = temp->id;
+		strcpy(optnode->name, temp->name);
+		if(temp->value == NULL)
+			memset(optnode->value, '\0', sizeof(optnode->value));
+		else
+			strcpy(optnode->value, temp->value);
+		if(temp->mask == NULL)
+			memset(optnode->value, '\0', sizeof(optnode->mask));
+		else
+			strcpy(optnode->mask, temp->mask);
+		optnode->argtype = temp->argtype;
+		optnode->conftype = temp->conftype;
+		optnode->next = c;
+		c = optnode;
+		temp = temp->next;
+	}
+	return c;
 }

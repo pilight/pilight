@@ -70,6 +70,8 @@ int main(int argc, char **argv) {
 	progname = malloc((10*sizeof(char))+1);
 	progname = strdup("433-debug");
 
+	struct options_t *options = malloc(sizeof(struct options_t));	
+	
 #ifdef USE_LIRC
 	lirc_t data;
 	char *socket = strdup("/dev/lirc0");

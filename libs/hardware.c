@@ -61,7 +61,7 @@ void hw_init(void) {
 	arctechSwInit();
 	arctechDimInit();
 	arctechOldInit();
-	//sartanoInit();
+	sartanoInit();
 	relayInit();
 	rawInit();
 	alectoInit();

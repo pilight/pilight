@@ -53,7 +53,7 @@ int main(int argc, char **argv) {
 	progname = malloc((10*sizeof(char))+1);
 	progname = strdup("433-control");
 
-	options = malloc(255*sizeof(struct options_t));
+	struct options_t *options = malloc(sizeof(struct options_t));
 
 	int sockfd = 0;
     char *recvBuff = NULL;
