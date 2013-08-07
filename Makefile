@@ -24,13 +24,13 @@ ifeq (, $(findstring 1, $(USE_LIRC)))
 	SUBDIRS = libs protocols lirc
 	SRC = $(wildcard *.c)
 	INCLUDES = $(wildcard protocols/*.o) $(wildcard lirc/*.o) $(wildcard libs/*.h) $(wildcard libs/*.o)
-	PROGAMS = $(patsubst %.c,433-%,$(SRC))
+	PROGAMS = $(patsubst %.c,pilight-%,$(SRC))
 	LIBS = libs/libs.o protocols/protocols.o lirc/lirc.o
 else
 	SUBDIRS = libs protocols
 	SRC = $(wildcard *.c)
 	INCLUDES = $(wildcard protocols/*.o) $(wildcard libs/*.o)
-	PROGAMS = $(patsubst %.c,433-%,$(SRC))
+	PROGAMS = $(patsubst %.c,pilight-%,$(SRC))
 	LIBS = libs/libs.o protocols/protocols.o
 endif
 
@@ -41,37 +41,51 @@ subdirs: $(SUBDIRS) all
 $(SUBDIRS):
 	$(MAKE) -C $@
 
-all: $(LIBS) $(PROGAMS) 
+all: $(LIBS) libpilight.so.1 libpilight.a $(PROGAMS) 
 
-# lib433.so.1:
-	# $(GCC) $(LIBS) -shared -o lib433.so.1 -lpthread -lm
-	# cp lib433.so.1 /usr/local/lib/
-	# ldconfig
+libpilight.so.1:
+	$(GCC) $(LIBS) -shared -o libpilight.so.1 -lpthread -lm
 	
-# lib433.a:
-	# ar -rsc lib433.a $(LIBS)
-	# cp lib433.a /usr/local/lib/
+libpilight.a:
+	$(CROSS_COMPILE)ar -rsc libpilight.a $(LIBS)
 
-433-daemon: daemon.c $(INCLUDES) $(LIBS)
-	$(GCC) $(CFLAGS) -o $@ $(patsubst 433-%,%.c,$@) $(LIBS)
+pilight-daemon: daemon.c $(INCLUDES) $(LIBS)
+	$(GCC) $(CFLAGS) -o $@ $(patsubst pilight-%,%.c,$@) libpilight.so.1
 
-433-send: send.c $(INCLUDES) $(LIBS)
-	$(GCC) $(CFLAGS) -o $@ $(patsubst 433-%,%.c,$@) $(LIBS)
+pilight-send: send.c $(INCLUDES) $(LIBS)
+	$(GCC) $(CFLAGS) -o $@ $(patsubst pilight-%,%.c,$@) libpilight.so.1
 
-433-receive: receive.c $(INCLUDES) $(LIBS)
-	$(GCC) $(CFLAGS) -o $@ $(patsubst 433-%,%.c,$@) $(LIBS)
+pilight-receive: receive.c $(INCLUDES) $(LIBS)
+	$(GCC) $(CFLAGS) -o $@ $(patsubst pilight-%,%.c,$@) libpilight.so.1
 
-433-debug: debug.c $(INCLUDES) $(LIBS)
-	$(GCC) $(CFLAGS) -o $@ $(patsubst 433-%,%.c,$@) $(LIBS)
+pilight-debug: debug.c $(INCLUDES) $(LIBS)
+	$(GCC) $(CFLAGS) -o $@ $(patsubst pilight-%,%.c,$@) libpilight.so.1
 
-433-learn: learn.c $(INCLUDES) $(LIBS)
-	$(GCC) $(CFLAGS) -o $@ $(patsubst 433-%,%.c,$@) $(LIBS)
+pilight-learn: learn.c $(INCLUDES) $(LIBS)
+	$(GCC) $(CFLAGS) -o $@ $(patsubst pilight-%,%.c,$@) libpilight.so.1
 
-433-control: control.c $(INCLUDES) $(LIBS)
-	$(GCC) $(CFLAGS) -o $@ $(patsubst 433-%,%.c,$@) $(LIBS)
+pilight-control: control.c $(INCLUDES) $(LIBS)
+	$(GCC) $(CFLAGS) -o $@ $(patsubst pilight-%,%.c,$@) libpilight.so.1
 
+install:
+	install -m 0755 -d /usr/local/lib
+	install -m 0755 -d /usr/local/sbin
+	install -m 0755 -d /etc/pilight
+	install -m 0655 pilight-daemon /usr/local/sbin/
+	install -m 0655 pilight-send /usr/local/sbin/
+	install -m 0655 pilight-receive /usr/local/sbin/
+	install -m 0655 pilight-control /usr/local/sbin/
+	install -m 0655 pilight-debug /usr/local/sbin/
+	install -m 0655 pilight-learn /usr/local/sbin/
+	install -m 0655 libpilight.so.1 /usr/local/lib/
+	install -m 0644 settings.json-default /etc/pilight/
+	mv /etc/pilight/settings.json-default /etc/pilight/settings.json
+	ln -sf /usr/local/lib/libpilight.so.1 /usr/local/lib/libpilight.so
+	ldconfig
+	
+	
 clean:
-	rm 433-* >/dev/null 2>&1 || true
+	rm pilight-* >/dev/null 2>&1 || true
 	rm *.so* || true
 	rm *.a* || true
 	for dir in $(SUBDIRS); do \

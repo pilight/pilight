@@ -1,0 +1,11 @@
+{
+	"port": 5000,
+	"mode": "server",
+	"log-level": 4,
+	"pid-file": "/var/run/pilight.pid",
+	"config-file": "",
+	"log-file": "/var/log/pilight.log",
+	"process-file": "",
+	"send-repeats": 10,
+	"socket": "/dev/lirc0"
+}

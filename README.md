@@ -47,20 +47,20 @@ lrwxrwxrwx 1 root root      21 jan  1  1970 /dev/lircd -> ../var/run/lirc/lircd
 ```
 If you don't use the lirc kernel module, then make sure you have set the `GPIO_IN_PIN` and `GPIO_OUT_PIN` in the `libs/settings.h` to the right values.
 <br />
-The core of this program is the 433-daemon. This will run itself in the background. You can then use the 433-receiver or the 433-sender
-to connect to the 433-daemon to receive or send codes. The 433-daemon also has the possibility to automatically invoke another script.
-So you can use the 433-daemon to log incoming codes.<br />
+The core of this program is the pilight-daemon. This will run itself in the background. You can then use the pilight-receiver or the pilight-sender
+to connect to the pilight-daemon to receive or send codes. The pilight-daemon also has the possibility to automatically invoke another script.
+So you can use the pilight-daemon to log incoming codes.<br />
 To alter the default behavior of the daemon, a settings file can be created.<br />
-The default location to where this file needs to be stores is `/etc/433-daemon/settings.json`.<br />
+The default location to where this file needs to be stores is `/etc/pilight/settings.json`.<br />
 All options and its default values are show below:<br />
 ```
 {
 	"port": 5000,
 	"mode": "daemon",
 	"log-level": 4,
-	"pid-file": "/var/log/daemon/433-daemon.pid",
-	"config-file": "/etc/433-daemon/config.json",
-	"log-file": "/var/log/433-daemon.log",
+	"pid-file": "/var/log/daemon/pilight.pid",
+	"config-file": "/etc/pilight/config.json",
+	"log-file": "/var/log/pilight.log",
 	"process-file": "",
 	"send-repeats": 10,
 	"receive-repeats": 1,
@@ -79,14 +79,14 @@ __send-repeats__: How many times should a code be send<br />
 __receive-repeats__: How many times should a code be recieved before marked valid<br />
 __socket__: what socket should we read from<br />
 <br />
-__process file__: This script can be anything you like. The 433-daemon will pass the same JSON object to this script as the receiver, but without any formatting. You can than parse the JSON object for further processing.
+__process file__: This script can be anything you like. The pilight-daemon will pass the same JSON object to this script as the receiver, but without any formatting. You can than parse the JSON object for further processing.
 <hr>
 The output of the receiver will be as follow:
 ```
-root@pi:~# ./433-send -p kaku_switch -i 100 -u 15 -f
+root@pi:~# ./pilight-send -p kaku_switch -i 100 -u 15 -f
 ```
 ```
-root@pi:~# ./433-receiver
+root@pi:~# ./pilight-receiver
 {
 	"origin": "sender",
 	"protocol": "arctech_switches",
@@ -99,10 +99,10 @@ root@pi:~# ./433-receiver
 
 ```
 ```
-root@pi:~# ./433-send -p kaku_dimmer -i 100 -u 15 -d 15
+root@pi:~# ./pilight-send -p kaku_dimmer -i 100 -u 15 -d 15
 ```
 ```
-root@pi:~# ./433-receiver
+root@pi:~# ./pilight-receiver
 {
 	"origin": "sender",
 	"protocol": "arctech_dimmers",
@@ -115,10 +115,10 @@ root@pi:~# ./433-receiver
 }
 ```
 ```
-root@pi:~# ./433-send -p elro -i 10 -u 15 -t
+root@pi:~# ./pilight-send -p elro -i 10 -u 15 -t
 ```
 ```
-root@pi:~# ./433-receiver
+root@pi:~# ./pilight-receiver
 {
 	"origin": "sender",
 	"protocol": "sartano",
@@ -130,14 +130,14 @@ root@pi:~# ./433-receiver
 }
 ```
 <hr>
-The sender will 433-send will send codes to the 433-daemon:
+The sender will pilight-send will send codes to the pilight-daemon:
 ```
-root@pi:~# ./433-send -p kaku_switch -i 1 -u 1 -t
+root@pi:~# ./pilight-send -p kaku_switch -i 1 -u 1 -t
 ```
 The command line arguments depend on the protocol used e.g.:
 ```
-root@pi:~# ./433-send -H
-Usage: 433-send -p protocol [options]
+root@pi:~# ./pilight-send -H
+Usage: pilight-send -p protocol [options]
          -H --help                      display this message
          -V --version                   display version
          -S --server=127.0.0.1          connect to server address
@@ -155,8 +155,8 @@ The supported protocols are:
          elro                           Elro Switches
          relay                          Control connected relay's         
          raw                            Raw codes
-root@pi:~# ./433-send -p kaku_switch -h
-Usage: 433-send -p kaku_switch [options]
+root@pi:~# ./pilight-send -p kaku_switch -h
+Usage: pilight-send -p kaku_switch [options]
          -H --help                      display this message
          -V --version                   display version
          -S --server=127.0.0.1          connect to server address
@@ -172,9 +172,9 @@ Usage: 433-send -p kaku_switch [options]
 ```
 Examples are:
 ```
-root@pi:~# ./433-send -p kaku_switch -t 1 -u 1 -t
-root@pi:~# ./433-send -p kaku_dimmer -t 1 -u 1 -d 15
-root@pi:~# ./433-send -p elro -t 1 -u 1 -t
+root@pi:~# ./pilight-send -p kaku_switch -t 1 -u 1 -t
+root@pi:~# ./pilight-send -p kaku_dimmer -t 1 -u 1 -d 15
+root@pi:~# ./pilight-send -p elro -t 1 -u 1 -t
 ```
 <hr>
 To control devices that are not yet supported one can use the `raw` protocol. This protocol allows the sending of raw codes.
@@ -182,7 +182,7 @@ To figure out what the raw codes of your devices are you can run the debugger fi
 for you to press a button for the device you want to control. Once you held the button long enough to control the device 
 using the raw codes.
 ```
-root@pi:~# ./433-debug
+root@pi:~# ./pilight-debug
 header:      	10
 pulse:          5
 footer:         38
@@ -195,14 +195,14 @@ Binary code:
 ```
 You can now use the raw code to control your device:
 ```
-root@pi:~# ./433-send -p raw -c "286 2825 286 201 289 1337 287 209 283 1351 287 204 289 1339 288 207 288 1341 289 207 281 1343 284 205 292 1346 282 212 283 1348 282 213 279 1352 282 211 281 1349 282 210 283 1347 284 211 288 1348 281 211 285 1353 278 213 280 1351 280 232 282 1356 279 213 285 1351 276 215 285 1348 277 216 278 1359 278 216 279 1353 272 214 283 1358 276 216 276 1351 278 214 284 1357 275 217 276 1353 270 217 277 1353 272 220 277 1351 275 220 272 1356 275 1353 273 224 277 236 282 1355 272 1353 273 233 273 222 268 1358 270 219 277 1361 274 218 280 1358 272 1355 271 243 251 11302"
+root@pi:~# ./pilight-send -p raw -c "286 2825 286 201 289 1337 287 209 283 1351 287 204 289 1339 288 207 288 1341 289 207 281 1343 284 205 292 1346 282 212 283 1348 282 213 279 1352 282 211 281 1349 282 210 283 1347 284 211 288 1348 281 211 285 1353 278 213 280 1351 280 232 282 1356 279 213 285 1351 276 215 285 1348 277 216 278 1359 278 216 279 1353 272 214 283 1358 276 216 276 1351 278 214 284 1357 275 217 276 1353 270 217 277 1353 272 220 277 1351 275 220 272 1356 275 1353 273 224 277 236 282 1355 272 1353 273 233 273 222 268 1358 270 219 277 1361 274 218 280 1358 272 1355 271 243 251 11302"
 ```
 <hr>
 The learner does the same as the debugger but is more extensive. It will try to figure out as much as possible about your protocol.
 At this moment only switches are supported, so not dimmers or others devices. Just follow the steps of the learner and when you
 where successfull, it will print the following information (in case of Klik Aan Klik Uit):
 ```
-root@pi:~# ./433-learn
+root@pi:~# ./pilight-learn
 1. Please send and hold one of the OFF buttons. Done.
 
 2. Please send and hold the ON button for the same device
@@ -253,7 +253,7 @@ The only variable that isn't recorded, is the ID. Most of the times, the ID is s
 in bits 0 till 25. Also notice that both the debugger and the learner are highly experimental.
 <hr>
 To use the controller, a config file is needed. This looks like this:<br />
-_The `type` and the `order` setting will automatically be added by the 433-daemon_
+_The `type` and the `order` setting will automatically be added by the pilight-daemon_
 ```
 {
 	"living": {
@@ -320,18 +320,18 @@ _The `type` and the `order` setting will automatically be added by the 433-daemo
 	}		
 }
 ```
-To control a device, you can know easily use the `433-control`:
+To control a device, you can know easily use the `pilight-control`:
 ```
-root@pi:~# ./433-control -l living -d bookshelve
+root@pi:~# ./pilight-control -l living -d bookshelve
 ```
 The config file will automatically be updated with the status of the configured devices. So while sending, but also while receiving.<br />
 To force the device in a specific state:
 ```
-root@pi:~# ./433-control -l living -d bookshelve -s on
+root@pi:~# ./pilight-control -l living -d bookshelve -s on
 ```
 To also simultaniously change the value a device such as a dimmer you can use:
 ```
-root@pi:~# ./433-control -l living -d main -s on -v dimlevel=1
+root@pi:~# ./pilight-control -l living -d main -s on -v dimlevel=1
 ```
 <hr>
 ## NODES

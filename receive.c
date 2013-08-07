@@ -1,21 +1,20 @@
 /*
 	Copyright (C) 2013 CurlyMo
 
-	This file is part of the Raspberry Pi 433.92Mhz transceiver.
+	This file is part of the pilight.
 
-    Raspberry Pi 433.92Mhz transceiver is free software: you can redistribute
-	it and/or modify it under the terms of the GNU General Public License as
-	published by the Free Software Foundation, either version 3 of the License,
-	or (at your option) any later version.
+    pilight is free software: you can redistribute it and/or modify it under the 
+	terms of the GNU General Public License as published by the Free Software 
+	Foundation, either version 3 of the License, or (at your option) any later 
+	version.
 
-    Raspberry Pi 433.92Mhz transceiver is distributed in the hope that it will
-	be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
+    pilight transceiver is distributed in the hope that it will be useful, but 
+	WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY 
+	or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License 
+	for more details.
 
     You should have received a copy of the GNU General Public License
-    along with Raspberry Pi 433.92Mhz transceiver. If not, see
-	<http://www.gnu.org/licenses/>
+    along with pilight. If not, see	<http://www.gnu.org/licenses/>
 */
 
 #include <stdio.h>
@@ -43,8 +42,8 @@ int main(int argc, char **argv) {
 
 	log_level_set(LOG_NOTICE);
 
-	progname = malloc((10*sizeof(char))+1);
-	progname = strdup("433-receive");
+	progname = malloc((14*sizeof(char))+1);
+	progname = strdup("pilight-receive");
 	struct options_t *options = malloc(sizeof(struct options_t));
 	
 	JsonNode *json = json_mkobject();
@@ -97,7 +96,7 @@ int main(int argc, char **argv) {
 	}	
 	
     if((sockfd = socket_connect(strdup(server), port)) == -1) {
-		logprintf(LOG_ERR, "could not connect to 433-daemon");
+		logprintf(LOG_ERR, "could not connect to pilight-daemon");
 		return EXIT_FAILURE;
 	}
 
