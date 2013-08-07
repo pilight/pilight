@@ -68,7 +68,10 @@ int irq_attach(int gpio_pin, int mode) {
 		return EXIT_FAILURE;
 	}
 	
-	system(command);
+	if(system(command) == -1) {
+		logprintf(LOG_ERR, "can't claim gpio pin %d", gpio_pin);
+		return EXIT_FAILURE;
+	}
 	irq_reset(&fd, rdbuf);
 
 	memset(fn, 0x00, GPIO_FN_MAXLEN);
@@ -76,6 +79,7 @@ int irq_attach(int gpio_pin, int mode) {
 	
 	fd=open(fn, O_RDONLY);
 	if(fd < 0) {
+		logprintf(LOG_ERR, "can't open gpio pin %d", gpio_pin);
 		return EXIT_FAILURE;
 	}	
 	

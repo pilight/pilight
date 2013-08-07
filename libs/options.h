@@ -46,7 +46,6 @@ int options_get_value(struct options_t **options, int id, char **out);
 int options_get_argtype(struct options_t **options, int id, int *out);
 int options_get_name(struct options_t **options, int id, char **out);
 int options_get_id(struct options_t **options, char *name, int *out);
-// int getOptionValByName(struct options_t **options, char *name, char **out);
 int options_get_mask(struct options_t **options, int id, char **out);
 int options_parse(struct options_t **options, int argc, char **argv, int error_check);
 void options_add(struct options_t **options, int id, const char *name, int argtype, int conftype, const char *mask);

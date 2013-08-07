@@ -92,7 +92,9 @@ int module_init(void) {
 #else
 	if(gpio_request(GPIO_IN_PIN) == 0) {
 		/* Attach an interrupt to the requested pin */
-		irq_attach(GPIO_IN_PIN, CHANGE);
+		if(irq_attach(GPIO_IN_PIN, CHANGE) != 0) {
+			exit(EXIT_FAILURE);
+		}
 	} else {
 		exit(EXIT_FAILURE);
 	}

@@ -144,27 +144,6 @@ int options_get_id(struct options_t **opt, char *name, int *out) {
 	return 1;
 }
 
-// /* Get a certain option value identified by the name */
-// int options_get_value(struct options_t **opt, char *name, char **out) {
-	// struct options_t *temp = *opt;
-	// *out = NULL;
-	// while(temp != NULL) {
-		// if(temp->name != NULL) {
-			// if(strcmp(temp->name,name) == 0) {
-				// if(temp->value != NULL && strlen(temp->value) > 0) {
-					// *out = temp->value;
-					// return 0;
-				// } else {
-					// return 1;
-				// }
-			// }
-		// }
-		// temp = temp->next;
-	// }
-
-	// return 1;
-// }
-
 /* Parse all CLI arguments */
 int options_parse(struct options_t **opt, int argc, char **argv, int error_check) {
 	int c = 0;

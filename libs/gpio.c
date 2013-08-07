@@ -63,12 +63,15 @@ int gpio_request(int gpio_pin) {
 	gc_attach(gpio_free);
 	
 	sprintf(command, "echo %d > /sys/class/gpio/export 2>/dev/null", gpio_wiringPi2BCM(gpio_pin));
-	system(command);
-
-	sprintf(folder, "/sys/class/gpio/gpio%d", gpio_wiringPi2BCM(gpio_pin));
-	if((err = stat(folder, &s)) != -1 && S_ISDIR(s.st_mode)) {
-		gpio_register(gpio_pin);	
-		return EXIT_SUCCESS;
+	if(system(command) != -1) {
+		sprintf(folder, "/sys/class/gpio/gpio%d", gpio_wiringPi2BCM(gpio_pin));
+		if((err = stat(folder, &s)) != -1 && S_ISDIR(s.st_mode)) {
+			gpio_register(gpio_pin);	
+			return EXIT_SUCCESS;
+		} else {
+			logprintf(LOG_ERR, "can't claim gpio pin %d", gpio_pin);
+			return EXIT_FAILURE;
+		}
 	} else {
 		logprintf(LOG_ERR, "can't claim gpio pin %d", gpio_pin);
 		return EXIT_FAILURE;
@@ -92,8 +95,12 @@ int gpio_pinmode(int gpio_pin, int mode) {
 		logprintf(LOG_ERR, "can't claim gpio pin %d", gpio_pin);
 		return EXIT_FAILURE;
 	}
-	system(command);
-	return EXIT_SUCCESS;
+	if(system(command) != -1) {
+		return EXIT_SUCCESS;
+	} else {
+		logprintf(LOG_ERR, "can't claim gpio pin %d", gpio_pin);
+		return EXIT_FAILURE;
+	}
 }
 
 /* Free the GPIO pins used */
@@ -102,17 +109,22 @@ int gpio_free(void) {
 	int err;
 	struct stat s;
 
-	int i;
-	for(i=0;i<pins.nr;i++) {
+	int i = 0;
+	int x = pins.nr;
+	for(i=0;i<x;i++) {
 		sprintf(command, "echo %d > /sys/class/gpio/unexport 2>/dev/null", gpio_wiringPi2BCM(pins.pins[i]));
-		system(command);
-		sprintf(folder, "/sys/class/gpio/gpio%d", gpio_wiringPi2BCM(pins.pins[i]));
-		if((err = stat(folder, &s)) != -1 && S_ISDIR(s.st_mode)) {
-			logprintf(LOG_ERR, "can't free gpio pin %d", gpio_wiringPi2BCM(pins.pins[i]));
-			return EXIT_FAILURE;
+		if(system(command) != -1) {
+			sprintf(folder, "/sys/class/gpio/gpio%d", gpio_wiringPi2BCM(pins.pins[i]));
+			if((err = stat(folder, &s)) != -1 && S_ISDIR(s.st_mode)) {
+				logprintf(LOG_ERR, "can't free gpio pin %d", pins.pins[i]);
+				return EXIT_FAILURE;
+			}
+		} else {
+			logprintf(LOG_ERR, "can't free gpio pin %d", pins.pins[i]);
+			return EXIT_FAILURE;			
 		}
 	}
-	for(i=0;i<pins.nr;i++) {
+	for(i=0;i<x;i++) {
 		gpio_deregister(pins.pins[i]);
 	}
 	
