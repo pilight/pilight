@@ -169,10 +169,10 @@ void arctechOldInit(void) {
 	arctech_old.bit = 0;
 	arctech_old.recording = 0;
 
-	addOption(&arctech_old.options, 't', "on", no_value, config_state, NULL);
-	addOption(&arctech_old.options, 'f', "off", no_value, config_state, NULL);
-	addOption(&arctech_old.options, 'u', "unit", has_value, config_id, "^(3[12]?|[012][0-9]|[0-9]{1})$$");
-	addOption(&arctech_old.options, 'i', "id", has_value, config_id, "^(3[12]?|[012][0-9]|[0-9]{1})$");
+	options_add(&arctech_old.options, 't', "on", no_value, config_state, NULL);
+	options_add(&arctech_old.options, 'f', "off", no_value, config_state, NULL);
+	options_add(&arctech_old.options, 'u', "unit", has_value, config_id, "^(3[12]?|[012][0-9]|[0-9]{1})$$");
+	options_add(&arctech_old.options, 'i', "id", has_value, config_id, "^(3[12]?|[012][0-9]|[0-9]{1})$");
 
 	arctech_old.parseBinary=arctechOldParseBinary;
 	arctech_old.createCode=&arctechOldCreateCode;

@@ -98,9 +98,9 @@ void relayInit(void) {
 	relay.type = SWITCH;
 	relay.message = malloc(sizeof(JsonNode));
 
-	addOption(&relay.options, 't', "on", no_value, config_state, NULL);
-	addOption(&relay.options, 'f', "off", no_value, config_state, NULL);
-	addOption(&relay.options, 'g', "gpio", has_value, config_id, "^[0-7]{1}$");
+	options_add(&relay.options, 't', "on", no_value, config_state, NULL);
+	options_add(&relay.options, 'f', "off", no_value, config_state, NULL);
+	options_add(&relay.options, 'g', "gpio", has_value, config_id, "^[0-7]{1}$");
 
 	relay.createCode=&relayCreateCode;
 	relay.printHelp=&relayPrintHelp;

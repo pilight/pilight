@@ -125,23 +125,23 @@ void logperror(int prio, const char *s) {
 	// errno = save_errno;
 }
 
-void enable_file_log(void) {
+void log_file_enable(void) {
 	filelog = 1;
 }
 
-void disable_file_log(void) {
+void log_file_disable(void) {
 	filelog = 0;
 }
 
-void enable_shell_log(void) {
+void log_shell_enable(void) {
 	shelllog = 1;
 }
 
-void disable_shell_log(void) {
+void log_shell_disable(void) {
 	shelllog = 0;
 }
 
-void set_logfile(char *log) {
+void log_file_set(char *log) {
 	struct stat s;
 	char *filename = basename(log);
 	char path[1024];
@@ -173,10 +173,10 @@ void set_logfile(char *log) {
 	}
 }
 
-void set_loglevel(int level) {
+void log_level_set(int level) {
 	loglevel = level;
 }
 
-int get_loglevel(void) {
+int log_level_get(void) {
 	return loglevel;
 }

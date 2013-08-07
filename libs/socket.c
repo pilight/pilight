@@ -36,7 +36,7 @@
 #include "socket.h"
 
 /* Start the socket server */
-int start_server(unsigned short port) {
+int socket_start(unsigned short port) {
 	int opt = 1;
     struct sockaddr_in address;
 
@@ -74,7 +74,7 @@ int start_server(unsigned short port) {
     return 0;
 }
 
-int connect_to_server(char *address, unsigned short port) {
+int socket_connect(char *address, unsigned short port) {
 	struct sockaddr_in serv_addr;
 	int sockfd;
 
@@ -198,7 +198,7 @@ int socket_msgcmp(char *a, char *b) {
 	return strcmp(a, tmp);
 }
 
-void *wait_for_data(void *param) {
+void *socket_wait(void *param) {
 	struct socket_callback_t *socket_callback = (struct socket_callback_t *)param;
 
 	int activity;

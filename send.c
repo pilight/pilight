@@ -47,9 +47,9 @@ typedef enum {
 
 int main(int argc, char **argv) {
 
-	disable_file_log();
-	enable_shell_log();
-	set_loglevel(LOG_NOTICE);
+	log_file_disable();
+	log_shell_enable();
+	log_level_set(LOG_NOTICE);
 
 	progname = malloc((10*sizeof(char))+1);
 	progname = strdup("433-send");
@@ -84,11 +84,11 @@ int main(int argc, char **argv) {
 	JsonNode *code = json_mkobject();
 
 	/* Define all CLI arguments of this program */
-	addOption(&options, 'H', "help", no_value, 0, NULL);
-	addOption(&options, 'V', "version", no_value, 0, NULL);
-	addOption(&options, 'p', "protocol", has_value, 0, NULL);
-	addOption(&options, 'S', "server", has_value, 0, "^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]).){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$");
-	addOption(&options, 'P', "port", has_value, 0, "[0-9]{1,4}");
+	options_add(&options, 'H', "help", no_value, 0, NULL);
+	options_add(&options, 'V', "version", no_value, 0, NULL);
+	options_add(&options, 'p', "protocol", has_value, 0, NULL);
+	options_add(&options, 'S', "server", has_value, 0, "^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]).){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$");
+	options_add(&options, 'P', "port", has_value, 0, "[0-9]{1,4}");
 
 	/* Initialize peripheral modules */
 	hw_init();
@@ -96,7 +96,7 @@ int main(int argc, char **argv) {
 	/* Get the protocol to be used */
 	while (1) {
 		int c;
-		c = getOptions(&options, argc, argv, 0);
+		c = options_parse(&options, argc, argv, 0);
 
 		if (c == -1)
 			break;
@@ -138,7 +138,7 @@ int main(int argc, char **argv) {
 					/* Check if the protocol requires specific CLI arguments
 					   and merge them with the main CLI arguments */
 					if(protocol->options != NULL && help == 0) {
-						options = mergeOptions(&options, &protocol->options);
+						options = options_merge(&options, &protocol->options);
 					} else if(help == 1) {
 						protohelp=1;
 					}
@@ -195,7 +195,7 @@ int main(int argc, char **argv) {
 	   fill all necessary values in the options struct */
 	while(1) {
 		int c;
-		c = getOptions(&options, argc, argv, 1);
+		c = options_parse(&options, argc, argv, 1);
 
 		if(c == -1)
 			break;
@@ -207,7 +207,7 @@ int main(int argc, char **argv) {
 		if(strlen(options->name) > 0) {
 			/* Only send the CLI arguments that belong to this protocol, the protocol name
 			and those that are called by the user */
-			if((getOptionIdByName(&protocol->options, options->name, &itmp) == 0 || strcmp(options->name, "protocol") == 0)
+			if((options_get_id(&protocol->options, options->name, &itmp) == 0 || strcmp(options->name, "protocol") == 0)
 			&& strlen(options->value) > 0) {
 				json_append_member(code, options->name, json_mkstring(options->value));
 			}
@@ -216,7 +216,7 @@ int main(int argc, char **argv) {
 	}
 
 	if(protocol->createCode(code) == 0) {
-		if((sockfd = connect_to_server(strdup(server), port)) == -1) {
+		if((sockfd = socket_connect(strdup(server), port)) == -1) {
 			logprintf(LOG_ERR, "could not connect to 433-daemon");
 			goto close;
 		}

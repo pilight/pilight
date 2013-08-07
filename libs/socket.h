@@ -36,14 +36,14 @@ int clientSocket;
 int socket_clients[MAX_CLIENTS];
 
 /* Start the socket server */
-int start_server(unsigned short port);
-int connect_to_server(char *address, unsigned short port);
+int socket_start(unsigned short port);
+int socket_connect(char *address, unsigned short port);
 void socket_close(int i);
 void socket_write(int sockfd, const char *msg, ...);
 void socket_write_big(int sockfd, const char *msg, ...);
 char *socket_read(int sockfd);
 char *socket_read_big(int sockfd);
 int socket_msgcmp(char *a, char *b);
-void *wait_for_data(void *param);
+void *socket_wait(void *param);
 
 #endif

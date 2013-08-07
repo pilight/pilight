@@ -63,9 +63,9 @@ int normalize(int i) {
 
 int main(int argc, char **argv) {
 
-	enable_shell_log();
-	disable_file_log();
-	set_loglevel(LOG_NOTICE);
+	log_shell_enable();
+	log_file_disable();
+	log_level_set(LOG_NOTICE);
 
 	progname = malloc((10*sizeof(char))+1);
 	progname = strdup("433-debug");
@@ -102,15 +102,15 @@ int main(int argc, char **argv) {
 	hw_choose_driver(NULL);
 #endif
 
-	addOption(&options, 'H', "help", no_value, 0, NULL);
-	addOption(&options, 'V', "version", no_value, 0, NULL);
+	options_add(&options, 'H', "help", no_value, 0, NULL);
+	options_add(&options, 'V', "version", no_value, 0, NULL);
 #ifdef USE_LIRC	
-	addOption(&options, 'S', "socket", has_value, 0, "^/dev/([A-Za-z]+)([0-9]+)");
+	options_add(&options, 'S', "socket", has_value, 0, "^/dev/([A-Za-z]+)([0-9]+)");
 #endif
 
 	while (1) {
 		int c;
-		c = getOptions(&options, argc, argv, 1);
+		c = options_parse(&options, argc, argv, 1);
 		if(c == -1)
 			break;
 		switch (c) {

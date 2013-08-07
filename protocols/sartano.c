@@ -171,10 +171,10 @@ void sartanoInit(void) {
 	sartano.bit = 0;
 	sartano.recording = 0;
 
-	addOption(&sartano.options, 't', "on", no_value, config_state, NULL);
-	addOption(&sartano.options, 'f', "off", no_value, config_state, NULL);
-	addOption(&sartano.options, 'u', "unit", has_value, config_id, "^(3[12]?|[012][0-9]|[0-9]{1})$");
-	addOption(&sartano.options, 'i', "id", has_value, config_id, "^(3[12]?|[012][0-9]|[0-9]{1})$");
+	options_add(&sartano.options, 't', "on", no_value, config_state, NULL);
+	options_add(&sartano.options, 'f', "off", no_value, config_state, NULL);
+	options_add(&sartano.options, 'u', "unit", has_value, config_id, "^(3[12]?|[012][0-9]|[0-9]{1})$");
+	options_add(&sartano.options, 'i', "id", has_value, config_id, "^(3[12]?|[012][0-9]|[0-9]{1})$");
 
 	sartano.parseBinary=&sartanoParseBinary;
 	sartano.createCode=&sartanoCreateCode;

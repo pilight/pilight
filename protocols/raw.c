@@ -60,7 +60,7 @@ void rawInit(void) {
 	protocol_add_device(&raw, "raw", "Raw codes");
 	raw.type = RAW;
 
-	addOption(&raw.options, 'c', "code", has_value, 0, NULL);
+	options_add(&raw.options, 'c', "code", has_value, 0, NULL);
 
 	raw.createCode=&rawCreateCode;
 	raw.printHelp=&rawPrintHelp;

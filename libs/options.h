@@ -41,15 +41,15 @@ struct options_t {
 	struct options_t *next;
 };
 
-void setOptionValById(struct options_t **options, int id, const char *val);
-int getOptionValById(struct options_t **options, int id, char **out);
-int getOptionArgTypeById(struct options_t **options, int id, int *out);
-int getOptionNameById(struct options_t **options, int id, char **out);
-int getOptionIdByName(struct options_t **options, char *name, int *out);
-int getOptionValByName(struct options_t **options, char *name, char **out);
-int getOptionMaskById(struct options_t **options, int id, char **out);
-int getOptions(struct options_t **options, int argc, char **argv, int error_check);
-void addOption(struct options_t **options, int id, const char *name, int argtype, int conftype, const char *mask);
-struct options_t *mergeOptions(struct options_t **a, struct options_t **b);
+void options_set_value(struct options_t **options, int id, const char *val);
+int options_get_value(struct options_t **options, int id, char **out);
+int options_get_argtype(struct options_t **options, int id, int *out);
+int options_get_name(struct options_t **options, int id, char **out);
+int options_get_id(struct options_t **options, char *name, int *out);
+// int getOptionValByName(struct options_t **options, char *name, char **out);
+int options_get_mask(struct options_t **options, int id, char **out);
+int options_parse(struct options_t **options, int argc, char **argv, int error_check);
+void options_add(struct options_t **options, int id, const char *name, int argtype, int conftype, const char *mask);
+struct options_t *options_merge(struct options_t **a, struct options_t **b);
 
 #endif

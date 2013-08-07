@@ -83,10 +83,10 @@ void alectoInit(void) {
 	alecto.bit = 0;
 	alecto.recording = 0;
 
-	addOption(&alecto.options, 'h', "humidity", has_value, config_value, "[0-9]");
-	addOption(&alecto.options, 't', "temperature", has_value, config_value, "[0-9]");
-	addOption(&alecto.options, 'b', "battery", has_value, config_value, "[0-9]");
-	addOption(&alecto.options, 'i', "id", has_value, config_id, "[0-9]");
+	options_add(&alecto.options, 'h', "humidity", has_value, config_value, "[0-9]");
+	options_add(&alecto.options, 't', "temperature", has_value, config_value, "[0-9]");
+	options_add(&alecto.options, 'b', "battery", has_value, config_value, "[0-9]");
+	options_add(&alecto.options, 'i', "id", has_value, config_id, "[0-9]");
 
 	alecto.parseCode=&alectoParseCode;
 

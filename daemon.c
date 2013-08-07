@@ -771,7 +771,7 @@ void *clientize(void *param) {
 	settings_find_string("server-ip", &server);
 	settings_find_number("server-port", &port);
 
-	if((sockfd = connect_to_server(strdup(server), (short unsigned int)port)) == -1) {
+	if((sockfd = socket_connect(strdup(server), (short unsigned int)port)) == -1) {
 		logprintf(LOG_ERR, "could not connect to 433-daemon");
 		exit(EXIT_FAILURE);
 	}
@@ -844,8 +844,8 @@ void deamonize(void) {
 	int f;
 	char buffer[BUFFER_SIZE];
 
-	enable_file_log();
-	disable_shell_log();
+	log_file_enable();
+	log_shell_disable();
 	//Get the pid of the fork
 	pid_t npid = fork();
 	switch(npid) {
@@ -900,8 +900,8 @@ int main(int argc , char **argv) {
 	/* Catch all exit signals for gc */
 	gc_catch();
 
-	disable_file_log();
-	enable_shell_log();
+	log_file_disable();
+	log_shell_enable();
 
 	progname = malloc((10*sizeof(char))+1);
 	progname = strdup("433-daemon");
@@ -917,17 +917,17 @@ int main(int argc , char **argv) {
 	char *stmp = NULL;
 	int port = 0;
 
-	addOption(&options, 'H', "help", no_value, 0, NULL);
-	addOption(&options, 'V', "version", no_value, 0, NULL);
-	addOption(&options, 'D', "nodaemon", no_value, 0, NULL);
-	addOption(&options, 'S', "settings", has_value, 0, NULL);
+	options_add(&options, 'H', "help", no_value, 0, NULL);
+	options_add(&options, 'V', "version", no_value, 0, NULL);
+	options_add(&options, 'D', "nodaemon", no_value, 0, NULL);
+	options_add(&options, 'S', "settings", has_value, 0, NULL);
 
 #ifdef USE_LIRC
 	hw_choose_driver(NULL);
 #endif
 	while (1) {
 		int c;
-		c = getOptions(&options, argc, argv, 1);
+		c = options_parse(&options, argc, argv, 1);
 		if (c == -1)
 			break;
 		switch(c) {
@@ -1001,11 +1001,11 @@ int main(int argc , char **argv) {
 
 	if(settings_find_number("log-level", &itmp) == 0) {
 		itmp += 2;
-		set_loglevel(itmp);
+		log_level_set(itmp);
 	}
 	
 	if(settings_find_string("log-file", &stmp) == 0) {
-		set_logfile(stmp);
+		log_file_set(stmp);
 	}
 	
 	if(settings_find_string("mode", &stmp) == 0) {
@@ -1017,7 +1017,7 @@ int main(int argc , char **argv) {
 	}
 
 	if(nodaemon == 1 || running == 1) {
-		set_loglevel(LOG_DEBUG);
+		log_level_set(LOG_DEBUG);
 	}
 
 	settings_find_string("process-file", &process_file);
@@ -1069,7 +1069,7 @@ int main(int argc , char **argv) {
 				receivers++;
 			}
 
-			if(get_loglevel() >= LOG_DEBUG) {
+			if(log_level_get() >= LOG_DEBUG) {
 				config_print();
 			}
 		}
@@ -1079,7 +1079,7 @@ int main(int argc , char **argv) {
 		port = PORT;
 	}
 	
-	start_server((short unsigned int)port);
+	socket_start((short unsigned int)port);
 	if(nodaemon == 0) {
 		deamonize();
 	}
@@ -1096,7 +1096,7 @@ int main(int argc , char **argv) {
 		pthread_create(&pth1, NULL, &clientize, (void *)NULL);
 	}
 	/* Make sure the server part is non-blocking by creating a new thread */
-	pthread_create(&pth2, NULL, &wait_for_data, (void *)&socket_callback);
+	pthread_create(&pth2, NULL, &socket_wait, (void *)&socket_callback);
 	receive_code();
 	pthread_join(pth1, NULL);
 	pthread_join(pth2, NULL);

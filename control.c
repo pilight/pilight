@@ -46,9 +46,9 @@ typedef enum {
 
 int main(int argc, char **argv) {
 
-	disable_file_log();
-	enable_shell_log();
-	set_loglevel(LOG_NOTICE);
+	log_file_disable();
+	log_shell_enable();
+	log_level_set(LOG_NOTICE);
 
 	progname = malloc((10*sizeof(char))+1);
 	progname = strdup("433-control");
@@ -78,14 +78,14 @@ int main(int argc, char **argv) {
 	JsonNode *jvalues = json_mkobject();
 
 	/* Define all CLI arguments of this program */
-	addOption(&options, 'H', "help", no_value, 0, NULL);
-	addOption(&options, 'V', "version", no_value, 0, NULL);
-	addOption(&options, 'l', "location", has_value, 0, NULL);
-	addOption(&options, 'd', "device", has_value, 0,  NULL);
-	addOption(&options, 's', "state", has_value, 0,  NULL);
-	addOption(&options, 'v', "values", has_value, 0,  NULL);
-	addOption(&options, 'S', "server", has_value, 0, "^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]).){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$");
-	addOption(&options, 'P', "port", has_value, 0, "[0-9]{1,4}");
+	options_add(&options, 'H', "help", no_value, 0, NULL);
+	options_add(&options, 'V', "version", no_value, 0, NULL);
+	options_add(&options, 'l', "location", has_value, 0, NULL);
+	options_add(&options, 'd', "device", has_value, 0,  NULL);
+	options_add(&options, 's', "state", has_value, 0,  NULL);
+	options_add(&options, 'v', "values", has_value, 0,  NULL);
+	options_add(&options, 'S', "server", has_value, 0, "^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]).){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$");
+	options_add(&options, 'P', "port", has_value, 0, "[0-9]{1,4}");
 
 	/* Store all CLI arguments for later usage
 	   and also check if the CLI arguments where
@@ -93,7 +93,7 @@ int main(int argc, char **argv) {
 	   fill all necessary values in the options struct */
 	while(1) {
 		int c;
-		c = getOptions(&options, argc, argv, 1);
+		c = options_parse(&options, argc, argv, 1);
 		if(c == -1)
 			break;
 		switch(c) {
@@ -143,7 +143,7 @@ int main(int argc, char **argv) {
 		exit(EXIT_SUCCESS);
 	}
 
-	if((sockfd = connect_to_server(strdup(server), port)) == -1) {
+	if((sockfd = socket_connect(strdup(server), port)) == -1) {
 		logprintf(LOG_ERR, "could not connect to 433-daemon");
 		exit(EXIT_FAILURE);
 	}
