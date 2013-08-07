@@ -104,7 +104,7 @@ void sartanoCreateState(int state) {
 	} else {
 		sartanoCreateHigh(40, 43);
 	}
-	raw[47]=(sartano.footer*PULSE_LENGTH);
+	sartano.raw[47]=(sartano.footer*PULSE_LENGTH);
 }
 
 int sartanoCreateCode(JsonNode *code) {
