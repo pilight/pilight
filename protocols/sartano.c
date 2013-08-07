@@ -49,10 +49,10 @@ void sartanoCreateLow(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=4) {
-		sartano.raw[i]=(PULSE_LENGTH);
-		sartano.raw[i+1]=(sartano.pulse*PULSE_LENGTH);
-		sartano.raw[i+2]=(sartano.pulse*PULSE_LENGTH);
-		sartano.raw[i+3]=(PULSE_LENGTH);
+		sartano.raw[i]=(sartano.pulse*PULSE_LENGTH);
+		sartano.raw[i+1]=(PULSE_LENGTH);
+		sartano.raw[i+2]=(PULSE_LENGTH);
+		sartano.raw[i+3]=(sartano.pulse*PULSE_LENGTH);
 	}
 }
 
@@ -62,13 +62,12 @@ void sartanoCreateHigh(int s, int e) {
 	for(i=s;i<=e;i+=4) {
 		sartano.raw[i]=(PULSE_LENGTH);
 		sartano.raw[i+1]=(sartano.pulse*PULSE_LENGTH);
-
 		sartano.raw[i+2]=(PULSE_LENGTH);
 		sartano.raw[i+3]=(sartano.pulse*PULSE_LENGTH);
 	}
 }
 void sartanoClearCode(void) {
-	sartanoCreateLow(0,49);
+	sartanoCreateLow(0,47);
 }
 
 void sartanoCreateUnit(int unit) {
@@ -79,8 +78,8 @@ void sartanoCreateUnit(int unit) {
 	length = decToBinRev(unit, binary);
 	for(i=0;i<=length;i++) {
 		if(binary[i]==1) {
-			x=(i+1)*4;
-			sartanoCreateHigh(1+(x-3), 1+x);
+			x=i*4;
+			sartanoCreateHigh(x, x+3);
 		}
 	}
 }
@@ -93,8 +92,8 @@ void sartanoCreateId(int id) {
 	length = decToBinRev(id, binary);
 	for(i=0;i<=length;i++) {
 		if(binary[i]==1) {
-			x=(i+1)*4;
-			sartanoCreateHigh(21+(x-3), 21+x);
+			x=i*4;
+			sartanoCreateHigh(20+x, 20+x+3);
 		}
 	}
 }
@@ -105,11 +104,7 @@ void sartanoCreateState(int state) {
 	} else {
 		sartanoCreateHigh(40, 43);
 	}
-}
-
-void sartanoCreateFooter(void) {
-	sartano.raw[48]=(PULSE_LENGTH);
-	sartano.raw[49]=(sartano.footer*PULSE_LENGTH);
+	raw[47]=(sartano.footer*PULSE_LENGTH);
 }
 
 int sartanoCreateCode(JsonNode *code) {
@@ -130,10 +125,10 @@ int sartanoCreateCode(JsonNode *code) {
 	if(id == -1 || unit == -1 || state == -1) {
 		logprintf(LOG_ERR, "sartano: insufficient number of arguments");
 		return EXIT_FAILURE;
-	} else if(id > 32 || id < 0) {
+	} else if(id > 31 || id < 0) {
 		logprintf(LOG_ERR, "sartano: invalid id range");
 		return EXIT_FAILURE;
-	} else if(unit > 32 || unit < 0) {
+	} else if(unit > 31 || unit < 0) {
 		logprintf(LOG_ERR, "sartano: invalid unit range");
 		return EXIT_FAILURE;
 	} else {
@@ -142,7 +137,6 @@ int sartanoCreateCode(JsonNode *code) {
 		sartanoCreateUnit(unit);
 		sartanoCreateId(id);
 		sartanoCreateState(state);
-		sartanoCreateFooter();
 	}
 	return EXIT_SUCCESS;
 }
@@ -171,8 +165,8 @@ void sartanoInit(void) {
 
 	options_add(&sartano.options, 't', "on", no_value, config_state, NULL);
 	options_add(&sartano.options, 'f', "off", no_value, config_state, NULL);
-	options_add(&sartano.options, 'u', "unit", has_value, config_id, "^(3[12]?|[012][0-9]|[0-9]{1})$");
-	options_add(&sartano.options, 'i', "id", has_value, config_id, "^(3[12]?|[012][0-9]|[0-9]{1})$");
+	options_add(&sartano.options, 'u', "unit", has_value, config_id, "^(3[12]?|[01][0-9]|[0-9]{1})$");
+	options_add(&sartano.options, 'i', "id", has_value, config_id, "^(3[12]?|[01][0-9]|[0-9]{1})$");
 
 	sartano.parseBinary=&sartanoParseBinary;
 	sartano.createCode=&sartanoCreateCode;
