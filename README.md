@@ -18,7 +18,7 @@ I used a 220 Ohm resistor and a 100nF capacitor. I haven't experimented with oth
 __Don't forget to use the command `sudo` prior to all commands below when you're not logged in as root__
 <hr>
 To fully benifit from my code, you should build a low-pass filter to make sure no noise is being received by the receiver.
-This filter only costs about $1 and works absolutely perfect. All components are commonly used and can be found on ebay or at a local DIY shops.<br />
+This filter only co.sts about $1 and works absolutely perfect. All components are commonly used and can be found on ebay or at a local DIY shops.<br />
 <img src="http://i.imgur.com/yRp532m.jpg" alt="Low-pass filter" title="Low-pass filter" border="0" />
 <hr>
 With this new code you can choose to use a lirc kernel module or plain GPIO interaction. To use the lirc kernel module uncomment this line in the `libs/settings.h`:<br />
@@ -83,10 +83,10 @@ __process file__: This script can be anything you like. The pilight-daemon will 
 <hr>
 The output of the receiver will be as follow:
 ```
-root@pi:~# ./pilight-send -p kaku_switch -i 100 -u 15 -f
+root@pi:~# pilight-send -p kaku_switch -i 100 -u 15 -f
 ```
 ```
-root@pi:~# ./pilight-receiver
+root@pi:~# pilight-receiver
 {
 	"origin": "sender",
 	"protocol": "arctech_switches",
@@ -99,10 +99,10 @@ root@pi:~# ./pilight-receiver
 
 ```
 ```
-root@pi:~# ./pilight-send -p kaku_dimmer -i 100 -u 15 -d 15
+root@pi:~# pilight-send -p kaku_dimmer -i 100 -u 15 -d 15
 ```
 ```
-root@pi:~# ./pilight-receiver
+root@pi:~# pilight-receiver
 {
 	"origin": "sender",
 	"protocol": "arctech_dimmers",
@@ -115,10 +115,10 @@ root@pi:~# ./pilight-receiver
 }
 ```
 ```
-root@pi:~# ./pilight-send -p elro -i 10 -u 15 -t
+root@pi:~# pilight-send -p elro -i 10 -u 15 -t
 ```
 ```
-root@pi:~# ./pilight-receiver
+root@pi:~# pilight-receiver
 {
 	"origin": "sender",
 	"protocol": "sartano",
@@ -136,7 +136,7 @@ root@pi:~# ./pilight-send -p kaku_switch -i 1 -u 1 -t
 ```
 The command line arguments depend on the protocol used e.g.:
 ```
-root@pi:~# ./pilight-send -H
+root@pi:~# pilight-send -H
 Usage: pilight-send -p protocol [options]
          -H --help                      display this message
          -V --version                   display version
@@ -155,7 +155,7 @@ The supported protocols are:
          elro                           Elro Switches
          relay                          Control connected relay's         
          raw                            Raw codes
-root@pi:~# ./pilight-send -p kaku_switch -h
+root@pi:~# pilight-send -p kaku_switch -h
 Usage: pilight-send -p kaku_switch [options]
          -H --help                      display this message
          -V --version                   display version
@@ -172,9 +172,9 @@ Usage: pilight-send -p kaku_switch [options]
 ```
 Examples are:
 ```
-root@pi:~# ./pilight-send -p kaku_switch -t 1 -u 1 -t
-root@pi:~# ./pilight-send -p kaku_dimmer -t 1 -u 1 -d 15
-root@pi:~# ./pilight-send -p elro -t 1 -u 1 -t
+root@pi:~# pilight-send -p kaku_switch -t 1 -u 1 -t
+root@pi:~# pilight-send -p kaku_dimmer -t 1 -u 1 -d 15
+root@pi:~# pilight-send -p elro -t 1 -u 1 -t
 ```
 <hr>
 To control devices that are not yet supported one can use the `raw` protocol. This protocol allows the sending of raw codes.
@@ -182,7 +182,7 @@ To figure out what the raw codes of your devices are you can run the debugger fi
 for you to press a button for the device you want to control. Once you held the button long enough to control the device 
 using the raw codes.
 ```
-root@pi:~# ./pilight-debug
+root@pi:~# pilight-debug
 header:      	10
 pulse:          5
 footer:         38
@@ -195,14 +195,14 @@ Binary code:
 ```
 You can now use the raw code to control your device:
 ```
-root@pi:~# ./pilight-send -p raw -c "286 2825 286 201 289 1337 287 209 283 1351 287 204 289 1339 288 207 288 1341 289 207 281 1343 284 205 292 1346 282 212 283 1348 282 213 279 1352 282 211 281 1349 282 210 283 1347 284 211 288 1348 281 211 285 1353 278 213 280 1351 280 232 282 1356 279 213 285 1351 276 215 285 1348 277 216 278 1359 278 216 279 1353 272 214 283 1358 276 216 276 1351 278 214 284 1357 275 217 276 1353 270 217 277 1353 272 220 277 1351 275 220 272 1356 275 1353 273 224 277 236 282 1355 272 1353 273 233 273 222 268 1358 270 219 277 1361 274 218 280 1358 272 1355 271 243 251 11302"
+root@pi:~# pilight-send -p raw -c "286 2825 286 201 289 1337 287 209 283 1351 287 204 289 1339 288 207 288 1341 289 207 281 1343 284 205 292 1346 282 212 283 1348 282 213 279 1352 282 211 281 1349 282 210 283 1347 284 211 288 1348 281 211 285 1353 278 213 280 1351 280 232 282 1356 279 213 285 1351 276 215 285 1348 277 216 278 1359 278 216 279 1353 272 214 283 1358 276 216 276 1351 278 214 284 1357 275 217 276 1353 270 217 277 1353 272 220 277 1351 275 220 272 1356 275 1353 273 224 277 236 282 1355 272 1353 273 233 273 222 268 1358 270 219 277 1361 274 218 280 1358 272 1355 271 243 251 11302"
 ```
 <hr>
 The learner does the same as the debugger but is more extensive. It will try to figure out as much as possible about your protocol.
 At this moment only switches are supported, so not dimmers or others devices. Just follow the steps of the learner and when you
 where successfull, it will print the following information (in case of Klik Aan Klik Uit):
 ```
-root@pi:~# ./pilight-learn
+root@pi:~# pilight-learn
 1. Please send and hold one of the OFF buttons. Done.
 
 2. Please send and hold the ON button for the same device
@@ -322,16 +322,16 @@ _The `type` and the `order` setting will automatically be added by the pilight-d
 ```
 To control a device, you can know easily use the `pilight-control`:
 ```
-root@pi:~# ./pilight-control -l living -d bookshelve
+root@pi:~# pilight-control -l living -d bookshelve
 ```
 The config file will automatically be updated with the status of the configured devices. So while sending, but also while receiving.<br />
 To force the device in a specific state:
 ```
-root@pi:~# ./pilight-control -l living -d bookshelve -s on
+root@pi:~# pilight-control -l living -d bookshelve -s on
 ```
 To also simultaniously change the value a device such as a dimmer you can use:
 ```
-root@pi:~# ./pilight-control -l living -d main -s on -v dimlevel=1
+root@pi:~# pilight-control -l living -d main -s on -v dimlevel=1
 ```
 <hr>
 ## NODES
