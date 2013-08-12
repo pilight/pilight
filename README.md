@@ -56,7 +56,7 @@ All options and its default values are show below:<br />
 ```
 {
 	"port": 5000,
-	"mode": "daemon",
+	"mode": "server",
 	"log-level": 4,
 	"pid-file": "/var/log/daemon/pilight.pid",
 	"config-file": "/etc/pilight/config.json",
