@@ -39,7 +39,7 @@ void arctechDimCreateMessage(int id, int unit, int state, int all, int dimlevel)
 	if(state == 1)
 		json_append_member(arctech_dimmer.message, "state", json_mkstring("on"));
 	else
-		json_append_member(arctech_dimmer.message, "state", json_mkstring("off"));;
+		json_append_member(arctech_dimmer.message, "state", json_mkstring("off"));
 }
 
 void arctechDimParseBinary(void) {
@@ -103,10 +103,14 @@ void arctechDimCreateAll(int all) {
 }
 
 void arctechDimCreateState(int state) {
-	arctech_dimmer.raw[110]=(PULSE_LENGTH);
-	arctech_dimmer.raw[111]=(PULSE_LENGTH);
-	arctech_dimmer.raw[112]=(PULSE_LENGTH);
-	arctech_dimmer.raw[113]=(PULSE_LENGTH);
+	if(state == 1) {
+		arctechDimCreateHigh(110, 113);
+	} else if(state == -1) {
+		arctech_dimmer.raw[110]=(PULSE_LENGTH);
+		arctech_dimmer.raw[111]=(PULSE_LENGTH);
+		arctech_dimmer.raw[112]=(PULSE_LENGTH);
+		arctech_dimmer.raw[113]=(PULSE_LENGTH);
+	}
 }
 
 void arctechDimCreateUnit(int unit) {
@@ -182,7 +186,7 @@ int arctechDimCreateCode(JsonNode *code) {
 			unit = 0;
 		}
 		if(dimlevel >= 0) {
-			state = 1;
+			state = -1;
 		}
 		arctechDimCreateMessage(id, unit, state, all, dimlevel);
 		arctechDimCreateStart();
