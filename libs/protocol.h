@@ -53,6 +53,7 @@ struct protocol_t {
 	int pulse;
 	int footer;
 	int length;
+	short crossing;
 	struct options_t *options;
 	JsonNode *message;
 

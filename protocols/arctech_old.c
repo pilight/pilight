@@ -160,8 +160,9 @@ void arctechOldInit(void) {
 	arctech_old.type = SWITCH;
 	arctech_old.header = 4;
 	arctech_old.pulse = 4;
-	arctech_old.footer = 45;
+	arctech_old.footer = 38;
 	arctech_old.length = 48;
+	arctech_old.crossing = 1;
 	arctech_old.message = malloc(sizeof(JsonNode));
 
 	arctech_old.bit = 0;

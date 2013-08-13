@@ -571,6 +571,7 @@ void receive_code(void) {
 	int newDuration;
 #endif
 
+	short crossing = 0;
 	unsigned int x = 0, y = 0, i = 0;
 	protocol_t *protocol = malloc(sizeof(protocol_t));
 	struct conflicts_t *tmp_conflicts = NULL;
@@ -702,11 +703,17 @@ void receive_code(void) {
 											}
 											continue;
 										}
+										
+										if(protocol->crossing == 0 || protocol->crossing > 3) {
+											crossing = 3;
+										} else {
+											crossing = protocol->crossing;
+										}
 
 										if(protocol->parseBinary != NULL) {
 											/* Convert the one's and zero's into binary */
-											for(x=2; x<protocol->bit; x+=4) {
-												if(protocol->code[x+1] == 1) {
+											for(x=0; x<protocol->bit; x+=4) {
+												if(protocol->code[x+(unsigned int)crossing] == 1) {
 													protocol->binary[x/4]=1;
 												} else {
 													protocol->binary[x/4]=0;
