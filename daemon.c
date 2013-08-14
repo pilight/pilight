@@ -571,7 +571,8 @@ void receive_code(void) {
 	int newDuration;
 #endif
 
-	short crossing = 0;
+	short lsb = 0;
+	short header = 0;
 	unsigned int x = 0, y = 0, i = 0;
 	protocol_t *protocol = malloc(sizeof(protocol_t));
 	struct conflicts_t *tmp_conflicts = NULL;
@@ -609,8 +610,7 @@ void receive_code(void) {
 					/* Lots of checks if the protocol can actually receive anything */
 					if((((protocol->parseRaw != NULL || protocol->parseCode != NULL) && protocol->length > 0)
 					    || protocol->parseBinary != NULL)
-						&& protocol->header > 0 && protocol->footer > 0
-						&& protocol->pulse > 0) {
+						&& protocol->footer > 0	&& protocol->pulse > 0) {
 						/* If we are recording, keep recording until the footer has been matched */
 						if(protocol->recording == 1) {
 							if(protocol->bit < 255) {
@@ -620,14 +620,21 @@ void receive_code(void) {
 								protocol->recording = 0;
 							}
 						}
+						if(protocol->header == 0) {
+							header = (short)protocol->pulse;
+							lsb = 1;
+						} else {
+							header = (short)protocol->header;
+							lsb = 3;
+						}
 
 						/* Try to catch the header of the code */
 						if(duration > (PULSE_LENGTH-(PULSE_LENGTH*MULTIPLIER))
 						   && duration < (PULSE_LENGTH+(PULSE_LENGTH*MULTIPLIER))
 						   && protocol->bit == 0) {
 							protocol->raw[protocol->bit++] = duration;
-						} else if(duration > ((protocol->header*PULSE_LENGTH)-((protocol->header*PULSE_LENGTH)*MULTIPLIER))
-						   && duration < ((protocol->header*PULSE_LENGTH)+((protocol->header*PULSE_LENGTH)*MULTIPLIER))
+						} else if(duration > ((header*PULSE_LENGTH)-((header*PULSE_LENGTH)*MULTIPLIER))
+						   && duration < ((header*PULSE_LENGTH)+((header*PULSE_LENGTH)*MULTIPLIER))
 						   && protocol->bit == 1) {
 							protocol->raw[protocol->bit++] = duration;
 							protocol->recording = 1;
@@ -704,16 +711,10 @@ void receive_code(void) {
 											continue;
 										}
 										
-										if(protocol->crossing == 0 || protocol->crossing > 3) {
-											crossing = 3;
-										} else {
-											crossing = protocol->crossing;
-										}
-
 										if(protocol->parseBinary != NULL) {
 											/* Convert the one's and zero's into binary */
 											for(x=0; x<protocol->bit; x+=4) {
-												if(protocol->code[x+(unsigned int)crossing] == 1) {
+												if(protocol->code[x+(unsigned int)lsb] == 1) {
 													protocol->binary[x/4]=1;
 												} else {
 													protocol->binary[x/4]=0;

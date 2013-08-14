@@ -158,11 +158,9 @@ void arctechOldInit(void) {
 	protocol_add_device(&arctech_old, "cogex", "Cogex Switches");
 	protocol_add_conflict(&arctech_old, "sartano");
 	arctech_old.type = SWITCH;
-	arctech_old.header = 4;
 	arctech_old.pulse = 4;
 	arctech_old.footer = 38;
 	arctech_old.length = 48;
-	arctech_old.crossing = 1;
 	arctech_old.message = malloc(sizeof(JsonNode));
 
 	arctech_old.bit = 0;

@@ -154,11 +154,9 @@ void sartanoInit(void) {
 	protocol_add_device(&sartano, "elro", "Elro Switches");
 	protocol_add_conflict(&sartano, "arctech_old");
 	sartano.type = SWITCH;
-	sartano.header = 4;
 	sartano.pulse = 4;
 	sartano.footer = 38;
 	sartano.length = 48;
-	sartano.crossing = 1;
 	sartano.message = malloc(sizeof(JsonNode));
 
 	sartano.bit = 0;
