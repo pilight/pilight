@@ -30,7 +30,7 @@ void arctechOldCreateMessage(int id, int unit, int state) {
 	arctech_old.message = json_mkobject();
 	json_append_member(arctech_old.message, "id", json_mknumber(id));
 	json_append_member(arctech_old.message, "unit", json_mknumber(unit));
-	if(state == 1)
+	if(state == 0)
 		json_append_member(arctech_old.message, "state", json_mkstring("on"));
 	else
 		json_append_member(arctech_old.message, "state", json_mkstring("off"));
@@ -47,10 +47,10 @@ void arctechOldCreateLow(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=4) {
-		arctech_old.raw[i]=(PULSE_LENGTH);
-		arctech_old.raw[i+1]=(arctech_old.pulse*PULSE_LENGTH);
-		arctech_old.raw[i+2]=(arctech_old.pulse*PULSE_LENGTH);
-		arctech_old.raw[i+3]=(PULSE_LENGTH);
+		arctech_old.raw[i]=(arctech_old.pulse*PULSE_LENGTH);
+		arctech_old.raw[i+1]=(PULSE_LENGTH);
+		arctech_old.raw[i+2]=(PULSE_LENGTH);
+		arctech_old.raw[i+3]=(arctech_old.pulse*PULSE_LENGTH);
 	}
 }
 
@@ -66,7 +66,7 @@ void arctechOldCreateHigh(int s, int e) {
 }
 
 void arctechOldClearCode(void) {
-	arctechOldCreateLow(0,49);
+	arctechOldCreateLow(0,47);
 }
 
 void arctechOldCreateUnit(int unit) {
@@ -77,8 +77,8 @@ void arctechOldCreateUnit(int unit) {
 	length = decToBinRev(unit, binary);
 	for(i=0;i<=length;i++) {
 		if(binary[i]==1) {
-			x=(i+1)*4;
-			arctechOldCreateHigh(1+(x-3),1+x);
+			x=i*4;
+			arctechOldCreateHigh(x, x+3);
 		}
 	}
 }
@@ -91,8 +91,8 @@ void arctechOldCreateId(int id) {
 	length = decToBinRev(id, binary);
 	for(i=0;i<=length;i++) {
 		if(binary[i]==1) {
-			x=(i+1)*4;
-			arctechOldCreateHigh(21+(x-3), 21+x);
+			x=i*4;
+			arctechOldCreateHigh(20+x, 20+x+3);
 		}
 	}
 }
@@ -104,8 +104,7 @@ void arctechOldCreateState(int state) {
 }
 
 void arctechOldCreateFooter(void) {
-	arctech_old.raw[48]=(PULSE_LENGTH);
-	arctech_old.raw[49]=(arctech_old.footer*PULSE_LENGTH);
+	arctech_old.raw[47]=(arctech_old.footer*PULSE_LENGTH);
 }
 
 
