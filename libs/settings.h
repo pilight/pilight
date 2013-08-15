@@ -93,3 +93,7 @@ int settings_read(void);
 int settings_set_file(char *settfile);
 
 #endif
+
+#if defined(__linux__) && defined(__x86_64__)
+#define _GNU_SOURCE
+#endif
