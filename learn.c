@@ -490,7 +490,11 @@ int main(int argc, char **argv) {
 	/* Print everything */
 	printf("--[RESULTS]--\n");
 	printf("\n");
-	printf("header:\t\t%d\n",normalize(header));
+	if(normalize(header) == normalize(pulse)) {
+		printf("header:\t\t0\n");
+	} else {
+		printf("header:\t\t%d\n",normalize(header));
+	}
 	printf("pulse:\t\t%d\n",normalize(pulse));
 	printf("footer:\t\t%d\n",normalize(footer));
 	printf("rawLength:\t%d\n",rawLength);
