@@ -40,6 +40,7 @@
 #include "protocols/arctech_dimmer.h"
 #include "protocols/arctech_old.h"
 #include "protocols/sartano.h"
+#include "protocols/impuls.h"
 #include "protocols/alecto.h"
 #include "protocols/raw.h"
 #include "protocols/relay.h"
@@ -59,7 +60,8 @@ void hw_init(void) {
 	arctechSwInit();
 	arctechDimInit();
 	arctechOldInit();
-	//sartanoInit();
+	sartanoInit();
+	impulsInit();
 	relayInit();
 	rawInit();
 	alectoInit();
