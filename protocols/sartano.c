@@ -104,7 +104,6 @@ void sartanoCreateState(int state) {
 	} else {
 		sartanoCreateHigh(40, 43);
 	}
-	sartano.raw[47]=(sartano.footer*PULSE_LENGTH);
 }
 
 void sartanoCreateFooter(void) {
