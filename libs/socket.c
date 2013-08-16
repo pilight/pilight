@@ -245,7 +245,7 @@ void *socket_wait(void *param) {
             logprintf(LOG_INFO, "new client, ip: %s, port: %d", inet_ntoa(address.sin_addr), ntohs(address.sin_port));
 			logprintf(LOG_DEBUG, "client fd: %d", clientSocket);
             //send new connection accept message
-            socket_write(clientSocket, "{\"message\":\"accept connection\"}");
+            //socket_write(clientSocket, "{\"message\":\"accept connection\"}");
 
             //add new socket to array of sockets
             for(i=0;i<MAX_CLIENTS;i++) {

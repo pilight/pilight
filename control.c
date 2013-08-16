@@ -150,29 +150,29 @@ int main(int argc, char **argv) {
 	hw_init();
 
 	while(1) {
-		/* Clear the receive buffer again and read the welcome message */
-		if(steps == REQUEST) {
-			if((recvBuff = socket_read_big(sockfd)) != NULL) {
-				json = json_decode(recvBuff);
-				json_find_string(json, "message", &message);
+		if(steps > WELCOME) {
+			/* Clear the receive buffer again and read the welcome message */
+			if(steps == REQUEST) {
+				if((recvBuff = socket_read_big(sockfd)) != NULL) {
+					json = json_decode(recvBuff);
+					json_find_string(json, "message", &message);
+				} else {
+					goto close;
+				}
 			} else {
-				goto close;
+				if((recvBuff = socket_read(sockfd)) != NULL) {
+					json = json_decode(recvBuff);
+					json_find_string(json, "message", &message);
+				} else {
+					goto close;
+				}
 			}
-		} else {
-			if((recvBuff = socket_read(sockfd)) != NULL) {
-				json = json_decode(recvBuff);
-				json_find_string(json, "message", &message);
-			} else {
-				goto close;
-			}
-		}
 		usleep(100);
+		}
 		switch(steps) {
 			case WELCOME:
-				if(strcmp(message, "accept connection") == 0) {
-					socket_write(sockfd, "{\"message\":\"client controller\"}");
-					steps=IDENTIFY;
-				}
+				socket_write(sockfd, "{\"message\":\"client controller\"}");
+				steps=IDENTIFY;
 			break;
 			case IDENTIFY:
 				if(strcmp(message, "accept client") == 0) {

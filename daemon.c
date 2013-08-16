@@ -489,6 +489,46 @@ void client_controller_parse_code(int i, JsonNode *json) {
 	}
 }
 
+void client_webserver_parse_code(int i, char buffer[BUFFER_SIZE]) {
+	int sd = socket_clients[i], x = 0;
+	FILE *f;
+	char *ptr = malloc(sizeof(char));
+	char *cache = malloc((sizeof(char)*BUFFER_SIZE)+1);
+ 
+	ptr = strstr(buffer, " HTTP/");
+	*ptr = 0;
+	ptr = NULL;	
+	if(strncmp(buffer, "GET ", 4) == 0) {
+		ptr = buffer + 4;
+	}
+	if(ptr[strlen(ptr) - 1] == '/') {	
+		socket_write(sd, "HTTP/1.1 200 OK\r");
+		socket_write(sd, "Server : pilight webserver\r");
+		socket_write(sd, "\r");
+		socket_write(sd, "<html><head><title>pilight daemon</title></head>\r");
+		socket_write(sd, "<body><center><img src=\"logo.png\"></center></body></html>\r");
+	} else if(strcmp(ptr, "/logo.png") == 0) {
+		if(ptr == buffer + 4) {
+			socket_write(sd, "HTTP/1.1 200 OK\r");
+			socket_write(sd, "Content-Type: image/png\r");
+			socket_write(sd, "Server : pilight webserver\r");
+			socket_write(sd, "\r");		
+
+			f = fopen("/usr/share/images/pilight/logo.png", "rb");
+			if(f) {
+				x = 0;
+				while (!feof(f)) {
+					x = (int)fread(cache, 1, BUFFER_SIZE, f);
+					send(sd, cache, (size_t)x, MSG_NOSIGNAL);
+				}
+				fclose(f);
+			} else {
+				logprintf(LOG_NOTICE, "pilight logo not found");
+			}
+		}
+	}
+}
+
 /* Parse the incoming buffer from the client */
 void socket_parse_data(int i, char buffer[BUFFER_SIZE]) {
 	int sd = socket_clients[i];
@@ -511,17 +551,12 @@ void socket_parse_data(int i, char buffer[BUFFER_SIZE]) {
 	if(strcmp(buffer, "HEART\n") == 0) {
 		socket_write(sd, "BEAT");
 	} else {
-		// if(strstr(buffer, " HTTP/") != NULL) {
-			// logprintf(LOG_INFO, "client recognized as web");
-			// handshakes[i] = WEB;
-			// socket_write(sd, "HTTP/1.1 404 Not Found\r");
-			// socket_write(sd, "Server : pilight webserver\r");
-			// socket_write(sd, "\r");
-			// socket_write(sd, "<html><head><title>404 Not Found</head></title>\r");
-			// socket_write(sd, "<body><p>404 Not Found: The requested resource could not be found!</p></body></html>\r");
-			// socket_close(sd);
-		// } else 
-		if(json_find_string(json, "incognito", &incognito) == 0) {
+		if(strstr(buffer, " HTTP/") != NULL) {
+			logprintf(LOG_INFO, "client recognized as web");
+			handshakes[i] = WEB;
+			client_webserver_parse_code(i, buffer);
+			socket_close(sd);
+		} else if(json_find_string(json, "incognito", &incognito) == 0) {
 			incognito_mode = 1;
 			for(x=0;x<(sizeof(clients)/sizeof(clients[0]));x++) {
 				if(strcmp(clients[x], incognito) == 0) {

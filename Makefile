@@ -71,6 +71,7 @@ install:
 	install -m 0755 -d /usr/local/lib
 	install -m 0755 -d /usr/local/sbin
 	install -m 0755 -d /etc/pilight
+	install -m 0755 -d /usr/share/images/pilight/
 	install -m 0655 pilight-daemon /usr/local/sbin/
 	install -m 0655 pilight-send /usr/local/sbin/
 	install -m 0655 pilight-receive /usr/local/sbin/
@@ -79,6 +80,7 @@ install:
 	install -m 0655 pilight-learn /usr/local/sbin/
 	install -m 0655 libpilight.so.1 /usr/local/lib/
 	install -m 0644 settings.json-default /etc/pilight/
+	install -m 0644 logo.png /usr/share/images/pilight/
 	mv /etc/pilight/settings.json-default /etc/pilight/settings.json
 	ln -sf /usr/local/lib/libpilight.so.1 /usr/local/lib/libpilight.so
 	ldconfig

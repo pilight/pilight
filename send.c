@@ -218,20 +218,20 @@ int main(int argc, char **argv) {
 		}
 
 		while(1) {
-			/* Clear the receive buffer again and read the welcome message */
-			if((recvBuff = socket_read(sockfd)) != NULL) {
-				json = json_decode(recvBuff);
-				json_find_string(json, "message", &message);
-			} else {
-				goto close;
+			if(steps > WELCOME) {
+				/* Clear the receive buffer again and read the welcome message */
+				if((recvBuff = socket_read(sockfd)) != NULL) {
+					json = json_decode(recvBuff);
+					json_find_string(json, "message", &message);
+				} else {
+					goto close;
+				}
+				usleep(100);
 			}
-			usleep(100);
 			switch(steps) {
 				case WELCOME:
-					if(strcmp(message, "accept connection") == 0) {
-						socket_write(sockfd, "{\"message\":\"client sender\"}");
-						steps=IDENTIFY;
-					}
+					socket_write(sockfd, "{\"message\":\"client sender\"}");
+					steps=IDENTIFY;
 				case IDENTIFY:
 					if(strcmp(message, "accept client") == 0) {
 						steps=SEND;
