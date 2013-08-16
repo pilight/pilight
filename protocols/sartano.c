@@ -156,7 +156,8 @@ void sartanoInit(void) {
 	sartano.type = SWITCH;
 	sartano.pulse = 4;
 	sartano.footer = 38;
-	sartano.length = 48;
+	sartano.rawLength = 50;
+	sartano.binLength = 12;
 	sartano.message = malloc(sizeof(JsonNode));
 
 	sartano.bit = 0;

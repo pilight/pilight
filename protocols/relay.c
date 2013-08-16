@@ -44,7 +44,7 @@ int relayCreateCode(JsonNode *code) {
 	char folder[32];
 	struct stat s;
 
-	relay.length = 0;
+	relay.rawLength = 0;
 
 	if(json_find_string(code, "gpio", &tmp) == 0)
 		gpio=atoi(tmp);

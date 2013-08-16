@@ -27,6 +27,8 @@
 #include "arctech_old.h"
 
 void arctechOldCreateMessage(int id, int unit, int state) {
+	char alpha[16] = {"ABCDEFGHIJKLMNO"};
+
 	arctech_old.message = json_mkobject();
 	json_append_member(arctech_old.message, "id", json_mknumber(id));
 	json_append_member(arctech_old.message, "unit", json_mknumber(unit));
@@ -37,9 +39,13 @@ void arctechOldCreateMessage(int id, int unit, int state) {
 }
 
 void arctechOldParseBinary(void) {
-	int unit = binToDec(arctech_old.binary, 0, 4);
+	int i = 0;
+	for(i=0;i<arctech_old.binLength;i++) {
+		arctech_old.binary[i] ^= 1;
+	}
+	int unit = binToDec(arctech_old.binary, 0, 3);
 	int state = arctech_old.binary[11];
-	int id = binToDec(arctech_old.binary, 5, 9);
+	int id = binToDec(arctech_old.binary, 4, 8)+1;
 	arctechOldCreateMessage(id, unit, state);
 }
 
@@ -159,7 +165,8 @@ void arctechOldInit(void) {
 	arctech_old.type = SWITCH;
 	arctech_old.pulse = 4;
 	arctech_old.footer = 38;
-	arctech_old.length = 48;
+	arctech_old.rawLength = 50;
+	arctech_old.binLength = 12;
 	arctech_old.message = malloc(sizeof(JsonNode));
 
 	arctech_old.bit = 0;

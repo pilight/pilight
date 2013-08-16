@@ -64,15 +64,17 @@ typedef enum {
 	SENDER,
 	CONTROLLER,
 	NODE,
-	GUI
+	GUI,
+	WEB
 } client_type_t;
 
-char clients[5][11] = {
+char clients[6][11] = {
 	"receiver\0",
 	"sender\0",
 	"controller\0",
 	"node\0",
-	"gui\0"
+	"gui\0",
+	"web\0"
 };
 
 typedef enum {
@@ -263,16 +265,17 @@ void send_code(JsonNode *json) {
 				}
 
 				sending = 1;
-#ifdef USE_LIRC				
+
+#ifdef USE_LIRC
 				/* Create a single code with all repeats included */
-				int longCode[(protocol->length*send_repeat)+1];
+				int longCode[(protocol->rawLength*send_repeat)+1];
 				for(i=0;i<send_repeat;i++) {
-					for(x=0;x<protocol->length;x++) {
-						longCode[x+(protocol->length*i)]=protocol->raw[x];
+					for(x=0;x<protocol->rawLength;x++) {
+						longCode[x+(protocol->rawLength*i)]=protocol->raw[x];
 					}
 				}
 				/* Send this single big code at once */
-				code.length = (x+(protocol->length*(i-1)))+1;
+				code.length = (x+(protocol->rawLength*(i-1)))+1;
 				code.signals = longCode;
 
 				/* Send the code, if we succeeded, inform the receiver */
@@ -289,7 +292,7 @@ void send_code(JsonNode *json) {
 #else
 				piHiPri(99);
 				for(i=0;i<send_repeat;i++) {
-					for(x=0;x<protocol->length;x+=2) {
+					for(x=0;x<protocol->rawLength;x+=2) {
 						digitalWrite(GPIO_OUT_PIN, 1);
 						usleep((__useconds_t)protocol->raw[x]);
 						digitalWrite(GPIO_OUT_PIN, 0);
@@ -508,6 +511,16 @@ void socket_parse_data(int i, char buffer[BUFFER_SIZE]) {
 	if(strcmp(buffer, "HEART\n") == 0) {
 		socket_write(sd, "BEAT");
 	} else {
+		// if(strstr(buffer, " HTTP/") != NULL) {
+			// logprintf(LOG_INFO, "client recognized as web");
+			// handshakes[i] = WEB;
+			// socket_write(sd, "HTTP/1.1 404 Not Found\r");
+			// socket_write(sd, "Server : pilight webserver\r");
+			// socket_write(sd, "\r");
+			// socket_write(sd, "<html><head><title>404 Not Found</head></title>\r");
+			// socket_write(sd, "<body><p>404 Not Found: The requested resource could not be found!</p></body></html>\r");
+			// socket_close(sd);
+		// } else 
 		if(json_find_string(json, "incognito", &incognito) == 0) {
 			incognito_mode = 1;
 			for(x=0;x<(sizeof(clients)/sizeof(clients[0]));x++) {
@@ -552,6 +565,7 @@ void socket_parse_data(int i, char buffer[BUFFER_SIZE]) {
 		}
 		if(handshakes[i] == -1 && socket_clients[i] > 0) {
 			socket_write(sd, "{\"message\":\"reject client\"}");
+			socket_close(sd);
 		}
 	}
 	json_delete(json);
@@ -608,7 +622,7 @@ void receive_code(void) {
 				for(i=0; i<protocols.nr; ++i) {
 					protocol = protocols.listeners[i];
 					/* Lots of checks if the protocol can actually receive anything */
-					if((((protocol->parseRaw != NULL || protocol->parseCode != NULL) && protocol->length > 0)
+					if((((protocol->parseRaw != NULL || protocol->parseCode != NULL) && protocol->rawLength > 0)
 					    || protocol->parseBinary != NULL)
 						&& protocol->footer > 0	&& protocol->pulse > 0) {
 						/* If we are recording, keep recording until the footer has been matched */
@@ -646,7 +660,7 @@ void receive_code(void) {
 							//logprintf(LOG_DEBUG, "catched %s header and footer", protocol->id);
 
 							/* Check if the code matches the raw length */
-							if((protocol->bit == protocol->length)) {
+							if((protocol->bit == protocol->rawLength)) {
 								if(protocol->parseRaw != NULL) {
 									logprintf(LOG_DEBUG, "called %s parseRaw()", protocol->id);
 
@@ -722,7 +736,7 @@ void receive_code(void) {
 											}
 
 											/* Check if the binary matches the binary length */
-											if((x/4) == (protocol->length/4)) {
+											if((protocol->binLength > 0 && ((x/4) == protocol->binLength)) || (protocol->binLength == 0 && ((x/4) == protocol->rawLength/4))) {
 												logprintf(LOG_DEBUG, "called %s parseBinary()", protocol->id);
 
 												protocol->parseBinary();
