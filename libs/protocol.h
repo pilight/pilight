@@ -76,7 +76,7 @@ struct protocol_t {
 
 typedef struct {
 	int nr;
-	protocol_t *listeners[6]; // Change this to the number of available protocols
+	protocol_t *listeners[8]; // Change this to the number of available protocols
 } protocols_t;
 
 protocols_t protocols;
