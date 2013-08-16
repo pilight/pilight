@@ -49,10 +49,10 @@ void sartanoCreateLow(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=4) {
-		sartano.raw[i]=(sartano.pulse*PULSE_LENGTH);
-		sartano.raw[i+1]=(PULSE_LENGTH);
-		sartano.raw[i+2]=(PULSE_LENGTH);
-		sartano.raw[i+3]=(sartano.pulse*PULSE_LENGTH);
+		sartano.raw[i]=(PULSE_LENGTH);
+		sartano.raw[i+1]=(sartano.pulse*PULSE_LENGTH);
+		sartano.raw[i+2]=(sartano.pulse*PULSE_LENGTH);
+		sartano.raw[i+3]=(PULSE_LENGTH);
 	}
 }
 
@@ -107,6 +107,11 @@ void sartanoCreateState(int state) {
 	sartano.raw[47]=(sartano.footer*PULSE_LENGTH);
 }
 
+void sartanoCreateFooter(void) {
+	sartano.raw[48]=(PULSE_LENGTH);
+	sartano.raw[49]=(sartano.footer*PULSE_LENGTH);
+}
+
 int sartanoCreateCode(JsonNode *code) {
 	int id = -1;
 	int unit = -1;
@@ -137,6 +142,7 @@ int sartanoCreateCode(JsonNode *code) {
 		sartanoCreateUnit(unit);
 		sartanoCreateId(id);
 		sartanoCreateState(state);
+		sartanoCreateFooter();
 	}
 	return EXIT_SUCCESS;
 }
@@ -153,6 +159,7 @@ void sartanoInit(void) {
 	strcpy(sartano.id, "sartano");
 	protocol_add_device(&sartano, "elro", "Elro Switches");
 	protocol_add_conflict(&sartano, "arctech_old");
+	protocol_add_conflict(&sartano, "impuls");
 	sartano.type = SWITCH;
 	sartano.pulse = 4;
 	sartano.footer = 38;
