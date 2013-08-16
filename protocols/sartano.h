@@ -25,9 +25,13 @@ void sartanoInit(void);
 void sartanoCreateMessage(int id, int unit, int state);
 void sartanoParseBinary(void);
 int sartanoCreateCode(JsonNode *code);
+void sartanoCreateLow(int s, int e);
+void sartanoCreateHigh(int s, int e);
+void sartanoClearCode(void);
 void sartanoCreateUnit(int unit);
 void sartanoCreateId(int id);
 void sartanoCreateState(int state);
+void sartanoCreateFooter(void);
 void sartanoPrintHelp(void);
 
 #endif
