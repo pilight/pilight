@@ -150,10 +150,12 @@ The supported protocols are:
          dio_switch                     D-IO (Chacon) Switches
          kaku_switch                    KlikAanKlikUit Switches
          kaku_dimmer                    KlikAanKlikUit Dimmers
-         Cogex                          Cogex Switches
+         cogex                          Cogex Switches
          kaku_old                       Old KlikAanKlikUit Switches
          elro                           Elro Switches
-         relay                          Control connected relay's         
+         select-remote                  SelectRemote Switches
+         impuls                         Impuls Switches
+         relay                          Control connected relay's
          raw                            Raw codes
 root@pi:~# pilight-send -p kaku_switch -h
 Usage: pilight-send -p kaku_switch [options]
