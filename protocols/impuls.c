@@ -168,7 +168,7 @@ void impulsInit(void) {
 
 	strcpy(impuls.id, "impuls");
 	protocol_add_device(&impuls, "impuls", "Impuls Switches");
-	protocol_add_device(&impuls, "selectremote", "SelectRemote Switches");
+	protocol_add_device(&impuls, "select-remote", "SelectRemote Switches");
 	protocol_add_conflict(&impuls, "arctech_old");
 	protocol_add_conflict(&impuls, "sartano");
 	impuls.type = SWITCH;

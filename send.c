@@ -174,7 +174,7 @@ int main(int argc, char **argv) {
 				if(protocol->createCode != NULL) {
 					while(protocol->devices != NULL) {
 						printf("\t %s\t\t\t",protocol->devices->id);
-						if(strlen(protocol->devices->id)<6)
+						if(strlen(protocol->devices->id)<7)
 							printf("\t");
 						printf("%s\n", protocol->devices->desc);
 						protocol->devices = protocol->devices->next;
