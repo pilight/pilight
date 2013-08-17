@@ -183,8 +183,8 @@ void impulsInit(void) {
 
 	options_add(&impuls.options, 't', "on", no_value, config_state, NULL);
 	options_add(&impuls.options, 'f', "off", no_value, config_state, NULL);
-	options_add(&impuls.options, 'u', "unit", has_value, config_id, "^(3[12]?|[012][0-9]|[0-9]{1})$");
-	options_add(&impuls.options, 'i', "id", has_value, config_id, "^(3[12]?|[012][0-9]|[0-9]{1})$");
+	options_add(&impuls.options, 'u', "unit", has_value, config_id, "^(3[012]?|[012][0-9]|[0-9]{1})$");
+	options_add(&impuls.options, 'i', "id", has_value, config_id, "^(3[012]?|[012][0-9]|[0-9]{1})$");
 
 	impuls.parseBinary=&impulsParseBinary;
 	impuls.createCode=&impulsCreateCode;
