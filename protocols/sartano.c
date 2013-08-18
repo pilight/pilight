@@ -37,6 +37,12 @@ void sartanoCreateMessage(int id, int unit, int state) {
 }
 
 void sartanoParseBinary(void) {
+	/* Swap 0 and 1 bits before parsing received bits */
+	int i = 0;
+	for(i=0;i<sartano.binLength;i++) {
+        	sartano.binary[i] ^= 1;
+	}
+    	
 	int unit = binToDec(sartano.binary, 0, 4);
 	int state = sartano.binary[10];
 	int check = sartano.binary[11];
@@ -160,8 +166,8 @@ void sartanoInit(void) {
 	protocol_add_conflict(&sartano, "arctech_old");
 	protocol_add_conflict(&sartano, "impuls");
 	sartano.type = SWITCH;
-	sartano.pulse = 4;
-	sartano.footer = 38;
+	sartano.pulse = 3;
+	sartano.footer = 33;
 	sartano.rawLength = 50;
 	sartano.binLength = 12;
 	sartano.message = malloc(sizeof(JsonNode));
