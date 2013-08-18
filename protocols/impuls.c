@@ -172,8 +172,8 @@ void impulsInit(void) {
 	protocol_add_conflict(&impuls, "arctech_old");
 	protocol_add_conflict(&impuls, "sartano");
 	impuls.type = SWITCH;
-	impuls.pulse = 3;
-	impuls.footer = 31;
+	impuls.pulse = 3; // unconfirmed, works for sending but receiving remote does not work yet
+	impuls.footer = 33; // unconfirmed, works for sending but receiving remote does not work yet
 	impuls.rawLength = 50;
 	impuls.binLength = 12;
 	impuls.message = malloc(sizeof(JsonNode));
