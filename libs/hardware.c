@@ -64,7 +64,6 @@ void hw_init(void) {
 int module_init(void) {
 	int use_lirc = USE_LIRC;
 	int gpio_in = GPIO_IN_PIN;
-	int gpio_out = GPIO_OUT_PIN;
 
 	settings_find_number("use-lirc", &use_lirc);
 	settings_find_number("gpio-receiver", &gpio_in);
