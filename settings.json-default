@@ -7,5 +7,5 @@
 	"log-file": "/var/log/pilight.log",
 	"process-file": "",
 	"send-repeats": 10,
-	"socket": "/dev/lirc0"
+	"use-lirc": 0
 }
