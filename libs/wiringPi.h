@@ -160,7 +160,7 @@ extern void gpioClockSet        (int pin, int freq) ;
 // Interrupts
 //	(Also Pi hardware specific)
 
-// extern int  waitForInterrupt    (int pin, int mS) ;
+extern int  waitForInterrupt    (int pin, int mS) ;
 extern int  wiringPiISR         (int pin, int mode) ;
 
 // Threads
