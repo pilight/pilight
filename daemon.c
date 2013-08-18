@@ -660,7 +660,7 @@ void receive_code(void) {
 						}
 						if(protocol->header == 0) {
 							header = (short)protocol->pulse;
-							lsb = 1;
+							lsb = 2; // lsb 1 for arctech_old, lsb 2 for sartano, impuls requires the checking of lsb 1 AND 2
 						} else {
 							header = (short)protocol->header;
 							lsb = 3;
@@ -681,7 +681,7 @@ void receive_code(void) {
 						/* Try to catch the footer of the code */
 						if(duration > ((protocol->footer*PULSE_LENGTH)-((protocol->footer*PULSE_LENGTH)*MULTIPLIER))
 						   && duration < ((protocol->footer*PULSE_LENGTH)+((protocol->footer*PULSE_LENGTH)*MULTIPLIER))) {
-							//logprintf(LOG_DEBUG, "catched %s header and footer", protocol->id);
+							//logprintf(LOG_DEBUG, "caught %s header and footer", protocol->id);
 
 							/* Check if the code matches the raw length */
 							if((protocol->bit == protocol->rawLength)) {
@@ -727,7 +727,7 @@ void receive_code(void) {
 									/* Continue if we have recognized enough repeated codes */
 									if(y >= receive_repeat) {
 										if(protocol->parseCode != NULL) {
-											logprintf(LOG_DEBUG, "catched minimum # of repeats %s of %s", y, protocol->id);
+											logprintf(LOG_DEBUG, "caught minimum # of repeats %s of %s", y, protocol->id);
 											logprintf(LOG_DEBUG, "called %s parseCode()", protocol->id);
 
 											protocol->parseCode();
@@ -757,6 +757,11 @@ void receive_code(void) {
 												} else {
 													protocol->binary[x/4]=0;
 												}
+											}
+											
+											/* Fix for sartano receiving */
+											if(protocol->header == 0) {
+    												x -= 4;
 											}
 
 											/* Check if the binary matches the binary length */
