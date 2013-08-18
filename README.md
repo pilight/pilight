@@ -80,7 +80,6 @@ __socket__: what lirc socket should we read from (use-lirc: 1)<br />
 __use-lirc__: use the lirc_rpi kernel module or plain gpio access<br />
 __gpio-sender__: to what pin is the sender connected (use-lirc: 0)<br />
 __gpio-receiver__: to what pin is the reciever connected (use-lirc: 0)<br />
-<br />
 __process file__: This script can be anything you like. The pilight-daemon will pass the same JSON object to this script as the receiver, but without any formatting. You can than parse the JSON object for further processing.
 <hr>
 The output of the receiver will be as follow:
