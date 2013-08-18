@@ -21,10 +21,6 @@ To fully benifit from my code, you should build a low-pass filter to make sure n
 This filter only costs about $1 and works absolutely perfect. All components are commonly used and can be found on ebay or at a local DIY shops.<br />
 <img src="http://i.imgur.com/yRp532m.jpg" alt="Low-pass filter" title="Low-pass filter" border="0" />
 <hr>
-With this new code you can choose to use a lirc kernel module or plain GPIO interaction. To use the lirc kernel module uncomment this line in the `libs/settings.h`:<br />
-` * #define USE_LIRC`<br />
-to this:<br />
-`#define USE LIRC`<br />
 Those who are not using a low-pass filter are adviced to use this code with the lirc kernel module.
 The downside of using the lirc kernel module is that this it is not entirely standalone, because you have to have the lirc_rpi kernel module loaded. This kernel
 module is shipped with the standard raspberry pi kernel. To load this module, just run:
@@ -64,7 +60,10 @@ All options and its default values are show below:<br />
 	"process-file": "",
 	"send-repeats": 10,
 	"receive-repeats": 1,
-	"socket": "/dev/lirc0"
+	"socket": "/dev/lirc0",
+	"use-lirc": 0,
+	"gpio-sender": 0,
+	"gpio-receiver": 1
 }
 ```
 __port__: change the default port the daemon will run at<br />
@@ -77,7 +76,10 @@ __log-file__: The default location of the log id file<br />
 __process-file__: The optional process file<br />
 __send-repeats__: How many times should a code be send<br />
 __receive-repeats__: How many times should a code be recieved before marked valid<br />
-__socket__: what socket should we read from<br />
+__socket__: what lirc socket should we read from (use-lirc: 1)<br />
+__use-lirc__: use the lirc_rpi kernel module or plain gpio access<br />
+__gpio-sender__: to what pin is the sender connected (use-lirc: 0)<br />
+__gpio-receiver__: to what pin is the reciever connected (use-lirc: 0)<br />
 <br />
 __process file__: This script can be anything you like. The pilight-daemon will pass the same JSON object to this script as the receiver, but without any formatting. You can than parse the JSON object for further processing.
 <hr>

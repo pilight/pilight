@@ -21,10 +21,6 @@
  ***********************************************************************
  */
 
-#include "settings.h"
-
-#ifndef USE_LIRC
- 
 #ifndef	__WIRING_PI_H__
 #define	__WIRING_PI_H__
 
@@ -164,8 +160,8 @@ extern void gpioClockSet        (int pin, int freq) ;
 // Interrupts
 //	(Also Pi hardware specific)
 
-extern int  waitForInterrupt    (int pin, int mS) ;
-extern int  wiringPiISR         (int pin, int mode, void (*function)(void)) ;
+// extern int  waitForInterrupt    (int pin, int mS) ;
+extern int  wiringPiISR         (int pin, int mode) ;
 
 // Threads
 
@@ -186,8 +182,6 @@ extern unsigned int micros            (void) ;
 
 #ifdef __cplusplus
 }
-#endif
-
 #endif
 
 #endif

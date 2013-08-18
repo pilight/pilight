@@ -32,21 +32,12 @@
 #include "settings.h"
 #include "log.h"
 #include "options.h"
-
-#ifdef USE_LIRC
-
+#include "wiringPi.h"
 #include "lirc.h"
 #include "lirc/ir_remote.h"
 #include "lirc/hardware.h"
 #include "lirc/hw-types.h"
-
-#else
-
-#include <wiringPi.h>
-#include "gpio.h"
 #include "irq.h"
-
-#endif
 
 typedef enum {
 	WAIT,
@@ -103,14 +94,12 @@ int main(int argc, char **argv) {
 	progname = strdup("pilight-learn");
 	struct options_t *options = malloc(sizeof(struct options_t));
 	
-#ifdef USE_LIRC
 	lirc_t data;
 	char *socket = strdup("/dev/lirc0");
 	int have_device = 0;
-#else
-	int newDuration;
-#endif
-
+	int use_lirc = USE_LIRC;
+	int gpio_in = GPIO_IN_PIN;
+	
 	int duration = 0;
 	int i = 0;
 	int y = 0;
@@ -154,15 +143,11 @@ int main(int argc, char **argv) {
 	memset(all,-1,75);
 	memset(unit,-1,75);
 
-#ifdef USE_LIRC
-	hw_choose_driver(NULL);
-#endif
-
 	options_add(&options, 'H', "help", no_value, 0, NULL);
 	options_add(&options, 'V', "version", no_value, 0, NULL);
-#ifdef USE_LIRC	
 	options_add(&options, 'S', "socket", has_value, 0, "^/dev/([A-Za-z]+)([0-9]+)");
-#endif
+	options_add(&options, 'L', "lirc", no_value, 0, NULL);
+	options_add(&options, 'G', "gpio", has_value, 0, "^[0-7]$");
 	while (1) {
 		int c;
 		c = options_parse(&options, argc, argv, 1);
@@ -172,75 +157,179 @@ int main(int argc, char **argv) {
 			case 'H':
 				printf("Usage: %s [options]\n", progname);
 				printf("\t -H --help\t\tdisplay usage summary\n");
-				printf("\t -V --version\t\tdisplay version\n");
-#ifdef USE_LIRC				
+				printf("\t -V --version\t\tdisplay version\n");		
 				printf("\t -S --socket=socket\tread from given socket\n");
-#endif
+				printf("\t -L --lirc\t\tuse the lirc_rpi kernel module\n");
+				printf("\t -G --gpio=#\t\tGPIO pin we're directly reading from\n");
 				return (EXIT_SUCCESS);
 			break;
 			case 'V':
 				printf("%s %s\n", progname, "1.0");
 				return (EXIT_SUCCESS);
 			break;
-#ifdef USE_LIRC			
+			case 'L':
+				use_lirc = 1;
+			break;
+			case 'G':
+				gpio_in = atoi(optarg);
+				use_lirc = 0;
+			break;
 			case 'S':
 				socket = optarg;
 				have_device = 1;
 			break;
-#endif
 			default:
 				printf("Usage: %s [options]\n", progname);
 				return (EXIT_FAILURE);
 			break;
 		}
 	}
-
-#ifdef USE_LIRC
-	if(strcmp(socket, "/var/lirc/lircd") == 0) {
-		logprintf(LOG_ERR, "refusing to connect to lircd socket");
-		return EXIT_FAILURE;
-	}
-
-	if(have_device)
-		hw.device = socket;
-
-	if(!hw.init_func()) {
-		return EXIT_FAILURE;
-	}
-#endif
-
-#ifndef USE_LIRC
-	if(gpio_request(GPIO_IN_PIN) == 0) {
-		/* Attach an interrupt to the requested pin */
-		irq_attach(GPIO_IN_PIN, CHANGE);
+	
+	if(use_lirc == 1) {
+		hw_choose_driver(NULL);
+		
+		if(strcmp(socket, "/var/lirc/lircd") == 0) {
+			logprintf(LOG_ERR, "refusing to connect to lircd socket");
+			return EXIT_FAILURE;
+		}
+	
+		if(have_device)
+			hw.device = socket;
+	
+		if(!hw.init_func()) {
+			return EXIT_FAILURE;
+		}
 	} else {
-		return EXIT_FAILURE;		
-	}
-	printf("Please make sure the daemon is not running when using this debugger.\n\n");
-#endif
+		if(wiringPiSetup() == -1)
+			return EXIT_FAILURE;
 
-	while(loop) {
-#ifdef USE_LIRC
-		data = hw.readdata(0);
-		duration = (data & PULSE_MASK);
-#else
-
-		unsigned short a = 0;
-
-		if((newDuration = irq_read()) == 1) {
-			continue;
+		if(wiringPiISR(gpio_in, INT_EDGE_BOTH) < 0) {
+			logprintf(LOG_ERR, "unable to register interrupt for pin %d", gpio_in) ;
+			return 1 ;
 		}
 
-		for(a=0;a<2;a++) {
-			if(a==0) {
-				duration = PULSE_LENGTH;
-			} else {
-				duration = newDuration;
-				if(duration < 750) {
-					duration = PULSE_LENGTH;
+		(void)piHiPri(55);
+	}
+	
+	printf("Please make sure the daemon is not running when using this debugger.\n\n");	
+
+	while(loop) {
+		switch(state) {
+			case CAPTURE:
+				printf("1. Please send and hold one of the OFF buttons.");
+				break;
+			case ON:
+				/* Store the previous OFF button code */
+				for(i=0;i<binaryLength;i++) {
+					offBinary[i] = binary[i];
 				}
-			}
-#endif
+				printf("2. Please send and hold the ON button for the same device\n");
+				printf("   as for which you send the previous OFF button.");
+				break;
+			case OFF:
+				/* Store the previous ON button code */
+				for(i=0;i<binaryLength;i++) {
+					onBinary[i] = binary[i];
+				}
+				for(i=0;i<rawLength;i++) {
+					onCode[i] = code[i];
+				}
+				z=0;
+
+				/* Compare the ON and OFF codes and save bit that are different */
+				for(i=0;i<binaryLength;i++) {
+					if(offBinary[i] != onBinary[i]) {
+						onoff[z++]=i;
+					}
+				}
+				for(i=0;i<rawLength;i++) {
+					offCode[i] = code[i];
+				}
+				printf("3. Please send and hold (one of the) ALL buttons.\n");
+				printf("   If you're remote doesn't support turning ON or OFF\n");
+				printf("   all devices at once, press the same OFF button as in\n");
+				printf("   the beginning.");
+			break;
+			case ALL:
+				z=0;
+				memset(temp,-1,75);
+				/* Store the ALL code */
+				for(i=0;i<binaryLength;i++) {
+					allBinary[i] = binary[i];
+					if(allBinary[i] != onBinary[i]) {
+						temp[z++] = i;
+					}
+				}
+				for(i=0;i<rawLength;i++) {
+					allCode[i] = code[i];
+				}
+				/* Compare the ALL code to the ON and OFF code and store the differences */
+				y=0;
+				for(i=0;i<binaryLength;i++) {
+					if(allBinary[i] != offBinary[i]) {
+						all[y++] = i;
+					}
+				}
+				if((unsigned int)z < y) {
+					for(i=0;i<z;i++) {
+						all[z]=temp[z];
+					}
+				}
+				printf("4. Please send and hold the ON button with the lowest ID.");
+			break;
+			case UNIT1:
+				/* Store the lowest unit code */
+				for(i=0;i<binaryLength;i++) {
+					unit1Binary[i] = binary[i];
+				}
+				for(i=0;i<rawLength;i++) {
+					unit1Code[i] = code[i];
+				}
+				printf("5. Please send and hold the ON button with the second to lowest ID.");
+			break;
+			case UNIT2:
+				/* Store the second to lowest unit code */
+				for(i=0;i<binaryLength;i++) {
+					unit2Binary[i] = binary[i];
+				}
+				for(i=0;i<rawLength;i++) {
+					unit2Code[i] = code[i];
+				}
+				printf("6. Please send and hold the ON button with the highest ID.");
+			break;
+			case PROCESSUNIT:
+				z=0;
+				/* Store the highest unit code and compare the three codes. Store all
+				   bit that are different */
+				for(i=0;i<binaryLength;i++) {
+					unit3Binary[i] = binary[i];
+					if((unit2Binary[i] != unit1Binary[i]) || (unit1Binary[i] != unit3Binary[i]) || (unit2Binary[i] != unit3Binary[i])) {
+						unit[z++]=i;
+					}
+				}
+				for(i=0;i<rawLength;i++) {
+					unit3Code[i] = code[i];
+				}
+				state=STOP;
+			break;
+			case WAIT:
+			case STOP:
+			default:;
+		}
+		fflush(stdout);
+		if(state!=WAIT)
+			pState=state;	
+		if(state==STOP)
+			loop = 0;
+		else
+			state=WAIT;		
+		if(use_lirc == 1) {
+			data = hw.readdata(0);
+			duration = (data & PULSE_MASK);
+		} else {
+			duration = irq_read(gpio_in);
+		}
+
 		/* If we are recording, keep recording until the next footer has been matched */
 		if(recording == 1) {
 			if(bit < 255) {
@@ -368,119 +457,6 @@ int main(int argc, char **argv) {
 				pBinary[i]=binary[i];
 			}
 		}
-
-		switch(state) {
-			case CAPTURE:
-				printf("1. Please send and hold one of the OFF buttons.");
-				break;
-			case ON:
-				/* Store the previous OFF button code */
-				for(i=0;i<binaryLength;i++) {
-					offBinary[i] = binary[i];
-				}
-				printf("2. Please send and hold the ON button for the same device\n");
-				printf("   as for which you send the previous OFF button.");
-				break;
-			case OFF:
-				/* Store the previous ON button code */
-				for(i=0;i<binaryLength;i++) {
-					onBinary[i] = binary[i];
-				}
-				for(i=0;i<rawLength;i++) {
-					onCode[i] = code[i];
-				}
-				z=0;
-
-				/* Compare the ON and OFF codes and save bit that are different */
-				for(i=0;i<binaryLength;i++) {
-					if(offBinary[i] != onBinary[i]) {
-						onoff[z++]=i;
-					}
-				}
-				for(i=0;i<rawLength;i++) {
-					offCode[i] = code[i];
-				}
-				printf("3. Please send and hold (one of the) ALL buttons.\n");
-				printf("   If you're remote doesn't support turning ON or OFF\n");
-				printf("   all devices at once, press the same OFF button as in\n");
-				printf("   the beginning.");
-			break;
-			case ALL:
-				z=0;
-				memset(temp,-1,75);
-				/* Store the ALL code */
-				for(i=0;i<binaryLength;i++) {
-					allBinary[i] = binary[i];
-					if(allBinary[i] != onBinary[i]) {
-						temp[z++] = i;
-					}
-				}
-				for(i=0;i<rawLength;i++) {
-					allCode[i] = code[i];
-				}
-				/* Compare the ALL code to the ON and OFF code and store the differences */
-				y=0;
-				for(i=0;i<binaryLength;i++) {
-					if(allBinary[i] != offBinary[i]) {
-						all[y++] = i;
-					}
-				}
-				if((unsigned int)z < y) {
-					for(i=0;i<z;i++) {
-						all[z]=temp[z];
-					}
-				}
-				printf("4. Please send and hold the ON button with the lowest ID.");
-			break;
-			case UNIT1:
-				/* Store the lowest unit code */
-				for(i=0;i<binaryLength;i++) {
-					unit1Binary[i] = binary[i];
-				}
-				for(i=0;i<rawLength;i++) {
-					unit1Code[i] = code[i];
-				}
-				printf("5. Please send and hold the ON button with the second to lowest ID.");
-			break;
-			case UNIT2:
-				/* Store the second to lowest unit code */
-				for(i=0;i<binaryLength;i++) {
-					unit2Binary[i] = binary[i];
-				}
-				for(i=0;i<rawLength;i++) {
-					unit2Code[i] = code[i];
-				}
-				printf("6. Please send and hold the ON button with the highest ID.");
-			break;
-			case PROCESSUNIT:
-				z=0;
-				/* Store the highest unit code and compare the three codes. Store all
-				   bit that are different */
-				for(i=0;i<binaryLength;i++) {
-					unit3Binary[i] = binary[i];
-					if((unit2Binary[i] != unit1Binary[i]) || (unit1Binary[i] != unit3Binary[i]) || (unit2Binary[i] != unit3Binary[i])) {
-						unit[z++]=i;
-					}
-				}
-				for(i=0;i<rawLength;i++) {
-					unit3Code[i] = code[i];
-				}
-				state=STOP;
-			break;
-			case WAIT:
-			case STOP:
-			default:;
-		}
-	fflush(stdout);
-	if(state!=WAIT)
-		pState=state;
-	if(state==STOP)
-		loop = 0;
-	else
-		state=WAIT;
-#ifndef USE_LIRC
-		}
-#endif		
 	}
 
 	rmDup(all, onoff);

@@ -32,21 +32,12 @@
 #include "settings.h"
 #include "log.h"
 #include "options.h"
-
-#ifdef USE_LIRC
-
+#include "wiringPi.h"
 #include "lirc.h"
 #include "lirc/ir_remote.h"
 #include "lirc/hardware.h"
 #include "lirc/hw-types.h"
-
-#else
-
-#include <wiringPi.h>
-#include "gpio.h"
 #include "irq.h"
-
-#endif
 
 int normalize(int i) {
 	double x;
@@ -66,13 +57,11 @@ int main(int argc, char **argv) {
 
 	struct options_t *options = malloc(sizeof(struct options_t));	
 	
-#ifdef USE_LIRC
 	lirc_t data;
 	char *socket = strdup("/dev/lirc0");
 	int have_device = 0;
-#else
-	int newDuration;
-#endif
+	int use_lirc = USE_LIRC;
+	int gpio_in = GPIO_IN_PIN;
 
 	int duration = 0;
 	int i = 0;
@@ -92,15 +81,11 @@ int main(int argc, char **argv) {
 
 	int loop = 1;
 
-#ifdef USE_LIRC
-	hw_choose_driver(NULL);
-#endif
-
 	options_add(&options, 'H', "help", no_value, 0, NULL);
 	options_add(&options, 'V', "version", no_value, 0, NULL);
-#ifdef USE_LIRC	
 	options_add(&options, 'S', "socket", has_value, 0, "^/dev/([A-Za-z]+)([0-9]+)");
-#endif
+	options_add(&options, 'L', "lirc", no_value, 0, NULL);
+	options_add(&options, 'G', "gpio", has_value, 0, "^[0-7]$");
 
 	while (1) {
 		int c;
@@ -108,25 +93,30 @@ int main(int argc, char **argv) {
 		if(c == -1)
 			break;
 		switch (c) {
-			case 'h':
+			case 'H':
 				printf("Usage: %s [options]\n", progname);
 				printf("\t -H --help\t\tdisplay usage summary\n");
-				printf("\t -V --version\t\tdisplay version\n");
-#ifdef USE_LIRC				
+				printf("\t -V --version\t\tdisplay version\n");		
 				printf("\t -S --socket=socket\tread from given socket\n");
-#endif
+				printf("\t -L --lirc\t\tuse the lirc_rpi kernel module\n");
+				printf("\t -G --gpio=#\t\tGPIO pin we're directly reading from\n");
 				return (EXIT_SUCCESS);
 			break;
-			case 'v':
+			case 'V':
 				printf("%s %s\n", progname, "1.0");
 				return (EXIT_SUCCESS);
-			break;
-#ifdef USE_LIRC			
+			break;	
 			case 'S':
 				socket = optarg;
 				have_device = 1;
 			break;
-#endif
+			case 'L':
+				use_lirc = 1;
+			break;
+			case 'G':
+				gpio_in = atoi(optarg);
+				use_lirc = 0;
+			break;
 			default:
 				printf("Usage: %s [options]\n", progname);
 				return (EXIT_FAILURE);
@@ -134,62 +124,44 @@ int main(int argc, char **argv) {
 		}
 	}
 
-#ifdef USE_LIRC
-	if(strcmp(socket, "/var/lirc/lircd") == 0) {
-		logprintf(LOG_ERR, "refusing to connect to lircd socket");
-		return EXIT_FAILURE;
-	}
+	if(use_lirc == 1) {
+		hw_choose_driver(NULL);
+		if(strcmp(socket, "/var/lirc/lircd") == 0) {
+			logprintf(LOG_ERR, "refusing to connect to lircd socket");
+			return EXIT_FAILURE;
+		}
 
-	if(have_device)
-		hw.device = socket;
+		if(have_device)
+			hw.device = socket;
 
-	if(!hw.init_func()) {
-		return EXIT_FAILURE;
-	}
-#endif
-
-/*
-End of the original (but stripped) code of mode2
-*/
-
-#ifndef USE_LIRC
-	if(gpio_request(GPIO_IN_PIN) == 0) {
-		/* Attach an interrupt to the requested pin */
-		irq_attach(GPIO_IN_PIN, CHANGE);
+		if(!hw.init_func()) {
+			return EXIT_FAILURE;
+		}
 	} else {
-		return EXIT_FAILURE;		
+
+		if(wiringPiSetup() == -1)
+			return EXIT_FAILURE;
+
+		if(wiringPiISR(gpio_in, INT_EDGE_BOTH) < 0) {
+			logprintf(LOG_ERR, "unable to register interrupt for pin %d", gpio_in) ;
+			return 1 ;
+		}
+		(void)piHiPri(55);
 	}
-	
+
 	printf("Please make sure the daemon is not running when using this debugger.\n\n");
 	printf("Now press and hold one of the button on your remote or wait until\n");
 	printf("another device such as a weather station has send new codes\n");
 	printf("It is possible that the debugger needs to be restarted when it does.\n");
 	printf("not show anything. This is because it's then following a wrong lead.\n");
 
-#endif
-
 	while(loop) {
-#ifdef USE_LIRC
-		data = hw.readdata(0);
-		duration = (data & PULSE_MASK);
-#else
-
-		unsigned short a = 0;
-
-		if((newDuration = irq_read()) == 1) {
-			continue;
+		if(use_lirc == 1) {
+			data = hw.readdata(0);
+			duration = (data & PULSE_MASK);
+		} else {
+			duration = irq_read(gpio_in);
 		}
-
-		for(a=0;a<2;a++) {
-			if(a==0) {
-				duration = PULSE_LENGTH;
-			} else {
-				duration = newDuration;
-				if(duration < 750) {
-					duration = PULSE_LENGTH;
-				}
-			}
-#endif
 
 		/* If we are recording, keep recording until the next footer has been matched */
 		if(recording == 1) {
@@ -249,9 +221,6 @@ End of the original (but stripped) code of mode2
 		}
 
 		fflush(stdout);
-#ifndef USE_LIRC
-		}
-#endif
 	};
 
 	/* Convert the raw code into binary code */

@@ -51,10 +51,6 @@
 //		Added in the 2 UART pins
 //		Change maxPins to numPins to more accurately reflect purpose
 
-#include "settings.h"
-
-#ifndef USE_LIRC
-
 #include <stdio.h>
 #include <stdarg.h>
 #include <stdint.h>
@@ -1302,21 +1298,21 @@ int waitForInterrupt (int pin, int mS)
  *********************************************************************************
  */
 
-static void *interruptHandler (void *arg)
-{
-  int myPin ;
+// static void *interruptHandler (void *arg)
+// {
+  // int myPin ;
 
-  (void)piHiPri (55) ;	// Only effective if we run as root
+  // (void)piHiPri (55) ;	// Only effective if we run as root
 
-  myPin   = pinPass ;
-  pinPass = -1 ;
+  // myPin   = pinPass ;
+  // pinPass = -1 ;
 
-  for (;;)
-    if (waitForInterrupt (myPin, -1) > 0)
-      isrFunctions [myPin] () ;
+  // // for (;;)
+    // // if (waitForInterrupt (myPin, -1) > 0)
+      // // isrFunctions [myPin] () ;
 
-  return NULL ;
-}
+  // return NULL ;
+// }
 
 
 /*
@@ -1327,7 +1323,7 @@ static void *interruptHandler (void *arg)
  *********************************************************************************
  */
 
-int wiringPiISR (int pin, int mode, void (*function)(void))
+int wiringPiISR (int pin, int mode)
 {
   pthread_t threadId ;
   const char *modeS ;
@@ -1395,14 +1391,14 @@ int wiringPiISR (int pin, int mode, void (*function)(void))
   for (i = 0 ; i < count ; ++i)
     read (sysFds [bcmGpioPin], &c, 1) ;
 
-  isrFunctions [pin] = function ;
+  // isrFunctions [pin] = function ;
 
-  pthread_mutex_lock (&pinMutex) ;
-    pinPass = pin ;
-    pthread_create (&threadId, NULL, interruptHandler, NULL) ;
-    while (pinPass != -1)
-      delay (1) ;
-  pthread_mutex_unlock (&pinMutex) ;
+  // pthread_mutex_lock (&pinMutex) ;
+    // pinPass = pin ;
+    // pthread_create (&threadId, NULL, interruptHandler, NULL) ;
+    // while (pinPass != -1)
+      // delay (1) ;
+  // pthread_mutex_unlock (&pinMutex) ;
 
   return 0 ;
 }
@@ -1736,5 +1732,3 @@ int piHiPri (const int pri)
 
   return sched_setscheduler (0, SCHED_RR, &sched) ;
 }
-
-#endif

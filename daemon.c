@@ -38,25 +38,15 @@
 #include "options.h"
 #include "socket.h"
 #include "json.h"
-
-#ifdef USE_LIRC
-
+// #include "webserver.h"
 #include "lirc.h"
 #include "lirc/lircd.h"
 #include "lirc/hardware.h"
 #include "lirc/transmit.h"
 #include "lirc/hw-types.h"
 #include "lirc/hw_default.h"
-
-#else
-
-#include <wiringPi.h>
-#include "gpio.h"
+#include "wiringPi.h"
 #include "irq.h"
-
-#endif
-
-
 #include "hardware.h"
 
 typedef enum {
@@ -113,7 +103,12 @@ unsigned short runmode = 1;
 int sockfd = 0;
 /* In the client running in incognito mode */
 unsigned short incognito_mode = 0;
-
+/* use the lirc_rpi module or plain GPIO */
+int use_lirc = USE_LIRC;
+/* on what pin are we sending */
+int gpio_out = GPIO_OUT_PIN;
+/* on what pin are we receiving */
+int gpio_in = GPIO_IN_PIN;
 
 /* http://stackoverflow.com/a/3535143 */
 void escape_characters(char* dest, const char* src) {
@@ -232,9 +227,7 @@ void send_code(JsonNode *json) {
 	/* Hold the final protocol struct */
 	protocol_t *protocol = malloc(sizeof(protocol_t));
 	/* The code that is send to the hardware wrapper */
-#ifdef USE_LIRC
 	struct ir_ncode code;
-#endif
 
 	JsonNode *jcode = json_mkobject();
 	JsonNode *message = json_mkobject();
@@ -266,47 +259,50 @@ void send_code(JsonNode *json) {
 
 				sending = 1;
 
-#ifdef USE_LIRC
-				/* Create a single code with all repeats included */
-				int longCode[(protocol->rawLength*send_repeat)+1];
-				for(i=0;i<send_repeat;i++) {
-					for(x=0;x<protocol->rawLength;x++) {
-						longCode[x+(protocol->rawLength*i)]=protocol->raw[x];
+				if(use_lirc == 1) {
+					/* Create a single code with all repeats included */
+					int longCode[(protocol->rawLength*send_repeat)+1];
+					for(i=0;i<send_repeat;i++) {
+						for(x=0;x<protocol->rawLength;x++) {
+							longCode[x+(protocol->rawLength*i)]=protocol->raw[x];
+						}
 					}
-				}
-				/* Send this single big code at once */
-				code.length = (x+(protocol->rawLength*(i-1)))+1;
-				code.signals = longCode;
-
-				/* Send the code, if we succeeded, inform the receiver */
-				if(((int)strlen(hw.device) > 0 && send_ir_ncode(&code) == 1) || (int)strlen(hw.device) == 0) {
+					
+					longCode[(protocol->rawLength*send_repeat)+1] = 0;
+					
+					/* Send this single big code at once */
+					code.length = (x+(protocol->rawLength*(i-1)))+1;
+					code.signals = longCode;
+					
+					/* Send the code, if we succeeded, inform the receiver */
+					if(((int)strlen(hw.device) > 0 && send_ir_ncode(&code) == 1) || (int)strlen(hw.device) == 0) {
+						logprintf(LOG_DEBUG, "successfully send %s code", protocol->id);
+						if(logged == 0) {
+							logged = 1;
+							/* Write the message to all receivers */
+							broadcast(protocol->id, message);
+						}
+					} else {
+						logprintf(LOG_ERR, "failed to send code");
+					}
+				} else {
+					piHiPri(55);
+					for(i=0;i<send_repeat;i++) {
+						for(x=0;x<protocol->rawLength;x+=2) {
+							digitalWrite(gpio_out, 1);
+							usleep((__useconds_t)protocol->raw[x]);
+							digitalWrite(gpio_out, 0);
+							usleep((__useconds_t)protocol->raw[x+1]);
+						}
+					}
+					piHiPri(0);
 					logprintf(LOG_DEBUG, "successfully send %s code", protocol->id);
 					if(logged == 0) {
 						logged = 1;
 						/* Write the message to all receivers */
 						broadcast(protocol->id, message);
 					}
-				} else {
-					logprintf(LOG_ERR, "failed to send code");
 				}
-#else
-				piHiPri(99);
-				for(i=0;i<send_repeat;i++) {
-					for(x=0;x<protocol->rawLength;x+=2) {
-						digitalWrite(GPIO_OUT_PIN, 1);
-						usleep((__useconds_t)protocol->raw[x]);
-						digitalWrite(GPIO_OUT_PIN, 0);
-						usleep((__useconds_t)protocol->raw[x+1]);
-					}
-				}
-				piHiPri(0);
-				logprintf(LOG_DEBUG, "successfully send %s code", protocol->id);
-				if(logged == 0) {
-					logged = 1;
-					/* Write the message to all receivers */
-					broadcast(protocol->id, message);
-				}				
-#endif
 				sending = 0;
 			}
 		}
@@ -490,41 +486,52 @@ void client_controller_parse_code(int i, JsonNode *json) {
 }
 
 void client_webserver_parse_code(int i, char buffer[BUFFER_SIZE]) {
-	int sd = socket_clients[i], x = 0;
+	int sd = socket_clients[i];
+	int x = 0;
 	FILE *f;
 	char *ptr = malloc(sizeof(char));
 	char *cache = malloc((sizeof(char)*BUFFER_SIZE)+1);
- 
-	ptr = strstr(buffer, " HTTP/");
-	*ptr = 0;
-	ptr = NULL;	
-	if(strncmp(buffer, "GET ", 4) == 0) {
-		ptr = buffer + 4;
-	}
-	if(ptr[strlen(ptr) - 1] == '/') {	
-		socket_write(sd, "HTTP/1.1 200 OK\r");
-		socket_write(sd, "Server : pilight webserver\r");
-		socket_write(sd, "\r");
-		socket_write(sd, "<html><head><title>pilight daemon</title></head>\r");
-		socket_write(sd, "<body><center><img src=\"logo.png\"></center></body></html>\r");
-	} else if(strcmp(ptr, "/logo.png") == 0) {
-		if(ptr == buffer + 4) {
-			socket_write(sd, "HTTP/1.1 200 OK\r");
-			socket_write(sd, "Content-Type: image/png\r");
-			socket_write(sd, "Server : pilight webserver\r");
-			socket_write(sd, "\r");		
+	struct sockaddr_in sin;
+	socklen_t len = sizeof(sin);
 
-			f = fopen("/usr/share/images/pilight/logo.png", "rb");
-			if(f) {
-				x = 0;
-				while (!feof(f)) {
-					x = (int)fread(cache, 1, BUFFER_SIZE, f);
-					send(sd, cache, (size_t)x, MSG_NOSIGNAL);
+	if(getsockname(sd, (struct sockaddr *)&sin, &len) == -1) {
+		logprintf(LOG_ERR, "could not determine server ip address");
+	} else {
+		ptr = strstr(buffer, " HTTP/");
+		*ptr = 0;
+		ptr = NULL;	
+
+		if(strncmp(buffer, "GET ", 4) == 0) {
+			ptr = buffer + 4;
+		}
+		if(strcmp(ptr, "/logo.png") == 0) {
+			if(ptr == buffer + 4) {
+				socket_write(sd, "HTTP/1.1 200 OK\r");
+				socket_write(sd, "Content-Type: image/png\r");
+				socket_write(sd, "Server : pilight webserver\r");
+				socket_write(sd, "\r");		
+
+				f = fopen("/usr/share/images/pilight/logo.png", "rb");
+				if(f) {
+					x = 0;
+					while (!feof(f)) {
+						x = (int)fread(cache, 1, BUFFER_SIZE, f);
+						send(sd, cache, (size_t)x, MSG_NOSIGNAL);
+					}
+					fclose(f);
+				} else {
+					logprintf(LOG_NOTICE, "pilight logo not found");
 				}
-				fclose(f);
-			} else {
-				logprintf(LOG_NOTICE, "pilight logo not found");
 			}
+		} else {
+		/* Redirect all incoming trafic to the pilight webserver port */
+			socket_write(sd, "HTTP/1.1 200 OK\r");
+			socket_write(sd, "Server : pilight webserver\r");
+			socket_write(sd, "\r");
+			socket_write(sd, "<html><head><title>pilight daemon</title></head>\r");
+			//sprintf(cache, "<body><center><img src=\"logo.png\"><br /><p style=\"color: #0099ff; font-weight: 800px; font-family: Verdana; font-size: 20px;\">The pilight webgui is located at <a style=\"text-decoration: none; color: #0099ff; font-weight: 800px; font-family: Verdana; font-size: 20px;\" href=\"http://%s:%d\">http://%s:%d</a></p></center></body></html>\r", inet_ntoa(sin.sin_addr), WEBPORT, inet_ntoa(sin.sin_addr), WEBPORT);
+			socket_write(sd ,"<body><center><img src=\"logo.png\"></center></body></html>\r");
+			socket_write(sd, cache);
 		}
 	}
 }
@@ -614,43 +621,25 @@ void socket_client_disconnected(int i) {
 }
 
 void receive_code(void) {
-#ifdef USE_LIRC
 	lirc_t data;
-#else
-	int newDuration;
-#endif
-
 	short lsb = 0;
 	short header = 0;
 	unsigned int x = 0, y = 0, i = 0;
 	protocol_t *protocol = malloc(sizeof(protocol_t));
 	struct conflicts_t *tmp_conflicts = NULL;
 	
-
+	if(use_lirc == 0) {
+		(void)piHiPri(55);
+	}
 	while(1) {
 		/* Only initialize the hardware receive the data when there are receivers connected */
 		if(receivers > 0) {
-#ifdef USE_LIRC
-			data = hw.readdata(0);
-			duration = (data & PULSE_MASK);
-#else
-
-			unsigned short a = 0;
-
-			if((newDuration = irq_read()) == 1) {
-				continue;
+			if(use_lirc == 1) {
+				data = hw.readdata(0);
+				duration = (data & PULSE_MASK);
+			} else {
+				duration = irq_read(gpio_in);
 			}
-
-			for(a=0;a<2;a++) {
-				if(a==0) {
-					duration = PULSE_LENGTH;
-				} else {
-					duration = newDuration;
-					if(duration < 750) {
-						duration = PULSE_LENGTH;
-					}
-				}
-#endif
 
 			/* A space is normally for 295 long, so filter spaces less then 200 */
 			if(sending == 0 && duration > 200) {
@@ -770,6 +759,10 @@ void receive_code(void) {
 												}
 											}
 
+											if(protocol->header == 0) {
+												x -= 4;
+											}
+
 											/* Check if the binary matches the binary length */
 											if((protocol->binLength > 0 && ((x/4) == protocol->binLength)) || (protocol->binLength == 0 && ((x/4) == protocol->rawLength/4))) {
 												logprintf(LOG_DEBUG, "called %s parseBinary()", protocol->id);
@@ -802,10 +795,6 @@ void receive_code(void) {
 					}
 				}
 			}
-
-#ifndef USE_LIRC
-			}
-#endif
 			//json_delete(message);
 		} else {
 			sleep(1);
@@ -895,7 +884,7 @@ close:
 	exit(EXIT_SUCCESS);
 }
 
-void deamonize(void) {
+void daemonize(void) {
 	int f;
 	char buffer[BUFFER_SIZE];
 
@@ -928,13 +917,10 @@ void deamonize(void) {
 /* Garbage collector of main program */
 int main_gc(void) {
 
-#ifdef USE_LIRC
-	if((int)strlen(hw.device) > 0) {
-#endif	
+	if((use_lirc == 1 && (int)strlen(hw.device) > 0) || use_lirc == 0) {
 		module_deinit();
-#ifdef USE_LIRC		
 	}
-#endif
+
 	if(running == 0) {
 		/* Remove the stale pid file */
 		if(access(pid_file, F_OK) != -1) {
@@ -945,6 +931,7 @@ int main_gc(void) {
 			}
 		}
 	}
+	
 	return 0;
 }
 
@@ -965,6 +952,7 @@ int main(int argc , char **argv) {
 	
 	struct socket_callback_t socket_callback;
 	struct options_t *options = malloc(sizeof(options_t));
+	//pthread_t pth1, pth2, pth3;
 	pthread_t pth1, pth2;
 	char buffer[BUFFER_SIZE];
 	int f;
@@ -977,9 +965,6 @@ int main(int argc , char **argv) {
 	options_add(&options, 'D', "nodaemon", no_value, 0, NULL);
 	options_add(&options, 'S', "settings", has_value, 0, NULL);
 
-#ifdef USE_LIRC
-	hw_choose_driver(NULL);
-#endif
 	while (1) {
 		int c;
 		c = options_parse(&options, argc, argv, 1);
@@ -1023,6 +1008,13 @@ int main(int argc , char **argv) {
 			return EXIT_FAILURE;
 		}
 	}
+
+	if(use_lirc == 1) {
+		hw_choose_driver(NULL);
+	}
+	
+	settings_find_number("gpio-sender", &gpio_out);
+	settings_find_number("gpio-receiver", &gpio_out);
 	
 	if(settings_find_string("pid-file", &pid_file) != 0) {
 		pid_file = strdup(PID_FILE);
@@ -1048,11 +1040,11 @@ int main(int argc , char **argv) {
 	}
 	close(f);	
 
-#ifdef USE_LIRC
-	if(settings_find_string("socket", &hw.device) != 0) {
-		hw.device = strdup(DEFAULT_LIRC_SOCKET);
+	if(use_lirc == 1) {
+		if(settings_find_string("socket", &hw.device) != 0) {
+			hw.device = strdup(DEFAULT_LIRC_SOCKET);
+		}
 	}
-#endif
 
 	if(settings_find_number("log-level", &itmp) == 0) {
 		itmp += 2;
@@ -1062,7 +1054,7 @@ int main(int argc , char **argv) {
 	if(settings_find_string("log-file", &stmp) == 0) {
 		log_file_set(stmp);
 	}
-	
+
 	if(settings_find_string("mode", &stmp) == 0) {
 		if(strcmp(stmp, "client") == 0) {
 			runmode = 2;
@@ -1077,12 +1069,12 @@ int main(int argc , char **argv) {
 
 	settings_find_string("process-file", &process_file);
 
-#ifdef USE_LIRC
-	if(strcmp(hw.device, "/var/lirc/lircd") == 0) {
-		logprintf(LOG_ERR, "refusing to connect to lircd socket");
-		return EXIT_FAILURE;
+	if(use_lirc == 1) {
+		if(strcmp(hw.device, "/var/lirc/lircd") == 0) {
+			logprintf(LOG_ERR, "refusing to connect to lircd socket");
+			return EXIT_FAILURE;
+		}
 	}
-#endif
 	
 	if(settings_find_number("send-repeats", &send_repeat) != 0) {
 		send_repeat = SEND_REPEATS;
@@ -1097,21 +1089,10 @@ int main(int argc , char **argv) {
 		logprintf(LOG_NOTICE, "already active (pid %d)", atoi(buffer));
 		return EXIT_FAILURE;
 	}
-
-#ifdef USE_LIRC
-	if((int)strlen(hw.device) > 0) {
-#else
-		if(wiringPiSetup() == -1)
-			return EXIT_FAILURE;
-
-		pinMode(GPIO_OUT_PIN, OUTPUT);
-		gpio_register(GPIO_OUT_PIN);
-
-#endif
+	
+	if((use_lirc == 1 && (int)strlen(hw.device) > 0) || use_lirc == 0) {
 		module_init();
-#ifdef USE_LIRC
 	}
-#endif
 
 	/* Initialize peripheral modules */
 	hw_init();
@@ -1136,7 +1117,7 @@ int main(int argc , char **argv) {
 	
 	socket_start((short unsigned int)port);
 	if(nodaemon == 0) {
-		deamonize();
+		daemonize();
 	}
 	
     //initialise all socket_clients and handshakes to 0 so not checked
@@ -1152,9 +1133,11 @@ int main(int argc , char **argv) {
 	}
 	/* Make sure the server part is non-blocking by creating a new thread */
 	pthread_create(&pth2, NULL, &socket_wait, (void *)&socket_callback);
+	// pthread_create(&pth3, NULL, &webserver_start, (void *)NULL);
 	receive_code();
 	pthread_join(pth1, NULL);
 	pthread_join(pth2, NULL);
+	// pthread_join(pth3, NULL);
 
 	return EXIT_FAILURE;
 }

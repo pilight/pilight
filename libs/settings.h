@@ -21,35 +21,25 @@
 
 #include "protocol.h"
 
-/* Uncomment this line if you want to use the this
- * program with the lirc_rpi module.
- * This is adviced when running the daemon without
- * the low-pass filter.
- *
- * #define USE_LIRC
- *
- */
+#define USE_LIRC			0
 
-#ifndef USE_LIRC
+#define GPIO_IN_PIN			1
+#define GPIO_OUT_PIN		0
 
-	#define GPIO_IN_PIN			1
-	#define GPIO_OUT_PIN		0
+#define POLL_TIMEOUT		1000
+#define RDBUF_LEN			5
+#define GPIO_FN_MAXLEN		32
 
-	#define POLL_TIMEOUT		1000
-	#define RDBUF_LEN			5
-	#define GPIO_FN_MAXLEN		32
-
-#else
-
-	#define DEFAULT_LIRC_SOCKET	"/dev/lirc0"
-	#define FREQ433				433920
-	#define FREQ38				38000
-
-#endif
+#define DEFAULT_LIRC_SOCKET	"/dev/lirc0"
+#define FREQ433				433920
+#define FREQ38				38000
 
 #define PULSE_LENGTH		295
 
 #define PORT 				5000
+#define WEBPORT				5001
+#define WEBROOT				"web"
+
 #define MAX_CLIENTS			30
 #define BUFFER_SIZE			1025
 #define BIG_BUFFER_SIZE		1025000
@@ -62,7 +52,6 @@
 #define SEND_REPEATS		10
 #define RECEIVE_REPEATS		1
 #define MULTIPLIER			0.3
-
 
 typedef union value_t {
 	int ivalue;
