@@ -27,8 +27,6 @@
 #include "arctech_old.h"
 
 void arctechOldCreateMessage(int id, int unit, int state) {
-	char alpha[16] = {"ABCDEFGHIJKLMNO"};
-
 	arctech_old.message = json_mkobject();
 	json_append_member(arctech_old.message, "id", json_mknumber(id));
 	json_append_member(arctech_old.message, "unit", json_mknumber(unit));

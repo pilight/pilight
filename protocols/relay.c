@@ -24,8 +24,8 @@
 #include "settings.h"
 #include "log.h"
 #include "protocol.h"
-#include "gpio.h"
 #include "relay.h"
+#include "wiringPi.h"
 
 void relayCreateMessage(int gpio, int state) {
 	relay.message = json_mkobject();
@@ -40,10 +40,10 @@ int relayCreateCode(JsonNode *code) {
 	int gpio = -1;
 	int state = -1;
 	char *tmp;
-	char command[50];
-	char folder[32];
-	struct stat s;
-
+	int use_lirc = USE_LIRC;
+	int gpio_in = GPIO_IN_PIN;
+	int gpio_out = GPIO_OUT_PIN;
+	
 	relay.rawLength = 0;
 
 	if(json_find_string(code, "gpio", &tmp) == 0)
@@ -53,30 +53,32 @@ int relayCreateCode(JsonNode *code) {
 	else if(json_find_string(code, "on", &tmp) == 0)
 		state=1;
 	
+	settings_find_number("use-lirc", &use_lirc);
+	settings_find_number("gpio-receiver", &gpio_in);
+	settings_find_number("gpio-sender", &gpio_out);
+	
 	if(gpio == -1 || state == -1) {
 		logprintf(LOG_ERR, "relay: insufficient number of arguments");
 		return EXIT_FAILURE;
 	} else if(gpio > 7 || gpio < 0) {
 		logprintf(LOG_ERR, "relay: invalid gpio range");
 		return EXIT_FAILURE;
-#ifndef USE_LIRC
-	} else if(gpio == GPIO_IN_PIN || gpio == GPIO_OUT_PIN) {
+	} else if(use_lirc == 0 && (gpio == gpio_in || gpio == gpio_out)) {
 		logprintf(LOG_ERR, "relay: gpio's already in use");
 		return EXIT_FAILURE;
-#endif
 	} else {
 		if(strstr(progname, "daemon") != 0) {
-			sprintf(folder, "/sys/class/gpio/gpio%d 2>/dev/null", gpio_wiringPi2BCM(gpio));
-			if(stat(folder, &s) != -1 && S_ISDIR(s.st_mode) == 0) {
-				gpio_request(gpio);
+			if(wiringPiSetup() < 0) {
+				logprintf(LOG_ERR, "unable to setup wiringPi") ;
+				return EXIT_FAILURE;
+			} else {
+				pinMode(gpio, OUTPUT);
+				if(state == 1) {
+					digitalWrite(gpio, LOW);
+				} else if(state == 0) {
+					digitalWrite(gpio, HIGH);
+				}
 			}
-			gpio_pinmode(gpio, OUTPUT);
-			if(state == 1) {
-				sprintf(command, "echo 0 > /sys/class/gpio/gpio%d/value 2>/dev/null", gpio_wiringPi2BCM(gpio));
-			} else if(state == 0) {
-				sprintf(command, "echo 1 > /sys/class/gpio/gpio%d/value 2>/dev/null", gpio_wiringPi2BCM(gpio));
-			}
-			system(command);
 			relayCreateMessage(gpio, state);
 		}
 	}

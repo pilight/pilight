@@ -125,6 +125,10 @@ int settings_parse(JsonNode *root) {
 	int server_port = 0;
 	int own_port = 0;
 	int has_config = 0;
+	int has_lirc = 0;
+	int has_socket = 0;
+	int gpio_in = -1;
+	int gpio_out = -1;
 
 	JsonNode *jsettings = json_first_child(root);
 
@@ -200,8 +204,38 @@ int settings_parse(JsonNode *root) {
 				have_error = 1;
 				goto clear;
 			} else {
+				has_socket = 1;
 				settings_add_string_node(jsettings->key, jsettings->string_);
 			}
+		} else if(strcmp(jsettings->key, "use-lirc") == 0) {
+			if(jsettings->number_ < 0 || jsettings->number_ > 1) {
+				logprintf(LOG_ERR, "setting \"%s\" must be either 0 or 1", jsettings->key);
+				have_error = 1;
+				goto clear;
+			} else {
+				if((int)jsettings->number_ == 1) {
+					has_lirc = 1;
+				}
+				settings_add_number_node(jsettings->key, (int)jsettings->number_);
+			}
+		} else if(strcmp(jsettings->key, "gpio-reciever") == 0) {
+			if(jsettings->number_ < 0 || jsettings->number_ > 7) {
+				logprintf(LOG_ERR, "setting \"%s\" must be between 0 and 7", jsettings->key);
+				have_error = 1;
+				goto clear;
+			} else {
+				gpio_out = (int)jsettings->number_;
+				settings_add_number_node(jsettings->key, (int)jsettings->number_);
+			}			
+		} else if(strcmp(jsettings->key, "gpio-sender") == 0) {
+			if(jsettings->number_ < 0 || jsettings->number_ > 7) {
+				logprintf(LOG_ERR, "setting \"%s\" must be between 0 and 7", jsettings->key);
+				have_error = 1;
+				goto clear;
+			} else {
+				gpio_in = (int)jsettings->number_;
+				settings_add_number_node(jsettings->key, (int)jsettings->number_);
+			}			
 		} else if(strcmp(jsettings->key, "server") == 0) {
 			JsonNode *jserver = json_find_member(root, "server");
 			JsonNode *jtmp = json_first_child(jserver);
@@ -235,6 +269,21 @@ int settings_parse(JsonNode *root) {
 		jsettings = jsettings->next;
 	}
 
+	if(has_lirc == 1 && gpio_in > -1) {
+		logprintf(LOG_ERR, "setting \"gpio-receiver\" cand use-lirc cannot be combined");
+		have_error = 1;
+		goto clear;
+	}
+	if(has_lirc == 1 && gpio_out > -1) {
+		logprintf(LOG_ERR, "setting \"gpio-sender\" cand use-lirc cannot be combined");
+		have_error = 1;
+		goto clear;
+	}	
+	if(has_lirc == 0 && has_socket == 1) {
+		logprintf(LOG_ERR, "setting \"socket\" must be combined with use-lirc");
+		have_error = 1;
+		goto clear;
+	}
 	if(server_port > 0 && server_port == own_port && is_node == 1) {
 		logprintf(LOG_ERR, "setting \"port\" and server port cannot be the same");
 		have_error = 1;
