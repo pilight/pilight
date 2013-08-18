@@ -759,10 +759,6 @@ void receive_code(void) {
 												}
 											}
 
-											if(protocol->header == 0) {
-												x -= 4;
-											}
-
 											/* Check if the binary matches the binary length */
 											if((protocol->binLength > 0 && ((x/4) == protocol->binLength)) || (protocol->binLength == 0 && ((x/4) == protocol->rawLength/4))) {
 												logprintf(LOG_DEBUG, "called %s parseBinary()", protocol->id);
@@ -1009,12 +1005,13 @@ int main(int argc , char **argv) {
 		}
 	}
 
+	settings_find_number("gpio-sender", &gpio_out);
+	settings_find_number("gpio-receiver", &gpio_out);
+	settings_find_number("use-lirc", &use_lirc);
+
 	if(use_lirc == 1) {
 		hw_choose_driver(NULL);
 	}
-	
-	settings_find_number("gpio-sender", &gpio_out);
-	settings_find_number("gpio-receiver", &gpio_out);
 	
 	if(settings_find_string("pid-file", &pid_file) != 0) {
 		pid_file = strdup(PID_FILE);
