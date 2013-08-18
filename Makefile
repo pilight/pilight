@@ -34,10 +34,10 @@ $(SUBDIRS):
 all: $(LIBS) libpilight.so.1 libpilight.a $(PROGAMS) 
 
 libpilight.so.1:
-	$(GCC) $(LIBS) libwebsockets.o -shared -o libpilight.so.1 -lpthread -lm
+	$(GCC) $(LIBS) deps/libwebsockets.o -shared -o libpilight.so.1 -lpthread -lm
 	
 libpilight.a:
-	$(CROSS_COMPILE)ar -rsc libpilight.a $(LIBS) libwebsockets.o 
+	$(CROSS_COMPILE)ar -rsc libpilight.a $(LIBS) deps/libwebsockets.o
 
 pilight-daemon: daemon.c $(INCLUDES) $(LIBS)
 	$(GCC) $(CFLAGS) -o $@ $(patsubst pilight-%,%.c,$@) libpilight.so.1
@@ -71,6 +71,7 @@ install:
 	install -m 0655 libpilight.so.1 /usr/local/lib/
 	install -m 0644 settings.json-default /etc/pilight/
 	install -m 0644 logo.png /usr/share/images/pilight/
+	[ ! -f /usr/local/bin/gpio ] && install -m 0655 deps/gpio /usr/local/bin/ || true
 	mv /etc/pilight/settings.json-default /etc/pilight/settings.json
 	ln -sf /usr/local/lib/libpilight.so.1 /usr/local/lib/libpilight.so
 	ldconfig
