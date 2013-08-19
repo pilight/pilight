@@ -37,6 +37,7 @@ void impulsCreateMessage(int id, int unit, int state) {
 }
 
 void impulsParseBinary(void) {
+	impuls.message = NULL;
 	int unit = binToDec(impuls.binary, 0, 4);
 	int check = impuls.binary[10];
 	int state = impuls.binary[11];

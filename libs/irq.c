@@ -31,6 +31,7 @@
 #include "irq.h"
 #include "gc.h"
 #include "log.h"
+#include "wiringPi.h"
 
 struct {
 	unsigned long first;

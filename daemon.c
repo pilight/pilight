@@ -174,18 +174,18 @@ int broadcast(char *protoname, JsonNode *json) {
 	JsonNode *jret = json_mkobject();
 
 	/* Update the config file */
-	jret = config_update(protoname, json);
+	if(config_update(protoname, json, jret) == 0) {
+		char *conf = json_stringify(jret, NULL);
 
-	char *conf = json_stringify(jret, NULL);
-
-	for(i=0;i<MAX_CLIENTS;i++) {
-		if(handshakes[i] == GUI) {
-			socket_write(socket_clients[i], conf);
-			broadcasted = 1;
+		for(i=0;i<MAX_CLIENTS;i++) {
+			if(handshakes[i] == GUI) {
+				socket_write(socket_clients[i], conf);
+				broadcasted = 1;
+			}
 		}
-	}
-	if(broadcasted == 1) {
-		logprintf(LOG_DEBUG, "broadcasted: %s", conf);
+		if(broadcasted == 1) {
+			logprintf(LOG_DEBUG, "broadcasted: %s", conf);
+		}
 	}
 
 	broadcasted = 0;

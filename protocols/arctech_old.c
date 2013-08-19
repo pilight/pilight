@@ -30,20 +30,16 @@ void arctechOldCreateMessage(int id, int unit, int state) {
 	arctech_old.message = json_mkobject();
 	json_append_member(arctech_old.message, "id", json_mknumber(id));
 	json_append_member(arctech_old.message, "unit", json_mknumber(unit));
-	if(state == 0)
+	if(state == 1)
 		json_append_member(arctech_old.message, "state", json_mkstring("on"));
 	else
 		json_append_member(arctech_old.message, "state", json_mkstring("off"));
 }
 
 void arctechOldParseBinary(void) {
-	int i = 0;
-	for(i=0;i<arctech_old.binLength;i++) {
-		arctech_old.binary[i] ^= 1;
-	}
-	int unit = binToDec(arctech_old.binary, 0, 3);
+	int unit = binToDec(arctech_old.binary, 0, 4);
 	int state = arctech_old.binary[11];
-	int id = binToDec(arctech_old.binary, 4, 8)+1;
+	int id = binToDec(arctech_old.binary, 5, 9);
 	arctechOldCreateMessage(id, unit, state);
 }
 
@@ -51,10 +47,10 @@ void arctechOldCreateLow(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=4) {
-		arctech_old.raw[i]=(arctech_old.pulse*PULSE_LENGTH);
-		arctech_old.raw[i+1]=(PULSE_LENGTH);
-		arctech_old.raw[i+2]=(PULSE_LENGTH);
-		arctech_old.raw[i+3]=(arctech_old.pulse*PULSE_LENGTH);
+		arctech_old.raw[i]=(PULSE_LENGTH);
+		arctech_old.raw[i+1]=(arctech_old.pulse*PULSE_LENGTH);
+		arctech_old.raw[i+2]=(arctech_old.pulse*PULSE_LENGTH);
+		arctech_old.raw[i+3]=(PULSE_LENGTH);
 	}
 }
 
@@ -111,7 +107,6 @@ void arctechOldCreateFooter(void) {
 	arctech_old.raw[47]=(arctech_old.footer*PULSE_LENGTH);
 }
 
-
 int arctechOldCreateCode(JsonNode *code) {
 	int id = -1;
 	int unit = -1;
@@ -166,7 +161,7 @@ void arctechOldInit(void) {
 	arctech_old.rawLength = 50;
 	arctech_old.binLength = 12;
 	arctech_old.message = malloc(sizeof(JsonNode));
-	arctech_old.lsb = 1;
+	arctech_old.lsb = 3;
 
 	arctech_old.bit = 0;
 	arctech_old.recording = 0;

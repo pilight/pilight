@@ -30,7 +30,7 @@
 #include "options.h"
 #include "protocol.h"
 
-JsonNode *config_update(char *protoname, JsonNode *json) {
+int config_update(char *protoname, JsonNode *json, JsonNode *out) {
 	/* The pointer to the config locations */
 	struct conf_locations_t *lptr = conf_locations;
 	/* The pointer to the config devices */
@@ -210,10 +210,11 @@ JsonNode *config_update(char *protoname, JsonNode *json) {
 
 	/* Only update the config file, if a state change occured */
 	if(update == 1 && configfile != NULL) {
+		*out = *rroot;
 		config_write(json_stringify(config2json(), "\t"));
 	}
 	//json_delete(json);
-	return rroot;
+	return (update == 1) ? 0 : -1;
 }
 
 int config_get_location(char *id, struct conf_locations_t **loc) {

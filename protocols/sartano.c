@@ -37,6 +37,7 @@ void sartanoCreateMessage(int id, int unit, int state) {
 }
 
 void sartanoParseBinary(void) {
+	sartano.message = NULL;
 	int unit = binToDec(sartano.binary, 0, 4);
 	int state = sartano.binary[10];
 	int check = sartano.binary[11];
