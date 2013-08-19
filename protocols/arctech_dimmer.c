@@ -221,6 +221,7 @@ void arctechDimInit(void) {
 	arctech_dimmer.footer = 38;
 	arctech_dimmer.rawLength = 148;
 	arctech_dimmer.message = malloc(sizeof(JsonNode));
+	arctech_dimmer.lsb = 3;
 
 	arctech_dimmer.bit = 0;
 	arctech_dimmer.recording = 0;

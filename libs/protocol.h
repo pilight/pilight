@@ -54,6 +54,7 @@ struct protocol_t {
 	int footer;
 	int rawLength;
 	int binLength;
+	unsigned short lsb;
 	struct options_t *options;
 	JsonNode *message;
 

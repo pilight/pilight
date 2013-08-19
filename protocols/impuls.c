@@ -177,6 +177,7 @@ void impulsInit(void) {
 	impuls.rawLength = 50;
 	impuls.binLength = 12;
 	impuls.message = malloc(sizeof(JsonNode));
+	impuls.lsb = 1;
 
 	impuls.bit = 0;
 	impuls.recording = 0;

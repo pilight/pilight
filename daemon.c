@@ -622,7 +622,6 @@ void socket_client_disconnected(int i) {
 
 void receive_code(void) {
 	lirc_t data;
-	short lsb = 0;
 	short header = 0;
 	unsigned int x = 0, y = 0, i = 0;
 	protocol_t *protocol = malloc(sizeof(protocol_t));
@@ -660,10 +659,8 @@ void receive_code(void) {
 						}
 						if(protocol->header == 0) {
 							header = (short)protocol->pulse;
-							lsb = 1;
 						} else {
 							header = (short)protocol->header;
-							lsb = 3;
 						}
 
 						/* Try to catch the header of the code */
@@ -752,7 +749,7 @@ void receive_code(void) {
 										if(protocol->parseBinary != NULL) {
 											/* Convert the one's and zero's into binary */
 											for(x=0; x<protocol->bit; x+=4) {
-												if(protocol->code[x+(unsigned int)lsb] == 1) {
+												if(protocol->code[x+(unsigned int)protocol->lsb] == 1) {
 													protocol->binary[x/4]=1;
 												} else {
 													protocol->binary[x/4]=0;

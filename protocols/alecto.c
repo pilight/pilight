@@ -77,6 +77,7 @@ void alectoInit(void) {
 	alecto.footer = 30;
 	alecto.rawLength = 74;
 	alecto.message = malloc(sizeof(JsonNode));
+	alecto.lsb = 3;
 
 	alecto.bit = 0;
 	alecto.recording = 0;
