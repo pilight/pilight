@@ -54,6 +54,28 @@ void protocol_add_conflict(protocol_t *proto, const char *id) {
 	proto->conflicts = cnode;
 }
 
+/* http://www.cs.bu.edu/teaching/c/linked-list/delete/ */
+void protocol_remove_conflict(protocol_t *proto, const char *id) {
+	struct conflicts_t *currP, *prevP;
+
+	prevP = NULL;
+
+	for(currP = proto->conflicts; currP != NULL; prevP = currP, currP = currP->next) {
+
+		if(strcmp(currP->id, id) == 0) {
+			if(prevP == NULL) {
+				proto->conflicts = currP->next;
+			} else {
+				prevP->next = currP->next;
+			}
+
+			free(currP);
+
+			break;
+		}
+	}
+}
+
 int protocol_has_device(protocol_t **proto, const char *id) {
 	struct devices_t *temp = (*proto)->devices;
 
