@@ -186,6 +186,7 @@ int broadcast(char *protoname, JsonNode *json) {
 		if(broadcasted == 1) {
 			logprintf(LOG_DEBUG, "broadcasted: %s", conf);
 		}
+		//json_delete(jret);
 	}
 
 	broadcasted = 0;
@@ -213,15 +214,14 @@ int broadcast(char *protoname, JsonNode *json) {
 				pclose(f);
 				broadcasted = 1;
 			}
-			free(escaped);
+			//free(escaped);
 			if(broadcasted) {
 				logprintf(LOG_DEBUG, "broadcasted: %s", message);
 			}
 		}
 		return 1;
 	}
-	json_delete(jret);
-	free(message);
+	//free(message);
 	return 0;
 }
 
@@ -318,7 +318,7 @@ void send_code(JsonNode *json) {
 void client_sender_parse_code(int i, JsonNode *json) {
 	int sd = socket_clients[i];
 
-	if(incognito_mode == 0) {
+	if(incognito_mode == 0 && handshakes[i] != NODE) {
 		/* Don't let the sender wait until we have send the code */
 		socket_close(sd);
 		handshakes[i] = -1;
@@ -482,7 +482,7 @@ void client_controller_parse_code(int i, JsonNode *json) {
 				} else {
 					logprintf(LOG_ERR, "the location \"%s\" does not exist", location);
 				}
-				if(incognito_mode == 0 && handshakes[i] != GUI) {
+				if(incognito_mode == 0 && handshakes[i] != GUI && handshakes[i] != NODE) {
 					socket_close(sd);
 					handshakes[i] = -1;
 				}
@@ -587,7 +587,6 @@ void socket_parse_data(int i, char buffer[BUFFER_SIZE]) {
 				if(runmode == 2 && sockfd > 0 && strcmp(message, "request config") != 0) {
 					socket_write(sockfd, "{\"incognito\":\"%s\"}", clients[handshakes[i]]);
 					socket_write(sockfd, buffer);
-					socket_write(sockfd, "{\"incognito\":\"node\"}");
 				}
 			}
 			if(handshakes[i] == NODE) {
@@ -615,11 +614,20 @@ void socket_parse_data(int i, char buffer[BUFFER_SIZE]) {
 					}
 				}
 			}
+			if(incognito_mode == 1) {
+				for(x=0;x<(sizeof(clients)/sizeof(clients[0]));x++) {
+					if(strcmp(clients[x], "node") == 0) {
+						handshakes[i] = x;
+						break;
+					}
+				}
+				incognito_mode = 0;
+			}
 		}
 		if(handshakes[i] == -1 && socket_clients[i] > 0) {
 			socket_write(sd, "{\"message\":\"reject client\"}");
 			socket_close(sd);
-		}
+		}	
 	}
 	json_delete(json);
 }
@@ -830,29 +838,29 @@ void *clientize(void *param) {
 	}
 		
 	while(1) {
-		/* Clear the receive buffer again and read the welcome message */
-		if(steps == REQUEST) {
-			if((recvBuff = socket_read_big(sockfd)) != NULL) {
-				json = json_decode(recvBuff);
-				json_find_string(json, "message", &message);
+		if(steps > WELCOME) {
+			/* Clear the receive buffer again and read the welcome message */
+			if(steps == REQUEST) {
+				if((recvBuff = socket_read_big(sockfd)) != NULL) {
+					json = json_decode(recvBuff);
+					json_find_string(json, "message", &message);
+				} else {
+					goto close;
+				}
 			} else {
-				goto close;
-			}
-		} else {
-			if((recvBuff = socket_read(sockfd)) != NULL) {
-				json = json_decode(recvBuff);
-				json_find_string(json, "message", &message);
-			} else {
-				goto close;
+				if((recvBuff = socket_read(sockfd)) != NULL) {
+					json = json_decode(recvBuff);
+					json_find_string(json, "message", &message);
+				} else {
+					goto close;
+				}
 			}
 		}
 		usleep(100);
 		switch(steps) {
 			case WELCOME:
-				if(strcmp(message, "accept connection") == 0) {
-					socket_write(sockfd, "{\"message\":\"client node\"}");
-					steps=IDENTIFY;
-				}
+				socket_write(sockfd, "{\"message\":\"client node\"}");
+				steps=IDENTIFY;
 			break;
 			case IDENTIFY:
 				if(strcmp(message, "accept client") == 0) {

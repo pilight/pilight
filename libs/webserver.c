@@ -43,7 +43,7 @@ struct per_session_data__http {
 };
 
 int webserver_port = WEBSERVER_PORT;
-char *webserver_root = WEBSERVER_ROOT;
+char *webserver_root;
 int sockfd = 0;
 char *recvBuff = NULL;
 
@@ -276,9 +276,11 @@ void *webserver_start(void *param) {
 
 	struct lws_context_creation_info info;
 	pthread_t pth1;
-
+	
 	settings_find_number("webserver-port", &webserver_port);
-	settings_find_string("webserver-root", &webserver_root);	
+	if(settings_find_string("webserver-root", &webserver_root) != 0) {
+		webserver_root = strdup(WEBSERVER_ROOT);
+	}
 	
 	memset(&info, 0, sizeof info);
 	info.port = webserver_port;
