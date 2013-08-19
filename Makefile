@@ -77,6 +77,8 @@ install:
 	install -m 0644 web/pilight.js /usr/local/share/pilight/
 	install -m 0644 web/favicon.ico /usr/local/share/pilight/
 	install -m 0644 web/logo.png /usr/local/share/pilight/
+	install -m 0644 web/battery_green.png /usr/local/share/pilight/
+	install -m 0644 web/battery_red.png /usr/local/share/pilight/
 	[ ! -f /usr/local/bin/gpio ] && install -m 0655 deps/gpio /usr/local/bin/ || true
 	mv /etc/pilight/settings.json-default /etc/pilight/settings.json
 	ln -sf /usr/local/lib/libpilight.so.1 /usr/local/lib/libpilight.so

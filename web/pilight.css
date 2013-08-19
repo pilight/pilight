@@ -20,6 +20,53 @@ div.ui-slider.ui-slider-switch {
 	margin: 6px 10px 10px 0px;
 }
 
+div.temperature, div.humidity, div.battery.red, div.battery.green {
+	position: absolute;
+	float: right;
+	top: 8px;
+	padding: 4px;
+}
+
+div.battery.red, div.battery.green {
+	right: 15px;
+	top: 14px;
+	width: 10px;
+	height: 16px;
+}
+
+div.battery.red {
+	background: url('battery_red.png') 0px 0px no-repeat;
+}
+
+div.battery.green {
+	background: url('battery_green.png') 0px 0px no-repeat;
+}
+
+div.temperature {
+	right: 85px;
+}
+
+div.humidity {
+	right: 50px;
+}
+
+div.degrees, div.percentage {
+	position: absolute;
+	float: right;
+	font-size: 14px;
+	color: #aeaeae;
+}
+
+div.degrees {
+	top: 6px;
+	right: 80px;
+}
+
+div.percentage {
+	top: 15px;
+	right: 42px;
+}
+
 div.ui-slider {
 	margin: 15px 0px 0px 0px;
 	width: 100%;

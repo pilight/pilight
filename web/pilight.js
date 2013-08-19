@@ -49,6 +49,19 @@ function createDimmerElement(sTabId, sDevId, sDevName, sDevProto, sState, iDimLe
 	}
 }
 
+function createWeatherElement(sTabId, sDevId, sDevName, iTemperature, iHumidity, iBattery) {
+	iOldDimLevel = iDimLevel;
+	oTab = $('#'+sTabId).find('ul');
+	oTab.append($('<li data-icon="false">'+sDevName+'<div class="temperature" id="'+sTabId+'_'+sDevId+'_temp">'+(iTemperature/100)+'</div><div class="degrees">o</div><div class="humidity" id="'+sTabId+'_'+sDevId+'_humi">'+iHumidity+'</div><div class="percentage">%</div><div id="'+sTabId+'_'+sDevId+'_batt" class="battery"></div></li>'));
+	if(iBattery) {
+		$('#'+sTabId+'_'+sDevId+'_batt').addClass('green');
+	} else {
+		$('#'+sTabId+'_'+sDevId+'_batt').addClass('red');
+	}
+	oTab.listview();
+	oTab.listview("refresh");
+}
+
 function createGUI(data) {
 	$.each(data, function(root, locations) {
 		$('#tabs').append($("<ul></ul>"));
@@ -80,6 +93,9 @@ function createGUI(data) {
 						var sDevState;
 						var iDevDimLevel;
 						var sDevProto;
+						var iHumidity;
+						var iBattery;
+						var iTemperature;
 						$.each(dvalues, function(sindex, svalues) {
 							if(sindex == 'name') {
 								sDevName = svalues;
@@ -91,12 +107,20 @@ function createGUI(data) {
 								iDimLevel = svalues;
 							} else if(sindex == 'protocol') {
 								sDevProto = svalues;
+							} else if(sindex == 'humidity') {
+								iHumidity = svalues;
+							} else if(sindex == 'battery') {
+								iBattery = svalues;
+							} else if(sindex == 'temperature') {
+								iTemperature = svalues;
 							}
 						});
 						if(iDevType == 1) {
 							createSwitchElement(lindex, dindex, sDevName, sDevState);
 						} else if(iDevType == 2) {
 							createDimmerElement(lindex, dindex, sDevName, sDevProto, sDevState, iDimLevel);
+						} else if(iDevType == 3) {
+							createWeatherElement(lindex, dindex, sDevName, iTemperature, iHumidity, iBattery);
 						}
 					}
 				});
@@ -184,6 +208,18 @@ $(document).ready(function() {
 						if(vindex == 'dimlevel') {
 							$('#'+lindex+'_'+lvalues+'_dimmer').val(vvalues);
 							$('#'+lindex+'_'+lvalues+'_dimmer').slider('refresh');
+						}
+					} else if(iType == 3) {
+						if(vindex == 'temperature') {
+							$('#'+lindex+'_'+lvalues+'_temp').text(vvalues);
+						} else if(vindex == 'humidity') {
+							$('#'+lindex+'_'+lvalues+'_humi').text(vvalues);
+						} else if(vindex == 'battery') {
+							if(vvalues == 1) {
+								$('#'+lindex+'_'+lvalues+'_batt').removeClass('red').addClass('green');
+							} else {
+								$('#'+lindex+'_'+lvalues+'_batt').removeClass('green').addClass('red');
+							}
 						}
 					}
 				});
