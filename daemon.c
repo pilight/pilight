@@ -678,7 +678,7 @@ void receive_code(void) {
 						/* Try to catch the footer of the code */
 						if(duration > ((protocol->footer*PULSE_LENGTH)-((protocol->footer*PULSE_LENGTH)*MULTIPLIER))
 						   && duration < ((protocol->footer*PULSE_LENGTH)+((protocol->footer*PULSE_LENGTH)*MULTIPLIER))) {
-							//logprintf(LOG_DEBUG, "catched %s header and footer", protocol->id);
+							//logprintf(LOG_DEBUG, "caught %s header and footer", protocol->id);
 
 							/* Check if the code matches the raw length */
 							if((protocol->bit == protocol->rawLength)) {
@@ -724,7 +724,7 @@ void receive_code(void) {
 									/* Continue if we have recognized enough repeated codes */
 									if(y >= receive_repeat) {
 										if(protocol->parseCode != NULL) {
-											logprintf(LOG_DEBUG, "catched minimum # of repeats %s of %s", y, protocol->id);
+											logprintf(LOG_DEBUG, "caught minimum # of repeats %s of %s", y, protocol->id);
 											logprintf(LOG_DEBUG, "called %s parseCode()", protocol->id);
 
 											protocol->parseCode();
@@ -755,6 +755,11 @@ void receive_code(void) {
 													protocol->binary[x/4]=0;
 												}
 											}
+
+											/* Fix for sartano receiving */
+											if(protocol->header == 0) {
+												x -= 4;
+											} 											
 
 											/* Check if the binary matches the binary length */
 											if((protocol->binLength > 0 && ((x/4) == protocol->binLength)) || (protocol->binLength == 0 && ((x/4) == protocol->rawLength/4))) {
