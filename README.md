@@ -63,7 +63,10 @@ All options and its default values are show below:<br />
 	"socket": "/dev/lirc0",
 	"use-lirc": 0,
 	"gpio-sender": 0,
-	"gpio-receiver": 1
+	"gpio-receiver": 1,
+	"webserver-enable": 1,
+	"webserver-root": "/usr/local/share/pilight/",
+	"webserver-port": 5001
 }
 ```
 __port__: change the default port the daemon will run at<br />
@@ -76,11 +79,13 @@ __log-file__: The default location of the log id file<br />
 __process-file__: The optional process file<br />
 __send-repeats__: How many times should a code be send<br />
 __receive-repeats__: How many times should a code be recieved before marked valid<br />
-__socket__: what lirc socket should we read from (use-lirc: 1)<br />
-__use-lirc__: use the lirc_rpi kernel module or plain gpio access<br />
-__gpio-sender__: to what pin is the sender connected (use-lirc: 0)<br />
-__gpio-receiver__: to what pin is the reciever connected (use-lirc: 0)<br />
-__process file__: This script can be anything you like. The pilight-daemon will pass the same JSON object to this script as the receiver, but without any formatting. You can than parse the JSON object for further processing.
+__socket__: What lirc socket should we read from (use-lirc: 1)<br />
+__use-lirc__: Use the lirc_rpi kernel module or plain gpio access<br />
+__gpio-sender__: To what pin is the sender connected (use-lirc: 0)<br />
+__gpio-receiver__: To what pin is the reciever connected (use-lirc: 0)<br />
+__webserver-enable__: Enable the built-in webserver<br />
+__webserver-port: On what port does the webserver need to run<br />
+__webserver-root: The webserver root path<br />
 <hr>
 The output of the receiver will be as follow:
 ```

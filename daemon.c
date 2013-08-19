@@ -38,7 +38,7 @@
 #include "options.h"
 #include "socket.h"
 #include "json.h"
-// #include "webserver.h"
+#include "webserver.h"
 #include "lirc.h"
 #include "lirc/lircd.h"
 #include "lirc/hardware.h"
@@ -103,12 +103,18 @@ unsigned short runmode = 1;
 int sockfd = 0;
 /* In the client running in incognito mode */
 unsigned short incognito_mode = 0;
-/* use the lirc_rpi module or plain GPIO */
+/* Use the lirc_rpi module or plain GPIO */
 int use_lirc = USE_LIRC;
-/* on what pin are we sending */
+/* On what pin are we sending */
 int gpio_out = GPIO_OUT_PIN;
-/* on what pin are we receiving */
+/* On what pin are we receiving */
 int gpio_in = GPIO_IN_PIN;
+/* Do we enable the webserver */
+int webserver_enable = WEBSERVER_ENABLE;
+/* On what port does the webserver run */
+int webserver_port = WEBSERVER_PORT;
+/* The webroot of pilight */
+char *webserver_root;
 
 /* http://stackoverflow.com/a/3535143 */
 void escape_characters(char* dest, const char* src) {
@@ -491,10 +497,11 @@ void client_webserver_parse_code(int i, char buffer[BUFFER_SIZE]) {
 	FILE *f;
 	char *ptr = malloc(sizeof(char));
 	char *cache = malloc((sizeof(char)*BUFFER_SIZE)+1);
-	struct sockaddr_in sin;
-	socklen_t len = sizeof(sin);
+	char path[255];
+	struct sockaddr_in sockin;
+	socklen_t len = sizeof(sockin);
 
-	if(getsockname(sd, (struct sockaddr *)&sin, &len) == -1) {
+	if(getsockname(sd, (struct sockaddr *)&sockin, &len) == -1) {
 		logprintf(LOG_ERR, "could not determine server ip address");
 	} else {
 		ptr = strstr(buffer, " HTTP/");
@@ -511,7 +518,8 @@ void client_webserver_parse_code(int i, char buffer[BUFFER_SIZE]) {
 				socket_write(sd, "Server : pilight webserver\r");
 				socket_write(sd, "\r");		
 
-				f = fopen("/usr/share/images/pilight/logo.png", "rb");
+				sprintf(path, "%slogo.png", webserver_root);
+				f = fopen(path, "rb");
 				if(f) {
 					x = 0;
 					while (!feof(f)) {
@@ -529,9 +537,12 @@ void client_webserver_parse_code(int i, char buffer[BUFFER_SIZE]) {
 			socket_write(sd, "Server : pilight webserver\r");
 			socket_write(sd, "\r");
 			socket_write(sd, "<html><head><title>pilight daemon</title></head>\r");
-			//sprintf(cache, "<body><center><img src=\"logo.png\"><br /><p style=\"color: #0099ff; font-weight: 800px; font-family: Verdana; font-size: 20px;\">The pilight webgui is located at <a style=\"text-decoration: none; color: #0099ff; font-weight: 800px; font-family: Verdana; font-size: 20px;\" href=\"http://%s:%d\">http://%s:%d</a></p></center></body></html>\r", inet_ntoa(sin.sin_addr), WEBPORT, inet_ntoa(sin.sin_addr), WEBPORT);
-			socket_write(sd ,"<body><center><img src=\"logo.png\"></center></body></html>\r");
-			socket_write(sd, cache);
+			if(webserver_enable == 1) {
+				sprintf(cache, "<body><center><img src=\"logo.png\"><br /><p style=\"color: #0099ff; font-weight: 800px; font-family: Verdana; font-size: 20px;\">The pilight webgui is located at <a style=\"text-decoration: none; color: #0099ff; font-weight: 800px; font-family: Verdana; font-size: 20px;\" href=\"http://%s:%d\">http://%s:%d</a></p></center></body></html>\r", inet_ntoa(sockin.sin_addr), webserver_port, inet_ntoa(sockin.sin_addr), webserver_port);
+				socket_write(sd, cache);
+			} else {
+				socket_write(sd, "<body><center><img src=\"logo.png\"></center></body></html>\r");
+			}
 		}
 	}
 }
@@ -950,8 +961,7 @@ int main(int argc , char **argv) {
 	
 	struct socket_callback_t socket_callback;
 	struct options_t *options = malloc(sizeof(options_t));
-	//pthread_t pth1, pth2, pth3;
-	pthread_t pth1, pth2;
+	pthread_t pth1, pth2, pth3;
 	char buffer[BUFFER_SIZE];
 	int f;
 	int itmp;
@@ -1008,8 +1018,13 @@ int main(int argc , char **argv) {
 	}
 
 	settings_find_number("gpio-sender", &gpio_out);
-	settings_find_number("gpio-receiver", &gpio_out);
+	settings_find_number("gpio-receiver", &gpio_in);
 	settings_find_number("use-lirc", &use_lirc);
+	settings_find_number("webserver-enable", &webserver_enable);
+	settings_find_number("webserver-port", &webserver_port);
+	if(settings_find_string("webserver-root", &webserver_root) != 0) {
+		webserver_root = strdup(WEBSERVER_ROOT);
+	}
 
 	if(use_lirc == 1) {
 		hw_choose_driver(NULL);
@@ -1127,16 +1142,24 @@ int main(int argc , char **argv) {
     socket_callback.client_connected_callback = NULL;
     socket_callback.client_data_callback = &socket_parse_data;
 
+	/* The daemon running in client mode, create a seperate thread that
+	   communicates with the server */
 	if(runmode == 2) {
 		pthread_create(&pth1, NULL, &clientize, (void *)NULL);
 	}
-	/* Make sure the server part is non-blocking by creating a new thread */
+	/* Create a seperate thread for the server */
 	pthread_create(&pth2, NULL, &socket_wait, (void *)&socket_callback);
-	// pthread_create(&pth3, NULL, &webserver_start, (void *)NULL);
+	/* Create a seperate thread for the webserver */
+	if(webserver_enable == 1) {
+		pthread_create(&pth3, NULL, &webserver_start, (void *)NULL);
+	}
+	/* And our main receiving loop */
 	receive_code();
 	pthread_join(pth1, NULL);
 	pthread_join(pth2, NULL);
-	// pthread_join(pth3, NULL);
+	if(webserver_enable == 1) {
+		pthread_join(pth3, NULL);
+	}
 
 	return EXIT_FAILURE;
 }

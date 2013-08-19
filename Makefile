@@ -58,10 +58,12 @@ pilight-control: control.c $(INCLUDES) $(LIBS)
 	$(GCC) $(CFLAGS) -o $@ $(patsubst pilight-%,%.c,$@) libpilight.so.1
 
 install:
+	[ -d /usr/share/images/pilight/ ] && rm -r /usr/share/images/pilight/ || true
+	
 	install -m 0755 -d /usr/local/lib
 	install -m 0755 -d /usr/local/sbin
 	install -m 0755 -d /etc/pilight
-	install -m 0755 -d /usr/share/images/pilight/
+	install -m 0755 -d /usr/local/share/pilight/
 	install -m 0655 pilight-daemon /usr/local/sbin/
 	install -m 0655 pilight-send /usr/local/sbin/
 	install -m 0655 pilight-receive /usr/local/sbin/
@@ -70,7 +72,11 @@ install:
 	install -m 0655 pilight-learn /usr/local/sbin/
 	install -m 0655 libpilight.so.1 /usr/local/lib/
 	install -m 0644 settings.json-default /etc/pilight/
-	install -m 0644 logo.png /usr/share/images/pilight/
+	install -m 0644 web/index.html /usr/local/share/pilight/
+	install -m 0644 web/pilight.css /usr/local/share/pilight/
+	install -m 0644 web/pilight.js /usr/local/share/pilight/
+	install -m 0644 web/favicon.ico /usr/local/share/pilight/
+	install -m 0644 web/logo.png /usr/local/share/pilight/
 	[ ! -f /usr/local/bin/gpio ] && install -m 0655 deps/gpio /usr/local/bin/ || true
 	mv /etc/pilight/settings.json-default /etc/pilight/settings.json
 	ln -sf /usr/local/lib/libpilight.so.1 /usr/local/lib/libpilight.so

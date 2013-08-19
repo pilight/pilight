@@ -64,9 +64,11 @@ void hw_init(void) {
 int module_init(void) {
 	int use_lirc = USE_LIRC;
 	int gpio_in = GPIO_IN_PIN;
+	int gpio_out = GPIO_OUT_PIN;
 
 	settings_find_number("use-lirc", &use_lirc);
 	settings_find_number("gpio-receiver", &gpio_in);
+	settings_find_number("gpio-sender", &gpio_out);
 	
 	if(use_lirc == 1) {
 		if(initialized == 0) {
@@ -92,7 +94,7 @@ int module_init(void) {
 		if(wiringPiSetup() == -1)
 			return EXIT_FAILURE;
 
-		pinMode(gpio_in, OUTPUT);
+		pinMode(gpio_out, OUTPUT);
 		if(wiringPiISR(gpio_in, INT_EDGE_BOTH) < 0) {
 			logprintf(LOG_ERR, "unable to register interrupt for pin %d", gpio_in) ;
 			return 1 ;

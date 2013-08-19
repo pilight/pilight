@@ -7,5 +7,11 @@
 	"log-file": "/var/log/pilight.log",
 	"process-file": "",
 	"send-repeats": 10,
-	"use-lirc": 0
+	"receive-repeats": 1,
+	"gpio-sender": 0,
+	"gpio-receiver": 1,
+	"use-lirc": 0,
+	"webserver-enable": 1,
+	"webserver-root": "/usr/local/share/pilight/",
+	"webserver-port": 5001
 }

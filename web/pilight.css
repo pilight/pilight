@@ -1,0 +1,46 @@
+body {
+	margin: 0px;
+}
+
+#content div.content {
+	display: none;
+	width: 100%;
+}
+
+.ui-li .ui-btn-inner a.ui-link-inherit, .ui-li-static.ui-li {
+	display: block;
+	padding: 12px 75px 14px 15px;
+}
+
+div.ui-slider.ui-slider-switch {
+	position: absolute;
+	float: right;
+	right: 0px;
+	width: 100px;
+	margin: 6px 10px 10px 0px;
+}
+
+div.ui-slider {
+	margin: 15px 0px 0px 0px;
+	width: 100%;
+}
+
+.dimmer-slider {
+	display: none;
+}
+
+.ui-loader-background {
+    width:100%;
+    height:100%;
+    top:0;
+    padding: 0;
+    margin: 0;
+    background: rgba(0, 0, 0, 0.3);
+    display:none;
+    position: fixed;
+    z-index:100;
+}
+
+.ui-loading .ui-loader-background {
+    display:block;
+}

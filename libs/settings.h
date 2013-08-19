@@ -37,8 +37,9 @@
 #define PULSE_LENGTH		295
 
 #define PORT 				5000
-#define WEBPORT				5001
-#define WEBROOT				"web"
+#define WEBSERVER_PORT		5001
+#define WEBSERVER_ROOT		"web"
+#define WEBSERVER_ENABLE	1
 
 #define MAX_CLIENTS			30
 #define BUFFER_SIZE			1025
@@ -59,7 +60,7 @@ typedef union value_t {
 } value_t;
 
 typedef struct settings_t {
-	char name[15];
+	char *name;
 	int type;
 	union value_t *value;
 	struct settings_t *next;

@@ -34,7 +34,8 @@
 /* Add a string value to the settings struct */
 void settings_add_string_node(const char *name, char *value) {
 	struct settings_t *snode = malloc(sizeof(struct settings_t));
-	strcpy(snode->name, name);
+	snode->name = malloc(strlen(name)*sizeof(char));
+	snode->name = strdup(name);
 	snode->value = malloc(sizeof(union value_t));
 	snode->value->cvalue = malloc((strlen(value)*sizeof(char))+1);
 	memset(snode->value->cvalue, '\0', (strlen(value)*sizeof(char))+1);
@@ -47,7 +48,8 @@ void settings_add_string_node(const char *name, char *value) {
 /* Add an int value to the settings struct */
 void settings_add_number_node(const char *name, int value) {
 	struct settings_t *snode = malloc(sizeof(struct settings_t));
-	strcpy(snode->name, name);
+	snode->name = malloc(strlen(name)*sizeof(char));
+	snode->name = strdup(name);
 	snode->value = malloc(sizeof(union value_t));
 	snode->value->ivalue = value;
 	snode->type = 1;
@@ -123,6 +125,7 @@ int settings_parse(JsonNode *root) {
 	int is_node = 0;
 	char *server_ip = NULL;
 	int server_port = 0;
+	int web_port = 0;
 	int own_port = 0;
 	int has_config = 0;
 	int has_lirc = 0;
@@ -218,7 +221,32 @@ int settings_parse(JsonNode *root) {
 				}
 				settings_add_number_node(jsettings->key, (int)jsettings->number_);
 			}
-		} else if(strcmp(jsettings->key, "gpio-reciever") == 0) {
+		} else if(strcmp(jsettings->key, "webserver-port") == 0) {
+			if(jsettings->number_ < 0) {
+				logprintf(LOG_ERR, "setting \"%s\" must contain a number larger than 0", jsettings->key);
+				have_error = 1;
+				goto clear;
+			} else {
+				web_port = (int)jsettings->number_;
+				settings_add_number_node(jsettings->key, (int)jsettings->number_);
+			}
+		} else if(strcmp(jsettings->key, "webserver-root") == 0) {
+			if(jsettings->string_ == NULL) {
+				logprintf(LOG_ERR, "setting \"%s\" must contain a valid path", jsettings->key);
+				have_error = 1;
+				goto clear;
+			} else {
+				settings_add_string_node(jsettings->key, jsettings->string_);
+			}
+		} else if(strcmp(jsettings->key, "webserver-enable") == 0) {
+			if(jsettings->number_ < 0 || jsettings->number_ > 1) {
+				logprintf(LOG_ERR, "setting \"%s\" must be either 0 or 1", jsettings->key);
+				have_error = 1;
+				goto clear;
+			} else {
+				settings_add_number_node(jsettings->key, (int)jsettings->number_);
+			}
+		} else if(strcmp(jsettings->key, "gpio-receiver") == 0) {
 			if(jsettings->number_ < 0 || jsettings->number_ > 7) {
 				logprintf(LOG_ERR, "setting \"%s\" must be between 0 and 7", jsettings->key);
 				have_error = 1;
@@ -265,6 +293,10 @@ int settings_parse(JsonNode *root) {
 				have_error = 1;
 				goto clear;
 			}
+		} else {
+			logprintf(LOG_ERR, "setting \"%s\" is invalid", jsettings->key);
+			have_error = 1;
+			goto clear;
 		}
 		jsettings = jsettings->next;
 	}
@@ -285,7 +317,12 @@ int settings_parse(JsonNode *root) {
 		goto clear;
 	}
 	if(server_port > 0 && server_port == own_port && is_node == 1) {
-		logprintf(LOG_ERR, "setting \"port\" and server port cannot be the same");
+		logprintf(LOG_ERR, "setting \"port\" and \"server port\" cannot be the same");
+		have_error = 1;
+		goto clear;
+	}
+	if(web_port == own_port) {
+		logprintf(LOG_ERR, "setting \"port\" and \"webserver-port\" cannot be the same");
 		have_error = 1;
 		goto clear;
 	}
