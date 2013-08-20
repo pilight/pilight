@@ -75,8 +75,8 @@ int config_update(char *protoname, JsonNode *json, JsonNode *out) {
 	/* Retrieve the used protocol */
 	while(pnode) {
 		/* Check if the protocol exists */
-		if(strcmp(pnode->listener->id, protoname) == 0) {
-			protocol = pnode->listener;
+		protocol = pnode->listener;
+		if(strcmp(protocol->id, protoname) == 0) {
 			break;
 		}
 		pnode = pnode->next;
@@ -567,7 +567,7 @@ int config_check_state(int i, JsonNode *jsetting, struct conf_devices_t *device)
 
 		tmp_options = device->protopt->options;
 
-		while(tmp_options != NULL) {
+		while(tmp_options != NULL && tmp_options->name != NULL) {
 			/* We are only interested in the config_* options */
 			if(tmp_options->conftype == config_state) {
 				/* If an option requires an argument, then check if the
@@ -884,8 +884,8 @@ int config_parse_locations(JsonNode *jlocations, struct conf_locations_t *locati
 				/* Retrieve the used protocol */
 				while(pnode != NULL) {
 					/* Check if the protocol exists */
-					if(protocol_has_device(pnode->listener, pname) == 0 && match == 0) {
-						protocol = pnode->listener;
+					protocol = pnode->listener;
+					if(protocol_has_device(protocol, pname) == 0 && match == 0) {
 						match = 1;
 						break;
 					}

@@ -247,8 +247,8 @@ void send_code(JsonNode *json) {
 		/* Retrieve the used protocol */
 		while(pnode != NULL) {
 			/* Check if the protocol exists */
+			protocol = pnode->listener;
 			if(protocol_has_device(pnode->listener, name) == 0 && match == 0) {
-				protocol = pnode->listener;
 				match = 1;
 				break;
 			}
@@ -559,7 +559,7 @@ void socket_parse_data(int i, char buffer[BUFFER_SIZE]) {
 	char *incognito;
 	JsonNode *json = json_mkobject();
 	short x = 0;
-	
+
 	getpeername(sd, (struct sockaddr*)&address, (socklen_t*)&addrlen);
 
 	if(strcmp(buffer, "HEART\n") != 0) {
