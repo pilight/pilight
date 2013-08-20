@@ -23,48 +23,47 @@
 #include "options.h"
 #include "protocol.h"
 
-void protocol_unregister(protocol_t *proto) {
-	int i;
-
-	for(i=0; i<protocols.nr; ++i) {
-		if(strcmp(protocols.listeners[i]->id, proto->id) == 0) {
-		  protocols.nr--;
-		  protocols.listeners[i] = protocols.listeners[protocols.nr];
-		}
-	}
-}
-
-void protocol_register(protocol_t *proto) {
-	protocol_unregister(proto);
-	protocols.listeners[protocols.nr++] = proto;
+void protocol_register(protocol_t **proto) {
+	*proto = malloc(sizeof(struct protocol_t));
+	(*proto)->options = malloc(sizeof(struct options_t));
+	(*proto)->id = malloc(sizeof(char));
+	
+	struct protocols_t *pnode = malloc(sizeof(struct protocols_t));
+	pnode->listener = malloc(sizeof(struct protocol_t));
+	pnode->listener = *proto;
+	pnode->next = protocols;
+	protocols = pnode;
 }
 
 void protocol_add_device(protocol_t *proto, const char *id, const char *desc) {
 	struct devices_t *dnode = malloc(sizeof(struct devices_t));
-	strcpy(dnode->id, id);
-	strcpy(dnode->desc, desc);
+	dnode->id = malloc(sizeof(char));
+	dnode->desc = malloc(sizeof(char));
+	dnode->id = strdup(id);
+	dnode->desc = strdup(desc);
 	dnode->next	= proto->devices;
 	proto->devices = dnode;
 }
 
 void protocol_add_conflict(protocol_t *proto, const char *id) {
 	struct conflicts_t *cnode = malloc(sizeof(struct conflicts_t));
-	strcpy(cnode->id, id);
+	cnode->id = malloc(sizeof(char));
+	cnode->id = strdup(id);
 	cnode->next	= proto->conflicts;
 	proto->conflicts = cnode;
 }
 
 /* http://www.cs.bu.edu/teaching/c/linked-list/delete/ */
-void protocol_remove_conflict(protocol_t *proto, const char *id) {
+void protocol_remove_conflict(protocol_t **proto, const char *id) {
 	struct conflicts_t *currP, *prevP;
 
 	prevP = NULL;
 
-	for(currP = proto->conflicts; currP != NULL; prevP = currP, currP = currP->next) {
+	for(currP = (*proto)->conflicts; currP != NULL; prevP = currP, currP = currP->next) {
 
 		if(strcmp(currP->id, id) == 0) {
 			if(prevP == NULL) {
-				proto->conflicts = currP->next;
+				(*proto)->conflicts = currP->next;
 			} else {
 				prevP->next = currP->next;
 			}
@@ -76,8 +75,8 @@ void protocol_remove_conflict(protocol_t *proto, const char *id) {
 	}
 }
 
-int protocol_has_device(protocol_t **proto, const char *id) {
-	struct devices_t *temp = (*proto)->devices;
+int protocol_has_device(protocol_t *proto, const char *id) {
+	struct devices_t *temp = proto->devices;
 
 	while(temp != NULL) {
 		if(strcmp(temp->id, id) == 0) {

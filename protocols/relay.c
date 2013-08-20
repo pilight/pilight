@@ -28,12 +28,12 @@
 #include "wiringPi.h"
 
 void relayCreateMessage(int gpio, int state) {
-	relay.message = json_mkobject();
-	json_append_member(relay.message, "gpio", json_mknumber(gpio));
+	relay->message = json_mkobject();
+	json_append_member(relay->message, "gpio", json_mknumber(gpio));
 	if(state == 1)
-		json_append_member(relay.message, "state", json_mkstring("on"));
+		json_append_member(relay->message, "state", json_mkstring("on"));
 	else
-		json_append_member(relay.message, "state", json_mkstring("off"));
+		json_append_member(relay->message, "state", json_mkstring("off"));
 }
 
 int relayCreateCode(JsonNode *code) {
@@ -44,7 +44,7 @@ int relayCreateCode(JsonNode *code) {
 	int gpio_in = GPIO_IN_PIN;
 	int gpio_out = GPIO_OUT_PIN;
 	
-	relay.rawLength = 0;
+	relay->rawLength = 0;
 
 	if(json_find_string(code, "gpio", &tmp) == 0)
 		gpio=atoi(tmp);
@@ -93,17 +93,16 @@ void relayPrintHelp(void) {
 
 void relayInit(void) {
 
-	strcpy(relay.id, "relay");
-	protocol_add_device(&relay, "relay", "Control connected relay's");
-	relay.type = SWITCH;
-	relay.message = malloc(sizeof(JsonNode));
-
-	options_add(&relay.options, 't', "on", no_value, config_state, NULL);
-	options_add(&relay.options, 'f', "off", no_value, config_state, NULL);
-	options_add(&relay.options, 'g', "gpio", has_value, config_id, "^[0-7]{1}$");
-
-	relay.createCode=&relayCreateCode;
-	relay.printHelp=&relayPrintHelp;
-
 	protocol_register(&relay);
+	relay->id = strdup("relay");
+	protocol_add_device(relay, "relay", "Control connected relay's");
+	relay->type = SWITCH;
+	relay->message = malloc(sizeof(JsonNode));
+
+	options_add(&relay->options, 't', "on", no_value, config_state, NULL);
+	options_add(&relay->options, 'f', "off", no_value, config_state, NULL);
+	options_add(&relay->options, 'g', "gpio", has_value, config_id, "^[0-7]{1}$");
+
+	relay->createCode=&relayCreateCode;
+	relay->printHelp=&relayPrintHelp;
 }

@@ -29,25 +29,19 @@ typedef enum {
 	WEATHER
 } devtype_t;
 
-typedef struct devices_t devices_t;
-
-struct devices_t {
-	char id[25];
-	char desc[50];
+typedef struct devices_t {
+	char *id;
+	char *desc;
 	struct devices_t *next;
-};
+} devices_t;
 
-typedef struct conflicts_t conflicts_t;
-
-struct conflicts_t {
-	char id[25];
+typedef struct conflicts_t {
+	char *id;
 	struct conflicts_t *next;
-};
+} conflicts_t;
 
-typedef struct protocol_t protocol_t;
-
-struct protocol_t {
-	char id[25];
+typedef struct protocol_t {
+	char *id;
 	devtype_t type;
 	int header;
 	int pulse;
@@ -73,20 +67,19 @@ struct protocol_t {
 	void (*parseBinary)(void);
 	int (*createCode)(JsonNode *code);
 	void (*printHelp)(void);
-};
+} protocol_t;
 
-typedef struct {
-	int nr;
-	protocol_t *listeners[8]; // Change this to the number of available protocols
+typedef struct protocols_t {
+	struct protocol_t *listener;
+	struct protocols_t *next;
 } protocols_t;
 
-protocols_t protocols;
+struct protocols_t *protocols;
 
-void protocol_register(protocol_t *proto);
-void protocol_unregister(protocol_t *proto);
+void protocol_register(protocol_t **proto);
 void protocol_add_device(protocol_t *proto, const char *id, const char *desc);
 void protocol_add_conflict(protocol_t *proto, const char *id);
-void protocol_remove_conflict(protocol_t *proto, const char *id);
-int protocol_has_device(protocol_t **proto, const char *id);
+void protocol_remove_conflict(protocol_t **proto, const char *id);
+int protocol_has_device(protocol_t *proto, const char *id);
 
 #endif

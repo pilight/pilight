@@ -40,11 +40,11 @@ int rawCreateCode(JsonNode *code) {
 	rncode = strdup(rcode);
 	pch = strtok(rncode, " ");
 	while(pch != NULL) {
-		raw.raw[i]=atoi(pch);
+		raw->raw[i]=atoi(pch);
 		pch = strtok(NULL, " ");
 		i++;
 	}
-	raw.rawLength=i;
+	raw->rawLength=i;
 	return EXIT_SUCCESS;
 }
 
@@ -54,14 +54,13 @@ void rawPrintHelp(void) {
 
 void rawInit(void) {
 
-	strcpy(raw.id, "raw");
-	protocol_add_device(&raw, "raw", "Raw codes");
-	raw.type = RAW;
-
-	options_add(&raw.options, 'c', "code", has_value, 0, NULL);
-
-	raw.createCode=&rawCreateCode;
-	raw.printHelp=&rawPrintHelp;
-
 	protocol_register(&raw);
+	raw->id = strdup("raw");
+	protocol_add_device(raw, "raw", "Raw codes");
+	raw->type = RAW;
+
+	options_add(&raw->options, 'c', "code", has_value, 0, NULL);
+
+	raw->createCode=&rawCreateCode;
+	raw->printHelp=&rawPrintHelp;
 }

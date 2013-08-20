@@ -19,7 +19,7 @@
 #ifndef _PROTOCOL_ARCTECH_DIMMER_H_
 #define _PROTOCOL_ARCTECH_DIMMER_H_
 
-protocol_t arctech_dimmer;
+struct protocol_t *arctech_dimmer;
 
 void arctechDimInit(void);
 void arctechDimCreateMessage(int id, int unit, int state, int all, int dimlevel);

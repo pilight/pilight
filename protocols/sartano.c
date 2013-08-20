@@ -27,21 +27,21 @@
 #include "sartano.h"
 
 void sartanoCreateMessage(int id, int unit, int state) {
-	sartano.message = json_mkobject();
-	json_append_member(sartano.message, "id", json_mknumber(id));
-	json_append_member(sartano.message, "unit", json_mknumber(unit));
+	sartano->message = json_mkobject();
+	json_append_member(sartano->message, "id", json_mknumber(id));
+	json_append_member(sartano->message, "unit", json_mknumber(unit));
 	if(state == 1)
-		json_append_member(sartano.message, "state", json_mkstring("on"));
+		json_append_member(sartano->message, "state", json_mkstring("on"));
 	else
-		json_append_member(sartano.message, "state", json_mkstring("off"));
+		json_append_member(sartano->message, "state", json_mkstring("off"));
 }
 
 void sartanoParseBinary(void) {
-	sartano.message = NULL;
-	int unit = binToDec(sartano.binary, 0, 4);
-	int state = sartano.binary[10];
-	int check = sartano.binary[11];
-	int id = binToDec(sartano.binary, 5, 9);
+	sartano->message = NULL;
+	int unit = binToDec(sartano->binary, 0, 4);
+	int state = sartano->binary[10];
+	int check = sartano->binary[11];
+	int id = binToDec(sartano->binary, 5, 9);
 	if(check != state)
 		sartanoCreateMessage(id, unit, state);
 }
@@ -50,10 +50,10 @@ void sartanoCreateLow(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=4) {
-		sartano.raw[i]=(PULSE_LENGTH);
-		sartano.raw[i+1]=(sartano.pulse*PULSE_LENGTH);
-		sartano.raw[i+2]=(sartano.pulse*PULSE_LENGTH);
-		sartano.raw[i+3]=(PULSE_LENGTH);
+		sartano->raw[i]=(PULSE_LENGTH);
+		sartano->raw[i+1]=(sartano->pulse*PULSE_LENGTH);
+		sartano->raw[i+2]=(sartano->pulse*PULSE_LENGTH);
+		sartano->raw[i+3]=(PULSE_LENGTH);
 	}
 }
 
@@ -61,10 +61,10 @@ void sartanoCreateHigh(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=4) {
-		sartano.raw[i]=(PULSE_LENGTH);
-		sartano.raw[i+1]=(sartano.pulse*PULSE_LENGTH);
-		sartano.raw[i+2]=(PULSE_LENGTH);
-		sartano.raw[i+3]=(sartano.pulse*PULSE_LENGTH);
+		sartano->raw[i]=(PULSE_LENGTH);
+		sartano->raw[i+1]=(sartano->pulse*PULSE_LENGTH);
+		sartano->raw[i+2]=(PULSE_LENGTH);
+		sartano->raw[i+3]=(sartano->pulse*PULSE_LENGTH);
 	}
 }
 void sartanoClearCode(void) {
@@ -108,8 +108,8 @@ void sartanoCreateState(int state) {
 }
 
 void sartanoCreateFooter(void) {
-	sartano.raw[48]=(PULSE_LENGTH);
-	sartano.raw[49]=(sartano.footer*PULSE_LENGTH);
+	sartano->raw[48]=(PULSE_LENGTH);
+	sartano->raw[49]=(sartano->footer*PULSE_LENGTH);
 }
 
 int sartanoCreateCode(JsonNode *code) {
@@ -156,29 +156,28 @@ void sartanoPrintHelp(void) {
 
 void sartanoInit(void) {
 
-	strcpy(sartano.id, "sartano");
-	protocol_add_device(&sartano, "elro", "Elro Switches");
-	protocol_add_conflict(&sartano, "arctech_old");
-	protocol_add_conflict(&sartano, "impuls");
-	sartano.type = SWITCH;
-	sartano.pulse = 4;
-	sartano.footer = 38;
-	sartano.rawLength = 50;
-	sartano.binLength = 12;
-	sartano.message = malloc(sizeof(JsonNode));
-	sartano.lsb = 3;
-
-	sartano.bit = 0;
-	sartano.recording = 0;
-
-	options_add(&sartano.options, 't', "on", no_value, config_state, NULL);
-	options_add(&sartano.options, 'f', "off", no_value, config_state, NULL);
-	options_add(&sartano.options, 'u', "unit", has_value, config_id, "^(3[012]?|[012][0-9]|[0-9]{1})$");
-	options_add(&sartano.options, 'i', "id", has_value, config_id, "^(3[012]?|[012][0-9]|[0-9]{1})$");
-
-	sartano.parseBinary=&sartanoParseBinary;
-	sartano.createCode=&sartanoCreateCode;
-	sartano.printHelp=&sartanoPrintHelp;
-
 	protocol_register(&sartano);
+	sartano->id = strdup("sartano");
+	protocol_add_device(sartano, "elro", "Elro Switches");
+	protocol_add_conflict(sartano, "arctech_old");
+	protocol_add_conflict(sartano, "impuls");
+	sartano->type = SWITCH;
+	sartano->pulse = 4;
+	sartano->footer = 38;
+	sartano->rawLength = 50;
+	sartano->binLength = 12;
+	sartano->message = malloc(sizeof(JsonNode));
+	sartano->lsb = 3;
+
+	sartano->bit = 0;
+	sartano->recording = 0;
+
+	options_add(&sartano->options, 't', "on", no_value, config_state, NULL);
+	options_add(&sartano->options, 'f', "off", no_value, config_state, NULL);
+	options_add(&sartano->options, 'u', "unit", has_value, config_id, "^(3[012]?|[012][0-9]|[0-9]{1})$");
+	options_add(&sartano->options, 'i', "id", has_value, config_id, "^(3[012]?|[012][0-9]|[0-9]{1})$");
+
+	sartano->parseBinary=&sartanoParseBinary;
+	sartano->createCode=&sartanoCreateCode;
+	sartano->printHelp=&sartanoPrintHelp;
 }

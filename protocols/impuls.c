@@ -27,21 +27,21 @@
 #include "impuls.h"
 
 void impulsCreateMessage(int id, int unit, int state) {
-	impuls.message = json_mkobject();
-	json_append_member(impuls.message, "id", json_mknumber(id));
-	json_append_member(impuls.message, "unit", json_mknumber(unit));
+	impuls->message = json_mkobject();
+	json_append_member(impuls->message, "id", json_mknumber(id));
+	json_append_member(impuls->message, "unit", json_mknumber(unit));
 	if(state == 1)
-		json_append_member(impuls.message, "state", json_mkstring("on"));
+		json_append_member(impuls->message, "state", json_mkstring("on"));
 	else
-		json_append_member(impuls.message, "state", json_mkstring("off"));
+		json_append_member(impuls->message, "state", json_mkstring("off"));
 }
 
 void impulsParseBinary(void) {
-	impuls.message = NULL;
-	int unit = binToDec(impuls.binary, 0, 4);
-	int check = impuls.binary[10];
-	int state = impuls.binary[11];
-	int id = binToDec(impuls.binary, 5, 9);
+	impuls->message = NULL;
+	int unit = binToDec(impuls->binary, 0, 4);
+	int check = impuls->binary[10];
+	int state = impuls->binary[11];
+	int id = binToDec(impuls->binary, 5, 9);
 	if(check != state)
 		impulsCreateMessage(id, unit, state);
 }
@@ -50,10 +50,10 @@ void impulsCreateLow(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=4) {
-		impuls.raw[i]=(PULSE_LENGTH);
-		impuls.raw[i+1]=(impuls.pulse*PULSE_LENGTH);
-		impuls.raw[i+2]=(impuls.pulse*PULSE_LENGTH);
-		impuls.raw[i+3]=(PULSE_LENGTH);
+		impuls->raw[i]=(PULSE_LENGTH);
+		impuls->raw[i+1]=(impuls->pulse*PULSE_LENGTH);
+		impuls->raw[i+2]=(impuls->pulse*PULSE_LENGTH);
+		impuls->raw[i+3]=(PULSE_LENGTH);
 	}
 }
 
@@ -61,10 +61,10 @@ void impulsCreateMed(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=4) {
-		impuls.raw[i]=(impuls.pulse*PULSE_LENGTH);
-		impuls.raw[i+1]=(PULSE_LENGTH);
-		impuls.raw[i+2]=(impuls.pulse*PULSE_LENGTH);
-		impuls.raw[i+3]=(PULSE_LENGTH);
+		impuls->raw[i]=(impuls->pulse*PULSE_LENGTH);
+		impuls->raw[i+1]=(PULSE_LENGTH);
+		impuls->raw[i+2]=(impuls->pulse*PULSE_LENGTH);
+		impuls->raw[i+3]=(PULSE_LENGTH);
 	}
 }
 
@@ -72,10 +72,10 @@ void impulsCreateHigh(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=4) {
-		impuls.raw[i]=(PULSE_LENGTH);
-		impuls.raw[i+1]=(impuls.pulse*PULSE_LENGTH);
-		impuls.raw[i+2]=(PULSE_LENGTH);
-		impuls.raw[i+3]=(impuls.pulse*PULSE_LENGTH);
+		impuls->raw[i]=(PULSE_LENGTH);
+		impuls->raw[i+1]=(impuls->pulse*PULSE_LENGTH);
+		impuls->raw[i+2]=(PULSE_LENGTH);
+		impuls->raw[i+3]=(impuls->pulse*PULSE_LENGTH);
 	}
 }
 void impulsClearCode(void) {
@@ -119,8 +119,8 @@ void impulsCreateState(int state) {
 }
 
 void impulsCreateFooter(void) {
-	impuls.raw[48]=(PULSE_LENGTH);
-	impuls.raw[49]=(impuls.footer*PULSE_LENGTH);
+	impuls->raw[48]=(PULSE_LENGTH);
+	impuls->raw[49]=(impuls->footer*PULSE_LENGTH);
 }
 
 int impulsCreateCode(JsonNode *code) {
@@ -167,30 +167,29 @@ void impulsPrintHelp(void) {
 
 void impulsInit(void) {
 
-	strcpy(impuls.id, "impuls");
-	protocol_add_device(&impuls, "impuls", "Impuls Switches");
-	protocol_add_device(&impuls, "select-remote", "SelectRemote Switches");
-	protocol_add_conflict(&impuls, "arctech_old");
-	protocol_add_conflict(&impuls, "sartano");
-	impuls.type = SWITCH;
-	impuls.pulse = 3;
-	impuls.footer = 31;
-	impuls.rawLength = 50;
-	impuls.binLength = 12;
-	impuls.message = malloc(sizeof(JsonNode));
-	impuls.lsb = 1;
-
-	impuls.bit = 0;
-	impuls.recording = 0;
-
-	options_add(&impuls.options, 't', "on", no_value, config_state, NULL);
-	options_add(&impuls.options, 'f', "off", no_value, config_state, NULL);
-	options_add(&impuls.options, 'u', "unit", has_value, config_id, "^(3[012]?|[012][0-9]|[0-9]{1})$");
-	options_add(&impuls.options, 'i', "id", has_value, config_id, "^(3[012]?|[012][0-9]|[0-9]{1})$");
-
-	impuls.parseBinary=&impulsParseBinary;
-	impuls.createCode=&impulsCreateCode;
-	impuls.printHelp=&impulsPrintHelp;
-
 	protocol_register(&impuls);
+	impuls->id = strdup("impuls");
+	protocol_add_device(impuls, "impuls", "Impuls Switches");
+	protocol_add_device(impuls, "select-remote", "SelectRemote Switches");
+	protocol_add_conflict(impuls, "arctech_old");
+	protocol_add_conflict(impuls, "sartano");
+	impuls->type = SWITCH;
+	impuls->pulse = 3;
+	impuls->footer = 31;
+	impuls->rawLength = 50;
+	impuls->binLength = 12;
+	impuls->message = malloc(sizeof(JsonNode));
+	impuls->lsb = 1;
+
+	impuls->bit = 0;
+	impuls->recording = 0;
+
+	options_add(&impuls->options, 't', "on", no_value, config_state, NULL);
+	options_add(&impuls->options, 'f', "off", no_value, config_state, NULL);
+	options_add(&impuls->options, 'u', "unit", has_value, config_id, "^(3[012]?|[012][0-9]|[0-9]{1})$");
+	options_add(&impuls->options, 'i', "id", has_value, config_id, "^(3[012]?|[012][0-9]|[0-9]{1})$");
+
+	impuls->parseBinary=&impulsParseBinary;
+	impuls->createCode=&impulsCreateCode;
+	impuls->printHelp=&impulsPrintHelp;
 }

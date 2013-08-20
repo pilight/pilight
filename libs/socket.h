@@ -21,13 +21,11 @@
 
 #include "settings.h"
 
-typedef struct socket_callback_t socket_callback_t;
-
-struct socket_callback_t {
+typedef struct socket_callback_t {
     void (*client_connected_callback)(int);
     void (*client_disconnected_callback)(int);
     void (*client_data_callback)(int, char*);
-};
+} socket_callback_t;
 
 int serverSocket;
 int clientSocket;

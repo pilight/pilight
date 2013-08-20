@@ -27,19 +27,19 @@
 #include "arctech_old.h"
 
 void arctechOldCreateMessage(int id, int unit, int state) {
-	arctech_old.message = json_mkobject();
-	json_append_member(arctech_old.message, "id", json_mknumber(id));
-	json_append_member(arctech_old.message, "unit", json_mknumber(unit));
+	arctech_old->message = json_mkobject();
+	json_append_member(arctech_old->message, "id", json_mknumber(id));
+	json_append_member(arctech_old->message, "unit", json_mknumber(unit));
 	if(state == 1)
-		json_append_member(arctech_old.message, "state", json_mkstring("on"));
+		json_append_member(arctech_old->message, "state", json_mkstring("on"));
 	else
-		json_append_member(arctech_old.message, "state", json_mkstring("off"));
+		json_append_member(arctech_old->message, "state", json_mkstring("off"));
 }
 
 void arctechOldParseBinary(void) {
-	int unit = binToDec(arctech_old.binary, 0, 4);
-	int state = arctech_old.binary[11];
-	int id = binToDec(arctech_old.binary, 5, 9);
+	int unit = binToDec(arctech_old->binary, 0, 4);
+	int state = arctech_old->binary[11];
+	int id = binToDec(arctech_old->binary, 5, 9);
 	arctechOldCreateMessage(id, unit, state);
 }
 
@@ -47,10 +47,10 @@ void arctechOldCreateLow(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=4) {
-		arctech_old.raw[i]=(PULSE_LENGTH);
-		arctech_old.raw[i+1]=(arctech_old.pulse*PULSE_LENGTH);
-		arctech_old.raw[i+2]=(arctech_old.pulse*PULSE_LENGTH);
-		arctech_old.raw[i+3]=(PULSE_LENGTH);
+		arctech_old->raw[i]=(PULSE_LENGTH);
+		arctech_old->raw[i+1]=(arctech_old->pulse*PULSE_LENGTH);
+		arctech_old->raw[i+2]=(arctech_old->pulse*PULSE_LENGTH);
+		arctech_old->raw[i+3]=(PULSE_LENGTH);
 	}
 }
 
@@ -58,10 +58,10 @@ void arctechOldCreateHigh(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=4) {
-		arctech_old.raw[i]=(PULSE_LENGTH);
-		arctech_old.raw[i+1]=(arctech_old.pulse*PULSE_LENGTH);
-		arctech_old.raw[i+2]=(PULSE_LENGTH);
-		arctech_old.raw[i+3]=(arctech_old.pulse*PULSE_LENGTH);
+		arctech_old->raw[i]=(PULSE_LENGTH);
+		arctech_old->raw[i+1]=(arctech_old->pulse*PULSE_LENGTH);
+		arctech_old->raw[i+2]=(PULSE_LENGTH);
+		arctech_old->raw[i+3]=(arctech_old->pulse*PULSE_LENGTH);
 	}
 }
 
@@ -104,7 +104,7 @@ void arctechOldCreateState(int state) {
 }
 
 void arctechOldCreateFooter(void) {
-	arctech_old.raw[47]=(arctech_old.footer*PULSE_LENGTH);
+	arctech_old->raw[47]=(arctech_old->footer*PULSE_LENGTH);
 }
 
 int arctechOldCreateCode(JsonNode *code) {
@@ -151,29 +151,28 @@ void arctechOldPrintHelp(void) {
 
 void arctechOldInit(void) {
 
-	strcpy(arctech_old.id, "archtech_old");
-	protocol_add_device(&arctech_old, "kaku_old", "Old KlikAanKlikUit Switches");
-	protocol_add_device(&arctech_old, "cogex", "Cogex Switches");
-	protocol_add_conflict(&arctech_old, "sartano");
-	arctech_old.type = SWITCH;
-	arctech_old.pulse = 4;
-	arctech_old.footer = 38;
-	arctech_old.rawLength = 50;
-	arctech_old.binLength = 12;
-	arctech_old.message = malloc(sizeof(JsonNode));
-	arctech_old.lsb = 3;
-
-	arctech_old.bit = 0;
-	arctech_old.recording = 0;
-
-	options_add(&arctech_old.options, 't', "on", no_value, config_state, NULL);
-	options_add(&arctech_old.options, 'f', "off", no_value, config_state, NULL);
-	options_add(&arctech_old.options, 'u', "unit", has_value, config_id, "^(3[012]?|[012][0-9]|[0-9]{1})$$");
-	options_add(&arctech_old.options, 'i', "id", has_value, config_id, "^(3[012]?|[012][0-9]|[0-9]{1})$");
-
-	arctech_old.parseBinary=arctechOldParseBinary;
-	arctech_old.createCode=&arctechOldCreateCode;
-	arctech_old.printHelp=&arctechOldPrintHelp;
-
 	protocol_register(&arctech_old);
+	arctech_old->id = strdup("archtech_old");
+	protocol_add_device(arctech_old, "kaku_old", "Old KlikAanKlikUit Switches");
+	protocol_add_device(arctech_old, "cogex", "Cogex Switches");
+	protocol_add_conflict(arctech_old, "sartano");
+	arctech_old->type = SWITCH;
+	arctech_old->pulse = 4;
+	arctech_old->footer = 38;
+	arctech_old->rawLength = 50;
+	arctech_old->binLength = 12;
+	arctech_old->message = malloc(sizeof(JsonNode));
+	arctech_old->lsb = 3;
+
+	arctech_old->bit = 0;
+	arctech_old->recording = 0;
+
+	options_add(&arctech_old->options, 't', "on", no_value, config_state, NULL);
+	options_add(&arctech_old->options, 'f', "off", no_value, config_state, NULL);
+	options_add(&arctech_old->options, 'u', "unit", has_value, config_id, "^(3[012]?|[012][0-9]|[0-9]{1})$$");
+	options_add(&arctech_old->options, 'i', "id", has_value, config_id, "^(3[012]?|[012][0-9]|[0-9]{1})$");
+
+	arctech_old->parseBinary=arctechOldParseBinary;
+	arctech_old->createCode=&arctechOldCreateCode;
+	arctech_old->printHelp=&arctechOldPrintHelp;
 }

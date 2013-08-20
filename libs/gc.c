@@ -33,31 +33,23 @@ void gc_handler(int sig) {
     siglongjmp(gc_cleanup, sig);
 }
 
-/* Removed function from GC */
-void gc_detach(int (*fp)(void)) {
-	unsigned i;
-
-	for(i=0; i<gc.nr; ++i) {
-		if(gc.listeners[i] == fp) {
-			gc.nr--;
-			gc.listeners[i] = gc.listeners[gc.nr];
-		}
-	}
-}
-
 /* Add function to gc */
 void gc_attach(int (*fp)(void)) {
-	gc_detach(fp);
-	gc.listeners[gc.nr++] = fp;
+	struct collectors_t *gnode = malloc(sizeof(struct collectors_t));
+	gnode->listener=fp;
+	gnode->next = gc;
+	gc = gnode;
 }
 
 /* Run the GC manually */
 int gc_run(void) {
-    unsigned int i, s;
-	for(i=0; i<gc.nr; ++i) {
-		if(gc.listeners[i]() != 0) {
+    unsigned int s;
+	struct collectors_t *temp = gc;
+	while(temp) {
+		if(temp->listener() != 0) {
 			s=1;
 		}
+		temp = temp->next;
 	}
 	if(s)
 		return EXIT_FAILURE;

@@ -183,12 +183,12 @@ int broadcast(char *protoname, JsonNode *json) {
 				broadcasted = 1;
 			}
 		}
+
 		if(broadcasted == 1) {
 			logprintf(LOG_DEBUG, "broadcasted: %s", conf);
 		}
 		//json_delete(jret);
 	}
-
 	broadcasted = 0;
 
 	if(json_validate(message) == true && receivers > 0) {
@@ -243,13 +243,16 @@ void send_code(JsonNode *json) {
 	} else if(json_find_string(jcode, "protocol", &name) != 0) {
 		logprintf(LOG_ERR, "sender did not provide a protocol name");
 	} else {
-		for(i=0; i<protocols.nr; ++i) {
-			protocol = protocols.listeners[i];
+		struct protocols_t *pnode = protocols;
+		/* Retrieve the used protocol */
+		while(pnode != NULL) {
+			protocol = pnode->listener;
 			/* Check if the protocol exists */
-			if(protocol_has_device(&protocol, name) == 0 && match == 0) {
+			if(protocol_has_device(protocol, name) == 0 && match == 0) {
 				match = 1;
 				break;
 			}
+			pnode = pnode->next;
 		}
 		logged = 0;
 		/* If we matched a protocol and are not already sending, continue */
@@ -342,8 +345,7 @@ void control_device(struct conf_devices_t *dev, char *state, JsonNode *values) {
 	}
 
 	/* Check all protocol options */
-	if(dev->protopt->options != NULL) {
-		opt = dev->protopt->options;
+	if((opt = dev->protopt->options) != NULL) {
 		while(opt) {
 			sett = dev->settings;
 			while(sett) {
@@ -557,7 +559,7 @@ void socket_parse_data(int i, char buffer[BUFFER_SIZE]) {
 	char *incognito;
 	JsonNode *json = json_mkobject();
 	short x = 0;
-
+	
 	getpeername(sd, (struct sockaddr*)&address, (socklen_t*)&addrlen);
 
 	if(strcmp(buffer, "HEART\n") != 0) {
@@ -642,9 +644,10 @@ void socket_client_disconnected(int i) {
 void receive_code(void) {
 	lirc_t data;
 	short header = 0;
-	unsigned int x = 0, y = 0, i = 0;
+	unsigned int x = 0, y = 0;
 	protocol_t *protocol = malloc(sizeof(protocol_t));
 	struct conflicts_t *tmp_conflicts = NULL;
+	struct protocols_t *pnode = NULL;
 	
 	if(use_lirc == 0) {
 		(void)piHiPri(55);
@@ -661,8 +664,9 @@ void receive_code(void) {
 
 			/* A space is normally for 295 long, so filter spaces less then 200 */
 			if(sending == 0 && duration > 200) {
-				for(i=0; i<protocols.nr; ++i) {
-					protocol = protocols.listeners[i];
+				pnode = protocols;
+				while(pnode != NULL) {
+					protocol = protocols->listener;
 					/* Lots of checks if the protocol can actually receive anything */
 					if((((protocol->parseRaw != NULL || protocol->parseCode != NULL) && protocol->rawLength > 0)
 					    || protocol->parseBinary != NULL)
@@ -810,6 +814,7 @@ void receive_code(void) {
 							protocol->bit = 0;
 						}
 					}
+					pnode = pnode->next;
 				}
 			}
 			//json_delete(message);

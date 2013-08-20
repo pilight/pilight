@@ -19,7 +19,7 @@
 #ifndef _PROTOCOL_IMPULS_H_
 #define _PROTOCOL_IMPULS_H_
 
-protocol_t impuls;
+struct protocol_t *impuls;
 
 void impulsInit(void);
 void impulsCreateMessage(int id, int unit, int state);
