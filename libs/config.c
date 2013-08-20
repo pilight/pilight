@@ -55,8 +55,6 @@ int config_update(char *protoname, JsonNode *json, JsonNode *out) {
 	char ctmp[10];
 	/* Temporarily int */
 	int itmp;
-	/* Loop short */
-	unsigned short i = 0;
 	/* Do we need to update the config file */
 	unsigned short update = 0;
 	/* The new state value */
@@ -73,28 +71,32 @@ int config_update(char *protoname, JsonNode *json, JsonNode *out) {
 	/* Was this device added to the return struct */
 	int have_device = 0;
 
+	struct protocols_t *pnode = protocols;
 	/* Retrieve the used protocol */
-	for(i=0;i<protocols.nr; ++i) {
-		protocol = protocols.listeners[i];
-
+	while(pnode) {
 		/* Check if the protocol exists */
-		if(strcmp(protocol->id, protoname) == 0) {
+		if(strcmp(pnode->listener->id, protoname) == 0) {
+			protocol = pnode->listener;
 			break;
 		}
+		pnode = pnode->next;
 	}
 
 	/* Only loop through all locations if the protocol has options */
 	if((opt = protocol->options) != NULL) {
+
 		/* Loop through all location */
 		while(lptr) {
 			dptr = lptr->devices;
 			/* Loop through all devices of this location */
 			have_device = 0;
 			rloc = json_mkarray();
+
 			while(dptr) {
 				match1 = 0; match2 = 0;
 
-				if(protocol_has_device(&protocol, dptr->protoname) == 0) {
+				if(protocol_has_device(protocol, dptr->protoname) == 0) {
+
 					opt = protocol->options;
 					/* Loop through all protocol options */
 					while(opt) {
@@ -565,7 +567,7 @@ int config_check_state(int i, JsonNode *jsetting, struct conf_devices_t *device)
 
 		tmp_options = device->protopt->options;
 
-		while(tmp_options != NULL && tmp_options->name != NULL) {
+		while(tmp_options != NULL) {
 			/* We are only interested in the config_* options */
 			if(tmp_options->conftype == config_state) {
 				/* If an option requires an argument, then check if the
@@ -878,14 +880,16 @@ int config_parse_locations(JsonNode *jlocations, struct conf_locations_t *locati
 				}
 
 				match = 0;
-				for(i=0;i<protocols.nr; ++i) {
-					protocol = protocols.listeners[i];
-
+				struct protocols_t *pnode = protocols;
+				/* Retrieve the used protocol */
+				while(pnode != NULL) {
 					/* Check if the protocol exists */
-					if(protocol_has_device(&protocol, pname) == 0 && match == 0) {
+					if(protocol_has_device(pnode->listener, pname) == 0 && match == 0) {
+						protocol = pnode->listener;
 						match = 1;
 						break;
 					}
+					pnode = pnode->next;
 				}
 
 				if(match == 0) {

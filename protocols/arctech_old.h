@@ -19,7 +19,7 @@
 #ifndef _PROTOCOL_ARCTECH_OLD_H_
 #define _PROTOCOL_ARCTECH_OLD_H_
 
-protocol_t arctech_old;
+struct protocol_t *arctech_old;
 
 void arctechOldInit(void);
 void arctechOldCreateMessage(int id, int unit, int state);

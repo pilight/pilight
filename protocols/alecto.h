@@ -19,7 +19,7 @@
 #ifndef _PROTOCOL_ALECTO_H_
 #define _PROTOCOL_ALECTO_H_
 
-protocol_t alecto;
+struct protocol_t *alecto;
 
 void alectoParseRaw(void);
 void alectoInit(void);

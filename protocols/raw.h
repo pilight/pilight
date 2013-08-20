@@ -19,7 +19,7 @@
 #ifndef _PROTOCOL_RAW_H_
 #define _PROTOCOL_RAW_H_
 
-protocol_t raw;
+struct protocol_t *raw;
 
 void rawInit(void);
 int rawCreateCode(JsonNode *code);

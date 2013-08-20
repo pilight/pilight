@@ -59,7 +59,6 @@ int main(int argc, char **argv) {
 
 	/* Hold the name of the protocol */
 	char protobuffer[25] = "\0";
-	int i;
 	/* Does this protocol exists */
 	int match = 0;
 
@@ -126,10 +125,12 @@ int main(int argc, char **argv) {
 		if(strlen(protobuffer) > 0 && version) {
 			printf("-p and -V cannot be combined\n");
 		} else {
-			for(i=0; i<protocols.nr; ++i) {
-				protocol = protocols.listeners[i];
+			struct protocols_t *pnode = protocols;
+			/* Retrieve the used protocol */
+			while(pnode) {
 				/* Check if the protocol exists */
-				if(protocol_has_device(&protocol, protobuffer) == 0 && match == 0 && protocol->createCode != NULL) {
+				protocol = pnode->listener;
+				if(protocol_has_device(protocol, protobuffer) == 0 && match == 0 && protocol->createCode != NULL) {
 					match=1;
 					/* Check if the protocol requires specific CLI arguments
 					   and merge them with the main CLI arguments */
@@ -140,6 +141,7 @@ int main(int argc, char **argv) {
 					}
 					break;
 				}
+				pnode = pnode->next;
 			}
 			/* If no protocols matches the requested protocol */
 			if(!match) {
@@ -169,10 +171,12 @@ int main(int argc, char **argv) {
 			protocol->printHelp();
 		} else {
 			printf("\nThe supported protocols are:\n");
-			for(i=0; i<protocols.nr; ++i) {
-				protocol = protocols.listeners[i];
+			struct protocols_t *pnode = protocols;
+			/* Retrieve the used protocol */
+			while(pnode) {
+				protocol = pnode->listener;
 				if(protocol->createCode != NULL) {
-					while(protocol->devices != NULL) {
+					while(protocol->devices) {
 						printf("\t %s\t\t\t",protocol->devices->id);
 						if(strlen(protocol->devices->id)<7)
 							printf("\t");
@@ -180,6 +184,7 @@ int main(int argc, char **argv) {
 						protocol->devices = protocol->devices->next;
 					}
 				}
+				pnode = pnode->next;
 			}
 		}
 		return (EXIT_SUCCESS);
@@ -199,7 +204,7 @@ int main(int argc, char **argv) {
 
 	int itmp;
 	/* Check if we got sufficient arguments from this protocol */
-	while(options != NULL) {
+	while(options) {
 		if(strlen(options->name) > 0) {
 			/* Only send the CLI arguments that belong to this protocol, the protocol name
 			and those that are called by the user */

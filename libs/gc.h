@@ -19,16 +19,15 @@
 #ifndef _GC_H_
 #define _GC_H_
 
-typedef struct {
-	int nr;
-	int (*listeners[10])(void);
+typedef struct collectors_t {
+	int (*listener)(void);
+	struct collectors_t *next;
 } collectors_t;
 
-collectors_t gc;
+struct collectors_t *gc;
 
 void gc_handler(int signal);
 void gc_attach(int (*fp)(void));
-void gc_detach(int (*fp)(void));
 void gc_catch(void);
 int gc_run(void);
 

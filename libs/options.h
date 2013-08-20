@@ -27,17 +27,15 @@
 #define config_state	2
 #define config_value	3
 
-typedef struct options_t options_t;
-
-struct options_t {
+typedef struct options_t {
 	int id;
-	char name[255];
-	char value[255];
-	char mask[255];
+	char *name;
+	char *value;
+	char *mask;
 	int argtype;
 	int conftype;
 	struct options_t *next;
-};
+} options_t;
 
 void options_set_value(struct options_t **options, int id, const char *val);
 int options_get_value(struct options_t **options, int id, char **out);

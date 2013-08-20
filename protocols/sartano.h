@@ -19,7 +19,7 @@
 #ifndef _PROTOCOL_SARTANO_H_
 #define _PROTOCOL_SARTANO_H_
 
-protocol_t sartano;
+struct protocol_t *sartano;
 
 void sartanoInit(void);
 void sartanoCreateMessage(int id, int unit, int state);

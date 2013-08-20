@@ -27,22 +27,22 @@
 #include "arctech_switch.h"
 
 void arctechSwCreateMessage(int id, int unit, int state, int all) {
-	arctech_switch.message = json_mkobject();
-	json_append_member(arctech_switch.message, "id", json_mknumber(id));
-	json_append_member(arctech_switch.message, "unit", json_mknumber(unit));
+	arctech_switch->message = json_mkobject();
+	json_append_member(arctech_switch->message, "id", json_mknumber(id));
+	json_append_member(arctech_switch->message, "unit", json_mknumber(unit));
 	if(all == 1)
-		json_append_member(arctech_switch.message, "all", json_mknumber(all));
+		json_append_member(arctech_switch->message, "all", json_mknumber(all));
 	if(state == 1)
-		json_append_member(arctech_switch.message, "state", json_mkstring("on"));
+		json_append_member(arctech_switch->message, "state", json_mkstring("on"));
 	else
-		json_append_member(arctech_switch.message, "state", json_mkstring("off"));
+		json_append_member(arctech_switch->message, "state", json_mkstring("off"));
 }
 
 void arctechSwParseBinary(void) {
-	int unit = binToDecRev(arctech_switch.binary, 28, 31);
-	int state = arctech_switch.binary[27];
-	int all = arctech_switch.binary[26];
-	int id = binToDecRev(arctech_switch.binary, 0, 25);
+	int unit = binToDecRev(arctech_switch->binary, 28, 31);
+	int state = arctech_switch->binary[27];
+	int all = arctech_switch->binary[26];
+	int id = binToDecRev(arctech_switch->binary, 0, 25);
 
 	arctechSwCreateMessage(id, unit, state, all);
 }
@@ -51,10 +51,10 @@ void arctechSwCreateLow(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=4) {
-		arctech_switch.raw[i]=(PULSE_LENGTH);
-		arctech_switch.raw[i+1]=(PULSE_LENGTH);
-		arctech_switch.raw[i+2]=(PULSE_LENGTH);
-		arctech_switch.raw[i+3]=(arctech_switch.pulse*PULSE_LENGTH);
+		arctech_switch->raw[i]=(PULSE_LENGTH);
+		arctech_switch->raw[i+1]=(PULSE_LENGTH);
+		arctech_switch->raw[i+2]=(PULSE_LENGTH);
+		arctech_switch->raw[i+3]=(arctech_switch->pulse*PULSE_LENGTH);
 	}
 }
 
@@ -62,10 +62,10 @@ void arctechSwCreateHigh(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=4) {
-		arctech_switch.raw[i]=(PULSE_LENGTH);
-		arctech_switch.raw[i+1]=(arctech_switch.pulse*PULSE_LENGTH);
-		arctech_switch.raw[i+2]=(PULSE_LENGTH);
-		arctech_switch.raw[i+3]=(PULSE_LENGTH);
+		arctech_switch->raw[i]=(PULSE_LENGTH);
+		arctech_switch->raw[i+1]=(arctech_switch->pulse*PULSE_LENGTH);
+		arctech_switch->raw[i+2]=(PULSE_LENGTH);
+		arctech_switch->raw[i+3]=(PULSE_LENGTH);
 	}
 }
 
@@ -74,8 +74,8 @@ void arctechSwClearCode(void) {
 }
 
 void arctechSwCreateStart(void) {
-	arctech_switch.raw[0]=(PULSE_LENGTH);
-	arctech_switch.raw[1]=(arctech_switch.header*PULSE_LENGTH);
+	arctech_switch->raw[0]=(PULSE_LENGTH);
+	arctech_switch->raw[1]=(arctech_switch->header*PULSE_LENGTH);
 }
 
 void arctechSwCreateId(int id) {
@@ -119,7 +119,7 @@ void arctechSwCreateUnit(int unit) {
 }
 
 void arctechSwCreateFooter(void) {
-	arctech_switch.raw[131]=(arctech_switch.footer*PULSE_LENGTH);
+	arctech_switch->raw[131]=(arctech_switch->footer*PULSE_LENGTH);
 }
 
 int arctechSwCreateCode(JsonNode *code) {
@@ -175,33 +175,31 @@ void arctechSwPrintHelp(void) {
 
 void arctechSwInit(void) {
 
-	strcpy(arctech_switch.id, "archtech_switches");
-	protocol_add_device(&arctech_switch, "kaku_switch", "KlikAanKlikUit Switches");
-	protocol_add_device(&arctech_switch, "dio_switch", "D-IO (Chacon) Switches");
-	protocol_add_device(&arctech_switch, "nexa_switch", "Nexa Switches");
-	protocol_add_device(&arctech_switch, "coco_switch", "CoCo Technologies Switches");
-	protocol_add_conflict(&arctech_switch, "archtech_dimmers");
-	arctech_switch.type = SWITCH;
-	arctech_switch.header = 9;
-	arctech_switch.pulse = 5;
-	arctech_switch.footer = 35;
-	arctech_switch.rawLength = 132;
-	arctech_switch.message = malloc(sizeof(JsonNode));
-	arctech_switch.lsb = 3;
-
-
-	arctech_switch.bit = 0;
-	arctech_switch.recording = 0;
-
-	options_add(&arctech_switch.options, 'a', "all", no_value, 0, NULL);
-	options_add(&arctech_switch.options, 't', "on", no_value, config_state, NULL);
-	options_add(&arctech_switch.options, 'f', "off", no_value, config_state, NULL);
-	options_add(&arctech_switch.options, 'u', "unit", has_value, config_id, "^([0-9]{1}|[1][0-6])$");
-	options_add(&arctech_switch.options, 'i', "id", has_value, config_id, "^([0-9]{1,7}|[1-5][0-9]{7}|6([0-6][0-9]{6}|7(0[0-9]{5}|10([0-7][0-9]{3}|8([0-7][0-9]{2}|8([0-5][0-9]|6[0-3]))))))$");
-
-	arctech_switch.parseBinary=&arctechSwParseBinary;
-	arctech_switch.createCode=&arctechSwCreateCode;
-	arctech_switch.printHelp=&arctechSwPrintHelp;
-
 	protocol_register(&arctech_switch);
+	arctech_switch->id = strdup("archtech_switches");
+	protocol_add_device(arctech_switch, "kaku_switch", "KlikAanKlikUit Switches");
+	protocol_add_device(arctech_switch, "dio_switch", "D-IO (Chacon) Switches");
+	protocol_add_device(arctech_switch, "nexa_switch", "Nexa Switches");
+	protocol_add_device(arctech_switch, "coco_switch", "CoCo Technologies Switches");
+	protocol_add_conflict(arctech_switch, "archtech_dimmers");
+	arctech_switch->type = SWITCH;
+	arctech_switch->header = 9;
+	arctech_switch->pulse = 5;
+	arctech_switch->footer = 35;
+	arctech_switch->rawLength = 132;
+	arctech_switch->message = malloc(sizeof(JsonNode));
+	arctech_switch->lsb = 3;
+
+	arctech_switch->bit = 0;
+	arctech_switch->recording = 0;
+
+	options_add(&arctech_switch->options, 'a', "all", no_value, 0, NULL);
+	options_add(&arctech_switch->options, 't', "on", no_value, config_state, NULL);
+	options_add(&arctech_switch->options, 'f', "off", no_value, config_state, NULL);
+	options_add(&arctech_switch->options, 'u', "unit", has_value, config_id, "^([0-9]{1}|[1][0-6])$");
+	options_add(&arctech_switch->options, 'i', "id", has_value, config_id, "^([0-9]{1,7}|[1-5][0-9]{7}|6([0-6][0-9]{6}|7(0[0-9]{5}|10([0-7][0-9]{3}|8([0-7][0-9]{2}|8([0-5][0-9]|6[0-3]))))))$");
+
+	arctech_switch->parseBinary=&arctechSwParseBinary;
+	arctech_switch->createCode=&arctechSwCreateCode;
+	arctech_switch->printHelp=&arctechSwPrintHelp;
 }

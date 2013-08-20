@@ -19,7 +19,7 @@
 #ifndef _PROTOCOL_RELAY_H_
 #define _PROTOCOL_RELAY_H_
 
-protocol_t relay;
+struct protocol_t *relay;
 
 void relayInit(void);
 int relayCreateCode(JsonNode *code);

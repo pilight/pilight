@@ -19,7 +19,7 @@
 #ifndef _PROTOCOL_ARCTECH_SWITCH_H_
 #define _PROTOCOL_ARCTECH_SWITCH_H_
 
-protocol_t arctech_switch;
+struct protocol_t *arctech_switch;
 
 void arctechSwInit(void);
 void arctechSwCreateMessage(int id, int unit, int state, int all);

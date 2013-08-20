@@ -36,7 +36,7 @@ int getOptPos = 0;
 /* Add a value to the specific struct id */
 void options_set_value(struct options_t **opt, int id, const char *val) {
 	struct options_t *temp = *opt;
-	while(temp != NULL) {
+	while(temp) {
 		if(temp->id == id && temp->id > 0) {
 			strcpy(temp->value,val);
 			break;
@@ -49,7 +49,7 @@ void options_set_value(struct options_t **opt, int id, const char *val) {
 int options_get_value(struct options_t **opt, int id, char **out) {
 	struct options_t *temp = *opt;
 	*out = NULL;	
-	while(temp != NULL) {
+	while(temp) {
 		if(temp->id == id && temp->id > 0) {
 			if(temp->value != NULL && strlen(temp->value) > 0) {
 				*out = temp->value;
@@ -68,7 +68,7 @@ int options_get_value(struct options_t **opt, int id, char **out) {
 int options_get_argtype(struct options_t **opt, int id, int *out) {
 	struct options_t *temp = *opt;
 	*out = 0;
-	while(temp != NULL) {
+	while(temp) {
 		if(temp->id == id && temp->id > 0) {
 			if(temp->argtype != 0) {
 				*out = temp->argtype;
@@ -87,7 +87,7 @@ int options_get_argtype(struct options_t **opt, int id, int *out) {
 int options_get_name(struct options_t **opt, int id, char **out) {
 	struct options_t *temp = *opt;
 	*out = NULL;
-	while(temp != NULL) {
+	while(temp) {
 		if(temp->id == id && temp->id > 0) {
 			if(temp->name != NULL) {
 				*out = temp->name;
@@ -106,7 +106,7 @@ int options_get_name(struct options_t **opt, int id, char **out) {
 int options_get_mask(struct options_t **opt, int id, char **out) {
 	struct options_t *temp = *opt;
 	*out = NULL;
-	while(temp != NULL) {
+	while(temp) {
 		if(temp->id == id && temp->id > 0) {
 			if(temp->mask != NULL) {
 				*out = temp->mask;
@@ -125,7 +125,7 @@ int options_get_mask(struct options_t **opt, int id, char **out) {
 int options_get_id(struct options_t **opt, char *name, int *out) {
 	struct options_t *temp = *opt;
 	*out = 0;
-	while(temp != NULL) {
+	while(temp) {
 		if(temp->name != NULL) {
 			if(strcmp(temp->name,name) == 0) {
 				if(temp->id > 0) {
@@ -319,19 +319,22 @@ void options_add(struct options_t **opt, int id, const char *name, int argtype, 
 	} else if(options_get_id(opt, strdup(name), &itmp) == 0) {
 		logprintf(LOG_ERR, "duplicate option name: %s", name);
 	} else {
-		if(*opt == NULL) {
-			*opt = malloc(sizeof(struct options_t));
-		}
 		struct options_t *optnode = malloc(sizeof(struct options_t));
 		optnode->id = id;
-		strcpy(optnode->name, name);
-		memset(optnode->value, '\0', sizeof(optnode->value));
+		optnode->name = malloc(sizeof(char));
+		memset(optnode->name, '\0', sizeof(optnode->name));
+		if(name != NULL) {
+			optnode->name = strdup(name);	
+		}
 		optnode->argtype = argtype;
 		optnode->conftype = conftype;
-		if(mask == NULL)
-			memset(optnode->value, '\0', sizeof(optnode->mask));
-		else
-			strcpy(optnode->mask, mask);
+		optnode->mask = malloc(sizeof(char));
+		memset(optnode->mask, '\0', sizeof(optnode->mask));
+		if(mask != NULL) {
+			optnode->mask = strdup(mask);
+		}
+		optnode->value = malloc(sizeof(char));		
+		memset(optnode->value, '\0', sizeof(optnode->value));
 		optnode->next = *opt;
 		*opt = optnode;
 	}
@@ -339,44 +342,39 @@ void options_add(struct options_t **opt, int id, const char *name, int argtype, 
 
 /* Merge two options structs */
 struct options_t *options_merge(struct options_t **a, struct options_t **b) {
-	struct options_t *temp = *b;
+	struct options_t *temp = NULL;
 	struct options_t *c = malloc(sizeof(struct options_t));
-	while(temp != NULL && temp->name != NULL) {
-		struct options_t *optnode = malloc(sizeof(struct options_t));
-		optnode->id = temp->id;
-		strcpy(optnode->name, temp->name);
-		if(temp->value == NULL)
+	int i = 0;
+	for(i=0;i<2;i++) {
+		if(i) {
+			temp = *b;
+		} else {
+			temp = *a;
+		}
+		while(temp) {
+			struct options_t *optnode = malloc(sizeof(struct options_t));
+			optnode->id = temp->id;
+			optnode->name = malloc(sizeof(char));
+			memset(optnode->name, '\0', sizeof(optnode->name));
+			if(temp->name != NULL) {
+				optnode->name = strdup(temp->name);
+			}
+			optnode->value = malloc(sizeof(char));
 			memset(optnode->value, '\0', sizeof(optnode->value));
-		else
-			strcpy(optnode->value, temp->value);
-		if(temp->mask == NULL)
-			memset(optnode->value, '\0', sizeof(optnode->mask));
-		else
-			strcpy(optnode->mask, temp->mask);
-		optnode->argtype = temp->argtype;
-		optnode->conftype = temp->conftype;
-		optnode->next = c;
-		c = optnode;
-		temp = temp->next;
-	}
-	temp = *a;
-	while(temp != NULL && temp->name != NULL) {
-		struct options_t *optnode = malloc(sizeof(struct options_t));
-		optnode->id = temp->id;
-		strcpy(optnode->name, temp->name);
-		if(temp->value == NULL)
-			memset(optnode->value, '\0', sizeof(optnode->value));
-		else
-			strcpy(optnode->value, temp->value);
-		if(temp->mask == NULL)
-			memset(optnode->value, '\0', sizeof(optnode->mask));
-		else
-			strcpy(optnode->mask, temp->mask);
-		optnode->argtype = temp->argtype;
-		optnode->conftype = temp->conftype;
-		optnode->next = c;
-		c = optnode;
-		temp = temp->next;
+			if(temp->value != NULL) {
+				optnode->value = strdup(temp->value);
+			}
+			optnode->mask = malloc(sizeof(char));
+			memset(optnode->mask, '\0', sizeof(optnode->mask));
+			if(temp->mask != NULL) {
+				optnode->mask = strdup(temp->mask);		
+			}
+			optnode->argtype = temp->argtype;
+			optnode->conftype = temp->conftype;
+			optnode->next = c;
+			c = optnode;
+			temp = temp->next;
+		}
 	}
 	return c;
 }
