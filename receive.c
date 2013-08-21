@@ -41,7 +41,6 @@ int main(int argc, char **argv) {
 
 	log_level_set(LOG_NOTICE);
 
-	progname = malloc((14*sizeof(char))+1);
 	progname = strdup("pilight-receive");
 	struct options_t *options = malloc(sizeof(struct options_t));
 	
@@ -53,6 +52,7 @@ int main(int argc, char **argv) {
     int sockfd = 0;
     char *recvBuff;
 	char *message = NULL;
+	char *args = NULL;	
 	steps_t steps = WELCOME;
 
 	options_add(&options, 'H', "help", no_value, 0, NULL);
@@ -66,7 +66,7 @@ int main(int argc, char **argv) {
 	   fill all necessary values in the options struct */
 	while(1) {
 		int c;
-		c = options_parse(&options, argc, argv, 1);
+		c = options_parse(&options, argc, argv, 1, &args);
 		if(c == -1)
 			break;
 		switch(c) {

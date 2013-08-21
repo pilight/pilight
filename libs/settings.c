@@ -34,7 +34,6 @@
 /* Add a string value to the settings struct */
 void settings_add_string_node(const char *name, char *value) {
 	struct settings_t *snode = malloc(sizeof(struct settings_t));
-	snode->name = malloc(strlen(name)*sizeof(char));
 	snode->name = strdup(name);
 	snode->value = malloc(sizeof(union value_t));
 	snode->value->cvalue = malloc((strlen(value)*sizeof(char))+1);
@@ -48,7 +47,6 @@ void settings_add_string_node(const char *name, char *value) {
 /* Add an int value to the settings struct */
 void settings_add_number_node(const char *name, int value) {
 	struct settings_t *snode = malloc(sizeof(struct settings_t));
-	snode->name = malloc(strlen(name)*sizeof(char));
 	snode->name = strdup(name);
 	snode->value = malloc(sizeof(union value_t));
 	snode->value->ivalue = value;
@@ -68,6 +66,7 @@ int settings_find_number(const char *name, int *out) {
 		}
 		tmp_settings = tmp_settings->next;
 	}
+	free(tmp_settings);
 	return 1;
 }
 
@@ -82,6 +81,7 @@ int settings_find_string(const char *name, char **out) {
 		}
 		tmp_settings = tmp_settings->next;
 	}
+	free(tmp_settings);
 	return 1;
 }
 
@@ -94,8 +94,9 @@ int settings_path_exists(char *fil) {
 
 	memset(path, '\0', sizeof(path));
 	memcpy(path, fil, i);
-
-	if(strcmp(basename(fil), fil) != 0) {
+	snprintf(path, i, "%s", fil);
+	
+	if(strcmp(filename, fil) != 0) {
 		int err = stat(path, &s);
 		if(err == -1) {
 			if(ENOENT == errno) {
@@ -135,7 +136,7 @@ int settings_parse(JsonNode *root) {
 
 	JsonNode *jsettings = json_first_child(root);
 
-	while(jsettings != NULL) {
+	while(jsettings) {
 		if(strcmp(jsettings->key, "port") == 0 || strcmp(jsettings->key, "send-repeats") == 0 || strcmp(jsettings->key, "receive-repeats") == 0) {
 			if((int)jsettings->number_ == 0) {
 				logprintf(LOG_ERR, "setting \"%s\" must contain a number larger than 0", jsettings->key);
@@ -300,7 +301,7 @@ int settings_parse(JsonNode *root) {
 		}
 		jsettings = jsettings->next;
 	}
-
+	json_delete(jsettings);
 	if(has_lirc == 1 && gpio_in > -1) {
 		logprintf(LOG_ERR, "setting \"gpio-receiver\" cand use-lirc cannot be combined");
 		have_error = 1;
@@ -390,7 +391,7 @@ int settings_read(void) {
 		return EXIT_FAILURE;
 	}
 	settings_write(json_stringify(root, "\t"));
-
+	json_delete(root);
 	return EXIT_SUCCESS;
 }
 

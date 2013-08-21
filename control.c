@@ -91,7 +91,7 @@ int main(int argc, char **argv) {
 	   fill all necessary values in the options struct */
 	while(1) {
 		int c;
-		c = options_parse(&options, argc, argv, 1);
+		c = options_parse(&options, argc, argv, 1, &optarg);
 		if(c == -1)
 			break;
 		switch(c) {

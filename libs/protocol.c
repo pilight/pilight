@@ -25,11 +25,9 @@
 
 void protocol_register(protocol_t **proto) {
 	*proto = malloc(sizeof(struct protocol_t));
-	(*proto)->options = malloc(sizeof(struct options_t));
-	(*proto)->id = malloc(sizeof(char));
+	(*proto)->options = NULL;
 	
 	struct protocols_t *pnode = malloc(sizeof(struct protocols_t));
-	pnode->listener = malloc(sizeof(struct protocol_t));
 	pnode->listener = *proto;
 	pnode->next = protocols;
 	protocols = pnode;
@@ -37,8 +35,6 @@ void protocol_register(protocol_t **proto) {
 
 void protocol_add_device(protocol_t *proto, const char *id, const char *desc) {
 	struct devices_t *dnode = malloc(sizeof(struct devices_t));
-	dnode->id = malloc(sizeof(char));
-	dnode->desc = malloc(sizeof(char));
 	dnode->id = strdup(id);
 	dnode->desc = strdup(desc);
 	dnode->next	= proto->devices;
@@ -47,7 +43,6 @@ void protocol_add_device(protocol_t *proto, const char *id, const char *desc) {
 
 void protocol_add_conflict(protocol_t *proto, const char *id) {
 	struct conflicts_t *cnode = malloc(sizeof(struct conflicts_t));
-	cnode->id = malloc(sizeof(char));
 	cnode->id = strdup(id);
 	cnode->next	= proto->conflicts;
 	proto->conflicts = cnode;
@@ -78,11 +73,12 @@ void protocol_remove_conflict(protocol_t **proto, const char *id) {
 int protocol_has_device(protocol_t *proto, const char *id) {
 	struct devices_t *temp = proto->devices;
 
-	while(temp != NULL) {
+	while(temp) {
 		if(strcmp(temp->id, id) == 0) {
 			return 0;
 		}
 		temp = temp->next;
 	}
+	free(temp);
 	return 1;
 }

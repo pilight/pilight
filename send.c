@@ -47,14 +47,14 @@ int main(int argc, char **argv) {
 	log_shell_enable();
 	log_level_set(LOG_NOTICE);
 
-	progname = malloc((14*sizeof(char))+1);
 	progname = strdup("pilight-send");
 
-	struct options_t *options = malloc(sizeof(struct options_t));
+	struct options_t *options = NULL;
 
 	int sockfd = 0;
     char *recvBuff = NULL;
     char *message;
+	char *args = NULL;
 	steps_t steps = WELCOME;
 
 	/* Hold the name of the protocol */
@@ -91,17 +91,17 @@ int main(int argc, char **argv) {
 	/* Get the protocol to be used */
 	while (1) {
 		int c;
-		c = options_parse(&options, argc, argv, 0);
+		c = options_parse(&options, argc, argv, 0, &args);
 
 		if (c == -1)
 			break;
 		switch(c) {
 			case 'p':
-				if(strlen(optarg) == 0) {
+				if(strlen(args) == 0) {
 					logprintf(LOG_ERR, "options '-p' and '--protocol' require an argument");
 					exit(EXIT_FAILURE);
 				} else {
-					strcpy(protobuffer, optarg);
+					strcpy(protobuffer, args);
 				}
 			break;
 			case 'V':
@@ -111,10 +111,10 @@ int main(int argc, char **argv) {
 				help = 1;
 			break;
 			case 'S':
-				strcpy(server, optarg);
+				strcpy(server, args);
 			break;
 			case 'P':
-				port = (unsigned short)atoi(optarg);
+				port = (unsigned short)atoi(args);
 			break;
 			default:;
 		}
@@ -196,7 +196,7 @@ int main(int argc, char **argv) {
 	   fill all necessary values in the options struct */
 	while(1) {
 		int c;
-		c = options_parse(&options, argc, argv, 1);
+		c = options_parse(&options, argc, argv, 1, &args);
 
 		if(c == -1)
 			break;

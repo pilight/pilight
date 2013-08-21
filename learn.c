@@ -90,12 +90,12 @@ int main(int argc, char **argv) {
 	log_shell_disable();
 	log_level_set(LOG_NOTICE);
 
-	progname = malloc((14*sizeof(char))+1);
 	progname = strdup("pilight-learn");
-	struct options_t *options = malloc(sizeof(struct options_t));
+	struct options_t *options = NULL;
 	
 	lirc_t data;
 	char *socket = strdup("/dev/lirc0");
+	char *args;
 	int have_device = 0;
 	int use_lirc = USE_LIRC;
 	int gpio_in = GPIO_IN_PIN;
@@ -150,7 +150,7 @@ int main(int argc, char **argv) {
 	options_add(&options, 'G', "gpio", has_value, 0, "^[0-7]$");
 	while (1) {
 		int c;
-		c = options_parse(&options, argc, argv, 1);
+		c = options_parse(&options, argc, argv, 1, &args);
 		if (c == -1)
 			break;
 		switch (c) {

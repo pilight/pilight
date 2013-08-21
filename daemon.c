@@ -115,6 +115,8 @@ int webserver_enable = WEBSERVER_ENABLE;
 int webserver_port = WEBSERVER_PORT;
 /* The webroot of pilight */
 char *webserver_root;
+/* Thread pointers */
+pthread_t pth1, pth2, pth3;
 
 /* http://stackoverflow.com/a/3535143 */
 void escape_characters(char* dest, const char* src) {
@@ -214,14 +216,14 @@ int broadcast(char *protoname, JsonNode *json) {
 				pclose(f);
 				broadcasted = 1;
 			}
-			//free(escaped);
 			if(broadcasted) {
 				logprintf(LOG_DEBUG, "broadcasted: %s", message);
 			}
 		}
+		free(escaped);
 		return 1;
 	}
-	//free(message);
+	free(message);
 	return 0;
 }
 
@@ -433,6 +435,7 @@ void client_node_parse_code(int i, JsonNode *json) {
 			socket_write_big(sd, json_stringify(json, NULL));
 		}
 	}
+	json_delete(json);
 }
 
 void client_controller_parse_code(int i, JsonNode *json) {
@@ -497,15 +500,16 @@ void client_webserver_parse_code(int i, char buffer[BUFFER_SIZE]) {
 	int sd = socket_clients[i];
 	int x = 0;
 	FILE *f;
-	char *ptr = malloc(sizeof(char));
-	char *cache = malloc((sizeof(char)*BUFFER_SIZE)+1);
-	char path[255];
+	char *ptr = NULL;;
+	char *cache = NULL;
+	char *path = NULL;
 	struct sockaddr_in sockin;
 	socklen_t len = sizeof(sockin);
 
 	if(getsockname(sd, (struct sockaddr *)&sockin, &len) == -1) {
 		logprintf(LOG_ERR, "could not determine server ip address");
 	} else {
+		ptr = malloc(sizeof(char));
 		ptr = strstr(buffer, " HTTP/");
 		*ptr = 0;
 		ptr = NULL;	
@@ -520,15 +524,19 @@ void client_webserver_parse_code(int i, char buffer[BUFFER_SIZE]) {
 				socket_write(sd, "Server : pilight webserver\r");
 				socket_write(sd, "\r");		
 
+				path = malloc(((strlen(webserver_root)+strlen("logo.png"))*sizeof(char))+1);
 				sprintf(path, "%slogo.png", webserver_root);
 				f = fopen(path, "rb");
 				if(f) {
 					x = 0;
+					cache = malloc((sizeof(char)*BUFFER_SIZE)+1);
 					while (!feof(f)) {
 						x = (int)fread(cache, 1, BUFFER_SIZE, f);
 						send(sd, cache, (size_t)x, MSG_NOSIGNAL);
 					}
 					fclose(f);
+					free(cache);
+					free(path);
 				} else {
 					logprintf(LOG_NOTICE, "pilight logo not found");
 				}
@@ -539,12 +547,14 @@ void client_webserver_parse_code(int i, char buffer[BUFFER_SIZE]) {
 			socket_write(sd, "Server : pilight webserver\r");
 			socket_write(sd, "\r");
 			socket_write(sd, "<html><head><title>pilight daemon</title></head>\r");
+			cache = malloc((sizeof(char)*BUFFER_SIZE)+1);
 			if(webserver_enable == 1) {
 				sprintf(cache, "<body><center><img src=\"logo.png\"><br /><p style=\"color: #0099ff; font-weight: 800px; font-family: Verdana; font-size: 20px;\">The pilight webgui is located at <a style=\"text-decoration: none; color: #0099ff; font-weight: 800px; font-family: Verdana; font-size: 20px;\" href=\"http://%s:%d\">http://%s:%d</a></p></center></body></html>\r", inet_ntoa(sockin.sin_addr), webserver_port, inet_ntoa(sockin.sin_addr), webserver_port);
 				socket_write(sd, cache);
 			} else {
 				socket_write(sd, "<body><center><img src=\"logo.png\"></center></body></html>\r");
 			}
+			free(cache);
 		}
 	}
 }
@@ -554,12 +564,12 @@ void socket_parse_data(int i, char buffer[BUFFER_SIZE]) {
 	int sd = socket_clients[i];
 	struct sockaddr_in address;
 	int addrlen = sizeof(address);
-	char tmp[25];
+	char *tmp;
 	char *message;
 	char *incognito;
 	JsonNode *json = json_mkobject();
 	short x = 0;
-	
+
 	getpeername(sd, (struct sockaddr*)&address, (socklen_t*)&addrlen);
 
 	if(strcmp(buffer, "HEART\n") != 0) {
@@ -600,6 +610,7 @@ void socket_parse_data(int i, char buffer[BUFFER_SIZE]) {
 			} else {
 				/* Check if we matched a know client type */
 				for(x=0;x<(sizeof(clients)/sizeof(clients[0]));x++) {
+					tmp = malloc(sizeof(char)*26);
 					memset(tmp, '\0', 25);
 
 					strcat(tmp, "client ");
@@ -614,6 +625,7 @@ void socket_parse_data(int i, char buffer[BUFFER_SIZE]) {
 							receivers++;
 						break;
 					}
+					free(tmp);
 				}
 			}
 			if(incognito_mode == 1) {
@@ -629,7 +641,7 @@ void socket_parse_data(int i, char buffer[BUFFER_SIZE]) {
 		if(handshakes[i] == -1 && socket_clients[i] > 0) {
 			socket_write(sd, "{\"message\":\"reject client\"}");
 			socket_close(sd);
-		}	
+		}
 	}
 	json_delete(json);
 }
@@ -817,7 +829,6 @@ void receive_code(void) {
 					pnode = pnode->next;
 				}
 			}
-			//json_delete(message);
 		} else {
 			sleep(1);
 		}
@@ -828,7 +839,7 @@ void *clientize(void *param) {
 	char *server = NULL;
 	int port = 0;
 	steps_t steps = WELCOME;
-    char *recvBuff;
+    char *recvBuff = NULL;
 	char *message = NULL;
 	char *protocol = NULL;
 	JsonNode *json = NULL;
@@ -967,20 +978,20 @@ int main(int argc , char **argv) {
 	log_file_disable();
 	log_shell_enable();
 
-	progname = malloc((14*sizeof(char))+1);
 	progname = strdup("pilight-daemon");
-
 	settingsfile = strdup(SETTINGS_FILE);
 	
 	struct socket_callback_t socket_callback;
-	struct options_t *options = malloc(sizeof(options_t));
-	pthread_t pth1, pth2, pth3;
+	struct options_t *options = NULL;
 	char buffer[BUFFER_SIZE];
 	int f;
 	int itmp;
 	char *stmp = NULL;
+	char *args = NULL;
 	int port = 0;
 
+	memset(buffer, '\0', BUFFER_SIZE);
+	
 	options_add(&options, 'H', "help", no_value, 0, NULL);
 	options_add(&options, 'V', "version", no_value, 0, NULL);
 	options_add(&options, 'D', "nodaemon", no_value, 0, NULL);
@@ -988,7 +999,7 @@ int main(int argc , char **argv) {
 
 	while (1) {
 		int c;
-		c = options_parse(&options, argc, argv, 1);
+		c = options_parse(&options, argc, argv, 1, &args);
 		if (c == -1)
 			break;
 		switch(c) {
@@ -1006,11 +1017,11 @@ int main(int argc , char **argv) {
 				return (EXIT_SUCCESS);
 			break;
 			case 'S': 
-				if(access(optarg, F_OK) != -1) {
-					settingsfile = strdup(optarg);
-					settings_set_file(optarg);
+				if(access(args, F_OK) != -1) {
+					settingsfile = strdup(args);
+					settings_set_file(args);
 				} else {
-					fprintf(stderr, "%s: the settings file %s does not exists\n", progname, optarg);
+					fprintf(stderr, "%s: the settings file %s does not exists\n", progname, args);
 					return EXIT_FAILURE;
 				}
 			break;
@@ -1050,6 +1061,7 @@ int main(int argc , char **argv) {
 	if((f = open(pid_file, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR)) != -1) {
 		if(read(f, buffer, BUFFER_SIZE) != -1) {
 			//If the file is empty, create a new process
+			strcat(buffer, "\0");
 			if(!atoi(buffer)) {
 				running = 0;
 			} else {
@@ -1146,7 +1158,7 @@ int main(int argc , char **argv) {
 	if(nodaemon == 0) {
 		daemonize();
 	}
-	
+
     //initialise all socket_clients and handshakes to 0 so not checked
 	memset(socket_clients, 0, sizeof(socket_clients));
 	memset(handshakes, -1, sizeof(handshakes));
@@ -1161,7 +1173,7 @@ int main(int argc , char **argv) {
 		pthread_create(&pth1, NULL, &clientize, (void *)NULL);
 	}
 	/* Create a seperate thread for the server */
-	pthread_create(&pth2, NULL, &socket_wait, (void *)&socket_callback);
+	pthread_create(&pth2, NULL, &socket_wait, (void *)&socket_callback);	
 	/* Create a seperate thread for the webserver */
 	if(webserver_enable == 1) {
 		pthread_create(&pth3, NULL, &webserver_start, (void *)NULL);

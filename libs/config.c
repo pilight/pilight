@@ -206,6 +206,11 @@ int config_update(char *protoname, JsonNode *json, JsonNode *out) {
 	json_append_member(rroot, "devices", rdev);
 	json_append_member(rroot, "values", rval);
 
+	free(lptr);
+	free(dptr);
+	free(sptr);
+	free(opt);
+	
 	/* Only update the config file, if a state change occured */
 	if(update == 1) {
 		if(configfile != NULL) {
@@ -213,7 +218,9 @@ int config_update(char *protoname, JsonNode *json, JsonNode *out) {
 		}
 		*out = *rroot;
 	}
-	//json_delete(json);
+
+	json_delete(code);
+	json_delete(json);
 	return (update == 1) ? 0 : -1;
 }
 
@@ -359,6 +366,14 @@ void config_reverse_struct(struct conf_locations_t **loc) {
         lprev = lptr;
         lptr = lnext;
     }
+	free(lptr);
+	free(dptr);
+	free(sptr);
+	free(vptr);
+	free(lnext);
+	free(dnext);
+	free(snext);
+	free(vnext);
 
     *loc = lprev;
 }
@@ -366,15 +381,15 @@ void config_reverse_struct(struct conf_locations_t **loc) {
 JsonNode *config2json(void) {
 	/* Temporary pointer to the different structure */
 	struct conf_locations_t *tmp_locations = NULL;
-	struct conf_devices_t *tmp_devices;
-	struct conf_settings_t *tmp_settings;
-	struct conf_values_t *tmp_values;
+	struct conf_devices_t *tmp_devices = NULL;
+	struct conf_settings_t *tmp_settings = NULL;
+	struct conf_values_t *tmp_values = NULL;
 
 	/* Pointers to the newly created JSON object */
 	struct JsonNode *root = json_mkobject();
-	struct JsonNode *location = json_mkobject();
-	struct JsonNode *device = json_mkobject();
-	struct JsonNode *setting = json_mkobject();
+	struct JsonNode *location = NULL;
+	struct JsonNode *device = NULL;
+	struct JsonNode *setting = NULL;
 	int lorder = 0;
 	int dorder = 0;
 	/* Make sure we preserve the order of the original file */
@@ -428,6 +443,11 @@ JsonNode *config2json(void) {
 		tmp_locations = tmp_locations->next;
 	}
 
+	free(tmp_locations);
+	free(tmp_devices);
+	free(tmp_settings);
+	free(tmp_values);
+
 	return root;
 }
 
@@ -458,7 +478,7 @@ void config_save_setting(int i, JsonNode *jsetting, struct conf_settings_t *snod
 	int itmp = 0;
 
 	/* New device settings node */
-	snode = malloc(sizeof(struct conf_settings_t));
+	snode = realloc(snode, sizeof(struct conf_settings_t));
 	snode->name = strdup(jsetting->key);
 
 	/* If the JSON tag is an array, then i should be a values array */
@@ -511,12 +531,13 @@ void config_save_setting(int i, JsonNode *jsetting, struct conf_settings_t *snod
 	conf_values = NULL;
 	if(vnode != NULL && vnode->next != NULL)
 		vnode->next = NULL;
+		
+	free(vnode);
 }
 
 int config_check_state(int i, JsonNode *jsetting, struct conf_devices_t *device) {
 	/* Temporary options pointer */
 	struct options_t *tmp_options;
-
 	/* Temporary JSON pointer */
 	struct JsonNode *jtmp;
 	/* JSON pointer to the values array */
@@ -563,7 +584,7 @@ int config_check_state(int i, JsonNode *jsetting, struct conf_devices_t *device)
 
 		tmp_options = device->protopt->options;
 
-		while(tmp_options != NULL && tmp_options->name != NULL) {
+		while(tmp_options) {
 			/* We are only interested in the config_* options */
 			if(tmp_options->conftype == config_state) {
 				/* If an option requires an argument, then check if the
@@ -617,7 +638,7 @@ int config_check_state(int i, JsonNode *jsetting, struct conf_devices_t *device)
 					   and the values in the values array match, these protocol states */
 					valid_value = 0;
 					jtmp = json_first_child(jvalues);
-					while(jtmp != NULL) {
+					while(jtmp) {
 						if(jtmp->tag == JSON_NUMBER) {
 							sprintf(ctmp1, "%d", (int)jtmp->number_);
 						} else if(jtmp->tag == JSON_STRING) {
@@ -647,6 +668,8 @@ int config_check_state(int i, JsonNode *jsetting, struct conf_devices_t *device)
 		have_error = 1;
 		goto clear;
 	}
+	
+	free(tmp_options);
 
 clear:
 	return have_error;
@@ -658,9 +681,9 @@ int config_parse_devices(JsonNode *jdevices, struct conf_devices_t *device) {
 	/* Temporary settings holder */
 	struct conf_settings_t *tmp_settings = NULL;
 	/* JSON devices iterator */
-	JsonNode *jsettings = json_mkobject();
+	JsonNode *jsettings = NULL;
 	/* Temporarily options pointer */
-	struct options_t *tmp_options;
+	struct options_t *tmp_options = NULL;
 
 	int i = 0, have_error = 0, valid_setting = 0, match = 0, has_state = 0;
 	/* Check for any duplicate fields */
@@ -721,7 +744,7 @@ int config_parse_devices(JsonNode *jdevices, struct conf_devices_t *device) {
 			valid_setting = 0;
 			if(device->protopt->options != NULL) {
 				tmp_options = device->protopt->options;
-				while(tmp_options != NULL && tmp_options->name != NULL) {
+				while(tmp_options) {
 					if(strcmp(jsettings->key, tmp_options->name) == 0 && (tmp_options->conftype == config_id || tmp_options->conftype == config_value)) {
 						valid_setting = 1;
 						break;
@@ -746,10 +769,10 @@ int config_parse_devices(JsonNode *jdevices, struct conf_devices_t *device) {
 	   in the config file */
 	if(device->protopt->options != NULL) {
 		tmp_options = device->protopt->options;
-		while(tmp_options != NULL && tmp_options->name != NULL) {
+		while(tmp_options) {
 			match = 0;
 			jsettings = json_first_child(jdevices);
-			while(jsettings != NULL) {
+			while(jsettings) {
 				if(strcmp(jsettings->key, tmp_options->name) == 0) {
 					match = 1;
 					break;
@@ -769,7 +792,7 @@ int config_parse_devices(JsonNode *jdevices, struct conf_devices_t *device) {
 	if(nrstate == 0 || nrvalues == 0) {
 		if(device->protopt->options != NULL) {
 			tmp_options = device->protopt->options;
-			while(tmp_options != NULL && tmp_options->name != NULL) {
+			while(tmp_options) {
 				if(tmp_options->conftype == config_state) {
 					has_state = 1;
 					break;
@@ -800,6 +823,9 @@ int config_parse_devices(JsonNode *jdevices, struct conf_devices_t *device) {
 	if(snode != NULL && snode->next != NULL)
 		snode->next = NULL;
 
+	free(snode);
+	free(tmp_settings);
+	free(tmp_options);
 clear:
 	return have_error;
 }
@@ -810,13 +836,13 @@ int config_parse_locations(JsonNode *jlocations, struct conf_locations_t *locati
 	/* Temporary JSON devices  */
 	struct conf_devices_t *tmp_devices = NULL;
 	/* JSON devices iterator */
-	JsonNode *jdevices = json_mkobject();
+	JsonNode *jdevices = NULL;
 	/* Device name */
 	char *name = NULL;
 	/* Protocol name */
 	char *pname = NULL;
 	/* Pointer to the match protocol */
-	protocol_t *protocol = malloc(sizeof(protocol_t));
+	protocol_t *protocol = NULL;
 
 	int i = 0, have_error = 0, match = 0;
 	/* Check for duplicate name setting */
@@ -877,13 +903,16 @@ int config_parse_locations(JsonNode *jlocations, struct conf_locations_t *locati
 
 				match = 0;
 				struct protocols_t *pnode = protocols;
+				/*
+				 * Vallgrind conditional jump error
+				 */
 				while(pnode) {
 					protocol = pnode->listener;
 					if(protocol_has_device(protocol, pname) == 0 && match == 0) {
 						match = 1;
 						break;
 					}
-					pnode = pnode->next;
+					pnode = pnode->next;				
 				}
 				
 				if(match == 0) {
@@ -924,6 +953,8 @@ int config_parse_locations(JsonNode *jlocations, struct conf_locations_t *locati
 	if(dnode != NULL && dnode->next != NULL)
 		dnode->next = NULL;
 
+	free(dnode);
+	free(tmp_devices);
 clear:
 	return have_error;
 }
@@ -933,7 +964,7 @@ int config_parse(JsonNode *root) {
 	struct conf_locations_t *lnode = NULL;
 	struct conf_locations_t *tmp_locations = NULL;
 	/* JSON locations iterator */
-	JsonNode *jlocations = json_mkobject();
+	JsonNode *jlocations = NULL;
 	/* Location name */
 	char *name = NULL;
 
@@ -941,7 +972,7 @@ int config_parse(JsonNode *root) {
 
 	jlocations = json_first_child(root);
 
-	while(jlocations != NULL) {
+	while(jlocations) {
 		i++;
 		/* An location can only be a JSON object */
 		if(jlocations->tag != 5) {
@@ -982,6 +1013,9 @@ int config_parse(JsonNode *root) {
 	}
 	/* Preverse the original order inside the structs as in the config file */
 	config_reverse_struct(&conf_locations);
+	
+	free(tmp_locations);
+	json_delete(jlocations);
 clear:
 	return have_error;
 }
@@ -1040,12 +1074,13 @@ int config_read() {
 	config_parse(root);
 	config_write(json_stringify(root, "\t"));
 
+	json_delete(root);
 	return EXIT_SUCCESS;
 }
 
 int config_set_file(char *cfgfile) {
 	if(access(cfgfile, F_OK) != -1) {
-		strcpy(configfile, cfgfile);
+		configfile = strdup(cfgfile);
 	} else {
 		fprintf(stderr, "%s: the config file %s does not exists\n", progname, cfgfile);
 		return EXIT_FAILURE;

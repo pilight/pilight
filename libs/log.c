@@ -37,7 +37,7 @@ FILE *lf=NULL;
 int filelog = 1;
 int shelllog = 1;
 int loglevel = LOG_INFO;
-char logfile[1024] = LOG_FILE;
+char *logfile;
 
 int log_gc(void) {
 	if(lf != NULL) {
@@ -50,7 +50,9 @@ int log_gc(void) {
 void logprintf(int prio, const char *format_str, ...) {
 	int save_errno = errno;
 	va_list ap;
-
+	if(logfile == NULL) {
+		logfile = strdup(LOG_FILE);
+	}
 	if(filelog == 0 && shelllog == 0)
 		return;
 
@@ -142,13 +144,13 @@ void log_shell_disable(void) {
 void log_file_set(char *log) {
 	struct stat s;
 	char *filename = basename(log);
-	char path[1024];
 	size_t i = (strlen(log)-strlen(filename));
-
-	memset(path, '\0', sizeof(path));
-	memcpy(path, log, i);
-
-	if(strcmp(basename(log), log) != 0) {
+	/*
+	 * Valgrind memory leak but don't know why?
+	*/		
+	char *path = strndup(log, i);
+	
+	if(strcmp(filename, log) != 0) {
 		int err = stat(path, &s);
 		if(err == -1) {
 			if(ENOENT == errno) {
@@ -160,7 +162,7 @@ void log_file_set(char *log) {
 			}
 		} else {
 			if(S_ISDIR(s.st_mode)) {
-				strcpy(logfile,log);
+				logfile = strdup(log);
 			} else {
 				logprintf(LOG_ERR, "the log file folder does not exist", optarg);
 				exit(EXIT_FAILURE);
