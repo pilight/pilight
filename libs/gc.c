@@ -36,7 +36,7 @@ void gc_handler(int sig) {
 /* Add function to gc */
 void gc_attach(int (*fp)(void)) {
 	struct collectors_t *gnode = malloc(sizeof(struct collectors_t));
-	gnode->listener=fp;
+	gnode->listener = fp;
 	gnode->next = gc;
 	gc = gnode;
 }

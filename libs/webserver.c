@@ -60,7 +60,7 @@ struct libwebsocket_protocols libwebsocket_protocols[] = {
 };
 
 int webserver_gc(void) {
-	libwebsocket_context_destroy(context);
+	// libwebsocket_context_destroy(context);
 	socket_close(sockfd);
 	return 1;
 }

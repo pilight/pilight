@@ -949,7 +949,6 @@ void daemonize(void) {
 
 /* Garbage collector of main program */
 int main_gc(void) {
-
 	if((use_lirc == 1 && (int)strlen(hw.device) > 0) || use_lirc == 0) {
 		module_deinit();
 	}
