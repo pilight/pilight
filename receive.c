@@ -42,7 +42,7 @@ int main(int argc, char **argv) {
 	log_level_set(LOG_NOTICE);
 
 	progname = strdup("pilight-receive");
-	struct options_t *options = malloc(sizeof(struct options_t));
+	struct options_t *options = NULL;
 	
 	JsonNode *json = json_mkobject();
 
