@@ -350,8 +350,6 @@ void options_add(struct options_t **opt, int id, const char *name, int argtype, 
 		optnode->value = malloc(sizeof(char));
 		if(mask != NULL) {
 			optnode->mask = strdup(mask);
-		} else {
-			optnode->mask = malloc(sizeof(char));
 		}
 		optnode->next = *opt;
 		*opt = optnode;
@@ -375,19 +373,13 @@ struct options_t *options_merge(struct options_t **a, struct options_t **b) {
 			optnode->id = temp->id;
 			if(temp->name != NULL) {
 				optnode->name = strdup(temp->name);
-			} else {
-				optnode->name = malloc(strlen(temp->name));
 			}
 			if(temp->value != NULL) {
 				optnode->value = strdup(temp->value);
-			} else {
-				optnode->value = malloc(strlen(temp->value));
 			}
 			if(temp->mask != NULL) {
 				optnode->mask = strdup(temp->mask);		
-			} else {
-				optnode->mask = malloc(strlen(temp->mask));
-			}
+			} 
 			optnode->argtype = temp->argtype;
 			optnode->conftype = temp->conftype;
 			optnode->next = c;

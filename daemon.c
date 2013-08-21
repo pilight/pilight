@@ -524,12 +524,12 @@ void client_webserver_parse_code(int i, char buffer[BUFFER_SIZE]) {
 				socket_write(sd, "Server : pilight webserver\r");
 				socket_write(sd, "\r");		
 
-				path = malloc(((strlen(webserver_root)+strlen("logo.png"))*sizeof(char))+1);
+				path = malloc(strlen(webserver_root)+strlen("logo.png")+1);
 				sprintf(path, "%slogo.png", webserver_root);
 				f = fopen(path, "rb");
 				if(f) {
 					x = 0;
-					cache = malloc((sizeof(char)*BUFFER_SIZE)+1);
+					cache = malloc(BUFFER_SIZE);
 					while (!feof(f)) {
 						x = (int)fread(cache, 1, BUFFER_SIZE, f);
 						send(sd, cache, (size_t)x, MSG_NOSIGNAL);
@@ -547,7 +547,7 @@ void client_webserver_parse_code(int i, char buffer[BUFFER_SIZE]) {
 			socket_write(sd, "Server : pilight webserver\r");
 			socket_write(sd, "\r");
 			socket_write(sd, "<html><head><title>pilight daemon</title></head>\r");
-			cache = malloc((sizeof(char)*BUFFER_SIZE)+1);
+			cache = malloc(BUFFER_SIZE);
 			if(webserver_enable == 1) {
 				sprintf(cache, "<body><center><img src=\"logo.png\"><br /><p style=\"color: #0099ff; font-weight: 800px; font-family: Verdana; font-size: 20px;\">The pilight webgui is located at <a style=\"text-decoration: none; color: #0099ff; font-weight: 800px; font-family: Verdana; font-size: 20px;\" href=\"http://%s:%d\">http://%s:%d</a></p></center></body></html>\r", inet_ntoa(sockin.sin_addr), webserver_port, inet_ntoa(sockin.sin_addr), webserver_port);
 				socket_write(sd, cache);
@@ -610,7 +610,7 @@ void socket_parse_data(int i, char buffer[BUFFER_SIZE]) {
 			} else {
 				/* Check if we matched a know client type */
 				for(x=0;x<(sizeof(clients)/sizeof(clients[0]));x++) {
-					tmp = malloc(sizeof(char)*26);
+					tmp = malloc(26);
 					memset(tmp, '\0', 25);
 
 					strcat(tmp, "client ");
@@ -1172,7 +1172,7 @@ int main(int argc , char **argv) {
 		pthread_create(&pth1, NULL, &clientize, (void *)NULL);
 	}
 	/* Create a seperate thread for the server */
-	pthread_create(&pth2, NULL, &socket_wait, (void *)&socket_callback);	
+	pthread_create(&pth2, NULL, &socket_wait, (void *)&socket_callback);
 	/* Create a seperate thread for the webserver */
 	if(webserver_enable == 1) {
 		pthread_create(&pth3, NULL, &webserver_start, (void *)NULL);
