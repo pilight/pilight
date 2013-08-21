@@ -380,12 +380,12 @@ int settings_read(void) {
 	/* Validate JSON and turn into JSON object */
 	if(json_validate(content) == false) {
 		logprintf(LOG_ERR, "settings are not in a valid json format", content);
-		free(content);
+		//free(content);
 		return EXIT_FAILURE;
 	}
 	root = json_decode(content);
 
-	free(content);
+	//free(content);
 
 	if(settings_parse(root) != 0) {
 		return EXIT_FAILURE;

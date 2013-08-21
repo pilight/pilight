@@ -26,7 +26,7 @@
 void protocol_register(protocol_t **proto) {
 	*proto = malloc(sizeof(struct protocol_t));
 	(*proto)->options = NULL;
-	
+
 	struct protocols_t *pnode = malloc(sizeof(struct protocols_t));
 	pnode->listener = *proto;
 	pnode->next = protocols;

@@ -83,12 +83,14 @@ int config_update(char *protoname, JsonNode *json, JsonNode *out) {
 
 	/* Only loop through all locations if the protocol has options */
 	if((opt = protocol->options) != NULL) {
+
 		/* Loop through all location */
 		while(lptr) {
 			dptr = lptr->devices;
 			/* Loop through all devices of this location */
 			have_device = 0;
 			rloc = json_mkarray();
+
 			while(dptr) {
 				match1 = 0; match2 = 0;
 
@@ -912,7 +914,7 @@ int config_parse_locations(JsonNode *jlocations, struct conf_locations_t *locati
 						match = 1;
 						break;
 					}
-					pnode = pnode->next;				
+					pnode = pnode->next;
 				}
 				
 				if(match == 0) {
