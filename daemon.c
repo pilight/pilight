@@ -655,9 +655,8 @@ void receive_code(void) {
 	lirc_t data;
 	short header = 0;
 	unsigned int x = 0, y = 0;
-	protocol_t *protocol = malloc(sizeof(protocol_t));
 	struct conflicts_t *tmp_conflicts = NULL;
-	
+	struct protocol_t *protocol = NULL;
 	if(use_lirc == 0) {
 		(void)piHiPri(55);
 	}
@@ -677,7 +676,7 @@ void receive_code(void) {
 				struct protocols_t *pnode = protocols;
 				/* Retrieve the used protocol */
 				while(pnode != NULL) {
-					protocol = pnode->listener;					
+					protocol = pnode->listener;
 
 					/* Lots of checks if the protocol can actually receive anything */
 					if((((protocol->parseRaw != NULL || protocol->parseCode != NULL) && protocol->rawLength > 0)
@@ -963,7 +962,8 @@ int main_gc(void) {
 			}
 		}
 	}
-	
+	free(progname);
+	free(settingsfile);
 	return 0;
 }
 

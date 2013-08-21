@@ -155,6 +155,9 @@ int options_parse(struct options_t **opt, int argc, char **argv, int error_check
 	/* If have readed all arguments, exit and reset */
 	if(getOptPos>=(argc-1)) {
 		getOptPos=0;
+		free(longarg);
+		free(*optarg);
+		free(shortarg);
 		return -1;
 	} else {
 		getOptPos++;

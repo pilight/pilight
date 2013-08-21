@@ -211,7 +211,7 @@ int config_update(char *protoname, JsonNode *json, JsonNode *out) {
 	free(lptr);
 	free(dptr);
 	free(sptr);
-	free(opt);
+	//free(opt);
 	
 	/* Only update the config file, if a state change occured */
 	if(update == 1) {

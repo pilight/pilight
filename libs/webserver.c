@@ -46,6 +46,7 @@ int webserver_port = WEBSERVER_PORT;
 char *webserver_root;
 int sockfd = 0;
 char *recvBuff = NULL;
+char *server;
 
 typedef enum {
 	WELCOME,
@@ -62,6 +63,7 @@ struct libwebsocket_protocols libwebsocket_protocols[] = {
 int webserver_gc(void) {
 	// libwebsocket_context_destroy(context);
 	socket_close(sockfd);
+	free(server);
 	return 1;
 }
 
@@ -107,7 +109,7 @@ int webserver_callback_http(struct libwebsocket_context *webcontext, struct libw
 			} else if(strcmp(ext, "js") == 0) {
 				strcpy(mimetype, "text/javascript");
 			}			
-			
+			free(dot);
 			fstat(pss->fd, &sb);
 			
 			// if((unsigned int)sb.st_size > 16720) {
@@ -221,12 +223,13 @@ int webserver_callback_http(struct libwebsocket_context *webcontext, struct libw
 void *webserver_clientize(void *param) {
 	steps_t steps = WELCOME;
 	char *message = NULL;
+	server = strdup("localhost");
 	JsonNode *json = json_mkobject();
 	int port = 0;
 
 	settings_find_number("port", &port);
 
-	if((sockfd = socket_connect(strdup("localhost"), (short unsigned int)port)) == -1) {
+	if((sockfd = socket_connect(server, (short unsigned int)port)) == -1) {
 		logprintf(LOG_ERR, "could not connect to pilight-daemon");
 		exit(EXIT_FAILURE);
 	}	
