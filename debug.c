@@ -52,10 +52,9 @@ int main(int argc, char **argv) {
 	log_file_disable();
 	log_level_set(LOG_NOTICE);
 
-	progname = malloc((14*sizeof(char))+1);
 	progname = strdup("pilight-debug");
 
-	struct options_t *options = malloc(sizeof(struct options_t));	
+	struct options_t *options = NULL;	
 	
 	lirc_t data;
 	char *socket = strdup("/dev/lirc0");
@@ -107,7 +106,8 @@ int main(int argc, char **argv) {
 				return (EXIT_SUCCESS);
 			break;	
 			case 'S':
-				socket = optarg;
+				free(socket);
+				socket = strdup(optarg);
 				have_device = 1;
 			break;
 			case 'L':
@@ -264,5 +264,8 @@ int main(int argc, char **argv) {
 		printf("%d",binary[i]);
 	}
 	printf("\n");
+	
+	free(progname);
+	free(socket);
 	return (EXIT_SUCCESS);
 }

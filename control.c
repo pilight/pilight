@@ -48,10 +48,9 @@ int main(int argc, char **argv) {
 	log_shell_enable();
 	log_level_set(LOG_NOTICE);
 
-	progname = malloc((14*sizeof(char))+1);
 	progname = strdup("pilight-control");
 
-	struct options_t *options = malloc(sizeof(struct options_t));
+	struct options_t *options = NULL;
 
 	int sockfd = 0;
     char *recvBuff = NULL;
@@ -67,7 +66,7 @@ int main(int argc, char **argv) {
 	struct conf_devices_t *sdevice = NULL;
 	int has_values = 0;
 	
-	char server[16] = "127.0.0.1";
+	char *server = strdup("127.0.0.1");
 	unsigned short port = PORT;
 	
 	JsonNode *json = json_mkobject();
@@ -124,7 +123,8 @@ int main(int argc, char **argv) {
 				strcpy(values, optarg);
 			break;			
 			case 'S':
-				strcpy(server, optarg);
+				free(server);
+				server = strdup(optarg);
 			break;
 			case 'P':
 				port = (unsigned short)atoi(optarg);
@@ -141,7 +141,7 @@ int main(int argc, char **argv) {
 		exit(EXIT_SUCCESS);
 	}
 
-	if((sockfd = socket_connect(strdup(server), port)) == -1) {
+	if((sockfd = socket_connect(server, port)) == -1) {
 		logprintf(LOG_ERR, "could not connect to pilight-daemon");
 		exit(EXIT_FAILURE);
 	}
@@ -263,5 +263,6 @@ int main(int argc, char **argv) {
 close:
 	json_delete(json);
 	socket_close(sockfd);
+free(server);
 return EXIT_SUCCESS;
 }

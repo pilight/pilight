@@ -175,6 +175,7 @@ int main(int argc, char **argv) {
 				use_lirc = 0;
 			break;
 			case 'S':
+				free(socket);
 				socket = optarg;
 				have_device = 1;
 			break;
@@ -561,5 +562,8 @@ int main(int argc, char **argv) {
 		printf("%d",unit3Binary[i]);
 	}
 	printf("\n");
+	
+	free(socket);
+	free(progname);
 	return (EXIT_SUCCESS);
 }

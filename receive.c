@@ -46,7 +46,7 @@ int main(int argc, char **argv) {
 	
 	JsonNode *json = json_mkobject();
 
-	char server[16] = "127.0.0.1";
+	char *server = strdup("127.0.0.1");
 	unsigned short port = PORT;	
 	
     int sockfd = 0;
@@ -82,7 +82,8 @@ int main(int argc, char **argv) {
 				exit(EXIT_SUCCESS);
 			break;
 			case 'S':
-				strcpy(server, optarg);
+				free(server);
+				server = strdup(optarg);
 			break;
 			case 'P':
 				port = (unsigned short)atoi(optarg);
@@ -94,7 +95,7 @@ int main(int argc, char **argv) {
 		}
 	}	
 	
-    if((sockfd = socket_connect(strdup(server), port)) == -1) {
+    if((sockfd = socket_connect(server, port)) == -1) {
 		logprintf(LOG_ERR, "could not connect to pilight-daemon");
 		return EXIT_FAILURE;
 	}
@@ -135,5 +136,7 @@ int main(int argc, char **argv) {
 	}
 close:
 	socket_close(sockfd);
+free(progname);
+free(server);
 return EXIT_SUCCESS;
 }

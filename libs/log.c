@@ -109,6 +109,8 @@ void logprintf(int prio, const char *format_str, ...) {
 			va_end(ap);
 		}
 	}
+	free(logfile);
+	logfile = NULL;
 	errno = save_errno;
 }
 

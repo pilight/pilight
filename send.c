@@ -69,7 +69,7 @@ int main(int argc, char **argv) {
 	/* Do we need to print the protocol help */
 	int protohelp = 0;
 
-	char server[16] = "127.0.0.1";
+	char *server = strdup("127.0.0.1");
 	unsigned short port = PORT;
 	
 	/* Hold the final protocol struct */
@@ -111,7 +111,8 @@ int main(int argc, char **argv) {
 				help = 1;
 			break;
 			case 'S':
-				strcpy(server, args);
+				free(server);
+				server = strdup(args);
 			break;
 			case 'P':
 				port = (unsigned short)atoi(args);
@@ -217,7 +218,7 @@ int main(int argc, char **argv) {
 	}
 
 	if(protocol->createCode(code) == 0) {
-		if((sockfd = socket_connect(strdup(server), port)) == -1) {
+		if((sockfd = socket_connect(server, port)) == -1) {
 			logprintf(LOG_ERR, "could not connect to 433-daemon");
 			goto close;
 		}
@@ -262,5 +263,7 @@ int main(int argc, char **argv) {
 close:
 	json_delete(json);
 	socket_close(sockfd);
+free(progname);
+free(server);
 return EXIT_SUCCESS;
 }
