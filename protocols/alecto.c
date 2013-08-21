@@ -24,6 +24,7 @@
 #include "log.h"
 #include "protocol.h"
 #include "binary.h"
+#include "gc.h"
 #include "alecto.h"
 
 void alectoParseCode(void) {
@@ -68,7 +69,7 @@ void alectoParseCode(void) {
 }
 
 void alectoInit(void) {
-
+	
 	protocol_register(&alecto);
 	alecto->id = strdup("alecto");
 	protocol_add_device(alecto, "alecto", "Alecto based weather stations");

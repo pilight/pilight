@@ -368,7 +368,7 @@ int settings_read(void) {
 	bytes = (size_t)st.st_size;
 
 	if((content = calloc(bytes+1, sizeof(char))) == NULL) {
-		logprintf(LOG_ERR, "out of memory", settingsfile);
+		logprintf(LOG_ERR, "out of memory");
 		return EXIT_FAILURE;
 	}
 
@@ -380,18 +380,19 @@ int settings_read(void) {
 	/* Validate JSON and turn into JSON object */
 	if(json_validate(content) == false) {
 		logprintf(LOG_ERR, "settings are not in a valid json format", content);
-		//free(content);
+		free(content);
 		return EXIT_FAILURE;
 	}
+
 	root = json_decode(content);
 
-	//free(content);
-
 	if(settings_parse(root) != 0) {
+		free(content);
 		return EXIT_FAILURE;
 	}
 	settings_write(json_stringify(root, "\t"));
 	json_delete(root);
+	free(content);
 	return EXIT_SUCCESS;
 }
 

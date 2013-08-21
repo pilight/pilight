@@ -24,6 +24,7 @@
 #include "log.h"
 #include "protocol.h"
 #include "binary.h"
+#include "gc.h"
 #include "impuls.h"
 
 void impulsCreateMessage(int id, int unit, int state) {

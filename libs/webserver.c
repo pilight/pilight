@@ -276,7 +276,8 @@ void *webserver_start(void *param) {
 
 	struct lws_context_creation_info info;
 	pthread_t pth1;
-	
+	pthread_attr_t pattr1;
+
 	settings_find_number("webserver-port", &webserver_port);
 	if(settings_find_string("webserver-root", &webserver_root) != 0) {
 		webserver_root = strdup(WEBSERVER_ROOT);
@@ -297,12 +298,13 @@ void *webserver_start(void *param) {
 	} else {
 		/* Create a seperate thread in which the webserver communicates
 		   the main daemon as if it where a gui */
-		pthread_create(&pth1, NULL, &webserver_clientize, (void *)NULL);
+		pthread_attr_init(&pattr1);
+		pthread_attr_setdetachstate(&pattr1, PTHREAD_CREATE_DETACHED);		   
+		pthread_create(&pth1, &pattr1, &webserver_clientize, (void *)NULL);
 		/* Main webserver loop */
 		while(1) {
 			libwebsocket_service(context, 50);
 		}
-		pthread_join(pth1, NULL);
 	}
 	return 0;
 }

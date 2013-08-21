@@ -24,6 +24,7 @@
 #include "log.h"
 #include "protocol.h"
 #include "binary.h"
+#include "gc.h"
 #include "arctech_dimmer.h"
 
 void arctechDimCreateMessage(int id, int unit, int state, int all, int dimlevel) {
@@ -209,7 +210,6 @@ void arctechDimPrintHelp(void) {
 	printf("\t -a --all\t\t\tsend command to all devices with this id\n");
 	printf("\t -d --dimlevel=dimlevel\t\tsend a specific dimlevel\n");
 }
-
 
 void arctechDimInit(void) {
 

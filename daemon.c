@@ -115,8 +115,6 @@ int webserver_enable = WEBSERVER_ENABLE;
 int webserver_port = WEBSERVER_PORT;
 /* The webroot of pilight */
 char *webserver_root;
-/* Thread pointers */
-pthread_t pth1, pth2, pth3;
 
 /* http://stackoverflow.com/a/3535143 */
 void escape_characters(char* dest, const char* src) {
@@ -659,11 +657,11 @@ void receive_code(void) {
 	unsigned int x = 0, y = 0;
 	protocol_t *protocol = malloc(sizeof(protocol_t));
 	struct conflicts_t *tmp_conflicts = NULL;
-	struct protocols_t *pnode = NULL;
 	
 	if(use_lirc == 0) {
 		(void)piHiPri(55);
 	}
+
 	while(1) {
 		/* Only initialize the hardware receive the data when there are receivers connected */
 		if(receivers > 0) {
@@ -676,9 +674,11 @@ void receive_code(void) {
 
 			/* A space is normally for 295 long, so filter spaces less then 200 */
 			if(sending == 0 && duration > 200) {
-				pnode = protocols;
+				struct protocols_t *pnode = protocols;
+				/* Retrieve the used protocol */
 				while(pnode != NULL) {
-					protocol = protocols->listener;
+					protocol = pnode->listener;					
+
 					/* Lots of checks if the protocol can actually receive anything */
 					if((((protocol->parseRaw != NULL || protocol->parseCode != NULL) && protocol->rawLength > 0)
 					    || protocol->parseBinary != NULL)
@@ -780,7 +780,7 @@ void receive_code(void) {
 											}
 											continue;
 										}
-										
+									
 										if(protocol->parseBinary != NULL) {
 											/* Convert the one's and zero's into binary */
 											for(x=0; x<protocol->bit; x+=4) {
@@ -799,7 +799,6 @@ void receive_code(void) {
 											/* Check if the binary matches the binary length */
 											if((protocol->binLength > 0 && ((x/4) == protocol->binLength)) || (protocol->binLength == 0 && ((x/4) == protocol->rawLength/4))) {
 												logprintf(LOG_DEBUG, "called %s parseBinary()", protocol->id);
-
 												protocol->parseBinary();
 												if(protocol->message != NULL && json_validate(json_stringify(protocol->message, NULL)) == true) {
 													tmp_conflicts = protocol->conflicts;
@@ -949,6 +948,7 @@ void daemonize(void) {
 
 /* Garbage collector of main program */
 int main_gc(void) {
+
 	if((use_lirc == 1 && (int)strlen(hw.device) > 0) || use_lirc == 0) {
 		module_deinit();
 	}
@@ -981,7 +981,9 @@ int main(int argc , char **argv) {
 	settingsfile = strdup(SETTINGS_FILE);
 	
 	struct socket_callback_t socket_callback;
-	struct options_t *options = NULL;
+	struct options_t *options = NULL;	
+	pthread_t pth1, pth2, pth3;
+	pthread_attr_t pattr1, pattr2, pattr3;
 	char buffer[BUFFER_SIZE];
 	int f;
 	int itmp;
@@ -1033,7 +1035,7 @@ int main(int argc , char **argv) {
 			break;
 		}
 	}
-	
+
 	if(access(settingsfile, F_OK) != -1) {
 		if(settings_read() != 0) {
 			return EXIT_FAILURE;
@@ -1169,21 +1171,24 @@ int main(int argc , char **argv) {
 	/* The daemon running in client mode, create a seperate thread that
 	   communicates with the server */
 	if(runmode == 2) {
-		pthread_create(&pth1, NULL, &clientize, (void *)NULL);
+		pthread_attr_init(&pattr1);
+		pthread_attr_setdetachstate(&pattr1, PTHREAD_CREATE_DETACHED);
+		pthread_create(&pth1, &pattr1, &clientize, (void *)NULL);
 	}
 	/* Create a seperate thread for the server */
-	pthread_create(&pth2, NULL, &socket_wait, (void *)&socket_callback);
+	pthread_attr_init(&pattr2);
+	pthread_attr_setdetachstate(&pattr2, PTHREAD_CREATE_DETACHED);	
+	pthread_create(&pth2, &pattr2, &socket_wait, (void *)&socket_callback);
+	pthread_detach(pth2);
 	/* Create a seperate thread for the webserver */
 	if(webserver_enable == 1) {
+		pthread_attr_init(&pattr3);
+		pthread_attr_setdetachstate(&pattr3, PTHREAD_CREATE_DETACHED);	
 		pthread_create(&pth3, NULL, &webserver_start, (void *)NULL);
+		pthread_detach(pth3);
 	}
 	/* And our main receiving loop */
 	receive_code();
-	pthread_join(pth1, NULL);
-	pthread_join(pth2, NULL);
-	if(webserver_enable == 1) {
-		pthread_join(pth3, NULL);
-	}
 
 	return EXIT_FAILURE;
 }

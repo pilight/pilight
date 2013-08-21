@@ -25,6 +25,7 @@
 #include "log.h"
 #include "protocol.h"
 #include "relay.h"
+#include "gc.h"
 #include "wiringPi.h"
 
 void relayCreateMessage(int gpio, int state) {

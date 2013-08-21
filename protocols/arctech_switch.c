@@ -24,6 +24,7 @@
 #include "log.h"
 #include "protocol.h"
 #include "binary.h"
+#include "gc.h"
 #include "arctech_switch.h"
 
 void arctechSwCreateMessage(int id, int unit, int state, int all) {

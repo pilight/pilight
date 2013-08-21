@@ -221,8 +221,6 @@ int config_update(char *protoname, JsonNode *json, JsonNode *out) {
 		*out = *rroot;
 	}
 
-	json_delete(code);
-	json_delete(json);
 	return (update == 1) ? 0 : -1;
 }
 
