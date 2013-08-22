@@ -187,7 +187,7 @@ int broadcast(char *protoname, JsonNode *json) {
 		if(broadcasted == 1) {
 			logprintf(LOG_DEBUG, "broadcasted: %s", conf);
 		}
-		//json_delete(jret);
+		json_delete(jret);
 	}
 	broadcasted = 0;
 
@@ -206,18 +206,20 @@ int broadcast(char *protoname, JsonNode *json) {
 		if(process_file != NULL && strlen(process_file) > 0) {
 			/* Call the external file */
 			if(strlen(process_file) > 0) {
-				char cmd[255];
-				strcpy(cmd, process_file);
-				strcat(cmd," ");
+				char *cmd = malloc(strlen(process_file)+strlen(escaped)+2);
+				memcpy(cmd, process_file, strlen(process_file));
+				strcat(cmd, " ");
 				strcat(cmd, escaped);
 				f=popen(cmd, "r");
 				pclose(f);
+				free(cmd);
 				broadcasted = 1;
 			}
 			if(broadcasted) {
 				logprintf(LOG_DEBUG, "broadcasted: %s", message);
 			}
 		}
+		free(message);
 		free(escaped);
 		return 1;
 	}
@@ -231,7 +233,7 @@ void send_code(JsonNode *json) {
 	char *name;
 
 	/* Hold the final protocol struct */
-	protocol_t *protocol = malloc(sizeof(protocol_t));
+	protocol_t *protocol = NULL;
 	/* The code that is send to the hardware wrapper */
 	struct ir_ncode code;
 
@@ -259,8 +261,7 @@ void send_code(JsonNode *json) {
 		if(match == 1 && sending == 0 && protocol->createCode != NULL && send_repeat > 0) {
 			/* Let the protocol create his code */
 			if(protocol->createCode(jcode) == 0) {
-
-				if(protocol->message != NULL && json_validate(json_stringify(message, NULL)) == true && json_validate(json_stringify(message, NULL)) == true) {
+				if(protocol->message != NULL && json_validate(json_stringify(protocol->message, NULL)) == true) {
 					json_append_member(message, "origin", json_mkstring("sender"));
 					json_append_member(message, "protocol", json_mkstring(protocol->id));
 					json_append_member(message, "code", protocol->message);
@@ -289,7 +290,10 @@ void send_code(JsonNode *json) {
 						if(logged == 0) {
 							logged = 1;
 							/* Write the message to all receivers */
-							broadcast(protocol->id, message);
+							char *protoname = strdup(protocol->id);
+							broadcast(protoname, message);
+							json_delete(message);
+							free(protoname);
 						}
 					} else {
 						logprintf(LOG_ERR, "failed to send code");
@@ -309,13 +313,17 @@ void send_code(JsonNode *json) {
 					if(logged == 0) {
 						logged = 1;
 						/* Write the message to all receivers */
-						broadcast(protocol->id, message);
+						char *protoname = strdup(protocol->id);
+						broadcast(protoname, message);
+						json_delete(message);
+						free(protoname);
 					}
 				}
 				sending = 0;
 			}
 		}
 	}
+	// json_delete(message);
 }
 
 void client_sender_parse_code(int i, JsonNode *json) {
@@ -334,16 +342,19 @@ void control_device(struct conf_devices_t *dev, char *state, JsonNode *values) {
 	struct conf_settings_t *sett = NULL;
 	struct conf_values_t *val = NULL;
 	struct options_t *opt = NULL;
-	char *fval = NULL;
-	char *cstate = NULL;
-	char *nstate = NULL;
+	char *fval = malloc(sizeof(char));
+	char *cstate = malloc(sizeof(char));
+	char *nstate = malloc(sizeof(char));
 	JsonNode *code = json_mkobject();
 	JsonNode *json = json_mkobject();
 
 	if(strlen(state) > 0) {
+		free(nstate);
 		nstate = strdup(state);
 	}
 
+	memset(fval, '\0', sizeof(fval));
+	
 	/* Check all protocol options */
 	if((opt = dev->protopt->options) != NULL) {
 		while(opt) {
@@ -355,7 +366,8 @@ void control_device(struct conf_devices_t *dev, char *state, JsonNode *values) {
 				}
 				/* Retrieve the current state */
 				if(strcmp(sett->name, "state") == 0 && strlen(state) == 0) {
-					cstate = strdup(sett->values->value);
+					cstate = realloc(cstate, sizeof(sett->values->value));
+					memcpy(cstate, sett->values->value, sizeof(sett->values->value));
 				}
 				
 				/* Retrieve the possible device values */
@@ -381,13 +393,16 @@ void control_device(struct conf_devices_t *dev, char *state, JsonNode *values) {
 	if(strlen(state) == 0) {
 		/* Get the next state value */
 		while(val) {
-			if(fval == NULL) {
+			if(strlen(fval) == 0) {
+				free(fval);
 				fval = strdup(val->value);
 			}
 			if(strcmp(val->value, cstate) == 0) {
 				if(val->next) {
-					nstate = val->next->value;
-				} else {
+					nstate = realloc(nstate, sizeof(val->next->value));
+					memcpy(nstate, val->next->value, sizeof(val->next->value));
+				} else {				
+					free(nstate);
 					nstate = strdup(fval);
 				}
 				break;
@@ -415,8 +430,11 @@ void control_device(struct conf_devices_t *dev, char *state, JsonNode *values) {
 	json_append_member(code, "protocol", json_mkstring(dev->protoname));
 	json_append_member(json, "message", json_mkstring("sender"));
 	json_append_member(json, "code", code);
-
+	
 	send_code(json);
+	free(cstate);
+	free(fval);
+	free(nstate);
 	json_delete(code);
 	json_delete(json);
 }
@@ -441,7 +459,7 @@ void client_controller_parse_code(int i, JsonNode *json) {
 	char *message = NULL;
 	char *location = NULL;
 	char *device = NULL;
-	char *state = NULL;
+	char *state = malloc(sizeof(char));
 	char *tmp = NULL;
 	struct conf_locations_t *slocation;
 	struct conf_devices_t *sdevice;
@@ -468,6 +486,7 @@ void client_controller_parse_code(int i, JsonNode *json) {
 				/* Check if the device and location exists in the config file */
 				} else if(config_get_location(location, &slocation) == 0) {
 					if(config_get_device(location, device, &sdevice) == 0) {
+						free(state);
 						if(json_find_string(code, "state", &tmp) == 0) {
 							state = strdup(tmp);
 						} else {
@@ -479,6 +498,7 @@ void client_controller_parse_code(int i, JsonNode *json) {
 							values = json_first_child(values);
 						}
 						control_device(sdevice, state, values);
+						free(state);
 					} else {
 						logprintf(LOG_ERR, "the device \"%s\" does not exist", device);
 					}
@@ -845,8 +865,8 @@ void *clientize(void *param) {
 
 	settings_find_string("server-ip", &server);
 	settings_find_number("server-port", &port);
-
-	if((sockfd = socket_connect(strdup(server), (short unsigned int)port)) == -1) {
+	
+	if((sockfd = socket_connect(server, (short unsigned int)port)) == -1) {
 		logprintf(LOG_ERR, "could not connect to pilight-daemon");
 		exit(EXIT_FAILURE);
 	}
@@ -911,6 +931,7 @@ close:
 	json_delete(json);
 	json_delete(jconfig);
 	socket_close(sockfd);
+	free(server);
 	gc_run();
 	exit(EXIT_SUCCESS);
 }
@@ -1019,6 +1040,7 @@ int main(int argc , char **argv) {
 			break;
 			case 'S': 
 				if(access(args, F_OK) != -1) {
+					free(settingsfile);
 					settingsfile = strdup(args);
 					settings_set_file(args);
 				} else {
@@ -1056,6 +1078,7 @@ int main(int argc , char **argv) {
 	}
 	
 	if(settings_find_string("pid-file", &pid_file) != 0) {
+		free(pid_file);
 		pid_file = strdup(PID_FILE);
 	}
 

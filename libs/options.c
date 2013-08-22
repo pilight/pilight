@@ -31,9 +31,7 @@ void options_set_value(struct options_t **opt, int id, const char *val) {
 	struct options_t *temp = *opt;
 	while(temp) {
 		if(temp->id == id && temp->id > 0) {
-			if(temp->value != NULL) {
-				free(temp->value);
-			}
+			free(temp->value);
 			temp->value = strdup(val);
 			break;
 		}

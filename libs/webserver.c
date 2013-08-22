@@ -64,6 +64,7 @@ int webserver_gc(void) {
 	// libwebsocket_context_destroy(context);
 	socket_close(sockfd);
 	free(server);
+	free(webserver_root);
 	return 1;
 }
 

@@ -171,7 +171,7 @@ void log_file_set(char *log) {
 			}
 		}
 	} else {
-		strcpy(logfile,log);
+		logfile = strdup(log);
 	}
 }
 

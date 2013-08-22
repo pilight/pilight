@@ -124,7 +124,7 @@ int settings_file_exists(char *filename) {
 int settings_parse(JsonNode *root) {
 	int have_error = 0;
 	int is_node = 0;
-	char *server_ip = NULL;
+	char *server_ip = malloc(sizeof(char));
 	int server_port = 0;
 	int web_port = 0;
 	int own_port = 0;
@@ -272,6 +272,7 @@ int settings_parse(JsonNode *root) {
 			while(jtmp != NULL) {
 				i++;
 				if(jtmp->tag == JSON_STRING) {
+					free(server_ip);
 					server_ip = strdup(jtmp->string_);
 				} else if(jtmp->tag == JSON_NUMBER) {
 					server_port = (int)jtmp->number_;
@@ -332,6 +333,7 @@ int settings_parse(JsonNode *root) {
 		have_error = 1;
 		goto clear;		
 	}
+	free(server_ip);
 clear:
 	return have_error;
 }

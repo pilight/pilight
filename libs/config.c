@@ -52,13 +52,13 @@ int config_update(char *protoname, JsonNode *json, JsonNode *out) {
 	/* Temporarily char pointer */
 	char *stmp = NULL;
 	/* Temporarily char array */
-	char ctmp[10];
+	char *ctmp = malloc(sizeof(char));
 	/* Temporarily int */
 	int itmp;
 	/* Do we need to update the config file */
 	unsigned short update = 0;
 	/* The new state value */
-	char state[10];
+	char *state = malloc(sizeof(char));
 
 	/* Make sure the character poinrter are empty */
 	memset(state, '\0', sizeof(state));
@@ -106,9 +106,11 @@ int config_update(char *protoname, JsonNode *json, JsonNode *out) {
 							if(opt->conftype == config_id && strcmp(sptr->name, opt->name) == 0) {
 								match1++;
 								if(json_find_string(code, opt->name, &stmp) == 0) {
-									strcpy(ctmp, stmp);
+									free(ctmp);
+									ctmp = strdup(stmp);
 								}
 								if(json_find_number(code, opt->name, &itmp) == 0) {
+									ctmp = realloc(ctmp, sizeof(int));
 									sprintf(ctmp, "%d", itmp);
 								}
 
@@ -120,16 +122,20 @@ int config_update(char *protoname, JsonNode *json, JsonNode *out) {
 							if(opt->conftype == config_state && strlen(state) == 0) {
 								if(opt->argtype == no_value) {
 									if(json_find_string(code, "state", &stmp) == 0) {
-										strcpy(state, stmp);
+										free(state);
+										state = strdup(stmp);
 									}
 									if(json_find_number(code, "state", &itmp) == 0) {
+										state = realloc(state, sizeof(int));
 										sprintf(state, "%d", itmp);
 									}
 								} else if(opt->argtype == has_value) {
 									if(json_find_string(code, opt->name, &stmp) == 0) {
-										strcpy(state, stmp);
+										free(state);
+										state = strdup(stmp);
 									}
 									if(json_find_number(code, opt->name, &itmp) == 0) {
+										state = realloc(state, sizeof(int));
 										sprintf(state, "%d", itmp);
 									}
 								}
@@ -150,15 +156,18 @@ int config_update(char *protoname, JsonNode *json, JsonNode *out) {
 
 									memset(ctmp, '\0', sizeof(ctmp));
 									if(json_find_string(code, opt->name, &stmp) == 0) {
-										strcpy(ctmp, stmp);
+										free(ctmp);
+										ctmp = strdup(stmp);
 									}
 
 									if(json_find_number(code, opt->name, &itmp) == 0) {
+										ctmp = realloc(ctmp, sizeof(int));
 										sprintf(ctmp, "%d", itmp);
 									}
 
 									if(strlen(ctmp) > 0) {
 										if(strcmp(sptr->values->value, ctmp) != 0) {
+											free(sptr->values->value);
 											sptr->values->value = strdup(ctmp);
 										}
 
@@ -179,6 +188,7 @@ int config_update(char *protoname, JsonNode *json, JsonNode *out) {
 							/* Check if we need to update the state */
 							if(strcmp(sptr->name, "state") == 0) {
 								if(strcmp(sptr->values->value, state) != 0) {
+									free(sptr->values->value);
 									sptr->values->value = strdup(state);
 									update = 1;
 								}
@@ -208,11 +218,9 @@ int config_update(char *protoname, JsonNode *json, JsonNode *out) {
 	json_append_member(rroot, "devices", rdev);
 	json_append_member(rroot, "values", rval);
 
-	free(lptr);
-	free(dptr);
-	free(sptr);
-	//free(opt);
-	
+	free(ctmp);
+	free(state);
+
 	/* Only update the config file, if a state change occured */
 	if(update == 1) {
 		if(configfile != NULL) {
