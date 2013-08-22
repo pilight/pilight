@@ -28,7 +28,6 @@
 #include <syslog.h>
 #include <signal.h>
 #include <pthread.h>
-#include <assert.h>
 
 #include "libwebsockets.h"
 #include "gc.h"
@@ -79,7 +78,6 @@ int webserver_callback_http(struct libwebsocket_context *webcontext, struct libw
 	switch(reason) {
 		case LWS_CALLBACK_HTTP: {
 			char *request;
-
 			if(strcmp((const char *)in, "/") == 0) {
 				request = malloc(strlen(webserver_root)+13);
 				sprintf(request, "%s%s", webserver_root, "/index.html");
@@ -159,15 +157,9 @@ int webserver_callback_http(struct libwebsocket_context *webcontext, struct libw
 			} else {
 				if(json_validate((char *)in) == true) {
 					JsonNode *json = json_decode((char *)in);
-					char *tmp = NULL;
-					
-					int found = json_find_string(json, "message", &tmp);
+					char *message = NULL;
 
-					if(found != -1) {
-						/* Buffer the json incoming message to properly
-						   free the json object */
-						char *message =  strdup(tmp);
-						assert(message != NULL);
+					if(json_find_string(json, "message", &message) != -1) {
 						if(strcmp(message, "request config") == 0) {
 
 							JsonNode *jsend = json_mkobject();
@@ -175,21 +167,20 @@ int webserver_callback_http(struct libwebsocket_context *webcontext, struct libw
 							json_append_member(jsend, "config", jconfig);
 
 							char *output = json_stringify(jsend, NULL);
-
 							libwebsocket_write(wsi, (unsigned char *)output, strlen(output), LWS_WRITE_TEXT);
 
 							/*
 							 * TODO: find a way to free *output, *jsend
 							 * It seems like libwebsocket_write already does memory freeing
 							 */
-
 						} else if(strcmp(message, "send") == 0) {
 							/* Write all codes coming from the webserver to the daemon */
 							socket_write(sockfd, (char *)in);
 						}
-						free(message);
 					}
-					json_delete(json);
+					/*
+					 * TODO: find a way to free *json
+					 */
 				}
 			}
 		break;
@@ -199,7 +190,9 @@ int webserver_callback_http(struct libwebsocket_context *webcontext, struct libw
 		case LWS_CALLBACK_SERVER_WRITEABLE:
 			/* Push the incoming message to the webgui */
 			m = libwebsocket_write(wsi, (unsigned char *)recvBuff, strlen(recvBuff), LWS_WRITE_TEXT);
-			free(recvBuff);
+			/*
+			 * It seems like libwebsocket_write already does memory freeing
+			 */	
 			if (m < n) {
 				logprintf(LOG_ERR, "(webserver) %d writing to di socket", n);
 				return -1;
@@ -253,6 +246,7 @@ void *webserver_clientize(void *param) {
 	steps_t steps = WELCOME;
 	char *message = NULL;
 	server = strdup("localhost");
+	JsonNode *json = json_mkobject();
 	int port = 0;
 
 	settings_find_number("port", &port);
@@ -266,9 +260,11 @@ void *webserver_clientize(void *param) {
 		if(steps > WELCOME) {
 			/* Clear the receive buffer again and read the welcome message */
 			if((recvBuff = socket_read(sockfd)) != NULL) {
-				JsonNode *json = json_decode(recvBuff);
+				json = json_decode(recvBuff);
 				json_find_string(json, "message", &message);
-				json_delete(json);
+				/*
+				 * TODO: find a way to free *json
+				 */				
 			} else {
 				goto close;
 			}
