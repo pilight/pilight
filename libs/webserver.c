@@ -109,7 +109,7 @@ int webserver_callback_http(struct libwebsocket_context *webcontext, struct libw
 			} else if(strcmp(ext, "js") == 0) {
 				strcpy(mimetype, "text/javascript");
 			}			
-			free(dot);
+			//free(dot);
 			fstat(pss->fd, &sb);
 			
 			// if((unsigned int)sb.st_size > 16720) {
