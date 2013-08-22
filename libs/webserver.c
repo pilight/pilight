@@ -167,12 +167,13 @@ int webserver_callback_http(struct libwebsocket_context *webcontext, struct libw
 							json_append_member(jsend, "config", jconfig);
 
 							char *output = json_stringify(jsend, NULL);
-							libwebsocket_write(wsi, (unsigned char *)output, strlen(output), LWS_WRITE_TEXT);
+							size_t output_len = strlen(output);
+							char buf[LWS_SEND_BUFFER_PRE_PADDING + output_len + LWS_SEND_BUFFER_POST_PADDING];
+ 	  						memcpy(&buf[LWS_SEND_BUFFER_PRE_PADDING], 0, output_len);
+							libwebsocket_write(wsi, &buf[LWS_SEND_BUFFER_PRE_PADDING], output_len, LWS_WRITE_TEXT);
 
-							/*
-							 * TODO: find a way to free *output, *jsend
-							 * It seems like libwebsocket_write already does memory freeing
-							 */
+							free(output);
+							free(jsend);
 						} else if(strcmp(message, "send") == 0) {
 							/* Write all codes coming from the webserver to the daemon */
 							socket_write(sockfd, (char *)in);
