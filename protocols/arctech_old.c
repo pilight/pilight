@@ -38,10 +38,22 @@ void arctechOldCreateMessage(int id, int unit, int state) {
 }
 
 void arctechOldParseBinary(void) {
+	int fp = 0;
+	int i = 0;
+	for(i=0;i<arctech_old->binLength;i++) {
+		// arctech_old->binary[i] = arctech_old->code[(4*i+3)]; // lsb = 3 code for when ParseBinary is replaced by ParseCode
+		if (arctech_old->code[(4*i+0)] != 0) fp = 1;
+		if (arctech_old->code[(4*i+1)] != 1) fp = 1;
+		if (arctech_old->code[(4*i+2)] == arctech_old->code[(4*i+3)]) fp = 1;
+	}
+	if (arctech_old->code[48] != 0) fp = 1;
+	if (arctech_old->code[49] != 1) fp = 1;
+	arctech_old->message = NULL;
 	int unit = binToDec(arctech_old->binary, 0, 4);
 	int state = arctech_old->binary[11];
 	int id = binToDec(arctech_old->binary, 5, 9);
-	arctechOldCreateMessage(id, unit, state);
+	if (fp == 0)
+		arctechOldCreateMessage(id, unit, state);
 }
 
 void arctechOldCreateLow(int s, int e) {
@@ -105,7 +117,8 @@ void arctechOldCreateState(int state) {
 }
 
 void arctechOldCreateFooter(void) {
-	arctech_old->raw[47]=(arctech_old->footer*PULSE_LENGTH);
+	arctech_old->raw[48]=(PULSE_LENGTH);
+	arctech_old->raw[49]=(arctech_old->footer*PULSE_LENGTH);
 }
 
 int arctechOldCreateCode(JsonNode *code) {
@@ -156,9 +169,8 @@ void arctechOldInit(void) {
 	arctech_old->id = strdup("archtech_old");
 	protocol_add_device(arctech_old, "kaku_old", "Old KlikAanKlikUit Switches");
 	protocol_add_device(arctech_old, "cogex", "Cogex Switches");
-	protocol_add_conflict(arctech_old, "sartano");
 	arctech_old->type = SWITCH;
-	arctech_old->pulse = 4;
+	arctech_old->pulse = 3;
 	arctech_old->footer = 38;
 	arctech_old->rawLength = 50;
 	arctech_old->binLength = 12;
