@@ -211,7 +211,7 @@ int main(int argc, char **argv) {
 		if(strlen(newOptions->name) > 0) {
 			/* Only send the CLI arguments that belong to this protocol, the protocol name
 			and those that are called by the user */
-			if((options_get_id(&protocol->options, newOptions->name, &itmp) == 0 || strcmp(options->name, "protocol") == 0)
+			if((options_get_id(&protocol->options, newOptions->name, &itmp) == 0 || strcmp(newOptions->name, "protocol") == 0)
 			&& strlen(newOptions->value) > 0) {
 				json_append_member(code, newOptions->name, json_mkstring(newOptions->value));
 			}
