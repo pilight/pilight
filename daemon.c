@@ -260,7 +260,7 @@ void send_code(JsonNode *json) {
 			/* Let the protocol create his code */
 			if(protocol->createCode(jcode) == 0) {
 
-				if(protocol->message != NULL && json_validate(json_stringify(message, NULL)) == true && json_validate(json_stringify(message, NULL)) == true) {
+				if(protocol->message != NULL && json_validate(json_stringify(protocol->message, NULL)) == true) {
 					json_append_member(message, "origin", json_mkstring("sender"));
 					json_append_member(message, "protocol", json_mkstring(protocol->id));
 					json_append_member(message, "code", protocol->message);
