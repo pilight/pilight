@@ -135,6 +135,7 @@ int main(int argc, char **argv) {
 			break;
 		}
 	}
+	options_delete(options);
 
 	if(strlen(location) == 0 || strlen(device) == 0) {
 		printf("Usage: %s -l location -d device\n", progname);

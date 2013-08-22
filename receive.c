@@ -22,6 +22,7 @@
 #include <unistd.h>
 #include <errno.h>
 #include <syslog.h>
+#include <assert.h>
 
 #include "settings.h"
 #include "log.h"
@@ -44,13 +45,13 @@ int main(int argc, char **argv) {
 	progname = strdup("pilight-receive");
 	struct options_t *options = NULL;
 	
-	JsonNode *json = json_mkobject();
+	JsonNode *json = NULL;
 
 	char *server = strdup("127.0.0.1");
 	unsigned short port = PORT;	
 	
     int sockfd = 0;
-    char *recvBuff;
+    char *recvBuff = NULL;
 	char *message = NULL;
 	char *args = NULL;	
 	steps_t steps = WELCOME;
@@ -94,7 +95,7 @@ int main(int argc, char **argv) {
 			break;
 		}
 	}	
-	
+	options_delete(options);
     if((sockfd = socket_connect(server, port)) == -1) {
 		logprintf(LOG_ERR, "could not connect to pilight-daemon");
 		return EXIT_FAILURE;
@@ -103,40 +104,59 @@ int main(int argc, char **argv) {
 	while(1) {
 		if(steps > WELCOME) {
 			/* Clear the receive buffer again and read the welcome message */
-			if((recvBuff = socket_read(sockfd)) != NULL) {
-
-				json = json_decode(recvBuff);
-				json_find_string(json, "message", &message);
-			} else {
+			recvBuff = socket_read(sockfd);
+			if(recvBuff == NULL) {
 				goto close;
 			}
 		}
-
 		switch(steps) {
 			case WELCOME:
 				socket_write(sockfd, "{\"message\":\"client receiver\"}");
 				steps=IDENTIFY;
 			break;
 			case IDENTIFY:
+				//extract the message
+				json = json_decode(recvBuff);
+				json_find_string(json, "message", &message);
+				assert(message != NULL);
 				if(strcmp(message, "accept client") == 0) {
 					steps=RECEIVE;
-				}
-				if(strcmp(message, "reject client") == 0) {
+				} else if(strcmp(message, "reject client") == 0) {
 					steps=REJECT;
+				} else {
+					assert(false);
 				}
+				//cleanup
+				json_delete(json);
+				json = NULL;
+				message = NULL;
 			break;
-			case RECEIVE:
-				printf("%s\n", json_stringify(json, "\t"));
-			break;
+			case RECEIVE: {
+					char *line = strtok(recvBuff, "\n");
+					//for each line
+					while(line) {
+						json = json_decode(recvBuff);
+						assert(json != NULL);
+						char *output = json_stringify(json, "\t");
+						printf("%s\n", output);
+						free(output);
+						json_delete(json);
+						line = strtok(NULL,"\n");
+					}
+			} break;
 			case REJECT:
 			default:
 				goto close;
 			break;
 		}
+		free(recvBuff);
+		recvBuff = NULL;
 	}
 close:
 	socket_close(sockfd);
 free(progname);
 free(server);
+free(message);
+
 return EXIT_SUCCESS;
 }

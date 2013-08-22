@@ -120,6 +120,8 @@ int main(int argc, char **argv) {
 			default:;
 		}
 	}	
+	
+	struct options_t *newOptions = NULL;
 
 	/* Check if a protocol was given */
 	if(strlen(protobuffer) > 0 && strcmp(protobuffer,"-V") != 0) {
@@ -136,7 +138,7 @@ int main(int argc, char **argv) {
 					/* Check if the protocol requires specific CLI arguments
 					   and merge them with the main CLI arguments */
 					if(protocol->options != NULL && help == 0) {
-						options = options_merge(&options, &protocol->options);
+						newOptions = options_merge(&options, &protocol->options);
 					} else if(help == 1) {
 						protohelp=1;
 					}
@@ -150,7 +152,7 @@ int main(int argc, char **argv) {
 			}
 		}
 	}
-	
+	options_delete(options);
 	/* Display help or version information */
 	if(version == 1) {
 		printf("%s %s\n", progname, "1.0");
@@ -197,7 +199,7 @@ int main(int argc, char **argv) {
 	   fill all necessary values in the options struct */
 	while(1) {
 		int c;
-		c = options_parse(&options, argc, argv, 1, &args);
+		c = options_parse(&newOptions, argc, argv, 1, &args);
 
 		if(c == -1)
 			break;
@@ -205,18 +207,18 @@ int main(int argc, char **argv) {
 
 	int itmp;
 	/* Check if we got sufficient arguments from this protocol */
-	while(options) {
-		if(strlen(options->name) > 0) {
+	while(newOptions) {
+		if(strlen(newOptions->name) > 0) {
 			/* Only send the CLI arguments that belong to this protocol, the protocol name
 			and those that are called by the user */
-			if((options_get_id(&protocol->options, options->name, &itmp) == 0 || strcmp(options->name, "protocol") == 0)
-			&& strlen(options->value) > 0) {
-				json_append_member(code, options->name, json_mkstring(options->value));
+			if((options_get_id(&protocol->options, newOptions->name, &itmp) == 0 || strcmp(options->name, "protocol") == 0)
+			&& strlen(newOptions->value) > 0) {
+				json_append_member(code, newOptions->name, json_mkstring(newOptions->value));
 			}
 		}
-		options = options->next;
+		newOptions = newOptions->next;
 	}
-
+	options_delete(newOptions);
 	if(protocol->createCode(code) == 0) {
 		if((sockfd = socket_connect(server, port)) == -1) {
 			logprintf(LOG_ERR, "could not connect to 433-daemon");

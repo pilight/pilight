@@ -188,6 +188,7 @@ int broadcast(char *protoname, JsonNode *json) {
 			logprintf(LOG_DEBUG, "broadcasted: %s", conf);
 		}
 		json_delete(jret);
+		free(conf);
 	}
 	broadcasted = 0;
 
@@ -207,9 +208,7 @@ int broadcast(char *protoname, JsonNode *json) {
 			/* Call the external file */
 			if(strlen(process_file) > 0) {
 				char *cmd = malloc(strlen(process_file)+strlen(escaped)+2);
-				memcpy(cmd, process_file, strlen(process_file));
-				strcat(cmd, " ");
-				strcat(cmd, escaped);
+				sprintf(cmd, "%s %s", process_file, escaped);
 				f=popen(cmd, "r");
 				pclose(f);
 				free(cmd);
@@ -261,10 +260,14 @@ void send_code(JsonNode *json) {
 		if(match == 1 && sending == 0 && protocol->createCode != NULL && send_repeat > 0) {
 			/* Let the protocol create his code */
 			if(protocol->createCode(jcode) == 0) {
-				if(protocol->message != NULL && json_validate(json_stringify(protocol->message, NULL)) == true) {
-					json_append_member(message, "origin", json_mkstring("sender"));
-					json_append_member(message, "protocol", json_mkstring(protocol->id));
-					json_append_member(message, "code", protocol->message);
+				if(protocol->message != NULL) {
+					char *valid = json_stringify(protocol->message, NULL);
+					if(json_validate(valid) == true) {
+						json_append_member(message, "origin", json_mkstring("sender"));
+						json_append_member(message, "protocol", json_mkstring(protocol->id));
+						json_append_member(message, "code", protocol->message);
+					}
+					free(valid);
 				}
 
 				sending = 1;
@@ -447,8 +450,13 @@ void client_node_parse_code(int i, JsonNode *json) {
 		/* Send the config file to the controller */
 		if(strcmp(message, "request config") == 0) {
 			json = json_mkobject();
-			json_append_member(json, "config", config2json());
-			socket_write_big(sd, json_stringify(json, NULL));
+			JsonNode *joutput = config2json();
+			json_append_member(json, "config", joutput);
+			free(joutput);
+			joutput = NULL;
+			char *output = json_stringify(json, NULL);
+			socket_write_big(sd, output);
+			free(output);
 		}
 	}
 	json_delete(json);
@@ -470,8 +478,13 @@ void client_controller_parse_code(int i, JsonNode *json) {
 		/* Send the config file to the controller */
 		if(strcmp(message, "request config") == 0) {
 			json = json_mkobject();
-			json_append_member(json, "config", config2json());
-			socket_write_big(sd, json_stringify(json, NULL));
+			JsonNode *joutput = config2json();
+			json_append_member(json, "config", joutput);
+			char *output = json_stringify(json, NULL);
+			socket_write_big(sd, output);
+			json_delete(joutput);
+			joutput = NULL;			
+			free(output);
 		/* Control a specific device */
 		} else if(strcmp(message, "send") == 0) {
 			/* Check if got a code */
@@ -629,10 +642,8 @@ void socket_parse_data(int i, char buffer[BUFFER_SIZE]) {
 				/* Check if we matched a know client type */
 				for(x=0;x<(sizeof(clients)/sizeof(clients[0]));x++) {
 					tmp = malloc(26);
-					memset(tmp, '\0', 25);
 
-					strcat(tmp, "client ");
-					strcat(tmp, clients[x]);
+					sprintf(tmp, "client %s", clients[x]);
 
 					if(strcmp(message, tmp) == 0) {
 						socket_write(sd, "{\"message\":\"accept client\"}");
@@ -740,20 +751,24 @@ void receive_code(void) {
 									logprintf(LOG_DEBUG, "called %s parseRaw()", protocol->id);
 
 									protocol->parseRaw();
-									if(protocol->message != NULL && json_validate(json_stringify(protocol->message, NULL)) == true) {
-										tmp_conflicts = protocol->conflicts;
-										JsonNode *message = json_mkobject();
-										json_append_member(message, "code", protocol->message);
-										json_append_member(message, "origin", json_mkstring("receiver"));
-										json_append_member(message, "protocol", json_mkstring(protocol->id));
-										broadcast(protocol->id, message);													
-										while(tmp_conflicts != NULL) {
-											json_remove_from_parent(json_find_member(message, "protocol"));
-											json_append_member(message, "protocol", json_mkstring(tmp_conflicts->id));
-											broadcast(tmp_conflicts->id, message);
-											tmp_conflicts = tmp_conflicts->next;
+									if(protocol->message != NULL) {
+										char *valid = json_stringify(protocol->message, NULL);
+										if(json_validate(valid) == true) {
+											tmp_conflicts = protocol->conflicts;
+											JsonNode *message = json_mkobject();
+											json_append_member(message, "code", protocol->message);
+											json_append_member(message, "origin", json_mkstring("receiver"));
+											json_append_member(message, "protocol", json_mkstring(protocol->id));
+											broadcast(protocol->id, message);													
+											while(tmp_conflicts != NULL) {
+												json_remove_from_parent(json_find_member(message, "protocol"));
+												json_append_member(message, "protocol", json_mkstring(tmp_conflicts->id));
+												broadcast(tmp_conflicts->id, message);
+												tmp_conflicts = tmp_conflicts->next;
+											}
+											json_delete(message);
 										}
-										json_delete(message);
+										free(valid);
 									}
 									continue;
 								}
@@ -782,20 +797,24 @@ void receive_code(void) {
 											logprintf(LOG_DEBUG, "called %s parseCode()", protocol->id);
 
 											protocol->parseCode();
-											if(protocol->message != NULL && json_validate(json_stringify(protocol->message, NULL)) == true) {
-												tmp_conflicts = protocol->conflicts;
-												JsonNode *message = json_mkobject();
-												json_append_member(message, "code", protocol->message);
-												json_append_member(message, "origin", json_mkstring("receiver"));
-												json_append_member(message, "protocol", json_mkstring(protocol->id));
-												broadcast(protocol->id, message);													
-												while(tmp_conflicts != NULL) {
-													json_remove_from_parent(json_find_member(message, "protocol"));
-													json_append_member(message, "protocol", json_mkstring(tmp_conflicts->id));
-													broadcast(tmp_conflicts->id, message);
-													tmp_conflicts = tmp_conflicts->next;
+											if(protocol->message != NULL) {
+												char *valid = json_stringify(protocol->message, NULL);
+												if(json_validate(valid) == true) {
+													tmp_conflicts = protocol->conflicts;
+													JsonNode *message = json_mkobject();
+													json_append_member(message, "code", protocol->message);
+													json_append_member(message, "origin", json_mkstring("receiver"));
+													json_append_member(message, "protocol", json_mkstring(protocol->id));
+													broadcast(protocol->id, message);													
+													while(tmp_conflicts != NULL) {
+														json_remove_from_parent(json_find_member(message, "protocol"));
+														json_append_member(message, "protocol", json_mkstring(tmp_conflicts->id));
+														broadcast(tmp_conflicts->id, message);
+														tmp_conflicts = tmp_conflicts->next;
+													}
+													json_delete(message);
 												}
-												json_delete(message);
+												free(valid);
 											}
 											continue;
 										}
@@ -819,20 +838,24 @@ void receive_code(void) {
 											if((protocol->binLength > 0 && ((x/4) == protocol->binLength)) || (protocol->binLength == 0 && ((x/4) == protocol->rawLength/4))) {
 												logprintf(LOG_DEBUG, "called %s parseBinary()", protocol->id);
 												protocol->parseBinary();
-												if(protocol->message != NULL && json_validate(json_stringify(protocol->message, NULL)) == true) {
-													tmp_conflicts = protocol->conflicts;
-													JsonNode *message = json_mkobject();
-													json_append_member(message, "code", protocol->message);
-													json_append_member(message, "origin", json_mkstring("receiver"));
-													json_append_member(message, "protocol", json_mkstring(protocol->id));
-													broadcast(protocol->id, message);													
-													while(tmp_conflicts != NULL) {
-														json_remove_from_parent(json_find_member(message, "protocol"));
-														json_append_member(message, "protocol", json_mkstring(tmp_conflicts->id));
-														broadcast(tmp_conflicts->id, message);
-														tmp_conflicts = tmp_conflicts->next;
+												if(protocol->message != NULL) {
+													char *valid = json_stringify(protocol->message, NULL);
+													if(json_validate(valid) == true) {
+														tmp_conflicts = protocol->conflicts;
+														JsonNode *message = json_mkobject();
+														json_append_member(message, "code", protocol->message);
+														json_append_member(message, "origin", json_mkstring("receiver"));
+														json_append_member(message, "protocol", json_mkstring(protocol->id));
+														broadcast(protocol->id, message);													
+														while(tmp_conflicts != NULL) {
+															json_remove_from_parent(json_find_member(message, "protocol"));
+															json_append_member(message, "protocol", json_mkstring(tmp_conflicts->id));
+															broadcast(tmp_conflicts->id, message);
+															tmp_conflicts = tmp_conflicts->next;
+														}
+														json_delete(message);														
 													}
-													json_delete(message);
+													free(valid);
 												}
 												continue;
 											}
@@ -1057,7 +1080,8 @@ int main(int argc , char **argv) {
 			break;
 		}
 	}
-
+	options_delete(options);
+	
 	if(access(settingsfile, F_OK) != -1) {
 		if(settings_read() != 0) {
 			return EXIT_FAILURE;

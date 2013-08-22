@@ -46,5 +46,6 @@ int options_get_mask(struct options_t **options, int id, char **out);
 int options_parse(struct options_t **options, int argc, char **argv, int error_check, char **optarg);
 void options_add(struct options_t **options, int id, const char *name, int argtype, int conftype, const char *mask);
 struct options_t *options_merge(struct options_t **a, struct options_t **b);
+void options_delete(struct options_t *options);
 
 #endif

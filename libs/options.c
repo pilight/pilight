@@ -402,3 +402,13 @@ struct options_t *options_merge(struct options_t **a, struct options_t **b) {
 	}
 	return c;
 }
+
+void options_delete(struct options_t *options) {
+	while(options) {
+		free(options->mask);
+		free(options->value);
+		free(options->name);
+		options = options->next;
+	}
+	free(options);
+}

@@ -123,6 +123,7 @@ int main(int argc, char **argv) {
 			break;
 		}
 	}
+	options_delete(options);
 
 	if(use_lirc == 1) {
 		hw_choose_driver(NULL);

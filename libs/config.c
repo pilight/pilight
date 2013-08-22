@@ -224,7 +224,12 @@ int config_update(char *protoname, JsonNode *json, JsonNode *out) {
 	/* Only update the config file, if a state change occured */
 	if(update == 1) {
 		if(configfile != NULL) {
-			config_write(json_stringify(config2json(), "\t"));
+			JsonNode *joutput = config2json();
+			char *output = json_stringify(joutput, "\t");
+			config_write(output);
+			json_delete(joutput);
+			free(output);			
+			joutput = NULL;
 		}
 		*out = *rroot;
 	}
@@ -461,7 +466,12 @@ JsonNode *config2json(void) {
 
 void config_print(void) {
 	logprintf(LOG_DEBUG, "-- start parsed config file --");
-	printf("%s\n", json_stringify(config2json(), "\t"));
+	JsonNode *joutput = config2json();
+	char *output = json_stringify(joutput, "\t");
+	printf("%s\n", output);
+	json_delete(joutput);
+	free(output);
+	joutput = NULL;
 	logprintf(LOG_DEBUG, "-- end parsed config file --");
 }
 
@@ -1080,9 +1090,13 @@ int config_read() {
 	free(content);
 
 	config_parse(root);
-	config_write(json_stringify(root, "\t"));
+
+	char *output = json_stringify(root, "\t");
+	config_write(output);
+	free(output);
 
 	json_delete(root);
+	root = NULL;
 	return EXIT_SUCCESS;
 }
 
