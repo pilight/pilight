@@ -28,6 +28,7 @@
 #include <syslog.h>
 #include <signal.h>
 #include <pthread.h>
+#include <assert.h>
 
 #include "libwebsockets.h"
 #include "gc.h"
@@ -69,11 +70,6 @@ int webserver_gc(void) {
 }
 
 int webserver_callback_http(struct libwebsocket_context *webcontext, struct libwebsocket *wsi, enum libwebsocket_callback_reasons reason, void *user, void *in, size_t len) {
-	char request[255];
-	char *dot = NULL;
-	char *ext = NULL;
-	char mimetype[255];
-	char *message = NULL;
 	int /*f = 0,*/ n = 0, m = 0;
 	struct stat sb; 
 	/* static unsigned char buffer[4096];
@@ -81,10 +77,14 @@ int webserver_callback_http(struct libwebsocket_context *webcontext, struct libw
 	struct per_session_data__http *pss = (struct per_session_data__http *)user;
 	
 	switch(reason) {
-		case LWS_CALLBACK_HTTP:
+		case LWS_CALLBACK_HTTP: {
+			char *request;
+
 			if(strcmp((const char *)in, "/") == 0) {
+				request = malloc(strlen(webserver_root)+13);
 				sprintf(request, "%s%s", webserver_root, "/index.html");
 			} else {
+				request = malloc(strlen(webserver_root)+strlen((const char *)in)+1);
 				sprintf(request, "%s%s", webserver_root, (const char *)in);
 			}
 
@@ -94,21 +94,25 @@ int webserver_callback_http(struct libwebsocket_context *webcontext, struct libw
 				return -1;
 			}
 			
+			char *dot = NULL;
+			char *ext = NULL;
+			char *mimetype = NULL;
+			
 			dot = strrchr(request, '.');
 			if(!dot || dot == request) 
 				return -1;
 			ext = strdup(dot+1);
 
 			if(strcmp(ext, "html") == 0) {
-				strcpy(mimetype, "text/html");
+				mimetype = strdup("text/html");
 			} else if(strcmp(ext, "png") == 0) {
-				strcpy(mimetype, "image/png");
+				mimetype = strdup("image/png");
 			} else if(strcmp(ext, "ico") == 0) {
-				strcpy(mimetype, "image/x-icon");
+				mimetype = strdup("image/x-icon");
 			} else if(strcmp(ext, "css") == 0) {
-				strcpy(mimetype, "text/css");
+				mimetype = strdup("text/css");
 			} else if(strcmp(ext, "js") == 0) {
-				strcpy(mimetype, "text/javascript");
+				mimetype = strdup("text/javascript");
 			}			
 			free(ext);
 			fstat(pss->fd, &sb);
@@ -124,7 +128,7 @@ int webserver_callback_http(struct libwebsocket_context *webcontext, struct libw
 
 				// n = libwebsocket_write(wsi, buffer, p - buffer, LWS_WRITE_HTTP);
 
-				// if (n < 0) {
+					// if (n < 0) {
 					// close(pss->fd);
 					// return -1;
 				// }
@@ -132,12 +136,15 @@ int webserver_callback_http(struct libwebsocket_context *webcontext, struct libw
 				// libwebsocket_callback_on_writable(webcontext, wsi);
 				// break;
 			// } else {
-				if(libwebsockets_serve_http_file(webcontext, wsi, request, mimetype)) {
-					return -1;
+						// }
+			if(libwebsockets_serve_http_file(webcontext, wsi, request, mimetype)) {
+				return -1;
 				libwebsocket_callback_on_writable(webcontext, wsi);
-				// }
 			}
-			break;
+			free(request);
+			free(mimetype);
+		}
+		break;
 		case LWS_CALLBACK_HTTP_FILE_COMPLETION:
 			return -1;
 		case LWS_CALLBACK_ESTABLISHED:
@@ -150,19 +157,39 @@ int webserver_callback_http(struct libwebsocket_context *webcontext, struct libw
 			if((int)len < 4) {	
 				return -1;
 			} else {
-				if(json_validate((const char *)in) == true) {
-					JsonNode *json = json_decode((const char *)in);
-					if(json_find_string(json, "message", &message) != -1) {
+				if(json_validate((char *)in) == true) {
+					JsonNode *json = json_decode((char *)in);
+					char *tmp = NULL;
+					
+					int found = json_find_string(json, "message", &tmp);
+
+					if(found != -1) {
+						/* Buffer the json incoming message to properly
+						   free the json object */
+						char *message =  strdup(tmp);
+						assert(message != NULL);
 						if(strcmp(message, "request config") == 0) {
-							json = json_mkobject();
-							json_append_member(json, "config", config2json());
-							message = json_stringify(json, NULL);
-							libwebsocket_write(wsi, (unsigned char *)message, strlen(message), LWS_WRITE_TEXT);
+
+							JsonNode *jsend = json_mkobject();
+							JsonNode *jconfig = config2json();
+							json_append_member(jsend, "config", jconfig);
+
+							char *output = json_stringify(jsend, NULL);
+
+							libwebsocket_write(wsi, (unsigned char *)output, strlen(output), LWS_WRITE_TEXT);
+
+							/*
+							 * TODO: find a way to free *output, *jsend
+							 * It seems like libwebsocket_write already does memory freeing
+							 */
+
 						} else if(strcmp(message, "send") == 0) {
 							/* Write all codes coming from the webserver to the daemon */
-							socket_write(sockfd, (const char *)in);
+							socket_write(sockfd, (char *)in);
 						}
+						free(message);
 					}
+					json_delete(json);
 				}
 			}
 		break;
@@ -172,6 +199,7 @@ int webserver_callback_http(struct libwebsocket_context *webcontext, struct libw
 		case LWS_CALLBACK_SERVER_WRITEABLE:
 			/* Push the incoming message to the webgui */
 			m = libwebsocket_write(wsi, (unsigned char *)recvBuff, strlen(recvBuff), LWS_WRITE_TEXT);
+			free(recvBuff);
 			if (m < n) {
 				logprintf(LOG_ERR, "(webserver) %d writing to di socket", n);
 				return -1;
@@ -213,7 +241,7 @@ int webserver_callback_http(struct libwebsocket_context *webcontext, struct libw
 				// } while(!lws_send_pipe_choked(wsi));
 				// libwebsocket_callback_on_writable(webcontext, wsi);
 			// }
-			break;	
+		break;	
 		case LWS_CALLBACK_FILTER_NETWORK_CONNECTION:
 		default:
 		break;
@@ -225,7 +253,6 @@ void *webserver_clientize(void *param) {
 	steps_t steps = WELCOME;
 	char *message = NULL;
 	server = strdup("localhost");
-	JsonNode *json = json_mkobject();
 	int port = 0;
 
 	settings_find_number("port", &port);
@@ -239,8 +266,9 @@ void *webserver_clientize(void *param) {
 		if(steps > WELCOME) {
 			/* Clear the receive buffer again and read the welcome message */
 			if((recvBuff = socket_read(sockfd)) != NULL) {
-				json = json_decode(recvBuff);
+				JsonNode *json = json_decode(recvBuff);
 				json_find_string(json, "message", &message);
+				json_delete(json);
 			} else {
 				goto close;
 			}
@@ -257,6 +285,7 @@ void *webserver_clientize(void *param) {
 				if(strcmp(message, "reject client") == 0) {
 					steps=REJECT;
 				}
+				free(recvBuff);
 			break;
 			case SYNC:
 				/* Push all incoming sync messages to the web gui */
@@ -269,7 +298,6 @@ void *webserver_clientize(void *param) {
 		}
 	}
 close:
-	json_delete(json);
 	socket_close(sockfd);	
 	return 0;
 }

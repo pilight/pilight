@@ -449,6 +449,7 @@ void client_node_parse_code(int i, JsonNode *json) {
 	if(json_find_string(json, "message", &message) == 0) {
 		/* Send the config file to the controller */
 		if(strcmp(message, "request config") == 0) {
+			json_delete(json);
 			json = json_mkobject();
 			JsonNode *joutput = config2json();
 			json_append_member(json, "config", joutput);
