@@ -38,12 +38,22 @@ void sartanoCreateMessage(int id, int unit, int state) {
 }
 
 void sartanoParseBinary(void) {
+	int fp = 0;
+	int i = 0;
+	for(i=0;i<sartano->binLength;i++) {
+		// sartano->binary[i] = sartano->code[(4*i+3)]; // lsb = 3 code for when ParseBinary is replaced by ParseCode
+		if (sartano->code[(4*i+0)] != 0) fp = 1;
+		if (sartano->code[(4*i+1)] != 1) fp = 1;
+		if (sartano->code[(4*i+2)] == sartano->code[(4*i+3)]) fp = 1;
+	}
+	if (sartano->code[48] != 0) fp = 1;
+	if (sartano->code[49] != 1) fp = 1;
 	sartano->message = NULL;
 	int unit = binToDec(sartano->binary, 0, 4);
 	int state = sartano->binary[10];
 	int check = sartano->binary[11];
 	int id = binToDec(sartano->binary, 5, 9);
-	if(check != state)
+	if ((check != state) && fp == 0)
 		sartanoCreateMessage(id, unit, state);
 }
 
@@ -160,11 +170,9 @@ void sartanoInit(void) {
 	protocol_register(&sartano);
 	sartano->id = strdup("sartano");
 	protocol_add_device(sartano, "elro", "Elro Switches");
-	protocol_add_conflict(sartano, "arctech_old");
-	protocol_add_conflict(sartano, "impuls");
 	sartano->type = SWITCH;
-	sartano->pulse = 4;
-	sartano->footer = 38;
+	sartano->pulse = 3;
+	sartano->footer = 33;
 	sartano->rawLength = 50;
 	sartano->binLength = 12;
 	sartano->message = malloc(sizeof(JsonNode));
