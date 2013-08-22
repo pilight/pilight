@@ -37,7 +37,7 @@ void impulsCreateMessage(int id, int unit, int state) {
 		json_append_member(impuls->message, "state", json_mkstring("off"));
 }
 
-void impulsParseBinary(void) {
+/*void impulsParseBinary(void) {
 	int fp = 0;
 	int i = 0;
 	for(i=0;i<5;i++) {
@@ -61,7 +61,7 @@ void impulsParseBinary(void) {
 	int id = binToDec(impuls->binary, 5, 9);
 	// if ((check != state) && fp == 0) // functionality currently not working
 	//	impulsCreateMessage(id, unit, state);
-}
+}*/
 
 void impulsCreateLow(int s, int e) {
 	int i;
@@ -191,22 +191,22 @@ void impulsInit(void) {
 	protocol_add_conflict(impuls, "arctech_old");
 	protocol_add_conflict(impuls, "sartano");
 	impuls->type = SWITCH;
-	impuls->pulse = 3;
-	impuls->footer = 31;
+	/*impuls->pulse = 3;
+	impuls->footer = 31;*/
 	impuls->rawLength = 50;
-	impuls->binLength = 12;
+	//impuls->binLength = 12;
 	impuls->message = malloc(sizeof(JsonNode));
-	impuls->lsb = 1;
+	//impuls->lsb = 1;
 
-	impuls->bit = 0;
-	impuls->recording = 0;
+	/*impuls->bit = 0;
+	impuls->recording = 0;*/
 
 	options_add(&impuls->options, 't', "on", no_value, config_state, NULL);
 	options_add(&impuls->options, 'f', "off", no_value, config_state, NULL);
 	options_add(&impuls->options, 'u', "unit", has_value, config_id, "^(3[012]?|[012][0-9]|[0-9]{1})$");
 	options_add(&impuls->options, 'i', "id", has_value, config_id, "^(3[012]?|[012][0-9]|[0-9]{1})$");
 
-	impuls->parseBinary=&impulsParseBinary;
+	//impuls->parseBinary=&impulsParseBinary;
 	impuls->createCode=&impulsCreateCode;
 	impuls->printHelp=&impulsPrintHelp;
 }
