@@ -304,12 +304,12 @@ int settings_parse(JsonNode *root) {
 	}
 	json_delete(jsettings);
 	if(has_lirc == 1 && gpio_in > -1) {
-		logprintf(LOG_ERR, "setting \"gpio-receiver\" cand use-lirc cannot be combined");
+		logprintf(LOG_ERR, "setting \"gpio-receiver\" and use-lirc cannot be combined");
 		have_error = 1;
 		goto clear;
 	}
 	if(has_lirc == 1 && gpio_out > -1) {
-		logprintf(LOG_ERR, "setting \"gpio-sender\" cand use-lirc cannot be combined");
+		logprintf(LOG_ERR, "setting \"gpio-sender\" and use-lirc cannot be combined");
 		have_error = 1;
 		goto clear;
 	}	
