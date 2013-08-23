@@ -168,8 +168,8 @@ int webserver_callback_http(struct libwebsocket_context *webcontext, struct libw
 
 							char *output = json_stringify(jsend, NULL);
 							size_t output_len = strlen(output);
-							char buf[LWS_SEND_BUFFER_PRE_PADDING + output_len + LWS_SEND_BUFFER_POST_PADDING];
- 	  						memcpy(&buf[LWS_SEND_BUFFER_PRE_PADDING], 0, output_len);
+							unsigned char buf[LWS_SEND_BUFFER_PRE_PADDING + output_len + LWS_SEND_BUFFER_POST_PADDING];
+ 	  						memcpy(&buf[LWS_SEND_BUFFER_PRE_PADDING], output, output_len);
 							libwebsocket_write(wsi, &buf[LWS_SEND_BUFFER_PRE_PADDING], output_len, LWS_WRITE_TEXT);
 
 							free(output);
