@@ -179,9 +179,7 @@ int webserver_callback_http(struct libwebsocket_context *webcontext, struct libw
 							socket_write(sockfd, (char *)in);
 						}
 					}
-					/*
-					 * TODO: find a way to free *json
-					 */
+					json_delete(json);
 				}
 			}
 		break;
@@ -190,7 +188,12 @@ int webserver_callback_http(struct libwebsocket_context *webcontext, struct libw
 		case LWS_CALLBACK_CLIENT_WRITEABLE:
 		case LWS_CALLBACK_SERVER_WRITEABLE:
 			/* Push the incoming message to the webgui */
-			m = libwebsocket_write(wsi, (unsigned char *)recvBuff, strlen(recvBuff), LWS_WRITE_TEXT);
+			{
+				size_t recvBuff_len = strlen(recvBuff);
+				unsigned char buf[LWS_SEND_BUFFER_PRE_PADDING + recvBuff_len + LWS_SEND_BUFFER_POST_PADDING];
+				memcpy(&buf[LWS_SEND_BUFFER_PRE_PADDING], recvBuff, recvBuff_len);
+				m = libwebsocket_write(wsi, &buf[LWS_SEND_BUFFER_PRE_PADDING], recvBuff_len, LWS_WRITE_TEXT);
+			}
 			/*
 			 * It seems like libwebsocket_write already does memory freeing
 			 */	
@@ -282,7 +285,6 @@ void *webserver_clientize(void *param) {
 				if(strcmp(message, "reject client") == 0) {
 					steps=REJECT;
 				}
-				free(recvBuff);
 			break;
 			case SYNC:
 				/* Push all incoming sync messages to the web gui */
@@ -293,6 +295,9 @@ void *webserver_clientize(void *param) {
 				goto close;
 			break;
 		}
+
+		free(recvBuff);
+		recvBuff = NULL;
 	}
 close:
 	socket_close(sockfd);	
