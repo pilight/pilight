@@ -250,7 +250,6 @@ void *webserver_clientize(void *param) {
 	steps_t steps = WELCOME;
 	char *message = NULL;
 	server = strdup("localhost");
-	JsonNode *json = json_mkobject();
 	int port = 0;
 
 	settings_find_number("port", &port);
@@ -263,12 +262,7 @@ void *webserver_clientize(void *param) {
 	while(1) {
 		if(steps > WELCOME) {
 			/* Clear the receive buffer again and read the welcome message */
-			if((recvBuff = socket_read(sockfd)) != NULL) {
-				json = json_decode(recvBuff);
-				json_find_string(json, "message", &message);
-				/*
-				 * TODO: find a way to free *json
-				 */				
+			if((recvBuff = socket_read(sockfd)) != NULL) {	
 			} else {
 				goto close;
 			}
@@ -279,11 +273,17 @@ void *webserver_clientize(void *param) {
 				steps=IDENTIFY;
 			break;
 			case IDENTIFY:
-				if(strcmp(message, "accept client") == 0) {
-					steps=SYNC;
-				}
-				if(strcmp(message, "reject client") == 0) {
-					steps=REJECT;
+				{
+					JsonNode *json = json_decode(recvBuff);
+					json_find_string(json, "message", &message);
+					if(strcmp(message, "accept client") == 0) {
+						steps=SYNC;
+					}
+					if(strcmp(message, "reject client") == 0) {
+						steps=REJECT;
+					}
+					json_delete(json);
+					free(recvBuff);
 				}
 			break;
 			case SYNC:
@@ -295,9 +295,6 @@ void *webserver_clientize(void *param) {
 				goto close;
 			break;
 		}
-
-		free(recvBuff);
-		recvBuff = NULL;
 	}
 close:
 	socket_close(sockfd);	
