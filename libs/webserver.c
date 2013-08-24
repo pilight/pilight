@@ -167,20 +167,19 @@ int webserver_callback_http(struct libwebsocket_context *webcontext, struct libw
 							json_append_member(jsend, "config", jconfig);
 
 							char *output = json_stringify(jsend, NULL);
-							libwebsocket_write(wsi, (unsigned char *)output, strlen(output), LWS_WRITE_TEXT);
+							size_t output_len = strlen(output);
+							unsigned char buf[LWS_SEND_BUFFER_PRE_PADDING + output_len + LWS_SEND_BUFFER_POST_PADDING];
+ 	  						memcpy(&buf[LWS_SEND_BUFFER_PRE_PADDING], output, output_len);
+							libwebsocket_write(wsi, &buf[LWS_SEND_BUFFER_PRE_PADDING], output_len, LWS_WRITE_TEXT);
 
-							/*
-							 * TODO: find a way to free *output, *jsend
-							 * It seems like libwebsocket_write already does memory freeing
-							 */
+							free(output);
+							free(jsend);
 						} else if(strcmp(message, "send") == 0) {
 							/* Write all codes coming from the webserver to the daemon */
 							socket_write(sockfd, (char *)in);
 						}
 					}
-					/*
-					 * TODO: find a way to free *json
-					 */
+					json_delete(json);
 				}
 			}
 		break;
@@ -189,7 +188,12 @@ int webserver_callback_http(struct libwebsocket_context *webcontext, struct libw
 		case LWS_CALLBACK_CLIENT_WRITEABLE:
 		case LWS_CALLBACK_SERVER_WRITEABLE:
 			/* Push the incoming message to the webgui */
-			m = libwebsocket_write(wsi, (unsigned char *)recvBuff, strlen(recvBuff), LWS_WRITE_TEXT);
+			{
+				size_t recvBuff_len = strlen(recvBuff);
+				unsigned char buf[LWS_SEND_BUFFER_PRE_PADDING + recvBuff_len + LWS_SEND_BUFFER_POST_PADDING];
+				memcpy(&buf[LWS_SEND_BUFFER_PRE_PADDING], recvBuff, recvBuff_len);
+				m = libwebsocket_write(wsi, &buf[LWS_SEND_BUFFER_PRE_PADDING], recvBuff_len, LWS_WRITE_TEXT);
+			}
 			/*
 			 * It seems like libwebsocket_write already does memory freeing
 			 */	
@@ -246,7 +250,6 @@ void *webserver_clientize(void *param) {
 	steps_t steps = WELCOME;
 	char *message = NULL;
 	server = strdup("localhost");
-	JsonNode *json = json_mkobject();
 	int port = 0;
 
 	settings_find_number("port", &port);
@@ -259,12 +262,7 @@ void *webserver_clientize(void *param) {
 	while(1) {
 		if(steps > WELCOME) {
 			/* Clear the receive buffer again and read the welcome message */
-			if((recvBuff = socket_read(sockfd)) != NULL) {
-				json = json_decode(recvBuff);
-				json_find_string(json, "message", &message);
-				/*
-				 * TODO: find a way to free *json
-				 */				
+			if((recvBuff = socket_read(sockfd)) != NULL) {	
 			} else {
 				goto close;
 			}
@@ -275,13 +273,18 @@ void *webserver_clientize(void *param) {
 				steps=IDENTIFY;
 			break;
 			case IDENTIFY:
-				if(strcmp(message, "accept client") == 0) {
-					steps=SYNC;
+				{
+					JsonNode *json = json_decode(recvBuff);
+					json_find_string(json, "message", &message);
+					if(strcmp(message, "accept client") == 0) {
+						steps=SYNC;
+					}
+					if(strcmp(message, "reject client") == 0) {
+						steps=REJECT;
+					}
+					json_delete(json);
+					free(recvBuff);
 				}
-				if(strcmp(message, "reject client") == 0) {
-					steps=REJECT;
-				}
-				free(recvBuff);
 			break;
 			case SYNC:
 				/* Push all incoming sync messages to the web gui */
