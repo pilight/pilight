@@ -188,11 +188,9 @@ void impulsInit(void) {
 	impuls->id = strdup("impuls");
 	protocol_add_device(impuls, "impuls", "Impuls Switches");
 	protocol_add_device(impuls, "select-remote", "SelectRemote Switches");
-	protocol_add_conflict(impuls, "arctech_old");
-	protocol_add_conflict(impuls, "sartano");
 	impuls->type = SWITCH;
-	/*impuls->pulse = 3;
-	impuls->footer = 31;*/
+	impuls->pulse = 3;
+	impuls->footer = 33;
 	impuls->rawLength = 50;
 	//impuls->binLength = 12;
 	impuls->message = malloc(sizeof(JsonNode));

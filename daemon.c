@@ -794,7 +794,7 @@ void receive_code(void) {
 									/* Continue if we have recognized enough repeated codes */
 									if(y >= receive_repeat) {
 										if(protocol->parseCode != NULL) {
-											logprintf(LOG_DEBUG, "caught minimum # of repeats %s of %s", y, protocol->id);
+											logprintf(LOG_DEBUG, "caught minimum # of repeats %d of %s", y, protocol->id);
 											logprintf(LOG_DEBUG, "called %s parseCode()", protocol->id);
 
 											protocol->parseCode();
