@@ -80,7 +80,6 @@ struct conf_settings_t {
 struct conf_devices_t {
 	char *id;
 	char *name;
-	char *state;
 	char *protoname;
 	struct protocol_t *protopt;
 	struct conf_settings_t *settings;
@@ -123,5 +122,6 @@ int config_parse(JsonNode *root);
 int config_write(char *content);
 int config_read(void);
 int config_set_file(char *cfgfile);
+int config_gc(void);
 
 #endif

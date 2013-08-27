@@ -47,7 +47,8 @@ int main(int argc, char **argv) {
 	log_shell_enable();
 	log_level_set(LOG_NOTICE);
 
-	progname = strdup("pilight-send");
+	progname = malloc(13);
+	strcpy(progname, "pilight-send");
 
 	struct options_t *options = NULL;
 
@@ -69,7 +70,8 @@ int main(int argc, char **argv) {
 	/* Do we need to print the protocol help */
 	int protohelp = 0;
 
-	char *server = strdup("127.0.0.1");
+	char *server = malloc(13);
+	strcpy(server, "127.0.0.1");
 	unsigned short port = PORT;
 	
 	/* Hold the final protocol struct */
@@ -111,8 +113,8 @@ int main(int argc, char **argv) {
 				help = 1;
 			break;
 			case 'S':
-				free(server);
-				server = strdup(args);
+				server = realloc(server, strlen(args)+1);
+				strcpy(server, args);
 			break;
 			case 'P':
 				port = (unsigned short)atoi(args);
@@ -265,7 +267,9 @@ int main(int argc, char **argv) {
 close:
 	json_delete(json);
 	socket_close(sockfd);
+
 free(progname);
 free(server);
+protocol_gc();
 return EXIT_SUCCESS;
 }

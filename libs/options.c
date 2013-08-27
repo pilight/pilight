@@ -31,8 +31,8 @@ void options_set_value(struct options_t **opt, int id, const char *val) {
 	struct options_t *temp = *opt;
 	while(temp) {
 		if(temp->id == id && temp->id > 0) {
-			free(temp->value);
-			temp->value = strdup(val);
+			temp->value = realloc(temp->value, strlen(val)+1);
+			strcpy(temp->value, val);
 			break;
 		}
 		temp = temp->next;
@@ -45,7 +45,7 @@ int options_get_value(struct options_t **opt, int id, char **out) {
 	*out = NULL;	
 	while(temp) {
 		if(temp->id == id && temp->id > 0) {
-			if(temp->value != NULL) {
+			if(temp->value) {
 				*out = temp->value;
 				return 0;
 			} else {
@@ -83,7 +83,7 @@ int options_get_name(struct options_t **opt, int id, char **out) {
 	*out = NULL;
 	while(temp) {
 		if(temp->id == id && temp->id > 0) {
-			if(temp->name != NULL) {
+			if(temp->name) {
 				*out = temp->name;
 				return 0;
 			} else {
@@ -102,7 +102,7 @@ int options_get_mask(struct options_t **opt, int id, char **out) {
 	*out = NULL;
 	while(temp) {
 		if(temp->id == id && temp->id > 0) {
-			if(temp->mask != NULL) {
+			if(temp->mask) {
 				*out = temp->mask;
 				return 0;
 			} else {
@@ -120,7 +120,7 @@ int options_get_id(struct options_t **opt, char *name, int *out) {
 	struct options_t *temp = *opt;
 	*out = 0;
 	while(temp) {
-		if(temp->name != NULL) {
+		if(temp->name) {
 			if(strcmp(temp->name, name) == 0) {
 				if(temp->id > 0) {
 					*out = temp->id;
@@ -176,7 +176,7 @@ int options_parse(struct options_t **opt, int argc, char **argv, int error_check
 		
 		/* Check if the CLI character contains an equals to (=) sign.
 		   If it does, we have probably encountered a long argument */
-		if(strchr(argv[getOptPos],'=') != NULL) {
+		if(strchr(argv[getOptPos],'=')) {
 			/* Copy all characters until the equals to sign.
 			   This will probably be the name of the argument */
 			longarg = realloc(longarg, strcspn(argv[getOptPos],"="));			   
@@ -191,20 +191,15 @@ int options_parse(struct options_t **opt, int argc, char **argv, int error_check
 		} else {
 			/* If the argument does not contain a equals sign.
 			   Store the argument to check later if it's a long argument */
-			free(longarg);
-			/*
-			 * Valgrind memory leak but don't know why?
-			 */			
-			longarg = strdup(argv[getOptPos]);
+			longarg = realloc(longarg, strlen(argv[getOptPos])+1);	
+			strcpy(longarg, argv[getOptPos]);
 		}
 
 		/* A short argument only contains of two characters.
 		   So only store the first two characters */
-		free(shortarg);
-		/*
-		 * Valgrind memory leak but don't know why?
-		 */
-		shortarg = strndup(argv[getOptPos], 2);
+		shortarg = realloc(shortarg, strlen(argv[getOptPos])+1);
+		memset(shortarg, '\0', 3);
+		strncpy(shortarg, argv[getOptPos], 2);
 
 		/* Check if the short argument and the long argument are equal,
 		   then we probably encountered a short argument. Only store the
@@ -212,15 +207,16 @@ int options_parse(struct options_t **opt, int argc, char **argv, int error_check
 		   after the current one, store it as the CLI value. However, only
 		   do this if the first character of the argument doesn't contain*/
 		if(strcmp(longarg, shortarg) == 0 && (getOptPos+1)<argc && argv[getOptPos+1][0] != '-') {
-			free(*optarg);
-			*optarg = strdup(argv[getOptPos+1]);
+			*optarg = realloc(*optarg, strlen(argv[getOptPos+1])+1);
+			strcpy(*optarg, argv[getOptPos+1]);
 			c = shortarg[1];
 			getOptPos++;
 		} else {
 			/* If the short argument and the long argument are not equal,
 			    then we probably encountered a long argument. */
 			if(longarg[0] == '-' && longarg[1] == '-') {
-				ctmp = strdup(&longarg[2]);
+				ctmp = realloc(ctmp, strlen(&longarg[2])+1);
+				strcpy(ctmp, &longarg[2]);
 
 				/* Retrieve the short identifier for the long argument */
 				if(options_get_id(opt, ctmp, &itmp) == 0) {
@@ -245,7 +241,7 @@ int options_parse(struct options_t **opt, int argc, char **argv, int error_check
 				} else {
 					logprintf(LOG_ERR, "invalid option -- '%s'", longarg);
 				}
-				exit(EXIT_FAILURE);
+				goto gc;
 			} else {
 				return 0;
 			}
@@ -257,7 +253,7 @@ int options_parse(struct options_t **opt, int argc, char **argv, int error_check
 				} else {
 					logprintf(LOG_ERR, "option '%s' doesn't take an argument", longarg);
 				}
-				exit(EXIT_FAILURE);
+				goto gc;
 			} else {
 				return 0;
 			}
@@ -269,7 +265,7 @@ int options_parse(struct options_t **opt, int argc, char **argv, int error_check
 				} else {
 					logprintf(LOG_ERR, "option '%s' requires an argument", longarg);
 				}
-				exit(EXIT_FAILURE);
+				goto gc;
 			} else {
 				return 0;
 			}
@@ -281,7 +277,7 @@ int options_parse(struct options_t **opt, int argc, char **argv, int error_check
 				} else {
 					logprintf(LOG_ERR, "invalid option -- '%s'", longarg);
 				}
-				exit(EXIT_FAILURE);
+				goto gc;
 			} else {
 				return 0;
 			}
@@ -296,7 +292,7 @@ int options_parse(struct options_t **opt, int argc, char **argv, int error_check
 					reti = regcomp(&regex, mask, REG_EXTENDED);
 					if(reti) {
 						logprintf(LOG_ERR, "could not compile regex");
-						exit(EXIT_FAILURE);
+						goto gc;
 					}
 					reti = regexec(&regex, *optarg, 0, NULL, 0);
 					if(reti == REG_NOMATCH || reti != 0) {
@@ -306,21 +302,31 @@ int options_parse(struct options_t **opt, int argc, char **argv, int error_check
 							logprintf(LOG_ERR, "invalid format -- '%s'", longarg);
 						}
 						logprintf(LOG_ERR, "requires %s", mask);
-						exit(EXIT_FAILURE);
+						goto gc;
 					}
 				}
 #endif
 				options_set_value(opt, c, *optarg);
 			}
+			free(shortarg);
+			free(longarg);			
 			return c;
 		}
 	}
+
+gc:
+	free(longarg);
+	free(*optarg);
+	free(shortarg);
+	free(ctmp);
+	exit(EXIT_FAILURE);
 }
 
 /* Add a new option to the options struct */
 void options_add(struct options_t **opt, int id, const char *name, int argtype, int conftype, const char *mask) {
 	char *ctmp = NULL;
-	char *nname = strdup(name);
+	char *nname = malloc(strlen(name)+1);
+	strcpy(nname, name);
 	int itmp;
 	if(!(argtype >= 0 && argtype <= 3)) {
 		logprintf(LOG_ERR, "tying to add an invalid option type");
@@ -330,7 +336,7 @@ void options_add(struct options_t **opt, int id, const char *name, int argtype, 
 		logprintf(LOG_ERR, "trying to add an option with an invalid config type");
 		free(nname);
 		exit(EXIT_FAILURE);
-	} else if(name == NULL) {
+	} else if(!name) {
 		logprintf(LOG_ERR, "trying to add an option without name");
 		free(nname);
 		exit(EXIT_FAILURE);
@@ -345,12 +351,14 @@ void options_add(struct options_t **opt, int id, const char *name, int argtype, 
 	} else {
 		struct options_t *optnode = malloc(sizeof(struct options_t));
 		optnode->id = id;
-		optnode->name = strdup(name);
+		optnode->name = malloc(strlen(name)+1);
+		strcpy(optnode->name, name);
 		optnode->argtype = argtype;
 		optnode->conftype = conftype;
 		optnode->value = malloc(sizeof(char));
-		if(mask != NULL) {
-			optnode->mask = strdup(mask);
+		if(mask) {
+			optnode->mask = malloc(strlen(mask)+1);
+			strcpy(optnode->mask, mask);
 		} else {
 			optnode->mask = malloc(sizeof(char));
 			memset(optnode->mask, '\0', sizeof(char));
@@ -375,20 +383,23 @@ struct options_t *options_merge(struct options_t **a, struct options_t **b) {
 		while(temp) {
 			struct options_t *optnode = malloc(sizeof(struct options_t));
 			optnode->id = temp->id;
-			if(temp->name != NULL) {
-				optnode->name = strdup(temp->name);
+			if(temp->name) {
+				optnode->name = malloc(strlen(temp->name)+1);
+				strcpy(optnode->name, temp->name);
 			} else {
 				optnode->name = malloc(sizeof(char));
 				memset(optnode->name, '\0', sizeof(char));
 			}
-			if(temp->value != NULL) {
-				optnode->value = strdup(temp->value);
+			if(temp->value) {
+				optnode->value = malloc(strlen(temp->value)+1);
+				strcpy(optnode->value, temp->value);
 			} else {
 				optnode->value = malloc(sizeof(char));
 				memset(optnode->value, '\0', sizeof(char));
 			}
-			if(temp->mask != NULL) {
-				optnode->mask = strdup(temp->mask);		
+			if(temp->mask) {
+				optnode->mask = malloc(strlen(temp->mask)+1);
+				strcpy(optnode->mask, temp->mask);		
 			} else {
 				optnode->mask = malloc(sizeof(char));
 				memset(optnode->mask, '\0', sizeof(char));
@@ -404,11 +415,16 @@ struct options_t *options_merge(struct options_t **a, struct options_t **b) {
 }
 
 void options_delete(struct options_t *options) {
+	struct options_t *tmp;
 	while(options) {
-		free(options->mask);
-		free(options->value);
-		free(options->name);
+		tmp = options;
+		free(tmp->mask);
+		free(tmp->value);
+		free(tmp->name);
 		options = options->next;
+		free(tmp);
 	}
 	free(options);
+	
+	logprintf(LOG_DEBUG, "freed options struct");
 }

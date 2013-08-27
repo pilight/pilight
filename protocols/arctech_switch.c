@@ -177,7 +177,8 @@ void arctechSwPrintHelp(void) {
 void arctechSwInit(void) {
 
 	protocol_register(&arctech_switch);
-	arctech_switch->id = strdup("archtech_switches");
+	arctech_switch->id = malloc(18);
+	strcpy(arctech_switch->id, "archtech_switches");
 	protocol_add_device(arctech_switch, "kaku_switch", "KlikAanKlikUit Switches");
 	protocol_add_device(arctech_switch, "dio_switch", "D-IO (Chacon) Switches");
 	protocol_add_device(arctech_switch, "nexa_switch", "Nexa Switches");
@@ -188,7 +189,6 @@ void arctechSwInit(void) {
 	arctech_switch->pulse = 5;
 	arctech_switch->footer = 35;
 	arctech_switch->rawLength = 132;
-	arctech_switch->message = malloc(sizeof(JsonNode));
 	arctech_switch->lsb = 3;
 
 	arctech_switch->bit = 0;

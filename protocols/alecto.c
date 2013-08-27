@@ -43,7 +43,6 @@ void alectoParseCode(void) {
 		a-=binToDec(alecto->binary, i, i+3);
 	}
 
-	alecto->message = NULL;
 	if(binToDec(alecto->binary, 32, 35) == (a&0xf)) {
 		id = binToDec(alecto->binary, 0, 7);
 		if(alecto->binary[11] == 1)
@@ -71,14 +70,14 @@ void alectoParseCode(void) {
 void alectoInit(void) {
 	
 	protocol_register(&alecto);
-	alecto->id = strdup("alecto");
+	alecto->id = malloc(7);
+	strcpy(alecto->id, "alecto");
 	protocol_add_device(alecto, "alecto", "Alecto based weather stations");
 	alecto->type = WEATHER;
 	alecto->header = 14;
 	alecto->pulse = 14;
 	alecto->footer = 30;
 	alecto->rawLength = 74;
-	alecto->message = malloc(sizeof(JsonNode));
 	alecto->lsb = 3;
 
 	alecto->bit = 0;

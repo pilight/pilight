@@ -54,15 +54,10 @@
 #define RECEIVE_REPEATS		1
 #define MULTIPLIER			0.3
 
-typedef union value_t {
-	int ivalue;
-	char *cvalue;
-} value_t;
-
 typedef struct settings_t {
 	char *name;
 	int type;
-	union value_t *value;
+	char *value;
 	struct settings_t *next;
 } settings_t;
 
@@ -81,6 +76,7 @@ int settings_parse(JsonNode *root);
 int settings_write(char *content);
 int settings_read(void);
 int settings_set_file(char *settfile);
+int settings_gc(void);
 
 #endif
 

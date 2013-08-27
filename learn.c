@@ -90,11 +90,13 @@ int main(int argc, char **argv) {
 	log_shell_disable();
 	log_level_set(LOG_NOTICE);
 
-	progname = strdup("pilight-learn");
+	progname = malloc(16);
+	strcpy(progname, "pilight-learn");
 	struct options_t *options = NULL;
 	
 	lirc_t data;
-	char *socket = strdup("/dev/lirc0");
+	char *socket = malloc(11);
+	strcpy(socket, "/dev/lirc0");
 	char *args;
 	int have_device = 0;
 	int use_lirc = USE_LIRC;
@@ -175,7 +177,7 @@ int main(int argc, char **argv) {
 				use_lirc = 0;
 			break;
 			case 'S':
-				free(socket);
+				socket = realloc(socket, strlen(optarg)+1);
 				socket = optarg;
 				have_device = 1;
 			break;

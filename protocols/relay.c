@@ -95,10 +95,10 @@ void relayPrintHelp(void) {
 void relayInit(void) {
 
 	protocol_register(&relay);
-	relay->id = strdup("relay");
+	relay->id = malloc(6);
+	strcpy(relay->id, "relay");
 	protocol_add_device(relay, "relay", "Control connected relay's");
 	relay->type = SWITCH;
-	relay->message = malloc(sizeof(JsonNode));
 
 	options_add(&relay->options, 't', "on", no_value, config_state, NULL);
 	options_add(&relay->options, 'f', "off", no_value, config_state, NULL);

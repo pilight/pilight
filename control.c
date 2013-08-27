@@ -48,7 +48,8 @@ int main(int argc, char **argv) {
 	log_shell_enable();
 	log_level_set(LOG_NOTICE);
 
-	progname = strdup("pilight-control");
+	progname = malloc(16);
+	strcpy(progname, "pilight-control");
 
 	struct options_t *options = NULL;
 
@@ -66,7 +67,8 @@ int main(int argc, char **argv) {
 	struct conf_devices_t *sdevice = NULL;
 	int has_values = 0;
 	
-	char *server = strdup("127.0.0.1");
+	char *server = malloc(13);
+	strcpy(server, "127.0.0.1");
 	unsigned short port = PORT;
 	
 	JsonNode *json = json_mkobject();
@@ -123,8 +125,8 @@ int main(int argc, char **argv) {
 				strcpy(values, optarg);
 			break;			
 			case 'S':
-				free(server);
-				server = strdup(optarg);
+				server = realloc(server, strlen(optarg)+1);
+				strcpy(server, optarg);
 			break;
 			case 'P':
 				port = (unsigned short)atoi(optarg);
@@ -264,6 +266,8 @@ int main(int argc, char **argv) {
 close:
 	json_delete(json);
 	socket_close(sockfd);
+config_gc();
+protocol_gc();
 free(server);
 return EXIT_SUCCESS;
 }

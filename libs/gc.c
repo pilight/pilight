@@ -44,13 +44,15 @@ void gc_attach(int (*fp)(void)) {
 /* Run the GC manually */
 int gc_run(void) {
     unsigned int s;
-	struct collectors_t *temp = gc;
-	while(temp) {
-		if(temp->listener() != 0) {
+
+	while(gc) {
+		if(gc->listener() != 0) {
 			s=1;
 		}
-		temp = temp->next;
+		gc = gc->next;
 	}
+	free(gc);
+	
 	if(s)
 		return EXIT_FAILURE;
 	else

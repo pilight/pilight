@@ -185,7 +185,8 @@ void impulsPrintHelp(void) {
 void impulsInit(void) {
 
 	protocol_register(&impuls);
-	impuls->id = strdup("impuls");
+	impuls->id = malloc(7);
+	strcpy(impuls->id, "impuls");
 	protocol_add_device(impuls, "impuls", "Impuls Switches");
 	protocol_add_device(impuls, "select-remote", "SelectRemote Switches");
 	impuls->type = SWITCH;
@@ -193,7 +194,6 @@ void impulsInit(void) {
 	impuls->footer = 33;
 	impuls->rawLength = 50;
 	//impuls->binLength = 12;
-	impuls->message = malloc(sizeof(JsonNode));
 	//impuls->lsb = 1;
 
 	/*impuls->bit = 0;

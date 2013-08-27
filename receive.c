@@ -42,12 +42,14 @@ int main(int argc, char **argv) {
 
 	log_level_set(LOG_NOTICE);
 
-	progname = strdup("pilight-receive");
+	progname = malloc(16);
+	strcpy(progname, "pilight-receive");
 	struct options_t *options = NULL;
 	
 	JsonNode *json = NULL;
 
-	char *server = strdup("127.0.0.1");
+	char *server = malloc(13);
+	strcpy(server, "127.0.0.1");
 	unsigned short port = PORT;	
 	
     int sockfd = 0;
@@ -83,8 +85,8 @@ int main(int argc, char **argv) {
 				exit(EXIT_SUCCESS);
 			break;
 			case 'S':
-				free(server);
-				server = strdup(optarg);
+				server = realloc(server, strlen(args)+1);
+				strcpy(server, args);
 			break;
 			case 'P':
 				port = (unsigned short)atoi(optarg);
@@ -154,6 +156,8 @@ int main(int argc, char **argv) {
 	}
 close:
 	socket_close(sockfd);
+	
+protocol_gc();
 free(progname);
 free(server);
 free(message);

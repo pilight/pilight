@@ -40,7 +40,7 @@ int loglevel = LOG_INFO;
 char *logfile;
 
 int log_gc(void) {
-	if(lf != NULL) {
+	if(lf) {
 		if(fclose(lf) != 0)
 			return 0;
 	}
@@ -51,7 +51,8 @@ void logprintf(int prio, const char *format_str, ...) {
 	int save_errno = errno;
 	va_list ap;
 	if(logfile == NULL) {
-		logfile = strdup(LOG_FILE);
+		logfile = realloc(logfile, strlen(LOG_FILE)+1);
+		strcpy(logfile, LOG_FILE);
 	}
 	if(filelog == 0 && shelllog == 0)
 		return;
@@ -146,33 +147,38 @@ void log_shell_disable(void) {
 void log_file_set(char *log) {
 	struct stat s;
 	char *filename = basename(log);
-	size_t i = (strlen(log)-strlen(filename));
-	/*
-	 * Valgrind memory leak but don't know why?
-	*/		
-	char *path = strndup(log, i);
-	
+	size_t i = (strlen(log)-strlen(filename));	
+	char *path = malloc(i+1);
+	memset(path, '\0', i+1);
+	strncpy(path, log, i);
+
 	if(strcmp(filename, log) != 0) {
 		int err = stat(path, &s);
 		if(err == -1) {
 			if(ENOENT == errno) {
 				logprintf(LOG_ERR, "the log file folder does not exist", optarg);
+				free(path);
 				exit(EXIT_FAILURE);
 			} else {
 				logprintf(LOG_ERR, "failed to run stat on log folder", optarg);
+				free(path);
 				exit(EXIT_FAILURE);
 			}
 		} else {
 			if(S_ISDIR(s.st_mode)) {
-				logfile = strdup(log);
+				logfile = realloc(logfile, strlen(log)+1);
+				strcpy(logfile, log);
 			} else {
 				logprintf(LOG_ERR, "the log file folder does not exist", optarg);
+				free(path);
 				exit(EXIT_FAILURE);
 			}
 		}
 	} else {
-		logfile = strdup(log);
+		logfile = realloc(logfile, strlen(log)+1);
+		strcpy(logfile, log);
 	}
+	free(path);
 }
 
 void log_level_set(int level) {

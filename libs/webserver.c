@@ -99,18 +99,24 @@ int webserver_callback_http(struct libwebsocket_context *webcontext, struct libw
 			dot = strrchr(request, '.');
 			if(!dot || dot == request) 
 				return -1;
-			ext = strdup(dot+1);
+			ext = malloc(strlen(dot)+1);
+			strcpy(ext, dot+1);
 
 			if(strcmp(ext, "html") == 0) {
-				mimetype = strdup("text/html");
+				mimetype = realloc(mimetype, 10);
+				strcpy(mimetype, "text/html");
 			} else if(strcmp(ext, "png") == 0) {
-				mimetype = strdup("image/png");
+				mimetype = realloc(mimetype, 10);
+				strcpy(mimetype, "image/png");
 			} else if(strcmp(ext, "ico") == 0) {
-				mimetype = strdup("image/x-icon");
+				mimetype = realloc(mimetype, 13);
+				strcpy(mimetype, "image/x-icon");
 			} else if(strcmp(ext, "css") == 0) {
-				mimetype = strdup("text/css");
+				mimetype = realloc(mimetype, 10);
+				strcpy(mimetype, "text/css");
 			} else if(strcmp(ext, "js") == 0) {
-				mimetype = strdup("text/javascript");
+				mimetype = realloc(mimetype, 16);
+				strcpy(mimetype, "text/javascript");
 			}			
 			free(ext);
 			fstat(pss->fd, &sb);
@@ -167,29 +173,31 @@ int webserver_callback_http(struct libwebsocket_context *webcontext, struct libw
 							json_append_member(jsend, "config", jconfig);
 
 							char *output = json_stringify(jsend, NULL);
-							libwebsocket_write(wsi, (unsigned char *)output, strlen(output), LWS_WRITE_TEXT);
+							size_t output_len = strlen(output);
+							unsigned char buf[LWS_SEND_BUFFER_PRE_PADDING + output_len + LWS_SEND_BUFFER_POST_PADDING];
+ 	  						memcpy(&buf[LWS_SEND_BUFFER_PRE_PADDING], output, output_len);
+							libwebsocket_write(wsi, &buf[LWS_SEND_BUFFER_PRE_PADDING], output_len, LWS_WRITE_TEXT);
 
-							/*
-							 * TODO: find a way to free *output, *jsend
-							 * It seems like libwebsocket_write already does memory freeing
-							 */
+							free(output);
+							json_delete(jsend);
 						} else if(strcmp(message, "send") == 0) {
 							/* Write all codes coming from the webserver to the daemon */
 							socket_write(sockfd, (char *)in);
 						}
 					}
-					/*
-					 * TODO: find a way to free *json
-					 */
+					json_delete(json);
 				}
 			}
 		break;
 		case LWS_CALLBACK_CLIENT_RECEIVE:
 		case LWS_CALLBACK_CLIENT_RECEIVE_PONG:
 		case LWS_CALLBACK_CLIENT_WRITEABLE:
-		case LWS_CALLBACK_SERVER_WRITEABLE:
-			/* Push the incoming message to the webgui */
-			m = libwebsocket_write(wsi, (unsigned char *)recvBuff, strlen(recvBuff), LWS_WRITE_TEXT);
+		case LWS_CALLBACK_SERVER_WRITEABLE: {
+			/* Push the incoming message to the webgui */		
+			size_t recvBuff_len = strlen(recvBuff);
+			unsigned char buf[LWS_SEND_BUFFER_PRE_PADDING + recvBuff_len + LWS_SEND_BUFFER_POST_PADDING];
+			memcpy(&buf[LWS_SEND_BUFFER_PRE_PADDING], recvBuff, recvBuff_len);
+			m = libwebsocket_write(wsi, &buf[LWS_SEND_BUFFER_PRE_PADDING], recvBuff_len, LWS_WRITE_TEXT);
 			/*
 			 * It seems like libwebsocket_write already does memory freeing
 			 */	
@@ -197,6 +205,8 @@ int webserver_callback_http(struct libwebsocket_context *webcontext, struct libw
 				logprintf(LOG_ERR, "(webserver) %d writing to di socket", n);
 				return -1;
 			}
+			free(recvBuff);
+		}
 		break;
 		case LWS_CALLBACK_FILTER_PROTOCOL_CONNECTION:
 		case LWS_CALLBACK_OPENSSL_LOAD_EXTRA_CLIENT_VERIFY_CERTS:
@@ -245,8 +255,8 @@ int webserver_callback_http(struct libwebsocket_context *webcontext, struct libw
 void *webserver_clientize(void *param) {
 	steps_t steps = WELCOME;
 	char *message = NULL;
-	server = strdup("localhost");
-	JsonNode *json = json_mkobject();
+	server = malloc(10);
+	strcpy(server, "localhost");
 	int port = 0;
 
 	settings_find_number("port", &port);
@@ -259,13 +269,7 @@ void *webserver_clientize(void *param) {
 	while(1) {
 		if(steps > WELCOME) {
 			/* Clear the receive buffer again and read the welcome message */
-			if((recvBuff = socket_read(sockfd)) != NULL) {
-				json = json_decode(recvBuff);
-				json_find_string(json, "message", &message);
-				/*
-				 * TODO: find a way to free *json
-				 */				
-			} else {
+			if((recvBuff = socket_read(sockfd)) == NULL) {	
 				goto close;
 			}
 		} 	
@@ -274,14 +278,18 @@ void *webserver_clientize(void *param) {
 				socket_write(sockfd, "{\"message\":\"client gui\"}");
 				steps=IDENTIFY;
 			break;
-			case IDENTIFY:
+			case IDENTIFY: {
+				JsonNode *json = json_decode(recvBuff);
+				json_find_string(json, "message", &message);
 				if(strcmp(message, "accept client") == 0) {
 					steps=SYNC;
 				}
 				if(strcmp(message, "reject client") == 0) {
 					steps=REJECT;
 				}
+				json_delete(json);
 				free(recvBuff);
+			}
 			break;
 			case SYNC:
 				/* Push all incoming sync messages to the web gui */
@@ -308,7 +316,8 @@ void *webserver_start(void *param) {
 
 	settings_find_number("webserver-port", &webserver_port);
 	if(settings_find_string("webserver-root", &webserver_root) != 0) {
-		webserver_root = strdup(WEBSERVER_ROOT);
+		webserver_root = malloc(strlen(WEBSERVER_ROOT)+1);
+		strcpy(webserver_root, WEBSERVER_ROOT);
 	}
 	
 	memset(&info, 0, sizeof info);

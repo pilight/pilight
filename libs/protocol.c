@@ -22,10 +22,13 @@
 
 #include "options.h"
 #include "protocol.h"
+#include "log.h"
 
 void protocol_register(protocol_t **proto) {
 	*proto = malloc(sizeof(struct protocol_t));
 	(*proto)->options = NULL;
+	(*proto)->devices = NULL;
+	(*proto)->conflicts = NULL;
 
 	struct protocols_t *pnode = malloc(sizeof(struct protocols_t));
 	pnode->listener = *proto;
@@ -35,15 +38,18 @@ void protocol_register(protocol_t **proto) {
 
 void protocol_add_device(protocol_t *proto, const char *id, const char *desc) {
 	struct devices_t *dnode = malloc(sizeof(struct devices_t));
-	dnode->id = strdup(id);
-	dnode->desc = strdup(desc);
+	dnode->id = malloc(strlen(id)+1);
+	strcpy(dnode->id, id);
+	dnode->desc = malloc(strlen(desc)+1);
+	strcpy(dnode->desc, desc);
 	dnode->next	= proto->devices;
 	proto->devices = dnode;
 }
 
 void protocol_add_conflict(protocol_t *proto, const char *id) {
 	struct conflicts_t *cnode = malloc(sizeof(struct conflicts_t));
-	cnode->id = strdup(id);
+	cnode->id = malloc(strlen(id)+1);
+	strcpy(cnode->id, id);
 	cnode->next	= proto->conflicts;
 	proto->conflicts = cnode;
 }
@@ -81,4 +87,41 @@ int protocol_has_device(protocol_t *proto, const char *id) {
 	}
 	free(temp);
 	return 1;
+}
+
+int protocol_gc(void) {
+	struct protocols_t *stmp;
+	struct devices_t *dtmp;
+	struct conflicts_t *ctmp;
+	while(protocols) {
+		stmp = protocols;
+		free(stmp->listener->id);
+		options_delete(stmp->listener->options);
+		if(stmp->listener->devices) {
+			while(stmp->listener->devices) {
+				dtmp = stmp->listener->devices;
+				free(dtmp->id);
+				free(dtmp->desc);
+				stmp->listener->devices = stmp->listener->devices->next;
+				free(dtmp);
+			}
+		}
+		free(stmp->listener->devices);
+		if(stmp->listener->conflicts) {
+			while(stmp->listener->conflicts) {
+				ctmp = stmp->listener->conflicts;
+				free(ctmp->id);
+				stmp->listener->conflicts = stmp->listener->conflicts->next;
+				free(ctmp);
+			}
+		}
+		free(stmp->listener->conflicts);
+		free(stmp->listener);
+		protocols = protocols->next;
+		free(stmp);
+	}
+	free(protocols);
+
+	logprintf(LOG_DEBUG, "garbage collected protocol library");
+	return EXIT_SUCCESS;
 }

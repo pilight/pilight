@@ -34,11 +34,10 @@
 /* Add a string value to the settings struct */
 void settings_add_string_node(const char *name, char *value) {
 	struct settings_t *snode = malloc(sizeof(struct settings_t));
-	snode->name = strdup(name);
-	snode->value = malloc(sizeof(union value_t));
-	snode->value->cvalue = malloc((strlen(value)*sizeof(char))+1);
-	memset(snode->value->cvalue, '\0', (strlen(value)*sizeof(char))+1);
-	memcpy(snode->value->cvalue, value, strlen(value));
+	snode->name = malloc(strlen(name)+1);
+	strcpy(snode->name, name);
+	snode->value = malloc(strlen(value)+1);
+	strcpy(snode->value, value);
 	snode->type = 2;
 	snode->next = settings;
 	settings = snode;
@@ -47,9 +46,12 @@ void settings_add_string_node(const char *name, char *value) {
 /* Add an int value to the settings struct */
 void settings_add_number_node(const char *name, int value) {
 	struct settings_t *snode = malloc(sizeof(struct settings_t));
-	snode->name = strdup(name);
-	snode->value = malloc(sizeof(union value_t));
-	snode->value->ivalue = value;
+	char ctmp[256];
+	snode->name = malloc(strlen(name)+1);
+	strcpy(snode->name, name);
+	sprintf(ctmp, "%d", value);
+	snode->value = malloc(strlen(ctmp)+1);
+	strcpy(snode->value, ctmp);
 	snode->type = 1;
 	snode->next = settings;
 	settings = snode;
@@ -59,9 +61,9 @@ void settings_add_number_node(const char *name, int value) {
 int settings_find_number(const char *name, int *out) {
 	struct settings_t *tmp_settings = settings;
 
-	while(tmp_settings != NULL) {
+	while(tmp_settings) {
 		if(strcmp(tmp_settings->name, name) == 0 && tmp_settings->type == 1) {
-			*out = tmp_settings->value->ivalue;
+			*out = atoi(tmp_settings->value);
 			return 0;
 		}
 		tmp_settings = tmp_settings->next;
@@ -74,9 +76,9 @@ int settings_find_number(const char *name, int *out) {
 int settings_find_string(const char *name, char **out) {
 	struct settings_t *tmp_settings = settings;
 
-	while(tmp_settings != NULL) {
+	while(tmp_settings) {
 		if(strcmp(tmp_settings->name, name) == 0 && tmp_settings->type == 2) {
-			*out = tmp_settings->value->cvalue;
+			*out = tmp_settings->value;
 			return 0;
 		}
 		tmp_settings = tmp_settings->next;
@@ -149,7 +151,7 @@ int settings_parse(JsonNode *root) {
 				settings_add_number_node(jsettings->key, (int)jsettings->number_);
 			}
 		} else if(strcmp(jsettings->key, "mode") == 0) {
-			if(jsettings->string_ == NULL) {
+			if(!jsettings->string_) {
 				logprintf(LOG_ERR, "setting \"%s\" must be \"server\" or \"client\"", jsettings->key);
 				have_error = 1;
 				goto clear;
@@ -174,7 +176,7 @@ int settings_parse(JsonNode *root) {
 				settings_add_number_node(jsettings->key, (int)jsettings->number_);
 			}
 		} else if(strcmp(jsettings->key, "pid-file") == 0 || strcmp(jsettings->key, "log-file") == 0) {
-			if(jsettings->string_ == NULL) {
+			if(!jsettings->string_) {
 				logprintf(LOG_ERR, "setting \"%s\" must contain an existing file path", jsettings->key);
 				have_error = 1;
 				goto clear;
@@ -188,7 +190,7 @@ int settings_parse(JsonNode *root) {
 				}
 			}
 		} else if(strcmp(jsettings->key, "config-file") == 0 || strcmp(jsettings->key, "process-file") == 0) {
-			if(jsettings->string_ == NULL) {
+			if(!jsettings->string_) {
 				logprintf(LOG_ERR, "setting \"%s\" must contain an existing file path", jsettings->key);
 				have_error = 1;
 				goto clear;
@@ -203,7 +205,7 @@ int settings_parse(JsonNode *root) {
 				}
 			}
 		} else if(strcmp(jsettings->key, "socket") == 0) {
-			if(jsettings->string_ == NULL) {
+			if(!jsettings->string_) {
 				logprintf(LOG_ERR, "setting \"%s\" must point an existing socket", jsettings->key);
 				have_error = 1;
 				goto clear;
@@ -232,7 +234,7 @@ int settings_parse(JsonNode *root) {
 				settings_add_number_node(jsettings->key, (int)jsettings->number_);
 			}
 		} else if(strcmp(jsettings->key, "webserver-root") == 0) {
-			if(jsettings->string_ == NULL) {
+			if(!jsettings->string_) {
 				logprintf(LOG_ERR, "setting \"%s\" must contain a valid path", jsettings->key);
 				have_error = 1;
 				goto clear;
@@ -269,11 +271,11 @@ int settings_parse(JsonNode *root) {
 			JsonNode *jserver = json_find_member(root, "server");
 			JsonNode *jtmp = json_first_child(jserver);
 			int i = 0;
-			while(jtmp != NULL) {
+			while(jtmp) {
 				i++;
 				if(jtmp->tag == JSON_STRING) {
-					free(server_ip);
-					server_ip = strdup(jtmp->string_);
+					server_ip = realloc(server_ip, strlen(jtmp->string_)+1);
+					strcpy(server_ip, jtmp->string_);
 				} else if(jtmp->tag == JSON_NUMBER) {
 					server_port = (int)jtmp->number_;
 				}
@@ -287,7 +289,7 @@ int settings_parse(JsonNode *root) {
 				logprintf(LOG_ERR, "setting \"%s\" must be in the format of [ \"x.x.x.x\", xxxx ]", jsettings->key);
 				have_error = 1;
 				goto clear;
-			} else if(server_ip != NULL && server_port > 0 && is_node == 1) {
+			} else if(strlen(server_ip) > 0 && server_port > 0 && is_node == 1) {
 				settings_add_string_node("server-ip", server_ip);
 				settings_add_number_node("server-port", server_port);
 			} else {	
@@ -342,7 +344,7 @@ int settings_write(char *content) {
 	FILE *fp;
 
 	/* Overwrite config file with proper format */
-	if((fp = fopen(settingsfile, "w+")) == NULL) {
+	if(!(fp = fopen(settingsfile, "w+"))) {
 		logprintf(LOG_ERR, "cannot write settings file: %s", settingsfile);
 		return EXIT_FAILURE;
 	}
@@ -353,6 +355,21 @@ int settings_write(char *content) {
 	return EXIT_SUCCESS;
 }
 
+int settings_gc(void) {
+	struct settings_t *tmp;
+
+	while(settings) {
+		tmp = settings;
+		free(tmp->name);
+		free(tmp->value);
+		settings = settings->next;
+		free(tmp);
+	}
+	free(settings);
+	logprintf(LOG_DEBUG, "garbage collected settings library");
+	return 1;
+}
+
 int settings_read(void) {
 	FILE *fp;
 	char *content;
@@ -361,7 +378,7 @@ int settings_read(void) {
 	struct stat st;
 
 	/* Read JSON config file */
-	if((fp = fopen(settingsfile, "rb")) == NULL) {
+	if(!(fp = fopen(settingsfile, "rb"))) {
 		logprintf(LOG_ERR, "cannot read settings file: %s", settingsfile);
 		return EXIT_FAILURE;
 	}
@@ -369,7 +386,7 @@ int settings_read(void) {
 	fstat(fileno(fp), &st);
 	bytes = (size_t)st.st_size;
 
-	if((content = calloc(bytes+1, sizeof(char))) == NULL) {
+	if(!(content = calloc(bytes+1, sizeof(char)))) {
 		logprintf(LOG_ERR, "out of memory");
 		return EXIT_FAILURE;
 	}
@@ -392,15 +409,18 @@ int settings_read(void) {
 		free(content);
 		return EXIT_FAILURE;
 	}
-	settings_write(json_stringify(root, "\t"));
+	char *output = json_stringify(root, "\t");
+	settings_write(output);
 	json_delete(root);
+	free(output);	
 	free(content);
 	return EXIT_SUCCESS;
 }
 
 int settings_set_file(char *settfile) {
 	if(access(settfile, R_OK | W_OK) != -1) {
-		settingsfile = strdup(settfile);
+		settingsfile = realloc(settingsfile, strlen(settfile)+1);
+		strcpy(settingsfile, settfile);
 	} else {
 		fprintf(stderr, "%s: the settings file %s does not exists\n", progname, settfile);
 		return EXIT_FAILURE;

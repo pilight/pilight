@@ -42,17 +42,18 @@ void arctechOldParseBinary(void) {
 	int i = 0;
 	for(i=0;i<arctech_old->binLength;i++) {
 		// arctech_old->binary[i] = arctech_old->code[(4*i+3)]; // lsb = 3 code for when ParseBinary is replaced by ParseCode
-		if (arctech_old->code[(4*i+0)] != 0) fp = 1;
-		if (arctech_old->code[(4*i+1)] != 1) fp = 1;
-		if (arctech_old->code[(4*i+2)] == arctech_old->code[(4*i+3)]) fp = 1;
+		if((arctech_old->code[(4*i+0)] != 0) || (arctech_old->code[(4*i+1)] != 1)
+			|| (arctech_old->code[(4*i+2)] == arctech_old->code[(4*i+3)])) {
+			fp = 1;
+		}
 	}
-	if (arctech_old->code[48] != 0) fp = 1;
-	if (arctech_old->code[49] != 1) fp = 1;
-	arctech_old->message = NULL;
+	if((arctech_old->code[48] != 0) || (arctech_old->code[49] != 1)) {
+		fp = 1;
+	}
 	int unit = binToDec(arctech_old->binary, 0, 4);
 	int state = arctech_old->binary[11];
 	int id = binToDec(arctech_old->binary, 5, 9);
-	if (fp == 0)
+	if(fp == 0)
 		arctechOldCreateMessage(id, unit, state);
 }
 
@@ -166,7 +167,8 @@ void arctechOldPrintHelp(void) {
 void arctechOldInit(void) {
 
 	protocol_register(&arctech_old);
-	arctech_old->id = strdup("archtech_old");
+	arctech_old->id = malloc(13);
+	strcpy(arctech_old->id, "archtech_old");
 	protocol_add_device(arctech_old, "kaku_old", "Old KlikAanKlikUit Switches");
 	protocol_add_device(arctech_old, "cogex", "Cogex Switches");
 	arctech_old->type = SWITCH;
@@ -174,7 +176,6 @@ void arctechOldInit(void) {
 	arctech_old->footer = 38;
 	arctech_old->rawLength = 50;
 	arctech_old->binLength = 12;
-	arctech_old->message = malloc(sizeof(JsonNode));
 	arctech_old->lsb = 3;
 
 	arctech_old->bit = 0;

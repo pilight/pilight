@@ -214,14 +214,14 @@ void arctechDimPrintHelp(void) {
 void arctechDimInit(void) {
 
 	protocol_register(&arctech_dimmer);
-	arctech_dimmer->id = strdup("archtech_dimmers");
+	arctech_dimmer->id = malloc(18);
+	strcpy(arctech_dimmer->id, "archtech_dimmers");
 	protocol_add_device(arctech_dimmer, "kaku_dimmer", "KlikAanKlikUit Dimmers");
 	arctech_dimmer->type = DIMMER;
 	arctech_dimmer->header = 10;
 	arctech_dimmer->pulse = 5;
 	arctech_dimmer->footer = 38;
 	arctech_dimmer->rawLength = 148;
-	arctech_dimmer->message = malloc(sizeof(JsonNode));
 	arctech_dimmer->lsb = 3;
 
 	arctech_dimmer->bit = 0;

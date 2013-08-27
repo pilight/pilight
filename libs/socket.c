@@ -113,17 +113,17 @@ void socket_close(int sockfd) {
 			}
 		}
 
+		logprintf(LOG_INFO, "client disconnected, ip %s, port %d", inet_ntoa(address.sin_addr), ntohs(address.sin_port));		
 		shutdown(sockfd, SHUT_WR);
 		close(sockfd);
-		logprintf(LOG_INFO, "client disconnected, ip %s, port %d", inet_ntoa(address.sin_addr), ntohs(address.sin_port));
 	}
 }
 
 void socket_write(int sockfd, const char *msg, ...) {
-	char message[BUFFER_SIZE];
 	va_list ap;
 
 	if(strlen(msg) > 0 && sockfd > 0) {
+		char *message = malloc(BUFFER_SIZE);
 		memset(message, '\0', BUFFER_SIZE);
 
 		va_start(ap, msg);
@@ -140,14 +140,15 @@ void socket_write(int sockfd, const char *msg, ...) {
 			// Prevent buffering of messages
 			usleep(100);
 		}
+		free(message);
 	}
 }
 
 void socket_write_big(int sockfd, const char *msg, ...) {
-	char message[BIG_BUFFER_SIZE];
 	va_list ap;
 
 	if(strlen(msg) > 0 && sockfd > 0) {
+		char *message = malloc(BIG_BUFFER_SIZE);
 		memset(message, '\0', BIG_BUFFER_SIZE);
 
 		va_start(ap, msg);
@@ -164,14 +165,16 @@ void socket_write_big(int sockfd, const char *msg, ...) {
 			// Prevent buffering of messages
 			usleep(100);
 		}
+		free(message);
 	}
 }
 
 char *socket_read(int sockfd) {
-	char *recvBuff = malloc((sizeof(char)*BUFFER_SIZE));
+	char *recvBuff = malloc(BUFFER_SIZE);
 	memset(recvBuff, '\0', BUFFER_SIZE);
 
 	if(read(sockfd, recvBuff, BUFFER_SIZE) < 1) {
+		free(recvBuff);
 		return NULL;
 	} else {
 		return recvBuff;
@@ -179,7 +182,7 @@ char *socket_read(int sockfd) {
 }
 
 char *socket_read_big(int sockfd) {
-	char *recvBuff = malloc((sizeof(char)*BIG_BUFFER_SIZE));
+	char *recvBuff = malloc(BIG_BUFFER_SIZE);
 	memset(recvBuff, '\0', BIG_BUFFER_SIZE);
 
 	if(read(sockfd, recvBuff, BIG_BUFFER_SIZE) < 1) {
@@ -204,7 +207,6 @@ void *socket_wait(void *param) {
     int max_sd;
     struct sockaddr_in address;
 	int addrlen = sizeof(address);
-    char readBuff[BUFFER_SIZE];
 	fd_set readfds;
 	char *pch;
 
@@ -259,6 +261,8 @@ void *socket_wait(void *param) {
                 }
             }
         }
+
+		char *readBuff = malloc(BUFFER_SIZE);		
         memset(readBuff, '\0', BUFFER_SIZE);
         //else its some IO operation on some other socket :)
         for(i=0;i<MAX_CLIENTS;i++) {
@@ -266,7 +270,7 @@ void *socket_wait(void *param) {
 
             if(FD_ISSET((long unsigned int)sd , &readfds)) {
                 //Check if it was for closing, and also read the incoming message
-                if((n = (int)read(sd, readBuff, sizeof(readBuff)-1)) == 0) {
+                if((n = (int)read(sd, readBuff, BUFFER_SIZE-1)) == 0) {
                     //Somebody disconnected, get his details and print
                     getpeername(sd, (struct sockaddr*)&address, (socklen_t*)&addrlen);
 					logprintf(LOG_INFO, "client disconnected, ip %s, port %d", inet_ntoa(address.sin_addr), ntohs(address.sin_port));
@@ -292,5 +296,6 @@ void *socket_wait(void *param) {
                 }
             }
         }
+		free(readBuff);
     }
 }

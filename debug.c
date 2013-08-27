@@ -52,12 +52,14 @@ int main(int argc, char **argv) {
 	log_file_disable();
 	log_level_set(LOG_NOTICE);
 
-	progname = strdup("pilight-debug");
+	progname = malloc(15);
+	strcpy(progname, "pilight-debug");
 
 	struct options_t *options = NULL;	
 	
 	lirc_t data;
-	char *socket = strdup("/dev/lirc0");
+	char *socket = malloc(11);
+	strcpy(socket, "/dev/lirc0");
 	int have_device = 0;
 	int use_lirc = USE_LIRC;
 	int gpio_in = GPIO_IN_PIN;
@@ -106,8 +108,8 @@ int main(int argc, char **argv) {
 				return (EXIT_SUCCESS);
 			break;	
 			case 'S':
-				free(socket);
-				socket = strdup(optarg);
+				socket = realloc(socket, strlen(optarg)+1);
+				strcpy(socket, optarg);
 				have_device = 1;
 			break;
 			case 'L':
