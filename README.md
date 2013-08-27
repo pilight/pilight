@@ -2,8 +2,6 @@
 ### If you like my solutions, then don't hesitate to donate:
 <a href="https://www.paypal.com/cgi-bin/webscr?cmd=_donations&business=curlymoo1%40gmail%2ecom&lc=NL&item_name=CurlyMoo&no_note=1&no_shipping=1&currency_code=EUR&bn=PP%2dDonationsBF%3abtn_donateCC_LG%2egif%3aNonHosted" target="_blank">
 <img alt="PayPal" title="PayPal" border="0" src="https://www.paypalobjects.com/nl_NL/NL/i/btn/btn_donateCC_LG.gif" ></a><br />
-<a href="http://flattr.com/thing/1106962/" target="_blank">
-<img src="http://api.flattr.com/button/flattr-badge-large.png" alt="Flattr this" title="Flattr this" border="0" /></a>
 <hr>
 I bought one of these Arduino 433.92Mhz sender and receiver kits for controlling my Klik Aan Klik Uit and Elro devices. 
 They are called "433MHz Superheterodyne 3400 RF Transmitter and Receiver link kit" and can be found on ebay for about $10.
