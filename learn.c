@@ -33,10 +33,10 @@
 #include "log.h"
 #include "options.h"
 #include "wiringPi.h"
-#include "lirc.h"
-#include "lirc/ir_remote.h"
-#include "lirc/hardware.h"
-#include "lirc/hw-types.h"
+#include "libs/lirc/lirc.h"
+#include "libs/lirc/ir_remote.h"
+#include "libs/lirc/hardware.h"
+#include "libs/lirc/hw-types.h"
 #include "irq.h"
 
 typedef enum {

@@ -17,12 +17,12 @@ endif
 ifneq (, $(findstring amd64, $(SYS)))
 	OSFLAGS = -O3 -fPIC -march=native -mtune=native -mfpmath=sse -Wno-conversion
 endif
-CFLAGS = -ffast-math $(OSFLAGS) -Wfloat-equal -Wshadow -Wpointer-arith -Wcast-align -Wstrict-overflow=5 -Wwrite-strings -Waggregate-return -Wcast-qual -Wswitch-default -Wswitch-enum -Wformat=2 -g -Wall -I. -I.. -Ilibs/ -Iprotocols/ -Ilirc/ -I/usr/include/ -L/usr/lib/arm-linux-gnueabihf/ -pthread -lm
-SUBDIRS = libs protocols lirc
+CFLAGS = -ffast-math $(OSFLAGS) -Wfloat-equal -Wshadow -Wpointer-arith -Wcast-align -Wstrict-overflow=5 -Wwrite-strings -Waggregate-return -Wcast-qual -Wswitch-default -Wswitch-enum -Wformat=2 -g -Wall -I. -I.. -Ilibs/pilight/ -Iprotocols/ -Ilibs/lirc/ -I/usr/include/ -L/usr/lib/arm-linux-gnueabihf/ -pthread -lm
+SUBDIRS = libs/pilight protocols libs/lirc libs/websockets
 SRC = $(wildcard *.c)
 INCLUDES = $(wildcard protocols/*.o) $(wildcard lirc/*.o) $(wildcard libs/*.h) $(wildcard libs/*.o)
 PROGAMS = $(patsubst %.c,pilight-%,$(SRC))
-LIBS = libs/libs.o protocols/protocols.o lirc/lirc.o
+LIBS = libs/pilight/libs.o protocols/protocols.o libs/lirc/lirc.o libs/websockets/websockets.o
 
 .PHONY: subdirs $(SUBDIRS)
 
@@ -33,28 +33,28 @@ $(SUBDIRS):
 
 all: $(LIBS) libpilight.so.1 libpilight.a $(PROGAMS) 
 
-libpilight.so.1:
-	$(GCC) $(LIBS) deps/libwebsockets.o -shared -o libpilight.so.1 -lpthread -lm
+libpilight.so.1: $(LIBS)
+	$(GCC) $(LIBS) -shared -o libpilight.so.1 -lpthread -lm
 	
-libpilight.a:
-	$(CROSS_COMPILE)ar -rsc libpilight.a $(LIBS) deps/libwebsockets.o
+libpilight.a: $(LIBS)
+	$(CROSS_COMPILE)ar -rsc libpilight.a $(LIBS)
 
-pilight-daemon: daemon.c $(INCLUDES) $(LIBS)
+pilight-daemon: daemon.c $(INCLUDES) $(LIBS) libpilight.so.1
 	$(GCC) $(CFLAGS) -o $@ $(patsubst pilight-%,%.c,$@) libpilight.so.1
 
-pilight-send: send.c $(INCLUDES) $(LIBS)
+pilight-send: send.c $(INCLUDES) $(LIBS) libpilight.so.1
 	$(GCC) $(CFLAGS) -o $@ $(patsubst pilight-%,%.c,$@) libpilight.so.1
 
-pilight-receive: receive.c $(INCLUDES) $(LIBS)
+pilight-receive: receive.c $(INCLUDES) $(LIBS) libpilight.so.1
 	$(GCC) $(CFLAGS) -o $@ $(patsubst pilight-%,%.c,$@) libpilight.so.1
 
-pilight-debug: debug.c $(INCLUDES) $(LIBS)
+pilight-debug: debug.c $(INCLUDES) $(LIBS) libpilight.so.1
 	$(GCC) $(CFLAGS) -o $@ $(patsubst pilight-%,%.c,$@) libpilight.so.1
 
-pilight-learn: learn.c $(INCLUDES) $(LIBS)
+pilight-learn: learn.c $(INCLUDES) $(LIBS) libpilight.so.1
 	$(GCC) $(CFLAGS) -o $@ $(patsubst pilight-%,%.c,$@) libpilight.so.1
 
-pilight-control: control.c $(INCLUDES) $(LIBS)
+pilight-control: control.c $(INCLUDES) $(LIBS) libpilight.so.1
 	$(GCC) $(CFLAGS) -o $@ $(patsubst pilight-%,%.c,$@) libpilight.so.1
 
 install:
@@ -86,6 +86,13 @@ install:
 	
 	
 clean:
+	rm pilight-* >/dev/null 2>&1 || true
+	rm *pilight*.so* || true
+	rm *pilight*.a* || true
+	$(MAKE) -C libs/ $@; \
+	$(MAKE) -C protocols/ $@; \
+	
+dist-clean:
 	rm pilight-* >/dev/null 2>&1 || true
 	rm *pilight*.so* || true
 	rm *pilight*.a* || true
