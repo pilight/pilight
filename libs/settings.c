@@ -126,7 +126,7 @@ int settings_file_exists(char *filename) {
 int settings_parse(JsonNode *root) {
 	int have_error = 0;
 	int is_node = 0;
-	char *server_ip = malloc(sizeof(char));
+	char *server_ip = malloc(4);
 	int server_port = 0;
 	int web_port = 0;
 	int own_port = 0;

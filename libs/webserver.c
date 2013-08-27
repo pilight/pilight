@@ -100,19 +100,19 @@ int webserver_callback_http(struct libwebsocket_context *webcontext, struct libw
 			strcpy(ext, dot+1);
 
 			if(strcmp(ext, "html") == 0) {
-				mimetype = realloc(mimetype, 10);
+				mimetype = malloc(10);
 				strcpy(mimetype, "text/html");
 			} else if(strcmp(ext, "png") == 0) {
-				mimetype = realloc(mimetype, 10);
+				mimetype = malloc(10);
 				strcpy(mimetype, "image/png");
 			} else if(strcmp(ext, "ico") == 0) {
-				mimetype = realloc(mimetype, 13);
+				mimetype = malloc(13);
 				strcpy(mimetype, "image/x-icon");
 			} else if(strcmp(ext, "css") == 0) {
-				mimetype = realloc(mimetype, 10);
+				mimetype = malloc(10);
 				strcpy(mimetype, "text/css");
 			} else if(strcmp(ext, "js") == 0) {
-				mimetype = realloc(mimetype, 16);
+				mimetype = malloc(16);
 				strcpy(mimetype, "text/javascript");
 			}			
 			free(ext);

@@ -538,7 +538,7 @@ void client_webserver_parse_code(int i, char buffer[BUFFER_SIZE]) {
 	if(getsockname(sd, (struct sockaddr *)&sockin, &len) == -1) {
 		logprintf(LOG_ERR, "could not determine server ip address");
 	} else {
-		ptr = malloc(sizeof(char));
+		ptr = malloc(4);
 		ptr = strstr(buffer, " HTTP/");
 		*ptr = 0;
 		ptr = NULL;	
@@ -1140,7 +1140,7 @@ int main(int argc , char **argv) {
 
 	if(use_lirc == 1) {
 		if(settings_find_string("socket", &hw.device) != 0) {
-			hw.device = realloc(hw.device, strlen(DEFAULT_LIRC_SOCKET)+1);
+			hw.device = malloc(strlen(DEFAULT_LIRC_SOCKET)+1);
 			strcpy(hw.device, DEFAULT_LIRC_SOCKET);
 		}
 	}

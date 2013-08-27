@@ -165,14 +165,14 @@ int options_parse(struct options_t **opt, int argc, char **argv, int error_check
 			free(shortarg);
 		}
 		/* Reservate enough memory to store all variables */
-		longarg = malloc(sizeof(char));
+		longarg = malloc(4);
 		shortarg = malloc(2);
-		*optarg = malloc(sizeof(char));
+		*optarg = malloc(4);
 		
 		/* The memory to null */
-		memset(*optarg, '\0', sizeof(char));
+		memset(*optarg, '\0', 4);
 		memset(shortarg, '\0', 2);
-		memset(longarg, '\0', sizeof(char));
+		memset(longarg, '\0', 4);
 		
 		/* Check if the CLI character contains an equals to (=) sign.
 		   If it does, we have probably encountered a long argument */
@@ -355,13 +355,13 @@ void options_add(struct options_t **opt, int id, const char *name, int argtype, 
 		strcpy(optnode->name, name);
 		optnode->argtype = argtype;
 		optnode->conftype = conftype;
-		optnode->value = malloc(sizeof(char));
+		optnode->value = malloc(4);
 		if(mask) {
 			optnode->mask = malloc(strlen(mask)+1);
 			strcpy(optnode->mask, mask);
 		} else {
-			optnode->mask = malloc(sizeof(char));
-			memset(optnode->mask, '\0', sizeof(char));
+			optnode->mask = malloc(4);
+			memset(optnode->mask, '\0', 4);
 		}
 		optnode->next = *opt;
 		*opt = optnode;
@@ -387,22 +387,22 @@ struct options_t *options_merge(struct options_t **a, struct options_t **b) {
 				optnode->name = malloc(strlen(temp->name)+1);
 				strcpy(optnode->name, temp->name);
 			} else {
-				optnode->name = malloc(sizeof(char));
-				memset(optnode->name, '\0', sizeof(char));
+				optnode->name = malloc(4);
+				memset(optnode->name, '\0', 4);
 			}
 			if(temp->value) {
 				optnode->value = malloc(strlen(temp->value)+1);
 				strcpy(optnode->value, temp->value);
 			} else {
-				optnode->value = malloc(sizeof(char));
-				memset(optnode->value, '\0', sizeof(char));
+				optnode->value = malloc(4);
+				memset(optnode->value, '\0', 4);
 			}
 			if(temp->mask) {
 				optnode->mask = malloc(strlen(temp->mask)+1);
 				strcpy(optnode->mask, temp->mask);		
 			} else {
-				optnode->mask = malloc(sizeof(char));
-				memset(optnode->mask, '\0', sizeof(char));
+				optnode->mask = malloc(4);
+				memset(optnode->mask, '\0', 4);
 			}
 			optnode->argtype = temp->argtype;
 			optnode->conftype = temp->conftype;
