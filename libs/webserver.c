@@ -61,10 +61,7 @@ struct libwebsocket_protocols libwebsocket_protocols[] = {
 };
 
 int webserver_gc(void) {
-	// libwebsocket_context_destroy(context);
 	socket_close(sockfd);
-	free(server);
-	free(webserver_root);
 	return 1;
 }
 
@@ -343,5 +340,6 @@ void *webserver_start(void *param) {
 			libwebsocket_service(context, 50);
 		}
 	}
+	libwebsocket_context_destroy(context);
 	return 0;
 }

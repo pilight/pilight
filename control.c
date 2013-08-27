@@ -244,8 +244,9 @@ int main(int argc, char **argv) {
 							
 							json_append_member(json, "message", json_mkstring("send"));
 							json_append_member(json, "code", jcode);
-
-							socket_write(sockfd, json_stringify(json, NULL));
+							char *output = json_stringify(json, NULL);
+							socket_write(sockfd, output);
+							free(output);
 						} else {
 							logprintf(LOG_ERR, "the device \"%s\" does not exist", device);
 							goto close;

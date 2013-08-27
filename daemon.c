@@ -352,6 +352,10 @@ void control_device(struct conf_devices_t *dev, char *state, JsonNode *values) {
 	JsonNode *code = json_mkobject();
 	JsonNode *json = json_mkobject();
 
+	memset(fval, '\0', 255);
+	memset(cstate, '\0', 255);
+	memset(nstate, '\0', 255);
+	
 	if(strlen(state) > 0) {
 		strcpy(nstate, state);
 	}
@@ -460,7 +464,6 @@ void client_controller_parse_code(int i, JsonNode *json) {
 	char *message = NULL;
 	char *location = NULL;
 	char *device = NULL;
-	char *state = malloc(sizeof(char));
 	char *tmp = NULL;
 	struct conf_locations_t *slocation;
 	struct conf_devices_t *sdevice;
@@ -492,12 +495,13 @@ void client_controller_parse_code(int i, JsonNode *json) {
 				/* Check if the device and location exists in the config file */
 				} else if(config_get_location(location, &slocation) == 0) {
 					if(config_get_device(location, device, &sdevice) == 0) {
+						char *state = malloc(4);
 						if(json_find_string(code, "state", &tmp) == 0) {
 							state = realloc(state, strlen(tmp)+1);
 							strcpy(state, tmp);
 						} else {
-							state = realloc(state, sizeof(char));
-							memset(state, '\0', sizeof(state));
+							state = realloc(state, 4);
+							memset(state, '\0', 4);
 						}
 						/* Send the device code */						
 						values = json_find_member(code, "values");

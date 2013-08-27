@@ -41,8 +41,12 @@ char *logfile;
 
 int log_gc(void) {
 	if(lf) {
-		if(fclose(lf) != 0)
+		if(fclose(lf) != 0) {
 			return 0;
+		}
+		else {
+			lf = NULL;
+		}
 	}
 	return 1;
 }
@@ -73,7 +77,7 @@ void logprintf(int prio, const char *format_str, ...) {
 		currents=ctime(&current);
 
 		if(filelog == 1 && lf != NULL && loglevel < LOG_DEBUG) {
-			fprintf(lf,"[%15.15s] %s: ",currents+4, progname);
+			fprintf(lf, "[%15.15s] %s: ",currents+4, progname);
 			va_start(ap, format_str);
 			if(prio==LOG_WARNING)
 				fprintf(lf,"WARNING: ");

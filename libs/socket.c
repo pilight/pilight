@@ -113,9 +113,9 @@ void socket_close(int sockfd) {
 			}
 		}
 
-		logprintf(LOG_INFO, "client disconnected, ip %s, port %d", inet_ntoa(address.sin_addr), ntohs(address.sin_port));		
 		shutdown(sockfd, SHUT_WR);
 		close(sockfd);
+		logprintf(LOG_INFO, "client disconnected, ip %s, port %d", inet_ntoa(address.sin_addr), ntohs(address.sin_port));				
 	}
 }
 
