@@ -30,6 +30,15 @@ void protocol_register(protocol_t **proto) {
 	(*proto)->devices = NULL;
 	(*proto)->conflicts = NULL;
 
+	(*proto)->header = 0;
+	(*proto)->footer = 0;
+	(*proto)->pulse = 0;
+	(*proto)->rawLength = 0;
+	(*proto)->binLength = 0;
+	(*proto)->lsb = 0;
+	(*proto)->bit = 0;
+	(*proto)->recording = 0;
+	
 	struct protocols_t *pnode = malloc(sizeof(struct protocols_t));
 	pnode->listener = *proto;
 	pnode->next = protocols;

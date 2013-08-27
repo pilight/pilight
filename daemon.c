@@ -766,7 +766,7 @@ void receive_code(void) {
 											}
 											json_delete(message);
 										}
-										json_delete(protocol->message);
+										protocol->message = NULL;
 										free(valid);
 									}
 									continue;
@@ -813,7 +813,7 @@ void receive_code(void) {
 													}
 													json_delete(message);
 												}
-												json_delete(protocol->message);
+												protocol->message = NULL;
 												free(valid);
 											}
 											continue;
@@ -837,7 +837,9 @@ void receive_code(void) {
 											/* Check if the binary matches the binary length */
 											if((protocol->binLength > 0 && ((x/4) == protocol->binLength)) || (protocol->binLength == 0 && ((x/4) == protocol->rawLength/4))) {
 												logprintf(LOG_DEBUG, "called %s parseBinary()", protocol->id);
+												
 												protocol->parseBinary();
+
 												if(protocol->message) {
 													char *valid = json_stringify(protocol->message, NULL);
 													if(json_validate(valid) == true) {
@@ -855,7 +857,7 @@ void receive_code(void) {
 														}
 														json_delete(message);														
 													}
-													json_delete(protocol->message);
+													protocol->message = NULL;
 													free(valid);
 												}
 												continue;
