@@ -39,6 +39,7 @@
 #include "../../protocols/alecto.h"
 #include "../../protocols/raw.h"
 #include "../../protocols/relay.h"
+#include "../../protocols/generic_weather.h"
 
 #include "hardware.h"
 
@@ -58,6 +59,7 @@ void hw_init(void) {
 	relayInit();
 	rawInit();
 	alectoInit();
+	//genWeatherInit();
 }
 
 /* Initialize the hardware module lirc_rpi */

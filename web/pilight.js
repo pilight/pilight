@@ -50,9 +50,11 @@ function createDimmerElement(sTabId, sDevId, sDevName, sDevProto, sState, iDimLe
 }
 
 function createWeatherElement(sTabId, sDevId, sDevName, iTemperature, iHumidity, iBattery) {
-	iOldDimLevel = iDimLevel;
 	oTab = $('#'+sTabId).find('ul');
-	oTab.append($('<li data-icon="false">'+sDevName+'<div class="temperature" id="'+sTabId+'_'+sDevId+'_temp">'+(iTemperature/100)+'</div><div class="degrees">o</div><div class="humidity" id="'+sTabId+'_'+sDevId+'_humi">'+iHumidity+'</div><div class="percentage">%</div><div id="'+sTabId+'_'+sDevId+'_batt" class="battery"></div></li>'));
+	oTab.append($('<li data-icon="false">'+sDevName+'<div class="temperature" id="'+sTabId+'_'+sDevId+'_temp">'+(iTemperature/100)+'</div><div class="degrees">o</div><div class="humidity" id="'+sTabId+'_'+sDevId+'_humi">'+iHumidity+'</div><div class="percentage">%</div></li>'));
+	if(iBattery != -1) {
+		oTab.find('li').append($('<div id="'+sTabId+'_'+sDevId+'_batt" class="battery"></div>'));
+	}
 	if(iBattery) {
 		$('#'+sTabId+'_'+sDevId+'_batt').addClass('green');
 	} else {
@@ -94,7 +96,7 @@ function createGUI(data) {
 						var iDevDimLevel;
 						var sDevProto;
 						var iHumidity;
-						var iBattery;
+						var iBattery = -1;
 						var iTemperature;
 						$.each(dvalues, function(sindex, svalues) {
 							if(sindex == 'name') {

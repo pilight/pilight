@@ -182,9 +182,10 @@ int main(int argc, char **argv) {
 				protocol = pnode->listener;
 				if(protocol->createCode != NULL) {
 					while(protocol->devices) {
-						printf("\t %s\t\t\t",protocol->devices->id);
+						printf("\t %s\t\t",protocol->devices->id);
 						if(strlen(protocol->devices->id)<7)
 							printf("\t");
+						if(strlen(protocol->devices->id)<14)
 						printf("%s\n", protocol->devices->desc);
 						protocol->devices = protocol->devices->next;
 					}
