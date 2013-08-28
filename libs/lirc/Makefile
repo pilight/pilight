@@ -1,21 +1,21 @@
 GCC = $(CROSS_COMPILE)gcc
 SYS := $(shell $(GCC) -dumpmachine)
 ifneq (, $(findstring x86_64, $(SYS)))
-	OSFLAGS = -fPIC -Ofast -march=native -mtune=native -mfpmath=sse
+	OSFLAGS = -fPIC -O0 -march=native -mtune=native -mfpmath=sse
 endif
 ifneq (, $(findstring arm, $(SYS)))
 	ifneq (, $(findstring gnueabihf, $(SYS)))
-		OSFLAGS = -Ofast -mfloat-abi=hard -mfpu=vfp -march=armv6
+		OSFLAGS = -O0 -mfloat-abi=hard -mfpu=vfp -march=armv6
 	endif
 	ifneq (, $(findstring gnueabi, $(SYS)))
-		OSFLAGS = -Ofast -mfloat-abi=hard -mfpu=vfp -march=armv6
+		OSFLAGS = -O0 -mfloat-abi=hard -mfpu=vfp -march=armv6
 	endif	
 	ifneq (, $(findstring gnueabisf, $(SYS)))
-		OSFLAGS = -Ofast -mfloat-abi=soft -mfpu=vfp -march=armv6
+		OSFLAGS = -O0 -mfloat-abi=soft -mfpu=vfp -march=armv6
 	endif
 endif
 ifneq (, $(findstring amd64, $(SYS)))
-	OSFLAGS = -fPIC -O3 -march=native -mtune=native -mfpmath=sse
+	OSFLAGS = -fPIC -O0 -march=native -mtune=native -mfpmath=sse
 endif
 CFLAGS = -ffast-math $(OSFLAGS) -g -Wall -static -I. -I..
 SRC = $(wildcard *.c)

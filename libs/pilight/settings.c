@@ -270,7 +270,7 @@ int settings_parse(JsonNode *root) {
 		} else if(strcmp(jsettings->key, "server") == 0) {
 			JsonNode *jserver = json_find_member(root, "server");
 			JsonNode *jtmp = json_first_child(jserver);
-			int i = 0;
+			unsigned short i = 0;
 			while(jtmp) {
 				i++;
 				if(jtmp->tag == JSON_STRING) {
@@ -285,7 +285,7 @@ int settings_parse(JsonNode *root) {
 				}
 				jtmp = jtmp->next;
 			}
-			if(i > 2) {
+			if(2 < i) {
 				logprintf(LOG_ERR, "setting \"%s\" must be in the format of [ \"x.x.x.x\", xxxx ]", jsettings->key);
 				have_error = 1;
 				goto clear;

@@ -61,6 +61,9 @@ struct libwebsocket_protocols libwebsocket_protocols[] = {
 
 int webserver_gc(void) {
 	loop = 0;
+	if(recvBuff) {
+		free(recvBuff);
+	}
 	socket_close(sockfd);
 	
 	logprintf(LOG_DEBUG, "garbage collected webserver library");
@@ -204,9 +207,12 @@ int webserver_callback_http(struct libwebsocket_context *webcontext, struct libw
 			 */	
 			if (m < n) {
 				logprintf(LOG_ERR, "(webserver) %d writing to di socket", n);
+				free(recvBuff);
+				recvBuff = NULL;
 				return -1;
 			}
 			free(recvBuff);
+			recvBuff = NULL;
 		}
 		break;
 		case LWS_CALLBACK_FILTER_PROTOCOL_CONNECTION:
@@ -290,6 +296,7 @@ void *webserver_clientize(void *param) {
 				}
 				json_delete(json);
 				free(recvBuff);
+				recvBuff = NULL;
 			}
 			break;
 			case SYNC:
