@@ -88,8 +88,8 @@ int config_update(char *protoname, JsonNode *json, JsonNode **out) {
 			dptr = lptr->devices;
 			/* Loop through all devices of this location */
 			have_device = 0;
-			JsonNode *rloc = json_mkarray();
 
+			JsonNode *rloc = json_mkarray();
 			while(dptr) {
 				match1 = 0; match2 = 0;
 
