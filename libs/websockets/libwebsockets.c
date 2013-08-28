@@ -1205,6 +1205,20 @@ libwebsocket_context_destroy(struct libwebsocket_context *context)
 	CRYPTO_cleanup_all_ex_data();
 #endif
 
+	int t = 0;
+
+	for(t=0;t<context->fds_count;t++) {
+		if(context->lws_lookup[context->fds[t].fd]) {
+			if(context->lws_lookup[context->fds[t].fd]->u.ws.rx_user_buffer) {
+				free(context->lws_lookup[context->fds[t].fd]->u.ws.rx_user_buffer);
+			}
+			if(context->lws_lookup[context->fds[t].fd]->user_space) {
+				free(context->lws_lookup[context->fds[t].fd]->user_space);
+			}
+			free(context->lws_lookup[context->fds[t].fd]); 
+		}
+	}
+
 	if (context->fds)
 		free(context->fds);
 	if (context->lws_lookup)

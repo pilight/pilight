@@ -171,7 +171,7 @@ int broadcast(char *protoname, JsonNode *json) {
 	char *message = json_stringify(json, NULL);
 
 	char *escaped = malloc(2 * strlen(message) + 1);
-	JsonNode *jret = json_mkobject();
+	JsonNode *jret = NULL;
 
 	/* Update the config file */
 	if(config_update(protoname, json, &jret) == 0) {
@@ -189,7 +189,9 @@ int broadcast(char *protoname, JsonNode *json) {
 		}
 		free(conf);
 	}
-	json_delete(jret);
+	if(jret != NULL) {
+		json_delete(jret);
+	}
 	broadcasted = 0;
 
 	if(json_validate(message) == true && receivers > 0) {
@@ -236,7 +238,7 @@ void send_code(JsonNode *json) {
 	/* The code that is send to the hardware wrapper */
 	struct ir_ncode code;
 
-	JsonNode *jcode = json_mkobject();
+	JsonNode *jcode = NULL;
 	JsonNode *message = json_mkobject();
 
 	if(!(jcode = json_find_member(json, "code"))) {
@@ -330,7 +332,9 @@ void send_code(JsonNode *json) {
 				sending = 0;
 			}	
 		}
-		json_delete(jcode);
+		if(jcode != NULL) {
+			json_delete(jcode);
+		}
 	}
 }
 
@@ -594,7 +598,7 @@ void socket_parse_data(int i, char buffer[BUFFER_SIZE]) {
 	int addrlen = sizeof(address);
 	char *message;
 	char *incognito;
-	JsonNode *json = json_mkobject();
+	JsonNode *json = NULL;
 	short x = 0;
 
 	getpeername(sd, (struct sockaddr*)&address, (socklen_t*)&addrlen);
@@ -606,70 +610,74 @@ void socket_parse_data(int i, char buffer[BUFFER_SIZE]) {
 	if(strcmp(buffer, "HEART\n") == 0) {
 		socket_write(sd, "BEAT");
 	} else {
-		json = json_decode(buffer);	
-		if(strstr(buffer, " HTTP/")) {
-			logprintf(LOG_INFO, "client recognized as web");
-			handshakes[i] = WEB;
-			client_webserver_parse_code(i, buffer);
-			socket_close(sd);
-		} else if(json_find_string(json, "incognito", &incognito) == 0) {
-			incognito_mode = 1;
-			for(x=0;x<(sizeof(clients)/sizeof(clients[0]));x++) {
-				if(strcmp(clients[x], incognito) == 0) {
-					handshakes[i] = x;
-					break;
-				}
-			}
-		} else if(json_find_string(json, "message", &message) == 0) {
-			if(handshakes[i] != NODE && handshakes[i] != RECEIVER && handshakes[i] > -1) {
-				if(runmode == 2 && sockfd > 0 && strcmp(message, "request config") != 0) {
-					socket_write(sockfd, "{\"incognito\":\"%s\"}", clients[handshakes[i]]);
-					socket_write(sockfd, buffer);
-				}
-			}
-			if(handshakes[i] == NODE) {
-				client_node_parse_code(i, json);
-			} else if(handshakes[i] == SENDER) {
-				client_sender_parse_code(i, json);
-			} else if(handshakes[i] == CONTROLLER || handshakes[i] == GUI) {
-				client_controller_parse_code(i, json);
-			} else {
-				/* Check if we matched a know client type */
+		if(json_validate(buffer) == true) {
+			json = json_decode(buffer);	
+			if(strstr(buffer, " HTTP/")) {
+				logprintf(LOG_INFO, "client recognized as web");
+				handshakes[i] = WEB;
+				client_webserver_parse_code(i, buffer);
+				socket_close(sd);
+			} else if(json_find_string(json, "incognito", &incognito) == 0) {
+				incognito_mode = 1;
 				for(x=0;x<(sizeof(clients)/sizeof(clients[0]));x++) {
-					char *tmp = malloc(8+strlen(clients[x]));
-
-					sprintf(tmp, "client %s", clients[x]);
-					tmp[7+strlen(clients[x])] = '\0';
-
-					if(strcmp(message, tmp) == 0) {
-						socket_write(sd, "{\"message\":\"accept client\"}");
-						logprintf(LOG_INFO, "client recognized as %s", clients[x]);
-						handshakes[i] = x;
-
-						if(handshakes[i] == RECEIVER || handshakes[i] == GUI || handshakes[i] == NODE)
-							receivers++;
-						free(tmp);							
-						break;
-					}
-					free(tmp);
-				}
-			}
-			if(incognito_mode == 1) {
-				for(x=0;x<(sizeof(clients)/sizeof(clients[0]));x++) {
-					if(strcmp(clients[x], "node") == 0) {
+					if(strcmp(clients[x], incognito) == 0) {
 						handshakes[i] = x;
 						break;
 					}
 				}
-				incognito_mode = 0;
+			} else if(json_find_string(json, "message", &message) == 0) {
+				if(handshakes[i] != NODE && handshakes[i] != RECEIVER && handshakes[i] > -1) {
+					if(runmode == 2 && sockfd > 0 && strcmp(message, "request config") != 0) {
+						socket_write(sockfd, "{\"incognito\":\"%s\"}", clients[handshakes[i]]);
+						socket_write(sockfd, buffer);
+					}
+				}
+				if(handshakes[i] == NODE) {
+					client_node_parse_code(i, json);
+				} else if(handshakes[i] == SENDER) {
+					client_sender_parse_code(i, json);
+				} else if(handshakes[i] == CONTROLLER || handshakes[i] == GUI) {
+					client_controller_parse_code(i, json);
+				} else {
+					/* Check if we matched a know client type */
+					for(x=0;x<(sizeof(clients)/sizeof(clients[0]));x++) {
+						char *tmp = malloc(8+strlen(clients[x]));
+
+						sprintf(tmp, "client %s", clients[x]);
+						tmp[7+strlen(clients[x])] = '\0';
+
+						if(strcmp(message, tmp) == 0) {
+							socket_write(sd, "{\"message\":\"accept client\"}");
+							logprintf(LOG_INFO, "client recognized as %s", clients[x]);
+							handshakes[i] = x;
+
+							if(handshakes[i] == RECEIVER || handshakes[i] == GUI || handshakes[i] == NODE)
+								receivers++;
+							free(tmp);							
+							break;
+						}
+						free(tmp);
+					}
+				}
+				if(incognito_mode == 1) {
+					for(x=0;x<(sizeof(clients)/sizeof(clients[0]));x++) {
+						if(strcmp(clients[x], "node") == 0) {
+							handshakes[i] = x;
+							break;
+						}
+					}
+					incognito_mode = 0;
+				}
 			}
-		}
-		if(handshakes[i] == -1 && socket_clients[i] > 0) {
-			socket_write(sd, "{\"message\":\"reject client\"}");
-			socket_close(sd);
+			if(handshakes[i] == -1 && socket_clients[i] > 0) {
+				socket_write(sd, "{\"message\":\"reject client\"}");
+				socket_close(sd);
+			}
 		}
 	}
-	json_delete(json);
+	if(json != NULL) {
+		json_delete(json);
+	}
 }
 
 void socket_client_disconnected(int i) {
@@ -957,7 +965,9 @@ void *clientize(void *param) {
 close:
 	socket_close(sockfd);
 	protocol_gc();
-	webserver_gc();
+	if(webserver_enable == 1) {
+		webserver_gc();
+	}
 	config_gc();
 	gc_run();
 	exit(EXIT_SUCCESS);
@@ -1011,7 +1021,9 @@ int main_gc(void) {
 		}
 	}
 
-	webserver_gc();
+	if(webserver_enable == 1) {
+		webserver_gc();
+	}
 	config_gc();
 	protocol_gc();
 	settings_gc();

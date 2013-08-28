@@ -89,7 +89,7 @@ int config_update(char *protoname, JsonNode *json, JsonNode **out) {
 			/* Loop through all devices of this location */
 			have_device = 0;
 
-			JsonNode *rloc = json_mkarray();
+			JsonNode *rloc = NULL;
 			while(dptr) {
 				match1 = 0; match2 = 0;
 
@@ -168,6 +168,9 @@ int config_update(char *protoname, JsonNode *json, JsonNode **out) {
 										}
 
 										if(have_device == 0) {
+											if(rloc == NULL) {
+												rloc = json_mkarray();
+											}
 											json_append_element(rloc, json_mkstring(dptr->id));
 											have_device = 1;
 										}
@@ -187,7 +190,9 @@ int config_update(char *protoname, JsonNode *json, JsonNode **out) {
 								if(json_find_string(rval, sptr->name, &stmp) != 0) {
 									json_append_member(rval, sptr->name, json_mkstring(sptr->values->value));
 								}
-
+								if(rloc == NULL) {
+									rloc = json_mkarray();
+								}
 								json_append_element(rloc, json_mkstring(dptr->id));
 								have_device = 1;
 								//break;

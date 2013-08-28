@@ -36,8 +36,6 @@
 #include "socket.h"
 #include "webserver.h"
 
-struct libwebsocket_context *context;
-
 struct per_session_data__http {
 	int fd;
 };
@@ -63,7 +61,6 @@ struct libwebsocket_protocols libwebsocket_protocols[] = {
 
 int webserver_gc(void) {
 	loop = 0;
-	libwebsocket_context_destroy(context);
 	socket_close(sockfd);
 	
 	logprintf(LOG_DEBUG, "garbage collected webserver library");
@@ -312,6 +309,7 @@ close:
 
 void *webserver_start(void *param) {
 
+	int n = 0;
 	struct lws_context_creation_info info;
 	pthread_t pth1;
 	pthread_attr_t pattr1;
@@ -331,7 +329,7 @@ void *webserver_start(void *param) {
 	info.gid = -1;
 	info.uid = -1;
 	
-	context = libwebsocket_create_context(&info);
+	struct libwebsocket_context *context = libwebsocket_create_context(&info);
 	if(context == NULL) {
 		lwsl_err("libwebsocket init failed\n");
 	} else {
@@ -341,9 +339,10 @@ void *webserver_start(void *param) {
 		pthread_attr_setdetachstate(&pattr1, PTHREAD_CREATE_DETACHED);		   
 		pthread_create(&pth1, &pattr1, &webserver_clientize, (void *)NULL);
 		/* Main webserver loop */
-		while(loop) {
-			libwebsocket_service(context, 50);
+		while(n >= 0 && loop) {
+			n = libwebsocket_service(context, 50);
 		}
+		libwebsocket_context_destroy(context);
 	}
 	return 0;
 }
