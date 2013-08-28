@@ -29,9 +29,10 @@
 #include <signal.h>
 #include <pthread.h>
 
-#include "libwebsockets.h"
+#include "../websockets/libwebsockets.h"
 #include "gc.h"
 #include "config.h"
+#include "log.h"
 #include "json.h"
 #include "socket.h"
 #include "webserver.h"
@@ -275,6 +276,7 @@ void *webserver_clientize(void *param) {
 		if(steps > WELCOME) {
 			memset(recvBuff, '\0', BUFFER_SIZE);
 			/* Clear the receive buffer again and read the welcome message */
+			/* Used direct read access instead of socket_read */
 			if(read(sockfd, recvBuff, BUFFER_SIZE) < 1) {	
 				goto close;
 			}

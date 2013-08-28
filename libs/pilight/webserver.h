@@ -19,7 +19,7 @@
 #ifndef _WEBSERVER_H_
 #define _WEBSERVER_H_
 
-#include "libwebsockets.h"
+#include "../websockets/libwebsockets.h"
 
 int webserver_gc(void);
 int webserver_callback_http(struct libwebsocket_context *webcontext, struct libwebsocket *wsi, enum libwebsocket_callback_reasons reason, void *user, void *in, size_t len);

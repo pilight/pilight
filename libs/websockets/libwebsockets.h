@@ -986,7 +986,7 @@ libwebsocket_read(struct libwebsocket_context *context,
 					       unsigned char *buf, size_t len);
 
 #ifndef LWS_NO_EXTENSIONS
-LWS_VISIBLE LWS_EXTERN struct libwebsocket_extension *libwebsocket_get_internal_extensions();
+LWS_VISIBLE LWS_EXTERN struct libwebsocket_extension *libwebsocket_get_internal_extensions(void);
 #endif
 
 #ifdef __cplusplus
