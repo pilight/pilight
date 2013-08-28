@@ -262,15 +262,17 @@ void *socket_wait(void *param) {
             }
         }
 
-		char *readBuff = malloc(BUFFER_SIZE);		
-        memset(readBuff, '\0', BUFFER_SIZE);
         //else its some IO operation on some other socket :)
         for(i=0;i<MAX_CLIENTS;i++) {
 			sd = socket_clients[i];
 
             if(FD_ISSET((long unsigned int)sd , &readfds)) {
                 //Check if it was for closing, and also read the incoming message
+				
+				char *readBuff = malloc(BUFFER_SIZE);		
+				memset(readBuff, '\0', BUFFER_SIZE);				
                 if((n = (int)read(sd, readBuff, BUFFER_SIZE-1)) == 0) {
+					free(readBuff);
                     //Somebody disconnected, get his details and print
                     getpeername(sd, (struct sockaddr*)&address, (socklen_t*)&addrlen);
 					logprintf(LOG_INFO, "client disconnected, ip %s, port %d", inet_ntoa(address.sin_addr), ntohs(address.sin_port));
@@ -289,13 +291,12 @@ void *socket_wait(void *param) {
 							strcat(pch, "\n");
 							socket_callback->client_data_callback(i, pch);
 							pch = strtok(NULL, "\n");
-							if(pch == NULL)
-								break;
 						}
+						free(readBuff);
+						readBuff = NULL;
 					}
                 }
             }
         }
-		free(readBuff);
     }
 }

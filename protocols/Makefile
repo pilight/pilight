@@ -31,5 +31,7 @@ all: $(OBJS) protocols.o
 protocols.o: $(OBJS)
 	$(CROSS_COMPILE)ld -L/usr/local/lib -r $(OBJS) -o protocols.o
 
+dist-clean: clean
+	
 clean:
 	rm *.o >/dev/null 2>&1 || true

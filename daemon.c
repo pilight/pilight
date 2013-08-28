@@ -174,7 +174,7 @@ int broadcast(char *protoname, JsonNode *json) {
 	JsonNode *jret = json_mkobject();
 
 	/* Update the config file */
-	if(config_update(protoname, json, jret) == 0) {
+	if(config_update(protoname, json, &jret) == 0) {
 		char *conf = json_stringify(jret, NULL);
 
 		for(i=0;i<MAX_CLIENTS;i++) {
@@ -241,8 +241,10 @@ void send_code(JsonNode *json) {
 
 	if(!(jcode = json_find_member(json, "code"))) {
 		logprintf(LOG_ERR, "sender did not send any codes");
+		json_delete(jcode);
 	} else if(json_find_string(jcode, "protocol", &name) != 0) {
 		logprintf(LOG_ERR, "sender did not provide a protocol name");
+		json_delete(jcode);
 	} else {
 		struct protocols_t *pnode = protocols;
 		/* Retrieve the used protocol */
@@ -259,6 +261,7 @@ void send_code(JsonNode *json) {
 		/* If we matched a protocol and are not already sending, continue */
 		if(match == 1 && sending == 0 && protocol->createCode && send_repeat > 0) {
 			/* Let the protocol create his code */
+			
 			if(protocol->createCode(jcode) == 0) {
 				if(protocol->message) {
 					char *valid = json_stringify(protocol->message, NULL);
@@ -325,8 +328,9 @@ void send_code(JsonNode *json) {
 					}
 				}
 				sending = 0;
-			}
+			}	
 		}
+		json_delete(jcode);
 	}
 }
 
@@ -434,7 +438,6 @@ void control_device(struct conf_devices_t *dev, char *state, JsonNode *values) {
 	
 	send_code(json);
 
-	json_delete(code);
 	json_delete(json);
 }
 
@@ -445,18 +448,15 @@ void client_node_parse_code(int i, JsonNode *json) {
 	if(json_find_string(json, "message", &message) == 0) {
 		/* Send the config file to the controller */
 		if(strcmp(message, "request config") == 0) {
-			json_delete(json);
-			json = json_mkobject();
+			JsonNode *jsend = json_mkobject();
 			JsonNode *joutput = config2json();
-			json_append_member(json, "config", joutput);
-			free(joutput);
-			joutput = NULL;
-			char *output = json_stringify(json, NULL);
+			json_append_member(jsend, "config", joutput);
+			char *output = json_stringify(jsend, NULL);
 			socket_write_big(sd, output);
 			free(output);
+			json_delete(jsend);
 		}
 	}
-	json_delete(json);
 }
 
 void client_controller_parse_code(int i, JsonNode *json) {
@@ -473,13 +473,12 @@ void client_controller_parse_code(int i, JsonNode *json) {
 	if(json_find_string(json, "message", &message) == 0) {
 		/* Send the config file to the controller */
 		if(strcmp(message, "request config") == 0) {
-			json = json_mkobject();
+			JsonNode *jsend = json_mkobject();
 			JsonNode *joutput = config2json();
-			json_append_member(json, "config", joutput);
-			char *output = json_stringify(json, NULL);
+			json_append_member(jsend, "config", joutput);
+			char *output = json_stringify(jsend, NULL);
 			socket_write_big(sd, output);
-			json_delete(joutput);
-			joutput = NULL;			
+			json_delete(jsend);		
 			free(output);
 		/* Control a specific device */
 		} else if(strcmp(message, "send") == 0) {
@@ -604,11 +603,10 @@ void socket_parse_data(int i, char buffer[BUFFER_SIZE]) {
 		logprintf(LOG_DEBUG, "socket recv: %s", buffer);
 	}
 
-	json = json_decode(buffer);
-
 	if(strcmp(buffer, "HEART\n") == 0) {
 		socket_write(sd, "BEAT");
 	} else {
+		json = json_decode(buffer);	
 		if(strstr(buffer, " HTTP/")) {
 			logprintf(LOG_INFO, "client recognized as web");
 			handshakes[i] = WEB;
@@ -650,6 +648,7 @@ void socket_parse_data(int i, char buffer[BUFFER_SIZE]) {
 
 						if(handshakes[i] == RECEIVER || handshakes[i] == GUI || handshakes[i] == NODE)
 							receivers++;
+						free(tmp);							
 						break;
 					}
 					free(tmp);
@@ -896,7 +895,7 @@ void *clientize(void *param) {
 		logprintf(LOG_ERR, "could not connect to pilight-daemon");
 		exit(EXIT_FAILURE);
 	}
-		
+	free(server);		
 	while(1) {
 		if(steps > WELCOME) {
 			/* Clear the receive buffer again and read the welcome message */
@@ -957,8 +956,8 @@ void *clientize(void *param) {
 	}
 close:
 	socket_close(sockfd);
-	free(server);
 	protocol_gc();
+	webserver_gc();
 	config_gc();
 	gc_run();
 	exit(EXIT_SUCCESS);
@@ -1012,6 +1011,7 @@ int main_gc(void) {
 		}
 	}
 
+	webserver_gc();
 	config_gc();
 	protocol_gc();
 	settings_gc();

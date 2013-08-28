@@ -139,7 +139,7 @@ SHA1(const unsigned char *d, size_t n, unsigned char *md);
 #endif
 
 #define MAX_WEBSOCKET_04_KEY_LEN 128
-#define LWS_MAX_SOCKET_IO_BUF 4096
+#define LWS_MAX_SOCKET_IO_BUF 10240
 
 #ifndef SYSTEM_RANDOM_FILEPATH
 #define SYSTEM_RANDOM_FILEPATH "/dev/urandom"

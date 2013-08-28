@@ -47,6 +47,7 @@ char *webserver_root;
 int sockfd = 0;
 char *recvBuff = NULL;
 char *server;
+int loop = 1;
 
 typedef enum {
 	WELCOME,
@@ -61,7 +62,11 @@ struct libwebsocket_protocols libwebsocket_protocols[] = {
 };
 
 int webserver_gc(void) {
+	loop = 0;
+	libwebsocket_context_destroy(context);
 	socket_close(sockfd);
+	
+	logprintf(LOG_DEBUG, "garbage collected webserver library");
 	return 1;
 }
 
@@ -139,8 +144,10 @@ int webserver_callback_http(struct libwebsocket_context *webcontext, struct libw
 			// } else {
 						// }
 			if(libwebsockets_serve_http_file(webcontext, wsi, request, mimetype)) {
-				return -1;
+				free(request);
+				free(mimetype);
 				libwebsocket_callback_on_writable(webcontext, wsi);
+				return -1;
 			}
 			free(request);
 			free(mimetype);
@@ -262,7 +269,7 @@ void *webserver_clientize(void *param) {
 		logprintf(LOG_ERR, "could not connect to pilight-daemon");
 		exit(EXIT_FAILURE);
 	}	
-
+	free(server);
 	while(1) {
 		if(steps > WELCOME) {
 			/* Clear the receive buffer again and read the welcome message */
@@ -299,13 +306,11 @@ void *webserver_clientize(void *param) {
 		}
 	}
 close:
-	socket_close(sockfd);	
+	webserver_gc();
 	return 0;
 }
 
 void *webserver_start(void *param) {
-
-	gc_attach(webserver_gc);
 
 	struct lws_context_creation_info info;
 	pthread_t pth1;
@@ -336,10 +341,9 @@ void *webserver_start(void *param) {
 		pthread_attr_setdetachstate(&pattr1, PTHREAD_CREATE_DETACHED);		   
 		pthread_create(&pth1, &pattr1, &webserver_clientize, (void *)NULL);
 		/* Main webserver loop */
-		while(1) {
+		while(loop) {
 			libwebsocket_service(context, 50);
 		}
 	}
-	libwebsocket_context_destroy(context);
 	return 0;
 }

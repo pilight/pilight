@@ -35,6 +35,8 @@ wiringPi.o: wiringPi.c wiringPi.h
 
 libs.o: $(OBJS)
 	$(CROSS_COMPILE)ld -L/usr/local/lib -r $(OBJS) -o libs.o
-	
+
+dist-clean: clean
+
 clean:
 	rm *.o >/dev/null 2>&1 || true

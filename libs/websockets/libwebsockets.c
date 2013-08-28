@@ -2288,19 +2288,10 @@ libwebsocket_ensure_user_space(struct libwebsocket *wsi)
 	return 0;
 }
 
-char *choppy(const char *s )
-{
-    char *n = malloc( strlen( s ? s : "\n" ) );
-    if( s )
-        strcpy( n, s );
-    n[strlen(n)-1]='\0';
-    return n;
-}
-
 static void lwsl_emit_stderr(int level, const char *line)
 {
-	char newline[255];
-	char newline1[255];
+	char *newline = NULL;
+	char *strline = NULL;
 	switch (level) {
 		case LLL_ERR:
 			level = LOG_ERR;
@@ -2317,9 +2308,23 @@ static void lwsl_emit_stderr(int level, const char *line)
 		default:
 		break;
 	}
-	strcpy(newline, choppy(line));
-	sprintf(newline1, "%s %s", "(webserver)", newline);
-	logprintf(level, newline1);
+
+	/* Remove newlines from log */
+	int i=0, x=0;
+    int len = strlen(line)+1;
+	strline = malloc(len);
+    for(i=0;i<len;i++) {
+        if(line[i] != '\n') {
+            strcpy(&strline[i-x], (char *)&line[i]);
+        } else {
+			x++;
+		}
+    }
+	newline = malloc(14+strlen(strline));
+	sprintf(newline, "%s %s", "(webserver)", strline);
+	logprintf(level, newline);
+	free(strline);
+	free(newline);
 }
 
 #ifdef WIN32

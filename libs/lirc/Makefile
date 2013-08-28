@@ -30,5 +30,7 @@ all: $(OBJS) lirc.o
 lirc.o: $(OBJS)
 	$(CROSS_COMPILE)ld -L/usr/local/lib -r $(OBJS) -o lirc.o
 
+dist-clean: clean	
+
 clean:
 	rm *.o >/dev/null 2>&1 || true

@@ -31,14 +31,14 @@
 #include "log.h"
 
 #include "protocol.h"
-#include "protocols/arctech_switch.h"
-#include "protocols/arctech_dimmer.h"
-#include "protocols/arctech_old.h"
-#include "protocols/sartano.h"
-#include "protocols/impuls.h"
-#include "protocols/alecto.h"
-#include "protocols/raw.h"
-#include "protocols/relay.h"
+#include "../../protocols/arctech_switch.h"
+#include "../../protocols/arctech_dimmer.h"
+#include "../../protocols/arctech_old.h"
+#include "../../protocols/sartano.h"
+#include "../../protocols/impuls.h"
+#include "../../protocols/alecto.h"
+#include "../../protocols/raw.h"
+#include "../../protocols/relay.h"
 
 #include "hardware.h"
 

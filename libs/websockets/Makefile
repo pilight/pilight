@@ -30,5 +30,7 @@ all: $(OBJS) websockets.o
 websockets.o: $(OBJS)
 	$(CROSS_COMPILE)ld -L/usr/local/lib -r $(OBJS) -o websockets.o
 
+dist-clean: clean
+
 clean:
 	rm *.o >/dev/null 2>&1 || true
