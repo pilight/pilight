@@ -44,6 +44,7 @@ int webserver_port = WEBSERVER_PORT;
 char *webserver_root;
 int sockfd = 0;
 char *recvBuff = NULL;
+char *syncBuff = NULL;
 char *server;
 int loop = 1;
 
@@ -61,11 +62,9 @@ struct libwebsocket_protocols libwebsocket_protocols[] = {
 
 int webserver_gc(void) {
 	loop = 0;
-	if(recvBuff) {
-		free(recvBuff);
-	}
+	free(recvBuff);
 	socket_close(sockfd);
-	
+
 	logprintf(LOG_DEBUG, "garbage collected webserver library");
 	return 1;
 }
@@ -178,10 +177,10 @@ int webserver_callback_http(struct libwebsocket_context *webcontext, struct libw
 
 							char *output = json_stringify(jsend, NULL);
 							size_t output_len = strlen(output);
-							unsigned char buf[LWS_SEND_BUFFER_PRE_PADDING + output_len + LWS_SEND_BUFFER_POST_PADDING];
+							unsigned char *buf = malloc(LWS_SEND_BUFFER_PRE_PADDING + output_len + LWS_SEND_BUFFER_POST_PADDING);
  	  						memcpy(&buf[LWS_SEND_BUFFER_PRE_PADDING], output, output_len);
 							libwebsocket_write(wsi, &buf[LWS_SEND_BUFFER_PRE_PADDING], output_len, LWS_WRITE_TEXT);
-
+							free(buf);
 							free(output);
 							json_delete(jsend);
 						} else if(strcmp(message, "send") == 0) {
@@ -197,22 +196,20 @@ int webserver_callback_http(struct libwebsocket_context *webcontext, struct libw
 		case LWS_CALLBACK_CLIENT_RECEIVE_PONG:
 		case LWS_CALLBACK_CLIENT_WRITEABLE:
 		case LWS_CALLBACK_SERVER_WRITEABLE: {
-			/* Push the incoming message to the webgui */		
-			size_t recvBuff_len = strlen(recvBuff);
-			unsigned char buf[LWS_SEND_BUFFER_PRE_PADDING + recvBuff_len + LWS_SEND_BUFFER_POST_PADDING];
-			memcpy(&buf[LWS_SEND_BUFFER_PRE_PADDING], recvBuff, recvBuff_len);
-			m = libwebsocket_write(wsi, &buf[LWS_SEND_BUFFER_PRE_PADDING], recvBuff_len, LWS_WRITE_TEXT);
+			/* Push the incoming message to the webgui */
+			size_t syncBuff_len = strlen(syncBuff);
+			unsigned char *buf = malloc(LWS_SEND_BUFFER_PRE_PADDING + syncBuff_len + LWS_SEND_BUFFER_POST_PADDING);
+			memcpy(&buf[LWS_SEND_BUFFER_PRE_PADDING], syncBuff, syncBuff_len);
+			m = libwebsocket_write(wsi, &buf[LWS_SEND_BUFFER_PRE_PADDING], syncBuff_len, LWS_WRITE_TEXT);
+			free(buf);
+			free(syncBuff);
 			/*
 			 * It seems like libwebsocket_write already does memory freeing
 			 */	
 			if (m < n) {
 				logprintf(LOG_ERR, "(webserver) %d writing to di socket", n);
-				free(recvBuff);
-				recvBuff = NULL;
 				return -1;
 			}
-			free(recvBuff);
-			recvBuff = NULL;
 		}
 		break;
 		case LWS_CALLBACK_FILTER_PROTOCOL_CONNECTION:
@@ -271,15 +268,17 @@ void *webserver_clientize(void *param) {
 	if((sockfd = socket_connect(server, (short unsigned int)port)) == -1) {
 		logprintf(LOG_ERR, "could not connect to pilight-daemon");
 		exit(EXIT_FAILURE);
-	}	
+	}
+	recvBuff = malloc(BUFFER_SIZE);
 	free(server);
 	while(1) {
 		if(steps > WELCOME) {
+			memset(recvBuff, '\0', BUFFER_SIZE);
 			/* Clear the receive buffer again and read the welcome message */
-			if((recvBuff = socket_read(sockfd)) == NULL) {	
+			if(read(sockfd, recvBuff, BUFFER_SIZE) < 1) {	
 				goto close;
 			}
-		} 	
+		}
 		switch(steps) {
 			case WELCOME:
 				socket_write(sockfd, "{\"message\":\"client gui\"}");
@@ -295,11 +294,11 @@ void *webserver_clientize(void *param) {
 					steps=REJECT;
 				}
 				json_delete(json);
-				free(recvBuff);
-				recvBuff = NULL;
 			}
 			break;
-			case SYNC:
+			case SYNC:			
+				syncBuff = malloc(strlen(recvBuff)+1);
+				strcpy(syncBuff, recvBuff);
 				/* Push all incoming sync messages to the web gui */
 				libwebsocket_callback_on_writable_all_protocol(&libwebsocket_protocols[0]);
 			break;				
