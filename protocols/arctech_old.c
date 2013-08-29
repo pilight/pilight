@@ -41,18 +41,18 @@ void arctechOldParseBinary(void) {
 	int fp = 0;
 	int i = 0;
 	for(i=0;i<arctech_old->binLength;i++) {
-		// arctech_old->binary[i] = arctech_old->code[(4*i+3)]; // lsb = 3 code for when ParseBinary is replaced by ParseCode
 		if((arctech_old->code[(4*i+0)] != 0) || (arctech_old->code[(4*i+1)] != 1)
 			|| (arctech_old->code[(4*i+2)] == arctech_old->code[(4*i+3)])) {
 			fp = 1;
 		}
 	}
-	if((arctech_old->code[48] != 0) || (arctech_old->code[49] != 1)) {
+	if((arctech_old->code[38] != 1) || (arctech_old->code[42] != 1)
+		|| (arctech_old->code[48] != 0) || (arctech_old->code[49] != 1)) {
 		fp = 1;
 	}
-	int unit = binToDec(arctech_old->binary, 0, 4);
-	int state = arctech_old->binary[11];
-	int id = binToDec(arctech_old->binary, 5, 9);
+	int unit = binToDec(arctech_old->binary, 0, 3);
+	int state = !arctech_old->binary[11];
+	int id = binToDec(arctech_old->binary, 4, 8);
 	if(fp == 0)
 		arctechOldCreateMessage(id, unit, state);
 }
@@ -80,7 +80,8 @@ void arctechOldCreateHigh(int s, int e) {
 }
 
 void arctechOldClearCode(void) {
-	arctechOldCreateLow(0,47);
+	arctechOldCreateHigh(0,34);
+	arctechOldCreateLow(35,47);
 }
 
 void arctechOldCreateUnit(int unit) {
@@ -92,7 +93,7 @@ void arctechOldCreateUnit(int unit) {
 	for(i=0;i<=length;i++) {
 		if(binary[i]==1) {
 			x=i*4;
-			arctechOldCreateHigh(x, x+3);
+			arctechOldCreateLow(x, x+3);
 		}
 	}
 }
@@ -106,13 +107,13 @@ void arctechOldCreateId(int id) {
 	for(i=0;i<=length;i++) {
 		if(binary[i]==1) {
 			x=i*4;
-			arctechOldCreateHigh(20+x, 20+x+3);
+			arctechOldCreateLow(20+x, 20+x+3);
 		}
 	}
 }
 
 void arctechOldCreateState(int state) {
-	if(state == 0) {
+	if(state == 1) {
 		arctechOldCreateHigh(44,47);
 	}
 }
@@ -171,12 +172,13 @@ void arctechOldInit(void) {
 	strcpy(arctech_old->id, "archtech_old");
 	protocol_add_device(arctech_old, "kaku_old", "Old KlikAanKlikUit Switches");
 	protocol_add_device(arctech_old, "cogex", "Cogex Switches");
+	protocol_add_device(arctech_old, "intertechno", "Intertechno (PA3) Switches");
 	arctech_old->type = SWITCH;
 	arctech_old->pulse = 3;
 	arctech_old->footer = 38;
 	arctech_old->rawLength = 50;
 	arctech_old->binLength = 12;
-	arctech_old->lsb = 3;
+	arctech_old->lsb = 2;
 
 	arctech_old->bit = 0;
 	arctech_old->recording = 0;
