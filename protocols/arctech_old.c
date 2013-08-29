@@ -113,7 +113,7 @@ void arctechOldCreateId(int id) {
 }
 
 void arctechOldCreateState(int state) {
-	if(state == 1) {
+	if(state == 0) {
 		arctechOldCreateHigh(44,47);
 	}
 }
