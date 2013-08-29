@@ -80,8 +80,8 @@ void arctechOldCreateHigh(int s, int e) {
 }
 
 void arctechOldClearCode(void) {
-	arctechOldCreateHigh(0,34);
-	arctechOldCreateLow(35,47);
+	arctechOldCreateHigh(0,35);
+	arctechOldCreateLow(36,47);
 }
 
 void arctechOldCreateUnit(int unit) {
