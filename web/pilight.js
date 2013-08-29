@@ -1,7 +1,7 @@
 var websocket;
 var bConnected = false;
 
-function createSwitchElement(sTabId, sDevId, sDevName, sState) {
+function createSwitchElement(sTabId, sDevId, sDevName, sDevProto, sState) {
 	oTab = $('#'+sTabId).find('ul');
 	oTab.append($('<li data-icon="false">'+sDevName+'<select id="'+sTabId+'_'+sDevId+'_switch" data-role="slider"><option value="off">Off</option><option value="on">On</option></select></li>'));
 	$('#'+sTabId+'_'+sDevId+'_switch').slider();
@@ -49,10 +49,10 @@ function createDimmerElement(sTabId, sDevId, sDevName, sDevProto, sState, iDimLe
 	}
 }
 
-function createWeatherElement(sTabId, sDevId, sDevName, iTemperature, iHumidity, iBattery) {
+function createWeatherElement(sTabId, sDevId, sDevName, sDevProto, iTemperature, iHumidity, iBattery) {
 	oTab = $('#'+sTabId).find('ul');
 	oTab.append($('<li data-icon="false">'+sDevName+'<div class="temperature" id="'+sTabId+'_'+sDevId+'_temp">'+(iTemperature/100)+'</div><div class="degrees">o</div><div class="humidity" id="'+sTabId+'_'+sDevId+'_humi">'+iHumidity+'</div><div class="percentage">%</div></li>'));
-	if(iBattery != -1) {
+	if(sDevProto == "alecto") {
 		oTab.find('li').append($('<div id="'+sTabId+'_'+sDevId+'_batt" class="battery"></div>'));
 	}
 	if(iBattery) {
@@ -96,7 +96,7 @@ function createGUI(data) {
 						var iDevDimLevel;
 						var sDevProto;
 						var iHumidity;
-						var iBattery = -1;
+						var iBattery;
 						var iTemperature;
 						$.each(dvalues, function(sindex, svalues) {
 							if(sindex == 'name') {
@@ -118,11 +118,11 @@ function createGUI(data) {
 							}
 						});
 						if(iDevType == 1) {
-							createSwitchElement(lindex, dindex, sDevName, sDevState);
+							createSwitchElement(lindex, dindex, sDevName, sDevProto, sDevState);
 						} else if(iDevType == 2) {
 							createDimmerElement(lindex, dindex, sDevName, sDevProto, sDevState, iDimLevel);
 						} else if(iDevType == 3) {
-							createWeatherElement(lindex, dindex, sDevName, iTemperature, iHumidity, iBattery);
+							createWeatherElement(lindex, dindex, sDevName, sDevProto, iTemperature, iHumidity, iBattery);
 						}
 					}
 				});

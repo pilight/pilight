@@ -59,7 +59,7 @@ void hw_init(void) {
 	relayInit();
 	rawInit();
 	alectoInit();
-	//genWeatherInit();
+	genWeatherInit();
 }
 
 /* Initialize the hardware module lirc_rpi */

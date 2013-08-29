@@ -410,6 +410,7 @@ JsonNode *config2json(void) {
 
 		dorder = 0;
 		tmp_devices = tmp_locations->devices;
+
 		while(tmp_devices) {
 			dorder++;
 			device = json_mkobject();
@@ -438,21 +439,21 @@ JsonNode *config2json(void) {
 						}
 						tmp_values = tmp_values->next;
 					}
+					free(tmp_values);
 					json_append_member(device, tmp_settings->name, setting);
 				}
 				tmp_settings = tmp_settings->next;
 			}
+			free(tmp_settings);
 			json_append_member(location, tmp_devices->id, device);
 			tmp_devices = tmp_devices->next;
 		}
+		free(tmp_devices);
 		json_append_member(root, tmp_locations->id, location);
 		tmp_locations = tmp_locations->next;
 	}
 
 	free(tmp_locations);
-	free(tmp_devices);
-	free(tmp_settings);
-	free(tmp_values);
 
 	return root;
 }

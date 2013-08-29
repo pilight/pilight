@@ -73,7 +73,7 @@ void genWeatherInit(void) {
 	options_add(&generic_weather->options, 'h', "humidity", has_value, config_value, "[0-9]");
 	options_add(&generic_weather->options, 't', "temperature", has_value, config_value, "[0-9]");
 	options_add(&generic_weather->options, 'i', "id", has_value, config_id, "[0-9]");
-	
+
 	generic_weather->printHelp=&genWeatherPrintHelp;
 	generic_weather->createCode=&genWeatherCreateCode;
 }
