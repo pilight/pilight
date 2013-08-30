@@ -43,7 +43,7 @@ div.battery.green {
 }
 
 div.temperature {
-	right: 85px;
+	right: 100px;
 }
 
 div.humidity {
@@ -59,7 +59,7 @@ div.degrees, div.percentage {
 
 div.degrees {
 	top: 6px;
-	right: 80px;
+	right: 95px;
 }
 
 div.percentage {
