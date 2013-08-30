@@ -56,8 +56,8 @@ function createWeatherElement(sTabId, sDevId, sDevName, sDevProto, iTemperature,
 	    iPrecisionHumidity = 1;
 	}
         else {
-	    iPrecisionTemperature = Math.pow(10, iPrecisionTemperature);
-	    iPrecisionHumidity = Math.pow(10, iPrecisionHumidity); 
+	    iPrecisionTemperature = Math.round(Math.pow(10, iPrecisionTemperature));
+	    iPrecisionHumidity = Math.round(Math.pow(10, iPrecisionHumidity)); 
 	}
         iTemperature /= iPrecisionTemperature;
         iHumidity /= iPrecisionHumidity;
@@ -231,14 +231,14 @@ $(document).ready(function() {
 					} else if(iType == 3) {
 						if(vindex == 'temperature') {
 						    if (aValues.hasOwnProperty("precision_temperature")) {
-							vvalues /= Math.pow(10, aValues.precision_temperature);
+							vvalues /= Math.round(Math.pow(10, aValues.precision_temperature));
 						    } else {
 							vvalues /= 10; //assume alecto??
 						    }
 						    $('#'+lindex+'_'+lvalues+'_temp').text(vvalues);
 						} else if(vindex == 'humidity') {
 						    if (aValues.hasOwnProperty("precision_humidity")) {
-							vvalues /= Math.pow(10, aValues.precision_humidity);
+							vvalues /= Math.round(Math.pow(10, aValues.precision_humidity));
   						    } else {
 							vvalues /= 1; //assume alecto??
 						    }
