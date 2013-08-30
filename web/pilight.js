@@ -250,16 +250,8 @@ $(document).ready(function() {
 							vvalues /= 1; //assume alecto??
 							precision = 0;
 						    }
-						    $('#'+lindex+'_'+lvalues+'_temp').text(vvalues.toFixed(precision));
+						    $('#'+lindex+'_'+lvalues+'_humi').text(vvalues.toFixed(precision));
 
-						    if(vvalues > 1000) {
-							vvalues /= 100;
-						    }	
-						    else if(vvalues > 100) {
-							vvalues /= 10;
-						    }
-
-						    $('#'+lindex+'_'+lvalues+'_humi').text(vvalues);
 						} else if(vindex == 'battery') {
 							if(vvalues == 1) {
 								$('#'+lindex+'_'+lvalues+'_batt').removeClass('red').addClass('green');
