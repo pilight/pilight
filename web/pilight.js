@@ -219,6 +219,13 @@ $(document).ready(function() {
 						}
 					} else if(iType == 3) {
 						if(vindex == 'temperature') {
+						    if(vvalues > 100) {
+							vvalues /= 10;
+						    }	
+						    else if(vvalues > 1000) {
+							vvalues /= 100;
+						    }
+
 							$('#'+lindex+'_'+lvalues+'_temp').text(vvalues);
 						} else if(vindex == 'humidity') {
 							$('#'+lindex+'_'+lvalues+'_humi').text(vvalues);
