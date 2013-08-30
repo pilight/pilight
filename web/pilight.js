@@ -49,21 +49,19 @@ function createDimmerElement(sTabId, sDevId, sDevName, sDevProto, sState, iDimLe
 	}
 }
 
-function createWeatherElement(sTabId, sDevId, sDevName, sDevProto, iTemperature, iHumidity, iBattery) {
+function createWeatherElement(sTabId, sDevId, sDevName, sDevProto, iTemperature, iPrecisionTemperature, iHumidity, iPrecisionTemperature, iBattery) {
 	oTab = $('#'+sTabId).find('ul');
-	if(iTemperature > 1000) {
-		iTemperature /= 100;
-	}	
-	else if(iTemperature > 100) {
-		iTemperature /= 10;
+        if(sDevProto == "alecto") {
+	    iPrecisionTemperature = 10;
+	    iPrecisionHumidity = 1;
 	}
-    	if(iHumidity > 1000) {
-		iHumidity /= 100;
-	}	
-	else if(iHumidity > 100) {
-		iHumidity /= 10;
+        else {
+	    iPrecisionTemperature = Math.pow(10, iPrecisionTemperature);
+	    iPrecisionHumidity = Math.pow(10, iPrecisionHumidity); 
 	}
-
+        iTemperature /= iPrecisionTemperature;
+        iHumidity /= iPrecisionHumidity;
+    
     	oTab.append($('<li data-icon="false">'+sDevName+'<div class="temperature" id="'+sTabId+'_'+sDevId+'_temp">'+(iTemperature)+'</div><div class="degrees">o</div><div class="humidity" id="'+sTabId+'_'+sDevId+'_humi">'+iHumidity+'</div><div class="percentage">%</div></li>'));
 	if(sDevProto == "alecto") {
 		oTab.find('li').append($('<div id="'+sTabId+'_'+sDevId+'_batt" class="battery"></div>'));
@@ -111,6 +109,9 @@ function createGUI(data) {
 						var iHumidity;
 						var iBattery;
 						var iTemperature;
+					    	var iPrecisionTemperature;
+					    	var iPrecisionHumidity;
+					    
 						$.each(dvalues, function(sindex, svalues) {
 							if(sindex == 'name') {
 								sDevName = svalues;
@@ -128,14 +129,19 @@ function createGUI(data) {
 								iBattery = svalues;
 							} else if(sindex == 'temperature') {
 								iTemperature = svalues;
+							} else if(sindex == 'precision_temperature') {
+								iPrecisionTemperature = svalues;
+							} else if(sindex == 'precision_humidity') {
+								iPrecisionHumidity = svalues;
 							}
+						    
 						});
 						if(iDevType == 1) {
 							createSwitchElement(lindex, dindex, sDevName, sDevProto, sDevState);
 						} else if(iDevType == 2) {
 							createDimmerElement(lindex, dindex, sDevName, sDevProto, sDevState, iDimLevel);
 						} else if(iDevType == 3) {
-							createWeatherElement(lindex, dindex, sDevName, sDevProto, iTemperature, iHumidity, iBattery);
+							createWeatherElement(lindex, dindex, sDevName, sDevProto, iTemperature, iPrecisionTemperature, iHumidity, iPrecisionHumidity, iBattery);
 						}
 					}
 				});
@@ -226,15 +232,20 @@ $(document).ready(function() {
 						}
 					} else if(iType == 3) {
 						if(vindex == 'temperature') {
-						    if(vvalues > 1000) {
-							vvalues /= 100;
-						    }	
-						    else if(vvalues > 100) {
-							vvalues /= 10;
+						    if (aValues.hasOwnProperty("precision_temperature")) {
+							vvalues /= Math.pow(10, aValues.precision_temperature);
+						    } else {
+							vvalues /= 10; //assume alecto??
 						    }
-
 						    $('#'+lindex+'_'+lvalues+'_temp').text(vvalues);
 						} else if(vindex == 'humidity') {
+						    if (aValues.hasOwnProperty("precision_humidity")) {
+							vvalues /= Math.pow(10, aValues.precision_humidity);
+  						    } else {
+							vvalues /= 1; //assume alecto??
+						    }
+						    $('#'+lindex+'_'+lvalues+'_temp').text(vvalues);
+
 						    if(vvalues > 1000) {
 							vvalues /= 100;
 						    }	
