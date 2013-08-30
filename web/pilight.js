@@ -51,23 +51,23 @@ function createDimmerElement(sTabId, sDevId, sDevName, sDevProto, sState, iDimLe
 
 function createWeatherElement(sTabId, sDevId, sDevName, sDevProto, iTemperature, iPrecisionTemperature, iHumidity, iPrecisionHumidity, iBattery) {
 	oTab = $('#'+sTabId).find('ul');
-        if(sDevProto == "alecto") {
-	    iPrecisionTemperature = 10;
-	    iPrecisionHumidity = 1;
+        if(sDevProto == "alecto") { //assume alecto
+	    iPrecisionTemperature = 1;
+	    iPrecisionHumidity = 0;
 	}
-        else {
-	    iPrecisionTemperature = Math.round(Math.pow(10, iPrecisionTemperature));
-	    iPrecisionHumidity = Math.round(Math.pow(10, iPrecisionHumidity)); 
-	}
-        iTemperature /= iPrecisionTemperature;
-        iHumidity /= iPrecisionHumidity;
+	
+        iTemperature /= Math.pow(10, iPrecisionTemperature);
+        iHumidity /= Math.pow(10, iPrecisionHumidity); 
     
-    	oTab.append($('<li data-icon="false">'+sDevName+'<div class="temperature" id="'+sTabId+'_'+sDevId+'_temp">'+(iTemperature)+'</div><div class="degrees">o</div><div class="humidity" id="'+sTabId+'_'+sDevId+'_humi">'+iHumidity+'</div><div class="percentage">%</div></li>'));
-    oTab.find('li').append($('<div id="'+sTabId+'_'+sDevId+'_batt" class="battery"></div>'));
-    if(iBattery) {
+        oTab.append($('<li data-icon="false">'+sDevName+'<div class="temperature" id="'+sTabId+'_'+sDevId+'_temp">'+(iTemperature.toFixed(iPrecisionTemperature))+'</div><div class="degrees">o</div><div class="humidity" id="'+sTabId+'_'+sDevId+'_humi">'+iHumidity.toFixed(iPrecisionHumidity)+'</div><div class="percentage">%</div></li>'));
+
+        if(sDevProto == "alecto") {
+	    oTab.find('li').append($('<div id="'+sTabId+'_'+sDevId+'_batt" class="battery"></div>'));
+	    if(iBattery) {
 		$('#'+sTabId+'_'+sDevId+'_batt').addClass('green');
-	} else {
+	    } else {
 		$('#'+sTabId+'_'+sDevId+'_batt').addClass('red');
+	    }
 	}
 	oTab.listview();
 	oTab.listview("refresh");
@@ -230,19 +230,27 @@ $(document).ready(function() {
 						}
 					} else if(iType == 3) {
 						if(vindex == 'temperature') {
+						    var precision = 0;
 						    if (aValues.hasOwnProperty("precision_temperature")) {
-							vvalues /= Math.round(Math.pow(10, aValues.precision_temperature));
+							vvalues /= Math.pow(10, aValues.precision_temperature);
+							precision = aValues.precision_temperature;
 						    } else {
 							vvalues /= 10; //assume alecto??
+							precision = 1;
+
 						    }
-						    $('#'+lindex+'_'+lvalues+'_temp').text(vvalues);
+						    $('#'+lindex+'_'+lvalues+'_temp').text(vvalues.toFixed(precision));
 						} else if(vindex == 'humidity') {
+						    var precision = 0;
+
 						    if (aValues.hasOwnProperty("precision_humidity")) {
-							vvalues /= Math.round(Math.pow(10, aValues.precision_humidity));
-  						    } else {
+							vvalues /= Math.pow(10, aValues.precision_humidity);
+							precision = aValues.precision_humidity;
+						    } else {
 							vvalues /= 1; //assume alecto??
+							precision = 0;
 						    }
-						    $('#'+lindex+'_'+lvalues+'_temp').text(vvalues);
+						    $('#'+lindex+'_'+lvalues+'_temp').text(vvalues.toFixed(precision));
 
 						    if(vvalues > 1000) {
 							vvalues /= 100;
