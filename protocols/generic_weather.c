@@ -27,17 +27,23 @@
 #include "gc.h"
 #include "generic_weather.h"
 
-void genWeatherCreateMessage(int id, int temperature, int humidity) {
+void genWeatherCreateMessage(int id, int temperature, int precision_temperature, int humidity, int precision_humidity) {
 	generic_weather->message = json_mkobject();
 	json_append_member(generic_weather->message, "id", json_mknumber(id));
 	json_append_member(generic_weather->message, "temperature", json_mknumber(temperature));
+	json_append_member(generic_weather->message, "precision_temperature", json_mknumber(precision_temperature));
 	json_append_member(generic_weather->message, "humidity", json_mknumber(humidity));
+	json_append_member(generic_weather->message, "precision_humidity", json_mknumber(precision_temperature));
+
 }
 
 int genWeatherCreateCode(JsonNode *code) {
 	int id = -1;
 	int temp = -1;
 	int humi = -1;
+	int prec_temp = -1;
+	int prec_humi = -1;
+
 	char *tmp;
 
 	if(json_find_string(code, "id", &tmp) == 0)
@@ -46,19 +52,28 @@ int genWeatherCreateCode(JsonNode *code) {
 		temp = atoi(tmp);
 	if(json_find_string(code, "humidity", &tmp) == 0)
 		humi = atoi(tmp);
+	if(json_find_string(code, "precision_temperature", &tmp) == 0)
+		prec_temp = atoi(tmp);
+	if(json_find_string(code, "precision_humidity", &tmp) == 0)
+		prec_humi = atoi(tmp);
 
-	if(id == -1 || temp == -1 || humi == -1) {
+	
+	if(id == -1 || temp == -1 || humi == -1 || prec_temp == -1 || prec_humi ) {
 		logprintf(LOG_ERR, "generic_weather: insufficient number of arguments");
 		return EXIT_FAILURE;
 	} else {
-		genWeatherCreateMessage(id, temp, humi);
+	  genWeatherCreateMessage(id, temp, prec_temp, humi, prec_humi);
 	}
 	return EXIT_SUCCESS;
 }
 
 void genWeatherPrintHelp(void) {
 	printf("\t -t --temperature=temperature\t\t\tset the temperature\n");
+	printf("\t -pt --precision_temperature=precision_temperature\t\t\tset the decimal precision of temperature\n");
+
 	printf("\t -h --humidity=humidity\t\t\tset the humidity\n");
+	printf("\t -ph --precision_humidity=precision_humidity\t\t\tset the decimal precision of humidity\n");
+
 	printf("\t -i --id=id\t\t\tcontrol a device with this id\n");
 }
 
@@ -72,6 +87,9 @@ void genWeatherInit(void) {
 
 	options_add(&generic_weather->options, 'h', "humidity", has_value, config_value, "[0-9]");
 	options_add(&generic_weather->options, 't', "temperature", has_value, config_value, "[0-9]");
+	options_add(&generic_weather->options, 'ph', "precision_humidity", has_value, config_value, "[0-9]");
+	options_add(&generic_weather->options, 'pt', "precision_temperature", has_value, config_value, "[0-9]");
+
 	options_add(&generic_weather->options, 'i', "id", has_value, config_id, "[0-9]");
 
 	generic_weather->printHelp=&genWeatherPrintHelp;
