@@ -51,13 +51,20 @@ function createDimmerElement(sTabId, sDevId, sDevName, sDevProto, sState, iDimLe
 
 function createWeatherElement(sTabId, sDevId, sDevName, sDevProto, iTemperature, iHumidity, iBattery) {
 	oTab = $('#'+sTabId).find('ul');
-	oTab.append($('<li data-icon="false">'+sDevName+'<div class="temperature" id="'+sTabId+'_'+sDevId+'_temp">'+(iTemperature/100)+'</div><div class="degrees">o</div><div class="humidity" id="'+sTabId+'_'+sDevId+'_humi">'+iHumidity+'</div><div class="percentage">%</div></li>'));
-	if(iTemperature > 100) {
-		iTemperature /= 10;
-	}	
-	else if(iTemperature > 1000) {
+	if(iTemperature > 1000) {
 		iTemperature /= 100;
+	}	
+	else if(iTemperature > 100) {
+		iTemperature /= 10;
 	}
+    	if(iHumidity > 1000) {
+		iHumidity /= 100;
+	}	
+	else if(iHumidity > 100) {
+		iHumidity /= 10;
+	}
+
+    	oTab.append($('<li data-icon="false">'+sDevName+'<div class="temperature" id="'+sTabId+'_'+sDevId+'_temp">'+(iTemperature)+'</div><div class="degrees">o</div><div class="humidity" id="'+sTabId+'_'+sDevId+'_humi">'+iHumidity+'</div><div class="percentage">%</div></li>'));
 	if(sDevProto == "alecto") {
 		oTab.find('li').append($('<div id="'+sTabId+'_'+sDevId+'_batt" class="battery"></div>'));
 	}
@@ -219,16 +226,23 @@ $(document).ready(function() {
 						}
 					} else if(iType == 3) {
 						if(vindex == 'temperature') {
-						    if(vvalues > 100) {
-							vvalues /= 10;
-						    }	
-						    else if(vvalues > 1000) {
+						    if(vvalues > 1000) {
 							vvalues /= 100;
+						    }	
+						    else if(vvalues > 100) {
+							vvalues /= 10;
 						    }
 
-							$('#'+lindex+'_'+lvalues+'_temp').text(vvalues);
+						    $('#'+lindex+'_'+lvalues+'_temp').text(vvalues);
 						} else if(vindex == 'humidity') {
-							$('#'+lindex+'_'+lvalues+'_humi').text(vvalues);
+						    if(vvalues > 1000) {
+							vvalues /= 100;
+						    }	
+						    else if(vvalues > 100) {
+							vvalues /= 10;
+						    }
+
+						    $('#'+lindex+'_'+lvalues+'_humi').text(vvalues);
 						} else if(vindex == 'battery') {
 							if(vvalues == 1) {
 								$('#'+lindex+'_'+lvalues+'_batt').removeClass('red').addClass('green');
