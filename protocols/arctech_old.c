@@ -172,7 +172,7 @@ void arctechOldInit(void) {
 	strcpy(arctech_old->id, "archtech_old");
 	protocol_add_device(arctech_old, "kaku_old", "Old KlikAanKlikUit Switches");
 	protocol_add_device(arctech_old, "cogex", "Cogex Switches");
-	protocol_add_device(arctech_old, "intertechno", "Intertechno (PA3) Switches");
+	protocol_add_device(arctech_old, "intertechno_old", "Old Intertechno Switches");
 	arctech_old->type = SWITCH;
 	arctech_old->pulse = 3;
 	arctech_old->footer = 38;
