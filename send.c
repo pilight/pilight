@@ -186,6 +186,7 @@ int main(int argc, char **argv) {
 						if(strlen(protocol->devices->id)<7)
 							printf("\t");
 						if(strlen(protocol->devices->id)<14)
+							printf("\t");
 						printf("%s\n", protocol->devices->desc);
 						protocol->devices = protocol->devices->next;
 					}
