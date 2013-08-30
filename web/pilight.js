@@ -63,10 +63,8 @@ function createWeatherElement(sTabId, sDevId, sDevName, sDevProto, iTemperature,
         iHumidity /= iPrecisionHumidity;
     
     	oTab.append($('<li data-icon="false">'+sDevName+'<div class="temperature" id="'+sTabId+'_'+sDevId+'_temp">'+(iTemperature)+'</div><div class="degrees">o</div><div class="humidity" id="'+sTabId+'_'+sDevId+'_humi">'+iHumidity+'</div><div class="percentage">%</div></li>'));
-	if(sDevProto == "alecto") {
-		oTab.find('li').append($('<div id="'+sTabId+'_'+sDevId+'_batt" class="battery"></div>'));
-	}
-	if(iBattery) {
+    oTab.find('li').append($('<div id="'+sTabId+'_'+sDevId+'_batt" class="battery"></div>'));
+    if(iBattery) {
 		$('#'+sTabId+'_'+sDevId+'_batt').addClass('green');
 	} else {
 		$('#'+sTabId+'_'+sDevId+'_batt').addClass('red');
