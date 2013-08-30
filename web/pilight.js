@@ -49,7 +49,7 @@ function createDimmerElement(sTabId, sDevId, sDevName, sDevProto, sState, iDimLe
 	}
 }
 
-function createWeatherElement(sTabId, sDevId, sDevName, sDevProto, iTemperature, iPrecisionTemperature, iHumidity, iPrecisionTemperature, iBattery) {
+function createWeatherElement(sTabId, sDevId, sDevName, sDevProto, iTemperature, iPrecisionTemperature, iHumidity, iPrecisionHumidity, iBattery) {
 	oTab = $('#'+sTabId).find('ul');
         if(sDevProto == "alecto") {
 	    iPrecisionTemperature = 10;
