@@ -33,7 +33,7 @@ void genWeatherCreateMessage(int id, int temperature, int precision_temperature,
 	json_append_member(generic_weather->message, "temperature", json_mknumber(temperature));
 	json_append_member(generic_weather->message, "precision_temperature", json_mknumber(precision_temperature));
 	json_append_member(generic_weather->message, "humidity", json_mknumber(humidity));
-	json_append_member(generic_weather->message, "precision_humidity", json_mknumber(precision_temperature));
+	json_append_member(generic_weather->message, "precision_humidity", json_mknumber(precision_humidity));
 
 }
 
