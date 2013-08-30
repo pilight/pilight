@@ -58,7 +58,7 @@ int genWeatherCreateCode(JsonNode *code) {
 		prec_humi = atoi(tmp);
 
 	
-	if(id == -1 || temp == -1 || humi == -1 || prec_temp == -1 || prec_humi ) {
+	if(id == -1 || temp == -1 || humi == -1 || prec_temp == -1 || prec_humi == -1) {
 		logprintf(LOG_ERR, "generic_weather: insufficient number of arguments");
 		return EXIT_FAILURE;
 	} else {
