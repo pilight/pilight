@@ -49,22 +49,25 @@ function createDimmerElement(sTabId, sDevId, sDevName, sDevProto, sState, iDimLe
 	}
 }
 
-function createWeatherElement(sTabId, sDevId, sDevName, sDevProto, iTemperature, iHumidity, iBattery) {
+function createWeatherElement(sTabId, sDevId, sDevName, sDevProto, iTemperature, iPrecisionTemperature, iHumidity, iPrecisionHumidity, iBattery) {
 	oTab = $('#'+sTabId).find('ul');
-	oTab.append($('<li data-icon="false">'+sDevName+'<div class="temperature" id="'+sTabId+'_'+sDevId+'_temp">'+(iTemperature/100)+'</div><div class="degrees">o</div><div class="humidity" id="'+sTabId+'_'+sDevId+'_humi">'+iHumidity+'</div><div class="percentage">%</div></li>'));
-	if(iTemperature > 100) {
-		iTemperature /= 10;
-	}	
-	else if(iTemperature > 1000) {
-		iTemperature /= 100;
+        if(sDevProto == "alecto") { //assume alecto
+	    iPrecisionTemperature = 1;
+	    iPrecisionHumidity = 0;
 	}
-	if(sDevProto == "alecto") {
-		oTab.find('li').append($('<div id="'+sTabId+'_'+sDevId+'_batt" class="battery"></div>'));
-	}
-	if(iBattery) {
+	
+        iTemperature /= Math.pow(10, iPrecisionTemperature);
+        iHumidity /= Math.pow(10, iPrecisionHumidity); 
+    
+        oTab.append($('<li data-icon="false">'+sDevName+'<div class="temperature" id="'+sTabId+'_'+sDevId+'_temp">'+(iTemperature.toFixed(iPrecisionTemperature))+'</div><div class="degrees">o</div><div class="humidity" id="'+sTabId+'_'+sDevId+'_humi">'+iHumidity.toFixed(iPrecisionHumidity)+'</div><div class="percentage">%</div></li>'));
+
+        if(sDevProto == "alecto") {
+	    oTab.find('li').append($('<div id="'+sTabId+'_'+sDevId+'_batt" class="battery"></div>'));
+	    if(iBattery) {
 		$('#'+sTabId+'_'+sDevId+'_batt').addClass('green');
-	} else {
+	    } else {
 		$('#'+sTabId+'_'+sDevId+'_batt').addClass('red');
+	    }
 	}
 	oTab.listview();
 	oTab.listview("refresh");
@@ -104,6 +107,9 @@ function createGUI(data) {
 						var iHumidity;
 						var iBattery;
 						var iTemperature;
+					    	var iPrecisionTemperature;
+					    	var iPrecisionHumidity;
+					    
 						$.each(dvalues, function(sindex, svalues) {
 							if(sindex == 'name') {
 								sDevName = svalues;
@@ -121,14 +127,19 @@ function createGUI(data) {
 								iBattery = svalues;
 							} else if(sindex == 'temperature') {
 								iTemperature = svalues;
+							} else if(sindex == 'precision_temperature') {
+								iPrecisionTemperature = svalues;
+							} else if(sindex == 'precision_humidity') {
+								iPrecisionHumidity = svalues;
 							}
+						    
 						});
 						if(iDevType == 1) {
 							createSwitchElement(lindex, dindex, sDevName, sDevProto, sDevState);
 						} else if(iDevType == 2) {
 							createDimmerElement(lindex, dindex, sDevName, sDevProto, sDevState, iDimLevel);
 						} else if(iDevType == 3) {
-							createWeatherElement(lindex, dindex, sDevName, sDevProto, iTemperature, iHumidity, iBattery);
+							createWeatherElement(lindex, dindex, sDevName, sDevProto, iTemperature, iPrecisionTemperature, iHumidity, iPrecisionHumidity, iBattery);
 						}
 					}
 				});
@@ -219,9 +230,28 @@ $(document).ready(function() {
 						}
 					} else if(iType == 3) {
 						if(vindex == 'temperature') {
-							$('#'+lindex+'_'+lvalues+'_temp').text(vvalues);
+						    var precision = 0;
+						    if (aValues.hasOwnProperty("precision_temperature")) {
+							vvalues /= Math.pow(10, aValues.precision_temperature);
+							precision = aValues.precision_temperature;
+						    } else {
+							vvalues /= 10; //assume alecto??
+							precision = 1;
+
+						    }
+						    $('#'+lindex+'_'+lvalues+'_temp').text(vvalues.toFixed(precision));
 						} else if(vindex == 'humidity') {
-							$('#'+lindex+'_'+lvalues+'_humi').text(vvalues);
+						    var precision = 0;
+
+						    if (aValues.hasOwnProperty("precision_humidity")) {
+							vvalues /= Math.pow(10, aValues.precision_humidity);
+							precision = aValues.precision_humidity;
+						    } else {
+							vvalues /= 1; //assume alecto??
+							precision = 0;
+						    }
+						    $('#'+lindex+'_'+lvalues+'_humi').text(vvalues.toFixed(precision));
+
 						} else if(vindex == 'battery') {
 							if(vvalues == 1) {
 								$('#'+lindex+'_'+lvalues+'_batt').removeClass('red').addClass('green');
