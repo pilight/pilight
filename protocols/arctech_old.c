@@ -107,7 +107,7 @@ void arctechOldCreateId(int id) {
 	for(i=0;i<=length;i++) {
 		if(binary[i]==1) {
 			x=i*4;
-			arctechOldCreateLow(20+x, 20+x+3);
+			arctechOldCreateLow(16+x, 16+x+3);
 		}
 	}
 }
