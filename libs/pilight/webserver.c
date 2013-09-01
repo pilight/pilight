@@ -63,7 +63,6 @@ struct libwebsocket_protocols libwebsocket_protocols[] = {
 
 int webserver_gc(void) {
 	loop = 0;
-	free(recvBuff);
 	socket_close(sockfd);
 
 	logprintf(LOG_DEBUG, "garbage collected webserver library");
@@ -272,7 +271,7 @@ void *webserver_clientize(void *param) {
 	}
 	recvBuff = malloc(BUFFER_SIZE);
 	free(server);
-	while(1) {
+	while(loop) {
 		if(steps > WELCOME) {
 			memset(recvBuff, '\0', BUFFER_SIZE);
 			/* Clear the receive buffer again and read the welcome message */
@@ -310,6 +309,7 @@ void *webserver_clientize(void *param) {
 			break;
 		}
 	}
+	free(recvBuff);
 close:
 	webserver_gc();
 	return 0;

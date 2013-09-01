@@ -41,10 +41,11 @@ int relayCreateCode(JsonNode *code) {
 	int gpio = -1;
 	int state = -1;
 	char *tmp;
-	int use_lirc = USE_LIRC;
+	char *hw_mode = malloc(strlen(HW_MODE)+1);
 	int gpio_in = GPIO_IN_PIN;
 	int gpio_out = GPIO_OUT_PIN;
 	
+	hw_mode = strcpy(hw_mode, HW_MODE);
 	relay->rawLength = 0;
 
 	if(json_find_string(code, "gpio", &tmp) == 0)
@@ -54,18 +55,21 @@ int relayCreateCode(JsonNode *code) {
 	else if(json_find_string(code, "on", &tmp) == 0)
 		state=1;
 	
-	settings_find_number("use-lirc", &use_lirc);
+	settings_find_string("hw-mode", &hw_mode);
 	settings_find_number("gpio-receiver", &gpio_in);
 	settings_find_number("gpio-sender", &gpio_out);
 	
 	if(gpio == -1 || state == -1) {
 		logprintf(LOG_ERR, "relay: insufficient number of arguments");
+		free(hw_mode);		
 		return EXIT_FAILURE;
 	} else if(gpio > 7 || gpio < 0) {
 		logprintf(LOG_ERR, "relay: invalid gpio range");
+		free(hw_mode);		
 		return EXIT_FAILURE;
-	} else if(use_lirc == 0 && (gpio == gpio_in || gpio == gpio_out)) {
+	} else if(strcmp(hw_mode, "gpio") == 0 && (gpio == gpio_in || gpio == gpio_out)) {
 		logprintf(LOG_ERR, "relay: gpio's already in use");
+		free(hw_mode);
 		return EXIT_FAILURE;
 	} else {
 		if(strstr(progname, "daemon") != 0) {
@@ -83,6 +87,7 @@ int relayCreateCode(JsonNode *code) {
 			relayCreateMessage(gpio, state);
 		}
 	}
+	free(hw_mode);	
 	return EXIT_SUCCESS;
 }
 

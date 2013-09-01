@@ -131,7 +131,7 @@ int settings_parse(JsonNode *root) {
 	int web_port = 0;
 	int own_port = 0;
 	int has_config = 0;
-	int has_lirc = 0;
+	int hw_mode = 0;
 	int has_socket = 0;
 	int gpio_in = -1;
 	int gpio_out = -1;
@@ -204,7 +204,7 @@ int settings_parse(JsonNode *root) {
 					goto clear;
 				}
 			}
-		} else if(strcmp(jsettings->key, "socket") == 0) {
+		} else if(strcmp(jsettings->key, "hw-socket") == 0) {
 			if(!jsettings->string_) {
 				logprintf(LOG_ERR, "setting \"%s\" must point an existing socket", jsettings->key);
 				have_error = 1;
@@ -213,16 +213,20 @@ int settings_parse(JsonNode *root) {
 				has_socket = 1;
 				settings_add_string_node(jsettings->key, jsettings->string_);
 			}
-		} else if(strcmp(jsettings->key, "use-lirc") == 0) {
-			if(jsettings->number_ < 0 || jsettings->number_ > 1) {
-				logprintf(LOG_ERR, "setting \"%s\" must be either 0 or 1", jsettings->key);
+		} else if(strcmp(jsettings->key, "hw-mode") == 0) {
+			if(!jsettings->string_) {
+				logprintf(LOG_ERR, "setting \"%s\" must be either \"gpio\", \"module\", or \"none\"", jsettings->key);
 				have_error = 1;
 				goto clear;
 			} else {
-				if((int)jsettings->number_ == 1) {
-					has_lirc = 1;
+				if(strcmp(jsettings->string_, "module") == 0) {
+					hw_mode = 1;
+				} else if(strcmp(jsettings->string_, "none") == 0) {
+					hw_mode = 0;
+				} else if(strcmp(jsettings->string_, "gpio") == 0) {
+					hw_mode = 2;
 				}
-				settings_add_number_node(jsettings->key, (int)jsettings->number_);
+				settings_add_string_node(jsettings->key, jsettings->string_);
 			}
 		} else if(strcmp(jsettings->key, "webserver-port") == 0) {
 			if(jsettings->number_ < 0) {
@@ -305,18 +309,18 @@ int settings_parse(JsonNode *root) {
 		jsettings = jsettings->next;
 	}
 	json_delete(jsettings);
-	if(has_lirc == 1 && gpio_in > -1) {
-		logprintf(LOG_ERR, "setting \"gpio-receiver\" and use-lirc cannot be combined");
+	if((hw_mode == 1 || hw_mode == 0) && gpio_in > -1) {
+		logprintf(LOG_ERR, "setting \"gpio-receiver\" and \"module\" or \"none\" hw-mode cannot be combined");
 		have_error = 1;
 		goto clear;
 	}
-	if(has_lirc == 1 && gpio_out > -1) {
-		logprintf(LOG_ERR, "setting \"gpio-sender\" and use-lirc cannot be combined");
+	if((hw_mode == 1 || hw_mode == 0) && gpio_out > -1) {
+		logprintf(LOG_ERR, "setting \"gpio-sender\" and \"module\" or \"none\" hw-mode cannot be combined");
 		have_error = 1;
 		goto clear;
 	}	
-	if(has_lirc == 0 && has_socket == 1) {
-		logprintf(LOG_ERR, "setting \"socket\" must be combined with use-lirc");
+	if((hw_mode == 2 || hw_mode == 0) && has_socket == 1) {
+		logprintf(LOG_ERR, "setting \"hw-socket\" must be combined with \"module\" hw-mode");
 		have_error = 1;
 		goto clear;
 	}

@@ -41,6 +41,8 @@ void protocol_register(protocol_t **proto) {
 	(*proto)->parseRaw = NULL;
 	(*proto)->parseBinary = NULL;
 	(*proto)->parseCode = NULL;
+	(*proto)->createCode = NULL;
+	(*proto)->printHelp = NULL;
 	
 	struct protocols_t *pnode = malloc(sizeof(struct protocols_t));
 	pnode->listener = *proto;

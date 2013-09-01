@@ -58,8 +58,8 @@ All options and its default values are show below:<br />
 	"process-file": "",
 	"send-repeats": 10,
 	"receive-repeats": 1,
-	"socket": "/dev/lirc0",
-	"use-lirc": 0,
+	"hw-socket": "/dev/lirc0",
+	"hw-mode": "gpio",
 	"gpio-sender": 0,
 	"gpio-receiver": 1,
 	"webserver-enable": 1,
@@ -77,10 +77,10 @@ __log-file__: The default location of the log id file<br />
 __process-file__: The optional process file<br />
 __send-repeats__: How many times should a code be send<br />
 __receive-repeats__: How many times should a code be recieved before marked valid<br />
-__socket__: What lirc socket should we read from (use-lirc: 1)<br />
-__use-lirc__: Use the lirc_rpi kernel module or plain gpio access<br />
-__gpio-sender__: To what pin is the sender connected (use-lirc: 0)<br />
-__gpio-receiver__: To what pin is the reciever connected (use-lirc: 0)<br />
+__hw-socket__: What lirc socket should we read from (hw-mode: "lirc")<br />
+__hw-mode__: _module_ do we want to use the kernel module, _gpio_ do we want to use direct gpio acces, _none_ disable hardware interface <br />
+__gpio-sender__: To what pin is the sender connected (hw-mode: "gpio")<br />
+__gpio-receiver__: To what pin is the reciever connected (hw-mode: "gpio")<br />
 __webserver-enable__: Enable the built-in webserver<br />
 __webserver-port: On what port does the webserver need to run<br />
 __webserver-root: The webserver root path<br />

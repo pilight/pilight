@@ -21,7 +21,7 @@
 
 #include "protocol.h"
 
-#define USE_LIRC			0
+#define HW_MODE				"gpio"
 
 #define GPIO_IN_PIN			1
 #define GPIO_OUT_PIN		0

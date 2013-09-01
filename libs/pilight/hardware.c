@@ -17,14 +17,10 @@
 */
 
 #include <stdlib.h>
+#include <sys/ioctl.h>
 #include "settings.h"
 
-#include "../lirc/lirc.h"
-#include "../lirc/lircd.h"
 #include "../lirc/hardware.h"
-#include "../lirc/transmit.h"
-#include "../lirc/hw-types.h"
-#include "../lirc/hw_default.h"
 
 #include "irq.h"
 #include "wiringPi.h"
@@ -64,17 +60,25 @@ void hw_init(void) {
 
 /* Initialize the hardware module lirc_rpi */
 int module_init(void) {
-	int use_lirc = USE_LIRC;
+	char *mode = NULL;
+	int allocated = 0;
 	int gpio_in = GPIO_IN_PIN;
 	int gpio_out = GPIO_OUT_PIN;
 
-	settings_find_number("use-lirc", &use_lirc);
+	if(settings_find_string("hw-mode", &mode) != 0) {
+		mode = malloc(strlen(HW_MODE)+1);
+		strcpy(mode, HW_MODE);
+		allocated = 1;
+	}
 	settings_find_number("gpio-receiver", &gpio_in);
 	settings_find_number("gpio-sender", &gpio_out);
-	
-	if(use_lirc == 1) {
+
+	if(strcmp(mode, "module") == 0) {
 		if(initialized == 0) {
 			if(!hw.init_func()) {
+				if(allocated) {
+					free(mode);
+				}
 				exit(EXIT_FAILURE);
 			}
 
@@ -82,38 +86,63 @@ int module_init(void) {
 			if(setfreq == 0) {
 				freq = FREQ433;
 				/* Set the lirc_rpi frequency to 433.92Mhz */
-				if(hw.ioctl_func(LIRC_SET_SEND_CARRIER, &freq) == -1) {
+				if(ioctl(hw.fd, _IOW('i', 0x00000013, __u32), &freq) == -1) {
 					logprintf(LOG_ERR, "could not set lirc_rpi send frequency");
+					if(allocated) {
+						free(mode);
+					}
 					exit(EXIT_FAILURE);
 				}
 				setfreq = 1;
 			}
 			logprintf(LOG_DEBUG, "initialized lirc_rpi module");
 			initialized = 1;
-		
 		}
-	} else {
-		if(wiringPiSetup() == -1)
+		if(allocated) {
+			free(mode);
+		}
+		return EXIT_SUCCESS;
+	} else if(strcmp(mode, "gpio") == 0) {
+		if(wiringPiSetup() == -1) {
+			if(allocated) {
+				free(mode);
+			}
 			return EXIT_FAILURE;
-
+		}
 		pinMode(gpio_out, OUTPUT);
 		if(wiringPiISR(gpio_in, INT_EDGE_BOTH) < 0) {
 			logprintf(LOG_ERR, "unable to register interrupt for pin %d", gpio_in) ;
-			return 1 ;
+			if(allocated) {
+				free(mode);
+			}
+			return EXIT_SUCCESS;
 		}
 	}
-	return EXIT_SUCCESS;
+	if(allocated) {
+		free(mode);
+	}
+	return EXIT_FAILURE;
 }
 
 /* Release the hardware module lirc_rpi */
 int module_deinit(void) {
-	int use_lirc = 0;
-	settings_find_number("use-lirc", &use_lirc);
-	if(use_lirc == 1) {
+	char *mode = NULL;
+	int allocated = 0;
+	
+	if(settings_find_string("hw-mode", &mode) != 0) {
+		mode = malloc(strlen(HW_MODE)+1);
+		strcpy(mode, HW_MODE);
+		allocated = 1;
+	}
+
+	if(strcmp(mode, "module") == 0) {
 		if(initialized == 1) {
 			freq = FREQ38;
-			if(hw.ioctl_func(LIRC_SET_SEND_CARRIER, &freq) == -1) {
+			if(ioctl(hw.fd, _IOW('i', 0x00000013, __u32), &freq) == -1) {
 				logprintf(LOG_ERR, "could not restore default freq of the lirc_rpi module");
+				if(allocated) {
+					free(mode);
+				}
 				exit(EXIT_FAILURE);
 			} else {
 				logprintf(LOG_DEBUG, "default freq of the lirc_rpi module set");
@@ -124,6 +153,13 @@ int module_deinit(void) {
 			logprintf(LOG_DEBUG, "deinitialized lirc_rpi module");
 			initialized	= 0;
 		}
+		if(allocated) {
+			free(mode);
+		}
+		return EXIT_SUCCESS;
 	}
-	return EXIT_SUCCESS;
+	if(allocated) {
+		free(mode);
+	}
+	return EXIT_FAILURE;
 }

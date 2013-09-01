@@ -42,12 +42,11 @@
 #include "libs/lirc/lirc.h"
 #include "libs/lirc/lircd.h"
 #include "libs/lirc/hardware.h"
-#include "libs/lirc/transmit.h"
-#include "libs/lirc/hw-types.h"
-#include "libs/lirc/hw_default.h"
 #include "wiringPi.h"
 #include "irq.h"
 #include "hardware.h"
+
+struct hardware hw_default;
 
 typedef enum {
 	RECEIVER,
@@ -92,7 +91,7 @@ int running = 1;
 /* How many times does the code need to be resend */
 int send_repeat;
 /* How many times does a code need to received*/
-int receive_repeat;
+int receive_repeat = 1;
 /* Are we currently sending code */
 int sending = 0;
 /* If we have accepted a client, handshakes will store the type of client */
@@ -104,7 +103,8 @@ int sockfd = 0;
 /* In the client running in incognito mode */
 unsigned short incognito_mode = 0;
 /* Use the lirc_rpi module or plain GPIO */
-int use_lirc = USE_LIRC;
+char *hw_mode;
+int free_hw_mode = 0;
 /* On what pin are we sending */
 int gpio_out = GPIO_OUT_PIN;
 /* On what pin are we receiving */
@@ -170,7 +170,6 @@ int broadcast(char *protoname, JsonNode *json) {
 	int i = 0, broadcasted = 0;
 	char *message = json_stringify(json, NULL);
 
-	char *escaped = malloc(2 * strlen(message) + 1);
 	JsonNode *jret = NULL;
 
 	/* Update the config file */
@@ -204,6 +203,7 @@ int broadcast(char *protoname, JsonNode *json) {
 			}
 		}
 
+		char *escaped = malloc(2 * strlen(message) + 1);
 		escape_characters(escaped, message);
 
 		if(process_file && strlen(process_file) > 0) {
@@ -235,8 +235,6 @@ void send_code(JsonNode *json) {
 
 	/* Hold the final protocol struct */
 	protocol_t *protocol = NULL;
-	/* The code that is send to the hardware wrapper */
-	struct ir_ncode code;
 
 	JsonNode *jcode = NULL;
 	JsonNode *message = json_mkobject();
@@ -277,23 +275,24 @@ void send_code(JsonNode *json) {
 
 				sending = 1;
 
-				if(use_lirc == 1) {
+				if(strcmp(hw_mode, "module") == 0) {
 					/* Create a single code with all repeats included */
-					int longCode[(protocol->rawLength*send_repeat)+1];
+					int code_len = (protocol->rawLength*send_repeat)+1;
+					size_t send_len = (size_t)(code_len * (int)sizeof(int));
+					int longCode[code_len];
+					memset(longCode, 0, send_len);
 					for(i=0;i<send_repeat;i++) {
 						for(x=0;x<protocol->rawLength;x++) {
 							longCode[x+(protocol->rawLength*i)]=protocol->raw[x];
 						}
 					}
 					
-					longCode[(protocol->rawLength*send_repeat)+1] = 0;
-					
-					/* Send this single big code at once */
-					code.length = (x+(protocol->rawLength*(i-1)))+1;
-					code.signals = longCode;
-					
-					/* Send the code, if we succeeded, inform the receiver */
-					if(((int)strlen(hw.device) > 0 && send_ir_ncode(&code) == 1) || (int)strlen(hw.device) == 0) {
+					longCode[code_len] = 0;
+
+					int n = write(hw.fd, longCode, send_len);
+
+					/* Send the code, if we succeeded, inform the receiver */					
+					if(((int)strlen(hw.device) > 0 && n == send_len)) {
 						logprintf(LOG_DEBUG, "successfully send %s code", protocol->id);
 						if(logged == 0) {
 							logged = 1;
@@ -307,7 +306,7 @@ void send_code(JsonNode *json) {
 					} else {
 						logprintf(LOG_ERR, "failed to send code");
 					}
-				} else {
+				} else if(strcmp(hw_mode, "gpio") == 0) {
 					piHiPri(55);
 					for(i=0;i<send_repeat;i++) {
 						for(x=0;x<protocol->rawLength;x+=2) {
@@ -319,6 +318,16 @@ void send_code(JsonNode *json) {
 					}
 					piHiPri(0);
 					logprintf(LOG_DEBUG, "successfully send %s code", protocol->id);
+					if(logged == 0) {
+						logged = 1;
+						/* Write the message to all receivers */
+						char *protoname = malloc(strlen(protocol->id)+1);
+						strcpy(protoname, protocol->id);
+						broadcast(protoname, message);
+						json_delete(message);
+						free(protoname);
+					}
+				} else if(strcmp(hw_mode, "none") == 0) {
 					if(logged == 0) {
 						logged = 1;
 						/* Write the message to all receivers */
@@ -693,14 +702,15 @@ void receive_code(void) {
 	unsigned int x = 0, y = 0;
 	struct conflicts_t *tmp_conflicts = NULL;
 	struct protocol_t *protocol = NULL;
-	if(use_lirc == 0) {
+
+	if(strcmp(hw_mode, "gpio") == 0) {
 		(void)piHiPri(55);
 	}
 
 	while(1) {
 		/* Only initialize the hardware receive the data when there are receivers connected */
 		if(receivers > 0) {
-			if(use_lirc == 1) {
+			if(strcmp(hw_mode, "module") == 0) {
 				data = hw.readdata(0);
 				duration = (data & PULSE_MASK);
 			} else {
@@ -758,20 +768,25 @@ void receive_code(void) {
 									protocol->parseRaw();
 									if(protocol->message) {
 										char *valid = json_stringify(protocol->message, NULL);
-										if(json_validate(valid) == true) {
+										json_delete(protocol->message);
+										if(valid && json_validate(valid) == true) {
 											tmp_conflicts = protocol->conflicts;
-											JsonNode *message = json_mkobject();
-											json_append_member(message, "code", protocol->message);
-											json_append_member(message, "origin", json_mkstring("receiver"));
-											json_append_member(message, "protocol", json_mkstring(protocol->id));
-											broadcast(protocol->id, message);													
+											JsonNode *jmessage = json_mkobject();
+											
+											json_append_member(jmessage, "code", json_decode(valid));
+											json_append_member(jmessage, "origin", json_mkstring("receiver"));
+											json_append_member(jmessage, "protocol", json_mkstring(protocol->id));
+											broadcast(protocol->id, jmessage);									
+											json_delete(jmessage);
 											while(tmp_conflicts) {
-												json_remove_from_parent(json_find_member(message, "protocol"));
-												json_append_member(message, "protocol", json_mkstring(tmp_conflicts->id));
-												broadcast(tmp_conflicts->id, message);
+												jmessage = json_mkobject();
+												json_append_member(jmessage, "code", json_decode(valid));
+												json_append_member(jmessage, "origin", json_mkstring("receiver"));
+												json_append_member(jmessage, "protocol", json_mkstring(tmp_conflicts->id));
+												broadcast(tmp_conflicts->id, jmessage);
 												tmp_conflicts = tmp_conflicts->next;
-											}
-											json_delete(message);
+												json_delete(jmessage);
+											}													
 										}
 										protocol->message = NULL;
 										free(valid);
@@ -804,22 +819,28 @@ void receive_code(void) {
 
 											protocol->parseCode();
 											if(protocol->message) {
-												char *valid = json_stringify(protocol->message, NULL);
-												if(json_validate(valid) == true) {
+												char *valid = json_stringify(protocol->message, NULL);												
+												json_delete(protocol->message);
+												if(valid && json_validate(valid) == true) {
 													tmp_conflicts = protocol->conflicts;
-													JsonNode *message = json_mkobject();
-													json_append_member(message, "code", protocol->message);
-													json_append_member(message, "origin", json_mkstring("receiver"));
-													json_append_member(message, "protocol", json_mkstring(protocol->id));
-													broadcast(protocol->id, message);													
+													JsonNode *jmessage = json_mkobject();
+													
+													json_append_member(jmessage, "code", json_decode(valid));
+													json_append_member(jmessage, "origin", json_mkstring("receiver"));
+													json_append_member(jmessage, "protocol", json_mkstring(protocol->id));
+													broadcast(protocol->id, jmessage);									
+													json_delete(jmessage);
 													while(tmp_conflicts) {
-														json_remove_from_parent(json_find_member(message, "protocol"));
-														json_append_member(message, "protocol", json_mkstring(tmp_conflicts->id));
-														broadcast(tmp_conflicts->id, message);
+														jmessage = json_mkobject();
+														json_append_member(jmessage, "code", json_decode(valid));
+														json_append_member(jmessage, "origin", json_mkstring("receiver"));
+														json_append_member(jmessage, "protocol", json_mkstring(tmp_conflicts->id));
+														broadcast(tmp_conflicts->id, jmessage);
 														tmp_conflicts = tmp_conflicts->next;
-													}
-													json_delete(message);
+														json_delete(jmessage);
+													}													
 												}
+												json_delete(protocol->message);
 												protocol->message = NULL;
 												free(valid);
 											}
@@ -849,20 +870,26 @@ void receive_code(void) {
 
 												if(protocol->message) {
 													char *valid = json_stringify(protocol->message, NULL);
-													if(json_validate(valid) == true) {
+													json_delete(protocol->message);
+													if(valid && json_validate(valid) == true) {
 														tmp_conflicts = protocol->conflicts;
-														JsonNode *message = json_mkobject();
-														json_append_member(message, "code", protocol->message);
-														json_append_member(message, "origin", json_mkstring("receiver"));
-														json_append_member(message, "protocol", json_mkstring(protocol->id));
-														broadcast(protocol->id, message);													
+														JsonNode *jmessage = json_mkobject();
+														JsonNode *jcode = json_decode(valid);
+														json_append_member(jmessage, "code", jcode);
+														json_append_member(jmessage, "origin", json_mkstring("receiver"));
+														json_append_member(jmessage, "protocol", json_mkstring(protocol->id));
+														broadcast(protocol->id, jmessage);									
+														json_delete(jmessage);
 														while(tmp_conflicts) {
-															json_remove_from_parent(json_find_member(message, "protocol"));
-															json_append_member(message, "protocol", json_mkstring(tmp_conflicts->id));
-															broadcast(tmp_conflicts->id, message);
+															jmessage = json_mkobject();
+															jcode = json_decode(valid);
+															json_append_member(jmessage, "code", jcode);
+															json_append_member(jmessage, "origin", json_mkstring("receiver"));
+															json_append_member(jmessage, "protocol", json_mkstring(tmp_conflicts->id));
+															broadcast(tmp_conflicts->id, jmessage);
 															tmp_conflicts = tmp_conflicts->next;
-														}
-														json_delete(message);														
+															json_delete(jmessage);
+														}													
 													}
 													protocol->message = NULL;
 													free(valid);
@@ -1006,7 +1033,7 @@ void daemonize(void) {
 /* Garbage collector of main program */
 int main_gc(void) {
 
-	if((use_lirc == 1 && (int)strlen(hw.device) > 0) || use_lirc == 0) {
+	if((strcmp(hw_mode, "module") == 0 && (int)strlen(hw.device) > 0) || strcmp(hw_mode, "gpio") == 0) {
 		module_deinit();
 	}
 
@@ -1029,6 +1056,9 @@ int main_gc(void) {
 	settings_gc();
 
 	free(progname);
+	if(free_hw_mode) {
+		free(hw_mode);
+	}
 	return 0;
 }
 
@@ -1047,7 +1077,7 @@ int main(int argc , char **argv) {
 
 	settingsfile = malloc(strlen(SETTINGS_FILE)+1);
 	strcpy(settingsfile, SETTINGS_FILE);
-
+	
 	struct socket_callback_t socket_callback;
 	struct options_t *options = NULL;	
 	pthread_t pth1, pth2, pth3;
@@ -1114,7 +1144,7 @@ int main(int argc , char **argv) {
 
 	settings_find_number("gpio-sender", &gpio_out);
 	settings_find_number("gpio-receiver", &gpio_in);
-	settings_find_number("use-lirc", &use_lirc);
+	settings_find_string("hw-mode", &hw_mode);
 	settings_find_number("webserver-enable", &webserver_enable);
 	settings_find_number("webserver-port", &webserver_port);
 	if(settings_find_string("webserver-root", &webserver_root) != 0) {
@@ -1122,8 +1152,8 @@ int main(int argc , char **argv) {
 		strcpy(webserver_root, WEBSERVER_ROOT);
 	}
 
-	if(use_lirc == 1) {
-		hw_choose_driver(NULL);
+	if(strcmp(hw_mode, "module") == 0) {
+		hw = hw_default;
 	}
 	
 	if(settings_find_string("pid-file", &pid_file) != 0) {
@@ -1152,10 +1182,11 @@ int main(int argc , char **argv) {
 	}
 	close(f);	
 
-	if(use_lirc == 1) {
-		if(settings_find_string("socket", &hw.device) != 0) {
+	if(strcmp(hw_mode, "module") == 0) {
+		if(settings_find_string("hw-socket", &hw.device) != 0) {
 			hw.device = malloc(strlen(DEFAULT_LIRC_SOCKET)+1);
 			strcpy(hw.device, DEFAULT_LIRC_SOCKET);
+			free_hw_mode = 1;
 		}
 	}
 
@@ -1182,7 +1213,7 @@ int main(int argc , char **argv) {
 
 	settings_find_string("process-file", &process_file);
 
-	if(use_lirc == 1) {
+	if(strcmp(hw_mode, "module") == 0) {
 		if(strcmp(hw.device, "/var/lirc/lircd") == 0) {
 			logprintf(LOG_ERR, "refusing to connect to lircd socket");
 			return EXIT_FAILURE;
@@ -1202,10 +1233,11 @@ int main(int argc , char **argv) {
 		logprintf(LOG_NOTICE, "already active (pid %d)", atoi(buffer));
 		return EXIT_FAILURE;
 	}
-	
-	if((use_lirc == 1 && (int)strlen(hw.device) > 0) || use_lirc == 0) {
+
+	if((strcmp(hw_mode, "module") == 0 && (int)strlen(hw.device) > 0) || strcmp(hw_mode, "gpio") == 0) {
 		module_init();
 	}
+
 
 	/* Initialize peripheral modules */
 	hw_init();
@@ -1214,6 +1246,7 @@ int main(int argc , char **argv) {
 		stmp = malloc(strlen(CONFIG_FILE)+1);
 		strcpy(stmp, CONFIG_FILE);
 	}
+	
 	if(config_set_file(stmp) == 0) {
 		if(config_read() != 0) {
 			return EXIT_FAILURE;
@@ -1262,8 +1295,15 @@ int main(int argc , char **argv) {
 		pthread_create(&pth3, NULL, &webserver_start, (void *)NULL);
 		pthread_detach(pth3);
 	}
+
 	/* And our main receiving loop */
-	receive_code();
+	if(strcmp(hw_mode, "gpio") == 0 || strcmp(hw_mode, "module") == 0) {
+		receive_code();
+	} else {
+		while(1) {
+			sleep(1);
+		}
+	}
 
 	return EXIT_FAILURE;
 }

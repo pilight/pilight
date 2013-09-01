@@ -34,10 +34,10 @@
 #include "options.h"
 #include "wiringPi.h"
 #include "libs/lirc/lirc.h"
-#include "libs/lirc/ir_remote.h"
 #include "libs/lirc/hardware.h"
-#include "libs/lirc/hw-types.h"
 #include "irq.h"
+
+struct hardware hw_default;
 
 typedef enum {
 	WAIT,
@@ -99,8 +99,10 @@ int main(int argc, char **argv) {
 	strcpy(socket, "/dev/lirc0");
 	char *args;
 	int have_device = 0;
-	int use_lirc = USE_LIRC;
+	char *hw_mode = malloc(strlen(HW_MODE)+1);
 	int gpio_in = GPIO_IN_PIN;
+	
+	strcpy(hw_mode, HW_MODE);
 	
 	int duration = 0;
 	int i = 0;
@@ -161,7 +163,7 @@ int main(int argc, char **argv) {
 				printf("\t -H --help\t\tdisplay usage summary\n");
 				printf("\t -V --version\t\tdisplay version\n");		
 				printf("\t -S --socket=socket\tread from given socket\n");
-				printf("\t -L --lirc\t\tuse the lirc_rpi kernel module\n");
+				printf("\t -M --module\t\tuse the lirc_rpi kernel module\n");
 				printf("\t -G --gpio=#\t\tGPIO pin we're directly reading from\n");
 				return (EXIT_SUCCESS);
 			break;
@@ -169,12 +171,12 @@ int main(int argc, char **argv) {
 				printf("%s %s\n", progname, "1.0");
 				return (EXIT_SUCCESS);
 			break;
-			case 'L':
-				use_lirc = 1;
+			case 'M':
+				strcpy(hw_mode, "module");
 			break;
 			case 'G':
 				gpio_in = atoi(optarg);
-				use_lirc = 0;
+				strcpy(hw_mode, "gpio");
 			break;
 			case 'S':
 				socket = realloc(socket, strlen(optarg)+1);
@@ -189,8 +191,8 @@ int main(int argc, char **argv) {
 	}
 	options_delete(options);
 	
-	if(use_lirc == 1) {
-		hw_choose_driver(NULL);
+	if(strcmp(hw_mode, "module") == 0) {
+		hw = hw_default;
 		
 		if(strcmp(socket, "/var/lirc/lircd") == 0) {
 			logprintf(LOG_ERR, "refusing to connect to lircd socket");
@@ -327,7 +329,7 @@ int main(int argc, char **argv) {
 			loop = 0;
 		else
 			state=WAIT;		
-		if(use_lirc == 1) {
+		if(strcmp(hw_mode, "module") == 0) {
 			data = hw.readdata(0);
 			duration = (data & PULSE_MASK);
 		} else {
@@ -566,6 +568,7 @@ int main(int argc, char **argv) {
 	}
 	printf("\n");
 	
+	free(hw_mode);
 	free(socket);
 	free(progname);
 	return (EXIT_SUCCESS);
