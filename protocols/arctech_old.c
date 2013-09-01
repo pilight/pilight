@@ -51,7 +51,7 @@ void arctechOldParseBinary(void) {
 		fp = 1;
 	}
 	int unit = binToDec(arctech_old->binary, 0, 3);
-	int state = !arctech_old->binary[11];
+	int state = arctech_old->binary[11];
 	int id = binToDec(arctech_old->binary, 4, 8);
 	if(fp == 0)
 		arctechOldCreateMessage(id, unit, state);
@@ -107,7 +107,7 @@ void arctechOldCreateId(int id) {
 	for(i=0;i<=length;i++) {
 		if(binary[i]==1) {
 			x=i*4;
-			arctechOldCreateLow(20+x, 20+x+3);
+			arctechOldCreateLow(16+x, 16+x+3);
 		}
 	}
 }
@@ -174,8 +174,8 @@ void arctechOldInit(void) {
 	protocol_add_device(arctech_old, "cogex", "Cogex Switches");
 	protocol_add_device(arctech_old, "intertechno_old", "Old Intertechno Switches");
 	arctech_old->type = SWITCH;
-	arctech_old->pulse = 3;
-	arctech_old->footer = 38;
+	arctech_old->pulse = 4;
+	arctech_old->footer = 39;
 	arctech_old->rawLength = 50;
 	arctech_old->binLength = 12;
 	arctech_old->lsb = 2;
