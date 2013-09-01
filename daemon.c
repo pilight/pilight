@@ -91,7 +91,7 @@ int running = 1;
 /* How many times does the code need to be resend */
 int send_repeat;
 /* How many times does a code need to received*/
-int receive_repeat = 1;
+int receive_repeat = RECEIVE_REPEATS;
 /* Are we currently sending code */
 int sending = 0;
 /* If we have accepted a client, handshakes will store the type of client */
@@ -1224,9 +1224,7 @@ int main(int argc , char **argv) {
 		send_repeat = SEND_REPEATS;
 	}
 
-	if(settings_find_number("receive-repeats", &receive_repeat) != 0) {
-		receive_repeat = RECEIVE_REPEATS;
-	}	
+	settings_find_number("receive-repeats", &receive_repeat);
 	
 	if(running == 1) {
 		nodaemon=1;
