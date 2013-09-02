@@ -48,7 +48,7 @@ int main(int argc, char **argv) {
 	
 	JsonNode *json = NULL;
 
-	char *server = malloc(13);
+	char *server = malloc(17);
 	strcpy(server, "127.0.0.1");
 	unsigned short port = PORT;	
 	
@@ -89,7 +89,7 @@ int main(int argc, char **argv) {
 				strcpy(server, args);
 			break;
 			case 'P':
-				port = (unsigned short)atoi(optarg);
+				port = (unsigned short)atoi(args);
 			break;			
 			default:
 				printf("Usage: %s -l location -d device\n", progname);
@@ -97,12 +97,13 @@ int main(int argc, char **argv) {
 			break;
 		}
 	}	
+
 	options_delete(options);
     if((sockfd = socket_connect(server, port)) == -1) {
 		logprintf(LOG_ERR, "could not connect to pilight-daemon");
 		return EXIT_FAILURE;
 	}
-
+	free(server);
 	while(1) {
 		if(steps > WELCOME) {
 			/* Clear the receive buffer again and read the welcome message */
@@ -159,7 +160,6 @@ close:
 	
 protocol_gc();
 free(progname);
-free(server);
 free(message);
 
 return EXIT_SUCCESS;

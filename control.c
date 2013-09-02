@@ -67,14 +67,14 @@ int main(int argc, char **argv) {
 	struct conf_devices_t *sdevice = NULL;
 	int has_values = 0;
 	
-	char *server = malloc(13);
+	char *server = malloc(17);
 	strcpy(server, "127.0.0.1");
 	unsigned short port = PORT;
 	
-	JsonNode *json = json_mkobject();
-	JsonNode *jconfig = json_mkobject();
-	JsonNode *jcode = json_mkobject();
-	JsonNode *jvalues = json_mkobject();
+	JsonNode *json = NULL;
+	JsonNode *jconfig = NULL;
+	JsonNode *jcode = NULL;
+	JsonNode *jvalues = NULL;
 
 	/* Define all CLI arguments of this program */
 	options_add(&options, 'H', "help", no_value, 0, NULL);
@@ -187,15 +187,15 @@ int main(int argc, char **argv) {
 			case REQUEST:
 				socket_write(sockfd, "{\"message\":\"request config\"}");
 				steps=CONFIG;
+				free(recvBuff);
+				json_delete(json);
 			break;
 			case CONFIG:
 				if((jconfig = json_find_member(json, "config")) != NULL) {
 					config_parse(jconfig);
 					if(config_get_location(location, &slocation) == 0) {
 						if(config_get_device(location, device, &sdevice) == 0) {
-							json_delete(json);
-
-							json = json_mkobject();
+							JsonNode *joutput = json_mkobject();
 							jcode = json_mkobject();
 							jvalues = json_mkobject();
 
@@ -234,38 +234,47 @@ int main(int argc, char **argv) {
 									json_append_member(jcode, "state", json_mkstring(state));
 								} else {
 									logprintf(LOG_ERR, "\"%s\" is an invalid state for device \"%s\"", state, device);
+									free(recvBuff);
 									goto close;
 								}
 							}
 							
 							if(has_values == 1) {
 								json_append_member(jcode, "values", jvalues);
+							} else {
+								json_delete(jvalues);
 							}
 							
-							json_append_member(json, "message", json_mkstring("send"));
-							json_append_member(json, "code", jcode);
-							char *output = json_stringify(json, NULL);
+							json_append_member(joutput, "message", json_mkstring("send"));
+							json_append_member(joutput, "code", jcode);
+							char *output = json_stringify(joutput, NULL);
 							socket_write(sockfd, output);
 							free(output);
+							json_delete(joutput);
 						} else {
 							logprintf(LOG_ERR, "the device \"%s\" does not exist", device);
+							free(recvBuff);
 							goto close;
 						}
 					} else {
 						logprintf(LOG_ERR, "the location \"%s\" does not exist", location);
+						free(recvBuff);						
 						goto close;
 					}
 				}
+				json_delete(json);
+				free(recvBuff);				
 				goto close;
 			break;
 			case REJECT:
 			default:
+				json_delete(json);
+				free(recvBuff);			
 				goto close;
 			break;
 		}
 	}
 close:
-	json_delete(json);
 	socket_close(sockfd);
 config_gc();
 protocol_gc();

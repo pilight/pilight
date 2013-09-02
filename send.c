@@ -70,7 +70,7 @@ int main(int argc, char **argv) {
 	/* Do we need to print the protocol help */
 	int protohelp = 0;
 
-	char *server = malloc(13);
+	char *server = malloc(17);
 	strcpy(server, "127.0.0.1");
 	unsigned short port = PORT;
 	
@@ -139,7 +139,7 @@ int main(int argc, char **argv) {
 					match=1;
 					/* Check if the protocol requires specific CLI arguments
 					   and merge them with the main CLI arguments */
-					if(protocol->options != NULL && help == 0) {
+					if(protocol->options && help == 0) {
 						newOptions = options_merge(&options, &protocol->options);
 					} else if(help == 1) {
 						protohelp=1;
@@ -158,9 +158,12 @@ int main(int argc, char **argv) {
 	/* Display help or version information */
 	if(version == 1) {
 		printf("%s %s\n", progname, "1.0");
+		if(protocol && protocol->options && match) {
+			options_delete(newOptions);
+		}
 		return (EXIT_SUCCESS);
 	} else if(help == 1 || protohelp == 1 || match == 0) {
-		if(protohelp == 1 && match == 1 && protocol->printHelp != NULL)
+		if(protohelp == 1 && match == 1 && protocol->printHelp)
 			printf("Usage: %s -p %s [options]\n", progname, protobuffer);
 		else
 			printf("Usage: %s -p protocol [options]\n", progname);
@@ -171,7 +174,7 @@ int main(int argc, char **argv) {
 			printf("\t -P --port=%d\t\t\tconnect to server port\n", port);
 			printf("\t -p --protocol=protocol\t\tthe protocol that you want to control\n");
 		}
-		if(protohelp == 1 && match == 1 && protocol->printHelp != NULL) {
+		if(protohelp == 1 && match == 1 && protocol->printHelp) {
 			printf("\n\t[%s]\n", protobuffer);
 			protocol->printHelp();
 		} else {
@@ -180,7 +183,7 @@ int main(int argc, char **argv) {
 			/* Retrieve the used protocol */
 			while(pnode) {
 				protocol = pnode->listener;
-				if(protocol->createCode != NULL) {
+				if(protocol->createCode) {
 					while(protocol->devices) {
 						printf("\t %s\t\t",protocol->devices->id);
 						if(strlen(protocol->devices->id)<7)
@@ -193,6 +196,9 @@ int main(int argc, char **argv) {
 				}
 				pnode = pnode->next;
 			}
+		}
+		if(protocol && protocol->options && match) {
+			options_delete(newOptions);
 		}
 		return (EXIT_SUCCESS);
 	}
@@ -224,15 +230,18 @@ int main(int argc, char **argv) {
 	}
 	options_delete(newOptions);
 	if(protocol->createCode(code) == 0) {
+		if(protocol->message) {
+			json_delete(protocol->message);
+		}
 		if((sockfd = socket_connect(server, port)) == -1) {
-			logprintf(LOG_ERR, "could not connect to 433-daemon");
+			logprintf(LOG_ERR, "could not connect to pilight-daemon");
 			goto close;
 		}
 
 		while(1) {
 			if(steps > WELCOME) {
 				/* Clear the receive buffer again and read the welcome message */
-				if((recvBuff = socket_read(sockfd)) != NULL) {
+				if((recvBuff = socket_read(sockfd))) {
 					json = json_decode(recvBuff);
 					json_find_string(json, "message", &message);
 				} else {
@@ -256,7 +265,9 @@ int main(int argc, char **argv) {
 					json = json_mkobject();
 					json_append_member(json, "message", json_mkstring("send"));
 					json_append_member(json, "code", code);
-					socket_write(sockfd, json_stringify(json, NULL));
+					char *output = json_stringify(json, NULL);
+					socket_write(sockfd, output);
+					free(output);
 					goto close;
 				break;
 				case REJECT:

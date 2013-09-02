@@ -308,8 +308,10 @@ int config_valid_value(char *lid, char *sid, char *name, char *value) {
 				}
 				reti = regexec(&regex, value, 0, NULL, 0);
 				if(reti == REG_NOMATCH || reti != 0) {
+					regfree(&regex);
 					return 1;
 				}
+				regfree(&regex);
 #endif
 				return 0;
 			}
@@ -621,6 +623,7 @@ int config_check_state(int i, JsonNode *jsetting, struct conf_devices_t *device)
 						if(reti == REG_NOMATCH || reti != 0) {
 							logprintf(LOG_ERR, "setting #%d \"%s\" of \"%s\", invalid", i, jsetting->key, device->id);
 							have_error = 1;
+							regfree(&regex);
 							goto clear;
 						} else {
 							/* Also check if the values in the values array
@@ -643,6 +646,7 @@ int config_check_state(int i, JsonNode *jsetting, struct conf_devices_t *device)
 								}
 								jtmp = jtmp->next;
 							}
+							regfree(&regex);
 						}
 						if(valid_state == 0) {
 							logprintf(LOG_ERR, "setting #%d \"%s\" of \"%s\", invalid", i, jsetting->key, device->id);

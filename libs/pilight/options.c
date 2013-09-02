@@ -302,8 +302,10 @@ int options_parse(struct options_t **opt, int argc, char **argv, int error_check
 							logprintf(LOG_ERR, "invalid format -- '%s'", longarg);
 						}
 						logprintf(LOG_ERR, "requires %s", mask);
+						regfree(&regex);
 						goto gc;
 					}
+					regfree(&regex);
 				}
 #endif
 				options_set_value(opt, c, *optarg);

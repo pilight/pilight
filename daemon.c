@@ -930,7 +930,7 @@ void *clientize(void *param) {
 		logprintf(LOG_ERR, "could not connect to pilight-daemon");
 		exit(EXIT_FAILURE);
 	}
-	free(server);		
+		
 	while(1) {
 		if(steps > WELCOME) {
 			/* Clear the receive buffer again and read the welcome message */
@@ -966,6 +966,8 @@ void *clientize(void *param) {
 			case REQUEST:
 				socket_write(sockfd, "{\"message\":\"request config\"}");
 				steps=CONFIG;
+				free(recvBuff);
+				json_delete(json);
 			break;
 			case CONFIG:
 				if((jconfig = json_find_member(json, "config"))) {
@@ -973,31 +975,28 @@ void *clientize(void *param) {
 					json_delete(jconfig);
 					steps=FORWARD;
 				}
+				json_delete(json);
+				free(recvBuff);
 			break;
 			case FORWARD:
-				if(strcmp(message, "request config") != 0 && !json_find_member(json, "config")) {
+				if(!json_find_member(json, "config")) {
 					if(json_find_string(json, "origin", &message) == 0 && 
-					   json_find_string(json, "protocol", &protocol) == 0) {
+					json_find_string(json, "protocol", &protocol) == 0) {
 						broadcast(protocol, json);
 					}
 				}
+				json_delete(json);
+				free(recvBuff);
 			break;
 			case REJECT:
 			default:
 				goto close;
 			break;
 		}
-		json_delete(json);
 	}
 close:
 	socket_close(sockfd);
-	protocol_gc();
-	if(webserver_enable == 1) {
-		webserver_gc();
-	}
-	config_gc();
-	gc_run();
-	exit(EXIT_SUCCESS);
+	return NULL;
 }
 
 void daemonize(void) {
@@ -1242,20 +1241,17 @@ int main(int argc , char **argv) {
 	/* Initialize peripheral modules */
 	hw_init();
 
-	if(settings_find_string("config-file", &stmp) != 0) {
-		stmp = malloc(strlen(CONFIG_FILE)+1);
-		strcpy(stmp, CONFIG_FILE);
-	}
-	
-	if(config_set_file(stmp) == 0) {
-		if(config_read() != 0) {
-			return EXIT_FAILURE;
-		} else {
-			receivers++;
-		}
+	if(settings_find_string("config-file", &stmp) == 0) {
+		if(config_set_file(stmp) == 0) {
+			if(config_read() != 0) {
+				return EXIT_FAILURE;
+			} else {
+				receivers++;
+			}
 
-		if(log_level_get() >= LOG_DEBUG) {
-			config_print();
+			if(log_level_get() >= LOG_DEBUG) {
+				config_print();
+			}
 		}
 	}
 

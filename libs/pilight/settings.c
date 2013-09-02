@@ -126,7 +126,7 @@ int settings_file_exists(char *filename) {
 int settings_parse(JsonNode *root) {
 	int have_error = 0;
 	int is_node = 0;
-	char *server_ip = malloc(4);
+	char *server_ip = malloc(17);
 	int server_port = 0;
 	int web_port = 0;
 	int own_port = 0;
@@ -196,13 +196,17 @@ int settings_parse(JsonNode *root) {
 				goto clear;
 			} else if(strlen(jsettings->string_) > 0) {
 				if(settings_file_exists(jsettings->string_) == 0) {
-					has_config = 1;
+					if(strcmp(jsettings->key, "config-file") == 0) {
+						has_config = 1;
+					}
 					settings_add_string_node(jsettings->key, jsettings->string_);
 				} else {
 					logprintf(LOG_ERR, "setting \"%s\" must point to an existing file", jsettings->key);
 					have_error = 1;
 					goto clear;
 				}
+			} else if(strcmp(jsettings->key, "config-file") == 0) {
+				has_config = 1;
 			}
 		} else if(strcmp(jsettings->key, "hw-socket") == 0) {
 			if(!jsettings->string_) {
