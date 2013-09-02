@@ -238,8 +238,10 @@ int webserver_callback_http(struct libwebsocket_context *webcontext, struct libw
 			memcpy(&buf[LWS_SEND_BUFFER_PRE_PADDING], syncBuff, syncBuff_len);
 			m = libwebsocket_write(wsi, &buf[LWS_SEND_BUFFER_PRE_PADDING], syncBuff_len, LWS_WRITE_TEXT);
 			free(buf);
-			free(syncBuff);
-			syncBuff = NULL;
+			if(syncBuff) {
+				free(syncBuff);
+				syncBuff = NULL;
+			}
 			/*
 			 * It seems like libwebsocket_write already does memory freeing
 			 */	
@@ -365,6 +367,10 @@ void *webserver_start(void *param) {
 			n = libwebsocket_service(context, 50);
 		}
 		libwebsocket_context_destroy(context);
+		if(syncBuff) {
+			free(syncBuff);
+			syncBuff = NULL;
+		}
 	}
 	return 0;
 }
