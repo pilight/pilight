@@ -313,7 +313,11 @@ void *webserver_clientize(void *param) {
 				json_delete(json);
 			}
 			break;
-			case SYNC:			
+			case SYNC:
+				if(syncBuff) {
+					free(syncBuff);
+					syncBuff = NULL;
+				}
 				syncBuff = malloc(strlen(recvBuff)+1);
 				strcpy(syncBuff, recvBuff);
 				/* Push all incoming sync messages to the web gui */
