@@ -301,6 +301,7 @@ void send_code(JsonNode *json) {
 							strcpy(protoname, protocol->id);
 							broadcast(protoname, message);
 							json_delete(message);
+							message = NULL;
 							free(protoname);
 						}
 					} else {
@@ -325,6 +326,7 @@ void send_code(JsonNode *json) {
 						strcpy(protoname, protocol->id);
 						broadcast(protoname, message);
 						json_delete(message);
+							message = NULL;
 						free(protoname);
 					}
 				} else if(strcmp(hw_mode, "none") == 0) {
@@ -335,13 +337,18 @@ void send_code(JsonNode *json) {
 						strcpy(protoname, protocol->id);
 						broadcast(protoname, message);
 						json_delete(message);
+						message = NULL;
 						free(protoname);
 					}
 				}
 				sending = 0;
 			}	
 		}
-		if(jcode != NULL) {
+		if(message) {
+			json_delete(message);
+			message = NULL;
+		}
+		if(jcode) {
 			json_delete(jcode);
 		}
 	}
