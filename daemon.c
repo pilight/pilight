@@ -297,12 +297,9 @@ void send_code(JsonNode *json) {
 						if(logged == 0) {
 							logged = 1;
 							/* Write the message to all receivers */
-							char *protoname = malloc(strlen(protocol->id)+1);
-							strcpy(protoname, protocol->id);
-							broadcast(protoname, message);
+							broadcast(protocol->id, message);
 							json_delete(message);
 							message = NULL;
-							free(protoname);
 						}
 					} else {
 						logprintf(LOG_ERR, "failed to send code");
@@ -322,23 +319,17 @@ void send_code(JsonNode *json) {
 					if(logged == 0) {
 						logged = 1;
 						/* Write the message to all receivers */
-						char *protoname = malloc(strlen(protocol->id)+1);
-						strcpy(protoname, protocol->id);
-						broadcast(protoname, message);
+						broadcast(protocol->id, message);
 						json_delete(message);
-							message = NULL;
-						free(protoname);
+						message = NULL;
 					}
 				} else if(strcmp(hw_mode, "none") == 0) {
 					if(logged == 0) {
 						logged = 1;
 						/* Write the message to all receivers */
-						char *protoname = malloc(strlen(protocol->id)+1);
-						strcpy(protoname, protocol->id);
-						broadcast(protoname, message);
+						broadcast(protocol->id, message);
 						json_delete(message);
 						message = NULL;
-						free(protoname);
 					}
 				}
 				sending = 0;
