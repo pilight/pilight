@@ -838,7 +838,6 @@ void receive_code(void) {
 														json_delete(jmessage);
 													}													
 												}
-												json_delete(protocol->message);
 												protocol->message = NULL;
 												free(valid);
 											}
