@@ -52,7 +52,7 @@ char *request = NULL;
 char *ext = NULL;
 char *mimetype = NULL;
 char *server;
-int loop = 1;
+unsigned short webserver_loop = 1;
 
 typedef enum {
 	WELCOME,
@@ -67,7 +67,7 @@ struct libwebsocket_protocols libwebsocket_protocols[] = {
 };
 
 int webserver_gc(void) {
-	loop = 0;
+	webserver_loop = 0;
 	socket_close(sockfd);
 	if(syncBuff) {
 		free(syncBuff);
@@ -302,7 +302,7 @@ void *webserver_clientize(void *param) {
 	}
 	sockReadBuff = malloc(BUFFER_SIZE);
 	free(server);
-	while(loop) {
+	while(webserver_loop) {
 		if(steps > WELCOME) {
 			memset(sockReadBuff, '\0', BUFFER_SIZE);
 			/* Clear the receive buffer again and read the welcome message */
@@ -352,7 +352,6 @@ void *webserver_start(void *param) {
 	int n = 0;
 	struct lws_context_creation_info info;
 	pthread_t pth1;
-	pthread_attr_t pattr1;
 
 	settings_find_number("webserver-port", &webserver_port);
 	if(settings_find_string("webserver-root", &webserver_root) != 0) {
@@ -374,12 +373,10 @@ void *webserver_start(void *param) {
 		lwsl_err("libwebsocket init failed\n");
 	} else {
 		/* Create a seperate thread in which the webserver communicates
-		   the main daemon as if it where a gui */
-		pthread_attr_init(&pattr1);
-		pthread_attr_setdetachstate(&pattr1, PTHREAD_CREATE_DETACHED);		   
-		pthread_create(&pth1, &pattr1, &webserver_clientize, (void *)NULL);
+		   the main daemon as if it where a gui */		   
+		pthread_create(&pth1, NULL, &webserver_clientize, (void *)NULL);
 		/* Main webserver loop */
-		while(n >= 0 && loop) {
+		while(n >= 0 && webserver_loop) {
 			n = libwebsocket_service(context, 50);
 		}
 		libwebsocket_context_destroy(context);
@@ -387,6 +384,8 @@ void *webserver_start(void *param) {
 			free(syncBuff);
 			syncBuff = NULL;
 		}
+		pthread_cancel(pth1);
+		pthread_join(pth1, NULL);
 	}
 	return 0;
 }

@@ -115,6 +115,10 @@ int webserver_enable = WEBSERVER_ENABLE;
 int webserver_port = WEBSERVER_PORT;
 /* The webroot of pilight */
 char *webserver_root;
+/* Thread pointers */
+pthread_t pth1, pth2, pth3;
+/* While loop conditions */
+unsigned short main_loop = 1;
 
 /* http://stackoverflow.com/a/3535143 */
 void escape_characters(char* dest, const char* src) {
@@ -705,7 +709,7 @@ void receive_code(void) {
 		(void)piHiPri(55);
 	}
 
-	while(1) {
+	while(main_loop) {
 		/* Only initialize the hardware receive the data when there are receivers connected */
 		if(receivers > 0) {
 			if(strcmp(hw_mode, "module") == 0) {
@@ -929,7 +933,7 @@ void *clientize(void *param) {
 		exit(EXIT_FAILURE);
 	}
 		
-	while(1) {
+	while(main_loop) {
 		if(steps > WELCOME) {
 			/* Clear the receive buffer again and read the welcome message */
 			if(steps == REQUEST) {
@@ -1049,10 +1053,25 @@ int main_gc(void) {
 	protocol_gc();
 	settings_gc();
 	options_gc();
+	socket_gc();
 
 	free(progname);
 	if(free_hw_mode) {
 		free(hw_mode);
+	}
+
+	main_loop = 0;
+	
+	if(runmode == 2) {
+		pthread_cancel(pth1);
+		pthread_join(pth1, NULL);
+	}
+
+	pthread_cancel(pth2);
+	pthread_join(pth2, NULL);	
+	if(webserver_enable == 1) {
+		pthread_cancel(pth3);
+		pthread_join(pth3, NULL);
 	}
 	return 0;
 }
@@ -1075,8 +1094,7 @@ int main(int argc , char **argv) {
 	
 	struct socket_callback_t socket_callback;
 	struct options_t *options = NULL;	
-	pthread_t pth1, pth2, pth3;
-	pthread_attr_t pattr1, pattr2, pattr3;
+
 	char buffer[BUFFER_SIZE];
 	int f;
 	int itmp;
@@ -1091,7 +1109,7 @@ int main(int argc , char **argv) {
 	options_add(&options, 'D', "nodaemon", no_value, 0, NULL);
 	options_add(&options, 'S', "settings", has_value, 0, NULL);
 
-	while (1) {
+	while(1) {
 		int c;
 		c = options_parse(&options, argc, argv, 1, &args);
 		if (c == -1)
@@ -1269,28 +1287,20 @@ int main(int argc , char **argv) {
 	/* The daemon running in client mode, create a seperate thread that
 	   communicates with the server */
 	if(runmode == 2) {
-		pthread_attr_init(&pattr1);
-		pthread_attr_setdetachstate(&pattr1, PTHREAD_CREATE_DETACHED);
-		pthread_create(&pth1, &pattr1, &clientize, (void *)NULL);
+		pthread_create(&pth1, NULL, &clientize, (void *)NULL);
 	}
 	/* Create a seperate thread for the server */
-	pthread_attr_init(&pattr2);
-	pthread_attr_setdetachstate(&pattr2, PTHREAD_CREATE_DETACHED);	
-	pthread_create(&pth2, &pattr2, &socket_wait, (void *)&socket_callback);
-	pthread_detach(pth2);
+	pthread_create(&pth2, NULL, &socket_wait, (void *)&socket_callback);
 	/* Create a seperate thread for the webserver */
 	if(webserver_enable == 1) {
-		pthread_attr_init(&pattr3);
-		pthread_attr_setdetachstate(&pattr3, PTHREAD_CREATE_DETACHED);	
 		pthread_create(&pth3, NULL, &webserver_start, (void *)NULL);
-		pthread_detach(pth3);
 	}
 
 	/* And our main receiving loop */
 	if(strcmp(hw_mode, "gpio") == 0 || strcmp(hw_mode, "module") == 0) {
 		receive_code();
 	} else {
-		while(1) {
+		while(main_loop) {
 			sleep(1);
 		}
 	}

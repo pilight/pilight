@@ -37,6 +37,7 @@
 char *readBuff = NULL;
 char *recvBuff = NULL;
 char *sendBuff = NULL;
+unsigned short socket_loop = 1;
 
 int socket_gc(void) {
 	if(readBuff) {
@@ -48,13 +49,14 @@ int socket_gc(void) {
 	if(sendBuff) {
 		free(sendBuff);
 	}
+	socket_loop = 0;
 	logprintf(LOG_DEBUG, "garbage collected socket library");
 	return EXIT_SUCCESS;
 }
 
 /* Start the socket server */
 int socket_start(unsigned short port) {
-	gc_attach(socket_gc);
+	//gc_attach(socket_gc);
 
 	int opt = 1;
     struct sockaddr_in address;
@@ -223,7 +225,7 @@ void *socket_wait(void *param) {
 	char *pch;
 	readBuff = malloc(BIG_BUFFER_SIZE);
 
-	while(1) {
+	while(socket_loop) {
 		do {
 			//clear the socket set
 			FD_ZERO(&readfds);
@@ -247,7 +249,7 @@ void *socket_wait(void *param) {
 			}
 			//wait for an activity on one of the sockets , timeout is NULL , so wait indefinitely
 			activity = select(max_sd + 1, &readfds, NULL, NULL, NULL);
-		} while(activity == -1 && errno == EINTR);
+		} while(activity == -1 && errno == EINTR && socket_loop);
 
         //If something happened on the master socket , then its an incoming connection
         if(FD_ISSET((long unsigned int)serverSocket, &readfds)) {
@@ -308,4 +310,5 @@ void *socket_wait(void *param) {
             }
         }
     }
+	return NULL;
 }
