@@ -44,7 +44,6 @@ int fcache_gc(void) {
 }
 
 int fcache_add(char *filename) {
-	gc_attach(fcache_gc);
 
 	unsigned long filesize, i = 0;
 	struct stat sb;

@@ -152,15 +152,19 @@ int main(int argc, char **argv) {
 				goto close;
 			break;
 		}
-		free(recvBuff);
-		recvBuff = NULL;
 	}
 close:
 	socket_close(sockfd);
 	
-protocol_gc();
-free(progname);
-free(message);
+	protocol_gc();
+	options_gc();
+	free(progname);
+	free(server);
+	if(args) {
+		free(args);
+		args = NULL;
+	}
+	free(message);
 
 return EXIT_SUCCESS;
 }

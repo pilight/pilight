@@ -45,8 +45,12 @@ struct per_session_data__http {
 int webserver_port = WEBSERVER_PORT;
 char *webserver_root;
 int sockfd = 0;
-char *recvBuff = NULL;
+char *sockReadBuff = NULL;
 char *syncBuff = NULL;
+unsigned char *sockWriteBuff = NULL;
+char *request = NULL;
+char *ext = NULL;
+char *mimetype = NULL;
 char *server;
 int loop = 1;
 
@@ -69,7 +73,23 @@ int webserver_gc(void) {
 		free(syncBuff);
 		syncBuff = NULL;
 	}
-
+	if(sockWriteBuff) {
+		free(sockWriteBuff);
+		sockWriteBuff = NULL;
+	}
+	if(ext) {
+		free(ext);
+		ext = NULL;
+	}
+	if(request) {
+		free(request);
+		request = NULL;
+	}
+	if(mimetype) {
+		free(mimetype);
+		mimetype = NULL;
+	}
+	fcache_gc();
 	logprintf(LOG_DEBUG, "garbage collected webserver library");
 	return 1;
 }
@@ -83,12 +103,13 @@ int webserver_callback_http(struct libwebsocket_context *webcontext, struct libw
 	
 	switch(reason) {
 		case LWS_CALLBACK_HTTP: {
-			char *request;
 			if(strcmp((const char *)in, "/") == 0) {
-				request = malloc(strlen(webserver_root)+13);
+				request = realloc(request, strlen(webserver_root)+13);
+				memset(request, '\0', strlen(webserver_root)+13);
 				sprintf(request, "%s%s", webserver_root, "/index.html");
 			} else {
-				request = malloc(strlen(webserver_root)+strlen((const char *)in)+1);
+				request = realloc(request, strlen(webserver_root)+strlen((const char *)in)+1);
+				memset(request, '\0', strlen(webserver_root)+strlen((const char *)in)+1);
 				sprintf(request, "%s%s", webserver_root, (const char *)in);
 			}
 
@@ -106,32 +127,36 @@ int webserver_callback_http(struct libwebsocket_context *webcontext, struct libw
 			// }
 			
 				char *dot = NULL;
-				char *ext = NULL;
-				char *mimetype = NULL;
 				
 				dot = strrchr(request, '.');
 				if(!dot || dot == request) 
 					return -1;
-				ext = malloc(strlen(dot)+1);
+					
+				ext = realloc(ext, strlen(dot)+1);
+				memset(ext, '\0', strlen(dot)+1);
 				strcpy(ext, dot+1);
 
 				if(strcmp(ext, "html") == 0) {
-					mimetype = malloc(10);
+					mimetype = realloc(mimetype, 10);
+					memset(mimetype, '\0', 10);
 					strcpy(mimetype, "text/html");
 				} else if(strcmp(ext, "png") == 0) {
-					mimetype = malloc(10);
+					mimetype = realloc(mimetype, 10);
+					memset(mimetype, '\0', 10);
 					strcpy(mimetype, "image/png");
 				} else if(strcmp(ext, "ico") == 0) {
-					mimetype = malloc(13);
+					mimetype = realloc(mimetype, 13);
+					memset(mimetype, '\0', 13);
 					strcpy(mimetype, "image/x-icon");
 				} else if(strcmp(ext, "css") == 0) {
-					mimetype = malloc(10);
+					mimetype = realloc(mimetype, 10);
+					memset(mimetype, '\0', 10);
 					strcpy(mimetype, "text/css");
 				} else if(strcmp(ext, "js") == 0) {
-					mimetype = malloc(16);
+					mimetype = realloc(mimetype, 16);
+					memset(mimetype, '\0', 16);
 					strcpy(mimetype, "text/javascript");
-				}			
-				free(ext);
+				}
 				fstat(pss->fd, &sb);
 				
 				// unsigned char *p = buffer;
@@ -143,8 +168,6 @@ int webserver_callback_http(struct libwebsocket_context *webcontext, struct libw
 					// mimetype, (unsigned int)size);
 
 				if(libwebsockets_serve_http_file(webcontext, wsi, request, mimetype)) {
-					free(request);
-					free(mimetype);
 					libwebsocket_callback_on_writable(webcontext, wsi);
 					return -1;
 				}					
@@ -181,10 +204,6 @@ int webserver_callback_http(struct libwebsocket_context *webcontext, struct libw
 					// libwebsocket_callback_on_writable(webcontext, wsi);
 					
 				// }
-				free(request);
-				free(mimetype);
-			} else {
-				free(request);
 			}
 		}
 		break;
@@ -213,10 +232,10 @@ int webserver_callback_http(struct libwebsocket_context *webcontext, struct libw
 
 							char *output = json_stringify(jsend, NULL);
 							size_t output_len = strlen(output);
-							unsigned char *buf = malloc(LWS_SEND_BUFFER_PRE_PADDING + output_len + LWS_SEND_BUFFER_POST_PADDING);
- 	  						memcpy(&buf[LWS_SEND_BUFFER_PRE_PADDING], output, output_len);
-							libwebsocket_write(wsi, &buf[LWS_SEND_BUFFER_PRE_PADDING], output_len, LWS_WRITE_TEXT);
-							free(buf);
+							sockWriteBuff = realloc(sockWriteBuff, LWS_SEND_BUFFER_PRE_PADDING + output_len + LWS_SEND_BUFFER_POST_PADDING);
+							memset(sockWriteBuff, '\0', sizeof(sockWriteBuff));
+ 	  						memcpy(&sockWriteBuff[LWS_SEND_BUFFER_PRE_PADDING], output, output_len);
+							libwebsocket_write(wsi, &sockWriteBuff[LWS_SEND_BUFFER_PRE_PADDING], output_len, LWS_WRITE_TEXT);
 							free(output);
 							json_delete(jsend);
 						} else if(strcmp(message, "send") == 0) {
@@ -234,14 +253,10 @@ int webserver_callback_http(struct libwebsocket_context *webcontext, struct libw
 		case LWS_CALLBACK_SERVER_WRITEABLE: {
 			/* Push the incoming message to the webgui */
 			size_t syncBuff_len = strlen(syncBuff);
-			unsigned char *buf = malloc(LWS_SEND_BUFFER_PRE_PADDING + syncBuff_len + LWS_SEND_BUFFER_POST_PADDING);
-			memcpy(&buf[LWS_SEND_BUFFER_PRE_PADDING], syncBuff, syncBuff_len);
-			m = libwebsocket_write(wsi, &buf[LWS_SEND_BUFFER_PRE_PADDING], syncBuff_len, LWS_WRITE_TEXT);
-			free(buf);
-			if(syncBuff) {
-				free(syncBuff);
-				syncBuff = NULL;
-			}
+			sockWriteBuff = realloc(sockWriteBuff, LWS_SEND_BUFFER_PRE_PADDING + syncBuff_len + LWS_SEND_BUFFER_POST_PADDING);
+			memset(sockWriteBuff, '\0', sizeof(sockWriteBuff));
+			memcpy(&sockWriteBuff[LWS_SEND_BUFFER_PRE_PADDING], syncBuff, syncBuff_len);
+			m = libwebsocket_write(wsi, &sockWriteBuff[LWS_SEND_BUFFER_PRE_PADDING], syncBuff_len, LWS_WRITE_TEXT);
 			/*
 			 * It seems like libwebsocket_write already does memory freeing
 			 */	
@@ -285,14 +300,14 @@ void *webserver_clientize(void *param) {
 		logprintf(LOG_ERR, "could not connect to pilight-daemon");
 		exit(EXIT_FAILURE);
 	}
-	recvBuff = malloc(BUFFER_SIZE);
+	sockReadBuff = malloc(BUFFER_SIZE);
 	free(server);
 	while(loop) {
 		if(steps > WELCOME) {
-			memset(recvBuff, '\0', BUFFER_SIZE);
+			memset(sockReadBuff, '\0', BUFFER_SIZE);
 			/* Clear the receive buffer again and read the welcome message */
 			/* Used direct read access instead of socket_read */
-			if(read(sockfd, recvBuff, BUFFER_SIZE) < 1) {	
+			if(read(sockfd, sockReadBuff, BUFFER_SIZE) < 1) {	
 				goto close;
 			}
 		}
@@ -302,7 +317,7 @@ void *webserver_clientize(void *param) {
 				steps=IDENTIFY;
 			break;
 			case IDENTIFY: {
-				JsonNode *json = json_decode(recvBuff);
+				JsonNode *json = json_decode(sockReadBuff);
 				json_find_string(json, "message", &message);
 				if(strcmp(message, "accept client") == 0) {
 					steps=SYNC;
@@ -314,12 +329,9 @@ void *webserver_clientize(void *param) {
 			}
 			break;
 			case SYNC:
-				if(syncBuff) {
-					free(syncBuff);
-					syncBuff = NULL;
-				}
-				syncBuff = malloc(strlen(recvBuff)+1);
-				strcpy(syncBuff, recvBuff);
+				syncBuff = realloc(syncBuff, strlen(sockReadBuff)+1);
+				memset(syncBuff, '\0', sizeof(syncBuff));
+				strcpy(syncBuff, sockReadBuff);
 				/* Push all incoming sync messages to the web gui */
 				libwebsocket_callback_on_writable_all_protocol(&libwebsocket_protocols[0]);
 			break;				
@@ -329,7 +341,7 @@ void *webserver_clientize(void *param) {
 			break;
 		}
 	}
-	free(recvBuff);
+	free(sockReadBuff);
 close:
 	webserver_gc();
 	return 0;

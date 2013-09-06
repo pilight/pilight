@@ -569,7 +569,12 @@ int main(int argc, char **argv) {
 	printf("\n");
 	
 	free(hw_mode);
-	free(socket);
+	options_gc();
 	free(progname);
+	free(socket);
+	if(args) {
+		free(args);
+		args = NULL;
+	}
 	return (EXIT_SUCCESS);
 }

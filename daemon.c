@@ -735,6 +735,7 @@ void receive_code(void) {
 								protocol->recording = 0;
 							}
 						}
+						
 						if(protocol->header == 0) {
 							header = (short)protocol->pulse;
 						} else {
@@ -963,7 +964,6 @@ void *clientize(void *param) {
 			case REQUEST:
 				socket_write(sockfd, "{\"message\":\"request config\"}");
 				steps=CONFIG;
-				free(recvBuff);
 				json_delete(json);
 			break;
 			case CONFIG:
@@ -973,7 +973,6 @@ void *clientize(void *param) {
 					steps=FORWARD;
 				}
 				json_delete(json);
-				free(recvBuff);
 			break;
 			case FORWARD:
 				if(!json_find_member(json, "config")) {
@@ -983,7 +982,6 @@ void *clientize(void *param) {
 					}
 				}
 				json_delete(json);
-				free(recvBuff);
 			break;
 			case REJECT:
 			default:
@@ -1050,6 +1048,7 @@ int main_gc(void) {
 	config_gc();
 	protocol_gc();
 	settings_gc();
+	options_gc();
 
 	free(progname);
 	if(free_hw_mode) {

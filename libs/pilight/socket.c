@@ -31,10 +31,31 @@
 
 #include "settings.h"
 #include "log.h"
+#include "gc.h"
 #include "socket.h"
+
+char *readBuff = NULL;
+char *recvBuff = NULL;
+char *sendBuff = NULL;
+
+int socket_gc(void) {
+	if(readBuff) {
+		free(readBuff);
+	}
+	if(recvBuff) {
+		free(recvBuff);
+	}
+	if(sendBuff) {
+		free(sendBuff);
+	}
+	logprintf(LOG_DEBUG, "garbage collected socket library");
+	return EXIT_SUCCESS;
+}
 
 /* Start the socket server */
 int socket_start(unsigned short port) {
+	gc_attach(socket_gc);
+
 	int opt = 1;
     struct sockaddr_in address;
 
@@ -56,7 +77,7 @@ int socket_start(unsigned short port) {
     address.sin_port = htons(port);
 
     //bind the socket to localhost
-    if (bind(serverSocket, (struct sockaddr *)&address, sizeof(address))<0) {
+    if (bind(serverSocket, (struct sockaddr *)&address, sizeof(address)) < 0) {
         logprintf(LOG_ERR, "cannot bind to socket port %d, address already in use?", address);
         exit(EXIT_FAILURE);
     }
@@ -76,6 +97,11 @@ int socket_connect(char *address, unsigned short port) {
 	struct sockaddr_in serv_addr;
 	int sockfd;
 
+	if(!sendBuff) {
+		sendBuff = malloc(BIG_BUFFER_SIZE);
+		recvBuff = malloc(BIG_BUFFER_SIZE);
+	}
+	
 	/* Try to open a new socket */
     if((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
         logprintf(LOG_ERR, "could not create socket");
@@ -105,6 +131,7 @@ void socket_close(int sockfd) {
 
 	if(sockfd > 0) {
 		getpeername(sockfd, (struct sockaddr*)&address, (socklen_t*)&addrlen);
+		logprintf(LOG_INFO, "client disconnected, ip %s, port %d", inet_ntoa(address.sin_addr), ntohs(address.sin_port));				
 
 		for(i=0;i<MAX_CLIENTS;i++) {
 			if(socket_clients[i] == sockfd) {
@@ -112,8 +139,6 @@ void socket_close(int sockfd) {
 				break;
 			}
 		}
-
-		logprintf(LOG_INFO, "client disconnected, ip %s, port %d", inet_ntoa(address.sin_addr), ntohs(address.sin_port));				
 		close(sockfd);
 	}
 }
@@ -122,24 +147,23 @@ void socket_write(int sockfd, const char *msg, ...) {
 	va_list ap;
 
 	if(strlen(msg) > 0 && sockfd > 0) {
-		char *message = malloc(BUFFER_SIZE);
-		memset(message, '\0', BUFFER_SIZE);
+		memset(sendBuff, '\0', BIG_BUFFER_SIZE);
 
 		va_start(ap, msg);
-		vsprintf(message, msg, ap);
+		vsprintf(sendBuff, msg, ap);
 		va_end(ap);
-		strcat(message, "\n");
-		if(send(sockfd, message, strlen(message), MSG_NOSIGNAL) == -1) {
-			logprintf(LOG_DEBUG, "socket write failed: %s", message);
+		strcat(sendBuff, "\n");
+
+		if(send(sockfd, sendBuff, strlen(sendBuff), MSG_NOSIGNAL) == -1) {
+			logprintf(LOG_DEBUG, "socket write failed: %s", sendBuff);
 			socket_close(sockfd);
 		} else {
-			if(strcmp(message, "BEAT\n") != 0) {
-				logprintf(LOG_DEBUG, "socket write succeeded: %s", message);
+			if(strcmp(sendBuff, "BEAT\n") != 0) {
+				logprintf(LOG_DEBUG, "socket write succeeded: %s", sendBuff);
 			}
 			// Prevent buffering of messages
 			usleep(100);
 		}
-		free(message);
 	}
 }
 
@@ -147,33 +171,30 @@ void socket_write_big(int sockfd, const char *msg, ...) {
 	va_list ap;
 
 	if(strlen(msg) > 0 && sockfd > 0) {
-		char *message = malloc(BIG_BUFFER_SIZE);
-		memset(message, '\0', BIG_BUFFER_SIZE);
+		memset(sendBuff, '\0', BIG_BUFFER_SIZE);
 
 		va_start(ap, msg);
-		vsprintf(message, msg, ap);
+		vsprintf(sendBuff, msg, ap);
 		va_end(ap);
-		strcat(message, "\n");
-		if(send(sockfd, message, strlen(message), MSG_NOSIGNAL) == -1) {
-			logprintf(LOG_DEBUG, "socket write failed: %s", message);
+		strcat(sendBuff, "\n");
+
+		if(send(sockfd, sendBuff, strlen(sendBuff), MSG_NOSIGNAL) == -1) {
+			logprintf(LOG_DEBUG, "socket write failed: %s", sendBuff);
 			socket_close(sockfd);
 		} else {
-			if(strcmp(message, "BEAT\n") != 0) {
-				logprintf(LOG_DEBUG, "socket write succeeded: %s", message);
+			if(strcmp(sendBuff, "BEAT\n") != 0) {
+				logprintf(LOG_DEBUG, "socket write succeeded: %s", sendBuff);
 			}
 			// Prevent buffering of messages
 			usleep(100);
 		}
-		free(message);
 	}
 }
 
 char *socket_read(int sockfd) {
-	char *recvBuff = malloc(BUFFER_SIZE);
 	memset(recvBuff, '\0', BUFFER_SIZE);
 
 	if(read(sockfd, recvBuff, BUFFER_SIZE) < 1) {
-		free(recvBuff);
 		return NULL;
 	} else {
 		return recvBuff;
@@ -181,7 +202,6 @@ char *socket_read(int sockfd) {
 }
 
 char *socket_read_big(int sockfd) {
-	char *recvBuff = malloc(BIG_BUFFER_SIZE);
 	memset(recvBuff, '\0', BIG_BUFFER_SIZE);
 
 	if(read(sockfd, recvBuff, BIG_BUFFER_SIZE) < 1) {
@@ -189,13 +209,6 @@ char *socket_read_big(int sockfd) {
 	} else {
 		return recvBuff;
 	}
-}
-
-int socket_msgcmp(char *a, char *b) {
-	char tmp[BUFFER_SIZE];
-	strcpy(tmp, b);
-	strcat(tmp, "\n");
-	return strcmp(a, tmp);
 }
 
 void *socket_wait(void *param) {
@@ -208,6 +221,7 @@ void *socket_wait(void *param) {
 	int addrlen = sizeof(address);
 	fd_set readfds;
 	char *pch;
+	readBuff = malloc(BIG_BUFFER_SIZE);
 
 	while(1) {
 		do {
@@ -253,7 +267,7 @@ void *socket_wait(void *param) {
                 //if position is empty
                 if(socket_clients[i] == 0) {
                     socket_clients[i] = clientSocket;
-					if(socket_callback->client_connected_callback != NULL)
+					if(socket_callback->client_connected_callback)
 						socket_callback->client_connected_callback(i);
                     logprintf(LOG_DEBUG, "client id: %d", i);
                     break;
@@ -267,32 +281,28 @@ void *socket_wait(void *param) {
 
             if(FD_ISSET((long unsigned int)sd , &readfds)) {
                 //Check if it was for closing, and also read the incoming message
-				
-				char *readBuff = malloc(BUFFER_SIZE);		
+
 				memset(readBuff, '\0', BUFFER_SIZE);				
                 if((n = (int)read(sd, readBuff, BUFFER_SIZE-1)) == 0) {
-					free(readBuff);
                     //Somebody disconnected, get his details and print
                     getpeername(sd, (struct sockaddr*)&address, (socklen_t*)&addrlen);
 					logprintf(LOG_INFO, "client disconnected, ip %s, port %d", inet_ntoa(address.sin_addr), ntohs(address.sin_port));
-					if(socket_callback->client_disconnected_callback != NULL)
+					if(socket_callback->client_disconnected_callback)
 						socket_callback->client_disconnected_callback(i);
 					//Close the socket and mark as 0 in list for reuse
 					close(sd);
 					socket_clients[i] = 0;
                 } else {
                     //set the string terminating NULL byte on the end of the data read
-                    readBuff[n] = '\0';
+                    // readBuff[n] = '\0';
 
-					if(n > -1 && socket_callback->client_data_callback != NULL) {
+					if(n > -1 && socket_callback->client_data_callback) {
 						pch = strtok(readBuff, "\n");
-						while(pch != NULL) {
+						while(pch) {
 							strcat(pch, "\n");
 							socket_callback->client_data_callback(i, pch);
 							pch = strtok(NULL, "\n");
 						}
-						free(readBuff);
-						readBuff = NULL;
 					}
                 }
             }

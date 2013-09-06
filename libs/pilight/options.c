@@ -25,6 +25,27 @@
 #include "options.h"
 
 int getOptPos = 0;
+char *longarg = NULL;
+char *shortarg = NULL;
+char *gctmp = NULL;
+
+int options_gc(void) {
+	if(longarg) {
+		free(longarg);
+		longarg = NULL;
+	}
+	if(shortarg) {
+		free(shortarg);
+		shortarg = NULL;
+	}
+	if(gctmp) {
+		free(gctmp);
+		gctmp = NULL;
+	}
+
+	logprintf(LOG_NOTICE, "garbage collected options library");
+	return EXIT_SUCCESS;
+}
 
 /* Add a value to the specific struct id */
 void options_set_value(struct options_t **opt, int id, const char *val) {
@@ -139,35 +160,25 @@ int options_get_id(struct options_t **opt, char *name, int *out) {
 /* Parse all CLI arguments */
 int options_parse(struct options_t **opt, int argc, char **argv, int error_check, char **optarg) {
 	int c = 0;
-	char *ctmp = NULL;
 	int itmp = 0;
 #ifndef __FreeBSD__	
 	char *mask;
 	regex_t regex;
 	int reti;
 #endif
-	
-	char *longarg = NULL;
-	char *shortarg = NULL;
+
+	char *ctmp = NULL;
 	
 	/* If have readed all arguments, exit and reset */
 	if(getOptPos>=(argc-1)) {
 		getOptPos=0;
-		free(longarg);
-		free(*optarg);
-		free(shortarg);
 		return -1;
 	} else {
 		getOptPos++;
-		if(getOptPos == 2) {
-			free(longarg);
-			free(*optarg);
-			free(shortarg);
-		}
 		/* Reservate enough memory to store all variables */
-		longarg = malloc(4);
-		shortarg = malloc(2);
-		*optarg = malloc(4);
+		longarg = realloc(longarg, 4);
+		shortarg = realloc(shortarg, 2);
+		*optarg = realloc(*optarg, 4);
 		
 		/* The memory to null */
 		memset(*optarg, '\0', 4);
@@ -215,11 +226,11 @@ int options_parse(struct options_t **opt, int argc, char **argv, int error_check
 			/* If the short argument and the long argument are not equal,
 			    then we probably encountered a long argument. */
 			if(longarg[0] == '-' && longarg[1] == '-') {
-				ctmp = realloc(ctmp, strlen(&longarg[2])+1);
-				strcpy(ctmp, &longarg[2]);
+				gctmp = realloc(gctmp, strlen(&longarg[2])+1);
+				strcpy(gctmp, &longarg[2]);
 
 				/* Retrieve the short identifier for the long argument */
-				if(options_get_id(opt, ctmp, &itmp) == 0) {
+				if(options_get_id(opt, gctmp, &itmp) == 0) {
 					c = itmp;
 				} else if(argv[getOptPos][0] == '-') {
 					c = shortarg[1];
@@ -310,17 +321,11 @@ int options_parse(struct options_t **opt, int argc, char **argv, int error_check
 #endif
 				options_set_value(opt, c, *optarg);
 			}
-			free(shortarg);
-			free(longarg);			
 			return c;
 		}
 	}
 
 gc:
-	free(longarg);
-	free(*optarg);
-	free(shortarg);
-	free(ctmp);
 	exit(EXIT_FAILURE);
 }
 
@@ -357,7 +362,7 @@ void options_add(struct options_t **opt, int id, const char *name, int argtype, 
 		strcpy(optnode->name, name);
 		optnode->argtype = argtype;
 		optnode->conftype = conftype;
-		optnode->value = malloc(4);
+		optnode->value = NULL;
 		if(mask) {
 			optnode->mask = malloc(strlen(mask)+1);
 			strcpy(optnode->mask, mask);
@@ -372,48 +377,44 @@ void options_add(struct options_t **opt, int id, const char *name, int argtype, 
 }
 
 /* Merge two options structs */
-struct options_t *options_merge(struct options_t **a, struct options_t **b) {
+void options_merge(struct options_t **a, struct options_t **b) {
 	struct options_t *temp = NULL;
 	struct options_t *c = NULL;
 	int i = 0;
-	for(i=0;i<2;i++) {
-		if(i) {
-			temp = *b;
+	temp = *b;
+	while(temp) {
+		struct options_t *optnode = malloc(sizeof(struct options_t));
+		optnode->id = temp->id;
+		if(temp->name) {
+			optnode->name = malloc(strlen(temp->name)+1);
+			memset(optnode->name, '\0', strlen(temp->name)+1);
+			memcpy(optnode->name, temp->name, strlen(temp->name));
 		} else {
-			temp = *a;
+			optnode->name = malloc(4);
+			memset(optnode->name, '\0', 4);
 		}
-		while(temp) {
-			struct options_t *optnode = malloc(sizeof(struct options_t));
-			optnode->id = temp->id;
-			if(temp->name) {
-				optnode->name = malloc(strlen(temp->name)+1);
-				strcpy(optnode->name, temp->name);
-			} else {
-				optnode->name = malloc(4);
-				memset(optnode->name, '\0', 4);
-			}
-			if(temp->value) {
-				optnode->value = malloc(strlen(temp->value)+1);
-				strcpy(optnode->value, temp->value);
-			} else {
-				optnode->value = malloc(4);
-				memset(optnode->value, '\0', 4);
-			}
-			if(temp->mask) {
-				optnode->mask = malloc(strlen(temp->mask)+1);
-				strcpy(optnode->mask, temp->mask);		
-			} else {
-				optnode->mask = malloc(4);
-				memset(optnode->mask, '\0', 4);
-			}
-			optnode->argtype = temp->argtype;
-			optnode->conftype = temp->conftype;
-			optnode->next = c;
-			c = optnode;
-			temp = temp->next;
+		if(temp->value) {
+			optnode->value = malloc(strlen(temp->value)+1);
+			memset(optnode->value, '\0', strlen(temp->value)+1);
+			memcpy(optnode->value, temp->value, strlen(temp->value));
+		} else {
+			optnode->value = malloc(4);
+			memset(optnode->value, '\0', 4);
 		}
+		if(temp->mask) {
+			optnode->mask = malloc(strlen(temp->mask)+1);
+			memset(optnode->mask, '\0', strlen(temp->mask)+1);
+			memcpy(optnode->mask, temp->mask, strlen(temp->mask));
+		} else {
+			optnode->mask = malloc(4);
+			memset(optnode->mask, '\0', 4);
+		}
+		optnode->argtype = temp->argtype;
+		optnode->conftype = temp->conftype;
+		optnode->next = *a;
+		*a = optnode;
+		temp = temp->next;
 	}
-	return c;
 }
 
 void options_delete(struct options_t *options) {

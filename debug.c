@@ -271,7 +271,12 @@ int main(int argc, char **argv) {
 	printf("\n");
 	
 	free(hw_mode);
+	options_gc();
 	free(progname);
 	free(socket);
+	if(optarg) {
+		free(optarg);
+		optarg = NULL;
+	}
 	return (EXIT_SUCCESS);
 }

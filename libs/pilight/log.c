@@ -37,7 +37,8 @@ FILE *lf=NULL;
 int filelog = 1;
 int shelllog = 1;
 int loglevel = LOG_INFO;
-char *logfile;
+char *logfile = NULL;
+char *logpath = NULL;
 
 int log_gc(void) {
 	if(lf) {
@@ -47,6 +48,10 @@ int log_gc(void) {
 		else {
 			lf = NULL;
 		}
+	}
+	if(logpath) {
+		free(logpath);
+		logpath = NULL;
 	}
 	return 1;
 }
@@ -152,20 +157,18 @@ void log_file_set(char *log) {
 	struct stat s;
 	char *filename = basename(log);
 	size_t i = (strlen(log)-strlen(filename));	
-	char *path = malloc(i+1);
-	memset(path, '\0', i+1);
-	strncpy(path, log, i);
+	logpath = realloc(logpath, i+1);
+	memset(logpath, '\0', i+1);
+	strncpy(logpath, log, i);
 
 	if(strcmp(filename, log) != 0) {
-		int err = stat(path, &s);
+		int err = stat(logpath, &s);
 		if(err == -1) {
 			if(ENOENT == errno) {
 				logprintf(LOG_ERR, "the log file folder does not exist", optarg);
-				free(path);
 				exit(EXIT_FAILURE);
 			} else {
 				logprintf(LOG_ERR, "failed to run stat on log folder", optarg);
-				free(path);
 				exit(EXIT_FAILURE);
 			}
 		} else {
@@ -174,7 +177,6 @@ void log_file_set(char *log) {
 				strcpy(logfile, log);
 			} else {
 				logprintf(LOG_ERR, "the log file folder does not exist", optarg);
-				free(path);
 				exit(EXIT_FAILURE);
 			}
 		}
@@ -182,7 +184,6 @@ void log_file_set(char *log) {
 		logfile = realloc(logfile, strlen(log)+1);
 		strcpy(logfile, log);
 	}
-	free(path);
 }
 
 void log_level_set(int level) {

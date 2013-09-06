@@ -187,7 +187,6 @@ int main(int argc, char **argv) {
 			case REQUEST:
 				socket_write(sockfd, "{\"message\":\"request config\"}");
 				steps=CONFIG;
-				free(recvBuff);
 				json_delete(json);
 			break;
 			case CONFIG:
@@ -234,7 +233,6 @@ int main(int argc, char **argv) {
 									json_append_member(jcode, "state", json_mkstring(state));
 								} else {
 									logprintf(LOG_ERR, "\"%s\" is an invalid state for device \"%s\"", state, device);
-									free(recvBuff);
 									goto close;
 								}
 							}
@@ -253,31 +251,35 @@ int main(int argc, char **argv) {
 							json_delete(joutput);
 						} else {
 							logprintf(LOG_ERR, "the device \"%s\" does not exist", device);
-							free(recvBuff);
 							goto close;
 						}
 					} else {
 						logprintf(LOG_ERR, "the location \"%s\" does not exist", location);
-						free(recvBuff);						
 						goto close;
 					}
 				}
 				json_delete(json);
-				free(recvBuff);				
 				goto close;
 			break;
 			case REJECT:
 			default:
 				json_delete(json);
-				free(recvBuff);			
 				goto close;
 			break;
 		}
 	}
 close:
 	socket_close(sockfd);
-config_gc();
-protocol_gc();
-free(server);
+
+	config_gc();
+	protocol_gc();
+	socket_gc();
+	options_gc();
+	free(progname);
+	free(server);
+	if(optarg) {
+		free(optarg);
+		optarg = NULL;
+	}
 return EXIT_SUCCESS;
 }

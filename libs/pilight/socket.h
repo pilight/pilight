@@ -41,5 +41,6 @@ char *socket_read(int sockfd);
 char *socket_read_big(int sockfd);
 int socket_msgcmp(char *a, char *b);
 void *socket_wait(void *param);
+int socket_gc(void);
 
 #endif

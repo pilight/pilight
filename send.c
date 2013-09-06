@@ -123,8 +123,6 @@ int main(int argc, char **argv) {
 		}
 	}	
 	
-	struct options_t *newOptions = NULL;
-
 	/* Check if a protocol was given */
 	if(strlen(protobuffer) > 0 && strcmp(protobuffer,"-V") != 0) {
 		if(strlen(protobuffer) > 0 && version) {
@@ -140,7 +138,7 @@ int main(int argc, char **argv) {
 					/* Check if the protocol requires specific CLI arguments
 					   and merge them with the main CLI arguments */
 					if(protocol->options && help == 0) {
-						newOptions = options_merge(&options, &protocol->options);
+						options_merge(&options, &protocol->options);
 					} else if(help == 1) {
 						protohelp=1;
 					}
@@ -154,14 +152,11 @@ int main(int argc, char **argv) {
 			}
 		}
 	}
-	options_delete(options);
+
 	/* Display help or version information */
 	if(version == 1) {
 		printf("%s %s\n", progname, "1.0");
-		if(protocol && protocol->options && match) {
-			options_delete(newOptions);
-		}
-		return (EXIT_SUCCESS);
+		goto close;
 	} else if(help == 1 || protohelp == 1 || match == 0) {
 		if(protohelp == 1 && match == 1 && protocol->printHelp)
 			printf("Usage: %s -p %s [options]\n", progname, protobuffer);
@@ -197,10 +192,7 @@ int main(int argc, char **argv) {
 				pnode = pnode->next;
 			}
 		}
-		if(protocol && protocol->options && match) {
-			options_delete(newOptions);
-		}
-		return (EXIT_SUCCESS);
+		goto close;
 	}
 
 	/* Store all CLI arguments for later usage
@@ -209,7 +201,7 @@ int main(int argc, char **argv) {
 	   fill all necessary values in the options struct */
 	while(1) {
 		int c;
-		c = options_parse(&newOptions, argc, argv, 1, &args);
+		c = options_parse(&options, argc, argv, 1, &args);
 
 		if(c == -1)
 			break;
@@ -217,18 +209,19 @@ int main(int argc, char **argv) {
 
 	int itmp;
 	/* Check if we got sufficient arguments from this protocol */
-	while(newOptions) {
-		if(strlen(newOptions->name) > 0) {
+	struct options_t *tmp = options;
+	while(tmp) {
+		if(strlen(tmp->name) > 0) {
 			/* Only send the CLI arguments that belong to this protocol, the protocol name
 			and those that are called by the user */
-			if((options_get_id(&protocol->options, newOptions->name, &itmp) == 0 || strcmp(newOptions->name, "protocol") == 0)
-			&& strlen(newOptions->value) > 0) {
-				json_append_member(code, newOptions->name, json_mkstring(newOptions->value));
+			if((options_get_id(&protocol->options, tmp->name, &itmp) == 0 || strcmp(tmp->name, "protocol") == 0)
+			&& strlen(tmp->value) > 0) {
+				json_append_member(code, tmp->name, json_mkstring(tmp->value));
 			}
 		}
-		newOptions = newOptions->next;
+		tmp = tmp->next;
 	}
-	options_delete(newOptions);
+
 	if(protocol->createCode(code) == 0) {
 		if(protocol->message) {
 			json_delete(protocol->message);
@@ -278,11 +271,21 @@ int main(int argc, char **argv) {
 		}
 	}
 close:
-	json_delete(json);
-	socket_close(sockfd);
-
-free(progname);
-free(server);
-protocol_gc();
+	if(json) {
+		json_delete(json);
+	}
+	if(sockfd) {
+		socket_close(sockfd);
+	}
+	log_shell_disable();
+	free(server);
+	protocol_gc();
+	options_delete(options);
+	options_gc();
+	free(progname);
+	if(args) {
+		free(args);
+		args = NULL;
+	}
 return EXIT_SUCCESS;
 }
