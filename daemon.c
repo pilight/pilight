@@ -269,11 +269,13 @@ void send_code(JsonNode *json) {
 			if(protocol->createCode(jcode) == 0) {
 				if(protocol->message) {
 					char *valid = json_stringify(protocol->message, NULL);
+					json_delete(protocol->message);
 					if(json_validate(valid) == true) {
 						json_append_member(message, "origin", json_mkstring("sender"));
 						json_append_member(message, "protocol", json_mkstring(protocol->id));
-						json_append_member(message, "code", protocol->message);
+						json_append_member(message, "code", json_decode(valid));
 					}
+					protocol->message = NULL;
 					free(valid);
 				}
 
