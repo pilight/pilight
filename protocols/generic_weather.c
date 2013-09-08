@@ -30,14 +30,18 @@
 void genWeatherCreateMessage(int id, int temperature, int humidity) {
 	generic_weather->message = json_mkobject();
 	json_append_member(generic_weather->message, "id", json_mknumber(id));
-	json_append_member(generic_weather->message, "temperature", json_mknumber(temperature));
-	json_append_member(generic_weather->message, "humidity", json_mknumber(humidity));
+	if(temperature > -999) {
+		json_append_member(generic_weather->message, "temperature", json_mknumber(temperature));
+	}
+	if(humidity > -999) {
+		json_append_member(generic_weather->message, "humidity", json_mknumber(humidity));
+	}
 }
 
 int genWeatherCreateCode(JsonNode *code) {
-	int id = -1;
-	int temp = -1;
-	int humi = -1;
+	int id = -999;
+	int temp = -999;
+	int humi = -999;
 	char *tmp;
 
 	if(json_find_string(code, "id", &tmp) == 0)
@@ -47,7 +51,7 @@ int genWeatherCreateCode(JsonNode *code) {
 	if(json_find_string(code, "humidity", &tmp) == 0)
 		humi = atoi(tmp);
 
-	if(id == -1 || temp == -1 || humi == -1) {
+	if(id == -999 || (temp == -999 && humi == -999)) {
 		logprintf(LOG_ERR, "generic_weather: insufficient number of arguments");
 		return EXIT_FAILURE;
 	} else {

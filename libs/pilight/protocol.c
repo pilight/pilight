@@ -43,6 +43,8 @@ void protocol_register(protocol_t **proto) {
 	(*proto)->parseCode = NULL;
 	(*proto)->createCode = NULL;
 	(*proto)->printHelp = NULL;
+	(*proto)->message = NULL;
+
 	memset(&(*proto)->raw[0], 0, sizeof((*proto)->raw));
 	memset(&(*proto)->code[0], 0, sizeof((*proto)->code));
 	memset(&(*proto)->pCode[0], 0, sizeof((*proto)->pCode));

@@ -329,11 +329,13 @@ void *webserver_clientize(void *param) {
 			}
 			break;
 			case SYNC:
-				syncBuff = realloc(syncBuff, strlen(sockReadBuff)+1);
-				memset(syncBuff, '\0', sizeof(syncBuff));
-				strcpy(syncBuff, sockReadBuff);
-				/* Push all incoming sync messages to the web gui */
-				libwebsocket_callback_on_writable_all_protocol(&libwebsocket_protocols[0]);
+				if(strlen(sockReadBuff) > 0) {
+					syncBuff = realloc(syncBuff, strlen(sockReadBuff)+1);
+					memset(syncBuff, '\0', sizeof(syncBuff));
+					strcpy(syncBuff, sockReadBuff);
+					/* Push all incoming sync messages to the web gui */
+					libwebsocket_callback_on_writable_all_protocol(&libwebsocket_protocols[0]);
+				}
 			break;				
 			case REJECT:
 			default:
