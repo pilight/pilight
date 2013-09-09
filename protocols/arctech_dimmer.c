@@ -173,7 +173,7 @@ int arctechDimCreateCode(JsonNode *code) {
 	} else if(id > 67108863 || id < 1) {
 		logprintf(LOG_ERR, "arctech_dimmer: invalid id range");
 		return EXIT_FAILURE;
-	} else if((unit > 16 || unit < 0) && all == 0) {
+	} else if((unit > 15 || unit < 0) && all == 0) {
 		logprintf(LOG_ERR, "arctech_dimmer: invalid unit range");
 		return EXIT_FAILURE;
 	} else if(state == -1 && (dimlevel > 16 || dimlevel < 0)) {
