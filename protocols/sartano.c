@@ -27,10 +27,10 @@
 #include "gc.h"
 #include "sartano.h"
 
-void sartanoCreateMessage(int id, int unit, int state) {
+void sartanoCreateMessage(int systemcode, int unitcode, int state) {
 	sartano->message = json_mkobject();
-	json_append_member(sartano->message, "systemcode", json_mknumber(id));
-	json_append_member(sartano->message, "unitcode", json_mknumber(unit));
+	json_append_member(sartano->message, "systemcode", json_mknumber(systemcode));
+	json_append_member(sartano->message, "unitcode", json_mknumber(unitcode));
 	if(state == 1)
 		json_append_member(sartano->message, "state", json_mkstring("on"));
 	else
@@ -41,23 +41,19 @@ void sartanoParseBinary(void) {
 	int fp = 0;
 	int i = 0;
 	for(i=0;i<sartano->binLength;i++) {
-		// sartano->binary[i] = sartano->code[(4*i+3)]; // lsb = 3 code for when ParseBinary is replaced by ParseCode
 		if((sartano->code[(4*i+0)] != 0) || (sartano->code[(4*i+1)] != 1)
 		   || (sartano->code[(4*i+2)] == sartano->code[(4*i+3)])) {
 			fp = 1;
 		}
 	}
-	if((sartano->code[48] != 0) || (sartano->code[49] != 1)) {
-		fp = 1;
-	}
+	if((sartano->code[48] != 0) || (sartano->code[49] != 1)) fp = 1;
 
-	int unit = binToDec(sartano->binary, 0, 4);
+	int systemcode = binToDec(sartano->binary, 0, 4);
+	int unitcode = binToDec(sartano->binary, 5, 9);
 	int state = sartano->binary[10];
 	int check = sartano->binary[11];
-	int id = binToDec(sartano->binary, 5, 9);
-	if ((check != state) && fp == 0) {
-		sartanoCreateMessage(id, unit, state);
-	}
+	if ((check != state) && fp == 0)
+		sartanoCreateMessage(systemcode, unitcode, state);
 }
 
 void sartanoCreateLow(int s, int e) {
@@ -85,12 +81,12 @@ void sartanoClearCode(void) {
 	sartanoCreateLow(0,47);
 }
 
-void sartanoCreateUnit(int unit) {
+void sartanoCreateSystemCode(int systemcode) {
 	int binary[255];
 	int length = 0;
 	int i=0, x=0;
 
-	length = decToBinRev(unit, binary);
+	length = decToBinRev(systemcode, binary);
 	for(i=0;i<=length;i++) {
 		if(binary[i]==1) {
 			x=i*4;
@@ -99,12 +95,12 @@ void sartanoCreateUnit(int unit) {
 	}
 }
 
-void sartanoCreateId(int id) {
+void sartanoCreateUnitCode(int unitcode) {
 	int binary[255];
 	int length = 0;
 	int i=0, x=0;
 
-	length = decToBinRev(id, binary);
+	length = decToBinRev(unitcode, binary);
 	for(i=0;i<=length;i++) {
 		if(binary[i]==1) {
 			x=i*4;
@@ -127,34 +123,34 @@ void sartanoCreateFooter(void) {
 }
 
 int sartanoCreateCode(JsonNode *code) {
-	int id = -1;
-	int unit = -1;
+	int systemcode = -1;
+	int unitcode = -1;
 	int state = -1;
 	char *tmp;
 
 	if(json_find_string(code, "systemcode", &tmp) == 0)
-		id=atoi(tmp);
+		systemcode=atoi(tmp);
+	if(json_find_string(code, "unitcode", &tmp) == 0)
+		unitcode = atoi(tmp);
 	if(json_find_string(code, "off", &tmp) == 0)
 		state=0;
 	else if(json_find_string(code, "on", &tmp) == 0)
 		state=1;
-	if(json_find_string(code, "unitcode", &tmp) == 0)
-		unit = atoi(tmp);
 
-	if(id == -1 || unit == -1 || state == -1) {
+	if(systemcode == -1 || unitcode == -1 || state == -1) {
 		logprintf(LOG_ERR, "sartano: insufficient number of arguments");
 		return EXIT_FAILURE;
-	} else if(id > 31 || id < 0) {
+	} else if(systemcode > 31 || systemcode < 0) {
 		logprintf(LOG_ERR, "sartano: invalid systemcode range");
 		return EXIT_FAILURE;
-	} else if(unit > 31 || unit < 0) {
+	} else if(unitcode > 31 || unitcode < 0) {
 		logprintf(LOG_ERR, "sartano: invalid unitcode range");
 		return EXIT_FAILURE;
 	} else {
-		sartanoCreateMessage(id, unit, state);
+		sartanoCreateMessage(systemcode, unitcode, state);
 		sartanoClearCode();
-		sartanoCreateUnit(unit);
-		sartanoCreateId(id);
+		sartanoCreateSystemCode(systemcode);
+		sartanoCreateUnitCode(unitcode);
 		sartanoCreateState(state);
 		sartanoCreateFooter();
 	}
@@ -162,10 +158,10 @@ int sartanoCreateCode(JsonNode *code) {
 }
 
 void sartanoPrintHelp(void) {
+	printf("\t -s --systemcode=systemcode\tcontrol a device with this systemcode\n");
+	printf("\t -u --unitcode=unitcode\t\tcontrol a device with this unitcode\n");
 	printf("\t -t --on\t\t\tsend an on signal\n");
 	printf("\t -f --off\t\t\tsend an off signal\n");
-	printf("\t -u --unitcode=unitcode\t\t\tcontrol a device with this unitcode\n");
-	printf("\t -s --systemcode=systemcode\t\t\tcontrol a device with this systemcode\n");
 }
 
 void sartanoInit(void) {
@@ -184,10 +180,10 @@ void sartanoInit(void) {
 	sartano->bit = 0;
 	sartano->recording = 0;
 
+	options_add(&sartano->options, 's', "systemcode", has_value, config_id, "^(3[012]?|[012][0-9]|[0-9]{1})$");
+	options_add(&sartano->options, 'u', "unitcode", has_value, config_id, "^(3[012]?|[012][0-9]|[0-9]{1})$");
 	options_add(&sartano->options, 't', "on", no_value, config_state, NULL);
 	options_add(&sartano->options, 'f', "off", no_value, config_state, NULL);
-	options_add(&sartano->options, 'u', "unitcode", has_value, config_id, "^(3[012]?|[012][0-9]|[0-9]{1})$");
-	options_add(&sartano->options, 's', "systemcode", has_value, config_id, "^(3[012]?|[012][0-9]|[0-9]{1})$");
 
 	sartano->parseBinary=&sartanoParseBinary;
 	sartano->createCode=&sartanoCreateCode;

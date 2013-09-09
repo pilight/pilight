@@ -27,27 +27,27 @@
 #include "gc.h"
 #include "impuls.h"
 
-void impulsCreateMessage(int id, int unit, int state) {
+void impulsCreateMessage(int systemcode, int programcode, int state) {
 	impuls->message = json_mkobject();
-	json_append_member(impuls->message, "systemcode", json_mknumber(id));
-	json_append_member(impuls->message, "programcode", json_mknumber(unit));
+	json_append_member(impuls->message, "systemcode", json_mknumber(systemcode));
+	json_append_member(impuls->message, "programcode", json_mknumber(programcode));
 	if(state == 1)
 		json_append_member(impuls->message, "state", json_mkstring("on"));
 	else
 		json_append_member(impuls->message, "state", json_mkstring("off"));
 }
 
-/*void impulsParseBinary(void) {
+/*void impulsParseCode(void) {
 	int fp = 0;
 	int i = 0;
 	for(i=0;i<5;i++) {
-		// impuls->binary[i] = impuls->code[(4*i+0)]; // Med bits: lsb = 0
+		impuls->binary[i] = impuls->code[(4*i+0)]; // Med bits: lsb = 0
 		if (impuls->code[(4*i+0)] == impuls->code[(4*i+1)]) fp = 1;
 		if (impuls->code[(4*i+2)] != 1) fp = 1;
 		if (impuls->code[(4*i+3)] != 0) fp = 1;
 	}
 	for(i=5;i<12;i++) {
-		// impuls->binary[i] = impuls->code[(4*i+3)]; // High bits: lsb = 3
+		impuls->binary[i] = impuls->code[(4*i+3)]; // High bits: lsb = 3
 		if (impuls->code[(4*i+0)] != 0) fp = 1;
 		if (impuls->code[(4*i+1)] != 1) fp = 1;
 		if (impuls->code[(4*i+2)] == impuls->code[(4*i+3)]) fp = 1;
@@ -55,12 +55,12 @@ void impulsCreateMessage(int id, int unit, int state) {
 	if (impuls->code[48] != 0) fp = 1;
 	if (impuls->code[49] != 1) fp = 1;
 	impuls->message = NULL;
-	int unit = binToDec(impuls->binary, 0, 4);
+	int systemcode = binToDec(impuls->binary, 0, 4);
+	int programcode = binToDec(impuls->binary, 5, 9);
 	int check = impuls->binary[10];
 	int state = impuls->binary[11];
-	int id = binToDec(impuls->binary, 5, 9);
-	// if ((check != state) && fp == 0) // functionality currently not working
-	//	impulsCreateMessage(id, unit, state);
+	if ((check != state) && fp == 0)
+		impulsCreateMessage(id, unit, state);
 }*/
 
 void impulsCreateLow(int s, int e) {
@@ -99,12 +99,12 @@ void impulsClearCode(void) {
 	impulsCreateLow(0,47);
 }
 
-void impulsCreateUnit(int unit) {
+void impulsCreateSystemCode(int systemcode) {
 	int binary[255];
 	int length = 0;
 	int i=0, x=0;
 
-	length = decToBinRev(unit, binary);
+	length = decToBinRev(systemcode, binary);
 	for(i=0;i<=length;i++) {
 		if(binary[i]==1) {
 			x=i*4;
@@ -113,12 +113,12 @@ void impulsCreateUnit(int unit) {
 	}
 }
 
-void impulsCreateId(int id) {
+void impulsCreateProgramCode(int programcode) {
 	int binary[255];
 	int length = 0;
 	int i=0, x=0;
 
-	length = decToBinRev(id, binary);
+	length = decToBinRev(programcode, binary);
 	for(i=0;i<=length;i++) {
 		if(binary[i]==1) {
 			x=i*4;
@@ -141,34 +141,34 @@ void impulsCreateFooter(void) {
 }
 
 int impulsCreateCode(JsonNode *code) {
-	int id = -1;
-	int unit = -1;
+	int systemcode = -1;
+	int programcode = -1;
 	int state = -1;
 	char *tmp;
 
 	if(json_find_string(code, "systemcode", &tmp) == 0)
-		id=atoi(tmp);
+		systemcode=atoi(tmp);
+	if(json_find_string(code, "programcode", &tmp) == 0)
+		programcode=atoi(tmp);
 	if(json_find_string(code, "off", &tmp) == 0)
 		state=0;
 	else if(json_find_string(code, "on", &tmp) == 0)
 		state=1;
-	if(json_find_string(code, "programcode", &tmp) == 0)
-		unit = atoi(tmp);
 
-	if(id == -1 || unit == -1 || state == -1) {
+	if(systemcode == -1 || programcode == -1 || state == -1) {
 		logprintf(LOG_ERR, "impuls: insufficient number of arguments");
 		return EXIT_FAILURE;
-	} else if(id > 31 || id < 0) {
+	} else if(systemcode > 31 || systemcode < 0) {
 		logprintf(LOG_ERR, "impuls: invalid systemcode range");
 		return EXIT_FAILURE;
-	} else if(unit > 31 || unit < 0) {
+	} else if(programcode > 31 || programcode < 0) {
 		logprintf(LOG_ERR, "impuls: invalid programcode range");
 		return EXIT_FAILURE;
 	} else {
-		impulsCreateMessage(id, unit, state);
+		impulsCreateMessage(systemcode, programcode, state);
 		impulsClearCode();
-		impulsCreateUnit(unit);
-		impulsCreateId(id);
+		impulsCreateSystemCode(systemcode);
+		impulsCreateProgramCode(programcode);
 		impulsCreateState(state);
 		impulsCreateFooter();
 	}
@@ -176,10 +176,10 @@ int impulsCreateCode(JsonNode *code) {
 }
 
 void impulsPrintHelp(void) {
+	printf("\t -s --systemcode=systemcode\tcontrol a device with this systemcode\n");
+	printf("\t -u --programcode=programcode\tcontrol a device with this programcode\n");
 	printf("\t -t --on\t\t\tsend an on signal\n");
 	printf("\t -f --off\t\t\tsend an off signal\n");
-	printf("\t -u --programcode=programcode\t\t\tcontrol a device with this programcode\n");
-	printf("\t -s --systemcode=systemcode\t\t\tcontrol a device with this systemcode\n");
 }
 
 void impulsInit(void) {
@@ -199,12 +199,12 @@ void impulsInit(void) {
 	/*impuls->bit = 0;
 	impuls->recording = 0;*/
 
+	options_add(&impuls->options, 's', "systemcode", has_value, config_id, "^(3[012]?|[012][0-9]|[0-9]{1})$");
+	options_add(&impuls->options, 'u', "programcode", has_value, config_id, "^(3[012]?|[012][0-9]|[0-9]{1})$");
 	options_add(&impuls->options, 't', "on", no_value, config_state, NULL);
 	options_add(&impuls->options, 'f', "off", no_value, config_state, NULL);
-	options_add(&impuls->options, 'u', "programcode", has_value, config_id, "^(3[012]?|[012][0-9]|[0-9]{1})$");
-	options_add(&impuls->options, 's', "systemcode", has_value, config_id, "^(3[012]?|[012][0-9]|[0-9]{1})$");
 
-	//impuls->parseBinary=&impulsParseBinary;
+	//impuls->parseCode=&impulsParseCode;
 	impuls->createCode=&impulsCreateCode;
 	impuls->printHelp=&impulsPrintHelp;
 }

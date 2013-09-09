@@ -22,15 +22,15 @@
 struct protocol_t *impuls;
 
 void impulsInit(void);
-void impulsCreateMessage(int id, int unit, int state);
-void impulsParseBinary(void);
+void impulsCreateMessage(int systemcode, int programcode, int state);
+//void impulsParseCode(void);
 int impulsCreateCode(JsonNode *code);
 void impulsCreateLow(int s, int e);
 void impulsCreateMed(int s, int e);
 void impulsCreateHigh(int s, int e);
 void impulsClearCode(void);
-void impulsCreateUnit(int unit);
-void impulsCreateId(int id);
+void impulsCreateSystemCode(int systemcode);
+void impulsCreateProgramCode(int programcode);
 void impulsCreateState(int state);
 void impulsCreateFooter(void);
 void impulsPrintHelp(void);
