@@ -172,6 +172,9 @@ int options_parse(struct options_t **opt, int argc, char **argv, int error_check
 	/* If have readed all arguments, exit and reset */
 	if(getOptPos>=(argc-1)) {
 		getOptPos=0;
+		if(*optarg) {
+			free(*optarg);
+		}
 		return -1;
 	} else {
 		getOptPos++;
@@ -379,8 +382,6 @@ void options_add(struct options_t **opt, int id, const char *name, int argtype, 
 /* Merge two options structs */
 void options_merge(struct options_t **a, struct options_t **b) {
 	struct options_t *temp = NULL;
-	struct options_t *c = NULL;
-	int i = 0;
 	temp = *b;
 	while(temp) {
 		struct options_t *optnode = malloc(sizeof(struct options_t));

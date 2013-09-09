@@ -106,11 +106,24 @@ int webserver_callback_http(struct libwebsocket_context *webcontext, struct libw
 			if(strcmp((const char *)in, "/") == 0) {
 				request = realloc(request, strlen(webserver_root)+13);
 				memset(request, '\0', strlen(webserver_root)+13);
-				sprintf(request, "%s%s", webserver_root, "/index.html");
+				if(webserver_root[strlen(webserver_root)-1] == '/') {
+					sprintf(request, "%s%s", webserver_root, "index.html");
+				} else {
+					sprintf(request, "%s%s", webserver_root, "/index.html");
+				}
 			} else {
-				request = realloc(request, strlen(webserver_root)+strlen((const char *)in)+1);
-				memset(request, '\0', strlen(webserver_root)+strlen((const char *)in)+1);
-				sprintf(request, "%s%s", webserver_root, (const char *)in);
+				char *cin = (char *)in;
+
+				if(webserver_root[strlen(webserver_root)-1] == '/' && cin[0] == '/') {
+					request = realloc(request, strlen(webserver_root)+strlen((const char *)in));
+					memset(request, '\0', strlen(webserver_root)+strlen((const char *)in));				
+					strncpy(&request[0], webserver_root, strlen(webserver_root)-1);
+					strncpy(&request[strlen(webserver_root)-1], cin, strlen(cin));
+				} else {
+					request = realloc(request, strlen(webserver_root)+strlen((const char *)in)+1);
+					memset(request, '\0', strlen(webserver_root)+strlen((const char *)in)+1);
+					sprintf(request, "%s%s", webserver_root, (const char *)in);
+				}
 			}
 
 			if(fcache_get_size(request, &size) != 0) {
