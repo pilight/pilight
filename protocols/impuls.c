@@ -29,8 +29,8 @@
 
 void impulsCreateMessage(int id, int unit, int state) {
 	impuls->message = json_mkobject();
-	json_append_member(impuls->message, "id", json_mknumber(id));
-	json_append_member(impuls->message, "unit", json_mknumber(unit));
+	json_append_member(impuls->message, "systemcode", json_mknumber(id));
+	json_append_member(impuls->message, "programcode", json_mknumber(unit));
 	if(state == 1)
 		json_append_member(impuls->message, "state", json_mkstring("on"));
 	else
@@ -146,23 +146,23 @@ int impulsCreateCode(JsonNode *code) {
 	int state = -1;
 	char *tmp;
 
-	if(json_find_string(code, "id", &tmp) == 0)
+	if(json_find_string(code, "systemcode", &tmp) == 0)
 		id=atoi(tmp);
 	if(json_find_string(code, "off", &tmp) == 0)
 		state=0;
 	else if(json_find_string(code, "on", &tmp) == 0)
 		state=1;
-	if(json_find_string(code, "unit", &tmp) == 0)
+	if(json_find_string(code, "programcode", &tmp) == 0)
 		unit = atoi(tmp);
 
 	if(id == -1 || unit == -1 || state == -1) {
 		logprintf(LOG_ERR, "impuls: insufficient number of arguments");
 		return EXIT_FAILURE;
 	} else if(id > 31 || id < 0) {
-		logprintf(LOG_ERR, "impuls: invalid id range");
+		logprintf(LOG_ERR, "impuls: invalid systemcode range");
 		return EXIT_FAILURE;
 	} else if(unit > 31 || unit < 0) {
-		logprintf(LOG_ERR, "impuls: invalid unit range");
+		logprintf(LOG_ERR, "impuls: invalid programcode range");
 		return EXIT_FAILURE;
 	} else {
 		impulsCreateMessage(id, unit, state);
@@ -178,8 +178,8 @@ int impulsCreateCode(JsonNode *code) {
 void impulsPrintHelp(void) {
 	printf("\t -t --on\t\t\tsend an on signal\n");
 	printf("\t -f --off\t\t\tsend an off signal\n");
-	printf("\t -u --unit=unit\t\t\tcontrol a device with this unit code\n");
-	printf("\t -i --id=id\t\t\tcontrol a device with this id\n");
+	printf("\t -u --programcode=programcode\t\t\tcontrol a device with this programcode\n");
+	printf("\t -s --systemcode=systemcode\t\t\tcontrol a device with this systemcode\n");
 }
 
 void impulsInit(void) {
@@ -201,8 +201,8 @@ void impulsInit(void) {
 
 	options_add(&impuls->options, 't', "on", no_value, config_state, NULL);
 	options_add(&impuls->options, 'f', "off", no_value, config_state, NULL);
-	options_add(&impuls->options, 'u', "unit", has_value, config_id, "^(3[012]?|[012][0-9]|[0-9]{1})$");
-	options_add(&impuls->options, 'i', "id", has_value, config_id, "^(3[012]?|[012][0-9]|[0-9]{1})$");
+	options_add(&impuls->options, 'u', "programcode", has_value, config_id, "^(3[012]?|[012][0-9]|[0-9]{1})$");
+	options_add(&impuls->options, 's', "systemcode", has_value, config_id, "^(3[012]?|[012][0-9]|[0-9]{1})$");
 
 	//impuls->parseBinary=&impulsParseBinary;
 	impuls->createCode=&impulsCreateCode;

@@ -174,6 +174,7 @@ int options_parse(struct options_t **opt, int argc, char **argv, int error_check
 		getOptPos=0;
 		if(*optarg) {
 			free(*optarg);
+			*optarg = NULL;
 		}
 		return -1;
 	} else {
