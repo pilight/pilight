@@ -144,7 +144,7 @@ int arctechOldCreateCode(JsonNode *code) {
 	} else if(id > 31 || id < 0) {
 		logprintf(LOG_ERR, "arctech_old: invalid id range");
 		return EXIT_FAILURE;
-	} else if(unit > 31 || unit < 0) {
+	} else if(unit > 15 || unit < 0) {
 		logprintf(LOG_ERR, "arctech_old: invalid unit range");
 		return EXIT_FAILURE;
 	} else {
