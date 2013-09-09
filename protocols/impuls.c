@@ -31,10 +31,11 @@ void impulsCreateMessage(int systemcode, int programcode, int state) {
 	impuls->message = json_mkobject();
 	json_append_member(impuls->message, "systemcode", json_mknumber(systemcode));
 	json_append_member(impuls->message, "programcode", json_mknumber(programcode));
-	if(state == 1)
+	if(state == 1) {
 		json_append_member(impuls->message, "state", json_mkstring("on"));
-	else
+	} else {
 		json_append_member(impuls->message, "state", json_mkstring("off"));
+	}
 }
 
 /*void impulsParseCode(void) {
@@ -59,8 +60,9 @@ void impulsCreateMessage(int systemcode, int programcode, int state) {
 	int programcode = binToDec(impuls->binary, 5, 9);
 	int check = impuls->binary[10];
 	int state = impuls->binary[11];
-	if ((check != state) && fp == 0)
+	if ((check != state) && fp == 0) {
 		impulsCreateMessage(id, unit, state);
+	}
 }*/
 
 void impulsCreateLow(int s, int e) {
@@ -95,6 +97,7 @@ void impulsCreateHigh(int s, int e) {
 		impuls->raw[i+3]=(impuls->pulse*PULSE_LENGTH);
 	}
 }
+
 void impulsClearCode(void) {
 	impulsCreateLow(0,47);
 }
@@ -146,14 +149,17 @@ int impulsCreateCode(JsonNode *code) {
 	int state = -1;
 	char *tmp;
 
-	if(json_find_string(code, "systemcode", &tmp) == 0)
+	if(json_find_string(code, "systemcode", &tmp) == 0) {
 		systemcode=atoi(tmp);
-	if(json_find_string(code, "programcode", &tmp) == 0)
+	}
+	if(json_find_string(code, "programcode", &tmp) == 0) {
 		programcode=atoi(tmp);
-	if(json_find_string(code, "off", &tmp) == 0)
+	}
+	if(json_find_string(code, "off", &tmp) == 0) {
 		state=0;
-	else if(json_find_string(code, "on", &tmp) == 0)
+	} else if(json_find_string(code, "on", &tmp) == 0) {
 		state=1;
+	}
 
 	if(systemcode == -1 || programcode == -1 || state == -1) {
 		logprintf(LOG_ERR, "impuls: insufficient number of arguments");

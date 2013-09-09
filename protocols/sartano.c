@@ -31,10 +31,11 @@ void sartanoCreateMessage(int systemcode, int unitcode, int state) {
 	sartano->message = json_mkobject();
 	json_append_member(sartano->message, "systemcode", json_mknumber(systemcode));
 	json_append_member(sartano->message, "unitcode", json_mknumber(unitcode));
-	if(state == 1)
+	if(state == 1) {
 		json_append_member(sartano->message, "state", json_mkstring("on"));
-	else
+	} else {
 		json_append_member(sartano->message, "state", json_mkstring("off"));
+	}
 }
 
 void sartanoParseBinary(void) {
@@ -46,14 +47,17 @@ void sartanoParseBinary(void) {
 			fp = 1;
 		}
 	}
-	if((sartano->code[48] != 0) || (sartano->code[49] != 1)) fp = 1;
+	if((sartano->code[48] != 0) || (sartano->code[49] != 1)) {
+		fp = 1;
+	}
 
 	int systemcode = binToDec(sartano->binary, 0, 4);
 	int unitcode = binToDec(sartano->binary, 5, 9);
 	int state = sartano->binary[10];
 	int check = sartano->binary[11];
-	if ((check != state) && fp == 0)
+	if((check != state) && fp == 0) {
 		sartanoCreateMessage(systemcode, unitcode, state);
+	}
 }
 
 void sartanoCreateLow(int s, int e) {
@@ -128,14 +132,17 @@ int sartanoCreateCode(JsonNode *code) {
 	int state = -1;
 	char *tmp;
 
-	if(json_find_string(code, "systemcode", &tmp) == 0)
+	if(json_find_string(code, "systemcode", &tmp) == 0) {
 		systemcode=atoi(tmp);
-	if(json_find_string(code, "unitcode", &tmp) == 0)
+	}
+	if(json_find_string(code, "unitcode", &tmp) == 0) {
 		unitcode = atoi(tmp);
-	if(json_find_string(code, "off", &tmp) == 0)
+	}
+	if(json_find_string(code, "off", &tmp) == 0) {
 		state=0;
-	else if(json_find_string(code, "on", &tmp) == 0)
+	} else if(json_find_string(code, "on", &tmp) == 0) {
 		state=1;
+	}
 
 	if(systemcode == -1 || unitcode == -1 || state == -1) {
 		logprintf(LOG_ERR, "sartano: insufficient number of arguments");
