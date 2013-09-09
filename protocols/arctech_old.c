@@ -144,7 +144,7 @@ int arctechOldCreateCode(JsonNode *code) {
 	} else if(id > 31 || id < 0) {
 		logprintf(LOG_ERR, "arctech_old: invalid id range");
 		return EXIT_FAILURE;
-	} else if(unit > 31 || unit < 0) {
+	} else if(unit > 15 || unit < 0) {
 		logprintf(LOG_ERR, "arctech_old: invalid unit range");
 		return EXIT_FAILURE;
 	} else {
@@ -185,7 +185,7 @@ void arctechOldInit(void) {
 
 	options_add(&arctech_old->options, 't', "on", no_value, config_state, NULL);
 	options_add(&arctech_old->options, 'f', "off", no_value, config_state, NULL);
-	options_add(&arctech_old->options, 'u', "unit", has_value, config_id, "^(3[012]?|[012][0-9]|[0-9]{1})$");
+	options_add(&arctech_old->options, 'u', "unit", has_value, config_id, "^([0-9]{1}|[1][0-5])$");
 	options_add(&arctech_old->options, 'i', "id", has_value, config_id, "^(3[012]?|[012][0-9]|[0-9]{1})$");
 
 	arctech_old->parseBinary=arctechOldParseBinary;
