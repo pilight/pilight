@@ -169,7 +169,7 @@ int options_parse(struct options_t **opt, int argc, char **argv, int error_check
 
 	char *ctmp = NULL;
 	
-	/* If have readed all arguments, exit and reset */
+	/* If have read all arguments, exit and reset */
 	if(getOptPos>=(argc-1)) {
 		getOptPos=0;
 		if(*optarg) {
@@ -179,7 +179,7 @@ int options_parse(struct options_t **opt, int argc, char **argv, int error_check
 		return -1;
 	} else {
 		getOptPos++;
-		/* Reservate enough memory to store all variables */
+		/* Reserve enough memory to store all variables */
 		longarg = realloc(longarg, 4);
 		shortarg = realloc(shortarg, 2);
 		*optarg = realloc(*optarg, 4);
