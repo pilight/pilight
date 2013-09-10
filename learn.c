@@ -97,7 +97,7 @@ int main(int argc, char **argv) {
 	lirc_t data;
 	char *socket = malloc(11);
 	strcpy(socket, "/dev/lirc0");
-	char *args;
+	char *args = NULL;
 	int have_device = 0;
 	char *hw_mode = malloc(strlen(HW_MODE)+1);
 	int gpio_in = GPIO_IN_PIN;
@@ -114,38 +114,34 @@ int main(int argc, char **argv) {
 
 	int recording = 1;
 	int bit = 0;
-	int raw[255];
-	int pRaw[255];
-	int code[255];
-	int onCode[255];
-	int offCode[255];
-	int allCode[255];
-	int unit1Code[255];
-	int unit2Code[255];
-	int unit3Code[255];
-	int binary[255];
-	int pBinary[255];
-	int onBinary[255];
-	int offBinary[255];
-	int allBinary[255];
-	int unit1Binary[255];
-	int unit2Binary[255];
-	int unit3Binary[255];
+	int raw[255] = {0};
+	int pRaw[255] = {0};
+	int code[255] = {0};
+	int onCode[255] = {0};
+	int offCode[255] = {0};
+	int allCode[255] = {0};
+	int unit1Code[255] = {0};
+	int unit2Code[255] = {0};
+	int unit3Code[255] = {0};
+	int binary[255] = {0};
+	int pBinary[255] = {0};
+	int onBinary[255] = {0};
+	int offBinary[255] = {0};
+	int allBinary[255] = {0};
+	int unit1Binary[255] = {0};
+	int unit2Binary[255] = {0};
+	int unit3Binary[255] = {0};
 	int loop = 1;
 	
-	int temp[75];
+	int temp[75] = {0};
 	int footer = 0;
 	int header = 0;
 	int pulse = 0;
-	int onoff[75];
-	int all[75];
-	int unit[75];
+	int onoff[75] = {-1};
+	int all[75] = {-1};
+	int unit[75] = {-1};
 	int rawLength = 0;
 	int binaryLength = 0;
-
-	memset(onoff,-1,75);
-	memset(all,-1,75);
-	memset(unit,-1,75);
 
 	options_add(&options, 'H', "help", no_value, 0, NULL);
 	options_add(&options, 'V', "version", no_value, 0, NULL);
@@ -572,9 +568,6 @@ int main(int argc, char **argv) {
 	options_gc();
 	free(progname);
 	free(socket);
-	if(args) {
-		free(args);
-		args = NULL;
-	}
+
 	return (EXIT_SUCCESS);
 }

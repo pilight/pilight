@@ -283,9 +283,6 @@ close:
 	options_delete(options);
 	options_gc();
 	free(progname);
-	if(args) {
-		free(args);
-		args = NULL;
-	}
+
 return EXIT_SUCCESS;
 }

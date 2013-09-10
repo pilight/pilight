@@ -277,9 +277,6 @@ close:
 	options_gc();
 	free(progname);
 	free(server);
-	if(optarg) {
-		free(optarg);
-		optarg = NULL;
-	}
+
 return EXIT_SUCCESS;
 }

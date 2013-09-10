@@ -160,10 +160,6 @@ close:
 	options_gc();
 	free(progname);
 	free(server);
-	if(args) {
-		free(args);
-		args = NULL;
-	}
 	free(message);
 
 return EXIT_SUCCESS;

@@ -72,10 +72,10 @@ int main(int argc, char **argv) {
 
 	int recording = 1;
 	int bit = 0;
-	int raw[255];
-	int pRaw[255];
-	int code[255];
-	int binary[255];
+	int raw[255] = {0};
+	int pRaw[255] = {0};
+	int code[255] = {0};
+	int binary[255] = {0};
 	int footer = 0;
 	int header = 0;
 	int pulse = 0;
@@ -149,7 +149,7 @@ int main(int argc, char **argv) {
 
 		if(wiringPiISR(gpio_in, INT_EDGE_BOTH) < 0) {
 			logprintf(LOG_ERR, "unable to register interrupt for pin %d", gpio_in) ;
-			return 1 ;
+			return EXIT_SUCCESS;
 		}
 		(void)piHiPri(55);
 	}
@@ -269,14 +269,13 @@ int main(int argc, char **argv) {
 		printf("%d",binary[i]);
 	}
 	printf("\n");
+
+	log_shell_disable();
 	
 	free(hw_mode);
 	options_gc();
 	free(progname);
 	free(socket);
-	if(optarg) {
-		free(optarg);
-		optarg = NULL;
-	}
+
 	return (EXIT_SUCCESS);
 }

@@ -15,7 +15,7 @@ ifneq (, $(findstring arm, $(SYS)))
 	endif
 endif
 ifneq (, $(findstring amd64, $(SYS)))
-	OSFLAGS = -Ofast -fPIC -march=native -mtune=native -mfpmath=sse -Wno-conversion
+	OSFLAGS = -O3 -fPIC -march=native -mtune=native -mfpmath=sse -Wno-conversion
 endif
 CFLAGS = -ffast-math $(OSFLAGS) -Wfloat-equal -Wshadow -Wpointer-arith -Wcast-align -Wstrict-overflow=5 -Wwrite-strings -Waggregate-return -Wcast-qual -Wswitch-default -Wswitch-enum -Wformat=2 -g -Wall -I. -I.. -I../libs/pilight/
 SRC = $(wildcard *.c)
