@@ -36,6 +36,10 @@
 #include "libs/lirc/lirc.h"
 #include "libs/lirc/hardware.h"
 #include "irq.h"
+#include "gc.h"
+
+char *hw_mode = NULL;
+char *socket = NULL;
 
 struct hardware hw_default;
 
@@ -84,25 +88,36 @@ int normalize(int i) {
 	return (int)(round(x));
 }
 
+int main_gc(void) {
+
+	log_shell_disable();
+	if(hw_mode) {
+		free(hw_mode);
+	}
+	options_gc();
+	if(progname) {
+		free(progname);
+	}
+	if(socket) {
+		free(socket);
+	}
+
+	return EXIT_SUCCESS;
+}
+
 int main(int argc, char **argv) {
 
+	gc_attach(main_gc);
+
 	log_shell_enable();
-	log_shell_disable();
 	log_level_set(LOG_NOTICE);
 
-	progname = malloc(16);
-	strcpy(progname, "pilight-learn");
 	struct options_t *options = NULL;
 	
 	lirc_t data;
-	char *socket = malloc(11);
-	strcpy(socket, "/dev/lirc0");
 	char *args = NULL;
 	int have_device = 0;
-	char *hw_mode = malloc(strlen(HW_MODE)+1);
 	int gpio_in = GPIO_IN_PIN;
-	
-	strcpy(hw_mode, HW_MODE);
 	
 	int duration = 0;
 	int i = 0;
@@ -143,11 +158,21 @@ int main(int argc, char **argv) {
 	int rawLength = 0;
 	int binaryLength = 0;
 
+	progname = malloc(16);
+	strcpy(progname, "pilight-learn");
+	
+	hw_mode = malloc(strlen(HW_MODE)+1);
+	strcpy(hw_mode, HW_MODE);
+
+	socket = malloc(11);
+	strcpy(socket, "/dev/lirc0");
+
 	options_add(&options, 'H', "help", no_value, 0, NULL);
 	options_add(&options, 'V', "version", no_value, 0, NULL);
 	options_add(&options, 'S', "socket", has_value, 0, "^/dev/([A-Za-z]+)([0-9]+)");
 	options_add(&options, 'L', "lirc", no_value, 0, NULL);
 	options_add(&options, 'G', "gpio", has_value, 0, "^[0-7]$");
+
 	while (1) {
 		int c;
 		c = options_parse(&options, argc, argv, 1, &args);
@@ -563,11 +588,6 @@ int main(int argc, char **argv) {
 		printf("%d",unit3Binary[i]);
 	}
 	printf("\n");
-	
-	free(hw_mode);
-	options_gc();
-	free(progname);
-	free(socket);
 
 	return (EXIT_SUCCESS);
 }
