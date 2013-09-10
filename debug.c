@@ -77,6 +77,8 @@ int main(int argc, char **argv) {
 
 	struct options_t *options = NULL;	
 	
+	char *args = NULL;
+	
 	lirc_t data;
 	int have_device = 0;
 	int gpio_in = GPIO_IN_PIN;
@@ -111,12 +113,12 @@ int main(int argc, char **argv) {
 	options_add(&options, 'H', "help", no_value, 0, NULL);
 	options_add(&options, 'V', "version", no_value, 0, NULL);
 	options_add(&options, 'S', "socket", has_value, 0, "^/dev/([A-Za-z]+)([0-9]+)");
-	options_add(&options, 'L', "lirc", no_value, 0, NULL);
+	options_add(&options, 'M', "module", no_value, 0, NULL);
 	options_add(&options, 'G', "gpio", has_value, 0, "^[0-7]$");
 
 	while (1) {
 		int c;
-		c = options_parse(&options, argc, argv, 1, &optarg);
+		c = options_parse(&options, argc, argv, 1, &args);
 		if(c == -1)
 			break;
 		switch (c) {
@@ -125,7 +127,7 @@ int main(int argc, char **argv) {
 				printf("\t -H --help\t\tdisplay usage summary\n");
 				printf("\t -V --version\t\tdisplay version\n");		
 				printf("\t -S --socket=socket\tread from given socket\n");
-				printf("\t -L --module\t\tuse the lirc_rpi kernel module\n");
+				printf("\t -M --module\t\tuse the lirc_rpi kernel module\n");
 				printf("\t -G --gpio=#\t\tGPIO pin we're directly reading from\n");
 				return (EXIT_SUCCESS);
 			break;
@@ -134,15 +136,17 @@ int main(int argc, char **argv) {
 				return (EXIT_SUCCESS);
 			break;	
 			case 'S':
-				socket = realloc(socket, strlen(optarg)+1);
-				strcpy(socket, optarg);
+				socket = realloc(socket, strlen(args)+1);
+				strcpy(socket, args);
 				have_device = 1;
 			break;
-			case 'L':
+			case 'M':
+				hw_mode = realloc(hw_mode, strlen("module")+1);
 				strcpy(hw_mode, "module");
 			break;
 			case 'G':
-				gpio_in = atoi(optarg);
+				gpio_in = atoi(args);
+				hw_mode = realloc(hw_mode, strlen("gpio")+1);
 				strcpy(hw_mode, "gpio");
 			break;
 			default:

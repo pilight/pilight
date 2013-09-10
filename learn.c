@@ -170,7 +170,7 @@ int main(int argc, char **argv) {
 	options_add(&options, 'H', "help", no_value, 0, NULL);
 	options_add(&options, 'V', "version", no_value, 0, NULL);
 	options_add(&options, 'S', "socket", has_value, 0, "^/dev/([A-Za-z]+)([0-9]+)");
-	options_add(&options, 'L', "lirc", no_value, 0, NULL);
+	options_add(&options, 'M', "module", no_value, 0, NULL);
 	options_add(&options, 'G', "gpio", has_value, 0, "^[0-7]$");
 
 	while (1) {
@@ -193,15 +193,17 @@ int main(int argc, char **argv) {
 				return (EXIT_SUCCESS);
 			break;
 			case 'M':
+				hw_mode = realloc(hw_mode, strlen("module")+1);
 				strcpy(hw_mode, "module");
 			break;
 			case 'G':
-				gpio_in = atoi(optarg);
+				gpio_in = atoi(args);
+				hw_mode = realloc(hw_mode, strlen("gpio")+1);
 				strcpy(hw_mode, "gpio");
 			break;
 			case 'S':
-				socket = realloc(socket, strlen(optarg)+1);
-				socket = optarg;
+				socket = realloc(socket, strlen(args)+1);
+				strcpy(socket, args);
 				have_device = 1;
 			break;
 			default:
@@ -211,7 +213,7 @@ int main(int argc, char **argv) {
 		}
 	}
 	options_delete(options);
-	
+
 	if(strcmp(hw_mode, "module") == 0) {
 		hw = hw_default;
 		
