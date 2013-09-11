@@ -61,8 +61,8 @@ int genWeatherCreateCode(JsonNode *code) {
 }
 
 void genWeatherPrintHelp(void) {
-	printf("\t -t --temperature=temperature\t\t\tset the temperature\n");
-	printf("\t -h --humidity=humidity\t\t\tset the humidity\n");
+	printf("\t -t --temperature=temperature\tset the temperature\n");
+	printf("\t -h --humidity=humidity\t\tset the humidity\n");
 	printf("\t -i --id=id\t\t\tcontrol a device with this id\n");
 }
 
