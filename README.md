@@ -19,7 +19,7 @@ To fully benefit from my code, you should build a low-pass filter to make sure n
 This filter only costs about $1 and works absolutely perfect. All components are commonly used and can be found on ebay or at a local DIY shops.<br />
 <img src="http://i.imgur.com/yRp532m.jpg" alt="Low-pass filter" title="Low-pass filter" border="0" />
 <hr>
-Those who are not using a low-pass filter are adviced to use this code with the lirc kernel module.
+Those who are not using a low-pass filter are adviced to use this code with the lirc kernel module: `hw-mode` set as `module` inside the `/etc/pilight/settings.json`.
 The downside of using the lirc kernel module is that this it is not entirely standalone, because you have to have the lirc_rpi kernel module loaded. This kernel
 module is shipped with the standard raspberry pi kernel. To load this module, just run:
 ```
@@ -39,7 +39,7 @@ crw-rw---T 1 root video 249, 0 jan  1  1970 /dev/lirc0
 crw-rw---T 1 root video 249, 1 jan  1  1970 /dev/lirc1
 lrwxrwxrwx 1 root root      21 jan  1  1970 /dev/lircd -> ../var/run/lirc/lircd
 ```
-If you don't use the lirc kernel module, then make sure you have set the `GPIO_IN_PIN` and `GPIO_OUT_PIN` in the `libs/settings.h` to the right values.
+If you don't use the lirc kernel module, then make sure you have set the `gpio-sender` and `gpio-receiver` in the `/etc/pilight/settings.json` to the right values, and the `hw-mode` set to `gpio`.
 <br />
 The core of this program is the pilight-daemon. This will run itself in the background. You can then use the pilight-receiver or the pilight-sender
 to connect to the pilight-daemon to receive or send codes. The pilight-daemon also has the possibility to automatically invoke another script.
