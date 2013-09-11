@@ -119,7 +119,7 @@ root@pi:~# pilight-receiver
 }
 ```
 ```
-root@pi:~# pilight-send -p elro -i 10 -u 15 -t
+root@pi:~# pilight-send -p elro -s 10 -u 15 -t
 ```
 ```
 root@pi:~# pilight-receiver
@@ -127,8 +127,8 @@ root@pi:~# pilight-receiver
 	"origin": "sender",
 	"protocol": "sartano",
 	"code": {
-		"id": 10,
-		"unit": 15,
+		"systemcode": 10,
+		"unitcode": 15,
 		"state": off
 	}
 }
@@ -180,7 +180,7 @@ Examples are:
 ```
 root@pi:~# pilight-send -p kaku_switch -t 1 -u 1 -t
 root@pi:~# pilight-send -p kaku_dimmer -t 1 -u 1 -d 15
-root@pi:~# pilight-send -p elro -t 1 -u 1 -t
+root@pi:~# pilight-send -p elro -s 1 -u 1 -t
 ```
 <hr>
 To control devices that are not yet supported one can use the `raw` protocol. This protocol allows the sending of raw codes.
@@ -304,8 +304,8 @@ _The `type` and the `order` setting will automatically be added by the pilight-d
 			"order": 1,
 			"protocol": "elro",
 			"type": 1,
-			"id": 5678,
-			"unit": 0,
+			"systemcode": 5678,
+			"unitcode": 0,
 			"state": "on",
 			"values": [ "on", "off" ]
 		}
