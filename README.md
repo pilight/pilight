@@ -82,8 +82,8 @@ __hw-mode__: _module_ do we want to use the kernel module, _gpio_ do we want to 
 __gpio-sender__: To what pin is the sender connected (hw-mode: "gpio")<br />
 __gpio-receiver__: To what pin is the reciever connected (hw-mode: "gpio")<br />
 __webserver-enable__: Enable the built-in webserver<br />
-__webserver-port: On what port does the webserver need to run<br />
-__webserver-root: The webserver root path<br />
+__webserver-port__: On what port does the webserver need to run<br />
+__webserver-root__: The webserver root path<br />
 <hr>
 The output of the receiver will be as follow:
 ```
