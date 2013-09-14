@@ -92,8 +92,7 @@ clean:
 	rm pilight-* >/dev/null 2>&1 || true
 	rm *pilight*.so* || true
 	rm *pilight*.a* || true
-	$(MAKE) -C libs/ $@; \
-	$(MAKE) -C protocols/ $@; \
+	$(MAKE) -C libs/protocols/ $@;
 	
 dist-clean:
 	rm pilight-* >/dev/null 2>&1 || true
