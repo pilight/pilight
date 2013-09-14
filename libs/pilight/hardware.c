@@ -25,18 +25,19 @@
 #include "log.h"
 
 #include "protocol.h"
-#include "../../protocols/arctech_switch.h"
-#include "../../protocols/arctech_dimmer.h"
-#include "../../protocols/arctech_old.h"
-#include "../../protocols/sartano.h"
-#include "../../protocols/impuls.h"
-#include "../../protocols/alecto.h"
-#include "../../protocols/raw.h"
-#include "../../protocols/relay.h"
-#include "../../protocols/generic_weather.h"
+#include "../protocols/arctech_switch.h"
+#include "../protocols/arctech_dimmer.h"
+#include "../protocols/arctech_old.h"
+#include "../protocols/sartano.h"
+#include "../protocols/impuls.h"
+#include "../protocols/alecto.h"
+#include "../protocols/raw.h"
+#include "../protocols/relay.h"
+#include "../protocols/generic_weather.h"
 
-#include "../../hardwares/module.h"
-#include "../../hardwares/gpio.h"
+#include "../hardwares/module.h"
+#include "../hardwares/gpio.h"
+#include "../hardwares/none.h"
 
 #include "hardware.h"
 
@@ -60,6 +61,7 @@ void hardware_init(void) {
 
 	moduleInit();
 	gpioInit();
+	noneInit();
 }
 
 void hardware_register(hardware_t **hw) {

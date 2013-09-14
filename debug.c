@@ -191,8 +191,9 @@ int main(int argc, char **argv) {
 		printf("It is possible that the debugger needs to be restarted when it does.\n");
 		printf("not show anything. This is because it's then following a wrong lead.\n");
 	}
-	if(!hardware->receive) {
-		printf("The hw-mode \"%s\" isn't compatible with pilight-debug", hw_mode);
+
+	if(match == 0 || !hardware->receive) {
+		printf("The hw-mode \"%s\" isn't compatible with pilight-debug\n", hw_mode);
 		return EXIT_SUCCESS;
 	}
 

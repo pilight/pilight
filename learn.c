@@ -249,8 +249,8 @@ int main(int argc, char **argv) {
 		printf("Please make sure the daemon is not running when using this debugger.\n\n");	
 	}
 
-	if(!hardware->receive) {
-		printf("The hw-mode \"%s\" isn't compatible with pilight-learn", hw_mode);
+	if(match == 0 || !hardware->receive) {
+		printf("The hw-mode \"%s\" isn't compatible with pilight-learn\n", hw_mode);
 		return EXIT_SUCCESS;
 	}
 
