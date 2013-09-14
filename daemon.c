@@ -39,14 +39,9 @@
 #include "socket.h"
 #include "json.h"
 #include "webserver.h"
-#include "libs/lirc/lirc.h"
-#include "libs/lirc/lircd.h"
-#include "libs/lirc/hardware.h"
 #include "wiringPi.h"
 #include "irq.h"
 #include "hardware.h"
-
-struct hardware hw_default;
 
 typedef enum {
 	RECEIVER,
@@ -103,8 +98,7 @@ int sockfd = 0;
 /* In the client running in incognito mode */
 unsigned short incognito_mode = 0;
 /* Use the lirc_rpi module or plain GPIO */
-char *hw_mode;
-int free_hw_mode = 0;
+const char *hw_mode = HW_MODE;
 /* On what pin are we sending */
 int gpio_out = GPIO_OUT_PIN;
 /* On what pin are we receiving */
@@ -238,7 +232,8 @@ void send_code(JsonNode *json) {
 	char *name;
 
 	/* Hold the final protocol struct */
-	protocol_t *protocol = NULL;
+	struct protocol_t *protocol = NULL;
+	struct hardware_t *hardware = NULL;
 
 	JsonNode *jcode = NULL;
 	JsonNode *message = json_mkobject();
@@ -281,56 +276,46 @@ void send_code(JsonNode *json) {
 
 				sending = 1;
 
-				if(strcmp(hw_mode, "module") == 0) {
+				struct hardwares_t *htmp = hardwares;
+				match = 0;
+				while(htmp) {
+					if(strcmp(htmp->listener->id, hw_mode) == 0) {
+						hardware = htmp->listener;
+						match = 1;
+						break;
+					}
+					htmp = htmp->next;
+				}
+				
+				if(match == 1) {
 					/* Create a single code with all repeats included */
-					int code_len = (protocol->rawLength*send_repeat)+1;
+					int code_len = (protocol->rawLength*send_repeat*protocol->send_repeats)+1;
 					size_t send_len = (size_t)(code_len * (int)sizeof(int));
 					int longCode[code_len];
 					memset(longCode, 0, send_len);
-					for(i=0;i<send_repeat;i++) {
+					
+					for(i=0;i<(send_repeat*protocol->send_repeats);i++) {
 						for(x=0;x<protocol->rawLength;x++) {
 							longCode[x+(protocol->rawLength*i)]=protocol->raw[x];
 						}
 					}
-					
+
 					longCode[code_len] = 0;
 
-					int n = write(hw.fd, longCode, send_len);
-
-					/* Send the code, if we succeeded, inform the receiver */					
-					if(((int)strlen(hw.device) > 0 && n == send_len)) {
-						logprintf(LOG_DEBUG, "successfully send %s code", protocol->id);
-						if(logged == 0) {
-							logged = 1;
-							/* Write the message to all receivers */
-							broadcast(protocol->id, message);
-							json_delete(message);
-							message = NULL;
+					if(hardware->send) {
+						if(hardware->send(longCode) == 0) {
+							logprintf(LOG_DEBUG, "successfully send %s code", protocol->id);
+							if(logged == 0) {
+								logged = 1;
+								/* Write the message to all receivers */
+								broadcast(protocol->id, message);
+								json_delete(message);
+								message = NULL;
+							}
+						} else {
+							logprintf(LOG_ERR, "failed to send code");
 						}
-					} else {
-						logprintf(LOG_ERR, "failed to send code");
-					}
-				} else if(strcmp(hw_mode, "gpio") == 0) {
-					piHiPri(55);
-					for(i=0;i<send_repeat;i++) {
-						for(x=0;x<protocol->rawLength;x+=2) {
-							digitalWrite(gpio_out, 1);
-							usleep((__useconds_t)protocol->raw[x]);
-							digitalWrite(gpio_out, 0);
-							usleep((__useconds_t)protocol->raw[x+1]);
-						}
-					}
-					piHiPri(0);
-					logprintf(LOG_DEBUG, "successfully send %s code", protocol->id);
-					if(logged == 0) {
-						logged = 1;
-						/* Write the message to all receivers */
-						broadcast(protocol->id, message);
-						json_delete(message);
-						message = NULL;
-					}
-				} else if(strcmp(hw_mode, "none") == 0) {
-					if(logged == 0) {
+					} else if(logged == 0) {
 						logged = 1;
 						/* Write the message to all receivers */
 						broadcast(protocol->id, message);
@@ -338,8 +323,9 @@ void send_code(JsonNode *json) {
 						message = NULL;
 					}
 				}
+
 				sending = 0;
-			}	
+			}
 		}
 		if(message) {
 			json_delete(message);
@@ -701,26 +687,29 @@ void socket_client_disconnected(int i) {
 }
 
 void receive_code(void) {
-	lirc_t data;
 	short header = 0;
-	unsigned int x = 0, y = 0;
+	unsigned int x = 0, y = 0, match = 0;
 	struct conflicts_t *tmp_conflicts = NULL;
 	struct protocol_t *protocol = NULL;
-
-	if(strcmp(hw_mode, "gpio") == 0) {
-		(void)piHiPri(55);
+	struct hardware_t *hardware = NULL;
+	struct hardwares_t *htmp = hardwares;
+	
+	match = 0;
+	while(htmp) {
+		if(strcmp(htmp->listener->id, hw_mode) == 0) {
+			hardware = htmp->listener;
+			match = 1;
+			break;
+		}
+		htmp = htmp->next;
 	}
-
-	while(main_loop) {
+	
+	while(main_loop && match == 1 && hardware->receive) {
 		/* Only initialize the hardware receive the data when there are receivers connected */
 		if(receivers > 0) {
-			if(strcmp(hw_mode, "module") == 0) {
-				data = hw.readdata(0);
-				duration = (data & PULSE_MASK);
-			} else {
-				duration = irq_read(gpio_in);
-			}
 
+			duration = hardware->receive();
+		
 			/* A space is normally for 295 long, so filter spaces less then 200 */
 			if(sending == 0 && duration > 200) {
 				struct protocols_t *pnode = protocols;
@@ -815,9 +804,9 @@ void receive_code(void) {
 									}
 
 									y++;
-
+									
 									/* Continue if we have recognized enough repeated codes */
-									if(y >= receive_repeat) {
+									if(y >= (receive_repeat*protocol->receive_repeats)) {
 										if(protocol->parseCode) {
 											logprintf(LOG_DEBUG, "caught minimum # of repeats %d of %s", y, protocol->id);
 											logprintf(LOG_DEBUG, "called %s parseCode()", protocol->id);
@@ -1032,9 +1021,22 @@ void daemonize(void) {
 
 /* Garbage collector of main program */
 int main_gc(void) {
-
-	if((strcmp(hw_mode, "module") == 0 && (int)strlen(hw.device) > 0) || strcmp(hw_mode, "gpio") == 0) {
-		module_deinit();
+	unsigned int match = 0;
+	struct hardware_t *hardware = NULL;
+	struct hardwares_t *htmp = hardwares;
+	
+	match = 0;
+	while(htmp) {
+		if(strcmp(htmp->listener->id, hw_mode) == 0) {
+			hardware = htmp->listener;
+			match = 1;
+			break;
+		}
+		htmp = htmp->next;
+	}
+	
+	if(match == 1 && hardware->deinit) {
+		hardware->deinit();
 	}
 
 	if(running == 0) {
@@ -1053,14 +1055,12 @@ int main_gc(void) {
 	}
 	config_gc();
 	protocol_gc();
+	hardware_gc();
 	settings_gc();
 	options_gc();
 	socket_gc();
 
 	free(progname);
-	if(free_hw_mode) {
-		free(hw_mode);
-	}
 
 	main_loop = 0;
 	
@@ -1096,10 +1096,12 @@ int main(int argc , char **argv) {
 	
 	struct socket_callback_t socket_callback;
 	struct options_t *options = NULL;	
+	struct hardware_t *hardware = NULL;	
 
 	char buffer[BUFFER_SIZE];
 	int f;
 	int itmp;
+	unsigned short match = 0;
 	char *stmp = NULL;
 	char *args = NULL;
 	int port = 0;
@@ -1159,16 +1161,16 @@ int main(int argc , char **argv) {
 
 	settings_find_number("gpio-sender", &gpio_out);
 	settings_find_number("gpio-receiver", &gpio_in);
-	settings_find_string("hw-mode", &hw_mode);
+
+	if(settings_find_string("hw-mode", &stmp) == 0) {
+		hw_mode = stmp;
+	}
+
 	settings_find_number("webserver-enable", &webserver_enable);
 	settings_find_number("webserver-port", &webserver_port);
 	if(settings_find_string("webserver-root", &webserver_root) != 0) {
 		webserver_root = realloc(webserver_root, strlen(WEBSERVER_ROOT)+1);
 		strcpy(webserver_root, WEBSERVER_ROOT);
-	}
-
-	if(strcmp(hw_mode, "module") == 0) {
-		hw = hw_default;
 	}
 	
 	if(settings_find_string("pid-file", &pid_file) != 0) {
@@ -1197,14 +1199,6 @@ int main(int argc , char **argv) {
 	}
 	close(f);	
 
-	if(strcmp(hw_mode, "module") == 0) {
-		if(settings_find_string("hw-socket", &hw.device) != 0) {
-			hw.device = malloc(strlen(DEFAULT_LIRC_SOCKET)+1);
-			strcpy(hw.device, DEFAULT_LIRC_SOCKET);
-			free_hw_mode = 1;
-		}
-	}
-
 	if(settings_find_number("log-level", &itmp) == 0) {
 		itmp += 2;
 		log_level_set(itmp);
@@ -1227,13 +1221,6 @@ int main(int argc , char **argv) {
 	}
 
 	settings_find_string("process-file", &process_file);
-
-	if(strcmp(hw_mode, "module") == 0) {
-		if(strcmp(hw.device, "/var/lirc/lircd") == 0) {
-			logprintf(LOG_ERR, "refusing to connect to lircd socket");
-			return EXIT_FAILURE;
-		}
-	}
 	
 	if(settings_find_number("send-repeats", &send_repeat) != 0) {
 		send_repeat = SEND_REPEATS;
@@ -1247,13 +1234,27 @@ int main(int argc , char **argv) {
 		return EXIT_FAILURE;
 	}
 
-	if((strcmp(hw_mode, "module") == 0 && (int)strlen(hw.device) > 0) || strcmp(hw_mode, "gpio") == 0) {
-		module_init();
-	}
-
-
 	/* Initialize peripheral modules */
-	hw_init();
+	hardware_init();
+	
+	struct hardwares_t *htmp = hardwares;
+	match = 0;
+	while(htmp) {
+		if(strcmp(htmp->listener->id, hw_mode) == 0) {
+			hardware = htmp->listener;
+			match = 1;
+			break;
+		}
+		htmp = htmp->next;
+	}
+	if(match == 1) {
+		if(hardware->init) {
+			hardware->init();
+		}
+	} else {
+		logprintf(LOG_NOTICE, "the \"%s\" hw-mode is not supported", hw_mode);
+		return EXIT_FAILURE;		
+	}
 
 	if(settings_find_string("config-file", &stmp) == 0) {
 		if(config_set_file(stmp) == 0) {
@@ -1299,7 +1300,7 @@ int main(int argc , char **argv) {
 	}
 
 	/* And our main receiving loop */
-	if(strcmp(hw_mode, "gpio") == 0 || strcmp(hw_mode, "module") == 0) {
+	if(match == 1) {
 		receive_code();
 	} else {
 		while(main_loop) {

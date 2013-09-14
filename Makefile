@@ -18,11 +18,11 @@ ifneq (, $(findstring amd64, $(SYS)))
 	OSFLAGS = -O3 -fPIC -march=native -mtune=native -mfpmath=sse -Wno-conversion
 endif
 CFLAGS = -ffast-math $(OSFLAGS) -Wfloat-equal -Wshadow -Wpointer-arith -Wcast-align -Wstrict-overflow=5 -Wwrite-strings -Waggregate-return -Wcast-qual -Wswitch-default -Wswitch-enum -Wformat=2 -g -Wall -I. -I.. -Ilibs/pilight/ -Iprotocols/ -Ilibs/lirc/ -I/usr/include/ -L/usr/lib/arm-linux-gnueabihf/ -pthread -lm
-SUBDIRS = libs/pilight protocols libs/lirc libs/websockets
+SUBDIRS = libs/pilight protocols hardwares libs/websockets
 SRC = $(wildcard *.c)
-INCLUDES = $(wildcard protocols/*.o) $(wildcard lirc/*.o) $(wildcard libs/*.h) $(wildcard libs/*.o)
+INCLUDES = $(wildcard protocols/*.h) $(wildcard protocols/*.c) $(wildcard hardwares/*.h) $(wildcard hardwares/*.c) $(wildcard libs/pilight/*.h) $(wildcard libs/websockets/*.c) $(wildcard libs/websockets/*.h) $(wildcard libs/websockets/*.c)
 PROGAMS = $(patsubst %.c,pilight-%,$(SRC))
-LIBS = libs/pilight/libs.o protocols/protocols.o libs/lirc/lirc.o libs/websockets/websockets.o
+LIBS = libs/pilight/pilight.o protocols/protocols.o hardwares/hardwares.o libs/websockets/websockets.o
 
 .PHONY: subdirs $(SUBDIRS)
 

@@ -20,8 +20,6 @@
 #include <sys/ioctl.h>
 #include "settings.h"
 
-#include "../lirc/hardware.h"
-
 #include "irq.h"
 #include "wiringPi.h"
 #include "log.h"
@@ -37,6 +35,9 @@
 #include "../../protocols/relay.h"
 #include "../../protocols/generic_weather.h"
 
+#include "../../hardwares/module.h"
+#include "../../hardwares/gpio.h"
+
 #include "hardware.h"
 
 /* The frequency on which the lirc module needs to send 433.92Mhz*/
@@ -46,7 +47,7 @@ int initialized = 0;
 /* Is the right frequency set */
 int setfreq = 0;
 
-void hw_init(void) {
+void hardware_init(void) {
 	arctechSwInit();
 	arctechDimInit();
 	arctechOldInit();
@@ -56,110 +57,38 @@ void hw_init(void) {
 	rawInit();
 	alectoInit();
 	genWeatherInit();
+
+	moduleInit();
+	gpioInit();
 }
 
-/* Initialize the hardware module lirc_rpi */
-int module_init(void) {
-	char *mode = NULL;
-	int allocated = 0;
-	int gpio_in = GPIO_IN_PIN;
-	int gpio_out = GPIO_OUT_PIN;
+void hardware_register(hardware_t **hw) {
+	*hw = malloc(sizeof(struct hardware_t));
 
-	if(settings_find_string("hw-mode", &mode) != 0) {
-		mode = malloc(strlen(HW_MODE)+1);
-		strcpy(mode, HW_MODE);
-		allocated = 1;
-	}
-	settings_find_number("gpio-receiver", &gpio_in);
-	settings_find_number("gpio-sender", &gpio_out);
-
-	if(strcmp(mode, "module") == 0) {
-		if(initialized == 0) {
-			if(!hw.init_func()) {
-				if(allocated) {
-					free(mode);
-				}
-				exit(EXIT_FAILURE);
-			}
-
-			/* Only set the frequency once */
-			if(setfreq == 0) {
-				freq = FREQ433;
-				/* Set the lirc_rpi frequency to 433.92Mhz */
-				if(ioctl(hw.fd, _IOW('i', 0x00000013, __u32), &freq) == -1) {
-					logprintf(LOG_ERR, "could not set lirc_rpi send frequency");
-					if(allocated) {
-						free(mode);
-					}
-					exit(EXIT_FAILURE);
-				}
-				setfreq = 1;
-			}
-			logprintf(LOG_DEBUG, "initialized lirc_rpi module");
-			initialized = 1;
-		}
-		if(allocated) {
-			free(mode);
-		}
-		return EXIT_SUCCESS;
-	} else if(strcmp(mode, "gpio") == 0) {
-		if(wiringPiSetup() == -1) {
-			if(allocated) {
-				free(mode);
-			}
-			return EXIT_FAILURE;
-		}
-		pinMode(gpio_out, OUTPUT);
-		if(wiringPiISR(gpio_in, INT_EDGE_BOTH) < 0) {
-			logprintf(LOG_ERR, "unable to register interrupt for pin %d", gpio_in) ;
-			if(allocated) {
-				free(mode);
-			}
-			return EXIT_SUCCESS;
-		}
-	}
-	if(allocated) {
-		free(mode);
-	}
-	return EXIT_FAILURE;
-}
-
-/* Release the hardware module lirc_rpi */
-int module_deinit(void) {
-	char *mode = NULL;
-	int allocated = 0;
+	(*hw)->init = NULL;
+	(*hw)->deinit = NULL;
+	(*hw)->receive = NULL;
+	(*hw)->send = NULL;
 	
-	if(settings_find_string("hw-mode", &mode) != 0) {
-		mode = malloc(strlen(HW_MODE)+1);
-		strcpy(mode, HW_MODE);
-		allocated = 1;
-	}
-
-	if(strcmp(mode, "module") == 0) {
-		if(initialized == 1) {
-			freq = FREQ38;
-			if(ioctl(hw.fd, _IOW('i', 0x00000013, __u32), &freq) == -1) {
-				logprintf(LOG_ERR, "could not restore default freq of the lirc_rpi module");
-				if(allocated) {
-					free(mode);
-				}
-				exit(EXIT_FAILURE);
-			} else {
-				logprintf(LOG_DEBUG, "default freq of the lirc_rpi module set");
-			}
-			/* Restore the lirc_rpi frequency to its default value */
-			hw.deinit_func();
-
-			logprintf(LOG_DEBUG, "deinitialized lirc_rpi module");
-			initialized	= 0;
-		}
-		if(allocated) {
-			free(mode);
-		}
-		return EXIT_SUCCESS;
-	}
-	if(allocated) {
-		free(mode);
-	}
-	return EXIT_FAILURE;
+	struct hardwares_t *hnode = malloc(sizeof(struct hardwares_t));
+	hnode->listener = *hw;
+	hnode->next = hardwares;
+	hardwares = hnode;
 }
+
+int hardware_gc(void) {
+	struct hardwares_t *htmp;
+
+	while(hardwares) {
+		htmp = hardwares;
+		free(htmp->listener->id);
+		free(htmp->listener);
+		hardwares = hardwares->next;
+		free(htmp);
+	}
+	free(hardwares);
+
+	logprintf(LOG_DEBUG, "garbage collected hardware library");
+	return EXIT_SUCCESS;
+}
+

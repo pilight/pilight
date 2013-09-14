@@ -48,6 +48,8 @@ typedef struct protocol_t {
 	int footer;
 	int rawLength;
 	int binLength;
+	short send_repeats;
+	short receive_repeats;
 	unsigned short lsb;
 	struct options_t *options;
 	JsonNode *message;

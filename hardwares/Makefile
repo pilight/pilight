@@ -17,26 +17,21 @@ endif
 ifneq (, $(findstring amd64, $(SYS)))
 	OSFLAGS = -O3 -fPIC -march=native -mtune=native -mfpmath=sse -Wno-conversion
 endif
-CFLAGS =-ffast-math $(OSFLAGS) -Wfloat-equal -Wshadow -Wpointer-arith -Wcast-align -Wstrict-overflow=5 -Wwrite-strings -Waggregate-return -Wcast-qual -Wswitch-default -Wswitch-enum -Wformat=2 -g -Wall -I. -I.. -I/usr/include/
+CFLAGS = -ffast-math $(OSFLAGS) -Wfloat-equal -Wshadow -Wpointer-arith -Wcast-align -Wstrict-overflow=5 -Wwrite-strings -Waggregate-return -Wcast-qual -Wswitch-default -Wswitch-enum -Wformat=2 -g -Wall -I. -I.. -I../libs/pilight/
 SRC = $(wildcard *.c)
 OBJS = $(SRC:.c=.o)
 HEADERS := $(SRC:.c=.h)
+INCLUDES = $(wildcard ../libs/*.h) ../libs/libs.o
 
-all: json.o $(OBJS) pilight.o
+all: $(OBJS) hardwares.o
 
-json.o: json.c json.h
-	$(GCC) -ffast-math $(OSFLAGS) -Wno-conversion -g -I. -I.. -I/usr/include/ -c $(patsubst %.o,%.c,$@) $(LIBS)
+%.o: %.c %.h $(INCLUDES)
+	$(GCC) $(CFLAGS) -c $(patsubst %.o,%.c,$@)
 
-wiringPi.o: wiringPi.c wiringPi.h
-	$(GCC) -ffast-math $(OSFLAGS) -Wno-conversion -g -I. -I.. -I/usr/include/ -pthread -lm -c $(patsubst %.o,%.c,$@) $(LIBS)
-	
-%.o: %.c %.h
-	$(GCC) $(CFLAGS) -c $(patsubst %.o,%.c,$@) $(LIBS)
-
-pilight.o: $(OBJS)
-	$(CROSS_COMPILE)ld -L/usr/local/lib -r $(OBJS) -o pilight.o
+hardwares.o: $(OBJS)
+	$(CROSS_COMPILE)ld -L/usr/local/lib -r $(OBJS) -o hardwares.o
 
 dist-clean: clean
-
+	
 clean:
 	rm *.o >/dev/null 2>&1 || true

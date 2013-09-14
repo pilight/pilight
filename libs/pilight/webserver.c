@@ -53,6 +53,7 @@ char *ext = NULL;
 char *mimetype = NULL;
 char *server;
 unsigned short webserver_loop = 1;
+pthread_t pth1;
 
 typedef enum {
 	WELCOME,
@@ -89,6 +90,8 @@ int webserver_gc(void) {
 		free(mimetype);
 		mimetype = NULL;
 	}
+	pthread_cancel(pth1);
+	pthread_join(pth1, NULL);
 	fcache_gc();
 	logprintf(LOG_DEBUG, "garbage collected webserver library");
 	return 1;
@@ -366,7 +369,6 @@ void *webserver_start(void *param) {
 
 	int n = 0;
 	struct lws_context_creation_info info;
-	pthread_t pth1;
 
 	settings_find_number("webserver-port", &webserver_port);
 	if(settings_find_string("webserver-root", &webserver_root) != 0) {
@@ -399,8 +401,6 @@ void *webserver_start(void *param) {
 			free(syncBuff);
 			syncBuff = NULL;
 		}
-		pthread_cancel(pth1);
-		pthread_join(pth1, NULL);
 	}
 	return 0;
 }

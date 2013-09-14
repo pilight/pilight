@@ -38,6 +38,8 @@ void protocol_register(protocol_t **proto) {
 	(*proto)->lsb = 0;
 	(*proto)->bit = 0;
 	(*proto)->recording = 0;
+	(*proto)->send_repeats = 1;
+	(*proto)->receive_repeats = 1;
 	(*proto)->parseRaw = NULL;
 	(*proto)->parseBinary = NULL;
 	(*proto)->parseCode = NULL;

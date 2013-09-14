@@ -149,9 +149,8 @@ int main(int argc, char **argv) {
 		exit(EXIT_FAILURE);
 	}
 
-	/* Initialize peripheral modules */
-	hw_init();
-
+	hardware_init();
+	
 	while(1) {
 		if(steps > WELCOME) {
 			/* Clear the receive buffer again and read the welcome message */

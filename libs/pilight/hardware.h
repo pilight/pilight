@@ -21,8 +21,24 @@
 
 #include "settings.h"
 
-void hw_init(void);
-int module_init(void);
-int module_deinit(void);
+typedef struct hardware_t {
+	char *id;
+
+	unsigned short (*init)(void);
+	unsigned short (*deinit)(void);
+	int (*receive)(void);
+	unsigned short (*send)(int *code);
+} hardware_t;
+
+typedef struct hardwares_t {
+	struct hardware_t *listener;
+	struct hardwares_t *next;
+} hardwares_t;
+
+struct hardwares_t *hardwares;
+
+void hardware_init(void);
+void hardware_register(hardware_t **hw);
+int hardware_gc(void);
 
 #endif

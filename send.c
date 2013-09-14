@@ -88,7 +88,7 @@ int main(int argc, char **argv) {
 	options_add(&options, 'P', "port", has_value, 0, "[0-9]{1,4}");
 
 	/* Initialize peripheral modules */
-	hw_init();
+	hardware_init();
 
 	/* Get the protocol to be used */
 	while (1) {

@@ -30,18 +30,14 @@
 #include <string.h>
 
 #include "settings.h"
+#include "hardware.h"
 #include "log.h"
 #include "options.h"
 #include "wiringPi.h"
-#include "libs/lirc/lirc.h"
-#include "libs/lirc/hardware.h"
 #include "irq.h"
 #include "gc.h"
 
-char *hw_mode = NULL;
-char *socket = NULL;
-
-struct hardware hw_default;
+const char *hw_mode = HW_MODE;
 
 int normalize(int i) {
 	double x;
@@ -51,18 +47,36 @@ int normalize(int i) {
 }
 
 int main_gc(void) {
+	struct hardware_t *hardware = NULL;	
+	unsigned short match = 0;
 
 	log_shell_disable();
-	if(hw_mode) {
-		free(hw_mode);
-	}
 	options_gc();
+	settings_gc();
+	
+	struct hardwares_t *htmp = hardwares;
+	match = 0;
+	while(htmp) {
+		if(strcmp(htmp->listener->id, hw_mode) == 0) {
+			hardware = htmp->listener;
+			match = 1;
+			break;
+		}
+		htmp = htmp->next;
+	}
+	if(match == 1) {
+		hardware->deinit();
+	}		
+	
+	hardware_gc();
+	
 	if(progname) {
 		free(progname);
 	}
-	if(socket) {
-		free(socket);
-	}
+	
+	if(settingsfile) {
+		free(settingsfile);
+	}	
 
 	return EXIT_SUCCESS;
 }
@@ -75,13 +89,11 @@ int main(int argc, char **argv) {
 	log_file_disable();
 	log_level_set(LOG_NOTICE);
 
-	struct options_t *options = NULL;	
+	struct options_t *options = NULL;
+	struct hardware_t *hardware = NULL;		
 	
 	char *args = NULL;
-	
-	lirc_t data;
-	int have_device = 0;
-	int gpio_in = GPIO_IN_PIN;
+	char *stmp = NULL;
 
 	int duration = 0;
 	int i = 0;
@@ -100,21 +112,17 @@ int main(int argc, char **argv) {
 	int binaryLength = 0;
 
 	int loop = 1;
+	unsigned short match = 0;
 
+	settingsfile = malloc(strlen(SETTINGS_FILE)+1);
+	strcpy(settingsfile, SETTINGS_FILE);	
+	
 	progname = malloc(15);
 	strcpy(progname, "pilight-debug");	
-
-	hw_mode = malloc(strlen(HW_MODE)+1);
-	strcpy(hw_mode, HW_MODE);
-
-	socket = malloc(11);
-	strcpy(socket, "/dev/lirc0");	
-
+	
 	options_add(&options, 'H', "help", no_value, 0, NULL);
 	options_add(&options, 'V', "version", no_value, 0, NULL);
-	options_add(&options, 'S', "socket", has_value, 0, "^/dev/([A-Za-z]+)([0-9]+)");
-	options_add(&options, 'M', "module", no_value, 0, NULL);
-	options_add(&options, 'G', "gpio", has_value, 0, "^[0-7]$");
+	options_add(&options, 'S', "settings", has_value, 0, NULL);
 
 	while (1) {
 		int c;
@@ -126,28 +134,22 @@ int main(int argc, char **argv) {
 				printf("Usage: %s [options]\n", progname);
 				printf("\t -H --help\t\tdisplay usage summary\n");
 				printf("\t -V --version\t\tdisplay version\n");		
-				printf("\t -S --socket=socket\tread from given socket\n");
-				printf("\t -M --module\t\tuse the lirc_rpi kernel module\n");
-				printf("\t -G --gpio=#\t\tGPIO pin we're directly reading from\n");
+				printf("\t -S --settings\t\tsettings file\n");
 				return (EXIT_SUCCESS);
 			break;
 			case 'V':
 				printf("%s %s\n", progname, "1.0");
 				return (EXIT_SUCCESS);
 			break;	
-			case 'S':
-				socket = realloc(socket, strlen(args)+1);
-				strcpy(socket, args);
-				have_device = 1;
-			break;
-			case 'M':
-				hw_mode = realloc(hw_mode, strlen("module")+1);
-				strcpy(hw_mode, "module");
-			break;
-			case 'G':
-				gpio_in = atoi(args);
-				hw_mode = realloc(hw_mode, strlen("gpio")+1);
-				strcpy(hw_mode, "gpio");
+			case 'S': 
+				if(access(args, F_OK) != -1) {
+					settingsfile = realloc(settingsfile, strlen(args)+1);
+					strcpy(settingsfile, args);
+					settings_set_file(args);
+				} else {
+					fprintf(stderr, "%s: the settings file %s does not exists\n", progname, args);
+					return EXIT_FAILURE;
+				}
 			break;
 			default:
 				printf("Usage: %s [options]\n", progname);
@@ -157,44 +159,45 @@ int main(int argc, char **argv) {
 	}
 	options_delete(options);
 
-	if(strcmp(hw_mode, "module") == 0) {
-		hw = hw_default;
-		if(strcmp(socket, "/var/lirc/lircd") == 0) {
-			logprintf(LOG_ERR, "refusing to connect to lircd socket");
+	if(access(settingsfile, F_OK) != -1) {
+		if(settings_read() != 0) {
 			return EXIT_FAILURE;
 		}
+	}	
+	
+	if(settings_find_string("hw-mode", &stmp) == 0) {
+		hw_mode = stmp;
+	}	
 
-		if(have_device)
-			hw.device = socket;
-
-		if(!hw.init_func()) {
-			return EXIT_FAILURE;
+	hardware_init();
+	
+	struct hardwares_t *htmp = hardwares;
+	match = 0;
+	while(htmp) {
+		if(strcmp(htmp->listener->id, hw_mode) == 0) {
+			hardware = htmp->listener;
+			match = 1;
+			break;
 		}
-	} else {
-
-		if(wiringPiSetup() == -1)
-			return EXIT_FAILURE;
-
-		if(wiringPiISR(gpio_in, INT_EDGE_BOTH) < 0) {
-			logprintf(LOG_ERR, "unable to register interrupt for pin %d", gpio_in) ;
-			return EXIT_SUCCESS;
-		}
-		(void)piHiPri(55);
+		htmp = htmp->next;
 	}
 
-	printf("Please make sure the daemon is not running when using this debugger.\n\n");
-	printf("Now press and hold one of the button on your remote or wait until\n");
-	printf("another device such as a weather station has send new codes\n");
-	printf("It is possible that the debugger needs to be restarted when it does.\n");
-	printf("not show anything. This is because it's then following a wrong lead.\n");
-	
-	while(loop) {
-		if(strcmp(hw_mode, "module") == 0) {
-			data = hw.readdata(0);
-			duration = (data & PULSE_MASK);
-		} else if(strcmp(hw_mode, "gpio") == 0) {
-			duration = irq_read(gpio_in);
-		}
+	if(match == 1 && hardware->init) {
+		hardware->init();
+
+		printf("Please make sure the daemon is not running when using this debugger.\n\n");
+		printf("Now press and hold one of the button on your remote or wait until\n");
+		printf("another device such as a weather station has send new codes\n");
+		printf("It is possible that the debugger needs to be restarted when it does.\n");
+		printf("not show anything. This is because it's then following a wrong lead.\n");
+	}
+	if(!hardware->receive) {
+		printf("The hw-mode \"%s\" isn't compatible with pilight-debug", hw_mode);
+		return EXIT_SUCCESS;
+	}
+
+	while(loop && match == 1 && hardware->receive) {
+		duration = hardware->receive();
 
 		/* If we are recording, keep recording until the next footer has been matched */
 		if(recording == 1) {
