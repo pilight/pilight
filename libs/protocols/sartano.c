@@ -38,7 +38,7 @@ void sartanoCreateMessage(int systemcode, int unitcode, int state) {
 	}
 }
 
-void sartanoParseBinary(void) {
+void sartanoParseBinary(int repeats) {
 	int fp = 0;
 	int i = 0;
 	for(i=0;i<sartano->binLength;i++) {

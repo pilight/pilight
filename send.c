@@ -3,13 +3,13 @@
 
 	This file is part of pilight.
 
-    pilight is free software: you can redistribute it and/or modify it under the 
-	terms of the GNU General Public License as published by the Free Software 
-	Foundation, either version 3 of the License, or (at your option) any later 
+    pilight is free software: you can redistribute it and/or modify it under the
+	terms of the GNU General Public License as published by the Free Software
+	Foundation, either version 3 of the License, or (at your option) any later
 	version.
 
-    pilight is distributed in the hope that it will be useful, but WITHOUT ANY 
-	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR 
+    pilight is distributed in the hope that it will be useful, but WITHOUT ANY
+	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
@@ -73,7 +73,7 @@ int main(int argc, char **argv) {
 	char *server = malloc(17);
 	strcpy(server, "127.0.0.1");
 	unsigned short port = PORT;
-	
+
 	/* Hold the final protocol struct */
 	protocol_t *protocol = NULL;
 
@@ -121,8 +121,8 @@ int main(int argc, char **argv) {
 			break;
 			default:;
 		}
-	}	
-	
+	}
+
 	/* Check if a protocol was given */
 	if(strlen(protobuffer) > 0 && strcmp(protobuffer,"-V") != 0) {
 		if(strlen(protobuffer) > 0 && version) {

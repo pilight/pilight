@@ -37,7 +37,7 @@ void arctechOldCreateMessage(int id, int unit, int state) {
 		json_append_member(arctech_old->message, "state", json_mkstring("off"));
 }
 
-void arctechOldParseBinary(void) {
+void arctechOldParseBinary(int repeats) {
 	int fp = 0;
 	int i = 0;
 	for(i=0;i<arctech_old->binLength;i++) {

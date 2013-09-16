@@ -23,7 +23,7 @@ struct protocol_t *sartano;
 
 void sartanoInit(void);
 void sartanoCreateMessage(int systemcode, int unitcode, int state);
-void sartanoParseBinary(void);
+void sartanoParseBinary(int repeats);
 int sartanoCreateCode(JsonNode *code);
 void sartanoCreateLow(int s, int e);
 void sartanoCreateHigh(int s, int e);

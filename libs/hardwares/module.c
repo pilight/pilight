@@ -3,13 +3,13 @@
 
 	This file is part of pilight.
 
-    pilight is free software: you can redistribute it and/or modify it under the 
-	terms of the GNU General Public License as published by the Free Software 
-	Foundation, either version 3 of the License, or (at your option) any later 
+    pilight is free software: you can redistribute it and/or modify it under the
+	terms of the GNU General Public License as published by the Free Software
+	Foundation, either version 3 of the License, or (at your option) any later
 	version.
 
-    pilight is distributed in the hope that it will be useful, but WITHOUT ANY 
-	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR 
+    pilight is distributed in the hope that it will be useful, but WITHOUT ANY
+	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
@@ -42,12 +42,12 @@ unsigned short moduleHwInit(void) {
 	if(settings_find_string("hw-socket", &socket) == 0) {
 		module_socket = socket;
 	}
-	
+
 	if(strcmp(module_socket, "/var/lirc/lircd") == 0) {
 		logprintf(LOG_ERR, "refusing to connect to lircd socket");
 		return EXIT_FAILURE;
 	}
-	
+
 	if(module_initialized == 0) {
 		if((module_fd = open(module_socket, O_RDWR)) < 0) {
 			logprintf(LOG_ERR, "could not open %s", module_socket);
@@ -72,12 +72,12 @@ unsigned short moduleHwInit(void) {
 
 unsigned short moduleHwDeinit(void) {
 	unsigned int freq = 0;
-	
+
 	if(module_initialized == 1) {
 
 		freq = FREQ38;
 
-		/* Restore the lirc_rpi frequency to its default value */		
+		/* Restore the lirc_rpi frequency to its default value */
 		if(ioctl(module_fd, _IOW('i', 0x00000013, __u32), &freq) == -1) {
 			logprintf(LOG_ERR, "could not restore default freq of the lirc_rpi module");
 			exit(EXIT_FAILURE);
@@ -124,11 +124,11 @@ int moduleReceive(void) {
 }
 
 void moduleInit(void) {
-	
+
 	hardware_register(&module);
 	module->id = malloc(7);
 	strcpy(module->id, "module");
-	
+
 	module->init=&moduleHwInit;
 	module->deinit=&moduleHwDeinit;
 	module->send=&moduleSend;

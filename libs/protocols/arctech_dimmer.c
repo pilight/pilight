@@ -43,12 +43,13 @@ void arctechDimCreateMessage(int id, int unit, int state, int all, int dimlevel)
 		json_append_member(arctech_dimmer->message, "state", json_mkstring("off"));
 }
 
-void arctechDimParseBinary(void) {
+void arctechDimParseBinary(int repeats) {
 	int dimlevel = binToDecRev(arctech_dimmer->binary, 32, 35);
 	int unit = binToDecRev(arctech_dimmer->binary, 28, 31);
 	int state = arctech_dimmer->binary[27];
 	int all = arctech_dimmer->binary[26];
 	int id = binToDecRev(arctech_dimmer->binary, 0, 25);
+
 	arctechDimCreateMessage(id, unit, state, all, dimlevel);
 }
 

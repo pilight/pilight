@@ -3,13 +3,13 @@
 
 	This file is part of pilight.
 
-    pilight is free software: you can redistribute it and/or modify it under the 
-	terms of the GNU General Public License as published by the Free Software 
-	Foundation, either version 3 of the License, or (at your option) any later 
+    pilight is free software: you can redistribute it and/or modify it under the
+	terms of the GNU General Public License as published by the Free Software
+	Foundation, either version 3 of the License, or (at your option) any later
 	version.
 
-    pilight is distributed in the hope that it will be useful, but WITHOUT ANY 
-	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR 
+    pilight is distributed in the hope that it will be useful, but WITHOUT ANY
+	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
@@ -60,7 +60,7 @@ typedef enum {
 	IDENTIFY,
 	REJECT,
 	SYNC
-} steps_t; 
+} steps_t;
 
 struct libwebsocket_protocols libwebsocket_protocols[] = {
 	{ "http-only", webserver_callback_http, 102400, 102400 },
@@ -99,11 +99,11 @@ int webserver_gc(void) {
 
 int webserver_callback_http(struct libwebsocket_context *webcontext, struct libwebsocket *wsi, enum libwebsocket_callback_reasons reason, void *user, void *in, size_t len) {
 	int /*f = 0,*/ n = 0, m = 0;
-	struct stat sb; 
+	struct stat sb;
 	int size;
 	//static unsigned char buffer[4096];
 	struct per_session_data__http *pss = (struct per_session_data__http *)user;
-	
+
 	switch(reason) {
 		case LWS_CALLBACK_HTTP: {
 			if(strcmp((const char *)in, "/") == 0) {
@@ -119,7 +119,7 @@ int webserver_callback_http(struct libwebsocket_context *webcontext, struct libw
 
 				if(webserver_root[strlen(webserver_root)-1] == '/' && cin[0] == '/') {
 					request = realloc(request, strlen(webserver_root)+strlen((const char *)in));
-					memset(request, '\0', strlen(webserver_root)+strlen((const char *)in));				
+					memset(request, '\0', strlen(webserver_root)+strlen((const char *)in));
 					strncpy(&request[0], webserver_root, strlen(webserver_root)-1);
 					strncpy(&request[strlen(webserver_root)-1], cin, strlen(cin));
 				} else {
@@ -134,20 +134,20 @@ int webserver_callback_http(struct libwebsocket_context *webcontext, struct libw
 					logprintf(LOG_ERR, "(webserver) could not cache %s", request);
 				}
 			}
-			
+
 			if(fcache_get_size(request, &size) == 0) {
 			// if((pss->fd = open(request, O_RDONLY)) == -1) {
 				// logprintf(LOG_ERR, "(webserver) file not found %s", request);
 				// free(request);
 				// return -1;
 			// }
-			
+
 				char *dot = NULL;
-				
+
 				dot = strrchr(request, '.');
-				if(!dot || dot == request) 
+				if(!dot || dot == request)
 					return -1;
-					
+
 				ext = realloc(ext, strlen(dot)+1);
 				memset(ext, '\0', strlen(dot)+1);
 				strcpy(ext, dot+1);
@@ -174,7 +174,7 @@ int webserver_callback_http(struct libwebsocket_context *webcontext, struct libw
 					strcpy(mimetype, "text/javascript");
 				}
 				fstat(pss->fd, &sb);
-				
+
 				// unsigned char *p = buffer;
 				// p += sprintf((char *)p,
 					// "HTTP/1.0 200 OK\x0d\x0a"
@@ -186,8 +186,8 @@ int webserver_callback_http(struct libwebsocket_context *webcontext, struct libw
 				if(libwebsockets_serve_http_file(webcontext, wsi, request, mimetype)) {
 					libwebsocket_callback_on_writable(webcontext, wsi);
 					return -1;
-				}					
-					
+				}
+
 				// libwebsocket_write(wsi, (unsigned char *)buffer, (size_t)(p - buffer), LWS_WRITE_HTTP);
 				// libwebsocket_callback_on_writable(webcontext, wsi);
 
@@ -218,7 +218,7 @@ int webserver_callback_http(struct libwebsocket_context *webcontext, struct libw
 						// size -= 4096;
 					// }
 					// libwebsocket_callback_on_writable(webcontext, wsi);
-					
+
 				// }
 			}
 		}
@@ -232,7 +232,7 @@ int webserver_callback_http(struct libwebsocket_context *webcontext, struct libw
 		case LWS_CALLBACK_CLOSED:
 		case LWS_CALLBACK_CLOSED_HTTP:
 		case LWS_CALLBACK_RECEIVE:
-			if((int)len < 4) {	
+			if((int)len < 4) {
 				return -1;
 			} else {
 				if(json_validate((char *)in) == true) {
@@ -275,7 +275,7 @@ int webserver_callback_http(struct libwebsocket_context *webcontext, struct libw
 			m = libwebsocket_write(wsi, &sockWriteBuff[LWS_SEND_BUFFER_PRE_PADDING], syncBuff_len, LWS_WRITE_TEXT);
 			/*
 			 * It seems like libwebsocket_write already does memory freeing
-			 */	
+			 */
 			if (m < n) {
 				logprintf(LOG_ERR, "(webserver) %d writing to di socket", n);
 				return -1;
@@ -323,7 +323,7 @@ void *webserver_clientize(void *param) {
 			memset(sockReadBuff, '\0', BUFFER_SIZE);
 			/* Clear the receive buffer again and read the welcome message */
 			/* Used direct read access instead of socket_read */
-			if(read(sockfd, sockReadBuff, BUFFER_SIZE) < 1) {	
+			if(read(sockfd, sockReadBuff, BUFFER_SIZE) < 1) {
 				goto close;
 			}
 		}
@@ -352,7 +352,7 @@ void *webserver_clientize(void *param) {
 					/* Push all incoming sync messages to the web gui */
 					libwebsocket_callback_on_writable_all_protocol(&libwebsocket_protocols[0]);
 				}
-			break;				
+			break;
 			case REJECT:
 			default:
 				goto close;
@@ -375,7 +375,7 @@ void *webserver_start(void *param) {
 		webserver_root = malloc(strlen(WEBSERVER_ROOT)+1);
 		strcpy(webserver_root, WEBSERVER_ROOT);
 	}
-	
+
 	memset(&info, 0, sizeof info);
 	info.port = webserver_port;
 
@@ -384,13 +384,13 @@ void *webserver_start(void *param) {
 	info.ssl_private_key_filepath = NULL;
 	info.gid = -1;
 	info.uid = -1;
-	
+
 	struct libwebsocket_context *context = libwebsocket_create_context(&info);
 	if(context == NULL) {
 		lwsl_err("libwebsocket init failed\n");
 	} else {
 		/* Create a seperate thread in which the webserver communicates
-		   the main daemon as if it where a gui */		   
+		   the main daemon as if it where a gui */
 		pthread_create(&pth1, NULL, &webserver_clientize, (void *)NULL);
 		/* Main webserver loop */
 		while(n >= 0 && webserver_loop) {

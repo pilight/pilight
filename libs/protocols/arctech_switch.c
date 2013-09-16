@@ -39,7 +39,7 @@ void arctechSwCreateMessage(int id, int unit, int state, int all) {
 		json_append_member(arctech_switch->message, "state", json_mkstring("off"));
 }
 
-void arctechSwParseBinary(void) {
+void arctechSwParseBinary(int repeats) {
 	int unit = binToDecRev(arctech_switch->binary, 28, 31);
 	int state = arctech_switch->binary[27];
 	int all = arctech_switch->binary[26];

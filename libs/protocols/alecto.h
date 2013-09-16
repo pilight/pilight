@@ -21,7 +21,7 @@
 
 struct protocol_t *alecto;
 
-void alectoParseRaw(void);
+void alectoParseCode(int repeats);
 void alectoInit(void);
 
 #endif

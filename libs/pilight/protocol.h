@@ -65,8 +65,8 @@ typedef struct protocol_t {
 	struct conflicts_t *conflicts;
 
 	void (*parseRaw)(void);
-	void (*parseCode)(void);
-	void (*parseBinary)(void);
+	void (*parseCode)(int repeats);
+	void (*parseBinary)(int repeats);
 	int (*createCode)(JsonNode *code);
 	void (*printHelp)(void);
 } protocol_t;

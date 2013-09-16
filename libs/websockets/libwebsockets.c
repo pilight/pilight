@@ -571,7 +571,7 @@ int lws_set_socket_options(struct libwebsocket_context *context, int fd)
 			alive.keepalivetime = context->ka_time;
 			alive.keepaliveinterval = context->ka_interval;
 
-			if (WSAIoctl(fd, SIO_KEEPALIVE_VALS, &alive, sizeof(alive), 
+			if (WSAIoctl(fd, SIO_KEEPALIVE_VALS, &alive, sizeof(alive),
 									NULL, 0, &dwBytesRet, NULL, NULL))
 				return 1;
 		}
@@ -1215,7 +1215,7 @@ libwebsocket_context_destroy(struct libwebsocket_context *context)
 			if(context->lws_lookup[context->fds[t].fd]->user_space) {
 				free(context->lws_lookup[context->fds[t].fd]->user_space);
 			}
-			free(context->lws_lookup[context->fds[t].fd]); 
+			free(context->lws_lookup[context->fds[t].fd]);
 		}
 	}
 
@@ -1961,7 +1961,7 @@ libwebsocket_create_context(struct lws_context_creation_info *info)
 
 	method = (SSL_METHOD *)SSLv23_server_method();
 	if (!method) {
-		lwsl_err("problem creating ssl method %lu: %s\n", 
+		lwsl_err("problem creating ssl method %lu: %s\n",
 			ERR_get_error(),
 			ERR_error_string(ERR_get_error(),
 					      (char *)context->service_buffer));

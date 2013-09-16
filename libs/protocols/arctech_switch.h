@@ -23,7 +23,7 @@ struct protocol_t *arctech_switch;
 
 void arctechSwInit(void);
 void arctechSwCreateMessage(int id, int unit, int state, int all);
-void arctechSwParseBinary(void);
+void arctechSwParseBinary(int repeats);
 int arctechSwCreateCode(JsonNode *code);
 void arctechSwCreateLow(int s, int e);
 void arctechSwCreateHigh(int s, int e);
