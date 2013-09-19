@@ -19,16 +19,14 @@ ifneq (, $(findstring amd64, $(SYS)))
 endif
 CFLAGS = -ffast-math $(OSFLAGS) -Wfloat-equal -Wshadow -Wpointer-arith -Wcast-align -Wstrict-overflow=5 -Wwrite-strings -Waggregate-return -Wcast-qual -Wswitch-default -Wswitch-enum -Wformat=2 -g -Wall -I. -I.. -I../pilight/
 SRC = $(wildcard *.c)
-HEADERS = $(wildcard *.h)
 OBJS = $(SRC:.c=.o)
-INCLUDES = $(wildcard ../libs/*.h) ../libs/pilight.o
 
 all: $(OBJS) protocols.o
 
-%.o: %.c %.h $(INCLUDES) $(SRC) $(HEADERS)
+%.o: %.c %.h
 	$(GCC) $(CFLAGS) -c $(patsubst %.o,%.c,$@)
 
-protocols.o: $(OBJS) $(SRC) $(HEADERS)
+protocols.o: $(OBJS)
 	$(CROSS_COMPILE)ld -L/usr/local/lib -r $(OBJS) -o protocols.o
 
 dist-clean: clean

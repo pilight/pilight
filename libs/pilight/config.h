@@ -67,6 +67,7 @@ typedef enum {
 
 struct conf_values_t {
 	char *value;
+	char *name;
 	config_type_t type;
 	struct conf_values_t *next;
 };

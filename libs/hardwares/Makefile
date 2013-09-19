@@ -20,12 +20,10 @@ endif
 CFLAGS = -ffast-math $(OSFLAGS) -Wfloat-equal -Wshadow -Wpointer-arith -Wcast-align -Wstrict-overflow=5 -Wwrite-strings -Waggregate-return -Wcast-qual -Wswitch-default -Wswitch-enum -Wformat=2 -g -Wall -I. -I.. -I../pilight/
 SRC = $(wildcard *.c)
 OBJS = $(SRC:.c=.o)
-HEADERS := $(SRC:.c=.h)
-INCLUDES = $(wildcard ../libs/*.h) ../libs/pilight.o
 
 all: $(OBJS) hardwares.o
 
-%.o: %.c %.h $(INCLUDES)
+%.o: %.c %.h
 	$(GCC) $(CFLAGS) -c $(patsubst %.o,%.c,$@)
 
 hardwares.o: $(OBJS)

@@ -357,6 +357,9 @@ void control_device(struct conf_devices_t *dev, char *state, JsonNode *values) {
 	char fval[255];
 	char cstate[255];
 	char nstate[255];
+
+	char *ctmp = NULL;
+
 	JsonNode *code = json_mkobject();
 	JsonNode *json = json_mkobject();
 
@@ -374,8 +377,14 @@ void control_device(struct conf_devices_t *dev, char *state, JsonNode *values) {
 			sett = dev->settings;
 			while(sett) {
 				/* Retrieve the device id's */
-				if(opt->conftype == config_id && strcmp(sett->name, opt->name) == 0) {
-					json_append_member(code, sett->name, json_mkstring(sett->values->value));
+				if(strcmp(sett->name, "id") == 0) {
+					val = sett->values;
+					while(val) {
+						if(opt->conftype == config_id && strcmp(val->name, opt->name) == 0 && json_find_string(code, val->name, &ctmp) != 0) {
+							json_append_member(code, val->name, json_mkstring(val->value));
+						}
+						val = val->next;
+					}
 				}
 				/* Retrieve the current state */
 				if(strcmp(sett->name, "state") == 0 && strlen(state) == 0) {

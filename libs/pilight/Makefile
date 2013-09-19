@@ -20,18 +20,17 @@ endif
 CFLAGS =-ffast-math $(OSFLAGS) -Wfloat-equal -Wshadow -Wpointer-arith -Wcast-align -Wstrict-overflow=5 -Wwrite-strings -Waggregate-return -Wcast-qual -Wswitch-default -Wswitch-enum -Wformat=2 -g -Wall -I. -I.. -I/usr/include/
 SRC = $(wildcard *.c)
 OBJS = $(SRC:.c=.o)
-HEADERS := $(SRC:.c=.h)
 
-all: json.o $(OBJS) pilight.o
+all: json.o wiringPi.o $(OBJS) pilight.o
 
 json.o: json.c json.h
-	$(GCC) -ffast-math $(OSFLAGS) -Wno-conversion -g -I. -I.. -I/usr/include/ -c $(patsubst %.o,%.c,$@) $(LIBS)
-
+	$(GCC) -ffast-math $(OSFLAGS) -Wno-conversion -g -I. -I.. -I/usr/include/ -c $(patsubst %.o,%.c,$@)
+	
 wiringPi.o: wiringPi.c wiringPi.h
-	$(GCC) -ffast-math $(OSFLAGS) -Wno-conversion -g -I. -I.. -I/usr/include/ -pthread -lm -c $(patsubst %.o,%.c,$@) $(LIBS)
+	$(GCC) -ffast-math $(OSFLAGS) -Wno-conversion -g -I. -I.. -I/usr/include/ -pthread -lm -c $(patsubst %.o,%.c,$@)
 	
 %.o: %.c %.h
-	$(GCC) $(CFLAGS) -c $(patsubst %.o,%.c,$@) $(LIBS)
+	$(GCC) $(CFLAGS) -c $(patsubst %.o,%.c,$@)
 
 pilight.o: $(OBJS)
 	$(CROSS_COMPILE)ld -L/usr/local/lib -r $(OBJS) -o pilight.o

@@ -343,7 +343,7 @@ static void emit_value_indented     (SB *out, const JsonNode *node, const char *
 static void emit_string             (SB *out, const char *str);
 static void emit_number             (SB *out, double num);
 static void emit_array              (SB *out, const JsonNode *array);
-static void emit_array_indented     (SB *out, const JsonNode *array);
+static void emit_array_indented     (SB *out, const JsonNode *array, const char *space, int indent_level);
 static void emit_object             (SB *out, const JsonNode *object);
 static void emit_object_indented    (SB *out, const JsonNode *object, const char *space, int indent_level);
 
@@ -1015,7 +1015,7 @@ void emit_value_indented(SB *out, const JsonNode *node, const char *space, int i
 			emit_number(out, node->number_);
 			break;
 		case JSON_ARRAY:
-			emit_array_indented(out, node);
+			emit_array_indented(out, node, space, indent_level);
 			break;
 		case JSON_OBJECT:
 			emit_object_indented(out, node, space, indent_level);
@@ -1025,20 +1025,37 @@ void emit_value_indented(SB *out, const JsonNode *node, const char *space, int i
 	}
 }
 
-static void emit_array(SB *out, const JsonNode *array)
+static void emit_array_indented(SB *out, const JsonNode *array, const char *space, int indent_level)
 {
-	const JsonNode *element;
+	const JsonNode *element = array->children.head;
+	const JsonNode *tmp = json_first_child(array);
+	int i, x;
 
-	sb_putc(out, '[');
-	json_foreach(element, array) {
-		emit_value(out, element);
-		if (element->next != NULL)
-			sb_putc(out, ',');
+	if(tmp->tag == JSON_STRING || tmp->tag == JSON_NUMBER) {
+		emit_array(out, array);
+	} else {
+		if (element == NULL) {
+			sb_puts(out, "[]");
+			return;
+		}
+
+		sb_puts(out, "[");
+		x = 0;
+		while (element != NULL) {
+			x++;
+			if(x > 1) {
+				for (i = 0; i < indent_level; i++)
+					sb_puts(out, space);
+			}
+			emit_value_indented(out, element, space, indent_level);
+			element = element->next;
+			sb_puts(out, element != NULL ? ",\n" : "");
+		}
+		sb_puts(out, "]");
 	}
-	sb_putc(out, ']');
 }
 
-static void emit_array_indented(SB *out, const JsonNode *array)
+static void emit_array(SB *out, const JsonNode *array)
 {
 	const JsonNode *element = array->children.head;
 	int i;

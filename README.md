@@ -270,8 +270,10 @@ _The `type` and the `order` setting will automatically be added by the pilight-d
 			"order": 1,
 			"protocol": "kaku_switch",
 			"type": 1,
-			"id": 1234,
-			"unit": 0,
+			"id": [{
+				"id": 1234,
+				"unit": 0
+			}],
 			"state": "off",
 			"values": [ "on", "off" ]
 		},
@@ -280,8 +282,10 @@ _The `type` and the `order` setting will automatically be added by the pilight-d
 			"order": 2,
 			"protocol": "kaku_dimmer",
 			"type": 1,
-			"id": 1234,
-			"unit": 1,
+			"id": [{
+				"id": 1234,
+				"unit": 1
+			}],
 			"state": "on",
 			"dimlevel", 0,
 			"values": [ "on", "off" ]
@@ -291,7 +295,9 @@ _The `type` and the `order` setting will automatically be added by the pilight-d
 			"order": 3,
 			"protocol": "relay",
 			"type": 1,
-			"gpio": 3,
+			"id": [{
+				"gpio": 3
+			}],
 			"state": "off",
 			"values": [ "on", "off" ]
 		} 
@@ -304,8 +310,10 @@ _The `type` and the `order` setting will automatically be added by the pilight-d
 			"order": 1,
 			"protocol": "elro",
 			"type": 1,
-			"systemcode": 5678,
-			"unitcode": 0,
+			"id": [{
+				"systemcode": 5678,
+				"unitcode": 0,
+			}],
 			"state": "on",
 			"values": [ "on", "off" ]
 		}
@@ -318,7 +326,9 @@ _The `type` and the `order` setting will automatically be added by the pilight-d
 			"order": 1,
 			"protocol": "alecto",
 			"type": 3,
-			"id": 100,
+			"id": [{
+				"id": 100
+			}],
 			"humidity": 50,
 			"temperature": 1530,
 			"battery": 1

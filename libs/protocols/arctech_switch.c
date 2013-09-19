@@ -30,13 +30,17 @@
 void arctechSwCreateMessage(int id, int unit, int state, int all) {
 	arctech_switch->message = json_mkobject();
 	json_append_member(arctech_switch->message, "id", json_mknumber(id));
-	json_append_member(arctech_switch->message, "unit", json_mknumber(unit));
-	if(all == 1)
-		json_append_member(arctech_switch->message, "all", json_mknumber(all));
-	if(state == 1)
+	if(all == 1) {
+		json_append_member(arctech_switch->message, "all", json_mknumber(all));	
+	} else {
+		json_append_member(arctech_switch->message, "unit", json_mknumber(unit));
+	}
+		
+	if(state == 1) {
 		json_append_member(arctech_switch->message, "state", json_mkstring("on"));
-	else
+	} else {
 		json_append_member(arctech_switch->message, "state", json_mkstring("off"));
+	}
 }
 
 void arctechSwParseBinary(int repeats) {

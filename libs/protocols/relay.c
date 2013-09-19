@@ -76,7 +76,7 @@ int relayCreateCode(JsonNode *code) {
 			free(hw_mode);
 		}		
 		return EXIT_FAILURE;
-	} else if(strcmp(hw_mode, "gpio") == 0 && (gpio == gpio_in || gpio == gpio_out)) {
+	} else if(strstr(progname, "daemon") != 0 && strcmp(hw_mode, "gpio") == 0 && (gpio == gpio_in || gpio == gpio_out)) {
 		logprintf(LOG_ERR, "relay: gpio's already in use");
 		if(free_hw_mode) {
 			free(hw_mode);
@@ -96,6 +96,10 @@ int relayCreateCode(JsonNode *code) {
 				}
 			}
 			relayCreateMessage(gpio, state);
+			// Sleep for 1 second
+			struct timeval tv;
+			tv.tv_sec = 1;
+			select(0, NULL, NULL, NULL, &tv);
 		}
 	}
 	if(free_hw_mode) {

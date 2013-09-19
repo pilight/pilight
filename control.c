@@ -270,6 +270,7 @@ int main(int argc, char **argv) {
 close:
 	socket_close(sockfd);
 
+        log_shell_disable();
 	config_gc();
 	protocol_gc();
 	socket_gc();

@@ -30,17 +30,20 @@
 void arctechDimCreateMessage(int id, int unit, int state, int all, int dimlevel) {
 	arctech_dimmer->message = json_mkobject();
 	json_append_member(arctech_dimmer->message, "id", json_mknumber(id));
-	json_append_member(arctech_dimmer->message, "unit", json_mknumber(unit));
+	if(all == 1) {
+		json_append_member(arctech_dimmer->message, "all", json_mknumber(all));
+	} else {
+		json_append_member(arctech_dimmer->message, "unit", json_mknumber(unit));
+	}
 	if(dimlevel >= 0) {
 		state = 1;
 		json_append_member(arctech_dimmer->message, "dimlevel", json_mknumber(dimlevel));
 	}
-	if(all == 1)
-		json_append_member(arctech_dimmer->message, "all", json_mknumber(all));
-	if(state == 1)
+	if(state == 1) {
 		json_append_member(arctech_dimmer->message, "state", json_mkstring("on"));
-	else
+	} else {
 		json_append_member(arctech_dimmer->message, "state", json_mkstring("off"));
+	}
 }
 
 void arctechDimParseBinary(int repeats) {
