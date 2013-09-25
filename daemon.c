@@ -111,7 +111,7 @@ int webserver_port = WEBSERVER_PORT;
 /* The webroot of pilight */
 char *webserver_root;
 /* Thread pointers */
-pthread_t pth1, pth2, pth3;
+pthread_t pth1, pth2, pth3, pth4;
 /* While loop conditions */
 unsigned short main_loop = 1;
 
@@ -164,8 +164,20 @@ void escape_characters(char* dest, const char* src) {
 	*dest = '\0'; /* Ensure nul terminator */
 }
 
-int broadcast(char *protoname, JsonNode *json) {
+void *call_process_file(void *param) {
 	FILE *f;
+	char *cmd = malloc(strlen(process_file)+strlen((char *)param)+2);
+	sprintf(cmd, "%s %s", process_file, (char *)param);
+	f=popen(cmd, "r");
+	pclose(f);
+	free(cmd);
+	
+	pthread_exit((void *)NULL);
+	pthread_cancel(pth4);
+	pthread_join(pth4, NULL);
+}
+
+int broadcast(char *protoname, JsonNode *json) {
 	int i = 0, broadcasted = 0;
 	char *message = json_stringify(json, NULL);
 
@@ -208,11 +220,8 @@ int broadcast(char *protoname, JsonNode *json) {
 		if(process_file && strlen(process_file) > 0) {
 			/* Call the external file */
 			if(strlen(process_file) > 0) {
-				char *cmd = malloc(strlen(process_file)+strlen(escaped)+2);
-				sprintf(cmd, "%s %s", process_file, escaped);
-				f=popen(cmd, "r");
-				pclose(f);
-				free(cmd);
+				pthread_create(&pth4, NULL, &call_process_file, (void *)escaped);
+				usleep(100);
 				broadcasted = 1;
 			}
 			if(broadcasted) {

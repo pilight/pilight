@@ -8,6 +8,7 @@ New (Experimental) Features
 - Allow for protocol specific settings to alter default protocol behavior.
 - Fixed bugs of the weather module in the webgui.
 - Differentiate between internally communicated settings and external ones.
+- Allow (non-blocking) pilight-send call from within process file.
 
 New config syntax:
 
