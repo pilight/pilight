@@ -29,6 +29,7 @@ void protocol_register(protocol_t **proto) {
 	(*proto)->options = NULL;
 	(*proto)->devices = NULL;
 	(*proto)->conflicts = NULL;
+	(*proto)->settings = NULL;
 
 	(*proto)->header = 0;
 	(*proto)->footer = 0;
@@ -46,7 +47,7 @@ void protocol_register(protocol_t **proto) {
 	(*proto)->createCode = NULL;
 	(*proto)->printHelp = NULL;
 	(*proto)->message = NULL;
-
+	
 	memset(&(*proto)->raw[0], 0, sizeof((*proto)->raw));
 	memset(&(*proto)->code[0], 0, sizeof((*proto)->code));
 	memset(&(*proto)->pCode[0], 0, sizeof((*proto)->pCode));
@@ -58,8 +59,8 @@ void protocol_register(protocol_t **proto) {
 	protocols = pnode;
 }
 
-void protocol_add_device(protocol_t *proto, const char *id, const char *desc) {
-	struct devices_t *dnode = malloc(sizeof(struct devices_t));
+void protocol_device_add(protocol_t *proto, const char *id, const char *desc) {
+	struct protocol_devices_t *dnode = malloc(sizeof(struct protocol_devices_t));
 	dnode->id = malloc(strlen(id)+1);
 	strcpy(dnode->id, id);
 	dnode->desc = malloc(strlen(desc)+1);
@@ -68,17 +69,18 @@ void protocol_add_device(protocol_t *proto, const char *id, const char *desc) {
 	proto->devices = dnode;
 }
 
-void protocol_add_conflict(protocol_t *proto, const char *id) {
-	struct conflicts_t *cnode = malloc(sizeof(struct conflicts_t));
+void protocol_conflict_add(protocol_t *proto, const char *id) {
+	struct protocol_conflicts_t *cnode = malloc(sizeof(struct protocol_conflicts_t));
 	cnode->id = malloc(strlen(id)+1);
 	strcpy(cnode->id, id);
 	cnode->next	= proto->conflicts;
 	proto->conflicts = cnode;
 }
 
+
 /* http://www.cs.bu.edu/teaching/c/linked-list/delete/ */
-void protocol_remove_conflict(protocol_t **proto, const char *id) {
-	struct conflicts_t *currP, *prevP;
+void protocol_conflict_remove(protocol_t **proto, const char *id) {
+	struct protocol_conflicts_t *currP, *prevP;
 
 	prevP = NULL;
 
@@ -91,6 +93,7 @@ void protocol_remove_conflict(protocol_t **proto, const char *id) {
 				prevP->next = currP->next;
 			}
 
+			free(currP->id);
 			free(currP);
 
 			break;
@@ -98,8 +101,136 @@ void protocol_remove_conflict(protocol_t **proto, const char *id) {
 	}
 }
 
-int protocol_has_device(protocol_t *proto, const char *id) {
-	struct devices_t *temp = proto->devices;
+void protocol_setting_add_string(protocol_t *proto, const char *name, const char *value, unsigned short custom) {
+	int error = 0;
+	switch(proto->type) {
+		case DIMMER:
+			if(!(!strcmp(name, "states"))) {
+				logprintf(LOG_ERR, "protocol \"%s\" setting \"%s\" is invalid for dimmer type", proto->id, name);
+				error = 1;
+			}
+		break;
+		case RELAY:
+			if(!(!strcmp(name, "default") || !strcmp(name, "states"))) {
+				logprintf(LOG_ERR, "protocol \"%s\" setting \"%s\" is invalid for relay type", proto->id, name);
+				error = 1;
+			}
+		break;
+		case SWITCH:
+			if(!(!strcmp(name, "states"))) {
+				logprintf(LOG_ERR, "protocol \"%s\" setting \"%s\" is invalid for switch type", proto->id, name);
+				error = 1;
+			}
+		break;
+		case WEATHER:		
+		case RAW:		
+		default:
+		break;
+	}
+	if(!error) {
+		protocol_setting_remove(&proto, name);
+		struct protocol_settings_t *snode = malloc(sizeof(struct protocol_settings_t));
+		snode->name = malloc(strlen(name)+1);
+		strcpy(snode->name, name);
+		snode->value = malloc(strlen(value)+1);
+		strcpy(snode->value, value);	
+		snode->custom = custom;	
+		snode->type = 1;
+		snode->next	= proto->settings;
+		proto->settings = snode;
+	}
+}
+
+void protocol_setting_add_number(protocol_t *proto, const char *name, int value, unsigned short custom) {
+	int error = 0;
+	switch(proto->type) {
+		case DIMMER:
+			if(!(!strcmp(name, "max") || !strcmp(name, "min"))) {
+				logprintf(LOG_ERR, "protocol \"%s\" setting \"%s\" is invalid for dimmer type", proto->id, name);
+				error = 1;
+			}
+		break;
+		case WEATHER:
+			if(!(!strcmp(name, "decimals") || !strcmp(name, "battery") 
+			     || !strcmp(name, "temperature") || !strcmp(name, "humidity"))) {
+				logprintf(LOG_ERR, "protocol \"%s\" setting \"%s\" is invalid for weather type", proto->id, name);
+				error = 1;
+			}
+		break;
+		case SWITCH:
+		case RELAY:
+		case RAW:		
+		default:
+		break;
+	}
+	if(!error) {
+		protocol_setting_remove(&proto, name);
+		struct protocol_settings_t *snode = malloc(sizeof(struct protocol_settings_t));
+		snode->name = malloc(strlen(name)+1);
+		strcpy(snode->name, name);
+		snode->value = malloc(sizeof(value)+1);
+		sprintf(snode->value, "%d", value);	
+		snode->custom = custom;	
+		snode->type = 2;	
+		snode->next	= proto->settings;
+		proto->settings = snode;
+	}
+}
+
+int protocol_setting_get_string(protocol_t *proto, const char *name, char **out) {
+	struct protocol_settings_t *tmp_settings = proto->settings;
+
+	while(tmp_settings) {
+		if(strcmp(tmp_settings->name, name) == 0 && tmp_settings->type == 1) {
+			*out = tmp_settings->value;
+			return 0;
+		}
+		tmp_settings = tmp_settings->next;
+	}
+	free(tmp_settings);
+	return 1;
+}
+
+int protocol_setting_get_number(protocol_t *proto, const char *name, int *out) {
+	struct protocol_settings_t *tmp_settings = proto->settings;
+
+	while(tmp_settings) {
+		if(strcmp(tmp_settings->name, name) == 0 && tmp_settings->type == 2) {
+			*out = atoi(tmp_settings->value);
+			return 0;
+		}
+		tmp_settings = tmp_settings->next;
+	}
+	free(tmp_settings);
+	return 1;
+}
+
+/* http://www.cs.bu.edu/teaching/c/linked-list/delete/ */
+void protocol_setting_remove(protocol_t **proto, const char *name) {
+	struct protocol_settings_t *currP, *prevP;
+
+	prevP = NULL;
+
+	for(currP = (*proto)->settings; currP != NULL; prevP = currP, currP = currP->next) {
+
+		if(strcmp(currP->name, name) == 0) {
+			if(prevP == NULL) {
+				(*proto)->settings = currP->next;
+			} else {
+				prevP->next = currP->next;
+			}
+
+			free(currP->name);
+			free(currP->value);
+			free(currP);
+
+			break;
+		}
+	}
+}
+
+int protocol_device_exists(protocol_t *proto, const char *id) {
+	struct protocol_devices_t *temp = proto->devices;
 
 	while(temp) {
 		if(strcmp(temp->id, id) == 0) {
@@ -112,35 +243,47 @@ int protocol_has_device(protocol_t *proto, const char *id) {
 }
 
 int protocol_gc(void) {
-	struct protocols_t *stmp;
-	struct devices_t *dtmp;
-	struct conflicts_t *ctmp;
+	struct protocols_t *ptmp;
+	struct protocol_devices_t *dtmp;
+	struct protocol_conflicts_t *ctmp;
+	struct protocol_settings_t *stmp;
+
 	while(protocols) {
-		stmp = protocols;
-		free(stmp->listener->id);
-		options_delete(stmp->listener->options);
-		if(stmp->listener->devices) {
-			while(stmp->listener->devices) {
-				dtmp = stmp->listener->devices;
+		ptmp = protocols;
+		free(ptmp->listener->id);
+		options_delete(ptmp->listener->options);
+		if(ptmp->listener->devices) {
+			while(ptmp->listener->devices) {
+				dtmp = ptmp->listener->devices;
 				free(dtmp->id);
 				free(dtmp->desc);
-				stmp->listener->devices = stmp->listener->devices->next;
+				ptmp->listener->devices = ptmp->listener->devices->next;
 				free(dtmp);
 			}
 		}
-		free(stmp->listener->devices);
-		if(stmp->listener->conflicts) {
-			while(stmp->listener->conflicts) {
-				ctmp = stmp->listener->conflicts;
+		free(ptmp->listener->devices);
+		if(ptmp->listener->conflicts) {
+			while(ptmp->listener->conflicts) {
+				ctmp = ptmp->listener->conflicts;
 				free(ctmp->id);
-				stmp->listener->conflicts = stmp->listener->conflicts->next;
+				ptmp->listener->conflicts = ptmp->listener->conflicts->next;
 				free(ctmp);
 			}
 		}
-		free(stmp->listener->conflicts);
-		free(stmp->listener);
+		free(ptmp->listener->conflicts);
+		if(ptmp->listener->settings) {
+			while(ptmp->listener->settings) {
+				stmp = ptmp->listener->settings;
+				free(stmp->name);
+				free(stmp->value);
+				ptmp->listener->settings = ptmp->listener->settings->next;
+				free(stmp);
+			}
+		}
+		free(ptmp->listener->settings);
+		free(ptmp->listener);
 		protocols = protocols->next;
-		free(stmp);
+		free(ptmp);
 	}
 	free(protocols);
 

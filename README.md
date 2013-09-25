@@ -267,15 +267,12 @@ _The `type` and the `order` setting will automatically be added by the pilight-d
 		"order": 1,
 		"bookshelve": {
 			"name": "Book Shelve Light",
-			"order": 1,
 			"protocol": "kaku_switch",
-			"type": 1,
 			"id": [{
 				"id": 1234,
 				"unit": 0
 			}],
-			"state": "off",
-			"values": [ "on", "off" ]
+			"state": "off"
 		},
 		"main": {
 			"name": "Main",
@@ -287,19 +284,15 @@ _The `type` and the `order` setting will automatically be added by the pilight-d
 				"unit": 1
 			}],
 			"state": "on",
-			"dimlevel", 0,
-			"values": [ "on", "off" ]
+			"dimlevel", 0
 		},
 		"television": {
 			"name": "Television",
-			"order": 3,
 			"protocol": "relay",
-			"type": 1,
 			"id": [{
 				"gpio": 3
 			}],
-			"state": "off",
-			"values": [ "on", "off" ]
+			"state": "off"
 		} 
 	},
 	"bedroom": {
@@ -307,15 +300,12 @@ _The `type` and the `order` setting will automatically be added by the pilight-d
 		"order": 2,
 		"main": {
 			"name": "Main",
-			"order": 1,
 			"protocol": "elro",
-			"type": 1,
 			"id": [{
 				"systemcode": 5678,
 				"unitcode": 0,
 			}],
-			"state": "on",
-			"values": [ "on", "off" ]
+			"state": "on"
 		}
 	},
 	"garden": {
@@ -323,9 +313,7 @@ _The `type` and the `order` setting will automatically be added by the pilight-d
 		"order": 3,
 		"weather": {
 			"name": "Weather Station",
-			"order": 1,
 			"protocol": "alecto",
-			"type": 3,
 			"id": [{
 				"id": 100
 			}],

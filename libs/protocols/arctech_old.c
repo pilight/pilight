@@ -170,9 +170,9 @@ void arctechOldInit(void) {
 	protocol_register(&arctech_old);
 	arctech_old->id = malloc(13);
 	strcpy(arctech_old->id, "archtech_old");
-	protocol_add_device(arctech_old, "kaku_old", "Old KlikAanKlikUit Switches");
-	protocol_add_device(arctech_old, "cogex", "Cogex Switches");
-	protocol_add_device(arctech_old, "intertechno_old", "Old Intertechno Switches");
+	protocol_device_add(arctech_old, "kaku_old", "Old KlikAanKlikUit Switches");
+	protocol_device_add(arctech_old, "cogex", "Cogex Switches");
+	protocol_device_add(arctech_old, "intertechno_old", "Old Intertechno Switches");
 	arctech_old->type = SWITCH;
 	arctech_old->pulse = 4;
 	arctech_old->footer = 39;
@@ -188,6 +188,8 @@ void arctechOldInit(void) {
 	options_add(&arctech_old->options, 'u', "unit", has_value, config_id, "^([0-9]{1}|[1][0-5])$");
 	options_add(&arctech_old->options, 'i', "id", has_value, config_id, "^(3[012]?|[012][0-9]|[0-9]{1})$");
 
+	protocol_setting_add_string(arctech_old, "states", "on,off", 0);	
+	
 	arctech_old->parseBinary=arctechOldParseBinary;
 	arctech_old->createCode=&arctechOldCreateCode;
 	arctech_old->printHelp=&arctechOldPrintHelp;

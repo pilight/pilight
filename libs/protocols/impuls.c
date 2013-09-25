@@ -193,8 +193,8 @@ void impulsInit(void) {
 	protocol_register(&impuls);
 	impuls->id = malloc(7);
 	strcpy(impuls->id, "impuls");
-	protocol_add_device(impuls, "impuls", "Impuls Switches");
-	protocol_add_device(impuls, "select-remote", "SelectRemote Switches");
+	protocol_device_add(impuls, "impuls", "Impuls Switches");
+	protocol_device_add(impuls, "select-remote", "SelectRemote Switches");
 	impuls->type = SWITCH;
 	impuls->pulse = 3;
 	impuls->footer = 33;
@@ -209,6 +209,8 @@ void impulsInit(void) {
 	options_add(&impuls->options, 'u', "programcode", has_value, config_id, "^(3[012]?|[012][0-9]|[0-9]{1})$");
 	options_add(&impuls->options, 't', "on", no_value, config_state, NULL);
 	options_add(&impuls->options, 'f', "off", no_value, config_state, NULL);
+
+	protocol_setting_add_string(impuls, "states", "on,off", 0);
 
 	//impuls->parseCode=&impulsParseCode;
 	impuls->createCode=&impulsCreateCode;

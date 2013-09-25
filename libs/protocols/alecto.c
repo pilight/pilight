@@ -72,7 +72,7 @@ void alectoInit(void) {
 	protocol_register(&alecto);
 	alecto->id = malloc(7);
 	strcpy(alecto->id, "alecto");
-	protocol_add_device(alecto, "alecto", "Alecto based weather stations");
+	protocol_device_add(alecto, "alecto", "Alecto based weather stations");
 	alecto->type = WEATHER;
 	alecto->header = 14;
 	alecto->pulse = 14;
@@ -88,5 +88,10 @@ void alectoInit(void) {
 	options_add(&alecto->options, 'b', "battery", has_value, config_value, "[0-9]");
 	options_add(&alecto->options, 'i', "id", has_value, config_id, "[0-9]");
 
+	protocol_setting_add_number(alecto, "decimals", 2, 0);
+	protocol_setting_add_number(alecto, "humidity", 1, 0);
+	protocol_setting_add_number(alecto, "temperature", 1, 0);
+	protocol_setting_add_number(alecto, "battery", 1, 0);
+	
 	alecto->parseCode=&alectoParseCode;
 }

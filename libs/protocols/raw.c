@@ -58,7 +58,7 @@ void rawInit(void) {
 	protocol_register(&raw);
 	raw->id = malloc(4);
 	strcpy(raw->id, "raw");
-	protocol_add_device(raw, "raw", "Raw codes");
+	protocol_device_add(raw, "raw", "Raw codes");
 	raw->type = RAW;
 
 	options_add(&raw->options, 'c', "code", has_value, 0, NULL);

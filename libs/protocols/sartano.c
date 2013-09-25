@@ -176,7 +176,7 @@ void sartanoInit(void) {
 	protocol_register(&sartano);
 	sartano->id = malloc(8);
 	strcpy(sartano->id, "sartano");
-	protocol_add_device(sartano, "elro", "Elro Switches");
+	protocol_device_add(sartano, "elro", "Elro Switches");
 	sartano->type = SWITCH;
 	sartano->pulse = 3;
 	sartano->footer = 33;
@@ -192,6 +192,8 @@ void sartanoInit(void) {
 	options_add(&sartano->options, 't', "on", no_value, config_state, NULL);
 	options_add(&sartano->options, 'f', "off", no_value, config_state, NULL);
 
+	protocol_setting_add_string(sartano, "states", "on,off", 0);	
+	
 	sartano->parseBinary=&sartanoParseBinary;
 	sartano->createCode=&sartanoCreateCode;
 	sartano->printHelp=&sartanoPrintHelp;

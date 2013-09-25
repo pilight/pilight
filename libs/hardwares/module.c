@@ -114,7 +114,7 @@ unsigned short moduleSend(int *code) {
 }
 
 int moduleReceive(void) {
-	int data;
+	int data = 0;
 
 	if((read(module_fd, &data, sizeof(data))) == 0) {
 		data = 1;

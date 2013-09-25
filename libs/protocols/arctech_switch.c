@@ -183,12 +183,12 @@ void arctechSwInit(void) {
 	protocol_register(&arctech_switch);
 	arctech_switch->id = malloc(18);
 	strcpy(arctech_switch->id, "archtech_switches");
-	protocol_add_device(arctech_switch, "kaku_switch", "KlikAanKlikUit Switches");
-	protocol_add_device(arctech_switch, "dio_switch", "D-IO (Chacon) Switches");
-	protocol_add_device(arctech_switch, "nexa_switch", "Nexa Switches");
-	protocol_add_device(arctech_switch, "coco_switch", "CoCo Technologies Switches");
-	protocol_add_device(arctech_switch, "intertechno_switch", "Intertechno Switches");
-	protocol_add_conflict(arctech_switch, "archtech_dimmers");
+	protocol_device_add(arctech_switch, "kaku_switch", "KlikAanKlikUit Switches");
+	protocol_device_add(arctech_switch, "dio_switch", "D-IO (Chacon) Switches");
+	protocol_device_add(arctech_switch, "nexa_switch", "Nexa Switches");
+	protocol_device_add(arctech_switch, "coco_switch", "CoCo Technologies Switches");
+	protocol_device_add(arctech_switch, "intertechno_switch", "Intertechno Switches");
+	protocol_conflict_add(arctech_switch, "archtech_dimmers");
 	arctech_switch->type = SWITCH;
 	arctech_switch->header = 9;
 	arctech_switch->pulse = 5;
@@ -205,6 +205,8 @@ void arctechSwInit(void) {
 	options_add(&arctech_switch->options, 'u', "unit", has_value, config_id, "^([0-9]{1}|[1][0-5])$");
 	options_add(&arctech_switch->options, 'i', "id", has_value, config_id, "^([0-9]{1,7}|[1-5][0-9]{7}|6([0-6][0-9]{6}|7(0[0-9]{5}|10([0-7][0-9]{3}|8([0-7][0-9]{2}|8([0-5][0-9]|6[0-3]))))))$");
 
+	protocol_setting_add_string(arctech_switch, "states", "on,off", 0);	
+	
 	arctech_switch->parseBinary=&arctechSwParseBinary;
 	arctech_switch->createCode=&arctechSwCreateCode;
 	arctech_switch->printHelp=&arctechSwPrintHelp;

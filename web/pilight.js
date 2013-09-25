@@ -1,9 +1,9 @@
 var websocket;
 var bConnected = false;
 
-function createSwitchElement(sTabId, sDevId, sDevName, sDevProto, sState) {
+function createSwitchElement(sTabId, sDevId, aValues) {
 	oTab = $('#'+sTabId).find('ul');
-	oTab.append($('<li data-icon="false">'+sDevName+'<select id="'+sTabId+'_'+sDevId+'_switch" data-role="slider"><option value="off">Off</option><option value="on">On</option></select></li>'));
+	oTab.append($('<li data-icon="false">'+aValues['name']+'<select id="'+sTabId+'_'+sDevId+'_switch" data-role="slider"><option value="off">Off</option><option value="on">On</option></select></li>'));
 	$('#'+sTabId+'_'+sDevId+'_switch').slider();
 	$('#'+sTabId+'_'+sDevId+'_switch').bind("change", function(event, ui) {
 		event.stopPropagation();
@@ -11,25 +11,22 @@ function createSwitchElement(sTabId, sDevId, sDevName, sDevProto, sState) {
 	});
 	oTab.listview();
 	oTab.listview("refresh");
-	if(sState == "on") {
+	if(aValues['state'] == "on") {
 		$('#'+sTabId+'_'+sDevId+'_switch')[0].selectedIndex = 1;
 		$('#'+sTabId+'_'+sDevId+'_switch').slider('refresh');
 	}
 }
 
-function createDimmerElement(sTabId, sDevId, sDevName, sDevProto, sState, iDimLevel) {
-	iOldDimLevel = iDimLevel;
+function createDimmerElement(sTabId, sDevId, aValues) {
+	iOldDimLevel = aValues['dimlevel'];
 	oTab = $('#'+sTabId).find('ul');
-	if(sDevProto == "kaku_dimmer") {
-		iMin = 0;
-		iMax = 15;
-	}
-	oTab.append($('<li data-icon="false">'+sDevName+'<select id="'+sTabId+'_'+sDevId+'_switch" data-role="slider"><option value="off">Off</option><option value="on">On</option></select><input type="range" name="slider-fill" id="'+sTabId+'_'+sDevId+'_dimmer" class="dimmer-slider" value="'+iDimLevel+'" min="'+iMin+'" max="'+iMax+'" data-highlight="true" /></li>'));
+	oTab.append($('<li data-icon="false">'+aValues['name']+'<select id="'+sTabId+'_'+sDevId+'_switch" data-role="slider"><option value="off">Off</option><option value="on">On</option></select><input type="range" name="slider-fill" id="'+sTabId+'_'+sDevId+'_dimmer" class="dimmer-slider" value="'+aValues['dimlevel']+'" min="'+aValues['settings']['min']+'" max="'+aValues['settings']['max']+'" data-highlight="true" /></li>'));
 	$('#'+sTabId+'_'+sDevId+'_switch').slider();
 	$('#'+sTabId+'_'+sDevId+'_switch').bind("change", function(event, ui) {
 		event.stopPropagation();
 		websocket.send('{"message":"send","code":{"location":"'+sTabId+'","device":"'+sDevId+'","state":"'+this.value+'"}}');
 	});
+
 	$('#'+sTabId+'_'+sDevId+'_dimmer').slider({
 		stop: function() {
 			if(iOldDimLevel != this.value) {
@@ -43,28 +40,30 @@ function createDimmerElement(sTabId, sDevId, sDevName, sDevProto, sState, iDimLe
 	
 	oTab.listview();
 	oTab.listview("refresh");
-	if(sState == "on") {
+	if(aValues['state'] == "on") {
 		$('#'+sTabId+'_'+sDevId+'_switch')[0].selectedIndex = 1;
 		$('#'+sTabId+'_'+sDevId+'_switch').slider('refresh');
 	}
 }
 
-function createWeatherElement(sTabId, sDevId, sDevName, sDevProto, iTemperature, iHumidity, iBattery) {
+function createWeatherElement(sTabId, sDevId, aValues) {
 	oTab = $('#'+sTabId).find('ul');
-	oTab.append($('<li data-icon="false">'+sDevName+'<div class="temperature" id="'+sTabId+'_'+sDevId+'_temp">'+(iTemperature/100)+'</div><div class="degrees">o</div><div class="humidity" id="'+sTabId+'_'+sDevId+'_humi">'+iHumidity+'</div><div class="percentage">%</div></li>'));
-	if(iTemperature > 100) {
-		iTemperature /= 10;
+	aValues['temperature'] /= Math.pow(10, aValues['settings']['decimals']);
+	aValues['humidity'] /= Math.pow(10, aValues['settings']['decimals']);
+	oTab.append($('<li class="weather" id="'+sTabId+'_'+sDevId+'_weather" data-icon="false">'+aValues['name']+'</li>'));
+	if(aValues['settings']['battery']) {
+		oTab.find('#'+sTabId+'_'+sDevId+'_weather').append($('<div id="'+sTabId+'_'+sDevId+'_batt" class="battery"></div>'));
+		if(aValues['battery']) {
+			$('#'+sTabId+'_'+sDevId+'_batt').addClass('green');
+		} else {
+			$('#'+sTabId+'_'+sDevId+'_batt').addClass('red');
+		}
 	}	
-	else if(iTemperature > 1000) {
-		iTemperature /= 100;
+	if(aValues['settings']['humidity']) {
+		oTab.find('#'+sTabId+'_'+sDevId+'_weather').append($('<div class="percentage">%</div><div class="humidity" id="'+sTabId+'_'+sDevId+'_humi">'+aValues['humidity']+'</div>'));
 	}
-	if(sDevProto == "alecto") {
-		oTab.find('li').append($('<div id="'+sTabId+'_'+sDevId+'_batt" class="battery"></div>'));
-	}
-	if(iBattery) {
-		$('#'+sTabId+'_'+sDevId+'_batt').addClass('green');
-	} else {
-		$('#'+sTabId+'_'+sDevId+'_batt').addClass('red');
+	if(aValues['settings']['temperature']) {
+		oTab.find('#'+sTabId+'_'+sDevId+'_weather').append($('<div class="degrees">o</div><div class="temperature" id="'+sTabId+'_'+sDevId+'_temp">'+aValues['temperature']+'</div>'));
 	}
 	oTab.listview();
 	oTab.listview("refresh");
@@ -96,39 +95,16 @@ function createGUI(data) {
 						oNavBar.navbar();
 						$('#content').append($('<div class="content" id="'+lindex+'"><ul data-role="listview" data-inset="true" data-theme="c"></ul></div>'));
 					} else if(dindex != 'order') {
-						var sDevName;
-						var iDevType;
-						var sDevState;
-						var iDevDimLevel;
-						var sDevProto;
-						var iHumidity;
-						var iBattery;
-						var iTemperature;
+						aValues = new Array();
 						$.each(dvalues, function(sindex, svalues) {
-							if(sindex == 'name') {
-								sDevName = svalues;
-							} else if(sindex == 'type') {
-								iDevType = svalues;
-							} else if(sindex == 'state') {
-								sDevState = svalues;
-							} else if(sindex == 'dimlevel') {
-								iDimLevel = svalues;
-							} else if(sindex == 'protocol') {
-								sDevProto = svalues;
-							} else if(sindex == 'humidity') {
-								iHumidity = svalues;
-							} else if(sindex == 'battery') {
-								iBattery = svalues;
-							} else if(sindex == 'temperature') {
-								iTemperature = svalues;
-							}
+							aValues[sindex] = svalues;
 						});
-						if(iDevType == 1) {
-							createSwitchElement(lindex, dindex, sDevName, sDevProto, sDevState);
-						} else if(iDevType == 2) {
-							createDimmerElement(lindex, dindex, sDevName, sDevProto, sDevState, iDimLevel);
-						} else if(iDevType == 3) {
-							createWeatherElement(lindex, dindex, sDevName, sDevProto, iTemperature, iHumidity, iBattery);
+						if(aValues['type'] == 1 || aValues['type'] == 4) {
+							createSwitchElement(lindex, dindex, aValues);
+						} else if(aValues['type'] == 2) {
+							createDimmerElement(lindex, dindex, aValues);
+						} else if(aValues['type'] == 3) {
+							createWeatherElement(lindex, dindex, aValues);
 						}
 					}
 				});
@@ -195,7 +171,7 @@ $(document).ready(function() {
 			var iType = data.type;
 			$.each(aLocations, function(lindex, lvalues) {
 				$.each(aValues, function(vindex, vvalues) {
-					if(iType == 1) {
+					if(iType == 1 || iType == 4) {
 						if(vindex == 'state') {
 							if(vvalues == 'on') {
 								$('#'+lindex+'_'+lvalues+'_switch')[0].selectedIndex = 1;
@@ -218,11 +194,11 @@ $(document).ready(function() {
 							$('#'+lindex+'_'+lvalues+'_dimmer').slider('refresh');
 						}
 					} else if(iType == 3) {
-						if(vindex == 'temperature') {
+						if(vindex == 'temperature' && $('#'+lindex+'_'+lvalues+'_temp')) {
 							$('#'+lindex+'_'+lvalues+'_temp').text(vvalues);
-						} else if(vindex == 'humidity') {
+						} else if(vindex == 'humidity' && $('#'+lindex+'_'+lvalues+'_humi')) {
 							$('#'+lindex+'_'+lvalues+'_humi').text(vvalues);
-						} else if(vindex == 'battery') {
+						} else if(vindex == 'battery' && $('#'+lindex+'_'+lvalues+'_batt')) {
 							if(vvalues == 1) {
 								$('#'+lindex+'_'+lvalues+'_batt').removeClass('red').addClass('green');
 							} else {

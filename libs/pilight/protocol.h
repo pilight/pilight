@@ -26,19 +26,28 @@ typedef enum {
 	RAW,
 	SWITCH,
 	DIMMER,
-	WEATHER
+	WEATHER,
+	RELAY
 } devtype_t;
 
-typedef struct devices_t {
+typedef struct protocol_devices_t {
 	char *id;
 	char *desc;
-	struct devices_t *next;
-} devices_t;
+	struct protocol_devices_t *next;
+} protocol_devices_t;
 
-typedef struct conflicts_t {
+typedef struct protocol_conflicts_t {
 	char *id;
-	struct conflicts_t *next;
-} conflicts_t;
+	struct protocol_conflicts_t *next;
+} protocol_conflicts_t;
+
+typedef struct protocol_settings_t {
+	char *name;
+	char *value;
+	unsigned short type;
+	unsigned short custom;
+	struct protocol_settings_t *next;
+} protocol_settings_t;
 
 typedef struct protocol_t {
 	char *id;
@@ -61,8 +70,9 @@ typedef struct protocol_t {
 	int pCode[255];
 	int binary[128]; // Max. the half the raw length
 
-	struct devices_t *devices;
-	struct conflicts_t *conflicts;
+	struct protocol_devices_t *devices;
+	struct protocol_conflicts_t *conflicts;
+	struct protocol_settings_t *settings;
 
 	void (*parseRaw)(void);
 	void (*parseCode)(int repeats);
@@ -79,10 +89,15 @@ typedef struct protocols_t {
 struct protocols_t *protocols;
 
 void protocol_register(protocol_t **proto);
-void protocol_add_device(protocol_t *proto, const char *id, const char *desc);
-void protocol_add_conflict(protocol_t *proto, const char *id);
-void protocol_remove_conflict(protocol_t **proto, const char *id);
-int protocol_has_device(protocol_t *proto, const char *id);
+void protocol_device_add(protocol_t *proto, const char *id, const char *desc);
+void protocol_conflict_add(protocol_t *proto, const char *id);
+void protocol_setting_add_string(protocol_t *proto, const char *name, const char *value, unsigned short custom);
+void protocol_setting_add_number(protocol_t *proto, const char *name, int value, unsigned short custom);
+void protocol_setting_remove(protocol_t **proto, const char *name);
+int protocol_setting_get_string(protocol_t *proto, const char *name, char **out);
+int protocol_setting_get_number(protocol_t *proto, const char *name, int *out);
+void protocol_conflict_remove(protocol_t **proto, const char *id);
+int protocol_device_exists(protocol_t *proto, const char *id);
 int protocol_gc(void);
 
 #endif

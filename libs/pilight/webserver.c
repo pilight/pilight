@@ -243,7 +243,7 @@ int webserver_callback_http(struct libwebsocket_context *webcontext, struct libw
 						if(strcmp(message, "request config") == 0) {
 
 							JsonNode *jsend = json_mkobject();
-							JsonNode *jconfig = config2json();
+							JsonNode *jconfig = config2json(1);
 							json_append_member(jsend, "config", jconfig);
 
 							char *output = json_stringify(jsend, NULL);

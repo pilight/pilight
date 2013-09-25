@@ -42,12 +42,14 @@ int relayCreateCode(JsonNode *code) {
 	int state = -1;
 	char *tmp;
 	char *hw_mode;
+	char *def = malloc(4);
 	int gpio_in = GPIO_IN_PIN;
 	int gpio_out = GPIO_OUT_PIN;
 	int free_hw_mode = 0;
 
 	relay->rawLength = 0;
-
+	strcpy(def, "off");
+	
 	if(json_find_string(code, "gpio", &tmp) == 0)
 		gpio=atoi(tmp);
 	if(json_find_string(code, "off", &tmp) == 0)
@@ -88,11 +90,20 @@ int relayCreateCode(JsonNode *code) {
 				logprintf(LOG_ERR, "unable to setup wiringPi") ;
 				return EXIT_FAILURE;
 			} else {
+				protocol_setting_get_string(relay, "default", &def);
 				pinMode(gpio, OUTPUT);
-				if(state == 1) {
-					digitalWrite(gpio, LOW);
-				} else if(state == 0) {
-					digitalWrite(gpio, HIGH);
+				if(strcmp(def, "off") == 0) {
+					if(state == 1) {
+						digitalWrite(gpio, LOW);
+					} else if(state == 0) {
+						digitalWrite(gpio, HIGH);
+					}
+				} else {
+					if(state == 0) {
+						digitalWrite(gpio, LOW);
+					} else if(state == 1) {
+						digitalWrite(gpio, HIGH);
+					}
 				}
 			}
 			relayCreateMessage(gpio, state);
@@ -119,13 +130,16 @@ void relayInit(void) {
 	protocol_register(&relay);
 	relay->id = malloc(6);
 	strcpy(relay->id, "relay");
-	protocol_add_device(relay, "relay", "Control connected relay's");
-	relay->type = SWITCH;
+	protocol_device_add(relay, "relay", "Control connected relay's");
+	relay->type = RELAY;
 
 	options_add(&relay->options, 't', "on", no_value, config_state, NULL);
 	options_add(&relay->options, 'f', "off", no_value, config_state, NULL);
 	options_add(&relay->options, 'g', "gpio", has_value, config_id, "^[0-7]{1}$");
 
+	protocol_setting_add_string(relay, "default", "off", 0);
+	protocol_setting_add_string(relay, "states", "on,off", 0);
+	
 	relay->createCode=&relayCreateCode;
 	relay->printHelp=&relayPrintHelp;
 }

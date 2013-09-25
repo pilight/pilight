@@ -132,15 +132,15 @@ int main(int argc, char **argv) {
 				port = (unsigned short)atoi(optarg);
 			break;
 			default:
-				printf("Usage: %s -l location -d device\n", progname);
+				printf("Usage: %s -l location -d device -s state\n", progname);
 				exit(EXIT_SUCCESS);
 			break;
 		}
 	}
 	options_delete(options);
 
-	if(strlen(location) == 0 || strlen(device) == 0) {
-		printf("Usage: %s -l location -d device\n", progname);
+	if(strlen(location) == 0 || strlen(device) == 0 || strlen(state) == 0) {
+		printf("Usage: %s -l location -d device -s state\n", progname);
 		exit(EXIT_SUCCESS);
 	}
 
@@ -227,13 +227,11 @@ int main(int argc, char **argv) {
 								}
 							}
 
-							if(strlen(state) > 0) {
-								if(config_valid_state(location, device, state) == 0) {
-									json_append_member(jcode, "state", json_mkstring(state));
-								} else {
-									logprintf(LOG_ERR, "\"%s\" is an invalid state for device \"%s\"", state, device);
-									goto close;
-								}
+							if(config_valid_state(location, device, state) == 0) {
+								json_append_member(jcode, "state", json_mkstring(state));
+							} else {
+								logprintf(LOG_ERR, "\"%s\" is an invalid state for device \"%s\"", state, device);
+								goto close;
 							}
 
 							if(has_values == 1) {

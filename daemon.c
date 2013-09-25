@@ -251,7 +251,7 @@ void send_code(JsonNode *json) {
 		while(pnode) {
 			protocol = pnode->listener;
 			/* Check if the protocol exists */
-			if(protocol_has_device(protocol, name) == 0 && match == 0) {
+			if(protocol_device_exists(protocol, name) == 0 && match == 0) {
 				match = 1;
 				break;
 			}
@@ -354,22 +354,11 @@ void control_device(struct conf_devices_t *dev, char *state, JsonNode *values) {
 	struct conf_settings_t *sett = NULL;
 	struct conf_values_t *val = NULL;
 	struct options_t *opt = NULL;
-	char fval[255];
-	char cstate[255];
-	char nstate[255];
 
 	char *ctmp = NULL;
 
 	JsonNode *code = json_mkobject();
 	JsonNode *json = json_mkobject();
-
-	memset(fval, '\0', 255);
-	memset(cstate, '\0', 255);
-	memset(nstate, '\0', 255);
-
-	if(strlen(state) > 0) {
-		strcpy(nstate, state);
-	}
 
 	/* Check all protocol options */
 	if((opt = dev->protopt->options)) {
@@ -386,11 +375,6 @@ void control_device(struct conf_devices_t *dev, char *state, JsonNode *values) {
 						val = val->next;
 					}
 				}
-				/* Retrieve the current state */
-				if(strcmp(sett->name, "state") == 0 && strlen(state) == 0) {
-					strcpy(cstate, sett->values->value);
-				}
-
 				/* Retrieve the possible device values */
 				if(strcmp(sett->name, "values") == 0) {
 					val = sett->values;
@@ -411,33 +395,15 @@ void control_device(struct conf_devices_t *dev, char *state, JsonNode *values) {
 		}
 	}
 
-	if(strlen(state) == 0) {
-		/* Get the next state value */
-		while(val) {
-			if(strlen(fval) == 0) {
-				strcpy(fval, val->value);
-			}
-			if(strcmp(val->value, cstate) == 0) {
-				if(val->next) {
-					strcpy(nstate, val->next->value);
-				} else {
-					strcpy(nstate, fval);
-				}
-				break;
-			}
-			val = val->next;
-		}
-	}
-
 	/* Send the new device state */
 	if(dev->protopt->options) {
 		opt = dev->protopt->options;
 		while(opt) {
-			if(opt->conftype == config_state && opt->argtype == no_value && strcmp(opt->name, nstate) == 0) {
+			if(opt->conftype == config_state && opt->argtype == no_value && strcmp(opt->name, state) == 0) {
 				json_append_member(code, opt->name, json_mkstring("1"));
 				break;
 			} else if(opt->conftype == config_state && opt->argtype == has_value) {
-				json_append_member(code, opt->name, json_mkstring(nstate));
+				json_append_member(code, opt->name, json_mkstring(state));
 				break;
 			}
 			opt = opt->next;
@@ -462,7 +428,7 @@ void client_node_parse_code(int i, JsonNode *json) {
 		/* Send the config file to the controller */
 		if(strcmp(message, "request config") == 0) {
 			JsonNode *jsend = json_mkobject();
-			JsonNode *joutput = config2json();
+			JsonNode *joutput = config2json(1);
 			json_append_member(jsend, "config", joutput);
 			char *output = json_stringify(jsend, NULL);
 			socket_write_big(sd, output);
@@ -487,7 +453,7 @@ void client_controller_parse_code(int i, JsonNode *json) {
 		/* Send the config file to the controller */
 		if(strcmp(message, "request config") == 0) {
 			JsonNode *jsend = json_mkobject();
-			JsonNode *joutput = config2json();
+			JsonNode *joutput = config2json(1);
 			json_append_member(jsend, "config", joutput);
 			char *output = json_stringify(jsend, NULL);
 			socket_write_big(sd, output);
@@ -700,7 +666,7 @@ void receive_code(void) {
 	short header = 0;
 	unsigned int x = 0, match = 0;
 	int y = 0;
-	struct conflicts_t *tmp_conflicts = NULL;
+	struct protocol_conflicts_t *tmp_conflicts = NULL;
 	struct protocol_t *protocol = NULL;
 	struct hardware_t *hardware = NULL;
 	struct hardwares_t *htmp = hardwares;

@@ -133,7 +133,7 @@ int main(int argc, char **argv) {
 			while(pnode) {
 				/* Check if the protocol exists */
 				protocol = pnode->listener;
-				if(protocol_has_device(protocol, protobuffer) == 0 && match == 0 && protocol->createCode != NULL) {
+				if(protocol_device_exists(protocol, protobuffer) == 0 && match == 0 && protocol->createCode != NULL) {
 					match=1;
 					/* Check if the protocol requires specific CLI arguments
 					   and merge them with the main CLI arguments */

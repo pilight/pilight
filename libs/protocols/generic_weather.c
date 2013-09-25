@@ -63,6 +63,7 @@ int genWeatherCreateCode(JsonNode *code) {
 void genWeatherPrintHelp(void) {
 	printf("\t -t --temperature=temperature\tset the temperature\n");
 	printf("\t -h --humidity=humidity\t\tset the humidity\n");
+	printf("\t -b --battery=battery\t\tset the battery level\n");
 	printf("\t -i --id=id\t\t\tcontrol a device with this id\n");
 }
 
@@ -71,12 +72,18 @@ void genWeatherInit(void) {
 	protocol_register(&generic_weather);
 	generic_weather->id = malloc(16);
 	strcpy(generic_weather->id, "generic_weather");
-	protocol_add_device(generic_weather, "generic_weather", "Generic weather stations");
+	protocol_device_add(generic_weather, "generic_weather", "Generic weather stations");
 	generic_weather->type = WEATHER;
 
 	options_add(&generic_weather->options, 'h', "humidity", has_value, config_value, "[0-9]");
 	options_add(&generic_weather->options, 't', "temperature", has_value, config_value, "[0-9]");
+	options_add(&generic_weather->options, 'b', "battery", has_value, config_value, "[01]");
 	options_add(&generic_weather->options, 'i', "id", has_value, config_id, "[0-9]");
+
+	protocol_setting_add_number(generic_weather, "decimals", 2, 0);	
+	protocol_setting_add_number(generic_weather, "humidity", 1, 0);
+	protocol_setting_add_number(generic_weather, "temperature", 1, 0);
+	protocol_setting_add_number(generic_weather, "battery", 0, 0);
 
 	generic_weather->printHelp=&genWeatherPrintHelp;
 	generic_weather->createCode=&genWeatherCreateCode;
