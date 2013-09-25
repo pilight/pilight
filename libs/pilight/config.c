@@ -992,7 +992,7 @@ int config_parse_devices(JsonNode *jdevices, struct conf_devices_t *device) {
 	}
 	/* Check if this protocol requires a state and values setting
 	   to be specified and if they are missing when it is. */
-	if(nrstate == 0 /*|| nrvalues == 0*/) {
+	if(nrstate == 0) {
 		if(device->protopt->options) {
 			tmp_options = device->protopt->options;
 			while(tmp_options) {

@@ -1,10 +1,13 @@
 New (Experimental) Features
 =======
-- Modular hardware support
-- All function also works with the pilight config
-- Multiple ID's per device (feature request)
-- Fixed relay protocol bug in which in detected the wrong `hw-mode`
+- Modular hardware support.
+- All function also works with the pilight config.
+- Multiple ID's per device (feature request).
+- Fixed relay protocol bug in which in detected the wrong `hw-mode`.
 - Allow for protocol specific `send_repeats` and `receive_repeats` setting.
+- Allow for protocol specific settings to alter default protocol behavior.
+- Fixed bugs of the weather module in the webgui.
+- Differentiate between internally communicated settings and external ones.
 
 New config syntax:
 
