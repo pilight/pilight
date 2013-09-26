@@ -34,6 +34,8 @@
 #include "../protocols/raw.h"
 #include "../protocols/relay.h"
 #include "../protocols/generic_weather.h"
+#include "../protocols/generic_switch.h"
+#include "../protocols/generic_dimmer.h"
 
 #include "../hardwares/module.h"
 #include "../hardwares/gpio.h"
@@ -58,6 +60,8 @@ void hardware_init(void) {
 	rawInit();
 	alectoInit();
 	genWeatherInit();
+	genSwitchInit();
+	genDimInit();
 
 	moduleInit();
 	gpioInit();

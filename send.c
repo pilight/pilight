@@ -183,7 +183,7 @@ int main(int argc, char **argv) {
 						printf("\t %s\t\t",protocol->devices->id);
 						if(strlen(protocol->devices->id)<7)
 							printf("\t");
-						if(strlen(protocol->devices->id)<14)
+						if(strlen(protocol->devices->id)<15)
 							printf("\t");
 						printf("%s\n", protocol->devices->desc);
 						protocol->devices = protocol->devices->next;
