@@ -1745,15 +1745,15 @@ libwebsocket_create_context(struct lws_context_creation_info *info)
 	int pid_daemon = get_daemonize_pid();
 #endif
 
-	lwsl_notice("Initial logging level %d\n", log_level);
-	lwsl_notice("Library version: %s\n", library_version);
+	//lwsl_notice("Initial logging level %d\n", log_level);
+	//lwsl_notice("Library version: %s\n", library_version);
 	lwsl_info(" LWS_MAX_HEADER_LEN: %u\n", LWS_MAX_HEADER_LEN);
 	lwsl_info(" LWS_MAX_PROTOCOLS: %u\n", LWS_MAX_PROTOCOLS);
 #ifndef LWS_NO_EXTENSIONS
 	lwsl_info(" LWS_MAX_EXTENSIONS_ACTIVE: %u\n",
 						LWS_MAX_EXTENSIONS_ACTIVE);
 #else
-	lwsl_notice(" Configured without extension support\n");
+	//lwsl_notice(" Configured without extension support\n");
 #endif
 	lwsl_info(" SPEC_LATEST_SUPPORTED: %u\n", SPEC_LATEST_SUPPORTED);
 	lwsl_info(" AWAITING_TIMEOUT: %u\n", AWAITING_TIMEOUT);
@@ -1803,7 +1803,7 @@ libwebsocket_create_context(struct lws_context_creation_info *info)
 	memset(context, 0, sizeof(*context));
 #ifndef LWS_NO_DAEMONIZE
 	context->started_with_parent = pid_daemon;
-	lwsl_notice(" Started with daemon pid %d\n", pid_daemon);
+	//lwsl_notice(" Started with daemon pid %d\n", pid_daemon);
 #endif
 
 	context->listen_service_extraseen = 0;
@@ -1814,13 +1814,13 @@ libwebsocket_create_context(struct lws_context_creation_info *info)
 	context->options = info->options;
 	/* to reduce this allocation, */
 	context->max_fds = getdtablesize();
-	lwsl_notice(" static allocation: %u + (%u x %u fds) = %u bytes\n",
+	/*lwsl_notice(" static allocation: %u + (%u x %u fds) = %u bytes\n",
 		sizeof(struct libwebsocket_context),
 		sizeof(struct pollfd) + sizeof(struct libwebsocket *),
 		context->max_fds,
 		sizeof(struct libwebsocket_context) +
 		((sizeof(struct pollfd) + sizeof(struct libwebsocket *)) *
-							     context->max_fds));
+							     context->max_fds));*/
 
 	context->fds = (struct pollfd *)malloc(sizeof(struct pollfd) *
 							      context->max_fds);
@@ -1876,8 +1876,8 @@ libwebsocket_create_context(struct lws_context_creation_info *info)
 		gethostname((char *)context->canonical_hostname,
 				       sizeof(context->canonical_hostname) - 1);
 
-		lwsl_notice(" canonical_hostname = %s\n",
-					context->canonical_hostname);
+		/*lwsl_notice(" canonical_hostname = %s\n",
+					context->canonical_hostname);*/
 	}
 #endif
 
@@ -1925,13 +1925,13 @@ libwebsocket_create_context(struct lws_context_creation_info *info)
 			lwsl_notice(" Not compiled for OpenSSl support!\n");
 			goto bail;
 		}
-		lwsl_notice(" Compiled without SSL support\n");
+		//lwsl_notice(" Compiled without SSL support\n");
 #endif
 
-		lwsl_notice(
+		/*lwsl_notice(
 			" per-conn mem: %u + %u headers + protocol rx buf\n",
 				sizeof(struct libwebsocket),
-					      sizeof(struct allocated_headers));
+					      sizeof(struct allocated_headers));*/
 	}
 #endif
 
@@ -2184,7 +2184,8 @@ libwebsocket_create_context(struct lws_context_creation_info *info)
 		context->listen_service_fd = sockfd;
 
 		listen(sockfd, LWS_SOMAXCONN);
-		lwsl_notice(" Listening on port %d\n", info->port);
+		logprintf(LOG_INFO, "webserver listening to port: %d", info->port);
+		//lwsl_notice(" Listening on port %d\n", info->port);
 	}
 #endif
 

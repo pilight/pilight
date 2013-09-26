@@ -171,7 +171,7 @@ void *call_process_file(void *param) {
 	f=popen(cmd, "r");
 	pclose(f);
 	free(cmd);
-	
+
 	pthread_exit((void *)NULL);
 	pthread_cancel(pth4);
 	pthread_join(pth4, NULL);
@@ -998,7 +998,7 @@ close:
 }
 
 void daemonize(void) {
-	int f;
+	int f = 0;
 	char buffer[BUFFER_SIZE];
 
 	log_file_enable();
@@ -1016,12 +1016,15 @@ void daemonize(void) {
 			if((f = open(pid_file, O_RDWR | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR)) != -1) {
 				lseek(f, 0, SEEK_SET);
 				sprintf(buffer, "%d", npid);
-				if(write(f, buffer, strlen(buffer)) != -1) {
+				int i = write(f, buffer, strlen(buffer));
+				if(i != strlen(buffer)) {
 					logprintf(LOG_ERR, "could not store pid in %s", pid_file);
 				}
 			}
 			close(f);
-			logprintf(LOG_INFO, "started daemon with pid %d", npid);
+			log_shell_enable();
+			logprintf(LOG_INFO, "daemon started with pid: %d", npid);
+			log_shell_disable();
 			exit(0);
 		break;
 	}
@@ -1093,7 +1096,7 @@ int main(int argc , char **argv) {
 	/* Catch all exit signals for gc */
 	gc_catch();
 
-	log_file_disable();
+	log_file_enable();
 	log_shell_enable();
 
 	progname = malloc(16);
@@ -1160,7 +1163,7 @@ int main(int argc , char **argv) {
 		}
 	}
 	options_delete(options);
-	
+
 	if(access(settingsfile, F_OK) != -1) {
 		if(settings_read() != 0) {
 			return EXIT_FAILURE;
@@ -1225,11 +1228,13 @@ int main(int argc , char **argv) {
 	}
 
 	if(nodaemon == 1 || running == 1) {
+		log_file_disable();
+		log_shell_enable();
 		log_level_set(LOG_DEBUG);
 	}
 
-	logprintf(LOG_INFO, "version %.1f, commit %s", VERSION, HASH);	
-	
+	logprintf(LOG_INFO, "version %.1f, commit %s", VERSION, HASH);
+
 	settings_find_string("process-file", &process_file);
 
 	if(settings_find_number("send-repeats", &send_repeat) != 0) {
@@ -1284,10 +1289,10 @@ int main(int argc , char **argv) {
 		port = PORT;
 	}
 
-	socket_start((short unsigned int)port);
 	if(nodaemon == 0) {
 		daemonize();
 	}
+	socket_start((short unsigned int)port);
 
     //initialise all socket_clients and handshakes to 0 so not checked
 	memset(socket_clients, 0, sizeof(socket_clients));

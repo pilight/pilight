@@ -132,7 +132,7 @@
 #define STDC_HEADERS
 
 /* Version number of package */
-#define VERSION
+// #define VERSION
 
 /* Define to rpl_malloc if the replacement function should be used. */
 /* #undef malloc */

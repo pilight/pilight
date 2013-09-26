@@ -184,6 +184,16 @@ void log_file_set(char *log) {
 		logfile = realloc(logfile, strlen(log)+1);
 		strcpy(logfile, log);
 	}
+
+	if(lf == NULL && filelog == 1) {
+		if((lf = fopen(logfile, "w")) == NULL) {
+			logprintf(LOG_WARNING, "could not open logfile %s", logfile);
+		} else {
+			if(fclose(lf) == 0) {
+				lf = NULL;
+			}
+		}
+	}
 }
 
 void log_level_set(int level) {

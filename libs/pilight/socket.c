@@ -90,7 +90,7 @@ int socket_start(unsigned short port) {
         exit(EXIT_FAILURE);
     }
 
-	logprintf(LOG_INFO, "server started at port %d", port);
+	logprintf(LOG_INFO, "daemon listening to port: %d", port);
 
     return 0;
 }
