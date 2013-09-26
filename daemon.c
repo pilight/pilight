@@ -1137,7 +1137,7 @@ int main(int argc , char **argv) {
 				return (EXIT_SUCCESS);
 			break;
 			case 'V':
-				printf("%s %s\n", progname, "1.0");
+				printf("%s %.1f\n", progname, VERSION);
 				return (EXIT_SUCCESS);
 			break;
 			case 'S':
@@ -1160,7 +1160,7 @@ int main(int argc , char **argv) {
 		}
 	}
 	options_delete(options);
-
+	
 	if(access(settingsfile, F_OK) != -1) {
 		if(settings_read() != 0) {
 			return EXIT_FAILURE;
@@ -1228,6 +1228,8 @@ int main(int argc , char **argv) {
 		log_level_set(LOG_DEBUG);
 	}
 
+	logprintf(LOG_INFO, "version %.1f, commit %s", VERSION, HASH);	
+	
 	settings_find_string("process-file", &process_file);
 
 	if(settings_find_number("send-repeats", &send_repeat) != 0) {

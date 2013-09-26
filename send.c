@@ -155,7 +155,7 @@ int main(int argc, char **argv) {
 
 	/* Display help or version information */
 	if(version == 1) {
-		printf("%s %s\n", progname, "1.0");
+		printf("%s %.1f\n", progname, VERSION);
 		goto close;
 	} else if(help == 1 || protohelp == 1 || match == 0) {
 		if(protohelp == 1 && match == 1 && protocol->printHelp)

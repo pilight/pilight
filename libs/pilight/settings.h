@@ -21,6 +21,8 @@
 
 #include "protocol.h"
 
+#define VERSION				1.0
+
 #define HW_MODE				"gpio"
 
 #define GPIO_IN_PIN			1
@@ -43,7 +45,7 @@
 
 #define MAX_CLIENTS			30
 #define BUFFER_SIZE			1025
-#define BIG_BUFFER_SIZE		1025000
+#define BIG_BUFFER_SIZE		1024001
 
 #define PID_FILE			"/var/run/pilight.pid"
 #define CONFIG_FILE			"/etc/pilight/config.json"
