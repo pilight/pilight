@@ -101,7 +101,58 @@ void protocol_conflict_remove(protocol_t **proto, const char *id) {
 	}
 }
 
-void protocol_setting_add_string(protocol_t *proto, const char *name, const char *value, unsigned short custom) {
+int protocol_setting_update_string(protocol_t *proto, const char *name, const char *value) {
+	struct protocol_settings_t *tmp_settings = proto->settings;
+
+	while(tmp_settings) {
+		if(strcmp(tmp_settings->name, name) == 0 && tmp_settings->type == 1) {
+			tmp_settings->old_value = realloc(tmp_settings->old_value, strlen(tmp_settings->cur_value)+1);
+			strcpy(tmp_settings->old_value, tmp_settings->cur_value);
+			tmp_settings->cur_value = realloc(tmp_settings->cur_value, strlen(value)+1);
+			strcpy(tmp_settings->cur_value, value);
+			return 0;
+		}
+		tmp_settings = tmp_settings->next;
+	}
+	free(tmp_settings);
+	return 1;
+}
+
+int protocol_setting_update_number(protocol_t *proto, const char *name, int value) {
+	struct protocol_settings_t *tmp_settings = proto->settings;
+
+	while(tmp_settings) {
+		if(strcmp(tmp_settings->name, name) == 0 && tmp_settings->type == 2) {
+			tmp_settings->old_value = realloc(tmp_settings->old_value, strlen(tmp_settings->cur_value)+1);
+			strcpy(tmp_settings->old_value, tmp_settings->cur_value);
+			tmp_settings->cur_value = realloc(tmp_settings->cur_value, sizeof(int)+1);
+			sprintf(tmp_settings->cur_value, "%d", value);
+			return 0;
+		}
+		tmp_settings = tmp_settings->next;
+	}
+	free(tmp_settings);
+	return 1;
+}
+
+int protocol_setting_restore(protocol_t *proto, const char *name) {
+	struct protocol_settings_t *tmp_settings = proto->settings;
+
+	while(tmp_settings) {
+		if(strcmp(tmp_settings->name, name) == 0) {
+			tmp_settings->cur_value = realloc(tmp_settings->cur_value, strlen(tmp_settings->old_value)+1);
+			strcpy(tmp_settings->cur_value, tmp_settings->old_value);
+			tmp_settings->old_value = realloc(tmp_settings->old_value, 4);
+			memset(tmp_settings->old_value, '\0', 4);
+			return 0;
+		}
+		tmp_settings = tmp_settings->next;
+	}
+	free(tmp_settings);
+	return 1;	
+}
+
+void protocol_setting_add_string(protocol_t *proto, const char *name, const char *value) {
 	int error = 0;
 	switch(proto->type) {
 		case DIMMER:
@@ -132,16 +183,16 @@ void protocol_setting_add_string(protocol_t *proto, const char *name, const char
 		struct protocol_settings_t *snode = malloc(sizeof(struct protocol_settings_t));
 		snode->name = malloc(strlen(name)+1);
 		strcpy(snode->name, name);
-		snode->value = malloc(strlen(value)+1);
-		strcpy(snode->value, value);	
-		snode->custom = custom;	
+		snode->cur_value = malloc(strlen(value)+1);
+		snode->old_value = malloc(4);
+		strcpy(snode->cur_value, value);	
 		snode->type = 1;
 		snode->next	= proto->settings;
 		proto->settings = snode;
 	}
 }
 
-void protocol_setting_add_number(protocol_t *proto, const char *name, int value, unsigned short custom) {
+void protocol_setting_add_number(protocol_t *proto, const char *name, int value) {
 	int error = 0;
 	switch(proto->type) {
 		case DIMMER:
@@ -168,10 +219,10 @@ void protocol_setting_add_number(protocol_t *proto, const char *name, int value,
 		struct protocol_settings_t *snode = malloc(sizeof(struct protocol_settings_t));
 		snode->name = malloc(strlen(name)+1);
 		strcpy(snode->name, name);
-		snode->value = malloc(sizeof(value)+1);
-		sprintf(snode->value, "%d", value);	
-		snode->custom = custom;	
-		snode->type = 2;	
+		snode->cur_value = malloc(sizeof(value)+1);
+		snode->old_value = malloc(4);
+		sprintf(snode->cur_value, "%d", value);	
+		snode->type = 2;
 		snode->next	= proto->settings;
 		proto->settings = snode;
 	}
@@ -182,7 +233,7 @@ int protocol_setting_get_string(protocol_t *proto, const char *name, char **out)
 
 	while(tmp_settings) {
 		if(strcmp(tmp_settings->name, name) == 0 && tmp_settings->type == 1) {
-			*out = tmp_settings->value;
+			*out = tmp_settings->cur_value;
 			return 0;
 		}
 		tmp_settings = tmp_settings->next;
@@ -196,7 +247,7 @@ int protocol_setting_get_number(protocol_t *proto, const char *name, int *out) {
 
 	while(tmp_settings) {
 		if(strcmp(tmp_settings->name, name) == 0 && tmp_settings->type == 2) {
-			*out = atoi(tmp_settings->value);
+			*out = atoi(tmp_settings->cur_value);
 			return 0;
 		}
 		tmp_settings = tmp_settings->next;
@@ -221,7 +272,7 @@ void protocol_setting_remove(protocol_t **proto, const char *name) {
 			}
 
 			free(currP->name);
-			free(currP->value);
+			free(currP->cur_value);
 			free(currP);
 
 			break;
@@ -275,7 +326,8 @@ int protocol_gc(void) {
 			while(ptmp->listener->settings) {
 				stmp = ptmp->listener->settings;
 				free(stmp->name);
-				free(stmp->value);
+				free(stmp->cur_value);
+				free(stmp->old_value);
 				ptmp->listener->settings = ptmp->listener->settings->next;
 				free(stmp);
 			}

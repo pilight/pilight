@@ -1,6 +1,8 @@
 var websocket;
 var bConnected = false;
 
+var aDecimals = new Array();
+
 function createSwitchElement(sTabId, sDevId, aValues) {
 	oTab = $('#'+sTabId).find('ul');
 	oTab.append($('<li data-icon="false">'+aValues['name']+'<select id="'+sTabId+'_'+sDevId+'_switch" data-role="slider"><option value="off">Off</option><option value="on">On</option></select></li>'));
@@ -48,6 +50,7 @@ function createDimmerElement(sTabId, sDevId, aValues) {
 
 function createWeatherElement(sTabId, sDevId, aValues) {
 	oTab = $('#'+sTabId).find('ul');
+	aDecimals[sTabId+'_'+sDevId] = aValues['settings']['decimals'];
 	aValues['temperature'] /= Math.pow(10, aValues['settings']['decimals']);
 	aValues['humidity'] /= Math.pow(10, aValues['settings']['decimals']);
 	oTab.append($('<li class="weather" id="'+sTabId+'_'+sDevId+'_weather" data-icon="false">'+aValues['name']+'</li>'));
@@ -170,42 +173,46 @@ $(document).ready(function() {
 			var aLocations = data.devices;
 			var iType = data.type;
 			$.each(aLocations, function(lindex, lvalues) {
-				$.each(aValues, function(vindex, vvalues) {
-					if(iType == 1 || iType == 4) {
-						if(vindex == 'state') {
-							if(vvalues == 'on') {
-								$('#'+lindex+'_'+lvalues+'_switch')[0].selectedIndex = 1;
-							} else {
-								$('#'+lindex+'_'+lvalues+'_switch')[0].selectedIndex = 0;
+				$.each(lvalues, function(dindex, dvalues) {
+					$.each(aValues, function(vindex, vvalues) {
+						if(iType == 1 || iType == 4) {
+							if(vindex == 'state') {
+								if(vvalues == 'on') {
+									$('#'+lindex+'_'+dvalues+'_switch')[0].selectedIndex = 1;
+								} else {
+									$('#'+lindex+'_'+dvalues+'_switch')[0].selectedIndex = 0;
+								}
+								$('#'+lindex+'_'+dvalues+'_switch').slider('refresh');
 							}
-							$('#'+lindex+'_'+lvalues+'_switch').slider('refresh');
-						}
-					} else if(iType == 2) {
-						if(vindex == 'state') {
-							if(vvalues == 'on') {
-								$('#'+lindex+'_'+lvalues+'_switch')[0].selectedIndex = 1;
-							} else {
-								$('#'+lindex+'_'+lvalues+'_switch')[0].selectedIndex = 0;
+						} else if(iType == 2) {
+							if(vindex == 'state') {
+								if(vvalues == 'on') {
+									$('#'+lindex+'_'+dvalues+'_switch')[0].selectedIndex = 1;
+								} else {
+									$('#'+lindex+'_'+dvalues+'_switch')[0].selectedIndex = 0;
+								}
+								$('#'+lindex+'_'+dvalues+'_switch').slider('refresh');
 							}
-							$('#'+lindex+'_'+lvalues+'_switch').slider('refresh');
-						}
-						if(vindex == 'dimlevel') {
-							$('#'+lindex+'_'+lvalues+'_dimmer').val(vvalues);
-							$('#'+lindex+'_'+lvalues+'_dimmer').slider('refresh');
-						}
-					} else if(iType == 3) {
-						if(vindex == 'temperature' && $('#'+lindex+'_'+lvalues+'_temp')) {
-							$('#'+lindex+'_'+lvalues+'_temp').text(vvalues);
-						} else if(vindex == 'humidity' && $('#'+lindex+'_'+lvalues+'_humi')) {
-							$('#'+lindex+'_'+lvalues+'_humi').text(vvalues);
-						} else if(vindex == 'battery' && $('#'+lindex+'_'+lvalues+'_batt')) {
-							if(vvalues == 1) {
-								$('#'+lindex+'_'+lvalues+'_batt').removeClass('red').addClass('green');
-							} else {
-								$('#'+lindex+'_'+lvalues+'_batt').removeClass('green').addClass('red');
+							if(vindex == 'dimlevel') {
+								$('#'+lindex+'_'+dvalues+'_dimmer').val(vvalues);
+								$('#'+lindex+'_'+dvalues+'_dimmer').slider('refresh');
+							}
+						} else if(iType == 3) {
+							if(vindex == 'temperature' && $('#'+lindex+'_'+dvalues+'_temp')) {
+								vvalues /= Math.pow(10, aDecimals[lindex+'_'+dvalues]);
+								$('#'+lindex+'_'+dvalues+'_temp').text(vvalues);
+							} else if(vindex == 'humidity' && $('#'+lindex+'_'+dvalues+'_humi')) {
+								vvalues /= Math.pow(10, aDecimals[lindex+'_'+dvalues]);
+								$('#'+lindex+'_'+dvalues+'_humi').text(vvalues);
+							} else if(vindex == 'battery' && $('#'+lindex+'_'+dvalues+'_batt')) {
+								if(vvalues == 1) {
+									$('#'+lindex+'_'+dvalues+'_batt').removeClass('red').addClass('green');
+								} else {
+									$('#'+lindex+'_'+dvalues+'_batt').removeClass('green').addClass('red');
+								}
 							}
 						}
-					}
+					});
 				});
 			});
 		};	

@@ -22,7 +22,7 @@
 struct protocol_t *generic_weather;
 
 void genWeatherInit(void);
-void genWeatherCreateMessage(int id, int temperature, int humidity);
+void genWeatherCreateMessage(int id, int temperature, int humidity, int battery);
 int genWeatherCreateCode(JsonNode *code);
 void genWeatherPrintHelp(void);
 

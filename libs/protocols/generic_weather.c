@@ -27,7 +27,7 @@
 #include "gc.h"
 #include "generic_weather.h"
 
-void genWeatherCreateMessage(int id, int temperature, int humidity) {
+void genWeatherCreateMessage(int id, int temperature, int humidity, int battery) {
 	generic_weather->message = json_mkobject();
 	json_append_member(generic_weather->message, "id", json_mknumber(id));
 	if(temperature > -999) {
@@ -36,12 +36,16 @@ void genWeatherCreateMessage(int id, int temperature, int humidity) {
 	if(humidity > -999) {
 		json_append_member(generic_weather->message, "humidity", json_mknumber(humidity));
 	}
+	if(battery > -1) {
+		json_append_member(generic_weather->message, "battery", json_mknumber(battery));
+	}
 }
 
 int genWeatherCreateCode(JsonNode *code) {
 	int id = -999;
 	int temp = -999;
 	int humi = -999;
+	int batt = -1;
 	char *tmp;
 
 	if(json_find_string(code, "id", &tmp) == 0)
@@ -50,12 +54,14 @@ int genWeatherCreateCode(JsonNode *code) {
 		temp = atoi(tmp);
 	if(json_find_string(code, "humidity", &tmp) == 0)
 		humi = atoi(tmp);
+	if(json_find_string(code, "battery", &tmp) == 0)
+		batt = atoi(tmp);
 
-	if(id == -999 || (temp == -999 && humi == -999)) {
+	if(id == -999 && temp == -999 && humi == -999 && batt == -1) {
 		logprintf(LOG_ERR, "generic_weather: insufficient number of arguments");
 		return EXIT_FAILURE;
 	} else {
-		genWeatherCreateMessage(id, temp, humi);
+		genWeatherCreateMessage(id, temp, humi, batt);
 	}
 	return EXIT_SUCCESS;
 }
@@ -80,10 +86,10 @@ void genWeatherInit(void) {
 	options_add(&generic_weather->options, 'b', "battery", has_value, config_value, "[01]");
 	options_add(&generic_weather->options, 'i', "id", has_value, config_id, "[0-9]");
 
-	protocol_setting_add_number(generic_weather, "decimals", 2, 0);	
-	protocol_setting_add_number(generic_weather, "humidity", 1, 0);
-	protocol_setting_add_number(generic_weather, "temperature", 1, 0);
-	protocol_setting_add_number(generic_weather, "battery", 0, 0);
+	protocol_setting_add_number(generic_weather, "decimals", 2);	
+	protocol_setting_add_number(generic_weather, "humidity", 1);
+	protocol_setting_add_number(generic_weather, "temperature", 1);
+	protocol_setting_add_number(generic_weather, "battery", 0);
 
 	generic_weather->printHelp=&genWeatherPrintHelp;
 	generic_weather->createCode=&genWeatherCreateCode;

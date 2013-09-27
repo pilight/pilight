@@ -88,10 +88,10 @@ void alectoInit(void) {
 	options_add(&alecto->options, 'b', "battery", has_value, config_value, "[0-9]");
 	options_add(&alecto->options, 'i', "id", has_value, config_id, "[0-9]");
 
-	protocol_setting_add_number(alecto, "decimals", 2, 0);
-	protocol_setting_add_number(alecto, "humidity", 1, 0);
-	protocol_setting_add_number(alecto, "temperature", 1, 0);
-	protocol_setting_add_number(alecto, "battery", 1, 0);
+	protocol_setting_add_number(alecto, "decimals", 2);
+	protocol_setting_add_number(alecto, "humidity", 1);
+	protocol_setting_add_number(alecto, "temperature", 1);
+	protocol_setting_add_number(alecto, "battery", 1);
 	
 	alecto->parseCode=&alectoParseCode;
 }

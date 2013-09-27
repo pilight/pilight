@@ -137,8 +137,8 @@ void relayInit(void) {
 	options_add(&relay->options, 'f', "off", no_value, config_state, NULL);
 	options_add(&relay->options, 'g', "gpio", has_value, config_id, "^[0-7]{1}$");
 
-	protocol_setting_add_string(relay, "default", "off", 0);
-	protocol_setting_add_string(relay, "states", "on,off", 0);
+	protocol_setting_add_string(relay, "default", "off");
+	protocol_setting_add_string(relay, "states", "on,off");
 	
 	relay->createCode=&relayCreateCode;
 	relay->printHelp=&relayPrintHelp;

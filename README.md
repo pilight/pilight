@@ -16,7 +16,6 @@ New config syntax:
 {
 	"living": {
 		"name": "Living",
-		"order": 1,
 		"bookshelve": {
 			"name": "Book Shelve Light",
 			"protocol": "kaku_switch",
@@ -28,9 +27,7 @@ New config syntax:
 		},
 		"main": {
 			"name": "Main",
-			"order": 2,
 			"protocol": "kaku_dimmer",
-			"type": 1,
 			"id": [{
 				"id": 1234,
 				"unit": 1
@@ -49,7 +46,6 @@ New config syntax:
 	},
 	"bedroom": {
 		"name": "Bedroom",
-		"order": 2,
 		"main": {
 			"name": "Main",
 			"protocol": "elro",
@@ -62,7 +58,6 @@ New config syntax:
 	},
 	"garden": {
 		"name": "Garden",
-		"order": 3,
 		"weather": {
 			"name": "Weather Station",
 			"protocol": "alecto",

@@ -192,7 +192,7 @@ void sartanoInit(void) {
 	options_add(&sartano->options, 't', "on", no_value, config_state, NULL);
 	options_add(&sartano->options, 'f', "off", no_value, config_state, NULL);
 
-	protocol_setting_add_string(sartano, "states", "on,off", 0);	
+	protocol_setting_add_string(sartano, "states", "on,off");	
 	
 	sartano->parseBinary=&sartanoParseBinary;
 	sartano->createCode=&sartanoCreateCode;

@@ -92,9 +92,9 @@ void genDimInit(void) {
 	options_add(&generic_dimmer->options, 'f', "off", no_value, config_state, NULL);
 	options_add(&generic_dimmer->options, 'i', "id", has_value, config_id, "^([0-9]{1,})$");
 
-	protocol_setting_add_number(generic_dimmer, "min", 0, 0);
-	protocol_setting_add_number(generic_dimmer, "max", 10, 0);	
-	protocol_setting_add_string(generic_dimmer, "states", "on,off", 0);
+	protocol_setting_add_number(generic_dimmer, "min", 0);
+	protocol_setting_add_number(generic_dimmer, "max", 10);	
+	protocol_setting_add_string(generic_dimmer, "states", "on,off");
 
 	generic_dimmer->printHelp=&genDimPrintHelp;
 	generic_dimmer->createCode=&genDimCreateCode;

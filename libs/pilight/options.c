@@ -390,23 +390,21 @@ void options_merge(struct options_t **a, struct options_t **b) {
 		if(temp->name) {
 			optnode->name = malloc(strlen(temp->name)+1);
 			memset(optnode->name, '\0', strlen(temp->name)+1);
-			memcpy(optnode->name, temp->name, strlen(temp->name));
+			strcpy(optnode->name, temp->name);
 		} else {
 			optnode->name = malloc(4);
 			memset(optnode->name, '\0', 4);
 		}
 		if(temp->value) {
 			optnode->value = malloc(strlen(temp->value)+1);
-			memset(optnode->value, '\0', strlen(temp->value)+1);
-			memcpy(optnode->value, temp->value, strlen(temp->value));
+			strcpy(optnode->value, temp->value);
 		} else {
 			optnode->value = malloc(4);
 			memset(optnode->value, '\0', 4);
 		}
 		if(temp->mask) {
-			optnode->mask = malloc(strlen(temp->mask)+1);
-			memset(optnode->mask, '\0', strlen(temp->mask)+1);
-			memcpy(optnode->mask, temp->mask, strlen(temp->mask));
+			optnode->mask = malloc(strlen(temp->mask)*2);
+			strcpy(optnode->mask, temp->mask);
 		} else {
 			optnode->mask = malloc(4);
 			memset(optnode->mask, '\0', 4);

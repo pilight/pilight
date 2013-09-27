@@ -77,7 +77,7 @@ void genSwitchInit(void) {
 	options_add(&generic_switch->options, 'f', "off", no_value, config_state, NULL);
 	options_add(&generic_switch->options, 'i', "id", has_value, config_id, "^([0-9]{1,})$");
 
-	protocol_setting_add_string(generic_switch, "states", "on,off", 0);
+	protocol_setting_add_string(generic_switch, "states", "on,off");
 
 	generic_switch->printHelp=&genSwitchPrintHelp;
 	generic_switch->createCode=&genSwitchCreateCode;

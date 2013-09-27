@@ -238,7 +238,7 @@ int broadcast(char *protoname, JsonNode *json) {
 
 /* Send a specific code */
 void send_code(JsonNode *json) {
-	int i=0, match = 0, x = 0, logged = 1;
+	int i = 0, match = 0, x = 0, logged = 0;
 	char *name;
 
 	/* Hold the final protocol struct */
@@ -246,6 +246,7 @@ void send_code(JsonNode *json) {
 	struct hardware_t *hardware = NULL;
 
 	JsonNode *jcode = NULL;
+	JsonNode *jsettings = NULL;
 	JsonNode *message = json_mkobject();
 
 	if(!(jcode = json_find_member(json, "code"))) {
@@ -269,8 +270,21 @@ void send_code(JsonNode *json) {
 		logged = 0;
 		/* If we matched a protocol and are not already sending, continue */
 		if(match == 1 && sending == 0 && protocol->createCode && send_repeat > 0) {
-			/* Let the protocol create his code */
 
+			if((jsettings = json_find_member(jcode, "settings"))) {
+				JsonNode *jchild = json_first_child(jsettings);
+				while(jchild) {
+					if(jchild->tag == JSON_NUMBER) {
+						protocol_setting_update_number(protocol, jchild->key, (int)jchild->number_);
+					} else if(jchild->tag == JSON_STRING) {
+						protocol_setting_update_string(protocol, jchild->key, jchild->string_);
+					}
+					jchild = jchild->next;
+				}
+				json_delete(jchild);
+			}
+
+			/* Let the protocol create his code */
 			if(protocol->createCode(jcode) == 0) {
 				if(protocol->message) {
 					char *valid = json_stringify(protocol->message, NULL);
@@ -336,6 +350,18 @@ void send_code(JsonNode *json) {
 
 				sending = 0;
 			}
+
+			if((jsettings = json_find_member(jcode, "settings"))) {
+				JsonNode *jchild = json_first_child(jsettings);
+				while(jchild) {
+					if(jchild->tag == JSON_NUMBER || jchild->tag == JSON_STRING) {
+						protocol_setting_restore(protocol, jchild->key);
+					}
+					jchild = jchild->next;
+				}
+				json_delete(jchild);
+			}
+
 		}
 		if(message) {
 			json_delete(message);
@@ -363,11 +389,13 @@ void control_device(struct conf_devices_t *dev, char *state, JsonNode *values) {
 	struct conf_settings_t *sett = NULL;
 	struct conf_values_t *val = NULL;
 	struct options_t *opt = NULL;
+	unsigned short has_settings = 0;
 
 	char *ctmp = NULL;
 
 	JsonNode *code = json_mkobject();
 	JsonNode *json = json_mkobject();
+	JsonNode *jsettings = json_mkobject();
 
 	/* Check all protocol options */
 	if((opt = dev->protopt->options)) {
@@ -384,9 +412,19 @@ void control_device(struct conf_devices_t *dev, char *state, JsonNode *values) {
 						val = val->next;
 					}
 				}
-				/* Retrieve the possible device values */
-				if(strcmp(sett->name, "values") == 0) {
+
+				/* Retrieve the protocol specific settings */
+				if(strcmp(sett->name, "settings") == 0 && !has_settings) {
+					has_settings = 1;
 					val = sett->values;
+					while(val) {
+						if(val->type == CONFIG_TYPE_NUMBER) {
+							json_append_member(jsettings, val->name, json_mknumber(atoi(val->value)));
+						} else if(val->type == CONFIG_TYPE_STRING) {
+							json_append_member(jsettings, val->name, json_mkstring(val->value));
+						}
+						val = val->next;
+					}
 				}
 				sett = sett->next;
 			}
@@ -423,6 +461,7 @@ void control_device(struct conf_devices_t *dev, char *state, JsonNode *values) {
 	json_append_member(code, "protocol", json_mkstring(dev->protoname));
 	json_append_member(json, "message", json_mkstring("sender"));
 	json_append_member(json, "code", code);
+	json_append_member(code, "settings", jsettings);
 
 	send_code(json);
 
@@ -1289,10 +1328,10 @@ int main(int argc , char **argv) {
 		port = PORT;
 	}
 
+	socket_start((short unsigned int)port);
 	if(nodaemon == 0) {
 		daemonize();
 	}
-	socket_start((short unsigned int)port);
 
     //initialise all socket_clients and handshakes to 0 so not checked
 	memset(socket_clients, 0, sizeof(socket_clients));
