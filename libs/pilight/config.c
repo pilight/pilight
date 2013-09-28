@@ -635,7 +635,7 @@ void config_save_setting(int i, JsonNode *jsetting, struct conf_settings_t *snod
 	} else if(jsetting->tag == JSON_OBJECT) {
 		snode->name = malloc(strlen(jsetting->key)+1);
 		strcpy(snode->name, jsetting->key);
-
+		
 		jtmp = json_first_child(jsetting);
 		while(jtmp) {
 			vnode = malloc(sizeof(struct conf_values_t));			
@@ -812,6 +812,30 @@ clear:
 	return have_error;
 }
 
+int config_check_settings(int i, JsonNode *jsetting, struct conf_devices_t *device) {
+	JsonNode *jtmp = json_first_child(jsetting);
+	int have_error = 0;
+
+	while(jtmp) {
+		if(jtmp->tag == JSON_STRING) {
+			if(protocol_setting_check_string(device->protopt, jtmp->key, jtmp->string_) != 0) {	
+				have_error = 1;
+				break;
+			}
+		} else if(jtmp->tag == JSON_NUMBER) {
+			if(protocol_setting_check_number(device->protopt, jtmp->key, (int)jtmp->number_) != 0) {
+				have_error = 1;
+				break;
+			}
+		}
+		jtmp = jtmp->next;
+	}
+	json_delete(jtmp);
+	if(have_error) {
+		logprintf(LOG_ERR, "setting #%d \"%s\" of \"%s\", invalid", i, "settings", device->id);
+	}
+	return have_error;
+}
 
 int config_check_state(int i, JsonNode *jsetting, struct conf_devices_t *device) {
 	/* Temporary options pointer */
@@ -949,6 +973,10 @@ int config_parse_devices(JsonNode *jdevices, struct conf_devices_t *device) {
 			snode = malloc(sizeof(struct conf_settings_t));
 			config_save_setting(i, jsettings, snode);
 		} else if(strcmp(jsettings->key, "settings") == 0 && jsettings->tag == JSON_OBJECT) {
+			if(config_check_settings(i, jsettings, device) != 0) {
+				have_error = 1;
+				goto clear;
+			}
 			snode = malloc(sizeof(struct conf_settings_t));
 			config_save_setting(i, jsettings, snode);
 		/* The protocol and name settings are already saved in the device struct */

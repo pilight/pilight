@@ -152,33 +152,57 @@ int protocol_setting_restore(protocol_t *proto, const char *name) {
 	return 1;	
 }
 
-void protocol_setting_add_string(protocol_t *proto, const char *name, const char *value) {
-	int error = 0;
+int protocol_setting_check_string(protocol_t *proto, const char *name, const char *value) {
+	if(strcmp(name, "default") == 0 || strcmp(name, "states") == 0) {
+		if(proto->options) {
+			char *nvalue = malloc(strlen(value)+1);
+			strcpy(nvalue, value);
+			char *pch = strtok(nvalue, ",");
+			while(pch) {
+				int valid_state = 0;
+				struct options_t *options = proto->options;
+				while(options) {
+					if(options->conftype == config_state && strcmp(options->name, pch) == 0) {
+						valid_state = 1;
+						break;
+					}
+					options = options->next;
+				}
+				if(valid_state == 0) {
+					return 1;
+				}
+				pch = strtok(NULL, ",");
+			}
+			free(nvalue);
+		}
+	}
 	switch(proto->type) {
 		case DIMMER:
 			if(strcmp(name, "states") != 0) {
-				logprintf(LOG_ERR, "protocol \"%s\" setting \"%s\" is invalid for dimmer type", proto->id, name);
-				error = 1;
+				return 1;
 			}
 		break;
 		case RELAY:
 			if(strcmp(name, "default") != 0 && strcmp(name, "states") != 0) {
-				logprintf(LOG_ERR, "protocol \"%s\" setting \"%s\" is invalid for relay type", proto->id, name);
-				error = 1;
+				return 1;
 			}
 		break;
 		case SWITCH:
 			if(strcmp(name, "states") != 0) {
-				logprintf(LOG_ERR, "protocol \"%s\" setting \"%s\" is invalid for switch type", proto->id, name);
-				error = 1;
+				return 1;
 			}
 		break;
 		case WEATHER:		
 		case RAW:		
 		default:
+			return 1;
 		break;
 	}
-	if(!error) {
+	return 0;
+}
+
+void protocol_setting_add_string(protocol_t *proto, const char *name, const char *value) {
+	if(protocol_setting_check_string(proto, name, value) == 0) {
 		protocol_setting_remove(&proto, name);
 		struct protocol_settings_t *snode = malloc(sizeof(struct protocol_settings_t));
 		snode->name = malloc(strlen(name)+1);
@@ -190,43 +214,55 @@ void protocol_setting_add_string(protocol_t *proto, const char *name, const char
 		snode->next	= proto->settings;
 		proto->settings = snode;
 	} else {
+		logprintf(LOG_ERR, "protocol \"%s\" setting \"%s\" is invalid", proto->id, name);
 		exit(EXIT_FAILURE);
 	}
 }
 
-void protocol_setting_add_number(protocol_t *proto, const char *name, int value) {
-	int error = 0;
+int protocol_setting_check_number(protocol_t *proto, const char *name, int value) {
+	if((strcmp(name, "readonly") == 0 ||
+		strcmp(name, "temperature") == 0 ||
+		strcmp(name, "battery") == 0 ||
+		strcmp(name, "humidity") == 0) &&
+		(value < 0 || value > 1)) {
+		return 1;
+	}
+	if(strcmp(name, "decimals") == 0 && (value < 0 || value > 2)) {
+		return 1;
+	}
+	
 	switch(proto->type) {
 		case DIMMER:
 			if(strcmp(name, "max") != 0 && strcmp(name, "min") != 0 && strcmp(name, "readonly") != 0) {
-				logprintf(LOG_ERR, "protocol \"%s\" setting \"%s\" is invalid for dimmer type", proto->id, name);
-				error = 1;
+				return 1;
 			}
 		break;
 		case WEATHER:
 			if(strcmp(name, "decimals") != 0 && strcmp(name, "battery") != 0
-			     && strcmp(name, "temperature") != 0 && strcmp(name, "humidity") != 0) {
-				logprintf(LOG_ERR, "protocol \"%s\" setting \"%s\" is invalid for weather type", proto->id, name);
-				error = 1;
+			   && strcmp(name, "temperature") != 0 && strcmp(name, "humidity") != 0) {
+				return 1;
 			}
 		break;
 		case SWITCH:
 			if(strcmp(name, "readonly") != 0) {
-				logprintf(LOG_ERR, "protocol \"%s\" setting \"%s\" is invalid for switch type", proto->id, name);
-				error = 1;
+				return 1;
 			}
 		break;
 		case RELAY:
 			if(strcmp(name, "readonly") != 0) {
-				logprintf(LOG_ERR, "protocol \"%s\" setting \"%s\" is invalid for relay type", proto->id, name);
-				error = 1;
+				return 1;
 			}
 		break;
-		case RAW:		
+		case RAW:
 		default:
+			return 1;
 		break;
 	}
-	if(!error) {
+	return 0;
+}
+
+void protocol_setting_add_number(protocol_t *proto, const char *name, int value) {
+	if(protocol_setting_check_number(proto, name, value) == 0) {
 		protocol_setting_remove(&proto, name);
 		struct protocol_settings_t *snode = malloc(sizeof(struct protocol_settings_t));
 		snode->name = malloc(strlen(name)+1);
@@ -237,7 +273,8 @@ void protocol_setting_add_number(protocol_t *proto, const char *name, int value)
 		snode->type = 2;
 		snode->next	= proto->settings;
 		proto->settings = snode;
-	} else {
+	} else {	
+		logprintf(LOG_ERR, "protocol \"%s\" setting \"%s\" is invalid", proto->id, name);
 		exit(EXIT_FAILURE);
 	}
 }

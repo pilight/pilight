@@ -97,6 +97,8 @@ int protocol_setting_get_string(protocol_t *proto, const char *name, char **out)
 int protocol_setting_get_number(protocol_t *proto, const char *name, int *out);
 int protocol_setting_update_string(protocol_t *proto, const char *name, const char *value);
 int protocol_setting_update_number(protocol_t *proto, const char *name, int value);
+int protocol_setting_check_number(protocol_t *proto, const char *name, int value);
+int protocol_setting_check_string(protocol_t *proto, const char *name, const char *value);
 int protocol_setting_restore(protocol_t *proto, const char *name);
 void protocol_setting_remove(protocol_t **proto, const char *name);
 void protocol_conflict_remove(protocol_t **proto, const char *id);
