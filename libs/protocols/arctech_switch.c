@@ -205,7 +205,8 @@ void arctechSwInit(void) {
 	options_add(&arctech_switch->options, 'u', "unit", has_value, config_id, "^([0-9]{1}|[1][0-5])$");
 	options_add(&arctech_switch->options, 'i', "id", has_value, config_id, "^([0-9]{1,7}|[1-5][0-9]{7}|6([0-6][0-9]{6}|7(0[0-9]{5}|10([0-7][0-9]{3}|8([0-7][0-9]{2}|8([0-5][0-9]|6[0-3]))))))$");
 
-	protocol_setting_add_string(arctech_switch, "states", "on,off");	
+	protocol_setting_add_string(arctech_switch, "states", "on,off");
+	protocol_setting_add_number(arctech_switch, "readonly", 0);
 	
 	arctech_switch->parseBinary=&arctechSwParseBinary;
 	arctech_switch->createCode=&arctechSwCreateCode;

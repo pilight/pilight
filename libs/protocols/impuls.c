@@ -211,6 +211,7 @@ void impulsInit(void) {
 	options_add(&impuls->options, 'f', "off", no_value, config_state, NULL);
 
 	protocol_setting_add_string(impuls, "states", "on,off");
+	protocol_setting_add_number(impuls, "readonly", 0);
 
 	//impuls->parseCode=&impulsParseCode;
 	impuls->createCode=&impulsCreateCode;

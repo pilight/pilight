@@ -139,6 +139,7 @@ void relayInit(void) {
 
 	protocol_setting_add_string(relay, "default", "off");
 	protocol_setting_add_string(relay, "states", "on,off");
+	protocol_setting_add_number(relay, "readonly", 0);
 	
 	relay->createCode=&relayCreateCode;
 	relay->printHelp=&relayPrintHelp;

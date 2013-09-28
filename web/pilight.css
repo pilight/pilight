@@ -83,3 +83,9 @@ div.ui-slider {
 .ui-loading .ui-loader-background {
     display:block;
 }
+
+.ui-disabled {
+	filter: Alpha(Opacity=75);
+	opacity: .7;
+	zoom: 1;
+}

@@ -425,7 +425,7 @@ JsonNode *config2json(unsigned short internal) {
 	struct JsonNode *jdevice = NULL;
 	struct JsonNode *joptions = NULL;
 	struct JsonNode *jid = NULL;
-	struct JsonNode *jsettings = NULL;	
+	struct JsonNode *jsettings = NULL;
 	struct protocol_t *protocol = NULL;
 	struct protocol_settings_t *psettings = NULL;
 

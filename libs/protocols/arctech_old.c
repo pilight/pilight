@@ -188,7 +188,8 @@ void arctechOldInit(void) {
 	options_add(&arctech_old->options, 'u', "unit", has_value, config_id, "^([0-9]{1}|[1][0-5])$");
 	options_add(&arctech_old->options, 'i', "id", has_value, config_id, "^(3[012]?|[012][0-9]|[0-9]{1})$");
 
-	protocol_setting_add_string(arctech_old, "states", "on,off");	
+	protocol_setting_add_string(arctech_old, "states", "on,off");
+	protocol_setting_add_number(arctech_old, "readonly", 0);
 	
 	arctech_old->parseBinary=arctechOldParseBinary;
 	arctech_old->createCode=&arctechOldCreateCode;

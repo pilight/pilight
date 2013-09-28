@@ -78,6 +78,7 @@ void genSwitchInit(void) {
 	options_add(&generic_switch->options, 'i', "id", has_value, config_id, "^([0-9]{1,})$");
 
 	protocol_setting_add_string(generic_switch, "states", "on,off");
+	protocol_setting_add_number(generic_switch, "readonly", 1);
 
 	generic_switch->printHelp=&genSwitchPrintHelp;
 	generic_switch->createCode=&genSwitchCreateCode;

@@ -241,6 +241,7 @@ void arctechDimInit(void) {
 	protocol_setting_add_number(arctech_dimmer, "min", 0);
 	protocol_setting_add_number(arctech_dimmer, "max", 15);
 	protocol_setting_add_string(arctech_dimmer, "states", "on,off");
+	protocol_setting_add_number(arctech_dimmer, "readonly", 0);
 
 	arctech_dimmer->parseBinary=&arctechDimParseBinary;
 	arctech_dimmer->createCode=&arctechDimCreateCode;

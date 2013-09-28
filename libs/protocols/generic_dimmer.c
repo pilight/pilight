@@ -95,6 +95,7 @@ void genDimInit(void) {
 	protocol_setting_add_number(generic_dimmer, "min", 0);
 	protocol_setting_add_number(generic_dimmer, "max", 10);	
 	protocol_setting_add_string(generic_dimmer, "states", "on,off");
+	protocol_setting_add_number(generic_dimmer, "readonly", 1);
 
 	generic_dimmer->printHelp=&genDimPrintHelp;
 	generic_dimmer->createCode=&genDimCreateCode;

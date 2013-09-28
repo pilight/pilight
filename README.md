@@ -9,6 +9,7 @@ New (Experimental) Features
 - Fixed bugs of the weather module in the webgui.
 - Differentiate between internally communicated settings and external ones.
 - Allow (non-blocking) pilight-send call from within process file.
+- Added a protocol specific "readonly" setting. This should disable controlling devices from the GUIs.
 
 New config syntax:
 

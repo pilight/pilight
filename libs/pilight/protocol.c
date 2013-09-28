@@ -156,19 +156,19 @@ void protocol_setting_add_string(protocol_t *proto, const char *name, const char
 	int error = 0;
 	switch(proto->type) {
 		case DIMMER:
-			if(!(!strcmp(name, "states"))) {
+			if(strcmp(name, "states") != 0) {
 				logprintf(LOG_ERR, "protocol \"%s\" setting \"%s\" is invalid for dimmer type", proto->id, name);
 				error = 1;
 			}
 		break;
 		case RELAY:
-			if(!(!strcmp(name, "default") || !strcmp(name, "states"))) {
+			if(strcmp(name, "default") != 0 && strcmp(name, "states") != 0) {
 				logprintf(LOG_ERR, "protocol \"%s\" setting \"%s\" is invalid for relay type", proto->id, name);
 				error = 1;
 			}
 		break;
 		case SWITCH:
-			if(!(!strcmp(name, "states"))) {
+			if(strcmp(name, "states") != 0) {
 				logprintf(LOG_ERR, "protocol \"%s\" setting \"%s\" is invalid for switch type", proto->id, name);
 				error = 1;
 			}
@@ -189,6 +189,8 @@ void protocol_setting_add_string(protocol_t *proto, const char *name, const char
 		snode->type = 1;
 		snode->next	= proto->settings;
 		proto->settings = snode;
+	} else {
+		exit(EXIT_FAILURE);
 	}
 }
 
@@ -196,20 +198,30 @@ void protocol_setting_add_number(protocol_t *proto, const char *name, int value)
 	int error = 0;
 	switch(proto->type) {
 		case DIMMER:
-			if(!(!strcmp(name, "max") || !strcmp(name, "min"))) {
+			if(strcmp(name, "max") != 0 && strcmp(name, "min") != 0 && strcmp(name, "readonly") != 0) {
 				logprintf(LOG_ERR, "protocol \"%s\" setting \"%s\" is invalid for dimmer type", proto->id, name);
 				error = 1;
 			}
 		break;
 		case WEATHER:
-			if(!(!strcmp(name, "decimals") || !strcmp(name, "battery") 
-			     || !strcmp(name, "temperature") || !strcmp(name, "humidity"))) {
+			if(strcmp(name, "decimals") != 0 && strcmp(name, "battery") != 0
+			     && strcmp(name, "temperature") != 0 && strcmp(name, "humidity") != 0) {
 				logprintf(LOG_ERR, "protocol \"%s\" setting \"%s\" is invalid for weather type", proto->id, name);
 				error = 1;
 			}
 		break;
 		case SWITCH:
+			if(strcmp(name, "readonly") != 0) {
+				logprintf(LOG_ERR, "protocol \"%s\" setting \"%s\" is invalid for switch type", proto->id, name);
+				error = 1;
+			}
+		break;
 		case RELAY:
+			if(strcmp(name, "readonly") != 0) {
+				logprintf(LOG_ERR, "protocol \"%s\" setting \"%s\" is invalid for relay type", proto->id, name);
+				error = 1;
+			}
+		break;
 		case RAW:		
 		default:
 		break;
@@ -225,6 +237,8 @@ void protocol_setting_add_number(protocol_t *proto, const char *name, int value)
 		snode->type = 2;
 		snode->next	= proto->settings;
 		proto->settings = snode;
+	} else {
+		exit(EXIT_FAILURE);
 	}
 }
 

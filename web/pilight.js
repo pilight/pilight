@@ -17,6 +17,9 @@ function createSwitchElement(sTabId, sDevId, aValues) {
 		$('#'+sTabId+'_'+sDevId+'_switch')[0].selectedIndex = 1;
 		$('#'+sTabId+'_'+sDevId+'_switch').slider('refresh');
 	}
+	if(aValues['settings']['readonly']) {
+		$('#'+sTabId+'_'+sDevId+'_switch').slider('disable');
+	}
 }
 
 function createDimmerElement(sTabId, sDevId, aValues) {
@@ -46,6 +49,10 @@ function createDimmerElement(sTabId, sDevId, aValues) {
 		$('#'+sTabId+'_'+sDevId+'_switch')[0].selectedIndex = 1;
 		$('#'+sTabId+'_'+sDevId+'_switch').slider('refresh');
 	}
+	if(aValues['settings']['readonly']) {
+		$('#'+sTabId+'_'+sDevId+'_switch').slider('disable');
+		$('#'+sTabId+'_'+sDevId+'_dimmer').slider('disable');
+	}	
 }
 
 function createWeatherElement(sTabId, sDevId, aValues) {
