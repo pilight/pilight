@@ -47,7 +47,7 @@ int relayCreateCode(JsonNode *code) {
 	int gpio_out = GPIO_OUT_PIN;
 	int free_hw_mode = 0;
 
-	relay->rawLength = 0;
+	relay->rawlen = 0;
 	strcpy(def, "off");
 	
 	if(json_find_string(code, "gpio", &tmp) == 0)

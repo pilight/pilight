@@ -23,7 +23,7 @@ struct protocol_t *impuls;
 
 void impulsInit(void);
 void impulsCreateMessage(int systemcode, int programcode, int state);
-//void impulsParseCode(int repeats);
+void impulsParseCode(int repeats);
 int impulsCreateCode(JsonNode *code);
 void impulsCreateLow(int s, int e);
 void impulsCreateMed(int s, int e);

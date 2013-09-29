@@ -45,7 +45,7 @@ int rawCreateCode(JsonNode *code) {
 		pch = strtok(NULL, " ");
 		i++;
 	}
-	raw->rawLength=i;
+	raw->rawlen=i;
 	return EXIT_SUCCESS;
 }
 

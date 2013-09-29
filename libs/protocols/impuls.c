@@ -38,7 +38,7 @@ void impulsCreateMessage(int systemcode, int programcode, int state) {
 	}
 }
 
-/*void impulsParseCode(int repeats) {
+void impulsParseCode(int repeats) {
 	int fp = 0;
 	int i = 0;
 	for(i=0;i<5;i++) {
@@ -55,24 +55,23 @@ void impulsCreateMessage(int systemcode, int programcode, int state) {
 	}
 	if (impuls->code[48] != 0) fp = 1;
 	if (impuls->code[49] != 1) fp = 1;
-	impuls->message = NULL;
 	int systemcode = binToDec(impuls->binary, 0, 4);
 	int programcode = binToDec(impuls->binary, 5, 9);
 	int check = impuls->binary[10];
 	int state = impuls->binary[11];
 	if ((check != state) && fp == 0) {
-		impulsCreateMessage(id, unit, state);
+		impulsCreateMessage(systemcode, programcode, state);
 	}
-}*/
+}
 
 void impulsCreateLow(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=4) {
-		impuls->raw[i]=(PULSE_LENGTH);
-		impuls->raw[i+1]=(impuls->pulse*PULSE_LENGTH);
-		impuls->raw[i+2]=(impuls->pulse*PULSE_LENGTH);
-		impuls->raw[i+3]=(PULSE_LENGTH);
+		impuls->raw[i]=(PULSE_LENGTH/impuls->plslen);
+		impuls->raw[i+1]=(impuls->pulse*(PULSE_LENGTH/impuls->plslen));
+		impuls->raw[i+2]=(impuls->pulse*(PULSE_LENGTH/impuls->plslen));
+		impuls->raw[i+3]=(PULSE_LENGTH/impuls->plslen);
 	}
 }
 
@@ -80,10 +79,10 @@ void impulsCreateMed(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=4) {
-		impuls->raw[i]=(impuls->pulse*PULSE_LENGTH);
-		impuls->raw[i+1]=(PULSE_LENGTH);
-		impuls->raw[i+2]=(impuls->pulse*PULSE_LENGTH);
-		impuls->raw[i+3]=(PULSE_LENGTH);
+		impuls->raw[i]=(impuls->pulse*(PULSE_LENGTH/impuls->plslen));
+		impuls->raw[i+1]=(PULSE_LENGTH/impuls->plslen);
+		impuls->raw[i+2]=(impuls->pulse*(PULSE_LENGTH/impuls->plslen));
+		impuls->raw[i+3]=(PULSE_LENGTH/impuls->plslen);
 	}
 }
 
@@ -91,10 +90,10 @@ void impulsCreateHigh(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=4) {
-		impuls->raw[i]=(PULSE_LENGTH);
-		impuls->raw[i+1]=(impuls->pulse*PULSE_LENGTH);
-		impuls->raw[i+2]=(PULSE_LENGTH);
-		impuls->raw[i+3]=(impuls->pulse*PULSE_LENGTH);
+		impuls->raw[i]=(PULSE_LENGTH/impuls->plslen);
+		impuls->raw[i+1]=(impuls->pulse*(PULSE_LENGTH/impuls->plslen));
+		impuls->raw[i+2]=(PULSE_LENGTH/impuls->plslen);
+		impuls->raw[i+3]=(impuls->pulse*(PULSE_LENGTH/impuls->plslen));
 	}
 }
 
@@ -197,14 +196,13 @@ void impulsInit(void) {
 	protocol_device_add(impuls, "select-remote", "SelectRemote Switches");
 	impuls->type = SWITCH;
 	impuls->pulse = 3;
-	impuls->footer = 33;
+	impuls->footer = 31;
 	impuls->rawlen = 50;
 	impuls->plslen = 2;
-	//impuls->binLength = 12;
-	//impuls->lsb = 1;
+	impuls->binlen = 12;
 
-	/*impuls->bit = 0;
-	impuls->recording = 0;*/
+	impuls->bit = 0;
+	impuls->recording = 0;
 
 	options_add(&impuls->options, 's', "systemcode", has_value, config_id, "^(3[012]?|[012][0-9]|[0-9]{1})$");
 	options_add(&impuls->options, 'u', "programcode", has_value, config_id, "^(3[012]?|[012][0-9]|[0-9]{1})$");
@@ -214,7 +212,7 @@ void impulsInit(void) {
 	protocol_setting_add_string(impuls, "states", "on,off");
 	protocol_setting_add_number(impuls, "readonly", 0);
 
-	//impuls->parseCode=&impulsParseCode;
+	impuls->parseCode=&impulsParseCode;
 	impuls->createCode=&impulsCreateCode;
 	impuls->printHelp=&impulsPrintHelp;
 }
