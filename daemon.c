@@ -633,14 +633,14 @@ void socket_parse_data(int i, char buffer[BUFFER_SIZE]) {
 	if(strcmp(buffer, "HEART\n") == 0) {
 		socket_write(sd, "BEAT");
 	} else {
-		if(json_validate(buffer) == true) {
+		if(strstr(buffer, " HTTP/")) {
+			logprintf(LOG_INFO, "client recognized as web");
+			handshakes[i] = WEB;
+			client_webserver_parse_code(i, buffer);
+			socket_close(sd);
+		} else if(json_validate(buffer) == true) {
 			json = json_decode(buffer);
-			if(strstr(buffer, " HTTP/")) {
-				logprintf(LOG_INFO, "client recognized as web");
-				handshakes[i] = WEB;
-				client_webserver_parse_code(i, buffer);
-				socket_close(sd);
-			} else if(json_find_string(json, "incognito", &incognito) == 0) {
+			if(json_find_string(json, "incognito", &incognito) == 0) {
 				incognito_mode = 1;
 				for(x=0;x<(sizeof(clients)/sizeof(clients[0]));x++) {
 					if(strcmp(clients[x], incognito) == 0) {
