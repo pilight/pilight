@@ -10,6 +10,7 @@ New (Experimental) Features
 - Differentiate between internally communicated settings and external ones.
 - Allow (non-blocking) pilight-send call from within process file.
 - Added a protocol specific "readonly" setting. This should disable controlling devices from the GUIs.
+- Added whitelist setting for socket connections.
 
 New config syntax:
 
