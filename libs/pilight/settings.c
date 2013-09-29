@@ -136,6 +136,11 @@ int settings_parse(JsonNode *root) {
 	int gpio_in = -1;
 	int gpio_out = -1;
 
+#ifndef __FreeBSD__	
+	regex_t regex;
+	int reti;
+#endif	
+	
 	JsonNode *jsettings = json_first_child(root);
 
 	while(jsettings) {
@@ -207,6 +212,37 @@ int settings_parse(JsonNode *root) {
 				}
 			} else if(strcmp(jsettings->key, "config-file") == 0) {
 				has_config = 1;
+			}
+		} else if(strcmp(jsettings->key, "whitelist") == 0) {
+			if(!jsettings->string_) {
+				logprintf(LOG_ERR, "setting \"%s\" must contain valid ip addresses", jsettings->key);
+				have_error = 1;
+				goto clear;
+			} else if(strlen(jsettings->string_) > 0) {
+#ifndef __FreeBSD__			
+				char validate[] = "^((\\*|[0-9]|[1-9][0-9]|1[0-9][0-9]|2([0-4][0-9]|5[0-5]))\\.(\\*|[0-9]|[1-9][0-9]|1[0-9][0-9]|2([0-4][0-9]|5[0-5]))\\.(\\*|[0-9]|[1-9][0-9]|1[0-9][0-9]|2([0-4][0-9]|5[0-5]))\\.(\\*|[0-9]|[1-9][0-9]|1[0-9][0-9]|2([0-4][0-9]|5[0-5]))(,[\\ ]|,|$))+$";
+				reti = regcomp(&regex, validate, REG_EXTENDED);
+				if(reti) {
+					logprintf(LOG_ERR, "could not compile regex");
+					have_error = 1;
+					goto clear;
+				}
+				reti = regexec(&regex, jsettings->string_, 0, NULL, 0);
+				if(reti == REG_NOMATCH || reti != 0) {
+					logprintf(LOG_ERR, "setting \"%s\" must contain valid ip addresses", jsettings->key);
+					have_error = 1;
+					regfree(&regex);
+					goto clear;
+				}
+				regfree(&regex);
+#endif
+				int l = (int)strlen(jsettings->string_)-1;
+				if(jsettings->string_[l] == ' ' || jsettings->string_[l] == ',') {
+					logprintf(LOG_ERR, "setting \"%s\" must contain valid ip addresses", jsettings->key);
+					have_error = 1;
+					goto clear;
+				}
+				settings_add_string_node(jsettings->key, jsettings->string_);
 			}
 		} else if(strcmp(jsettings->key, "hw-socket") == 0) {
 			if(!jsettings->string_) {

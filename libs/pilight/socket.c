@@ -54,6 +54,73 @@ int socket_gc(void) {
 	return EXIT_SUCCESS;
 }
 
+int socket_check_whitelist(char *ip) {
+	char *whitelist = NULL;
+	unsigned int client[4] = {0};
+	int x = 0, i = 0, error = 1;
+	char *pch = NULL;
+	char wip[16] = {'\0'};
+	
+	pch = strtok(ip, ".");
+	x = 0;
+	while(pch) {
+		client[x] = (unsigned int)atoi(pch);
+		x++;
+		pch = strtok(NULL, ".");
+	}
+
+	if(settings_find_string("whitelist", &whitelist) != 0) {
+		return 0;
+	}
+	if(strlen(whitelist) == 0) {
+		return 0;
+	}
+
+	char *tmp = whitelist;
+	x = 0;
+	while(*tmp != '\0') {
+		while(*tmp == ',' || *tmp == ' ') {
+			tmp++;
+		}
+		wip[x] = *tmp;
+		x++;
+		tmp++; 
+
+		if(*tmp == '\0' || *tmp == ',') {
+			x = 0;
+			unsigned int lower[4] = {0};
+			unsigned int upper[4] = {0};
+			
+			i = 0;
+			pch = strtok(wip, ".");
+			while(pch) {
+				if(strcmp(pch, "*") == 0) {
+					lower[i] = 0;
+					upper[i] = 255;
+				} else {
+					lower[i] = (unsigned int)atoi(pch);
+					upper[i] = (unsigned int)atoi(pch);
+				}
+				pch = strtok(NULL, ".");
+				i++;
+			}
+
+			unsigned int wlower = lower[0] << 24 | lower[1] << 16 | lower[2] << 8 | lower[3];
+			unsigned int wupper = upper[0] << 24 | upper[1] << 16 | upper[2] << 8 | upper[3];
+			unsigned int nip = client[0] << 24 | client[1] << 16 | client[2] << 8 | client[3];
+
+			if((nip >= wlower && nip <= wupper) || (nip == 2130706433)) {
+				error = 0;
+			}
+			memset(wip, '\0', 16);
+		}		
+	}
+
+	free(pch);
+
+	return error;
+}
+
 /* Start the socket server */
 int socket_start(unsigned short port) {
 	//gc_attach(socket_gc);
@@ -247,34 +314,38 @@ void *socket_wait(void *param) {
 				if(sd > max_sd)
 					max_sd = sd;
 			}
-			//wait for an activity on one of the sockets , timeout is NULL , so wait indefinitely
+			//wait for an activity on one of the sockets, timeout is NULL, so wait indefinitely
 			activity = select(max_sd + 1, &readfds, NULL, NULL, NULL);
 		} while(activity == -1 && errno == EINTR && socket_loop);
 
-        //If something happened on the master socket , then its an incoming connection
+        //If something happened on the master socket, then its an incoming connection
         if(FD_ISSET((long unsigned int)serverSocket, &readfds)) {
             if((clientSocket = accept(serverSocket, (struct sockaddr *)&address, (socklen_t*)&addrlen))<0) {
                 logprintf(LOG_ERR, "failed to accept client");
                 exit(EXIT_FAILURE);
             }
+			if(socket_check_whitelist(inet_ntoa(address.sin_addr)) != 0) {
+				logprintf(LOG_INFO, "rejected client, ip: %s, port: %d", inet_ntoa(address.sin_addr), ntohs(address.sin_port));
+				close(clientSocket);
+			} else {
+				//inform user of socket number - used in send and receive commands
+				logprintf(LOG_INFO, "new client, ip: %s, port: %d", inet_ntoa(address.sin_addr), ntohs(address.sin_port));
+				logprintf(LOG_DEBUG, "client fd: %d", clientSocket);
+				//send new connection accept message
+				//socket_write(clientSocket, "{\"message\":\"accept connection\"}");
 
-            //inform user of socket number - used in send and receive commands
-            logprintf(LOG_INFO, "new client, ip: %s, port: %d", inet_ntoa(address.sin_addr), ntohs(address.sin_port));
-			logprintf(LOG_DEBUG, "client fd: %d", clientSocket);
-            //send new connection accept message
-            //socket_write(clientSocket, "{\"message\":\"accept connection\"}");
-
-            //add new socket to array of sockets
-            for(i=0;i<MAX_CLIENTS;i++) {
-                //if position is empty
-                if(socket_clients[i] == 0) {
-                    socket_clients[i] = clientSocket;
-					if(socket_callback->client_connected_callback)
-						socket_callback->client_connected_callback(i);
-                    logprintf(LOG_DEBUG, "client id: %d", i);
-                    break;
-                }
-            }
+				//add new socket to array of sockets
+				for(i=0;i<MAX_CLIENTS;i++) {
+					//if position is empty
+					if(socket_clients[i] == 0) {
+						socket_clients[i] = clientSocket;
+						if(socket_callback->client_connected_callback)
+							socket_callback->client_connected_callback(i);
+						logprintf(LOG_DEBUG, "client id: %d", i);
+						break;
+					}
+				}
+			}
         }
 
         //else its some IO operation on some other socket :)

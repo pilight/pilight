@@ -635,7 +635,7 @@ void config_save_setting(int i, JsonNode *jsetting, struct conf_settings_t *snod
 	} else if(jsetting->tag == JSON_OBJECT) {
 		snode->name = malloc(strlen(jsetting->key)+1);
 		strcpy(snode->name, jsetting->key);
-		
+
 		jtmp = json_first_child(jsetting);
 		while(jtmp) {
 			vnode = malloc(sizeof(struct conf_values_t));			

@@ -13,5 +13,6 @@
 	"hw-mode": "gpio",
 	"webserver-enable": 1,
 	"webserver-root": "/usr/local/share/pilight/",
-	"webserver-port": 5001
+	"webserver-port": 5001,
+	"whitelist": ""
 }

@@ -39,8 +39,8 @@ void socket_write(int sockfd, const char *msg, ...);
 void socket_write_big(int sockfd, const char *msg, ...);
 char *socket_read(int sockfd);
 char *socket_read_big(int sockfd);
-int socket_msgcmp(char *a, char *b);
 void *socket_wait(void *param);
+int socket_check_whitelist(char *ip);
 int socket_gc(void);
 
 #endif

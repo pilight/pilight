@@ -40,7 +40,7 @@
 
 #define PORT 				5000
 #define WEBSERVER_PORT		5001
-#define WEBSERVER_ROOT		"web"
+#define WEBSERVER_ROOT		"/usr/local/share/pilight/"
 #define WEBSERVER_ENABLE	1
 
 #define MAX_CLIENTS			30
