@@ -60,7 +60,17 @@ int socket_check_whitelist(char *ip) {
 	int x = 0, i = 0, error = 1;
 	char *pch = NULL;
 	char wip[16] = {'\0'};
-	
+
+	/* Check if there are any whitelisted ip address */
+	if(settings_find_string("whitelist", &whitelist) != 0) {
+		return 0;
+	}
+
+	if(strlen(whitelist) == 0) {
+		return 0;
+	}	
+
+	/* Explode ip address to a 4 elements int array */
 	pch = strtok(ip, ".");
 	x = 0;
 	while(pch) {
@@ -69,28 +79,30 @@ int socket_check_whitelist(char *ip) {
 		pch = strtok(NULL, ".");
 	}
 
-	if(settings_find_string("whitelist", &whitelist) != 0) {
-		return 0;
-	}
-	if(strlen(whitelist) == 0) {
-		return 0;
-	}
-
 	char *tmp = whitelist;
 	x = 0;
+	/* Loop through all whitelised ip addresses */
 	while(*tmp != '\0') {
+		/* Remove any comma's and spaces */
 		while(*tmp == ',' || *tmp == ' ') {
 			tmp++;
 		}
+		/* Save ip address in temporary char array */
 		wip[x] = *tmp;
 		x++;
-		tmp++; 
+		tmp++;
 
+		/* Each ip address is either terminated by a comma or EOL delimiter */
 		if(*tmp == '\0' || *tmp == ',') {
 			x = 0;
 			unsigned int lower[4] = {0};
 			unsigned int upper[4] = {0};
-			
+
+			/* Turn the whitelist ip address into a upper and lower boundary.
+			   If the ip address doesn't contain a wildcard, then the upper
+			   and lower boundary are the same. If the ip address does contain
+			   a wildcard, then this lower boundary number will be 0 and the
+			   upper boundary number 255. */
 			i = 0;
 			pch = strtok(wip, ".");
 			while(pch) {
@@ -105,10 +117,15 @@ int socket_check_whitelist(char *ip) {
 				i++;
 			}
 
+			/* http://stackoverflow.com/a/9696632
+			   Turn the different ip addresses into one single number and compare those
+			   against each other to see if the ip address is inside the lower and upper
+			   whitelisted boundary */
 			unsigned int wlower = lower[0] << 24 | lower[1] << 16 | lower[2] << 8 | lower[3];
 			unsigned int wupper = upper[0] << 24 | upper[1] << 16 | upper[2] << 8 | upper[3];
 			unsigned int nip = client[0] << 24 | client[1] << 16 | client[2] << 8 | client[3];
 
+			/* Always allow 127.0.0.1 connections */
 			if((nip >= wlower && nip <= wupper) || (nip == 2130706433)) {
 				error = 0;
 			}

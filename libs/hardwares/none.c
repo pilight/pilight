@@ -24,9 +24,20 @@
 #include "hardware.h"
 #include "none.h"
 
+int noneSend(void) {
+	return 0;
+}
+
+int noneReceive(void) {
+	sleep(1);
+	return 0;
+}
+
 void noneInit(void) {
 
 	hardware_register(&none);
 	none->id = malloc(5);
 	strcpy(none->id, "none");
+	none->receive=&noneReceive;
+	none->send=&noneSend;
 }

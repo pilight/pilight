@@ -22,5 +22,7 @@
 struct hardware_t *none;
 
 void noneInit(void);
+int noneReceive(void);
+int noneSend(void);
 
 #endif

@@ -166,9 +166,13 @@ void log_file_set(char *log) {
 		if(err == -1) {
 			if(ENOENT == errno) {
 				logprintf(LOG_ERR, "the log file folder does not exist", optarg);
+				free(logpath);
+				logpath = NULL;
 				exit(EXIT_FAILURE);
 			} else {
 				logprintf(LOG_ERR, "failed to run stat on log folder", optarg);
+				free(logpath);
+				logpath = NULL;				
 				exit(EXIT_FAILURE);
 			}
 		} else {
@@ -177,6 +181,8 @@ void log_file_set(char *log) {
 				strcpy(logfile, log);
 			} else {
 				logprintf(LOG_ERR, "the log file folder does not exist", optarg);
+				free(logpath);
+				logpath = NULL;				
 				exit(EXIT_FAILURE);
 			}
 		}
@@ -194,6 +200,8 @@ void log_file_set(char *log) {
 			}
 		}
 	}
+	free(logpath);
+	logpath = NULL;
 }
 
 void log_level_set(int level) {

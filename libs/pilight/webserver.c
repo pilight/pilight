@@ -78,6 +78,10 @@ int webserver_gc(void) {
 		free(sockWriteBuff);
 		sockWriteBuff = NULL;
 	}
+	if(sockReadBuff) {
+		free(sockReadBuff);
+		sockReadBuff = NULL;
+	}
 	if(ext) {
 		free(ext);
 		ext = NULL;
@@ -360,6 +364,7 @@ void *webserver_clientize(void *param) {
 		}
 	}
 	free(sockReadBuff);
+	sockReadBuff = NULL;
 close:
 	webserver_gc();
 	return 0;

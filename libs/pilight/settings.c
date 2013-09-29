@@ -32,7 +32,7 @@
 #include "log.h"
 
 /* Add a string value to the settings struct */
-void settings_add_string_node(const char *name, char *value) {
+void settings_add_string(const char *name, char *value) {
 	struct settings_t *snode = malloc(sizeof(struct settings_t));
 	snode->name = malloc(strlen(name)+1);
 	strcpy(snode->name, name);
@@ -44,7 +44,7 @@ void settings_add_string_node(const char *name, char *value) {
 }
 
 /* Add an int value to the settings struct */
-void settings_add_number_node(const char *name, int value) {
+void settings_add_number(const char *name, int value) {
 	struct settings_t *snode = malloc(sizeof(struct settings_t));
 	char ctmp[256];
 	snode->name = malloc(strlen(name)+1);
@@ -153,7 +153,7 @@ int settings_parse(JsonNode *root) {
 				if(strcmp(jsettings->key, "port") == 0) {
 					own_port = (int)jsettings->number_;
 				}
-				settings_add_number_node(jsettings->key, (int)jsettings->number_);
+				settings_add_number(jsettings->key, (int)jsettings->number_);
 			}
 		} else if(strcmp(jsettings->key, "mode") == 0) {
 			if(!jsettings->string_) {
@@ -165,7 +165,7 @@ int settings_parse(JsonNode *root) {
 					is_node = 1;
 				}
 				if(strcmp(jsettings->string_, "server") == 0 || strcmp(jsettings->string_, "client") == 0) {
-					settings_add_string_node(jsettings->key, jsettings->string_);
+					settings_add_string(jsettings->key, jsettings->string_);
 				} else {
 					logprintf(LOG_ERR, "setting \"%s\" must be \"server\" or \"client\"", jsettings->key);
 					have_error = 1;
@@ -178,7 +178,7 @@ int settings_parse(JsonNode *root) {
 				have_error = 1;
 				goto clear;
 			} else {
-				settings_add_number_node(jsettings->key, (int)jsettings->number_);
+				settings_add_number(jsettings->key, (int)jsettings->number_);
 			}
 		} else if(strcmp(jsettings->key, "pid-file") == 0 || strcmp(jsettings->key, "log-file") == 0) {
 			if(!jsettings->string_) {
@@ -191,7 +191,7 @@ int settings_parse(JsonNode *root) {
 					have_error = 1;
 					goto clear;				
 				} else {
-					settings_add_string_node(jsettings->key, jsettings->string_);
+					settings_add_string(jsettings->key, jsettings->string_);
 				}
 			}
 		} else if(strcmp(jsettings->key, "config-file") == 0 || strcmp(jsettings->key, "process-file") == 0) {
@@ -204,7 +204,7 @@ int settings_parse(JsonNode *root) {
 					if(strcmp(jsettings->key, "config-file") == 0) {
 						has_config = 1;
 					}
-					settings_add_string_node(jsettings->key, jsettings->string_);
+					settings_add_string(jsettings->key, jsettings->string_);
 				} else {
 					logprintf(LOG_ERR, "setting \"%s\" must point to an existing file", jsettings->key);
 					have_error = 1;
@@ -242,7 +242,7 @@ int settings_parse(JsonNode *root) {
 					have_error = 1;
 					goto clear;
 				}
-				settings_add_string_node(jsettings->key, jsettings->string_);
+				settings_add_string(jsettings->key, jsettings->string_);
 			}
 		} else if(strcmp(jsettings->key, "hw-socket") == 0) {
 			if(!jsettings->string_) {
@@ -251,7 +251,7 @@ int settings_parse(JsonNode *root) {
 				goto clear;
 			} else {
 				has_socket = 1;
-				settings_add_string_node(jsettings->key, jsettings->string_);
+				settings_add_string(jsettings->key, jsettings->string_);
 			}
 		} else if(strcmp(jsettings->key, "hw-mode") == 0) {
 			if(!jsettings->string_) {
@@ -266,7 +266,7 @@ int settings_parse(JsonNode *root) {
 				} else if(strcmp(jsettings->string_, "gpio") == 0) {
 					hw_mode = 2;
 				}
-				settings_add_string_node(jsettings->key, jsettings->string_);
+				settings_add_string(jsettings->key, jsettings->string_);
 			}
 		} else if(strcmp(jsettings->key, "webserver-port") == 0) {
 			if(jsettings->number_ < 0) {
@@ -275,7 +275,7 @@ int settings_parse(JsonNode *root) {
 				goto clear;
 			} else {
 				web_port = (int)jsettings->number_;
-				settings_add_number_node(jsettings->key, (int)jsettings->number_);
+				settings_add_number(jsettings->key, (int)jsettings->number_);
 			}
 		} else if(strcmp(jsettings->key, "webserver-root") == 0) {
 			if(!jsettings->string_) {
@@ -283,7 +283,7 @@ int settings_parse(JsonNode *root) {
 				have_error = 1;
 				goto clear;
 			} else {
-				settings_add_string_node(jsettings->key, jsettings->string_);
+				settings_add_string(jsettings->key, jsettings->string_);
 			}
 		} else if(strcmp(jsettings->key, "webserver-enable") == 0) {
 			if(jsettings->number_ < 0 || jsettings->number_ > 1) {
@@ -291,7 +291,7 @@ int settings_parse(JsonNode *root) {
 				have_error = 1;
 				goto clear;
 			} else {
-				settings_add_number_node(jsettings->key, (int)jsettings->number_);
+				settings_add_number(jsettings->key, (int)jsettings->number_);
 			}
 		} else if(strcmp(jsettings->key, "gpio-receiver") == 0) {
 			if(jsettings->number_ < 0 || jsettings->number_ > 7) {
@@ -300,7 +300,7 @@ int settings_parse(JsonNode *root) {
 				goto clear;
 			} else {
 				gpio_out = (int)jsettings->number_;
-				settings_add_number_node(jsettings->key, (int)jsettings->number_);
+				settings_add_number(jsettings->key, (int)jsettings->number_);
 			}			
 		} else if(strcmp(jsettings->key, "gpio-sender") == 0) {
 			if(jsettings->number_ < 0 || jsettings->number_ > 7) {
@@ -309,7 +309,7 @@ int settings_parse(JsonNode *root) {
 				goto clear;
 			} else {
 				gpio_in = (int)jsettings->number_;
-				settings_add_number_node(jsettings->key, (int)jsettings->number_);
+				settings_add_number(jsettings->key, (int)jsettings->number_);
 			}			
 		} else if(strcmp(jsettings->key, "server") == 0) {
 			JsonNode *jserver = json_find_member(root, "server");
@@ -334,8 +334,8 @@ int settings_parse(JsonNode *root) {
 				have_error = 1;
 				goto clear;
 			} else if(strlen(server_ip) > 0 && server_port > 0 && is_node == 1) {
-				settings_add_string_node("server-ip", server_ip);
-				settings_add_number_node("server-port", server_port);
+				settings_add_string("server-ip", server_ip);
+				settings_add_number("server-port", server_port);
 			} else {	
 				logprintf(LOG_ERR, "setting \"%s\" must be in the format of [ \"x.x.x.x\", xxxx ]", jsettings->key);
 				have_error = 1;
@@ -410,6 +410,11 @@ int settings_gc(void) {
 		free(tmp);
 	}
 	free(settings);
+	
+	if(settingsfile) {
+		free(settingsfile);
+		settingsfile = NULL;
+	}
 	logprintf(LOG_DEBUG, "garbage collected settings library");
 	return 1;
 }

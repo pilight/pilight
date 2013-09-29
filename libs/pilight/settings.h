@@ -69,8 +69,8 @@ char *progname;
 /* The location of the settings file */
 char *settingsfile;
 
-void settings_add_string_node(const char *name, char *value);
-void settings_add_int_node(const char *name, int value);
+void settings_add_string(const char *name, char *value);
+void settings_add_int(const char *name, int value);
 int settings_find_number(const char *name, int *out);
 int settings_find_string(const char *name, char **out);
 int settings_path_exists(char *fil);
