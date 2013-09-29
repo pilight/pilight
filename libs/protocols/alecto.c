@@ -35,7 +35,7 @@ void alectoParseCode(int repeats) {
 	int battery;
 	int id;
 
-	for(i=1;i<alecto->rawLength-1;i+=2) {
+	for(i=1;i<alecto->rawlen-1;i+=2) {
 		alecto->binary[x++] = alecto->code[i];
 	}
 
@@ -77,7 +77,7 @@ void alectoInit(void) {
 	alecto->header = 14;
 	alecto->pulse = 14;
 	alecto->footer = 30;
-	alecto->rawLength = 74;
+	alecto->rawlen = 74;
 	alecto->lsb = 3;
 
 	alecto->bit = 0;

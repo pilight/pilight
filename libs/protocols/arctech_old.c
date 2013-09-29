@@ -40,7 +40,7 @@ void arctechOldCreateMessage(int id, int unit, int state) {
 void arctechOldParseBinary(int repeats) {
 	int fp = 0;
 	int i = 0;
-	for(i=0;i<arctech_old->binLength;i++) {
+	for(i=0;i<arctech_old->binlen;i++) {
 		if((arctech_old->code[(4*i+0)] != 0) || (arctech_old->code[(4*i+1)] != 1)
 			|| (arctech_old->code[(4*i+2)] == arctech_old->code[(4*i+3)])) {
 			fp = 1;
@@ -176,8 +176,8 @@ void arctechOldInit(void) {
 	arctech_old->type = SWITCH;
 	arctech_old->pulse = 4;
 	arctech_old->footer = 39;
-	arctech_old->rawLength = 50;
-	arctech_old->binLength = 12;
+	arctech_old->rawlen = 50;
+	arctech_old->binlen = 12;
 	arctech_old->lsb = 2;
 
 	arctech_old->bit = 0;

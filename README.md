@@ -11,7 +11,8 @@ New (Experimental) Features
 - Allow (non-blocking) pilight-send call from within process file.
 - Added a protocol specific "readonly" setting. This should disable controlling devices from the GUIs.
 - Added whitelist setting for socket connections.
-
+- Allow protocol specific pulse lengths
+- Default pulse length has been changed from 295 to 294.
 New config syntax:
 
 ```

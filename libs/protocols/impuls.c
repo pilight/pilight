@@ -198,7 +198,8 @@ void impulsInit(void) {
 	impuls->type = SWITCH;
 	impuls->pulse = 3;
 	impuls->footer = 33;
-	impuls->rawLength = 50;
+	impuls->rawlen = 50;
+	impuls->plslen = 2;
 	//impuls->binLength = 12;
 	//impuls->lsb = 1;
 

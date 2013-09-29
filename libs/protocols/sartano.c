@@ -41,7 +41,7 @@ void sartanoCreateMessage(int systemcode, int unitcode, int state) {
 void sartanoParseBinary(int repeats) {
 	int fp = 0;
 	int i = 0;
-	for(i=0;i<sartano->binLength;i++) {
+	for(i=0;i<sartano->binlen;i++) {
 		if((sartano->code[(4*i+0)] != 0) || (sartano->code[(4*i+1)] != 1)
 		   || (sartano->code[(4*i+2)] == sartano->code[(4*i+3)])) {
 			fp = 1;
@@ -180,8 +180,8 @@ void sartanoInit(void) {
 	sartano->type = SWITCH;
 	sartano->pulse = 3;
 	sartano->footer = 33;
-	sartano->rawLength = 50;
-	sartano->binLength = 12;
+	sartano->rawlen = 50;
+	sartano->binlen = 12;
 	sartano->lsb = 3;
 
 	sartano->bit = 0;

@@ -193,7 +193,7 @@ void arctechSwInit(void) {
 	arctech_switch->header = 9;
 	arctech_switch->pulse = 5;
 	arctech_switch->footer = 35;
-	arctech_switch->rawLength = 132;
+	arctech_switch->rawlen = 132;
 	arctech_switch->lsb = 3;
 
 	arctech_switch->bit = 0;

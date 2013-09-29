@@ -313,14 +313,14 @@ void send_code(JsonNode *json) {
 
 				if(match == 1) {
 					/* Create a single code with all repeats included */
-					int code_len = (protocol->rawLength*send_repeat*protocol->send_repeats)+1;
+					int code_len = (protocol->rawlen*send_repeat*protocol->txrpt)+1;
 					size_t send_len = (size_t)(code_len * (int)sizeof(int));
 					int longCode[code_len];
 					memset(longCode, 0, send_len);
 
-					for(i=0;i<(send_repeat*protocol->send_repeats);i++) {
-						for(x=0;x<protocol->rawLength;x++) {
-							longCode[x+(protocol->rawLength*i)]=protocol->raw[x];
+					for(i=0;i<(send_repeat*protocol->txrpt);i++) {
+						for(x=0;x<protocol->rawlen;x++) {
+							longCode[x+(protocol->rawlen*i)]=protocol->raw[x];
 						}
 					}
 
@@ -713,7 +713,7 @@ void socket_client_disconnected(int i) {
 void receive_code(void) {
 	short header = 0;
 	unsigned int x = 0, match = 0;
-	int y = 0;
+	int y = 0, plslen = PULSE_LENGTH;
 	struct protocol_conflicts_t *tmp_conflicts = NULL;
 	struct protocol_t *protocol = NULL;
 	struct hardware_t *hardware = NULL;
@@ -748,7 +748,7 @@ void receive_code(void) {
 					protocol = pnode->listener;
 
 					/* Lots of checks if the protocol can actually receive anything */
-					if((((protocol->parseRaw || protocol->parseCode) && protocol->rawLength > 0)
+					if((((protocol->parseRaw || protocol->parseCode) && protocol->rawlen > 0)
 					    || protocol->parseBinary)
 						&& protocol->footer > 0	&& protocol->pulse > 0) {
 						/* If we are recording, keep recording until the footer has been matched */
@@ -767,25 +767,27 @@ void receive_code(void) {
 							header = (short)protocol->header;
 						}
 
+						plslen = (PULSE_LENGTH/protocol->plslen);
+						
 						/* Try to catch the header of the code */
-						if(duration > (PULSE_LENGTH-(PULSE_LENGTH*MULTIPLIER))
-						   && duration < (PULSE_LENGTH+(PULSE_LENGTH*MULTIPLIER))
+						if(duration > (plslen-(plslen*MULTIPLIER))
+						   && duration < (plslen+(plslen*MULTIPLIER))
 						   && protocol->bit == 0) {
 							protocol->raw[protocol->bit++] = duration;
-						} else if(duration > ((header*PULSE_LENGTH)-((header*PULSE_LENGTH)*MULTIPLIER))
-						   && duration < ((header*PULSE_LENGTH)+((header*PULSE_LENGTH)*MULTIPLIER))
+						} else if(duration > ((header*plslen)-((header*plslen)*MULTIPLIER))
+						   && duration < ((header*plslen)+((header*plslen)*MULTIPLIER))
 						   && protocol->bit == 1) {
 							protocol->raw[protocol->bit++] = duration;
 							protocol->recording = 1;
 						}
 
 						/* Try to catch the footer of the code */
-						if(duration > ((protocol->footer*PULSE_LENGTH)-((protocol->footer*PULSE_LENGTH)*MULTIPLIER))
-						   && duration < ((protocol->footer*PULSE_LENGTH)+((protocol->footer*PULSE_LENGTH)*MULTIPLIER))) {
+						if(duration > ((protocol->footer*plslen)-((protocol->footer*plslen)*MULTIPLIER))
+						   && duration < ((protocol->footer*plslen)+((protocol->footer*plslen)*MULTIPLIER))) {
 							//logprintf(LOG_DEBUG, "caught %s header and footer", protocol->id);
 
 							/* Check if the code matches the raw length */
-							if((protocol->bit == protocol->rawLength)) {
+							if((protocol->bit == protocol->rawlen)) {
 								if(protocol->parseRaw) {
 									logprintf(LOG_DEBUG, "called %s parseRaw()", protocol->id);
 
@@ -829,7 +831,7 @@ void receive_code(void) {
 											second = 0;
 										}
 										protocol->pCode[x]=protocol->code[x];
-										if(protocol->raw[x] > ((protocol->pulse*PULSE_LENGTH)-PULSE_LENGTH)) {
+										if(protocol->raw[x] > ((protocol->pulse*plslen)-plslen)) {
 											protocol->code[x]=1;
 										} else {
 											protocol->code[x]=0;
@@ -853,7 +855,7 @@ void receive_code(void) {
 									y++;
 
 									/* Continue if we have recognized enough repeated codes */
-									if(y >= (receive_repeat*protocol->receive_repeats)) {
+									if(y >= (receive_repeat*protocol->rxrpt)) {
 										if(protocol->parseCode) {
 											logprintf(LOG_DEBUG, "caught minimum # of repeats %d of %s", y, protocol->id);
 											logprintf(LOG_DEBUG, "called %s parseCode()", protocol->id);
@@ -903,7 +905,7 @@ void receive_code(void) {
 											}
 
 											/* Check if the binary matches the binary length */
-											if((protocol->binLength > 0 && ((x/4) == protocol->binLength)) || (protocol->binLength == 0 && ((x/4) == protocol->rawLength/4))) {
+											if((protocol->binlen > 0 && ((x/4) == protocol->binlen)) || (protocol->binlen == 0 && ((x/4) == protocol->rawlen/4))) {
 												logprintf(LOG_DEBUG, "called %s parseBinary()", protocol->id);
 
 												protocol->parseBinary(y);

@@ -225,7 +225,7 @@ void arctechDimInit(void) {
 	arctech_dimmer->header = 10;
 	arctech_dimmer->pulse = 5;
 	arctech_dimmer->footer = 38;
-	arctech_dimmer->rawLength = 148;
+	arctech_dimmer->rawlen = 148;
 	arctech_dimmer->lsb = 3;
 
 	arctech_dimmer->bit = 0;
