@@ -45,7 +45,12 @@ int genDimCreateCode(JsonNode *code) {
 	int id = -1;
 	int state = -1;
 	int dimlevel = -1;
+	int max = 0;
+	int min = 10;
 	char *tmp;
+
+	protocol_setting_get_number(generic_dimmer, "min", &min);
+	protocol_setting_get_number(generic_dimmer, "max", &max);	
 
 	if(json_find_string(code, "id", &tmp) == 0)
 		id=atoi(tmp);
@@ -59,6 +64,9 @@ int genDimCreateCode(JsonNode *code) {
 	if(id == -1 || (dimlevel == -1 && state == -1)) {
 		logprintf(LOG_ERR, "generic_dimmer: insufficient number of arguments");
 		return EXIT_FAILURE;
+	} else if(dimlevel != -1 && (dimlevel > max || dimlevel < min)) {
+		logprintf(LOG_ERR, "arctech_dimmer: invalid dimlevel range");
+		return EXIT_FAILURE;		
 	} else if(dimlevel >= 0 && state == 0) {
 		logprintf(LOG_ERR, "generic_dimmer: dimlevel and state cannot be combined");
 		return EXIT_FAILURE;

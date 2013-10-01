@@ -154,7 +154,7 @@ int main(int argc, char **argv) {
 	while(1) {
 		if(steps > WELCOME) {
 			/* Clear the receive buffer again and read the welcome message */
-			if(steps == REQUEST) {
+			if(steps == CONFIG) {
 				if((recvBuff = socket_read_big(sockfd)) != NULL) {
 					json = json_decode(recvBuff);
 					json_find_string(json, "message", &message);

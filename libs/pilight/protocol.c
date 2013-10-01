@@ -19,6 +19,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <regex.h>
 
 #include "options.h"
 #include "protocol.h"
@@ -221,6 +222,12 @@ void protocol_setting_add_string(protocol_t *proto, const char *name, const char
 }
 
 int protocol_setting_check_number(protocol_t *proto, const char *name, int value) {
+
+#ifndef __FreeBSD__	
+	regex_t regex;
+	int reti;
+#endif
+
 	if((strcmp(name, "readonly") == 0 ||
 		strcmp(name, "temperature") == 0 ||
 		strcmp(name, "battery") == 0 ||
@@ -230,6 +237,32 @@ int protocol_setting_check_number(protocol_t *proto, const char *name, int value
 	}
 	if(strcmp(name, "decimals") == 0 && (value < 0 || value > 2)) {
 		return 1;
+	}
+	if(strcmp(name, "min") == 0 || strcmp(name, "max") == 0) {
+		struct options_t *tmp_options = proto->options;
+		while(tmp_options) {
+			if(tmp_options->conftype == config_value && strlen(tmp_options->mask) > 0) {
+#ifndef __FreeBSD__
+				/* If the argument has a regex mask, check if it passes */
+				reti = regcomp(&regex, tmp_options->mask, REG_EXTENDED);
+				if(reti) {
+					logprintf(LOG_ERR, "could not compile regex");
+					return 1;
+				}
+				char *tmp = malloc(sizeof(value)+1);
+				sprintf(tmp, "%d", value);
+				reti = regexec(&regex, tmp, 0, NULL, 0);
+				if(reti == REG_NOMATCH || reti != 0) {
+					free(tmp);
+					regfree(&regex);
+					return 1;
+				}
+				free(tmp);
+				regfree(&regex);
+#endif
+			}
+			tmp_options = tmp_options->next;
+		}
 	}
 	
 	switch(proto->type) {
@@ -274,7 +307,7 @@ void protocol_setting_add_number(protocol_t *proto, const char *name, int value)
 		snode->type = 2;
 		snode->next	= proto->settings;
 		proto->settings = snode;
-	} else {	
+	} else {
 		logprintf(LOG_ERR, "protocol \"%s\" setting \"%s\" is invalid", proto->id, name);
 		exit(EXIT_FAILURE);
 	}

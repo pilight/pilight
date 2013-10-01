@@ -156,7 +156,12 @@ int arctechDimCreateCode(JsonNode *code) {
 	int state = -1;
 	int all = 0;
 	int dimlevel = -1;
+	int max = 0;
+	int min = 15;
 	char *tmp;
+
+	protocol_setting_get_number(arctech_dimmer, "min", &min);
+	protocol_setting_get_number(arctech_dimmer, "max", &max);
 
 	if(json_find_string(code, "id", &tmp) == 0)
 		id=atoi(tmp);
@@ -180,7 +185,7 @@ int arctechDimCreateCode(JsonNode *code) {
 	} else if((unit > 15 || unit < 0) && all == 0) {
 		logprintf(LOG_ERR, "arctech_dimmer: invalid unit range");
 		return EXIT_FAILURE;
-	} else if(state == -1 && (dimlevel > 16 || dimlevel < 0)) {
+	} else if(dimlevel != -1 && (dimlevel > max || dimlevel < min)) {
 		logprintf(LOG_ERR, "arctech_dimmer: invalid dimlevel range");
 		return EXIT_FAILURE;
 	} else if(dimlevel >= 0 && state == 0) {
@@ -231,7 +236,7 @@ void arctechDimInit(void) {
 	arctech_dimmer->bit = 0;
 	arctech_dimmer->recording = 0;
 
-	options_add(&arctech_dimmer->options, 'd', "dimlevel", has_value, config_value, "^([0-9]{1}|[1][0-6])$");
+	options_add(&arctech_dimmer->options, 'd', "dimlevel", has_value, config_value, "^([0-9]{1}|[1][0-5])$");
 	options_add(&arctech_dimmer->options, 'a', "all", no_value, 0, NULL);
 	options_add(&arctech_dimmer->options, 'u', "unit", has_value, config_id, "^([0-9]{1}|[1][0-5])$");
 	options_add(&arctech_dimmer->options, 'i', "id", has_value, config_id, "^([0-9]{1,7}|[1-5][0-9]{7}|6([0-6][0-9]{6}|7(0[0-9]{5}|10([0-7][0-9]{3}|8([0-7][0-9]{2}|8([0-5][0-9]|6[0-3]))))))$");

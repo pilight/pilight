@@ -696,7 +696,7 @@ void config_save_setting(int i, JsonNode *jsetting, struct conf_settings_t *snod
 		}
 		vnode->next = conf_values;
 		conf_values = vnode;
-		
+
 		snode->values = malloc(sizeof(struct conf_values_t));
 		/* Only store values if they are present */
 		if(conf_values) {
