@@ -55,6 +55,7 @@ int genSwitchCreateCode(JsonNode *code) {
 	} else {
 		genSwitchCreateMessage(id, state);
 	}
+
 	return EXIT_SUCCESS;
 
 }
@@ -66,7 +67,7 @@ void genSwitchPrintHelp(void) {
 }
 
 void genSwitchInit(void) {
-	
+
 	protocol_register(&generic_switch);
 	generic_switch->id = malloc(15);
 	strcpy(generic_switch->id, "generic_switch");

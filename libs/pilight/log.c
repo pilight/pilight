@@ -49,6 +49,10 @@ int log_gc(void) {
 			lf = NULL;
 		}
 	}
+	if(logfile) {
+		free(logfile);
+		logfile = NULL;
+	}
 	if(logpath) {
 		free(logpath);
 		logpath = NULL;
@@ -172,7 +176,7 @@ void log_file_set(char *log) {
 			} else {
 				logprintf(LOG_ERR, "failed to run stat on log folder", optarg);
 				free(logpath);
-				logpath = NULL;				
+				logpath = NULL;
 				exit(EXIT_FAILURE);
 			}
 		} else {
@@ -182,7 +186,7 @@ void log_file_set(char *log) {
 			} else {
 				logprintf(LOG_ERR, "the log file folder does not exist", optarg);
 				free(logpath);
-				logpath = NULL;				
+				logpath = NULL;
 				exit(EXIT_FAILURE);
 			}
 		}

@@ -79,11 +79,13 @@ typedef struct protocol_t {
 	void (*parseCode)(int repeats);
 	void (*parseBinary)(int repeats);
 	int (*createCode)(JsonNode *code);
+	int (*checkValues)(JsonNode *code);
 	void (*printHelp)(void);
 } protocol_t;
 
 typedef struct protocols_t {
 	struct protocol_t *listener;
+	char *name;
 	struct protocols_t *next;
 } protocols_t;
 

@@ -43,6 +43,7 @@
 #include "wiringPi.h"
 #include "irq.h"
 #include "hardware.h"
+#include "pilight.h"
 
 typedef enum {
 	RECEIVER,
@@ -178,12 +179,13 @@ void *call_process_file(void *param) {
 }
 
 int broadcast(char *protoname, JsonNode *json) {
+
 	int i = 0, broadcasted = 0;
 	char *message = json_stringify(json, NULL);
 
 	JsonNode *jret = NULL;
 
-	/* Update the config file */
+	/* Update the config */
 	if(config_update(protoname, json, &jret) == 0) {
 		char *conf = json_stringify(jret, NULL);
 
@@ -199,7 +201,7 @@ int broadcast(char *protoname, JsonNode *json) {
 		}
 		free(conf);
 	}
-	if(jret != NULL) {
+	if(jret) {
 		json_delete(jret);
 	}
 	broadcasted = 0;
@@ -218,7 +220,8 @@ int broadcast(char *protoname, JsonNode *json) {
 		escape_characters(escaped, message);
 
 		if(process_file && strlen(process_file) > 0) {
-			/* Call the external file */
+			/* Call the external file in a seperate thread to make
+			   it non-blocking. */
 			if(strlen(process_file) > 0) {
 				pthread_create(&pth4, NULL, &call_process_file, (void *)escaped);
 				usleep(100);
@@ -239,7 +242,6 @@ int broadcast(char *protoname, JsonNode *json) {
 /* Send a specific code */
 void send_code(JsonNode *json) {
 	int i = 0, match = 0, x = 0, logged = 0;
-	char *name;
 
 	/* Hold the final protocol struct */
 	struct protocol_t *protocol = NULL;
@@ -247,121 +249,148 @@ void send_code(JsonNode *json) {
 
 	JsonNode *jcode = NULL;
 	JsonNode *jsettings = NULL;
-	JsonNode *message = json_mkobject();
+	JsonNode *jprotocols = NULL;
+	JsonNode *jprotocol = NULL;
+	JsonNode *message = NULL;
 
 	if(!(jcode = json_find_member(json, "code"))) {
 		logprintf(LOG_ERR, "sender did not send any codes");
 		json_delete(jcode);
-	} else if(json_find_string(jcode, "protocol", &name) != 0) {
+	} else if(!(jprotocols = json_find_member(jcode, "protocol"))) {
 		logprintf(LOG_ERR, "sender did not provide a protocol name");
 		json_delete(jcode);
 	} else {
-		struct protocols_t *pnode = protocols;
-		/* Retrieve the used protocol */
-		while(pnode) {
-			protocol = pnode->listener;
-			/* Check if the protocol exists */
-			if(protocol_device_exists(protocol, name) == 0 && match == 0) {
-				match = 1;
-				break;
-			}
-			pnode = pnode->next;
-		}
 		logged = 0;
 		/* If we matched a protocol and are not already sending, continue */
-		if(match == 1 && sending == 0 && protocol->createCode && send_repeat > 0) {
-
-			if((jsettings = json_find_member(jcode, "settings"))) {
-				JsonNode *jchild = json_first_child(jsettings);
-				while(jchild) {
-					if(jchild->tag == JSON_NUMBER) {
-						protocol_setting_update_number(protocol, jchild->key, (int)jchild->number_);
-					} else if(jchild->tag == JSON_STRING) {
-						protocol_setting_update_string(protocol, jchild->key, jchild->string_);
-					}
-					jchild = jchild->next;
-				}
-				json_delete(jchild);
-			}
-
-			/* Let the protocol create his code */
-			if(protocol->createCode(jcode) == 0) {
-				if(protocol->message) {
-					char *valid = json_stringify(protocol->message, NULL);
-					json_delete(protocol->message);
-					if(json_validate(valid) == true) {
-						json_append_member(message, "origin", json_mkstring("sender"));
-						json_append_member(message, "protocol", json_mkstring(protocol->id));
-						json_append_member(message, "code", json_decode(valid));
-					}
-					protocol->message = NULL;
-					free(valid);
-				}
-
-				sending = 1;
-
-				struct hardwares_t *htmp = hardwares;
+		if(sending == 0 && send_repeat > 0) {
+			jprotocol = json_first_child(jprotocols);
+			while(jprotocol) {
 				match = 0;
-				while(htmp) {
-					if(strcmp(htmp->listener->id, hw_mode) == 0) {
-						hardware = htmp->listener;
-						match = 1;
-						break;
+				logged = 0;
+				if(jprotocol->tag == JSON_STRING) {
+					struct protocols_t *pnode = protocols;
+					/* Retrieve the used protocol */
+					while(pnode) {
+						protocol = pnode->listener;
+						/* Check if the protocol exists */
+						if(protocol_device_exists(protocol, jprotocol->string_) == 0 && match == 0) {
+							match = 1;
+							break;
+						}
+						pnode = pnode->next;
 					}
-					htmp = htmp->next;
 				}
 
-				if(match == 1) {
-					/* Create a single code with all repeats included */
-					int code_len = (protocol->rawlen*send_repeat*protocol->txrpt)+1;
-					size_t send_len = (size_t)(code_len * (int)sizeof(int));
-					int longCode[code_len];
-					memset(longCode, 0, send_len);
-
-					for(i=0;i<(send_repeat*protocol->txrpt);i++) {
-						for(x=0;x<protocol->rawlen;x++) {
-							longCode[x+(protocol->rawlen*i)]=protocol->raw[x];
+				if(match == 1 && protocol->createCode) {
+					/* Temporary alter the protocol specific settings */
+					if((jsettings = json_find_member(jcode, "settings"))) {
+						JsonNode *jchild = NULL;
+						if((jchild = json_first_child(jsettings))) {
+							while(jchild) {
+								if(jchild->tag == JSON_NUMBER) {
+									if(protocol_setting_check_number(protocol, jchild->key, (int)jchild->number_) == 0) {
+										protocol_setting_update_number(protocol, jchild->key, (int)jchild->number_);
+									}
+								} else if(jchild->tag == JSON_STRING) {
+									if(protocol_setting_check_string(protocol, jchild->key, jchild->string_) == 0) {
+										protocol_setting_update_string(protocol, jchild->key, jchild->string_);
+									}
+								}
+								jchild = jchild->next;
+							}
+							json_delete(jchild);
 						}
 					}
 
-					longCode[code_len] = 0;
+					/* Let the protocol create his code */
+					if(protocol->createCode(jcode) == 0) {
+						message = json_mkobject();
+						if(protocol->message) {
+							char *valid = json_stringify(protocol->message, NULL);
+							json_delete(protocol->message);
+							if(json_validate(valid) == true) {
+								json_append_member(message, "origin", json_mkstring("sender"));
+								json_append_member(message, "protocol", json_mkstring(protocol->id));
+								json_append_member(message, "code", json_decode(valid));
+							}
+							protocol->message = NULL;
+							free(valid);
+						}
 
-					if(hardware->send) {
-						if(hardware->send(longCode) == 0) {
-							logprintf(LOG_DEBUG, "successfully send %s code", protocol->id);
-							if(logged == 0) {
+						sending = 1;
+
+						struct hardwares_t *htmp = hardwares;
+						match = 0;
+						while(htmp) {
+							if(strcmp(htmp->listener->id, hw_mode) == 0) {
+								hardware = htmp->listener;
+								match = 1;
+								break;
+							}
+							htmp = htmp->next;
+						}
+
+						if(match == 1) {
+							/* Create a single code with all repeats included */
+							int code_len = (protocol->rawlen*send_repeat*protocol->txrpt)+1;
+							size_t send_len = (size_t)(code_len * (int)sizeof(int));
+							int longCode[code_len];
+							memset(longCode, 0, send_len);
+
+							for(i=0;i<(send_repeat*protocol->txrpt);i++) {
+								for(x=0;x<protocol->rawlen;x++) {
+									longCode[x+(protocol->rawlen*i)]=protocol->raw[x];
+								}
+							}
+
+							longCode[code_len] = 0;
+							if(hardware->send) {
+								if(hardware->send(longCode) == 0) {
+									logprintf(LOG_DEBUG, "successfully send %s code", protocol->id);
+									if(logged == 0) {
+										logged = 1;
+										/* Write the message to all receivers */
+										broadcast(protocol->id, message);
+										json_delete(message);
+										message = NULL;
+									}
+								} else {
+									logprintf(LOG_ERR, "failed to send code");
+								}
+							} else if(logged == 0) {
 								logged = 1;
 								/* Write the message to all receivers */
 								broadcast(protocol->id, message);
 								json_delete(message);
 								message = NULL;
 							}
-						} else {
-							logprintf(LOG_ERR, "failed to send code");
 						}
-					} else if(logged == 0) {
-						logged = 1;
-						/* Write the message to all receivers */
-						broadcast(protocol->id, message);
-						json_delete(message);
-						message = NULL;
+
+						sending = 0;
+					}
+
+					/* Restore the protocol specific settings to their default values */
+					if((jsettings = json_find_member(jcode, "settings"))) {
+						JsonNode *jchild = NULL;
+						if((jchild = json_first_child(jsettings))) {
+							while(jchild) {
+								if(jchild->tag == JSON_NUMBER) {
+									if(protocol_setting_check_number(protocol, jchild->key, (int)jchild->number_) == 0) {
+										protocol_setting_restore(protocol, jchild->key);
+									}
+								} else if(jchild->tag == JSON_STRING) {
+									if(protocol_setting_check_string(protocol, jchild->key, jchild->string_) == 0) {
+										protocol_setting_restore(protocol, jchild->key);
+									}
+								}
+								jchild = jchild->next;
+							}
+							json_delete(jchild);
+						}
 					}
 				}
-
-				sending = 0;
+				jprotocol = jprotocol->next;
 			}
-
-			if((jsettings = json_find_member(jcode, "settings"))) {
-				JsonNode *jchild = json_first_child(jsettings);
-				while(jchild) {
-					if(jchild->tag == JSON_NUMBER || jchild->tag == JSON_STRING) {
-						protocol_setting_restore(protocol, jchild->key);
-					}
-					jchild = jchild->next;
-				}
-				json_delete(jchild);
-			}
-
 		}
 		if(message) {
 			json_delete(message);
@@ -389,6 +418,7 @@ void control_device(struct conf_devices_t *dev, char *state, JsonNode *values) {
 	struct conf_settings_t *sett = NULL;
 	struct conf_values_t *val = NULL;
 	struct options_t *opt = NULL;
+	struct protocols_t *tmp_protocols = NULL;
 	unsigned short has_settings = 0;
 
 	char *ctmp = NULL;
@@ -396,69 +426,82 @@ void control_device(struct conf_devices_t *dev, char *state, JsonNode *values) {
 	JsonNode *code = json_mkobject();
 	JsonNode *json = json_mkobject();
 	JsonNode *jsettings = json_mkobject();
+	JsonNode *jprotocols = json_mkarray();
 
 	/* Check all protocol options */
-	if((opt = dev->protopt->options)) {
-		while(opt) {
-			sett = dev->settings;
-			while(sett) {
-				/* Retrieve the device id's */
-				if(strcmp(sett->name, "id") == 0) {
-					val = sett->values;
-					while(val) {
-						if(opt->conftype == config_id && strcmp(val->name, opt->name) == 0 && json_find_string(code, val->name, &ctmp) != 0) {
-							json_append_member(code, val->name, json_mkstring(val->value));
-						}
-						val = val->next;
-					}
-				}
-
-				/* Retrieve the protocol specific settings */
-				if(strcmp(sett->name, "settings") == 0 && !has_settings) {
-					has_settings = 1;
-					val = sett->values;
-					while(val) {
-						if(val->type == CONFIG_TYPE_NUMBER) {
-							json_append_member(jsettings, val->name, json_mknumber(atoi(val->value)));
-						} else if(val->type == CONFIG_TYPE_STRING) {
-							json_append_member(jsettings, val->name, json_mkstring(val->value));
-						}
-						val = val->next;
-					}
-				}
-				sett = sett->next;
-			}
-			opt = opt->next;
-		}
-		while(values) {
-			opt = dev->protopt->options;
+	tmp_protocols = dev->protocols;
+	while(tmp_protocols) {
+		json_append_element(jprotocols, json_mkstring(tmp_protocols->name));
+		if((opt = tmp_protocols->listener->options)) {
 			while(opt) {
-				if(opt->conftype == config_value && strcmp(values->key, opt->name) == 0) {
-					json_append_member(code, values->key, json_mkstring(values->string_));
+				sett = dev->settings;
+				while(sett) {
+					/* Retrieve the device id's */
+					if(strcmp(sett->name, "id") == 0) {
+						val = sett->values;
+						while(val) {
+							if(opt->conftype == config_id && strcmp(val->name, opt->name) == 0 && json_find_string(code, val->name, &ctmp) != 0) {
+								json_append_member(code, val->name, json_mkstring(val->value));
+							}
+							val = val->next;
+						}
+					}
+
+					/* Retrieve the protocol specific settings */
+					if(strcmp(sett->name, "settings") == 0 && !has_settings) {
+						has_settings = 1;
+						val = sett->values;
+						while(val) {
+							if(val->type == CONFIG_TYPE_NUMBER) {
+								json_append_member(jsettings, val->name, json_mknumber(atoi(val->value)));
+							} else if(val->type == CONFIG_TYPE_STRING) {
+								json_append_member(jsettings, val->name, json_mkstring(val->value));
+							}
+							val = val->next;
+						}
+					}
+					sett = sett->next;
 				}
 				opt = opt->next;
 			}
-			values = values->next;
-		}
-	}
-
-	/* Send the new device state */
-	if(dev->protopt->options) {
-		opt = dev->protopt->options;
-		while(opt) {
-			if(opt->conftype == config_state && opt->argtype == no_value && strcmp(opt->name, state) == 0) {
-				json_append_member(code, opt->name, json_mkstring("1"));
-				break;
-			} else if(opt->conftype == config_state && opt->argtype == has_value) {
-				json_append_member(code, opt->name, json_mkstring(state));
-				break;
+			while(values) {
+				opt = tmp_protocols->listener->options;
+				while(opt) {
+					if(opt->conftype == config_value && strcmp(values->key, opt->name) == 0) {
+						if(values->tag == JSON_STRING) {
+							json_append_member(code, values->key, json_mkstring(values->string_));
+						} else if(values->tag == JSON_NUMBER) {
+							ctmp = realloc(ctmp, sizeof(int));
+							sprintf(ctmp, "%d", (int)values->number_);
+							json_append_member(code, values->key, json_mkstring(ctmp));
+							free(ctmp);
+						}
+					}
+					opt = opt->next;
+				}
+				values = values->next;
 			}
-			opt = opt->next;
 		}
+		/* Send the new device state */
+		if((opt = tmp_protocols->listener->options)) {
+			while(opt) {
+				if(json_find_member(code, opt->name) == NULL) {
+					if(opt->conftype == config_state && opt->argtype == no_value && strcmp(opt->name, state) == 0) {
+						json_append_member(code, opt->name, json_mkstring("1"));
+						break;
+					} else if(opt->conftype == config_state && opt->argtype == has_value) {
+						json_append_member(code, opt->name, json_mkstring(state));
+						break;
+					}
+				}
+				opt = opt->next;
+			}
+		}
+		tmp_protocols = tmp_protocols->next;
 	}
 
 	/* Construct the right json object */
-	json_append_member(code, "protocol", json_mkstring(dev->protoname));
+	json_append_member(code, "protocol", jprotocols);
 	json_append_member(json, "message", json_mkstring("sender"));
 	json_append_member(json, "code", code);
 	json_append_member(code, "settings", jsettings);
@@ -597,7 +640,7 @@ void client_webserver_parse_code(int i, char buffer[BUFFER_SIZE]) {
 				}
 			}
 		} else {
-		/* Redirect all incoming trafic to the pilight webserver port */
+		    /* Catch all webserver page to inform users on which port the webserver runs */
 			socket_write(sd, "HTTP/1.1 200 OK\r");
 			socket_write(sd, "Server : pilight webserver\r");
 			socket_write(sd, "\r");
@@ -633,6 +676,8 @@ void socket_parse_data(int i, char buffer[BUFFER_SIZE]) {
 	if(strcmp(buffer, "HEART\n") == 0) {
 		socket_write(sd, "BEAT");
 	} else {
+		/* Serve static webserver page. This is the only request that's is
+		   expected not to be a json object */
 		if(strstr(buffer, " HTTP/")) {
 			logprintf(LOG_INFO, "client recognized as web");
 			handshakes[i] = WEB;
@@ -640,6 +685,9 @@ void socket_parse_data(int i, char buffer[BUFFER_SIZE]) {
 			socket_close(sd);
 		} else if(json_validate(buffer) == true) {
 			json = json_decode(buffer);
+			/* The incognito mode is used by the daemon to emulate certain clients.
+			   Temporary change the client type from the node mode to the emulated
+			   client mode. */
 			if(json_find_string(json, "incognito", &incognito) == 0) {
 				incognito_mode = 1;
 				for(x=0;x<(sizeof(clients)/sizeof(clients[0]));x++) {
@@ -682,6 +730,7 @@ void socket_parse_data(int i, char buffer[BUFFER_SIZE]) {
 						free(tmp);
 					}
 				}
+				/* Directly after using the incognito mode, restore the node mode */
 				if(incognito_mode == 1) {
 					for(x=0;x<(sizeof(clients)/sizeof(clients[0]));x++) {
 						if(strcmp(clients[x], "node") == 0) {
@@ -698,7 +747,7 @@ void socket_parse_data(int i, char buffer[BUFFER_SIZE]) {
 			}
 		}
 	}
-	if(json != NULL) {
+	if(json) {
 		json_delete(json);
 	}
 }
@@ -741,7 +790,7 @@ void receive_code(void) {
 			duration = hardware->receive();
 
 			/* A space is normally for 295 long, so filter spaces less then 200 */
-			if(sending == 0 && duration > 200) {
+			if(sending == 0 && duration > 150) {
 				struct protocols_t *pnode = protocols;
 				/* Retrieve the used protocol */
 				while(pnode) {
@@ -768,7 +817,7 @@ void receive_code(void) {
 						}
 
 						plslen = (PULSE_LENGTH/protocol->plslen);
-						
+
 						/* Try to catch the header of the code */
 						if(duration > (plslen-(plslen*MULTIPLIER))
 						   && duration < (plslen+(plslen*MULTIPLIER))
@@ -1044,7 +1093,7 @@ void daemonize(void) {
 
 	log_file_enable();
 	log_shell_disable();
-	//Get the pid of the fork
+	/* Get the pid of the fork */
 	pid_t npid = fork();
 	switch(npid) {
 		case 0:
@@ -1158,6 +1207,10 @@ int main(int argc , char **argv) {
 	char *args = NULL;
 	int port = 0;
 
+	int show_help = 0;
+	int show_version = 0;
+	int show_default = 0;
+
 	memset(buffer, '\0', BUFFER_SIZE);
 
 	options_add(&options, 'H', "help", no_value, 0, NULL);
@@ -1172,17 +1225,10 @@ int main(int argc , char **argv) {
 			break;
 		switch(c) {
 			case 'H':
-				printf("Usage: %s [options]\n", progname);
-				printf("\t -H --help\t\tdisplay usage summary\n");
-				printf("\t -V --version\t\tdisplay version\n");
-				printf("\t -S --settings\t\tsettings file\n");
-				printf("\t -D --nodaemon\t\tdo not daemonize and\n");
-				printf("\t\t\t\tshow debug information\n");
-				return (EXIT_SUCCESS);
+				show_help = 1;
 			break;
 			case 'V':
-				printf("%s %.1f\n", progname, VERSION);
-				return (EXIT_SUCCESS);
+				show_version = 1;
 			break;
 			case 'S':
 				if(access(args, F_OK) != -1) {
@@ -1191,23 +1237,40 @@ int main(int argc , char **argv) {
 					settings_set_file(args);
 				} else {
 					fprintf(stderr, "%s: the settings file %s does not exists\n", progname, args);
-					return EXIT_FAILURE;
+					exit(EXIT_FAILURE);
 				}
 			break;
 			case 'D':
 				nodaemon=1;
 			break;
 			default:
-				printf("Usage: %s [options]\n", progname);
-				return (EXIT_FAILURE);
+				show_default = 1;
 			break;
 		}
 	}
 	options_delete(options);
 
+	if(show_help) {
+		printf("Usage: %s [options]\n", progname);
+		printf("\t -H --help\t\tdisplay usage summary\n");
+		printf("\t -V --version\t\tdisplay version\n");
+		printf("\t -S --settings\t\tsettings file\n");
+		printf("\t -D --nodaemon\t\tdo not daemonize and\n");
+		printf("\t\t\t\tshow debug information\n");
+		goto clear;
+	}
+	if(show_version) {
+		printf("%s %.1f\n", progname, VERSION);
+		goto clear;
+	}
+	if(show_default) {
+		printf("Usage: %s [options]\n", progname);
+		goto clear;
+	}
+
 	if(access(settingsfile, F_OK) != -1) {
 		if(settings_read() != 0) {
-			return EXIT_FAILURE;
+			goto clear;
 		}
 	}
 
@@ -1247,7 +1310,7 @@ int main(int argc , char **argv) {
 		}
 	} else {
 		logprintf(LOG_ERR, "could not open / create pid_file %s", pid_file);
-		return EXIT_FAILURE;
+		goto clear;
 	}
 	close(f);
 
@@ -1287,7 +1350,9 @@ int main(int argc , char **argv) {
 	if(running == 1) {
 		nodaemon=1;
 		logprintf(LOG_NOTICE, "already active (pid %d)", atoi(buffer));
-		return EXIT_FAILURE;
+		log_level_set(LOG_NOTICE);
+		log_shell_disable();
+		goto clear;
 	}
 
 	/* Initialize peripheral modules */
@@ -1309,13 +1374,13 @@ int main(int argc , char **argv) {
 		}
 	} else {
 		logprintf(LOG_NOTICE, "the \"%s\" hw-mode is not supported", hw_mode);
-		return EXIT_FAILURE;
+		goto clear;
 	}
 
 	if(settings_find_string("config-file", &stmp) == 0) {
 		if(config_set_file(stmp) == 0) {
 			if(config_read() != 0) {
-				return EXIT_FAILURE;
+				goto clear;
 			} else {
 				receivers++;
 			}
@@ -1339,6 +1404,10 @@ int main(int argc , char **argv) {
 	memset(socket_clients, 0, sizeof(socket_clients));
 	memset(handshakes, -1, sizeof(handshakes));
 
+	/* Export certain daemon function to global usage */
+	pilight.broadcast = &broadcast;
+
+	/* Run certain daemon functions from the socket library */
     socket_callback.client_disconnected_callback = &socket_client_disconnected;
     socket_callback.client_connected_callback = NULL;
     socket_callback.client_data_callback = &socket_parse_data;
@@ -1364,5 +1433,13 @@ int main(int argc , char **argv) {
 		}
 	}
 
+clear:
+	if(nodaemon == 0) {
+		log_level_set(LOG_NOTICE);
+		log_shell_disable();
+	}
+	main_gc();
+	log_gc();
+	gc_clear();
 	return EXIT_FAILURE;
 }

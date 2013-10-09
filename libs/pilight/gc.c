@@ -41,6 +41,16 @@ void gc_attach(int (*fp)(void)) {
 	gc = gnode;
 }
 
+void gc_clear(void) {
+	struct collectors_t *tmp = gc;
+	while(gc) {
+		tmp = gc;
+		gc = gc->next;
+		free(tmp);
+	}
+	free(gc);
+}
+
 /* Run the GC manually */
 int gc_run(void) {
     unsigned int s;

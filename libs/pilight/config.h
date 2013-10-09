@@ -40,7 +40,7 @@ typedef struct conf_values_t conf_values_t;
 |------------------|
 | id               |
 | name		       |
-| protocol	       | --> protocol_t <protocol.h>
+| protocols	       | --> protocols_t <protocol.h>
 | settings	       | ---
 |------------------|   |
 				       |
@@ -81,8 +81,7 @@ struct conf_settings_t {
 struct conf_devices_t {
 	char *id;
 	char *name;
-	char *protoname;
-	struct protocol_t *protopt;
+	struct protocols_t *protocols;
 	struct conf_settings_t *settings;
 	struct conf_devices_t *next;
 };

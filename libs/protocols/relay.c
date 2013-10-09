@@ -86,27 +86,29 @@ int relayCreateCode(JsonNode *code) {
 		return EXIT_FAILURE;
 	} else {
 		if(strstr(progname, "daemon") != 0) {
-			if(wiringPiSetup() < 0) {
-				logprintf(LOG_ERR, "unable to setup wiringPi") ;
-				return EXIT_FAILURE;
-			} else {
-				protocol_setting_get_string(relay, "default", &def);
-				pinMode(gpio, OUTPUT);
-				if(strcmp(def, "off") == 0) {
-					if(state == 1) {
-						digitalWrite(gpio, LOW);
-					} else if(state == 0) {
-						digitalWrite(gpio, HIGH);
-					}
+			if(strcmp(hw_mode, "none") != 0) {
+				if(wiringPiSetup() < 0) {
+					logprintf(LOG_ERR, "unable to setup wiringPi") ;
+					return EXIT_FAILURE;
 				} else {
-					if(state == 0) {
-						digitalWrite(gpio, LOW);
-					} else if(state == 1) {
-						digitalWrite(gpio, HIGH);
+					protocol_setting_get_string(relay, "default", &def);
+					pinMode(gpio, OUTPUT);
+					if(strcmp(def, "off") == 0) {
+						if(state == 1) {
+							digitalWrite(gpio, LOW);
+						} else if(state == 0) {
+							digitalWrite(gpio, HIGH);
+						}
+					} else {
+						if(state == 0) {
+							digitalWrite(gpio, LOW);
+						} else if(state == 1) {
+							digitalWrite(gpio, HIGH);
+						}
 					}
 				}
+				relayCreateMessage(gpio, state);
 			}
-			relayCreateMessage(gpio, state);
 			// Sleep for 1 second
 			struct timeval tv;
 			tv.tv_sec = 1;

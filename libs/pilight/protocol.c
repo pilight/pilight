@@ -47,6 +47,7 @@ void protocol_register(protocol_t **proto) {
 	(*proto)->parseBinary = NULL;
 	(*proto)->parseCode = NULL;
 	(*proto)->createCode = NULL;
+	(*proto)->checkValues = NULL;
 	(*proto)->printHelp = NULL;
 	(*proto)->message = NULL;
 
@@ -57,6 +58,7 @@ void protocol_register(protocol_t **proto) {
 	
 	struct protocols_t *pnode = malloc(sizeof(struct protocols_t));
 	pnode->listener = *proto;
+	pnode->name = malloc(4);
 	pnode->next = protocols;
 	protocols = pnode;
 }
@@ -155,29 +157,6 @@ int protocol_setting_restore(protocol_t *proto, const char *name) {
 }
 
 int protocol_setting_check_string(protocol_t *proto, const char *name, const char *value) {
-	if(strcmp(name, "default") == 0 || strcmp(name, "states") == 0) {
-		if(proto->options) {
-			char *nvalue = malloc(strlen(value)+1);
-			strcpy(nvalue, value);
-			char *pch = strtok(nvalue, ",");
-			while(pch) {
-				int valid_state = 0;
-				struct options_t *options = proto->options;
-				while(options) {
-					if(options->conftype == config_state && strcmp(options->name, pch) == 0) {
-						valid_state = 1;
-						break;
-					}
-					options = options->next;
-				}
-				if(valid_state == 0) {
-					return 1;
-				}
-				pch = strtok(NULL, ",");
-			}
-			free(nvalue);
-		}
-	}
 	switch(proto->type) {
 		case DIMMER:
 			if(strcmp(name, "states") != 0) {
@@ -200,6 +179,31 @@ int protocol_setting_check_string(protocol_t *proto, const char *name, const cha
 			return 1;
 		break;
 	}
+	
+	if(strcmp(name, "default") == 0 || strcmp(name, "states") == 0) {
+		if(proto->options) {
+			char *nvalue = malloc(strlen(value)+1);
+			strcpy(nvalue, value);
+			char *pch = strtok(nvalue, ",");
+			while(pch) {
+				int valid_state = 0;
+				struct options_t *options = proto->options;
+				while(options) {
+					if(options->conftype == config_state && strcmp(options->name, pch) == 0) {
+						valid_state = 1;
+						break;
+					}
+					options = options->next;
+				}
+				if(valid_state == 0) {
+					return 1;
+				}
+				pch = strtok(NULL, ",");
+			}
+			free(nvalue);
+		}
+	}	
+	
 	return 0;
 }
 
@@ -228,43 +232,6 @@ int protocol_setting_check_number(protocol_t *proto, const char *name, int value
 	int reti;
 #endif
 
-	if((strcmp(name, "readonly") == 0 ||
-		strcmp(name, "temperature") == 0 ||
-		strcmp(name, "battery") == 0 ||
-		strcmp(name, "humidity") == 0) &&
-		(value < 0 || value > 1)) {
-		return 1;
-	}
-	if(strcmp(name, "decimals") == 0 && (value < 0 || value > 2)) {
-		return 1;
-	}
-	if(strcmp(name, "min") == 0 || strcmp(name, "max") == 0) {
-		struct options_t *tmp_options = proto->options;
-		while(tmp_options) {
-			if(tmp_options->conftype == config_value && strlen(tmp_options->mask) > 0) {
-#ifndef __FreeBSD__
-				/* If the argument has a regex mask, check if it passes */
-				reti = regcomp(&regex, tmp_options->mask, REG_EXTENDED);
-				if(reti) {
-					logprintf(LOG_ERR, "could not compile regex");
-					return 1;
-				}
-				char *tmp = malloc(sizeof(value)+1);
-				sprintf(tmp, "%d", value);
-				reti = regexec(&regex, tmp, 0, NULL, 0);
-				if(reti == REG_NOMATCH || reti != 0) {
-					free(tmp);
-					regfree(&regex);
-					return 1;
-				}
-				free(tmp);
-				regfree(&regex);
-#endif
-			}
-			tmp_options = tmp_options->next;
-		}
-	}
-	
 	switch(proto->type) {
 		case DIMMER:
 			if(strcmp(name, "max") != 0 && strcmp(name, "min") != 0 && strcmp(name, "readonly") != 0) {
@@ -292,6 +259,45 @@ int protocol_setting_check_number(protocol_t *proto, const char *name, int value
 			return 1;
 		break;
 	}
+	
+	if((strcmp(name, "readonly") == 0 ||
+		strcmp(name, "temperature") == 0 ||
+		strcmp(name, "battery") == 0 ||
+		strcmp(name, "humidity") == 0) &&
+		(value < 0 || value > 1)) {
+		return 1;
+	}
+	if(strcmp(name, "decimals") == 0 && (value < 0 || value > 2)) {
+		return 1;
+	}
+
+	if(strcmp(name, "min") == 0 || strcmp(name, "max") == 0) {	
+		struct options_t *tmp_options = proto->options;
+		while(tmp_options) {
+			if(tmp_options->conftype == config_value && strlen(tmp_options->mask) > 0) {
+#ifndef __FreeBSD__
+				/* If the argument has a regex mask, check if it passes */
+				reti = regcomp(&regex, tmp_options->mask, REG_EXTENDED);
+				if(reti) {
+					logprintf(LOG_ERR, "could not compile regex");
+					return 1;
+				}
+				char *tmp = malloc(sizeof(value)+1);
+				sprintf(tmp, "%d", value);
+				reti = regexec(&regex, tmp, 0, NULL, 0);
+				if(reti == REG_NOMATCH || reti != 0) {
+					free(tmp);
+					regfree(&regex);
+					return 1;
+				}
+				free(tmp);
+				regfree(&regex);
+#endif
+			}
+			tmp_options = tmp_options->next;
+		}
+	}
+
 	return 0;
 }
 
@@ -387,6 +393,7 @@ int protocol_gc(void) {
 	while(protocols) {
 		ptmp = protocols;
 		free(ptmp->listener->id);
+		free(ptmp->name);
 		options_delete(ptmp->listener->options);
 		if(ptmp->listener->devices) {
 			while(ptmp->listener->devices) {

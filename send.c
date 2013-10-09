@@ -214,9 +214,14 @@ int main(int argc, char **argv) {
 		if(strlen(tmp->name) > 0) {
 			/* Only send the CLI arguments that belong to this protocol, the protocol name
 			and those that are called by the user */
-			if((options_get_id(&protocol->options, tmp->name, &itmp) == 0 || strcmp(tmp->name, "protocol") == 0)
+			if((options_get_id(&protocol->options, tmp->name, &itmp) == 0)
 			&& strlen(tmp->value) > 0) {
 				json_append_member(code, tmp->name, json_mkstring(tmp->value));
+			}
+			if(strcmp(tmp->name, "protocol") == 0 && strlen(tmp->value) > 0) {
+				JsonNode *jprotocol = json_mkarray();
+				json_append_element(jprotocol, json_mkstring(tmp->value));
+				json_append_member(code, "protocol", jprotocol);
 			}
 		}
 		tmp = tmp->next;

@@ -39,16 +39,15 @@ int fcache_gc(void) {
 	}
 	free(fcache);
 	
-	logprintf(LOG_NOTICE, "garbage collected fcache library");
+	logprintf(LOG_DEBUG, "garbage collected fcache library");
 	return 1;
 }
 
 int fcache_add(char *filename) {
 
-	unsigned long filesize, i = 0;
+	unsigned long filesize = 0, i = 0;
 	struct stat sb;
-	int rc;
-	struct fcache_t *node;
+	int rc = 0;
 
 	logprintf(LOG_NOTICE, "caching %s", filename);
 
@@ -56,10 +55,11 @@ int fcache_add(char *filename) {
 		logprintf(LOG_ERR, "failed to stat %s", filename);
 		return -1;
 	} else {
-		node = malloc(sizeof(struct fcache_t));
+		struct fcache_t *node = malloc(sizeof(struct fcache_t));
 		
 		filesize = (unsigned long)sb.st_size;
-		node->bytes = (unsigned char *)malloc(filesize + 100);
+		node->bytes = malloc(filesize + 100);
+		memset(node->bytes, '\0', filesize + 100);
 		int fd = open(filename, O_RDONLY);
 
 		i = 0;

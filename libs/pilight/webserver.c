@@ -38,21 +38,21 @@
 #include "webserver.h"
 #include "fcache.h"
 
-struct per_session_data__http {
-	int fd;
-};
-
 int webserver_port = WEBSERVER_PORT;
+int webserver_cache = 1;
+unsigned short webserver_loop = 1;
 char *webserver_root;
+
 int sockfd = 0;
 char *sockReadBuff = NULL;
 char *syncBuff = NULL;
 unsigned char *sockWriteBuff = NULL;
+
 char *request = NULL;
 char *ext = NULL;
 char *mimetype = NULL;
 char *server;
-unsigned short webserver_loop = 1;
+
 pthread_t pth1;
 
 typedef enum {
@@ -102,17 +102,16 @@ int webserver_gc(void) {
 }
 
 int webserver_callback_http(struct libwebsocket_context *webcontext, struct libwebsocket *wsi, enum libwebsocket_callback_reasons reason, void *user, void *in, size_t len) {
-	int /*f = 0,*/ n = 0, m = 0;
-	struct stat sb;
+	int n = 0, m = 0;
 	int size;
-	//static unsigned char buffer[4096];
-	struct per_session_data__http *pss = (struct per_session_data__http *)user;
 
 	switch(reason) {
 		case LWS_CALLBACK_HTTP: {
+			/* If the webserver didn't request a file, serve the index.html */
 			if(strcmp((const char *)in, "/") == 0) {
 				request = realloc(request, strlen(webserver_root)+13);
 				memset(request, '\0', strlen(webserver_root)+13);
+				/* Check if the webserver_root is terminated by a slash. If not, than add it */
 				if(webserver_root[strlen(webserver_root)-1] == '/') {
 					sprintf(request, "%s%s", webserver_root, "index.html");
 				} else {
@@ -120,7 +119,7 @@ int webserver_callback_http(struct libwebsocket_context *webcontext, struct libw
 				}
 			} else {
 				char *cin = (char *)in;
-
+				/* If a file was requested add it to the webserver path to create the absolute path */
 				if(webserver_root[strlen(webserver_root)-1] == '/' && cin[0] == '/') {
 					request = realloc(request, strlen(webserver_root)+strlen((const char *)in));
 					memset(request, '\0', strlen(webserver_root)+strlen((const char *)in));
@@ -133,97 +132,71 @@ int webserver_callback_http(struct libwebsocket_context *webcontext, struct libw
 				}
 			}
 
-			if(fcache_get_size(request, &size) != 0) {
-				if((fcache_add(request)) != 0) {
-					logprintf(LOG_ERR, "(webserver) could not cache %s", request);
-				}
+			char *dot = NULL;
+			/* Retrieve the extension of the requested file and create a mimetype accordingly */
+			dot = strrchr(request, '.');
+			if(!dot || dot == request)
+				return -1;
+
+			ext = realloc(ext, strlen(dot)+1);
+			memset(ext, '\0', strlen(dot)+1);
+			strcpy(ext, dot+1);
+
+			if(strcmp(ext, "html") == 0) {
+				mimetype = realloc(mimetype, 10);
+				memset(mimetype, '\0', 10);
+				strcpy(mimetype, "text/html");
+			} else if(strcmp(ext, "png") == 0) {
+				mimetype = realloc(mimetype, 10);
+				memset(mimetype, '\0', 10);
+				strcpy(mimetype, "image/png");
+			} else if(strcmp(ext, "ico") == 0) {
+				mimetype = realloc(mimetype, 13);
+				memset(mimetype, '\0', 13);
+				strcpy(mimetype, "image/x-icon");
+			} else if(strcmp(ext, "css") == 0) {
+				mimetype = realloc(mimetype, 10);
+				memset(mimetype, '\0', 10);
+				strcpy(mimetype, "text/css");
+			} else if(strcmp(ext, "js") == 0) {
+				mimetype = realloc(mimetype, 16);
+				memset(mimetype, '\0', 16);
+				strcpy(mimetype, "text/javascript");
 			}
 
-			if(fcache_get_size(request, &size) == 0) {
-			// if((pss->fd = open(request, O_RDONLY)) == -1) {
-				// logprintf(LOG_ERR, "(webserver) file not found %s", request);
-				// free(request);
-				// return -1;
-			// }
-
-				char *dot = NULL;
-
-				dot = strrchr(request, '.');
-				if(!dot || dot == request)
-					return -1;
-
-				ext = realloc(ext, strlen(dot)+1);
-				memset(ext, '\0', strlen(dot)+1);
-				strcpy(ext, dot+1);
-
-				if(strcmp(ext, "html") == 0) {
-					mimetype = realloc(mimetype, 10);
-					memset(mimetype, '\0', 10);
-					strcpy(mimetype, "text/html");
-				} else if(strcmp(ext, "png") == 0) {
-					mimetype = realloc(mimetype, 10);
-					memset(mimetype, '\0', 10);
-					strcpy(mimetype, "image/png");
-				} else if(strcmp(ext, "ico") == 0) {
-					mimetype = realloc(mimetype, 13);
-					memset(mimetype, '\0', 13);
-					strcpy(mimetype, "image/x-icon");
-				} else if(strcmp(ext, "css") == 0) {
-					mimetype = realloc(mimetype, 10);
-					memset(mimetype, '\0', 10);
-					strcpy(mimetype, "text/css");
-				} else if(strcmp(ext, "js") == 0) {
-					mimetype = realloc(mimetype, 16);
-					memset(mimetype, '\0', 16);
-					strcpy(mimetype, "text/javascript");
+			if(webserver_cache) {
+				/* If webserver caching is enabled, first load all files in the memory */
+				if(fcache_get_size(request, &size) != 0) {
+					if((fcache_add(request)) != 0) {
+						logprintf(LOG_ERR, "(webserver) could not cache %s", request);
+					}
 				}
-				fstat(pss->fd, &sb);
 
-				// unsigned char *p = buffer;
-				// p += sprintf((char *)p,
-					// "HTTP/1.0 200 OK\x0d\x0a"
-					// "Server: libwebsockets\x0d\x0a"
-					// "Content-Type: %s\x0d\x0a"
-					// "Content-Length: %u\x0d\x0a\x0d\x0a",
-					// mimetype, (unsigned int)size);
+				/* Check if a file was succesfully stored in memory */
+				if(fcache_get_size(request, &size) == 0) {
+					/* Combine the header and the file content itself and server it */
+					unsigned char *header = malloc(74+strlen(mimetype)+sizeof((unsigned int)size)+1);
+					sprintf((char *)header,
+						"HTTP/1.0 200 OK\x0d\x0a"
+						"Server: pilight\x0d\x0a"
+						"Content-Type: %s\x0d\x0a"
+						"Content-Length: %u\x0d\x0a\x0d\x0a",
+						mimetype, (unsigned int)size);
+					unsigned char *content = malloc(strlen((char *)header)+(size_t)size+1);
+					memset(content, '\0', strlen((char *)header)+(size_t)size+1);
+					strcat((char *)content, (char *)header);
+					strcat((char *)content, (char *)fcache_get_bytes(request));
 
+					libwebsocket_write(wsi, content, strlen((char *)content), LWS_WRITE_HTTP);
+					free(header);
+					free(content);
+				}
+			} else {
+				/* Read a file from the FS and server it */
 				if(libwebsockets_serve_http_file(webcontext, wsi, request, mimetype)) {
 					libwebsocket_callback_on_writable(webcontext, wsi);
 					return -1;
 				}
-
-				// libwebsocket_write(wsi, (unsigned char *)buffer, (size_t)(p - buffer), LWS_WRITE_HTTP);
-				// libwebsocket_callback_on_writable(webcontext, wsi);
-
-				// unsigned char *bytes = fcache_get_bytes(request);
-				// if(bytes) {
-					// unsigned long b = 0;
-					// unsigned long c = 4096;
-					// if(size < 4096) {
-						// c = (unsigned long)size;
-					// }
-
-					// while(size > 0) {
-						// memcpy(buffer, &bytes[b], c);
-						// m = libwebsocket_write(wsi, buffer, c, LWS_WRITE_HTTP);
-
-						// if((int)c != m) {
-							// free(request);
-							// free(mimetype);
-							// logprintf(LOG_ERR, "(webserver) failed to write %s", request);
-							// return -1;
-						// }
-						// if(size >= 4096) {
-							// b += 4096;
-						// } else {
-							// c = (unsigned long)size;
-							// b += (unsigned long)size;
-						// }
-						// size -= 4096;
-					// }
-					// libwebsocket_callback_on_writable(webcontext, wsi);
-
-				// }
 			}
 		}
 		break;
@@ -252,6 +225,7 @@ int webserver_callback_http(struct libwebsocket_context *webcontext, struct libw
 
 							char *output = json_stringify(jsend, NULL);
 							size_t output_len = strlen(output);
+							/* This PRE_PADDIGN and POST_PADDING is an requirement for LWS_WRITE_TEXT */
 							sockWriteBuff = realloc(sockWriteBuff, LWS_SEND_BUFFER_PRE_PADDING + output_len + LWS_SEND_BUFFER_POST_PADDING);
 							memset(sockWriteBuff, '\0', sizeof(sockWriteBuff));
  	  						memcpy(&sockWriteBuff[LWS_SEND_BUFFER_PRE_PADDING], output, output_len);
@@ -273,6 +247,8 @@ int webserver_callback_http(struct libwebsocket_context *webcontext, struct libw
 		case LWS_CALLBACK_SERVER_WRITEABLE: {
 			/* Push the incoming message to the webgui */
 			size_t syncBuff_len = strlen(syncBuff);
+
+			/* This PRE_PADDIGN and POST_PADDING is an requirement for LWS_WRITE_TEXT */
 			sockWriteBuff = realloc(sockWriteBuff, LWS_SEND_BUFFER_PRE_PADDING + syncBuff_len + LWS_SEND_BUFFER_POST_PADDING);
 			memset(sockWriteBuff, '\0', sizeof(sockWriteBuff));
 			memcpy(&sockWriteBuff[LWS_SEND_BUFFER_PRE_PADDING], syncBuff, syncBuff_len);
@@ -375,21 +351,28 @@ void *webserver_start(void *param) {
 	int n = 0;
 	struct lws_context_creation_info info;
 
+	/* Check on what port the webserver needs to run */
 	settings_find_number("webserver-port", &webserver_port);
 	if(settings_find_string("webserver-root", &webserver_root) != 0) {
+		/* If no webserver port was set, use the default webserver port */
 		webserver_root = malloc(strlen(WEBSERVER_ROOT)+1);
 		strcpy(webserver_root, WEBSERVER_ROOT);
 	}
 
+	/* Do we turn on webserver caching. This means that all requested files are
+	   loaded into the memory so they aren't read from the FS anymore */
+	settings_find_number("webserver-cache", &webserver_cache);
+
+	/* Default websockets info */
 	memset(&info, 0, sizeof info);
 	info.port = webserver_port;
-
 	info.protocols = libwebsocket_protocols;
 	info.ssl_cert_filepath = NULL;
 	info.ssl_private_key_filepath = NULL;
 	info.gid = -1;
 	info.uid = -1;
 
+	/* Start the libwebsocket server */
 	struct libwebsocket_context *context = libwebsocket_create_context(&info);
 	if(context == NULL) {
 		lwsl_err("libwebsocket init failed\n");
@@ -401,6 +384,7 @@ void *webserver_start(void *param) {
 		while(n >= 0 && webserver_loop) {
 			n = libwebsocket_service(context, 50);
 		}
+		/* If the main loop stops, stop and destroy the webserver */
 		libwebsocket_context_destroy(context);
 		if(syncBuff) {
 			free(syncBuff);

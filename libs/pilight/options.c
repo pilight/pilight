@@ -43,7 +43,7 @@ int options_gc(void) {
 		gctmp = NULL;
 	}
 
-	logprintf(LOG_NOTICE, "garbage collected options library");
+	logprintf(LOG_DEBUG, "garbage collected options library");
 	return EXIT_SUCCESS;
 }
 
@@ -330,7 +330,12 @@ int options_parse(struct options_t **opt, int argc, char **argv, int error_check
 	}
 
 gc:
-	exit(EXIT_FAILURE);
+	getOptPos=0;
+	if(*optarg) {
+		free(*optarg);
+		*optarg = NULL;
+	}
+	return -1;
 }
 
 /* Add a new option to the options struct */

@@ -30,5 +30,6 @@ void gc_handler(int signal);
 void gc_attach(int (*fp)(void));
 void gc_catch(void);
 int gc_run(void);
+void gc_clear(void);
 
 #endif

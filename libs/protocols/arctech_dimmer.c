@@ -150,6 +150,30 @@ void arctechDimCreateFooter(void) {
 	arctech_dimmer->raw[147]=(arctech_dimmer->footer*PULSE_LENGTH);
 }
 
+int arctechDimcheckValues(JsonNode *code) {
+	int dimlevel = -1;
+	int max = 0;
+	int min = 15;
+	char *tmp;
+	
+	protocol_setting_get_number(arctech_dimmer, "min", &min);
+	protocol_setting_get_number(arctech_dimmer, "max", &max);	
+
+	if(min > max) {
+		return 1;
+	}
+	
+	if(json_find_string(code, "dimlevel", &tmp) == 0) {
+		dimlevel = atoi(tmp);	
+		if(dimlevel != -1 && (dimlevel < min || dimlevel > max)) {
+			return 1;
+		} else {
+			return 0;
+		}
+	}
+	return 0;
+}
+
 int arctechDimCreateCode(JsonNode *code) {
 	int id = -1;
 	int unit = -1;
@@ -251,4 +275,5 @@ void arctechDimInit(void) {
 	arctech_dimmer->parseBinary=&arctechDimParseBinary;
 	arctech_dimmer->createCode=&arctechDimCreateCode;
 	arctech_dimmer->printHelp=&arctechDimPrintHelp;
+	arctech_dimmer->checkValues=&arctechDimcheckValues;
 }

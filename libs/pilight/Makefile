@@ -28,7 +28,7 @@ json.o: json.c json.h
 	
 wiringPi.o: wiringPi.c wiringPi.h
 	$(GCC) -ffast-math $(OSFLAGS) -Wno-conversion -g -I. -I.. -I/usr/include/ -pthread -lm -c $(patsubst %.o,%.c,$@)
-	
+
 %.o: %.c %.h
 	$(GCC) $(CFLAGS) -c $(patsubst %.o,%.c,$@)
 

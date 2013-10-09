@@ -16,21 +16,13 @@
     along with pilight. If not, see	<http://www.gnu.org/licenses/>
 */
 
-#ifndef _LOG_H_
-#define _LOG_H_
+#ifndef _PILIGHT_H_
+#define _PILIGHT_H_
 
-#include <syslog.h>
-#include "settings.h"
+typedef struct pilight_t {
+    int (*broadcast)(char *name, JsonNode *message);
+} pilight_t;
 
-void logprintf(int prio, const char *format_str, ...);
-void logperror(int prio, const char *s);
-void log_file_enable(void);
-void log_file_disable(void);
-void log_shell_enable(void);
-void log_shell_disable(void);
-void log_file_set(char *file);
-void log_level_set(int level);
-int log_level_get(void);
-int log_gc(void);
+struct pilight_t pilight;
 
 #endif

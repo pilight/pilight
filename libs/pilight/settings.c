@@ -293,6 +293,14 @@ int settings_parse(JsonNode *root) {
 			} else {
 				settings_add_number(jsettings->key, (int)jsettings->number_);
 			}
+		} else if(strcmp(jsettings->key, "webserver-cache") == 0) {
+			if(jsettings->number_ < 0 || jsettings->number_ > 1) {
+				logprintf(LOG_ERR, "setting \"%s\" must be either 0 or 1", jsettings->key);
+				have_error = 1;
+				goto clear;
+			} else {
+				settings_add_number(jsettings->key, (int)jsettings->number_);
+			}
 		} else if(strcmp(jsettings->key, "gpio-receiver") == 0) {
 			if(jsettings->number_ < 0 || jsettings->number_ > 7) {
 				logprintf(LOG_ERR, "setting \"%s\" must be between 0 and 7", jsettings->key);
