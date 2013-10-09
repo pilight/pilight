@@ -110,6 +110,7 @@ int main(int argc, char **argv) {
 	int pulse = 0;
 	int rawLength = 0;
 	int binaryLength = 0;
+	int pulselen = 0;
 
 	int loop = 1;
 	unsigned short match = 0;
@@ -212,10 +213,9 @@ int main(int argc, char **argv) {
 
 		/* First try to catch code that seems to be a footer.
 		   If a real footer has been recognized, start using that as the new footer */
-		if((duration > 5000
-		   && duration < 100000 && footer == 0) || ((footer-(footer*0.1)<duration) && (footer+(footer*0.1)>duration))) {
+		if((duration > 4440 && footer == 0) || ((footer-(footer*0.1)<duration) && (footer+(footer*0.1)>duration))) {
 			recording = 1;
-
+			pulselen = (int)duration/40;
 			/* Check if we are recording similar codes */
 			for(i=0;i<(bit-1);i++) {
 				if(!(((pRaw[i]-(pRaw[i]*0.3)) < raw[i]) && ((pRaw[i]+(pRaw[i]*0.3)) > raw[i]))) {
@@ -288,8 +288,9 @@ int main(int argc, char **argv) {
 	}
 	printf("pulse:\t\t%d\n",normalize(pulse));
 	printf("footer:\t\t%d\n",normalize(footer));
-	printf("rawLength:\t%d\n",rawLength);
-	printf("binaryLength:\t%d\n",binaryLength);
+	printf("rawlen:\t\t%d\n",rawLength);
+	printf("binlen:\t\t%d\n",binaryLength);
+	printf("pulselen:\t%d\n",pulselen);
 	printf("\n");
 	printf("Raw code:\n");
 	for(i=0;i<rawLength;i++) {
