@@ -187,9 +187,9 @@ int main(int argc, char **argv) {
 		hardware->init();
 
 		printf("Please make sure the daemon is not running when using this debugger.\n\n");
-		printf("Now press and hold one of the button on your remote or wait until\n");
+		printf("Now press and hold one of the buttons on your remote or wait until\n");
 		printf("another device such as a weather station has send new codes\n");
-		printf("It is possible that the debugger needs to be restarted when it does.\n");
+		printf("It is possible that the debugger needs to be restarted when it does\n");
 		printf("not show anything. This is because it's then following a wrong lead.\n");
 	}
 
@@ -200,7 +200,6 @@ int main(int argc, char **argv) {
 
 	while(loop && match == 1 && hardware->receive) {
 		duration = hardware->receive();
-
 		/* If we are recording, keep recording until the next footer has been matched */
 		if(recording == 1) {
 			if(bit < 255) {
@@ -215,7 +214,7 @@ int main(int argc, char **argv) {
 		   If a real footer has been recognized, start using that as the new footer */
 		if((duration > 4440 && footer == 0) || ((footer-(footer*0.1)<duration) && (footer+(footer*0.1)>duration))) {
 			recording = 1;
-			pulselen = (int)duration/40;
+			pulselen = (int)duration/34;
 			/* Check if we are recording similar codes */
 			for(i=0;i<(bit-1);i++) {
 				if(!(((pRaw[i]-(pRaw[i]*0.3)) < raw[i]) && ((pRaw[i]+(pRaw[i]*0.3)) > raw[i]))) {
