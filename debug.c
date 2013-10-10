@@ -38,10 +38,11 @@
 #include "gc.h"
 
 const char *hw_mode = HW_MODE;
+int pulselen = 0;
 
 int normalize(int i) {
 	double x;
-	x=(double)i/PULSE_LENGTH;
+	x=(double)i/pulselen;
 
 	return (int)(round(x));
 }
@@ -110,7 +111,6 @@ int main(int argc, char **argv) {
 	int pulse = 0;
 	int rawLength = 0;
 	int binaryLength = 0;
-	int pulselen = 0;
 
 	int loop = 1;
 	unsigned short match = 0;
@@ -240,11 +240,11 @@ int main(int argc, char **argv) {
 				/* Try to catch the footer, and the low and high values */
 				for(i=0;i<bit;i++) {
 					if((i+1)<bit && i > 2 && footer > 0) {
-						if((raw[i]/PULSE_LENGTH) >= 2) {
+						if((raw[i]/pulselen) >= 2) {
 							pulse=raw[i];
 						}
 					}
-					if(duration > 5000 && duration < 100000) {
+					if(duration > 4440) {
 						footer=raw[i];
 					}
 				}
@@ -262,7 +262,7 @@ int main(int argc, char **argv) {
 
 	/* Convert the raw code into binary code */
 	for(i=0;i<rawLength;i++) {
-		if((unsigned int)raw[i] > (pulse-PULSE_LENGTH)) {
+		if((unsigned int)raw[i] > (pulse-pulselen)) {
 			code[i]=1;
 		} else {
 			code[i]=0;
@@ -294,7 +294,7 @@ int main(int argc, char **argv) {
 	printf("\n");
 	printf("Raw code:\n");
 	for(i=0;i<rawLength;i++) {
-		printf("%d ",normalize(raw[i])*PULSE_LENGTH);
+		printf("%d ",normalize(raw[i])*pulselen);
 	}
 	printf("\n");
 	printf("Binary code:\n");
