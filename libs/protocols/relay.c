@@ -107,8 +107,8 @@ int relayCreateCode(JsonNode *code) {
 						}
 					}
 				}
-				relayCreateMessage(gpio, state);
 			}
+			relayCreateMessage(gpio, state);
 			// Sleep for 1 second
 			struct timeval tv;
 			tv.tv_sec = 1;

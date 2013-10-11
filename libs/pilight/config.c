@@ -89,7 +89,7 @@ int config_update(char *protoname, JsonNode *json, JsonNode **out) {
 	/* Only loop through all locations if the protocol has options */
 	if((opt = protocol->options)) {
 
-		/* Loop through all location */
+		/* Loop through all locations */
 		while(lptr) {
 			dptr = lptr->devices;
 			/* Loop through all devices of this location */
@@ -174,7 +174,7 @@ int config_update(char *protoname, JsonNode *json, JsonNode **out) {
 						}
 						sptr = sptr->next;
 					}
-					have_device = 0;
+
 					is_valid = 1;
 					/* If we matched a config device, update it's state */
 					if(match1 > 0 && match2 > 0 && match1 == match2) {
