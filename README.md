@@ -21,6 +21,10 @@ New (Experimental) Features
 - Allow for multiple protocols per device.
 - Enabled webserver file caching.
 - Allow for push messages send from within a protocol.
+- Code repeat numbers are now communicated.
+- Fixed bug when pilight-daemon was started as a non-root user.
+- The config file updates will now only occur inside memory. When stopping the daemon the file is updated.
+- The log will now contain microseconds to enable specific benchmarking of code.
 
 New config syntax:
 

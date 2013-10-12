@@ -316,6 +316,7 @@ void send_code(JsonNode *json) {
 								json_append_member(message, "origin", json_mkstring("sender"));
 								json_append_member(message, "protocol", json_mkstring(protocol->id));
 								json_append_member(message, "code", json_decode(valid));
+								json_append_member(message, "repeat", json_mknumber(1));
 							}
 							protocol->message = NULL;
 							free(valid);
@@ -924,6 +925,7 @@ void receive_code(void) {
 													json_append_member(jmessage, "code", json_decode(valid));
 													json_append_member(jmessage, "origin", json_mkstring("receiver"));
 													json_append_member(jmessage, "protocol", json_mkstring(protocol->id));
+													json_append_member(jmessage, "repeat", json_mknumber(y));
 													broadcast(protocol->id, jmessage);
 													json_delete(jmessage);
 													while(tmp_conflicts) {
@@ -931,6 +933,7 @@ void receive_code(void) {
 														json_append_member(jmessage, "code", json_decode(valid));
 														json_append_member(jmessage, "origin", json_mkstring("receiver"));
 														json_append_member(jmessage, "protocol", json_mkstring(tmp_conflicts->id));
+														json_append_member(jmessage, "repeat", json_mknumber(y));
 														broadcast(tmp_conflicts->id, jmessage);
 														tmp_conflicts = tmp_conflicts->next;
 														json_delete(jmessage);
@@ -973,6 +976,7 @@ void receive_code(void) {
 														json_append_member(jmessage, "code", jcode);
 														json_append_member(jmessage, "origin", json_mkstring("receiver"));
 														json_append_member(jmessage, "protocol", json_mkstring(protocol->id));
+														json_append_member(jmessage, "repeat", json_mknumber(y));
 														broadcast(protocol->id, jmessage);
 														json_delete(jmessage);
 														while(tmp_conflicts) {
@@ -981,6 +985,7 @@ void receive_code(void) {
 															json_append_member(jmessage, "code", jcode);
 															json_append_member(jmessage, "origin", json_mkstring("receiver"));
 															json_append_member(jmessage, "protocol", json_mkstring(tmp_conflicts->id));
+															json_append_member(jmessage, "repeat", json_mknumber(y));
 															broadcast(tmp_conflicts->id, jmessage);
 															tmp_conflicts = tmp_conflicts->next;
 															json_delete(jmessage);
@@ -1116,9 +1121,7 @@ void daemonize(void) {
 				}
 			}
 			close(f);
-			log_shell_enable();
 			logprintf(LOG_INFO, "daemon started with pid: %d", npid);
-			log_shell_disable();
 			exit(0);
 		break;
 	}
@@ -1158,6 +1161,14 @@ int main_gc(void) {
 	if(webserver_enable == 1) {
 		webserver_gc();
 	}
+
+	JsonNode *joutput = config2json(0);
+	char *output = json_stringify(joutput, "\t");
+	config_write(output);
+	json_delete(joutput);
+	free(output);			
+	joutput = NULL;
+
 	config_gc();
 	protocol_gc();
 	hardware_gc();
@@ -1189,6 +1200,16 @@ int main_gc(void) {
 }
 
 int main(int argc , char **argv) {
+
+	progname = malloc(16);
+	strcpy(progname, "pilight-daemon");
+
+	if(geteuid() != 0) {
+		printf("%s requires root priveliges\n", progname);
+		free(progname);
+		exit(EXIT_FAILURE);
+	}
+
 	/* Run main garbage collector when quiting the daemon */
 	gc_attach(main_gc);
 
@@ -1196,10 +1217,7 @@ int main(int argc , char **argv) {
 	gc_catch();
 
 	log_file_enable();
-	log_shell_enable();
-
-	progname = malloc(16);
-	strcpy(progname, "pilight-daemon");
+	log_shell_disable();
 
 	settingsfile = malloc(strlen(SETTINGS_FILE)+1);
 	strcpy(settingsfile, SETTINGS_FILE);
@@ -1230,8 +1248,12 @@ int main(int argc , char **argv) {
 	while(1) {
 		int c;
 		c = options_parse(&options, argc, argv, 1, &args);
-		if (c == -1)
+		if(c == -1)
 			break;
+		if(c == -2) {
+			show_help = 1;
+			break;
+		}
 		switch(c) {
 			case 'H':
 				show_help = 1;
@@ -1269,7 +1291,7 @@ int main(int argc , char **argv) {
 		goto clear;
 	}
 	if(show_version) {
-		printf("%s %.1f\n", progname, VERSION);
+		printf("%s version %.1f, commit %s\n", progname, VERSION, HASH);
 		goto clear;
 	}
 	if(show_default) {
@@ -1331,7 +1353,6 @@ int main(int argc , char **argv) {
 	if(settings_find_string("log-file", &stmp) == 0) {
 		log_file_set(stmp);
 	}
-
 	if(settings_find_string("mode", &stmp) == 0) {
 		if(strcmp(stmp, "client") == 0) {
 			runmode = 2;
@@ -1340,13 +1361,13 @@ int main(int argc , char **argv) {
 		}
 	}
 
+	logprintf(LOG_INFO, "version %.1f, commit %s", VERSION, HASH);
+	
 	if(nodaemon == 1 || running == 1) {
 		log_file_disable();
 		log_shell_enable();
 		log_level_set(LOG_DEBUG);
 	}
-
-	logprintf(LOG_INFO, "version %.1f, commit %s", VERSION, HASH);
 
 	settings_find_string("process-file", &process_file);
 

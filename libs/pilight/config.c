@@ -305,14 +305,14 @@ int config_update(char *protoname, JsonNode *json, JsonNode **out) {
 
 	/* Only update the config file, if a state change occured */
 	if(update == 1) {
-		if(configfile) {
-			JsonNode *joutput = config2json(0);
-			char *output = json_stringify(joutput, "\t");
-			config_write(output);
-			json_delete(joutput);
-			free(output);			
-			joutput = NULL;
-		}
+		// if(configfile) {
+			// JsonNode *joutput = config2json(0);
+			// char *output = json_stringify(joutput, "\t");
+			// config_write(output);
+			// json_delete(joutput);
+			// free(output);			
+			// joutput = NULL;
+		// }
 		*out = rroot;
 	} else {
 		json_delete(rroot);

@@ -335,7 +335,7 @@ gc:
 		free(*optarg);
 		*optarg = NULL;
 	}
-	return -1;
+	return -2;
 }
 
 /* Add a new option to the options struct */
