@@ -172,10 +172,8 @@ void *call_process_file(void *param) {
 	f=popen(cmd, "r");
 	pclose(f);
 	free(cmd);
-
+	free(param);
 	pthread_exit((void *)NULL);
-	pthread_cancel(pth4);
-	pthread_join(pth4, NULL);
 }
 
 int broadcast(char *protoname, JsonNode *json) {
@@ -223,7 +221,13 @@ int broadcast(char *protoname, JsonNode *json) {
 			/* Call the external file in a seperate thread to make
 			   it non-blocking. */
 			if(strlen(process_file) > 0) {
-				pthread_create(&pth4, NULL, &call_process_file, (void *)escaped);
+				if(pth4) {
+					pthread_cancel(pth4);
+					pthread_join(pth4, NULL);
+				}
+				char *param = malloc(strlen(escaped)+1);
+				strcpy(param, escaped);
+				pthread_create(&pth4, NULL, &call_process_file, (void *)param);
 				usleep(100);
 				broadcasted = 1;
 			}
@@ -1165,6 +1169,11 @@ int main_gc(void) {
 
 	main_loop = 0;
 
+	if(pth4) {
+		pthread_cancel(pth4);
+		pthread_join(pth4, NULL);
+	}
+	
 	if(runmode == 2) {
 		pthread_cancel(pth1);
 		pthread_join(pth1, NULL);
