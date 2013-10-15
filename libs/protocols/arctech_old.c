@@ -161,8 +161,8 @@ void arctechOldInit(void) {
 	protocol_device_add(arctech_old, "cogex", "Cogex Switches");
 	protocol_device_add(arctech_old, "intertechno_old", "Old Intertechno Switches");
 	arctech_old->type = SWITCH;
-	arctech_old->pulse = 4;
-	arctech_old->plslen = 294;
+	arctech_old->pulse = 3;
+	arctech_old->plslen = 336;
 	arctech_old->rawlen = 50;
 	arctech_old->binlen = 12;
 	arctech_old->lsb = 2;
