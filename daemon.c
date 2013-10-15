@@ -115,6 +115,14 @@ char *webserver_root;
 pthread_t pth1, pth2, pth3, pth4;
 /* While loop conditions */
 unsigned short main_loop = 1;
+/* Only update the config file on exit when it's valid */
+unsigned short valid_config = 1;
+/* How many received repeats did we encounter */
+int repeats = 0;
+/* Reset repeats after a certian amount of time */
+unsigned long first = 0;
+unsigned long second = 0;
+struct timeval tv;
 
 /* http://stackoverflow.com/a/3535143 */
 void escape_characters(char* dest, const char* src) {
@@ -243,6 +251,133 @@ int broadcast(char *protoname, JsonNode *json) {
 	return 0;
 }
 
+void receiver_create_message(protocol_t *protocol, int rep) {
+	if(protocol->message) {
+		char *valid = json_stringify(protocol->message, NULL);
+		json_delete(protocol->message);
+		if(valid && json_validate(valid) == true) {
+			struct protocol_conflicts_t *tmp_conflicts = NULL;
+
+			tmp_conflicts = protocol->conflicts;
+			JsonNode *jmessage = json_mkobject();
+
+			json_append_member(jmessage, "code", json_decode(valid));
+			json_append_member(jmessage, "origin", json_mkstring("receiver"));
+			json_append_member(jmessage, "protocol", json_mkstring(protocol->id));
+			if(rep > -1) {
+				json_append_member(jmessage, "repeats", json_mknumber(rep));
+			}
+			broadcast(protocol->id, jmessage);
+			json_delete(jmessage);
+			while(tmp_conflicts) {
+				jmessage = json_mkobject();
+				json_append_member(jmessage, "code", json_decode(valid));
+				json_append_member(jmessage, "origin", json_mkstring("receiver"));
+				json_append_member(jmessage, "protocol", json_mkstring(tmp_conflicts->id));
+				if(rep > -1) {
+					json_append_member(jmessage, "repeats", json_mknumber(rep));
+				}
+				broadcast(tmp_conflicts->id, jmessage);
+				tmp_conflicts = tmp_conflicts->next;
+				json_delete(jmessage);
+			}
+		}
+		protocol->message = NULL;
+		free(valid);
+	}
+}
+
+void receiver_parse_code(int *rawcode, int rawlen, int plslen) {
+	struct protocol_t *protocol = NULL;
+	struct protocols_t *pnode = protocols;
+	int x = 0;
+
+	while(pnode) {
+		protocol = pnode->listener;
+		if((((protocol->parseRaw || protocol->parseCode) && protocol->rawlen > 0)
+		   || protocol->parseBinary) && protocol->pulse > 0 && protocol->plslen > 0) {
+			if(rawlen == protocol->rawlen && (plslen > ((double)protocol->plslen-3) && plslen < ((double)protocol->plslen+3))) {
+				if(protocol->parseRaw) {
+					logprintf(LOG_DEBUG, "called %s parseRaw()", protocol->id);
+
+					protocol->parseRaw();
+					receiver_create_message(protocol, -1);
+					//continue;
+				}
+
+				/* Convert the raw codes to one's and zero's */
+				for(x=0;x<(int)(double)rawlen;x++) {
+					protocol->pCode[x] = protocol->code[x];
+					memcpy(&protocol->raw[x], &rawcode[x], sizeof(int));
+					if(protocol->raw[x] >= ((protocol->pulse*plslen)-plslen)) {
+						protocol->code[x]=1;
+					} else {
+						protocol->code[x]=0;
+					}
+					/* Check if the current code matches the previous one */
+					if(protocol->pCode[x] != protocol->code[x]) {
+						repeats=0;
+						first = 0;
+						second = 0;
+					}
+				}
+
+				gettimeofday(&tv, NULL);
+				if(first > 0) {
+					first = second;
+				}
+				second = 1000000 * (unsigned int)tv.tv_sec + (unsigned int)tv.tv_usec;
+				if(first == 0) {
+					first = second;
+				}
+
+				/* Reset # of repeats after a certain delay */
+				if(((int)second-(int)first) > 1000000) {
+					repeats = 0;
+				}
+
+				repeats++;
+				/* Continue if we have recognized enough repeated codes */
+				if(repeats >= (receive_repeat*protocol->rxrpt)) {
+					if(protocol->parseCode) {
+						logprintf(LOG_DEBUG, "caught minimum # of repeats %d of %s", repeats, protocol->id);
+						logprintf(LOG_DEBUG, "called %s parseCode()", protocol->id);
+
+						protocol->parseCode(repeats);
+						receiver_create_message(protocol, repeats);
+						//continue;
+					}
+
+					if(protocol->parseBinary) {
+						/* Convert the one's and zero's into binary */
+						for(x=0; x<(int)(double)rawlen; x+=4) {
+							if(protocol->code[x+protocol->lsb] == 1) {
+								protocol->binary[x/4]=1;
+							} else {
+								protocol->binary[x/4]=0;
+							}
+						}
+
+						if((double)protocol->raw[1]/((double)protocol->pulse*(double)protocol->plslen) < 1.5) {
+							x -= 4;
+						}
+
+						/* Check if the binary matches the binary length */
+						if((protocol->binlen > 0 && ((x/4) == protocol->binlen)) || (protocol->binlen == 0 && ((x/4) == protocol->rawlen/4))) {
+							logprintf(LOG_DEBUG, "called %s parseBinary()", protocol->id);
+
+							protocol->parseBinary(repeats);
+							receiver_create_message(protocol, repeats);
+							//continue;
+						}
+					}
+				}
+			}
+		}
+		pnode = pnode->next;
+	}
+}
+
 /* Send a specific code */
 void send_code(JsonNode *json) {
 	int i = 0, match = 0, x = 0, logged = 0;
@@ -354,8 +489,13 @@ void send_code(JsonNode *json) {
 									logprintf(LOG_DEBUG, "successfully send %s code", protocol->id);
 									if(logged == 0) {
 										logged = 1;
-										/* Write the message to all receivers */
-										broadcast(protocol->id, message);
+										if(strcmp(protocol->id, "raw") == 0) {
+											int plslen = protocol->raw[protocol->rawlen-1]/PULSE_DIV;
+											receiver_parse_code(protocol->raw, protocol->rawlen, plslen);
+										} else {
+											/* Write the message to all receivers */
+											broadcast(protocol->id, message);
+										}
 										json_delete(message);
 										message = NULL;
 									}
@@ -364,8 +504,13 @@ void send_code(JsonNode *json) {
 								}
 							} else if(logged == 0) {
 								logged = 1;
-								/* Write the message to all receivers */
-								broadcast(protocol->id, message);
+								if(strcmp(protocol->id, "raw") == 0) {
+									int plslen = protocol->raw[protocol->rawlen-1]/PULSE_DIV;
+									receiver_parse_code(protocol->raw, protocol->rawlen, plslen);
+								} else {
+									/* Write the message to all receivers */
+									broadcast(protocol->id, message);
+								}
 								json_delete(message);
 								message = NULL;
 							}
@@ -765,18 +910,10 @@ void socket_client_disconnected(int i) {
 }
 
 void receive_code(void) {
-	short header = 0;
-	unsigned int x = 0, match = 0;
-	int y = 0, plslen = PULSE_LENGTH;
-	struct protocol_conflicts_t *tmp_conflicts = NULL;
-	struct protocol_t *protocol = NULL;
+	int plslen = 0, rawlen = 0, match = 0;
 	struct hardware_t *hardware = NULL;
 	struct hardwares_t *htmp = hardwares;
-
-	/* Get time between two codes */
-	unsigned long first = 0;
-	unsigned long second = 0;
-	struct timeval tv;
+	int rawcode[255] = {0};
 
 	match = 0;
 	while(htmp) {
@@ -790,222 +927,20 @@ void receive_code(void) {
 
 	while(main_loop && match == 1 && hardware->receive) {
 		/* Only initialize the hardware receive the data when there are receivers connected */
-		if(receivers > 0) {
+		if(receivers > 0 && sending == 0) {
 
 			duration = hardware->receive();
-
-			/* A space is normally for 295 long, so filter spaces less then 200 */
-			if(sending == 0 && duration > 150) {
-				struct protocols_t *pnode = protocols;
-				/* Retrieve the used protocol */
-				while(pnode) {
-					protocol = pnode->listener;
-
-					/* Lots of checks if the protocol can actually receive anything */
-					if((((protocol->parseRaw || protocol->parseCode) && protocol->rawlen > 0)
-					    || protocol->parseBinary)
-						&& protocol->footer > 0	&& protocol->pulse > 0) {
-						/* If we are recording, keep recording until the footer has been matched */
-						if(protocol->recording == 1) {
-							if(protocol->bit < 255) {
-								protocol->raw[protocol->bit++] = duration;
-							} else {
-								protocol->bit = 0;
-								protocol->recording = 0;
-							}
-						}
-
-						if(protocol->header == 0) {
-							header = (short)protocol->pulse;
-						} else {
-							header = (short)protocol->header;
-						}
-
-						plslen = (PULSE_LENGTH/protocol->plslen);
-
-						/* Try to catch the header of the code */
-						if(duration > (plslen-(plslen*MULTIPLIER))
-						   && duration < (plslen+(plslen*MULTIPLIER))
-						   && protocol->bit == 0) {
-							protocol->raw[protocol->bit++] = duration;
-						} else if(duration > ((header*plslen)-((header*plslen)*MULTIPLIER))
-						   && duration < ((header*plslen)+((header*plslen)*MULTIPLIER))
-						   && protocol->bit == 1) {
-							protocol->raw[protocol->bit++] = duration;
-							protocol->recording = 1;
-						}
-
-						/* Try to catch the footer of the code */
-						if(duration > ((protocol->footer*plslen)-((protocol->footer*plslen)*MULTIPLIER))
-						   && duration < ((protocol->footer*plslen)+((protocol->footer*plslen)*MULTIPLIER))) {
-							//logprintf(LOG_DEBUG, "caught %s header and footer", protocol->id);
-
-							/* Check if the code matches the raw length */
-							if((protocol->bit == protocol->rawlen)) {
-								if(protocol->parseRaw) {
-									logprintf(LOG_DEBUG, "called %s parseRaw()", protocol->id);
-
-									protocol->parseRaw();
-									if(protocol->message) {
-										char *valid = json_stringify(protocol->message, NULL);
-										json_delete(protocol->message);
-										if(valid && json_validate(valid) == true) {
-											tmp_conflicts = protocol->conflicts;
-											JsonNode *jmessage = json_mkobject();
-
-											json_append_member(jmessage, "code", json_decode(valid));
-											json_append_member(jmessage, "origin", json_mkstring("receiver"));
-											json_append_member(jmessage, "protocol", json_mkstring(protocol->id));
-											broadcast(protocol->id, jmessage);
-											json_delete(jmessage);
-											while(tmp_conflicts) {
-												jmessage = json_mkobject();
-												json_append_member(jmessage, "code", json_decode(valid));
-												json_append_member(jmessage, "origin", json_mkstring("receiver"));
-												json_append_member(jmessage, "protocol", json_mkstring(tmp_conflicts->id));
-												broadcast(tmp_conflicts->id, jmessage);
-												tmp_conflicts = tmp_conflicts->next;
-												json_delete(jmessage);
-											}
-										}
-										protocol->message = NULL;
-										free(valid);
-									}
-									//continue;
-								}
-
-								if((protocol->parseCode || protocol->parseBinary) && protocol->pulse > 0) {
-									/* Convert the raw codes to one's and zero's */
-									for(x=0;x<protocol->bit;x++) {
-
-										/* Check if the current code matches the previous one */
-										if(protocol->pCode[0] > 0 && protocol->pCode[x] != protocol->code[x]) {
-											y=0;
-											first = 0;
-											second = 0;
-										}
-										protocol->pCode[x]=protocol->code[x];
-										if(protocol->raw[x] > ((protocol->pulse*plslen)-plslen)) {
-											protocol->code[x]=1;
-										} else {
-											protocol->code[x]=0;
-										}
-									}
-
-									gettimeofday(&tv, NULL);
-									if(first > 0) {
-										first = second;
-									}
-									second = 1000000 * (unsigned int)tv.tv_sec + (unsigned int)tv.tv_usec;
-									if(first == 0) {
-										first = second;
-									}
-
-									/* Reset # of repeats after a certain delay */
-									if(((int)second-(int)first) > 1500000) {
-										y = 0;
-									}
-
-									y++;
-
-									/* Continue if we have recognized enough repeated codes */
-									if(y >= (receive_repeat*protocol->rxrpt)) {
-										if(protocol->parseCode) {
-											logprintf(LOG_DEBUG, "caught minimum # of repeats %d of %s", y, protocol->id);
-											logprintf(LOG_DEBUG, "called %s parseCode()", protocol->id);
-
-											protocol->parseCode(y);
-											if(protocol->message) {
-												char *valid = json_stringify(protocol->message, NULL);
-												json_delete(protocol->message);
-												if(valid && json_validate(valid) == true) {
-													tmp_conflicts = protocol->conflicts;
-													JsonNode *jmessage = json_mkobject();
-
-													json_append_member(jmessage, "code", json_decode(valid));
-													json_append_member(jmessage, "origin", json_mkstring("receiver"));
-													json_append_member(jmessage, "protocol", json_mkstring(protocol->id));
-													json_append_member(jmessage, "repeat", json_mknumber(y));
-													broadcast(protocol->id, jmessage);
-													json_delete(jmessage);
-													while(tmp_conflicts) {
-														jmessage = json_mkobject();
-														json_append_member(jmessage, "code", json_decode(valid));
-														json_append_member(jmessage, "origin", json_mkstring("receiver"));
-														json_append_member(jmessage, "protocol", json_mkstring(tmp_conflicts->id));
-														json_append_member(jmessage, "repeat", json_mknumber(y));
-														broadcast(tmp_conflicts->id, jmessage);
-														tmp_conflicts = tmp_conflicts->next;
-														json_delete(jmessage);
-													}
-												}
-												protocol->message = NULL;
-												free(valid);
-											}
-											//continue;
-										}
-
-										if(protocol->parseBinary) {
-											/* Convert the one's and zero's into binary */
-											for(x=0; x<protocol->bit; x+=4) {
-												if(protocol->code[x+(unsigned int)protocol->lsb] == 1) {
-													protocol->binary[x/4]=1;
-												} else {
-													protocol->binary[x/4]=0;
-												}
-											}
-
-											/* Fix for sartano receiving */
-											if(protocol->header == 0) {
-												x -= 4;
-											}
-
-											/* Check if the binary matches the binary length */
-											if((protocol->binlen > 0 && ((x/4) == protocol->binlen)) || (protocol->binlen == 0 && ((x/4) == protocol->rawlen/4))) {
-												logprintf(LOG_DEBUG, "called %s parseBinary()", protocol->id);
-
-												protocol->parseBinary(y);
-
-												if(protocol->message) {
-													char *valid = json_stringify(protocol->message, NULL);
-													json_delete(protocol->message);
-													if(valid && json_validate(valid) == true) {
-														tmp_conflicts = protocol->conflicts;
-														JsonNode *jmessage = json_mkobject();
-														JsonNode *jcode = json_decode(valid);
-														json_append_member(jmessage, "code", jcode);
-														json_append_member(jmessage, "origin", json_mkstring("receiver"));
-														json_append_member(jmessage, "protocol", json_mkstring(protocol->id));
-														json_append_member(jmessage, "repeat", json_mknumber(y));
-														broadcast(protocol->id, jmessage);
-														json_delete(jmessage);
-														while(tmp_conflicts) {
-															jmessage = json_mkobject();
-															jcode = json_decode(valid);
-															json_append_member(jmessage, "code", jcode);
-															json_append_member(jmessage, "origin", json_mkstring("receiver"));
-															json_append_member(jmessage, "protocol", json_mkstring(tmp_conflicts->id));
-															json_append_member(jmessage, "repeat", json_mknumber(y));
-															broadcast(tmp_conflicts->id, jmessage);
-															tmp_conflicts = tmp_conflicts->next;
-															json_delete(jmessage);
-														}
-													}
-													protocol->message = NULL;
-													free(valid);
-												}
-												//continue;
-											}
-										}
-									}
-								}
-							}
-							protocol->recording = 0;
-							protocol->bit = 0;
-						}
-					}
-					pnode = pnode->next;
+			rawcode[rawlen] = duration;
+			rawlen++;
+			if(rawlen > 255) {
+				rawlen = 0;
+			}
+			if(duration > 4440) {
+				if((duration/PULSE_DIV) < 1000) {
+					plslen = duration/PULSE_DIV;
 				}
+				receiver_parse_code(rawcode, rawlen, plslen);
+				rawlen = 0;
 			}
 		} else {
 			sleep(1);
@@ -1162,12 +1097,14 @@ int main_gc(void) {
 		webserver_gc();
 	}
 
-	JsonNode *joutput = config2json(0);
-	char *output = json_stringify(joutput, "\t");
-	config_write(output);
-	json_delete(joutput);
-	free(output);			
-	joutput = NULL;
+	if(valid_config) {
+		JsonNode *joutput = config2json(0);
+		char *output = json_stringify(joutput, "\t");
+		config_write(output);
+		json_delete(joutput);
+		free(output);
+		joutput = NULL;
+	}
 
 	config_gc();
 	protocol_gc();
@@ -1184,7 +1121,7 @@ int main_gc(void) {
 		pthread_cancel(pth4);
 		pthread_join(pth4, NULL);
 	}
-	
+
 	if(runmode == 2) {
 		pthread_cancel(pth1);
 		pthread_join(pth1, NULL);
@@ -1205,7 +1142,7 @@ int main(int argc , char **argv) {
 	strcpy(progname, "pilight-daemon");
 
 	if(geteuid() != 0) {
-		printf("%s requires root priveliges\n", progname);
+		printf("%s requires root priveliges in order to run\n", progname);
 		free(progname);
 		exit(EXIT_FAILURE);
 	}
@@ -1362,7 +1299,7 @@ int main(int argc , char **argv) {
 	}
 
 	logprintf(LOG_INFO, "version %.1f, commit %s", VERSION, HASH);
-	
+
 	if(nodaemon == 1 || running == 1) {
 		log_file_disable();
 		log_shell_enable();
@@ -1410,6 +1347,7 @@ int main(int argc , char **argv) {
 	if(settings_find_string("config-file", &stmp) == 0) {
 		if(config_set_file(stmp) == 0) {
 			if(config_read() != 0) {
+				valid_config = 0;
 				goto clear;
 			} else {
 				receivers++;
@@ -1436,6 +1374,8 @@ int main(int argc , char **argv) {
 
 	/* Export certain daemon function to global usage */
 	pilight.broadcast = &broadcast;
+	pilight.send = &send_code;
+	pilight.receive = &receiver_parse_code;
 
 	/* Run certain daemon functions from the socket library */
     socket_callback.client_disconnected_callback = &socket_client_disconnected;

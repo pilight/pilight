@@ -27,7 +27,7 @@ typedef struct hardware_t {
 	unsigned short (*init)(void);
 	unsigned short (*deinit)(void);
 	int (*receive)(void);
-	unsigned short (*send)(int *code);
+	int (*send)(int *code);
 } hardware_t;
 
 typedef struct hardwares_t {

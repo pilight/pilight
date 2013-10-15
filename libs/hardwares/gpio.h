@@ -23,7 +23,7 @@ struct hardware_t *gpio;
 
 unsigned short gpioHwInit(void);
 unsigned short gpioHwDeinit(void);
-unsigned short gpioSend(int *code);
+int gpioSend(int *code);
 int gpioReceive(void);
 void gpioInit(void);
 

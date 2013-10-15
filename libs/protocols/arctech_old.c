@@ -38,33 +38,20 @@ void arctechOldCreateMessage(int id, int unit, int state) {
 }
 
 void arctechOldParseBinary(int repeats) {
-	int fp = 0;
-	int i = 0;
-	for(i=0;i<arctech_old->binlen;i++) {
-		if((arctech_old->code[(4*i+0)] != 0) || (arctech_old->code[(4*i+1)] != 1)
-			|| (arctech_old->code[(4*i+2)] == arctech_old->code[(4*i+3)])) {
-			fp = 1;
-		}
-	}
-	if((arctech_old->code[38] != 1) || (arctech_old->code[42] != 1)
-		|| (arctech_old->code[48] != 0) || (arctech_old->code[49] != 1)) {
-		fp = 1;
-	}
 	int unit = binToDec(arctech_old->binary, 0, 3);
 	int state = arctech_old->binary[11];
 	int id = binToDec(arctech_old->binary, 4, 8);
-	if(fp == 0)
-		arctechOldCreateMessage(id, unit, state);
+	arctechOldCreateMessage(id, unit, state);
 }
 
 void arctechOldCreateLow(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=4) {
-		arctech_old->raw[i]=(PULSE_LENGTH);
-		arctech_old->raw[i+1]=(arctech_old->pulse*PULSE_LENGTH);
-		arctech_old->raw[i+2]=(arctech_old->pulse*PULSE_LENGTH);
-		arctech_old->raw[i+3]=(PULSE_LENGTH);
+		arctech_old->raw[i]=(arctech_old->plslen);
+		arctech_old->raw[i+1]=(arctech_old->pulse*arctech_old->plslen);
+		arctech_old->raw[i+2]=(arctech_old->pulse*arctech_old->plslen);
+		arctech_old->raw[i+3]=(arctech_old->plslen);
 	}
 }
 
@@ -72,10 +59,10 @@ void arctechOldCreateHigh(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=4) {
-		arctech_old->raw[i]=(PULSE_LENGTH);
-		arctech_old->raw[i+1]=(arctech_old->pulse*PULSE_LENGTH);
-		arctech_old->raw[i+2]=(PULSE_LENGTH);
-		arctech_old->raw[i+3]=(arctech_old->pulse*PULSE_LENGTH);
+		arctech_old->raw[i]=(arctech_old->plslen);
+		arctech_old->raw[i+1]=(arctech_old->pulse*arctech_old->plslen);
+		arctech_old->raw[i+2]=(arctech_old->plslen);
+		arctech_old->raw[i+3]=(arctech_old->pulse*arctech_old->plslen);
 	}
 }
 
@@ -119,8 +106,8 @@ void arctechOldCreateState(int state) {
 }
 
 void arctechOldCreateFooter(void) {
-	arctech_old->raw[48]=(PULSE_LENGTH);
-	arctech_old->raw[49]=(arctech_old->footer*PULSE_LENGTH);
+	arctech_old->raw[48]=(arctech_old->plslen);
+	arctech_old->raw[49]=(PULSE_DIV*arctech_old->plslen);
 }
 
 int arctechOldCreateCode(JsonNode *code) {
@@ -169,19 +156,16 @@ void arctechOldInit(void) {
 
 	protocol_register(&arctech_old);
 	arctech_old->id = malloc(13);
-	strcpy(arctech_old->id, "archtech_old");
+	strcpy(arctech_old->id, "arctech_old");
 	protocol_device_add(arctech_old, "kaku_old", "Old KlikAanKlikUit Switches");
 	protocol_device_add(arctech_old, "cogex", "Cogex Switches");
 	protocol_device_add(arctech_old, "intertechno_old", "Old Intertechno Switches");
 	arctech_old->type = SWITCH;
 	arctech_old->pulse = 4;
-	arctech_old->footer = 39;
+	arctech_old->plslen = 294;
 	arctech_old->rawlen = 50;
 	arctech_old->binlen = 12;
 	arctech_old->lsb = 2;
-
-	arctech_old->bit = 0;
-	arctech_old->recording = 0;
 
 	options_add(&arctech_old->options, 't', "on", no_value, config_state, NULL);
 	options_add(&arctech_old->options, 'f', "off", no_value, config_state, NULL);

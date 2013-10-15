@@ -36,7 +36,7 @@
 #define FREQ433				433920
 #define FREQ38				38000
 
-#define PULSE_LENGTH		295
+#define PULSE_DIV			34
 
 #define PORT 				5000
 #define WEBSERVER_PORT		5001

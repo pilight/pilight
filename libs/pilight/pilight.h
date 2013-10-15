@@ -21,6 +21,8 @@
 
 typedef struct pilight_t {
     int (*broadcast)(char *name, JsonNode *message);
+    void (*send)(JsonNode *json);
+    void (*receive)(int *rawcode, int rawlen, int plslen);
 } pilight_t;
 
 struct pilight_t pilight;

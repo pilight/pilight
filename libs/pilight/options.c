@@ -194,15 +194,16 @@ int options_parse(struct options_t **opt, int argc, char **argv, int error_check
 		if(strchr(argv[getOptPos],'=')) {
 			/* Copy all characters until the equals to sign.
 			   This will probably be the name of the argument */
-			longarg = realloc(longarg, strcspn(argv[getOptPos],"="));			   
+			longarg = realloc(longarg, strcspn(argv[getOptPos],"=")+1);			
+			memset(longarg, '\0', strcspn(argv[getOptPos],"=")+1);
 			memcpy(longarg, &argv[getOptPos][0], strcspn(argv[getOptPos],"="));
-			strcat(longarg, "\0");
 
 			/* Then copy everything after the equals sign.
 			   This will probably be the value of the argument */
-			*optarg = realloc(*optarg, (strlen(argv[getOptPos])-strlen(&argv[getOptPos][strcspn(argv[getOptPos],"=")+1])));
-			memcpy(*optarg, &argv[getOptPos][strcspn(argv[getOptPos],"=")+1], strlen(argv[getOptPos]));
-			strcat(*optarg, "\0");
+			size_t i = strlen(&argv[getOptPos][strcspn(argv[getOptPos],"=")+1]);
+			*optarg = realloc(*optarg, i+1);
+			memset(*optarg, '\0', i+1);
+			memcpy(*optarg, &argv[getOptPos][strcspn(argv[getOptPos],"=")+1], i);
 		} else {
 			/* If the argument does not contain a equals sign.
 			   Store the argument to check later if it's a long argument */

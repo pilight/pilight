@@ -24,7 +24,7 @@
 #include "hardware.h"
 #include "none.h"
 
-int noneSend(void) {
+int noneSend(int *code) {
 	return 0;
 }
 

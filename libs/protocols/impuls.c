@@ -68,10 +68,10 @@ void impulsCreateLow(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=4) {
-		impuls->raw[i]=(PULSE_LENGTH/impuls->plslen);
-		impuls->raw[i+1]=(impuls->pulse*(PULSE_LENGTH/impuls->plslen));
-		impuls->raw[i+2]=(impuls->pulse*(PULSE_LENGTH/impuls->plslen));
-		impuls->raw[i+3]=(PULSE_LENGTH/impuls->plslen);
+		impuls->raw[i]=impuls->plslen;
+		impuls->raw[i+1]=(impuls->pulse*impuls->plslen);
+		impuls->raw[i+2]=(impuls->pulse*impuls->plslen);
+		impuls->raw[i+3]=impuls->plslen;
 	}
 }
 
@@ -79,10 +79,10 @@ void impulsCreateMed(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=4) {
-		impuls->raw[i]=(impuls->pulse*(PULSE_LENGTH/impuls->plslen));
-		impuls->raw[i+1]=(PULSE_LENGTH/impuls->plslen);
-		impuls->raw[i+2]=(impuls->pulse*(PULSE_LENGTH/impuls->plslen));
-		impuls->raw[i+3]=(PULSE_LENGTH/impuls->plslen);
+		impuls->raw[i]=(impuls->pulse*impuls->plslen);
+		impuls->raw[i+1]=impuls->plslen;
+		impuls->raw[i+2]=(impuls->pulse*impuls->plslen);
+		impuls->raw[i+3]=impuls->plslen;
 	}
 }
 
@@ -90,10 +90,10 @@ void impulsCreateHigh(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=4) {
-		impuls->raw[i]=(PULSE_LENGTH/impuls->plslen);
-		impuls->raw[i+1]=(impuls->pulse*(PULSE_LENGTH/impuls->plslen));
-		impuls->raw[i+2]=(PULSE_LENGTH/impuls->plslen);
-		impuls->raw[i+3]=(impuls->pulse*(PULSE_LENGTH/impuls->plslen));
+		impuls->raw[i]=impuls->plslen;
+		impuls->raw[i+1]=(impuls->pulse*impuls->plslen);
+		impuls->raw[i+2]=impuls->plslen;
+		impuls->raw[i+3]=(impuls->pulse*impuls->plslen);
 	}
 }
 
@@ -138,8 +138,8 @@ void impulsCreateState(int state) {
 }
 
 void impulsCreateFooter(void) {
-	impuls->raw[48]=(PULSE_LENGTH);
-	impuls->raw[49]=(impuls->footer*PULSE_LENGTH);
+	impuls->raw[48]=(impuls->plslen);
+	impuls->raw[49]=(PULSE_DIV*impuls->plslen);
 }
 
 int impulsCreateCode(JsonNode *code) {
@@ -196,13 +196,9 @@ void impulsInit(void) {
 	protocol_device_add(impuls, "select-remote", "SelectRemote Switches");
 	impuls->type = SWITCH;
 	impuls->pulse = 3;
-	impuls->footer = 31;
+	impuls->plslen = 133;
 	impuls->rawlen = 50;
-	impuls->plslen = 2;
 	impuls->binlen = 12;
-
-	impuls->bit = 0;
-	impuls->recording = 0;
 
 	options_add(&impuls->options, 's', "systemcode", has_value, config_id, "^(3[012]?|[012][0-9]|[0-9]{1})$");
 	options_add(&impuls->options, 'u', "programcode", has_value, config_id, "^(3[012]?|[012][0-9]|[0-9]{1})$");

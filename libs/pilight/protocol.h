@@ -54,12 +54,12 @@ typedef struct protocol_t {
 	devtype_t type;
 	int header;
 	int pulse;
+	int plslen;	
 	int footer;
 	int rawlen;
 	int binlen;
 	short txrpt;
 	short rxrpt;
-	short plslen;
 	unsigned short lsb;
 	struct options_t *options;
 	JsonNode *message;

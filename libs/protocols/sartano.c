@@ -39,23 +39,11 @@ void sartanoCreateMessage(int systemcode, int unitcode, int state) {
 }
 
 void sartanoParseBinary(int repeats) {
-	int fp = 0;
-	int i = 0;
-	for(i=0;i<sartano->binlen;i++) {
-		if((sartano->code[(4*i+0)] != 0) || (sartano->code[(4*i+1)] != 1)
-		   || (sartano->code[(4*i+2)] == sartano->code[(4*i+3)])) {
-			fp = 1;
-		}
-	}
-	if((sartano->code[48] != 0) || (sartano->code[49] != 1)) {
-		fp = 1;
-	}
-
 	int systemcode = binToDec(sartano->binary, 0, 4);
 	int unitcode = binToDec(sartano->binary, 5, 9);
 	int state = sartano->binary[10];
 	int check = sartano->binary[11];
-	if((check != state) && fp == 0) {
+	if(check != state) {
 		sartanoCreateMessage(systemcode, unitcode, state);
 	}
 }
@@ -64,10 +52,10 @@ void sartanoCreateLow(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=4) {
-		sartano->raw[i]=(PULSE_LENGTH);
-		sartano->raw[i+1]=(sartano->pulse*PULSE_LENGTH);
-		sartano->raw[i+2]=(sartano->pulse*PULSE_LENGTH);
-		sartano->raw[i+3]=(PULSE_LENGTH);
+		sartano->raw[i]=(sartano->plslen);
+		sartano->raw[i+1]=(sartano->pulse*sartano->plslen);
+		sartano->raw[i+2]=(sartano->pulse*sartano->plslen);
+		sartano->raw[i+3]=(sartano->plslen);
 	}
 }
 
@@ -75,10 +63,10 @@ void sartanoCreateHigh(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=4) {
-		sartano->raw[i]=(PULSE_LENGTH);
-		sartano->raw[i+1]=(sartano->pulse*PULSE_LENGTH);
-		sartano->raw[i+2]=(PULSE_LENGTH);
-		sartano->raw[i+3]=(sartano->pulse*PULSE_LENGTH);
+		sartano->raw[i]=(sartano->plslen);
+		sartano->raw[i+1]=(sartano->pulse*sartano->plslen);
+		sartano->raw[i+2]=(sartano->plslen);
+		sartano->raw[i+3]=(sartano->pulse*sartano->plslen);
 	}
 }
 void sartanoClearCode(void) {
@@ -122,8 +110,8 @@ void sartanoCreateState(int state) {
 }
 
 void sartanoCreateFooter(void) {
-	sartano->raw[48]=(PULSE_LENGTH);
-	sartano->raw[49]=(sartano->footer*PULSE_LENGTH);
+	sartano->raw[48]=(sartano->plslen);
+	sartano->raw[49]=(PULSE_DIV*sartano->plslen);
 }
 
 int sartanoCreateCode(JsonNode *code) {
@@ -179,13 +167,10 @@ void sartanoInit(void) {
 	protocol_device_add(sartano, "elro", "Elro Switches");
 	sartano->type = SWITCH;
 	sartano->pulse = 3;
-	sartano->footer = 33;
+	sartano->plslen = 287;
 	sartano->rawlen = 50;
 	sartano->binlen = 12;
 	sartano->lsb = 3;
-
-	sartano->bit = 0;
-	sartano->recording = 0;
 
 	options_add(&sartano->options, 's', "systemcode", has_value, config_id, "^(3[012]?|[012][0-9]|[0-9]{1})$");
 	options_add(&sartano->options, 'u', "unitcode", has_value, config_id, "^(3[012]?|[012][0-9]|[0-9]{1})$");

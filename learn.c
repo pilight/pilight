@@ -38,6 +38,7 @@
 #include "gc.h"
 
 const char *hw_mode = HW_MODE;
+int pulse_length = 0;
 
 typedef enum {
 	WAIT,
@@ -79,7 +80,7 @@ void rmDup(int *a, int *b) {
 
 int normalize(int i) {
 	double x;
-	x=(double)i/PULSE_LENGTH;
+	x=(double)i/pulse_length;
 
 	return (int)(round(x));
 }
@@ -379,9 +380,9 @@ int main(int argc, char **argv) {
 
 		/* First try to catch code that seems to be a footer.
 		   If a real footer has been recognized, start using that as the new footer */
-		if((duration > 5000
-		   && duration < 100000 && footer == 0) || ((footer-(footer*0.1)<duration) && (footer+(footer*0.1)>duration))) {
+		if((duration > 4440 && footer == 0) || ((footer-(footer*0.1)<duration) && (footer+(footer*0.1)>duration))) {
 			recording = 1;
+			pulse_length = duration/PULSE_DIV;
 
 			/* Check if we are recording similar codes */
 			for(i=0;i<(bit-1);i++) {
@@ -412,7 +413,7 @@ int main(int argc, char **argv) {
 					/* Try to catch the footer, and the low and high values */
 					for(i=0;i<bit;i++) {
 						if((i+1)<bit && i > 2 && footer > 0) {
-							if((raw[i]/PULSE_LENGTH) >= 2) {
+							if((raw[i]/pulse_length) >= 2) {
 								pulse=raw[i];
 							}
 						}
@@ -423,7 +424,7 @@ int main(int argc, char **argv) {
 					if(header > 0 && footer > 0 && pulse > 0 && rawLength > 0) {
 						/* Convert the raw code into binary code */
 						for(i=0;i<rawLength;i++) {
-							if((unsigned int)raw[i] > (pulse-PULSE_LENGTH)) {
+							if((unsigned int)raw[i] > (pulse-pulse_length)) {
 								code[i]=1;
 							} else {
 								code[i]=0;
@@ -503,15 +504,10 @@ int main(int argc, char **argv) {
 	/* Print everything */
 	printf("--[RESULTS]--\n");
 	printf("\n");
-	if(normalize(header) == normalize(pulse)) {
-		printf("header:\t\t0\n");
-	} else {
-		printf("header:\t\t%d\n",normalize(header));
-	}
 	printf("pulse:\t\t%d\n",normalize(pulse));
-	printf("footer:\t\t%d\n",normalize(footer));
-	printf("rawLength:\t%d\n",rawLength);
-	printf("binaryLength:\t%d\n",binaryLength);
+	printf("rawlen:\t\t%d\n",rawLength);
+	printf("binlen:\t\t%d\n",binaryLength);
+	printf("plslen:\t\t%d\n",pulse_length);
 	printf("\n");
 	printf("on-off bit(s):\t");
 	z=0;
@@ -533,7 +529,7 @@ int main(int argc, char **argv) {
 	printf("\n\n");
 	printf("Raw code:\n");
 	for(i=0;i<rawLength;i++) {
-		printf("%d ",normalize(raw[i])*PULSE_LENGTH);
+		printf("%d ",normalize(raw[i])*pulse_length);
 	}
 	printf("\n");
 	printf("Raw simplified:\n");

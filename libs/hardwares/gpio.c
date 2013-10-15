@@ -71,7 +71,7 @@ unsigned short gpioHwDeinit(void) {
 	return 0;
 }
 
-unsigned short gpioSend(int *code) {
+int gpioSend(int *code) {
 	unsigned short i = 0;
 
 	piHiPri(55);

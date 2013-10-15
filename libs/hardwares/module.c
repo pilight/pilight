@@ -97,7 +97,7 @@ unsigned short moduleHwDeinit(void) {
 	return EXIT_SUCCESS;
 }
 
-unsigned short moduleSend(int *code) {
+int moduleSend(int *code) {
 	size_t i = 0;
 	while(code[i]) {
 		i++;

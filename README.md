@@ -20,11 +20,16 @@ New (Experimental) Features
 - Enabled Impuls receiving.
 - Allow for multiple protocols per device.
 - Enabled webserver file caching.
-- Allow for push messages send from within a protocol.
+- Open specific pilight function through the pilight_t struct. This allows protocols to control the broadcast, sending, and receiving function.
 - Code repeat numbers are now communicated.
 - Fixed bug when pilight-daemon was started as a non-root user.
 - The config file updates will now only occur inside memory. When stopping the daemon the file is updated.
 - The log will now contain microseconds to enable specific benchmarking of code.
+- Dynamic pulse length detection which improves receiving.
+- Raw codes sent by the sender will now be parsed by the daemon as a received code. This allows for receive simulation.
+- Fixed small bug in options library.
+- Suppress error message when running "make clean".
+- Added support for the Alecto WSD-17 weather station.
 
 New config syntax:
 

@@ -20,6 +20,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <unistd.h>
 
 #include "settings.h"
 #include "log.h"
@@ -42,13 +43,19 @@ int relayCreateCode(JsonNode *code) {
 	int state = -1;
 	char *tmp;
 	char *hw_mode;
-	char *def = malloc(4);
+	char *def = NULL;
 	int gpio_in = GPIO_IN_PIN;
 	int gpio_out = GPIO_OUT_PIN;
 	int free_hw_mode = 0;
+	int free_def = 0;
+	int have_error = 0;
 
 	relay->rawlen = 0;
-	strcpy(def, "off");
+	if(protocol_setting_get_string(relay, "default", &def) != 0) {
+		def = malloc(4);
+		free_def = 1;
+		strcpy(def, "off");
+	}
 	
 	if(json_find_string(code, "gpio", &tmp) == 0)
 		gpio=atoi(tmp);
@@ -68,22 +75,16 @@ int relayCreateCode(JsonNode *code) {
 	
 	if(gpio == -1 || state == -1) {
 		logprintf(LOG_ERR, "relay: insufficient number of arguments");
-		if(free_hw_mode) {
-			free(hw_mode);
-		}
-		return EXIT_FAILURE;
+		have_error = 1;
+		goto clear;
 	} else if(gpio > 7 || gpio < 0) {
 		logprintf(LOG_ERR, "relay: invalid gpio range");
-		if(free_hw_mode) {
-			free(hw_mode);
-		}		
-		return EXIT_FAILURE;
+		have_error = 1;
+		goto clear;
 	} else if(strstr(progname, "daemon") != 0 && strcmp(hw_mode, "gpio") == 0 && (gpio == gpio_in || gpio == gpio_out)) {
 		logprintf(LOG_ERR, "relay: gpio's already in use");
-		if(free_hw_mode) {
-			free(hw_mode);
-		}
-		return EXIT_FAILURE;
+		have_error = 1;
+		goto clear;
 	} else {
 		if(strstr(progname, "daemon") != 0) {
 			if(strcmp(hw_mode, "none") != 0) {
@@ -91,7 +92,6 @@ int relayCreateCode(JsonNode *code) {
 					logprintf(LOG_ERR, "unable to setup wiringPi") ;
 					return EXIT_FAILURE;
 				} else {
-					protocol_setting_get_string(relay, "default", &def);
 					pinMode(gpio, OUTPUT);
 					if(strcmp(def, "off") == 0) {
 						if(state == 1) {
@@ -110,15 +110,23 @@ int relayCreateCode(JsonNode *code) {
 			}
 			relayCreateMessage(gpio, state);
 			// Sleep for 1 second
-			struct timeval tv;
-			tv.tv_sec = 1;
-			select(0, NULL, NULL, NULL, &tv);
+			sleep(1);
 		}
+		goto clear;
 	}
+
+clear:
 	if(free_hw_mode) {
 		free(hw_mode);
-	}	
-	return EXIT_SUCCESS;
+	}
+	if(free_def) {
+		free(def);
+	}
+	if(have_error) {
+		return EXIT_FAILURE;
+	} else {
+		return EXIT_SUCCESS;
+	}
 }
 
 void relayPrintHelp(void) {

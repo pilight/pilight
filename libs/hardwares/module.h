@@ -23,7 +23,7 @@ struct hardware_t *module;
 
 unsigned short moduleHwInit(void);
 unsigned short moduleHwDeinit(void);
-unsigned short moduleSend(int *code);
+int moduleSend(int *code);
 int moduleReceive(void);
 void moduleInit(void);
 

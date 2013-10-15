@@ -214,7 +214,7 @@ int main(int argc, char **argv) {
 		   If a real footer has been recognized, start using that as the new footer */
 		if((duration > 4440 && footer == 0) || ((footer-(footer*0.1)<duration) && (footer+(footer*0.1)>duration))) {
 			recording = 1;
-			pulselen = (int)duration/34;
+			pulselen = (int)duration/PULSE_DIV;
 			/* Check if we are recording similar codes */
 			for(i=0;i<(bit-1);i++) {
 				if(!(((pRaw[i]-(pRaw[i]*0.3)) < raw[i]) && ((pRaw[i]+(pRaw[i]*0.3)) > raw[i]))) {
@@ -280,13 +280,7 @@ int main(int argc, char **argv) {
 	/* Print everything */
 	printf("--[RESULTS]--\n");
 	printf("\n");
-	if(normalize(header) == normalize(pulse)) {
-		printf("header:\t\t0\n");
-	} else {
-		printf("header:\t\t%d\n",normalize(header));
-	}
 	printf("pulse:\t\t%d\n",normalize(pulse));
-	printf("footer:\t\t%d\n",normalize(footer));
 	printf("rawlen:\t\t%d\n",rawLength);
 	printf("binlen:\t\t%d\n",binaryLength);
 	printf("pulselen:\t%d\n",pulselen);

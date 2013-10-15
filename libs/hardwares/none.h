@@ -23,6 +23,6 @@ struct hardware_t *none;
 
 void noneInit(void);
 int noneReceive(void);
-int noneSend(void);
+int noneSend(int *code);
 
 #endif

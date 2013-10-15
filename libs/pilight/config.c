@@ -1560,6 +1560,9 @@ int config_write(char *content) {
 		logprintf(LOG_ERR, "cannot write config file: %s", configfile);
 		return EXIT_FAILURE;
 	}
+	if(strcmp(content, "{}") == 0) {
+		return EXIT_SUCCESS;
+	}
 	fseek(fp, 0L, SEEK_SET);
  	fwrite(content, sizeof(char), strlen(content), fp);
 	fclose(fp);

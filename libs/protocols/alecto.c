@@ -28,43 +28,20 @@
 #include "alecto.h"
 
 void alectoParseCode(int repeats) {
-	int i = 0, x = 0, a = 0xf;
+	int i = 0, x = 0;
 	int temperature;
-	int negative;
-	int humidity;
-	int battery;
 	int id;
 
 	for(i=1;i<alecto->rawlen-1;i+=2) {
 		alecto->binary[x++] = alecto->code[i];
 	}
 
-	for(i=0;i<x-4;i+=4) {
-		a-=binToDec(alecto->binary, i, i+3);
-	}
+	id = binToDecRev(alecto->binary, 0, 11);
+	temperature = binToDecRev(alecto->binary, 16, 27);
 
-	if(binToDec(alecto->binary, 32, 35) == (a&0xf)) {
-		id = binToDec(alecto->binary, 0, 7);
-		if(alecto->binary[11] == 1)
-			battery = 1;
-		else
-			battery = 0;
-		temperature = binToDec(alecto->binary, 12, 22);
-		if(alecto->binary[23] == 1)
-			negative=1;
-		else
-			negative=0;
-		humidity = ((binToDec(alecto->binary, 28, 31)*10)+binToDec(alecto->binary, 24, 27));
-
-		alecto->message = json_mkobject();
-		json_append_member(alecto->message, "id", json_mknumber(id));
-		json_append_member(alecto->message, "battery", json_mknumber(battery));
-		if(negative==1)
-			json_append_member(alecto->message, "temperature", json_mknumber(temperature));
-		else
-			json_append_member(alecto->message, "temperature", json_mknumber(temperature/-1));
-		json_append_member(alecto->message, "humidity", json_mknumber(humidity));
-	}
+	alecto->message = json_mkobject();
+	json_append_member(alecto->message, "id", json_mknumber(id));
+	json_append_member(alecto->message, "temperature", json_mknumber(temperature));
 }
 
 void alectoInit(void) {
@@ -72,26 +49,20 @@ void alectoInit(void) {
 	protocol_register(&alecto);
 	alecto->id = malloc(7);
 	strcpy(alecto->id, "alecto");
-	protocol_device_add(alecto, "alecto", "Alecto based weather stations");
+	protocol_device_add(alecto, "alecto", "Alecto weather stations");
 	alecto->type = WEATHER;
-	alecto->header = 14;
 	alecto->pulse = 14;
-	alecto->footer = 30;
+	alecto->plslen = 270;
 	alecto->rawlen = 74;
 	alecto->lsb = 3;
 
-	alecto->bit = 0;
-	alecto->recording = 0;
-
-	options_add(&alecto->options, 'h', "humidity", has_value, config_value, "[0-9]");
 	options_add(&alecto->options, 't', "temperature", has_value, config_value, "[0-9]");
-	options_add(&alecto->options, 'b', "battery", has_value, config_value, "[0-9]");
 	options_add(&alecto->options, 'i', "id", has_value, config_id, "[0-9]");
 
-	protocol_setting_add_number(alecto, "decimals", 2);
-	protocol_setting_add_number(alecto, "humidity", 1);
+	protocol_setting_add_number(alecto, "decimals", 1);
+	protocol_setting_add_number(alecto, "humidity", 0);
 	protocol_setting_add_number(alecto, "temperature", 1);
-	protocol_setting_add_number(alecto, "battery", 1);
+	protocol_setting_add_number(alecto, "battery", 0);
 	
 	alecto->parseCode=&alectoParseCode;
 }

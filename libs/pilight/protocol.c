@@ -32,17 +32,13 @@ void protocol_register(protocol_t **proto) {
 	(*proto)->conflicts = NULL;
 	(*proto)->settings = NULL;
 
-	(*proto)->header = 0;
-	(*proto)->footer = 0;
 	(*proto)->pulse = 0;
+	(*proto)->plslen = 295;
 	(*proto)->rawlen = 0;
 	(*proto)->binlen = 0;
 	(*proto)->lsb = 0;
-	(*proto)->bit = 0;
-	(*proto)->recording = 0;
 	(*proto)->txrpt = 1;
 	(*proto)->rxrpt = 1;
-	(*proto)->plslen = 1;
 	(*proto)->parseRaw = NULL;
 	(*proto)->parseBinary = NULL;
 	(*proto)->parseCode = NULL;

@@ -56,10 +56,10 @@ void arctechSwCreateLow(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=4) {
-		arctech_switch->raw[i]=(PULSE_LENGTH);
-		arctech_switch->raw[i+1]=(PULSE_LENGTH);
-		arctech_switch->raw[i+2]=(PULSE_LENGTH);
-		arctech_switch->raw[i+3]=(arctech_switch->pulse*PULSE_LENGTH);
+		arctech_switch->raw[i]=(arctech_switch->plslen);
+		arctech_switch->raw[i+1]=(arctech_switch->plslen);
+		arctech_switch->raw[i+2]=(arctech_switch->plslen);
+		arctech_switch->raw[i+3]=(arctech_switch->pulse*arctech_switch->plslen);
 	}
 }
 
@@ -67,10 +67,10 @@ void arctechSwCreateHigh(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=4) {
-		arctech_switch->raw[i]=(PULSE_LENGTH);
-		arctech_switch->raw[i+1]=(arctech_switch->pulse*PULSE_LENGTH);
-		arctech_switch->raw[i+2]=(PULSE_LENGTH);
-		arctech_switch->raw[i+3]=(PULSE_LENGTH);
+		arctech_switch->raw[i]=(arctech_switch->plslen);
+		arctech_switch->raw[i+1]=(arctech_switch->pulse*arctech_switch->plslen);
+		arctech_switch->raw[i+2]=(arctech_switch->plslen);
+		arctech_switch->raw[i+3]=(arctech_switch->plslen);
 	}
 }
 
@@ -79,8 +79,8 @@ void arctechSwClearCode(void) {
 }
 
 void arctechSwCreateStart(void) {
-	arctech_switch->raw[0]=(PULSE_LENGTH);
-	arctech_switch->raw[1]=(arctech_switch->header*PULSE_LENGTH);
+	arctech_switch->raw[0]=(arctech_switch->plslen);
+	arctech_switch->raw[1]=(9*arctech_switch->plslen);
 }
 
 void arctechSwCreateId(int id) {
@@ -124,7 +124,7 @@ void arctechSwCreateUnit(int unit) {
 }
 
 void arctechSwCreateFooter(void) {
-	arctech_switch->raw[131]=(arctech_switch->footer*PULSE_LENGTH);
+	arctech_switch->raw[131]=(PULSE_DIV*arctech_switch->plslen);
 }
 
 int arctechSwCreateCode(JsonNode *code) {
@@ -190,14 +190,10 @@ void arctechSwInit(void) {
 	protocol_device_add(arctech_switch, "intertechno_switch", "Intertechno Switches");
 	protocol_conflict_add(arctech_switch, "archtech_dimmers");
 	arctech_switch->type = SWITCH;
-	arctech_switch->header = 9;
 	arctech_switch->pulse = 5;
-	arctech_switch->footer = 35;
+	arctech_switch->plslen = 299;
 	arctech_switch->rawlen = 132;
 	arctech_switch->lsb = 3;
-
-	arctech_switch->bit = 0;
-	arctech_switch->recording = 0;
 
 	options_add(&arctech_switch->options, 'a', "all", no_value, 0, NULL);
 	options_add(&arctech_switch->options, 't', "on", no_value, config_state, NULL);

@@ -91,14 +91,14 @@ install:
 	
 clean:
 	rm pilight-* >/dev/null 2>&1 || true
-	rm *pilight*.so* || true
-	rm *pilight*.a* || true
+	rm *pilight*.so* >/dev/null 2>&1 || true
+	rm *pilight*.a* >/dev/null 2>&1 || true
 	$(MAKE) -C libs/protocols/ $@;
 	
 dist-clean:
 	rm pilight-* >/dev/null 2>&1 || true
-	rm *pilight*.so* || true
-	rm *pilight*.a* || true
+	rm *pilight*.so* >/dev/null 2>&1 || true
+	rm *pilight*.a* >/dev/null 2>&1 || true
 	for dir in $(SUBDIRS); do \
 		$(MAKE) -C $$dir $@; \
 	done
