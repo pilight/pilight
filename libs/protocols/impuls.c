@@ -39,27 +39,11 @@ void impulsCreateMessage(int systemcode, int programcode, int state) {
 }
 
 void impulsParseCode(int repeats) {
-	int fp = 0;
-	int i = 0;
-	for(i=0;i<5;i++) {
-		impuls->binary[i] = impuls->code[(4*i+0)]; // Med bits: lsb = 0
-		if (impuls->code[(4*i+0)] == impuls->code[(4*i+1)]) fp = 1;
-		if (impuls->code[(4*i+2)] != 1) fp = 1;
-		if (impuls->code[(4*i+3)] != 0) fp = 1;
-	}
-	for(i=5;i<12;i++) {
-		impuls->binary[i] = impuls->code[(4*i+3)]; // High bits: lsb = 3
-		if (impuls->code[(4*i+0)] != 0) fp = 1;
-		if (impuls->code[(4*i+1)] != 1) fp = 1;
-		if (impuls->code[(4*i+2)] == impuls->code[(4*i+3)]) fp = 1;
-	}
-	if (impuls->code[48] != 0) fp = 1;
-	if (impuls->code[49] != 1) fp = 1;
 	int systemcode = binToDec(impuls->binary, 0, 4);
 	int programcode = binToDec(impuls->binary, 5, 9);
 	int check = impuls->binary[10];
 	int state = impuls->binary[11];
-	if ((check != state) && fp == 0) {
+	if(check != state) {
 		impulsCreateMessage(systemcode, programcode, state);
 	}
 }
