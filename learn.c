@@ -164,7 +164,6 @@ int main(int argc, char **argv) {
 	
 	int temp[75] = {-1};
 	int footer = 0;
-	int header = 0;
 	int pulse = 0;
 	int onoff[75] = {-1};
 	int all[75] = {-1};
@@ -397,18 +396,12 @@ int main(int argc, char **argv) {
 			/* Continue if we have 2 matches */
 			if(y>2) {
 				/* If we are certain we are recording similar codes.
-				   Save the header values and the raw code length */
+				   Save the raw code length */
 				if(footer>0) {
-					if(header == 0) {
-						header=raw[1];
-					}
 					if(rawLength == 0)
 						rawLength=bit;
 				}
 				if(rawLength == 0 || rawLength == bit) {
-				   /*|| ((((raw[0]-(raw[0]*0.3)) < header[0]) || ((raw[0]+(raw[0]*0.3)) > header[0]))
- 				       && (((raw[1]-(raw[1]*0.3)) < header[1]) || ((raw[1]+(raw[1]*0.3)) > header[1]))
-					   && (((raw[bit-1]-(raw[bit-1]*0.1)) < footer) || ((raw[bit-1]+(raw[bit-1]*0.1)) > footer)))) {*/
 
 					/* Try to catch the footer, and the low and high values */
 					for(i=0;i<bit;i++) {
@@ -421,7 +414,7 @@ int main(int argc, char **argv) {
 							footer=raw[i];
 					}
 					/* If we have gathered all data, stop with the loop */
-					if(header > 0 && footer > 0 && pulse > 0 && rawLength > 0) {
+					if(footer > 0 && pulse > 0 && rawLength > 0) {
 						/* Convert the raw code into binary code */
 						for(i=0;i<rawLength;i++) {
 							if((unsigned int)raw[i] > (pulse-pulse_length)) {

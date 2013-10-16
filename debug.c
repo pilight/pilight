@@ -107,7 +107,6 @@ int main(int argc, char **argv) {
 	int code[255] = {0};
 	int binary[255] = {0};
 	int footer = 0;
-	int header = 0;
 	int pulse = 0;
 	int rawLength = 0;
 	int binaryLength = 0;
@@ -227,12 +226,8 @@ int main(int argc, char **argv) {
 
 			/* Continue if we have 2 matches */
 			if(y>2) {
-				/* If we are certain we are recording similar codes.
-				   Save the header values and the raw code length */
+				/* If we are certain we are recording similar codes. Save the raw code length. */
 				if(footer>0) {
-					if(header == 0) {
-						header=raw[1];
-					}
 					if(rawLength == 0)
 						rawLength=bit;
 				}
@@ -249,7 +244,7 @@ int main(int argc, char **argv) {
 				}
 
 				/* If we have gathered all data, stop with the loop */
-				if(header > 0 && footer > 0 && pulse > 0 && rawLength > 0) {
+				if(footer > 0 && pulse > 0 && rawLength > 0) {
 					loop = 0;
 				}
 			}
