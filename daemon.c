@@ -1236,15 +1236,11 @@ int main(int argc , char **argv) {
 		goto clear;
 	}
 
-	log_shell_enable();
 	if(access(settingsfile, F_OK) != -1) {
 		if(settings_read() != 0) {
 			valid_config = 0;
 			goto clear;
 		}
-	}
-	if(nodaemon == 0) {
-		log_shell_disable();
 	}
 
 	settings_find_number("gpio-sender", &gpio_out);
@@ -1350,7 +1346,6 @@ int main(int argc , char **argv) {
 		goto clear;
 	}
 
-	log_shell_enable();
 	if(settings_find_string("config-file", &stmp) == 0) {
 		if(config_set_file(stmp) == 0) {
 			if(config_read() != 0) {
@@ -1372,7 +1367,6 @@ int main(int argc , char **argv) {
 
 	if(nodaemon == 0) {
 		daemonize();
-		log_shell_disable();
 	}
 	socket_start((short unsigned int)port);	
 

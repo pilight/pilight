@@ -108,7 +108,7 @@ void logprintf(int prio, const char *format_str, ...) {
 			va_end(ap);
 		}
 
-		if(shelllog == 1) {
+		if(shelllog == 1 || prio == LOG_ERR) {
 
 			fprintf(stderr, "[%22.22s] %s: ", buf, progname);
 			va_start(ap, format_str);
