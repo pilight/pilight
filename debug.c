@@ -128,7 +128,7 @@ int main(int argc, char **argv) {
 	while (1) {
 		int c;
 		c = options_parse(&options, argc, argv, 1, &args);
-		if(c == -1)
+		if(c == -1 || c == -2)
 			break;
 		switch (c) {
 			case 'H':

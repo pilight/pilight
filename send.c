@@ -95,7 +95,7 @@ int main(int argc, char **argv) {
 		int c;
 		c = options_parse(&options, argc, argv, 0, &args);
 
-		if (c == -1)
+		if(c == -1 || c == -2)
 			break;
 		switch(c) {
 			case 'p':
@@ -152,6 +152,26 @@ int main(int argc, char **argv) {
 			}
 		}
 	}
+	
+	/* Store all CLI arguments for later usage
+	   and also check if the CLI arguments where
+	   used correctly by the user. This will also
+	   fill all necessary values in the options struct */
+	while(1) {
+		int c;
+		c = options_parse(&options, argc, argv, 1, &args);
+
+		if(c == -1)
+			break;
+		if(c == -2) {
+			if(match == 1) {
+				protohelp = 1;
+			} else {
+				help = 1;
+			}
+		break;
+		}
+	}	
 
 	/* Display help or version information */
 	if(version == 1) {
@@ -193,18 +213,6 @@ int main(int argc, char **argv) {
 			}
 		}
 		goto close;
-	}
-
-	/* Store all CLI arguments for later usage
-	   and also check if the CLI arguments where
-	   used correctly by the user. This will also
-	   fill all necessary values in the options struct */
-	while(1) {
-		int c;
-		c = options_parse(&options, argc, argv, 1, &args);
-
-		if(c == -1)
-			break;
 	}
 
 	int itmp;

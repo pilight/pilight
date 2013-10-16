@@ -1359,7 +1359,6 @@ int main(int argc , char **argv) {
 			}
 		}
 	}
-	log_shell_disable();
 
 	if(settings_find_number("port", &port) != 0) {
 		port = PORT;
@@ -1368,6 +1367,7 @@ int main(int argc , char **argv) {
 	socket_start((short unsigned int)port);
 	if(nodaemon == 0) {
 		daemonize();
+		log_shell_disable();
 	}
 
     //initialise all socket_clients and handshakes to 0 so not checked

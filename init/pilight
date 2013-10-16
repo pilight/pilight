@@ -9,8 +9,8 @@
 # Description:       Starts pilight-daemon
 #                  
 ### END INIT INFO
+# Author: sweet pi & CurlyMo
 
-# Author: sweet pi
 # Do NOT "set -e"
 
 # PATH should only include /usr/* if it runs after the mountnfs.sh script
@@ -18,7 +18,7 @@ PATH=/sbin:/usr/sbin:/bin:/usr/bin:/usr/local/bin:/usr/local/sbin
 NAME=pilight
 DAEMON=/usr/local/sbin/pilight-daemon
 #Should be the same as in: /etc/pilight/settings.json
-PIDFILE=/var/run/pilight.pid
+PIDFILE=$(sed -ne 's/\(.*\)"pid-file":[\ ]\{0,\}"\(.*\)",/\2/p' /etc/pilight/settings.json);
 DAEMON_ARGS=
 SCRIPTNAME=/etc/init.d/$NAME
 # Exit if the package is not installed
@@ -34,6 +34,7 @@ SCRIPTNAME=/etc/init.d/$NAME
 # Depend on lsb-base (>= 3.2-14) to ensure that this file is present
 # and status_of_proc is working.
 . /lib/lsb/init-functions
+VERBOSE=yes
 
 #
 # Function that starts the daemon/service
@@ -69,8 +70,6 @@ do_stop()
     rm -f $PIDFILE
     return "$RETVAL"
 }
-
-
 
 case "$1" in
   start)
