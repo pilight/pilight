@@ -1068,6 +1068,10 @@ int main_gc(void) {
 	struct hardware_t *hardware = NULL;
 	struct hardwares_t *htmp = hardwares;
 
+	main_loop = 0;	
+	
+	//sleep(1);
+	
 	match = 0;
 	while(htmp) {
 		if(strcmp(htmp->listener->id, hw_mode) == 0) {
@@ -1106,17 +1110,6 @@ int main_gc(void) {
 		joutput = NULL;
 	}
 
-	config_gc();
-	protocol_gc();
-	hardware_gc();
-	settings_gc();
-	options_gc();
-	socket_gc();
-
-	free(progname);
-
-	main_loop = 0;
-
 	if(pth4) {
 		pthread_cancel(pth4);
 		pthread_join(pth4, NULL);
@@ -1133,6 +1126,15 @@ int main_gc(void) {
 		pthread_cancel(pth3);
 		pthread_join(pth3, NULL);
 	}
+	
+	config_gc();
+	protocol_gc();
+	hardware_gc();
+	settings_gc();
+	options_gc();
+	socket_gc();	
+	
+	free(progname);	
 	return 0;
 }
 
