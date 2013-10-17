@@ -83,7 +83,7 @@ void genWeatherInit(void) {
 
 	options_add(&generic_weather->options, 'h', "humidity", has_value, config_value, "[0-9]");
 	options_add(&generic_weather->options, 't', "temperature", has_value, config_value, "[0-9]");
-	options_add(&generic_weather->options, 'b', "battery", has_value, config_value, "[01]");
+	options_add(&generic_weather->options, 'b', "battery", has_value, config_value, "^[01]$");
 	options_add(&generic_weather->options, 'i', "id", has_value, config_id, "[0-9]");
 
 	protocol_setting_add_number(generic_weather, "decimals", 2);	

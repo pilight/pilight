@@ -199,6 +199,7 @@ int main(int argc, char **argv) {
 
 	while(loop && match == 1 && hardware->receive) {
 		duration = hardware->receive();
+
 		/* If we are recording, keep recording until the next footer has been matched */
 		if(recording == 1) {
 			if(bit < 255) {
