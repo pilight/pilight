@@ -28,13 +28,14 @@
 #include "settings.h"
 #include "pilight.h"
 #include "log.h"
+#include "threads.h"
 #include "protocol.h"
 #include "binary.h"
 #include "gc.h"
 #include "ds18b20.h"
 
-pthread_t ds18b20_pth;
 unsigned short ds18b20_loop = 1;
+char *ds18b20_path = NULL;
 char *ds18b20_w1nr = NULL;
 char *ds18b20_w1id = NULL;
 char *ds18b20_w1dir = NULL;
@@ -43,7 +44,7 @@ char *ds18b20_w1slave = NULL;
 void *ds18b20Parse(void *param) {
 	struct dirent *dir;
 	struct dirent *file;
-	char path[] = "/sys/bus/w1/devices/";
+
 	DIR *d = NULL;
 	DIR *f = NULL;
 	FILE *fp;
@@ -53,11 +54,9 @@ void *ds18b20Parse(void *param) {
 	
 	int w1valid = 0;
 	int w1temp = 0;
-	memset(ds18b20_w1nr, '\0', 3);
-	memset(ds18b20_w1id, '\0', 13);
 
 	while(ds18b20_loop) {
-		if((d = opendir(path))) {
+		if((d = opendir(ds18b20_path))) {
 			while((dir = readdir(d)) != NULL) {
 				if(dir->d_type == DT_LNK) {
 					if(strcmp(dir->d_name, ".") != 0 && strcmp(dir->d_name, "..") != 0) {
@@ -65,10 +64,10 @@ void *ds18b20Parse(void *param) {
 						if(atoi(ds18b20_w1nr) == 28) {
 							strncpy(ds18b20_w1id, &dir->d_name[3], 12);
 
-							size_t w1dirlen = strlen(dir->d_name)+strlen(path)+2;
+							size_t w1dirlen = strlen(dir->d_name)+strlen(ds18b20_path)+2;
 							ds18b20_w1dir = realloc(ds18b20_w1dir, w1dirlen);
 							memset(ds18b20_w1dir, '\0', w1dirlen);
-							strcat(ds18b20_w1dir, path);
+							strcat(ds18b20_w1dir, ds18b20_path);
 							strcat(ds18b20_w1dir, dir->d_name);
 							strcat(ds18b20_w1dir, "/");
 
@@ -149,26 +148,23 @@ void *ds18b20Parse(void *param) {
 		sleep(5);
 	}
 
-	return(0);
+	return (void *)NULL;
 }
 
 int ds18b20GC(void) {
 	ds18b20_loop = 0;
-	if(ds18b20_pth) {
-		pthread_cancel(ds18b20_pth);
-		pthread_join(ds18b20_pth, NULL);
-	}
 	free(ds18b20_w1slave);	
 	free(ds18b20_w1dir);
 	free(ds18b20_w1nr);
 	free(ds18b20_w1id);
+	free(ds18b20_path);
 	return 1;
 }
 
 void ds18b20Init(void) {
 	
 	gc_attach(ds18b20GC);
-	
+
 	protocol_register(&ds18b20);
 	ds18b20->id = malloc(8);
 	strcpy(ds18b20->id, "ds18b20");
@@ -186,7 +182,15 @@ void ds18b20Init(void) {
 	ds18b20_w1nr = malloc(3);
 	ds18b20_w1id = malloc(13);
 	ds18b20_w1dir = malloc(4);
-	ds18b20_w1slave = malloc(4);	
-		
-	pthread_create(&ds18b20_pth, NULL, &ds18b20Parse, (void *)NULL);
+	ds18b20_w1slave = malloc(4);
+	ds18b20_path = malloc(21);
+
+	memset(ds18b20_w1nr, '\0', 3);
+	memset(ds18b20_w1id, '\0', 13);	
+	memset(ds18b20_w1dir, '\0', 4);	
+	memset(ds18b20_w1slave, '\0', 4);	
+	memset(ds18b20_path, '\0', 21);	
+	strcpy(ds18b20_path, "/sys/bus/w1/devices/");
+
+	threads_register(&ds18b20Parse, (void *)NULL);
 }

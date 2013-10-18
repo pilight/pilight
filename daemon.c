@@ -37,6 +37,7 @@
 #include "gc.h"
 #include "log.h"
 #include "options.h"
+#include "threads.h"
 #include "socket.h"
 #include "json.h"
 #include "webserver.h"
@@ -112,7 +113,7 @@ int webserver_port = WEBSERVER_PORT;
 /* The webroot of pilight */
 char *webserver_root;
 /* Thread pointers */
-pthread_t pth1, pth2, pth3, pth4;
+pthread_t pth, pth1;
 /* While loop conditions */
 unsigned short main_loop = 1;
 /* Only update the config file on exit when it's valid */
@@ -228,13 +229,13 @@ int broadcast(char *protoname, JsonNode *json) {
 			/* Call the external file in a seperate thread to make
 			   it non-blocking. */
 			if(strlen(process_file) > 0) {
-				if(pth4) {
-					pthread_cancel(pth4);
-					pthread_join(pth4, NULL);
+				if(pth1) {
+					pthread_cancel(pth1);
+					pthread_join(pth1, NULL);
 				}
 				char *param = malloc(strlen(escaped)+1);
 				strcpy(param, escaped);
-				pthread_create(&pth4, NULL, &call_process_file, (void *)param);
+				pthread_create(&pth1, NULL, &call_process_file, (void *)param);
 				usleep(100);
 				broadcasted = 1;
 			}
@@ -1107,23 +1108,17 @@ int main_gc(void) {
 		joutput = NULL;
 	}
 
-	if(pth4) {
-		pthread_cancel(pth4);
-		pthread_join(pth4, NULL);
-	}
-
-	if(runmode == 2) {
+	if(pth1) {
 		pthread_cancel(pth1);
 		pthread_join(pth1, NULL);
 	}
 
-	pthread_cancel(pth2);
-	pthread_join(pth2, NULL);
-	if(webserver_enable == 1) {
-		pthread_cancel(pth3);
-		pthread_join(pth3, NULL);
-	}
+	if(pth) {
+		pthread_cancel(pth);
+		pthread_join(pth, NULL);
+	}	
 	
+	threads_gc();
 	config_gc();
 	protocol_gc();
 	hardware_gc();
@@ -1383,18 +1378,22 @@ int main(int argc , char **argv) {
     socket_callback.client_connected_callback = NULL;
     socket_callback.client_data_callback = &socket_parse_data;
 
-	/* The daemon running in client mode, create a seperate thread that
+	/* Start threads library that keeps track of all threads used */
+	pthread_create(&pth, NULL, &threads_start, (void *)NULL);
+
+	/* The daemon running in client mode, register a seperate thread that
 	   communicates with the server */
 	if(runmode == 2) {
-		pthread_create(&pth1, NULL, &clientize, (void *)NULL);
-	}
-	/* Create a seperate thread for the server */
-	pthread_create(&pth2, NULL, &socket_wait, (void *)&socket_callback);
-	/* Create a seperate thread for the webserver */
-	if(webserver_enable == 1) {
-		pthread_create(&pth3, NULL, &webserver_start, (void *)NULL);
+		threads_register(&clientize, (void *)NULL);
 	}
 
+	/* Register a seperate thread for the socket server */
+	threads_register(&socket_wait, (void *)&socket_callback);
+
+	/* Register a seperate thread for the webserver */
+	if(webserver_enable == 1) {
+		threads_register(&webserver_start, (void *)NULL);
+	}
 	/* And our main receiving loop */
 	if(match == 1) {
 		receive_code();

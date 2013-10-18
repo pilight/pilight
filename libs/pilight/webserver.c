@@ -27,12 +27,12 @@
 #include <assert.h>
 #include <syslog.h>
 #include <signal.h>
-#include <pthread.h>
 
 #include "../websockets/libwebsockets.h"
 #include "gc.h"
 #include "config.h"
 #include "log.h"
+#include "threads.h"
 #include "json.h"
 #include "socket.h"
 #include "webserver.h"
@@ -52,8 +52,6 @@ char *request = NULL;
 char *ext = NULL;
 char *mimetype = NULL;
 char *server;
-
-pthread_t pth1;
 
 typedef enum {
 	WELCOME,
@@ -94,8 +92,6 @@ int webserver_gc(void) {
 		free(mimetype);
 		mimetype = NULL;
 	}
-	pthread_cancel(pth1);
-	pthread_join(pth1, NULL);
 	fcache_gc();
 	logprintf(LOG_DEBUG, "garbage collected webserver library");
 	return 1;
@@ -377,9 +373,9 @@ void *webserver_start(void *param) {
 	if(context == NULL) {
 		lwsl_err("libwebsocket init failed\n");
 	} else {
-		/* Create a seperate thread in which the webserver communicates
+		/* Register a seperate thread in which the webserver communicates
 		   the main daemon as if it where a gui */
-		pthread_create(&pth1, NULL, &webserver_clientize, (void *)NULL);
+		threads_register(&webserver_clientize, (void *)NULL);
 		/* Main webserver loop */
 		while(n >= 0 && webserver_loop) {
 			n = libwebsocket_service(context, 50);
