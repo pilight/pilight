@@ -83,7 +83,7 @@ install:
 	install -m 0644 web/apple-touch-icon-iphone-retina-display.png /usr/local/share/pilight/
 	install -m 0644 web/apple-touch-icon-ipad.png /usr/local/share/pilight/
 	install -m 0644 web/apple-touch-icon-iphone.png /usr/local/share/pilight/	
-	install -m 0655 init/pilight /etc/init.d/
+	install -m 0755 init/pilight /etc/init.d/
 	update-rc.d pilight defaults
 
 	[ ! -f /usr/local/bin/gpio ] && install -m 0755 deps/gpio /usr/local/bin/ || true

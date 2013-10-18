@@ -263,7 +263,7 @@ int protocol_setting_check_number(protocol_t *proto, const char *name, int value
 		(value < 0 || value > 1)) {
 		return 1;
 	}
-	if(strcmp(name, "decimals") == 0 && (value < 0 || value > 2)) {
+	if(strcmp(name, "decimals") == 0 && (value < 0 || value > 3)) {
 		return 1;
 	}
 

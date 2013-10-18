@@ -185,7 +185,6 @@ void *call_process_file(void *param) {
 }
 
 int broadcast(char *protoname, JsonNode *json) {
-
 	int i = 0, broadcasted = 0;
 	char *message = json_stringify(json, NULL);
 
@@ -1069,8 +1068,6 @@ int main_gc(void) {
 	struct hardwares_t *htmp = hardwares;
 
 	main_loop = 0;	
-	
-	//sleep(1);
 	
 	match = 0;
 	while(htmp) {

@@ -141,7 +141,6 @@ int config_update(char *protoname, JsonNode *json, JsonNode **out) {
 										if(json_find_number(code, opt->name, &itmp) == 0) {
 											sprintf(ctmp, "%d", itmp);
 										}
-
 										if(strcmp(ctmp, vptr->value) == 0) {
 											match2++;
 										}

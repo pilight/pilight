@@ -36,6 +36,7 @@
 #include "../protocols/generic_weather.h"
 #include "../protocols/generic_switch.h"
 #include "../protocols/generic_dimmer.h"
+#include "../protocols/ds18b20.h"
 
 #include "../hardwares/module.h"
 #include "../hardwares/gpio.h"
@@ -62,6 +63,7 @@ void hardware_init(void) {
 	genWeatherInit();
 	genSwitchInit();
 	genDimInit();
+	ds18b20Init();
 
 	moduleInit();
 	gpioInit();
