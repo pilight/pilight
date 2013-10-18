@@ -25,6 +25,8 @@
 #include "log.h"
 
 unsigned short thread_loop = 1;
+unsigned short thread_count = 0;
+unsigned short thread_running = 0;
 
 void threads_register(void *(*function)(void *param), void *param) {
 	struct threads_t *tnode = malloc(sizeof(struct threads_t));
@@ -34,19 +36,25 @@ void threads_register(void *(*function)(void *param), void *param) {
 	tnode->param = param;
 	tnode->next = threads;
 	threads = tnode;
+	
+	thread_count++;
 }
 
 void *threads_start(void *param) {
+	struct threads_t *tmp_threads = NULL;
 	while(thread_loop) {
-		struct threads_t *tmp_threads = threads;
-		while(tmp_threads) {
-			if(tmp_threads->running == 0) {
-				pthread_create(&tmp_threads->pth, NULL, tmp_threads->function, (void *)tmp_threads->param);
-				tmp_threads->running = 1;
+		if(thread_count > thread_running) {
+			tmp_threads = threads;
+			while(tmp_threads) {
+				if(tmp_threads->running == 0) {
+					pthread_create(&tmp_threads->pth, NULL, tmp_threads->function, (void *)tmp_threads->param);
+					tmp_threads->running = 1;
+					thread_running++;
+				}
+				tmp_threads = tmp_threads->next;
 			}
-			tmp_threads = tmp_threads->next;
 		}
-		usleep(10);
+		usleep(5000);
 	}
 	return (void *)NULL;
 }
@@ -58,6 +66,7 @@ int threads_gc(void) {
 	while(tmp_threads) {
 		if(tmp_threads->running == 1) {
 			tmp_threads->running = 0;
+			thread_running--;
 			pthread_cancel(tmp_threads->pth);
 			pthread_join(tmp_threads->pth, NULL);
 		}
@@ -67,6 +76,7 @@ int threads_gc(void) {
 	struct threads_t *ttmp;
 	while(threads) {
 		ttmp = threads;
+		thread_count--;
 		threads = threads->next;
 		free(ttmp);
 	}
