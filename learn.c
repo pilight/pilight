@@ -33,6 +33,7 @@
 #include "hardware.h"
 #include "log.h"
 #include "options.h"
+#include "threads.h"
 #include "wiringPi.h"
 #include "irq.h"
 #include "gc.h"
@@ -104,17 +105,21 @@ int main_gc(void) {
 	if(match == 1) {
 		hardware->deinit();
 	}		
-	
-	hardware_gc();	
 
+	threads_gc();	
 	options_gc();
+	settings_gc();	
+	hardware_gc();
+	protocol_gc();
+	log_gc();
+
 	if(progname) {
 		free(progname);
 	}
 	
 	if(settingsfile) {
 		free(settingsfile);
-	}
+	}	
 
 	return EXIT_SUCCESS;
 }
@@ -123,6 +128,9 @@ int main(int argc, char **argv) {
 
 	gc_attach(main_gc);
 
+	/* Catch all exit signals for gc */
+	gc_catch();	
+	
 	log_shell_enable();
 	log_level_set(LOG_NOTICE);
 
@@ -250,7 +258,7 @@ int main(int argc, char **argv) {
 	}
 
 	if(match == 0 || !hardware->receive) {
-		printf("The hw-mode \"%s\" isn't compatible with pilight-learn\n", hw_mode);
+		printf("The hw-mode \"%s\" isn't compatible with %s\n", hw_mode, progname);
 		return EXIT_SUCCESS;
 	}
 

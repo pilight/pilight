@@ -58,6 +58,9 @@ pilight-learn: learn.c $(INCLUDES) $(LIBS) libpilight.so.1
 pilight-control: control.c $(INCLUDES) $(LIBS) libpilight.so.1
 	$(GCC) $(CFLAGS) -o $@ $(patsubst pilight-%,%.c,$@) libpilight.so.1
 
+pilight-raw: raw.c $(INCLUDES) $(LIBS) libpilight.so.1
+	$(GCC) $(CFLAGS) -o $@ $(patsubst pilight-%,%.c,$@) libpilight.so.1	
+	
 install:
 	[ -d /usr/share/images/pilight/ ] && rm -r /usr/share/images/pilight/ || true
 	
@@ -71,6 +74,7 @@ install:
 	install -m 0655 pilight-control /usr/local/sbin/
 	install -m 0655 pilight-debug /usr/local/sbin/
 	install -m 0655 pilight-learn /usr/local/sbin/
+	install -m 0655 pilight-raw /usr/local/sbin/
 	install -m 0655 libpilight.so.1 /usr/local/lib/
 	install -m 0644 settings.json-default /etc/pilight/
 	install -m 0644 web/index.html /usr/local/share/pilight/

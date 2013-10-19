@@ -55,7 +55,7 @@ void gc_clear(void) {
 int gc_run(void) {
     unsigned int s;
 	struct collectors_t *tmp = gc;
-	
+
 	while(gc) {
 		tmp = gc;
 		if(gc->listener() != 0) {
