@@ -28,6 +28,7 @@
 #include "../protocols/arctech_switch.h"
 #include "../protocols/arctech_dimmer.h"
 #include "../protocols/arctech_old.h"
+#include "../protocols/home_easy_old.h"
 #include "../protocols/sartano.h"
 #include "../protocols/impuls.h"
 #include "../protocols/alecto.h"
@@ -55,6 +56,7 @@ void hardware_init(void) {
 	arctechSwInit();
 	arctechDimInit();
 	arctechOldInit();
+	homeEasyOldInit();
 	sartanoInit();
 	impulsInit();
 	relayInit();
