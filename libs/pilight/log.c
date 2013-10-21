@@ -28,7 +28,7 @@
 #include <sys/stat.h>
 #include <libgen.h>
 
-#include "config.h"
+#include "../../pilight.h"
 #include "gc.h"
 #include "log.h"
 

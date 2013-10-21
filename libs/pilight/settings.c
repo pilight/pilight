@@ -27,6 +27,7 @@
 #include <time.h>
 #include <libgen.h>
 
+#include "../../pilight.h"
 #include "json.h"
 #include "settings.h"
 #include "log.h"
@@ -268,6 +269,7 @@ int settings_parse(JsonNode *root) {
 				}
 				settings_add_string(jsettings->key, jsettings->string_);
 			}
+#ifdef WEBSERVER
 		} else if(strcmp(jsettings->key, "webserver-port") == 0) {
 			if(jsettings->number_ < 0) {
 				logprintf(LOG_ERR, "setting \"%s\" must contain a number larger than 0", jsettings->key);
@@ -301,6 +303,7 @@ int settings_parse(JsonNode *root) {
 			} else {
 				settings_add_number(jsettings->key, (int)jsettings->number_);
 			}
+#endif
 		} else if(strcmp(jsettings->key, "gpio-receiver") == 0) {
 			if(jsettings->number_ < 0 || jsettings->number_ > 7) {
 				logprintf(LOG_ERR, "setting \"%s\" must be between 0 and 7", jsettings->key);
@@ -377,11 +380,13 @@ int settings_parse(JsonNode *root) {
 		have_error = 1;
 		goto clear;
 	}
+#ifdef WEBSERVER
 	if(web_port == own_port) {
 		logprintf(LOG_ERR, "setting \"port\" and \"webserver-port\" cannot be the same");
 		have_error = 1;
 		goto clear;
 	}
+#endif
 	if(is_node == 1 && has_config == 1) {
 		logprintf(LOG_ERR, "a daemon running as client cannot have a config file defined");
 		have_error = 1;

@@ -24,6 +24,7 @@
 #include <syslog.h>
 #include <assert.h>
 
+#include "pilight.h"
 #include "settings.h"
 #include "log.h"
 #include "options.h"

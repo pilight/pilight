@@ -22,7 +22,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-#include "settings.h"
+#include "../../pilight.h"
 #include "log.h"
 #include "protocol.h"
 #include "relay.h"
@@ -44,8 +44,10 @@ int relayCreateCode(JsonNode *code) {
 	char *tmp;
 	char *hw_mode;
 	char *def = NULL;
+#ifdef HARDWARE_433_GPIO
 	int gpio_in = GPIO_IN_PIN;
 	int gpio_out = GPIO_OUT_PIN;
+#endif	
 	int free_hw_mode = 0;
 	int free_def = 0;
 	int have_error = 0;
@@ -70,8 +72,10 @@ int relayCreateCode(JsonNode *code) {
 		free_hw_mode = 1;
 	}
 
+#ifdef HARDWARE_433_GPIO
 	settings_find_number("gpio-receiver", &gpio_in);
 	settings_find_number("gpio-sender", &gpio_out);
+#endif
 	
 	if(gpio == -1 || state == -1) {
 		logprintf(LOG_ERR, "relay: insufficient number of arguments");
@@ -81,10 +85,12 @@ int relayCreateCode(JsonNode *code) {
 		logprintf(LOG_ERR, "relay: invalid gpio range");
 		have_error = 1;
 		goto clear;
+#ifdef HARDWARE_433_GPIO
 	} else if(strstr(progname, "daemon") != 0 && strcmp(hw_mode, "gpio") == 0 && (gpio == gpio_in || gpio == gpio_out)) {
 		logprintf(LOG_ERR, "relay: gpio's already in use");
 		have_error = 1;
 		goto clear;
+#endif
 	} else {
 		if(strstr(progname, "daemon") != 0) {
 			if(strcmp(hw_mode, "none") != 0) {

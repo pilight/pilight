@@ -21,7 +21,7 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "settings.h"
+#include "../../pilight.h"
 #include "log.h"
 #include "hardware.h"
 #include "wiringPi.h"

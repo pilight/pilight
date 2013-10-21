@@ -18,57 +18,30 @@
 
 #include <stdlib.h>
 #include <sys/ioctl.h>
-#include "settings.h"
 
+#include "../../pilight.h"
 #include "irq.h"
 #include "wiringPi.h"
 #include "log.h"
 
-#include "protocol.h"
-#include "../protocols/arctech_switch.h"
-#include "../protocols/arctech_dimmer.h"
-#include "../protocols/arctech_old.h"
-#include "../protocols/home_easy_old.h"
-#include "../protocols/sartano.h"
-#include "../protocols/impuls.h"
-#include "../protocols/alecto.h"
-#include "../protocols/raw.h"
-#include "../protocols/relay.h"
-#include "../protocols/generic_weather.h"
-#include "../protocols/generic_switch.h"
-#include "../protocols/generic_dimmer.h"
-#include "../protocols/ds18b20.h"
-
 #include "../hardwares/module.h"
-#include "../hardwares/gpio.h"
-#include "../hardwares/none.h"
+
+#ifdef HARDWARE_433_GPIO
+	#include "../hardwares/gpio.h"
+#endif
+#ifdef HARDWARE_433_MODULE
+	#include "../hardwares/none.h"
+#endif
 
 #include "hardware.h"
 
-/* The frequency on which the lirc module needs to send 433.92Mhz*/
-int freq = FREQ433; // Khz
-/* Is the module initialized */
-int initialized = 0;
-/* Is the right frequency set */
-int setfreq = 0;
-
 void hardware_init(void) {
-	arctechSwInit();
-	arctechDimInit();
-	arctechOldInit();
-	homeEasyOldInit();
-	sartanoInit();
-	impulsInit();
-	relayInit();
-	rawInit();
-	alectoInit();
-	genWeatherInit();
-	genSwitchInit();
-	genDimInit();
-	ds18b20Init();
-
+#ifdef HARDWARE_433_MODULE
 	moduleInit();
+#endif
+#ifdef HARDWARE_433_GPIO	
 	gpioInit();
+#endif
 	noneInit();
 }
 

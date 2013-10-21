@@ -28,9 +28,10 @@
 #include <syslog.h>
 #include <signal.h>
 
+#include "../../pilight.h"
 #include "../websockets/libwebsockets.h"
-#include "gc.h"
 #include "config.h"
+#include "gc.h"
 #include "log.h"
 #include "threads.h"
 #include "json.h"

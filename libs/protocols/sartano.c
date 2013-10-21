@@ -20,7 +20,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "settings.h"
+#include "../../pilight.h"
 #include "log.h"
 #include "protocol.h"
 #include "binary.h"

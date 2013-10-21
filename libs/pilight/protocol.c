@@ -21,9 +21,92 @@
 #include <string.h>
 #include <regex.h>
 
+#include "../../pilight.h"
 #include "options.h"
 #include "protocol.h"
 #include "log.h"
+
+#if defined(PROTOCOL_COCO_SWITCH) || defined(PROTOCOL_DIO_SWITCH) || defined(PROTOCOL_NEXA_SWITCH) || defined(PROTOCOL_COCO_SWITCH) || defined(PROTOCOL_INTERTECHNO_SWITCH)
+	#include "../protocols/arctech_switch.h"
+#endif
+#ifdef PROTOCOL_KAKU_DIMMER
+	#include "../protocols/arctech_dimmer.h"
+#endif
+#if defined(PROTOCOL_COGEX_SWITCH) || defined(PROTOCOL_KAKU_OLD) || defined(PROTOCOL_INTERTECHNO_OLD)
+	#include "../protocols/arctech_old.h"
+#endif
+#ifdef PROTOCOL_HOMEEASY_OLD
+	#include "../protocols/home_easy_old.h"
+#endif
+#ifdef PROTOCOL_ELRO
+	#include "../protocols/sartano.h"
+#endif
+#if defined(PROTOCOL_SELECTREMOTE) || defined(PROTOCOL_IMPULS)
+	#include "../protocols/impuls.h"
+#endif
+#ifdef PROTOCOL_ALECTO
+	#include "../protocols/alecto.h"
+#endif
+#ifdef PROTOCOL_RAW
+	#include "../protocols/raw.h"
+#endif
+#ifdef PROTOCOL_RELAY
+	#include "../protocols/relay.h"
+#endif
+#ifdef PROTOCOL_GENERIC_WEATHER
+	#include "../protocols/generic_weather.h"
+#endif
+#ifdef PROTOCOL_GENERIC_SWITCH
+	#include "../protocols/generic_switch.h"
+#endif
+#ifdef PROTOCOL_GENERIC_DIMMER
+	#include "../protocols/generic_dimmer.h"
+#endif
+#ifdef PROTOCOL_DS18B20
+	#include "../protocols/ds18b20.h"
+#endif
+
+void protocol_init(void) {
+#if defined(PROTOCOL_COCO_SWITCH) || defined(PROTOCOL_DIO_SWITCH) || defined(PROTOCOL_NEXA_SWITCH) || defined(PROTOCOL_COCO_SWITCH) || defined(PROTOCOL_INTERTECHNO_SWITCH)
+	arctechSwInit();
+#endif
+#ifdef PROTOCOL_KAKU_DIMMER
+	arctechDimInit();
+#endif
+#if defined(PROTOCOL_COGEX_SWITCH) || defined(PROTOCOL_KAKU_OLD) || defined(PROTOCOL_INTERTECHNO_OLD)
+	arctechOldInit();
+#endif
+#ifdef PROTOCOL_HOMEEASY_OLD
+	homeEasyOldInit();
+#endif
+#ifdef PROTOCOL_ELRO
+	sartanoInit();
+#endif
+#if defined(PROTOCOL_SELECTREMOTE) || defined(PROTOCOL_IMPULS)
+	impulsInit();
+#endif
+#ifdef PROTOCOL_RELAY
+	relayInit();
+#endif
+#ifdef PROTOCOL_RAW
+	rawInit();
+#endif
+#ifdef PROTOCOL_ALECTO
+	alectoInit();
+#endif
+#ifdef PROTOCOL_GENERIC_WEATHER
+	genWeatherInit();
+#endif
+#ifdef PROTOCOL_GENERIC_SWITCH
+	genSwitchInit();
+#endif
+#ifdef PROTOCOL_GENERIC_DIMMER
+	genDimInit();
+#endif
+#ifdef PROTOCOL_DS18B20
+	ds18b20Init();
+#endif
+}
 
 void protocol_register(protocol_t **proto) {
 	*proto = malloc(sizeof(struct protocol_t));

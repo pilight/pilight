@@ -91,6 +91,7 @@ typedef struct protocols_t {
 
 struct protocols_t *protocols;
 
+void protocol_init(void);
 void protocol_register(protocol_t **proto);
 void protocol_device_add(protocol_t *proto, const char *id, const char *desc);
 void protocol_conflict_add(protocol_t *proto, const char *id);

@@ -32,6 +32,7 @@
 #include <pthread.h>
 #include <ctype.h>
 
+#include "pilight.h"
 #include "settings.h"
 #include "config.h"
 #include "gc.h"
@@ -40,11 +41,13 @@
 #include "threads.h"
 #include "socket.h"
 #include "json.h"
-#include "webserver.h"
 #include "wiringPi.h"
 #include "irq.h"
 #include "hardware.h"
-#include "pilight.h"
+
+#ifdef WEBSERVER
+	#include "webserver.h"
+#endif
 
 typedef enum {
 	RECEIVER,
@@ -102,16 +105,6 @@ int sockfd = 0;
 unsigned short incognito_mode = 0;
 /* Use the lirc_rpi module or plain GPIO */
 const char *hw_mode = HW_MODE;
-/* On what pin are we sending */
-int gpio_out = GPIO_OUT_PIN;
-/* On what pin are we receiving */
-int gpio_in = GPIO_IN_PIN;
-/* Do we enable the webserver */
-int webserver_enable = WEBSERVER_ENABLE;
-/* On what port does the webserver run */
-int webserver_port = WEBSERVER_PORT;
-/* The webroot of pilight */
-char *webserver_root;
 /* Thread pointers */
 pthread_t pth, pth1;
 /* While loop conditions */
@@ -124,6 +117,15 @@ int repeats = 0;
 unsigned long first = 0;
 unsigned long second = 0;
 struct timeval tv;
+
+#ifdef WEBSERVER
+/* Do we enable the webserver */
+int webserver_enable = WEBSERVER_ENABLE;
+/* On what port does the webserver run */
+int webserver_port = WEBSERVER_PORT;
+/* The webroot of pilight */
+char *webserver_root;
+#endif
 
 /* http://stackoverflow.com/a/3535143 */
 void escape_characters(char* dest, const char* src) {
@@ -744,6 +746,7 @@ void client_controller_parse_code(int i, JsonNode *json) {
 	}
 }
 
+#ifdef WEBSERVER
 void client_webserver_parse_code(int i, char buffer[BUFFER_SIZE]) {
 	int sd = socket_clients[i];
 	int x = 0;
@@ -806,6 +809,7 @@ void client_webserver_parse_code(int i, char buffer[BUFFER_SIZE]) {
 		}
 	}
 }
+#endif
 
 /* Parse the incoming buffer from the client */
 void socket_parse_data(int i, char buffer[BUFFER_SIZE]) {
@@ -828,12 +832,16 @@ void socket_parse_data(int i, char buffer[BUFFER_SIZE]) {
 	} else {
 		/* Serve static webserver page. This is the only request that's is
 		   expected not to be a json object */
+#ifdef WEBSERVER
 		if(strstr(buffer, " HTTP/")) {
 			logprintf(LOG_INFO, "client recognized as web");
 			handshakes[i] = WEB;
 			client_webserver_parse_code(i, buffer);
 			socket_close(sd);
-		} else if(json_validate(buffer) == true) {
+		} else if(json_validate(buffer) == true) {			
+#else
+		if(json_validate(buffer) == true) {	
+#endif
 			json = json_decode(buffer);
 			/* The incognito mode is used by the daemon to emulate certain clients.
 			   Temporary change the client type from the node mode to the emulated
@@ -1095,9 +1103,11 @@ int main_gc(void) {
 		}
 	}
 
+#ifdef WEBSERVER
 	if(webserver_enable == 1) {
 		webserver_gc();
 	}
+#endif
 
 	if(valid_config) {
 		JsonNode *joutput = config2json(0);
@@ -1237,19 +1247,18 @@ int main(int argc , char **argv) {
 		}
 	}
 
-	settings_find_number("gpio-sender", &gpio_out);
-	settings_find_number("gpio-receiver", &gpio_in);
-
 	if(settings_find_string("hw-mode", &stmp) == 0) {
 		hw_mode = stmp;
 	}
 
+#ifdef WEBSERVER
 	settings_find_number("webserver-enable", &webserver_enable);
 	settings_find_number("webserver-port", &webserver_port);
 	if(settings_find_string("webserver-root", &webserver_root) != 0) {
 		webserver_root = realloc(webserver_root, strlen(WEBSERVER_ROOT)+1);
 		strcpy(webserver_root, WEBSERVER_ROOT);
 	}
+#endif
 
 	if(settings_find_string("pid-file", &pid_file) != 0) {
 		pid_file = realloc(pid_file, strlen(PID_FILE)+1);
@@ -1320,6 +1329,8 @@ int main(int argc , char **argv) {
 
 	/* Initialize peripheral modules */
 	hardware_init();
+	/* Initialize protocols */
+	protocol_init();
 
 	struct hardwares_t *htmp = hardwares;
 	match = 0;
@@ -1390,10 +1401,13 @@ int main(int argc , char **argv) {
 	/* Register a seperate thread for the socket server */
 	threads_register(&socket_wait, (void *)&socket_callback);
 
+#ifdef WEBSERVER
 	/* Register a seperate thread for the webserver */
 	if(webserver_enable == 1) {
 		threads_register(&webserver_start, (void *)NULL);
 	}
+#endif
+
 	/* And our main receiving loop */
 	if(match == 1) {
 		receive_code();

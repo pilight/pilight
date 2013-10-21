@@ -25,8 +25,7 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 
-#include "settings.h"
-#include "pilight.h"
+#include "../../pilight.h"
 #include "log.h"
 #include "threads.h"
 #include "protocol.h"

@@ -29,6 +29,7 @@
 #include <math.h>
 #include <string.h>
 
+#include "pilight.h"
 #include "settings.h"
 #include "hardware.h"
 #include "log.h"
@@ -110,7 +111,6 @@ int main_gc(void) {
 	options_gc();
 	settings_gc();	
 	hardware_gc();
-	protocol_gc();
 	log_gc();
 
 	if(progname) {

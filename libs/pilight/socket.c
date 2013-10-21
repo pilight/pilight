@@ -29,7 +29,7 @@
 #include <netdb.h>
 #include <arpa/inet.h>
 
-#include "settings.h"
+#include "../../pilight.h"
 #include "log.h"
 #include "gc.h"
 #include "socket.h"

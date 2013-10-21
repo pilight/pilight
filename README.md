@@ -32,6 +32,7 @@ New (Experimental) Features
 - Added support for the Alecto WSD-17 weather station.
 - Added support for the 1-Wire ds18b20 temperature sensor.
 - Added threads library to which every function can register it's necessary threads.
+- Implemented cmake and optional build paramaters.
 
 New config syntax:
 

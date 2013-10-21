@@ -26,13 +26,13 @@
 #include <errno.h>
 #include <syslog.h>
 
+#include "pilight.h"
 #include "settings.h"
 #include "log.h"
 #include "options.h"
 #include "socket.h"
 #include "json.h"
-
-#include "hardware.h"
+#include "protocol.h"
 
 typedef enum {
 	WELCOME,
@@ -87,8 +87,8 @@ int main(int argc, char **argv) {
 	options_add(&options, 'S', "server", has_value, 0, "^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]).){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$");
 	options_add(&options, 'P', "port", has_value, 0, "[0-9]{1,4}");
 
-	/* Initialize peripheral modules */
-	hardware_init();
+	/* Initialize protocols */
+	protocol_init();
 
 	/* Get the protocol to be used */
 	while (1) {

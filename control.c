@@ -26,13 +26,14 @@
 #include <syslog.h>
 
 #include "settings.h"
+#include "pilight.h"
 #include "config.h"
 #include "log.h"
 #include "options.h"
 #include "socket.h"
 #include "json.h"
 
-#include "hardware.h"
+#include "protocol.h"
 
 typedef enum {
 	WELCOME,
@@ -149,7 +150,7 @@ int main(int argc, char **argv) {
 		exit(EXIT_FAILURE);
 	}
 
-	hardware_init();
+	protocol_init();
 
 	while(1) {
 		if(steps > WELCOME) {
