@@ -1,5 +1,8 @@
 #!/bin/bash
 
+cmake --help &>/dev/null || { echo "This program requires cmake"; exit; }
+dialog -v &>/dev/null || { echo "This program requires dialog"; exit; }
+
 function clean {
 	rm -r CMakeFiles 2>/dev/null;
 	rm cmake_install.cmake 2>/dev/null;
@@ -60,12 +63,12 @@ else
 	OUTPUT=$(dialog --cancel-label "Abort" --extra-button --extra-label "Cancel and Install" --ok-label "Save and Install" --checklist "pilight configuration options" 17 100 10 ${MENU[@]} 3>&1 1>&2 2>&3);
 	RETURN=$?;
 
+	UPDATE=0;
 	if [ $RETURN -eq 0 ]; then
 		IFS=" ";
 		RESULTS=($OUTPUT);
 		IFS=$'\n';
 		OPTIONS=($(cat CMakeConfig.txt));
-		UPDATE=0;
 		for ROW in ${OPTIONS[@]}; do
 			MATCH=0;
 			[[ "$ROW" =~ (set\(([0-9A-Za-z_]+)[[:space:]].*) ]] && NAME=${BASH_REMATCH[2]};
