@@ -1039,10 +1039,21 @@ close:
 	return NULL;
 }
 
-void daemonize(void) {
+void save_pid(pid_t npid) {
 	int f = 0;
 	char buffer[BUFFER_SIZE];
+	if((f = open(pid_file, O_RDWR | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR)) != -1) {
+		lseek(f, 0, SEEK_SET);
+		sprintf(buffer, "%d", npid);
+		int i = write(f, buffer, strlen(buffer));
+		if(i != strlen(buffer)) {
+			logprintf(LOG_ERR, "could not store pid in %s", pid_file);
+		}
+	}
+	close(f);
+}
 
+void daemonize(void) {
 	log_file_enable();
 	log_shell_disable();
 	/* Get the pid of the fork */
@@ -1055,15 +1066,7 @@ void daemonize(void) {
 			exit(1);
 		break;
 		default:
-			if((f = open(pid_file, O_RDWR | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR)) != -1) {
-				lseek(f, 0, SEEK_SET);
-				sprintf(buffer, "%d", npid);
-				int i = write(f, buffer, strlen(buffer));
-				if(i != strlen(buffer)) {
-					logprintf(LOG_ERR, "could not store pid in %s", pid_file);
-				}
-			}
-			close(f);
+			save_pid(npid);
 			logprintf(LOG_INFO, "daemon started with pid: %d", npid);
 			exit(0);
 		break;
@@ -1370,10 +1373,12 @@ int main(int argc , char **argv) {
 		port = PORT;
 	}
 
+	socket_start((short unsigned int)port);
 	if(nodaemon == 0) {
 		daemonize();
+	} else {
+		save_pid(getpid());
 	}
-	socket_start((short unsigned int)port);	
 
     //initialise all socket_clients and handshakes to 0 so not checked
 	memset(socket_clients, 0, sizeof(socket_clients));

@@ -2,6 +2,13 @@ cmake_minimum_required(VERSION 2.8)
 
 project(pilight C)
 
+if(${CMAKE_SYSTEM_PROCESSOR} MATCHES "armv6")
+	set(CMAKE_C_FLAGS "-Ofast -mfloat-abi=hard -mfpu=vfp -march=armv6 -ffast-math -Wfloat-equal -Wshadow -Wpointer-arith -Wcast-align -Wstrict-overflow=5 -Wwrite-strings -Waggregate-return -Wcast-qual -Wswitch-default -Wswitch-enum -Wformat=2 -g -Wall -Wconversion -Wunreachable-code -Wstrict-prototypes")
+endif()
+if(${CMAKE_SYSTEM_PROCESSOR} MATCHES "x86_64")
+	set(CMAKE_C_FLAGS "-Ofast -fPIC -march=native -mtune=native -mfpmath=sse -ffast-math -Wconversion -Wunreachable-code -Wstrict-prototypes -Wfloat-equal -Wshadow -Wpointer-arith -Wcast-align -Wstrict-overflow=5 -Wwrite-strings -Waggregate-return -Wcast-qual -Wswitch-default -Wswitch-enum -Wformat=2 -g -Wall")	
+endif()
+
 # Start uninstaller generator
 function(WRITE_UNINSTALL_TARGET_SCRIPT)
     # Create uninstall target template file, if it doesn't exist...
@@ -56,7 +63,7 @@ execute_process(COMMAND git describe --always
 STRING(REGEX REPLACE "\n" "" git_ver "${git_ver}")
 add_definitions(-DHASH="${git_ver}")
 
-SET(CMAKE_CXX_FLAGS_DISTRIBUTION "-O3 -L/usr/lib/i386-linux-gnu/")
+
 
 include_directories("${PROJECT_SOURCE_DIR}/libs/pilight/")
 
@@ -160,10 +167,11 @@ if(${WEBSERVER} MATCHES "ON")
 	)
 endif()
 
+file(GLOB webserver_sources "${PROJECT_SOURCE_DIR}/libs/websockets/*.c")
+
 if(${WEBSERVER} MATCHES "OFF")
 	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/pilight/webserver.h")
 	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/pilight/webserver.c")
-	file(GLOB webserver_sources "${PROJECT_SOURCE_DIR}/libs/websockets/*.c")
 	list(REMOVE_ITEM pilight ${webserver_sources})
 	file(GLOB webserver_headers "${PROJECT_SOURCE_DIR}/libs/websockets/*.h")	
 	list(REMOVE_ITEM pilight ${webserver_headers})
@@ -182,6 +190,8 @@ set_target_properties(pilight_shared PROPERTIES OUTPUT_NAME pilight)
 set_target_properties(pilight_static PROPERTIES OUTPUT_NAME pilight)
 
 set_source_files_properties(${PROJECT_SOURCE_DIR}/libs/pilight/wiringPi.c PROPERTIES COMPILE_FLAGS " -w ")
+set_source_files_properties(${PROJECT_SOURCE_DIR}/libs/pilight/json.c PROPERTIES COMPILE_FLAGS " -w ")
+set_source_files_properties(${webserver_sources} PROPERTIES COMPILE_FLAGS " -w ")
 
 install(TARGETS pilight_shared DESTINATION lib)
 install(TARGETS pilight_static DESTINATION lib)
