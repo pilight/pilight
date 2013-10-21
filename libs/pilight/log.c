@@ -87,8 +87,8 @@ void logprintf(int prio, const char *format_str, ...) {
 		gettimeofday(&tv, NULL);
 		if((tm = localtime(&tv.tv_sec)) != NULL) {
 			//%b %d %H:%M:%S:%u
-			strftime(fmt, sizeof(fmt), "%b %d %H:%M:%S:%%03u", tm);
-			snprintf(buf, sizeof(buf), fmt, tv.tv_usec);
+			strftime(fmt, sizeof(fmt), "%b %d %H:%M:%S", tm);
+			snprintf(buf, sizeof(buf), "%s:%03u", fmt, (unsigned int)tv.tv_usec);
 		}
 
 		if(filelog == 1 && lf != NULL && loglevel < LOG_DEBUG) {
