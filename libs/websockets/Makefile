@@ -17,7 +17,7 @@ endif
 ifneq (, $(findstring amd64, $(SYS)))
 	OSFLAGS = -fPIC -O3 -march=native -mtune=native -mfpmath=sse
 endif
-CFLAGS = -ffast-math $(OSFLAGS) -g -Wall -static -I. -I.. -I../pilight/
+CFLAGS = -ffast-math $(OSFLAGS) -g -Wall -static -isystem. -isystem.. -I../pilight/
 SRC = $(wildcard *.c)
 OBJS = $(SRC:.c=.o)
 HEADERS := $(SRC:.c=.h)

@@ -55,7 +55,7 @@ int main_gc(void) {
 		}
 		htmp = htmp->next;
 	}
-	if(match == 1) {
+	if(match == 1 && hardware->deinit) {
 		hardware->deinit();
 	}		
 
@@ -170,7 +170,7 @@ int main(int argc, char **argv) {
 		hardware->init();
 	}
 
-	if(match == 0 || !hardware->receive) {
+	if(match == 0 || !hardware->receive || strcmp(hw_mode, "none") == 0) {
 		printf("The hw-mode \"%s\" isn't compatible with pilight-raw\n", hw_mode);
 		main_gc();
 		return EXIT_SUCCESS;
@@ -178,7 +178,9 @@ int main(int argc, char **argv) {
 
 	while(loop && match == 1 && hardware->receive) {
 		duration = hardware->receive();
-		printf("%d\n", duration);
+		if(duration > 0) {
+			printf("%d\n", duration);
+		}
 	};
 	main_gc();
 	return (EXIT_SUCCESS);

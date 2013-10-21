@@ -64,7 +64,7 @@ int main_gc(void) {
 		}
 		htmp = htmp->next;
 	}
-	if(match == 1) {
+	if(match == 1 && hardware->deinit) {
 		hardware->deinit();
 	}		
 
@@ -199,8 +199,9 @@ int main(int argc, char **argv) {
 		printf("not show anything. This is because it's then following a wrong lead.\n");
 	}
 
-	if(match == 0 || !hardware->receive) {
+	if(match == 0 || !hardware->receive || strcmp(hw_mode, "none") == 0) {
 		printf("The hw-mode \"%s\" isn't compatible with %s\n", hw_mode, progname);
+		main_gc();
 		return EXIT_SUCCESS;
 	}
 
