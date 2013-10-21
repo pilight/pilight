@@ -38,7 +38,7 @@
 #ifdef PROTOCOL_HOMEEASY_OLD
 	#include "../protocols/home_easy_old.h"
 #endif
-#ifdef PROTOCOL_ELRO
+#ifdef PROTOCOL_ELRO_SWITCH
 	#include "../protocols/sartano.h"
 #endif
 #if defined(PROTOCOL_SELECTREMOTE) || defined(PROTOCOL_IMPULS)

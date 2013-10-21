@@ -140,6 +140,19 @@ depend:
 .PHONY : depend
 
 #=============================================================================
+# Target rules for targets named pilight
+
+# Build rule for target.
+pilight: cmake_check_build_system
+	$(MAKE) -f CMakeFiles/Makefile2 pilight
+.PHONY : pilight
+
+# fast build rule for target.
+pilight/fast:
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/build
+.PHONY : pilight/fast
+
+#=============================================================================
 # Target rules for targets named pilight-control
 
 # Build rule for target.
@@ -370,8 +383,7 @@ libs/hardwares/gpio.o: libs/hardwares/gpio.c.o
 
 # target to build an object file
 libs/hardwares/gpio.c.o:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/hardwares/gpio.c.o
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/hardwares/gpio.c.o
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/hardwares/gpio.c.o
 .PHONY : libs/hardwares/gpio.c.o
 
 libs/hardwares/gpio.i: libs/hardwares/gpio.c.i
@@ -379,8 +391,7 @@ libs/hardwares/gpio.i: libs/hardwares/gpio.c.i
 
 # target to preprocess a source file
 libs/hardwares/gpio.c.i:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/hardwares/gpio.c.i
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/hardwares/gpio.c.i
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/hardwares/gpio.c.i
 .PHONY : libs/hardwares/gpio.c.i
 
 libs/hardwares/gpio.s: libs/hardwares/gpio.c.s
@@ -388,8 +399,7 @@ libs/hardwares/gpio.s: libs/hardwares/gpio.c.s
 
 # target to generate assembly for a file
 libs/hardwares/gpio.c.s:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/hardwares/gpio.c.s
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/hardwares/gpio.c.s
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/hardwares/gpio.c.s
 .PHONY : libs/hardwares/gpio.c.s
 
 libs/hardwares/module.o: libs/hardwares/module.c.o
@@ -397,8 +407,7 @@ libs/hardwares/module.o: libs/hardwares/module.c.o
 
 # target to build an object file
 libs/hardwares/module.c.o:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/hardwares/module.c.o
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/hardwares/module.c.o
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/hardwares/module.c.o
 .PHONY : libs/hardwares/module.c.o
 
 libs/hardwares/module.i: libs/hardwares/module.c.i
@@ -406,8 +415,7 @@ libs/hardwares/module.i: libs/hardwares/module.c.i
 
 # target to preprocess a source file
 libs/hardwares/module.c.i:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/hardwares/module.c.i
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/hardwares/module.c.i
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/hardwares/module.c.i
 .PHONY : libs/hardwares/module.c.i
 
 libs/hardwares/module.s: libs/hardwares/module.c.s
@@ -415,8 +423,7 @@ libs/hardwares/module.s: libs/hardwares/module.c.s
 
 # target to generate assembly for a file
 libs/hardwares/module.c.s:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/hardwares/module.c.s
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/hardwares/module.c.s
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/hardwares/module.c.s
 .PHONY : libs/hardwares/module.c.s
 
 libs/hardwares/none.o: libs/hardwares/none.c.o
@@ -424,8 +431,7 @@ libs/hardwares/none.o: libs/hardwares/none.c.o
 
 # target to build an object file
 libs/hardwares/none.c.o:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/hardwares/none.c.o
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/hardwares/none.c.o
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/hardwares/none.c.o
 .PHONY : libs/hardwares/none.c.o
 
 libs/hardwares/none.i: libs/hardwares/none.c.i
@@ -433,8 +439,7 @@ libs/hardwares/none.i: libs/hardwares/none.c.i
 
 # target to preprocess a source file
 libs/hardwares/none.c.i:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/hardwares/none.c.i
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/hardwares/none.c.i
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/hardwares/none.c.i
 .PHONY : libs/hardwares/none.c.i
 
 libs/hardwares/none.s: libs/hardwares/none.c.s
@@ -442,8 +447,7 @@ libs/hardwares/none.s: libs/hardwares/none.c.s
 
 # target to generate assembly for a file
 libs/hardwares/none.c.s:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/hardwares/none.c.s
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/hardwares/none.c.s
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/hardwares/none.c.s
 .PHONY : libs/hardwares/none.c.s
 
 libs/pilight/binary.o: libs/pilight/binary.c.o
@@ -451,8 +455,7 @@ libs/pilight/binary.o: libs/pilight/binary.c.o
 
 # target to build an object file
 libs/pilight/binary.c.o:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/pilight/binary.c.o
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/pilight/binary.c.o
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/pilight/binary.c.o
 .PHONY : libs/pilight/binary.c.o
 
 libs/pilight/binary.i: libs/pilight/binary.c.i
@@ -460,8 +463,7 @@ libs/pilight/binary.i: libs/pilight/binary.c.i
 
 # target to preprocess a source file
 libs/pilight/binary.c.i:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/pilight/binary.c.i
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/pilight/binary.c.i
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/pilight/binary.c.i
 .PHONY : libs/pilight/binary.c.i
 
 libs/pilight/binary.s: libs/pilight/binary.c.s
@@ -469,8 +471,7 @@ libs/pilight/binary.s: libs/pilight/binary.c.s
 
 # target to generate assembly for a file
 libs/pilight/binary.c.s:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/pilight/binary.c.s
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/pilight/binary.c.s
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/pilight/binary.c.s
 .PHONY : libs/pilight/binary.c.s
 
 libs/pilight/config.o: libs/pilight/config.c.o
@@ -478,8 +479,7 @@ libs/pilight/config.o: libs/pilight/config.c.o
 
 # target to build an object file
 libs/pilight/config.c.o:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/pilight/config.c.o
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/pilight/config.c.o
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/pilight/config.c.o
 .PHONY : libs/pilight/config.c.o
 
 libs/pilight/config.i: libs/pilight/config.c.i
@@ -487,8 +487,7 @@ libs/pilight/config.i: libs/pilight/config.c.i
 
 # target to preprocess a source file
 libs/pilight/config.c.i:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/pilight/config.c.i
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/pilight/config.c.i
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/pilight/config.c.i
 .PHONY : libs/pilight/config.c.i
 
 libs/pilight/config.s: libs/pilight/config.c.s
@@ -496,8 +495,7 @@ libs/pilight/config.s: libs/pilight/config.c.s
 
 # target to generate assembly for a file
 libs/pilight/config.c.s:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/pilight/config.c.s
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/pilight/config.c.s
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/pilight/config.c.s
 .PHONY : libs/pilight/config.c.s
 
 libs/pilight/fcache.o: libs/pilight/fcache.c.o
@@ -505,8 +503,7 @@ libs/pilight/fcache.o: libs/pilight/fcache.c.o
 
 # target to build an object file
 libs/pilight/fcache.c.o:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/pilight/fcache.c.o
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/pilight/fcache.c.o
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/pilight/fcache.c.o
 .PHONY : libs/pilight/fcache.c.o
 
 libs/pilight/fcache.i: libs/pilight/fcache.c.i
@@ -514,8 +511,7 @@ libs/pilight/fcache.i: libs/pilight/fcache.c.i
 
 # target to preprocess a source file
 libs/pilight/fcache.c.i:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/pilight/fcache.c.i
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/pilight/fcache.c.i
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/pilight/fcache.c.i
 .PHONY : libs/pilight/fcache.c.i
 
 libs/pilight/fcache.s: libs/pilight/fcache.c.s
@@ -523,8 +519,7 @@ libs/pilight/fcache.s: libs/pilight/fcache.c.s
 
 # target to generate assembly for a file
 libs/pilight/fcache.c.s:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/pilight/fcache.c.s
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/pilight/fcache.c.s
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/pilight/fcache.c.s
 .PHONY : libs/pilight/fcache.c.s
 
 libs/pilight/gc.o: libs/pilight/gc.c.o
@@ -532,8 +527,7 @@ libs/pilight/gc.o: libs/pilight/gc.c.o
 
 # target to build an object file
 libs/pilight/gc.c.o:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/pilight/gc.c.o
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/pilight/gc.c.o
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/pilight/gc.c.o
 .PHONY : libs/pilight/gc.c.o
 
 libs/pilight/gc.i: libs/pilight/gc.c.i
@@ -541,8 +535,7 @@ libs/pilight/gc.i: libs/pilight/gc.c.i
 
 # target to preprocess a source file
 libs/pilight/gc.c.i:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/pilight/gc.c.i
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/pilight/gc.c.i
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/pilight/gc.c.i
 .PHONY : libs/pilight/gc.c.i
 
 libs/pilight/gc.s: libs/pilight/gc.c.s
@@ -550,8 +543,7 @@ libs/pilight/gc.s: libs/pilight/gc.c.s
 
 # target to generate assembly for a file
 libs/pilight/gc.c.s:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/pilight/gc.c.s
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/pilight/gc.c.s
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/pilight/gc.c.s
 .PHONY : libs/pilight/gc.c.s
 
 libs/pilight/hardware.o: libs/pilight/hardware.c.o
@@ -559,8 +551,7 @@ libs/pilight/hardware.o: libs/pilight/hardware.c.o
 
 # target to build an object file
 libs/pilight/hardware.c.o:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/pilight/hardware.c.o
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/pilight/hardware.c.o
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/pilight/hardware.c.o
 .PHONY : libs/pilight/hardware.c.o
 
 libs/pilight/hardware.i: libs/pilight/hardware.c.i
@@ -568,8 +559,7 @@ libs/pilight/hardware.i: libs/pilight/hardware.c.i
 
 # target to preprocess a source file
 libs/pilight/hardware.c.i:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/pilight/hardware.c.i
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/pilight/hardware.c.i
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/pilight/hardware.c.i
 .PHONY : libs/pilight/hardware.c.i
 
 libs/pilight/hardware.s: libs/pilight/hardware.c.s
@@ -577,8 +567,7 @@ libs/pilight/hardware.s: libs/pilight/hardware.c.s
 
 # target to generate assembly for a file
 libs/pilight/hardware.c.s:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/pilight/hardware.c.s
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/pilight/hardware.c.s
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/pilight/hardware.c.s
 .PHONY : libs/pilight/hardware.c.s
 
 libs/pilight/irq.o: libs/pilight/irq.c.o
@@ -586,8 +575,7 @@ libs/pilight/irq.o: libs/pilight/irq.c.o
 
 # target to build an object file
 libs/pilight/irq.c.o:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/pilight/irq.c.o
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/pilight/irq.c.o
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/pilight/irq.c.o
 .PHONY : libs/pilight/irq.c.o
 
 libs/pilight/irq.i: libs/pilight/irq.c.i
@@ -595,8 +583,7 @@ libs/pilight/irq.i: libs/pilight/irq.c.i
 
 # target to preprocess a source file
 libs/pilight/irq.c.i:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/pilight/irq.c.i
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/pilight/irq.c.i
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/pilight/irq.c.i
 .PHONY : libs/pilight/irq.c.i
 
 libs/pilight/irq.s: libs/pilight/irq.c.s
@@ -604,8 +591,7 @@ libs/pilight/irq.s: libs/pilight/irq.c.s
 
 # target to generate assembly for a file
 libs/pilight/irq.c.s:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/pilight/irq.c.s
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/pilight/irq.c.s
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/pilight/irq.c.s
 .PHONY : libs/pilight/irq.c.s
 
 libs/pilight/json.o: libs/pilight/json.c.o
@@ -613,8 +599,7 @@ libs/pilight/json.o: libs/pilight/json.c.o
 
 # target to build an object file
 libs/pilight/json.c.o:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/pilight/json.c.o
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/pilight/json.c.o
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/pilight/json.c.o
 .PHONY : libs/pilight/json.c.o
 
 libs/pilight/json.i: libs/pilight/json.c.i
@@ -622,8 +607,7 @@ libs/pilight/json.i: libs/pilight/json.c.i
 
 # target to preprocess a source file
 libs/pilight/json.c.i:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/pilight/json.c.i
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/pilight/json.c.i
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/pilight/json.c.i
 .PHONY : libs/pilight/json.c.i
 
 libs/pilight/json.s: libs/pilight/json.c.s
@@ -631,8 +615,7 @@ libs/pilight/json.s: libs/pilight/json.c.s
 
 # target to generate assembly for a file
 libs/pilight/json.c.s:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/pilight/json.c.s
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/pilight/json.c.s
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/pilight/json.c.s
 .PHONY : libs/pilight/json.c.s
 
 libs/pilight/log.o: libs/pilight/log.c.o
@@ -640,8 +623,7 @@ libs/pilight/log.o: libs/pilight/log.c.o
 
 # target to build an object file
 libs/pilight/log.c.o:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/pilight/log.c.o
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/pilight/log.c.o
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/pilight/log.c.o
 .PHONY : libs/pilight/log.c.o
 
 libs/pilight/log.i: libs/pilight/log.c.i
@@ -649,8 +631,7 @@ libs/pilight/log.i: libs/pilight/log.c.i
 
 # target to preprocess a source file
 libs/pilight/log.c.i:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/pilight/log.c.i
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/pilight/log.c.i
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/pilight/log.c.i
 .PHONY : libs/pilight/log.c.i
 
 libs/pilight/log.s: libs/pilight/log.c.s
@@ -658,8 +639,7 @@ libs/pilight/log.s: libs/pilight/log.c.s
 
 # target to generate assembly for a file
 libs/pilight/log.c.s:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/pilight/log.c.s
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/pilight/log.c.s
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/pilight/log.c.s
 .PHONY : libs/pilight/log.c.s
 
 libs/pilight/options.o: libs/pilight/options.c.o
@@ -667,8 +647,7 @@ libs/pilight/options.o: libs/pilight/options.c.o
 
 # target to build an object file
 libs/pilight/options.c.o:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/pilight/options.c.o
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/pilight/options.c.o
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/pilight/options.c.o
 .PHONY : libs/pilight/options.c.o
 
 libs/pilight/options.i: libs/pilight/options.c.i
@@ -676,8 +655,7 @@ libs/pilight/options.i: libs/pilight/options.c.i
 
 # target to preprocess a source file
 libs/pilight/options.c.i:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/pilight/options.c.i
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/pilight/options.c.i
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/pilight/options.c.i
 .PHONY : libs/pilight/options.c.i
 
 libs/pilight/options.s: libs/pilight/options.c.s
@@ -685,8 +663,7 @@ libs/pilight/options.s: libs/pilight/options.c.s
 
 # target to generate assembly for a file
 libs/pilight/options.c.s:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/pilight/options.c.s
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/pilight/options.c.s
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/pilight/options.c.s
 .PHONY : libs/pilight/options.c.s
 
 libs/pilight/protocol.o: libs/pilight/protocol.c.o
@@ -694,8 +671,7 @@ libs/pilight/protocol.o: libs/pilight/protocol.c.o
 
 # target to build an object file
 libs/pilight/protocol.c.o:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/pilight/protocol.c.o
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/pilight/protocol.c.o
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/pilight/protocol.c.o
 .PHONY : libs/pilight/protocol.c.o
 
 libs/pilight/protocol.i: libs/pilight/protocol.c.i
@@ -703,8 +679,7 @@ libs/pilight/protocol.i: libs/pilight/protocol.c.i
 
 # target to preprocess a source file
 libs/pilight/protocol.c.i:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/pilight/protocol.c.i
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/pilight/protocol.c.i
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/pilight/protocol.c.i
 .PHONY : libs/pilight/protocol.c.i
 
 libs/pilight/protocol.s: libs/pilight/protocol.c.s
@@ -712,8 +687,7 @@ libs/pilight/protocol.s: libs/pilight/protocol.c.s
 
 # target to generate assembly for a file
 libs/pilight/protocol.c.s:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/pilight/protocol.c.s
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/pilight/protocol.c.s
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/pilight/protocol.c.s
 .PHONY : libs/pilight/protocol.c.s
 
 libs/pilight/settings.o: libs/pilight/settings.c.o
@@ -721,8 +695,7 @@ libs/pilight/settings.o: libs/pilight/settings.c.o
 
 # target to build an object file
 libs/pilight/settings.c.o:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/pilight/settings.c.o
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/pilight/settings.c.o
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/pilight/settings.c.o
 .PHONY : libs/pilight/settings.c.o
 
 libs/pilight/settings.i: libs/pilight/settings.c.i
@@ -730,8 +703,7 @@ libs/pilight/settings.i: libs/pilight/settings.c.i
 
 # target to preprocess a source file
 libs/pilight/settings.c.i:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/pilight/settings.c.i
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/pilight/settings.c.i
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/pilight/settings.c.i
 .PHONY : libs/pilight/settings.c.i
 
 libs/pilight/settings.s: libs/pilight/settings.c.s
@@ -739,8 +711,7 @@ libs/pilight/settings.s: libs/pilight/settings.c.s
 
 # target to generate assembly for a file
 libs/pilight/settings.c.s:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/pilight/settings.c.s
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/pilight/settings.c.s
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/pilight/settings.c.s
 .PHONY : libs/pilight/settings.c.s
 
 libs/pilight/socket.o: libs/pilight/socket.c.o
@@ -748,8 +719,7 @@ libs/pilight/socket.o: libs/pilight/socket.c.o
 
 # target to build an object file
 libs/pilight/socket.c.o:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/pilight/socket.c.o
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/pilight/socket.c.o
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/pilight/socket.c.o
 .PHONY : libs/pilight/socket.c.o
 
 libs/pilight/socket.i: libs/pilight/socket.c.i
@@ -757,8 +727,7 @@ libs/pilight/socket.i: libs/pilight/socket.c.i
 
 # target to preprocess a source file
 libs/pilight/socket.c.i:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/pilight/socket.c.i
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/pilight/socket.c.i
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/pilight/socket.c.i
 .PHONY : libs/pilight/socket.c.i
 
 libs/pilight/socket.s: libs/pilight/socket.c.s
@@ -766,8 +735,7 @@ libs/pilight/socket.s: libs/pilight/socket.c.s
 
 # target to generate assembly for a file
 libs/pilight/socket.c.s:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/pilight/socket.c.s
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/pilight/socket.c.s
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/pilight/socket.c.s
 .PHONY : libs/pilight/socket.c.s
 
 libs/pilight/threads.o: libs/pilight/threads.c.o
@@ -775,8 +743,7 @@ libs/pilight/threads.o: libs/pilight/threads.c.o
 
 # target to build an object file
 libs/pilight/threads.c.o:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/pilight/threads.c.o
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/pilight/threads.c.o
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/pilight/threads.c.o
 .PHONY : libs/pilight/threads.c.o
 
 libs/pilight/threads.i: libs/pilight/threads.c.i
@@ -784,8 +751,7 @@ libs/pilight/threads.i: libs/pilight/threads.c.i
 
 # target to preprocess a source file
 libs/pilight/threads.c.i:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/pilight/threads.c.i
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/pilight/threads.c.i
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/pilight/threads.c.i
 .PHONY : libs/pilight/threads.c.i
 
 libs/pilight/threads.s: libs/pilight/threads.c.s
@@ -793,8 +759,7 @@ libs/pilight/threads.s: libs/pilight/threads.c.s
 
 # target to generate assembly for a file
 libs/pilight/threads.c.s:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/pilight/threads.c.s
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/pilight/threads.c.s
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/pilight/threads.c.s
 .PHONY : libs/pilight/threads.c.s
 
 libs/pilight/webserver.o: libs/pilight/webserver.c.o
@@ -802,8 +767,7 @@ libs/pilight/webserver.o: libs/pilight/webserver.c.o
 
 # target to build an object file
 libs/pilight/webserver.c.o:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/pilight/webserver.c.o
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/pilight/webserver.c.o
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/pilight/webserver.c.o
 .PHONY : libs/pilight/webserver.c.o
 
 libs/pilight/webserver.i: libs/pilight/webserver.c.i
@@ -811,8 +775,7 @@ libs/pilight/webserver.i: libs/pilight/webserver.c.i
 
 # target to preprocess a source file
 libs/pilight/webserver.c.i:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/pilight/webserver.c.i
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/pilight/webserver.c.i
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/pilight/webserver.c.i
 .PHONY : libs/pilight/webserver.c.i
 
 libs/pilight/webserver.s: libs/pilight/webserver.c.s
@@ -820,8 +783,7 @@ libs/pilight/webserver.s: libs/pilight/webserver.c.s
 
 # target to generate assembly for a file
 libs/pilight/webserver.c.s:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/pilight/webserver.c.s
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/pilight/webserver.c.s
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/pilight/webserver.c.s
 .PHONY : libs/pilight/webserver.c.s
 
 libs/pilight/wiringPi.o: libs/pilight/wiringPi.c.o
@@ -829,8 +791,7 @@ libs/pilight/wiringPi.o: libs/pilight/wiringPi.c.o
 
 # target to build an object file
 libs/pilight/wiringPi.c.o:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/pilight/wiringPi.c.o
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/pilight/wiringPi.c.o
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/pilight/wiringPi.c.o
 .PHONY : libs/pilight/wiringPi.c.o
 
 libs/pilight/wiringPi.i: libs/pilight/wiringPi.c.i
@@ -838,8 +799,7 @@ libs/pilight/wiringPi.i: libs/pilight/wiringPi.c.i
 
 # target to preprocess a source file
 libs/pilight/wiringPi.c.i:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/pilight/wiringPi.c.i
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/pilight/wiringPi.c.i
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/pilight/wiringPi.c.i
 .PHONY : libs/pilight/wiringPi.c.i
 
 libs/pilight/wiringPi.s: libs/pilight/wiringPi.c.s
@@ -847,8 +807,7 @@ libs/pilight/wiringPi.s: libs/pilight/wiringPi.c.s
 
 # target to generate assembly for a file
 libs/pilight/wiringPi.c.s:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/pilight/wiringPi.c.s
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/pilight/wiringPi.c.s
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/pilight/wiringPi.c.s
 .PHONY : libs/pilight/wiringPi.c.s
 
 libs/protocols/alecto.o: libs/protocols/alecto.c.o
@@ -856,8 +815,7 @@ libs/protocols/alecto.o: libs/protocols/alecto.c.o
 
 # target to build an object file
 libs/protocols/alecto.c.o:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/protocols/alecto.c.o
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/protocols/alecto.c.o
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/protocols/alecto.c.o
 .PHONY : libs/protocols/alecto.c.o
 
 libs/protocols/alecto.i: libs/protocols/alecto.c.i
@@ -865,8 +823,7 @@ libs/protocols/alecto.i: libs/protocols/alecto.c.i
 
 # target to preprocess a source file
 libs/protocols/alecto.c.i:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/protocols/alecto.c.i
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/protocols/alecto.c.i
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/protocols/alecto.c.i
 .PHONY : libs/protocols/alecto.c.i
 
 libs/protocols/alecto.s: libs/protocols/alecto.c.s
@@ -874,8 +831,7 @@ libs/protocols/alecto.s: libs/protocols/alecto.c.s
 
 # target to generate assembly for a file
 libs/protocols/alecto.c.s:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/protocols/alecto.c.s
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/protocols/alecto.c.s
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/protocols/alecto.c.s
 .PHONY : libs/protocols/alecto.c.s
 
 libs/protocols/arctech_dimmer.o: libs/protocols/arctech_dimmer.c.o
@@ -883,8 +839,7 @@ libs/protocols/arctech_dimmer.o: libs/protocols/arctech_dimmer.c.o
 
 # target to build an object file
 libs/protocols/arctech_dimmer.c.o:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/protocols/arctech_dimmer.c.o
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/protocols/arctech_dimmer.c.o
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/protocols/arctech_dimmer.c.o
 .PHONY : libs/protocols/arctech_dimmer.c.o
 
 libs/protocols/arctech_dimmer.i: libs/protocols/arctech_dimmer.c.i
@@ -892,8 +847,7 @@ libs/protocols/arctech_dimmer.i: libs/protocols/arctech_dimmer.c.i
 
 # target to preprocess a source file
 libs/protocols/arctech_dimmer.c.i:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/protocols/arctech_dimmer.c.i
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/protocols/arctech_dimmer.c.i
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/protocols/arctech_dimmer.c.i
 .PHONY : libs/protocols/arctech_dimmer.c.i
 
 libs/protocols/arctech_dimmer.s: libs/protocols/arctech_dimmer.c.s
@@ -901,8 +855,7 @@ libs/protocols/arctech_dimmer.s: libs/protocols/arctech_dimmer.c.s
 
 # target to generate assembly for a file
 libs/protocols/arctech_dimmer.c.s:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/protocols/arctech_dimmer.c.s
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/protocols/arctech_dimmer.c.s
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/protocols/arctech_dimmer.c.s
 .PHONY : libs/protocols/arctech_dimmer.c.s
 
 libs/protocols/arctech_old.o: libs/protocols/arctech_old.c.o
@@ -910,8 +863,7 @@ libs/protocols/arctech_old.o: libs/protocols/arctech_old.c.o
 
 # target to build an object file
 libs/protocols/arctech_old.c.o:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/protocols/arctech_old.c.o
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/protocols/arctech_old.c.o
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/protocols/arctech_old.c.o
 .PHONY : libs/protocols/arctech_old.c.o
 
 libs/protocols/arctech_old.i: libs/protocols/arctech_old.c.i
@@ -919,8 +871,7 @@ libs/protocols/arctech_old.i: libs/protocols/arctech_old.c.i
 
 # target to preprocess a source file
 libs/protocols/arctech_old.c.i:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/protocols/arctech_old.c.i
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/protocols/arctech_old.c.i
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/protocols/arctech_old.c.i
 .PHONY : libs/protocols/arctech_old.c.i
 
 libs/protocols/arctech_old.s: libs/protocols/arctech_old.c.s
@@ -928,8 +879,7 @@ libs/protocols/arctech_old.s: libs/protocols/arctech_old.c.s
 
 # target to generate assembly for a file
 libs/protocols/arctech_old.c.s:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/protocols/arctech_old.c.s
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/protocols/arctech_old.c.s
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/protocols/arctech_old.c.s
 .PHONY : libs/protocols/arctech_old.c.s
 
 libs/protocols/arctech_switch.o: libs/protocols/arctech_switch.c.o
@@ -937,8 +887,7 @@ libs/protocols/arctech_switch.o: libs/protocols/arctech_switch.c.o
 
 # target to build an object file
 libs/protocols/arctech_switch.c.o:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/protocols/arctech_switch.c.o
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/protocols/arctech_switch.c.o
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/protocols/arctech_switch.c.o
 .PHONY : libs/protocols/arctech_switch.c.o
 
 libs/protocols/arctech_switch.i: libs/protocols/arctech_switch.c.i
@@ -946,8 +895,7 @@ libs/protocols/arctech_switch.i: libs/protocols/arctech_switch.c.i
 
 # target to preprocess a source file
 libs/protocols/arctech_switch.c.i:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/protocols/arctech_switch.c.i
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/protocols/arctech_switch.c.i
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/protocols/arctech_switch.c.i
 .PHONY : libs/protocols/arctech_switch.c.i
 
 libs/protocols/arctech_switch.s: libs/protocols/arctech_switch.c.s
@@ -955,8 +903,7 @@ libs/protocols/arctech_switch.s: libs/protocols/arctech_switch.c.s
 
 # target to generate assembly for a file
 libs/protocols/arctech_switch.c.s:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/protocols/arctech_switch.c.s
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/protocols/arctech_switch.c.s
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/protocols/arctech_switch.c.s
 .PHONY : libs/protocols/arctech_switch.c.s
 
 libs/protocols/ds18b20.o: libs/protocols/ds18b20.c.o
@@ -964,8 +911,7 @@ libs/protocols/ds18b20.o: libs/protocols/ds18b20.c.o
 
 # target to build an object file
 libs/protocols/ds18b20.c.o:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/protocols/ds18b20.c.o
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/protocols/ds18b20.c.o
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/protocols/ds18b20.c.o
 .PHONY : libs/protocols/ds18b20.c.o
 
 libs/protocols/ds18b20.i: libs/protocols/ds18b20.c.i
@@ -973,8 +919,7 @@ libs/protocols/ds18b20.i: libs/protocols/ds18b20.c.i
 
 # target to preprocess a source file
 libs/protocols/ds18b20.c.i:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/protocols/ds18b20.c.i
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/protocols/ds18b20.c.i
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/protocols/ds18b20.c.i
 .PHONY : libs/protocols/ds18b20.c.i
 
 libs/protocols/ds18b20.s: libs/protocols/ds18b20.c.s
@@ -982,8 +927,7 @@ libs/protocols/ds18b20.s: libs/protocols/ds18b20.c.s
 
 # target to generate assembly for a file
 libs/protocols/ds18b20.c.s:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/protocols/ds18b20.c.s
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/protocols/ds18b20.c.s
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/protocols/ds18b20.c.s
 .PHONY : libs/protocols/ds18b20.c.s
 
 libs/protocols/generic_dimmer.o: libs/protocols/generic_dimmer.c.o
@@ -991,8 +935,7 @@ libs/protocols/generic_dimmer.o: libs/protocols/generic_dimmer.c.o
 
 # target to build an object file
 libs/protocols/generic_dimmer.c.o:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/protocols/generic_dimmer.c.o
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/protocols/generic_dimmer.c.o
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/protocols/generic_dimmer.c.o
 .PHONY : libs/protocols/generic_dimmer.c.o
 
 libs/protocols/generic_dimmer.i: libs/protocols/generic_dimmer.c.i
@@ -1000,8 +943,7 @@ libs/protocols/generic_dimmer.i: libs/protocols/generic_dimmer.c.i
 
 # target to preprocess a source file
 libs/protocols/generic_dimmer.c.i:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/protocols/generic_dimmer.c.i
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/protocols/generic_dimmer.c.i
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/protocols/generic_dimmer.c.i
 .PHONY : libs/protocols/generic_dimmer.c.i
 
 libs/protocols/generic_dimmer.s: libs/protocols/generic_dimmer.c.s
@@ -1009,8 +951,7 @@ libs/protocols/generic_dimmer.s: libs/protocols/generic_dimmer.c.s
 
 # target to generate assembly for a file
 libs/protocols/generic_dimmer.c.s:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/protocols/generic_dimmer.c.s
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/protocols/generic_dimmer.c.s
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/protocols/generic_dimmer.c.s
 .PHONY : libs/protocols/generic_dimmer.c.s
 
 libs/protocols/generic_switch.o: libs/protocols/generic_switch.c.o
@@ -1018,8 +959,7 @@ libs/protocols/generic_switch.o: libs/protocols/generic_switch.c.o
 
 # target to build an object file
 libs/protocols/generic_switch.c.o:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/protocols/generic_switch.c.o
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/protocols/generic_switch.c.o
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/protocols/generic_switch.c.o
 .PHONY : libs/protocols/generic_switch.c.o
 
 libs/protocols/generic_switch.i: libs/protocols/generic_switch.c.i
@@ -1027,8 +967,7 @@ libs/protocols/generic_switch.i: libs/protocols/generic_switch.c.i
 
 # target to preprocess a source file
 libs/protocols/generic_switch.c.i:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/protocols/generic_switch.c.i
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/protocols/generic_switch.c.i
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/protocols/generic_switch.c.i
 .PHONY : libs/protocols/generic_switch.c.i
 
 libs/protocols/generic_switch.s: libs/protocols/generic_switch.c.s
@@ -1036,8 +975,7 @@ libs/protocols/generic_switch.s: libs/protocols/generic_switch.c.s
 
 # target to generate assembly for a file
 libs/protocols/generic_switch.c.s:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/protocols/generic_switch.c.s
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/protocols/generic_switch.c.s
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/protocols/generic_switch.c.s
 .PHONY : libs/protocols/generic_switch.c.s
 
 libs/protocols/generic_weather.o: libs/protocols/generic_weather.c.o
@@ -1045,8 +983,7 @@ libs/protocols/generic_weather.o: libs/protocols/generic_weather.c.o
 
 # target to build an object file
 libs/protocols/generic_weather.c.o:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/protocols/generic_weather.c.o
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/protocols/generic_weather.c.o
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/protocols/generic_weather.c.o
 .PHONY : libs/protocols/generic_weather.c.o
 
 libs/protocols/generic_weather.i: libs/protocols/generic_weather.c.i
@@ -1054,8 +991,7 @@ libs/protocols/generic_weather.i: libs/protocols/generic_weather.c.i
 
 # target to preprocess a source file
 libs/protocols/generic_weather.c.i:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/protocols/generic_weather.c.i
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/protocols/generic_weather.c.i
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/protocols/generic_weather.c.i
 .PHONY : libs/protocols/generic_weather.c.i
 
 libs/protocols/generic_weather.s: libs/protocols/generic_weather.c.s
@@ -1063,8 +999,7 @@ libs/protocols/generic_weather.s: libs/protocols/generic_weather.c.s
 
 # target to generate assembly for a file
 libs/protocols/generic_weather.c.s:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/protocols/generic_weather.c.s
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/protocols/generic_weather.c.s
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/protocols/generic_weather.c.s
 .PHONY : libs/protocols/generic_weather.c.s
 
 libs/protocols/home_easy_old.o: libs/protocols/home_easy_old.c.o
@@ -1072,8 +1007,7 @@ libs/protocols/home_easy_old.o: libs/protocols/home_easy_old.c.o
 
 # target to build an object file
 libs/protocols/home_easy_old.c.o:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/protocols/home_easy_old.c.o
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/protocols/home_easy_old.c.o
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/protocols/home_easy_old.c.o
 .PHONY : libs/protocols/home_easy_old.c.o
 
 libs/protocols/home_easy_old.i: libs/protocols/home_easy_old.c.i
@@ -1081,8 +1015,7 @@ libs/protocols/home_easy_old.i: libs/protocols/home_easy_old.c.i
 
 # target to preprocess a source file
 libs/protocols/home_easy_old.c.i:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/protocols/home_easy_old.c.i
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/protocols/home_easy_old.c.i
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/protocols/home_easy_old.c.i
 .PHONY : libs/protocols/home_easy_old.c.i
 
 libs/protocols/home_easy_old.s: libs/protocols/home_easy_old.c.s
@@ -1090,8 +1023,7 @@ libs/protocols/home_easy_old.s: libs/protocols/home_easy_old.c.s
 
 # target to generate assembly for a file
 libs/protocols/home_easy_old.c.s:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/protocols/home_easy_old.c.s
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/protocols/home_easy_old.c.s
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/protocols/home_easy_old.c.s
 .PHONY : libs/protocols/home_easy_old.c.s
 
 libs/protocols/impuls.o: libs/protocols/impuls.c.o
@@ -1099,8 +1031,7 @@ libs/protocols/impuls.o: libs/protocols/impuls.c.o
 
 # target to build an object file
 libs/protocols/impuls.c.o:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/protocols/impuls.c.o
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/protocols/impuls.c.o
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/protocols/impuls.c.o
 .PHONY : libs/protocols/impuls.c.o
 
 libs/protocols/impuls.i: libs/protocols/impuls.c.i
@@ -1108,8 +1039,7 @@ libs/protocols/impuls.i: libs/protocols/impuls.c.i
 
 # target to preprocess a source file
 libs/protocols/impuls.c.i:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/protocols/impuls.c.i
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/protocols/impuls.c.i
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/protocols/impuls.c.i
 .PHONY : libs/protocols/impuls.c.i
 
 libs/protocols/impuls.s: libs/protocols/impuls.c.s
@@ -1117,8 +1047,7 @@ libs/protocols/impuls.s: libs/protocols/impuls.c.s
 
 # target to generate assembly for a file
 libs/protocols/impuls.c.s:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/protocols/impuls.c.s
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/protocols/impuls.c.s
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/protocols/impuls.c.s
 .PHONY : libs/protocols/impuls.c.s
 
 libs/protocols/raw.o: libs/protocols/raw.c.o
@@ -1126,8 +1055,7 @@ libs/protocols/raw.o: libs/protocols/raw.c.o
 
 # target to build an object file
 libs/protocols/raw.c.o:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/protocols/raw.c.o
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/protocols/raw.c.o
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/protocols/raw.c.o
 .PHONY : libs/protocols/raw.c.o
 
 libs/protocols/raw.i: libs/protocols/raw.c.i
@@ -1135,8 +1063,7 @@ libs/protocols/raw.i: libs/protocols/raw.c.i
 
 # target to preprocess a source file
 libs/protocols/raw.c.i:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/protocols/raw.c.i
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/protocols/raw.c.i
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/protocols/raw.c.i
 .PHONY : libs/protocols/raw.c.i
 
 libs/protocols/raw.s: libs/protocols/raw.c.s
@@ -1144,8 +1071,7 @@ libs/protocols/raw.s: libs/protocols/raw.c.s
 
 # target to generate assembly for a file
 libs/protocols/raw.c.s:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/protocols/raw.c.s
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/protocols/raw.c.s
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/protocols/raw.c.s
 .PHONY : libs/protocols/raw.c.s
 
 libs/protocols/relay.o: libs/protocols/relay.c.o
@@ -1153,8 +1079,7 @@ libs/protocols/relay.o: libs/protocols/relay.c.o
 
 # target to build an object file
 libs/protocols/relay.c.o:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/protocols/relay.c.o
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/protocols/relay.c.o
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/protocols/relay.c.o
 .PHONY : libs/protocols/relay.c.o
 
 libs/protocols/relay.i: libs/protocols/relay.c.i
@@ -1162,8 +1087,7 @@ libs/protocols/relay.i: libs/protocols/relay.c.i
 
 # target to preprocess a source file
 libs/protocols/relay.c.i:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/protocols/relay.c.i
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/protocols/relay.c.i
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/protocols/relay.c.i
 .PHONY : libs/protocols/relay.c.i
 
 libs/protocols/relay.s: libs/protocols/relay.c.s
@@ -1171,8 +1095,7 @@ libs/protocols/relay.s: libs/protocols/relay.c.s
 
 # target to generate assembly for a file
 libs/protocols/relay.c.s:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/protocols/relay.c.s
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/protocols/relay.c.s
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/protocols/relay.c.s
 .PHONY : libs/protocols/relay.c.s
 
 libs/protocols/sartano.o: libs/protocols/sartano.c.o
@@ -1180,8 +1103,7 @@ libs/protocols/sartano.o: libs/protocols/sartano.c.o
 
 # target to build an object file
 libs/protocols/sartano.c.o:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/protocols/sartano.c.o
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/protocols/sartano.c.o
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/protocols/sartano.c.o
 .PHONY : libs/protocols/sartano.c.o
 
 libs/protocols/sartano.i: libs/protocols/sartano.c.i
@@ -1189,8 +1111,7 @@ libs/protocols/sartano.i: libs/protocols/sartano.c.i
 
 # target to preprocess a source file
 libs/protocols/sartano.c.i:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/protocols/sartano.c.i
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/protocols/sartano.c.i
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/protocols/sartano.c.i
 .PHONY : libs/protocols/sartano.c.i
 
 libs/protocols/sartano.s: libs/protocols/sartano.c.s
@@ -1198,8 +1119,7 @@ libs/protocols/sartano.s: libs/protocols/sartano.c.s
 
 # target to generate assembly for a file
 libs/protocols/sartano.c.s:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/protocols/sartano.c.s
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/protocols/sartano.c.s
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/protocols/sartano.c.s
 .PHONY : libs/protocols/sartano.c.s
 
 libs/websockets/base64-decode.o: libs/websockets/base64-decode.c.o
@@ -1207,8 +1127,7 @@ libs/websockets/base64-decode.o: libs/websockets/base64-decode.c.o
 
 # target to build an object file
 libs/websockets/base64-decode.c.o:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/websockets/base64-decode.c.o
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/websockets/base64-decode.c.o
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/websockets/base64-decode.c.o
 .PHONY : libs/websockets/base64-decode.c.o
 
 libs/websockets/base64-decode.i: libs/websockets/base64-decode.c.i
@@ -1216,8 +1135,7 @@ libs/websockets/base64-decode.i: libs/websockets/base64-decode.c.i
 
 # target to preprocess a source file
 libs/websockets/base64-decode.c.i:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/websockets/base64-decode.c.i
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/websockets/base64-decode.c.i
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/websockets/base64-decode.c.i
 .PHONY : libs/websockets/base64-decode.c.i
 
 libs/websockets/base64-decode.s: libs/websockets/base64-decode.c.s
@@ -1225,8 +1143,7 @@ libs/websockets/base64-decode.s: libs/websockets/base64-decode.c.s
 
 # target to generate assembly for a file
 libs/websockets/base64-decode.c.s:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/websockets/base64-decode.c.s
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/websockets/base64-decode.c.s
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/websockets/base64-decode.c.s
 .PHONY : libs/websockets/base64-decode.c.s
 
 libs/websockets/daemonize.o: libs/websockets/daemonize.c.o
@@ -1234,8 +1151,7 @@ libs/websockets/daemonize.o: libs/websockets/daemonize.c.o
 
 # target to build an object file
 libs/websockets/daemonize.c.o:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/websockets/daemonize.c.o
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/websockets/daemonize.c.o
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/websockets/daemonize.c.o
 .PHONY : libs/websockets/daemonize.c.o
 
 libs/websockets/daemonize.i: libs/websockets/daemonize.c.i
@@ -1243,8 +1159,7 @@ libs/websockets/daemonize.i: libs/websockets/daemonize.c.i
 
 # target to preprocess a source file
 libs/websockets/daemonize.c.i:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/websockets/daemonize.c.i
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/websockets/daemonize.c.i
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/websockets/daemonize.c.i
 .PHONY : libs/websockets/daemonize.c.i
 
 libs/websockets/daemonize.s: libs/websockets/daemonize.c.s
@@ -1252,8 +1167,7 @@ libs/websockets/daemonize.s: libs/websockets/daemonize.c.s
 
 # target to generate assembly for a file
 libs/websockets/daemonize.c.s:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/websockets/daemonize.c.s
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/websockets/daemonize.c.s
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/websockets/daemonize.c.s
 .PHONY : libs/websockets/daemonize.c.s
 
 libs/websockets/getifaddrs.o: libs/websockets/getifaddrs.c.o
@@ -1261,8 +1175,7 @@ libs/websockets/getifaddrs.o: libs/websockets/getifaddrs.c.o
 
 # target to build an object file
 libs/websockets/getifaddrs.c.o:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/websockets/getifaddrs.c.o
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/websockets/getifaddrs.c.o
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/websockets/getifaddrs.c.o
 .PHONY : libs/websockets/getifaddrs.c.o
 
 libs/websockets/getifaddrs.i: libs/websockets/getifaddrs.c.i
@@ -1270,8 +1183,7 @@ libs/websockets/getifaddrs.i: libs/websockets/getifaddrs.c.i
 
 # target to preprocess a source file
 libs/websockets/getifaddrs.c.i:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/websockets/getifaddrs.c.i
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/websockets/getifaddrs.c.i
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/websockets/getifaddrs.c.i
 .PHONY : libs/websockets/getifaddrs.c.i
 
 libs/websockets/getifaddrs.s: libs/websockets/getifaddrs.c.s
@@ -1279,8 +1191,7 @@ libs/websockets/getifaddrs.s: libs/websockets/getifaddrs.c.s
 
 # target to generate assembly for a file
 libs/websockets/getifaddrs.c.s:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/websockets/getifaddrs.c.s
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/websockets/getifaddrs.c.s
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/websockets/getifaddrs.c.s
 .PHONY : libs/websockets/getifaddrs.c.s
 
 libs/websockets/handshake.o: libs/websockets/handshake.c.o
@@ -1288,8 +1199,7 @@ libs/websockets/handshake.o: libs/websockets/handshake.c.o
 
 # target to build an object file
 libs/websockets/handshake.c.o:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/websockets/handshake.c.o
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/websockets/handshake.c.o
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/websockets/handshake.c.o
 .PHONY : libs/websockets/handshake.c.o
 
 libs/websockets/handshake.i: libs/websockets/handshake.c.i
@@ -1297,8 +1207,7 @@ libs/websockets/handshake.i: libs/websockets/handshake.c.i
 
 # target to preprocess a source file
 libs/websockets/handshake.c.i:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/websockets/handshake.c.i
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/websockets/handshake.c.i
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/websockets/handshake.c.i
 .PHONY : libs/websockets/handshake.c.i
 
 libs/websockets/handshake.s: libs/websockets/handshake.c.s
@@ -1306,8 +1215,7 @@ libs/websockets/handshake.s: libs/websockets/handshake.c.s
 
 # target to generate assembly for a file
 libs/websockets/handshake.c.s:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/websockets/handshake.c.s
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/websockets/handshake.c.s
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/websockets/handshake.c.s
 .PHONY : libs/websockets/handshake.c.s
 
 libs/websockets/libwebsockets.o: libs/websockets/libwebsockets.c.o
@@ -1315,8 +1223,7 @@ libs/websockets/libwebsockets.o: libs/websockets/libwebsockets.c.o
 
 # target to build an object file
 libs/websockets/libwebsockets.c.o:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/websockets/libwebsockets.c.o
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/websockets/libwebsockets.c.o
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/websockets/libwebsockets.c.o
 .PHONY : libs/websockets/libwebsockets.c.o
 
 libs/websockets/libwebsockets.i: libs/websockets/libwebsockets.c.i
@@ -1324,8 +1231,7 @@ libs/websockets/libwebsockets.i: libs/websockets/libwebsockets.c.i
 
 # target to preprocess a source file
 libs/websockets/libwebsockets.c.i:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/websockets/libwebsockets.c.i
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/websockets/libwebsockets.c.i
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/websockets/libwebsockets.c.i
 .PHONY : libs/websockets/libwebsockets.c.i
 
 libs/websockets/libwebsockets.s: libs/websockets/libwebsockets.c.s
@@ -1333,8 +1239,7 @@ libs/websockets/libwebsockets.s: libs/websockets/libwebsockets.c.s
 
 # target to generate assembly for a file
 libs/websockets/libwebsockets.c.s:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/websockets/libwebsockets.c.s
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/websockets/libwebsockets.c.s
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/websockets/libwebsockets.c.s
 .PHONY : libs/websockets/libwebsockets.c.s
 
 libs/websockets/output.o: libs/websockets/output.c.o
@@ -1342,8 +1247,7 @@ libs/websockets/output.o: libs/websockets/output.c.o
 
 # target to build an object file
 libs/websockets/output.c.o:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/websockets/output.c.o
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/websockets/output.c.o
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/websockets/output.c.o
 .PHONY : libs/websockets/output.c.o
 
 libs/websockets/output.i: libs/websockets/output.c.i
@@ -1351,8 +1255,7 @@ libs/websockets/output.i: libs/websockets/output.c.i
 
 # target to preprocess a source file
 libs/websockets/output.c.i:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/websockets/output.c.i
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/websockets/output.c.i
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/websockets/output.c.i
 .PHONY : libs/websockets/output.c.i
 
 libs/websockets/output.s: libs/websockets/output.c.s
@@ -1360,8 +1263,7 @@ libs/websockets/output.s: libs/websockets/output.c.s
 
 # target to generate assembly for a file
 libs/websockets/output.c.s:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/websockets/output.c.s
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/websockets/output.c.s
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/websockets/output.c.s
 .PHONY : libs/websockets/output.c.s
 
 libs/websockets/parsers.o: libs/websockets/parsers.c.o
@@ -1369,8 +1271,7 @@ libs/websockets/parsers.o: libs/websockets/parsers.c.o
 
 # target to build an object file
 libs/websockets/parsers.c.o:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/websockets/parsers.c.o
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/websockets/parsers.c.o
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/websockets/parsers.c.o
 .PHONY : libs/websockets/parsers.c.o
 
 libs/websockets/parsers.i: libs/websockets/parsers.c.i
@@ -1378,8 +1279,7 @@ libs/websockets/parsers.i: libs/websockets/parsers.c.i
 
 # target to preprocess a source file
 libs/websockets/parsers.c.i:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/websockets/parsers.c.i
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/websockets/parsers.c.i
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/websockets/parsers.c.i
 .PHONY : libs/websockets/parsers.c.i
 
 libs/websockets/parsers.s: libs/websockets/parsers.c.s
@@ -1387,8 +1287,7 @@ libs/websockets/parsers.s: libs/websockets/parsers.c.s
 
 # target to generate assembly for a file
 libs/websockets/parsers.c.s:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/websockets/parsers.c.s
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/websockets/parsers.c.s
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/websockets/parsers.c.s
 .PHONY : libs/websockets/parsers.c.s
 
 libs/websockets/server-handshake.o: libs/websockets/server-handshake.c.o
@@ -1396,8 +1295,7 @@ libs/websockets/server-handshake.o: libs/websockets/server-handshake.c.o
 
 # target to build an object file
 libs/websockets/server-handshake.c.o:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/websockets/server-handshake.c.o
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/websockets/server-handshake.c.o
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/websockets/server-handshake.c.o
 .PHONY : libs/websockets/server-handshake.c.o
 
 libs/websockets/server-handshake.i: libs/websockets/server-handshake.c.i
@@ -1405,8 +1303,7 @@ libs/websockets/server-handshake.i: libs/websockets/server-handshake.c.i
 
 # target to preprocess a source file
 libs/websockets/server-handshake.c.i:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/websockets/server-handshake.c.i
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/websockets/server-handshake.c.i
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/websockets/server-handshake.c.i
 .PHONY : libs/websockets/server-handshake.c.i
 
 libs/websockets/server-handshake.s: libs/websockets/server-handshake.c.s
@@ -1414,8 +1311,7 @@ libs/websockets/server-handshake.s: libs/websockets/server-handshake.c.s
 
 # target to generate assembly for a file
 libs/websockets/server-handshake.c.s:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/websockets/server-handshake.c.s
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/websockets/server-handshake.c.s
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/websockets/server-handshake.c.s
 .PHONY : libs/websockets/server-handshake.c.s
 
 libs/websockets/server.o: libs/websockets/server.c.o
@@ -1423,8 +1319,7 @@ libs/websockets/server.o: libs/websockets/server.c.o
 
 # target to build an object file
 libs/websockets/server.c.o:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/websockets/server.c.o
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/websockets/server.c.o
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/websockets/server.c.o
 .PHONY : libs/websockets/server.c.o
 
 libs/websockets/server.i: libs/websockets/server.c.i
@@ -1432,8 +1327,7 @@ libs/websockets/server.i: libs/websockets/server.c.i
 
 # target to preprocess a source file
 libs/websockets/server.c.i:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/websockets/server.c.i
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/websockets/server.c.i
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/websockets/server.c.i
 .PHONY : libs/websockets/server.c.i
 
 libs/websockets/server.s: libs/websockets/server.c.s
@@ -1441,8 +1335,7 @@ libs/websockets/server.s: libs/websockets/server.c.s
 
 # target to generate assembly for a file
 libs/websockets/server.c.s:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/websockets/server.c.s
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/websockets/server.c.s
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/websockets/server.c.s
 .PHONY : libs/websockets/server.c.s
 
 libs/websockets/sha-1.o: libs/websockets/sha-1.c.o
@@ -1450,8 +1343,7 @@ libs/websockets/sha-1.o: libs/websockets/sha-1.c.o
 
 # target to build an object file
 libs/websockets/sha-1.c.o:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/websockets/sha-1.c.o
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/websockets/sha-1.c.o
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/websockets/sha-1.c.o
 .PHONY : libs/websockets/sha-1.c.o
 
 libs/websockets/sha-1.i: libs/websockets/sha-1.c.i
@@ -1459,8 +1351,7 @@ libs/websockets/sha-1.i: libs/websockets/sha-1.c.i
 
 # target to preprocess a source file
 libs/websockets/sha-1.c.i:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/websockets/sha-1.c.i
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/websockets/sha-1.c.i
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/websockets/sha-1.c.i
 .PHONY : libs/websockets/sha-1.c.i
 
 libs/websockets/sha-1.s: libs/websockets/sha-1.c.s
@@ -1468,8 +1359,7 @@ libs/websockets/sha-1.s: libs/websockets/sha-1.c.s
 
 # target to generate assembly for a file
 libs/websockets/sha-1.c.s:
-	$(MAKE) -f CMakeFiles/pilight_shared.dir/build.make CMakeFiles/pilight_shared.dir/libs/websockets/sha-1.c.s
-	$(MAKE) -f CMakeFiles/pilight_static.dir/build.make CMakeFiles/pilight_static.dir/libs/websockets/sha-1.c.s
+	$(MAKE) -f CMakeFiles/pilight.dir/build.make CMakeFiles/pilight.dir/libs/websockets/sha-1.c.s
 .PHONY : libs/websockets/sha-1.c.s
 
 raw.o: raw.c.o
@@ -1555,6 +1445,7 @@ help:
 	@echo "... install/local"
 	@echo "... install/strip"
 	@echo "... list_install_components"
+	@echo "... pilight"
 	@echo "... pilight-control"
 	@echo "... pilight-daemon"
 	@echo "... pilight-debug"

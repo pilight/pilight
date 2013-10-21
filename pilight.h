@@ -45,7 +45,7 @@
 #define PROTOCOL_NEXA_SWITCH
 #define PROTOCOL_RAW
 #define PROTOCOL_RELAY
-#define PROTOCOL_ELRO
+#define PROTOCOL_ELRO_SWITCH
 #define PROTOCOL_SELECTREMOTE
 
 /* Hardware support */

@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 2.8.8)
 
 project(pilight C)
 
@@ -63,8 +63,6 @@ execute_process(COMMAND git describe --always
 STRING(REGEX REPLACE "\n" "" git_ver "${git_ver}")
 add_definitions(-DHASH="${git_ver}")
 
-
-
 include_directories("${PROJECT_SOURCE_DIR}/libs/pilight/")
 
 file(GLOB pilight_headers
@@ -110,7 +108,7 @@ if(${PROTOCOL_DS18B20} MATCHES "OFF")
 	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/ds18b20.c")
 endif()
 
-if(${PROTOCOL_ELRO} MATCHES "OFF")
+if(${PROTOCOL_ELRO_SWITCH} MATCHES "OFF")
 	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/sartano.h")
 	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/sartano.c")
 endif()
@@ -181,13 +179,13 @@ find_package(Threads REQUIRED)
 
 configure_file(pilight.h.in pilight.h)
 
-add_library(pilight_shared SHARED ${pilight})
-add_library(pilight_static STATIC ${pilight})
+add_library(pilight OBJECT ${pilight})
+add_library(pilight_static STATIC $<TARGET_OBJECTS:pilight>)
+add_library(pilight_shared SHARED $<TARGET_OBJECTS:pilight>)
 target_link_libraries(pilight_shared ${CMAKE_THREAD_LIBS_INIT})
 target_link_libraries(pilight_static ${CMAKE_THREAD_LIBS_INIT})
 
-set_target_properties(pilight_shared PROPERTIES OUTPUT_NAME pilight)
-set_target_properties(pilight_static PROPERTIES OUTPUT_NAME pilight)
+set_target_properties(pilight_shared pilight_static PROPERTIES OUTPUT_NAME pilight)
 
 set_source_files_properties(${PROJECT_SOURCE_DIR}/libs/pilight/wiringPi.c PROPERTIES COMPILE_FLAGS " -w ")
 set_source_files_properties(${PROJECT_SOURCE_DIR}/libs/pilight/json.c PROPERTIES COMPILE_FLAGS " -w ")
