@@ -198,7 +198,7 @@ if(${WEBSERVER} MATCHES "ON")
 	install(FILES ${web} DESTINATION /usr/local/share/pilight/)
 endif()
 
-install(FILES init/pilight DESTINATION /etc/init.d/)
+install(PROGRAMS init/pilight DESTINATION /etc/init.d/)
 
 if(NOT EXISTS "/usr/local/bin/gpio")
 	install(FILES deps/gpio DESTINATION /usr/local/bin/) 

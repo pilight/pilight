@@ -73,12 +73,16 @@ do_stop()
 
 case "$1" in
   start)
-    [ "$VERBOSE" != no ] && log_daemon_msg "Starting $DESC" "$NAME"
-    do_start
-    case "$?" in
-        0|1) [ "$VERBOSE" != no ] && log_end_msg 0 ;;
-        2) [ "$VERBOSE" != no ] && log_end_msg 1 ;;
-    esac
+	if [ $(pkill -0 pilight-daemon 2>/dev/null; echo $?) -gt 0 ]; then
+		[ "$VERBOSE" != no ] && log_daemon_msg "Starting $DESC" "$NAME"
+		do_start
+		case "$?" in
+			0|1) [ "$VERBOSE" != no ] && log_end_msg 0 ;;
+			2) [ "$VERBOSE" != no ] && log_end_msg 1 ;;
+		esac
+	else
+		status_of_proc "$DAEMON" "$NAME" && exit 0 || exit $?
+	fi
     ;;
   stop)
     [ "$VERBOSE" != no ] && log_daemon_msg "Stopping $DESC" "$NAME"
