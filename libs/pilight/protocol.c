@@ -79,7 +79,7 @@ void protocol_init(void) {
 #ifdef PROTOCOL_HOMEEASY_OLD
 	homeEasyOldInit();
 #endif
-#ifdef PROTOCOL_ELRO
+#ifdef PROTOCOL_ELRO_SWITCH
 	sartanoInit();
 #endif
 #if defined(PROTOCOL_SELECTREMOTE) || defined(PROTOCOL_IMPULS)
