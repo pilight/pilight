@@ -191,7 +191,7 @@ void arctechSwInit(void) {
 	protocol_conflict_add(arctech_switch, "archtech_dimmers");
 	arctech_switch->type = SWITCH;
 	arctech_switch->pulse = 5;
-	arctech_switch->plslen = 299;
+	arctech_switch->plslen = 300;
 	arctech_switch->rawlen = 132;
 	arctech_switch->lsb = 3;
 

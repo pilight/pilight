@@ -48,13 +48,13 @@ void *threads_start(void *param) {
 			while(tmp_threads) {
 				if(tmp_threads->running == 0) {
 					pthread_create(&tmp_threads->pth, NULL, tmp_threads->function, (void *)tmp_threads->param);
-					tmp_threads->running = 1;
+					tmp_threads->running = 1;		
+					thread_running++;
 					if(thread_running == 1) {
 						logprintf(LOG_DEBUG, "new thread, %d thread running", thread_running);
 					} else {
 						logprintf(LOG_DEBUG, "new thread, %d threads running", thread_running);
-					}					
-					thread_running++;
+					}
 				}
 				tmp_threads = tmp_threads->next;
 			}

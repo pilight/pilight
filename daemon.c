@@ -113,6 +113,8 @@ unsigned short main_loop = 1;
 unsigned short valid_config = 1;
 /* How many received repeats did we encounter */
 int repeats = 0;
+/* Used hardware module */
+struct hardware_t *hardware = NULL;
 /* Reset repeats after a certian amount of time */
 unsigned long first = 0;
 unsigned long second = 0;
@@ -386,7 +388,6 @@ void send_code(JsonNode *json) {
 
 	/* Hold the final protocol struct */
 	struct protocol_t *protocol = NULL;
-	struct hardware_t *hardware = NULL;
 
 	JsonNode *jcode = NULL;
 	JsonNode *jsettings = NULL;
@@ -461,65 +462,52 @@ void send_code(JsonNode *json) {
 
 						sending = 1;
 
-						struct hardwares_t *htmp = hardwares;
-						match = 0;
-						while(htmp) {
-							if(strcmp(htmp->listener->id, hw_mode) == 0) {
-								hardware = htmp->listener;
-								match = 1;
-								break;
+						/* Create a single code with all repeats included */
+						int code_len = (protocol->rawlen*send_repeat*protocol->txrpt)+1;
+						size_t send_len = (size_t)(code_len * (int)sizeof(int));
+						int longCode[code_len];
+						memset(longCode, 0, send_len);
+
+						for(i=0;i<(send_repeat*protocol->txrpt);i++) {
+							for(x=0;x<protocol->rawlen;x++) {
+								longCode[x+(protocol->rawlen*i)]=protocol->raw[x];
 							}
-							htmp = htmp->next;
 						}
 
-						if(match == 1) {
-							/* Create a single code with all repeats included */
-							int code_len = (protocol->rawlen*send_repeat*protocol->txrpt)+1;
-							size_t send_len = (size_t)(code_len * (int)sizeof(int));
-							int longCode[code_len];
-							memset(longCode, 0, send_len);
-
-							for(i=0;i<(send_repeat*protocol->txrpt);i++) {
-								for(x=0;x<protocol->rawlen;x++) {
-									longCode[x+(protocol->rawlen*i)]=protocol->raw[x];
-								}
-							}
-
-							longCode[code_len] = 0;
-							if(hardware->send) {
-								if(hardware->send(longCode) == 0) {
-									logprintf(LOG_DEBUG, "successfully send %s code", protocol->id);
-									if(logged == 0) {
-										logged = 1;
-										if(strcmp(protocol->id, "raw") == 0) {
-											int plslen = protocol->raw[protocol->rawlen-1]/PULSE_DIV;
-											receiver_parse_code(protocol->raw, protocol->rawlen, plslen);
-										} else {
-											/* Write the message to all receivers */
-											broadcast(protocol->id, message);
-										}
-										json_delete(message);
-										message = NULL;
+						longCode[code_len] = 0;
+						if(hardware->send) {
+							if(hardware->send(longCode) == 0) {
+								logprintf(LOG_DEBUG, "successfully send %s code", protocol->id);
+								if(logged == 0) {
+									logged = 1;
+									if(strcmp(protocol->id, "raw") == 0) {
+										int plslen = protocol->raw[protocol->rawlen-1]/PULSE_DIV;
+										receiver_parse_code(protocol->raw, protocol->rawlen, plslen);
+									} else {
+										/* Write the message to all receivers */
+										broadcast(protocol->id, message);
 									}
-								} else {
-									logprintf(LOG_ERR, "failed to send code");
+									json_delete(message);
+									message = NULL;
 								}
-							} else if(logged == 0) {
-								logged = 1;
-								if(strcmp(protocol->id, "raw") == 0) {
-									int plslen = protocol->raw[protocol->rawlen-1]/PULSE_DIV;
-									receiver_parse_code(protocol->raw, protocol->rawlen, plslen);
-								} else {
-									/* Write the message to all receivers */
-									broadcast(protocol->id, message);
-								}
-								json_delete(message);
-								message = NULL;
+							} else {
+								logprintf(LOG_ERR, "failed to send code");
 							}
+						} else if(logged == 0) {
+							logged = 1;
+							if(strcmp(protocol->id, "raw") == 0) {
+								int plslen = protocol->raw[protocol->rawlen-1]/PULSE_DIV;
+								receiver_parse_code(protocol->raw, protocol->rawlen, plslen);
+							} else {
+								/* Write the message to all receivers */
+								broadcast(protocol->id, message);
+							}
+							json_delete(message);
+							message = NULL;
 						}
-
-						sending = 0;
 					}
+
+					sending = 0;
 
 					/* Restore the protocol specific settings to their default values */
 					if((jsettings = json_find_member(jcode, "settings"))) {
@@ -917,27 +905,16 @@ void socket_client_disconnected(int i) {
 	handshakes[i] = 0;
 }
 
-void receive_code(void) {
-	int plslen = 0, rawlen = 0, match = 0;
-	struct hardware_t *hardware = NULL;
-	struct hardwares_t *htmp = hardwares;
+void *receive_code(void *param) {
+	int plslen = 0, rawlen = 0;
 	int rawcode[255] = {0};
 
-	match = 0;
-	while(htmp) {
-		if(strcmp(htmp->listener->id, hw_mode) == 0) {
-			hardware = htmp->listener;
-			match = 1;
-			break;
-		}
-		htmp = htmp->next;
-	}
-
-	while(main_loop && match == 1 && hardware->receive) {
+	while(main_loop && hardware->receive) {
 		/* Only initialize the hardware receive the data when there are receivers connected */
 		if(receivers > 0 && sending == 0) {
 
 			duration = hardware->receive();
+
 			rawcode[rawlen] = duration;
 			rawlen++;
 			if(rawlen > 255) {
@@ -954,6 +931,7 @@ void receive_code(void) {
 			sleep(1);
 		}
 	}
+	return (void *)NULL;
 }
 
 void *clientize(void *param) {
@@ -1075,23 +1053,10 @@ void daemonize(void) {
 
 /* Garbage collector of main program */
 int main_gc(void) {
-	unsigned int match = 0;
-	struct hardware_t *hardware = NULL;
-	struct hardwares_t *htmp = hardwares;
 
 	main_loop = 0;	
 	
-	match = 0;
-	while(htmp) {
-		if(strcmp(htmp->listener->id, hw_mode) == 0) {
-			hardware = htmp->listener;
-			match = 1;
-			break;
-		}
-		htmp = htmp->next;
-	}
-
-	if(match == 1 && hardware->deinit) {
+	if(hardware != NULL && hardware->deinit) {
 		hardware->deinit();
 	}
 
@@ -1168,7 +1133,6 @@ int main(int argc , char **argv) {
 
 	struct socket_callback_t socket_callback;
 	struct options_t *options = NULL;
-	struct hardware_t *hardware = NULL;
 
 	char buffer[BUFFER_SIZE];
 	int f;
@@ -1405,6 +1369,9 @@ int main(int argc , char **argv) {
 
 	/* Register a seperate thread for the socket server */
 	threads_register(&socket_wait, (void *)&socket_callback);
+	if(match == 1) {
+		threads_register(&receive_code, (void *)NULL);
+	}
 
 #ifdef WEBSERVER
 	/* Register a seperate thread for the webserver */
@@ -1414,12 +1381,9 @@ int main(int argc , char **argv) {
 #endif
 
 	/* And our main receiving loop */
-	if(match == 1) {
-		receive_code();
-	} else {
-		while(main_loop) {
-			sleep(1);
-		}
+
+	while(main_loop) {
+		sleep(1);
 	}
 
 clear:
