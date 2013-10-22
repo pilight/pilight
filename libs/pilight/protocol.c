@@ -26,7 +26,7 @@
 #include "protocol.h"
 #include "log.h"
 
-#if defined(PROTOCOL_COCO_SWITCH) || defined(PROTOCOL_DIO_SWITCH) || defined(PROTOCOL_NEXA_SWITCH) || defined(PROTOCOL_COCO_SWITCH) || defined(PROTOCOL_INTERTECHNO_SWITCH)
+#if defined(PROTOCOL_COCO_SWITCH) || defined(PROTOCOL_DIO_SWITCH) || defined(PROTOCOL_NEXA_SWITCH) || defined(PROTOCOL_KAKU_SWITCH) || defined(PROTOCOL_INTERTECHNO_SWITCH)
 	#include "../protocols/arctech_switch.h"
 #endif
 #ifdef PROTOCOL_KAKU_DIMMER
@@ -67,7 +67,7 @@
 #endif
 
 void protocol_init(void) {
-#if defined(PROTOCOL_COCO_SWITCH) || defined(PROTOCOL_DIO_SWITCH) || defined(PROTOCOL_NEXA_SWITCH) || defined(PROTOCOL_COCO_SWITCH) || defined(PROTOCOL_INTERTECHNO_SWITCH)
+#if defined(PROTOCOL_COCO_SWITCH) || defined(PROTOCOL_DIO_SWITCH) || defined(PROTOCOL_NEXA_SWITCH) || defined(PROTOCOL_KAKU_SWITCH) || defined(PROTOCOL_INTERTECHNO_SWITCH)
 	arctechSwInit();
 #endif
 #ifdef PROTOCOL_KAKU_DIMMER
@@ -79,7 +79,7 @@ void protocol_init(void) {
 #ifdef PROTOCOL_HOMEEASY_OLD
 	homeEasyOldInit();
 #endif
-#ifdef PROTOCOL_ELRO
+#ifdef PROTOCOL_ELRO_SWITCH
 	sartanoInit();
 #endif
 #if defined(PROTOCOL_SELECTREMOTE) || defined(PROTOCOL_IMPULS)
