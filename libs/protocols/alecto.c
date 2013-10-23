@@ -50,9 +50,9 @@ void alectoInit(void) {
 	alecto->id = malloc(7);
 	strcpy(alecto->id, "alecto");
 	protocol_device_add(alecto, "alecto", "Alecto weather stations");
+	protocol_plslen_add(alecto, 270);
 	alecto->type = WEATHER;
 	alecto->pulse = 14;
-	alecto->plslen = 270;
 	alecto->rawlen = 74;
 	alecto->lsb = 3;
 

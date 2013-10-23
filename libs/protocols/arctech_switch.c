@@ -56,10 +56,10 @@ void arctechSwCreateLow(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=4) {
-		arctech_switch->raw[i]=(arctech_switch->plslen);
-		arctech_switch->raw[i+1]=(arctech_switch->plslen);
-		arctech_switch->raw[i+2]=(arctech_switch->plslen);
-		arctech_switch->raw[i+3]=(arctech_switch->pulse*arctech_switch->plslen);
+		arctech_switch->raw[i]=(arctech_switch->plslen->length);
+		arctech_switch->raw[i+1]=(arctech_switch->plslen->length);
+		arctech_switch->raw[i+2]=(arctech_switch->plslen->length);
+		arctech_switch->raw[i+3]=(arctech_switch->pulse*arctech_switch->plslen->length);
 	}
 }
 
@@ -67,10 +67,10 @@ void arctechSwCreateHigh(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=4) {
-		arctech_switch->raw[i]=(arctech_switch->plslen);
-		arctech_switch->raw[i+1]=(arctech_switch->pulse*arctech_switch->plslen);
-		arctech_switch->raw[i+2]=(arctech_switch->plslen);
-		arctech_switch->raw[i+3]=(arctech_switch->plslen);
+		arctech_switch->raw[i]=(arctech_switch->plslen->length);
+		arctech_switch->raw[i+1]=(arctech_switch->pulse*arctech_switch->plslen->length);
+		arctech_switch->raw[i+2]=(arctech_switch->plslen->length);
+		arctech_switch->raw[i+3]=(arctech_switch->plslen->length);
 	}
 }
 
@@ -79,8 +79,8 @@ void arctechSwClearCode(void) {
 }
 
 void arctechSwCreateStart(void) {
-	arctech_switch->raw[0]=(arctech_switch->plslen);
-	arctech_switch->raw[1]=(9*arctech_switch->plslen);
+	arctech_switch->raw[0]=(arctech_switch->plslen->length);
+	arctech_switch->raw[1]=(9*arctech_switch->plslen->length);
 }
 
 void arctechSwCreateId(int id) {
@@ -124,7 +124,7 @@ void arctechSwCreateUnit(int unit) {
 }
 
 void arctechSwCreateFooter(void) {
-	arctech_switch->raw[131]=(PULSE_DIV*arctech_switch->plslen);
+	arctech_switch->raw[131]=(PULSE_DIV*arctech_switch->plslen->length);
 }
 
 int arctechSwCreateCode(JsonNode *code) {
@@ -189,9 +189,10 @@ void arctechSwInit(void) {
 	protocol_device_add(arctech_switch, "coco_switch", "CoCo Technologies Switches");
 	protocol_device_add(arctech_switch, "intertechno_switch", "Intertechno Switches");
 	protocol_conflict_add(arctech_switch, "archtech_dimmers");
+	protocol_plslen_add(arctech_switch, 300);
+	protocol_plslen_add(arctech_switch, 251);
 	arctech_switch->type = SWITCH;
 	arctech_switch->pulse = 5;
-	arctech_switch->plslen = 300;
 	arctech_switch->rawlen = 132;
 	arctech_switch->lsb = 3;
 

@@ -114,9 +114,9 @@ void protocol_register(protocol_t **proto) {
 	(*proto)->devices = NULL;
 	(*proto)->conflicts = NULL;
 	(*proto)->settings = NULL;
+	(*proto)->plslen = NULL;
 
 	(*proto)->pulse = 0;
-	(*proto)->plslen = 295;
 	(*proto)->rawlen = 0;
 	(*proto)->binlen = 0;
 	(*proto)->lsb = 0;
@@ -142,6 +142,13 @@ void protocol_register(protocol_t **proto) {
 	protocols = pnode;
 }
 
+void protocol_plslen_add(protocol_t *proto, int plslen) {
+	struct protocol_plslen_t *pnode = malloc(sizeof(struct protocol_plslen_t));
+	pnode->length = plslen;
+	pnode->next	= proto->plslen;
+	proto->plslen = pnode;	
+}
+
 void protocol_device_add(protocol_t *proto, const char *id, const char *desc) {
 	struct protocol_devices_t *dnode = malloc(sizeof(struct protocol_devices_t));
 	dnode->id = malloc(strlen(id)+1);
@@ -159,7 +166,6 @@ void protocol_conflict_add(protocol_t *proto, const char *id) {
 	cnode->next	= proto->conflicts;
 	proto->conflicts = cnode;
 }
-
 
 /* http://www.cs.bu.edu/teaching/c/linked-list/delete/ */
 void protocol_conflict_remove(protocol_t **proto, const char *id) {
@@ -468,12 +474,21 @@ int protocol_gc(void) {
 	struct protocol_devices_t *dtmp;
 	struct protocol_conflicts_t *ctmp;
 	struct protocol_settings_t *stmp;
+	struct protocol_plslen_t *ttmp;
 
 	while(protocols) {
 		ptmp = protocols;
 		free(ptmp->listener->id);
 		free(ptmp->name);
 		options_delete(ptmp->listener->options);
+		if(ptmp->listener->plslen) {
+			while(ptmp->listener->plslen) {
+				ttmp = ptmp->listener->plslen;
+				ptmp->listener->plslen = ptmp->listener->plslen->next;
+				free(ttmp);
+			}
+		}
+		free(ptmp->listener->plslen);
 		if(ptmp->listener->devices) {
 			while(ptmp->listener->devices) {
 				dtmp = ptmp->listener->devices;
@@ -483,7 +498,7 @@ int protocol_gc(void) {
 				free(dtmp);
 			}
 		}
-		free(ptmp->listener->devices);
+		free(ptmp->listener->devices);		
 		if(ptmp->listener->conflicts) {
 			while(ptmp->listener->conflicts) {
 				ctmp = ptmp->listener->conflicts;

@@ -63,10 +63,10 @@ void impulsCreateLow(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=4) {
-		impuls->raw[i]=impuls->plslen;
-		impuls->raw[i+1]=(impuls->pulse*impuls->plslen);
-		impuls->raw[i+2]=(impuls->pulse*impuls->plslen);
-		impuls->raw[i+3]=impuls->plslen;
+		impuls->raw[i]=impuls->plslen->length;
+		impuls->raw[i+1]=(impuls->pulse*impuls->plslen->length);
+		impuls->raw[i+2]=(impuls->pulse*impuls->plslen->length);
+		impuls->raw[i+3]=impuls->plslen->length;
 	}
 }
 
@@ -74,10 +74,10 @@ void impulsCreateMed(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=4) {
-		impuls->raw[i]=(impuls->pulse*impuls->plslen);
-		impuls->raw[i+1]=impuls->plslen;
-		impuls->raw[i+2]=(impuls->pulse*impuls->plslen);
-		impuls->raw[i+3]=impuls->plslen;
+		impuls->raw[i]=(impuls->pulse*impuls->plslen->length);
+		impuls->raw[i+1]=impuls->plslen->length;
+		impuls->raw[i+2]=(impuls->pulse*impuls->plslen->length);
+		impuls->raw[i+3]=impuls->plslen->length;
 	}
 }
 
@@ -85,10 +85,10 @@ void impulsCreateHigh(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=4) {
-		impuls->raw[i]=impuls->plslen;
-		impuls->raw[i+1]=(impuls->pulse*impuls->plslen);
-		impuls->raw[i+2]=impuls->plslen;
-		impuls->raw[i+3]=(impuls->pulse*impuls->plslen);
+		impuls->raw[i]=impuls->plslen->length;
+		impuls->raw[i+1]=(impuls->pulse*impuls->plslen->length);
+		impuls->raw[i+2]=impuls->plslen->length;
+		impuls->raw[i+3]=(impuls->pulse*impuls->plslen->length);
 	}
 }
 
@@ -133,8 +133,8 @@ void impulsCreateState(int state) {
 }
 
 void impulsCreateFooter(void) {
-	impuls->raw[48]=(impuls->plslen);
-	impuls->raw[49]=(PULSE_DIV*impuls->plslen);
+	impuls->raw[48]=(impuls->plslen->length);
+	impuls->raw[49]=(PULSE_DIV*impuls->plslen->length);
 }
 
 int impulsCreateCode(JsonNode *code) {
@@ -189,9 +189,9 @@ void impulsInit(void) {
 	strcpy(impuls->id, "impuls");
 	protocol_device_add(impuls, "impuls", "Impuls Switches");
 	protocol_device_add(impuls, "select-remote", "SelectRemote Switches");
+	protocol_plslen_add(impuls, 133);
 	impuls->type = SWITCH;
 	impuls->pulse = 3;
-	impuls->plslen = 133;
 	impuls->rawlen = 50;
 	impuls->binlen = 12;
 

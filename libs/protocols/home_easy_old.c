@@ -57,10 +57,10 @@ void homeEasyOldCreateHigh(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=4) {
-		home_easy_old->raw[i]=(home_easy_old->plslen);
-		home_easy_old->raw[i+1]=(home_easy_old->pulse*home_easy_old->plslen);
-		home_easy_old->raw[i+2]=(home_easy_old->pulse*home_easy_old->plslen);
-		home_easy_old->raw[i+3]=(home_easy_old->plslen);
+		home_easy_old->raw[i]=(home_easy_old->plslen->length);
+		home_easy_old->raw[i+1]=(home_easy_old->pulse*home_easy_old->plslen->length);
+		home_easy_old->raw[i+2]=(home_easy_old->pulse*home_easy_old->plslen->length);
+		home_easy_old->raw[i+3]=(home_easy_old->plslen->length);
 	}
 }
 
@@ -68,10 +68,10 @@ void homeEasyOldCreateLow(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=4) {
-		home_easy_old->raw[i]=(home_easy_old->plslen);
-		home_easy_old->raw[i+1]=(home_easy_old->pulse*home_easy_old->plslen);
-		home_easy_old->raw[i+2]=(home_easy_old->plslen);
-		home_easy_old->raw[i+3]=(home_easy_old->pulse*home_easy_old->plslen);
+		home_easy_old->raw[i]=(home_easy_old->plslen->length);
+		home_easy_old->raw[i+1]=(home_easy_old->pulse*home_easy_old->plslen->length);
+		home_easy_old->raw[i+2]=(home_easy_old->plslen->length);
+		home_easy_old->raw[i+3]=(home_easy_old->pulse*home_easy_old->plslen->length);
 	}
 }
 
@@ -124,8 +124,8 @@ void homeEasyOldCreateState(int state) {
 }
 
 void homeEasyOldCreateFooter(void) {
-	home_easy_old->raw[48]=(home_easy_old->plslen);
-	home_easy_old->raw[49]=(PULSE_DIV*home_easy_old->plslen);
+	home_easy_old->raw[48]=(home_easy_old->plslen->length);
+	home_easy_old->raw[49]=(PULSE_DIV*home_easy_old->plslen->length);
 }
 
 int homeEasyOldCreateCode(JsonNode *code) {
@@ -188,9 +188,9 @@ void homeEasyOldInit(void) {
 	home_easy_old->id = malloc(14);
 	strcpy(home_easy_old->id, "home_easy_old");
 	protocol_device_add(home_easy_old, "home_easy_old", "Old Home Easy Switches");
+	protocol_plslen_add(home_easy_old, 289);
 	home_easy_old->type = SWITCH;
 	home_easy_old->pulse = 3;
-	home_easy_old->plslen = 289;
 	home_easy_old->rawlen = 50;
 	home_easy_old->binlen = 12;
 	home_easy_old->lsb = 3;

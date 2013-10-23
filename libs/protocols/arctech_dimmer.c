@@ -60,10 +60,10 @@ void arctechDimCreateLow(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=4) {
-		arctech_dimmer->raw[i]=(arctech_dimmer->plslen);
-		arctech_dimmer->raw[i+1]=(arctech_dimmer->plslen);
-		arctech_dimmer->raw[i+2]=(arctech_dimmer->plslen);
-		arctech_dimmer->raw[i+3]=(arctech_dimmer->pulse*arctech_dimmer->plslen);
+		arctech_dimmer->raw[i]=(arctech_dimmer->plslen->length);
+		arctech_dimmer->raw[i+1]=(arctech_dimmer->plslen->length);
+		arctech_dimmer->raw[i+2]=(arctech_dimmer->plslen->length);
+		arctech_dimmer->raw[i+3]=(arctech_dimmer->pulse*arctech_dimmer->plslen->length);
 	}
 }
 
@@ -71,10 +71,10 @@ void arctechDimCreateHigh(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=4) {
-		arctech_dimmer->raw[i]=(arctech_dimmer->plslen);
-		arctech_dimmer->raw[i+1]=(arctech_dimmer->pulse*arctech_dimmer->plslen);
-		arctech_dimmer->raw[i+2]=(arctech_dimmer->plslen);
-		arctech_dimmer->raw[i+3]=(arctech_dimmer->plslen);
+		arctech_dimmer->raw[i]=(arctech_dimmer->plslen->length);
+		arctech_dimmer->raw[i+1]=(arctech_dimmer->pulse*arctech_dimmer->plslen->length);
+		arctech_dimmer->raw[i+2]=(arctech_dimmer->plslen->length);
+		arctech_dimmer->raw[i+3]=(arctech_dimmer->plslen->length);
 	}
 }
 
@@ -83,8 +83,8 @@ void arctechDimClearCode(void) {
 }
 
 void arctechDimCreateStart(void) {
-	arctech_dimmer->raw[0]=arctech_dimmer->plslen;
-	arctech_dimmer->raw[1]=(10*arctech_dimmer->plslen);
+	arctech_dimmer->raw[0]=arctech_dimmer->plslen->length;
+	arctech_dimmer->raw[1]=(10*arctech_dimmer->plslen->length);
 }
 
 void arctechDimCreateId(int id) {
@@ -111,10 +111,10 @@ void arctechDimCreateState(int state) {
 	if(state == 1) {
 		arctechDimCreateHigh(110, 113);
 	} else if(state == -1) {
-		arctech_dimmer->raw[110]=(arctech_dimmer->plslen);
-		arctech_dimmer->raw[111]=(arctech_dimmer->plslen);
-		arctech_dimmer->raw[112]=(arctech_dimmer->plslen);
-		arctech_dimmer->raw[113]=(arctech_dimmer->plslen);
+		arctech_dimmer->raw[110]=(arctech_dimmer->plslen->length);
+		arctech_dimmer->raw[111]=(arctech_dimmer->plslen->length);
+		arctech_dimmer->raw[112]=(arctech_dimmer->plslen->length);
+		arctech_dimmer->raw[113]=(arctech_dimmer->plslen->length);
 	}
 }
 
@@ -147,7 +147,7 @@ void arctechDimCreateDimlevel(int dimlevel) {
 }
 
 void arctechDimCreateFooter(void) {
-	arctech_dimmer->raw[147]=(PULSE_DIV*arctech_dimmer->plslen);
+	arctech_dimmer->raw[147]=(PULSE_DIV*arctech_dimmer->plslen->length);
 }
 
 int arctechDimcheckValues(JsonNode *code) {
@@ -250,9 +250,9 @@ void arctechDimInit(void) {
 	arctech_dimmer->id = malloc(18);
 	strcpy(arctech_dimmer->id, "archtech_dimmers");
 	protocol_device_add(arctech_dimmer, "kaku_dimmer", "KlikAanKlikUit Dimmers");
+	protocol_plslen_add(arctech_dimmer, 300);
 	arctech_dimmer->type = DIMMER;
 	arctech_dimmer->pulse = 5;
-	arctech_dimmer->plslen = 299;
 	arctech_dimmer->rawlen = 148;
 	arctech_dimmer->lsb = 3;
 

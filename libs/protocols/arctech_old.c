@@ -48,10 +48,10 @@ void arctechOldCreateLow(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=4) {
-		arctech_old->raw[i]=(arctech_old->plslen);
-		arctech_old->raw[i+1]=(arctech_old->pulse*arctech_old->plslen);
-		arctech_old->raw[i+2]=(arctech_old->pulse*arctech_old->plslen);
-		arctech_old->raw[i+3]=(arctech_old->plslen);
+		arctech_old->raw[i]=(arctech_old->plslen->length);
+		arctech_old->raw[i+1]=(arctech_old->pulse*arctech_old->plslen->length);
+		arctech_old->raw[i+2]=(arctech_old->pulse*arctech_old->plslen->length);
+		arctech_old->raw[i+3]=(arctech_old->plslen->length);
 	}
 }
 
@@ -59,10 +59,10 @@ void arctechOldCreateHigh(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=4) {
-		arctech_old->raw[i]=(arctech_old->plslen);
-		arctech_old->raw[i+1]=(arctech_old->pulse*arctech_old->plslen);
-		arctech_old->raw[i+2]=(arctech_old->plslen);
-		arctech_old->raw[i+3]=(arctech_old->pulse*arctech_old->plslen);
+		arctech_old->raw[i]=(arctech_old->plslen->length);
+		arctech_old->raw[i+1]=(arctech_old->pulse*arctech_old->plslen->length);
+		arctech_old->raw[i+2]=(arctech_old->plslen->length);
+		arctech_old->raw[i+3]=(arctech_old->pulse*arctech_old->plslen->length);
 	}
 }
 
@@ -106,8 +106,8 @@ void arctechOldCreateState(int state) {
 }
 
 void arctechOldCreateFooter(void) {
-	arctech_old->raw[48]=(arctech_old->plslen);
-	arctech_old->raw[49]=(PULSE_DIV*arctech_old->plslen);
+	arctech_old->raw[48]=(arctech_old->plslen->length);
+	arctech_old->raw[49]=(PULSE_DIV*arctech_old->plslen->length);
 }
 
 int arctechOldCreateCode(JsonNode *code) {
@@ -160,9 +160,9 @@ void arctechOldInit(void) {
 	protocol_device_add(arctech_old, "kaku_old", "Old KlikAanKlikUit Switches");
 	protocol_device_add(arctech_old, "cogex", "Cogex Switches");
 	protocol_device_add(arctech_old, "intertechno_old", "Old Intertechno Switches");
+	protocol_plslen_add(arctech_old, 336);
 	arctech_old->type = SWITCH;
 	arctech_old->pulse = 3;
-	arctech_old->plslen = 336;
 	arctech_old->rawlen = 50;
 	arctech_old->binlen = 12;
 	arctech_old->lsb = 2;

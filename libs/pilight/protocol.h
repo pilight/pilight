@@ -41,6 +41,11 @@ typedef struct protocol_conflicts_t {
 	struct protocol_conflicts_t *next;
 } protocol_conflicts_t;
 
+typedef struct protocol_plslen_t {
+	int length;
+	struct protocol_plslen_t *next;
+} protocol_plslen_t;
+
 typedef struct protocol_settings_t {
 	char *name;
 	char *cur_value;
@@ -54,7 +59,7 @@ typedef struct protocol_t {
 	devtype_t type;
 	int header;
 	int pulse;
-	int plslen;	
+	struct protocol_plslen_t *plslen;	
 	int footer;
 	int rawlen;
 	int binlen;
@@ -92,6 +97,7 @@ typedef struct protocols_t {
 struct protocols_t *protocols;
 
 void protocol_init(void);
+void protocol_plslen_add(protocol_t *proto, int plslen);
 void protocol_register(protocol_t **proto);
 void protocol_device_add(protocol_t *proto, const char *id, const char *desc);
 void protocol_conflict_add(protocol_t *proto, const char *id);

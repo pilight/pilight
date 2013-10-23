@@ -240,7 +240,7 @@ int broadcast(char *protoname, JsonNode *json) {
 				char *param = malloc(strlen(escaped)+1);
 				strcpy(param, escaped);
 				pthread_create(&pth1, NULL, &call_process_file, (void *)param);
-				usleep(100);
+				//usleep(100);
 				broadcasted = 1;
 			}
 			if(broadcasted) {
@@ -294,13 +294,23 @@ void receiver_create_message(protocol_t *protocol, int rep) {
 void receiver_parse_code(int *rawcode, int rawlen, int plslen) {
 	struct protocol_t *protocol = NULL;
 	struct protocols_t *pnode = protocols;
-	int x = 0;
+	struct protocol_plslen_t *plslengths = NULL;
+	int x = 0, match = 0;
 
 	while(pnode) {
 		protocol = pnode->listener;
 		if((((protocol->parseRaw || protocol->parseCode) && protocol->rawlen > 0)
-		   || protocol->parseBinary) && protocol->pulse > 0 && protocol->plslen > 0) {
-			if(rawlen == protocol->rawlen && (plslen > ((double)protocol->plslen-3) && plslen < ((double)protocol->plslen+3))) {
+		   || protocol->parseBinary) && protocol->pulse > 0 && protocol->plslen) {
+			plslengths = protocol->plslen;
+			while(plslengths) {
+				if((plslen > ((double)plslengths->length-3) && plslen < ((double)plslengths->length+3))) {
+					match = 1;
+					break;
+				}
+				plslengths = plslengths->next;
+			}
+			if(rawlen == protocol->rawlen && match == 1) {
+				logprintf(LOG_DEBUG, "recevied pulse length of %d parseRaw()", plslengths->length);
 				if(protocol->parseRaw) {
 					logprintf(LOG_DEBUG, "called %s parseRaw()", protocol->id);
 
@@ -313,7 +323,7 @@ void receiver_parse_code(int *rawcode, int rawlen, int plslen) {
 				for(x=0;x<(int)(double)rawlen;x++) {
 					protocol->pCode[x] = protocol->code[x];
 					memcpy(&protocol->raw[x], &rawcode[x], sizeof(int));
-					if(protocol->raw[x] >= ((protocol->pulse*plslen)-plslen)) {
+					if(protocol->raw[x] >= ((protocol->pulse*plslengths->length)-plslengths->length)) {
 						protocol->code[x]=1;
 					} else {
 						protocol->code[x]=0;
@@ -362,7 +372,7 @@ void receiver_parse_code(int *rawcode, int rawlen, int plslen) {
 							}
 						}
 
-						if((double)protocol->raw[1]/((double)protocol->pulse*(double)protocol->plslen) < 1.5) {
+						if((double)protocol->raw[1]/((double)protocol->pulse*(double)plslengths->length) < 1.5) {
 							x -= 4;
 						}
 

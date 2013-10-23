@@ -52,10 +52,10 @@ void sartanoCreateLow(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=4) {
-		sartano->raw[i]=(sartano->plslen);
-		sartano->raw[i+1]=(sartano->pulse*sartano->plslen);
-		sartano->raw[i+2]=(sartano->pulse*sartano->plslen);
-		sartano->raw[i+3]=(sartano->plslen);
+		sartano->raw[i]=(sartano->plslen->length);
+		sartano->raw[i+1]=(sartano->pulse*sartano->plslen->length);
+		sartano->raw[i+2]=(sartano->pulse*sartano->plslen->length);
+		sartano->raw[i+3]=(sartano->plslen->length);
 	}
 }
 
@@ -63,10 +63,10 @@ void sartanoCreateHigh(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=4) {
-		sartano->raw[i]=(sartano->plslen);
-		sartano->raw[i+1]=(sartano->pulse*sartano->plslen);
-		sartano->raw[i+2]=(sartano->plslen);
-		sartano->raw[i+3]=(sartano->pulse*sartano->plslen);
+		sartano->raw[i]=(sartano->plslen->length);
+		sartano->raw[i+1]=(sartano->pulse*sartano->plslen->length);
+		sartano->raw[i+2]=(sartano->plslen->length);
+		sartano->raw[i+3]=(sartano->pulse*sartano->plslen->length);
 	}
 }
 void sartanoClearCode(void) {
@@ -110,8 +110,8 @@ void sartanoCreateState(int state) {
 }
 
 void sartanoCreateFooter(void) {
-	sartano->raw[48]=(sartano->plslen);
-	sartano->raw[49]=(PULSE_DIV*sartano->plslen);
+	sartano->raw[48]=(sartano->plslen->length);
+	sartano->raw[49]=(PULSE_DIV*sartano->plslen->length);
 }
 
 int sartanoCreateCode(JsonNode *code) {
@@ -165,9 +165,9 @@ void sartanoInit(void) {
 	sartano->id = malloc(8);
 	strcpy(sartano->id, "sartano");
 	protocol_device_add(sartano, "elro", "Elro Switches");
+	protocol_plslen_add(sartano, 287);
 	sartano->type = SWITCH;
 	sartano->pulse = 3;
-	sartano->plslen = 287;
 	sartano->rawlen = 50;
 	sartano->binlen = 12;
 	sartano->lsb = 3;
