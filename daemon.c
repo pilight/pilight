@@ -365,6 +365,7 @@ void receiver_parse_code(int *rawcode, int rawlen, int plslen) {
 						if((double)protocol->raw[1]/((double)protocol->pulse*(double)plslengths->length) < 1.2) {
 							x -= 4;
 						}
+
 						/* Check if the binary matches the binary length */
 						if((protocol->binlen > 0 && ((x/4) == protocol->binlen)) || (protocol->binlen == 0 && ((x/4) == protocol->rawlen/4))) {
 							logprintf(LOG_DEBUG, "called %s parseBinary()", protocol->id);
@@ -383,7 +384,6 @@ void receiver_parse_code(int *rawcode, int rawlen, int plslen) {
 
 void *send_code(void *param) {
 	int i = 0, x = 0;
-	JsonNode *message = NULL;
 
 	pthread_mutex_lock(&sendqueue_lock);	
 
@@ -392,11 +392,13 @@ void *send_code(void *param) {
 			pthread_mutex_lock(&sendqueue_lock);	
 
 			sending = 1;			
-			message = json_mkobject();
 			struct protocol_t *protocol = sendqueue->protopt;
 
-			if(strlen(sendqueue->message) > 0) {
+			JsonNode *message = NULL;
+
+			if(sendqueue->message) {
 				if(json_validate(sendqueue->message) == true) {
+					message = json_mkobject();
 					json_append_member(message, "origin", json_mkstring("sender"));
 					json_append_member(message, "protocol", json_mkstring(protocol->id));
 					json_append_member(message, "code", json_decode(sendqueue->message));
@@ -434,10 +436,14 @@ void *send_code(void *param) {
 				}
 			}
 			
-			broadcast_queue(sendqueue->protoname, message);
+			if(message) {
+				broadcast_queue(sendqueue->protoname, message);
+			}
 			
 			struct sendqueue_t *tmp = sendqueue;
-			free(tmp->message);
+			if(tmp->message) {
+				free(tmp->message);
+			}
 			free(tmp->protoname);
 			sendqueue = sendqueue->next;
 			free(tmp);
@@ -516,6 +522,7 @@ void send_queue(JsonNode *json) {
 						struct sendqueue_t *mnode = malloc(sizeof(struct sendqueue_t));
 						gettimeofday(&tcurrent, NULL);
 						mnode->id = 1000000 * (unsigned int)tcurrent.tv_sec + (unsigned int)tcurrent.tv_usec;	
+						mnode->message = NULL;
 						if(protocol->message) {
 							char *jsonstr = json_stringify(protocol->message, NULL);
 							json_delete(protocol->message);
