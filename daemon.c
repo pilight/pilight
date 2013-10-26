@@ -29,6 +29,7 @@
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/time.h>
+#define __USE_GNU
 #include <pthread.h>
 #include <ctype.h>
 
@@ -76,11 +77,38 @@ typedef enum {
 	FORWARD
 } steps_t;
 
+typedef struct sendqueue_t {
+	unsigned int id;
+	char *message;
+	char *protoname;
+	struct protocol_t *protopt;
+	int code[255];
+	struct sendqueue_t *next;
+} sendqueue_t;
+
+struct sendqueue_t *sendqueue;
+struct sendqueue_t *sendqueue_head;
+pthread_mutex_t sendqueue_lock = PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP;
+pthread_cond_t sendqueue_signal = PTHREAD_COND_INITIALIZER;
+int sendqueue_number = 0;
+unsigned int sendqueue_timestamp = 0;
+
+typedef struct bcqueue_t {
+	unsigned int id;
+	JsonNode *jmessage;
+	char *protoname;
+	struct bcqueue_t *next;
+} bcqueue_t;
+
+struct bcqueue_t *bcqueue;
+struct bcqueue_t *bcqueue_head;
+pthread_mutex_t bcqueue_lock = PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP;
+pthread_cond_t bcqueue_signal = PTHREAD_COND_INITIALIZER;
+int bcqueue_number = 0;
+
 /* The pid_file and pid of this daemon */
 char *pid_file;
 pid_t pid;
-/* The to call when a new code is send or received */
-char *process_file;
 /* The duration of the received pulse */
 int duration = 0;
 /* The number of receivers connected */
@@ -106,7 +134,7 @@ unsigned short incognito_mode = 0;
 /* Use the lirc_rpi module or plain GPIO */
 const char *hw_mode = HW_MODE;
 /* Thread pointers */
-pthread_t pth, pth1;
+pthread_t pth;
 /* While loop conditions */
 unsigned short main_loop = 1;
 /* Only update the config file on exit when it's valid */
@@ -129,134 +157,92 @@ int webserver_port = WEBSERVER_PORT;
 char *webserver_root;
 #endif
 
-/* http://stackoverflow.com/a/3535143 */
-void escape_characters(char* dest, const char* src) {
-	char c;
+void broadcast_queue(char *protoname, JsonNode *json) {
+	struct timeval tcurrent;
+	gettimeofday(&tcurrent, NULL);
 
-	while((c = *(src++))) {
-		switch(c) {
-			case '\a':
-				*(dest++) = '\\';
-				*(dest++) = 'a';
-			break;
-			case '\b':
-				*(dest++) = '\\';
-				*(dest++) = 'b';
-			break;
-			case '\t':
-				*(dest++) = '\\';
-				*(dest++) = 't';
-			break;
-			case '\n':
-				*(dest++) = '\\';
-				*(dest++) = 'n';
-			break;
-			case '\v':
-				*(dest++) = '\\';
-				*(dest++) = 'v';
-			break;
-			case '\f':
-				*(dest++) = '\\';
-				*(dest++) = 'f';
-			break;
-			case '\r':
-				*(dest++) = '\\';
-				*(dest++) = 'r';
-			break;
-			case '\\':
-				*(dest++) = '\\';
-				*(dest++) = '\\';
-			break;
-			case '\"':
-				*(dest++) = '\\';
-				*(dest++) = '\"';
-			break;
-			default:
-				*(dest++) = c;
-			}
+	pthread_mutex_lock(&bcqueue_lock);
+	struct bcqueue_t *bnode = malloc(sizeof(struct bcqueue_t));
+	bnode->id = 1000000 * (unsigned int)tcurrent.tv_sec + (unsigned int)tcurrent.tv_usec;;
+	bnode->jmessage = json;
+	bnode->protoname = malloc(strlen(protoname)+1);
+	strcpy(bnode->protoname, protoname);
+	
+	if(bcqueue_number == 0) {
+		bcqueue = bnode;
+		bcqueue_head = bnode;
+	} else {
+		bcqueue_head->next = bnode;
+		bcqueue_head = bnode;
 	}
-	*dest = '\0'; /* Ensure nul terminator */
+	
+	bcqueue_number++;
+	pthread_mutex_unlock(&bcqueue_lock);
+	pthread_cond_signal(&bcqueue_signal);
 }
 
-void *call_process_file(void *param) {
-	FILE *f;
-	char *cmd = malloc(strlen(process_file)+strlen((char *)param)+2);
-	sprintf(cmd, "%s %s", process_file, (char *)param);
-	f=popen(cmd, "r");
-	pclose(f);
-	free(cmd);
-	free(param);
-	pthread_exit((void *)NULL);
-}
-
-int broadcast(char *protoname, JsonNode *json) {
+void *broadcast(void *param) {
 	int i = 0, broadcasted = 0;
-	char *message = json_stringify(json, NULL);
 
-	JsonNode *jret = NULL;
-
-	/* Update the config */
-	if(config_update(protoname, json, &jret) == 0) {
-		char *conf = json_stringify(jret, NULL);
-
-		for(i=0;i<MAX_CLIENTS;i++) {
-			if(handshakes[i] == GUI) {
-				socket_write(socket_clients[i], conf);
-				broadcasted = 1;
-			}
-		}
-
-		if(broadcasted == 1) {
-			logprintf(LOG_DEBUG, "broadcasted: %s", conf);
-		}
-		free(conf);
-	}
-	if(jret) {
-		json_delete(jret);
-	}
-	broadcasted = 0;
-
-	if(json_validate(message) == true && receivers > 0) {
-
-		/* Write the message to all receivers */
-		for(i=0;i<MAX_CLIENTS;i++) {
-			if(handshakes[i] == RECEIVER || handshakes[i] == NODE) {
-				socket_write(socket_clients[i], message);
-				broadcasted = 1;
-			}
-		}
-
-		char *escaped = malloc(2 * strlen(message) + 1);
-		escape_characters(escaped, message);
-
-		if(process_file && strlen(process_file) > 0) {
-			/* Call the external file in a seperate thread to make
-			   it non-blocking. */
-			if(strlen(process_file) > 0) {
-				if(pth1) {
-					pthread_cancel(pth1);
-					pthread_join(pth1, NULL);
+	pthread_mutex_lock(&bcqueue_lock);
+	while(main_loop) {
+		if(bcqueue_number > 0) {
+			pthread_mutex_lock(&bcqueue_lock);
+			
+			broadcasted = 0;
+			JsonNode *jret = NULL;
+			/* Update the config */
+			if(config_update(bcqueue->protoname, bcqueue->jmessage, &jret) == 0) {
+				char *conf = json_stringify(jret, NULL);
+				for(i=0;i<MAX_CLIENTS;i++) {
+					if(handshakes[i] == GUI) {
+						socket_write(socket_clients[i], conf);
+						broadcasted = 1;
+					}
 				}
-				char *param = malloc(strlen(escaped)+1);
-				strcpy(param, escaped);
-				pthread_create(&pth1, NULL, &call_process_file, (void *)param);
-				//usleep(100);
-				broadcasted = 1;
+
+				if(broadcasted == 1) {
+					logprintf(LOG_DEBUG, "broadcasted: %s", conf);
+				}
+				free(conf);
 			}
-			if(broadcasted) {
-				logprintf(LOG_DEBUG, "broadcasted: %s", message);
+			if(jret) {
+				json_delete(jret);
 			}
+			broadcasted = 0;
+
+			if(receivers > 0) {
+
+				char *json = json_stringify(bcqueue->jmessage, NULL);
+				/* Write the message to all receivers */
+				for(i=0;i<MAX_CLIENTS;i++) {
+					if(handshakes[i] == RECEIVER || handshakes[i] == NODE) {
+						socket_write(socket_clients[i], json);
+						broadcasted = 1;
+					}
+				}		
+				logprintf(LOG_DEBUG, "broadcasted: %s", json);
+				free(json);
+			}
+			
+			struct bcqueue_t *tmp = bcqueue;
+			free(bcqueue->protoname);
+			json_delete(bcqueue->jmessage);
+			bcqueue = bcqueue->next;
+			free(tmp);
+			bcqueue_number--;
+				
+			pthread_mutex_unlock(&bcqueue_lock);
+		} else {
+			pthread_cond_wait(&bcqueue_signal, &bcqueue_lock);
 		}
-		free(message);
-		free(escaped);
-		return 1;
 	}
-	free(message);
-	return 0;
+	return (void *)NULL;
 }
 
 void receiver_create_message(protocol_t *protocol, int rep) {
 	if(protocol->message) {
+		char *json = NULL;
 		char *valid = json_stringify(protocol->message, NULL);
 		json_delete(protocol->message);
 		if(valid && json_validate(valid) == true) {
@@ -271,7 +257,9 @@ void receiver_create_message(protocol_t *protocol, int rep) {
 			if(rep > -1) {
 				json_append_member(jmessage, "repeats", json_mknumber(rep));
 			}
-			broadcast(protocol->id, jmessage);
+			json = json_stringify(jmessage, NULL);
+			broadcast_queue(protocol->id, json_decode(json));
+			free(json);
 			json_delete(jmessage);
 			while(tmp_conflicts) {
 				jmessage = json_mkobject();
@@ -281,7 +269,9 @@ void receiver_create_message(protocol_t *protocol, int rep) {
 				if(rep > -1) {
 					json_append_member(jmessage, "repeats", json_mknumber(rep));
 				}
-				broadcast(tmp_conflicts->id, jmessage);
+				json = json_stringify(jmessage, NULL);
+				broadcast_queue(tmp_conflicts->id, json_decode(json));
+				free(json);
 				tmp_conflicts = tmp_conflicts->next;
 				json_delete(jmessage);
 			}
@@ -299,21 +289,21 @@ void receiver_parse_code(int *rawcode, int rawlen, int plslen) {
 
 	while(pnode) {
 		protocol = pnode->listener;
+		match = 0;
 		if((((protocol->parseRaw || protocol->parseCode) && protocol->rawlen > 0)
 		   || protocol->parseBinary) && protocol->pulse > 0 && protocol->plslen) {
 			plslengths = protocol->plslen;
 			while(plslengths) {
-				if((plslen > ((double)plslengths->length-3) && plslen < ((double)plslengths->length+3))) {
+				if((plslen >= ((double)plslengths->length-5) && plslen <= ((double)plslengths->length+5))) {
 					match = 1;
 					break;
 				}
 				plslengths = plslengths->next;
 			}
 			if(rawlen == protocol->rawlen && match == 1) {
-				logprintf(LOG_DEBUG, "recevied pulse length of %d parseRaw()", plslengths->length);
 				if(protocol->parseRaw) {
+					logprintf(LOG_DEBUG, "recevied pulse length of %d", plslen);
 					logprintf(LOG_DEBUG, "called %s parseRaw()", protocol->id);
-
 					protocol->parseRaw();
 					receiver_create_message(protocol, -1);
 					//continue;
@@ -346,7 +336,7 @@ void receiver_parse_code(int *rawcode, int rawlen, int plslen) {
 				}
 
 				/* Reset # of repeats after a certain delay */
-				if(((int)second-(int)first) > 1000000) {
+				if(((int)second-(int)first) > 750000) {
 					repeats = 0;
 				}
 
@@ -372,10 +362,9 @@ void receiver_parse_code(int *rawcode, int rawlen, int plslen) {
 							}
 						}
 
-						if((double)protocol->raw[1]/((double)protocol->pulse*(double)plslengths->length) < 1.5) {
+						if((double)protocol->raw[1]/((double)protocol->pulse*(double)plslengths->length) < 1.2) {
 							x -= 4;
 						}
-
 						/* Check if the binary matches the binary length */
 						if((protocol->binlen > 0 && ((x/4) == protocol->binlen)) || (protocol->binlen == 0 && ((x/4) == protocol->rawlen/4))) {
 							logprintf(LOG_DEBUG, "called %s parseBinary()", protocol->id);
@@ -392,9 +381,80 @@ void receiver_parse_code(int *rawcode, int rawlen, int plslen) {
 	}
 }
 
+void *send_code(void *param) {
+	int i = 0, x = 0;
+	JsonNode *message = NULL;
+
+	pthread_mutex_lock(&sendqueue_lock);	
+
+	while(main_loop) {
+		if(sendqueue_number > 0) {
+			pthread_mutex_lock(&sendqueue_lock);	
+
+			sending = 1;			
+			message = json_mkobject();
+			struct protocol_t *protocol = sendqueue->protopt;
+
+			if(strlen(sendqueue->message) > 0) {
+				if(json_validate(sendqueue->message) == true) {
+					json_append_member(message, "origin", json_mkstring("sender"));
+					json_append_member(message, "protocol", json_mkstring(protocol->id));
+					json_append_member(message, "code", json_decode(sendqueue->message));
+					json_append_member(message, "repeat", json_mknumber(1));
+				}
+			}
+			
+			/* Create a single code with all repeats included */
+			int code_len = (protocol->rawlen*send_repeat*protocol->txrpt)+1;
+			size_t send_len = (size_t)(code_len * (int)sizeof(int));
+			int longCode[code_len];
+			memset(longCode, 0, send_len);
+
+			for(i=0;i<(send_repeat*protocol->txrpt);i++) {
+				for(x=0;x<protocol->rawlen;x++) {
+					longCode[x+(protocol->rawlen*i)]=sendqueue->code[x];
+				}
+			}
+
+			longCode[code_len] = 0;
+			if(hardware->send) {
+				if(hardware->send(longCode) == 0) {
+					logprintf(LOG_DEBUG, "successfully send %s code", protocol->id);
+					if(strcmp(protocol->id, "raw") == 0) {
+						int plslen = protocol->raw[protocol->rawlen-1]/PULSE_DIV;
+						receiver_parse_code(protocol->raw, protocol->rawlen, plslen);
+					}
+				} else {
+					logprintf(LOG_ERR, "failed to send code");
+				}
+			} else {
+				if(strcmp(protocol->id, "raw") == 0) {
+					int plslen = protocol->raw[protocol->rawlen-1]/PULSE_DIV;
+					receiver_parse_code(protocol->raw, protocol->rawlen, plslen);
+				}
+			}
+			
+			broadcast_queue(sendqueue->protoname, message);
+			
+			struct sendqueue_t *tmp = sendqueue;
+			free(tmp->message);
+			free(tmp->protoname);
+			sendqueue = sendqueue->next;
+			free(tmp);
+			sendqueue_number--;
+			pthread_mutex_unlock(&sendqueue_lock);
+		} else {
+			sending = 0;
+			pthread_cond_wait(&sendqueue_signal, &sendqueue_lock);
+		}
+	}
+	return (void *)NULL;
+}
+
 /* Send a specific code */
-void send_code(JsonNode *json) {
-	int i = 0, match = 0, x = 0, logged = 0;
+void send_queue(JsonNode *json) {
+	int match = 0, x = 0;
+	struct timeval tcurrent;
 
 	/* Hold the final protocol struct */
 	struct protocol_t *protocol = NULL;
@@ -403,7 +463,6 @@ void send_code(JsonNode *json) {
 	JsonNode *jsettings = NULL;
 	JsonNode *jprotocols = NULL;
 	JsonNode *jprotocol = NULL;
-	JsonNode *message = NULL;
 
 	if(!(jcode = json_find_member(json, "code"))) {
 		logprintf(LOG_ERR, "sender did not send any codes");
@@ -412,13 +471,11 @@ void send_code(JsonNode *json) {
 		logprintf(LOG_ERR, "sender did not provide a protocol name");
 		json_delete(jcode);
 	} else {
-		logged = 0;
 		/* If we matched a protocol and are not already sending, continue */
-		if(sending == 0 && send_repeat > 0) {
+		if(send_repeat > 0) {
 			jprotocol = json_first_child(jprotocols);
 			while(jprotocol) {
 				match = 0;
-				logged = 0;
 				if(jprotocol->tag == JSON_STRING) {
 					struct protocols_t *pnode = protocols;
 					/* Retrieve the used protocol */
@@ -432,7 +489,6 @@ void send_code(JsonNode *json) {
 						pnode = pnode->next;
 					}
 				}
-
 				if(match == 1 && protocol->createCode) {
 					/* Temporary alter the protocol specific settings */
 					if((jsettings = json_find_member(jcode, "settings"))) {
@@ -456,68 +512,40 @@ void send_code(JsonNode *json) {
 
 					/* Let the protocol create his code */
 					if(protocol->createCode(jcode) == 0) {
-						message = json_mkobject();
+						pthread_mutex_lock(&sendqueue_lock);
+						struct sendqueue_t *mnode = malloc(sizeof(struct sendqueue_t));
+						gettimeofday(&tcurrent, NULL);
+						mnode->id = 1000000 * (unsigned int)tcurrent.tv_sec + (unsigned int)tcurrent.tv_usec;	
 						if(protocol->message) {
-							char *valid = json_stringify(protocol->message, NULL);
+							char *jsonstr = json_stringify(protocol->message, NULL);
 							json_delete(protocol->message);
-							if(json_validate(valid) == true) {
-								json_append_member(message, "origin", json_mkstring("sender"));
-								json_append_member(message, "protocol", json_mkstring(protocol->id));
-								json_append_member(message, "code", json_decode(valid));
-								json_append_member(message, "repeat", json_mknumber(1));
+							if(json_validate(jsonstr) == true) { 
+								mnode->message = malloc(strlen(jsonstr)+1);
+								strcpy(mnode->message, jsonstr);
 							}
+							free(jsonstr);
 							protocol->message = NULL;
-							free(valid);
+						}
+						for(x=0;x<protocol->rawlen;x++) {
+							mnode->code[x]=protocol->raw[x];
+						}
+						mnode->protoname = malloc(strlen(protocol->id)+1);
+						strcpy(mnode->protoname, protocol->id);
+						mnode->protopt = protocol;
+
+						if(sendqueue_number == 0) {
+							sendqueue = mnode;
+							sendqueue_head = mnode;
+						} else {
+							sendqueue_head->next = mnode;
+							sendqueue_head = mnode;
 						}
 
-						sending = 1;
-
-						/* Create a single code with all repeats included */
-						int code_len = (protocol->rawlen*send_repeat*protocol->txrpt)+1;
-						size_t send_len = (size_t)(code_len * (int)sizeof(int));
-						int longCode[code_len];
-						memset(longCode, 0, send_len);
-
-						for(i=0;i<(send_repeat*protocol->txrpt);i++) {
-							for(x=0;x<protocol->rawlen;x++) {
-								longCode[x+(protocol->rawlen*i)]=protocol->raw[x];
-							}
-						}
-
-						longCode[code_len] = 0;
-						if(hardware->send) {
-							if(hardware->send(longCode) == 0) {
-								logprintf(LOG_DEBUG, "successfully send %s code", protocol->id);
-								if(logged == 0) {
-									logged = 1;
-									if(strcmp(protocol->id, "raw") == 0) {
-										int plslen = protocol->raw[protocol->rawlen-1]/PULSE_DIV;
-										receiver_parse_code(protocol->raw, protocol->rawlen, plslen);
-									} else {
-										/* Write the message to all receivers */
-										broadcast(protocol->id, message);
-									}
-									json_delete(message);
-									message = NULL;
-								}
-							} else {
-								logprintf(LOG_ERR, "failed to send code");
-							}
-						} else if(logged == 0) {
-							logged = 1;
-							if(strcmp(protocol->id, "raw") == 0) {
-								int plslen = protocol->raw[protocol->rawlen-1]/PULSE_DIV;
-								receiver_parse_code(protocol->raw, protocol->rawlen, plslen);
-							} else {
-								/* Write the message to all receivers */
-								broadcast(protocol->id, message);
-							}
-							json_delete(message);
-							message = NULL;
-						}
+						sendqueue_number++;
+						pthread_mutex_unlock(&sendqueue_lock);
+						pthread_cond_signal(&sendqueue_signal);
+						sendqueue_timestamp = mnode->id;
 					}
-
-					sending = 0;
 
 					/* Restore the protocol specific settings to their default values */
 					if((jsettings = json_find_member(jcode, "settings"))) {
@@ -542,10 +570,7 @@ void send_code(JsonNode *json) {
 				jprotocol = jprotocol->next;
 			}
 		}
-		if(message) {
-			json_delete(message);
-			message = NULL;
-		}
+
 		if(jcode) {
 			json_delete(jcode);
 		}
@@ -560,8 +585,7 @@ void client_sender_parse_code(int i, JsonNode *json) {
 		socket_close(sd);
 		handshakes[i] = -1;
 	}
-
-	send_code(json);
+	send_queue(json);
 }
 
 void control_device(struct conf_devices_t *dev, char *state, JsonNode *values) {
@@ -652,11 +676,11 @@ void control_device(struct conf_devices_t *dev, char *state, JsonNode *values) {
 
 	/* Construct the right json object */
 	json_append_member(code, "protocol", jprotocols);
-	json_append_member(json, "message", json_mkstring("sender"));
+	json_append_member(json, "message", json_mkstring("send"));
 	json_append_member(json, "code", code);
 	json_append_member(code, "settings", jsettings);
 
-	send_code(json);
+	send_queue(json);
 
 	json_delete(json);
 }
@@ -876,6 +900,7 @@ void socket_parse_data(int i, char buffer[BUFFER_SIZE]) {
 						if(strcmp(message, tmp) == 0) {
 							socket_write(sd, "{\"message\":\"accept client\"}");
 							logprintf(LOG_INFO, "client recognized as %s", clients[x]);
+
 							handshakes[i] = x;
 
 							if(handshakes[i] == RECEIVER || handshakes[i] == GUI || handshakes[i] == NODE)
@@ -922,7 +947,6 @@ void *receive_code(void *param) {
 	while(main_loop && hardware->receive) {
 		/* Only initialize the hardware receive the data when there are receivers connected */
 		if(receivers > 0 && sending == 0) {
-
 			duration = hardware->receive();
 
 			rawcode[rawlen] = duration;
@@ -938,7 +962,7 @@ void *receive_code(void *param) {
 				rawlen = 0;
 			}
 		} else {
-			sleep(1);
+			usleep(10);
 		}
 	}
 	return (void *)NULL;
@@ -1011,7 +1035,7 @@ void *clientize(void *param) {
 				if(!json_find_member(json, "config")) {
 					if(json_find_string(json, "origin", &message) == 0 &&
 					json_find_string(json, "protocol", &protocol) == 0) {
-						broadcast(protocol, json);
+						broadcast_queue(protocol, json);
 					}
 				}
 				json_delete(json);
@@ -1094,11 +1118,6 @@ int main_gc(void) {
 		json_delete(joutput);
 		free(output);
 		joutput = NULL;
-	}
-
-	if(pth1) {
-		pthread_cancel(pth1);
-		pthread_join(pth1, NULL);
 	}
 
 	if(pth) {
@@ -1288,8 +1307,6 @@ int main(int argc , char **argv) {
 		log_level_set(LOG_DEBUG);
 	}
 
-	settings_find_string("process-file", &process_file);
-
 	if(settings_find_number("send-repeats", &send_repeat) != 0) {
 		send_repeat = SEND_REPEATS;
 	}
@@ -1359,8 +1376,8 @@ int main(int argc , char **argv) {
 	memset(handshakes, -1, sizeof(handshakes));
 
 	/* Export certain daemon function to global usage */
-	pilight.broadcast = &broadcast;
-	pilight.send = &send_code;
+	pilight.broadcast = &broadcast_queue;
+	pilight.send = &send_queue;
 	pilight.receive = &receiver_parse_code;
 
 	/* Run certain daemon functions from the socket library */
@@ -1379,6 +1396,8 @@ int main(int argc , char **argv) {
 
 	/* Register a seperate thread for the socket server */
 	threads_register(&socket_wait, (void *)&socket_callback);
+	threads_register(&send_code, (void *)NULL);
+	threads_register(&broadcast, (void *)NULL);
 	if(match == 1) {
 		threads_register(&receive_code, (void *)NULL);
 	}
@@ -1389,8 +1408,6 @@ int main(int argc , char **argv) {
 		threads_register(&webserver_start, (void *)NULL);
 	}
 #endif
-
-	/* And our main receiving loop */
 
 	while(main_loop) {
 		sleep(1);

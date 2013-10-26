@@ -195,7 +195,7 @@ int settings_parse(JsonNode *root) {
 					settings_add_string(jsettings->key, jsettings->string_);
 				}
 			}
-		} else if(strcmp(jsettings->key, "config-file") == 0 || strcmp(jsettings->key, "process-file") == 0) {
+		} else if(strcmp(jsettings->key, "config-file") == 0) {
 			if(!jsettings->string_) {
 				logprintf(LOG_ERR, "setting \"%s\" must contain an existing file path", jsettings->key);
 				have_error = 1;

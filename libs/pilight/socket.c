@@ -385,7 +385,6 @@ void *socket_wait(void *param) {
                 } else {
                     //set the string terminating NULL byte on the end of the data read
                     // readBuff[n] = '\0';
-
 					if(n > -1 && socket_callback->client_data_callback) {
 						pch = strtok(readBuff, "\n");
 						while(pch) {

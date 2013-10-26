@@ -115,8 +115,6 @@ int relayCreateCode(JsonNode *code) {
 				}
 			}
 			relayCreateMessage(gpio, state);
-			// Sleep for 1 second
-			sleep(1);
 		}
 		goto clear;
 	}

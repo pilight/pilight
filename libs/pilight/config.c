@@ -1554,17 +1554,21 @@ clear:
 int config_write(char *content) {
 	FILE *fp;
 
-	/* Overwrite config file with proper format */
-	if(!(fp = fopen(configfile, "w+"))) {
-		logprintf(LOG_ERR, "cannot write config file: %s", configfile);
-		return EXIT_FAILURE;
+	if(access(configfile, F_OK) != -1) {
+		/* Overwrite config file with proper format */
+		if(!(fp = fopen(configfile, "w+"))) {
+			logprintf(LOG_ERR, "cannot write config file: %s", configfile);
+			return EXIT_FAILURE;
+		}
+		if(strcmp(content, "{}") == 0) {
+			return EXIT_SUCCESS;
+		}
+		fseek(fp, 0L, SEEK_SET);
+		fwrite(content, sizeof(char), strlen(content), fp);
+		fclose(fp);
+	} else {
+		logprintf(LOG_ERR, "the config file %s does not exists\n", configfile);
 	}
-	if(strcmp(content, "{}") == 0) {
-		return EXIT_SUCCESS;
-	}
-	fseek(fp, 0L, SEEK_SET);
- 	fwrite(content, sizeof(char), strlen(content), fp);
-	fclose(fp);
 
 	return EXIT_SUCCESS;
 }
@@ -1681,7 +1685,7 @@ int config_set_file(char *cfgfile) {
 		configfile = realloc(configfile, strlen(cfgfile)+1);
 		strcpy(configfile, cfgfile);
 	} else {
-		fprintf(stderr, "%s: the config file %s does not exists\n", progname, cfgfile);
+		logprintf(LOG_ERR, "the config file %s does not exists\n", cfgfile);
 		return EXIT_FAILURE;
 	}
 	return EXIT_SUCCESS;

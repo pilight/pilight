@@ -5,7 +5,6 @@
 	"pid-file": "/var/run/pilight.pid",
 	"config-file": "",
 	"log-file": "/var/log/pilight.log",
-	"process-file": "",
 	"send-repeats": 10,
 	"receive-repeats": 1,
 	"gpio-sender": 0,

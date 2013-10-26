@@ -201,7 +201,7 @@ endif()
 install(PROGRAMS init/pilight DESTINATION /etc/init.d/)
 
 if(NOT EXISTS "/usr/local/bin/gpio")
-	install(FILES deps/gpio DESTINATION /usr/local/bin/) 
+	install(PROGRAMS deps/gpio DESTINATION /usr/local/bin/) 
 endif()
 
 if(NOT EXISTS "/etc/pilight/settings.json")

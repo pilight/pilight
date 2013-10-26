@@ -30,7 +30,6 @@
 
 int gpio_in = 0;
 int gpio_out = 0;
-int gpio_prio = 55;
 
 unsigned short gpioHwInit(void) {
 	char *mode = NULL;
@@ -74,33 +73,26 @@ unsigned short gpioHwDeinit(void) {
 int gpioSend(int *code) {
 	unsigned short i = 0;
 
-	piHiPri(55);
-	gpio_prio = 55;
 	while(code[i]) {
 		digitalWrite(gpio_out, 1);
 		usleep((__useconds_t)code[i++]);
 		digitalWrite(gpio_out, 0);
 		usleep((__useconds_t)code[i++]);
 	}
-	piHiPri(0);
-	gpio_prio = 0;
 	return 0;
 }
 
 int gpioReceive(void) {
-	if(gpio_prio != 55) {
-		piHiPri(55);
-		gpio_prio = 55;
-	}
 	return irq_read(gpio_in);
 }
 
 void gpioInit(void) {
-
 	hardware_register(&gpio);
 	gpio->id = malloc(5);
 	strcpy(gpio->id, "gpio");
 
+	piHiPri(55);	
+	
 	gpio->init=&gpioHwInit;
 	gpio->deinit=&gpioHwDeinit;
 	gpio->send=&gpioSend;

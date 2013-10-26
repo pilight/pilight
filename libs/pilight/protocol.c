@@ -498,7 +498,7 @@ int protocol_gc(void) {
 				free(dtmp);
 			}
 		}
-		free(ptmp->listener->devices);		
+		free(ptmp->listener->devices);
 		if(ptmp->listener->conflicts) {
 			while(ptmp->listener->conflicts) {
 				ctmp = ptmp->listener->conflicts;
