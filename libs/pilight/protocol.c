@@ -22,6 +22,7 @@
 #include <regex.h>
 
 #include "../../pilight.h"
+#include "common.h"
 #include "options.h"
 #include "protocol.h"
 #include "log.h"
@@ -182,8 +183,8 @@ void protocol_conflict_remove(protocol_t **proto, const char *id) {
 				prevP->next = currP->next;
 			}
 
-			free(currP->id);
-			free(currP);
+			sfree((void *)&currP->id);
+			sfree((void *)&currP);
 
 			break;
 		}
@@ -203,7 +204,7 @@ int protocol_setting_update_string(protocol_t *proto, const char *name, const ch
 		}
 		tmp_settings = tmp_settings->next;
 	}
-	free(tmp_settings);
+	sfree((void *)&tmp_settings);
 	return 1;
 }
 
@@ -220,7 +221,7 @@ int protocol_setting_update_number(protocol_t *proto, const char *name, int valu
 		}
 		tmp_settings = tmp_settings->next;
 	}
-	free(tmp_settings);
+	sfree((void *)&tmp_settings);
 	return 1;
 }
 
@@ -237,7 +238,7 @@ int protocol_setting_restore(protocol_t *proto, const char *name) {
 		}
 		tmp_settings = tmp_settings->next;
 	}
-	free(tmp_settings);
+	sfree((void *)&tmp_settings);
 	return 1;	
 }
 
@@ -285,7 +286,7 @@ int protocol_setting_check_string(protocol_t *proto, const char *name, const cha
 				}
 				pch = strtok(NULL, ",");
 			}
-			free(nvalue);
+			sfree((void *)&nvalue);
 		}
 	}	
 	
@@ -371,11 +372,11 @@ int protocol_setting_check_number(protocol_t *proto, const char *name, int value
 				sprintf(tmp, "%d", value);
 				reti = regexec(&regex, tmp, 0, NULL, 0);
 				if(reti == REG_NOMATCH || reti != 0) {
-					free(tmp);
+					sfree((void *)&tmp);
 					regfree(&regex);
 					return 1;
 				}
-				free(tmp);
+				sfree((void *)&tmp);
 				regfree(&regex);
 #endif
 			}
@@ -414,7 +415,7 @@ int protocol_setting_get_string(protocol_t *proto, const char *name, char **out)
 		}
 		tmp_settings = tmp_settings->next;
 	}
-	free(tmp_settings);
+	sfree((void *)&tmp_settings);
 	return 1;
 }
 
@@ -428,7 +429,7 @@ int protocol_setting_get_number(protocol_t *proto, const char *name, int *out) {
 		}
 		tmp_settings = tmp_settings->next;
 	}
-	free(tmp_settings);
+	sfree((void *)&tmp_settings);
 	return 1;
 }
 
@@ -447,9 +448,9 @@ void protocol_setting_remove(protocol_t **proto, const char *name) {
 				prevP->next = currP->next;
 			}
 
-			free(currP->name);
-			free(currP->cur_value);
-			free(currP);
+			sfree((void *)&currP->name);
+			sfree((void *)&currP->cur_value);
+			sfree((void *)&currP);
 
 			break;
 		}
@@ -465,7 +466,7 @@ int protocol_device_exists(protocol_t *proto, const char *id) {
 		}
 		temp = temp->next;
 	}
-	free(temp);
+	sfree((void *)&temp);
 	return 1;
 }
 
@@ -478,52 +479,52 @@ int protocol_gc(void) {
 
 	while(protocols) {
 		ptmp = protocols;
-		free(ptmp->listener->id);
-		free(ptmp->name);
+		sfree((void *)&ptmp->listener->id);
+		sfree((void *)&ptmp->name);
 		options_delete(ptmp->listener->options);
 		if(ptmp->listener->plslen) {
 			while(ptmp->listener->plslen) {
 				ttmp = ptmp->listener->plslen;
 				ptmp->listener->plslen = ptmp->listener->plslen->next;
-				free(ttmp);
+				sfree((void *)&ttmp);
 			}
 		}
-		free(ptmp->listener->plslen);
+		sfree((void *)&ptmp->listener->plslen);
 		if(ptmp->listener->devices) {
 			while(ptmp->listener->devices) {
 				dtmp = ptmp->listener->devices;
-				free(dtmp->id);
-				free(dtmp->desc);
+				sfree((void *)&dtmp->id);
+				sfree((void *)&dtmp->desc);
 				ptmp->listener->devices = ptmp->listener->devices->next;
-				free(dtmp);
+				sfree((void *)&dtmp);
 			}
 		}
-		free(ptmp->listener->devices);
+		sfree((void *)&ptmp->listener->devices);
 		if(ptmp->listener->conflicts) {
 			while(ptmp->listener->conflicts) {
 				ctmp = ptmp->listener->conflicts;
-				free(ctmp->id);
+				sfree((void *)&ctmp->id);
 				ptmp->listener->conflicts = ptmp->listener->conflicts->next;
-				free(ctmp);
+				sfree((void *)&ctmp);
 			}
 		}
-		free(ptmp->listener->conflicts);
+		sfree((void *)&ptmp->listener->conflicts);
 		if(ptmp->listener->settings) {
 			while(ptmp->listener->settings) {
 				stmp = ptmp->listener->settings;
-				free(stmp->name);
-				free(stmp->cur_value);
-				free(stmp->old_value);
+				sfree((void *)&stmp->name);
+				sfree((void *)&stmp->cur_value);
+				sfree((void *)&stmp->old_value);
 				ptmp->listener->settings = ptmp->listener->settings->next;
-				free(stmp);
+				sfree((void *)&stmp);
 			}
 		}
-		free(ptmp->listener->settings);
-		free(ptmp->listener);
+		sfree((void *)&ptmp->listener->settings);
+		sfree((void *)&ptmp->listener);
 		protocols = protocols->next;
-		free(ptmp);
+		sfree((void *)&ptmp);
 	}
-	free(protocols);
+	sfree((void *)&protocols);
 
 	logprintf(LOG_DEBUG, "garbage collected protocol library");
 	return EXIT_SUCCESS;

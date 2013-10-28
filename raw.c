@@ -30,6 +30,7 @@
 #include <string.h>
 
 #include "pilight.h"
+#include "common.h"
 #include "settings.h"
 #include "hardware.h"
 #include "log.h"
@@ -66,13 +67,8 @@ int main_gc(void) {
 	hardware_gc();
 	log_gc();
 
-	if(progname) {
-		free(progname);
-	}
-	
-	if(settingsfile) {
-		free(settingsfile);
-	}	
+	sfree((void *)&progname);
+	sfree((void *)&settingsfile);	
 
 	return EXIT_SUCCESS;
 }

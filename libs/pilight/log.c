@@ -29,14 +29,12 @@
 #include <libgen.h>
 
 #include "../../pilight.h"
+#include "common.h"
 #include "gc.h"
 #include "log.h"
 
 FILE *lf=NULL;
 
-/* Enable log */
-int filelog = 1;
-int shelllog = 1;
 int loglevel = LOG_INFO;
 char *logfile = NULL;
 char *logpath = NULL;
@@ -50,24 +48,19 @@ int log_gc(void) {
 			lf = NULL;
 		}
 	}
-	if(logfile) {
-		free(logfile);
-		logfile = NULL;
-	}
-	if(logpath) {
-		free(logpath);
-		logpath = NULL;
-	}
+	sfree((void *)&logfile);
+	sfree((void *)&logpath);
+
 	return 1;
 }
 
 void logprintf(int prio, const char *format_str, ...) {
 	int save_errno = errno;
 	va_list ap;
-	if(logfile == NULL) {
-		logfile = realloc(logfile, strlen(LOG_FILE)+1);
-		strcpy(logfile, LOG_FILE);
-	}
+	// if(logfile == NULL) {
+		// logfile = realloc(logfile, strlen(LOG_FILE)+1);
+		// strcpy(logfile, LOG_FILE);
+	// }
 	if(filelog == 0 && shelllog == 0)
 		return;
 
@@ -80,19 +73,9 @@ void logprintf(int prio, const char *format_str, ...) {
 			}
 		}
 
-		char fmt[64], buf[64];
-		struct timeval tv;
-		struct tm *tm;
-
-		gettimeofday(&tv, NULL);
-		if((tm = localtime(&tv.tv_sec)) != NULL) {
-			//%b %d %H:%M:%S:%u
-			strftime(fmt, sizeof(fmt), "%b %d %H:%M:%S", tm);
-			snprintf(buf, sizeof(buf), "%s:%03u", fmt, (unsigned int)tv.tv_usec);
-		}
-
 		if(filelog == 1 && lf != NULL && loglevel < LOG_DEBUG) {
-			fprintf(lf, "[%22.22s] %s: ", buf, progname);
+			logmarkup();
+			fputs(debug_log, lf);
 			va_start(ap, format_str);
 			if(prio==LOG_WARNING)
 				fprintf(lf,"WARNING: ");
@@ -109,10 +92,9 @@ void logprintf(int prio, const char *format_str, ...) {
 		}
 
 		if(shelllog == 1 || prio == LOG_ERR) {
-
-			fprintf(stderr, "[%22.22s] %s: ", buf, progname);
+			logmarkup();
+			fputs(debug_log, stderr);
 			va_start(ap, format_str);
-
 			if(prio==LOG_WARNING)
 				fprintf(stderr, "WARNING: ");
 			if(prio==LOG_ERR)
@@ -124,13 +106,13 @@ void logprintf(int prio, const char *format_str, ...) {
 			if(prio==LOG_DEBUG)
 				fprintf(stderr, "DEBUG: ");
 			vfprintf(stderr, format_str, ap);
-			fputc('\n',stderr);
+			fputc('\n', stderr);
 			fflush(stderr);
 			va_end(ap);
 		}
 	}
-	free(logfile);
-	logfile = NULL;
+	// sfree((void *)&logfile);
+	// logfile = NULL;
 	errno = save_errno;
 }
 
@@ -176,13 +158,11 @@ void log_file_set(char *log) {
 		if(err == -1) {
 			if(ENOENT == errno) {
 				logprintf(LOG_ERR, "the log file folder does not exist", optarg);
-				free(logpath);
-				logpath = NULL;
+				sfree((void *)&logpath);
 				exit(EXIT_FAILURE);
 			} else {
 				logprintf(LOG_ERR, "failed to run stat on log folder", optarg);
-				free(logpath);
-				logpath = NULL;
+				sfree((void *)&logpath);
 				exit(EXIT_FAILURE);
 			}
 		} else {
@@ -191,8 +171,7 @@ void log_file_set(char *log) {
 				strcpy(logfile, log);
 			} else {
 				logprintf(LOG_ERR, "the log file folder does not exist", optarg);
-				free(logpath);
-				logpath = NULL;
+				sfree((void *)&logpath);
 				exit(EXIT_FAILURE);
 			}
 		}
@@ -210,8 +189,7 @@ void log_file_set(char *log) {
 			}
 		}
 	}
-	free(logpath);
-	logpath = NULL;
+	sfree((void *)&logpath);
 }
 
 void log_level_set(int level) {

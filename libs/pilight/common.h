@@ -16,32 +16,33 @@
     along with pilight. If not, see	<http://www.gnu.org/licenses/>
 */
 
-#ifndef _SETTINGS_H_
-#define _SETTINGS_H_
+#ifndef _COMMON_H_
+#define _COMMON_H_
 
-#include "protocol.h"
+#include "../../pilight.h"
 
-typedef struct settings_t {
-	char *name;
-	int type;
-	char *value;
-	struct settings_t *next;
-} settings_t;
+char *progname;
+int filelog;
+int shelllog;
+char debug_log[129];
 
-struct settings_t *settings;
+void logmarkup(void);
 
-/* The location of the settings file */
-char *settingsfile;
+#ifdef DEBUG
 
-void settings_add_string(const char *name, char *value);
-void settings_add_int(const char *name, int value);
-int settings_find_number(const char *name, int *out);
-int settings_find_string(const char *name, char **out);
-int settings_path_exists(char *fil);
-int settings_parse(JsonNode *root);
-int settings_write(char *content);
-int settings_read(void);
-int settings_set_file(char *settfile);
-int settings_gc(void);
+void debug_free(void **addr, const char *file, int line);
+const char *debug_filename(const char *file);
+void *debug_malloc(size_t len, const char *file, int line);
+void *debug_realloc(void *addr, size_t len, const char *file, int line);
+
+#define sfree(x) debug_free(x, __FILE__, __LINE__);
+#define malloc(x) debug_malloc(x, __FILE__, __LINE__);
+#define realloc(y, x) debug_realloc(y, x, __FILE__, __LINE__);
+
+#else
+
+void sfree(void **addr);
+
+#endif
 
 #endif

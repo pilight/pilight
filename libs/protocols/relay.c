@@ -23,6 +23,7 @@
 #include <unistd.h>
 
 #include "../../pilight.h"
+#include "common.h"
 #include "log.h"
 #include "protocol.h"
 #include "relay.h"
@@ -120,12 +121,8 @@ int relayCreateCode(JsonNode *code) {
 	}
 
 clear:
-	if(free_hw_mode) {
-		free(hw_mode);
-	}
-	if(free_def) {
-		free(def);
-	}
+	if(free_hw_mode) sfree((void *)&hw_mode);
+	if(free_def) sfree((void *)&def);
 	if(have_error) {
 		return EXIT_FAILURE;
 	} else {

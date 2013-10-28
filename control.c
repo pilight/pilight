@@ -25,8 +25,9 @@
 #include <errno.h>
 #include <syslog.h>
 
-#include "settings.h"
 #include "pilight.h"
+#include "common.h"
+#include "settings.h"
 #include "config.h"
 #include "log.h"
 #include "options.h"
@@ -245,7 +246,7 @@ int main(int argc, char **argv) {
 							json_append_member(joutput, "code", jcode);
 							char *output = json_stringify(joutput, NULL);
 							socket_write(sockfd, output);
-							free(output);
+							sfree((void *)&output);
 							json_delete(joutput);
 						} else {
 							logprintf(LOG_ERR, "the device \"%s\" does not exist", device);
@@ -274,8 +275,8 @@ close:
 	protocol_gc();
 	socket_gc();
 	options_gc();
-	free(progname);
-	free(server);
+	sfree((void *)&progname);
+	sfree((void *)&server);
 
 return EXIT_SUCCESS;
 }

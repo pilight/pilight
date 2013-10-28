@@ -26,6 +26,7 @@
 #include <sys/stat.h>
 
 #include "../../pilight.h"
+#include "common.h"
 #include "log.h"
 #include "threads.h"
 #include "protocol.h"
@@ -97,7 +98,7 @@ void *ds18b20Parse(void *param) {
 											if(fread(content, sizeof(char), bytes, fp) == -1) {
 												logprintf(LOG_ERR, "cannot read config file: %s", ds18b20_w1slave);
 												fclose(fp);
-												free(content);
+												sfree((void *)&content);
 												break;
 											}
 											fclose(fp);
@@ -116,7 +117,7 @@ void *ds18b20Parse(void *param) {
 												}
 												pch = strtok(NULL, "\n=: ");
 											}
-											free(content);
+											sfree((void *)&content);
 											if(w1valid) {
 												ds18b20->message = json_mkobject();
 												
@@ -152,11 +153,11 @@ void *ds18b20Parse(void *param) {
 
 int ds18b20GC(void) {
 	ds18b20_loop = 0;
-	free(ds18b20_w1slave);	
-	free(ds18b20_w1dir);
-	free(ds18b20_w1nr);
-	free(ds18b20_w1id);
-	free(ds18b20_path);
+	sfree((void *)&ds18b20_w1slave);	
+	sfree((void *)&ds18b20_w1dir);
+	sfree((void *)&ds18b20_w1nr);
+	sfree((void *)&ds18b20_w1id);
+	sfree((void *)&ds18b20_path);
 	return 1;
 }
 

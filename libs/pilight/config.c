@@ -26,6 +26,7 @@
 #include <sys/stat.h>
 
 #include "config.h"
+#include "common.h"
 #include "log.h"
 #include "options.h"
 #include "protocol.h"
@@ -309,7 +310,7 @@ int config_update(char *protoname, JsonNode *json, JsonNode **out) {
 			// char *output = json_stringify(joutput, "\t");
 			// config_write(output);
 			// json_delete(joutput);
-			// free(output);			
+			// sfree((void *)&output);			
 			// joutput = NULL;
 		// }
 		*out = rroot;
@@ -484,14 +485,14 @@ void config_reverse_struct(struct conf_locations_t **loc) {
         lprev = lptr;
         lptr = lnext;
     }
-	free(lptr);
-	free(dptr);
-	free(sptr);
-	free(vptr);
-	free(lnext);
-	free(dnext);
-	free(snext);
-	free(vnext);
+	sfree((void *)&lptr);
+	sfree((void *)&dptr);
+	sfree((void *)&sptr);
+	sfree((void *)&vptr);
+	sfree((void *)&lnext);
+	sfree((void *)&dnext);
+	sfree((void *)&snext);
+	sfree((void *)&vnext);
 
     *loc = lprev;	
 }
@@ -567,7 +568,7 @@ JsonNode *config2json(unsigned short internal) {
 						tmp_values = tmp_values->next;
 					}
 					json_append_element(jid, jnid);
-					free(tmp_values);
+					sfree((void *)&tmp_values);
 				} else if(strcmp(tmp_settings->name, "settings") == 0) {
 					has_settings = 1;
 					while(tmp_values) {
@@ -578,7 +579,7 @@ JsonNode *config2json(unsigned short internal) {
 						}
 						tmp_values = tmp_values->next;
 					}
-					free(tmp_values);
+					sfree((void *)&tmp_values);
 				} else if(!tmp_values->next) {
 					if(tmp_values->type == CONFIG_TYPE_NUMBER) {
 						json_append_member(jdevice, tmp_settings->name, json_mknumber(atoi(tmp_values->value)));
@@ -595,7 +596,7 @@ JsonNode *config2json(unsigned short internal) {
 						}
 						tmp_values = tmp_values->next;
 					}
-					free(tmp_values);
+					sfree((void *)&tmp_values);
 					json_append_member(jdevice, tmp_settings->name, joptions);
 				}
 				tmp_settings = tmp_settings->next;
@@ -624,17 +625,17 @@ JsonNode *config2json(unsigned short internal) {
 			} else {
 				json_append_member(jdevice, "settings", jsettings);
 			}
-			free(tmp_settings);			
+			sfree((void *)&tmp_settings);			
 
 			json_append_member(jlocation, tmp_devices->id, jdevice);
 			tmp_devices = tmp_devices->next;
 		}
-		free(tmp_devices);
+		sfree((void *)&tmp_devices);
 		json_append_member(jroot, tmp_locations->id, jlocation);
 		tmp_locations = tmp_locations->next;
 	}
 
-	free(tmp_locations);
+	sfree((void *)&tmp_locations);
 
 	return jroot;
 }
@@ -645,7 +646,7 @@ void config_print(void) {
 	char *output = json_stringify(joutput, "\t");
 	printf("%s\n", output);
 	json_delete(joutput);
-	free(output);
+	sfree((void *)&output);
 	joutput = NULL;
 	logprintf(LOG_DEBUG, "-- end parsed config file --");
 }
@@ -673,7 +674,7 @@ void config_save_setting(int i, JsonNode *jsetting, struct conf_settings_t *snod
 	/* If the JSON tag is an array, then it should be a values or id array */
 	if(jsetting->tag == JSON_ARRAY) {
 		if(strcmp(jsetting->key, "id") == 0) {
-			free(snode);
+			sfree((void *)&snode);
 			
 			/* Loop through the values of this values array */
 			jtmp = json_first_child(jsetting);
@@ -722,7 +723,7 @@ void config_save_setting(int i, JsonNode *jsetting, struct conf_settings_t *snod
 				if(vnode && vnode->next)
 					vnode->next = NULL;
 				
-				free(vnode);
+				sfree((void *)&vnode);
 			}
 		}
 	} else if(jsetting->tag == JSON_OBJECT) {
@@ -768,7 +769,7 @@ void config_save_setting(int i, JsonNode *jsetting, struct conf_settings_t *snod
 		if(vnode && vnode->next)
 			vnode->next = NULL;
 		
-		free(vnode);		
+		sfree((void *)&vnode);		
 	} else {
 		/* New device settings node */
 		snode->name = malloc(strlen(jsetting->key)+1);
@@ -807,7 +808,7 @@ void config_save_setting(int i, JsonNode *jsetting, struct conf_settings_t *snod
 		if(vnode && vnode->next)
 			vnode->next = NULL;
 		
-		free(vnode);
+		sfree((void *)&vnode);
 	}
 }
 
@@ -986,7 +987,7 @@ int config_validate_settings(void) {
 								}
 								tmp_values = tmp_values->next;
 							}
-							free(tmp_values);
+							sfree((void *)&tmp_values);
 						} else if(strcmp(tmp_settings->name, "id") != 0) {
 							if(!tmp_values->next) {
 								json_append_member(jdevice, tmp_settings->name, json_mkstring(tmp_values->value));
@@ -996,14 +997,14 @@ int config_validate_settings(void) {
 									json_append_element(joptions, json_mkstring(tmp_values->value));
 									tmp_values = tmp_values->next;
 								}
-								free(tmp_values);
+								sfree((void *)&tmp_values);
 								json_append_member(jdevice, tmp_settings->name, joptions);
 							}
 						}
 						tmp_settings = tmp_settings->next;
 					}
 
-					free(tmp_settings);
+					sfree((void *)&tmp_settings);
 					/* Let the settings and values be validated against each other */
 					if(tmp_protocols->listener->checkValues(jdevice) != 0) {
 						logprintf(LOG_ERR, "device #%d \"%s\" of \"%s\", invalid", dorder, tmp_devices->name, tmp_locations->name);
@@ -1028,7 +1029,7 @@ int config_validate_settings(void) {
 								}							
 								tmp_values = tmp_values->next;
 							}
-							free(tmp_values);
+							sfree((void *)&tmp_values);
 						}
 						tmp_settings = tmp_settings->next;
 					}
@@ -1039,11 +1040,11 @@ int config_validate_settings(void) {
 			json_delete(jdevice);
 			jdevice=NULL;
 		}
-		free(tmp_devices);
+		sfree((void *)&tmp_devices);
 		tmp_locations = tmp_locations->next;
 	}
 
-	free(tmp_locations);	
+	sfree((void *)&tmp_locations);	
 	
 clear:
 	if(jdevice) {
@@ -1127,7 +1128,7 @@ int config_check_state(int i, JsonNode *jsetting, struct conf_devices_t *device)
 		goto clear;
 	}
 	
-	free(tmp_options);
+	sfree((void *)&tmp_options);
 
 clear:
 	return have_error;
@@ -1325,11 +1326,11 @@ int config_parse_devices(JsonNode *jdevices, struct conf_devices_t *device) {
 		if(snode->next) {
 			snode->next = NULL;
 		}
-		free(snode);
+		sfree((void *)&snode);
 	}
 	
-	free(tmp_settings);
-	free(tmp_options);
+	sfree((void *)&tmp_settings);
+	sfree((void *)&tmp_options);
 clear:
 	return have_error;
 }
@@ -1437,14 +1438,14 @@ int config_parse_locations(JsonNode *jlocations, struct conf_locations_t *locati
 						// logprintf(LOG_ERR, "device #%d \"%s\" of \"%s\", cannot combine protocols of different types", i, jdevices->key, location->id);
 						// have_error = 1;
 						// json_delete(jprotocol);
-						// free(dnode);
+						// sfree((void *)&dnode);
 						// goto clear;
 					// }
 					if(match == 0) {
 						logprintf(LOG_ERR, "device #%d \"%s\" of \"%s\", invalid protocol", i, jdevices->key, location->id);
 						have_error = 1;
 						json_delete(jprotocol);
-						free(dnode);
+						sfree((void *)&dnode);
 						goto clear;
 					} else {
 						struct protocols_t *pnode = malloc(sizeof(struct protocols_t));
@@ -1481,8 +1482,8 @@ int config_parse_locations(JsonNode *jlocations, struct conf_locations_t *locati
 	/* Clear the locations struct for the next location */
 	conf_devices = NULL;
 
-	free(dnode);
-	free(tmp_devices);
+	sfree((void *)&dnode);
+	sfree((void *)&tmp_devices);
 clear:
 	return have_error;
 }
@@ -1545,7 +1546,7 @@ int config_parse(JsonNode *root) {
 	/* Preverse the original order inside the structs as in the config file */
 	config_reverse_struct(&conf_locations);
 
-	free(tmp_locations);
+	sfree((void *)&tmp_locations);
 	json_delete(jlocations);
 clear:
 	return have_error;
@@ -1574,7 +1575,7 @@ int config_write(char *content) {
 }
 
 int config_gc(void) {
-	free(configfile);
+	sfree((void *)&configfile);
 	
 	struct conf_locations_t *ltmp;
 	struct conf_devices_t *dtmp;
@@ -1590,37 +1591,37 @@ int config_gc(void) {
 				stmp = dtmp->settings;
 				while(stmp->values) {
 					vtmp = stmp->values;
-					free(vtmp->value);
-					free(vtmp->name);
+					sfree((void *)&vtmp->value);
+					sfree((void *)&vtmp->name);
 					stmp->values = stmp->values->next;
-					free(vtmp);
+					sfree((void *)&vtmp);
 				}
-				free(stmp->values);
-				free(stmp->name);
+				sfree((void *)&stmp->values);
+				sfree((void *)&stmp->name);
 				dtmp->settings = dtmp->settings->next;
-				free(stmp);
+				sfree((void *)&stmp);
 			}
 			while(dtmp->protocols) {
 				ptmp = dtmp->protocols;
-				free(ptmp->name);
-				free(ptmp->listener);
+				sfree((void *)&ptmp->name);
+				sfree((void *)&ptmp->listener);
 				dtmp->protocols = dtmp->protocols->next;
-				free(ptmp);
+				sfree((void *)&ptmp);
 			}
-			free(dtmp->protocols);
-			free(dtmp->settings);
-			free(dtmp->id);
-			free(dtmp->name);
+			sfree((void *)&dtmp->protocols);
+			sfree((void *)&dtmp->settings);
+			sfree((void *)&dtmp->id);
+			sfree((void *)&dtmp->name);
 			ltmp->devices = ltmp->devices->next;
-			free(dtmp);
+			sfree((void *)&dtmp);
 		}
-		free(ltmp->devices);		
-		free(ltmp->id);
-		free(ltmp->name);
+		sfree((void *)&ltmp->devices);		
+		sfree((void *)&ltmp->id);
+		sfree((void *)&ltmp->name);
 		conf_locations = conf_locations->next;
-		free(ltmp);
+		sfree((void *)&ltmp);
 	}
-	free(conf_locations);
+	sfree((void *)&conf_locations);
 	
 	logprintf(LOG_DEBUG, "garbage collected config library");
 	
@@ -1656,19 +1657,19 @@ int config_read() {
 	/* Validate JSON and turn into JSON object */
 	if(json_validate(content) == false) {
 		logprintf(LOG_ERR, "config is not in a valid json format", content);
-		free(content);
+		sfree((void *)&content);
 		return EXIT_FAILURE;
 	}
 	root = json_decode(content);
 
-	free(content);
+	sfree((void *)&content);
 
 	if(config_parse(root) == 0 && config_validate_settings() == 0) {
 		JsonNode *joutput = config2json(0);
 		char *output = json_stringify(joutput, "\t");
 		config_write(output);
 		json_delete(joutput);
-		free(output);			
+		sfree((void *)&output);			
 		joutput = NULL;
 		json_delete(root);
 		root = NULL;

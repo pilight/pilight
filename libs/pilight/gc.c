@@ -22,6 +22,7 @@
 #include <setjmp.h>
 
 #include "gc.h"
+#include "common.h"
 
 static sigjmp_buf gc_cleanup;
 
@@ -46,9 +47,9 @@ void gc_clear(void) {
 	while(gc) {
 		tmp = gc;
 		gc = gc->next;
-		free(tmp);
+		sfree((void *)&tmp);
 	}
-	free(gc);
+	sfree((void *)&gc);
 }
 
 /* Run the GC manually */
@@ -62,9 +63,9 @@ int gc_run(void) {
 			s=1;
 		}
 		gc = gc->next;
-		free(tmp);
+		sfree((void *)&tmp);
 	}
-	free(gc);
+	sfree((void *)&gc);
 	
 	if(s)
 		return EXIT_FAILURE;

@@ -25,6 +25,7 @@ with Splash. If not, see <http://www.gnu.org/licenses/>
 #include <sys/stat.h>
 
 #include "fcache.h"
+#include "common.h"
 #include "log.h"
 #include "gc.h"
 
@@ -32,12 +33,12 @@ int fcache_gc(void) {
 	struct fcache_t *tmp = fcache;
 	while(fcache) {
 		tmp = fcache;
-		free(tmp->name);
-		free(tmp->bytes);
+		sfree((void *)&tmp->name);
+		sfree((void *)&tmp->bytes);
 		fcache = fcache->next;
-		free(tmp);
+		sfree((void *)&tmp);
 	}
-	free(fcache);
+	sfree((void *)&fcache);
 	
 	logprintf(LOG_DEBUG, "garbage collected fcache library");
 	return 1;

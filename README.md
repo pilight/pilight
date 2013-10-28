@@ -33,6 +33,7 @@ New (Experimental) Features
 - Added support for the 1-Wire ds18b20 temperature sensor.
 - Added threads library to which every function can register it's necessary threads.
 - Implemented cmake and optional build paramaters.
+- Added debug compilation mode that makes all memory actions verbose.
 
 New config syntax:
 

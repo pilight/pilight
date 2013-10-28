@@ -20,6 +20,7 @@
 #include <sys/ioctl.h>
 
 #include "../../pilight.h"
+#include "common.h"
 #include "irq.h"
 #include "wiringPi.h"
 #include "log.h"
@@ -64,12 +65,12 @@ int hardware_gc(void) {
 
 	while(hardwares) {
 		htmp = hardwares;
-		free(htmp->listener->id);
-		free(htmp->listener);
+		sfree((void *)&htmp->listener->id);
+		sfree((void *)&htmp->listener);
 		hardwares = hardwares->next;
-		free(htmp);
+		sfree((void *)&htmp);
 	}
-	free(hardwares);
+	sfree((void *)&hardwares);
 
 	logprintf(LOG_DEBUG, "garbage collected hardware library");
 	return EXIT_SUCCESS;

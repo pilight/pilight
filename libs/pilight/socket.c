@@ -30,6 +30,7 @@
 #include <arpa/inet.h>
 
 #include "../../pilight.h"
+#include "common.h"
 #include "log.h"
 #include "gc.h"
 #include "socket.h"
@@ -40,15 +41,9 @@ char *sendBuff = NULL;
 unsigned short socket_loop = 1;
 
 int socket_gc(void) {
-	if(readBuff) {
-		free(readBuff);
-	}
-	if(recvBuff) {
-		free(recvBuff);
-	}
-	if(sendBuff) {
-		free(sendBuff);
-	}
+	sfree((void *)&readBuff);
+	sfree((void *)&recvBuff);
+	sfree((void *)&sendBuff);
 	socket_loop = 0;
 	logprintf(LOG_DEBUG, "garbage collected socket library");
 	return EXIT_SUCCESS;
@@ -133,7 +128,7 @@ int socket_check_whitelist(char *ip) {
 		}		
 	}
 
-	free(pch);
+	sfree((void *)&pch);
 
 	return error;
 }
@@ -385,6 +380,7 @@ void *socket_wait(void *param) {
                 } else {
                     //set the string terminating NULL byte on the end of the data read
                     // readBuff[n] = '\0';
+
 					if(n > -1 && socket_callback->client_data_callback) {
 						pch = strtok(readBuff, "\n");
 						while(pch) {

@@ -1,3 +1,4 @@
+set(DEBUG OFF CACHE BOOL "turn on extended memory debug information")
 set(WEBSERVER ON CACHE BOOL "enable the built-in webserver")
 set(PROTOCOL_ALECTO ON CACHE BOOL "support for the Alecto weather stations protocol")
 set(PROTOCOL_COGEX_SWITCH ON CACHE BOOL "support for the Cogex switch protocol")

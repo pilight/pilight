@@ -29,6 +29,7 @@
 #include <signal.h>
 
 #include "../../pilight.h"
+#include "common.h"
 #include "../websockets/libwebsockets.h"
 #include "config.h"
 #include "gc.h"
@@ -69,30 +70,12 @@ struct libwebsocket_protocols libwebsocket_protocols[] = {
 int webserver_gc(void) {
 	webserver_loop = 0;
 	socket_close(sockfd);
-	if(syncBuff) {
-		free(syncBuff);
-		syncBuff = NULL;
-	}
-	if(sockWriteBuff) {
-		free(sockWriteBuff);
-		sockWriteBuff = NULL;
-	}
-	if(sockReadBuff) {
-		free(sockReadBuff);
-		sockReadBuff = NULL;
-	}
-	if(ext) {
-		free(ext);
-		ext = NULL;
-	}
-	if(request) {
-		free(request);
-		request = NULL;
-	}
-	if(mimetype) {
-		free(mimetype);
-		mimetype = NULL;
-	}
+	sfree((void *)&syncBuff);
+	sfree((void *)&sockWriteBuff);
+	sfree((void *)&sockReadBuff);
+	sfree((void *)&ext);
+	sfree((void *)&request);
+	sfree((void *)&mimetype);
 	fcache_gc();
 	logprintf(LOG_DEBUG, "garbage collected webserver library");
 	return 1;
@@ -185,8 +168,8 @@ int webserver_callback_http(struct libwebsocket_context *webcontext, struct libw
 					strcat((char *)content, (char *)fcache_get_bytes(request));
 
 					libwebsocket_write(wsi, content, strlen((char *)content), LWS_WRITE_HTTP);
-					free(header);
-					free(content);
+					sfree((void *)&header);
+					sfree((void *)&content);
 				}
 			} else {
 				/* Read a file from the FS and server it */
@@ -227,7 +210,7 @@ int webserver_callback_http(struct libwebsocket_context *webcontext, struct libw
 							memset(sockWriteBuff, '\0', sizeof(sockWriteBuff));
  	  						memcpy(&sockWriteBuff[LWS_SEND_BUFFER_PRE_PADDING], output, output_len);
 							libwebsocket_write(wsi, &sockWriteBuff[LWS_SEND_BUFFER_PRE_PADDING], output_len, LWS_WRITE_TEXT);
-							free(output);
+							sfree((void *)&output);
 							json_delete(jsend);
 						} else if(strcmp(message, "send") == 0) {
 							/* Write all codes coming from the webserver to the daemon */
@@ -294,7 +277,7 @@ void *webserver_clientize(void *param) {
 		exit(EXIT_FAILURE);
 	}
 	sockReadBuff = malloc(BUFFER_SIZE);
-	free(server);
+	sfree((void *)&server);
 	while(webserver_loop) {
 		if(steps > WELCOME) {
 			memset(sockReadBuff, '\0', BUFFER_SIZE);
@@ -336,7 +319,7 @@ void *webserver_clientize(void *param) {
 			break;
 		}
 	}
-	free(sockReadBuff);
+	sfree((void *)&sockReadBuff);
 	sockReadBuff = NULL;
 close:
 	webserver_gc();
@@ -383,10 +366,7 @@ void *webserver_start(void *param) {
 		}
 		/* If the main loop stops, stop and destroy the webserver */
 		libwebsocket_context_destroy(context);
-		if(syncBuff) {
-			free(syncBuff);
-			syncBuff = NULL;
-		}
+		sfree((void *)&syncBuff);
 	}
 	return 0;
 }

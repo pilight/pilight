@@ -22,6 +22,7 @@
 #include <unistd.h>
 
 #include "hardware.h"
+#include "common.h"
 #include "none.h"
 
 int noneSend(int *code) {

@@ -21,6 +21,7 @@
 #include <string.h>
 
 #include "../../pilight.h"
+#include "common.h"
 #include "log.h"
 #include "protocol.h"
 #include "binary.h"

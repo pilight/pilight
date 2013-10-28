@@ -93,8 +93,6 @@ struct conf_locations_t {
 	struct conf_locations_t *next;
 };
 
-char *progname;
-
 /* Struct to store the locations */
 struct conf_locations_t *conf_locations;
 /* Struct to store the devices per location */

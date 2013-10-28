@@ -27,6 +27,7 @@
 #include <syslog.h>
 
 #include "pilight.h"
+#include "common.h"
 #include "settings.h"
 #include "log.h"
 #include "options.h"
@@ -273,7 +274,7 @@ int main(int argc, char **argv) {
 					json_append_member(json, "code", code);
 					char *output = json_stringify(json, NULL);
 					socket_write(sockfd, output);
-					free(output);
+					sfree((void *)&output);
 					goto close;
 				break;
 				case REJECT:
@@ -291,11 +292,11 @@ close:
 		socket_close(sockfd);
 	}
 	log_shell_disable();
-	free(server);
+	sfree((void *)&server);
 	protocol_gc();
 	options_delete(options);
 	options_gc();
-	free(progname);
+	sfree((void *)&progname);
 
 return EXIT_SUCCESS;
 }

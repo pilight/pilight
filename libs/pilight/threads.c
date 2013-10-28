@@ -22,6 +22,7 @@
 #include <unistd.h>
 
 #include "threads.h"
+#include "common.h"
 #include "log.h"
 
 unsigned short thread_loop = 1;
@@ -83,9 +84,9 @@ int threads_gc(void) {
 		ttmp = threads;
 		thread_count--;
 		threads = threads->next;
-		free(ttmp);
+		sfree((void *)&ttmp);
 	}
-	free(threads);
+	sfree((void *)&threads);
 
 	logprintf(LOG_DEBUG, "garbage collected threads library");
 	return EXIT_SUCCESS;

@@ -25,6 +25,7 @@
 #include <assert.h>
 
 #include "pilight.h"
+#include "common.h"
 #include "settings.h"
 #include "log.h"
 #include "options.h"
@@ -104,7 +105,7 @@ int main(int argc, char **argv) {
 		logprintf(LOG_ERR, "could not connect to pilight-daemon");
 		return EXIT_FAILURE;
 	}
-	free(server);
+	sfree((void *)&server);
 	while(1) {
 		if(steps > WELCOME) {
 			/* Clear the receive buffer again and read the welcome message */
@@ -143,7 +144,7 @@ int main(int argc, char **argv) {
 						assert(json != NULL);
 						char *output = json_stringify(json, "\t");
 						printf("%s\n", output);
-						free(output);
+						sfree((void *)&output);
 						json_delete(json);
 						line = strtok(NULL,"\n");
 					}
@@ -159,9 +160,9 @@ close:
 
 	protocol_gc();
 	options_gc();
-	free(progname);
-	free(server);
-	free(message);
+	sfree((void *)&progname);
+	sfree((void *)&server);
+	sfree((void *)&message);
 
 return EXIT_SUCCESS;
 }

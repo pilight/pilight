@@ -28,6 +28,7 @@
 #include <libgen.h>
 
 #include "../../pilight.h"
+#include "common.h"
 #include "json.h"
 #include "settings.h"
 #include "log.h"
@@ -69,7 +70,7 @@ int settings_find_number(const char *name, int *out) {
 		}
 		tmp_settings = tmp_settings->next;
 	}
-	free(tmp_settings);
+	sfree((void *)&tmp_settings);
 	return 1;
 }
 
@@ -84,7 +85,7 @@ int settings_find_string(const char *name, char **out) {
 		}
 		tmp_settings = tmp_settings->next;
 	}
-	free(tmp_settings);
+	sfree((void *)&tmp_settings);
 	return 1;
 }
 
@@ -392,7 +393,7 @@ int settings_parse(JsonNode *root) {
 		have_error = 1;
 		goto clear;		
 	}
-	free(server_ip);
+	sfree((void *)&server_ip);
 clear:
 	return have_error;
 }
@@ -417,17 +418,14 @@ int settings_gc(void) {
 
 	while(settings) {
 		tmp = settings;
-		free(tmp->name);
-		free(tmp->value);
+		sfree((void *)&tmp->name);
+		sfree((void *)&tmp->value);
 		settings = settings->next;
-		free(tmp);
+		sfree((void *)&tmp);
 	}
-	free(settings);
+	sfree((void *)&settings);
 	
-	if(settingsfile) {
-		free(settingsfile);
-		settingsfile = NULL;
-	}
+	sfree((void *)&settingsfile);
 	logprintf(LOG_DEBUG, "garbage collected settings library");
 	return 1;
 }
@@ -461,21 +459,21 @@ int settings_read(void) {
 	/* Validate JSON and turn into JSON object */
 	if(json_validate(content) == false) {
 		logprintf(LOG_ERR, "settings are not in a valid json format", content);
-		free(content);
+		sfree((void *)&content);
 		return EXIT_FAILURE;
 	}
 
 	root = json_decode(content);
 
 	if(settings_parse(root) != 0) {
-		free(content);
+		sfree((void *)&content);
 		return EXIT_FAILURE;
 	}
 	char *output = json_stringify(root, "\t");
 	settings_write(output);
 	json_delete(root);
-	free(output);	
-	free(content);
+	sfree((void *)&output);	
+	sfree((void *)&content);
 	return EXIT_SUCCESS;
 }
 

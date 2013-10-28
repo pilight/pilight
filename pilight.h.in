@@ -24,6 +24,7 @@
 /* Internals */
 
 #cmakedefine WEBSERVER
+#cmakedefine DEBUG
 
 /* Protocol support */
 

@@ -23,6 +23,7 @@
 
 #include "../../pilight.h"
 #include "log.h"
+#include "common.h"
 #include "hardware.h"
 #include "wiringPi.h"
 #include "irq.h"
@@ -48,7 +49,7 @@ unsigned short gpioHwInit(void) {
 
 	if(wiringPiSetup() == -1) {
 		if(allocated) {
-			free(mode);
+			sfree((void *)&mode);
 		}
 		return EXIT_FAILURE;
 	}
@@ -56,12 +57,12 @@ unsigned short gpioHwInit(void) {
 	if(wiringPiISR(gpio_in, INT_EDGE_BOTH) < 0) {
 		logprintf(LOG_ERR, "unable to register interrupt for pin %d", gpio_in) ;
 		if(allocated) {
-			free(mode);
+			sfree((void *)&mode);
 		}
 		return EXIT_SUCCESS;
 	}
 	if(allocated) {
-		free(mode);
+		sfree((void *)&mode);
 	}
 	return EXIT_FAILURE;
 }

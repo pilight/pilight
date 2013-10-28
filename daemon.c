@@ -34,6 +34,7 @@
 #include <ctype.h>
 
 #include "pilight.h"
+#include "common.h"
 #include "settings.h"
 #include "config.h"
 #include "gc.h"
@@ -204,7 +205,7 @@ void *broadcast(void *param) {
 				if(broadcasted == 1) {
 					logprintf(LOG_DEBUG, "broadcasted: %s", conf);
 				}
-				free(conf);
+				sfree((void *)&conf);
 			}
 			if(jret) {
 				json_delete(jret);
@@ -222,14 +223,14 @@ void *broadcast(void *param) {
 					}
 				}		
 				logprintf(LOG_DEBUG, "broadcasted: %s", json);
-				free(json);
+				sfree((void *)&json);
 			}
 			
 			struct bcqueue_t *tmp = bcqueue;
-			free(bcqueue->protoname);
+			sfree((void *)&bcqueue->protoname);
 			json_delete(bcqueue->jmessage);
 			bcqueue = bcqueue->next;
-			free(tmp);
+			sfree((void *)&tmp);
 			bcqueue_number--;
 				
 			pthread_mutex_unlock(&bcqueue_lock);
@@ -259,7 +260,7 @@ void receiver_create_message(protocol_t *protocol, int rep) {
 			}
 			json = json_stringify(jmessage, NULL);
 			broadcast_queue(protocol->id, json_decode(json));
-			free(json);
+			sfree((void *)&json);
 			json_delete(jmessage);
 			while(tmp_conflicts) {
 				jmessage = json_mkobject();
@@ -271,13 +272,13 @@ void receiver_create_message(protocol_t *protocol, int rep) {
 				}
 				json = json_stringify(jmessage, NULL);
 				broadcast_queue(tmp_conflicts->id, json_decode(json));
-				free(json);
+				sfree((void *)&json);
 				tmp_conflicts = tmp_conflicts->next;
 				json_delete(jmessage);
 			}
 		}
 		protocol->message = NULL;
-		free(valid);
+		sfree((void *)&valid);
 	}
 }
 
@@ -442,11 +443,11 @@ void *send_code(void *param) {
 			
 			struct sendqueue_t *tmp = sendqueue;
 			if(tmp->message) {
-				free(tmp->message);
+				sfree((void *)&tmp->message);
 			}
-			free(tmp->protoname);
+			sfree((void *)&tmp->protoname);
 			sendqueue = sendqueue->next;
-			free(tmp);
+			sfree((void *)&tmp);
 			sendqueue_number--;
 			pthread_mutex_unlock(&sendqueue_lock);
 		} else {
@@ -530,7 +531,7 @@ void send_queue(JsonNode *json) {
 								mnode->message = malloc(strlen(jsonstr)+1);
 								strcpy(mnode->message, jsonstr);
 							}
-							free(jsonstr);
+							sfree((void *)&jsonstr);
 							protocol->message = NULL;
 						}
 						for(x=0;x<protocol->rawlen;x++) {
@@ -655,7 +656,7 @@ void control_device(struct conf_devices_t *dev, char *state, JsonNode *values) {
 							ctmp = realloc(ctmp, sizeof(int));
 							sprintf(ctmp, "%d", (int)values->number_);
 							json_append_member(code, values->key, json_mkstring(ctmp));
-							free(ctmp);
+							sfree((void *)&ctmp);
 						}
 					}
 					opt = opt->next;
@@ -704,7 +705,7 @@ void client_node_parse_code(int i, JsonNode *json) {
 			json_append_member(jsend, "config", joutput);
 			char *output = json_stringify(jsend, NULL);
 			socket_write_big(sd, output);
-			free(output);
+			sfree((void *)&output);
 			json_delete(jsend);
 		}
 	}
@@ -730,7 +731,7 @@ void client_controller_parse_code(int i, JsonNode *json) {
 			char *output = json_stringify(jsend, NULL);
 			socket_write_big(sd, output);
 			json_delete(jsend);
-			free(output);
+			sfree((void *)&output);
 		/* Control a specific device */
 		} else if(strcmp(message, "send") == 0) {
 			/* Check if got a code */
@@ -759,7 +760,7 @@ void client_controller_parse_code(int i, JsonNode *json) {
 							values = json_first_child(values);
 						}
 						control_device(sdevice, state, values);
-						free(state);
+						sfree((void *)&state);
 					} else {
 						logprintf(LOG_ERR, "the device \"%s\" does not exist", device);
 					}
@@ -815,8 +816,8 @@ void client_webserver_parse_code(int i, char buffer[BUFFER_SIZE]) {
 						send(sd, cache, (size_t)x, MSG_NOSIGNAL);
 					}
 					fclose(f);
-					free(cache);
-					free(path);
+					sfree((void *)&cache);
+					sfree((void *)&path);
 				} else {
 					logprintf(LOG_NOTICE, "pilight logo not found");
 				}
@@ -834,7 +835,7 @@ void client_webserver_parse_code(int i, char buffer[BUFFER_SIZE]) {
 			} else {
 				socket_write(sd, "<body><center><img src=\"logo.png\"></center></body></html>\r");
 			}
-			free(cache);
+			sfree((void *)&cache);
 		}
 	}
 }
@@ -912,10 +913,10 @@ void socket_parse_data(int i, char buffer[BUFFER_SIZE]) {
 
 							if(handshakes[i] == RECEIVER || handshakes[i] == GUI || handshakes[i] == NODE)
 								receivers++;
-							free(tmp);
+							sfree((void *)&tmp);
 							break;
 						}
-						free(tmp);
+						sfree((void *)&tmp);
 					}
 				}
 				/* Directly after using the incognito mode, restore the node mode */
@@ -1123,7 +1124,7 @@ int main_gc(void) {
 		char *output = json_stringify(joutput, "\t");
 		config_write(output);
 		json_delete(joutput);
-		free(output);
+		sfree((void *)&output);
 		joutput = NULL;
 	}
 
@@ -1140,7 +1141,7 @@ int main_gc(void) {
 	options_gc();
 	socket_gc();	
 	
-	free(progname);	
+	sfree((void *)&progname);	
 	return 0;
 }
 
@@ -1151,7 +1152,7 @@ int main(int argc , char **argv) {
 
 	if(geteuid() != 0) {
 		printf("%s requires root priveliges in order to run\n", progname);
-		free(progname);
+		sfree((void *)&progname);
 		exit(EXIT_FAILURE);
 	}
 

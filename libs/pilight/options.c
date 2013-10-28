@@ -22,6 +22,7 @@
 #include <string.h>
 
 #include "log.h"
+#include "common.h"
 #include "options.h"
 
 int getOptPos = 0;
@@ -30,18 +31,9 @@ char *shortarg = NULL;
 char *gctmp = NULL;
 
 int options_gc(void) {
-	if(longarg) {
-		free(longarg);
-		longarg = NULL;
-	}
-	if(shortarg) {
-		free(shortarg);
-		shortarg = NULL;
-	}
-	if(gctmp) {
-		free(gctmp);
-		gctmp = NULL;
-	}
+	sfree((void *)&longarg);
+	sfree((void *)&shortarg);
+	sfree((void *)&gctmp);
 
 	logprintf(LOG_DEBUG, "garbage collected options library");
 	return EXIT_SUCCESS;
@@ -173,7 +165,7 @@ int options_parse(struct options_t **opt, int argc, char **argv, int error_check
 	if(getOptPos>=(argc-1)) {
 		getOptPos=0;
 		if(*optarg) {
-			free(*optarg);
+			sfree((void *)&*optarg);
 			*optarg = NULL;
 		}
 		return -1;
@@ -332,10 +324,8 @@ int options_parse(struct options_t **opt, int argc, char **argv, int error_check
 
 gc:
 	getOptPos=0;
-	if(*optarg) {
-		free(*optarg);
-		*optarg = NULL;
-	}
+	sfree((void *)&*optarg);
+
 	return -2;
 }
 
@@ -347,23 +337,23 @@ void options_add(struct options_t **opt, int id, const char *name, int argtype, 
 	int itmp;
 	if(!(argtype >= 0 && argtype <= 3)) {
 		logprintf(LOG_ERR, "tying to add an invalid option type");
-		free(nname);
+		sfree((void *)&nname);
 		exit(EXIT_FAILURE);
 	} else if(!(conftype >= 0 && conftype <= 5)) {
 		logprintf(LOG_ERR, "trying to add an option with an invalid config type");
-		free(nname);
+		sfree((void *)&nname);
 		exit(EXIT_FAILURE);
 	} else if(!name) {
 		logprintf(LOG_ERR, "trying to add an option without name");
-		free(nname);
+		sfree((void *)&nname);
 		exit(EXIT_FAILURE);
 	} else if(options_get_name(opt, id, &ctmp) == 0) {
 		logprintf(LOG_ERR, "duplicate option id: %c", id);
-		free(nname);
+		sfree((void *)&nname);
 		exit(EXIT_FAILURE);
 	} else if(options_get_id(opt, nname, &itmp) == 0) {
 		logprintf(LOG_ERR, "duplicate option name: %s", name);
-		free(nname);
+		sfree((void *)&nname);
 		exit(EXIT_FAILURE);
 	} else {
 		struct options_t *optnode = malloc(sizeof(struct options_t));
@@ -382,7 +372,7 @@ void options_add(struct options_t **opt, int id, const char *name, int argtype, 
 		}
 		optnode->next = *opt;
 		*opt = optnode;
-		free(nname);
+		sfree((void *)&nname);
 	}
 }
 
@@ -427,13 +417,13 @@ void options_delete(struct options_t *options) {
 	struct options_t *tmp;
 	while(options) {
 		tmp = options;
-		free(tmp->mask);
-		free(tmp->value);
-		free(tmp->name);
+		sfree((void *)&tmp->mask);
+		sfree((void *)&tmp->value);
+		sfree((void *)&tmp->name);
 		options = options->next;
-		free(tmp);
+		sfree((void *)&tmp);
 	}
-	free(options);
+	sfree((void *)&options);
 	
 	logprintf(LOG_DEBUG, "freed options struct");
 }
