@@ -56,10 +56,10 @@ int log_gc(void) {
 void logprintf(int prio, const char *format_str, ...) {
 	int save_errno = errno;
 	va_list ap;
-	// if(logfile == NULL) {
-		// logfile = realloc(logfile, strlen(LOG_FILE)+1);
-		// strcpy(logfile, LOG_FILE);
-	// }
+	if(logfile == NULL) {
+		logfile = realloc(logfile, strlen(LOG_FILE)+1);
+		strcpy(logfile, LOG_FILE);
+	}
 	if(filelog == 0 && shelllog == 0)
 		return;
 
@@ -110,8 +110,7 @@ void logprintf(int prio, const char *format_str, ...) {
 			va_end(ap);
 		}
 	}
-	// sfree((void *)&logfile);
-	// logfile = NULL;
+	sfree((void *)&logfile);
 	errno = save_errno;
 }
 

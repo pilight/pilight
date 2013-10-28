@@ -22,8 +22,8 @@
 #include <unistd.h>
 
 #include "../../pilight.h"
-#include "log.h"
 #include "common.h"
+#include "log.h"
 #include "hardware.h"
 #include "wiringPi.h"
 #include "irq.h"
@@ -88,6 +88,7 @@ int gpioReceive(void) {
 }
 
 void gpioInit(void) {
+
 	hardware_register(&gpio);
 	gpio->id = malloc(5);
 	strcpy(gpio->id, "gpio");

@@ -228,7 +228,7 @@ void socket_write(int sockfd, const char *msg, ...) {
 	va_list ap;
 
 	if(strlen(msg) > 0 && sockfd > 0) {
-		memset(sendBuff, '\0', BIG_BUFFER_SIZE);
+		memset(sendBuff, '\0', BUFFER_SIZE);
 
 		va_start(ap, msg);
 		vsprintf(sendBuff, msg, ap);
@@ -242,9 +242,8 @@ void socket_write(int sockfd, const char *msg, ...) {
 			if(strcmp(sendBuff, "BEAT\n") != 0) {
 				logprintf(LOG_DEBUG, "socket write succeeded: %s", sendBuff);
 			}
-			// Prevent buffering of messages
-			usleep(100);
 		}
+		usleep(100);
 	}
 }
 
@@ -266,9 +265,8 @@ void socket_write_big(int sockfd, const char *msg, ...) {
 			if(strcmp(sendBuff, "BEAT\n") != 0) {
 				logprintf(LOG_DEBUG, "socket write succeeded: %s", sendBuff);
 			}
-			// Prevent buffering of messages
-			usleep(100);
 		}
+		usleep(100);
 	}
 }
 
@@ -301,7 +299,6 @@ void *socket_wait(void *param) {
     struct sockaddr_in address;
 	int addrlen = sizeof(address);
 	fd_set readfds;
-	char *pch;
 	readBuff = malloc(BIG_BUFFER_SIZE);
 
 	while(socket_loop) {
@@ -366,8 +363,8 @@ void *socket_wait(void *param) {
 
             if(FD_ISSET((long unsigned int)sd , &readfds)) {
                 //Check if it was for closing, and also read the incoming message
+				memset(readBuff, '\0', BUFFER_SIZE);
 
-				memset(readBuff, '\0', BUFFER_SIZE);				
                 if((n = (int)read(sd, readBuff, BUFFER_SIZE-1)) == 0) {
                     //Somebody disconnected, get his details and print
                     getpeername(sd, (struct sockaddr*)&address, (socklen_t*)&addrlen);
@@ -379,15 +376,15 @@ void *socket_wait(void *param) {
 					socket_clients[i] = 0;
                 } else {
                     //set the string terminating NULL byte on the end of the data read
-                    // readBuff[n] = '\0';
+                    //readBuff[n] = '\0';
 
 					if(n > -1 && socket_callback->client_data_callback) {
-						pch = strtok(readBuff, "\n");
+						char *pch = strtok(readBuff, "\n");
 						while(pch) {
-							strcat(pch, "\n");
 							socket_callback->client_data_callback(i, pch);
 							pch = strtok(NULL, "\n");
 						}
+						sfree((void *)&pch);
 					}
                 }
             }

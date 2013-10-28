@@ -92,7 +92,6 @@ struct sendqueue_t *sendqueue_head;
 pthread_mutex_t sendqueue_lock = PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP;
 pthread_cond_t sendqueue_signal = PTHREAD_COND_INITIALIZER;
 int sendqueue_number = 0;
-unsigned int sendqueue_timestamp = 0;
 
 typedef struct bcqueue_t {
 	unsigned int id;
@@ -139,7 +138,7 @@ pthread_t pth;
 /* While loop conditions */
 unsigned short main_loop = 1;
 /* Only update the config file on exit when it's valid */
-unsigned short valid_config = 1;
+unsigned short valid_config = 0;
 /* How many received repeats did we encounter */
 int repeats = 0;
 /* Used hardware module */
@@ -164,7 +163,7 @@ void broadcast_queue(char *protoname, JsonNode *json) {
 
 	pthread_mutex_lock(&bcqueue_lock);
 	struct bcqueue_t *bnode = malloc(sizeof(struct bcqueue_t));
-	bnode->id = 1000000 * (unsigned int)tcurrent.tv_sec + (unsigned int)tcurrent.tv_usec;;
+	bnode->id = 1000000 * (unsigned int)tcurrent.tv_sec + (unsigned int)tcurrent.tv_usec;
 	bnode->jmessage = json;
 	bnode->protoname = malloc(strlen(protoname)+1);
 	strcpy(bnode->protoname, protoname);
@@ -391,7 +390,6 @@ void *send_code(void *param) {
 	while(main_loop) {
 		if(sendqueue_number > 0) {
 			pthread_mutex_lock(&sendqueue_lock);	
-
 			sending = 1;			
 			struct protocol_t *protocol = sendqueue->protopt;
 
@@ -552,7 +550,6 @@ void send_queue(JsonNode *json) {
 						sendqueue_number++;
 						pthread_mutex_unlock(&sendqueue_lock);
 						pthread_cond_signal(&sendqueue_signal);
-						sendqueue_timestamp = mnode->id;
 					}
 
 					/* Restore the protocol specific settings to their default values */
@@ -593,6 +590,7 @@ void client_sender_parse_code(int i, JsonNode *json) {
 		socket_close(sd);
 		handshakes[i] = -1;
 	}
+
 	send_queue(json);
 }
 
@@ -853,11 +851,11 @@ void socket_parse_data(int i, char buffer[BUFFER_SIZE]) {
 
 	getpeername(sd, (struct sockaddr*)&address, (socklen_t*)&addrlen);
 
-	if(strcmp(buffer, "HEART\n") != 0) {
+	if(strcmp(buffer, "HEART") != 0) {
 		logprintf(LOG_DEBUG, "socket recv: %s", buffer);
 	}
 
-	if(strcmp(buffer, "HEART\n") == 0) {
+	if(strcmp(buffer, "HEART") == 0) {
 		socket_write(sd, "BEAT");
 	} else {
 		/* Serve static webserver page. This is the only request that's is
@@ -1162,6 +1160,8 @@ int main(int argc , char **argv) {
 	/* Catch all exit signals for gc */
 	gc_catch();
 
+	loglevel = LOG_INFO;	
+	
 	log_file_enable();
 	log_shell_disable();
 
@@ -1246,7 +1246,6 @@ int main(int argc , char **argv) {
 
 	if(access(settingsfile, F_OK) != -1) {
 		if(settings_read() != 0) {
-			valid_config = 0;
 			goto clear;
 		}
 	}
@@ -1356,9 +1355,9 @@ int main(int argc , char **argv) {
 	if(settings_find_string("config-file", &stmp) == 0) {
 		if(config_set_file(stmp) == 0) {
 			if(config_read() != 0) {
-				valid_config = 0;
 				goto clear;
 			} else {
+				valid_config = 1;
 				receivers++;
 			}
 

@@ -28,7 +28,7 @@ char *progname;
 int filelog;
 int shelllog;
 int loglevel;
-char debug_log[129];
+char debug_log[128];
 
 void logmarkup(void);
 
