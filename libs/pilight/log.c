@@ -35,7 +35,6 @@
 
 FILE *lf=NULL;
 
-int loglevel = LOG_INFO;
 char *logfile = NULL;
 char *logpath = NULL;
 

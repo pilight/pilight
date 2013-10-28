@@ -49,7 +49,7 @@ const char *debug_filename(const char *file) {
 
 void *debug_malloc(size_t len, const char *file, int line) {
 	void *(*libc_malloc)(size_t) = dlsym(RTLD_NEXT, "malloc");
-	if(shelllog == 1) {
+	if(shelllog == 1 && loglevel == LOG_DEBUG) {
 		logmarkup();
 		printf("%s", debug_log);
 		printf("DEBUG: malloc from %s #%d\n", debug_filename(file), line);
@@ -60,7 +60,7 @@ void *debug_malloc(size_t len, const char *file, int line) {
 void *debug_realloc(void *addr, size_t len, const char *file, int line) {
 	void *(*libc_realloc)(void *, size_t) = dlsym(RTLD_NEXT, "realloc");
 	if(addr == NULL) {
-		if(shelllog == 1) {
+	if(shelllog == 1 && loglevel == LOG_DEBUG) {
 			logmarkup();
 			printf("%s", debug_log);			
 			printf("DEBUG: realloc from %s #%d\n", debug_filename(file), line);
@@ -74,7 +74,7 @@ void *debug_realloc(void *addr, size_t len, const char *file, int line) {
 void debug_free(void **addr, const char *file, int line) {
 	void ** __p = addr;
 	if(*(__p) != NULL) {
-		if(shelllog == 1) {
+	if(shelllog == 1 && loglevel == LOG_DEBUG) {
 			logmarkup();
 			printf("%s", debug_log);			
 			printf("DEBUG: free from %s #%d\n", debug_filename(file), line);

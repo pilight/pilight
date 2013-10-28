@@ -32,7 +32,7 @@ void sartanoCreateMessage(int systemcode, int unitcode, int state) {
 	sartano->message = json_mkobject();
 	json_append_member(sartano->message, "systemcode", json_mknumber(systemcode));
 	json_append_member(sartano->message, "unitcode", json_mknumber(unitcode));
-	if(state == 1) {
+	if(state == 0) {
 		json_append_member(sartano->message, "state", json_mkstring("on"));
 	} else {
 		json_append_member(sartano->message, "state", json_mkstring("off"));
@@ -42,11 +42,9 @@ void sartanoCreateMessage(int systemcode, int unitcode, int state) {
 void sartanoParseBinary(int repeats) {
 	int systemcode = binToDec(sartano->binary, 0, 4);
 	int unitcode = binToDec(sartano->binary, 5, 9);
-	int state = sartano->binary[10];
-	int check = sartano->binary[11];
-	if(check != state) {
-		sartanoCreateMessage(systemcode, unitcode, state);
-	}
+	int check = sartano->binary[10];
+	int state = sartano->binary[11];
+	sartanoCreateMessage(systemcode, unitcode, state);
 }
 
 void sartanoCreateLow(int s, int e) {
@@ -166,7 +164,7 @@ void sartanoInit(void) {
 	sartano->id = malloc(8);
 	strcpy(sartano->id, "sartano");
 	protocol_device_add(sartano, "elro", "Elro Switches");
-	protocol_plslen_add(sartano, 287);
+	protocol_plslen_add(sartano, 291);
 	sartano->type = SWITCH;
 	sartano->pulse = 3;
 	sartano->rawlen = 50;

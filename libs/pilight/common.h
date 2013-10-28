@@ -19,11 +19,15 @@
 #ifndef _COMMON_H_
 #define _COMMON_H_
 
+#include <syslog.h>
+
 #include "../../pilight.h"
+#include "log.h"
 
 char *progname;
 int filelog;
 int shelllog;
+int loglevel;
 char debug_log[129];
 
 void logmarkup(void);
