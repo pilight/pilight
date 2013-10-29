@@ -520,7 +520,7 @@ LWS_EXTERN int handshake_0405(struct libwebsocket_context *context,
 #endif
 
 #ifndef LWS_NO_DAEMONIZE
-LWS_EXTERN int get_daemonize_pid();
+LWS_EXTERN int get_daemonize_pid(void);
 #endif
 
 extern int interface_to_sa(const char *ifname,

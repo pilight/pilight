@@ -590,7 +590,7 @@ LWS_VISIBLE int libwebsockets_serve_http_file(struct libwebsocket_context *conte
 	fstat(wsi->u.http.fd, &stat_buf);
 	wsi->u.http.filelen = stat_buf.st_size;
 	p += sprintf((char *)p,
-"HTTP/1.0 200 OK\x0d\x0aServer: pilight webserver\x0d\x0a""Content-Type: %s\x0d\x0a",
+"HTTP/1.0 200 OK\x0d\x0aServer: pilight\x0d\x0a""Content-Type: %s\x0d\x0a",
 								  content_type);
 	p += sprintf((char *)p,
 		"Content-Length: %u\x0d\x0a\x0d\x0a",

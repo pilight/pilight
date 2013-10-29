@@ -31,6 +31,7 @@
 #include "../../pilight.h"
 #include "common.h"
 #include "../websockets/libwebsockets.h"
+#include "../websockets/private-libwebsockets.h" 
 #include "config.h"
 #include "gc.h"
 #include "log.h"
@@ -154,22 +155,23 @@ int webserver_callback_http(struct libwebsocket_context *webcontext, struct libw
 
 				/* Check if a file was succesfully stored in memory */
 				if(fcache_get_size(request, &size) == 0) {
-					/* Combine the header and the file content itself and server it */
-					unsigned char *header = malloc(74+strlen(mimetype)+sizeof((unsigned int)size)+1);
-					sprintf((char *)header,
+					unsigned char *p = webcontext->service_buffer;
+
+					p += sprintf((char *)p,
 						"HTTP/1.0 200 OK\x0d\x0a"
 						"Server: pilight\x0d\x0a"
-						"Content-Type: %s\x0d\x0a"
-						"Content-Length: %u\x0d\x0a\x0d\x0a",
-						mimetype, (unsigned int)size);
-					unsigned char *content = malloc(strlen((char *)header)+(size_t)size+1);
-					memset(content, '\0', strlen((char *)header)+(size_t)size+1);
-					strcat((char *)content, (char *)header);
-					strcat((char *)content, (char *)fcache_get_bytes(request));
+						"Content-Type: %s\x0d\x0a",
+						mimetype);
 
-					libwebsocket_write(wsi, content, strlen((char *)content), LWS_WRITE_HTTP);
-					sfree((void *)&header);
-					sfree((void *)&content);
+					p += sprintf((char *)p,
+						"Content-Length: %u\x0d\x0a\x0d\x0a",
+						(unsigned int)size);
+
+					libwebsocket_write(wsi, webcontext->service_buffer, (size_t)(p-webcontext->service_buffer), LWS_WRITE_HTTP);
+					libwebsocket_write(wsi, fcache_get_bytes(request), (size_t)size, LWS_WRITE_HTTP);
+					libwebsocket_callback_on_writable(webcontext, wsi);
+
+					return 0;
 				}
 			} else {
 				/* Read a file from the FS and server it */
