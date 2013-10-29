@@ -53,7 +53,7 @@ int fcache_add(char *filename) {
 	logprintf(LOG_NOTICE, "caching %s", filename);
 
 	if((rc = stat(filename, &sb)) != 0) {
-		logprintf(LOG_ERR, "failed to stat %s", filename);
+		logprintf(LOG_NOTICE, "failed to stat %s", filename);
 		return -1;
 	} else {
 		struct fcache_t *node = malloc(sizeof(struct fcache_t));

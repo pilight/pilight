@@ -100,10 +100,8 @@ void sartanoCreateUnitCode(int unitcode) {
 }
 
 void sartanoCreateState(int state) {
-	if(state == 0) {
+	if(state == 1) {
 		sartanoCreateHigh(44, 47);
-	} else {
-		sartanoCreateHigh(40, 43);
 	}
 }
 
@@ -125,9 +123,9 @@ int sartanoCreateCode(JsonNode *code) {
 		unitcode = atoi(tmp);
 	}
 	if(json_find_string(code, "off", &tmp) == 0) {
-		state=0;
-	} else if(json_find_string(code, "on", &tmp) == 0) {
 		state=1;
+	} else if(json_find_string(code, "on", &tmp) == 0) {
+		state=0;
 	}
 
 	if(systemcode == -1 || unitcode == -1 || state == -1) {

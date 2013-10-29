@@ -164,7 +164,11 @@ void broadcast_queue(char *protoname, JsonNode *json) {
 	pthread_mutex_lock(&bcqueue_lock);
 	struct bcqueue_t *bnode = malloc(sizeof(struct bcqueue_t));
 	bnode->id = 1000000 * (unsigned int)tcurrent.tv_sec + (unsigned int)tcurrent.tv_usec;
-	bnode->jmessage = json;
+
+	char *jstr = json_stringify(json, NULL);
+	bnode->jmessage = json_decode(jstr);
+	sfree((void *)&jstr);
+
 	bnode->protoname = malloc(strlen(protoname)+1);
 	strcpy(bnode->protoname, protoname);
 	

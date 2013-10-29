@@ -148,7 +148,7 @@ int webserver_callback_http(struct libwebsocket_context *webcontext, struct libw
 				/* If webserver caching is enabled, first load all files in the memory */
 				if(fcache_get_size(request, &size) != 0) {
 					if((fcache_add(request)) != 0) {
-						logprintf(LOG_ERR, "(webserver) could not cache %s", request);
+						logprintf(LOG_NOTICE, "(webserver) could not cache %s", request);
 					}
 				}
 
