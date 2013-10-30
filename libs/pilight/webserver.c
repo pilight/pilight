@@ -157,6 +157,10 @@ int webserver_callback_http(struct libwebsocket_context *webcontext, struct libw
 				if(fcache_get_size(request, &size) == 0) {
 					unsigned char *p = webcontext->service_buffer;
 
+					wsi->u.http.fd = -1;
+					wsi->u.http.stream = fcache_get_bytes(request);
+					wsi->u.http.filelen = (size_t)size;	
+					
 					p += sprintf((char *)p,
 						"HTTP/1.0 200 OK\x0d\x0a"
 						"Server: pilight\x0d\x0a"
@@ -168,7 +172,10 @@ int webserver_callback_http(struct libwebsocket_context *webcontext, struct libw
 						(unsigned int)size);
 
 					libwebsocket_write(wsi, webcontext->service_buffer, (size_t)(p-webcontext->service_buffer), LWS_WRITE_HTTP);
-					libwebsocket_write(wsi, fcache_get_bytes(request), (size_t)size, LWS_WRITE_HTTP);
+				
+					wsi->u.http.filepos = 0;
+					wsi->state = WSI_STATE_HTTP_ISSUING_FILE;
+					libwebsockets_serve_http_file_fragment(webcontext, wsi);
 					libwebsocket_callback_on_writable(webcontext, wsi);
 
 					return 0;

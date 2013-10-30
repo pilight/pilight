@@ -504,21 +504,33 @@ send_raw:
 LWS_VISIBLE int libwebsockets_serve_http_file_fragment(
 		struct libwebsocket_context *context, struct libwebsocket *wsi)
 {
-	int n, m;
+	unsigned int n = sizeof(context->service_buffer), m;
 
 	while (!lws_send_pipe_choked(wsi)) {
-		n = read(wsi->u.http.fd, context->service_buffer,
-					       sizeof(context->service_buffer));
+		if(wsi->u.http.fd > -1) {
+			n = read(wsi->u.http.fd, context->service_buffer, sizeof(context->service_buffer));
+		} else {
+			if(wsi->u.http.filelen-wsi->u.http.filepos < n) {
+				n = wsi->u.http.filelen-wsi->u.http.filepos;
+			} else {
+				n = sizeof(context->service_buffer);
+			}		
+			memcpy(context->service_buffer, &wsi->u.http.stream[wsi->u.http.filepos], n);
+		}
 		if (n > 0) {
-			m = libwebsocket_write(wsi, context->service_buffer, n,
-								LWS_WRITE_HTTP);
+			m = libwebsocket_write(wsi, context->service_buffer, n, LWS_WRITE_HTTP);
 			if (m < 0)
 				return -1;
 
 			wsi->u.http.filepos += m;
-			if (m != n)
+			if (m != n) {
 				/* adjust for what was not sent */
-				lseek(wsi->u.http.fd, m - n, SEEK_CUR);
+				if(wsi->u.http.fd > -1) {
+					lseek(wsi->u.http.fd, m - n, SEEK_CUR);
+				} else {
+					wsi->u.http.filepos += m - n;
+				}
+			}
 		}
 
 		if (n < 0)

@@ -312,6 +312,7 @@ struct _lws_http_mode_related {
 	int fd;
 	unsigned long filepos;
 	unsigned long filelen;
+	unsigned char *stream;
 };
 
 struct lws_fragments {
