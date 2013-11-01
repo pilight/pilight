@@ -139,7 +139,7 @@ SHA1(const unsigned char *d, size_t n, unsigned char *md);
 #endif
 
 #define MAX_WEBSOCKET_04_KEY_LEN 128
-#define LWS_MAX_SOCKET_IO_BUF 10240
+#define LWS_MAX_SOCKET_IO_BUF 4096
 
 #ifndef SYSTEM_RANDOM_FILEPATH
 #define SYSTEM_RANDOM_FILEPATH "/dev/urandom"
@@ -313,6 +313,7 @@ struct _lws_http_mode_related {
 	unsigned long filepos;
 	unsigned long filelen;
 	unsigned char *stream;
+	unsigned short choke;
 };
 
 struct lws_fragments {

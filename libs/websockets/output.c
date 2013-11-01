@@ -533,10 +533,9 @@ LWS_VISIBLE int libwebsockets_serve_http_file_fragment(
 			}
 		}
 
-		if (n < 0)
+		if (n <= 0)
 			return -1; /* caller will close */
-
-		if (wsi->u.http.filepos == wsi->u.http.filelen) {
+		if (wsi->u.http.filepos == wsi->u.http.filelen && wsi->u.http.choke == 1) {
 			wsi->state = WSI_STATE_HTTP;
 
 			if (wsi->protocol->callback)
@@ -548,8 +547,9 @@ LWS_VISIBLE int libwebsockets_serve_http_file_fragment(
 			return 1;  /* >0 indicates completed */
 		}
 	}
-
-	lwsl_notice("choked before able to send whole file (post)\n");
+	if(wsi->u.http.choke == 1) {
+		lwsl_notice("choked before able to send whole file (post)\n");
+	}
 	libwebsocket_callback_on_writable(context, wsi);
 
 	return 0; /* indicates further processing must be done */
