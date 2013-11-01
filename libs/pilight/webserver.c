@@ -51,9 +51,7 @@ char *sockReadBuff = NULL;
 char *syncBuff = NULL;
 unsigned char *sockWriteBuff = NULL;
 
-// char *request = NULL;
 char *ext = NULL;
-// char *mimetype = NULL;
 char *server;
 
 typedef enum {
@@ -82,8 +80,6 @@ int webserver_gc(void) {
 	sfree((void *)&sockWriteBuff);
 	sfree((void *)&sockReadBuff);
 	sfree((void *)&ext);
-	// sfree((void *)&request);
-	// sfree((void *)&mimetype);
 	fcache_gc();
 	logprintf(LOG_DEBUG, "garbage collected webserver library");
 	return 1;
@@ -187,7 +183,8 @@ int webserver_callback_http(struct libwebsocket_context *webcontext, struct libw
 						wsi->state = WSI_STATE_HTTP_ISSUING_FILE;
 
 						libwebsockets_serve_http_file_fragment(webcontext, wsi);
-						libwebsocket_callback_on_writable(webcontext, wsi);
+						sfree((void *)&pss->mimetype);
+						sfree((void *)&pss->request);
 						return 0;
 					} else {
 						libwebsocket_callback_on_writable(webcontext, wsi);
@@ -214,7 +211,9 @@ int webserver_callback_http(struct libwebsocket_context *webcontext, struct libw
 					wsi->state = WSI_STATE_HTTP_ISSUING_FILE;
 				
 					libwebsockets_serve_http_file_fragment(webcontext, wsi);
-					libwebsocket_callback_on_writable(webcontext, wsi);
+					sfree((void *)&pss->mimetype);
+					sfree((void *)&pss->request);
+					close(pss->fd);
 					return 0;
 				} else {
 					libwebsocket_callback_on_writable(webcontext, wsi);
@@ -230,12 +229,12 @@ int webserver_callback_http(struct libwebsocket_context *webcontext, struct libw
 				do {
 					n = read(pss->fd, webcontext->service_buffer, sizeof(webcontext->service_buffer));
 					if(n <= 0) {
-						close(pss->fd);
+						//close(pss->fd);
 						return -1;
 					}
 					m = libwebsocket_write(wsi, webcontext->service_buffer, (size_t)n, LWS_WRITE_HTTP);
 					if(m < 0) {
-						close(pss->fd);
+						//close(pss->fd);
 						return -1;
 					}
 					if(m != n) {
@@ -255,6 +254,8 @@ int webserver_callback_http(struct libwebsocket_context *webcontext, struct libw
 					libwebsockets_serve_http_file_fragment(webcontext, wsi);
 				}
 			}
+			sfree((void *)&pss->mimetype);
+			sfree((void *)&pss->request);
 		break;			
 		case LWS_CALLBACK_ESTABLISHED:
 		case LWS_CALLBACK_CLIENT_CONNECTION_ERROR:
@@ -300,18 +301,18 @@ int webserver_callback_http(struct libwebsocket_context *webcontext, struct libw
 		case LWS_CALLBACK_CLIENT_WRITEABLE:
 		case LWS_CALLBACK_SERVER_WRITEABLE: {
 			/* Push the incoming message to the webgui */
-			size_t n = strlen(syncBuff);
+			size_t l = strlen(syncBuff);
 
 			/* This PRE_PADDIGN and POST_PADDING is an requirement for LWS_WRITE_TEXT */
-			sockWriteBuff = realloc(sockWriteBuff, LWS_SEND_BUFFER_PRE_PADDING + n + LWS_SEND_BUFFER_POST_PADDING);
+			sockWriteBuff = realloc(sockWriteBuff, LWS_SEND_BUFFER_PRE_PADDING + l + LWS_SEND_BUFFER_POST_PADDING);
 			memset(sockWriteBuff, '\0', sizeof(sockWriteBuff));
-			memcpy(&sockWriteBuff[LWS_SEND_BUFFER_PRE_PADDING], syncBuff, n);
-			m = libwebsocket_write(wsi, &sockWriteBuff[LWS_SEND_BUFFER_PRE_PADDING], n, LWS_WRITE_TEXT);
+			memcpy(&sockWriteBuff[LWS_SEND_BUFFER_PRE_PADDING], syncBuff, l);
+			m = libwebsocket_write(wsi, &sockWriteBuff[LWS_SEND_BUFFER_PRE_PADDING], l, LWS_WRITE_TEXT);
 			/*
 			 * It seems like libwebsocket_write already does memory freeing
 			 */
-			if (m != n+4) {
-				logprintf(LOG_ERR, "(webserver) %d writing to socket", n);
+			if (m != l+4) {
+				logprintf(LOG_ERR, "(webserver) %d writing to socket", l);
 				return -1;
 			}
 		}

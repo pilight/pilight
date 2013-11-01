@@ -441,6 +441,7 @@ void *send_code(void *param) {
 			
 			if(message) {
 				broadcast_queue(sendqueue->protoname, message);
+				json_delete(message);
 			}
 			
 			struct sendqueue_t *tmp = sendqueue;
