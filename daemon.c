@@ -139,13 +139,9 @@ pthread_t pth;
 unsigned short main_loop = 1;
 /* Only update the config file on exit when it's valid */
 unsigned short valid_config = 0;
-/* How many received repeats did we encounter */
-int repeats = 0;
 /* Used hardware module */
 struct hardware_t *hardware = NULL;
 /* Reset repeats after a certian amount of time */
-unsigned long first = 0;
-unsigned long second = 0;
 struct timeval tv;
 
 #ifdef WEBSERVER
@@ -324,35 +320,35 @@ void receiver_parse_code(int *rawcode, int rawlen, int plslen) {
 					}
 					/* Check if the current code matches the previous one */
 					if(protocol->pCode[x] != protocol->code[x]) {
-						repeats=0;
-						first = 0;
-						second = 0;
+						protocol->repeats=0;
+						protocol->first = 0;
+						protocol->second = 0;
 					}
 				}
 
 				gettimeofday(&tv, NULL);
-				if(first > 0) {
-					first = second;
+				if(protocol->first > 0) {
+					protocol->first = protocol->second;
 				}
-				second = 1000000 * (unsigned int)tv.tv_sec + (unsigned int)tv.tv_usec;
-				if(first == 0) {
-					first = second;
+				protocol->second = 1000000 * (unsigned int)tv.tv_sec + (unsigned int)tv.tv_usec;
+				if(protocol->first == 0) {
+					protocol->first = protocol->second;
 				}
 
 				/* Reset # of repeats after a certain delay */
-				if(((int)second-(int)first) > 750000) {
-					repeats = 0;
+				if(((int)protocol->second-(int)protocol->first) > 750000) {
+					protocol->repeats = 0;
 				}
 
-				repeats++;
+				protocol->repeats++;
 				/* Continue if we have recognized enough repeated codes */
-				if(repeats >= (receive_repeat*protocol->rxrpt)) {
+				if(protocol->repeats >= (receive_repeat*protocol->rxrpt)) {
 					if(protocol->parseCode) {
-						logprintf(LOG_DEBUG, "caught minimum # of repeats %d of %s", repeats, protocol->id);
+						logprintf(LOG_DEBUG, "caught minimum # of repeats %d of %s", protocol->repeats, protocol->id);
 						logprintf(LOG_DEBUG, "called %s parseCode()", protocol->id);
 
-						protocol->parseCode(repeats);
-						receiver_create_message(protocol, repeats);
+						protocol->parseCode(protocol->repeats);
+						receiver_create_message(protocol, protocol->repeats);
 						//continue;
 					}
 
@@ -374,8 +370,8 @@ void receiver_parse_code(int *rawcode, int rawlen, int plslen) {
 						if((protocol->binlen > 0 && ((x/4) == protocol->binlen)) || (protocol->binlen == 0 && ((x/4) == protocol->rawlen/4))) {
 							logprintf(LOG_DEBUG, "called %s parseBinary()", protocol->id);
 
-							protocol->parseBinary(repeats);
-							receiver_create_message(protocol, repeats);
+							protocol->parseBinary(protocol->repeats);
+							receiver_create_message(protocol, protocol->repeats);
 							//continue;
 						}
 					}
