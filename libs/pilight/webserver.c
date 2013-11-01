@@ -31,7 +31,7 @@
 #include "../../pilight.h"
 #include "common.h"
 #include "../websockets/libwebsockets.h"
-#include "../websockets/private-libwebsockets.h" 
+#include "../websockets/private-libwebsockets.h"
 #include "config.h"
 #include "gc.h"
 #include "log.h"
@@ -83,6 +83,24 @@ int webserver_gc(void) {
 	fcache_gc();
 	logprintf(LOG_DEBUG, "garbage collected webserver library");
 	return 1;
+}
+
+void webserver_send_404(const char *in, unsigned char **p) {
+	*p += sprintf((char *)*p,
+		"HTTP/1.0 404 Not Found\x0d\x0a"
+		"Server: pilight\x0d\x0a"
+		"Content-Type: text/html\x0d\x0a");
+	*p += sprintf((char *)*p,
+		"Content-Length: %u\x0d\x0a\x0d\x0a",
+		(unsigned int)(202+strlen((const char *)in)));
+	*p += sprintf((char *)*p, "<!DOCTYPE HTML PUBLIC \"-//IETF//DTD HTML 2.0//EN\">\x0d\x0a"
+		"<html><head>\x0d\x0a"
+		"<title>404 Not Found</title>\x0d\x0a"
+		"</head><body>\x0d\x0a"
+		"<h1>Not Found</h1>\x0d\x0a"
+		"<p>The requested URL %s was not found on this server.</p>\x0d\x0a"
+		"</body></html>",
+		(const char *)in);
 }
 
 int webserver_callback_http(struct libwebsocket_context *webcontext, struct libwebsocket *wsi, enum libwebsocket_callback_reasons reason, void *user, void *in, size_t len) {
@@ -149,35 +167,39 @@ int webserver_callback_http(struct libwebsocket_context *webcontext, struct libw
 				memset(pss->mimetype, '\0', 16);
 				strcpy(pss->mimetype, "text/javascript");
 			}
-			
-			unsigned char *p = webcontext->service_buffer;
 
-			p += sprintf((char *)p,
-				"HTTP/1.0 200 OK\x0d\x0a"
-				"Server: pilight\x0d\x0a"
-				"Content-Type: %s\x0d\x0a",
-				pss->mimetype);
+			unsigned char *p = webcontext->service_buffer;			
 
 			if(webserver_cache) {
 				/* If webserver caching is enabled, first load all files in the memory */
 				if(fcache_get_size(pss->request, &size) != 0) {
 					if((fcache_add(pss->request)) != 0) {
 						logprintf(LOG_NOTICE, "(webserver) could not cache %s", pss->request);
+						webserver_send_404((const char *)in, &p);
+						libwebsocket_write(wsi, webcontext->service_buffer, (size_t)(p-webcontext->service_buffer), LWS_WRITE_HTTP);
+						return -1;
 					}
 				}
 
 				/* Check if a file was succesfully stored in memory */
 				if(fcache_get_size(pss->request, &size) == 0) {
+
+					p += sprintf((char *)p,
+						"HTTP/1.0 200 OK\x0d\x0a"
+						"Server: pilight\x0d\x0a"
+						"Content-Type: %s\x0d\x0a",
+						pss->mimetype);
+
 					p += sprintf((char *)p,
 						"Content-Length: %u\x0d\x0a\x0d\x0a",
-						(unsigned int)size);				
-				
+						(unsigned int)size);
+
 					libwebsocket_write(wsi, webcontext->service_buffer, (size_t)(p-webcontext->service_buffer), LWS_WRITE_HTTP);
 					pss->fd = -1;
 					if(size <= sizeof(webcontext->service_buffer)) {
 						wsi->u.http.fd = -1;
 						wsi->u.http.stream = fcache_get_bytes(pss->request);
-						wsi->u.http.filelen = (size_t)size;	
+						wsi->u.http.filelen = (size_t)size;
 						wsi->u.http.filepos = 0;
 						wsi->u.http.choke = 1;
 						wsi->state = WSI_STATE_HTTP_ISSUING_FILE;
@@ -193,9 +215,18 @@ int webserver_callback_http(struct libwebsocket_context *webcontext, struct libw
 				}
 			} else {
 				pss->fd = open(pss->request, O_RDONLY);
-				if(pss->fd < 0)
-                   return -1;
+				if(pss->fd < 0) {
+					webserver_send_404((const char *)in, &p);
+					libwebsocket_write(wsi, webcontext->service_buffer, (size_t)(p-webcontext->service_buffer), LWS_WRITE_HTTP);
+					return -1;
+				}
 				fstat(pss->fd, &stat_buf);
+
+				p += sprintf((char *)p,
+					"HTTP/1.0 200 OK\x0d\x0a"
+					"Server: pilight\x0d\x0a"
+					"Content-Type: %s\x0d\x0a",
+					pss->mimetype);
 
 				p += sprintf((char *)p,
 					"Content-Length: %u\x0d\x0a\x0d\x0a",
@@ -205,11 +236,11 @@ int webserver_callback_http(struct libwebsocket_context *webcontext, struct libw
 				if(stat_buf.st_size <= sizeof(webcontext->service_buffer)) {
 					wsi->u.http.fd = pss->fd;
 					wsi->u.http.stream = NULL;
-					wsi->u.http.filelen = (size_t)stat_buf.st_size;	
+					wsi->u.http.filelen = (size_t)stat_buf.st_size;
 					wsi->u.http.filepos = 0;
 					wsi->u.http.choke = 1;
 					wsi->state = WSI_STATE_HTTP_ISSUING_FILE;
-				
+
 					libwebsockets_serve_http_file_fragment(webcontext, wsi);
 					sfree((void *)&pss->mimetype);
 					sfree((void *)&pss->request);
@@ -246,17 +277,17 @@ int webserver_callback_http(struct libwebsocket_context *webcontext, struct libw
 				if(fcache_get_size(pss->request, &size) == 0) {
 					wsi->u.http.filepos = 0;
 					wsi->u.http.choke = 0;
-					wsi->state = WSI_STATE_HTTP_ISSUING_FILE;				
+					wsi->state = WSI_STATE_HTTP_ISSUING_FILE;
 					wsi->u.http.fd = -1;
 					wsi->u.http.stream = fcache_get_bytes(pss->request);
-					wsi->u.http.filelen = (size_t)size;	
-				
+					wsi->u.http.filelen = (size_t)size;
+
 					libwebsockets_serve_http_file_fragment(webcontext, wsi);
 				}
 			}
 			sfree((void *)&pss->mimetype);
 			sfree((void *)&pss->request);
-		break;			
+		break;
 		case LWS_CALLBACK_ESTABLISHED:
 		case LWS_CALLBACK_CLIENT_CONNECTION_ERROR:
 		case LWS_CALLBACK_CLIENT_FILTER_PRE_ESTABLISH:

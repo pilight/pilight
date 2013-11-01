@@ -34,6 +34,7 @@ New (Experimental) Features
 - Added threads library to which every function can register it's necessary threads.
 - Implemented cmake and optional build paramaters.
 - Added debug compilation mode that makes all memory actions verbose.
+- Added webserver 404 errors
 
 New config syntax:
 

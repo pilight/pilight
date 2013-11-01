@@ -93,8 +93,8 @@ void gpioInit(void) {
 	gpio->id = malloc(5);
 	strcpy(gpio->id, "gpio");
 
-	piHiPri(55);	
-	
+	piHiPri(55);
+
 	gpio->init=&gpioHwInit;
 	gpio->deinit=&gpioHwDeinit;
 	gpio->send=&gpioSend;

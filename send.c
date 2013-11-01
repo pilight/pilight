@@ -153,7 +153,7 @@ int main(int argc, char **argv) {
 			}
 		}
 	}
-	
+
 	/* Store all CLI arguments for later usage
 	   and also check if the CLI arguments where
 	   used correctly by the user. This will also
@@ -172,7 +172,7 @@ int main(int argc, char **argv) {
 			}
 		break;
 		}
-	}	
+	}
 
 	/* Display help or version information */
 	if(version == 1) {

@@ -171,7 +171,7 @@ void broadcast_queue(char *protoname, JsonNode *json) {
 
 	bnode->protoname = malloc(strlen(protoname)+1);
 	strcpy(bnode->protoname, protoname);
-	
+
 	if(bcqueue_number == 0) {
 		bcqueue = bnode;
 		bcqueue_head = bnode;
@@ -179,7 +179,7 @@ void broadcast_queue(char *protoname, JsonNode *json) {
 		bcqueue_head->next = bnode;
 		bcqueue_head = bnode;
 	}
-	
+
 	bcqueue_number++;
 	pthread_mutex_unlock(&bcqueue_lock);
 	pthread_cond_signal(&bcqueue_signal);
@@ -192,7 +192,7 @@ void *broadcast(void *param) {
 	while(main_loop) {
 		if(bcqueue_number > 0) {
 			pthread_mutex_lock(&bcqueue_lock);
-			
+
 			broadcasted = 0;
 			JsonNode *jret = NULL;
 			/* Update the config */
@@ -224,18 +224,18 @@ void *broadcast(void *param) {
 						socket_write(socket_clients[i], json);
 						broadcasted = 1;
 					}
-				}		
+				}
 				logprintf(LOG_DEBUG, "broadcasted: %s", json);
 				sfree((void *)&json);
 			}
-			
+
 			struct bcqueue_t *tmp = bcqueue;
 			sfree((void *)&bcqueue->protoname);
 			json_delete(bcqueue->jmessage);
 			bcqueue = bcqueue->next;
 			sfree((void *)&tmp);
 			bcqueue_number--;
-				
+
 			pthread_mutex_unlock(&bcqueue_lock);
 		} else {
 			pthread_cond_wait(&bcqueue_signal, &bcqueue_lock);
@@ -389,12 +389,12 @@ void receiver_parse_code(int *rawcode, int rawlen, int plslen) {
 void *send_code(void *param) {
 	int i = 0, x = 0;
 
-	pthread_mutex_lock(&sendqueue_lock);	
+	pthread_mutex_lock(&sendqueue_lock);
 
 	while(main_loop) {
 		if(sendqueue_number > 0) {
-			pthread_mutex_lock(&sendqueue_lock);	
-			sending = 1;			
+			pthread_mutex_lock(&sendqueue_lock);
+			sending = 1;
 			struct protocol_t *protocol = sendqueue->protopt;
 
 			JsonNode *message = NULL;
@@ -408,7 +408,7 @@ void *send_code(void *param) {
 					json_append_member(message, "repeat", json_mknumber(1));
 				}
 			}
-			
+
 			/* Create a single code with all repeats included */
 			int code_len = (protocol->rawlen*send_repeat*protocol->txrpt)+1;
 			size_t send_len = (size_t)(code_len * (int)sizeof(int));
@@ -438,12 +438,12 @@ void *send_code(void *param) {
 					receiver_parse_code(protocol->raw, protocol->rawlen, plslen);
 				}
 			}
-			
+
 			if(message) {
 				broadcast_queue(sendqueue->protoname, message);
 				json_delete(message);
 			}
-			
+
 			struct sendqueue_t *tmp = sendqueue;
 			if(tmp->message) {
 				sfree((void *)&tmp->message);
@@ -525,12 +525,12 @@ void send_queue(JsonNode *json) {
 						pthread_mutex_lock(&sendqueue_lock);
 						struct sendqueue_t *mnode = malloc(sizeof(struct sendqueue_t));
 						gettimeofday(&tcurrent, NULL);
-						mnode->id = 1000000 * (unsigned int)tcurrent.tv_sec + (unsigned int)tcurrent.tv_usec;	
+						mnode->id = 1000000 * (unsigned int)tcurrent.tv_sec + (unsigned int)tcurrent.tv_usec;
 						mnode->message = NULL;
 						if(protocol->message) {
 							char *jsonstr = json_stringify(protocol->message, NULL);
 							json_delete(protocol->message);
-							if(json_validate(jsonstr) == true) { 
+							if(json_validate(jsonstr) == true) {
 								mnode->message = malloc(strlen(jsonstr)+1);
 								strcpy(mnode->message, jsonstr);
 							}
@@ -871,9 +871,9 @@ void socket_parse_data(int i, char buffer[BUFFER_SIZE]) {
 			handshakes[i] = WEB;
 			client_webserver_parse_code(i, buffer);
 			socket_close(sd);
-		} else if(json_validate(buffer) == true) {			
+		} else if(json_validate(buffer) == true) {
 #else
-		if(json_validate(buffer) == true) {	
+		if(json_validate(buffer) == true) {
 #endif
 			json = json_decode(buffer);
 			/* The incognito mode is used by the daemon to emulate certain clients.
@@ -1099,8 +1099,8 @@ void daemonize(void) {
 /* Garbage collector of main program */
 int main_gc(void) {
 
-	main_loop = 0;	
-	
+	main_loop = 0;
+
 	if(hardware != NULL && hardware->deinit) {
 		hardware->deinit();
 	}
@@ -1134,17 +1134,17 @@ int main_gc(void) {
 	if(pth) {
 		pthread_cancel(pth);
 		pthread_join(pth, NULL);
-	}	
-	
+	}
+
 	threads_gc();
 	config_gc();
 	protocol_gc();
 	hardware_gc();
 	settings_gc();
 	options_gc();
-	socket_gc();	
-	
-	sfree((void *)&progname);	
+	socket_gc();
+
+	sfree((void *)&progname);
 	return 0;
 }
 
@@ -1165,8 +1165,8 @@ int main(int argc , char **argv) {
 	/* Catch all exit signals for gc */
 	gc_catch();
 
-	loglevel = LOG_INFO;	
-	
+	loglevel = LOG_INFO;
+
 	log_file_enable();
 	log_shell_disable();
 

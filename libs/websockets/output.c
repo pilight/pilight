@@ -514,7 +514,7 @@ LWS_VISIBLE int libwebsockets_serve_http_file_fragment(
 				n = wsi->u.http.filelen-wsi->u.http.filepos;
 			} else {
 				n = sizeof(context->service_buffer);
-			}		
+			}
 			memcpy(context->service_buffer, &wsi->u.http.stream[wsi->u.http.filepos], n);
 		}
 		if (n > 0) {
