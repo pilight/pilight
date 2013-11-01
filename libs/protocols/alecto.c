@@ -28,7 +28,7 @@
 #include "gc.h"
 #include "alecto.h"
 
-void alectoParseCode(int repeats) {
+void alectoParseCode(void) {
 	int i = 0, x = 0;
 	int temperature;
 	int id;

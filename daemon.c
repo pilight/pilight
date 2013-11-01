@@ -240,7 +240,7 @@ void *broadcast(void *param) {
 	return (void *)NULL;
 }
 
-void receiver_create_message(protocol_t *protocol, int rep) {
+void receiver_create_message(protocol_t *protocol) {
 	if(protocol->message) {
 		char *json = NULL;
 		char *valid = json_stringify(protocol->message, NULL);
@@ -254,8 +254,8 @@ void receiver_create_message(protocol_t *protocol, int rep) {
 			json_append_member(jmessage, "code", json_decode(valid));
 			json_append_member(jmessage, "origin", json_mkstring("receiver"));
 			json_append_member(jmessage, "protocol", json_mkstring(protocol->id));
-			if(rep > -1) {
-				json_append_member(jmessage, "repeats", json_mknumber(rep));
+			if(protocol->repeats > -1) {
+				json_append_member(jmessage, "repeats", json_mknumber(protocol->repeats));
 			}
 			json = json_stringify(jmessage, NULL);
 			broadcast_queue(protocol->id, json_decode(json));
@@ -266,8 +266,8 @@ void receiver_create_message(protocol_t *protocol, int rep) {
 				json_append_member(jmessage, "code", json_decode(valid));
 				json_append_member(jmessage, "origin", json_mkstring("receiver"));
 				json_append_member(jmessage, "protocol", json_mkstring(tmp_conflicts->id));
-				if(rep > -1) {
-					json_append_member(jmessage, "repeats", json_mknumber(rep));
+				if(protocol->repeats > -1) {
+					json_append_member(jmessage, "repeats", json_mknumber(protocol->repeats));
 				}
 				json = json_stringify(jmessage, NULL);
 				broadcast_queue(tmp_conflicts->id, json_decode(json));
@@ -305,7 +305,8 @@ void receiver_parse_code(int *rawcode, int rawlen, int plslen) {
 					logprintf(LOG_DEBUG, "recevied pulse length of %d", plslen);
 					logprintf(LOG_DEBUG, "called %s parseRaw()", protocol->id);
 					protocol->parseRaw();
-					receiver_create_message(protocol, -1);
+					protocol->repeats = -1;
+					receiver_create_message(protocol);
 					//continue;
 				}
 
@@ -347,8 +348,8 @@ void receiver_parse_code(int *rawcode, int rawlen, int plslen) {
 						logprintf(LOG_DEBUG, "caught minimum # of repeats %d of %s", protocol->repeats, protocol->id);
 						logprintf(LOG_DEBUG, "called %s parseCode()", protocol->id);
 
-						protocol->parseCode(protocol->repeats);
-						receiver_create_message(protocol, protocol->repeats);
+						protocol->parseCode();
+						receiver_create_message(protocol);
 						//continue;
 					}
 
@@ -370,8 +371,8 @@ void receiver_parse_code(int *rawcode, int rawlen, int plslen) {
 						if((protocol->binlen > 0 && ((x/4) == protocol->binlen)) || (protocol->binlen == 0 && ((x/4) == protocol->rawlen/4))) {
 							logprintf(LOG_DEBUG, "called %s parseBinary()", protocol->id);
 
-							protocol->parseBinary(protocol->repeats);
-							receiver_create_message(protocol, protocol->repeats);
+							protocol->parseBinary();
+							receiver_create_message(protocol);
 							//continue;
 						}
 					}

@@ -39,7 +39,7 @@ void impulsCreateMessage(int systemcode, int programcode, int state) {
 	}
 }
 
-void impulsParseCode(int repeats) {
+void impulsParseCode(void) {
 	int x = 0;
 	int systemcode = binToDec(impuls->binary, 0, 4);
 	int programcode = binToDec(impuls->binary, 5, 9);

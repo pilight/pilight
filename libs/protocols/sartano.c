@@ -39,7 +39,7 @@ void sartanoCreateMessage(int systemcode, int unitcode, int state) {
 	}
 }
 
-void sartanoParseBinary(int repeats) {
+void sartanoParseBinary(void) {
 	int systemcode = binToDec(sartano->binary, 0, 4);
 	int unitcode = binToDec(sartano->binary, 5, 9);
 	int state = sartano->binary[11];

@@ -69,6 +69,10 @@ typedef struct protocol_t {
 	struct options_t *options;
 	JsonNode *message;
 
+	int repeats;
+	unsigned long first;
+	unsigned long second;	
+	
 	int bit;
 	int recording;
 	int raw[255];
@@ -81,8 +85,8 @@ typedef struct protocol_t {
 	struct protocol_settings_t *settings;
 
 	void (*parseRaw)(void);
-	void (*parseCode)(int repeats);
-	void (*parseBinary)(int repeats);
+	void (*parseCode)(void);
+	void (*parseBinary)(void);
 	int (*createCode)(JsonNode *code);
 	int (*checkValues)(JsonNode *code);
 	void (*printHelp)(void);

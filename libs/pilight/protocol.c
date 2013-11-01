@@ -130,6 +130,10 @@ void protocol_register(protocol_t **proto) {
 	(*proto)->checkValues = NULL;
 	(*proto)->printHelp = NULL;
 	(*proto)->message = NULL;
+	
+	(*proto)->repeats = 0;
+	(*proto)->first = 0;
+	(*proto)->second = 0;
 
 	memset(&(*proto)->raw[0], 0, sizeof((*proto)->raw));
 	memset(&(*proto)->code[0], 0, sizeof((*proto)->code));

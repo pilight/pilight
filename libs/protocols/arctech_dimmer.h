@@ -23,7 +23,7 @@ struct protocol_t *arctech_dimmer;
 
 void arctechDimInit(void);
 void arctechDimCreateMessage(int id, int unit, int state, int all, int dimlevel);
-void arctechDimParseBinary(int repeats);
+void arctechDimParseBinary(void);
 int arctechDimCheckSettings(JsonNode *code);
 int arctechDimCreateCode(JsonNode *code);
 void arctechDimCreateLow(int s, int e);

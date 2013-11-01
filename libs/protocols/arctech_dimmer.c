@@ -47,7 +47,7 @@ void arctechDimCreateMessage(int id, int unit, int state, int all, int dimlevel)
 	}
 }
 
-void arctechDimParseBinary(int repeats) {
+void arctechDimParseBinary(void) {
 	int dimlevel = binToDecRev(arctech_dimmer->binary, 32, 35);
 	int unit = binToDecRev(arctech_dimmer->binary, 28, 31);
 	int state = arctech_dimmer->binary[27];

@@ -44,7 +44,7 @@ void arctechSwCreateMessage(int id, int unit, int state, int all) {
 	}
 }
 
-void arctechSwParseBinary(int repeats) {
+void arctechSwParseBinary(void) {
 	int unit = binToDecRev(arctech_switch->binary, 28, 31);
 	int state = arctech_switch->binary[27];
 	int all = arctech_switch->binary[26];

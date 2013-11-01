@@ -23,7 +23,7 @@ struct protocol_t *home_easy_old;
 
 void homeEasyOldInit(void);
 void homeEasyOldCreateMessage(int systemcode, int unitcode, int state, int all);
-void homeEasyOldParseBinary(int repeats);
+void homeEasyOldParseBinary(void);
 int homeEasyOldCreateCode(JsonNode *code);
 void homeEasyOldCreateLow(int s, int e);
 void homeEasyOldCreateHigh(int s, int e);

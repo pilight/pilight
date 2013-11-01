@@ -23,7 +23,7 @@ struct protocol_t *arctech_old;
 
 void arctechOldInit(void);
 void arctechOldCreateMessage(int id, int unit, int state);
-void arctechOldParseBinary(int repeats);
+void arctechOldParseBinary(void);
 int arctechOldCreateCode(JsonNode *code);
 void arctechOldCreateUnit(int unit);
 void arctechOldCreateId(int id);

@@ -38,7 +38,7 @@ void arctechOldCreateMessage(int id, int unit, int state) {
 		json_append_member(arctech_old->message, "state", json_mkstring("off"));
 }
 
-void arctechOldParseBinary(int repeats) {
+void arctechOldParseBinary(void) {
 	int unit = binToDec(arctech_old->binary, 0, 3);
 	int state = arctech_old->binary[11];
 	int id = binToDec(arctech_old->binary, 4, 8);

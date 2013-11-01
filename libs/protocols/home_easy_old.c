@@ -43,7 +43,7 @@ void homeEasyOldCreateMessage(int systemcode, int unitcode, int state, int all) 
 	}
 }
 
-void homeEasyOldParseBinary(int repeats) {
+void homeEasyOldParseBinary(void) {
 	int systemcode = 15-binToDecRev(home_easy_old->binary, 1, 4);
 	int unitcode = 15-binToDecRev(home_easy_old->binary, 5, 8);
 	int all = home_easy_old->binary[9];
