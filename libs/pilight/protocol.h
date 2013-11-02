@@ -27,7 +27,8 @@ typedef enum {
 	SWITCH,
 	DIMMER,
 	WEATHER,
-	RELAY
+	RELAY,
+	SCREEN
 } devtype_t;
 
 typedef struct protocol_devices_t {

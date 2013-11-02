@@ -64,6 +64,15 @@ div.ui-slider {
 	width: 100%;
 }
 
+.screen {
+	position: relative;
+	float: right;
+	width: 135px;
+	height: 0px;
+	top: -21px;
+	right: -100px;
+}
+
 .dimmer-slider {
 	display: none;
 }

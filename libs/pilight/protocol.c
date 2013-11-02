@@ -30,6 +30,9 @@
 #if defined(PROTOCOL_COCO_SWITCH) || defined(PROTOCOL_DIO_SWITCH) || defined(PROTOCOL_NEXA_SWITCH) || defined(PROTOCOL_KAKU_SWITCH) || defined(PROTOCOL_INTERTECHNO_SWITCH)
 	#include "../protocols/arctech_switch.h"
 #endif
+#ifdef PROTOCOL_KAKU_SCREEN
+	#include "../protocols/arctech_screen.h"
+#endif
 #ifdef PROTOCOL_KAKU_DIMMER
 	#include "../protocols/arctech_dimmer.h"
 #endif
@@ -70,6 +73,9 @@
 void protocol_init(void) {
 #if defined(PROTOCOL_COCO_SWITCH) || defined(PROTOCOL_DIO_SWITCH) || defined(PROTOCOL_NEXA_SWITCH) || defined(PROTOCOL_KAKU_SWITCH) || defined(PROTOCOL_INTERTECHNO_SWITCH)
 	arctechSwInit();
+#endif
+#ifdef PROTOCOL_KAKU_SCREEN
+	arctechScrInit();
 #endif
 #ifdef PROTOCOL_KAKU_DIMMER
 	arctechDimInit();
@@ -259,6 +265,7 @@ int protocol_setting_check_string(protocol_t *proto, const char *name, const cha
 			}
 		break;
 		case SWITCH:
+		case SCREEN:
 			if(strcmp(name, "states") != 0) {
 				return 1;
 			}
@@ -335,6 +342,7 @@ int protocol_setting_check_number(protocol_t *proto, const char *name, int value
 			}
 		break;
 		case SWITCH:
+		case SCREEN:
 			if(strcmp(name, "readonly") != 0) {
 				return 1;
 			}

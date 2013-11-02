@@ -22,6 +22,64 @@ function createSwitchElement(sTabId, sDevId, aValues) {
 	}
 }
 
+function blinking(elm) {
+    timer = setInterval(blink, 10);
+    function blink() {
+        elm.fadeOut(400, function() {
+           elm.fadeIn(400);
+        });
+    }
+}
+
+function createScreenElement(sTabId, sDevId, aValues) {
+	oTab = $('#'+sTabId).find('ul');
+	oTab.append($('<li data-icon="false">'+aValues['name']+'<div id="'+sTabId+'_'+sDevId+'_screen" class="screen" data-role="fieldcontain" data-type="horizontal"><fieldset data-role="controlgroup" class="controlgroup" data-type="horizontal" data-mini="true"><input type="radio" name="'+sTabId+'_'+sDevId+'_screen" id="'+sTabId+'_'+sDevId+'_screen_down" value="down" /><label for="'+sTabId+'_'+sDevId+'_screen_down">Down</label><input type="radio" name="'+sTabId+'_'+sDevId+'_screen" id="'+sTabId+'_'+sDevId+'_screen_up" value="up" /><label for="'+sTabId+'_'+sDevId+'_screen_up">Up</label></fieldset></div></li>'));
+	$("div").trigger("create");
+	$('#'+sTabId+'_'+sDevId+'_screen_down').checkboxradio();
+	$('#'+sTabId+'_'+sDevId+'_screen_up').checkboxradio();
+	$('#'+sTabId+'_'+sDevId+'_screen_down').bind("change", function(event, ui) {
+		event.stopPropagation();	
+		i = 0;
+		oLabel = this.parentNode.getElementsByTagName('label')[0];
+		$(oLabel).removeClass('ui-btn-active');
+		x = window.setInterval(function() {
+			i++;
+			if(i%2 == 1)
+				$(oLabel).removeClass('ui-btn-active');
+			else
+				$(oLabel).addClass('ui-btn-active');
+			if(i==4)
+				window.clearInterval(x);
+		}, 150);	
+		websocket.send('{"message":"send","code":{"location":"'+sTabId+'","device":"'+sDevId+'","state":"'+this.value+'"}}');
+	});
+	$('#'+sTabId+'_'+sDevId+'_screen_up').bind("change", function(event, ui) {
+		event.stopPropagation();
+		i = 0;
+		oLabel = this.parentNode.getElementsByTagName('label')[0];
+		$(oLabel).removeClass('ui-btn-active');
+		x = window.setInterval(function() {
+			i++;
+			if(i%2 == 1)
+				$(oLabel).removeClass('ui-btn-active');
+			else
+				$(oLabel).addClass('ui-btn-active');
+			if(i==4)
+				window.clearInterval(x);
+		}, 150);		
+		websocket.send('{"message":"send","code":{"location":"'+sTabId+'","device":"'+sDevId+'","state":"'+this.value+'"}}');
+	});
+	if(aValues['state'] == "up") {
+		$('#'+sTabId+'_'+sDevId+'_screen_up').attr("checked","checked")
+		$('#'+sTabId+'_'+sDevId+'_screen_up').checkboxradio("refresh");
+	} else {
+		$('#'+sTabId+'_'+sDevId+'_screen_down').attr("checked","checked")
+		$('#'+sTabId+'_'+sDevId+'_screen_down').checkboxradio("refresh");
+	}
+	oTab.listview();
+	oTab.listview("refresh");
+}
+
 function createDimmerElement(sTabId, sDevId, aValues) {
 	iOldDimLevel = aValues['dimlevel'];
 	oTab = $('#'+sTabId).find('ul');
@@ -115,6 +173,8 @@ function createGUI(data) {
 							createDimmerElement(lindex, dindex, aValues);
 						} else if(aValues['type'] == 3) {
 							createWeatherElement(lindex, dindex, aValues);
+						} else if(aValues['type'] == 5) {
+							createScreenElement(lindex, dindex, aValues);
 						}
 					}
 				});

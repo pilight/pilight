@@ -35,6 +35,7 @@ New (Experimental) Features
 - Implemented cmake and optional build paramaters.
 - Added debug compilation mode that makes all memory actions verbose.
 - Added webserver 404 errors
+- Added KlikAanKlikUit screens support and webgui buttons
 
 New config syntax:
 
