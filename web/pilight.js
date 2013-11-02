@@ -22,15 +22,6 @@ function createSwitchElement(sTabId, sDevId, aValues) {
 	}
 }
 
-function blinking(elm) {
-    timer = setInterval(blink, 10);
-    function blink() {
-        elm.fadeOut(400, function() {
-           elm.fadeIn(400);
-        });
-    }
-}
-
 function createScreenElement(sTabId, sDevId, aValues) {
 	oTab = $('#'+sTabId).find('ul');
 	oTab.append($('<li data-icon="false">'+aValues['name']+'<div id="'+sTabId+'_'+sDevId+'_screen" class="screen" data-role="fieldcontain" data-type="horizontal"><fieldset data-role="controlgroup" class="controlgroup" data-type="horizontal" data-mini="true"><input type="radio" name="'+sTabId+'_'+sDevId+'_screen" id="'+sTabId+'_'+sDevId+'_screen_down" value="down" /><label for="'+sTabId+'_'+sDevId+'_screen_down">Down</label><input type="radio" name="'+sTabId+'_'+sDevId+'_screen" id="'+sTabId+'_'+sDevId+'_screen_up" value="up" /><label for="'+sTabId+'_'+sDevId+'_screen_up">Up</label></fieldset></div></li>'));
@@ -78,6 +69,10 @@ function createScreenElement(sTabId, sDevId, aValues) {
 	}
 	oTab.listview();
 	oTab.listview("refresh");
+	if(aValues['settings']['readonly']) {
+		$('#'+sTabId+'_'+sDevId+'_screen_up').checkboxradio('disable');
+		$('#'+sTabId+'_'+sDevId+'_screen_down').checkboxradio('disable');
+	}
 }
 
 function createDimmerElement(sTabId, sDevId, aValues) {
