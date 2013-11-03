@@ -246,9 +246,6 @@ void receiver_create_message(protocol_t *protocol) {
 		char *valid = json_stringify(protocol->message, NULL);
 		json_delete(protocol->message);
 		if(valid && json_validate(valid) == true) {
-			struct protocol_conflicts_t *tmp_conflicts = NULL;
-
-			tmp_conflicts = protocol->conflicts;
 			JsonNode *jmessage = json_mkobject();
 
 			json_append_member(jmessage, "code", json_decode(valid));
@@ -261,20 +258,6 @@ void receiver_create_message(protocol_t *protocol) {
 			broadcast_queue(protocol->id, json_decode(json));
 			sfree((void *)&json);
 			json_delete(jmessage);
-			while(tmp_conflicts) {
-				jmessage = json_mkobject();
-				json_append_member(jmessage, "code", json_decode(valid));
-				json_append_member(jmessage, "origin", json_mkstring("receiver"));
-				json_append_member(jmessage, "protocol", json_mkstring(tmp_conflicts->id));
-				if(protocol->repeats > -1) {
-					json_append_member(jmessage, "repeats", json_mknumber(protocol->repeats));
-				}
-				json = json_stringify(jmessage, NULL);
-				broadcast_queue(tmp_conflicts->id, json_decode(json));
-				sfree((void *)&json);
-				tmp_conflicts = tmp_conflicts->next;
-				json_delete(jmessage);
-			}
 		}
 		protocol->message = NULL;
 		sfree((void *)&valid);
@@ -307,7 +290,25 @@ void receiver_parse_code(int *rawcode, int rawlen, int plslen) {
 					protocol->parseRaw();
 					protocol->repeats = -1;
 					receiver_create_message(protocol);
-					//continue;
+					struct protocol_conflicts_t *tmp_conflicts = protocol->conflicts;
+					while(tmp_conflicts) {
+						pnode = protocols;
+						while(pnode) {
+							struct protocol_t *proto = pnode->listener;
+							if(strcmp(proto->id, tmp_conflicts->id) == 0) {
+								for(x=0;x<(int)(double)rawlen;x++) {
+									proto->raw[x] = protocol->raw[x];
+								}
+								proto->repeats = protocol->repeats;
+								proto->parseRaw();
+								receiver_create_message(proto);
+								break;
+							}
+							pnode = pnode->next;
+						}
+						tmp_conflicts = tmp_conflicts->next;
+					}
+					break;
 				}
 
 				/* Convert the raw codes to one's and zero's */
@@ -315,13 +316,13 @@ void receiver_parse_code(int *rawcode, int rawlen, int plslen) {
 					protocol->pCode[x] = protocol->code[x];
 					memcpy(&protocol->raw[x], &rawcode[x], sizeof(int));
 					if(protocol->raw[x] >= ((protocol->pulse*plslengths->length)-plslengths->length)) {
-						protocol->code[x]=1;
+						protocol->code[x] = 1;
 					} else {
-						protocol->code[x]=0;
+						protocol->code[x] = 0;
 					}
 					/* Check if the current code matches the previous one */
 					if(protocol->pCode[x] != protocol->code[x]) {
-						protocol->repeats=0;
+						protocol->repeats = 0;
 						protocol->first = 0;
 						protocol->second = 0;
 					}
@@ -350,16 +351,35 @@ void receiver_parse_code(int *rawcode, int rawlen, int plslen) {
 
 						protocol->parseCode();
 						receiver_create_message(protocol);
-						//continue;
+						
+						struct protocol_conflicts_t *tmp_conflicts = protocol->conflicts;
+						while(tmp_conflicts) {
+							pnode = protocols;
+							while(pnode) {
+								struct protocol_t *proto = pnode->listener;
+								if(strcmp(proto->id, tmp_conflicts->id) == 0) {
+									for(x=0;x<(int)(double)rawlen;x++) {
+										proto->code[x] = protocol->code[x];
+									}
+									proto->repeats = protocol->repeats;
+									proto->parseCode();
+									receiver_create_message(proto);
+									break;
+								}
+								pnode = pnode->next;
+							}
+							tmp_conflicts = tmp_conflicts->next;
+						}
+						break;
 					}
 
 					if(protocol->parseBinary) {
 						/* Convert the one's and zero's into binary */
 						for(x=0; x<(int)(double)rawlen; x+=4) {
 							if(protocol->code[x+protocol->lsb] == 1) {
-								protocol->binary[x/4]=1;
+								protocol->binary[x/4] = 1;
 							} else {
-								protocol->binary[x/4]=0;
+								protocol->binary[x/4] = 0;
 							}
 						}
 
@@ -373,7 +393,33 @@ void receiver_parse_code(int *rawcode, int rawlen, int plslen) {
 
 							protocol->parseBinary();
 							receiver_create_message(protocol);
-							//continue;
+
+							struct protocol_conflicts_t *tmp_conflicts = protocol->conflicts;
+							while(tmp_conflicts) {
+								pnode = protocols;
+								while(pnode) {
+									struct protocol_t *proto = pnode->listener;
+									int z = 0;
+									if(strcmp(proto->id, tmp_conflicts->id) == 0) {
+										int binlen = 0;
+										if(protocol->binlen) {
+											binlen = protocol->binlen;
+										} else {
+											binlen = x/4;
+										}
+										for(z=0; z<=binlen; z++) {
+											proto->binary[z] = protocol->binary[z];
+										}
+										proto->repeats = protocol->repeats;
+										proto->parseBinary();
+										receiver_create_message(proto);
+										break;
+									}
+									pnode = pnode->next;
+								}
+								tmp_conflicts = tmp_conflicts->next;
+							}
+							break;
 						}
 					}
 				}
@@ -954,7 +1000,7 @@ void *receive_code(void *param) {
 
 	while(main_loop && hardware->receive) {
 		/* Only initialize the hardware receive the data when there are receivers connected */
-		if(receivers > 0 && sending == 0) {
+		if(sending == 0) {
 			duration = hardware->receive();
 
 			rawcode[rawlen] = duration;
@@ -1145,7 +1191,7 @@ int main_gc(void) {
 	return 0;
 }
 
-int main(int argc , char **argv) {
+int main(int argc, char **argv) {
 
 	progname = malloc(16);
 	strcpy(progname, "pilight-daemon");

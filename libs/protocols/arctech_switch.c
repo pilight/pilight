@@ -184,13 +184,11 @@ void arctechSwInit(void) {
 	protocol_register(&arctech_switch);
 	arctech_switch->id = malloc(18);
 	strcpy(arctech_switch->id, "archtech_switches");
-	strcpy(arctech_switch->id, "archtech_screen");
 	protocol_device_add(arctech_switch, "kaku_switch", "KlikAanKlikUit Switches");
 	protocol_device_add(arctech_switch, "dio_switch", "D-IO (Chacon) Switches");
 	protocol_device_add(arctech_switch, "nexa_switch", "Nexa Switches");
 	protocol_device_add(arctech_switch, "coco_switch", "CoCo Technologies Switches");
 	protocol_device_add(arctech_switch, "intertechno_switch", "Intertechno Switches");
-	protocol_conflict_add(arctech_switch, "archtech_dimmers");
 	protocol_conflict_add(arctech_switch, "archtech_screens");
 	protocol_plslen_add(arctech_switch, 303);
 	protocol_plslen_add(arctech_switch, 251);

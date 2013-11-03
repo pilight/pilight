@@ -185,7 +185,6 @@ void arctechScrInit(void) {
 	arctech_screen->id = malloc(18);
 	strcpy(arctech_screen->id, "archtech_screens");
 	protocol_device_add(arctech_screen, "kaku_screen", "KlikAanKlikUit Switches");
-	protocol_conflict_add(arctech_screen, "archtech_dimmers");
 	protocol_conflict_add(arctech_screen, "archtech_switches");
 	protocol_plslen_add(arctech_screen, 303);
 	protocol_plslen_add(arctech_screen, 251);
