@@ -43,6 +43,7 @@
 #cmakedefine PROTOCOL_KAKU_DIMMER
 #cmakedefine PROTOCOL_KAKU_OLD
 #cmakedefine PROTOCOL_KAKU_SWITCH
+#cmakedefine PROTOCOL_KAKU_SCREEN
 #cmakedefine PROTOCOL_NEXA_SWITCH
 #cmakedefine PROTOCOL_RAW
 #cmakedefine PROTOCOL_RELAY
