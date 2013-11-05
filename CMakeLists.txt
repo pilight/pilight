@@ -83,15 +83,25 @@ if(${PROTOCOL_ALECTO} MATCHES "OFF")
 endif()
 
 if(${PROTOCOL_COGEX_SWITCH} MATCHES "OFF" 
-	AND ${PROTOCOL_KAKU_OLD} MATCHES "OFF" 
+	AND ${PROTOCOL_KAKU_SWITCH_OLD} MATCHES "OFF" 
 	AND ${PROTOCOL_INTERTECHNO_OLD} MATCHES "OFF")
-	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/arctech_old.h")
-	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/arctech_old.c")
+	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/arctech_switch_old.h")
+	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/arctech_switch_old.c")
+endif()
+
+if(${PROTOCOL_KAKU_SCREEN_OLD} MATCHES "OFF")
+	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/arctech_screen_old.h")
+	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/arctech_screen_old.c")
 endif()
 
 if(${PROTOCOL_KAKU_DIMMER} MATCHES "OFF")
 	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/arctech_dimmer.h")
 	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/arctech_dimmer.c")
+endif()
+
+if(${PROTOCOL_KAKU_SCREEN} MATCHES "OFF")
+	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/arctech_screen.h")
+	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/arctech_screen.c")
 endif()
 
 if(${PROTOCOL_COCO_SWITCH} MATCHES "OFF"
