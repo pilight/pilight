@@ -77,8 +77,7 @@ void genWeatherPrintHelp(void) {
 void genWeatherInit(void) {
 	
 	protocol_register(&generic_weather);
-	generic_weather->id = malloc(16);
-	strcpy(generic_weather->id, "generic_weather");
+	protocol_set_id(generic_weather, "generic_weather");
 	protocol_device_add(generic_weather, "generic_weather", "Generic weather stations");
 	generic_weather->type = WEATHER;
 

@@ -36,8 +36,11 @@
 #ifdef PROTOCOL_KAKU_DIMMER
 	#include "../protocols/arctech_dimmer.h"
 #endif
-#if defined(PROTOCOL_COGEX_SWITCH) || defined(PROTOCOL_KAKU_OLD) || defined(PROTOCOL_INTERTECHNO_OLD)
-	#include "../protocols/arctech_old.h"
+#if defined(PROTOCOL_COGEX_SWITCH) || defined(PROTOCOL_KAKU_SWITCH_OLD) || defined(PROTOCOL_INTERTECHNO_OLD)
+	#include "../protocols/arctech_switch_old.h"
+#endif
+#ifdef PROTOCOL_KAKU_SCREEN_OLD
+	#include "../protocols/arctech_screen_old.h"
 #endif
 #ifdef PROTOCOL_HOMEEASY_OLD
 	#include "../protocols/home_easy_old.h"
@@ -80,8 +83,11 @@ void protocol_init(void) {
 #ifdef PROTOCOL_KAKU_DIMMER
 	arctechDimInit();
 #endif
-#if defined(PROTOCOL_COGEX_SWITCH) || defined(PROTOCOL_KAKU_OLD) || defined(PROTOCOL_INTERTECHNO_OLD)
-	arctechOldInit();
+#if defined(PROTOCOL_COGEX_SWITCH) || defined(PROTOCOL_KAKU_SWITCH_OLD) || defined(PROTOCOL_INTERTECHNO_OLD)
+	arctechSwOldInit();
+#endif
+#ifdef PROTOCOL_KAKU_SCREEN_OLD
+	arctechSrOldInit();
 #endif
 #ifdef PROTOCOL_HOMEEASY_OLD
 	homeEasyOldInit();
@@ -151,6 +157,11 @@ void protocol_register(protocol_t **proto) {
 	pnode->name = malloc(4);
 	pnode->next = protocols;
 	protocols = pnode;
+}
+
+void protocol_set_id(protocol_t *proto, const char *id) {
+	proto->id = malloc(strlen(id)+1);
+	strcpy(proto->id, id);
 }
 
 void protocol_plslen_add(protocol_t *proto, int plslen) {

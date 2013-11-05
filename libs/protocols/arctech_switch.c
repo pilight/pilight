@@ -182,8 +182,7 @@ void arctechSwPrintHelp(void) {
 void arctechSwInit(void) {
 
 	protocol_register(&arctech_switch);
-	arctech_switch->id = malloc(18);
-	strcpy(arctech_switch->id, "archtech_switches");
+	protocol_set_id(arctech_switch, "archtech_switches");
 	protocol_device_add(arctech_switch, "kaku_switch", "KlikAanKlikUit Switches");
 	protocol_device_add(arctech_switch, "dio_switch", "D-IO (Chacon) Switches");
 	protocol_device_add(arctech_switch, "nexa_switch", "Nexa Switches");

@@ -48,8 +48,7 @@ void alectoParseCode(void) {
 void alectoInit(void) {
 	
 	protocol_register(&alecto);
-	alecto->id = malloc(7);
-	strcpy(alecto->id, "alecto");
+	protocol_set_id(alecto, "alecto");
 	protocol_device_add(alecto, "alecto", "Alecto weather stations");
 	protocol_plslen_add(alecto, 270);
 	alecto->type = WEATHER;

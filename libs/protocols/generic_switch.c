@@ -70,8 +70,7 @@ void genSwitchPrintHelp(void) {
 void genSwitchInit(void) {
 
 	protocol_register(&generic_switch);
-	generic_switch->id = malloc(15);
-	strcpy(generic_switch->id, "generic_switch");
+	protocol_set_id(generic_switch, "generic_switch");
 	protocol_device_add(generic_switch, "generic_switch", "Generic switches");
 	generic_switch->type = SWITCH;
 

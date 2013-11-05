@@ -102,6 +102,7 @@ typedef struct protocols_t {
 struct protocols_t *protocols;
 
 void protocol_init(void);
+void protocol_set_id(protocol_t *proto, const char *id);
 void protocol_plslen_add(protocol_t *proto, int plslen);
 void protocol_register(protocol_t **proto);
 void protocol_device_add(protocol_t *proto, const char *id, const char *desc);

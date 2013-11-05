@@ -139,8 +139,7 @@ void relayPrintHelp(void) {
 void relayInit(void) {
 
 	protocol_register(&relay);
-	relay->id = malloc(6);
-	strcpy(relay->id, "relay");
+	protocol_set_id(relay, "relay");
 	protocol_device_add(relay, "relay", "Control connected relay's");
 	relay->type = RELAY;
 

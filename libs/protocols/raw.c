@@ -57,8 +57,7 @@ void rawPrintHelp(void) {
 void rawInit(void) {
 
 	protocol_register(&raw);
-	raw->id = malloc(4);
-	strcpy(raw->id, "raw");
+	protocol_set_id(raw, "raw");
 	protocol_device_add(raw, "raw", "Raw codes");
 	raw->type = RAW;
 

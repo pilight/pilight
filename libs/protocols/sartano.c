@@ -158,8 +158,7 @@ void sartanoPrintHelp(void) {
 void sartanoInit(void) {
 
 	protocol_register(&sartano);
-	sartano->id = malloc(8);
-	strcpy(sartano->id, "sartano");
+	protocol_set_id(sartano, "sartano");
 	protocol_device_add(sartano, "elro", "Elro Switches");
 	protocol_plslen_add(sartano, 291);
 	sartano->type = SWITCH;

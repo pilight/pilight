@@ -166,8 +166,7 @@ void ds18b20Init(void) {
 	gc_attach(ds18b20GC);
 
 	protocol_register(&ds18b20);
-	ds18b20->id = malloc(8);
-	strcpy(ds18b20->id, "ds18b20");
+	protocol_set_id(ds18b20, "ds18b20");
 	protocol_device_add(ds18b20, "ds18b20", "1-wire temperature sensor");
 	ds18b20->type = WEATHER;
 

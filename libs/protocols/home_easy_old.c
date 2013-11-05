@@ -186,8 +186,7 @@ void homeEasyOldPrintHelp(void) {
 void homeEasyOldInit(void) {
 
 	protocol_register(&home_easy_old);
-	home_easy_old->id = malloc(14);
-	strcpy(home_easy_old->id, "home_easy_old");
+	protocol_set_id(home_easy_old, "home_easy_old");
 	protocol_device_add(home_easy_old, "home_easy_old", "Old Home Easy Switches");
 	protocol_plslen_add(home_easy_old, 289);
 	home_easy_old->type = SWITCH;

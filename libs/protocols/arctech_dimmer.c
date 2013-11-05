@@ -248,8 +248,7 @@ void arctechDimPrintHelp(void) {
 void arctechDimInit(void) {
 
 	protocol_register(&arctech_dimmer);
-	arctech_dimmer->id = malloc(18);
-	strcpy(arctech_dimmer->id, "archtech_dimmers");
+	protocol_set_id(arctech_dimmer, "archtech_dimmers");
 	protocol_device_add(arctech_dimmer, "kaku_dimmer", "KlikAanKlikUit Dimmers");
 	protocol_plslen_add(arctech_dimmer, 300);
 	arctech_dimmer->type = DIMMER;

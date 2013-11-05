@@ -115,8 +115,7 @@ void genDimPrintHelp(void) {
 void genDimInit(void) {
 	
 	protocol_register(&generic_dimmer);
-	generic_dimmer->id = malloc(15);
-	strcpy(generic_dimmer->id, "generic_dimmer");
+	protocol_set_id(generic_dimmer, "generic_dimmer");
 	protocol_device_add(generic_dimmer, "generic_dimmer", "Generic dimmers");
 	generic_dimmer->type = DIMMER;
 

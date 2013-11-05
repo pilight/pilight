@@ -186,8 +186,7 @@ void impulsPrintHelp(void) {
 void impulsInit(void) {
 
 	protocol_register(&impuls);
-	impuls->id = malloc(7);
-	strcpy(impuls->id, "impuls");
+	protocol_set_id(impuls, "impuls");
 	protocol_device_add(impuls, "impuls", "Impuls Switches");
 	protocol_device_add(impuls, "select-remote", "SelectRemote Switches");
 	protocol_plslen_add(impuls, 133);
