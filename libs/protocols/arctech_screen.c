@@ -24,6 +24,7 @@
 #include "common.h"
 #include "log.h"
 #include "protocol.h"
+#include "hardware.h"
 #include "binary.h"
 #include "gc.h"
 #include "arctech_screen.h"
@@ -187,7 +188,8 @@ void arctechScrInit(void) {
 	protocol_conflict_add(arctech_screen, "archtech_switches");
 	protocol_plslen_add(arctech_screen, 303);
 	protocol_plslen_add(arctech_screen, 251);
-	arctech_screen->type = SCREEN;
+	arctech_screen->devtype = SCREEN;
+	arctech_screen->hwtype = RX433;
 	arctech_screen->pulse = 5;
 	arctech_screen->rawlen = 132;
 	arctech_screen->lsb = 3;

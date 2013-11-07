@@ -26,6 +26,7 @@
 #include "common.h"
 #include "log.h"
 #include "protocol.h"
+#include "hardware.h"
 #include "relay.h"
 #include "gc.h"
 #include "wiringPi.h"
@@ -141,7 +142,7 @@ void relayInit(void) {
 	protocol_register(&relay);
 	protocol_set_id(relay, "relay");
 	protocol_device_add(relay, "relay", "Control connected relay's");
-	relay->type = RELAY;
+	relay->devtype = RELAY;
 
 	options_add(&relay->options, 't', "on", no_value, config_state, NULL);
 	options_add(&relay->options, 'f', "off", no_value, config_state, NULL);

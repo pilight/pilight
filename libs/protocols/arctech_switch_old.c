@@ -24,6 +24,7 @@
 #include "common.h"
 #include "log.h"
 #include "protocol.h"
+#include "hardware.h"
 #include "binary.h"
 #include "gc.h"
 #include "arctech_switch_old.h"
@@ -162,7 +163,8 @@ void arctechSwOldInit(void) {
 	protocol_device_add(arctech_switch_old, "intertechno_old", "Old Intertechno Switches");
 	protocol_conflict_add(arctech_switch_old, "archtech_screens_old");	
 	protocol_plslen_add(arctech_switch_old, 336);
-	arctech_switch_old->type = SWITCH;
+	arctech_switch_old->devtype = SWITCH;
+	arctech_switch_old->hwtype = RX433;
 	arctech_switch_old->pulse = 3;
 	arctech_switch_old->rawlen = 50;
 	arctech_switch_old->binlen = 12;

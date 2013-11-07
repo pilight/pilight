@@ -24,6 +24,7 @@
 #include "common.h"
 #include "log.h"
 #include "protocol.h"
+#include "hardware.h"
 #include "binary.h"
 #include "gc.h"
 #include "generic_dimmer.h"
@@ -117,7 +118,7 @@ void genDimInit(void) {
 	protocol_register(&generic_dimmer);
 	protocol_set_id(generic_dimmer, "generic_dimmer");
 	protocol_device_add(generic_dimmer, "generic_dimmer", "Generic dimmers");
-	generic_dimmer->type = DIMMER;
+	generic_dimmer->devtype = DIMMER;
 
 	options_add(&generic_dimmer->options, 'd', "dimlevel", has_value, config_value, "^([0-9]{1,})$");
 	options_add(&generic_dimmer->options, 't', "on", no_value, config_state, NULL);

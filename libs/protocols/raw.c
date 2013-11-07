@@ -24,6 +24,7 @@
 #include "common.h"
 #include "log.h"
 #include "protocol.h"
+#include "hardware.h"
 #include "binary.h"
 #include "gc.h"
 #include "raw.h"
@@ -59,7 +60,7 @@ void rawInit(void) {
 	protocol_register(&raw);
 	protocol_set_id(raw, "raw");
 	protocol_device_add(raw, "raw", "Raw codes");
-	raw->type = RAW;
+	raw->devtype = RAW;
 
 	options_add(&raw->options, 'c', "code", has_value, 0, NULL);
 

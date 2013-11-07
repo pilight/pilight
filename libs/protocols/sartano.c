@@ -24,6 +24,7 @@
 #include "common.h"
 #include "log.h"
 #include "protocol.h"
+#include "hardware.h"
 #include "binary.h"
 #include "gc.h"
 #include "sartano.h"
@@ -161,7 +162,8 @@ void sartanoInit(void) {
 	protocol_set_id(sartano, "sartano");
 	protocol_device_add(sartano, "elro", "Elro Switches");
 	protocol_plslen_add(sartano, 291);
-	sartano->type = SWITCH;
+	sartano->devtype = SWITCH;
+	sartano->hwtype = RX433;
 	sartano->pulse = 3;
 	sartano->rawlen = 50;
 	sartano->binlen = 12;

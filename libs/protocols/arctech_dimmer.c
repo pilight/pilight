@@ -24,6 +24,7 @@
 #include "common.h"
 #include "log.h"
 #include "protocol.h"
+#include "hardware.h"
 #include "binary.h"
 #include "gc.h"
 #include "arctech_dimmer.h"
@@ -251,7 +252,8 @@ void arctechDimInit(void) {
 	protocol_set_id(arctech_dimmer, "archtech_dimmers");
 	protocol_device_add(arctech_dimmer, "kaku_dimmer", "KlikAanKlikUit Dimmers");
 	protocol_plslen_add(arctech_dimmer, 300);
-	arctech_dimmer->type = DIMMER;
+	arctech_dimmer->devtype = DIMMER;
+	arctech_dimmer->hwtype = RX433;
 	arctech_dimmer->pulse = 5;
 	arctech_dimmer->rawlen = 148;
 	arctech_dimmer->lsb = 3;

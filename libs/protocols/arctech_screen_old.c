@@ -24,6 +24,7 @@
 #include "common.h"
 #include "log.h"
 #include "protocol.h"
+#include "hardware.h"
 #include "binary.h"
 #include "gc.h"
 #include "arctech_screen_old.h"
@@ -160,7 +161,8 @@ void arctechSrOldInit(void) {
 	protocol_device_add(arctech_screen_old, "kaku_screen_old", "old KlikAanKlikUit Screens");
 	protocol_conflict_add(arctech_screen_old, "archtech_switches_old");	
 	protocol_plslen_add(arctech_screen_old, 336);
-	arctech_screen_old->type = SCREEN;
+	arctech_screen_old->devtype = SCREEN;
+	arctech_screen_old->hwtype = RX433;
 	arctech_screen_old->pulse = 3;
 	arctech_screen_old->rawlen = 50;
 	arctech_screen_old->binlen = 12;

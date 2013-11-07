@@ -24,6 +24,7 @@
 #include "common.h"
 #include "log.h"
 #include "protocol.h"
+#include "hardware.h"
 #include "binary.h"
 #include "gc.h"
 #include "home_easy_old.h"
@@ -189,7 +190,8 @@ void homeEasyOldInit(void) {
 	protocol_set_id(home_easy_old, "home_easy_old");
 	protocol_device_add(home_easy_old, "home_easy_old", "Old Home Easy Switches");
 	protocol_plslen_add(home_easy_old, 289);
-	home_easy_old->type = SWITCH;
+	home_easy_old->devtype = SWITCH;
+	home_easy_old->hwtype = RX433;
 	home_easy_old->pulse = 3;
 	home_easy_old->rawlen = 50;
 	home_easy_old->binlen = 12;

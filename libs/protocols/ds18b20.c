@@ -30,6 +30,7 @@
 #include "log.h"
 #include "threads.h"
 #include "protocol.h"
+#include "hardware.h"
 #include "binary.h"
 #include "gc.h"
 #include "ds18b20.h"
@@ -54,7 +55,10 @@ void *ds18b20Parse(void *param) {
 	
 	int w1valid = 0;
 	int w1temp = 0;
+	int interval = 0;
 
+	protocol_setting_get_number(ds18b20, "interval", &interval);	
+	
 	while(ds18b20_loop) {
 		if((d = opendir(ds18b20_path))) {
 			while((dir = readdir(d)) != NULL) {
@@ -145,7 +149,7 @@ void *ds18b20Parse(void *param) {
 			}
 			closedir(d);
 		}
-		sleep(5);
+		sleep((unsigned int)interval);
 	}
 
 	return (void *)NULL;
@@ -168,7 +172,8 @@ void ds18b20Init(void) {
 	protocol_register(&ds18b20);
 	protocol_set_id(ds18b20, "ds18b20");
 	protocol_device_add(ds18b20, "ds18b20", "1-wire temperature sensor");
-	ds18b20->type = WEATHER;
+	ds18b20->devtype = WEATHER;
+	ds18b20->hwtype = SENSOR;
 
 	options_add(&ds18b20->options, 't', "temperature", has_value, config_value, "^[0-9]{1,5}$");
 	options_add(&ds18b20->options, 'i', "id", has_value, config_id, "^[a-z0-9]{12}$");
@@ -177,6 +182,7 @@ void ds18b20Init(void) {
 	protocol_setting_add_number(ds18b20, "humidity", 0);
 	protocol_setting_add_number(ds18b20, "temperature", 1);
 	protocol_setting_add_number(ds18b20, "battery", 0);
+	protocol_setting_add_number(ds18b20, "interval", 5);
 	
 	ds18b20_w1nr = malloc(3);
 	ds18b20_w1id = malloc(13);

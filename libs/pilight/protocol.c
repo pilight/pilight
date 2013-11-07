@@ -264,27 +264,29 @@ int protocol_setting_restore(protocol_t *proto, const char *name) {
 }
 
 int protocol_setting_check_string(protocol_t *proto, const char *name, const char *value) {
-	switch(proto->type) {
+	int error = EXIT_SUCCESS;
+
+	switch(proto->devtype) {
 		case DIMMER:
 			if(strcmp(name, "states") != 0) {
-				return 1;
+				error=EXIT_FAILURE;
 			}
 		break;
 		case RELAY:
 			if(strcmp(name, "default") != 0 && strcmp(name, "states") != 0) {
-				return 1;
+				error=EXIT_FAILURE;
 			}
 		break;
 		case SWITCH:
 		case SCREEN:
 			if(strcmp(name, "states") != 0) {
-				return 1;
+				error=EXIT_FAILURE;
 			}
 		break;
 		case WEATHER:		
 		case RAW:		
 		default:
-			return 1;
+			error=EXIT_FAILURE;
 		break;
 	}
 	
@@ -304,7 +306,7 @@ int protocol_setting_check_string(protocol_t *proto, const char *name, const cha
 					options = options->next;
 				}
 				if(valid_state == 0) {
-					return 1;
+					error=EXIT_FAILURE;
 				}
 				pch = strtok(NULL, ",");
 			}
@@ -312,7 +314,7 @@ int protocol_setting_check_string(protocol_t *proto, const char *name, const cha
 		}
 	}	
 	
-	return 0;
+	return error;
 }
 
 void protocol_setting_add_string(protocol_t *proto, const char *name, const char *value) {
@@ -335,49 +337,58 @@ void protocol_setting_add_string(protocol_t *proto, const char *name, const char
 
 int protocol_setting_check_number(protocol_t *proto, const char *name, int value) {
 
+	int error = EXIT_SUCCESS;
 #ifndef __FreeBSD__	
 	regex_t regex;
 	int reti;
 #endif
 
-	switch(proto->type) {
+	switch(proto->devtype) {
 		case DIMMER:
 			if(strcmp(name, "max") != 0 && strcmp(name, "min") != 0 && strcmp(name, "readonly") != 0) {
-				return 1;
+				error=EXIT_FAILURE;
 			}
 		break;
 		case WEATHER:
 			if(strcmp(name, "decimals") != 0 && strcmp(name, "battery") != 0
 			   && strcmp(name, "temperature") != 0 && strcmp(name, "humidity") != 0) {
-				return 1;
+			   if(proto->hwtype == SENSOR && strcmp(name, "interval") != 0) {
+					error=EXIT_FAILURE;
+				}
 			}
 		break;
 		case SWITCH:
 		case SCREEN:
 			if(strcmp(name, "readonly") != 0) {
-				return 1;
+				error=EXIT_FAILURE;
 			}
 		break;
 		case RELAY:
 			if(strcmp(name, "readonly") != 0) {
-				return 1;
+				error=EXIT_FAILURE;
 			}
 		break;
 		case RAW:
 		default:
-			return 1;
+			error=EXIT_FAILURE;
 		break;
 	}
+	
 	
 	if((strcmp(name, "readonly") == 0 ||
 		strcmp(name, "temperature") == 0 ||
 		strcmp(name, "battery") == 0 ||
 		strcmp(name, "humidity") == 0) &&
 		(value < 0 || value > 1)) {
-		return 1;
+			error=EXIT_FAILURE;
 	}
+
 	if(strcmp(name, "decimals") == 0 && (value < 0 || value > 3)) {
-		return 1;
+		error=EXIT_FAILURE;
+	}
+
+	if(strcmp(name, "interval") == 0 && value < 0) {
+		error=EXIT_FAILURE;
 	}
 
 	if(strcmp(name, "min") == 0 || strcmp(name, "max") == 0) {	
@@ -389,7 +400,7 @@ int protocol_setting_check_number(protocol_t *proto, const char *name, int value
 				reti = regcomp(&regex, tmp_options->mask, REG_EXTENDED);
 				if(reti) {
 					logprintf(LOG_ERR, "could not compile regex");
-					return 1;
+					error=EXIT_FAILURE;
 				}
 				char *tmp = malloc(sizeof(value)+1);
 				sprintf(tmp, "%d", value);
@@ -397,7 +408,7 @@ int protocol_setting_check_number(protocol_t *proto, const char *name, int value
 				if(reti == REG_NOMATCH || reti != 0) {
 					sfree((void *)&tmp);
 					regfree(&regex);
-					return 1;
+					error=EXIT_FAILURE;
 				}
 				sfree((void *)&tmp);
 				regfree(&regex);
@@ -407,7 +418,7 @@ int protocol_setting_check_number(protocol_t *proto, const char *name, int value
 		}
 	}
 
-	return 0;
+	return error;
 }
 
 void protocol_setting_add_number(protocol_t *proto, const char *name, int value) {

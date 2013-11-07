@@ -24,6 +24,7 @@
 #include "common.h"
 #include "log.h"
 #include "protocol.h"
+#include "hardware.h"
 #include "binary.h"
 #include "gc.h"
 #include "generic_switch.h"
@@ -72,7 +73,7 @@ void genSwitchInit(void) {
 	protocol_register(&generic_switch);
 	protocol_set_id(generic_switch, "generic_switch");
 	protocol_device_add(generic_switch, "generic_switch", "Generic switches");
-	generic_switch->type = SWITCH;
+	generic_switch->devtype = SWITCH;
 
 	options_add(&generic_switch->options, 't', "on", no_value, config_state, NULL);
 	options_add(&generic_switch->options, 'f', "off", no_value, config_state, NULL);

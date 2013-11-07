@@ -299,7 +299,7 @@ int config_update(char *protoname, JsonNode *json, JsonNode **out) {
 		}
 	}
 	json_append_member(rroot, "origin", json_mkstring("config"));
-	json_append_member(rroot, "type",  json_mknumber((int)protocol->type));
+	json_append_member(rroot, "type",  json_mknumber((int)protocol->devtype));
 	json_append_member(rroot, "devices", rdev);
 	json_append_member(rroot, "values", rval);
 
@@ -542,7 +542,7 @@ JsonNode *config2json(unsigned short internal) {
 			struct protocols_t *tmp_protocols = tmp_devices->protocols;
 			struct JsonNode *jprotocols = json_mkarray();
 			if(internal) {
-				json_append_member(jdevice, "type", json_mknumber(tmp_protocols->listener->type));
+				json_append_member(jdevice, "type", json_mknumber(tmp_protocols->listener->devtype));
 			}			
 			while(tmp_protocols) {
 				json_append_element(jprotocols, json_mkstring(tmp_protocols->name));

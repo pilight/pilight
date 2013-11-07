@@ -21,6 +21,13 @@
 
 #include "settings.h"
 
+typedef enum {
+	RXUNI,
+	RX433,
+	RX868,
+	SENSOR
+} hwtype_t;
+
 typedef struct hardware_t {
 	char *id;
 

@@ -20,6 +20,7 @@
 #define _PROTOCOL_H_
 
 #include "options.h"
+#include "hardware.h"
 #include "json.h"
 
 typedef enum {
@@ -57,7 +58,6 @@ typedef struct protocol_settings_t {
 
 typedef struct protocol_t {
 	char *id;
-	devtype_t type;
 	int header;
 	int pulse;
 	struct protocol_plslen_t *plslen;	
@@ -81,6 +81,8 @@ typedef struct protocol_t {
 	int pCode[255];
 	int binary[128]; // Max. the half the raw length
 
+	hwtype_t hwtype;
+	devtype_t devtype;
 	struct protocol_devices_t *devices;
 	struct protocol_conflicts_t *conflicts;
 	struct protocol_settings_t *settings;

@@ -24,6 +24,7 @@
 #include "common.h"
 #include "log.h"
 #include "protocol.h"
+#include "hardware.h"
 #include "binary.h"
 #include "gc.h"
 #include "generic_weather.h"
@@ -79,7 +80,7 @@ void genWeatherInit(void) {
 	protocol_register(&generic_weather);
 	protocol_set_id(generic_weather, "generic_weather");
 	protocol_device_add(generic_weather, "generic_weather", "Generic weather stations");
-	generic_weather->type = WEATHER;
+	generic_weather->devtype = WEATHER;
 
 	options_add(&generic_weather->options, 'h', "humidity", has_value, config_value, "[0-9]");
 	options_add(&generic_weather->options, 't', "temperature", has_value, config_value, "[0-9]");

@@ -24,6 +24,7 @@
 #include "common.h"
 #include "log.h"
 #include "protocol.h"
+#include "hardware.h"
 #include "binary.h"
 #include "gc.h"
 #include "alecto.h"
@@ -51,7 +52,8 @@ void alectoInit(void) {
 	protocol_set_id(alecto, "alecto");
 	protocol_device_add(alecto, "alecto", "Alecto weather stations");
 	protocol_plslen_add(alecto, 270);
-	alecto->type = WEATHER;
+	alecto->devtype = WEATHER;
+	alecto->hwtype = RX433;
 	alecto->pulse = 14;
 	alecto->rawlen = 74;
 	alecto->lsb = 3;

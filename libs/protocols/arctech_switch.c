@@ -24,6 +24,7 @@
 #include "common.h"
 #include "log.h"
 #include "protocol.h"
+#include "hardware.h"
 #include "binary.h"
 #include "gc.h"
 #include "arctech_switch.h"
@@ -191,7 +192,8 @@ void arctechSwInit(void) {
 	protocol_conflict_add(arctech_switch, "archtech_screens");
 	protocol_plslen_add(arctech_switch, 303);
 	protocol_plslen_add(arctech_switch, 251);
-	arctech_switch->type = SWITCH;
+	arctech_switch->devtype = SWITCH;
+	arctech_switch->hwtype = RX433;
 	arctech_switch->pulse = 5;
 	arctech_switch->rawlen = 132;
 	arctech_switch->lsb = 3;

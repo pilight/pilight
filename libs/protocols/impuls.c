@@ -24,6 +24,7 @@
 #include "common.h"
 #include "log.h"
 #include "protocol.h"
+#include "hardware.h"
 #include "binary.h"
 #include "gc.h"
 #include "impuls.h"
@@ -190,7 +191,8 @@ void impulsInit(void) {
 	protocol_device_add(impuls, "impuls", "Impuls Switches");
 	protocol_device_add(impuls, "select-remote", "SelectRemote Switches");
 	protocol_plslen_add(impuls, 133);
-	impuls->type = SWITCH;
+	impuls->devtype = SWITCH;
+	impuls->hwtype = RX433;
 	impuls->pulse = 3;
 	impuls->rawlen = 50;
 	impuls->binlen = 12;
