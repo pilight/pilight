@@ -60,6 +60,11 @@ void hardware_register(hardware_t **hw) {
 	hardwares = hnode;
 }
 
+void hardware_set_id(hardware_t *hw, const char *id) {
+	hw->id = malloc(strlen(id)+1);
+	strcpy(hw->id, id);
+}
+
 int hardware_gc(void) {
 	struct hardwares_t *htmp;
 

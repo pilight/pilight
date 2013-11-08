@@ -37,8 +37,7 @@ int noneReceive(void) {
 void noneInit(void) {
 
 	hardware_register(&none);
-	none->id = malloc(5);
-	strcpy(none->id, "none");
+	hardware_set_id(none, "none");
 	none->receive=&noneReceive;
 	none->send=&noneSend;
 }

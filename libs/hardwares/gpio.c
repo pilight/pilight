@@ -90,8 +90,7 @@ int gpioReceive(void) {
 void gpioInit(void) {
 
 	hardware_register(&gpio);
-	gpio->id = malloc(5);
-	strcpy(gpio->id, "gpio");
+	hardware_set_id(gpio, "gpio");
 
 	piHiPri(55);
 

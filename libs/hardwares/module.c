@@ -127,8 +127,7 @@ int moduleReceive(void) {
 void moduleInit(void) {
 
 	hardware_register(&module);
-	module->id = malloc(7);
-	strcpy(module->id, "module");
+	hardware_set_id(module, "module");
 
 	module->init=&moduleHwInit;
 	module->deinit=&moduleHwDeinit;

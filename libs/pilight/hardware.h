@@ -19,14 +19,14 @@
 #ifndef _HARDWARE_H_
 #define _HARDWARE_H_
 
-#include "settings.h"
-
 typedef enum {
 	RXUNI,
 	RX433,
 	RX868,
 	SENSOR
 } hwtype_t;
+
+#include "settings.h"
 
 typedef struct hardware_t {
 	char *id;
@@ -46,6 +46,7 @@ struct hardwares_t *hardwares;
 
 void hardware_init(void);
 void hardware_register(hardware_t **hw);
+void hardware_set_id(hardware_t *hw, const char *id);
 int hardware_gc(void);
 
 #endif

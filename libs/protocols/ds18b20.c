@@ -55,7 +55,7 @@ void *ds18b20Parse(void *param) {
 	
 	int w1valid = 0;
 	int w1temp = 0;
-	int interval = 0;
+	int interval = 5;
 
 	protocol_setting_get_number(ds18b20, "interval", &interval);	
 	
