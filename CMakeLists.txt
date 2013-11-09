@@ -41,6 +41,8 @@ foreach (file \${files})
 endforeach(file)
 
 execute_process(COMMAND update-rc.d pilight remove)
+execute_process(COMMAND ln -sf /usr/local/lib/pilight/libpilight.so.2 /usr/local/lib/libpilight.so)
+execute_process(COMMAND ldconfig)
 
 ") # END of appending to file...
     endif()
@@ -201,8 +203,8 @@ set_source_files_properties(${PROJECT_SOURCE_DIR}/libs/pilight/wiringPi.c PROPER
 set_source_files_properties(${PROJECT_SOURCE_DIR}/libs/pilight/json.c PROPERTIES COMPILE_FLAGS " -w ")
 set_source_files_properties(${webserver_sources} PROPERTIES COMPILE_FLAGS " -w ")
 
-install(TARGETS pilight_shared DESTINATION lib)
-install(TARGETS pilight_static DESTINATION lib)
+install(FILES libpilight.so DESTINATION lib/pilight/ RENAME libpilight.so.2)
+install(FILES libpilight.a DESTINATION lib/pilight/ RENAME libpilight.a)
 
 if(${WEBSERVER} MATCHES "ON")
 	install(FILES ${web} DESTINATION /usr/local/share/pilight/)

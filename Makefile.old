@@ -32,39 +32,39 @@ subdirs: $(SUBDIRS) all
 $(SUBDIRS):
 	$(MAKE) -C $@
 
-all: $(LIBS) libpilight.so.1 libpilight.a $(PROGAMS) 
+all: $(LIBS) libpilight.so libpilight.a $(PROGAMS) 
 
 libpilight.so.1: $(LIBS)
-	$(GCC) $(LIBS) -shared -o libpilight.so.1 -lpthread -lm -ldl
+	$(GCC) $(LIBS) -shared -o libpilight.so -lpthread -lm -ldl
 	
 libpilight.a: $(LIBS)
 	$(CROSS_COMPILE)ar -rsc libpilight.a $(LIBS)
 
-pilight-daemon: daemon.c $(INCLUDES) $(LIBS) libpilight.so.1
-	$(GCC) $(CFLAGS) -o $@ $(patsubst pilight-%,%.c,$@) libpilight.so.1
+pilight-daemon: daemon.c $(INCLUDES) $(LIBS) libpilight.so
+	$(GCC) $(CFLAGS) -o $@ $(patsubst pilight-%,%.c,$@) libpilight.so
 
-pilight-send: send.c $(INCLUDES) $(LIBS) libpilight.so.1
-	$(GCC) $(CFLAGS) -o $@ $(patsubst pilight-%,%.c,$@) libpilight.so.1
+pilight-send: send.c $(INCLUDES) $(LIBS) libpilight.so
+	$(GCC) $(CFLAGS) -o $@ $(patsubst pilight-%,%.c,$@) libpilight.so
 
-pilight-receive: receive.c $(INCLUDES) $(LIBS) libpilight.so.1
-	$(GCC) $(CFLAGS) -o $@ $(patsubst pilight-%,%.c,$@) libpilight.so.1
+pilight-receive: receive.c $(INCLUDES) $(LIBS) libpilight.so
+	$(GCC) $(CFLAGS) -o $@ $(patsubst pilight-%,%.c,$@) libpilight.so
 
-pilight-debug: debug.c $(INCLUDES) $(LIBS) libpilight.so.1
-	$(GCC) $(CFLAGS) -o $@ $(patsubst pilight-%,%.c,$@) libpilight.so.1
+pilight-debug: debug.c $(INCLUDES) $(LIBS) libpilight.so
+	$(GCC) $(CFLAGS) -o $@ $(patsubst pilight-%,%.c,$@) libpilight.so
 
-pilight-learn: learn.c $(INCLUDES) $(LIBS) libpilight.so.1
-	$(GCC) $(CFLAGS) -o $@ $(patsubst pilight-%,%.c,$@) libpilight.so.1
+pilight-learn: learn.c $(INCLUDES) $(LIBS) libpilight.so
+	$(GCC) $(CFLAGS) -o $@ $(patsubst pilight-%,%.c,$@) libpilight.so
 
-pilight-control: control.c $(INCLUDES) $(LIBS) libpilight.so.1
-	$(GCC) $(CFLAGS) -o $@ $(patsubst pilight-%,%.c,$@) libpilight.so.1
+pilight-control: control.c $(INCLUDES) $(LIBS) libpilight.so
+	$(GCC) $(CFLAGS) -o $@ $(patsubst pilight-%,%.c,$@) libpilight.so
 
-pilight-raw: raw.c $(INCLUDES) $(LIBS) libpilight.so.1
-	$(GCC) $(CFLAGS) -o $@ $(patsubst pilight-%,%.c,$@) libpilight.so.1	
+pilight-raw: raw.c $(INCLUDES) $(LIBS) libpilight.so
+	$(GCC) $(CFLAGS) -o $@ $(patsubst pilight-%,%.c,$@) libpilight.so
 	
 install:
 	[ -d /usr/share/images/pilight/ ] && rm -r /usr/share/images/pilight/ || true
 	
-	install -m 0755 -d /usr/local/lib
+	install -m 0755 -d /usr/local/lib/pilight/
 	install -m 0755 -d /usr/local/sbin
 	install -m 0755 -d /etc/pilight
 	install -m 0755 -d /usr/local/share/pilight/
@@ -75,7 +75,8 @@ install:
 	install -m 0655 pilight-debug /usr/local/sbin/
 	install -m 0655 pilight-learn /usr/local/sbin/
 	install -m 0655 pilight-raw /usr/local/sbin/
-	install -m 0655 libpilight.so.1 /usr/local/lib/
+	install -m 0655 libpilight.so /usr/local/lib/pilight/
+	install -m 0655 libpilight.a /usr/local/lib/pilight/
 	install -m 0644 settings.json-default /etc/pilight/
 	install -m 0644 web/index.html /usr/local/share/pilight/
 	install -m 0644 web/pilight.css /usr/local/share/pilight/
@@ -87,12 +88,13 @@ install:
 	install -m 0644 web/apple-touch-icon-iphone-retina-display.png /usr/local/share/pilight/
 	install -m 0644 web/apple-touch-icon-ipad.png /usr/local/share/pilight/
 	install -m 0644 web/apple-touch-icon-iphone.png /usr/local/share/pilight/	
-	#install -m 0755 init/pilight /etc/init.d/
+	install -m 0755 init/pilight /etc/init.d/
 	update-rc.d pilight defaults
 
 	[ ! -f /usr/local/bin/gpio ] && install -m 0755 deps/gpio /usr/local/bin/ || true
 	[ ! -f /etc/pilight/settings.json ] && mv /etc/pilight/settings.json-default /etc/pilight/settings.json || true
-	ln -sf /usr/local/lib/libpilight.so.1 /usr/local/lib/libpilight.so
+	mv /usr/local/lib/pilight/libpilight.so /usr/local/lib/pilight/libpilight.so.2
+	ln -sf /usr/local/lib/pilight/libpilight.so.2 /usr/local/lib/libpilight.so
 	ldconfig
 	
 clean:
