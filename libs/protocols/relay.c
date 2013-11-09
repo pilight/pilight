@@ -83,7 +83,7 @@ int relayCreateCode(JsonNode *code) {
 		logprintf(LOG_ERR, "relay: insufficient number of arguments");
 		have_error = 1;
 		goto clear;
-	} else if(gpio > 7 || gpio < 0) {
+	} else if(gpio > 20 || gpio < 0) {
 		logprintf(LOG_ERR, "relay: invalid gpio range");
 		have_error = 1;
 		goto clear;

@@ -58,7 +58,7 @@
 
 #define VERSION				1.0
 
-#ifdef HARDWARE_433_MODULE
+#ifdef HARDWARE_433_GPIO
 	#define HW_MODE				"gpio"
 #elif defined(HARDWARE_433_MODULE)
 	#define HW_MODE				"module"
@@ -66,7 +66,7 @@
 	#define HW_MODE				"none"
 #endif
 
-#ifdef HARDWARE_433_MODULE
+#ifdef HARDWARE_433_GPIO
 	#define GPIO_IN_PIN			1
 	#define GPIO_OUT_PIN		0
 
@@ -81,9 +81,9 @@
 	#define FREQ38				38000
 #endif
 
-#define PULSE_DIV			34
+#define PULSE_DIV				34
 
-#define PORT 				5000
+#define PORT 					5000
 
 #ifdef WEBSERVER
 	#define WEBSERVER_PORT		5001
@@ -92,20 +92,17 @@
 	#define WEBSERVER_CACHE		1
 #endif
 
-#define MAX_CLIENTS			30
-#define BUFFER_SIZE			1025
-#define BIG_BUFFER_SIZE		1024001
+#define MAX_CLIENTS				30
+#define BUFFER_SIZE				1025
+#define BIG_BUFFER_SIZE			1024001
 
-#define SEND_BUFFER			10000
+#define PID_FILE				"/var/run/pilight.pid"
+#define CONFIG_FILE				"/etc/pilight/config.json"
+#define LOG_FILE				"/var/log/pilight.log"
+#define SETTINGS_FILE			"/etc/pilight/settings.json"
 
-#define PID_FILE			"/var/run/pilight.pid"
-#define CONFIG_FILE			"/etc/pilight/config.json"
-#define LOG_FILE			"/var/log/pilight.log"
-#define SETTINGS_FILE		"/etc/pilight/settings.json"
-
-#define SEND_REPEATS		10
-#define RECEIVE_REPEATS		1
-#define MULTIPLIER			0.3
+#define SEND_REPEATS			10
+#define RECEIVE_REPEATS			1
 
 typedef struct pilight_t {
     void (*broadcast)(char *name, JsonNode *message);

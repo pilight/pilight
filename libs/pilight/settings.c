@@ -306,8 +306,8 @@ int settings_parse(JsonNode *root) {
 			}
 #endif
 		} else if(strcmp(jsettings->key, "gpio-receiver") == 0) {
-			if(jsettings->number_ < 0 || jsettings->number_ > 7) {
-				logprintf(LOG_ERR, "setting \"%s\" must be between 0 and 7", jsettings->key);
+			if(jsettings->number_ < 0 || jsettings->number_ > 20) {
+				logprintf(LOG_ERR, "setting \"%s\" must be between 0 and 20", jsettings->key);
 				have_error = 1;
 				goto clear;
 			} else {
@@ -315,8 +315,8 @@ int settings_parse(JsonNode *root) {
 				settings_add_number(jsettings->key, (int)jsettings->number_);
 			}			
 		} else if(strcmp(jsettings->key, "gpio-sender") == 0) {
-			if(jsettings->number_ < 0 || jsettings->number_ > 7) {
-				logprintf(LOG_ERR, "setting \"%s\" must be between 0 and 7", jsettings->key);
+			if(jsettings->number_ < 0 || jsettings->number_ > 20) {
+				logprintf(LOG_ERR, "setting \"%s\" must be between 0 and 20", jsettings->key);
 				have_error = 1;
 				goto clear;
 			} else {
