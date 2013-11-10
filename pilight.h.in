@@ -29,6 +29,7 @@
 /* Protocol support */
 
 #cmakedefine PROTOCOL_ALECTO
+#cmakedefine PROTOCOL_CHACON
 #cmakedefine PROTOCOL_COGEX_SWITCH
 #cmakedefine PROTOCOL_COCO_SWITCH
 #cmakedefine PROTOCOL_DS18B20
