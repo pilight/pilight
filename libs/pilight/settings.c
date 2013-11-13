@@ -33,6 +33,10 @@
 #include "settings.h"
 #include "log.h"
 
+#ifdef UPDATE
+	#include "http_lib.h"
+#endif
+
 /* Add a string value to the settings struct */
 void settings_add_string(const char *name, char *value) {
 	struct settings_t *snode = malloc(sizeof(struct settings_t));
@@ -281,7 +285,7 @@ int settings_parse(JsonNode *root) {
 				settings_add_number(jsettings->key, (int)jsettings->number_);
 			}
 		} else if(strcmp(jsettings->key, "webserver-root") == 0) {
-			if(!jsettings->string_) {
+			if(!jsettings->string_ || settings_path_exists(jsettings->string_) != 0) {
 				logprintf(LOG_ERR, "setting \"%s\" must contain a valid path", jsettings->key);
 				have_error = 1;
 				goto clear;
@@ -303,6 +307,53 @@ int settings_parse(JsonNode *root) {
 				goto clear;
 			} else {
 				settings_add_number(jsettings->key, (int)jsettings->number_);
+			}
+#endif
+#ifdef UPDATE
+		} else if(strcmp(jsettings->key, "update-check") == 0) {
+			if(jsettings->number_ < 0 || jsettings->number_ > 1) {
+				logprintf(LOG_ERR, "setting \"%s\" must be either 0 or 1", jsettings->key);
+				have_error = 1;
+				goto clear;
+			} else {
+				settings_add_number(jsettings->key, (int)jsettings->number_);
+			} 
+		} else if(strcmp(jsettings->key, "update-development") == 0) {
+			if(jsettings->number_ < 0 || jsettings->number_ > 1) {
+				logprintf(LOG_ERR, "setting \"%s\" must be either 0 or 1", jsettings->key);
+				have_error = 1;
+				goto clear;
+			} else {
+				settings_add_number(jsettings->key, (int)jsettings->number_);
+			}
+		} else if(strcmp(jsettings->key, "update-mirror") == 0) {
+			char *filename = NULL;
+			char *url = NULL;
+			char *data = NULL;
+			int lg = 0;
+			char typebuf[70];
+
+			if(jsettings->string_) {
+				url = malloc(strlen(jsettings->string_)+1);
+				strcpy(url, jsettings->string_);
+				http_parse_url(url, &filename);
+			}
+			if(!jsettings->string_ || http_get(filename, &data, &lg, typebuf) != 200) {
+				logprintf(LOG_ERR, "setting \"%s\" must be point to a valid (online) file", jsettings->key);
+				/* clean-up http_lib global */
+				if(http_server) sfree((void *)&http_server);
+				if(filename) sfree((void *)&filename);
+				if(url) sfree((void *)&url);
+				if(data) sfree((void *)&data);
+				have_error = 1;
+				goto clear;
+			} else {
+				settings_add_string(jsettings->key, jsettings->string_);
+				/* clean-up http_lib global */
+				if(http_server) sfree((void *)&http_server);
+				if(filename) sfree((void *)&filename);
+				if(url) sfree((void *)&url);
+				if(data) sfree((void *)&data);
 			}
 #endif
 		} else if(strcmp(jsettings->key, "gpio-receiver") == 0) {

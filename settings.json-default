@@ -14,5 +14,6 @@
 	"webserver-root": "/usr/local/share/pilight/",
 	"webserver-port": 5001,
 	"webserver-cache": 1,
-	"whitelist": ""
+	"whitelist": "",
+	"update-check": 1
 }

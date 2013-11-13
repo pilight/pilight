@@ -25,6 +25,7 @@
 
 #cmakedefine WEBSERVER
 #cmakedefine DEBUG
+#cmakedefine UPDATE
 
 /* Protocol support */
 
@@ -57,7 +58,7 @@
 #cmakedefine HARDWARE_433_GPIO
 #cmakedefine HARDWARE_433_MODULE
 
-#define VERSION				2.0
+#define VERSION					"2.0"
 
 #ifdef HARDWARE_433_GPIO
 	#define HW_MODE				"gpio"
@@ -104,6 +105,12 @@
 
 #define SEND_REPEATS			10
 #define RECEIVE_REPEATS			1
+
+#ifdef UPDATE
+	#define UPDATE_MIRROR			"http://apt.pilight.org/mirror.txt"
+	#define UPDATE_CHECK			1
+	#define UPDATE_DEVELOPMENT		0
+#endif
 
 typedef struct pilight_t {
     void (*broadcast)(char *name, JsonNode *message);

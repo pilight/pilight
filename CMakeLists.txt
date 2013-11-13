@@ -175,6 +175,13 @@ if(${HARDWARE_433_MODULE} MATCHES "OFF")
 	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/hardwares/module.h")
 	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/hardwares/module.c")
 endif()
+
+if(${UPDATE} MATCHES "OFF")
+	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/pilight/update.h")
+	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/pilight/update.c")
+	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/pilight/http_lib.h")
+	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/pilight/http_lib.c")	
+endif()
 	
 if(${WEBSERVER} MATCHES "ON")
 	file(GLOB web
@@ -192,7 +199,12 @@ if(${WEBSERVER} MATCHES "OFF")
 	list(REMOVE_ITEM pilight ${webserver_headers})
 endif()
 	
-find_package(Threads REQUIRED)	
+find_package(Threads REQUIRED)
+
+if(${UPDATE} MATCHES "ON")
+	find_package(ZLIB REQUIRED)
+	file(GLOB CMAKE_ZLIB_LIBS_INIT "/usr/lib/arm-linux-gnueabihf/libz.so")
+endif()
 
 configure_file(pilight.h.in pilight.h)
 
@@ -202,10 +214,16 @@ add_library(pilight_shared SHARED $<TARGET_OBJECTS:pilight>)
 target_link_libraries(pilight_shared ${CMAKE_THREAD_LIBS_INIT})
 target_link_libraries(pilight_static ${CMAKE_THREAD_LIBS_INIT})
 
+if(${UPDATE} MATCHES "ON")
+	target_link_libraries(pilight_shared ${CMAKE_ZLIB_LIBS_INIT})
+	target_link_libraries(pilight_static ${CMAKE_ZLIB_LIBS_INIT})
+endif()
+
 set_target_properties(pilight_shared pilight_static PROPERTIES OUTPUT_NAME pilight)
 
 set_source_files_properties(${PROJECT_SOURCE_DIR}/libs/pilight/wiringPi.c PROPERTIES COMPILE_FLAGS " -w ")
 set_source_files_properties(${PROJECT_SOURCE_DIR}/libs/pilight/json.c PROPERTIES COMPILE_FLAGS " -w ")
+set_source_files_properties(${PROJECT_SOURCE_DIR}/libs/pilight/http_lib.c PROPERTIES COMPILE_FLAGS " -w ")
 set_source_files_properties(${webserver_sources} PROPERTIES COMPILE_FLAGS " -w ")
 
 install(FILES libpilight.so DESTINATION lib/pilight/ RENAME libpilight.so.2)
@@ -229,6 +247,10 @@ add_executable(pilight-daemon daemon.c)
 target_link_libraries(pilight-daemon pilight_shared)
 target_link_libraries(pilight-daemon ${CMAKE_DL_LIBS})
 target_link_libraries(pilight-daemon ${CMAKE_THREAD_LIBS_INIT})
+
+if(${UPDATE} MATCHES "ON")
+	target_link_libraries(pilight-daemon ${CMAKE_ZLIB_LIBS_INIT})
+endif()
 
 add_executable(pilight-raw raw.c)
 target_link_libraries(pilight-raw pilight_shared)
