@@ -10,8 +10,23 @@ body {
 #version {
 	font-size: 10px;
 	margin: 0px;
-	position: relative;
-	float: left;
+	position: aboslute;
+	height: 15px;
+	top: 0px;
+	left: 0px;
+	overflow: hidden;
+}
+
+#header {
+	height: 40px;
+}
+
+#header h1 {
+	margin-top: -5px;
+}
+
+.heading { 
+	font-size: 16px;
 }
 
 .ui-li .ui-btn-inner a.ui-link-inherit, .ui-li-static.ui-li {
