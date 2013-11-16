@@ -157,7 +157,7 @@ void chaconSwPrintHelp(void) {
 void chaconSwInit(void) {
 	protocol_register(&chacon_switch);
 	protocol_set_id(chacon_switch, "chacon_switch");	
-	protocol_device_add(chacon_switch, "chacon_switch", "chacon_switch Switches");
+	protocol_device_add(chacon_switch, "chacon_switch", "Charon Switches");
 	protocol_plslen_add(chacon_switch, 454);
 	chacon_switch->devtype = SWITCH;
 	chacon_switch->hwtype = RX433;

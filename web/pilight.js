@@ -38,7 +38,6 @@ if(typeof(localStorage) != 'undefined') {
 		if($('#helpdlg').length == 1) {
 			$('#helpdlg').remove();
 		}
-		iLatestTap = new Date().getTime();
 	});
 	
 	$(document).mouseup(function(e) {
@@ -66,7 +65,7 @@ if(typeof(localStorage) != 'undefined') {
 			if($('#helpdlg').length == 1) {
 				$('#helpdlg').remove();
 			} else {
-				$("<div data-theme='a' id='helpdlg' class='ui-loader ui-overlay-shadow ui-body-e ui-corner-all'><b>Short Cuts</b><br /><ul><li>[ctrl] + [alt] + [shift] + t<br />Switch between horizontal or tabular view</li></ul></div>")
+				$("<div data-theme='a' id='helpdlg' class='ui-loader ui-overlay-shadow ui-body-e ui-corner-all'><b>Short Cuts</b><br /><ul><li>[ctrl] + [alt] + [shift] + t<br />Switch between tabular or vertical view</li></ul></div>")
 				.appendTo($('body'));
 				$('#helpdlg').css({ "display": "block", "padding": "10px", "width": "300px", "position": "relative", "left" : ($(window).width() / 2)-150+'px', "top" : (($(window).height() / 2)-($('#helpdlg').height() / 2))+'px'})
 			}
