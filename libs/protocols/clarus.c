@@ -215,8 +215,8 @@ void clarusSwInit(void) {
 
 	options_add(&clarus_switch->options, 't', "on", no_value, config_state, NULL);
 	options_add(&clarus_switch->options, 'f', "off", no_value, config_state, NULL);
-	options_add(&clarus_switch->options, 'u', "unit", has_value, config_id, NULL);
-	options_add(&clarus_switch->options, 'i', "id", has_value, config_id, NULL);
+	options_add(&clarus_switch->options, 'u', "unit", has_value, config_id,  "^(3[012]?|[012][0-9]|[0-9]{1})$");
+	options_add(&clarus_switch->options, 'i', "id", has_value, config_id, "^[ABCDE](3[012]?|[012][0-9]|[0-9]{1})$");
 
 	protocol_setting_add_string(clarus_switch, "states", "on,off");
 	protocol_setting_add_number(clarus_switch, "readonly", 0);
