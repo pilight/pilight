@@ -845,8 +845,8 @@ int config_check_id(int i, JsonNode *jsetting, struct conf_devices_t *device) {
 	/* Temporary protocols pointer */
 	struct protocols_t *tmp_protocols = NULL;
 
-	int match1 = 0, match2 = 0, has_id = 0;
-	int valid_values = 0, nrvalues = 0, nrids1 = 0, nrids2 = 0, have_error = 0;
+	int match1 = 0, match2 = 0, match3 = 0, has_id = 0;
+	int valid_values = 0, nrprotocols = 0, nrids1 = 0, nrids2 = 0, have_error = 0;
 
 	/* Variable holders for casting */
 	char ctmp[256];
@@ -855,6 +855,8 @@ int config_check_id(int i, JsonNode *jsetting, struct conf_devices_t *device) {
 	while(tmp_protocols) {
 		jid = json_first_child(jsetting);
 		has_id = 0;
+		match3 = 0;
+		nrprotocols++;
 		while(jid) {
 			match2 = 0; match1 = 0; nrids1 = 0; nrids2 = 0;
 			jvalues = json_first_child(jid);
@@ -872,7 +874,6 @@ int config_check_id(int i, JsonNode *jsetting, struct conf_devices_t *device) {
 			}
 			if(nrids1 == nrids2) {
 				has_id = 1;
-				nrvalues++;
 				jvalues = json_first_child(jid);
 				while(jvalues) {
 					match1++;
@@ -910,21 +911,21 @@ int config_check_id(int i, JsonNode *jsetting, struct conf_devices_t *device) {
 			}
 			json_delete(jvalues);
 			jid = jid->next;
-			if(match2 > 0) {
-				if(match1 == match2) {
-					valid_values++;
-				} else {
-					valid_values--;
-				}
+			if(match2 > 0 && match1 == match2) {
+				match3 = 1;
 			}
 		}
 		if(!has_id) {
+			valid_values--;
+		} else if(match3) {
+			valid_values++;
+		} else {
 			valid_values--;
 		}
 		json_delete(jid);
 		tmp_protocols = tmp_protocols->next;
 	}
-	if(nrvalues != valid_values) {
+	if(nrprotocols != valid_values) {
 		logprintf(LOG_ERR, "setting #%d \"%s\" of \"%s\", invalid", i, "id", device->id);
 		have_error = 1;
 	}	
