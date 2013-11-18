@@ -29,15 +29,19 @@
 #include <math.h>
 #include <string.h>
 
+#include "pilight.h"
+#include "common.h"
 #include "settings.h"
+#include "hardware.h"
 #include "log.h"
 #include "options.h"
+#include "threads.h"
 #include "wiringPi.h"
-#include "lirc.h"
-#include "lirc/ir_remote.h"
-#include "lirc/hardware.h"
-#include "lirc/hw-types.h"
 #include "irq.h"
+#include "gc.h"
+
+const char *hw_mode = HW_MODE;
+int pulse_length = 0;
 
 typedef enum {
 	WAIT,
@@ -79,27 +83,59 @@ void rmDup(int *a, int *b) {
 
 int normalize(int i) {
 	double x;
-	x=(double)i/PULSE_LENGTH;
+	x=(double)i/pulse_length;
 
 	return (int)(round(x));
 }
 
+int main_gc(void) {
+	struct hardware_t *hardware = NULL;	
+	unsigned short match = 0;
+
+	log_shell_disable();
+
+	struct hardwares_t *htmp = hardwares;
+	match = 0;
+	while(htmp) {
+		if(strcmp(htmp->listener->id, hw_mode) == 0) {
+			hardware = htmp->listener;
+			match = 1;
+			break;
+		}
+		htmp = htmp->next;
+	}
+	if(match == 1 && hardware->deinit) {
+		hardware->deinit();
+	}		
+
+	threads_gc();	
+	options_gc();
+	settings_gc();	
+	hardware_gc();
+	log_gc();
+
+	sfree((void *)&progname);
+	sfree((void *)&settingsfile);	
+
+	return EXIT_SUCCESS;
+}
+
 int main(int argc, char **argv) {
 
+	gc_attach(main_gc);
+
+	/* Catch all exit signals for gc */
+	gc_catch();	
+	
 	log_shell_enable();
-	log_shell_disable();
 	log_level_set(LOG_NOTICE);
 
-	progname = strdup("pilight-learn");
 	struct options_t *options = NULL;
+	struct hardware_t *hardware = NULL;	
 	
-	lirc_t data;
-	char *socket = strdup("/dev/lirc0");
-	char *args;
-	int have_device = 0;
-	int use_lirc = USE_LIRC;
-	int gpio_in = GPIO_IN_PIN;
-	
+	char *args = NULL;
+	char *stmp = NULL;
+
 	int duration = 0;
 	int i = 0;
 	int y = 0;
@@ -110,74 +146,76 @@ int main(int argc, char **argv) {
 
 	int recording = 1;
 	int bit = 0;
-	int raw[255];
-	int pRaw[255];
-	int code[255];
-	int onCode[255];
-	int offCode[255];
-	int allCode[255];
-	int unit1Code[255];
-	int unit2Code[255];
-	int unit3Code[255];
-	int binary[255];
-	int pBinary[255];
-	int onBinary[255];
-	int offBinary[255];
-	int allBinary[255];
-	int unit1Binary[255];
-	int unit2Binary[255];
-	int unit3Binary[255];
+	int raw[255] = {0};
+	int pRaw[255] = {0};
+	int code[255] = {0};
+	int onCode[255] = {0};
+	int offCode[255] = {0};
+	int allCode[255] = {0};
+	int unit1Code[255] = {0};
+	int unit2Code[255] = {0};
+	int unit3Code[255] = {0};
+	int binary[255] = {0};
+	int pBinary[255] = {0};
+	int onBinary[255] = {0};
+	int offBinary[255] = {0};
+	int allBinary[255] = {0};
+	int unit1Binary[255] = {0};
+	int unit2Binary[255] = {0};
+	int unit3Binary[255] = {0};
 	int loop = 1;
+	unsigned short match = 0;
 	
-	int temp[75];
+	int temp[75] = {-1};
 	int footer = 0;
-	int header = 0;
 	int pulse = 0;
-	int onoff[75];
-	int all[75];
-	int unit[75];
+	int onoff[75] = {-1};
+	int all[75] = {-1};
+	int unit[75] = {-1};
 	int rawLength = 0;
 	int binaryLength = 0;
 
-	memset(onoff,-1,75);
-	memset(all,-1,75);
-	memset(unit,-1,75);
+	memset(onoff, -1, 75);
+	memset(unit, -1, 75);
+	memset(all, -1, 75);
+	memset(temp, -1, 75);
+	
+	settingsfile = malloc(strlen(SETTINGS_FILE)+1);
+	strcpy(settingsfile, SETTINGS_FILE);	
+	
+	progname = malloc(16);
+	strcpy(progname, "pilight-learn");
 
 	options_add(&options, 'H', "help", no_value, 0, NULL);
 	options_add(&options, 'V', "version", no_value, 0, NULL);
-	options_add(&options, 'S', "socket", has_value, 0, "^/dev/([A-Za-z]+)([0-9]+)");
-	options_add(&options, 'L', "lirc", no_value, 0, NULL);
-	options_add(&options, 'G', "gpio", has_value, 0, "^[0-7]$");
+	options_add(&options, 'S', "settings", has_value, 0, NULL);
+
 	while (1) {
 		int c;
 		c = options_parse(&options, argc, argv, 1, &args);
-		if (c == -1)
+		if(c == -1 || c == -2)
 			break;
 		switch (c) {
 			case 'H':
 				printf("Usage: %s [options]\n", progname);
 				printf("\t -H --help\t\tdisplay usage summary\n");
 				printf("\t -V --version\t\tdisplay version\n");		
-				printf("\t -S --socket=socket\tread from given socket\n");
-				printf("\t -L --lirc\t\tuse the lirc_rpi kernel module\n");
-				printf("\t -G --gpio=#\t\tGPIO pin we're directly reading from\n");
+				printf("\t -S --settings\t\tsettings file\n");
 				return (EXIT_SUCCESS);
 			break;
 			case 'V':
-				printf("%s %s\n", progname, "1.0");
+				printf("%s %.1f\n", progname, VERSION);
 				return (EXIT_SUCCESS);
-			break;
-			case 'L':
-				use_lirc = 1;
-			break;
-			case 'G':
-				gpio_in = atoi(optarg);
-				use_lirc = 0;
-			break;
-			case 'S':
-				free(socket);
-				socket = optarg;
-				have_device = 1;
+			break;	
+			case 'S': 
+				if(access(args, F_OK) != -1) {
+					settingsfile = realloc(settingsfile, strlen(args)+1);
+					strcpy(settingsfile, args);
+					settings_set_file(args);
+				} else {
+					fprintf(stderr, "%s: the settings file %s does not exists\n", progname, args);
+					return EXIT_FAILURE;
+				}
 			break;
 			default:
 				printf("Usage: %s [options]\n", progname);
@@ -185,36 +223,43 @@ int main(int argc, char **argv) {
 			break;
 		}
 	}
-	
-	if(use_lirc == 1) {
-		hw_choose_driver(NULL);
-		
-		if(strcmp(socket, "/var/lirc/lircd") == 0) {
-			logprintf(LOG_ERR, "refusing to connect to lircd socket");
-			return EXIT_FAILURE;
-		}
-	
-		if(have_device)
-			hw.device = socket;
-	
-		if(!hw.init_func()) {
-			return EXIT_FAILURE;
-		}
-	} else {
-		if(wiringPiSetup() == -1)
-			return EXIT_FAILURE;
+	options_delete(options);
 
-		if(wiringPiISR(gpio_in, INT_EDGE_BOTH) < 0) {
-			logprintf(LOG_ERR, "unable to register interrupt for pin %d", gpio_in) ;
-			return 1 ;
+	if(access(settingsfile, F_OK) != -1) {
+		if(settings_read() != 0) {
+			return EXIT_FAILURE;
 		}
-
-		(void)piHiPri(55);
 	}
 	
-	printf("Please make sure the daemon is not running when using this debugger.\n\n");	
+	if(settings_find_string("hw-mode", &stmp) == 0) {
+		hw_mode = stmp;
+	}	
+	
+	hardware_init();	
+	
+	struct hardwares_t *htmp = hardwares;
+	match = 0;
+	while(htmp) {
+		if(strcmp(htmp->listener->id, hw_mode) == 0) {
+			hardware = htmp->listener;
+			match = 1;
+			break;
+		}
+		htmp = htmp->next;
+	}
+	if(match == 1 && hardware->init) {
+		hardware->init();
+	
+		printf("Please make sure the daemon is not running when using this debugger.\n\n");	
+	}
 
-	while(loop) {
+	if(match == 0 || !hardware->receive || strcmp(hw_mode, "none") == 0) {
+		printf("The hw-mode \"%s\" isn't compatible with %s\n", hw_mode, progname);
+		main_gc();
+		return EXIT_SUCCESS;
+	}
+
+	while(loop && match == 1 && hardware->receive) {
 		switch(state) {
 			case CAPTURE:
 				printf("1. Please send and hold one of the OFF buttons.");
@@ -235,8 +280,8 @@ int main(int argc, char **argv) {
 				for(i=0;i<rawLength;i++) {
 					onCode[i] = code[i];
 				}
+				
 				z=0;
-
 				/* Compare the ON and OFF codes and save bit that are different */
 				for(i=0;i<binaryLength;i++) {
 					if(offBinary[i] != onBinary[i]) {
@@ -323,13 +368,9 @@ int main(int argc, char **argv) {
 		if(state==STOP)
 			loop = 0;
 		else
-			state=WAIT;		
-		if(use_lirc == 1) {
-			data = hw.readdata(0);
-			duration = (data & PULSE_MASK);
-		} else {
-			duration = irq_read(gpio_in);
-		}
+			state=WAIT;	
+
+		duration = hardware->receive();
 
 		/* If we are recording, keep recording until the next footer has been matched */
 		if(recording == 1) {
@@ -343,9 +384,9 @@ int main(int argc, char **argv) {
 
 		/* First try to catch code that seems to be a footer.
 		   If a real footer has been recognized, start using that as the new footer */
-		if((duration > 5000
-		   && duration < 100000 && footer == 0) || ((footer-(footer*0.1)<duration) && (footer+(footer*0.1)>duration))) {
+		if((duration > 4440 && footer == 0) || ((footer-(footer*0.1)<duration) && (footer+(footer*0.1)>duration))) {
 			recording = 1;
+			pulse_length = duration/PULSE_DIV;
 
 			/* Check if we are recording similar codes */
 			for(i=0;i<(bit-1);i++) {
@@ -360,23 +401,17 @@ int main(int argc, char **argv) {
 			/* Continue if we have 2 matches */
 			if(y>2) {
 				/* If we are certain we are recording similar codes.
-				   Save the header values and the raw code length */
+				   Save the raw code length */
 				if(footer>0) {
-					if(header == 0) {
-						header=raw[1];
-					}
 					if(rawLength == 0)
 						rawLength=bit;
 				}
 				if(rawLength == 0 || rawLength == bit) {
-				   /*|| ((((raw[0]-(raw[0]*0.3)) < header[0]) || ((raw[0]+(raw[0]*0.3)) > header[0]))
- 				       && (((raw[1]-(raw[1]*0.3)) < header[1]) || ((raw[1]+(raw[1]*0.3)) > header[1]))
-					   && (((raw[bit-1]-(raw[bit-1]*0.1)) < footer) || ((raw[bit-1]+(raw[bit-1]*0.1)) > footer)))) {*/
 
 					/* Try to catch the footer, and the low and high values */
 					for(i=0;i<bit;i++) {
 						if((i+1)<bit && i > 2 && footer > 0) {
-							if((raw[i]/PULSE_LENGTH) >= 2) {
+							if((raw[i]/pulse_length) >= 2) {
 								pulse=raw[i];
 							}
 						}
@@ -384,10 +419,10 @@ int main(int argc, char **argv) {
 							footer=raw[i];
 					}
 					/* If we have gathered all data, stop with the loop */
-					if(header > 0 && footer > 0 && pulse > 0 && rawLength > 0) {
+					if(footer > 0 && pulse > 0 && rawLength > 0) {
 						/* Convert the raw code into binary code */
 						for(i=0;i<rawLength;i++) {
-							if((unsigned int)raw[i] > (pulse-PULSE_LENGTH)) {
+							if((unsigned int)raw[i] > (pulse-pulse_length)) {
 								code[i]=1;
 							} else {
 								code[i]=0;
@@ -467,15 +502,10 @@ int main(int argc, char **argv) {
 	/* Print everything */
 	printf("--[RESULTS]--\n");
 	printf("\n");
-	if(normalize(header) == normalize(pulse)) {
-		printf("header:\t\t0\n");
-	} else {
-		printf("header:\t\t%d\n",normalize(header));
-	}
 	printf("pulse:\t\t%d\n",normalize(pulse));
-	printf("footer:\t\t%d\n",normalize(footer));
-	printf("rawLength:\t%d\n",rawLength);
-	printf("binaryLength:\t%d\n",binaryLength);
+	printf("rawlen:\t\t%d\n",rawLength);
+	printf("binlen:\t\t%d\n",binaryLength);
+	printf("plslen:\t\t%d\n",pulse_length);
 	printf("\n");
 	printf("on-off bit(s):\t");
 	z=0;
@@ -497,7 +527,7 @@ int main(int argc, char **argv) {
 	printf("\n\n");
 	printf("Raw code:\n");
 	for(i=0;i<rawLength;i++) {
-		printf("%d ",normalize(raw[i])*PULSE_LENGTH);
+		printf("%d ",normalize(raw[i])*pulse_length);
 	}
 	printf("\n");
 	printf("Raw simplified:\n");
@@ -562,8 +592,6 @@ int main(int argc, char **argv) {
 		printf("%d",unit3Binary[i]);
 	}
 	printf("\n");
-	
-	free(socket);
-	free(progname);
+
 	return (EXIT_SUCCESS);
 }

@@ -3,13 +3,13 @@
 
 	This file is part of pilight.
 
-    pilight is free software: you can redistribute it and/or modify it under the 
-	terms of the GNU General Public License as published by the Free Software 
-	Foundation, either version 3 of the License, or (at your option) any later 
+    pilight is free software: you can redistribute it and/or modify it under the
+	terms of the GNU General Public License as published by the Free Software
+	Foundation, either version 3 of the License, or (at your option) any later
 	version.
 
-    pilight is distributed in the hope that it will be useful, but WITHOUT ANY 
-	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR 
+    pilight is distributed in the hope that it will be useful, but WITHOUT ANY
+	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
@@ -26,13 +26,14 @@
 #include <errno.h>
 #include <syslog.h>
 
+#include "pilight.h"
+#include "common.h"
 #include "settings.h"
 #include "log.h"
 #include "options.h"
 #include "socket.h"
 #include "json.h"
-
-#include "hardware.h"
+#include "protocol.h"
 
 typedef enum {
 	WELCOME,
@@ -47,7 +48,8 @@ int main(int argc, char **argv) {
 	log_shell_enable();
 	log_level_set(LOG_NOTICE);
 
-	progname = strdup("pilight-send");
+	progname = malloc(13);
+	strcpy(progname, "pilight-send");
 
 	struct options_t *options = NULL;
 
@@ -69,9 +71,10 @@ int main(int argc, char **argv) {
 	/* Do we need to print the protocol help */
 	int protohelp = 0;
 
-	char *server = strdup("127.0.0.1");
+	char *server = malloc(17);
+	strcpy(server, "127.0.0.1");
 	unsigned short port = PORT;
-	
+
 	/* Hold the final protocol struct */
 	protocol_t *protocol = NULL;
 
@@ -85,15 +88,15 @@ int main(int argc, char **argv) {
 	options_add(&options, 'S', "server", has_value, 0, "^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]).){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$");
 	options_add(&options, 'P', "port", has_value, 0, "[0-9]{1,4}");
 
-	/* Initialize peripheral modules */
-	hw_init();
+	/* Initialize protocols */
+	protocol_init();
 
 	/* Get the protocol to be used */
 	while (1) {
 		int c;
 		c = options_parse(&options, argc, argv, 0, &args);
 
-		if (c == -1)
+		if(c == -1 || c == -2)
 			break;
 		switch(c) {
 			case 'p':
@@ -111,15 +114,15 @@ int main(int argc, char **argv) {
 				help = 1;
 			break;
 			case 'S':
-				free(server);
-				server = strdup(args);
+				server = realloc(server, strlen(args)+1);
+				strcpy(server, args);
 			break;
 			case 'P':
 				port = (unsigned short)atoi(args);
 			break;
 			default:;
 		}
-	}	
+	}
 
 	/* Check if a protocol was given */
 	if(strlen(protobuffer) > 0 && strcmp(protobuffer,"-V") != 0) {
@@ -131,12 +134,12 @@ int main(int argc, char **argv) {
 			while(pnode) {
 				/* Check if the protocol exists */
 				protocol = pnode->listener;
-				if(protocol_has_device(protocol, protobuffer) == 0 && match == 0 && protocol->createCode != NULL) {
+				if(protocol_device_exists(protocol, protobuffer) == 0 && match == 0 && protocol->createCode != NULL) {
 					match=1;
 					/* Check if the protocol requires specific CLI arguments
 					   and merge them with the main CLI arguments */
-					if(protocol->options != NULL && help == 0) {
-						options = options_merge(&options, &protocol->options);
+					if(protocol->options && help == 0) {
+						options_merge(&options, &protocol->options);
 					} else if(help == 1) {
 						protohelp=1;
 					}
@@ -150,46 +153,6 @@ int main(int argc, char **argv) {
 			}
 		}
 	}
-	
-	/* Display help or version information */
-	if(version == 1) {
-		printf("%s %s\n", progname, "1.0");
-		return (EXIT_SUCCESS);
-	} else if(help == 1 || protohelp == 1 || match == 0) {
-		if(protohelp == 1 && match == 1 && protocol->printHelp != NULL)
-			printf("Usage: %s -p %s [options]\n", progname, protobuffer);
-		else
-			printf("Usage: %s -p protocol [options]\n", progname);
-		if(help == 1) {
-			printf("\t -H --help\t\t\tdisplay this message\n");
-			printf("\t -V --version\t\t\tdisplay version\n");
-			printf("\t -S --server=%s\t\tconnect to server address\n", server);
-			printf("\t -P --port=%d\t\t\tconnect to server port\n", port);
-			printf("\t -p --protocol=protocol\t\tthe protocol that you want to control\n");
-		}
-		if(protohelp == 1 && match == 1 && protocol->printHelp != NULL) {
-			printf("\n\t[%s]\n", protobuffer);
-			protocol->printHelp();
-		} else {
-			printf("\nThe supported protocols are:\n");
-			struct protocols_t *pnode = protocols;
-			/* Retrieve the used protocol */
-			while(pnode) {
-				protocol = pnode->listener;
-				if(protocol->createCode != NULL) {
-					while(protocol->devices) {
-						printf("\t %s\t\t\t",protocol->devices->id);
-						if(strlen(protocol->devices->id)<7)
-							printf("\t");
-						printf("%s\n", protocol->devices->desc);
-						protocol->devices = protocol->devices->next;
-					}
-				}
-				pnode = pnode->next;
-			}
-		}
-		return (EXIT_SUCCESS);
-	}
 
 	/* Store all CLI arguments for later usage
 	   and also check if the CLI arguments where
@@ -201,32 +164,91 @@ int main(int argc, char **argv) {
 
 		if(c == -1)
 			break;
+		if(c == -2) {
+			if(match == 1) {
+				protohelp = 1;
+			} else {
+				help = 1;
+			}
+		break;
+		}
+	}
+
+	/* Display help or version information */
+	if(version == 1) {
+		printf("%s %.1f\n", progname, VERSION);
+		goto close;
+	} else if(help == 1 || protohelp == 1 || match == 0) {
+		if(protohelp == 1 && match == 1 && protocol->printHelp)
+			printf("Usage: %s -p %s [options]\n", progname, protobuffer);
+		else
+			printf("Usage: %s -p protocol [options]\n", progname);
+		if(help == 1) {
+			printf("\t -H --help\t\t\tdisplay this message\n");
+			printf("\t -V --version\t\t\tdisplay version\n");
+			printf("\t -S --server=%s\t\tconnect to server address\n", server);
+			printf("\t -P --port=%d\t\t\tconnect to server port\n", port);
+			printf("\t -p --protocol=protocol\t\tthe protocol that you want to control\n");
+		}
+		if(protohelp == 1 && match == 1 && protocol->printHelp) {
+			printf("\n\t[%s]\n", protobuffer);
+			protocol->printHelp();
+		} else {
+			printf("\nThe supported protocols are:\n");
+			struct protocols_t *pnode = protocols;
+			/* Retrieve the used protocol */
+			while(pnode) {
+				protocol = pnode->listener;
+				if(protocol->createCode) {
+					while(protocol->devices) {
+						printf("\t %s\t\t",protocol->devices->id);
+						if(strlen(protocol->devices->id)<7)
+							printf("\t");
+						if(strlen(protocol->devices->id)<15)
+							printf("\t");
+						printf("%s\n", protocol->devices->desc);
+						protocol->devices = protocol->devices->next;
+					}
+				}
+				pnode = pnode->next;
+			}
+		}
+		goto close;
 	}
 
 	int itmp;
 	/* Check if we got sufficient arguments from this protocol */
-	while(options) {
-		if(strlen(options->name) > 0) {
+	struct options_t *tmp = options;
+	while(tmp) {
+		if(strlen(tmp->name) > 0) {
 			/* Only send the CLI arguments that belong to this protocol, the protocol name
 			and those that are called by the user */
-			if((options_get_id(&protocol->options, options->name, &itmp) == 0 || strcmp(options->name, "protocol") == 0)
-			&& strlen(options->value) > 0) {
-				json_append_member(code, options->name, json_mkstring(options->value));
+			if((options_get_id(&protocol->options, tmp->name, &itmp) == 0)
+			&& strlen(tmp->value) > 0) {
+				json_append_member(code, tmp->name, json_mkstring(tmp->value));
+			}
+			if(strcmp(tmp->name, "protocol") == 0 && strlen(tmp->value) > 0) {
+				JsonNode *jprotocol = json_mkarray();
+				json_append_element(jprotocol, json_mkstring(tmp->value));
+				json_append_member(code, "protocol", jprotocol);
 			}
 		}
-		options = options->next;
+		tmp = tmp->next;
 	}
 
 	if(protocol->createCode(code) == 0) {
+		if(protocol->message) {
+			json_delete(protocol->message);
+		}
 		if((sockfd = socket_connect(server, port)) == -1) {
-			logprintf(LOG_ERR, "could not connect to 433-daemon");
+			logprintf(LOG_ERR, "could not connect to pilight-daemon");
 			goto close;
 		}
 
 		while(1) {
 			if(steps > WELCOME) {
 				/* Clear the receive buffer again and read the welcome message */
-				if((recvBuff = socket_read(sockfd)) != NULL) {
+				if((recvBuff = socket_read(sockfd))) {
 					json = json_decode(recvBuff);
 					json_find_string(json, "message", &message);
 				} else {
@@ -250,7 +272,9 @@ int main(int argc, char **argv) {
 					json = json_mkobject();
 					json_append_member(json, "message", json_mkstring("send"));
 					json_append_member(json, "code", code);
-					socket_write(sockfd, json_stringify(json, NULL));
+					char *output = json_stringify(json, NULL);
+					socket_write(sockfd, output);
+					sfree((void *)&output);
 					goto close;
 				break;
 				case REJECT:
@@ -261,9 +285,18 @@ int main(int argc, char **argv) {
 		}
 	}
 close:
-	json_delete(json);
-	socket_close(sockfd);
-free(progname);
-free(server);
+	if(json) {
+		json_delete(json);
+	}
+	if(sockfd) {
+		socket_close(sockfd);
+	}
+	log_shell_disable();
+	sfree((void *)&server);
+	protocol_gc();
+	options_delete(options);
+	options_gc();
+	sfree((void *)&progname);
+
 return EXIT_SUCCESS;
 }

@@ -3,13 +3,13 @@
 
 	This file is part of pilight.
 
-    pilight is free software: you can redistribute it and/or modify it under the 
-	terms of the GNU General Public License as published by the Free Software 
-	Foundation, either version 3 of the License, or (at your option) any later 
+    pilight is free software: you can redistribute it and/or modify it under the
+	terms of the GNU General Public License as published by the Free Software
+	Foundation, either version 3 of the License, or (at your option) any later
 	version.
 
-    pilight is distributed in the hope that it will be useful, but WITHOUT ANY 
-	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR 
+    pilight is distributed in the hope that it will be useful, but WITHOUT ANY
+	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
@@ -25,6 +25,8 @@
 #include <errno.h>
 #include <syslog.h>
 
+#include "pilight.h"
+#include "common.h"
 #include "settings.h"
 #include "config.h"
 #include "log.h"
@@ -32,7 +34,7 @@
 #include "socket.h"
 #include "json.h"
 
-#include "hardware.h"
+#include "protocol.h"
 
 typedef enum {
 	WELCOME,
@@ -48,7 +50,8 @@ int main(int argc, char **argv) {
 	log_shell_enable();
 	log_level_set(LOG_NOTICE);
 
-	progname = strdup("pilight-control");
+	progname = malloc(16);
+	strcpy(progname, "pilight-control");
 
 	struct options_t *options = NULL;
 
@@ -65,14 +68,15 @@ int main(int argc, char **argv) {
 	struct conf_locations_t *slocation = NULL;
 	struct conf_devices_t *sdevice = NULL;
 	int has_values = 0;
-	
-	char *server = strdup("127.0.0.1");
+
+	char *server = malloc(17);
+	strcpy(server, "127.0.0.1");
 	unsigned short port = PORT;
-	
-	JsonNode *json = json_mkobject();
-	JsonNode *jconfig = json_mkobject();
-	JsonNode *jcode = json_mkobject();
-	JsonNode *jvalues = json_mkobject();
+
+	JsonNode *json = NULL;
+	JsonNode *jconfig = NULL;
+	JsonNode *jcode = NULL;
+	JsonNode *jvalues = NULL;
 
 	/* Define all CLI arguments of this program */
 	options_add(&options, 'H', "help", no_value, 0, NULL);
@@ -91,7 +95,7 @@ int main(int argc, char **argv) {
 	while(1) {
 		int c;
 		c = options_parse(&options, argc, argv, 1, &optarg);
-		if(c == -1)
+		if(c == -1 || c == -2)
 			break;
 		switch(c) {
 			case 'H':
@@ -107,7 +111,7 @@ int main(int argc, char **argv) {
 				exit(EXIT_SUCCESS);
 			break;
 			case 'V':
-				printf("%s %s\n", progname, "1.0");
+				printf("%s %.1f\n", progname, VERSION);
 				exit(EXIT_SUCCESS);
 			break;
 			case 'l':
@@ -121,23 +125,24 @@ int main(int argc, char **argv) {
 			break;
 			case 'v':
 				strcpy(values, optarg);
-			break;			
+			break;
 			case 'S':
-				free(server);
-				server = strdup(optarg);
+				server = realloc(server, strlen(optarg)+1);
+				strcpy(server, optarg);
 			break;
 			case 'P':
 				port = (unsigned short)atoi(optarg);
-			break;			
+			break;
 			default:
-				printf("Usage: %s -l location -d device\n", progname);
+				printf("Usage: %s -l location -d device -s state\n", progname);
 				exit(EXIT_SUCCESS);
 			break;
 		}
 	}
+	options_delete(options);
 
-	if(strlen(location) == 0 || strlen(device) == 0) {
-		printf("Usage: %s -l location -d device\n", progname);
+	if(strlen(location) == 0 || strlen(device) == 0 || strlen(state) == 0) {
+		printf("Usage: %s -l location -d device -s state\n", progname);
 		exit(EXIT_SUCCESS);
 	}
 
@@ -146,13 +151,12 @@ int main(int argc, char **argv) {
 		exit(EXIT_FAILURE);
 	}
 
-	/* Initialize peripheral modules */
-	hw_init();
+	protocol_init();
 
 	while(1) {
 		if(steps > WELCOME) {
 			/* Clear the receive buffer again and read the welcome message */
-			if(steps == REQUEST) {
+			if(steps == CONFIG) {
 				if((recvBuff = socket_read_big(sockfd)) != NULL) {
 					json = json_decode(recvBuff);
 					json_find_string(json, "message", &message);
@@ -184,15 +188,14 @@ int main(int argc, char **argv) {
 			case REQUEST:
 				socket_write(sockfd, "{\"message\":\"request config\"}");
 				steps=CONFIG;
+				json_delete(json);
 			break;
 			case CONFIG:
 				if((jconfig = json_find_member(json, "config")) != NULL) {
 					config_parse(jconfig);
 					if(config_get_location(location, &slocation) == 0) {
 						if(config_get_device(location, device, &sdevice) == 0) {
-							json_delete(json);
-
-							json = json_mkobject();
+							JsonNode *joutput = json_mkobject();
 							jcode = json_mkobject();
 							jvalues = json_mkobject();
 
@@ -224,25 +227,27 @@ int main(int argc, char **argv) {
 										break;
 									}
 								}
-							}							
-							
-							if(strlen(state) > 0) {
-								if(config_valid_state(location, device, state) == 0) {
-									json_append_member(jcode, "state", json_mkstring(state));
-								} else {
-									logprintf(LOG_ERR, "\"%s\" is an invalid state for device \"%s\"", state, device);
-									goto close;
-								}
 							}
-							
+
+							if(config_valid_state(location, device, state) == 0) {
+								json_append_member(jcode, "state", json_mkstring(state));
+							} else {
+								logprintf(LOG_ERR, "\"%s\" is an invalid state for device \"%s\"", state, device);
+								goto close;
+							}
+
 							if(has_values == 1) {
 								json_append_member(jcode, "values", jvalues);
+							} else {
+								json_delete(jvalues);
 							}
-							
-							json_append_member(json, "message", json_mkstring("send"));
-							json_append_member(json, "code", jcode);
 
-							socket_write(sockfd, json_stringify(json, NULL));
+							json_append_member(joutput, "message", json_mkstring("send"));
+							json_append_member(joutput, "code", jcode);
+							char *output = json_stringify(joutput, NULL);
+							socket_write(sockfd, output);
+							sfree((void *)&output);
+							json_delete(joutput);
 						} else {
 							logprintf(LOG_ERR, "the device \"%s\" does not exist", device);
 							goto close;
@@ -252,17 +257,26 @@ int main(int argc, char **argv) {
 						goto close;
 					}
 				}
+				json_delete(json);
 				goto close;
 			break;
 			case REJECT:
 			default:
+				json_delete(json);
 				goto close;
 			break;
 		}
 	}
 close:
-	json_delete(json);
 	socket_close(sockfd);
-free(server);
+
+        log_shell_disable();
+	config_gc();
+	protocol_gc();
+	socket_gc();
+	options_gc();
+	sfree((void *)&progname);
+	sfree((void *)&server);
+
 return EXIT_SUCCESS;
 }

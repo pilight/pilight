@@ -1,0 +1,112 @@
+GCC = $(CROSS_COMPILE)gcc
+SYS := $(shell $(GCC) -dumpmachine)
+ifneq (, $(findstring x86_64, $(SYS)))
+	OSFLAGS = -Ofast -fPIC -march=native -mtune=native -mfpmath=sse -Wconversion -Wunreachable-code -Wstrict-prototypes 
+endif
+ifneq (, $(findstring arm, $(SYS)))
+	ifneq (, $(findstring gnueabihf, $(SYS)))
+		OSFLAGS = -Ofast -mfloat-abi=hard -mfpu=vfp -march=armv6 -Wconversion -Wunreachable-code -Wstrict-prototypes 
+	endif
+	ifneq (, $(findstring gnueabi, $(SYS)))
+		OSFLAGS = -Ofast -mfloat-abi=hard -mfpu=vfp -march=armv6 -Wconversion -Wunreachable-code -Wstrict-prototypes 
+	endif	
+	ifneq (, $(findstring gnueabisf, $(SYS)))
+		OSFLAGS = -Ofast -mfloat-abi=soft -mfpu=vfp -march=armv6 -Wconversion -Wunreachable-code -Wstrict-prototypes 
+	endif
+endif
+ifneq (, $(findstring amd64, $(SYS)))
+	OSFLAGS = -O3 -fPIC -march=native -mtune=native -mfpmath=sse -Wno-conversion
+endif
+GIT_HASH := $(shell git describe --always)
+CFLAGS = -ffast-math $(OSFLAGS) -Wfloat-equal -Wshadow -Wpointer-arith -Wcast-align -Wstrict-overflow=5 -Wwrite-strings -Waggregate-return -Wcast-qual -Wswitch-default -Wswitch-enum -Wformat=2 -g -Wall -I. -isystem.. -Ilibs/pilight/ -Ilibs/protocols/ -Ilibs/hardwares/ -pthread -lm -DHASH=\"$(GIT_HASH)\"
+SUBDIRS = libs/pilight libs/protocols libs/hardwares libs/websockets
+SRC = $(wildcard *.c)
+INCLUDES = $(wildcard protocols/*.h) $(wildcard protocols/*.c) $(wildcard hardwares/*.h) $(wildcard hardwares/*.c) $(wildcard libs/pilight/*.h) $(wildcard libs/websockets/*.c) $(wildcard libs/websockets/*.h) $(wildcard libs/websockets/*.c)
+PROGAMS = $(patsubst %.c,pilight-%,$(SRC))
+LIBS = libs/pilight/pilight.o libs/protocols/protocols.o libs/hardwares/hardwares.o libs/websockets/websockets.o
+
+.PHONY: subdirs $(SUBDIRS)
+
+subdirs: $(SUBDIRS) all
+
+$(SUBDIRS):
+	$(MAKE) -C $@
+
+all: $(LIBS) libpilight.so libpilight.a $(PROGAMS) 
+
+libpilight.so.1: $(LIBS)
+	$(GCC) $(LIBS) -shared -o libpilight.so -lpthread -lm -ldl
+	
+libpilight.a: $(LIBS)
+	$(CROSS_COMPILE)ar -rsc libpilight.a $(LIBS)
+
+pilight-daemon: daemon.c $(INCLUDES) $(LIBS) libpilight.so
+	$(GCC) $(CFLAGS) -o $@ $(patsubst pilight-%,%.c,$@) libpilight.so
+
+pilight-send: send.c $(INCLUDES) $(LIBS) libpilight.so
+	$(GCC) $(CFLAGS) -o $@ $(patsubst pilight-%,%.c,$@) libpilight.so
+
+pilight-receive: receive.c $(INCLUDES) $(LIBS) libpilight.so
+	$(GCC) $(CFLAGS) -o $@ $(patsubst pilight-%,%.c,$@) libpilight.so
+
+pilight-debug: debug.c $(INCLUDES) $(LIBS) libpilight.so
+	$(GCC) $(CFLAGS) -o $@ $(patsubst pilight-%,%.c,$@) libpilight.so
+
+pilight-learn: learn.c $(INCLUDES) $(LIBS) libpilight.so
+	$(GCC) $(CFLAGS) -o $@ $(patsubst pilight-%,%.c,$@) libpilight.so
+
+pilight-control: control.c $(INCLUDES) $(LIBS) libpilight.so
+	$(GCC) $(CFLAGS) -o $@ $(patsubst pilight-%,%.c,$@) libpilight.so
+
+pilight-raw: raw.c $(INCLUDES) $(LIBS) libpilight.so
+	$(GCC) $(CFLAGS) -o $@ $(patsubst pilight-%,%.c,$@) libpilight.so
+	
+install:
+	[ -d /usr/share/images/pilight/ ] && rm -r /usr/share/images/pilight/ || true
+	
+	install -m 0755 -d /usr/local/lib/pilight/
+	install -m 0755 -d /usr/local/sbin
+	install -m 0755 -d /etc/pilight
+	install -m 0755 -d /usr/local/share/pilight/
+	install -m 0655 pilight-daemon /usr/local/sbin/
+	install -m 0655 pilight-send /usr/local/sbin/
+	install -m 0655 pilight-receive /usr/local/sbin/
+	install -m 0655 pilight-control /usr/local/sbin/
+	install -m 0655 pilight-debug /usr/local/sbin/
+	install -m 0655 pilight-learn /usr/local/sbin/
+	install -m 0655 pilight-raw /usr/local/sbin/
+	install -m 0655 libpilight.so /usr/local/lib/pilight/
+	install -m 0655 libpilight.a /usr/local/lib/pilight/
+	install -m 0644 settings.json-default /etc/pilight/
+	install -m 0644 web/index.html /usr/local/share/pilight/
+	install -m 0644 web/pilight.css /usr/local/share/pilight/
+	install -m 0644 web/pilight.js /usr/local/share/pilight/
+	install -m 0644 web/favicon.ico /usr/local/share/pilight/
+	install -m 0644 web/logo.png /usr/local/share/pilight/
+	install -m 0644 web/battery_green.png /usr/local/share/pilight/
+	install -m 0644 web/battery_red.png /usr/local/share/pilight/
+	install -m 0644 web/apple-touch-icon-iphone-retina-display.png /usr/local/share/pilight/
+	install -m 0644 web/apple-touch-icon-ipad.png /usr/local/share/pilight/
+	install -m 0644 web/apple-touch-icon-iphone.png /usr/local/share/pilight/	
+	install -m 0755 init/pilight /etc/init.d/
+	update-rc.d pilight defaults
+
+	[ ! -f /usr/local/bin/gpio ] && install -m 0755 deps/gpio /usr/local/bin/ || true
+	[ ! -f /etc/pilight/settings.json ] && mv /etc/pilight/settings.json-default /etc/pilight/settings.json || true
+	mv /usr/local/lib/pilight/libpilight.so /usr/local/lib/pilight/libpilight.so.2
+	ln -sf /usr/local/lib/pilight/libpilight.so.2 /usr/local/lib/libpilight.so
+	ldconfig
+	
+clean:
+	rm pilight-* >/dev/null 2>&1 || true
+	rm *pilight*.so* >/dev/null 2>&1 || true
+	rm *pilight*.a* >/dev/null 2>&1 || true
+	$(MAKE) -C libs/protocols/ $@;
+	
+dist-clean:
+	rm pilight-* >/dev/null 2>&1 || true
+	rm *pilight*.so* >/dev/null 2>&1 || true
+	rm *pilight*.a* >/dev/null 2>&1 || true
+	for dir in $(SUBDIRS); do \
+		$(MAKE) -C $$dir $@; \
+	done
