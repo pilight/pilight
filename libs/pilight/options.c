@@ -291,29 +291,33 @@ int options_parse(struct options_t **opt, int argc, char **argv, int error_check
 			}
 		} else {
 			/* If the argument didn't have a value, set it to 1 */
-			if(strlen(*optarg) == 0)
+			if(strlen(*optarg) == 0) {
 				options_set_value(opt, c, "1");
-			else {
-#ifndef __FreeBSD__			
-				/* If the argument has a regex mask, check if it passes */
-				if(options_get_mask(opt, c, &mask) == 0) {
-					reti = regcomp(&regex, mask, REG_EXTENDED);
-					if(reti) {
-						logprintf(LOG_ERR, "could not compile regex");
-						goto gc;
-					}
-					reti = regexec(&regex, *optarg, 0, NULL, 0);
-					if(reti == REG_NOMATCH || reti != 0) {
-						if(shortarg[0] == '-') {
-							logprintf(LOG_ERR, "invalid format -- '-%c'", c);
-						} else {
-							logprintf(LOG_ERR, "invalid format -- '%s'", longarg);
+			} else {
+#ifndef __FreeBSD__	
+				if(error_check != 2) {
+					/* If the argument has a regex mask, check if it passes */
+					if(options_get_mask(opt, c, &mask) == 0) {
+						reti = regcomp(&regex, mask, REG_EXTENDED);
+						if(reti) {
+							logprintf(LOG_ERR, "could not compile regex");
+							goto gc;
 						}
-						logprintf(LOG_ERR, "requires %s", mask);
+						reti = regexec(&regex, *optarg, 0, NULL, 0);
+						if(reti == REG_NOMATCH || reti != 0) {
+							if(error_check == 1) {
+								if(shortarg[0] == '-') {
+									logprintf(LOG_ERR, "invalid format -- '-%c'", c);
+								} else {
+									logprintf(LOG_ERR, "invalid format -- '%s'", longarg);
+								}
+								logprintf(LOG_ERR, "requires %s", mask);
+							}
+							regfree(&regex);
+							goto gc;
+						}
 						regfree(&regex);
-						goto gc;
 					}
-					regfree(&regex);
 				}
 #endif
 				options_set_value(opt, c, *optarg);

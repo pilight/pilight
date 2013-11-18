@@ -39,6 +39,7 @@
 #include "json.h"
 #include "socket.h"
 #include "webserver.h"
+#include "socket.h"
 #include "fcache.h"
 
 int webserver_port = WEBSERVER_PORT;
@@ -399,6 +400,20 @@ int webserver_callback_http(struct libwebsocket_context *webcontext, struct libw
 			return 0;
 		}
 		break;
+		case LWS_CALLBACK_FILTER_NETWORK_CONNECTION:
+			if((int)in > 0) {
+				struct sockaddr_in address;
+				int addrlen = sizeof(address);
+				getpeername((int)in, (struct sockaddr*)&address, (socklen_t*)&addrlen);
+				if(socket_check_whitelist(inet_ntoa(address.sin_addr)) != 0) {
+					logprintf(LOG_INFO, "rejected client, ip: %s, port: %d", inet_ntoa(address.sin_addr), ntohs(address.sin_port));
+					return -1;
+				} else {			
+					logprintf(LOG_INFO, "client connected, ip %s, port %d", inet_ntoa(address.sin_addr), ntohs(address.sin_port));				
+					return 0;
+				}
+			}
+		break;		
 		case LWS_CALLBACK_FILTER_PROTOCOL_CONNECTION:
 		case LWS_CALLBACK_OPENSSL_LOAD_EXTRA_CLIENT_VERIFY_CERTS:
 		case LWS_CALLBACK_OPENSSL_LOAD_EXTRA_SERVER_VERIFY_CERTS:
@@ -412,7 +427,6 @@ int webserver_callback_http(struct libwebsocket_context *webcontext, struct libw
 		case LWS_CALLBACK_DEL_POLL_FD:
 		case LWS_CALLBACK_SET_MODE_POLL_FD:
 		case LWS_CALLBACK_CLEAR_MODE_POLL_FD:
-		case LWS_CALLBACK_FILTER_NETWORK_CONNECTION:
 		default:
 		break;
 	}
