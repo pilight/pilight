@@ -160,7 +160,7 @@ int main(int argc, char **argv) {
 	   fill all necessary values in the options struct */
 	while(1) {
 		int c;
-		c = options_parse(&options, argc, argv, 1, &args);
+		c = options_parse(&options, argc, argv, 2, &args);
 
 		if(c == -1)
 			break;
