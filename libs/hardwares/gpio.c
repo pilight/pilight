@@ -68,6 +68,15 @@ unsigned short gpioHwInit(void) {
 }
 
 unsigned short gpioHwDeinit(void) {
+	FILE *fd;
+	if((fd = fopen ("/sys/class/gpio/unexport", "w"))) {
+		fprintf(fd, "%d\n", wpiPinToGpio(gpio_in));
+		fclose(fd);
+	}
+	if((fd = fopen ("/sys/class/gpio/unexport", "w"))) {
+		fprintf(fd, "%d\n", wpiPinToGpio(gpio_out));
+		fclose(fd);
+	}
 	return 0;
 }
 

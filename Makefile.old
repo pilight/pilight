@@ -94,7 +94,6 @@ install:
 	install -m 0755 init/pilight /etc/init.d/
 	update-rc.d pilight defaults
 
-	[ ! -f /usr/local/bin/gpio ] && install -m 0755 deps/gpio /usr/local/bin/ || true
 	[ ! -f /etc/pilight/settings.json ] && mv /etc/pilight/settings.json-default /etc/pilight/settings.json || true
 	mv /usr/local/lib/pilight/libpilight.so /usr/local/lib/pilight/libpilight.so.2
 	ln -sf /usr/local/lib/pilight/libpilight.so.2 /usr/local/lib/libpilight.so
