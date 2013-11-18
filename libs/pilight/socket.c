@@ -38,7 +38,7 @@
 char *readBuff = NULL;
 char *recvBuff = NULL;
 char *sendBuff = NULL;
-unsigned int ***whitelist_cache;
+unsigned int ***whitelist_cache = NULL;
 unsigned int whitelist_number;
 unsigned short socket_loop = 1;
 
@@ -46,7 +46,7 @@ int socket_gc(void) {
 	sfree((void *)&readBuff);
 	sfree((void *)&recvBuff);
 	sfree((void *)&sendBuff);
-	sfree((void *)&whitelist_cache);
+	if(whitelist_cache) sfree((void *)&whitelist_cache);
 	socket_loop = 0;
 	logprintf(LOG_DEBUG, "garbage collected socket library");
 	return EXIT_SUCCESS;

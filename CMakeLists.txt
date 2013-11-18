@@ -240,10 +240,6 @@ endif()
 
 install(PROGRAMS init/pilight DESTINATION /etc/init.d/)
 
-if(NOT EXISTS "/usr/local/bin/gpio")
-	install(PROGRAMS deps/gpio DESTINATION /usr/local/bin/) 
-endif()
-
 if(NOT EXISTS "/etc/pilight/settings.json")
 	install(FILES settings.json-default DESTINATION /etc/pilight/ RENAME settings.json) 
 endif()

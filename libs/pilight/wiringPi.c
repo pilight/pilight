@@ -1314,6 +1314,76 @@ int waitForInterrupt (int pin, int mS)
   // return NULL ;
 // }
 
+static void changeOwner (char *file)
+{
+  uid_t uid = getuid () ;
+  uid_t gid = getgid () ;
+
+  if (chown (file, uid, gid) != 0)
+  {
+    if (errno == ENOENT)	// Warn that it's not there
+      fprintf (stderr, "gpio: Warning: File not present: %s\n", file) ;
+    else
+    {
+      fprintf (stderr, "gpio: Unable to change ownership of %s: %s\n", file, strerror (errno)) ;
+      exit (1) ;
+    }
+  }
+}
+
+void doEdge (int pin, const char *mode)
+{
+  FILE *fd ;
+  char fName [128] ;
+
+// Export the pin and set direction to input
+
+  if ((fd = fopen ("/sys/class/gpio/export", "w")) == NULL)
+  {
+    fprintf (stderr, "gpio: Unable to open GPIO export interface: %d\n", strerror (errno)) ;
+    exit (1) ;
+  }
+
+  fprintf (fd, "%d\n", pin) ;
+  fclose (fd) ;
+
+  sprintf (fName, "/sys/class/gpio/gpio%d/direction", pin) ;
+  if ((fd = fopen (fName, "w")) == NULL)
+  {
+    fprintf (stderr, "gpio: Unable to open GPIO direction interface for pin %d: %s\n", pin, strerror (errno)) ;
+    exit (1) ;
+  }
+
+  fprintf (fd, "in\n") ;
+  fclose (fd) ;
+
+  sprintf (fName, "/sys/class/gpio/gpio%d/edge", pin) ;
+  if ((fd = fopen (fName, "w")) == NULL)
+  {
+    fprintf (stderr, "gpio: Unable to open GPIO edge interface for pin %d: %s\n", pin, strerror (errno)) ;
+    exit (1) ;
+  }
+
+  /**/ if (strcasecmp (mode, "none")    == 0) fprintf (fd, "none\n") ;
+  else if (strcasecmp (mode, "rising")  == 0) fprintf (fd, "rising\n") ;
+  else if (strcasecmp (mode, "falling") == 0) fprintf (fd, "falling\n") ;
+  else if (strcasecmp (mode, "both")    == 0) fprintf (fd, "both\n") ;
+  else
+  {
+    fprintf (stderr, "gpio: Invalid mode: %s. Should be none, rising, falling or both\n", mode) ;
+    exit (1) ;
+  }
+
+// Change ownership of the value and edge files, so the current user can actually use it!
+
+  sprintf (fName, "/sys/class/gpio/gpio%d/value", pin) ;
+  changeOwner (fName) ;
+
+  sprintf (fName, "/sys/class/gpio/gpio%d/edge", pin) ;
+  changeOwner (fName) ;
+
+  fclose (fd) ;
+}
 
 /*
  * wiringPiISR:
@@ -1368,8 +1438,8 @@ int wiringPiISR (int pin, int mode)
 
     if (pid == 0)	// Child, exec
     {
-      execl ("/usr/local/bin/gpio", "gpio", "edge", pinS, modeS, (char *)NULL) ;
-      return wiringPiFailure (WPI_FATAL, "wiringPiISR: execl failed: %s\n", strerror (errno)) ;
+      doEdge(atoi(pinS), modeS) ;
+      //return wiringPiFailure (WPI_FATAL, "wiringPiISR: execl failed: %s\n", strerror (errno)) ;
     }
     else		// Parent, wait
       wait (NULL) ;
