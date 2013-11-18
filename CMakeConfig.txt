@@ -4,6 +4,7 @@ set(PROTOCOL_ALECTO ON CACHE BOOL "support for the Alecto weather stations proto
 set(PROTOCOL_COGEX_SWITCH ON CACHE BOOL "support for the Cogex switch protocol")
 set(PROTOCOL_COCO_SWITCH ON CACHE BOOL "support for the new ClickOnClickOff switch protocol")
 set(PROTOCOL_DS18B20 ON CACHE BOOL "support for the 1-Wire ds18b20 temperature sensor")
+set(PROTOCOL_DHT22 ON CACHE BOOL "support for the DHT22/AM2302 temperature-humidity sensor")
 set(PROTOCOL_DIO_SWITCH ON CACHE BOOL "support for the D-IO (Chacon) switch protocol")
 set(PROTOCOL_ELRO_SWITCH ON CACHE BOOL "support for the Elro switch protocol")
 set(PROTOCOL_GENERIC_DIMMER ON CACHE BOOL "support for the generic dimmer protocol")

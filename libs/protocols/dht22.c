@@ -25,6 +25,7 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <stdint.h>
+#include <wiringPi.h>
 
 #include "../../pilight.h"
 #include "common.h"
@@ -41,16 +42,20 @@
 
 unsigned short dht22_loop = 1;
 
-void *dht22Parse(void *param) {
-	struct dirent *dir;
-	struct dirent *file;
+static uint8_t sizecvt(const int read_value)
+{
+  /* digitalRead() and friends from wiringpi are defined as returning a value
+< 256. However, they are returned as int() types. This is a safety function */
 
-	DIR *d = NULL;
-	DIR *f = NULL;
-	FILE *fp;
-	char *content;
-	size_t bytes;
-	struct stat st;
+  if (read_value > 255 || read_value < 0)
+  {
+    printf("Invalid data from wiringPi library\n");
+    exit(EXIT_FAILURE);
+  }
+  return (uint8_t)read_value;
+}
+
+void *dht22Parse(void *param) {
 	
 	int interval = 5;
 	int dht_pin = 7;
@@ -71,7 +76,7 @@ void *dht22Parse(void *param) {
 			uint8_t counter = 0;
 			uint8_t j = 0, i;
 
-			dht22_dat[0] = dht22_dat[1] = dht22_dat[2] = dht22_dat[3] = dht22_dat[4] = 0;
+			int dht22_dat[5] = {0,0,0,0,0};
 
 			// pull pin down for 18 milliseconds
 			pinMode(dht_pin, OUTPUT);
@@ -117,7 +122,7 @@ void *dht22Parse(void *param) {
 					h = (float)dht22_dat[0] * 256 + (float)dht22_dat[1];
 					h /= 10;
 					t = (float)(dht22_dat[2] & 0x7F)* 256 + (float)dht22_dat[3];
-					t /= 10.0;
+					t /= 10.0f;
 					if ((dht22_dat[2] & 0x80) != 0) t *= -1;
 
 					dht22->message = json_mkobject();
