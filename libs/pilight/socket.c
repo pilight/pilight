@@ -38,12 +38,15 @@
 char *readBuff = NULL;
 char *recvBuff = NULL;
 char *sendBuff = NULL;
+unsigned int ***whitelist_cache;
+unsigned int whitelist_number;
 unsigned short socket_loop = 1;
 
 int socket_gc(void) {
 	sfree((void *)&readBuff);
 	sfree((void *)&recvBuff);
 	sfree((void *)&sendBuff);
+	sfree((void *)&whitelist_cache);
 	socket_loop = 0;
 	logprintf(LOG_DEBUG, "garbage collected socket library");
 	return EXIT_SUCCESS;
@@ -74,58 +77,67 @@ int socket_check_whitelist(char *ip) {
 		pch = strtok(NULL, ".");
 	}
 
-	char *tmp = whitelist;
-	x = 0;
-	/* Loop through all whitelised ip addresses */
-	while(*tmp != '\0') {
-		/* Remove any comma's and spaces */
-		while(*tmp == ',' || *tmp == ' ') {
+	if(!whitelist_cache) {
+		char *tmp = whitelist;
+		x = 0;
+		/* Loop through all whitelised ip addresses */
+		while(*tmp != '\0') {
+			/* Remove any comma's and spaces */
+			while(*tmp == ',' || *tmp == ' ') {
+				tmp++;
+			}
+			/* Save ip address in temporary char array */
+			wip[x] = *tmp;
+			x++;
 			tmp++;
-		}
-		/* Save ip address in temporary char array */
-		wip[x] = *tmp;
-		x++;
-		tmp++;
 
-		/* Each ip address is either terminated by a comma or EOL delimiter */
-		if(*tmp == '\0' || *tmp == ',') {
-			x = 0;
-			unsigned int lower[4] = {0};
-			unsigned int upper[4] = {0};
+			/* Each ip address is either terminated by a comma or EOL delimiter */
+			if(*tmp == '\0' || *tmp == ',') {
+				x = 0;
+				whitelist_cache = realloc(whitelist_cache, (sizeof(unsigned int ***)*(whitelist_number+1)));
+				whitelist_cache[whitelist_number] = malloc(sizeof(unsigned int **)*2);
+				/* Lower boundary */
+				whitelist_cache[whitelist_number][0] = malloc(sizeof(unsigned int *)*4);
+				/* Upper boundary */
+				whitelist_cache[whitelist_number][1] = malloc(sizeof(unsigned int *)*4);
 
-			/* Turn the whitelist ip address into a upper and lower boundary.
-			   If the ip address doesn't contain a wildcard, then the upper
-			   and lower boundary are the same. If the ip address does contain
-			   a wildcard, then this lower boundary number will be 0 and the
-			   upper boundary number 255. */
-			i = 0;
-			pch = strtok(wip, ".");
-			while(pch) {
-				if(strcmp(pch, "*") == 0) {
-					lower[i] = 0;
-					upper[i] = 255;
-				} else {
-					lower[i] = (unsigned int)atoi(pch);
-					upper[i] = (unsigned int)atoi(pch);
+				/* Turn the whitelist ip address into a upper and lower boundary.
+				   If the ip address doesn't contain a wildcard, then the upper
+				   and lower boundary are the same. If the ip address does contain
+				   a wildcard, then this lower boundary number will be 0 and the
+				   upper boundary number 255. */
+				i = 0;
+				pch = strtok(wip, ".");
+				while(pch) {
+					if(strcmp(pch, "*") == 0) {
+						whitelist_cache[whitelist_number][0][i] = 0;
+						whitelist_cache[whitelist_number][1][i] = 255;
+					} else {
+						whitelist_cache[whitelist_number][0][i] = (unsigned int)atoi(pch);
+						whitelist_cache[whitelist_number][1][i] = (unsigned int)atoi(pch);
+					}
+					pch = strtok(NULL, ".");
+					i++;
 				}
-				pch = strtok(NULL, ".");
-				i++;
+				memset(wip, '\0', 16);
+				whitelist_number++;
 			}
+		}
+	}
 
-			/* http://stackoverflow.com/a/9696632
-			   Turn the different ip addresses into one single number and compare those
-			   against each other to see if the ip address is inside the lower and upper
-			   whitelisted boundary */
-			unsigned int wlower = lower[0] << 24 | lower[1] << 16 | lower[2] << 8 | lower[3];
-			unsigned int wupper = upper[0] << 24 | upper[1] << 16 | upper[2] << 8 | upper[3];
-			unsigned int nip = client[0] << 24 | client[1] << 16 | client[2] << 8 | client[3];
+	for(x=0;x<whitelist_number;x++) {
+		/* http://stackoverflow.com/a/9696632
+		   Turn the different ip addresses into one single number and compare those
+		   against each other to see if the ip address is inside the lower and upper
+		   whitelisted boundary */	
+		unsigned int wlower = whitelist_cache[x][0][0] << 24 | whitelist_cache[x][0][1] << 16 | whitelist_cache[x][0][2] << 8 | whitelist_cache[x][0][3];
+		unsigned int wupper = whitelist_cache[x][1][0] << 24 | whitelist_cache[x][1][1] << 16 | whitelist_cache[x][1][2] << 8 | whitelist_cache[x][1][3];
+		unsigned int nip = client[0] << 24 | client[1] << 16 | client[2] << 8 | client[3];
 
-			/* Always allow 127.0.0.1 connections */
-			if((nip >= wlower && nip <= wupper) || (nip == 2130706433)) {
-				error = 0;
-			}
-			memset(wip, '\0', 16);
-		}		
+		/* Always allow 127.0.0.1 connections */
+		if((nip >= wlower && nip <= wupper) || (nip == 2130706433)) {
+			error = 0;
+		}
 	}
 
 	sfree((void *)&pch);
