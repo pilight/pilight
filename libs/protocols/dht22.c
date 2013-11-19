@@ -25,7 +25,6 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <stdint.h>
-#include <wiringPi.h>
 
 #include "../../pilight.h"
 #include "common.h"
@@ -36,7 +35,7 @@
 #include "binary.h"
 #include "gc.h"
 #include "dht22.h"
-
+#include "../pilight/wiringPi.h"
 	
 #define MAXTIMINGS 85
 
@@ -57,6 +56,11 @@ static uint8_t sizecvt(const int read_value)
 
 void *dht22Parse(void *param) {
 	
+
+	//TODO: Is this a good place to do the setup? How to prevent double Setup?
+  	if (wiringPiSetup () == -1)
+    	exit(EXIT_FAILURE) ;
+
 	int interval = 5;
 	int dht_pin = 7;
 
@@ -65,7 +69,6 @@ void *dht22Parse(void *param) {
 
 	
 	while(dht22_loop) {
-
 
 		int tries = 5;
 		unsigned short got_correct_date = 0;
@@ -118,33 +121,30 @@ void *dht22Parse(void *param) {
 
 					got_correct_date = 1;
 
-					float t, h;
-					h = (float)dht22_dat[0] * 256 + (float)dht22_dat[1];
-					h /= 10;
-					t = (float)(dht22_dat[2] & 0x7F)* 256 + (float)dht22_dat[3];
-					t /= 10.0f;
+					int h = dht22_dat[0] * 256 + dht22_dat[1];
+					int t = (dht22_dat[2] & 0x7F)* 256 + dht22_dat[3];
+
 					if ((dht22_dat[2] & 0x80) != 0) t *= -1;
 
+					
 					dht22->message = json_mkobject();
-					
 					JsonNode *code = json_mkobject();
-					
+					json_append_member(code, "temperature", json_mkstring(dht22->id));
 					json_append_member(code, "temperature", json_mknumber(t));
-					
+					json_append_member(code, "humidity", json_mknumber(h));
+
 					json_append_member(dht22->message, "code", code);
 					json_append_member(dht22->message, "origin", json_mkstring("receiver"));
 					json_append_member(dht22->message, "protocol", json_mkstring(dht22->id));
-					
 					pilight.broadcast(dht22->id, dht22->message);
 					json_delete(dht22->message);
 					dht22->message = NULL;
-
-					printf("Humidity = %.2f %% Temperature = %.2f *C \n", h, t );
-		
 	  			}
 				else
 				{
+					logprintf(LOG_DEBUG, "dht22 data checksum was wrong");
 					tries--;
+					sleep(1);
 				}
 
 		}
@@ -162,16 +162,20 @@ int dht22GC(void) {
 }
 
 void dht22Init(void) {
-	
 	gc_attach(dht22GC);
 
 	protocol_register(&dht22);
 	protocol_set_id(dht22, "dht22");
-	protocol_device_add(dht22, "DHT22", "DHT22/AM2302 temperature-humidity sensor");
+	protocol_device_add(dht22, "dht22", "DHT22/AM2302 temperature-humidity sensor");
 	dht22->devtype = WEATHER;
 	dht22->hwtype = SENSOR;
 
+	
 	options_add(&dht22->options, 't', "temperature", has_value, config_value, "^[0-9]{1,5}$");
+	options_add(&dht22->options, 'h', "humidity", has_value, config_value, "^[0-9]{1,3}$");
+	options_add(&dht22->options, 'i', "id", has_value, config_id, ".+");
+	options_add(&dht22->options, 'p', "pin", has_value, config_value, "^[0-9]{1,2}$");
+
 
 	protocol_setting_add_number(dht22, "decimals", 3);
 	protocol_setting_add_number(dht22, "humidity", 1);
