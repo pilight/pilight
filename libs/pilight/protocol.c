@@ -72,6 +72,9 @@
 #ifdef PROTOCOL_DS18B20
 	#include "../protocols/ds18b20.h"
 #endif
+#ifdef PROTOCOL_DHT22
+	#include "../protocols/dht22.h"
+#endif
 #ifdef PROTOCOL_CHACON
 	#include "../protocols/chacon.h"
 #endif
@@ -124,6 +127,9 @@ void protocol_init(void) {
 #endif
 #ifdef PROTOCOL_DS18B20
 	ds18b20Init();
+#endif
+#ifdef PROTOCOL_DHT22
+	dht22Init();
 #endif
 #ifdef PROTOCOL_CHACON
 	chaconSwInit();
