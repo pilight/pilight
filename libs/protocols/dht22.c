@@ -129,7 +129,7 @@ void *dht22Parse(void *param) {
 					
 					dht22->message = json_mkobject();
 					JsonNode *code = json_mkobject();
-					json_append_member(code, "temperature", json_mkstring(dht22->id));
+					json_append_member(code, "id", json_mkstring(dht22->id));
 					json_append_member(code, "temperature", json_mknumber(t));
 					json_append_member(code, "humidity", json_mknumber(h));
 
@@ -171,13 +171,13 @@ void dht22Init(void) {
 	dht22->hwtype = SENSOR;
 
 	
-	options_add(&dht22->options, 't', "temperature", has_value, config_value, "^[0-9]{1,5}$");
+	options_add(&dht22->options, 't', "temperature", has_value, config_value, "^[0-9]{1,3}$");
 	options_add(&dht22->options, 'h', "humidity", has_value, config_value, "^[0-9]{1,3}$");
 	options_add(&dht22->options, 'i', "id", has_value, config_id, ".+");
 	options_add(&dht22->options, 'p', "pin", has_value, config_value, "^[0-9]{1,2}$");
 
 
-	protocol_setting_add_number(dht22, "decimals", 3);
+	protocol_setting_add_number(dht22, "decimals", 1);
 	protocol_setting_add_number(dht22, "humidity", 1);
 	protocol_setting_add_number(dht22, "temperature", 1);
 	protocol_setting_add_number(dht22, "battery", 0);
