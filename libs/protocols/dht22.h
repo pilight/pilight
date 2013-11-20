@@ -19,8 +19,11 @@
 #ifndef _PROTOCOL_DHT22_H_
 #define _PROTOCOL_DHT22_H_
 
+#include "json.h"
+
 struct protocol_t *dht22;
 
 void dht22Init(void);
+void dht22InitDev(JsonNode *jdevice);
 
 #endif

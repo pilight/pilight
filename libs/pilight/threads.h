@@ -23,6 +23,7 @@
 
 typedef struct threads_t {
 	pthread_t pth;
+	char *id;
 	void *param;
 	unsigned int running;
 	void *(*function)(void *param);
@@ -31,7 +32,7 @@ typedef struct threads_t {
 
 struct threads_t *threads;
 
-void threads_register(void *(*function)(void* param), void *param);
+void threads_register(const char *id, void *(*function)(void* param), void *param);
 void *threads_start(void *param);
 int threads_gc(void);
 

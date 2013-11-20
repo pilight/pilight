@@ -34,6 +34,7 @@
 #include "hardware.h"
 #include "binary.h"
 #include "gc.h"
+#include "json.h"
 #include "dht22.h"
 #include "../pilight/wiringPi.h"
 	
@@ -45,7 +46,6 @@ static uint8_t sizecvt(const int read_value)
 {
 	/* digitalRead() and friends from wiringpi are defined as returning a value
 	   < 256. However, they are returned as int() types. This is a safety function */
-
 	if(read_value > 255 || read_value < 0) {
 		logprintf(LOG_NOTICE, "invalid data from wiringPi library");
 	}
@@ -55,22 +55,23 @@ static uint8_t sizecvt(const int read_value)
 
 void *dht22Parse(void *param) {
 
-	if(wiringPiSetup () == -1) {
-    	return 0;
-	}
-
+	struct JsonNode *json = (struct JsonNode *)param;
+	struct JsonNode *jsettings = NULL;
 	int interval = 5;
 	int dht_pin = 7;
 
-	protocol_setting_get_number(dht22, "interval", &interval);	
-	protocol_setting_get_number(dht22, "gpio", &dht_pin);	
+	json_find_number(json, "gpio", &dht_pin);
+	if((jsettings = json_find_member(json, "settings"))) {
+		json_find_number(jsettings, "interval", &interval);
+	}
+	json_delete(json);	
 	
 	while(dht22_loop) {
 
 		int tries = 5;
 		unsigned short got_correct_date = 0;
 
-		while(tries > 0 && !got_correct_date) {
+		while(tries && !got_correct_date) {
 
 			uint8_t laststate = HIGH;
 			uint8_t counter = 0;
@@ -139,7 +140,7 @@ void *dht22Parse(void *param) {
 				json_delete(dht22->message);
 				dht22->message = NULL;
 			} else {
-				//logprintf(LOG_DEBUG, "dht22 data checksum was wrong");
+				logprintf(LOG_DEBUG, "dht22 data checksum was wrong");
 				tries--;
 				sleep(1);
 			}
@@ -148,6 +149,13 @@ void *dht22Parse(void *param) {
 	}
 
 	return (void *)NULL;
+}
+
+void dht22InitDev(JsonNode *jdevice) {
+	char *output = json_stringify(jdevice, NULL);
+	JsonNode *json = json_decode(output);
+	threads_register("dht22", &dht22Parse, (void *)json);
+	sfree((void *)&output);
 }
 
 int dht22GC(void) {
@@ -167,7 +175,7 @@ void dht22Init(void) {
 	options_add(&dht22->options, 't', "temperature", has_value, config_value, "^[0-9]{1,3}$");
 	options_add(&dht22->options, 'h', "humidity", has_value, config_value, "^[0-9]{1,3}$");
 	options_add(&dht22->options, 'i', "id", has_value, config_id, ".+");
-	options_add(&dht22->options, 'p', "pin", has_value, config_value, "^[0-9]{1,2}$");
+	options_add(&dht22->options, 'g', "gpio", has_value, config_value, "^[0-9]{1,2}$");
 
 	protocol_setting_add_number(dht22, "decimals", 1);
 	protocol_setting_add_number(dht22, "humidity", 1);
@@ -175,5 +183,7 @@ void dht22Init(void) {
 	protocol_setting_add_number(dht22, "battery", 0);
 	protocol_setting_add_number(dht22, "interval", 5);
 
-	threads_register(&dht22Parse, (void *)NULL);
+	dht22->initDev=&dht22InitDev;
+	
+	wiringPiSetup();
 }

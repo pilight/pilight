@@ -1334,6 +1334,14 @@ int config_parse_devices(JsonNode *jdevices, struct conf_devices_t *device) {
 			tmp_protocols = tmp_protocols->next;
 		}
 	}
+	
+	tmp_protocols = device->protocols;
+	while(tmp_protocols) {
+		if(tmp_protocols->listener->initDev) {
+			tmp_protocols->listener->initDev(jdevices);
+		}
+		tmp_protocols = tmp_protocols->next;
+	}
 
 	device->settings = malloc(sizeof(struct conf_settings_t));
 	/* Only store devices if they are present */

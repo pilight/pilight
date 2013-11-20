@@ -19,8 +19,11 @@
 #ifndef _PROTOCOL_DS18B20_H_
 #define _PROTOCOL_DS18B20_H_
 
+#include "json.h"
+
 struct protocol_t *ds18b20;
 
 void ds18b20Init(void);
+void ds18b20InitDev(JsonNode *jdevice);
 
 #endif

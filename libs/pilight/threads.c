@@ -29,11 +29,13 @@ unsigned short thread_loop = 1;
 unsigned short thread_count = 0;
 unsigned short thread_running = 0;
 
-void threads_register(void *(*function)(void *param), void *param) {
+void threads_register(const char *id, void *(*function)(void *param), void *param) {
 	struct threads_t *tnode = malloc(sizeof(struct threads_t));
 
 	tnode->function = function;
 	tnode->running = 0;
+	tnode->id = malloc(strlen(id)+1);
+	strcpy(tnode->id, id);
 	tnode->param = param;
 	tnode->next = threads;
 	threads = tnode;
@@ -52,9 +54,9 @@ void *threads_start(void *param) {
 					tmp_threads->running = 1;		
 					thread_running++;
 					if(thread_running == 1) {
-						logprintf(LOG_DEBUG, "new thread, %d thread running", thread_running);
+						logprintf(LOG_DEBUG, "new thread %s, %d thread running", tmp_threads->id, thread_running);
 					} else {
-						logprintf(LOG_DEBUG, "new thread, %d threads running", thread_running);
+						logprintf(LOG_DEBUG, "new thread %s, %d threads running", tmp_threads->id, thread_running);
 					}
 				}
 				tmp_threads = tmp_threads->next;
@@ -62,7 +64,7 @@ void *threads_start(void *param) {
 		}
 		usleep(5000);
 	}
-	return 0;
+	return (void *)NULL;
 }
 
 int threads_gc(void) {
@@ -75,6 +77,11 @@ int threads_gc(void) {
 			thread_running--;
 			pthread_cancel(tmp_threads->pth);
 			pthread_join(tmp_threads->pth, NULL);
+			if(thread_running == 1) {
+				logprintf(LOG_DEBUG, "stopped thread %s, %d thread running", tmp_threads->id, thread_running);
+			} else {
+				logprintf(LOG_DEBUG, "stopped thread %s, %d threads running", tmp_threads->id, thread_running);
+			}
 		}
 		tmp_threads = tmp_threads->next;
 	}
@@ -82,6 +89,7 @@ int threads_gc(void) {
 	struct threads_t *ttmp;
 	while(threads) {
 		ttmp = threads;
+		sfree((void *)&ttmp->id);
 		thread_count--;
 		threads = threads->next;
 		sfree((void *)&ttmp);
@@ -91,4 +99,3 @@ int threads_gc(void) {
 	logprintf(LOG_DEBUG, "garbage collected threads library");
 	return EXIT_SUCCESS;
 }
-

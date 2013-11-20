@@ -529,7 +529,7 @@ void *webserver_start(void *param) {
 	} else {
 		/* Register a seperate thread in which the webserver communicates
 		   the main daemon as if it where a gui */
-		threads_register(&webserver_clientize, (void *)NULL);
+		threads_register("webserver client", &webserver_clientize, (void *)NULL);
 		sleep(1);
 		/* Main webserver loop */
 		while(n >= 0 && webserver_loop) {
