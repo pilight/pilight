@@ -158,6 +158,7 @@ void protocol_register(protocol_t **proto) {
 	(*proto)->parseCode = NULL;
 	(*proto)->createCode = NULL;
 	(*proto)->checkValues = NULL;
+	(*proto)->initDev = NULL;
 	(*proto)->printHelp = NULL;
 	(*proto)->message = NULL;
 	

@@ -32,136 +32,153 @@
 #include "protocol.h"
 #include "hardware.h"
 #include "binary.h"
+#include "json.h"
 #include "gc.h"
 #include "ds18b20.h"
 
 unsigned short ds18b20_loop = 1;
+unsigned short ds18b20_nrfree = 0;
 char *ds18b20_path = NULL;
-char *ds18b20_w1nr = NULL;
-char *ds18b20_w1id = NULL;
-char *ds18b20_w1dir = NULL;
-char *ds18b20_w1slave = NULL;
 
 void *ds18b20Parse(void *param) {
-	struct dirent *dir;
+	struct JsonNode *json = (struct JsonNode *)param;
+	struct JsonNode *jid = NULL;
+	struct JsonNode *jchild = NULL;
+	struct JsonNode *jsettings = NULL;
 	struct dirent *file;
+	struct stat st;
 
 	DIR *d = NULL;
-	DIR *f = NULL;
 	FILE *fp;
-	char *content;
+	char *ds18b20_sensor = NULL;
+	char *stmp = NULL;
+	char **id = NULL;
+	char *content;	
+	char *ds18b20_w1slave = NULL;
+	int w1valid = 0, w1temp = 0, interval = 5;		
+	int x = 0, nrid = 0, y = 0;
 	size_t bytes;
-	struct stat st;
 	
-	int w1valid = 0;
-	int w1temp = 0;
-	int interval = 5;
+	if((jid = json_find_member(json, "id"))) {
+		jchild = json_first_child(jid);
+		while(jchild) {
+			if(json_find_string(jchild, "id", &stmp) == 0) {
+				id = realloc(id, (sizeof(char *)*(size_t)(nrid+1)));
+				id[nrid] = malloc(strlen(stmp)+1);
+				strcpy(id[nrid], stmp);
+				nrid++;
+			}
+			jchild = jchild->next;
+		}
+	}
+	if((jsettings = json_find_member(json, "settings"))) {
+		json_find_number(jsettings, "interval", &interval);
+	}
+	json_delete(json);
 
-	protocol_setting_get_number(ds18b20, "interval", &interval);	
+	ds18b20_nrfree++;
 	
 	while(ds18b20_loop) {
-		if((d = opendir(ds18b20_path))) {
-			while((dir = readdir(d)) != NULL) {
-				if(dir->d_type == DT_LNK) {
-					if(strcmp(dir->d_name, ".") != 0 && strcmp(dir->d_name, "..") != 0) {
-						strncpy(ds18b20_w1nr, dir->d_name, 2);
-						if(atoi(ds18b20_w1nr) == 28) {
-							strncpy(ds18b20_w1id, &dir->d_name[3], 12);
+		for(y=0;y<nrid;y++) {
+			ds18b20_sensor = realloc(ds18b20_sensor, strlen(ds18b20_path)+strlen(id[y])+5);
+			sprintf(ds18b20_sensor, "%s28-%s/", ds18b20_path, id[y]);
+			if((d = opendir(ds18b20_sensor))) {
+				while((file = readdir(d)) != NULL) {
+					if(file->d_type == DT_REG) {
+						if(strcmp(file->d_name, "w1_slave") == 0) {
+							size_t w1slavelen = strlen(ds18b20_sensor)+10;
+							ds18b20_w1slave = realloc(ds18b20_w1slave, w1slavelen);
+							memset(ds18b20_w1slave, '\0', w1slavelen);
+							strncpy(ds18b20_w1slave, ds18b20_sensor, strlen(ds18b20_sensor));
+							strcat(ds18b20_w1slave, "w1_slave");
 
-							size_t w1dirlen = strlen(dir->d_name)+strlen(ds18b20_path)+2;
-							ds18b20_w1dir = realloc(ds18b20_w1dir, w1dirlen);
-							memset(ds18b20_w1dir, '\0', w1dirlen);
-							strcat(ds18b20_w1dir, ds18b20_path);
-							strcat(ds18b20_w1dir, dir->d_name);
-							strcat(ds18b20_w1dir, "/");
+							if(!(fp = fopen(ds18b20_w1slave, "rb"))) {
+								logprintf(LOG_ERR, "cannot read w1 file: %s", ds18b20_w1slave);
+								break;
+							}
 
-							if((f = opendir(ds18b20_w1dir))) {
-								while((file = readdir(f)) != NULL) {
-									if(file->d_type == DT_REG) {
-										if(strcmp(file->d_name, "w1_slave") == 0) {
-											size_t w1slavelen = w1dirlen+10;
-											ds18b20_w1slave = realloc(ds18b20_w1slave, w1slavelen);
-											memset(ds18b20_w1slave, '\0', w1slavelen);
-											strncpy(ds18b20_w1slave, ds18b20_w1dir, w1dirlen);
-											strcat(ds18b20_w1slave, "w1_slave");
+							fstat(fileno(fp), &st);
+							bytes = (size_t)st.st_size;
 
-											if(!(fp = fopen(ds18b20_w1slave, "rb"))) {
-												logprintf(LOG_ERR, "cannot read w1 file: %s", ds18b20_w1slave);
-												break;
-											}
+							if(!(content = calloc(bytes+1, sizeof(char)))) {
+								logprintf(LOG_ERR, "out of memory");
+								fclose(fp);
+								break;
+							}
 
-											fstat(fileno(fp), &st);
-											bytes = (size_t)st.st_size;
-
-											if(!(content = calloc(bytes+1, sizeof(char)))) {
-												logprintf(LOG_ERR, "out of memory");
-												fclose(fp);
-												break;
-											}
-
-											if(fread(content, sizeof(char), bytes, fp) == -1) {
-												logprintf(LOG_ERR, "cannot read config file: %s", ds18b20_w1slave);
-												fclose(fp);
-												sfree((void *)&content);
-												break;
-											}
-											fclose(fp);
-											w1valid = 0;
-											char *pch = strtok(content, "\n=: ");
-											int x = 0;
-											while(pch) {
-												if(strlen(pch) > 2) {
-													if(x == 1 && strstr(pch, "YES")) {
-														w1valid = 1;
-													}
-													if(x == 2) {	
-														w1temp = atoi(pch);
-													}
-													x++;
-												}
-												pch = strtok(NULL, "\n=: ");
-											}
-											sfree((void *)&content);
-											if(w1valid) {
-												ds18b20->message = json_mkobject();
-												
-												JsonNode *code = json_mkobject();
-												
-												json_append_member(code, "id", json_mkstring(ds18b20_w1id));
-												json_append_member(code, "temperature", json_mknumber(w1temp));
-												
-												json_append_member(ds18b20->message, "code", code);
-												json_append_member(ds18b20->message, "origin", json_mkstring("receiver"));
-												json_append_member(ds18b20->message, "protocol", json_mkstring(ds18b20->id));
-												
-												pilight.broadcast(ds18b20->id, ds18b20->message);
-												json_delete(ds18b20->message);
-												ds18b20->message = NULL;
-											}
-										}
+							if(fread(content, sizeof(char), bytes, fp) == -1) {
+								logprintf(LOG_ERR, "cannot read config file: %s", ds18b20_w1slave);
+								fclose(fp);
+								sfree((void *)&content);
+								break;
+							}
+							fclose(fp);
+							w1valid = 0;
+							char *pch = strtok(content, "\n=: ");
+							x = 0;
+							while(pch) {
+								if(strlen(pch) > 2) {
+									if(x == 1 && strstr(pch, "YES")) {
+										w1valid = 1;
 									}
+									if(x == 2) {	
+										w1temp = atoi(pch);
+									}
+									x++;
 								}
-								closedir(f);
+								pch = strtok(NULL, "\n=: ");
+							}
+							sfree((void *)&content);
+							if(w1valid) {
+								ds18b20->message = json_mkobject();
+								
+								JsonNode *code = json_mkobject();
+								
+								json_append_member(code, "id", json_mkstring(id[y]));
+								json_append_member(code, "temperature", json_mknumber(w1temp));
+								
+								json_append_member(ds18b20->message, "code", code);
+								json_append_member(ds18b20->message, "origin", json_mkstring("receiver"));
+								json_append_member(ds18b20->message, "protocol", json_mkstring(ds18b20->id));
+								
+								pilight.broadcast(ds18b20->id, ds18b20->message);
+								json_delete(ds18b20->message);
+								ds18b20->message = NULL;
 							}
 						}
 					}
 				}
+				closedir(d);
+			} else {
+				logprintf(LOG_ERR, "1-wire device %s does not exists", ds18b20_sensor);
 			}
-			closedir(d);
 		}
-		sleep((unsigned int)interval);
+		for(x=0;x<(interval*1000);x++) {
+			if(ds18b20_loop) {
+				usleep((__useconds_t)(x));
+			}
+		}
 	}
+	if(id) sfree((void *)&id);
+	if(ds18b20_w1slave) sfree((void *)&ds18b20_w1slave);
+	ds18b20_nrfree--;
 
 	return (void *)NULL;
 }
 
+void ds18b20InitDev(JsonNode *jdevice) {
+	char *output = json_stringify(jdevice, NULL);
+	JsonNode *json = json_decode(output);
+	threads_register("ds18b20", &ds18b20Parse, (void *)json);
+	sfree((void *)&output);
+}
+
 int ds18b20GC(void) {
-	ds18b20_loop = 0;
-	sfree((void *)&ds18b20_w1slave);	
-	sfree((void *)&ds18b20_w1dir);
-	sfree((void *)&ds18b20_w1nr);
-	sfree((void *)&ds18b20_w1id);
+	ds18b20_loop = 0;	
 	sfree((void *)&ds18b20_path);
+	while(ds18b20_nrfree > 0) {
+		usleep(100);
+	}
 	return 1;
 }
 
@@ -183,19 +200,10 @@ void ds18b20Init(void) {
 	protocol_setting_add_number(ds18b20, "temperature", 1);
 	protocol_setting_add_number(ds18b20, "battery", 0);
 	protocol_setting_add_number(ds18b20, "interval", 5);
-	
-	ds18b20_w1nr = malloc(3);
-	ds18b20_w1id = malloc(13);
-	ds18b20_w1dir = malloc(4);
-	ds18b20_w1slave = malloc(4);
-	ds18b20_path = malloc(21);
 
-	memset(ds18b20_w1nr, '\0', 3);
-	memset(ds18b20_w1id, '\0', 13);	
-	memset(ds18b20_w1dir, '\0', 4);	
-	memset(ds18b20_w1slave, '\0', 4);	
+	ds18b20_path = malloc(21);
 	memset(ds18b20_path, '\0', 21);	
 	strcpy(ds18b20_path, "/sys/bus/w1/devices/");
 
-	threads_register(&ds18b20Parse, (void *)NULL);
+	ds18b20->initDev=&ds18b20InitDev;
 }

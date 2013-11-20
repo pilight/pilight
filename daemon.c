@@ -1462,28 +1462,28 @@ int main(int argc, char **argv) {
 	/* The daemon running in client mode, register a seperate thread that
 	   communicates with the server */
 	if(runmode == 2) {
-		threads_register(&clientize, (void *)NULL);
+		threads_register("node", &clientize, (void *)NULL);
 	}
 
 	/* Register a seperate thread for the socket server */
-	threads_register(&socket_wait, (void *)&socket_callback);
-	threads_register(&send_code, (void *)NULL);
-	threads_register(&broadcast, (void *)NULL);
+	threads_register("socket", &socket_wait, (void *)&socket_callback);
+	threads_register("sender", &send_code, (void *)NULL);
+	threads_register("broadcaster", &broadcast, (void *)NULL);
 
 #ifdef UPDATE
 	if(update_check) {
-		threads_register(&update_poll, (void *)NULL);
+		threads_register("updater", &update_poll, (void *)NULL);
 	}
 #endif
 
 	if(match == 1) {
-		threads_register(&receive_code, (void *)NULL);
+		threads_register("receiver", &receive_code, (void *)NULL);
 	}
 
 #ifdef WEBSERVER
 	/* Register a seperate thread for the webserver */
 	if(webserver_enable == 1) {
-		threads_register(&webserver_start, (void *)NULL);
+		threads_register("webserver daemon", &webserver_start, (void *)NULL);
 	}
 #endif
 
