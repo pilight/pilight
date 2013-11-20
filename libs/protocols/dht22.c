@@ -169,6 +169,8 @@ void dht22Init(void) {
 	protocol_register(&dht22);
 	protocol_set_id(dht22, "dht22");
 	protocol_device_add(dht22, "dht22", "1-wire temperature and humidity sensor");
+	protocol_device_add(dht22, "dht11", "1-wire temperature and humidity sensor");
+	protocol_device_add(dht22, "am2302", "1-wire temperature and humidity sensor");	
 	dht22->devtype = WEATHER;
 	dht22->hwtype = SENSOR;
 

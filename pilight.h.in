@@ -59,7 +59,7 @@
 #cmakedefine HARDWARE_433_GPIO
 #cmakedefine HARDWARE_433_MODULE
 
-#define VERSION					"2.0"
+#define VERSION					"2.1"
 
 #ifdef HARDWARE_433_GPIO
 	#define HW_MODE				"gpio"
