@@ -176,7 +176,7 @@ void arctechSrOldInit(void) {
 	protocol_setting_add_string(arctech_screen_old, "states", "up,down");
 	protocol_setting_add_number(arctech_screen_old, "readonly", 0);
 	
-	arctech_screen_old->parseBinary=arctechSrOldParseBinary;
+	arctech_screen_old->parseBinary=&arctechSrOldParseBinary;
 	arctech_screen_old->createCode=&arctechSrOldCreateCode;
 	arctech_screen_old->printHelp=&arctechSrOldPrintHelp;
 }

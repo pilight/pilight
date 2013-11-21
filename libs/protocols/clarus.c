@@ -221,7 +221,7 @@ void clarusSwInit(void) {
 	protocol_setting_add_string(clarus_switch, "states", "on,off");
 	protocol_setting_add_number(clarus_switch, "readonly", 0);
 	
-	clarus_switch->parseCode=clarusSwParseCode;
+	clarus_switch->parseCode=&clarusSwParseCode;
 	clarus_switch->createCode=&clarusSwCreateCode;
 	clarus_switch->printHelp=&clarusSwPrintHelp;
 }

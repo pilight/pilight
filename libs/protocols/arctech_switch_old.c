@@ -178,7 +178,7 @@ void arctechSwOldInit(void) {
 	protocol_setting_add_string(arctech_switch_old, "states", "on,off");
 	protocol_setting_add_number(arctech_switch_old, "readonly", 0);
 	
-	arctech_switch_old->parseBinary=arctechSwOldParseBinary;
+	arctech_switch_old->parseBinary=&arctechSwOldParseBinary;
 	arctech_switch_old->createCode=&arctechSwOldCreateCode;
 	arctech_switch_old->printHelp=&arctechSwOldPrintHelp;
 }

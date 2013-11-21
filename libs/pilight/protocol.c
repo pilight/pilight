@@ -46,7 +46,8 @@
 	#include "../protocols/home_easy_old.h"
 #endif
 #ifdef PROTOCOL_ELRO_SWITCH
-	#include "../protocols/sartano.h"
+	#include "../protocols/elro_he.h"
+	#include "../protocols/elro_hc.h"
 #endif
 #if defined(PROTOCOL_SELECTREMOTE) || defined(PROTOCOL_IMPULS)
 	#include "../protocols/impuls.h"
@@ -102,7 +103,8 @@ void protocol_init(void) {
 	homeEasyOldInit();
 #endif
 #ifdef PROTOCOL_ELRO_SWITCH
-	sartanoInit();
+	elroHEInit();
+	elroHCInit();
 #endif
 #if defined(PROTOCOL_SELECTREMOTE) || defined(PROTOCOL_IMPULS)
 	impulsInit();

@@ -174,7 +174,7 @@ void chaconSwInit(void) {
 	protocol_setting_add_string(chacon_switch, "states", "on,off");
 	protocol_setting_add_number(chacon_switch, "readonly", 0);
 	
-	chacon_switch->parseBinary=chaconSwParseBinary;
+	chacon_switch->parseBinary=&chaconSwParseBinary;
 	chacon_switch->createCode=&chaconSwCreateCode;
 	chacon_switch->printHelp=&chaconSwPrintHelp;
 }

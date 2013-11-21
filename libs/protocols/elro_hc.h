@@ -16,22 +16,22 @@
     along with pilight. If not, see	<http://www.gnu.org/licenses/>
 */
 
-#ifndef _PROTOCOL_SARTANO_H_
-#define _PROTOCOL_SARTANO_H_
+#ifndef _PROTOCOL_ELRO_HC_H_
+#define _PROTOCOL_ELRO_HC_H_
 
-struct protocol_t *sartano;
+struct protocol_t *elro_hc;
 
-void sartanoInit(void);
-void sartanoCreateMessage(int systemcode, int unitcode, int state);
-void sartanoParseBinary(void);
-int sartanoCreateCode(JsonNode *code);
-void sartanoCreateLow(int s, int e);
-void sartanoCreateHigh(int s, int e);
-void sartanoClearCode(void);
-void sartanoCreateSystemCode(int systemcode);
-void sartanoCreateUnitCode(int unitcode);
-void sartanoCreateState(int state);
-void sartanoCreateFooter(void);
-void sartanoPrintHelp(void);
+void elroHCInit(void);
+void elroHCCreateMessage(int systemcode, int unitcode, int state);
+void elroHCParseBinary(void);
+int elroHCCreateCode(JsonNode *code);
+void elroHCCreateLow(int s, int e);
+void elroHCCreateHigh(int s, int e);
+void elroHCClearCode(void);
+void elroHCCreateSystemCode(int systemcode);
+void elroHCCreateUnitCode(int unitcode);
+void elroHCCreateState(int state);
+void elroHCCreateFooter(void);
+void elroHCPrintHelp(void);
 
 #endif
