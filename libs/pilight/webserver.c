@@ -226,6 +226,10 @@ int webserver_callback_http(struct libwebsocket_context *webcontext, struct libw
 				mimetype = malloc(10);
 				memset(mimetype, '\0', 10);
 				strcpy(mimetype, "text/html");
+			} else if(strcmp(ext, "xml") == 0) {
+				mimetype = malloc(10);
+				memset(mimetype, '\0', 10);
+				strcpy(mimetype, "text/xml");
 			} else if(strcmp(ext, "png") == 0) {
 				mimetype = malloc(10);
 				memset(mimetype, '\0', 10);

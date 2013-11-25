@@ -161,7 +161,7 @@ void arctechSwOldInit(void) {
 	protocol_device_add(arctech_switch_old, "kaku_switch_old", "Old KlikAanKlikUit Switches");
 	protocol_device_add(arctech_switch_old, "cogex", "Cogex Switches");
 	protocol_device_add(arctech_switch_old, "intertechno_old", "Old Intertechno Switches");
-	protocol_conflict_add(arctech_switch_old, "archtech_screens_old");	
+	protocol_conflict_add(arctech_switch_old, "arctech_screens_old");	
 	protocol_plslen_add(arctech_switch_old, 336);
 	arctech_switch_old->devtype = SWITCH;
 	arctech_switch_old->hwtype = RX433;

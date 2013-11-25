@@ -5,8 +5,16 @@ var bSending = false;
 var aDecimals = new Array();
 var bShowTabs = true;
 
+var cookieEnabled = (navigator.cookieEnabled) ? true : false;
+
+if(typeof navigator.cookieEnabled == "undefined" && !cookieEnabled) { 
+	document.cookie="testcookie";
+	cookieEnabled = (document.cookie.indexOf("testcookie") != -1) ? true : false;
+	document.cookie = 'testcookie=; expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+}
+
 function toggleTabs() {
-	if(typeof(localStorage) != 'undefined') {
+	if(cookieEnabled && typeof(localStorage) != 'undefined') {
 		try {		
 			if(localStorage.getItem("tabs") == "true") {
 				localStorage.setItem("tabs", "false");
@@ -22,7 +30,7 @@ function toggleTabs() {
 	}
 }
 
-if(typeof(localStorage) != 'undefined') {
+if(cookieEnabled && typeof(localStorage) != 'undefined') {
 	var iLatestTap1 = 0;
 	var iLatestTap2 = 0;
 
