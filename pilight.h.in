@@ -30,6 +30,7 @@
 /* Protocol support */
 
 #cmakedefine PROTOCOL_ALECTO
+#cmakedefine PROTOCOL_BCM2835
 #cmakedefine PROTOCOL_CHACON
 #cmakedefine PROTOCOL_CLARUS
 #cmakedefine PROTOCOL_COGEX_SWITCH

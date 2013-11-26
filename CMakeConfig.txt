@@ -1,6 +1,7 @@
 set(WEBSERVER ON CACHE BOOL "enable the built-in webserver")
 set(UPDATE ON CACHE BOOL "enable the built-in update checker")
 set(PROTOCOL_ALECTO ON CACHE BOOL "support for the Alecto weather stations protocol")
+set(PROTOCOL_BCM2835 ON CACHE BOOL "support for the RPi temperature sensor")
 set(PROTOCOL_CHACON ON CACHE BOOL "support for the Chacon switch protocol")
 set(PROTOCOL_CLARUS ON CACHE BOOL "support for the Clarus switch protocol")
 set(PROTOCOL_COGEX_SWITCH ON CACHE BOOL "support for the Cogex switch protocol")

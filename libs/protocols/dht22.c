@@ -60,17 +60,16 @@ void *dht22Parse(void *param) {
 	struct JsonNode *jsettings = NULL;
 	struct JsonNode *jid = NULL;
 	struct JsonNode *jchild = NULL;
-	char **id = NULL;
+	int *id;
 	int nrid = 0, y = 0, interval = 5, x = 0;
-	char *stmp = NULL;
+	int itmp;
 
 	if((jid = json_find_member(json, "id"))) {
 		jchild = json_first_child(jid);
 		while(jchild) {
-			if(json_find_string(jchild, "id", &stmp) == 0) {
-				id = realloc(id, (sizeof(char *)*(size_t)(nrid+1)));
-				id[nrid] = malloc(strlen(stmp)+1);
-				strcpy(id[nrid], stmp);
+			if(json_find_number(jchild, "id", &itmp) == 0) {
+				id = realloc(id, (sizeof(int)*(size_t)(nrid+1)));
+				id[nrid] = itmp;
 				nrid++;
 			}
 			jchild = jchild->next;
@@ -97,26 +96,26 @@ void *dht22Parse(void *param) {
 				int dht22_dat[5] = {0,0,0,0,0};
 
 				// pull pin down for 18 milliseconds
-				pinMode(atoi(id[y]), OUTPUT);			
-				digitalWrite(atoi(id[y]), LOW);
+				pinMode(id[y], OUTPUT);			
+				digitalWrite(id[y], LOW);
 				delay(18);
 				// then pull it up for 40 microseconds
-				digitalWrite(atoi(id[y]), HIGH);
+				digitalWrite(id[y], HIGH);
 				delayMicroseconds(40);
 				// prepare to read the pin
-				pinMode(atoi(id[y]), INPUT);
+				pinMode(id[y], INPUT);
 
 				// detect change and read data
 				for(i=0; i<MAXTIMINGS; i++) {
 					counter = 0;
-					while(sizecvt(digitalRead(atoi(id[y]))) == laststate) {
+					while(sizecvt(digitalRead(id[y])) == laststate) {
 						counter++;
 						delayMicroseconds(1);
 						if (counter == 255) {
 							break;
 						}
 					}
-					laststate = sizecvt(digitalRead(atoi(id[y])));
+					laststate = sizecvt(digitalRead(id[y]));
 
 					if(counter == 255) 
 						break;
@@ -146,14 +145,15 @@ void *dht22Parse(void *param) {
 					
 					dht22->message = json_mkobject();
 					JsonNode *code = json_mkobject();
-					json_append_member(code, "gpio", json_mknumber(atoi(id[y])));
+					json_append_member(code, "gpio", json_mknumber(id[y]));
 					json_append_member(code, "temperature", json_mknumber(t));
 					json_append_member(code, "humidity", json_mknumber(h));
 
 					json_append_member(dht22->message, "code", code);
 					json_append_member(dht22->message, "origin", json_mkstring("receiver"));
 					json_append_member(dht22->message, "protocol", json_mkstring(dht22->id));
-					pilight.broadcast(id[y], dht22->message);
+
+					pilight.broadcast(dht22->id, dht22->message);
 					json_delete(dht22->message);
 					dht22->message = NULL;
 				} else {
