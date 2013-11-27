@@ -83,7 +83,6 @@ void elroHCCreateSystemCode(int systemcode) {
 
 	length = decToBinRev(systemcode, binary);
 	for(i=0;i<=length;i++) {
-		printf("%d", binary[i]);
 		if(binary[i]==1) {
 			x=i*4;
 			elroHCCreateLow(19-(x+3), 19-x);
@@ -98,7 +97,6 @@ void elroHCCreateUnitCode(int unitcode) {
 
 	length = decToBinRev(unitcode, binary);
 	for(i=0;i<=length;i++) {
-		printf("%d", binary[i]);
 		if(binary[i]==1) {
 			x=i*4;
 			elroHCCreateLow(39-(x+3), 39-x);

@@ -446,7 +446,7 @@ void *webserver_clientize(void *param) {
 
 	settings_find_number("port", &port);
 
-	if((sockfd = socket_connect(server, (short unsigned int)port)) == -1) {
+	if((sockfd = socket_connect(server, (short unsigned int)socket_get_port())) == -1) {
 		logprintf(LOG_ERR, "could not connect to pilight-daemon");
 		exit(EXIT_FAILURE);
 	}

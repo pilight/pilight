@@ -27,10 +27,6 @@ typedef struct socket_callback_t {
     void (*client_data_callback)(int, char*);
 } socket_callback_t;
 
-int serverSocket;
-int clientSocket;
-int socket_clients[MAX_CLIENTS];
-
 /* Start the socket server */
 int socket_start(unsigned short port);
 int socket_connect(char *address, unsigned short port);
@@ -42,5 +38,8 @@ char *socket_read_big(int sockfd);
 void *socket_wait(void *param);
 int socket_check_whitelist(char *ip);
 int socket_gc(void);
+unsigned int socket_get_port(void);
+int socket_get_fd(void);
+int socket_get_clients(int i);
 
 #endif

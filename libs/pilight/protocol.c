@@ -85,6 +85,9 @@
 #ifdef PROTOCOL_BCM2835
 	#include "../protocols/bcm2835.h"
 #endif
+#ifdef PROTOCOL_CONRAD_RSL_SWITCH
+	#include "../protocols/conrad_rsl_switch.h"
+#endif
 
 void protocol_init(void) {
 #if defined(PROTOCOL_COCO_SWITCH) || defined(PROTOCOL_DIO_SWITCH) || defined(PROTOCOL_NEXA_SWITCH) || defined(PROTOCOL_KAKU_SWITCH) || defined(PROTOCOL_INTERTECHNO_SWITCH)
@@ -144,6 +147,9 @@ void protocol_init(void) {
 #endif
 #ifdef PROTOCOL_BCM2835
 	bcm2835Init();
+#endif
+#ifdef PROTOCOL_CONRAD_RSL_SWITCH
+	conradRSLSwInit();
 #endif
 }
 

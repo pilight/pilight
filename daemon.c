@@ -205,7 +205,7 @@ void *broadcast(void *param) {
 				char *conf = json_stringify(jret, NULL);
 				for(i=0;i<MAX_CLIENTS;i++) {
 					if(handshakes[i] == GUI) {
-						socket_write(socket_clients[i], conf);
+						socket_write(socket_get_clients(i), conf);
 						broadcasted = 1;
 					}
 				}
@@ -226,7 +226,7 @@ void *broadcast(void *param) {
 				/* Write the message to all receivers */
 				for(i=0;i<MAX_CLIENTS;i++) {
 					if(handshakes[i] == RECEIVER || handshakes[i] == NODE) {
-						socket_write(socket_clients[i], json);
+						socket_write(socket_get_clients(i), json);
 						broadcasted = 1;
 					}
 				}
@@ -293,6 +293,9 @@ void receiver_parse_code(int *rawcode, int rawlen, int plslen) {
 				plslengths = plslengths->next;
 			}
 			if(rawlen == protocol->rawlen && match == 1) {
+				for(x=0;x<(int)(double)rawlen;x++) {
+					memcpy(&protocol->raw[x], &rawcode[x], sizeof(int));
+				}
 				if(protocol->parseRaw) {
 					logprintf(LOG_DEBUG, "recevied pulse length of %d", plslen);
 					logprintf(LOG_DEBUG, "called %s parseRaw()", protocol->id);
@@ -323,7 +326,7 @@ void receiver_parse_code(int *rawcode, int rawlen, int plslen) {
 				/* Convert the raw codes to one's and zero's */
 				for(x=0;x<(int)(double)rawlen;x++) {
 					protocol->pCode[x] = protocol->code[x];
-					memcpy(&protocol->raw[x], &rawcode[x], sizeof(int));
+
 					if(protocol->raw[x] >= ((protocol->pulse*plslengths->length)-plslengths->length)) {
 						protocol->code[x] = 1;
 					} else {
@@ -640,7 +643,7 @@ void send_queue(JsonNode *json) {
 }
 
 void client_sender_parse_code(int i, JsonNode *json) {
-	int sd = socket_clients[i];
+	int sd = socket_get_clients(i);
 
 	if(incognito_mode == 0 && handshakes[i] != NODE) {
 		/* Don't let the sender wait until we have send the code */
@@ -749,7 +752,7 @@ void control_device(struct conf_devices_t *dev, char *state, JsonNode *values) {
 }
 
 void client_node_parse_code(int i, JsonNode *json) {
-	int sd = socket_clients[i];
+	int sd = socket_get_clients(i);
 	char *message = NULL;
 
 	if(json_find_string(json, "message", &message) == 0) {
@@ -765,7 +768,7 @@ void client_node_parse_code(int i, JsonNode *json) {
 }
 
 void client_controller_parse_code(int i, JsonNode *json) {
-	int sd = socket_clients[i];
+	int sd = socket_get_clients(i);
 	char *message = NULL;
 	char *location = NULL;
 	char *device = NULL;
@@ -829,7 +832,7 @@ void client_controller_parse_code(int i, JsonNode *json) {
 
 #ifdef WEBSERVER
 void client_webserver_parse_code(int i, char buffer[BUFFER_SIZE]) {
-	int sd = socket_clients[i];
+	int sd = socket_get_clients(i);
 	int x = 0;
 	FILE *f;
 	char *ptr = NULL;;
@@ -895,7 +898,7 @@ void client_webserver_parse_code(int i, char buffer[BUFFER_SIZE]) {
 
 /* Parse the incoming buffer from the client */
 void socket_parse_data(int i, char buffer[BUFFER_SIZE]) {
-	int sd = socket_clients[i];
+	int sd = socket_get_clients(i);
 	struct sockaddr_in address;
 	int addrlen = sizeof(address);
 	char *message;
@@ -982,7 +985,7 @@ void socket_parse_data(int i, char buffer[BUFFER_SIZE]) {
 					incognito_mode = 0;
 				}
 			}
-			if(handshakes[i] == -1 && socket_clients[i] > 0) {
+			if(handshakes[i] == -1 && socket_get_clients(i) > 0) {
 				socket_write(sd, "{\"message\":\"reject client\"}");
 				socket_close(sd);
 			}
@@ -1442,8 +1445,7 @@ int main(int argc, char **argv) {
 		save_pid(getpid());
 	}
 
-    //initialise all socket_clients and handshakes to 0 so not checked
-	memset(socket_clients, 0, sizeof(socket_clients));
+    //initialise all handshakes to 0 so not checked
 	memset(handshakes, -1, sizeof(handshakes));
 
 	/* Export certain daemon function to global usage */

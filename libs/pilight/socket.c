@@ -41,6 +41,9 @@ char *sendBuff = NULL;
 unsigned int ***whitelist_cache = NULL;
 unsigned int whitelist_number;
 unsigned short socket_loop = 1;
+unsigned int socket_port = 0;
+int socket_server = 0;
+int socket_clients[MAX_CLIENTS];
 
 int socket_gc(void) {
 	sfree((void *)&readBuff);
@@ -149,17 +152,20 @@ int socket_check_whitelist(char *ip) {
 int socket_start(unsigned short port) {
 	//gc_attach(socket_gc);
 
-	int opt = 1;
     struct sockaddr_in address;
+	unsigned int addrlen = sizeof(address);
+	int opt = 1;
+
+	memset(socket_clients, 0, sizeof(socket_clients));	
 
     //create a master socket
-    if((serverSocket = socket(AF_INET , SOCK_STREAM , 0)) == 0)  {
+    if((socket_server = socket(AF_INET , SOCK_STREAM , 0)) == 0)  {
         logprintf(LOG_ERR, "could not create new socket");
         exit(EXIT_FAILURE);
     }
 
     //set master socket to allow multiple connections , this is just a good habit, it will work without this
-    if(setsockopt(serverSocket, SOL_SOCKET, SO_REUSEADDR, (char *)&opt, sizeof(opt)) < 0 ) {
+    if(setsockopt(socket_server, SOL_SOCKET, SO_REUSEADDR, (char *)&opt, sizeof(opt)) < 0 ) {
         logprintf(LOG_ERR, "could not set proper socket options");
         exit(EXIT_FAILURE);
     }
@@ -170,20 +176,37 @@ int socket_start(unsigned short port) {
     address.sin_port = htons(port);
 
     //bind the socket to localhost
-    if (bind(serverSocket, (struct sockaddr *)&address, sizeof(address)) < 0) {
+    if (bind(socket_server, (struct sockaddr *)&address, sizeof(address)) < 0) {
         logprintf(LOG_ERR, "cannot bind to socket port %d, address already in use?", address);
         exit(EXIT_FAILURE);
     }
 
     //try to specify maximum of 3 pending connections for the master socket
-    if(listen(serverSocket, 3) < 0) {
+    if(listen(socket_server, 3) < 0) {
         logprintf(LOG_ERR, "failed to listen to socket");
         exit(EXIT_FAILURE);
     }
 
-	logprintf(LOG_INFO, "daemon listening to port: %d", port);
+	if(getsockname(socket_server, (struct sockaddr *)&address, &addrlen) == -1)
+		perror("getsockname");
+	else
+		socket_port = ntohs(address.sin_port);
+	
+	logprintf(LOG_INFO, "daemon listening to port: %d", socket_port);
 
     return 0;
+}
+
+unsigned int socket_get_port(void) {
+	return socket_port;
+}
+
+int socket_get_fd(void) {
+	return socket_server;
+}
+
+int socket_get_clients(int i) {
+	return socket_clients[i];
 }
 
 int socket_connect(char *address, unsigned short port) {
@@ -309,6 +332,7 @@ void *socket_wait(void *param) {
 	int i, n, sd;
     int max_sd;
     struct sockaddr_in address;
+	int socket_client;
 	int addrlen = sizeof(address);
 	fd_set readfds;
 	readBuff = malloc(BIG_BUFFER_SIZE);
@@ -319,8 +343,8 @@ void *socket_wait(void *param) {
 			FD_ZERO(&readfds);
 
 			//add master socket to set
-			FD_SET((long unsigned int)serverSocket, &readfds);
-			max_sd = serverSocket;
+			FD_SET((long unsigned int)socket_get_fd(), &readfds);
+			max_sd = socket_get_fd();
 
 			//add child sockets to set
 			for(i=0;i<MAX_CLIENTS;i++) {
@@ -340,26 +364,26 @@ void *socket_wait(void *param) {
 		} while(activity == -1 && errno == EINTR && socket_loop);
 
         //If something happened on the master socket, then its an incoming connection
-        if(FD_ISSET((long unsigned int)serverSocket, &readfds)) {
-            if((clientSocket = accept(serverSocket, (struct sockaddr *)&address, (socklen_t*)&addrlen))<0) {
+        if(FD_ISSET((long unsigned int)socket_get_fd(), &readfds)) {
+            if((socket_client = accept(socket_get_fd(), (struct sockaddr *)&address, (socklen_t*)&addrlen))<0) {
                 logprintf(LOG_ERR, "failed to accept client");
                 exit(EXIT_FAILURE);
             }
 			if(socket_check_whitelist(inet_ntoa(address.sin_addr)) != 0) {
 				logprintf(LOG_INFO, "rejected client, ip: %s, port: %d", inet_ntoa(address.sin_addr), ntohs(address.sin_port));
-				close(clientSocket);
+				close(socket_client);
 			} else {
 				//inform user of socket number - used in send and receive commands
 				logprintf(LOG_INFO, "new client, ip: %s, port: %d", inet_ntoa(address.sin_addr), ntohs(address.sin_port));
-				logprintf(LOG_DEBUG, "client fd: %d", clientSocket);
+				logprintf(LOG_DEBUG, "client fd: %d", socket_client);
 				//send new connection accept message
-				//socket_write(clientSocket, "{\"message\":\"accept connection\"}");
+				//socket_write(socket_client, "{\"message\":\"accept connection\"}");
 
 				//add new socket to array of sockets
 				for(i=0;i<MAX_CLIENTS;i++) {
 					//if position is empty
 					if(socket_clients[i] == 0) {
-						socket_clients[i] = clientSocket;
+						socket_clients[i] = socket_client;
 						if(socket_callback->client_connected_callback)
 							socket_callback->client_connected_callback(i);
 						logprintf(LOG_DEBUG, "client id: %d", i);

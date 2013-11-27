@@ -183,6 +183,12 @@ if(${PROTOCOL_BCM2835} MATCHES "OFF")
 	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/hardwares/bcm2835.c")
 endif()
 
+if(${PROTOCOL_CONRAD_RSL_SWITCH} MATCHES "OFF")
+	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/hardwares/conrad_rsl_switch.h")
+	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/hardwares/conrad_rsl_switch.c")
+endif()
+
+
 if(${HARDWARE_433_GPIO} MATCHES "OFF")
 	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/hardwares/gpio.h")
 	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/hardwares/gpio.c")
