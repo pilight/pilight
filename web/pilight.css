@@ -31,7 +31,11 @@ body {
 
 .ui-li .ui-btn-inner a.ui-link-inherit, .ui-li-static.ui-li {
 	display: block;
-	padding: 12px 75px 14px 15px;
+	padding: 15px 75px 14px 15px;
+}
+
+.ui-li.dimmer {
+	padding: 15px 75px 1px 15px;
 }
 
 div.ui-slider.ui-slider-switch {
@@ -81,22 +85,13 @@ div.percentage {
 	left: 50px;
 }
 
-div.ui-slider {
-	margin: 15px 0px 0px 0px;
-	width: 100%;
-}
-
-.screen {
+div.screen {
 	position: relative;
 	float: right;
 	width: 135px;
 	height: 0px;
-	top: -21px;
+	top: -25px;
 	right: -100px;
-}
-
-.dimmer-slider {
-	display: none;
 }
 
 .ui-loader-background {

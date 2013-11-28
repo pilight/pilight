@@ -95,7 +95,7 @@ function createSwitchElement(sTabId, sDevId, aValues) {
 		} else {
 			oTab = $('#all');
 		}
-		oTab.append($('<li data-icon="false">'+aValues['name']+'<select id="'+sTabId+'_'+sDevId+'_switch" data-role="slider"><option value="off">Off</option><option value="on">On</option></select></li>'));
+		oTab.append($('<li id="'+sTabId+'_'+sDevId+'" class="switch" data-icon="false">'+aValues['name']+'<select id="'+sTabId+'_'+sDevId+'_switch" data-role="slider"><option value="off">Off</option><option value="on">On</option></select></li>'));
 		$('#'+sTabId+'_'+sDevId+'_switch').slider();
 		$('#'+sTabId+'_'+sDevId+'_switch').bind("change", function(event, ui) {
 			event.stopPropagation();
@@ -130,7 +130,7 @@ function createScreenElement(sTabId, sDevId, aValues) {
 		} else {
 			oTab = $('#all');
 		}
-		oTab.append($('<li data-icon="false">'+aValues['name']+'<div id="'+sTabId+'_'+sDevId+'_screen" class="screen" data-role="fieldcontain" data-type="horizontal"><fieldset data-role="controlgroup" class="controlgroup" data-type="horizontal" data-mini="true"><input type="radio" name="'+sTabId+'_'+sDevId+'_screen" id="'+sTabId+'_'+sDevId+'_screen_down" value="down" /><label for="'+sTabId+'_'+sDevId+'_screen_down">Down</label><input type="radio" name="'+sTabId+'_'+sDevId+'_screen" id="'+sTabId+'_'+sDevId+'_screen_up" value="up" /><label for="'+sTabId+'_'+sDevId+'_screen_up">Up</label></fieldset></div></li>'));
+		oTab.append($('<li  id="'+sTabId+'_'+sDevId+'" class="screen" data-icon="false">'+aValues['name']+'<div id="'+sTabId+'_'+sDevId+'_screen" class="screen" data-role="fieldcontain" data-type="horizontal"><fieldset data-role="controlgroup" class="controlgroup" data-type="horizontal" data-mini="true"><input type="radio" name="'+sTabId+'_'+sDevId+'_screen" id="'+sTabId+'_'+sDevId+'_screen_down" value="down" /><label for="'+sTabId+'_'+sDevId+'_screen_down">Down</label><input type="radio" name="'+sTabId+'_'+sDevId+'_screen" id="'+sTabId+'_'+sDevId+'_screen_up" value="up" /><label for="'+sTabId+'_'+sDevId+'_screen_up">Up</label></fieldset></div></li>'));
 		$("div").trigger("create");
 		$('#'+sTabId+'_'+sDevId+'_screen_down').checkboxradio();
 		$('#'+sTabId+'_'+sDevId+'_screen_up').checkboxradio();
@@ -204,7 +204,7 @@ function createDimmerElement(sTabId, sDevId, aValues) {
 		} else {
 			oTab = $('#all');
 		}
-		oTab.append($('<li data-icon="false">'+aValues['name']+'<select id="'+sTabId+'_'+sDevId+'_switch" data-role="slider"><option value="off">Off</option><option value="on">On</option></select><input type="range" name="slider-fill" id="'+sTabId+'_'+sDevId+'_dimmer" class="dimmer-slider" value="'+aValues['dimlevel']+'" min="'+aValues['settings']['min']+'" max="'+aValues['settings']['max']+'" data-highlight="true" /></li>'));
+		oTab.append($('<li id="'+sTabId+'_'+sDevId+'" class="dimmer" data-icon="false">'+aValues['name']+'<select id="'+sTabId+'_'+sDevId+'_switch" data-role="slider"><option value="off">Off</option><option value="on">On</option></select><div id="'+sTabId+'_'+sDevId+'_dimmer" min="'+aValues['settings']['min']+'" max="'+aValues['settings']['max']+'" data-highlight="true" ><input type="value" id="'+sTabId+'_'+sDevId+'_value" class="slider-value dimmer-slider ui-slider-input ui-input-text ui-body-c ui-corner-all ui-shadow-inset" /></div></li>'));
 		$('#'+sTabId+'_'+sDevId+'_switch').slider();
 		$('#'+sTabId+'_'+sDevId+'_switch').bind("change", function(event, ui) {
 			event.stopPropagation();
@@ -234,6 +234,9 @@ function createDimmerElement(sTabId, sDevId, aValues) {
 					}
 				}
 			}    
+		});
+		$('#'+sTabId+'_'+sDevId+'_dimmer').change(function(event) {
+			$('#'+sTabId+'_'+sDevId+'_value').val(this.value);
 		});
 		
 		oTab.listview();
