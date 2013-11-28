@@ -32,7 +32,7 @@
 void conradRSLSwCreateMessage(int id, int state) {
 	conrad_rsl_switch->message = json_mkobject();
 	json_append_member(conrad_rsl_switch->message, "id", json_mknumber(id));
-	if(state == 0) {
+	if(state == 1) {
 		json_append_member(conrad_rsl_switch->message, "state", json_mkstring("on"));
 	} else {
 		json_append_member(conrad_rsl_switch->message, "state", json_mkstring("off"));
@@ -58,7 +58,7 @@ void conradRSLSwParseCode(void) {
 	int state2 = conrad_rsl_switch->binary[5];
 
 	if(check == 4 && check1 == 1 && state1 != state2) {
-		conradRSLSwCreateMessage(id, state1);
+		conradRSLSwCreateMessage(id, state2);
 	}
 }
 
