@@ -62,7 +62,7 @@ void *threads_start(void *param) {
 		}
 		usleep(5000);
 	}
-	return (void *)NULL;
+	return 0;
 }
 
 int threads_gc(void) {

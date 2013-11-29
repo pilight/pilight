@@ -7,6 +7,13 @@ body {
 	width: 100%;
 }
 
+#version {
+	font-size: 10px;
+	margin: 0px;
+	position: relative;
+	float: left;
+}
+
 .ui-li .ui-btn-inner a.ui-link-inherit, .ui-li-static.ui-li {
 	display: block;
 	padding: 12px 75px 14px 15px;

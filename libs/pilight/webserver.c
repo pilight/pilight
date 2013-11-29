@@ -67,10 +67,7 @@ struct libwebsocket_protocols libwebsocket_protocols[] = {
 };
 
 struct per_session_data__http {
-    int fd;
-	unsigned char *stream;
-	char *mimetype;
-	char *request;
+	struct libwebsocket *wsi;
 };
 
 int webserver_gc(void) {
@@ -85,14 +82,53 @@ int webserver_gc(void) {
 	return 1;
 }
 
-void webserver_send_404(const char *in, unsigned char **p) {
+int webserver_ishex(int x) {
+	return(x >= '0' && x <= '9') || (x >= 'a' && x <= 'f') || (x >= 'A' && x <= 'F');
+}
+
+int webserver_urldecode(const char *s, char *dec) {
+	char *o;
+	const char *end = s + strlen(s);
+	int c;
+
+	for(o = dec; s <= end; o++) {
+		c = *s++;
+		if(c == '+') {
+			c = ' ';
+		} else if(c == '%' && (!webserver_ishex(*s++) || !webserver_ishex(*s++)	|| !sscanf(s - 2, "%2x", &c))) {
+			return -1;
+		}
+		if(dec) {
+			sprintf(o, "%c", c);
+		}
+	}
+
+	return o - dec;
+}
+
+void webserver_create_header(unsigned char **p, const char *message, char *mimetype, unsigned int len) {
 	*p += sprintf((char *)*p,
-		"HTTP/1.0 404 Not Found\x0d\x0a"
-		"Server: pilight\x0d\x0a"
-		"Content-Type: text/html\x0d\x0a");
+		"HTTP/1.0 %s\r\n"
+		"Server: pilight\r\n"
+		"Content-Type: %s\r\n",
+		message, mimetype);
 	*p += sprintf((char *)*p,
-		"Content-Length: %u\x0d\x0a\x0d\x0a",
-		(unsigned int)(202+strlen((const char *)in)));
+		"Content-Length: %u\r\n\r\n",
+		len);
+}
+
+void webserver_create_wsi(struct libwebsocket **wsi, int fd, unsigned char *stream, size_t size) {
+	(*wsi)->u.http.fd = fd;
+	(*wsi)->u.http.stream = stream;
+	(*wsi)->u.http.filelen = size;
+	(*wsi)->u.http.filepos = 0;
+	(*wsi)->u.http.choke = 1;
+	(*wsi)->state = WSI_STATE_HTTP_ISSUING_FILE;
+}
+
+void webserver_create_404(const char *in, unsigned char **p) {
+	char mimetype[] = "text/html";
+	webserver_create_header(p, "404 Not Found", mimetype, (unsigned int)(202+strlen((const char *)in)));
 	*p += sprintf((char *)*p, "<!DOCTYPE HTML PUBLIC \"-//IETF//DTD HTML 2.0//EN\">\x0d\x0a"
 		"<html><head>\x0d\x0a"
 		"<title>404 Not Found</title>\x0d\x0a"
@@ -106,6 +142,9 @@ void webserver_send_404(const char *in, unsigned char **p) {
 int webserver_callback_http(struct libwebsocket_context *webcontext, struct libwebsocket *wsi, enum libwebsocket_callback_reasons reason, void *user, void *in, size_t len) {
 	int n = 0, m = 0;
 	int size;
+	char *request = NULL;
+	char *mimetype = NULL;
+	unsigned char *p = NULL;
 	struct stat stat_buf;
 	struct per_session_data__http *pss = (struct per_session_data__http *)user;
 
@@ -113,141 +152,162 @@ int webserver_callback_http(struct libwebsocket_context *webcontext, struct libw
 		case LWS_CALLBACK_HTTP: {
 			/* If the webserver didn't request a file, serve the index.html */
 			if(strcmp((const char *)in, "/") == 0) {
-				pss->request = realloc(pss->request, strlen(webserver_root)+13);
-				memset(pss->request, '\0', strlen(webserver_root)+13);
+				request = malloc(strlen(webserver_root)+13);
+				memset(request, '\0', strlen(webserver_root)+13);
 				/* Check if the webserver_root is terminated by a slash. If not, than add it */
 				if(webserver_root[strlen(webserver_root)-1] == '/') {
-					sprintf(pss->request, "%s%s", webserver_root, "index.html");
+					sprintf(request, "%s%s", webserver_root, "index.html");
 				} else {
-					sprintf(pss->request, "%s%s", webserver_root, "/index.html");
+					sprintf(request, "%s%s", webserver_root, "/index.html");
 				}
 			} else {
-				char *cin = (char *)in;
+				if(strstr((char *)in, "/send") > 0) {
+					char out[strlen((char *)in)];
+					webserver_urldecode(&((char *)in)[6], out);
+					socket_write(sockfd, out);
+					return -1;
+				} else if(strstr((char *)in, "/config") > 0) {
+					JsonNode *jsend = config_broadcast_create();
+					char *output = json_stringify(jsend, NULL);
+
+					p = webcontext->service_buffer;
+					size = (int)strlen(output);
+					mimetype = malloc(11);
+					strcpy(mimetype, "text/plain");
+					webserver_create_header(&p, "200 OK", mimetype, (unsigned int)size);
+					sfree((void *)&mimetype);
+
+					libwebsocket_write(wsi, webcontext->service_buffer, (size_t)(p-webcontext->service_buffer), LWS_WRITE_HTTP);
+					webserver_create_wsi(&wsi, -2, (unsigned char *)output, (size_t)size);
+					pss->wsi = wsi;
+
+					if(size <= sizeof(webcontext->service_buffer)) {
+						libwebsockets_serve_http_file_fragment(webcontext, pss->wsi);
+						json_delete(jsend);
+						sfree((void *)&output);
+						jsend = NULL;
+						return -1;
+					} else {
+						json_delete(jsend);
+						sfree((void *)&output);
+						jsend = NULL;
+						wsi->u.http.choke = 0;
+						libwebsocket_callback_on_writable(webcontext, pss->wsi);
+						break;
+					}
+				}
 				/* If a file was requested add it to the webserver path to create the absolute path */
-				if(webserver_root[strlen(webserver_root)-1] == '/' && cin[0] == '/') {
-					pss->request = realloc(pss->request, strlen(webserver_root)+strlen((const char *)in));
-					memset(pss->request, '\0', strlen(webserver_root)+strlen((const char *)in));
-					strncpy(&pss->request[0], webserver_root, strlen(webserver_root)-1);
-					strncpy(&pss->request[strlen(webserver_root)-1], cin, strlen(cin));
+				if(webserver_root[strlen(webserver_root)-1] == '/' && ((char *)in)[0] == '/') {
+					request = malloc(strlen(webserver_root)+strlen((const char *)in));
+					memset(request, '\0', strlen(webserver_root)+strlen((const char *)in));
+					strncpy(&request[0], webserver_root, strlen(webserver_root)-1);
+					strncpy(&request[strlen(webserver_root)-1], (char *)in, strlen((char *)in));
 				} else {
-					pss->request = realloc(pss->request, strlen(webserver_root)+strlen((const char *)in)+1);
-					memset(pss->request, '\0', strlen(webserver_root)+strlen((const char *)in)+1);
-					sprintf(pss->request, "%s%s", webserver_root, (const char *)in);
+					request = malloc(strlen(webserver_root)+strlen((const char *)in)+1);
+					memset(request, '\0', strlen(webserver_root)+strlen((const char *)in)+1);
+					sprintf(request, "%s%s", webserver_root, (const char *)in);
 				}
 			}
 
 			char *dot = NULL;
 			/* Retrieve the extension of the requested file and create a mimetype accordingly */
-			dot = strrchr(pss->request, '.');
-			if(!dot || dot == pss->request)
+			dot = strrchr(request, '.');
+			if(!dot || dot == request) {
+				sfree((void *)&request);
 				return -1;
+			}
 
 			ext = realloc(ext, strlen(dot)+1);
 			memset(ext, '\0', strlen(dot)+1);
 			strcpy(ext, dot+1);
 
 			if(strcmp(ext, "html") == 0) {
-				pss->mimetype = realloc(pss->mimetype, 10);
-				memset(pss->mimetype, '\0', 10);
-				strcpy(pss->mimetype, "text/html");
+				mimetype = malloc(10);
+				memset(mimetype, '\0', 10);
+				strcpy(mimetype, "text/html");
 			} else if(strcmp(ext, "png") == 0) {
-				pss->mimetype = realloc(pss->mimetype, 10);
-				memset(pss->mimetype, '\0', 10);
-				strcpy(pss->mimetype, "image/png");
+				mimetype = malloc(10);
+				memset(mimetype, '\0', 10);
+				strcpy(mimetype, "image/png");
 			} else if(strcmp(ext, "ico") == 0) {
-				pss->mimetype = realloc(pss->mimetype, 13);
-				memset(pss->mimetype, '\0', 13);
-				strcpy(pss->mimetype, "image/x-icon");
+				mimetype = malloc(13);
+				memset(mimetype, '\0', 13);
+				strcpy(mimetype, "image/x-icon");
 			} else if(strcmp(ext, "css") == 0) {
-				pss->mimetype = realloc(pss->mimetype, 10);
-				memset(pss->mimetype, '\0', 10);
-				strcpy(pss->mimetype, "text/css");
+				mimetype = malloc(9);
+				memset(mimetype, '\0', 9);
+				strcpy(mimetype, "text/css");
 			} else if(strcmp(ext, "js") == 0) {
-				pss->mimetype = realloc(pss->mimetype, 16);
-				memset(pss->mimetype, '\0', 16);
-				strcpy(pss->mimetype, "text/javascript");
+				mimetype = malloc(16);
+				memset(mimetype, '\0', 16);
+				strcpy(mimetype, "text/javascript");
 			}
 
-			unsigned char *p = webcontext->service_buffer;			
+			p = webcontext->service_buffer;
 
 			if(webserver_cache) {
 				/* If webserver caching is enabled, first load all files in the memory */
-				if(fcache_get_size(pss->request, &size) != 0) {
-					if((fcache_add(pss->request)) != 0) {
-						logprintf(LOG_NOTICE, "(webserver) could not cache %s", pss->request);
-						webserver_send_404((const char *)in, &p);
+				if(fcache_get_size(request, &size) != 0) {
+					if((fcache_add(request)) != 0) {
+						logprintf(LOG_NOTICE, "(webserver) could not cache %s", request);
+						webserver_create_404((const char *)in, &p);
 						libwebsocket_write(wsi, webcontext->service_buffer, (size_t)(p-webcontext->service_buffer), LWS_WRITE_HTTP);
+						sfree((void *)&mimetype);
+						sfree((void *)&request);
 						return -1;
 					}
 				}
 
 				/* Check if a file was succesfully stored in memory */
-				if(fcache_get_size(pss->request, &size) == 0) {
+				if(fcache_get_size(request, &size) == 0) {
 
-					p += sprintf((char *)p,
-						"HTTP/1.0 200 OK\x0d\x0a"
-						"Server: pilight\x0d\x0a"
-						"Content-Type: %s\x0d\x0a",
-						pss->mimetype);
-
-					p += sprintf((char *)p,
-						"Content-Length: %u\x0d\x0a\x0d\x0a",
-						(unsigned int)size);
+					webserver_create_header(&p, "200 OK", mimetype, (unsigned int)size);
 
 					libwebsocket_write(wsi, webcontext->service_buffer, (size_t)(p-webcontext->service_buffer), LWS_WRITE_HTTP);
-					pss->fd = -1;
-					if(size <= sizeof(webcontext->service_buffer)) {
-						wsi->u.http.fd = -1;
-						wsi->u.http.stream = fcache_get_bytes(pss->request);
-						wsi->u.http.filelen = (size_t)size;
-						wsi->u.http.filepos = 0;
-						wsi->u.http.choke = 1;
-						wsi->state = WSI_STATE_HTTP_ISSUING_FILE;
 
-						libwebsockets_serve_http_file_fragment(webcontext, wsi);
-						sfree((void *)&pss->mimetype);
-						sfree((void *)&pss->request);
-						return 0;
+					webserver_create_wsi(&wsi, -1, fcache_get_bytes(request), (size_t)size);
+					pss->wsi = wsi;
+
+					sfree((void *)&mimetype);
+					sfree((void *)&request);
+
+					if(size <= sizeof(webcontext->service_buffer)) {
+						libwebsockets_serve_http_file_fragment(webcontext, pss->wsi);
+						return -1;
 					} else {
-						libwebsocket_callback_on_writable(webcontext, wsi);
+						pss->wsi->u.http.choke = 0;
+						libwebsocket_callback_on_writable(webcontext, pss->wsi);
 						break;
 					}
 				}
+				sfree((void *)&mimetype);
+				sfree((void *)&request);
 			} else {
-				pss->fd = open(pss->request, O_RDONLY);
-				if(pss->fd < 0) {
-					webserver_send_404((const char *)in, &p);
+				int fd = open(request, O_RDONLY);
+				if(fd < 0) {
+					webserver_create_404((const char *)in, &p);
 					libwebsocket_write(wsi, webcontext->service_buffer, (size_t)(p-webcontext->service_buffer), LWS_WRITE_HTTP);
+					sfree((void *)&mimetype);
+					sfree((void *)&request);
 					return -1;
 				}
-				fstat(pss->fd, &stat_buf);
+				fstat(fd, &stat_buf);
 
-				p += sprintf((char *)p,
-					"HTTP/1.0 200 OK\x0d\x0a"
-					"Server: pilight\x0d\x0a"
-					"Content-Type: %s\x0d\x0a",
-					pss->mimetype);
-
-				p += sprintf((char *)p,
-					"Content-Length: %u\x0d\x0a\x0d\x0a",
-					(unsigned int)stat_buf.st_size);
-
+				webserver_create_header(&p, "200 OK", mimetype, (unsigned int)stat_buf.st_size);
 				libwebsocket_write(wsi, webcontext->service_buffer, (size_t)(p-webcontext->service_buffer), LWS_WRITE_HTTP);
-				if(stat_buf.st_size <= sizeof(webcontext->service_buffer)) {
-					wsi->u.http.fd = pss->fd;
-					wsi->u.http.stream = NULL;
-					wsi->u.http.filelen = (size_t)stat_buf.st_size;
-					wsi->u.http.filepos = 0;
-					wsi->u.http.choke = 1;
-					wsi->state = WSI_STATE_HTTP_ISSUING_FILE;
+				sfree((void *)&mimetype);
+				sfree((void *)&request);
 
-					libwebsockets_serve_http_file_fragment(webcontext, wsi);
-					sfree((void *)&pss->mimetype);
-					sfree((void *)&pss->request);
-					close(pss->fd);
-					return 0;
+				webserver_create_wsi(&wsi, fd, NULL, (size_t)stat_buf.st_size);
+				pss->wsi = wsi;
+
+				if(stat_buf.st_size <= sizeof(webcontext->service_buffer)) {
+					libwebsockets_serve_http_file_fragment(webcontext, pss->wsi);
+					close(fd);
+					return -1;
 				} else {
-					libwebsocket_callback_on_writable(webcontext, wsi);
+					pss->wsi->u.http.choke = 0;
+					libwebsocket_callback_on_writable(webcontext, pss->wsi);
 					break;
 				}
 			}
@@ -256,37 +316,29 @@ int webserver_callback_http(struct libwebsocket_context *webcontext, struct libw
 		case LWS_CALLBACK_HTTP_FILE_COMPLETION:
 			return -1;
 		case LWS_CALLBACK_HTTP_WRITEABLE:
-			if(pss->fd > -1) {
+			pss->wsi->u.http.choke = 0;
+			if(pss->wsi->u.http.fd > -1) {
 				do {
-					n = read(pss->fd, webcontext->service_buffer, sizeof(webcontext->service_buffer));
+					n = read(pss->wsi->u.http.fd, webcontext->service_buffer, sizeof(webcontext->service_buffer));
 					if(n <= 0) {
 						//close(pss->fd);
 						return -1;
 					}
-					m = libwebsocket_write(wsi, webcontext->service_buffer, (size_t)n, LWS_WRITE_HTTP);
+					m = libwebsocket_write(pss->wsi, webcontext->service_buffer, (size_t)n, LWS_WRITE_HTTP);
 					if(m < 0) {
 						//close(pss->fd);
 						return -1;
 					}
 					if(m != n) {
-						lseek(pss->fd, m - n, SEEK_CUR);
+						lseek(pss->wsi->u.http.fd, m - n, SEEK_CUR);
 					}
-				} while (!lws_send_pipe_choked(wsi));
-				libwebsocket_callback_on_writable(webcontext, wsi);
+				} while (!lws_send_pipe_choked(pss->wsi));
+				libwebsocket_callback_on_writable(webcontext, pss->wsi);
+				close(pss->wsi->u.http.fd);
 			} else {
-				if(fcache_get_size(pss->request, &size) == 0) {
-					wsi->u.http.filepos = 0;
-					wsi->u.http.choke = 0;
-					wsi->state = WSI_STATE_HTTP_ISSUING_FILE;
-					wsi->u.http.fd = -1;
-					wsi->u.http.stream = fcache_get_bytes(pss->request);
-					wsi->u.http.filelen = (size_t)size;
-
-					libwebsockets_serve_http_file_fragment(webcontext, wsi);
-				}
+				libwebsockets_serve_http_file_fragment(webcontext, pss->wsi);
 			}
-			sfree((void *)&pss->mimetype);
-			sfree((void *)&pss->request);
+			return -1;
 		break;
 		case LWS_CALLBACK_ESTABLISHED:
 		case LWS_CALLBACK_CLIENT_CONNECTION_ERROR:
@@ -305,10 +357,7 @@ int webserver_callback_http(struct libwebsocket_context *webcontext, struct libw
 					if(json_find_string(json, "message", &message) != -1) {
 						if(strcmp(message, "request config") == 0) {
 
-							JsonNode *jsend = json_mkobject();
-							JsonNode *jconfig = config2json(1);
-							json_append_member(jsend, "config", jconfig);
-
+							JsonNode *jsend = config_broadcast_create();
 							char *output = json_stringify(jsend, NULL);
 							size_t output_len = strlen(output);
 							/* This PRE_PADDIGN and POST_PADDING is an requirement for LWS_WRITE_TEXT */
@@ -326,6 +375,7 @@ int webserver_callback_http(struct libwebsocket_context *webcontext, struct libw
 					json_delete(json);
 				}
 			}
+			return 0;
 		break;
 		case LWS_CALLBACK_CLIENT_RECEIVE:
 		case LWS_CALLBACK_CLIENT_RECEIVE_PONG:
@@ -346,6 +396,7 @@ int webserver_callback_http(struct libwebsocket_context *webcontext, struct libw
 				logprintf(LOG_ERR, "(webserver) %d writing to socket", l);
 				return -1;
 			}
+			return 0;
 		}
 		break;
 		case LWS_CALLBACK_FILTER_PROTOCOL_CONNECTION:
@@ -465,6 +516,7 @@ void *webserver_start(void *param) {
 		/* Register a seperate thread in which the webserver communicates
 		   the main daemon as if it where a gui */
 		threads_register(&webserver_clientize, (void *)NULL);
+		sleep(1);
 		/* Main webserver loop */
 		while(n >= 0 && webserver_loop) {
 			n = libwebsocket_service(context, 50);

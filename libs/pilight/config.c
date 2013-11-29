@@ -31,6 +31,10 @@
 #include "options.h"
 #include "protocol.h"
 
+#ifdef UPDATE
+	#include "update.h"
+#endif
+
 int config_update(char *protoname, JsonNode *json, JsonNode **out) {
 	/* The pointer to the config locations */
 	struct conf_locations_t *lptr = conf_locations;
@@ -512,7 +516,7 @@ JsonNode *config2json(unsigned short internal) {
 	struct JsonNode *jid = NULL;
 	struct JsonNode *jsettings = NULL;
 	struct protocol_settings_t *psettings = NULL;
-
+	
 	int lorder = 0;
 	int dorder = 0;
 	int has_settings = 0;
@@ -638,6 +642,25 @@ JsonNode *config2json(unsigned short internal) {
 	sfree((void *)&tmp_locations);
 
 	return jroot;
+}
+
+JsonNode *config_broadcast_create(void) {
+	struct JsonNode *jsend = json_mkobject();
+	struct JsonNode *joutput = config2json(1);
+	json_append_member(jsend, "config", joutput);
+	
+#ifdef UPDATE
+	struct JsonNode *jversion = json_mkarray();
+	json_append_element(jversion, json_mkstring(VERSION));
+	if(update_latests_version()) {
+		json_append_element(jversion, json_mkstring(update_latests_version()));
+	} else {
+		json_append_element(jversion, json_mkstring(VERSION));
+	}
+	json_append_member(jsend, "version", jversion);	
+#endif
+
+	return jsend;
 }
 
 void config_print(void) {

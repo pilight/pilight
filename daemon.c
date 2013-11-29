@@ -47,6 +47,10 @@
 #include "irq.h"
 #include "hardware.h"
 
+#ifdef UPDATE
+	#include "update.h"
+#endif
+
 #ifdef WEBSERVER
 	#include "webserver.h"
 #endif
@@ -151,6 +155,11 @@ int webserver_enable = WEBSERVER_ENABLE;
 int webserver_port = WEBSERVER_PORT;
 /* The webroot of pilight */
 char *webserver_root;
+#endif
+
+#ifdef UPDATE
+/* Do we need to check for updates */
+int update_check = UPDATE_CHECK;
 #endif
 
 void broadcast_queue(char *protoname, JsonNode *json) {
@@ -351,7 +360,7 @@ void receiver_parse_code(int *rawcode, int rawlen, int plslen) {
 
 						protocol->parseCode();
 						receiver_create_message(protocol);
-						
+
 						struct protocol_conflicts_t *tmp_conflicts = protocol->conflicts;
 						while(tmp_conflicts) {
 							pnode = protocols;
@@ -746,9 +755,7 @@ void client_node_parse_code(int i, JsonNode *json) {
 	if(json_find_string(json, "message", &message) == 0) {
 		/* Send the config file to the controller */
 		if(strcmp(message, "request config") == 0) {
-			JsonNode *jsend = json_mkobject();
-			JsonNode *joutput = config2json(1);
-			json_append_member(jsend, "config", joutput);
+			struct JsonNode *jsend = config_broadcast_create();
 			char *output = json_stringify(jsend, NULL);
 			socket_write_big(sd, output);
 			sfree((void *)&output);
@@ -771,13 +778,11 @@ void client_controller_parse_code(int i, JsonNode *json) {
 	if(json_find_string(json, "message", &message) == 0) {
 		/* Send the config file to the controller */
 		if(strcmp(message, "request config") == 0) {
-			JsonNode *jsend = json_mkobject();
-			JsonNode *joutput = config2json(1);
-			json_append_member(jsend, "config", joutput);
+			struct JsonNode *jsend = config_broadcast_create();
 			char *output = json_stringify(jsend, NULL);
 			socket_write_big(sd, output);
-			json_delete(jsend);
 			sfree((void *)&output);
+			json_delete(jsend);
 		/* Control a specific device */
 		} else if(strcmp(message, "send") == 0) {
 			/* Check if got a code */
@@ -848,16 +853,17 @@ void client_webserver_parse_code(int i, char buffer[BUFFER_SIZE]) {
 			if(ptr == buffer + 4) {
 				socket_write(sd, "HTTP/1.1 200 OK\r");
 				socket_write(sd, "Content-Type: image/png\r");
-				socket_write(sd, "Server : pilight webserver\r");
+				socket_write(sd, "Server : pilight\r");
 				socket_write(sd, "\r");
 
 				path = malloc(strlen(webserver_root)+strlen("logo.png")+1);
-				sprintf(path, "%slogo.png", webserver_root);
+				sprintf(path, "%s/logo.png", webserver_root);
+				printf("%s\n", path);
 				f = fopen(path, "rb");
 				if(f) {
 					x = 0;
 					cache = malloc(BUFFER_SIZE);
-					while (!feof(f)) {
+					while(!feof(f)) {
 						x = (int)fread(cache, 1, BUFFER_SIZE, f);
 						send(sd, cache, (size_t)x, MSG_NOSIGNAL);
 					}
@@ -871,7 +877,7 @@ void client_webserver_parse_code(int i, char buffer[BUFFER_SIZE]) {
 		} else {
 		    /* Catch all webserver page to inform users on which port the webserver runs */
 			socket_write(sd, "HTTP/1.1 200 OK\r");
-			socket_write(sd, "Server : pilight webserver\r");
+			socket_write(sd, "Server : pilight\r");
 			socket_write(sd, "\r");
 			socket_write(sd, "<html><head><title>pilight daemon</title></head>\r");
 			cache = malloc(BUFFER_SIZE);
@@ -1174,6 +1180,12 @@ int main_gc(void) {
 		joutput = NULL;
 	}
 
+#ifdef UPDATE
+	if(update_check) {
+		update_gc();
+	}
+#endif
+
 	if(pth) {
 		pthread_cancel(pth);
 		pthread_join(pth, NULL);
@@ -1284,7 +1296,7 @@ int main(int argc, char **argv) {
 		goto clear;
 	}
 	if(show_version) {
-		printf("%s version %.1f, commit %s\n", progname, VERSION, HASH);
+		printf("%s version %s, commit %s\n", progname, VERSION, HASH);
 		goto clear;
 	}
 	if(show_default) {
@@ -1309,6 +1321,10 @@ int main(int argc, char **argv) {
 		webserver_root = realloc(webserver_root, strlen(WEBSERVER_ROOT)+1);
 		strcpy(webserver_root, WEBSERVER_ROOT);
 	}
+#endif
+
+#ifdef UPDATE
+	settings_find_number("update-check", &update_check);
 #endif
 
 	if(settings_find_string("pid-file", &pid_file) != 0) {
@@ -1354,7 +1370,7 @@ int main(int argc, char **argv) {
 		}
 	}
 
-	logprintf(LOG_INFO, "version %.1f, commit %s", VERSION, HASH);
+	logprintf(LOG_INFO, "version %s, commit %s", VERSION, HASH);
 
 	if(nodaemon == 1 || running == 1) {
 		log_file_disable();
@@ -1453,6 +1469,13 @@ int main(int argc, char **argv) {
 	threads_register(&socket_wait, (void *)&socket_callback);
 	threads_register(&send_code, (void *)NULL);
 	threads_register(&broadcast, (void *)NULL);
+
+#ifdef UPDATE
+	if(update_check) {
+		threads_register(&update_poll, (void *)NULL);
+	}
+#endif
+
 	if(match == 1) {
 		threads_register(&receive_code, (void *)NULL);
 	}

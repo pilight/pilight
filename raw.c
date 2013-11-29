@@ -118,7 +118,7 @@ int main(int argc, char **argv) {
 				return (EXIT_SUCCESS);
 			break;
 			case 'V':
-				printf("%s %.1f\n", progname, VERSION);
+				printf("%s %s\n", progname, VERSION);
 				return (EXIT_SUCCESS);
 			break;	
 			case 'S': 
