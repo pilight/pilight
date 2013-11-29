@@ -69,6 +69,8 @@
 #include <sys/wait.h>
 #include <sys/ioctl.h>
 
+int wiringPiInitialized = 0;
+
 #include "wiringPi.h"
 
 #ifndef	TRUE
@@ -1432,17 +1434,16 @@ int wiringPiISR (int pin, int mode)
       modeS = "both" ;
 
     sprintf (pinS, "%d", bcmGpioPin) ;
+    doEdge(atoi(pinS), modeS) ;
+    // if ((pid = fork ()) < 0)	// Fail
+      // return wiringPiFailure (WPI_FATAL, "wiringPiISR: fork failed: %s\n", strerror (errno)) ;
 
-    if ((pid = fork ()) < 0)	// Fail
-      return wiringPiFailure (WPI_FATAL, "wiringPiISR: fork failed: %s\n", strerror (errno)) ;
-
-    if (pid == 0)	// Child, exec
-    {
-      doEdge(atoi(pinS), modeS) ;
-      //return wiringPiFailure (WPI_FATAL, "wiringPiISR: execl failed: %s\n", strerror (errno)) ;
-    }
-    else		// Parent, wait
-      wait (NULL) ;
+    // if (pid == 0)	// Child, exec
+    // {
+      // //return wiringPiFailure (WPI_FATAL, "wiringPiISR: execl failed: %s\n", strerror (errno)) ;
+    // }
+    // else		// Parent, wait
+      // wait (NULL) ;
   }
 
 // Now pre-open the /sys/class node - but it may already be open if
@@ -1605,6 +1606,12 @@ unsigned int micros (void)
 
 int wiringPiSetup (void)
 {
+  if(!wiringPiInitialized) {
+	wiringPiInitialized = 1;
+  } else {
+    return 1;
+  }
+
   int      fd ;
   int      boardRev ;
 
