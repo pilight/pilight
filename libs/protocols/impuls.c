@@ -42,19 +42,20 @@ void impulsCreateMessage(int systemcode, int programcode, int state) {
 
 void impulsParseCode(void) {
 	int x = 0;
-	int systemcode = binToDec(impuls->binary, 0, 4);
-	int programcode = binToDec(impuls->binary, 5, 9);
-	int check = impuls->binary[10];
-	int state = impuls->binary[11];
 
 	/* Convert the one's and zero's into binary */
-	for(x=0; x<(int)(double)impuls->rawlen; x+=4) {
+	for(x=0; x<impuls->rawlen; x+=4) {
 		if(impuls->code[x+3] == 1 || impuls->code[x+0] == 1) {
 			impuls->binary[x/4]=1;
 		} else {
 			impuls->binary[x/4]=0;
 		}
 	}
+
+	int systemcode = binToDec(impuls->binary, 0, 4);
+	int programcode = binToDec(impuls->binary, 5, 9);
+	int check = impuls->binary[10];
+	int state = impuls->binary[11];
 
 	if(check != state) {
 		impulsCreateMessage(systemcode, programcode, state);
