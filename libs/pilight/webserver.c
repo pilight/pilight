@@ -412,12 +412,12 @@ int webserver_callback_http(struct libwebsocket_context *webcontext, struct libw
 				if(socket_check_whitelist(inet_ntoa(address.sin_addr)) != 0) {
 					logprintf(LOG_INFO, "rejected client, ip: %s, port: %d", inet_ntoa(address.sin_addr), ntohs(address.sin_port));
 					return -1;
-				} else {			
-					logprintf(LOG_INFO, "client connected, ip %s, port %d", inet_ntoa(address.sin_addr), ntohs(address.sin_port));				
+				} else {
+					logprintf(LOG_INFO, "client connected, ip %s, port %d", inet_ntoa(address.sin_addr), ntohs(address.sin_port));
 					return 0;
 				}
 			}
-		break;		
+		break;
 		case LWS_CALLBACK_FILTER_PROTOCOL_CONNECTION:
 		case LWS_CALLBACK_OPENSSL_LOAD_EXTRA_CLIENT_VERIFY_CERTS:
 		case LWS_CALLBACK_OPENSSL_LOAD_EXTRA_SERVER_VERIFY_CERTS:

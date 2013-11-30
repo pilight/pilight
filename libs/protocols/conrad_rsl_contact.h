@@ -16,22 +16,22 @@
     along with pilight. If not, see	<http://www.gnu.org/licenses/>
 */
 
-#ifndef _PROTOCOL_CONRAD_RSL_SW_H_
-#define _PROTOCOL_CONRAD_RSL_SW_H_
+#ifndef _PROTOCOL_CONRAD_RSL_CN_H_
+#define _PROTOCOL_CONRAD_RSL_CN_H_
 
-struct protocol_t *conrad_rsl_switch;
+struct protocol_t *conrad_rsl_contact;
 
-void conradRSLSwCreateMessage(int id, int state);
-void conradRSLSwParseCode(void);
-void conradRSLSwCreateLow(int s, int e);
-void conradRSLSwCreateHigh(int s, int e);
-void conradRSLSwClearCode(void);
-void conradRSLSwCreateId(int id);
-void conradRSLSwCreateStart(int start);
-void conradRSLSwCreateState(int state);
-void conradRSLSwCreateFooter(void);
-int conradRSLSwCreateCode(JsonNode *code);
-void conradRSLSwPrintHelp(void);
-void conradRSLSwInit(void);
+void conradRSLCnCreateMessage(int id, int state);
+void conradRSLCnParseCode(void);
+void conradRSLCnCreateLow(int s, int e);
+void conradRSLCnCreateHigh(int s, int e);
+void conradRSLCnClearCode(void);
+void conradRSLCnCreateId(int id);
+void conradRSLCnCreateStart(int start);
+void conradRSLCnCreateState(int state);
+void conradRSLCnCreateFooter(void);
+int conradRSLCnCreateCode(JsonNode *code);
+void conradRSLCnPrintHelp(void);
+void conradRSLCnInit(void);
 
 #endif

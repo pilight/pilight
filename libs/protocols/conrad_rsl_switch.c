@@ -29,10 +29,9 @@
 #include "gc.h"
 #include "conrad_rsl_switch.h"
 
-void conradRSLSwCreateMessage(int id, int unit, int state) {
+void conradRSLSwCreateMessage(int id, int state) {
 	conrad_rsl_switch->message = json_mkobject();
 	json_append_member(conrad_rsl_switch->message, "id", json_mknumber(id));
-	json_append_member(conrad_rsl_switch->message, "unit", json_mknumber(unit));
 	if(state == 1) {
 		json_append_member(conrad_rsl_switch->message, "state", json_mkstring("on"));
 	} else {
@@ -53,12 +52,13 @@ void conradRSLSwParseCode(void) {
 	}
 
 	int id = binToDecRev(conrad_rsl_switch->binary, 6, 31);
-	int unit = binToDecRev(conrad_rsl_switch->binary, 0, 4);
-	int check = conrad_rsl_switch->binary[32];
-	int state = conrad_rsl_switch->binary[5];
+	int check = binToDecRev(conrad_rsl_switch->binary, 0, 3);
+	int check1 = conrad_rsl_switch->binary[32];
+	int state1 = conrad_rsl_switch->binary[4];
+	int state2 = conrad_rsl_switch->binary[5];
 
-	if(check == 1) {
-		conradRSLSwCreateMessage(id, unit, state);
+	if(check == 4 && check1 == 1 && state1 != state2) {
+		conradRSLSwCreateMessage(id, state2);
 	}
 }
 
@@ -98,12 +98,12 @@ void conradRSLSwCreateId(int id) {
 	}
 }
 
-void conradRSLSwCreateUnit(int unit) {
+void conradRSLSwCreateStart(int start) {
 	int binary[255];
 	int length = 0;
 	int i=0, x=0;
 
-	length = decToBin(unit, binary);
+	length = decToBin(start, binary);
 	for(i=0;i<=length;i++) {
 		if(binary[i]==1) {
 			x=i*2;
@@ -127,16 +127,12 @@ void conradRSLSwCreateFooter(void) {
 
 int conradRSLSwCreateCode(JsonNode *code) {
 	int id = -1;
-	int unit = -1;
 	int state = -1;
 	char *tmp;
 
 	if(json_find_string(code, "id", &tmp) == 0) {
 		id=atoi(tmp);
 	}
-	if(json_find_string(code, "unit", &tmp) == 0) {
-		unit=atoi(tmp);
-	}	
 	if(json_find_string(code, "off", &tmp) == 0) {
 		state=0;
 	} else if(json_find_string(code, "on", &tmp) == 0) {
@@ -147,15 +143,12 @@ int conradRSLSwCreateCode(JsonNode *code) {
 		logprintf(LOG_ERR, "conrad_rsl_switch: insufficient number of arguments");
 		return EXIT_FAILURE;
 	} else if(id > 67108863 || id < 0) {
-		logprintf(LOG_ERR, "conrad_rsl_switch: invalid id range");
-		return EXIT_FAILURE;
-	} else if(unit > 15 || unit < 0) {
-		logprintf(LOG_ERR, "conrad_rsl_switch: invalid unit range");
+		logprintf(LOG_ERR, "conrad_rsl_switch: invalid programcode range");
 		return EXIT_FAILURE;
 	} else {
-		conradRSLSwCreateMessage(id, unit, state);
+		conradRSLSwCreateMessage(id, state);
 		conradRSLSwClearCode();
-		conradRSLSwCreateUnit(unit);
+		conradRSLSwCreateStart(4);
 		conradRSLSwCreateId(id);
 		conradRSLSwCreateState(state);
 		conradRSLSwCreateFooter();
@@ -165,7 +158,6 @@ int conradRSLSwCreateCode(JsonNode *code) {
 
 void conradRSLSwPrintHelp(void) {
 	printf("\t -i --id=id\tcontrol a device with this id\n");
-	printf("\t -i --unit=unit\tcontrol a device with this unit code\n");
 	printf("\t -t --on\t\t\tsend an on signal\n");
 	printf("\t -f --off\t\t\tsend an off signal\n");
 }
@@ -176,7 +168,6 @@ void conradRSLSwInit(void) {
 	protocol_set_id(conrad_rsl_switch, "conrad_rsl_switch");
 	protocol_device_add(conrad_rsl_switch, "conrad_rsl_switch", "Conrad RSL Switches");
 	protocol_plslen_add(conrad_rsl_switch, 204);
-	protocol_plslen_add(conrad_rsl_switch, 190);
 	conrad_rsl_switch->devtype = SWITCH;
 	conrad_rsl_switch->hwtype = RX433;
 	conrad_rsl_switch->pulse = 5;
@@ -184,7 +175,6 @@ void conradRSLSwInit(void) {
 	conrad_rsl_switch->binlen = 33;
 
 	options_add(&conrad_rsl_switch->options, 'i', "id", has_value, config_id, "^(([0-9]|([1-9][0-9])|([1-9][0-9]{2})|([1-9][0-9]{3})|([1-9][0-9]{4})|([1-9][0-9]{5})|([1-9][0-9]{6})|((6710886[0-3])|(671088[0-5][0-9])|(67108[0-7][0-9]{2})|(6710[0-7][0-9]{3})|(671[0--1][0-9]{4})|(670[0-9]{5})|(6[0-6][0-9]{6})|(0[0-5][0-9]{7}))))$");
-	options_add(&conrad_rsl_switch->options, 'u', "unit", has_value, config_id, "^([0-9]{1}|[1][0-5])$");
 	options_add(&conrad_rsl_switch->options, 't', "on", no_value, config_state, NULL);
 	options_add(&conrad_rsl_switch->options, 'f', "off", no_value, config_state, NULL);
 

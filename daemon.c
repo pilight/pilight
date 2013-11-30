@@ -1411,7 +1411,7 @@ int main(int argc, char **argv) {
 	}
 
 	settings_find_number("port", &port);
-	
+
 	if(ssdp_seek(&ssdp_list) == -1) {
 		logprintf(LOG_NOTICE, "no pilight daemon found, daemonizing");
 	} else {
@@ -1420,7 +1420,7 @@ int main(int argc, char **argv) {
 	}
 	sfree((void *)&ssdp_list);
 
-	if(runmode == 1) {	
+	if(runmode == 1) {
 		if(settings_find_string("config-file", &stmp) == 0) {
 			if(config_set_file(stmp) == 0) {
 				if(config_read() != 0) {
@@ -1444,7 +1444,7 @@ int main(int argc, char **argv) {
 	} else {
 		save_pid(getpid());
 	}
-	
+
     //initialise all handshakes to 0 so not checked
 	memset(handshakes, -1, sizeof(handshakes));
 
