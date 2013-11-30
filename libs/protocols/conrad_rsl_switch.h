@@ -21,7 +21,7 @@
 
 struct protocol_t *conrad_rsl_switch;
 
-void conradRSLSwCreateMessage(int id, int state);
+void conradRSLSwCreateMessage(int id, int unit, int state);
 void conradRSLSwParseCode(void);
 void conradRSLSwCreateLow(int s, int e);
 void conradRSLSwCreateHigh(int s, int e);
