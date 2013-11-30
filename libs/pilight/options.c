@@ -366,7 +366,8 @@ void options_add(struct options_t **opt, int id, const char *name, int argtype, 
 		strcpy(optnode->name, name);
 		optnode->argtype = argtype;
 		optnode->conftype = conftype;
-		optnode->value = NULL;
+		optnode->value = malloc(4);
+		memset(optnode->value, '\0', 4);
 		if(mask) {
 			optnode->mask = malloc(strlen(mask)+1);
 			strcpy(optnode->mask, mask);

@@ -30,6 +30,7 @@
 #include "log.h"
 #include "options.h"
 #include "socket.h"
+#include "ssdp.h"
 
 typedef enum {
 	WELCOME,
@@ -47,12 +48,9 @@ int main(int argc, char **argv) {
 	progname = malloc(16);
 	strcpy(progname, "pilight-receive");
 	struct options_t *options = NULL;
+	struct ssdp_list_t *ssdp_list = NULL;
 
 	JsonNode *json = NULL;
-
-	char *server = malloc(17);
-	strcpy(server, "127.0.0.1");
-	unsigned short port = PORT;
 
     int sockfd = 0;
     char *recvBuff = NULL;
@@ -62,8 +60,6 @@ int main(int argc, char **argv) {
 
 	options_add(&options, 'H', "help", no_value, 0, NULL);
 	options_add(&options, 'V', "version", no_value, 0, NULL);
-	options_add(&options, 'S', "server", has_value, 0, "^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]).){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$");
-	options_add(&options, 'P', "port", has_value, 0, "[0-9]{1,4}");
 
 	/* Store all CLI arguments for later usage
 	   and also check if the CLI arguments where
@@ -78,20 +74,11 @@ int main(int argc, char **argv) {
 			case 'H':
 				printf("\t -H --help\t\t\tdisplay this message\n");
 				printf("\t -V --version\t\t\tdisplay version\n");
-				printf("\t -S --server=%s\t\tconnect to server address\n", server);
-				printf("\t -P --port=%d\t\t\tconnect to server port\n", port);
 				exit(EXIT_SUCCESS);
 			break;
 			case 'V':
 				printf("%s %s\n", progname, VERSION);
 				exit(EXIT_SUCCESS);
-			break;
-			case 'S':
-				server = realloc(server, strlen(args)+1);
-				strcpy(server, args);
-			break;
-			case 'P':
-				port = (unsigned short)atoi(args);
 			break;
 			default:
 				printf("Usage: %s -l location -d device\n", progname);
@@ -101,11 +88,16 @@ int main(int argc, char **argv) {
 	}
 
 	options_delete(options);
-    if((sockfd = socket_connect(server, port)) == -1) {
-		logprintf(LOG_ERR, "could not connect to pilight-daemon");
-		return EXIT_FAILURE;
+    if(ssdp_seek(&ssdp_list) == -1) {
+		logprintf(LOG_ERR, "no pilight ssdp connections found");
+	} else {
+		if((sockfd = socket_connect(ssdp_list->ip, ssdp_list->port)) == -1) {
+			logprintf(LOG_ERR, "could not connect to pilight-daemon");
+			exit(EXIT_FAILURE);
+		}
 	}
-	sfree((void *)&server);
+	sfree((void *)&ssdp_list);
+
 	while(1) {
 		if(steps > WELCOME) {
 			/* Clear the receive buffer again and read the welcome message */
@@ -161,7 +153,6 @@ close:
 	protocol_gc();
 	options_gc();
 	sfree((void *)&progname);
-	sfree((void *)&server);
 	sfree((void *)&message);
 
 return EXIT_SUCCESS;

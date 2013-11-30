@@ -49,7 +49,7 @@ void *bcm2835Parse(void *param) {
 
 	FILE *fp;
 	int itmp;
-	int *id;
+	int *id = 0;
 	char *content;	
 	int interval = 5;		
 	int x = 0, nrid = 0, y = 0;

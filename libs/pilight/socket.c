@@ -173,7 +173,11 @@ int socket_start(unsigned short port) {
     //type of socket created
     address.sin_family = AF_INET;
     address.sin_addr.s_addr = INADDR_ANY;
-    address.sin_port = htons(port);
+	if(port <= 0) {
+		address.sin_port = 0;
+	} else {
+		address.sin_port = htons(port);
+	}
 
     //bind the socket to localhost
     if (bind(socket_server, (struct sockaddr *)&address, sizeof(address)) < 0) {

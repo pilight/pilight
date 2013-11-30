@@ -34,6 +34,7 @@
 #include "socket.h"
 #include "json.h"
 #include "protocol.h"
+#include "ssdp.h"
 
 typedef enum {
 	WELCOME,
@@ -52,6 +53,7 @@ int main(int argc, char **argv) {
 	strcpy(progname, "pilight-send");
 
 	struct options_t *options = NULL;
+	struct ssdp_list_t *ssdp_list = NULL;
 
 	int sockfd = 0;
     char *recvBuff = NULL;
@@ -71,10 +73,6 @@ int main(int argc, char **argv) {
 	/* Do we need to print the protocol help */
 	int protohelp = 0;
 
-	char *server = malloc(17);
-	strcpy(server, "127.0.0.1");
-	unsigned short port = PORT;
-
 	/* Hold the final protocol struct */
 	protocol_t *protocol = NULL;
 
@@ -85,8 +83,6 @@ int main(int argc, char **argv) {
 	options_add(&options, 'H', "help", no_value, 0, NULL);
 	options_add(&options, 'V', "version", no_value, 0, NULL);
 	options_add(&options, 'p', "protocol", has_value, 0, NULL);
-	options_add(&options, 'S', "server", has_value, 0, "^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]).){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$");
-	options_add(&options, 'P', "port", has_value, 0, "[0-9]{1,4}");
 
 	/* Initialize protocols */
 	protocol_init();
@@ -112,13 +108,6 @@ int main(int argc, char **argv) {
 			break;
 			case 'H':
 				help = 1;
-			break;
-			case 'S':
-				server = realloc(server, strlen(args)+1);
-				strcpy(server, args);
-			break;
-			case 'P':
-				port = (unsigned short)atoi(args);
 			break;
 			default:;
 		}
@@ -186,8 +175,6 @@ int main(int argc, char **argv) {
 		if(help == 1) {
 			printf("\t -H --help\t\t\tdisplay this message\n");
 			printf("\t -V --version\t\t\tdisplay version\n");
-			printf("\t -S --server=%s\t\tconnect to server address\n", server);
-			printf("\t -P --port=%d\t\t\tconnect to server port\n", port);
 			printf("\t -p --protocol=protocol\t\tthe protocol that you want to control\n");
 		}
 		if(protohelp == 1 && match == 1 && protocol->printHelp) {
@@ -240,10 +227,15 @@ int main(int argc, char **argv) {
 		if(protocol->message) {
 			json_delete(protocol->message);
 		}
-		if((sockfd = socket_connect(server, port)) == -1) {
-			logprintf(LOG_ERR, "could not connect to pilight-daemon");
-			goto close;
+		if(ssdp_seek(&ssdp_list) == -1) {
+			logprintf(LOG_ERR, "no pilight ssdp connections found");
+		} else {
+			if((sockfd = socket_connect(ssdp_list->ip, ssdp_list->port)) == -1) {
+				logprintf(LOG_ERR, "could not connect to pilight-daemon");
+				exit(EXIT_FAILURE);
+			}
 		}
+		sfree((void *)&ssdp_list);
 
 		while(1) {
 			if(steps > WELCOME) {
@@ -292,7 +284,6 @@ close:
 		socket_close(sockfd);
 	}
 	log_shell_disable();
-	sfree((void *)&server);
 	protocol_gc();
 	options_delete(options);
 	options_gc();

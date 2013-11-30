@@ -46,6 +46,7 @@
 #include "wiringPi.h"
 #include "irq.h"
 #include "hardware.h"
+#include "ssdp.h"
 
 #ifdef UPDATE
 	#include "update.h"
@@ -1032,22 +1033,23 @@ void *receive_code(void *param) {
 }
 
 void *clientize(void *param) {
-	char *server = NULL;
-	int port = 0;
 	steps_t steps = WELCOME;
+	struct ssdp_list_t *ssdp_list = NULL;
     char *recvBuff = NULL;
 	char *message = NULL;
 	char *protocol = NULL;
 	JsonNode *json = NULL;
 	JsonNode *jconfig = NULL;
 
-	settings_find_string("server-ip", &server);
-	settings_find_number("server-port", &port);
-
-	if((sockfd = socket_connect(server, (short unsigned int)port)) == -1) {
-		logprintf(LOG_ERR, "could not connect to pilight-daemon");
-		exit(EXIT_FAILURE);
+	if(ssdp_seek(&ssdp_list) == -1) {
+		logprintf(LOG_ERR, "no pilight ssdp connections found");
+	} else {
+		if((sockfd = socket_connect(ssdp_list->ip, ssdp_list->port)) == -1) {
+			logprintf(LOG_ERR, "could not connect to pilight-daemon");
+			exit(EXIT_FAILURE);
+		}
 	}
+	sfree((void *)&ssdp_list);
 
 	while(main_loop) {
 		if(steps > WELCOME) {
@@ -1111,6 +1113,7 @@ void *clientize(void *param) {
 	}
 close:
 	socket_close(sockfd);
+	exit(EXIT_FAILURE);
 	return NULL;
 }
 
@@ -1233,18 +1236,14 @@ int main(int argc, char **argv) {
 
 	struct socket_callback_t socket_callback;
 	struct options_t *options = NULL;
+	struct ssdp_list_t *ssdp_list = NULL;
 
 	char buffer[BUFFER_SIZE];
-	int f;
-	int itmp;
+	int f, itmp, show_help = 0, show_version = 0, show_default = 0;
 	unsigned short match = 0;
 	char *stmp = NULL;
 	char *args = NULL;
 	int port = 0;
-
-	int show_help = 0;
-	int show_version = 0;
-	int show_default = 0;
 
 	memset(buffer, '\0', BUFFER_SIZE);
 
@@ -1365,14 +1364,6 @@ int main(int argc, char **argv) {
 		log_file_set(stmp);
 	}
 
-	if(settings_find_string("mode", &stmp) == 0) {
-		if(strcmp(stmp, "client") == 0) {
-			runmode = 2;
-		} else if(strcmp(stmp, "server") == 0) {
-			runmode = 1;
-		}
-	}
-
 	logprintf(LOG_INFO, "version %s, commit %s", VERSION, HASH);
 
 	if(nodaemon == 1 || running == 1) {
@@ -1419,32 +1410,41 @@ int main(int argc, char **argv) {
 		goto clear;
 	}
 
-	if(settings_find_string("config-file", &stmp) == 0) {
-		if(config_set_file(stmp) == 0) {
-			if(config_read() != 0) {
-				goto clear;
-			} else {
-				valid_config = 1;
-				receivers++;
-			}
+	settings_find_number("port", &port);
+	
+	if(ssdp_seek(&ssdp_list) == -1) {
+		logprintf(LOG_NOTICE, "no pilight daemon found, daemonizing");
+	} else {
+		logprintf(LOG_NOTICE, "a pilight daemon was found, clientizing");
+		runmode = 2;
+	}
+	sfree((void *)&ssdp_list);
 
-			if(log_level_get() >= LOG_DEBUG) {
-				config_print();
+	if(runmode == 1) {	
+		if(settings_find_string("config-file", &stmp) == 0) {
+			if(config_set_file(stmp) == 0) {
+				if(config_read() != 0) {
+					goto clear;
+				} else {
+					valid_config = 1;
+					receivers++;
+				}
+
+				if(log_level_get() >= LOG_DEBUG) {
+					config_print();
+				}
 			}
 		}
-	}
 
-	if(settings_find_number("port", &port) != 0) {
-		port = PORT;
+		socket_start((unsigned short)port);
+		ssdp_start();
 	}
-
-	socket_start((short unsigned int)port);
 	if(nodaemon == 0) {
 		daemonize();
 	} else {
 		save_pid(getpid());
 	}
-
+	
     //initialise all handshakes to 0 so not checked
 	memset(handshakes, -1, sizeof(handshakes));
 
@@ -1469,6 +1469,7 @@ int main(int argc, char **argv) {
 
 	/* Register a seperate thread for the socket server */
 	threads_register("socket", &socket_wait, (void *)&socket_callback);
+	threads_register("ssdp", &ssdp_wait, (void *)NULL);
 	threads_register("sender", &send_code, (void *)NULL);
 	threads_register("broadcaster", &broadcast, (void *)NULL);
 

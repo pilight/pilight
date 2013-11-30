@@ -89,8 +89,6 @@
 
 #define PULSE_DIV				34
 
-#define PORT 					5000
-
 #ifdef WEBSERVER
 	#define WEBSERVER_PORT		5001
 	#define WEBSERVER_ROOT		"/usr/local/share/pilight/"

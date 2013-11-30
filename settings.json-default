@@ -1,6 +1,4 @@
 {
-	"port": 5000,
-	"mode": "server",
 	"log-level": 4,
 	"pid-file": "/var/run/pilight.pid",
 	"config-file": "",

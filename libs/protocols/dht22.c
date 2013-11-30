@@ -60,7 +60,7 @@ void *dht22Parse(void *param) {
 	struct JsonNode *jsettings = NULL;
 	struct JsonNode *jid = NULL;
 	struct JsonNode *jchild = NULL;
-	int *id;
+	int *id = 0;
 	int nrid = 0, y = 0, interval = 5, x = 0;
 	int itmp;
 
