@@ -112,7 +112,7 @@ void conradRSLCnCreateStart(int start) {
 }
 
 void conradRSLCnCreateState(int state) {
-	if(state == 0) {
+	if(state == 1) {
 		conradRSLCnCreateHigh(8, 9);
 	}
 	conradRSLCnCreateHigh(10, 11);
