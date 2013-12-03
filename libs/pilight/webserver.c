@@ -27,6 +27,8 @@
 #include <assert.h>
 #include <syslog.h>
 #include <signal.h>
+#define __USE_GNU
+#include <pthread.h>
 
 #include "../../pilight.h"
 #include "common.h"
@@ -64,12 +66,24 @@ typedef enum {
 
 struct libwebsocket_protocols libwebsocket_protocols[] = {
 	{ "http-only", webserver_callback_http, 102400, 102400 },
+	{ "data", webserver_callback_data, 102400, 102400 },
 	{ NULL, NULL, 0, 0 }
 };
 
 struct per_session_data__http {
 	struct libwebsocket *wsi;
 };
+
+typedef struct webqueue_t {
+	char *message;
+	struct webqueue_t *next;
+} webqueue_t;
+
+struct webqueue_t *webqueue;
+struct webqueue_t *webqueue_head;
+pthread_mutex_t webqueue_lock = PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP;
+pthread_cond_t webqueue_signal = PTHREAD_COND_INITIALIZER;
+int webqueue_number = 0;
 
 int webserver_gc(void) {
 	webserver_loop = 0;
@@ -352,6 +366,56 @@ int webserver_callback_http(struct libwebsocket_context *webcontext, struct libw
 		case LWS_CALLBACK_CLOSED:
 		case LWS_CALLBACK_CLOSED_HTTP:
 		case LWS_CALLBACK_RECEIVE:
+		case LWS_CALLBACK_CLIENT_RECEIVE:
+		case LWS_CALLBACK_CLIENT_RECEIVE_PONG:
+		case LWS_CALLBACK_CLIENT_WRITEABLE:
+		case LWS_CALLBACK_SERVER_WRITEABLE:
+		case LWS_CALLBACK_FILTER_NETWORK_CONNECTION:
+			if((int)in > 0) {
+				struct sockaddr_in address;
+				int addrlen = sizeof(address);
+				getpeername((int)in, (struct sockaddr*)&address, (socklen_t*)&addrlen);
+				if(socket_check_whitelist(inet_ntoa(address.sin_addr)) != 0) {
+					logprintf(LOG_INFO, "rejected client, ip: %s, port: %d", inet_ntoa(address.sin_addr), ntohs(address.sin_port));
+					return -1;
+				} else {
+					logprintf(LOG_INFO, "client connected, ip %s, port %d", inet_ntoa(address.sin_addr), ntohs(address.sin_port));
+					return 0;
+				}
+			}
+		break;
+		case LWS_CALLBACK_FILTER_PROTOCOL_CONNECTION:
+		case LWS_CALLBACK_OPENSSL_LOAD_EXTRA_CLIENT_VERIFY_CERTS:
+		case LWS_CALLBACK_OPENSSL_LOAD_EXTRA_SERVER_VERIFY_CERTS:
+		case LWS_CALLBACK_OPENSSL_PERFORM_CLIENT_CERT_VERIFICATION:
+		case LWS_CALLBACK_CLIENT_APPEND_HANDSHAKE_HEADER:
+		case LWS_CALLBACK_CONFIRM_EXTENSION_OKAY:
+		case LWS_CALLBACK_CLIENT_CONFIRM_EXTENSION_SUPPORTED:
+		case LWS_CALLBACK_PROTOCOL_INIT:
+		case LWS_CALLBACK_PROTOCOL_DESTROY:
+		case LWS_CALLBACK_ADD_POLL_FD:
+		case LWS_CALLBACK_DEL_POLL_FD:
+		case LWS_CALLBACK_SET_MODE_POLL_FD:
+		case LWS_CALLBACK_CLEAR_MODE_POLL_FD:
+		default:
+		break;
+	}
+	return 0;
+}
+
+int webserver_callback_data(struct libwebsocket_context *webcontext, struct libwebsocket *wsi, enum libwebsocket_callback_reasons reason, void *user, void *in, size_t len) {
+	int m;
+	switch(reason) {
+		case LWS_CALLBACK_HTTP:
+		case LWS_CALLBACK_HTTP_FILE_COMPLETION:
+		case LWS_CALLBACK_HTTP_WRITEABLE:
+		case LWS_CALLBACK_ESTABLISHED:
+		case LWS_CALLBACK_CLIENT_CONNECTION_ERROR:
+		case LWS_CALLBACK_CLIENT_FILTER_PRE_ESTABLISH:
+		case LWS_CALLBACK_CLIENT_ESTABLISHED:
+		case LWS_CALLBACK_CLOSED:
+		case LWS_CALLBACK_CLOSED_HTTP:
+		case LWS_CALLBACK_RECEIVE:
 			if((int)len < 4) {
 				return -1;
 			} else {
@@ -386,22 +450,23 @@ int webserver_callback_http(struct libwebsocket_context *webcontext, struct libw
 		case LWS_CALLBACK_CLIENT_RECEIVE_PONG:
 		case LWS_CALLBACK_CLIENT_WRITEABLE:
 		case LWS_CALLBACK_SERVER_WRITEABLE: {
-			/* Push the incoming message to the webgui */
-			size_t l = strlen(syncBuff);
-
-			/* This PRE_PADDIGN and POST_PADDING is an requirement for LWS_WRITE_TEXT */
-			sockWriteBuff = realloc(sockWriteBuff, LWS_SEND_BUFFER_PRE_PADDING + l + LWS_SEND_BUFFER_POST_PADDING);
-			memset(sockWriteBuff, '\0', sizeof(sockWriteBuff));
-			memcpy(&sockWriteBuff[LWS_SEND_BUFFER_PRE_PADDING], syncBuff, l);
-			m = libwebsocket_write(wsi, &sockWriteBuff[LWS_SEND_BUFFER_PRE_PADDING], l, LWS_WRITE_TEXT);
-			/*
-			 * It seems like libwebsocket_write already does memory freeing
-			 */
-			if (m != l+4) {
-				logprintf(LOG_ERR, "(webserver) %d writing to socket", l);
-				return -1;
+			if(syncBuff) {
+				/* Push the incoming message to the webgui */
+				size_t l = strlen(syncBuff);
+				/* This PRE_PADDIGN and POST_PADDING is an requirement for LWS_WRITE_TEXT */
+				sockWriteBuff = realloc(sockWriteBuff, LWS_SEND_BUFFER_PRE_PADDING + l + LWS_SEND_BUFFER_POST_PADDING);
+				memset(sockWriteBuff, '\0', sizeof(sockWriteBuff));
+				memcpy(&sockWriteBuff[LWS_SEND_BUFFER_PRE_PADDING], syncBuff, l);
+				m = libwebsocket_write(wsi, &sockWriteBuff[LWS_SEND_BUFFER_PRE_PADDING], l, LWS_WRITE_TEXT);
+				/*
+				 * It seems like libwebsocket_write already does memory freeing
+				 */
+				if (m != l+4) {
+					logprintf(LOG_ERR, "(webserver) %d writing to socket", l);
+					return -1;
+				}			
+				return 0;
 			}
-			return 0;
 		}
 		break;
 		case LWS_CALLBACK_FILTER_NETWORK_CONNECTION:
@@ -435,6 +500,25 @@ int webserver_callback_http(struct libwebsocket_context *webcontext, struct libw
 		break;
 	}
 	return 0;
+}
+
+void webserver_queue(char *message) {
+	pthread_mutex_lock(&webqueue_lock);
+	struct webqueue_t *wnode = malloc(sizeof(struct webqueue_t));
+	wnode->message = malloc(strlen(message)+1);
+	strcpy(wnode->message, message);
+
+	if(webqueue_number == 0) {
+		webqueue = wnode;
+		webqueue_head = wnode;
+	} else {
+		webqueue_head->next = wnode;
+		webqueue_head = wnode;
+	}
+
+	webqueue_number++;
+	pthread_mutex_unlock(&webqueue_lock);
+	pthread_cond_signal(&webqueue_signal);
 }
 
 void *webserver_clientize(void *param) {
@@ -480,11 +564,7 @@ void *webserver_clientize(void *param) {
 			break;
 			case SYNC:
 				if(strlen(sockReadBuff) > 0) {
-					syncBuff = realloc(syncBuff, strlen(sockReadBuff)+1);
-					memset(syncBuff, '\0', sizeof(syncBuff));
-					strcpy(syncBuff, sockReadBuff);
-					/* Push all incoming sync messages to the web gui */
-					libwebsocket_callback_on_writable_all_protocol(&libwebsocket_protocols[0]);
+					webserver_queue(sockReadBuff);
 				}
 			break;
 			case REJECT:
@@ -498,6 +578,31 @@ void *webserver_clientize(void *param) {
 close:
 	webserver_gc();
 	return 0;
+}
+
+void *webserver_broadcast(void *param) {
+	pthread_mutex_lock(&webqueue_lock);
+	while(webserver_loop) {
+		if(webqueue_number > 0) {
+			pthread_mutex_lock(&webqueue_lock);
+
+			syncBuff = realloc(syncBuff, strlen(webqueue->message)+1);
+			memset(syncBuff, '\0', sizeof(syncBuff));
+			strcpy(syncBuff, webqueue->message);
+
+			libwebsocket_callback_on_writable_all_protocol(&libwebsocket_protocols[1]);
+
+			struct webqueue_t *tmp = webqueue;
+			sfree((void *)&webqueue->message);
+			webqueue = webqueue->next;
+			sfree((void *)&tmp);
+			webqueue_number--;
+			pthread_mutex_unlock(&webqueue_lock);
+		} else {
+			pthread_cond_wait(&webqueue_signal, &webqueue_lock);
+		}
+	}
+	return (void *)NULL;
 }
 
 void *webserver_start(void *param) {
@@ -534,7 +639,7 @@ void *webserver_start(void *param) {
 		/* Register a seperate thread in which the webserver communicates
 		   the main daemon as if it where a gui */
 		threads_register("webserver client", &webserver_clientize, (void *)NULL);
-		sleep(1);
+		threads_register("webserver broadcast", &webserver_broadcast, (void *)NULL);
 		/* Main webserver loop */
 		while(n >= 0 && webserver_loop) {
 			n = libwebsocket_service(context, 50);

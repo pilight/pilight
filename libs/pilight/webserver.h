@@ -23,6 +23,9 @@
 
 int webserver_gc(void);
 int webserver_callback_http(struct libwebsocket_context *webcontext, struct libwebsocket *wsi, enum libwebsocket_callback_reasons reason, void *user, void *in, size_t len);
+int webserver_callback_data(struct libwebsocket_context *webcontext, struct libwebsocket *wsi, enum libwebsocket_callback_reasons reason, void *user, void *in, size_t len);
+void webserver_queue(char *message);
+void *webserver_broadcast(void *param);
 void *webserver_start(void *param);
 
 #endif

@@ -258,30 +258,44 @@ function createDimmerElement(sTabId, sDevId, aValues) {
 }
 
 function createWeatherElement(sTabId, sDevId, aValues) {
+	aDecimals[sTabId+'_'+sDevId] = aValues['settings']['decimals'];
+	aValues['temperature'] /= Math.pow(10, aValues['settings']['decimals']);
+	aValues['humidity'] /= Math.pow(10, aValues['settings']['decimals']);
 	if($('#'+sTabId+'_'+sDevId+'_weather').length == 0) {
 		if(bShowTabs) {
 			oTab = $('#'+sTabId).find('ul');
 		} else {
 			oTab = $('#all');
 		}
-		aDecimals[sTabId+'_'+sDevId] = aValues['settings']['decimals'];
-		aValues['temperature'] /= Math.pow(10, aValues['settings']['decimals']);
-		aValues['humidity'] /= Math.pow(10, aValues['settings']['decimals']);
 		oTab.append($('<li class="weather" id="'+sTabId+'_'+sDevId+'_weather" data-icon="false">'+aValues['name']+'</li>'));
-	}
-	if(aValues['settings']['battery']) {
-		oTab.find('#'+sTabId+'_'+sDevId+'_weather').append($('<div id="'+sTabId+'_'+sDevId+'_batt" class="battery"></div>'));
-		if(aValues['battery']) {
-			$('#'+sTabId+'_'+sDevId+'_batt').addClass('green');
-		} else {
-			$('#'+sTabId+'_'+sDevId+'_batt').addClass('red');
+		if(aValues['settings']['battery']) {
+			oTab.find('#'+sTabId+'_'+sDevId+'_weather').append($('<div id="'+sTabId+'_'+sDevId+'_batt" class="battery"></div>'));
+			if(aValues['battery']) {
+				$('#'+sTabId+'_'+sDevId+'_batt').addClass('green');
+			} else {
+				$('#'+sTabId+'_'+sDevId+'_batt').addClass('red');
+			}
 		}
-	}		
-	if(aValues['settings']['humidity']) {
-		oTab.find('#'+sTabId+'_'+sDevId+'_weather').append($('<div class="percentage">%</div><div class="humidity" id="'+sTabId+'_'+sDevId+'_humi">'+aValues['humidity']+'</div>'));
-	}
-	if(aValues['settings']['temperature']) {
-		oTab.find('#'+sTabId+'_'+sDevId+'_weather').append($('<div class="degrees">o</div><div class="temperature" id="'+sTabId+'_'+sDevId+'_temp">'+aValues['temperature']+'</div>'));
+		if(aValues['settings']['humidity']) {
+			oTab.find('#'+sTabId+'_'+sDevId+'_weather').append($('<div class="percentage">%</div><div class="humidity" id="'+sTabId+'_'+sDevId+'_humi">'+aValues['humidity']+'</div>'));
+		}
+		if(aValues['settings']['temperature']) {
+			oTab.find('#'+sTabId+'_'+sDevId+'_weather').append($('<div class="degrees">o</div><div class="temperature" id="'+sTabId+'_'+sDevId+'_temp">'+aValues['temperature']+'</div>'));
+		}
+	} else {
+		if(aValues['settings']['battery']) {
+			if(aValues['battery']) {
+				$('#'+sTabId+'_'+sDevId+'_batt').removeClass('red').addClass('green');
+			} else {
+				$('#'+sTabId+'_'+sDevId+'_batt').removeClass('green').addClass('red');
+			}
+		}
+		if(aValues['settings']['humidity']) {
+			$('#'+sTabId+'_'+sDevId+'_humi').text(aValues['humidity']);
+		}
+		if(aValues['settings']['temperature']) {
+			$('#'+sTabId+'_'+sDevId+'_temp').text(aValues['temperature']);
+		}
 	}
 	oTab.listview();
 	oTab.listview("refresh");
@@ -436,10 +450,10 @@ $(document).ready(function() {
 	if($('body').length == 1) {
 		$.mobile.showPageLoadingMsg("b", "Connecting...", true);	
 		if(typeof MozWebSocket != "undefined") {
-			oWebsocket = new MozWebSocket("ws://"+location.host);
+			oWebsocket = new MozWebSocket("ws://"+location.host, "data");
 		} else if(typeof WebSocket != "undefined") {
 			/* The characters after the trailing slash are needed for a wierd IE 10 bug */
-			oWebsocket = new WebSocket("ws://"+location.host+'/websocket');
+			oWebsocket = new WebSocket("ws://"+location.host+'/websocket', "data");
 		} else {
 			var load = window.setInterval(function() {
 				$.get('http://'+location.host+'/config?'+$.now(), function(txt) {
