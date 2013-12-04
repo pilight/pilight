@@ -281,6 +281,18 @@ int settings_parse(JsonNode *root) {
 				goto clear;
 			} else {
 				settings_add_number(jsettings->key, (int)jsettings->number_);
+			} 
+		} else if(strcmp(jsettings->key, "webserver-username") == 0 || strcmp(jsettings->key, "webserver-password") == 0) {
+			if(jsettings->string_ || strlen(jsettings->string_) > 0) {
+				settings_add_string(jsettings->key, jsettings->string_);
+			}
+		} else if(strcmp(jsettings->key, "webserver-authentication") == 0) {
+			if(jsettings->number_ < 0 || jsettings->number_ > 1) {
+				logprintf(LOG_ERR, "setting \"%s\" must be either 0 or 1", jsettings->key);
+				have_error = 1;
+				goto clear;
+			} else {
+				settings_add_number(jsettings->key, (int)jsettings->number_);
 			}
 #endif
 #ifdef UPDATE

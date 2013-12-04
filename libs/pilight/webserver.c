@@ -46,8 +46,12 @@
 
 int webserver_port = WEBSERVER_PORT;
 int webserver_cache = 1;
+int webserver_authentication = 0;
+char *webserver_username = NULL;
+char *webserver_password = NULL;
 unsigned short webserver_loop = 1;
 char *webserver_root;
+unsigned char alphabet[64] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
 int sockfd = 0;
 char *sockReadBuff = NULL;
@@ -64,14 +68,15 @@ typedef enum {
 	SYNC
 } steps_t;
 
-struct libwebsocket_protocols libwebsocket_protocols[] = {
-	{ "http-only", webserver_callback_http, 102400, 102400 },
-	{ "data", webserver_callback_data, 102400, 102400 },
-	{ NULL, NULL, 0, 0 }
-};
-
 struct per_session_data__http {
 	struct libwebsocket *wsi;
+	unsigned short loggedin;
+};
+
+struct libwebsocket_protocols libwebsocket_protocols[] = {
+	{ "http-only", webserver_callback_http, sizeof(struct per_session_data__http), 0 },
+	{ "data", webserver_callback_data, 0, 0 },
+	{ NULL, NULL, 0, 0 }
 };
 
 typedef struct webqueue_t {
@@ -141,6 +146,16 @@ void webserver_create_wsi(struct libwebsocket **wsi, int fd, unsigned char *stre
 	(*wsi)->state = WSI_STATE_HTTP_ISSUING_FILE;
 }
 
+void webserver_create_401(unsigned char **p) {
+	*p += sprintf((char *)*p,
+		"HTTP/1.1 401 Authorization Required\r\n"
+		"WWW-Authenticate: Basic realm=\"pilight\"\r\n"
+		"Server: pilight\r\n"
+		"Content-Length: 40\r\n"
+		"Content-Type: text/html\r\n\r\n");
+	*p += sprintf((char *)*p, "401 Authorization Required");
+}
+
 void webserver_create_404(const char *in, unsigned char **p) {
 	char mimetype[] = "text/html";
 	webserver_create_header(p, "404 Not Found", mimetype, (unsigned int)(202+strlen((const char *)in)));
@@ -154,6 +169,61 @@ void webserver_create_404(const char *in, unsigned char **p) {
 		(const char *)in);
 }
 
+int base64decode(unsigned char *dest, unsigned char *src, int l) {
+	static char inalphabet[256], decoder[256];
+	int i, bits, c, char_count;
+	int rpos;
+	int wpos = 0;
+
+	for(i=(sizeof alphabet)-1;i>=0;i--) {
+		inalphabet[alphabet[i]] = 1;
+		decoder[alphabet[i]] = (char)i;
+	}
+
+	char_count = 0;
+	bits = 0;
+	for(rpos=0;rpos<l;rpos++) {
+		c = src[rpos];
+
+		if(c == '=') {
+			break;
+		}
+
+		if(c > 255 || !inalphabet[c]) {
+			continue;
+		}
+
+		bits += decoder[c];
+		char_count++;
+		if(char_count < 4) {
+			bits <<= 6;
+		} else {
+			dest[wpos++] = (char)(bits >> 16);
+			dest[wpos++] = (char)((bits >> 8) & 0xff);
+			dest[wpos++] = (char)(bits & 0xff);
+			bits = 0;
+			char_count = 0;
+		}
+	}
+
+	switch(char_count) {
+		case 1:
+			return -1;
+		break;
+		case 2:
+			dest[wpos++] = (char)(bits >> 10);
+		break;
+		case 3:
+			dest[wpos++] = (char)(bits >> 16);
+			dest[wpos++] = (char)((bits >> 8) & 0xff);
+		break;
+		default:
+		break;
+	}
+
+	return wpos;
+}
+
 int webserver_callback_http(struct libwebsocket_context *webcontext, struct libwebsocket *wsi, enum libwebsocket_callback_reasons reason, void *user, void *in, size_t len) {
 	int n = 0, m = 0;
 	int size;
@@ -162,9 +232,50 @@ int webserver_callback_http(struct libwebsocket_context *webcontext, struct libw
 	unsigned char *p = NULL;
 	struct stat stat_buf;
 	struct per_session_data__http *pss = (struct per_session_data__http *)user;
-
+	
 	switch(reason) {
 		case LWS_CALLBACK_HTTP: {
+			if(pss->loggedin == 0 && webserver_authentication == 1 && webserver_username != NULL && webserver_password != NULL) {
+				/* Check if authorization header field was given and extract username and password */
+				char *pch = strtok((char *)webcontext->service_buffer, "\r\n");
+				char encpass[1024] = {'\0'};
+				char decpass[1024] = {'\0'};
+				char username[512] = {'\0'};
+				char password[512] = {'\0'};
+
+				while(pch) {
+					sscanf(pch, "Authorization: Basic%*[ \n\t]%s", encpass);
+					if(strlen(encpass) > 0) {
+						base64decode((unsigned char *)decpass, (unsigned char *)encpass, (int)strlen(encpass));
+						break;
+					}
+					pch = strtok(NULL, "\r\n");
+				}
+				if(strlen(decpass) > 0) {
+					int error = 0;
+					pch = strtok(decpass, ":");
+					if(pch != NULL) {
+						strcpy(&username[0], pch);
+					} else {
+						error = 1;
+					}
+					pch = strtok(NULL, ":");
+					if(pch != NULL) {
+						strcpy(&password[0], pch);
+					} else {
+						error = 1;
+					}
+					if(error == 0 && strcmp(username, webserver_username) == 0 && strcmp(password, webserver_password) == 0) {
+						pss->loggedin = 1;
+					}
+				}
+				if(pss->loggedin == 0) {
+					p = webcontext->service_buffer;
+					webserver_create_401(&p);
+					libwebsocket_write(wsi, webcontext->service_buffer, (size_t)(p-webcontext->service_buffer), LWS_WRITE_HTTP);
+					return -1;
+				}
+			}
 			/* If the webserver didn't request a file, serve the index.html */
 			if(strcmp((const char *)in, "/") == 0) {
 				request = malloc(strlen(webserver_root)+13);
@@ -359,17 +470,6 @@ int webserver_callback_http(struct libwebsocket_context *webcontext, struct libw
 			}
 			return -1;
 		break;
-		case LWS_CALLBACK_ESTABLISHED:
-		case LWS_CALLBACK_CLIENT_CONNECTION_ERROR:
-		case LWS_CALLBACK_CLIENT_FILTER_PRE_ESTABLISH:
-		case LWS_CALLBACK_CLIENT_ESTABLISHED:
-		case LWS_CALLBACK_CLOSED:
-		case LWS_CALLBACK_CLOSED_HTTP:
-		case LWS_CALLBACK_RECEIVE:
-		case LWS_CALLBACK_CLIENT_RECEIVE:
-		case LWS_CALLBACK_CLIENT_RECEIVE_PONG:
-		case LWS_CALLBACK_CLIENT_WRITEABLE:
-		case LWS_CALLBACK_SERVER_WRITEABLE:
 		case LWS_CALLBACK_FILTER_NETWORK_CONNECTION:
 			if((int)in > 0) {
 				struct sockaddr_in address;
@@ -383,7 +483,18 @@ int webserver_callback_http(struct libwebsocket_context *webcontext, struct libw
 					return 0;
 				}
 			}
-		break;
+		break;		
+		case LWS_CALLBACK_ESTABLISHED:
+		case LWS_CALLBACK_CLIENT_CONNECTION_ERROR:
+		case LWS_CALLBACK_CLIENT_FILTER_PRE_ESTABLISH:
+		case LWS_CALLBACK_CLIENT_ESTABLISHED:
+		case LWS_CALLBACK_CLOSED:
+		case LWS_CALLBACK_CLOSED_HTTP:
+		case LWS_CALLBACK_RECEIVE:
+		case LWS_CALLBACK_CLIENT_RECEIVE:
+		case LWS_CALLBACK_CLIENT_RECEIVE_PONG:
+		case LWS_CALLBACK_CLIENT_WRITEABLE:
+		case LWS_CALLBACK_SERVER_WRITEABLE:
 		case LWS_CALLBACK_FILTER_PROTOCOL_CONNECTION:
 		case LWS_CALLBACK_OPENSSL_LOAD_EXTRA_CLIENT_VERIFY_CERTS:
 		case LWS_CALLBACK_OPENSSL_LOAD_EXTRA_SERVER_VERIFY_CERTS:
@@ -406,16 +517,7 @@ int webserver_callback_http(struct libwebsocket_context *webcontext, struct libw
 int webserver_callback_data(struct libwebsocket_context *webcontext, struct libwebsocket *wsi, enum libwebsocket_callback_reasons reason, void *user, void *in, size_t len) {
 	int m;
 	switch(reason) {
-		case LWS_CALLBACK_HTTP:
-		case LWS_CALLBACK_HTTP_FILE_COMPLETION:
-		case LWS_CALLBACK_HTTP_WRITEABLE:
-		case LWS_CALLBACK_ESTABLISHED:
-		case LWS_CALLBACK_CLIENT_CONNECTION_ERROR:
-		case LWS_CALLBACK_CLIENT_FILTER_PRE_ESTABLISH:
-		case LWS_CALLBACK_CLIENT_ESTABLISHED:
-		case LWS_CALLBACK_CLOSED:
-		case LWS_CALLBACK_CLOSED_HTTP:
-		case LWS_CALLBACK_RECEIVE:
+	case LWS_CALLBACK_RECEIVE:
 			if((int)len < 4) {
 				return -1;
 			} else {
@@ -446,9 +548,6 @@ int webserver_callback_data(struct libwebsocket_context *webcontext, struct libw
 			}
 			return 0;
 		break;
-		case LWS_CALLBACK_CLIENT_RECEIVE:
-		case LWS_CALLBACK_CLIENT_RECEIVE_PONG:
-		case LWS_CALLBACK_CLIENT_WRITEABLE:
 		case LWS_CALLBACK_SERVER_WRITEABLE: {
 			if(syncBuff) {
 				/* Push the incoming message to the webgui */
@@ -482,7 +581,19 @@ int webserver_callback_data(struct libwebsocket_context *webcontext, struct libw
 					return 0;
 				}
 			}
-		break;
+		break;		
+		case LWS_CALLBACK_HTTP:
+		case LWS_CALLBACK_HTTP_FILE_COMPLETION:
+		case LWS_CALLBACK_HTTP_WRITEABLE:
+		case LWS_CALLBACK_ESTABLISHED:
+		case LWS_CALLBACK_CLIENT_CONNECTION_ERROR:
+		case LWS_CALLBACK_CLIENT_FILTER_PRE_ESTABLISH:
+		case LWS_CALLBACK_CLIENT_ESTABLISHED:
+		case LWS_CALLBACK_CLOSED:
+		case LWS_CALLBACK_CLOSED_HTTP:
+		case LWS_CALLBACK_CLIENT_RECEIVE:
+		case LWS_CALLBACK_CLIENT_RECEIVE_PONG:
+		case LWS_CALLBACK_CLIENT_WRITEABLE:
 		case LWS_CALLBACK_FILTER_PROTOCOL_CONNECTION:
 		case LWS_CALLBACK_OPENSSL_LOAD_EXTRA_CLIENT_VERIFY_CERTS:
 		case LWS_CALLBACK_OPENSSL_LOAD_EXTRA_SERVER_VERIFY_CERTS:
@@ -621,6 +732,9 @@ void *webserver_start(void *param) {
 	/* Do we turn on webserver caching. This means that all requested files are
 	   loaded into the memory so they aren't read from the FS anymore */
 	settings_find_number("webserver-cache", &webserver_cache);
+	settings_find_number("webserver-authentication", &webserver_authentication);
+	settings_find_string("webserver-password", &webserver_password);
+	settings_find_string("webserver-username", &webserver_username);
 
 	/* Default websockets info */
 	memset(&info, 0, sizeof info);
