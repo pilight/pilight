@@ -222,7 +222,7 @@ int ssdp_seek(struct ssdp_list_t **ssdp_list) {
 	unsigned short int nip[4], port = 0;
 	
 	tv.tv_sec = 0;
-	tv.tv_usec = 10000;
+	tv.tv_usec = 50000;
 
 	sock = socket(AF_INET, SOCK_DGRAM, 0);
     addr.sin_family = AF_INET;
@@ -246,6 +246,7 @@ int ssdp_seek(struct ssdp_list_t **ssdp_list) {
 			//perror("read");
 			goto end;
 		}
+
 		if(strstr(message, "pilight") > 0) {
 			char *pch = strtok(message, "\r\n");
 			while(pch) {
@@ -255,13 +256,14 @@ int ssdp_seek(struct ssdp_list_t **ssdp_list) {
 				}
 				pch = strtok(NULL, "\r\n");
 			}
-
-			struct ssdp_list_t *node = malloc(sizeof(ssdp_list_t));
-			sprintf(node->ip, "%hu.%hu.%hu.%hu", nip[0], nip[1], nip[2], nip[3]);
-			node->ip[16] = '\0';
-			node->port = port;
-			node->next = *ssdp_list;
-			*ssdp_list = node;
+			if(match) {
+				struct ssdp_list_t *node = malloc(sizeof(struct ssdp_list_t));
+				sprintf(node->ip, "%hu.%hu.%hu.%hu", nip[0], nip[1], nip[2], nip[3]);
+				node->ip[16] = '\0';
+				node->port = port;
+				node->next = *ssdp_list;
+				*ssdp_list = node;
+			}
 		}
 	}
 	goto end;
@@ -279,6 +281,7 @@ end:
 		sfree((void *)&ptr);
 		sfree((void *)&next);
 		*ssdp_list = prev;
+
 		return 0;
 	} else {
 		return -1;

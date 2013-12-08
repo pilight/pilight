@@ -234,8 +234,8 @@ int main(int argc, char **argv) {
 				logprintf(LOG_ERR, "could not connect to pilight-daemon");
 				exit(EXIT_FAILURE);
 			}
+			sfree((void *)&ssdp_list);
 		}
-		sfree((void *)&ssdp_list);
 
 		while(1) {
 			if(steps > WELCOME) {

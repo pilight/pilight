@@ -396,7 +396,7 @@ void receiver_parse_code(int *rawcode, int rawlen, int plslen) {
 							}
 						}
 
-						if((double)protocol->raw[1]/((double)protocol->pulse*(double)plslengths->length) < 1.2) {
+						if((double)protocol->raw[1]/((double)protocol->pulse*(double)plslengths->length) < 1.35) {
 							x -= 4;
 						}
 
@@ -1034,7 +1034,7 @@ void *receive_code(void *param) {
 
 void *clientize(void *param) {
 	steps_t steps = WELCOME;
-	struct ssdp_list_t *ssdp_list = NULL;
+	struct ssdp_list_t *ssdp_list;
     char *recvBuff = NULL;
 	char *message = NULL;
 	char *protocol = NULL;
@@ -1048,13 +1048,13 @@ void *clientize(void *param) {
 			logprintf(LOG_ERR, "could not connect to pilight-daemon");
 			exit(EXIT_FAILURE);
 		}
+		sfree((void *)&ssdp_list);
 	}
-	sfree((void *)&ssdp_list);
 
 	while(main_loop) {
 		if(steps > WELCOME) {
 			/* Clear the receive buffer again and read the welcome message */
-			if(steps == REQUEST) {
+			if(steps == CONFIG) {
 				if((recvBuff = socket_read_big(sockfd))) {
 					json = json_decode(recvBuff);
 					json_find_string(json, "message", &message);
@@ -1069,8 +1069,8 @@ void *clientize(void *param) {
 					goto close;
 				}
 			}
+			logprintf(LOG_DEBUG, "socket recv: %s", recvBuff);
 		}
-		usleep(100);
 		switch(steps) {
 			case WELCOME:
 				socket_write(sockfd, "{\"message\":\"client node\"}");
@@ -1465,11 +1465,11 @@ int main(int argc, char **argv) {
 	   communicates with the server */
 	if(runmode == 2) {
 		threads_register("node", &clientize, (void *)NULL);
+	} else {
+		/* Register a seperate thread for the socket server */
+		threads_register("socket", &socket_wait, (void *)&socket_callback);
+		threads_register("ssdp", &ssdp_wait, (void *)NULL);
 	}
-
-	/* Register a seperate thread for the socket server */
-	threads_register("socket", &socket_wait, (void *)&socket_callback);
-	threads_register("ssdp", &ssdp_wait, (void *)NULL);
 	threads_register("sender", &send_code, (void *)NULL);
 	threads_register("broadcaster", &broadcast, (void *)NULL);
 

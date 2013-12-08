@@ -55,7 +55,7 @@ int main(int argc, char **argv) {
 	strcpy(progname, "pilight-control");
 
 	struct options_t *options = NULL;
-	struct ssdp_list_t *ssdp_list = NULL;
+	struct ssdp_list_t *ssdp_list;
 
 	int sockfd = 0;
     char *recvBuff = NULL;
@@ -140,8 +140,8 @@ int main(int argc, char **argv) {
 			logprintf(LOG_ERR, "could not connect to pilight-daemon");
 			exit(EXIT_FAILURE);
 		}
+		sfree((void *)&ssdp_list);
 	}
-	sfree((void *)&ssdp_list);
 
 	protocol_init();
 

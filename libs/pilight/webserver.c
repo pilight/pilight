@@ -42,6 +42,7 @@
 #include "socket.h"
 #include "webserver.h"
 #include "socket.h"
+#include "ssdp.h"
 #include "fcache.h"
 
 int webserver_port = WEBSERVER_PORT;
@@ -232,7 +233,7 @@ int webserver_callback_http(struct libwebsocket_context *webcontext, struct libw
 	unsigned char *p = NULL;
 	struct stat stat_buf;
 	struct per_session_data__http *pss = (struct per_session_data__http *)user;
-	
+
 	switch(reason) {
 		case LWS_CALLBACK_HTTP: {
 			if(pss->loggedin == 0 && webserver_authentication == 1 && webserver_username != NULL && webserver_password != NULL) {
@@ -635,16 +636,18 @@ void webserver_queue(char *message) {
 void *webserver_clientize(void *param) {
 	steps_t steps = WELCOME;
 	char *message = NULL;
-	server = malloc(10);
-	strcpy(server, "localhost");
-	int port = 0;
+	struct ssdp_list_t *ssdp_list;
 
-	settings_find_number("port", &port);
-
-	if((sockfd = socket_connect(server, (short unsigned int)socket_get_port())) == -1) {
-		logprintf(LOG_ERR, "could not connect to pilight-daemon");
-		exit(EXIT_FAILURE);
+	if(ssdp_seek(&ssdp_list) == -1) {
+		logprintf(LOG_ERR, "no pilight ssdp connections found");
+	} else {
+		if((sockfd = socket_connect(ssdp_list->ip, ssdp_list->port)) == -1) {
+			logprintf(LOG_ERR, "could not connect to pilight-daemon");
+			exit(EXIT_FAILURE);
+		}
+		sfree((void *)&ssdp_list);
 	}
+
 	sockReadBuff = malloc(BUFFER_SIZE);
 	sfree((void *)&server);
 	while(webserver_loop) {

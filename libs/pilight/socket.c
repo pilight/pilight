@@ -219,6 +219,8 @@ int socket_connect(char *address, unsigned short port) {
 
 	if(!sendBuff) {
 		sendBuff = malloc(BIG_BUFFER_SIZE);
+	}
+	if(!recvBuff) {
 		recvBuff = malloc(BIG_BUFFER_SIZE);
 	}
 	
@@ -340,6 +342,13 @@ void *socket_wait(void *param) {
 	int addrlen = sizeof(address);
 	fd_set readfds;
 	readBuff = malloc(BIG_BUFFER_SIZE);
+	
+	if(!sendBuff) {
+		sendBuff = malloc(BIG_BUFFER_SIZE);
+	}
+	if(!recvBuff) {
+		recvBuff = malloc(BIG_BUFFER_SIZE);
+	}	
 
 	while(socket_loop) {
 		do {
