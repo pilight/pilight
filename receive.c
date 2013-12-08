@@ -90,10 +90,11 @@ int main(int argc, char **argv) {
 	options_delete(options);
     if(ssdp_seek(&ssdp_list) == -1) {
 		logprintf(LOG_ERR, "no pilight ssdp connections found");
+		goto close;
 	} else {
 		if((sockfd = socket_connect(ssdp_list->ip, ssdp_list->port)) == -1) {
 			logprintf(LOG_ERR, "could not connect to pilight-daemon");
-			exit(EXIT_FAILURE);
+			goto close;
 		}
 		sfree((void *)&ssdp_list);
 	}
@@ -148,7 +149,9 @@ int main(int argc, char **argv) {
 		}
 	}
 close:
-	socket_close(sockfd);
+	if(sockfd > 0) {
+		socket_close(sockfd);
+	}
 
 	protocol_gc();
 	options_gc();
