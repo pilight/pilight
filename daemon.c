@@ -1034,7 +1034,7 @@ void *receive_code(void *param) {
 
 void *clientize(void *param) {
 	steps_t steps = WELCOME;
-	struct ssdp_list_t *ssdp_list;
+	struct ssdp_list_t *ssdp_list = NULL;
     char *recvBuff = NULL;
 	char *message = NULL;
 	char *protocol = NULL;

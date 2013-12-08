@@ -53,7 +53,7 @@ int main(int argc, char **argv) {
 	strcpy(progname, "pilight-send");
 
 	struct options_t *options = NULL;
-	struct ssdp_list_t *ssdp_list;
+	struct ssdp_list_t *ssdp_list = NULL;
 
 	int sockfd = 0;
     char *recvBuff = NULL;
