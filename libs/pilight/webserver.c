@@ -638,11 +638,20 @@ void *webserver_clientize(void *param) {
 	char *message = NULL;
 	struct ssdp_list_t *ssdp_list;
 
+	
 	if(ssdp_seek(&ssdp_list) == -1) {
-		logprintf(LOG_ERR, "no pilight ssdp connections found");
+		logprintf(LOG_DEBUG, "no pilight ssdp connections found");
+		server = malloc(10);
+		strcpy(server, "127.0.0.1");
+		if((sockfd = socket_connect(server, (unsigned short)socket_get_port())) == -1) {
+			logprintf(LOG_DEBUG, "could not connect to pilight-daemon");
+			sfree((void *)&server);
+			exit(EXIT_FAILURE);
+		}
+		sfree((void *)&server);
 	} else {
 		if((sockfd = socket_connect(ssdp_list->ip, ssdp_list->port)) == -1) {
-			logprintf(LOG_ERR, "could not connect to pilight-daemon");
+			logprintf(LOG_DEBUG, "could not connect to pilight-daemon");
 			exit(EXIT_FAILURE);
 		}
 		sfree((void *)&ssdp_list);

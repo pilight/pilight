@@ -48,7 +48,7 @@ int main(int argc, char **argv) {
 	progname = malloc(16);
 	strcpy(progname, "pilight-receive");
 	struct options_t *options = NULL;
-	struct ssdp_list_t *ssdp_list = NULL;
+	struct ssdp_list_t *ssdp_list;
 
 	JsonNode *json = NULL;
 
