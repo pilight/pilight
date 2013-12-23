@@ -35,7 +35,7 @@
 	#include "../hardwares/module.h"
 #endif
 #ifdef HARDWARE_433_PILIGHT
-	#include "../hardwares/PILIGHT.h"
+	#include "../hardwares/pilight.h"
 #endif
 
 #include "hardware.h"
