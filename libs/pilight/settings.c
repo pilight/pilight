@@ -235,7 +235,7 @@ int settings_parse(JsonNode *root) {
 			}
 		} else if(strcmp(jsettings->key, "hw-mode") == 0) {
 			if(!jsettings->string_) {
-				logprintf(LOG_ERR, "setting \"%s\" must be either \"gpio\", \"module\", or \"none\"", jsettings->key);
+				logprintf(LOG_ERR, "setting \"%s\" must be either \"gpio\", \"module\", \"pilight\" or \"none\"", jsettings->key);
 				have_error = 1;
 				goto clear;
 			} else {
@@ -245,6 +245,8 @@ int settings_parse(JsonNode *root) {
 					hw_mode = 0;
 				} else if(strcmp(jsettings->string_, "gpio") == 0) {
 					hw_mode = 2;
+				} else if(strcmp(jsettings->string_, "pilight") == 0) {
+					hw_mode = 3;
 				}
 				settings_add_string(jsettings->key, jsettings->string_);
 			}
@@ -348,7 +350,7 @@ int settings_parse(JsonNode *root) {
 				have_error = 1;
 				goto clear;
 			} else {
-				gpio_out = (int)jsettings->number_;
+				gpio_in = (int)jsettings->number_;
 				settings_add_number(jsettings->key, (int)jsettings->number_);
 			}			
 		} else if(strcmp(jsettings->key, "gpio-sender") == 0) {
@@ -357,7 +359,7 @@ int settings_parse(JsonNode *root) {
 				have_error = 1;
 				goto clear;
 			} else {
-				gpio_in = (int)jsettings->number_;
+				gpio_out = (int)jsettings->number_;
 				settings_add_number(jsettings->key, (int)jsettings->number_);
 			}			
 		} else {
@@ -368,8 +370,8 @@ int settings_parse(JsonNode *root) {
 		jsettings = jsettings->next;
 	}
 	json_delete(jsettings);
-	if((hw_mode == 1 || hw_mode == 0) && gpio_in > -1) {
-		logprintf(LOG_ERR, "setting \"gpio-receiver\" and \"module\" or \"none\" hw-mode cannot be combined");
+	if((hw_mode == 1 || hw_mode == 0 || hw_mode == 3) && gpio_in > -1) {
+		logprintf(LOG_ERR, "setting \"gpio-receiver\" and \"module\", \"pilight\" or \"none\" hw-mode cannot be combined");
 		have_error = 1;
 		goto clear;
 	}
@@ -379,7 +381,7 @@ int settings_parse(JsonNode *root) {
 		goto clear;
 	}	
 	if((hw_mode == 2 || hw_mode == 0) && has_socket == 1) {
-		logprintf(LOG_ERR, "setting \"hw-socket\" must be combined with \"module\" hw-mode");
+		logprintf(LOG_ERR, "setting \"hw-socket\" must be combined with \"module\" or \"pilight\" hw-mode");
 		have_error = 1;
 		goto clear;
 	}

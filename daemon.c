@@ -1403,7 +1403,9 @@ int main(int argc, char **argv) {
 	}
 	if(match == 1) {
 		if(hardware->init) {
-			hardware->init();
+			if(hardware->init() == EXIT_FAILURE) {
+				goto clear;
+			}
 		}
 	} else {
 		logprintf(LOG_NOTICE, "the \"%s\" hw-mode is not supported", hw_mode);

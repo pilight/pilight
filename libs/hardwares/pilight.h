@@ -16,28 +16,15 @@
     along with pilight. If not, see	<http://www.gnu.org/licenses/>
 */
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
+#ifndef _HARDWARE_PILIGHT_MOD_H_
+#define _HARDWARE_PILIGHT_MOD_H_
 
-#include "hardware.h"
-#include "common.h"
-#include "none.h"
+struct hardware_t *pilight_mod;
 
-int noneSend(int *code) {
-	return EXIT_SUCCESS;
-}
+unsigned short pilightModHwInit(void);
+unsigned short pilightModHwDeinit(void);
+int pilightModSend(int *code);
+int pilightModReceive(void);
+void pilightModInit(void);
 
-int noneReceive(void) {
-	sleep(1);
-	return EXIT_SUCCESS;
-}
-
-void noneInit(void) {
-
-	hardware_register(&none);
-	hardware_set_id(none, "none");
-	none->receive=&noneReceive;
-	none->send=&noneSend;
-}
+#endif

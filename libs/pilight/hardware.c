@@ -26,23 +26,30 @@
 #include "wiringPi.h"
 #include "log.h"
 
-#include "../hardwares/module.h"
+#include "../hardwares/none.h"
 
 #ifdef HARDWARE_433_GPIO
 	#include "../hardwares/gpio.h"
 #endif
 #ifdef HARDWARE_433_MODULE
-	#include "../hardwares/none.h"
+	#include "../hardwares/module.h"
+#endif
+#ifdef HARDWARE_433_PILIGHT
+	#include "../hardwares/PILIGHT.h"
 #endif
 
 #include "hardware.h"
 
 void hardware_init(void) {
+
 #ifdef HARDWARE_433_MODULE
-	moduleInit();
+		moduleInit();
 #endif
-#ifdef HARDWARE_433_GPIO	
-	gpioInit();
+#ifdef HARDWARE_433_GPIO
+		gpioInit();
+#endif
+#ifdef HARDWARE_433_PILIGHT
+		pilightModInit();
 #endif
 	noneInit();
 }
@@ -62,7 +69,7 @@ void hardware_register(hardware_t **hw) {
 }
 
 void hardware_set_id(hardware_t *hw, const char *id) {
-	hw->id = malloc(strlen(id)+1);
+	hw->id = malloc(strlen(id)+1);	
 	strcpy(hw->id, id);
 }
 

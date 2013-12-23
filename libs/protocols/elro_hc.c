@@ -168,6 +168,7 @@ void elroHCInit(void) {
 	protocol_register(&elro_hc);
 	protocol_set_id(elro_hc, "elro_hc");
 	protocol_device_add(elro_hc, "elro_hc", "Elro Home Control Switches");
+	protocol_device_add(elro_hc, "brennenstuhl", "Brennenstuhl Comfort");
 	protocol_plslen_add(elro_hc, 296);
 	elro_hc->devtype = SWITCH;
 	elro_hc->hwtype = RX433;

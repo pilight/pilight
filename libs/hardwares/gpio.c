@@ -33,36 +33,20 @@ int gpio_in = 0;
 int gpio_out = 0;
 
 unsigned short gpioHwInit(void) {
-	char *mode = NULL;
-	int allocated = 0;
 
 	gpio_in = GPIO_IN_PIN;
 	gpio_out = GPIO_OUT_PIN;
 
-	if(settings_find_string("hw-mode", &mode) != 0) {
-		mode = malloc(strlen(HW_MODE)+1);
-		strcpy(mode, HW_MODE);
-		allocated = 1;
-	}
 	settings_find_number("gpio-receiver", &gpio_in);
 	settings_find_number("gpio-sender", &gpio_out);
 
 	if(wiringPiSetup() == -1) {
-		if(allocated) {
-			sfree((void *)&mode);
-		}
 		return EXIT_FAILURE;
 	}
 	pinMode(gpio_out, OUTPUT);
 	if(wiringPiISR(gpio_in, INT_EDGE_BOTH) < 0) {
 		logprintf(LOG_ERR, "unable to register interrupt for pin %d", gpio_in) ;
-		if(allocated) {
-			sfree((void *)&mode);
-		}
 		return EXIT_SUCCESS;
-	}
-	if(allocated) {
-		sfree((void *)&mode);
 	}
 	return EXIT_FAILURE;
 }

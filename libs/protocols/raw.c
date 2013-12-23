@@ -31,7 +31,6 @@
 
 int rawCreateCode(JsonNode *code) {
 	char *rcode = NULL;
-	char *rncode = NULL;
 	char *pch = NULL;
 	int i=0;
 
@@ -40,8 +39,7 @@ int rawCreateCode(JsonNode *code) {
 		return EXIT_FAILURE;
 	}
 
-	rncode = strdup(rcode);
-	pch = strtok(rncode, " ");
+	pch = strtok(rcode, " ");
 	while(pch != NULL) {
 		raw->raw[i]=atoi(pch);
 		pch = strtok(NULL, " ");
