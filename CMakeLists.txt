@@ -194,7 +194,6 @@ if(${PROTOCOL_CONRAD_RSL_CONTACT} MATCHES "OFF")
 	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/hardwares/conrad_rsl_contact.c")
 endif()
 
-
 if(${HARDWARE_433_GPIO} MATCHES "OFF")
 	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/hardwares/gpio.h")
 	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/hardwares/gpio.c")
@@ -203,6 +202,11 @@ endif()
 if(${HARDWARE_433_MODULE} MATCHES "OFF")
 	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/hardwares/module.h")
 	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/hardwares/module.c")
+endif()
+
+if(${HARDWARE_433_PILIGHT} MATCHES "OFF")
+	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/hardwares/pilight.h")
+	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/hardwares/pilight.c")
 endif()
 
 if(${UPDATE} MATCHES "OFF")
