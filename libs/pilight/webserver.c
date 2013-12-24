@@ -553,6 +553,7 @@ int webserver_callback_data(struct libwebsocket_context *webcontext, struct libw
 			if(syncBuff) {
 				/* Push the incoming message to the webgui */
 				size_t l = strlen(syncBuff);
+
 				/* This PRE_PADDIGN and POST_PADDING is an requirement for LWS_WRITE_TEXT */
 				sockWriteBuff = realloc(sockWriteBuff, LWS_SEND_BUFFER_PRE_PADDING + l + LWS_SEND_BUFFER_POST_PADDING);
 				memset(sockWriteBuff, '\0', sizeof(sockWriteBuff));
@@ -561,7 +562,7 @@ int webserver_callback_data(struct libwebsocket_context *webcontext, struct libw
 				/*
 				 * It seems like libwebsocket_write already does memory freeing
 				 */
-				if (m != l+4) {
+				if (m < l) {
 					logprintf(LOG_ERR, "(webserver) %d writing to socket", l);
 					return -1;
 				}			
