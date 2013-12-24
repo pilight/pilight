@@ -465,9 +465,11 @@ $(document).ready(function() {
 				}).fail(function() {
 					window.clearInterval(load);
 					if(bConnected) {
-						$.mobile.showPageLoadingMsg("b", "Connection lost", true);
+						$.mobile.showPageLoadingMsg("b", "Connection lost, touch to reload", true);
+						$('html').on({ 'touchstart mousedown' : function(){location.reload();}});
 					} else {
-						$.mobile.showPageLoadingMsg("b", "Failed to connect", true);
+						$.mobile.showPageLoadingMsg("b", "Failed to connect, touch to reload", true);
+						$('html').on({ 'touchstart mousedown' : function(){location.reload();}});
 					}
 				});
 			}, 1000);
@@ -480,9 +482,11 @@ $(document).ready(function() {
 			};
 			oWebsocket.onclose = function(evt) {
 				if(bConnected) {
-					$.mobile.showPageLoadingMsg("b", "Connection lost", true);
+					$.mobile.showPageLoadingMsg("b", "Connection lost, touch to reload", true);
+					$('html').on({ 'touchstart mousedown' : function(){location.reload();}});
 				} else {
-					$.mobile.showPageLoadingMsg("b", "Failed to connect", true);
+					$.mobile.showPageLoadingMsg("b", "Failed to connect, touch to reload", true);
+					$('html').on({ 'touchstart mousedown' : function(){location.reload();}});
 				}
 			};
 			oWebsocket.onerror = function(evt) {
