@@ -199,6 +199,16 @@ if(${PROTOCOL_REV_SWTICH} MATCHES "OFF")
 	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/rev_switch.c")
 endif()
 
+if(${PROTOCOL_DHT11} MATCHES "OFF")
+	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/dht11.h")
+	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/dht11.c")
+endif()
+
+if(${PROTOCOL_DHT22} MATCHES "OFF")
+	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/dht22.h")
+	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/dht22.c")
+endif()
+
 if(${HARDWARE_433_GPIO} MATCHES "OFF")
 	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/hardwares/gpio.h")
 	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/hardwares/gpio.c")
