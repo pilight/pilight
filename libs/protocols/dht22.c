@@ -67,7 +67,7 @@ void *dht22Parse(void *param) {
 	if((jid = json_find_member(json, "id"))) {
 		jchild = json_first_child(jid);
 		while(jchild) {
-			if(json_find_number(jchild, "id", &itmp) == 0) {
+			if(json_find_number(jchild, "gpio", &itmp) == 0) {
 				id = realloc(id, (sizeof(int)*(size_t)(nrid+1)));
 				id[nrid] = itmp;
 				nrid++;
@@ -78,15 +78,14 @@ void *dht22Parse(void *param) {
 	if((jsettings = json_find_member(json, "settings"))) {
 		json_find_number(jsettings, "interval", &interval);
 	}
-	json_delete(json);	
+	json_delete(json);
 	
 	dht22_nrfree++;	
-	
+
 	while(dht22_loop) {
 		for(y=0;y<nrid;y++) {
 			int tries = 5;
 			unsigned short got_correct_date = 0;
-
 			while(tries && !got_correct_date) {
 
 				uint8_t laststate = HIGH;
@@ -182,8 +181,7 @@ void *dht22Parse(void *param) {
 
 void dht22InitDev(JsonNode *jdevice) {
 
-	
-#ifdef HARDWARE_433_GPIO
+#if defined(HARDWARE_433_GPIO) || defined(HARDWARE_433_PILIGHT)
 	JsonNode *jid = NULL;
 	JsonNode *jchild = NULL;
 	int gpio_in = GPIO_IN_PIN;
@@ -200,7 +198,7 @@ void dht22InitDev(JsonNode *jdevice) {
 	if((jid = json_find_member(jdevice, "id"))) {
 		jchild = json_first_child(jid);
 		while(jchild) {
-			if(json_find_string(jchild, "id", &stmp) == 0) {
+			if(json_find_string(jchild, "gpio", &stmp) == 0) {
 				id = realloc(id, (sizeof(char *)*(size_t)(nrid+1)));
 				id[nrid] = malloc(strlen(stmp)+1);
 				strcpy(id[nrid], stmp);
@@ -250,7 +248,6 @@ void dht22Init(void) {
 	protocol_register(&dht22);
 	protocol_set_id(dht22, "dht22");
 	protocol_device_add(dht22, "dht22", "1-wire temperature and humidity sensor");
-	protocol_device_add(dht22, "dht11", "1-wire temperature and humidity sensor");
 	protocol_device_add(dht22, "am2302", "1-wire temperature and humidity sensor");	
 	dht22->devtype = WEATHER;
 	dht22->hwtype = SENSOR;
