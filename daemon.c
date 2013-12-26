@@ -324,7 +324,7 @@ void receiver_parse_code(int *rawcode, int rawlen, int plslen) {
 				for(x=0;x<(int)(double)rawlen;x++) {
 					protocol->pCode[x] = protocol->code[x];
 					memcpy(&protocol->raw[x], &rawcode[x], sizeof(int));
-					if(protocol->raw[x] >= ((protocol->pulse*plslengths->length)-plslengths->length)) {
+					if(protocol->raw[x] >= ( plslengths->length * (1+protocol->pulse)/2 )) {
 						protocol->code[x] = 1;
 					} else {
 						protocol->code[x] = 0;
