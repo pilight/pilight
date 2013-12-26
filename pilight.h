@@ -78,10 +78,12 @@
 	#define HW_MODE				"none"
 #endif
 
+#if defined(HARDWARE_433_GPIO) || defined(HARDWARE_433_PILIGHT)
+	#define GPIO_OUT_PIN		0
+#endif
+
 #ifdef HARDWARE_433_GPIO
 	#define GPIO_IN_PIN			1
-	#define GPIO_OUT_PIN		0
-
 	#define POLL_TIMEOUT		1000
 	#define RDBUF_LEN			5
 	#define GPIO_FN_MAXLEN		32
