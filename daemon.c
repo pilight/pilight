@@ -327,8 +327,8 @@ void receiver_parse_code(int *rawcode, int rawlen, int plslen) {
 				/* Convert the raw codes to one's and zero's */
 				for(x=0;x<(int)(double)rawlen;x++) {
 					protocol->pCode[x] = protocol->code[x];
-
-					if(protocol->raw[x] >= ((protocol->pulse*plslengths->length)-plslengths->length)) {
+					
+					if(protocol->raw[x] >= ( plslengths->length * (1+protocol->pulse)/2 )) {
 						protocol->code[x] = 1;
 					} else {
 						protocol->code[x] = 0;
