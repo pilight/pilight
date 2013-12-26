@@ -287,7 +287,7 @@ void receiver_parse_code(int *rawcode, int rawlen, int plslen) {
 		   || protocol->parseBinary) && protocol->pulse > 0 && protocol->plslen) {
 			plslengths = protocol->plslen;
 			while(plslengths) {
-				if((plslen >= ((double)plslengths->length-5) && plslen <= ((double)plslengths->length+5))) {
+				if((plslen >= ((double)plslengths->length - (protocol->pulse)/20 ) && plslen <= ((double)plslengths->length + (protocol->pulse)/20 ))) {
 					match = 1;
 					break;
 				}
