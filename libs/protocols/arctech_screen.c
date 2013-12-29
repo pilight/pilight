@@ -46,8 +46,6 @@ void arctechSrCreateMessage(int id, int unit, int state, int all) {
 }
 
 void arctechSrParseBinary(void) {
-	printf("%p\n", arctech_screen);
-	printf("%s\n", arctech_screen->binlen);
 	int unit = binToDecRev(arctech_screen->binary, 28, 31);
 	int state = arctech_screen->binary[27];
 	int all = arctech_screen->binary[26];
