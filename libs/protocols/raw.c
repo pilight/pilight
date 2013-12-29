@@ -31,6 +31,7 @@
 
 int rawCreateCode(JsonNode *code) {
 	char *rcode = NULL;
+	char *ncode = NULL;
 	char *pch = NULL;
 	int i=0;
 
@@ -39,12 +40,15 @@ int rawCreateCode(JsonNode *code) {
 		return EXIT_FAILURE;
 	}
 
-	pch = strtok(rcode, " ");
+	ncode = malloc(strlen(rcode)+1);
+	strcpy(ncode, rcode);
+	pch = strtok(ncode, " ");
 	while(pch != NULL) {
 		raw->raw[i]=atoi(pch);
 		pch = strtok(NULL, " ");
 		i++;
 	}
+	sfree((void *)&ncode);
 	raw->rawlen=i;
 	return EXIT_SUCCESS;
 }

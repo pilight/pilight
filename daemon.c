@@ -313,8 +313,12 @@ void receiver_parse_code(int *rawcode, int rawlen, int plslen) {
 									proto->raw[x] = protocol->raw[x];
 								}
 								proto->repeats = protocol->repeats;
-								proto->parseRaw();
-								receiver_create_message(proto);
+								/* Not all protocols use the same parsing functions when they conflict. 
+								   Need to fix */
+								if(proto->parseRaw) {
+									proto->parseRaw();
+									receiver_create_message(proto);
+								}
 								break;
 							}
 							pnode = pnode->next;
@@ -361,7 +365,6 @@ void receiver_parse_code(int *rawcode, int rawlen, int plslen) {
 					if(protocol->parseCode) {
 						logprintf(LOG_DEBUG, "caught minimum # of repeats %d of %s", protocol->repeats, protocol->id);
 						logprintf(LOG_DEBUG, "called %s parseCode()", protocol->id);
-
 						protocol->parseCode();
 						receiver_create_message(protocol);
 
@@ -375,8 +378,12 @@ void receiver_parse_code(int *rawcode, int rawlen, int plslen) {
 										proto->code[x] = protocol->code[x];
 									}
 									proto->repeats = protocol->repeats;
-									proto->parseCode();
-									receiver_create_message(proto);
+									/* Not all protocols use the same parsing functions when they conflict. 
+									   Need to fix */
+									if(proto->parseCode) {
+										proto->parseCode();
+										receiver_create_message(proto);
+									}
 									break;
 								}
 								pnode = pnode->next;
@@ -424,8 +431,12 @@ void receiver_parse_code(int *rawcode, int rawlen, int plslen) {
 											proto->binary[z] = protocol->binary[z];
 										}
 										proto->repeats = protocol->repeats;
-										proto->parseBinary();
-										receiver_create_message(proto);
+										/* Not all protocols use the same parsing functions when they conflict. 
+										   Need to fix */
+										if(proto->parseBinary) {
+											proto->parseBinary();
+											receiver_create_message(proto);
+										}
 										break;
 									}
 									pnode = pnode->next;

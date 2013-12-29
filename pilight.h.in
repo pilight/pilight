@@ -56,7 +56,6 @@
 #cmakedefine PROTOCOL_NEXA_SWITCH
 #cmakedefine PROTOCOL_RAW
 #cmakedefine PROTOCOL_RELAY
-#cmakedefine PROTOCOL_REV_SWITCH
 #cmakedefine PROTOCOL_ELRO_SWITCH
 #cmakedefine PROTOCOL_SELECTREMOTE
 

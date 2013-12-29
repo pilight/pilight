@@ -91,9 +91,6 @@
 #ifdef PROTOCOL_CONRAD_RSL_CONTACT
 	#include "../protocols/conrad_rsl_contact.h"
 #endif
-#ifdef PROTOCOL_REV_SWITCH
-	// #include "../protocols/rev_switch.h"
-#endif
 
 void protocol_init(void) {
 #if defined(PROTOCOL_COCO_SWITCH) || defined(PROTOCOL_DIO_SWITCH) || defined(PROTOCOL_NEXA_SWITCH) || defined(PROTOCOL_KAKU_SWITCH) || defined(PROTOCOL_INTERTECHNO_SWITCH)
@@ -159,9 +156,6 @@ void protocol_init(void) {
 #endif
 #ifdef PROTOCOL_CONRAD_RSL_CONTACT
 	conradRSLCnInit();
-#endif
-#ifdef PROTOCOL_REV_SWITCH
-	// revSwInit();
 #endif
 }
 

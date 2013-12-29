@@ -302,7 +302,6 @@ void *ssdp_wait(void *param) {
 					logprintf(LOG_ERR, "getnameinfo() failed: %s", gai_strerror(s));
 					exit(EXIT_FAILURE);
 				}
-				x++;
 				memset(sspd_header[x], '\0', BUFFER_SIZE);	
 				sprintf(sspd_header[x], "NOTIFY * HTTP/1.1\r\n"
 					"Host:239.255.255.250:1900\r\n"
@@ -312,6 +311,7 @@ void *ssdp_wait(void *param) {
 					"USN:uuid:%s::urn:schemas-upnp-org:service:pilight:1\r\n"
 					"NTS:ssdp:alive\r\n"
 					"SERVER: %s UPnP/1.1 pilight (%s)/%s\r\n\r\n", host, socket_get_port(), id, ssdp_distro, ssdp_gethostname(), VERSION);
+				x++;
 			}
 		}
 	}
