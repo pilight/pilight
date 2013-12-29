@@ -16,14 +16,14 @@
     along with pilight. If not, see	<http://www.gnu.org/licenses/>
 */
 
-#ifndef _PROTOCOL_BCM2835_H_
-#define _PROTOCOL_BCM2835_H_
+#ifndef _PROTOCOL_RPI_TEMP_H_
+#define _PROTOCOL_RPI_TEMP_H_
 
 #include "json.h"
 
-struct protocol_t *bcm2835;
+struct protocol_t *rpiTemp;
 
-void bcm2835Init(void);
-void bcm2835InitDev(JsonNode *jdevice);
+void rpiTempInit(void);
+void rpiTempInitDev(JsonNode *jdevice);
 
 #endif

@@ -183,13 +183,13 @@ void arctechSwPrintHelp(void) {
 void arctechSwInit(void) {
 
 	protocol_register(&arctech_switch);
-	protocol_set_id(arctech_switch, "archtech_switches");
+	protocol_set_id(arctech_switch, "arctech_switches");
 	protocol_device_add(arctech_switch, "kaku_switch", "KlikAanKlikUit Switches");
 	protocol_device_add(arctech_switch, "dio_switch", "D-IO Switches");
 	protocol_device_add(arctech_switch, "nexa_switch", "Nexa Switches");
 	protocol_device_add(arctech_switch, "coco_switch", "CoCo Technologies Switches");
 	protocol_device_add(arctech_switch, "intertechno_switch", "Intertechno Switches");
-	protocol_conflict_add(arctech_switch, "archtech_screens");
+	protocol_conflict_add(arctech_switch, "arctech_screens");
 	protocol_plslen_add(arctech_switch, 315);
 	protocol_plslen_add(arctech_switch, 303);
 	protocol_plslen_add(arctech_switch, 251);

@@ -30,7 +30,7 @@
 /* Protocol support */
 
 #cmakedefine PROTOCOL_ALECTO
-#cmakedefine PROTOCOL_BCM2835
+#cmakedefine PROTOCOL_RPI_TEMP
 #cmakedefine PROTOCOL_BRENNENSTUHL_SWITCH
 #cmakedefine PROTOCOL_CLARUS
 #cmakedefine PROTOCOL_COCO_SWITCH

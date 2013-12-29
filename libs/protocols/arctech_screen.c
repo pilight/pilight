@@ -29,7 +29,7 @@
 #include "gc.h"
 #include "arctech_screen.h"
 
-void arctechScrCreateMessage(int id, int unit, int state, int all) {
+void arctechSrCreateMessage(int id, int unit, int state, int all) {
 	arctech_screen->message = json_mkobject();
 	json_append_member(arctech_screen->message, "id", json_mknumber(id));
 	if(all == 1) {
@@ -45,16 +45,18 @@ void arctechScrCreateMessage(int id, int unit, int state, int all) {
 	}
 }
 
-void arctechScrParseBinary(void) {
+void arctechSrParseBinary(void) {
+	printf("%p\n", arctech_screen);
+	printf("%s\n", arctech_screen->binlen);
 	int unit = binToDecRev(arctech_screen->binary, 28, 31);
 	int state = arctech_screen->binary[27];
 	int all = arctech_screen->binary[26];
 	int id = binToDecRev(arctech_screen->binary, 0, 25);
 
-	arctechScrCreateMessage(id, unit, state, all);
+	arctechSrCreateMessage(id, unit, state, all);
 }
 
-void arctechScrCreateLow(int s, int e) {
+void arctechSrCreateLow(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=4) {
@@ -65,7 +67,7 @@ void arctechScrCreateLow(int s, int e) {
 	}
 }
 
-void arctechScrCreateHigh(int s, int e) {
+void arctechSrCreateHigh(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=4) {
@@ -76,16 +78,16 @@ void arctechScrCreateHigh(int s, int e) {
 	}
 }
 
-void arctechScrClearCode(void) {
-	arctechScrCreateLow(2, 132);
+void arctechSrClearCode(void) {
+	arctechSrCreateLow(2, 132);
 }
 
-void arctechScrCreateStart(void) {
+void arctechSrCreateStart(void) {
 	arctech_screen->raw[0]=(arctech_screen->plslen->length);
 	arctech_screen->raw[1]=(9*arctech_screen->plslen->length);
 }
 
-void arctechScrCreateId(int id) {
+void arctechSrCreateId(int id) {
 	int binary[255];
 	int length = 0;
 	int i=0, x=0;
@@ -94,24 +96,24 @@ void arctechScrCreateId(int id) {
 	for(i=0;i<=length;i++) {
 		if(binary[i]==1) {
 			x=((length-i)+1)*4;
-			arctechScrCreateHigh(106-x, 106-(x-3));
+			arctechSrCreateHigh(106-x, 106-(x-3));
 		}
 	}
 }
 
-void arctechScrCreateAll(int all) {
+void arctechSrCreateAll(int all) {
 	if(all == 1) {
-		arctechScrCreateHigh(106, 109);
+		arctechSrCreateHigh(106, 109);
 	}
 }
 
-void arctechScrCreateState(int state) {
+void arctechSrCreateState(int state) {
 	if(state == 1) {
-		arctechScrCreateHigh(110, 113);
+		arctechSrCreateHigh(110, 113);
 	}
 }
 
-void arctechScrCreateUnit(int unit) {
+void arctechSrCreateUnit(int unit) {
 	int binary[255];
 	int length = 0;
 	int i=0, x=0;
@@ -120,16 +122,16 @@ void arctechScrCreateUnit(int unit) {
 	for(i=0;i<=length;i++) {
 		if(binary[i]==1) {
 			x=((length-i)+1)*4;
-			arctechScrCreateHigh(130-x, 130-(x-3));
+			arctechSrCreateHigh(130-x, 130-(x-3));
 		}
 	}
 }
 
-void arctechScrCreateFooter(void) {
+void arctechSrCreateFooter(void) {
 	arctech_screen->raw[131]=(PULSE_DIV*arctech_screen->plslen->length);
 }
 
-int arctechScrCreateCode(JsonNode *code) {
+int arctechSrCreateCode(JsonNode *code) {
 	int id = -1;
 	int unit = -1;
 	int state = -1;
@@ -160,19 +162,19 @@ int arctechScrCreateCode(JsonNode *code) {
 		if(unit == -1 && all == 1) {
 			unit = 0;
 		}
-		arctechScrCreateMessage(id, unit, state, all);
-		arctechScrCreateStart();
-		arctechScrClearCode();
-		arctechScrCreateId(id);
-		arctechScrCreateAll(all);
-		arctechScrCreateState(state);
-		arctechScrCreateUnit(unit);
-		arctechScrCreateFooter();
+		arctechSrCreateMessage(id, unit, state, all);
+		arctechSrCreateStart();
+		arctechSrClearCode();
+		arctechSrCreateId(id);
+		arctechSrCreateAll(all);
+		arctechSrCreateState(state);
+		arctechSrCreateUnit(unit);
+		arctechSrCreateFooter();
 	}
 	return EXIT_SUCCESS;
 }
 
-void arctechScrPrintHelp(void) {
+void arctechSrPrintHelp(void) {
 	printf("\t -t --up\t\t\tsend an up signal\n");
 	printf("\t -f --down\t\t\tsend an down signal\n");
 	printf("\t -u --unit=unit\t\t\tcontrol a device with this unit code\n");
@@ -180,12 +182,12 @@ void arctechScrPrintHelp(void) {
 	printf("\t -a --all\t\t\tsend command to all devices with this id\n");
 }
 
-void arctechScrInit(void) {
+void arctechSrInit(void) {
 
 	protocol_register(&arctech_screen);
-	protocol_set_id(arctech_screen, "archtech_screens");
+	protocol_set_id(arctech_screen, "arctech_screens");
 	protocol_device_add(arctech_screen, "kaku_screen", "KlikAanKlikUit Screens");
-	protocol_conflict_add(arctech_screen, "archtech_switches");
+	protocol_conflict_add(arctech_screen, "arctech_switches");
 	protocol_plslen_add(arctech_screen, 303);
 	protocol_plslen_add(arctech_screen, 251);
 	arctech_screen->devtype = SCREEN;
@@ -203,7 +205,7 @@ void arctechScrInit(void) {
 	protocol_setting_add_string(arctech_screen, "states", "up,down");
 	protocol_setting_add_number(arctech_screen, "readonly", 0);
 	
-	arctech_screen->parseBinary=&arctechScrParseBinary;
-	arctech_screen->createCode=&arctechScrCreateCode;
-	arctech_screen->printHelp=&arctechScrPrintHelp;
+	arctech_screen->parseBinary=&arctechSrParseBinary;
+	arctech_screen->createCode=&arctechSrCreateCode;
+	arctech_screen->printHelp=&arctechSrPrintHelp;
 }

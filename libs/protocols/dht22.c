@@ -38,7 +38,7 @@
 #include "dht22.h"
 #include "../pilight/wiringPi.h"
 	
-#define MAXTIMINGS 85
+#define MAXTIMINGS 100
 
 unsigned short dht22_loop = 1;
 int dht22_nrfree = 0;
@@ -86,7 +86,7 @@ void *dht22Parse(void *param) {
 		for(y=0;y<nrid;y++) {
 			int tries = 5;
 			unsigned short got_correct_date = 0;
-			while(tries && !got_correct_date) {
+			while(tries && !got_correct_date && dht22_loop) {
 
 				uint8_t laststate = HIGH;
 				uint8_t counter = 0;
@@ -96,21 +96,22 @@ void *dht22Parse(void *param) {
 
 				// pull pin down for 18 milliseconds
 				pinMode(id[y], OUTPUT);			
-				digitalWrite(id[y], LOW);
-				delay(18);
-				// then pull it up for 40 microseconds
 				digitalWrite(id[y], HIGH);
-				delayMicroseconds(40);
+				usleep(500000);  // 500 ms
+				// then pull it up for 40 microseconds
+				digitalWrite(id[y], LOW);
+				usleep(20000);
 				// prepare to read the pin
 				pinMode(id[y], INPUT);
 
 				// detect change and read data
 				for(i=0; i<MAXTIMINGS; i++) {
 					counter = 0;
-					while(sizecvt(digitalRead(id[y])) == laststate) {
+					delayMicroseconds(10);
+					while(sizecvt(digitalRead(id[y])) == laststate && dht22_loop) {
 						counter++;
 						delayMicroseconds(1);
-						if (counter == 255) {
+						if(counter == 255) {
 							break;
 						}
 					}
@@ -120,19 +121,19 @@ void *dht22Parse(void *param) {
 						break;
 
 					// ignore first 3 transitions
-					if((i >= 4) && (i%2 == 0)) {
+					if((i >= 3) && (i%2 == 0)) {
+					
 						// shove each bit into the storage bytes
 						dht22_dat[j/8] <<= 1;
-						if (counter > 16)
+						if(counter > 16)
 							dht22_dat[j/8] |= 1;
-							j++;
-						}
+						j++;
 					}
+				}
 
 				// check we read 40 bits (8bit x 5 ) + verify checksum in the last byte
 				// print it out if data is good
 				if((j >= 40) && (dht22_dat[4] == ((dht22_dat[0] + dht22_dat[1] + dht22_dat[2] + dht22_dat[3]) & 0xFF))) {
-
 					got_correct_date = 1;
 
 					int h = dht22_dat[0] * 256 + dht22_dat[1];
@@ -141,7 +142,6 @@ void *dht22Parse(void *param) {
 					if((dht22_dat[2] & 0x80) != 0) 
 						t *= -1;
 
-					
 					dht22->message = json_mkobject();
 					JsonNode *code = json_mkobject();
 					json_append_member(code, "gpio", json_mknumber(id[y]));

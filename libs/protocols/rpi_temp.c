@@ -34,13 +34,13 @@
 #include "binary.h"
 #include "json.h"
 #include "gc.h"
-#include "bcm2835.h"
+#include "rpi_temp.h"
 
-unsigned short bcm2835_loop = 1;
-unsigned short bcm2835_nrfree = 0;
-char *bcm2835_temp = NULL;
+unsigned short rpi_temp_loop = 1;
+unsigned short rpi_temp_nrfree = 0;
+char *rpi_temp_temp = NULL;
 
-void *bcm2835Parse(void *param) {
+void *rpiTempParse(void *param) {
 	struct JsonNode *json = (struct JsonNode *)param;
 	struct JsonNode *jid = NULL;
 	struct JsonNode *jchild = NULL;
@@ -71,11 +71,11 @@ void *bcm2835Parse(void *param) {
 	}
 	json_delete(json);
 
-	bcm2835_nrfree++;
-	
-	while(bcm2835_loop) {
+	rpi_temp_nrfree++;
+
+	while(rpi_temp_loop) {
 		for(y=0;y<nrid;y++) {
-			if((fp = fopen(bcm2835_temp, "rb"))) {
+			if((fp = fopen(rpi_temp_temp, "rb"))) {
 				fstat(fileno(fp), &st);
 				bytes = (size_t)st.st_size;
 
@@ -86,7 +86,7 @@ void *bcm2835Parse(void *param) {
 				}
 
 				if(fread(content, sizeof(char), bytes, fp) == -1) {
-					logprintf(LOG_ERR, "cannot read config file: %s", bcm2835_temp);
+					logprintf(LOG_ERR, "cannot read config file: %s", rpi_temp_temp);
 					fclose(fp);
 					sfree((void *)&content);
 					break;
@@ -96,72 +96,72 @@ void *bcm2835Parse(void *param) {
 				int temp = atoi(content);
 				sfree((void *)&content);
 
-				bcm2835->message = json_mkobject();
+				rpiTemp->message = json_mkobject();
 				JsonNode *code = json_mkobject();
 				json_append_member(code, "id", json_mknumber(id[y]));
 				json_append_member(code, "temperature", json_mknumber(temp));
 									
-				json_append_member(bcm2835->message, "code", code);
-				json_append_member(bcm2835->message, "origin", json_mkstring("receiver"));
-				json_append_member(bcm2835->message, "protocol", json_mkstring(bcm2835->id));
+				json_append_member(rpiTemp->message, "code", code);
+				json_append_member(rpiTemp->message, "origin", json_mkstring("receiver"));
+				json_append_member(rpiTemp->message, "protocol", json_mkstring(rpiTemp->id));
 									
-				pilight.broadcast(bcm2835->id, bcm2835->message);
-				json_delete(bcm2835->message);
-				bcm2835->message = NULL;
+				pilight.broadcast(rpiTemp->id, rpiTemp->message);
+				json_delete(rpiTemp->message);
+				rpiTemp->message = NULL;
 			} else {
-				logprintf(LOG_ERR, "CPU bcm2835 device %s does not exists", bcm2835_temp);
+				logprintf(LOG_ERR, "CPU RPI device %s does not exists", rpi_temp_temp);
 			}
 		}
 		for(x=0;x<(interval*1000);x++) {
-			if(bcm2835_loop) {
+			if(rpi_temp_loop) {
 				usleep((__useconds_t)(x));
 			}
 		}
 	}
 	if(id) sfree((void *)&id);
-	bcm2835_nrfree--;
+	rpi_temp_nrfree--;
 
 	return (void *)NULL;
 }
 
-void bcm2835InitDev(JsonNode *jdevice) {
+void rpiTempInitDev(JsonNode *jdevice) {
 	char *output = json_stringify(jdevice, NULL);
 	JsonNode *json = json_decode(output);
-	threads_register("bcm2835", &bcm2835Parse, (void *)json);
+	threads_register("rpi_temp", &rpiTempParse, (void *)json);
 	sfree((void *)&output);
 }
 
-int bcm2835GC(void) {
-	bcm2835_loop = 0;	
-	sfree((void *)&bcm2835_temp);
-	while(bcm2835_nrfree > 0) {
+int rpiTempGC(void) {
+	rpi_temp_loop = 0;	
+	sfree((void *)&rpi_temp_temp);
+	while(rpi_temp_nrfree > 0) {
 		usleep(100);
 	}
 	return 1;
 }
 
-void bcm2835Init(void) {
+void rpiTempInit(void) {
 	
-	gc_attach(bcm2835GC);
+	gc_attach(rpiTempGC);
 
-	protocol_register(&bcm2835);
-	protocol_set_id(bcm2835, "bcm2835");
-	protocol_device_add(bcm2835, "bcm2835", "RPi CPU/GPU temperature sensor");
-	bcm2835->devtype = WEATHER;
-	bcm2835->hwtype = SENSOR;
+	protocol_register(&rpiTemp);
+	protocol_set_id(rpiTemp, "rpi_temp");
+	protocol_device_add(rpiTemp, "rpi_temp", "RPi CPU/GPU temperature sensor");
+	rpiTemp->devtype = WEATHER;
+	rpiTemp->hwtype = SENSOR;
 
-	options_add(&bcm2835->options, 't', "temperature", has_value, config_value, "^[0-9]{1,5}$");
-	options_add(&bcm2835->options, 'i', "id", has_value, config_id, "[0-9]");
+	options_add(&rpiTemp->options, 't', "temperature", has_value, config_value, "^[0-9]{1,5}$");
+	options_add(&rpiTemp->options, 'i', "id", has_value, config_id, "[0-9]");
 
-	protocol_setting_add_number(bcm2835, "decimals", 3);
-	protocol_setting_add_number(bcm2835, "humidity", 0);
-	protocol_setting_add_number(bcm2835, "temperature", 1);
-	protocol_setting_add_number(bcm2835, "battery", 0);
-	protocol_setting_add_number(bcm2835, "interval", 5);
+	protocol_setting_add_number(rpiTemp, "decimals", 3);
+	protocol_setting_add_number(rpiTemp, "humidity", 0);
+	protocol_setting_add_number(rpiTemp, "temperature", 1);
+	protocol_setting_add_number(rpiTemp, "battery", 0);
+	protocol_setting_add_number(rpiTemp, "interval", 5);
 
-	bcm2835_temp = malloc(38);
-	memset(bcm2835_temp, '\0', 38);
-	strcpy(bcm2835_temp, "/sys/class/thermal/thermal_zone0/temp");
+	rpi_temp_temp = malloc(38);
+	memset(rpi_temp_temp, '\0', 38);
+	strcpy(rpi_temp_temp, "/sys/class/thermal/thermal_zone0/temp");
 
-	bcm2835->initDev=&bcm2835InitDev;
+	rpiTemp->initDev=&rpiTempInitDev;
 }

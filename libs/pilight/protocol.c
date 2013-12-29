@@ -82,8 +82,8 @@
 #ifdef PROTOCOL_CLARUS
 	#include "../protocols/clarus.h"
 #endif
-#ifdef PROTOCOL_BCM2835
-	#include "../protocols/bcm2835.h"
+#ifdef PROTOCOL_RPI_TEMP
+	#include "../protocols/rpi_temp.h"
 #endif
 #ifdef PROTOCOL_CONRAD_RSL_SWITCH
 	#include "../protocols/conrad_rsl_switch.h"
@@ -100,7 +100,7 @@ void protocol_init(void) {
 	arctechSwInit();
 #endif
 #ifdef PROTOCOL_KAKU_SCREEN
-	arctechScrInit();
+	arctechSrInit();
 #endif
 #ifdef PROTOCOL_KAKU_DIMMER
 	arctechDimInit();
@@ -151,8 +151,8 @@ void protocol_init(void) {
 #ifdef PROTOCOL_CLARUS
 	clarusSwInit();
 #endif
-#ifdef PROTOCOL_BCM2835
-	bcm2835Init();
+#ifdef PROTOCOL_RPI_TEMP
+	rpiTempInit();
 #endif
 #ifdef PROTOCOL_CONRAD_RSL_SWITCH
 	conradRSLSwInit();

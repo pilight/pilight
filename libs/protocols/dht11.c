@@ -38,7 +38,7 @@
 #include "dht11.h"
 #include "../pilight/wiringPi.h"
 	
-#define MAXTIMINGS 85
+#define MAXTIMINGS 100
 
 unsigned short dht11_loop = 1;
 int dht11_nrfree = 0;
@@ -76,7 +76,7 @@ void *dht11Parse(void *param) {
 			int tries = 5;
 			unsigned short got_correct_date = 0;
 
-			while(tries && !got_correct_date) {
+			while(tries && !got_correct_date && dht11_loop) {
 
 				int laststate = HIGH;
 				int counter = 0;
@@ -85,19 +85,20 @@ void *dht11Parse(void *param) {
 				int dht11_dat[5] = {0,0,0,0,0};
 
 				// pull pin down for 18 milliseconds
-				pinMode(id[y], OUTPUT);
-				digitalWrite(id[y], LOW);
-				delay(18);
-				// then pull it up for 40 microseconds
+				pinMode(id[y], OUTPUT);			
 				digitalWrite(id[y], HIGH);
-				delayMicroseconds(40);
+				usleep(500000);  // 500 ms
+				// then pull it up for 40 microseconds
+				digitalWrite(id[y], LOW);
+				usleep(20000);
 				// prepare to read the pin
 				pinMode(id[y], INPUT);
 
 				// detect change and read data
 				for(i=0; i<MAXTIMINGS; i++) {
 					counter = 0;
-					while(digitalRead(id[y]) == laststate) {
+					delayMicroseconds(10);
+					while(digitalRead(id[y]) == laststate && dht11_loop) {
 						counter++;
 						delayMicroseconds(1);
 						if (counter == 255) {
@@ -115,9 +116,9 @@ void *dht11Parse(void *param) {
 						dht11_dat[j/8] <<= 1;
 						if (counter > 16)
 							dht11_dat[j/8] |= 1;
-							j++;
-						}
+						j++;
 					}
+				}
 
 				// check we read 40 bits (8bit x 5 ) + verify checksum in the last byte
 				// print it out if data is good
@@ -125,8 +126,8 @@ void *dht11Parse(void *param) {
 
 					got_correct_date = 1;
 
-					int h = dht11_dat[0] * 100 + dht11_dat[1];
-					int t = dht11_dat[2] * 100 + dht11_dat[3];
+					int h = dht11_dat[0];
+					int t = dht11_dat[2];
 					
 					dht11->message = json_mkobject();
 					JsonNode *code = json_mkobject();
@@ -240,7 +241,7 @@ void dht11Init(void) {
 	options_add(&dht11->options, 'h', "humidity", has_value, config_value, "^[0-9]{1,3}$");
 	options_add(&dht11->options, 'g', "gpio", has_value, config_id, "^([0-9]{1}|1[0-9]|20)$");
 
-	protocol_setting_add_number(dht11, "decimals", 1);
+	protocol_setting_add_number(dht11, "decimals", 0);
 	protocol_setting_add_number(dht11, "humidity", 1);
 	protocol_setting_add_number(dht11, "temperature", 1);
 	protocol_setting_add_number(dht11, "battery", 0);

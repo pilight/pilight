@@ -328,7 +328,7 @@ void receiver_parse_code(int *rawcode, int rawlen, int plslen) {
 				for(x=0;x<(int)(double)rawlen;x++) {
 					protocol->pCode[x] = protocol->code[x];
 					
-					if(protocol->raw[x] >= ( plslengths->length * (1+protocol->pulse)/2 )) {
+					if(protocol->raw[x] >= (plslengths->length * (1+protocol->pulse)/2)) {
 						protocol->code[x] = 1;
 					} else {
 						protocol->code[x] = 0;
@@ -396,7 +396,7 @@ void receiver_parse_code(int *rawcode, int rawlen, int plslen) {
 							}
 						}
 
-						if((double)protocol->raw[1]/((double)protocol->pulse*(double)plslengths->length) < 1.35) {
+						if((double)protocol->raw[1]/((plslengths->length * (1+protocol->pulse)/2)) < 1.35) {
 							x -= 4;
 						}
 
@@ -1401,9 +1401,11 @@ int main(int argc, char **argv) {
 		}
 		htmp = htmp->next;
 	}
+	
 	if(match == 1) {
 		if(hardware->init) {
 			if(hardware->init() == EXIT_FAILURE) {
+				logprintf(LOG_ERR, "could not initialize %s hardware mode", hardware->id);
 				goto clear;
 			}
 		}

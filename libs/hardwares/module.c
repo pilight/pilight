@@ -108,9 +108,9 @@ int moduleSend(int *code) {
 	int n = write(module_fd, code, i);
 
 	if(n == i) {
-		return 0;
+		return EXIT_SUCCESS;
 	} else {
-		return 1;
+		return EXIT_FAILURE;
 	}
 }
 

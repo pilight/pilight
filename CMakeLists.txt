@@ -179,9 +179,9 @@ if(${PROTOCOL_CLARUS} MATCHES "OFF")
 	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/clarus.c")
 endif()
 
-if(${PROTOCOL_BCM2835} MATCHES "OFF")
-	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/bcm2835.h")
-	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/bcm2835.c")
+if(${PROTOCOL_RPI_TEMP} MATCHES "OFF")
+	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/rpi_temp.h")
+	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/rpi_temp.c")
 endif()
 
 if(${PROTOCOL_CONRAD_RSL_SWITCH} MATCHES "OFF")

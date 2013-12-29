@@ -21,19 +21,19 @@
 
 struct protocol_t *arctech_screen;
 
-void arctechScrInit(void);
-void arctechScrCreateMessage(int id, int unit, int state, int all);
-void arctechScrParseBinary(void);
-int arctechScrCreateCode(JsonNode *code);
-void arctechScrCreateLow(int s, int e);
-void arctechScrCreateHigh(int s, int e);
-void arctechScrClearCode(void);
-void arctechScrCreateStart(void);
-void arctechScrCreateId(int id);
-void arctechScrCreateAll(int all);
-void arctechScrCreateState(int state);
-void arctechScrCreateUnit(int unit);
-void arctechScrCreateFooter(void);
-void arctechScrPrintHelp(void);
+void arctechSrInit(void);
+void arctechSrCreateMessage(int id, int unit, int state, int all);
+void arctechSrParseBinary(void);
+int arctechSrCreateCode(JsonNode *code);
+void arctechSrCreateLow(int s, int e);
+void arctechSrCreateHigh(int s, int e);
+void arctechSrClearCode(void);
+void arctechSrCreateStart(void);
+void arctechSrCreateId(int id);
+void arctechSrCreateAll(int all);
+void arctechSrCreateState(int state);
+void arctechSrCreateUnit(int unit);
+void arctechSrCreateFooter(void);
+void arctechSrPrintHelp(void);
 
 #endif
