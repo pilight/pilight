@@ -51,7 +51,8 @@ void *rpiTempParse(void *param) {
 	int itmp;
 	int *id = malloc(sizeof(int));
 	char *content;	
-	int interval = 5;		
+	int interval = 5;	
+	int temp_corr = 0;
 	int x = 0, nrid = 0, y = 0;
 	size_t bytes;
 	
@@ -68,6 +69,7 @@ void *rpiTempParse(void *param) {
 	}
 	if((jsettings = json_find_member(json, "settings"))) {
 		json_find_number(jsettings, "interval", &interval);
+		json_find_number(jsettings, "temp-corr", &temp_corr);
 	}
 	json_delete(json);
 
@@ -93,7 +95,7 @@ void *rpiTempParse(void *param) {
 				}
 
 				fclose(fp);
-				int temp = atoi(content);
+				int temp = atoi(content)+temp_corr;
 				sfree((void *)&content);
 
 				rpiTemp->message = json_mkobject();

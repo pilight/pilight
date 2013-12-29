@@ -51,6 +51,7 @@ void *dht11Parse(void *param) {
 	struct JsonNode *jchild = NULL;
 	int *id = 0;
 	int nrid = 0, y = 0, interval = 5, x = 0;
+	int temp_corr = 0, humi_corr = 0;
 	int itmp;
 
 	if((jid = json_find_member(json, "id"))) {
@@ -66,6 +67,8 @@ void *dht11Parse(void *param) {
 	}
 	if((jsettings = json_find_member(json, "settings"))) {
 		json_find_number(jsettings, "interval", &interval);
+		json_find_number(jsettings, "temp-corr", &temp_corr);
+		json_find_number(jsettings, "humi-corr", &humi_corr);
 	}
 	json_delete(json);	
 	
@@ -128,6 +131,8 @@ void *dht11Parse(void *param) {
 
 					int h = dht11_dat[0];
 					int t = dht11_dat[2];
+					t += temp_corr;
+					h += humi_corr;
 					
 					dht11->message = json_mkobject();
 					JsonNode *code = json_mkobject();

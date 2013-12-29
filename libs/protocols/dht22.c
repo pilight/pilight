@@ -62,6 +62,7 @@ void *dht22Parse(void *param) {
 	struct JsonNode *jchild = NULL;
 	int *id = 0;
 	int nrid = 0, y = 0, interval = 5, x = 0;
+	int temp_corr = 0, humi_corr = 0;
 	int itmp;
 
 	if((jid = json_find_member(json, "id"))) {
@@ -77,6 +78,8 @@ void *dht22Parse(void *param) {
 	}
 	if((jsettings = json_find_member(json, "settings"))) {
 		json_find_number(jsettings, "interval", &interval);
+		json_find_number(jsettings, "temp-corr", &temp_corr);
+		json_find_number(jsettings, "humi-corr", &humi_corr);
 	}
 	json_delete(json);
 	
@@ -138,6 +141,8 @@ void *dht22Parse(void *param) {
 
 					int h = dht22_dat[0] * 256 + dht22_dat[1];
 					int t = (dht22_dat[2] & 0x7F)* 256 + dht22_dat[3];
+					t += temp_corr;
+					h += humi_corr;
 
 					if((dht22_dat[2] & 0x80) != 0) 
 						t *= -1;

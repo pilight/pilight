@@ -55,7 +55,8 @@ void *ds18b20Parse(void *param) {
 	char **id = NULL;
 	char *content;	
 	char *ds18b20_w1slave = NULL;
-	int w1valid = 0, w1temp = 0, interval = 5;		
+	int w1valid = 0, w1temp = 0, interval = 5;
+	int temp_corr = 0;		
 	int x = 0, nrid = 0, y = 0;
 	size_t bytes;
 	
@@ -73,6 +74,7 @@ void *ds18b20Parse(void *param) {
 	}
 	if((jsettings = json_find_member(json, "settings"))) {
 		json_find_number(jsettings, "interval", &interval);
+		json_find_number(jsettings, "temp-corr", &temp_corr);
 	}
 	json_delete(json);
 
@@ -122,7 +124,7 @@ void *ds18b20Parse(void *param) {
 										w1valid = 1;
 									}
 									if(x == 2) {	
-										w1temp = atoi(pch);
+										w1temp = atoi(pch)+temp_corr;
 									}
 									x++;
 								}
