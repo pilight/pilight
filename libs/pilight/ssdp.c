@@ -21,6 +21,7 @@
 #include <string.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
+#include <sys/stat.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <sys/types.h>
@@ -55,59 +56,36 @@ char *ssdp_gethostname(void) {
 }
 
 char *ssdp_getdistroname(void) {
-	int fd[2];
-	int pid;
 	int rc = 1;
-	char buff[32];
 	char dist[32];
-	float version = 0;
 	memset(dist, '\0', 32);
+	struct stat sb;	
+	char *ssdp_distro = NULL;
 
-	if(pipe(fd) < 0) {
-		perror("pipe");
-		return NULL;
-	} else {
-		pid = fork();
-		switch(pid) {
-			case 0:
-				dup2(fd[1], 1);
-				close(fd[0]);
-				close(fd[1]);
-#ifndef __FreeBSD__
-				system("lsb_release -ri");
-#elif defined(__FreeBSD__)
-				system("uname -rs");
-#endif
-				close(fd[1]);
-				exit(0);
-			break;
-			case -1:
-				exit(0);
-			break;
-			default:
-				close(fd[1]);
-				waitpid(pid, NULL ,0);
-
-				while(rc > 0) {
-					rc = read(fd[0], buff, 32);
-#ifndef __FreeBSD__						
-					sscanf(buff, "Distributor ID:%*[ \n\t]%s", dist);
-					sscanf(buff, "%f", &version);
+#ifdef __FreeBSD__
+	strcpy(dist, "FreeBSD/0.0");
 #else
-					sscanf(buff, "%s%*[ \n\t]%f-.*", dist, &version);
-#endif
-					if(strlen(dist) > 0 && (int)version != 0) {
-						break;
-					}
-				}
-			break;
-		}
-		char *ssdp_distro = malloc(strlen(dist)+5);
-		memset(ssdp_distro, '\0', strlen(dist)+5);
-		sprintf(ssdp_distro, "%s/%.1f", dist, version);
-		return ssdp_distro;
+	if((rc = stat("/etc/redhat-release", &sb)) == 0) {
+		strcpy(dist, "RedHat/0.0");
+	} else if((rc = stat("/etc/SuSE-release", &sb)) == 0) {
+		strcpy(dist, "SuSE/0.0");
+	} else if((rc = stat("/etc/mandrake-release", &sb)) == 0) {
+		strcpy(dist, "Mandrake/0.0");
+	} else if((rc = stat("/etc/debian-release", &sb)) == 0) {
+		strcpy(dist, "Debian/0.0");
+	} else if((rc = stat("/etc/debian_version", &sb)) == 0) {
+		strcpy(dist, "Debian/0.0");
+	} else {
+		strcpy(dist, "Unknown/0.0");
 	}
-	return NULL;
+#endif
+	if(strlen(dist) > 0) {
+		ssdp_distro = malloc(strlen(dist)+1);
+		strcpy(ssdp_distro, dist);
+		return ssdp_distro;
+	} else {
+		return NULL;
+	}
 }
 
 void ssdp_getethmac(void) {
