@@ -56,6 +56,7 @@
 #define PROTOCOL_NEXA_SWITCH
 #define PROTOCOL_RAW
 #define PROTOCOL_RELAY
+#define PROTOCOL_REV
 #define PROTOCOL_ELRO_SWITCH
 #define PROTOCOL_SELECTREMOTE
 
@@ -132,3 +133,5 @@ typedef struct pilight_t {
 struct pilight_t pilight;
 
 #endif
+
+
