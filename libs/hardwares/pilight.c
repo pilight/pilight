@@ -31,7 +31,7 @@
 #include "pilight.h"
 
 int pilight_mod_initialized = 0;
-char *pilight_mod_socket = DEFAULT_PILIGHT_SOCKET;
+const char *pilight_mod_socket = DEFAULT_PILIGHT_SOCKET;
 int pilight_mod_fd = 0;
 int pilight_mod_out = 0;
 

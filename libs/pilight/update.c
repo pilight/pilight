@@ -37,7 +37,7 @@ unsigned short update_loop = 1;
 unsigned short update_needed = 0;
 char *update_latests_ver = NULL;
 char *update_current_ver = NULL;
-int update_last_check = 0;
+time_t update_last_check = 0;
 char **update_mirrors = NULL;
 char *update_filename = NULL, *update_data = NULL;
 char update_typebuf[70];
@@ -103,7 +103,7 @@ int update_vercmp(char *val, char *ref) {
 			rl= strtol(ref, (char**)&ref, 10);
 		}
 		if(vl != rl) {
-			return vl - rl;
+			return (int)(vl - rl);
 		}
 
 		vc = *val;

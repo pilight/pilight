@@ -2,17 +2,20 @@ cmake_minimum_required(VERSION 2.8.8)
 
 project(pilight C)
 
-if(${CMAKE_SYSTEM_PROCESSOR} MATCHES "armv6" AND (${USE_SOFT_FLOAT} MATCHES "OFF"))
-	set(CMAKE_C_FLAGS "-Ofast -mfloat-abi=hard -mfpu=vfp -march=armv6 -ffast-math -Wfloat-equal -Wshadow -Wpointer-arith -Wcast-align -Wstrict-overflow=5 -Wwrite-strings -Waggregate-return -Wcast-qual -Wswitch-default -Wswitch-enum -Wformat=2 -g -Wall -Wconversion -Wunreachable-code -Wstrict-prototypes")
-	set(ZLIB_PATH "/usr/lib/arm-linux-gnueabihf/libz.so")
-endif()
-if((${CMAKE_SYSTEM_PROCESSOR} MATCHES "armv6") AND (${USE_SOFT_FLOAT} MATCHES "ON")) 
-	# For kernels compiled with soft float ABI
-	set(CMAKE_C_FLAGS "-Ofast -mfloat-abi=soft -msoft-float -mfpu=vfp -march=armv6 -ffast-math -Wfloat-equal -Wshadow -Wpointer-arith -Wcast-align -Wstrict-overflow=5 -Wwrite-strings -Waggregate-return -Wcast-qual -Wswitch-default -Wswitch-enum -Wformat=2 -g -Wall -Wconversion -Wunreachable-code -Wstrict-prototypes")
-	set(ZLIB_PATH "/usr/lib/arm-linux-gnueabi/libz.so")
+include(${PROJECT_SOURCE_DIR}/CMakeConfig.txt)
+
+if(${CMAKE_SYSTEM_PROCESSOR} MATCHES "armv6")
+	if(${USE_SOFT_FLOAT} MATCHES "OFF")
+		set(CMAKE_C_FLAGS "-Ofast -mfloat-abi=hard -mfpu=vfp -march=armv6 -ffast-math -Wfloat-equal -Wshadow -Wpointer-arith -Wcast-align -Wstrict-overflow=5 -Wwrite-strings -Waggregate-return -Wcast-qual -Wswitch-default -Wswitch-enum -Wformat=2 -g -Wall -Wconversion -Wunreachable-code -Wstrict-prototypes")
+		file(GLOB CMAKE_ZLIB_LIBS_INIT "/usr/lib/arm-linux-gnueabihf/libz.so")
+	else()
+		set(CMAKE_C_FLAGS "-Ofast -mfloat-abi=soft -msoft-float -mfpu=vfp -march=armv6 -ffast-math -Wfloat-equal -Wshadow -Wpointer-arith -Wcast-align -Wstrict-overflow=5 -Wwrite-strings -Waggregate-return -Wcast-qual -Wswitch-default -Wswitch-enum -Wformat=2 -g -Wall -Wconversion -Wunreachable-code -Wstrict-prototypes")
+		file(GLOB CMAKE_ZLIB_LIBS_INIT "/usr/lib/arm-linux-gnueabi/libz.so")
+	endif()
 endif()
 if(${CMAKE_SYSTEM_PROCESSOR} MATCHES "x86_64")
 	set(CMAKE_C_FLAGS "-Ofast -fPIC -march=native -mtune=native -mfpmath=sse -ffast-math -Wconversion -Wunreachable-code -Wstrict-prototypes -Wfloat-equal -Wshadow -Wpointer-arith -Wcast-align -Wstrict-overflow=5 -Wwrite-strings -Waggregate-return -Wcast-qual -Wswitch-default -Wswitch-enum -Wformat=2 -g -Wall")	
+	file(GLOB CMAKE_ZLIB_LIBS_INIT "/usr/lib/x86_64-linux-gnu/libz.so")
 endif()
 
 # Start uninstaller generator
@@ -60,8 +63,6 @@ if(NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/cmake_postinstall.cmake)
 	# BEGIN actual write to file...
 	file(WRITE ${__uninstall_filename} "execute_process(COMMAND update-rc.d pilight defaults)")
 endif()
-
-include(${PROJECT_SOURCE_DIR}/CMakeConfig.txt)
 
 execute_process(COMMAND git describe --always
 	WORKING_DIRECTORY ${PROJECT_SOURCE_DIR} 
@@ -246,7 +247,6 @@ find_package(Threads REQUIRED)
 
 if(${UPDATE} MATCHES "ON")
 	find_package(ZLIB REQUIRED)
-	file(GLOB CMAKE_ZLIB_LIBS_INIT ${ZLIB_PATH})
 endif()
 
 configure_file(pilight.h.in pilight.h)

@@ -124,12 +124,12 @@ void *dht22Parse(void *param) {
 						break;
 
 					// ignore first 3 transitions
-					if((i >= 3) && (i%2 == 0)) {
+					if((i >= 4) && (i%2 == 0)) {
 					
 						// shove each bit into the storage bytes
-						dht22_dat[j/8] <<= 1;
+						dht22_dat[(int)((double)j/8)] <<= 1;
 						if(counter > 16)
-							dht22_dat[j/8] |= 1;
+							dht22_dat[(int)((double)j/8)] |= 1;
 						j++;
 					}
 				}

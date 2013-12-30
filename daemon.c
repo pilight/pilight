@@ -1134,7 +1134,7 @@ void save_pid(pid_t npid) {
 	if((f = open(pid_file, O_RDWR | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR)) != -1) {
 		lseek(f, 0, SEEK_SET);
 		sprintf(buffer, "%d", npid);
-		int i = write(f, buffer, strlen(buffer));
+		ssize_t i = write(f, buffer, strlen(buffer));
 		if(i != strlen(buffer)) {
 			logprintf(LOG_ERR, "could not store pid in %s", pid_file);
 		}

@@ -105,7 +105,7 @@ int moduleSend(int *code) {
 	}
 	i++;
 	i*=sizeof(int);
-	int n = write(module_fd, code, i);
+	ssize_t n = write(module_fd, code, i);
 
 	if(n == i) {
 		return EXIT_SUCCESS;

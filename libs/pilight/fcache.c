@@ -48,7 +48,7 @@ int fcache_add(char *filename) {
 
 	unsigned long filesize = 0, i = 0;
 	struct stat sb;
-	int rc = 0;
+	ssize_t rc = 0;
 
 	logprintf(LOG_NOTICE, "caching %s", filename);
 

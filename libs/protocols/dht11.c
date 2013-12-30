@@ -114,11 +114,11 @@ void *dht11Parse(void *param) {
 						break;
 
 					// ignore first 3 transitions
-					if((i >= 4) && (i%2 == 0)) {
+					if((i >= 4) && (i%2 == 0) && !(j & 1) && j >= 8) {
 						// shove each bit into the storage bytes
-						dht11_dat[j/8] <<= 1;
+						dht11_dat[(int)((double)j/8)] <<= 1;
 						if (counter > 16)
-							dht11_dat[j/8] |= 1;
+							dht11_dat[(int)((double)j/8)] |= 1;
 						j++;
 					}
 				}

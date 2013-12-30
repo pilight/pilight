@@ -195,7 +195,8 @@ int ssdp_seek(struct ssdp_list_t **ssdp_list) {
 	struct timeval tv;
 	char message[BUFFER_SIZE] = {'\0'};
 	char header[BUFFER_SIZE] = {'\0'};
-	int len = 1, sock, match = 0;
+	int sock, match = 0;
+	ssize_t len = 0;
 	socklen_t addrlen = sizeof(addr);
 	unsigned short int nip[4], port = 0;
 	
@@ -273,7 +274,7 @@ void *ssdp_wait(void *param) {
 	char host[NI_MAXHOST];
 	char *id = ssdp_genuuid();
 	int x = 0;
-	int len;
+	ssize_t len = 0;
 	socklen_t addrlen = sizeof(addr);
 	int family, s = 0;
 

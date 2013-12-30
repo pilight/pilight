@@ -124,7 +124,7 @@ int webserver_urldecode(const char *s, char *dec) {
 		}
 	}
 
-	return o - dec;
+	return (int)(o - dec);
 }
 
 void webserver_create_header(unsigned char **p, const char *message, char *mimetype, unsigned int len) {
@@ -199,9 +199,9 @@ int base64decode(unsigned char *dest, unsigned char *src, int l) {
 		if(char_count < 4) {
 			bits <<= 6;
 		} else {
-			dest[wpos++] = (char)(bits >> 16);
-			dest[wpos++] = (char)((bits >> 8) & 0xff);
-			dest[wpos++] = (char)(bits & 0xff);
+			dest[wpos++] = (unsigned char)(bits >> 16);
+			dest[wpos++] = (unsigned char)((bits >> 8) & 0xff);
+			dest[wpos++] = (unsigned char)(bits & 0xff);
 			bits = 0;
 			char_count = 0;
 		}
@@ -212,11 +212,11 @@ int base64decode(unsigned char *dest, unsigned char *src, int l) {
 			return -1;
 		break;
 		case 2:
-			dest[wpos++] = (char)(bits >> 10);
+			dest[wpos++] = (unsigned char)(bits >> 10);
 		break;
 		case 3:
-			dest[wpos++] = (char)(bits >> 16);
-			dest[wpos++] = (char)((bits >> 8) & 0xff);
+			dest[wpos++] = (unsigned char)(bits >> 16);
+			dest[wpos++] = (unsigned char)((bits >> 8) & 0xff);
 		break;
 		default:
 		break;
@@ -226,8 +226,9 @@ int base64decode(unsigned char *dest, unsigned char *src, int l) {
 }
 
 int webserver_callback_http(struct libwebsocket_context *webcontext, struct libwebsocket *wsi, enum libwebsocket_callback_reasons reason, void *user, void *in, size_t len) {
-	int n = 0, m = 0;
+	int m = 0;
 	int size;
+	ssize_t n =0;
 	char *request = NULL;
 	char *mimetype = NULL;
 	unsigned char *p = NULL;
@@ -472,10 +473,10 @@ int webserver_callback_http(struct libwebsocket_context *webcontext, struct libw
 			return -1;
 		break;
 		case LWS_CALLBACK_FILTER_NETWORK_CONNECTION:
-			if((int)in > 0) {
+			if((int)(intptr_t)in > 0) {
 				struct sockaddr_in address;
 				int addrlen = sizeof(address);
-				getpeername((int)in, (struct sockaddr*)&address, (socklen_t*)&addrlen);
+				getpeername((int)(intptr_t)in, (struct sockaddr*)&address, (socklen_t*)&addrlen);
 				if(socket_check_whitelist(inet_ntoa(address.sin_addr)) != 0) {
 					logprintf(LOG_INFO, "rejected client, ip: %s, port: %d", inet_ntoa(address.sin_addr), ntohs(address.sin_port));
 					return -1;
@@ -534,7 +535,7 @@ int webserver_callback_data(struct libwebsocket_context *webcontext, struct libw
 							size_t output_len = strlen(output);
 							/* This PRE_PADDIGN and POST_PADDING is an requirement for LWS_WRITE_TEXT */
 							sockWriteBuff = realloc(sockWriteBuff, LWS_SEND_BUFFER_PRE_PADDING + output_len + LWS_SEND_BUFFER_POST_PADDING);
-							memset(sockWriteBuff, '\0', sizeof(sockWriteBuff));
+							memset(sockWriteBuff, '\0', sizeof(*sockWriteBuff));
  	  						memcpy(&sockWriteBuff[LWS_SEND_BUFFER_PRE_PADDING], output, output_len);
 							libwebsocket_write(wsi, &sockWriteBuff[LWS_SEND_BUFFER_PRE_PADDING], output_len, LWS_WRITE_TEXT);
 							sfree((void *)&output);
@@ -556,7 +557,7 @@ int webserver_callback_data(struct libwebsocket_context *webcontext, struct libw
 
 				/* This PRE_PADDIGN and POST_PADDING is an requirement for LWS_WRITE_TEXT */
 				sockWriteBuff = realloc(sockWriteBuff, LWS_SEND_BUFFER_PRE_PADDING + l + LWS_SEND_BUFFER_POST_PADDING);
-				memset(sockWriteBuff, '\0', sizeof(sockWriteBuff));
+				memset(sockWriteBuff, '\0', sizeof(*sockWriteBuff));
 				memcpy(&sockWriteBuff[LWS_SEND_BUFFER_PRE_PADDING], syncBuff, l);
 				m = libwebsocket_write(wsi, &sockWriteBuff[LWS_SEND_BUFFER_PRE_PADDING], l, LWS_WRITE_TEXT);
 				/*
@@ -571,10 +572,10 @@ int webserver_callback_data(struct libwebsocket_context *webcontext, struct libw
 		}
 		break;
 		case LWS_CALLBACK_FILTER_NETWORK_CONNECTION:
-			if((int)in > 0) {
+			if((int)(intptr_t)in > 0) {
 				struct sockaddr_in address;
 				int addrlen = sizeof(address);
-				getpeername((int)in, (struct sockaddr*)&address, (socklen_t*)&addrlen);
+				getpeername((int)(intptr_t)in, (struct sockaddr*)&address, (socklen_t*)&addrlen);
 				if(socket_check_whitelist(inet_ntoa(address.sin_addr)) != 0) {
 					logprintf(LOG_INFO, "rejected client, ip: %s, port: %d", inet_ntoa(address.sin_addr), ntohs(address.sin_port));
 					return -1;
@@ -711,7 +712,7 @@ void *webserver_broadcast(void *param) {
 			pthread_mutex_lock(&webqueue_lock);
 
 			syncBuff = realloc(syncBuff, strlen(webqueue->message)+1);
-			memset(syncBuff, '\0', sizeof(syncBuff));
+			memset(syncBuff, '\0', sizeof(*syncBuff));
 			strcpy(syncBuff, webqueue->message);
 
 			libwebsocket_callback_on_writable_all_protocol(&libwebsocket_protocols[1]);
