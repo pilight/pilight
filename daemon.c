@@ -403,7 +403,7 @@ void receiver_parse_code(int *rawcode, int rawlen, int plslen) {
 							}
 						}
 
-						if((double)protocol->raw[1]/((plslengths->length * (1+protocol->pulse)/2)) < 1.35) {
+						if((double)protocol->raw[1]/((plslengths->length * (1+protocol->pulse)/2)) < 2) {
 							x -= 4;
 						}
 
