@@ -206,8 +206,8 @@ int pilightModSend(int *code) {
 int pilightModReceive(void) {
 	char buff[255] = {0};
 	if((read(pilight_mod_fd_rec, buff, sizeof(buff))) < 0) {
-		return -1;
 		usleep(5000*1000);
+		return -1;
 	}
 
 	return (atoi(buff));
