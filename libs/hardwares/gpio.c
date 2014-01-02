@@ -48,7 +48,7 @@ unsigned short gpioHwInit(void) {
 		logprintf(LOG_ERR, "unable to register interrupt for pin %d", gpio_in) ;
 		return EXIT_SUCCESS;
 	}
-	return EXIT_FAILURE;
+	return EXIT_SUCCESS;
 }
 
 unsigned short gpioHwDeinit(void) {
@@ -61,7 +61,7 @@ unsigned short gpioHwDeinit(void) {
 		fprintf(fd, "%d\n", wpiPinToGpio(gpio_out));
 		fclose(fd);
 	}
-	return 0;
+	return EXIT_SUCCESS;
 }
 
 int gpioSend(int *code) {
@@ -73,7 +73,7 @@ int gpioSend(int *code) {
 		digitalWrite(gpio_out, 0);
 		usleep((__useconds_t)code[i++]);
 	}
-	return 0;
+	return EXIT_SUCCESS;
 }
 
 int gpioReceive(void) {
