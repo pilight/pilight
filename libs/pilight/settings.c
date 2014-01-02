@@ -137,6 +137,9 @@ int settings_parse(JsonNode *root) {
 	int has_socket = 0;
 	int gpio_in = -1;
 	int gpio_out = -1;
+	int attiny_prefilter = 0;
+	int prefilter_svp = 0;
+	int prefilter_lvp = 0;
 
 #ifndef __FreeBSD__	
 	regex_t regex;
@@ -362,6 +365,33 @@ int settings_parse(JsonNode *root) {
 				gpio_out = (int)jsettings->number_;
 				settings_add_number(jsettings->key, (int)jsettings->number_);
 			}			
+		} else if(strcmp(jsettings->key, "attiny-prefilter") == 0) {
+			if(jsettings->number_ < 0 || jsettings->number_ > 1) {
+				logprintf(LOG_ERR, "setting \"%s\" must be either 0 or 1", jsettings->key);
+				have_error = 1;
+				goto clear;
+			} else {
+				attiny_prefilter = (int)jsettings->number_;
+				settings_add_number(jsettings->key, (int)jsettings->number_);
+			}
+		} else if(strcmp(jsettings->key, "pilight-prefilter-shortest-pulse") == 0) {
+			if(jsettings->number_ < 30 || jsettings->number_ > 1000) {
+				logprintf(LOG_ERR, "setting \"%s\" must be between 30 and 1000", jsettings->key);
+				have_error = 1;
+				goto clear;
+			} else {
+				prefilter_svp = (int)jsettings->number_;
+				settings_add_number(jsettings->key, (int)jsettings->number_);
+			}
+		} else if(strcmp(jsettings->key, "pilight-prefilter-longest-pulse") == 0) {
+			if(jsettings->number_ < 300 || jsettings->number_ > 50000) {
+				logprintf(LOG_ERR, "setting \"%s\" must between 300 and 50000", jsettings->key);
+				have_error = 1;
+				goto clear;
+			} else {
+				prefilter_lvp = (int)jsettings->number_;
+				settings_add_number(jsettings->key, (int)jsettings->number_);
+			}
 		} else {
 			logprintf(LOG_ERR, "setting \"%s\" is invalid", jsettings->key);
 			have_error = 1;
@@ -370,8 +400,8 @@ int settings_parse(JsonNode *root) {
 		jsettings = jsettings->next;
 	}
 	json_delete(jsettings);
-	if((hw_mode == 1 || hw_mode == 0 || hw_mode == 3) && gpio_in > -1) {
-		logprintf(LOG_ERR, "setting \"gpio-receiver\" and \"module\", \"pilight\" or \"none\" hw-mode cannot be combined");
+	if((hw_mode == 1 || hw_mode == 0) && gpio_in > -1) {
+		logprintf(LOG_ERR, "setting \"gpio-receiver\" and \"module\", or \"none\" hw-mode cannot be combined");
 		have_error = 1;
 		goto clear;
 	}
@@ -382,6 +412,21 @@ int settings_parse(JsonNode *root) {
 	}	
 	if((hw_mode == 2 || hw_mode == 0) && has_socket == 1) {
 		logprintf(LOG_ERR, "setting \"hw-socket\" must be combined with \"module\" or \"pilight\" hw-mode");
+		have_error = 1;
+		goto clear;
+	}
+	if((hw_mode == 0 || hw_mode == 1 || hw_mode == 2) && attiny_prefilter == 1) {
+		logprintf(LOG_ERR, "setting \"attiny-prefilter\" must be combined with \"pilight\" hw-mode");
+		have_error = 1;
+		goto clear;
+	}
+	if((hw_mode == 0 || hw_mode == 1 || hw_mode == 2) && prefilter_svp > 0) {
+		logprintf(LOG_ERR, "setting \"piligt-prefilter-shortest-pulse\" must be combined with \"pilight\" hw-mode");
+		have_error = 1;
+		goto clear;
+	}
+	if((hw_mode == 0 || hw_mode == 1 || hw_mode == 2) && prefilter_lvp > 0) {
+		logprintf(LOG_ERR, "setting \"piligt-prefilter-longest-pulse\" must be combined with \"pilight\" hw-mode");
 		have_error = 1;
 		goto clear;
 	}
