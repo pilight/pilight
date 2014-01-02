@@ -126,7 +126,11 @@ unsigned short pilightModHwInit(void) {
 		} else {
 			
 			ioctl(pilight_mod_fd_trans, IOCTL_GPIO_OUT, getWiringPiPin(pilight_mod_out));
-			ioctl(pilight_mod_fd_trans, IOCTL_START_TRANSMITTER, 0);
+			
+			if(ioctl(pilight_mod_fd_trans, IOCTL_START_TRANSMITTER, 0) < 0){
+				logprintf(LOG_ERR, "could not start pilight transmitter on pin %d",getWiringPiPin(pilight_mod_out));
+				return EXIT_FAILURE;
+			}
 			
 			logprintf(LOG_DEBUG, "initialized pilight transmitter module");
 			pilight_mod_trans_initialized = 1;
@@ -143,7 +147,10 @@ unsigned short pilightModHwInit(void) {
 			ioctl(pilight_mod_fd_rec, IOCTL_LONGEST_V_P, pilight_mod_lvp);
 			ioctl(pilight_mod_fd_rec, IOCTL_SHORTEST_V_P, pilight_mod_svp);
 			ioctl(pilight_mod_fd_rec, IOCTL_FILTER_ON, filter_on);
-			ioctl(pilight_mod_fd_rec, IOCTL_START_RECEIVER, 0);
+			if(ioctl(pilight_mod_fd_rec, IOCTL_START_RECEIVER, 0) < 0){
+				logprintf(LOG_ERR, "could not start pilight receiver on pin %d",getWiringPiPin(pilight_mod_in));
+				return EXIT_FAILURE;
+			}
 			
 			logprintf(LOG_DEBUG, "initialized pilight receiver module");
 			pilight_mod_rec_initialized = 1;
@@ -200,9 +207,10 @@ int pilightModReceive(void) {
 	char buff[255] = {0};
 	if((read(pilight_mod_fd_rec, buff, sizeof(buff))) < 0) {
 		return -1;
+		usleep(5000*1000);
 	}
 
-	return (atoi(buff) & 0x00FFFFFF);
+	return (atoi(buff));
 }
 
 void pilightModInit(void) {
