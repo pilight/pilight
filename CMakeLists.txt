@@ -75,13 +75,13 @@ add_definitions(-DHASH="${git_ver}")
 include_directories("${PROJECT_SOURCE_DIR}/libs/pilight/")
 
 file(GLOB pilight_headers
-	"${PROJECT_SOURCE_DIR}/libs/hardwares/*.h" 
+	"${PROJECT_SOURCE_DIR}/libs/hardware/*.h" 
 	"${PROJECT_SOURCE_DIR}/libs/pilight/*.h"
 	"${PROJECT_SOURCE_DIR}/libs/protocols/*.h" 
 	"${PROJECT_SOURCE_DIR}/libs/websockets/*.h")
 	
 file(GLOB pilight
-	"${PROJECT_SOURCE_DIR}/libs/hardwares/*.c" 
+	"${PROJECT_SOURCE_DIR}/libs/hardware/*.c" 
 	"${PROJECT_SOURCE_DIR}/libs/pilight/*.c"
 	"${PROJECT_SOURCE_DIR}/libs/protocols/*.c" 
 	"${PROJECT_SOURCE_DIR}/libs/websockets/*.c")
@@ -211,18 +211,18 @@ if(${PROTOCOL_DHT22} MATCHES "OFF")
 endif()
 
 if(${HARDWARE_433_GPIO} MATCHES "OFF")
-	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/hardwares/gpio.h")
-	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/hardwares/gpio.c")
+	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/hardware/433gpio.h")
+	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/hardware/433gpio.c")
 endif()
 
 if(${HARDWARE_433_MODULE} MATCHES "OFF")
-	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/hardwares/module.h")
-	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/hardwares/module.c")
+	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/hardware/433module.h")
+	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/hardware/433module.c")
 endif()
 
 if(${HARDWARE_433_PILIGHT} MATCHES "OFF")
-	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/hardwares/pilight.h")
-	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/hardwares/pilight.c")
+	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/hardware/433pilight.h")
+	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/hardware/433pilight.c")
 endif()
 
 if(${UPDATE} MATCHES "OFF")
