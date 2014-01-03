@@ -180,8 +180,6 @@ int pilight433Send(int *code) {
 	int ret = 0;
 	unsigned int code_len = 0;
 	
-	logprintf(LOG_ERR, "sending");
-	
 	while(code[code_len]) {
 		code_len++;
 	}
@@ -200,7 +198,7 @@ int pilight433Receive(void) {
 	char buff[255] = {0};
 	if((read(pilight_433_fd_rec, buff, sizeof(buff))) < 0) {
 		usleep(5000*1000);
-		return -1;
+		return EXIT_FAILURE;
 	}
 	return (atoi(buff));
 }
@@ -228,21 +226,21 @@ unsigned short pilight433Settings(JsonNode *json) {
 			return EXIT_FAILURE;
 		}
 	}
-	if(strcmp(json->key, "attiny-prefilter") == 0) {
+	if(strcmp(json->key, "uc-connected") == 0) {
 		if(json->tag == JSON_NUMBER) {
 		pilight_433_prefilter = (int)json->number_;
 		} else {
 			return EXIT_FAILURE;
 		}
 	}
-	if(strcmp(json->key, "pilight-prefilter-shortest-pulse") == 0) {
+	if(strcmp(json->key, "shortest-pulse") == 0) {
 		if(json->tag == JSON_NUMBER) {
 		pilight_433_svp = (int)json->number_;
 		} else {
 			return EXIT_FAILURE;
 		}
 	}
-	if(strcmp(json->key, "pilight-prefilter-longest-pulse") == 0) {
+	if(strcmp(json->key, "longest-pulse") == 0) {
 		if(json->tag == JSON_NUMBER) {
 		pilight_433_lvp = (int)json->number_;
 		} else {
@@ -260,13 +258,14 @@ void pilight433Init(void) {
 	options_add(&pilight433->options, 'd', "socket", has_value, config_value, "^/dev/([a-z]+)[0-9]+$");
 	options_add(&pilight433->options, 'r', "receiver", has_value, config_value, "^[0-9]+$");
 	options_add(&pilight433->options, 's', "sender", has_value, config_value, "^[0-9]+$");
-	options_add(&pilight433->options, 'a', "attiny-prefilter", has_value, config_value, "^[0-9]+$");
-	options_add(&pilight433->options, 'p', "pilight-prefilter-shortest-pulse", has_value, config_value, "^[0-9]+$");
-	options_add(&pilight433->options, 'l', "pilight-prefilter-longest-pulse", has_value, config_value, "^[0-9]+$");
+	options_add(&pilight433->options, 'u', "uc-connected", has_value, config_value, "^[0-9]+$");
+	options_add(&pilight433->options, 'p', "shortest-pulse", has_value, config_value, "^[0-9]+$");
+	options_add(&pilight433->options, 'l', "longest-pulse", has_value, config_value, "^[0-9]+$");
 
 	pilight433->init=&pilight433HwInit;
 	pilight433->deinit=&pilight433HwDeinit;
 	pilight433->send=&pilight433Send;
 	pilight433->receive=&pilight433Receive;
 	pilight433->settings=&pilight433Settings;
+	pilight433->type=RF433;
 }
