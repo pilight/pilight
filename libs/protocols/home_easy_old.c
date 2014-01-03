@@ -191,7 +191,7 @@ void homeEasyOldInit(void) {
 	protocol_device_add(home_easy_old, "home_easy_old", "Old Home Easy Switches");
 	protocol_plslen_add(home_easy_old, 289);
 	home_easy_old->devtype = SWITCH;
-	home_easy_old->hwtype = RX433;
+	home_easy_old->hwtype = RF433;
 	home_easy_old->pulse = 3;
 	home_easy_old->rawlen = 50;
 	home_easy_old->binlen = 12;

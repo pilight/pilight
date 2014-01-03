@@ -287,6 +287,10 @@ if(NOT EXISTS "/etc/pilight/settings.json")
 	install(FILES settings.json-default DESTINATION /etc/pilight/ RENAME settings.json) 
 endif()
 
+if(NOT EXISTS "/etc/pilight/hardware.json")
+	install(FILES hardware.json DESTINATION /etc/pilight/) 
+endif()
+
 add_executable(pilight-daemon daemon.c)
 target_link_libraries(pilight-daemon pilight_shared)
 target_link_libraries(pilight-daemon ${CMAKE_DL_LIBS})

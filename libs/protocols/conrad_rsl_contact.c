@@ -167,7 +167,7 @@ void conradRSLCnInit(void) {
 	protocol_device_add(conrad_rsl_contact, "conrad_rsl_contact", "Conrad RSL Contact Sensor");
 	protocol_plslen_add(conrad_rsl_contact, 190);
 	conrad_rsl_contact->devtype = SWITCH;
-	conrad_rsl_contact->hwtype = RX433;
+	conrad_rsl_contact->hwtype = RF433;
 	conrad_rsl_contact->pulse = 5;
 	conrad_rsl_contact->rawlen = 66;
 	conrad_rsl_contact->binlen = 33;

@@ -196,7 +196,7 @@ void impulsInit(void) {
 	protocol_plslen_add(impuls, 141);
 	protocol_plslen_add(impuls, 171);
 	impuls->devtype = SWITCH;
-	impuls->hwtype = RX433;
+	impuls->hwtype = RF433;
 	impuls->pulse = 3;
 	impuls->rawlen = 50;
 	impuls->binlen = 12;

@@ -211,7 +211,7 @@ void revInit(void) {
 	protocol_device_add(rev_switch, "rev_switch", "REV Switches");
 	protocol_plslen_add(rev_switch, 319); 
 	rev_switch->devtype = SWITCH;
-	rev_switch->hwtype = RX433;
+	rev_switch->hwtype = RF433;
 	rev_switch->pulse = 3;
 	rev_switch->rawlen = 50;
 	rev_switch->binlen = 12;

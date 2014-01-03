@@ -39,27 +39,19 @@
 #include "irq.h"
 #include "gc.h"
 
-const char *hw_mode = HW_MODE;
+unsigned short main_loop = 1;
+pthread_t pth;
 
 int main_gc(void) {
-	struct hardware_t *hardware = NULL;	
-	unsigned short match = 0;
-
 	log_shell_disable();
 
-	struct hardwares_t *htmp = hardwares;
-	match = 0;
-	while(htmp) {
-		if(strcmp(htmp->listener->id, hw_mode) == 0) {
-			hardware = htmp->listener;
-			match = 1;
-			break;
+	struct conf_hardware_t *tmp_confhw = conf_hardware;
+	while(tmp_confhw) {	
+		if(tmp_confhw->hardware->deinit) {
+			tmp_confhw->hardware->deinit();
 		}
-		htmp = htmp->next;
+		tmp_confhw = tmp_confhw->next;
 	}
-	if(match == 1 && hardware->deinit) {
-		hardware->deinit();
-	}		
 
 	threads_gc();	
 	options_gc();
@@ -71,6 +63,19 @@ int main_gc(void) {
 	sfree((void *)&settingsfile);	
 
 	return EXIT_SUCCESS;
+}
+
+void *receive_code(void *param) {
+	int duration = 0;
+	
+	struct hardware_t *hardware = (hardware_t *)param;
+	while(main_loop && hardware->receive) {
+		duration = hardware->receive();
+		if(duration > 0) {
+			printf("%s: %d\n", hardware->id, duration);
+		}
+	};
+	return NULL;
 }
 
 int main(int argc, char **argv) {
@@ -85,14 +90,9 @@ int main(int argc, char **argv) {
 	log_level_set(LOG_NOTICE);
 
 	struct options_t *options = NULL;
-	struct hardware_t *hardware = NULL;		
 	
 	char *args = NULL;
-	char *stmp = NULL;
-
-	int duration = 0;
-	int loop = 1;
-	unsigned short match = 0;
+	char *hwfile = NULL;
 
 	settingsfile = malloc(strlen(SETTINGS_FILE)+1);
 	strcpy(settingsfile, SETTINGS_FILE);	
@@ -145,39 +145,35 @@ int main(int argc, char **argv) {
 		}
 	}	
 	
-	if(settings_find_string("hw-mode", &stmp) == 0) {
-		hw_mode = stmp;
-	}	
-
 	hardware_init();
 	
-	struct hardwares_t *htmp = hardwares;
-	match = 0;
-	while(htmp) {
-		if(strcmp(htmp->listener->id, hw_mode) == 0) {
-			hardware = htmp->listener;
-			match = 1;
-			break;
+	if(settings_find_string("hardware-file", &hwfile) == 0) {
+		hardware_set_file(hwfile);
+		if(hardware_read() == EXIT_FAILURE) {
+			goto clear;
 		}
-		htmp = htmp->next;
 	}
 
-	if(match == 1 && hardware->init) {
-		hardware->init();
-	}
+	/* Start threads library that keeps track of all threads used */
+	pthread_create(&pth, NULL, &threads_start, (void *)NULL);	
 
-	if(match == 0 || !hardware->receive || strcmp(hw_mode, "none") == 0) {
-		printf("The hw-mode \"%s\" isn't compatible with pilight-raw\n", hw_mode);
-		main_gc();
-		return EXIT_SUCCESS;
-	}
-
-	while(loop && match == 1 && hardware->receive) {
-		duration = hardware->receive();
-		if(duration > 0) {
-			printf("%d\n", duration);
+	struct conf_hardware_t *tmp_confhw = conf_hardware;
+	while(tmp_confhw) {
+		if(tmp_confhw->hardware->init() == EXIT_FAILURE) {
+			logprintf(LOG_ERR, "could not initialize %s hardware mode", tmp_confhw->hardware->id);
+			goto clear;
 		}
-	};
+		threads_register(tmp_confhw->hardware->id, &receive_code, (void *)tmp_confhw->hardware);
+		tmp_confhw = tmp_confhw->next;
+	}
+
+	while(main_loop) {
+		sleep(1);
+	}
+
 	main_gc();
 	return (EXIT_SUCCESS);
+clear:
+	main_gc();
+	return (EXIT_FAILURE);
 }

@@ -163,7 +163,7 @@ void elroHEInit(void) {
 	protocol_device_add(elro_he, "elro_he", "Elro Home Easy Switches");
 	protocol_plslen_add(elro_he, 288);
 	elro_he->devtype = SWITCH;
-	elro_he->hwtype = RX433;
+	elro_he->hwtype = RF433;
 	elro_he->pulse = 3;
 	elro_he->rawlen = 50;
 	elro_he->binlen = 12;

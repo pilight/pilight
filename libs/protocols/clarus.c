@@ -208,7 +208,7 @@ void clarusSwInit(void) {
 	protocol_device_add(clarus_switch, "clarus_switch", "Clarus Switches");
 	protocol_plslen_add(clarus_switch, 189);
 	clarus_switch->devtype = SWITCH;
-	clarus_switch->hwtype = RX433;
+	clarus_switch->hwtype = RF433;
 	clarus_switch->pulse = 3;
 	clarus_switch->rawlen = 50;
 	clarus_switch->binlen = 12;

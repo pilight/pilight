@@ -171,7 +171,7 @@ void elroHCInit(void) {
 	protocol_device_add(elro_hc, "brennenstuhl", "Brennenstuhl Comfort");
 	protocol_plslen_add(elro_hc, 296);
 	elro_hc->devtype = SWITCH;
-	elro_hc->hwtype = RX433;
+	elro_hc->hwtype = RF433;
 	elro_hc->pulse = 3;
 	elro_hc->rawlen = 50;
 	elro_hc->binlen = 12;

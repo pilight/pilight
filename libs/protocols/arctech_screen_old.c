@@ -162,7 +162,7 @@ void arctechSrOldInit(void) {
 	protocol_conflict_add(arctech_screen_old, "arctech_switches_old");	
 	protocol_plslen_add(arctech_screen_old, 336);
 	arctech_screen_old->devtype = SCREEN;
-	arctech_screen_old->hwtype = RX433;
+	arctech_screen_old->hwtype = RF433;
 	arctech_screen_old->pulse = 3;
 	arctech_screen_old->rawlen = 50;
 	arctech_screen_old->binlen = 12;

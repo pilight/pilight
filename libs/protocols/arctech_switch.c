@@ -194,7 +194,7 @@ void arctechSwInit(void) {
 	protocol_plslen_add(arctech_switch, 303);
 	protocol_plslen_add(arctech_switch, 251);
 	arctech_switch->devtype = SWITCH;
-	arctech_switch->hwtype = RX433;
+	arctech_switch->hwtype = RF433;
 	arctech_switch->pulse = 5;
 	arctech_switch->rawlen = 132;
 	arctech_switch->lsb = 3;

@@ -169,7 +169,7 @@ void conradRSLSwInit(void) {
 	protocol_device_add(conrad_rsl_switch, "conrad_rsl_switch", "Conrad RSL Switches");
 	protocol_plslen_add(conrad_rsl_switch, 204);
 	conrad_rsl_switch->devtype = SWITCH;
-	conrad_rsl_switch->hwtype = RX433;
+	conrad_rsl_switch->hwtype = RF433;
 	conrad_rsl_switch->pulse = 5;
 	conrad_rsl_switch->rawlen = 66;
 	conrad_rsl_switch->binlen = 33;

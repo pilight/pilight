@@ -133,10 +133,6 @@ int settings_parse(JsonNode *root) {
 	int have_error = 0;
 	int web_port = 0;
 	int own_port = 0;
-	int hw_mode = 0;
-	int has_socket = 0;
-	int gpio_in = -1;
-	int gpio_out = -1;
 
 #ifndef __FreeBSD__	
 	regex_t regex;
@@ -179,7 +175,7 @@ int settings_parse(JsonNode *root) {
 					settings_add_string(jsettings->key, jsettings->string_);
 				}
 			}
-		} else if(strcmp(jsettings->key, "config-file") == 0) {
+		} else if(strcmp(jsettings->key, "config-file") == 0 || strcmp(jsettings->key, "hardware-file") == 0) {
 			if(!jsettings->string_) {
 				logprintf(LOG_ERR, "setting \"%s\" must contain an existing file path", jsettings->key);
 				have_error = 1;
@@ -221,32 +217,6 @@ int settings_parse(JsonNode *root) {
 					logprintf(LOG_ERR, "setting \"%s\" must contain valid ip addresses", jsettings->key);
 					have_error = 1;
 					goto clear;
-				}
-				settings_add_string(jsettings->key, jsettings->string_);
-			}
-		} else if(strcmp(jsettings->key, "hw-socket") == 0) {
-			if(!jsettings->string_) {
-				logprintf(LOG_ERR, "setting \"%s\" must point an existing socket", jsettings->key);
-				have_error = 1;
-				goto clear;
-			} else {
-				has_socket = 1;
-				settings_add_string(jsettings->key, jsettings->string_);
-			}
-		} else if(strcmp(jsettings->key, "hw-mode") == 0) {
-			if(!jsettings->string_) {
-				logprintf(LOG_ERR, "setting \"%s\" must be either \"gpio\", \"module\", \"pilight\" or \"none\"", jsettings->key);
-				have_error = 1;
-				goto clear;
-			} else {
-				if(strcmp(jsettings->string_, "module") == 0) {
-					hw_mode = 1;
-				} else if(strcmp(jsettings->string_, "none") == 0) {
-					hw_mode = 0;
-				} else if(strcmp(jsettings->string_, "gpio") == 0) {
-					hw_mode = 2;
-				} else if(strcmp(jsettings->string_, "pilight") == 0) {
-					hw_mode = 3;
 				}
 				settings_add_string(jsettings->key, jsettings->string_);
 			}
@@ -343,25 +313,7 @@ int settings_parse(JsonNode *root) {
 				if(url) sfree((void *)&url);
 				if(data) sfree((void *)&data);
 			}
-#endif
-		} else if(strcmp(jsettings->key, "gpio-receiver") == 0) {
-			if(jsettings->number_ < 0 || jsettings->number_ > 20) {
-				logprintf(LOG_ERR, "setting \"%s\" must be between 0 and 20", jsettings->key);
-				have_error = 1;
-				goto clear;
-			} else {
-				gpio_in = (int)jsettings->number_;
-				settings_add_number(jsettings->key, (int)jsettings->number_);
-			}			
-		} else if(strcmp(jsettings->key, "gpio-sender") == 0) {
-			if(jsettings->number_ < 0 || jsettings->number_ > 20) {
-				logprintf(LOG_ERR, "setting \"%s\" must be between 0 and 20", jsettings->key);
-				have_error = 1;
-				goto clear;
-			} else {
-				gpio_out = (int)jsettings->number_;
-				settings_add_number(jsettings->key, (int)jsettings->number_);
-			}			
+#endif		
 		} else {
 			logprintf(LOG_ERR, "setting \"%s\" is invalid", jsettings->key);
 			have_error = 1;
@@ -370,21 +322,6 @@ int settings_parse(JsonNode *root) {
 		jsettings = jsettings->next;
 	}
 	json_delete(jsettings);
-	if((hw_mode == 1 || hw_mode == 0 || hw_mode == 3) && gpio_in > -1) {
-		logprintf(LOG_ERR, "setting \"gpio-receiver\" and \"module\", \"pilight\" or \"none\" hw-mode cannot be combined");
-		have_error = 1;
-		goto clear;
-	}
-	if((hw_mode == 1 || hw_mode == 0) && gpio_out > -1) {
-		logprintf(LOG_ERR, "setting \"gpio-sender\" and \"module\" or \"none\" hw-mode cannot be combined");
-		have_error = 1;
-		goto clear;
-	}	
-	if((hw_mode == 2 || hw_mode == 0) && has_socket == 1) {
-		logprintf(LOG_ERR, "setting \"hw-socket\" must be combined with \"module\" or \"pilight\" hw-mode");
-		have_error = 1;
-		goto clear;
-	}
 #ifdef WEBSERVER
 	if(web_port == own_port) {
 		logprintf(LOG_ERR, "setting \"port\" and \"webserver-port\" cannot be the same");

@@ -50,10 +50,10 @@ void alectoInit(void) {
 	
 	protocol_register(&alecto);
 	protocol_set_id(alecto, "alecto");
-	protocol_device_add(alecto, "alecto", "Alecto weather stations");
+	protocol_device_add(alecto, "alecto", "Alecto Weather Stations");
 	protocol_plslen_add(alecto, 270);
 	alecto->devtype = WEATHER;
-	alecto->hwtype = RX433;
+	alecto->hwtype = RF433;
 	alecto->pulse = 14;
 	alecto->rawlen = 74;
 	alecto->lsb = 3;

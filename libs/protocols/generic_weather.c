@@ -79,7 +79,7 @@ void genWeatherInit(void) {
 	
 	protocol_register(&generic_weather);
 	protocol_set_id(generic_weather, "generic_weather");
-	protocol_device_add(generic_weather, "generic_weather", "Generic weather stations");
+	protocol_device_add(generic_weather, "generic_weather", "Generic Weather Stations");
 	generic_weather->devtype = WEATHER;
 
 	options_add(&generic_weather->options, 'h', "humidity", has_value, config_value, "[0-9]");

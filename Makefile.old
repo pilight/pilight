@@ -21,12 +21,12 @@ ifneq (, $(findstring amd64, $(SYS)))
 	OSFLAGS = -O3 -fPIC -march=native -mtune=native -mfpmath=sse -Wno-conversion
 endif
 GIT_HASH := $(shell git describe --always)
-CFLAGS = -ffast-math $(OSFLAGS) -Wfloat-equal -Wshadow -Wpointer-arith -Wcast-align -Wstrict-overflow=5 -Wwrite-strings -Waggregate-return -Wcast-qual -Wswitch-default -Wswitch-enum -Wformat=2 -g -Wall -I. -isystem.. -Ilibs/pilight/ -Ilibs/protocols/ -Ilibs/hardwares/ -pthread -lm -DHASH=\"$(GIT_HASH)\"
-SUBDIRS = libs/pilight libs/protocols libs/hardwares libs/websockets
+CFLAGS = -ffast-math $(OSFLAGS) -Wfloat-equal -Wshadow -Wpointer-arith -Wcast-align -Wstrict-overflow=5 -Wwrite-strings -Waggregate-return -Wcast-qual -Wswitch-default -Wswitch-enum -Wformat=2 -g -Wall -I. -isystem.. -Ilibs/pilight/ -Ilibs/protocols/ -Ilibs/hardware/ -pthread -lm -DHASH=\"$(GIT_HASH)\"
+SUBDIRS = libs/pilight libs/protocols libs/hardware libs/websockets
 SRC = $(wildcard *.c)
-INCLUDES = $(wildcard protocols/*.h) $(wildcard protocols/*.c) $(wildcard hardwares/*.h) $(wildcard hardwares/*.c) $(wildcard libs/pilight/*.h) $(wildcard libs/websockets/*.c) $(wildcard libs/websockets/*.h) $(wildcard libs/websockets/*.c)
+INCLUDES = $(wildcard protocols/*.h) $(wildcard protocols/*.c) $(wildcard hardware/*.h) $(wildcard hardware/*.c) $(wildcard libs/pilight/*.h) $(wildcard libs/websockets/*.c) $(wildcard libs/websockets/*.h) $(wildcard libs/websockets/*.c)
 PROGAMS = $(patsubst %.c,pilight-%,$(SRC))
-LIBS = libs/pilight/pilight.o libs/protocols/protocols.o libs/hardwares/hardwares.o libs/websockets/websockets.o
+LIBS = libs/pilight/pilight.o libs/protocols/protocols.o libs/hardware/hardware.o libs/websockets/websockets.o
 
 .PHONY: subdirs $(SUBDIRS)
 

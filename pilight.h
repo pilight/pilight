@@ -67,36 +67,6 @@
 #define HARDWARE_433_PILIGHT
 
 #define VERSION					"2.1"
-
-#ifdef HARDWARE_433_PILIGHT
-	#define HW_MODE				"pilight"
-#elif defined(HARDWARE_433_GPIO)
-	#define HW_MODE				"gpio"
-#elif defined(HARDWARE_433_MODULE)
-	#define HW_MODE				"module"
-#else
-	#define HW_MODE				"none"
-#endif
-
-#ifdef HARDWARE_433_GPIO
-	#define GPIO_IN_PIN			1
-	#define GPIO_OUT_PIN		0
-
-	#define POLL_TIMEOUT		1000
-	#define RDBUF_LEN			5
-	#define GPIO_FN_MAXLEN		32
-#endif
-
-#ifdef HARDWARE_433_MODULE
-	#define DEFAULT_LIRC_SOCKET	"/dev/lirc0"
-	#define FREQ433				433920
-	#define FREQ38				38000
-#endif
-
-#ifdef HARDWARE_433_PILIGHT
-	#define DEFAULT_PILIGHT_SOCKET	"/dev/pilight0"
-#endif
-
 #define PULSE_DIV				34
 
 #ifdef WEBSERVER
@@ -133,5 +103,3 @@ typedef struct pilight_t {
 struct pilight_t pilight;
 
 #endif
-
-

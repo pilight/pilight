@@ -20,33 +20,48 @@
 #define _HARDWARE_H_
 
 typedef enum {
-	RXUNI,
-	RX433,
-	RX868,
+	NONE,
+	RF433,
+	RF868,
 	SENSOR
 } hwtype_t;
 
-#include "settings.h"
+#include "options.h"
+#include "json.h"
+
+typedef struct conf_hardware_t conf_hardware_t;
 
 typedef struct hardware_t {
 	char *id;
+	hwtype_t type;
+	struct options_t *options;
 
 	unsigned short (*init)(void);
 	unsigned short (*deinit)(void);
 	int (*receive)(void);
 	int (*send)(int *code);
+	unsigned short (*settings)(JsonNode *json);
 } hardware_t;
 
-typedef struct hardwares_t {
-	struct hardware_t *listener;
-	struct hardwares_t *next;
-} hardwares_t;
+struct conf_hardware_t {
+	hardware_t *hardware;
+	struct conf_hardware_t *next;
+};
 
-struct hardwares_t *hardwares;
+typedef struct hwlst_t {
+	struct hardware_t *listener;
+	struct hwlst_t *next;
+} hwlst_t;
+
+struct hwlst_t *hwlst;
+struct conf_hardware_t *conf_hardware;
 
 void hardware_init(void);
 void hardware_register(hardware_t **hw);
 void hardware_set_id(hardware_t *hw, const char *id);
 int hardware_gc(void);
+int hardware_set_file(char *file);
+int hardware_read(void);
+int hardware_write(char *content);
 
 #endif

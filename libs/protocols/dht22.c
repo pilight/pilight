@@ -185,58 +185,10 @@ void *dht22Parse(void *param) {
 }
 
 void dht22InitDev(JsonNode *jdevice) {
-
-#if defined(HARDWARE_433_GPIO) || defined(HARDWARE_433_PILIGHT)
-	JsonNode *jid = NULL;
-	JsonNode *jchild = NULL;
-	int gpio_in = GPIO_IN_PIN;
-	int gpio_out = GPIO_OUT_PIN;
-	char *hw_mode = NULL;
-	int free_hw_mode = 0;
-	char **id = NULL;
-	int nrid = 0, y = 0;
-	char *stmp = NULL;
-
-	settings_find_number("gpio-receiver", &gpio_in);
-	settings_find_number("gpio-sender", &gpio_out);
-
-	if((jid = json_find_member(jdevice, "id"))) {
-		jchild = json_first_child(jid);
-		while(jchild) {
-			if(json_find_string(jchild, "gpio", &stmp) == 0) {
-				id = realloc(id, (sizeof(char *)*(size_t)(nrid+1)));
-				id[nrid] = malloc(strlen(stmp)+1);
-				strcpy(id[nrid], stmp);
-				nrid++;
-			}
-			jchild = jchild->next;
-		}
-	}
-	
-	if(settings_find_string("hw-mode", &hw_mode) != 0) {
-		hw_mode = malloc(strlen(HW_MODE)+1);
-		strcpy(hw_mode, HW_MODE);
-		free_hw_mode = 1;
-	}
-	
-	for(y=0;y<nrid;y++) {
-		if(strstr(progname, "daemon") != 0 && strcmp(hw_mode, "gpio") == 0 && (atoi(id[y]) == gpio_in || atoi(id[y]) == gpio_out)) {
-			logprintf(LOG_ERR, "dht22: gpio's already in use");
-			goto clear;
-		}
-	}
-#endif
-
 	char *output = json_stringify(jdevice, NULL);
 	JsonNode *json = json_decode(output);
 	threads_register("dht22", &dht22Parse, (void *)json);
 	sfree((void *)&output);
-
-#ifdef HARDWARE_433_GPIO	
-clear:
-	if(free_hw_mode) sfree((void *)&hw_mode);
-	if(id) sfree((void *)&id);
-#endif
 }
 
 int dht22GC(void) {
@@ -252,8 +204,8 @@ void dht22Init(void) {
 
 	protocol_register(&dht22);
 	protocol_set_id(dht22, "dht22");
-	protocol_device_add(dht22, "dht22", "1-wire temperature and humidity sensor");
-	protocol_device_add(dht22, "am2302", "1-wire temperature and humidity sensor");	
+	protocol_device_add(dht22, "dht22", "1-wire Temperature and Humidity Sensor");
+	protocol_device_add(dht22, "am2302", "1-wire Temperature and Humidity Sensor");	
 	dht22->devtype = WEATHER;
 	dht22->hwtype = SENSOR;
 

@@ -40,8 +40,9 @@
 #include "irq.h"
 #include "gc.h"
 
-const char *hw_mode = HW_MODE;
 int pulse_length = 0;
+unsigned short main_loop = 1;
+pthread_t pth;
 
 typedef enum {
 	WAIT,
@@ -89,24 +90,18 @@ int normalize(int i) {
 }
 
 int main_gc(void) {
-	struct hardware_t *hardware = NULL;	
-	unsigned short match = 0;
-
+	printf("\n");
 	log_shell_disable();
 
-	struct hardwares_t *htmp = hardwares;
-	match = 0;
-	while(htmp) {
-		if(strcmp(htmp->listener->id, hw_mode) == 0) {
-			hardware = htmp->listener;
-			match = 1;
-			break;
+	main_loop = 0;
+
+	struct conf_hardware_t *tmp_confhw = conf_hardware;
+	while(tmp_confhw) {	
+		if(tmp_confhw->hardware->deinit) {
+			tmp_confhw->hardware->deinit();
 		}
-		htmp = htmp->next;
+		tmp_confhw = tmp_confhw->next;
 	}
-	if(match == 1 && hardware->deinit) {
-		hardware->deinit();
-	}		
 
 	threads_gc();	
 	options_gc();
@@ -120,22 +115,7 @@ int main_gc(void) {
 	return EXIT_SUCCESS;
 }
 
-int main(int argc, char **argv) {
-
-	gc_attach(main_gc);
-
-	/* Catch all exit signals for gc */
-	gc_catch();	
-	
-	log_shell_enable();
-	log_level_set(LOG_NOTICE);
-
-	struct options_t *options = NULL;
-	struct hardware_t *hardware = NULL;	
-	
-	char *args = NULL;
-	char *stmp = NULL;
-
+void *receive_code(void *param) {
 	int duration = 0;
 	int i = 0;
 	int y = 0;
@@ -163,8 +143,6 @@ int main(int argc, char **argv) {
 	int unit1Binary[255] = {0};
 	int unit2Binary[255] = {0};
 	int unit3Binary[255] = {0};
-	int loop = 1;
-	unsigned short match = 0;
 	
 	int temp[75] = {-1};
 	int footer = 0;
@@ -180,86 +158,8 @@ int main(int argc, char **argv) {
 	memset(all, -1, 75);
 	memset(temp, -1, 75);
 	
-	settingsfile = malloc(strlen(SETTINGS_FILE)+1);
-	strcpy(settingsfile, SETTINGS_FILE);	
-	
-	progname = malloc(16);
-	strcpy(progname, "pilight-learn");
-
-	options_add(&options, 'H', "help", no_value, 0, NULL);
-	options_add(&options, 'V', "version", no_value, 0, NULL);
-	options_add(&options, 'S', "settings", has_value, 0, NULL);
-
-	while (1) {
-		int c;
-		c = options_parse(&options, argc, argv, 1, &args);
-		if(c == -1 || c == -2)
-			break;
-		switch (c) {
-			case 'H':
-				printf("Usage: %s [options]\n", progname);
-				printf("\t -H --help\t\tdisplay usage summary\n");
-				printf("\t -V --version\t\tdisplay version\n");		
-				printf("\t -S --settings\t\tsettings file\n");
-				return (EXIT_SUCCESS);
-			break;
-			case 'V':
-				printf("%s %s\n", progname, VERSION);
-				return (EXIT_SUCCESS);
-			break;	
-			case 'S': 
-				if(access(args, F_OK) != -1) {
-					settingsfile = realloc(settingsfile, strlen(args)+1);
-					strcpy(settingsfile, args);
-					settings_set_file(args);
-				} else {
-					fprintf(stderr, "%s: the settings file %s does not exists\n", progname, args);
-					return EXIT_FAILURE;
-				}
-			break;
-			default:
-				printf("Usage: %s [options]\n", progname);
-				return (EXIT_FAILURE);
-			break;
-		}
-	}
-	options_delete(options);
-
-	if(access(settingsfile, F_OK) != -1) {
-		if(settings_read() != 0) {
-			return EXIT_FAILURE;
-		}
-	}
-	
-	if(settings_find_string("hw-mode", &stmp) == 0) {
-		hw_mode = stmp;
-	}	
-	
-	hardware_init();	
-	
-	struct hardwares_t *htmp = hardwares;
-	match = 0;
-	while(htmp) {
-		if(strcmp(htmp->listener->id, hw_mode) == 0) {
-			hardware = htmp->listener;
-			match = 1;
-			break;
-		}
-		htmp = htmp->next;
-	}
-	if(match == 1 && hardware->init) {
-		hardware->init();
-	
-		printf("Please make sure the daemon is not running when using this debugger.\n\n");	
-	}
-
-	if(match == 0 || !hardware->receive || strcmp(hw_mode, "none") == 0) {
-		printf("The hw-mode \"%s\" isn't compatible with %s\n", hw_mode, progname);
-		main_gc();
-		return EXIT_SUCCESS;
-	}
-
-	while(loop && match == 1 && hardware->receive) {
+	struct hardware_t *hardware = (hardware_t *)param;
+	while(main_loop && hardware->receive) {
 		switch(state) {
 			case CAPTURE:
 				printf("1. Please send and hold one of the OFF buttons.");
@@ -366,7 +266,7 @@ int main(int argc, char **argv) {
 		if(state!=WAIT)
 			pState=state;	
 		if(state==STOP)
-			loop = 0;
+			main_loop = 0;
 		else
 			state=WAIT;	
 
@@ -502,6 +402,7 @@ int main(int argc, char **argv) {
 	/* Print everything */
 	printf("--[RESULTS]--\n");
 	printf("\n");
+	printf("hardware:\t%s\n",hardware->id);
 	printf("pulse:\t\t%d\n",normalize(pulse));
 	printf("rawlen:\t\t%d\n",rawLength);
 	printf("binlen:\t\t%d\n",binaryLength);
@@ -591,7 +492,113 @@ int main(int argc, char **argv) {
 	for(i=0;i<binaryLength;i++) {
 		printf("%d",unit3Binary[i]);
 	}
-	printf("\n");
+	main_gc();
+	return NULL;
+}
+
+int main(int argc, char **argv) {
+
+	gc_attach(main_gc);
+
+	/* Catch all exit signals for gc */
+	gc_catch();	
+	
+	log_shell_enable();
+	log_level_set(LOG_NOTICE);
+
+	struct options_t *options = NULL;
+	
+	char *args = NULL;
+	char *hwfile = NULL;
+	int x = 0;
+	
+	settingsfile = malloc(strlen(SETTINGS_FILE)+1);
+	strcpy(settingsfile, SETTINGS_FILE);	
+	
+	progname = malloc(16);
+	strcpy(progname, "pilight-learn");
+
+	options_add(&options, 'H', "help", no_value, 0, NULL);
+	options_add(&options, 'V', "version", no_value, 0, NULL);
+	options_add(&options, 'S', "settings", has_value, 0, NULL);
+
+	while (1) {
+		int c;
+		c = options_parse(&options, argc, argv, 1, &args);
+		if(c == -1 || c == -2)
+			break;
+		switch (c) {
+			case 'H':
+				printf("Usage: %s [options]\n", progname);
+				printf("\t -H --help\t\tdisplay usage summary\n");
+				printf("\t -V --version\t\tdisplay version\n");		
+				printf("\t -S --settings\t\tsettings file\n");
+				return (EXIT_SUCCESS);
+			break;
+			case 'V':
+				printf("%s %s\n", progname, VERSION);
+				return (EXIT_SUCCESS);
+			break;	
+			case 'S': 
+				if(access(args, F_OK) != -1) {
+					settingsfile = realloc(settingsfile, strlen(args)+1);
+					strcpy(settingsfile, args);
+					settings_set_file(args);
+				} else {
+					fprintf(stderr, "%s: the settings file %s does not exists\n", progname, args);
+					return EXIT_FAILURE;
+				}
+			break;
+			default:
+				printf("Usage: %s [options]\n", progname);
+				return (EXIT_FAILURE);
+			break;
+		}
+	}
+	options_delete(options);
+
+	if(access(settingsfile, F_OK) != -1) {
+		if(settings_read() != 0) {
+			return EXIT_FAILURE;
+		}
+	}
+	
+	hardware_init();	
+	
+	if(settings_find_string("hardware-file", &hwfile) == 0) {
+		hardware_set_file(hwfile);
+		if(hardware_read() == EXIT_FAILURE) {
+			goto clear;
+		}
+	}
+
+	/* Start threads library that keeps track of all threads used */
+	pthread_create(&pth, NULL, &threads_start, (void *)NULL);	
+
+	struct conf_hardware_t *tmp_confhw = conf_hardware;
+	while(tmp_confhw) {
+		if(tmp_confhw->hardware->init() == EXIT_FAILURE) {
+			logprintf(LOG_ERR, "could not initialize %s hardware mode", tmp_confhw->hardware->id);
+			goto clear;
+		}
+		if(x == 0) {
+			threads_register(tmp_confhw->hardware->id, &receive_code, (void *)tmp_confhw->hardware);
+		}
+		tmp_confhw = tmp_confhw->next;
+		x++;
+	}
+	if(x > 1) {
+		printf("pilight-learn can only use one hardware module at one time\n\n");
+	}
+
+	printf("Please make sure the daemon is not running when using this debugger.\n\n");	
+
+	while(main_loop) {
+		sleep(1);
+	}
 
 	return (EXIT_SUCCESS);
+clear:
+	main_gc();
+	return (EXIT_FAILURE);
 }

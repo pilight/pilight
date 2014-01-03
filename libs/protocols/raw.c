@@ -61,7 +61,7 @@ void rawInit(void) {
 
 	protocol_register(&raw);
 	protocol_set_id(raw, "raw");
-	protocol_device_add(raw, "raw", "Raw codes");
+	protocol_device_add(raw, "raw", "Raw Codes");
 	raw->devtype = RAW;
 
 	options_add(&raw->options, 'c', "code", has_value, 0, NULL);

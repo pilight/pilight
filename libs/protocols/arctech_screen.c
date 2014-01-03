@@ -189,7 +189,7 @@ void arctechSrInit(void) {
 	protocol_plslen_add(arctech_screen, 303);
 	protocol_plslen_add(arctech_screen, 251);
 	arctech_screen->devtype = SCREEN;
-	arctech_screen->hwtype = RX433;
+	arctech_screen->hwtype = RF433;
 	arctech_screen->pulse = 5;
 	arctech_screen->rawlen = 132;
 	arctech_screen->lsb = 3;

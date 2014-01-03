@@ -117,7 +117,7 @@ void genDimInit(void) {
 	
 	protocol_register(&generic_dimmer);
 	protocol_set_id(generic_dimmer, "generic_dimmer");
-	protocol_device_add(generic_dimmer, "generic_dimmer", "Generic dimmers");
+	protocol_device_add(generic_dimmer, "generic_dimmer", "Generic Dimmers");
 	generic_dimmer->devtype = DIMMER;
 
 	options_add(&generic_dimmer->options, 'd', "dimlevel", has_value, config_value, "^([0-9]{1,})$");

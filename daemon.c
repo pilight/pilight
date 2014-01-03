@@ -136,16 +136,12 @@ unsigned short runmode = 1;
 int sockfd = 0;
 /* In the client running in incognito mode */
 unsigned short incognito_mode = 0;
-/* Use the lirc_rpi module or plain GPIO */
-const char *hw_mode = HW_MODE;
 /* Thread pointers */
 pthread_t pth;
 /* While loop conditions */
 unsigned short main_loop = 1;
 /* Only update the config file on exit when it's valid */
 unsigned short valid_config = 0;
-/* Used hardware module */
-struct hardware_t *hardware = NULL;
 /* Reset repeats after a certian amount of time */
 struct timeval tv;
 
@@ -463,6 +459,7 @@ void *send_code(void *param) {
 			pthread_mutex_lock(&sendqueue_lock);
 			sending = 1;
 			struct protocol_t *protocol = sendqueue->protopt;
+			struct hardware_t *hardware = NULL;
 
 			JsonNode *message = NULL;
 
@@ -489,7 +486,16 @@ void *send_code(void *param) {
 			}
 
 			longCode[code_len] = 0;
-			if(hardware->send) {
+			struct conf_hardware_t *tmp_confhw = conf_hardware;
+			while(tmp_confhw) {
+				if(protocol->hwtype == tmp_confhw->hardware->type) {
+					hardware = tmp_confhw->hardware;
+					break;
+				}
+				tmp_confhw = tmp_confhw->next;
+			}
+
+			if(hardware && hardware->send) {
 				if(hardware->send(longCode) == 0) {
 					logprintf(LOG_DEBUG, "successfully send %s code", protocol->id);
 					if(strcmp(protocol->id, "raw") == 0) {
@@ -1019,8 +1025,9 @@ void *receive_code(void *param) {
 	int plslen = 0, rawlen = 0;
 	int rawcode[255] = {0};
 
+	struct hardware_t *hardware = (hardware_t *)param;
+	
 	while(main_loop && hardware->receive) {
-		/* Only initialize the hardware receive the data when there are receivers connected */
 		if(sending == 0) {
 			duration = hardware->receive();
 
@@ -1167,8 +1174,12 @@ int main_gc(void) {
 
 	main_loop = 0;
 
-	if(hardware != NULL && hardware->deinit) {
-		hardware->deinit();
+	struct conf_hardware_t *tmp_confhw = conf_hardware;
+	while(tmp_confhw) {	
+		if(tmp_confhw->hardware->deinit) {
+			tmp_confhw->hardware->deinit();
+		}
+		tmp_confhw = tmp_confhw->next;
 	}
 
 	if(running == 0) {
@@ -1251,7 +1262,7 @@ int main(int argc, char **argv) {
 
 	char buffer[BUFFER_SIZE];
 	int f, itmp, show_help = 0, show_version = 0, show_default = 0;
-	unsigned short match = 0;
+	char *hwfile = NULL;	
 	char *stmp = NULL;
 	char *args = NULL;
 	int port = 0;
@@ -1321,10 +1332,6 @@ int main(int argc, char **argv) {
 		if(settings_read() != 0) {
 			goto clear;
 		}
-	}
-
-	if(settings_find_string("hw-mode", &stmp) == 0) {
-		hw_mode = stmp;
 	}
 
 #ifdef WEBSERVER
@@ -1402,27 +1409,11 @@ int main(int argc, char **argv) {
 	/* Initialize protocols */
 	protocol_init();
 
-	struct hardwares_t *htmp = hardwares;
-	match = 0;
-	while(htmp) {
-		if(strcmp(htmp->listener->id, hw_mode) == 0) {
-			hardware = htmp->listener;
-			match = 1;
-			break;
+	if(settings_find_string("hardware-file", &hwfile) == 0) {
+		hardware_set_file(hwfile);
+		if(hardware_read() == EXIT_FAILURE) {
+			goto clear;
 		}
-		htmp = htmp->next;
-	}
-	
-	if(match == 1) {
-		if(hardware->init) {
-			if(hardware->init() == EXIT_FAILURE) {
-				logprintf(LOG_ERR, "could not initialize %s hardware mode", hardware->id);
-				goto clear;
-			}
-		}
-	} else {
-		logprintf(LOG_NOTICE, "the \"%s\" hw-mode is not supported", hw_mode);
-		goto clear;
 	}
 
 	settings_find_number("port", &port);
@@ -1494,8 +1485,14 @@ int main(int argc, char **argv) {
 	}
 #endif
 
-	if(match == 1) {
-		threads_register("receiver", &receive_code, (void *)NULL);
+	struct conf_hardware_t *tmp_confhw = conf_hardware;
+	while(tmp_confhw) {
+		if(tmp_confhw->hardware->init() == EXIT_FAILURE) {
+			logprintf(LOG_ERR, "could not initialize %s hardware mode", tmp_confhw->hardware->id);
+			goto clear;
+		}
+		threads_register(tmp_confhw->hardware->id, &receive_code, (void *)tmp_confhw->hardware);
+		tmp_confhw = tmp_confhw->next;
 	}
 
 #ifdef WEBSERVER

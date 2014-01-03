@@ -72,7 +72,7 @@ void genSwitchInit(void) {
 
 	protocol_register(&generic_switch);
 	protocol_set_id(generic_switch, "generic_switch");
-	protocol_device_add(generic_switch, "generic_switch", "Generic switches");
+	protocol_device_add(generic_switch, "generic_switch", "Generic Switches");
 	generic_switch->devtype = SWITCH;
 
 	options_add(&generic_switch->options, 't', "on", no_value, config_state, NULL);

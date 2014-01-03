@@ -1,11 +1,16 @@
-#By Philipp Schmitt (philipp<at>schmitt<dot>co)
+#!upstart
 
-[Unit]
-Description=pilight daemon
+description "start pilight daemon"
 
-[Service]
-ExecStart=/usr/bin/pilight-daemon
-Type=forking
+start on net-device-up IFACE=lo
+stop on runlevel [06]
 
-[Install]
-WantedBy=multi-user.target
+pre-start script
+	pilight-daemon
+end script
+
+post-stop script
+    while pgrep pilight-daemon; do
+	    pkill pilight-daemon || :
+    done;
+end script

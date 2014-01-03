@@ -190,7 +190,7 @@ void ds18b20Init(void) {
 
 	protocol_register(&ds18b20);
 	protocol_set_id(ds18b20, "ds18b20");
-	protocol_device_add(ds18b20, "ds18b20", "1-wire temperature sensor");
+	protocol_device_add(ds18b20, "ds18b20", "1-wire Temperature Sensor");
 	ds18b20->devtype = WEATHER;
 	ds18b20->hwtype = SENSOR;
 

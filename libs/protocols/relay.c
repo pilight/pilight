@@ -44,13 +44,7 @@ int relayCreateCode(JsonNode *code) {
 	int gpio = -1;
 	int state = -1;
 	char *tmp;
-	char *hw_mode;
-	char *def = NULL;
-#ifdef HARDWARE_433_GPIO
-	int gpio_in = GPIO_IN_PIN;
-	int gpio_out = GPIO_OUT_PIN;
-#endif	
-	int free_hw_mode = 0;
+	char *def = NULL;	
 	int free_def = 0;
 	int have_error = 0;
 
@@ -68,17 +62,6 @@ int relayCreateCode(JsonNode *code) {
 	else if(json_find_string(code, "on", &tmp) == 0)
 		state=1;
 	
-	if(settings_find_string("hw-mode", &hw_mode) != 0) {
-		hw_mode = malloc(strlen(HW_MODE)+1);
-		strcpy(hw_mode, HW_MODE);
-		free_hw_mode = 1;
-	}
-
-#ifdef HARDWARE_433_GPIO
-	settings_find_number("gpio-receiver", &gpio_in);
-	settings_find_number("gpio-sender", &gpio_out);
-#endif
-	
 	if(gpio == -1 || state == -1) {
 		logprintf(LOG_ERR, "relay: insufficient number of arguments");
 		have_error = 1;
@@ -87,32 +70,24 @@ int relayCreateCode(JsonNode *code) {
 		logprintf(LOG_ERR, "relay: invalid gpio range");
 		have_error = 1;
 		goto clear;
-#ifdef HARDWARE_433_GPIO
-	} else if(strstr(progname, "daemon") != 0 && strcmp(hw_mode, "gpio") == 0 && (gpio == gpio_in || gpio == gpio_out)) {
-		logprintf(LOG_ERR, "relay: gpio's already in use");
-		have_error = 1;
-		goto clear;
-#endif
 	} else {
 		if(strstr(progname, "daemon") != 0) {
-			if(strcmp(hw_mode, "none") != 0) {
-				if(wiringPiSetup() < 0) {
-					logprintf(LOG_ERR, "unable to setup wiringPi") ;
-					return EXIT_FAILURE;
+			if(wiringPiSetup() < 0) {
+				logprintf(LOG_ERR, "unable to setup wiringPi") ;
+				return EXIT_FAILURE;
+			} else {
+				pinMode(gpio, OUTPUT);
+				if(strcmp(def, "off") == 0) {
+					if(state == 1) {
+						digitalWrite(gpio, LOW);
+					} else if(state == 0) {
+						digitalWrite(gpio, HIGH);
+					}
 				} else {
-					pinMode(gpio, OUTPUT);
-					if(strcmp(def, "off") == 0) {
-						if(state == 1) {
-							digitalWrite(gpio, LOW);
-						} else if(state == 0) {
-							digitalWrite(gpio, HIGH);
-						}
-					} else {
-						if(state == 0) {
-							digitalWrite(gpio, LOW);
-						} else if(state == 1) {
-							digitalWrite(gpio, HIGH);
-						}
+					if(state == 0) {
+						digitalWrite(gpio, LOW);
+					} else if(state == 1) {
+						digitalWrite(gpio, HIGH);
 					}
 				}
 			}
@@ -122,7 +97,6 @@ int relayCreateCode(JsonNode *code) {
 	}
 
 clear:
-	if(free_hw_mode) sfree((void *)&hw_mode);
 	if(free_def) sfree((void *)&def);
 	if(have_error) {
 		return EXIT_FAILURE;
@@ -141,7 +115,7 @@ void relayInit(void) {
 
 	protocol_register(&relay);
 	protocol_set_id(relay, "relay");
-	protocol_device_add(relay, "relay", "Control connected relay's");
+	protocol_device_add(relay, "relay", "GPIO connected relay's");
 	relay->devtype = RELAY;
 
 	options_add(&relay->options, 't', "on", no_value, config_state, NULL);
