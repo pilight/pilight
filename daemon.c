@@ -270,7 +270,7 @@ void receiver_create_message(protocol_t *protocol) {
 	}
 }
 
-void receiver_parse_code(int *rawcode, int rawlen, int plslen) {
+void receiver_parse_code(int *rawcode, int rawlen, int plslen, int hwtype) {
 	struct protocol_t *protocol = NULL;
 	struct protocols_t *pnode = protocols;
 	struct protocol_plslen_t *plslengths = NULL;
@@ -279,8 +279,9 @@ void receiver_parse_code(int *rawcode, int rawlen, int plslen) {
 	while(pnode) {
 		protocol = pnode->listener;
 		match = 0;
-		if((((protocol->parseRaw || protocol->parseCode) && protocol->rawlen > 0)
-		   || protocol->parseBinary) && protocol->pulse > 0 && protocol->plslen) {
+		if(protocol->hwtype == hwtype && 
+		  ((((protocol->parseRaw || protocol->parseCode) && protocol->rawlen > 0)
+		   || protocol->parseBinary) && protocol->pulse > 0 && protocol->plslen)) {
 			plslengths = protocol->plslen;
 			while(plslengths) {
 				if((plslen >= ((double)plslengths->length-5) && plslen <= ((double)plslengths->length+5))) {
@@ -500,7 +501,7 @@ void *send_code(void *param) {
 					logprintf(LOG_DEBUG, "successfully send %s code", protocol->id);
 					if(strcmp(protocol->id, "raw") == 0) {
 						int plslen = protocol->raw[protocol->rawlen-1]/PULSE_DIV;
-						receiver_parse_code(protocol->raw, protocol->rawlen, plslen);
+						receiver_parse_code(protocol->raw, protocol->rawlen, plslen, protocol->hwtype);
 					}
 				} else {
 					logprintf(LOG_ERR, "failed to send code");
@@ -508,7 +509,7 @@ void *send_code(void *param) {
 			} else {
 				if(strcmp(protocol->id, "raw") == 0) {
 					int plslen = protocol->raw[protocol->rawlen-1]/PULSE_DIV;
-					receiver_parse_code(protocol->raw, protocol->rawlen, plslen);
+					receiver_parse_code(protocol->raw, protocol->rawlen, plslen, protocol->hwtype);
 				}
 			}
 
@@ -1040,7 +1041,7 @@ void *receive_code(void *param) {
 				if((duration/PULSE_DIV) < 1000) {
 					plslen = duration/PULSE_DIV;
 				}
-				receiver_parse_code(rawcode, rawlen, plslen);
+				receiver_parse_code(rawcode, rawlen, plslen, hardware->type);
 				rawlen = 0;
 			}
 		} else {
