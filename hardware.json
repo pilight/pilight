@@ -1,0 +1,6 @@
+{
+	"433gpio": {
+		"sender": 1,
+		"receiver": 0
+	}
+}
