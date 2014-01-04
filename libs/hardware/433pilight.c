@@ -198,7 +198,8 @@ int pilight433Receive(void) {
 	char buff[255] = {0};
 	if((read(pilight_433_fd_rec, buff, sizeof(buff))) < 0) {
 		usleep(5000*1000);
-		return EXIT_FAILURE;
+		//return EXIT_FAILURE;
+		return 0;
 	}
 	return (atoi(buff));
 }
@@ -251,7 +252,19 @@ unsigned short pilight433Settings(JsonNode *json) {
 	return EXIT_SUCCESS;
 }
 
+int pilight433gc(void) {
+	if(pilight_433_socket) {
+		sfree((void *)&pilight_433_socket);
+	}
+
+	return 1;
+}
+
+
 void pilight433Init(void) {
+	
+	gc_attach(pilight433gc);
+	
 	hardware_register(&pilight433);
 	hardware_set_id(pilight433, "433pilight");
 	
@@ -262,10 +275,10 @@ void pilight433Init(void) {
 	options_add(&pilight433->options, 'p', "shortest-pulse", has_value, config_value, "^[0-9]+$");
 	options_add(&pilight433->options, 'l', "longest-pulse", has_value, config_value, "^[0-9]+$");
 
+	pilight433->type=RF433;
 	pilight433->init=&pilight433HwInit;
 	pilight433->deinit=&pilight433HwDeinit;
 	pilight433->send=&pilight433Send;
 	pilight433->receive=&pilight433Receive;
 	pilight433->settings=&pilight433Settings;
-	pilight433->type=RF433;
 }
