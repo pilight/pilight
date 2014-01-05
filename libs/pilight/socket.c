@@ -33,6 +33,7 @@
 #include "common.h"
 #include "log.h"
 #include "gc.h"
+#include "settings.h"
 #include "socket.h"
 
 char *readBuff = NULL;

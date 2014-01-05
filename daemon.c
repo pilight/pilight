@@ -1025,6 +1025,7 @@ void socket_client_disconnected(int i) {
 void *receive_code(void *param) {
 	int plslen = 0, rawlen = 0;
 	int rawcode[255] = {0};
+	int duration = 0;
 
 	struct hardware_t *hardware = (hardware_t *)param;
 	

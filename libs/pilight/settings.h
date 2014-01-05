@@ -19,7 +19,6 @@
 #ifndef _SETTINGS_H_
 #define _SETTINGS_H_
 
-#include "protocol.h"
 #include "json.h"
 
 typedef struct settings_t {

@@ -19,8 +19,6 @@
 #ifndef _SOCKETS_H_
 #define _SOCKETS_H_
 
-#include "settings.h"
-
 typedef struct socket_callback_t {
     void (*client_connected_callback)(int);
     void (*client_disconnected_callback)(int);

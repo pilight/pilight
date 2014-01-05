@@ -116,7 +116,7 @@ extern "C" {
 #endif
 
 // Internal
-
+extern int wiringPiGetPin (int pin);
 extern int wiringPiFailure (int fatal, const char *message, ...) ;
 
 // Core wiringPi functions

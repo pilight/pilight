@@ -153,7 +153,6 @@ close:
 		socket_close(sockfd);
 	}
 
-	protocol_gc();
 	options_gc();
 	sfree((void *)&progname);
 	sfree((void *)&message);

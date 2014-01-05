@@ -225,7 +225,6 @@ static int sysFds [64] =
 
 static void (*isrFunctions [64])(void) ;
 
-
 // Doing it the Arduino way with lookup tables...
 //	Yes, it's probably more innefficient than all the bit-twidling, but it
 //	does tend to make it all a bit clearer. At least to me!
@@ -266,7 +265,6 @@ static int pinToGpioR2 [64] =
   -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,	// ... 47
   -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,	// ... 63
 } ;
-
 
 // physToGpio:
 //	Take a physical pin (1 through 26) and re-map it to the BCM_GPIO pin
@@ -519,6 +517,20 @@ static uint8_t gpioToClkDiv [] =
  *	Fail. Or not.
  *********************************************************************************
  */
+
+int wiringPiGetPin (int pin)
+{	
+	int boardRev;
+	
+	boardRev = piBoardRev();
+	if (boardRev == 1) {
+		pinToGpio =  pinToGpioR1 ;
+	} else{
+		pinToGpio =  pinToGpioR2 ;
+	}
+	
+	return pinToGpio[pin & 63];
+}
 
 int wiringPiFailure (int fatal, const char *message, ...)
 {

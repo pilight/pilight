@@ -22,7 +22,6 @@
 #include <syslog.h>
 
 #include "../../pilight.h"
-#include "log.h"
 
 char *progname;
 int filelog;

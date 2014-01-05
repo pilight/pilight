@@ -26,6 +26,7 @@
 #include "../../pilight.h"
 #include "common.h"
 #include "log.h"
+#include "gc.h"
 #include "hardware.h"
 #include "json.h"
 #include "wiringPi.h"
@@ -52,74 +53,26 @@ int pilight_433_svp = 0;
 int pilight_433_lvp = 0;
 char *pilight_433_socket = NULL;
 
-
-static int *pinToGpio ;
-
-static int pinToGpioR1 [64] =
-{
-  17, 18, 21, 22, 23, 24, 25, 4,        // From the Original Wiki - GPIO 0 through 7:        wpi  0 -  7
-   0,  1,                                // I2C  - SDA0, SCL0                                wpi  8 -  9
-   8,  7,                                // SPI  - CE1, CE0                                wpi 10 - 11
-  10,  9, 11,                                 // SPI  - MOSI, MISO, SCLK                        wpi 12 - 14
-  14, 15,                                // UART - Tx, Rx                                wpi 15 - 16
-
-// Padding:
-
-      -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,        // ... 31
-  -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,        // ... 47
-  -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,        // ... 63
-} ;
-
-static int pinToGpioR2 [64] =
-{
-  17, 18, 27, 22, 23, 24, 25, 4,        // From the Original Wiki - GPIO 0 through 7:        wpi  0 -  7
-   2,  3,                                // I2C  - SDA0, SCL0                                wpi  8 -  9
-   8,  7,                                // SPI  - CE1, CE0                                wpi 10 - 11
-  10,  9, 11,                                 // SPI  - MOSI, MISO, SCLK                        wpi 12 - 14
-  14, 15,                                // UART - Tx, Rx                                wpi 15 - 16
-  28, 29, 30, 31,                        // New GPIOs 8 though 11                        wpi 17 - 20
-
-// Padding:
-
-                      -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,        // ... 31
-  -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,        // ... 47
-  -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,        // ... 63
-} ;
-
-
-int getWiringPiPin(int pin)
-{	
-	int boardRev;
-	
-	boardRev = piBoardRev () ;
-	if (boardRev == 1){
-		pinToGpio =  pinToGpioR1 ;
-	}
-	else{
-		pinToGpio =  pinToGpioR2 ;
-	}
-	
-	return pinToGpio[pin & 63];
-}
-
-
 unsigned short pilight433HwInit(void) {
 	int filter_on = 1;
 
 	if(pilight_433_prefilter == 1){
 		filter_on = 0;
 	}
-	
+
+	int pin_in = wiringPiGetPin(pilight_433_in);
+	int pin_out = wiringPiGetPin(pilight_433_out);
+
 	if(pilight_433_trans_initialized == 0) {
 		if((pilight_433_fd_trans = open(pilight_433_socket, O_WRONLY)) < 0) {
 			logprintf(LOG_ERR, "could not open %s", pilight_433_socket);
 			return EXIT_FAILURE;
 		} else {
 			
-			ioctl(pilight_433_fd_trans, IOCTL_GPIO_OUT, getWiringPiPin(pilight_433_out));
+			ioctl(pilight_433_fd_trans, IOCTL_GPIO_OUT, pin_out);
 			
 			if(ioctl(pilight_433_fd_trans, IOCTL_START_TRANSMITTER, 0) < 0){
-				logprintf(LOG_ERR, "could not start pilight transmitter on pin %d",getWiringPiPin(pilight_433_out));
+				logprintf(LOG_ERR, "could not start pilight transmitter on pin %d", pin_out);
 				return EXIT_FAILURE;
 			}
 			
@@ -134,12 +87,12 @@ unsigned short pilight433HwInit(void) {
 			return EXIT_FAILURE;
 		} else {
 			
-			ioctl(pilight_433_fd_rec, IOCTL_GPIO_IN, getWiringPiPin(pilight_433_in));
+			ioctl(pilight_433_fd_rec, IOCTL_GPIO_IN, pin_in);
 			ioctl(pilight_433_fd_rec, IOCTL_LONGEST_V_P, pilight_433_lvp);
 			ioctl(pilight_433_fd_rec, IOCTL_SHORTEST_V_P, pilight_433_svp);
 			ioctl(pilight_433_fd_rec, IOCTL_FILTER_ON, filter_on);
 			if(ioctl(pilight_433_fd_rec, IOCTL_START_RECEIVER, 0) < 0){
-				logprintf(LOG_ERR, "could not start pilight receiver on pin %d",getWiringPiPin(pilight_433_in));
+				logprintf(LOG_ERR, "could not start pilight receiver on pin %d", pin_in);
 				return EXIT_FAILURE;
 			}
 			
