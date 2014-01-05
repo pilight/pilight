@@ -198,7 +198,6 @@ int pilight433Receive(void) {
 	char buff[255] = {0};
 	if((read(pilight_433_fd_rec, buff, sizeof(buff))) < 0) {
 		usleep(5000*1000);
-		//return EXIT_FAILURE;
 		return 0;
 	}
 	return (atoi(buff));
@@ -257,7 +256,7 @@ int pilight433gc(void) {
 		sfree((void *)&pilight_433_socket);
 	}
 
-	return 1;
+	return EXIT_SUCCESS;
 }
 
 
