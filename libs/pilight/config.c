@@ -1181,7 +1181,7 @@ int config_parse_devices(JsonNode *jdevices, struct conf_devices_t *device) {
 
 	int i = 0, have_error = 0, valid_setting = 0, match = 0, has_state = 0;
 	/* Check for any duplicate fields */
-	int nrname = 0, nrprotocol = 0, nrstate = 0, nrorder = 0, nrsettings = 0;
+	int nrname = 0, nrprotocol = 0, nrstate = 0, nrorder = 0, nrsettings = 0, nruuid = 0;
 
 	jsettings = json_first_child(jdevices);
 	while(jsettings) {
@@ -1190,6 +1190,9 @@ int config_parse_devices(JsonNode *jdevices, struct conf_devices_t *device) {
 		if(strcmp(jsettings->key, "name") == 0) {
 			nrname++;
 		}
+		if(strcmp(jsettings->key, "uuid") == 0) {
+			nruuid++;
+		}		
 		if(strcmp(jsettings->key, "order") == 0) {
 			nrorder++;
 		}		
@@ -1202,7 +1205,7 @@ int config_parse_devices(JsonNode *jdevices, struct conf_devices_t *device) {
 		if(strcmp(jsettings->key, "settings") == 0) {
 			nrsettings++;
 		}
-		if(nrstate > 1 || nrprotocol > 1 || nrname > 1 || nrorder > 1 || nrsettings > 1) {
+		if(nrstate > 1 || nrprotocol > 1 || nrname > 1 || nrorder > 1 || nrsettings > 1 || nruuid > 1) {
 			logprintf(LOG_ERR, "settting #%d \"%s\" of \"%s\", duplicate", i, jsettings->key, device->id);
 			have_error = 1;
 			goto clear;
@@ -1232,10 +1235,14 @@ int config_parse_devices(JsonNode *jdevices, struct conf_devices_t *device) {
 			config_save_setting(i, jsettings, snode);
 		
 		/* The protocol and name settings are already saved in the device struct */
+		} else if(strcmp(jsettings->key, "uuid") == 0 && jsettings->tag == JSON_STRING) {
+			device->uuid = malloc(strlen(jsettings->string_)+1);
+			strcpy(device->uuid, jsettings->string_);
 		} else if(!((strcmp(jsettings->key, "name") == 0 && jsettings->tag == JSON_STRING)
 			|| (strcmp(jsettings->key, "protocol") == 0 && jsettings->tag == JSON_ARRAY)
 			|| (strcmp(jsettings->key, "type") == 0 && jsettings->tag == JSON_NUMBER)
-			|| (strcmp(jsettings->key, "order") == 0 && jsettings->tag == JSON_NUMBER))) {
+			|| (strcmp(jsettings->key, "order") == 0 && jsettings->tag == JSON_NUMBER)
+			|| (strcmp(jsettings->key, "uuid") == 0 && jsettings->tag == JSON_STRING))) {
 
 			/* Check for duplicate settings */
 			tmp_settings = conf_settings;
