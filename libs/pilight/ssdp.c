@@ -91,17 +91,19 @@ char *ssdp_getdistroname(void) {
 void ssdp_getethmac(void) {
 #if defined(SIOCGIFHWADDR)
 	if(!ssdp_mac) {
+		int fd = socket(PF_INET, SOCK_DGRAM, IPPROTO_IP);
 		ssdp_mac = malloc(13);
 		memset(ssdp_mac, '\0', 13);
 		struct ifreq s;
 
 		strcpy(s.ifr_name, "eth0");
-		if(ioctl(ssdp_socket, SIOCGIFHWADDR, &s) == 0) {
+		if(ioctl(fd, SIOCGIFHWADDR, &s) == 0) {
 			int i;
 			for(i = 0; i < 12; i+=2) {
 				sprintf(&ssdp_mac[i], "%02x", (unsigned char)s.ifr_addr.sa_data[i/2]);
 			}
 		}
+		close(fd);
 	}
 #elif defined(HAVE_GETIFADDRS)
 	ifaddrs* iflist;
@@ -118,17 +120,19 @@ void ssdp_getethmac(void) {
     }
 #elif defined(SIOCGIFADDR)
 	if(!ssdp_mac) {
+		int fd = socket(PF_INET, SOCK_DGRAM, IPPROTO_IP);
 		ssdp_mac = malloc(13);
 		memset(ssdp_mac, '\0', 13);
 		struct ifreq s;
 
 		strcpy(s.ifr_name, "re0");
-		if(ioctl(ssdp_socket, SIOCGIFADDR, &s) == 0) {
+		if(ioctl(fd, SIOCGIFADDR, &s) == 0) {
 			int i;
 			for(i = 0; i < 12; i+=2) {
 				sprintf(&ssdp_mac[i], "%02x", (unsigned char)s.ifr_addr.sa_data[i/2]);
 			}
 		}
+		close(fd);
 	}
 #endif
 }
@@ -157,6 +161,7 @@ char *ssdp_genuuid(void) {
 
 	sprintf(upnp_id, "%04X-%02X-%02X-%02X-%04X%02X", (a&0xFFFF), (b&0xFF), (c&0xFF), (d&0xFF), (e&0xFFFF), (f&0xFF));
 
+	sfree((void *)&ssdp_mac);
 	return upnp_id;
 }
 
@@ -322,7 +327,6 @@ void *ssdp_wait(void *param) {
 	sfree((void *)&id);
 	sfree((void *)&ssdp_distro);
 	sfree((void *)&ssdp_hostname);
-	sfree((void *)&ssdp_mac);
 
 	while(ssdp_loop) {
 		memset(message, '\0', BUFFER_SIZE);

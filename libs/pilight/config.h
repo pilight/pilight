@@ -80,6 +80,7 @@ struct conf_settings_t {
 
 struct conf_devices_t {
 	char *id;
+	char *uuid;
 	char *name;
 	struct protocols_t *protocols;
 	struct conf_settings_t *settings;

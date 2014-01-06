@@ -114,8 +114,6 @@ int bcqueue_number = 0;
 /* The pid_file and pid of this daemon */
 char *pid_file;
 pid_t pid;
-/* The duration of the received pulse */
-int duration = 0;
 /* The number of receivers connected */
 int receivers = 0;
 /* Daemonize or not */
@@ -144,6 +142,8 @@ unsigned short main_loop = 1;
 unsigned short valid_config = 0;
 /* Reset repeats after a certian amount of time */
 struct timeval tv;
+/* Store the uuid of this Raspberry Pi */
+char *pilight_uuid = NULL;
 
 #ifdef WEBSERVER
 /* Do we enable the webserver */
@@ -167,6 +167,9 @@ void broadcast_queue(char *protoname, JsonNode *json) {
 	struct bcqueue_t *bnode = malloc(sizeof(struct bcqueue_t));
 	bnode->id = 1000000 * (unsigned int)tcurrent.tv_sec + (unsigned int)tcurrent.tv_usec;
 
+	if(pilight_uuid) {
+		json_append_member(json, "uuid", json_mkstring(pilight_uuid));
+	}
 	char *jstr = json_stringify(json, NULL);
 	bnode->jmessage = json_decode(jstr);
 	sfree((void *)&jstr);
@@ -279,7 +282,7 @@ void receiver_parse_code(int *rawcode, int rawlen, int plslen, int hwtype) {
 	while(pnode) {
 		protocol = pnode->listener;
 		match = 0;
-		if(protocol->hwtype == hwtype && 
+		if((protocol->hwtype == hwtype || hwtype == -1) && 
 		  ((((protocol->parseRaw || protocol->parseCode) && protocol->rawlen > 0)
 		   || protocol->parseBinary) && protocol->pulse > 0 && protocol->plslen)) {
 			plslengths = protocol->plslen;
@@ -501,7 +504,7 @@ void *send_code(void *param) {
 					logprintf(LOG_DEBUG, "successfully send %s code", protocol->id);
 					if(strcmp(protocol->id, "raw") == 0) {
 						int plslen = protocol->raw[protocol->rawlen-1]/PULSE_DIV;
-						receiver_parse_code(protocol->raw, protocol->rawlen, plslen, protocol->hwtype);
+						receiver_parse_code(protocol->raw, protocol->rawlen, plslen, -1);
 					}
 				} else {
 					logprintf(LOG_ERR, "failed to send code");
@@ -509,7 +512,7 @@ void *send_code(void *param) {
 			} else {
 				if(strcmp(protocol->id, "raw") == 0) {
 					int plslen = protocol->raw[protocol->rawlen-1]/PULSE_DIV;
-					receiver_parse_code(protocol->raw, protocol->rawlen, plslen, protocol->hwtype);
+					receiver_parse_code(protocol->raw, protocol->rawlen, plslen, -1);
 				}
 			}
 
@@ -1230,6 +1233,9 @@ int main_gc(void) {
 	socket_gc();
 
 	sfree((void *)&progname);
+	if(pilight_uuid) {
+		sfree((void *)&pilight_uuid);
+	}
 	return 0;
 }
 
@@ -1249,6 +1255,8 @@ int main(int argc, char **argv) {
 
 	/* Catch all exit signals for gc */
 	gc_catch();
+
+	pilight_uuid = ssdp_genuuid();
 
 	loglevel = LOG_INFO;
 

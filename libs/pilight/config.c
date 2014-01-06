@@ -30,10 +30,13 @@
 #include "log.h"
 #include "options.h"
 #include "protocol.h"
+#include "ssdp.h"
 
 #ifdef UPDATE
 	#include "update.h"
 #endif
+
+char *config_uuid = NULL;
 
 int config_update(char *protoname, JsonNode *json, JsonNode **out) {
 	/* The pointer to the config locations */
@@ -304,6 +307,9 @@ int config_update(char *protoname, JsonNode *json, JsonNode **out) {
 	}
 	json_append_member(rroot, "origin", json_mkstring("config"));
 	json_append_member(rroot, "type",  json_mknumber((int)protocol->devtype));
+	if(config_uuid) {
+		json_append_member(rroot, "uuid",  json_mkstring(config_uuid));
+	}
 	json_append_member(rroot, "devices", rdev);
 	json_append_member(rroot, "values", rval);
 
@@ -553,6 +559,9 @@ JsonNode *config2json(unsigned short internal) {
 				tmp_protocols = tmp_protocols->next;
 			}
 			json_append_member(jdevice, "protocol", jprotocols);
+			if(internal) {
+				json_append_member(jdevice, "uuid", json_mkstring(tmp_devices->uuid));
+			}
 			json_append_member(jdevice, "id", json_mkarray());
 
 			has_settings = 0;
@@ -1437,6 +1446,10 @@ int config_parse_locations(JsonNode *jlocations, struct conf_locations_t *locati
 				}
 
 				dnode = malloc(sizeof(struct conf_devices_t));
+				if(config_uuid) {				
+					dnode->uuid = malloc(strlen(config_uuid)+1);
+					strcpy(dnode->uuid, config_uuid);
+				}
 				dnode->id = malloc(strlen(jdevices->key)+1);
 				dnode->protocols = NULL;
 				strcpy(dnode->id, jdevices->key);
@@ -1608,7 +1621,10 @@ int config_write(char *content) {
 
 int config_gc(void) {
 	sfree((void *)&configfile);
-	
+	if(config_uuid) {
+		sfree((void *)&config_uuid);
+	}
+
 	struct conf_locations_t *ltmp;
 	struct conf_devices_t *dtmp;
 	struct conf_settings_t *stmp;
@@ -1644,6 +1660,7 @@ int config_gc(void) {
 			sfree((void *)&dtmp->settings);
 			sfree((void *)&dtmp->id);
 			sfree((void *)&dtmp->name);
+			sfree((void *)&dtmp->uuid);
 			ltmp->devices = ltmp->devices->next;
 			sfree((void *)&dtmp);
 		}
@@ -1696,6 +1713,8 @@ int config_read() {
 
 	sfree((void *)&content);
 
+	config_uuid = ssdp_genuuid();	
+	
 	if(config_parse(root) == 0 && config_validate_settings() == 0) {
 		JsonNode *joutput = config2json(0);
 		char *output = json_stringify(joutput, "\t");
