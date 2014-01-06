@@ -259,8 +259,8 @@ function createDimmerElement(sTabId, sDevId, aValues) {
 
 function createWeatherElement(sTabId, sDevId, aValues) {
 	aDecimals[sTabId+'_'+sDevId] = aValues['settings']['decimals'];
-	aValues['temperature'] /= Math.pow(10, aValues['settings']['decimals']);
-	aValues['humidity'] /= Math.pow(10, aValues['settings']['decimals']);
+	aValues['temperature'] /= Math.pow(10, aValues['settings']['decimals']).toFixed(aValues['settings']['decimals']);
+	aValues['humidity'] /= Math.pow(10, aValues['settings']['decimals']).toFixed(aValues['settings']['decimals']);
 	if($('#'+sTabId+'_'+sDevId+'_weather').length == 0) {
 		if(bShowTabs) {
 			oTab = $('#'+sTabId).find('ul');
@@ -427,10 +427,10 @@ function parseData(data) {
 						}
 					} else if(iType == 3) {
 						if(vindex == 'temperature' && $('#'+lindex+'_'+dvalues+'_temp')) {
-							vvalues /= Math.pow(10, aDecimals[lindex+'_'+dvalues]);
+							vvalues /= Math.pow(10, aDecimals[lindex+'_'+dvalues]).toFixed(aDecimals[lindex+'_'+dvalues]);
 							$('#'+lindex+'_'+dvalues+'_temp').text(vvalues);
 						} else if(vindex == 'humidity' && $('#'+lindex+'_'+dvalues+'_humi')) {
-							vvalues /= Math.pow(10, aDecimals[lindex+'_'+dvalues]);
+							vvalues /= Math.pow(10, aDecimals[lindex+'_'+dvalues]).toFixed(aDecimals[lindex+'_'+dvalues]);
 							$('#'+lindex+'_'+dvalues+'_humi').text(vvalues);
 						} else if(vindex == 'battery' && $('#'+lindex+'_'+dvalues+'_batt')) {
 							if(vvalues == 1) {
