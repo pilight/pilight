@@ -177,7 +177,7 @@ int revCreateCode(JsonNode *code) {
 	if(strcmp(id, "-1") == 0 || unit == -1 || state == -1) {
 		logprintf(LOG_ERR, "rev_switch: insufficient number of arguments");
 		return EXIT_FAILURE;
-	} else if((int)(id[0]) < 65 || (int)(id[0]) > 69) {
+	} else if((int)(id[0]) < 65 || (int)(id[0]) > 70) {
 		logprintf(LOG_ERR, "rev_switch: invalid id range");
 		return EXIT_FAILURE;
 	} else if(atoi(&id[1]) < 0 || atoi(&id[1]) > 31) {
@@ -210,6 +210,7 @@ void revInit(void) {
 	protocol_set_id(rev_switch, "rev_switch");	
 	protocol_device_add(rev_switch, "rev_switch", "REV Switches");
 	protocol_plslen_add(rev_switch, 319); 
+	protocol_plslen_add(rev_switch, 258); 
 	rev_switch->devtype = SWITCH;
 	rev_switch->hwtype = RF433;
 	rev_switch->pulse = 3;
@@ -219,7 +220,7 @@ void revInit(void) {
 	options_add(&rev_switch->options, 't', "on", no_value, config_state, NULL);
 	options_add(&rev_switch->options, 'f', "off", no_value, config_state, NULL);
 	options_add(&rev_switch->options, 'u', "unit", has_value, config_id,  "^(3[012]?|[012][0-9]|[0-9]{1})$");
-	options_add(&rev_switch->options, 'i', "id", has_value, config_id, "^[ABCDE](3[012]?|[012][0-9]|[0-9]{1})$");
+	options_add(&rev_switch->options, 'i', "id", has_value, config_id, "^[ABCDEF](3[012]?|[012][0-9]|[0-9]{1})$");
 
 	protocol_setting_add_string(rev_switch, "states", "on,off");
 	protocol_setting_add_number(rev_switch, "readonly", 0);
