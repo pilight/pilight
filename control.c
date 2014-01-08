@@ -70,9 +70,9 @@ int main(int argc, char **argv) {
 	struct conf_locations_t *slocation = NULL;
 	struct conf_devices_t *sdevice = NULL;
 	int has_values = 0;
-	
+
 	char *server = NULL;
-	unsigned short port = 0;	
+	unsigned short port = 0;
 
 	JsonNode *json = NULL;
 	JsonNode *jconfig = NULL;
@@ -87,7 +87,7 @@ int main(int argc, char **argv) {
 	options_add(&options, 's', "state", has_value, 0,  NULL);
 	options_add(&options, 'v', "values", has_value, 0,  NULL);
 	options_add(&options, 'S', "server", has_value, 0, "^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]).){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$");
-	options_add(&options, 'P', "port", has_value, 0, "[0-9]{1,4}");	
+	options_add(&options, 'P', "port", has_value, 0, "[0-9]{1,4}");
 
 	/* Store all CLI arguments for later usage
 	   and also check if the CLI arguments where
@@ -133,7 +133,7 @@ int main(int argc, char **argv) {
 			break;
 			case 'P':
 				port = (unsigned short)atoi(optarg);
-			break;			
+			break;
 			default:
 				printf("Usage: %s -l location -d device -s state\n", progname);
 				exit(EXIT_SUCCESS);

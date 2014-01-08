@@ -101,7 +101,7 @@ void gpio433Init(void) {
 
 	options_add(&gpio433->options, 'r', "receiver", has_value, config_value, "^[0-9]+$");
 	options_add(&gpio433->options, 's', "sender", has_value, config_value, "^[0-9]+$");
-	
+
 	gpio433->type=RF433;
 	gpio433->init=&gpio433HwInit;
 	gpio433->deinit=&gpio433HwDeinit;

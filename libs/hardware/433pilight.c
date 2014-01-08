@@ -68,25 +68,25 @@ unsigned short pilight433HwInit(void) {
 			logprintf(LOG_ERR, "could not open %s", pilight_433_socket);
 			return EXIT_FAILURE;
 		} else {
-			
+
 			ioctl(pilight_433_fd_trans, IOCTL_GPIO_OUT, pin_out);
-			
+
 			if(ioctl(pilight_433_fd_trans, IOCTL_START_TRANSMITTER, 0) < 0){
 				logprintf(LOG_ERR, "could not start pilight transmitter on pin %d", pin_out);
 				return EXIT_FAILURE;
 			}
-			
+
 			logprintf(LOG_DEBUG, "initialized pilight transmitter module");
 			pilight_433_trans_initialized = 1;
 		}
 	}
-	
+
 	if(pilight_433_rec_initialized == 0) {
 		if((pilight_433_fd_rec = open(pilight_433_socket, O_RDONLY)) < 0) {
 			logprintf(LOG_ERR, "could not open %s", pilight_433_socket);
 			return EXIT_FAILURE;
 		} else {
-			
+
 			ioctl(pilight_433_fd_rec, IOCTL_GPIO_IN, pin_in);
 			ioctl(pilight_433_fd_rec, IOCTL_LONGEST_V_P, pilight_433_lvp);
 			ioctl(pilight_433_fd_rec, IOCTL_SHORTEST_V_P, pilight_433_svp);
@@ -95,12 +95,12 @@ unsigned short pilight433HwInit(void) {
 				logprintf(LOG_ERR, "could not start pilight receiver on pin %d", pin_in);
 				return EXIT_FAILURE;
 			}
-			
+
 			logprintf(LOG_DEBUG, "initialized pilight receiver module");
 			pilight_433_rec_initialized = 1;
 		}
 	}
-	
+
 	return EXIT_SUCCESS;
 }
 
@@ -114,7 +114,7 @@ unsigned short pilight433HwDeinit(void) {
 		logprintf(LOG_DEBUG, "deinitialized pilight receiver module");
 		pilight_433_rec_initialized	= 0;
 	}
-	
+
 	if(pilight_433_trans_initialized == 1) {
 		ioctl(pilight_433_fd_trans, IOCTL_STOP_TRANSMITTER, 0);
 		if(pilight_433_fd_trans != 0) {
@@ -132,15 +132,15 @@ unsigned short pilight433HwDeinit(void) {
 int pilight433Send(int *code) {
 	int ret = 0;
 	unsigned int code_len = 0;
-	
+
 	while(code[code_len]) {
 		code_len++;
 	}
 	code_len++;
 	code_len*=sizeof(int);
-	
+
 	ret = write(pilight_433_fd_trans, code, code_len);
-	
+
 	if(ret == code_len){
 		return EXIT_SUCCESS;
 	}
@@ -169,7 +169,7 @@ unsigned short pilight433Settings(JsonNode *json) {
 		if(json->tag == JSON_NUMBER) {
 		pilight_433_in = (int)json->number_;
 		} else {
-			return EXIT_FAILURE;	
+			return EXIT_FAILURE;
 		}
 	}
 	if(strcmp(json->key, "receiver") == 0) {
@@ -200,7 +200,7 @@ unsigned short pilight433Settings(JsonNode *json) {
 			return EXIT_FAILURE;
 		}
 	}
-	
+
 	return EXIT_SUCCESS;
 }
 
@@ -214,12 +214,12 @@ int pilight433gc(void) {
 
 
 void pilight433Init(void) {
-	
+
 	gc_attach(pilight433gc);
-	
+
 	hardware_register(&pilight433);
 	hardware_set_id(pilight433, "433pilight");
-	
+
 	options_add(&pilight433->options, 'd', "socket", has_value, config_value, "^/dev/([a-z]+)[0-9]+$");
 	options_add(&pilight433->options, 'r', "receiver", has_value, config_value, "^[0-9]+$");
 	options_add(&pilight433->options, 's', "sender", has_value, config_value, "^[0-9]+$");

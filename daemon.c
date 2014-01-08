@@ -282,7 +282,7 @@ void receiver_parse_code(int *rawcode, int rawlen, int plslen, int hwtype) {
 	while(pnode) {
 		protocol = pnode->listener;
 		match = 0;
-		if((protocol->hwtype == hwtype || hwtype == -1) && 
+		if((protocol->hwtype == hwtype || hwtype == -1) &&
 		  ((((protocol->parseRaw || protocol->parseCode) && protocol->rawlen > 0)
 		   || protocol->parseBinary) && protocol->pulse > 0 && protocol->plslen)) {
 			plslengths = protocol->plslen;
@@ -313,7 +313,7 @@ void receiver_parse_code(int *rawcode, int rawlen, int plslen, int hwtype) {
 									proto->raw[x] = protocol->raw[x];
 								}
 								proto->repeats = protocol->repeats;
-								/* Not all protocols use the same parsing functions when they conflict. 
+								/* Not all protocols use the same parsing functions when they conflict.
 								   Need to fix */
 								if(proto->parseRaw) {
 									proto->parseRaw();
@@ -331,7 +331,7 @@ void receiver_parse_code(int *rawcode, int rawlen, int plslen, int hwtype) {
 				/* Convert the raw codes to one's and zero's */
 				for(x=0;x<(int)(double)rawlen;x++) {
 					protocol->pCode[x] = protocol->code[x];
-					
+
 					if(protocol->raw[x] >= (plslengths->length * (1+protocol->pulse)/2)) {
 						protocol->code[x] = 1;
 					} else {
@@ -378,7 +378,7 @@ void receiver_parse_code(int *rawcode, int rawlen, int plslen, int hwtype) {
 										proto->code[x] = protocol->code[x];
 									}
 									proto->repeats = protocol->repeats;
-									/* Not all protocols use the same parsing functions when they conflict. 
+									/* Not all protocols use the same parsing functions when they conflict.
 									   Need to fix */
 									if(proto->parseCode) {
 										proto->parseCode();
@@ -431,7 +431,7 @@ void receiver_parse_code(int *rawcode, int rawlen, int plslen, int hwtype) {
 											proto->binary[z] = protocol->binary[z];
 										}
 										proto->repeats = protocol->repeats;
-										/* Not all protocols use the same parsing functions when they conflict. 
+										/* Not all protocols use the same parsing functions when they conflict.
 										   Need to fix */
 										if(proto->parseBinary) {
 											proto->parseBinary();
@@ -1031,7 +1031,7 @@ void *receive_code(void *param) {
 	int duration = 0;
 
 	struct hardware_t *hardware = (hardware_t *)param;
-	
+
 	while(main_loop && hardware->receive) {
 		if(sending == 0) {
 			duration = hardware->receive();
@@ -1180,7 +1180,7 @@ int main_gc(void) {
 	main_loop = 0;
 
 	struct conf_hardware_t *tmp_confhw = conf_hardware;
-	while(tmp_confhw) {	
+	while(tmp_confhw) {
 		if(tmp_confhw->hardware->deinit) {
 			tmp_confhw->hardware->deinit();
 		}
@@ -1272,7 +1272,7 @@ int main(int argc, char **argv) {
 
 	char buffer[BUFFER_SIZE];
 	int f, itmp, show_help = 0, show_version = 0, show_default = 0;
-	char *hwfile = NULL;	
+	char *hwfile = NULL;
 	char *stmp = NULL;
 	char *args = NULL;
 	int port = 0;

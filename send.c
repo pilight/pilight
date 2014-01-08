@@ -72,9 +72,9 @@ int main(int argc, char **argv) {
 	int version = 0;
 	/* Do we need to print the protocol help */
 	int protohelp = 0;
-	
+
 	char *server = NULL;
-	unsigned short port = 0;	
+	unsigned short port = 0;
 
 	/* Hold the final protocol struct */
 	protocol_t *protocol = NULL;
@@ -120,7 +120,7 @@ int main(int argc, char **argv) {
 			break;
 			case 'P':
 				port = (unsigned short)atoi(args);
-			break;			
+			break;
 			default:;
 		}
 	}

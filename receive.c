@@ -53,8 +53,8 @@ int main(int argc, char **argv) {
 	JsonNode *json = NULL;
 
 	char *server = NULL;
-	unsigned short port = 0;	
-	
+	unsigned short port = 0;
+
     int sockfd = 0;
     char *recvBuff = NULL;
 	char *message = NULL;
@@ -93,7 +93,7 @@ int main(int argc, char **argv) {
 			break;
 			case 'P':
 				port = (unsigned short)atoi(args);
-			break;			
+			break;
 			default:
 				printf("Usage: %s -l location -d device\n", progname);
 				exit(EXIT_SUCCESS);

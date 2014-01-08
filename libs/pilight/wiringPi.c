@@ -519,16 +519,16 @@ static uint8_t gpioToClkDiv [] =
  */
 
 int wiringPiGetPin (int pin)
-{	
+{
 	int boardRev;
-	
+
 	boardRev = piBoardRev();
 	if (boardRev == 1) {
 		pinToGpio =  pinToGpioR1 ;
 	} else{
 		pinToGpio =  pinToGpioR2 ;
 	}
-	
+
 	return pinToGpio[pin & 63];
 }
 

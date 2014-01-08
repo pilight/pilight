@@ -345,7 +345,6 @@ int webserver_callback_http(struct libwebsocket_context *webcontext, struct libw
 					sprintf(request, "%s/%s%s", webserver_root, webgui_tpl, (const char *)in);
 				}
 			}
-			printf("%s\n", request);
 			char *dot = NULL;
 			/* Retrieve the extension of the requested file and create a mimetype accordingly */
 			dot = strrchr(request, '.');
@@ -494,7 +493,7 @@ int webserver_callback_http(struct libwebsocket_context *webcontext, struct libw
 					return 0;
 				}
 			}
-		break;		
+		break;
 		case LWS_CALLBACK_ESTABLISHED:
 		case LWS_CALLBACK_CLIENT_CONNECTION_ERROR:
 		case LWS_CALLBACK_CLIENT_FILTER_PRE_ESTABLISH:
@@ -575,7 +574,7 @@ int webserver_callback_data(struct libwebsocket_context *webcontext, struct libw
 				if (m < l) {
 					logprintf(LOG_ERR, "(webserver) %d writing to socket", l);
 					return -1;
-				}			
+				}
 				return 0;
 			}
 		}
@@ -593,7 +592,7 @@ int webserver_callback_data(struct libwebsocket_context *webcontext, struct libw
 					return 0;
 				}
 			}
-		break;		
+		break;
 		case LWS_CALLBACK_HTTP:
 		case LWS_CALLBACK_HTTP_FILE_COMPLETION:
 		case LWS_CALLBACK_HTTP_WRITEABLE:
@@ -649,7 +648,7 @@ void *webserver_clientize(void *param) {
 	char *message = NULL;
 	struct ssdp_list_t *ssdp_list;
 
-	
+
 	if(ssdp_seek(&ssdp_list) == -1) {
 		logprintf(LOG_DEBUG, "no pilight ssdp connections found");
 		server = malloc(10);
