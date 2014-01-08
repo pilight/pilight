@@ -70,6 +70,9 @@ int main(int argc, char **argv) {
 	struct conf_locations_t *slocation = NULL;
 	struct conf_devices_t *sdevice = NULL;
 	int has_values = 0;
+	
+	char *server = NULL;
+	unsigned short port = 0;	
 
 	JsonNode *json = NULL;
 	JsonNode *jconfig = NULL;
@@ -83,6 +86,8 @@ int main(int argc, char **argv) {
 	options_add(&options, 'd', "device", has_value, 0,  NULL);
 	options_add(&options, 's', "state", has_value, 0,  NULL);
 	options_add(&options, 'v', "values", has_value, 0,  NULL);
+	options_add(&options, 'S', "server", has_value, 0, "^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]).){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$");
+	options_add(&options, 'P', "port", has_value, 0, "[0-9]{1,4}");	
 
 	/* Store all CLI arguments for later usage
 	   and also check if the CLI arguments where
@@ -97,6 +102,8 @@ int main(int argc, char **argv) {
 			case 'H':
 				printf("\t -H --help\t\t\tdisplay this message\n");
 				printf("\t -V --version\t\t\tdisplay version\n");
+				printf("\t -S --server=x.x.x.x\t\tconnect to server address\n");
+				printf("\t -P --port=xxxx\t\t\tconnect to server port\n");
 				printf("\t -l --location=location\t\tthe location in which the device resides\n");
 				printf("\t -d --device=device\t\tthe device that you want to control\n");
 				printf("\t -s --state=state\t\tthe new state of the device\n");
@@ -120,6 +127,13 @@ int main(int argc, char **argv) {
 			case 'v':
 				strcpy(values, optarg);
 			break;
+			case 'S':
+				server = realloc(server, strlen(optarg)+1);
+				strcpy(server, optarg);
+			break;
+			case 'P':
+				port = (unsigned short)atoi(optarg);
+			break;			
 			default:
 				printf("Usage: %s -l location -d device -s state\n", progname);
 				exit(EXIT_SUCCESS);
@@ -133,7 +147,12 @@ int main(int argc, char **argv) {
 		exit(EXIT_SUCCESS);
 	}
 
-	if(ssdp_seek(&ssdp_list) == -1) {
+	if(server && port > 0) {
+		if((sockfd = socket_connect(server, port)) == -1) {
+			logprintf(LOG_ERR, "could not connect to pilight-daemon");
+			exit(EXIT_FAILURE);
+		}
+	} else if(ssdp_seek(&ssdp_list) == -1) {
 		logprintf(LOG_ERR, "no pilight ssdp connections found");
 		goto close;
 	} else {
@@ -264,7 +283,9 @@ close:
 	if(sockfd > 0) {
 		socket_close(sockfd);
 	}
-
+	if(server) {
+		sfree((void *)&server);
+	}
 	log_shell_disable();
 	config_gc();
 	protocol_gc();

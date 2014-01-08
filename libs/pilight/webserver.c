@@ -41,7 +41,7 @@
 #include "json.h"
 #include "socket.h"
 #include "webserver.h"
-#include "socket.h"
+#include "settings.h"
 #include "ssdp.h"
 #include "fcache.h"
 
@@ -51,7 +51,8 @@ int webserver_authentication = 0;
 char *webserver_username = NULL;
 char *webserver_password = NULL;
 unsigned short webserver_loop = 1;
-char *webserver_root;
+char *webserver_root = NULL;
+char *webgui_tpl = NULL;
 unsigned char alphabet[64] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
 int sockfd = 0;
@@ -98,6 +99,12 @@ int webserver_gc(void) {
 	sfree((void *)&sockWriteBuff);
 	sfree((void *)&sockReadBuff);
 	sfree((void *)&ext);
+	if(webserver_root) {
+		sfree((void *)&webserver_root);
+	}
+	if(webgui_tpl) {
+		sfree((void *)&webgui_tpl);
+	}
 	fcache_gc();
 	logprintf(LOG_DEBUG, "garbage collected webserver library");
 	return 1;
@@ -280,13 +287,13 @@ int webserver_callback_http(struct libwebsocket_context *webcontext, struct libw
 			}
 			/* If the webserver didn't request a file, serve the index.html */
 			if(strcmp((const char *)in, "/") == 0) {
-				request = malloc(strlen(webserver_root)+13);
-				memset(request, '\0', strlen(webserver_root)+13);
+				request = malloc(strlen(webserver_root)+strlen(webgui_tpl)+14);
+				memset(request, '\0', strlen(webserver_root)+strlen(webgui_tpl)+14);
 				/* Check if the webserver_root is terminated by a slash. If not, than add it */
 				if(webserver_root[strlen(webserver_root)-1] == '/') {
-					sprintf(request, "%s%s", webserver_root, "index.html");
+					sprintf(request, "%s/%s%s", webserver_root, webgui_tpl, "index.html");
 				} else {
-					sprintf(request, "%s%s", webserver_root, "/index.html");
+					sprintf(request, "%s/%s%s", webserver_root, webgui_tpl, "/index.html");
 				}
 			} else {
 				if(strstr((char *)in, "/send") > 0) {
@@ -326,17 +333,19 @@ int webserver_callback_http(struct libwebsocket_context *webcontext, struct libw
 				}
 				/* If a file was requested add it to the webserver path to create the absolute path */
 				if(webserver_root[strlen(webserver_root)-1] == '/' && ((char *)in)[0] == '/') {
-					request = malloc(strlen(webserver_root)+strlen((const char *)in));
-					memset(request, '\0', strlen(webserver_root)+strlen((const char *)in));
+					request = malloc(strlen(webserver_root)+strlen(webgui_tpl)+strlen((const char *)in));
+					memset(request, '\0', strlen(webserver_root)+strlen(webgui_tpl)+strlen((const char *)in));
 					strncpy(&request[0], webserver_root, strlen(webserver_root)-1);
-					strncpy(&request[strlen(webserver_root)-1], (char *)in, strlen((char *)in));
+					strncpy(&request[strlen(webserver_root)-1], webgui_tpl, strlen(webgui_tpl));
+					strcat(request, "/");
+					strncpy(&request[strlen(webgui_tpl)+strlen(webserver_root)], (char *)in, strlen((char *)in));
 				} else {
-					request = malloc(strlen(webserver_root)+strlen((const char *)in)+1);
-					memset(request, '\0', strlen(webserver_root)+strlen((const char *)in)+1);
-					sprintf(request, "%s%s", webserver_root, (const char *)in);
+					request = malloc(strlen(webserver_root)+strlen(webgui_tpl)+strlen((const char *)in)+2);
+					memset(request, '\0', strlen(webserver_root)+strlen(webgui_tpl)+strlen((const char *)in)+2);
+					sprintf(request, "%s/%s%s", webserver_root, webgui_tpl, (const char *)in);
 				}
 			}
-
+			printf("%s\n", request);
 			char *dot = NULL;
 			/* Retrieve the extension of the requested file and create a mimetype accordingly */
 			dot = strrchr(request, '.');
@@ -741,6 +750,11 @@ void *webserver_start(void *param) {
 		/* If no webserver port was set, use the default webserver port */
 		webserver_root = malloc(strlen(WEBSERVER_ROOT)+1);
 		strcpy(webserver_root, WEBSERVER_ROOT);
+	}
+	if(settings_find_string("webgui-template", &webgui_tpl) != 0) {
+		/* If no webserver port was set, use the default webserver port */
+		webgui_tpl = malloc(strlen(WEBGUI_TEMPLATE)+1);
+		strcpy(webgui_tpl, WEBGUI_TEMPLATE);
 	}
 
 	/* Do we turn on webserver caching. This means that all requested files are

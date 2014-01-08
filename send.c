@@ -72,6 +72,9 @@ int main(int argc, char **argv) {
 	int version = 0;
 	/* Do we need to print the protocol help */
 	int protohelp = 0;
+	
+	char *server = NULL;
+	unsigned short port = 0;	
 
 	/* Hold the final protocol struct */
 	protocol_t *protocol = NULL;
@@ -83,6 +86,8 @@ int main(int argc, char **argv) {
 	options_add(&options, 'H', "help", no_value, 0, NULL);
 	options_add(&options, 'V', "version", no_value, 0, NULL);
 	options_add(&options, 'p', "protocol", has_value, 0, NULL);
+	options_add(&options, 'S', "server", has_value, 0, "^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]).){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$");
+	options_add(&options, 'P', "port", has_value, 0, "[0-9]{1,4}");
 
 	/* Initialize protocols */
 	protocol_init();
@@ -109,6 +114,13 @@ int main(int argc, char **argv) {
 			case 'H':
 				help = 1;
 			break;
+			case 'S':
+				server = realloc(server, strlen(args)+1);
+				strcpy(server, args);
+			break;
+			case 'P':
+				port = (unsigned short)atoi(args);
+			break;			
 			default:;
 		}
 	}
@@ -176,6 +188,8 @@ int main(int argc, char **argv) {
 			printf("\t -H --help\t\t\tdisplay this message\n");
 			printf("\t -V --version\t\t\tdisplay version\n");
 			printf("\t -p --protocol=protocol\t\tthe protocol that you want to control\n");
+			printf("\t -S --server=x.x.x.x\t\tconnect to server address\n");
+			printf("\t -P --port=xxxx\t\t\tconnect to server port\n");
 		}
 		if(protohelp == 1 && match == 1 && protocol->printHelp) {
 			printf("\n\t[%s]\n", protobuffer);
@@ -227,7 +241,12 @@ int main(int argc, char **argv) {
 		if(protocol->message) {
 			json_delete(protocol->message);
 		}
-		if(ssdp_seek(&ssdp_list) == -1) {
+		if(server && port > 0) {
+			if((sockfd = socket_connect(server, port)) == -1) {
+				logprintf(LOG_ERR, "could not connect to pilight-daemon");
+				goto close;
+			}
+		} else if(ssdp_seek(&ssdp_list) == -1) {
 			logprintf(LOG_ERR, "no pilight ssdp connections found");
 			goto close;
 		} else {
@@ -283,6 +302,9 @@ close:
 	}
 	if(sockfd) {
 		socket_close(sockfd);
+	}
+	if(server) {
+		sfree((void *)&server);
 	}
 	log_shell_disable();
 	protocol_gc();

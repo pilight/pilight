@@ -31,6 +31,7 @@
 #include "http_lib.h"
 #include "common.h"
 #include "settings.h"
+#include "log.h"
 #include "../../pilight.h"
 
 unsigned short update_loop = 1;

@@ -74,6 +74,7 @@
 	#define WEBSERVER_ROOT		"/usr/local/share/pilight/"
 	#define WEBSERVER_ENABLE	1
 	#define WEBSERVER_CACHE		1
+	#define WEBGUI_TEMPLATE		"default"
 #endif
 
 #define MAX_CLIENTS				30
@@ -97,7 +98,7 @@
 typedef struct pilight_t {
     void (*broadcast)(char *name, JsonNode *message);
     void (*send)(JsonNode *json);
-    void (*receive)(int *rawcode, int rawlen, int plslen);
+    void (*receive)(int *rawcode, int rawlen, int plslen, int hwtype);
 } pilight_t;
 
 struct pilight_t pilight;

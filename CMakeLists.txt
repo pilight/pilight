@@ -232,12 +232,6 @@ if(${UPDATE} MATCHES "OFF")
 	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/pilight/http_lib.c")	
 endif()
 	
-if(${WEBSERVER} MATCHES "ON")
-	file(GLOB web
-		"${PROJECT_SOURCE_DIR}/web/*"
-	)
-endif()
-
 file(GLOB webserver_sources "${PROJECT_SOURCE_DIR}/libs/websockets/*.c")
 
 if(${WEBSERVER} MATCHES "OFF")
@@ -278,7 +272,7 @@ install(FILES libpilight.so DESTINATION lib/pilight/ RENAME libpilight.so.2)
 install(FILES libpilight.a DESTINATION lib/pilight/ RENAME libpilight.a)
 
 if(${WEBSERVER} MATCHES "ON")
-	install(FILES ${web} DESTINATION /usr/local/share/pilight/)
+	install(DIRECTORY web/ DESTINATION /usr/local/share/pilight)
 endif()
 
 install(PROGRAMS init/pilight DESTINATION /etc/init.d/)

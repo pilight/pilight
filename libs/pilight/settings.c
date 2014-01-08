@@ -70,12 +70,12 @@ int settings_find_number(const char *name, int *out) {
 	while(tmp_settings) {
 		if(strcmp(tmp_settings->name, name) == 0 && tmp_settings->type == 1) {
 			*out = atoi(tmp_settings->value);
-			return 0;
+			return EXIT_SUCCESS;
 		}
 		tmp_settings = tmp_settings->next;
 	}
 	sfree((void *)&tmp_settings);
-	return 1;
+	return EXIT_FAILURE;
 }
 
 /* Retrieve a string value from the settings struct */
@@ -85,12 +85,12 @@ int settings_find_string(const char *name, char **out) {
 	while(tmp_settings) {
 		if(strcmp(tmp_settings->name, name) == 0 && tmp_settings->type == 2) {
 			*out = tmp_settings->value;
-			return 0;
+			return EXIT_SUCCESS;
 		}
 		tmp_settings = tmp_settings->next;
 	}
 	sfree((void *)&tmp_settings);
-	return 1;
+	return EXIT_FAILURE;
 }
 
 /* Check if a given path exists */
@@ -108,19 +108,19 @@ int settings_path_exists(char *fil) {
 		int err = stat(path, &s);
 		if(err == -1) {
 			if(ENOENT == errno) {
-				return 1;
+				return EXIT_FAILURE;
 			} else {
-				return 1;
+				return EXIT_FAILURE;
 			}
 		} else {
 			if(S_ISDIR(s.st_mode)) {
-				return 0;
+				return EXIT_SUCCESS;
 			} else {
-				return 1;
+				return EXIT_FAILURE;
 			}
 		}
 	}
-	return 0;
+	return EXIT_SUCCESS;
 }
 
 /* Check if a given file exists */
@@ -134,13 +134,20 @@ int settings_parse(JsonNode *root) {
 	int web_port = 0;
 	int own_port = 0;
 
+#ifdef WEBSERVER
+	char *webgui_tpl = malloc(strlen(WEBGUI_TEMPLATE)+1);
+	strcpy(webgui_tpl, WEBGUI_TEMPLATE);
+	char *webgui_root = malloc(strlen(WEBSERVER_ROOT)+1);
+	strcpy(webgui_root, WEBSERVER_ROOT);
+#endif
+
 #ifndef __FreeBSD__	
 	regex_t regex;
 	int reti;
 #endif	
 	
 	JsonNode *jsettings = json_first_child(root);
-
+	
 	while(jsettings) {
 		if(strcmp(jsettings->key, "port") == 0 || strcmp(jsettings->key, "send-repeats") == 0 || strcmp(jsettings->key, "receive-repeats") == 0) {
 			if((int)jsettings->number_ == 0) {
@@ -167,7 +174,7 @@ int settings_parse(JsonNode *root) {
 				have_error = 1;
 				goto clear;
 			} else {
-				if(settings_path_exists(jsettings->string_) != 0) {
+				if(settings_path_exists(jsettings->string_) != EXIT_SUCCESS) {
 					logprintf(LOG_ERR, "setting \"%s\" must point to an existing folder", jsettings->key);
 					have_error = 1;
 					goto clear;				
@@ -181,7 +188,7 @@ int settings_parse(JsonNode *root) {
 				have_error = 1;
 				goto clear;
 			} else if(strlen(jsettings->string_) > 0) {
-				if(settings_file_exists(jsettings->string_) == 0) {
+				if(settings_file_exists(jsettings->string_) == EXIT_SUCCESS) {
 					settings_add_string(jsettings->key, jsettings->string_);
 				} else {
 					logprintf(LOG_ERR, "setting \"%s\" must point to an existing file", jsettings->key);
@@ -236,6 +243,8 @@ int settings_parse(JsonNode *root) {
 				have_error = 1;
 				goto clear;
 			} else {
+				webgui_root = realloc(webgui_root, strlen(jsettings->string_)+1);
+				strcpy(webgui_root, jsettings->string_);
 				settings_add_string(jsettings->key, jsettings->string_);
 			}
 		} else if(strcmp(jsettings->key, "webserver-enable") == 0) {
@@ -265,6 +274,16 @@ int settings_parse(JsonNode *root) {
 				goto clear;
 			} else {
 				settings_add_number(jsettings->key, (int)jsettings->number_);
+			}
+		}  else if(strcmp(jsettings->key, "webgui-template") == 0) {
+			if(!jsettings->string_) {
+				logprintf(LOG_ERR, "setting \"%s\" must be a valid template", jsettings->key);
+				have_error = 1;
+				goto clear;
+			} else {
+				webgui_tpl = malloc(strlen(jsettings->string_)+1);
+				strcpy(webgui_tpl, jsettings->string_);
+				settings_add_string(jsettings->key, jsettings->string_);
 			}
 #endif
 #ifdef UPDATE
@@ -323,13 +342,31 @@ int settings_parse(JsonNode *root) {
 	}
 	json_delete(jsettings);
 #ifdef WEBSERVER
+	if(webgui_tpl) {
+		char *tmp = malloc(strlen(webgui_root)+strlen(webgui_tpl)+13);
+		sprintf(tmp, "%s/%s/index.html", webgui_root, webgui_tpl);
+		if(settings_path_exists(tmp) != EXIT_SUCCESS) {
+			logprintf(LOG_ERR, "setting \"webgui-template\", template does not exists");
+			have_error = 1;
+			goto clear;		
+		}
+	}
+
 	if(web_port == own_port) {
 		logprintf(LOG_ERR, "setting \"port\" and \"webserver-port\" cannot be the same");
 		have_error = 1;
 		goto clear;
 	}
-#endif	
+#endif
 clear:
+#ifdef WEBSERVER
+	if(webgui_tpl) {
+		sfree((void *)&webgui_tpl);
+	}
+	if(webgui_root) {
+		sfree((void *)&webgui_root);
+	}
+#endif
 	return have_error;
 }
 
