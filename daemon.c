@@ -308,7 +308,7 @@ void receiver_create_message(protocol_t *protocol) {
 			json_append_member(jmessage, "origin", json_mkstring("receiver"));
 			json_append_member(jmessage, "protocol", json_mkstring(protocol->id));
 			if(strlen(pilight_uuid) > 0) {
-				json_append_member(jmessage, "protocol", json_mkstring(pilight_uuid));
+				json_append_member(jmessage, "uuid", json_mkstring(pilight_uuid));
 			}
 			if(protocol->repeats > -1) {
 				json_append_member(jmessage, "repeats", json_mknumber(protocol->repeats));
