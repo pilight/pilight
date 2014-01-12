@@ -44,7 +44,7 @@ int relayCreateCode(JsonNode *code) {
 	int gpio = -1;
 	int state = -1;
 	char *tmp;
-	char *def = NULL;	
+	char *def = NULL;
 	int free_def = 0;
 	int have_error = 0;
 
@@ -61,7 +61,7 @@ int relayCreateCode(JsonNode *code) {
 		state=0;
 	else if(json_find_string(code, "on", &tmp) == 0)
 		state=1;
-	
+
 	if(gpio == -1 || state == -1) {
 		logprintf(LOG_ERR, "relay: insufficient number of arguments");
 		have_error = 1;
@@ -92,8 +92,8 @@ int relayCreateCode(JsonNode *code) {
 				}
 			}
 			relayCreateMessage(gpio, state);
+			goto clear;			
 		}
-		goto clear;
 	}
 
 clear:
@@ -117,6 +117,7 @@ void relayInit(void) {
 	protocol_set_id(relay, "relay");
 	protocol_device_add(relay, "relay", "GPIO connected relay's");
 	relay->devtype = RELAY;
+	relay->hwtype = HWRELAY;
 
 	options_add(&relay->options, 't', "on", no_value, config_state, NULL);
 	options_add(&relay->options, 'f', "off", no_value, config_state, NULL);

@@ -80,8 +80,9 @@ struct conf_settings_t {
 
 struct conf_devices_t {
 	char *id;
-	char *uuid;
 	char *name;
+	char dev_uuid[21];
+	char ori_uuid[21];
 	struct protocols_t *protocols;
 	struct conf_settings_t *settings;
 	struct conf_devices_t *next;
@@ -94,15 +95,6 @@ struct conf_locations_t {
 	struct conf_locations_t *next;
 };
 
-/* Struct to store the locations */
-struct conf_locations_t *conf_locations;
-/* Struct to store the devices per location */
-struct conf_devices_t *conf_devices;
-/* Struct to store the device specific settings */
-struct conf_settings_t *conf_settings;
-/* Struct to store the device values list settings */
-struct conf_values_t *conf_values;
-
 /* The default config file location */
 char *configfile;
 
@@ -111,15 +103,17 @@ int config_get_location(char *id, struct conf_locations_t **loc);
 int config_get_device(char *lid, char *sid, struct conf_devices_t **dev);
 int config_valid_state(char *lid, char *sid, char *state);
 int config_valid_value(char *lid, char *sid, char *name, char *value);
-JsonNode *config2json(unsigned short internal);
+JsonNode *config2json(short internal);
 JsonNode *config_broadcast_create(void);
 void config_print(void);
-void config_save_setting(int i, JsonNode *jsetting, struct conf_settings_t *snode);
+void config_save_setting(int i, JsonNode *jsetting, struct conf_devices_t *device);
 int config_check_state(int i, JsonNode *jsetting, struct conf_devices_t *device);
 int config_check_settings(int i, JsonNode *jsetting, struct conf_devices_t *device);
 int config_parse_devices(JsonNode *jdevices, struct conf_devices_t *device);
 int config_parse_locations(JsonNode *jlocations, struct conf_locations_t *location);
+int config_merge_locations(JsonNode *jlocations, struct conf_locations_t *location);
 int config_parse(JsonNode *root);
+// int config_merge(char *content);
 int config_write(char *content);
 int config_read(void);
 int config_set_file(char *cfgfile);

@@ -74,6 +74,14 @@ char clients[6][11] = {
 	"web\0"
 };
 
+typedef struct nodes_t {
+	char uuid[21];
+	int client_id;
+	struct nodes_t *next;
+} nodes_t;
+
+struct nodes_t *nodes = NULL;
+
 typedef enum {
 	WELCOME,
 	IDENTIFY,
@@ -89,6 +97,7 @@ typedef struct sendqueue_t {
 	char *protoname;
 	struct protocol_t *protopt;
 	int code[255];
+	char uuid[UUID_LENGTH];
 	struct sendqueue_t *next;
 } sendqueue_t;
 
@@ -142,8 +151,8 @@ unsigned short main_loop = 1;
 unsigned short valid_config = 0;
 /* Reset repeats after a certian amount of time */
 struct timeval tv;
-/* Store the uuid of this Raspberry Pi */
-char *pilight_uuid = NULL;
+/* How many nodes are connected */
+int nrnodes = 0;
 
 #ifdef WEBSERVER
 /* Do we enable the webserver */
@@ -159,6 +168,36 @@ char *webserver_root;
 int update_check = UPDATE_CHECK;
 #endif
 
+void node_add(int id, char uuid[21]) {
+	struct nodes_t *node = malloc(sizeof(struct nodes_t));
+	strcpy(node->uuid, uuid);
+	node->client_id = id;
+	node->next = nodes;
+	nodes = node;
+	nrnodes++;
+}
+
+void node_remove(int id) {
+	struct nodes_t *currP, *prevP;
+
+	prevP = NULL;
+
+	for(currP = nodes; currP != NULL; prevP = currP, currP = currP->next) {
+
+		if(currP->client_id == id) {
+			if(prevP == NULL) {
+				nodes = currP->next;
+			} else {
+				prevP->next = currP->next;
+			}
+
+			sfree((void *)&currP);
+			nrnodes--;
+			break;
+		}
+	}
+}
+
 void broadcast_queue(char *protoname, JsonNode *json) {
 	struct timeval tcurrent;
 	gettimeofday(&tcurrent, NULL);
@@ -167,10 +206,8 @@ void broadcast_queue(char *protoname, JsonNode *json) {
 	struct bcqueue_t *bnode = malloc(sizeof(struct bcqueue_t));
 	bnode->id = 1000000 * (unsigned int)tcurrent.tv_sec + (unsigned int)tcurrent.tv_usec;
 
-	if(pilight_uuid) {
-		json_append_member(json, "uuid", json_mkstring(pilight_uuid));
-	}
 	char *jstr = json_stringify(json, NULL);
+
 	bnode->jmessage = json_decode(jstr);
 	sfree((void *)&jstr);
 
@@ -200,6 +237,8 @@ void *broadcast(void *param) {
 
 			broadcasted = 0;
 			JsonNode *jret = NULL;
+			char *json = json_stringify(bcqueue->jmessage, NULL);
+
 			/* Update the config */
 			if(config_update(bcqueue->protoname, bcqueue->jmessage, &jret) == 0) {
 				char *conf = json_stringify(jret, NULL);
@@ -221,18 +260,27 @@ void *broadcast(void *param) {
 			broadcasted = 0;
 
 			if(receivers > 0) {
-
-				char *json = json_stringify(bcqueue->jmessage, NULL);
 				/* Write the message to all receivers */
 				for(i=0;i<MAX_CLIENTS;i++) {
-					if(handshakes[i] == RECEIVER || handshakes[i] == NODE) {
+					if(handshakes[i] == RECEIVER) {
 						socket_write(socket_get_clients(i), json);
 						broadcasted = 1;
 					}
 				}
-				logprintf(LOG_DEBUG, "broadcasted: %s", json);
-				sfree((void *)&json);
 			}
+			if(runmode == 2 && sockfd > 0) {
+				struct JsonNode *jupdate = json_decode(json);
+				json_append_member(jupdate, "message", json_mkstring("update"));
+				char *ret = json_stringify(jupdate, NULL);
+				socket_write(sockfd, ret);
+				broadcasted = 1;
+				json_delete(jupdate);
+				sfree((void *)&ret);
+			}
+			if(broadcasted == 1) {
+				logprintf(LOG_DEBUG, "broadcasted: %s", json);
+			}
+			sfree((void *)&json);			
 
 			struct bcqueue_t *tmp = bcqueue;
 			sfree((void *)&bcqueue->protoname);
@@ -251,7 +299,6 @@ void *broadcast(void *param) {
 
 void receiver_create_message(protocol_t *protocol) {
 	if(protocol->message) {
-		char *json = NULL;
 		char *valid = json_stringify(protocol->message, NULL);
 		json_delete(protocol->message);
 		if(valid && json_validate(valid) == true) {
@@ -260,12 +307,18 @@ void receiver_create_message(protocol_t *protocol) {
 			json_append_member(jmessage, "code", json_decode(valid));
 			json_append_member(jmessage, "origin", json_mkstring("receiver"));
 			json_append_member(jmessage, "protocol", json_mkstring(protocol->id));
+			if(strlen(pilight_uuid) > 0) {
+				json_append_member(jmessage, "protocol", json_mkstring(pilight_uuid));
+			}
 			if(protocol->repeats > -1) {
 				json_append_member(jmessage, "repeats", json_mknumber(protocol->repeats));
 			}
-			json = json_stringify(jmessage, NULL);
-			broadcast_queue(protocol->id, json_decode(json));
-			sfree((void *)&json);
+			char *output = json_stringify(jmessage, NULL);
+			JsonNode *json = json_decode(output);
+			broadcast_queue(protocol->id, json);
+			sfree((void *)&output);
+			json_delete(json);
+			json = NULL;
 			json_delete(jmessage);
 		}
 		protocol->message = NULL;
@@ -333,6 +386,7 @@ void receiver_parse_code(int *rawcode, int rawlen, int plslen, int hwtype) {
 					protocol->pCode[x] = protocol->code[x];
 
 					if(protocol->raw[x] >= (plslengths->length * (1+protocol->pulse)/2)) {
+						protocol->code[x] = 1;
 						protocol->code[x] = 1;
 					} else {
 						protocol->code[x] = 0;
@@ -473,6 +527,9 @@ void *send_code(void *param) {
 					json_append_member(message, "origin", json_mkstring("sender"));
 					json_append_member(message, "protocol", json_mkstring(protocol->id));
 					json_append_member(message, "code", json_decode(sendqueue->message));
+					if(strlen(sendqueue->uuid) > 0) {
+						json_append_member(message, "uuid", json_mkstring(sendqueue->uuid));
+					}
 					json_append_member(message, "repeat", json_mknumber(1));
 				}
 			}
@@ -519,6 +576,7 @@ void *send_code(void *param) {
 			if(message) {
 				broadcast_queue(sendqueue->protoname, message);
 				json_delete(message);
+				message = NULL;
 			}
 
 			struct sendqueue_t *tmp = sendqueue;
@@ -542,7 +600,7 @@ void *send_code(void *param) {
 void send_queue(JsonNode *json) {
 	int match = 0, x = 0;
 	struct timeval tcurrent;
-
+	char *uuid = NULL;
 	/* Hold the final protocol struct */
 	struct protocol_t *protocol = NULL;
 
@@ -558,8 +616,9 @@ void send_queue(JsonNode *json) {
 		logprintf(LOG_ERR, "sender did not provide a protocol name");
 		json_delete(jcode);
 	} else {
+		json_find_string(jcode, "uuid", &uuid);
 		/* If we matched a protocol and are not already sending, continue */
-		if(send_repeat > 0) {
+		if((!uuid || (uuid && strcmp(uuid, pilight_uuid) == 0)) && send_repeat > 0) {
 			jprotocol = json_first_child(jprotocols);
 			while(jprotocol) {
 				match = 0;
@@ -620,7 +679,11 @@ void send_queue(JsonNode *json) {
 						mnode->protoname = malloc(strlen(protocol->id)+1);
 						strcpy(mnode->protoname, protocol->id);
 						mnode->protopt = protocol;
-
+						if(uuid) {
+							strcpy(mnode->uuid, uuid);
+						} else {
+							memset(mnode->uuid, '\0', UUID_LENGTH);
+						}
 						if(sendqueue_number == 0) {
 							sendqueue = mnode;
 							sendqueue_head = mnode;
@@ -764,10 +827,13 @@ void control_device(struct conf_devices_t *dev, char *state, JsonNode *values) {
 
 	/* Construct the right json object */
 	json_append_member(code, "protocol", jprotocols);
-	json_append_member(json, "message", json_mkstring("send"));
-	json_append_member(json, "code", code);
 	json_append_member(code, "settings", jsettings);
-
+	if(dev->dev_uuid && (dev->protocols->listener->hwtype == SENSOR 
+	   || dev->protocols->listener->hwtype == HWRELAY)) {
+		json_append_member(code, "uuid", json_mkstring(dev->dev_uuid));
+	}
+	json_append_member(json, "code", code);
+	json_append_member(json, "message", json_mkstring("send"));
 	send_queue(json);
 
 	json_delete(json);
@@ -785,6 +851,11 @@ void client_node_parse_code(int i, JsonNode *json) {
 			socket_write_big(sd, output);
 			sfree((void *)&output);
 			json_delete(jsend);
+		} else if(strcmp(message, "update") == 0) {
+			char *pname = NULL;
+			if(json_find_string(json, "protocol", &pname) == 0) {
+				broadcast_queue(pname, json);
+			}
 		}
 	}
 }
@@ -835,6 +906,7 @@ void client_controller_parse_code(int i, JsonNode *json) {
 						if(values) {
 							values = json_first_child(values);
 						}
+
 						control_device(sdevice, state, values);
 						sfree((void *)&state);
 					} else {
@@ -972,8 +1044,24 @@ void socket_parse_data(int i, char buffer[BUFFER_SIZE]) {
 					client_node_parse_code(i, json);
 				} else if(handshakes[i] == SENDER) {
 					client_sender_parse_code(i, json);
+					if(strcmp(message, "send") == 0) {
+						for(x=0;x<(sizeof(clients)/sizeof(clients[0]));x++) {
+							if(handshakes[x] == NODE) {
+								socket_write(socket_get_clients(x), "{\"incognito\":\"sender\"}");
+								socket_write(socket_get_clients(x), buffer);
+							}
+						}
+					}
 				} else if(handshakes[i] == CONTROLLER || handshakes[i] == GUI) {
 					client_controller_parse_code(i, json);
+					if(strcmp(message, "send") == 0) {
+						for(x=0;x<(sizeof(clients)/sizeof(clients[0]));x++) {
+							if(handshakes[x] == NODE) {
+								socket_write(socket_get_clients(x), "{\"incognito\":\"controller\"}");
+								socket_write(socket_get_clients(x), buffer);
+							}
+						}
+					}
 				} else {
 					/* Check if we matched a know client type */
 					for(x=0;x<(sizeof(clients)/sizeof(clients[0]));x++) {
@@ -988,6 +1076,14 @@ void socket_parse_data(int i, char buffer[BUFFER_SIZE]) {
 
 							handshakes[i] = x;
 
+							if(handshakes[i] == NODE) {
+								char *uuid = NULL;
+								if(json_find_string(json, "uuid", &uuid) == 0) {
+									node_add(i, uuid);
+								} else {
+									handshakes[i] = -1;
+								}
+							}
 							if(handshakes[i] == RECEIVER || handshakes[i] == GUI || handshakes[i] == NODE)
 								receivers++;
 							sfree((void *)&tmp);
@@ -1015,6 +1111,7 @@ void socket_parse_data(int i, char buffer[BUFFER_SIZE]) {
 	}
 	if(json) {
 		json_delete(json);
+		json = NULL;
 	}
 }
 
@@ -1022,6 +1119,10 @@ void socket_client_disconnected(int i) {
 	if(handshakes[i] == RECEIVER || handshakes[i] == GUI || handshakes[i] == NODE)
 		receivers--;
 
+	if(handshakes[i] == NODE) {
+		node_remove(i);
+	}		
+		
 	handshakes[i] = 0;
 }
 
@@ -1061,78 +1162,129 @@ void *clientize(void *param) {
     char *recvBuff = NULL;
 	char *message = NULL;
 	char *protocol = NULL;
+	int client_type = 0;
 	JsonNode *json = NULL;
-	JsonNode *jconfig = NULL;
-
-	if(ssdp_seek(&ssdp_list) == -1) {
-		logprintf(LOG_ERR, "no pilight ssdp connections found");
-	} else {
-		if((sockfd = socket_connect(ssdp_list->ip, ssdp_list->port)) == -1) {
-			logprintf(LOG_ERR, "could not connect to pilight-daemon");
-			exit(EXIT_FAILURE);
-		}
-		sfree((void *)&ssdp_list);
-	}
+	JsonNode *jreturn = NULL;
+	int x = 0;
+	int client_loop = 1;
 
 	while(main_loop) {
-		if(steps > WELCOME) {
-			/* Clear the receive buffer again and read the welcome message */
-			if(steps == CONFIG) {
-				if((recvBuff = socket_read_big(sockfd))) {
-					json = json_decode(recvBuff);
-					json_find_string(json, "message", &message);
-				} else {
-					goto close;
-				}
-			} else {
-				if((recvBuff = socket_read(sockfd))) {
-					json = json_decode(recvBuff);
-					json_find_string(json, "message", &message);
-				} else {
-					goto close;
-				}
+		client_loop = 1;
+		steps = WELCOME;
+		if(ssdp_seek(&ssdp_list) == -1) {
+			logprintf(LOG_ERR, "no pilight ssdp connections found");
+			client_loop = 0;
+		} else {
+			if((sockfd = socket_connect(ssdp_list->ip, ssdp_list->port)) == -1) {
+				logprintf(LOG_ERR, "could not connect to pilight-daemon");
+				client_loop = 0;
 			}
-			logprintf(LOG_DEBUG, "socket recv: %s", recvBuff);
+			sfree((void *)&ssdp_list);
 		}
-		switch(steps) {
-			case WELCOME:
-				socket_write(sockfd, "{\"message\":\"client node\"}");
-				steps=IDENTIFY;
-			break;
-			case IDENTIFY:
-				if(strcmp(message, "accept client") == 0) {
-					steps=FORWARD;
-				}
-				if(strcmp(message, "reject client") == 0) {
-					steps=REJECT;
-				}
-			case REQUEST:
-				socket_write(sockfd, "{\"message\":\"request config\"}");
-				steps=CONFIG;
-				json_delete(json);
-			break;
-			case CONFIG:
-				if((jconfig = json_find_member(json, "config"))) {
-					config_parse(jconfig);
-					json_delete(jconfig);
-					steps=FORWARD;
-				}
-				json_delete(json);
-			break;
-			case FORWARD:
-				if(!json_find_member(json, "config")) {
-					if(json_find_string(json, "origin", &message) == 0 &&
-					json_find_string(json, "protocol", &protocol) == 0) {
-						broadcast_queue(protocol, json);
+
+		while(client_loop) {
+			if(steps > WELCOME) {
+				/* Clear the receive buffer again and read the welcome message */
+				if(steps == CONFIG) {
+					if((recvBuff = socket_read_big(sockfd))) {
+						json = json_decode(recvBuff);
+						json_find_string(json, "message", &message);
+						logprintf(LOG_DEBUG, "socket recv: %s", recvBuff);
+					} else {
+						client_loop = 0;
+						break;
+					}
+				} else {
+					if((recvBuff = socket_read(sockfd))) {
+						json = json_decode(recvBuff);
+						json_find_string(json, "message", &message);
+						logprintf(LOG_DEBUG, "socket recv: %s", recvBuff);
+					} else {
+						client_loop = 0;
+						break;
 					}
 				}
-				json_delete(json);
-			break;
-			case REJECT:
-			default:
-				goto close;
-			break;
+			}
+			switch(steps) {
+				case WELCOME:
+					socket_write(sockfd, "{\"message\":\"client node\",\"uuid\":\"%s\"}", pilight_uuid);
+					steps=IDENTIFY;
+				break;
+				case IDENTIFY:
+					if(strcmp(message, "accept client") == 0) {
+						steps=FORWARD;
+					}
+					if(strcmp(message, "reject client") == 0) {
+						steps=REJECT;
+					}
+				case REQUEST:
+					socket_write(sockfd, "{\"message\":\"request config\"}");
+					steps=CONFIG;
+					if(json) {
+						json_delete(json);
+						json = NULL;
+					}
+				break;
+				case CONFIG:
+					if((jreturn = json_find_member(json, "config"))) {
+						config_parse(jreturn);
+						json_delete(jreturn);
+						steps=FORWARD;
+					}
+					if(json) {
+						json_delete(json);
+						json = NULL;
+					}
+				break;
+				case FORWARD: {
+					char *pch = strtok(recvBuff, "\n");
+					if(json) {
+						json_delete(json);
+						json = NULL;
+					}
+					while(pch) {
+						json = json_decode(recvBuff);
+						if((jreturn = json_find_member(json, "incognito")) && jreturn->tag == JSON_STRING) {
+							for(x=0;x<(sizeof(clients)/sizeof(clients[0]));x++) {
+								if(strcmp(clients[x], jreturn->string_) == 0) {
+									client_type = x;
+									break;
+								}
+							}
+						} else {
+							if(client_type == SENDER) {
+								client_sender_parse_code(-1, json);
+							} else if(client_type == CONTROLLER) {
+								client_controller_parse_code(-1, json);
+							} else if(client_type == -1) {
+								if(!json_find_member(json, "config")) {
+									if(json_find_string(json, "origin", &message) == 0 &&
+									json_find_string(json, "protocol", &protocol) == 0) {
+										broadcast_queue(protocol, json);
+									}
+								}
+							}
+						}
+						pch = strtok(NULL, "\n");
+					}
+				} break;
+				case REJECT:
+				default:
+					goto close;
+				break;
+			}
 		}
+
+		if(json) {
+			json_delete(json);
+			json = NULL;
+		}
+
+		socket_close(sockfd);
+		config_gc();
+		logprintf(LOG_NOTICE, "connection to main pilight daemon lost");
+		logprintf(LOG_NOTICE, "trying to reconnect...");
+		sleep(3);
 	}
 close:
 	socket_close(sockfd);
@@ -1205,7 +1357,7 @@ int main_gc(void) {
 #endif
 
 	if(valid_config) {
-		JsonNode *joutput = config2json(0);
+		JsonNode *joutput = config2json(-1);
 		char *output = json_stringify(joutput, "\t");
 		config_write(output);
 		json_delete(joutput);
@@ -1232,10 +1384,14 @@ int main_gc(void) {
 	options_gc();
 	socket_gc();
 
-	sfree((void *)&progname);
-	if(pilight_uuid) {
-		sfree((void *)&pilight_uuid);
+	struct nodes_t *tmp_nodes;
+	while(nodes) {
+		tmp_nodes = nodes;
+		nodes = nodes->next;
+		sfree((void *)&tmp_nodes);
 	}
+	sfree((void *)&nodes);	
+	sfree((void *)&progname);
 	return 0;
 }
 
@@ -1256,7 +1412,7 @@ int main(int argc, char **argv) {
 	/* Catch all exit signals for gc */
 	gc_catch();
 
-	pilight_uuid = ssdp_genuuid();
+	strcpy(pilight_uuid, ssdp_genuuid());
 
 	loglevel = LOG_INFO;
 
@@ -1490,7 +1646,7 @@ int main(int argc, char **argv) {
 	threads_register("broadcaster", &broadcast, (void *)NULL);
 
 #ifdef UPDATE
-	if(update_check) {
+	if(update_check && runmode == 1) {
 		threads_register("updater", &update_poll, (void *)NULL);
 	}
 #endif
@@ -1507,7 +1663,7 @@ int main(int argc, char **argv) {
 
 #ifdef WEBSERVER
 	/* Register a seperate thread for the webserver */
-	if(webserver_enable == 1) {
+	if(webserver_enable == 1 && runmode == 1) {
 		threads_register("webserver daemon", &webserver_start, (void *)NULL);
 	}
 #endif

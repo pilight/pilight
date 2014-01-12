@@ -139,14 +139,17 @@ void ssdp_getethmac(void) {
 
 unsigned long ssdp_genid(void) {
 	ssdp_getethmac();
-	char *end;
-	unsigned long i = (unsigned long)strtol(ssdp_mac, &end, 12);
-	return i;
+	int i = 0;
+	unsigned long x = 0;
+	for(i=0;i<12;i++) {
+		x += (unsigned long)ssdp_mac[i];
+	}
+	return x;
 }
 
 char *ssdp_genuuid(void) {
-	char *upnp_id = malloc(21);
-	memset(upnp_id, '\0', 21);
+	char *upnp_id = malloc(UUID_LENGTH);
+	memset(upnp_id, '\0', UUID_LENGTH);
 	unsigned long r;
 	unsigned int a, b, c, d, e, f;
 

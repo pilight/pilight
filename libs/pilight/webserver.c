@@ -646,8 +646,7 @@ void webserver_queue(char *message) {
 void *webserver_clientize(void *param) {
 	steps_t steps = WELCOME;
 	char *message = NULL;
-	struct ssdp_list_t *ssdp_list;
-
+	struct ssdp_list_t *ssdp_list = NULL;
 
 	if(ssdp_seek(&ssdp_list) == -1) {
 		logprintf(LOG_DEBUG, "no pilight ssdp connections found");

@@ -130,8 +130,7 @@ int socket_check_whitelist(char *ip) {
 	}
 
 	for(x=0;x<whitelist_number;x++) {
-		/* http://stackoverflow.com/a/9696632
-		   Turn the different ip addresses into one single number and compare those
+		/* Turn the different ip addresses into one single number and compare those
 		   against each other to see if the ip address is inside the lower and upper
 		   whitelisted boundary */	
 		unsigned int wlower = whitelist_cache[x][0][0] << 24 | whitelist_cache[x][0][1] << 16 | whitelist_cache[x][0][2] << 8 | whitelist_cache[x][0][3];

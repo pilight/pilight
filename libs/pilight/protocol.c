@@ -178,6 +178,7 @@ void protocol_register(protocol_t **proto) {
 	(*proto)->binlen = 0;
 	(*proto)->lsb = 0;
 	(*proto)->txrpt = 1;
+	(*proto)->hwtype = 1;
 	(*proto)->rxrpt = 1;
 	(*proto)->parseRaw = NULL;
 	(*proto)->parseBinary = NULL;
@@ -513,7 +514,6 @@ int protocol_setting_get_number(protocol_t *proto, const char *name, int *out) {
 	return 1;
 }
 
-/* http://www.cs.bu.edu/teaching/c/linked-list/delete/ */
 void protocol_setting_remove(protocol_t **proto, const char *name) {
 	struct protocol_settings_t *currP, *prevP;
 
