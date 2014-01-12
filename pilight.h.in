@@ -88,6 +88,7 @@
 
 #define SEND_REPEATS			10
 #define RECEIVE_REPEATS			1
+#define UUID_LENGTH				21
 
 #ifdef UPDATE
 	#define UPDATE_MIRROR			"http://apt.pilight.org/mirror.txt"
@@ -102,5 +103,7 @@ typedef struct pilight_t {
 } pilight_t;
 
 struct pilight_t pilight;
+
+char pilight_uuid[UUID_LENGTH];
 
 #endif
