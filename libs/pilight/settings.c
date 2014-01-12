@@ -149,7 +149,9 @@ int settings_parse(JsonNode *root) {
 	JsonNode *jsettings = json_first_child(root);
 	
 	while(jsettings) {
-		if(strcmp(jsettings->key, "port") == 0 || strcmp(jsettings->key, "send-repeats") == 0 || strcmp(jsettings->key, "receive-repeats") == 0) {
+		if(strcmp(jsettings->key, "port") == 0 
+		   || strcmp(jsettings->key, "send-repeats") == 0
+		   || strcmp(jsettings->key, "receive-repeats") == 0) {
 			if((int)jsettings->number_ == 0) {
 				logprintf(LOG_ERR, "setting \"%s\" must contain a number larger than 0", jsettings->key);
 				have_error = 1;
@@ -158,6 +160,14 @@ int settings_parse(JsonNode *root) {
 				if(strcmp(jsettings->key, "port") == 0) {
 					own_port = (int)jsettings->number_;
 				}
+				settings_add_number(jsettings->key, (int)jsettings->number_);
+			}
+		} else if(strcmp(jsettings->key, "standalone") == 0) {
+			if(jsettings->number_ < 0 || jsettings->number_ > 1) {
+				logprintf(LOG_ERR, "setting \"%s\" must be either 0 or 1", jsettings->key);
+				have_error = 1;
+				goto clear;
+			} else {
 				settings_add_number(jsettings->key, (int)jsettings->number_);
 			}
 		} else if(strcmp(jsettings->key, "log-level") == 0) {

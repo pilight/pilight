@@ -153,6 +153,8 @@ unsigned short valid_config = 0;
 struct timeval tv;
 /* How many nodes are connected */
 int nrnodes = 0;
+/* Are we running standalone */
+int standalone = 0;
 
 #ifdef WEBSERVER
 /* Do we enable the webserver */
@@ -1583,14 +1585,17 @@ int main(int argc, char **argv) {
 	}
 
 	settings_find_number("port", &port);
+	settings_find_number("standalone", &standalone);
 
-	if(ssdp_seek(&ssdp_list) == -1) {
-		logprintf(LOG_NOTICE, "no pilight daemon found, daemonizing");
-	} else {
-		logprintf(LOG_NOTICE, "a pilight daemon was found, clientizing");
-		runmode = 2;
+	if(standalone == 1) {
+		if(ssdp_seek(&ssdp_list) == -1) {
+			logprintf(LOG_NOTICE, "no pilight daemon found, daemonizing");
+		} else {
+			logprintf(LOG_NOTICE, "a pilight daemon was found, clientizing");
+			runmode = 2;
+		}
+		sfree((void *)&ssdp_list);
 	}
-	sfree((void *)&ssdp_list);
 
 	if(runmode == 1) {
 		if(settings_find_string("config-file", &stmp) == 0) {
@@ -1609,7 +1614,9 @@ int main(int argc, char **argv) {
 		}
 
 		socket_start((unsigned short)port);
-		ssdp_start();
+		if(standalone == 0) {
+			ssdp_start();
+		}
 	}
 	if(nodaemon == 0) {
 		daemonize();
