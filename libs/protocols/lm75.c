@@ -1,5 +1,5 @@
 /*
-	Copyright (C) 2013 CurlyMo
+	Copyright (C) 2014 CurlyMo
 
 	This file is part of pilight.
 
@@ -141,8 +141,7 @@ void lm75Init(void) {
 
 	protocol_register(&lm75);
 	protocol_set_id(lm75, "lm75");
-	protocol_device_add(lm75, "lm75", "1-wire Temperature and Humidity Sensor");
-	protocol_device_add(lm75, "am2302", "1-wire Temperature and Humidity Sensor");	
+	protocol_device_add(lm75, "lm75", "TI I2C Temperature Sensor");
 	lm75->devtype = WEATHER;
 	lm75->hwtype = SENSOR;
 
