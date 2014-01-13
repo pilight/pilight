@@ -3,13 +3,13 @@
 
 	This file is part of pilight.
 
-    pilight is free software: you can redistribute it and/or modify it under the 
-	terms of the GNU General Public License as published by the Free Software 
-	Foundation, either version 3 of the License, or (at your option) any later 
+    pilight is free software: you can redistribute it and/or modify it under the
+	terms of the GNU General Public License as published by the Free Software
+	Foundation, either version 3 of the License, or (at your option) any later
 	version.
 
-    pilight is distributed in the hope that it will be useful, but WITHOUT ANY 
-	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR 
+    pilight is distributed in the hope that it will be useful, but WITHOUT ANY
+	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
@@ -33,11 +33,11 @@ void arctechSwCreateMessage(int id, int unit, int state, int all) {
 	arctech_switch->message = json_mkobject();
 	json_append_member(arctech_switch->message, "id", json_mknumber(id));
 	if(all == 1) {
-		json_append_member(arctech_switch->message, "all", json_mknumber(all));	
+		json_append_member(arctech_switch->message, "all", json_mknumber(all));
 	} else {
 		json_append_member(arctech_switch->message, "unit", json_mknumber(unit));
 	}
-		
+
 	if(state == 1) {
 		json_append_member(arctech_switch->message, "state", json_mkstring("on"));
 	} else {
@@ -187,6 +187,8 @@ void arctechSwInit(void) {
 	protocol_device_add(arctech_switch, "coco_switch", "CoCo Technologies Switches");
 	protocol_device_add(arctech_switch, "intertechno_switch", "Intertechno Switches");
 	protocol_conflict_add(arctech_switch, "arctech_screens");
+  protocol_conflict_add(arctech_switch, "arctech_doors");
+
 	protocol_plslen_add(arctech_switch, 315);
 	protocol_plslen_add(arctech_switch, 303);
 	protocol_plslen_add(arctech_switch, 251);
@@ -204,7 +206,7 @@ void arctechSwInit(void) {
 
 	protocol_setting_add_string(arctech_switch, "states", "on,off");
 	protocol_setting_add_number(arctech_switch, "readonly", 0);
-	
+
 	arctech_switch->parseBinary=&arctechSwParseBinary;
 	arctech_switch->createCode=&arctechSwCreateCode;
 	arctech_switch->printHelp=&arctechSwPrintHelp;

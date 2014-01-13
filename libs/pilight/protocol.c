@@ -3,13 +3,13 @@
 
 	This file is part of pilight.
 
-    pilight is free software: you can redistribute it and/or modify it under the 
-	terms of the GNU General Public License as published by the Free Software 
-	Foundation, either version 3 of the License, or (at your option) any later 
+    pilight is free software: you can redistribute it and/or modify it under the
+	terms of the GNU General Public License as published by the Free Software
+	Foundation, either version 3 of the License, or (at your option) any later
 	version.
 
-    pilight is distributed in the hope that it will be useful, but WITHOUT ANY 
-	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR 
+    pilight is distributed in the hope that it will be useful, but WITHOUT ANY
+	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
@@ -32,6 +32,9 @@
 #endif
 #ifdef PROTOCOL_KAKU_SCREEN
 	#include "../protocols/arctech_screen.h"
+#endif
+#ifdef PROTOCOL_KAKU_DOOR
+  #include "../protocols/arctech_door.h"
 #endif
 #ifdef PROTOCOL_KAKU_DIMMER
 	#include "../protocols/arctech_dimmer.h"
@@ -104,6 +107,9 @@ void protocol_init(void) {
 #endif
 #ifdef PROTOCOL_KAKU_SCREEN
 	arctechSrInit();
+#endif
+#ifdef PROTOCOL_KAKU_DOOR
+  arctechDoorInit();
 #endif
 #ifdef PROTOCOL_KAKU_DIMMER
 	arctechDimInit();
@@ -194,7 +200,7 @@ void protocol_register(protocol_t **proto) {
 	(*proto)->initDev = NULL;
 	(*proto)->printHelp = NULL;
 	(*proto)->message = NULL;
-	
+
 	(*proto)->repeats = 0;
 	(*proto)->first = 0;
 	(*proto)->second = 0;
@@ -203,7 +209,7 @@ void protocol_register(protocol_t **proto) {
 	memset(&(*proto)->code[0], 0, sizeof((*proto)->code));
 	memset(&(*proto)->pCode[0], 0, sizeof((*proto)->pCode));
 	memset(&(*proto)->binary[0], 0, sizeof((*proto)->binary));
-	
+
 	struct protocols_t *pnode = malloc(sizeof(struct protocols_t));
 	pnode->listener = *proto;
 	pnode->name = malloc(4);
@@ -220,7 +226,7 @@ void protocol_plslen_add(protocol_t *proto, int plslen) {
 	struct protocol_plslen_t *pnode = malloc(sizeof(struct protocol_plslen_t));
 	pnode->length = plslen;
 	pnode->next	= proto->plslen;
-	proto->plslen = pnode;	
+	proto->plslen = pnode;
 }
 
 void protocol_device_add(protocol_t *proto, const char *id, const char *desc) {
@@ -312,7 +318,7 @@ int protocol_setting_restore(protocol_t *proto, const char *name) {
 		tmp_settings = tmp_settings->next;
 	}
 	sfree((void *)&tmp_settings);
-	return 1;	
+	return 1;
 }
 
 int protocol_setting_check_string(protocol_t *proto, const char *name, const char *value) {
@@ -335,13 +341,13 @@ int protocol_setting_check_string(protocol_t *proto, const char *name, const cha
 				error=EXIT_FAILURE;
 			}
 		break;
-		case WEATHER:		
-		case RAW:		
+		case WEATHER:
+		case RAW:
 		default:
 			error=EXIT_FAILURE;
 		break;
 	}
-	
+
 	if(strcmp(name, "default") == 0 || strcmp(name, "states") == 0) {
 		if(proto->options) {
 			char *nvalue = malloc(strlen(value)+1);
@@ -364,8 +370,8 @@ int protocol_setting_check_string(protocol_t *proto, const char *name, const cha
 			}
 			sfree((void *)&nvalue);
 		}
-	}	
-	
+	}
+
 	return error;
 }
 
@@ -377,7 +383,7 @@ void protocol_setting_add_string(protocol_t *proto, const char *name, const char
 		strcpy(snode->name, name);
 		snode->cur_value = malloc(strlen(value)+1);
 		snode->old_value = malloc(4);
-		strcpy(snode->cur_value, value);	
+		strcpy(snode->cur_value, value);
 		snode->type = 1;
 		snode->next	= proto->settings;
 		proto->settings = snode;
@@ -390,7 +396,7 @@ void protocol_setting_add_string(protocol_t *proto, const char *name, const char
 int protocol_setting_check_number(protocol_t *proto, const char *name, int value) {
 
 	int error = EXIT_SUCCESS;
-#ifndef __FreeBSD__	
+#ifndef __FreeBSD__
 	regex_t regex;
 	int reti;
 #endif
@@ -426,8 +432,8 @@ int protocol_setting_check_number(protocol_t *proto, const char *name, int value
 			error=EXIT_FAILURE;
 		break;
 	}
-	
-	
+
+
 	if((strcmp(name, "readonly") == 0 ||
 		strcmp(name, "temperature") == 0 ||
 		strcmp(name, "battery") == 0 ||
@@ -444,7 +450,7 @@ int protocol_setting_check_number(protocol_t *proto, const char *name, int value
 		error=EXIT_FAILURE;
 	}
 
-	if(strcmp(name, "min") == 0 || strcmp(name, "max") == 0) {	
+	if(strcmp(name, "min") == 0 || strcmp(name, "max") == 0) {
 		struct options_t *tmp_options = proto->options;
 		while(tmp_options) {
 			if(tmp_options->conftype == config_value && strlen(tmp_options->mask) > 0) {
@@ -482,7 +488,7 @@ void protocol_setting_add_number(protocol_t *proto, const char *name, int value)
 		strcpy(snode->name, name);
 		snode->cur_value = malloc(sizeof(value)+1);
 		snode->old_value = malloc(4);
-		sprintf(snode->cur_value, "%d", value);	
+		sprintf(snode->cur_value, "%d", value);
 		snode->type = 2;
 		snode->next	= proto->settings;
 		proto->settings = snode;
