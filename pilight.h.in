@@ -53,6 +53,7 @@
 #cmakedefine PROTOCOL_KAKU_SCREEN_OLD
 #cmakedefine PROTOCOL_KAKU_SWITCH
 #cmakedefine PROTOCOL_KAKU_SCREEN
+#cmakedefine PROTOCOL_LM75
 #cmakedefine PROTOCOL_NEXA_SWITCH
 #cmakedefine PROTOCOL_RAW
 #cmakedefine PROTOCOL_RELAY
