@@ -75,7 +75,7 @@ void *lm75Parse(void *param) {
 	while(lm75_loop) {
 		for(y=0;y<nrid;y++) {
 			int fd = 0;
-			if((fd = wiringPiI2CSetup(strtol(id[y], NULL, 16))) > 0) {
+			if((fd = wiringPiI2CSetup((int)strtol(id[y], NULL, 16))) > 0) {
 
                 int raw = wiringPiI2CReadReg16(fd, 0x00);            
                 float temp = ((float)((raw&0x00ff)+((raw>>15)?0:0.5))*10);
@@ -122,6 +122,7 @@ void *lm75Parse(void *param) {
 }
 
 void lm75InitDev(JsonNode *jdevice) {
+	wiringPiSetup();
 	char *output = json_stringify(jdevice, NULL);
 	JsonNode *json = json_decode(output);
 	threads_register("lm75", &lm75Parse, (void *)json);
@@ -155,6 +156,4 @@ void lm75Init(void) {
 	protocol_setting_add_number(lm75, "interval", 5);
 
 	lm75->initDev=&lm75InitDev;
-	
-	wiringPiSetup();
 }

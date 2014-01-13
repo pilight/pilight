@@ -31,7 +31,7 @@ char debug_log[128];
 
 void logmarkup(void);
 int isNumeric(char *str);
-
+pid_t proc_find(const char *name);
 #ifdef DEBUG
 
 void debug_free(void **addr, const char *file, int line);

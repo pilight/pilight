@@ -23,6 +23,8 @@
 #include <dlfcn.h>
 #include <sys/time.h>
 #include <time.h>
+#include <dirent.h>
+#include <sys/types.h>
 
 #include "common.h"
 #include "log.h"
@@ -39,6 +41,42 @@ void logmarkup(void) {
 	}
 	
 	sprintf(debug_log, "[%22.22s] %s: ", buf, progname);
+}
+
+pid_t proc_find(const char *name) {
+	DIR* dir;
+	struct dirent* ent;
+	char* endptr;
+	char buf[512];
+	FILE* fp = NULL;
+
+	if(!(dir = opendir("/proc"))) {
+        logprintf(LOG_ERR, "can't open /proc");
+        return -1;
+    }
+
+    while((ent = readdir(dir)) != NULL) {
+        long lpid = strtol(ent->d_name, &endptr, 10);
+        if(*endptr != '\0') {
+			continue;
+        }
+
+        snprintf(buf, sizeof(buf), "/proc/%ld/cmdline", lpid);
+
+        if((fp = fopen(buf, "r"))) {
+			if(fgets(buf, sizeof(buf), fp) != NULL) {
+                char* first = strtok(buf, " ");
+                if(!strcmp(first, name)) {
+					fclose(fp);
+					closedir(dir);
+					return (pid_t)lpid;
+				}
+			}
+			fclose(fp);
+		}
+	}
+	closedir(dir);
+	return -1;
 }
 
 int isNumeric(char * s) {
