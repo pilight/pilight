@@ -171,6 +171,7 @@ void *dht11Parse(void *param) {
 }
 
 void dht11InitDev(JsonNode *jdevice) {
+	wiringPiSetup();
 	char *output = json_stringify(jdevice, NULL);
 	JsonNode *json = json_decode(output);
 	threads_register("dht11", &dht11Parse, (void *)json);
@@ -205,6 +206,4 @@ void dht11Init(void) {
 	protocol_setting_add_number(dht11, "interval", 5);
 
 	dht11->initDev=&dht11InitDev;
-	
-	wiringPiSetup();
 }

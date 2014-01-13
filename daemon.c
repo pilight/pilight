@@ -282,7 +282,7 @@ void *broadcast(void *param) {
 			if(broadcasted == 1) {
 				logprintf(LOG_DEBUG, "broadcasted: %s", json);
 			}
-			sfree((void *)&json);			
+			sfree((void *)&json);
 
 			struct bcqueue_t *tmp = bcqueue;
 			sfree((void *)&bcqueue->protoname);
@@ -831,7 +831,7 @@ void control_device(struct conf_devices_t *dev, char *state, JsonNode *values) {
 	/* Construct the right json object */
 	json_append_member(code, "protocol", jprotocols);
 	json_append_member(code, "settings", jsettings);
-	if(dev->dev_uuid && (dev->protocols->listener->hwtype == SENSOR 
+	if(dev->dev_uuid && (dev->protocols->listener->hwtype == SENSOR
 	   || dev->protocols->listener->hwtype == HWRELAY)) {
 		json_append_member(code, "uuid", json_mkstring(dev->dev_uuid));
 	}
@@ -1125,8 +1125,8 @@ void socket_client_disconnected(int i) {
 
 	if(handshakes[i] == NODE) {
 		node_remove(i);
-	}		
-		
+	}
+
 	handshakes[i] = 0;
 }
 
@@ -1394,7 +1394,7 @@ int main_gc(void) {
 		nodes = nodes->next;
 		sfree((void *)&tmp_nodes);
 	}
-	sfree((void *)&nodes);	
+	sfree((void *)&nodes);
 	sfree((void *)&progname);
 	return 0;
 }
@@ -1589,7 +1589,7 @@ int main(int argc, char **argv) {
 	settings_find_number("port", &port);
 	settings_find_number("standalone", &standalone);
 
-	if(standalone == 1) {
+	if(standalone == 0) {
 		if(ssdp_seek(&ssdp_list) == -1) {
 			logprintf(LOG_NOTICE, "no pilight daemon found, daemonizing");
 		} else {

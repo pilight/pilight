@@ -185,6 +185,7 @@ void *dht22Parse(void *param) {
 }
 
 void dht22InitDev(JsonNode *jdevice) {
+	wiringPiSetup();
 	char *output = json_stringify(jdevice, NULL);
 	JsonNode *json = json_decode(output);
 	threads_register("dht22", &dht22Parse, (void *)json);
@@ -220,6 +221,4 @@ void dht22Init(void) {
 	protocol_setting_add_number(dht22, "interval", 5);
 
 	dht22->initDev=&dht22InitDev;
-	
-	wiringPiSetup();
 }

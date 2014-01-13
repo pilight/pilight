@@ -130,8 +130,8 @@ unsigned short pilight433HwDeinit(void) {
 }
 
 int pilight433Send(int *code) {
-	int ret = 0;
-	unsigned int code_len = 0;
+	ssize_t ret = 0;
+	unsigned long code_len = 0;
 
 	while(code[code_len]) {
 		code_len++;

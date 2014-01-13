@@ -210,13 +210,29 @@ int main(int argc, char **argv) {
 	
 	char *args = NULL;
 	char *hwfile = NULL;
-
+	pid_t pid = 0;
+	
 	settingsfile = malloc(strlen(SETTINGS_FILE)+1);
 	strcpy(settingsfile, SETTINGS_FILE);	
 	
 	progname = malloc(15);
 	strcpy(progname, "pilight-debug");	
-	
+
+	if((pid = proc_find("pilight-daemon")) > 0) {
+		logprintf(LOG_ERR, "pilight-daemon instance found (%d)", (int)pid);
+		exit(EXIT_FAILURE);
+	}
+
+	if((pid = proc_find("pilight-learn")) > 0) {
+		logprintf(LOG_ERR, "pilight-learn instance found (%d)", (int)pid);
+		exit(EXIT_FAILURE);
+	}
+
+	if((pid = proc_find("pilight-debug")) > 0) {
+		logprintf(LOG_ERR, "pilight-debug instance found (%d)", (int)pid);
+		exit(EXIT_FAILURE);
+	}
+
 	options_add(&options, 'H', "help", no_value, 0, NULL);
 	options_add(&options, 'V', "version", no_value, 0, NULL);
 	options_add(&options, 'S', "settings", has_value, 0, NULL);
@@ -284,7 +300,6 @@ int main(int argc, char **argv) {
 		tmp_confhw = tmp_confhw->next;
 	}	
 
-	printf("Please make sure the daemon is not running when using this debugger.\n\n");
 	printf("Now press and hold one of the buttons on your remote or wait until\n");
 	printf("another device such as a weather station has send new codes\n");
 	printf("It is possible that the debugger needs to be restarted when it does\n");

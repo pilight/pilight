@@ -66,6 +66,9 @@ pilight-control: control.c $(INCLUDES) $(LIBS) libpilight.so
 pilight-raw: raw.c $(INCLUDES) $(LIBS) libpilight.so
 	$(GCC) $(CFLAGS) -o $@ $(patsubst pilight-%,%.c,$@) libpilight.so /usr/lib/arm-linux-gnueabihf/libz.so
 	
+pilight-uuid: uuid.c $(INCLUDES) $(LIBS) libpilight.so
+	$(GCC) $(CFLAGS) -o $@ $(patsubst pilight-%,%.c,$@) libpilight.so /usr/lib/arm-linux-gnueabihf/libz.so
+
 install:
 	[ -d /usr/share/images/pilight/ ] && rm -r /usr/share/images/pilight/ || true
 	
