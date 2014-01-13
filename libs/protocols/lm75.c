@@ -75,7 +75,7 @@ void *lm75Parse(void *param) {
 	while(lm75_loop) {
 		for(y=0;y<nrid;y++) {
 			int fd = 0;
-			if((fd = wiringPiI2CSetup(strtol(id[y], NULL, 16))) < 0) {
+			if((fd = wiringPiI2CSetup(strtol(id[y], NULL, 16))) > 0) {
 
                 int raw = wiringPiI2CReadReg16(fd, 0x00);            
                 float temp = ((float)((raw&0x00ff)+((raw>>15)?0:0.5))*10);
