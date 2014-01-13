@@ -224,7 +224,7 @@ function createDimmerElement(sTabId, sDevId, aValues) {
 					iOldDimLevel = this.value;
 					$('#'+sTabId+'_'+sDevId+'_switch')[0].selectedIndex = 1;
 					$('#'+sTabId+'_'+sDevId+'_switch').slider('refresh');					
-					var json = '{"message":"send","code":{"location":"'+sTabId+'","device":"'+sDevId+'","state":"on","values":{"dimlevel":"'+this.value+'"}}}';
+					var json = '{"message":"send","code":{"location":"'+sTabId+'","device":"'+sDevId+'","state":"on","values":{"dimlevel":'+this.value+'}}}';
 					if(oWebsocket) {
 						oWebsocket.send(json);
 					} else {
