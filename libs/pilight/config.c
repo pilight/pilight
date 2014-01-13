@@ -1303,7 +1303,7 @@ int config_parse_devices(JsonNode *jdevices, struct conf_devices_t *device) {
 		}
 	}
 
-	if(strlen(pilight_uuid) > 0 && strcmp(device->ori_uuid, pilight_uuid) == 0) {
+	if(strlen(pilight_uuid) > 0 && strcmp(device->dev_uuid, pilight_uuid) == 0) {
 		tmp_protocols = device->protocols;
 		while(tmp_protocols) {
 			if(tmp_protocols->listener->initDev) {
