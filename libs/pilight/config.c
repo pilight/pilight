@@ -219,19 +219,24 @@ int config_update(char *protoname, JsonNode *json, JsonNode **out) {
 									if(strcmp(sptr->name, opt->name) == 0 && opt->conftype == config_value && opt->argtype == has_value) {
 
 										memset(ctmp, '\0', sizeof(ctmp));
+										int type = 0;
 										if(json_find_string(code, opt->name, &stmp) == 0) {
 											strcpy(ctmp, stmp);
 										}
-
 										if(json_find_number(code, opt->name, &itmp) == 0) {
 											sprintf(ctmp, "%d", itmp);
-										}
+											type = 1;
+										}										
 
 										/* Check if the protocol settings of this device are valid to 
 										   make sure no errors occur in the config.json. */
 										if(protocol->checkValues) {
 											JsonNode *jcode = json_mkobject();
-											json_append_member(jcode, opt->name, json_mkstring(ctmp));
+											if(type == 0) { 
+												json_append_member(jcode, opt->name, json_mkstring(ctmp));
+											} else {
+												json_append_member(jcode, opt->name, json_mknumber(itmp));
+											}
 											if(protocol->checkValues(jcode) != 0) {
 												is_valid = 0;
 												json_delete(jcode);
@@ -248,7 +253,11 @@ int config_update(char *protoname, JsonNode *json, JsonNode **out) {
 											}
 
 											if(json_find_string(rval, sptr->name, &stmp) != 0) {
-												json_append_member(rval, sptr->name, json_mkstring(sptr->values->value));
+												if(sptr->values->type == CONFIG_TYPE_STRING) {
+													json_append_member(rval, sptr->name, json_mkstring(sptr->values->value));
+												} else if(sptr->values->type == CONFIG_TYPE_NUMBER) {
+													json_append_member(rval, sptr->name, json_mknumber(atoi(sptr->values->value)));
+												}
 												update = 1;
 											}
 
@@ -275,7 +284,11 @@ int config_update(char *protoname, JsonNode *json, JsonNode **out) {
 									}
 									
 									if(json_find_string(rval, sptr->name, &stmp) != 0) {
-										json_append_member(rval, sptr->name, json_mkstring(sptr->values->value));
+										if(sptr->values->type == CONFIG_TYPE_STRING) {
+											json_append_member(rval, sptr->name, json_mkstring(sptr->values->value));
+										} else if(sptr->values->type == CONFIG_TYPE_NUMBER) {
+											json_append_member(rval, sptr->name, json_mknumber(atoi(sptr->values->value)));
+										}
 									}
 									if(rloc == NULL) {
 										rloc = json_mkarray();
@@ -312,15 +325,15 @@ int config_update(char *protoname, JsonNode *json, JsonNode **out) {
 			lptr = lptr->next;
 		}
 	}
-	json_append_member(rroot, "origin", json_mkstring("config"));
-	json_append_member(rroot, "type",  json_mknumber((int)protocol->devtype));
-	if(strlen(pilight_uuid) > 0 && (protocol->hwtype == SENSOR || protocol->hwtype == HWRELAY)) {
-		json_append_member(rroot, "uuid",  json_mkstring(pilight_uuid));
-	}
-	json_append_member(rroot, "devices", rdev);
-	json_append_member(rroot, "values", rval);
+	if(update == 1) {	
+		json_append_member(rroot, "origin", json_mkstring("config"));
+		json_append_member(rroot, "type",  json_mknumber((int)protocol->devtype));
+		if(strlen(pilight_uuid) > 0 && (protocol->hwtype == SENSOR || protocol->hwtype == HWRELAY)) {
+			json_append_member(rroot, "uuid",  json_mkstring(pilight_uuid));
+		}
+		json_append_member(rroot, "devices", rdev);
+		json_append_member(rroot, "values", rval);
 
-	if(update == 1) {
 		*out = rroot;
 	} else {
 		json_delete(rroot);
@@ -970,7 +983,11 @@ int config_validate_settings(void) {
 							} else {
 								joptions = json_mkarray();
 								while(tmp_values) {
-									json_append_element(joptions, json_mkstring(tmp_values->value));
+									if(tmp_values->type == CONFIG_TYPE_STRING) {
+										json_append_element(joptions, json_mkstring(tmp_values->value));
+									} else if(tmp_values->type == CONFIG_TYPE_NUMBER) {
+										json_append_element(joptions, json_mknumber(atoi(tmp_values->value)));
+									}
 									tmp_values = tmp_values->next;
 								}
 								json_append_member(jdevice, tmp_settings->name, joptions);

@@ -41,6 +41,14 @@ void logmarkup(void) {
 	sprintf(debug_log, "[%22.22s] %s: ", buf, progname);
 }
 
+int isNumeric(char * s) {
+    if(s == NULL || *s == '\0' || *s == ' ')
+		return EXIT_FAILURE;
+    char *p;
+    strtod(s, &p);
+    return (*p == '\0') ? EXIT_SUCCESS : EXIT_FAILURE;
+}
+
 #ifdef DEBUG
 
 const char *debug_filename(const char *file) {

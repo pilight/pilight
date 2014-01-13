@@ -768,7 +768,11 @@ void control_device(struct conf_devices_t *dev, char *state, JsonNode *values) {
 						val = sett->values;
 						while(val) {
 							if(opt->conftype == config_id && strcmp(val->name, opt->name) == 0 && json_find_string(code, val->name, &ctmp) != 0) {
-								json_append_member(code, val->name, json_mkstring(val->value));
+								if(val->type == CONFIG_TYPE_STRING) {
+									json_append_member(code, val->name, json_mkstring(val->value));
+								} else if(val->type == CONFIG_TYPE_NUMBER) {
+									json_append_member(code, val->name, json_mknumber(atoi(val->value)));
+								}
 							}
 							val = val->next;
 						}
@@ -798,10 +802,7 @@ void control_device(struct conf_devices_t *dev, char *state, JsonNode *values) {
 						if(values->tag == JSON_STRING) {
 							json_append_member(code, values->key, json_mkstring(values->string_));
 						} else if(values->tag == JSON_NUMBER) {
-							ctmp = realloc(ctmp, sizeof(int));
-							sprintf(ctmp, "%d", (int)values->number_);
-							json_append_member(code, values->key, json_mkstring(ctmp));
-							sfree((void *)&ctmp);
+							json_append_member(code, values->key, json_mknumber(values->number_));
 						}
 					}
 					opt = opt->next;
@@ -814,7 +815,7 @@ void control_device(struct conf_devices_t *dev, char *state, JsonNode *values) {
 			while(opt) {
 				if(json_find_member(code, opt->name) == NULL) {
 					if(opt->conftype == config_state && opt->argtype == no_value && strcmp(opt->name, state) == 0) {
-						json_append_member(code, opt->name, json_mkstring("1"));
+						json_append_member(code, opt->name, json_mknumber(1));
 						break;
 					} else if(opt->conftype == config_state && opt->argtype == has_value) {
 						json_append_member(code, opt->name, json_mkstring(state));
@@ -836,6 +837,7 @@ void control_device(struct conf_devices_t *dev, char *state, JsonNode *values) {
 	}
 	json_append_member(json, "code", code);
 	json_append_member(json, "message", json_mkstring("send"));
+
 	send_queue(json);
 
 	json_delete(json);

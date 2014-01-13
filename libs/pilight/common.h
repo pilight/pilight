@@ -30,6 +30,7 @@ int loglevel;
 char debug_log[128];
 
 void logmarkup(void);
+int isNumeric(char *str);
 
 #ifdef DEBUG
 

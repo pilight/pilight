@@ -48,16 +48,11 @@ int genWeatherCreateCode(JsonNode *code) {
 	int temp = -999;
 	int humi = -999;
 	int batt = -1;
-	char *tmp;
 
-	if(json_find_string(code, "id", &tmp) == 0)
-		id=atoi(tmp);
-	if(json_find_string(code, "temperature", &tmp) == 0)
-		temp = atoi(tmp);
-	if(json_find_string(code, "humidity", &tmp) == 0)
-		humi = atoi(tmp);
-	if(json_find_string(code, "battery", &tmp) == 0)
-		batt = atoi(tmp);
+	json_find_number(code, "id", &id);
+	json_find_number(code, "temperature", &temp);
+	json_find_number(code, "humidity", &humi);
+	json_find_number(code, "battery", &batt);
 
 	if(id == -999 && temp == -999 && humi == -999 && batt == -1) {
 		logprintf(LOG_ERR, "generic_weather: insufficient number of arguments");

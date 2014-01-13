@@ -224,7 +224,11 @@ int main(int argc, char **argv) {
 									char *val = strdup(pch);
 									if(pch != NULL) {
 										if(config_valid_value(location, device, name, val) == 0) {
-											json_append_member(jvalues, name, json_mkstring(val));
+											if(isNumeric(val) == EXIT_SUCCESS) {
+												json_append_member(jvalues, name, json_mknumber(atoi(val)));
+											} else {
+												json_append_member(jvalues, name, json_mkstring(val));
+											}
 											has_values = 1;
 										} else {
 											logprintf(LOG_ERR, "\"%s\" is an invalid value for device \"%s\"", name, device);

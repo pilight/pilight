@@ -116,16 +116,14 @@ int arctechSrOldCreateCode(JsonNode *code) {
 	int id = -1;
 	int unit = -1;
 	int state = -1;
-	char *tmp;
+	int tmp;
 
-	if(json_find_string(code, "id", &tmp) == 0)
-		id=atoi(tmp);
-	if(json_find_string(code, "down", &tmp) == 0)
+	json_find_number(code, "id", &id);
+	json_find_number(code, "unit", &unit);
+	if(json_find_number(code, "off", &tmp) == 0)
 		state=0;
-	else if(json_find_string(code, "up", &tmp) == 0)
+	else if(json_find_number(code, "on", &tmp) == 0)
 		state=1;
-	if(json_find_string(code, "unit", &tmp) == 0)
-		unit = atoi(tmp);
 
 	if(id == -1 || unit == -1 || state == -1) {
 		logprintf(LOG_ERR, "arctech_screen_old: insufficient number of arguments");

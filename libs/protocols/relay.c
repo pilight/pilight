@@ -43,7 +43,7 @@ void relayCreateMessage(int gpio, int state) {
 int relayCreateCode(JsonNode *code) {
 	int gpio = -1;
 	int state = -1;
-	char *tmp;
+	int tmp;
 	char *def = NULL;
 	int free_def = 0;
 	int have_error = 0;
@@ -55,11 +55,10 @@ int relayCreateCode(JsonNode *code) {
 		strcpy(def, "off");
 	}
 	
-	if(json_find_string(code, "gpio", &tmp) == 0)
-		gpio=atoi(tmp);
-	if(json_find_string(code, "off", &tmp) == 0)
+	json_find_number(code, "gpio", &gpio);
+	if(json_find_number(code, "off", &tmp) == 0)
 		state=0;
-	else if(json_find_string(code, "on", &tmp) == 0)
+	else if(json_find_number(code, "on", &tmp) == 0)
 		state=1;
 
 	if(gpio == -1 || state == -1) {

@@ -134,19 +134,16 @@ int arctechSwCreateCode(JsonNode *code) {
 	int unit = -1;
 	int state = -1;
 	int all = 0;
-	char *tmp;
+	int tmp;
 
-	if(json_find_string(code, "id", &tmp) == 0)
-		id=atoi(tmp);
-	if(json_find_string(code, "off", &tmp) == 0)
+	json_find_number(code, "id", &id);
+	json_find_number(code, "unit", &unit);
+	json_find_number(code, "all", &all);
+	if(json_find_number(code, "off", &tmp) == 0)
 		state=0;
-	else if(json_find_string(code, "on", &tmp) == 0)
+	else if(json_find_number(code, "on", &tmp) == 0)
 		state=1;
-	if(json_find_string(code, "unit", &tmp) == 0)
-		unit = atoi(tmp);
-	if(json_find_string(code, "all", &tmp) == 0)
-		all = 1;
-		
+
 	if(id == -1 || (unit == -1 && all == 0) || state == -1) {
 		logprintf(LOG_ERR, "arctech_switch: insufficient number of arguments");
 		return EXIT_FAILURE;

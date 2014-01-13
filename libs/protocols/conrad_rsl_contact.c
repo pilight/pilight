@@ -126,16 +126,13 @@ void conradRSLCnCreateFooter(void) {
 int conradRSLCnCreateCode(JsonNode *code) {
 	int id = -1;
 	int state = -1;
-	char *tmp;
+	int tmp;
 
-	if(json_find_string(code, "id", &tmp) == 0) {
-		id=atoi(tmp);
-	}
-	if(json_find_string(code, "off", &tmp) == 0) {
+	json_find_number(code, "id", &id);
+	if(json_find_number(code, "off", &tmp) == 0)
 		state=0;
-	} else if(json_find_string(code, "on", &tmp) == 0) {
+	else if(json_find_number(code, "on", &tmp) == 0)
 		state=1;
-	}
 
 	if(id == -1 || state == -1) {
 		logprintf(LOG_ERR, "conrad_rsl_contact: insufficient number of arguments");

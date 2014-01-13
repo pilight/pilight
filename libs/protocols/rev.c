@@ -159,20 +159,20 @@ int revCreateCode(JsonNode *code) {
 	char id[3] = {'\0'};
 	int unit = -1;
 	int state = -1;
-	char *tmp;
+	int itmp;
+	char *stmp;
 
 	strcpy(id, "-1");
 	
-	if(json_find_string(code, "id", &tmp) == 0)
-		strcpy(id, tmp);
+	if(json_find_string(code, "id", &stmp) == 0)
+		strcpy(id, stmp);
 		
-	if(json_find_string(code, "off", &tmp) == 0)
+	if(json_find_number(code, "off", &itmp) == 0)
 		state=0;
-	else if(json_find_string(code, "on", &tmp) == 0)
+	else if(json_find_number(code, "on", &itmp) == 0)
 		state=1;
-		
-	if(json_find_string(code, "unit", &tmp) == 0)
-		unit = atoi(tmp);
+
+	json_find_number(code, "unit", &unit);
 		
 	if(strcmp(id, "-1") == 0 || unit == -1 || state == -1) {
 		logprintf(LOG_ERR, "rev_switch: insufficient number of arguments");

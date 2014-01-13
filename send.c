@@ -226,7 +226,11 @@ int main(int argc, char **argv) {
 			and those that are called by the user */
 			if((options_get_id(&protocol->options, tmp->name, &itmp) == 0)
 			&& strlen(tmp->value) > 0) {
-				json_append_member(code, tmp->name, json_mkstring(tmp->value));
+				if(isNumeric(tmp->value) == EXIT_SUCCESS) {
+					json_append_member(code, tmp->name, json_mknumber(atoi(tmp->value)));
+				} else {
+					json_append_member(code, tmp->name, json_mkstring(tmp->value));
+				}
 			}
 			if(strcmp(tmp->name, "protocol") == 0 && strlen(tmp->value) > 0) {
 				JsonNode *jprotocol = json_mkarray();

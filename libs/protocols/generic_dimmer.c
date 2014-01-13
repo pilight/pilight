@@ -47,7 +47,6 @@ int genDimcheckValues(JsonNode *code) {
 	int dimlevel = -1;
 	int max = 0;
 	int min = 15;
-	char *tmp;
 	
 	protocol_setting_get_number(generic_dimmer, "min", &min);
 	protocol_setting_get_number(generic_dimmer, "max", &max);	
@@ -56,8 +55,7 @@ int genDimcheckValues(JsonNode *code) {
 		return 1;
 	}
 	
-	if(json_find_string(code, "dimlevel", &tmp) == 0) {
-		dimlevel = atoi(tmp);	
+	if(json_find_number(code, "dimlevel", &dimlevel) == 0) {
 		if(dimlevel != -1 && (dimlevel < min || dimlevel > max)) {
 			return 1;
 		} else {
@@ -73,18 +71,16 @@ int genDimCreateCode(JsonNode *code) {
 	int dimlevel = -1;
 	int max = 0;
 	int min = 10;
-	char *tmp;
+	int tmp;
 
 	protocol_setting_get_number(generic_dimmer, "min", &min);
 	protocol_setting_get_number(generic_dimmer, "max", &max);	
 
-	if(json_find_string(code, "id", &tmp) == 0)
-		id=atoi(tmp);
-	if(json_find_string(code, "dimlevel", &tmp) == 0)
-		dimlevel = atoi(tmp);		
-	if(json_find_string(code, "off", &tmp) == 0)
+	json_find_number(code, "id", &id);
+	json_find_number(code, "dimlevel", &dimlevel);
+	if(json_find_number(code, "off", &tmp) == 0)
 		state=0;
-	else if(json_find_string(code, "on", &tmp) == 0)
+	else if(json_find_number(code, "on", &tmp) == 0)
 		state=1;
 
 	if(id == -1 || (dimlevel == -1 && state == -1)) {
