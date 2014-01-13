@@ -607,8 +607,6 @@ int main(int argc, char **argv) {
 		printf("pilight-learn can only use one hardware module at one time\n\n");
 	}
 
-	printf("Please make sure the daemon is not running when using this debugger.\n\n");	
-
 	while(main_loop) {
 		sleep(1);
 	}

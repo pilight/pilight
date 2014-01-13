@@ -300,7 +300,6 @@ int main(int argc, char **argv) {
 		tmp_confhw = tmp_confhw->next;
 	}	
 
-	printf("Please make sure the daemon is not running when using this debugger.\n\n");
 	printf("Now press and hold one of the buttons on your remote or wait until\n");
 	printf("another device such as a weather station has send new codes\n");
 	printf("It is possible that the debugger needs to be restarted when it does\n");
