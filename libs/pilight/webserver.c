@@ -291,7 +291,7 @@ int webserver_callback_http(struct libwebsocket_context *webcontext, struct libw
 				memset(request, '\0', strlen(webserver_root)+strlen(webgui_tpl)+14);
 				/* Check if the webserver_root is terminated by a slash. If not, than add it */
 				if(webserver_root[strlen(webserver_root)-1] == '/') {
-					sprintf(request, "%s/%s%s", webserver_root, webgui_tpl, "index.html");
+					sprintf(request, "%s%s%s", webserver_root, webgui_tpl, "index.html");
 				} else {
 					sprintf(request, "%s/%s%s", webserver_root, webgui_tpl, "/index.html");
 				}
@@ -331,18 +331,21 @@ int webserver_callback_http(struct libwebsocket_context *webcontext, struct libw
 						break;
 					}
 				}
+				
+				size_t wlen = strlen(webserver_root)+strlen(webgui_tpl)+strlen((const char *)in)+2;
+				request = malloc(wlen);
+				memset(request, '\0', wlen);
 				/* If a file was requested add it to the webserver path to create the absolute path */
-				if(webserver_root[strlen(webserver_root)-1] == '/' && ((char *)in)[0] == '/') {
-					request = malloc(strlen(webserver_root)+strlen(webgui_tpl)+strlen((const char *)in));
-					memset(request, '\0', strlen(webserver_root)+strlen(webgui_tpl)+strlen((const char *)in));
-					strncpy(&request[0], webserver_root, strlen(webserver_root)-1);
-					strncpy(&request[strlen(webserver_root)-1], webgui_tpl, strlen(webgui_tpl));
-					strcat(request, "/");
-					strncpy(&request[strlen(webgui_tpl)+strlen(webserver_root)], (char *)in, strlen((char *)in));
+				if(webserver_root[strlen(webserver_root)-1] == '/') {
+					if(((char *)in)[0] == '/')
+						sprintf(request, "%s%s%s", webserver_root, webgui_tpl, (char *)in);
+					else 
+						sprintf(request, "%s%s/%s", webserver_root, webgui_tpl, (char *)in);
 				} else {
-					request = malloc(strlen(webserver_root)+strlen(webgui_tpl)+strlen((const char *)in)+2);
-					memset(request, '\0', strlen(webserver_root)+strlen(webgui_tpl)+strlen((const char *)in)+2);
-					sprintf(request, "%s/%s%s", webserver_root, webgui_tpl, (const char *)in);
+					if(((char *)in)[0] == '/')
+						sprintf(request, "%s/%s%s", webserver_root, webgui_tpl, (const char *)in);
+					else
+						sprintf(request, "%s/%s/%s", webserver_root, webgui_tpl, (const char *)in);
 				}
 			}
 			char *dot = NULL;
