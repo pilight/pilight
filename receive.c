@@ -40,6 +40,7 @@ typedef enum {
 } steps_t;
 
 int main(int argc, char **argv) {
+
 	log_shell_enable();
 	log_file_disable();
 
@@ -175,6 +176,7 @@ close:
 		sfree((void *)&server);
 	}
 	options_gc();
+	log_gc();
 	sfree((void *)&progname);
 	sfree((void *)&message);
 

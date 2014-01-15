@@ -314,6 +314,7 @@ close:
 	protocol_gc();
 	options_delete(options);
 	options_gc();
+	log_gc();
 	sfree((void *)&progname);
 
 return EXIT_SUCCESS;

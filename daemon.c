@@ -1394,6 +1394,8 @@ int main_gc(void) {
 		nodes = nodes->next;
 		sfree((void *)&tmp_nodes);
 	}
+	
+	log_gc();
 	sfree((void *)&nodes);
 	sfree((void *)&progname);
 	return 0;

@@ -47,28 +47,28 @@ int log_gc(void) {
 			lf = NULL;
 		}
 	}
-	sfree((void *)&logfile);
-	sfree((void *)&logpath);
-
+	if(logfile) {
+		sfree((void *)&logfile);
+	}
+	if(logpath) {
+		sfree((void *)&logpath);
+	}
+	logmarkup();
+	fprintf(stderr, "%sDEBUG: garbage collected log library\n", debug_log);
 	return 1;
 }
 
 void logprintf(int prio, const char *format_str, ...) {
 	int save_errno = errno;
 	va_list ap;
-	if(logfile == NULL) {
-		logfile = realloc(logfile, strlen(LOG_FILE)+1);
-		strcpy(logfile, LOG_FILE);
-	}
-	if(filelog == 0 && shelllog == 0)
+
+	if(logfile == NULL && filelog == 0 && shelllog == 0)
 		return;
 
 	if(loglevel >= prio) {
 		if(lf == NULL && filelog == 1) {
 			if((lf = fopen(logfile, "a+")) == NULL) {
 				logprintf(LOG_WARNING, "could not open logfile %s", logfile);
-			} else {
-				gc_attach(log_gc);
 			}
 		}
 
@@ -110,7 +110,6 @@ void logprintf(int prio, const char *format_str, ...) {
 			va_end(ap);
 		}
 	}
-	sfree((void *)&logfile);
 	errno = save_errno;
 }
 
@@ -150,7 +149,7 @@ void log_file_set(char *log) {
 	logpath = realloc(logpath, i+1);
 	memset(logpath, '\0', i+1);
 	strncpy(logpath, log, i);
-
+	
 	if(strcmp(filename, log) != 0) {
 		int err = stat(logpath, &s);
 		if(err == -1) {
