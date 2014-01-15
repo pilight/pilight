@@ -226,7 +226,7 @@ if(${HARDWARE_433_GPIO} MATCHES "OFF")
 	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/hardware/433gpio.c")
 endif()
 
-if(${HARDWARE_433_MODULE} MATCHES "OFF")
+if(${HARDWARE_433_LIRC} MATCHES "OFF")
 	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/hardware/433module.h")
 	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/hardware/433module.c")
 endif()
