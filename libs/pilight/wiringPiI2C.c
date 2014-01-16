@@ -26,7 +26,7 @@
 #include <stdlib.h>
 #include <fcntl.h>
 #include <sys/ioctl.h>
-#include <linux/i2c-dev.h>
+#include "i2c-dev.h"
 
 #include "wiringPi.h"
 #include "wiringPiI2C.h"

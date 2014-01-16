@@ -1689,7 +1689,6 @@ clear:
 		log_shell_disable();
 	}
 	main_gc();
-	log_gc();
 	gc_clear();
 	return EXIT_FAILURE;
 }

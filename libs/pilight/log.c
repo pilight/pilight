@@ -39,6 +39,10 @@ char *logfile = NULL;
 char *logpath = NULL;
 
 int log_gc(void) {
+	if(shelllog == 1) {
+		logmarkup();
+		fprintf(stderr, "%sDEBUG: garbage collected log library\n", debug_log);
+	}
 	if(lf) {
 		if(fclose(lf) != 0) {
 			return 0;
@@ -53,8 +57,6 @@ int log_gc(void) {
 	if(logpath) {
 		sfree((void *)&logpath);
 	}
-	logmarkup();
-	fprintf(stderr, "%sDEBUG: garbage collected log library\n", debug_log);
 	return 1;
 }
 
