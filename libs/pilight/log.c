@@ -68,12 +68,6 @@ void logprintf(int prio, const char *format_str, ...) {
 		return;
 
 	if(loglevel >= prio) {
-		if(lf == NULL && filelog == 1) {
-			if((lf = fopen(logfile, "a+")) == NULL) {
-				logprintf(LOG_WARNING, "could not open logfile %s", logfile);
-			}
-		}
-
 		if(filelog == 1 && lf != NULL && loglevel < LOG_DEBUG) {
 			logmarkup();
 			fputs(debug_log, lf);
@@ -151,16 +145,16 @@ void log_file_set(char *log) {
 	logpath = realloc(logpath, i+1);
 	memset(logpath, '\0', i+1);
 	strncpy(logpath, log, i);
-	
+
 	if(strcmp(filename, log) != 0) {
 		int err = stat(logpath, &s);
 		if(err == -1) {
 			if(ENOENT == errno) {
-				logprintf(LOG_ERR, "the log file folder does not exist", optarg);
+				logprintf(LOG_ERR, "the log folder %s does not exist", logpath);
 				sfree((void *)&logpath);
 				exit(EXIT_FAILURE);
 			} else {
-				logprintf(LOG_ERR, "failed to run stat on log folder", optarg);
+				logprintf(LOG_ERR, "failed to run stat on log folder %s", logpath);
 				sfree((void *)&logpath);
 				exit(EXIT_FAILURE);
 			}
@@ -169,7 +163,7 @@ void log_file_set(char *log) {
 				logfile = realloc(logfile, strlen(log)+1);
 				strcpy(logfile, log);
 			} else {
-				logprintf(LOG_ERR, "the log file folder does not exist", optarg);
+				logprintf(LOG_ERR, "the log folder %s does not exist", logpath);
 				sfree((void *)&logpath);
 				exit(EXIT_FAILURE);
 			}
@@ -180,12 +174,13 @@ void log_file_set(char *log) {
 	}
 
 	if(lf == NULL && filelog == 1) {
-		if((lf = fopen(logfile, "w")) == NULL) {
-			logprintf(LOG_WARNING, "could not open logfile %s", logfile);
-		} else {
-			if(fclose(lf) == 0) {
-				lf = NULL;
-			}
+		if((lf = fopen(logfile, "w+")) == NULL) {
+			filelog = 0;
+			shelllog = 1;
+			logprintf(LOG_ERR, "could not open logfile %s", logfile);
+			sfree((void *)&logpath);
+			sfree((void *)&logfile);
+			exit(EXIT_FAILURE);
 		}
 	}
 	sfree((void *)&logpath);

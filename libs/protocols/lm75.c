@@ -159,7 +159,7 @@ void lm75Init(void) {
 	lm75->hwtype = SENSOR;
 
     options_add(&lm75->options, 't', "temperature", has_value, config_value, "^[0-9]{1,3}$");
-    options_add(&lm75->options, 'i', "id", has_value, config_id, "0x[0-9]{2}");
+    options_add(&lm75->options, 'i', "id", has_value, config_id, "0x[0-9a-f]{2}");
 
 	protocol_setting_add_number(lm75, "decimals", 1);
 	protocol_setting_add_number(lm75, "humidity", 0);
