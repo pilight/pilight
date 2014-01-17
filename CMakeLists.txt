@@ -113,7 +113,7 @@ if(${PROTOCOL_KAKU_SCREEN} MATCHES "OFF")
 	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/arctech_screen.c")
 endif()
 
-if(${PROTOCOL_KAKU_CONTACT} MATCHES "CLOSED")
+if(${PROTOCOL_KAKU_CONTACT} MATCHES "OFF")
   list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/arctech_contact.h")
   list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/arctech_contact.c")
 endif()
