@@ -58,11 +58,6 @@ void sort_list(void) {
 	struct pname_t *e = NULL;
 	struct pname_t *tmp = NULL;
 
-	/*
-	// the `c' node precedes the `a' and `e' node
-	// pointing up the node to which the comparisons
-	// are being made.
-	*/
 	while(e != pname->next) {
 		c = a = pname;
 		b = a->next;
@@ -139,8 +134,7 @@ int main(int argc, char **argv) {
 	options_add(&options, 'P', "port", has_value, 0, "[0-9]{1,4}");
 
 	/* Initialize protocols */
-	protocol_init();	
-	//sort_list();
+	protocol_init();
 	
 	/* Get the protocol to be used */
 	while (1) {

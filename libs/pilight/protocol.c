@@ -79,6 +79,9 @@
 #ifdef PROTOCOL_DS18B20
 	#include "../protocols/ds18b20.h"
 #endif
+#ifdef PROTOCOL_DS18S20
+	#include "../protocols/ds18s20.h"
+#endif
 #ifdef PROTOCOL_DHT22
 	#include "../protocols/dht22.h"
 #endif
@@ -153,6 +156,9 @@ void protocol_init(void) {
 #endif
 #ifdef PROTOCOL_DS18B20
 	ds18b20Init();
+#endif
+#ifdef PROTOCOL_DS18S20
+	ds18s20Init();
 #endif
 #ifdef PROTOCOL_DHT22
 	dht22Init();
