@@ -33,8 +33,8 @@
 #ifdef PROTOCOL_KAKU_SCREEN
 	#include "../protocols/arctech_screen.h"
 #endif
-#ifdef PROTOCOL_KAKU_DOOR
-  #include "../protocols/arctech_door.h"
+#ifdef PROTOCOL_KAKU_CONTACT
+  #include "../protocols/arctech_contact.h"
 #endif
 #ifdef PROTOCOL_KAKU_DIMMER
 	#include "../protocols/arctech_dimmer.h"
@@ -108,8 +108,8 @@ void protocol_init(void) {
 #ifdef PROTOCOL_KAKU_SCREEN
 	arctechSrInit();
 #endif
-#ifdef PROTOCOL_KAKU_DOOR
-  arctechDoorInit();
+#ifdef PROTOCOL_KAKU_CONTACT
+  arctechContactInit();
 #endif
 #ifdef PROTOCOL_KAKU_DIMMER
 	arctechDimInit();

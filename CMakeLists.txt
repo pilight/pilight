@@ -113,9 +113,9 @@ if(${PROTOCOL_KAKU_SCREEN} MATCHES "OFF")
 	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/arctech_screen.c")
 endif()
 
-if(${PROTOCOL_KAKU_DOOR} MATCHES "OFF")
-  list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/arctech_door.h")
-  list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/arctech_door.c")
+if(${PROTOCOL_KAKU_CONTACT} MATCHES "CLOSED")
+  list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/arctech_contact.h")
+  list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/arctech_contact.c")
 endif()
 
 

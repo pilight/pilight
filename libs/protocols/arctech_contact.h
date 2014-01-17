@@ -16,13 +16,13 @@
     along with pilight. If not, see <http://www.gnu.org/licenses/>
 */
 
-#ifndef _PROTOCOL_ARCTECH_DOOR_H_
-#define _PROTOCOL_ARCTECH_DOOR_H_
+#ifndef _PROTOCOL_ARCTECH_CONTACT_H_
+#define _PROTOCOL_ARCTECH_CONTACT_H_
 
-struct protocol_t *arctech_door;
+struct protocol_t *arctech_contact;
 
-void arctechDoorInit(void);
-void arctechDoorCreateMessage(int id, int unit, int state, int all);
-void arctechDoorParseBinary(void);
+void arctechContactInit(void);
+void arctechContactCreateMessage(int id, int unit, int state, int all);
+void arctechContactParseBinary(void);
 
 #endif
