@@ -156,7 +156,7 @@ void arctechSrOldInit(void) {
 
 	protocol_register(&arctech_screen_old);
 	protocol_set_id(arctech_screen_old, "arctech_screens_old");
-	protocol_device_add(arctech_screen_old, "kaku_screen_old", "old KlikAanKlikUit Screens");
+	protocol_device_add(arctech_screen_old, "kaku_screen_old", "Old KlikAanKlikUit Screens");
 	protocol_conflict_add(arctech_screen_old, "arctech_switches_old");	
 	protocol_plslen_add(arctech_screen_old, 336);
 	arctech_screen_old->devtype = SCREEN;

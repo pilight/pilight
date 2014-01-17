@@ -43,6 +43,55 @@ typedef enum {
 	SEND
 } steps_t;
 
+struct pname_t {
+	char *name;
+	char *desc;
+	struct pname_t *next;
+};
+
+struct pname_t *pname = NULL;
+
+void sort_list(void) {
+	struct pname_t *a = NULL;
+	struct pname_t *b = NULL;
+	struct pname_t *c = NULL;
+	struct pname_t *e = NULL;
+	struct pname_t *tmp = NULL;
+
+	/*
+	// the `c' node precedes the `a' and `e' node
+	// pointing up the node to which the comparisons
+	// are being made.
+	*/
+	while(e != pname->next) {
+		c = a = pname;
+		b = a->next;
+		while(a != e) {
+			if(strcmp(a->name, b->name) > 0) {
+				if(a == pname) {
+					tmp = b->next;
+					b->next = a;
+					a->next = tmp;
+					pname = b;
+					c = b;
+				} else {
+					tmp = b->next;
+					b->next = a;
+					a->next = tmp;
+					c->next = b;
+					c = b;
+				}
+			} else {
+				c = a;
+				a = a->next;
+			}
+			b = a->next;
+			if(b == e)
+				e = a;
+		}
+	}
+}
+
 int main(int argc, char **argv) {
 
 	log_file_disable();
@@ -90,8 +139,9 @@ int main(int argc, char **argv) {
 	options_add(&options, 'P', "port", has_value, 0, "[0-9]{1,4}");
 
 	/* Initialize protocols */
-	protocol_init();
-
+	protocol_init();	
+	//sort_list();
+	
 	/* Get the protocol to be used */
 	while (1) {
 		int c;
@@ -202,17 +252,34 @@ int main(int argc, char **argv) {
 				protocol = pnode->listener;
 				if(protocol->createCode) {
 					while(protocol->devices) {
-						printf("\t %s\t\t",protocol->devices->id);
-						if(strlen(protocol->devices->id)<7)
-							printf("\t");
-						if(strlen(protocol->devices->id)<15)
-							printf("\t");
-						printf("%s\n", protocol->devices->desc);
+						struct pname_t *node = malloc(sizeof(struct pname_t));
+						node->name = malloc(strlen(protocol->devices->id)+1);
+						strcpy(node->name, protocol->devices->id);
+						node->desc = malloc(strlen(protocol->devices->desc)+1);
+						strcpy(node->desc, protocol->devices->desc);
+						node->next = pname;
+						pname = node;
 						protocol->devices = protocol->devices->next;
 					}
 				}
 				pnode = pnode->next;
 			}
+			sort_list();
+			struct pname_t *ptmp = NULL;
+			while(pname) {
+				ptmp = pname;
+				printf("\t %s\t\t",ptmp->name);
+				if(strlen(ptmp->name)<7)
+					printf("\t");
+				if(strlen(ptmp->name)<15)
+					printf("\t");
+				printf("%s\n", ptmp->desc);
+				sfree((void *)&ptmp->name);
+				sfree((void *)&ptmp->desc);
+				pname = pname->next;
+				sfree((void *)&ptmp);
+			}
+			sfree((void *)&pname);
 		}
 		goto close;
 	}
