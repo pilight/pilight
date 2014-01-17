@@ -295,6 +295,7 @@ close:
 	protocol_gc();
 	socket_gc();
 	options_gc();
+	log_gc();
 	sfree((void *)&progname);
 
 return EXIT_SUCCESS;

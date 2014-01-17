@@ -65,7 +65,7 @@
 /* Hardware support */
 
 #cmakedefine HARDWARE_433_GPIO
-#cmakedefine HARDWARE_433_MODULE
+#cmakedefine HARDWARE_433_LIRC
 #cmakedefine HARDWARE_433_PILIGHT
 
 #define VERSION					"2.1"

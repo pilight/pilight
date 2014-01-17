@@ -32,11 +32,13 @@
 
 int gpio_433_in = 0;
 int gpio_433_out = 0;
+int gpio_433_initialized = 0;
 
 unsigned short gpio433HwInit(void) {
 	if(wiringPiSetup() == -1) {
 		return EXIT_FAILURE;
 	}
+	gpio_433_initialized = 1;
 	pinMode(gpio_433_out, OUTPUT);
 	if(wiringPiISR(gpio_433_in, INT_EDGE_BOTH) < 0) {
 		logprintf(LOG_ERR, "unable to register interrupt for pin %d", gpio_433_in) ;
@@ -47,13 +49,15 @@ unsigned short gpio433HwInit(void) {
 
 unsigned short gpio433HwDeinit(void) {
 	FILE *fd;
-	if((fd = fopen ("/sys/class/gpio/unexport", "w"))) {
-		fprintf(fd, "%d\n", wpiPinToGpio(gpio_433_out));
-		fclose(fd);
-	}
-	if((fd = fopen ("/sys/class/gpio/unexport", "w"))) {
-		fprintf(fd, "%d\n", wpiPinToGpio(gpio_433_in));
-		fclose(fd);
+	if(gpio_433_initialized) {
+		if((fd = fopen ("/sys/class/gpio/unexport", "w"))) {
+			fprintf(fd, "%d", wpiPinToGpio(gpio_433_out));
+			fclose(fd);
+		}
+		if((fd = fopen ("/sys/class/gpio/unexport", "w"))) {
+			fprintf(fd, "%d", wpiPinToGpio(gpio_433_in));
+			fclose(fd);
+		}
 	}
 	return EXIT_SUCCESS;
 }

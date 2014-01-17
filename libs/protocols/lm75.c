@@ -49,6 +49,7 @@ void *lm75Parse(void *param) {
 	struct JsonNode *jid = NULL;
 	struct JsonNode *jchild = NULL;
 	char **id = NULL;
+	int *fd = 0;
 	int i = 0;
 	int nrid = 0, y = 0, interval = 5, x = 0;
 	char *stmp;
@@ -72,12 +73,15 @@ void *lm75Parse(void *param) {
 	
 	lm75_nrfree++;	
 
+	fd = realloc(fd, (sizeof(int)*(size_t)(nrid+1)));
+	for(y=0;y<nrid;y++) {
+		fd[y] = wiringPiI2CSetup((int)strtol(id[y], NULL, 16));
+	}
+	
 	while(lm75_loop) {
 		for(y=0;y<nrid;y++) {
-			int fd = 0;
-			if((fd = wiringPiI2CSetup((int)strtol(id[y], NULL, 16))) > 0) {
-
-                int raw = wiringPiI2CReadReg16(fd, 0x00);            
+			if(fd[nrid] > 0) {
+                int raw = wiringPiI2CReadReg16(fd[nrid], 0x00);            
                 float temp = ((float)((raw&0x00ff)+((raw>>15)?0:0.5))*10);
 
 				lm75->message = json_mkobject();
@@ -116,6 +120,14 @@ void *lm75Parse(void *param) {
 		}
 		sfree((void *)&id);
 	}
+	if(fd) {
+		for(y=0;y<nrid;y++) {
+			if(fd[nrid] > 0) {
+				close(fd[nrid]);
+			}
+		}
+		sfree((void *)&fd);
+	}
 	lm75_nrfree--;
 
 	return (void *)NULL;
@@ -147,7 +159,7 @@ void lm75Init(void) {
 	lm75->hwtype = SENSOR;
 
     options_add(&lm75->options, 't', "temperature", has_value, config_value, "^[0-9]{1,3}$");
-    options_add(&lm75->options, 'i', "id", has_value, config_id, "0x[0-9]{2}");
+    options_add(&lm75->options, 'i', "id", has_value, config_id, "0x[0-9a-f]{2}");
 
 	protocol_setting_add_number(lm75, "decimals", 1);
 	protocol_setting_add_number(lm75, "humidity", 0);

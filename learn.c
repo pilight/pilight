@@ -502,7 +502,7 @@ int main(int argc, char **argv) {
 
 	/* Catch all exit signals for gc */
 	gc_catch();	
-	
+
 	log_shell_enable();
 	log_level_set(LOG_NOTICE);
 
@@ -524,8 +524,8 @@ int main(int argc, char **argv) {
 		exit(EXIT_FAILURE);
 	}
 
-	if((pid = proc_find("pilight-learn")) > 0) {
-		logprintf(LOG_ERR, "pilight-learn instance found (%d)", (int)pid);
+	if((pid = proc_find("pilight-raw")) > 0) {
+		logprintf(LOG_ERR, "pilight-raw instance found (%d)", (int)pid);
 		exit(EXIT_FAILURE);
 	}
 

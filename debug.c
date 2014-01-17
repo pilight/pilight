@@ -228,8 +228,8 @@ int main(int argc, char **argv) {
 		exit(EXIT_FAILURE);
 	}
 
-	if((pid = proc_find("pilight-debug")) > 0) {
-		logprintf(LOG_ERR, "pilight-debug instance found (%d)", (int)pid);
+	if((pid = proc_find("pilight-raw")) > 0) {
+		logprintf(LOG_ERR, "pilight-raw instance found (%d)", (int)pid);
 		exit(EXIT_FAILURE);
 	}
 
