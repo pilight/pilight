@@ -433,6 +433,7 @@ int protocol_setting_check_number(protocol_t *proto, const char *name, int value
 		break;
 	}
 
+
 	if((strcmp(name, "readonly") == 0 ||
 		strcmp(name, "temperature") == 0 ||
 		strcmp(name, "battery") == 0 ||
