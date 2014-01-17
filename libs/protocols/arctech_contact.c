@@ -39,7 +39,7 @@ void arctechContactCreateMessage(int id, int unit, int state, int all) {
   }
 
   if(state == 1) {
-          json_append_member(arctech_contact->message, "state", json_mkstring("open"));
+          json_append_member(arctech_contact->message, "state", json_mkstring("opened"));
   } else {
           json_append_member(arctech_contact->message, "state", json_mkstring("closed"));
   }
@@ -70,11 +70,11 @@ void arctechContactInit(void) {
   options_add(&arctech_contact->options, 'a', "all", no_value, 0, NULL);
   options_add(&arctech_contact->options, 'u', "unit", has_value, config_id, "^([0-9]{1}|[1][0-5])$");
   options_add(&arctech_contact->options, 'i', "id", has_value, config_id, "^([0-9]{1,7}|[1-5][0-9]{7}|6([0-6][0-9]{6}|7(0[0-9]{5}|10([0-7][0-9]{3}|8([0-7][0-9]{2}|8([0-5][0-9]|6[0-3]))))))$");
-  options_add(&arctech_contact->options, 't', "open", no_value, config_state, NULL);
+  options_add(&arctech_contact->options, 't', "opened", no_value, config_state, NULL);
   options_add(&arctech_contact->options, 'f', "closed", no_value, config_state, NULL);
 
 
-  protocol_setting_add_string(arctech_contact, "states", "open,closed");
+  protocol_setting_add_string(arctech_contact, "states", "opened,closed");
   protocol_setting_add_number(arctech_contact, "readonly", 1);
 
   arctech_contact->parseBinary=&arctechContactParseBinary;
