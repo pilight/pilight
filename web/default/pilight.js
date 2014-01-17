@@ -405,7 +405,7 @@ function parseData(data) {
 				$.each(aValues, function(vindex, vvalues) {
 					if(iType == 1 || iType == 4) {
 						if(vindex == 'state') {
-							if(vvalues == 'on') {
+							if(vvalues == 'on' || vvalues == 'opened') {
 								$('#'+lindex+'_'+dvalues+'_switch')[0].selectedIndex = 1;
 							} else {
 								$('#'+lindex+'_'+dvalues+'_switch')[0].selectedIndex = 0;
