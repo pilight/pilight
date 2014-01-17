@@ -58,7 +58,7 @@ void arctechContactInit(void) {
 
   protocol_register(&arctech_contact);
   protocol_set_id(arctech_contact, "arctech_contact");
-  protocol_device_add(arctech_contact, "kaku_contact", "KlikAanKlikUit contact Sensor");
+  protocol_device_add(arctech_contact, "kaku_contact", "KlikAanKlikUit Contact Sensor");
   protocol_plslen_add(arctech_contact, 294);
 
   arctech_contact->devtype = SWITCH;
