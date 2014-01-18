@@ -80,8 +80,8 @@ void *lm75Parse(void *param) {
 	
 	while(lm75_loop) {
 		for(y=0;y<nrid;y++) {
-			if(fd[nrid] > 0) {
-                int raw = wiringPiI2CReadReg16(fd[nrid], 0x00);            
+			if(fd[y] > 0) {
+                int raw = wiringPiI2CReadReg16(fd[y], 0x00);            
                 float temp = ((float)((raw&0x00ff)+((raw>>15)?0:0.5))*10);
 
 				lm75->message = json_mkobject();
@@ -122,8 +122,8 @@ void *lm75Parse(void *param) {
 	}
 	if(fd) {
 		for(y=0;y<nrid;y++) {
-			if(fd[nrid] > 0) {
-				close(fd[nrid]);
+			if(fd[y] > 0) {
+				close(fd[y]);
 			}
 		}
 		sfree((void *)&fd);
