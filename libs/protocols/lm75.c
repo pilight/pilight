@@ -155,6 +155,7 @@ void lm75Init(void) {
 	protocol_register(&lm75);
 	protocol_set_id(lm75, "lm75");
 	protocol_device_add(lm75, "lm75", "TI I2C Temperature Sensor");
+	protocol_device_add(lm75, "lm76", "TI I2C Temperature Sensor");
 	lm75->devtype = WEATHER;
 	lm75->hwtype = SENSOR;
 
