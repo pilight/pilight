@@ -106,6 +106,9 @@
 #ifdef PROTOCOL_POLLIN_SWITCH
 	#include "../protocols/pollin.h"
 #endif
+#ifdef PROTOCOL_MUMBI_SWITCH
+	#include "../protocols/mumbi.h"
+#endif
 
 void protocol_init(void) {
 #if defined(PROTOCOL_COCO_SWITCH) || defined(PROTOCOL_DIO_SWITCH) || defined(PROTOCOL_NEXA_SWITCH) || defined(PROTOCOL_KAKU_SWITCH) || defined(PROTOCOL_INTERTECHNO_SWITCH)
@@ -186,6 +189,9 @@ void protocol_init(void) {
 #endif
 #ifdef PROTOCOL_POLLIN_SWITCH
 	pollinInit();
+#endif
+#ifdef PROTOCOL_MUMBI_SWITCH
+	mumbiInit();
 #endif
 }
 

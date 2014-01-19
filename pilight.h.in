@@ -56,6 +56,7 @@
 #cmakedefine PROTOCOL_KAKU_SCREEN
 #cmakedefine PROTOCOL_KAKU_CONTACT
 #cmakedefine PROTOCOL_LM75
+#cmakedefine PROTOCOL_MUMBI_SWITCH
 #cmakedefine PROTOCOL_NEXA_SWITCH
 #cmakedefine PROTOCOL_POLLIN_SWITCH
 #cmakedefine PROTOCOL_RAW

@@ -348,6 +348,7 @@ void receiver_parse_code(int *rawcode, int rawlen, int plslen, int hwtype) {
 				}
 				plslengths = plslengths->next;
 			}
+
 			if(rawlen == protocol->rawlen && match == 1) {
 				for(x=0;x<(int)(double)rawlen;x++) {
 					memcpy(&protocol->raw[x], &rawcode[x], sizeof(int));
@@ -458,8 +459,8 @@ void receiver_parse_code(int *rawcode, int rawlen, int plslen, int hwtype) {
 								protocol->binary[x/4] = 0;
 							}
 						}
-
-						if((double)protocol->raw[1]/((plslengths->length * (1+protocol->pulse)/2)) < 2) {
+						printf("%f\n", (double)protocol->raw[1]/((plslengths->length * (1+protocol->pulse)/2)));
+						if((double)protocol->raw[1]/((plslengths->length * (1+protocol->pulse)/2)) < 2.1) {
 							x -= 4;
 						}
 

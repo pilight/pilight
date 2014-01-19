@@ -156,7 +156,7 @@ void pollinInit(void) {
 	protocol_register(&pollin);
 	protocol_set_id(pollin, "pollin");
 	protocol_device_add(pollin, "pollin", "Pollin Switches");
-	protocol_plslen_add(pollin, 303);
+	protocol_plslen_add(pollin, 301);
 	pollin->devtype = SWITCH;
 	pollin->hwtype = RF433;
 	pollin->pulse = 3;
