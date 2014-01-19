@@ -52,6 +52,7 @@ void *lm75Parse(void *param) {
 	int *fd = 0;
 	int i = 0;
 	int nrid = 0, y = 0, interval = 5, x = 0;
+	int temp_corr = 0;
 	char *stmp;
 
 	if((jid = json_find_member(json, "id"))) {
@@ -68,6 +69,7 @@ void *lm75Parse(void *param) {
 	}
 	if((jsettings = json_find_member(json, "settings"))) {
 		json_find_number(jsettings, "interval", &interval);
+		json_find_number(jsettings, "temp-corr", &temp_corr);
 	}
 	json_delete(json);
 	
@@ -87,7 +89,7 @@ void *lm75Parse(void *param) {
 				lm75->message = json_mkobject();
 				JsonNode *code = json_mkobject();
 				json_append_member(code, "id", json_mkstring(id[y]));
-				json_append_member(code, "temperature", json_mknumber((int)temp));
+				json_append_member(code, "temperature", json_mknumber((int)temp+temp_corr));
 
 				json_append_member(lm75->message, "code", code);
 				json_append_member(lm75->message, "origin", json_mkstring("receiver"));

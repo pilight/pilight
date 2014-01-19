@@ -33,7 +33,7 @@ void elroHECreateMessage(int systemcode, int unitcode, int state) {
 	elro_he->message = json_mkobject();
 	json_append_member(elro_he->message, "systemcode", json_mknumber(systemcode));
 	json_append_member(elro_he->message, "unitcode", json_mknumber(unitcode));
-	if(state == 1) {
+	if(state == 0) {
 		json_append_member(elro_he->message, "state", json_mkstring("on"));
 	} else {
 		json_append_member(elro_he->message, "state", json_mkstring("off"));
@@ -101,7 +101,7 @@ void elroHECreateUnitCode(int unitcode) {
 }
 
 void elroHECreateState(int state) {
-	if(state == 1) {
+	if(state == 0) {
 		elroHECreateHigh(44, 47);
 	}
 }

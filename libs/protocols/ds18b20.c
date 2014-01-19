@@ -56,7 +56,7 @@ void *ds18b20Parse(void *param) {
 	char *content;	
 	char *ds18b20_w1slave = NULL;
 	int w1valid = 0, w1temp = 0, interval = 5;
-	int temp_corr = 0;		
+	int temp_corr = 0;
 	int x = 0, nrid = 0, y = 0;
 	size_t bytes;
 	

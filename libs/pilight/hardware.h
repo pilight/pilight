@@ -24,7 +24,8 @@ typedef enum {
 	RF433,
 	RF868,
 	SENSOR,
-	HWRELAY
+	HWRELAY,
+	API
 } hwtype_t;
 
 #include "options.h"

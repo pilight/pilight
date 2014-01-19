@@ -240,6 +240,11 @@ if(${PROTOCOL_LM75} MATCHES "OFF"
 	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/pilight/wiringPiI2C.c")
 endif()
 
+if(${PROTOCOL_WUNDERGROUND} MATCHES "OFF")
+	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/wunderground.h")
+	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/wunderground.c")
+endif()
+
 if(${HARDWARE_433_GPIO} MATCHES "OFF")
 	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/hardware/433gpio.h")
 	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/hardware/433gpio.c")

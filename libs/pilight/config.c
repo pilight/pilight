@@ -1421,7 +1421,7 @@ int config_parse_locations(JsonNode *jlocations, struct conf_locations_t *locati
 						}
 						tmp_protocols = tmp_protocols->next;
 					}
-					if(ptype != protocol->hwtype) {
+					if(match == 1 && ptype != protocol->hwtype) {
 						logprintf(LOG_ERR, "device #%d \"%s\" of \"%s\", cannot combine protocols of different hardware types", i, jdevices->key, location->id);
 						have_error = 1;
 						json_delete(jprotocol);
