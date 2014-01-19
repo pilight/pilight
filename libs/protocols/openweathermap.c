@@ -55,7 +55,7 @@ void *openweathermapParse(void *param) {
 	struct JsonNode *node = NULL;
 	struct openweathermap_data_t *openweathermap_data = NULL;
 	struct openweathermap_data_t *wtmp = NULL;
-	int interval = 60;
+	int interval = 600;
 	
 	char url[1024];
 	char *filename = NULL, *data = NULL;
@@ -108,7 +108,7 @@ void *openweathermapParse(void *param) {
 		while(wtmp) {
 			filename = NULL;
 			data = NULL;
-			sprintf(url, "http://api.openweathermap.org/data/2.5/weather?q=%s,%s", wtmp->location, wtmp->country);
+			sprintf(url, "http://api.openweathermap.org/data/2.5/weather?q=%s,%s&APPID=8db24c4ac56251371c7ea87fd3115493", wtmp->location, wtmp->country);
 			http_parse_url(url, &filename);
 			ret = http_get(filename, &data, &lg, typebuf);
 			if(ret == 200) {
@@ -203,10 +203,10 @@ int openweathermapGC(void) {
 }
 
 int openweathermapCheckValues(JsonNode *code) {
-	int interval = 300;
+	int interval = 600;
 	protocol_setting_get_number(openweathermap, "interval", &interval);
 
-	if(interval < 300) {
+	if(interval < 600) {
 		return 1;
 	}
 
@@ -232,7 +232,7 @@ void openweathermapInit(void) {
 	protocol_setting_add_number(openweathermap, "humidity", 1);
 	protocol_setting_add_number(openweathermap, "temperature", 1);
 	protocol_setting_add_number(openweathermap, "battery", 0);
-	protocol_setting_add_number(openweathermap, "interval", 60);
+	protocol_setting_add_number(openweathermap, "interval", 600);
 
 	openweathermap->initDev=&openweathermapInitDev;
 	openweathermap->checkValues=&openweathermapCheckValues;
