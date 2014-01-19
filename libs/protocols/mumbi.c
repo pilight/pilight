@@ -101,7 +101,7 @@ void mumbiCreateUnitCode(int unitcode) {
 }
 
 void mumbiCreateState(int state) {
-	if(state == 1) {
+	if(state == 0) {
 		mumbiCreateHigh(44, 47);
 	}
 }
