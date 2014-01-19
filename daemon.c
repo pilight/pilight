@@ -459,7 +459,7 @@ void receiver_parse_code(int *rawcode, int rawlen, int plslen, int hwtype) {
 								protocol->binary[x/4] = 0;
 							}
 						}
-						printf("%f\n", (double)protocol->raw[1]/((plslengths->length * (1+protocol->pulse)/2)));
+
 						if((double)protocol->raw[1]/((plslengths->length * (1+protocol->pulse)/2)) < 2.1) {
 							x -= 4;
 						}

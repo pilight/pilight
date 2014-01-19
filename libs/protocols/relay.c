@@ -114,7 +114,7 @@ void relayInit(void) {
 
 	protocol_register(&relay);
 	protocol_set_id(relay, "relay");
-	protocol_device_add(relay, "relay", "GPIO connected relay's");
+	protocol_device_add(relay, "relay", "GPIO Connected Relays");
 	relay->devtype = RELAY;
 	relay->hwtype = HWRELAY;
 
