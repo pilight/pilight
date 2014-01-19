@@ -53,6 +53,7 @@ void *wundergroundParse(void *param) {
 	struct JsonNode *jchild = NULL;
 	struct JsonNode *jchild1 = NULL;
 	struct JsonNode *jsettings = NULL;
+	struct JsonNode *node = NULL;
 	struct wunderground_data_t *wunderground_data = NULL;
 	struct wunderground_data_t *wtmp = NULL;
 	int interval = 900;
@@ -61,7 +62,8 @@ void *wundergroundParse(void *param) {
 	char *filename = NULL, *data = NULL;
 	char typebuf[70];
 	char *stmp = NULL;
-	int temp = 0, humi = 0;
+	double temp = 0;
+	int humi = 0;
 	int lg = 0, ret = 0;
 	int x = 0;
 	JsonNode *jdata = NULL;
@@ -122,29 +124,34 @@ void *wundergroundParse(void *param) {
 					if(json_validate(data) == true) {
 						if((jdata = json_decode(data)) != NULL) {
 							if((jobs = json_find_member(jdata, "current_observation")) != NULL) {
-								if(json_find_number(jobs, "temp_c", &temp) != 0) {
+								if((node = json_find_member(jobs, "temp_c")) == NULL) {
 									printf("api.wunderground.com json has no temp_c key");
 								} else if(json_find_string(jobs, "relative_humidity", &stmp) != 0) {
 									printf("api.wunderground.com json has no relative_humidity key");
 								} else {
-									sscanf(stmp, "%d%%", &humi);
-									wunderground->message = json_mkobject();
-									
-									JsonNode *code = json_mkobject();
-									
-									json_append_member(code, "api", json_mkstring(wtmp->api));
-									json_append_member(code, "location", json_mkstring(wtmp->location));
-									json_append_member(code, "country", json_mkstring(wtmp->country));
-									json_append_member(code, "temperature", json_mknumber(temp*100));
-									json_append_member(code, "humidity", json_mknumber(humi*100));
-									
-									json_append_member(wunderground->message, "code", code);
-									json_append_member(wunderground->message, "origin", json_mkstring("receiver"));
-									json_append_member(wunderground->message, "protocol", json_mkstring(wunderground->id));
-									
-									pilight.broadcast(wunderground->id, wunderground->message);
-									json_delete(wunderground->message);
-									wunderground->message = NULL;
+									if(node->tag != JSON_NUMBER) {
+										printf("api.wunderground.com json has no temp_c key");
+									} else {
+										temp = node->number_;
+										sscanf(stmp, "%d%%", &humi);
+										wunderground->message = json_mkobject();
+										
+										JsonNode *code = json_mkobject();
+										
+										json_append_member(code, "api", json_mkstring(wtmp->api));
+										json_append_member(code, "location", json_mkstring(wtmp->location));
+										json_append_member(code, "country", json_mkstring(wtmp->country));
+										json_append_member(code, "temperature", json_mknumber(temp*100));
+										json_append_member(code, "humidity", json_mknumber(humi*100));
+										
+										json_append_member(wunderground->message, "code", code);
+										json_append_member(wunderground->message, "origin", json_mkstring("receiver"));
+										json_append_member(wunderground->message, "protocol", json_mkstring(wunderground->id));
+										
+										pilight.broadcast(wunderground->id, wunderground->message);
+										json_delete(wunderground->message);
+										wunderground->message = NULL;
+									}
 								}
 							} else {
 								logprintf(LOG_NOTICE, "api.wunderground.com json has no current_observation key");
