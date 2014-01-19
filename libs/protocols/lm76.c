@@ -35,14 +35,14 @@
 #include "binary.h"
 #include "gc.h"
 #include "json.h"
-#include "lm75.h"
+#include "lm76.h"
 #include "../pilight/wiringPi.h"
 #include "../pilight/wiringPiI2C.h"
 
-unsigned short lm75_loop = 1;
-int lm75_nrfree = 0;
+unsigned short lm76_loop = 1;
+int lm76_nrfree = 0;
 
-void *lm75Parse(void *param) {
+void *lm76Parse(void *param) {
 
 	struct JsonNode *json = (struct JsonNode *)param;
 	struct JsonNode *jsettings = NULL;
@@ -71,44 +71,44 @@ void *lm75Parse(void *param) {
 	}
 	json_delete(json);
 	
-	lm75_nrfree++;	
+	lm76_nrfree++;	
 
 	fd = realloc(fd, (sizeof(int)*(size_t)(nrid+1)));
 	for(y=0;y<nrid;y++) {
 		fd[y] = wiringPiI2CSetup((int)strtol(id[y], NULL, 16));
 	}
 	
-	while(lm75_loop) {
+	while(lm76_loop) {
 		for(y=0;y<nrid;y++) {
 			if(fd[y] > 0) {
                 int raw = wiringPiI2CReadReg16(fd[y], 0x00);            
                 float temp = ((float)((raw&0x00ff)+((raw>>15)?0:0.5))*10);
 
-				lm75->message = json_mkobject();
+				lm76->message = json_mkobject();
 				JsonNode *code = json_mkobject();
 				json_append_member(code, "id", json_mkstring(id[y]));
 				json_append_member(code, "temperature", json_mknumber((int)temp));
 
-				json_append_member(lm75->message, "code", code);
-				json_append_member(lm75->message, "origin", json_mkstring("receiver"));
-				json_append_member(lm75->message, "protocol", json_mkstring(lm75->id));
+				json_append_member(lm76->message, "code", code);
+				json_append_member(lm76->message, "origin", json_mkstring("receiver"));
+				json_append_member(lm76->message, "protocol", json_mkstring(lm76->id));
 
-				pilight.broadcast(lm75->id, lm75->message);
-				json_delete(lm75->message);
-				lm75->message = NULL;
+				pilight.broadcast(lm76->id, lm76->message);
+				json_delete(lm76->message);
+				lm76->message = NULL;
 			} else {
-				logprintf(LOG_DEBUG, "error connecting to lm75");
+				logprintf(LOG_DEBUG, "error connecting to lm76");
 				logprintf(LOG_DEBUG, "(probably i2c bus error from wiringPiI2CSetup)");
 				logprintf(LOG_DEBUG, "(maybe wrong id? use i2cdetect to find out)");
 				for(x=0;x<1000;x++) {
-					if(lm75_loop) {
+					if(lm76_loop) {
 						usleep((__useconds_t)(x));
 					}
 				}
 			}
 		}
 		for(x=0;x<(interval*1000);x++) {
-			if(lm75_loop) {
+			if(lm76_loop) {
 				usleep((__useconds_t)(x));
 			}
 		}
@@ -128,44 +128,44 @@ void *lm75Parse(void *param) {
 		}
 		sfree((void *)&fd);
 	}
-	lm75_nrfree--;
+	lm76_nrfree--;
 
 	return (void *)NULL;
 }
 
-void lm75InitDev(JsonNode *jdevice) {
+void lm76InitDev(JsonNode *jdevice) {
 	wiringPiSetup();
 	char *output = json_stringify(jdevice, NULL);
 	JsonNode *json = json_decode(output);
-	threads_register("lm75", &lm75Parse, (void *)json);
+	threads_register("lm76", &lm76Parse, (void *)json);
 	sfree((void *)&output);
 }
 
-int lm75GC(void) {
-	lm75_loop = 0;
-	while(lm75_nrfree > 0) {
+int lm76GC(void) {
+	lm76_loop = 0;
+	while(lm76_nrfree > 0) {
 		usleep(100);
 	}
 	return 1;
 }
 
-void lm75Init(void) {
-	gc_attach(lm75GC);
+void lm76Init(void) {
+	gc_attach(lm76GC);
 
-	protocol_register(&lm75);
-	protocol_set_id(lm75, "lm75");
-	protocol_device_add(lm75, "lm75", "TI I2C Temperature Sensor");
-	lm75->devtype = WEATHER;
-	lm75->hwtype = SENSOR;
+	protocol_register(&lm76);
+	protocol_set_id(lm76, "lm76");
+	protocol_device_add(lm76, "lm76", "TI I2C Temperature Sensor");
+	lm76->devtype = WEATHER;
+	lm76->hwtype = SENSOR;
 
-    options_add(&lm75->options, 't', "temperature", has_value, config_value, "^[0-9]{1,3}$");
-    options_add(&lm75->options, 'i', "id", has_value, config_id, "0x[0-9a-f]{2}");
+    options_add(&lm76->options, 't', "temperature", has_value, config_value, "^[0-9]{1,3}$");
+    options_add(&lm76->options, 'i', "id", has_value, config_id, "0x[0-9a-f]{2}");
 
-	protocol_setting_add_number(lm75, "decimals", 1);
-	protocol_setting_add_number(lm75, "humidity", 0);
-	protocol_setting_add_number(lm75, "temperature", 1);
-	protocol_setting_add_number(lm75, "battery", 0);
-	protocol_setting_add_number(lm75, "interval", 5);
+	protocol_setting_add_number(lm76, "decimals", 3);
+	protocol_setting_add_number(lm76, "humidity", 0);
+	protocol_setting_add_number(lm76, "temperature", 1);
+	protocol_setting_add_number(lm76, "battery", 0);
+	protocol_setting_add_number(lm76, "interval", 5);
 
-	lm75->initDev=&lm75InitDev;
+	lm76->initDev=&lm76InitDev;
 }

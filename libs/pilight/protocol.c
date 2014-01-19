@@ -100,8 +100,9 @@
 #ifdef PROTOCOL_CONRAD_RSL_CONTACT
 	#include "../protocols/conrad_rsl_contact.h"
 #endif
-#ifdef PROTOCOL_LM75
+#if defined(PROTOCOL_LM75) || defined(PROTOCOL_LM76)
 	#include "../protocols/lm75.h"
+	#include "../protocols/lm76.h"
 #endif
 #ifdef PROTOCOL_POLLIN_SWITCH
 	#include "../protocols/pollin.h"
@@ -184,8 +185,9 @@ void protocol_init(void) {
 #ifdef PROTOCOL_CONRAD_RSL_CONTACT
 	conradRSLCnInit();
 #endif
-#ifdef PROTOCOL_LM75
+#if defined(PROTOCOL_LM75) || defined(PROTOCOL_LM76)
 	lm75Init();
+	lm76Init();
 #endif
 #ifdef PROTOCOL_POLLIN_SWITCH
 	pollinInit();

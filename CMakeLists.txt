@@ -230,9 +230,12 @@ if(${PROTOCOL_MUMBI_SWITCH} MATCHES "OFF")
 	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/mumbi.c")
 endif()
 
-if(${PROTOCOL_LM75} MATCHES "OFF")
+if(${PROTOCOL_LM75} MATCHES "OFF"
+   AND ${PROTOCOL_LM76} MATCHES "OFF")
 	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/lm75.h")
+	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/lm76.h")
 	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/lm75.c")
+	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/lm76.c")
 	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/pilight/wiringPiI2C.h")
 	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/pilight/wiringPiI2C.c")
 endif()

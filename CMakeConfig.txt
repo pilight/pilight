@@ -28,6 +28,7 @@ set(PROTOCOL_KAKU_SWITCH ON CACHE BOOL "support for the new KlikAanKlikUit switc
 set(PROTOCOL_KAKU_SCREEN ON CACHE BOOL "support for the new KlikAanKlikUit screen protocol")
 set(PROTOCOL_KAKU_CONTACT ON CACHE BOOL "support for the new KlikAanKlikUit contact protocol")
 set(PROTOCOL_LM75 ON CACHE BOOL "support for the lm75 i2c temperature sensor")
+set(PROTOCOL_LM76 ON CACHE BOOL "support for the lm76 i2c temperature sensor")
 set(PROTOCOL_MUMBI ON CACHE BOOL "support for the Mumbi switch protocol")
 set(PROTOCOL_NEXA_SWITCH ON CACHE BOOL "support for the Nexa switch protocol")
 set(PROTOCOL_POLLIN_SWITCH ON CACHE BOOL "support for polling switch protocol")
