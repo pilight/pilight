@@ -117,9 +117,9 @@ int lirc433Send(int *code) {
 int lirc433Receive(void) {
 	int data = 0;
 
-	// if((read(lirc_433_fd, &data, sizeof(data))) == 0) {
-		// data = 1;
-	// }
+	if((read(lirc_433_fd, &data, sizeof(data))) == 0) {
+		data = 1;
+	}
 
 	return (data & 0x00FFFFFF);
 }

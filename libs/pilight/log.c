@@ -37,7 +37,6 @@ FILE *lf=NULL;
 
 char *logfile = NULL;
 char *logpath = NULL;
-unsigned long logsize = 0;
 
 int log_gc(void) {
 	if(shelllog == 1) {
@@ -76,7 +75,6 @@ void logprintf(int prio, const char *format_str, ...) {
 			logmarkup();
 			memset(line, '\0', 1024);
 			strcat(line, debug_log);
-			//fputs(debug_log, lf);
 			va_start(ap, format_str);
 			if(prio==LOG_WARNING)
 				strcat(line, "WARNING: ");
@@ -117,7 +115,7 @@ void logprintf(int prio, const char *format_str, ...) {
 			
 			fwrite(line, sizeof(char), strlen(line), lf);
 			fflush(lf);
-			va_end(ap);					
+			va_end(ap);
 		}
 
 		if(shelllog == 1 || prio == LOG_ERR) {
