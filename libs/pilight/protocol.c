@@ -113,6 +113,9 @@
 #ifdef PROTOCOL_WUNDERGROUND
 	#include "../protocols/wunderground.h"
 #endif
+#ifdef PROTOCOL_OPENWEATHERMAP
+	#include "../protocols/openweathermap.h"
+#endif
 
 void protocol_init(void) {
 #if defined(PROTOCOL_COCO_SWITCH) || defined(PROTOCOL_DIO_SWITCH) || defined(PROTOCOL_NEXA_SWITCH) || defined(PROTOCOL_KAKU_SWITCH) || defined(PROTOCOL_INTERTECHNO_SWITCH)
@@ -200,6 +203,9 @@ void protocol_init(void) {
 #endif
 #ifdef PROTOCOL_WUNDERGROUND
 	wundergroundInit();
+#endif
+#ifdef PROTOCOL_OPENWEATHERMAP
+	openweathermapInit();
 #endif
 }
 
