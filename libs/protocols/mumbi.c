@@ -44,7 +44,9 @@ void mumbiParseBinary(void) {
 	int systemcode = binToDec(mumbi->binary, 0, 4);
 	int unitcode = binToDec(mumbi->binary, 5, 9);
 	int state = mumbi->binary[11];
-	mumbiCreateMessage(systemcode, unitcode, state);
+	if(unitcode > 0) {
+		mumbiCreateMessage(systemcode, unitcode, state);
+	}
 }
 
 void mumbiCreateLow(int s, int e) {
