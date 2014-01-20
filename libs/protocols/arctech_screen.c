@@ -139,9 +139,9 @@ int arctechSrCreateCode(JsonNode *code) {
 	json_find_number(code, "id", &id);
 	json_find_number(code, "unit", &unit);
 	json_find_number(code, "all", &all);
-	if(json_find_number(code, "off", &tmp) == 0)
+	if(json_find_number(code, "down", &tmp) == 0)
 		state=0;
-	else if(json_find_number(code, "on", &tmp) == 0)
+	else if(json_find_number(code, "up", &tmp) == 0)
 		state=1;
 
 	if(id == -1 || (unit == -1 && all == 0) || state == -1) {
@@ -182,10 +182,10 @@ void arctechSrInit(void) {
 	protocol_register(&arctech_screen);
 	protocol_set_id(arctech_screen, "arctech_screens");
 	protocol_device_add(arctech_screen, "kaku_screen", "KlikAanKlikUit Screens");
-  protocol_conflict_add(arctech_screen, "arctech_switches");
-  protocol_conflict_add(arctech_screen, "arctech_contact");
-  protocol_plslen_add(arctech_screen, 303);
-  protocol_plslen_add(arctech_screen, 251);
+	protocol_conflict_add(arctech_screen, "arctech_switches");
+	protocol_conflict_add(arctech_screen, "arctech_contact");
+	protocol_plslen_add(arctech_screen, 303);
+	protocol_plslen_add(arctech_screen, 251);
 	protocol_plslen_add(arctech_screen, 294);
 	arctech_screen->devtype = SCREEN;
 	arctech_screen->hwtype = RF433;

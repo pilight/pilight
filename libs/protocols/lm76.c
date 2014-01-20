@@ -84,7 +84,7 @@ void *lm76Parse(void *param) {
 		for(y=0;y<nrid;y++) {
 			if(fd[y] > 0) {
                 int raw = wiringPiI2CReadReg16(fd[y], 0x00);            
-                float temp = ((float)((raw&0x00ff)+((raw>>15)?0:0.5))*10);
+                float temp = ((float)((raw&0x00ff)+((raw>>15)?0:0.0625))*10);
 
 				lm76->message = json_mkobject();
 				JsonNode *code = json_mkobject();

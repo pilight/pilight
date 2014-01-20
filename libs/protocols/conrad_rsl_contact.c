@@ -33,9 +33,9 @@ void conradRSLCnCreateMessage(int id, int state) {
 	conrad_rsl_contact->message = json_mkobject();
 	json_append_member(conrad_rsl_contact->message, "id", json_mknumber(id));
 	if(state == 1) {
-		json_append_member(conrad_rsl_contact->message, "state", json_mkstring("on"));
+		json_append_member(conrad_rsl_contact->message, "state", json_mkstring("opened"));
 	} else {
-		json_append_member(conrad_rsl_contact->message, "state", json_mkstring("off"));
+		json_append_member(conrad_rsl_contact->message, "state", json_mkstring("closed"));
 	}
 }
 
@@ -61,102 +61,6 @@ void conradRSLCnParseCode(void) {
 	}
 }
 
-void conradRSLCnCreateLow(int s, int e) {
-	int i;
-
-	for(i=s;i<=e;i+=2) {
-		conrad_rsl_contact->raw[i]=((conrad_rsl_contact->pulse+1)*conrad_rsl_contact->plslen->length);
-		conrad_rsl_contact->raw[i+1]=conrad_rsl_contact->plslen->length*2;
-	}
-}
-
-void conradRSLCnCreateHigh(int s, int e) {
-	int i;
-
-	for(i=s;i<=e;i+=2) {
-		conrad_rsl_contact->raw[i]=conrad_rsl_contact->plslen->length*2;
-		conrad_rsl_contact->raw[i+1]=((conrad_rsl_contact->pulse+1)*conrad_rsl_contact->plslen->length);
-	}
-}
-
-void conradRSLCnClearCode(void) {
-	conradRSLCnCreateLow(0,65);
-}
-
-void conradRSLCnCreateId(int id) {
-	int binary[255];
-	int length = 0;
-	int i=0, x=0;
-
-	length = decToBin(id, binary);
-	for(i=0;i<=length;i++) {
-		if(binary[i]==1) {
-			x=i*2;
-			conradRSLCnCreateHigh(12+x, 12+x+1);
-		}
-	}
-}
-
-void conradRSLCnCreateStart(int start) {
-	int binary[255];
-	int length = 0;
-	int i=0, x=0;
-
-	length = decToBin(start, binary);
-	for(i=0;i<=length;i++) {
-		if(binary[i]==1) {
-			x=i*2;
-			conradRSLCnCreateHigh(2+x, 2+x+1);
-		}
-	}
-}
-
-void conradRSLCnCreateState(int state) {
-	if(state == 1) {
-		conradRSLCnCreateHigh(8, 9);
-	}
-	conradRSLCnCreateHigh(10, 11);
-}
-
-void conradRSLCnCreateFooter(void) {
-	conrad_rsl_contact->raw[64]=(conrad_rsl_contact->plslen->length);
-	conrad_rsl_contact->raw[65]=(PULSE_DIV*conrad_rsl_contact->plslen->length);
-}
-
-int conradRSLCnCreateCode(JsonNode *code) {
-	int id = -1;
-	int state = -1;
-	int tmp;
-
-	json_find_number(code, "id", &id);
-	if(json_find_number(code, "off", &tmp) == 0)
-		state=0;
-	else if(json_find_number(code, "on", &tmp) == 0)
-		state=1;
-
-	if(id == -1 || state == -1) {
-		logprintf(LOG_ERR, "conrad_rsl_contact: insufficient number of arguments");
-		return EXIT_FAILURE;
-	} else if(id > 67108863 || id < 0) {
-		logprintf(LOG_ERR, "conrad_rsl_contact: invalid programcode range");
-		return EXIT_FAILURE;
-	} else {
-		conradRSLCnCreateMessage(id, state);
-		conradRSLCnClearCode();
-		conradRSLCnCreateStart(5);
-		conradRSLCnCreateId(id);
-		conradRSLCnCreateState(state);
-		conradRSLCnCreateFooter();
-	}
-	return EXIT_SUCCESS;
-}
-
-void conradRSLCnPrintHelp(void) {
-	printf("\t -i --id=id\tcontrol a device with this id\n");
-	printf("\t -t --on\t\t\tsend an on signal\n");
-	printf("\t -f --off\t\t\tsend an off signal\n");
-}
-
 void conradRSLCnInit(void) {
 
 	protocol_register(&conrad_rsl_contact);
@@ -170,13 +74,11 @@ void conradRSLCnInit(void) {
 	conrad_rsl_contact->binlen = 33;
 
 	options_add(&conrad_rsl_contact->options, 'i', "id", has_value, config_id, "^(([0-9]|([1-9][0-9])|([1-9][0-9]{2})|([1-9][0-9]{3})|([1-9][0-9]{4})|([1-9][0-9]{5})|([1-9][0-9]{6})|((6710886[0-3])|(671088[0-5][0-9])|(67108[0-7][0-9]{2})|(6710[0-7][0-9]{3})|(671[0--1][0-9]{4})|(670[0-9]{5})|(6[0-6][0-9]{6})|(0[0-5][0-9]{7}))))$");
-	options_add(&conrad_rsl_contact->options, 't', "on", no_value, config_state, NULL);
-	options_add(&conrad_rsl_contact->options, 'f', "off", no_value, config_state, NULL);
+	options_add(&conrad_rsl_contact->options, 't', "opened", no_value, config_state, NULL);
+	options_add(&conrad_rsl_contact->options, 'f', "closed", no_value, config_state, NULL);
 
-	protocol_setting_add_string(conrad_rsl_contact, "states", "on,off");
-	protocol_setting_add_number(conrad_rsl_contact, "readonly", 0);
+	protocol_setting_add_string(conrad_rsl_contact, "states", "opened,closed");
+	protocol_setting_add_number(conrad_rsl_contact, "readonly", 1);
 
 	conrad_rsl_contact->parseCode=&conradRSLCnParseCode;
-	conrad_rsl_contact->createCode=&conradRSLCnCreateCode;
-	conrad_rsl_contact->printHelp=&conradRSLCnPrintHelp;
 }

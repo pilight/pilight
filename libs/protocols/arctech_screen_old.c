@@ -120,9 +120,9 @@ int arctechSrOldCreateCode(JsonNode *code) {
 
 	json_find_number(code, "id", &id);
 	json_find_number(code, "unit", &unit);
-	if(json_find_number(code, "off", &tmp) == 0)
+	if(json_find_number(code, "down", &tmp) == 0)
 		state=0;
-	else if(json_find_number(code, "on", &tmp) == 0)
+	else if(json_find_number(code, "up", &tmp) == 0)
 		state=1;
 
 	if(id == -1 || unit == -1 || state == -1) {
