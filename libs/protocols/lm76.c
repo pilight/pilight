@@ -83,8 +83,8 @@ void *lm76Parse(void *param) {
 	while(lm76_loop) {
 		for(y=0;y<nrid;y++) {
 			if(fd[y] > 0) {
-                int raw = wiringPiI2CReadReg16(fd[y], 0x00);            
-                float temp = ((float)((raw&0x00ff)+((raw>>15)?0:0.0625))*10);
+				int raw = wiringPiI2CReadReg16(fd[y], 0x00);            
+				float temp = ((float)((raw&0x00ff)+((raw>>15)?0:0.0005))*10);
 
 				lm76->message = json_mkobject();
 				JsonNode *code = json_mkobject();
@@ -160,8 +160,8 @@ void lm76Init(void) {
 	lm76->devtype = WEATHER;
 	lm76->hwtype = SENSOR;
 
-    options_add(&lm76->options, 't', "temperature", has_value, config_value, "^[0-9]{1,3}$");
-    options_add(&lm76->options, 'i', "id", has_value, config_id, "0x[0-9a-f]{2}");
+	options_add(&lm76->options, 't', "temperature", has_value, config_value, "^[0-9]{1,3}$");
+	options_add(&lm76->options, 'i', "id", has_value, config_id, "0x[0-9a-f]{2}");
 
 	protocol_setting_add_number(lm76, "decimals", 3);
 	protocol_setting_add_number(lm76, "humidity", 0);
