@@ -88,10 +88,10 @@ void gc_catch(void) {
     sigaction(SIGABRT, &act, &old);
     sigaction(SIGTSTP, &act, &old);
 
-    // sigaction(SIGBUS,  &act, &old);
-    // sigaction(SIGILL,  &act, &old);
-    // sigaction(SIGSEGV, &act, &old);
-	// sigaction(SIGFPE,  &act, &old);	
+    sigaction(SIGBUS,  &act, &old);
+    sigaction(SIGILL,  &act, &old);
+    sigaction(SIGSEGV, &act, &old);
+	sigaction(SIGFPE,  &act, &old);	
 
     if(sigsetjmp(gc_cleanup, 0) == 0)
 		return;

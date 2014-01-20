@@ -21,9 +21,13 @@
 #include <dirent.h>
 #include <string.h>
 #include <unistd.h>
+#define __USE_GNU
 #include <pthread.h>
+#include <sys/types.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <sys/stat.h>
+#include <sys/time.h>
 
 #include "../../pilight.h"
 #include "common.h"
@@ -46,6 +50,22 @@ typedef struct openweathermap_data_t {
 unsigned short openweathermap_loop = 1;
 unsigned short openweathermap_nrfree = 0;
 
+void openweathermapParseCleanUp(void *arg) {
+	struct openweathermap_data_t *openweathermap_data = (struct openweathermap_data_t *)arg;
+	struct openweathermap_data_t *wtmp = NULL;
+
+	openweathermap_loop = 0;
+	
+	while(openweathermap_data) {
+		wtmp = openweathermap_data;
+		sfree((void *)&openweathermap_data->country);
+		sfree((void *)&openweathermap_data->location);
+		openweathermap_data = openweathermap_data->next;
+		sfree((void *)&wtmp);
+	}
+	sfree((void *)&openweathermap_data);
+}
+
 void *openweathermapParse(void *param) {
 	struct JsonNode *json = (struct JsonNode *)param;
 	struct JsonNode *jid = NULL;
@@ -53,19 +73,25 @@ void *openweathermapParse(void *param) {
 	struct JsonNode *jchild1 = NULL;
 	struct JsonNode *jsettings = NULL;
 	struct JsonNode *node = NULL;
+	struct JsonNode *jdata = NULL;
+	struct JsonNode *jmain = NULL;
 	struct openweathermap_data_t *openweathermap_data = NULL;
 	struct openweathermap_data_t *wtmp = NULL;
+	struct timeval tp;
+	struct timespec ts;	
 	int interval = 600;
 	
 	char url[1024];
 	char *filename = NULL, *data = NULL;
 	char typebuf[70];
 	double temp = 0;
-	int humi = 0;
-	int lg = 0, ret = 0;
-	int x = 0;
-	JsonNode *jdata = NULL;
-	JsonNode *jmain = NULL;	
+	int rc = 0, humi = 0, lg = 0, ret = 0;
+	int firstrun = 1;
+	
+	pthread_mutex_t mutex = PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP;        
+    pthread_cond_t cond;
+	
+    pthread_cond_init(&cond, NULL);
 
 	int has_country = 0, has_location = 0;
 	if((jid = json_find_member(json, "id"))) {
@@ -101,88 +127,91 @@ void *openweathermapParse(void *param) {
 	}
 	json_delete(json);
 
-	openweathermap_nrfree++;
+	pthread_cleanup_push(openweathermapParseCleanUp, (void *)openweathermap_data);
 	
 	while(openweathermap_loop) {
 		wtmp = openweathermap_data;
-		while(wtmp) {
-			filename = NULL;
-			data = NULL;
-			sprintf(url, "http://api.openweathermap.org/data/2.5/weather?q=%s,%s&APPID=8db24c4ac56251371c7ea87fd3115493", wtmp->location, wtmp->country);
-			http_parse_url(url, &filename);
-			ret = http_get(filename, &data, &lg, typebuf);
-			if(ret == 200) {
-				if(strcmp(typebuf, "application/json;") == 0) {
-					if(json_validate(data) == true) {
-						if((jdata = json_decode(data)) != NULL) {
-							if((jmain = json_find_member(jdata, "main")) != NULL) {
-								if((node = json_find_member(jmain, "temp")) == NULL) {
-									printf("api.openweathermap.org json has no temp_c key");
-								} else if(json_find_number(jmain, "humidity", &humi) != 0) {
-									printf("api.openweathermap.org json has no humidity key");
-								} else {
-									if(node->tag != JSON_NUMBER) {
-										printf("api.openweathermap.org json has no temp key");
-									} else {
-										temp = node->number_-273,15;
+		rc = gettimeofday(&tp, NULL);
+		ts.tv_sec = tp.tv_sec;
+		ts.tv_nsec = tp.tv_usec * 1000;
+		if(firstrun) {
+			ts.tv_sec += 1;
+			firstrun = 0;
+		} else {
+			ts.tv_sec += interval;
+		}
 
-										openweathermap->message = json_mkobject();
-										
-										JsonNode *code = json_mkobject();
-										
-										json_append_member(code, "location", json_mkstring(wtmp->location));
-										json_append_member(code, "country", json_mkstring(wtmp->country));
-										json_append_member(code, "temperature", json_mknumber(temp*100));
-										json_append_member(code, "humidity", json_mknumber(humi*100));
-										
-										json_append_member(openweathermap->message, "code", code);
-										json_append_member(openweathermap->message, "origin", json_mkstring("receiver"));
-										json_append_member(openweathermap->message, "protocol", json_mkstring(openweathermap->id));
-										
-										pilight.broadcast(openweathermap->id, openweathermap->message);
-										json_delete(openweathermap->message);
-										openweathermap->message = NULL;
+		pthread_mutex_lock(&mutex);
+		rc = pthread_cond_timedwait(&cond, &mutex, &ts);
+		if(rc == ETIMEDOUT) {
+			while(wtmp) {
+				filename = NULL;
+				data = NULL;
+				sprintf(url, "http://api.openweathermap.org/data/2.5/weather?q=%s,%s&APPID=8db24c4ac56251371c7ea87fd3115493", wtmp->location, wtmp->country);
+				http_parse_url(url, &filename);
+				ret = http_get(filename, &data, &lg, typebuf);
+				if(ret == 200) {
+					if(strcmp(typebuf, "application/json;") == 0) {
+						if(json_validate(data) == true) {
+							if((jdata = json_decode(data)) != NULL) {
+								if((jmain = json_find_member(jdata, "main")) != NULL) {
+									if((node = json_find_member(jmain, "temp")) == NULL) {
+										printf("api.openweathermap.org json has no temp_c key");
+									} else if(json_find_number(jmain, "humidity", &humi) != 0) {
+										printf("api.openweathermap.org json has no humidity key");
+									} else {
+										if(node->tag != JSON_NUMBER) {
+											printf("api.openweathermap.org json has no temp key");
+										} else {
+											temp = node->number_-273,15;
+
+											openweathermap->message = json_mkobject();
+											
+											JsonNode *code = json_mkobject();
+											
+											json_append_member(code, "location", json_mkstring(wtmp->location));
+											json_append_member(code, "country", json_mkstring(wtmp->country));
+											json_append_member(code, "temperature", json_mknumber((int)(temp*100)));
+											json_append_member(code, "humidity", json_mknumber((int)(humi*100)));
+											
+											json_append_member(openweathermap->message, "code", code);
+											json_append_member(openweathermap->message, "origin", json_mkstring("receiver"));
+											json_append_member(openweathermap->message, "protocol", json_mkstring(openweathermap->id));
+											
+											pilight.broadcast(openweathermap->id, openweathermap->message);
+											json_delete(openweathermap->message);
+											openweathermap->message = NULL;
+										}
 									}
+								} else {
+									logprintf(LOG_NOTICE, "api.openweathermap.org json has no current_observation key");
 								}
+								json_delete(jdata);
 							} else {
-								logprintf(LOG_NOTICE, "api.openweathermap.org json has no current_observation key");
+								logprintf(LOG_NOTICE, "api.openweathermap.org json could not be parsed");
 							}
-							json_delete(jdata);
-						} else {
-							logprintf(LOG_NOTICE, "api.openweathermap.org json could not be parsed");
+						}  else {
+							logprintf(LOG_NOTICE, "api.openweathermap.org response was not in a valid json format");
 						}
-					}  else {
+					} else {
 						logprintf(LOG_NOTICE, "api.openweathermap.org response was not in a valid json format");
 					}
 				} else {
-					logprintf(LOG_NOTICE, "api.openweathermap.org response was not in a valid json format");
+					logprintf(LOG_NOTICE, "could not reach api.openweathermap.org");
 				}
-			} else {
-				logprintf(LOG_NOTICE, "could not reach api.openweathermap.org");
+				if(data) {
+					sfree((void *)&data);
+				}
+				if(filename) {
+					sfree((void *)&filename);
+				}
+			wtmp = wtmp->next;
 			}
-			if(data) {
-				sfree((void *)&data);
-			}
-			if(filename) {
-				sfree((void *)&filename);
-			}
-		wtmp = wtmp->next;
 		}
-		for(x=0;x<(interval*1000);x++) {
-			if(openweathermap_loop) {
-				usleep((__useconds_t)(x));
-			}
-		}		
+		pthread_mutex_unlock(&mutex);
 	}
-
-	while(openweathermap_data) {
-		wtmp = openweathermap_data;
-		sfree((void *)&openweathermap_data->country);
-		sfree((void *)&openweathermap_data->location);
-		openweathermap_data = openweathermap_data->next;
-		sfree((void *)&wtmp);
-	}
-	openweathermap_nrfree--;
+	
+	pthread_cleanup_pop(1);
 
 	return (void *)NULL;
 }
@@ -192,14 +221,6 @@ void openweathermapInitDev(JsonNode *jdevice) {
 	JsonNode *json = json_decode(output);
 	threads_register("openweathermap", &openweathermapParse, (void *)json);
 	sfree((void *)&output);
-}
-
-int openweathermapGC(void) {
-	openweathermap_loop = 0;
-	while(openweathermap_nrfree > 0) {
-		usleep(100);
-	}
-	return 1;
 }
 
 int openweathermapCheckValues(JsonNode *code) {
@@ -214,8 +235,6 @@ int openweathermapCheckValues(JsonNode *code) {
 }
 
 void openweathermapInit(void) {
-	
-	gc_attach(openweathermapGC);
 
 	protocol_register(&openweathermap);
 	protocol_set_id(openweathermap, "openweathermap");

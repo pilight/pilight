@@ -33,7 +33,7 @@ void pollinCreateMessage(int systemcode, int unitcode, int state) {
 	pollin->message = json_mkobject();
 	json_append_member(pollin->message, "systemcode", json_mknumber(systemcode));
 	json_append_member(pollin->message, "unitcode", json_mknumber(unitcode));
-	if(state == 0) {
+	if(state == 1) {
 		json_append_member(pollin->message, "state", json_mkstring("on"));
 	} else {
 		json_append_member(pollin->message, "state", json_mkstring("off"));
@@ -101,7 +101,7 @@ void pollinCreateUnitCode(int unitcode) {
 }
 
 void pollinCreateState(int state) {
-	if(state == 0) {
+	if(state == 1) {
 		pollinCreateHigh(44, 47);
 	}
 }

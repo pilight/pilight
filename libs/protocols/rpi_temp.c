@@ -21,9 +21,13 @@
 #include <dirent.h>
 #include <string.h>
 #include <unistd.h>
+#define __USE_GNU
 #include <pthread.h>
+#include <sys/types.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <sys/stat.h>
+#include <sys/time.h>
 
 #include "../../pilight.h"
 #include "common.h"
@@ -40,22 +44,32 @@ unsigned short rpi_temp_loop = 1;
 unsigned short rpi_temp_nrfree = 0;
 char *rpi_temp_temp = NULL;
 
+void rpiTempParseCleanUp(void *arg) {
+	sfree((void *)&arg);
+	
+	rpi_temp_loop = 0;
+}
+
 void *rpiTempParse(void *param) {
 	struct JsonNode *json = (struct JsonNode *)param;
 	struct JsonNode *jid = NULL;
 	struct JsonNode *jchild = NULL;
 	struct JsonNode *jsettings = NULL;
+	struct timeval tp;
+	struct timespec ts;	
 	struct stat st;
 
 	FILE *fp;
 	int itmp;
 	int *id = malloc(sizeof(int));
 	char *content;	
-	int interval = 5;	
-	int temp_corr = 0;
-	int x = 0, nrid = 0, y = 0;
+	int interval = 10, temp_corr = 0, nrid = 0, y = 0, rc = 0;
 	size_t bytes;
-	
+	int firstrun = 1;
+
+	pthread_mutex_t mutex = PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP;        
+    pthread_cond_t cond;
+
 	if((jid = json_find_member(json, "id"))) {
 		jchild = json_first_child(jid);
 		while(jchild) {
@@ -73,55 +87,65 @@ void *rpiTempParse(void *param) {
 	}
 	json_delete(json);
 
-	rpi_temp_nrfree++;
+	pthread_cleanup_push(rpiTempParseCleanUp, (void *)id);
 
 	while(rpi_temp_loop) {
-		for(y=0;y<nrid;y++) {
-			if((fp = fopen(rpi_temp_temp, "rb"))) {
-				fstat(fileno(fp), &st);
-				bytes = (size_t)st.st_size;
+		rc = gettimeofday(&tp, NULL);
+		ts.tv_sec = tp.tv_sec;
+		ts.tv_nsec = tp.tv_usec * 1000;
+		if(firstrun) {
+			ts.tv_sec += 1;
+			firstrun = 0;
+		} else {
+			ts.tv_sec += interval;
+		}
 
-				if(!(content = calloc(bytes+1, sizeof(char)))) {
-					logprintf(LOG_ERR, "out of memory");
-					fclose(fp);
-					break;
-				}
+		pthread_mutex_lock(&mutex);
+		rc = pthread_cond_timedwait(&cond, &mutex, &ts);
+		if(rc == ETIMEDOUT) {			
+			for(y=0;y<nrid;y++) {
+				if((fp = fopen(rpi_temp_temp, "rb"))) {
+					fstat(fileno(fp), &st);
+					bytes = (size_t)st.st_size;
 
-				if(fread(content, sizeof(char), bytes, fp) == -1) {
-					logprintf(LOG_ERR, "cannot read config file: %s", rpi_temp_temp);
+					if(!(content = calloc(bytes+1, sizeof(char)))) {
+						logprintf(LOG_ERR, "out of memory");
+						fclose(fp);
+						break;
+					}
+
+					if(fread(content, sizeof(char), bytes, fp) == -1) {
+						logprintf(LOG_ERR, "cannot read config file: %s", rpi_temp_temp);
+						fclose(fp);
+						sfree((void *)&content);
+						break;
+					}
+
 					fclose(fp);
+					int temp = atoi(content)+temp_corr;
 					sfree((void *)&content);
-					break;
+
+					rpiTemp->message = json_mkobject();
+					JsonNode *code = json_mkobject();
+					json_append_member(code, "id", json_mknumber(id[y]));
+					json_append_member(code, "temperature", json_mknumber(temp));
+										
+					json_append_member(rpiTemp->message, "code", code);
+					json_append_member(rpiTemp->message, "origin", json_mkstring("receiver"));
+					json_append_member(rpiTemp->message, "protocol", json_mkstring(rpiTemp->id));
+										
+					pilight.broadcast(rpiTemp->id, rpiTemp->message);
+					json_delete(rpiTemp->message);
+					rpiTemp->message = NULL;
+				} else {
+					logprintf(LOG_ERR, "CPU RPI device %s does not exists", rpi_temp_temp);
 				}
-
-				fclose(fp);
-				int temp = atoi(content)+temp_corr;
-				sfree((void *)&content);
-
-				rpiTemp->message = json_mkobject();
-				JsonNode *code = json_mkobject();
-				json_append_member(code, "id", json_mknumber(id[y]));
-				json_append_member(code, "temperature", json_mknumber(temp));
-									
-				json_append_member(rpiTemp->message, "code", code);
-				json_append_member(rpiTemp->message, "origin", json_mkstring("receiver"));
-				json_append_member(rpiTemp->message, "protocol", json_mkstring(rpiTemp->id));
-									
-				pilight.broadcast(rpiTemp->id, rpiTemp->message);
-				json_delete(rpiTemp->message);
-				rpiTemp->message = NULL;
-			} else {
-				logprintf(LOG_ERR, "CPU RPI device %s does not exists", rpi_temp_temp);
 			}
 		}
-		for(x=0;x<(interval*1000);x++) {
-			if(rpi_temp_loop) {
-				usleep((__useconds_t)(x));
-			}
-		}
+		pthread_mutex_unlock(&mutex);
 	}
-	if(id) sfree((void *)&id);
-	rpi_temp_nrfree--;
+
+	pthread_cleanup_pop(1);
 
 	return (void *)NULL;
 }
@@ -134,11 +158,7 @@ void rpiTempInitDev(JsonNode *jdevice) {
 }
 
 int rpiTempGC(void) {
-	rpi_temp_loop = 0;	
 	sfree((void *)&rpi_temp_temp);
-	while(rpi_temp_nrfree > 0) {
-		usleep(100);
-	}
 	return 1;
 }
 
@@ -159,7 +179,7 @@ void rpiTempInit(void) {
 	protocol_setting_add_number(rpiTemp, "humidity", 0);
 	protocol_setting_add_number(rpiTemp, "temperature", 1);
 	protocol_setting_add_number(rpiTemp, "battery", 0);
-	protocol_setting_add_number(rpiTemp, "interval", 5);
+	protocol_setting_add_number(rpiTemp, "interval", 10);
 
 	rpi_temp_temp = malloc(38);
 	memset(rpi_temp_temp, '\0', 38);

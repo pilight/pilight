@@ -21,9 +21,13 @@
 #include <dirent.h>
 #include <string.h>
 #include <unistd.h>
+#define __USE_GNU
 #include <pthread.h>
+#include <sys/types.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <sys/stat.h>
+#include <sys/time.h>
 
 #include "../../pilight.h"
 #include "common.h"
@@ -47,6 +51,22 @@ typedef struct wunderground_data_t {
 unsigned short wunderground_loop = 1;
 unsigned short wunderground_nrfree = 0;
 
+void wundergroundParseCleanUp(void *arg) {
+	struct wunderground_data_t *wunderground_data = (struct wunderground_data_t *)arg;
+	struct wunderground_data_t *wtmp = NULL;
+
+	wunderground_loop = 0;
+	
+	while(wunderground_data) {
+		wtmp = wunderground_data;
+		sfree((void *)&wunderground_data->country);
+		sfree((void *)&wunderground_data->location);
+		wunderground_data = wunderground_data->next;
+		sfree((void *)&wtmp);
+	}
+	sfree((void *)&wunderground_data);
+}
+
 void *wundergroundParse(void *param) {
 	struct JsonNode *json = (struct JsonNode *)param;
 	struct JsonNode *jid = NULL;
@@ -56,6 +76,8 @@ void *wundergroundParse(void *param) {
 	struct JsonNode *node = NULL;
 	struct wunderground_data_t *wunderground_data = NULL;
 	struct wunderground_data_t *wtmp = NULL;
+	struct timeval tp;
+	struct timespec ts;		
 	int interval = 900;
 	
 	char url[1024];
@@ -63,12 +85,16 @@ void *wundergroundParse(void *param) {
 	char typebuf[70];
 	char *stmp = NULL;
 	double temp = 0;
-	int humi = 0;
-	int lg = 0, ret = 0;
-	int x = 0;
+	int humi = 0, rc = 0, lg = 0, ret = 0;
+	int firstrun = 1;	
 	JsonNode *jdata = NULL;
 	JsonNode *jobs = NULL;	
 
+	pthread_mutex_t mutex = PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP;        
+    pthread_cond_t cond;
+	
+    pthread_cond_init(&cond, NULL);	
+	
 	int has_country = 0, has_api = 0, has_location = 0;
 	if((jid = json_find_member(json, "id"))) {
 		jchild = json_first_child(jid);
@@ -108,91 +134,93 @@ void *wundergroundParse(void *param) {
 	}
 	json_delete(json);
 
-	wunderground_nrfree++;
+	pthread_cleanup_push(wundergroundParseCleanUp, (void *)wunderground_data);
 	
 	while(wunderground_loop) {
 		wtmp = wunderground_data;
-		while(wtmp) {
-			filename = NULL;
-			data = NULL;
-			sprintf(url, "http://api.wunderground.com/api/%s/geolookup/conditions/q/%s/%s.json", wtmp->api, wtmp->country, wtmp->location);	
-			http_parse_url(url, &filename);
-			ret = http_get(filename, &data, &lg, typebuf);
+		rc = gettimeofday(&tp, NULL);
+		ts.tv_sec = tp.tv_sec;
+		ts.tv_nsec = tp.tv_usec * 1000;
+		if(firstrun) {
+			ts.tv_sec += 1;
+			firstrun = 0;
+		} else {
+			ts.tv_sec += interval;
+		}
 
-			if(ret == 200) {
-				if(strcmp(typebuf, "application/json;") == 0) {
-					if(json_validate(data) == true) {
-						if((jdata = json_decode(data)) != NULL) {
-							if((jobs = json_find_member(jdata, "current_observation")) != NULL) {
-								if((node = json_find_member(jobs, "temp_c")) == NULL) {
-									printf("api.wunderground.com json has no temp_c key");
-								} else if(json_find_string(jobs, "relative_humidity", &stmp) != 0) {
-									printf("api.wunderground.com json has no relative_humidity key");
-								} else {
-									if(node->tag != JSON_NUMBER) {
+		pthread_mutex_lock(&mutex);
+		rc = pthread_cond_timedwait(&cond, &mutex, &ts);
+		if(rc == ETIMEDOUT) {
+			while(wtmp) {
+				filename = NULL;
+				data = NULL;
+				sprintf(url, "http://api.wunderground.com/api/%s/geolookup/conditions/q/%s/%s.json", wtmp->api, wtmp->country, wtmp->location);	
+				http_parse_url(url, &filename);
+				ret = http_get(filename, &data, &lg, typebuf);
+
+				if(ret == 200) {
+					if(strcmp(typebuf, "application/json;") == 0) {
+						if(json_validate(data) == true) {
+							if((jdata = json_decode(data)) != NULL) {
+								if((jobs = json_find_member(jdata, "current_observation")) != NULL) {
+									if((node = json_find_member(jobs, "temp_c")) == NULL) {
 										printf("api.wunderground.com json has no temp_c key");
+									} else if(json_find_string(jobs, "relative_humidity", &stmp) != 0) {
+										printf("api.wunderground.com json has no relative_humidity key");
 									} else {
-										temp = node->number_;
-										sscanf(stmp, "%d%%", &humi);
-										wunderground->message = json_mkobject();
-										
-										JsonNode *code = json_mkobject();
-										
-										json_append_member(code, "api", json_mkstring(wtmp->api));
-										json_append_member(code, "location", json_mkstring(wtmp->location));
-										json_append_member(code, "country", json_mkstring(wtmp->country));
-										json_append_member(code, "temperature", json_mknumber(temp*100));
-										json_append_member(code, "humidity", json_mknumber(humi*100));
-										
-										json_append_member(wunderground->message, "code", code);
-										json_append_member(wunderground->message, "origin", json_mkstring("receiver"));
-										json_append_member(wunderground->message, "protocol", json_mkstring(wunderground->id));
-										
-										pilight.broadcast(wunderground->id, wunderground->message);
-										json_delete(wunderground->message);
-										wunderground->message = NULL;
+										if(node->tag != JSON_NUMBER) {
+											printf("api.wunderground.com json has no temp_c key");
+										} else {
+											temp = node->number_;
+											sscanf(stmp, "%d%%", &humi);
+											wunderground->message = json_mkobject();
+											
+											JsonNode *code = json_mkobject();
+											
+											json_append_member(code, "api", json_mkstring(wtmp->api));
+											json_append_member(code, "location", json_mkstring(wtmp->location));
+											json_append_member(code, "country", json_mkstring(wtmp->country));
+											json_append_member(code, "temperature", json_mknumber((int)(temp*100)));
+											json_append_member(code, "humidity", json_mknumber((int)(humi*100)));
+											
+											json_append_member(wunderground->message, "code", code);
+											json_append_member(wunderground->message, "origin", json_mkstring("receiver"));
+											json_append_member(wunderground->message, "protocol", json_mkstring(wunderground->id));
+											
+											pilight.broadcast(wunderground->id, wunderground->message);
+											json_delete(wunderground->message);
+											wunderground->message = NULL;
+										}
 									}
+								} else {
+									logprintf(LOG_NOTICE, "api.wunderground.com json has no current_observation key");
 								}
+								json_delete(jdata);
 							} else {
-								logprintf(LOG_NOTICE, "api.wunderground.com json has no current_observation key");
+								logprintf(LOG_NOTICE, "api.wunderground.com json could not be parsed");
 							}
-							json_delete(jdata);
-						} else {
-							logprintf(LOG_NOTICE, "api.wunderground.com json could not be parsed");
+						}  else {
+							logprintf(LOG_NOTICE, "api.wunderground.com response was not in a valid json format");
 						}
-					}  else {
+					} else {
 						logprintf(LOG_NOTICE, "api.wunderground.com response was not in a valid json format");
 					}
 				} else {
-					logprintf(LOG_NOTICE, "api.wunderground.com response was not in a valid json format");
+					logprintf(LOG_NOTICE, "could not reach api.wundergrond.com");
 				}
-			} else {
-				logprintf(LOG_NOTICE, "could not reach api.wundergrond.com");
+				if(data) {
+					sfree((void *)&data);
+				}
+				if(filename) {
+					sfree((void *)&filename);
+				}
+			wtmp = wtmp->next;
 			}
-			if(data) {
-				sfree((void *)&data);
-			}
-			if(filename) {
-				sfree((void *)&filename);
-			}
-		wtmp = wtmp->next;
 		}
-		for(x=0;x<(interval*1000);x++) {
-			if(wunderground_loop) {
-				usleep((__useconds_t)(x));
-			}
-		}		
+		pthread_mutex_unlock(&mutex);				
 	}
 
-	while(wunderground_data) {
-		wtmp = wunderground_data;
-		sfree((void *)&wunderground_data->country);
-		sfree((void *)&wunderground_data->location);
-		sfree((void *)&wunderground_data->api);
-		wunderground_data = wunderground_data->next;
-		sfree((void *)&wtmp);
-	}
-	wunderground_nrfree--;
+	pthread_cleanup_pop(1);
 
 	return (void *)NULL;
 }
@@ -202,14 +230,6 @@ void wundergroundInitDev(JsonNode *jdevice) {
 	JsonNode *json = json_decode(output);
 	threads_register("wunderground", &wundergroundParse, (void *)json);
 	sfree((void *)&output);
-}
-
-int wundergroundGC(void) {
-	wunderground_loop = 0;
-	while(wunderground_nrfree > 0) {
-		usleep(100);
-	}
-	return 1;
 }
 
 int wundergroundCheckValues(JsonNode *code) {
@@ -224,8 +244,6 @@ int wundergroundCheckValues(JsonNode *code) {
 }
 
 void wundergroundInit(void) {
-	
-	gc_attach(wundergroundGC);
 
 	protocol_register(&wunderground);
 	protocol_set_id(wunderground, "wunderground");
