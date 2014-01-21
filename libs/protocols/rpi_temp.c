@@ -59,16 +59,16 @@ void *rpiTempParse(void *param) {
 	struct timespec ts;	
 	struct stat st;
 
-	FILE *fp;
-	int itmp;
+	FILE *fp = NULL;
+	int itmp = 0;
 	int *id = malloc(sizeof(int));
-	char *content;	
+	char *content = NULL;
 	int interval = 10, temp_corr = 0, nrid = 0, y = 0, rc = 0;
-	size_t bytes;
+	size_t bytes = 0;
 	int firstrun = 1;
 
 	pthread_mutex_t mutex = PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP;        
-    pthread_cond_t cond;
+    pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
 
 	if((jid = json_find_member(json, "id"))) {
 		jchild = json_first_child(jid);
@@ -81,6 +81,7 @@ void *rpiTempParse(void *param) {
 			jchild = jchild->next;
 		}
 	}
+
 	if((jsettings = json_find_member(json, "settings"))) {
 		json_find_number(jsettings, "interval", &interval);
 		json_find_number(jsettings, "temp-corr", &temp_corr);

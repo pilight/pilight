@@ -1,5 +1,5 @@
 /*
-	Copyright (C) 2013 CurlyMo
+	Copyright (C) 2014 CurlyMo
 
 	This file is part of pilight.
 
@@ -33,7 +33,7 @@ void pollinCreateMessage(int systemcode, int unitcode, int state) {
 	pollin->message = json_mkobject();
 	json_append_member(pollin->message, "systemcode", json_mknumber(systemcode));
 	json_append_member(pollin->message, "unitcode", json_mknumber(unitcode));
-	if(state == 1) {
+	if(state == 0) {
 		json_append_member(pollin->message, "state", json_mkstring("on"));
 	} else {
 		json_append_member(pollin->message, "state", json_mkstring("off"));

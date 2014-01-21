@@ -1,5 +1,5 @@
 /*
-	Copyright (C) 2013 CurlyMo
+	Copyright (C) 2013 - 2014 CurlyMo
 
 	This file is part of pilight.
 
@@ -135,7 +135,7 @@ int main(int argc, char **argv) {
 
 	/* Initialize protocols */
 	protocol_init();
-	
+
 	/* Get the protocol to be used */
 	while (1) {
 		int c;

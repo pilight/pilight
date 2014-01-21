@@ -47,8 +47,7 @@
 unsigned short dht22_loop = 1;
 int dht22_nrfree = 0;
 
-static uint8_t sizecvt(const int read_value)
-{
+static uint8_t sizecvt(const int read_value) {
 	/* digitalRead() and friends from wiringpi are defined as returning a value
 	   < 256. However, they are returned as int() types. This is a safety function */
 	if(read_value > 255 || read_value < 0) {
@@ -77,10 +76,10 @@ void *dht22Parse(void *param) {
 	int firstrun = 1;
 
 	pthread_mutex_t mutex = PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP;        
-    pthread_cond_t cond;
+    pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
 
     pthread_cond_init(&cond, NULL);
-	
+
 	if((jid = json_find_member(json, "id"))) {
 		jchild = json_first_child(jid);
 		while(jchild) {
@@ -92,6 +91,7 @@ void *dht22Parse(void *param) {
 			jchild = jchild->next;
 		}
 	}
+
 	if((jsettings = json_find_member(json, "settings"))) {
 		json_find_number(jsettings, "interval", &interval);
 		json_find_number(jsettings, "temp-corr", &temp_corr);

@@ -84,13 +84,15 @@ void *lm76Parse(void *param) {
 	struct lm76data_t *lm76data = malloc(sizeof(struct lm76data_t));	
 	int y = 0, interval = 10, rc = 0;
 	int temp_corr = 0;
-	char *stmp;
+	char *stmp = NULL;
 	int firstrun = 1;
 
 	lm76data->nrid = 0;
+	lm76data->id = NULL;
+	lm76data->fd = 0;
 	
 	pthread_mutex_t mutex = PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP;        
-    pthread_cond_t cond;
+    pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
 
 	if((jid = json_find_member(json, "id"))) {
 		jchild = json_first_child(jid);
@@ -134,7 +136,7 @@ void *lm76Parse(void *param) {
 			for(y=0;y<lm76data->nrid;y++) {
 				if(lm76data->fd[y] > 0) {
 					int raw = wiringPiI2CReadReg16(lm76data->fd[y], 0x00);            
-					float temp = ((float)((raw&0x00ff)+((raw>>15)?0:0.0625))*10);
+					float temp = ((float)((raw&0x00ff)+((raw>>12)*0.0625))*1000);
 
 					lm76->message = json_mkobject();
 					JsonNode *code = json_mkobject();

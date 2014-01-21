@@ -1,5 +1,5 @@
 /*
-	Copyright (C) 2013 CurlyMo
+	Copyright (C) 2014 CurlyMo
 
 	This file is part of pilight.
 
@@ -91,7 +91,7 @@ void *wundergroundParse(void *param) {
 	JsonNode *jobs = NULL;	
 
 	pthread_mutex_t mutex = PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP;        
-    pthread_cond_t cond;
+    pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
 	
     pthread_cond_init(&cond, NULL);	
 	

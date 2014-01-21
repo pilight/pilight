@@ -365,15 +365,15 @@ http_retcode http_get(filename, pdata, plength, typebuf)
 			}
 
 			if(n > 0) {
-				if((*buffer)=='\0') { 
+				if((*buffer)=='\0') {
 					break;
 				} else {
 					if(!newbuf) {
 						newbuf = realloc(newbuf, strlen(buffer)+1);
 					} else {
 						newbuf = realloc(newbuf, len+strlen(buffer)+1);
-					}				
-					len += sprintf(&newbuf[len], "%s", buffer);	
+					}
+					len += sprintf(&newbuf[len], "%s", buffer);
 				}
 			}
 		}
@@ -384,7 +384,7 @@ http_retcode http_get(filename, pdata, plength, typebuf)
 		close(fd);
       return ERRNOLG;
 	 }
-		
+
 
 	if(len > 0) {
 		*plength = len;

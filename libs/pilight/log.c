@@ -1,5 +1,5 @@
 /*
-	Copyright (C) 2013 CurlyMo
+	Copyright (C) 2013 - 2014 CurlyMo
 
 	This file is part of pilight.
 
@@ -65,7 +65,7 @@ void logprintf(int prio, const char *format_str, ...) {
 	char line[1024];
 	va_list ap;
 	struct stat sb;
-	
+
 	if(logfile == NULL && filelog == 0 && shelllog == 0)
 		return;
 
@@ -86,7 +86,7 @@ void logprintf(int prio, const char *format_str, ...) {
 				strcat(line, "NOTICE: ");
 			vsprintf(&line[strlen(line)], format_str, ap);
 			strcat(line, "\n");
-			
+
 			if((stat(logfile, &sb)) != 0) {
 				fclose(lf);
 				lf = NULL;
@@ -111,8 +111,8 @@ void logprintf(int prio, const char *format_str, ...) {
 						filelog = 0;
 					}
 				}
-			}			
-			
+			}
+
 			fwrite(line, sizeof(char), strlen(line), lf);
 			fflush(lf);
 			va_end(ap);
@@ -220,7 +220,7 @@ void log_file_set(char *log) {
 			}
 		}
 	}
-	
+
 	if(lf == NULL && filelog == 1) {
 		if((lf = fopen(logfile, "a")) == NULL) {
 			filelog = 0;

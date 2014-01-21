@@ -331,7 +331,7 @@ int webserver_callback_http(struct libwebsocket_context *webcontext, struct libw
 						break;
 					}
 				}
-				
+
 				size_t wlen = strlen(webserver_root)+strlen(webgui_tpl)+strlen((const char *)in)+2;
 				request = malloc(wlen);
 				memset(request, '\0', wlen);
@@ -339,7 +339,7 @@ int webserver_callback_http(struct libwebsocket_context *webcontext, struct libw
 				if(webserver_root[strlen(webserver_root)-1] == '/') {
 					if(((char *)in)[0] == '/')
 						sprintf(request, "%s%s%s", webserver_root, webgui_tpl, (char *)in);
-					else 
+					else
 						sprintf(request, "%s%s/%s", webserver_root, webgui_tpl, (char *)in);
 				} else {
 					if(((char *)in)[0] == '/')

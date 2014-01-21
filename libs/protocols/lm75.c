@@ -83,13 +83,15 @@ void *lm75Parse(void *param) {
 	struct timeval tp;
 	struct timespec ts;	
 	int y = 0, interval = 10, temp_corr = 0, rc = 0;
-	char *stmp;
+	char *stmp = NULL;
 	int firstrun = 1;
 
 	lm75data->nrid = 0;
+	lm75data->id = NULL;
+	lm75data->fd = 0;
 	
 	pthread_mutex_t mutex = PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP;        
-    pthread_cond_t cond;
+    pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
 
 	if((jid = json_find_member(json, "id"))) {
 		jchild = json_first_child(jid);
@@ -103,6 +105,7 @@ void *lm75Parse(void *param) {
 			jchild = jchild->next;
 		}
 	}
+
 	if((jsettings = json_find_member(json, "settings"))) {
 		json_find_number(jsettings, "interval", &interval);
 		json_find_number(jsettings, "temp-corr", &temp_corr);

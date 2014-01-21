@@ -1,5 +1,5 @@
 /*
-	Copyright (C) 2013 CurlyMo
+	Copyright (C) 2013 - 2014 CurlyMo
 
 	This file is part of pilight.
 
@@ -337,7 +337,8 @@ void receiver_parse_code(int *rawcode, int rawlen, int plslen, int hwtype) {
 	while(pnode) {
 		protocol = pnode->listener;
 		match = 0;
-		if((protocol->hwtype == hwtype || hwtype == -1) &&
+
+		if((protocol->hwtype == hwtype || protocol->hwtype == -1 || hwtype == -1) &&
 		  ((((protocol->parseRaw || protocol->parseCode) && protocol->rawlen > 0)
 		   || protocol->parseBinary) && protocol->pulse > 0 && protocol->plslen)) {
 			plslengths = protocol->plslen;
@@ -350,6 +351,7 @@ void receiver_parse_code(int *rawcode, int rawlen, int plslen, int hwtype) {
 			}
 
 			if(rawlen == protocol->rawlen && match == 1) {
+
 				for(x=0;x<(int)(double)rawlen;x++) {
 					memcpy(&protocol->raw[x], &rawcode[x], sizeof(int));
 				}
@@ -1124,11 +1126,12 @@ void socket_client_disconnected(int i) {
 	if(handshakes[i] == RECEIVER || handshakes[i] == GUI || handshakes[i] == NODE)
 		receivers--;
 
+	handshakes[i] = -1;
+
 	if(handshakes[i] == NODE) {
 		node_remove(i);
 	}
 
-	handshakes[i] = 0;
 }
 
 void *receive_code(void *param) {
@@ -1395,7 +1398,7 @@ int main_gc(void) {
 		nodes = nodes->next;
 		sfree((void *)&tmp_nodes);
 	}
-	
+
 	log_gc();
 	sfree((void *)&nodes);
 	sfree((void *)&progname);

@@ -55,24 +55,24 @@ void *ds18s20Parse(void *param) {
 	struct JsonNode *jid = NULL;
 	struct JsonNode *jchild = NULL;
 	struct JsonNode *jsettings = NULL;
-	struct dirent *file;
+	struct dirent *file = NULL;
 	struct stat st;
 	struct timeval tp;
 	struct timespec ts;
 
 	DIR *d = NULL;
-	FILE *fp;
+	FILE *fp = NULL;
 	char *ds18s20_sensor = NULL;
 	char *stmp = NULL;
 	char **id = NULL;
-	char *content;	
+	char *content = NULL;	
 	int w1valid = 0, w1temp = 0, interval = 10, x = 0;
 	int temp_corr = 0, rc = 0, nrid = 0, y = 0;
-	size_t bytes;
+	size_t bytes = 0;
 	int firstrun = 1;
 
 	pthread_mutex_t mutex = PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP;        
-    pthread_cond_t cond;
+    pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
 
 	if((jid = json_find_member(json, "id"))) {
 		jchild = json_first_child(jid);

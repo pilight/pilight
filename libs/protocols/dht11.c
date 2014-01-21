@@ -63,11 +63,11 @@ void *dht11Parse(void *param) {
 	int *id = 0;
 	int nrid = 0, y = 0, interval = 10;
 	int temp_corr = 0, humi_corr = 0, rc = 0;
-	int itmp;
+	int itmp = 0;
 	int firstrun = 1;
 
 	pthread_mutex_t mutex = PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP;        
-    pthread_cond_t cond;
+    pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
 
     pthread_cond_init(&cond, NULL);
 
@@ -82,6 +82,7 @@ void *dht11Parse(void *param) {
 			jchild = jchild->next;
 		}
 	}
+
 	if((jsettings = json_find_member(json, "settings"))) {
 		json_find_number(jsettings, "interval", &interval);
 		json_find_number(jsettings, "temp-corr", &temp_corr);

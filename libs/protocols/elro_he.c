@@ -1,5 +1,5 @@
 /*
-	Copyright (C) 2013 CurlyMo
+	Copyright (C) 2014 CurlyMo
 
 	This file is part of pilight.
 
@@ -101,7 +101,7 @@ void elroHECreateUnitCode(int unitcode) {
 }
 
 void elroHECreateState(int state) {
-	if(state == 0) {
+	if(state == 1) {
 		elroHECreateHigh(44, 47);
 	}
 }

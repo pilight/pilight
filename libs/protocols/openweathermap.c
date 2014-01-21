@@ -1,5 +1,5 @@
 /*
-	Copyright (C) 2013 CurlyMo
+	Copyright (C) 2014 CurlyMo
 
 	This file is part of pilight.
 
@@ -80,7 +80,7 @@ void *openweathermapParse(void *param) {
 	struct timeval tp;
 	struct timespec ts;	
 	int interval = 600;
-	
+
 	char url[1024];
 	char *filename = NULL, *data = NULL;
 	char typebuf[70];
@@ -89,7 +89,7 @@ void *openweathermapParse(void *param) {
 	int firstrun = 1;
 	
 	pthread_mutex_t mutex = PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP;        
-    pthread_cond_t cond;
+    pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
 	
     pthread_cond_init(&cond, NULL);
 
