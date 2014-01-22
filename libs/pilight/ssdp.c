@@ -35,14 +35,23 @@
 #include "common.h"
 #include "socket.h"
 #include "log.h"
+#include "gc.h"
 #include "ssdp.h"
 
 char *ssdp_mac = NULL;
 char *ssdp_hostname = NULL;
-/* Allow an ip address for either a wlan of eth0 adapter */
-char sspd_header[2][BUFFER_SIZE];
+char **ssdp_header = NULL;
+int ssdp_nrheader = 0;
 int ssdp_socket = 0;
 int ssdp_loop = 1;
+
+int ssdp_gc(void) {
+	int x = 0;
+	for(x=0;x<ssdp_nrheader;x++) {
+		sfree((void *)&ssdp_header[x]);
+	}
+	sfree((void *)&ssdp_header);
+}
 
 char *ssdp_gethostname(void) {
 	if(!ssdp_hostname) {
@@ -141,31 +150,44 @@ unsigned long ssdp_genid(void) {
 	ssdp_getethmac();
 	int i = 0;
 	unsigned long x = 0;
-	for(i=0;i<12;i++) {
-		x += (unsigned long)ssdp_mac[i];
+	if(ssdp_mac && strlen(ssdp_mac) > 0) {
+		for(i=0;i<12;i++) {
+			x += (unsigned long)ssdp_mac[i];
+		}
+
+		return x;
+	} else {
+		return -1;
 	}
-	return x;
 }
 
 char *ssdp_genuuid(void) {
-	char *upnp_id = malloc(UUID_LENGTH);
-	memset(upnp_id, '\0', UUID_LENGTH);
-	unsigned long r;
-	unsigned int a, b, c, d, e, f;
+	unsigned long r = ssdp_genid();
+	if(r > 0) {
+	
+		char *upnp_id = malloc(UUID_LENGTH);
+		memset(upnp_id, '\0', UUID_LENGTH);
+		unsigned int a, b, c, d, e, f;	
 
-	r = ssdp_genid();
-	a = (r>> 0) & 0xFFFF;
-	b = (r>>16) & 0xFF;
-	c = (r>>24) & 0xFF;
-	r = ssdp_genid();
-	d = (r>> 0) & 0xFF;
-	e = (r>> 8) & 0xFFFF;
-	f = (r>>24) & 0xFF;
+		a = (r>> 0) & 0xFFFF;
+		b = (r>>16) & 0xFF;
+		c = (r>>24) & 0xFF;
+		if(r > 0) {
+			r = ssdp_genid();
+			d = (r>> 0) & 0xFF;
+			e = (r>> 8) & 0xFFFF;
+			f = (r>>24) & 0xFF;
 
-	sprintf(upnp_id, "%04X-%02X-%02X-%02X-%04X%02X", (a&0xFFFF), (b&0xFF), (c&0xFF), (d&0xFF), (e&0xFFFF), (f&0xFF));
-
-	sfree((void *)&ssdp_mac);
-	return upnp_id;
+			sprintf(upnp_id, "%04X-%02X-%02X-%02X-%04X%02X", (a&0xFFFF), (b&0xFF), (c&0xFF), (d&0xFF), (e&0xFFFF), (f&0xFF));
+		} else {
+			sfree((void *)&ssdp_mac);
+			return NULL;
+		}
+		sfree((void *)&ssdp_mac);
+		return upnp_id;
+	} else {
+		return NULL;
+	}
 }
 
 int ssdp_start(void) {
@@ -275,48 +297,187 @@ end:
 	}
 }
 
+#ifdef __FreeBSD__
+static struct sockaddr *sockaddr_dup(struct sockaddr *sa) {
+	struct sockaddr *ret;
+	socklen_t socklen;
+#ifdef HAVE_SOCKADDR_SA_LEN
+	socklen = sa->sa_len;
+#else
+	socklen = sizeof(struct sockaddr_storage);
+#endif
+	ret = calloc(1, socklen);
+	if (ret == NULL)
+		return NULL;
+	memcpy(ret, sa, socklen);
+	return ret;
+}
+
+int rep_getifaddrs(struct ifaddrs **ifap) {
+	struct ifconf ifc;
+	char buff[8192];
+	int fd, i, n;
+	struct ifreq ifr, *ifrp=NULL;
+	struct ifaddrs *curif = NULL, *ifa = NULL;
+	struct ifaddrs *lastif = NULL;
+
+	*ifap = NULL;
+
+	if ((fd = socket(AF_INET, SOCK_DGRAM, 0)) == -1) {
+		return -1;
+	}
+  
+	ifc.ifc_len = sizeof(buff);
+	ifc.ifc_buf = buff;
+
+	if (ioctl(fd, SIOCGIFCONF, &ifc) != 0) {
+		close(fd);
+		return -1;
+	}
+  
+#ifndef max
+#define max(a,b) ((a) > (b) ? (a) : (b))
+#endif
+#ifdef __FreeBSD__
+#define ifreq_size(i) max(sizeof(struct ifreq),\
+     sizeof((i).ifr_name)+(i).ifr_addr.sa_len)
+#else
+#define ifreq_size(i) sizeof(struct ifreq)  
+#endif
+
+	n = ifc.ifc_len;
+
+	/* Loop through interfaces, looking for given IP address */
+	for (i = 0; i < n; i+= ifreq_size(*ifrp) ) {
+		int match = 0;
+		ifrp = (struct ifreq *)((char *) ifc.ifc_buf+i);
+		for(ifa = *ifap; ifa != NULL; ifa = ifa->ifa_next) {
+			if(strcmp(ifrp->ifr_name, ifa->ifa_name) == 0) {
+				match = 1;
+				break;
+			}
+		}
+		if(match == 1) {
+			continue;
+		}
+		curif = calloc(1, sizeof(struct ifaddrs));
+		if (curif == NULL) {
+			freeifaddrs(*ifap);
+			close(fd);
+			return -1;
+		}
+
+		curif->ifa_name = malloc(sizeof(IFNAMSIZ)+1);
+		strncpy(curif->ifa_name, ifrp->ifr_name, IFNAMSIZ);
+		strncpy(ifr.ifr_name, ifrp->ifr_name, IFNAMSIZ);
+		if (curif->ifa_name == NULL) {
+			free(curif);
+			freeifaddrs(*ifap);
+			close(fd);
+			return -1;
+		}
+	
+		curif->ifa_flags = ifr.ifr_flags;
+		curif->ifa_dstaddr = NULL;
+		curif->ifa_data = NULL;
+		curif->ifa_next = NULL;
+
+		curif->ifa_addr = NULL;
+		if (ioctl(fd, SIOCGIFADDR, &ifr) != -1) {
+			curif->ifa_addr = sockaddr_dup(&ifr.ifr_addr);
+			if (curif->ifa_addr == NULL) {
+				free(curif->ifa_name);
+				free(curif);
+				freeifaddrs(*ifap);
+				close(fd);
+				return -1;
+			}
+		}
+
+
+		curif->ifa_netmask = NULL;
+		if (ioctl(fd, SIOCGIFNETMASK, &ifr) != -1) {
+			curif->ifa_netmask = sockaddr_dup(&ifr.ifr_addr);
+			if (curif->ifa_netmask == NULL) {
+				if (curif->ifa_addr != NULL) {
+					free(curif->ifa_addr);
+				}
+				free(curif->ifa_name);
+				free(curif);
+				freeifaddrs(*ifap);
+				close(fd);
+				return -1;
+			}
+		}
+
+		if (lastif == NULL) {
+			*ifap = curif;
+		} else {
+			lastif->ifa_next = curif;
+		}
+		lastif = curif;
+	}
+
+	close(fd);
+
+	return 0;
+}
+#endif
+
 void *ssdp_wait(void *param) {
+
+	gc_attach(ssdp_gc);
+
 	struct sockaddr_in addr;
 	struct ifaddrs *ifaddr, *ifa;
 	char message[BUFFER_SIZE];
 	char host[NI_MAXHOST];
-	char *id = ssdp_genuuid();
 	int x = 0;
 	ssize_t len = 0;
 	socklen_t addrlen = sizeof(addr);
 	int family, s = 0;
 
-#ifndef __FreeBSD__
-	if(getifaddrs(&ifaddr) == -1) {
-		perror("getifaddrs");
+	char *id = ssdp_genuuid();	
+	char *ssdp_distro = ssdp_getdistroname();	
+	
+	if(id == NULL) {
+		logprintf(LOG_ERR, "could not generate uuid");
 		exit(EXIT_FAILURE);
 	}
-#endif
-
-	char *ssdp_distro = ssdp_getdistroname();	
 	
 	if(!ssdp_distro) {
 		logprintf(LOG_ERR, "failed to determine the distribution", gai_strerror(s));
 		exit(EXIT_FAILURE);
 	}
-#ifndef __FreeBSD__
+
+#ifdef __FreeBSD__	
+	if(rep_getifaddrs(&ifaddr) == -1) {
+		logprintf(LOG_ERR, "could not get network adapter information");
+		exit(EXIT_FAILURE);
+	}
+#else
+	if(getifaddrs(&ifaddr) == -1) {
+		perror("getifaddrs");
+		exit(EXIT_FAILURE);
+	}
+#endif
 	for(ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next) {
 		if(ifa->ifa_addr == NULL) {
 			continue;
 		}
-
-		family = ifa->ifa_addr->sa_family;
-
-		if(strcmp(ifa->ifa_name, "lo") != 0 && family == AF_INET) {
-			if(family == AF_INET || family == AF_INET6) {
-				s = getnameinfo(ifa->ifa_addr, sizeof(struct sockaddr_in), host, NI_MAXHOST, NULL, 0, NI_NUMERICHOST);
-				if(s != 0) {
-					logprintf(LOG_ERR, "getnameinfo() failed: %s", gai_strerror(s));
-					exit(EXIT_FAILURE);
-				}
-#endif			
-				memset(sspd_header[x], '\0', BUFFER_SIZE);	
-				sprintf(sspd_header[x], "NOTIFY * HTTP/1.1\r\n"
+		if((strstr(ifa->ifa_name, "lo") == NULL && strstr(ifa->ifa_name, "vbox") == NULL) 
+		    && (family == AF_INET || AF_INET6)) {
+			memset(host, '\0', NI_MAXHOST);
+			s = getnameinfo(ifa->ifa_addr, sizeof(struct sockaddr_in), host, NI_MAXHOST, NULL, 0, NI_NUMERICHOST);
+			if(s != 0) {
+				logprintf(LOG_ERR, "getnameinfo() failed: %s", gai_strerror(s));
+				exit(EXIT_FAILURE);
+			}
+			if(strlen(host) > 0) {
+				ssdp_header = realloc(ssdp_header, sizeof(char *)*(ssdp_nrheader+1));
+				ssdp_header[ssdp_nrheader] = malloc(BUFFER_SIZE);
+				memset(ssdp_header[ssdp_nrheader], '\0', BUFFER_SIZE);	
+				sprintf(ssdp_header[ssdp_nrheader], "NOTIFY * HTTP/1.1\r\n"
 					"Host:239.255.255.250:1900\r\n"
 					"Cache-Control:max-age=900\r\n"
 					"Location:%s:%d\r\n"
@@ -324,14 +485,12 @@ void *ssdp_wait(void *param) {
 					"USN:uuid:%s::urn:schemas-upnp-org:service:pilight:1\r\n"
 					"NTS:ssdp:alive\r\n"
 					"SERVER: %s UPnP/1.1 pilight (%s)/%s\r\n\r\n", host, socket_get_port(), id, ssdp_distro, ssdp_gethostname(), VERSION);
-				x++;
-#ifndef __FreeBSD__				
+				ssdp_nrheader++;	
 			}
 		}
 	}
 
 	freeifaddrs(ifaddr);
-#endif
 
 	sfree((void *)&id);
 	sfree((void *)&ssdp_distro);
@@ -344,9 +503,9 @@ void *ssdp_wait(void *param) {
 			break;
 		}
 		if(strstr(message, "M-SEARCH * HTTP/1.1") > 0 && strstr(message, "urn:schemas-upnp-org:service:pilight:1") > 0) {
-			for(x=0;x<2;x++) {
-				if(strlen(sspd_header[x]) > 0) {
-					if((len = sendto(ssdp_socket, sspd_header[x], BUFFER_SIZE, 0, (struct sockaddr *)&addr, sizeof(addr))) >= 0) {
+			for(x=0;x<ssdp_nrheader;x++) {
+				if(strlen(ssdp_header[x]) > 0) {
+					if((len = sendto(ssdp_socket, ssdp_header[x], BUFFER_SIZE, 0, (struct sockaddr *)&addr, sizeof(addr))) >= 0) {
 						logprintf(LOG_DEBUG, "ssdp sent notify");
 					}
 				}
