@@ -22,6 +22,8 @@
  ***********************************************************************
  */
 
+#ifndef __FreeBSD__
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <fcntl.h>
@@ -120,3 +122,5 @@ int wiringPiI2CSetup (int devId)
 
   return fd ;
 }
+
+#endif

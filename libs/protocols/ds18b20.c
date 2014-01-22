@@ -71,8 +71,18 @@ void *ds18b20Parse(void *param) {
 	size_t bytes = 0;
 	int firstrun = 1;
 
+#ifndef __FreeBSD__
 	pthread_mutex_t mutex = PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP;        
     pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
+#else
+	pthread_mutex_t mutex;
+	pthread_cond_t cond;
+	pthread_mutexattr_t attr;
+
+	pthread_mutexattr_init(&attr);
+	pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);
+	pthread_mutex_init(&mutex, &attr);
+#endif
 
 	if((jid = json_find_member(json, "id"))) {
 		jchild = json_first_child(jid);

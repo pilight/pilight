@@ -103,8 +103,15 @@ typedef struct sendqueue_t {
 
 struct sendqueue_t *sendqueue;
 struct sendqueue_t *sendqueue_head;
-pthread_mutex_t sendqueue_lock = PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP;
-pthread_cond_t sendqueue_signal = PTHREAD_COND_INITIALIZER;
+
+#ifndef __FreeBSD__
+	pthread_mutex_t sendqueue_lock = PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP;
+	pthread_cond_t sendqueue_signal = PTHREAD_COND_INITIALIZER;
+#else
+	pthread_mutex_t sendqueue_lock;
+	pthread_cond_t sendqueue_signal;
+	pthread_mutexattr_t sendqueue_attr;	
+#endif
 int sendqueue_number = 0;
 
 typedef struct bcqueue_t {
@@ -116,8 +123,14 @@ typedef struct bcqueue_t {
 
 struct bcqueue_t *bcqueue;
 struct bcqueue_t *bcqueue_head;
-pthread_mutex_t bcqueue_lock = PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP;
-pthread_cond_t bcqueue_signal = PTHREAD_COND_INITIALIZER;
+#ifndef __FreeBSD__
+	pthread_mutex_t bcqueue_lock = PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP;
+	pthread_cond_t bcqueue_signal = PTHREAD_COND_INITIALIZER;
+#else
+	pthread_mutex_t bcqueue_lock;
+	pthread_cond_t bcqueue_signal;
+	pthread_mutexattr_t bcqueue_attr;
+#endif
 int bcqueue_number = 0;
 
 /* The pid_file and pid of this daemon */
@@ -1427,8 +1440,8 @@ int main(int argc, char **argv) {
 	loglevel = LOG_INFO;
 
 	log_file_enable();
-	log_shell_disable();
-
+	log_shell_disable();	
+	
 	settingsfile = malloc(strlen(SETTINGS_FILE)+1);
 	strcpy(settingsfile, SETTINGS_FILE);
 
@@ -1632,6 +1645,16 @@ int main(int argc, char **argv) {
 		save_pid(getpid());
 	}
 
+#ifdef __FreeBSD__
+	pthread_mutexattr_init(&sendqueue_attr);
+	pthread_mutexattr_settype(&sendqueue_attr, PTHREAD_MUTEX_RECURSIVE);
+	pthread_mutex_init(&sendqueue_lock, &sendqueue_attr);
+	
+	pthread_mutexattr_init(&bcqueue_attr);
+	pthread_mutexattr_settype(&bcqueue_attr, PTHREAD_MUTEX_RECURSIVE);
+	pthread_mutex_init(&bcqueue_lock, &bcqueue_attr);
+#endif
+	
     //initialise all handshakes to 0 so not checked
 	memset(handshakes, -1, sizeof(handshakes));
 

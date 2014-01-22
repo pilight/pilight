@@ -76,7 +76,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #ifndef LWS_NO_FORK
-#ifdef HAVE_SYS_PRCTL_H
+#if defined(HAVE_SYS_PRCTL_H) && !defined(__FreeBSD__)
 #include <sys/prctl.h>
 #endif
 #endif

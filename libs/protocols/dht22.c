@@ -75,8 +75,18 @@ void *dht22Parse(void *param) {
 	int temp_corr = 0, humi_corr = 0, itmp = 0;
 	int firstrun = 1;
 
+#ifndef __FreeBSD__
 	pthread_mutex_t mutex = PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP;        
     pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
+#else
+	pthread_mutex_t mutex;
+	pthread_cond_t cond;
+	pthread_mutexattr_t attr;
+
+	pthread_mutexattr_init(&attr);
+	pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);
+	pthread_mutex_init(&mutex, &attr);
+#endif
 
     pthread_cond_init(&cond, NULL);
 

@@ -31,8 +31,13 @@ char debug_log[128];
 
 void logmarkup(void);
 int isNumeric(char *str);
+#ifdef __FreeBSD__
+int proc_find(const char *name);
+#else
 pid_t proc_find(const char *name);
-#ifdef DEBUG
+#endif
+
+#if defined(DEBUG) && !defined(__FreeBSD)
 
 void debug_free(void **addr, const char *file, int line);
 const char *debug_filename(const char *file);

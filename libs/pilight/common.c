@@ -43,7 +43,11 @@ void logmarkup(void) {
 	sprintf(debug_log, "[%22.22s] %s: ", buf, progname);
 }
 
+#ifdef __FreeBSD__
+int proc_find(const char *name) {
+#else
 pid_t proc_find(const char *name) {
+#endif
 	DIR* dir;
 	struct dirent* ent;
 	char* endptr;

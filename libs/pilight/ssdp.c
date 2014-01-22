@@ -105,19 +105,6 @@ void ssdp_getethmac(void) {
 		}
 		close(fd);
 	}
-#elif defined(HAVE_GETIFADDRS)
-	ifaddrs* iflist;
-    if(getifaddrs(&iflist) == 0) {
-        for(ifaddrs* cur = iflist; cur; cur = cur->ifa_next) {
-            if((cur->ifa_addr->sa_family == AF_LINK) && (strcmp(cur->ifa_name, if_name) == 0) && cur->ifa_addr) {
-                sockaddr_dl* sdl = (sockaddr_dl*)cur->ifa_addr;
-                memcpy(&ssdp_mac[i], LLADDR(sdl), sdl->sdl_alen);
-                break;
-            }
-        }
-
-        freeifaddrs(iflist);
-    }
 #elif defined(SIOCGIFADDR)
 	if(!ssdp_mac) {
 		int fd = socket(PF_INET, SOCK_DGRAM, IPPROTO_IP);
@@ -134,6 +121,19 @@ void ssdp_getethmac(void) {
 		}
 		close(fd);
 	}
+#elif defined(HAVE_GETIFADDRS)
+	ifaddrs* iflist;
+    if(getifaddrs(&iflist) == 0) {
+        for(ifaddrs* cur = iflist; cur; cur = cur->ifa_next) {
+            if((cur->ifa_addr->sa_family == AF_LINK) && (strcmp(cur->ifa_name, if_name) == 0) && cur->ifa_addr) {
+                sockaddr_dl* sdl = (sockaddr_dl*)cur->ifa_addr;
+                memcpy(&ssdp_mac[i], LLADDR(sdl), sdl->sdl_alen);
+                break;
+            }
+        }
+
+        freeifaddrs(iflist);
+    }
 #endif
 }
 
@@ -209,7 +209,7 @@ int ssdp_seek(struct ssdp_list_t **ssdp_list) {
 	unsigned short int nip[4], port = 0;
 	
 	tv.tv_sec = 0;
-	tv.tv_usec = 50000;
+	tv.tv_usec = 100000;
 
 	sock = socket(AF_INET, SOCK_DGRAM, 0);
     addr.sin_family = AF_INET;
@@ -286,10 +286,12 @@ void *ssdp_wait(void *param) {
 	socklen_t addrlen = sizeof(addr);
 	int family, s = 0;
 
+#ifndef __FreeBSD__
 	if(getifaddrs(&ifaddr) == -1) {
 		perror("getifaddrs");
 		exit(EXIT_FAILURE);
 	}
+#endif
 
 	char *ssdp_distro = ssdp_getdistroname();	
 	
@@ -297,6 +299,7 @@ void *ssdp_wait(void *param) {
 		logprintf(LOG_ERR, "failed to determine the distribution", gai_strerror(s));
 		exit(EXIT_FAILURE);
 	}
+#ifndef __FreeBSD__
 	for(ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next) {
 		if(ifa->ifa_addr == NULL) {
 			continue;
@@ -311,6 +314,7 @@ void *ssdp_wait(void *param) {
 					logprintf(LOG_ERR, "getnameinfo() failed: %s", gai_strerror(s));
 					exit(EXIT_FAILURE);
 				}
+#endif			
 				memset(sspd_header[x], '\0', BUFFER_SIZE);	
 				sprintf(sspd_header[x], "NOTIFY * HTTP/1.1\r\n"
 					"Host:239.255.255.250:1900\r\n"
@@ -321,11 +325,13 @@ void *ssdp_wait(void *param) {
 					"NTS:ssdp:alive\r\n"
 					"SERVER: %s UPnP/1.1 pilight (%s)/%s\r\n\r\n", host, socket_get_port(), id, ssdp_distro, ssdp_gethostname(), VERSION);
 				x++;
+#ifndef __FreeBSD__				
 			}
 		}
 	}
 
 	freeifaddrs(ifaddr);
+#endif
 
 	sfree((void *)&id);
 	sfree((void *)&ssdp_distro);

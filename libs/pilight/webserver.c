@@ -46,7 +46,11 @@
 #include "fcache.h"
 
 int webserver_port = WEBSERVER_PORT;
+#ifndef __FreeBSD__
 int webserver_cache = 1;
+#else
+int webserver_cache = 0;
+#endif
 int webserver_authentication = 0;
 char *webserver_username = NULL;
 char *webserver_password = NULL;
@@ -88,8 +92,15 @@ typedef struct webqueue_t {
 
 struct webqueue_t *webqueue;
 struct webqueue_t *webqueue_head;
+
+#ifndef __FreeBSD__
 pthread_mutex_t webqueue_lock = PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP;
 pthread_cond_t webqueue_signal = PTHREAD_COND_INITIALIZER;
+#else
+pthread_mutex_t webqueue_lock;
+pthread_cond_t webqueue_signal;
+#endif
+
 int webqueue_number = 0;
 
 int webserver_gc(void) {
@@ -291,7 +302,11 @@ int webserver_callback_http(struct libwebsocket_context *webcontext, struct libw
 				memset(request, '\0', strlen(webserver_root)+strlen(webgui_tpl)+14);
 				/* Check if the webserver_root is terminated by a slash. If not, than add it */
 				if(webserver_root[strlen(webserver_root)-1] == '/') {
+#ifdef __FreeBSD__
+					sprintf(request, "%s%s/%s", webserver_root, webgui_tpl, "index.html");
+#else
 					sprintf(request, "%s%s%s", webserver_root, webgui_tpl, "index.html");
+#endif
 				} else {
 					sprintf(request, "%s/%s%s", webserver_root, webgui_tpl, "/index.html");
 				}
@@ -742,6 +757,15 @@ void *webserver_broadcast(void *param) {
 
 void *webserver_start(void *param) {
 
+#ifdef __FreeBSD__
+	pthread_mutex_t webqueue_lock;
+	pthread_mutexattr_t webqueue_attr;
+
+	pthread_mutexattr_init(&webqueue_attr);
+	pthread_mutexattr_settype(&webqueue_attr, PTHREAD_MUTEX_RECURSIVE);
+	pthread_mutex_init(&webqueue_lock, &webqueue_attr);
+#endif
+
 	int n = 0;
 	struct lws_context_creation_info info;
 
@@ -760,7 +784,9 @@ void *webserver_start(void *param) {
 
 	/* Do we turn on webserver caching. This means that all requested files are
 	   loaded into the memory so they aren't read from the FS anymore */
+#ifndef __FreeBSD__
 	settings_find_number("webserver-cache", &webserver_cache);
+#endif
 	settings_find_number("webserver-authentication", &webserver_authentication);
 	settings_find_string("webserver-password", &webserver_password);
 	settings_find_string("webserver-username", &webserver_username);

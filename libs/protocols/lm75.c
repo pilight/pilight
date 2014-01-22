@@ -90,8 +90,18 @@ void *lm75Parse(void *param) {
 	lm75data->id = NULL;
 	lm75data->fd = 0;
 	
+#ifndef __FreeBSD__
 	pthread_mutex_t mutex = PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP;        
     pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
+#else
+	pthread_mutex_t mutex;
+	pthread_cond_t cond;
+	pthread_mutexattr_t attr;
+
+	pthread_mutexattr_init(&attr);
+	pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);
+	pthread_mutex_init(&mutex, &attr);
+#endif
 
 	if((jid = json_find_member(json, "id"))) {
 		jchild = json_first_child(jid);
@@ -111,11 +121,12 @@ void *lm75Parse(void *param) {
 		json_find_number(jsettings, "temp-corr", &temp_corr);
 	}
 	json_delete(json);
-	
+#ifndef __FreeBSD__	
 	lm75data->fd = realloc(lm75data->fd, (sizeof(int)*(size_t)(lm75data->nrid+1)));
 	for(y=0;y<lm75data->nrid;y++) {
 		lm75data->fd[y] = wiringPiI2CSetup((int)strtol(lm75data->id[y], NULL, 16));
 	}
+#endif
 
 	pthread_cleanup_push(lm75ParseCleanUp, (void *)lm75data);	
 	
@@ -133,6 +144,7 @@ void *lm75Parse(void *param) {
 		pthread_mutex_lock(&mutex);
 		rc = pthread_cond_timedwait(&cond, &mutex, &ts);
 		if(rc == ETIMEDOUT) {		
+#ifndef __FreeBSD__		
 			for(y=0;y<lm75data->nrid;y++) {
 				if(lm75data->fd[y] > 0) {
 					int raw = wiringPiI2CReadReg16(lm75data->fd[y], 0x00);            
@@ -157,6 +169,7 @@ void *lm75Parse(void *param) {
 					sleep(1);
 				}
 			}
+#endif
 		}
 		pthread_mutex_unlock(&mutex);
 	}

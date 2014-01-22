@@ -88,8 +88,18 @@ void *openweathermapParse(void *param) {
 	int rc = 0, humi = 0, lg = 0, ret = 0;
 	int firstrun = 1;
 	
+#ifndef __FreeBSD__
 	pthread_mutex_t mutex = PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP;        
     pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
+#else
+	pthread_mutex_t mutex;
+	pthread_cond_t cond;
+	pthread_mutexattr_t attr;
+
+	pthread_mutexattr_init(&attr);
+	pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);
+	pthread_mutex_init(&mutex, &attr);
+#endif
 	
     pthread_cond_init(&cond, NULL);
 

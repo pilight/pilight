@@ -90,8 +90,18 @@ void *wundergroundParse(void *param) {
 	JsonNode *jdata = NULL;
 	JsonNode *jobs = NULL;	
 
+#ifndef __FreeBSD__
 	pthread_mutex_t mutex = PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP;        
     pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
+#else
+	pthread_mutex_t mutex;
+	pthread_cond_t cond;
+	pthread_mutexattr_t attr;
+
+	pthread_mutexattr_init(&attr);
+	pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);
+	pthread_mutex_init(&mutex, &attr);
+#endif
 	
     pthread_cond_init(&cond, NULL);	
 	
@@ -266,3 +276,4 @@ void wundergroundInit(void) {
 	wunderground->initDev=&wundergroundInitDev;
 	wunderground->checkValues=&wundergroundCheckValues;
 }
+

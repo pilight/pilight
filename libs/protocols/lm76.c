@@ -40,7 +40,9 @@
 #include "json.h"
 #include "lm76.h"
 #include "../pilight/wiringPi.h"
+#ifndef __FreeBSD__
 #include "../pilight/wiringPiI2C.h"
+#endif
 
 unsigned short lm76_loop = 1;
 int lm76_nrfree = 0;
@@ -91,8 +93,18 @@ void *lm76Parse(void *param) {
 	lm76data->id = NULL;
 	lm76data->fd = 0;
 	
+#ifndef __FreeBSD__
 	pthread_mutex_t mutex = PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP;        
     pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
+#else
+	pthread_mutex_t mutex;
+	pthread_cond_t cond;
+	pthread_mutexattr_t attr;
+
+	pthread_mutexattr_init(&attr);
+	pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);
+	pthread_mutex_init(&mutex, &attr);
+#endif
 
 	if((jid = json_find_member(json, "id"))) {
 		jchild = json_first_child(jid);
@@ -111,15 +123,15 @@ void *lm76Parse(void *param) {
 		json_find_number(jsettings, "temp-corr", &temp_corr);
 	}
 	json_delete(json);
-	
+#ifndef __FreeBSD__	
 	lm76data->fd = realloc(lm76data->fd, (sizeof(int)*(size_t)(lm76data->nrid+1)));
 	for(y=0;y<lm76data->nrid;y++) {
 		lm76data->fd[y] = wiringPiI2CSetup((int)strtol(lm76data->id[y], NULL, 16));
 	}
-
+#endif
 	pthread_cleanup_push(lm76ParseCleanUp, (void *)lm76data);
 	
-	while(lm76_loop) {
+	while(lm76_loop) {	
 		rc = gettimeofday(&tp, NULL);
 		ts.tv_sec = tp.tv_sec;
 		ts.tv_nsec = tp.tv_usec * 1000;
@@ -132,9 +144,10 @@ void *lm76Parse(void *param) {
 
 		pthread_mutex_lock(&mutex);
 		rc = pthread_cond_timedwait(&cond, &mutex, &ts);
-		if(rc == ETIMEDOUT) {			
+		if(rc == ETIMEDOUT) {
+#ifndef __FreeBSD__	
 			for(y=0;y<lm76data->nrid;y++) {
-				if(lm76data->fd[y] > 0) {
+				if(lm76data->fd[y] > 0) {		
 					int raw = wiringPiI2CReadReg16(lm76data->fd[y], 0x00);            
 					float temp = ((float)((raw&0x00ff)+((raw>>12)*0.0625))*1000);
 
@@ -157,6 +170,7 @@ void *lm76Parse(void *param) {
 					sleep(1);
 				}
 			}
+#endif
 		}
 		pthread_mutex_unlock(&mutex);
 	}
