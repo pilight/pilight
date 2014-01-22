@@ -24,7 +24,7 @@ HEADERS := $(SRC:.c=.h)
 
 all: $(OBJS) websockets.o
 
-$(OBJS): $(patsubst %.o,%.c,$@) $(patsubst %.c,%.h,$@)
+$(OBJS): $(SRC)
 	$(GCC) $(CFLAGS) -c $(patsubst %.o,%.c,$@)
 
 websockets.o: $(OBJS)

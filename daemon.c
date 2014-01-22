@@ -110,7 +110,7 @@ struct sendqueue_t *sendqueue_head;
 #else
 	pthread_mutex_t sendqueue_lock;
 	pthread_cond_t sendqueue_signal;
-	pthread_mutexattr_t sendqueue_attr;	
+	pthread_mutexattr_t sendqueue_attr;
 #endif
 int sendqueue_number = 0;
 
@@ -1440,8 +1440,8 @@ int main(int argc, char **argv) {
 	loglevel = LOG_INFO;
 
 	log_file_enable();
-	log_shell_disable();	
-	
+	log_shell_disable();
+
 	settingsfile = malloc(strlen(SETTINGS_FILE)+1);
 	strcpy(settingsfile, SETTINGS_FILE);
 
@@ -1649,12 +1649,12 @@ int main(int argc, char **argv) {
 	pthread_mutexattr_init(&sendqueue_attr);
 	pthread_mutexattr_settype(&sendqueue_attr, PTHREAD_MUTEX_RECURSIVE);
 	pthread_mutex_init(&sendqueue_lock, &sendqueue_attr);
-	
+
 	pthread_mutexattr_init(&bcqueue_attr);
 	pthread_mutexattr_settype(&bcqueue_attr, PTHREAD_MUTEX_RECURSIVE);
 	pthread_mutex_init(&bcqueue_lock, &bcqueue_attr);
 #endif
-	
+
     //initialise all handshakes to 0 so not checked
 	memset(handshakes, -1, sizeof(handshakes));
 

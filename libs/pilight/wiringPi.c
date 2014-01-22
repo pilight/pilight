@@ -1618,6 +1618,7 @@ unsigned int micros (void)
 
 int wiringPiSetup (void)
 {
+#ifdef __arm__
   if(!wiringPiInitialized) {
 	wiringPiInitialized = 1;
   } else {
@@ -1700,7 +1701,7 @@ int wiringPiSetup (void)
   initialiseEpoch () ;
 
   wiringPiMode = WPI_MODE_PINS ;
-
+#endif
   return 0 ;
 }
 

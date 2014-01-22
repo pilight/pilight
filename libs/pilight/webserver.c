@@ -46,11 +46,7 @@
 #include "fcache.h"
 
 int webserver_port = WEBSERVER_PORT;
-#ifndef __FreeBSD__
 int webserver_cache = 1;
-#else
-int webserver_cache = 0;
-#endif
 int webserver_authentication = 0;
 char *webserver_username = NULL;
 char *webserver_password = NULL;
@@ -75,7 +71,9 @@ typedef enum {
 } steps_t;
 
 struct per_session_data__http {
-	struct libwebsocket *wsi;
+	int fd;
+	int free;
+	unsigned char *bytes;
 	unsigned short loggedin;
 };
 
@@ -158,10 +156,10 @@ void webserver_create_header(unsigned char **p, const char *message, char *mimet
 
 void webserver_create_wsi(struct libwebsocket **wsi, int fd, unsigned char *stream, size_t size) {
 	(*wsi)->u.http.fd = fd;
-	(*wsi)->u.http.stream = stream;
+	// (*wsi)->u.http.stream = stream;
 	(*wsi)->u.http.filelen = size;
 	(*wsi)->u.http.filepos = 0;
-	(*wsi)->u.http.choke = 1;
+	// (*wsi)->u.http.choke = 1;
 	(*wsi)->state = WSI_STATE_HTTP_ISSUING_FILE;
 }
 
@@ -244,17 +242,17 @@ int base64decode(unsigned char *dest, unsigned char *src, int l) {
 }
 
 int webserver_callback_http(struct libwebsocket_context *webcontext, struct libwebsocket *wsi, enum libwebsocket_callback_reasons reason, void *user, void *in, size_t len) {
-	int m = 0;
+	int n, m;
+	unsigned char *p;
+	static unsigned char buffer[4096];
+	struct stat stat_buf;
 	int size;
-	ssize_t n =0;
+	struct per_session_data__http *pss = (struct per_session_data__http *)user;
 	char *request = NULL;
 	char *mimetype = NULL;
-	unsigned char *p = NULL;
-	struct stat stat_buf;
-	struct per_session_data__http *pss = (struct per_session_data__http *)user;
 
 	switch(reason) {
-		case LWS_CALLBACK_HTTP: {
+		case LWS_CALLBACK_HTTP:
 			if(pss->loggedin == 0 && webserver_authentication == 1 && webserver_username != NULL && webserver_password != NULL) {
 				/* Check if authorization header field was given and extract username and password */
 				char *pch = strtok((char *)webcontext->service_buffer, "\r\n");
@@ -284,29 +282,30 @@ int webserver_callback_http(struct libwebsocket_context *webcontext, struct libw
 						strcpy(&password[0], pch);
 					} else {
 						error = 1;
-					}
+					};
 					if(error == 0 && strcmp(username, webserver_username) == 0 && strcmp(password, webserver_password) == 0) {
 						pss->loggedin = 1;
 					}
 				}
 				if(pss->loggedin == 0) {
-					p = webcontext->service_buffer;
+					p = buffer;
 					webserver_create_401(&p);
-					libwebsocket_write(wsi, webcontext->service_buffer, (size_t)(p-webcontext->service_buffer), LWS_WRITE_HTTP);
+					libwebsocket_write(wsi, buffer, (size_t)(p-buffer), LWS_WRITE_HTTP);
 					return -1;
 				}
 			}
+
 			/* If the webserver didn't request a file, serve the index.html */
 			if(strcmp((const char *)in, "/") == 0) {
 				request = malloc(strlen(webserver_root)+strlen(webgui_tpl)+14);
 				memset(request, '\0', strlen(webserver_root)+strlen(webgui_tpl)+14);
 				/* Check if the webserver_root is terminated by a slash. If not, than add it */
 				if(webserver_root[strlen(webserver_root)-1] == '/') {
-#ifdef __FreeBSD__
+	#ifdef __FreeBSD__
 					sprintf(request, "%s%s/%s", webserver_root, webgui_tpl, "index.html");
-#else
+	#else
 					sprintf(request, "%s%s%s", webserver_root, webgui_tpl, "index.html");
-#endif
+	#endif
 				} else {
 					sprintf(request, "%s/%s%s", webserver_root, webgui_tpl, "/index.html");
 				}
@@ -320,7 +319,7 @@ int webserver_callback_http(struct libwebsocket_context *webcontext, struct libw
 					JsonNode *jsend = config_broadcast_create();
 					char *output = json_stringify(jsend, NULL);
 
-					p = webcontext->service_buffer;
+					p = buffer;
 					size = (int)strlen(output);
 					mimetype = malloc(11);
 					strcpy(mimetype, "text/plain");
@@ -328,23 +327,12 @@ int webserver_callback_http(struct libwebsocket_context *webcontext, struct libw
 					sfree((void *)&mimetype);
 
 					libwebsocket_write(wsi, webcontext->service_buffer, (size_t)(p-webcontext->service_buffer), LWS_WRITE_HTTP);
-					webserver_create_wsi(&wsi, -2, (unsigned char *)output, (size_t)size);
-					pss->wsi = wsi;
-
-					if(size <= sizeof(webcontext->service_buffer)) {
-						libwebsockets_serve_http_file_fragment(webcontext, pss->wsi);
-						json_delete(jsend);
-						sfree((void *)&output);
-						jsend = NULL;
-						return -1;
-					} else {
-						json_delete(jsend);
-						sfree((void *)&output);
-						jsend = NULL;
-						wsi->u.http.choke = 0;
-						libwebsocket_callback_on_writable(webcontext, pss->wsi);
-						break;
-					}
+					pss->bytes = (unsigned char *)output;
+					pss->free = 1;
+					json_delete(jsend);
+					jsend = NULL;
+					libwebsocket_callback_on_writable(webcontext, wsi);
+					break;
 				}
 
 				size_t wlen = strlen(webserver_root)+strlen(webgui_tpl)+strlen((const char *)in)+2;
@@ -363,11 +351,12 @@ int webserver_callback_http(struct libwebsocket_context *webcontext, struct libw
 						sprintf(request, "%s/%s/%s", webserver_root, webgui_tpl, (const char *)in);
 				}
 			}
+
 			char *dot = NULL;
 			/* Retrieve the extension of the requested file and create a mimetype accordingly */
 			dot = strrchr(request, '.');
 			if(!dot || dot == request) {
-				sfree((void *)&request);
+				free(request);
 				return -1;
 			}
 
@@ -401,15 +390,14 @@ int webserver_callback_http(struct libwebsocket_context *webcontext, struct libw
 				strcpy(mimetype, "text/javascript");
 			}
 
-			p = webcontext->service_buffer;
-
 			if(webserver_cache) {
+				p = buffer;
 				/* If webserver caching is enabled, first load all files in the memory */
 				if(fcache_get_size(request, &size) != 0) {
 					if((fcache_add(request)) != 0) {
 						logprintf(LOG_NOTICE, "(webserver) could not cache %s", request);
 						webserver_create_404((const char *)in, &p);
-						libwebsocket_write(wsi, webcontext->service_buffer, (size_t)(p-webcontext->service_buffer), LWS_WRITE_HTTP);
+						libwebsocket_write(wsi, buffer, (size_t)(p-buffer), LWS_WRITE_HTTP);
 						sfree((void *)&mimetype);
 						sfree((void *)&request);
 						return -1;
@@ -420,84 +408,130 @@ int webserver_callback_http(struct libwebsocket_context *webcontext, struct libw
 				if(fcache_get_size(request, &size) == 0) {
 
 					webserver_create_header(&p, "200 OK", mimetype, (unsigned int)size);
+					libwebsocket_write(wsi, buffer, (size_t)(p-buffer), LWS_WRITE_HTTP);
 
-					libwebsocket_write(wsi, webcontext->service_buffer, (size_t)(p-webcontext->service_buffer), LWS_WRITE_HTTP);
-
-					webserver_create_wsi(&wsi, -1, fcache_get_bytes(request), (size_t)size);
-					pss->wsi = wsi;
+					pss->bytes = fcache_get_bytes(request);
+					pss->free = 0;
+					libwebsocket_callback_on_writable(webcontext, wsi);
 
 					sfree((void *)&mimetype);
 					sfree((void *)&request);
-
-					if(size <= sizeof(webcontext->service_buffer)) {
-						libwebsockets_serve_http_file_fragment(webcontext, pss->wsi);
-						return -1;
-					} else {
-						pss->wsi->u.http.choke = 0;
-						libwebsocket_callback_on_writable(webcontext, pss->wsi);
-						break;
-					}
+					break;
 				}
 				sfree((void *)&mimetype);
 				sfree((void *)&request);
 			} else {
+				/* check for the "send a big file by hand" example case */
 				int fd = open(request, O_RDONLY);
+				fstat(fd, &stat_buf);
+				p = buffer;
 				if(fd < 0) {
 					webserver_create_404((const char *)in, &p);
-					libwebsocket_write(wsi, webcontext->service_buffer, (size_t)(p-webcontext->service_buffer), LWS_WRITE_HTTP);
-					sfree((void *)&mimetype);
-					sfree((void *)&request);
+					libwebsocket_write(wsi, buffer, (size_t)(p-buffer), LWS_WRITE_HTTP);
+					free(mimetype);
+					free(request);
 					return -1;
 				}
-				fstat(fd, &stat_buf);
 
-				webserver_create_header(&p, "200 OK", mimetype, (unsigned int)stat_buf.st_size);
-				libwebsocket_write(wsi, webcontext->service_buffer, (size_t)(p-webcontext->service_buffer), LWS_WRITE_HTTP);
+				webserver_create_header(&p, "200 OK", mimetype, (unsigned long)stat_buf.st_size);
+				n = libwebsocket_write(wsi, buffer, (size_t)(p-buffer), LWS_WRITE_HTTP);
+				if(n < 0) {
+					close(pss->fd);
+					return -1;
+				}
 				sfree((void *)&mimetype);
 				sfree((void *)&request);
-
-				webserver_create_wsi(&wsi, fd, NULL, (size_t)stat_buf.st_size);
-				pss->wsi = wsi;
-
-				if(stat_buf.st_size <= sizeof(webcontext->service_buffer)) {
-					libwebsockets_serve_http_file_fragment(webcontext, pss->wsi);
-					close(fd);
-					return -1;
+				if(stat_buf.st_size > LWS_MAX_SOCKET_IO_BUF) {
+					pss->fd = fd;
+					pss->bytes = NULL;
+					pss->free = 0;
+					libwebsocket_callback_on_writable(webcontext, wsi);
+					break;
 				} else {
-					pss->wsi->u.http.choke = 0;
-					libwebsocket_callback_on_writable(webcontext, pss->wsi);
+					libwebsockets_serve_http_file_fragment(webcontext, wsi);
 					break;
 				}
 			}
-		}
 		break;
+		case LWS_CALLBACK_HTTP_BODY:
+		break;
+		case LWS_CALLBACK_HTTP_BODY_COMPLETION:
 		case LWS_CALLBACK_HTTP_FILE_COMPLETION:
-			return -1;
+		return -1;
 		case LWS_CALLBACK_HTTP_WRITEABLE:
-			pss->wsi->u.http.choke = 0;
-			if(pss->wsi->u.http.fd > -1) {
+			if(pss->bytes) {
+				wsi->u.http.filelen = strlen((char *)pss->bytes);
+				n = LWS_MAX_SOCKET_IO_BUF;
+
 				do {
-					n = read(pss->wsi->u.http.fd, webcontext->service_buffer, sizeof(webcontext->service_buffer));
-					if(n <= 0) {
-						//close(pss->fd);
+					if(wsi->u.http.filelen-wsi->u.http.filepos < n) {
+						n = (int)(wsi->u.http.filelen-wsi->u.http.filepos);
+					} else {
+						n = sizeof(buffer);
+					}
+					memcpy(buffer, &pss->bytes[wsi->u.http.filepos], (size_t)n);
+
+					if(n > 0) {
+						m = libwebsocket_write(wsi, buffer, (size_t)n, LWS_WRITE_HTTP);
+
+						if(m < 0) {
+							goto bail;
+						}
+
+						wsi->u.http.filepos += (long unsigned int)m;
+						if(m != n) {
+							wsi->u.http.filepos += (long unsigned int)(m - n);
+						}
+					}
+
+					if(n < 0) {
+						goto bail;
+					}
+
+					if(n == 0) {
+						goto flush_bail;
+					}
+
+					if(wsi->u.http.filelen == wsi->u.http.filepos) {
 						return -1;
 					}
-					m = libwebsocket_write(pss->wsi, webcontext->service_buffer, (size_t)n, LWS_WRITE_HTTP);
-					if(m < 0) {
-						//close(pss->fd);
-						return -1;
-					}
-					if(m != n) {
-						lseek(pss->wsi->u.http.fd, m - n, SEEK_CUR);
-					}
-				} while (!lws_send_pipe_choked(pss->wsi));
-				libwebsocket_callback_on_writable(webcontext, pss->wsi);
-				close(pss->wsi->u.http.fd);
+				} while (!lws_send_pipe_choked(wsi));
+				libwebsocket_callback_on_writable(webcontext, wsi);
 			} else {
-				libwebsockets_serve_http_file_fragment(webcontext, pss->wsi);
+				do {
+					n = read(pss->fd, buffer, sizeof buffer);
+
+					if(n < 0) {
+						goto bail;
+					}
+					if(n == 0) {
+						goto flush_bail;
+					}
+
+					m = libwebsocket_write(wsi, buffer, (size_t)n, LWS_WRITE_HTTP);
+					if(m < 0) {
+						goto bail;
+					}
+					if (m != n)
+						lseek(pss->fd, m - n, SEEK_CUR);
+
+				} while (!lws_send_pipe_choked(wsi));
+				libwebsocket_callback_on_writable(webcontext, wsi);
+			}
+		break;
+		flush_bail:
+			if(lws_send_pipe_choked(wsi)) {
+				libwebsocket_callback_on_writable(webcontext, wsi);
+				break;
+			}
+		bail:
+			if(pss->fd > 0) {
+				close(pss->fd);
+			}
+			if(pss->free == 1) {
+				sfree((void *)&pss->bytes);
 			}
 			return -1;
-		break;
 		case LWS_CALLBACK_FILTER_NETWORK_CONNECTION:
 			if((int)(intptr_t)in > 0) {
 				struct sockaddr_in address;
@@ -518,11 +552,9 @@ int webserver_callback_http(struct libwebsocket_context *webcontext, struct libw
 		case LWS_CALLBACK_CLIENT_ESTABLISHED:
 		case LWS_CALLBACK_CLOSED:
 		case LWS_CALLBACK_CLOSED_HTTP:
-		case LWS_CALLBACK_RECEIVE:
 		case LWS_CALLBACK_CLIENT_RECEIVE:
 		case LWS_CALLBACK_CLIENT_RECEIVE_PONG:
 		case LWS_CALLBACK_CLIENT_WRITEABLE:
-		case LWS_CALLBACK_SERVER_WRITEABLE:
 		case LWS_CALLBACK_FILTER_PROTOCOL_CONNECTION:
 		case LWS_CALLBACK_OPENSSL_LOAD_EXTRA_CLIENT_VERIFY_CERTS:
 		case LWS_CALLBACK_OPENSSL_LOAD_EXTRA_SERVER_VERIFY_CERTS:
@@ -536,9 +568,16 @@ int webserver_callback_http(struct libwebsocket_context *webcontext, struct libw
 		case LWS_CALLBACK_DEL_POLL_FD:
 		case LWS_CALLBACK_SET_MODE_POLL_FD:
 		case LWS_CALLBACK_CLEAR_MODE_POLL_FD:
+		case LWS_CALLBACK_RECEIVE:
+		case LWS_CALLBACK_SERVER_WRITEABLE:
+		case LWS_CALLBACK_FILTER_HTTP_CONNECTION:
+		case LWS_CALLBACK_GET_THREAD_ID:
+		case LWS_CALLBACK_LOCK_POLL:
+		case LWS_CALLBACK_UNLOCK_POLL:
 		default:
 		break;
 	}
+
 	return 0;
 }
 
@@ -636,6 +675,12 @@ int webserver_callback_data(struct libwebsocket_context *webcontext, struct libw
 		case LWS_CALLBACK_DEL_POLL_FD:
 		case LWS_CALLBACK_SET_MODE_POLL_FD:
 		case LWS_CALLBACK_CLEAR_MODE_POLL_FD:
+		case LWS_CALLBACK_HTTP_BODY:
+		case LWS_CALLBACK_HTTP_BODY_COMPLETION:
+		case LWS_CALLBACK_FILTER_HTTP_CONNECTION:
+		case LWS_CALLBACK_GET_THREAD_ID:
+		case LWS_CALLBACK_LOCK_POLL:
+		case LWS_CALLBACK_UNLOCK_POLL:
 		default:
 		break;
 	}
@@ -784,9 +829,7 @@ void *webserver_start(void *param) {
 
 	/* Do we turn on webserver caching. This means that all requested files are
 	   loaded into the memory so they aren't read from the FS anymore */
-#ifndef __FreeBSD__
 	settings_find_number("webserver-cache", &webserver_cache);
-#endif
 	settings_find_number("webserver-authentication", &webserver_authentication);
 	settings_find_string("webserver-password", &webserver_password);
 	settings_find_string("webserver-username", &webserver_username);

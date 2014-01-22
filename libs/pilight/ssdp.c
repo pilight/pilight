@@ -51,6 +51,7 @@ int ssdp_gc(void) {
 		sfree((void *)&ssdp_header[x]);
 	}
 	sfree((void *)&ssdp_header);
+	return EXIT_SUCCESS;
 }
 
 char *ssdp_gethostname(void) {
@@ -157,7 +158,7 @@ unsigned long ssdp_genid(void) {
 
 		return x;
 	} else {
-		return -1;
+		return 0;
 	}
 }
 
@@ -474,7 +475,7 @@ void *ssdp_wait(void *param) {
 				exit(EXIT_FAILURE);
 			}
 			if(strlen(host) > 0) {
-				ssdp_header = realloc(ssdp_header, sizeof(char *)*(ssdp_nrheader+1));
+				ssdp_header = realloc(ssdp_header, sizeof(char *)*((unsigned int)ssdp_nrheader+1));
 				ssdp_header[ssdp_nrheader] = malloc(BUFFER_SIZE);
 				memset(ssdp_header[ssdp_nrheader], '\0', BUFFER_SIZE);	
 				sprintf(ssdp_header[ssdp_nrheader], "NOTIFY * HTTP/1.1\r\n"
