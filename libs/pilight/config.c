@@ -607,6 +607,11 @@ JsonNode *config_broadcast_create(void) {
 	}
 	json_append_member(jsend, "version", jversion);	
 #endif
+	struct JsonNode *jfirmware = json_mkobject();
+	json_append_member(jfirmware, "version", json_mknumber(firmware.version));	
+	json_append_member(jfirmware, "hpf", json_mknumber(firmware.hpf));	
+	json_append_member(jfirmware, "lpf", json_mknumber(firmware.lpf));	
+	json_append_member(jsend, "firmware", jfirmware);
 
 	return jsend;
 }

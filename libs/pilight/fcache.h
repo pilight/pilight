@@ -31,6 +31,7 @@ struct fcache_t *fcache;
 
 int fcache_gc(void);
 int fcache_add(char *filename);
+int fcache_rm(char *filename);
 short fcache_get_size(char *filename, int *out);
 unsigned char *fcache_get_bytes(char *filename);
 

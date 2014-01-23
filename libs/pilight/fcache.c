@@ -44,6 +44,35 @@ int fcache_gc(void) {
 	return 1;
 }
 
+void fcache_remove_node(struct fcache_t **cache, char *name) {
+	struct fcache_t *currP, *prevP;
+
+	prevP = NULL;
+
+	for(currP = *cache; currP != NULL; prevP = currP, currP = currP->next) {
+
+		if(strcmp(currP->name, name) == 0) {
+			if(prevP == NULL) {
+				*cache = currP->next;
+			} else {
+				prevP->next = currP->next;
+			}
+
+			sfree((void *)&currP->name);
+			sfree((void *)&currP->bytes);
+			sfree((void *)&currP);
+
+			break;
+		}
+	}
+}
+
+int fcache_rm(char *filename) {
+	fcache_remove_node(&fcache, filename);
+	logprintf(LOG_DEBUG, "removed %s from cache", filename);
+	return 1;
+}
+
 int fcache_add(char *filename) {
 
 	unsigned long filesize = 0, i = 0;

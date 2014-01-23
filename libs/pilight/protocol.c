@@ -281,7 +281,6 @@ void protocol_conflict_add(protocol_t *proto, const char *id) {
 	proto->conflicts = cnode;
 }
 
-/* http://www.cs.bu.edu/teaching/c/linked-list/delete/ */
 void protocol_conflict_remove(protocol_t **proto, const char *id) {
 	struct protocol_conflicts_t *currP, *prevP;
 

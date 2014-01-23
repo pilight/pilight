@@ -256,7 +256,7 @@ void *broadcast(void *param) {
 			broadcasted = 0;
 			JsonNode *jret = NULL;
 			char *json = json_stringify(bcqueue->jmessage, NULL);
-
+			
 			/* Update the config */
 			if(config_update(bcqueue->protoname, bcqueue->jmessage, &jret) == 0) {
 				char *conf = json_stringify(jret, NULL);
@@ -267,13 +267,21 @@ void *broadcast(void *param) {
 					}
 				}
 
-				if(broadcasted == 1) {
+				if(broadcasted == 1 || nodaemon == 1) {
 					logprintf(LOG_DEBUG, "broadcasted: %s", conf);
 				}
 				sfree((void *)&conf);
 			}
 			if(jret) {
 				json_delete(jret);
+			}
+			if(strcmp(bcqueue->protoname, "pilight_firmware") == 0) {
+				JsonNode *code = NULL;
+				if((code = json_find_member(bcqueue->jmessage, "code")) != NULL) {
+					json_find_number(code, "version", &firmware.version);
+					json_find_number(code, "lpf", &firmware.lpf);
+					json_find_number(code, "hpf", &firmware.hpf);
+				}
 			}
 			broadcasted = 0;
 

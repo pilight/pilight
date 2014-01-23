@@ -4,6 +4,9 @@ var bInitialized = false;
 var bSending = false;
 var aDecimals = new Array();
 var bShowTabs = true;
+var iPLVersion = 0;
+var iPLNVersion = 0;
+var iFWVersion = 0;
 
 var cookieEnabled = (navigator.cookieEnabled) ? true : false;
 
@@ -301,13 +304,33 @@ function createWeatherElement(sTabId, sDevId, aValues) {
 	oTab.listview("refresh");
 }
 
+function updateVersions() {
+	if(iPLVersion != iPLNVersion) {
+		if(iFWVersion > 0) {
+			var obj = $('#version').text("pilight v"+iPLVersion+" - available v"+iPLNVersion+"\nfilter firmware v"+iFWVersion);
+		} else {
+			var obj = $('#version').text("pilight v"+iPLVersion+" - available v"+iPLNVersion);
+		}
+	} else {
+		if(iFWVersion > 0) {
+			var obj = $('#version').text("pilight v"+iPLVersion+"\nfilter firmware  v"+iFWVersion);
+		} else {
+			var obj = $('#version').text("pilight v"+iPLVersion);
+		}
+	}
+	obj.html(obj.html().replace(/\n/g,'<br/>'));
+}
+
 function createGUI(data) {
 	$.each(data, function(root, locations) {
 		if(root == 'version') {
-			if(locations[0] != locations[1]) {
-				$('#version').text("pilight v"+locations[0]+" - available v"+location[1]);
-			} else {
-				$('#version').text("pilight v"+locations[0]);
+			iPLVersion = locations[0];
+			iPLNVersion = locations[1];
+			updateVersions();
+		} else if(root == "firmware") {
+			iFWVersion = locations["version"];
+			if(iFWVersion > 0) {
+				updateVersions();
 			}
 		} else if(root == 'config') {
 			$('#tabs').append($("<ul></ul>"));
@@ -443,7 +466,7 @@ function parseData(data) {
 				});
 			});
 		});
-	};
+	}
 }
 
 $(document).ready(function() {
