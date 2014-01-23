@@ -33,7 +33,7 @@ void mumbiCreateMessage(int systemcode, int unitcode, int state) {
 	mumbi->message = json_mkobject();
 	json_append_member(mumbi->message, "systemcode", json_mknumber(systemcode));
 	json_append_member(mumbi->message, "unitcode", json_mknumber(unitcode));
-	if(state == 0) {
+	if(state == 1) {
 		json_append_member(mumbi->message, "state", json_mkstring("on"));
 	} else {
 		json_append_member(mumbi->message, "state", json_mkstring("off"));
@@ -122,9 +122,9 @@ int mumbiCreateCode(JsonNode *code) {
 	json_find_number(code, "systemcode", &systemcode);
 	json_find_number(code, "unitcode", &unitcode);
 	if(json_find_number(code, "off", &tmp) == 0)
-		state=1;
-	else if(json_find_number(code, "on", &tmp) == 0)
 		state=0;
+	else if(json_find_number(code, "on", &tmp) == 0)
+		state=1;
 
 	if(systemcode == -1 || unitcode == -1 || state == -1) {
 		logprintf(LOG_ERR, "mumbi: insufficient number of arguments");
