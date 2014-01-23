@@ -319,6 +319,13 @@ int hardware_read(void) {
 		sfree((void *)&content);
 		return EXIT_FAILURE;
 	}
+
+	if(!conf_hardware) {	
+		json_delete(root);
+		root = json_decode("{\"none\":{}}");
+		hardware_parse(root);
+	}
+
 	char *output = json_stringify(root, "\t");
 	hardware_write(output);
 	json_delete(root);

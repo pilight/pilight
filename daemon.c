@@ -247,6 +247,9 @@ void *broadcast(void *param) {
 
 	pthread_mutex_lock(&bcqueue_lock);
 	while(main_loop) {
+#ifdef __FreeBSD__
+		pthread_mutex_lock(&bcqueue_lock);		
+#endif	
 		if(bcqueue_number > 0) {
 			pthread_mutex_lock(&bcqueue_lock);
 
@@ -531,6 +534,9 @@ void *send_code(void *param) {
 	pthread_mutex_lock(&sendqueue_lock);
 
 	while(main_loop) {
+#ifdef __FreeBSD__
+		pthread_mutex_lock(&sendqueue_lock);		
+#endif		
 		if(sendqueue_number > 0) {
 			pthread_mutex_lock(&sendqueue_lock);
 			sending = 1;
@@ -1603,6 +1609,10 @@ int main(int argc, char **argv) {
 		if(hardware_read() == EXIT_FAILURE) {
 			goto clear;
 		}
+	} else {
+		JsonNode *root = json_decode("{\"none\":{}}");
+		hardware_parse(root);
+		json_delete(root);
 	}
 
 	settings_find_number("port", &port);
@@ -1691,11 +1701,13 @@ int main(int argc, char **argv) {
 
 	struct conf_hardware_t *tmp_confhw = conf_hardware;
 	while(tmp_confhw) {
-		if(tmp_confhw->hardware->init() == EXIT_FAILURE) {
-			logprintf(LOG_ERR, "could not initialize %s hardware mode", tmp_confhw->hardware->id);
-			goto clear;
+		if(tmp_confhw->hardware->init) {
+			if(tmp_confhw->hardware->init() == EXIT_FAILURE) {
+				logprintf(LOG_ERR, "could not initialize %s hardware mode", tmp_confhw->hardware->id);
+				goto clear;
+			}
+			threads_register(tmp_confhw->hardware->id, &receive_code, (void *)tmp_confhw->hardware);
 		}
-		threads_register(tmp_confhw->hardware->id, &receive_code, (void *)tmp_confhw->hardware);
 		tmp_confhw = tmp_confhw->next;
 	}
 

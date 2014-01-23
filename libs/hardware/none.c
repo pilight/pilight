@@ -26,6 +26,7 @@
 #include "none.h"
 
 int noneSend(int *code) {
+	sleep(1);
 	return EXIT_SUCCESS;
 }
 

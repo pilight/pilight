@@ -154,15 +154,6 @@ void webserver_create_header(unsigned char **p, const char *message, char *mimet
 		len);
 }
 
-void webserver_create_wsi(struct libwebsocket **wsi, int fd, unsigned char *stream, size_t size) {
-	(*wsi)->u.http.fd = fd;
-	// (*wsi)->u.http.stream = stream;
-	(*wsi)->u.http.filelen = size;
-	(*wsi)->u.http.filepos = 0;
-	// (*wsi)->u.http.choke = 1;
-	(*wsi)->state = WSI_STATE_HTTP_ISSUING_FILE;
-}
-
 void webserver_create_401(unsigned char **p) {
 	*p += sprintf((char *)*p,
 		"HTTP/1.1 401 Authorization Required\r\n"
@@ -301,11 +292,11 @@ int webserver_callback_http(struct libwebsocket_context *webcontext, struct libw
 				memset(request, '\0', strlen(webserver_root)+strlen(webgui_tpl)+14);
 				/* Check if the webserver_root is terminated by a slash. If not, than add it */
 				if(webserver_root[strlen(webserver_root)-1] == '/') {
-	#ifdef __FreeBSD__
+#ifdef __FreeBSD__
 					sprintf(request, "%s%s/%s", webserver_root, webgui_tpl, "index.html");
-	#else
+#else
 					sprintf(request, "%s%s%s", webserver_root, webgui_tpl, "index.html");
-	#endif
+#endif
 				} else {
 					sprintf(request, "%s/%s%s", webserver_root, webgui_tpl, "/index.html");
 				}
@@ -356,7 +347,7 @@ int webserver_callback_http(struct libwebsocket_context *webcontext, struct libw
 			/* Retrieve the extension of the requested file and create a mimetype accordingly */
 			dot = strrchr(request, '.');
 			if(!dot || dot == request) {
-				free(request);
+				sfree((void *)request);
 				return -1;
 			}
 
@@ -421,7 +412,6 @@ int webserver_callback_http(struct libwebsocket_context *webcontext, struct libw
 				sfree((void *)&mimetype);
 				sfree((void *)&request);
 			} else {
-				/* check for the "send a big file by hand" example case */
 				int fd = open(request, O_RDONLY);
 				fstat(fd, &stat_buf);
 				p = buffer;
@@ -433,7 +423,7 @@ int webserver_callback_http(struct libwebsocket_context *webcontext, struct libw
 					return -1;
 				}
 
-				webserver_create_header(&p, "200 OK", mimetype, (unsigned long)stat_buf.st_size);
+				webserver_create_header(&p, "200 OK", mimetype, (unsigned int)stat_buf.st_size);
 				n = libwebsocket_write(wsi, buffer, (size_t)(p-buffer), LWS_WRITE_HTTP);
 				if(n < 0) {
 					close(pss->fd);
@@ -499,7 +489,7 @@ int webserver_callback_http(struct libwebsocket_context *webcontext, struct libw
 				libwebsocket_callback_on_writable(webcontext, wsi);
 			} else {
 				do {
-					n = read(pss->fd, buffer, sizeof buffer);
+					n = (int)read(pss->fd, buffer, sizeof buffer);
 
 					if(n < 0) {
 						goto bail;
@@ -776,8 +766,12 @@ close:
 }
 
 void *webserver_broadcast(void *param) {
-	pthread_mutex_lock(&webqueue_lock);
+	pthread_mutex_lock(&webqueue_lock);	
+
 	while(webserver_loop) {
+#ifdef __FreeBSD__
+		pthread_mutex_lock(&webqueue_lock);		
+#endif
 		if(webqueue_number > 0) {
 			pthread_mutex_lock(&webqueue_lock);
 
@@ -804,10 +798,12 @@ void *webserver_start(void *param) {
 
 #ifdef __FreeBSD__
 	pthread_mutex_t webqueue_lock;
+	pthread_cond_t webqueue_signal;
 	pthread_mutexattr_t webqueue_attr;
 
 	pthread_mutexattr_init(&webqueue_attr);
 	pthread_mutexattr_settype(&webqueue_attr, PTHREAD_MUTEX_RECURSIVE);
+	pthread_cond_init(&webqueue_signal, NULL);
 	pthread_mutex_init(&webqueue_lock, &webqueue_attr);
 #endif
 
