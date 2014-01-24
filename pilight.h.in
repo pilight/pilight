@@ -111,8 +111,14 @@ typedef struct pilight_t {
     void (*receive)(int *rawcode, int rawlen, int plslen, int hwtype);
 } pilight_t;
 
-struct pilight_t pilight;
+typedef struct firmware_t {
+	int lpf;
+	int hpf;
+	int version;
+} firmware_t;
 
+struct pilight_t pilight;
+struct firmware_t firmware;
 char pilight_uuid[UUID_LENGTH];
 
 #endif
