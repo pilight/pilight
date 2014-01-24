@@ -494,8 +494,9 @@ JsonNode *config2json(short internal) {
 					json_append_member(jdevice, "type", json_mknumber(tmp_protocols->listener->devtype));
 				}
 				if(internal > 0 || (strlen(pilight_uuid) > 0 && 
-				  (strcmp(tmp_devices->ori_uuid, pilight_uuid) == 0) &&
-				  (strcmp(tmp_devices->dev_uuid, pilight_uuid) != 0))) {
+					(strcmp(tmp_devices->ori_uuid, pilight_uuid) == 0) &&
+					(strcmp(tmp_devices->dev_uuid, pilight_uuid) != 0)) 
+					|| tmp_devices->cst_uuid == 1) {
 					json_append_member(jdevice, "uuid", json_mkstring(tmp_devices->dev_uuid));
 				}
 				if(internal > 0) {
@@ -1193,6 +1194,7 @@ int config_parse_devices(JsonNode *jdevices, struct conf_devices_t *device) {
 			config_save_setting(i, jsettings, device);
 		} else if(strcmp(jsettings->key, "uuid") == 0 && jsettings->tag == JSON_STRING) {
 			strcpy(device->dev_uuid, jsettings->string_);
+			device->cst_uuid = 1;
 		} else if(strcmp(jsettings->key, "origin") == 0 && jsettings->tag == JSON_STRING) {
 			strcpy(device->ori_uuid, jsettings->string_);
 		/* The protocol and name settings are already saved in the device struct */				
@@ -1395,6 +1397,7 @@ int config_parse_locations(JsonNode *jlocations, struct conf_locations_t *locati
 					strcpy(dnode->dev_uuid, pilight_uuid);
 					strcpy(dnode->ori_uuid, pilight_uuid);
 				}
+				dnode->cst_uuid = 0;
 				dnode->id = malloc(strlen(jdevices->key)+1);
 				strcpy(dnode->id, jdevices->key);
 				dnode->name = malloc(strlen(name)+1);

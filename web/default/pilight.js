@@ -307,13 +307,13 @@ function createWeatherElement(sTabId, sDevId, aValues) {
 function updateVersions() {
 	if(iPLVersion != iPLNVersion) {
 		if(iFWVersion > 0) {
-			var obj = $('#version').text("pilight v"+iPLVersion+" - available v"+iPLNVersion+"\nfilter firmware v"+iFWVersion);
+			var obj = $('#version').text("pilight v"+iPLVersion+" - available v"+iPLNVersion+" / filter firmware v"+iFWVersion);
 		} else {
 			var obj = $('#version').text("pilight v"+iPLVersion+" - available v"+iPLNVersion);
 		}
 	} else {
 		if(iFWVersion > 0) {
-			var obj = $('#version').text("pilight v"+iPLVersion+"\nfilter firmware  v"+iFWVersion);
+			var obj = $('#version').text("pilight v"+iPLVersion+" / filter firmware  v"+iFWVersion);
 		} else {
 			var obj = $('#version').text("pilight v"+iPLVersion);
 		}

@@ -256,7 +256,7 @@ void *broadcast(void *param) {
 			broadcasted = 0;
 			JsonNode *jret = NULL;
 			char *json = json_stringify(bcqueue->jmessage, NULL);
-			
+
 			/* Update the config */
 			if(config_update(bcqueue->protoname, bcqueue->jmessage, &jret) == 0) {
 				char *conf = json_stringify(jret, NULL);
@@ -1451,6 +1451,10 @@ int main(int argc, char **argv) {
 
 	strcpy(pilight_uuid, ssdp_genuuid());
 
+	firmware.version = 0;
+	firmware.lpf = 0;
+	firmware.hpf = 0;	
+	
 	loglevel = LOG_INFO;
 
 	log_file_enable();

@@ -85,6 +85,7 @@ install:
 	install -m 0655 pilight-debug /usr/local/sbin/
 	install -m 0655 pilight-learn /usr/local/sbin/
 	install -m 0655 pilight-raw /usr/local/sbin/
+	install -m 0655 pilight-uuid /usr/local/sbin/
 	install -m 0655 libpilight.so /usr/local/lib/pilight/
 	install -m 0655 libpilight.a /usr/local/lib/pilight/
 	install -m 0644 settings.json-default /etc/pilight/

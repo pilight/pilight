@@ -83,6 +83,7 @@ struct conf_devices_t {
 	char *name;
 	char dev_uuid[21];
 	char ori_uuid[21];
+	int cst_uuid;
 	struct protocols_t *protocols;
 	struct conf_settings_t *settings;
 	struct conf_devices_t *next;
