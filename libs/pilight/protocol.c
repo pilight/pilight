@@ -26,6 +26,7 @@
 #include "options.h"
 #include "protocol.h"
 #include "log.h"
+#include "../protocols/pilight_firmware.h"
 
 #if defined(PROTOCOL_COCO_SWITCH) || defined(PROTOCOL_DIO_SWITCH) || defined(PROTOCOL_NEXA_SWITCH) || defined(PROTOCOL_KAKU_SWITCH) || defined(PROTOCOL_INTERTECHNO_SWITCH)
 	#include "../protocols/arctech_switch.h"
@@ -116,9 +117,12 @@
 #ifdef PROTOCOL_OPENWEATHERMAP
 	#include "../protocols/openweathermap.h"
 #endif
-#include "../protocols/pilight_firmware.h"
+#ifdef PROTOCOL_SILVERCREST
+	#include "../protocols/silvercrest.h"
+#endif
 
 void protocol_init(void) {
+	pilightFirmwareInit();
 #if defined(PROTOCOL_COCO_SWITCH) || defined(PROTOCOL_DIO_SWITCH) || defined(PROTOCOL_NEXA_SWITCH) || defined(PROTOCOL_KAKU_SWITCH) || defined(PROTOCOL_INTERTECHNO_SWITCH)
 	arctechSwInit();
 #endif
@@ -208,7 +212,9 @@ void protocol_init(void) {
 #ifdef PROTOCOL_OPENWEATHERMAP
 	openweathermapInit();
 #endif
-pilightFirmwareInit();
+#ifdef PROTOCOL_SILVERCREST
+	silvercrestInit();
+#endif
 }
 
 void protocol_register(protocol_t **proto) {
