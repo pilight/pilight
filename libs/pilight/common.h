@@ -43,7 +43,7 @@ void debug_free(void **addr, const char *file, int line);
 const char *debug_filename(const char *file);
 void *debug_malloc(size_t len, const char *file, int line);
 void *debug_realloc(void *addr, size_t len, const char *file, int line);
-void *debug_calloc(size_t len, size_t len, const char *file, int line);
+void *debug_calloc(size_t nlen, size_t elen, const char *file, int line);
 
 #define sfree(x) debug_free(x, __FILE__, __LINE__);
 #define malloc(x) debug_malloc(x, __FILE__, __LINE__);
