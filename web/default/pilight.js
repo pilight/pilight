@@ -333,6 +333,27 @@ function createWattmeterElement(sTabId, sDevId, aValues) {
 	oTab.listview("refresh");
 }
 
+function createWebcamElement(sTabId, sDevId, aValues) {
+	if($('#'+sTabId+'_'+sDevId+'_webcam').length == 0) {
+		if(bShowTabs) {
+			oTab = $('#'+sTabId).find('ul');
+		} else {
+			oTab = $('#all');
+		}
+		oTab.append($('<li class="webcam" id="'+sTabId+'_'+sDevId+'_webcam" data-icon="false">'+aValues['name']+'</li>'));
+		if(aValues['settings']['url']) {
+			oTab.find('#'+sTabId+'_'+sDevId+'_webcam').append($('<div class="webcam" id="'+sTabId+'_'+sDevId+'_image">'+aValues['settings']['url']+'</div>'));
+		}
+
+	} else {
+		if(aValues['settings']['url']) {
+			$('#'+sTabId+'_'+sDevId+'_image').text(aValues['settings']['url']);
+		}
+	}
+	oTab.listview();
+	oTab.listview("refresh");
+}
+
 function updateVersions() {
 	if(iPLVersion != iPLNVersion) {
 		if(iFWVersion > 0) {
@@ -410,6 +431,10 @@ function createGUI(data) {
 							createWeatherElement(lindex, dindex, aValues);
 						} else if(aValues['type'] == 5) {
 							createScreenElement(lindex, dindex, aValues);
+						} else if(aValues['type'] == 6) {
+							createWattmeterElement(lindex, dindex, aValues);							
+						} else if(aValues['type'] == 7) {
+							createWebcamElement(lindex, dindex, aValues);
 						}
 					}
 				});
