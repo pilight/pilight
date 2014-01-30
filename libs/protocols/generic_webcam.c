@@ -40,7 +40,7 @@ void genWebcamCreateMessage(int id, char *url, int refresh) {
 
 int genWebcamCreateCode(JsonNode *code) {
 	int id = -999;
-	char *url;
+	char *url = "";
 	int refresh = -999;
 	char *tmp;
 
