@@ -40,7 +40,7 @@ void genWebcamCreateMessage(int id, char *url, int refresh) {
 
 int genWebcamCreateCode(JsonNode *code) {
 	int id = -999;
-	char *url = "";
+	char *url;
 	int refresh = -999;
 	char *tmp;
 
@@ -50,6 +50,9 @@ int genWebcamCreateCode(JsonNode *code) {
 	if(json_find_string(code, "url", &tmp) == "")
 		url = atoi(tmp);
 	*/
+	
+	&url = "";
+	
 	if(json_find_string(code, "refresh", &tmp) == 0)
 		refresh = atoi(tmp);
 
