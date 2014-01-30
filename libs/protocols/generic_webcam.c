@@ -51,7 +51,7 @@ int genWebcamCreateCode(JsonNode *code) {
 		url = atoi(tmp);
 	*/
 	
-	&url = "";
+	//&url = "";
 	
 	if(json_find_string(code, "refresh", &tmp) == 0)
 		refresh = atoi(tmp);
@@ -61,7 +61,7 @@ int genWebcamCreateCode(JsonNode *code) {
 		logprintf(LOG_ERR, "generic_webcam: insufficient number of arguments");
 		return EXIT_FAILURE;
 	} else {
-		genWebcamCreateMessage(id, url, refresh);
+		genWebcamCreateMessage(id, "url", refresh);
 	}
 	return EXIT_SUCCESS;
 }
