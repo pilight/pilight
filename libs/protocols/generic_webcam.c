@@ -29,10 +29,11 @@
 #include "gc.h"
 #include "generic_webcam.h"
 
-void genWebcamCreateMessage(int id, char *url, int refresh) {
+//void genWebcamCreateMessage(int id, char *url, int refresh) {
+void genWebcamCreateMessage(int id, int refresh) {
 	generic_webcam->message = json_mkobject();
 	json_append_member(generic_webcam->message, "id", json_mknumber(id));
-	json_append_member(generic_webcam->message, "url", json_mkstring(url));
+	//json_append_member(generic_webcam->message, "url", json_mkstring(url));
 	if(refresh > -999) {
 		json_append_member(generic_webcam->message, "refresh", json_mknumber(refresh));
 	}
@@ -61,7 +62,8 @@ int genWebcamCreateCode(JsonNode *code) {
 		logprintf(LOG_ERR, "generic_webcam: insufficient number of arguments");
 		return EXIT_FAILURE;
 	} else {
-		genWebcamCreateMessage(id, "url", refresh);
+		//genWebcamCreateMessage(id, url, refresh);
+		genWebcamCreateMessage(id, refresh);
 	}
 	return EXIT_SUCCESS;
 }
