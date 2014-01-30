@@ -47,7 +47,7 @@ div.ui-slider.ui-slider-switch {
 	margin: 6px 10px 10px 0px;
 }
 
-div.temperature, div.humidity, div.battery.red, div.battery.green {
+div.temperature, div.humidity, div.battery.red, div.battery.green, div.watt, div.price {
 	position: relative;
 	float: right;
 	padding: 4px;
@@ -69,7 +69,7 @@ div.battery.green {
 	background: url('battery_green.png') 0px 0px no-repeat;
 }
 
-div.degrees, div.percentage {
+div.degrees, div.percentage, div.wattios, div.coin {
 	position: relative;
 	float: right;
 	font-size: 14px;
@@ -81,7 +81,7 @@ div.degrees {
 	left: 48px;
 }
 
-div.percentage {
+div.percentage, div.wattios, div.coin {
 	top: 5px;
 	left: 50px;
 }
