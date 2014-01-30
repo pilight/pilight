@@ -22,7 +22,8 @@
 struct protocol_t *generic_webcam;
 
 void genWebcamInit(void);
-void genWebcamCreateMessage(int id, char *url, int refresh);
+//void genWebcamCreateMessage(int id, char *url, int refresh);
+void genWebcamCreateMessage(int id, int refresh);
 int genWebcamCreateCode(JsonNode *code);
 void genWebcamPrintHelp(void);
 
