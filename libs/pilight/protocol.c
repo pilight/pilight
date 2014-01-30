@@ -71,6 +71,12 @@
 #ifdef PROTOCOL_GENERIC_WEATHER
 	#include "../protocols/generic_weather.h"
 #endif
+#ifdef PROTOCOL_GENERIC_WATTMETER
+	#include "../protocols/generic_wattmeter.h"
+#endif
+#ifdef PROTOCOL_GENERIC_WEBCAM
+	#include "../protocols/generic_webcam.h"
+#endif
 #ifdef PROTOCOL_GENERIC_SWITCH
 	#include "../protocols/generic_switch.h"
 #endif
@@ -165,6 +171,12 @@ void protocol_init(void) {
 #endif
 #ifdef PROTOCOL_GENERIC_WEATHER
 	genWeatherInit();
+#endif
+#ifdef PROTOCOL_GENERIC_WATTMETER
+	genWattmeterInit();
+#endif
+#ifdef PROTOCOL_GENERIC_WEBCAM
+	genWebcamInit();
 #endif
 #ifdef PROTOCOL_GENERIC_SWITCH
 	genSwitchInit();
@@ -381,6 +393,8 @@ int protocol_setting_check_string(protocol_t *proto, const char *name, const cha
 			}
 		break;
 		case WEATHER:
+		case WATTMETER:
+		case WEBCAM:
 		case RAW:
 		default:
 			error=EXIT_FAILURE;
@@ -455,6 +469,17 @@ int protocol_setting_check_number(protocol_t *proto, const char *name, int value
 				}
 			}
 		break;
+		case WATTMETER:
+			if(strcmp(name, "decimals") != 0 && strcmp(name, "watt") != 0
+			   && strcmp(name, "price") != 0) {
+					error=EXIT_FAILURE;
+			}
+		break;
+		case WEBCAM:
+			if(strcmp(name, "url") != "" && strcmp(name, "refresh") != 0) {
+				error=EXIT_FAILURE;
+			}
+		break;		
 		case SWITCH:
 		case SCREEN:
 			if(strcmp(name, "readonly") != 0) {
