@@ -44,14 +44,10 @@ int genWattmeterCreateCode(JsonNode *code) {
 	int id = -999;
 	int watt = -999;
 	int price = -999;
-	char *tmp;
-
-	if(json_find_string(code, "id", &tmp) == 0)
-		id=atoi(tmp);
-	if(json_find_string(code, "watt", &tmp) == 0)
-		watt = atoi(tmp);
-	if(json_find_string(code, "price", &tmp) == 0)
-		price = atoi(tmp);
+	
+	json_find_number(code, "id", &id);
+	json_find_number(code, "watt", &watt);
+	json_find_number(code, "price", &price);
 
 	if(id == -999 && watt == -999 && price == -999) {
 		logprintf(LOG_ERR, "generic_wattmeter: insufficient number of arguments");
