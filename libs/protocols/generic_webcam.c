@@ -230,9 +230,9 @@ void *generic_webcamParse(void *param) {
 	}
 
 	pthread_cleanup_pop(1);
-
-	return (void *)NULL;
 	*/
+	return (void *)NULL;
+	
 }
 
 void generic_webcamInitDev(JsonNode *jdevice) {
