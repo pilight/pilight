@@ -21,7 +21,7 @@
 
 #include "json.h"
 
-struct protocol_t *genericwebcam;
+struct protocol_t *generic_webcam;
 
 void generic_webcamInit(void);
 int generic_webcamCheckValues(JsonNode *code);
