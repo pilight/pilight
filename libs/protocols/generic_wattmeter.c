@@ -68,7 +68,7 @@ void genWattmeterInit(void) {
 	
 	protocol_register(&generic_wattmeter);
 	protocol_set_id(generic_wattmeter, "generic_wattmeter");
-	protocol_device_add(generic_wattmeter, "generic_wattmeter", "Generic watt meter");
+	protocol_device_add(generic_wattmeter, "generic_wattmeter", "Generic wattmeter");
 	generic_wattmeter->devtype = WATTMETER;
 
 	options_add(&generic_wattmeter->options, 'w', "watt", has_value, config_value, "[0-9]");
