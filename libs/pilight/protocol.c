@@ -176,7 +176,7 @@ void protocol_init(void) {
 	genWattmeterInit();
 #endif
 #ifdef PROTOCOL_GENERIC_WEBCAM
-	genericwebcamInit();
+	generic_webcamInit();
 #endif
 #ifdef PROTOCOL_GENERIC_SWITCH
 	genSwitchInit();
@@ -476,7 +476,7 @@ int protocol_setting_check_number(protocol_t *proto, const char *name, int value
 			}
 		break;
 		case WEBCAM:
-			if(strcmp(name, "url") != 0 && strcmp(name, "refresh") != 0) {
+			if(strcmp(name, "interval") != 0) {
 				error=EXIT_FAILURE;
 			}
 		break;		
