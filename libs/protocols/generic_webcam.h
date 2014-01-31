@@ -23,8 +23,8 @@
 
 struct protocol_t *genericwebcam;
 
-void genericwebcamInit(void);
-int genericwebcamCheckValues(JsonNode *code);
-void genericwebcamInitDev(JsonNode *jdevice);
+void generic_webcamInit(void);
+int generic_webcamCheckValues(JsonNode *code);
+void generic_webcamInitDev(JsonNode *jdevice);
 
 #endif
