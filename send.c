@@ -141,8 +141,10 @@ int main(int argc, char **argv) {
 		int c;
 		c = options_parse(&options, argc, argv, 0, &args);
 
-		if(c == -1 || c == -2)
+		if(c == -1)
 			break;
+		if(c == -2)
+			c = 'H';
 		switch(c) {
 			case 'p':
 				if(strlen(args) == 0) {

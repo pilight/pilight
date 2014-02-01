@@ -33,7 +33,7 @@ void elroHCCreateMessage(int systemcode, int unitcode, int state) {
 	elro_hc->message = json_mkobject();
 	json_append_member(elro_hc->message, "systemcode", json_mknumber(systemcode));
 	json_append_member(elro_hc->message, "unitcode", json_mknumber(unitcode));
-	if(state == 0) {
+	if(state == 1) {
 		json_append_member(elro_hc->message, "state", json_mkstring("on"));
 	} else {
 		json_append_member(elro_hc->message, "state", json_mkstring("off"));

@@ -267,7 +267,7 @@ void *broadcast(void *param) {
 					}
 				}
 
-				if(broadcasted == 1 || nodaemon == 1) {
+				if(broadcasted == 1) {
 					logprintf(LOG_DEBUG, "broadcasted: %s", conf);
 				}
 				sfree((void *)&conf);
@@ -303,7 +303,7 @@ void *broadcast(void *param) {
 				json_delete(jupdate);
 				sfree((void *)&ret);
 			}
-			if(broadcasted == 1) {
+			if(broadcasted == 1 || nodaemon == 1) {
 				logprintf(LOG_DEBUG, "broadcasted: %s", json);
 			}
 			sfree((void *)&json);
@@ -444,7 +444,7 @@ void receiver_parse_code(int *rawcode, int rawlen, int plslen, int hwtype) {
 
 				protocol->repeats++;
 				/* Continue if we have recognized enough repeated codes */
-				if(protocol->repeats >= (receive_repeat*protocol->rxrpt)) {
+				if(protocol->repeats >= (receive_repeat*protocol->rxrpt) || strcmp(protocol->id, "pilight_firmware") == 0) {
 					if(protocol->parseCode) {
 						logprintf(LOG_DEBUG, "caught minimum # of repeats %d of %s", protocol->repeats, protocol->id);
 						logprintf(LOG_DEBUG, "called %s parseCode()", protocol->id);

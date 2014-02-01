@@ -74,8 +74,10 @@ int main(int argc, char **argv) {
 	while(1) {
 		int c;
 		c = options_parse(&options, argc, argv, 1, &args);
-		if(c == -1 || c == -2)
+		if(c == -1)
 			break;
+		if(c == -2)
+			c = 'H';
 		switch(c) {
 			case 'H':
 				printf("\t -H --help\t\t\tdisplay this message\n");

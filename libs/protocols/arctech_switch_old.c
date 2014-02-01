@@ -162,6 +162,7 @@ void arctechSwOldInit(void) {
 	protocol_conflict_add(arctech_switch_old, "arctech_screens_old");	
 	protocol_plslen_add(arctech_switch_old, 336);
 	protocol_plslen_add(arctech_switch_old, 326);
+	protocol_plslen_add(arctech_switch_old, 330);	
 	arctech_switch_old->devtype = SWITCH;
 	arctech_switch_old->hwtype = RF433;
 	arctech_switch_old->pulse = 3;

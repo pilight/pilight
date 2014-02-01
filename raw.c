@@ -101,21 +101,6 @@ int main(int argc, char **argv) {
 	progname = malloc(12);
 	strcpy(progname, "pilight-raw");	
 
-	if((pid = proc_find("pilight-daemon")) > 0) {
-		logprintf(LOG_ERR, "pilight-daemon instance found (%d)", (int)pid);
-		exit(EXIT_FAILURE);
-	}
-
-	if((pid = proc_find("pilight-learn")) > 0) {
-		logprintf(LOG_ERR, "pilight-learn instance found (%d)", (int)pid);
-		exit(EXIT_FAILURE);
-	}
-
-	if((pid = proc_find("pilight-debug")) > 0) {
-		logprintf(LOG_ERR, "pilight-debug instance found (%d)", (int)pid);
-		exit(EXIT_FAILURE);
-	}
-
 	options_add(&options, 'H', "help", no_value, 0, NULL);
 	options_add(&options, 'V', "version", no_value, 0, NULL);
 	options_add(&options, 'S', "settings", has_value, 0, NULL);
@@ -123,8 +108,10 @@ int main(int argc, char **argv) {
 	while (1) {
 		int c;
 		c = options_parse(&options, argc, argv, 1, &args);
-		if(c == -1 || c == -2)
+		if(c == -1)
 			break;
+		if(c == -2)
+			c = 'H';
 		switch (c) {
 			case 'H':
 				printf("Usage: %s [options]\n", progname);
@@ -155,6 +142,21 @@ int main(int argc, char **argv) {
 	}
 	options_delete(options);
 
+	if((pid = proc_find("pilight-daemon")) > 0) {
+		logprintf(LOG_ERR, "pilight-daemon instance found (%d)", (int)pid);
+		return (EXIT_FAILURE);
+	}
+
+	if((pid = proc_find("pilight-learn")) > 0) {
+		logprintf(LOG_ERR, "pilight-learn instance found (%d)", (int)pid);
+		return (EXIT_FAILURE);
+	}
+
+	if((pid = proc_find("pilight-debug")) > 0) {
+		logprintf(LOG_ERR, "pilight-debug instance found (%d)", (int)pid);
+		return (EXIT_FAILURE);
+	}	
+	
 	if(access(settingsfile, F_OK) != -1) {
 		if(settings_read() != 0) {
 			return EXIT_FAILURE;

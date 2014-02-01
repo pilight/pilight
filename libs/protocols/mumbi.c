@@ -104,7 +104,9 @@ void mumbiCreateUnitCode(int unitcode) {
 
 void mumbiCreateState(int state) {
 	if(state == 0) {
-		mumbiCreateHigh(44, 47);
+			mumbiCreateHigh(44, 47);
+	} else {
+			mumbiCreateHigh(40, 43);
 	}
 }
 
@@ -141,7 +143,7 @@ int mumbiCreateCode(JsonNode *code) {
 		mumbiCreateSystemCode(systemcode);
 		mumbiCreateUnitCode(unitcode);
 		mumbiCreateState(state);
-		mumbiCreateFooter();
+		mumbiCreateFooter();	
 	}
 	return EXIT_SUCCESS;
 }
@@ -158,6 +160,7 @@ void mumbiInit(void) {
 	protocol_register(&mumbi);
 	protocol_set_id(mumbi, "mumbi");
 	protocol_device_add(mumbi, "mumbi", "Mumbi Switches");
+	protocol_conflict_add(mumbi, "silvercrest");	
 	protocol_plslen_add(mumbi, 312);
 	mumbi->devtype = SWITCH;
 	mumbi->hwtype = RF433;
