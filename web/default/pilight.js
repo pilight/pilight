@@ -519,6 +519,7 @@ function parseData(data) {
 							}
 						}
 					} else if(iType == 6) {
+						alert("Entro");
 						if(vindex == 'watt' && $('#'+lindex+'_'+dvalues+'_watt')) {
 							vvalues /= Math.pow(10, aDecimals[lindex+'_'+dvalues]).toFixed(aDecimals[lindex+'_'+dvalues]);
 							$('#'+lindex+'_'+dvalues+'_watt').text(vvalues);
