@@ -43,11 +43,11 @@ void genWebcamCreateMessage(int id, int interval, char *url) {
 int genWebcamCreateCode(JsonNode *code) {
 	int id = -999;
 	int interval = -999;	
-        char url[]="";
+        //char url[]="";
 	
 	json_find_number(code, "id", &id);
 	json_find_number(code, "interval", &interval);
-	json_find_string(code, "url", **url);
+	//json_find_string(code, "url", **url);
 
                 
 	if(id == -999 && interval == -999 && url[0] != '\0') {
