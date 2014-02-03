@@ -261,7 +261,7 @@ void generic_webcamInit(void) {
 	generic_webcam->devtype = WEBCAM;
 	generic_webcam->hwtype = API;
 
-	options_add(&generic_webcam->options, 'u', "url", has_value, config_id, "^((http|ftp|https|www)://)?([\w+?\.\w+])+([a-zA-Z0-9\~\!\@\#\$\%\^\&\*\(\)_\-\=\+\\\/\?\.\:\;\'\,]*)?$");
+	options_add(&generic_webcam->options, 'u', "url", has_value, config_id, "[^~,]");
 	protocol_setting_add_number(generic_webcam, "interval", 900);
 
 	generic_webcam->initDev=&generic_webcamInitDev;
