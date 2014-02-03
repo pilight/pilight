@@ -49,9 +49,9 @@ int genWebcamCreateCode(JsonNode *code) {
 	json_find_number(code, "id", &id);
 	json_find_number(code, "interval", &interval);
 	if(json_find_string(code, "url", &tmp) == 0)
-		unit = atoi(tmp);
+		url = atoi(tmp);
                 
-	if(id == -999 && interval == -999 && unit == -1) {
+	if(id == -999 && interval == -999 && url == -1) {
 		logprintf(LOG_ERR, "generic_webcam: insufficient number of arguments");
 		return EXIT_FAILURE;
 	} else {
