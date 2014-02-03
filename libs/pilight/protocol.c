@@ -382,6 +382,7 @@ int protocol_setting_check_string(protocol_t *proto, const char *name, const cha
 		break;
 		case WEATHER:
 		case RAW:
+		case INTERNAL:
 		default:
 			error=EXIT_FAILURE;
 		break;
@@ -467,6 +468,7 @@ int protocol_setting_check_number(protocol_t *proto, const char *name, int value
 			}
 		break;
 		case RAW:
+		case INTERNAL:
 		default:
 			error=EXIT_FAILURE;
 		break;

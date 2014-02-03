@@ -24,7 +24,8 @@
 #include "json.h"
 
 typedef enum {
-	RAW,
+	INTERNAL = -1,
+	RAW = 0,
 	SWITCH,
 	DIMMER,
 	WEATHER,

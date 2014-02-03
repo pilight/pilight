@@ -1,5 +1,6 @@
 GCC = $(CROSS_COMPILE)gcc
 SYS := $(shell $(GCC) -dumpmachine)
+OS := $(shell uname)
 
 ifdef CROSS_COMPILE
 	INCLUDE = -isystem/usr/include/ -isystem/usr/include/x86_64-linux-gnu/
@@ -12,7 +13,11 @@ ifneq (, $(findstring arm, $(SYS)))
 		OSFLAGS = -Ofast -mfloat-abi=hard -mfpu=vfp -march=armv6 -Wconversion -Wunreachable-code -Wstrict-prototypes 
 	endif
 	ifneq (, $(findstring gnueabi, $(SYS)))
-		OSFLAGS = -Ofast -mfloat-abi=hard -mfpu=vfp -march=armv6 -Wconversion -Wunreachable-code -Wstrict-prototypes 
+		ifeq (, $(findstring FreeBSD, $(SYS)))
+			OSFLAGS = -isystem../../../../x-tools/arm-unknown-linux-gnueabi/sysroot/usr/include/ -nostdinc -Ofast -mfloat-abi=hard -mfpu=vfp -march=armv6 -Wconversion -Wunreachable-code -Wstrict-prototypes 
+		else
+			OSFLAGS = -Ofast -mfloat-abi=hard -mfpu=vfp -march=armv6 -Wconversion -Wunreachable-code -Wstrict-prototypes 
+		endif
 	endif	
 	ifneq (, $(findstring gnueabisf, $(SYS)))
 		OSFLAGS = -Ofast -mfloat-abi=soft -mfpu=vfp -march=armv6 -Wconversion -Wunreachable-code -Wstrict-prototypes 
@@ -21,7 +26,7 @@ endif
 ifneq (, $(findstring amd64, $(SYS)))
 	OSFLAGS = -O3 -fPIC -march=native -mtune=native -mfpmath=sse -Wno-conversion
 endif
-CFLAGS = -ffast-math $(OSFLAGS) -Wfloat-equal -Wshadow -Wpointer-arith -Wcast-align -Wstrict-overflow=5 -Wwrite-strings -Waggregate-return -Wcast-qual -Wswitch-default -Wswitch-enum -Wformat=2 -g -Wall -isystem. -isystem..
+CFLAGS = -ffast-math $(OSFLAGS) -Wfloat-equal -Wshadow -Wpointer-arith -Wcast-align -Wformat-nonliteral -Wstrict-overflow=5 -Wwrite-strings -Waggregate-return -Wcast-qual -Wswitch-default -Wswitch-enum -Wformat=2 -g -Wall -isystem. -isystem..
 SRC = $(wildcard *.c)
 OBJS = $(filter-out wiringPi.o wiringPiI2C.o http_lib.o json.o update.o, $(SRC:.c=.o))
 

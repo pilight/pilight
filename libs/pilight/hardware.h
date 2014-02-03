@@ -20,7 +20,8 @@
 #define _HARDWARE_H_
 
 typedef enum {
-	NONE,
+	HWINTERNAL = -1,
+	NONE = 0,
 	RF433,
 	RF868,
 	SENSOR,

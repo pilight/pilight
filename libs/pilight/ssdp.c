@@ -436,7 +436,7 @@ void *ssdp_wait(void *param) {
 	int x = 0;
 	ssize_t len = 0;
 	socklen_t addrlen = sizeof(addr);
-	int family, s = 0;
+	int family = 0, s = 0;
 
 	char *id = ssdp_genuuid();	
 	char *ssdp_distro = ssdp_getdistroname();	

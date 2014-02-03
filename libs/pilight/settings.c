@@ -291,7 +291,7 @@ int settings_parse(JsonNode *root) {
 				have_error = 1;
 				goto clear;
 			} else {
-				webgui_tpl = malloc(strlen(jsettings->string_)+1);
+				webgui_tpl = realloc(webgui_tpl, strlen(jsettings->string_)+1);
 				strcpy(webgui_tpl, jsettings->string_);
 				settings_add_string(jsettings->key, jsettings->string_);
 			}

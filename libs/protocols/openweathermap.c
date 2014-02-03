@@ -173,7 +173,7 @@ void *openweathermapParse(void *param) {
 										if(node->tag != JSON_NUMBER) {
 											printf("api.openweathermap.org json has no temp key");
 										} else {
-											temp = node->number_-273,15;
+											temp = node->number_-273.15;
 
 											openweathermap->message = json_mkobject();
 											
