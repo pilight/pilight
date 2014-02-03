@@ -16,15 +16,14 @@
     along with pilight. If not, see	<http://www.gnu.org/licenses/>
 */
 
-#ifndef _PROTOCOL_GENERICWEBCAM_H_
-#define _PROTOCOL_GENERICWEBCAM_H_
+#ifndef _PROTOCOL_GENWEBCAM_H_
+#define _PROTOCOL_GENWEBCAM_H_
 
-#include "json.h"
+struct protocol_t *generic_wattmeter;
 
-struct protocol_t *generic_webcam;
-
-void generic_webcamInit(void);
-int generic_webcamCheckValues(JsonNode *code);
-void generic_webcamInitDev(JsonNode *jdevice);
+void genWebcamInit(void);
+void genWebcamCreateMessage(int id, int interval, char *url);
+int genWebcamCreateCode(JsonNode *code);
+void genWebcamPrintHelp(void);
 
 #endif
