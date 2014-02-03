@@ -19,7 +19,7 @@
 #ifndef _PROTOCOL_GENWEBCAM_H_
 #define _PROTOCOL_GENWEBCAM_H_
 
-struct protocol_t *generic_wattmeter;
+struct protocol_t *generic_webcam;
 
 void genWebcamInit(void);
 void genWebcamCreateMessage(int id, int interval, char *url);
