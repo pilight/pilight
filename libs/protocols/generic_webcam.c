@@ -47,7 +47,7 @@ int genWebcamCreateCode(JsonNode *code) {
 	
 	json_find_number(code, "id", &id);
 	json_find_number(code, "interval", &interval);
-	json_find_string(code, "url", url);
+	json_find_string(code, "url", **url);
 
                 
 	if(id == -999 && interval == -999 && url[0] != '\0') {
