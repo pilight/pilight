@@ -261,6 +261,7 @@ function createDimmerElement(sTabId, sDevId, aValues) {
 }
 
 function createWeatherElement(sTabId, sDevId, aValues) {
+	alert("Prueba Weather!");
 	aDecimals[sTabId+'_'+sDevId] = aValues['settings']['decimals'];
 	aValues['temperature'] /= Math.pow(10, aValues['settings']['decimals']).toFixed(aValues['settings']['decimals']);
 	aValues['humidity'] /= Math.pow(10, aValues['settings']['decimals']).toFixed(aValues['settings']['decimals']);
@@ -305,7 +306,7 @@ function createWeatherElement(sTabId, sDevId, aValues) {
 }
 
 function createWattmeterElement(sTabId, sDevId, aValues) {
-	alert("Prueba!");
+	alert("Prueba Wattmeter!");
 	aDecimals[sTabId+'_'+sDevId] = aValues['settings']['decimals'];
 	aValues['watt'] /= Math.pow(10, aValues['settings']['decimals']).toFixed(aValues['settings']['decimals']);
 	aValues['price'] /= Math.pow(10, aValues['settings']['decimals']).toFixed(aValues['settings']['decimals']);
