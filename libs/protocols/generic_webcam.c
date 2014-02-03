@@ -32,28 +32,25 @@
 void genWebcamCreateMessage(int id, int interval, char *url) {
 	generic_wattmeter->message = json_mkobject();
 	json_append_member(generic_wattmeter->message, "id", json_mknumber(id));
-        int len = url.size();
 	if(interval > -999) {
 		json_append_member(generic_wattmeter->message, "interval", json_mknumber(interval));
 	}
-	if(len > 0) {
+	if(url[0] != '\0') {
 		json_append_member(generic_wattmeter->message, "url", json_mkstring(*url));
 	}
 }
 
 int genWebcamCreateCode(JsonNode *code) {
 	int id = -999;
-	int interval = -999;
-	int lenurl = 0;
+	int interval = -999;	
         char url[]="";
 	
 	json_find_number(code, "id", &id);
 	json_find_number(code, "interval", &interval);
 	json_find_string(code, "url", &url);
 
-        lenurl = url.size();
                 
-	if(id == -999 && interval == -999 && lenurl == 0) {
+	if(id == -999 && interval == -999 && url[0] != '\0') {
 		logprintf(LOG_ERR, "generic_webcam: insufficient number of arguments");
 		return EXIT_FAILURE;
 	} else {
