@@ -340,14 +340,14 @@ function createWebcamElement(sTabId, sDevId, aValues) {
 		} else {
 			oTab = $('#all');
 		}
-		oTab.append($('<li class="webcam" id="'+sTabId+'_'+sDevId+'_webcam" data-icon="false">'+aValues['name']+aValues['settings']['url']+'</li>'));
-		if(aValues['settings']['url']) {
-			oTab.find('#'+sTabId+'_'+sDevId+'_webcam').append($('<div class="webcam" id="'+sTabId+'_'+sDevId+'_image">'+aValues['settings']['url']+'</div>'));
+		oTab.append($('<li class="webcam" id="'+sTabId+'_'+sDevId+'_webcam" data-icon="false">'+aValues['name']+aValues['id']['url']+'</li>'));
+		if(aValues['id']['url']) {
+			oTab.find('#'+sTabId+'_'+sDevId+'_webcam').append($('<div class="webcam" id="'+sTabId+'_'+sDevId+'_image">'+aValues['id']['url']+'</div>'));
 		}
 
 	} else {
-		if(aValues['settings']['url']) {
-			$('#'+sTabId+'_'+sDevId+'_image').text(aValues['settings']['url']);
+		if(aValues['id']['url']) {
+			$('#'+sTabId+'_'+sDevId+'_image').text(aValues['id']['url']);
 		}
 	}
 	oTab.listview();
