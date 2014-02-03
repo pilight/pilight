@@ -305,6 +305,7 @@ function createWeatherElement(sTabId, sDevId, aValues) {
 }
 
 function createWattmeterElement(sTabId, sDevId, aValues) {
+	alert("Prueba!");
 	aDecimals[sTabId+'_'+sDevId] = aValues['settings']['decimals'];
 	aValues['watt'] /= Math.pow(10, aValues['settings']['decimals']).toFixed(aValues['settings']['decimals']);
 	aValues['price'] /= Math.pow(10, aValues['settings']['decimals']).toFixed(aValues['settings']['decimals']);
