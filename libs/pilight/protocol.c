@@ -176,7 +176,7 @@ void protocol_init(void) {
 	genWattmeterInit();
 #endif
 #ifdef PROTOCOL_GENERIC_WEBCAM
-	generic_webcamInit();
+	genWebcamInit();
 #endif
 #ifdef PROTOCOL_GENERIC_SWITCH
 	genSwitchInit();
