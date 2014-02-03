@@ -518,7 +518,15 @@ function parseData(data) {
 								$('#'+lindex+'_'+dvalues+'_batt').removeClass('green').addClass('red');
 							}
 						}
-					}
+					} else if(iType == 6) {
+						if(vindex == 'watt' && $('#'+lindex+'_'+dvalues+'_watt')) {
+							vvalues /= Math.pow(10, aDecimals[lindex+'_'+dvalues]).toFixed(aDecimals[lindex+'_'+dvalues]);
+							$('#'+lindex+'_'+dvalues+'_watt').text(vvalues);
+						} else if(vindex == 'price' && $('#'+lindex+'_'+dvalues+'_price')) {
+							vvalues /= Math.pow(10, aDecimals[lindex+'_'+dvalues]).toFixed(aDecimals[lindex+'_'+dvalues]);
+							$('#'+lindex+'_'+dvalues+'_price').text(vvalues);
+						}
+					}					
 				});
 			});
 		});
