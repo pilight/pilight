@@ -30,13 +30,13 @@
 #include "generic_webcam.h"
 
 void genWebcamCreateMessage(int id, int interval, char *url) {
-	generic_wattmeter->message = json_mkobject();
-	json_append_member(generic_wattmeter->message, "id", json_mknumber(id));
+	generic_webcam->message = json_mkobject();
+	json_append_member(generic_webcam->message, "id", json_mknumber(id));
 	if(interval > -999) {
-		json_append_member(generic_wattmeter->message, "interval", json_mknumber(interval));
+		json_append_member(generic_webcam->message, "interval", json_mknumber(interval));
 	}
 	if(url[0] != '\0') {
-		json_append_member(generic_wattmeter->message, "url", json_mkstring(url));
+		json_append_member(generic_webcam->message, "url", json_mkstring(url));
 	}
 }
 
