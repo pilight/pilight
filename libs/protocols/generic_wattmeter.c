@@ -60,7 +60,7 @@ int genWattmeterCreateCode(JsonNode *code) {
 
 void genWattmeterPrintHelp(void) {
 	printf("\t -w --watt=watt\tset the watts\n");
-	printf("\t -p --price=price\t\tset the price\n");
+	printf("\t -m --price=price\t\tset the price\n");
 	printf("\t -i --id=id\t\t\tcontrol a device with this id\n");
 }
 
@@ -72,7 +72,7 @@ void genWattmeterInit(void) {
 	generic_wattmeter->devtype = WATTMETER;
 
 	options_add(&generic_wattmeter->options, 'w', "watt", has_value, config_value, "[0-9]");
-	options_add(&generic_wattmeter->options, 'p', "price", has_value, config_value, "[0-9]");
+	options_add(&generic_wattmeter->options, 'm', "price", has_value, config_value, "[0-9]");
 	options_add(&generic_wattmeter->options, 'i', "id", has_value, config_id, "[0-9]");
 
 	protocol_setting_add_number(generic_wattmeter, "decimals", 2);	
