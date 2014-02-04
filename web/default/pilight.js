@@ -70,7 +70,7 @@ if(cookieEnabled && typeof(localStorage) != 'undefined') {
 			}
 		}
 	});
-
+	
 	$(document).keydown(function(e) {
 		if(e.keyCode == 72) {
 			if($('#helpdlg').length == 1) {
@@ -319,7 +319,7 @@ function createWattmeterElement(sTabId, sDevId, aValues) {
 			oTab.find('#'+sTabId+'_'+sDevId+'_wattmeter').append($('<div class="coin">€</div><div class="price" id="'+sTabId+'_'+sDevId+'_price">'+aValues['price']+'</div>'));
 		}
 		if(aValues['settings']['watt']) {
-			oTab.find('#'+sTabId+'_'+sDevId+'_wattmeter').append($('<div class="wattios">Watts</div><div class="watt" id="'+sTabId+'_'+sDevId+'_watt">'+aValues['watt']+'</div>'));
+			oTab.find('#'+sTabId+'_'+sDevId+'_wattmeter').append($('<div class="wattios">W</div><div class="watt" id="'+sTabId+'_'+sDevId+'_watt">'+aValues['watt']+'</div>'));
 		}
 	} else {
 		if(aValues['settings']['price']) {
