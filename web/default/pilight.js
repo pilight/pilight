@@ -355,7 +355,7 @@ function createWebcamElement(sTabId, sDevId, aValues) {
         imgsrc = aValues['url'];
         imgid = sTabId+"_"+sDevId+"_img";
         setInterval(function(){
-            $("#"+imgid).attr("src", imgsrc+new Date().getTime());
+            $("#"+imgid).attr("src", imgsrc+"&"+new Date().getTime());
         },2000);           
 }
 
