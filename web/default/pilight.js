@@ -342,7 +342,7 @@ function createWebcamElement(sTabId, sDevId, aValues) {
 		}
 		oTab.append($('<li class="webcam" id="'+sTabId+'_'+sDevId+'_webcam" data-icon="false">'+aValues['name']+'</li>'));
 		if(aValues['url']) {
-			oTab.find('#'+sTabId+'_'+sDevId+'_webcam').append($('<div class="webcam" id="'+sTabId+'_'+sDevId+'_image"><img src="'+aValues['url']+'"></div>'));
+			oTab.find('#'+sTabId+'_'+sDevId+'_webcam').append($('<div class="webcam" id="'+sTabId+'_'+sDevId+'_image"><img id="'+sTabId+'_'+sDevId+'_img" src="'+aValues['url']+'"></div>'));
 		}
 
 	} else {
@@ -353,23 +353,10 @@ function createWebcamElement(sTabId, sDevId, aValues) {
 	oTab.listview();
 	oTab.listview("refresh");
         imgsrc = aValues['url'];
-        imgid = sTabId+"_"+sDevId+"_image";
-        window.setTimeout(function PlayImg(){
-            var append = '&' + new Date().getTime() + Math.random();
-            var img = document.createElement("img");
-            img.onload = function () {
-                    var div = document.getElementById(imgid);
-                    while (div.childNodes.length > 0)
-                                    div.removeChild(div.childNodes[0]);
-                    div.appendChild(img);			
-                    window.setTimeout("PlayImg();", 20);
-            }
-            img.onerror = function () {
-                    window.setTimeout("PlayImg();", 10);
-            }
-            img.src = imgsrc+append;            
-        }
-        ,20);            
+        imgid = sTabId+"_"+sDevId+"_img";
+        setInterval(function(){
+            $("#"+imgid).attr("src", imgsrc+new Date().getTime());
+        },2000);           
 }
 
 function updateVersions() {
