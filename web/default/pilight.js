@@ -357,7 +357,7 @@ function createWebcamElement(sTabId, sDevId, aValues) {
         $("#"+imgid).responsiveImg();
         setInterval(function(){
             $("#"+imgid).attr("src", imgsrc+"&"+new Date().getTime());
-        },2000);           
+        },aValues['interval']);           
 }
 
 function updateVersions() {
