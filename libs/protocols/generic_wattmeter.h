@@ -22,7 +22,7 @@
 struct protocol_t *generic_wattmeter;
 
 void genWattmeterInit(void);
-void genWattmeterCreateMessage(int id, int watt, int price, char *coin)
+void genWattmeterCreateMessage(int id, int watt, int price, char *coin);
 int genWattmeterCreateCode(JsonNode *code);
 void genWattmeterPrintHelp(void);
 
