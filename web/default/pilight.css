@@ -35,6 +35,11 @@ body {
 	padding: 15px 75px 14px 15px;
 }
 
+.webcam {
+	display: block;
+	padding: 15px 15px 15px 15px;
+}
+
 .ui-li.dimmer {
 	padding: 15px 75px 1px 15px;
 }
