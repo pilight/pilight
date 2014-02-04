@@ -342,7 +342,7 @@ function createWebcamElement(sTabId, sDevId, aValues) {
 		}
 		oTab.append($('<li class="webcam" id="'+sTabId+'_'+sDevId+'_webcam" data-icon="false">'+aValues['name']+'</li>'));
 		if(aValues['url']) {
-			oTab.find('#'+sTabId+'_'+sDevId+'_webcam').append($('<div class="webcam" id="'+sTabId+'_'+sDevId+'_image"><img id="'+sTabId+'_'+sDevId+'_img" src="'+aValues['url']+'"></div>'));
+			oTab.find('#'+sTabId+'_'+sDevId+'_webcam').append($('<div class="webcam" id="'+sTabId+'_'+sDevId+'_image"><img id="'+sTabId+'_'+sDevId+'_img" src="'+aValues['url']+'" style="max-width:100%;"></div>'));
 		}
 
 	} else {
@@ -354,6 +354,7 @@ function createWebcamElement(sTabId, sDevId, aValues) {
 	oTab.listview("refresh");
         imgsrc = aValues['url'];
         imgid = sTabId+"_"+sDevId+"_img";
+        $("#"+imgid).responsiveImg();
         setInterval(function(){
             $("#"+imgid).attr("src", imgsrc+"&"+new Date().getTime());
         },2000);           
