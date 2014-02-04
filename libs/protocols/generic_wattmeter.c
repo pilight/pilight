@@ -29,7 +29,7 @@
 #include "gc.h"
 #include "generic_wattmeter.h"
 
-void genWattmeterCreateMessage(int id, int watt, int price) {
+void genWattmeterCreateMessage(int id, int watt, int price, char *coin) {
 	generic_wattmeter->message = json_mkobject();
 	json_append_member(generic_wattmeter->message, "id", json_mknumber(id));
 	if(watt > -999) {
@@ -38,22 +38,29 @@ void genWattmeterCreateMessage(int id, int watt, int price) {
 	if(price > -999) {
 		json_append_member(generic_wattmeter->message, "price", json_mknumber(price));
 	}
+	if(coin[0] != '\0') {
+		json_append_member(generic_wattmeter->message, "coin", json_mkstring(coin));
+	}
 }
 
 int genWattmeterCreateCode(JsonNode *code) {
 	int id = -999;
 	int watt = -999;
 	int price = -999;
-	
+	int coin = -1;
+        char *tmp;
+        
 	json_find_number(code, "id", &id);
 	json_find_number(code, "watt", &watt);
 	json_find_number(code, "price", &price);
+	if(json_find_string(code, "coin", &tmp) == 0)
+		coin = atoi(tmp);
 
-	if(id == -999 && watt == -999 && price == -999) {
+	if(id == -999 && watt == -999 && price == -999 && coin == -1) {
 		logprintf(LOG_ERR, "generic_wattmeter: insufficient number of arguments");
 		return EXIT_FAILURE;
 	} else {
-		genWattmeterCreateMessage(id, watt, price);
+		genWattmeterCreateMessage(id, watt, price, coin);
 	}
 	return EXIT_SUCCESS;
 }
@@ -74,10 +81,11 @@ void genWattmeterInit(void) {
 	options_add(&generic_wattmeter->options, 'w', "watt", has_value, config_value, "[0-9]");
 	options_add(&generic_wattmeter->options, 'm', "price", has_value, config_value, "[0-9]");
 	options_add(&generic_wattmeter->options, 'i', "id", has_value, config_id, "[0-9]");
+	options_add(&generic_wattmeter->options, 'c', "coin", has_value, config_id, "[^~,]");
 
 	protocol_setting_add_number(generic_wattmeter, "decimals", 2);	
-	protocol_setting_add_number(generic_wattmeter, "watt", 1);
-	protocol_setting_add_number(generic_wattmeter, "price", 1);
+	//protocol_setting_add_number(generic_wattmeter, "watt", 1);
+	//protocol_setting_add_number(generic_wattmeter, "price", 1);
 
 	generic_wattmeter->printHelp=&genWattmeterPrintHelp;
 	generic_wattmeter->createCode=&genWattmeterCreateCode;
