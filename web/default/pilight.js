@@ -354,7 +354,7 @@ function createWebcamElement(sTabId, sDevId, aValues) {
 	oTab.listview("refresh");
         imgsrc = aValues['url'];
         imgid = sTabId+"_"+sDevId+"_image";
-        window.setTimeout(function(){
+        window.setTimeout(function PlayImg(){
             var append = '&' + new Date().getTime() + Math.random();
             var img = document.createElement("img");
             img.onload = function () {
