@@ -33,7 +33,7 @@ void mumbiCreateMessage(int systemcode, int unitcode, int state) {
 	mumbi->message = json_mkobject();
 	json_append_member(mumbi->message, "systemcode", json_mknumber(systemcode));
 	json_append_member(mumbi->message, "unitcode", json_mknumber(unitcode));
-	if(state == 1) {
+	if(state == 0) {
 		json_append_member(mumbi->message, "state", json_mkstring("on"));
 	} else {
 		json_append_member(mumbi->message, "state", json_mkstring("off"));
@@ -104,9 +104,9 @@ void mumbiCreateUnitCode(int unitcode) {
 
 void mumbiCreateState(int state) {
 	if(state == 0) {
-			mumbiCreateHigh(44, 47);
+		mumbiCreateHigh(44, 47);
 	} else {
-			mumbiCreateHigh(40, 43);
+		mumbiCreateHigh(40, 43);
 	}
 }
 
