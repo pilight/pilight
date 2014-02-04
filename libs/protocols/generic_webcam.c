@@ -77,7 +77,7 @@ void genWebcamInit(void) {
 	options_add(&generic_webcam->options, 'u', "url", has_value, config_value, "[^~,]");
 	options_add(&generic_webcam->options, 'i', "id", has_value, config_id, "[0-9]");
 
-	protocol_setting_add_number(generic_webcam, "url", 1);
+	//protocol_setting_add_number(generic_webcam, "url", 1);
 	protocol_setting_add_number(generic_webcam, "interval", 1);
 
 	generic_webcam->printHelp=&genWebcamPrintHelp;
