@@ -354,24 +354,22 @@ function createWebcamElement(sTabId, sDevId, aValues) {
 	oTab.listview("refresh");
         imgsrc = aValues['url'];
         imgid = sTabId+"_"+sDevId+"_image";
-        window.setTimeout('PlayImg(imgid,imgsrc);',20);            
-}
-
-function PlayImg(imgid,imgsrc)
-{
-        var append = '&' + new Date().getTime() + Math.random();
-        var img = document.createElement("img");
-        img.onload = function () {
-                var div = document.getElementById(imgid);
-                while (div.childNodes.length > 0)
-                                div.removeChild(div.childNodes[0]);
-                div.appendChild(img);			
-                window.setTimeout("PlayImg();", 20);
+        window.setTimeout(function(){
+            var append = '&' + new Date().getTime() + Math.random();
+            var img = document.createElement("img");
+            img.onload = function () {
+                    var div = document.getElementById(imgid);
+                    while (div.childNodes.length > 0)
+                                    div.removeChild(div.childNodes[0]);
+                    div.appendChild(img);			
+                    window.setTimeout("PlayImg();", 20);
+            }
+            img.onerror = function () {
+                    window.setTimeout("PlayImg();", 10);
+            }
+            img.src = imgsrc+append;            
         }
-        img.onerror = function () {
-                window.setTimeout("PlayImg();", 10);
-        }
-        img.src = imgsrc+append;
+        ,20);            
 }
 
 function updateVersions() {
