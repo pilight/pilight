@@ -84,10 +84,11 @@ void genWattmeterInit(void) {
 
 	//Variables
 	options_add(&generic_wattmeter->options, 'w', "watt", has_value, config_value, "[0-9]");
+	options_add(&generic_wattmeter->options, 'm', "price", has_value, config_value, "[0-9]");
+	options_add(&generic_wattmeter->options, 'c', "coin", has_value, config_value, "[^~,]");
+	
 	//Constantes
-	options_add(&generic_wattmeter->options, 'm', "price", has_value, config_id, "[0-9]");
 	options_add(&generic_wattmeter->options, 'i', "id", has_value, config_id, "[0-9]");
-	options_add(&generic_wattmeter->options, 'c', "coin", has_value, config_id, "[^~,]");
 
 	protocol_setting_add_number(generic_wattmeter, "decimals", 2);	
 	//protocol_setting_add_number(generic_wattmeter, "watt", 1);
