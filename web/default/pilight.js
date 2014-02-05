@@ -537,7 +537,8 @@ function parseData(data) {
 						} 
 						if(aPrice[lindex+'_'+dvalues] > -1 && $('#'+lindex+'_'+dvalues+'_price')) {
 							vvalues /= Math.pow(10, aDecimals[lindex+'_'+dvalues]).toFixed(aDecimals[lindex+'_'+dvalues]);
-							$('#'+lindex+'_'+dvalues+'_price').text(vvalues*aPrice[lindex+'_'+dvalues]);
+							apricewatt = vvalues*aPrice[lindex+'_'+dvalues];
+							$('#'+lindex+'_'+dvalues+'_price').text(apricewatt.toFixed(aDecimals[lindex+'_'+dvalues]));
 						}
 					}					
 				});
