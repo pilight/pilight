@@ -60,7 +60,7 @@ int genWattmeterCreateCode(JsonNode *code) {
 		logprintf(LOG_ERR, "generic_wattmeter: insufficient number of arguments");
 		return EXIT_FAILURE;
 	} else {
-		genWattmeterCreateMessage(id, watt, price, coin);
+		genWattmeterCreateMessage(id, watt, price, tmp);
 	}
 	return EXIT_SUCCESS;
 }
