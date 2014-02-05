@@ -331,6 +331,7 @@ function createWattmeterElement(sTabId, sDevId, aValues) {
 			$('#'+sTabId+'_'+sDevId+'_price').text(wattprice.toFixed(aValues['settings']['decimals']));
 		}
 		if(aValues['watt']) {
+			alert("probando");
 			$('#'+sTabId+'_'+sDevId+'_watt').text(aValues['watt']);
 		}
 	}
