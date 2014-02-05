@@ -3,6 +3,7 @@ var bConnected = false;
 var bInitialized = false;
 var bSending = false;
 var aDecimals = new Array();
+var aPrice = new Array();
 var bShowTabs = true;
 var iPLVersion = 0;
 var iPLNVersion = 0;
@@ -308,6 +309,7 @@ function createWattmeterElement(sTabId, sDevId, aValues) {
 	aDecimals[sTabId+'_'+sDevId] = aValues['settings']['decimals'];
 	aValues['watt'] /= Math.pow(10, aValues['settings']['decimals']).toFixed(aValues['settings']['decimals']);
 	aValues['price'] /= Math.pow(1000, aValues['settings']['decimals']).toFixed(aValues['settings']['decimals']);
+	aPrice[sTabId+'_'+sDevId] = aValues['price'];
 	wattprice = -1;
 	if(aValues['price'] && aValues['price']) {
 		wattprice = aValues['watt']*aValues['price'];
@@ -532,9 +534,10 @@ function parseData(data) {
 						if(vindex == 'watt' && $('#'+lindex+'_'+dvalues+'_watt')) {
 							vvalues /= Math.pow(10, aDecimals[lindex+'_'+dvalues]).toFixed(aDecimals[lindex+'_'+dvalues]);
 							$('#'+lindex+'_'+dvalues+'_watt').text(vvalues);
-						} else if(vindex == 'price' && $('#'+lindex+'_'+dvalues+'_price')) {
+						} 
+						if(aPrice[lindex+'_'+dvalues] > -1 && $('#'+lindex+'_'+dvalues+'_price')) {
 							vvalues /= Math.pow(10, aDecimals[lindex+'_'+dvalues]).toFixed(aDecimals[lindex+'_'+dvalues]);
-							$('#'+lindex+'_'+dvalues+'_price').text(vvalues);
+							$('#'+lindex+'_'+dvalues+'_price').text(vvalues*aPrice[lindex+'_'+dvalues]);
 						}
 					}					
 				});
