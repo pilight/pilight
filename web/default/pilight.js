@@ -328,7 +328,7 @@ function createWattmeterElement(sTabId, sDevId, aValues) {
 		}*/
 		if(aValues['watt']) {
 			$('#'+sTabId+'_'+sDevId+'_watt').text(aValues['watt']);
-			$('#'+sTabId+'_'+sDevId+'_price').text(aValues['price']);
+			$('#'+sTabId+'_'+sDevId+'_price').text(aValues['settings']['price']);
 		}
 	}
 	oTab.listview();
