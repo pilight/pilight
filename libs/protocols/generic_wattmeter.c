@@ -84,7 +84,7 @@ void genWattmeterInit(void) {
 
 	//Variables
 	options_add(&generic_wattmeter->options, 'w', "watt", has_value, config_value, "[0-9]");
-	options_add(&generic_wattmeter->options, 'm', "price", has_value, config_value, "[-+]?[0-9]*\.?[0-9]+");
+	options_add(&generic_wattmeter->options, 'm', "price", has_value, config_value, "[^~,]");
 	options_add(&generic_wattmeter->options, 'c', "coin", has_value, config_value, "[^~,]");
 	
 	//Constantes
