@@ -406,10 +406,6 @@ int webserver_callback_http(struct libwebsocket_context *webcontext, struct libw
 					libwebsocket_write(wsi, buffer, (size_t)(p-buffer), LWS_WRITE_HTTP);
 					sfree((void *)&mimetype);
 					sfree((void *)&request);
-
-					if(!webserver_cache) {
-						fcache_rm(request);
-					}
 					return -1;
 				}
 			}
