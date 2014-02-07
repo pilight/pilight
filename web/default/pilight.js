@@ -363,13 +363,11 @@ function createWebcamElement(sTabId, sDevId, aValues) {
         imgsrc = aValues['url'];
         imgid = sTabId+"_"+sDevId+"_img";
         $("#"+imgid).responsiveImg();
-        setInterval(function(){
+        imgrefresh = setInterval(function(){
             if (imgsrc.indexOf('?') != -1) {
             	$("#"+imgid).attr("src", imgsrc+"?"+new Date().getTime());
-            	alert(imgid);
             } else {
-            	$("#"+imgid).attr("src", imgsrc+"&"+new Date().getTime());	
-            	alert("hola "+imgid);
+            	$("#"+imgid).attr("src", imgsrc+"&"+new Date().getTime());
             }
         },aValues['interval']);           
 }
