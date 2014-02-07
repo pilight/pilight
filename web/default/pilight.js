@@ -4,7 +4,6 @@ var bInitialized = false;
 var bSending = false;
 var aDecimals = new Array();
 var aPrice = new Array();
-var aWebcam = new Array();
 var bShowTabs = true;
 var iPLVersion = 0;
 var iPLNVersion = 0;
@@ -364,7 +363,7 @@ function createWebcamElement(sTabId, sDevId, aValues) {
         imgsrc = aValues['url'];
         imgid = sTabId+"_"+sDevId+"_img";
         $("#"+imgid).responsiveImg();
-        aWebcam[imgid] = setInterval(function(){
+        var aWebcam = setInterval(function(){
             if (imgsrc.indexOf("?") != -1) {
             	$("#"+imgid).attr("src", imgsrc+"&"+new Date().getTime());
             } else {
