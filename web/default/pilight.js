@@ -366,8 +366,10 @@ function createWebcamElement(sTabId, sDevId, aValues) {
         setInterval(function(){
             if (imgsrc.indexOf('?') != -1) {
             	$("#"+imgid).attr("src", imgsrc+"?"+new Date().getTime());
+            	alert(imgid);
             } else {
             	$("#"+imgid).attr("src", imgsrc+"&"+new Date().getTime());	
+            	alert("hola "+imgid);
             }
         },aValues['interval']);           
 }
