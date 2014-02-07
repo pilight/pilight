@@ -360,8 +360,8 @@ function createWebcamElement(sTabId, sDevId, aValues) {
 	}
 	oTab.listview();
 	oTab.listview("refresh");
-        imgsrc = aValues['url'];
-        imgid = sTabId+"_"+sDevId+"_img";
+        var imgsrc = aValues['url'];
+        var imgid = sTabId+"_"+sDevId+"_img";
         $("#"+imgid).responsiveImg();
         var aWebcam = setInterval(function(){
             if (imgsrc.indexOf("?") != -1) {
