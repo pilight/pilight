@@ -45,7 +45,6 @@
 #define MAXTIMINGS 100
 
 unsigned short dht22_loop = 1;
-int dht22_nrfree = 0;
 
 static uint8_t sizecvt(const int read_value) {
 	/* digitalRead() and friends from wiringpi are defined as returning a value

@@ -41,10 +41,9 @@
 #include "dht11.h"
 #include "../pilight/wiringPi.h"
 	
-#define MAXTIMINGS 100
+#define MAXTIMINGS 10000
 
 unsigned short dht11_loop = 1;
-int dht11_nrfree = 0;
 
 void dht11ParseCleanUp(void *arg) {
 	sfree((void *)&arg);
@@ -121,53 +120,70 @@ void *dht11Parse(void *param) {
 				unsigned short got_correct_date = 0;
 
 				while(tries && !got_correct_date && dht11_loop) {
+					int dht11_dat[5], cnt = 7, idx = 0;
+					int i = 0;
+					int error = 0;
+					unsigned int loopCnt = MAXTIMINGS;
+					long curtime = 0;
+					struct timeval tv;
 
-					int laststate = HIGH;
-					int counter = 0;
-					int j = 0, i = 0;
+					for(i=0;i<5;i++) {
+						dht11_dat[i] = 0;
+					}
 
-					int dht11_dat[5] = {0,0,0,0,0};
-
-					// pull pin down for 18 milliseconds
-					pinMode(id[y], OUTPUT);			
-					digitalWrite(id[y], HIGH);
-					usleep(500000);  // 500 ms
-					// then pull it up for 40 microseconds
+					pinMode(id[y], OUTPUT);
 					digitalWrite(id[y], LOW);
-					usleep(20000);
-					// prepare to read the pin
+					delay(20);
+					digitalWrite(id[y], HIGH);
+					delayMicroseconds(40);
 					pinMode(id[y], INPUT);
 
-					// detect change and read data
-					for(i=0; i<MAXTIMINGS; i++) {
-						counter = 0;
-						delayMicroseconds(10);
-						while(digitalRead(id[y]) == laststate && dht11_loop) {
-							counter++;
-							delayMicroseconds(1);
-							if (counter == 255) {
-								break;
-							}
-						}
-						laststate = digitalRead(id[y]);
 
-						if(counter == 255) 
-							break;
-
-						// ignore first 3 transitions
-						if((i >= 4) && (i%2 == 0) && !(j & 1) && j >= 8) {
-							// shove each bit into the storage bytes
-							dht11_dat[(int)((double)j/8)] <<= 1;
-							if (counter > 16)
-								dht11_dat[(int)((double)j/8)] |= 1;
-							j++;
+					while(digitalRead(id[y]) == LOW) {
+						if(loopCnt-- == 0) {
+							error = 1;
 						}
 					}
 
-					// check we read 40 bits (8bit x 5 ) + verify checksum in the last byte
-					// print it out if data is good
-					if((j >= 40) && (dht11_dat[4] == ((dht11_dat[0] + dht11_dat[1] + dht11_dat[2] + dht11_dat[3]) & 0xFF))) {
+					loopCnt = MAXTIMINGS;
+					while(digitalRead(id[y]) == HIGH) {
+						if(loopCnt-- == 0) {
+							error = 1;
+						}
+					}
 
+					for(i=0;i<40;i++) {
+						loopCnt = MAXTIMINGS;
+						while(digitalRead(id[y]) == LOW) {
+							if(loopCnt-- == 0) {
+								error = 1;
+							}
+						}
+
+						gettimeofday(&tv, NULL);
+						curtime = (1000000 * tv.tv_sec + tv.tv_usec);
+						loopCnt = MAXTIMINGS;
+
+						while(digitalRead(id[y]) == HIGH) {
+							if(loopCnt-- == 0) {
+								error = 1;
+							}
+						}
+
+						gettimeofday(&tv, NULL);
+						if(((1000000 * tv.tv_sec + tv.tv_usec) - curtime) > 40) {
+							dht11_dat[idx] |= (1 << cnt);
+						}
+						if(cnt == 0) {
+							cnt = 7;   
+							idx++;      
+						}
+						else {
+							cnt--;
+						}
+					}
+					
+					if(error == 0 && dht11_dat[4] == (dht11_dat[0] + dht11_dat[2])) {
 						got_correct_date = 1;
 
 						int h = dht11_dat[0];
@@ -177,7 +193,7 @@ void *dht11Parse(void *param) {
 						
 						dht11->message = json_mkobject();
 						JsonNode *code = json_mkobject();
-						json_append_member(code, "id", json_mkstring(dht11->id));
+						json_append_member(code, "gpio", json_mknumber(id[y]));
 						json_append_member(code, "temperature", json_mknumber(t));
 						json_append_member(code, "humidity", json_mknumber(h));
 
