@@ -35,9 +35,9 @@ body {
 	padding: 15px 75px 14px 15px;
 }
 
-.webcam {
-	display: block;
-	padding: 15px 15px 15px 15px;
+div.webcam {
+/*	display: block;
+	padding: 15px 15px 15px 15px;*/
 }
 
 .ui-li.dimmer {
@@ -57,10 +57,6 @@ div.temperature, div.humidity, div.battery.red, div.battery.green, div.watt, div
 	float: right;
 	padding: 4px;
 	right: -50px;
-}
-
-div.webcam {
-	height: 100px;
 }
 
 div.battery.red, div.battery.green {
