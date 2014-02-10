@@ -59,6 +59,10 @@ div.temperature, div.humidity, div.battery.red, div.battery.green, div.watt, div
 	right: -50px;
 }
 
+div.webcam {
+	height: 100px;
+}
+
 div.battery.red, div.battery.green {
 	width: 10px;
 	height: 16px;
