@@ -472,12 +472,12 @@ function parseData(data) {
 $(document).ready(function() {
 	if($('body').length == 1) {
 		$.mobile.showPageLoadingMsg("b", "Connecting...", true);
-		// if(typeof MozWebSocket != "undefined") {
-			// oWebsocket = new MozWebSocket("ws://"+location.host, "data");
-		// } else if(typeof WebSocket != "undefined") {
-			// /* The characters after the trailing slash are needed for a wierd IE 10 bug */
-			// oWebsocket = new WebSocket("ws://"+location.host+'/websocket', "data");
-		// } else {
+		if(typeof MozWebSocket != "undefined") {
+			oWebsocket = new MozWebSocket("ws://"+location.host, "data");
+		} else if(typeof WebSocket != "undefined") {
+			/* The characters after the trailing slash are needed for a wierd IE 10 bug */
+			oWebsocket = new WebSocket("ws://"+location.host+'/websocket', "data");
+		} else {
 			var load = window.setInterval(function() {
 				$.get('http://'+location.host+'/config?'+$.now(), function(txt) {
 					bConnected = true;
@@ -496,30 +496,30 @@ $(document).ready(function() {
 					}
 				});
 			}, 1000);
-		// }
+		}
 
-		// if(oWebsocket) {
-			// oWebsocket.onopen = function(evt) {
-				// bConnected = true;
-				// oWebsocket.send("{\"message\":\"request config\"}");
-			// };
-			// oWebsocket.onclose = function(evt) {
-				// if(bConnected) {
-					// $.mobile.showPageLoadingMsg("b", "Connection lost, touch to reload", true);
-					// $('html').on({ 'touchstart mousedown' : function(){location.reload();}});
-				// } else {
-					// $.mobile.showPageLoadingMsg("b", "Failed to connect, touch to reload", true);
-					// $('html').on({ 'touchstart mousedown' : function(){location.reload();}});
-				// }
-			// };
-			// oWebsocket.onerror = function(evt) {
-				// $.mobile.showPageLoadingMsg("b", "An unexpected error occured", true);
-			// };
-			// oWebsocket.onmessage = function(evt) {
-				// var data = $.parseJSON(evt.data);
-				// parseData(data);
-			// }
-		// }
+		if(oWebsocket) {
+			oWebsocket.onopen = function(evt) {
+				bConnected = true;
+				oWebsocket.send("{\"message\":\"request config\"}");
+			};
+			oWebsocket.onclose = function(evt) {
+				if(bConnected) {
+					$.mobile.showPageLoadingMsg("b", "Connection lost, touch to reload", true);
+					$('html').on({ 'touchstart mousedown' : function(){location.reload();}});
+				} else {
+					$.mobile.showPageLoadingMsg("b", "Failed to connect, touch to reload", true);
+					$('html').on({ 'touchstart mousedown' : function(){location.reload();}});
+				}
+			};
+			oWebsocket.onerror = function(evt) {
+				$.mobile.showPageLoadingMsg("b", "An unexpected error occured", true);
+			};
+			oWebsocket.onmessage = function(evt) {
+				var data = $.parseJSON(evt.data);
+				parseData(data);
+			}
+		}
 		$('div[data-role="header"] h1').css({'white-space':'normal'});
 	}
 });
