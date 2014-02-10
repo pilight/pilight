@@ -66,6 +66,10 @@ int main(int argc, char **argv) {
 	char *args = NULL;	
 	
 	progname = malloc(13);
+	if(!progname) {
+		logprintf(LOG_ERR, "out of memory");
+		exit(EXIT_FAILURE);
+	}
 	strcpy(progname, "pilight-uuid");	
 	
 	options_add(&options, 'H', "help", no_value, 0, NULL);

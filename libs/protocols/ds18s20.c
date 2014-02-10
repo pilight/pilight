@@ -89,7 +89,15 @@ void *ds18s20Parse(void *param) {
 		while(jchild) {
 			if(json_find_string(jchild, "id", &stmp) == 0) {
 				id = realloc(id, (sizeof(char *)*(size_t)(nrid+1)));
+				if(!id) {
+					logprintf(LOG_ERR, "out of memory");
+					exit(EXIT_FAILURE);
+				}
 				id[nrid] = malloc(strlen(stmp)+1);
+				if(!id[nrid]) {
+					logprintf(LOG_ERR, "out of memory");
+					exit(EXIT_FAILURE);
+				}
 				strcpy(id[nrid], stmp);
 				nrid++;
 			}
@@ -120,6 +128,10 @@ void *ds18s20Parse(void *param) {
 		if(rc == ETIMEDOUT) {	
 			for(y=0;y<nrid;y++) {
 				ds18s20_sensor = realloc(ds18s20_sensor, strlen(ds18s20_path)+strlen(id[y])+5);
+				if(!ds18s20_sensor) {
+					logprintf(LOG_ERR, "out of memory");
+					exit(EXIT_FAILURE);
+				}
 				sprintf(ds18s20_sensor, "%s10-%s/", ds18s20_path, id[y]);
 				if((d = opendir(ds18s20_sensor))) {
 					while((file = readdir(d)) != NULL) {
@@ -233,6 +245,10 @@ void ds18s20Init(void) {
 	protocol_setting_add_number(ds18s20, "interval", 10);
 
 	ds18s20_path = malloc(21);
+	if(!ds18s20_path) {
+		logprintf(LOG_ERR, "out of memory");
+		exit(EXIT_FAILURE);
+	}
 	memset(ds18s20_path, '\0', 21);	
 	strcpy(ds18s20_path, "/sys/bus/w1/devices/");
 

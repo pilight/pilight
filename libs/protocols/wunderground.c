@@ -112,20 +112,36 @@ void *wundergroundParse(void *param) {
 			has_country = 0, has_api = 0, has_location = 0;
 			jchild1 = json_first_child(jchild);
 			struct wunderground_data_t* wnode = malloc(sizeof(struct wunderground_data_t));
+			if(!wnode) {
+				logprintf(LOG_ERR, "out of memory");
+				exit(EXIT_FAILURE);
+			}
 			while(jchild1) {
 				if(strcmp(jchild1->key, "api") == 0) {
 					has_api = 1;
 					wnode->api = malloc(strlen(jchild1->string_)+1);
+					if(!wnode->api) {
+						logprintf(LOG_ERR, "out of memory");
+						exit(EXIT_FAILURE);
+					}
 					strcpy(wnode->api, jchild1->string_);
 				}
 				if(strcmp(jchild1->key, "location") == 0) {
 					has_location = 1;
 					wnode->location = malloc(strlen(jchild1->string_)+1);
+					if(!wnode->location) {
+						logprintf(LOG_ERR, "out of memory");
+						exit(EXIT_FAILURE);
+					}
 					strcpy(wnode->location, jchild1->string_);
 				}
 				if(strcmp(jchild1->key, "country") == 0) {
 					has_country = 1;
 					wnode->country = malloc(strlen(jchild1->string_)+1);
+					if(!wnode->country) {
+						logprintf(LOG_ERR, "out of memory");
+						exit(EXIT_FAILURE);
+					}
 					strcpy(wnode->country, jchild1->string_);
 				}
 				jchild1 = jchild1->next;

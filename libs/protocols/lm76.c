@@ -83,11 +83,15 @@ void *lm76Parse(void *param) {
 	struct JsonNode *jchild = NULL;
 	struct timeval tp;
 	struct timespec ts;	
-	struct lm76data_t *lm76data = malloc(sizeof(struct lm76data_t));	
+	struct lm76data_t *lm76data = malloc(sizeof(struct lm76data_t));
 	int y = 0, interval = 10, rc = 0;
 	int temp_corr = 0;
 	char *stmp = NULL;
 	int firstrun = 1;
+	if(!lm76data) {
+		logprintf(LOG_ERR, "out of memory");
+		exit(EXIT_FAILURE);
+	}
 
 	lm76data->nrid = 0;
 	lm76data->id = NULL;
@@ -111,7 +115,15 @@ void *lm76Parse(void *param) {
 		while(jchild) {
 			if(json_find_string(jchild, "id", &stmp) == 0) {
 				lm76data->id = realloc(lm76data->id, (sizeof(char *)*(size_t)(lm76data->nrid+1)));
+				if(!lm76data->id) {
+					logprintf(LOG_ERR, "out of memory");
+					exit(EXIT_FAILURE);
+				}
 				lm76data->id[lm76data->nrid] = malloc(strlen(stmp)+1);
+				if(!lm76data->id[lm76data->nrid]) {
+					logprintf(LOG_ERR, "out of memory");
+					exit(EXIT_FAILURE);
+				}
 				strcpy(lm76data->id[lm76data->nrid], stmp);
 				lm76data->nrid++;
 			}
@@ -125,6 +137,10 @@ void *lm76Parse(void *param) {
 	json_delete(json);
 #ifndef __FreeBSD__	
 	lm76data->fd = realloc(lm76data->fd, (sizeof(int)*(size_t)(lm76data->nrid+1)));
+	if(!lm76data->fd) {
+		logprintf(LOG_ERR, "out of memory");
+		exit(EXIT_FAILURE);
+	}
 	for(y=0;y<lm76data->nrid;y++) {
 		lm76data->fd[y] = wiringPiI2CSetup((int)strtol(lm76data->id[y], NULL, 16));
 	}

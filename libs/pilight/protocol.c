@@ -219,6 +219,10 @@ void protocol_init(void) {
 
 void protocol_register(protocol_t **proto) {
 	*proto = malloc(sizeof(struct protocol_t));
+	if(!*proto) {
+		logprintf(LOG_ERR, "out of memory");
+		exit(EXIT_FAILURE);
+	}
 	(*proto)->options = NULL;
 	(*proto)->devices = NULL;
 	(*proto)->conflicts = NULL;
@@ -251,19 +255,35 @@ void protocol_register(protocol_t **proto) {
 	memset(&(*proto)->binary[0], 0, sizeof((*proto)->binary));
 
 	struct protocols_t *pnode = malloc(sizeof(struct protocols_t));
+	if(!pnode) {
+		logprintf(LOG_ERR, "out of memory");
+		exit(EXIT_FAILURE);
+	}
 	pnode->listener = *proto;
 	pnode->name = malloc(4);
+	if(!pnode->name) {
+		logprintf(LOG_ERR, "out of memory");
+		exit(EXIT_FAILURE);
+	}
 	pnode->next = protocols;
 	protocols = pnode;
 }
 
 void protocol_set_id(protocol_t *proto, const char *id) {
 	proto->id = malloc(strlen(id)+1);
+	if(!proto->id) {
+		logprintf(LOG_ERR, "out of memory");
+		exit(EXIT_FAILURE);
+	}
 	strcpy(proto->id, id);
 }
 
 void protocol_plslen_add(protocol_t *proto, int plslen) {
 	struct protocol_plslen_t *pnode = malloc(sizeof(struct protocol_plslen_t));
+	if(!pnode) {
+		logprintf(LOG_ERR, "out of memory");
+		exit(EXIT_FAILURE);
+	}
 	pnode->length = plslen;
 	pnode->next	= proto->plslen;
 	proto->plslen = pnode;
@@ -271,9 +291,21 @@ void protocol_plslen_add(protocol_t *proto, int plslen) {
 
 void protocol_device_add(protocol_t *proto, const char *id, const char *desc) {
 	struct protocol_devices_t *dnode = malloc(sizeof(struct protocol_devices_t));
+	if(!dnode) {
+		logprintf(LOG_ERR, "out of memory");
+		exit(EXIT_FAILURE);
+	}
 	dnode->id = malloc(strlen(id)+1);
+	if(!dnode->id) {
+		logprintf(LOG_ERR, "out of memory");
+		exit(EXIT_FAILURE);
+	}
 	strcpy(dnode->id, id);
 	dnode->desc = malloc(strlen(desc)+1);
+	if(!dnode->desc) {
+		logprintf(LOG_ERR, "out of memory");
+		exit(EXIT_FAILURE);
+	}
 	strcpy(dnode->desc, desc);
 	dnode->next	= proto->devices;
 	proto->devices = dnode;
@@ -281,7 +313,15 @@ void protocol_device_add(protocol_t *proto, const char *id, const char *desc) {
 
 void protocol_conflict_add(protocol_t *proto, const char *id) {
 	struct protocol_conflicts_t *cnode = malloc(sizeof(struct protocol_conflicts_t));
+	if(!cnode) {
+		logprintf(LOG_ERR, "out of memory");
+		exit(EXIT_FAILURE);
+	}
 	cnode->id = malloc(strlen(id)+1);
+	if(!cnode->id) {
+		logprintf(LOG_ERR, "out of memory");
+		exit(EXIT_FAILURE);
+	}
 	strcpy(cnode->id, id);
 	cnode->next	= proto->conflicts;
 	proto->conflicts = cnode;
@@ -315,8 +355,16 @@ int protocol_setting_update_string(protocol_t *proto, const char *name, const ch
 	while(tmp_settings) {
 		if(strcmp(tmp_settings->name, name) == 0 && tmp_settings->type == 1) {
 			tmp_settings->old_value = realloc(tmp_settings->old_value, strlen(tmp_settings->cur_value)+1);
+			if(!tmp_settings->old_value) {
+				logprintf(LOG_ERR, "out of memory");
+				exit(EXIT_FAILURE);
+			}
 			strcpy(tmp_settings->old_value, tmp_settings->cur_value);
 			tmp_settings->cur_value = realloc(tmp_settings->cur_value, strlen(value)+1);
+			if(!tmp_settings->cur_value) {
+				logprintf(LOG_ERR, "out of memory");
+				exit(EXIT_FAILURE);
+			}
 			strcpy(tmp_settings->cur_value, value);
 			return 0;
 		}
@@ -332,8 +380,16 @@ int protocol_setting_update_number(protocol_t *proto, const char *name, int valu
 	while(tmp_settings) {
 		if(strcmp(tmp_settings->name, name) == 0 && tmp_settings->type == 2) {
 			tmp_settings->old_value = realloc(tmp_settings->old_value, strlen(tmp_settings->cur_value)+1);
+			if(!tmp_settings->old_value) {
+				logprintf(LOG_ERR, "out of memory");
+				exit(EXIT_FAILURE);
+			}
 			strcpy(tmp_settings->old_value, tmp_settings->cur_value);
 			tmp_settings->cur_value = realloc(tmp_settings->cur_value, sizeof(int)+1);
+			if(!tmp_settings->cur_value) {
+				logprintf(LOG_ERR, "out of memory");
+				exit(EXIT_FAILURE);
+			}
 			sprintf(tmp_settings->cur_value, "%d", value);
 			return 0;
 		}
@@ -349,8 +405,16 @@ int protocol_setting_restore(protocol_t *proto, const char *name) {
 	while(tmp_settings) {
 		if(strcmp(tmp_settings->name, name) == 0) {
 			tmp_settings->cur_value = realloc(tmp_settings->cur_value, strlen(tmp_settings->old_value)+1);
+			if(!tmp_settings->cur_value) {
+				logprintf(LOG_ERR, "out of memory");
+				exit(EXIT_FAILURE);
+			}
 			strcpy(tmp_settings->cur_value, tmp_settings->old_value);
 			tmp_settings->old_value = realloc(tmp_settings->old_value, 4);
+			if(!tmp_settings->old_value) {
+				logprintf(LOG_ERR, "out of memory");
+				exit(EXIT_FAILURE);
+			}
 			memset(tmp_settings->old_value, '\0', 4);
 			return 0;
 		}
@@ -383,6 +447,7 @@ int protocol_setting_check_string(protocol_t *proto, const char *name, const cha
 		case WEATHER:
 		case RAW:
 		case INTERNAL:
+		case CONTACT:
 		default:
 			error=EXIT_FAILURE;
 		break;
@@ -391,6 +456,10 @@ int protocol_setting_check_string(protocol_t *proto, const char *name, const cha
 	if(strcmp(name, "default") == 0 || strcmp(name, "states") == 0) {
 		if(proto->options) {
 			char *nvalue = malloc(strlen(value)+1);
+			if(!nvalue) {
+				logprintf(LOG_ERR, "out of memory");
+				exit(EXIT_FAILURE);
+			}
 			strcpy(nvalue, value);
 			char *pch = strtok(nvalue, ",");
 			while(pch) {
@@ -419,10 +488,26 @@ void protocol_setting_add_string(protocol_t *proto, const char *name, const char
 	if(protocol_setting_check_string(proto, name, value) == 0) {
 		protocol_setting_remove(&proto, name);
 		struct protocol_settings_t *snode = malloc(sizeof(struct protocol_settings_t));
+		if(!snode) {
+			logprintf(LOG_ERR, "out of memory");
+			exit(EXIT_FAILURE);
+		}
 		snode->name = malloc(strlen(name)+1);
+		if(!snode->name) {
+			logprintf(LOG_ERR, "out of memory");
+			exit(EXIT_FAILURE);
+		}
 		strcpy(snode->name, name);
 		snode->cur_value = malloc(strlen(value)+1);
+		if(!snode->cur_value) {
+			logprintf(LOG_ERR, "out of memory");
+			exit(EXIT_FAILURE);
+		}
 		snode->old_value = malloc(4);
+		if(!snode->old_value) {
+			logprintf(LOG_ERR, "out of memory");
+			exit(EXIT_FAILURE);
+		}
 		strcpy(snode->cur_value, value);
 		snode->type = 1;
 		snode->next	= proto->settings;
@@ -469,6 +554,7 @@ int protocol_setting_check_number(protocol_t *proto, const char *name, int value
 		break;
 		case RAW:
 		case INTERNAL:
+		case CONTACT:
 		default:
 			error=EXIT_FAILURE;
 		break;
@@ -502,6 +588,10 @@ int protocol_setting_check_number(protocol_t *proto, const char *name, int value
 					error=EXIT_FAILURE;
 				}
 				char *tmp = malloc(sizeof(value)+1);
+				if(!tmp) {
+					logprintf(LOG_ERR, "out of memory");
+					exit(EXIT_FAILURE);
+				}
 				sprintf(tmp, "%d", value);
 				reti = regexec(&regex, tmp, 0, NULL, 0);
 				if(reti == REG_NOMATCH || reti != 0) {
@@ -524,10 +614,26 @@ void protocol_setting_add_number(protocol_t *proto, const char *name, int value)
 	if(protocol_setting_check_number(proto, name, value) == 0) {
 		protocol_setting_remove(&proto, name);
 		struct protocol_settings_t *snode = malloc(sizeof(struct protocol_settings_t));
+		if(!snode) {
+			logprintf(LOG_ERR, "out of memory");
+			exit(EXIT_FAILURE);
+		}
 		snode->name = malloc(strlen(name)+1);
+		if(!snode->name) {
+			logprintf(LOG_ERR, "out of memory");
+			exit(EXIT_FAILURE);
+		}
 		strcpy(snode->name, name);
 		snode->cur_value = malloc(sizeof(value)+1);
+		if(!snode->cur_value) {
+			logprintf(LOG_ERR, "out of memory");
+			exit(EXIT_FAILURE);
+		}
 		snode->old_value = malloc(4);
+		if(!snode->old_value) {
+			logprintf(LOG_ERR, "out of memory");
+			exit(EXIT_FAILURE);
+		}
 		sprintf(snode->cur_value, "%d", value);
 		snode->type = 2;
 		snode->next	= proto->settings;

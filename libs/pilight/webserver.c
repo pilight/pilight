@@ -233,6 +233,17 @@ int base64decode(unsigned char *dest, unsigned char *src, int l) {
 	return wpos;
 }
 
+char *webserver_mimetype(const char *str) {
+	char *mimetype = malloc(strlen(str)+1);
+	if(!mimetype) {
+		logprintf(LOG_ERR, "out of memory");
+		exit(EXIT_FAILURE);
+	}
+	memset(mimetype, '\0', strlen(str)+1);
+	strcpy(mimetype, str);
+	return mimetype;
+}
+
 int webserver_callback_http(struct libwebsocket_context *webcontext, struct libwebsocket *wsi, enum libwebsocket_callback_reasons reason, void *user, void *in, size_t len) {
 	int n, m;
 	unsigned char *p;
@@ -289,6 +300,10 @@ int webserver_callback_http(struct libwebsocket_context *webcontext, struct libw
 			/* If the webserver didn't request a file, serve the index.html */
 			if(strcmp((const char *)in, "/") == 0) {
 				request = malloc(strlen(webserver_root)+strlen(webgui_tpl)+14);
+				if(!request) {
+					logprintf(LOG_ERR, "out of memory");
+					exit(EXIT_FAILURE);
+				}
 				memset(request, '\0', strlen(webserver_root)+strlen(webgui_tpl)+14);
 				/* Check if the webserver_root is terminated by a slash. If not, than add it */
 				if(webserver_root[strlen(webserver_root)-1] == '/') {
@@ -307,10 +322,13 @@ int webserver_callback_http(struct libwebsocket_context *webcontext, struct libw
 					socket_write(sockfd, out);
 					p = buffer;
 					char *output = malloc(22);
+					if(!output) {
+						logprintf(LOG_ERR, "out of memory");
+						exit(EXIT_FAILURE);
+					}
 					strcpy(output, "{\"message\":\"success\"}");
 					size = (int)strlen(output)+1;
-					mimetype = malloc(11);
-					strcpy(mimetype, "text/plain");
+					mimetype = webserver_mimetype("text/plain");
 					webserver_create_header(&p, "200 OK", mimetype, (unsigned int)size);
 					sfree((void *)&mimetype);
 
@@ -326,8 +344,7 @@ int webserver_callback_http(struct libwebsocket_context *webcontext, struct libw
 					char *output = json_stringify(jsend, NULL);
 					p = buffer;
 					size = (int)strlen(output);
-					mimetype = malloc(11);
-					strcpy(mimetype, "text/plain");
+					mimetype = webserver_mimetype("text/plain");
 					webserver_create_header(&p, "200 OK", mimetype, (unsigned int)size);
 					sfree((void *)&mimetype);
 					json_delete(jsend);
@@ -344,6 +361,10 @@ int webserver_callback_http(struct libwebsocket_context *webcontext, struct libw
 
 				size_t wlen = strlen(webserver_root)+strlen(webgui_tpl)+strlen((const char *)in)+2;
 				request = malloc(wlen);
+				if(!request) {
+					logprintf(LOG_ERR, "out of memory");
+					exit(EXIT_FAILURE);
+				}
 				memset(request, '\0', wlen);
 				/* If a file was requested add it to the webserver path to create the absolute path */
 				if(webserver_root[strlen(webserver_root)-1] == '/') {
@@ -368,37 +389,27 @@ int webserver_callback_http(struct libwebsocket_context *webcontext, struct libw
 			}
 
 			ext = realloc(ext, strlen(dot)+1);
+			if(!ext) {
+				logprintf(LOG_ERR, "out of memory");
+				exit(EXIT_FAILURE);
+			}
 			memset(ext, '\0', strlen(dot)+1);
 			strcpy(ext, dot+1);
 
 			if(strcmp(ext, "html") == 0) {
-				mimetype = malloc(10);
-				memset(mimetype, '\0', 10);
-				strcpy(mimetype, "text/html");
+				mimetype = webserver_mimetype("text/html");
 			} else if(strcmp(ext, "xml") == 0) {
-				mimetype = malloc(10);
-				memset(mimetype, '\0', 10);
-				strcpy(mimetype, "text/xml");
+				mimetype = webserver_mimetype("text/xml");
 			} else if(strcmp(ext, "png") == 0) {
-				mimetype = malloc(10);
-				memset(mimetype, '\0', 10);
-				strcpy(mimetype, "image/png");
+				mimetype = webserver_mimetype("image/png");
 			} else if(strcmp(ext, "gif") == 0) {
-				mimetype = malloc(10);
-				memset(mimetype, '\0', 10);
-				strcpy(mimetype, "image/gif");
+				mimetype = webserver_mimetype("image/gif");
 			} else if(strcmp(ext, "ico") == 0) {
-				mimetype = malloc(13);
-				memset(mimetype, '\0', 13);
-				strcpy(mimetype, "image/x-icon");
+				mimetype = webserver_mimetype("image/x-icon");
 			} else if(strcmp(ext, "css") == 0) {
-				mimetype = malloc(9);
-				memset(mimetype, '\0', 9);
-				strcpy(mimetype, "text/css");
+				mimetype = webserver_mimetype("text/css");
 			} else if(strcmp(ext, "js") == 0) {
-				mimetype = malloc(16);
-				memset(mimetype, '\0', 16);
-				strcpy(mimetype, "text/javascript");
+				mimetype = webserver_mimetype("text/javascript");
 			}
 
 			p = buffer;
@@ -424,6 +435,10 @@ int webserver_callback_http(struct libwebsocket_context *webcontext, struct libw
 				pss->free = 0;
 				pss->cached = 1;
 				pss->request = malloc(strlen(request)+1);
+				if(!pss->request) {
+					logprintf(LOG_ERR, "out of memory");
+					exit(EXIT_FAILURE);
+				}
 				strcpy(pss->request, request);
 				libwebsocket_callback_on_writable(webcontext, wsi);				
 				
@@ -561,6 +576,10 @@ int webserver_callback_data(struct libwebsocket_context *webcontext, struct libw
 							size_t output_len = strlen(output);
 							/* This PRE_PADDIGN and POST_PADDING is an requirement for LWS_WRITE_TEXT */
 							sockWriteBuff = realloc(sockWriteBuff, LWS_SEND_BUFFER_PRE_PADDING + output_len + LWS_SEND_BUFFER_POST_PADDING);
+							if(!sockWriteBuff) {
+								logprintf(LOG_ERR, "out of memory");
+								exit(EXIT_FAILURE);
+							}
 							memset(sockWriteBuff, '\0', sizeof(*sockWriteBuff));
  	  						memcpy(&sockWriteBuff[LWS_SEND_BUFFER_PRE_PADDING], output, output_len);
 							libwebsocket_write(wsi, &sockWriteBuff[LWS_SEND_BUFFER_PRE_PADDING], output_len, LWS_WRITE_TEXT);
@@ -583,6 +602,10 @@ int webserver_callback_data(struct libwebsocket_context *webcontext, struct libw
 
 				/* This PRE_PADDIGN and POST_PADDING is an requirement for LWS_WRITE_TEXT */
 				sockWriteBuff = realloc(sockWriteBuff, LWS_SEND_BUFFER_PRE_PADDING + l + LWS_SEND_BUFFER_POST_PADDING);
+				if(!sockWriteBuff) {
+					logprintf(LOG_ERR, "out of memory");
+					exit(EXIT_FAILURE);
+				}
 				memset(sockWriteBuff, '\0', sizeof(*sockWriteBuff));
 				memcpy(&sockWriteBuff[LWS_SEND_BUFFER_PRE_PADDING], syncBuff, l);
 				m = libwebsocket_write(wsi, &sockWriteBuff[LWS_SEND_BUFFER_PRE_PADDING], l, LWS_WRITE_TEXT);
@@ -651,7 +674,15 @@ int webserver_callback_data(struct libwebsocket_context *webcontext, struct libw
 void webserver_queue(char *message) {
 	pthread_mutex_lock(&webqueue_lock);
 	struct webqueue_t *wnode = malloc(sizeof(struct webqueue_t));
+	if(!wnode) {
+		logprintf(LOG_ERR, "out of memory");
+		exit(EXIT_FAILURE);
+	}
 	wnode->message = malloc(strlen(message)+1);
+	if(!wnode->message) {
+		logprintf(LOG_ERR, "out of memory");
+		exit(EXIT_FAILURE);
+	}
 	strcpy(wnode->message, message);
 
 	if(webqueue_number == 0) {
@@ -677,6 +708,10 @@ void *webserver_clientize(void *param) {
 	if(ssdp_seek(&ssdp_list) == -1 || standalone == 1) {
 		logprintf(LOG_DEBUG, "no pilight ssdp connections found");
 		server = malloc(10);
+		if(!server) {
+			logprintf(LOG_ERR, "out of memory");
+			exit(EXIT_FAILURE);
+		}
 		strcpy(server, "127.0.0.1");
 		if((sockfd = socket_connect(server, (unsigned short)socket_get_port())) == -1) {
 			logprintf(LOG_DEBUG, "could not connect to pilight-daemon");
@@ -693,6 +728,10 @@ void *webserver_clientize(void *param) {
 	}
 
 	sockReadBuff = malloc(BUFFER_SIZE);
+	if(!sockReadBuff) {
+		logprintf(LOG_ERR, "out of memory");
+		exit(EXIT_FAILURE);
+	}
 	sfree((void *)&server);
 	while(webserver_loop) {
 		if(steps > WELCOME) {
@@ -749,6 +788,10 @@ void *webserver_broadcast(void *param) {
 			pthread_mutex_lock(&webqueue_lock);
 
 			syncBuff = realloc(syncBuff, strlen(webqueue->message)+1);
+			if(!syncBuff) {
+				logprintf(LOG_ERR, "out of memory");
+				exit(EXIT_FAILURE);
+			}
 			memset(syncBuff, '\0', sizeof(*syncBuff));
 			strcpy(syncBuff, webqueue->message);
 
@@ -788,11 +831,19 @@ void *webserver_start(void *param) {
 	if(settings_find_string("webserver-root", &webserver_root) != 0) {
 		/* If no webserver port was set, use the default webserver port */
 		webserver_root = malloc(strlen(WEBSERVER_ROOT)+1);
+		if(!webserver_root) {
+			logprintf(LOG_ERR, "out of memory");
+			exit(EXIT_FAILURE);
+		}
 		strcpy(webserver_root, WEBSERVER_ROOT);
 	}
 	if(settings_find_string("webgui-template", &webgui_tpl) != 0) {
 		/* If no webserver port was set, use the default webserver port */
 		webgui_tpl = malloc(strlen(WEBGUI_TEMPLATE)+1);
+		if(!webgui_tpl) {
+			logprintf(LOG_ERR, "out of memory");
+			exit(EXIT_FAILURE);
+		}
 		strcpy(webgui_tpl, WEBGUI_TEMPLATE);
 	}
 

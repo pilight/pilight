@@ -41,6 +41,10 @@ int rawCreateCode(JsonNode *code) {
 	}
 
 	ncode = malloc(strlen(rcode)+1);
+	if(!ncode) {
+		logprintf(LOG_ERR, "out of memory");
+		exit(EXIT_FAILURE);
+	}
 	strcpy(ncode, rcode);
 	pch = strtok(ncode, " ");
 	while(pch != NULL) {

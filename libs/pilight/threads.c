@@ -31,10 +31,17 @@ unsigned short thread_running = 0;
 
 void threads_register(const char *id, void *(*function)(void *param), void *param) {
 	struct threads_t *tnode = malloc(sizeof(struct threads_t));
-
+	if(!tnode) {
+		logprintf(LOG_ERR, "out of memory");
+		exit(EXIT_FAILURE);
+	}
 	tnode->function = function;
 	tnode->running = 0;
 	tnode->id = malloc(strlen(id)+1);
+	if(!tnode->id) {
+		logprintf(LOG_ERR, "out of memory");
+		exit(EXIT_FAILURE);
+	}
 	strcpy(tnode->id, id);
 	tnode->param = param;
 	tnode->next = threads;

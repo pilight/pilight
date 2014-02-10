@@ -67,6 +67,11 @@ void *rpiTempParse(void *param) {
 	size_t bytes = 0;
 	int firstrun = 1;
 
+	if(!id) {
+		logprintf(LOG_ERR, "out of memory");
+		exit(EXIT_FAILURE);
+	}
+	
 #ifndef __FreeBSD__
 	pthread_mutex_t mutex = PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP;        
     pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
@@ -193,6 +198,10 @@ void rpiTempInit(void) {
 	protocol_setting_add_number(rpiTemp, "interval", 10);
 
 	rpi_temp_temp = malloc(38);
+	if(!rpi_temp_temp) {
+		logprintf(LOG_ERR, "out of memory");
+		exit(EXIT_FAILURE);
+	}
 	memset(rpi_temp_temp, '\0', 38);
 	strcpy(rpi_temp_temp, "/sys/class/thermal/thermal_zone0/temp");
 

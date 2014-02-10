@@ -19,13 +19,20 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
-#include <string.h>
 #include <unistd.h>
+#include <fcntl.h>
+#include <sys/ioctl.h>
+#include <limits.h>
 #include <errno.h>
+#include <syslog.h>
+#include <time.h>
+#include <math.h>
+#include <string.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/time.h>
 #include <netinet/in.h>
+#include <netinet/tcp.h>
 #include <netdb.h>
 #include <arpa/inet.h>
 
@@ -36,9 +43,7 @@
 #include "settings.h"
 #include "socket.h"
 
-char *readBuff = NULL;
-char *recvBuff = NULL;
-char *sendBuff = NULL;
+char recvBuff[BUFFER_SIZE];
 unsigned int ***whitelist_cache = NULL;
 unsigned int whitelist_number;
 unsigned short socket_loop = 1;
@@ -47,9 +52,6 @@ int socket_server = 0;
 int socket_clients[MAX_CLIENTS];
 
 int socket_gc(void) {
-	sfree((void *)&readBuff);
-	sfree((void *)&recvBuff);
-	sfree((void *)&sendBuff);
 	if(whitelist_cache) sfree((void *)&whitelist_cache);
 	socket_loop = 0;
 	logprintf(LOG_DEBUG, "garbage collected socket library");
@@ -98,12 +100,24 @@ int socket_check_whitelist(char *ip) {
 			/* Each ip address is either terminated by a comma or EOL delimiter */
 			if(*tmp == '\0' || *tmp == ',') {
 				x = 0;
-				whitelist_cache = realloc(whitelist_cache, (sizeof(unsigned int ***)*(whitelist_number+1)));
-				whitelist_cache[whitelist_number] = malloc(sizeof(unsigned int **)*2);
+				if((whitelist_cache = realloc(whitelist_cache, (sizeof(unsigned int ***)*(whitelist_number+1)))) == NULL) {
+					logprintf(LOG_ERR, "out of memory");
+					exit(EXIT_FAILURE);
+				}
+				if((whitelist_cache[whitelist_number] = malloc(sizeof(unsigned int **)*2)) == NULL) {
+					logprintf(LOG_ERR, "out of memory");
+					exit(EXIT_FAILURE);
+				}
 				/* Lower boundary */
-				whitelist_cache[whitelist_number][0] = malloc(sizeof(unsigned int *)*4);
+				if((whitelist_cache[whitelist_number][0] = malloc(sizeof(unsigned int *)*4)) == NULL) {
+					logprintf(LOG_ERR, "out of memory");
+					exit(EXIT_FAILURE);
+				}
 				/* Upper boundary */
-				whitelist_cache[whitelist_number][1] = malloc(sizeof(unsigned int *)*4);
+				if((whitelist_cache[whitelist_number][1] = malloc(sizeof(unsigned int *)*4)) == NULL) {
+					logprintf(LOG_ERR, "out of memory");
+					exit(EXIT_FAILURE);
+				}
 
 				/* Turn the whitelist ip address into a upper and lower boundary.
 				   If the ip address doesn't contain a wildcard, then the upper
@@ -191,6 +205,10 @@ int socket_start(unsigned short port) {
         exit(EXIT_FAILURE);
     }
 
+	static struct linger linger = { 0, 0 };
+	socklen_t lsize = sizeof(struct linger);
+	setsockopt(socket_server, SOL_SOCKET, SO_LINGER, (void *)&linger, lsize);
+
 	if(getsockname(socket_server, (struct sockaddr *)&address, &addrlen) == -1)
 		perror("getsockname");
 	else
@@ -216,13 +234,6 @@ int socket_get_clients(int i) {
 int socket_connect(char *address, unsigned short port) {
 	struct sockaddr_in serv_addr;
 	int sockfd;
-
-	if(!sendBuff) {
-		sendBuff = malloc(BIG_BUFFER_SIZE);
-	}
-	if(!recvBuff) {
-		recvBuff = malloc(BIG_BUFFER_SIZE);
-	}
 	
 	/* Try to open a new socket */
     if((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
@@ -261,94 +272,155 @@ void socket_close(int sockfd) {
 				break;
 			}
 		}
+		shutdown(sockfd, 2);
 		close(sockfd);
 	}
 }
 
-void socket_write(int sockfd, const char *msg, ...) {
+int socket_write(int sockfd, const char *msg, ...) {
 	va_list ap;
-
+	int bytes = -1;
+	int ptr = 0, n = 0, x = BUFFER_SIZE, len = (int)strlen(EOSS);
 	if(strlen(msg) > 0 && sockfd > 0) {
-		memset(sendBuff, '\0', BUFFER_SIZE);
+
+		va_start(ap, msg);
+		n = (int)vsnprintf(NULL, 0, msg, ap) + (int)(len + 1); // EOL + dual NL
+		va_end(ap);
+
+		char *sendBuff = malloc((size_t)n);
+		if(!sendBuff) {
+			logprintf(LOG_ERR, "out of memory");
+			exit(EXIT_FAILURE);
+		}
+		memset(sendBuff, '\0', (size_t)n);
 
 		va_start(ap, msg);
 		vsprintf(sendBuff, msg, ap);
 		va_end(ap);
-		strcat(sendBuff, "\n");
 
-		if(send(sockfd, sendBuff, strlen(sendBuff), MSG_NOSIGNAL) == -1) {
-			logprintf(LOG_DEBUG, "socket write failed: %s", sendBuff);
-			socket_close(sockfd);
-		} else {
-			if(strcmp(sendBuff, "BEAT\n") != 0) {
-				logprintf(LOG_DEBUG, "socket write succeeded: %s", sendBuff);
+		strcat(sendBuff, EOSS);
+
+		while(ptr < n) {
+			if((n-ptr) < BUFFER_SIZE) {
+				x = (n-ptr);
+			} else {
+				x = BUFFER_SIZE;
 			}
+			if((bytes = send(sockfd, &sendBuff[ptr], (size_t)x, MSG_NOSIGNAL)) == -1) {
+				/* Change the delimiter into regular newlines */
+				sendBuff[n-len] = '\0';
+				sendBuff[n-(len+1)] = '\n';
+				logprintf(LOG_DEBUG, "socket write failed: %s", sendBuff);
+				sfree((void *)&sendBuff);
+				return -1;
+			}
+			ptr += bytes;
 		}
-		usleep(100);
+
+		if(strstr(sendBuff, "BEAT") == NULL) {
+			/* Change the delimiter into regular newlines */
+			sendBuff[n-len] = '\0';
+			sendBuff[n-(len+1)] = '\n';
+			logprintf(LOG_DEBUG, "socket write succeeded: %s", sendBuff);
+		}
+		sfree((void *)&sendBuff);
 	}
+	return n;
 }
 
-void socket_write_big(int sockfd, const char *msg, ...) {
-	va_list ap;
+void socket_rm_client(int i, struct socket_callback_t *socket_callback) {
+    struct sockaddr_in address;
+	int addrlen = sizeof(address);
+	int sd = socket_clients[i];
 
-	if(strlen(msg) > 0 && sockfd > 0) {
-		memset(sendBuff, '\0', BIG_BUFFER_SIZE);
-
-		va_start(ap, msg);
-		vsprintf(sendBuff, msg, ap);
-		va_end(ap);
-		strcat(sendBuff, "\n");
-
-		if(send(sockfd, sendBuff, strlen(sendBuff), MSG_NOSIGNAL) == -1) {
-			logprintf(LOG_DEBUG, "socket write failed: %s", sendBuff);
-			socket_close(sockfd);
-		} else {
-			if(strcmp(sendBuff, "BEAT\n") != 0) {
-				logprintf(LOG_DEBUG, "socket write succeeded: %s", sendBuff);
-			}
-		}
-		usleep(100);
-	}
+	//Somebody disconnected, get his details and print
+	getpeername(sd, (struct sockaddr*)&address, (socklen_t*)&addrlen);
+	logprintf(LOG_INFO, "client disconnected, ip %s, port %d", inet_ntoa(address.sin_addr), ntohs(address.sin_port));
+	if(socket_callback->client_disconnected_callback)
+		socket_callback->client_disconnected_callback(i);
+	//Close the socket and mark as 0 in list for reuse
+	shutdown(sd, 2);
+	close(sd);
+	socket_clients[i] = 0;
 }
 
 char *socket_read(int sockfd) {
-	memset(recvBuff, '\0', BUFFER_SIZE);
+	int bytes = 0;
+	int ptr = 0, n = 0, len = (int)strlen(EOSS);
+	fd_set fds;
+	char *message = NULL;
+	fcntl(sockfd, F_SETFL, O_NONBLOCK);
 
-	if(read(sockfd, recvBuff, BUFFER_SIZE) < 1) {
-		return NULL;
-	} else {
-		return recvBuff;
+	while(socket_loop) {
+		FD_ZERO(&fds);
+		FD_SET(sockfd, &fds);
+
+		do {
+			n = select(sockfd+1, &fds, NULL, NULL, 0);
+		} while(n == -1 && errno == EINTR && socket_loop);
+
+		if(n == -1) {
+			return NULL;
+		} else if(n > 0) {
+			if(FD_ISSET(sockfd, &fds)) {
+				bytes = recv(sockfd, recvBuff, BUFFER_SIZE, 0);
+				
+				if(bytes <= 0) {
+					return NULL;
+				} else {
+					ptr+=bytes;
+					if((message = realloc(message, (size_t)ptr+1)) == NULL) {
+						logprintf(LOG_ERR, "out of memory");
+						exit(EXIT_FAILURE);
+					}
+					memcpy(&message[(ptr-bytes)], recvBuff, (size_t)bytes);
+				}			
+
+				if(message && strlen(message) > 0) {
+					/* When a stream is larger then the buffer size, it has to contain
+					   the pilight delimiter to know when the stream ends. If the stream
+					   is shorter then the buffer size, we know we received the full stream */
+					int l = 0;
+					if((l = strncmp(&message[ptr-(len+1)], EOSS, (unsigned int)(len+1)) == 0) || ptr < BUFFER_SIZE) {
+						/* If the socket contains buffered TCP messages, separate them by 
+						   changing the delimiters into newlines */
+						if(ptr > strlen(message)) {
+							int i = 0;
+							for(i=0;i<ptr;i++) {
+								if(i+len < ptr && strncmp(&message[i], EOSS, (size_t)len) == 0 && message[i+len] == '\0') {
+									memmove(&message[i], &message[i+len], (size_t)(ptr-(i+len)));
+									ptr-=len;
+									message[i] = '\n';
+								}
+							}
+							message[ptr] = '\0';
+						} else {
+							if(l) {
+								message[ptr-(len+1)] = '\0'; // remove delimiter
+							} else {
+								message[ptr] = '\0';
+							}
+						}
+						return message;
+					}
+				}
+			}
+		}
 	}
-}
 
-char *socket_read_big(int sockfd) {
-	memset(recvBuff, '\0', BIG_BUFFER_SIZE);
-
-	if(read(sockfd, recvBuff, BIG_BUFFER_SIZE) < 1) {
-		return NULL;
-	} else {
-		return recvBuff;
-	}
+	return NULL;
 }
 
 void *socket_wait(void *param) {
 	struct socket_callback_t *socket_callback = (struct socket_callback_t *)param;
 
 	int activity;
-	int i, n, sd;
+	int i, sd;
     int max_sd;
     struct sockaddr_in address;
 	int socket_client;
 	int addrlen = sizeof(address);
 	fd_set readfds;
-	readBuff = malloc(BIG_BUFFER_SIZE);
-	
-	if(!sendBuff) {
-		sendBuff = malloc(BIG_BUFFER_SIZE);
-	}
-	if(!recvBuff) {
-		recvBuff = malloc(BIG_BUFFER_SIZE);
-	}	
 
 	while(socket_loop) {
 		do {
@@ -356,17 +428,16 @@ void *socket_wait(void *param) {
 			FD_ZERO(&readfds);
 
 			//add master socket to set
-			FD_SET((long unsigned int)socket_get_fd(), &readfds);
+			FD_SET(socket_get_fd(), &readfds);
 			max_sd = socket_get_fd();
 
 			//add child sockets to set
 			for(i=0;i<MAX_CLIENTS;i++) {
 				//socket descriptor
 				sd = socket_clients[i];
-
 				//if valid socket descriptor then add to read list
 				if(sd > 0)
-					FD_SET((long unsigned int)sd, &readfds);
+					FD_SET(sd, &readfds);
 
 				//highest file descriptor number, need it for the select function
 				if(sd > max_sd)
@@ -377,13 +448,14 @@ void *socket_wait(void *param) {
 		} while(activity == -1 && errno == EINTR && socket_loop);
 
         //If something happened on the master socket, then its an incoming connection
-        if(FD_ISSET((long unsigned int)socket_get_fd(), &readfds)) {
+        if(FD_ISSET(socket_get_fd(), &readfds)) {
             if((socket_client = accept(socket_get_fd(), (struct sockaddr *)&address, (socklen_t*)&addrlen))<0) {
                 logprintf(LOG_ERR, "failed to accept client");
                 exit(EXIT_FAILURE);
             }
 			if(socket_check_whitelist(inet_ntoa(address.sin_addr)) != 0) {
 				logprintf(LOG_INFO, "rejected client, ip: %s, port: %d", inet_ntoa(address.sin_addr), ntohs(address.sin_port));
+				shutdown(socket_client, 2);
 				close(socket_client);
 			} else {
 				//inform user of socket number - used in send and receive commands
@@ -391,6 +463,14 @@ void *socket_wait(void *param) {
 				logprintf(LOG_DEBUG, "client fd: %d", socket_client);
 				//send new connection accept message
 				//socket_write(socket_client, "{\"message\":\"accept connection\"}");
+
+				static struct linger linger = { 0, 0 };
+				socklen_t lsize = sizeof(struct linger);
+				setsockopt(socket_client, SOL_SOCKET, SO_LINGER, (void *)&linger, lsize); 
+				int flags = fcntl(socket_client, F_GETFL, 0);
+				if(flags != -1) {
+					fcntl(socket_client, F_SETFL, flags | O_NONBLOCK);
+				}
 
 				//add new socket to array of sockets
 				for(i=0;i<MAX_CLIENTS;i++) {
@@ -410,33 +490,25 @@ void *socket_wait(void *param) {
         for(i=0;i<MAX_CLIENTS;i++) {
 			sd = socket_clients[i];
 
-            if(FD_ISSET((long unsigned int)sd , &readfds)) {
-                //Check if it was for closing, and also read the incoming message
-				memset(readBuff, '\0', BUFFER_SIZE);
-
-                if((n = (int)read(sd, readBuff, BUFFER_SIZE-1)) == 0) {
-                    //Somebody disconnected, get his details and print
-                    getpeername(sd, (struct sockaddr*)&address, (socklen_t*)&addrlen);
-					logprintf(LOG_INFO, "client disconnected, ip %s, port %d", inet_ntoa(address.sin_addr), ntohs(address.sin_port));
-					if(socket_callback->client_disconnected_callback)
-						socket_callback->client_disconnected_callback(i);
-					//Close the socket and mark as 0 in list for reuse
-					close(sd);
-					socket_clients[i] = 0;
-                } else {
-                    //set the string terminating NULL byte on the end of the data read
-                    //readBuff[n] = '\0';
-
-					if(n > -1 && socket_callback->client_data_callback) {
-						char *pch = strtok(readBuff, "\n");
+			if(FD_ISSET(socket_clients[i] , &readfds)) {
+				FD_CLR(socket_clients[i], &readfds);
+				char *message = NULL;	
+				if((message = socket_read(sd))) {
+					if(socket_callback->client_data_callback) {
+						char buffer[strlen(message)+1];
+						strcpy(buffer, message);
+						char *pch = strtok(buffer, "\n");
 						while(pch) {
 							socket_callback->client_data_callback(i, pch);
 							pch = strtok(NULL, "\n");
 						}
-						sfree((void *)&pch);
 					}
-                }
-            }
+					sfree((void *)&message);
+				} else {
+					socket_rm_client(i, socket_callback);
+					i--;
+				}
+			}
         }
     }
 	return NULL;

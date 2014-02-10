@@ -94,6 +94,10 @@ int main(int argc, char **argv) {
 	log_level_set(LOG_NOTICE);
 
 	progname = malloc(13);
+	if(!progname) {
+		logprintf(LOG_ERR, "out of memory");
+		exit(EXIT_FAILURE);
+	}
 	strcpy(progname, "pilight-send");
 
 	struct options_t *options = NULL;
@@ -162,6 +166,10 @@ int main(int argc, char **argv) {
 			break;
 			case 'S':
 				server = realloc(server, strlen(args)+1);
+				if(!server) {
+					logprintf(LOG_ERR, "out of memory");
+					exit(EXIT_FAILURE);
+				}
 				strcpy(server, args);
 			break;
 			case 'P':
@@ -249,9 +257,21 @@ int main(int argc, char **argv) {
 				if(protocol->createCode) {
 					while(protocol->devices) {
 						struct pname_t *node = malloc(sizeof(struct pname_t));
+						if(!node) {
+							logprintf(LOG_ERR, "out of memory");
+							exit(EXIT_FAILURE);
+						}
 						node->name = malloc(strlen(protocol->devices->id)+1);
+						if(!node->name) {
+							logprintf(LOG_ERR, "out of memory");
+							exit(EXIT_FAILURE);
+						}
 						strcpy(node->name, protocol->devices->id);
 						node->desc = malloc(strlen(protocol->devices->desc)+1);
+						if(!node->desc) {
+							logprintf(LOG_ERR, "out of memory");
+							exit(EXIT_FAILURE);
+						}
 						strcpy(node->desc, protocol->devices->desc);
 						node->next = pname;
 						pname = node;
@@ -330,10 +350,10 @@ int main(int argc, char **argv) {
 				if((recvBuff = socket_read(sockfd))) {
 					json = json_decode(recvBuff);
 					json_find_string(json, "message", &message);
+					sfree((void *)&recvBuff);
 				} else {
 					goto close;
 				}
-				usleep(100);
 			}
 			switch(steps) {
 				case WELCOME:
@@ -354,6 +374,7 @@ int main(int argc, char **argv) {
 					char *output = json_stringify(json, NULL);
 					socket_write(sockfd, output);
 					sfree((void *)&output);
+					//usleep(300000);
 					goto close;
 				break;
 				case REJECT:
