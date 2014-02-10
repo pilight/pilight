@@ -51,7 +51,10 @@ int main(int argc, char **argv) {
 	log_shell_enable();
 	log_level_set(LOG_NOTICE);
 
-	progname = malloc(16);
+	if((progname = malloc(16)) == NULL) {
+		logprintf(LOG_ERR, "out of memory");
+		exit(EXIT_FAILURE);
+	}
 	strcpy(progname, "pilight-control");
 
 	struct options_t *options = NULL;
@@ -131,6 +134,10 @@ int main(int argc, char **argv) {
 			break;
 			case 'S':
 				server = realloc(server, strlen(optarg)+1);
+				if(!server) {
+					logprintf(LOG_ERR, "out of memory");
+					exit(EXIT_FAILURE);
+				}
 				strcpy(server, optarg);
 			break;
 			case 'P':
@@ -170,22 +177,13 @@ int main(int argc, char **argv) {
 	while(1) {
 		if(steps > WELCOME) {
 			/* Clear the receive buffer again and read the welcome message */
-			if(steps == CONFIG) {
-				if((recvBuff = socket_read_big(sockfd)) != NULL) {
-					json = json_decode(recvBuff);
-					json_find_string(json, "message", &message);
-				} else {
-					goto close;
-				}
+			if((recvBuff = socket_read(sockfd))) {
+				json = json_decode(recvBuff);
+				json_find_string(json, "message", &message);
+				sfree((void *)&recvBuff);
 			} else {
-				if((recvBuff = socket_read(sockfd)) != NULL) {
-					json = json_decode(recvBuff);
-					json_find_string(json, "message", &message);
-				} else {
-					goto close;
-				}
+				goto close;
 			}
-		usleep(100);
 		}
 		switch(steps) {
 			case WELCOME:

@@ -85,6 +85,11 @@ void *lm75Parse(void *param) {
 	int y = 0, interval = 10, temp_corr = 0, rc = 0;
 	char *stmp = NULL;
 	int firstrun = 1;
+	
+	if(!lm75data) {
+		logprintf(LOG_ERR, "out of memory");
+		exit(EXIT_FAILURE);
+	}
 
 	lm75data->nrid = 0;
 	lm75data->id = NULL;
@@ -108,7 +113,15 @@ void *lm75Parse(void *param) {
 		while(jchild) {
 			if(json_find_string(jchild, "id", &stmp) == 0) {
 				lm75data->id = realloc(lm75data->id, (sizeof(char *)*(size_t)(lm75data->nrid+1)));
+				if(!lm75data->id) {
+					logprintf(LOG_ERR, "out of memory");
+					exit(EXIT_FAILURE);
+				}
 				lm75data->id[lm75data->nrid] = malloc(strlen(stmp)+1);
+				if(!lm75data->id[lm75data->nrid]) {
+					logprintf(LOG_ERR, "out of memory");
+					exit(EXIT_FAILURE);
+				}
 				strcpy(lm75data->id[lm75data->nrid], stmp);
 				lm75data->nrid++;
 			}
@@ -123,6 +136,10 @@ void *lm75Parse(void *param) {
 	json_delete(json);
 #ifndef __FreeBSD__	
 	lm75data->fd = realloc(lm75data->fd, (sizeof(int)*(size_t)(lm75data->nrid+1)));
+	if(!lm75data->fd) {
+		logprintf(LOG_ERR, "out of memory");
+		exit(EXIT_FAILURE);
+	}
 	for(y=0;y<lm75data->nrid;y++) {
 		lm75data->fd[y] = wiringPiI2CSetup((int)strtol(lm75data->id[y], NULL, 16));
 	}

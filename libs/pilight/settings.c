@@ -40,9 +40,21 @@
 /* Add a string value to the settings struct */
 void settings_add_string(const char *name, char *value) {
 	struct settings_t *snode = malloc(sizeof(struct settings_t));
+	if(!snode) {
+		logprintf(LOG_ERR, "out of memory");
+		exit(EXIT_FAILURE);
+	}
 	snode->name = malloc(strlen(name)+1);
+	if(!snode->name) {
+		logprintf(LOG_ERR, "out of memory");
+		exit(EXIT_FAILURE);
+	}
 	strcpy(snode->name, name);
 	snode->value = malloc(strlen(value)+1);
+	if(!snode->value) {
+		logprintf(LOG_ERR, "out of memory");
+		exit(EXIT_FAILURE);
+	}
 	strcpy(snode->value, value);
 	snode->type = 2;
 	snode->next = settings;
@@ -52,11 +64,23 @@ void settings_add_string(const char *name, char *value) {
 /* Add an int value to the settings struct */
 void settings_add_number(const char *name, int value) {
 	struct settings_t *snode = malloc(sizeof(struct settings_t));
+	if(!snode) {
+		logprintf(LOG_ERR, "out of memory");
+		exit(EXIT_FAILURE);
+	}
 	char ctmp[256];
 	snode->name = malloc(strlen(name)+1);
+	if(!snode->name) {
+		logprintf(LOG_ERR, "out of memory");
+		exit(EXIT_FAILURE);
+	}
 	strcpy(snode->name, name);
 	sprintf(ctmp, "%d", value);
 	snode->value = malloc(strlen(ctmp)+1);
+	if(!snode->value) {
+		logprintf(LOG_ERR, "out of memory");
+		exit(EXIT_FAILURE);
+	}
 	strcpy(snode->value, ctmp);
 	snode->type = 1;
 	snode->next = settings;
@@ -136,8 +160,16 @@ int settings_parse(JsonNode *root) {
 
 #ifdef WEBSERVER
 	char *webgui_tpl = malloc(strlen(WEBGUI_TEMPLATE)+1);
+	if(!webgui_tpl) {
+		logprintf(LOG_ERR, "out of memory");
+		exit(EXIT_FAILURE);
+	}
 	strcpy(webgui_tpl, WEBGUI_TEMPLATE);
 	char *webgui_root = malloc(strlen(WEBSERVER_ROOT)+1);
+	if(!webgui_root) {
+		logprintf(LOG_ERR, "out of memory");
+		exit(EXIT_FAILURE);
+	}
 	strcpy(webgui_root, WEBSERVER_ROOT);
 #endif
 
@@ -254,6 +286,10 @@ int settings_parse(JsonNode *root) {
 				goto clear;
 			} else {
 				webgui_root = realloc(webgui_root, strlen(jsettings->string_)+1);
+				if(!webgui_root) {
+					logprintf(LOG_ERR, "out of memory");
+					exit(EXIT_FAILURE);
+				}
 				strcpy(webgui_root, jsettings->string_);
 				settings_add_string(jsettings->key, jsettings->string_);
 			}
@@ -292,6 +328,10 @@ int settings_parse(JsonNode *root) {
 				goto clear;
 			} else {
 				webgui_tpl = realloc(webgui_tpl, strlen(jsettings->string_)+1);
+				if(!webgui_tpl) {
+					logprintf(LOG_ERR, "out of memory");
+					exit(EXIT_FAILURE);
+				}
 				strcpy(webgui_tpl, jsettings->string_);
 				settings_add_string(jsettings->key, jsettings->string_);
 			}
@@ -322,6 +362,10 @@ int settings_parse(JsonNode *root) {
 
 			if(jsettings->string_) {
 				url = malloc(strlen(jsettings->string_)+1);
+				if(!url) {
+					logprintf(LOG_ERR, "out of memory");
+					exit(EXIT_FAILURE);
+				}
 				strcpy(url, jsettings->string_);
 				http_parse_url(url, &filename);
 			}
@@ -354,6 +398,10 @@ int settings_parse(JsonNode *root) {
 #ifdef WEBSERVER
 	if(webgui_tpl) {
 		char *tmp = malloc(strlen(webgui_root)+strlen(webgui_tpl)+13);
+		if(!tmp) {
+			logprintf(LOG_ERR, "out of memory");
+			exit(EXIT_FAILURE);
+		}
 		sprintf(tmp, "%s/%s/index.html", webgui_root, webgui_tpl);
 		if(settings_path_exists(tmp) != EXIT_SUCCESS) {
 			logprintf(LOG_ERR, "setting \"webgui-template\", template does not exists");
@@ -462,6 +510,10 @@ int settings_read(void) {
 int settings_set_file(char *settfile) {
 	if(access(settfile, R_OK | W_OK) != -1) {
 		settingsfile = realloc(settingsfile, strlen(settfile)+1);
+		if(!settingsfile) {
+			logprintf(LOG_ERR, "out of memory");
+			exit(EXIT_FAILURE);
+		}
 		strcpy(settingsfile, settfile);
 	} else {
 		fprintf(stderr, "%s: the settings file %s does not exists\n", progname, settfile);

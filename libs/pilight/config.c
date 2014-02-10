@@ -249,6 +249,10 @@ int config_update(char *protoname, JsonNode *json, JsonNode **out) {
 										if(strlen(ctmp) > 0 && is_valid) {
 											if(strcmp(sptr->values->value, ctmp) != 0) {
 												sptr->values->value = realloc(sptr->values->value, strlen(ctmp)+1);
+												if(!sptr->values->value) {
+													logprintf(LOG_ERR, "out of memory");
+													exit(EXIT_FAILURE);
+												}
 												strcpy(sptr->values->value, ctmp);
 											}
 
@@ -279,6 +283,10 @@ int config_update(char *protoname, JsonNode *json, JsonNode **out) {
 								if(strcmp(sptr->name, "state") == 0) {
 									if(strcmp(sptr->values->value, state) != 0) {
 										sptr->values->value = realloc(sptr->values->value, strlen(state)+1);
+										if(!sptr->values->value) {
+											logprintf(LOG_ERR, "out of memory");
+											exit(EXIT_FAILURE);
+										}
 										strcpy(sptr->values->value, state);
 										update = 1;
 									}
@@ -650,24 +658,48 @@ void config_save_setting(int i, JsonNode *jsetting, struct conf_devices_t *devic
 			jtmp = json_first_child(jsetting);
 			while(jtmp) {
 				snode = malloc(sizeof(struct conf_settings_t));
+				if(!snode) {
+					logprintf(LOG_ERR, "out of memory");
+					exit(EXIT_FAILURE);
+				}
 				snode->name = malloc(strlen(jsetting->key)+1);
+				if(!snode->name) {
+					logprintf(LOG_ERR, "out of memory");
+					exit(EXIT_FAILURE);
+				}
 				strcpy(snode->name, jsetting->key);			
 				snode->values = NULL;
 				snode->next = NULL;
 				if(jtmp->tag == JSON_OBJECT) {
 					JsonNode *jtmp1 = json_first_child(jtmp);	
 					while(jtmp1) {
-						vnode = malloc(sizeof(struct conf_values_t));			
+						vnode = malloc(sizeof(struct conf_values_t));
+						if(!vnode) {
+							logprintf(LOG_ERR, "out of memory");
+							exit(EXIT_FAILURE);
+						}
 						vnode->name = malloc(strlen(jtmp1->key)+1);
+						if(!vnode->name) {
+							logprintf(LOG_ERR, "out of memory");
+							exit(EXIT_FAILURE);
+						}
 						strcpy(vnode->name, jtmp1->key);
 						vnode->next = NULL;
 						if(jtmp1->tag == JSON_STRING) {
 							vnode->value = malloc(strlen(jtmp1->string_)+1);
+							if(!vnode->value) {
+								logprintf(LOG_ERR, "out of memory");
+								exit(EXIT_FAILURE);
+							}
 							strcpy(vnode->value, jtmp1->string_);
 							vnode->type = CONFIG_TYPE_STRING;
 						} else if(jtmp1->tag == JSON_NUMBER) {
 							sprintf(ctmp, "%d", (int)jtmp1->number_);
 							vnode->value = malloc(strlen(ctmp)+1);
+							if(!vnode->value) {
+								logprintf(LOG_ERR, "out of memory");
+								exit(EXIT_FAILURE);
+							}
 							strcpy(vnode->value, ctmp);
 							vnode->type = CONFIG_TYPE_NUMBER;	
 						}
@@ -703,7 +735,15 @@ void config_save_setting(int i, JsonNode *jsetting, struct conf_devices_t *devic
 		}
 	} else if(jsetting->tag == JSON_OBJECT) {
 		snode = malloc(sizeof(struct conf_settings_t));
+		if(!snode) {
+			logprintf(LOG_ERR, "out of memory");
+			exit(EXIT_FAILURE);
+		}
 		snode->name = malloc(strlen(jsetting->key)+1);
+		if(!snode->name) {
+			logprintf(LOG_ERR, "out of memory");
+			exit(EXIT_FAILURE);
+		}
 		strcpy(snode->name, jsetting->key);
 		snode->values = NULL;
 		snode->next = NULL;
@@ -711,19 +751,43 @@ void config_save_setting(int i, JsonNode *jsetting, struct conf_devices_t *devic
 		jtmp = json_first_child(jsetting);
 		while(jtmp) {
 			if(jtmp->tag == JSON_STRING) {		
-				vnode = malloc(sizeof(struct conf_values_t));			
+				vnode = malloc(sizeof(struct conf_values_t));
+				if(!vnode) {
+					logprintf(LOG_ERR, "out of memory");
+					exit(EXIT_FAILURE);
+				}
 				vnode->name = malloc(strlen(jtmp->key)+1);
+				if(!vnode->name) {
+					logprintf(LOG_ERR, "out of memory");
+					exit(EXIT_FAILURE);
+				}
 				strcpy(vnode->name, jtmp->key);			
 				vnode->value = malloc(strlen(jtmp->string_)+1);
+				if(!vnode->value) {
+					logprintf(LOG_ERR, "out of memory");
+					exit(EXIT_FAILURE);
+				}
 				strcpy(vnode->value, jtmp->string_);
 				vnode->type = CONFIG_TYPE_STRING;
 				vnode->next = NULL;
 			} else if(jtmp->tag == JSON_NUMBER) {
 				vnode = malloc(sizeof(struct conf_values_t));			
+				if(!vnode) {
+					logprintf(LOG_ERR, "out of memory");
+					exit(EXIT_FAILURE);
+				}
 				vnode->name = malloc(strlen(jtmp->key)+1);
+				if(!vnode->name) {
+					logprintf(LOG_ERR, "out of memory");
+					exit(EXIT_FAILURE);
+				}
 				strcpy(vnode->name, jtmp->key);			
 				sprintf(ctmp, "%d", (int)jtmp->number_);
 				vnode->value = malloc(strlen(ctmp)+1);
+				if(!vnode->value) {
+					logprintf(LOG_ERR, "out of memory");
+					exit(EXIT_FAILURE);
+				}
 				strcpy(vnode->value, ctmp);
 				vnode->type = CONFIG_TYPE_NUMBER;
 				vnode->next = NULL;
@@ -757,24 +821,52 @@ void config_save_setting(int i, JsonNode *jsetting, struct conf_devices_t *devic
 	} else {
 		/* New device settings node */
 		snode = malloc(sizeof(struct conf_settings_t));
+		if(!snode) {
+			logprintf(LOG_ERR, "out of memory");
+			exit(EXIT_FAILURE);
+		}
 		snode->name = malloc(strlen(jsetting->key)+1);
+		if(!snode->name) {
+			logprintf(LOG_ERR, "out of memory");
+			exit(EXIT_FAILURE);
+		}
 		strcpy(snode->name, jsetting->key);
 		snode->values = NULL;
 		snode->next = NULL;
 	
 		vnode = malloc(sizeof(struct conf_values_t));
+		if(!vnode) {
+			logprintf(LOG_ERR, "out of memory");
+			exit(EXIT_FAILURE);
+		}
 		int valid = 0;
 		/* Cast and store the new value */
 		if(jsetting->tag == JSON_STRING && json_find_string(jsetting->parent, jsetting->key, &stmp) == 0) {
 			vnode->value = malloc(strlen(stmp)+1);
+			if(!vnode->value) {
+				logprintf(LOG_ERR, "out of memory");
+				exit(EXIT_FAILURE);
+			}
 			vnode->name = malloc(4);
+			if(!vnode->name) {
+				logprintf(LOG_ERR, "out of memory");
+				exit(EXIT_FAILURE);
+			}
 			strcpy(vnode->value, stmp);
 			vnode->type = CONFIG_TYPE_STRING;
 			valid = 1;
 		} else if(jsetting->tag == JSON_NUMBER && json_find_number(jsetting->parent, jsetting->key, &itmp) == 0) {
 			sprintf(ctmp, "%d", itmp);
 			vnode->value = malloc(strlen(ctmp)+1);
+			if(!vnode->value) {
+				logprintf(LOG_ERR, "out of memory");
+				exit(EXIT_FAILURE);
+			}
 			vnode->name = malloc(4);
+			if(!vnode->name) {
+				logprintf(LOG_ERR, "out of memory");
+				exit(EXIT_FAILURE);
+			}
 			strcpy(vnode->value, ctmp);
 			vnode->type = CONFIG_TYPE_NUMBER;
 			valid = 1;
@@ -1393,14 +1485,26 @@ int config_parse_locations(JsonNode *jlocations, struct conf_locations_t *locati
 				}
 
 				dnode = malloc(sizeof(struct conf_devices_t));
+				if(!dnode) {
+					logprintf(LOG_ERR, "out of memory");
+					exit(EXIT_FAILURE);
+				}
 				if(strlen(pilight_uuid) > 0) {				
 					strcpy(dnode->dev_uuid, pilight_uuid);
 					strcpy(dnode->ori_uuid, pilight_uuid);
 				}
 				dnode->cst_uuid = 0;
 				dnode->id = malloc(strlen(jdevices->key)+1);
+				if(!dnode->id) {
+					logprintf(LOG_ERR, "out of memory");
+					exit(EXIT_FAILURE);
+				}
 				strcpy(dnode->id, jdevices->key);
 				dnode->name = malloc(strlen(name)+1);
+				if(!dnode->name) {
+					logprintf(LOG_ERR, "out of memory");
+					exit(EXIT_FAILURE);
+				}
 				strcpy(dnode->name, name);
 				dnode->settings = NULL;
 				dnode->next = NULL;
@@ -1444,9 +1548,21 @@ int config_parse_locations(JsonNode *jlocations, struct conf_locations_t *locati
 						goto clear;
 					} else {
 						struct protocols_t *pnode = malloc(sizeof(struct protocols_t));
+						if(!pnode) {
+							logprintf(LOG_ERR, "out of memory");
+							exit(EXIT_FAILURE);
+						}
 						pnode->listener = malloc(sizeof(struct protocol_t));
+						if(!pnode->listener) {
+							logprintf(LOG_ERR, "out of memory");
+							exit(EXIT_FAILURE);
+						}
 						memcpy(pnode->listener, protocol, sizeof(struct protocol_t));
 						pnode->name = malloc(strlen(jprotocol->string_)+1);
+						if(!pnode->name) {
+							logprintf(LOG_ERR, "out of memory");
+							exit(EXIT_FAILURE);
+						}
 						strcpy(pnode->name, jprotocol->string_);
 						pnode->next = NULL;
 						tmp_protocols = dnode->protocols;
@@ -1527,9 +1643,21 @@ int config_parse(JsonNode *root) {
 			}
 
 			lnode = malloc(sizeof(struct conf_locations_t));
+			if(!lnode) {
+				logprintf(LOG_ERR, "out of memory");
+				exit(EXIT_FAILURE);
+			}
 			lnode->id = malloc(strlen(jlocations->key)+1);
+			if(!lnode->id) {
+				logprintf(LOG_ERR, "out of memory");
+				exit(EXIT_FAILURE);
+			}
 			strcpy(lnode->id, jlocations->key);
 			lnode->name = malloc(strlen(name)+1);
+			if(!lnode->name) {
+				logprintf(LOG_ERR, "out of memory");
+				exit(EXIT_FAILURE);
+			}
 			strcpy(lnode->name, name);
 			lnode->devices = NULL;
 			lnode->next = NULL;
@@ -1653,12 +1781,12 @@ int config_write(char *content) {
 			logprintf(LOG_ERR, "cannot write config file: %s", configfile);
 			return EXIT_FAILURE;
 		}
-		if(strcmp(content, "{}") == 0) {
-			return EXIT_SUCCESS;
-		}
 		fseek(fp, 0L, SEEK_SET);
 		fwrite(content, sizeof(char), strlen(content), fp);
 		fclose(fp);
+		if(strcmp(content, "{}") == 0) {
+			return EXIT_SUCCESS;
+		}		
 	} else {
 		logprintf(LOG_ERR, "the config file %s does not exists\n", configfile);
 	}
@@ -1776,6 +1904,10 @@ int config_read() {
 int config_set_file(char *cfgfile) {
 	if(access(cfgfile, F_OK) != -1) {
 		configfile = realloc(configfile, strlen(cfgfile)+1);
+		if(!configfile) {
+			logprintf(LOG_ERR, "out of memory");
+			exit(EXIT_FAILURE);
+		}
 		strcpy(configfile, cfgfile);
 	} else {
 		logprintf(LOG_ERR, "the config file %s does not exists\n", cfgfile);

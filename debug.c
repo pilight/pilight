@@ -213,9 +213,17 @@ int main(int argc, char **argv) {
 	pid_t pid = 0;
 	
 	settingsfile = malloc(strlen(SETTINGS_FILE)+1);
+	if(!settingsfile) {
+		logprintf(LOG_ERR, "out of memory");
+		exit(EXIT_FAILURE);
+	}
 	strcpy(settingsfile, SETTINGS_FILE);	
 	
 	progname = malloc(15);
+	if(!progname) {
+		logprintf(LOG_ERR, "out of memory");
+		exit(EXIT_FAILURE);
+	}
 	strcpy(progname, "pilight-debug");
 
 	options_add(&options, 'H', "help", no_value, 0, NULL);
@@ -244,6 +252,10 @@ int main(int argc, char **argv) {
 			case 'S': 
 				if(access(args, F_OK) != -1) {
 					settingsfile = realloc(settingsfile, strlen(args)+1);
+					if(!settingsfile) {
+						logprintf(LOG_ERR, "out of memory");
+						exit(EXIT_FAILURE);
+					}
 					strcpy(settingsfile, args);
 					settings_set_file(args);
 				} else {

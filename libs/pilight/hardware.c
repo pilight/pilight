@@ -65,6 +65,10 @@ void hardware_init(void) {
 
 void hardware_register(hardware_t **hw) {
 	*hw = malloc(sizeof(struct hardware_t));
+	if(!*hw) {
+		logprintf(LOG_ERR, "out of memory");
+		exit(EXIT_FAILURE);
+	}
 	(*hw)->options = NULL;
 
 	(*hw)->init = NULL;
@@ -74,6 +78,10 @@ void hardware_register(hardware_t **hw) {
 	(*hw)->settings = NULL;
 	
 	struct hwlst_t *hnode = malloc(sizeof(struct hwlst_t));
+	if(!hnode) {
+		logprintf(LOG_ERR, "out of memory");
+		exit(EXIT_FAILURE);
+	}
 	hnode->listener = *hw;
 	hnode->next = hwlst;
 	hwlst = hnode;
@@ -81,6 +89,10 @@ void hardware_register(hardware_t **hw) {
 
 void hardware_set_id(hardware_t *hw, const char *id) {
 	hw->id = malloc(strlen(id)+1);	
+	if(!hw->id) {
+		logprintf(LOG_ERR, "out of memory");
+		exit(EXIT_FAILURE);
+	}
 	strcpy(hw->id, id);
 }
 
@@ -206,9 +218,17 @@ int hardware_parse(JsonNode *root) {
 #ifndef __FreeBSD__	
 					if(jvalues->tag == JSON_NUMBER) {
 						stmp = realloc(stmp, sizeof(jvalues->number_));
+						if(!stmp) {
+							logprintf(LOG_ERR, "out of memory");
+							exit(EXIT_FAILURE);
+						}
 						sprintf(stmp, "%d", (int)jvalues->number_);
 					} else if(jvalues->tag == JSON_STRING) {
 						stmp = realloc(stmp, strlen(jvalues->string_)+1);
+						if(!stmp) {
+							logprintf(LOG_ERR, "out of memory");
+							exit(EXIT_FAILURE);
+						}
 						strcpy(stmp, jvalues->string_);
 					}
 					reti = regcomp(&regex, hw_options->mask, REG_EXTENDED);
@@ -266,6 +286,10 @@ int hardware_parse(JsonNode *root) {
 			}
 			
 			hnode = malloc(sizeof(struct conf_hardware_t));
+			if(!hnode) {
+				logprintf(LOG_ERR, "out of memory");
+				exit(EXIT_FAILURE);
+			}
 			hnode->hardware = hardware;
 			hnode->next = conf_hardware;
 			conf_hardware = hnode;
@@ -337,6 +361,10 @@ int hardware_read(void) {
 int hardware_set_file(char *file) {
 	if(access(file, R_OK | W_OK) != -1) {
 		hwfile = realloc(hwfile, strlen(file)+1);
+		if(!hwfile) {
+			logprintf(LOG_ERR, "out of memory");
+			exit(EXIT_FAILURE);
+		}
 		strcpy(hwfile, file);
 	} else {
 		fprintf(stderr, "%s: the hardware file %s does not exists\n", progname, file);
