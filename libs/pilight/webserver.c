@@ -32,8 +32,7 @@
 
 #include "../../pilight.h"
 #include "common.h"
-#include "../websockets/libwebsockets.h"
-#include "../websockets/private-libwebsockets.h"
+#include "mongoose.h"
 #include "config.h"
 #include "gc.h"
 #include "log.h"
@@ -54,14 +53,13 @@ unsigned short webserver_loop = 1;
 char *webserver_root = NULL;
 char *webgui_tpl = NULL;
 unsigned char alphabet[64] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+struct mg_server *mgserver = NULL;
 
 int sockfd = 0;
 char *sockReadBuff = NULL;
-char *syncBuff = NULL;
 unsigned char *sockWriteBuff = NULL;
 
-char *ext = NULL;
-char *server;
+char *server = NULL;
 
 typedef enum {
 	WELCOME,
@@ -69,20 +67,6 @@ typedef enum {
 	REJECT,
 	SYNC
 } steps_t;
-
-struct per_session_data__http {
-	int free;
-	int cached;
-	char *request;
-	unsigned char *bytes;
-	unsigned short loggedin;
-};
-
-struct libwebsocket_protocols libwebsocket_protocols[] = {
-	{ "http-only", webserver_callback_http, sizeof(struct per_session_data__http), 0 },
-	{ "data", webserver_callback_data, 0, 0 },
-	{ NULL, NULL, 0, 0 }
-};
 
 typedef struct webqueue_t {
 	char *message;
@@ -105,10 +89,8 @@ int webqueue_number = 0;
 int webserver_gc(void) {
 	webserver_loop = 0;
 	socket_close(sockfd);
-	sfree((void *)&syncBuff);
 	sfree((void *)&sockWriteBuff);
 	sfree((void *)&sockReadBuff);
-	sfree((void *)&ext);
 	if(webserver_root) {
 		sfree((void *)&webserver_root);
 	}
@@ -155,16 +137,6 @@ void webserver_create_header(unsigned char **p, const char *message, char *mimet
 		len);
 }
 
-void webserver_create_401(unsigned char **p) {
-	*p += sprintf((char *)*p,
-		"HTTP/1.1 401 Authorization Required\r\n"
-		"WWW-Authenticate: Basic realm=\"pilight\"\r\n"
-		"Server: pilight\r\n"
-		"Content-Length: 40\r\n"
-		"Content-Type: text/html\r\n\r\n");
-	*p += sprintf((char *)*p, "401 Authorization Required");
-}
-
 void webserver_create_404(const char *in, unsigned char **p) {
 	char mimetype[] = "text/html";
 	webserver_create_header(p, "404 Not Found", mimetype, (unsigned int)(202+strlen((const char *)in)));
@@ -178,61 +150,6 @@ void webserver_create_404(const char *in, unsigned char **p) {
 		(const char *)in);
 }
 
-int base64decode(unsigned char *dest, unsigned char *src, int l) {
-	static char inalphabet[256], decoder[256];
-	int i, bits, c, char_count;
-	int rpos;
-	int wpos = 0;
-
-	for(i=(sizeof alphabet)-1;i>=0;i--) {
-		inalphabet[alphabet[i]] = 1;
-		decoder[alphabet[i]] = (char)i;
-	}
-
-	char_count = 0;
-	bits = 0;
-	for(rpos=0;rpos<l;rpos++) {
-		c = src[rpos];
-
-		if(c == '=') {
-			break;
-		}
-
-		if(c > 255 || !inalphabet[c]) {
-			continue;
-		}
-
-		bits += decoder[c];
-		char_count++;
-		if(char_count < 4) {
-			bits <<= 6;
-		} else {
-			dest[wpos++] = (unsigned char)(bits >> 16);
-			dest[wpos++] = (unsigned char)((bits >> 8) & 0xff);
-			dest[wpos++] = (unsigned char)(bits & 0xff);
-			bits = 0;
-			char_count = 0;
-		}
-	}
-
-	switch(char_count) {
-		case 1:
-			return -1;
-		break;
-		case 2:
-			dest[wpos++] = (unsigned char)(bits >> 10);
-		break;
-		case 3:
-			dest[wpos++] = (unsigned char)(bits >> 16);
-			dest[wpos++] = (unsigned char)((bits >> 8) & 0xff);
-		break;
-		default:
-		break;
-	}
-
-	return wpos;
-}
-
 char *webserver_mimetype(const char *str) {
 	char *mimetype = malloc(strlen(str)+1);
 	if(!mimetype) {
@@ -243,151 +160,90 @@ char *webserver_mimetype(const char *str) {
 	strcpy(mimetype, str);
 	return mimetype;
 }
+static int webserver_sockets_callback(struct mg_connection *c) {
+	if(c->is_websocket) {
+		mg_websocket_write(c, 1, (char *)c->callback_param, strlen((char *)c->callback_param));
+	}
+	return MG_REQUEST_PROCESSED;
+}
 
-int webserver_callback_http(struct libwebsocket_context *webcontext, struct libwebsocket *wsi, enum libwebsocket_callback_reasons reason, void *user, void *in, size_t len) {
-	int n, m;
+static int webserver_auth_handler(struct mg_connection *conn) {
+	if(webserver_authentication == 1 && webserver_username != NULL && webserver_password != NULL) {
+		return mg_authorize_input(conn, webserver_username, webserver_password, mg_get_option(mgserver, "auth_domain"));
+	} else {
+		return MG_AUTH_OK;
+	}
+}
+
+static int webserver_request_handler(struct mg_connection *conn) {
+	char *request = NULL;
+	char *ext = NULL;
+	char *mimetype = NULL;
+	int size = 0;
 	unsigned char *p;
 	static unsigned char buffer[4096];
-	int size;
-	struct per_session_data__http *pss = (struct per_session_data__http *)user;
-	char *request = NULL;
-	char *mimetype = NULL;
 
-	switch(reason) {
-		case LWS_CALLBACK_HTTP:
-			if(pss->loggedin == 0 && webserver_authentication == 1 && webserver_username != NULL && webserver_password != NULL) {
-				/* Check if authorization header field was given and extract username and password */
-				char *pch = strtok((char *)webcontext->service_buffer, "\r\n");
-				char encpass[1024] = {'\0'};
-				char decpass[1024] = {'\0'};
-				char username[512] = {'\0'};
-				char password[512] = {'\0'};
-
-				while(pch) {
-					sscanf(pch, "Authorization: Basic%*[ \n\t]%s", encpass);
-					if(strlen(encpass) > 0) {
-						base64decode((unsigned char *)decpass, (unsigned char *)encpass, (int)strlen(encpass));
-						break;
-					}
-					pch = strtok(NULL, "\r\n");
-				}
-				if(strlen(decpass) > 0) {
-					int error = 0;
-					pch = strtok(decpass, ":");
-					if(pch != NULL) {
-						strcpy(&username[0], pch);
-					} else {
-						error = 1;
-					}
-					pch = strtok(NULL, ":");
-					if(pch != NULL) {
-						strcpy(&password[0], pch);
-					} else {
-						error = 1;
-					};
-					if(error == 0 && strcmp(username, webserver_username) == 0 && strcmp(password, webserver_password) == 0) {
-						pss->loggedin = 1;
-					}
-				}
-				if(pss->loggedin == 0) {
-					p = buffer;
-					webserver_create_401(&p);
-					libwebsocket_write(wsi, buffer, (size_t)(p-buffer), LWS_WRITE_HTTP);
-					return -1;
-				}
+	if(!conn->is_websocket) {
+		if(strcmp(conn->uri, "/send") == 0) {
+			if(conn->query_string != NULL) {
+				char out[strlen(conn->query_string)];
+				webserver_urldecode(conn->query_string, out);
+				socket_write(sockfd, out);
+				mg_printf_data(conn, "{\"message\":\"success\"}");
 			}
-
-			/* If the webserver didn't request a file, serve the index.html */
-			if(strcmp((const char *)in, "/") == 0) {
-				request = malloc(strlen(webserver_root)+strlen(webgui_tpl)+14);
-				if(!request) {
-					logprintf(LOG_ERR, "out of memory");
-					exit(EXIT_FAILURE);
-				}
-				memset(request, '\0', strlen(webserver_root)+strlen(webgui_tpl)+14);
-				/* Check if the webserver_root is terminated by a slash. If not, than add it */
-				if(webserver_root[strlen(webserver_root)-1] == '/') {
-#ifdef __FreeBSD__
-					sprintf(request, "%s%s/%s", webserver_root, webgui_tpl, "index.html");
-#else
-					sprintf(request, "%s%s%s", webserver_root, webgui_tpl, "index.html");
-#endif
-				} else {
-					sprintf(request, "%s/%s%s", webserver_root, webgui_tpl, "/index.html");
-				}
-			} else {
-				if(strcmp((char *)in, "/send") == 0) {
-					char out[strlen((char *)in)];
-					webserver_urldecode(&((char *)in)[6], out);
-					socket_write(sockfd, out);
-					p = buffer;
-					char *output = malloc(22);
-					if(!output) {
-						logprintf(LOG_ERR, "out of memory");
-						exit(EXIT_FAILURE);
-					}
-					strcpy(output, "{\"message\":\"success\"}");
-					size = (int)strlen(output)+1;
-					mimetype = webserver_mimetype("text/plain");
-					webserver_create_header(&p, "200 OK", mimetype, (unsigned int)size);
-					sfree((void *)&mimetype);
-
-					libwebsocket_write(wsi, buffer, (size_t)(p-buffer), LWS_WRITE_HTTP);
-					pss->bytes = (unsigned char *)output;
-					pss->free = 1;
-					pss->cached = 0;
-					pss->request = NULL;
-					libwebsocket_callback_on_writable(webcontext, wsi);
-					break;
-				} else if(strcmp((char *)in, "/config") == 0) {
-					JsonNode *jsend = config_broadcast_create();
-					char *output = json_stringify(jsend, NULL);
-					p = buffer;
-					size = (int)strlen(output);
-					mimetype = webserver_mimetype("text/plain");
-					webserver_create_header(&p, "200 OK", mimetype, (unsigned int)size);
-					sfree((void *)&mimetype);
-					json_delete(jsend);
-					jsend = NULL;
-					
-					libwebsocket_write(wsi, buffer, (size_t)(p-buffer), LWS_WRITE_HTTP);
-					pss->bytes = (unsigned char *)output;
-					pss->free = 1;
-					pss->cached = 0;
-					pss->request = NULL;
-					libwebsocket_callback_on_writable(webcontext, wsi);
-					break;
-				}
-
-				size_t wlen = strlen(webserver_root)+strlen(webgui_tpl)+strlen((const char *)in)+2;
-				request = malloc(wlen);
-				if(!request) {
-					logprintf(LOG_ERR, "out of memory");
-					exit(EXIT_FAILURE);
-				}
-				memset(request, '\0', wlen);
-				/* If a file was requested add it to the webserver path to create the absolute path */
-				if(webserver_root[strlen(webserver_root)-1] == '/') {
-					if(((char *)in)[0] == '/')
-						sprintf(request, "%s%s%s", webserver_root, webgui_tpl, (char *)in);
-					else
-						sprintf(request, "%s%s/%s", webserver_root, webgui_tpl, (char *)in);
-				} else {
-					if(((char *)in)[0] == '/')
-						sprintf(request, "%s/%s%s", webserver_root, webgui_tpl, (const char *)in);
-					else
-						sprintf(request, "%s/%s/%s", webserver_root, webgui_tpl, (const char *)in);
-				}
-			}
-
-			char *dot = NULL;
-			/* Retrieve the extension of the requested file and create a mimetype accordingly */
-			dot = strrchr(request, '.');
-			if(!dot || dot == request) {
-				sfree((void *)request);
+			return MG_REQUEST_PROCESSED;
+		} else if(strcmp(conn->uri, "/config") == 0) {
+			JsonNode *jsend = config_broadcast_create();
+			char *output = json_stringify(jsend, NULL);
+			mg_printf_data(conn, output);
+			json_delete(jsend);
+			jsend = NULL;
+			return MG_REQUEST_PROCESSED;
+		} else if(strcmp(conn->uri, "/") == 0) {
+			request = malloc(strlen(webserver_root)+strlen(webgui_tpl)+14);
+			if(!request) {
+				logprintf(LOG_ERR, "out of memory");
 				return -1;
 			}
+			memset(request, '\0', strlen(webserver_root)+strlen(webgui_tpl)+14);
+			/* Check if the webserver_root is terminated by a slash. If not, than add it */
+			if(webserver_root[strlen(webserver_root)-1] == '/') {
+#ifdef __FreeBSD__
+				sprintf(request, "%s%s/%s", webserver_root, webgui_tpl, "index.html");
+#else
+				sprintf(request, "%s%s%s", webserver_root, webgui_tpl, "index.html");
+#endif
+			} else {
+				sprintf(request, "%s/%s/%s", webserver_root, webgui_tpl, "/index.html");
+			}
+		} else {
+			size_t wlen = strlen(webserver_root)+strlen(webgui_tpl)+strlen(conn->uri)+2;
+			request = malloc(wlen);
+			if(!request) {
+				logprintf(LOG_ERR, "out of memory");
+				exit(EXIT_FAILURE);
+			}
+			memset(request, '\0', wlen);
+			/* If a file was requested add it to the webserver path to create the absolute path */
+			if(webserver_root[strlen(webserver_root)-1] == '/') {
+				if(conn->uri[0] == '/')
+					sprintf(request, "%s%s%s", webserver_root, webgui_tpl, conn->uri);
+				else
+					sprintf(request, "%s%s/%s", webserver_root, webgui_tpl, conn->uri);
+			} else {
+				if(conn->uri[0] == '/')
+					sprintf(request, "%s/%s%s", webserver_root, webgui_tpl, conn->uri);
+				else
+					sprintf(request, "%s/%s/%s", webserver_root, webgui_tpl, conn->uri);
+			}
+		}
 
+		char *dot = NULL;
+		/* Retrieve the extension of the requested file and create a mimetype accordingly */
+		dot = strrchr(request, '.');
+		if(!dot || dot == request) {
+			mimetype = webserver_mimetype("text/plain");
+		} else {
 			ext = realloc(ext, strlen(dot)+1);
 			if(!ext) {
 				logprintf(LOG_ERR, "out of memory");
@@ -411,264 +267,59 @@ int webserver_callback_http(struct libwebsocket_context *webcontext, struct libw
 			} else if(strcmp(ext, "js") == 0) {
 				mimetype = webserver_mimetype("text/javascript");
 			}
+		}
 
-			p = buffer;
-			/* If webserver caching is enabled, first load all files in the memory */
-			if(fcache_get_size(request, &size) != 0) {
-				if((fcache_add(request)) != 0) {
-					logprintf(LOG_NOTICE, "(webserver) could not cache %s", request);
-					webserver_create_404((const char *)in, &p);
-					libwebsocket_write(wsi, buffer, (size_t)(p-buffer), LWS_WRITE_HTTP);
-					sfree((void *)&mimetype);
-					sfree((void *)&request);
-					return -1;
-				}
-			}
-
-			/* Check if a file was succesfully stored in memory */
-			if(fcache_get_size(request, &size) == 0) {
-
-				webserver_create_header(&p, "200 OK", mimetype, (unsigned int)size);
-				libwebsocket_write(wsi, buffer, (size_t)(p-buffer), LWS_WRITE_HTTP);
-
-				pss->bytes = fcache_get_bytes(request);
-				pss->free = 0;
-				pss->cached = 1;
-				pss->request = malloc(strlen(request)+1);
-				if(!pss->request) {
-					logprintf(LOG_ERR, "out of memory");
-					exit(EXIT_FAILURE);
-				}
-				strcpy(pss->request, request);
-				libwebsocket_callback_on_writable(webcontext, wsi);				
-				
+		p = buffer;
+		/* If webserver caching is enabled, first load all files in the memory */
+		if(fcache_get_size(request, &size) != 0) {
+			if((fcache_add(request)) != 0) {
+				logprintf(LOG_NOTICE, "(webserver) could not cache %s", request);
+				webserver_create_404(conn->uri, &p);
+				mg_write(conn, buffer, (int)(p-buffer));
 				sfree((void *)&mimetype);
 				sfree((void *)&request);
-				break;
+				return MG_REQUEST_PROCESSED;
+			}
+		}
+		/* Check if a file was succesfully stored in memory */
+		if(fcache_get_size(request, &size) == 0) {
+			webserver_create_header(&p, "200 OK", mimetype, (unsigned int)size);
+			mg_write(conn, buffer, (int)(p-buffer));
+			mg_write(conn, fcache_get_bytes(request), size);
+			if(!webserver_cache) {
+				fcache_rm(request);
 			}
 			sfree((void *)&mimetype);
 			sfree((void *)&request);
-		break;
-		case LWS_CALLBACK_HTTP_BODY:
-		break;
-		case LWS_CALLBACK_HTTP_BODY_COMPLETION:
-		case LWS_CALLBACK_HTTP_FILE_COMPLETION:
-		return -1;
-		case LWS_CALLBACK_HTTP_WRITEABLE:
-			wsi->u.http.filelen = strlen((char *)pss->bytes);
-			n = LWS_MAX_SOCKET_IO_BUF;
-
-			do {
-				if(wsi->u.http.filelen-wsi->u.http.filepos < n) {
-					n = (int)(wsi->u.http.filelen-wsi->u.http.filepos);
-				} else {
-					n = sizeof(buffer);
-				}
-				memcpy(buffer, &pss->bytes[wsi->u.http.filepos], (size_t)n);
-
-				if(n > 0) {
-					m = libwebsocket_write(wsi, buffer, (size_t)n, LWS_WRITE_HTTP);
-
-					if(m < 0) {
-						goto bail;
-					}
-
-					wsi->u.http.filepos += (long unsigned int)m;
-					if(m != n) {
-						wsi->u.http.filepos += (long unsigned int)(m - n);
-					}
-				}
-
-				if(n < 0) {
-					goto bail;
-				}
-
-				if(n == 0) {
-					goto flush_bail;
-				}
-
-				if(wsi->u.http.filelen == wsi->u.http.filepos) {
-					goto bail;
-				}
-			} while (!lws_send_pipe_choked(wsi));
-			libwebsocket_callback_on_writable(webcontext, wsi);
-		flush_bail:
-			if(lws_send_pipe_choked(wsi)) {
-				libwebsocket_callback_on_writable(webcontext, wsi);
-				break;
-			}
-		bail:
-			if(pss->free == 1) {
-				sfree((void *)&pss->bytes);
-			}
-			if(pss->cached) {
-				if(!webserver_cache) {
-					fcache_rm(pss->request);
-				}
-				sfree((void *)&pss->request);
-			}
-			return -1;
-		case LWS_CALLBACK_FILTER_NETWORK_CONNECTION:
-			if((int)(intptr_t)in > 0) {
-				struct sockaddr_in address;
-				int addrlen = sizeof(address);
-				getpeername((int)(intptr_t)in, (struct sockaddr*)&address, (socklen_t*)&addrlen);
-				if(socket_check_whitelist(inet_ntoa(address.sin_addr)) != 0) {
-					logprintf(LOG_INFO, "rejected client, ip: %s, port: %d", inet_ntoa(address.sin_addr), ntohs(address.sin_port));
-					return -1;
-				} else {
-					logprintf(LOG_INFO, "client connected, ip %s, port %d", inet_ntoa(address.sin_addr), ntohs(address.sin_port));
-					return 0;
-				}
-			}
-		break;
-		case LWS_CALLBACK_ESTABLISHED:
-		case LWS_CALLBACK_CLIENT_CONNECTION_ERROR:
-		case LWS_CALLBACK_CLIENT_FILTER_PRE_ESTABLISH:
-		case LWS_CALLBACK_CLIENT_ESTABLISHED:
-		case LWS_CALLBACK_CLOSED:
-		case LWS_CALLBACK_CLOSED_HTTP:
-		case LWS_CALLBACK_CLIENT_RECEIVE:
-		case LWS_CALLBACK_CLIENT_RECEIVE_PONG:
-		case LWS_CALLBACK_CLIENT_WRITEABLE:
-		case LWS_CALLBACK_FILTER_PROTOCOL_CONNECTION:
-		case LWS_CALLBACK_OPENSSL_LOAD_EXTRA_CLIENT_VERIFY_CERTS:
-		case LWS_CALLBACK_OPENSSL_LOAD_EXTRA_SERVER_VERIFY_CERTS:
-		case LWS_CALLBACK_OPENSSL_PERFORM_CLIENT_CERT_VERIFICATION:
-		case LWS_CALLBACK_CLIENT_APPEND_HANDSHAKE_HEADER:
-		case LWS_CALLBACK_CONFIRM_EXTENSION_OKAY:
-		case LWS_CALLBACK_CLIENT_CONFIRM_EXTENSION_SUPPORTED:
-		case LWS_CALLBACK_PROTOCOL_INIT:
-		case LWS_CALLBACK_PROTOCOL_DESTROY:
-		case LWS_CALLBACK_ADD_POLL_FD:
-		case LWS_CALLBACK_DEL_POLL_FD:
-		case LWS_CALLBACK_SET_MODE_POLL_FD:
-		case LWS_CALLBACK_CLEAR_MODE_POLL_FD:
-		case LWS_CALLBACK_RECEIVE:
-		case LWS_CALLBACK_SERVER_WRITEABLE:
-		case LWS_CALLBACK_FILTER_HTTP_CONNECTION:
-		case LWS_CALLBACK_GET_THREAD_ID:
-		case LWS_CALLBACK_LOCK_POLL:
-		case LWS_CALLBACK_UNLOCK_POLL:
-		default:
-		break;
-	}
-
-	return 0;
-}
-
-int webserver_callback_data(struct libwebsocket_context *webcontext, struct libwebsocket *wsi, enum libwebsocket_callback_reasons reason, void *user, void *in, size_t len) {
-	int m;
-	switch(reason) {
-	case LWS_CALLBACK_RECEIVE:
-			if((int)len < 4) {
-				return -1;
-			} else {
-				if(json_validate((char *)in) == true) {
-					JsonNode *json = json_decode((char *)in);
-					char *message = NULL;
-
-					if(json_find_string(json, "message", &message) != -1) {
-						if(strcmp(message, "request config") == 0) {
-
-							JsonNode *jsend = config_broadcast_create();
-							char *output = json_stringify(jsend, NULL);
-							size_t output_len = strlen(output);
-							/* This PRE_PADDIGN and POST_PADDING is an requirement for LWS_WRITE_TEXT */
-							sockWriteBuff = realloc(sockWriteBuff, LWS_SEND_BUFFER_PRE_PADDING + output_len + LWS_SEND_BUFFER_POST_PADDING);
-							if(!sockWriteBuff) {
-								logprintf(LOG_ERR, "out of memory");
-								exit(EXIT_FAILURE);
-							}
-							memset(sockWriteBuff, '\0', sizeof(*sockWriteBuff));
- 	  						memcpy(&sockWriteBuff[LWS_SEND_BUFFER_PRE_PADDING], output, output_len);
-							libwebsocket_write(wsi, &sockWriteBuff[LWS_SEND_BUFFER_PRE_PADDING], output_len, LWS_WRITE_TEXT);
-							sfree((void *)&output);
-							json_delete(jsend);
-						} else if(strcmp(message, "send") == 0) {
-							/* Write all codes coming from the webserver to the daemon */
-							socket_write(sockfd, (char *)in);
-						}
-					}
-					json_delete(json);
-				}
-			}
-			return 0;
-		break;
-		case LWS_CALLBACK_SERVER_WRITEABLE: {
-			if(syncBuff) {
-				/* Push the incoming message to the webgui */
-				size_t l = strlen(syncBuff);
-
-				/* This PRE_PADDIGN and POST_PADDING is an requirement for LWS_WRITE_TEXT */
-				sockWriteBuff = realloc(sockWriteBuff, LWS_SEND_BUFFER_PRE_PADDING + l + LWS_SEND_BUFFER_POST_PADDING);
-				if(!sockWriteBuff) {
-					logprintf(LOG_ERR, "out of memory");
-					exit(EXIT_FAILURE);
-				}
-				memset(sockWriteBuff, '\0', sizeof(*sockWriteBuff));
-				memcpy(&sockWriteBuff[LWS_SEND_BUFFER_PRE_PADDING], syncBuff, l);
-				m = libwebsocket_write(wsi, &sockWriteBuff[LWS_SEND_BUFFER_PRE_PADDING], l, LWS_WRITE_TEXT);
-				/*
-				 * It seems like libwebsocket_write already does memory freeing
-				 */
-				if (m < l) {
-					logprintf(LOG_ERR, "(webserver) %d writing to socket", l);
-					return -1;
-				}
-				return 0;
-			}
 		}
-		break;
-		case LWS_CALLBACK_FILTER_NETWORK_CONNECTION:
-			if((int)(intptr_t)in > 0) {
-				struct sockaddr_in address;
-				int addrlen = sizeof(address);
-				getpeername((int)(intptr_t)in, (struct sockaddr*)&address, (socklen_t*)&addrlen);
-				if(socket_check_whitelist(inet_ntoa(address.sin_addr)) != 0) {
-					logprintf(LOG_INFO, "rejected client, ip: %s, port: %d", inet_ntoa(address.sin_addr), ntohs(address.sin_port));
-					return -1;
-				} else {
-					logprintf(LOG_INFO, "client connected, ip %s, port %d", inet_ntoa(address.sin_addr), ntohs(address.sin_port));
-					return 0;
+		sfree((void *)&mimetype);
+		sfree((void *)&request);
+	} else {
+		char input[conn->content_len+1];
+		strncpy(input, conn->content, conn->content_len);
+		input[conn->content_len] = '\0';
+
+		if(json_validate(input) == true) {
+			JsonNode *json = json_decode(input);
+			char *message = NULL;
+			if(json_find_string(json, "message", &message) != -1) {
+				if(strcmp(message, "request config") == 0) {
+					JsonNode *jsend = config_broadcast_create();
+					char *output = json_stringify(jsend, NULL);
+					size_t output_len = strlen(output);
+					mg_websocket_write(conn, 1, output, output_len);
+					sfree((void *)&output);
+					json_delete(jsend);
+				} else if(strcmp(message, "send") == 0) {
+					/* Write all codes coming from the webserver to the daemon */
+					socket_write(sockfd, input);
 				}
 			}
-		break;
-		case LWS_CALLBACK_HTTP:
-		case LWS_CALLBACK_HTTP_FILE_COMPLETION:
-		case LWS_CALLBACK_HTTP_WRITEABLE:
-		case LWS_CALLBACK_ESTABLISHED:
-		case LWS_CALLBACK_CLIENT_CONNECTION_ERROR:
-		case LWS_CALLBACK_CLIENT_FILTER_PRE_ESTABLISH:
-		case LWS_CALLBACK_CLIENT_ESTABLISHED:
-		case LWS_CALLBACK_CLOSED:
-		case LWS_CALLBACK_CLOSED_HTTP:
-		case LWS_CALLBACK_CLIENT_RECEIVE:
-		case LWS_CALLBACK_CLIENT_RECEIVE_PONG:
-		case LWS_CALLBACK_CLIENT_WRITEABLE:
-		case LWS_CALLBACK_FILTER_PROTOCOL_CONNECTION:
-		case LWS_CALLBACK_OPENSSL_LOAD_EXTRA_CLIENT_VERIFY_CERTS:
-		case LWS_CALLBACK_OPENSSL_LOAD_EXTRA_SERVER_VERIFY_CERTS:
-		case LWS_CALLBACK_OPENSSL_PERFORM_CLIENT_CERT_VERIFICATION:
-		case LWS_CALLBACK_CLIENT_APPEND_HANDSHAKE_HEADER:
-		case LWS_CALLBACK_CONFIRM_EXTENSION_OKAY:
-		case LWS_CALLBACK_CLIENT_CONFIRM_EXTENSION_SUPPORTED:
-		case LWS_CALLBACK_PROTOCOL_INIT:
-		case LWS_CALLBACK_PROTOCOL_DESTROY:
-		case LWS_CALLBACK_ADD_POLL_FD:
-		case LWS_CALLBACK_DEL_POLL_FD:
-		case LWS_CALLBACK_SET_MODE_POLL_FD:
-		case LWS_CALLBACK_CLEAR_MODE_POLL_FD:
-		case LWS_CALLBACK_HTTP_BODY:
-		case LWS_CALLBACK_HTTP_BODY_COMPLETION:
-		case LWS_CALLBACK_FILTER_HTTP_CONNECTION:
-		case LWS_CALLBACK_GET_THREAD_ID:
-		case LWS_CALLBACK_LOCK_POLL:
-		case LWS_CALLBACK_UNLOCK_POLL:
-		default:
-		break;
+			json_delete(json);
+		}
+		return MG_CLIENT_CONTINUE;
 	}
-	return 0;
+	return MG_REQUEST_PROCESSED;
 }
 
 void webserver_queue(char *message) {
@@ -704,7 +355,7 @@ void *webserver_clientize(void *param) {
 	struct ssdp_list_t *ssdp_list = NULL;
 	int standalone = 0;
 	
-	settings_find_number("standalone", &standalone);
+	// settings_find_number("standalone", &standalone);
 	if(ssdp_seek(&ssdp_list) == -1 || standalone == 1) {
 		logprintf(LOG_DEBUG, "no pilight ssdp connections found");
 		server = malloc(10);
@@ -727,18 +378,12 @@ void *webserver_clientize(void *param) {
 		sfree((void *)&ssdp_list);
 	}
 
-	sockReadBuff = malloc(BUFFER_SIZE);
-	if(!sockReadBuff) {
-		logprintf(LOG_ERR, "out of memory");
-		exit(EXIT_FAILURE);
-	}
 	sfree((void *)&server);
 	while(webserver_loop) {
 		if(steps > WELCOME) {
-			memset(sockReadBuff, '\0', BUFFER_SIZE);
 			/* Clear the receive buffer again and read the welcome message */
 			/* Used direct read access instead of socket_read */
-			if(read(sockfd, sockReadBuff, BUFFER_SIZE) < 1) {
+			if((sockReadBuff = socket_read(sockfd)) == NULL) {
 				goto close;
 			}
 		}
@@ -757,11 +402,15 @@ void *webserver_clientize(void *param) {
 					steps=REJECT;
 				}
 				json_delete(json);
+				sfree((void *)&sockReadBuff);
+				sockReadBuff = NULL;
 			}
 			break;
 			case SYNC:
 				if(strlen(sockReadBuff) > 0) {
 					webserver_queue(sockReadBuff);
+					sfree((void *)&sockReadBuff);
+					sockReadBuff = NULL;
 				}
 			break;
 			case REJECT:
@@ -770,8 +419,10 @@ void *webserver_clientize(void *param) {
 			break;
 		}
 	}
-	sfree((void *)&sockReadBuff);
-	sockReadBuff = NULL;
+	if(sockReadBuff) {
+		sfree((void *)&sockReadBuff);
+		sockReadBuff = NULL;
+	}
 close:
 	webserver_gc();
 	return 0;
@@ -787,15 +438,7 @@ void *webserver_broadcast(void *param) {
 		if(webqueue_number > 0) {
 			pthread_mutex_lock(&webqueue_lock);
 
-			syncBuff = realloc(syncBuff, strlen(webqueue->message)+1);
-			if(!syncBuff) {
-				logprintf(LOG_ERR, "out of memory");
-				exit(EXIT_FAILURE);
-			}
-			memset(syncBuff, '\0', sizeof(*syncBuff));
-			strcpy(syncBuff, webqueue->message);
-
-			libwebsocket_callback_on_writable_all_protocol(&libwebsocket_protocols[1]);
+			mg_iterate_over_connections(mgserver, webserver_sockets_callback, webqueue->message);
 
 			struct webqueue_t *tmp = webqueue;
 			sfree((void *)&webqueue->message);
@@ -822,9 +465,6 @@ void *webserver_start(void *param) {
 	pthread_cond_init(&webqueue_signal, NULL);
 	pthread_mutex_init(&webqueue_lock, &webqueue_attr);
 #endif
-
-	int n = 0;
-	struct lws_context_creation_info info;
 
 	/* Check on what port the webserver needs to run */
 	settings_find_number("webserver-port", &webserver_port);
@@ -854,31 +494,25 @@ void *webserver_start(void *param) {
 	settings_find_string("webserver-password", &webserver_password);
 	settings_find_string("webserver-username", &webserver_username);
 
-	/* Default websockets info */
-	memset(&info, 0, sizeof info);
-	info.port = webserver_port;
-	info.protocols = libwebsocket_protocols;
-	info.ssl_cert_filepath = NULL;
-	info.ssl_private_key_filepath = NULL;
-	info.gid = -1;
-	info.uid = -1;
+	mgserver = mg_create_server(NULL);
+	char webport[10] = {'\0'};
+	sprintf(webport, "%d", webserver_port);
+	mg_set_option(mgserver, "listening_port", webport);
+	mg_set_option(mgserver, "auth_domain", "pilight");
+	mg_set_request_handler(mgserver, webserver_request_handler);
+	mg_set_auth_handler(mgserver, webserver_auth_handler);
 
-	/* Start the libwebsocket server */
-	struct libwebsocket_context *context = libwebsocket_create_context(&info);
-	if(context == NULL) {
-		lwsl_err("libwebsocket init failed\n");
-	} else {
-		/* Register a seperate thread in which the webserver communicates
-		   the main daemon as if it where a gui */
-		threads_register("webserver client", &webserver_clientize, (void *)NULL);
-		threads_register("webserver broadcast", &webserver_broadcast, (void *)NULL);
-		/* Main webserver loop */
-		while(n >= 0 && webserver_loop) {
-			n = libwebsocket_service(context, 50);
-		}
-		/* If the main loop stops, stop and destroy the webserver */
-		libwebsocket_context_destroy(context);
-		sfree((void *)&syncBuff);
+	/* Register a seperate thread in which the webserver communicates
+	   the main daemon as if it where a gui */
+	threads_register("webserver client", &webserver_clientize, (void *)NULL);
+	threads_register("webserver broadcast", &webserver_broadcast, (void *)NULL);
+
+	logprintf(LOG_DEBUG, "webserver listening to port %s", mg_get_option(mgserver, "listening_port"));
+	/* Main webserver loop */
+	while(webserver_loop) {
+		mg_poll_server(mgserver, 100);
 	}
+	mg_destroy_server(&mgserver);
+
 	return 0;
 }

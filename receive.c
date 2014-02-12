@@ -161,18 +161,18 @@ int main(int argc, char **argv) {
 				message = NULL;
 			break;
 			case RECEIVE: {
-					char *line = strtok(recvBuff, "\n");
-					//for each line
-					while(line) {
-						json = json_decode(line);
-						assert(json != NULL);
-						char *output = json_stringify(json, "\t");
-						printf("%s\n", output);
-						sfree((void *)&output);
-						json_delete(json);
-						line = strtok(NULL,"\n");
-					}
-					sfree((void *)&recvBuff);
+				char *line = strtok(recvBuff, "\n");
+				//for each line
+				while(line) {
+					json = json_decode(line);
+					assert(json != NULL);
+					char *output = json_stringify(json, "\t");
+					printf("%s\n", output);
+					sfree((void *)&output);
+					json_delete(json);
+					line = strtok(NULL,"\n");
+				}
+				sfree((void *)&recvBuff);
 			} break;
 			case REJECT:
 			default:
