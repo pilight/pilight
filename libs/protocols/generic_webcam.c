@@ -44,7 +44,7 @@ int genWebcamCreateCode(JsonNode *code) {
 	int id = -999;
 	int interval = -999;
 	int url = -1;
-        char *tmp;
+	char *tmp;
 	
 	json_find_number(code, "id", &id);
 	json_find_number(code, "interval", &interval);
@@ -73,12 +73,17 @@ void genWebcamInit(void) {
 	protocol_device_add(generic_webcam, "generic_webcam", "Generic webcam");
 	generic_webcam->devtype = WEBCAM;
 
-	options_add(&generic_webcam->options, 't', "interval", has_value, config_value, "[0-9]");
-	options_add(&generic_webcam->options, 'u', "url", has_value, config_value, "[^~,]");
+	//options_add(&generic_webcam->options, 't', "interval", has_value, config_value, "[0-9]");
+	//options_add(&generic_webcam->options, 'u', "url", has_value, config_value, "[^~,]");
+	options_add(&generic_webcam->options, 't', "interval", has_value, config_id, "[0-9]");
+	options_add(&generic_webcam->options, 'u', "url", has_value, config_id, "[^~,]");
 	options_add(&generic_webcam->options, 'i', "id", has_value, config_id, "[0-9]");
 
+	
+	//esto es por si queremos agregar variables de configuración para mostrar o no valores, numero de decimales, etc
+	//protocol_setting_add_string
 	//protocol_setting_add_number(generic_webcam, "url", 1);
-	protocol_setting_add_number(generic_webcam, "interval", 1);
+	//protocol_setting_add_number(generic_webcam, "interval", 1);
 
 	generic_webcam->printHelp=&genWebcamPrintHelp;
 	generic_webcam->createCode=&genWebcamCreateCode;
