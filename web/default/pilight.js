@@ -349,12 +349,12 @@ function createWebcamElement(sTabId, sDevId, aValues) {
 			oTab = $('#all');
 		}
 		oTab.append($('<li class="webcam" id="'+sTabId+'_'+sDevId+'_webcam" data-icon="false">'+aValues['name']+'</li>'));
-		if(aValues['url']) {
+		if(sDevId['url']) {
 			oTab.find('#'+sTabId+'_'+sDevId+'_webcam').append($('<div class="webcam" id="'+sTabId+'_'+sDevId+'_image"><img id="'+sTabId+'_'+sDevId+'_img" src="'+aValues['url']+'" style="max-width:100%;"></div>'));
 		}
 
 	} else {
-		if(aValues['url']) {
+		if(sDevId['url']) {
 			$('#'+sTabId+'_'+sDevId+'_image').text(aValues['url']);
 		}
 	}
