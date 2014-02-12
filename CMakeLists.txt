@@ -282,16 +282,11 @@ if(${UPDATE} MATCHES "OFF")
 	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/pilight/http_lib.c")
 endif()
 
-#file(GLOB webserver_sources "${PROJECT_SOURCE_DIR}/libs/websockets/*.c")
-
 if(${WEBSERVER} MATCHES "OFF")
 	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/pilight/webserver.h")
 	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/pilight/mongoose.h")
 	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/pilight/webserver.c")
 	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/pilight/mongoose.c")
-	# list(REMOVE_ITEM pilight ${webserver_sources})
-	# file(GLOB webserver_headers "${PROJECT_SOURCE_DIR}/libs/websockets/*.h")
-	# list(REMOVE_ITEM pilight ${webserver_headers})
 endif()
 
 find_package(Threads REQUIRED)
@@ -319,7 +314,7 @@ set_source_files_properties(${PROJECT_SOURCE_DIR}/libs/pilight/wiringPi.c PROPER
 set_source_files_properties(${PROJECT_SOURCE_DIR}/libs/pilight/wiringPiI2C.c PROPERTIES COMPILE_FLAGS " -w ")
 set_source_files_properties(${PROJECT_SOURCE_DIR}/libs/pilight/json.c PROPERTIES COMPILE_FLAGS " -w ")
 set_source_files_properties(${PROJECT_SOURCE_DIR}/libs/pilight/http_lib.c PROPERTIES COMPILE_FLAGS " -w ")
-#set_source_files_properties(${webserver_sources} PROPERTIES COMPILE_FLAGS " -w ")
+set_source_files_properties(${PROJECT_SOURCE_DIR}/libs/pilight/mongoose.c PROPERTIES COMPILE_FLAGS " -w ")
 
 install(FILES libpilight.so DESTINATION lib/pilight/ RENAME libpilight.so.2)
 install(FILES libpilight.a DESTINATION lib/pilight/ RENAME libpilight.a)
