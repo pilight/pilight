@@ -342,7 +342,7 @@ function createWattmeterElement(sTabId, sDevId, aValues) {
 }
 
 function createWebcamElement(sTabId, sDevId, aValues) {
-	alert(aValues);
+	console.debug(aValues);
 	/*
 	if($('#'+sTabId+'_'+sDevId+'_webcam').length == 0) {
 		if(bShowTabs) {
