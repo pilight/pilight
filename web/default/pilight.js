@@ -349,27 +349,27 @@ function createWebcamElement(sTabId, sDevId, aValues) {
 			oTab = $('#all');
 		}
 		oTab.append($('<li class="webcam" id="'+sTabId+'_'+sDevId+'_webcam" data-icon="false">'+aValues['name']+'</li>'));
-		if(sDevId['url']) {
-			oTab.find('#'+sTabId+'_'+sDevId+'_webcam').append($('<div class="webcam" id="'+sTabId+'_'+sDevId+'_image"><img id="'+sTabId+'_'+sDevId+'_img" src="'+aValues['url']+'" style="max-width:100%;"></div>'));
+		if(aValues['id']['url']) {
+			oTab.find('#'+sTabId+'_'+sDevId+'_webcam').append($('<div class="webcam" id="'+sTabId+'_'+sDevId+'_image"><img id="'+sTabId+'_'+sDevId+'_img" src="'+aValues['id']['url']+'" style="max-width:100%;"></div>'));
 		}
 
 	} else {
-		if(sDevId['url']) {
-			$('#'+sTabId+'_'+sDevId+'_image').text(aValues['url']);
+		if(aValues['id']['url']) {
+			$('#'+sTabId+'_'+sDevId+'_image').text(aValues['id']['url']);
 		}
 	}
 	oTab.listview();
 	oTab.listview("refresh");
-        var imgsrc = aValues['url'];
+        var imgsrc = aValues['id']['url'];
         var imgid = sTabId+"_"+sDevId+"_img";
-        //$("#"+imgid).responsiveImg();
+        $("#"+imgid).responsiveImg();
         var aWebcam = setInterval(function(){
             if (imgsrc.indexOf("?") != -1) {
             	$("#"+imgid).attr("src", imgsrc+"&timestamp="+new Date().getTime());
             } else {
             	$("#"+imgid).attr("src", imgsrc+"?"+new Date().getTime());
             }
-        },aValues['interval']);           
+        },aValues['settings']['interval']);           
 }
 
 function updateVersions() {
