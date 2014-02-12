@@ -19,21 +19,7 @@
 #ifndef _WEBSERVER_H_
 #define _WEBSERVER_H_
 
-#include "../websockets/libwebsockets.h"
-
 int webserver_gc(void);
-int webserver_ishex(int x);
-int webserver_urldecode(const char *s, char *dec);
-void webserver_create_header(unsigned char **p, const char *message, char *mimetype, unsigned int len);
-void webserver_create_wsi(struct libwebsocket **wsi, int fd, unsigned char *stream, size_t size);
-void webserver_create_401(unsigned char **p);
-void webserver_create_404(const char *in, unsigned char **p);
-int base64decode(unsigned char *dest, unsigned char *src, int l);
-int webserver_callback_http(struct libwebsocket_context *webcontext, struct libwebsocket *wsi, enum libwebsocket_callback_reasons reason, void *user, void *in, size_t len);
-int webserver_callback_data(struct libwebsocket_context *webcontext, struct libwebsocket *wsi, enum libwebsocket_callback_reasons reason, void *user, void *in, size_t len);
-void webserver_queue(char *message);
-void *webserver_broadcast(void *param);
-void *webserver_clientize(void *param);
 void *webserver_start(void *param);
 
 #endif

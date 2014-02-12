@@ -30,7 +30,7 @@ CFLAGS = -ffast-math $(OSFLAGS) -Wfloat-equal -Wshadow -Wpointer-arith -Wcast-al
 SRC = $(wildcard *.c)
 OBJS = $(filter-out wiringPi.o wiringPiI2C.o http_lib.o json.o update.o, $(SRC:.c=.o))
 
-all: json.o wiringPi.o wiringPiI2C.o http_lib.o update.o $(OBJS) pilight.o
+all: json.o wiringPi.o wiringPiI2C.o http_lib.o mongoose.o update.o $(OBJS) pilight.o
 
 json.o: json.c json.h
 	$(GCC) -ffast-math $(OSFLAGS) -Wno-conversion -g -isystem. -isystem.. -c $(patsubst %.o,%.c,$@)
@@ -44,6 +44,9 @@ wiringPi.o: wiringPi.c wiringPi.h
 wiringPiI2C.o: wiringPiI2C.c wiringPiI2C.h
 	$(GCC) -ffast-math $(OSFLAGS) -w -g -isystem. -isystem.. -pthread -lm -c $(patsubst %.o,%.c,$@)
 	
+mongoose.o: mongoose.c mongoose.h
+	$(GCC) -ffast-math $(OSFLAGS) -w -g -isystem. -isystem.. -pthread -lm -c $(patsubst %.o,%.c,$@)
+		
 update.o: update.c update.h
 	$(GCC) $(CFLAGS) -lz -c $(patsubst %.o,%.c,$@) -isystem. -isystem.. $(INCLUDE)
 
