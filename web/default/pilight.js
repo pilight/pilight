@@ -342,6 +342,8 @@ function createWattmeterElement(sTabId, sDevId, aValues) {
 }
 
 function createWebcamElement(sTabId, sDevId, aValues) {
+	alert(aValues);
+	/*
 	if($('#'+sTabId+'_'+sDevId+'_webcam').length == 0) {
 		if(bShowTabs) {
 			oTab = $('#'+sTabId).find('ul');
@@ -370,6 +372,7 @@ function createWebcamElement(sTabId, sDevId, aValues) {
             	$("#"+imgid).attr("src", imgsrc+"?"+new Date().getTime());
             }
         },aValues['settings']['interval']);           
+*/
 }
 
 function updateVersions() {
