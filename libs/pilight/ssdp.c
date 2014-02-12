@@ -59,7 +59,10 @@ char *ssdp_gethostname(void) {
 		char hostname[255] = {'\0'};
 		gethostname(hostname, 254);
 		char *pch = strtok(hostname, ".");
-		ssdp_hostname = malloc(strlen(pch)+1);
+		if(!(ssdp_hostname = malloc(strlen(pch)+1))) {
+			logprintf(LOG_ERR, "out of memory");
+			exit(EXIT_FAILURE);
+		}
 		strcpy(ssdp_hostname, pch);
 	}
 	return ssdp_hostname;
@@ -90,7 +93,10 @@ char *ssdp_getdistroname(void) {
 	}
 #endif
 	if(strlen(dist) > 0) {
-		ssdp_distro = malloc(strlen(dist)+1);
+		if(!(ssdp_distro = malloc(strlen(dist)+1))) {
+			logprintf(LOG_ERR, "out of memory");
+			exit(EXIT_FAILURE);
+		}
 		strcpy(ssdp_distro, dist);
 		return ssdp_distro;
 	} else {
@@ -102,7 +108,10 @@ void ssdp_getethmac(void) {
 #if defined(SIOCGIFHWADDR)
 	if(!ssdp_mac) {
 		int fd = socket(PF_INET, SOCK_DGRAM, IPPROTO_IP);
-		ssdp_mac = malloc(13);
+		if(!(ssdp_mac = malloc(13))) {
+			logprintf(LOG_ERR, "out of memory");
+			exit(EXIT_FAILURE);
+		}
 		memset(ssdp_mac, '\0', 13);
 		struct ifreq s;
 
@@ -118,7 +127,10 @@ void ssdp_getethmac(void) {
 #elif defined(SIOCGIFADDR)
 	if(!ssdp_mac) {
 		int fd = socket(PF_INET, SOCK_DGRAM, IPPROTO_IP);
-		ssdp_mac = malloc(13);
+		if(!(ssdp_mac = malloc(13))) {
+			logprintf(LOG_ERR, "out of memory");
+			exit(EXIT_FAILURE);
+		}
 		memset(ssdp_mac, '\0', 13);
 		struct ifreq s;
 
@@ -167,6 +179,10 @@ char *ssdp_genuuid(void) {
 	if(r > 0) {
 	
 		char *upnp_id = malloc(UUID_LENGTH);
+		if(!upnp_id) {
+			logprintf(LOG_ERR, "out of memory");
+			exit(EXIT_FAILURE);
+		}
 		memset(upnp_id, '\0', UUID_LENGTH);
 		unsigned int a, b, c, d, e, f;	
 
@@ -268,6 +284,10 @@ int ssdp_seek(struct ssdp_list_t **ssdp_list) {
 			}
 			if(match) {
 				struct ssdp_list_t *node = malloc(sizeof(struct ssdp_list_t));
+				if(!node) {
+					logprintf(LOG_ERR, "out of memory");
+					exit(EXIT_FAILURE);
+				}
 				sprintf(node->ip, "%hu.%hu.%hu.%hu", nip[0], nip[1], nip[2], nip[3]);
 				node->ip[16] = '\0';
 				node->port = port;
@@ -307,7 +327,10 @@ static struct sockaddr *sockaddr_dup(struct sockaddr *sa) {
 #else
 	socklen = sizeof(struct sockaddr_storage);
 #endif
-	ret = calloc(1, socklen);
+	if(!(ret = calloc(1, socklen))) {
+		logprintf(LOG_ERR, "out of memory");
+		exit(EXIT_FAILURE);
+	}
 	if (ret == NULL)
 		return NULL;
 	memcpy(ret, sa, socklen);
@@ -362,22 +385,22 @@ int rep_getifaddrs(struct ifaddrs **ifap) {
 			continue;
 		}
 		curif = calloc(1, sizeof(struct ifaddrs));
-		if (curif == NULL) {
+		if(curif == NULL) {
 			freeifaddrs(*ifap);
 			close(fd);
 			return -1;
 		}
 
 		curif->ifa_name = malloc(sizeof(IFNAMSIZ)+1);
-		strncpy(curif->ifa_name, ifrp->ifr_name, IFNAMSIZ);
-		strncpy(ifr.ifr_name, ifrp->ifr_name, IFNAMSIZ);
-		if (curif->ifa_name == NULL) {
+		if(curif->ifa_name == NULL) {
 			free(curif);
 			freeifaddrs(*ifap);
 			close(fd);
 			return -1;
 		}
-	
+		strncpy(curif->ifa_name, ifrp->ifr_name, IFNAMSIZ);
+		strncpy(ifr.ifr_name, ifrp->ifr_name, IFNAMSIZ);
+
 		curif->ifa_flags = ifr.ifr_flags;
 		curif->ifa_dstaddr = NULL;
 		curif->ifa_data = NULL;
@@ -482,8 +505,14 @@ void *ssdp_wait(void *param) {
 				exit(EXIT_FAILURE);
 			}
 			if(strlen(host) > 0) {
-				ssdp_header = realloc(ssdp_header, sizeof(char *)*((unsigned int)ssdp_nrheader+1));
-				ssdp_header[ssdp_nrheader] = malloc(BUFFER_SIZE);
+				if(!(ssdp_header = realloc(ssdp_header, sizeof(char *)*((unsigned int)ssdp_nrheader+1)))) {
+					logprintf(LOG_ERR, "out of memory");
+					exit(EXIT_FAILURE);
+				}
+				if(!(ssdp_header[ssdp_nrheader] = malloc(BUFFER_SIZE))) {
+					logprintf(LOG_ERR, "out of memory");
+					exit(EXIT_FAILURE);
+				}
 				memset(ssdp_header[ssdp_nrheader], '\0', BUFFER_SIZE);	
 				sprintf(ssdp_header[ssdp_nrheader], "NOTIFY * HTTP/1.1\r\n"
 					"Host:239.255.255.250:1900\r\n"
