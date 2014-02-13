@@ -309,6 +309,7 @@ function createWattmeterElement(sTabId, sDevId, aValues) {
 	aDecimals[sTabId+'_'+sDevId] = aValues['settings']['decimals'];
 	aValues['watt'] /= Math.pow(10, aValues['settings']['decimals']).toFixed(aValues['settings']['decimals']);
 	var Wprice = aValues['id'][0]['price'];
+	var Wcoin = aValues['id'][0]['coin'];
 	Wprice /= Math.pow(1000, aValues['settings']['decimals']).toFixed(aValues['settings']['decimals']);	
 	aPrice[sTabId+'_'+sDevId] = Wprice;
 	wattprice = -1;
@@ -322,18 +323,21 @@ function createWattmeterElement(sTabId, sDevId, aValues) {
 			oTab = $('#all');
 		}
 		oTab.append($('<li class="wattmeter" id="'+sTabId+'_'+sDevId+'_wattmeter" data-icon="false">'+aValues['name']+'</li>'));
-		if(wattprice > -1) {
-			oTab.find('#'+sTabId+'_'+sDevId+'_wattmeter').append($('<div class="coin">'+aValues['coin']+'</div><div class="price" id="'+sTabId+'_'+sDevId+'_price">'+wattprice.toFixed(aValues['settings']['decimals'])+'</div>'));
+		if(wattprice > -1 && aValues['settings']['price'] == 1) {
+			if (aValues['settings']['coin'] == 1) {
+				oTab.find('#'+sTabId+'_'+sDevId+'_wattmeter').append($('<div class="coin">'+Wcoin+'</div><div class="price" id="'+sTabId+'_'+sDevId+'_price">'+wattprice.toFixed(aValues['settings']['decimals'])+'</div>'));
+			} else {
+					oTab.find('#'+sTabId+'_'+sDevId+'_wattmeter').append($('<div class="price" id="'+sTabId+'_'+sDevId+'_price">'+wattprice.toFixed(aValues['settings']['decimals'])+'</div>'));
+			}
 		}
-		if(aValues['watt']) {
+		if(aValues['watt'] && aValues['settings']['watt'] == 1) {
 			oTab.find('#'+sTabId+'_'+sDevId+'_wattmeter').append($('<div class="wattios">W</div><div class="watt" id="'+sTabId+'_'+sDevId+'_watt">'+aValues['watt']+'</div>'));
 		}
 	} else {
 		if(wattprice > -1) {
 			$('#'+sTabId+'_'+sDevId+'_price').text(wattprice.toFixed(aValues['settings']['decimals']));
 		}
-		if(aValues['watt']) {
-			alert("probando");
+		if(aValues['watt']) {			
 			$('#'+sTabId+'_'+sDevId+'_watt').text(aValues['watt']);
 		}
 	}
