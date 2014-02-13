@@ -47,7 +47,7 @@ int genWebcamCreateCode(JsonNode *code) {
 	char *tmp;
 	
 	json_find_number(code, "id", &id);
-	json_find_number(code, "interval", &interval);
+	protocol_setting_get_number(generic_webcam, "interval", &interval);
 	if(json_find_string(code, "url", &tmp) == 0)
 		url = atoi(tmp);
                 
