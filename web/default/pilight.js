@@ -344,7 +344,7 @@ function createWattmeterElement(sTabId, sDevId, aValues) {
 function createWebcamElement(sTabId, sDevId, aValues) {
 	var Wname = aValues['name'];
 	var Wurl = aValues['id'][0]['url'];
-	var Winterval = aValues['id'][0]['interval'];
+	var Winterval = aValues['settings']['interval'];
 	if($('#'+sTabId+'_'+sDevId+'_webcam').length == 0) {
 		if(bShowTabs) {
 			oTab = $('#'+sTabId).find('ul');
