@@ -471,7 +471,7 @@ int protocol_setting_check_number(protocol_t *proto, const char *name, int value
 		break;
 		case WATTMETER:
 			if(strcmp(name, "decimals") != 0 && strcmp(name, "watt") != 0
-			   && strcmp(name, "price") != 0) {
+			   && strcmp(name, "price") != 0 && strcmp(name, "coin") != 0) {
 					error=EXIT_FAILURE;
 			}
 		break;
