@@ -75,7 +75,7 @@ void genWebcamInit(void) {
 
 	//options_add(&generic_webcam->options, 't', "interval", has_value, config_value, "[0-9]");
 	//options_add(&generic_webcam->options, 'u', "url", has_value, config_value, "[^~,]");
-	options_add(&generic_webcam->options, 't', "interval", has_value, config_id, "[0-9]");
+	//options_add(&generic_webcam->options, 't', "interval", has_value, config_id, "[0-9]");
 	options_add(&generic_webcam->options, 'u', "url", has_value, config_id, "[^~,]");
 	options_add(&generic_webcam->options, 'i', "id", has_value, config_id, "[0-9]");
 
@@ -83,7 +83,7 @@ void genWebcamInit(void) {
 	//esto es por si queremos agregar variables de configuración para mostrar o no valores, numero de decimales, etc
 	//protocol_setting_add_string
 	//protocol_setting_add_number(generic_webcam, "url", 1);
-	//protocol_setting_add_number(generic_webcam, "interval", 1);
+	protocol_setting_add_number(generic_webcam, "interval", 1000);
 
 	generic_webcam->printHelp=&genWebcamPrintHelp;
 	generic_webcam->createCode=&genWebcamCreateCode;
