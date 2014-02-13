@@ -29,14 +29,9 @@
 #include "gc.h"
 #include "generic_webcam.h"
 
-//void genWebcamCreateMessage(int id, int interval, char *url) {
-    void genWebcamCreateMessage(int id, char *url) {
+void genWebcamCreateMessage(int id, char *url) {
 	generic_webcam->message = json_mkobject();
 	json_append_member(generic_webcam->message, "id", json_mknumber(id));
-	/*
-	if(interval > -999) {
-		json_append_member(generic_webcam->message, "interval", json_mknumber(interval));
-	}*/
 	if(url[0] != '\0') {
 		json_append_member(generic_webcam->message, "url", json_mkstring(url));
 	}
@@ -49,7 +44,6 @@ int genWebcamCreateCode(JsonNode *code) {
 	char *tmp;
 	
 	json_find_number(code, "id", &id);
-	//json_find_number(code, "interval", &interval);
 	protocol_setting_get_number(generic_webcam, "interval", &interval);
 	if(json_find_string(code, "url", &tmp) == 0)
 		url = atoi(tmp);
@@ -58,7 +52,6 @@ int genWebcamCreateCode(JsonNode *code) {
 		logprintf(LOG_ERR, "generic_webcam: insufficient number of arguments");
 		return EXIT_FAILURE;
 	} else {
-		//genWebcamCreateMessage(id, interval, tmp);
 		genWebcamCreateMessage(id, tmp);
 	}
 	return EXIT_SUCCESS;
@@ -76,17 +69,9 @@ void genWebcamInit(void) {
 	protocol_device_add(generic_webcam, "generic_webcam", "Generic webcam");
 	generic_webcam->devtype = WEBCAM;
 
-	//options_add(&generic_webcam->options, 't', "interval", has_value, config_value, "[0-9]");
-	//options_add(&generic_webcam->options, 'u', "url", has_value, config_value, "[^~,]");
-	//options_add(&generic_webcam->options, 't', "interval", has_value, config_id, "[0-9]");
 	options_add(&generic_webcam->options, 'u', "url", has_value, config_id, "[^~,]");
 	options_add(&generic_webcam->options, 'i', "id", has_value, config_id, "[0-9]");
 
-	
-	//esto es por si queremos agregar variables de configuración para mostrar o no valores, numero de decimales, etc
-	//protocol_setting_add_string
-	//protocol_setting_add_number(generic_webcam, "url", 1);
-	//protocol_setting_add_number(generic_webcam, "interval", 1);
 	protocol_setting_add_number(generic_webcam, "interval", 1000);
 
 	generic_webcam->printHelp=&genWebcamPrintHelp;
