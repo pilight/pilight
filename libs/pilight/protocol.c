@@ -475,11 +475,6 @@ int protocol_setting_check_number(protocol_t *proto, const char *name, int value
 					error=EXIT_FAILURE;
 			}
 		break;
-		case WEBCAM:
-			if(strcmp(name, "interval") != 0) {
-				error=EXIT_FAILURE;
-			}
-		break;		
 		case SWITCH:
 		case SCREEN:
 			if(strcmp(name, "readonly") != 0) {
@@ -490,8 +485,13 @@ int protocol_setting_check_number(protocol_t *proto, const char *name, int value
 			if(strcmp(name, "readonly") != 0) {
 				error=EXIT_FAILURE;
 			}
-		break;
-		case RAW:
+		break;	
+		case WEBCAM:
+			if(strcmp(name, "interval") != 0) {
+				error=EXIT_FAILURE;
+			}		
+		break;	
+		case RAW:		
 		default:
 			error=EXIT_FAILURE;
 		break;
