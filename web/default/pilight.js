@@ -540,13 +540,12 @@ function parseData(data) {
 								$('#'+lindex+'_'+dvalues+'_batt').removeClass('green').addClass('red');
 							}
 						}
-					} else if(iType == 6) {
-						if(vindex == 'watt' && $('#'+lindex+'_'+dvalues+'_watt')) {
-							vvalues /= Math.pow(10, aDecimals[lindex+'_'+dvalues]).toFixed(aDecimals[lindex+'_'+dvalues]);
+					} else if(iType == 6) {						
+						vvalues /= Math.pow(10, aDecimals[lindex+'_'+dvalues]).toFixed(aDecimals[lindex+'_'+dvalues]);
+						if(vindex == 'watt' && $('#'+lindex+'_'+dvalues+'_watt')) {							
 							$('#'+lindex+'_'+dvalues+'_watt').text(vvalues);
 						} 
-						if(aPrice[lindex+'_'+dvalues] > -1 && $('#'+lindex+'_'+dvalues+'_price')) {
-							vvalues /= Math.pow(10, aDecimals[lindex+'_'+dvalues]).toFixed(aDecimals[lindex+'_'+dvalues]);
+						if(aPrice[lindex+'_'+dvalues] > -1 && $('#'+lindex+'_'+dvalues+'_price')) {						
 							apricewatt = vvalues*aPrice[lindex+'_'+dvalues];
 							$('#'+lindex+'_'+dvalues+'_price').text(apricewatt.toFixed(aDecimals[lindex+'_'+dvalues]));
 						}
