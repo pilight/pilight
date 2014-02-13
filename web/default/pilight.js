@@ -342,37 +342,36 @@ function createWattmeterElement(sTabId, sDevId, aValues) {
 }
 
 function createWebcamElement(sTabId, sDevId, aValues) {
-	console.debug(aValues);
-	/*
+	var Wname = aValues['name'];
+	var Wurl = aValues['id'][0]['url'];
+	var Winterval = aValues['id'][0]['interval'];
 	if($('#'+sTabId+'_'+sDevId+'_webcam').length == 0) {
 		if(bShowTabs) {
 			oTab = $('#'+sTabId).find('ul');
 		} else {
 			oTab = $('#all');
 		}
-		oTab.append($('<li class="webcam" id="'+sTabId+'_'+sDevId+'_webcam" data-icon="false">'+aValues['name']+'</li>'));
+		oTab.append($('<li class="webcam" id="'+sTabId+'_'+sDevId+'_webcam" data-icon="false">'+Wname+'</li>'));
 		if(aValues['id']['url']) {
-			oTab.find('#'+sTabId+'_'+sDevId+'_webcam').append($('<div class="webcam" id="'+sTabId+'_'+sDevId+'_image"><img id="'+sTabId+'_'+sDevId+'_img" src="'+aValues['id']['url']+'" style="max-width:100%;"></div>'));
+			oTab.find('#'+sTabId+'_'+sDevId+'_webcam').append($('<div class="webcam" id="'+sTabId+'_'+sDevId+'_image"><img id="'+sTabId+'_'+sDevId+'_img" src="'+Wurl+'" style="max-width:100%;"></div>'));
 		}
 
 	} else {
-		if(aValues['id']['url']) {
-			$('#'+sTabId+'_'+sDevId+'_image').text(aValues['id']['url']);
+		if(Wurl) {
+			$('#'+sTabId+'_'+sDevId+'_image').text(Wurl);
 		}
 	}
 	oTab.listview();
 	oTab.listview("refresh");
-        var imgsrc = aValues['id']['url'];
         var imgid = sTabId+"_"+sDevId+"_img";
         $("#"+imgid).responsiveImg();
         var aWebcam = setInterval(function(){
             if (imgsrc.indexOf("?") != -1) {
-            	$("#"+imgid).attr("src", imgsrc+"&timestamp="+new Date().getTime());
+            	$("#"+imgid).attr("src", Wurl+"&timestamp="+new Date().getTime());
             } else {
-            	$("#"+imgid).attr("src", imgsrc+"?"+new Date().getTime());
+            	$("#"+imgid).attr("src", Wurl+"?"+new Date().getTime());
             }
-        },aValues['settings']['interval']);           
-*/
+        },Winterval);
 }
 
 function updateVersions() {
