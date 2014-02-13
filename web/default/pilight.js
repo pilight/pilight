@@ -352,7 +352,7 @@ function createWebcamElement(sTabId, sDevId, aValues) {
 			oTab = $('#all');
 		}
 		oTab.append($('<li class="webcam" id="'+sTabId+'_'+sDevId+'_webcam" data-icon="false">'+Wname+'</li>'));
-		if(aValues['id']['url']) {
+		if(Wurl) {
 			oTab.find('#'+sTabId+'_'+sDevId+'_webcam').append($('<div class="webcam" id="'+sTabId+'_'+sDevId+'_image"><img id="'+sTabId+'_'+sDevId+'_img" src="'+Wurl+'" style="max-width:100%;"></div>'));
 		}
 
@@ -366,7 +366,7 @@ function createWebcamElement(sTabId, sDevId, aValues) {
         var imgid = sTabId+"_"+sDevId+"_img";
         $("#"+imgid).responsiveImg();
         var aWebcam = setInterval(function(){
-            if (imgsrc.indexOf("?") != -1) {
+            if (Wurl.indexOf("?") != -1) {
             	$("#"+imgid).attr("src", Wurl+"&timestamp="+new Date().getTime());
             } else {
             	$("#"+imgid).attr("src", Wurl+"?"+new Date().getTime());
