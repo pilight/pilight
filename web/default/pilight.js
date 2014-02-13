@@ -308,13 +308,13 @@ function createWeatherElement(sTabId, sDevId, aValues) {
 function createWattmeterElement(sTabId, sDevId, aValues) {
 	aDecimals[sTabId+'_'+sDevId] = aValues['settings']['decimals'];
 	aValues['watt'] /= Math.pow(10, aValues['settings']['decimals']).toFixed(aValues['settings']['decimals']);
-	aValues['price'] /= Math.pow(1000, aValues['settings']['decimals']).toFixed(aValues['settings']['decimals']);
-	aPrice[sTabId+'_'+sDevId] = aValues['price'];
+	var Wprice = aValues['id'][0]['price'];
+	Wprice /= Math.pow(1000, aValues['settings']['decimals']).toFixed(aValues['settings']['decimals']);	
+	aPrice[sTabId+'_'+sDevId] = Wprice;
 	wattprice = -1;
-	if(aValues['price'] && aValues['price']) {
-		wattprice = aValues['watt']*aValues['price'];
-	}
-	//aValues['price'] /= Math.pow(10, aValues['settings']['decimals']).toFixed(aValues['settings']['decimals']);
+	if(Wprice && aValues['watt']) {
+		wattprice = aValues['watt']*Wprice;
+	}	
 	if($('#'+sTabId+'_'+sDevId+'_wattmeter').length == 0) {
 		if(bShowTabs) {
 			oTab = $('#'+sTabId).find('ul');
