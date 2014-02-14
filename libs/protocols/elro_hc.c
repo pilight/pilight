@@ -105,7 +105,7 @@ void elroHCCreateUnitCode(int unitcode) {
 }
 
 void elroHCCreateState(int state) {
-	if(state == 1) {	
+	if(state == 0) {	
 		elroHCCreateLow(44, 47);
 		elroHCCreateLow(40, 43);
 	} else {
