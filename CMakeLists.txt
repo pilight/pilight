@@ -86,6 +86,11 @@ file(GLOB pilight
 	"${PROJECT_SOURCE_DIR}/libs/protocols/*.c" 
 	"${PROJECT_SOURCE_DIR}/libs/websockets/*.c")
 
+if(${PROTOCOL_THREECHAN} MATCHES "OFF")
+	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/threechan.h")
+	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/theechan.c")
+endif()
+
 if(${PROTOCOL_ALECTO} MATCHES "OFF")
 	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/alecto.h")
 	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/alecto.c")
