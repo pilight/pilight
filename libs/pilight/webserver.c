@@ -383,6 +383,10 @@ int webserver_callback_http(struct libwebsocket_context *webcontext, struct libw
 				mimetype = malloc(10);
 				memset(mimetype, '\0', 10);
 				strcpy(mimetype, "image/png");
+			} else if(strcmp(ext, "gif") == 0) {
+				mimetype = malloc(10);
+				memset(mimetype, '\0', 10);
+				strcpy(mimetype, "image/gif");
 			} else if(strcmp(ext, "ico") == 0) {
 				mimetype = malloc(13);
 				memset(mimetype, '\0', 13);

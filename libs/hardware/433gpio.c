@@ -79,14 +79,14 @@ int gpio433Receive(void) {
 }
 
 unsigned short gpio433Settings(JsonNode *json) {
-	if(strcmp(json->key, "sender") == 0) {
+	if(strcmp(json->key, "receiver") == 0) {
 		if(json->tag == JSON_NUMBER) {
 			gpio_433_in = (int)json->number_;
 		} else {
 			return EXIT_FAILURE;
 		}
 	}
-	if(strcmp(json->key, "receiver") == 0) {
+	if(strcmp(json->key, "sender") == 0) {
 		if(json->tag == JSON_NUMBER) {
 			gpio_433_out = (int)json->number_;
 		} else {

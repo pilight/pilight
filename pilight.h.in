@@ -75,7 +75,7 @@
 #cmakedefine HARDWARE_433_LIRC
 #cmakedefine HARDWARE_433_PILIGHT
 
-#define VERSION					"2.1"
+#define VERSION					"3.0"
 #define PULSE_DIV				34
 
 #ifdef WEBSERVER
