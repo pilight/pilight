@@ -1,5 +1,5 @@
 /*
-	Copyright (C) 2013 CurlyMo
+	Copyright (C) 2013 - 2014 CurlyMo
 
 	This file is part of pilight.
 
@@ -117,9 +117,9 @@ int lirc433Send(int *code) {
 int lirc433Receive(void) {
 	int data = 0;
 
-	// if((read(lirc_433_fd, &data, sizeof(data))) == 0) {
-		// data = 1;
-	// }
+	if((read(lirc_433_fd, &data, sizeof(data))) == 0) {
+		data = 1;
+	}
 
 	return (data & 0x00FFFFFF);
 }
@@ -128,6 +128,10 @@ unsigned short lirc433Settings(JsonNode *json) {
 	if(strcmp(json->key, "socket") == 0) {
 		if(json->tag == JSON_STRING) {
 			lirc_433_socket = malloc(strlen(json->string_)+1);
+			if(!lirc_433_socket) {
+				logprintf(LOG_ERR, "out of memory");
+				exit(EXIT_FAILURE);
+			}
 			strcpy(lirc_433_socket, json->string_);
 		} else {
 			return EXIT_FAILURE;

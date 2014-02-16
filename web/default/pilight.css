@@ -10,6 +10,7 @@ body {
 #version {
 	font-size: 10px;
 	margin: 0px;
+	padding-left: 3px;
 	position: aboslute;
 	height: 15px;
 	top: 0px;

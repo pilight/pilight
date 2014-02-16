@@ -1,5 +1,5 @@
 /*
-	Copyright (C) 2013 CurlyMo
+	Copyright (C) 2013 - 2014 CurlyMo
 
 	This file is part of pilight.
 
@@ -43,6 +43,50 @@ typedef enum {
 	SEND
 } steps_t;
 
+struct pname_t {
+	char *name;
+	char *desc;
+	struct pname_t *next;
+};
+
+struct pname_t *pname = NULL;
+
+void sort_list(void) {
+	struct pname_t *a = NULL;
+	struct pname_t *b = NULL;
+	struct pname_t *c = NULL;
+	struct pname_t *e = NULL;
+	struct pname_t *tmp = NULL;
+
+	while(e != pname->next) {
+		c = a = pname;
+		b = a->next;
+		while(a != e) {
+			if(strcmp(a->name, b->name) > 0) {
+				if(a == pname) {
+					tmp = b->next;
+					b->next = a;
+					a->next = tmp;
+					pname = b;
+					c = b;
+				} else {
+					tmp = b->next;
+					b->next = a;
+					a->next = tmp;
+					c->next = b;
+					c = b;
+				}
+			} else {
+				c = a;
+				a = a->next;
+			}
+			b = a->next;
+			if(b == e)
+				e = a;
+		}
+	}
+}
+
 int main(int argc, char **argv) {
 
 	log_file_disable();
@@ -50,6 +94,10 @@ int main(int argc, char **argv) {
 	log_level_set(LOG_NOTICE);
 
 	progname = malloc(13);
+	if(!progname) {
+		logprintf(LOG_ERR, "out of memory");
+		exit(EXIT_FAILURE);
+	}
 	strcpy(progname, "pilight-send");
 
 	struct options_t *options = NULL;
@@ -97,8 +145,10 @@ int main(int argc, char **argv) {
 		int c;
 		c = options_parse(&options, argc, argv, 0, &args);
 
-		if(c == -1 || c == -2)
+		if(c == -1)
 			break;
+		if(c == -2)
+			c = 'H';
 		switch(c) {
 			case 'p':
 				if(strlen(args) == 0) {
@@ -116,6 +166,10 @@ int main(int argc, char **argv) {
 			break;
 			case 'S':
 				server = realloc(server, strlen(args)+1);
+				if(!server) {
+					logprintf(LOG_ERR, "out of memory");
+					exit(EXIT_FAILURE);
+				}
 				strcpy(server, args);
 			break;
 			case 'P':
@@ -202,17 +256,46 @@ int main(int argc, char **argv) {
 				protocol = pnode->listener;
 				if(protocol->createCode) {
 					while(protocol->devices) {
-						printf("\t %s\t\t",protocol->devices->id);
-						if(strlen(protocol->devices->id)<7)
-							printf("\t");
-						if(strlen(protocol->devices->id)<15)
-							printf("\t");
-						printf("%s\n", protocol->devices->desc);
+						struct pname_t *node = malloc(sizeof(struct pname_t));
+						if(!node) {
+							logprintf(LOG_ERR, "out of memory");
+							exit(EXIT_FAILURE);
+						}
+						node->name = malloc(strlen(protocol->devices->id)+1);
+						if(!node->name) {
+							logprintf(LOG_ERR, "out of memory");
+							exit(EXIT_FAILURE);
+						}
+						strcpy(node->name, protocol->devices->id);
+						node->desc = malloc(strlen(protocol->devices->desc)+1);
+						if(!node->desc) {
+							logprintf(LOG_ERR, "out of memory");
+							exit(EXIT_FAILURE);
+						}
+						strcpy(node->desc, protocol->devices->desc);
+						node->next = pname;
+						pname = node;
 						protocol->devices = protocol->devices->next;
 					}
 				}
 				pnode = pnode->next;
 			}
+			sort_list();
+			struct pname_t *ptmp = NULL;
+			while(pname) {
+				ptmp = pname;
+				printf("\t %s\t\t",ptmp->name);
+				if(strlen(ptmp->name)<7)
+					printf("\t");
+				if(strlen(ptmp->name)<15)
+					printf("\t");
+				printf("%s\n", ptmp->desc);
+				sfree((void *)&ptmp->name);
+				sfree((void *)&ptmp->desc);
+				pname = pname->next;
+				sfree((void *)&ptmp);
+			}
+			sfree((void *)&pname);
 		}
 		goto close;
 	}
@@ -267,10 +350,10 @@ int main(int argc, char **argv) {
 				if((recvBuff = socket_read(sockfd))) {
 					json = json_decode(recvBuff);
 					json_find_string(json, "message", &message);
+					sfree((void *)&recvBuff);
 				} else {
 					goto close;
 				}
-				usleep(100);
 			}
 			switch(steps) {
 				case WELCOME:
@@ -291,6 +374,7 @@ int main(int argc, char **argv) {
 					char *output = json_stringify(json, NULL);
 					socket_write(sockfd, output);
 					sfree((void *)&output);
+					//usleep(300000);
 					goto close;
 				break;
 				case REJECT:

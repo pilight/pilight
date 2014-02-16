@@ -13,9 +13,14 @@ if(${CMAKE_SYSTEM_PROCESSOR} MATCHES "armv6")
 		file(GLOB CMAKE_ZLIB_LIBS_INIT "/usr/lib/arm-linux-gnueabi/libz.so")
 	endif()
 endif()
+
 if(${CMAKE_SYSTEM_PROCESSOR} MATCHES "x86_64")
-	set(CMAKE_C_FLAGS "-Ofast -fPIC -march=native -mtune=native -mfpmath=sse -ffast-math -Wconversion -Wunreachable-code -Wstrict-prototypes -Wfloat-equal -Wshadow -Wpointer-arith -Wcast-align -Wstrict-overflow=5 -Wwrite-strings -Waggregate-return -Wcast-qual -Wswitch-default -Wswitch-enum -Wformat=2 -g -Wall")	
+	set(CMAKE_C_FLAGS "-Ofast -fPIC -march=native -mtune=native -ffast-math -Wconversion -Wunreachable-code -Wstrict-prototypes -Wfloat-equal -Wshadow -Wpointer-arith -Wcast-align -Wstrict-overflow=5 -Wwrite-strings -Waggregate-return -Wcast-qual -Wswitch-default -Wswitch-enum -Wformat=2 -g -Wall")
 	file(GLOB CMAKE_ZLIB_LIBS_INIT "/usr/lib/x86_64-linux-gnu/libz.so")
+endif()
+if(${CMAKE_SYSTEM_PROCESSOR} MATCHES "amd64")
+	set(CMAKE_C_FLAGS "-O2 -fPIC -march=native -mtune=native -ffast-math -Wformat=2 -g -Wformat-nonliteral")
+	file(GLOB CMAKE_ZLIB_LIBS_INIT "/usr/lib32/libz.so")
 endif()
 
 # Start uninstaller generator
@@ -50,7 +55,7 @@ foreach (file \${files})
 endforeach(file)
 
 execute_process(COMMAND update-rc.d pilight remove)
-execute_process(COMMAND ln -sf /usr/local/lib/pilight/libpilight.so.2 /usr/local/lib/libpilight.so)
+execute_process(COMMAND ln -sf /usr/local/lib/pilight/libpilight.so.3 /usr/local/lib/libpilight.so)
 execute_process(COMMAND ldconfig)
 
 ") # END of appending to file...
@@ -65,7 +70,7 @@ if(NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/cmake_postinstall.cmake)
 endif()
 
 execute_process(COMMAND git describe --always
-	WORKING_DIRECTORY ${PROJECT_SOURCE_DIR} 
+	WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
 	RESULT_VARIABLE git_result
 	OUTPUT_VARIABLE git_ver)
 
@@ -75,15 +80,15 @@ add_definitions(-DHASH="${git_ver}")
 include_directories("${PROJECT_SOURCE_DIR}/libs/pilight/")
 
 file(GLOB pilight_headers
-	"${PROJECT_SOURCE_DIR}/libs/hardware/*.h" 
+	"${PROJECT_SOURCE_DIR}/libs/hardware/*.h"
 	"${PROJECT_SOURCE_DIR}/libs/pilight/*.h"
-	"${PROJECT_SOURCE_DIR}/libs/protocols/*.h" 
+	"${PROJECT_SOURCE_DIR}/libs/protocols/*.h"
 	"${PROJECT_SOURCE_DIR}/libs/websockets/*.h")
-	
+
 file(GLOB pilight
-	"${PROJECT_SOURCE_DIR}/libs/hardware/*.c" 
+	"${PROJECT_SOURCE_DIR}/libs/hardware/*.c"
 	"${PROJECT_SOURCE_DIR}/libs/pilight/*.c"
-	"${PROJECT_SOURCE_DIR}/libs/protocols/*.c" 
+	"${PROJECT_SOURCE_DIR}/libs/protocols/*.c"
 	"${PROJECT_SOURCE_DIR}/libs/websockets/*.c")
 
 if(${PROTOCOL_THREECHAN} MATCHES "OFF")
@@ -96,8 +101,8 @@ if(${PROTOCOL_ALECTO} MATCHES "OFF")
 	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/alecto.c")
 endif()
 
-if(${PROTOCOL_COGEX_SWITCH} MATCHES "OFF" 
-	AND ${PROTOCOL_KAKU_SWITCH_OLD} MATCHES "OFF" 
+if(${PROTOCOL_COGEX_SWITCH} MATCHES "OFF"
+	AND ${PROTOCOL_KAKU_SWITCH_OLD} MATCHES "OFF"
 	AND ${PROTOCOL_INTERTECHNO_OLD} MATCHES "OFF")
 	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/arctech_switch_old.h")
 	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/arctech_switch_old.c")
@@ -118,18 +123,28 @@ if(${PROTOCOL_KAKU_SCREEN} MATCHES "OFF")
 	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/arctech_screen.c")
 endif()
 
+if(${PROTOCOL_KAKU_CONTACT} MATCHES "OFF")
+  list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/arctech_contact.h")
+  list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/arctech_contact.c")
+endif()
+
 if(${PROTOCOL_COCO_SWITCH} MATCHES "OFF"
 	AND ${PROTOCOL_DIO_SWITCH} MATCHES "OFF"
 	AND ${PROTOCOL_NEXA_SWITCH} MATCHES "OFF"
 	AND ${PROTOCOL_KAKU_SWITCH} MATCHES "OFF"
 	AND ${PROTOCOL_INTERTECHNO_SWITCH} MATCHES "OFF")
 	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/arctech_switch.h")
-	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/arctech_switch.c")	
+	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/arctech_switch.c")
 endif()
 
 if(${PROTOCOL_DS18B20} MATCHES "OFF")
 	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/ds18b20.h")
 	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/ds18b20.c")
+endif()
+
+if(${PROTOCOL_DS18S20} MATCHES "OFF")
+	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/ds18s20.h")
+	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/ds18s20.c")
 endif()
 
 if(${PROTOCOL_DHT22} MATCHES "OFF")
@@ -215,11 +230,39 @@ if(${PROTOCOL_DHT22} MATCHES "OFF")
 	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/dht22.c")
 endif()
 
-if(${PROTOCOL_LM75} MATCHES "OFF")
+if(${PROTOCOL_POLLIN_SWITCH} MATCHES "OFF")
+	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/pollin.h")
+	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/pollin.c")
+endif()
+
+if(${PROTOCOL_MUMBI_SWITCH} MATCHES "OFF")
+	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/mumbi.h")
+	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/mumbi.c")
+endif()
+
+if(${PROTOCOL_LM75} MATCHES "OFF"
+   AND ${PROTOCOL_LM76} MATCHES "OFF")
 	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/lm75.h")
+	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/lm76.h")
 	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/lm75.c")
+	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/lm76.c")
 	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/pilight/wiringPiI2C.h")
 	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/pilight/wiringPiI2C.c")
+endif()
+
+if(${PROTOCOL_WUNDERGROUND} MATCHES "OFF")
+	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/wunderground.h")
+	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/wunderground.c")
+endif()
+
+if(${PROTOCOL_OPENWEATHERMAP} MATCHES "OFF")
+	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/openweathermap.h")
+	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/openweathermap.c")
+endif()
+
+if(${PROTOCOL_SILVERCREST} MATCHES "OFF")
+	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/silvercrest.h")
+	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/silvercrest.c")
 endif()
 
 if(${HARDWARE_433_GPIO} MATCHES "OFF")
@@ -241,19 +284,16 @@ if(${UPDATE} MATCHES "OFF")
 	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/pilight/update.h")
 	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/pilight/update.c")
 	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/pilight/http_lib.h")
-	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/pilight/http_lib.c")	
+	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/pilight/http_lib.c")
 endif()
-	
-file(GLOB webserver_sources "${PROJECT_SOURCE_DIR}/libs/websockets/*.c")
 
 if(${WEBSERVER} MATCHES "OFF")
 	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/pilight/webserver.h")
+	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/pilight/mongoose.h")
 	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/pilight/webserver.c")
-	list(REMOVE_ITEM pilight ${webserver_sources})
-	file(GLOB webserver_headers "${PROJECT_SOURCE_DIR}/libs/websockets/*.h")	
-	list(REMOVE_ITEM pilight ${webserver_headers})
+	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/pilight/mongoose.c")
 endif()
-	
+
 find_package(Threads REQUIRED)
 
 if(${UPDATE} MATCHES "ON")
@@ -279,9 +319,9 @@ set_source_files_properties(${PROJECT_SOURCE_DIR}/libs/pilight/wiringPi.c PROPER
 set_source_files_properties(${PROJECT_SOURCE_DIR}/libs/pilight/wiringPiI2C.c PROPERTIES COMPILE_FLAGS " -w ")
 set_source_files_properties(${PROJECT_SOURCE_DIR}/libs/pilight/json.c PROPERTIES COMPILE_FLAGS " -w ")
 set_source_files_properties(${PROJECT_SOURCE_DIR}/libs/pilight/http_lib.c PROPERTIES COMPILE_FLAGS " -w ")
-set_source_files_properties(${webserver_sources} PROPERTIES COMPILE_FLAGS " -w ")
+set_source_files_properties(${PROJECT_SOURCE_DIR}/libs/pilight/mongoose.c PROPERTIES COMPILE_FLAGS " -w ")
 
-install(FILES libpilight.so DESTINATION lib/pilight/ RENAME libpilight.so.2)
+install(FILES libpilight.so DESTINATION lib/pilight/ RENAME libpilight.so.3)
 install(FILES libpilight.a DESTINATION lib/pilight/ RENAME libpilight.a)
 
 if(${WEBSERVER} MATCHES "ON")
@@ -291,11 +331,11 @@ endif()
 install(PROGRAMS init/pilight DESTINATION /etc/init.d/)
 
 if(NOT EXISTS "/etc/pilight/settings.json")
-	install(FILES settings.json-default DESTINATION /etc/pilight/ RENAME settings.json) 
+	install(FILES settings.json-default DESTINATION /etc/pilight/ RENAME settings.json)
 endif()
 
 if(NOT EXISTS "/etc/pilight/hardware.json")
-	install(FILES hardware.json DESTINATION /etc/pilight/) 
+	install(FILES hardware.json DESTINATION /etc/pilight/)
 endif()
 
 add_executable(pilight-daemon daemon.c)

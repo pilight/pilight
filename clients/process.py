@@ -61,9 +61,20 @@ if len(responses) > 0:
 	socket.setdefaulttimeout(0)
 	s.connect((location, int(port)))
 	s.send('{"message":"client receiver"}\n')
-	if s.recv(1024) == '{"message":"accept client"}\n':
-		while(1):
-			buffer = s.recv(1024);
-			for f in iter(buffer.splitlines()):
-				print(f);
+	text = "";
+	while True:
+		line = s.recv(1024)
+		text += line;
+		if "\n\n" in line[-3:]:
+			text = text[:-3];
+			break;
+	if text == '{"message":"accept client"}':
+		while True:
+			line = s.recv(1024)
+			text += line;
+			if "\n\n" in line[-3:]:
+				text = text[:-3];
+				for f in iter(text.splitlines()):
+					print f;
+				text = "";
 	s.close()

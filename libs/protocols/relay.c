@@ -51,6 +51,10 @@ int relayCreateCode(JsonNode *code) {
 	relay->rawlen = 0;
 	if(protocol_setting_get_string(relay, "default", &def) != 0) {
 		def = malloc(4);
+		if(!def) {
+			logprintf(LOG_ERR, "out of memory");
+			exit(EXIT_FAILURE);
+		}
 		free_def = 1;
 		strcpy(def, "off");
 	}
@@ -114,7 +118,7 @@ void relayInit(void) {
 
 	protocol_register(&relay);
 	protocol_set_id(relay, "relay");
-	protocol_device_add(relay, "relay", "GPIO connected relay's");
+	protocol_device_add(relay, "relay", "GPIO Connected Relays");
 	relay->devtype = RELAY;
 	relay->hwtype = HWRELAY;
 

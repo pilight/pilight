@@ -3,13 +3,13 @@
 
 	This file is part of pilight.
 
-    pilight is free software: you can redistribute it and/or modify it under the 
-	terms of the GNU General Public License as published by the Free Software 
-	Foundation, either version 3 of the License, or (at your option) any later 
+    pilight is free software: you can redistribute it and/or modify it under the
+	terms of the GNU General Public License as published by the Free Software
+	Foundation, either version 3 of the License, or (at your option) any later
 	version.
 
-    pilight is distributed in the hope that it will be useful, but WITHOUT ANY 
-	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR 
+    pilight is distributed in the hope that it will be useful, but WITHOUT ANY
+	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
@@ -33,11 +33,11 @@ void arctechSrCreateMessage(int id, int unit, int state, int all) {
 	arctech_screen->message = json_mkobject();
 	json_append_member(arctech_screen->message, "id", json_mknumber(id));
 	if(all == 1) {
-		json_append_member(arctech_screen->message, "all", json_mknumber(all));	
+		json_append_member(arctech_screen->message, "all", json_mknumber(all));
 	} else {
 		json_append_member(arctech_screen->message, "unit", json_mknumber(unit));
 	}
-		
+
 	if(state == 1) {
 		json_append_member(arctech_screen->message, "state", json_mkstring("up"));
 	} else {
@@ -139,11 +139,11 @@ int arctechSrCreateCode(JsonNode *code) {
 	json_find_number(code, "id", &id);
 	json_find_number(code, "unit", &unit);
 	json_find_number(code, "all", &all);
-	if(json_find_number(code, "off", &tmp) == 0)
+	if(json_find_number(code, "down", &tmp) == 0)
 		state=0;
-	else if(json_find_number(code, "on", &tmp) == 0)
+	else if(json_find_number(code, "up", &tmp) == 0)
 		state=1;
-		
+
 	if(id == -1 || (unit == -1 && all == 0) || state == -1) {
 		logprintf(LOG_ERR, "arctech_screen: insufficient number of arguments");
 		return EXIT_FAILURE;
@@ -183,8 +183,10 @@ void arctechSrInit(void) {
 	protocol_set_id(arctech_screen, "arctech_screens");
 	protocol_device_add(arctech_screen, "kaku_screen", "KlikAanKlikUit Screens");
 	protocol_conflict_add(arctech_screen, "arctech_switches");
+	protocol_conflict_add(arctech_screen, "arctech_contact");
 	protocol_plslen_add(arctech_screen, 303);
 	protocol_plslen_add(arctech_screen, 251);
+	protocol_plslen_add(arctech_screen, 294);
 	arctech_screen->devtype = SCREEN;
 	arctech_screen->hwtype = RF433;
 	arctech_screen->pulse = 5;
@@ -199,7 +201,7 @@ void arctechSrInit(void) {
 
 	protocol_setting_add_string(arctech_screen, "states", "up,down");
 	protocol_setting_add_number(arctech_screen, "readonly", 0);
-	
+
 	arctech_screen->parseBinary=&arctechSrParseBinary;
 	arctech_screen->createCode=&arctechSrCreateCode;
 	arctech_screen->printHelp=&arctechSrPrintHelp;

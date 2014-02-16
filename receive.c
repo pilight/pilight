@@ -1,5 +1,5 @@
 /*
-	Copyright (C) 2013 CurlyMo
+	Copyright (C) 2013 - 2014 CurlyMo
 
 	This file is part of pilight.
 
@@ -47,6 +47,10 @@ int main(int argc, char **argv) {
 	log_level_set(LOG_NOTICE);
 
 	progname = malloc(16);
+	if(!progname) {
+		logprintf(LOG_ERR, "out of memory");
+		exit(EXIT_FAILURE);
+	}
 	strcpy(progname, "pilight-receive");
 	struct options_t *options = NULL;
 	struct ssdp_list_t *ssdp_list = NULL;
@@ -74,8 +78,10 @@ int main(int argc, char **argv) {
 	while(1) {
 		int c;
 		c = options_parse(&options, argc, argv, 1, &args);
-		if(c == -1 || c == -2)
+		if(c == -1)
 			break;
+		if(c == -2)
+			c = 'H';
 		switch(c) {
 			case 'H':
 				printf("\t -H --help\t\t\tdisplay this message\n");
@@ -90,6 +96,10 @@ int main(int argc, char **argv) {
 			break;
 			case 'S':
 				server = realloc(server, strlen(args)+1);
+				if(!server) {
+					logprintf(LOG_ERR, "out of memory");
+					exit(EXIT_FAILURE);
+				}
 				strcpy(server, args);
 			break;
 			case 'P':
@@ -146,21 +156,23 @@ int main(int argc, char **argv) {
 				}
 				//cleanup
 				json_delete(json);
+				sfree((void *)&recvBuff);
 				json = NULL;
 				message = NULL;
 			break;
 			case RECEIVE: {
-					char *line = strtok(recvBuff, "\n");
-					//for each line
-					while(line) {
-						json = json_decode(recvBuff);
-						assert(json != NULL);
-						char *output = json_stringify(json, "\t");
-						printf("%s\n", output);
-						sfree((void *)&output);
-						json_delete(json);
-						line = strtok(NULL,"\n");
-					}
+				char *line = strtok(recvBuff, "\n");
+				//for each line
+				while(line) {
+					json = json_decode(line);
+					assert(json != NULL);
+					char *output = json_stringify(json, "\t");
+					printf("%s\n", output);
+					sfree((void *)&output);
+					json_delete(json);
+					line = strtok(NULL,"\n");
+				}
+				sfree((void *)&recvBuff);
 			} break;
 			case REJECT:
 			default:
@@ -176,6 +188,7 @@ close:
 		sfree((void *)&server);
 	}
 	options_gc();
+	log_shell_disable();
 	log_gc();
 	sfree((void *)&progname);
 	sfree((void *)&message);

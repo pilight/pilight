@@ -4,10 +4,13 @@ var bInitialized = false;
 var bSending = false;
 var aDecimals = new Array();
 var bShowTabs = true;
+var iPLVersion = 0;
+var iPLNVersion = 0;
+var iFWVersion = 0;
 
 var cookieEnabled = (navigator.cookieEnabled) ? true : false;
 
-if(typeof navigator.cookieEnabled == "undefined" && !cookieEnabled) { 
+if(typeof navigator.cookieEnabled == "undefined" && !cookieEnabled) {
 	document.cookie="testcookie";
 	cookieEnabled = (document.cookie.indexOf("testcookie") != -1) ? true : false;
 	document.cookie = 'testcookie=; expires=Thu, 01 Jan 1970 00:00:01 GMT;';
@@ -15,7 +18,7 @@ if(typeof navigator.cookieEnabled == "undefined" && !cookieEnabled) {
 
 function toggleTabs() {
 	if(cookieEnabled && typeof(localStorage) != 'undefined') {
-		try {		
+		try {
 			if(localStorage.getItem("tabs") == "true") {
 				localStorage.setItem("tabs", "false");
 			} else {
@@ -25,7 +28,7 @@ function toggleTabs() {
 			if (e == QUOTA_EXCEEDED_ERR) {
 				alert('Quota exceeded!');
 			}
-		}				
+		}
 		document.location = document.location;
 	}
 }
@@ -37,17 +40,17 @@ if(cookieEnabled && typeof(localStorage) != 'undefined') {
 	if(localStorage.getItem("tabs") === null) {
 		localStorage.setItem("tabs", "true");
 	}
-	
+
 	if(localStorage.getItem("tabs") == "false") {
 		bShowTabs = false;
 	}
 
-	$(document).click(function(e) {	
+	$(document).click(function(e) {
 		if($('#helpdlg').length == 1) {
 			$('#helpdlg').remove();
 		}
 	});
-	
+
 	$(document).mouseup(function(e) {
 		if(e.target.className.indexOf('ui-page') == 0 || e.target.className.indexOf('ui-content') == 0) {
 			iDate = new Date().getTime();
@@ -67,7 +70,7 @@ if(cookieEnabled && typeof(localStorage) != 'undefined') {
 			}
 		}
 	});
-	
+
 	$(document).keydown(function(e) {
 		if(e.keyCode == 72) {
 			if($('#helpdlg').length == 1) {
@@ -111,7 +114,7 @@ function createSwitchElement(sTabId, sDevId, aValues) {
 		oTab.listview();
 		oTab.listview("refresh");
 	}
-	if(aValues['state'] == "on") {
+	if(aValues['state'] === "on" || aValues['state'] === "opened") {
 		$('#'+sTabId+'_'+sDevId+'_switch')[0].selectedIndex = 1;
 		$('#'+sTabId+'_'+sDevId+'_switch').slider('refresh');
 	} else {
@@ -135,7 +138,7 @@ function createScreenElement(sTabId, sDevId, aValues) {
 		$('#'+sTabId+'_'+sDevId+'_screen_down').checkboxradio();
 		$('#'+sTabId+'_'+sDevId+'_screen_up').checkboxradio();
 		$('#'+sTabId+'_'+sDevId+'_screen_down').bind("change", function(event, ui) {
-			event.stopPropagation();	
+			event.stopPropagation();
 			i = 0;
 			oLabel = this.parentNode.getElementsByTagName('label')[0];
 			$(oLabel).removeClass('ui-btn-active');
@@ -223,7 +226,7 @@ function createDimmerElement(sTabId, sDevId, aValues) {
 				if(iOldDimLevel != this.value) {
 					iOldDimLevel = this.value;
 					$('#'+sTabId+'_'+sDevId+'_switch')[0].selectedIndex = 1;
-					$('#'+sTabId+'_'+sDevId+'_switch').slider('refresh');					
+					$('#'+sTabId+'_'+sDevId+'_switch').slider('refresh');
 					var json = '{"message":"send","code":{"location":"'+sTabId+'","device":"'+sDevId+'","state":"on","values":{"dimlevel":'+this.value+'}}}';
 					if(oWebsocket) {
 						oWebsocket.send(json);
@@ -233,12 +236,12 @@ function createDimmerElement(sTabId, sDevId, aValues) {
 						window.setTimeout(function() { bSending = false; }, 1000);
 					}
 				}
-			}    
+			}
 		});
 		$('#'+sTabId+'_'+sDevId+'_dimmer').change(function(event) {
 			$('#'+sTabId+'_'+sDevId+'_value').val(this.value);
 		});
-		
+
 		oTab.listview();
 		oTab.listview("refresh");
 	}
@@ -301,13 +304,33 @@ function createWeatherElement(sTabId, sDevId, aValues) {
 	oTab.listview("refresh");
 }
 
+function updateVersions() {
+	if(iPLVersion != iPLNVersion) {
+		if(iFWVersion > 0) {
+			var obj = $('#version').text("pilight v"+iPLVersion+" - available v"+iPLNVersion+" / filter firmware v"+iFWVersion);
+		} else {
+			var obj = $('#version').text("pilight v"+iPLVersion+" - available v"+iPLNVersion);
+		}
+	} else {
+		if(iFWVersion > 0) {
+			var obj = $('#version').text("pilight v"+iPLVersion+" / filter firmware  v"+iFWVersion);
+		} else {
+			var obj = $('#version').text("pilight v"+iPLVersion);
+		}
+	}
+	obj.html(obj.html().replace(/\n/g,'<br/>'));
+}
+
 function createGUI(data) {
 	$.each(data, function(root, locations) {
 		if(root == 'version') {
-			if(locations[0] != locations[1]) {
-				$('#version').text("pilight v"+locations[0]+" - available v"+location[1]);
-			} else {
-				$('#version').text("pilight v"+locations[0]);
+			iPLVersion = locations[0];
+			iPLNVersion = locations[1];
+			updateVersions();
+		} else if(root == "firmware") {
+			iFWVersion = locations["version"];
+			if(iFWVersion > 0) {
+				updateVersions();
 			}
 		} else if(root == 'config') {
 			$('#tabs').append($("<ul></ul>"));
@@ -388,9 +411,9 @@ function createGUI(data) {
 				}
 			}
 			$.mobile.hidePageLoadingMsg();
-			bInitialized = true;			
+			bInitialized = true;
 		}
-	});	
+	});
 }
 
 function parseData(data) {
@@ -405,7 +428,7 @@ function parseData(data) {
 				$.each(aValues, function(vindex, vvalues) {
 					if(iType == 1 || iType == 4) {
 						if(vindex == 'state') {
-							if(vvalues == 'on') {
+							if(vvalues == 'on' || vvalues == 'opened') {
 								$('#'+lindex+'_'+dvalues+'_switch')[0].selectedIndex = 1;
 							} else {
 								$('#'+lindex+'_'+dvalues+'_switch')[0].selectedIndex = 0;
@@ -443,12 +466,12 @@ function parseData(data) {
 				});
 			});
 		});
-	};
+	}
 }
 
 $(document).ready(function() {
 	if($('body').length == 1) {
-		$.mobile.showPageLoadingMsg("b", "Connecting...", true);	
+		$.mobile.showPageLoadingMsg("b", "Connecting...", true);
 		if(typeof MozWebSocket != "undefined") {
 			oWebsocket = new MozWebSocket("ws://"+location.host, "data");
 		} else if(typeof WebSocket != "undefined") {
@@ -474,7 +497,7 @@ $(document).ready(function() {
 				});
 			}, 1000);
 		}
-		
+
 		if(oWebsocket) {
 			oWebsocket.onopen = function(evt) {
 				bConnected = true;

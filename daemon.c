@@ -1,5 +1,5 @@
 /*
-	Copyright (C) 2013 CurlyMo
+	Copyright (C) 2013 - 2014 CurlyMo
 
 	This file is part of pilight.
 
@@ -103,8 +103,15 @@ typedef struct sendqueue_t {
 
 struct sendqueue_t *sendqueue;
 struct sendqueue_t *sendqueue_head;
-pthread_mutex_t sendqueue_lock = PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP;
-pthread_cond_t sendqueue_signal = PTHREAD_COND_INITIALIZER;
+
+#ifndef __FreeBSD__
+	pthread_mutex_t sendqueue_lock = PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP;
+	pthread_cond_t sendqueue_signal = PTHREAD_COND_INITIALIZER;
+#else
+	pthread_mutex_t sendqueue_lock;
+	pthread_cond_t sendqueue_signal;
+	pthread_mutexattr_t sendqueue_attr;
+#endif
 int sendqueue_number = 0;
 
 typedef struct bcqueue_t {
@@ -116,8 +123,14 @@ typedef struct bcqueue_t {
 
 struct bcqueue_t *bcqueue;
 struct bcqueue_t *bcqueue_head;
-pthread_mutex_t bcqueue_lock = PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP;
-pthread_cond_t bcqueue_signal = PTHREAD_COND_INITIALIZER;
+#ifndef __FreeBSD__
+	pthread_mutex_t bcqueue_lock = PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP;
+	pthread_cond_t bcqueue_signal = PTHREAD_COND_INITIALIZER;
+#else
+	pthread_mutex_t bcqueue_lock;
+	pthread_cond_t bcqueue_signal;
+	pthread_mutexattr_t bcqueue_attr;
+#endif
 int bcqueue_number = 0;
 
 /* The pid_file and pid of this daemon */
@@ -172,6 +185,10 @@ int update_check = UPDATE_CHECK;
 
 void node_add(int id, char uuid[21]) {
 	struct nodes_t *node = malloc(sizeof(struct nodes_t));
+	if(!node) {
+		logprintf(LOG_ERR, "out of memory");
+		exit(EXIT_FAILURE);
+	}
 	strcpy(node->uuid, uuid);
 	node->client_id = id;
 	node->next = nodes;
@@ -206,6 +223,10 @@ void broadcast_queue(char *protoname, JsonNode *json) {
 
 	pthread_mutex_lock(&bcqueue_lock);
 	struct bcqueue_t *bnode = malloc(sizeof(struct bcqueue_t));
+	if(!bnode) {
+		logprintf(LOG_ERR, "out of memory");
+		exit(EXIT_FAILURE);
+	}
 	bnode->id = 1000000 * (unsigned int)tcurrent.tv_sec + (unsigned int)tcurrent.tv_usec;
 
 	char *jstr = json_stringify(json, NULL);
@@ -214,6 +235,10 @@ void broadcast_queue(char *protoname, JsonNode *json) {
 	sfree((void *)&jstr);
 
 	bnode->protoname = malloc(strlen(protoname)+1);
+	if(!bnode->protoname) {
+		logprintf(LOG_ERR, "out of memory");
+		exit(EXIT_FAILURE);
+	}
 	strcpy(bnode->protoname, protoname);
 
 	if(bcqueue_number == 0) {
@@ -234,6 +259,9 @@ void *broadcast(void *param) {
 
 	pthread_mutex_lock(&bcqueue_lock);
 	while(main_loop) {
+#ifdef __FreeBSD__
+		pthread_mutex_lock(&bcqueue_lock);		
+#endif	
 		if(bcqueue_number > 0) {
 			pthread_mutex_lock(&bcqueue_lock);
 
@@ -259,6 +287,14 @@ void *broadcast(void *param) {
 			if(jret) {
 				json_delete(jret);
 			}
+			if(strcmp(bcqueue->protoname, "pilight_firmware") == 0) {
+				JsonNode *code = NULL;
+				if((code = json_find_member(bcqueue->jmessage, "code")) != NULL) {
+					json_find_number(code, "version", &firmware.version);
+					json_find_number(code, "lpf", &firmware.lpf);
+					json_find_number(code, "hpf", &firmware.hpf);
+				}
+			}
 			broadcasted = 0;
 
 			if(receivers > 0) {
@@ -279,7 +315,7 @@ void *broadcast(void *param) {
 				json_delete(jupdate);
 				sfree((void *)&ret);
 			}
-			if(broadcasted == 1) {
+			if(broadcasted == 1 || nodaemon == 1) {
 				logprintf(LOG_DEBUG, "broadcasted: %s", json);
 			}
 			sfree((void *)&json);
@@ -337,7 +373,8 @@ void receiver_parse_code(int *rawcode, int rawlen, int plslen, int hwtype) {
 	while(pnode) {
 		protocol = pnode->listener;
 		match = 0;
-		if((protocol->hwtype == hwtype || hwtype == -1) &&
+
+		if((protocol->hwtype == hwtype || protocol->hwtype == -1 || hwtype == -1) &&
 		  ((((protocol->parseRaw || protocol->parseCode) && protocol->rawlen > 0)
 		   || protocol->parseBinary) && protocol->pulse > 0 && protocol->plslen)) {
 			plslengths = protocol->plslen;
@@ -348,7 +385,9 @@ void receiver_parse_code(int *rawcode, int rawlen, int plslen, int hwtype) {
 				}
 				plslengths = plslengths->next;
 			}
+
 			if(rawlen == protocol->rawlen && match == 1) {
+
 				for(x=0;x<(int)(double)rawlen;x++) {
 					memcpy(&protocol->raw[x], &rawcode[x], sizeof(int));
 				}
@@ -417,7 +456,7 @@ void receiver_parse_code(int *rawcode, int rawlen, int plslen, int hwtype) {
 
 				protocol->repeats++;
 				/* Continue if we have recognized enough repeated codes */
-				if(protocol->repeats >= (receive_repeat*protocol->rxrpt)) {
+				if(protocol->repeats >= (receive_repeat*protocol->rxrpt) || strcmp(protocol->id, "pilight_firmware") == 0) {
 					if(protocol->parseCode) {
 						logprintf(LOG_DEBUG, "caught minimum # of repeats %d of %s", protocol->repeats, protocol->id);
 						logprintf(LOG_DEBUG, "called %s parseCode()", protocol->id);
@@ -459,7 +498,7 @@ void receiver_parse_code(int *rawcode, int rawlen, int plslen, int hwtype) {
 							}
 						}
 
-						if((double)protocol->raw[1]/((plslengths->length * (1+protocol->pulse)/2)) < 2) {
+						if((double)protocol->raw[1]/((plslengths->length * (1+protocol->pulse)/2)) < 2.1) {
 							x -= 4;
 						}
 
@@ -515,6 +554,9 @@ void *send_code(void *param) {
 	pthread_mutex_lock(&sendqueue_lock);
 
 	while(main_loop) {
+#ifdef __FreeBSD__
+		pthread_mutex_lock(&sendqueue_lock);		
+#endif		
 		if(sendqueue_number > 0) {
 			pthread_mutex_lock(&sendqueue_lock);
 			sending = 1;
@@ -662,6 +704,10 @@ void send_queue(JsonNode *json) {
 					if(protocol->createCode(jcode) == 0) {
 						pthread_mutex_lock(&sendqueue_lock);
 						struct sendqueue_t *mnode = malloc(sizeof(struct sendqueue_t));
+						if(!mnode) {
+							logprintf(LOG_ERR, "out of memory");
+							exit(EXIT_FAILURE);
+						}
 						gettimeofday(&tcurrent, NULL);
 						mnode->id = 1000000 * (unsigned int)tcurrent.tv_sec + (unsigned int)tcurrent.tv_usec;
 						mnode->message = NULL;
@@ -670,6 +716,10 @@ void send_queue(JsonNode *json) {
 							json_delete(protocol->message);
 							if(json_validate(jsonstr) == true) {
 								mnode->message = malloc(strlen(jsonstr)+1);
+								if(!mnode->message) {
+									logprintf(LOG_ERR, "out of memory");
+									exit(EXIT_FAILURE);
+								}
 								strcpy(mnode->message, jsonstr);
 							}
 							sfree((void *)&jsonstr);
@@ -679,6 +729,10 @@ void send_queue(JsonNode *json) {
 							mnode->code[x]=protocol->raw[x];
 						}
 						mnode->protoname = malloc(strlen(protocol->id)+1);
+						if(!mnode->protoname) {
+							logprintf(LOG_ERR, "out of memory");
+							exit(EXIT_FAILURE);
+						}
 						strcpy(mnode->protoname, protocol->id);
 						mnode->protopt = protocol;
 						if(uuid) {
@@ -852,7 +906,7 @@ void client_node_parse_code(int i, JsonNode *json) {
 		if(strcmp(message, "request config") == 0) {
 			struct JsonNode *jsend = config_broadcast_create();
 			char *output = json_stringify(jsend, NULL);
-			socket_write_big(sd, output);
+			socket_write(sd, output);
 			sfree((void *)&output);
 			json_delete(jsend);
 		} else if(strcmp(message, "update") == 0) {
@@ -880,7 +934,7 @@ void client_controller_parse_code(int i, JsonNode *json) {
 		if(strcmp(message, "request config") == 0) {
 			struct JsonNode *jsend = config_broadcast_create();
 			char *output = json_stringify(jsend, NULL);
-			socket_write_big(sd, output);
+			socket_write(sd, output);
 			sfree((void *)&output);
 			json_delete(jsend);
 		/* Control a specific device */
@@ -898,11 +952,23 @@ void client_controller_parse_code(int i, JsonNode *json) {
 				} else if(config_get_location(location, &slocation) == 0) {
 					if(config_get_device(location, device, &sdevice) == 0) {
 						char *state = malloc(4);
+						if(!state) {
+							logprintf(LOG_ERR, "out of memory");
+							exit(EXIT_FAILURE);
+						}
 						if(json_find_string(code, "state", &tmp) == 0) {
 							state = realloc(state, strlen(tmp)+1);
+							if(!state) {
+								logprintf(LOG_ERR, "out of memory");
+								exit(EXIT_FAILURE);
+							}
 							strcpy(state, tmp);
 						} else {
 							state = realloc(state, 4);
+							if(!state) {
+								logprintf(LOG_ERR, "out of memory");
+								exit(EXIT_FAILURE);
+							}
 							memset(state, '\0', 4);
 						}
 						/* Send the device code */
@@ -943,6 +1009,10 @@ void client_webserver_parse_code(int i, char buffer[BUFFER_SIZE]) {
 		logprintf(LOG_ERR, "could not determine server ip address");
 	} else {
 		ptr = malloc(4);
+		if(!ptr) {
+			logprintf(LOG_ERR, "out of memory");
+			exit(EXIT_FAILURE);
+		}
 		ptr = strstr(buffer, " HTTP/");
 		*ptr = 0;
 		ptr = NULL;
@@ -958,12 +1028,19 @@ void client_webserver_parse_code(int i, char buffer[BUFFER_SIZE]) {
 				socket_write(sd, "\r");
 
 				path = malloc(strlen(webserver_root)+strlen("logo.png")+1);
+				if(!path) {
+					logprintf(LOG_ERR, "out of memory");
+					exit(EXIT_FAILURE);
+				}
 				sprintf(path, "%s/logo.png", webserver_root);
-				printf("%s\n", path);
 				f = fopen(path, "rb");
 				if(f) {
 					x = 0;
 					cache = malloc(BUFFER_SIZE);
+					if(!cache) {
+						logprintf(LOG_ERR, "out of memory");
+						exit(EXIT_FAILURE);
+					}
 					while(!feof(f)) {
 						x = (int)fread(cache, 1, BUFFER_SIZE, f);
 						send(sd, cache, (size_t)x, MSG_NOSIGNAL);
@@ -982,6 +1059,10 @@ void client_webserver_parse_code(int i, char buffer[BUFFER_SIZE]) {
 			socket_write(sd, "\r");
 			socket_write(sd, "<html><head><title>pilight daemon</title></head>\r");
 			cache = malloc(BUFFER_SIZE);
+			if(!cache) {
+				logprintf(LOG_ERR, "out of memory");
+				exit(EXIT_FAILURE);
+			}
 			if(webserver_enable == 1) {
 				sprintf(cache, "<body><center><img src=\"logo.png\"><br /><p style=\"color: #0099ff; font-weight: 800px; font-family: Verdana; font-size: 20px;\">The pilight webgui is located at <a style=\"text-decoration: none; color: #0099ff; font-weight: 800px; font-family: Verdana; font-size: 20px;\" href=\"http://%s:%d\">http://%s:%d</a></p></center></body></html>\r", inet_ntoa(sockin.sin_addr), webserver_port, inet_ntoa(sockin.sin_addr), webserver_port);
 				socket_write(sd, cache);
@@ -995,7 +1076,7 @@ void client_webserver_parse_code(int i, char buffer[BUFFER_SIZE]) {
 #endif
 
 /* Parse the incoming buffer from the client */
-void socket_parse_data(int i, char buffer[BUFFER_SIZE]) {
+void socket_parse_data(int i, char *buffer) {
 	int sd = socket_get_clients(i);
 	struct sockaddr_in address;
 	int addrlen = sizeof(address);
@@ -1006,13 +1087,10 @@ void socket_parse_data(int i, char buffer[BUFFER_SIZE]) {
 
 	getpeername(sd, (struct sockaddr*)&address, (socklen_t*)&addrlen);
 
-	if(strcmp(buffer, "HEART") != 0) {
-		logprintf(LOG_DEBUG, "socket recv: %s", buffer);
-	}
-
 	if(strcmp(buffer, "HEART") == 0) {
 		socket_write(sd, "BEAT");
 	} else {
+		logprintf(LOG_DEBUG, "socket recv: %s", buffer);
 		/* Serve static webserver page. This is the only request that's is
 		   expected not to be a json object */
 #ifdef WEBSERVER
@@ -1070,10 +1148,12 @@ void socket_parse_data(int i, char buffer[BUFFER_SIZE]) {
 					/* Check if we matched a know client type */
 					for(x=0;x<(sizeof(clients)/sizeof(clients[0]));x++) {
 						char *tmp = malloc(8+strlen(clients[x]));
-
+						if(!tmp) {
+							logprintf(LOG_ERR, "out of memory");
+							exit(EXIT_FAILURE);
+						}
 						sprintf(tmp, "client %s", clients[x]);
 						tmp[7+strlen(clients[x])] = '\0';
-
 						if(strcmp(message, tmp) == 0) {
 							socket_write(sd, "{\"message\":\"accept client\"}");
 							logprintf(LOG_INFO, "client recognized as %s", clients[x]);
@@ -1123,11 +1203,12 @@ void socket_client_disconnected(int i) {
 	if(handshakes[i] == RECEIVER || handshakes[i] == GUI || handshakes[i] == NODE)
 		receivers--;
 
+	handshakes[i] = -1;
+
 	if(handshakes[i] == NODE) {
 		node_remove(i);
 	}
 
-	handshakes[i] = 0;
 }
 
 void *receive_code(void *param) {
@@ -1189,24 +1270,14 @@ void *clientize(void *param) {
 		while(client_loop) {
 			if(steps > WELCOME) {
 				/* Clear the receive buffer again and read the welcome message */
-				if(steps == CONFIG) {
-					if((recvBuff = socket_read_big(sockfd))) {
-						json = json_decode(recvBuff);
-						json_find_string(json, "message", &message);
-						logprintf(LOG_DEBUG, "socket recv: %s", recvBuff);
-					} else {
-						client_loop = 0;
-						break;
-					}
+				if((recvBuff = socket_read(sockfd))) {
+					json = json_decode(recvBuff);
+					json_find_string(json, "message", &message);
+					logprintf(LOG_DEBUG, "socket recv: %s", recvBuff);
+					sfree((void *)&recvBuff);
 				} else {
-					if((recvBuff = socket_read(sockfd))) {
-						json = json_decode(recvBuff);
-						json_find_string(json, "message", &message);
-						logprintf(LOG_DEBUG, "socket recv: %s", recvBuff);
-					} else {
-						client_loop = 0;
-						break;
-					}
+					client_loop = 0;
+					break;
 				}
 			}
 			switch(steps) {
@@ -1394,7 +1465,7 @@ int main_gc(void) {
 		nodes = nodes->next;
 		sfree((void *)&tmp_nodes);
 	}
-	
+
 	log_gc();
 	sfree((void *)&nodes);
 	sfree((void *)&progname);
@@ -1404,6 +1475,10 @@ int main_gc(void) {
 int main(int argc, char **argv) {
 
 	progname = malloc(16);
+	if(!progname) {
+		logprintf(LOG_ERR, "out of memory");
+		exit(EXIT_FAILURE);
+	}
 	strcpy(progname, "pilight-daemon");
 
 	if(geteuid() != 0) {
@@ -1420,12 +1495,20 @@ int main(int argc, char **argv) {
 
 	strcpy(pilight_uuid, ssdp_genuuid());
 
+	firmware.version = 0;
+	firmware.lpf = 0;
+	firmware.hpf = 0;	
+	
 	loglevel = LOG_INFO;
 
 	log_file_enable();
 	log_shell_disable();
 
 	settingsfile = malloc(strlen(SETTINGS_FILE)+1);
+	if(!settingsfile) {
+		logprintf(LOG_ERR, "out of memory");
+		exit(EXIT_FAILURE);
+	}
 	strcpy(settingsfile, SETTINGS_FILE);
 
 	struct socket_callback_t socket_callback;
@@ -1465,6 +1548,10 @@ int main(int argc, char **argv) {
 			case 'S':
 				if(access(args, F_OK) != -1) {
 					settingsfile = realloc(settingsfile, strlen(args)+1);
+					if(!settingsfile) {
+						logprintf(LOG_ERR, "out of memory");
+						exit(EXIT_FAILURE);
+					}
 					strcpy(settingsfile, args);
 					settings_set_file(args);
 				} else {
@@ -1511,6 +1598,10 @@ int main(int argc, char **argv) {
 	settings_find_number("webserver-port", &webserver_port);
 	if(settings_find_string("webserver-root", &webserver_root) != 0) {
 		webserver_root = realloc(webserver_root, strlen(WEBSERVER_ROOT)+1);
+		if(!webserver_root) {
+			logprintf(LOG_ERR, "out of memory");
+			exit(EXIT_FAILURE);
+		}
 		strcpy(webserver_root, WEBSERVER_ROOT);
 	}
 #endif
@@ -1521,6 +1612,10 @@ int main(int argc, char **argv) {
 
 	if(settings_find_string("pid-file", &pid_file) != 0) {
 		pid_file = realloc(pid_file, strlen(PID_FILE)+1);
+		if(!pid_file) {
+			logprintf(LOG_ERR, "out of memory");
+			exit(EXIT_FAILURE);
+		}
 		strcpy(pid_file, PID_FILE);
 	}
 
@@ -1586,6 +1681,10 @@ int main(int argc, char **argv) {
 		if(hardware_read() == EXIT_FAILURE) {
 			goto clear;
 		}
+	} else {
+		JsonNode *root = json_decode("{\"none\":{}}");
+		hardware_parse(root);
+		json_delete(root);
 	}
 
 	settings_find_number("port", &port);
@@ -1628,6 +1727,16 @@ int main(int argc, char **argv) {
 		save_pid(getpid());
 	}
 
+#ifdef __FreeBSD__
+	pthread_mutexattr_init(&sendqueue_attr);
+	pthread_mutexattr_settype(&sendqueue_attr, PTHREAD_MUTEX_RECURSIVE);
+	pthread_mutex_init(&sendqueue_lock, &sendqueue_attr);
+
+	pthread_mutexattr_init(&bcqueue_attr);
+	pthread_mutexattr_settype(&bcqueue_attr, PTHREAD_MUTEX_RECURSIVE);
+	pthread_mutex_init(&bcqueue_lock, &bcqueue_attr);
+#endif
+
     //initialise all handshakes to 0 so not checked
 	memset(handshakes, -1, sizeof(handshakes));
 
@@ -1664,11 +1773,13 @@ int main(int argc, char **argv) {
 
 	struct conf_hardware_t *tmp_confhw = conf_hardware;
 	while(tmp_confhw) {
-		if(tmp_confhw->hardware->init() == EXIT_FAILURE) {
-			logprintf(LOG_ERR, "could not initialize %s hardware mode", tmp_confhw->hardware->id);
-			goto clear;
+		if(tmp_confhw->hardware->init) {
+			if(tmp_confhw->hardware->init() == EXIT_FAILURE) {
+				logprintf(LOG_ERR, "could not initialize %s hardware mode", tmp_confhw->hardware->id);
+				goto clear;
+			}
+			threads_register(tmp_confhw->hardware->id, &receive_code, (void *)tmp_confhw->hardware);
 		}
-		threads_register(tmp_confhw->hardware->id, &receive_code, (void *)tmp_confhw->hardware);
 		tmp_confhw = tmp_confhw->next;
 	}
 

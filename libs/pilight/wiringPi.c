@@ -116,14 +116,14 @@ struct wiringPiNodeStruct *wiringPiNodes = NULL ;
 
 // Port function select bits
 
-#define	FSEL_INPT		0b000
-#define	FSEL_OUTP		0b001
-#define	FSEL_ALT0		0b100
-#define	FSEL_ALT1		0b101
-#define	FSEL_ALT2		0b110
-#define	FSEL_ALT3		0b111
-#define	FSEL_ALT4		0b011
-#define	FSEL_ALT5		0b010
+#define	FSEL_INPT		0x0
+#define	FSEL_OUTP		0x1
+#define	FSEL_ALT0		0x4
+#define	FSEL_ALT1		0x5
+#define	FSEL_ALT2		0x6
+#define	FSEL_ALT3		0x7
+#define	FSEL_ALT4		0x3
+#define	FSEL_ALT5		0x2
 
 // Access from ARM Running Linux
 //	Taken from Gert/Doms code. Some of this is not in the manual
@@ -1618,6 +1618,7 @@ unsigned int micros (void)
 
 int wiringPiSetup (void)
 {
+#ifdef __arm__
   if(!wiringPiInitialized) {
 	wiringPiInitialized = 1;
   } else {
@@ -1700,7 +1701,7 @@ int wiringPiSetup (void)
   initialiseEpoch () ;
 
   wiringPiMode = WPI_MODE_PINS ;
-
+#endif
   return 0 ;
 }
 

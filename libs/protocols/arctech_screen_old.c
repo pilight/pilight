@@ -120,9 +120,9 @@ int arctechSrOldCreateCode(JsonNode *code) {
 
 	json_find_number(code, "id", &id);
 	json_find_number(code, "unit", &unit);
-	if(json_find_number(code, "off", &tmp) == 0)
+	if(json_find_number(code, "down", &tmp) == 0)
 		state=0;
-	else if(json_find_number(code, "on", &tmp) == 0)
+	else if(json_find_number(code, "up", &tmp) == 0)
 		state=1;
 
 	if(id == -1 || unit == -1 || state == -1) {
@@ -156,7 +156,7 @@ void arctechSrOldInit(void) {
 
 	protocol_register(&arctech_screen_old);
 	protocol_set_id(arctech_screen_old, "arctech_screens_old");
-	protocol_device_add(arctech_screen_old, "kaku_screen_old", "old KlikAanKlikUit Screens");
+	protocol_device_add(arctech_screen_old, "kaku_screen_old", "Old KlikAanKlikUit Screens");
 	protocol_conflict_add(arctech_screen_old, "arctech_switches_old");	
 	protocol_plslen_add(arctech_screen_old, 336);
 	arctech_screen_old->devtype = SCREEN;

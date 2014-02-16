@@ -1,20 +1,19 @@
 /*
-Copyright 2013 CurlyMo <curlymoo1@gmail.com>
+	Copyright (C) 2013 CurlyMo
 
-This file is part of Splash - Linux GUI Framebuffer Splash.
+	This file is part of pilight.
 
-Splash is free software: you can redistribute it and/or modify it under the
-terms of the GNU General Public License as published by the Free Software
-Foundation, either version 3 of the License, or (at your option) any later
-version.
+    pilight is free software: you can redistribute it and/or modify it under the 
+	terms of the GNU General Public License as published by the Free Software 
+	Foundation, either version 3 of the License, or (at your option) any later 
+	version.
 
-Splash is distributed in the hope that it will be useful, but WITHOUT ANY
-WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-FOR A PARTICULAR PURPOSE. See the GNU General Public License for more
-details.
+    pilight is distributed in the hope that it will be useful, but WITHOUT ANY 
+	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR 
+	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-You should have received a copy of the GNU General Public License along
-with Splash. If not, see <http://www.gnu.org/licenses/>
+    You should have received a copy of the GNU General Public License
+    along with pilight. If not, see	<http://www.gnu.org/licenses/>
 */
 
 #include <stdio.h>
@@ -44,6 +43,35 @@ int fcache_gc(void) {
 	return 1;
 }
 
+void fcache_remove_node(struct fcache_t **cache, char *name) {
+	struct fcache_t *currP, *prevP;
+
+	prevP = NULL;
+
+	for(currP = *cache; currP != NULL; prevP = currP, currP = currP->next) {
+
+		if(strcmp(currP->name, name) == 0) {
+			if(prevP == NULL) {
+				*cache = currP->next;
+			} else {
+				prevP->next = currP->next;
+			}
+
+			sfree((void *)&currP->name);
+			sfree((void *)&currP->bytes);
+			sfree((void *)&currP);
+
+			break;
+		}
+	}
+}
+
+int fcache_rm(char *filename) {
+	fcache_remove_node(&fcache, filename);
+	logprintf(LOG_DEBUG, "removed %s from cache", filename);
+	return 1;
+}
+
 int fcache_add(char *filename) {
 
 	unsigned long filesize = 0, i = 0;
@@ -57,9 +85,16 @@ int fcache_add(char *filename) {
 		return -1;
 	} else {
 		struct fcache_t *node = malloc(sizeof(struct fcache_t));
-		
+		if(!node) {
+			logprintf(LOG_ERR, "out of memory");
+			exit(EXIT_FAILURE);
+		}
 		filesize = (unsigned long)sb.st_size;
 		node->bytes = malloc(filesize + 100);
+		if(!node->bytes) {
+			logprintf(LOG_ERR, "out of memory");
+			exit(EXIT_FAILURE);
+		}
 		memset(node->bytes, '\0', filesize + 100);
 		int fd = open(filename, O_RDONLY);
 
@@ -72,6 +107,10 @@ int fcache_add(char *filename) {
 
 		node->size = (int)filesize;
 		node->name = malloc(strlen(filename)+1);
+		if(!node->name) {
+			logprintf(LOG_ERR, "out of memory");
+			exit(EXIT_FAILURE);
+		}
 		strcpy(node->name, filename);
 		node->next = fcache;
 		fcache = node;

@@ -22,11 +22,11 @@ ifneq (, $(findstring amd64, $(SYS)))
 endif
 GIT_HASH := $(shell git describe --always)
 CFLAGS = -ffast-math $(OSFLAGS) -Wfloat-equal -Wshadow -Wpointer-arith -Wcast-align -Wstrict-overflow=5 -Wwrite-strings -Waggregate-return -Wcast-qual -Wswitch-default -Wswitch-enum -Wformat=2 -g -Wall -I. -isystem.. -Ilibs/pilight/ -Ilibs/protocols/ -Ilibs/hardware/ -pthread -lm -DHASH=\"$(GIT_HASH)\"
-SUBDIRS = libs/pilight libs/protocols libs/hardware libs/websockets
+SUBDIRS = libs/pilight libs/protocols libs/hardware
 SRC = $(wildcard *.c)
-INCLUDES = $(wildcard protocols/*.h) $(wildcard protocols/*.c) $(wildcard hardware/*.h) $(wildcard hardware/*.c) $(wildcard libs/pilight/*.h) $(wildcard libs/websockets/*.c) $(wildcard libs/websockets/*.h) $(wildcard libs/websockets/*.c)
+INCLUDES = $(wildcard protocols/*.h) $(wildcard protocols/*.c) $(wildcard hardware/*.h) $(wildcard hardware/*.c) $(wildcard libs/pilight/*.h)
 PROGAMS = $(patsubst %.c,pilight-%,$(SRC))
-LIBS = libs/pilight/pilight.o libs/protocols/protocols.o libs/hardware/hardware.o libs/websockets/websockets.o
+LIBS = libs/pilight/pilight.o libs/protocols/protocols.o libs/hardware/hardware.o
 WEBFILES := $(shell cd web && find * -type f)
 WEBDIRS := $(shell cd web && find * -type d )
 
@@ -40,7 +40,7 @@ $(SUBDIRS):
 all: $(LIBS) libpilight.so libpilight.a $(PROGAMS) 
 
 libpilight.so: $(LIBS)
-	$(GCC) $(LIBS) -shared -o libpilight.so -lpthread -lm -ldl
+	$(GCC) $(LIBS) -shared -o libpilight.so -lpthread -lm
 	
 libpilight.a: $(LIBS)
 	$(CROSS_COMPILE)ar -rsc libpilight.a $(LIBS)
@@ -85,6 +85,7 @@ install:
 	install -m 0655 pilight-debug /usr/local/sbin/
 	install -m 0655 pilight-learn /usr/local/sbin/
 	install -m 0655 pilight-raw /usr/local/sbin/
+	install -m 0655 pilight-uuid /usr/local/sbin/
 	install -m 0655 libpilight.so /usr/local/lib/pilight/
 	install -m 0655 libpilight.a /usr/local/lib/pilight/
 	install -m 0644 settings.json-default /etc/pilight/

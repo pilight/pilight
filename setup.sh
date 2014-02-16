@@ -1,8 +1,10 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 cmake --help &>/dev/null || { echo "This program requires cmake"; exit; }
 dialog -v &>/dev/null || { echo "This program requires dialog"; exit; }
-dpkg --get-selections | grep -c libc6 &>/dev/null || { echo "This program requires libc6"; exit; }
+if [ $(uname -a | grep -c "FreeBSD") -eq 0 ]; then
+	dpkg --get-selections | grep -c libc6 &>/dev/null || { echo "This program requires libc6"; exit; }
+fi
 
 function clean {
 	rm -r CMakeFiles 2>/dev/null;

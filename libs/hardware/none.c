@@ -1,5 +1,5 @@
 /*
-	Copyright (C) 2013 CurlyMo
+	Copyright (C) 2013 - 2014 CurlyMo
 
 	This file is part of pilight.
 
@@ -26,6 +26,7 @@
 #include "none.h"
 
 int noneSend(int *code) {
+	sleep(1);
 	return EXIT_SUCCESS;
 }
 

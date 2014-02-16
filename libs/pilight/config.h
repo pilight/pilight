@@ -1,5 +1,5 @@
 /*
-	Copyright (C) 2013 CurlyMo
+	Copyright (C) 2013 - 2014 CurlyMo
 
 	This file is part of pilight.
 
@@ -83,6 +83,7 @@ struct conf_devices_t {
 	char *name;
 	char dev_uuid[21];
 	char ori_uuid[21];
+	int cst_uuid;
 	struct protocols_t *protocols;
 	struct conf_settings_t *settings;
 	struct conf_devices_t *next;

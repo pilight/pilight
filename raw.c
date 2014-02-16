@@ -1,5 +1,5 @@
 /*
-	Copyright (C) 2013 CurlyMo
+	Copyright (C) 2013 - 2014 CurlyMo
 
 	This file is part of pilight.
 
@@ -96,25 +96,18 @@ int main(int argc, char **argv) {
 	pid_t pid = 0;
 
 	settingsfile = malloc(strlen(SETTINGS_FILE)+1);
+	if(!settingsfile) {
+		logprintf(LOG_ERR, "out of memory");
+		exit(EXIT_FAILURE);
+	}
 	strcpy(settingsfile, SETTINGS_FILE);	
 	
 	progname = malloc(12);
+	if(!progname) {
+		logprintf(LOG_ERR, "out of memory");
+		exit(EXIT_FAILURE);
+	}
 	strcpy(progname, "pilight-raw");	
-
-	if((pid = proc_find("pilight-daemon")) > 0) {
-		logprintf(LOG_ERR, "pilight-daemon instance found (%d)", (int)pid);
-		exit(EXIT_FAILURE);
-	}
-
-	if((pid = proc_find("pilight-learn")) > 0) {
-		logprintf(LOG_ERR, "pilight-learn instance found (%d)", (int)pid);
-		exit(EXIT_FAILURE);
-	}
-
-	if((pid = proc_find("pilight-debug")) > 0) {
-		logprintf(LOG_ERR, "pilight-debug instance found (%d)", (int)pid);
-		exit(EXIT_FAILURE);
-	}
 
 	options_add(&options, 'H', "help", no_value, 0, NULL);
 	options_add(&options, 'V', "version", no_value, 0, NULL);
@@ -123,8 +116,10 @@ int main(int argc, char **argv) {
 	while (1) {
 		int c;
 		c = options_parse(&options, argc, argv, 1, &args);
-		if(c == -1 || c == -2)
+		if(c == -1)
 			break;
+		if(c == -2)
+			c = 'H';
 		switch (c) {
 			case 'H':
 				printf("Usage: %s [options]\n", progname);
@@ -140,6 +135,10 @@ int main(int argc, char **argv) {
 			case 'S': 
 				if(access(args, F_OK) != -1) {
 					settingsfile = realloc(settingsfile, strlen(args)+1);
+					if(!settingsfile) {
+						logprintf(LOG_ERR, "out of memory");
+						exit(EXIT_FAILURE);
+					}
 					strcpy(settingsfile, args);
 					settings_set_file(args);
 				} else {
@@ -155,6 +154,21 @@ int main(int argc, char **argv) {
 	}
 	options_delete(options);
 
+	if((pid = proc_find("pilight-daemon")) > 0) {
+		logprintf(LOG_ERR, "pilight-daemon instance found (%d)", (int)pid);
+		return (EXIT_FAILURE);
+	}
+
+	if((pid = proc_find("pilight-learn")) > 0) {
+		logprintf(LOG_ERR, "pilight-learn instance found (%d)", (int)pid);
+		return (EXIT_FAILURE);
+	}
+
+	if((pid = proc_find("pilight-debug")) > 0) {
+		logprintf(LOG_ERR, "pilight-debug instance found (%d)", (int)pid);
+		return (EXIT_FAILURE);
+	}	
+	
 	if(access(settingsfile, F_OK) != -1) {
 		if(settings_read() != 0) {
 			return EXIT_FAILURE;

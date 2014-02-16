@@ -23,15 +23,6 @@ struct protocol_t *conrad_rsl_contact;
 
 void conradRSLCnCreateMessage(int id, int state);
 void conradRSLCnParseCode(void);
-void conradRSLCnCreateLow(int s, int e);
-void conradRSLCnCreateHigh(int s, int e);
-void conradRSLCnClearCode(void);
-void conradRSLCnCreateId(int id);
-void conradRSLCnCreateStart(int start);
-void conradRSLCnCreateState(int state);
-void conradRSLCnCreateFooter(void);
-int conradRSLCnCreateCode(JsonNode *code);
-void conradRSLCnPrintHelp(void);
 void conradRSLCnInit(void);
 
 #endif

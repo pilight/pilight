@@ -18,6 +18,7 @@
 
 #include <string.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include <signal.h>
 #include <setjmp.h>
 
@@ -37,6 +38,10 @@ void gc_handler(int sig) {
 /* Add function to gc */
 void gc_attach(int (*fp)(void)) {
 	struct collectors_t *gnode = malloc(sizeof(struct collectors_t));
+	if(!gnode) {
+		fprintf(stderr, "out of memory\n");
+		exit(EXIT_FAILURE);
+	}
 	gnode->listener = fp;
 	gnode->next = gc;
 	gc = gnode;
@@ -88,10 +93,10 @@ void gc_catch(void) {
     sigaction(SIGABRT, &act, &old);
     sigaction(SIGTSTP, &act, &old);
 
-    // sigaction(SIGBUS,  &act, &old);
-    // sigaction(SIGILL,  &act, &old);
-    // sigaction(SIGSEGV, &act, &old);
-	// sigaction(SIGFPE,  &act, &old);	
+    sigaction(SIGBUS,  &act, &old);
+    sigaction(SIGILL,  &act, &old);
+    sigaction(SIGSEGV, &act, &old);
+	sigaction(SIGFPE,  &act, &old);	
 
     if(sigsetjmp(gc_cleanup, 0) == 0)
 		return;

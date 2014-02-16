@@ -1,5 +1,5 @@
 /*
-	Copyright (C) 2013 CurlyMo
+	Copyright (C) 2014 CurlyMo
 
 	This file is part of pilight.
 
@@ -66,6 +66,10 @@ int main(int argc, char **argv) {
 	char *args = NULL;	
 	
 	progname = malloc(13);
+	if(!progname) {
+		logprintf(LOG_ERR, "out of memory");
+		exit(EXIT_FAILURE);
+	}
 	strcpy(progname, "pilight-uuid");	
 	
 	options_add(&options, 'H', "help", no_value, 0, NULL);
@@ -74,8 +78,10 @@ int main(int argc, char **argv) {
 	while (1) {
 		int c;
 		c = options_parse(&options, argc, argv, 1, &args);
-		if(c == -1 || c == -2)
+		if(c == -1)
 			break;
+		if(c == -2)
+			c = 'H';
 		switch (c) {
 			case 'H':
 				printf("Usage: %s [options]\n", progname);

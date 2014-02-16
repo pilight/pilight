@@ -20,11 +20,13 @@
 #define _HARDWARE_H_
 
 typedef enum {
-	NONE,
+	HWINTERNAL = -1,
+	NONE = 0,
 	RF433,
 	RF868,
 	SENSOR,
-	HWRELAY
+	HWRELAY,
+	API
 } hwtype_t;
 
 #include "options.h"
@@ -63,6 +65,7 @@ void hardware_set_id(hardware_t *hw, const char *id);
 int hardware_gc(void);
 int hardware_set_file(char *file);
 int hardware_read(void);
+int hardware_parse(JsonNode *root);
 int hardware_write(char *content);
 
 #endif

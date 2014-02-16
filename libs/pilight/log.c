@@ -1,5 +1,5 @@
 /*
-	Copyright (C) 2013 CurlyMo
+	Copyright (C) 2013 - 2014 CurlyMo
 
 	This file is part of pilight.
 
@@ -62,26 +62,58 @@ int log_gc(void) {
 
 void logprintf(int prio, const char *format_str, ...) {
 	int save_errno = errno;
+	char line[1024];
 	va_list ap;
+	struct stat sb;
 
 	if(logfile == NULL && filelog == 0 && shelllog == 0)
 		return;
 
 	if(loglevel >= prio) {
-		if(filelog == 1 && lf != NULL && loglevel < LOG_DEBUG) {
+		if(filelog == 1 && lf != NULL && prio < LOG_DEBUG) {
+
 			logmarkup();
-			fputs(debug_log, lf);
+			memset(line, '\0', 1024);
+			strcat(line, debug_log);
 			va_start(ap, format_str);
 			if(prio==LOG_WARNING)
-				fprintf(lf,"WARNING: ");
+				strcat(line, "WARNING: ");
 			if(prio==LOG_ERR)
-				fprintf(lf,"ERROR: ");
+				strcat(line, "ERROR: ");
 			if(prio==LOG_INFO)
-				fprintf(lf, "INFO: ");
+				strcat(line, "INFO: ");
 			if(prio==LOG_NOTICE)
-				fprintf(lf, "NOTICE: ");
-			vfprintf(lf, format_str, ap);
-			fputc('\n',lf);
+				strcat(line, "NOTICE: ");
+			vsprintf(&line[strlen(line)], format_str, ap);
+			strcat(line, "\n");
+
+			if((stat(logfile, &sb)) != 0) {
+				fclose(lf);
+				lf = NULL;
+				if((lf = fopen(logfile, "a")) == NULL) {
+					filelog = 0;
+				}
+			} else {
+				if(sb.st_nlink == 0) {
+					lf = NULL;
+					if((lf = fopen(logfile, "a")) == NULL) {
+						filelog = 0;
+					}
+				}
+				if(sb.st_size > LOG_MAX_SIZE) {
+					fclose(lf);
+					char tmp[strlen(logfile)+5];
+					strcpy(tmp, logfile);
+					strcat(tmp, ".old");
+					rename(logfile, tmp);
+					lf = NULL;
+					if((lf = fopen(logfile, "a")) == NULL) {
+						filelog = 0;
+					}
+				}
+			}
+
+			fwrite(line, sizeof(char), strlen(line), lf);
 			fflush(lf);
 			va_end(ap);
 		}
@@ -140,6 +172,7 @@ void log_shell_disable(void) {
 
 void log_file_set(char *log) {
 	struct stat s;
+	struct stat sb;
 	char *filename = basename(log);
 	size_t i = (strlen(log)-strlen(filename));
 	logpath = realloc(logpath, i+1);
@@ -173,8 +206,23 @@ void log_file_set(char *log) {
 		strcpy(logfile, log);
 	}
 
+	char tmp[strlen(logfile)+5];
+	strcpy(tmp, logfile);
+	strcat(tmp, ".old");
+
+	if((stat(tmp, &sb)) == 0) {
+		if(sb.st_nlink > 0) {
+			if((stat(logfile, &sb)) == 0) {
+				if(sb.st_nlink > 0) {
+					remove(tmp);
+					rename(logfile, tmp);
+				}
+			}
+		}
+	}
+
 	if(lf == NULL && filelog == 1) {
-		if((lf = fopen(logfile, "w+")) == NULL) {
+		if((lf = fopen(logfile, "a")) == NULL) {
 			filelog = 0;
 			shelllog = 1;
 			logprintf(LOG_ERR, "could not open logfile %s", logfile);
@@ -183,6 +231,7 @@ void log_file_set(char *log) {
 			exit(EXIT_FAILURE);
 		}
 	}
+
 	sfree((void *)&logpath);
 }
 

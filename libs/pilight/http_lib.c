@@ -68,6 +68,7 @@ extern char *malloc();
 #include <stdio.h>
 
 #include "http_lib.h"
+#include "log.h"
 #define h_addr h_addr_list[0]
 
 #define SERVER_DEFAULT "adonis"
@@ -322,10 +323,11 @@ http_retcode http_get(filename, pdata, plength, typebuf)
 {
   http_retcode ret;
 
-  char header[MAXBUF];
+  char buffer[MAXBUF];
+  char *newbuf = NULL;
   char *pc;
   int  fd;
-  int  n,length=-1;
+  int  n,length=-1, len = 0;
 
   if (!pdata) return ERRNULL; else *pdata=NULL;
   if (plength) *plength=0;
@@ -334,7 +336,7 @@ http_retcode http_get(filename, pdata, plength, typebuf)
   ret=http_query("GET",filename,"",KEEP_OPEN, NULL, 0, &fd);
   if (ret==200) {
     while (1) {
-      n=http_read_line(fd,header,MAXBUF-1);
+      n=http_read_line(fd,buffer,MAXBUF-1);
 #ifdef VERBOSE
       fputs(header,stderr);
       putc('\n',stderr);
@@ -344,27 +346,74 @@ http_retcode http_get(filename, pdata, plength, typebuf)
 	return ERRRDHD;
       }
       /* empty line ? (=> end of header) */
-      if ( n>0 && (*header)=='\0') break;
+      if ( n>0 && (*buffer)=='\0') break;
       /* try to parse some keywords : */
       /* convert to lower case 'till a : is found or end of string */
-      for (pc=header; (*pc!=':' && *pc) ; pc++) *pc=tolower(*pc);
-      sscanf(header,"content-length: %d",&length);
-      if (typebuf) sscanf(header,"content-type: %s",typebuf);
+      for (pc=buffer; (*pc!=':' && *pc) ; pc++) *pc=tolower(*pc);
+      sscanf(buffer,"content-length: %d",&length);
+      if (typebuf) sscanf(buffer,"content-type: %s",typebuf);
+	  memset(buffer, '\0', MAXBUF);
     }
-    if (length<=0) {
-      close(fd);
-      return ERRNOLG;
-    }
-    if (plength) *plength=length;
 
-    if (length > 0 && !(*pdata=malloc(length+1))) {
-      close(fd);
-      return ERRMEM;
+    if(length<0) {
+		n=http_read_line(fd,buffer,MAXBUF-1);
+
+		while(1) {
+			 n=http_read_line(fd,buffer,MAXBUF-1);
+			 if(n<=0) {
+				close(fd);
+				break;
+			}
+
+			if(n > 0) {
+				if((*buffer)=='\0') {
+					break;
+				} else {
+					if(!newbuf) {
+						newbuf = realloc(newbuf, strlen(buffer)+1);
+					} else {
+						newbuf = realloc(newbuf, len+strlen(buffer)+1);
+					}
+					if(!newbuf) {
+						logprintf(LOG_ERR, "out of memory");
+						exit(EXIT_FAILURE);
+					}
+					len += sprintf(&newbuf[len], "%s", buffer);
+				}
+			}
+		}
+		close(fd);
+      //return ERRNOLG;
     }
-	memset(*pdata, '\0', length+1);
-    n=http_read_buffer(fd,*pdata,length);
-    close(fd);
-    if (n!=length) ret=ERRRDDT;
+	if(length == 0) {
+		close(fd);
+      return ERRNOLG;
+	 }
+
+
+	if(len > 0) {
+		*plength = len;
+		*pdata = malloc(len+1);
+		if(!*pdata) {
+			logprintf(LOG_ERR, "out of memory");
+			exit(EXIT_FAILURE);
+		}
+		memset(*pdata, '\0', len+1);
+		strcpy(*pdata, newbuf);
+		free(newbuf);
+		return ret;
+	} else {
+		if (plength) *plength=length;
+
+		if (length > 0 && !(*pdata=malloc(length+1))) {
+		  close(fd);
+		  return ERRMEM;
+		}
+		memset(*pdata, '\0', length+1);
+		n=http_read_buffer(fd,*pdata,length);
+		close(fd);
+		if (n!=length) ret=ERRRDDT;
+	}
   } else if (ret>=0) close(fd);
   return ret;
 }

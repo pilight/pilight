@@ -38,6 +38,7 @@
 #cmakedefine PROTOCOL_CONRAD_RSL_SWITCH
 #cmakedefine PROTOCOL_CONRAD_RSL_CONTACT
 #cmakedefine PROTOCOL_DS18B20
+#cmakedefine PROTOCOL_DS18S20
 #cmakedefine PROTOCOL_DHT11
 #cmakedefine PROTOCOL_DHT22
 #cmakedefine PROTOCOL_DIO_SWITCH
@@ -53,14 +54,24 @@
 #cmakedefine PROTOCOL_KAKU_SCREEN_OLD
 #cmakedefine PROTOCOL_KAKU_SWITCH
 #cmakedefine PROTOCOL_KAKU_SCREEN
+#cmakedefine PROTOCOL_KAKU_CONTACT
 #cmakedefine PROTOCOL_LM75
+#cmakedefine PROTOCOL_LM76
+#cmakedefine PROTOCOL_MUMBI_SWITCH
 #cmakedefine PROTOCOL_NEXA_SWITCH
+#cmakedefine PROTOCOL_OPENWEATHERMAP
+#cmakedefine PROTOCOL_POLLIN_SWITCH
 #cmakedefine PROTOCOL_RAW
 #cmakedefine PROTOCOL_RELAY
 #cmakedefine PROTOCOL_REV
 #cmakedefine PROTOCOL_ELRO_SWITCH
 #cmakedefine PROTOCOL_SELECTREMOTE
+<<<<<<< HEAD
 #cmakedefine PROTOCOL_THREECHAN
+=======
+#cmakedefine PROTOCOL_SILVERCREST
+#cmakedefine PROTOCOL_WUNDERGROUND
+>>>>>>> upstream/development
 
 /* Hardware support */
 
@@ -68,29 +79,34 @@
 #cmakedefine HARDWARE_433_LIRC
 #cmakedefine HARDWARE_433_PILIGHT
 
-#define VERSION					"2.1"
+#define VERSION					"3.0"
 #define PULSE_DIV				34
 
 #ifdef WEBSERVER
-	#define WEBSERVER_PORT		5001
-	#define WEBSERVER_ROOT		"/usr/local/share/pilight/"
-	#define WEBSERVER_ENABLE	1
-	#define WEBSERVER_CACHE		1
-	#define WEBGUI_TEMPLATE		"default"
+	#define WEBSERVER_PORT			5001
+	#define WEBSERVER_ROOT			"/usr/local/share/pilight/"
+	#define WEBSERVER_ENABLE		1
+	#define WEBSERVER_CACHE			1
+	#define WEBGUI_TEMPLATE			"default"
+	#define MAX_UPLOAD_FILESIZE 	5242880
+	#define MAX_CACHE_FILESIZE 		1048576
+	#define WEBSERVER_WORKERS		1
+	#define WEBSERVER_CHUNK_SIZE 	4096
 #endif
 
-#define MAX_CLIENTS				30
-#define BUFFER_SIZE				1025
-#define BIG_BUFFER_SIZE			1024001
+#define MAX_CLIENTS					30
+#define BUFFER_SIZE					1025
+#define EOSS						"\n\n" // End Of Socket Stream
 
-#define PID_FILE				"/var/run/pilight.pid"
-#define CONFIG_FILE				"/etc/pilight/config.json"
-#define LOG_FILE				"/var/log/pilight.log"
-#define SETTINGS_FILE			"/etc/pilight/settings.json"
+#define PID_FILE					"/var/run/pilight.pid"
+#define CONFIG_FILE					"/etc/pilight/config.json"
+#define LOG_FILE					"/var/log/pilight.log"
+#define SETTINGS_FILE				"/etc/pilight/settings.json"
+#define LOG_MAX_SIZE 				1048576 // 1024*1024
 
-#define SEND_REPEATS			10
-#define RECEIVE_REPEATS			1
-#define UUID_LENGTH				21
+#define SEND_REPEATS				10
+#define RECEIVE_REPEATS				1
+#define UUID_LENGTH					21
 
 #ifdef UPDATE
 	#define UPDATE_MIRROR			"http://apt.pilight.org/mirror.txt"
@@ -104,8 +120,14 @@ typedef struct pilight_t {
     void (*receive)(int *rawcode, int rawlen, int plslen, int hwtype);
 } pilight_t;
 
-struct pilight_t pilight;
+typedef struct firmware_t {
+	int lpf;
+	int hpf;
+	int version;
+} firmware_t;
 
+struct pilight_t pilight;
+struct firmware_t firmware;
 char pilight_uuid[UUID_LENGTH];
 
 #endif

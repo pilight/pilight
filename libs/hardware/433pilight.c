@@ -1,5 +1,5 @@
 /*
-	Copyright (C) 2013 CurlyMo
+	Copyright (C) 2013 - 2014 CurlyMo
 
 	This file is part of pilight.
 
@@ -160,6 +160,10 @@ unsigned short pilight433Settings(JsonNode *json) {
 	if(strcmp(json->key, "socket") == 0) {
 		if(json->tag == JSON_STRING) {
 			pilight_433_socket = malloc(strlen(json->string_)+1);
+			if(!pilight_433_socket) {
+				logprintf(LOG_ERR, "out of memory");
+				exit(EXIT_FAILURE);
+			}
 			strcpy(pilight_433_socket, json->string_);
 		} else {
 			return EXIT_FAILURE;
