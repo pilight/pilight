@@ -48,7 +48,7 @@ void threechanParseCode(void) {
 	threechan->message = json_mkobject();
 	json_append_member(threechan->message, "id", json_mknumber(id));
 	json_append_member(threechan->message, "temperature", json_mknumber(temperature));
-	json_append_member(threechan->message, "humidity", json_mknumber(humidity));
+	json_append_member(threechan->message, "humidity", json_mknumber(humidity*10));
 	json_append_member(threechan->message, "battery", json_mknumber(battery));
 }
 
