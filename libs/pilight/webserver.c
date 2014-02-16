@@ -526,7 +526,10 @@ static int webserver_request_handler(struct mg_connection *conn) {
 			}
 		}
 		sfree((void *)&ext);
-		
+
+		memset(buffer, '\0', 4096);
+		p = buffer;
+
 		if(access(request, F_OK) == 0) {
 			stat(request, &st);
 			if(webserver_cache && st.st_size <= MAX_CACHE_FILESIZE && 
@@ -537,9 +540,6 @@ static int webserver_request_handler(struct mg_connection *conn) {
 		} else {
 			goto filenotfound;
 		}
-		
-		memset(buffer, '\0', 4096);
-		p = buffer;
 
 		const char *cl = NULL;
 		if((cl = mg_get_header(conn, "Content-Length"))) {
@@ -612,8 +612,8 @@ static int webserver_request_handler(struct mg_connection *conn) {
 					header[(pos-xpos)] = '\0';
 					
 					/* Extract content info from PHP output */
-					memmove(&output[xpos], &output[pos+3], olen-(pos+3));
-					olen-=((pos+3)-xpos);
+					memmove(&output[xpos], &output[pos+3], olen-(pos+2));
+					olen-=((pos+2)-xpos);
 					
 					/* Retrieve the PHP content type */
 					char ite[pos-xpos];
