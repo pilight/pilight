@@ -298,6 +298,7 @@ struct mg_server {
   struct ll active_connections;
   mg_handler_t request_handler;
   mg_handler_t http_close_handler;
+  mg_handler_t http_open_handler;
   mg_handler_t error_handler;
   mg_handler_t auth_handler;
   char *config_options[NUM_OPTIONS];
@@ -642,7 +643,7 @@ static char *skip(char **buf, const char *delimiters) {
 
 // Parse HTTP headers from the given buffer, advance buffer to the point
 // where parsing stopped.
-static void parse_http_headers(char **buf, struct mg_connection *ri) {
+void parse_http_headers(char **buf, struct mg_connection *ri) {
   size_t i;
 
   for (i = 0; i < ARRAY_SIZE(ri->http_headers); i++) {
@@ -1349,6 +1350,25 @@ static void sockaddr_to_string(char *buf, size_t len,
 #endif
 }
 
+static void close_conn(struct connection *conn) {
+  LINKED_LIST_REMOVE(&conn->link);
+  closesocket(conn->client_sock);
+  close_local_endpoint(conn);
+
+  if (conn->server->http_close_handler)
+    conn->server->http_close_handler(&conn->mg_conn);
+
+  DBG(("%p %d %d", conn, conn->flags, conn->endpoint_type));
+  free(conn->request);            // It's OK to free(NULL), ditto below
+  free(conn->path_info);
+  free(conn->remote_iobuf.buf);
+  free(conn->local_iobuf.buf);
+#ifdef MONGOOSE_USE_SSL
+  if (conn->ssl != NULL) SSL_free(conn->ssl);
+#endif
+  free(conn);
+}
+
 static struct connection *accept_new_connection(struct mg_server *server) {
   union socket_address sa;
   socklen_t len = sizeof(sa);
@@ -1386,27 +1406,13 @@ static struct connection *accept_new_connection(struct mg_server *server) {
     LINKED_LIST_ADD_TO_FRONT(&server->active_connections, &conn->link);
     DBG(("added conn %p", conn));
   }
+  if(conn->server->http_open_handler) {
+    if(conn->server->http_open_handler(&conn->mg_conn) == -1) {
+		close_conn(conn);
+	}
+  }
 
   return conn;
-}
-
-static void close_conn(struct connection *conn) {
-  LINKED_LIST_REMOVE(&conn->link);
-  closesocket(conn->client_sock);
-  close_local_endpoint(conn);
-
-  if (conn->server->http_close_handler)
-    conn->server->http_close_handler(&conn->mg_conn);
-
-  DBG(("%p %d %d", conn, conn->flags, conn->endpoint_type));
-  free(conn->request);            // It's OK to free(NULL), ditto below
-  free(conn->path_info);
-  free(conn->remote_iobuf.buf);
-  free(conn->local_iobuf.buf);
-#ifdef MONGOOSE_USE_SSL
-  if (conn->ssl != NULL) SSL_free(conn->ssl);
-#endif
-  free(conn);
 }
 
 // Protect against directory disclosure attack by removing '..',
@@ -3075,7 +3081,6 @@ static int check_password(const char *method, const char *ha1, const char *uri,
     MG_AUTH_OK : MG_AUTH_FAIL;
 }
 
-// Authorize against the opened passwords file. Return 1 if authorized.
 int mg_authorize_input(struct mg_connection *c, char *username, char *password, const char *domain) {
   struct connection *conn = (struct connection *) c;
   const char *hdr;
@@ -3325,7 +3330,7 @@ static sock_t conn2(const char *host, int port) {
 
   if (host != NULL &&
       (he = gethostbyname(host)) != NULL &&
-    (sock = socket(PF_INET, SOCK_STREAM, 0)) != INVALID_SOCKET) {
+    (sock = socket(AF_INET, SOCK_STREAM, 0)) != INVALID_SOCKET) {
     set_close_on_exec(sock);
     sin.sin_family = AF_INET;
     sin.sin_port = htons((uint16_t) port);
@@ -3756,7 +3761,7 @@ int mg_connect(struct mg_server *server, const char *host, int port,
   int connect_ret_val;
 
   if (host == NULL || (he = gethostbyname(host)) == NULL ||
-      (sock = socket(PF_INET, SOCK_STREAM, 0)) == INVALID_SOCKET) return 0;
+      (sock = socket(AF_INET, SOCK_STREAM, 0)) == INVALID_SOCKET) return 0;
 #ifndef MONGOOSE_USE_SSL
   if (use_ssl) return 0;
 #endif
@@ -4261,6 +4266,10 @@ void mg_set_request_handler(struct mg_server *server, mg_handler_t handler) {
 
 void mg_set_http_close_handler(struct mg_server *server, mg_handler_t handler) {
   server->http_close_handler = handler;
+}
+
+void mg_set_http_open_handler(struct mg_server *server, mg_handler_t handler) {
+  server->http_open_handler = handler;
 }
 
 void mg_set_http_error_handler(struct mg_server *server, mg_handler_t handler) {
