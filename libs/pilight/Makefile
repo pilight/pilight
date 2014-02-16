@@ -28,7 +28,7 @@ ifneq (, $(findstring amd64, $(SYS)))
 endif
 CFLAGS = -ffast-math $(OSFLAGS) -Wfloat-equal -Wshadow -Wpointer-arith -Wcast-align -Wformat-nonliteral -Wstrict-overflow=5 -Wwrite-strings -Waggregate-return -Wcast-qual -Wswitch-default -Wswitch-enum -Wformat=2 -g -Wall -isystem. -isystem..
 SRC = $(wildcard *.c)
-OBJS = $(filter-out wiringPi.o wiringPiI2C.o http_lib.o json.o update.o, $(SRC:.c=.o))
+OBJS = $(filter-out wiringPi.o wiringPiI2C.o mongoose.o http_lib.o json.o update.o, $(SRC:.c=.o))
 
 all: json.o wiringPi.o wiringPiI2C.o http_lib.o mongoose.o update.o $(OBJS) pilight.o
 
@@ -53,8 +53,8 @@ update.o: update.c update.h
 %.o: %.c %.h 
 	$(GCC) $(CFLAGS) -c $(patsubst %.o,%.c,$@)
 
-pilight.o: $(OBJS) json.o http_lib.o wiringPi.o wiringPiI2C.o update.o
-	$(CROSS_COMPILE)ld -L/usr/local/lib -r $(OBJS) json.o http_lib.o wiringPi.o wiringPiI2C.o update.o -o pilight.o
+pilight.o: $(OBJS) json.o http_lib.o wiringPi.o wiringPiI2C.o update.o mongoose.o
+	$(CROSS_COMPILE)ld -L/usr/local/lib -r $(OBJS) json.o http_lib.o wiringPi.o wiringPiI2C.o mongoose.o update.o -o pilight.o
 
 dist-clean: clean
 

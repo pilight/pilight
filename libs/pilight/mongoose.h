@@ -68,6 +68,7 @@ const char *mg_set_option(struct mg_server *, const char *opt, const char *val);
 unsigned int mg_poll_server(struct mg_server *, int milliseconds);
 void mg_set_request_handler(struct mg_server *, mg_handler_t);
 void mg_set_http_close_handler(struct mg_server *, mg_handler_t);
+void mg_set_http_open_handler(struct mg_server *, mg_handler_t);
 void mg_set_http_error_handler(struct mg_server *, mg_handler_t);
 void mg_set_auth_handler(struct mg_server *, mg_handler_t);
 const char **mg_get_valid_option_names(void);
@@ -94,6 +95,7 @@ const char *mg_get_mime_type(const char *name, const char *default_mime_type);
 int mg_get_var(const struct mg_connection *conn, const char *var_name,
                char *buf, size_t buf_len);
 int mg_parse_header(const char *hdr, const char *var_name, char *buf, size_t);
+void parse_http_headers(char **buf, struct mg_connection *ri);
 int mg_parse_multipart(const char *buf, int buf_len,
                        char *var_name, int var_name_len,
                        char *file_name, int file_name_len,
