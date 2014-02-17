@@ -260,6 +260,11 @@ if(${PROTOCOL_SILVERCREST} MATCHES "OFF")
 	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/silvercrest.c")
 endif()
 
+if(${PROTOCOL_THREECHAN} MATCHES "OFF")
+	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/threechan.h")
+	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/threechan.c")
+endif()
+
 if(${HARDWARE_433_GPIO} MATCHES "OFF")
 	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/hardware/433gpio.h")
 	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/hardware/433gpio.c")
