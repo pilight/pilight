@@ -120,6 +120,9 @@
 #ifdef PROTOCOL_SILVERCREST
 	#include "../protocols/silvercrest.h"
 #endif
+#ifdef PROTOCOL_THREECHAN
+	#include "../protocols/threechan.h"
+#endif
 
 void protocol_init(void) {
 	pilightFirmwareInit();
@@ -214,6 +217,9 @@ void protocol_init(void) {
 #endif
 #ifdef PROTOCOL_SILVERCREST
 	silvercrestInit();
+#endif
+#ifdef PROTOCOL_THREECHAN
+	threechanInit();
 #endif
 }
 

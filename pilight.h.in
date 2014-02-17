@@ -67,6 +67,7 @@
 #cmakedefine PROTOCOL_ELRO_SWITCH
 #cmakedefine PROTOCOL_SELECTREMOTE
 #cmakedefine PROTOCOL_SILVERCREST
+#cmakedefine PROTOCOL_THREECHAN
 #cmakedefine PROTOCOL_WUNDERGROUND
 
 /* Hardware support */
