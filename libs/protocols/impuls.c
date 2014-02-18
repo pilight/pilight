@@ -187,6 +187,7 @@ void impulsInit(void) {
 	protocol_device_add(impuls, "impuls", "Impuls Switches");
 	protocol_device_add(impuls, "select-remote", "SelectRemote Switches");
 	protocol_conflict_add(impuls, "rev_switch");
+	protocol_plslen_add(impuls, 221);
 	protocol_plslen_add(impuls, 171);
 	protocol_plslen_add(impuls, 141);
 	protocol_plslen_add(impuls, 133);
