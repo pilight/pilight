@@ -1,5 +1,5 @@
 /*
-	Copyright (C) 2013 CurlyMo
+	Copyright (C) 2013 - 2014 CurlyMo
 
 	This file is part of pilight.
 
@@ -120,6 +120,9 @@
 #ifdef PROTOCOL_SILVERCREST
 	#include "../protocols/silvercrest.h"
 #endif
+#ifdef PROTOCOL_THREECHAN
+	#include "../protocols/threechan.h"
+#endif 
 
 void protocol_init(void) {
 	pilightFirmwareInit();
@@ -215,6 +218,9 @@ void protocol_init(void) {
 #ifdef PROTOCOL_SILVERCREST
 	silvercrestInit();
 #endif
+#ifdef PROTOCOL_THREECHAN
+	threechanInit();
+#endif 
 }
 
 void protocol_register(protocol_t **proto) {
