@@ -1,5 +1,5 @@
 /*
-	Copyright (C) 2013 CurlyMo
+	Copyright (C) 2014 CurlyMo
 
 	This file is part of pilight.
 
@@ -67,6 +67,7 @@
 #cmakedefine PROTOCOL_ELRO_SWITCH
 #cmakedefine PROTOCOL_SELECTREMOTE
 #cmakedefine PROTOCOL_SILVERCREST
+#cmakedefine PROTOCOL_THREECHAN
 #cmakedefine PROTOCOL_WUNDERGROUND
 
 /* Hardware support */
