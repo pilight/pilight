@@ -16,12 +16,36 @@
     along with pilight. If not, see	<http://www.gnu.org/licenses/>
 */
 
-#ifndef _PROTOCOL_THREECHAN_H_
-#define _PROTOCOL_THREECHAN_H_
+#ifndef _FIRMWARE_H_
+#define _FIRMWARE_H_
 
-struct protocol_t *threechan;
+typedef struct firmware_t {
+	int lpf;
+	int hpf;
+	int version;
+} firmware_t;
+struct firmware_t firmware;
 
-void threechanParseCode(void);
-void threechanInit(void);
+typedef enum {
+	FW_PROG_OP_FAIL,
+	FW_INIT_FAIL,
+	FW_RD_SIG_FAIL,
+	FW_INV_SIG_FAIL,
+	FW_MATCH_SIG_FAIL,
+	FW_ERASE_FAIL,
+	FW_WRITE_FAIL,
+	FW_VERIFY_FAIL,
+	FW_RD_FUSE_FAIL,
+	FW_INV_FUSE_FAIL
+} exitrc_t;
+
+typedef enum {
+	FW_MP_UNKNOWN,
+	FW_MP_ATTINY45,
+	FW_MP_ATTINY85
+} mptype_t;
+
+int firmware_update(char *fwfile);
+int firmware_check(char **output);
 
 #endif

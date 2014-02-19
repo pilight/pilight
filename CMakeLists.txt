@@ -78,18 +78,19 @@ STRING(REGEX REPLACE "\n" "" git_ver "${git_ver}")
 add_definitions(-DHASH="${git_ver}")
 
 include_directories("${PROJECT_SOURCE_DIR}/libs/pilight/")
+include_directories("${PROJECT_SOURCE_DIR}/libs/avrdude/")
 
 file(GLOB pilight_headers
 	"${PROJECT_SOURCE_DIR}/libs/hardware/*.h"
 	"${PROJECT_SOURCE_DIR}/libs/pilight/*.h"
 	"${PROJECT_SOURCE_DIR}/libs/protocols/*.h"
-	"${PROJECT_SOURCE_DIR}/libs/websockets/*.h")
+	"${PROJECT_SOURCE_DIR}/libs/avrdude/*.h")
 
 file(GLOB pilight
 	"${PROJECT_SOURCE_DIR}/libs/hardware/*.c"
 	"${PROJECT_SOURCE_DIR}/libs/pilight/*.c"
 	"${PROJECT_SOURCE_DIR}/libs/protocols/*.c"
-	"${PROJECT_SOURCE_DIR}/libs/websockets/*.c")
+	"${PROJECT_SOURCE_DIR}/libs/avrdude/*.c")
 
 if(${PROTOCOL_ALECTO} MATCHES "OFF")
 	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/alecto.h")
@@ -294,6 +295,15 @@ if(${WEBSERVER} MATCHES "OFF")
 	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/pilight/mongoose.c")
 endif()
 
+file(GLOB avrdude_sources "${PROJECT_SOURCE_DIR}/libs/avrdude/*.c")
+
+if(${FIRMWARE} MATCHES "OFF")
+	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/pilight/firmware.c")
+	list(REMOVE_ITEM pilight ${avrdude_sources})
+	file(GLOB avrdude_headers "${PROJECT_SOURCE_DIR}/libs/avrdude/*.h")
+	list(REMOVE_ITEM pilight ${avrdude_headers})
+endif()
+
 find_package(Threads REQUIRED)
 
 if(${UPDATE} MATCHES "ON")
@@ -320,6 +330,7 @@ set_source_files_properties(${PROJECT_SOURCE_DIR}/libs/pilight/wiringPiI2C.c PRO
 set_source_files_properties(${PROJECT_SOURCE_DIR}/libs/pilight/json.c PROPERTIES COMPILE_FLAGS " -w ")
 set_source_files_properties(${PROJECT_SOURCE_DIR}/libs/pilight/http_lib.c PROPERTIES COMPILE_FLAGS " -w ")
 set_source_files_properties(${PROJECT_SOURCE_DIR}/libs/pilight/mongoose.c PROPERTIES COMPILE_FLAGS " -w ")
+set_source_files_properties(${avrdude_sources} PROPERTIES COMPILE_FLAGS " -w ")
 
 install(FILES libpilight.so DESTINATION lib/pilight/ RENAME libpilight.so.3)
 install(FILES libpilight.a DESTINATION lib/pilight/ RENAME libpilight.a)

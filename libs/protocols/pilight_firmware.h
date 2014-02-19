@@ -22,7 +22,7 @@
 struct protocol_t *pilight_firmware;
 
 void pilightFirmwareInit(void);
-void pilightFirmwareCreateMessage(int id, int high, int low);
+void pilightFirmwareCreateMessage(int version, int high, int low);
 void pilightFirmwareParseBinary(void);
 
 #endif

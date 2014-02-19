@@ -202,6 +202,14 @@ int settings_parse(JsonNode *root) {
 			} else {
 				settings_add_number(jsettings->key, (int)jsettings->number_);
 			}
+		}  else if(strcmp(jsettings->key, "firmware-update") == 0) {
+			if(jsettings->number_ < 0 || jsettings->number_ > 1) {
+				logprintf(LOG_ERR, "setting \"%s\" must be either 0 or 1", jsettings->key);
+				have_error = 1;
+				goto clear;
+			} else {
+				settings_add_number(jsettings->key, (int)jsettings->number_);
+			}
 		} else if(strcmp(jsettings->key, "log-level") == 0) {
 			if((int)jsettings->number_ == 0 || (int)jsettings->number_ > 5) {
 				logprintf(LOG_ERR, "setting \"%s\" must contain a number from 0 till 5", jsettings->key);

@@ -499,7 +499,6 @@ void *ssdp_wait(void *param) {
                            (family == AF_INET) ? sizeof(struct sockaddr_in) :
                                                  sizeof(struct sockaddr_in6),
                            host, NI_MAXHOST, NULL, 0, NI_NUMERICHOST);
-			printf("%s\n", host);			   
 			if(s != 0) {
 				logprintf(LOG_ERR, "getnameinfo() failed: %s", gai_strerror(s));
 				exit(EXIT_FAILURE);

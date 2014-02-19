@@ -29,18 +29,18 @@
 #include "gc.h"
 #include "pilight_firmware.h"
 
-void pilightFirmwareCreateMessage(int id, int high, int low) {
+void pilightFirmwareCreateMessage(int version, int high, int low) {
 	pilight_firmware->message = json_mkobject();
-	json_append_member(pilight_firmware->message, "version", json_mknumber(id));
+	json_append_member(pilight_firmware->message, "version", json_mknumber(version));
 	json_append_member(pilight_firmware->message, "lpf", json_mknumber(high*10));
 	json_append_member(pilight_firmware->message, "hpf", json_mknumber(low*10));
 }
 
 void pilightFirmwareParseBinary(void) {
-	int id = binToDec(pilight_firmware->binary, 0, 15);
+	int version = binToDec(pilight_firmware->binary, 0, 15);
 	int high = binToDec(pilight_firmware->binary, 16, 31);
 	int low = binToDec(pilight_firmware->binary, 32, 47);
-	pilightFirmwareCreateMessage(id, high, low);
+	pilightFirmwareCreateMessage(version, high, low);
 }
 
 void pilightFirmwareInit(void) {

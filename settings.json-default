@@ -14,5 +14,6 @@
     "webserver-username": "",
     "webserver-password": "",
 	"whitelist": "",
-	"update-check": 1
+	"update-check": 1,
+	"firmware-update": 0
 }

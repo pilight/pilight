@@ -101,9 +101,9 @@ int webserver_gc(void) {
 	if(webgui_tpl) {
 		sfree((void *)&webgui_tpl);
 	}
-	for(i=0;i<WEBSERVER_WORKERS;i++) {	
+	for(i=0;i<WEBSERVER_WORKERS;i++) {
 		mg_destroy_server(&mgserver[i]);
-	}	
+	}
 	fcache_gc();
 	logprintf(LOG_DEBUG, "garbage collected webserver library");
 	return 1;
@@ -248,7 +248,7 @@ void webserver_create_header(unsigned char **p, const char *message, char *mimet
 		message, mimetype);
 	*p += sprintf((char *)*p,
 		"Content-Length: %u\r\n\r\n",
-		len);		
+		len);
 }
 
 void webserver_create_minimal_header(unsigned char **p, const char *message, unsigned int len) {
@@ -394,7 +394,7 @@ static int webserver_request_handler(struct mg_connection *conn) {
 	static unsigned char buffer[4096];
 	struct filehandler_t *filehandler = (struct filehandler_t *)conn->connection_param;
 	unsigned int chunk = WEBSERVER_CHUNK_SIZE;
-	struct stat st;	
+	struct stat st;
 
 	if(!conn->is_websocket) {
 		if(filehandler != NULL) {
@@ -451,7 +451,7 @@ static int webserver_request_handler(struct mg_connection *conn) {
 				if(!request) {
 					logprintf(LOG_ERR, "out of memory");
 					exit(EXIT_FAILURE);
-				}			
+				}
 				memset(request, '\0', strlen(webserver_root)+strlen(pch)+3);
 				if(webserver_root[strlen(webserver_root)-1] == '/') {
 #ifdef __FreeBSD__
@@ -466,7 +466,7 @@ static int webserver_request_handler(struct mg_connection *conn) {
 					break;
 				}
 				pch = strtok(NULL, ",");
-			}				
+			}
 		} else {
 			size_t wlen = strlen(webserver_root)+strlen(webgui_tpl)+strlen(conn->uri)+2;
 			request = malloc(wlen);
@@ -532,7 +532,7 @@ static int webserver_request_handler(struct mg_connection *conn) {
 
 		if(access(request, F_OK) == 0) {
 			stat(request, &st);
-			if(webserver_cache && st.st_size <= MAX_CACHE_FILESIZE && 
+			if(webserver_cache && st.st_size <= MAX_CACHE_FILESIZE &&
 			   strcmp(mimetype, "application/x-httpd-php") != 0 &&
 			   fcache_get_size(request, &size) != 0 && fcache_add(request) != 0) {
 				goto filenotfound;
@@ -606,15 +606,15 @@ static int webserver_request_handler(struct mg_connection *conn) {
 						logprintf(LOG_ERR, "out of memory");
 						exit(EXIT_FAILURE);
 					}
-					
+
 					/* Extract header info from PHP output */
 					strncpy(&header[0], &output[xpos], pos-xpos);
 					header[(pos-xpos)] = '\0';
-					
+
 					/* Extract content info from PHP output */
 					memmove(&output[xpos], &output[pos+3], olen-(pos+2));
 					olen-=((pos+2)-xpos);
-					
+
 					/* Retrieve the PHP content type */
 					char ite[pos-xpos];
 					strcpy(ite, header);
@@ -629,7 +629,7 @@ static int webserver_request_handler(struct mg_connection *conn) {
 						}
 						pch = strtok(NULL, "\n\r");
 					}
-					
+
 					if(strstr(header, "Status: 302 Moved Temporarily") != NULL) {
 						webserver_create_minimal_header(&p, "302 Moved Temporarily", (unsigned int)olen);
 					} else {
@@ -682,7 +682,7 @@ static int webserver_request_handler(struct mg_connection *conn) {
 					}
 					sfree((void *)&header);
 				}
-				
+
 				sfree((void *)&mimetype);
 				sfree((void *)&request);
 				return MG_REQUEST_PROCESSED;
@@ -698,7 +698,7 @@ static int webserver_request_handler(struct mg_connection *conn) {
 			stat(request, &st);
 			if(!webserver_cache || st.st_size > MAX_CACHE_FILESIZE) {
 				FILE *fp = fopen(request, "rb");
-				fseek(fp, 0, SEEK_END); 
+				fseek(fp, 0, SEEK_END);
 				size = (int)ftell(fp);
 				fseek(fp, 0, SEEK_SET);
 				if(strstr(mimetype, "text") != NULL) {
@@ -748,7 +748,7 @@ static int webserver_request_handler(struct mg_connection *conn) {
 					}
 				}
 
-				
+
 				sfree((void *)&mimetype);
 				sfree((void *)&request);
 				return MG_REQUEST_PROCESSED;
@@ -821,14 +821,14 @@ static int webserver_request_handler(struct mg_connection *conn) {
 		return MG_CLIENT_CONTINUE;
 	}
 	return MG_REQUEST_PROCESSED;
-	
+
 filenotfound:
 	logprintf(LOG_NOTICE, "(webserver) could not read %s", request);
 	webserver_create_404(conn->uri, &p);
 	mg_write(conn, buffer, (int)(p-buffer));
 	sfree((void *)&mimetype);
 	sfree((void *)&request);
-	return MG_REQUEST_PROCESSED;	
+	return MG_REQUEST_PROCESSED;
 }
 
 int webserver_open_handler(struct mg_connection *conn) {
@@ -883,7 +883,7 @@ void *webserver_clientize(void *param) {
 	char *message = NULL;
 	struct ssdp_list_t *ssdp_list = NULL;
 	int standalone = 0;
-	
+
 	// settings_find_number("standalone", &standalone);
 	if(ssdp_seek(&ssdp_list) == -1 || standalone == 1) {
 		logprintf(LOG_DEBUG, "no pilight ssdp connections found");
@@ -960,16 +960,16 @@ close:
 void *webserver_broadcast(void *param) {
 	int i = 0;
 
-	pthread_mutex_lock(&webqueue_lock);	
+	pthread_mutex_lock(&webqueue_lock);
 
 	while(webserver_loop) {
 #ifdef __FreeBSD__
-		pthread_mutex_lock(&webqueue_lock);		
+		pthread_mutex_lock(&webqueue_lock);
 #endif
 		if(webqueue_number > 0) {
 			pthread_mutex_lock(&webqueue_lock);
 
-			for(i=0;i<WEBSERVER_WORKERS;i++) {	
+			for(i=0;i<WEBSERVER_WORKERS;i++) {
 				mg_iterate_over_connections(mgserver[i], webserver_sockets_callback, webqueue->message);
 			}
 

@@ -21,12 +21,12 @@ ifneq (, $(findstring amd64, $(SYS)))
 	OSFLAGS = -O3 -fPIC -march=native -mtune=native -mfpmath=sse -Wno-conversion
 endif
 GIT_HASH := $(shell git describe --always)
-CFLAGS = -ffast-math $(OSFLAGS) -Wfloat-equal -Wshadow -Wpointer-arith -Wcast-align -Wstrict-overflow=5 -Wwrite-strings -Waggregate-return -Wcast-qual -Wswitch-default -Wswitch-enum -Wformat=2 -g -Wall -I. -isystem.. -Ilibs/pilight/ -Ilibs/protocols/ -Ilibs/hardware/ -pthread -lm -DHASH=\"$(GIT_HASH)\"
-SUBDIRS = libs/pilight libs/protocols libs/hardware
+CFLAGS = -ffast-math $(OSFLAGS) -Wfloat-equal -Wshadow -Wpointer-arith -Wcast-align -Wstrict-overflow=5 -Wwrite-strings -Waggregate-return -Wcast-qual -Wswitch-default -Wswitch-enum -Wformat=2 -g -Wall -I. -isystem.. -Ilibs/pilight/ -Ilibs/protocols/ -Ilibs/hardware/ -Ilibs/avrdude/ -pthread -lm -DHASH=\"$(GIT_HASH)\"
+SUBDIRS = libs/pilight libs/protocols libs/hardware libs/avrdude
 SRC = $(wildcard *.c)
-INCLUDES = $(wildcard protocols/*.h) $(wildcard protocols/*.c) $(wildcard hardware/*.h) $(wildcard hardware/*.c) $(wildcard libs/pilight/*.h)
+INCLUDES = $(wildcard protocols/*.h) $(wildcard protocols/*.c) $(wildcard hardware/*.h) $(wildcard hardware/*.c) $(wildcard libs/pilight/*.h) $(wildcard libs/pilight/*.c) $(wildcard libs/avrdude/*.h) $(wildcard libs/avrdude/*.c)
 PROGAMS = $(patsubst %.c,pilight-%,$(SRC))
-LIBS = libs/pilight/pilight.o libs/protocols/protocols.o libs/hardware/hardware.o
+LIBS = libs/pilight/pilight.o libs/protocols/protocols.o libs/hardware/hardware.o libs/avrdude/avrdude.o
 WEBFILES := $(shell cd web && find * -type f)
 WEBDIRS := $(shell cd web && find * -type d )
 
@@ -97,8 +97,9 @@ install:
 
 	[ ! -f /etc/pilight/settings.json ] && mv /etc/pilight/settings.json-default /etc/pilight/settings.json || true
 	[ ! -f /etc/pilight/hardware.json ] && cp hardware.json /etc/pilight/ || true
-	mv /usr/local/lib/pilight/libpilight.so /usr/local/lib/pilight/libpilight.so.2
-	ln -sf /usr/local/lib/pilight/libpilight.so.2 /usr/local/lib/libpilight.so
+
+	mv /usr/local/lib/pilight/libpilight.so /usr/local/lib/pilight/libpilight.so.3
+	ln -sf /usr/local/lib/pilight/libpilight.so.3 /usr/local/lib/libpilight.so
 	ldconfig
 	
 clean:

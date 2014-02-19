@@ -264,7 +264,7 @@ void socket_close(int sockfd) {
 
 	if(sockfd > 0) {
 		getpeername(sockfd, (struct sockaddr*)&address, (socklen_t*)&addrlen);
-		logprintf(LOG_INFO, "client disconnected, ip %s, port %d", inet_ntoa(address.sin_addr), ntohs(address.sin_port));				
+		logprintf(LOG_DEBUG, "client disconnected, ip %s, port %d", inet_ntoa(address.sin_addr), ntohs(address.sin_port));				
 
 		for(i=0;i<MAX_CLIENTS;i++) {
 			if(socket_clients[i] == sockfd) {
@@ -335,7 +335,7 @@ void socket_rm_client(int i, struct socket_callback_t *socket_callback) {
 
 	//Somebody disconnected, get his details and print
 	getpeername(sd, (struct sockaddr*)&address, (socklen_t*)&addrlen);
-	logprintf(LOG_INFO, "client disconnected, ip %s, port %d", inet_ntoa(address.sin_addr), ntohs(address.sin_port));
+	logprintf(LOG_DEBUG, "client disconnected, ip %s, port %d", inet_ntoa(address.sin_addr), ntohs(address.sin_port));
 	if(socket_callback->client_disconnected_callback)
 		socket_callback->client_disconnected_callback(i);
 	//Close the socket and mark as 0 in list for reuse

@@ -32,6 +32,7 @@
 #include "options.h"
 #include "protocol.h"
 #include "ssdp.h"
+#include "firmware.h"
 
 #ifdef UPDATE
 	#include "update.h"

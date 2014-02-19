@@ -26,6 +26,7 @@
 #cmakedefine WEBSERVER
 #cmakedefine DEBUG
 #cmakedefine UPDATE
+#cmakedefine FIRMWARE
 
 /* Protocol support */
 
@@ -111,20 +112,17 @@
 	#define UPDATE_DEVELOPMENT		0
 #endif
 
+#ifdef FIRMWARE
+	#define FIRMWARE_PATH				"/usr/local/src/"
+#endif
+
 typedef struct pilight_t {
     void (*broadcast)(char *name, JsonNode *message);
     void (*send)(JsonNode *json);
     void (*receive)(int *rawcode, int rawlen, int plslen, int hwtype);
 } pilight_t;
 
-typedef struct firmware_t {
-	int lpf;
-	int hpf;
-	int version;
-} firmware_t;
-
 struct pilight_t pilight;
-struct firmware_t firmware;
 char pilight_uuid[UUID_LENGTH];
 
 #endif

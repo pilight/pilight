@@ -47,6 +47,7 @@
 #include "irq.h"
 #include "hardware.h"
 #include "ssdp.h"
+#include "firmware.h"
 
 #ifdef UPDATE
 	#include "update.h"
@@ -260,8 +261,8 @@ void *broadcast(void *param) {
 	pthread_mutex_lock(&bcqueue_lock);
 	while(main_loop) {
 #ifdef __FreeBSD__
-		pthread_mutex_lock(&bcqueue_lock);		
-#endif	
+		pthread_mutex_lock(&bcqueue_lock);
+#endif
 		if(bcqueue_number > 0) {
 			pthread_mutex_lock(&bcqueue_lock);
 
@@ -555,8 +556,8 @@ void *send_code(void *param) {
 
 	while(main_loop) {
 #ifdef __FreeBSD__
-		pthread_mutex_lock(&sendqueue_lock);		
-#endif		
+		pthread_mutex_lock(&sendqueue_lock);
+#endif
 		if(sendqueue_number > 0) {
 			pthread_mutex_lock(&sendqueue_lock);
 			sending = 1;
@@ -1497,8 +1498,8 @@ int main(int argc, char **argv) {
 
 	firmware.version = 0;
 	firmware.lpf = 0;
-	firmware.hpf = 0;	
-	
+	firmware.hpf = 0;
+
 	loglevel = LOG_INFO;
 
 	log_file_enable();
@@ -1516,6 +1517,10 @@ int main(int argc, char **argv) {
 	struct ssdp_list_t *ssdp_list = NULL;
 
 	char buffer[BUFFER_SIZE];
+#ifdef FIRMWARE	
+	char fwfile[4096] = {'\0'};
+	int fwupdate = 0;
+#endif
 	int f, itmp, show_help = 0, show_version = 0, show_default = 0;
 	char *hwfile = NULL;
 	char *stmp = NULL;
@@ -1790,7 +1795,27 @@ int main(int argc, char **argv) {
 	}
 #endif
 
+#ifdef FIRMWARE
+	settings_find_number("firmware-update", &fwupdate);
+#endif
+
 	while(main_loop) {
+#ifdef FIRMWARE	
+		/* Check if firmware needs to be updated */
+		if(fwupdate == 1 && firmware.version > 0) {
+			char *fwtmp = fwfile;
+			if(firmware_check(&fwtmp) == 0) {
+				firmware.version = 0;
+				size_t fwl = strlen(FIRMWARE_PATH)+strlen(fwfile)+2;
+				char fwpath[fwl];
+				memset(fwpath, '\0', fwl);
+				sprintf(fwpath, "%s%s", FIRMWARE_PATH, fwfile);
+				logprintf(LOG_INFO, "**** START UPD. FW ****");
+				firmware_update(fwpath);
+				logprintf(LOG_INFO, "**** DONE  UPD. FW ****");
+			}
+		}
+#endif
 		sleep(1);
 	}
 
