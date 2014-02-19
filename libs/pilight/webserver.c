@@ -884,7 +884,7 @@ void *webserver_clientize(void *param) {
 	struct ssdp_list_t *ssdp_list = NULL;
 	int standalone = 0;
 
-	// settings_find_number("standalone", &standalone);
+	settings_find_number("standalone", &standalone);
 	if(ssdp_seek(&ssdp_list) == -1 || standalone == 1) {
 		logprintf(LOG_DEBUG, "no pilight ssdp connections found");
 		server = malloc(10);

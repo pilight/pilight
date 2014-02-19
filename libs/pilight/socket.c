@@ -284,7 +284,7 @@ int socket_write(int sockfd, const char *msg, ...) {
 	if(strlen(msg) > 0 && sockfd > 0) {
 
 		va_start(ap, msg);
-		n = (int)vsnprintf(NULL, 0, msg, ap) + (int)(len + 1); // EOL + dual NL
+		n = (int)vsnprintf(NULL, 0, msg, ap) + (int)(len); // + delimiter
 		va_end(ap);
 
 		char *sendBuff = malloc((size_t)n);
@@ -298,8 +298,8 @@ int socket_write(int sockfd, const char *msg, ...) {
 		vsprintf(sendBuff, msg, ap);
 		va_end(ap);
 
-		strcat(sendBuff, EOSS);
-
+		memcpy(&sendBuff[n-len], EOSS, (size_t)len);
+				
 		while(ptr < n) {
 			if((n-ptr) < BUFFER_SIZE) {
 				x = (n-ptr);
@@ -308,8 +308,8 @@ int socket_write(int sockfd, const char *msg, ...) {
 			}
 			if((bytes = send(sockfd, &sendBuff[ptr], (size_t)x, MSG_NOSIGNAL)) == -1) {
 				/* Change the delimiter into regular newlines */
-				sendBuff[n-len] = '\0';
-				sendBuff[n-(len+1)] = '\n';
+				sendBuff[n-(len-1)] = '\0';
+				sendBuff[n-(len)] = '\n';
 				logprintf(LOG_DEBUG, "socket write failed: %s", sendBuff);
 				sfree((void *)&sendBuff);
 				return -1;
@@ -319,8 +319,8 @@ int socket_write(int sockfd, const char *msg, ...) {
 
 		if(strstr(sendBuff, "BEAT") == NULL) {
 			/* Change the delimiter into regular newlines */
-			sendBuff[n-len] = '\0';
-			sendBuff[n-(len+1)] = '\n';
+			sendBuff[n-(len-1)] = '\0';
+			sendBuff[n-(len)] = '\n';
 			logprintf(LOG_DEBUG, "socket write succeeded: %s", sendBuff);
 		}
 		sfree((void *)&sendBuff);
@@ -381,22 +381,22 @@ char *socket_read(int sockfd) {
 					   the pilight delimiter to know when the stream ends. If the stream
 					   is shorter then the buffer size, we know we received the full stream */
 					int l = 0;
-					if((l = strncmp(&message[ptr-(len+1)], EOSS, (unsigned int)(len+1)) == 0) || ptr < BUFFER_SIZE) {
+					if((l = strncmp(&message[ptr-(len)], EOSS, (unsigned int)(len)) == 0) || ptr < BUFFER_SIZE) {
 						/* If the socket contains buffered TCP messages, separate them by 
 						   changing the delimiters into newlines */
 						if(ptr > strlen(message)) {
 							int i = 0;
 							for(i=0;i<ptr;i++) {
-								if(i+len < ptr && strncmp(&message[i], EOSS, (size_t)len) == 0 && message[i+len] == '\0') {
-									memmove(&message[i], &message[i+len], (size_t)(ptr-(i+len)));
-									ptr-=len;
+								if(i+(len-1) < ptr && strncmp(&message[i], EOSS, (size_t)len) == 0) {
+									memmove(&message[i], &message[i+(len-1)], (size_t)(ptr-(i+(len-1))));
+									ptr-=(len-1);
 									message[i] = '\n';
 								}
 							}
 							message[ptr] = '\0';
 						} else {
 							if(l) {
-								message[ptr-(len+1)] = '\0'; // remove delimiter
+								message[ptr-(len)] = '\0'; // remove delimiter
 							} else {
 								message[ptr] = '\0';
 							}

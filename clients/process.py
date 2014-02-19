@@ -65,15 +65,15 @@ if len(responses) > 0:
 	while True:
 		line = s.recv(1024)
 		text += line;
-		if "\n\n" in line[-3:]:
-			text = text[:-3];
+		if "\n\n" in line[-2:]:
+			text = text[:-2];
 			break;
 	if text == '{"message":"accept client"}':
 		while True:
 			line = s.recv(1024)
 			text += line;
-			if "\n\n" in line[-3:]:
-				text = text[:-3];
+			if "\n\n" in line[-2:]:
+				text = text[:-2];
 				for f in iter(text.splitlines()):
 					print f;
 				text = "";

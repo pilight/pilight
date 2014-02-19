@@ -45,13 +45,23 @@ while(@socket_recvfrom($rSocket, $sBuffer, 1024, MSG_WAITALL, $sTmp, $sTmp)) {
 	}
 }
 socket_close($rSocket);
-
+$sLine = '';
 if(count($aHosts) > 0) {
 	$fp = fsockopen($aHosts[0]['ip'], $aHosts[0]['port'], $errno, $errdesc) or die ("Couldn't connect to server");
 	fputs($fp, '{"message":"client receiver"}');
-	fgets($fp, 1024);
-	while(!feof($fp)){
-		echo fgets($fp, 1024);
+	$sLine = fgets($fp, 1024);
+	if($sLine == "{\"message\":\"accept client\"}\n") {
+		$iLen = 0;
+		$sLine = '';
+		while(true) {
+			$sLine .= fgets($fp, 1024);
+			$iLen = strlen($sLine);
+			if($iLen > 2 && ord($sLine[$iLen-1]) === 10 && ord($sLine[$iLen-2]) === 10) {
+				$sLine = substr($sLine, 0, -2);
+				echo $sLine."\n";
+				$sLine = '';
+			}
+		}
 	}
 } else {
 	die("no pilight ssdp connections found\n");
