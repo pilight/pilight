@@ -57,6 +57,9 @@ char *webgui_tpl = NULL;
 unsigned char alphabet[64] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 struct mg_server *mgserver[WEBSERVER_WORKERS];
 
+unsigned short webgui_tpl_free = 0;
+unsigned short webserver_root_free = 0;
+
 int sockfd = 0;
 char *sockReadBuff = NULL;
 unsigned char *sockWriteBuff = NULL;
@@ -95,12 +98,13 @@ int webserver_gc(void) {
 	socket_close(sockfd);
 	sfree((void *)&sockWriteBuff);
 	sfree((void *)&sockReadBuff);
-	if(webserver_root) {
+	if(webserver_root_free) {
 		sfree((void *)&webserver_root);
 	}
-	if(webgui_tpl) {
+	if(webgui_tpl_free) {
 		sfree((void *)&webgui_tpl);
 	}
+	sleep(1);
 	for(i=0;i<WEBSERVER_WORKERS;i++) {
 		mg_destroy_server(&mgserver[i]);
 	}
@@ -701,7 +705,7 @@ static int webserver_request_handler(struct mg_connection *conn) {
 				fseek(fp, 0, SEEK_END);
 				size = (int)ftell(fp);
 				fseek(fp, 0, SEEK_SET);
-				if(strstr(mimetype, "text") != NULL) {
+				if(strstr(mimetype, "text") != NULL || st.st_size < WEBSERVER_CHUNK_SIZE) {
 					webserver_create_header(&p, "200 OK", mimetype, (unsigned int)size);
 					mg_write(conn, buffer, (int)(p-buffer));
 					size_t total = 0;
@@ -747,7 +751,6 @@ static int webserver_request_handler(struct mg_connection *conn) {
 						}
 					}
 				}
-
 
 				sfree((void *)&mimetype);
 				sfree((void *)&request);
@@ -845,7 +848,7 @@ int webserver_open_handler(struct mg_connection *conn) {
 }
 
 void *webserver_serve(void *srv) {
-	for(;;) {
+	while(webserver_loop) {
 		mg_poll_server((struct mg_server *)srv, 1000);
 	}
 	return NULL;
@@ -1022,6 +1025,7 @@ void *webserver_start(void *param) {
 			exit(EXIT_FAILURE);
 		}
 		strcpy(webserver_root, WEBSERVER_ROOT);
+		webserver_root_free = 1;
 	}
 	if(settings_find_string("webgui-template", &webgui_tpl) != 0) {
 		/* If no webserver port was set, use the default webserver port */
@@ -1031,6 +1035,7 @@ void *webserver_start(void *param) {
 			exit(EXIT_FAILURE);
 		}
 		strcpy(webgui_tpl, WEBGUI_TEMPLATE);
+		webgui_tpl_free = 1;
 	}
 
 	/* Do we turn on webserver caching. This means that all requested files are

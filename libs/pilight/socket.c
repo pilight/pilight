@@ -157,8 +157,6 @@ int socket_check_whitelist(char *ip) {
 		}
 	}
 
-	sfree((void *)&pch);
-
 	return error;
 }
 
