@@ -21,18 +21,7 @@
 
 #include <pthread.h>
 
-typedef struct threads_t {
-	pthread_t pth;
-	char *id;
-	void *param;
-	unsigned int running;
-	void *(*function)(void *param);
-	struct threads_t *next;
-} threads_t;
-
-struct threads_t *threads;
-
-void threads_register(const char *id, void *(*function)(void* param), void *param);
+void threads_register(const char *id, void *(*function)(void* param), void *param, int force);
 void *threads_start(void *param);
 int threads_gc(void);
 

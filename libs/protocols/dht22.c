@@ -22,13 +22,10 @@
 #include <dirent.h>
 #include <string.h>
 #include <unistd.h>
-#define __USE_GNU
-#include <pthread.h>
 #include <sys/types.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <sys/stat.h>
-#include <sys/time.h>
 
 #include "../../pilight.h"
 #include "common.h"
@@ -45,6 +42,7 @@
 #define MAXTIMINGS 100
 
 unsigned short dht22_loop = 1;
+unsigned short dht22_threads = 0;
 
 static uint8_t sizecvt(const int read_value) {
 	/* digitalRead() and friends from wiringpi are defined as returning a value
@@ -56,38 +54,17 @@ static uint8_t sizecvt(const int read_value) {
 	return (uint8_t)read_value;
 }
 
-void dht22ParseCleanUp(void *arg) {
-	sfree((void *)&arg);
-	
-	dht22_loop = 0;
-}
-
 void *dht22Parse(void *param) {
-	struct JsonNode *json = (struct JsonNode *)param;
+	struct protocol_threads_t *node = (struct protocol_threads_t *)param;
+	struct JsonNode *json = (struct JsonNode *)node->param;
 	struct JsonNode *jsettings = NULL;
 	struct JsonNode *jid = NULL;
 	struct JsonNode *jchild = NULL;
-	struct timeval tp;
-	struct timespec ts;	
 	int *id = 0;
-	int nrid = 0, y = 0, interval = 10, rc = 0;
+	int nrid = 0, y = 0, interval = 10, nrloops = 0;
 	int temp_corr = 0, humi_corr = 0, itmp = 0;
-	int firstrun = 1;
 
-#ifndef __FreeBSD__
-	pthread_mutex_t mutex = PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP;        
-    pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
-#else
-	pthread_mutex_t mutex;
-	pthread_cond_t cond;
-	pthread_mutexattr_t attr;
-
-	pthread_mutexattr_init(&attr);
-	pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);
-	pthread_mutex_init(&mutex, &attr);
-#endif
-
-    pthread_cond_init(&cond, NULL);
+	dht22_threads++;
 
 	if((jid = json_find_member(json, "id"))) {
 		jchild = json_first_child(jid);
@@ -106,24 +83,9 @@ void *dht22Parse(void *param) {
 		json_find_number(jsettings, "temp-corr", &temp_corr);
 		json_find_number(jsettings, "humi-corr", &humi_corr);
 	}
-	json_delete(json);
-	
-	pthread_cleanup_push(dht22ParseCleanUp, (void *)id);
 
 	while(dht22_loop) {
-		rc = gettimeofday(&tp, NULL);
-		ts.tv_sec = tp.tv_sec;
-		ts.tv_nsec = tp.tv_usec * 1000;
-		if(firstrun) {
-			ts.tv_sec += 1;
-			firstrun = 0;
-		} else {
-			ts.tv_sec += interval;
-		}
-
-		pthread_mutex_lock(&mutex);
-		rc = pthread_cond_timedwait(&cond, &mutex, &ts);
-		if(rc == ETIMEDOUT) {
+		if(protocol_thread_wait(node, interval, &nrloops) == ETIMEDOUT) {
 			for(y=0;y<nrid;y++) {
 				int tries = 5;
 				unsigned short got_correct_date = 0;
@@ -206,11 +168,10 @@ void *dht22Parse(void *param) {
 				}
 			}
 		}
-		pthread_mutex_unlock(&mutex);	
 	}
-	
-	pthread_cleanup_pop(1);
 
+	sfree((void *)&id);
+	dht22_threads--;
 	return (void *)NULL;
 }
 
@@ -218,8 +179,19 @@ void dht22InitDev(JsonNode *jdevice) {
 	wiringPiSetup();
 	char *output = json_stringify(jdevice, NULL);
 	JsonNode *json = json_decode(output);
-	threads_register("dht22", &dht22Parse, (void *)json);
+
+	struct protocol_threads_t *node = protocol_thread_init(dht22, json);
+	threads_register("dht22", &dht22Parse, (void *)node, 0);
 	sfree((void *)&output);
+}
+
+void dht22GC(void) {
+	dht22_loop = 0;
+	protocol_thread_stop(dht22);
+	while(dht22_threads > 0) {
+		usleep(10);
+	}
+	protocol_thread_free(dht22);
 }
 
 void dht22Init(void) {
@@ -241,4 +213,5 @@ void dht22Init(void) {
 	protocol_setting_add_number(dht22, "interval", 10);
 
 	dht22->initDev=&dht22InitDev;
+	dht22->gc=&dht22GC;
 }

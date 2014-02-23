@@ -103,6 +103,7 @@ int hardware_gc(void) {
 	while(hwlst) {
 		htmp = hwlst;
 		sfree((void *)&htmp->listener->id);
+		options_delete(htmp->listener->options);
 		sfree((void *)&htmp->listener);
 		hwlst = hwlst->next;
 		sfree((void *)&htmp);
@@ -113,6 +114,10 @@ int hardware_gc(void) {
 		ctmp = conf_hardware;
 		conf_hardware = conf_hardware->next;
 		sfree((void *)&ctmp);
+	}
+	
+	if(hwfile) {
+		sfree((void *)&hwfile);
 	}
 	
 	logprintf(LOG_DEBUG, "garbage collected hardware library");

@@ -118,9 +118,11 @@ enum {
   MG_CONNECT_SUCCESS, MG_CONNECT_FAILURE,
   MG_DOWNLOAD_SUCCESS, MG_DOWNLOAD_FAILURE
 };
+
 int mg_connect(struct mg_server *, const char *host, int port, int use_ssl,
                mg_handler_t handler, void *param);
-
+void mg_stop(void);
+			   
 #ifdef __cplusplus
 }
 #endif // __cplusplus

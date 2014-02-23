@@ -101,7 +101,11 @@ int main(int argc, char **argv) {
 	}
 	options_delete(options);
 
-	printf("%s\n", ssdp_genuuid());
+	char *p = NULL;
+	if((p = ssdp_genuuid()) != NULL) {
+		printf("%s\n", p);
+		sfree((void *)&p);
+	}
 
 	main_gc();
 	return (EXIT_FAILURE);

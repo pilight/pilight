@@ -21,13 +21,10 @@
 #include <dirent.h>
 #include <string.h>
 #include <unistd.h>
-#define __USE_GNU
-#include <pthread.h>
 #include <sys/types.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <sys/stat.h>
-#include <sys/time.h>
 
 #include "../../pilight.h"
 #include "common.h"
@@ -48,26 +45,11 @@ typedef struct openweathermap_data_t {
 } openweathermap_data_t;
 
 unsigned short openweathermap_loop = 1;
-unsigned short openweathermap_nrfree = 0;
-
-void openweathermapParseCleanUp(void *arg) {
-	struct openweathermap_data_t *openweathermap_data = (struct openweathermap_data_t *)arg;
-	struct openweathermap_data_t *wtmp = NULL;
-
-	openweathermap_loop = 0;
-	
-	while(openweathermap_data) {
-		wtmp = openweathermap_data;
-		sfree((void *)&openweathermap_data->country);
-		sfree((void *)&openweathermap_data->location);
-		openweathermap_data = openweathermap_data->next;
-		sfree((void *)&wtmp);
-	}
-	sfree((void *)&openweathermap_data);
-}
+unsigned short openweathermap_threads = 0;
 
 void *openweathermapParse(void *param) {
-	struct JsonNode *json = (struct JsonNode *)param;
+	struct protocol_threads_t *thread = (struct protocol_threads_t *)param;
+	struct JsonNode *json = (struct JsonNode *)thread->param;
 	struct JsonNode *jid = NULL;
 	struct JsonNode *jchild = NULL;
 	struct JsonNode *jchild1 = NULL;
@@ -77,31 +59,15 @@ void *openweathermapParse(void *param) {
 	struct JsonNode *jmain = NULL;
 	struct openweathermap_data_t *openweathermap_data = NULL;
 	struct openweathermap_data_t *wtmp = NULL;
-	struct timeval tp;
-	struct timespec ts;	
-	int interval = 600;
+	int interval = 600, nrloops = 0;
 
 	char url[1024];
 	char *filename = NULL, *data = NULL;
 	char typebuf[70];
 	double temp = 0;
-	int rc = 0, humi = 0, lg = 0, ret = 0;
-	int firstrun = 1;
-	
-#ifndef __FreeBSD__
-	pthread_mutex_t mutex = PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP;        
-    pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
-#else
-	pthread_mutex_t mutex;
-	pthread_cond_t cond;
-	pthread_mutexattr_t attr;
+	int humi = 0, lg = 0, ret = 0;
 
-	pthread_mutexattr_init(&attr);
-	pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);
-	pthread_mutex_init(&mutex, &attr);
-#endif
-	
-    pthread_cond_init(&cond, NULL);
+	openweathermap_threads++;	
 
 	int has_country = 0, has_location = 0;
 	if((jid = json_find_member(json, "id"))) {
@@ -147,25 +113,10 @@ void *openweathermapParse(void *param) {
 	if((jsettings = json_find_member(json, "settings"))) {
 		json_find_number(jsettings, "interval", &interval);
 	}
-	json_delete(json);
-
-	pthread_cleanup_push(openweathermapParseCleanUp, (void *)openweathermap_data);
 	
 	while(openweathermap_loop) {
 		wtmp = openweathermap_data;
-		rc = gettimeofday(&tp, NULL);
-		ts.tv_sec = tp.tv_sec;
-		ts.tv_nsec = tp.tv_usec * 1000;
-		if(firstrun) {
-			ts.tv_sec += 1;
-			firstrun = 0;
-		} else {
-			ts.tv_sec += interval;
-		}
-
-		pthread_mutex_lock(&mutex);
-		rc = pthread_cond_timedwait(&cond, &mutex, &ts);
-		if(rc == ETIMEDOUT) {
+		if(protocol_thread_wait(thread, interval, &nrloops) == ETIMEDOUT) {
 			while(wtmp) {
 				filename = NULL;
 				data = NULL;
@@ -230,18 +181,26 @@ void *openweathermapParse(void *param) {
 			wtmp = wtmp->next;
 			}
 		}
-		pthread_mutex_unlock(&mutex);
 	}
 	
-	pthread_cleanup_pop(1);
-
+	while(openweathermap_data) {
+		wtmp = openweathermap_data;
+		sfree((void *)&openweathermap_data->country);
+		sfree((void *)&openweathermap_data->location);
+		openweathermap_data = openweathermap_data->next;
+		sfree((void *)&wtmp);
+	}
+	sfree((void *)&openweathermap_data);
+	openweathermap_threads--;
 	return (void *)NULL;
 }
 
 void openweathermapInitDev(JsonNode *jdevice) {
 	char *output = json_stringify(jdevice, NULL);
 	JsonNode *json = json_decode(output);
-	threads_register("openweathermap", &openweathermapParse, (void *)json);
+
+	struct protocol_threads_t *node = protocol_thread_init(openweathermap, json);
+	threads_register("openweathermap", &openweathermapParse, (void *)node, 0);
 	sfree((void *)&output);
 }
 
@@ -254,6 +213,15 @@ int openweathermapCheckValues(JsonNode *code) {
 	}
 
 	return 0;
+}
+
+void openweathermapGC(void) {
+	openweathermap_loop = 0;
+	protocol_thread_stop(openweathermap);
+	while(openweathermap_threads > 0) {
+		usleep(10);
+	}
+	protocol_thread_free(openweathermap);
 }
 
 void openweathermapInit(void) {
@@ -277,4 +245,5 @@ void openweathermapInit(void) {
 
 	openweathermap->initDev=&openweathermapInitDev;
 	openweathermap->checkValues=&openweathermapCheckValues;
+	openweathermap->gc=&openweathermapGC;
 }

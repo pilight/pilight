@@ -612,7 +612,7 @@ int main(int argc, char **argv) {
 			goto clear;
 		}
 		if(x == 0) {
-			threads_register(tmp_confhw->hardware->id, &receive_code, (void *)tmp_confhw->hardware);
+			threads_register(tmp_confhw->hardware->id, &receive_code, (void *)tmp_confhw->hardware, 0);
 		}
 		tmp_confhw = tmp_confhw->next;
 		x++;

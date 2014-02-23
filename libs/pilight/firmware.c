@@ -744,7 +744,7 @@ int firmware_check(char **output) {
 	DIR *d = NULL;
 	int tmp = 0;
 	int version = 0;
-	
+
 	if((d = opendir(FIRMWARE_PATH))) {
 		while((file = readdir(d)) !=  NULL) {
 			if(file->d_type == DT_REG) {

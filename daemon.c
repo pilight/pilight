@@ -29,7 +29,6 @@
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/time.h>
-#define __USE_GNU
 #include <pthread.h>
 #include <ctype.h>
 
@@ -105,14 +104,10 @@ typedef struct sendqueue_t {
 struct sendqueue_t *sendqueue;
 struct sendqueue_t *sendqueue_head;
 
-#ifndef __FreeBSD__
-	pthread_mutex_t sendqueue_lock = PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP;
-	pthread_cond_t sendqueue_signal = PTHREAD_COND_INITIALIZER;
-#else
-	pthread_mutex_t sendqueue_lock;
-	pthread_cond_t sendqueue_signal;
-	pthread_mutexattr_t sendqueue_attr;
-#endif
+pthread_mutex_t sendqueue_lock;
+pthread_cond_t sendqueue_signal;
+pthread_mutexattr_t sendqueue_attr;
+
 int sendqueue_number = 0;
 
 typedef struct bcqueue_t {
@@ -122,20 +117,18 @@ typedef struct bcqueue_t {
 	struct bcqueue_t *next;
 } bcqueue_t;
 
-struct bcqueue_t *bcqueue;
-struct bcqueue_t *bcqueue_head;
-#ifndef __FreeBSD__
-	pthread_mutex_t bcqueue_lock = PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP;
-	pthread_cond_t bcqueue_signal = PTHREAD_COND_INITIALIZER;
-#else
-	pthread_mutex_t bcqueue_lock;
-	pthread_cond_t bcqueue_signal;
-	pthread_mutexattr_t bcqueue_attr;
-#endif
+struct bcqueue_t *bcqueue = NULL;
+struct bcqueue_t *bcqueue_head = NULL;
+
+pthread_mutex_t bcqueue_lock;
+pthread_cond_t bcqueue_signal;
+pthread_mutexattr_t bcqueue_attr;
+
 int bcqueue_number = 0;
 
 /* The pid_file and pid of this daemon */
 char *pid_file;
+unsigned short pid_file_free = 0;
 pid_t pid;
 /* The number of receivers connected */
 int receivers = 0;
@@ -155,6 +148,7 @@ short handshakes[MAX_CLIENTS];
 unsigned short runmode = 1;
 /* Socket identifier to the server if we are running as client */
 int sockfd = 0;
+int loopfd = 0;
 /* In the client running in incognito mode */
 unsigned short incognito_mode = 0;
 /* Thread pointers */
@@ -177,6 +171,7 @@ int webserver_enable = WEBSERVER_ENABLE;
 int webserver_port = WEBSERVER_PORT;
 /* The webroot of pilight */
 char *webserver_root;
+int webserver_root_free = 0;
 #endif
 
 #ifdef UPDATE
@@ -322,12 +317,11 @@ void *broadcast(void *param) {
 			sfree((void *)&json);
 
 			struct bcqueue_t *tmp = bcqueue;
-			sfree((void *)&bcqueue->protoname);
-			json_delete(bcqueue->jmessage);
+			sfree((void *)&tmp->protoname);
+			json_delete(tmp->jmessage);
 			bcqueue = bcqueue->next;
 			sfree((void *)&tmp);
 			bcqueue_number--;
-
 			pthread_mutex_unlock(&bcqueue_lock);
 		} else {
 			pthread_cond_wait(&bcqueue_signal, &bcqueue_lock);
@@ -787,7 +781,7 @@ void send_queue(JsonNode *json) {
 void client_sender_parse_code(int i, JsonNode *json) {
 	int sd = socket_get_clients(i);
 
-	if(incognito_mode == 0 && handshakes[i] != NODE) {
+	if(incognito_mode == 0 && i > -1 && handshakes[i] != NODE) {
 		/* Don't let the sender wait until we have send the code */
 		socket_close(sd);
 		handshakes[i] = -1;
@@ -1232,7 +1226,9 @@ void *receive_code(void *param) {
 				if((duration/PULSE_DIV) < 1000) {
 					plslen = duration/PULSE_DIV;
 				}
-				receiver_parse_code(rawcode, rawlen, plslen, hardware->type);
+				if(rawlen > 1) {
+					receiver_parse_code(rawcode, rawlen, plslen, hardware->type);
+				}
 				rawlen = 0;
 			}
 		} else {
@@ -1265,17 +1261,18 @@ void *clientize(void *param) {
 				logprintf(LOG_ERR, "could not connect to pilight-daemon");
 				client_loop = 0;
 			}
-			sfree((void *)&ssdp_list);
+		}
+		if(ssdp_list) {
+			ssdp_free(ssdp_list);
 		}
 
 		while(client_loop) {
 			if(steps > WELCOME) {
 				/* Clear the receive buffer again and read the welcome message */
-				if((recvBuff = socket_read(sockfd))) {
+				if((recvBuff = socket_read(sockfd)) != NULL) {
 					json = json_decode(recvBuff);
 					json_find_string(json, "message", &message);
 					logprintf(LOG_DEBUG, "socket recv: %s", recvBuff);
-					sfree((void *)&recvBuff);
 				} else {
 					client_loop = 0;
 					break;
@@ -1293,6 +1290,7 @@ void *clientize(void *param) {
 					if(strcmp(message, "reject client") == 0) {
 						steps=REJECT;
 					}
+					sfree((void *)&recvBuff);
 				case REQUEST:
 					socket_write(sockfd, "{\"message\":\"request config\"}");
 					steps=CONFIG;
@@ -1311,6 +1309,7 @@ void *clientize(void *param) {
 						json_delete(json);
 						json = NULL;
 					}
+					sfree((void *)&recvBuff);
 				break;
 				case FORWARD: {
 					char *pch = strtok(recvBuff, "\n");
@@ -1343,9 +1342,13 @@ void *clientize(void *param) {
 						}
 						pch = strtok(NULL, "\n");
 					}
+					sfree((void *)&recvBuff);
 				} break;
 				case REJECT:
 				default:
+					if(recvBuff) {
+						sfree((void *)&recvBuff);
+					}
 					goto close;
 				break;
 			}
@@ -1356,15 +1359,20 @@ void *clientize(void *param) {
 			json = NULL;
 		}
 
-		socket_close(sockfd);
-		config_gc();
-		logprintf(LOG_NOTICE, "connection to main pilight daemon lost");
-		logprintf(LOG_NOTICE, "trying to reconnect...");
-		sleep(3);
+		if(main_loop == 1) {
+			socket_close(sockfd);
+			config_gc();
+			logprintf(LOG_NOTICE, "connection to main pilight daemon lost");
+			logprintf(LOG_NOTICE, "trying to reconnect...");
+			sleep(3);
+		}
 	}
+
 close:
-	socket_close(sockfd);
-	exit(EXIT_FAILURE);
+	if(main_loop == 1) {
+		socket_close(sockfd);
+		exit(EXIT_FAILURE);
+	}
 	return NULL;
 }
 
@@ -1406,13 +1414,46 @@ void daemonize(void) {
 int main_gc(void) {
 
 	main_loop = 0;
+	sending = 0;
 
+	/* If we are running in node mode, the clientize
+	   thread is waiting for a response from the main
+	   daemon. This means we can't gracefull stop that
+	   thread. However, by sending a HEART message the
+	   main daemon will response with a BEAT. This allows
+	   us to stop the socket_read function and properly
+	   stop the clientize thread. */
+	if(runmode == 2) {
+		socket_write(sockfd, "HEART");
+	}
+	
 	struct conf_hardware_t *tmp_confhw = conf_hardware;
 	while(tmp_confhw) {
 		if(tmp_confhw->hardware->deinit) {
 			tmp_confhw->hardware->deinit();
 		}
 		tmp_confhw = tmp_confhw->next;
+	}
+
+	pthread_mutex_unlock(&sendqueue_lock);
+	pthread_cond_signal(&sendqueue_signal);
+	pthread_cond_signal(&bcqueue_signal);
+	pthread_mutex_unlock(&bcqueue_lock);
+
+	if(valid_config) {
+		JsonNode *joutput = config2json(-1);
+		char *output = json_stringify(joutput, "\t");
+		config_write(output);
+		json_delete(joutput);
+		sfree((void *)&output);
+		joutput = NULL;
+	}
+
+	struct nodes_t *tmp_nodes;
+	while(nodes) {
+		tmp_nodes = nodes;
+		nodes = nodes->next;
+		sfree((void *)&tmp_nodes);
 	}
 
 	if(running == 0) {
@@ -1426,20 +1467,18 @@ int main_gc(void) {
 		}
 	}
 
+	if(pid_file_free) {
+		sfree((void *)&pid_file);
+	}
+
 #ifdef WEBSERVER
 	if(webserver_enable == 1) {
 		webserver_gc();
 	}
-#endif
-
-	if(valid_config) {
-		JsonNode *joutput = config2json(-1);
-		char *output = json_stringify(joutput, "\t");
-		config_write(output);
-		json_delete(joutput);
-		sfree((void *)&output);
-		joutput = NULL;
+	if(webserver_root_free) {
+		sfree((void *)&webserver_root);
 	}
+#endif
 
 #ifdef UPDATE
 	if(update_check) {
@@ -1447,12 +1486,7 @@ int main_gc(void) {
 	}
 #endif
 
-	if(pth) {
-		pthread_cancel(pth);
-		pthread_join(pth, NULL);
-	}
-
-	threads_gc();
+	ssdp_gc();
 	config_gc();
 	protocol_gc();
 	hardware_gc();
@@ -1460,14 +1494,10 @@ int main_gc(void) {
 	options_gc();
 	socket_gc();
 
-	struct nodes_t *tmp_nodes;
-	while(nodes) {
-		tmp_nodes = nodes;
-		nodes = nodes->next;
-		sfree((void *)&tmp_nodes);
-	}
-
+	threads_gc();
+	pthread_join(pth, NULL);
 	log_gc();
+
 	sfree((void *)&nodes);
 	sfree((void *)&progname);
 	return 0;
@@ -1494,7 +1524,11 @@ int main(int argc, char **argv) {
 	/* Catch all exit signals for gc */
 	gc_catch();
 
-	strcpy(pilight_uuid, ssdp_genuuid());
+	char *p = NULL;
+	if((p = ssdp_genuuid()) != NULL) {
+		strcpy(pilight_uuid, p);
+		sfree((void *)&p);
+	}
 
 	firmware.version = 0;
 	firmware.lpf = 0;
@@ -1517,7 +1551,7 @@ int main(int argc, char **argv) {
 	struct ssdp_list_t *ssdp_list = NULL;
 
 	char buffer[BUFFER_SIZE];
-#ifdef FIRMWARE	
+#ifdef FIRMWARE
 	char fwfile[4096] = {'\0'};
 	int fwupdate = 0;
 #endif
@@ -1594,8 +1628,10 @@ int main(int argc, char **argv) {
 
 	if(access(settingsfile, F_OK) != -1) {
 		if(settings_read() != 0) {
+			sfree((void *)&settingsfile);
 			goto clear;
 		}
+		sfree((void *)&settingsfile);
 	}
 
 #ifdef WEBSERVER
@@ -1608,6 +1644,7 @@ int main(int argc, char **argv) {
 			exit(EXIT_FAILURE);
 		}
 		strcpy(webserver_root, WEBSERVER_ROOT);
+		webserver_root_free = 1;
 	}
 #endif
 
@@ -1622,6 +1659,7 @@ int main(int argc, char **argv) {
 			exit(EXIT_FAILURE);
 		}
 		strcpy(pid_file, PID_FILE);
+		pid_file_free = 1;
 	}
 
 	if((f = open(pid_file, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR)) != -1) {
@@ -1702,7 +1740,9 @@ int main(int argc, char **argv) {
 			logprintf(LOG_NOTICE, "a pilight daemon was found, clientizing");
 			runmode = 2;
 		}
-		sfree((void *)&ssdp_list);
+		if(ssdp_list) {
+			ssdp_free(ssdp_list);
+		}
 	}
 
 	if(runmode == 1) {
@@ -1732,7 +1772,6 @@ int main(int argc, char **argv) {
 		save_pid(getpid());
 	}
 
-#ifdef __FreeBSD__
 	pthread_mutexattr_init(&sendqueue_attr);
 	pthread_mutexattr_settype(&sendqueue_attr, PTHREAD_MUTEX_RECURSIVE);
 	pthread_mutex_init(&sendqueue_lock, &sendqueue_attr);
@@ -1740,9 +1779,8 @@ int main(int argc, char **argv) {
 	pthread_mutexattr_init(&bcqueue_attr);
 	pthread_mutexattr_settype(&bcqueue_attr, PTHREAD_MUTEX_RECURSIVE);
 	pthread_mutex_init(&bcqueue_lock, &bcqueue_attr);
-#endif
 
-    //initialise all handshakes to 0 so not checked
+    //initialise all handshakes to -1 so not checked
 	memset(handshakes, -1, sizeof(handshakes));
 
 	/* Export certain daemon function to global usage */
@@ -1761,18 +1799,20 @@ int main(int argc, char **argv) {
 	/* The daemon running in client mode, register a seperate thread that
 	   communicates with the server */
 	if(runmode == 2) {
-		threads_register("node", &clientize, (void *)NULL);
+		threads_register("node", &clientize, (void *)NULL, 0);
 	} else {
 		/* Register a seperate thread for the socket server */
-		threads_register("socket", &socket_wait, (void *)&socket_callback);
-		threads_register("ssdp", &ssdp_wait, (void *)NULL);
+		threads_register("socket", &socket_wait, (void *)&socket_callback, 0);
+		if(standalone == 0) {
+			threads_register("ssdp", &ssdp_wait, (void *)NULL, 0);
+		}
 	}
-	threads_register("sender", &send_code, (void *)NULL);
-	threads_register("broadcaster", &broadcast, (void *)NULL);
+	threads_register("sender", &send_code, (void *)NULL, 0);
+	threads_register("broadcaster", &broadcast, (void *)NULL, 0);
 
 #ifdef UPDATE
 	if(update_check && runmode == 1) {
-		threads_register("updater", &update_poll, (void *)NULL);
+		threads_register("updater", &update_poll, (void *)NULL, 0);
 	}
 #endif
 
@@ -1783,7 +1823,7 @@ int main(int argc, char **argv) {
 				logprintf(LOG_ERR, "could not initialize %s hardware mode", tmp_confhw->hardware->id);
 				goto clear;
 			}
-			threads_register(tmp_confhw->hardware->id, &receive_code, (void *)tmp_confhw->hardware);
+			threads_register(tmp_confhw->hardware->id, &receive_code, (void *)tmp_confhw->hardware, 1);
 		}
 		tmp_confhw = tmp_confhw->next;
 	}
@@ -1791,7 +1831,11 @@ int main(int argc, char **argv) {
 #ifdef WEBSERVER
 	/* Register a seperate thread for the webserver */
 	if(webserver_enable == 1 && runmode == 1) {
-		threads_register("webserver daemon", &webserver_start, (void *)NULL);
+		threads_register("webserver daemon", &webserver_start, (void *)NULL, 0);
+		/* Register a seperate thread in which the webserver communicates
+		   the main daemon as if it where a gui */
+		threads_register("webserver client", &webserver_clientize, (void *)NULL, 0);
+		threads_register("webserver broadcast", &webserver_broadcast, (void *)NULL, 0);
 	}
 #endif
 
@@ -1800,7 +1844,7 @@ int main(int argc, char **argv) {
 #endif
 
 	while(main_loop) {
-#ifdef FIRMWARE	
+#ifdef FIRMWARE
 		/* Check if firmware needs to be updated */
 		if(fwupdate == 1 && firmware.version > 0) {
 			char *fwtmp = fwfile;
@@ -1818,6 +1862,7 @@ int main(int argc, char **argv) {
 #endif
 		sleep(1);
 	}
+	return EXIT_SUCCESS;
 
 clear:
 	if(nodaemon == 0) {

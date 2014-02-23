@@ -45,6 +45,8 @@
 #include <ctype.h>
 #include <stdarg.h>
 
+int mongoose_stop = 0;
+
 #ifdef _WIN32
 #include <windows.h>
 #include <process.h>    // For _beginthread
@@ -1394,6 +1396,7 @@ static struct connection *accept_new_connection(struct mg_server *server) {
     conn = NULL;
 #endif
   } else {
+
     set_close_on_exec(sock);
     set_non_blocking_mode(sock);
     conn->server = server;
@@ -3913,6 +3916,7 @@ unsigned int mg_poll_server(struct mg_server *server, int milliseconds) {
   FD_ZERO(&read_set);
   FD_ZERO(&write_set);
   add_to_set(server->listening_sock, &read_set, &max_fd);
+  add_to_set(server->listening_sock, &write_set, &max_fd);
 #ifndef MONGOOSE_NO_SOCKETPAIR
   add_to_set(server->ctl[1], &read_set, &max_fd);
 #endif
@@ -3939,6 +3943,9 @@ unsigned int mg_poll_server(struct mg_server *server, int milliseconds) {
   tv.tv_usec = (milliseconds % 1000) * 1000;
 
   if (select(max_fd + 1, &read_set, &write_set, NULL, &tv) > 0) {
+	if(mongoose_stop == 1) {
+		return;
+	}
     // Accept new connections
     if (FD_ISSET(server->listening_sock, &read_set)) {
       // We're not looping here, and accepting just one connection at
@@ -4330,4 +4337,8 @@ struct mg_server *mg_create_server(void *server_data) {
   set_default_option_values(server->config_options);
 
   return server;
+}
+
+void mg_stop(void) {
+	mongoose_stop = 1;
 }

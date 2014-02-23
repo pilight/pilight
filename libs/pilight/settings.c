@@ -414,8 +414,10 @@ int settings_parse(JsonNode *root) {
 		if(settings_path_exists(tmp) != EXIT_SUCCESS) {
 			logprintf(LOG_ERR, "setting \"webgui-template\", template does not exists");
 			have_error = 1;
+			sfree((void *)&tmp);
 			goto clear;		
 		}
+		sfree((void *)&tmp);
 	}
 
 	if(web_port == own_port) {

@@ -21,13 +21,10 @@
 #include <dirent.h>
 #include <string.h>
 #include <unistd.h>
-#define __USE_GNU
-#include <pthread.h>
 #include <sys/types.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <sys/stat.h>
-#include <sys/time.h>
 
 #include "../../pilight.h"
 #include "common.h"
@@ -49,61 +46,31 @@ typedef struct wunderground_data_t {
 } wunderground_data_t;
 
 unsigned short wunderground_loop = 1;
-unsigned short wunderground_nrfree = 0;
-
-void wundergroundParseCleanUp(void *arg) {
-	struct wunderground_data_t *wunderground_data = (struct wunderground_data_t *)arg;
-	struct wunderground_data_t *wtmp = NULL;
-
-	wunderground_loop = 0;
-	
-	while(wunderground_data) {
-		wtmp = wunderground_data;
-		sfree((void *)&wunderground_data->country);
-		sfree((void *)&wunderground_data->location);
-		wunderground_data = wunderground_data->next;
-		sfree((void *)&wtmp);
-	}
-	sfree((void *)&wunderground_data);
-}
+unsigned short wunderground_threads = 0;
 
 void *wundergroundParse(void *param) {
-	struct JsonNode *json = (struct JsonNode *)param;
+	struct protocol_threads_t *thread = (struct protocol_threads_t *)param;
+	struct JsonNode *json = (struct JsonNode *)thread->param;
 	struct JsonNode *jid = NULL;
 	struct JsonNode *jchild = NULL;
 	struct JsonNode *jchild1 = NULL;
 	struct JsonNode *jsettings = NULL;
 	struct JsonNode *node = NULL;
 	struct wunderground_data_t *wunderground_data = NULL;
-	struct wunderground_data_t *wtmp = NULL;
-	struct timeval tp;
-	struct timespec ts;		
-	int interval = 900;
+	struct wunderground_data_t *wtmp = NULL;	
+	int interval = 900, nrloops = 0;
 	
 	char url[1024];
 	char *filename = NULL, *data = NULL;
 	char typebuf[70];
 	char *stmp = NULL;
 	double temp = 0;
-	int humi = 0, rc = 0, lg = 0, ret = 0;
-	int firstrun = 1;	
+	int humi = 0, lg = 0, ret = 0;
+
 	JsonNode *jdata = NULL;
-	JsonNode *jobs = NULL;	
+	JsonNode *jobs = NULL;
 
-#ifndef __FreeBSD__
-	pthread_mutex_t mutex = PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP;        
-    pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
-#else
-	pthread_mutex_t mutex;
-	pthread_cond_t cond;
-	pthread_mutexattr_t attr;
-
-	pthread_mutexattr_init(&attr);
-	pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);
-	pthread_mutex_init(&mutex, &attr);
-#endif
-	
-    pthread_cond_init(&cond, NULL);	
+	wunderground_threads++;	
 	
 	int has_country = 0, has_api = 0, has_location = 0;
 	if((jid = json_find_member(json, "id"))) {
@@ -158,25 +125,10 @@ void *wundergroundParse(void *param) {
 	if((jsettings = json_find_member(json, "settings"))) {
 		json_find_number(jsettings, "interval", &interval);
 	}
-	json_delete(json);
 
-	pthread_cleanup_push(wundergroundParseCleanUp, (void *)wunderground_data);
-	
 	while(wunderground_loop) {
 		wtmp = wunderground_data;
-		rc = gettimeofday(&tp, NULL);
-		ts.tv_sec = tp.tv_sec;
-		ts.tv_nsec = tp.tv_usec * 1000;
-		if(firstrun) {
-			ts.tv_sec += 1;
-			firstrun = 0;
-		} else {
-			ts.tv_sec += interval;
-		}
-
-		pthread_mutex_lock(&mutex);
-		rc = pthread_cond_timedwait(&cond, &mutex, &ts);
-		if(rc == ETIMEDOUT) {
+		if(protocol_thread_wait(thread, interval, &nrloops) == ETIMEDOUT) {
 			while(wtmp) {
 				filename = NULL;
 				data = NULL;
@@ -242,19 +194,27 @@ void *wundergroundParse(void *param) {
 				}
 			wtmp = wtmp->next;
 			}
-		}
-		pthread_mutex_unlock(&mutex);				
+		}			
 	}
 
-	pthread_cleanup_pop(1);
-
+	while(wunderground_data) {
+		wtmp = wunderground_data;
+		sfree((void *)&wunderground_data->country);
+		sfree((void *)&wunderground_data->location);
+		wunderground_data = wunderground_data->next;
+		sfree((void *)&wtmp);
+	}
+	sfree((void *)&wunderground_data);
+	wunderground_threads--;
 	return (void *)NULL;
 }
 
 void wundergroundInitDev(JsonNode *jdevice) {
 	char *output = json_stringify(jdevice, NULL);
 	JsonNode *json = json_decode(output);
-	threads_register("wunderground", &wundergroundParse, (void *)json);
+
+	struct protocol_threads_t *node = protocol_thread_init(wunderground, json);
+	threads_register("wunderground", &wundergroundParse, (void *)node, 0);
 	sfree((void *)&output);
 }
 
@@ -267,6 +227,15 @@ int wundergroundCheckValues(JsonNode *code) {
 	}
 
 	return 0;
+}
+
+void wundergroundGC(void) {
+	wunderground_loop = 0;
+	protocol_thread_stop(wunderground);
+	while(wunderground_threads > 0) {
+		usleep(10);
+	}
+	protocol_thread_free(wunderground);
 }
 
 void wundergroundInit(void) {
@@ -291,5 +260,6 @@ void wundergroundInit(void) {
 
 	wunderground->initDev=&wundergroundInitDev;
 	wunderground->checkValues=&wundergroundCheckValues;
+	wunderground->gc=&wundergroundGC;
 }
 

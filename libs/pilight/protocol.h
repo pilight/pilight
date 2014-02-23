@@ -19,6 +19,8 @@
 #ifndef _PROTOCOL_H_
 #define _PROTOCOL_H_
 
+#include <pthread.h>
+
 #include "options.h"
 #include "hardware.h"
 #include "json.h"
@@ -58,6 +60,14 @@ typedef struct protocol_settings_t {
 	struct protocol_settings_t *next;
 } protocol_settings_t;
 
+typedef struct protocol_threads_t {
+	pthread_mutex_t mutex;
+	pthread_cond_t cond;
+	pthread_mutexattr_t attr;
+	JsonNode *param;
+	struct protocol_threads_t *next;
+} protocol_threads_t;
+
 typedef struct protocol_t {
 	char *id;
 	int header;
@@ -88,6 +98,7 @@ typedef struct protocol_t {
 	struct protocol_devices_t *devices;
 	struct protocol_conflicts_t *conflicts;
 	struct protocol_settings_t *settings;
+	struct protocol_threads_t *threads;
 
 	void (*parseRaw)(void);
 	void (*parseCode)(void);
@@ -96,6 +107,7 @@ typedef struct protocol_t {
 	int (*checkValues)(JsonNode *code);
 	void (*initDev)(JsonNode *device);
 	void (*printHelp)(void);
+	void (*gc)(void);
 } protocol_t;
 
 typedef struct protocols_t {
@@ -107,6 +119,10 @@ typedef struct protocols_t {
 struct protocols_t *protocols;
 
 void protocol_init(void);
+struct protocol_threads_t *protocol_thread_init(protocol_t *proto, struct JsonNode *param);
+int protocol_thread_wait(struct protocol_threads_t *node, int interval, int *nrloops);
+void protocol_thread_free(protocol_t *proto);
+void protocol_thread_stop(protocol_t *proto);
 void protocol_set_id(protocol_t *proto, const char *id);
 void protocol_plslen_add(protocol_t *proto, int plslen);
 void protocol_register(protocol_t **proto);

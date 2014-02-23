@@ -21,13 +21,10 @@
 #include <dirent.h>
 #include <string.h>
 #include <unistd.h>
-#define __USE_GNU
-#include <pthread.h>
 #include <sys/types.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <sys/stat.h>
-#include <sys/time.h>
 
 #include "../../pilight.h"
 #include "common.h"
@@ -41,49 +38,32 @@
 #include "rpi_temp.h"
 
 unsigned short rpi_temp_loop = 1;
-unsigned short rpi_temp_nrfree = 0;
-char *rpi_temp_temp = NULL;
-
-void rpiTempParseCleanUp(void *arg) {
-	sfree((void *)&arg);
-	
-	rpi_temp_loop = 0;
-}
+unsigned short rpi_temp_threads = 0;
+char rpi_temp[38];
 
 void *rpiTempParse(void *param) {
-	struct JsonNode *json = (struct JsonNode *)param;
+	struct protocol_threads_t *node = (struct protocol_threads_t *)param;
+	struct JsonNode *json = (struct JsonNode *)node->param;
 	struct JsonNode *jid = NULL;
 	struct JsonNode *jchild = NULL;
 	struct JsonNode *jsettings = NULL;
-	struct timeval tp;
-	struct timespec ts;	
 	struct stat st;
 
 	FILE *fp = NULL;
 	int itmp = 0;
 	int *id = malloc(sizeof(int));
 	char *content = NULL;
-	int interval = 10, temp_corr = 0, nrid = 0, y = 0, rc = 0;
+	int interval = 10, temp_corr = 0;
+	int nrloops = 0, nrid = 0, y = 0;
 	size_t bytes = 0;
-	int firstrun = 1;
+
+	rpi_temp_threads++;
 
 	if(!id) {
 		logprintf(LOG_ERR, "out of memory");
 		exit(EXIT_FAILURE);
 	}
 	
-#ifndef __FreeBSD__
-	pthread_mutex_t mutex = PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP;        
-    pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
-#else
-	pthread_mutex_t mutex;
-	pthread_cond_t cond;
-	pthread_mutexattr_t attr;
-
-	pthread_mutexattr_init(&attr);
-	pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);
-	pthread_mutex_init(&mutex, &attr);
-#endif
 
 	if((jid = json_find_member(json, "id"))) {
 		jchild = json_first_child(jid);
@@ -101,45 +81,29 @@ void *rpiTempParse(void *param) {
 		json_find_number(jsettings, "interval", &interval);
 		json_find_number(jsettings, "temp-corr", &temp_corr);
 	}
-	json_delete(json);
-
-	pthread_cleanup_push(rpiTempParseCleanUp, (void *)id);
 
 	while(rpi_temp_loop) {
-		rc = gettimeofday(&tp, NULL);
-		ts.tv_sec = tp.tv_sec;
-		ts.tv_nsec = tp.tv_usec * 1000;
-		if(firstrun) {
-			ts.tv_sec += 1;
-			firstrun = 0;
-		} else {
-			ts.tv_sec += interval;
-		}
-
-		pthread_mutex_lock(&mutex);
-		rc = pthread_cond_timedwait(&cond, &mutex, &ts);
-		if(rc == ETIMEDOUT) {			
+		if(protocol_thread_wait(node, interval, &nrloops) == ETIMEDOUT) {		
 			for(y=0;y<nrid;y++) {
-				if((fp = fopen(rpi_temp_temp, "rb"))) {
+				if((fp = fopen(rpi_temp, "rb"))) {
 					fstat(fileno(fp), &st);
 					bytes = (size_t)st.st_size;
 
-					if(!(content = calloc(bytes+1, sizeof(char)))) {
+					if(!(content = realloc(content, bytes+1))) {
 						logprintf(LOG_ERR, "out of memory");
 						fclose(fp);
 						break;
 					}
+					memset(content, '\0', bytes+1);
 
 					if(fread(content, sizeof(char), bytes, fp) == -1) {
-						logprintf(LOG_ERR, "cannot read config file: %s", rpi_temp_temp);
+						logprintf(LOG_ERR, "cannot read file: %s", rpi_temp);
 						fclose(fp);
-						sfree((void *)&content);
 						break;
 					}
 
 					fclose(fp);
 					int temp = atoi(content)+temp_corr;
-					sfree((void *)&content);
 
 					rpiTemp->message = json_mkobject();
 					JsonNode *code = json_mkobject();
@@ -154,33 +118,39 @@ void *rpiTempParse(void *param) {
 					json_delete(rpiTemp->message);
 					rpiTemp->message = NULL;
 				} else {
-					logprintf(LOG_ERR, "CPU RPI device %s does not exists", rpi_temp_temp);
+					logprintf(LOG_ERR, "CPU RPI device %s does not exists", rpi_temp);
 				}
 			}
 		}
-		pthread_mutex_unlock(&mutex);
 	}
 
-	pthread_cleanup_pop(1);
-
+	if(content) {
+		sfree((void *)&content);
+	}
+	sfree((void *)&id);
+	rpi_temp_threads--;
 	return (void *)NULL;
 }
 
 void rpiTempInitDev(JsonNode *jdevice) {
 	char *output = json_stringify(jdevice, NULL);
 	JsonNode *json = json_decode(output);
-	threads_register("rpi_temp", &rpiTempParse, (void *)json);
+
+	struct protocol_threads_t *node = protocol_thread_init(rpiTemp, json);	
+	threads_register("rpi_temp", &rpiTempParse, (void *)node, 0);
 	sfree((void *)&output);
 }
 
-int rpiTempGC(void) {
-	sfree((void *)&rpi_temp_temp);
-	return 1;
+void rpiTempGC(void) {
+	rpi_temp_loop = 0;
+	protocol_thread_stop(rpiTemp);
+	while(rpi_temp_threads > 0) {
+		usleep(10);
+	}
+	protocol_thread_free(rpiTemp);
 }
 
 void rpiTempInit(void) {
-	
-	gc_attach(rpiTempGC);
 
 	protocol_register(&rpiTemp);
 	protocol_set_id(rpiTemp, "rpi_temp");
@@ -197,13 +167,9 @@ void rpiTempInit(void) {
 	protocol_setting_add_number(rpiTemp, "battery", 0);
 	protocol_setting_add_number(rpiTemp, "interval", 10);
 
-	rpi_temp_temp = malloc(38);
-	if(!rpi_temp_temp) {
-		logprintf(LOG_ERR, "out of memory");
-		exit(EXIT_FAILURE);
-	}
-	memset(rpi_temp_temp, '\0', 38);
-	strcpy(rpi_temp_temp, "/sys/class/thermal/thermal_zone0/temp");
+	memset(rpi_temp, '\0', 38);
+	strcpy(rpi_temp, "/sys/class/thermal/thermal_zone0/temp");
 
 	rpiTemp->initDev=&rpiTempInitDev;
+	rpiTemp->gc=&rpiTempGC;
 }

@@ -1461,7 +1461,7 @@ int config_parse_locations(JsonNode *jlocations, struct conf_locations_t *locati
 		if(!((strcmp(jdevices->key, "name") == 0 && jdevices->tag == JSON_STRING) || (strcmp(jdevices->key, "order") == 0 && jdevices->tag == JSON_NUMBER) || (jdevices->tag == JSON_OBJECT))) {
 			logprintf(LOG_ERR, "device #%d \"%s\" of \"%s\", invalid field(s)", i, jdevices->key, location->id);
 			have_error = 1;
-			goto clear;
+				goto clear;
 		} else if(jdevices->tag == JSON_OBJECT) {
 			/* Save the name of the device */
 			if(json_find_string(jdevices, "name", &name) != 0) {
@@ -1480,7 +1480,6 @@ int config_parse_locations(JsonNode *jlocations, struct conf_locations_t *locati
 					if(strcmp(tmp_devices->id, jdevices->key) == 0) {
 						logprintf(LOG_ERR, "device #%d \"%s\" of \"%s\", duplicate", i, jdevices->key, location->id);
 						have_error = 1;
-						goto clear;
 					}
 					tmp_devices = tmp_devices->next;
 				}
@@ -1537,16 +1536,10 @@ int config_parse_locations(JsonNode *jlocations, struct conf_locations_t *locati
 					if(match == 1 && ptype != protocol->hwtype) {
 						logprintf(LOG_ERR, "device #%d \"%s\" of \"%s\", cannot combine protocols of different hardware types", i, jdevices->key, location->id);
 						have_error = 1;
-						json_delete(jprotocol);
-						sfree((void *)&dnode);
-						goto clear;
 					}		
 					if(match == 0) {
 						logprintf(LOG_ERR, "device #%d \"%s\" of \"%s\", invalid protocol", i, jdevices->key, location->id);
 						have_error = 1;
-						json_delete(jprotocol);
-						sfree((void *)&dnode);
-						goto clear;
 					} else {
 						struct protocols_t *pnode = malloc(sizeof(struct protocols_t));
 						if(!pnode) {
@@ -1581,9 +1574,8 @@ int config_parse_locations(JsonNode *jlocations, struct conf_locations_t *locati
 				}
 				json_delete(jprotocol);
 
-				if(config_parse_devices(jdevices, dnode) != 0) {
+				if(!have_error && config_parse_devices(jdevices, dnode) != 0) {
 					have_error = 1;
-					goto clear;
 				}
 
 				tmp_devices = location->devices;
@@ -1595,6 +1587,10 @@ int config_parse_locations(JsonNode *jlocations, struct conf_locations_t *locati
 				} else {
 					dnode->next = location->devices;
 					location->devices = dnode;
+				}
+
+				if(have_error) {
+					goto clear;
 				}
 			}
 		}
@@ -1613,7 +1609,7 @@ int config_parse(JsonNode *root) {
 	/* JSON locations iterator */
 	JsonNode *jlocations = NULL;
 	/* Location name */
-	char *name = NULL;
+	char *name;
 
 	int i = 0, have_error = 0;
 
@@ -1665,7 +1661,6 @@ int config_parse(JsonNode *root) {
 			
 			if(config_parse_locations(jlocations, lnode) != 0) {
 				have_error = 1;
-				goto clear;
 			}			
 
 			tmp_locations = conf_locations;
@@ -1678,12 +1673,15 @@ int config_parse(JsonNode *root) {
 				lnode->next = conf_locations;
 				conf_locations = lnode;
 			}
+
+			if(have_error) {
+				goto clear;
+			}
 			
 			jlocations = jlocations->next;
 		}
 	}
 
-	json_delete(jlocations);
 clear:
 	return have_error;
 }
@@ -1803,7 +1801,8 @@ int config_gc(void) {
 	struct conf_settings_t *stmp;
 	struct conf_values_t *vtmp;
 	struct protocols_t *ptmp;
-	/* Show the parsed log file */
+
+	/* Free config structure */
 	while(conf_locations) {
 		ltmp = conf_locations;
 		while(ltmp->devices) {
@@ -1850,10 +1849,10 @@ int config_gc(void) {
 }
 
 int config_read() {
+	char *content = NULL;
+	JsonNode *root = NULL;
 	FILE *fp;
-	char *content;
 	size_t bytes;
-	JsonNode *root;
 	struct stat st;
 
 	/* Read JSON config file */

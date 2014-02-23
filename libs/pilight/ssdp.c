@@ -39,31 +39,43 @@
 #include "ssdp.h"
 
 char *ssdp_mac = NULL;
-char *ssdp_hostname = NULL;
-char **ssdp_header = NULL;
-int ssdp_nrheader = 0;
 int ssdp_socket = 0;
 int ssdp_loop = 1;
 
 int ssdp_gc(void) {
-	int x = 0;
-	for(x=0;x<ssdp_nrheader;x++) {
-		sfree((void *)&ssdp_header[x]);
+	struct sockaddr_in addr;
+	int sockfd = 0;
+
+	ssdp_loop = 0;
+
+	/* Make a loopback socket we can close when pilight needs to be stopped
+	   or else the select statement will wait forever for an activity */
+	if((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) >= 0) {
+	/* Wakeup our recvfrom statement so the ssdp_wait function can 
+	   actually close and the thread can end gracefully */	
+		addr.sin_family = AF_INET;
+		addr.sin_port = htons(1900);
+		addr.sin_addr.s_addr = inet_addr("239.255.255.250");	
+		sendto(sockfd, "1", 1, 0, (struct sockaddr *)&addr, sizeof(addr));
 	}
-	sfree((void *)&ssdp_header);
+	
+	logprintf(LOG_DEBUG, "garbage collected ssdp library");
 	return EXIT_SUCCESS;
 }
 
 char *ssdp_gethostname(void) {
-	if(!ssdp_hostname) {
-		char hostname[255] = {'\0'};
-		gethostname(hostname, 254);
+	char hostname[255] = {'\0'};
+	char *ssdp_hostname = NULL;
+	gethostname(hostname, 254);
+	if(strlen(hostname) > 0) {
 		char *pch = strtok(hostname, ".");
-		if(!(ssdp_hostname = malloc(strlen(pch)+1))) {
-			logprintf(LOG_ERR, "out of memory");
-			exit(EXIT_FAILURE);
+		if(pch != NULL) {
+			if(!(ssdp_hostname = malloc(strlen(pch)+1))) {
+				logprintf(LOG_ERR, "out of memory");
+				exit(EXIT_FAILURE);
+			}
+			strcpy(ssdp_hostname, pch);
 		}
-		strcpy(ssdp_hostname, pch);
 	}
 	return ssdp_hostname;
 }
@@ -73,7 +85,7 @@ char *ssdp_getdistroname(void) {
 	char dist[32];
 	memset(dist, '\0', 32);
 	struct stat sb;	
-	char *ssdp_distro = NULL;
+	char *distro = NULL;
 
 #ifdef __FreeBSD__
 	strcpy(dist, "FreeBSD/0.0");
@@ -93,12 +105,12 @@ char *ssdp_getdistroname(void) {
 	}
 #endif
 	if(strlen(dist) > 0) {
-		if(!(ssdp_distro = malloc(strlen(dist)+1))) {
+		if(!(distro = malloc(strlen(dist)+1))) {
 			logprintf(LOG_ERR, "out of memory");
 			exit(EXIT_FAILURE);
 		}
-		strcpy(ssdp_distro, dist);
-		return ssdp_distro;
+		strcpy(distro, dist);
+		return distro;
 	} else {
 		return NULL;
 	}
@@ -233,7 +245,8 @@ int ssdp_start(void) {
 	if(bind(ssdp_socket, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
 		perror("bind");
 		return 0;
-	}
+	}	
+	
 	return 1;
 }
 
@@ -282,6 +295,8 @@ int ssdp_seek(struct ssdp_list_t **ssdp_list) {
 				}
 				pch = strtok(NULL, "\r\n");
 			}
+			/* strtok on fixed char array need to be freed */
+			// sfree((void *)&pch);
 			if(match) {
 				struct ssdp_list_t *node = malloc(sizeof(struct ssdp_list_t));
 				if(!node) {
@@ -316,6 +331,16 @@ end:
 	} else {
 		return -1;
 	}
+}
+
+void ssdp_free(struct ssdp_list_t *ssdp_list) {
+	struct ssdp_list_t *tmp = NULL;
+	while(ssdp_list) {
+		tmp = ssdp_list;
+		ssdp_list = ssdp_list->next;
+		sfree((void *)&tmp);
+	}
+	sfree((void *)&ssdp_list);
 }
 
 #ifdef __FreeBSD__
@@ -450,27 +475,27 @@ int rep_getifaddrs(struct ifaddrs **ifap) {
 
 void *ssdp_wait(void *param) {
 
-	gc_attach(ssdp_gc);
-
 	struct sockaddr_in addr;
 	struct ifaddrs *ifaddr, *ifa;
 	char message[BUFFER_SIZE];
 	char host[NI_MAXHOST];
-	int x = 0;
+	char **header = NULL;
 	ssize_t len = 0;
 	socklen_t addrlen = sizeof(addr);
-	int family = 0, s = 0;
+	int family = 0, s = 0, nrheader = 0, x = 0;
 
 	char *id = ssdp_genuuid();	
-	char *ssdp_distro = ssdp_getdistroname();	
+	char *distro = ssdp_getdistroname();
+	char *hostname = ssdp_gethostname();
+
 	
 	if(id == NULL) {
-		logprintf(LOG_ERR, "could not generate uuid");
+		logprintf(LOG_ERR, "could not generate the device uuid");
 		exit(EXIT_FAILURE);
 	}
 	
-	if(!ssdp_distro) {
-		logprintf(LOG_ERR, "failed to determine the distribution", gai_strerror(s));
+	if(distro == NULL) {
+		logprintf(LOG_ERR, "failed to determine the distribution");
 		exit(EXIT_FAILURE);
 	}
 
@@ -504,33 +529,33 @@ void *ssdp_wait(void *param) {
 				exit(EXIT_FAILURE);
 			}
 			if(strlen(host) > 0) {
-				if(!(ssdp_header = realloc(ssdp_header, sizeof(char *)*((unsigned int)ssdp_nrheader+1)))) {
+				if(!(header = realloc(header, sizeof(char *)*((size_t)nrheader+1)))) {
 					logprintf(LOG_ERR, "out of memory");
 					exit(EXIT_FAILURE);
 				}
-				if(!(ssdp_header[ssdp_nrheader] = malloc(BUFFER_SIZE))) {
+				if(!(header[nrheader] = malloc(BUFFER_SIZE))) {
 					logprintf(LOG_ERR, "out of memory");
 					exit(EXIT_FAILURE);
 				}
-				memset(ssdp_header[ssdp_nrheader], '\0', BUFFER_SIZE);	
-				sprintf(ssdp_header[ssdp_nrheader], "NOTIFY * HTTP/1.1\r\n"
+				memset(header[nrheader], '\0', BUFFER_SIZE);	
+				sprintf(header[nrheader], "NOTIFY * HTTP/1.1\r\n"
 					"Host:239.255.255.250:1900\r\n"
 					"Cache-Control:max-age=900\r\n"
 					"Location:%s:%d\r\n"
 					"NT:urn:schemas-upnp-org:service:pilight:1\r\n"
 					"USN:uuid:%s::urn:schemas-upnp-org:service:pilight:1\r\n"
 					"NTS:ssdp:alive\r\n"
-					"SERVER: %s UPnP/1.1 pilight (%s)/%s\r\n\r\n", host, socket_get_port(), id, ssdp_distro, ssdp_gethostname(), VERSION);
-				ssdp_nrheader++;	
+					"SERVER: %s UPnP/1.1 pilight (%s)/%s\r\n\r\n", host, socket_get_port(), id, distro, hostname, VERSION);
+				nrheader++;	
 			}
 		}
-	}
-
+	}	
+	
 	freeifaddrs(ifaddr);
 
 	sfree((void *)&id);
-	sfree((void *)&ssdp_distro);
-	sfree((void *)&ssdp_hostname);
+	sfree((void *)&distro);
+	sfree((void *)&hostname);
 
 	while(ssdp_loop) {
 		memset(message, '\0', BUFFER_SIZE);
@@ -538,16 +563,23 @@ void *ssdp_wait(void *param) {
 			//perror("read");
 			break;
 		}
+
 		if(strstr(message, "M-SEARCH * HTTP/1.1") > 0 && strstr(message, "urn:schemas-upnp-org:service:pilight:1") > 0) {
-			for(x=0;x<ssdp_nrheader;x++) {
-				if(strlen(ssdp_header[x]) > 0) {
-					if((len = sendto(ssdp_socket, ssdp_header[x], BUFFER_SIZE, 0, (struct sockaddr *)&addr, sizeof(addr))) >= 0) {
+			for(x=0;x<nrheader;x++) {
+				if(strlen(header[x]) > 0) {
+					if((len = sendto(ssdp_socket, header[x], BUFFER_SIZE, 0, (struct sockaddr *)&addr, sizeof(addr))) >= 0) {
 						logprintf(LOG_DEBUG, "ssdp sent notify");
 					}
 				}
 			}
 		}
 	}
+
+	for(x=0;x<nrheader;x++) {
+		sfree((void *)&header[x]);
+	}
+
+	sfree((void *)&header);	
 	return 0;
 }
 

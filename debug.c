@@ -310,7 +310,7 @@ int main(int argc, char **argv) {
 			logprintf(LOG_ERR, "could not initialize %s hardware mode", tmp_confhw->hardware->id);
 			goto clear;
 		}
-		threads_register(tmp_confhw->hardware->id, &receive_code, (void *)tmp_confhw->hardware);
+		threads_register(tmp_confhw->hardware->id, &receive_code, (void *)tmp_confhw->hardware, 0);
 		tmp_confhw = tmp_confhw->next;
 	}	
 

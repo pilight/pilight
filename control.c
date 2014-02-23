@@ -169,7 +169,9 @@ int main(int argc, char **argv) {
 			logprintf(LOG_ERR, "could not connect to pilight-daemon");
 			goto close;
 		}
-		sfree((void *)&ssdp_list);
+	}
+	if(ssdp_list) {
+		ssdp_free(ssdp_list);
 	}
 
 	protocol_init();

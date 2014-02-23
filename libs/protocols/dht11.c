@@ -21,8 +21,6 @@
 #include <dirent.h>
 #include <string.h>
 #include <unistd.h>
-#define __USE_GNU
-#include <pthread.h>
 #include <sys/types.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -44,41 +42,20 @@
 #define MAXTIMINGS 10000
 
 unsigned short dht11_loop = 1;
-
-void dht11ParseCleanUp(void *arg) {
-	sfree((void *)&arg);
-	
-	dht11_loop = 0;
-}
+unsigned short dht11_threads = 0;
 
 void *dht11Parse(void *param) {
-
-	struct JsonNode *json = (struct JsonNode *)param;
+	struct protocol_threads_t *node = (struct protocol_threads_t *)param;
+	struct JsonNode *json = (struct JsonNode *)node->param;
 	struct JsonNode *jsettings = NULL;
 	struct JsonNode *jid = NULL;
 	struct JsonNode *jchild = NULL;
-	struct timeval tp;
-	struct timespec ts;	
 	int *id = 0;
 	int nrid = 0, y = 0, interval = 10;
-	int temp_corr = 0, humi_corr = 0, rc = 0;
-	int itmp = 0;
-	int firstrun = 1;
+	int temp_corr = 0, humi_corr = 0;
+	int itmp = 0, nrloops = 0;
 
-#ifndef __FreeBSD__
-	pthread_mutex_t mutex = PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP;        
-    pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
-#else
-	pthread_mutex_t mutex;
-	pthread_cond_t cond;
-	pthread_mutexattr_t attr;
-
-	pthread_mutexattr_init(&attr);
-	pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);
-	pthread_mutex_init(&mutex, &attr);
-#endif
-
-    pthread_cond_init(&cond, NULL);
+	dht11_threads++;
 
 	if((jid = json_find_member(json, "id"))) {
 		jchild = json_first_child(jid);
@@ -97,24 +74,9 @@ void *dht11Parse(void *param) {
 		json_find_number(jsettings, "temp-corr", &temp_corr);
 		json_find_number(jsettings, "humi-corr", &humi_corr);
 	}
-	json_delete(json);	
 
-	pthread_cleanup_push(dht11ParseCleanUp, (void *)id);
-	
 	while(dht11_loop) {
-		rc = gettimeofday(&tp, NULL);
-		ts.tv_sec = tp.tv_sec;
-		ts.tv_nsec = tp.tv_usec * 1000;
-		if(firstrun) {
-			ts.tv_sec += 1;
-			firstrun = 0;
-		} else {
-			ts.tv_sec += interval;
-		}
-
-		pthread_mutex_lock(&mutex);
-		rc = pthread_cond_timedwait(&cond, &mutex, &ts);
-		if(rc == ETIMEDOUT) {	
+		if(protocol_thread_wait(node, interval, &nrloops) == ETIMEDOUT) {
 			for(y=0;y<nrid;y++) {
 				int tries = 5;
 				unsigned short got_correct_date = 0;
@@ -211,11 +173,10 @@ void *dht11Parse(void *param) {
 				}
 			}
 		}
-		pthread_mutex_unlock(&mutex);
 	}
-	
-	pthread_cleanup_pop(1);
 
+	sfree((void *)&id);
+	dht11_threads--;
 	return (void *)NULL;
 }
 
@@ -223,8 +184,19 @@ void dht11InitDev(JsonNode *jdevice) {
 	wiringPiSetup();
 	char *output = json_stringify(jdevice, NULL);
 	JsonNode *json = json_decode(output);
-	threads_register("dht11", &dht11Parse, (void *)json);
+
+	struct protocol_threads_t *node = protocol_thread_init(dht11, json);
+	threads_register("dht11", &dht11Parse, (void *)node, 0);
 	sfree((void *)&output);
+}
+
+void dht11GC(void) {
+	dht11_loop = 0;
+	protocol_thread_stop(dht11);
+	while(dht11_threads > 0) {
+		usleep(10);
+	}
+	protocol_thread_free(dht11);
 }
 
 void dht11Init(void) {
@@ -245,4 +217,5 @@ void dht11Init(void) {
 	protocol_setting_add_number(dht11, "interval", 10);
 
 	dht11->initDev=&dht11InitDev;
+	dht11->gc=&dht11GC;
 }

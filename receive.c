@@ -22,7 +22,6 @@
 #include <unistd.h>
 #include <errno.h>
 #include <syslog.h>
-#include <assert.h>
 
 #include "pilight.h"
 #include "common.h"
@@ -96,6 +95,7 @@ int main(int argc, char **argv) {
 			break;
 			case 'S':
 				server = realloc(server, strlen(args)+1);
+				memset(server, '\0', strlen(args)+1);
 				if(!server) {
 					logprintf(LOG_ERR, "out of memory");
 					exit(EXIT_FAILURE);
@@ -111,8 +111,8 @@ int main(int argc, char **argv) {
 			break;
 		}
 	}
-
 	options_delete(options);
+
 	if(server && port > 0) {
 		if((sockfd = socket_connect(server, port)) == -1) {
 			logprintf(LOG_ERR, "could not connect to pilight-daemon");
@@ -126,14 +126,18 @@ int main(int argc, char **argv) {
 			logprintf(LOG_ERR, "could not connect to pilight-daemon");
 			goto close;
 		}
-		sfree((void *)&ssdp_list);
+	}
+	if(ssdp_list) {
+		ssdp_free(ssdp_list);
+	}
+	if(server) {
+		sfree((void *)&server);
 	}
 
 	while(1) {
 		if(steps > WELCOME) {
 			/* Clear the receive buffer again and read the welcome message */
-			recvBuff = socket_read(sockfd);
-			if(recvBuff == NULL) {
+			if((recvBuff = socket_read(sockfd)) == NULL) {
 				goto close;
 			}
 		}
@@ -146,26 +150,23 @@ int main(int argc, char **argv) {
 				//extract the message
 				json = json_decode(recvBuff);
 				json_find_string(json, "message", &message);
-				assert(message != NULL);
 				if(strcmp(message, "accept client") == 0) {
 					steps=RECEIVE;
 				} else if(strcmp(message, "reject client") == 0) {
 					steps=REJECT;
-				} else {
-					assert(false);
 				}
 				//cleanup
 				json_delete(json);
 				sfree((void *)&recvBuff);
 				json = NULL;
 				message = NULL;
+				recvBuff = NULL;
 			break;
 			case RECEIVE: {
 				char *line = strtok(recvBuff, "\n");
 				//for each line
 				while(line) {
 					json = json_decode(line);
-					assert(json != NULL);
 					char *output = json_stringify(json, "\t");
 					printf("%s\n", output);
 					sfree((void *)&output);
@@ -173,6 +174,8 @@ int main(int argc, char **argv) {
 					line = strtok(NULL,"\n");
 				}
 				sfree((void *)&recvBuff);
+				sfree((void *)&line);
+				recvBuff = NULL;
 			} break;
 			case REJECT:
 			default:
@@ -184,14 +187,12 @@ close:
 	if(sockfd > 0) {
 		socket_close(sockfd);
 	}
-	if(server) {
-		sfree((void *)&server);
+	if(recvBuff) {
+		sfree((void *)&recvBuff);
 	}
 	options_gc();
 	log_shell_disable();
 	log_gc();
 	sfree((void *)&progname);
-	sfree((void *)&message);
-
 return EXIT_SUCCESS;
 }

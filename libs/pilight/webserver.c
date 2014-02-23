@@ -28,8 +28,8 @@
 #include <syslog.h>
 #include <signal.h>
 #include <stdarg.h>
-#define __USE_GNU
 #include <pthread.h>
+#include <sys/socket.h>
 
 #include "../../pilight.h"
 #include "common.h"
@@ -60,11 +60,8 @@ struct mg_server *mgserver[WEBSERVER_WORKERS];
 unsigned short webgui_tpl_free = 0;
 unsigned short webserver_root_free = 0;
 
+int loopfd = 0;
 int sockfd = 0;
-char *sockReadBuff = NULL;
-unsigned char *sockWriteBuff = NULL;
-
-char *server = NULL;
 
 typedef enum {
 	WELCOME,
@@ -81,13 +78,9 @@ typedef struct webqueue_t {
 struct webqueue_t *webqueue;
 struct webqueue_t *webqueue_head;
 
-#ifndef __FreeBSD__
-pthread_mutex_t webqueue_lock = PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP;
-pthread_cond_t webqueue_signal = PTHREAD_COND_INITIALIZER;
-#else
 pthread_mutex_t webqueue_lock;
 pthread_cond_t webqueue_signal;
-#endif
+pthread_mutexattr_t webqueue_attr;
 
 int webqueue_number = 0;
 
@@ -95,19 +88,27 @@ int webserver_gc(void) {
 	int i = 0;
 
 	webserver_loop = 0;
-	socket_close(sockfd);
-	sfree((void *)&sockWriteBuff);
-	sfree((void *)&sockReadBuff);
+
+	pthread_mutex_unlock(&webqueue_lock);
+	pthread_cond_signal(&webqueue_signal);
+
+    mg_stop();
+	if(loopfd > 0) {
+		send(loopfd, "1", 1, 0);
+		socket_close(loopfd);
+	}
+
 	if(webserver_root_free) {
 		sfree((void *)&webserver_root);
 	}
 	if(webgui_tpl_free) {
 		sfree((void *)&webgui_tpl);
 	}
-	sleep(1);
+
 	for(i=0;i<WEBSERVER_WORKERS;i++) {
 		mg_destroy_server(&mgserver[i]);
 	}
+
 	fcache_gc();
 	logprintf(LOG_DEBUG, "garbage collected webserver library");
 	return 1;
@@ -258,7 +259,7 @@ void webserver_create_header(unsigned char **p, const char *message, char *mimet
 void webserver_create_minimal_header(unsigned char **p, const char *message, unsigned int len) {
 	*p += sprintf((char *)*p,
 		"HTTP/1.1 %s\r\n"
-		"Server: zfsguru\r\n",
+		"Server: pilight\r\n",
 		message);
 	*p += sprintf((char *)*p,
 		"Content-Length: %u\r\n\r\n",
@@ -847,9 +848,9 @@ int webserver_open_handler(struct mg_connection *conn) {
 	return 1;
 }
 
-void *webserver_serve(void *srv) {
+void *webserver_worker(void *param) {
 	while(webserver_loop) {
-		mg_poll_server((struct mg_server *)srv, 1000);
+		mg_poll_server(mgserver[(int)param], 1000);
 	}
 	return NULL;
 }
@@ -884,39 +885,36 @@ void webserver_queue(char *message) {
 void *webserver_clientize(void *param) {
 	steps_t steps = WELCOME;
 	char *message = NULL;
+	char *sockReadBuff = NULL;
 	struct ssdp_list_t *ssdp_list = NULL;
 	int standalone = 0;
 
 	settings_find_number("standalone", &standalone);
 	if(ssdp_seek(&ssdp_list) == -1 || standalone == 1) {
 		logprintf(LOG_DEBUG, "no pilight ssdp connections found");
-		server = malloc(10);
-		if(!server) {
-			logprintf(LOG_ERR, "out of memory");
-			exit(EXIT_FAILURE);
-		}
-		strcpy(server, "127.0.0.1");
+		char server[16] = "127.0.0.1";
 		if((sockfd = socket_connect(server, (unsigned short)socket_get_port())) == -1) {
 			logprintf(LOG_DEBUG, "could not connect to pilight-daemon");
-			sfree((void *)&server);
 			exit(EXIT_FAILURE);
 		}
-		sfree((void *)&server);
 	} else {
 		if((sockfd = socket_connect(ssdp_list->ip, ssdp_list->port)) == -1) {
 			logprintf(LOG_DEBUG, "could not connect to pilight-daemon");
 			exit(EXIT_FAILURE);
 		}
-		sfree((void *)&ssdp_list);
+	}
+	if(ssdp_list) {
+		ssdp_free(ssdp_list);
 	}
 
-	sfree((void *)&server);
 	while(webserver_loop) {
 		if(steps > WELCOME) {
-			/* Clear the receive buffer again and read the welcome message */
-			/* Used direct read access instead of socket_read */
 			if((sockReadBuff = socket_read(sockfd)) == NULL) {
 				goto close;
+			}
+			if(!webserver_loop) {
+				sfree((void *)&sockReadBuff);
+				break;
 			}
 		}
 		switch(steps) {
@@ -935,28 +933,21 @@ void *webserver_clientize(void *param) {
 				}
 				json_delete(json);
 				sfree((void *)&sockReadBuff);
-				sockReadBuff = NULL;
 			}
 			break;
 			case SYNC:
-				if(strlen(sockReadBuff) > 0) {
-					webserver_queue(sockReadBuff);
-					sfree((void *)&sockReadBuff);
-					sockReadBuff = NULL;
-				}
+				webserver_queue(sockReadBuff);
+				sfree((void *)&sockReadBuff);
 			break;
 			case REJECT:
 			default:
+				sfree((void *)&sockReadBuff);
 				goto close;
 			break;
 		}
 	}
-	if(sockReadBuff) {
-		sfree((void *)&sockReadBuff);
-		sockReadBuff = NULL;
-	}
 close:
-	webserver_gc();
+	socket_close(sockfd);
 	return 0;
 }
 
@@ -1004,16 +995,10 @@ void *webserver_start(void *param) {
 		logprintf(LOG_ERR, "php support disabled due to missing base64 executable");
 	}
 
-#ifdef __FreeBSD__
-	pthread_mutex_t webqueue_lock;
-	pthread_cond_t webqueue_signal;
-	pthread_mutexattr_t webqueue_attr;
-
 	pthread_mutexattr_init(&webqueue_attr);
 	pthread_mutexattr_settype(&webqueue_attr, PTHREAD_MUTEX_RECURSIVE);
 	pthread_cond_init(&webqueue_signal, NULL);
 	pthread_mutex_init(&webqueue_lock, &webqueue_attr);
-#endif
 
 	/* Check on what port the webserver needs to run */
 	settings_find_number("webserver-port", &webserver_port);
@@ -1053,19 +1038,17 @@ void *webserver_start(void *param) {
 		sprintf(id, "%d", i);
 		mgserver[i] = mg_create_server((void *)id);
 		mg_set_option(mgserver[i], "listening_port", webport);
-		mg_set_option(mgserver[i], "auth_domain", "zfsguru");
+		mg_set_option(mgserver[i], "auth_domain", "pilight");
 		mg_set_request_handler(mgserver[i], webserver_request_handler);
 		mg_set_auth_handler(mgserver[i], webserver_auth_handler);
 		mg_set_http_open_handler(mgserver[i], webserver_open_handler);
-		mg_start_thread(webserver_serve, mgserver[i]);
-		logprintf(LOG_DEBUG, "webserver started thread %d", i);
+		char msg[25];
+		sprintf(msg, "webserver worker #%d", i);
+		threads_register(msg, &webserver_worker, (void *)i, 0);
 	}
 
-	/* Register a seperate thread in which the webserver communicates
-	   the main daemon as if it where a gui */
-	threads_register("webserver client", &webserver_clientize, (void *)NULL);
-	threads_register("webserver broadcast", &webserver_broadcast, (void *)NULL);
-
+	char localhost[16] = "127.0.0.1";
+	loopfd = socket_connect(localhost, (unsigned short)webserver_port);
 	logprintf(LOG_DEBUG, "webserver listening to port %s", webport);
 	/* Main webserver loop */
 	while(webserver_loop) {

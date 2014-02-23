@@ -21,5 +21,7 @@
 
 int webserver_gc(void);
 void *webserver_start(void *param);
+void *webserver_clientize(void *param);
+void *webserver_broadcast(void *param);
 
 #endif

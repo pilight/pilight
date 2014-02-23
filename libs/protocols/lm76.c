@@ -21,8 +21,6 @@
 #include <dirent.h>
 #include <string.h>
 #include <unistd.h>
-#define __USE_GNU
-#include <pthread.h>
 #include <sys/types.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -45,7 +43,7 @@
 #endif
 
 unsigned short lm76_loop = 1;
-int lm76_nrfree = 0;
+int lm76_threads = 0;
 
 typedef struct lm76data_t {
 	char **id;
@@ -53,41 +51,17 @@ typedef struct lm76data_t {
 	int *fd;
 } lm76data_t;
 
-void lm76ParseCleanUp(void *arg) {
-	struct lm76data_t *lm76data = (struct lm76data_t *)arg;
-	int i = 0;
-
-	if(lm76data->id) {
-		for(i=0;i<lm76data->nrid;i++) {
-			sfree((void *)&lm76data->id[i]);
-		}
-		sfree((void *)&lm76data->id);
-	}
-	if(lm76data->fd) {
-		for(i=0;i<lm76data->nrid;i++) {
-			if(lm76data->fd[i] > 0) {
-				close(lm76data->fd[i]);
-			}
-		}
-		sfree((void *)&lm76data->fd);
-	}
-	sfree((void *)&lm76data);
-	
-	lm76_loop = 0;
-}
-
 void *lm76Parse(void *param) {
-	struct JsonNode *json = (struct JsonNode *)param;
+	struct protocol_threads_t *node = (struct protocol_threads_t *)param;
+	struct JsonNode *json = (struct JsonNode *)node->param;
 	struct JsonNode *jsettings = NULL;
 	struct JsonNode *jid = NULL;
 	struct JsonNode *jchild = NULL;
-	struct timeval tp;
-	struct timespec ts;	
 	struct lm76data_t *lm76data = malloc(sizeof(struct lm76data_t));
-	int y = 0, interval = 10, rc = 0;
-	int temp_corr = 0;
+	int y = 0, interval = 10;
+	int temp_corr = 0, nrloops = 0;
 	char *stmp = NULL;
-	int firstrun = 1;
+
 	if(!lm76data) {
 		logprintf(LOG_ERR, "out of memory");
 		exit(EXIT_FAILURE);
@@ -96,19 +70,8 @@ void *lm76Parse(void *param) {
 	lm76data->nrid = 0;
 	lm76data->id = NULL;
 	lm76data->fd = 0;
-	
-#ifndef __FreeBSD__
-	pthread_mutex_t mutex = PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP;        
-    pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
-#else
-	pthread_mutex_t mutex;
-	pthread_cond_t cond;
-	pthread_mutexattr_t attr;
 
-	pthread_mutexattr_init(&attr);
-	pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);
-	pthread_mutex_init(&mutex, &attr);
-#endif
+	lm76_threads++;
 
 	if((jid = json_find_member(json, "id"))) {
 		jchild = json_first_child(jid);
@@ -134,7 +97,7 @@ void *lm76Parse(void *param) {
 		json_find_number(jsettings, "interval", &interval);
 		json_find_number(jsettings, "temp-corr", &temp_corr);
 	}
-	json_delete(json);
+
 #ifndef __FreeBSD__	
 	lm76data->fd = realloc(lm76data->fd, (sizeof(int)*(size_t)(lm76data->nrid+1)));
 	if(!lm76data->fd) {
@@ -145,22 +108,9 @@ void *lm76Parse(void *param) {
 		lm76data->fd[y] = wiringPiI2CSetup((int)strtol(lm76data->id[y], NULL, 16));
 	}
 #endif
-	pthread_cleanup_push(lm76ParseCleanUp, (void *)lm76data);
 	
-	while(lm76_loop) {	
-		rc = gettimeofday(&tp, NULL);
-		ts.tv_sec = tp.tv_sec;
-		ts.tv_nsec = tp.tv_usec * 1000;
-		if(firstrun) {
-			ts.tv_sec += 1;
-			firstrun = 0;
-		} else {
-			ts.tv_sec += interval;
-		}
-
-		pthread_mutex_lock(&mutex);
-		rc = pthread_cond_timedwait(&cond, &mutex, &ts);
-		if(rc == ETIMEDOUT) {
+	while(lm76_loop) {
+		if(protocol_thread_wait(node, interval, &nrloops) == ETIMEDOUT) {
 #ifndef __FreeBSD__	
 			for(y=0;y<lm76data->nrid;y++) {
 				if(lm76data->fd[y] > 0) {		
@@ -188,10 +138,24 @@ void *lm76Parse(void *param) {
 			}
 #endif
 		}
-		pthread_mutex_unlock(&mutex);
 	}
-	
-	pthread_cleanup_pop(1);
+
+	if(lm76data->id) {
+		for(y=0;y<lm76data->nrid;y++) {
+			sfree((void *)&lm76data->id[y]);
+		}
+		sfree((void *)&lm76data->id);
+	}
+	if(lm76data->fd) {
+		for(y=0;y<lm76data->nrid;y++) {
+			if(lm76data->fd[y] > 0) {
+				close(lm76data->fd[y]);
+			}
+		}
+		sfree((void *)&lm76data->fd);
+	}
+	sfree((void *)&lm76data);
+	lm76_threads--;
 
 	return (void *)NULL;
 }
@@ -200,8 +164,19 @@ void lm76InitDev(JsonNode *jdevice) {
 	wiringPiSetup();
 	char *output = json_stringify(jdevice, NULL);
 	JsonNode *json = json_decode(output);
-	threads_register("lm76", &lm76Parse, (void *)json);
+
+	struct protocol_threads_t *node = protocol_thread_init(lm76, json);
+	threads_register("lm76", &lm76Parse, (void *)node, 0);
 	sfree((void *)&output);
+}
+
+void lm76GC(void) {
+	lm76_loop = 0;
+	protocol_thread_stop(lm76);
+	while(lm76_threads > 0) {
+		usleep(10);
+	}
+	protocol_thread_free(lm76);
 }
 
 void lm76Init(void) {
@@ -221,4 +196,5 @@ void lm76Init(void) {
 	protocol_setting_add_number(lm76, "interval", 10);
 
 	lm76->initDev=&lm76InitDev;
+	lm76->gc=&lm76GC;
 }

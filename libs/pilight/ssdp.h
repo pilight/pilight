@@ -25,6 +25,7 @@ typedef struct ssdp_list_t {
 	struct ssdp_list_t *next;
 } ssdp_list_t;
 
+int ssdp_gc(void);
 char *ssdp_gethostname(void);
 char *ssdp_getdistroname(void);
 void ssdp_getethmac(void);
@@ -32,6 +33,7 @@ unsigned long ssdp_genid(void);
 char *ssdp_genuuid(void);
 int ssdp_start(void);
 int ssdp_seek(struct ssdp_list_t **ssdp_list);
+void ssdp_free(struct ssdp_list_t *ssdp_list);
 void *ssdp_wait(void* param);
 void ssdp_close(int ssdp_socket);
 

@@ -20,6 +20,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <regex.h>
+#include <sys/time.h>
 
 #include "../../pilight.h"
 #include "common.h"
@@ -249,7 +250,9 @@ void protocol_register(protocol_t **proto) {
 	(*proto)->checkValues = NULL;
 	(*proto)->initDev = NULL;
 	(*proto)->printHelp = NULL;
+	(*proto)->gc = NULL;
 	(*proto)->message = NULL;
+	(*proto)->threads = NULL;
 
 	(*proto)->repeats = 0;
 	(*proto)->first = 0;
@@ -273,6 +276,66 @@ void protocol_register(protocol_t **proto) {
 	}
 	pnode->next = protocols;
 	protocols = pnode;
+}
+
+struct protocol_threads_t *protocol_thread_init(protocol_t *proto, struct JsonNode *param) {
+	struct protocol_threads_t *node = malloc(sizeof(struct protocol_threads_t));
+	node->param = param;
+	pthread_mutexattr_init(&node->attr);
+	pthread_mutexattr_settype(&node->attr, PTHREAD_MUTEX_RECURSIVE);
+	pthread_mutex_init(&node->mutex, &node->attr);
+    pthread_cond_init(&node->cond, NULL);	
+	node->next = proto->threads;
+	proto->threads = node;
+	return node;
+}
+
+int protocol_thread_wait(struct protocol_threads_t *node, int interval, int *nrloops) {
+	struct timeval tp;
+	struct timespec ts;
+
+	pthread_mutex_unlock(&node->mutex);
+
+	gettimeofday(&tp, NULL);
+	ts.tv_sec = tp.tv_sec;
+	ts.tv_nsec = tp.tv_usec * 1000;
+	
+	if(*nrloops == 0) {
+		ts.tv_sec += 1;
+		*nrloops = 1;
+	} else {
+		ts.tv_sec += interval;
+	}
+
+	pthread_mutex_lock(&node->mutex);
+
+	return pthread_cond_timedwait(&node->cond, &node->mutex, &ts);
+}
+
+void protocol_thread_stop(protocol_t *proto) {
+	if(proto->threads) {
+		struct protocol_threads_t *tmp = proto->threads;
+		while(tmp) {
+			pthread_mutex_unlock(&tmp->mutex);
+			pthread_cond_broadcast(&tmp->cond);
+			tmp = tmp->next;
+		}
+	}
+}
+
+void protocol_thread_free(protocol_t *proto) {
+	if(proto->threads) {
+		struct protocol_threads_t *tmp = proto->threads;
+		while(tmp) {
+			tmp = proto->threads;
+			if(tmp->param) {
+				json_delete(tmp->param);
+			}
+			tmp = tmp->next;
+			sfree((void *)&tmp);
+		}
+		sfree((void *)&proto->threads);
+	}
 }
 
 void protocol_set_id(protocol_t *proto, const char *id) {
@@ -723,6 +786,9 @@ int protocol_gc(void) {
 
 	while(protocols) {
 		ptmp = protocols;
+		if(ptmp->listener->gc) {
+			ptmp->listener->gc();
+		}
 		sfree((void *)&ptmp->listener->id);
 		sfree((void *)&ptmp->name);
 		options_delete(ptmp->listener->options);

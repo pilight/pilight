@@ -21,13 +21,10 @@
 #include <dirent.h>
 #include <string.h>
 #include <unistd.h>
-#define __USE_GNU
-#include <pthread.h>
 #include <sys/types.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <sys/stat.h>
-#include <sys/time.h>
 
 #include "../../pilight.h"
 #include "common.h"
@@ -41,24 +38,17 @@
 #include "ds18b20.h"
 
 unsigned short ds18b20_loop = 1;
-unsigned short ds18b20_nrfree = 0;
-char *ds18b20_path = NULL;
-
-void ds18b20ParseCleanUp(void *arg) {
-	sfree((void *)&arg);
-	
-	ds18b20_loop = 0;
-}
+unsigned short ds18b20_threads = 0;
+char ds18b20_path[21];
 
 void *ds18b20Parse(void *param) {
-	struct JsonNode *json = (struct JsonNode *)param;
+	struct protocol_threads_t *node = (struct protocol_threads_t *)param;
+	struct JsonNode *json = (struct JsonNode *)node->param;
 	struct JsonNode *jid = NULL;
 	struct JsonNode *jchild = NULL;
 	struct JsonNode *jsettings = NULL;
 	struct dirent *file = NULL;
 	struct stat st;
-	struct timeval tp;
-	struct timespec ts;		
 
 	DIR *d = NULL;
 	FILE *fp = NULL;
@@ -67,22 +57,10 @@ void *ds18b20Parse(void *param) {
 	char **id = NULL;
 	char *content = NULL;
 	int w1valid = 0, w1temp = 0, interval = 10, x = 0;
-	int temp_corr = 0, rc = 0, nrid = 0, y = 0;
+	int temp_corr = 0, nrid = 0, y = 0, nrloops = 0;
 	size_t bytes = 0;
-	int firstrun = 1;
 
-#ifndef __FreeBSD__
-	pthread_mutex_t mutex = PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP;        
-    pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
-#else
-	pthread_mutex_t mutex;
-	pthread_cond_t cond;
-	pthread_mutexattr_t attr;
-
-	pthread_mutexattr_init(&attr);
-	pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);
-	pthread_mutex_init(&mutex, &attr);
-#endif
+	ds18b20_threads++;
 
 	if((jid = json_find_member(json, "id"))) {
 		jchild = json_first_child(jid);
@@ -108,24 +86,9 @@ void *ds18b20Parse(void *param) {
 		json_find_number(jsettings, "interval", &interval);
 		json_find_number(jsettings, "temp-corr", &temp_corr);
 	}
-	json_delete(json);
 
-	pthread_cleanup_push(ds18b20ParseCleanUp, (void *)id);
-	
 	while(ds18b20_loop) {
-		rc = gettimeofday(&tp, NULL);
-		ts.tv_sec = tp.tv_sec;
-		ts.tv_nsec = tp.tv_usec * 1000;
-		if(firstrun) {
-			ts.tv_sec += 1;
-			firstrun = 0;
-		} else {
-			ts.tv_sec += interval;
-		}
-
-		pthread_mutex_lock(&mutex);
-		rc = pthread_cond_timedwait(&cond, &mutex, &ts);
-		if(rc == ETIMEDOUT) {		
+		if(protocol_thread_wait(node, interval, &nrloops) == ETIMEDOUT) {
 			for(y=0;y<nrid;y++) {
 				ds18b20_sensor = realloc(ds18b20_sensor, strlen(ds18b20_path)+strlen(id[y])+5);
 				if(!ds18b20_sensor) {
@@ -151,16 +114,16 @@ void *ds18b20Parse(void *param) {
 								fstat(fileno(fp), &st);
 								bytes = (size_t)st.st_size;
 
-								if(!(content = calloc(bytes+1, sizeof(char)))) {
+								if(!(content = realloc(content, bytes+1))) {
 									logprintf(LOG_ERR, "out of memory");
 									fclose(fp);
 									break;
 								}
+								memset(content, '\0', bytes+1);
 
 								if(fread(content, sizeof(char), bytes, fp) == -1) {
 									logprintf(LOG_ERR, "cannot read config file: %s", ds18b20_w1slave);
 									fclose(fp);
-									sfree((void *)&content);
 									break;
 								}
 								fclose(fp);
@@ -179,7 +142,7 @@ void *ds18b20Parse(void *param) {
 									}
 									pch = strtok(NULL, "\n=: ");
 								}
-								sfree((void *)&content);
+
 								if(w1valid) {
 									ds18b20->message = json_mkobject();
 									
@@ -205,29 +168,38 @@ void *ds18b20Parse(void *param) {
 				}
 			}
 		}
-		pthread_mutex_unlock(&mutex);
 	}
-	
-	pthread_cleanup_pop(1);
 
+	if(content) {
+		sfree((void *)&content);
+	}
+	for(y=0;y<nrid;y++) {
+		sfree((void *)&id[y]);
+	}
+	sfree((void *)&id);
+	ds18b20_threads--;
 	return (void *)NULL;
 }
 
 void ds18b20InitDev(JsonNode *jdevice) {
 	char *output = json_stringify(jdevice, NULL);
 	JsonNode *json = json_decode(output);
-	threads_register("ds18b20", &ds18b20Parse, (void *)json);
+
+	struct protocol_threads_t *node = protocol_thread_init(ds18b20, json);
+	threads_register("ds18b20", &ds18b20Parse, (void *)node, 0);
 	sfree((void *)&output);
 }
 
-int ds18b20GC(void) {
-	sfree((void *)&ds18b20_path);
-	return 1;
+void ds18b20GC(void) {
+	ds18b20_loop = 0;
+	protocol_thread_stop(ds18b20);
+	while(ds18b20_threads > 0) {
+		usleep(10);
+	}
+	protocol_thread_free(ds18b20);
 }
 
 void ds18b20Init(void) {
-	
-	gc_attach(ds18b20GC);
 
 	protocol_register(&ds18b20);
 	protocol_set_id(ds18b20, "ds18b20");
@@ -244,13 +216,9 @@ void ds18b20Init(void) {
 	protocol_setting_add_number(ds18b20, "battery", 0);
 	protocol_setting_add_number(ds18b20, "interval", 10);
 
-	ds18b20_path = malloc(21);
-	if(!ds18b20_path) {
-		logprintf(LOG_ERR, "out of memory");
-		exit(EXIT_FAILURE);
-	}
 	memset(ds18b20_path, '\0', 21);	
 	strcpy(ds18b20_path, "/sys/bus/w1/devices/");
 
 	ds18b20->initDev=&ds18b20InitDev;
+	ds18b20->gc=&ds18b20GC;
 }
