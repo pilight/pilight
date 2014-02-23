@@ -93,9 +93,6 @@ void *threads_start(void *param) {
 	
 	pthread_mutex_lock(&threadqueue_lock);	
 	while(thread_loop) {
-#ifdef __FreeBSD__
-		pthread_mutex_lock(&threadqueue_lock);
-#endif
 		if(threadqueue_number > 0) {
 			pthread_mutex_lock(&threadqueue_lock);			
 			tmp_threads = threadqueue;

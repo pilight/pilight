@@ -75,8 +75,10 @@ int socket_gc(void) {
 		}
 	}
 
-	send(socket_loopback, "1", 1, MSG_NOSIGNAL);
-	socket_close(socket_loopback);
+	if(socket_loopback > 0) {
+		send(socket_loopback, "1", 1, MSG_NOSIGNAL);
+		socket_close(socket_loopback);
+	}
 
 	logprintf(LOG_DEBUG, "garbage collected socket library");
 	return EXIT_SUCCESS;
@@ -336,7 +338,7 @@ int socket_write(int sockfd, const char *msg, ...) {
 			} else {
 				x = BUFFER_SIZE;
 			}
-			if((bytes = send(sockfd, &sendBuff[ptr], (size_t)x, MSG_NOSIGNAL)) == -1) {
+			if((bytes = (int)send(sockfd, &sendBuff[ptr], (size_t)x, MSG_NOSIGNAL)) == -1) {
 				/* Change the delimiter into regular newlines */
 				sendBuff[n-(len-1)] = '\0';
 				sendBuff[n-(len)] = '\n';
@@ -379,7 +381,7 @@ char *socket_read(int sockfd) {
 	int bytes = 0;
 	size_t msglen = 0;
 	int ptr = 0, n = 0, len = (int)strlen(EOSS);
-	fd_set fdsread, fdswrite;
+	fd_set fdsread;
 	char *message = NULL;
 	fcntl(sockfd, F_SETFL, O_NONBLOCK);
 
@@ -399,7 +401,7 @@ char *socket_read(int sockfd) {
 			return NULL;
 		} else if(n > 0) {
 			if(FD_ISSET(sockfd, &fdsread)) {
-				bytes = recv(sockfd, recvBuff, BUFFER_SIZE, 0);
+				bytes = (int)recv(sockfd, recvBuff, BUFFER_SIZE, 0);
 				
 				if(bytes <= 0) {
 					return NULL;

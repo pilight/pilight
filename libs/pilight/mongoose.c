@@ -3944,7 +3944,7 @@ unsigned int mg_poll_server(struct mg_server *server, int milliseconds) {
 
   if (select(max_fd + 1, &read_set, &write_set, NULL, &tv) > 0) {
 	if(mongoose_stop == 1) {
-		return;
+		return 0;
 	}
     // Accept new connections
     if (FD_ISSET(server->listening_sock, &read_set)) {

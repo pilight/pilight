@@ -146,6 +146,7 @@ void ssdp_getethmac(void) {
 		memset(ssdp_mac, '\0', 13);
 		struct ifreq s;
 
+		memset(&s, '\0', sizeof(s));
 		strcpy(s.ifr_name, "re0");
 		if(ioctl(fd, SIOCGIFADDR, &s) == 0) {
 			int i;
@@ -264,6 +265,7 @@ int ssdp_seek(struct ssdp_list_t **ssdp_list) {
 	tv.tv_usec = 100000;
 
 	sock = socket(AF_INET, SOCK_DGRAM, 0);
+	memset((void *)&addr, '\0', sizeof(addr));
     addr.sin_family = AF_INET;
     addr.sin_port = htons(1900);
     addr.sin_addr.s_addr = inet_addr("239.255.255.250");

@@ -573,8 +573,10 @@ static int webserver_request_handler(struct mg_connection *conn) {
 				char name[11];
 				webserver_alpha_random(name, 10);
 				strcat(file, name);
-				int f = open(file, O_TRUNC | O_WRONLY | O_CREAT);
-				write(f, conn->content, conn->content_len);
+				int f = open(file, O_CREAT | O_TRUNC | O_WRONLY, 0644);
+				if(write(f, conn->content, conn->content_len) != conn->content_len) {
+					logprintf(LOG_ERR, "php cache file truncated");
+				}
 				close(f);
 				raw = webserver_shell("cat %s | php-cgi %s 2>&1 | base64", conn, request, file, request);
 				unlink(file);
@@ -957,9 +959,6 @@ void *webserver_broadcast(void *param) {
 	pthread_mutex_lock(&webqueue_lock);
 
 	while(webserver_loop) {
-#ifdef __FreeBSD__
-		pthread_mutex_lock(&webqueue_lock);
-#endif
 		if(webqueue_number > 0) {
 			pthread_mutex_lock(&webqueue_lock);
 

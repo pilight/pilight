@@ -148,7 +148,6 @@ short handshakes[MAX_CLIENTS];
 unsigned short runmode = 1;
 /* Socket identifier to the server if we are running as client */
 int sockfd = 0;
-int loopfd = 0;
 /* In the client running in incognito mode */
 unsigned short incognito_mode = 0;
 /* Thread pointers */
@@ -255,9 +254,6 @@ void *broadcast(void *param) {
 
 	pthread_mutex_lock(&bcqueue_lock);
 	while(main_loop) {
-#ifdef __FreeBSD__
-		pthread_mutex_lock(&bcqueue_lock);
-#endif
 		if(bcqueue_number > 0) {
 			pthread_mutex_lock(&bcqueue_lock);
 
@@ -549,9 +545,6 @@ void *send_code(void *param) {
 	pthread_mutex_lock(&sendqueue_lock);
 
 	while(main_loop) {
-#ifdef __FreeBSD__
-		pthread_mutex_lock(&sendqueue_lock);
-#endif
 		if(sendqueue_number > 0) {
 			pthread_mutex_lock(&sendqueue_lock);
 			sending = 1;
@@ -1278,6 +1271,9 @@ void *clientize(void *param) {
 					break;
 				}
 			}
+			if(main_loop == 0) {
+				break;
+			}			
 			switch(steps) {
 				case WELCOME:
 					socket_write(sockfd, "{\"message\":\"client node\",\"uuid\":\"%s\"}", pilight_uuid);
