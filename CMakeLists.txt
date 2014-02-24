@@ -168,6 +168,11 @@ endif()
 if(${PROTOCOL_GENERIC_WEATHER} MATCHES "OFF")
 	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/generic_weather.h")
 	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/generic_weather.c")
+endif
+
+if(${PROTOCOL_GENERIC_WEBCAM} MATCHES "OFF")
+	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/generic_webcam.h")
+	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/generic_webcam.c")
 endif()
 
 if(${PROTOCOL_HOMEEASY_OLD} MATCHES "OFF")
