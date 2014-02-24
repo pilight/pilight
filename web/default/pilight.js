@@ -304,6 +304,71 @@ function createWeatherElement(sTabId, sDevId, aValues) {
 	oTab.listview("refresh");
 }
 
+function PlayImg(Wurl,imgid,Winterval,Wdivid,Wmaxwidth)
+{
+	console.log(imgid+' '+Winterval);
+	var imgsrc = '';
+	if (Wurl.indexOf("?") != -1) {
+		imgsrc = Wurl+"&timestamp="+new Date().getTime();
+        } else {
+            	imgsrc = Wurl+"?"+new Date().getTime();
+        }
+	var img = document.createElement("img");
+	img.setAttribute("id", imgid);
+	console.log('imagen creada '+imgid);
+	if (Wmaxwidth > 0) {
+		img.width = Wmaxwidth;
+	}
+	console.log('tamaño asignado '+imgid);
+	img.onload = function () {
+		console.log('Cargamos imagen '+imgid);
+		var div = document.getElementById(Wdivid);
+		while (div.childNodes.length > 0)
+			div.removeChild(div.childNodes[0]);
+		div.appendChild(img);			
+		window.setTimeout(function(){PlayImg(Wurl,imgid,Winterval,Wdivid,Wmaxwidth)}, Winterval);
+	}
+	img.onerror = function () {
+		console.log('Error en carga imagen '+imgid);
+		window.setTimeout(function(){PlayImg(Wurl,imgid,Winterval,Wdivid,Wmaxwidth)}, Winterval);
+	}
+	console.log(imgsrc);
+	img.src = imgsrc;
+}
+
+function createWebcamElement(sTabId, sDevId, aValues) 
+{
+	var Wname = aValues['name'];
+	var Wurl = aValues['id'][0]['url'];
+	var Winterval = aValues['settings']['interval'];
+	var Wmaxwidth = aValues['settings']['width'];
+	var Wdivid = sTabId+'_'+sDevId+'_image';
+	var imgid = sTabId+"_"+sDevId+"_img";
+	if($('#'+sTabId+'_'+sDevId+'_webcam').length == 0) {
+		if(bShowTabs) {
+			oTab = $('#'+sTabId).find('ul');
+		} else {
+			oTab = $('#all');
+		}
+		oTab.append($('<li class="webcam" id="'+sTabId+'_'+sDevId+'_webcam" data-icon="false">'+Wname+'</li>'));
+		if(Wurl) {
+			if (Wmaxwidth > 0) {
+				oTab.find('#'+sTabId+'_'+sDevId+'_webcam').append($('<div class="webcam" id="'+sTabId+'_'+sDevId+'_image"><img id="'+sTabId+'_'+sDevId+'_img" class="imgrespon" src="'+Wurl+'" width='+Wmaxwidth+'></div>'));
+			} else {
+				oTab.find('#'+sTabId+'_'+sDevId+'_webcam').append($('<div class="webcam" id="'+sTabId+'_'+sDevId+'_image"><img id="'+sTabId+'_'+sDevId+'_img" class="imgrespon" src="'+Wurl+'"></div>'));
+			}
+		}
+
+	} else {
+		if(Wurl) {
+			$('#'+sTabId+'_'+sDevId+'_image').text(Wurl);
+		}
+	}
+	oTab.listview();
+	oTab.listview("refresh");
+        var aWebcam = window.setTimeout(function(){PlayImg(Wurl,imgid,Winterval,Wdivid,Wmaxwidth)},Winterval);
+}
+
 function updateVersions() {
 	if(iPLVersion != iPLNVersion) {
 		if(iFWVersion > 0) {
@@ -381,7 +446,9 @@ function createGUI(data) {
 							createWeatherElement(lindex, dindex, aValues);
 						} else if(aValues['type'] == 5) {
 							createScreenElement(lindex, dindex, aValues);
-						}
+						} else if(aValues['type'] == 6) {
+							createWebcamElement(lindex, dindex, aValues);
+						}						
 					}
 				});
 			});
