@@ -446,7 +446,7 @@ function createGUI(data) {
 							createWeatherElement(lindex, dindex, aValues);
 						} else if(aValues['type'] == 5) {
 							createScreenElement(lindex, dindex, aValues);
-						} else if(aValues['type'] == 6) {
+						} else if(aValues['type'] == 7) {
 							createWebcamElement(lindex, dindex, aValues);
 						}						
 					}
