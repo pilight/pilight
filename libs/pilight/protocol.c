@@ -71,9 +71,6 @@
 #ifdef PROTOCOL_GENERIC_WEATHER
 	#include "../protocols/generic_weather.h"
 #endif
-#ifdef PROTOCOL_GENERIC_WATTMETER
-	#include "../protocols/generic_wattmeter.h"
-#endif
 #ifdef PROTOCOL_GENERIC_WEBCAM
 	#include "../protocols/generic_webcam.h"
 #endif
@@ -171,9 +168,6 @@ void protocol_init(void) {
 #endif
 #ifdef PROTOCOL_GENERIC_WEATHER
 	genWeatherInit();
-#endif
-#ifdef PROTOCOL_GENERIC_WATTMETER
-	genWattmeterInit();
 #endif
 #ifdef PROTOCOL_GENERIC_WEBCAM
 	genWebcamInit();
@@ -393,7 +387,6 @@ int protocol_setting_check_string(protocol_t *proto, const char *name, const cha
 			}
 		break;
 		case WEATHER:
-		case WATTMETER:
 		case WEBCAM:
 		case RAW:
 		default:
@@ -467,12 +460,6 @@ int protocol_setting_check_number(protocol_t *proto, const char *name, int value
 			   if(proto->hwtype == SENSOR && strcmp(name, "interval") != 0) {
 					error=EXIT_FAILURE;
 				}
-			}
-		break;
-		case WATTMETER:
-			if(strcmp(name, "decimals") != 0 && strcmp(name, "watt") != 0
-			   && strcmp(name, "price") != 0 && strcmp(name, "coin") != 0) {
-					error=EXIT_FAILURE;
 			}
 		break;
 		case SWITCH:
