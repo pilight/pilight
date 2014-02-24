@@ -63,7 +63,6 @@ void threechanInit(void) {
 	threechan->hwtype = RF433;
 	threechan->pulse = 14;
 	threechan->rawlen = 74;
-	threechan->rxrpt = 6;
 
 	options_add(&threechan->options, 't', "temperature", has_value, config_value, "^[0-9]{1,3}$");
 	options_add(&threechan->options, 'i', "id", has_value, config_id, "[0-9]");
