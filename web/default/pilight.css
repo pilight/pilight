@@ -35,6 +35,12 @@ li.webcam.ui-li-static.ui-li {
 	padding: 15px 15px 15px 15px;	
 }
 
+div.webcam img {
+	max-width:100% !important;
+	height:auto;
+	display:block;	
+}
+
 .ui-li .ui-btn-inner a.ui-link-inherit, .ui-li-static.ui-li {
 	display: block;
 	padding: 15px 75px 14px 15px;
