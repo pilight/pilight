@@ -170,7 +170,9 @@ int webserver_enable = WEBSERVER_ENABLE;
 int webserver_port = WEBSERVER_PORT;
 /* The webroot of pilight */
 char *webserver_root;
+char *webgui_tpl = NULL;
 int webserver_root_free = 0;
+int webgui_tpl_free = 0;
 #endif
 
 #ifdef UPDATE
@@ -987,77 +989,80 @@ void client_webserver_parse_code(int i, char buffer[BUFFER_SIZE]) {
 	int sd = socket_get_clients(i);
 	int x = 0;
 	FILE *f;
-	char *ptr = NULL;;
+	unsigned char *p = NULL;
+	unsigned char buff[BUFFER_SIZE];
 	char *cache = NULL;
 	char *path = NULL;
+	char *mimetype = NULL;
+	struct stat sb;
 	struct sockaddr_in sockin;
 	socklen_t len = sizeof(sockin);
 
 	if(getsockname(sd, (struct sockaddr *)&sockin, &len) == -1) {
 		logprintf(LOG_ERR, "could not determine server ip address");
 	} else {
-		ptr = malloc(4);
-		if(!ptr) {
-			logprintf(LOG_ERR, "out of memory");
-			exit(EXIT_FAILURE);
+		if(strstr(buffer, " HTTP/") == NULL) {
+			return;
 		}
-		ptr = strstr(buffer, " HTTP/");
-		*ptr = 0;
-		ptr = NULL;
-
-		if(strncmp(buffer, "GET ", 4) == 0) {
-			ptr = buffer + 4;
-		}
-		if(strcmp(ptr, "/logo.png") == 0) {
-			if(ptr == buffer + 4) {
-				socket_write(sd, "HTTP/1.1 200 OK\r");
-				socket_write(sd, "Content-Type: image/png\r");
-				socket_write(sd, "Server : pilight\r");
-				socket_write(sd, "\r");
-
-				path = malloc(strlen(webserver_root)+strlen("logo.png")+1);
-				if(!path) {
-					logprintf(LOG_ERR, "out of memory");
-					exit(EXIT_FAILURE);
-				}
-				sprintf(path, "%s/logo.png", webserver_root);
-				f = fopen(path, "rb");
-				if(f) {
-					x = 0;
-					cache = malloc(BUFFER_SIZE);
-					if(!cache) {
-						logprintf(LOG_ERR, "out of memory");
-						exit(EXIT_FAILURE);
-					}
-					while(!feof(f)) {
-						x = (int)fread(cache, 1, BUFFER_SIZE, f);
-						send(sd, cache, (size_t)x, MSG_NOSIGNAL);
-					}
-					fclose(f);
-					sfree((void *)&cache);
-					sfree((void *)&path);
-				} else {
-					logprintf(LOG_NOTICE, "pilight logo not found");
-				}
-			}
-		} else {
-		    /* Catch all webserver page to inform users on which port the webserver runs */
-			socket_write(sd, "HTTP/1.1 200 OK\r");
-			socket_write(sd, "Server : pilight\r");
-			socket_write(sd, "\r");
-			socket_write(sd, "<html><head><title>pilight daemon</title></head>\r");
-			cache = malloc(BUFFER_SIZE);
-			if(!cache) {
+		p = buff;		
+		if(strstr(buffer, "/logo.png") != NULL) {
+			if(!(path = malloc(strlen(webserver_root)+strlen(webgui_tpl)+strlen("logo.png")+2))) {
 				logprintf(LOG_ERR, "out of memory");
 				exit(EXIT_FAILURE);
 			}
-			if(webserver_enable == 1) {
-				sprintf(cache, "<body><center><img src=\"logo.png\"><br /><p style=\"color: #0099ff; font-weight: 800px; font-family: Verdana; font-size: 20px;\">The pilight webgui is located at <a style=\"text-decoration: none; color: #0099ff; font-weight: 800px; font-family: Verdana; font-size: 20px;\" href=\"http://%s:%d\">http://%s:%d</a></p></center></body></html>\r", inet_ntoa(sockin.sin_addr), webserver_port, inet_ntoa(sockin.sin_addr), webserver_port);
-				socket_write(sd, cache);
+			sprintf(path, "%s/%s/logo.png", webserver_root, webgui_tpl);
+			if((f = fopen(path, "rb"))) {
+				fstat(fileno(f), &sb);
+				mimetype = webserver_mimetype("image/png");
+				webserver_create_header(&p, "200 OK", mimetype, (unsigned int)sb.st_size);
+				send(sd, buff, (size_t)(p-buff), MSG_NOSIGNAL);
+				x = 0;
+				if(!(cache = malloc(BUFFER_SIZE))) {
+					logprintf(LOG_ERR, "out of memory");
+					exit(EXIT_FAILURE);
+				}
+				memset(cache, '\0', BUFFER_SIZE);
+				while(!feof(f)) {
+					x = (int)fread(cache, 1, BUFFER_SIZE, f);
+					send(sd, cache, (size_t)x, MSG_NOSIGNAL);
+				}
+				fclose(f);
+				sfree((void *)&cache);
+				sfree((void *)&mimetype);
 			} else {
-				socket_write(sd, "<body><center><img src=\"logo.png\"></center></body></html>\r");
+				logprintf(LOG_NOTICE, "pilight logo not found");
 			}
-			sfree((void *)&cache);
+			sfree((void *)&path);
+		} else {
+		    /* Catch all webserver page to inform users on which port the webserver runs */
+			mimetype = webserver_mimetype("text/html");
+			webserver_create_header(&p, "200 OK", mimetype, (unsigned int)BUFFER_SIZE);
+			send(sd, buff, (size_t)(p-buff), MSG_NOSIGNAL);
+			if(webserver_enable == 1) {
+				if(!(cache = malloc(BUFFER_SIZE))) {
+					logprintf(LOG_ERR, "out of memory");
+					exit(EXIT_FAILURE);
+				}
+				memset(cache, '\0', BUFFER_SIZE);			
+				sprintf(cache, "<html><head><title>pilight</title></head>"
+							   "<body><center><img src=\"logo.png\"><br />"
+							   "<p style=\"color: #0099ff; font-weight: 800px;"
+							   "font-family: Verdana; font-size: 20px;\">"
+							   "The pilight webgui is located at "
+							   "<a style=\"text-decoration: none; color: #0099ff;"
+							   "font-weight: 800px; font-family: Verdana; font-size:"
+							   "20px;\" href=\"http://%s:%d\">http://%s:%d</a></p>"
+							   "</center></body></html>",
+							   inet_ntoa(sockin.sin_addr),
+							   webserver_port,
+							   inet_ntoa(sockin.sin_addr),
+							   webserver_port);
+				send(sd, cache, strlen(cache), MSG_NOSIGNAL);
+				sfree((void *)&cache);
+			} else {
+				send(sd, "<body><center><img src=\"logo.png\"></center></body></html>", 57, MSG_NOSIGNAL);
+			}
+			sfree((void *)&mimetype);
 		}
 	}
 }
@@ -1474,6 +1479,9 @@ int main_gc(void) {
 	if(webserver_root_free) {
 		sfree((void *)&webserver_root);
 	}
+	if(webgui_tpl_free) {
+		sfree((void *)&webgui_tpl);
+	}
 #endif
 
 #ifdef UPDATE
@@ -1642,6 +1650,16 @@ int main(int argc, char **argv) {
 		strcpy(webserver_root, WEBSERVER_ROOT);
 		webserver_root_free = 1;
 	}
+	if(settings_find_string("webgui-template", &webgui_tpl) != 0) {
+		/* If no webserver port was set, use the default webserver port */
+		webgui_tpl = malloc(strlen(WEBGUI_TEMPLATE)+1);
+		if(!webgui_tpl) {
+			logprintf(LOG_ERR, "out of memory");
+			exit(EXIT_FAILURE);
+		}
+		strcpy(webgui_tpl, WEBGUI_TEMPLATE);
+		webgui_tpl_free = 1;
+	}	
 #endif
 
 #ifdef UPDATE
