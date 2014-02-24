@@ -305,46 +305,6 @@ function createWeatherElement(sTabId, sDevId, aValues) {
 	oTab.listview("refresh");
 }
 
-function createWattmeterElement(sTabId, sDevId, aValues) {
-	aDecimals[sTabId+'_'+sDevId] = aValues['settings']['decimals'];
-	aValues['watt'] /= Math.pow(10, aValues['settings']['decimals']).toFixed(aValues['settings']['decimals']);
-	var Wprice = aValues['id'][0]['price'];
-	var Wcoin = aValues['id'][0]['coin'];
-	Wprice /= Math.pow(1000, aValues['settings']['decimals']).toFixed(aValues['settings']['decimals']);	
-	aPrice[sTabId+'_'+sDevId] = Wprice;
-	wattprice = -1;
-	if(Wprice && aValues['watt']) {
-		wattprice = aValues['watt']*Wprice;
-	}	
-	if($('#'+sTabId+'_'+sDevId+'_wattmeter').length == 0) {
-		if(bShowTabs) {
-			oTab = $('#'+sTabId).find('ul');
-		} else {
-			oTab = $('#all');
-		}
-		oTab.append($('<li class="wattmeter" id="'+sTabId+'_'+sDevId+'_wattmeter" data-icon="false">'+aValues['name']+'</li>'));
-		if(wattprice > -1 && aValues['settings']['price'] == 1) {
-			if (aValues['settings']['coin'] == 1) {
-				oTab.find('#'+sTabId+'_'+sDevId+'_wattmeter').append($('<div class="coin">'+Wcoin+'</div><div class="price" id="'+sTabId+'_'+sDevId+'_price">'+wattprice.toFixed(aValues['settings']['decimals'])+'</div>'));
-			} else {
-					oTab.find('#'+sTabId+'_'+sDevId+'_wattmeter').append($('<div class="price" id="'+sTabId+'_'+sDevId+'_price">'+wattprice.toFixed(aValues['settings']['decimals'])+'</div>'));
-			}
-		}
-		if(aValues['watt'] && aValues['settings']['watt'] == 1) {
-			oTab.find('#'+sTabId+'_'+sDevId+'_wattmeter').append($('<div class="wattios">W</div><div class="watt" id="'+sTabId+'_'+sDevId+'_watt">'+aValues['watt']+'</div>'));
-		}
-	} else {
-		if(wattprice > -1) {
-			$('#'+sTabId+'_'+sDevId+'_price').text(wattprice.toFixed(aValues['settings']['decimals']));
-		}
-		if(aValues['watt']) {			
-			$('#'+sTabId+'_'+sDevId+'_watt').text(aValues['watt']);
-		}
-	}
-	oTab.listview();
-	oTab.listview("refresh");
-}
-
 function PlayImg(Wurl,imgid,Winterval,Wdivid,Wmaxwidth)
 {
 	console.log(imgid+' '+Winterval);
@@ -487,8 +447,6 @@ function createGUI(data) {
 						} else if(aValues['type'] == 5) {
 							createScreenElement(lindex, dindex, aValues);
 						} else if(aValues['type'] == 6) {
-							createWattmeterElement(lindex, dindex, aValues);							
-						} else if(aValues['type'] == 7) {
 							createWebcamElement(lindex, dindex, aValues);
 						}
 					}
@@ -570,15 +528,6 @@ function parseData(data) {
 							} else {
 								$('#'+lindex+'_'+dvalues+'_batt').removeClass('green').addClass('red');
 							}
-						}
-					} else if(iType == 6) {						
-						vvalues /= Math.pow(10, aDecimals[lindex+'_'+dvalues]).toFixed(aDecimals[lindex+'_'+dvalues]);
-						if(vindex == 'watt' && $('#'+lindex+'_'+dvalues+'_watt')) {							
-							$('#'+lindex+'_'+dvalues+'_watt').text(vvalues);
-						} 
-						if(aPrice[lindex+'_'+dvalues] > -1 && $('#'+lindex+'_'+dvalues+'_price')) {						
-							apricewatt = vvalues*aPrice[lindex+'_'+dvalues];
-							$('#'+lindex+'_'+dvalues+'_price').text(apricewatt.toFixed(aDecimals[lindex+'_'+dvalues]));
 						}
 					}					
 				});
