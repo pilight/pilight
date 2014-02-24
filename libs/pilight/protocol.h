@@ -30,7 +30,6 @@ typedef enum {
 	WEATHER,
 	RELAY,
 	SCREEN,
-	WATTMETER,
 	WEBCAM
 } devtype_t;
 
