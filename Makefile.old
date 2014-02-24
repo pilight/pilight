@@ -35,7 +35,7 @@ WEBDIRS := $(shell cd web && find * -type d )
 subdirs: $(SUBDIRS) all
 
 $(SUBDIRS):
-	$(MAKE) -C $@
+	$(MAKE) -C $@ GIT_HASH=$(GIT_HASH)
 
 all: $(LIBS) libpilight.so libpilight.a $(PROGAMS) 
 

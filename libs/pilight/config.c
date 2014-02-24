@@ -615,6 +615,7 @@ JsonNode *config_broadcast_create(void) {
 	} else {
 		json_append_element(jversion, json_mkstring(VERSION));
 	}
+	json_append_element(jversion, json_mkstring(HASH));
 	json_append_member(jsend, "version", jversion);	
 #endif
 	struct JsonNode *jfirmware = json_mkobject();
