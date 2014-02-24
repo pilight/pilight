@@ -487,7 +487,7 @@ int protocol_setting_check_number(protocol_t *proto, const char *name, int value
 			}
 		break;	
 		case WEBCAM:
-			if(strcmp(name, "interval") != 0) {
+			if(strcmp(name, "interval") != 0 && strcmp(name, "width") != 0) {
 				error=EXIT_FAILURE;
 			}		
 		break;	
