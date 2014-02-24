@@ -78,6 +78,9 @@
 #ifdef PROTOCOL_GENERIC_DIMMER
 	#include "../protocols/generic_dimmer.h"
 #endif
+#ifdef PROTOCOL_GENERIC_WEBCAM
+	#include "../protocols/generic_webcam.h"
+#endif
 #ifdef PROTOCOL_DS18B20
 	#include "../protocols/ds18b20.h"
 #endif
@@ -175,6 +178,9 @@ void protocol_init(void) {
 #endif
 #ifdef PROTOCOL_GENERIC_DIMMER
 	genDimInit();
+#endif
+#ifdef PROTOCOL_GENERIC_WEBCAM
+	genWebcamInit();
 #endif
 #ifdef PROTOCOL_DS18B20
 	ds18b20Init();
@@ -517,6 +523,7 @@ int protocol_setting_check_string(protocol_t *proto, const char *name, const cha
 		case RAW:
 		case INTERNAL:
 		case CONTACT:
+		case WEBCAM:
 		default:
 			error=EXIT_FAILURE;
 		break;
@@ -621,6 +628,11 @@ int protocol_setting_check_number(protocol_t *proto, const char *name, int value
 				error=EXIT_FAILURE;
 			}
 		break;
+		case WEBCAM:
+			if(strcmp(name, "interval") != 0 && strcmp(name, "width") != 0) {
+				error=EXIT_FAILURE;
+			}		
+		break;		
 		case RAW:
 		case INTERNAL:
 		case CONTACT:
