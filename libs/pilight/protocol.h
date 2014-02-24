@@ -33,7 +33,8 @@ typedef enum {
 	WEATHER,
 	RELAY,
 	SCREEN,
-	CONTACT
+	CONTACT,
+	WEBCAM
 } devtype_t;
 
 typedef struct protocol_devices_t {
