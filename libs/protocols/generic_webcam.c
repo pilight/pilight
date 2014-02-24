@@ -40,15 +40,17 @@ void genWebcamCreateMessage(int id, char *url) {
 int genWebcamCreateCode(JsonNode *code) {
 	int id = -999;
 	int interval = 1000;
+	int width = 0;
 	int url = -1;
 	char *tmp;
 	
 	json_find_number(code, "id", &id);
 	protocol_setting_get_number(generic_webcam, "interval", &interval);
+	protocol_setting_get_number(generic_webcam, "width", &width);
 	if(json_find_string(code, "url", &tmp) == 0)
 		url = atoi(tmp);
                 
-	if(id == -999 && interval < 100 && url == -1) {
+	if(id == -999 && interval < 100 && url == -1 && width < 0) {
 		logprintf(LOG_ERR, "generic_webcam: insufficient number of arguments");
 		return EXIT_FAILURE;
 	} else {
@@ -73,6 +75,7 @@ void genWebcamInit(void) {
 	options_add(&generic_webcam->options, 'i', "id", has_value, config_id, "[0-9]");
 
 	protocol_setting_add_number(generic_webcam, "interval", 1000);
+	protocol_setting_add_number(generic_webcam, "width", 0);
 
 	generic_webcam->printHelp=&genWebcamPrintHelp;
 	generic_webcam->createCode=&genWebcamCreateCode;
