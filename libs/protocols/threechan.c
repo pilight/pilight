@@ -42,7 +42,7 @@ void threechanParseCode(void) {
 
 	id = binToDecRev(threechan->binary, 0, 11);
 	battery = threechan->binary[12];
-	temperature = binToDecRev(threechan->binary, 16, 27);
+	temperature = binToDecRev(threechan->binary, 18, 27);
 	humidity = binToDecRev(threechan->binary, 28, 35);
 
 	threechan->message = json_mkobject();
