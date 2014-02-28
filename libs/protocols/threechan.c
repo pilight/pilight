@@ -57,11 +57,11 @@ void threechanInit(void) {
 	protocol_register(&threechan);
 	protocol_set_id(threechan, "threechan");
 	protocol_device_add(threechan, "threechan", "3 Channel Weather Stations");
-	protocol_plslen_add(threechan, 270);
+	protocol_plslen_add(threechan, 266);
 	protocol_conflict_add(threechan, "alecto");
 	threechan->devtype = WEATHER;
 	threechan->hwtype = RF433;
-	threechan->pulse = 14;
+	threechan->pulse = 15;
 	threechan->rawlen = 74;
 
 	options_add(&threechan->options, 't', "temperature", has_value, config_value, "^[0-9]{1,3}$");
