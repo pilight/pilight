@@ -121,6 +121,9 @@
 #ifdef PROTOCOL_SILVERCREST
 	#include "../protocols/silvercrest.h"
 #endif
+#ifdef PROTOCOL_TEKNIHALL
+	#include "../protocols/teknihall.h"
+#endif
 #ifdef PROTOCOL_THREECHAN
 	#include "../protocols/threechan.h"
 #endif 
@@ -218,6 +221,9 @@ void protocol_init(void) {
 #endif
 #ifdef PROTOCOL_SILVERCREST
 	silvercrestInit();
+#endif
+#ifdef PROTOCOL_TEKNIHALL
+	teknihallInit();
 #endif
 #ifdef PROTOCOL_THREECHAN
 	threechanInit();
