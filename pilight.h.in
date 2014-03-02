@@ -67,6 +67,7 @@
 #cmakedefine PROTOCOL_REV
 #cmakedefine PROTOCOL_ELRO_SWITCH
 #cmakedefine PROTOCOL_SELECTREMOTE
+#cmakedefine PROTOCOL_SENSOR_1527
 #cmakedefine PROTOCOL_SILVERCREST
 #cmakedefine PROTOCOL_TEKNIHALL
 #cmakedefine PROTOCOL_THREECHAN
