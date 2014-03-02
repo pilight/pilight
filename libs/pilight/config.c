@@ -465,7 +465,6 @@ JsonNode *config2json(short internal) {
 
 	int lorder = 0;
 	int dorder = 0;
-	unsigned int nrdevices = 0;
 	int has_settings = 0;
 
 	/* Make sure we preserve the order of the original file */
@@ -481,7 +480,6 @@ JsonNode *config2json(short internal) {
 		}
 
 		dorder = 0;
-		nrdevices = 0;
 		tmp_devices = tmp_locations->devices;
 
 		while(tmp_devices) {
@@ -492,13 +490,14 @@ JsonNode *config2json(short internal) {
 			if((strlen(pilight_uuid) > 0 && ((strcmp(tmp_devices->ori_uuid, pilight_uuid) == 0) || 
 			   (tmp_devices->dev_uuid && strcmp(tmp_devices->dev_uuid, pilight_uuid) == 0)))
 			   || internal > 0) {
-				nrdevices++;
 
 				if(internal > 0) {
 					json_append_member(jdevice, "order", json_mknumber(dorder));
 				}
+
 				struct protocols_t *tmp_protocols = tmp_devices->protocols;
 				struct JsonNode *jprotocols = json_mkarray();
+
 				if(internal > 0) {
 					json_append_member(jdevice, "type", json_mknumber(tmp_protocols->listener->devtype));
 				}
@@ -593,9 +592,8 @@ JsonNode *config2json(short internal) {
 			}
 			tmp_devices = tmp_devices->next;
 		}
-		if(nrdevices) {
-			json_append_member(jroot, tmp_locations->id, jlocation);
-		}
+		json_append_member(jroot, tmp_locations->id, jlocation);
+
 		tmp_locations = tmp_locations->next;
 	}
 
