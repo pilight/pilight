@@ -16,6 +16,19 @@ if(typeof navigator.cookieEnabled == "undefined" && !cookieEnabled) {
 	document.cookie = 'testcookie=; expires=Thu, 01 Jan 1970 00:00:01 GMT;';
 }
 
+function getIEVersion(){
+    var agent = navigator.userAgent;
+    var reg = /MSIE\s?(\d+)(?:\.(\d+))?/i;
+    var matches = agent.match(reg);
+    if (matches != null) {
+        return { major: matches[1], minor: matches[2] };
+    }
+    return { major: "-1", minor: "-1" };
+}
+
+var ie_version =  getIEVersion();
+var is_ie10 = ie_version.major == 10;
+
 function toggleTabs() {
 	if(cookieEnabled && typeof(localStorage) != 'undefined') {
 		try {
@@ -475,8 +488,12 @@ $(document).ready(function() {
 		if(typeof MozWebSocket != "undefined") {
 			oWebsocket = new MozWebSocket("ws://"+location.host, "data");
 		} else if(typeof WebSocket != "undefined") {
-			/* The characters after the trailing slash are needed for a wierd IE 10 bug */
-			oWebsocket = new WebSocket("ws://"+location.host+'/websocket', "data");
+			if(is_ie10) {
+				/* The characters after the trailing slash are needed for a wierd IE 10 bug */
+				oWebsocket = new WebSocket("ws://"+location.host+'/websocket', "data");
+			} else {
+				oWebsocket = new WebSocket("ws://"+location.host, "data");
+			}
 		} else {
 			var load = window.setInterval(function() {
 				$.get('http://'+location.host+'/config?'+$.now(), function(txt) {
