@@ -492,7 +492,7 @@ $(document).ready(function() {
 				/* The characters after the trailing slash are needed for a wierd IE 10 bug */
 				oWebsocket = new WebSocket("ws://"+location.host+'/websocket', "data");
 			} else {
-				oWebsocket = new WebSocket("ws://"+location.host, "data");
+				oWebsocket = new WebSocket("ws://"+location.host);
 			}
 		} else {
 			var load = window.setInterval(function() {
