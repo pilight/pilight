@@ -103,8 +103,8 @@ void gpio433Init(void) {
 
 	piHiPri(55);
 
-	options_add(&gpio433->options, 'r', "receiver", has_value, config_value, "^[0-9]+$");
-	options_add(&gpio433->options, 's', "sender", has_value, config_value, "^[0-9]+$");
+	options_add(&gpio433->options, 'r', "receiver", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, "^[0-9]+$");
+	options_add(&gpio433->options, 's', "sender", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, "^[0-9]+$");
 
 	gpio433->type=RF433;
 	gpio433->init=&gpio433HwInit;

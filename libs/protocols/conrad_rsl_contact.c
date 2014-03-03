@@ -73,9 +73,9 @@ void conradRSLCnInit(void) {
 	conrad_rsl_contact->rawlen = 66;
 	conrad_rsl_contact->binlen = 33;
 
-	options_add(&conrad_rsl_contact->options, 'i', "id", has_value, config_id, "^(([0-9]|([1-9][0-9])|([1-9][0-9]{2})|([1-9][0-9]{3})|([1-9][0-9]{4})|([1-9][0-9]{5})|([1-9][0-9]{6})|((6710886[0-3])|(671088[0-5][0-9])|(67108[0-7][0-9]{2})|(6710[0-7][0-9]{3})|(671[0--1][0-9]{4})|(670[0-9]{5})|(6[0-6][0-9]{6})|(0[0-5][0-9]{7}))))$");
-	options_add(&conrad_rsl_contact->options, 't', "opened", no_value, config_state, NULL);
-	options_add(&conrad_rsl_contact->options, 'f', "closed", no_value, config_state, NULL);
+	options_add(&conrad_rsl_contact->options, 'i', "id", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, "^(([0-9]|([1-9][0-9])|([1-9][0-9]{2})|([1-9][0-9]{3})|([1-9][0-9]{4})|([1-9][0-9]{5})|([1-9][0-9]{6})|((6710886[0-3])|(671088[0-5][0-9])|(67108[0-7][0-9]{2})|(6710[0-7][0-9]{3})|(671[0--1][0-9]{4})|(670[0-9]{5})|(6[0-6][0-9]{6})|(0[0-5][0-9]{7}))))$");
+	options_add(&conrad_rsl_contact->options, 't', "opened", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL);
+	options_add(&conrad_rsl_contact->options, 'f', "closed", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL);
 
 	protocol_setting_add_string(conrad_rsl_contact, "states", "opened,closed");
 	protocol_setting_add_number(conrad_rsl_contact, "readonly", 1);

@@ -72,8 +72,8 @@ int main(int argc, char **argv) {
 	}
 	strcpy(progname, "pilight-uuid");	
 	
-	options_add(&options, 'H', "help", no_value, 0, NULL);
-	options_add(&options, 'V', "version", no_value, 0, NULL);
+	options_add(&options, 'H', "help", OPTION_NO_VALUE, 0, JSON_NULL, NULL);
+	options_add(&options, 'V', "version", OPTION_NO_VALUE, 0, JSON_NULL, NULL);
 
 	while (1) {
 		int c;

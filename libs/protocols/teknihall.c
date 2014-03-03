@@ -65,10 +65,10 @@ void teknihallInit(void) {
 	teknihall->pulse = 15;
 	teknihall->rawlen = 76;
 
-	options_add(&teknihall->options, 't', "temperature", has_value, config_value, "^[0-9]{1,3}$");
-	options_add(&teknihall->options, 'i', "id", has_value, config_id, "[0-9]");
-	options_add(&teknihall->options, 'h', "humidity", has_value, config_value, "[0-9]");
-	options_add(&teknihall->options, 'b', "battery", has_value, config_value, "^[01]$");
+	options_add(&teknihall->options, 't', "temperature", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, "^[0-9]{1,3}$");
+	options_add(&teknihall->options, 'i', "id", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, "[0-9]");
+	options_add(&teknihall->options, 'h', "humidity", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, "[0-9]");
+	options_add(&teknihall->options, 'b', "battery", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, "^[01]$");
 
 	protocol_setting_add_number(teknihall, "decimals", 1);
 	protocol_setting_add_number(teknihall, "humidity", 1);

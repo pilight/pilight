@@ -246,11 +246,11 @@ void wundergroundInit(void) {
 	wunderground->devtype = WEATHER;
 	wunderground->hwtype = API;
 
-	options_add(&wunderground->options, 't', "temperature", has_value, config_value, "^[0-9]{1,5}$");
-	options_add(&wunderground->options, 'h', "humidity", has_value, config_value, "^[0-9]{1,5}$");
-	options_add(&wunderground->options, 'a', "api", has_value, config_id, "^[a-z0-9]+$");
-	options_add(&wunderground->options, 'l', "location", has_value, config_id, "^[a-z]+$");
-	options_add(&wunderground->options, 'c', "country", has_value, config_id, "^[a-z]+$");
+	options_add(&wunderground->options, 't', "temperature", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, "^[0-9]{1,5}$");
+	options_add(&wunderground->options, 'h', "humidity", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, "^[0-9]{1,5}$");
+	options_add(&wunderground->options, 'a', "api", OPTION_HAS_VALUE, CONFIG_ID, JSON_STRING, "^[a-z0-9]+$");
+	options_add(&wunderground->options, 'l', "location", OPTION_HAS_VALUE, CONFIG_ID, JSON_STRING, "^[a-z]+$");
+	options_add(&wunderground->options, 'c', "country", OPTION_HAS_VALUE, CONFIG_ID, JSON_STRING, "^[a-z]+$");
 
 	protocol_setting_add_number(wunderground, "decimals", 2);
 	protocol_setting_add_number(wunderground, "humidity", 1);
@@ -262,4 +262,3 @@ void wundergroundInit(void) {
 	wunderground->checkValues=&wundergroundCheckValues;
 	wunderground->gc=&wundergroundGC;
 }
-

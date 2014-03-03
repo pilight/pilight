@@ -541,7 +541,7 @@ int protocol_setting_check_string(protocol_t *proto, const char *name, const cha
 				int valid_state = 0;
 				struct options_t *options = proto->options;
 				while(options) {
-					if(options->conftype == config_state && strcmp(options->name, pch) == 0) {
+					if(options->conftype == CONFIG_STATE && strcmp(options->name, pch) == 0) {
 						valid_state = 1;
 						break;
 					}
@@ -654,7 +654,7 @@ int protocol_setting_check_number(protocol_t *proto, const char *name, int value
 	if(strcmp(name, "min") == 0 || strcmp(name, "max") == 0) {
 		struct options_t *tmp_options = proto->options;
 		while(tmp_options) {
-			if(tmp_options->conftype == config_value && strlen(tmp_options->mask) > 0) {
+			if(tmp_options->conftype == CONFIG_VALUE && strlen(tmp_options->mask) > 0) {
 #ifndef __FreeBSD__
 				/* If the argument has a regex mask, check if it passes */
 				reti = regcomp(&regex, tmp_options->mask, REG_EXTENDED);

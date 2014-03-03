@@ -164,10 +164,10 @@ void elroHEInit(void) {
 	elro_he->binlen = 12;
 	elro_he->lsb = 3;
 
-	options_add(&elro_he->options, 's', "systemcode", has_value, config_id, "^(3[012]?|[012][0-9]|[0-9]{1})$");
-	options_add(&elro_he->options, 'u', "unitcode", has_value, config_id, "^(3[012]?|[012][0-9]|[0-9]{1})$");
-	options_add(&elro_he->options, 't', "on", no_value, config_state, NULL);
-	options_add(&elro_he->options, 'f', "off", no_value, config_state, NULL);
+	options_add(&elro_he->options, 's', "systemcode", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, "^(3[012]?|[012][0-9]|[0-9]{1})$");
+	options_add(&elro_he->options, 'u', "unitcode", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, "^(3[012]?|[012][0-9]|[0-9]{1})$");
+	options_add(&elro_he->options, 't', "on", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL);
+	options_add(&elro_he->options, 'f', "off", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL);
 
 	protocol_setting_add_string(elro_he, "states", "on,off");	
 	protocol_setting_add_number(elro_he, "readonly", 0);

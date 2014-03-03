@@ -811,7 +811,7 @@ void control_device(struct conf_devices_t *dev, char *state, JsonNode *values) {
 					if(strcmp(sett->name, "id") == 0) {
 						val = sett->values;
 						while(val) {
-							if(opt->conftype == config_id && strcmp(val->name, opt->name) == 0 && json_find_string(code, val->name, &ctmp) != 0) {
+							if(opt->conftype == CONFIG_ID && strcmp(val->name, opt->name) == 0 && json_find_string(code, val->name, &ctmp) != 0) {
 								if(val->type == CONFIG_TYPE_STRING) {
 									json_append_member(code, val->name, json_mkstring(val->value));
 								} else if(val->type == CONFIG_TYPE_NUMBER) {
@@ -842,7 +842,7 @@ void control_device(struct conf_devices_t *dev, char *state, JsonNode *values) {
 			while(values) {
 				opt = tmp_protocols->listener->options;
 				while(opt) {
-					if(opt->conftype == config_value && strcmp(values->key, opt->name) == 0) {
+					if(opt->conftype == CONFIG_VALUE && strcmp(values->key, opt->name) == 0) {
 						if(values->tag == JSON_STRING) {
 							json_append_member(code, values->key, json_mkstring(values->string_));
 						} else if(values->tag == JSON_NUMBER) {
@@ -858,10 +858,10 @@ void control_device(struct conf_devices_t *dev, char *state, JsonNode *values) {
 		if((opt = tmp_protocols->listener->options)) {
 			while(opt) {
 				if(json_find_member(code, opt->name) == NULL) {
-					if(opt->conftype == config_state && opt->argtype == no_value && strcmp(opt->name, state) == 0) {
+					if(opt->conftype == CONFIG_STATE && opt->argtype == OPTION_NO_VALUE && strcmp(opt->name, state) == 0) {
 						json_append_member(code, opt->name, json_mknumber(1));
 						break;
-					} else if(opt->conftype == config_state && opt->argtype == has_value) {
+					} else if(opt->conftype == CONFIG_STATE && opt->argtype == OPTION_HAS_VALUE) {
 						json_append_member(code, opt->name, json_mkstring(state));
 						break;
 					}
@@ -1565,10 +1565,10 @@ int main(int argc, char **argv) {
 
 	memset(buffer, '\0', BUFFER_SIZE);
 
-	options_add(&options, 'H', "help", no_value, 0, NULL);
-	options_add(&options, 'V', "version", no_value, 0, NULL);
-	options_add(&options, 'D', "nodaemon", no_value, 0, NULL);
-	options_add(&options, 'S', "settings", has_value, 0, NULL);
+	options_add(&options, 'H', "help", OPTION_NO_VALUE, 0, JSON_NULL, NULL);
+	options_add(&options, 'V', "version", OPTION_NO_VALUE, 0, JSON_NULL, NULL);
+	options_add(&options, 'D', "nodaemon", OPTION_NO_VALUE, 0, JSON_NULL, NULL);
+	options_add(&options, 'S', "settings", OPTION_HAS_VALUE, 0, JSON_NULL, NULL);
 
 	while(1) {
 		int c;

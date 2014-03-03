@@ -158,8 +158,8 @@ void rpiTempInit(void) {
 	rpiTemp->devtype = WEATHER;
 	rpiTemp->hwtype = SENSOR;
 
-	options_add(&rpiTemp->options, 't', "temperature", has_value, config_value, "^[0-9]{1,5}$");
-	options_add(&rpiTemp->options, 'i', "id", has_value, config_id, "[0-9]");
+	options_add(&rpiTemp->options, 't', "temperature", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, "^[0-9]{1,5}$");
+	options_add(&rpiTemp->options, 'i', "id", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, "[0-9]");
 
 	protocol_setting_add_number(rpiTemp, "decimals", 3);
 	protocol_setting_add_number(rpiTemp, "humidity", 0);

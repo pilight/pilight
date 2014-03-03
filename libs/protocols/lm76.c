@@ -186,8 +186,8 @@ void lm76Init(void) {
 	lm76->devtype = WEATHER;
 	lm76->hwtype = SENSOR;
 
-	options_add(&lm76->options, 't', "temperature", has_value, config_value, "^[0-9]{1,3}$");
-	options_add(&lm76->options, 'i', "id", has_value, config_id, "0x[0-9a-f]{2}");
+	options_add(&lm76->options, 't', "temperature", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, "^[0-9]{1,3}$");
+	options_add(&lm76->options, 'i', "id", OPTION_HAS_VALUE, CONFIG_ID, JSON_STRING, "0x[0-9a-f]{2}");
 
 	protocol_setting_add_number(lm76, "decimals", 3);
 	protocol_setting_add_number(lm76, "humidity", 0);

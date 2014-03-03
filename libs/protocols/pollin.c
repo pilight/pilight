@@ -164,10 +164,10 @@ void pollinInit(void) {
 	pollin->binlen = 12;
 	pollin->lsb = 3;
 
-	options_add(&pollin->options, 's', "systemcode", has_value, config_id, "^(3[012]?|[012][0-9]|[0-9]{1})$");
-	options_add(&pollin->options, 'u', "unitcode", has_value, config_id, "^(3[012]?|[012][0-9]|[0-9]{1})$");
-	options_add(&pollin->options, 't', "on", no_value, config_state, NULL);
-	options_add(&pollin->options, 'f', "off", no_value, config_state, NULL);
+	options_add(&pollin->options, 's', "systemcode", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, "^(3[012]?|[012][0-9]|[0-9]{1})$");
+	options_add(&pollin->options, 'u', "unitcode", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, "^(3[012]?|[012][0-9]|[0-9]{1})$");
+	options_add(&pollin->options, 't', "on", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL);
+	options_add(&pollin->options, 'f', "off", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL);
 
 	protocol_setting_add_string(pollin, "states", "on,off");	
 	protocol_setting_add_number(pollin, "readonly", 0);

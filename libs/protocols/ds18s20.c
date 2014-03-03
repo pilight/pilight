@@ -207,8 +207,8 @@ void ds18s20Init(void) {
 	ds18s20->devtype = WEATHER;
 	ds18s20->hwtype = SENSOR;
 
-	options_add(&ds18s20->options, 't', "temperature", has_value, config_value, "^[0-9]{1,5}$");
-	options_add(&ds18s20->options, 'i', "id", has_value, config_id, "^[a-z0-9]{12}$");
+	options_add(&ds18s20->options, 't', "temperature", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, "^[0-9]{1,5}$");
+	options_add(&ds18s20->options, 'i', "id", OPTION_HAS_VALUE, CONFIG_ID, JSON_STRING, "^[a-z0-9]{12}$");
 
 	protocol_setting_add_number(ds18s20, "decimals", 3);
 	protocol_setting_add_number(ds18s20, "humidity", 0);

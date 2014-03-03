@@ -56,9 +56,9 @@ void pilightFirmwareInit(void) {
   pilight_firmware->rawlen = 196;
   pilight_firmware->lsb = 3;
 
-  options_add(&pilight_firmware->options, 'v', "version", has_value, config_id, "^[0-9]+$");
-  options_add(&pilight_firmware->options, 'l', "lpf", has_value, config_id, "^[0-9]+$");
-  options_add(&pilight_firmware->options, 'h', "hpf", has_value, config_id, "^[0-9]+$");
+  options_add(&pilight_firmware->options, 'v', "version", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, "^[0-9]+$");
+  options_add(&pilight_firmware->options, 'l', "lpf", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, "^[0-9]+$");
+  options_add(&pilight_firmware->options, 'h', "hpf", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, "^[0-9]+$");
 
   pilight_firmware->parseBinary=&pilightFirmwareParseBinary;
 }

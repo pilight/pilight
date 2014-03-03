@@ -58,8 +58,8 @@ void alectoInit(void) {
 	alecto->rawlen = 74;
 	alecto->lsb = 3;
 
-	options_add(&alecto->options, 't', "temperature", has_value, config_value, "^[0-9]{1,3}$");
-	options_add(&alecto->options, 'i', "id", has_value, config_id, "[0-9]");
+	options_add(&alecto->options, 't', "temperature", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, "^[0-9]{1,3}$");
+	options_add(&alecto->options, 'i', "id", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, "[0-9]");
 
 	protocol_setting_add_number(alecto, "decimals", 1);
 	protocol_setting_add_number(alecto, "humidity", 0);

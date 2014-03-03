@@ -193,11 +193,11 @@ void arctechSrInit(void) {
 	arctech_screen->rawlen = 132;
 	arctech_screen->lsb = 3;
 
-	options_add(&arctech_screen->options, 'a', "all", no_value, 0, NULL);
-	options_add(&arctech_screen->options, 't', "up", no_value, config_state, NULL);
-	options_add(&arctech_screen->options, 'f', "down", no_value, config_state, NULL);
-	options_add(&arctech_screen->options, 'u', "unit", has_value, config_id, "^([0-9]{1}|[1][0-5])$");
-	options_add(&arctech_screen->options, 'i', "id", has_value, config_id, "^([0-9]{1,7}|[1-5][0-9]{7}|6([0-6][0-9]{6}|7(0[0-9]{5}|10([0-7][0-9]{3}|8([0-7][0-9]{2}|8([0-5][0-9]|6[0-3]))))))$");
+	options_add(&arctech_screen->options, 'a', "all", OPTION_NO_VALUE, 0, JSON_NUMBER, NULL);
+	options_add(&arctech_screen->options, 't', "up", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL);
+	options_add(&arctech_screen->options, 'f', "down", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL);
+	options_add(&arctech_screen->options, 'u', "unit", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, "^([0-9]{1}|[1][0-5])$");
+	options_add(&arctech_screen->options, 'i', "id", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, "^([0-9]{1,7}|[1-5][0-9]{7}|6([0-6][0-9]{6}|7(0[0-9]{5}|10([0-7][0-9]{3}|8([0-7][0-9]{2}|8([0-5][0-9]|6[0-3]))))))$");
 
 	protocol_setting_add_string(arctech_screen, "states", "up,down");
 	protocol_setting_add_number(arctech_screen, "readonly", 0);

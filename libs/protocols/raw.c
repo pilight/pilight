@@ -68,7 +68,7 @@ void rawInit(void) {
 	protocol_device_add(raw, "raw", "Raw Codes");
 	raw->devtype = RAW;
 
-	options_add(&raw->options, 'c', "code", has_value, 0, NULL);
+	options_add(&raw->options, 'c', "code", OPTION_HAS_VALUE, 0, JSON_STRING, NULL);
 
 	raw->createCode=&rawCreateCode;
 	raw->printHelp=&rawPrintHelp;

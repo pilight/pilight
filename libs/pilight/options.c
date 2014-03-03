@@ -375,7 +375,7 @@ gc:
 }
 
 /* Add a new option to the options struct */
-void options_add(struct options_t **opt, int id, const char *name, int argtype, int conftype, const char *mask) {
+void options_add(struct options_t **opt, int id, const char *name, int argtype, int conftype, int vartype, const char *mask) {
 	char *ctmp = NULL;
 	char *nname = malloc(strlen(name)+1);
 	if(!nname) {
@@ -419,6 +419,7 @@ void options_add(struct options_t **opt, int id, const char *name, int argtype, 
 		strcpy(optnode->name, name);
 		optnode->argtype = argtype;
 		optnode->conftype = conftype;
+		optnode->vartype = vartype;
 		optnode->value = malloc(4);
 		if(!optnode->value) {
 			logprintf(LOG_ERR, "out of memory");
@@ -505,6 +506,7 @@ void options_merge(struct options_t **a, struct options_t **b) {
 		}
 		optnode->argtype = temp->argtype;
 		optnode->conftype = temp->conftype;
+		optnode->vartype = temp->vartype;
 		optnode->next = *a;
 		*a = optnode;
 		temp = temp->next;

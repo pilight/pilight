@@ -116,10 +116,10 @@ void genDimInit(void) {
 	protocol_device_add(generic_dimmer, "generic_dimmer", "Generic Dimmers");
 	generic_dimmer->devtype = DIMMER;
 
-	options_add(&generic_dimmer->options, 'd', "dimlevel", has_value, config_value, "^([0-9]{1,})$");
-	options_add(&generic_dimmer->options, 't', "on", no_value, config_state, NULL);
-	options_add(&generic_dimmer->options, 'f', "off", no_value, config_state, NULL);
-	options_add(&generic_dimmer->options, 'i', "id", has_value, config_id, "^([0-9]{1,})$");
+	options_add(&generic_dimmer->options, 'd', "dimlevel", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, "^([0-9]{1,})$");
+	options_add(&generic_dimmer->options, 't', "on", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL);
+	options_add(&generic_dimmer->options, 'f', "off", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL);
+	options_add(&generic_dimmer->options, 'i', "id", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, "^([0-9]{1,})$");
 
 	protocol_setting_add_number(generic_dimmer, "min", 0);
 	protocol_setting_add_number(generic_dimmer, "max", 10);	

@@ -170,10 +170,10 @@ void arctechSwOldInit(void) {
 	arctech_switch_old->binlen = 12;
 	arctech_switch_old->lsb = 2;
 
-	options_add(&arctech_switch_old->options, 't', "on", no_value, config_state, NULL);
-	options_add(&arctech_switch_old->options, 'f', "off", no_value, config_state, NULL);
-	options_add(&arctech_switch_old->options, 'u', "unit", has_value, config_id, "^([0-9]{1}|[1][0-5])$");
-	options_add(&arctech_switch_old->options, 'i', "id", has_value, config_id, "^(3[012]?|[012][0-9]|[0-9]{1})$");
+	options_add(&arctech_switch_old->options, 't', "on", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL);
+	options_add(&arctech_switch_old->options, 'f', "off", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL);
+	options_add(&arctech_switch_old->options, 'u', "unit", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, "^([0-9]{1}|[1][0-5])$");
+	options_add(&arctech_switch_old->options, 'i', "id", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, "^(3[012]?|[012][0-9]|[0-9]{1})$");
 
 	protocol_setting_add_string(arctech_switch_old, "states", "on,off");
 	protocol_setting_add_number(arctech_switch_old, "readonly", 0);

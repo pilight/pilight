@@ -41,7 +41,6 @@
 
 /* Struct to store the locations */
 struct conf_locations_t *conf_locations = NULL;
-unsigned char alphanum[62] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
 
 int config_update(char *protoname, JsonNode *json, JsonNode **out) {
 	/* The pointer to the config locations */
@@ -132,7 +131,7 @@ int config_update(char *protoname, JsonNode *json, JsonNode **out) {
 							/* Check how many id's we need to match */
 							opt = protocol->options;
 							while(opt) {
-								if(opt->conftype == config_id) {
+								if(opt->conftype == CONFIG_ID) {
 									JsonNode *jtmp = json_first_child(code);
 									while(jtmp) {
 										if(strcmp(jtmp->key, opt->name) == 0) {
@@ -147,7 +146,7 @@ int config_update(char *protoname, JsonNode *json, JsonNode **out) {
 							/* Loop through all protocol options */
 							opt = protocol->options;
 							while(opt) {
-								if(opt->conftype == config_id && strcmp(sptr->name, "id") == 0) {
+								if(opt->conftype == CONFIG_ID && strcmp(sptr->name, "id") == 0) {
 									/* Check the config id's to match a device */								
 									vptr = sptr->values;
 									while(vptr) {
@@ -166,15 +165,15 @@ int config_update(char *protoname, JsonNode *json, JsonNode **out) {
 									}
 								}
 								/* Retrieve the new device state */
-								if(opt->conftype == config_state && strlen(state) == 0) {
-									if(opt->argtype == no_value) {
+								if(opt->conftype == CONFIG_STATE && strlen(state) == 0) {
+									if(opt->argtype == OPTION_NO_VALUE) {
 										if(json_find_string(code, "state", &stmp) == 0) {
 											strcpy(state, stmp);
 										}
 										if(json_find_number(code, "state", &itmp) == 0) {
 											sprintf(state, "%d", itmp);
 										}
-									} else if(opt->argtype == has_value) {
+									} else if(opt->argtype == OPTION_HAS_VALUE) {
 										if(json_find_string(code, opt->name, &stmp) == 0) {
 											strcpy(state, stmp);
 										}
@@ -219,7 +218,7 @@ int config_update(char *protoname, JsonNode *json, JsonNode **out) {
 								/* Loop through all protocol options */
 								while(opt) {
 									/* Check if there are values that can be updated */
-									if(strcmp(sptr->name, opt->name) == 0 && opt->conftype == config_value && opt->argtype == has_value) {
+									if(strcmp(sptr->name, opt->name) == 0 && opt->conftype == CONFIG_VALUE && opt->argtype == OPTION_HAS_VALUE) {
 
 										memset(ctmp, '\0', sizeof(ctmp));
 										int type = 0;
@@ -398,7 +397,7 @@ int config_valid_state(char *lid, char *sid, char *state) {
 			if(protocol->options) {
 				options = protocol->options;
 				while(options) {
-					if(strcmp(options->name, state) == 0 && options->conftype == config_state) {
+					if(strcmp(options->name, state) == 0 && options->conftype == CONFIG_STATE) {
 						return 0;
 						break;
 					}
@@ -425,7 +424,7 @@ int config_valid_value(char *lid, char *sid, char *name, char *value) {
 		while(tmp_protocol) {
 			opt = tmp_protocol->listener->options;
 			while(opt) {
-				if(opt->conftype == config_value && strcmp(name, opt->name) == 0) {
+				if(opt->conftype == CONFIG_VALUE && strcmp(name, opt->name) == 0) {
 #ifndef __FreeBSD__				
 					reti = regcomp(&regex, opt->mask, REG_EXTENDED);
 					if(reti) {
@@ -931,7 +930,7 @@ int config_check_id(int i, JsonNode *jsetting, struct conf_devices_t *device) {
 			}
 			if((tmp_options = tmp_protocols->listener->options)) {
 				while(tmp_options) {
-					if(tmp_options->conftype == config_id) {
+					if(tmp_options->conftype == CONFIG_ID) {
 						nrids2++;
 					}
 					tmp_options = tmp_options->next;
@@ -944,7 +943,7 @@ int config_check_id(int i, JsonNode *jsetting, struct conf_devices_t *device) {
 					match1++;
 					if((tmp_options = tmp_protocols->listener->options)) {
 						while(tmp_options) {
-							if(tmp_options->conftype == config_id) {
+							if(tmp_options->conftype == CONFIG_ID && tmp_options->vartype == jvalues->tag) {
 								if(strcmp(tmp_options->name, jvalues->key) == 0) {
 									match2++;
 									if(jvalues->tag == JSON_NUMBER) {
@@ -1170,12 +1169,12 @@ int config_check_state(int i, JsonNode *jsetting, struct conf_devices_t *device)
 			tmp_options = tmp_protocols->listener->options;
 
 			while(tmp_options) {
-				/* We are only interested in the config_* options */
-				if(tmp_options->conftype == config_state) {
+				/* We are only interested in the CONFIG_STATE options */
+				if(tmp_options->conftype == CONFIG_STATE && tmp_options->vartype == jsetting->tag) {
 					/* If an option requires an argument, then check if the
 					   argument state values and values array are of the right
 					   type. This is done by checking the regex mask */
-					if(tmp_options->argtype == has_value) {
+					if(tmp_options->argtype == OPTION_HAS_VALUE) {
 						if(strlen(tmp_options->mask) > 0) {
 							reti = regcomp(&regex, tmp_options->mask, REG_EXTENDED);
 							if(reti) {
@@ -1194,7 +1193,7 @@ int config_check_state(int i, JsonNode *jsetting, struct conf_devices_t *device)
 							regfree(&regex);
 						}
 					} else {
-						/* If a protocol has config_state arguments, than these define
+						/* If a protocol has CONFIG_STATE arguments, than these define
 						   the states a protocol can take. Check if the state value
 						   match, these protocol states */
 						
@@ -1316,7 +1315,9 @@ int config_parse_devices(JsonNode *jdevices, struct conf_devices_t *device) {
 				if(tmp_protocols->listener->options) {
 					tmp_options = tmp_protocols->listener->options;
 					while(tmp_options) {
-						if(strcmp(jsettings->key, tmp_options->name) == 0 && (tmp_options->conftype == config_id || tmp_options->conftype == config_value)) {
+						if(strcmp(jsettings->key, tmp_options->name) == 0 
+						   && (tmp_options->conftype == CONFIG_ID || tmp_options->conftype == CONFIG_VALUE)
+						   && (tmp_options->vartype == jsettings->tag)) {
 							valid_setting = 1;
 							break;
 						}
@@ -1353,7 +1354,7 @@ int config_parse_devices(JsonNode *jdevices, struct conf_devices_t *device) {
 					}
 					jsettings = jsettings->next;
 				}
-				if(match == 0 && tmp_options->conftype == config_value) {
+				if(match == 0 && tmp_options->conftype == CONFIG_VALUE) {
 					logprintf(LOG_ERR, "setting \"%s\" of \"%s\", missing", tmp_options->name, device->id);
 					have_error = 1;
 					goto clear;
@@ -1386,7 +1387,7 @@ int config_parse_devices(JsonNode *jdevices, struct conf_devices_t *device) {
 			if(tmp_protocols->listener->options) {
 				tmp_options = tmp_protocols->listener->options;
 				while(tmp_options) {
-					if(tmp_options->conftype == config_state) {
+					if(tmp_options->conftype == CONFIG_STATE) {
 						has_state = 1;
 						break;
 					}

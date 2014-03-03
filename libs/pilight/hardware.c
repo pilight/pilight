@@ -33,6 +33,7 @@
 #include "irq.h"
 #include "wiringPi.h"
 #include "log.h"
+#include "json.h"
 
 #include "../hardware/none.h"
 
@@ -207,7 +208,7 @@ int hardware_parse(JsonNode *root) {
 				jvalues = json_first_child(jchilds);
 				while(jvalues) {
 					if(jvalues->tag == JSON_NUMBER || jvalues->tag == JSON_STRING) {
-						if(strcmp(jvalues->key, hw_options->name) == 0 && hw_options->argtype == has_value) {
+						if(strcmp(jvalues->key, hw_options->name) == 0 && hw_options->argtype == OPTION_HAS_VALUE) {
 							match = 1;
 							break;
 						}
@@ -262,7 +263,7 @@ int hardware_parse(JsonNode *root) {
 				if(jvalues->tag == JSON_NUMBER || jvalues->tag == JSON_STRING) {
 					hw_options = hardware->options;
 					while(hw_options) {
-						if(strcmp(jvalues->key, hw_options->name) == 0) {
+						if(strcmp(jvalues->key, hw_options->name) == 0 && jvalues->tag == hw_options->vartype) {
 							match = 1;
 							break;
 						}

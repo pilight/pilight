@@ -202,9 +202,9 @@ void dht22Init(void) {
 	dht22->devtype = WEATHER;
 	dht22->hwtype = SENSOR;
 
-	options_add(&dht22->options, 't', "temperature", has_value, config_value, "^[0-9]{1,3}$");
-	options_add(&dht22->options, 'h', "humidity", has_value, config_value, "^[0-9]{1,3}$");
-	options_add(&dht22->options, 'g', "gpio", has_value, config_id, "^([0-9]{1}|1[0-9]|20)$");
+	options_add(&dht22->options, 't', "temperature", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, "^[0-9]{1,3}$");
+	options_add(&dht22->options, 'h', "humidity", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, "^[0-9]{1,3}$");
+	options_add(&dht22->options, 'g', "gpio", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, "^([0-9]{1}|1[0-9]|20)$");
 
 	protocol_setting_add_number(dht22, "decimals", 1);
 	protocol_setting_add_number(dht22, "humidity", 1);

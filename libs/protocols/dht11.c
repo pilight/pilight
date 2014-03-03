@@ -206,9 +206,9 @@ void dht11Init(void) {
 	dht11->devtype = WEATHER;
 	dht11->hwtype = SENSOR;
 
-	options_add(&dht11->options, 't', "temperature", has_value, config_value, "^[0-9]{1,3}$");
-	options_add(&dht11->options, 'h', "humidity", has_value, config_value, "^[0-9]{1,3}$");
-	options_add(&dht11->options, 'g', "gpio", has_value, config_id, "^([0-9]{1}|1[0-9]|20)$");
+	options_add(&dht11->options, 't', "temperature", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, "^[0-9]{1,3}$");
+	options_add(&dht11->options, 'h', "humidity", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, "^[0-9]{1,3}$");
+	options_add(&dht11->options, 'g', "gpio", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, "^([0-9]{1}|1[0-9]|20)$");
 
 	protocol_setting_add_number(dht11, "decimals", 0);
 	protocol_setting_add_number(dht11, "humidity", 1);

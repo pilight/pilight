@@ -77,10 +77,10 @@ void genWeatherInit(void) {
 	protocol_device_add(generic_weather, "generic_weather", "Generic Weather Stations");
 	generic_weather->devtype = WEATHER;
 
-	options_add(&generic_weather->options, 'h', "humidity", has_value, config_value, "[0-9]");
-	options_add(&generic_weather->options, 't', "temperature", has_value, config_value, "[0-9]");
-	options_add(&generic_weather->options, 'b', "battery", has_value, config_value, "^[01]$");
-	options_add(&generic_weather->options, 'i', "id", has_value, config_id, "[0-9]");
+	options_add(&generic_weather->options, 'h', "humidity", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, "[0-9]");
+	options_add(&generic_weather->options, 't', "temperature", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, "[0-9]");
+	options_add(&generic_weather->options, 'b', "battery", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, "^[01]$");
+	options_add(&generic_weather->options, 'i', "id", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, "[0-9]");
 
 	protocol_setting_add_number(generic_weather, "decimals", 2);	
 	protocol_setting_add_number(generic_weather, "humidity", 1);

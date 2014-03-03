@@ -122,9 +122,9 @@ void relayInit(void) {
 	relay->devtype = RELAY;
 	relay->hwtype = HWRELAY;
 
-	options_add(&relay->options, 't', "on", no_value, config_state, NULL);
-	options_add(&relay->options, 'f', "off", no_value, config_state, NULL);
-	options_add(&relay->options, 'g', "gpio", has_value, config_id, "^([0-9]{1}|1[0-9]|20)$");
+	options_add(&relay->options, 't', "on", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL);
+	options_add(&relay->options, 'f', "off", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL);
+	options_add(&relay->options, 'g', "gpio", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, "^([0-9]{1}|1[0-9]|20)$");
 
 	protocol_setting_add_string(relay, "default", "off");
 	protocol_setting_add_string(relay, "states", "on,off");
