@@ -155,10 +155,11 @@ int settings_file_exists(char *filename) {
 
 int settings_parse(JsonNode *root) {
 	int have_error = 0;
+
+#ifdef WEBSERVER
 	int web_port = 0;
 	int own_port = 0;
 
-#ifdef WEBSERVER
 	char *webgui_tpl = malloc(strlen(WEBGUI_TEMPLATE)+1);
 	if(!webgui_tpl) {
 		logprintf(LOG_ERR, "out of memory");
@@ -189,9 +190,11 @@ int settings_parse(JsonNode *root) {
 				have_error = 1;
 				goto clear;
 			} else {
+#ifdef WEBSERVER			
 				if(strcmp(jsettings->key, "port") == 0) {
 					own_port = (int)jsettings->number_;
 				}
+#endif
 				settings_add_number(jsettings->key, (int)jsettings->number_);
 			}
 		} else if(strcmp(jsettings->key, "standalone") == 0) {

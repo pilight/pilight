@@ -24,6 +24,7 @@
 #include <unistd.h>
 #include <regex.h>
 #include <sys/stat.h>
+#include<ctype.h>
 
 #include "../../pilight.h"
 #include "config.h"
@@ -40,6 +41,7 @@
 
 /* Struct to store the locations */
 struct conf_locations_t *conf_locations = NULL;
+unsigned char alphanum[62] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
 
 int config_update(char *protoname, JsonNode *json, JsonNode **out) {
 	/* The pointer to the config locations */
@@ -1429,7 +1431,7 @@ int config_parse_locations(JsonNode *jlocations, struct conf_locations_t *locati
 	/* Device name */
 	char *name = NULL;
 
-	int i = 0, have_error = 0, match = 0;
+	int i = 0, have_error = 0, match = 0, x = 0;
 	/* Check for duplicate name setting */
 	int nrname = 0;
 	/* Check for duplicate order setting */
@@ -1460,7 +1462,7 @@ int config_parse_locations(JsonNode *jlocations, struct conf_locations_t *locati
 		if(!((strcmp(jdevices->key, "name") == 0 && jdevices->tag == JSON_STRING) || (strcmp(jdevices->key, "order") == 0 && jdevices->tag == JSON_NUMBER) || (jdevices->tag == JSON_OBJECT))) {
 			logprintf(LOG_ERR, "device #%d \"%s\" of \"%s\", invalid field(s)", i, jdevices->key, location->id);
 			have_error = 1;
-				goto clear;
+			goto clear;
 		} else if(jdevices->tag == JSON_OBJECT) {
 			/* Save the name of the device */
 			if(json_find_string(jdevices, "name", &name) != 0) {
@@ -1473,6 +1475,13 @@ int config_parse_locations(JsonNode *jlocations, struct conf_locations_t *locati
 				have_error = 1;
 				goto clear;
 			} else {
+				for(x=0;x<strlen(jdevices->key);x++) {
+					if(!isalnum(jdevices->key[x])) {
+						logprintf(LOG_ERR, "device #%d \"%s\" of \"%s\", not alphanumeric", i, jdevices->key, location->id);
+						have_error = 1;
+						goto clear;
+					}
+				}
 				/* Check for duplicate fields */
 				tmp_devices = location->devices;
 				while(tmp_devices) {
@@ -1610,7 +1619,7 @@ int config_parse(JsonNode *root) {
 	/* Location name */
 	char *name;
 
-	int i = 0, have_error = 0;
+	int i = 0, have_error = 0, x = 0;
 
 	jlocations = json_first_child(root);
 
@@ -1627,6 +1636,14 @@ int config_parse(JsonNode *root) {
 			have_error = 1;
 			goto clear;
 		} else {
+			for(x=0;x<strlen(jlocations->key);x++) {
+				if(!isalnum(jlocations->key[x])) {
+					logprintf(LOG_ERR, "location #%d \"%s\", not alphanumeric", i, jlocations->key);
+					have_error = 1;
+					goto clear;
+				}
+			}		
+		
 			/* Check for duplicate locations */
 			tmp_locations = conf_locations;
 			while(tmp_locations) {

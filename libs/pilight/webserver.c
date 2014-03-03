@@ -54,7 +54,7 @@ unsigned short webserver_loop = 1;
 unsigned short webserver_php = 1;
 char *webserver_root = NULL;
 char *webgui_tpl = NULL;
-unsigned char alphabet[64] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+unsigned char webserver_validchar[64] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 struct mg_server *mgserver[WEBSERVER_WORKERS];
 
 unsigned short webgui_tpl_free = 0;
@@ -196,9 +196,9 @@ int base64decode(unsigned char *dest, unsigned char *src, int l) {
 	int rpos;
 	int wpos = 0;
 
-	for(i=(sizeof alphabet)-1;i>=0;i--) {
-		inalphabet[alphabet[i]] = 1;
-		decoder[alphabet[i]] = (char)i;
+	for(i=(sizeof webserver_validchar)-1;i>=0;i--) {
+		inalphabet[webserver_validchar[i]] = 1;
+		decoder[webserver_validchar[i]] = (char)i;
 	}
 
 	char_count = 0;
