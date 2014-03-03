@@ -1251,6 +1251,7 @@ void *clientize(void *param) {
 	while(main_loop) {
 		client_loop = 1;
 		steps = WELCOME;
+		ssdp_list = NULL;
 		if(ssdp_seek(&ssdp_list) == -1) {
 			logprintf(LOG_ERR, "no pilight ssdp connections found");
 			client_loop = 0;
@@ -1350,7 +1351,7 @@ void *clientize(void *param) {
 					if(recvBuff) {
 						sfree((void *)&recvBuff);
 					}
-					goto close;
+					main_loop = 0;
 				break;
 			}
 		}
@@ -1361,7 +1362,6 @@ void *clientize(void *param) {
 		}
 
 		if(main_loop == 1) {
-			socket_close(sockfd);
 			config_gc();
 			logprintf(LOG_NOTICE, "connection to main pilight daemon lost");
 			logprintf(LOG_NOTICE, "trying to reconnect...");
@@ -1369,11 +1369,9 @@ void *clientize(void *param) {
 		}
 	}
 
-close:
-	if(main_loop == 1) {
-		socket_close(sockfd);
-		exit(EXIT_FAILURE);
-	}
+	socket_close(sockfd);
+	exit(EXIT_FAILURE);
+
 	return NULL;
 }
 
