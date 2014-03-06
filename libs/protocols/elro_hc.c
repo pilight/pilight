@@ -172,13 +172,12 @@ void elroHCInit(void) {
 	elro_hc->binlen = 12;
 	elro_hc->lsb = 3;
 
-	options_add(&elro_hc->options, 's', "systemcode", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, "^(3[012]?|[012][0-9]|[0-9]{1})$");
-	options_add(&elro_hc->options, 'u', "unitcode", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, "^(3[012]?|[012][0-9]|[0-9]{1})$");
-	options_add(&elro_hc->options, 't', "on", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL);
-	options_add(&elro_hc->options, 'f', "off", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL);
+	options_add(&elro_hc->options, 's', "systemcode", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, NULL, "^(3[012]?|[012][0-9]|[0-9]{1})$");
+	options_add(&elro_hc->options, 'u', "unitcode", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, NULL, "^(3[012]?|[012][0-9]|[0-9]{1})$");
+	options_add(&elro_hc->options, 't', "on", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
+	options_add(&elro_hc->options, 'f', "off", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
 
-	protocol_setting_add_string(elro_hc, "states", "on,off");	
-	protocol_setting_add_number(elro_hc, "readonly", 0);
+	options_add(&elro_hc->options, 0, "gui-readonly", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 	
 	elro_hc->parseBinary=&elroHCParseBinary;
 	elro_hc->createCode=&elroHCCreateCode;

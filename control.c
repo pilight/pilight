@@ -83,14 +83,14 @@ int main(int argc, char **argv) {
 	JsonNode *jvalues = NULL;
 
 	/* Define all CLI arguments of this program */
-	options_add(&options, 'H', "help", OPTION_NO_VALUE, 0, JSON_NULL, NULL);
-	options_add(&options, 'V', "version", OPTION_NO_VALUE, 0, JSON_NULL, NULL);
-	options_add(&options, 'l', "location", OPTION_HAS_VALUE, 0, JSON_NULL, NULL);
-	options_add(&options, 'd', "device", OPTION_HAS_VALUE, 0,  JSON_NULL, NULL);
-	options_add(&options, 's', "state", OPTION_HAS_VALUE, 0, JSON_NULL, NULL);
-	options_add(&options, 'v', "values", OPTION_HAS_VALUE, 0, JSON_NULL, NULL);
-	options_add(&options, 'S', "server", OPTION_HAS_VALUE, 0, JSON_NULL, "^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]).){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$");
-	options_add(&options, 'P', "port", OPTION_HAS_VALUE, 0, JSON_NULL, "[0-9]{1,4}");
+	options_add(&options, 'H', "help", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
+	options_add(&options, 'V', "version", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
+	options_add(&options, 'l', "location", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, NULL);
+	options_add(&options, 'd', "device", OPTION_HAS_VALUE, 0,  JSON_NULL, NULL, NULL);
+	options_add(&options, 's', "state", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, NULL);
+	options_add(&options, 'v', "values", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, NULL);
+	options_add(&options, 'S', "server", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, "^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]).){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$");
+	options_add(&options, 'P', "port", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, "[0-9]{1,4}");
 
 	/* Store all CLI arguments for later usage
 	   and also check if the CLI arguments where

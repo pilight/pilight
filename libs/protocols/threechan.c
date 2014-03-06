@@ -65,15 +65,16 @@ void threechanInit(void) {
 	threechan->pulse = 15;
 	threechan->rawlen = 74;
 
-	options_add(&threechan->options, 't', "temperature", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, "^[0-9]{1,3}$");
-	options_add(&threechan->options, 'i', "id", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, "[0-9]");
-	options_add(&threechan->options, 'h', "humidity", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, "[0-9]");
-	options_add(&threechan->options, 'b', "battery", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, "^[01]$");
+	options_add(&threechan->options, 't', "temperature", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, NULL, "^[0-9]{1,3}$");
+	options_add(&threechan->options, 'i', "id", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, NULL, "[0-9]");
+	options_add(&threechan->options, 'h', "humidity", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, NULL, "[0-9]");
+	options_add(&threechan->options, 'b', "battery", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, NULL, "^[01]$");
 
-	protocol_setting_add_number(threechan, "decimals", 1);
-	protocol_setting_add_number(threechan, "humidity", 1);
-	protocol_setting_add_number(threechan, "temperature", 1);
-	protocol_setting_add_number(threechan, "battery", 1);
+	options_add(&threechan->options, 0, "device-decimals", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)1, "[0-9]");
+	options_add(&threechan->options, 0, "gui-decimals", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)1, "[0-9]");
+	options_add(&threechan->options, 0, "gui-show-humidity", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
+	options_add(&threechan->options, 0, "gui-show-temperature", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
+	options_add(&threechan->options, 0, "gui-show-battery", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
 
 	threechan->parseCode=&threechanParseCode;
 }

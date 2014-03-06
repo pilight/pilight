@@ -166,13 +166,12 @@ void arctechSrOldInit(void) {
 	arctech_screen_old->binlen = 12;
 	arctech_screen_old->lsb = 2;
 
-	options_add(&arctech_screen_old->options, 't', "up", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL);
-	options_add(&arctech_screen_old->options, 'f', "down", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL);
-	options_add(&arctech_screen_old->options, 'u', "unit", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, "^([0-9]{1}|[1][0-5])$");
-	options_add(&arctech_screen_old->options, 'i', "id", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, "^(3[012]?|[012][0-9]|[0-9]{1})$");
+	options_add(&arctech_screen_old->options, 't', "up", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
+	options_add(&arctech_screen_old->options, 'f', "down", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
+	options_add(&arctech_screen_old->options, 'u', "unit", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, NULL, "^([0-9]{1}|[1][0-5])$");
+	options_add(&arctech_screen_old->options, 'i', "id", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, NULL, "^(3[012]?|[012][0-9]|[0-9]{1})$");
 
-	protocol_setting_add_string(arctech_screen_old, "states", "up,down");
-	protocol_setting_add_number(arctech_screen_old, "readonly", 0);
+	options_add(&arctech_screen_old->options, 0, "gui-readonly", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 	
 	arctech_screen_old->parseBinary=&arctechSrOldParseBinary;
 	arctech_screen_old->createCode=&arctechSrOldCreateCode;

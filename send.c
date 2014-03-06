@@ -131,11 +131,11 @@ int main(int argc, char **argv) {
 	JsonNode *code = json_mkobject();
 
 	/* Define all CLI arguments of this program */
-	options_add(&options, 'H', "help", OPTION_NO_VALUE, 0, JSON_NULL, NULL);
-	options_add(&options, 'V', "version", OPTION_NO_VALUE, 0, JSON_NULL, NULL);
-	options_add(&options, 'p', "protocol", OPTION_HAS_VALUE, 0, JSON_NULL, NULL);
-	options_add(&options, 'S', "server", OPTION_HAS_VALUE, 0, JSON_NULL, "^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]).){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$");
-	options_add(&options, 'P', "port", OPTION_HAS_VALUE, 0, JSON_NULL, "[0-9]{1,4}");
+	options_add(&options, 'H', "help", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
+	options_add(&options, 'V', "version", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
+	options_add(&options, 'p', "protocol", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, NULL);
+	options_add(&options, 'S', "server", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, "^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]).){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$");
+	options_add(&options, 'P', "port", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, "[0-9]{1,4}");
 
 	/* Initialize protocols */
 	protocol_init();
@@ -309,7 +309,7 @@ int main(int argc, char **argv) {
 			and those that are called by the user */
 			if((options_get_id(&protocol->options, tmp->name, &itmp) == 0)
 			&& strlen(tmp->value) > 0) {
-				if(isNumeric(tmp->value) == EXIT_SUCCESS) {
+				if(isNumeric(tmp->value) == 0) {
 					json_append_member(code, tmp->name, json_mknumber(atoi(tmp->value)));
 				} else {
 					json_append_member(code, tmp->name, json_mkstring(tmp->value));

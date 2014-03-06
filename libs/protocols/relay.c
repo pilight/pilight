@@ -49,7 +49,7 @@ int relayCreateCode(JsonNode *code) {
 	int have_error = 0;
 
 	relay->rawlen = 0;
-	if(protocol_setting_get_string(relay, "default", &def) != 0) {
+	if(json_find_string(code, "default-state", &def) != 0) {
 		def = malloc(4);
 		if(!def) {
 			logprintf(LOG_ERR, "out of memory");
@@ -114,6 +114,27 @@ void relayPrintHelp(void) {
 	printf("\t -g --gpio=gpio\t\t\tthe gpio the relay is connected to\n");
 }
 
+int relayCheckValues(JsonNode *code) {
+	char *def = NULL;
+	int free_def = 0;
+
+	if(json_find_string(code, "default-state", &def) != 0) {
+		def = malloc(4);
+		if(!def) {
+			logprintf(LOG_ERR, "out of memory");
+			exit(EXIT_FAILURE);
+		}
+		free_def = 1;
+		strcpy(def, "off");
+	}
+	if(strcmp(def, "on") != 0 && strcmp(def, "off") != 0) {
+		if(free_def) sfree((void *)&def);
+		return 1;
+	}
+	if(free_def) sfree((void *)&def);
+	return 0;
+}
+
 void relayInit(void) {
 
 	protocol_register(&relay);
@@ -122,14 +143,14 @@ void relayInit(void) {
 	relay->devtype = RELAY;
 	relay->hwtype = HWRELAY;
 
-	options_add(&relay->options, 't', "on", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL);
-	options_add(&relay->options, 'f', "off", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL);
-	options_add(&relay->options, 'g', "gpio", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, "^([0-9]{1}|1[0-9]|20)$");
+	options_add(&relay->options, 't', "on", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
+	options_add(&relay->options, 'f', "off", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
+	options_add(&relay->options, 'g', "gpio", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, NULL, "^([0-9]{1}|1[0-9]|20)$");
 
-	protocol_setting_add_string(relay, "default", "off");
-	protocol_setting_add_string(relay, "states", "on,off");
-	protocol_setting_add_number(relay, "readonly", 0);
+	options_add(&relay->options, 0, "default-state", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_STRING, (void *)((char *)"off"), NULL);
+	options_add(&relay->options, 0, "gui-readonly", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 	
+	relay->checkValues=&relayCheckValues;
 	relay->createCode=&relayCreateCode;
 	relay->printHelp=&relayPrintHelp;
 }

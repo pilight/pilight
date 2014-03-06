@@ -74,12 +74,11 @@ void genSwitchInit(void) {
 	protocol_device_add(generic_switch, "generic_switch", "Generic Switches");
 	generic_switch->devtype = SWITCH;
 
-	options_add(&generic_switch->options, 't', "on", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL);
-	options_add(&generic_switch->options, 'f', "off", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL);
-	options_add(&generic_switch->options, 'i', "id", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, "^([0-9]{1,})$");
+	options_add(&generic_switch->options, 't', "on", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
+	options_add(&generic_switch->options, 'f', "off", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
+	options_add(&generic_switch->options, 'i', "id", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, NULL, "^([0-9]{1,})$");
 
-	protocol_setting_add_string(generic_switch, "states", "on,off");
-	protocol_setting_add_number(generic_switch, "readonly", 1);
+	options_add(&generic_switch->options, 0, "gui-readonly", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 
 	generic_switch->printHelp=&genSwitchPrintHelp;
 	generic_switch->createCode=&genSwitchCreateCode;

@@ -191,14 +191,13 @@ void homeEasyOldInit(void) {
 	home_easy_old->binlen = 12;
 	home_easy_old->lsb = 3;
 
-	options_add(&home_easy_old->options, 's', "systemcode", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, "^(3[012]?|[012][0-9]|[0-9]{1})$");
-	options_add(&home_easy_old->options, 'u', "unitcode", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, "^(3[012]?|[012][0-9]|[0-9]{1})$");
-	options_add(&home_easy_old->options, 'a', "all", OPTION_NO_VALUE, CONFIG_STATE, JSON_NUMBER, NULL);
-	options_add(&home_easy_old->options, 't', "on", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL);
-	options_add(&home_easy_old->options, 'f', "off", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL);
+	options_add(&home_easy_old->options, 's', "systemcode", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, NULL, "^(3[012]?|[012][0-9]|[0-9]{1})$");
+	options_add(&home_easy_old->options, 'u', "unitcode", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, NULL, "^(3[012]?|[012][0-9]|[0-9]{1})$");
+	options_add(&home_easy_old->options, 'a', "all", OPTION_NO_VALUE, CONFIG_STATE, JSON_NUMBER, NULL, NULL);
+	options_add(&home_easy_old->options, 't', "on", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
+	options_add(&home_easy_old->options, 'f', "off", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
 
-	protocol_setting_add_string(home_easy_old, "states", "on,off");	
-	protocol_setting_add_number(home_easy_old, "readonly", 0);
+	options_add(&home_easy_old->options, 0, "gui-readonly", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 	
 	home_easy_old->parseBinary=&homeEasyOldParseBinary;
 	home_easy_old->createCode=&homeEasyOldCreateCode;

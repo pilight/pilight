@@ -375,7 +375,7 @@ gc:
 }
 
 /* Add a new option to the options struct */
-void options_add(struct options_t **opt, int id, const char *name, int argtype, int conftype, int vartype, const char *mask) {
+void options_add(struct options_t **opt, int id, const char *name, int argtype, int conftype, int vartype, void *def, const char *mask) {
 	char *ctmp = NULL;
 	char *nname = malloc(strlen(name)+1);
 	if(!nname) {
@@ -396,7 +396,7 @@ void options_add(struct options_t **opt, int id, const char *name, int argtype, 
 		logprintf(LOG_ERR, "trying to add an option without name");
 		sfree((void *)&nname);
 		exit(EXIT_FAILURE);
-	} else if(options_get_name(opt, id, &ctmp) == 0) {
+	} else if(id != 0 && options_get_name(opt, id, &ctmp) == 0) {
 		logprintf(LOG_ERR, "duplicate option id: %c", id);
 		sfree((void *)&nname);
 		exit(EXIT_FAILURE);
@@ -420,6 +420,7 @@ void options_add(struct options_t **opt, int id, const char *name, int argtype, 
 		optnode->argtype = argtype;
 		optnode->conftype = conftype;
 		optnode->vartype = vartype;
+		optnode->def = def;
 		optnode->value = malloc(4);
 		if(!optnode->value) {
 			logprintf(LOG_ERR, "out of memory");
@@ -507,6 +508,7 @@ void options_merge(struct options_t **a, struct options_t **b) {
 		optnode->argtype = temp->argtype;
 		optnode->conftype = temp->conftype;
 		optnode->vartype = temp->vartype;
+		optnode->def = temp->def;
 		optnode->next = *a;
 		*a = optnode;
 		temp = temp->next;

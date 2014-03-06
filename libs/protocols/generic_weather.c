@@ -77,15 +77,16 @@ void genWeatherInit(void) {
 	protocol_device_add(generic_weather, "generic_weather", "Generic Weather Stations");
 	generic_weather->devtype = WEATHER;
 
-	options_add(&generic_weather->options, 'h', "humidity", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, "[0-9]");
-	options_add(&generic_weather->options, 't', "temperature", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, "[0-9]");
-	options_add(&generic_weather->options, 'b', "battery", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, "^[01]$");
-	options_add(&generic_weather->options, 'i', "id", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, "[0-9]");
+	options_add(&generic_weather->options, 'h', "humidity", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, NULL, "[0-9]");
+	options_add(&generic_weather->options, 't', "temperature", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, NULL, "[0-9]");
+	options_add(&generic_weather->options, 'b', "battery", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, NULL, "^[01]$");
+	options_add(&generic_weather->options, 'i', "id", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, NULL, "[0-9]");
 
-	protocol_setting_add_number(generic_weather, "decimals", 2);	
-	protocol_setting_add_number(generic_weather, "humidity", 1);
-	protocol_setting_add_number(generic_weather, "temperature", 1);
-	protocol_setting_add_number(generic_weather, "battery", 0);
+	options_add(&generic_weather->options, 0, "device-decimals", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)2, "[0-9]");
+	options_add(&generic_weather->options, 0, "gui-decimals", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)2, "[0-9]");
+	options_add(&generic_weather->options, 0, "gui-show-humidity", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
+	options_add(&generic_weather->options, 0, "gui-show-temperature", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
+	options_add(&generic_weather->options, 0, "gui-show-battery", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 
 	generic_weather->printHelp=&genWeatherPrintHelp;
 	generic_weather->createCode=&genWeatherCreateCode;

@@ -54,7 +54,6 @@ void *wundergroundParse(void *param) {
 	struct JsonNode *jid = NULL;
 	struct JsonNode *jchild = NULL;
 	struct JsonNode *jchild1 = NULL;
-	struct JsonNode *jsettings = NULL;
 	struct JsonNode *node = NULL;
 	struct wunderground_data_t *wunderground_data = NULL;
 	struct wunderground_data_t *wtmp = NULL;	
@@ -122,9 +121,8 @@ void *wundergroundParse(void *param) {
 			jchild = jchild->next;
 		}
 	}
-	if((jsettings = json_find_member(json, "settings"))) {
-		json_find_number(jsettings, "interval", &interval);
-	}
+
+	json_find_number(json, "poll-interval", &interval);
 
 	while(wunderground_loop) {
 		wtmp = wunderground_data;
@@ -161,7 +159,7 @@ void *wundergroundParse(void *param) {
 											json_append_member(code, "temperature", json_mknumber((int)(temp*100)));
 											json_append_member(code, "humidity", json_mknumber((int)(humi*100)));
 											
-											json_append_member(wunderground->message, "code", code);
+											json_append_member(wunderground->message, "message", code);
 											json_append_member(wunderground->message, "origin", json_mkstring("receiver"));
 											json_append_member(wunderground->message, "protocol", json_mkstring(wunderground->id));
 											
@@ -220,7 +218,8 @@ void wundergroundInitDev(JsonNode *jdevice) {
 
 int wundergroundCheckValues(JsonNode *code) {
 	int interval = 900;
-	protocol_setting_get_number(wunderground, "interval", &interval);
+
+	json_find_number(code, "poll-interval", &interval);
 
 	if(interval < 900) {
 		return 1;
@@ -246,17 +245,17 @@ void wundergroundInit(void) {
 	wunderground->devtype = WEATHER;
 	wunderground->hwtype = API;
 
-	options_add(&wunderground->options, 't', "temperature", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, "^[0-9]{1,5}$");
-	options_add(&wunderground->options, 'h', "humidity", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, "^[0-9]{1,5}$");
-	options_add(&wunderground->options, 'a', "api", OPTION_HAS_VALUE, CONFIG_ID, JSON_STRING, "^[a-z0-9]+$");
-	options_add(&wunderground->options, 'l', "location", OPTION_HAS_VALUE, CONFIG_ID, JSON_STRING, "^[a-z]+$");
-	options_add(&wunderground->options, 'c', "country", OPTION_HAS_VALUE, CONFIG_ID, JSON_STRING, "^[a-z]+$");
+	options_add(&wunderground->options, 't', "temperature", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, NULL, "^[0-9]{1,5}$");
+	options_add(&wunderground->options, 'h', "humidity", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, NULL, "^[0-9]{1,5}$");
+	options_add(&wunderground->options, 'a', "api", OPTION_HAS_VALUE, CONFIG_ID, JSON_STRING, NULL, "^[a-z0-9]+$");
+	options_add(&wunderground->options, 'l', "location", OPTION_HAS_VALUE, CONFIG_ID, JSON_STRING, NULL, "^[a-z]+$");
+	options_add(&wunderground->options, 'c', "country", OPTION_HAS_VALUE, CONFIG_ID, JSON_STRING, NULL, "^[a-z]+$");
 
-	protocol_setting_add_number(wunderground, "decimals", 2);
-	protocol_setting_add_number(wunderground, "humidity", 1);
-	protocol_setting_add_number(wunderground, "temperature", 1);
-	protocol_setting_add_number(wunderground, "battery", 0);
-	protocol_setting_add_number(wunderground, "interval", 900);
+	options_add(&wunderground->options, 0, "device-decimals", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)2, "[0-9]");
+	options_add(&wunderground->options, 0, "gui-decimals", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)2, "[0-9]");
+	options_add(&wunderground->options, 0, "gui-show-humidity", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
+	options_add(&wunderground->options, 0, "gui-show-temperature", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
+	options_add(&wunderground->options, 0, "poll-interval", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)900, "[0-9]");
 
 	wunderground->initDev=&wundergroundInitDev;
 	wunderground->checkValues=&wundergroundCheckValues;

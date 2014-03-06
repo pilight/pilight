@@ -52,7 +52,7 @@ void *dht11Parse(void *param) {
 	struct JsonNode *jchild = NULL;
 	int *id = 0;
 	int nrid = 0, y = 0, interval = 10;
-	int temp_corr = 0, humi_corr = 0;
+	int temp_offset = 0, humi_offset = 0;
 	int itmp = 0, nrloops = 0;
 
 	dht11_threads++;
@@ -69,11 +69,9 @@ void *dht11Parse(void *param) {
 		}
 	}
 
-	if((jsettings = json_find_member(json, "settings"))) {
-		json_find_number(jsettings, "interval", &interval);
-		json_find_number(jsettings, "temp-corr", &temp_corr);
-		json_find_number(jsettings, "humi-corr", &humi_corr);
-	}
+	json_find_number(json, "poll-interval", &interval);
+	json_find_number(json, "device-temperature-offset", &temp_offset);
+	json_find_number(json, "device-humidity-offset", &humi_offset);
 
 	while(dht11_loop) {
 		if(protocol_thread_wait(node, interval, &nrloops) == ETIMEDOUT) {
@@ -150,8 +148,8 @@ void *dht11Parse(void *param) {
 
 						int h = dht11_dat[0];
 						int t = dht11_dat[2];
-						t += temp_corr;
-						h += humi_corr;
+						t += temp_offset;
+						h += humi_offset;
 						
 						dht11->message = json_mkobject();
 						JsonNode *code = json_mkobject();
@@ -159,7 +157,7 @@ void *dht11Parse(void *param) {
 						json_append_member(code, "temperature", json_mknumber(t));
 						json_append_member(code, "humidity", json_mknumber(h));
 
-						json_append_member(dht11->message, "code", code);
+						json_append_member(dht11->message, "message", code);
 						json_append_member(dht11->message, "origin", json_mkstring("receiver"));
 						json_append_member(dht11->message, "protocol", json_mkstring(dht11->id));
 						pilight.broadcast(dht11->id, dht11->message);
@@ -206,15 +204,15 @@ void dht11Init(void) {
 	dht11->devtype = WEATHER;
 	dht11->hwtype = SENSOR;
 
-	options_add(&dht11->options, 't', "temperature", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, "^[0-9]{1,3}$");
-	options_add(&dht11->options, 'h', "humidity", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, "^[0-9]{1,3}$");
-	options_add(&dht11->options, 'g', "gpio", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, "^([0-9]{1}|1[0-9]|20)$");
+	options_add(&dht11->options, 't', "temperature", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, NULL, "^[0-9]{1,3}$");
+	options_add(&dht11->options, 'h', "humidity", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, NULL, "^[0-9]{1,3}$");
+	options_add(&dht11->options, 'g', "gpio", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, NULL, "^([0-9]{1}|1[0-9]|20)$");
 
-	protocol_setting_add_number(dht11, "decimals", 0);
-	protocol_setting_add_number(dht11, "humidity", 1);
-	protocol_setting_add_number(dht11, "temperature", 1);
-	protocol_setting_add_number(dht11, "battery", 0);
-	protocol_setting_add_number(dht11, "interval", 10);
+	options_add(&dht11->options, 0, "device-decimals", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)0, "[0-9]");
+	options_add(&dht11->options, 0, "device-temperature-offset", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)0, "[0-9]");
+	options_add(&dht11->options, 0, "gui-decimals", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)0, "[0-9]");
+	options_add(&dht11->options, 0, "gui-show-temperature", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
+	options_add(&dht11->options, 0, "poll-interval", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)10, "[0-9]");
 
 	dht11->initDev=&dht11InitDev;
 	dht11->gc=&dht11GC;

@@ -95,6 +95,7 @@ typedef struct sendqueue_t {
 	unsigned int id;
 	char *message;
 	char *protoname;
+	char *settings;
 	struct protocol_t *protopt;
 	int code[255];
 	char uuid[UUID_LENGTH];
@@ -227,7 +228,6 @@ void broadcast_queue(char *protoname, JsonNode *json) {
 	bnode->id = 1000000 * (unsigned int)tcurrent.tv_sec + (unsigned int)tcurrent.tv_usec;
 
 	char *jstr = json_stringify(json, NULL);
-
 	bnode->jmessage = json_decode(jstr);
 	sfree((void *)&jstr);
 
@@ -335,7 +335,7 @@ void receiver_create_message(protocol_t *protocol) {
 		if(valid && json_validate(valid) == true) {
 			JsonNode *jmessage = json_mkobject();
 
-			json_append_member(jmessage, "code", json_decode(valid));
+			json_append_member(jmessage, "message", json_decode(valid));
 			json_append_member(jmessage, "origin", json_mkstring("receiver"));
 			json_append_member(jmessage, "protocol", json_mkstring(protocol->id));
 			if(strlen(pilight_uuid) > 0) {
@@ -555,16 +555,21 @@ void *send_code(void *param) {
 
 			JsonNode *message = NULL;
 
-			if(sendqueue->message) {
+			if(sendqueue->message && strcmp(sendqueue->message, "{}") != 0) {
 				if(json_validate(sendqueue->message) == true) {
 					message = json_mkobject();
 					json_append_member(message, "origin", json_mkstring("sender"));
 					json_append_member(message, "protocol", json_mkstring(protocol->id));
-					json_append_member(message, "code", json_decode(sendqueue->message));
+					json_append_member(message, "message", json_decode(sendqueue->message));
 					if(strlen(sendqueue->uuid) > 0) {
 						json_append_member(message, "uuid", json_mkstring(sendqueue->uuid));
 					}
 					json_append_member(message, "repeat", json_mknumber(1));
+				}
+			}
+			if(sendqueue->settings && strcmp(sendqueue->settings, "{}") != 0) {
+				if(json_validate(sendqueue->settings) == true) {
+					json_append_member(message, "settings", json_decode(sendqueue->settings));
 				}
 			}
 
@@ -617,6 +622,9 @@ void *send_code(void *param) {
 			if(tmp->message) {
 				sfree((void *)&tmp->message);
 			}
+			if(tmp->settings) {
+				sfree((void *)&tmp->settings);
+			}
 			sfree((void *)&tmp->protoname);
 			sendqueue = sendqueue->next;
 			sfree((void *)&tmp);
@@ -639,7 +647,6 @@ void send_queue(JsonNode *json) {
 	struct protocol_t *protocol = NULL;
 
 	JsonNode *jcode = NULL;
-	JsonNode *jsettings = NULL;
 	JsonNode *jprotocols = NULL;
 	JsonNode *jprotocol = NULL;
 
@@ -670,26 +677,6 @@ void send_queue(JsonNode *json) {
 					}
 				}
 				if(match == 1 && protocol->createCode) {
-					/* Temporary alter the protocol specific settings */
-					if((jsettings = json_find_member(jcode, "settings"))) {
-						JsonNode *jchild = NULL;
-						if((jchild = json_first_child(jsettings))) {
-							while(jchild) {
-								if(jchild->tag == JSON_NUMBER) {
-									if(protocol_setting_check_number(protocol, jchild->key, (int)jchild->number_) == 0) {
-										protocol_setting_update_number(protocol, jchild->key, (int)jchild->number_);
-									}
-								} else if(jchild->tag == JSON_STRING) {
-									if(protocol_setting_check_string(protocol, jchild->key, jchild->string_) == 0) {
-										protocol_setting_update_string(protocol, jchild->key, jchild->string_);
-									}
-								}
-								jchild = jchild->next;
-							}
-							json_delete(jchild);
-						}
-					}
-
 					/* Let the protocol create his code */
 					if(protocol->createCode(jcode) == 0) {
 						pthread_mutex_lock(&sendqueue_lock);
@@ -725,6 +712,27 @@ void send_queue(JsonNode *json) {
 						}
 						strcpy(mnode->protoname, protocol->id);
 						mnode->protopt = protocol;
+
+						struct options_t *tmp_options = protocol->options;
+						int itmp = 0;
+						char *stmp = NULL;
+						struct JsonNode *jsettings = json_mkobject();
+						while(tmp_options) {
+							if(tmp_options->conftype == CONFIG_SETTING) {
+								if(tmp_options->vartype == JSON_NUMBER && json_find_number(jcode, tmp_options->name, &itmp) == 0) {
+									json_append_member(jsettings, tmp_options->name, json_mknumber(itmp));
+								} else if(tmp_options->vartype == JSON_STRING && json_find_string(jcode, tmp_options->name, &stmp) == 0) {
+									json_append_member(jsettings, tmp_options->name, json_mkstring(stmp));
+								}
+							}
+							tmp_options = tmp_options->next;
+						}
+						char *strsett = json_stringify(jsettings, NULL);
+						mnode->settings = malloc(strlen(strsett)+1);
+						strcpy(mnode->settings, strsett);
+						sfree((void *)&strsett);
+						json_delete(jsettings);
+
 						if(uuid) {
 							strcpy(mnode->uuid, uuid);
 						} else {
@@ -742,26 +750,6 @@ void send_queue(JsonNode *json) {
 						pthread_mutex_unlock(&sendqueue_lock);
 						pthread_cond_signal(&sendqueue_signal);
 					}
-
-					/* Restore the protocol specific settings to their default values */
-					if((jsettings = json_find_member(jcode, "settings"))) {
-						JsonNode *jchild = NULL;
-						if((jchild = json_first_child(jsettings))) {
-							while(jchild) {
-								if(jchild->tag == JSON_NUMBER) {
-									if(protocol_setting_check_number(protocol, jchild->key, (int)jchild->number_) == 0) {
-										protocol_setting_restore(protocol, jchild->key);
-									}
-								} else if(jchild->tag == JSON_STRING) {
-									if(protocol_setting_check_string(protocol, jchild->key, jchild->string_) == 0) {
-										protocol_setting_restore(protocol, jchild->key);
-									}
-								}
-								jchild = jchild->next;
-							}
-							json_delete(jchild);
-						}
-					}
 				}
 				jprotocol = jprotocol->next;
 			}
@@ -769,7 +757,7 @@ void send_queue(JsonNode *json) {
 
 		if(jcode) {
 			json_delete(jcode);
-		}
+		}		
 	}
 }
 
@@ -790,13 +778,11 @@ void control_device(struct conf_devices_t *dev, char *state, JsonNode *values) {
 	struct conf_values_t *val = NULL;
 	struct options_t *opt = NULL;
 	struct protocols_t *tmp_protocols = NULL;
-	unsigned short has_settings = 0;
 
 	char *ctmp = NULL;
 
 	JsonNode *code = json_mkobject();
 	JsonNode *json = json_mkobject();
-	JsonNode *jsettings = json_mkobject();
 	JsonNode *jprotocols = json_mkarray();
 
 	/* Check all protocol options */
@@ -811,7 +797,8 @@ void control_device(struct conf_devices_t *dev, char *state, JsonNode *values) {
 					if(strcmp(sett->name, "id") == 0) {
 						val = sett->values;
 						while(val) {
-							if(opt->conftype == CONFIG_ID && strcmp(val->name, opt->name) == 0 && json_find_string(code, val->name, &ctmp) != 0) {
+							if((opt->conftype == CONFIG_ID)
+							   && strcmp(val->name, opt->name) == 0 && json_find_string(code, val->name, &ctmp) != 0) {
 								if(val->type == CONFIG_TYPE_STRING) {
 									json_append_member(code, val->name, json_mkstring(val->value));
 								} else if(val->type == CONFIG_TYPE_NUMBER) {
@@ -821,18 +808,14 @@ void control_device(struct conf_devices_t *dev, char *state, JsonNode *values) {
 							val = val->next;
 						}
 					}
-
-					/* Retrieve the protocol specific settings */
-					if(strcmp(sett->name, "settings") == 0 && !has_settings) {
-						has_settings = 1;
+					if(strcmp(sett->name, opt->name) == 0 && opt->conftype == CONFIG_SETTING) {
 						val = sett->values;
-						while(val) {
-							if(val->type == CONFIG_TYPE_NUMBER) {
-								json_append_member(jsettings, val->name, json_mknumber(atoi(val->value)));
-							} else if(val->type == CONFIG_TYPE_STRING) {
-								json_append_member(jsettings, val->name, json_mkstring(val->value));
+						if(json_find_string(code, opt->name, &ctmp) != 0) {
+							if(val->type == CONFIG_TYPE_STRING) {
+								json_append_member(code, opt->name, json_mkstring(val->value));
+							} else if(val->type == CONFIG_TYPE_NUMBER) {
+								json_append_member(code, opt->name, json_mknumber(atoi(val->value)));
 							}
-							val = val->next;
 						}
 					}
 					sett = sett->next;
@@ -874,7 +857,6 @@ void control_device(struct conf_devices_t *dev, char *state, JsonNode *values) {
 
 	/* Construct the right json object */
 	json_append_member(code, "protocol", jprotocols);
-	json_append_member(code, "settings", jsettings);
 	if(dev->dev_uuid && (dev->protocols->listener->hwtype == SENSOR
 	   || dev->protocols->listener->hwtype == HWRELAY)) {
 		json_append_member(code, "uuid", json_mkstring(dev->dev_uuid));
@@ -1004,7 +986,7 @@ void client_webserver_parse_code(int i, char buffer[BUFFER_SIZE]) {
 		if(strstr(buffer, " HTTP/") == NULL) {
 			return;
 		}
-		p = buff;		
+		p = buff;
 		if(strstr(buffer, "/logo.png") != NULL) {
 			if(!(path = malloc(strlen(webserver_root)+strlen(webgui_tpl)+strlen("logo.png")+2))) {
 				logprintf(LOG_ERR, "out of memory");
@@ -1043,7 +1025,7 @@ void client_webserver_parse_code(int i, char buffer[BUFFER_SIZE]) {
 					logprintf(LOG_ERR, "out of memory");
 					exit(EXIT_FAILURE);
 				}
-				memset(cache, '\0', BUFFER_SIZE);			
+				memset(cache, '\0', BUFFER_SIZE);
 				sprintf(cache, "<html><head><title>pilight</title></head>"
 							   "<body><center><img src=\"logo.png\"><br />"
 							   "<p style=\"color: #0099ff; font-weight: 800px;"
@@ -1279,7 +1261,7 @@ void *clientize(void *param) {
 			}
 			if(main_loop == 0) {
 				break;
-			}			
+			}
 			switch(steps) {
 				case WELCOME:
 					socket_write(sockfd, "{\"message\":\"client node\",\"uuid\":\"%s\"}", pilight_uuid);
@@ -1425,7 +1407,7 @@ int main_gc(void) {
 	if(runmode == 2) {
 		socket_write(sockfd, "HEART");
 	}
-	
+
 	struct conf_hardware_t *tmp_confhw = conf_hardware;
 	while(tmp_confhw) {
 		if(tmp_confhw->hardware->deinit) {
@@ -1565,10 +1547,10 @@ int main(int argc, char **argv) {
 
 	memset(buffer, '\0', BUFFER_SIZE);
 
-	options_add(&options, 'H', "help", OPTION_NO_VALUE, 0, JSON_NULL, NULL);
-	options_add(&options, 'V', "version", OPTION_NO_VALUE, 0, JSON_NULL, NULL);
-	options_add(&options, 'D', "nodaemon", OPTION_NO_VALUE, 0, JSON_NULL, NULL);
-	options_add(&options, 'S', "settings", OPTION_HAS_VALUE, 0, JSON_NULL, NULL);
+	options_add(&options, 'H', "help", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
+	options_add(&options, 'V', "version", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
+	options_add(&options, 'D', "nodaemon", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
+	options_add(&options, 'S', "settings", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, NULL);
 
 	while(1) {
 		int c;
@@ -1657,7 +1639,7 @@ int main(int argc, char **argv) {
 		}
 		strcpy(webgui_tpl, WEBGUI_TEMPLATE);
 		webgui_tpl_free = 1;
-	}	
+	}
 #endif
 
 #ifdef UPDATE

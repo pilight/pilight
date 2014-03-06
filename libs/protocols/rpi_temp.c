@@ -46,14 +46,13 @@ void *rpiTempParse(void *param) {
 	struct JsonNode *json = (struct JsonNode *)node->param;
 	struct JsonNode *jid = NULL;
 	struct JsonNode *jchild = NULL;
-	struct JsonNode *jsettings = NULL;
 	struct stat st;
 
 	FILE *fp = NULL;
 	int itmp = 0;
 	int *id = malloc(sizeof(int));
 	char *content = NULL;
-	int interval = 10, temp_corr = 0;
+	int interval = 10, temp_offset = 0;
 	int nrloops = 0, nrid = 0, y = 0;
 	size_t bytes = 0;
 
@@ -63,7 +62,6 @@ void *rpiTempParse(void *param) {
 		logprintf(LOG_ERR, "out of memory");
 		exit(EXIT_FAILURE);
 	}
-	
 
 	if((jid = json_find_member(json, "id"))) {
 		jchild = json_first_child(jid);
@@ -77,10 +75,8 @@ void *rpiTempParse(void *param) {
 		}
 	}
 
-	if((jsettings = json_find_member(json, "settings"))) {
-		json_find_number(jsettings, "interval", &interval);
-		json_find_number(jsettings, "temp-corr", &temp_corr);
-	}
+	json_find_number(json, "poll-interval", &interval);
+	json_find_number(json, "device-temperature-offset", &temp_offset);
 
 	while(rpi_temp_loop) {
 		if(protocol_thread_wait(node, interval, &nrloops) == ETIMEDOUT) {		
@@ -103,14 +99,14 @@ void *rpiTempParse(void *param) {
 					}
 
 					fclose(fp);
-					int temp = atoi(content)+temp_corr;
+					int temp = atoi(content)+temp_offset;
 
 					rpiTemp->message = json_mkobject();
 					JsonNode *code = json_mkobject();
 					json_append_member(code, "id", json_mknumber(id[y]));
 					json_append_member(code, "temperature", json_mknumber(temp));
 										
-					json_append_member(rpiTemp->message, "code", code);
+					json_append_member(rpiTemp->message, "message", code);
 					json_append_member(rpiTemp->message, "origin", json_mkstring("receiver"));
 					json_append_member(rpiTemp->message, "protocol", json_mkstring(rpiTemp->id));
 										
@@ -158,14 +154,14 @@ void rpiTempInit(void) {
 	rpiTemp->devtype = WEATHER;
 	rpiTemp->hwtype = SENSOR;
 
-	options_add(&rpiTemp->options, 't', "temperature", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, "^[0-9]{1,5}$");
-	options_add(&rpiTemp->options, 'i', "id", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, "[0-9]");
+	options_add(&rpiTemp->options, 't', "temperature", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, NULL, "^[0-9]{1,5}$");
+	options_add(&rpiTemp->options, 'i', "id", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, NULL, "[0-9]");
 
-	protocol_setting_add_number(rpiTemp, "decimals", 3);
-	protocol_setting_add_number(rpiTemp, "humidity", 0);
-	protocol_setting_add_number(rpiTemp, "temperature", 1);
-	protocol_setting_add_number(rpiTemp, "battery", 0);
-	protocol_setting_add_number(rpiTemp, "interval", 10);
+	options_add(&rpiTemp->options, 0, "device-decimals", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)3, "[0-9]");
+	options_add(&rpiTemp->options, 0, "device-temperature-offset", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)0, "[0-9]");
+	options_add(&rpiTemp->options, 0, "gui-decimals", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)3, "[0-9]");
+	options_add(&rpiTemp->options, 0, "gui-show-temperature", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
+	options_add(&rpiTemp->options, 0, "poll-interval", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)10, "[0-9]");
 
 	memset(rpi_temp, '\0', 38);
 	strcpy(rpi_temp, "/sys/class/thermal/thermal_zone0/temp");

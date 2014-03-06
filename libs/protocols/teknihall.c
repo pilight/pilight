@@ -65,15 +65,16 @@ void teknihallInit(void) {
 	teknihall->pulse = 15;
 	teknihall->rawlen = 76;
 
-	options_add(&teknihall->options, 't', "temperature", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, "^[0-9]{1,3}$");
-	options_add(&teknihall->options, 'i', "id", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, "[0-9]");
-	options_add(&teknihall->options, 'h', "humidity", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, "[0-9]");
-	options_add(&teknihall->options, 'b', "battery", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, "^[01]$");
+	options_add(&teknihall->options, 't', "temperature", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, NULL, "^[0-9]{1,3}$");
+	options_add(&teknihall->options, 'i', "id", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, NULL, "[0-9]");
+	options_add(&teknihall->options, 'h', "humidity", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, NULL, "[0-9]");
+	options_add(&teknihall->options, 'b', "battery", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, NULL, "^[01]$");
 
-	protocol_setting_add_number(teknihall, "decimals", 1);
-	protocol_setting_add_number(teknihall, "humidity", 1);
-	protocol_setting_add_number(teknihall, "temperature", 1);
-	protocol_setting_add_number(teknihall, "battery", 1);
+	options_add(&teknihall->options, 0, "device-decimals", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)1, "[0-9]");
+	options_add(&teknihall->options, 0, "gui-decimals", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)1, "[0-9]");
+	options_add(&teknihall->options, 0, "gui-show-humidity", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
+	options_add(&teknihall->options, 0, "gui-show-temperature", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
+	options_add(&teknihall->options, 0, "gui-show-battery", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
 
 	teknihall->parseCode=&teknihallParseCode;
 }

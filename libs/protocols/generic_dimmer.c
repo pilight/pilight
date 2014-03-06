@@ -48,8 +48,8 @@ int genDimcheckValues(JsonNode *code) {
 	int max = 0;
 	int min = 15;
 	
-	protocol_setting_get_number(generic_dimmer, "min", &min);
-	protocol_setting_get_number(generic_dimmer, "max", &max);	
+	json_find_number(code, "dimlevel-maximum", &max);
+	json_find_number(code, "dimlevel-minimum", &min);	
 
 	if(min > max) {
 		return 1;
@@ -73,8 +73,8 @@ int genDimCreateCode(JsonNode *code) {
 	int min = 10;
 	int tmp;
 
-	protocol_setting_get_number(generic_dimmer, "min", &min);
-	protocol_setting_get_number(generic_dimmer, "max", &max);	
+	json_find_number(code, "dimlevel-maximum", &max);
+	json_find_number(code, "dimlevel-minimum", &min);	
 
 	json_find_number(code, "id", &id);
 	json_find_number(code, "dimlevel", &dimlevel);
@@ -116,15 +116,14 @@ void genDimInit(void) {
 	protocol_device_add(generic_dimmer, "generic_dimmer", "Generic Dimmers");
 	generic_dimmer->devtype = DIMMER;
 
-	options_add(&generic_dimmer->options, 'd', "dimlevel", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, "^([0-9]{1,})$");
-	options_add(&generic_dimmer->options, 't', "on", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL);
-	options_add(&generic_dimmer->options, 'f', "off", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL);
-	options_add(&generic_dimmer->options, 'i', "id", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, "^([0-9]{1,})$");
+	options_add(&generic_dimmer->options, 'd', "dimlevel", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, NULL, "^([0-9]{1,})$");
+	options_add(&generic_dimmer->options, 't', "on", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
+	options_add(&generic_dimmer->options, 'f', "off", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
+	options_add(&generic_dimmer->options, 'i', "id", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, NULL, "^([0-9]{1,})$");
 
-	protocol_setting_add_number(generic_dimmer, "min", 0);
-	protocol_setting_add_number(generic_dimmer, "max", 10);	
-	protocol_setting_add_string(generic_dimmer, "states", "on,off");
-	protocol_setting_add_number(generic_dimmer, "readonly", 1);
+	options_add(&generic_dimmer->options, 0, "dimlevel-minimum", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)0, "^([0-9]{1}|[1][0-5])$");
+	options_add(&generic_dimmer->options, 0, "dimlevel-maximum", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)15, "^([0-9]{1}|[1][0-5])$");
+	options_add(&generic_dimmer->options, 0, "gui-readonly", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 
 	generic_dimmer->printHelp=&genDimPrintHelp;
 	generic_dimmer->createCode=&genDimCreateCode;

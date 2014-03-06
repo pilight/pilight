@@ -46,7 +46,6 @@ void *ds18s20Parse(void *param) {
 	struct JsonNode *json = (struct JsonNode *)node->param;
 	struct JsonNode *jid = NULL;
 	struct JsonNode *jchild = NULL;
-	struct JsonNode *jsettings = NULL;
 	struct dirent *file = NULL;
 	struct stat st;
 
@@ -57,7 +56,7 @@ void *ds18s20Parse(void *param) {
 	char **id = NULL;
 	char *content = NULL;	
 	int w1valid = 0, w1temp = 0, interval = 10, x = 0;
-	int temp_corr = 0, nrid = 0, y = 0, nrloops = 0;
+	int temp_offset = 0, nrid = 0, y = 0, nrloops = 0;
 	size_t bytes = 0;
 
 	ds18s20_threads++;
@@ -82,10 +81,9 @@ void *ds18s20Parse(void *param) {
 			jchild = jchild->next;
 		}
 	}
-	if((jsettings = json_find_member(json, "settings"))) {
-		json_find_number(jsettings, "interval", &interval);
-		json_find_number(jsettings, "temp-corr", &temp_corr);
-	}
+
+	json_find_number(json, "poll-interval", &interval);
+	json_find_number(json, "device-temperature-offset", &temp_offset);
 
 	while(ds18s20_loop) {
 		if(protocol_thread_wait(node, interval, &nrloops) == ETIMEDOUT) {
@@ -136,7 +134,7 @@ void *ds18s20Parse(void *param) {
 											w1valid = 1;
 										}
 										if(x == 2) {	
-											w1temp = atoi(pch)+temp_corr;
+											w1temp = atoi(pch)+temp_offset;
 										}
 										x++;
 									}
@@ -151,7 +149,7 @@ void *ds18s20Parse(void *param) {
 									json_append_member(code, "id", json_mkstring(id[y]));
 									json_append_member(code, "temperature", json_mknumber(w1temp));
 									
-									json_append_member(ds18s20->message, "code", code);
+									json_append_member(ds18s20->message, "message", code);
 									json_append_member(ds18s20->message, "origin", json_mkstring("receiver"));
 									json_append_member(ds18s20->message, "protocol", json_mkstring(ds18s20->id));
 									
@@ -207,14 +205,14 @@ void ds18s20Init(void) {
 	ds18s20->devtype = WEATHER;
 	ds18s20->hwtype = SENSOR;
 
-	options_add(&ds18s20->options, 't', "temperature", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, "^[0-9]{1,5}$");
-	options_add(&ds18s20->options, 'i', "id", OPTION_HAS_VALUE, CONFIG_ID, JSON_STRING, "^[a-z0-9]{12}$");
+	options_add(&ds18s20->options, 't', "temperature", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, NULL, "^[0-9]{1,5}$");
+	options_add(&ds18s20->options, 'i', "id", OPTION_HAS_VALUE, CONFIG_ID, JSON_STRING, NULL, "^[a-z0-9]{12}$");
 
-	protocol_setting_add_number(ds18s20, "decimals", 3);
-	protocol_setting_add_number(ds18s20, "humidity", 0);
-	protocol_setting_add_number(ds18s20, "temperature", 1);
-	protocol_setting_add_number(ds18s20, "battery", 0);
-	protocol_setting_add_number(ds18s20, "interval", 10);
+	options_add(&ds18s20->options, 0, "device-decimals", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)3, "[0-9]");
+	options_add(&ds18s20->options, 0, "device-temperature-offset", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)0, "[0-9]");
+	options_add(&ds18s20->options, 0, "gui-decimals", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)3, "[0-9]");
+	options_add(&ds18s20->options, 0, "gui-show-temperature", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
+	options_add(&ds18s20->options, 0, "poll-interval", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)10, "[0-9]");
 
 	memset(ds18s20_path, '\0', 21);	
 	strcpy(ds18s20_path, "/sys/bus/w1/devices/");

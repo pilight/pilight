@@ -54,12 +54,11 @@ typedef struct lm76data_t {
 void *lm76Parse(void *param) {
 	struct protocol_threads_t *node = (struct protocol_threads_t *)param;
 	struct JsonNode *json = (struct JsonNode *)node->param;
-	struct JsonNode *jsettings = NULL;
 	struct JsonNode *jid = NULL;
 	struct JsonNode *jchild = NULL;
 	struct lm76data_t *lm76data = malloc(sizeof(struct lm76data_t));
 	int y = 0, interval = 10;
-	int temp_corr = 0, nrloops = 0;
+	int temp_offset = 0, nrloops = 0;
 	char *stmp = NULL;
 
 	if(!lm76data) {
@@ -93,10 +92,9 @@ void *lm76Parse(void *param) {
 			jchild = jchild->next;
 		}
 	}
-	if((jsettings = json_find_member(json, "settings"))) {
-		json_find_number(jsettings, "interval", &interval);
-		json_find_number(jsettings, "temp-corr", &temp_corr);
-	}
+
+	json_find_number(json, "poll-interval", &interval);
+	json_find_number(json, "device-temperature-offset", &temp_offset);
 
 #ifndef __FreeBSD__	
 	lm76data->fd = realloc(lm76data->fd, (sizeof(int)*(size_t)(lm76data->nrid+1)));
@@ -120,9 +118,9 @@ void *lm76Parse(void *param) {
 					lm76->message = json_mkobject();
 					JsonNode *code = json_mkobject();
 					json_append_member(code, "id", json_mkstring(lm76data->id[y]));
-					json_append_member(code, "temperature", json_mknumber((int)temp+temp_corr));
+					json_append_member(code, "temperature", json_mknumber((int)temp+temp_offset));
 
-					json_append_member(lm76->message, "code", code);
+					json_append_member(lm76->message, "message", code);
 					json_append_member(lm76->message, "origin", json_mkstring("receiver"));
 					json_append_member(lm76->message, "protocol", json_mkstring(lm76->id));
 
@@ -186,14 +184,12 @@ void lm76Init(void) {
 	lm76->devtype = WEATHER;
 	lm76->hwtype = SENSOR;
 
-	options_add(&lm76->options, 't', "temperature", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, "^[0-9]{1,3}$");
-	options_add(&lm76->options, 'i', "id", OPTION_HAS_VALUE, CONFIG_ID, JSON_STRING, "0x[0-9a-f]{2}");
+	options_add(&lm76->options, 't', "temperature", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, NULL, "^[0-9]{1,3}$");
+	options_add(&lm76->options, 'i', "id", OPTION_HAS_VALUE, CONFIG_ID, JSON_STRING, NULL, "0x[0-9a-f]{2}");
 
-	protocol_setting_add_number(lm76, "decimals", 3);
-	protocol_setting_add_number(lm76, "humidity", 0);
-	protocol_setting_add_number(lm76, "temperature", 1);
-	protocol_setting_add_number(lm76, "battery", 0);
-	protocol_setting_add_number(lm76, "interval", 10);
+	options_add(&lm76->options, 0, "device-decimals", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)3, "[0-9]");
+	options_add(&lm76->options, 0, "gui-decimals", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)3, "[0-9]");
+	options_add(&lm76->options, 0, "gui-show-temperature", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
 
 	lm76->initDev=&lm76InitDev;
 	lm76->gc=&lm76GC;

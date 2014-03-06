@@ -154,18 +154,19 @@ void arctechDimCreateFooter(void) {
 
 int arctechDimCheckValues(JsonNode *code) {
 	int dimlevel = -1;
-	int max = 0;
-	int min = 15;
+	int max = 15;
+	int min = 0;
 	
-	protocol_setting_get_number(arctech_dimmer, "min", &min);
-	protocol_setting_get_number(arctech_dimmer, "max", &max);	
+	json_find_number(code, "dimlevel-maximum", &max);
+	json_find_number(code, "dimlevel-minimum", &min);	
+	json_find_number(code, "dimlevel", &dimlevel);
 
 	if(min > max) {
 		return 1;
 	}
 	
-	if(json_find_number(code, "dimlevel", &dimlevel) == 0) {
-		if(dimlevel != -1 && (dimlevel < min || dimlevel > max)) {
+	if(dimlevel != -1) {
+		if(dimlevel < min || dimlevel > max) {
 			return 1;
 		} else {
 			return 0;
@@ -180,17 +181,18 @@ int arctechDimCreateCode(JsonNode *code) {
 	int state = -1;
 	int all = 0;
 	int dimlevel = -1;
-	int max = 0;
-	int min = 15;
-	int tmp;
+	int max = 15;
+	int min = 0;
+	int tmp = 0;
 
-	protocol_setting_get_number(arctech_dimmer, "min", &min);
-	protocol_setting_get_number(arctech_dimmer, "max", &max);
+	json_find_number(code, "dimlevel-maximum", &max);
+	json_find_number(code, "dimlevel-minimum", &min);
 
 	json_find_number(code, "id", &id);
 	json_find_number(code, "unit", &unit);
 	json_find_number(code, "dimlevel", &dimlevel);
 	json_find_number(code, "all", &all);
+
 	if(json_find_number(code, "off", &tmp) == 0)
 		state=0;
 	else if(json_find_number(code, "on", &tmp) == 0)
@@ -205,7 +207,7 @@ int arctechDimCreateCode(JsonNode *code) {
 	} else if((unit > 15 || unit < 0) && all == 0) {
 		logprintf(LOG_ERR, "arctech_dimmer: invalid unit range");
 		return EXIT_FAILURE;
-	} else if(dimlevel != -1 && (dimlevel > max || dimlevel < min)) {
+	} else if(dimlevel != -1 && (dimlevel > max || dimlevel < min) ) {
 		logprintf(LOG_ERR, "arctech_dimmer: invalid dimlevel range");
 		return EXIT_FAILURE;
 	} else if(dimlevel >= 0 && state == 0) {
@@ -253,17 +255,16 @@ void arctechDimInit(void) {
 	arctech_dimmer->rawlen = 148;
 	arctech_dimmer->lsb = 3;
 
-	options_add(&arctech_dimmer->options, 'd', "dimlevel", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, "^([0-9]{1}|[1][0-5])$");
-	options_add(&arctech_dimmer->options, 'a', "all", OPTION_NO_VALUE, 0, JSON_NUMBER, NULL);
-	options_add(&arctech_dimmer->options, 'u', "unit", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, "^([0-9]{1}|[1][0-5])$");
-	options_add(&arctech_dimmer->options, 'i', "id", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, "^([0-9]{1,7}|[1-5][0-9]{7}|6([0-6][0-9]{6}|7(0[0-9]{5}|10([0-7][0-9]{3}|8([0-7][0-9]{2}|8([0-5][0-9]|6[0-3]))))))$");
-	options_add(&arctech_dimmer->options, 't', "on", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL);
-	options_add(&arctech_dimmer->options, 'f', "off", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL);
-	
-	protocol_setting_add_number(arctech_dimmer, "min", 0);
-	protocol_setting_add_number(arctech_dimmer, "max", 15);
-	protocol_setting_add_string(arctech_dimmer, "states", "on,off");
-	protocol_setting_add_number(arctech_dimmer, "readonly", 0);
+	options_add(&arctech_dimmer->options, 'd', "dimlevel", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, NULL, "^([0-9]{1}|[1][0-5])$");
+	options_add(&arctech_dimmer->options, 'a', "all", OPTION_NO_VALUE, 0, JSON_NUMBER, NULL, NULL);
+	options_add(&arctech_dimmer->options, 'u', "unit", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, NULL, "^([0-9]{1}|[1][0-5])$");
+	options_add(&arctech_dimmer->options, 'i', "id", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, NULL, "^([0-9]{1,7}|[1-5][0-9]{7}|6([0-6][0-9]{6}|7(0[0-9]{5}|10([0-7][0-9]{3}|8([0-7][0-9]{2}|8([0-5][0-9]|6[0-3]))))))$");
+	options_add(&arctech_dimmer->options, 't', "on", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
+	options_add(&arctech_dimmer->options, 'f', "off", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
+
+	options_add(&arctech_dimmer->options, 0, "dimlevel-minimum", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)0, "^([0-9]{1}|[1][0-5])$");
+	options_add(&arctech_dimmer->options, 0, "dimlevel-maximum", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)15, "^([0-9]{1}|[1][0-5])$");
+	options_add(&arctech_dimmer->options, 0, "gui-readonly", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 
 	arctech_dimmer->parseBinary=&arctechDimParseBinary;
 	arctech_dimmer->createCode=&arctechDimCreateCode;

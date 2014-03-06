@@ -53,7 +53,6 @@ void *openweathermapParse(void *param) {
 	struct JsonNode *jid = NULL;
 	struct JsonNode *jchild = NULL;
 	struct JsonNode *jchild1 = NULL;
-	struct JsonNode *jsettings = NULL;
 	struct JsonNode *node = NULL;
 	struct JsonNode *jdata = NULL;
 	struct JsonNode *jmain = NULL;
@@ -110,9 +109,8 @@ void *openweathermapParse(void *param) {
 			jchild = jchild->next;
 		}
 	}
-	if((jsettings = json_find_member(json, "settings"))) {
-		json_find_number(jsettings, "interval", &interval);
-	}
+
+	json_find_number(json, "poll-interval", &interval);
 	
 	while(openweathermap_loop) {
 		wtmp = openweathermap_data;
@@ -147,7 +145,7 @@ void *openweathermapParse(void *param) {
 											json_append_member(code, "temperature", json_mknumber((int)(temp*100)));
 											json_append_member(code, "humidity", json_mknumber((int)(humi*100)));
 											
-											json_append_member(openweathermap->message, "code", code);
+											json_append_member(openweathermap->message, "message", code);
 											json_append_member(openweathermap->message, "origin", json_mkstring("receiver"));
 											json_append_member(openweathermap->message, "protocol", json_mkstring(openweathermap->id));
 											
@@ -206,7 +204,8 @@ void openweathermapInitDev(JsonNode *jdevice) {
 
 int openweathermapCheckValues(JsonNode *code) {
 	int interval = 600;
-	protocol_setting_get_number(openweathermap, "interval", &interval);
+
+	json_find_number(code, "poll-interval", &interval);
 
 	if(interval < 600) {
 		return 1;
@@ -232,16 +231,16 @@ void openweathermapInit(void) {
 	openweathermap->devtype = WEATHER;
 	openweathermap->hwtype = API;
 
-	options_add(&openweathermap->options, 't', "temperature", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, "^[0-9]{1,5}$");
-	options_add(&openweathermap->options, 'h', "humidity", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, "^[0-9]{1,5}$");
-	options_add(&openweathermap->options, 'l', "location", OPTION_HAS_VALUE, CONFIG_ID, JSON_STRING, "^[a-z]+$");
-	options_add(&openweathermap->options, 'c', "country", OPTION_HAS_VALUE, CONFIG_ID, JSON_STRING, "^[a-z]+$");
+	options_add(&openweathermap->options, 't', "temperature", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, NULL, "^[0-9]{1,5}$");
+	options_add(&openweathermap->options, 'h', "humidity", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, NULL, "^[0-9]{1,5}$");
+	options_add(&openweathermap->options, 'l', "location", OPTION_HAS_VALUE, CONFIG_ID, JSON_STRING, NULL, "^[a-z]+$");
+	options_add(&openweathermap->options, 'c', "country", OPTION_HAS_VALUE, CONFIG_ID, JSON_STRING, NULL, "^[a-z]+$");
 
-	protocol_setting_add_number(openweathermap, "decimals", 2);
-	protocol_setting_add_number(openweathermap, "humidity", 1);
-	protocol_setting_add_number(openweathermap, "temperature", 1);
-	protocol_setting_add_number(openweathermap, "battery", 0);
-	protocol_setting_add_number(openweathermap, "interval", 600);
+	options_add(&openweathermap->options, 0, "device-decimals", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)2, "[0-9]");
+	options_add(&openweathermap->options, 0, "gui-decimals", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)2, "[0-9]");
+	options_add(&openweathermap->options, 0, "gui-show-humidity", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
+	options_add(&openweathermap->options, 0, "gui-show-temperature", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
+	options_add(&openweathermap->options, 0, "poll-interval", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)600, "[0-9]");
 
 	openweathermap->initDev=&openweathermapInitDev;
 	openweathermap->checkValues=&openweathermapCheckValues;

@@ -156,7 +156,7 @@ void lirc433Init(void) {
 	hardware_register(&lirc433);
 	hardware_set_id(lirc433, "433lirc");
 
-	options_add(&lirc433->options, 's', "socket", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_STRING, "^/dev/([a-z]+)[0-9]+$");
+	options_add(&lirc433->options, 's', "socket", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_STRING, NULL, "^/dev/([a-z]+)[0-9]+$");
 
 	lirc433->type=RF433;
 	lirc433->init=&lirc433HwInit;

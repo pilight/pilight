@@ -58,13 +58,14 @@ void alectoInit(void) {
 	alecto->rawlen = 74;
 	alecto->lsb = 3;
 
-	options_add(&alecto->options, 't', "temperature", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, "^[0-9]{1,3}$");
-	options_add(&alecto->options, 'i', "id", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, "[0-9]");
+	options_add(&alecto->options, 't', "temperature", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, NULL, "^[0-9]{1,3}$");
+	options_add(&alecto->options, 'i', "id", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, NULL, "[0-9]");
 
-	protocol_setting_add_number(alecto, "decimals", 1);
-	protocol_setting_add_number(alecto, "humidity", 0);
-	protocol_setting_add_number(alecto, "temperature", 1);
-	protocol_setting_add_number(alecto, "battery", 0);
-	
+	options_add(&alecto->options, 0, "device-decimals", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)1, "[0-9]");
+	options_add(&alecto->options, 0, "gui-decimals", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)1, "[0-9]");
+	options_add(&alecto->options, 0, "gui-show-humidity", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
+	options_add(&alecto->options, 0, "gui-show-temperature", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
+	options_add(&alecto->options, 0, "gui-show-battery", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
+
 	alecto->parseCode=&alectoParseCode;
 }

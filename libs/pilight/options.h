@@ -21,17 +21,19 @@
 
 #define OPTION_NO_VALUE				1
 #define OPTION_HAS_VALUE	 		2
-#define OPTION_OPTIONAL_VALUE	 	3
+#define OPTION_OPT_VALUE	 	3
 
 #define CONFIG_ID		1
 #define CONFIG_STATE	2
 #define CONFIG_VALUE	3
+#define CONFIG_SETTING	4
 
 typedef struct options_t {
 	int id;
 	char *name;
 	char *value;
 	char *mask;
+	void *def;
 	int argtype;
 	int conftype;
 	int vartype;
@@ -46,7 +48,7 @@ int options_get_name(struct options_t **options, int id, char **out);
 int options_get_id(struct options_t **options, char *name, int *out);
 int options_get_mask(struct options_t **options, int id, char **out);
 int options_parse(struct options_t **options, int argc, char **argv, int error_check, char **optarg);
-void options_add(struct options_t **options, int id, const char *name, int argtype, int conftype, int vartype, const char *mask);
+void options_add(struct options_t **options, int id, const char *name, int argtype, int conftype, int vartype, void *def, const char *mask);
 void options_merge(struct options_t **a, struct options_t **b);
 void options_delete(struct options_t *options);
 

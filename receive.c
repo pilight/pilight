@@ -55,6 +55,7 @@ int main(int argc, char **argv) {
 	struct ssdp_list_t *ssdp_list = NULL;
 
 	JsonNode *json = NULL;
+	JsonNode *jsettings = NULL;
 
 	char *server = NULL;
 	unsigned short port = 0;
@@ -65,10 +66,10 @@ int main(int argc, char **argv) {
 	char *args = NULL;
 	steps_t steps = WELCOME;
 
-	options_add(&options, 'H', "help", OPTION_NO_VALUE, 0, JSON_NULL, NULL);
-	options_add(&options, 'V', "version", OPTION_NO_VALUE, 0, JSON_NULL, NULL);
-	options_add(&options, 'S', "server", OPTION_HAS_VALUE, 0, JSON_NULL, "^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]).){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$");
-	options_add(&options, 'P', "port", OPTION_HAS_VALUE, 0, JSON_NULL, "[0-9]{1,4}");
+	options_add(&options, 'H', "help", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
+	options_add(&options, 'V', "version", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
+	options_add(&options, 'S', "server", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, "^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]).){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$");
+	options_add(&options, 'P', "port", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, "[0-9]{1,4}");
 
 	/* Store all CLI arguments for later usage
 	   and also check if the CLI arguments where
@@ -167,6 +168,9 @@ int main(int argc, char **argv) {
 				//for each line
 				while(line) {
 					json = json_decode(line);
+					if((jsettings = json_find_member(json, "settings"))) {
+						json_remove_from_parent(jsettings);
+					}
 					char *output = json_stringify(json, "\t");
 					printf("%s\n", output);
 					sfree((void *)&output);

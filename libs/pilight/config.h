@@ -109,7 +109,7 @@ JsonNode *config_broadcast_create(void);
 void config_print(void);
 void config_save_setting(int i, JsonNode *jsetting, struct conf_devices_t *device);
 int config_check_state(int i, JsonNode *jsetting, struct conf_devices_t *device);
-int config_check_settings(int i, JsonNode *jsetting, struct conf_devices_t *device);
+int config_check_settings(JsonNode *jsetting, struct conf_devices_t *device);
 int config_parse_devices(JsonNode *jdevices, struct conf_devices_t *device);
 int config_parse_locations(JsonNode *jlocations, struct conf_locations_t *location);
 int config_merge_locations(JsonNode *jlocations, struct conf_locations_t *location);

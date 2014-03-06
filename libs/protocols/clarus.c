@@ -213,13 +213,12 @@ void clarusSwInit(void) {
 	clarus_switch->rawlen = 50;
 	clarus_switch->binlen = 12;
 
-	options_add(&clarus_switch->options, 't', "on", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL);
-	options_add(&clarus_switch->options, 'f', "off", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL);
-	options_add(&clarus_switch->options, 'u', "unit", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, "^(3[012]?|[012][0-9]|[0-9]{1})$");
-	options_add(&clarus_switch->options, 'i', "id", OPTION_HAS_VALUE, CONFIG_ID, JSON_STRING, "^[ABCDE](3[012]?|[012][0-9]|[0-9]{1})$");
+	options_add(&clarus_switch->options, 't', "on", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
+	options_add(&clarus_switch->options, 'f', "off", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
+	options_add(&clarus_switch->options, 'u', "unit", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, NULL, "^(3[012]?|[012][0-9]|[0-9]{1})$");
+	options_add(&clarus_switch->options, 'i', "id", OPTION_HAS_VALUE, CONFIG_ID, JSON_STRING, NULL, "^[ABCDE](3[012]?|[012][0-9]|[0-9]{1})$");
 
-	protocol_setting_add_string(clarus_switch, "states", "on,off");
-	protocol_setting_add_number(clarus_switch, "readonly", 0);
+	options_add(&clarus_switch->options, 0, "gui-readonly", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 	
 	clarus_switch->parseCode=&clarusSwParseCode;
 	clarus_switch->createCode=&clarusSwCreateCode;

@@ -52,14 +52,6 @@ typedef struct protocol_plslen_t {
 	struct protocol_plslen_t *next;
 } protocol_plslen_t;
 
-typedef struct protocol_settings_t {
-	char *name;
-	char *cur_value;
-	char *old_value;
-	unsigned short type;
-	struct protocol_settings_t *next;
-} protocol_settings_t;
-
 typedef struct protocol_threads_t {
 	pthread_mutex_t mutex;
 	pthread_cond_t cond;
@@ -97,7 +89,6 @@ typedef struct protocol_t {
 	devtype_t devtype;
 	struct protocol_devices_t *devices;
 	struct protocol_conflicts_t *conflicts;
-	struct protocol_settings_t *settings;
 	struct protocol_threads_t *threads;
 
 	void (*parseRaw)(void);
@@ -128,16 +119,6 @@ void protocol_plslen_add(protocol_t *proto, int plslen);
 void protocol_register(protocol_t **proto);
 void protocol_device_add(protocol_t *proto, const char *id, const char *desc);
 void protocol_conflict_add(protocol_t *proto, const char *id);
-void protocol_setting_add_string(protocol_t *proto, const char *name, const char *value);
-void protocol_setting_add_number(protocol_t *proto, const char *name, int value);
-int protocol_setting_get_string(protocol_t *proto, const char *name, char **out);
-int protocol_setting_get_number(protocol_t *proto, const char *name, int *out);
-int protocol_setting_update_string(protocol_t *proto, const char *name, const char *value);
-int protocol_setting_update_number(protocol_t *proto, const char *name, int value);
-int protocol_setting_check_number(protocol_t *proto, const char *name, int value);
-int protocol_setting_check_string(protocol_t *proto, const char *name, const char *value);
-int protocol_setting_restore(protocol_t *proto, const char *name);
-void protocol_setting_remove(protocol_t **proto, const char *name);
 void protocol_conflict_remove(protocol_t **proto, const char *id);
 int protocol_device_exists(protocol_t *proto, const char *id);
 int protocol_gc(void);

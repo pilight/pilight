@@ -224,12 +224,12 @@ void pilight433Init(void) {
 	hardware_register(&pilight433);
 	hardware_set_id(pilight433, "433pilight");
 
-	options_add(&pilight433->options, 'd', "socket", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_STRING, "^/dev/([a-z]+)[0-9]+$");
-	options_add(&pilight433->options, 'r', "receiver", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, "^[0-9]+$");
-	options_add(&pilight433->options, 's', "sender", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, "^[0-9]+$");
-	options_add(&pilight433->options, 'u', "uc-connected", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, "^[0-9]+$");
-	options_add(&pilight433->options, 'p', "shortest-pulse", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, "^[0-9]+$");
-	options_add(&pilight433->options, 'l', "longest-pulse", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, "^[0-9]+$");
+	options_add(&pilight433->options, 'd', "socket", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_STRING, NULL, "^/dev/([a-z]+)[0-9]+$");
+	options_add(&pilight433->options, 'r', "receiver", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, NULL, "^[0-9]+$");
+	options_add(&pilight433->options, 's', "sender", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, NULL, "^[0-9]+$");
+	options_add(&pilight433->options, 'u', "uc-connected", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, NULL, "^[0-9]+$");
+	options_add(&pilight433->options, 'p', "shortest-pulse", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, NULL, "^[0-9]+$");
+	options_add(&pilight433->options, 'l', "longest-pulse", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, NULL, "^[0-9]+$");
 
 	pilight433->type=RF433;
 	pilight433->init=&pilight433HwInit;

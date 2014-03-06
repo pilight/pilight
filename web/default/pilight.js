@@ -121,7 +121,7 @@ function createSwitchElement(sTabId, sDevId, aValues) {
 		$('#'+sTabId+'_'+sDevId+'_switch')[0].selectedIndex = 0;
 		$('#'+sTabId+'_'+sDevId+'_switch').slider('refresh');
 	}
-	if(aValues['settings']['readonly']) {
+	if(aValues['gui-readonly']) {
 		$('#'+sTabId+'_'+sDevId+'_switch').slider('disable');
 	}
 }
@@ -193,7 +193,7 @@ function createScreenElement(sTabId, sDevId, aValues) {
 	}
 	oTab.listview();
 	oTab.listview("refresh");
-	if(aValues['settings']['readonly']) {
+	if(aValues['gui-readonly']) {
 		$('#'+sTabId+'_'+sDevId+'_screen_up').checkboxradio('disable');
 		$('#'+sTabId+'_'+sDevId+'_screen_down').checkboxradio('disable');
 	}
@@ -207,7 +207,7 @@ function createDimmerElement(sTabId, sDevId, aValues) {
 		} else {
 			oTab = $('#all');
 		}
-		oTab.append($('<li id="'+sTabId+'_'+sDevId+'" class="dimmer" data-icon="false">'+aValues['name']+'<select id="'+sTabId+'_'+sDevId+'_switch" data-role="slider"><option value="off">Off</option><option value="on">On</option></select><div id="'+sTabId+'_'+sDevId+'_dimmer" min="'+aValues['settings']['min']+'" max="'+aValues['settings']['max']+'" data-highlight="true" ><input type="value" id="'+sTabId+'_'+sDevId+'_value" class="slider-value dimmer-slider ui-slider-input ui-input-text ui-body-c ui-corner-all ui-shadow-inset" /></div></li>'));
+		oTab.append($('<li id="'+sTabId+'_'+sDevId+'" class="dimmer" data-icon="false">'+aValues['name']+'<select id="'+sTabId+'_'+sDevId+'_switch" data-role="slider"><option value="off">Off</option><option value="on">On</option></select><div id="'+sTabId+'_'+sDevId+'_dimmer" min="'+aValues['dimlevel-minimum']+'" max="'+aValues['dimlevel-maximum']+'" data-highlight="true" ><input type="value" id="'+sTabId+'_'+sDevId+'_value" class="slider-value dimmer-slider ui-slider-input ui-input-text ui-body-c ui-corner-all ui-shadow-inset" /></div></li>'));
 		$('#'+sTabId+'_'+sDevId+'_switch').slider();
 		$('#'+sTabId+'_'+sDevId+'_switch').bind("change", function(event, ui) {
 			event.stopPropagation();
@@ -254,16 +254,18 @@ function createDimmerElement(sTabId, sDevId, aValues) {
 		$('#'+sTabId+'_'+sDevId+'_switch')[0].selectedIndex = 0;
 		$('#'+sTabId+'_'+sDevId+'_switch').slider('refresh');
 	}
-	if(aValues['settings']['readonly']) {
+	if(aValues['gui-readonly']) {
 		$('#'+sTabId+'_'+sDevId+'_switch').slider('disable');
 		$('#'+sTabId+'_'+sDevId+'_dimmer').slider('disable');
 	}
 }
 
 function createWeatherElement(sTabId, sDevId, aValues) {
-	aDecimals[sTabId+'_'+sDevId] = aValues['settings']['decimals'];
-	aValues['temperature'] /= Math.pow(10, aValues['settings']['decimals']).toFixed(aValues['settings']['decimals']);
-	aValues['humidity'] /= Math.pow(10, aValues['settings']['decimals']).toFixed(aValues['settings']['decimals']);
+	aDecimals[sTabId+'_'+sDevId] = new Array();
+	aDecimals[sTabId+'_'+sDevId]['gui'] = aValues['gui-decimals'];
+	aDecimals[sTabId+'_'+sDevId]['device'] = aValues['device-decimals'];
+	aValues['temperature'] /= Math.pow(10, aValues['device-decimals']);
+	aValues['humidity'] /= Math.pow(10, aValues['device-decimals']);
 	if($('#'+sTabId+'_'+sDevId+'_weather').length == 0) {
 		if(bShowTabs) {
 			oTab = $('#'+sTabId).find('ul');
@@ -271,7 +273,7 @@ function createWeatherElement(sTabId, sDevId, aValues) {
 			oTab = $('#all');
 		}
 		oTab.append($('<li class="weather" id="'+sTabId+'_'+sDevId+'_weather" data-icon="false">'+aValues['name']+'</li>'));
-		if(aValues['settings']['battery']) {
+		if(aValues['gui-show-battery']) {
 			oTab.find('#'+sTabId+'_'+sDevId+'_weather').append($('<div id="'+sTabId+'_'+sDevId+'_batt" class="battery"></div>'));
 			if(aValues['battery']) {
 				$('#'+sTabId+'_'+sDevId+'_batt').addClass('green');
@@ -279,25 +281,25 @@ function createWeatherElement(sTabId, sDevId, aValues) {
 				$('#'+sTabId+'_'+sDevId+'_batt').addClass('red');
 			}
 		}
-		if(aValues['settings']['humidity']) {
-			oTab.find('#'+sTabId+'_'+sDevId+'_weather').append($('<div class="percentage">%</div><div class="humidity" id="'+sTabId+'_'+sDevId+'_humi">'+aValues['humidity']+'</div>'));
+		if(aValues['gui-show-humidity']) {
+			oTab.find('#'+sTabId+'_'+sDevId+'_weather').append($('<div class="percentage">%</div><div class="humidity" id="'+sTabId+'_'+sDevId+'_humi">'+aValues['humidity'].toFixed(aValues['gui-decimals'])+'</div>'));
 		}
-		if(aValues['settings']['temperature']) {
-			oTab.find('#'+sTabId+'_'+sDevId+'_weather').append($('<div class="degrees">o</div><div class="temperature" id="'+sTabId+'_'+sDevId+'_temp">'+aValues['temperature']+'</div>'));
+		if(aValues['gui-show-temperature']) {
+			oTab.find('#'+sTabId+'_'+sDevId+'_weather').append($('<div class="degrees">o</div><div class="temperature" id="'+sTabId+'_'+sDevId+'_temp">'+aValues['temperature'].toFixed(aValues['gui-decimals'])+'</div>'));
 		}
 	} else {
-		if(aValues['settings']['battery']) {
+		if(aValues['gui-show-battery']) {
 			if(aValues['battery']) {
 				$('#'+sTabId+'_'+sDevId+'_batt').removeClass('red').addClass('green');
 			} else {
 				$('#'+sTabId+'_'+sDevId+'_batt').removeClass('green').addClass('red');
 			}
 		}
-		if(aValues['settings']['humidity']) {
-			$('#'+sTabId+'_'+sDevId+'_humi').text(aValues['humidity']);
+		if(aValues['gui-show-humidity']) {
+			$('#'+sTabId+'_'+sDevId+'_humi').text(aValues['humidity'].toFixed(aValues['gui-decimals']));
 		}
-		if(aValues['settings']['temperature']) {
-			$('#'+sTabId+'_'+sDevId+'_temp').text(aValues['temperature']);
+		if(aValues['gui-show-temperature']) {
+			$('#'+sTabId+'_'+sDevId+'_temp').text(aValues['temperature'].toFixed(aValues['gui-decimals']));
 		}
 	}
 	oTab.listview();
@@ -450,11 +452,11 @@ function parseData(data) {
 						}
 					} else if(iType == 3) {
 						if(vindex == 'temperature' && $('#'+lindex+'_'+dvalues+'_temp')) {
-							vvalues /= Math.pow(10, aDecimals[lindex+'_'+dvalues]).toFixed(aDecimals[lindex+'_'+dvalues]);
-							$('#'+lindex+'_'+dvalues+'_temp').text(vvalues);
+							vvalues /= Math.pow(10, aDecimals[lindex+'_'+dvalues]['device']);
+							$('#'+lindex+'_'+dvalues+'_temp').text(vvalues.toFixed(aDecimals[lindex+'_'+dvalues]['gui']));
 						} else if(vindex == 'humidity' && $('#'+lindex+'_'+dvalues+'_humi')) {
-							vvalues /= Math.pow(10, aDecimals[lindex+'_'+dvalues]).toFixed(aDecimals[lindex+'_'+dvalues]);
-							$('#'+lindex+'_'+dvalues+'_humi').text(vvalues);
+							vvalues /= Math.pow(10, aDecimals[lindex+'_'+dvalues]['device']);
+							$('#'+lindex+'_'+dvalues+'_humi').text(vvalues.toFixed(aDecimals[lindex+'_'+dvalues]['gui']));
 						} else if(vindex == 'battery' && $('#'+lindex+'_'+dvalues+'_batt')) {
 							if(vvalues == 1) {
 								$('#'+lindex+'_'+dvalues+'_batt').removeClass('red').addClass('green');

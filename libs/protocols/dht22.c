@@ -57,12 +57,11 @@ static uint8_t sizecvt(const int read_value) {
 void *dht22Parse(void *param) {
 	struct protocol_threads_t *node = (struct protocol_threads_t *)param;
 	struct JsonNode *json = (struct JsonNode *)node->param;
-	struct JsonNode *jsettings = NULL;
 	struct JsonNode *jid = NULL;
 	struct JsonNode *jchild = NULL;
 	int *id = 0;
 	int nrid = 0, y = 0, interval = 10, nrloops = 0;
-	int temp_corr = 0, humi_corr = 0, itmp = 0;
+	int temp_offset = 0, humi_offset = 0, itmp = 0;
 
 	dht22_threads++;
 
@@ -78,11 +77,9 @@ void *dht22Parse(void *param) {
 		}
 	}
 
-	if((jsettings = json_find_member(json, "settings"))) {
-		json_find_number(jsettings, "interval", &interval);
-		json_find_number(jsettings, "temp-corr", &temp_corr);
-		json_find_number(jsettings, "humi-corr", &humi_corr);
-	}
+	json_find_number(json, "poll-interval", &interval);
+	json_find_number(json, "device-temperature-offset", &temp_offset);
+	json_find_number(json, "device-humidity-offset", &humi_offset);
 
 	while(dht22_loop) {
 		if(protocol_thread_wait(node, interval, &nrloops) == ETIMEDOUT) {
@@ -141,8 +138,8 @@ void *dht22Parse(void *param) {
 
 						int h = dht22_dat[0] * 256 + dht22_dat[1];
 						int t = (dht22_dat[2] & 0x7F)* 256 + dht22_dat[3];
-						t += temp_corr;
-						h += humi_corr;
+						t += temp_offset;
+						h += humi_offset;
 
 						if((dht22_dat[2] & 0x80) != 0) 
 							t *= -1;
@@ -153,7 +150,7 @@ void *dht22Parse(void *param) {
 						json_append_member(code, "temperature", json_mknumber(t));
 						json_append_member(code, "humidity", json_mknumber(h));
 
-						json_append_member(dht22->message, "code", code);
+						json_append_member(dht22->message, "message", code);
 						json_append_member(dht22->message, "origin", json_mkstring("receiver"));
 						json_append_member(dht22->message, "protocol", json_mkstring(dht22->id));
 
@@ -202,15 +199,15 @@ void dht22Init(void) {
 	dht22->devtype = WEATHER;
 	dht22->hwtype = SENSOR;
 
-	options_add(&dht22->options, 't', "temperature", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, "^[0-9]{1,3}$");
-	options_add(&dht22->options, 'h', "humidity", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, "^[0-9]{1,3}$");
-	options_add(&dht22->options, 'g', "gpio", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, "^([0-9]{1}|1[0-9]|20)$");
+	options_add(&dht22->options, 't', "temperature", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, NULL, "^[0-9]{1,3}$");
+	options_add(&dht22->options, 'h', "humidity", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, NULL, "^[0-9]{1,3}$");
+	options_add(&dht22->options, 'g', "gpio", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, NULL, "^([0-9]{1}|1[0-9]|20)$");
 
-	protocol_setting_add_number(dht22, "decimals", 1);
-	protocol_setting_add_number(dht22, "humidity", 1);
-	protocol_setting_add_number(dht22, "temperature", 1);
-	protocol_setting_add_number(dht22, "battery", 0);
-	protocol_setting_add_number(dht22, "interval", 10);
+	options_add(&dht22->options, 0, "device-decimals", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)1, "[0-9]");
+	options_add(&dht22->options, 0, "device-temperature-offset", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)0, "[0-9]");
+	options_add(&dht22->options, 0, "gui-decimals", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)1, "[0-9]");
+	options_add(&dht22->options, 0, "gui-show-temperature", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
+	options_add(&dht22->options, 0, "poll-interval", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)10, "[0-9]");
 
 	dht22->initDev=&dht22InitDev;
 	dht22->gc=&dht22GC;

@@ -170,13 +170,12 @@ void arctechSwOldInit(void) {
 	arctech_switch_old->binlen = 12;
 	arctech_switch_old->lsb = 2;
 
-	options_add(&arctech_switch_old->options, 't', "on", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL);
-	options_add(&arctech_switch_old->options, 'f', "off", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL);
-	options_add(&arctech_switch_old->options, 'u', "unit", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, "^([0-9]{1}|[1][0-5])$");
-	options_add(&arctech_switch_old->options, 'i', "id", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, "^(3[012]?|[012][0-9]|[0-9]{1})$");
+	options_add(&arctech_switch_old->options, 't', "on", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
+	options_add(&arctech_switch_old->options, 'f', "off", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
+	options_add(&arctech_switch_old->options, 'u', "unit", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, NULL, "^([0-9]{1}|[1][0-5])$");
+	options_add(&arctech_switch_old->options, 'i', "id", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, NULL, "^(3[012]?|[012][0-9]|[0-9]{1})$");
 
-	protocol_setting_add_string(arctech_switch_old, "states", "on,off");
-	protocol_setting_add_number(arctech_switch_old, "readonly", 0);
+	options_add(&arctech_switch_old->options, 0, "gui-readonly", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 	
 	arctech_switch_old->parseBinary=&arctechSwOldParseBinary;
 	arctech_switch_old->createCode=&arctechSwOldCreateCode;
