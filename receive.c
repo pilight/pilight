@@ -55,7 +55,6 @@ int main(int argc, char **argv) {
 	struct ssdp_list_t *ssdp_list = NULL;
 
 	JsonNode *json = NULL;
-	JsonNode *jsettings = NULL;
 
 	char *server = NULL;
 	unsigned short port = 0;
@@ -137,7 +136,6 @@ int main(int argc, char **argv) {
 
 	while(1) {
 		if(steps > WELCOME) {
-			/* Clear the receive buffer again and read the welcome message */
 			if((recvBuff = socket_read(sockfd)) == NULL) {
 				goto close;
 			}
@@ -168,11 +166,10 @@ int main(int argc, char **argv) {
 				//for each line
 				while(line) {
 					json = json_decode(line);
-					if((jsettings = json_find_member(json, "settings"))) {
-						json_remove_from_parent(jsettings);
-					}
 					char *output = json_stringify(json, "\t");
-					printf("%s\n", output);
+					if(strcmp(output, "1") != 0) {
+						printf("%s\n", output);
+					}
 					sfree((void *)&output);
 					json_delete(json);
 					line = strtok(NULL,"\n");

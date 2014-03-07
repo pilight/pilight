@@ -261,7 +261,6 @@ void *broadcast(void *param) {
 
 			broadcasted = 0;
 			JsonNode *jret = NULL;
-			char *json = json_stringify(bcqueue->jmessage, NULL);
 
 			/* Update the config */
 			if(config_update(bcqueue->protoname, bcqueue->jmessage, &jret) == 0) {
@@ -281,6 +280,26 @@ void *broadcast(void *param) {
 			if(jret) {
 				json_delete(jret);
 			}
+
+			char *jinternal = json_stringify(bcqueue->jmessage, NULL);	
+
+			/* The message and settings objects inside the broadcast queue is only
+			   of interest for the internal pilight functions. For the outside world
+			   we only communicate the message part of the queue so we rename it
+			   to code for clarity and we remove the settings */
+			JsonNode *jcode = NULL;
+			if((jcode = json_find_member(bcqueue->jmessage, "message")) != NULL) {
+				jcode->key = realloc(jcode->key, 5);
+				strcpy(jcode->key, "code");
+			}
+
+			JsonNode *jsettings = NULL;
+			if((jsettings = json_find_member(bcqueue->jmessage, "settings"))) {
+				json_remove_from_parent(jsettings);
+			}			
+			
+			char *jbroadcast = json_stringify(bcqueue->jmessage, NULL);
+			
 			if(strcmp(bcqueue->protoname, "pilight_firmware") == 0) {
 				JsonNode *code = NULL;
 				if((code = json_find_member(bcqueue->jmessage, "code")) != NULL) {
@@ -295,13 +314,13 @@ void *broadcast(void *param) {
 				/* Write the message to all receivers */
 				for(i=0;i<MAX_CLIENTS;i++) {
 					if(handshakes[i] == RECEIVER) {
-						socket_write(socket_get_clients(i), json);
+						socket_write(socket_get_clients(i), jbroadcast);
 						broadcasted = 1;
 					}
 				}
 			}
 			if(runmode == 2 && sockfd > 0) {
-				struct JsonNode *jupdate = json_decode(json);
+				struct JsonNode *jupdate = json_decode(jinternal);
 				json_append_member(jupdate, "message", json_mkstring("update"));
 				char *ret = json_stringify(jupdate, NULL);
 				socket_write(sockfd, ret);
@@ -310,9 +329,10 @@ void *broadcast(void *param) {
 				sfree((void *)&ret);
 			}
 			if(broadcasted == 1 || nodaemon == 1) {
-				logprintf(LOG_DEBUG, "broadcasted: %s", json);
+				logprintf(LOG_DEBUG, "broadcasted: %s", jinternal);
 			}
-			sfree((void *)&json);
+			sfree((void *)&jinternal);
+			sfree((void *)&jbroadcast);
 
 			struct bcqueue_t *tmp = bcqueue;
 			sfree((void *)&tmp->protoname);
@@ -1318,7 +1338,7 @@ void *clientize(void *param) {
 							} else if(client_type == -1) {
 								if(!json_find_member(json, "config")) {
 									if(json_find_string(json, "origin", &message) == 0 &&
-									json_find_string(json, "protocol", &protocol) == 0) {
+									   json_find_string(json, "protocol", &protocol) == 0) {
 										broadcast_queue(protocol, json);
 									}
 								}
