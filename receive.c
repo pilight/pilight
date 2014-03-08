@@ -167,9 +167,7 @@ int main(int argc, char **argv) {
 				while(line) {
 					json = json_decode(line);
 					char *output = json_stringify(json, "\t");
-					if(strcmp(output, "1") != 0) {
-						printf("%s\n", output);
-					}
+					printf("%s\n", output);
 					sfree((void *)&output);
 					json_delete(json);
 					line = strtok(NULL,"\n");

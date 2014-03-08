@@ -415,7 +415,6 @@ char *socket_read(int sockfd) {
 					memcpy(&message[(ptr-bytes)], recvBuff, (size_t)bytes);
 					msglen = strlen(message);
 				}			
-
 				if(message && msglen > 0) {
 					/* When a stream is larger then the buffer size, it has to contain
 					   the pilight delimiter to know when the stream ends. If the stream
@@ -435,10 +434,14 @@ char *socket_read(int sockfd) {
 							}
 							message[ptr] = '\0';
 						} else {
-							if(l) {
+							if(l == 0) {
 								message[ptr-(len)] = '\0'; // remove delimiter
 							} else {
 								message[ptr] = '\0';
+							}
+							if(strcmp(message, "1") == 0) {
+								sfree((void *)&message);
+								return NULL;
 							}
 						}
 						return message;
