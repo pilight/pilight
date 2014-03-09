@@ -420,7 +420,7 @@ char *socket_read(int sockfd) {
 					   the pilight delimiter to know when the stream ends. If the stream
 					   is shorter then the buffer size, we know we received the full stream */
 					int l = 0;
-					if((l = strncmp(&message[ptr-(len)], EOSS, (unsigned int)(len)) == 0) || ptr < BUFFER_SIZE) {
+					if(((l = strncmp(&message[ptr-(len)], EOSS, (unsigned int)(len))) == 0) || ptr < BUFFER_SIZE) {
 						/* If the socket contains buffered TCP messages, separate them by 
 						   changing the delimiters into newlines */
 						if(ptr > msglen) {
@@ -439,7 +439,7 @@ char *socket_read(int sockfd) {
 							} else {
 								message[ptr] = '\0';
 							}
-							if(strcmp(message, "1") == 0) {
+							if(strcmp(message, "1") == 0 || strcmp(message, "BEAT") == 0) {
 								sfree((void *)&message);
 								return NULL;
 							}

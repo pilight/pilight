@@ -147,7 +147,8 @@ void relayInit(void) {
 	options_add(&relay->options, 'f', "off", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
 	options_add(&relay->options, 'g', "gpio", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, NULL, "^([0-9]{1}|1[0-9]|20)$");
 
-	options_add(&relay->options, 0, "default-state", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_STRING, (void *)((char *)"off"), NULL);
+	char state[] = "off";
+	options_add(&relay->options, 0, "default-state", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_STRING, (void *)state, NULL);
 	options_add(&relay->options, 0, "gui-readonly", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 	
 	relay->checkValues=&relayCheckValues;
