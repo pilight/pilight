@@ -280,9 +280,7 @@ void *broadcast(void *param) {
 			if(jret) {
 				json_delete(jret);
 			}
-
-			// char *jinternal = json_stringify(bcqueue->jmessage, NULL);	
-
+			
 			/* The message and settings objects inside the broadcast queue is only
 			   of interest for the internal pilight functions. For the outside world
 			   we only communicate the message part of the queue so we rename it
@@ -293,6 +291,8 @@ void *broadcast(void *param) {
 				strcpy(jcode->key, "code");
 			}
 
+			char *jinternal = json_stringify(bcqueue->jmessage, NULL);				
+			
 			JsonNode *jsettings = NULL;
 			if((jsettings = json_find_member(bcqueue->jmessage, "settings"))) {
 				json_remove_from_parent(jsettings);
@@ -320,7 +320,7 @@ void *broadcast(void *param) {
 				}
 			}
 			if(runmode == 2 && sockfd > 0) {
-				struct JsonNode *jupdate = json_decode(jbroadcast);
+				struct JsonNode *jupdate = json_decode(jinternal);
 				json_append_member(jupdate, "message", json_mkstring("update"));
 				char *ret = json_stringify(jupdate, NULL);
 				socket_write(sockfd, ret);
@@ -331,7 +331,7 @@ void *broadcast(void *param) {
 			if(broadcasted == 1 || nodaemon == 1) {
 				logprintf(LOG_DEBUG, "broadcasted: %s", jbroadcast);
 			}
-			// sfree((void *)&jinternal);
+			sfree((void *)&jinternal);
 			sfree((void *)&jbroadcast);
 
 			struct bcqueue_t *tmp = bcqueue;
@@ -681,7 +681,7 @@ void send_queue(JsonNode *json) {
 		/* If we matched a protocol and are not already sending, continue */
 		if((!uuid || (uuid && strcmp(uuid, pilight_uuid) == 0)) && send_repeat > 0) {
 			jprotocol = json_first_child(jprotocols);
-			while(jprotocol) {
+			while(jprotocol && match == 0) {
 				match = 0;
 				if(jprotocol->tag == JSON_STRING) {
 					struct protocols_t *pnode = protocols;
@@ -696,82 +696,82 @@ void send_queue(JsonNode *json) {
 						pnode = pnode->next;
 					}
 				}
-				if(match == 1 && protocol->createCode) {
-					/* Let the protocol create his code */
-					if(protocol->createCode(jcode) == 0) {
-						pthread_mutex_lock(&sendqueue_lock);
-						struct sendqueue_t *mnode = malloc(sizeof(struct sendqueue_t));
-						if(!mnode) {
-							logprintf(LOG_ERR, "out of memory");
-							exit(EXIT_FAILURE);
-						}
-						gettimeofday(&tcurrent, NULL);
-						mnode->id = 1000000 * (unsigned int)tcurrent.tv_sec + (unsigned int)tcurrent.tv_usec;
-						mnode->message = NULL;
-						if(protocol->message) {
-							char *jsonstr = json_stringify(protocol->message, NULL);
-							json_delete(protocol->message);
-							if(json_validate(jsonstr) == true) {
-								mnode->message = malloc(strlen(jsonstr)+1);
-								if(!mnode->message) {
-									logprintf(LOG_ERR, "out of memory");
-									exit(EXIT_FAILURE);
-								}
-								strcpy(mnode->message, jsonstr);
-							}
-							sfree((void *)&jsonstr);
-							protocol->message = NULL;
-						}
-						for(x=0;x<protocol->rawlen;x++) {
-							mnode->code[x]=protocol->raw[x];
-						}
-						mnode->protoname = malloc(strlen(protocol->id)+1);
-						if(!mnode->protoname) {
-							logprintf(LOG_ERR, "out of memory");
-							exit(EXIT_FAILURE);
-						}
-						strcpy(mnode->protoname, protocol->id);
-						mnode->protopt = protocol;
-
-						struct options_t *tmp_options = protocol->options;
-						int itmp = 0;
-						char *stmp = NULL;
-						struct JsonNode *jsettings = json_mkobject();
-						while(tmp_options) {
-							if(tmp_options->conftype == CONFIG_SETTING) {
-								if(tmp_options->vartype == JSON_NUMBER && json_find_number(jcode, tmp_options->name, &itmp) == 0) {
-									json_append_member(jsettings, tmp_options->name, json_mknumber(itmp));
-								} else if(tmp_options->vartype == JSON_STRING && json_find_string(jcode, tmp_options->name, &stmp) == 0) {
-									json_append_member(jsettings, tmp_options->name, json_mkstring(stmp));
-								}
-							}
-							tmp_options = tmp_options->next;
-						}
-						char *strsett = json_stringify(jsettings, NULL);
-						mnode->settings = malloc(strlen(strsett)+1);
-						strcpy(mnode->settings, strsett);
-						sfree((void *)&strsett);
-						json_delete(jsettings);
-
-						if(uuid) {
-							strcpy(mnode->uuid, uuid);
-						} else {
-							memset(mnode->uuid, '\0', UUID_LENGTH);
-						}
-						if(sendqueue_number == 0) {
-							sendqueue = mnode;
-							sendqueue_head = mnode;
-						} else {
-							sendqueue_head->next = mnode;
-							sendqueue_head = mnode;
-						}
-
-						sendqueue_number++;
-						pthread_mutex_unlock(&sendqueue_lock);
-						pthread_cond_signal(&sendqueue_signal);
-					}
-				}
 				jprotocol = jprotocol->next;
+			}
+			if(match == 1 && protocol->createCode) {
+				/* Let the protocol create his code */
+				if(protocol->createCode(jcode) == 0) {
+					pthread_mutex_lock(&sendqueue_lock);
+					struct sendqueue_t *mnode = malloc(sizeof(struct sendqueue_t));
+					if(!mnode) {
+						logprintf(LOG_ERR, "out of memory");
+						exit(EXIT_FAILURE);
+					}
+					gettimeofday(&tcurrent, NULL);
+					mnode->id = 1000000 * (unsigned int)tcurrent.tv_sec + (unsigned int)tcurrent.tv_usec;
+					mnode->message = NULL;
+					if(protocol->message) {
+						char *jsonstr = json_stringify(protocol->message, NULL);
+						json_delete(protocol->message);
+						if(json_validate(jsonstr) == true) {
+							mnode->message = malloc(strlen(jsonstr)+1);
+							if(!mnode->message) {
+								logprintf(LOG_ERR, "out of memory");
+								exit(EXIT_FAILURE);
+							}
+							strcpy(mnode->message, jsonstr);
+						}
+						sfree((void *)&jsonstr);
+						protocol->message = NULL;
+					}
+					for(x=0;x<protocol->rawlen;x++) {
+						mnode->code[x]=protocol->raw[x];
+					}
+					mnode->protoname = malloc(strlen(protocol->id)+1);
+					if(!mnode->protoname) {
+						logprintf(LOG_ERR, "out of memory");
+						exit(EXIT_FAILURE);
+					}
+					strcpy(mnode->protoname, protocol->id);
+					mnode->protopt = protocol;
+
+					struct options_t *tmp_options = protocol->options;
+					int itmp = 0;
+					char *stmp = NULL;
+					struct JsonNode *jsettings = json_mkobject();
+					while(tmp_options) {
+						if(tmp_options->conftype == CONFIG_SETTING) {
+							if(tmp_options->vartype == JSON_NUMBER && json_find_number(jcode, tmp_options->name, &itmp) == 0) {
+								json_append_member(jsettings, tmp_options->name, json_mknumber(itmp));
+							} else if(tmp_options->vartype == JSON_STRING && json_find_string(jcode, tmp_options->name, &stmp) == 0) {
+								json_append_member(jsettings, tmp_options->name, json_mkstring(stmp));
+							}
+						}
+						tmp_options = tmp_options->next;
+					}
+					char *strsett = json_stringify(jsettings, NULL);
+					mnode->settings = malloc(strlen(strsett)+1);
+					strcpy(mnode->settings, strsett);
+					sfree((void *)&strsett);
+					json_delete(jsettings);
+
+					if(uuid) {
+						strcpy(mnode->uuid, uuid);
+					} else {
+						memset(mnode->uuid, '\0', UUID_LENGTH);
+					}
+					if(sendqueue_number == 0) {
+						sendqueue = mnode;
+						sendqueue_head = mnode;
+					} else {
+						sendqueue_head->next = mnode;
+						sendqueue_head = mnode;
+					}
+
+					sendqueue_number++;
+					pthread_mutex_unlock(&sendqueue_lock);
+					pthread_cond_signal(&sendqueue_signal);
+				}
 			}
 		}
 
@@ -799,8 +799,6 @@ void control_device(struct conf_devices_t *dev, char *state, JsonNode *values) {
 	struct options_t *opt = NULL;
 	struct protocols_t *tmp_protocols = NULL;
 
-	char *ctmp = NULL;
-
 	JsonNode *code = json_mkobject();
 	JsonNode *json = json_mkobject();
 	JsonNode *jprotocols = json_mkarray();
@@ -818,7 +816,8 @@ void control_device(struct conf_devices_t *dev, char *state, JsonNode *values) {
 						val = sett->values;
 						while(val) {
 							if((opt->conftype == CONFIG_ID)
-							   && strcmp(val->name, opt->name) == 0 && json_find_string(code, val->name, &ctmp) != 0) {
+							   && strcmp(val->name, opt->name) == 0
+							   && json_find_member(code, opt->name) == NULL) {
 								if(val->type == CONFIG_TYPE_STRING) {
 									json_append_member(code, val->name, json_mkstring(val->value));
 								} else if(val->type == CONFIG_TYPE_NUMBER) {
@@ -830,7 +829,7 @@ void control_device(struct conf_devices_t *dev, char *state, JsonNode *values) {
 					}
 					if(strcmp(sett->name, opt->name) == 0 && opt->conftype == CONFIG_SETTING) {
 						val = sett->values;
-						if(json_find_string(code, opt->name, &ctmp) != 0) {
+						if(json_find_member(code, opt->name) == NULL) {
 							if(val->type == CONFIG_TYPE_STRING) {
 								json_append_member(code, opt->name, json_mkstring(val->value));
 							} else if(val->type == CONFIG_TYPE_NUMBER) {
@@ -845,7 +844,8 @@ void control_device(struct conf_devices_t *dev, char *state, JsonNode *values) {
 			while(values) {
 				opt = tmp_protocols->listener->options;
 				while(opt) {
-					if(opt->conftype == CONFIG_VALUE && strcmp(values->key, opt->name) == 0) {
+					if(opt->conftype == CONFIG_VALUE && strcmp(values->key, opt->name) == 0
+					   && json_find_member(code, opt->name) == NULL) {
 						if(values->tag == JSON_STRING) {
 							json_append_member(code, values->key, json_mkstring(values->string_));
 						} else if(values->tag == JSON_NUMBER) {
@@ -905,10 +905,15 @@ void client_node_parse_code(int i, JsonNode *json) {
 			char *pname = NULL;
 			if(json_find_string(json, "protocol", &pname) == 0) {
 				JsonNode *jcode = NULL;
+				JsonNode *jmessage = NULL;
+				if((jmessage = json_find_member(json, "message")) != NULL) {
+					json_remove_from_parent(jmessage);
+				}				
 				if((jcode = json_find_member(json, "code")) != NULL) {
 					jcode->key = realloc(jcode->key, 9);
 					strcpy(jcode->key, "message");
 				}
+				
 				broadcast_queue(pname, json);
 			}
 		}
