@@ -281,7 +281,7 @@ void *broadcast(void *param) {
 				json_delete(jret);
 			}
 
-			char *jinternal = json_stringify(bcqueue->jmessage, NULL);	
+			// char *jinternal = json_stringify(bcqueue->jmessage, NULL);	
 
 			/* The message and settings objects inside the broadcast queue is only
 			   of interest for the internal pilight functions. For the outside world
@@ -320,7 +320,7 @@ void *broadcast(void *param) {
 				}
 			}
 			if(runmode == 2 && sockfd > 0) {
-				struct JsonNode *jupdate = json_decode(jinternal);
+				struct JsonNode *jupdate = json_decode(jbroadcast);
 				json_append_member(jupdate, "message", json_mkstring("update"));
 				char *ret = json_stringify(jupdate, NULL);
 				socket_write(sockfd, ret);
@@ -329,9 +329,9 @@ void *broadcast(void *param) {
 				sfree((void *)&ret);
 			}
 			if(broadcasted == 1 || nodaemon == 1) {
-				logprintf(LOG_DEBUG, "broadcasted: %s", jinternal);
+				logprintf(LOG_DEBUG, "broadcasted: %s", jbroadcast);
 			}
-			sfree((void *)&jinternal);
+			// sfree((void *)&jinternal);
 			sfree((void *)&jbroadcast);
 
 			struct bcqueue_t *tmp = bcqueue;
@@ -904,6 +904,11 @@ void client_node_parse_code(int i, JsonNode *json) {
 		} else if(strcmp(message, "update") == 0) {
 			char *pname = NULL;
 			if(json_find_string(json, "protocol", &pname) == 0) {
+				JsonNode *jcode = NULL;
+				if((jcode = json_find_member(json, "code")) != NULL) {
+					jcode->key = realloc(jcode->key, 9);
+					strcpy(jcode->key, "message");
+				}
 				broadcast_queue(pname, json);
 			}
 		}
@@ -1099,6 +1104,7 @@ void socket_parse_data(int i, char *buffer) {
 		if(json_validate(buffer) == true) {
 #endif
 			json = json_decode(buffer);
+
 			/* The incognito mode is used by the daemon to emulate certain clients.
 			   Temporary change the client type from the node mode to the emulated
 			   client mode. */
@@ -1182,6 +1188,7 @@ void socket_parse_data(int i, char *buffer) {
 					incognito_mode = 0;
 				}
 			}
+
 			if(handshakes[i] == -1 && socket_get_clients(i) > 0) {
 				socket_write(sd, "{\"message\":\"reject client\"}");
 				socket_close(sd);
