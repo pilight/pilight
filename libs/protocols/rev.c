@@ -62,7 +62,7 @@ void revParseCode(void) {
 		z++;
 	}
 
-	int unit = binToDecRev(rev_switch->binary, 1, 5);
+	int unit = binToDecRev(rev_switch->binary, 0, 5);
 	int state = rev_switch->binary[10];
 	int y = binToDecRev(rev_switch->binary, 6, 9);
 	sprintf(&id[0], "%c%d", z, y);
@@ -183,7 +183,7 @@ int revCreateCode(JsonNode *code) {
 	} else if(atoi(&id[1]) < 0 || atoi(&id[1]) > 31) {
 		logprintf(LOG_ERR, "rev_switch: invalid id range");
 		return EXIT_FAILURE;
-	} else if(unit > 31 || unit < 0) {
+	} else if(unit > 63 || unit < 0) {
 		logprintf(LOG_ERR, "rev_switch: invalid unit range");
 		return EXIT_FAILURE;
 	} else {
@@ -219,7 +219,7 @@ void revInit(void) {
 
 	options_add(&rev_switch->options, 't', "on", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
 	options_add(&rev_switch->options, 'f', "off", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
-	options_add(&rev_switch->options, 'u', "unit", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, NULL, "^(3[012]?|[012][0-9]|[0-9]{1})$");
+	options_add(&rev_switch->options, 'u', "unit", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, NULL, "^([0-9]|[1-5][0-9]|6[0-3])$");
 	options_add(&rev_switch->options, 'i', "id", OPTION_HAS_VALUE, CONFIG_ID, JSON_STRING, NULL, "^[ABCDEF](3[012]?|[012][0-9]|[0-9]{1})$");
 
 	options_add(&rev_switch->options, 0, "gui-readonly", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");

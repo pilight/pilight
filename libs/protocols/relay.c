@@ -31,6 +31,8 @@
 #include "gc.h"
 #include "wiringPi.h"
 
+char *relay_state = NULL;
+
 void relayCreateMessage(int gpio, int state) {
 	relay->message = json_mkobject();
 	json_append_member(relay->message, "gpio", json_mknumber(gpio));
@@ -135,6 +137,10 @@ int relayCheckValues(JsonNode *code) {
 	return 0;
 }
 
+void relayGC(void) {
+	sfree((void *)&relay_state);
+}
+
 void relayInit(void) {
 
 	protocol_register(&relay);
@@ -147,11 +153,13 @@ void relayInit(void) {
 	options_add(&relay->options, 'f', "off", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
 	options_add(&relay->options, 'g', "gpio", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, NULL, "^([0-9]{1}|1[0-9]|20)$");
 
-	char state[] = "off";
-	options_add(&relay->options, 0, "default-state", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_STRING, (void *)state, NULL);
+	relay_state = malloc(4);
+	strcpy(relay_state, "off");
+	options_add(&relay->options, 0, "default-state", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_STRING, (void *)relay_state, NULL);
 	options_add(&relay->options, 0, "gui-readonly", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 	
 	relay->checkValues=&relayCheckValues;
 	relay->createCode=&relayCreateCode;
 	relay->printHelp=&relayPrintHelp;
+	relay->gc=&relayGC;
 }

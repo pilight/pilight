@@ -444,8 +444,10 @@ int protocol_gc(void) {
 
 	while(protocols) {
 		ptmp = protocols;
+		logprintf(LOG_DEBUG, "protocol %s", ptmp->listener->id);
 		if(ptmp->listener->gc) {
 			ptmp->listener->gc();
+			logprintf(LOG_DEBUG, "ran garbage collector");
 		}
 		sfree((void *)&ptmp->listener->id);
 		sfree((void *)&ptmp->name);

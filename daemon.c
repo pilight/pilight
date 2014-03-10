@@ -616,6 +616,12 @@ void *send_code(void *param) {
 			}
 
 			if(hardware && hardware->send) {
+				logprintf(LOG_INFO, "**** RAW CODE ****");
+				for(i=0;i<protocol->rawlen;i++) {
+					printf("%d ", protocol->raw[i]);
+				}
+				printf("\n");
+				logprintf(LOG_INFO, "**** RAW CODE ****");
 				if(hardware->send(longCode) == 0) {
 					logprintf(LOG_DEBUG, "successfully send %s code", protocol->id);
 					if(strcmp(protocol->id, "raw") == 0) {
