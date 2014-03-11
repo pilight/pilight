@@ -38,7 +38,6 @@
 #include "gc.h"
 #include "ssdp.h"
 
-char *ssdp_mac = NULL;
 int ssdp_socket = 0;
 int ssdp_loop = 1;
 
@@ -116,108 +115,98 @@ char *ssdp_getdistroname(void) {
 	}
 }
 
-void ssdp_getethmac(void) {
+char *ssdp_genuuid(char *ifname) {
+	char *ssdp_mac = NULL, *upnp_id = NULL;	
+	char a[1024], serial[UUID_LENGTH];
+	int i = 0;
+
+	memset(serial, '\0', UUID_LENGTH);
+	FILE *fp = fopen("/proc/cpuinfo", "r");
+	if(fp != NULL) {
+		while(!feof(fp)) {
+			if(fgets(a, 1024, fp) == 0) {
+				break;
+			}
+			if(strstr(a, "Serial") != NULL) {
+				sscanf(a, "Serial          : %s\n", (char *)&serial);
+				memmove(&serial[5], &serial[4], 17);
+				serial[4] = '-';
+				memmove(&serial[8], &serial[7], 17);
+				serial[7] = '-';
+				memmove(&serial[11], &serial[10], 17);
+				serial[10] = '-';
+				memmove(&serial[14], &serial[13], 17);
+				serial[13] = '-';
+				upnp_id = malloc(UUID_LENGTH);
+				strcpy(upnp_id, serial);
+				fclose(fp);
+				return upnp_id;
+			}
+		}
+		fclose(fp);
+	}
+	
 #if defined(SIOCGIFHWADDR)
-	if(!ssdp_mac) {
-		int fd = socket(PF_INET, SOCK_DGRAM, IPPROTO_IP);
-		if(!(ssdp_mac = malloc(13))) {
-			logprintf(LOG_ERR, "out of memory");
-			exit(EXIT_FAILURE);
-		}
-		memset(ssdp_mac, '\0', 13);
-		struct ifreq s;
-
-		strcpy(s.ifr_name, "eth0");
-		if(ioctl(fd, SIOCGIFHWADDR, &s) == 0) {
-			int i;
-			for(i = 0; i < 12; i+=2) {
-				sprintf(&ssdp_mac[i], "%02x", (unsigned char)s.ifr_addr.sa_data[i/2]);
-			}
-		}
-		close(fd);
+	int fd = socket(PF_INET, SOCK_DGRAM, IPPROTO_IP);
+	if(!(ssdp_mac = malloc(13))) {
+		logprintf(LOG_ERR, "out of memory");
+		exit(EXIT_FAILURE);
 	}
+	memset(ssdp_mac, '\0', 13);
+	struct ifreq s;
+
+	strcpy(s.ifr_name, ifname);
+	if(ioctl(fd, SIOCGIFHWADDR, &s) == 0) {
+		for(i = 0; i < 12; i+=2) {
+			sprintf(&ssdp_mac[i], "%02x", (unsigned char)s.ifr_addr.sa_data[i/2]);
+		}
+	}
+	close(fd);
 #elif defined(SIOCGIFADDR)
-	if(!ssdp_mac) {
-		int fd = socket(PF_INET, SOCK_DGRAM, IPPROTO_IP);
-		if(!(ssdp_mac = malloc(13))) {
-			logprintf(LOG_ERR, "out of memory");
-			exit(EXIT_FAILURE);
-		}
-		memset(ssdp_mac, '\0', 13);
-		struct ifreq s;
-
-		memset(&s, '\0', sizeof(s));
-		strcpy(s.ifr_name, "re0");
-		if(ioctl(fd, SIOCGIFADDR, &s) == 0) {
-			int i;
-			for(i = 0; i < 12; i+=2) {
-				sprintf(&ssdp_mac[i], "%02x", (unsigned char)s.ifr_addr.sa_data[i/2]);
-			}
-		}
-		close(fd);
+	int fd = socket(PF_INET, SOCK_DGRAM, IPPROTO_IP);
+	if(!(ssdp_mac = malloc(13))) {
+		logprintf(LOG_ERR, "out of memory");
+		exit(EXIT_FAILURE);
 	}
+	memset(ssdp_mac, '\0', 13);
+	struct ifreq s;
+
+	memset(&s, '\0', sizeof(s));
+	strcpy(s.ifr_name, ifname);
+	if(ioctl(fd, SIOCGIFADDR, &s) == 0) {
+		int i;
+		for(i = 0; i < 12; i+=2) {
+			sprintf(&ssdp_mac[i], "%02x", (unsigned char)s.ifr_addr.sa_data[i/2]);
+		}
+	}
+	close(fd);
 #elif defined(HAVE_GETIFADDRS)
 	ifaddrs* iflist;
-    if(getifaddrs(&iflist) == 0) {
-        for(ifaddrs* cur = iflist; cur; cur = cur->ifa_next) {
-            if((cur->ifa_addr->sa_family == AF_LINK) && (strcmp(cur->ifa_name, if_name) == 0) && cur->ifa_addr) {
-                sockaddr_dl* sdl = (sockaddr_dl*)cur->ifa_addr;
-                memcpy(&ssdp_mac[i], LLADDR(sdl), sdl->sdl_alen);
-                break;
-            }
-        }
-
-        freeifaddrs(iflist);
-    }
-#endif
-}
-
-unsigned long ssdp_genid(void) {
-	ssdp_getethmac();
-	int i = 0;
-	unsigned long x = 0;
-	if(ssdp_mac && strlen(ssdp_mac) > 0) {
-		for(i=0;i<12;i++) {
-			x += (unsigned long)ssdp_mac[i];
+	if(getifaddrs(&iflist) == 0) {
+		for(ifaddrs* cur = iflist; cur; cur = cur->ifa_next) {
+			if((cur->ifa_addr->sa_family == AF_LINK) && (strcmp(cur->ifa_name, if_name) == 0) && cur->ifa_addr) {
+				sockaddr_dl* sdl = (sockaddr_dl*)cur->ifa_addr;
+				memcpy(&ssdp_mac[i], LLADDR(sdl), sdl->sdl_alen);
+				break;
+			}
 		}
 
-		return x;
-	} else {
-		return 0;
+		freeifaddrs(iflist);
 	}
-}
+#endif
 
-char *ssdp_genuuid(void) {
-	unsigned long r = ssdp_genid();
-	if(r > 0) {
-	
-		char *upnp_id = malloc(UUID_LENGTH);
-		if(!upnp_id) {
-			logprintf(LOG_ERR, "out of memory");
-			exit(EXIT_FAILURE);
-		}
-		memset(upnp_id, '\0', UUID_LENGTH);
-		unsigned int a, b, c, d, e, f;	
-
-		a = (r>> 0) & 0xFFFF;
-		b = (r>>16) & 0xFF;
-		c = (r>>24) & 0xFF;
-		if(r > 0) {
-			r = ssdp_genid();
-			d = (r>> 0) & 0xFF;
-			e = (r>> 8) & 0xFFFF;
-			f = (r>>24) & 0xFF;
-
-			sprintf(upnp_id, "%04X-%02X-%02X-%02X-%04X%02X", (a&0xFFFF), (b&0xFF), (c&0xFF), (d&0xFF), (e&0xFFFF), (f&0xFF));
-		} else {
-			sfree((void *)&ssdp_mac);
-			return NULL;
-		}
+	if(strlen(ssdp_mac) > 0) {
+		upnp_id = malloc(UUID_LENGTH);
+		sprintf(upnp_id, 
+				"0000-%c%c-%c%c-%c%c-%c%c%c%c%c%c",
+				ssdp_mac[0], ssdp_mac[1], ssdp_mac[2],
+				ssdp_mac[3], ssdp_mac[4], ssdp_mac[5],
+				ssdp_mac[6], ssdp_mac[7], ssdp_mac[9],
+				ssdp_mac[10], ssdp_mac[11], ssdp_mac[12]);
 		sfree((void *)&ssdp_mac);
 		return upnp_id;
-	} else {
-		return NULL;
 	}
+	return NULL;
 }
 
 int ssdp_start(void) {
@@ -297,8 +286,6 @@ int ssdp_seek(struct ssdp_list_t **ssdp_list) {
 				}
 				pch = strtok(NULL, "\r\n");
 			}
-			/* strtok on fixed char array need to be freed */
-			// sfree((void *)&pch);
 			if(match) {
 				struct ssdp_list_t *node = malloc(sizeof(struct ssdp_list_t));
 				if(!node) {
@@ -482,19 +469,14 @@ void *ssdp_wait(void *param) {
 	char message[BUFFER_SIZE];
 	char host[NI_MAXHOST];
 	char **header = NULL;
+	char *id = NULL;
 	ssize_t len = 0;
 	socklen_t addrlen = sizeof(addr);
 	int family = 0, s = 0, nrheader = 0, x = 0;
 
-	char *id = ssdp_genuuid();	
 	char *distro = ssdp_getdistroname();
 	char *hostname = ssdp_gethostname();
 
-	
-	if(id == NULL) {
-		logprintf(LOG_ERR, "could not generate the device uuid");
-		exit(EXIT_FAILURE);
-	}
 	
 	if(distro == NULL) {
 		logprintf(LOG_ERR, "failed to determine the distribution");
@@ -512,6 +494,7 @@ void *ssdp_wait(void *param) {
 		exit(EXIT_FAILURE);
 	}
 #endif
+
 	for(ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next) {
 		if(ifa->ifa_addr == NULL) {
 			continue;
@@ -521,6 +504,10 @@ void *ssdp_wait(void *param) {
 		
 		if((strstr(ifa->ifa_name, "lo") == NULL && strstr(ifa->ifa_name, "vbox") == NULL 
 		    && strstr(ifa->ifa_name, "dummy") == NULL) && (family == AF_INET || family == AF_INET6)) {
+			if((id = ssdp_genuuid(ifa->ifa_name)) == NULL) {
+				logprintf(LOG_ERR, "could not generate the device uuid");
+				exit(EXIT_FAILURE);
+			}
 			memset(host, '\0', NI_MAXHOST);
 			s = getnameinfo(ifa->ifa_addr,
                            (family == AF_INET) ? sizeof(struct sockaddr_in) :
@@ -555,7 +542,9 @@ void *ssdp_wait(void *param) {
 	
 	freeifaddrs(ifaddr);
 
-	sfree((void *)&id);
+	if(id) {
+		sfree((void *)&id);
+	}
 	sfree((void *)&distro);
 	sfree((void *)&hostname);
 

@@ -37,13 +37,13 @@
 #include "gc.h"
 
 unsigned short main_loop = 1;
-pthread_t pth;
 
 int main_gc(void) {
 	log_shell_disable();
 
 	options_gc();
 	log_gc();
+	gc_clear();
 
 	sfree((void *)&progname);
 
@@ -62,7 +62,9 @@ int main(int argc, char **argv) {
 	log_level_set(LOG_NOTICE);
 
 	struct options_t *options = NULL;
-	
+	struct ifaddrs *ifaddr, *ifa;
+	int family = 0;
+	char *p = NULL;	
 	char *args = NULL;	
 	
 	progname = malloc(13);
@@ -101,12 +103,42 @@ int main(int argc, char **argv) {
 	}
 	options_delete(options);
 
-	char *p = NULL;
-	if((p = ssdp_genuuid()) != NULL) {
-		printf("%s\n", p);
-		sfree((void *)&p);
+#ifdef __FreeBSD__	
+	if(rep_getifaddrs(&ifaddr) == -1) {
+		logprintf(LOG_ERR, "could not get network adapter information");
+		goto clear;
+	}
+#else
+	if(getifaddrs(&ifaddr) == -1) {
+		perror("getifaddrs");
+		goto clear;
+	}
+#endif
+
+	for(ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next) {
+		if(ifa->ifa_addr == NULL) {
+			continue;
+		}
+		
+		family = ifa->ifa_addr->sa_family;
+		
+		if((strstr(ifa->ifa_name, "lo") == NULL && strstr(ifa->ifa_name, "vbox") == NULL 
+		    && strstr(ifa->ifa_name, "dummy") == NULL) && (family == AF_INET || family == AF_INET6)) {
+			if((p = ssdp_genuuid(ifa->ifa_name)) == NULL) {
+				logprintf(LOG_ERR, "could not generate the device uuid");
+				freeifaddrs(ifaddr);
+				goto clear;
+			} else {
+				printf("%s\n", p);
+				sfree((void *)&p);
+				break;
+			}
+		}
 	}
 
+	freeifaddrs(ifaddr);
+
+clear:
 	main_gc();
 	return (EXIT_FAILURE);
 }

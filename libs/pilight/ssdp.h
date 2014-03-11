@@ -19,6 +19,8 @@
 #ifndef _SSDP_H_
 #define _SSDP_H_
 
+#include <ifaddrs.h>
+
 typedef struct ssdp_list_t {
 	char ip[17];
 	unsigned short port;
@@ -28,9 +30,8 @@ typedef struct ssdp_list_t {
 int ssdp_gc(void);
 char *ssdp_gethostname(void);
 char *ssdp_getdistroname(void);
-void ssdp_getethmac(void);
-unsigned long ssdp_genid(void);
-char *ssdp_genuuid(void);
+char *ssdp_genuuid(char *ifname);
+int rep_getifaddrs(struct ifaddrs **ifap);
 int ssdp_start(void);
 int ssdp_seek(struct ssdp_list_t **ssdp_list);
 void ssdp_free(struct ssdp_list_t *ssdp_list);

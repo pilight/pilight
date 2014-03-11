@@ -1527,6 +1527,10 @@ int main_gc(void) {
 
 int main(int argc, char **argv) {
 
+	struct ifaddrs *ifaddr, *ifa;
+	int family = 0;
+	char *p = NULL;
+
 	progname = malloc(16);
 	if(!progname) {
 		logprintf(LOG_ERR, "out of memory");
@@ -1546,11 +1550,39 @@ int main(int argc, char **argv) {
 	/* Catch all exit signals for gc */
 	gc_catch();
 
-	char *p = NULL;
-	if((p = ssdp_genuuid()) != NULL) {
-		strcpy(pilight_uuid, p);
-		sfree((void *)&p);
+#ifdef __FreeBSD__	
+	if(rep_getifaddrs(&ifaddr) == -1) {
+		logprintf(LOG_ERR, "could not get network adapter information");
+		goto clear;
 	}
+#else
+	if(getifaddrs(&ifaddr) == -1) {
+		perror("getifaddrs");
+		goto clear;
+	}
+#endif
+
+	for(ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next) {
+		if(ifa->ifa_addr == NULL) {
+			continue;
+		}
+		
+		family = ifa->ifa_addr->sa_family;
+		
+		if((strstr(ifa->ifa_name, "lo") == NULL && strstr(ifa->ifa_name, "vbox") == NULL 
+		    && strstr(ifa->ifa_name, "dummy") == NULL) && (family == AF_INET || family == AF_INET6)) {
+			if((p = ssdp_genuuid(ifa->ifa_name)) == NULL) {
+				logprintf(LOG_ERR, "could not generate the device uuid");
+				freeifaddrs(ifaddr);
+				goto clear;
+			} else {
+				strcpy(pilight_uuid, p);
+				sfree((void *)&p);
+				break;
+			}
+		}
+	}
+	freeifaddrs(ifaddr);
 
 	firmware.version = 0;
 	firmware.lpf = 0;
@@ -1617,7 +1649,7 @@ int main(int argc, char **argv) {
 					settings_set_file(args);
 				} else {
 					fprintf(stderr, "%s: the settings file %s does not exists\n", progname, args);
-					exit(EXIT_FAILURE);
+					goto clear;
 				}
 			break;
 			case 'D':

@@ -24,7 +24,7 @@
 #include <unistd.h>
 #include <regex.h>
 #include <sys/stat.h>
-#include<ctype.h>
+#include <ctype.h>
 
 #include "../../pilight.h"
 #include "config.h"
