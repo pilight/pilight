@@ -15,6 +15,8 @@ set(PROTOCOL_DHT11 ON CACHE BOOL "support for the DHT11 temperature-humidity sen
 set(PROTOCOL_DHT22 ON CACHE BOOL "support for the DHT22/AM2302 temperature-humidity sensor")
 set(PROTOCOL_DIO_SWITCH ON CACHE BOOL "support for the D-IO switch protocol")
 set(PROTOCOL_ELRO_SWITCH ON CACHE BOOL "support for the Elro switch protocol")
+set(PROTOCOL_EV1527_CONTACT ON CACHE BOOL "support for the EV1527 based contact sensor protocol")
+set(PROTOCOL_EV1527_MOTION ON CACHE BOOL "support for the EV1527 based motion sensor protocol")
 set(PROTOCOL_GENERIC_DIMMER ON CACHE BOOL "support for the generic dimmer protocol")
 set(PROTOCOL_GENERIC_SWITCH ON CACHE BOOL "support for the generic switch protocol")
 set(PROTOCOL_GENERIC_WEATHER ON CACHE BOOL "support for the generic weather protocol")
