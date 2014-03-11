@@ -86,11 +86,7 @@ void ev1527ContactInit(void) {
   protocol_register(&ev1527_contact);
   protocol_set_id(ev1527_contact, "ev1527_contact");
   protocol_device_add(ev1527_contact, "ev1527_contact", "EV1527 Based Contact Sensor");
-  protocol_plslen_add(ev1527_contact, 260);
-  protocol_plslen_add(ev1527_contact, 253);
-  protocol_plslen_add(ev1527_contact, 254);
-  protocol_plslen_add(ev1527_contact, 258);
-  protocol_plslen_add(ev1527_contact, 259);
+  protocol_plslen_add(ev1527_contact, 256);
   protocol_conflict_add(ev1527_contact, "rev_switch");
   
   ev1527_contact->devtype = SWITCH;
