@@ -55,7 +55,7 @@ void ev1527ContactParseCode(void) {
 }
 
 int ev1527ContactCreateCode(JsonNode *code) {
-    int id = -1;
+	int id = -1;
 	int state = -1;
 	int tmp;
 
