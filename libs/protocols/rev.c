@@ -63,7 +63,7 @@ void revParseCode(void) {
 	}
 
 	int unit = binToDecRev(rev_switch->binary, 0, 5);
-	int state = rev_switch->binary[10];
+	int state = rev_switch->binary[11];
 	int y = binToDecRev(rev_switch->binary, 6, 9);
 	sprintf(&id[0], "%c%d", z, y);
 	
@@ -141,7 +141,11 @@ void revCreateId(char *id) {
 }
 
 void revCreateState(int state) {
-	if(state == 1) {
+	if(state == 0) {
+		rev_switch->raw[36]=(rev_switch->pulse*rev_switch->plslen->length);
+		rev_switch->raw[37]=(rev_switch->plslen->length);
+		rev_switch->raw[38]=(rev_switch->plslen->length);
+		rev_switch->raw[39]=(rev_switch->pulse*rev_switch->plslen->length);
 		revCreateMed(40,43);
 		revCreateHigh(44,47);
 	} else {
@@ -192,7 +196,7 @@ int revCreateCode(JsonNode *code) {
 		revCreateUnit(unit);
 		revCreateId(id);
 		revCreateState(state);
-		revCreateFooter();;
+		revCreateFooter();
 	}
 	return EXIT_SUCCESS;
 }
@@ -209,8 +213,10 @@ void revInit(void) {
 	protocol_register(&rev_switch);
 	protocol_set_id(rev_switch, "rev_switch");	
 	protocol_device_add(rev_switch, "rev_switch", "REV Switches");
-	protocol_plslen_add(rev_switch, 319); 
-	protocol_plslen_add(rev_switch, 258); 
+	protocol_conflict_add(rev_switch, "clarus_switch");
+	protocol_plslen_add(rev_switch, 319);
+	protocol_plslen_add(rev_switch, 258);
+	protocol_plslen_add(rev_switch, 186);
 	rev_switch->devtype = SWITCH;
 	rev_switch->hwtype = RF433;
 	rev_switch->pulse = 3;

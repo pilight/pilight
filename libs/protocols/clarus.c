@@ -206,6 +206,7 @@ void clarusSwInit(void) {
 	protocol_register(&clarus_switch);
 	protocol_set_id(clarus_switch, "clarus_switch");	
 	protocol_device_add(clarus_switch, "clarus_switch", "Clarus Switches");
+	protocol_conflict_add(clarus_switch, "rev_switch");
 	protocol_plslen_add(clarus_switch, 189);
 	clarus_switch->devtype = SWITCH;
 	clarus_switch->hwtype = RF433;
