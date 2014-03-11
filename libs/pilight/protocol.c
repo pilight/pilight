@@ -127,6 +127,12 @@
 #ifdef PROTOCOL_TEKNIHALL
 	#include "../protocols/teknihall.h"
 #endif
+#ifdef PROTOCOL_EV1527_CONTACT
+	#include "../protocols/ev1527_contact.h"
+#endif
+#ifdef PROTOCOL_EV1527_MOTION
+	#include "../protocols/ev1527_motion.h"
+#endif
 
 void protocol_init(void) {
 	pilightFirmwareInit();
@@ -227,6 +233,12 @@ void protocol_init(void) {
 #endif
 #ifdef PROTOCOL_TEKNIHALL
 	teknihallInit();
+#endif
+#ifdef PROTOCOL_EV1527_CONTACT
+	ev1527ContactInit();
+#endif
+#ifdef PROTOCOL_EV1527_MOTION
+	ev1527MotionInit();
 #endif
 }
 
