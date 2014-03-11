@@ -86,7 +86,6 @@ void ev1527MotionInit(void) {
   protocol_register(&ev1527_motion);
   protocol_set_id(ev1527_motion, "ev1527_motion");
   protocol_device_add(ev1527_motion, "ev1527_motion", "EV1527 based Motion Sensor");
-  protocol_plslen_add(ev1527_motion, 305);
   protocol_plslen_add(ev1527_motion, 306);
   protocol_conflict_add(ev1527_motion, "rev_switch");
   
