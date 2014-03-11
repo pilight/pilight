@@ -366,9 +366,8 @@ void socket_rm_client(int i, struct socket_callback_t *socket_callback) {
 	int sd = socket_clients[i];
 
 	//Somebody disconnected, get his details and print
-	if(getpeername(sd, (struct sockaddr*)&address, (socklen_t*)&addrlen) == 0) {
-		logprintf(LOG_DEBUG, "client disconnected, ip %s, port %d", inet_ntoa(address.sin_addr), ntohs(address.sin_port));
-	}
+	getpeername(sd, (struct sockaddr*)&address, (socklen_t*)&addrlen);
+	logprintf(LOG_DEBUG, "client disconnected, ip %s, port %d", inet_ntoa(address.sin_addr), ntohs(address.sin_port));
 	if(socket_callback->client_disconnected_callback)
 		socket_callback->client_disconnected_callback(i);
 	//Close the socket and mark as 0 in list for reuse

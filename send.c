@@ -376,7 +376,6 @@ int main(int argc, char **argv) {
 					char *output = json_stringify(json, NULL);
 					socket_write(sockfd, output);
 					sfree((void *)&output);
-					//usleep(300000);
 					goto close;
 				break;
 				case REJECT:

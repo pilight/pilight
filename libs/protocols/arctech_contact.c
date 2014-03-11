@@ -68,12 +68,12 @@ void arctechContactInit(void) {
   arctech_contact->rawlen = 148;
   arctech_contact->lsb = 3;
 
-  options_add(&arctech_contact->options, 'a', "all", OPTION_NO_VALUE, 0, JSON_NUMBER, NULL, NULL);
   options_add(&arctech_contact->options, 'u', "unit", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, NULL, "^([0-9]{1}|[1][0-5])$");
   options_add(&arctech_contact->options, 'i', "id", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, NULL, "^([0-9]{1,7}|[1-5][0-9]{7}|6([0-6][0-9]{6}|7(0[0-9]{5}|10([0-7][0-9]{3}|8([0-7][0-9]{2}|8([0-5][0-9]|6[0-3]))))))$");
   options_add(&arctech_contact->options, 't', "opened", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
   options_add(&arctech_contact->options, 'f', "closed", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
 
+  options_add(&arctech_contact->options, 'a', "all", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
   options_add(&arctech_contact->options, 0, "gui-readonly", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 
   arctech_contact->parseBinary=&arctechContactParseBinary;
