@@ -30,13 +30,13 @@
 #include "ev1527_motion.h"
 
 void ev1527MotionCreateMessage(int id, int state) {
-  ev1527_motion->message = json_mkobject();
-  json_append_member(ev1527_motion->message, "id", json_mknumber(id));
-  if(state == 1) {
-          json_append_member(ev1527_motion->message, "state", json_mkstring("on"));
-  } else {
-          json_append_member(ev1527_motion->message, "state", json_mkstring("off"));
-  }
+	ev1527_motion->message = json_mkobject();
+	json_append_member(ev1527_motion->message, "id", json_mknumber(id));
+	if(state == 1) {
+		json_append_member(ev1527_motion->message, "state", json_mkstring("on"));
+	} else {
+		json_append_member(ev1527_motion->message, "state", json_mkstring("off"));
+	}
 }
 
 void ev1527MotionParseCode(void) {
@@ -55,7 +55,7 @@ void ev1527MotionParseCode(void) {
 }
 
 int ev1527MotionCreateCode(JsonNode *code) {
-    int id = -1;
+	int id = -1;
 	int state = -1;
 	int tmp;
 
@@ -83,23 +83,23 @@ void ev1527MotionPrintHelp(void) {
 
 void ev1527MotionInit(void) {
 
-  protocol_register(&ev1527_motion);
-  protocol_set_id(ev1527_motion, "ev1527_motion");
-  protocol_device_add(ev1527_motion, "ev1527_motion", "EV1527 based Motion Sensor");
-  protocol_plslen_add(ev1527_motion, 306);
-  protocol_conflict_add(ev1527_motion, "rev_switch");
+	protocol_register(&ev1527_motion);
+	protocol_set_id(ev1527_motion, "ev1527_motion");
+	protocol_device_add(ev1527_motion, "ev1527_motion", "EV1527 based Motion Sensor");
+	protocol_plslen_add(ev1527_motion, 306);
+	protocol_conflict_add(ev1527_motion, "rev_switch");
   
-  ev1527_motion->devtype = SWITCH;
-  ev1527_motion->hwtype = RF433;
-  ev1527_motion->pulse = 3;
-  ev1527_motion->rawlen = 50;
+	ev1527_motion->devtype = SWITCH;
+	ev1527_motion->hwtype = RF433;
+	ev1527_motion->pulse = 3;
+	ev1527_motion->rawlen = 50;
 
-  options_add(&ev1527_motion->options, 't', "on", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
-  options_add(&ev1527_motion->options, 'f', "off", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
-  options_add(&ev1527_motion->options, 'i', "id", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, NULL, "^([0-9]{1,})$");
-  options_add(&ev1527_motion->options, 0, "gui-readonly", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
+	options_add(&ev1527_motion->options, 't', "on", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
+	options_add(&ev1527_motion->options, 'f', "off", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
+	options_add(&ev1527_motion->options, 'i', "id", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, NULL, "^([0-9]{1,})$");
+	options_add(&ev1527_motion->options, 0, "gui-readonly", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 
-  ev1527_motion->parseBinary=&ev1527MotionParseCode;
-  ev1527_motion->createCode=&ev1527MotionCreateCode;
-  ev1527_motion->printHelp=&ev1527MotionPrintHelp;
+	ev1527_motion->parseBinary=&ev1527MotionParseCode;
+	ev1527_motion->createCode=&ev1527MotionCreateCode;
+	ev1527_motion->printHelp=&ev1527MotionPrintHelp;
 }
