@@ -30,13 +30,13 @@
 #include "ev1527_contact.h"
 
 void ev1527ContactCreateMessage(int id, int state) {
-  ev1527_contact->message = json_mkobject();
-  json_append_member(ev1527_contact->message, "id", json_mknumber(id));
-  if(state == 1) {
-          json_append_member(ev1527_contact->message, "state", json_mkstring("opened"));
-  } else {
-          json_append_member(ev1527_contact->message, "state", json_mkstring("closed"));
-  }
+	ev1527_contact->message = json_mkobject();
+	json_append_member(ev1527_contact->message, "id", json_mknumber(id));
+	if(state == 1) {
+		json_append_member(ev1527_contact->message, "state", json_mkstring("opened"));
+	} else {
+		json_append_member(ev1527_contact->message, "state", json_mkstring("closed"));
+	}
 }
 
 void ev1527ContactParseCode(void) {
@@ -83,23 +83,23 @@ void ev1527ContactPrintHelp(void) {
 
 void ev1527ContactInit(void) {
 
-  protocol_register(&ev1527_contact);
-  protocol_set_id(ev1527_contact, "ev1527_contact");
-  protocol_device_add(ev1527_contact, "ev1527_contact", "EV1527 Based Contact Sensor");
-  protocol_plslen_add(ev1527_contact, 256);
-  protocol_conflict_add(ev1527_contact, "rev_switch");
+	protocol_register(&ev1527_contact);
+	protocol_set_id(ev1527_contact, "ev1527_contact");
+	protocol_device_add(ev1527_contact, "ev1527_contact", "EV1527 Based Contact Sensor");
+	protocol_plslen_add(ev1527_contact, 256);
+	protocol_conflict_add(ev1527_contact, "rev_switch");
   
-  ev1527_contact->devtype = SWITCH;
-  ev1527_contact->hwtype = RF433;
-  ev1527_contact->pulse = 3;
-  ev1527_contact->rawlen = 50;
+	ev1527_contact->devtype = SWITCH;
+	ev1527_contact->hwtype = RF433;
+ 	ev1527_contact->pulse = 3;
+	ev1527_contact->rawlen = 50;
 
-  options_add(&ev1527_contact->options, 't', "opened", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
-  options_add(&ev1527_contact->options, 'f', "closed", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
-  options_add(&ev1527_contact->options, 'i', "id", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, NULL, "^([0-9]{1,})$");
-  options_add(&ev1527_contact->options, 0, "gui-readonly", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
+	options_add(&ev1527_contact->options, 't', "opened", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
+	options_add(&ev1527_contact->options, 'f', "closed", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
+	options_add(&ev1527_contact->options, 'i', "id", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, NULL, "^([0-9]{1,})$");
+	options_add(&ev1527_contact->options, 0, "gui-readonly", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 
-  ev1527_contact->parseBinary=&ev1527ContactParseCode;
-  ev1527_contact->createCode=&ev1527ContactCreateCode;
-  ev1527_contact->printHelp=&ev1527ContactPrintHelp;
+	ev1527_contact->parseBinary=&ev1527ContactParseCode;
+	ev1527_contact->createCode=&ev1527ContactCreateCode;
+	ev1527_contact->printHelp=&ev1527ContactPrintHelp;
 }
