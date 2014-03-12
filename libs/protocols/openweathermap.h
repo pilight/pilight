@@ -20,11 +20,12 @@
 #define _PROTOCOL_OPENWEATHERMAP_H_
 
 #include "json.h"
+#include "threads.h"
 
 struct protocol_t *openweathermap;
 
 void openweathermapInit(void);
 int openweathermapCheckValues(JsonNode *code);
-void openweathermapInitDev(JsonNode *jdevice);
+struct threadqueue_t *openweathermapInitDev(JsonNode *jdevice);
 
 #endif

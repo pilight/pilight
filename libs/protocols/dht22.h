@@ -20,10 +20,11 @@
 #define _PROTOCOL_DHT22_H_
 
 #include "json.h"
+#include "threads.h"
 
 struct protocol_t *dht22;
 
 void dht22Init(void);
-void dht22InitDev(JsonNode *jdevice);
+struct threadqueue_t *dht22InitDev(JsonNode *jdevice);
 
 #endif

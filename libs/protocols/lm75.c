@@ -158,17 +158,18 @@ void *lm75Parse(void *param) {
 	return (void *)NULL;
 }
 
-void lm75InitDev(JsonNode *jdevice) {
+struct threadqueue_t *lm75InitDev(JsonNode *jdevice) {
+	lm75_loop = 1;
 	wiringPiSetup();
 	char *output = json_stringify(jdevice, NULL);
 	JsonNode *json = json_decode(output);
+	sfree((void *)&output);
 
 	struct protocol_threads_t *node = protocol_thread_init(lm75, json);
-	threads_register("lm75", &lm75Parse, (void *)node, 0);
-	sfree((void *)&output);
+	return threads_register("lm75", &lm75Parse, (void *)node, 0);
 }
 
-void lm75GC(void) {
+void lm75ThreadGC(void) {
 	lm75_loop = 0;
 	protocol_thread_stop(lm75);
 	while(lm75_threads > 0) {
@@ -192,5 +193,5 @@ void lm75Init(void) {
 	options_add(&lm75->options, 0, "gui-show-temperature", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
 
 	lm75->initDev=&lm75InitDev;
-	lm75->gc=&lm75GC;
+	lm75->threadGC=&lm75ThreadGC;
 }

@@ -207,13 +207,14 @@ void *wundergroundParse(void *param) {
 	return (void *)NULL;
 }
 
-void wundergroundInitDev(JsonNode *jdevice) {
+struct threadqueue_t *wundergroundInitDev(JsonNode *jdevice) {
+	wunderground_loop = 1;
 	char *output = json_stringify(jdevice, NULL);
 	JsonNode *json = json_decode(output);
+	sfree((void *)&output);
 
 	struct protocol_threads_t *node = protocol_thread_init(wunderground, json);
-	threads_register("wunderground", &wundergroundParse, (void *)node, 0);
-	sfree((void *)&output);
+	return threads_register("wunderground", &wundergroundParse, (void *)node, 0);
 }
 
 int wundergroundCheckValues(JsonNode *code) {
@@ -228,7 +229,7 @@ int wundergroundCheckValues(JsonNode *code) {
 	return 0;
 }
 
-void wundergroundGC(void) {
+void wundergroundThreadGC(void) {
 	wunderground_loop = 0;
 	protocol_thread_stop(wunderground);
 	while(wunderground_threads > 0) {
@@ -259,5 +260,5 @@ void wundergroundInit(void) {
 
 	wunderground->initDev=&wundergroundInitDev;
 	wunderground->checkValues=&wundergroundCheckValues;
-	wunderground->gc=&wundergroundGC;
+	wunderground->threadGC=&wundergroundThreadGC;
 }

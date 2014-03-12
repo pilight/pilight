@@ -158,17 +158,18 @@ void *lm76Parse(void *param) {
 	return (void *)NULL;
 }
 
-void lm76InitDev(JsonNode *jdevice) {
+struct threadqueue_t *lm76InitDev(JsonNode *jdevice) {
+	lm76_loop = 1;
 	wiringPiSetup();
 	char *output = json_stringify(jdevice, NULL);
 	JsonNode *json = json_decode(output);
+	sfree((void *)&output);
 
 	struct protocol_threads_t *node = protocol_thread_init(lm76, json);
-	threads_register("lm76", &lm76Parse, (void *)node, 0);
-	sfree((void *)&output);
+	return threads_register("lm76", &lm76Parse, (void *)node, 0);
 }
 
-void lm76GC(void) {
+void lm76ThreadGC(void) {
 	lm76_loop = 0;
 	protocol_thread_stop(lm76);
 	while(lm76_threads > 0) {
@@ -192,5 +193,5 @@ void lm76Init(void) {
 	options_add(&lm76->options, 0, "gui-show-temperature", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
 
 	lm76->initDev=&lm76InitDev;
-	lm76->gc=&lm76GC;
+	lm76->threadGC=&lm76ThreadGC;
 }

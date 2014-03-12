@@ -28,6 +28,7 @@
 
 #include "../../pilight.h"
 #include "config.h"
+#include "threads.h"
 #include "common.h"
 #include "log.h"
 #include "options.h"
@@ -1304,7 +1305,9 @@ int config_parse_devices(JsonNode *jdevices, struct conf_devices_t *device) {
 		tmp_protocols = device->protocols;
 		while(tmp_protocols) {
 			if(tmp_protocols->listener->initDev) {
-				tmp_protocols->listener->initDev(jdevices);
+				device->threads = realloc(device->threads, (sizeof(struct threadqueue_t *)*(size_t)(device->nrthreads+1)));
+				device->threads[device->nrthreads] = tmp_protocols->listener->initDev(jdevices);
+				device->nrthreads++;
 			}
 			tmp_protocols = tmp_protocols->next;
 		}
@@ -1410,6 +1413,8 @@ int config_parse_locations(JsonNode *jlocations, struct conf_locations_t *locati
 					exit(EXIT_FAILURE);
 				}
 				strcpy(dnode->name, name);
+				dnode->nrthreads = 0;
+				dnode->threads = NULL;
 				dnode->settings = NULL;
 				dnode->next = NULL;
 				dnode->protocols = NULL;
@@ -1707,7 +1712,7 @@ int config_write(char *content) {
 
 int config_gc(void) {
 	sfree((void *)&configfile);
-
+	int i = 0;
 	struct conf_locations_t *ltmp;
 	struct conf_devices_t *dtmp;
 	struct conf_settings_t *stmp;
@@ -1735,15 +1740,24 @@ int config_gc(void) {
 			}
 			while(dtmp->protocols) {
 				ptmp = dtmp->protocols;
+				if(ptmp->listener->threadGC) {
+					ptmp->listener->threadGC();
+				}
 				sfree((void *)&ptmp->name);
 				sfree((void *)&ptmp->listener);
 				dtmp->protocols = dtmp->protocols->next;
 				sfree((void *)&ptmp);
 			}
+			if(dtmp->nrthreads > 0) {
+				for(i=0;i<dtmp->nrthreads;i++) {
+					thread_stop(dtmp->threads[i]);
+				}
+			}			
 			sfree((void *)&dtmp->protocols);
 			sfree((void *)&dtmp->settings);
 			sfree((void *)&dtmp->id);
 			sfree((void *)&dtmp->name);
+			sfree((void *)&dtmp->threads);
 			ltmp->devices = ltmp->devices->next;
 			sfree((void *)&dtmp);
 		}

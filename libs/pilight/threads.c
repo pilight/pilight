@@ -21,6 +21,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <pthread.h>
+#include <sys/time.h>
 
 #include "threads.h"
 #include "common.h"
@@ -34,21 +35,10 @@ pthread_cond_t threadqueue_signal;
 pthread_mutexattr_t threadqueue_attr;
 
 int threadqueue_number = 0;
-
-struct threadqueue_t {
-	pthread_t pth;
-	int force;
-	char *id;
-	void *param;
-	unsigned int running;
-	void *(*function)(void *param);
-	struct threadqueue_t *next;
-} threadqueue_t;
-
 struct threadqueue_t *threadqueue = NULL;
 struct threadqueue_t *threadqueue_head = NULL;
 
-void threads_register(const char *id, void *(*function)(void *param), void *param, int force) {
+struct threadqueue_t *threads_register(const char *id, void *(*function)(void *param), void *param, int force) {
 	pthread_mutex_lock(&threadqueue_lock);
 
 	struct threadqueue_t *tnode = malloc(sizeof(struct threadqueue_t));
@@ -56,6 +46,11 @@ void threads_register(const char *id, void *(*function)(void *param), void *para
 		logprintf(LOG_ERR, "out of memory");
 		exit(EXIT_FAILURE);
 	}
+	
+	struct timeval tcurrent;
+	gettimeofday(&tcurrent, NULL);
+
+	tnode->ts = 1000000 * (unsigned int)tcurrent.tv_sec + (unsigned int)tcurrent.tv_usec;		
 	tnode->function = function;
 	tnode->running = 0;
 	tnode->force = force;
@@ -79,9 +74,11 @@ void threads_register(const char *id, void *(*function)(void *param), void *para
 		threadqueue = tnode;
 	}
 	threadqueue_number++;
-	
+
 	pthread_mutex_unlock(&threadqueue_lock);
 	pthread_cond_signal(&threadqueue_signal);	
+	
+	return tnode;
 }
 
 void *threads_start(void *param) {
@@ -103,13 +100,13 @@ void *threads_start(void *param) {
 				tmp_threads = tmp_threads->next;
 			}
 			pthread_create(&tmp_threads->pth, NULL, tmp_threads->function, (void *)tmp_threads->param);
+			thread_running++;
 			tmp_threads->running = 1;		
 			if(thread_running == 1) {
 				logprintf(LOG_DEBUG, "new thread %s, %d thread running", tmp_threads->id, thread_running);
 			} else {
 				logprintf(LOG_DEBUG, "new thread %s, %d threads running", tmp_threads->id, thread_running);
 			}
-			thread_running++;
 
 			threadqueue_number--;
 			pthread_mutex_unlock(&threadqueue_lock);
@@ -118,6 +115,42 @@ void *threads_start(void *param) {
 		}
 	}
 	return (void *)NULL;
+}
+
+void thread_stop(struct threadqueue_t *node) {
+	struct threadqueue_t *currP, *prevP;
+
+	prevP = NULL;
+
+	for(currP = threadqueue; currP != NULL; prevP = currP, currP = currP->next) {
+
+		if(currP->ts == node->ts) {
+			if(prevP == NULL) {
+				threadqueue = currP->next;
+			} else {
+				prevP->next = currP->next;
+			}
+
+			if(currP->running == 1) {
+				thread_running--;
+
+				if(currP->force == 1) {
+					pthread_cancel(currP->pth);
+				}
+				pthread_join(currP->pth, NULL);
+				if(thread_running == 1) {
+					logprintf(LOG_DEBUG, "stopped thread %s, %d thread running", currP->id, thread_running);
+				} else {
+					logprintf(LOG_DEBUG, "stopped thread %s, %d threads running", currP->id, thread_running);
+				}
+			}
+			
+			sfree((void *)&currP->id);
+			sfree((void *)&currP);
+
+			break;
+		}
+	}
 }
 
 int threads_gc(void) {

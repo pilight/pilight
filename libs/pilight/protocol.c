@@ -255,6 +255,7 @@ void protocol_register(protocol_t **proto) {
 	(*proto)->checkValues = NULL;
 	(*proto)->initDev = NULL;
 	(*proto)->printHelp = NULL;
+	(*proto)->threadGC = NULL;
 	(*proto)->gc = NULL;
 	(*proto)->message = NULL;
 	(*proto)->threads = NULL;
@@ -445,6 +446,10 @@ int protocol_gc(void) {
 	while(protocols) {
 		ptmp = protocols;
 		logprintf(LOG_DEBUG, "protocol %s", ptmp->listener->id);
+		if(ptmp->listener->threadGC) {
+			ptmp->listener->threadGC();
+			logprintf(LOG_DEBUG, "ran garbage collector");
+		}		
 		if(ptmp->listener->gc) {
 			ptmp->listener->gc();
 			logprintf(LOG_DEBUG, "ran garbage collector");

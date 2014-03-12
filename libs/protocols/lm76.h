@@ -20,10 +20,11 @@
 #define _PROTOCOL_LM76_H_
 
 #include "json.h"
+#include "threads.h"
 
 struct protocol_t *lm76;
 
 void lm76Init(void);
-void lm76InitDev(JsonNode *jdevice);
+struct threadqueue_t *lm76InitDev(JsonNode *jdevice);
 
 #endif

@@ -19,7 +19,9 @@
 #ifndef _CONFIG_H_
 #define _CONFIG_H_
 
+#include <pthread.h>
 #include "protocol.h"
+#include "threads.h"
 
 typedef struct conf_locations_t conf_locations_t;
 typedef struct conf_devices_t conf_devices_t;
@@ -84,8 +86,10 @@ struct conf_devices_t {
 	char dev_uuid[21];
 	char ori_uuid[21];
 	int cst_uuid;
+	int nrthreads;
 	struct protocols_t *protocols;
 	struct conf_settings_t *settings;
+	struct threadqueue_t **threads;
 	struct conf_devices_t *next;
 };
 

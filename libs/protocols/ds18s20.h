@@ -20,10 +20,11 @@
 #define _PROTOCOL_DS18S20_H_
 
 #include "json.h"
+#include "threads.h"
 
 struct protocol_t *ds18s20;
 
 void ds18s20Init(void);
-void ds18s20InitDev(JsonNode *jdevice);
+struct threadqueue_t *ds18s20InitDev(JsonNode *jdevice);
 
 #endif

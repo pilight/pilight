@@ -21,8 +21,20 @@
 
 #include <pthread.h>
 
-void threads_register(const char *id, void *(*function)(void* param), void *param, int force);
+struct threadqueue_t {
+	unsigned int ts;
+	pthread_t pth;
+	int force;
+	char *id;
+	void *param;
+	unsigned int running;
+	void *(*function)(void *param);
+	struct threadqueue_t *next;
+} threadqueue_t;
+
+struct threadqueue_t *threads_register(const char *id, void *(*function)(void* param), void *param, int force);
 void *threads_start(void *param);
+void thread_stop(struct threadqueue_t *node);
 int threads_gc(void);
 
 #endif

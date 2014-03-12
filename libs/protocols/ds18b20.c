@@ -179,16 +179,17 @@ void *ds18b20Parse(void *param) {
 	return (void *)NULL;
 }
 
-void ds18b20InitDev(JsonNode *jdevice) {
+struct threadqueue_t *ds18b20InitDev(JsonNode *jdevice) {
+	ds18b20_loop = 1;
 	char *output = json_stringify(jdevice, NULL);
 	JsonNode *json = json_decode(output);
+	sfree((void *)&output);
 
 	struct protocol_threads_t *node = protocol_thread_init(ds18b20, json);
-	threads_register("ds18b20", &ds18b20Parse, (void *)node, 0);
-	sfree((void *)&output);
+	return threads_register("ds18b20", &ds18b20Parse, (void *)node, 0);
 }
 
-void ds18b20GC(void) {
+void ds18b20ThreadGC(void) {
 	ds18b20_loop = 0;
 	protocol_thread_stop(ds18b20);
 	while(ds18b20_threads > 0) {
@@ -218,5 +219,5 @@ void ds18b20Init(void) {
 	strcpy(ds18b20_path, "/sys/bus/w1/devices/");
 
 	ds18b20->initDev=&ds18b20InitDev;
-	ds18b20->gc=&ds18b20GC;
+	ds18b20->threadGC=&ds18b20ThreadGC;
 }

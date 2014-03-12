@@ -20,11 +20,12 @@
 #define _PROTOCOL_WUNDERGROUND_H_
 
 #include "json.h"
+#include "threads.h"
 
 struct protocol_t *wunderground;
 
 void wundergroundInit(void);
 int wundergroundCheckValues(JsonNode *code);
-void wundergroundInitDev(JsonNode *jdevice);
+struct threadqueue_t *wundergroundInitDev(JsonNode *jdevice);
 
 #endif

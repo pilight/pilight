@@ -1390,7 +1390,6 @@ void *clientize(void *param) {
 	}
 
 	socket_close(sockfd);
-	exit(EXIT_FAILURE);
 
 	return NULL;
 }

@@ -172,17 +172,18 @@ void *dht22Parse(void *param) {
 	return (void *)NULL;
 }
 
-void dht22InitDev(JsonNode *jdevice) {
+struct threadqueue_t *dht22InitDev(JsonNode *jdevice) {
+	dht22_loop = 1;
 	wiringPiSetup();
 	char *output = json_stringify(jdevice, NULL);
 	JsonNode *json = json_decode(output);
+	sfree((void *)&output);
 
 	struct protocol_threads_t *node = protocol_thread_init(dht22, json);
-	threads_register("dht22", &dht22Parse, (void *)node, 0);
-	sfree((void *)&output);
+	return threads_register("dht22", &dht22Parse, (void *)node, 0);
 }
 
-void dht22GC(void) {
+void dht22ThreadGC(void) {
 	dht22_loop = 0;
 	protocol_thread_stop(dht22);
 	while(dht22_threads > 0) {
@@ -212,5 +213,5 @@ void dht22Init(void) {
 	options_add(&dht22->options, 0, "poll-interval", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)10, "[0-9]");
 
 	dht22->initDev=&dht22InitDev;
-	dht22->gc=&dht22GC;
+	dht22->threadGC=&dht22ThreadGC;
 }

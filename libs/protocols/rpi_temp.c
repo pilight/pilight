@@ -128,16 +128,17 @@ void *rpiTempParse(void *param) {
 	return (void *)NULL;
 }
 
-void rpiTempInitDev(JsonNode *jdevice) {
+struct threadqueue_t *rpiTempInitDev(JsonNode *jdevice) {
+	rpi_temp_loop = 1;
 	char *output = json_stringify(jdevice, NULL);
 	JsonNode *json = json_decode(output);
+	sfree((void *)&output);
 
 	struct protocol_threads_t *node = protocol_thread_init(rpiTemp, json);	
-	threads_register("rpi_temp", &rpiTempParse, (void *)node, 0);
-	sfree((void *)&output);
+	return threads_register("rpi_temp", &rpiTempParse, (void *)node, 0);
 }
 
-void rpiTempGC(void) {
+void rpiTempThreadGC(void) {
 	rpi_temp_loop = 0;
 	protocol_thread_stop(rpiTemp);
 	while(rpi_temp_threads > 0) {
@@ -167,5 +168,5 @@ void rpiTempInit(void) {
 	strcpy(rpi_temp, "/sys/class/thermal/thermal_zone0/temp");
 
 	rpiTemp->initDev=&rpiTempInitDev;
-	rpiTemp->gc=&rpiTempGC;
+	rpiTemp->threadGC=&rpiTempThreadGC;
 }

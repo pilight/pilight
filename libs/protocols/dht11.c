@@ -50,6 +50,7 @@ void *dht11Parse(void *param) {
 	struct JsonNode *jid = NULL;
 	struct JsonNode *jchild = NULL;
 	int *id = 0;
+	int dht11_dat[5];
 	int nrid = 0, y = 0, interval = 10;
 	int temp_offset = 0, humi_offset = 0;
 	int itmp = 0, nrloops = 0;
@@ -79,70 +80,53 @@ void *dht11Parse(void *param) {
 				unsigned short got_correct_date = 0;
 
 				while(tries && !got_correct_date && dht11_loop) {
-					int dht11_dat[5], cnt = 7, idx = 0;
-					int i = 0;
-					int error = 0;
-					unsigned int loopCnt = MAXTIMINGS;
-					long curtime = 0;
-					struct timeval tv;
+					int laststate = HIGH;
+					int counter = 0;
+					int j = 0, i = 0;
 
 					for(i=0;i<5;i++) {
 						dht11_dat[i] = 0;
 					}
 
-					pinMode(id[y], OUTPUT);
-					digitalWrite(id[y], LOW);
-					delay(20);
-					digitalWrite(id[y], HIGH);
-					delayMicroseconds(40);
-					pinMode(id[y], INPUT);
+					// pull pin down for 18 milliseconds
+					pinMode(id[i], OUTPUT);
+					digitalWrite(id[i], LOW);
+					delay(18);
+					// then pull it up for 40 microseconds
+					digitalWrite(id[i], HIGH);
+					delayMicroseconds(40); 
+					// prepare to read the pin
+					pinMode(id[i], INPUT);
 
 
-					while(digitalRead(id[y]) == LOW) {
-						if(loopCnt-- == 0) {
-							error = 1;
-						}
-					}
-
-					loopCnt = MAXTIMINGS;
-					while(digitalRead(id[y]) == HIGH) {
-						if(loopCnt-- == 0) {
-							error = 1;
-						}
-					}
-
-					for(i=0;i<40;i++) {
-						loopCnt = MAXTIMINGS;
-						while(digitalRead(id[y]) == LOW) {
-							if(loopCnt-- == 0) {
-								error = 1;
+					// detect change and read data
+					for(i=0;i<MAXTIMINGS;i++) {
+						counter = 0;
+							while(digitalRead(id[i]) == laststate) {
+								counter++;
+								delayMicroseconds(1);
+								if(counter == 255) {
+									break;
+								}
 							}
+						laststate = digitalRead(id[i]);
+
+						if(counter == 255) {
+							break;
 						}
 
-						gettimeofday(&tv, NULL);
-						curtime = (1000000 * tv.tv_sec + tv.tv_usec);
-						loopCnt = MAXTIMINGS;
-
-						while(digitalRead(id[y]) == HIGH) {
-							if(loopCnt-- == 0) {
-								error = 1;
+						// ignore first 3 transitions
+						if((i >= 4) && (i%2 == 0)) {
+							// shove each bit into the storage bytes
+							dht11_dat[(int)((double)j/8)] <<= 1;
+							if(counter > 16) {
+								dht11_dat[(int)((double)j/8)] |= 1;
 							}
-						}
-
-						gettimeofday(&tv, NULL);
-						if(((1000000 * tv.tv_sec + tv.tv_usec) - curtime) > 40) {
-							dht11_dat[idx] |= (1 << cnt);
-						}
-						if(cnt == 0) {
-							cnt = 7;   
-							idx++;      
-						}
-						else {
-							cnt--;
+							j++;
 						}
 					}
 					
-					if(error == 0 && dht11_dat[4] == (dht11_dat[0] + dht11_dat[2])) {
+					if((j >= 40) && (dht11_dat[4] == ((dht11_dat[0] + dht11_dat[1] + dht11_dat[2] + dht11_dat[3]) & 0xFF))) {
 						got_correct_date = 1;
 
 						int h = dht11_dat[0];
@@ -177,17 +161,18 @@ void *dht11Parse(void *param) {
 	return (void *)NULL;
 }
 
-void dht11InitDev(JsonNode *jdevice) {
+struct threadqueue_t *dht11InitDev(JsonNode *jdevice) {
+	dht11_loop = 1;
 	wiringPiSetup();
 	char *output = json_stringify(jdevice, NULL);
 	JsonNode *json = json_decode(output);
-
-	struct protocol_threads_t *node = protocol_thread_init(dht11, json);
-	threads_register("dht11", &dht11Parse, (void *)node, 0);
 	sfree((void *)&output);
+	
+	struct protocol_threads_t *node = protocol_thread_init(dht11, json);
+	return threads_register("dht11", &dht11Parse, (void *)node, 0);
 }
 
-void dht11GC(void) {
+void dht11ThreadGC(void) {
 	dht11_loop = 0;
 	protocol_thread_stop(dht11);
 	while(dht11_threads > 0) {
@@ -216,5 +201,5 @@ void dht11Init(void) {
 	options_add(&dht11->options, 0, "poll-interval", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)10, "[0-9]");
 
 	dht11->initDev=&dht11InitDev;
-	dht11->gc=&dht11GC;
+	dht11->threadGC=&dht11ThreadGC;
 }

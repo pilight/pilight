@@ -22,6 +22,7 @@
 #include <pthread.h>
 
 #include "options.h"
+#include "threads.h"
 #include "hardware.h"
 #include "json.h"
 
@@ -96,9 +97,10 @@ typedef struct protocol_t {
 	void (*parseBinary)(void);
 	int (*createCode)(JsonNode *code);
 	int (*checkValues)(JsonNode *code);
-	void (*initDev)(JsonNode *device);
+	struct threadqueue_t *(*initDev)(JsonNode *device);
 	void (*printHelp)(void);
 	void (*gc)(void);
+	void (*threadGC)(void);
 } protocol_t;
 
 typedef struct protocols_t {

@@ -193,13 +193,14 @@ void *openweathermapParse(void *param) {
 	return (void *)NULL;
 }
 
-void openweathermapInitDev(JsonNode *jdevice) {
+struct threadqueue_t *openweathermapInitDev(JsonNode *jdevice) {
+	openweathermap_loop = 1;
 	char *output = json_stringify(jdevice, NULL);
 	JsonNode *json = json_decode(output);
+	sfree((void *)&output);
 
 	struct protocol_threads_t *node = protocol_thread_init(openweathermap, json);
-	threads_register("openweathermap", &openweathermapParse, (void *)node, 0);
-	sfree((void *)&output);
+	return threads_register("openweathermap", &openweathermapParse, (void *)node, 0);
 }
 
 int openweathermapCheckValues(JsonNode *code) {
@@ -214,7 +215,7 @@ int openweathermapCheckValues(JsonNode *code) {
 	return 0;
 }
 
-void openweathermapGC(void) {
+void openweathermapThreadGC(void) {
 	openweathermap_loop = 0;
 	protocol_thread_stop(openweathermap);
 	while(openweathermap_threads > 0) {
@@ -244,5 +245,5 @@ void openweathermapInit(void) {
 
 	openweathermap->initDev=&openweathermapInitDev;
 	openweathermap->checkValues=&openweathermapCheckValues;
-	openweathermap->gc=&openweathermapGC;
+	openweathermap->threadGC=&openweathermapThreadGC;
 }
