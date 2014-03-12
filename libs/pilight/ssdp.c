@@ -129,13 +129,13 @@ char *ssdp_genuuid(char *ifname) {
 			}
 			if(strstr(a, "Serial") != NULL) {
 				sscanf(a, "Serial          : %s\n", (char *)&serial);
-				memmove(&serial[5], &serial[4], 17);
+				memmove(&serial[5], &serial[4], 16);
 				serial[4] = '-';
-				memmove(&serial[8], &serial[7], 17);
+				memmove(&serial[8], &serial[7], 13);
 				serial[7] = '-';
-				memmove(&serial[11], &serial[10], 17);
+				memmove(&serial[11], &serial[10], 10);
 				serial[10] = '-';
-				memmove(&serial[14], &serial[13], 17);
+				memmove(&serial[14], &serial[13], 7);
 				serial[13] = '-';
 				upnp_id = malloc(UUID_LENGTH);
 				strcpy(upnp_id, serial);
@@ -509,6 +509,7 @@ void *ssdp_wait(void *param) {
 				exit(EXIT_FAILURE);
 			}
 			memset(host, '\0', NI_MAXHOST);
+
 			s = getnameinfo(ifa->ifa_addr,
                            (family == AF_INET) ? sizeof(struct sockaddr_in) :
                                                  sizeof(struct sockaddr_in6),
