@@ -142,10 +142,6 @@ void revCreateId(char *id) {
 
 void revCreateState(int state) {
 	if(state == 0) {
-		rev_switch->raw[36]=(rev_switch->pulse*rev_switch->plslen->length);
-		rev_switch->raw[37]=(rev_switch->plslen->length);
-		rev_switch->raw[38]=(rev_switch->plslen->length);
-		rev_switch->raw[39]=(rev_switch->pulse*rev_switch->plslen->length);
 		revCreateMed(40,43);
 		revCreateHigh(44,47);
 	} else {
