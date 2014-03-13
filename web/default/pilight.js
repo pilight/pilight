@@ -452,11 +452,19 @@ function parseData(data) {
 						}
 					} else if(iType == 3) {
 						if(vindex == 'temperature' && $('#'+lindex+'_'+dvalues+'_temp')) {
-							vvalues /= Math.pow(10, aDecimals[lindex+'_'+dvalues]['device']);
-							$('#'+lindex+'_'+dvalues+'_temp').text(vvalues.toFixed(aDecimals[lindex+'_'+dvalues]['gui']));
+							if(lindex+'_'+dvalues in aDecimals
+							   && 'device' in aDecimals[lindex+'_'+dvalues]
+							   && 'gui' in aDecimals[lindex+'_'+dvalues]) {
+								vvalues /= Math.pow(10, aDecimals[lindex+'_'+dvalues]['device']);
+								$('#'+lindex+'_'+dvalues+'_temp').text(vvalues.toFixed(aDecimals[lindex+'_'+dvalues]['gui']));
+							}
 						} else if(vindex == 'humidity' && $('#'+lindex+'_'+dvalues+'_humi')) {
-							vvalues /= Math.pow(10, aDecimals[lindex+'_'+dvalues]['device']);
-							$('#'+lindex+'_'+dvalues+'_humi').text(vvalues.toFixed(aDecimals[lindex+'_'+dvalues]['gui']));
+							if(lindex+'_'+dvalues in aDecimals
+							   && 'device' in aDecimals[lindex+'_'+dvalues]
+							   && 'gui' in aDecimals[lindex+'_'+dvalues]) {
+								vvalues /= Math.pow(10, aDecimals[lindex+'_'+dvalues]['device']);
+								$('#'+lindex+'_'+dvalues+'_humi').text(vvalues.toFixed(aDecimals[lindex+'_'+dvalues]['gui']));
+							   }
 						} else if(vindex == 'battery' && $('#'+lindex+'_'+dvalues+'_batt')) {
 							if(vvalues == 1) {
 								$('#'+lindex+'_'+dvalues+'_batt').removeClass('red').addClass('green');
