@@ -18,6 +18,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <dirent.h>
 #include <string.h>
 #include <unistd.h>
@@ -25,7 +26,6 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <sys/stat.h>
-#include <sys/time.h>
 
 #include "../../pilight.h"
 #include "common.h"
@@ -39,10 +39,20 @@
 #include "dht11.h"
 #include "../pilight/wiringPi.h"
 	
-#define MAXTIMINGS 10000
+#define MAXTIMINGS 100
 
 unsigned short dht11_loop = 1;
 unsigned short dht11_threads = 0;
+
+static uint8_t sizecvt(const int read_value) {
+	/* digitalRead() and friends from wiringpi are defined as returning a value
+	   < 256. However, they are returned as int() types. This is a safety function */
+	if(read_value > 255 || read_value < 0) {
+		logprintf(LOG_NOTICE, "invalid data from wiringPi library");
+	}
+  
+	return (uint8_t)read_value;
+}
 
 void *dht11Parse(void *param) {
 	struct protocol_threads_t *node = (struct protocol_threads_t *)param;
@@ -50,10 +60,8 @@ void *dht11Parse(void *param) {
 	struct JsonNode *jid = NULL;
 	struct JsonNode *jchild = NULL;
 	int *id = 0;
-	int dht11_dat[5];
-	int nrid = 0, y = 0, interval = 10;
-	int temp_offset = 0, humi_offset = 0;
-	int itmp = 0, nrloops = 0;
+	int nrid = 0, y = 0, interval = 10, nrloops = 0;
+	int temp_offset = 0, humi_offset = 0, itmp = 0;
 
 	dht11_threads++;
 
@@ -78,62 +86,64 @@ void *dht11Parse(void *param) {
 			for(y=0;y<nrid;y++) {
 				int tries = 5;
 				unsigned short got_correct_date = 0;
-
 				while(tries && !got_correct_date && dht11_loop) {
-					int laststate = HIGH;
-					int counter = 0;
-					int j = 0, i = 0;
 
-					for(i=0;i<5;i++) {
-						dht11_dat[i] = 0;
-					}
+					uint8_t laststate = HIGH;
+					uint8_t counter = 0;
+					uint8_t j = 0, i = 0;
+
+					int dht11_dat[5] = {0,0,0,0,0};
 
 					// pull pin down for 18 milliseconds
-					pinMode(id[i], OUTPUT);
-					digitalWrite(id[i], LOW);
-					delay(18);
+					pinMode(id[y], OUTPUT);			
+					digitalWrite(id[y], HIGH);
+					usleep(500000);  // 500 ms
 					// then pull it up for 40 microseconds
-					digitalWrite(id[i], HIGH);
-					delayMicroseconds(40); 
+					digitalWrite(id[y], LOW);
+					usleep(20000);
 					// prepare to read the pin
-					pinMode(id[i], INPUT);
-
+					pinMode(id[y], INPUT);
 
 					// detect change and read data
-					for(i=0;i<MAXTIMINGS;i++) {
+					for(i=0; i<MAXTIMINGS; i++) {
 						counter = 0;
-							while(digitalRead(id[i]) == laststate) {
-								counter++;
-								delayMicroseconds(1);
-								if(counter == 255) {
-									break;
-								}
+						delayMicroseconds(10);
+						while(sizecvt(digitalRead(id[y])) == laststate && dht11_loop) {
+							counter++;
+							delayMicroseconds(1);
+							if(counter == 255) {
+								break;
 							}
-						laststate = digitalRead(id[i]);
-
-						if(counter == 255) {
-							break;
 						}
+						laststate = sizecvt(digitalRead(id[y]));
+
+						if(counter == 255) 
+							break;
 
 						// ignore first 3 transitions
 						if((i >= 4) && (i%2 == 0)) {
+						
 							// shove each bit into the storage bytes
 							dht11_dat[(int)((double)j/8)] <<= 1;
-							if(counter > 16) {
+							if(counter > 16)
 								dht11_dat[(int)((double)j/8)] |= 1;
-							}
 							j++;
 						}
 					}
-					
+
+					// check we read 40 bits (8bit x 5 ) + verify checksum in the last byte
+					// print it out if data is good
 					if((j >= 40) && (dht11_dat[4] == ((dht11_dat[0] + dht11_dat[1] + dht11_dat[2] + dht11_dat[3]) & 0xFF))) {
 						got_correct_date = 1;
 
-						int h = dht11_dat[0];
-						int t = dht11_dat[2];
+						int h = dht11_dat[0] + dht11_dat[1];
+						int t = (dht11_dat[2] & 0x7F) + dht11_dat[3];
 						t += temp_offset;
 						h += humi_offset;
-						
+
+						if((dht11_dat[2] & 0x80) != 0) 
+							t *= -1;
+
 						dht11->message = json_mkobject();
 						JsonNode *code = json_mkobject();
 						json_append_member(code, "gpio", json_mknumber(id[y]));
@@ -143,6 +153,7 @@ void *dht11Parse(void *param) {
 						json_append_member(dht11->message, "message", code);
 						json_append_member(dht11->message, "origin", json_mkstring("receiver"));
 						json_append_member(dht11->message, "protocol", json_mkstring(dht11->id));
+
 						pilight.broadcast(dht11->id, dht11->message);
 						json_delete(dht11->message);
 						dht11->message = NULL;
@@ -167,7 +178,7 @@ struct threadqueue_t *dht11InitDev(JsonNode *jdevice) {
 	char *output = json_stringify(jdevice, NULL);
 	JsonNode *json = json_decode(output);
 	sfree((void *)&output);
-	
+
 	struct protocol_threads_t *node = protocol_thread_init(dht11, json);
 	return threads_register("dht11", &dht11Parse, (void *)node, 0);
 }
