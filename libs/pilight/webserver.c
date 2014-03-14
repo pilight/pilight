@@ -30,6 +30,7 @@
 #include <stdarg.h>
 #include <pthread.h>
 #include <sys/socket.h>
+#include <pwd.h>
 
 #include "../../pilight.h"
 #include "common.h"
@@ -47,9 +48,9 @@
 
 int webserver_port = WEBSERVER_PORT;
 int webserver_cache = 1;
-int webserver_authentication = 0;
-char *webserver_username = NULL;
-char *webserver_password = NULL;
+char *webserver_user = NULL;
+char *webserver_authentication_username = NULL;
+char *webserver_authentication_password = NULL;
 unsigned short webserver_loop = 1;
 unsigned short webserver_php = 1;
 char *webserver_root = NULL;
@@ -59,6 +60,7 @@ struct mg_server *mgserver[WEBSERVER_WORKERS];
 
 unsigned short webgui_tpl_free = 0;
 unsigned short webserver_root_free = 0;
+unsigned short webserver_user_free = 0;
 
 int loopfd = 0;
 int sockfd = 0;
@@ -104,6 +106,9 @@ int webserver_gc(void) {
 	if(webgui_tpl_free) {
 		sfree((void *)&webgui_tpl);
 	}
+	if(webserver_user_free) {
+		sfree((void *)&webserver_user);
+	}
 
 	for(i=0;i<WEBSERVER_WORKERS;i++) {
 		mg_destroy_server(&mgserver[i]);
@@ -121,6 +126,16 @@ struct filehandler_t {
 	unsigned int length;
 	unsigned short free;
 } filehandler_t;
+
+uid_t webserver_name2uid(char const *name) {
+	if(name) {
+		struct passwd *pwd = getpwnam(name); /* don't free, see getpwnam() for details */
+		if(pwd) {
+			return pwd->pw_uid;
+		}
+	}
+	return (uid_t)-1;
+}
 
 int webserver_which(const char *program) {
 	char path[1024];
@@ -295,6 +310,7 @@ char *webserver_shell(const char *format_str, struct mg_connection *conn, char *
 	char *output = NULL;
 	const char *type = NULL;
 	const char *cookie = NULL;
+	__uid_t uid = 0;
 	va_list ap;
 
 	va_start(ap, request);
@@ -339,38 +355,43 @@ char *webserver_shell(const char *format_str, struct mg_connection *conn, char *
 		setenv("REQUEST_METHOD", "GET", 1);
 	}
 	FILE *fp = NULL;
-	if((fp = popen((char *)command, "r")) != NULL) {
-		size_t total = 0;
-		size_t chunk = 0;
-		unsigned char buff[1024] = {'\0'};
-		while(!feof(fp)) {
-			chunk = fread(buff, sizeof(char), 1024, fp);
-			total += chunk;
-			output = realloc(output, total+1);
-			if(!output) {
-				logprintf(LOG_ERR, "out of memory");
-				exit(EXIT_FAILURE);
+	if((uid = webserver_name2uid(webserver_user)) != -1) {
+		setuid(uid);
+		if((fp = popen((char *)command, "r")) != NULL) {
+			size_t total = 0;
+			size_t chunk = 0;
+			unsigned char buff[1024] = {'\0'};
+			while(!feof(fp)) {
+				chunk = fread(buff, sizeof(char), 1024, fp);
+				total += chunk;
+				output = realloc(output, total+1);
+				if(!output) {
+					logprintf(LOG_ERR, "out of memory");
+					exit(EXIT_FAILURE);
+				}
+				memcpy(&output[total-chunk], buff, chunk);
 			}
-			memcpy(&output[total-chunk], buff, chunk);
-		}
-		output[total] = '\0';
-		unsetenv("SCRIPT_FILENAME");
-		unsetenv("REDIRECT_STATUS");
-		unsetenv("SERVER_PROTOCOL");
-		unsetenv("REMOTE_HOST");
-		unsetenv("SERVER_NAME");
-		unsetenv("HTTPS");
-		unsetenv("HTTP_ACCEPT");
-		unsetenv("HTTP_COOKIE");
-		unsetenv("REQUEST_METHOD");
-		unsetenv("CONTENT_TYPE");
-		unsetenv("CONTENT_LENGTH");
-		unsetenv("QUERY_STRING");
-		unsetenv("REQUEST_METHOD");
+			output[total] = '\0';
+			unsetenv("SCRIPT_FILENAME");
+			unsetenv("REDIRECT_STATUS");
+			unsetenv("SERVER_PROTOCOL");
+			unsetenv("REMOTE_HOST");
+			unsetenv("SERVER_NAME");
+			unsetenv("HTTPS");
+			unsetenv("HTTP_ACCEPT");
+			unsetenv("HTTP_COOKIE");
+			unsetenv("REQUEST_METHOD");
+			unsetenv("CONTENT_TYPE");
+			unsetenv("CONTENT_LENGTH");
+			unsetenv("QUERY_STRING");
+			unsetenv("REQUEST_METHOD");
 
-		pclose(fp);
-		return output;
+			pclose(fp);
+			return output;
+		}
 	}
+		
+	setuid(0);
 
 	return NULL;
 }
@@ -383,8 +404,8 @@ static int webserver_sockets_callback(struct mg_connection *c) {
 }
 
 static int webserver_auth_handler(struct mg_connection *conn) {
-	if(webserver_authentication == 1 && webserver_username != NULL && webserver_password != NULL) {
-		return mg_authorize_input(conn, webserver_username, webserver_password, mg_get_option(mgserver[0], "auth_domain"));
+	if(webserver_authentication_username != NULL && webserver_authentication_password != NULL) {
+		return mg_authorize_input(conn, webserver_authentication_username, webserver_authentication_password, mg_get_option(mgserver[0], "auth_domain"));
 	} else {
 		return MG_AUTH_OK;
 	}
@@ -1025,10 +1046,18 @@ void *webserver_start(void *param) {
 	/* Do we turn on webserver caching. This means that all requested files are
 	   loaded into the memory so they aren't read from the FS anymore */
 	settings_find_number("webserver-cache", &webserver_cache);
-	settings_find_number("webserver-authentication", &webserver_authentication);
-	settings_find_string("webserver-password", &webserver_password);
-	settings_find_string("webserver-username", &webserver_username);
-
+	settings_find_string("webserver-authentication-password", &webserver_authentication_password);
+	settings_find_string("webserver-authentication-username", &webserver_authentication_username);
+	if(settings_find_string("webserver-user", &webserver_user) != 0) {
+		/* If no webserver port was set, use the default webserver port */
+		webserver_user = malloc(strlen(WEBSERVER_USER)+1);
+		if(!webserver_user) {
+			logprintf(LOG_ERR, "out of memory");
+			exit(EXIT_FAILURE);
+		}
+		strcpy(webserver_user, WEBSERVER_USER);
+		webserver_user_free = 1;
+	}
 	char webport[10] = {'\0'};
 	sprintf(webport, "%d", webserver_port);
 	int i = 0;

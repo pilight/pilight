@@ -19,7 +19,10 @@
 #ifndef _WEBSERVER_H_
 #define _WEBSERVER_H_
 
+#include <pwd.h>
+
 int webserver_gc(void);
+uid_t webserver_name2uid(char const *name);
 void *webserver_start(void *param);
 void *webserver_clientize(void *param);
 void *webserver_broadcast(void *param);

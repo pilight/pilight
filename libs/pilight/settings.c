@@ -37,6 +37,10 @@
 	#include "http_lib.h"
 #endif
 
+#ifdef WEBSERVER
+	#include "webserver.h"
+#endif
+
 /* Add a string value to the settings struct */
 void settings_add_string(const char *name, char *value) {
 	struct settings_t *snode = malloc(sizeof(struct settings_t));
@@ -320,18 +324,42 @@ int settings_parse(JsonNode *root) {
 			} else {
 				settings_add_number(jsettings->key, (int)jsettings->number_);
 			} 
-		} else if(strcmp(jsettings->key, "webserver-username") == 0 || strcmp(jsettings->key, "webserver-password") == 0) {
+		} else if(strcmp(jsettings->key, "webserver-user") == 0) {
 			if(jsettings->string_ || strlen(jsettings->string_) > 0) {
-				settings_add_string(jsettings->key, jsettings->string_);
+				if(webserver_name2uid(jsettings->string_) == -1) {
+					logprintf(LOG_ERR, "setting \"%s\" must contain a valid system user", jsettings->key);
+					have_error = 1;
+					goto clear;
+				} else {
+					settings_add_string(jsettings->key, jsettings->string_);
+				}
 			}
-		} else if(strcmp(jsettings->key, "webserver-authentication") == 0) {
-			if(jsettings->number_ < 0 || jsettings->number_ > 1) {
-				logprintf(LOG_ERR, "setting \"%s\" must be either 0 or 1", jsettings->key);
-				have_error = 1;
-				goto clear;
-			} else {
-				settings_add_number(jsettings->key, (int)jsettings->number_);
-			}
+		} else if(strcmp(jsettings->key, "webserver-authentication") == 0 && jsettings->tag == JSON_ARRAY) {
+				JsonNode *jtmp = json_first_child(jsettings);
+				unsigned short i = 0;
+				while(jtmp) {
+					i++;
+					if(jtmp->tag == JSON_STRING) {
+						if(i == 1) {
+							settings_add_string("webserver-authentication-username", jtmp->string_);
+						} else if(i == 2) {
+							settings_add_string("webserver-authentication-password", jtmp->string_);
+						}
+					} else {
+						have_error = 1;
+						break;
+					}
+					if(i > 2) {
+						have_error = 1;
+						break;
+					}
+					jtmp = jtmp->next;
+				}
+				if(i != 2 || have_error == 1) {
+					logprintf(LOG_ERR, "setting \"%s\" must be in the format of [ \"username\", \"password\" ]", jsettings->key);
+					have_error = 1;
+					goto clear;
+				}
 		}  else if(strcmp(jsettings->key, "webgui-template") == 0) {
 			if(!jsettings->string_) {
 				logprintf(LOG_ERR, "setting \"%s\" must be a valid template", jsettings->key);
