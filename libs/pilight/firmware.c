@@ -56,6 +56,99 @@
 #include "safemode.h"
 #include "firmware.h"
 
+void firmware_attiny25(struct avrpart **p) {
+	char pgm_bits[] = "1 0 1 0 1 1 0 0 0 1 0 1 0 0 1 1 x x x x x x x x x x x x x x x x";
+	char read_bits[] = "0 0 1 1 0 0 0 0 0 0 0 x x x x x x x x x x x a1 a0 o o o o o o o o";
+	char erase_bits[] = "1 0 1 0 1 1 0 0 1 0 0 x x x x x x x x x x x x x x x x x x x x x";
+	char writepage_bits[] = "0 1 0 0 1 1 0 0 0 0 0 0 0 0 a9 a8 a7 a6 a5 a4 x x x x x x x x x x x x";
+	char readlo_bits[] = "0 0 1 0 0 0 0 0 0 0 0 0 0 0 a9 a8 a7 a6 a5 a4 a3 a2 a1 a0 o o o o o o o o";
+	char readhigh_bits[] = "0 0 1 0 1 0 0 0 0 0 0 0 0 0 a9 a8 a7 a6 a5 a4 a3 a2 a1 a0 o o o o o o o o";
+	char loadpagelo_bits[] = "0 1 0 0 0 0 0 0 0 0 0 x x x x x x x x x a3 a2 a1 a0 i i i i i i i i";
+	char loadpagehigh_bits[] = "0 1 0 0 1 0 0 0 0 0 0 x x x x x x x x x a3 a2 a1 a0 i i i i i i i i";
+	char lfuseread_bits[] = "0 1 0 1 0 0 0 0 0 0 0 0 0 0 0 0 x x x x x x x x o o o o o o o o";
+	char lfusewrite_bits[] = "1 0 1 0 1 1 0 0 1 0 1 0 0 0 0 0 x x x x x x x x i i i i i i i i";
+	char hfuseread_bits[] = "0 1 0 1 1 0 0 0 0 0 0 0 1 0 0 0 x x x x x x x x o o o o o o o o";
+	char hfusewrite_bits[] = "1 0 1 0 1 1 0 0 1 0 1 0 1 0 0 0 x x x x x x x x i i i i i i i i";
+
+	*p = avr_new_part();
+	strcpy((*p)->id, "t25");
+	strcpy((*p)->desc, "ATtiny25");
+
+	(*p)->signature[0] = 0x1e;
+	(*p)->signature[1] = 0x91;
+	(*p)->signature[2] = 0x08;
+
+	(*p)->op[AVR_OP_PGM_ENABLE] = avr_new_opcode();
+	parse_cmdbits((*p)->op[AVR_OP_PGM_ENABLE], pgm_bits);
+
+	(*p)->op[AVR_OP_CHIP_ERASE] = avr_new_opcode();
+	parse_cmdbits((*p)->op[AVR_OP_CHIP_ERASE], erase_bits);
+
+	(*p)->sigmem = avr_new_memtype();
+	strcpy((*p)->sigmem->desc, "signature");
+	(*p)->sigmem->size = 3;
+	(*p)->sigmem->buf = malloc((size_t)(*p)->sigmem->size+(size_t)1);
+	(*p)->sigmem->op[AVR_OP_READ] = avr_new_opcode();
+	parse_cmdbits((*p)->sigmem->op[AVR_OP_READ], read_bits);
+
+	(*p)->flashmem = avr_new_memtype(); 
+	strcpy((*p)->flashmem->desc, "flash");
+
+	(*p)->flashmem->paged = 1;
+	(*p)->flashmem->size = 2048;
+	(*p)->flashmem->page_size = 32;
+	(*p)->flashmem->num_pages = 64;
+	(*p)->flashmem->min_write_delay = 4500;
+	(*p)->flashmem->max_write_delay = 4500;
+	(*p)->flashmem->readback[0] = 0xff;
+	(*p)->flashmem->readback[1] = 0xff;
+
+	(*p)->flashmem->op[AVR_OP_WRITEPAGE] = avr_new_opcode();
+	parse_cmdbits((*p)->flashmem->op[AVR_OP_WRITEPAGE], writepage_bits); 
+
+	(*p)->flashmem->op[AVR_OP_READ_LO] = avr_new_opcode();
+	parse_cmdbits((*p)->flashmem->op[AVR_OP_READ_LO], readlo_bits); 
+
+	(*p)->flashmem->op[AVR_OP_READ_HI] = avr_new_opcode();
+	parse_cmdbits((*p)->flashmem->op[AVR_OP_READ_HI], readhigh_bits); 
+
+	(*p)->flashmem->op[AVR_OP_LOADPAGE_LO] = avr_new_opcode();
+	parse_cmdbits((*p)->flashmem->op[AVR_OP_LOADPAGE_LO], loadpagelo_bits);
+
+	(*p)->flashmem->op[AVR_OP_LOADPAGE_HI] = avr_new_opcode();
+	parse_cmdbits((*p)->flashmem->op[AVR_OP_LOADPAGE_HI], loadpagehigh_bits);
+
+	(*p)->lfusemem = avr_new_memtype(); 
+	strcpy((*p)->lfusemem->desc, "lfuse");
+
+	(*p)->lfusemem->size = 1;
+	(*p)->lfusemem->buf = malloc((size_t)(*p)->lfusemem->size+(size_t)1);
+
+	(*p)->lfusemem->min_write_delay = 9000;
+	(*p)->lfusemem->max_write_delay = 9000;
+
+	(*p)->lfusemem->op[AVR_OP_READ] = avr_new_opcode();
+	parse_cmdbits((*p)->lfusemem->op[AVR_OP_READ], lfuseread_bits);
+
+	(*p)->lfusemem->op[AVR_OP_WRITE] = avr_new_opcode();
+	parse_cmdbits((*p)->lfusemem->op[AVR_OP_WRITE], lfusewrite_bits);
+
+	(*p)->hfusemem = avr_new_memtype(); 
+	strcpy((*p)->hfusemem->desc, "hfuse");
+
+	(*p)->hfusemem->size = 1;
+	(*p)->hfusemem->buf = malloc((size_t)(*p)->hfusemem->size+(size_t)1);
+
+	(*p)->hfusemem->min_write_delay = 9000;
+	(*p)->hfusemem->max_write_delay = 9000;
+
+	(*p)->hfusemem->op[AVR_OP_READ] = avr_new_opcode();
+	parse_cmdbits((*p)->hfusemem->op[AVR_OP_READ], hfuseread_bits);
+
+	(*p)->hfusemem->op[AVR_OP_WRITE] = avr_new_opcode();
+	parse_cmdbits((*p)->hfusemem->op[AVR_OP_WRITE], hfusewrite_bits);
+}
+
 void firmware_attiny45(struct avrpart **p) {
 	char pgm_bits[] = "1 0 1 0 1 1 0 0 0 1 0 1 0 0 1 1 x x x x x x x x x x x x x x x x";
 	char read_bits[] = "0 0 1 1 0 0 0 0 0 0 0 x x x x x x x x x x x a1 a0 o o o o o o o o";
@@ -71,8 +164,8 @@ void firmware_attiny45(struct avrpart **p) {
 	char hfusewrite_bits[] = "1 0 1 0 1 1 0 0 1 0 1 0 1 0 0 0 x x x x x x x x i i i i i i i i";
 
 	*p = avr_new_part();
-	strcpy((*p)->id, "t85");
-	strcpy((*p)->desc, "ATtiny85");
+	strcpy((*p)->id, "t45");
+	strcpy((*p)->desc, "ATtiny45");
 
 	(*p)->signature[0] = 0x1e;
 	(*p)->signature[1] = 0x92;
@@ -768,7 +861,7 @@ int firmware_check(char **output) {
 
 int firmware_update(char *fwfile) {
 	struct avrpart *p = NULL;
-	unsigned int type = FW_MP_ATTINY45;
+	unsigned int type = FW_MP_ATTINY25;
 	unsigned int match = 0;
 
 	if(fmt_autodetect(fwfile) != FMT_IHEX) {
@@ -776,7 +869,14 @@ int firmware_update(char *fwfile) {
 		return -1;
 	} else {
 		logprintf(LOG_INFO, "Discovering AVR the firmware is running on");
-		firmware_attiny45(&p);
+		firmware_attiny25(&p);
+		if(!match && firmware_identifymp(&p) != 0) {
+			type = FW_MP_ATTINY45;
+			match = 0;
+			firmware_attiny45(&p);
+		} else {
+			match = 1;
+		}
 		if(!match && firmware_identifymp(&p) != 0) {
 			type = FW_MP_ATTINY85;
 			match = 0;
@@ -793,6 +893,10 @@ int firmware_update(char *fwfile) {
 		}
 
 		switch(type) {
+			case FW_MP_ATTINY25:
+				logprintf(LOG_INFO, "Firmware running on an ATTiny25");
+				firmware_attiny25(&p);
+			break;
 			case FW_MP_ATTINY45:
 				logprintf(LOG_INFO, "Firmware running on an ATTiny45");
 				firmware_attiny45(&p);

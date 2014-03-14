@@ -41,6 +41,7 @@ typedef enum {
 
 typedef enum {
 	FW_MP_UNKNOWN,
+	FW_MP_ATTINY25,
 	FW_MP_ATTINY45,
 	FW_MP_ATTINY85
 } mptype_t;

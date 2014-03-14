@@ -48,7 +48,8 @@ void pilightFirmwareInit(void) {
   protocol_register(&pilight_firmware);
   protocol_set_id(pilight_firmware, "pilight_firmware");
   protocol_device_add(pilight_firmware, "pilight_firmware", "pilight filter firmware");
-  protocol_plslen_add(pilight_firmware, 232);
+  protocol_plslen_add(pilight_firmware, 230);
+  protocol_plslen_add(pilight_firmware, 220);
 
   pilight_firmware->devtype = INTERNAL;
   pilight_firmware->hwtype = HWINTERNAL;
