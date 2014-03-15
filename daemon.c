@@ -441,7 +441,6 @@ void receiver_parse_code(int *rawcode, int rawlen, int plslen, int hwtype) {
 
 					if(protocol->raw[x] >= (plslengths->length * (1+protocol->pulse)/2)) {
 						protocol->code[x] = 1;
-						protocol->code[x] = 1;
 					} else {
 						protocol->code[x] = 0;
 					}

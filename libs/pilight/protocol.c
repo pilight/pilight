@@ -127,6 +127,9 @@
 #ifdef PROTOCOL_TEKNIHALL
 	#include "../protocols/teknihall.h"
 #endif
+#ifdef PROTOCOL_X10
+	#include "../protocols/x10.h"
+#endif
 
 void protocol_init(void) {
 	pilightFirmwareInit();
@@ -227,6 +230,9 @@ void protocol_init(void) {
 #endif
 #ifdef PROTOCOL_TEKNIHALL
 	teknihallInit();
+#endif
+#ifdef PROTOCOL_X10
+	x10Init();
 #endif
 }
 
