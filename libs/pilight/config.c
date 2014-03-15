@@ -1369,11 +1369,11 @@ int config_parse_locations(JsonNode *jlocations, struct conf_locations_t *locati
 				have_error = 1;
 				goto clear;
 			/* Save the protocol of the device */
-			} else if((jprotocols = json_find_member(jdevices, "protocol")) == NULL && jprotocols->tag == JSON_ARRAY) {
+			} else if((jprotocols = json_find_member(jdevices, "protocol")) == NULL || jprotocols->tag != JSON_ARRAY) {
 				logprintf(LOG_ERR, "device #%d \"%s\" of \"%s\", missing protocol", i, jdevices->key, location->id);
 				have_error = 1;
 				goto clear;
-			} else {
+			 } else {
 				for(x=0;x<strlen(jdevices->key);x++) {
 					if(!isalnum(jdevices->key[x])) {
 						logprintf(LOG_ERR, "device #%d \"%s\" of \"%s\", not alphanumeric", i, jdevices->key, location->id);

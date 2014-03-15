@@ -261,6 +261,11 @@ if(${PROTOCOL_SILVERCREST} MATCHES "OFF")
 	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/silvercrest.c")
 endif()
 
+if(${PROTOCOL_X10} MATCHES "OFF")
+	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/sunriseset.h")
+	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/sunriseset.c")
+endif()
+
 if(${PROTOCOL_THREECHAN} MATCHES "OFF")
 	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/threechan.h")
 	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/threechan.c")
@@ -269,6 +274,11 @@ endif()
 if(${PROTOCOL_TEKNIHALL} MATCHES "OFF")
 	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/teknihall.h")
 	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/teknihall.c")
+endif()
+
+if(${PROTOCOL_X10} MATCHES "OFF")
+	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/x10.h")
+	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/x10.c")
 endif()
 
 if(${HARDWARE_433_GPIO} MATCHES "OFF")

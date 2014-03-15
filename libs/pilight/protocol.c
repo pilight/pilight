@@ -130,6 +130,9 @@
 #ifdef PROTOCOL_X10
 	#include "../protocols/x10.h"
 #endif
+#ifdef PROTOCOL_SUNRISESET
+	#include "../protocols/sunriseset.h"
+#endif
 
 void protocol_init(void) {
 	pilightFirmwareInit();
@@ -233,6 +236,9 @@ void protocol_init(void) {
 #endif
 #ifdef PROTOCOL_X10
 	x10Init();
+#endif
+#ifdef PROTOCOL_SUNRISESET
+	sunRiseSetInit();
 #endif
 }
 
