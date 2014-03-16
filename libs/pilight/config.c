@@ -1096,7 +1096,7 @@ int config_check_state(int i, JsonNode *jsetting, struct conf_devices_t *device)
 						/* If a protocol has CONFIG_STATE arguments, than these define
 						   the states a protocol can take. Check if the state value
 						   match, these protocol states */
-						
+
 						if(strcmp(tmp_options->name, ctmp) == 0 && valid_state == 0) {
 							valid_state = 1;
 						}

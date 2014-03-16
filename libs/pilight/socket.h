@@ -32,7 +32,6 @@ void socket_close(int i);
 int socket_write(int sockfd, const char *msg, ...);
 char *socket_read(int sockfd);
 void *socket_wait(void *param);
-int socket_check_whitelist(char *ip);
 int socket_gc(void);
 unsigned int socket_get_port(void);
 int socket_get_fd(void);

@@ -124,7 +124,7 @@ int main(int argc, char **argv) {
 		
 		if((strstr(ifa->ifa_name, "lo") == NULL && strstr(ifa->ifa_name, "vbox") == NULL 
 		    && strstr(ifa->ifa_name, "dummy") == NULL) && (family == AF_INET || family == AF_INET6)) {
-			if((p = ssdp_genuuid(ifa->ifa_name)) == NULL) {
+			if((p = genuuid(ifa->ifa_name)) == NULL) {
 				logprintf(LOG_ERR, "could not generate the device uuid");
 				freeifaddrs(ifaddr);
 				goto clear;

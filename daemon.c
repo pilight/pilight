@@ -1456,8 +1456,9 @@ int main_gc(void) {
 
 	pthread_mutex_unlock(&sendqueue_lock);
 	pthread_cond_signal(&sendqueue_signal);
-	pthread_cond_signal(&bcqueue_signal);
+
 	pthread_mutex_unlock(&bcqueue_lock);
+	pthread_cond_signal(&bcqueue_signal);
 
 	if(valid_config) {
 		JsonNode *joutput = config2json(-1);
@@ -1515,7 +1516,8 @@ int main_gc(void) {
 	settings_gc();
 	options_gc();
 	socket_gc();
-
+	
+	whitelist_free();
 	threads_gc();
 	pthread_join(pth, NULL);
 	log_gc();
@@ -1571,7 +1573,7 @@ int main(int argc, char **argv) {
 		
 		if((strstr(ifa->ifa_name, "lo") == NULL && strstr(ifa->ifa_name, "vbox") == NULL 
 		    && strstr(ifa->ifa_name, "dummy") == NULL) && (family == AF_INET || family == AF_INET6)) {
-			if((p = ssdp_genuuid(ifa->ifa_name)) == NULL) {
+			if((p = genuuid(ifa->ifa_name)) == NULL) {
 				logprintf(LOG_ERR, "could not generate the device uuid");
 				freeifaddrs(ifaddr);
 				goto clear;

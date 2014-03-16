@@ -243,8 +243,7 @@ void protocol_init(void) {
 }
 
 void protocol_register(protocol_t **proto) {
-	*proto = malloc(sizeof(struct protocol_t));
-	if(!*proto) {
+	if(!(*proto = malloc(sizeof(struct protocol_t)))) {
 		logprintf(LOG_ERR, "out of memory");
 		exit(EXIT_FAILURE);
 	}
@@ -287,8 +286,7 @@ void protocol_register(protocol_t **proto) {
 		exit(EXIT_FAILURE);
 	}
 	pnode->listener = *proto;
-	pnode->name = malloc(4);
-	if(!pnode->name) {
+	if(!(pnode->name = malloc(4))) {
 		logprintf(LOG_ERR, "out of memory");
 		exit(EXIT_FAILURE);
 	}
@@ -357,8 +355,7 @@ void protocol_thread_free(protocol_t *proto) {
 }
 
 void protocol_set_id(protocol_t *proto, const char *id) {
-	proto->id = malloc(strlen(id)+1);
-	if(!proto->id) {
+	if(!(proto->id = malloc(strlen(id)+1))) {
 		logprintf(LOG_ERR, "out of memory");
 		exit(EXIT_FAILURE);
 	}
@@ -382,14 +379,12 @@ void protocol_device_add(protocol_t *proto, const char *id, const char *desc) {
 		logprintf(LOG_ERR, "out of memory");
 		exit(EXIT_FAILURE);
 	}
-	dnode->id = malloc(strlen(id)+1);
-	if(!dnode->id) {
+	if(!(dnode->id = malloc(strlen(id)+1))) {
 		logprintf(LOG_ERR, "out of memory");
 		exit(EXIT_FAILURE);
 	}
 	strcpy(dnode->id, id);
-	dnode->desc = malloc(strlen(desc)+1);
-	if(!dnode->desc) {
+	if(!(dnode->desc = malloc(strlen(desc)+1))) {
 		logprintf(LOG_ERR, "out of memory");
 		exit(EXIT_FAILURE);
 	}
@@ -404,8 +399,7 @@ void protocol_conflict_add(protocol_t *proto, const char *id) {
 		logprintf(LOG_ERR, "out of memory");
 		exit(EXIT_FAILURE);
 	}
-	cnode->id = malloc(strlen(id)+1);
-	if(!cnode->id) {
+	if(!(cnode->id = malloc(strlen(id)+1))) {
 		logprintf(LOG_ERR, "out of memory");
 		exit(EXIT_FAILURE);
 	}

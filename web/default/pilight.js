@@ -266,6 +266,9 @@ function createWeatherElement(sTabId, sDevId, aValues) {
 	aDecimals[sTabId+'_'+sDevId]['device'] = aValues['device-decimals'];
 	aValues['temperature'] /= Math.pow(10, aValues['device-decimals']);
 	aValues['humidity'] /= Math.pow(10, aValues['device-decimals']);
+	aValues['sunrise'] /= Math.pow(10, aValues['device-decimals']);
+	aValues['sunset'] /= Math.pow(10, aValues['device-decimals']);
+
 	if($('#'+sTabId+'_'+sDevId+'_weather').length == 0) {
 		if(bShowTabs) {
 			oTab = $('#'+sTabId).find('ul');
@@ -287,6 +290,10 @@ function createWeatherElement(sTabId, sDevId, aValues) {
 		if(aValues['gui-show-temperature']) {
 			oTab.find('#'+sTabId+'_'+sDevId+'_weather').append($('<div class="degrees">o</div><div class="temperature" id="'+sTabId+'_'+sDevId+'_temp">'+aValues['temperature'].toFixed(aValues['gui-decimals'])+'</div>'));
 		}
+		if(aValues['gui-show-sunriseset']) {
+			oTab.find('#'+sTabId+'_'+sDevId+'_weather').append($('<div class="sunset_icon"></div><div class="sunset" id="'+sTabId+'_'+sDevId+'_sunset">'+aValues['sunset'].toFixed(aValues['gui-decimals'])+'</div>'));
+			oTab.find('#'+sTabId+'_'+sDevId+'_weather').append($('<div class="sunrise_icon"></div><div class="sunrise" id="'+sTabId+'_'+sDevId+'_sunrise">'+aValues['sunrise'].toFixed(aValues['gui-decimals'])+'</div>'));
+		}
 	} else {
 		if(aValues['gui-show-battery']) {
 			if(aValues['battery']) {
@@ -300,6 +307,10 @@ function createWeatherElement(sTabId, sDevId, aValues) {
 		}
 		if(aValues['gui-show-temperature']) {
 			$('#'+sTabId+'_'+sDevId+'_temp').text(aValues['temperature'].toFixed(aValues['gui-decimals']));
+		}
+		if(aValues['gui-show-sunriseset']) {
+			$('#'+sTabId+'_'+sDevId+'_sunrise').text(aValues['sunrise'].toFixed(aValues['gui-decimals']));
+			$('#'+sTabId+'_'+sDevId+'_sunset').text(aValues['sunset'].toFixed(aValues['gui-decimals']));
 		}
 	}
 	oTab.listview();
@@ -465,6 +476,20 @@ function parseData(data) {
 								vvalues /= Math.pow(10, aDecimals[lindex+'_'+dvalues]['device']);
 								$('#'+lindex+'_'+dvalues+'_humi').text(vvalues.toFixed(aDecimals[lindex+'_'+dvalues]['gui']));
 							   }
+						} else if(vindex == 'sunrise' && $('#'+lindex+'_'+dvalues+'_sunrise')) {
+							if(lindex+'_'+dvalues in aDecimals
+								&& 'device' in aDecimals[lindex+'_'+dvalues]
+								&& 'gui' in aDecimals[lindex+'_'+dvalues]) {
+								vvalues /= Math.pow(10, aDecimals[lindex+'_'+dvalues]['device']);
+								$('#'+lindex+'_'+dvalues+'_sunrise').text(vvalues.toFixed(aDecimals[lindex+'_'+dvalues]['gui']));
+							}
+						} else if(vindex == 'sunset' && $('#'+lindex+'_'+dvalues+'_sunset')) {
+								if(lindex+'_'+dvalues in aDecimals
+								&& 'device' in aDecimals[lindex+'_'+dvalues]
+								&& 'gui' in aDecimals[lindex+'_'+dvalues]) {
+								vvalues /= Math.pow(10, aDecimals[lindex+'_'+dvalues]['device']);
+								$('#'+lindex+'_'+dvalues+'_sunset').text(vvalues.toFixed(aDecimals[lindex+'_'+dvalues]['gui']));
+							}							   
 						} else if(vindex == 'battery' && $('#'+lindex+'_'+dvalues+'_batt')) {
 							if(vvalues == 1) {
 								$('#'+lindex+'_'+dvalues+'_batt').removeClass('red').addClass('green');

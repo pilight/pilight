@@ -55,7 +55,6 @@ unsigned short webserver_loop = 1;
 unsigned short webserver_php = 1;
 char *webserver_root = NULL;
 char *webgui_tpl = NULL;
-unsigned char webserver_validchar[64] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 struct mg_server *mgserver[WEBSERVER_WORKERS];
 
 unsigned short webgui_tpl_free = 0;
@@ -126,139 +125,6 @@ struct filehandler_t {
 	unsigned int length;
 	unsigned short free;
 } filehandler_t;
-
-uid_t webserver_name2uid(char const *name) {
-	if(name) {
-		struct passwd *pwd = getpwnam(name); /* don't free, see getpwnam() for details */
-		if(pwd) {
-			return pwd->pw_uid;
-		}
-	}
-	return (uid_t)-1;
-}
-
-int webserver_which(const char *program) {
-	char path[1024];
-	strcpy(path, getenv("PATH"));
-	char *pch = strtok(path, ":");
-	while(pch) {
-		char exec[strlen(pch)+8];
-		strcpy(exec, pch);
-		strcat(exec, "/");
-		strcat(exec, program);
-		if(access(exec, X_OK) != -1) {
-			return 0;
-		}
-		pch = strtok(NULL, ":");
-	}
-	return -1;
-}
-
-int webserver_ishex(int x) {
-	return(x >= '0' && x <= '9') || (x >= 'a' && x <= 'f') || (x >= 'A' && x <= 'F');
-}
-
-const char *rstrstr(const char* haystack, const char* needle) {
-	char* loc = 0;
-	char* found = 0;
-	size_t pos = 0;
-
-	while ((found = strstr(haystack + pos, needle)) != 0) {
-		loc = found;
-		pos = (size_t)((found - haystack) + 1);
-	}
-
-	return loc;
-}
-
-int webserver_urldecode(const char *s, char *dec) {
-	char *o;
-	const char *end = s + strlen(s);
-	int c;
-
-	for(o = dec; s <= end; o++) {
-		c = *s++;
-		if(c == '+') {
-			c = ' ';
-		} else if(c == '%' && (!webserver_ishex(*s++) || !webserver_ishex(*s++)	|| !sscanf(s - 2, "%2x", &c))) {
-			return -1;
-		}
-		if(dec) {
-			sprintf(o, "%c", c);
-		}
-	}
-
-	return (int)(o - dec);
-}
-
-void webserver_alpha_random(char *s, const int len) {
-    static const char alphanum[] =
-        "0123456789"
-        "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-        "abcdefghijklmnopqrstuvwxyz";
-	int i = 0;
-
-    for(i = 0; i < len; ++i) {
-        s[i] = alphanum[(unsigned int)rand() % (sizeof(alphanum) - 1)];
-    }
-
-    s[len] = 0;
-}
-
-int base64decode(unsigned char *dest, unsigned char *src, int l) {
-	static char inalphabet[256], decoder[256];
-	int i, bits, c, char_count;
-	int rpos;
-	int wpos = 0;
-
-	for(i=(sizeof webserver_validchar)-1;i>=0;i--) {
-		inalphabet[webserver_validchar[i]] = 1;
-		decoder[webserver_validchar[i]] = (char)i;
-	}
-
-	char_count = 0;
-	bits = 0;
-	for(rpos=0;rpos<l;rpos++) {
-		c = src[rpos];
-
-		if(c == '=') {
-			break;
-		}
-
-		if(c > 255 || !inalphabet[c]) {
-			continue;
-		}
-
-		bits += decoder[c];
-		char_count++;
-		if(char_count < 4) {
-			bits <<= 6;
-		} else {
-			dest[wpos++] = (unsigned char)(bits >> 16);
-			dest[wpos++] = (unsigned char)((bits >> 8) & 0xff);
-			dest[wpos++] = (unsigned char)(bits & 0xff);
-			bits = 0;
-			char_count = 0;
-		}
-	}
-
-	switch(char_count) {
-		case 1:
-			return -1;
-		break;
-		case 2:
-			dest[wpos++] = (unsigned char)(bits >> 10);
-		break;
-		case 3:
-			dest[wpos++] = (unsigned char)(bits >> 16);
-			dest[wpos++] = (unsigned char)((bits >> 8) & 0xff);
-		break;
-		default:
-		break;
-	}
-
-	return wpos;
-}
 
 void webserver_create_header(unsigned char **p, const char *message, char *mimetype, unsigned int len) {
 	*p += sprintf((char *)*p,
@@ -355,7 +221,7 @@ char *webserver_shell(const char *format_str, struct mg_connection *conn, char *
 		setenv("REQUEST_METHOD", "GET", 1);
 	}
 	FILE *fp = NULL;
-	if((uid = webserver_name2uid(webserver_user)) != -1) {
+	if((uid = name2uid(webserver_user)) != -1) {
 		setuid(uid);
 		if((fp = popen((char *)command, "r")) != NULL) {
 			size_t total = 0;
@@ -455,7 +321,7 @@ static int webserver_request_handler(struct mg_connection *conn) {
 		if(strcmp(conn->uri, "/send") == 0) {
 			if(conn->query_string != NULL) {
 				char out[strlen(conn->query_string)];
-				webserver_urldecode(conn->query_string, out);
+				urldecode(conn->query_string, out);
 				socket_write(sockfd, out);
 				mg_printf_data(conn, "{\"message\":\"success\"}");
 			}
@@ -592,7 +458,7 @@ static int webserver_request_handler(struct mg_connection *conn) {
 				char file[20];
 				strcpy(file, "/tmp/php");
 				char name[11];
-				webserver_alpha_random(name, 10);
+				alpha_random(name, 10);
 				strcat(file, name);
 				int f = open(file, O_CREAT | O_TRUNC | O_WRONLY, 0644);
 				if(write(f, conn->content, conn->content_len) != conn->content_len) {
@@ -861,7 +727,7 @@ filenotfound:
 int webserver_open_handler(struct mg_connection *conn) {
 	char ip[17];
 	strcpy(ip, conn->remote_ip);
-	if(socket_check_whitelist(conn->remote_ip) != 0) {
+	if(whitelist_check(conn->remote_ip) != 0) {
 		logprintf(LOG_INFO, "rejected client, ip: %s, port: %d", ip, conn->remote_port);
 		return -1;
 	} else {
@@ -1002,15 +868,15 @@ void *webserver_broadcast(void *param) {
 
 void *webserver_start(void *param) {
 
-	if(webserver_which("php-cgi") != 0) {
+	if(which("php-cgi") != 0) {
 		webserver_php = 0;
 		logprintf(LOG_ERR, "php support disabled due to missing php-cgi executable");
 	}
-	if(webserver_which("cat") != 0) {
+	if(which("cat") != 0) {
 		webserver_php = 0;
 		logprintf(LOG_ERR, "php support disabled due to missing cat executable");
 	}
-	if(webserver_which("base64") != 0) {
+	if(which("base64") != 0) {
 		webserver_php = 0;
 		logprintf(LOG_ERR, "php support disabled due to missing base64 executable");
 	}

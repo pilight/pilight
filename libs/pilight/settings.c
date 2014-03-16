@@ -31,15 +31,8 @@
 #include "common.h"
 #include "json.h"
 #include "settings.h"
+#include "http_lib.h"
 #include "log.h"
-
-#ifdef UPDATE
-	#include "http_lib.h"
-#endif
-
-#ifdef WEBSERVER
-	#include "webserver.h"
-#endif
 
 /* Add a string value to the settings struct */
 void settings_add_string(const char *name, char *value) {
@@ -119,36 +112,6 @@ int settings_find_string(const char *name, char **out) {
 	}
 	sfree((void *)&tmp_settings);
 	return EXIT_FAILURE;
-}
-
-/* Check if a given path exists */
-int settings_path_exists(char *fil) {
-	struct stat s;
-	char *filename = basename(fil);
-	char path[1024];
-	size_t i = (strlen(fil)-strlen(filename));
-
-	memset(path, '\0', sizeof(path));
-	memcpy(path, fil, i);
-	snprintf(path, i, "%s", fil);
-	
-	if(strcmp(filename, fil) != 0) {
-		int err = stat(path, &s);
-		if(err == -1) {
-			if(ENOENT == errno) {
-				return EXIT_FAILURE;
-			} else {
-				return EXIT_FAILURE;
-			}
-		} else {
-			if(S_ISDIR(s.st_mode)) {
-				return EXIT_SUCCESS;
-			} else {
-				return EXIT_FAILURE;
-			}
-		}
-	}
-	return EXIT_SUCCESS;
 }
 
 /* Check if a given file exists */
@@ -231,7 +194,7 @@ int settings_parse(JsonNode *root) {
 				have_error = 1;
 				goto clear;
 			} else {
-				if(settings_path_exists(jsettings->string_) != EXIT_SUCCESS) {
+				if(path_exists(jsettings->string_) != EXIT_SUCCESS) {
 					logprintf(LOG_ERR, "setting \"%s\" must point to an existing folder", jsettings->key);
 					have_error = 1;
 					goto clear;				
@@ -295,7 +258,7 @@ int settings_parse(JsonNode *root) {
 				settings_add_number(jsettings->key, (int)jsettings->number_);
 			}
 		} else if(strcmp(jsettings->key, "webserver-root") == 0) {
-			if(!jsettings->string_ || settings_path_exists(jsettings->string_) != 0) {
+			if(!jsettings->string_ || path_exists(jsettings->string_) != 0) {
 				logprintf(LOG_ERR, "setting \"%s\" must contain a valid path", jsettings->key);
 				have_error = 1;
 				goto clear;
@@ -326,7 +289,7 @@ int settings_parse(JsonNode *root) {
 			} 
 		} else if(strcmp(jsettings->key, "webserver-user") == 0) {
 			if(jsettings->string_ || strlen(jsettings->string_) > 0) {
-				if(webserver_name2uid(jsettings->string_) == -1) {
+				if(name2uid(jsettings->string_) == -1) {
 					logprintf(LOG_ERR, "setting \"%s\" must contain a valid system user", jsettings->key);
 					have_error = 1;
 					goto clear;
@@ -442,7 +405,7 @@ int settings_parse(JsonNode *root) {
 			exit(EXIT_FAILURE);
 		}
 		sprintf(tmp, "%s/%s/index.html", webgui_root, webgui_tpl);
-		if(settings_path_exists(tmp) != EXIT_SUCCESS) {
+		if(path_exists(tmp) != EXIT_SUCCESS) {
 			logprintf(LOG_ERR, "setting \"webgui-template\", template does not exists");
 			have_error = 1;
 			sfree((void *)&tmp);

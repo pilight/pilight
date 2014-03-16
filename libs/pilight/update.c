@@ -179,13 +179,6 @@ int update_mirror_list(void) {
 	return i;
 }
 
-void update_rmsubstr(char *s, const char *r) {
-	while((s=strstr(s, r))) {
-		size_t l = strlen(r);
-		memmove(s ,s+l, 1+strlen(s+l));
-	}
-}
-
 char *update_package_version(char *mirror) {
 	int x = 0;
 	size_t l = 0;
@@ -253,8 +246,8 @@ char *update_package_version(char *mirror) {
 			while(*tmp != '\0') {
 				if(*tmp == '\n' || *tmp == '\0') {
 					if((pch = strstr(line, "Version: ")) > 0) {
-						update_rmsubstr(line, "Version: ");
-						update_rmsubstr(line, "\n");
+						rmsubstr(line, "Version: ");
+						rmsubstr(line, "\n");
 						if(update_vercmp(line, version) >= 0) {
 							version = realloc(version, strlen(line)+1);
 							if(!version) {
@@ -304,11 +297,9 @@ void *update_poll(void *param) {
 	strcpy(update_current_ver, VERSION);
 	strcpy(update_latests_ver, VERSION);
 	char *n = NULL;
-	struct tm tm = {0};
 	struct tm *current;
 	time_t epoch = 0;
 	time_t timenow = 0;
-	char date[20];
 
 	while(update_loop) {
 		time(&timenow);
@@ -343,9 +334,7 @@ void *update_poll(void *param) {
 			int mday = current->tm_mday;
 			int year = current->tm_year+1900;
 
-			sprintf(date, "%d-%d-%d 00:00:00", year, month, mday+(7-wday));
-			strptime(date, "%Y-%m-%d %T", &tm);
-			epoch = mktime(&tm);
+			epoch = (int)datetime2ts(year, month, mday+(7-wday), 0, 0, 0);
 		}
 		sleep(1);
 	}

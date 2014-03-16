@@ -44,8 +44,6 @@
 #include "socket.h"
 
 char recvBuff[BUFFER_SIZE];
-unsigned int ***whitelist_cache = NULL;
-unsigned int whitelist_number;
 unsigned short socket_loop = 1;
 unsigned int socket_port = 0;
 int socket_loopback = 0;
@@ -54,16 +52,7 @@ int socket_clients[MAX_CLIENTS];
 
 int socket_gc(void) {
 	int x = 0;
-	int i = 0;
-	
-	if(whitelist_cache) {
-		for(i=0;i<whitelist_number;i++) {
-			sfree((void *)&whitelist_cache[i][0]);
-			sfree((void *)&whitelist_cache[i][1]);
-			sfree((void *)&whitelist_cache[i]);
-		}
-		sfree((void *)&whitelist_cache);
-	}
+
 	socket_loop = 0;
 	/* Wakeup all our select statement so the socket_wait and
        socket_read functions can actually close and the 
@@ -82,110 +71,6 @@ int socket_gc(void) {
 
 	logprintf(LOG_DEBUG, "garbage collected socket library");
 	return EXIT_SUCCESS;
-}
-
-int socket_check_whitelist(char *ip) {
-	char *whitelist = NULL;
-	unsigned int client[4] = {0};
-	int x = 0, i = 0, error = 1;
-	char *pch = NULL;
-	char wip[16] = {'\0'};
-
-	/* Check if there are any whitelisted ip address */
-	if(settings_find_string("whitelist", &whitelist) != 0) {
-		return 0;
-	}
-
-	if(strlen(whitelist) == 0) {
-		return 0;
-	}	
-
-	/* Explode ip address to a 4 elements int array */
-	pch = strtok(ip, ".");
-	x = 0;
-	while(pch) {
-		client[x] = (unsigned int)atoi(pch);
-		x++;
-		pch = strtok(NULL, ".");
-	}
-	sfree((void *)&pch);
-
-	if(!whitelist_cache) {
-		char *tmp = whitelist;
-		x = 0;
-		/* Loop through all whitelised ip addresses */
-		while(*tmp != '\0') {
-			/* Remove any comma's and spaces */
-			while(*tmp == ',' || *tmp == ' ') {
-				tmp++;
-			}
-			/* Save ip address in temporary char array */
-			wip[x] = *tmp;
-			x++;
-			tmp++;
-
-			/* Each ip address is either terminated by a comma or EOL delimiter */
-			if(*tmp == '\0' || *tmp == ',') {
-				x = 0;
-				if((whitelist_cache = realloc(whitelist_cache, (sizeof(unsigned int ***)*(whitelist_number+1)))) == NULL) {
-					logprintf(LOG_ERR, "out of memory");
-					exit(EXIT_FAILURE);
-				}
-				if((whitelist_cache[whitelist_number] = malloc(sizeof(unsigned int **)*2)) == NULL) {
-					logprintf(LOG_ERR, "out of memory");
-					exit(EXIT_FAILURE);
-				}
-				/* Lower boundary */
-				if((whitelist_cache[whitelist_number][0] = malloc(sizeof(unsigned int *)*4)) == NULL) {
-					logprintf(LOG_ERR, "out of memory");
-					exit(EXIT_FAILURE);
-				}
-				/* Upper boundary */
-				if((whitelist_cache[whitelist_number][1] = malloc(sizeof(unsigned int *)*4)) == NULL) {
-					logprintf(LOG_ERR, "out of memory");
-					exit(EXIT_FAILURE);
-				}
-
-				/* Turn the whitelist ip address into a upper and lower boundary.
-				   If the ip address doesn't contain a wildcard, then the upper
-				   and lower boundary are the same. If the ip address does contain
-				   a wildcard, then this lower boundary number will be 0 and the
-				   upper boundary number 255. */
-				i = 0;
-				pch = strtok(wip, ".");
-				while(pch) {
-					if(strcmp(pch, "*") == 0) {
-						whitelist_cache[whitelist_number][0][i] = 0;
-						whitelist_cache[whitelist_number][1][i] = 255;
-					} else {
-						whitelist_cache[whitelist_number][0][i] = (unsigned int)atoi(pch);
-						whitelist_cache[whitelist_number][1][i] = (unsigned int)atoi(pch);
-					}
-					pch = strtok(NULL, ".");
-					i++;
-				}
-				sfree((void *)&pch);
-				memset(wip, '\0', 16);
-				whitelist_number++;
-			}
-		}
-	}
-
-	for(x=0;x<whitelist_number;x++) {
-		/* Turn the different ip addresses into one single number and compare those
-		   against each other to see if the ip address is inside the lower and upper
-		   whitelisted boundary */	
-		unsigned int wlower = whitelist_cache[x][0][0] << 24 | whitelist_cache[x][0][1] << 16 | whitelist_cache[x][0][2] << 8 | whitelist_cache[x][0][3];
-		unsigned int wupper = whitelist_cache[x][1][0] << 24 | whitelist_cache[x][1][1] << 16 | whitelist_cache[x][1][2] << 8 | whitelist_cache[x][1][3];
-		unsigned int nip = client[0] << 24 | client[1] << 16 | client[2] << 8 | client[3];
-
-		/* Always allow 127.0.0.1 connections */
-		if((nip >= wlower && nip <= wupper) || (nip == 2130706433)) {
-			error = 0;
-		}
-	}
-
-	return error;
 }
 
 /* Start the socket server */
@@ -500,7 +385,7 @@ void *socket_wait(void *param) {
                 logprintf(LOG_ERR, "failed to accept client");
                 exit(EXIT_FAILURE);
             }
-			if(socket_check_whitelist(inet_ntoa(address.sin_addr)) != 0) {
+			if(whitelist_check(inet_ntoa(address.sin_addr)) != 0) {
 				logprintf(LOG_INFO, "rejected client, ip: %s, port: %d", inet_ntoa(address.sin_addr), ntohs(address.sin_port));
 				shutdown(socket_client, 2);
 				close(socket_client);
