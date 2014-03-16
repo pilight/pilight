@@ -1,4 +1,5 @@
 var oWebsocket = false;
+var bForceAjax = false;
 var bConnected = false;
 var bInitialized = false;
 var bSending = false;
@@ -342,18 +343,30 @@ function createWeatherElement(sTabId, sDevId, aValues) {
 	} else {
 		if('gui-show-battery' in aValues && aValues['gui-show-battery']) {
 			if(aValues['battery']) {
-				$('#'+sTabId+'_'+sDevId+'_batt').removeClass('red').addClass('green');
+				if($('#'+lindex+'_'+dvalues+'_batt').attr("class").indexOf("green") == -1) {
+					$('#'+sTabId+'_'+sDevId+'_batt').removeClass('red').addClass('green');
+				}
 			} else {
-				$('#'+sTabId+'_'+sDevId+'_batt').removeClass('green').addClass('red');
+				if($('#'+lindex+'_'+dvalues+'_batt').attr("class").indexOf("red") == -1) {
+					$('#'+sTabId+'_'+sDevId+'_batt').removeClass('green').addClass('red');
+				}
 			}
 		}
 		if('state' in aValues) {
 			if(aValues['state'] == 'rise') {
-				$('#'+sTabId+'_'+sDevId+'_sunrise_icon').removeClass('blue').addClass('gray');
-				$('#'+sTabId+'_'+sDevId+'_sunset_icon').removeClass('gray').addClass('yellow');
+				if($('#'+sTabId+'_'+sDevId+'_sunrise_icon').attr("class").indexOf("yellow") == -1) {
+					$('#'+sTabId+'_'+sDevId+'_sunrise_icon').removeClass('gray').addClass('yellow');
+				}
+				if($('#'+sTabId+'_'+sDevId+'_sunrise_icon').attr("class").indexOf("gray") == -1) {
+					$('#'+sTabId+'_'+sDevId+'_sunset_icon').removeClass('blue').addClass('gray');
+				}
 			} else {
-				$('#'+sTabId+'_'+sDevId+'_sunrise_icon').removeClass('gray').addClass('blue');
-				$('#'+sTabId+'_'+sDevId+'_sunset_icon').removeClass('yellow').addClass('gray');
+				if($('#'+sTabId+'_'+sDevId+'_sunrise_icon').attr("class").indexOf("gray") == -1) {
+					$('#'+sTabId+'_'+sDevId+'_sunrise_icon').removeClass('yellow').addClass('gray');
+				}
+				if($('#'+sTabId+'_'+sDevId+'_sunrise_icon').attr("class").indexOf("blue") == -1) {
+					$('#'+sTabId+'_'+sDevId+'_sunset_icon').removeClass('gray').addClass('blue');
+				}
 			}
 		}
 		if('gui-show-humidity' in aValues && aValues['gui-show-humidity'] && 'humidity' in aValues) {
@@ -394,7 +407,7 @@ function createGUI(data) {
 			iPLVersion = locations[0];
 			iPLNVersion = locations[1];
 			updateVersions();
-		} else if(root == 'firmware' && 'versions' in locations) {
+		} else if(root == 'firmware' && 'version' in locations) {
 			iFWVersion = locations["version"];
 			if(iFWVersion > 0) {
 				updateVersions();
@@ -547,17 +560,29 @@ function parseData(data) {
 							}
 						} else if(vindex == 'battery' && $('#'+lindex+'_'+dvalues+'_batt')) {
 							if(vvalues == 1) {
-								$('#'+lindex+'_'+dvalues+'_batt').removeClass('red').addClass('green');
+								if($('#'+lindex+'_'+dvalues+'_batt').attr("class").indexOf("green") == -1) {
+									$('#'+lindex+'_'+dvalues+'_batt').removeClass('red').addClass('green');
+								}
 							} else {
-								$('#'+lindex+'_'+dvalues+'_batt').removeClass('green').addClass('red');
+								if($('#'+lindex+'_'+dvalues+'_batt').attr("class").indexOf("red") == -1) {
+									$('#'+lindex+'_'+dvalues+'_batt').removeClass('green').addClass('red');
+								}
 							}
 						} else if(vindex == 'state' && $('#'+lindex+'_'+dvalues+'_sunrise_icon') && $('#'+lindex+'_'+dvalues+'_sunset_icon')) {
 							if(vvalues == 'rise') {
-								$('#'+lindex+'_'+dvalues+'_sunrise_icon').removeClass('blue').addClass('gray');
-								$('#'+lindex+'_'+dvalues+'_sunset_icon').removeClass('gray').addClass('yellow');
+								if($('#'+sTabId+'_'+sDevId+'_sunrise_icon').attr("class").indexOf("yellow") == -1) {
+									$('#'+lindex+'_'+dvalues+'_sunrise_icon').removeClass('gray').addClass('yellow');
+								}
+								if($('#'+sTabId+'_'+sDevId+'_sunset_icon').attr("class").indexOf("gray") == -1) {
+									$('#'+lindex+'_'+dvalues+'_sunset_icon').removeClass('blue').addClass('gray');
+								}
 							} else {
-								$('#'+lindex+'_'+dvalues+'_sunrise_icon').removeClass('gray').addClass('blue');
-								$('#'+lindex+'_'+dvalues+'_sunset_icon').removeClass('yellow').addClass('gray');
+								if($('#'+sTabId+'_'+sDevId+'_sunrise_icon').attr("class").indexOf("gray") == -1) {
+									$('#'+lindex+'_'+dvalues+'_sunrise_icon').removeClass('yellow').addClass('gray');
+								}
+								if($('#'+sTabId+'_'+sDevId+'_sunset_icon').attr("class").indexOf("blue") == -1) {
+									$('#'+lindex+'_'+dvalues+'_sunset_icon').removeClass('gray').addClass('blue');
+								}
 							}
 						}
 					}
@@ -570,9 +595,10 @@ function parseData(data) {
 $(document).ready(function() {
 	if($('body').length == 1) {
 		$.mobile.showPageLoadingMsg("b", "Connecting...", true);
-		if(typeof MozWebSocket != "undefined") {
+
+		if(!bForceAjax && typeof MozWebSocket != "undefined") {
 			oWebsocket = new MozWebSocket("ws://"+location.host);
-		} else if(typeof WebSocket != "undefined") {
+		} else if(!bForceAjax && typeof WebSocket != "undefined") {
 			/* The characters after the trailing slash are needed for a wierd IE 10 bug */
 			oWebsocket = new WebSocket("ws://"+location.host+'/websocket');
 		} else {
@@ -596,7 +622,7 @@ $(document).ready(function() {
 			}, 1000);
 		}
 
-		if(oWebsocket) {
+		if(!bForceAjax && oWebsocket) {
 			oWebsocket.onopen = function(evt) {
 				bConnected = true;
 				oWebsocket.send("{\"message\":\"request config\"}");
