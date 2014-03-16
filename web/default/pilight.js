@@ -394,7 +394,7 @@ function createGUI(data) {
 			iPLVersion = locations[0];
 			iPLNVersion = locations[1];
 			updateVersions();
-		} else if(root == 'firmware' && 'versions' in locations) {
+		} else if(root == 'firmware' && 'version' in locations) {
 			iFWVersion = locations["version"];
 			if(iFWVersion > 0) {
 				updateVersions();
