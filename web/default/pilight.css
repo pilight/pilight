@@ -48,7 +48,8 @@ div.ui-slider.ui-slider-switch {
 }
 
 div.temperature, div.humidity, div.battery.red, div.battery.green, 
-div.sunrise, div.sunset, div.sunrise_icon, div.sunset_icon {
+div.sunrise, div.sunset, div.sunset_icon.gray, div.sunrise_icon.gray,
+div.sunset_icon.blue, div.sunrise_icon.yellow  {
 	position: relative;
 	float: right;
 	padding: 4px;
@@ -62,7 +63,8 @@ div.battery.red, div.battery.green {
 	right: -60px;	
 }
 
-div.sunset_icon, div.sunrise_icon {
+div.sunset_icon.gray, div.sunrise_icon.gray,
+div.sunset_icon.blue, div.sunrise_icon.yellow  {
 	width: 19px;
 	height: 16px;
 	top: 0px;
@@ -78,12 +80,20 @@ div.battery.green {
 	background: url('battery_green.png') 0px 0px no-repeat;
 }
 
-div.sunrise_icon {
-	background: url('sunrise.png') 0px 0px no-repeat;
+div.sunrise_icon.gray {
+	background: url('sunrise_gray.png') 0px 0px no-repeat;
 }
 
-div.sunset_icon {
-	background: url('sunset.png') 0px 0px no-repeat;
+div.sunrise_icon.yellow {
+	background: url('sunrise_yellow.png') 0px 0px no-repeat;
+}
+
+div.sunset_icon.gray {
+	background: url('sunset_gray.png') 0px 0px no-repeat;
+}
+
+div.sunset_icon.blue {
+	background: url('sunset_blue.png') 0px 0px no-repeat;
 }
 
 div.degrees, div.percentage {
