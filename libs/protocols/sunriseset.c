@@ -205,7 +205,7 @@ void *sunRiseSetParse(void *param) {
 					interval = sunset-timenow;
 				/* Update all values when a new day arrives */
 				} else {
-					interval = midnight-midnight;
+					interval = midnight-timenow;
 				}
 
 				json_append_member(code, "longitude", json_mkstring(wtmp->slongitude));
