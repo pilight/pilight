@@ -46,7 +46,6 @@ char *genuuid(char *ifname);
 int whitelist_check(char *ip);
 void whitelist_free(void);
 int path_exists(char *fil);
-time_t datetime2ts(int year, int month, int day, int hour, int minutes, int seconds);
 #ifdef __FreeBSD__
 static struct sockaddr *sockaddr_dup(struct sockaddr *sa);
 int rep_getifaddrs(struct ifaddrs **ifap);

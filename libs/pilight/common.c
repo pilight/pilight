@@ -17,13 +17,10 @@
 */
 
 #define _GNU_SOURCE
-#define __USE_XOPEN
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <dlfcn.h>
-#include <sys/time.h>
-#include <time.h>
 #include <dirent.h>
 #include <sys/types.h>
 #include <pwd.h>
@@ -725,12 +722,4 @@ int path_exists(char *fil) {
 		}
 	}
 	return EXIT_SUCCESS;
-}
-
-time_t datetime2ts(int year, int month, int day, int hour, int minutes, int seconds) {
-	char date[20];
-	struct tm tm = {0};
-	sprintf(date, "%d-%d-%d %d:%d:%d", year, month, day, hour, minutes, seconds);
-	strptime(date, "%Y-%m-%d %T", &tm);
-	return mktime(&tm);
 }

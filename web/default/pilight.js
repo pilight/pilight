@@ -330,8 +330,8 @@ function createWeatherElement(sTabId, sDevId, aValues) {
 		if('gui-show-sunriseset' in aValues && aValues['gui-show-sunriseset'] && 'sunrise' in aValues && 'sunset' in aValues) {
 			oTab.find('#'+sTabId+'_'+sDevId+'_weather').append($('<div id="'+sTabId+'_'+sDevId+'_sunset_icon" class="sunset_icon"></div><div class="sunset" id="'+sTabId+'_'+sDevId+'_sunset">'+aValues['sunset'].toFixed(aValues['gui-decimals'])+'</div>'));
 			oTab.find('#'+sTabId+'_'+sDevId+'_weather').append($('<div id="'+sTabId+'_'+sDevId+'_sunrise_icon" class="sunrise_icon"></div><div class="sunrise" id="'+sTabId+'_'+sDevId+'_sunrise">'+aValues['sunrise'].toFixed(aValues['gui-decimals'])+'</div>'));
-			if('state' in aValues) {
-				if(aValues['state'] == 'rise') {
+			if('sun' in aValues) {
+				if(aValues['sun'] == 'rise') {
 					$('#'+sTabId+'_'+sDevId+'_sunrise_icon').addClass('yellow');
 					$('#'+sTabId+'_'+sDevId+'_sunset_icon').addClass('gray');
 				} else {
@@ -352,8 +352,8 @@ function createWeatherElement(sTabId, sDevId, aValues) {
 				}
 			}
 		}
-		if('state' in aValues) {
-			if(aValues['state'] == 'rise') {
+		if('sun' in aValues) {
+			if(aValues['sun'] == 'rise') {
 				if($('#'+sTabId+'_'+sDevId+'_sunrise_icon').attr("class").indexOf("yellow") == -1) {
 					$('#'+sTabId+'_'+sDevId+'_sunrise_icon').removeClass('gray').addClass('yellow');
 				}
@@ -464,8 +464,8 @@ function createGUI(data) {
 						}
 					}
 				});
-			});			
-
+			});					
+			
 			if(bShowTabs) {
 				$(document).delegate('[data-role="navbar"] a', 'click', function(e) {
 					var iPos = this.href.indexOf('#');
@@ -568,7 +568,7 @@ function parseData(data) {
 									$('#'+lindex+'_'+dvalues+'_batt').removeClass('green').addClass('red');
 								}
 							}
-						} else if(vindex == 'state' && $('#'+lindex+'_'+dvalues+'_sunrise_icon') && $('#'+lindex+'_'+dvalues+'_sunset_icon')) {
+						} else if(vindex == 'sun' && $('#'+lindex+'_'+dvalues+'_sunrise_icon') && $('#'+lindex+'_'+dvalues+'_sunset_icon')) {
 							if(vvalues == 'rise') {
 								if($('#'+sTabId+'_'+sDevId+'_sunrise_icon').attr("class").indexOf("yellow") == -1) {
 									$('#'+lindex+'_'+dvalues+'_sunrise_icon').removeClass('gray').addClass('yellow');

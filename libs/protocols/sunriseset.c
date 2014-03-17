@@ -32,6 +32,7 @@
 
 #include "../../pilight.h"
 #include "common.h"
+#include "datetime.h"
 #include "log.h"
 #include "threads.h"
 #include "protocol.h"
@@ -44,18 +45,11 @@
 #define PIX 57.29578049044297 // 180 / PI
 #define ZENITH 90.83333333333333
 
-typedef struct sunriseset_data_t {
-	char *slongitude;
-	char *slatitude;
-	double longitude;
-	double latitude;
-	struct sunriseset_data_t *next;
-} sunriseset_data_t;
-
 unsigned short sunriseset_loop = 1;
 unsigned short sunriseset_threads = 0;
+char UTC[] = "UTC";
 
-double sunRiseSetCalculate(int year, int month, int day, double lat, double lon, int rising, int timezone, int dst) {
+double sunRiseSetCalculate(int year, int month, int day, double lat, double lon, int rising, int tz, int dst) {
 	int N = (int)((floor(275 * month / 9)) - ((floor((month + 9) / 12)) * 
 			((1 + floor((year - 4 * floor(year / 4) + 2) / 3)))) + (int)day - 30);
 	
@@ -104,9 +98,8 @@ double sunRiseSetCalculate(int year, int month, int day, double lat, double lon,
 
 	double hour = UT-min;
 
-	return ((round(hour)+min)+1+dst)*100;
+	return ((round(hour)+min)+tz+dst)*100;
 }
-
 
 void *sunRiseSetParse(void *param) {
 	struct protocol_threads_t *thread = (struct protocol_threads_t *)param;
@@ -114,130 +107,113 @@ void *sunRiseSetParse(void *param) {
 	struct JsonNode *jid = NULL;
 	struct JsonNode *jchild = NULL;
 	struct JsonNode *jchild1 = NULL;
-	struct sunriseset_data_t *sunriseset_data = NULL;
-	struct sunriseset_data_t *wtmp = NULL;
-	int interval = 1, nrloops = 0;
-	int has_longitude = 0, has_latitude = 0;
+	char *slongitude = NULL, *slatitude = NULL, *tz = NULL;
+	double longitude = 0, latitude = 0;
+	int interval = 1, nrloops = 0, i = 0;
 	
 	time_t timenow = 0;
 	struct tm *current;
-	int month, mday, year = 0;
+	int month = 0, mday = 0, year = 0, offset = 0;
 
 	sunriseset_threads++;
 
 	if((jid = json_find_member(json, "id"))) {
 		jchild = json_first_child(jid);
+		i = 0;
 		while(jchild) {
-			has_longitude = 0, has_latitude = 0;
+			i++;
 			jchild1 = json_first_child(jchild);
-			struct sunriseset_data_t* wnode = malloc(sizeof(struct sunriseset_data_t));
-			if(!wnode) {
-				logprintf(LOG_ERR, "out of memory");
-				exit(EXIT_FAILURE);
-			}
 			while(jchild1) {
 				if(strcmp(jchild1->key, "longitude") == 0) {
-					has_longitude = 1;
-					if(!(wnode->slongitude = malloc(strlen(jchild1->string_)+1))) {
+					if(!(slongitude = malloc(strlen(jchild1->string_)+1))) {
 						logprintf(LOG_ERR, "out of memory");
 						exit(EXIT_FAILURE);
 					}
-					strcpy(wnode->slongitude, jchild1->string_);
-					wnode->longitude = atof(jchild1->string_);
+					strcpy(slongitude, jchild1->string_);
+					longitude = atof(jchild1->string_);
 				}
 				if(strcmp(jchild1->key, "latitude") == 0) {
-					has_latitude = 1;
-					if(!(wnode->slatitude = malloc(strlen(jchild1->string_)+1))) {
+					if(!(slatitude = malloc(strlen(jchild1->string_)+1))) {
 						logprintf(LOG_ERR, "out of memory");
 						exit(EXIT_FAILURE);
 					}
-					strcpy(wnode->slatitude, jchild1->string_);
-					wnode->latitude = atof(jchild1->string_);
+					strcpy(slatitude, jchild1->string_);
+					latitude = atof(jchild1->string_);
 				}
 				jchild1 = jchild1->next;
 			}
-			if(has_longitude && has_latitude) {
-				wnode->next = sunriseset_data;
-				sunriseset_data = wnode;
-			} else {
-				sfree((void *)&wnode);
+			if(i > 1) {
+				logprintf(LOG_ERR, "each sunriseset definition can only have a single ID object defined");
 			}
 			jchild = jchild->next;
 		}
 	}
 
 	json_find_number(json, "poll-interval", &interval);
-	
+
+	tz = coord2tz(longitude, latitude);
+
 	while(sunriseset_loop) {
-		wtmp = sunriseset_data;
 		if(protocol_thread_wait(thread, interval, &nrloops) == ETIMEDOUT) {
 			timenow = time(NULL);
 			current = localtime(&timenow);
 			month = current->tm_mon+1;
 			mday = current->tm_mday;
 			year = current->tm_year+1900;
-
-			time_t midnight = datetime2ts(year, month, mday, 23, 59, 59);
+			
+			time_t midnight = (datetime2ts(year, month, mday, 23, 59, 59, 0)+1);
 			time_t sunset = 0;
 			time_t sunrise = 0;
-			interval = (int)((midnight+1)-timenow);
+			offset = tzoffset(UTC, tz);
 
-			while(wtmp) {
-				sunriseset->message = json_mkobject();
-				
-				JsonNode *code = json_mkobject();
+			sunriseset->message = json_mkobject();
+			
+			JsonNode *code = json_mkobject();
+			int risetime = (int)sunRiseSetCalculate(year, month, mday, longitude, latitude, 1, offset, isdst(tz));
+			int hour = (int)round(risetime/100);
+			int min = (risetime - (hour*100));
+			sunrise = datetime2ts(year, month, mday, hour, min, 0, 0);
+			int settime = (int)sunRiseSetCalculate(year, month, mday, longitude, latitude, 0, offset, isdst(tz));
+			hour = (int)round(settime/100);
+			min = (settime - (hour*100));
+			sunset = datetime2ts(year, month, mday, hour, min, 0, 0);
 
-				int risetime = (int)sunRiseSetCalculate(year, month, mday, wtmp->longitude, wtmp->latitude, 1, 1, 0);
-				int hour = (int)round(risetime/100);
-				int min = (risetime - (hour*100));
-				sunrise = datetime2ts(year, month, mday, hour, min, 0);
-
-				int settime = (int)sunRiseSetCalculate(year, month, mday, wtmp->longitude, wtmp->latitude, 0, 1, 0);
-				hour = (int)round(settime/100);
-				min = (settime - (hour*100));
-				sunset = datetime2ts(year, month, mday, hour, min, 0);
-
-				/* Send message when sun rises */
-				if(sunrise > timenow) {
-					interval = sunrise-timenow;
-				/* Send message when sun sets */
-				} else if(sunset > timenow) {
-					interval = sunset-timenow;
-				/* Update all values when a new day arrives */
-				} else {
-					interval = midnight-timenow;
-				}
-
-				json_append_member(code, "longitude", json_mkstring(wtmp->slongitude));
-				json_append_member(code, "latitude", json_mkstring(wtmp->slatitude));
-				json_append_member(code, "sunrise", json_mknumber(risetime));
-				json_append_member(code, "sunset", json_mknumber(settime));
-				if(timenow > sunrise && timenow < sunset) {
-					json_append_member(code, "state", json_mkstring("rise"));
-				} else {
-					json_append_member(code, "state", json_mkstring("set"));
-				}
-				
-				json_append_member(sunriseset->message, "message", code);
-				json_append_member(sunriseset->message, "origin", json_mkstring("receiver"));
-				json_append_member(sunriseset->message, "protocol", json_mkstring(sunriseset->id));
-
-				pilight.broadcast(sunriseset->id, sunriseset->message);
-				json_delete(sunriseset->message);
-				sunriseset->message = NULL;
-				wtmp = wtmp->next;
+			/* Send message when sun rises */
+			if(sunrise > timenow) {
+				interval = sunrise-timenow;
+			/* Send message when sun sets */
+			} else if(sunset > timenow) {
+				interval = sunset-timenow;
+			/* Update all values when a new day arrives */
+			} else {
+				interval = midnight-timenow;
 			}
+
+			json_append_member(code, "longitude", json_mkstring(slongitude));
+			json_append_member(code, "latitude", json_mkstring(slatitude));
+			json_append_member(code, "sunrise", json_mknumber(risetime));
+			json_append_member(code, "sunset", json_mknumber(settime));
+			if(timenow > sunrise && timenow < sunset) {
+				json_append_member(code, "sun", json_mkstring("rise"));
+			} else {
+				json_append_member(code, "sun", json_mkstring("set"));
+			}
+			
+			json_append_member(sunriseset->message, "message", code);
+			json_append_member(sunriseset->message, "origin", json_mkstring("receiver"));
+			json_append_member(sunriseset->message, "protocol", json_mkstring(sunriseset->id));
+
+			pilight.broadcast(sunriseset->id, sunriseset->message);
+			json_delete(sunriseset->message);
+			sunriseset->message = NULL;
+			// Wait for 1 minute so we make sure the new interval is set
+			sleep(60);
 		}
 	}
 	
-	while(sunriseset_data) {
-		wtmp = sunriseset_data;
-		sfree((void *)&sunriseset_data->slatitude);
-		sfree((void *)&sunriseset_data->slongitude);
-		sunriseset_data = sunriseset_data->next;
-		sfree((void *)&wtmp);
-	}
-	sfree((void *)&sunriseset_data);
+	sfree((void *)&slatitude);
+	sfree((void *)&slongitude);
+	
 	sunriseset_threads--;
 	return (void *)NULL;
 }
@@ -261,6 +237,17 @@ void sunRiseSetThreadGC(void) {
 	protocol_thread_free(sunriseset);
 }
 
+int sunRiseSetCheckValues(JsonNode *code) {
+	char *sun = NULL;
+	
+	if(json_find_string(code, "sun", &sun) == 0) {
+		if(strcmp(sun, "rise") != 0 && strcmp(sun, "set") != 0) {
+			return 1;
+		}
+	}
+	return 0;
+}
+
 void sunRiseSetInit(void) {
 
 	protocol_register(&sunriseset);
@@ -273,8 +260,7 @@ void sunRiseSetInit(void) {
 	options_add(&sunriseset->options, 'a', "latitude", OPTION_HAS_VALUE, CONFIG_ID, JSON_STRING, NULL, NULL);
 	options_add(&sunriseset->options, 'u', "sunrise", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, NULL, "^[0-9]{3,4}$");
 	options_add(&sunriseset->options, 'd', "sunset", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, NULL, "^[0-9]{3,4}$");
-	options_add(&sunriseset->options, 'r', "rise", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
-	options_add(&sunriseset->options, 's', "set", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
+	options_add(&sunriseset->options, 's', "sun", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_STRING, NULL, NULL);
 	
 	options_add(&sunriseset->options, 0, "device-decimals", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)2, "[0-9]");
 	options_add(&sunriseset->options, 0, "gui-decimals", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)2, "[0-9]");	
@@ -282,4 +268,5 @@ void sunRiseSetInit(void) {
 
 	sunriseset->initDev=&sunRiseSetInitDev;
 	sunriseset->threadGC=&sunRiseSetThreadGC;
+	sunriseset->checkValues=&sunRiseSetCheckValues;
 }

@@ -30,6 +30,7 @@
 
 #include "http_lib.h"
 #include "common.h"
+#include "datetime.h"
 #include "settings.h"
 #include "log.h"
 #include "../../pilight.h"
@@ -334,7 +335,7 @@ void *update_poll(void *param) {
 			int mday = current->tm_mday;
 			int year = current->tm_year+1900;
 
-			epoch = (int)datetime2ts(year, month, mday+(7-wday), 0, 0, 0);
+			epoch = (int)datetime2ts(year, month, mday+(7-wday), 0, 0, 0, 0);
 		}
 		sleep(1);
 	}
