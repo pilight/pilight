@@ -28,6 +28,11 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <errno.h>
+#ifndef __USE_XOPEN
+	#define __USE_XOPEN
+#endif
+#include <sys/time.h>
+#include <time.h>
 
 #include "settings.h"
 #include "common.h"

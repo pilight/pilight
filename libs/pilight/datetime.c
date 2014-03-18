@@ -60598,18 +60598,18 @@ char *coord2tz(double longitude, double latitude) {
 
 time_t datetime2ts(int year, int month, int day, int hour, int minutes, int seconds, char *tz) {
 	char date[20];
-	time_t time;
+	time_t t;
 	struct tm tm = {0};
 	sprintf(date, "%d-%d-%d %d:%d:%d", year, month, day, hour, minutes, seconds);
 	strptime(date, "%Y-%m-%d %T", &tm);
 	if(tz) {
 		setenv("TZ", tz, 1);	
 	}
-	time = mktime(&tm);
+	t = mktime(&tm);
 	if(tz) {
 		unsetenv("TZ");
 	}
-	return time;
+	return t;
 }
 
 int tzoffset(char *tz1, char *tz2) {

@@ -26,7 +26,9 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <sys/time.h>
-#define __USE_XOPEN
+#ifndef __USE_XOPEN
+	#define __USE_XOPEN
+#endif
 #include <time.h>
 #include <math.h>
 
