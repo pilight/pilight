@@ -360,6 +360,8 @@ if(NOT EXISTS "/etc/pilight/settings.json")
 	install(FILES settings.json-default DESTINATION /etc/pilight/ RENAME settings.json)
 endif()
 
+install(FILES tzdata.json DESTINATION /etc/pilight/)
+
 if(NOT EXISTS "/etc/pilight/hardware.json")
 	install(FILES hardware.json DESTINATION /etc/pilight/)
 endif()

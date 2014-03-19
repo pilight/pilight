@@ -153,7 +153,10 @@ void *sunRiseSetParse(void *param) {
 
 	json_find_number(json, "poll-interval", &interval);
 
-	tz = coord2tz(longitude, latitude);
+	if((tz = coord2tz(longitude, latitude)) == NULL) {
+		logprintf(LOG_ERR, "could not determine timezone");
+		tz = UTC;
+	}
 
 	while(sunriseset_loop) {
 		if(protocol_thread_wait(thread, interval, &nrloops) == ETIMEDOUT) {
@@ -212,7 +215,7 @@ void *sunRiseSetParse(void *param) {
 			sleep(60);
 		}
 	}
-	
+
 	sfree((void *)&slatitude);
 	sfree((void *)&slongitude);
 	

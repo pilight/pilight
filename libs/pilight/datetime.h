@@ -19,6 +19,7 @@
 #ifndef _DATETIME_H_
 #define _DATETIME_H_
 
+int datetime_gc(void);
 char *coord2tz(double longitude, double latitude);
 time_t datetime2ts(int year, int month, int day, int hour, int minutes, int seconds, char *tz);
 int tzoffset(char *tz1, char *tz2);

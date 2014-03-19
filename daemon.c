@@ -33,6 +33,7 @@
 #include <ctype.h>
 
 #include "pilight.h"
+#include "datetime.h"
 #include "common.h"
 #include "settings.h"
 #include "config.h"
@@ -1509,6 +1510,7 @@ int main_gc(void) {
 	}
 #endif
 
+	datetime_gc();
 	ssdp_gc();
 	config_gc();
 	protocol_gc();
