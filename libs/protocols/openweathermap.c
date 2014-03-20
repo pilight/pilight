@@ -28,6 +28,7 @@
 
 #include "../../pilight.h"
 #include "common.h"
+#include "datetime.h"
 #include "log.h"
 #include "threads.h"
 #include "http_lib.h"
@@ -56,15 +57,19 @@ void *openweathermapParse(void *param) {
 	struct JsonNode *node = NULL;
 	struct JsonNode *jdata = NULL;
 	struct JsonNode *jmain = NULL;
+	struct JsonNode *jsys = NULL;
 	struct openweathermap_data_t *openweathermap_data = NULL;
 	struct openweathermap_data_t *wtmp = NULL;
-	int interval = 600, nrloops = 0;
+	int interval = 600, nrloops = 0, ointerval = 600;
 
 	char url[1024];
 	char *filename = NULL, *data = NULL;
 	char typebuf[70];
 	double temp = 0;
-	int humi = 0, lg = 0, ret = 0;
+	int humi = 0, lg = 0, ret = 0, sunrise = 0, sunset = 0;
+
+	time_t timenow = 0;
+	struct tm *tm;
 
 	openweathermap_threads++;	
 
@@ -111,10 +116,12 @@ void *openweathermapParse(void *param) {
 	}
 
 	json_find_number(json, "poll-interval", &interval);
+	ointerval = interval;
 	
 	while(openweathermap_loop) {
 		wtmp = openweathermap_data;
 		if(protocol_thread_wait(thread, interval, &nrloops) == ETIMEDOUT) {
+			interval = ointerval;
 			while(wtmp) {
 				filename = NULL;
 				data = NULL;
@@ -125,16 +132,29 @@ void *openweathermapParse(void *param) {
 					if(strcmp(typebuf, "application/json;") == 0) {
 						if(json_validate(data) == true) {
 							if((jdata = json_decode(data)) != NULL) {
-								if((jmain = json_find_member(jdata, "main")) != NULL) {
+								if((jmain = json_find_member(jdata, "main")) != NULL
+								   && (jsys = json_find_member(jdata, "sys")) != NULL) {
 									if((node = json_find_member(jmain, "temp")) == NULL) {
-										printf("api.openweathermap.org json has no temp_c key");
+										printf("api.openweathermap.org json has no temp key");
 									} else if(json_find_number(jmain, "humidity", &humi) != 0) {
 										printf("api.openweathermap.org json has no humidity key");
+									} else if(json_find_number(jsys, "sunrise", &sunrise) != 0) {
+										printf("api.openweathermap.org json has no sunrise key");
+									} else if(json_find_number(jsys, "sunset", &sunset) != 0) {
+										printf("api.openweathermap.org json has no sunset key");
 									} else {
 										if(node->tag != JSON_NUMBER) {
 											printf("api.openweathermap.org json has no temp key");
 										} else {
 											temp = node->number_-273.15;
+
+											timenow = time(NULL);
+											struct tm *current = localtime(&timenow);
+											int month = current->tm_mon+1;
+											int mday = current->tm_mday;
+											int year = current->tm_year+1900;
+											
+											time_t midnight = (datetime2ts(year, month, mday, 23, 59, 59, 0)+1);
 
 											openweathermap->message = json_mkobject();
 											
@@ -144,6 +164,17 @@ void *openweathermapParse(void *param) {
 											json_append_member(code, "country", json_mkstring(wtmp->country));
 											json_append_member(code, "temperature", json_mknumber((int)(temp*100)));
 											json_append_member(code, "humidity", json_mknumber((int)(humi*100)));
+											time_t a = (time_t)sunrise;
+											tm = localtime(&a);
+											json_append_member(code, "sunrise", json_mknumber((tm->tm_hour*100)+tm->tm_min));
+											time_t b = (time_t)sunset;
+											tm = localtime(&b);
+											json_append_member(code, "sunset", json_mknumber((tm->tm_hour*100)+tm->tm_min));
+											if(timenow > sunrise && timenow < sunset) {
+												json_append_member(code, "sun", json_mkstring("rise"));
+											} else {
+												json_append_member(code, "sun", json_mkstring("set"));
+											}
 											
 											json_append_member(openweathermap->message, "message", code);
 											json_append_member(openweathermap->message, "origin", json_mkstring("receiver"));
@@ -152,6 +183,23 @@ void *openweathermapParse(void *param) {
 											pilight.broadcast(openweathermap->id, openweathermap->message);
 											json_delete(openweathermap->message);
 											openweathermap->message = NULL;
+											
+											/* Send message when sun rises */
+											if(sunrise > timenow) {
+												if((sunrise-timenow) < ointerval) {
+													interval = sunrise-timenow;
+												}
+											/* Send message when sun sets */
+											} else if(sunset > timenow) {
+												if((sunset-timenow) < ointerval) {
+													interval = sunset-timenow;
+												}
+											/* Update all values when a new day arrives */
+											} else {
+												if((midnight-timenow) < ointerval) {
+													interval = midnight-timenow;
+												}
+											}
 										}
 									}
 								} else {
@@ -236,11 +284,15 @@ void openweathermapInit(void) {
 	options_add(&openweathermap->options, 'h', "humidity", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, NULL, "^[0-9]{1,5}$");
 	options_add(&openweathermap->options, 'l', "location", OPTION_HAS_VALUE, CONFIG_ID, JSON_STRING, NULL, "^[a-z]+$");
 	options_add(&openweathermap->options, 'c', "country", OPTION_HAS_VALUE, CONFIG_ID, JSON_STRING, NULL, "^[a-z]+$");
+	options_add(&openweathermap->options, 'u', "sunrise", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, NULL, "^[0-9]{3,4}$");
+	options_add(&openweathermap->options, 'd', "sunset", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, NULL, "^[0-9]{3,4}$");
+	options_add(&openweathermap->options, 's', "sun", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_STRING, NULL, NULL);	
 
 	options_add(&openweathermap->options, 0, "device-decimals", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)2, "[0-9]");
 	options_add(&openweathermap->options, 0, "gui-decimals", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)2, "[0-9]");
 	options_add(&openweathermap->options, 0, "gui-show-humidity", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
 	options_add(&openweathermap->options, 0, "gui-show-temperature", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
+	options_add(&openweathermap->options, 0, "gui-show-sunriseset", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
 	options_add(&openweathermap->options, 0, "poll-interval", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)600, "[0-9]");
 
 	openweathermap->initDev=&openweathermapInitDev;
