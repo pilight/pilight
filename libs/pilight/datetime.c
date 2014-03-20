@@ -58,7 +58,7 @@ int fillTZData(void) {
 	char tzdatafile[] = TZDATA_FILE;
 	/* Read JSON tzdata file */
 	if(!(fp = fopen(tzdatafile, "rb"))) {
-		logprintf(LOG_ERR, "cannot read config file: %s", tzdatafile);
+		logprintf(LOG_ERR, "cannot read tzdata file: %s", tzdatafile);
 		return EXIT_FAILURE;
 	}
 
@@ -147,7 +147,7 @@ char *coord2tz(double longitude, double latitude) {
 	}
 
 	int i = 0, a = 0, margin = 1, inside = 0;
-	char *timezone = NULL;
+	char *tz = NULL;
 
 	margin *= (int)pow(10, PRECISION);
 	int x = (int)round(latitude*(int)pow(10, PRECISION));
@@ -180,7 +180,7 @@ char *coord2tz(double longitude, double latitude) {
 										xinters = (y-p1y)*(p2x-p1x)/(p2y-p1y)+p1x;
 									}
 									if(p1x == p2x || x <= xinters) {
-										timezone = tznames[i];
+										tz = tznames[i];
 										inside = 1;
 										break;
 									}
@@ -200,7 +200,7 @@ char *coord2tz(double longitude, double latitude) {
 		margin++;
 		margin *= (int)pow(10, PRECISION);
 	}
-	return timezone;
+	return tz;
 }
 
 time_t datetime2ts(int year, int month, int day, int hour, int minutes, int seconds, char *tz) {

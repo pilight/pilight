@@ -212,7 +212,7 @@ void *sunRiseSetParse(void *param) {
 			json_delete(sunriseset->message);
 			sunriseset->message = NULL;
 			// Wait for 1 minute so we make sure the new interval is set
-			sleep(60);
+			protocol_thread_wait(thread, 60, &nrloops);
 		}
 	}
 

@@ -97,7 +97,7 @@ install:
 
 	[ ! -f /etc/pilight/settings.json ] && mv /etc/pilight/settings.json-default /etc/pilight/settings.json || true
 	[ ! -f /etc/pilight/hardware.json ] && cp hardware.json /etc/pilight/ || true
-	/etc/pilight/tzdata.json && cp tzdata.json /etc/pilight/ || true
+	cp tzdata.json /etc/pilight/ || true
 
 	mv /usr/local/lib/pilight/libpilight.so /usr/local/lib/pilight/libpilight.so.3
 	ln -sf /usr/local/lib/pilight/libpilight.so.3 /usr/local/lib/libpilight.so
