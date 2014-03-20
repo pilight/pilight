@@ -104,6 +104,7 @@
 #define CONFIG_FILE					"/etc/pilight/config.json"
 #define LOG_FILE					"/var/log/pilight.log"
 #define SETTINGS_FILE				"/etc/pilight/settings.json"
+#define TZDATA_FILE					"/etc/pilight/tzdata.json"
 #define LOG_MAX_SIZE 				1048576 // 1024*1024
 
 #define SEND_REPEATS				10
