@@ -96,21 +96,26 @@ div.sunset_icon.blue {
 	background: url('sunset_blue.png') 0px 0px no-repeat;
 }
 
-div.degrees, div.percentage {
+div.temperature_icon, div.humidity_icon {
 	position: relative;
 	float: right;
 	font-size: 14px;
 	color: #aeaeae;
+	width: 16px;
+	height: 16px;
 }
 
-div.degrees {
+div.temperature_icon, div.humidity_icon {
 	top: -2px;
 	left: 48px;
 }
 
-div.percentage {
-	top: 5px;
-	left: 50px;
+div.temperature_icon {
+	background: url('temp.png') 0px 0px no-repeat;
+}
+
+div.humidity_icon {
+	background: url('humi.png') 0px 0px no-repeat;
 }
 
 div.screen {

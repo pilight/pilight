@@ -281,7 +281,7 @@ void *broadcast(void *param) {
 			if(jret) {
 				json_delete(jret);
 			}
-			
+
 			/* The message and settings objects inside the broadcast queue is only
 			   of interest for the internal pilight functions. For the outside world
 			   we only communicate the message part of the queue so we rename it
@@ -292,15 +292,15 @@ void *broadcast(void *param) {
 				strcpy(jcode->key, "code");
 			}
 
-			char *jinternal = json_stringify(bcqueue->jmessage, NULL);				
-			
+			char *jinternal = json_stringify(bcqueue->jmessage, NULL);
+
 			JsonNode *jsettings = NULL;
 			if((jsettings = json_find_member(bcqueue->jmessage, "settings"))) {
 				json_remove_from_parent(jsettings);
-			}			
-			
+			}
+
 			char *jbroadcast = json_stringify(bcqueue->jmessage, NULL);
-			
+
 			if(strcmp(bcqueue->protoname, "pilight_firmware") == 0) {
 				JsonNode *code = NULL;
 				if((code = json_find_member(bcqueue->jmessage, "code")) != NULL) {
@@ -785,7 +785,7 @@ void send_queue(JsonNode *json) {
 
 		if(jcode) {
 			json_delete(jcode);
-		}		
+		}
 	}
 }
 
@@ -916,12 +916,12 @@ void client_node_parse_code(int i, JsonNode *json) {
 				JsonNode *jmessage = NULL;
 				if((jmessage = json_find_member(json, "message")) != NULL) {
 					json_remove_from_parent(jmessage);
-				}				
+				}
 				if((jcode = json_find_member(json, "code")) != NULL) {
 					jcode->key = realloc(jcode->key, 9);
 					strcpy(jcode->key, "message");
 				}
-				
+
 				broadcast_queue(pname, json);
 			}
 		}
@@ -1518,7 +1518,7 @@ int main_gc(void) {
 	settings_gc();
 	options_gc();
 	socket_gc();
-	
+
 	whitelist_free();
 	threads_gc();
 	pthread_join(pth, NULL);
@@ -1554,7 +1554,7 @@ int main(int argc, char **argv) {
 	/* Catch all exit signals for gc */
 	gc_catch();
 
-#ifdef __FreeBSD__	
+#ifdef __FreeBSD__
 	if(rep_getifaddrs(&ifaddr) == -1) {
 		logprintf(LOG_ERR, "could not get network adapter information");
 		goto clear;
@@ -1570,10 +1570,10 @@ int main(int argc, char **argv) {
 		if(ifa->ifa_addr == NULL) {
 			continue;
 		}
-		
+
 		family = ifa->ifa_addr->sa_family;
-		
-		if((strstr(ifa->ifa_name, "lo") == NULL && strstr(ifa->ifa_name, "vbox") == NULL 
+
+		if((strstr(ifa->ifa_name, "lo") == NULL && strstr(ifa->ifa_name, "vbox") == NULL
 		    && strstr(ifa->ifa_name, "dummy") == NULL) && (family == AF_INET || family == AF_INET6)) {
 			if((p = genuuid(ifa->ifa_name)) == NULL) {
 				logprintf(LOG_ERR, "could not generate the device uuid");

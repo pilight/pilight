@@ -91,7 +91,7 @@ void firmware_attiny25(struct avrpart **p) {
 	(*p)->sigmem->op[AVR_OP_READ] = avr_new_opcode();
 	parse_cmdbits((*p)->sigmem->op[AVR_OP_READ], read_bits);
 
-	(*p)->flashmem = avr_new_memtype(); 
+	(*p)->flashmem = avr_new_memtype();
 	strcpy((*p)->flashmem->desc, "flash");
 
 	(*p)->flashmem->paged = 1;
@@ -104,13 +104,13 @@ void firmware_attiny25(struct avrpart **p) {
 	(*p)->flashmem->readback[1] = 0xff;
 
 	(*p)->flashmem->op[AVR_OP_WRITEPAGE] = avr_new_opcode();
-	parse_cmdbits((*p)->flashmem->op[AVR_OP_WRITEPAGE], writepage_bits); 
+	parse_cmdbits((*p)->flashmem->op[AVR_OP_WRITEPAGE], writepage_bits);
 
 	(*p)->flashmem->op[AVR_OP_READ_LO] = avr_new_opcode();
-	parse_cmdbits((*p)->flashmem->op[AVR_OP_READ_LO], readlo_bits); 
+	parse_cmdbits((*p)->flashmem->op[AVR_OP_READ_LO], readlo_bits);
 
 	(*p)->flashmem->op[AVR_OP_READ_HI] = avr_new_opcode();
-	parse_cmdbits((*p)->flashmem->op[AVR_OP_READ_HI], readhigh_bits); 
+	parse_cmdbits((*p)->flashmem->op[AVR_OP_READ_HI], readhigh_bits);
 
 	(*p)->flashmem->op[AVR_OP_LOADPAGE_LO] = avr_new_opcode();
 	parse_cmdbits((*p)->flashmem->op[AVR_OP_LOADPAGE_LO], loadpagelo_bits);
@@ -118,7 +118,7 @@ void firmware_attiny25(struct avrpart **p) {
 	(*p)->flashmem->op[AVR_OP_LOADPAGE_HI] = avr_new_opcode();
 	parse_cmdbits((*p)->flashmem->op[AVR_OP_LOADPAGE_HI], loadpagehigh_bits);
 
-	(*p)->lfusemem = avr_new_memtype(); 
+	(*p)->lfusemem = avr_new_memtype();
 	strcpy((*p)->lfusemem->desc, "lfuse");
 
 	(*p)->lfusemem->size = 1;
@@ -133,7 +133,7 @@ void firmware_attiny25(struct avrpart **p) {
 	(*p)->lfusemem->op[AVR_OP_WRITE] = avr_new_opcode();
 	parse_cmdbits((*p)->lfusemem->op[AVR_OP_WRITE], lfusewrite_bits);
 
-	(*p)->hfusemem = avr_new_memtype(); 
+	(*p)->hfusemem = avr_new_memtype();
 	strcpy((*p)->hfusemem->desc, "hfuse");
 
 	(*p)->hfusemem->size = 1;

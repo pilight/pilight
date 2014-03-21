@@ -74,18 +74,19 @@ install:
 	
 	install -m 0755 -d /usr/local/lib/pilight/
 	install -m 0755 -d /usr/local/sbin
+	install -m 0755 -d /usr/local/bin
 	install -m 0755 -d /etc/pilight
 	for f in $(WEBDIRS) ; do \
 		install -m 0755 -d /usr/local/share/pilight/$$f; \
 	done
 	install -m 0655 pilight-daemon /usr/local/sbin/
-	install -m 0655 pilight-send /usr/local/sbin/
-	install -m 0655 pilight-receive /usr/local/sbin/
-	install -m 0655 pilight-control /usr/local/sbin/
+	install -m 0655 pilight-send /usr/local/bin/
+	install -m 0655 pilight-receive /usr/local/bin/
+	install -m 0655 pilight-control /usr/local/bin/
 	install -m 0655 pilight-debug /usr/local/sbin/
 	install -m 0655 pilight-learn /usr/local/sbin/
 	install -m 0655 pilight-raw /usr/local/sbin/
-	install -m 0655 pilight-uuid /usr/local/sbin/
+	install -m 0655 pilight-uuid /usr/local/bin/
 	install -m 0655 libpilight.so /usr/local/lib/pilight/
 	install -m 0655 libpilight.a /usr/local/lib/pilight/
 	install -m 0644 settings.json-default /etc/pilight/
@@ -97,6 +98,10 @@ install:
 
 	[ ! -f /etc/pilight/settings.json ] && mv /etc/pilight/settings.json-default /etc/pilight/settings.json || true
 	[ ! -f /etc/pilight/hardware.json ] && cp hardware.json /etc/pilight/ || true
+	[ -f /usr/local/sbin/pilight-control ] && rm /usr/local/sbin/pilight-control || true
+	[ -f /usr/local/sbin/pilight-send ] && rm /usr/local/sbin/pilight-send || true
+	[ -f /usr/local/sbin/pilight-receive ] && rm /usr/local/sbin/pilight-receive || true
+	[ -f /usr/local/sbin/pilight-uuid ] && rm /usr/local/sbin/pilight-uuid || true
 	cp tzdata.json /etc/pilight/ || true
 
 	mv /usr/local/lib/pilight/libpilight.so /usr/local/lib/pilight/libpilight.so.3

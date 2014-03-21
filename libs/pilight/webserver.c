@@ -256,7 +256,7 @@ char *webserver_shell(const char *format_str, struct mg_connection *conn, char *
 			return output;
 		}
 	}
-		
+
 	setuid(0);
 
 	return NULL;
