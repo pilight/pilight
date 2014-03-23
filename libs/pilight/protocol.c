@@ -133,6 +133,9 @@
 #ifdef PROTOCOL_SUNRISESET
 	#include "../protocols/sunriseset.h"
 #endif
+#ifdef PROTOCOL_PROGRAM
+	#include "../protocols/program.h"
+#endif
 
 void protocol_init(void) {
 	pilightFirmwareInit();
@@ -239,6 +242,9 @@ void protocol_init(void) {
 #endif
 #ifdef PROTOCOL_SUNRISESET
 	sunRiseSetInit();
+#endif
+#ifdef PROTOCOL_PROGRAM
+	programInit();
 #endif
 }
 

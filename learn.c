@@ -572,20 +572,23 @@ int main(int argc, char **argv) {
 	}
 	options_delete(options);
 
-	if((pid = proc_find("pilight-daemon")) > 0) {
+	char pilight_daemon[] = "pilight-daemon";
+	char pilight_debug[] = "pilight-debug";
+	char pilight_raw[] = "pilight-raw";
+	if((pid = proc_find(pilight_daemon, NULL)) > 0) {
 		logprintf(LOG_ERR, "pilight-daemon instance found (%d)", (int)pid);
 		return (EXIT_FAILURE);
 	}
 
-	if((pid = proc_find("pilight-raw")) > 0) {
+	if((pid = proc_find(pilight_raw, NULL)) > 0) {
 		logprintf(LOG_ERR, "pilight-raw instance found (%d)", (int)pid);
 		return (EXIT_FAILURE);
 	}
 
-	if((pid = proc_find("pilight-debug")) > 0) {
+	if((pid = proc_find(pilight_debug, NULL)) > 0) {
 		logprintf(LOG_ERR, "pilight-debug instance found (%d)", (int)pid);
 		return (EXIT_FAILURE);
-	}	
+	}		
 
 	if(access(settingsfile, F_OK) != -1) {
 		if(settings_read() != 0) {

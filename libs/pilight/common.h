@@ -49,9 +49,9 @@ int path_exists(char *fil);
 #ifdef __FreeBSD__
 static struct sockaddr *sockaddr_dup(struct sockaddr *sa);
 int rep_getifaddrs(struct ifaddrs **ifap);
-int proc_find(const char *name);
+int proc_find(char *name, char *args);
 #else
-pid_t proc_find(const char *name);
+pid_t proc_find(char *name, char *args);
 #endif
 
 #if defined(DEBUG) && !defined(__FreeBSD)

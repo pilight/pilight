@@ -57,39 +57,64 @@ void logmarkup(void) {
 }
 
 #ifdef __FreeBSD__
-int proc_find(const char *name) {
+int proc_find(char *cmd, ...) {
 #else
-pid_t proc_find(const char *name) {
+pid_t proc_find(char *cmd, char *args) {
 #endif
 	DIR* dir;
 	struct dirent* ent;
-	char* endptr;
-	char buf[512];
-	FILE* fp = NULL;
+	char *pch = NULL, fname[512], cmdline[1024];
+	int fd = 0, ptr = 0, match = 0, i = 0, y = '\n';
 
 	if(!(dir = opendir("/proc"))) {
-        logprintf(LOG_ERR, "can't open /proc");
-        return -1;
-    }
+       	return -1;
+	}
 
     while((ent = readdir(dir)) != NULL) {
-        long lpid = strtol(ent->d_name, &endptr, 10);
-        if(*endptr != '\0') {
-			continue;
-        }
+		if(isNumeric(ent->d_name) == 0) {
+			snprintf(fname, sizeof(fname), "/proc/%s/cmdline", ent->d_name);
+			if((fd = open(fname, O_RDONLY, 0)) > -1) {
+				if((ptr = read(fd, cmdline, sizeof(cmdline)-1)) > -1) {
+					i = 0, match = 0, y = 0, y = '\n';
+					/* Replace all NULL terminators for newlines */
+					for(i=0;i<ptr;i++) {
+						if(i < ptr && cmdline[i] == '\0') {
+							cmdline[i] = (char)y;
+							y = ' ';
+						}
+					}
+					cmdline[ptr-1] = '\0';
+					match = 0;
+					/* Check if program matches */
+					if((pch = strtok(cmdline, "\n")) == NULL) {
+						close(fd);
+						continue;
+					}
+					if(strcmp(pch, cmd) == 0) {
+						match++;
+					}
+					if(args != NULL && match == 1) {
+						if((pch = strtok(NULL, "\n")) == NULL) {
+							close(fd);
+							continue;
+						}
+						if(strcmp(pch, args) == 0) {
+							match++;
+						}
 
-        snprintf(buf, sizeof(buf), "/proc/%ld/cmdline", lpid);
-
-        if((fp = fopen(buf, "r"))) {
-			if(fgets(buf, sizeof(buf), fp) != NULL) {
-                char* first = strtok(buf, " ");
-                if(!strcmp(first, name)) {
-					fclose(fp);
-					closedir(dir);
-					return (pid_t)lpid;
+						if(match == 2) {
+							close(fd);
+							closedir(dir);
+							return (pid_t)atol(ent->d_name);
+						}
+					} else if(match) {
+						close(fd);
+						closedir(dir);
+						return (pid_t)atol(ent->d_name);
+					}
 				}
+				close(fd);
 			}
-			fclose(fp);
 		}
 	}
 	closedir(dir);

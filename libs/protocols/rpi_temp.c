@@ -39,7 +39,7 @@
 
 unsigned short rpi_temp_loop = 1;
 unsigned short rpi_temp_threads = 0;
-char rpi_temp[38];
+char rpi_temp[] = "/sys/class/thermal/thermal_zone0/temp";
 
 void *rpiTempParse(void *param) {
 	struct protocol_threads_t *node = (struct protocol_threads_t *)param;
@@ -87,8 +87,7 @@ void *rpiTempParse(void *param) {
 
 					if(!(content = realloc(content, bytes+1))) {
 						logprintf(LOG_ERR, "out of memory");
-						fclose(fp);
-						break;
+						exit(EXIT_FAILURE);
 					}
 					memset(content, '\0', bytes+1);
 
@@ -96,23 +95,24 @@ void *rpiTempParse(void *param) {
 						logprintf(LOG_ERR, "cannot read file: %s", rpi_temp);
 						fclose(fp);
 						break;
+					} else {
+						fclose(fp);
+						int temp = atoi(content)+temp_offset;
+						sfree((void *)&content);
+
+						rpiTemp->message = json_mkobject();
+						JsonNode *code = json_mkobject();
+						json_append_member(code, "id", json_mknumber(id[y]));
+						json_append_member(code, "temperature", json_mknumber(temp));
+											
+						json_append_member(rpiTemp->message, "message", code);
+						json_append_member(rpiTemp->message, "origin", json_mkstring("receiver"));
+						json_append_member(rpiTemp->message, "protocol", json_mkstring(rpiTemp->id));
+											
+						pilight.broadcast(rpiTemp->id, rpiTemp->message);
+						json_delete(rpiTemp->message);
+						rpiTemp->message = NULL;
 					}
-
-					fclose(fp);
-					int temp = atoi(content)+temp_offset;
-
-					rpiTemp->message = json_mkobject();
-					JsonNode *code = json_mkobject();
-					json_append_member(code, "id", json_mknumber(id[y]));
-					json_append_member(code, "temperature", json_mknumber(temp));
-										
-					json_append_member(rpiTemp->message, "message", code);
-					json_append_member(rpiTemp->message, "origin", json_mkstring("receiver"));
-					json_append_member(rpiTemp->message, "protocol", json_mkstring(rpiTemp->id));
-										
-					pilight.broadcast(rpiTemp->id, rpiTemp->message);
-					json_delete(rpiTemp->message);
-					rpiTemp->message = NULL;
 				} else {
 					logprintf(LOG_ERR, "CPU RPI device %s does not exists", rpi_temp);
 				}
@@ -120,9 +120,6 @@ void *rpiTempParse(void *param) {
 		}
 	}
 
-	if(content) {
-		sfree((void *)&content);
-	}
 	sfree((void *)&id);
 	rpi_temp_threads--;
 	return (void *)NULL;
@@ -163,9 +160,6 @@ void rpiTempInit(void) {
 	options_add(&rpiTemp->options, 0, "gui-decimals", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)3, "[0-9]");
 	options_add(&rpiTemp->options, 0, "gui-show-temperature", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
 	options_add(&rpiTemp->options, 0, "poll-interval", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)10, "[0-9]");
-
-	memset(rpi_temp, '\0', 38);
-	strcpy(rpi_temp, "/sys/class/thermal/thermal_zone0/temp");
 
 	rpiTemp->initDev=&rpiTempInitDev;
 	rpiTemp->threadGC=&rpiTempThreadGC;

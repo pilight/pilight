@@ -181,7 +181,7 @@ int settings_parse(JsonNode *root) {
 				settings_add_number(jsettings->key, (int)jsettings->number_);
 			}
 		} else if(strcmp(jsettings->key, "log-level") == 0) {
-			if((int)jsettings->number_ == 0 || (int)jsettings->number_ > 5) {
+			if((int)jsettings->number_ < 0 || (int)jsettings->number_ > 5) {
 				logprintf(LOG_ERR, "setting \"%s\" must contain a number from 0 till 5", jsettings->key);
 				have_error = 1;
 				goto clear;
