@@ -261,7 +261,7 @@ if(${PROTOCOL_SILVERCREST} MATCHES "OFF")
 	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/silvercrest.c")
 endif()
 
-if(${PROTOCOL_X10} MATCHES "OFF")
+if(${PROTOCOL_SUNRISESET} MATCHES "OFF")
 	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/sunriseset.h")
 	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/sunriseset.c")
 endif()
