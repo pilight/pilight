@@ -1683,7 +1683,7 @@ int main(int argc, char **argv) {
 		printf("Usage: %s [options]\n", progname);
 		goto clear;
 	}
-	
+
 	char pilight_learn[] = "pilight-learn";
 	char pilight_debug[] = "pilight-debug";
 	char pilight_raw[] = "pilight-raw";
@@ -1700,7 +1700,7 @@ int main(int argc, char **argv) {
 	if((pid = proc_find(pilight_debug, NULL)) > 0) {
 		logprintf(LOG_ERR, "pilight-debug instance found (%d)", (int)pid);
 		return (EXIT_FAILURE);
-	}		
+	}
 
 	if(access(settingsfile, F_OK) != -1) {
 		if(settings_read() != 0) {

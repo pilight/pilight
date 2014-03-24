@@ -47,6 +47,11 @@ div.ui-slider.ui-slider-switch {
 	margin: 6px 10px 10px 0px;
 }
 
+.pendingsw.pending .ui-slider-label {
+	background: #FF9900;
+}
+
+
 div.temperature, div.humidity, div.battery.red, div.battery.green, 
 div.sunrise, div.sunset, div.sunset_icon.gray, div.sunrise_icon.gray,
 div.sunset_icon.blue, div.sunrise_icon.yellow  {

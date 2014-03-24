@@ -4,6 +4,7 @@ var bConnected = false;
 var bInitialized = false;
 var bSending = false;
 var aDecimals = new Array();
+var aReadOnly = new Array();
 var bShowTabs = true;
 var iPLVersion = 0;
 var iPLNVersion = 0;
@@ -127,7 +128,65 @@ function createSwitchElement(sTabId, sDevId, aValues) {
 		}
 	}
 	if('gui-readonly' in aValues && aValues['gui-readonly']) {
+		aReadOnly[sTabId+'_'+sDevId] = 1;
 		$('#'+sTabId+'_'+sDevId+'_switch').slider('disable');
+	} else {
+		aReadOnly[sTabId+'_'+sDevId] = 0;
+	}
+}
+
+function createPendingSwitchElement(sTabId, sDevId, aValues) {
+	if($('#'+sTabId+'_'+sDevId+'_pendingsw').length == 0) {
+		if(bShowTabs) {
+			oTab = $('#'+sTabId).find('ul');
+		} else {
+			oTab = $('#all');
+		}
+
+		if('name' in aValues) {
+			oTab.append($('<li id="'+sTabId+'_'+sDevId+'" class="pendingsw" data-icon="false">'+aValues['name']+'<select id="'+sTabId+'_'+sDevId+'_pendingsw" data-role="slider"><option value="stopped">Stopped</option><option value="running">Running</option></select></li>'));
+		}
+		$('#'+sTabId+'_'+sDevId+'_pendingsw').slider();
+		
+		$('#'+sTabId+'_'+sDevId+'_pendingsw').bind("change", function(event, ui) {
+			event.stopPropagation();
+			$('#'+sTabId+'_'+sDevId+'_pendingsw').slider('disable');
+			$('#'+sTabId+'_'+sDevId).addClass('pending');
+			var json = '{"message":"send","code":{"location":"'+sTabId+'","device":"'+sDevId+'","state":"'+this.value+'"}}';
+			if(oWebsocket) {
+				oWebsocket.send(json);
+			} else {
+				bSending = true;
+				$.get('http://'+location.host+'/send?'+encodeURIComponent(json));
+				window.setTimeout(function() { bSending = false; }, 1000);
+			}
+		});
+		oTab.listview();
+		oTab.listview("refresh");
+	}
+	if('state' in aValues) {
+		if(aValues['state'] === "running") {
+			$('#'+sTabId+'_'+sDevId+'_pendingsw')[0].selectedIndex = 1;
+			$('#'+sTabId+'_'+sDevId+'_pendingsw').slider('refresh');
+			$('#'+sTabId+'_'+sDevId).removeClass('pending');
+			$('#'+sTabId+'_'+sDevId+'_pendingsw').slider('enable');
+		} else if(aValues['state'] === "pending") {
+			$('#'+sTabId+'_'+sDevId+'_pendingsw').slider('disable');
+			if($('#'+sTabId+'_'+sDevId).attr("class").indexOf("pending") == -1) {
+				$('#'+sTabId+'_'+sDevId).addClass('pending');
+			}
+		}else {
+			$('#'+sTabId+'_'+sDevId+'_pendingsw')[0].selectedIndex = 0;
+			$('#'+sTabId+'_'+sDevId+'_pendingsw').slider('refresh');
+			$('#'+sTabId+'_'+sDevId).removeClass('pending');
+			$('#'+sTabId+'_'+sDevId+'_pendingsw').slider('enable');
+		}
+	}
+	if('gui-readonly' in aValues && aValues['gui-readonly']) {
+		aReadOnly[sTabId+'_'+sDevId] = 1;
+		$('#'+sTabId+'_'+sDevId+'_pendingsw').slider('disable');
+	} else {
+		aReadOnly[sTabId+'_'+sDevId] = 0;
 	}
 }
 
@@ -203,8 +262,11 @@ function createScreenElement(sTabId, sDevId, aValues) {
 	oTab.listview();
 	oTab.listview("refresh");
 	if('gui-readonly' in aValues && aValues['gui-readonly']) {
+		aReadOnly[sTabId+'_'+sDevId] = 1;
 		$('#'+sTabId+'_'+sDevId+'_screen_up').checkboxradio('disable');
 		$('#'+sTabId+'_'+sDevId+'_screen_down').checkboxradio('disable');
+	} else {
+		aReadOnly[sTabId+'_'+sDevId] = 0;
 	}
 }
 
@@ -272,8 +334,11 @@ function createDimmerElement(sTabId, sDevId, aValues) {
 		}
 	}
 	if('gui-readonly' in aValues && aValues['gui-readonly']) {
+		aReadOnly[sTabId+'_'+sDevId] = 1;
 		$('#'+sTabId+'_'+sDevId+'_switch').slider('disable');
 		$('#'+sTabId+'_'+sDevId+'_dimmer').slider('disable');
+	} else {
+		aReadOnly[sTabId+'_'+sDevId] = 0;
 	}
 }
 
@@ -453,6 +518,7 @@ function createGUI(data) {
 						$.each(dvalues, function(sindex, svalues) {
 							aValues[sindex] = svalues;
 						});
+
 						if(aValues['type'] == 1 || aValues['type'] == 4) {
 							createSwitchElement(lindex, dindex, aValues);
 						} else if(aValues['type'] == 2) {
@@ -461,10 +527,12 @@ function createGUI(data) {
 							createWeatherElement(lindex, dindex, aValues);
 						} else if(aValues['type'] == 5) {
 							createScreenElement(lindex, dindex, aValues);
+						} else if(aValues['type'] == 7) {
+							createPendingSwitchElement(lindex, dindex, aValues);
 						}
 					}
 				});
-			});				
+			});					
 			
 			if(bShowTabs) {
 				$(document).delegate('[data-role="navbar"] a', 'click', function(e) {
@@ -528,6 +596,32 @@ function parseData(data) {
 						if(vindex == 'dimlevel') {
 							$('#'+lindex+'_'+dvalues+'_dimmer').val(vvalues);
 							$('#'+lindex+'_'+dvalues+'_dimmer').slider('refresh');
+						}
+					} else if(iType == 7) {
+						if(vindex == 'state') {
+							if(vvalues == 'running') {
+								$('#'+lindex+'_'+dvalues+'_pendingsw')[0].selectedIndex = 1;
+								if($('#'+lindex+'_'+dvalues).attr("class").indexOf("pending") >= 0) {
+									$('#'+lindex+'_'+dvalues).removeClass('pending');
+								}
+								if(lindex+'_'+dvalues in aReadOnly && aReadOnly[lindex+'_'+dvalues] == 0) {
+									$('#'+lindex+'_'+dvalues+'_pendingsw').slider('enable');
+								}
+							} else if(vvalues == 'pending') {
+								$('#'+lindex+'_'+dvalues+'_pendingsw').slider('disable');
+								if($('#'+lindex+'_'+dvalues).attr("class").indexOf("pending") <= 0) {
+									$('#'+lindex+'_'+dvalues).addClass('pending');
+								}
+							} else {
+								$('#'+lindex+'_'+dvalues+'_pendingsw')[0].selectedIndex = 0;
+								if($('#'+lindex+'_'+dvalues).attr("class").indexOf("pending") >= 0) {
+									$('#'+lindex+'_'+dvalues).removeClass('pending');
+								}
+								if(lindex+'_'+dvalues in aReadOnly && aReadOnly[lindex+'_'+dvalues] == 0) {
+									$('#'+lindex+'_'+dvalues+'_pendingsw').slider('enable');
+								}
+							}
+							$('#'+lindex+'_'+dvalues+'_pendingsw').slider('refresh');
 						}
 					} else if(iType == 3) {
 						if(vindex == 'temperature' && $('#'+lindex+'_'+dvalues+'_temp')) {
