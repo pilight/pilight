@@ -62,7 +62,7 @@ void *programParse(void *param) {
 	struct JsonNode *jchild1 = NULL;
 	char *prog = NULL, *args = NULL, *stopcmd = NULL, *startcmd = NULL;
 	
-	int interval = 1, nrloops = 0, i = 0, currentstate = 0, laststate = 0;
+	int interval = 1, nrloops = 0, i = 0, currentstate = 0, laststate = 1;
 	int pid = 0;
 
 	program_threads++;
@@ -137,7 +137,7 @@ void *programParse(void *param) {
 			}
 			jchild = jchild->next;
 		}
-	}	
+	}
 
 	struct programs_t *tmp = programs;
 	if(tmp) {
