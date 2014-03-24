@@ -76,7 +76,7 @@ int relayCreateCode(JsonNode *code) {
 		have_error = 1;
 		goto clear;
 	} else {
-		if(strstr(progname, "daemon") == NULL) {
+		if(strstr(progname, "daemon") != NULL) {
 			if(wiringPiSetup() < 0) {
 				logprintf(LOG_ERR, "unable to setup wiringPi") ;
 				return EXIT_FAILURE;
