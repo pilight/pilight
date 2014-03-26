@@ -4,6 +4,7 @@ var bConnected = false;
 var bInitialized = false;
 var bSending = false;
 var aDecimals = new Array();
+var aDateTime = new Array();
 var aReadOnly = new Array();
 var bShowTabs = true;
 var iPLVersion = 0;
@@ -449,6 +450,48 @@ function createWeatherElement(sTabId, sDevId, aValues) {
 	oTab.listview("refresh");
 }
 
+function createDateTimeElement(sTabId, sDevId, aValues) {
+	aDateTime[sTabId+'_'+sDevId] = new Array();
+
+	if('month' in aValues && aValues['month'] < 10) {
+		aValues['month'] = '0'+aValues['month'];
+	}
+	if('day' in aValues && aValues['day'] < 10) {
+		aValues['day'] = '0'+aValues['day'];
+	}
+	if('hour' in aValues && aValues['hour'] < 10) {
+		aValues['hour'] = '0'+aValues['hour'];
+	}
+	if('minute' in aValues && aValues['minute'] < 10) {
+		aValues['minute'] = '0'+aValues['minute'];
+	}
+	if('second' in aValues && aValues['second'] < 10) {
+		aValues['second'] = '0'+aValues['second'];
+	}
+
+	if($('#'+sTabId+'_'+sDevId+'_datetime').length == 0) {
+		if(bShowTabs) {
+			oTab = $('#'+sTabId).find('ul');
+		} else {
+			oTab = $('#all');
+		}	
+		if('name' in aValues) {
+			oTab.append($('<li id="'+sTabId+'_'+sDevId+'_datetime" data-icon="false">'+aValues['name']+'</li>'));
+			aDateTime[sTabId+'_'+sDevId]['year'] = aValues['year'];
+			aDateTime[sTabId+'_'+sDevId]['month'] = aValues['month'];
+			aDateTime[sTabId+'_'+sDevId]['day'] = aValues['day'];
+			aDateTime[sTabId+'_'+sDevId]['hour'] = aValues['hour'];
+			aDateTime[sTabId+'_'+sDevId]['minute'] = aValues['minute'];
+			aDateTime[sTabId+'_'+sDevId]['second'] = aValues['second'];
+			oTab.find('#'+sTabId+'_'+sDevId+'_datetime').append($('<div id="'+sTabId+'_'+sDevId+'_text" class="datetime">'+aValues['year']+'-'+aValues['month']+'-'+aValues['day']+' '+aValues['hour']+':'+aValues['minute']+':'+aValues['second']+'</div>'));
+		}
+	} else {
+		$('#'+sTabId+'_'+sDevId+'_text').text(aValues['year']+'-'+aValues['month']+'-'+aValues['day']+' '+aValues['hour']+':'+aValues['minute']+':'+aValues['second']);
+	}
+	oTab.listview();
+	oTab.listview("refresh");
+}
+
 function updateVersions() {
 	if(iPLVersion != iPLNVersion) {
 		if(iFWVersion > 0) {
@@ -529,11 +572,18 @@ function createGUI(data) {
 							createScreenElement(lindex, dindex, aValues);
 						} else if(aValues['type'] == 7) {
 							createPendingSwitchElement(lindex, dindex, aValues);
+						} else if(aValues['type'] == 8) {
+							createDateTimeElement(lindex, dindex, aValues);
 						}
 					}
 				});
-			});					
-			
+			});
+
+			$(document).delegate('#editbtn', 'click', function(e) {
+				document.location = "wakeup.php";
+				//e.preventDefault();
+			});
+
 			if(bShowTabs) {
 				$(document).delegate('[data-role="navbar"] a', 'click', function(e) {
 					var iPos = this.href.indexOf('#');
@@ -596,6 +646,25 @@ function parseData(data) {
 						if(vindex == 'dimlevel') {
 							$('#'+lindex+'_'+dvalues+'_dimmer').val(vvalues);
 							$('#'+lindex+'_'+dvalues+'_dimmer').slider('refresh');
+						}
+					} else if(iType == 8) {
+						if(lindex+'_'+dvalues in aDateTime &&
+						   vindex in aDateTime[lindex+'_'+dvalues]) {
+							if(vvalues < 10) {
+								vvalues = '0'+vvalues;
+							}
+							aDateTime[lindex+'_'+dvalues][vindex] = vvalues;
+							aVal = aDateTime[lindex+'_'+dvalues];
+							if('year' in aVal &&
+							   'month' in aVal &&
+							   'day' in aVal &&
+							   'hour' in aVal &&
+							   'minute' in aVal &&
+							   'second' in aVal) {
+								if(vindex == 'second') {
+									$('#'+lindex+'_'+dvalues+'_text').text(aVal['year']+'-'+aVal['month']+'-'+aVal['day']+' '+aVal['hour']+':'+aVal['minute']+':'+aVal['second']);
+								}
+							}
 						}
 					} else if(iType == 7) {
 						if(vindex == 'state') {

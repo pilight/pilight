@@ -49,7 +49,6 @@
 
 unsigned short sunriseset_loop = 1;
 unsigned short sunriseset_threads = 0;
-char UTC[] = "UTC";
 
 double sunRiseSetCalculate(int year, int month, int day, double lat, double lon, int rising, int tz, int dst) {
 	int N = (int)((floor(275 * month / 9)) - ((floor((month + 9) / 12)) * 
@@ -112,6 +111,7 @@ void *sunRiseSetParse(void *param) {
 	char *slongitude = NULL, *slatitude = NULL, *tz = NULL;
 	double longitude = 0, latitude = 0;
 	int interval = 1, nrloops = 0, i = 0;
+	char UTC[] = "UTC";	
 	
 	time_t timenow = 0;
 	struct tm *current;

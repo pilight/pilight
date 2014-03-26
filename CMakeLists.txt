@@ -286,6 +286,11 @@ if(${PROTOCOL_PROGRAM} MATCHES "OFF")
 	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/program.c")
 endif()
 
+if(${PROTOCOL_DATETIME} MATCHES "OFF")
+	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/pdatetime.h")
+	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/pdatetime.c")
+endif()
+
 if(${HARDWARE_433_GPIO} MATCHES "OFF")
 	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/hardware/433gpio.h")
 	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/hardware/433gpio.c")

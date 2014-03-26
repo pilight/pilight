@@ -51,10 +51,9 @@ div.ui-slider.ui-slider-switch {
 	background: #FF9900;
 }
 
-
-div.temperature, div.humidity, div.battery.red, div.battery.green, 
-div.sunrise, div.sunset, div.sunset_icon.gray, div.sunrise_icon.gray,
-div.sunset_icon.blue, div.sunrise_icon.yellow  {
+div.datetime, div.temperature, div.humidity, div.battery.red,
+div.battery.green, div.sunrise, div.sunset, div.sunset_icon.gray, 
+div.sunrise_icon.gray, div.sunset_icon.blue, div.sunrise_icon.yellow  {
 	position: relative;
 	float: right;
 	padding: 4px;

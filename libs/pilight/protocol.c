@@ -136,6 +136,9 @@
 #ifdef PROTOCOL_PROGRAM
 	#include "../protocols/program.h"
 #endif
+#ifdef PROTOCOL_DATETIME
+	#include "../protocols/pdatetime.h"
+#endif
 
 void protocol_init(void) {
 	pilightFirmwareInit();
@@ -245,6 +248,9 @@ void protocol_init(void) {
 #endif
 #ifdef PROTOCOL_PROGRAM
 	programInit();
+#endif
+#ifdef PROTOCOL_DATETIME
+	pdateTimeInit();
 #endif
 }
 
