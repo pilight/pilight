@@ -62,7 +62,7 @@ void *programParse(void *param) {
 	struct JsonNode *jchild1 = NULL;
 	char *prog = NULL, *args = NULL, *stopcmd = NULL, *startcmd = NULL;
 	
-	int interval = 1, nrloops = 0, i = 0, currentstate = 0, laststate = 1;
+	int interval = 1, nrloops = 0, i = 0, currentstate = 0, laststate = -1;
 	int pid = 0;
 
 	program_threads++;
@@ -76,7 +76,7 @@ void *programParse(void *param) {
 	lnode->wait = 0;
 	lnode->pth = 0;
 	
-	if(args) {
+	if(args && strlen(args) > 0) {
 		if(!(lnode->arguments = malloc(strlen(args)+1))) {
 			logprintf(LOG_ERR, "out of memory");
 			exit(EXIT_FAILURE);
@@ -160,7 +160,7 @@ void *programParse(void *param) {
 				JsonNode *code = json_mkobject();
 				json_append_member(code, "name", json_mkstring(lnode->name));
 
-				if((pid = (int)proc_find(prog, args)) > 0) {
+				if((pid = (int)proc_find(lnode->program, lnode->arguments)) > 0) {
 					currentstate = 1;
 					json_append_member(code, "state", json_mkstring("running"));
 					json_append_member(code, "pid", json_mknumber((int)pid));

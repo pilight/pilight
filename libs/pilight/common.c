@@ -93,6 +93,7 @@ pid_t proc_find(char *cmd, char *args) {
 					if(strcmp(pch, cmd) == 0) {
 						match++;
 					}
+
 					if(args != NULL && match == 1) {
 						if((pch = strtok(NULL, "\n")) == NULL) {
 							close(fd);
