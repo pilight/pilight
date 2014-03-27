@@ -181,8 +181,13 @@ void *pdateTimeParse(void *param) {
 				}
 				jchild1 = jchild1->next;
 			}
+			if(slongitude == NULL && slatitude == NULL) {
+				logprintf(LOG_ERR, "no longitude and latitude set");
+				goto close;
+			}
 			if(i > 1) {
 				logprintf(LOG_ERR, "each pdatetime definition can only have a single ID object defined");
+				goto close;
 			}
 			jchild = jchild->next;
 		}
@@ -196,7 +201,7 @@ void *pdateTimeParse(void *param) {
 	while(pdatetime_loop) {
 		if(protocol_thread_wait(thread, 1, &nrloops) == ETIMEDOUT) {
 			if(x%86400 == 0 || nntptime == -1) {
-				nntptime = getntptime("0.north-america.pool.ntp.org");
+				nntptime = getntptime("0.south-america.pool.ntp.org");
 				if(nntptime > -1) {
 					ntptime = nntptime;
 				}
@@ -238,8 +243,13 @@ void *pdateTimeParse(void *param) {
 		}
 	}
 
-	sfree((void *)&slatitude);
-	sfree((void *)&slongitude);
+close:
+	if(slatitude) {
+		sfree((void *)&slatitude);
+	}
+	if(slongitude) {
+		sfree((void *)&slongitude);
+	}
 	
 	pdatetime_threads--;
 	return (void *)NULL;
