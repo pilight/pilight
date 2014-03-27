@@ -29,6 +29,7 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include <ctype.h>
+#include <pthread.h>
 
 #include "json.h"
 #include "common.h"
@@ -44,8 +45,10 @@ int ***tzcoords;
 unsigned int tznrpolys[NRCOUNTRIES];
 char tznames[NRCOUNTRIES][30];
 int tzdatafilled = 0;
+pthread_mutex_t tzlock;
 
 int fillTZData(void) {
+	pthread_mutex_lock(&tzlock);
 	if(tzdatafilled == 1) {
 		return EXIT_SUCCESS;
 	}
@@ -122,6 +125,7 @@ int fillTZData(void) {
 	json_delete(root);
 	sfree((void *)&content);
 	tzdatafilled = 1;
+	pthread_mutex_unlock(&tzlock);	
 	return EXIT_SUCCESS;
 }
 

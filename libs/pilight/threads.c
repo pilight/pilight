@@ -133,7 +133,7 @@ void thread_stop(struct threadqueue_t *node) {
 
 			if(currP->running == 1) {
 				thread_running--;
-
+				logprintf(LOG_DEBUG, "stopping thread %s", currP->id);
 				if(currP->force == 1) {
 					pthread_cancel(currP->pth);
 				}
@@ -165,6 +165,7 @@ int threads_gc(void) {
 			tmp_threads->running = 0;
 			thread_running--;
 
+			logprintf(LOG_DEBUG, "stopping %s thread", tmp_threads->id);
 			if(tmp_threads->force == 1) {
 				pthread_cancel(tmp_threads->pth);
 			}
@@ -175,6 +176,7 @@ int threads_gc(void) {
 				logprintf(LOG_DEBUG, "stopped thread %s, %d threads running", tmp_threads->id, thread_running);
 			}
 		}
+		usleep(10000);
 		tmp_threads = tmp_threads->next;
 	}
 

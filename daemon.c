@@ -126,6 +126,10 @@ pthread_mutex_t bcqueue_lock;
 pthread_cond_t bcqueue_signal;
 pthread_mutexattr_t bcqueue_attr;
 
+pthread_mutex_t mainlock;
+pthread_cond_t mainsignal;
+pthread_mutexattr_t mainattr;
+
 int bcqueue_number = 0;
 
 /* The pid_file and pid of this daemon */
@@ -1461,6 +1465,9 @@ int main_gc(void) {
 	pthread_mutex_unlock(&bcqueue_lock);
 	pthread_cond_signal(&bcqueue_signal);
 
+	pthread_mutex_unlock(&mainlock);
+	pthread_cond_signal(&mainsignal);	
+	
 	if(valid_config) {
 		JsonNode *joutput = config2json(-1);
 		char *output = json_stringify(joutput, "\t");
@@ -1893,8 +1900,8 @@ int main(int argc, char **argv) {
 			threads_register("ssdp", &ssdp_wait, (void *)NULL, 0);
 		}
 	}
-	threads_register("sender", &send_code, (void *)NULL, 1);
-	threads_register("broadcaster", &broadcast, (void *)NULL, 1);
+	threads_register("sender", &send_code, (void *)NULL, 0);
+	threads_register("broadcaster", &broadcast, (void *)NULL, 0);
 
 #ifdef UPDATE
 	if(update_check && runmode == 1) {
@@ -1929,6 +1936,11 @@ int main(int argc, char **argv) {
 	settings_find_number("firmware-update", &fwupdate);
 #endif
 
+	pthread_mutexattr_init(&mainattr);
+	pthread_mutexattr_settype(&mainattr, PTHREAD_MUTEX_RECURSIVE);
+	pthread_mutex_init(&mainlock, &mainattr);
+    pthread_cond_init(&mainsignal, NULL);	
+
 	while(main_loop) {
 #ifdef FIRMWARE
 		/* Check if firmware needs to be updated */
@@ -1946,7 +1958,16 @@ int main(int argc, char **argv) {
 			}
 		}
 #endif
-		sleep(1);
+
+		struct timeval tp;
+		struct timespec ts;
+		pthread_mutex_unlock(&mainlock);
+		gettimeofday(&tp, NULL);
+		ts.tv_sec = tp.tv_sec;
+		ts.tv_nsec = tp.tv_usec * 1000;		
+		ts.tv_sec += 1;
+		pthread_mutex_lock(&mainlock);
+		pthread_cond_timedwait(&mainsignal, &mainlock, &ts);
 	}
 	return EXIT_SUCCESS;
 
