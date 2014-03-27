@@ -68,7 +68,7 @@ unsigned short gpio433HwDeinit(void) {
 
 int gpio433Send(int *code) {
 	unsigned short i = 0;
-	if(gpio_433_out > 0) {
+	if(gpio_433_out >= 0) {
 		while(code[i]) {
 			digitalWrite(gpio_433_out, 1);
 			usleep((__useconds_t)code[i++]);
