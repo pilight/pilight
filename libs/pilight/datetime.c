@@ -244,7 +244,7 @@ int ctzoffset(void) {
     t2 = gmtime(&tm1);
     tm2 = mktime(t2);
 	localtime(&tm1);
-	return ((tm1 - tm2)/3600);
+	return (int)((tm1 - tm2)/3600);
 }
 
 int isdst(char *tz) {

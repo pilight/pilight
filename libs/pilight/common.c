@@ -16,10 +16,13 @@
     along with pilight. If not, see	<http://www.gnu.org/licenses/>
 */
 
-#define _GNU_SOURCE
+#ifndef __FreeBSD__
+	#define _GNU_SOURCE
+#endif
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <libgen.h>
 #include <dlfcn.h>
 #include <dirent.h>
 #include <sys/types.h>
@@ -33,6 +36,10 @@
 #endif
 #include <sys/time.h>
 #include <time.h>
+#include <sys/ioctl.h>
+#include <net/if.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
 
 #include "settings.h"
 #include "common.h"
@@ -57,7 +64,7 @@ void logmarkup(void) {
 }
 
 #ifdef __FreeBSD__
-int proc_find(char *cmd, ...) {
+int proc_find(char *cmd, char *args) {
 #else
 pid_t proc_find(char *cmd, char *args) {
 #endif
@@ -74,7 +81,7 @@ pid_t proc_find(char *cmd, char *args) {
 		if(isNumeric(ent->d_name) == 0) {
 			snprintf(fname, sizeof(fname), "/proc/%s/cmdline", ent->d_name);
 			if((fd = open(fname, O_RDONLY, 0)) > -1) {
-				if((ptr = read(fd, cmdline, sizeof(cmdline)-1)) > -1) {
+				if((ptr = (int)read(fd, cmdline, sizeof(cmdline)-1)) > -1) {
 					i = 0, match = 0, y = 0, y = '\n';
 					/* Replace all NULL terminators for newlines */
 					for(i=0;i<ptr;i++) {
@@ -190,14 +197,14 @@ void sfree(void **addr) {
 
 #endif
 
-uid_t name2uid(char const *name) {
+int name2uid(char const *name) {
 	if(name) {
 		struct passwd *pwd = getpwnam(name); /* don't free, see getpwnam() for details */
 		if(pwd) {
-			return pwd->pw_uid;
+			return (int)pwd->pw_uid;
 		}
 	}
-	return (uid_t)-1;
+	return -1;
 }
 
 
@@ -308,8 +315,7 @@ int base64decode(unsigned char *dest, unsigned char *src, int l) {
 
 	switch(char_count) {
 		case 1:
-			return -1;
-		break;
+		return -1;
 		case 2:
 			dest[wpos++] = (unsigned char)(bits >> 10);
 		break;
@@ -350,15 +356,15 @@ char *hostname(void) {
 
 
 char *distroname(void) {
-	int rc = 1;
 	char dist[32];
 	memset(dist, '\0', 32);
-	struct stat sb;	
 	char *distro = NULL;
 
 #ifdef __FreeBSD__
 	strcpy(dist, "FreeBSD/0.0");
 #else
+	int rc = 1;
+	struct stat sb;		
 	if((rc = stat("/etc/redhat-release", &sb)) == 0) {
 		strcpy(dist, "RedHat/0.0");
 	} else if((rc = stat("/etc/SuSE-release", &sb)) == 0) {
@@ -480,7 +486,7 @@ char *genuuid(char *ifname) {
 }
 
 #ifdef __FreeBSD__
-static struct sockaddr *sockaddr_dup(struct sockaddr *sa) {
+struct sockaddr *sockaddr_dup(struct sockaddr *sa) {
 	struct sockaddr *ret;
 	socklen_t socklen;
 #ifdef HAVE_SOCKADDR_SA_LEN
@@ -532,8 +538,7 @@ int rep_getifaddrs(struct ifaddrs **ifap) {
 
 	n = ifc.ifc_len;
 
-	/* Loop through interfaces, looking for given IP address */
-	for (i = 0; i < n; i+= ifreq_size(*ifrp) ) {
+	for (i = 0; i < n; i+= (int)ifreq_size(*ifrp) ) {
 		int match = 0;
 		ifrp = (struct ifreq *)((char *) ifc.ifc_buf+i);
 		for(ifa = *ifap; ifa != NULL; ifa = ifa->ifa_next) {
@@ -562,7 +567,7 @@ int rep_getifaddrs(struct ifaddrs **ifap) {
 		strncpy(curif->ifa_name, ifrp->ifr_name, IFNAMSIZ);
 		strncpy(ifr.ifr_name, ifrp->ifr_name, IFNAMSIZ);
 
-		curif->ifa_flags = ifr.ifr_flags;
+		curif->ifa_flags = (unsigned int)ifr.ifr_flags;
 		curif->ifa_dstaddr = NULL;
 		curif->ifa_data = NULL;
 		curif->ifa_next = NULL;

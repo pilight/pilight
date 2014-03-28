@@ -271,7 +271,7 @@ char *socket_read(int sockfd) {
 
 	while(socket_loop) {
 		FD_ZERO(&fdsread);
-		FD_SET(sockfd, &fdsread);
+		FD_SET((unsigned long)sockfd, &fdsread);
 
 		do {
 			n = select(sockfd+1, &fdsread, NULL, NULL, 0);
@@ -284,7 +284,7 @@ char *socket_read(int sockfd) {
 		if(n == -1) {
 			return NULL;
 		} else if(n > 0) {
-			if(FD_ISSET(sockfd, &fdsread)) {
+			if(FD_ISSET((unsigned long)sockfd, &fdsread)) {
 				bytes = (int)recv(sockfd, recvBuff, BUFFER_SIZE, 0);
 				
 				if(bytes <= 0) {
@@ -355,7 +355,7 @@ void *socket_wait(void *param) {
 			FD_ZERO(&readfds);
 
 			//add master socket to set
-			FD_SET(socket_get_fd(), &readfds);
+			FD_SET((unsigned long)socket_get_fd(), &readfds);
 			max_sd = socket_get_fd();
 
 			//add child sockets to set
@@ -364,7 +364,7 @@ void *socket_wait(void *param) {
 				sd = socket_clients[i];
 				//if valid socket descriptor then add to read list
 				if(sd > 0)
-					FD_SET(sd, &readfds);
+					FD_SET((unsigned long)sd, &readfds);
 
 				//highest file descriptor number, need it for the select function
 				if(sd > max_sd)
@@ -380,7 +380,7 @@ void *socket_wait(void *param) {
 		}
 
         //If something happened on the master socket, then its an incoming connection
-        if(FD_ISSET(socket_get_fd(), &readfds)) {
+        if(FD_ISSET((unsigned long)socket_get_fd(), &readfds)) {
             if((socket_client = accept(socket_get_fd(), (struct sockaddr *)&address, (socklen_t*)&addrlen))<0) {
                 logprintf(LOG_ERR, "failed to accept client");
                 exit(EXIT_FAILURE);
@@ -421,8 +421,8 @@ void *socket_wait(void *param) {
 		//else its some IO operation on some other socket :)
 		for(i=1;i<MAX_CLIENTS;i++) {
 			sd = socket_clients[i];
-			if(FD_ISSET(socket_clients[i], &readfds)) {
-				FD_CLR(socket_clients[i], &readfds);
+			if(FD_ISSET((unsigned long)socket_clients[i], &readfds)) {
+				FD_CLR((unsigned long)socket_clients[i], &readfds);
 				char *message = NULL;
 				if((message = socket_read(sd)) != NULL) {
 					if(socket_callback->client_data_callback) {

@@ -146,7 +146,6 @@ int hardware_parse(JsonNode *root) {
 	struct options_t *hw_options = NULL;
 	struct hwlst_t *tmp_hwlst = NULL;
 	struct hardware_t *hardware = NULL;
-	char *stmp = NULL;
 	
 	JsonNode *jvalues = NULL;
 	JsonNode *jchilds = json_first_child(root);
