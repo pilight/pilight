@@ -910,5 +910,4 @@ int firmware_update(char *fwfile) {
 		}
 		return firmware_write(fwfile, &p);
 	}
-	return -1;
 }

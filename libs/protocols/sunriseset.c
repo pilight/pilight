@@ -185,13 +185,13 @@ void *sunRiseSetParse(void *param) {
 
 			/* Send message when sun rises */
 			if(sunrise > timenow) {
-				interval = sunrise-timenow;
+				interval = (int)(sunrise-timenow);
 			/* Send message when sun sets */
 			} else if(sunset > timenow) {
-				interval = sunset-timenow;
+				interval = (int)(sunset-timenow);
 			/* Update all values when a new day arrives */
 			} else {
-				interval = midnight-timenow;
+				interval = (int)(midnight-timenow);
 			}
 
 			json_append_member(code, "longitude", json_mkstring(slongitude));

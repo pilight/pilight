@@ -541,7 +541,7 @@ JsonNode *config2json(short internal) {
 						while(tmp_options) {
 							if(internal > 0 && tmp_options->conftype == CONFIG_SETTING && json_find_member(jdevice, tmp_options->name) == NULL) {
 								if(tmp_options->vartype == JSON_NUMBER) {
-									json_append_member(jdevice, tmp_options->name, json_mknumber((int)tmp_options->def));
+									json_append_member(jdevice, tmp_options->name, json_mknumber((int)(intptr_t)tmp_options->def));
 								} else if(tmp_options->vartype == JSON_STRING) {
 									json_append_member(jdevice, tmp_options->name, json_mkstring((char *)tmp_options->def));
 								}

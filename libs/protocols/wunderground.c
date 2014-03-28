@@ -228,17 +228,17 @@ void *wundergroundParse(void *param) {
 																		/* Send message when sun rises */
 																		if(sunrise > timenow) {
 																			if((sunrise-timenow) < ointerval) {
-																				interval = sunrise-timenow;
+																				interval = (int)(sunrise-timenow);
 																			}
 																		/* Send message when sun sets */
 																		} else if(sunset > timenow) {
 																			if((sunset-timenow) < ointerval) {
-																				interval = sunset-timenow;
+																				interval = (int)(sunset-timenow);
 																			}
 																		/* Update all values when a new day arrives */
 																		} else {
 																			if((midnight-timenow) < ointerval) {
-																				interval = midnight-timenow;
+																				interval = (int)(midnight-timenow);
 																			}
 																		}
 																	}

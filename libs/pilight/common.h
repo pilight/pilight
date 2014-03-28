@@ -32,7 +32,7 @@ char debug_log[128];
 
 void logmarkup(void);
 int isNumeric(char *str);
-uid_t name2uid(char const *name);
+int name2uid(char const *name);
 int which(const char *program);
 int ishex(int x);
 const char *rstrstr(const char* haystack, const char* needle);
@@ -47,7 +47,7 @@ int whitelist_check(char *ip);
 void whitelist_free(void);
 int path_exists(char *fil);
 #ifdef __FreeBSD__
-static struct sockaddr *sockaddr_dup(struct sockaddr *sa);
+struct sockaddr *sockaddr_dup(struct sockaddr *sa);
 int rep_getifaddrs(struct ifaddrs **ifap);
 int proc_find(char *name, char *args);
 #else

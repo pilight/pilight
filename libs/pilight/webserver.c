@@ -176,7 +176,7 @@ char *webserver_shell(const char *format_str, struct mg_connection *conn, char *
 	char *output = NULL;
 	const char *type = NULL;
 	const char *cookie = NULL;
-	__uid_t uid = 0;
+	int uid = 0;
 	va_list ap;
 
 	va_start(ap, request);
@@ -222,7 +222,7 @@ char *webserver_shell(const char *format_str, struct mg_connection *conn, char *
 	}
 	FILE *fp = NULL;
 	if((uid = name2uid(webserver_user)) != -1) {
-		setuid(uid);
+		setuid((uid_t)uid);
 		if((fp = popen((char *)command, "r")) != NULL) {
 			size_t total = 0;
 			size_t chunk = 0;
@@ -739,7 +739,7 @@ int webserver_open_handler(struct mg_connection *conn) {
 
 void *webserver_worker(void *param) {
 	while(webserver_loop) {
-		mg_poll_server(mgserver[(int)param], 1000);
+		mg_poll_server(mgserver[(intptr_t)param], 1000);
 	}
 	return NULL;
 }
@@ -938,7 +938,7 @@ void *webserver_start(void *param) {
 		mg_set_http_open_handler(mgserver[i], webserver_open_handler);
 		char msg[25];
 		sprintf(msg, "webserver worker #%d", i);
-		threads_register(msg, &webserver_worker, (void *)i, 0);
+		threads_register(msg, &webserver_worker, (void *)(intptr_t)i, 0);
 	}
 
 	char localhost[16] = "127.0.0.1";

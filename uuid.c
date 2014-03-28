@@ -18,16 +18,19 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdarg.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include <sys/ioctl.h>
-#include <limits.h>
-#include <errno.h>
-#include <syslog.h>
-#include <time.h>
-#include <math.h>
 #include <string.h>
+#include <signal.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <arpa/inet.h>
+#include <netinet/in.h>
+#include <sys/ioctl.h>
+#include <sys/socket.h>
+#include <sys/stat.h>
+#include <sys/time.h>
+#include <pthread.h>
+#include <ctype.h>
 
 #include "pilight.h"
 #include "common.h"

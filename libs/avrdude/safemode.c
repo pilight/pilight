@@ -168,7 +168,7 @@ int safemode_readfuses (unsigned char * lfuse, unsigned char * hfuse,
 		logprintf(LOG_ERR, "Programmer may not be reliable.");
         return -1;
     }
-    else if ((fusegood == 1)) {
+    else if (fusegood == 1) {
 		logprintf(LOG_INFO, "AVR lfuse reads as %X", safemode_lfuse);
     }
 
@@ -204,7 +204,7 @@ int safemode_readfuses (unsigned char * lfuse, unsigned char * hfuse,
 		logprintf(LOG_ERR, "Programmer may not be reliable.");
         return -1;
     }
-    else if ((fusegood == 1)) {
+    else if (fusegood == 1) {
 		logprintf(LOG_INFO, "AVR hfuse reads as %X", safemode_lfuse);
     }
 
