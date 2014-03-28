@@ -153,7 +153,6 @@ int hardware_parse(JsonNode *root) {
 #ifndef __FreeBSD__	
 	regex_t regex;
 	int reti;
-#else
 	char *stmp = NULL;
 #endif
 	

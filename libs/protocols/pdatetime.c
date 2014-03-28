@@ -123,7 +123,7 @@ time_t getntptime(const char *ntpserver) {
 
 	if(msg.refid > 0) {
 		(msg.rec).Ul_i.Xl_ui = ntohl((msg.rec).Ul_i.Xl_ui);
-		(msg.rec).Ul_f.Xl_f = ntohl((msg.rec).Ul_f.Xl_f);
+		(msg.rec).Ul_f.Xl_f = (int)ntohl((msg.rec).Ul_f.Xl_f);
 
 		unsigned int adj = 2208988800u;
 		return (time_t)(msg.rec.Ul_i.Xl_ui - adj);

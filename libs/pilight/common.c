@@ -423,6 +423,7 @@ char *genuuid(char *ifname) {
 	}
 	
 #if defined(SIOCGIFHWADDR)
+	int i = 0;
 	int fd = socket(PF_INET, SOCK_DGRAM, IPPROTO_IP);
 	if(!(mac = malloc(13))) {
 		logprintf(LOG_ERR, "out of memory");
