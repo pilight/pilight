@@ -362,8 +362,9 @@ install(FILES libpilight.a DESTINATION lib/pilight/ RENAME libpilight.a)
 
 if(EXISTS "/usr/local/lib/libpilight.so")
 	execute_process(COMMAND rm "/usr/local/lib/libpilight.so")
-	execute_process(COMMAND ln -s "/usr/local/lib/pilight/libpilight.so.3" "/usr/local/lib/libpilight.so")
 endif()
+
+execute_process(COMMAND ln -s "/usr/local/lib/pilight/libpilight.so.3" "/usr/local/lib/libpilight.so")
 
 if(${WEBSERVER} MATCHES "ON")
 	install(DIRECTORY web/ DESTINATION /usr/local/share/pilight)
