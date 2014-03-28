@@ -104,10 +104,9 @@ void elroADParseCode(void) {
 	} else if((groupcode == 3) && (groupcode2 == 3)) {
 	    groupRes = 1;
 	} else {
-	    logprintf(LOG_INFO, "Warning - elro_ad encountered a unknown group code combination - this was %i and %i", groupcode, groupcode2);
-	    groupRes = 0;
+		return;
 	}  
-
+	if((state <1) || (state >2)) return;	
 	elroADCreateMessage(systemcodeLOW, systemcodeHIGH, unitcode, state, groupRes);
 }
 
