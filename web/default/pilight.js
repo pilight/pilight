@@ -377,7 +377,7 @@ function createWeatherElement(sTabId, sDevId, aValues) {
 		if('name' in aValues) {
 			oTab.append($('<li class="weather" id="'+sTabId+'_'+sDevId+'_weather" data-icon="false">'+aValues['name']+'</li>'));
 		}
-		if('gui-show-battery' in aValues && aValues['gui-show-battery']) {
+		if('gui-show-battery' in aValues && aValues['gui-show-battery'] && 'battery' in aValues) {
 			oTab.find('#'+sTabId+'_'+sDevId+'_weather').append($('<div id="'+sTabId+'_'+sDevId+'_batt" class="battery"></div>'));
 			if('battery' in aValues) {
 				if(aValues['battery']) {
