@@ -84,19 +84,19 @@ time_t getntptime(const char *ntpserver) {
 	memset(&str, '\0', 50);
 
 	if(!(hptr = gethostbyname(ntpserver))) {
-		logprintf(LOG_ERR, "gethostbyname error for host: %s: %s", ntpserver, hstrerror(h_errno));
+		logprintf(LOG_DEBUG, "gethostbyname error for host: %s: %s", ntpserver, hstrerror(h_errno));
 		goto close;
 	}
 
 	if(hptr->h_addrtype == AF_INET && (pptr = hptr->h_addr_list) != NULL) {
 		inet_ntop(hptr->h_addrtype, *pptr, str, sizeof(str));
 	} else {
-		logprintf(LOG_ERR, "error call inet_ntop");
+		logprintf(LOG_DEBUG, "error call inet_ntop");
 		goto close;
 	}
 
 	if((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) == -1) {
-		logprintf(LOG_ERR, "error in socket");
+		logprintf(LOG_DEBUG, "error in socket");
 		goto close;
 	}
 
@@ -106,29 +106,29 @@ time_t getntptime(const char *ntpserver) {
 
 	inet_pton(AF_INET, str, &servaddr.sin_addr);
 	if(connect(sockfd, (struct sockaddr *)&servaddr, sizeof(servaddr)) == -1) {
-		logprintf(LOG_ERR, "error in connect");
+		logprintf(LOG_DEBUG, "error in connect");
 		goto close;
 	}
 
 	msg.li_vn_mode=227;
 	
 	if(sendto(sockfd, (char *)&msg, 48, 0, (struct sockaddr *)&servaddr, sizeof(servaddr)) < -1) {
-		logprintf(LOG_ERR, "error in sending");
+		logprintf(LOG_DEBUG, "error in sending");
 		goto close;
 	}
 	if(recvfrom(sockfd, (void *)&msg, 48, 0, NULL, NULL) < -1) {
-		logprintf(LOG_ERR, "error in receiving");
+		logprintf(LOG_DEBUG, "error in receiving");
 		goto close;
 	}
 
 	if(msg.refid > 0) {
 		(msg.rec).Ul_i.Xl_ui = ntohl((msg.rec).Ul_i.Xl_ui);
-		(msg.rec).Ul_f.Xl_f = ntohl((msg.rec).Ul_f.Xl_f);
+		(msg.rec).Ul_f.Xl_f = (int)ntohl((unsigned int)(msg.rec).Ul_f.Xl_f);
 
 		unsigned int adj = 2208988800u;
 		return (time_t)(msg.rec.Ul_i.Xl_ui - adj);
 	} else {
-		logprintf(LOG_ERR, "invalid ntp host");
+		logprintf(LOG_DEBUG, "invalid ntp host");
 		goto close;
 	}
 
@@ -182,11 +182,11 @@ void *pdateTimeParse(void *param) {
 				jchild1 = jchild1->next;
 			}
 			if(slongitude == NULL && slatitude == NULL) {
-				logprintf(LOG_ERR, "no longitude and latitude set");
+				logprintf(LOG_DEBUG, "no longitude and latitude set");
 				goto close;
 			}
 			if(i > 1) {
-				logprintf(LOG_ERR, "each pdatetime definition can only have a single ID object defined");
+				logprintf(LOG_DEBUG, "each pdatetime definition can only have a single ID object defined");
 				goto close;
 			}
 			jchild = jchild->next;
@@ -194,7 +194,7 @@ void *pdateTimeParse(void *param) {
 	}
 
 	if((tz = coord2tz(longitude, latitude)) == NULL) {
-		logprintf(LOG_ERR, "could not determine timezone");
+		logprintf(LOG_DEBUG, "could not determine timezone");
 		tz = UTC;
 	}
 

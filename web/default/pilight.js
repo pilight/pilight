@@ -377,7 +377,7 @@ function createWeatherElement(sTabId, sDevId, aValues) {
 		if('name' in aValues) {
 			oTab.append($('<li class="weather" id="'+sTabId+'_'+sDevId+'_weather" data-icon="false">'+aValues['name']+'</li>'));
 		}
-		if('gui-show-battery' in aValues && aValues['gui-show-battery']) {
+		if('gui-show-battery' in aValues && aValues['gui-show-battery'] && 'battery' in aValues) {
 			oTab.find('#'+sTabId+'_'+sDevId+'_weather').append($('<div id="'+sTabId+'_'+sDevId+'_batt" class="battery"></div>'));
 			if('battery' in aValues) {
 				if(aValues['battery']) {
@@ -469,6 +469,13 @@ function createDateTimeElement(sTabId, sDevId, aValues) {
 		aValues['second'] = '0'+aValues['second'];
 	}
 
+	aDateTime[sTabId+'_'+sDevId]['year'] = aValues['year'];
+	aDateTime[sTabId+'_'+sDevId]['month'] = aValues['month'];
+	aDateTime[sTabId+'_'+sDevId]['day'] = aValues['day'];
+	aDateTime[sTabId+'_'+sDevId]['hour'] = aValues['hour'];
+	aDateTime[sTabId+'_'+sDevId]['minute'] = aValues['minute'];
+	aDateTime[sTabId+'_'+sDevId]['second'] = aValues['second'];	
+
 	if($('#'+sTabId+'_'+sDevId+'_datetime').length == 0) {
 		if(bShowTabs) {
 			oTab = $('#'+sTabId).find('ul');
@@ -477,12 +484,6 @@ function createDateTimeElement(sTabId, sDevId, aValues) {
 		}	
 		if('name' in aValues) {
 			oTab.append($('<li id="'+sTabId+'_'+sDevId+'_datetime" data-icon="false">'+aValues['name']+'</li>'));
-			aDateTime[sTabId+'_'+sDevId]['year'] = aValues['year'];
-			aDateTime[sTabId+'_'+sDevId]['month'] = aValues['month'];
-			aDateTime[sTabId+'_'+sDevId]['day'] = aValues['day'];
-			aDateTime[sTabId+'_'+sDevId]['hour'] = aValues['hour'];
-			aDateTime[sTabId+'_'+sDevId]['minute'] = aValues['minute'];
-			aDateTime[sTabId+'_'+sDevId]['second'] = aValues['second'];
 			oTab.find('#'+sTabId+'_'+sDevId+'_datetime').append($('<div id="'+sTabId+'_'+sDevId+'_text" class="datetime">'+aValues['year']+'-'+aValues['month']+'-'+aValues['day']+' '+aValues['hour']+':'+aValues['minute']+':'+aValues['second']+'</div>'));
 		}
 	} else {
@@ -561,7 +562,6 @@ function createGUI(data) {
 						$.each(dvalues, function(sindex, svalues) {
 							aValues[sindex] = svalues;
 						});
-
 						if(aValues['type'] == 1 || aValues['type'] == 4) {
 							createSwitchElement(lindex, dindex, aValues);
 						} else if(aValues['type'] == 2) {
@@ -577,11 +577,6 @@ function createGUI(data) {
 						}
 					}
 				});
-			});
-
-			$(document).delegate('#editbtn', 'click', function(e) {
-				document.location = "wakeup.php";
-				//e.preventDefault();
 			});
 
 			if(bShowTabs) {
@@ -759,6 +754,9 @@ $(document).ready(function() {
 	if($('body').length == 1) {
 		$.mobile.showPageLoadingMsg("b", "Connecting...", true);
 
+		if(navigator.userAgent.indexOf("Safari") > -1) {
+			bForceAjax = true;
+		}
 		if(!bForceAjax && typeof MozWebSocket != "undefined") {
 			oWebsocket = new MozWebSocket("ws://"+location.host);
 		} else if(!bForceAjax && typeof WebSocket != "undefined") {

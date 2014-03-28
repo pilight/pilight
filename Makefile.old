@@ -93,7 +93,8 @@ install:
 	for f in $(WEBFILES) ; do \
 		cd web/ && install -D $$f /usr/local/share/pilight/`dirname $$f` || true && cd ..; \
 	done
-	install -m 0755 init/pilight /etc/init.d/
+	install -m 0755 init/pilight.initd /etc/init.d/
+	mv /etc/init.d/pilight.initd /etc/init.d/pilight
 	update-rc.d pilight defaults
 
 	[ ! -f /etc/pilight/settings.json ] && mv /etc/pilight/settings.json-default /etc/pilight/settings.json || true

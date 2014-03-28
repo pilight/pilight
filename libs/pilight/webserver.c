@@ -222,42 +222,47 @@ char *webserver_shell(const char *format_str, struct mg_connection *conn, char *
 	}
 	FILE *fp = NULL;
 	if((uid = name2uid(webserver_user)) != -1) {
-		setuid((uid_t)uid);
-		if((fp = popen((char *)command, "r")) != NULL) {
-			size_t total = 0;
-			size_t chunk = 0;
-			unsigned char buff[1024] = {'\0'};
-			while(!feof(fp)) {
-				chunk = fread(buff, sizeof(char), 1024, fp);
-				total += chunk;
-				output = realloc(output, total+1);
-				if(!output) {
-					logprintf(LOG_ERR, "out of memory");
-					exit(EXIT_FAILURE);
+		if(setuid((uid_t)uid) > -1) {
+			if((fp = popen((char *)command, "r")) != NULL) {
+				size_t total = 0;
+				size_t chunk = 0;
+				unsigned char buff[1024] = {'\0'};
+				while(!feof(fp)) {
+					chunk = fread(buff, sizeof(char), 1024, fp);
+					total += chunk;
+					output = realloc(output, total+1);
+					if(!output) {
+						logprintf(LOG_ERR, "out of memory");
+						exit(EXIT_FAILURE);
+					}
+					memcpy(&output[total-chunk], buff, chunk);
 				}
-				memcpy(&output[total-chunk], buff, chunk);
-			}
-			output[total] = '\0';
-			unsetenv("SCRIPT_FILENAME");
-			unsetenv("REDIRECT_STATUS");
-			unsetenv("SERVER_PROTOCOL");
-			unsetenv("REMOTE_HOST");
-			unsetenv("SERVER_NAME");
-			unsetenv("HTTPS");
-			unsetenv("HTTP_ACCEPT");
-			unsetenv("HTTP_COOKIE");
-			unsetenv("REQUEST_METHOD");
-			unsetenv("CONTENT_TYPE");
-			unsetenv("CONTENT_LENGTH");
-			unsetenv("QUERY_STRING");
-			unsetenv("REQUEST_METHOD");
+				output[total] = '\0';
+				unsetenv("SCRIPT_FILENAME");
+				unsetenv("REDIRECT_STATUS");
+				unsetenv("SERVER_PROTOCOL");
+				unsetenv("REMOTE_HOST");
+				unsetenv("SERVER_NAME");
+				unsetenv("HTTPS");
+				unsetenv("HTTP_ACCEPT");
+				unsetenv("HTTP_COOKIE");
+				unsetenv("REQUEST_METHOD");
+				unsetenv("CONTENT_TYPE");
+				unsetenv("CONTENT_LENGTH");
+				unsetenv("QUERY_STRING");
+				unsetenv("REQUEST_METHOD");
 
-			pclose(fp);
-			return output;
+				pclose(fp);
+				return output;
+			}
+		} else {
+			logprintf(LOG_DEBUG, "failed to change webserver uid");
 		}
 	}
 
-	setuid(0);
+	if(setuid(0) == -1) {
+		logprintf(LOG_DEBUG, "failed to restore webserver uid");
+	}
 
 	return NULL;
 }

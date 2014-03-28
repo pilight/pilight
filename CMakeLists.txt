@@ -341,7 +341,9 @@ add_library(pilight OBJECT ${pilight})
 add_library(pilight_static STATIC $<TARGET_OBJECTS:pilight>)
 add_library(pilight_shared SHARED $<TARGET_OBJECTS:pilight>)
 target_link_libraries(pilight_shared ${CMAKE_THREAD_LIBS_INIT})
+target_link_libraries(pilight_shared m)
 target_link_libraries(pilight_static ${CMAKE_THREAD_LIBS_INIT})
+target_link_libraries(pilight_static m)
 
 if(${UPDATE} MATCHES "ON")
 	target_link_libraries(pilight_shared ${CMAKE_ZLIB_LIBS_INIT})
@@ -362,14 +364,18 @@ install(FILES libpilight.a DESTINATION lib/pilight/ RENAME libpilight.a)
 
 if(EXISTS "/usr/local/lib/libpilight.so")
 	execute_process(COMMAND rm "/usr/local/lib/libpilight.so")
+endif()
+
+if(NOT EXISTS "/usr/local/lib/libpilight.so")
 	execute_process(COMMAND ln -s "/usr/local/lib/pilight/libpilight.so.3" "/usr/local/lib/libpilight.so")
+	execute_process(COMMAND ldconfig)
 endif()
 
 if(${WEBSERVER} MATCHES "ON")
 	install(DIRECTORY web/ DESTINATION /usr/local/share/pilight)
 endif()
 
-install(PROGRAMS init/pilight DESTINATION /etc/init.d/)
+install(PROGRAMS init/pilight.initd DESTINATION /etc/init.d/ RENAME pilight)
 
 if(NOT EXISTS "/etc/pilight/settings.json")
 	install(FILES settings.json-default DESTINATION /etc/pilight/ RENAME settings.json)

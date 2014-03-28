@@ -410,7 +410,7 @@ int config_valid_value(char *lid, char *sid, char *name, char *value) {
 #ifndef __FreeBSD__				
 					reti = regcomp(&regex, opt->mask, REG_EXTENDED);
 					if(reti) {
-						logprintf(LOG_ERR, "could not compile regex");
+						logprintf(LOG_ERR, "%s: could not compile %s regex", tmp_protocol->listener->id, opt->name);
 						exit(EXIT_FAILURE);
 					}
 					reti = regexec(&regex, value, 0, NULL, 0);
@@ -915,11 +915,11 @@ int config_check_id(int i, JsonNode *jsetting, struct conf_devices_t *device) {
 									}
 									
 									if(strlen(tmp_options->mask) > 0) {
-
+#ifndef __FreeBSD__
 										regex_t regex;
 										int reti = regcomp(&regex, tmp_options->mask, REG_EXTENDED);
 										if(reti) {
-											logprintf(LOG_ERR, "could not compile regex");
+											logprintf(LOG_ERR, "%s: could not compile %s regex", tmp_protocols->listener->id, tmp_options->name);
 										} else {
 											reti = regexec(&regex, ctmp, 0, NULL, 0);
 											if(reti == REG_NOMATCH || reti != 0) {
@@ -927,6 +927,7 @@ int config_check_id(int i, JsonNode *jsetting, struct conf_devices_t *device) {
 											}
 											regfree(&regex);
 										}
+#endif
 									}
 								}
 							}
@@ -1050,9 +1051,11 @@ int config_check_state(int i, JsonNode *jsetting, struct conf_devices_t *device)
 	char ctmp[256];
 	char *stmp = NULL;
 
+#ifndef __FreeBSD__	
 	/* Regex variables */
 	regex_t regex;
 	int reti;
+#endif	
 
 	/* Cast the different values */
 	if(jsetting->tag == JSON_NUMBER && json_find_number(jsetting->parent, jsetting->key, &itmp) == 0) {
@@ -1076,9 +1079,10 @@ int config_check_state(int i, JsonNode *jsetting, struct conf_devices_t *device)
 					   type. This is done by checking the regex mask */
 					if(tmp_options->argtype == OPTION_HAS_VALUE) {
 						if(strlen(tmp_options->mask) > 0) {
+#ifndef __FreeBSD__
 							reti = regcomp(&regex, tmp_options->mask, REG_EXTENDED);
 							if(reti) {
-								logprintf(LOG_ERR, "could not compile regex");
+								logprintf(LOG_ERR, "%s: could not compile %s regex", tmp_protocols->listener->id, tmp_options->name);
 								have_error = 1;
 								goto clear;
 							}
@@ -1091,6 +1095,7 @@ int config_check_state(int i, JsonNode *jsetting, struct conf_devices_t *device)
 								goto clear;
 							}
 							regfree(&regex);
+#endif
 						}
 					} else {
 						/* If a protocol has CONFIG_STATE arguments, than these define
