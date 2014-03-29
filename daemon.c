@@ -1466,8 +1466,8 @@ int main_gc(void) {
 	pthread_cond_signal(&bcqueue_signal);
 
 	pthread_mutex_unlock(&mainlock);
-	pthread_cond_signal(&mainsignal);	
-	
+	pthread_cond_signal(&mainsignal);
+
 	if(valid_config) {
 		JsonNode *joutput = config2json(-1);
 		char *output = json_stringify(joutput, "\t");
@@ -1939,7 +1939,7 @@ int main(int argc, char **argv) {
 	pthread_mutexattr_init(&mainattr);
 	pthread_mutexattr_settype(&mainattr, PTHREAD_MUTEX_RECURSIVE);
 	pthread_mutex_init(&mainlock, &mainattr);
-    pthread_cond_init(&mainsignal, NULL);	
+    pthread_cond_init(&mainsignal, NULL);
 
 	while(main_loop) {
 #ifdef FIRMWARE
@@ -1964,7 +1964,7 @@ int main(int argc, char **argv) {
 		pthread_mutex_unlock(&mainlock);
 		gettimeofday(&tp, NULL);
 		ts.tv_sec = tp.tv_sec;
-		ts.tv_nsec = tp.tv_usec * 1000;		
+		ts.tv_nsec = tp.tv_usec * 1000;
 		ts.tv_sec += 1;
 		pthread_mutex_lock(&mainlock);
 		pthread_cond_timedwait(&mainsignal, &mainlock, &ts);
