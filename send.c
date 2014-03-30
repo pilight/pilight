@@ -310,7 +310,7 @@ int main(int argc, char **argv) {
 			if((options_get_id(&protocol->options, tmp->name, &itmp) == 0)
 			&& strlen(tmp->value) > 0) {
 				if(isNumeric(tmp->value) == 0) {
-					json_append_member(code, tmp->name, json_mknumber(atoi(tmp->value)));
+					json_append_member(code, tmp->name, json_mknumber(atof(tmp->value)));
 				} else {
 					json_append_member(code, tmp->name, json_mkstring(tmp->value));
 				}
