@@ -109,7 +109,7 @@ time_t getntptime(const char *ntpserver) {
 	bzero(&servaddr, sizeof(servaddr));
 	servaddr.sin_family = AF_INET;
 	servaddr.sin_port = htons(123);
-	
+
 	inet_pton(AF_INET, str, &servaddr.sin_addr);
 	if(connect(sockfd, (struct sockaddr *)&servaddr, sizeof(servaddr)) == -1) {
 		logprintf(LOG_DEBUG, "error in connect");

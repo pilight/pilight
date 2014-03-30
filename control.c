@@ -227,7 +227,7 @@ int main(int argc, char **argv) {
 									if(pch != NULL) {
 										if(config_valid_value(location, device, name, val) == 0) {
 											if(isNumeric(val) == EXIT_SUCCESS) {
-												json_append_member(jvalues, name, json_mknumber(atoi(val)));
+												json_append_member(jvalues, name, json_mknumber(atof(val)));
 											} else {
 												json_append_member(jvalues, name, json_mkstring(val));
 											}

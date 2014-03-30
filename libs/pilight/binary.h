@@ -24,4 +24,9 @@ int binToDec(int *binary, int s, int e);
 int decToBinRev(int nr, int *binary);
 int decToBin(int n, int binary[]);
 
+unsigned long long binToDecRevUl(int *binary, unsigned int s, unsigned int e);
+unsigned long long binToDecUl(int *binary, unsigned int s, unsigned int e);
+int decToBinUl(unsigned long long n, int binary[]);
+int decToBinRevUl(unsigned long long n, int binary[]);
+
 #endif
