@@ -50,7 +50,7 @@
 unsigned short sunriseset_loop = 1;
 unsigned short sunriseset_threads = 0;
 
-double sunRiseSetCalculate(int year, int month, int day, double lat, double lon, int rising, int tz, int dst) {
+double sunRiseSetCalculate(int year, int month, int day, double lat, double lon, int rising, int tz) {
 	int N = (int)((floor(275 * month / 9)) - ((floor((month + 9) / 12)) * 
 			((1 + floor((year - 4 * floor(year / 4) + 2) / 3)))) + (int)day - 30);
 	
@@ -99,7 +99,7 @@ double sunRiseSetCalculate(int year, int month, int day, double lat, double lon,
 
 	double hour = UT-min;
 
-	return ((round(hour)+min)+tz+dst)*100;
+	return ((round(hour)+min)+tz)*100;
 }
 
 void *sunRiseSetParse(void *param) {
@@ -174,11 +174,11 @@ void *sunRiseSetParse(void *param) {
 			sunriseset->message = json_mkobject();
 			
 			JsonNode *code = json_mkobject();
-			int risetime = (int)sunRiseSetCalculate(year, month, mday, longitude, latitude, 1, offset, isdst(tz));
+			int risetime = (int)sunRiseSetCalculate(year, month, mday, longitude, latitude, 1, offset);
 			int hour = (int)round(risetime/100);
 			int min = (risetime - (hour*100));
 			sunrise = datetime2ts(year, month, mday, hour, min, 0, 0);
-			int settime = (int)sunRiseSetCalculate(year, month, mday, longitude, latitude, 0, offset, isdst(tz));
+			int settime = (int)sunRiseSetCalculate(year, month, mday, longitude, latitude, 0, offset);
 			hour = (int)round(settime/100);
 			min = (settime - (hour*100));
 			sunset = datetime2ts(year, month, mday, hour, min, 0, 0);

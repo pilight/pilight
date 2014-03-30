@@ -223,6 +223,14 @@ time_t datetime2ts(int year, int month, int day, int hour, int minutes, int seco
 	return t;
 }
 
+struct tm *localtztime(char *tz, time_t t) {
+	struct tm *tm = NULL;
+	setenv("TZ", tz, 1);
+	tm = localtime(&t);
+	unsetenv("TZ");
+	return tm;
+}
+
 int tzoffset(char *tz1, char *tz2) {
     time_t utc, tzsearch, now;
 	struct tm *tm = NULL;

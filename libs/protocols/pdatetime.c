@@ -78,7 +78,11 @@ time_t getntptime(const char *ntpserver) {
 	char **pptr = NULL;
 	char str[50];
 	int sockfd = 0;
+	struct timeval tv;
 
+	tv.tv_sec = 1;
+	tv.tv_usec = 0;	
+	
 	memset(&msg, '\0', sizeof(struct pkt));
 	memset(&servaddr, '\0', sizeof(struct sockaddr_in));
 	memset(&str, '\0', 50);
@@ -100,10 +104,12 @@ time_t getntptime(const char *ntpserver) {
 		goto close;
 	}
 
+	setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, (char *)&tv, sizeof(struct timeval));		
+	
 	bzero(&servaddr, sizeof(servaddr));
 	servaddr.sin_family = AF_INET;
 	servaddr.sin_port = htons(123);
-
+	
 	inet_pton(AF_INET, str, &servaddr.sin_addr);
 	if(connect(sockfd, (struct sockaddr *)&servaddr, sizeof(servaddr)) == -1) {
 		logprintf(LOG_DEBUG, "error in connect");
@@ -152,7 +158,7 @@ void *pdateTimeParse(void *param) {
 	
 	time_t nntptime = -1, ntptime = time(NULL);
 	struct tm *tm;
-	int offset = 0, x = 0;
+	int x = 0;
 
 	pdatetime_threads++;
 
@@ -213,22 +219,14 @@ void *pdateTimeParse(void *param) {
 			
 			JsonNode *code = json_mkobject();
 
-			offset = tzoffset(UTC, tz);
-			tm = gmtime(&ntptime);
-			
-			int hour = tm->tm_hour;
-			hour += offset;
-			hour += isdst(tz);
-			if(hour > 24) {
-				hour -= 24;
-			}
+			tm = localtztime(tz, ntptime);
 			
 			json_append_member(code, "longitude", json_mkstring(slongitude));
 			json_append_member(code, "latitude", json_mkstring(slatitude));
 			json_append_member(code, "year", json_mknumber(tm->tm_year+1900));
 			json_append_member(code, "month", json_mknumber(tm->tm_mon+1));
 			json_append_member(code, "day", json_mknumber(tm->tm_mday));
-			json_append_member(code, "hour", json_mknumber(hour));
+			json_append_member(code, "hour", json_mknumber(tm->tm_hour));
 			json_append_member(code, "minute", json_mknumber(tm->tm_min));
 			json_append_member(code, "second", json_mknumber(tm->tm_sec));
 
