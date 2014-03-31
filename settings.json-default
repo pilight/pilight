@@ -1,7 +1,7 @@
 {
 	"log-level": 4,
 	"pid-file": "/var/run/pilight.pid",
-	"config-file": "",
+	"config-file": "/etc/pilight/config.json",
 	"hardware-file": "/etc/pilight/hardware.json",
 	"log-file": "/var/log/pilight.log",
 	"send-repeats": 10,
