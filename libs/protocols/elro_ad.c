@@ -38,27 +38,23 @@
  * state : either 2 (off) or 1 (on)
  * groupEnabled : if 1 this affects a whole group of devices
  */
-void elroADCreateMessage(unsigned int systemcode, int unitcode, int state, int groupEnabled) {
+void elroADCreateMessage(unsigned long long systemcode, int unitcode, int state, int groupEnabled) {
 	elro_ad->message = json_mkobject();
 	//aka address
-	json_append_member(elro_ad->message, "systemcode", json_mknumber(systemcode));
+	json_append_member(elro_ad->message, "systemcode", json_mknumber((double)systemcode));
 	//toggle all or just one unit
 	if(groupEnabled == 1) {
-	    json_append_member(elro_ad->message, "group", json_mkstring("enabled"));
+	    json_append_member(elro_ad->message, "group", json_mknumber(groupEnabled));
 	} else {
-	    json_append_member(elro_ad->message, "group", json_mkstring("disabled"));
+	    json_append_member(elro_ad->message, "unitcode", json_mknumber(unitcode));
 	}
-	//aka channel
-	json_append_member(elro_ad->message, "unitcode", json_mknumber(unitcode));
 	//aka command
 	if(state == 1) {
 		json_append_member(elro_ad->message, "state", json_mkstring("on"));
 	}
 	else if(state == 2) {
 		json_append_member(elro_ad->message, "state", json_mkstring("off"));
-	} else {
-		json_append_member(elro_ad->message, "state", json_mkstring("UNKOWN"));
-	}
+	} 
 }
 
 /**
@@ -73,12 +69,9 @@ void elroADParseCode(void) {
 	//this means that we have to combine these ourselves into meaningful values in groups of 2
 	int chunkedCode[58];
 	
-	
-	for(chunkCounter = 0; chunkCounter < 58; chunkCounter +=1)
-	{
+	for(chunkCounter = 0; chunkCounter < 58; chunkCounter +=1) {
 		if(elro_ad->code[(chunkCounter)*2] != 0) {
 			//these are always zero - this is not a valid code
-			logprintf(LOG_INFO,"invalid code in elro_ad-first word not a low: %i",elro_ad->code[(chunkCounter)*2]);
 			return;
 		}
 		chunkedCode[chunkCounter] = elro_ad->code[(chunkCounter*2)+1];
@@ -86,7 +79,7 @@ void elroADParseCode(void) {
 	
 	//chunked code now contains "groups of 2" codes for us to handle. 
 	
-	unsigned int systemcode = binToDecUl(chunkedCode, 11, 42);
+	unsigned long long systemcode = binToDecRevUl(chunkedCode, 11, 42);
 	int groupcode = binToDec(chunkedCode, 43, 46);
 	int groupcode2 = binToDec(chunkedCode, 49, 50);
 	int unitcode = binToDec(chunkedCode, 51, 56);
@@ -147,14 +140,13 @@ void elroADClearCode(void) {
  *
  * systemcode : unsigned integer number, the 32 bit system code
  */
-void elroADCreateSystemCode(unsigned int systemcode) {
+void elroADCreateSystemCode(unsigned long long systemcode) {
 	int binary[255];
 	int length = 0;
 	int i=0, x=0;
-
 	length = decToBinRevUl(systemcode, binary);
-	for(i=0;i<=length;i++) {
-		if(binary[i]==1) {
+	for(i=0;i<=length;i++) { 
+		if(binary[(length)-i]==1) {
 			x=i*2;
 			elroADCreateHigh(22+x, 22+x+1);
 		}
@@ -197,8 +189,8 @@ void elroADCreateState(int state) {
 }
 
 /** 
- * sets the first group code block to the appropriate raw values.
- * Fro grouped mode this is the equivalent to 1100, for non-grouped mode 1011 
+ * sets the first group code portions to the appropriate raw values.
+ * Fro grouped mode this is the equivalent to 1100 and 11, for non-grouped mode 1011 and 01
  *
  * group : integer value, 1 means grouped enabled, 0 means disabled 
  */
@@ -208,31 +200,17 @@ void elroADCreateGroupCode(int group) {
 	elroADCreateHigh(88,89);
 	elroADCreateLow(90,91);
 	elroADCreateLow(92,93);
+	elroADCreateHigh(98,99);
+	elroADCreateHigh(100,101);
     } else {
 	elroADCreateHigh(86,87);
 	elroADCreateLow(88,89);
 	elroADCreateHigh(90,91);
 	elroADCreateHigh(92,93);
-    }
-}
-
-
-/**
- * sets the second group code block to the appropriate raw values.
- * For Grouped Mode this is 11, for non grouped mode 01 
- *
- * group : integer value, 1 means grouped enabled, 0 means disabled 
- */
-void elroADCreateGroupCode2(int group) {
-    if(group == 1) {
-	elroADCreateHigh(98,99);
-	elroADCreateHigh(100,101);
-    } else {
 	elroADCreateLow(98,99);
 	elroADCreateHigh(100,101);
     }
 }
-
 
 /** 
  * Inserts the (as far as is known) fixed message preamble
@@ -268,14 +246,13 @@ void elroADCreateFooter(void) {
  * returns : EXIT_SUCCESS or EXIT_FAILURE on obvious occasions
  */
 int elroADCreateCode(JsonNode *code) {
-	unsigned int systemcode = 0;
+	unsigned long long systemcode = 0;
 	int unitcode = -1;
 	int group = -1;
 	int state = -1;
 	int tmp;
-	int i=0;
-
-	json_find_number_u(code, "systemcode", &systemcode);
+	
+	json_find_numberUl(code, "systemcode", &systemcode);
 	
 	json_find_number(code, "group", &group);
 	json_find_number(code, "unitcode", &unitcode);
@@ -307,14 +284,8 @@ int elroADCreateCode(JsonNode *code) {
 		elroADCreateSystemCode(systemcode);
 		elroADCreateGroupCode(group);
 		elroADCreateState(state);
-		elroADCreateGroupCode2(group);
 		elroADCreateUnitCode(unitcode);
 		elroADCreateFooter();
-	}
-
-	printf("elro_ad has created your code:");
-	for(i=0; i<116; ++i) {
-	    printf("%i",elro_ad->raw[i]);
 	}
 	return EXIT_SUCCESS;
 }
@@ -344,7 +315,7 @@ void elroADInit(void) {
 	elro_ad->pulse = 4;
 	elro_ad->rawlen = 116;
 
-	options_add(&elro_ad->options, 's', "systemcode", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, NULL, "^(3[012]?|[012][0-9]|[0-9]{1})$");
+	options_add(&elro_ad->options, 's', "systemcode", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, NULL, "[0-9]{1,10}");
 	options_add(&elro_ad->options, 'g', "group", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
 	options_add(&elro_ad->options, 'u', "unitcode", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, NULL, "^(3[012]?|[012][0-9]|[0-9]{1})$");
 	options_add(&elro_ad->options, 't', "on", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
