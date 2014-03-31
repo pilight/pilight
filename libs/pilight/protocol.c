@@ -51,6 +51,7 @@
 	#include "../protocols/home_easy_old.h"
 #endif
 #ifdef PROTOCOL_ELRO_SWITCH
+	#include "../protocols/elro_ad.h"
 	#include "../protocols/elro_he.h"
 	#include "../protocols/elro_hc.h"
 #endif
@@ -164,6 +165,7 @@ void protocol_init(void) {
 	homeEasyOldInit();
 #endif
 #if defined(PROTOCOL_ELRO_SWITCH) || defined(PROTOCOL_BRENNENSTUHL_SWITCH)
+	elroADInit();
 	elroHEInit();
 	elroHCInit();
 #endif

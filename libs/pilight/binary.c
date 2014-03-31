@@ -52,6 +52,7 @@ int decToBin(int n, int binary[]) {
 	int y=0;
 	while(i<=n) {
 		i*=2;
+
 		x++;
 	}
 	i/=2;
@@ -115,7 +116,8 @@ unsigned long long binToDecUl(int *binary, unsigned int s, unsigned int e) {
 }
 
 int decToBinUl(unsigned long long n, int binary[]) {
-	unsigned long long i=1, x=0, y=0;
+	unsigned long long i=1;
+	int y=0, x=0;
 	while(i<=n) {
 		i*=2;
 		x++;
@@ -123,6 +125,7 @@ int decToBinUl(unsigned long long n, int binary[]) {
 	i/=2;
 	x--;
 	for(y=x;y>=0;y--) {
+		
 		if((long)(n-i)>=0) {
 			n-=i;
 			binary[x-y]=1;
@@ -135,7 +138,8 @@ int decToBinUl(unsigned long long n, int binary[]) {
 }
 
 int decToBinRevUl(unsigned long long n, int binary[]) {
-	unsigned long long i=1, x=0, y=0;
+	unsigned long long i=1;
+	int y=0,x=0;
 	while(i<=n) {
 		i*=2;
 		x++;

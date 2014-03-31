@@ -1392,6 +1392,16 @@ bool json_check(const JsonNode *node, char errmsg[256])
 	#undef problem
 }
 
+int json_find_numberUl(JsonNode *object, const char *name, unsigned long long *out) {
+	JsonNode *node = json_find_member(object, name);
+	if (node && node->tag == JSON_NUMBER) {
+		*out = node->number_;
+		return 0;
+	}
+	return 1;
+}
+
+
 int json_find_number(JsonNode *object, const char *name, int *out) {
 	JsonNode *node = json_find_member(object, name);
 	if (node && node->tag == JSON_NUMBER) {
