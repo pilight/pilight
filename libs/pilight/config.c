@@ -999,7 +999,7 @@ int config_validate_settings(void) {
 								if(tmp_values->type == CONFIG_TYPE_STRING) {
 									json_append_member(jdevice, tmp_settings->name, json_mkstring(tmp_values->value));
 								} else if(tmp_values->type == CONFIG_TYPE_NUMBER) {
-									json_append_member(jdevice, tmp_settings->name, json_mknumber(atoi(tmp_values->value)));
+									json_append_member(jdevice, tmp_settings->name, json_mknumber(atof(tmp_values->value)));
 								}
 							} else {
 								joptions = json_mkarray();
@@ -1007,7 +1007,7 @@ int config_validate_settings(void) {
 									if(tmp_values->type == CONFIG_TYPE_STRING) {
 										json_append_element(joptions, json_mkstring(tmp_values->value));
 									} else if(tmp_values->type == CONFIG_TYPE_NUMBER) {
-										json_append_element(joptions, json_mknumber(atoi(tmp_values->value)));
+										json_append_element(joptions, json_mknumber(atof(tmp_values->value)));
 									}
 									tmp_values = tmp_values->next;
 								}
