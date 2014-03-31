@@ -304,7 +304,10 @@ void elroADInit(void) {
 	elro_ad->pulse = 4;
 	elro_ad->rawlen = 116;
 
-	options_add(&elro_ad->options, 's', "systemcode", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, NULL, "[0-9]{1,10}");
+	options_add(&elro_ad->options, 's', "systemcode", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, NULL, "\b([0-9]{1,9}|[1-3][0-9]{9}|4([01][0-9]{8}|"
+													"2([0-8][0-9]{7}|9([0-3][0-9]{6}|4([0-8][0-9]{5}|"
+													"9([0-5][0-9]{4}|6([0-6][0-9]{3}|7([01][0-9]{2}|"
+													"2([0-8][0-9]|9[0-4])))))))))\b");
 	options_add(&elro_ad->options, 'g', "group", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
 	options_add(&elro_ad->options, 'u', "unitcode", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, NULL, "^(3[012]?|[012][0-9]|[0-9]{1})$");
 	options_add(&elro_ad->options, 't', "on", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
