@@ -44,7 +44,7 @@ void elroADCreateMessage(unsigned long long systemcode, int unitcode, int state,
 	json_append_member(elro_ad->message, "systemcode", json_mknumber((double)systemcode));
 	//toggle all or just one unit
 	if(groupEnabled == 1) {
-	    json_append_member(elro_ad->message, "group", json_mknumber(groupEnabled));
+	    json_append_member(elro_ad->message, "all", json_mknumber(groupEnabled));
 	} else {
 	    json_append_member(elro_ad->message, "unitcode", json_mknumber(unitcode));
 	}
@@ -243,11 +243,10 @@ int elroADCreateCode(JsonNode *code) {
 	
 	json_find_numberUl(code, "systemcode", &systemcode);
 	
-	json_find_number(code, "group", &group);
 	json_find_number(code, "unitcode", &unitcode);
 	
-	if(json_find_number(code, "group", &tmp) == 0) {
-	    group=1;
+	if(json_find_number(code, "all", &tmp) == 0) {
+	    json_find_number(code, "all", &group);
 	} else {
 	    group=0;
 	}
@@ -284,7 +283,7 @@ int elroADCreateCode(JsonNode *code) {
  */
 void elroADPrintHelp(void) {
 	printf("\t -s --systemcode=systemcode\tcontrol a device with this systemcode\n");
-	printf("\t -g --group=group mode\ttoggle switching all devices on or off\n");
+	printf("\t -a --all=switch all devices\ttoggle switching all devices on or off\n");
 	printf("\t -u --unitcode=unitcode\t\tcontrol a device with this unitcode\n");
 	printf("\t -t --on\t\t\tsend an on signal\n");
 	printf("\t -f --off\t\t\tsend an off signal\n");
@@ -304,14 +303,17 @@ void elroADInit(void) {
 	elro_ad->pulse = 4;
 	elro_ad->rawlen = 116;
 
-	options_add(&elro_ad->options, 's', "systemcode", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, NULL, "\b([0-9]{1,9}|[1-3][0-9]{9}|4([01][0-9]{8}|"
+	options_add(&elro_ad->options, 's', "systemcode", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, NULL, "^([0-9]{1,9}|[1-3][0-9]{9}|4([01][0-9]{8}|"
 													"2([0-8][0-9]{7}|9([0-3][0-9]{6}|4([0-8][0-9]{5}|"
 													"9([0-5][0-9]{4}|6([0-6][0-9]{3}|7([01][0-9]{2}|"
-													"2([0-8][0-9]|9[0-4])))))))))\b");
-	options_add(&elro_ad->options, 'g', "group", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
-	options_add(&elro_ad->options, 'u', "unitcode", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, NULL, "^(3[012]?|[012][0-9]|[0-9]{1})$");
+													"2([0-8][0-9]|9[0-4])))))))))$");
+	options_add(&elro_ad->options, 'u', "unitcode", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, NULL, "^[0-9]{1,2}$");
 	options_add(&elro_ad->options, 't', "on", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
 	options_add(&elro_ad->options, 'f', "off", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
+
+	options_add(&elro_ad->options, 'a', "all", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
+	options_add(&elro_ad->options, 0, "gui-readonly", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
+
 	
 	elro_ad->parseCode=&elroADParseCode;
 	elro_ad->createCode=&elroADCreateCode;
