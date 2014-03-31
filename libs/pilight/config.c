@@ -259,7 +259,7 @@ int config_update(char *protoname, JsonNode *json, JsonNode **out) {
 												if(sptr->values->type == CONFIG_TYPE_STRING) {
 													json_append_member(rval, sptr->name, json_mkstring(sptr->values->value));
 												} else if(sptr->values->type == CONFIG_TYPE_NUMBER) {
-													json_append_member(rval, sptr->name, json_mknumber(atoi(sptr->values->value)));
+													json_append_member(rval, sptr->name, json_mknumber(atof(sptr->values->value)));
 												}
 												update = 1;
 											}
@@ -294,7 +294,7 @@ int config_update(char *protoname, JsonNode *json, JsonNode **out) {
 										if(sptr->values->type == CONFIG_TYPE_STRING) {
 											json_append_member(rval, sptr->name, json_mkstring(sptr->values->value));
 										} else if(sptr->values->type == CONFIG_TYPE_NUMBER) {
-											json_append_member(rval, sptr->name, json_mknumber(atoi(sptr->values->value)));
+											json_append_member(rval, sptr->name, json_mknumber(atof(sptr->values->value)));
 										}
 									}
 									if(rloc == NULL) {
@@ -506,7 +506,7 @@ JsonNode *config2json(short internal) {
 						JsonNode *jnid = json_mkobject();
 						while(tmp_values) {
 							if(tmp_values->type == CONFIG_TYPE_NUMBER) {
-								json_append_member(jnid, tmp_values->name, json_mknumber(atoi(tmp_values->value)));
+								json_append_member(jnid, tmp_values->name, json_mknumber(atof(tmp_values->value)));
 							} else if(tmp_values->type == CONFIG_TYPE_STRING) {
 								json_append_member(jnid, tmp_values->name, json_mkstring(tmp_values->value));
 							}
@@ -515,7 +515,7 @@ JsonNode *config2json(short internal) {
 						json_append_element(jid, jnid);
 					} else if(!tmp_values->next) {
 						if(tmp_values->type == CONFIG_TYPE_NUMBER) {
-							json_append_member(jdevice, tmp_settings->name, json_mknumber(atoi(tmp_values->value)));
+							json_append_member(jdevice, tmp_settings->name, json_mknumber(atof(tmp_values->value)));
 						} else if(tmp_values->type == CONFIG_TYPE_STRING) {
 							json_append_member(jdevice, tmp_settings->name, json_mkstring(tmp_values->value));
 						}
@@ -523,7 +523,7 @@ JsonNode *config2json(short internal) {
 						joptions = json_mkarray();
 						while(tmp_values) {
 							if(tmp_values->type == CONFIG_TYPE_NUMBER) {
-								json_append_element(joptions, json_mknumber(atoi(tmp_values->value)));
+								json_append_element(joptions, json_mknumber(atof(tmp_values->value)));
 							} else if(tmp_values->type == CONFIG_TYPE_STRING) {
 								json_append_element(joptions, json_mkstring(tmp_values->value));
 							}

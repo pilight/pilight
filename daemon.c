@@ -833,7 +833,7 @@ void control_device(struct conf_devices_t *dev, char *state, JsonNode *values) {
 								if(val->type == CONFIG_TYPE_STRING) {
 									json_append_member(code, val->name, json_mkstring(val->value));
 								} else if(val->type == CONFIG_TYPE_NUMBER) {
-									json_append_member(code, val->name, json_mknumber(atoi(val->value)));
+									json_append_member(code, val->name, json_mknumber(atof(val->value)));
 								}
 							}
 							val = val->next;
@@ -845,7 +845,7 @@ void control_device(struct conf_devices_t *dev, char *state, JsonNode *values) {
 							if(val->type == CONFIG_TYPE_STRING) {
 								json_append_member(code, opt->name, json_mkstring(val->value));
 							} else if(val->type == CONFIG_TYPE_NUMBER) {
-								json_append_member(code, opt->name, json_mknumber(atoi(val->value)));
+								json_append_member(code, opt->name, json_mknumber(atof(val->value)));
 							}
 						}
 					}
