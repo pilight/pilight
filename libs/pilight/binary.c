@@ -96,7 +96,7 @@ unsigned long long binToDecRevUl(int *binary, unsigned int s, unsigned int e) {
 	for(i=s;i<e;i++) {
 		x*=2;
 	}
-	for(i=s;i<=e;i++) {
+	for(i=s;i<=e;i++) { 
 		if(binary[i] == 1) {
 			dec += x;
 		}
