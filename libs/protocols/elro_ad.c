@@ -297,7 +297,7 @@ void elroADInit(void) {
 
 	protocol_register(&elro_ad);
 	protocol_set_id(elro_ad, "elro_ad");
-	protocol_device_add(elro_ad, "elro_ad", "Elro Home Easy Advanced Switches (HE300)");
+	protocol_device_add(elro_ad, "elro_ad", "Elro Home Easy Advanced Switches");
 	protocol_plslen_add(elro_ad, 302);
 	elro_ad->devtype = SWITCH;
 	elro_ad->hwtype = RF433;
