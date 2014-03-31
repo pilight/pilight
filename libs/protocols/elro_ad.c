@@ -196,17 +196,13 @@ void elroADCreateState(int state) {
  */
 void elroADCreateGroupCode(int group) {
     if(group == 1) {
-	elroADCreateHigh(86,87);
-	elroADCreateHigh(88,89);
-	elroADCreateLow(90,91);
-	elroADCreateLow(92,93);
-	elroADCreateHigh(98,99);
-	elroADCreateHigh(100,101);
+	elroADCreateHigh(86,89);
+	elroADCreateLow(90,93);
+	elroADCreateHigh(98,101);
     } else {
 	elroADCreateHigh(86,87);
 	elroADCreateLow(88,89);
-	elroADCreateHigh(90,91);
-	elroADCreateHigh(92,93);
+	elroADCreateHigh(90,93);
 	elroADCreateLow(98,99);
 	elroADCreateHigh(100,101);
     }
@@ -217,17 +213,10 @@ void elroADCreateGroupCode(int group) {
  * First eleven words are the preamble
  */
 void elroADCreatePreamble(void) {
-    elroADCreateHigh(0,1);
-	elroADCreateHigh(2,3);
-	elroADCreateLow(4,5);
-	elroADCreateLow(6,7);
-	elroADCreateLow(8,9);
-	elroADCreateHigh(10,11);
-	elroADCreateHigh(12,13);
-	elroADCreateHigh(14,15);
-	elroADCreateHigh(16,17);
-	elroADCreateLow(18,19);
-	elroADCreateLow(20,21);
+        elroADCreateHigh(0,3);
+	elroADCreateLow(4,9);
+	elroADCreateHigh(10,17);
+	elroADCreateLow(18,21);
 }
 
 /**
