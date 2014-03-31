@@ -117,7 +117,7 @@ unsigned long long binToDecUl(int *binary, unsigned int s, unsigned int e) {
 
 int decToBinUl(unsigned long long n, int binary[]) {
 	unsigned long long i=1;
-	int y=0, x=0;
+	int y = 0, x = 0;
 	while(i<=n) {
 		i*=2;
 		x++;
@@ -139,7 +139,7 @@ int decToBinUl(unsigned long long n, int binary[]) {
 
 int decToBinRevUl(unsigned long long n, int binary[]) {
 	unsigned long long i=1;
-	int y=0,x=0;
+	int y=0, x=0;
 	while(i<=n) {
 		i*=2;
 		x++;
