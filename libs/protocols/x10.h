@@ -21,7 +21,17 @@
 
 struct protocol_t *x10;
 
+void x10CreateMessage(char *id, int state);
 void x10ParseCode(void);
+void x10CreateLow(int s, int e);
+void x10CreateHigh(int s, int e);
+void x10ClearCode(void);
+void x10CreateLetter(int l);
+void x10CreateNumber(int n);
+void x10CreateState(int state);
+void x10CreateFooter(void);
+int x10CreateCode(JsonNode *code);
+void x10PrintHelp(void);
 void x10Init(void);
 
 #endif

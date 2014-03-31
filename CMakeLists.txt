@@ -368,7 +368,6 @@ endif()
 
 if(NOT EXISTS "/usr/local/lib/libpilight.so")
 	execute_process(COMMAND ln -s "/usr/local/lib/pilight/libpilight.so.3" "/usr/local/lib/libpilight.so")
-	execute_process(COMMAND ldconfig)
 endif()
 
 if(${WEBSERVER} MATCHES "ON")
