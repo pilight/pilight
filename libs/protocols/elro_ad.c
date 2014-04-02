@@ -264,6 +264,8 @@ int elroADCreateCode(JsonNode *code) {
 	if(systemcode == 0 || unitcode == -1 || state == -1) {
 		logprintf(LOG_ERR, "elro_ad: insufficient number of arguments");
 		return EXIT_FAILURE;
+	} else if(systemcode > 4294967295 || unitcode > 99 || unitcode < 0) {
+		logprintf(LOG_ERR, "elro_ad: values out of valid range");
 	} else {
 		elroADCreateMessage(systemcode, unitcode, state, group);
 		elroADClearCode();
