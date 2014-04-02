@@ -242,10 +242,12 @@ int elroADCreateCode(JsonNode *code) {
 	int state = -1;
 	double itmp;
 	
-	json_find_number(code, "systemcode", &itmp);
+	if(json_find_number(code, "systemcode", &itmp) == 0) {
 		systemcode = (unsigned long long)itmp;
-	json_find_number(code, "unitcode", &itmp);
+	}
+	if(json_find_number(code, "unitcode", &itmp) == 0) {
 		unitcode = (int)round(itmp);
+	}
 	if(json_find_number(code, "all", &itmp) == 0) {
 	    group = (int)round(itmp);
 	} else {
