@@ -428,15 +428,19 @@ void *socket_wait(void *param) {
 					if(socket_callback->client_data_callback) {
 						size_t l = strlen(message);
 						if(l > 0) {
-							char *buffer = malloc(l+1);
-							strcpy(buffer, message);
-							char *pch = strtok(buffer, "\n");
-							while(pch) {
-								socket_callback->client_data_callback(i, pch);
-								pch = strtok(NULL, "\n");
+							if(strstr(message, "\n") != NULL) {
+								char *buffer = malloc(l+1);
+								strcpy(buffer, message);
+								char *pch = strtok(buffer, "\n");
+								while(pch != NULL) {
+									socket_callback->client_data_callback(i, pch);
+									pch = strtok(NULL, "\n");
+								}
+								sfree((void *)&pch);
+								sfree((void *)&buffer);
+							} else {
+								socket_callback->client_data_callback(i, message);
 							}
-							sfree((void *)&buffer);
-							sfree((void *)&pch);
 						}
 					}
 					sfree((void *)&message);

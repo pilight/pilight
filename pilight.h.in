@@ -84,6 +84,7 @@
 
 #define VERSION					"3.0"
 #define PULSE_DIV				34
+#define EPSILON					0.00001
 
 #ifdef WEBSERVER
 	#define WEBSERVER_PORT			5001

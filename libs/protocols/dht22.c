@@ -25,6 +25,7 @@
 #include <sys/types.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <math.h>
 #include <sys/stat.h>
 
 #include "../../pilight.h"
@@ -61,7 +62,8 @@ void *dht22Parse(void *param) {
 	struct JsonNode *jchild = NULL;
 	int *id = 0;
 	int nrid = 0, y = 0, interval = 10, nrloops = 0;
-	int temp_offset = 0, humi_offset = 0, itmp = 0;
+	int temp_offset = 0, humi_offset = 0;
+	double itmp = 0;
 
 	dht22_threads++;
 
@@ -70,16 +72,19 @@ void *dht22Parse(void *param) {
 		while(jchild) {
 			if(json_find_number(jchild, "gpio", &itmp) == 0) {
 				id = realloc(id, (sizeof(int)*(size_t)(nrid+1)));
-				id[nrid] = itmp;
+				id[nrid] = (int)round(itmp);
 				nrid++;
 			}
 			jchild = jchild->next;
 		}
 	}
 
-	json_find_number(json, "poll-interval", &interval);
-	json_find_number(json, "device-temperature-offset", &temp_offset);
-	json_find_number(json, "device-humidity-offset", &humi_offset);
+	if(json_find_number(json, "poll-interval", &itmp) == 0)
+		interval = (int)round(itmp);
+	if(json_find_number(json, "device-temperature-offset", &itmp) == 0)
+		temp_offset = (int)round(itmp);
+	if(json_find_number(json, "device-humidity-offset", &itmp) == 0)
+		humi_offset = (int)round(itmp);
 
 	while(dht22_loop) {
 		if(protocol_thread_wait(node, interval, &nrloops) == ETIMEDOUT) {

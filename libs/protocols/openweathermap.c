@@ -24,6 +24,7 @@
 #include <sys/types.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <math.h>
 #include <sys/stat.h>
 
 #include "../../pilight.h"
@@ -61,12 +62,13 @@ void *openweathermapParse(void *param) {
 	struct openweathermap_data_t *openweathermap_data = NULL;
 	struct openweathermap_data_t *wtmp = NULL;
 	int interval = 600, nrloops = 0, ointerval = 600;
+	double itmp = 0;
 
 	char url[1024];
 	char *filename = NULL, *data = NULL;
 	char typebuf[70];
-	double temp = 0;
-	int humi = 0, lg = 0, ret = 0, sunrise = 0, sunset = 0;
+	double temp = 0, sunrise = 0, sunset = 0, humi = 0;
+	int lg = 0, ret = 0;
 
 	time_t timenow = 0;
 	struct tm *tm;
@@ -115,7 +117,8 @@ void *openweathermapParse(void *param) {
 		}
 	}
 
-	json_find_number(json, "poll-interval", &interval);
+	if(json_find_number(json, "poll-interval", &itmp) == 0)
+		interval = (int)round(itmp);
 	ointerval = interval;
 	
 	while(openweathermap_loop) {
@@ -162,15 +165,15 @@ void *openweathermapParse(void *param) {
 											
 											json_append_member(code, "location", json_mkstring(wtmp->location));
 											json_append_member(code, "country", json_mkstring(wtmp->country));
-											json_append_member(code, "temperature", json_mknumber((int)(temp*100)));
-											json_append_member(code, "humidity", json_mknumber((int)(humi*100)));
+											json_append_member(code, "temperature", json_mknumber((int)(round(temp)*100)));
+											json_append_member(code, "humidity", json_mknumber((int)(round(humi)*100)));
 											time_t a = (time_t)sunrise;
 											tm = localtime(&a);
 											json_append_member(code, "sunrise", json_mknumber((tm->tm_hour*100)+tm->tm_min));
 											time_t b = (time_t)sunset;
 											tm = localtime(&b);
 											json_append_member(code, "sunset", json_mknumber((tm->tm_hour*100)+tm->tm_min));
-											if(timenow > sunrise && timenow < sunset) {
+											if(timenow > (int)round(sunrise) && timenow < (int)round(sunset)) {
 												json_append_member(code, "sun", json_mkstring("rise"));
 											} else {
 												json_append_member(code, "sun", json_mkstring("set"));
@@ -183,16 +186,16 @@ void *openweathermapParse(void *param) {
 											pilight.broadcast(openweathermap->id, openweathermap->message);
 											json_delete(openweathermap->message);
 											openweathermap->message = NULL;
-											
+
 											/* Send message when sun rises */
-											if(sunrise > timenow) {
-												if((sunrise-timenow) < ointerval) {
-													interval = (int)(sunrise-timenow);
+											if((int)round(sunrise) > timenow) {
+												if(((int)round(sunrise)-timenow) < ointerval) {
+													interval = (int)((int)round(sunrise)-timenow);
 												}
 											/* Send message when sun sets */
-											} else if(sunset > timenow) {
-												if((sunset-timenow) < ointerval) {
-													interval = (int)(sunset-timenow);
+											} else if((int)round(sunset) > timenow) {
+												if(((int)round(sunset)-timenow) < ointerval) {
+													interval = (int)((int)round(sunset)-timenow);
 												}
 											/* Update all values when a new day arrives */
 											} else {
@@ -252,11 +255,11 @@ struct threadqueue_t *openweathermapInitDev(JsonNode *jdevice) {
 }
 
 int openweathermapCheckValues(JsonNode *code) {
-	int interval = 600;
+	double interval = 600;
 
 	json_find_number(code, "poll-interval", &interval);
 
-	if(interval < 600) {
+	if((int)round(interval) < 600) {
 		return 1;
 	}
 

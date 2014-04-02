@@ -84,6 +84,8 @@ int fillTZData(void) {
 		sfree((void *)&content);
 		return EXIT_FAILURE;
 	}
+
+	logprintf(LOG_DEBUG, "loading timezone database...");
 	root = json_decode(content);
 
 	JsonNode *alist = json_first_child(root);

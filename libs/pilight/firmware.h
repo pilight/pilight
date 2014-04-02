@@ -20,9 +20,9 @@
 #define _FIRMWARE_H_
 
 typedef struct firmware_t {
-	int lpf;
-	int hpf;
-	int version;
+	double lpf;
+	double hpf;
+	double version;
 } firmware_t;
 struct firmware_t firmware;
 

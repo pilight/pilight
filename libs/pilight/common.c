@@ -64,9 +64,9 @@ void logmarkup(void) {
 }
 
 #ifdef __FreeBSD__
-int proc_find(char *cmd, char *args) {
+int findproc(char *cmd, char *args) {
 #else
-pid_t proc_find(char *cmd, char *args) {
+pid_t findproc(char *cmd, char *args) {
 #endif
 	DIR* dir;
 	struct dirent* ent;
@@ -111,14 +111,16 @@ pid_t proc_find(char *cmd, char *args) {
 						}
 
 						if(match == 2) {
+							pid_t pid = (pid_t)atol(ent->d_name);
 							close(fd);
 							closedir(dir);
-							return (pid_t)atol(ent->d_name);
+							return pid;
 						}
 					} else if(match) {
+						pid_t pid = (pid_t)atol(ent->d_name);
 						close(fd);
 						closedir(dir);
-						return (pid_t)atol(ent->d_name);
+						return pid;
 					}
 				}
 				close(fd);

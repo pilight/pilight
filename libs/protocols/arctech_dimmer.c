@@ -19,6 +19,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 
 #include "../../pilight.h"
 #include "common.h"
@@ -156,15 +157,19 @@ int arctechDimCheckValues(JsonNode *code) {
 	int dimlevel = -1;
 	int max = 15;
 	int min = 0;
-	
-	json_find_number(code, "dimlevel-maximum", &max);
-	json_find_number(code, "dimlevel-minimum", &min);	
-	json_find_number(code, "dimlevel", &dimlevel);
+	double itmp = -1;
+
+	if(json_find_number(code, "dimlevel-maximum", &itmp) == 0)
+		max = (int)round(itmp);
+	if(json_find_number(code, "dimlevel-minimum", &itmp) == 0)
+		min = (int)round(itmp);	
+	if(json_find_number(code, "dimlevel", &itmp) == 0)
+		dimlevel = (int)round(itmp);
 
 	if(min > max) {
 		return 1;
 	}
-	
+
 	if(dimlevel != -1) {
 		if(dimlevel < min || dimlevel > max) {
 			return 1;
@@ -183,19 +188,25 @@ int arctechDimCreateCode(JsonNode *code) {
 	int dimlevel = -1;
 	int max = 15;
 	int min = 0;
-	int tmp = 0;
+	double itmp = -1;
 
-	json_find_number(code, "dimlevel-maximum", &max);
-	json_find_number(code, "dimlevel-minimum", &min);
+	if(json_find_number(code, "dimlevel-maximum", &itmp) == 0)
+		max = (int)round(itmp);
+	if(json_find_number(code, "dimlevel-minimum", &itmp) == 0)
+		min = (int)round(itmp);
 
-	json_find_number(code, "id", &id);
-	json_find_number(code, "unit", &unit);
-	json_find_number(code, "dimlevel", &dimlevel);
-	json_find_number(code, "all", &all);
+	if(json_find_number(code, "id", &itmp) == 0)
+		id = (int)round(itmp);
+	if(json_find_number(code, "unit", &itmp) == 0)
+		unit = (int)round(itmp);
+	if(json_find_number(code, "dimlevel", &itmp) == 0)
+		dimlevel = (int)round(itmp);
+	if(json_find_number(code, "all", &itmp) == 0)
+		all = (int)round(itmp);
 
-	if(json_find_number(code, "off", &tmp) == 0)
+	if(json_find_number(code, "off", &itmp) == 0)
 		state=0;
-	else if(json_find_number(code, "on", &tmp) == 0)
+	else if(json_find_number(code, "on", &itmp) == 0)
 		state=1;
 
 	if(id == -1 || (unit == -1 && all == 0) || (dimlevel == -1 && state == -1)) {
@@ -211,7 +222,7 @@ int arctechDimCreateCode(JsonNode *code) {
 		logprintf(LOG_ERR, "arctech_dimmer: invalid dimlevel range");
 		return EXIT_FAILURE;
 	} else if(dimlevel >= 0 && state == 0) {
-		logprintf(LOG_ERR, "arctech_dimmer: dimlevel and state cannot be combined");
+		logprintf(LOG_ERR, "arctech_dimmer: dimlevel and off state cannot be combined");
 		return EXIT_FAILURE;
 	} else {
 		if(unit == -1 && all == 1) {
@@ -261,7 +272,7 @@ void arctechDimInit(void) {
 	options_add(&arctech_dimmer->options, 't', "on", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
 	options_add(&arctech_dimmer->options, 'f', "off", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
 
-	options_add(&arctech_dimmer->options, 'a', "all", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
+	options_add(&arctech_dimmer->options, 'a', "all", OPTION_NO_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 	options_add(&arctech_dimmer->options, 0, "dimlevel-minimum", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)0, "^([0-9]{1}|[1][0-5])$");
 	options_add(&arctech_dimmer->options, 0, "dimlevel-maximum", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)15, "^([0-9]{1}|[1][0-5])$");
 	options_add(&arctech_dimmer->options, 0, "gui-readonly", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");

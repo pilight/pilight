@@ -19,6 +19,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 
 #include "../../pilight.h"
 #include "common.h"
@@ -44,15 +45,20 @@ void genWeatherCreateMessage(int id, int temperature, int humidity, int battery)
 }
 
 int genWeatherCreateCode(JsonNode *code) {
+	double itmp = 0;
 	int id = -999;
 	int temp = -999;
 	int humi = -999;
 	int batt = -1;
 
-	json_find_number(code, "id", &id);
-	json_find_number(code, "temperature", &temp);
-	json_find_number(code, "humidity", &humi);
-	json_find_number(code, "battery", &batt);
+	if(json_find_number(code, "id", &itmp) == 0)
+		id = (int)round(itmp);
+	if(json_find_number(code, "temperature", &itmp) == 0)
+		temp = (int)round(itmp);
+	if(json_find_number(code, "humidity", &itmp) == 0)
+		humi = (int)round(itmp);
+	if(json_find_number(code, "battery", &itmp) == 0)
+		batt = (int)round(itmp);
 
 	if(id == -999 && temp == -999 && humi == -999 && batt == -1) {
 		logprintf(LOG_ERR, "generic_weather: insufficient number of arguments");

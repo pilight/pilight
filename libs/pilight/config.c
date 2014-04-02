@@ -25,6 +25,7 @@
 #include <regex.h>
 #include <sys/stat.h>
 #include <ctype.h>
+#include <math.h>
 
 #include "../../pilight.h"
 #include "config.h"
@@ -67,21 +68,24 @@ int config_update(char *protoname, JsonNode *json, JsonNode **out) {
 	
 	/* Temporarily char pointer */
 	char *stmp = NULL;
-	/* Temporarily char array */
-	char ctmp[255];
 	/* Temporarily int */
-	int itmp;
+	double itmp;
 	/* Do we need to update the config file */
 	unsigned short update = 0;
 	/* The new state value */
-	char state[255];
+	char vstring_[255];
+	double vnumber_ = -1;
+	char sstring_[255];
+	double snumber_ = -1;
+	config_type_t stateType = 0;
+	config_type_t valueType = 0;	
 	/* The UUID of this device */
 	char *uuid = NULL;
 	json_find_string(json, "uuid", &uuid);
 
 	/* Make sure the character poinrter are empty */
-	memset(state, '\0', sizeof(state));
-	memset(ctmp, '\0', sizeof(ctmp));
+	memset(sstring_, '\0', sizeof(sstring_));
+	memset(vstring_, '\0', sizeof(vstring_));
 
 	/* Check if the found settings matches the send code */
 	int match = 0;
@@ -155,13 +159,14 @@ int config_update(char *protoname, JsonNode *json, JsonNode **out) {
 									vptr = sptr->values;
 									while(vptr) {
 										if(strcmp(vptr->name, opt->name) == 0) {
-											if(json_find_string(message, opt->name, &stmp) == 0) {
-												strcpy(ctmp, stmp);
+											if(json_find_string(message, opt->name, &stmp) == 0 && 
+											   vptr->type == CONFIG_TYPE_STRING &&
+											   strcmp(stmp, vptr->string_) == 0) {
+												match2++;
 											}
-											if(json_find_number(message, opt->name, &itmp) == 0) {
-												sprintf(ctmp, "%d", itmp);
-											}
-											if(strcmp(ctmp, vptr->value) == 0) {
+											if(json_find_number(message, opt->name, &itmp) == 0 &&
+											   vptr->type == CONFIG_TYPE_NUMBER &&
+											   fabs(vptr->number_-itmp) < EPSILON) {
 												match2++;
 											}
 										}
@@ -169,20 +174,24 @@ int config_update(char *protoname, JsonNode *json, JsonNode **out) {
 									}
 								}
 								/* Retrieve the new device state */
-								if(opt->conftype == CONFIG_STATE && strlen(state) == 0) {
+								if(opt->conftype == CONFIG_STATE) {
 									if(opt->argtype == OPTION_NO_VALUE) {
 										if(json_find_string(message, "state", &stmp) == 0) {
-											strcpy(state, stmp);
+											strcpy(sstring_, stmp);
+											stateType = CONFIG_TYPE_STRING;
 										}
 										if(json_find_number(message, "state", &itmp) == 0) {
-											sprintf(state, "%d", itmp);
+											snumber_ = itmp;
+											stateType = CONFIG_TYPE_NUMBER;
 										}
 									} else if(opt->argtype == OPTION_HAS_VALUE) {
 										if(json_find_string(message, opt->name, &stmp) == 0) {
-											strcpy(state, stmp);
+											strcpy(sstring_, stmp);
+											stateType = CONFIG_TYPE_STRING;
 										}
 										if(json_find_number(message, opt->name, &itmp) == 0) {
-											sprintf(state, "%d", itmp);
+											snumber_ = itmp;
+											stateType = CONFIG_TYPE_NUMBER;
 										}
 									}
 								}
@@ -193,7 +202,7 @@ int config_update(char *protoname, JsonNode *json, JsonNode **out) {
 							}
 							sptr = sptr->next;
 						}
-						is_valid = 1;
+						is_valid = 0;
 						/* If we matched a config device, update it's state */
 						if(match1 > 0 && match2 > 0 && match1 == match2) {
 							sptr = dptr->settings;
@@ -206,14 +215,17 @@ int config_update(char *protoname, JsonNode *json, JsonNode **out) {
 									   && (opt->conftype == CONFIG_VALUE)
 									   && opt->argtype == OPTION_HAS_VALUE) {
 
-										memset(ctmp, '\0', sizeof(ctmp));
-										int type = 0;
+										memset(vstring_, '\0', sizeof(vstring_));
+										vnumber_ = -1;
 										if(json_find_string(message, opt->name, &stmp) == 0) {
-											strcpy(ctmp, stmp);
+											strcpy(vstring_, stmp);
+											valueType = CONFIG_TYPE_STRING;
+											is_valid = 1;
 										}
 										if(json_find_number(message, opt->name, &itmp) == 0) {
-											sprintf(ctmp, "%d", itmp);
-											type = 1;
+											vnumber_ = itmp;
+											valueType = CONFIG_TYPE_NUMBER;
+											is_valid = 1;
 										}										
 
 										/* Check if the protocol settings of this device are valid to 
@@ -230,10 +242,10 @@ int config_update(char *protoname, JsonNode *json, JsonNode **out) {
 												jsettings = jsettings->next;
 											}
 
-											if(type == 0) { 
-												json_append_member(jcode, opt->name, json_mkstring(ctmp));
+											if(valueType == CONFIG_TYPE_STRING) { 
+												json_append_member(jcode, opt->name, json_mkstring(vstring_));
 											} else {
-												json_append_member(jcode, opt->name, json_mknumber(itmp));
+												json_append_member(jcode, opt->name, json_mknumber(vnumber_));
 											}
 
 											if(protocol->checkValues(jcode) != 0) {
@@ -245,21 +257,29 @@ int config_update(char *protoname, JsonNode *json, JsonNode **out) {
 											}
 										}
 
-										if(strlen(ctmp) > 0 && is_valid) {
-											if(strcmp(sptr->values->value, ctmp) != 0) {
-												sptr->values->value = realloc(sptr->values->value, strlen(ctmp)+1);
-												if(!sptr->values->value) {
+										if(is_valid) {
+											if(valueType == CONFIG_TYPE_STRING &&
+											   strlen(vstring_) > 0 &&
+											   sptr->values->type == CONFIG_TYPE_STRING &&
+											   strcmp(sptr->values->string_, vstring_) != 0) {
+												sptr->values->string_ = realloc(sptr->values->string_, strlen(vstring_)+1);
+												if(!sptr->values->string_) {
 													logprintf(LOG_ERR, "out of memory");
 													exit(EXIT_FAILURE);
 												}
-												strcpy(sptr->values->value, ctmp);
+												strcpy(sptr->values->string_, vstring_);
+												sptr->values->type = CONFIG_TYPE_STRING;
+											} else if(valueType == CONFIG_TYPE_NUMBER &&
+											          sptr->values->type == CONFIG_TYPE_NUMBER &&
+											          fabs(sptr->values->number_-vnumber_) >= EPSILON) {
+												sptr->values->number_ = vnumber_;
+												sptr->values->type = CONFIG_TYPE_NUMBER;
 											}
-
 											if(json_find_string(rval, sptr->name, &stmp) != 0) {
 												if(sptr->values->type == CONFIG_TYPE_STRING) {
-													json_append_member(rval, sptr->name, json_mkstring(sptr->values->value));
+													json_append_member(rval, sptr->name, json_mkstring(sptr->values->string_));
 												} else if(sptr->values->type == CONFIG_TYPE_NUMBER) {
-													json_append_member(rval, sptr->name, json_mknumber(atof(sptr->values->value)));
+													json_append_member(rval, sptr->name, json_mknumber(sptr->values->number_));
 												}
 												update = 1;
 											}
@@ -280,21 +300,29 @@ int config_update(char *protoname, JsonNode *json, JsonNode **out) {
 
 								/* Check if we need to update the state */
 								if(strcmp(sptr->name, "state") == 0) {
-									if(strcmp(sptr->values->value, state) != 0) {
-										sptr->values->value = realloc(sptr->values->value, strlen(state)+1);
-										if(!sptr->values->value) {
+									if((stateType == CONFIG_TYPE_STRING && 
+									    sptr->values->type == CONFIG_TYPE_STRING && 
+										strcmp(sptr->values->string_, sstring_) != 0)) {
+										sptr->values->string_ = realloc(sptr->values->string_, strlen(sstring_)+1);
+										if(!sptr->values->string_) {
 											logprintf(LOG_ERR, "out of memory");
 											exit(EXIT_FAILURE);
 										}
-										strcpy(sptr->values->value, state);
+										strcpy(sptr->values->string_, sstring_);
+										sptr->values->type = CONFIG_TYPE_STRING;
+										update = 1;
+									} else if((stateType == CONFIG_TYPE_NUMBER && 
+									           sptr->values->type == CONFIG_TYPE_NUMBER && 
+											   fabs(sptr->values->number_-snumber_) < EPSILON)) {
+										sptr->values->number_ = snumber_;
+										sptr->values->type = CONFIG_TYPE_NUMBER;
 										update = 1;
 									}
-									
 									if(json_find_string(rval, sptr->name, &stmp) != 0) {
 										if(sptr->values->type == CONFIG_TYPE_STRING) {
-											json_append_member(rval, sptr->name, json_mkstring(sptr->values->value));
+											json_append_member(rval, sptr->name, json_mkstring(sptr->values->string_));
 										} else if(sptr->values->type == CONFIG_TYPE_NUMBER) {
-											json_append_member(rval, sptr->name, json_mknumber(atof(sptr->values->value)));
+											json_append_member(rval, sptr->name, json_mknumber(sptr->values->number_));
 										}
 									}
 									if(rloc == NULL) {
@@ -506,26 +534,26 @@ JsonNode *config2json(short internal) {
 						JsonNode *jnid = json_mkobject();
 						while(tmp_values) {
 							if(tmp_values->type == CONFIG_TYPE_NUMBER) {
-								json_append_member(jnid, tmp_values->name, json_mknumber(atof(tmp_values->value)));
+								json_append_member(jnid, tmp_values->name, json_mknumber(tmp_values->number_));
 							} else if(tmp_values->type == CONFIG_TYPE_STRING) {
-								json_append_member(jnid, tmp_values->name, json_mkstring(tmp_values->value));
+								json_append_member(jnid, tmp_values->name, json_mkstring(tmp_values->string_));
 							}
 							tmp_values = tmp_values->next;
 						}
 						json_append_element(jid, jnid);
 					} else if(!tmp_values->next) {
 						if(tmp_values->type == CONFIG_TYPE_NUMBER) {
-							json_append_member(jdevice, tmp_settings->name, json_mknumber(atof(tmp_values->value)));
+							json_append_member(jdevice, tmp_settings->name, json_mknumber(tmp_values->number_));
 						} else if(tmp_values->type == CONFIG_TYPE_STRING) {
-							json_append_member(jdevice, tmp_settings->name, json_mkstring(tmp_values->value));
+							json_append_member(jdevice, tmp_settings->name, json_mkstring(tmp_values->string_));
 						}
 					} else {
 						joptions = json_mkarray();
 						while(tmp_values) {
 							if(tmp_values->type == CONFIG_TYPE_NUMBER) {
-								json_append_element(joptions, json_mknumber(atof(tmp_values->value)));
+								json_append_element(joptions, json_mknumber(tmp_values->number_));
 							} else if(tmp_values->type == CONFIG_TYPE_STRING) {
-								json_append_element(joptions, json_mkstring(tmp_values->value));
+								json_append_element(joptions, json_mkstring(tmp_values->string_));
 							}
 							tmp_values = tmp_values->next;
 						}
@@ -611,8 +639,7 @@ void config_save_setting(int i, JsonNode *jsetting, struct conf_devices_t *devic
 
 	/* Variable holder for casting settings */
 	char *stmp = NULL;
-	char ctmp[256];
-	int itmp = 0;
+	double itmp = 0;
 
 	/* If the JSON tag is an array, then it should be a values or id array */
 	if(jsetting->tag == JSON_ARRAY) {
@@ -649,21 +676,15 @@ void config_save_setting(int i, JsonNode *jsetting, struct conf_devices_t *devic
 						strcpy(vnode->name, jtmp1->key);
 						vnode->next = NULL;
 						if(jtmp1->tag == JSON_STRING) {
-							vnode->value = malloc(strlen(jtmp1->string_)+1);
-							if(!vnode->value) {
+							vnode->string_ = malloc(strlen(jtmp1->string_)+1);
+							if(!vnode->string_) {
 								logprintf(LOG_ERR, "out of memory");
 								exit(EXIT_FAILURE);
 							}
-							strcpy(vnode->value, jtmp1->string_);
+							strcpy(vnode->string_, jtmp1->string_);
 							vnode->type = CONFIG_TYPE_STRING;
 						} else if(jtmp1->tag == JSON_NUMBER) {
-							sprintf(ctmp, "%d", (int)jtmp1->number_);
-							vnode->value = malloc(strlen(ctmp)+1);
-							if(!vnode->value) {
-								logprintf(LOG_ERR, "out of memory");
-								exit(EXIT_FAILURE);
-							}
-							strcpy(vnode->value, ctmp);
+							vnode->number_ = jtmp1->number_;
 							vnode->type = CONFIG_TYPE_NUMBER;	
 						}
 						if(jtmp1->tag == JSON_NUMBER || jtmp1->tag == JSON_STRING) {
@@ -725,12 +746,12 @@ void config_save_setting(int i, JsonNode *jsetting, struct conf_devices_t *devic
 					exit(EXIT_FAILURE);
 				}
 				strcpy(vnode->name, jtmp->key);			
-				vnode->value = malloc(strlen(jtmp->string_)+1);
-				if(!vnode->value) {
+				vnode->string_ = malloc(strlen(jtmp->string_)+1);
+				if(!vnode->string_) {
 					logprintf(LOG_ERR, "out of memory");
 					exit(EXIT_FAILURE);
 				}
-				strcpy(vnode->value, jtmp->string_);
+				strcpy(vnode->string_, jtmp->string_);
 				vnode->type = CONFIG_TYPE_STRING;
 				vnode->next = NULL;
 			} else if(jtmp->tag == JSON_NUMBER) {
@@ -745,13 +766,7 @@ void config_save_setting(int i, JsonNode *jsetting, struct conf_devices_t *devic
 					exit(EXIT_FAILURE);
 				}
 				strcpy(vnode->name, jtmp->key);			
-				sprintf(ctmp, "%d", (int)jtmp->number_);
-				vnode->value = malloc(strlen(ctmp)+1);
-				if(!vnode->value) {
-					logprintf(LOG_ERR, "out of memory");
-					exit(EXIT_FAILURE);
-				}
-				strcpy(vnode->value, ctmp);
+				vnode->number_ = jtmp->number_;
 				vnode->type = CONFIG_TYPE_NUMBER;
 				vnode->next = NULL;
 			}
@@ -805,8 +820,8 @@ void config_save_setting(int i, JsonNode *jsetting, struct conf_devices_t *devic
 		int valid = 0;
 		/* Cast and store the new value */
 		if(jsetting->tag == JSON_STRING && json_find_string(jsetting->parent, jsetting->key, &stmp) == 0) {
-			vnode->value = malloc(strlen(stmp)+1);
-			if(!vnode->value) {
+			vnode->string_ = malloc(strlen(stmp)+1);
+			if(!vnode->string_) {
 				logprintf(LOG_ERR, "out of memory");
 				exit(EXIT_FAILURE);
 			}
@@ -815,22 +830,16 @@ void config_save_setting(int i, JsonNode *jsetting, struct conf_devices_t *devic
 				logprintf(LOG_ERR, "out of memory");
 				exit(EXIT_FAILURE);
 			}
-			strcpy(vnode->value, stmp);
+			strcpy(vnode->string_, stmp);
 			vnode->type = CONFIG_TYPE_STRING;
 			valid = 1;
 		} else if(jsetting->tag == JSON_NUMBER && json_find_number(jsetting->parent, jsetting->key, &itmp) == 0) {
-			sprintf(ctmp, "%d", itmp);
-			vnode->value = malloc(strlen(ctmp)+1);
-			if(!vnode->value) {
-				logprintf(LOG_ERR, "out of memory");
-				exit(EXIT_FAILURE);
-			}
 			vnode->name = malloc(4);
 			if(!vnode->name) {
 				logprintf(LOG_ERR, "out of memory");
 				exit(EXIT_FAILURE);
 			}
-			strcpy(vnode->value, ctmp);
+			vnode->number_ = itmp;
 			vnode->type = CONFIG_TYPE_NUMBER;
 			valid = 1;
 		}
@@ -909,7 +918,7 @@ int config_check_id(int i, JsonNode *jsetting, struct conf_devices_t *device) {
 								if(strcmp(tmp_options->name, jvalues->key) == 0) {
 									match2++;
 									if(jvalues->tag == JSON_NUMBER) {
-										sprintf(ctmp, "%d", (int)jvalues->number_);
+										sprintf(ctmp, "%.0f", jvalues->number_);
 									} else if(jvalues->tag == JSON_STRING) {
 										strcpy(ctmp, jvalues->string_);
 									}
@@ -997,17 +1006,17 @@ int config_validate_settings(void) {
 						if(strcmp(tmp_settings->name, "id") != 0) {
 							if(!tmp_values->next) {
 								if(tmp_values->type == CONFIG_TYPE_STRING) {
-									json_append_member(jdevice, tmp_settings->name, json_mkstring(tmp_values->value));
+									json_append_member(jdevice, tmp_settings->name, json_mkstring(tmp_values->string_));
 								} else if(tmp_values->type == CONFIG_TYPE_NUMBER) {
-									json_append_member(jdevice, tmp_settings->name, json_mknumber(atof(tmp_values->value)));
+									json_append_member(jdevice, tmp_settings->name, json_mknumber(tmp_values->number_));
 								}
 							} else {
 								joptions = json_mkarray();
 								while(tmp_values) {
 									if(tmp_values->type == CONFIG_TYPE_STRING) {
-										json_append_element(joptions, json_mkstring(tmp_values->value));
+										json_append_element(joptions, json_mkstring(tmp_values->string_));
 									} else if(tmp_values->type == CONFIG_TYPE_NUMBER) {
-										json_append_element(joptions, json_mknumber(atof(tmp_values->value)));
+										json_append_element(joptions, json_mknumber(tmp_values->number_));
 									}
 									tmp_values = tmp_values->next;
 								}
@@ -1047,7 +1056,7 @@ int config_check_state(int i, JsonNode *jsetting, struct conf_devices_t *device)
 	int valid_state = 0, have_error = 0;
 
 	/* Variable holders for casting */
-	int itmp = 0;
+	double itmp = 0;
 	char ctmp[256];
 	char *stmp = NULL;
 
@@ -1059,7 +1068,7 @@ int config_check_state(int i, JsonNode *jsetting, struct conf_devices_t *device)
 
 	/* Cast the different values */
 	if(jsetting->tag == JSON_NUMBER && json_find_number(jsetting->parent, jsetting->key, &itmp) == 0) {
-		sprintf(ctmp, "%d", itmp);
+		sprintf(ctmp, "%.0f", itmp);
 	} else if(jsetting->tag == JSON_STRING && json_find_string(jsetting->parent, jsetting->key, &stmp) == 0) {
 		strcpy(ctmp, stmp);
 	}
@@ -1733,7 +1742,9 @@ int config_gc(void) {
 				stmp = dtmp->settings;
 				while(stmp->values) {
 					vtmp = stmp->values;
-					sfree((void *)&vtmp->value);
+					if(vtmp->type == CONFIG_TYPE_STRING && vtmp->string_ != NULL) {
+						sfree((void *)&vtmp->string_);
+					}
 					sfree((void *)&vtmp->name);
 					stmp->values = stmp->values->next;
 					sfree((void *)&vtmp);

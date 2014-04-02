@@ -8,10 +8,8 @@ fi
 
 function clean {
 	rm -r CMakeFiles 2>/dev/null;
-	rm cmake_install.cmake 2>/dev/null;
-	rm cmake_uninstall.cmake 2>/dev/null;
-	rm cmake_uninstall.cmake.in 2>/dev/null;
-	rm cmake_postinstall.cmake 2>/dev/null;
+	rm -r _CPack_Packages 2>/dev/null;
+	rm *.cmake 2>/dev/null;
 	rm CMakeCache.txt 2>/dev/null;
 	make clean 2>/dev/null;
 	rm Makefile 2>/dev/null;
@@ -24,6 +22,7 @@ function clean {
 	rm pilight-learn 2>/dev/null;
 	rm pilight-debug 2>/dev/null;
 	rm pilight-receive 2>/dev/null;
+	rm pilight-uuid 2>/dev/null;
 	rm *.a* 2>/dev/null;
 	rm *.so* 2>/dev/null;
 }

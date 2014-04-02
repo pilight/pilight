@@ -748,7 +748,7 @@ void send_queue(JsonNode *json) {
 					mnode->protopt = protocol;
 
 					struct options_t *tmp_options = protocol->options;
-					int itmp = 0;
+					double itmp = 0;
 					char *stmp = NULL;
 					struct JsonNode *jsettings = json_mkobject();
 					while(tmp_options) {
@@ -831,9 +831,9 @@ void control_device(struct conf_devices_t *dev, char *state, JsonNode *values) {
 							   && strcmp(val->name, opt->name) == 0
 							   && json_find_member(code, opt->name) == NULL) {
 								if(val->type == CONFIG_TYPE_STRING) {
-									json_append_member(code, val->name, json_mkstring(val->value));
+									json_append_member(code, val->name, json_mkstring(val->string_));
 								} else if(val->type == CONFIG_TYPE_NUMBER) {
-									json_append_member(code, val->name, json_mknumber(atof(val->value)));
+									json_append_member(code, val->name, json_mknumber(val->number_));
 								}
 							}
 							val = val->next;
@@ -843,9 +843,9 @@ void control_device(struct conf_devices_t *dev, char *state, JsonNode *values) {
 						val = sett->values;
 						if(json_find_member(code, opt->name) == NULL) {
 							if(val->type == CONFIG_TYPE_STRING) {
-								json_append_member(code, opt->name, json_mkstring(val->value));
+								json_append_member(code, opt->name, json_mkstring(val->string_));
 							} else if(val->type == CONFIG_TYPE_NUMBER) {
-								json_append_member(code, opt->name, json_mknumber(atof(val->value)));
+								json_append_member(code, opt->name, json_mknumber(val->number_));
 							}
 						}
 					}
@@ -1694,17 +1694,17 @@ int main(int argc, char **argv) {
 	char pilight_learn[] = "pilight-learn";
 	char pilight_debug[] = "pilight-debug";
 	char pilight_raw[] = "pilight-raw";
-	if((pid = proc_find(pilight_raw, NULL)) > 0) {
+	if((pid = findproc(pilight_raw, NULL)) > 0) {
 		logprintf(LOG_ERR, "pilight-raw instance found (%d)", (int)pid);
 		return (EXIT_FAILURE);
 	}
 
-	if((pid = proc_find(pilight_learn, NULL)) > 0) {
+	if((pid = findproc(pilight_learn, NULL)) > 0) {
 		logprintf(LOG_ERR, "pilight-learn instance found (%d)", (int)pid);
 		return (EXIT_FAILURE);
 	}
 
-	if((pid = proc_find(pilight_debug, NULL)) > 0) {
+	if((pid = findproc(pilight_debug, NULL)) > 0) {
 		logprintf(LOG_ERR, "pilight-debug instance found (%d)", (int)pid);
 		return (EXIT_FAILURE);
 	}
@@ -1958,7 +1958,6 @@ int main(int argc, char **argv) {
 			}
 		}
 #endif
-
 		struct timeval tp;
 		struct timespec ts;
 		pthread_mutex_unlock(&mainlock);

@@ -114,8 +114,7 @@ void json_remove_from_parent(JsonNode *node);
  */
 bool json_check(const JsonNode *node, char errmsg[256]);
 
-int json_find_numberUl(JsonNode *object, const char *name, unsigned long long *out);
-int json_find_number(JsonNode *object, const char *name, int *out);
+int json_find_number(JsonNode *object, const char *name, double *out);
 int json_find_string(JsonNode *object, const char *name, char **out);
 
 #endif

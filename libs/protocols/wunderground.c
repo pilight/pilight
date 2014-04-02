@@ -24,6 +24,7 @@
 #include <sys/types.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <math.h>
 #include <sys/stat.h>
 
 #include "../../pilight.h"
@@ -64,7 +65,7 @@ void *wundergroundParse(void *param) {
 	char *filename = NULL, *data = NULL;
 	char typebuf[70];
 	char *stmp = NULL;
-	double temp = 0;
+	double temp = 0, itmp = -1;
 	int humi = 0, lg = 0, ret = 0;
 
 	JsonNode *jdata = NULL;
@@ -131,7 +132,8 @@ void *wundergroundParse(void *param) {
 		}
 	}
 
-	json_find_number(json, "poll-interval", &interval);
+	if(json_find_number(json, "poll-interval", &itmp) == 0)
+		interval = (int)round(itmp);
 	ointerval = interval;
 
 	while(wunderground_loop) {
@@ -313,11 +315,11 @@ struct threadqueue_t *wundergroundInitDev(JsonNode *jdevice) {
 }
 
 int wundergroundCheckValues(JsonNode *code) {
-	int interval = 900;
+	double interval = 900;
 
 	json_find_number(code, "poll-interval", &interval);
-
-	if(interval < 900) {
+		
+	if((int)round(interval) < 900) {
 		return 1;
 	}
 

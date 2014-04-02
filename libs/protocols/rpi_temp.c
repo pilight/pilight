@@ -25,6 +25,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <sys/stat.h>
+#include <math.h>
 
 #include "../../pilight.h"
 #include "common.h"
@@ -49,7 +50,7 @@ void *rpiTempParse(void *param) {
 	struct stat st;
 
 	FILE *fp = NULL;
-	int itmp = 0;
+	double itmp = 0;
 	int *id = malloc(sizeof(int));
 	char *content = NULL;
 	int interval = 10, temp_offset = 0;
@@ -68,15 +69,17 @@ void *rpiTempParse(void *param) {
 		while(jchild) {
 			if(json_find_number(jchild, "id", &itmp) == 0) {
 				id = realloc(id, (sizeof(int)*(size_t)(nrid+1)));
-				id[nrid] = itmp;
+				id[nrid] = (int)round(itmp);
 				nrid++;
 			}
 			jchild = jchild->next;
 		}
 	}
 
-	json_find_number(json, "poll-interval", &interval);
-	json_find_number(json, "device-temperature-offset", &temp_offset);
+	if(json_find_number(json, "poll-interval", &itmp) == 0)
+		interval = (int)round(itmp);
+	if(json_find_number(json, "device-temperature-offset", &itmp) == 0)
+		temp_offset = (int)round(itmp);
 
 	while(rpi_temp_loop) {
 		if(protocol_thread_wait(node, interval, &nrloops) == ETIMEDOUT) {		
