@@ -19,6 +19,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 
 #include "../../pilight.h"
 #include "common.h"
@@ -159,7 +160,7 @@ int revCreateCode(JsonNode *code) {
 	char id[3] = {'\0'};
 	int unit = -1;
 	int state = -1;
-	int itmp;
+	double itmp = -1;
 	char *stmp;
 
 	strcpy(id, "-1");
@@ -172,7 +173,8 @@ int revCreateCode(JsonNode *code) {
 	else if(json_find_number(code, "on", &itmp) == 0)
 		state=1;
 
-	json_find_number(code, "unit", &unit);
+	if(json_find_number(code, "unit", &itmp) == 0)
+		unit = (int)round(itmp);
 		
 	if(strcmp(id, "-1") == 0 || unit == -1 || state == -1) {
 		logprintf(LOG_ERR, "rev_switch: insufficient number of arguments");

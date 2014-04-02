@@ -2,6 +2,9 @@ cmake_minimum_required(VERSION 2.8.8)
 
 project(pilight C)
 
+set(CPACK_PACKAGE_NAME pilight)
+set(PROJECT_VERSION 4.0)
+
 include(${PROJECT_SOURCE_DIR}/CMakeConfig.txt)
 
 if(${CMAKE_SYSTEM_PROCESSOR} MATCHES "armv6")
@@ -469,3 +472,19 @@ configure_file("${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake.in"
 	"${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake"
     IMMEDIATE @ONLY)
 add_custom_target(uninstall COMMAND ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake)
+
+set(CPACK_GENERATOR "DEB")
+set(CPACK_PACKAGING_INSTALL_PREFIX "/usr/local/")
+set(CPACK_PACKAGE_VERSION_MAJOR "4")
+set(CPACK_PACKAGE_VERSION_MINOR "0")
+set(CPACK_PACKAGE_VERSION_PATCH "0")
+set(CPACK_DEBIAN_PACKAGE_DEPENDS "zlib1g-dev")
+set(CPACK_DEBIAN_PACKAGE_PRIORITY "optional")
+set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE armhf)
+set(CPACK_PACKAGE_DESCRIPTION "Control RF devices with the Raspberry Pi")
+set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Control RF devices with the Raspberry Pi")
+set(CPACK_PACKAGE_CONTACT "CurlyMo <info@pilight.org>")
+set(CPACK_DEBIAN_PACKAGE_CONTROL_EXTRA "${CMAKE_CURRENT_SOURCE_DIR}/debian/postinst;${CMAKE_CURRENT_SOURCE_DIR}/debian/preinst;${CMAKE_CURRENT_SOURCE_DIR}/debian/postrm;${CMAKE_CURRENT_SOURCE_DIR}/debian/prerm")
+set(CPACK_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}${PROJECT_VERSION}")
+
+include(CPack)

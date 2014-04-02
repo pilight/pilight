@@ -150,8 +150,8 @@ void x10CreateFooter(void) {
 int x10CreateCode(JsonNode *code) {
 	char id[4] = {'\0'};
 	int state = -1;
-	int itmp;
-	char *stmp;
+	double itmp = -1;
+	char *stmp = NULL;
 
 	strcpy(id, "-1");
 	

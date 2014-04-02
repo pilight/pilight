@@ -27,6 +27,7 @@
 #include <sys/stat.h>
 #include <signal.h>
 #include <sys/wait.h>
+#include <math.h>
 
 #include "../../pilight.h"
 #include "common.h"
@@ -65,6 +66,7 @@ void *programParse(void *param) {
 	
 	int interval = 1, nrloops = 0, i = 0, currentstate = 0, laststate = -1;
 	int pid = 0;
+	double itmp = 0;
 
 	program_threads++;
 
@@ -151,7 +153,8 @@ void *programParse(void *param) {
 		programs = lnode;
 	}
 	
-	json_find_number(json, "poll-interval", &interval);
+	if(json_find_number(json, "poll-interval", &itmp) == 0)
+		interval = (int)round(itmp);
 
 	while(program_loop) {
 		if(protocol_thread_wait(pnode, interval, &nrloops) == ETIMEDOUT) {
@@ -228,7 +231,7 @@ void *programThread(void *param) {
 
 int programCreateCode(JsonNode *code) {
 	char *name = NULL;
-	int itmp = -1;
+	double itmp = -1;
 	int state = -1;
 	int pid = 0;
 

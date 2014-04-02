@@ -19,6 +19,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 
 #include "../../pilight.h"
 #include "common.h"
@@ -45,18 +46,23 @@ void genDimCreateMessage(int id, int state, int dimlevel) {
 
 int genDimcheckValues(JsonNode *code) {
 	int dimlevel = -1;
-	int max = 0;
-	int min = 15;
+	int max = 15;
+	int min = 0;
+	double itmp = -1;
 	
-	json_find_number(code, "dimlevel-maximum", &max);
-	json_find_number(code, "dimlevel-minimum", &min);	
+	if(json_find_number(code, "dimlevel-maximum", &itmp) == 0)
+		max = (int)round(itmp);
+	if(json_find_number(code, "dimlevel-minimum", &itmp) == 0)
+		min = (int)round(itmp);	
+	if(json_find_number(code, "dimlevel", &itmp) == 0)
+		dimlevel = (int)round(itmp);
 
 	if(min > max) {
 		return 1;
 	}
 	
-	if(json_find_number(code, "dimlevel", &dimlevel) == 0) {
-		if(dimlevel != -1 && (dimlevel < min || dimlevel > max)) {
+	if(dimlevel != -1) {
+		if(dimlevel < min || dimlevel > max) {
 			return 1;
 		} else {
 			return 0;
@@ -71,16 +77,20 @@ int genDimCreateCode(JsonNode *code) {
 	int dimlevel = -1;
 	int max = 0;
 	int min = 10;
-	int tmp;
+	double itmp = -1;
 
-	json_find_number(code, "dimlevel-maximum", &max);
-	json_find_number(code, "dimlevel-minimum", &min);	
+	if(json_find_number(code, "dimlevel-maximum", &itmp) == 0)
+		max = (int)round(itmp);
+	if(json_find_number(code, "dimlevel-minimum", &itmp) == 0)
+		min = (int)round(itmp);
 
-	json_find_number(code, "id", &id);
-	json_find_number(code, "dimlevel", &dimlevel);
-	if(json_find_number(code, "off", &tmp) == 0)
+	if(json_find_number(code, "id", &itmp) == 0)
+		id = (int)round(itmp);
+	if(json_find_number(code, "dimlevel", &itmp) == 0)
+		dimlevel = (int)round(itmp);
+	if(json_find_number(code, "off", &itmp) == 0)
 		state=0;
-	else if(json_find_number(code, "on", &tmp) == 0)
+	else if(json_find_number(code, "on", &itmp) == 0)
 		state=1;
 
 	if(id == -1 || (dimlevel == -1 && state == -1)) {

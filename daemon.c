@@ -748,7 +748,7 @@ void send_queue(JsonNode *json) {
 					mnode->protopt = protocol;
 
 					struct options_t *tmp_options = protocol->options;
-					int itmp = 0;
+					double itmp = 0;
 					char *stmp = NULL;
 					struct JsonNode *jsettings = json_mkobject();
 					while(tmp_options) {
@@ -831,9 +831,9 @@ void control_device(struct conf_devices_t *dev, char *state, JsonNode *values) {
 							   && strcmp(val->name, opt->name) == 0
 							   && json_find_member(code, opt->name) == NULL) {
 								if(val->type == CONFIG_TYPE_STRING) {
-									json_append_member(code, val->name, json_mkstring(val->value));
+									json_append_member(code, val->name, json_mkstring(val->string_));
 								} else if(val->type == CONFIG_TYPE_NUMBER) {
-									json_append_member(code, val->name, json_mknumber(atoi(val->value)));
+									json_append_member(code, val->name, json_mknumber(val->number_));
 								}
 							}
 							val = val->next;
@@ -843,9 +843,9 @@ void control_device(struct conf_devices_t *dev, char *state, JsonNode *values) {
 						val = sett->values;
 						if(json_find_member(code, opt->name) == NULL) {
 							if(val->type == CONFIG_TYPE_STRING) {
-								json_append_member(code, opt->name, json_mkstring(val->value));
+								json_append_member(code, opt->name, json_mkstring(val->string_));
 							} else if(val->type == CONFIG_TYPE_NUMBER) {
-								json_append_member(code, opt->name, json_mknumber(atoi(val->value)));
+								json_append_member(code, opt->name, json_mknumber(val->number_));
 							}
 						}
 					}
@@ -1958,7 +1958,6 @@ int main(int argc, char **argv) {
 			}
 		}
 #endif
-
 		struct timeval tp;
 		struct timespec ts;
 		pthread_mutex_unlock(&mainlock);

@@ -19,6 +19,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 
 #include "../../pilight.h"
 #include "common.h"
@@ -134,14 +135,17 @@ int arctechSrCreateCode(JsonNode *code) {
 	int unit = -1;
 	int state = -1;
 	int all = 0;
-	int tmp;
+	double itmp = -1;
 
-	json_find_number(code, "id", &id);
-	json_find_number(code, "unit", &unit);
-	json_find_number(code, "all", &all);
-	if(json_find_number(code, "down", &tmp) == 0)
+	if(json_find_number(code, "id", &itmp) == 0)
+		id = (int)round(itmp);
+	if(json_find_number(code, "unit", &itmp) == 0)
+		unit = (int)round(itmp);
+	if(json_find_number(code, "all", &itmp) == 0)
+		all = (int)round(itmp);
+	if(json_find_number(code, "down", &itmp) == 0)
 		state=0;
-	else if(json_find_number(code, "up", &tmp) == 0)
+	else if(json_find_number(code, "up", &itmp) == 0)
 		state=1;
 
 	if(id == -1 || (unit == -1 && all == 0) || state == -1) {

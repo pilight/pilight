@@ -24,6 +24,7 @@
 #include <sys/types.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <math.h>
 #include <sys/stat.h>
 #include <sys/time.h>
 
@@ -60,6 +61,7 @@ void *lm76Parse(void *param) {
 	int y = 0, interval = 10;
 	int temp_offset = 0, nrloops = 0;
 	char *stmp = NULL;
+	double itmp = -1;
 
 	if(!lm76data) {
 		logprintf(LOG_ERR, "out of memory");
@@ -93,8 +95,10 @@ void *lm76Parse(void *param) {
 		}
 	}
 
-	json_find_number(json, "poll-interval", &interval);
-	json_find_number(json, "device-temperature-offset", &temp_offset);
+	if(json_find_number(json, "poll-interval", &itmp) == 0)
+		interval = (int)round(itmp);
+	if(json_find_number(json, "device-temperature-offset", &itmp) == 0)
+		temp_offset = (int)round(itmp);
 
 #ifndef __FreeBSD__	
 	lm76data->fd = realloc(lm76data->fd, (sizeof(int)*(size_t)(lm76data->nrid+1)));

@@ -68,7 +68,10 @@ typedef enum {
 } config_type_t;
 
 struct conf_values_t {
-	char *value;
+	union {
+		char *string_;
+		double number_;
+	};
 	char *name;
 	config_type_t type;
 	struct conf_values_t *next;
@@ -101,7 +104,7 @@ struct conf_locations_t {
 };
 
 /* The default config file location */
-char *configfile;
+char *configfile = NULL;
 
 int config_update(char *protoname, JsonNode *message, JsonNode **out);
 int config_get_location(char *id, struct conf_locations_t **loc);

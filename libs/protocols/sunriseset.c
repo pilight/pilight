@@ -109,7 +109,7 @@ void *sunRiseSetParse(void *param) {
 	struct JsonNode *jchild = NULL;
 	struct JsonNode *jchild1 = NULL;
 	char *slongitude = NULL, *slatitude = NULL, *tz = NULL;
-	double longitude = 0, latitude = 0;
+	double longitude = 0, latitude = 0, itmp = -1;
 	int interval = 1, nrloops = 0, i = 0;
 	char UTC[] = "UTC";	
 	
@@ -151,7 +151,8 @@ void *sunRiseSetParse(void *param) {
 		}
 	}
 
-	json_find_number(json, "poll-interval", &interval);
+	if(json_find_number(json, "poll-interval", &itmp) == 0)
+		interval = (int)round(itmp);
 
 	if((tz = coord2tz(longitude, latitude)) == NULL) {
 		logprintf(LOG_DEBUG, "could not determine timezone");

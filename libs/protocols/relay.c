@@ -21,6 +21,7 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <math.h>
 
 #include "../../pilight.h"
 #include "common.h"
@@ -45,7 +46,7 @@ void relayCreateMessage(int gpio, int state) {
 int relayCreateCode(JsonNode *code) {
 	int gpio = -1;
 	int state = -1;
-	int tmp;
+	double itmp = -1;
 	char *def = NULL;
 	int free_def = 0;
 	int have_error = 0;
@@ -61,10 +62,11 @@ int relayCreateCode(JsonNode *code) {
 		strcpy(def, "off");
 	}
 	
-	json_find_number(code, "gpio", &gpio);
-	if(json_find_number(code, "off", &tmp) == 0)
+	if(json_find_number(code, "gpio", &itmp) == 0)
+		gpio = (int)round(itmp);
+	if(json_find_number(code, "off", &itmp) == 0)
 		state=0;
-	else if(json_find_number(code, "on", &tmp) == 0)
+	else if(json_find_number(code, "on", &itmp) == 0)
 		state=1;
 
 	if(gpio == -1 || state == -1) {

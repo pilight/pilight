@@ -19,6 +19,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 
 #include "../../pilight.h"
 #include "common.h"
@@ -135,14 +136,17 @@ int homeEasyOldCreateCode(JsonNode *code) {
 	int unitcode = -1;
 	int state = -1;
 	int all = -1;
-	int tmp;
+	double itmp = 0;
 
-	json_find_number(code, "systemcode", &systemcode);
-	json_find_number(code, "unitcode", &unitcode);
-	json_find_number(code, "all", &all);
-	if(json_find_number(code, "off", &tmp) == 0)
+	if(json_find_number(code, "systemcode", &itmp) == 0)
+		systemcode = (int)round(itmp);
+	if(json_find_number(code, "unitcode", &itmp) == 0)
+		unitcode = (int)round(itmp);
+	if(json_find_number(code, "all", &itmp) == 0)
+		all = (int)round(itmp);	
+	if(json_find_number(code, "off", &itmp) == 0)
 		state=0;
-	else if(json_find_number(code, "on", &tmp) == 0)
+	else if(json_find_number(code, "on", &itmp) == 0)
 		state=1;
 
 	if(systemcode == -1 || (unitcode == -1 && all == 0) || state == -1) {
