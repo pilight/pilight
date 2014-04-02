@@ -248,19 +248,18 @@ int elroADCreateCode(JsonNode *code) {
 		unitcode = (int)round(itmp);
 	}
 	if(json_find_number(code, "all", &itmp) == 0) {
-	    group = (int)round(itmp);
+	    group = 1;
+	    //on the reference remote, group toggles always used a unit code of 56.
+    	    //for that reason we are enforcing that here
+	    unitcode = 56;
 	}
 
-	//on the reference remote, group toggles always used a unit code of 56.
-        //for that reason we are enforcing that here
-	if(group == 1) {
-		unitcode = 56;	
-	}
-
-	if(json_find_number(code, "off", &itmp) == 0)
+	if(json_find_number(code, "off", &itmp) == 0) {
 		state=2;
-	else if(json_find_number(code, "on", &itmp) == 0)
+	}
+	else if(json_find_number(code, "on", &itmp) == 0) {
 		state=1;
+	}
 	
 	if(systemcode == 0 || unitcode == -1 || state == -1) {
 		logprintf(LOG_ERR, "elro_ad: insufficient number of arguments");
