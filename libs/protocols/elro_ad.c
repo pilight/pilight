@@ -22,7 +22,6 @@
 #include <math.h>
 
 #include "../../pilight.h"
-#include "../pilight/log.h"
 #include "common.h"
 #include "log.h"
 #include "protocol.h"
@@ -92,7 +91,7 @@ void elroADParseCode(void) {
 	} else if((groupcode == 3) && (groupcode2 == 3)) {
 	    groupRes = 1;
 	} else {
-		return;
+	    return;
 	}  
 	if((state <1) || (state >2)) return;	
 	elroADCreateMessage(systemcode, unitcode, state, groupRes);
@@ -238,7 +237,7 @@ void elroADCreateFooter(void) {
 int elroADCreateCode(JsonNode *code) {
 	unsigned long long systemcode = 0;
 	int unitcode = -1;
-	int group = -1;
+	int group = 0;
 	int state = -1;
 	double itmp;
 	
@@ -250,8 +249,6 @@ int elroADCreateCode(JsonNode *code) {
 	}
 	if(json_find_number(code, "all", &itmp) == 0) {
 	    group = (int)round(itmp);
-	} else {
-	    group=0;
 	}
 
 	//on the reference remote, group toggles always used a unit code of 56.
@@ -286,7 +283,7 @@ int elroADCreateCode(JsonNode *code) {
  */
 void elroADPrintHelp(void) {
 	printf("\t -s --systemcode=systemcode\tcontrol a device with this systemcode\n");
-	printf("\t -a --all=switch all devices\ttoggle switching all devices on or off\n");
+	printf("\t -a --all\t\t\ttoggle switching all devices on or off\n");
 	printf("\t -u --unitcode=unitcode\t\tcontrol a device with this unitcode\n");
 	printf("\t -t --on\t\t\tsend an on signal\n");
 	printf("\t -f --off\t\t\tsend an off signal\n");
@@ -314,7 +311,7 @@ void elroADInit(void) {
 	options_add(&elro_ad->options, 't', "on", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
 	options_add(&elro_ad->options, 'f', "off", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
 
-	options_add(&elro_ad->options, 'a', "all", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
+	options_add(&elro_ad->options, 'a', "all", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, NULL, NULL);
 	options_add(&elro_ad->options, 0, "gui-readonly", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 
 	
