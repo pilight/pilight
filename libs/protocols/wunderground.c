@@ -83,7 +83,7 @@ void *wundergroundParse(void *param) {
 
 	wunderground_threads++;	
 	
-	int has_country = 0, has_api = 0, has_location = 0, i = 0;
+	int has_country = 0, has_api = 0, has_location = 0;
 	if((jid = json_find_member(json, "id"))) {
 		jchild = json_first_child(jid);
 		while(jchild) {
@@ -125,10 +125,6 @@ void *wundergroundParse(void *param) {
 				jchild1 = jchild1->next;
 			}
 			if(has_country && has_api && has_location) {
-				if(i > 1) {
-					logprintf(LOG_ERR, "each openweathermap definition can only have a single ID object defined");
-				}
-				i++;
 				wnode->thread = thread;
 				wnode->next = wunderground_data;
 				wunderground_data = wnode;
@@ -392,6 +388,7 @@ void wundergroundInit(void) {
 	protocol_device_add(wunderground, "wunderground", "Weather Underground API");
 	wunderground->devtype = WEATHER;
 	wunderground->hwtype = API;
+	wunderground->multipleId = 0;
 
 	options_add(&wunderground->options, 't', "temperature", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, NULL, "^[0-9]{1,5}$");
 	options_add(&wunderground->options, 'h', "humidity", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, NULL, "^[0-9]{1,5}$");

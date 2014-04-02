@@ -844,7 +844,7 @@ void control_device(struct conf_devices_t *dev, char *state, JsonNode *values) {
 							val = val->next;
 						}
 					}
-					if(strcmp(sett->name, opt->name) == 0 
+					if(strcmp(sett->name, opt->name) == 0
 					   && opt->conftype == CONFIG_SETTING) {
 						val = sett->values;
 						if(json_find_member(code, opt->name) == NULL) {

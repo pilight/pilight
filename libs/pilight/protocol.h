@@ -73,6 +73,7 @@ typedef struct protocol_t {
 	int binlen;
 	short txrpt;
 	short rxrpt;
+	short multipleId;
 	unsigned short lsb;
 	struct options_t *options;
 	JsonNode *message;

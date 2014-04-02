@@ -110,7 +110,7 @@ void *sunRiseSetParse(void *param) {
 	struct JsonNode *jchild1 = NULL;
 	char *slongitude = NULL, *slatitude = NULL, *tz = NULL;
 	double longitude = 0, latitude = 0, itmp = -1;
-	int interval = 1, nrloops = 0, i = 0;
+	int interval = 1, nrloops = 0;
 	char UTC[] = "UTC";	
 	
 	time_t timenow = 0;
@@ -121,9 +121,7 @@ void *sunRiseSetParse(void *param) {
 
 	if((jid = json_find_member(json, "id"))) {
 		jchild = json_first_child(jid);
-		i = 0;
 		while(jchild) {
-			i++;
 			jchild1 = json_first_child(jchild);
 			while(jchild1) {
 				if(strcmp(jchild1->key, "longitude") == 0) {
@@ -143,9 +141,6 @@ void *sunRiseSetParse(void *param) {
 					latitude = atof(jchild1->string_);
 				}
 				jchild1 = jchild1->next;
-			}
-			if(i > 1) {
-				logprintf(LOG_ERR, "each sunriseset definition can only have a single ID object defined");
 			}
 			jchild = jchild->next;
 		}
@@ -261,6 +256,7 @@ void sunRiseSetInit(void) {
 	protocol_device_add(sunriseset, "sunriseset", "Sunrise / Sunset Calculator");
 	sunriseset->devtype = WEATHER;
 	sunriseset->hwtype = API;
+	sunriseset->multipleId = 0;
 
 	options_add(&sunriseset->options, 'o', "longitude", OPTION_HAS_VALUE, CONFIG_ID, JSON_STRING, NULL, NULL);
 	options_add(&sunriseset->options, 'a', "latitude", OPTION_HAS_VALUE, CONFIG_ID, JSON_STRING, NULL, NULL);

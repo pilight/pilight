@@ -79,7 +79,7 @@ void *openweathermapParse(void *param) {
 
 	openweathermap_threads++;	
 
-	int has_country = 0, has_location = 0, i = 0;
+	int has_country = 0, has_location = 0;
 	if((jid = json_find_member(json, "id"))) {
 		jchild = json_first_child(jid);
 		while(jchild) {
@@ -112,10 +112,6 @@ void *openweathermapParse(void *param) {
 				jchild1 = jchild1->next;
 			}
 			if(has_country && has_location) {
-				if(i > 1) {
-					logprintf(LOG_ERR, "each openweathermap definition can only have a single ID object defined");
-				}
-				i++;
 				wnode->thread = thread;
 				wnode->next = openweathermap_data;
 				openweathermap_data = wnode;
@@ -330,6 +326,7 @@ void openweathermapInit(void) {
 	protocol_device_add(openweathermap, "openweathermap", "Open Weather Map API");
 	openweathermap->devtype = WEATHER;
 	openweathermap->hwtype = API;
+	openweathermap->multipleId = 0;
 
 	options_add(&openweathermap->options, 't', "temperature", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, NULL, "^[0-9]{1,5}$");
 	options_add(&openweathermap->options, 'h', "humidity", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, NULL, "^[0-9]{1,5}$");

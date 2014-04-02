@@ -882,7 +882,8 @@ int config_check_id(int i, JsonNode *jsetting, struct conf_devices_t *device) {
 	struct protocols_t *tmp_protocols = NULL;
 
 	int match1 = 0, match2 = 0, match3 = 0, has_id = 0;
-	int valid_values = 0, nrprotocols = 0, nrids1 = 0, nrids2 = 0, have_error = 0;
+	int valid_values = 0, nrprotocols = 0, nrid = 0, nrids1 = 0;
+	int nrids2 = 0, have_error = 0, etype = 0;
 
 	/* Variable holders for casting */
 	char ctmp[256];
@@ -891,9 +892,11 @@ int config_check_id(int i, JsonNode *jsetting, struct conf_devices_t *device) {
 	while(tmp_protocols) {
 		jid = json_first_child(jsetting);
 		has_id = 0;
+		nrid = 0;
 		match3 = 0;
 		nrprotocols++;
 		while(jid) {
+			nrid++;
 			match2 = 0; match1 = 0; nrids1 = 0; nrids2 = 0;
 			jvalues = json_first_child(jid);
 			while(jvalues) {
@@ -951,10 +954,14 @@ int config_check_id(int i, JsonNode *jsetting, struct conf_devices_t *device) {
 			jid = jid->next;
 			if(match2 > 0 && match1 == match2) {
 				match3 = 1;
-			}
-		}
+			}	
+		}	
 		if(!has_id) {
 			valid_values--;
+		} else if(tmp_protocols->listener->multipleId == 0 && nrid > 1) {
+			valid_values--;
+			etype = 1;
+			break;
 		} else if(match3) {
 			valid_values++;
 		} else {
@@ -964,7 +971,11 @@ int config_check_id(int i, JsonNode *jsetting, struct conf_devices_t *device) {
 		tmp_protocols = tmp_protocols->next;
 	}
 	if(nrprotocols != valid_values) {
-		logprintf(LOG_ERR, "setting #%d \"%s\" of \"%s\", invalid", i, "id", device->id);
+		if(etype == 1) {
+			logprintf(LOG_ERR, "protocol \"%s\" used in \"%s\" doesn't support multiple id's", tmp_protocols->listener->id, device->id);
+		} else {
+			logprintf(LOG_ERR, "setting #%d \"%s\" of \"%s\", invalid", i, "id", device->id);
+		}
 		have_error = 1;
 	}	
 	return have_error;

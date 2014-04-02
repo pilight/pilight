@@ -154,7 +154,7 @@ void *pdateTimeParse(void *param) {
 	struct JsonNode *jchild1 = NULL;
 	char *slongitude = NULL, *slatitude = NULL, *tz = NULL;
 	double longitude = 0, latitude = 0;
-	int nrloops = 0, i = 0;
+	int nrloops = 0;
 	
 	time_t nntptime = -1, ntptime = time(NULL);
 	struct tm *tm;
@@ -164,9 +164,7 @@ void *pdateTimeParse(void *param) {
 
 	if((jid = json_find_member(json, "id"))) {
 		jchild = json_first_child(jid);
-		i = 0;
 		while(jchild) {
-			i++;
 			jchild1 = json_first_child(jchild);
 			while(jchild1) {
 				if(strcmp(jchild1->key, "longitude") == 0) {
@@ -189,10 +187,6 @@ void *pdateTimeParse(void *param) {
 			}
 			if(slongitude == NULL && slatitude == NULL) {
 				logprintf(LOG_DEBUG, "no longitude and latitude set");
-				goto close;
-			}
-			if(i > 1) {
-				logprintf(LOG_DEBUG, "each pdatetime definition can only have a single ID object defined");
 				goto close;
 			}
 			jchild = jchild->next;
@@ -279,6 +273,7 @@ void pdateTimeInit(void) {
 	protocol_device_add(pdatetime, "datetime", "Date and Time protocol");
 	pdatetime->devtype = DATETIME;
 	pdatetime->hwtype = API;
+	pdatetime->multipleId = 0;
 
 	options_add(&pdatetime->options, 'o', "longitude", OPTION_HAS_VALUE, CONFIG_ID, JSON_STRING, NULL, NULL);
 	options_add(&pdatetime->options, 'a', "latitude", OPTION_HAS_VALUE, CONFIG_ID, JSON_STRING, NULL, NULL);

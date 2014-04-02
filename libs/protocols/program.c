@@ -64,7 +64,7 @@ void *programParse(void *param) {
 	struct JsonNode *jchild1 = NULL;
 	char *prog = NULL, *args = NULL, *stopcmd = NULL, *startcmd = NULL;
 	
-	int interval = 1, nrloops = 0, i = 0, currentstate = 0, laststate = -1;
+	int interval = 1, nrloops = 0, currentstate = 0, laststate = -1;
 	int pid = 0;
 	double itmp = 0;
 
@@ -121,9 +121,7 @@ void *programParse(void *param) {
 
 	if((jid = json_find_member(json, "id"))) {
 		jchild = json_first_child(jid);
-		i = 0;
 		while(jchild) {
-			i++;
 			jchild1 = json_first_child(jchild);
 			while(jchild1) {
 				if(strcmp(jchild1->key, "name") == 0) {
@@ -134,9 +132,6 @@ void *programParse(void *param) {
 					strcpy(lnode->name, jchild1->string_);
 				}
 				jchild1 = jchild1->next;
-			}
-			if(i > 1) {
-				logprintf(LOG_ERR, "each program definition can only have a single ID object defined");
 			}
 			jchild = jchild->next;
 		}
@@ -346,6 +341,7 @@ void programInit(void) {
 	protocol_device_add(program, "program", "Start / Stop / State of a program");
 	program->devtype = PENDINGSW;
 	program->hwtype = API;
+	program->multipleId = 0;
 
 	options_add(&program->options, 'n', "name", OPTION_HAS_VALUE, CONFIG_ID, JSON_STRING, NULL, NULL);
 	options_add(&program->options, 'x', "start-command", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_STRING, NULL, NULL);

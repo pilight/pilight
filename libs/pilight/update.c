@@ -51,10 +51,10 @@ pthread_mutexattr_t updateattr;
 
 int update_gc(void) {
 	update_loop = 0;
-	
+
 	pthread_mutex_unlock(&updatelock);
-	pthread_cond_signal(&updatesignal);	
-	
+	pthread_cond_signal(&updatesignal);
+
 	sfree((void *)&update_latests_ver);
 	sfree((void *)&update_current_ver);
 	/* clean-up http_lib global */
@@ -309,8 +309,8 @@ void *update_poll(void *param) {
 	struct tm *current;
 	time_t epoch = 0;
 	time_t timenow = 0;
-	
-	
+
+
 	while(update_loop) {
 		time(&timenow);
 		if(epoch == timenow) {
