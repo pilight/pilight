@@ -51,7 +51,7 @@ div.ui-slider.ui-slider-switch {
 	background: #FF9900;
 }
 
-div.datetime, div.temperature, div.humidity, div.battery.red,
+div.datetime, div.temperature, div.humidity, div.battery.red, div.update,
 div.battery.green, div.sunrise, div.sunset, div.sunset_icon.gray, 
 div.sunrise_icon.gray, div.sunset_icon.blue, div.sunrise_icon.yellow  {
 	position: relative;
@@ -100,7 +100,7 @@ div.sunset_icon.blue {
 	background: url('sunset_blue.png') 0px 0px no-repeat;
 }
 
-div.temperature_icon, div.humidity_icon {
+div.temperature_icon, div.humidity_icon, div.update_icon {
 	position: relative;
 	float: right;
 	font-size: 14px;
@@ -114,12 +114,23 @@ div.temperature_icon, div.humidity_icon {
 	left: 48px;
 }
 
+div.update_icon {
+	left: 55px;
+	width: 20px;
+	height: 20px;
+	top: 2px;
+}
+
 div.temperature_icon {
 	background: url('temp.png') 0px 0px no-repeat;
 }
 
 div.humidity_icon {
 	background: url('humi.png') 0px 0px no-repeat;
+}
+
+div.update_icon {
+	background: url('update.png') 0px 0px no-repeat;
 }
 
 div.screen {

@@ -567,7 +567,8 @@ JsonNode *config2json(short internal) {
 					tmp_options = tmp_protocols->listener->options;
 					if(tmp_options) {
 						while(tmp_options) {
-							if(internal > 0 && tmp_options->conftype == CONFIG_SETTING && json_find_member(jdevice, tmp_options->name) == NULL) {
+							if(internal > 0 && (tmp_options->conftype == CONFIG_SETTING)
+							&& json_find_member(jdevice, tmp_options->name) == NULL) {
 								if(tmp_options->vartype == JSON_NUMBER) {
 									json_append_member(jdevice, tmp_options->name, json_mknumber((int)(intptr_t)tmp_options->def));
 								} else if(tmp_options->vartype == JSON_STRING) {
@@ -1226,7 +1227,8 @@ int config_parse_devices(JsonNode *jdevices, struct conf_devices_t *device) {
 						if(strcmp(jsettings->key, tmp_options->name) == 0 
 						   && (tmp_options->conftype == CONFIG_ID 
 						       || tmp_options->conftype == CONFIG_VALUE
-							   || tmp_options->conftype == CONFIG_SETTING)
+							   || tmp_options->conftype == CONFIG_SETTING
+							   || tmp_options->conftype == CONFIG_OPTIONAL)
 						   && (tmp_options->vartype == jsettings->tag)) {
 							valid_setting = 1;
 							break;

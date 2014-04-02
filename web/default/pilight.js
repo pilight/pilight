@@ -387,6 +387,19 @@ function createWeatherElement(sTabId, sDevId, aValues) {
 				}
 			}
 		}
+		if('gui-show-update' in aValues && aValues['gui-show-update']) {
+			oTab.find('#'+sTabId+'_'+sDevId+'_weather').append($('<div class="update_icon" id="'+sTabId+'_'+sDevId+'_upd" title="update">&nbsp;</div>'));
+			$('#'+sTabId+'_'+sDevId+'_upd').click(function() {
+				var json = '{"message":"send","code":{"location":"'+sTabId+'","device":"'+sDevId+'","values":{"update":1}}}';
+				if(oWebsocket) {
+					oWebsocket.send(json);
+				} else {
+					bSending = true;
+					$.get('http://'+location.host+'/send?'+encodeURIComponent(json));
+					window.setTimeout(function() { bSending = false; }, 1000);
+				}
+			});
+		}		
 		if('gui-show-humidity' in aValues && aValues['gui-show-humidity'] && 'humidity' in aValues) {
 			oTab.find('#'+sTabId+'_'+sDevId+'_weather').append($('<div class="humidity_icon"></div><div class="humidity" id="'+sTabId+'_'+sDevId+'_humi">'+aValues['humidity'].toFixed(aValues['gui-decimals'])+'</div>'));
 		}
@@ -578,6 +591,11 @@ function createGUI(data) {
 					}
 				});
 			});
+
+			$(document).delegate('#editbtn', 'click', function(e) {
+				document.location = "wakeup.php";
+				//e.preventDefault();
+			});			
 
 			if(bShowTabs) {
 				$(document).delegate('[data-role="navbar"] a', 'click', function(e) {
@@ -785,7 +803,7 @@ $(document).ready(function() {
 
 		if(!bForceAjax && oWebsocket) {
 			oWebsocket.onopen = function(evt) {
-				bConnected = true;
+				bConnected = true;		
 				oWebsocket.send("{\"message\":\"request config\"}");
 			};
 			oWebsocket.onclose = function(evt) {

@@ -434,6 +434,7 @@ char *genuuid(char *ifname) {
 	memset(mac, '\0', 13);
 	struct ifreq s;
 
+	memset(&s, '\0', sizeof(struct ifreq));	
 	strcpy(s.ifr_name, ifname);
 	if(ioctl(fd, SIOCGIFHWADDR, &s) == 0) {
 		for(i = 0; i < 12; i+=2) {
@@ -449,8 +450,8 @@ char *genuuid(char *ifname) {
 	}
 	memset(mac, '\0', 13);
 	struct ifreq s;
-
-	memset(&s, '\0', sizeof(s));
+	memset(&s.ifr_name, '\0', sizeof(s.ifr_name));
+	memset(&s, '\0', sizeof(struct ifreq));
 	strcpy(s.ifr_name, ifname);
 	if(ioctl(fd, SIOCGIFADDR, &s) == 0) {
 		int i;
@@ -614,6 +615,19 @@ int rep_getifaddrs(struct ifaddrs **ifap) {
 	close(fd);
 
 	return 0;
+}
+
+void rep_freeifaddrs(struct ifaddrs *ifaddr) {
+	struct ifaddrs *ifa;
+	while(ifaddr) {
+		ifa = ifaddr;
+		sfree((void *)&ifa->ifa_name);
+		sfree((void *)&ifa->ifa_addr);
+		sfree((void *)&ifa->ifa_netmask);
+		ifaddr = ifaddr->ifa_next;
+		sfree((void *)&ifa);
+	}
+	sfree((void *)&ifaddr);
 }
 #endif
 

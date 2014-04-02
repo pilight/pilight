@@ -27,6 +27,7 @@
 #define CONFIG_STATE	2
 #define CONFIG_VALUE	3
 #define CONFIG_SETTING	4
+#define CONFIG_OPTIONAL	5
 
 typedef struct options_t {
 	int id;

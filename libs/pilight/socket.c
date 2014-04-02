@@ -81,7 +81,8 @@ int socket_start(unsigned short port) {
 	unsigned int addrlen = sizeof(address);
 	int opt = 1;
 
-	memset(socket_clients, 0, sizeof(socket_clients));	
+	memset(&address, '\0', sizeof(struct sockaddr_in));
+	memset(socket_clients, 0, sizeof(socket_clients));
 
     //create a master socket
     if((socket_server = socket(AF_INET , SOCK_STREAM , 0)) == 0)  {

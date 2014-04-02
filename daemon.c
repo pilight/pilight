@@ -581,7 +581,9 @@ void *send_code(void *param) {
 
 			if(sendqueue->message && strcmp(sendqueue->message, "{}") != 0) {
 				if(json_validate(sendqueue->message) == true) {
-					message = json_mkobject();
+					if(!message) {
+						message = json_mkobject();
+					}
 					json_append_member(message, "origin", json_mkstring("sender"));
 					json_append_member(message, "protocol", json_mkstring(protocol->id));
 					json_append_member(message, "message", json_decode(sendqueue->message));
@@ -593,6 +595,9 @@ void *send_code(void *param) {
 			}
 			if(sendqueue->settings && strcmp(sendqueue->settings, "{}") != 0) {
 				if(json_validate(sendqueue->settings) == true) {
+					if(!message) {
+						message = json_mkobject();
+					}
 					json_append_member(message, "settings", json_decode(sendqueue->settings));
 				}
 			}
@@ -839,7 +844,8 @@ void control_device(struct conf_devices_t *dev, char *state, JsonNode *values) {
 							val = val->next;
 						}
 					}
-					if(strcmp(sett->name, opt->name) == 0 && opt->conftype == CONFIG_SETTING) {
+					if(strcmp(sett->name, opt->name) == 0 
+					   && opt->conftype == CONFIG_SETTING) {
 						val = sett->values;
 						if(json_find_member(code, opt->name) == NULL) {
 							if(val->type == CONFIG_TYPE_STRING) {
@@ -856,7 +862,8 @@ void control_device(struct conf_devices_t *dev, char *state, JsonNode *values) {
 			while(values) {
 				opt = tmp_protocols->listener->options;
 				while(opt) {
-					if(opt->conftype == CONFIG_VALUE && strcmp(values->key, opt->name) == 0
+					if((opt->conftype == CONFIG_VALUE || opt->conftype == CONFIG_OPTIONAL)
+					   && strcmp(values->key, opt->name) == 0
 					   && json_find_member(code, opt->name) == NULL) {
 						if(values->tag == JSON_STRING) {
 							json_append_member(code, values->key, json_mkstring(values->string_));
@@ -1593,7 +1600,11 @@ int main(int argc, char **argv) {
 			}
 		}
 	}
+#ifdef __FreeBSD__
+	rep_freeifaddrs(ifaddr);
+#else
 	freeifaddrs(ifaddr);
+#endif
 
 	firmware.version = 0;
 	firmware.lpf = 0;

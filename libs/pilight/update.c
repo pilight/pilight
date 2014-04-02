@@ -45,8 +45,16 @@ char *update_filename = NULL, *update_data = NULL;
 char update_typebuf[70];
 int update_lg = 0, update_ret = 0;
 
+pthread_mutex_t updatelock;
+pthread_cond_t updatesignal;
+pthread_mutexattr_t updateattr;
+
 int update_gc(void) {
 	update_loop = 0;
+	
+	pthread_mutex_unlock(&updatelock);
+	pthread_cond_signal(&updatesignal);	
+	
 	sfree((void *)&update_latests_ver);
 	sfree((void *)&update_current_ver);
 	/* clean-up http_lib global */
@@ -301,7 +309,8 @@ void *update_poll(void *param) {
 	struct tm *current;
 	time_t epoch = 0;
 	time_t timenow = 0;
-
+	
+	
 	while(update_loop) {
 		time(&timenow);
 		if(epoch == timenow) {
@@ -337,7 +346,15 @@ void *update_poll(void *param) {
 
 			epoch = (int)datetime2ts(year, month, mday+(7-wday), 0, 0, 0, 0);
 		}
-		sleep(1);
+		struct timeval tp;
+		struct timespec ts;
+		pthread_mutex_unlock(&updatelock);
+		gettimeofday(&tp, NULL);
+		ts.tv_sec = tp.tv_sec;
+		ts.tv_nsec = tp.tv_usec * 1000;
+		ts.tv_sec += 1;
+		pthread_mutex_lock(&updatelock);
+		pthread_cond_timedwait(&updatesignal, &updatelock, &ts);
 	}
 	return 0;
 }
