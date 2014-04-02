@@ -19,6 +19,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 
 #include "../../pilight.h"
 #include "../pilight/log.h"
@@ -239,14 +240,14 @@ int elroADCreateCode(JsonNode *code) {
 	int unitcode = -1;
 	int group = -1;
 	int state = -1;
-	int tmp;
+	double itmp;
 	
-	json_find_numberUl(code, "systemcode", &systemcode);
-	
-	json_find_number(code, "unitcode", &unitcode);
-	
-	if(json_find_number(code, "all", &tmp) == 0) {
-	    json_find_number(code, "all", &group);
+	json_find_number(code, "systemcode", &itmp);
+		systemcode = (unsigned long long)itmp;
+	json_find_number(code, "unitcode", &itmp);
+		unitcode = (int)round(itmp);
+	if(json_find_number(code, "all", &itmp) == 0) {
+	    group = (int)round(itmp);
 	} else {
 	    group=0;
 	}
@@ -257,9 +258,9 @@ int elroADCreateCode(JsonNode *code) {
 		unitcode = 56;	
 	}
 
-	if(json_find_number(code, "off", &tmp) == 0)
+	if(json_find_number(code, "off", &itmp) == 0)
 		state=2;
-	else if(json_find_number(code, "on", &tmp) == 0)
+	else if(json_find_number(code, "on", &itmp) == 0)
 		state=1;
 	
 	if(systemcode == 0 || unitcode == -1 || state == -1) {
