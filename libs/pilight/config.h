@@ -104,7 +104,7 @@ struct conf_locations_t {
 };
 
 /* The default config file location */
-char *configfile = NULL;
+char *configfile;
 
 int config_update(char *protoname, JsonNode *message, JsonNode **out);
 int config_get_location(char *id, struct conf_locations_t **loc);
