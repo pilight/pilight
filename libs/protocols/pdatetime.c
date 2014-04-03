@@ -154,7 +154,7 @@ void *pdateTimeParse(void *param) {
 	struct JsonNode *jchild1 = NULL;
 	char *slongitude = NULL, *slatitude = NULL, *tz = NULL;
 	double longitude = 0, latitude = 0;
-	int nrloops = 0;
+	int nrloops = 0, interval = 86400;
 	
 	time_t nntptime = -1, ntptime = time(NULL);
 	struct tm *tm;
@@ -200,10 +200,12 @@ void *pdateTimeParse(void *param) {
 
 	while(pdatetime_loop) {
 		if(protocol_thread_wait(thread, 1, &nrloops) == ETIMEDOUT) {
-			if(x%86400 == 0 || nntptime == -1) {
+			if(x == interval || nntptime == -1) {
 				nntptime = getntptime("0.south-america.pool.ntp.org");
 				if(nntptime > -1) {
 					ntptime = nntptime;
+				} else {
+					ntptime = time(NULL);
 				}
 				x = 0;
 			}
@@ -214,15 +216,22 @@ void *pdateTimeParse(void *param) {
 			JsonNode *code = json_mkobject();
 
 			tm = localtztime(tz, ntptime);
-			
+
+			int year = tm->tm_year+1900;
+			int month = tm->tm_mon+1;
+			int day = tm->tm_mday;
+			int hour = tm->tm_hour;
+			int minute = tm->tm_min;
+			int second = tm->tm_sec;
+
 			json_append_member(code, "longitude", json_mkstring(slongitude));
 			json_append_member(code, "latitude", json_mkstring(slatitude));
-			json_append_member(code, "year", json_mknumber(tm->tm_year+1900));
-			json_append_member(code, "month", json_mknumber(tm->tm_mon+1));
-			json_append_member(code, "day", json_mknumber(tm->tm_mday));
-			json_append_member(code, "hour", json_mknumber(tm->tm_hour));
-			json_append_member(code, "minute", json_mknumber(tm->tm_min));
-			json_append_member(code, "second", json_mknumber(tm->tm_sec));
+			json_append_member(code, "year", json_mknumber(year));
+			json_append_member(code, "month", json_mknumber(month));
+			json_append_member(code, "day", json_mknumber(day));
+			json_append_member(code, "hour", json_mknumber(hour));
+			json_append_member(code, "minute", json_mknumber(minute));
+			json_append_member(code, "second", json_mknumber(second));
 
 			json_append_member(pdatetime->message, "message", code);
 			json_append_member(pdatetime->message, "origin", json_mkstring("receiver"));
@@ -231,6 +240,11 @@ void *pdateTimeParse(void *param) {
 			pilight.broadcast(pdatetime->id, pdatetime->message);
 			json_delete(pdatetime->message);
 			pdatetime->message = NULL;
+			if(x == 0) {
+				time_t midnight = (datetime2ts(year, month, day, 23, 59, 59, 0)+1);
+				time_t timenow = datetime2ts(year, month, day, hour, minute, second, 0);		
+				interval = (int)(midnight-timenow);
+			}
 			x++;
 		}
 	}

@@ -82,7 +82,7 @@ void *rpiTempParse(void *param) {
 		temp_offset = (int)round(itmp);
 
 	while(rpi_temp_loop) {
-		if(protocol_thread_wait(node, interval, &nrloops) == ETIMEDOUT) {		
+		if(protocol_thread_wait(node, interval, &nrloops) == ETIMEDOUT) {
 			for(y=0;y<nrid;y++) {
 				if((fp = fopen(rpi_temp, "rb"))) {
 					fstat(fileno(fp), &st);

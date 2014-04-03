@@ -36,6 +36,15 @@ void pilightFirmwareCreateMessage(int version, int high, int low) {
 	json_append_member(pilight_firmware->message, "hpf", json_mknumber(low*10));
 }
 
+void pilightFirmwareParseRaw(void) {
+	int i = 0;
+	for(i=0;i<pilight_firmware->rawlen;i++) {
+		if(pilight_firmware->raw[i] < 100) {
+			pilight_firmware->raw[i]*=10;
+		}
+	}
+}
+
 void pilightFirmwareParseBinary(void) {
 	int version = binToDec(pilight_firmware->binary, 0, 15);
 	int high = binToDec(pilight_firmware->binary, 16, 31);
@@ -62,4 +71,5 @@ void pilightFirmwareInit(void) {
   options_add(&pilight_firmware->options, 'h', "hpf", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, NULL, "^[0-9]+$");
 
   pilight_firmware->parseBinary=&pilightFirmwareParseBinary;
+  pilight_firmware->parseRaw=&pilightFirmwareParseRaw;
 }

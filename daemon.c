@@ -319,7 +319,9 @@ void *broadcast(void *param) {
 				/* Write the message to all receivers */
 				for(i=0;i<MAX_CLIENTS;i++) {
 					if(handshakes[i] == RECEIVER) {
-						socket_write(socket_get_clients(i), jbroadcast);
+						if(strcmp(jbroadcast, "{}") != 0) {
+							socket_write(socket_get_clients(i), jbroadcast);
+						}
 						broadcasted = 1;
 					}
 				}
@@ -333,7 +335,7 @@ void *broadcast(void *param) {
 				json_delete(jupdate);
 				sfree((void *)&ret);
 			}
-			if(broadcasted == 1 || nodaemon == 1) {
+			if((broadcasted == 1 || nodaemon == 1) && strcmp(jbroadcast, "{}") != 0) {
 				logprintf(LOG_DEBUG, "broadcasted: %s", jbroadcast);
 			}
 			sfree((void *)&jinternal);
@@ -437,7 +439,9 @@ void receiver_parse_code(int *rawcode, int rawlen, int plslen, int hwtype) {
 						}
 						tmp_conflicts = tmp_conflicts->next;
 					}
-					break;
+					if(protocol->parseBinary == NULL && protocol->parseCode == NULL) {
+						break;
+					}
 				}
 
 				/* Convert the raw codes to one's and zero's */
@@ -502,7 +506,9 @@ void receiver_parse_code(int *rawcode, int rawlen, int plslen, int hwtype) {
 							}
 							tmp_conflicts = tmp_conflicts->next;
 						}
-						break;
+						if(protocol->parseBinary == NULL) {
+							break;
+						}
 					}
 
 					if(protocol->parseBinary) {

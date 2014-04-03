@@ -65,7 +65,7 @@ void *openweathermapParse(void *param) {
 	struct JsonNode *jsys = NULL;
 
 	struct openweathermap_data_t *wtmp = NULL;
-	int interval = 600, nrloops = 0, ointerval = 600;
+	int interval = 86400, nrloops = 0, ointerval = 86400;
 	double itmp = 0;
 
 	char url[1024];
@@ -343,7 +343,7 @@ void openweathermapInit(void) {
 	options_add(&openweathermap->options, 0, "gui-show-temperature", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
 	options_add(&openweathermap->options, 0, "gui-show-sunriseset", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
 	options_add(&openweathermap->options, 0, "gui-show-update", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
-	options_add(&openweathermap->options, 0, "poll-interval", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)600, "[0-9]");
+	options_add(&openweathermap->options, 0, "poll-interval", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)86400, "[0-9]");
 
 	openweathermap->createCode=&openweathermapCreateCode;
 	openweathermap->initDev=&openweathermapInitDev;

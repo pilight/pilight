@@ -135,7 +135,7 @@ void *lm76Parse(void *param) {
 					logprintf(LOG_DEBUG, "error connecting to lm76");
 					logprintf(LOG_DEBUG, "(probably i2c bus error from wiringPiI2CSetup)");
 					logprintf(LOG_DEBUG, "(maybe wrong id? use i2cdetect to find out)");
-					sleep(1);
+					protocol_thread_wait(node, 1, &nrloops);
 				}
 			}
 #endif

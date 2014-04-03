@@ -61,7 +61,7 @@ void *wundergroundParse(void *param) {
 	struct JsonNode *jchild1 = NULL;
 	struct JsonNode *node = NULL;
 	struct wunderground_data_t *wtmp = NULL;	
-	int interval = 900, nrloops = 0, ointerval = 900;
+	int interval = 86400, nrloops = 0, ointerval = 86400;
 	
 	char url[1024];
 	char *filename = NULL, *data = NULL;
@@ -406,7 +406,7 @@ void wundergroundInit(void) {
 	options_add(&wunderground->options, 0, "gui-show-temperature", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
 	options_add(&wunderground->options, 0, "gui-show-sunriseset", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
 	options_add(&wunderground->options, 0, "gui-show-update", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
-	options_add(&wunderground->options, 0, "poll-interval", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)900, "[0-9]");
+	options_add(&wunderground->options, 0, "poll-interval", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)86400, "[0-9]");
 
 	wunderground->createCode=&wundergroundCreateCode;
 	wunderground->initDev=&wundergroundInitDev;

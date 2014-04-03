@@ -63,7 +63,7 @@ void clarusSwParseCode(void) {
 		z++;
 	}
 
-	int unit = binToDecRev(clarus_switch->binary, 1, 5);
+	int unit = binToDecRev(clarus_switch->binary, 0, 5);
 	int state = clarus_switch->binary[11];
 	int y = binToDecRev(clarus_switch->binary, 6, 9);
 	sprintf(&id[0], "%c%d", z, y);
@@ -182,7 +182,7 @@ int clarusSwCreateCode(JsonNode *code) {
 	} else if(atoi(&id[1]) < 0 || atoi(&id[1]) > 31) {
 		logprintf(LOG_ERR, "clarus_switch: invalid id range");
 		return EXIT_FAILURE;
-	} else if(unit > 31 || unit < 0) {
+	} else if(unit > 63 || unit < 0) {
 		logprintf(LOG_ERR, "clarus_switch: invalid unit range");
 		return EXIT_FAILURE;
 	} else {
@@ -209,7 +209,8 @@ void clarusSwInit(void) {
 	protocol_set_id(clarus_switch, "clarus_switch");	
 	protocol_device_add(clarus_switch, "clarus_switch", "Clarus Switches");
 	protocol_conflict_add(clarus_switch, "rev_switch");
-	protocol_plslen_add(clarus_switch, 189);
+	protocol_plslen_add(clarus_switch, 190);
+	protocol_plslen_add(clarus_switch, 180);
 	clarus_switch->devtype = SWITCH;
 	clarus_switch->hwtype = RF433;
 	clarus_switch->pulse = 3;
@@ -218,7 +219,7 @@ void clarusSwInit(void) {
 
 	options_add(&clarus_switch->options, 't', "on", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
 	options_add(&clarus_switch->options, 'f', "off", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
-	options_add(&clarus_switch->options, 'u', "unit", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, NULL, "^(3[012]?|[012][0-9]|[0-9]{1})$");
+	options_add(&clarus_switch->options, 'u', "unit", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, NULL, "^([0-9]|[1-5][0-9]|6[0-3])$");
 	options_add(&clarus_switch->options, 'i', "id", OPTION_HAS_VALUE, CONFIG_ID, JSON_STRING, NULL, "^[ABCDE](3[012]?|[012][0-9]|[0-9]{1})$");
 
 	options_add(&clarus_switch->options, 0, "gui-readonly", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");

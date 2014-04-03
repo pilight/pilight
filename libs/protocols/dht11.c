@@ -165,7 +165,7 @@ void *dht11Parse(void *param) {
 					} else {
 						logprintf(LOG_DEBUG, "dht11 data checksum was wrong");
 						tries--;
-						sleep(1);
+						protocol_thread_wait(node, 1, &nrloops);
 					}
 				}
 			}

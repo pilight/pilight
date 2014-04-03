@@ -789,12 +789,12 @@ void *webserver_clientize(void *param) {
 		char server[16] = "127.0.0.1";
 		if((sockfd = socket_connect(server, (unsigned short)socket_get_port())) == -1) {
 			logprintf(LOG_DEBUG, "could not connect to pilight-daemon");
-			exit(EXIT_FAILURE);
+			goto close;
 		}
 	} else {
 		if((sockfd = socket_connect(ssdp_list->ip, ssdp_list->port)) == -1) {
 			logprintf(LOG_DEBUG, "could not connect to pilight-daemon");
-			exit(EXIT_FAILURE);
+			goto close;
 		}
 	}
 	if(ssdp_list) {
