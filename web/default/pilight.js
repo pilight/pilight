@@ -107,7 +107,11 @@ function createSwitchElement(sTabId, sDevId, aValues) {
 		$('#'+sTabId+'_'+sDevId+'_switch').slider();
 		$('#'+sTabId+'_'+sDevId+'_switch').bind("change", function(event, ui) {
 			event.stopPropagation();
-			var json = '{"message":"send","code":{"location":"'+sTabId+'","device":"'+sDevId+'","state":"'+this.value+'"}}';
+			if('all' in aValues && aValues['all'] == 1) {
+				var json = '{"message":"send","code":{"location":"'+sTabId+'","device":"'+sDevId+'","state":"'+this.value+'","values":{"all": 1}}}';
+			} else {
+				var json = '{"message":"send","code":{"location":"'+sTabId+'","device":"'+sDevId+'","state":"'+this.value+'"}}';
+			}
 			if(oWebsocket) {
 				oWebsocket.send(json);
 			} else {
@@ -218,7 +222,11 @@ function createScreenElement(sTabId, sDevId, aValues) {
 				if(i==4)
 					window.clearInterval(x);
 			}, 150);
-			var json = '{"message":"send","code":{"location":"'+sTabId+'","device":"'+sDevId+'","state":"'+this.value+'"}}'
+			if('all' in aValues && aValues['all'] == 1) {
+				var json = '{"message":"send","code":{"location":"'+sTabId+'","device":"'+sDevId+'","state":"'+this.value+'","values":{"all": 1}}}';
+			} else {
+				var json = '{"message":"send","code":{"location":"'+sTabId+'","device":"'+sDevId+'","state":"'+this.value+'"}}'
+			}
 			if(oWebsocket) {
 				oWebsocket.send(json);
 			} else {
@@ -241,7 +249,11 @@ function createScreenElement(sTabId, sDevId, aValues) {
 				if(i==4)
 					window.clearInterval(x);
 			}, 150);
-			var json = '{"message":"send","code":{"location":"'+sTabId+'","device":"'+sDevId+'","state":"'+this.value+'"}}';
+			if('all' in aValues && aValues['all'] == 1) {
+				var json = '{"message":"send","code":{"location":"'+sTabId+'","device":"'+sDevId+'","state":"'+this.value+'","values":{"all": 1}}}';
+			} else {
+				var json = '{"message":"send","code":{"location":"'+sTabId+'","device":"'+sDevId+'","state":"'+this.value+'"}}'
+			}
 			if(oWebsocket) {
 				oWebsocket.send(json);
 			} else {
@@ -289,7 +301,11 @@ function createDimmerElement(sTabId, sDevId, aValues) {
 		$('#'+sTabId+'_'+sDevId+'_switch').slider();
 		$('#'+sTabId+'_'+sDevId+'_switch').bind("change", function(event, ui) {
 			event.stopPropagation();
-			var json = '{"message":"send","code":{"location":"'+sTabId+'","device":"'+sDevId+'","state":"'+this.value+'"}}';
+			if('all' in aValues && aValues['all'] == 1) {
+				var json = '{"message":"send","code":{"location":"'+sTabId+'","device":"'+sDevId+'","state":"'+this.value+'","values":{"all": 1}}}';
+			} else {
+				var json = '{"message":"send","code":{"location":"'+sTabId+'","device":"'+sDevId+'","state":"'+this.value+'"}}';
+			}
 			if(oWebsocket) {
 				oWebsocket.send(json);
 			} else {
