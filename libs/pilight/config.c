@@ -882,7 +882,8 @@ int config_check_id(int i, JsonNode *jsetting, struct conf_devices_t *device) {
 	struct protocols_t *tmp_protocols = NULL;
 
 	int match1 = 0, match2 = 0, match3 = 0, has_id = 0;
-	int valid_values = 0, nrprotocols = 0, nrid = 0, nrids1 = 0;
+	int valid_values = 0, nrprotocols = 0, nrids1 = 0;
+	unsigned short nrid = 0;
 	int nrids2 = 0, have_error = 0, etype = 0;
 
 	/* Variable holders for casting */
