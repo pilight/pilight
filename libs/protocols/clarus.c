@@ -176,7 +176,7 @@ int clarusSwCreateCode(JsonNode *code) {
 	if(strcmp(id, "-1") == 0 || unit == -1 || state == -1) {
 		logprintf(LOG_ERR, "clarus_switch: insufficient number of arguments");
 		return EXIT_FAILURE;
-	} else if((int)(id[0]) < 65 || (int)(id[0]) > 69) {
+	} else if((int)(id[0]) < 65 || (int)(id[0]) > 70) {
 		logprintf(LOG_ERR, "clarus_switch: invalid id range");
 		return EXIT_FAILURE;
 	} else if(atoi(&id[1]) < 0 || atoi(&id[1]) > 31) {
@@ -220,7 +220,7 @@ void clarusSwInit(void) {
 	options_add(&clarus_switch->options, 't', "on", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
 	options_add(&clarus_switch->options, 'f', "off", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
 	options_add(&clarus_switch->options, 'u', "unit", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, NULL, "^([0-9]|[1-5][0-9]|6[0-3])$");
-	options_add(&clarus_switch->options, 'i', "id", OPTION_HAS_VALUE, CONFIG_ID, JSON_STRING, NULL, "^[ABCDE](3[012]?|[012][0-9]|[0-9]{1})$");
+	options_add(&clarus_switch->options, 'i', "id", OPTION_HAS_VALUE, CONFIG_ID, JSON_STRING, NULL, "^[ABCDEF](3[012]?|[012][0-9]|[0-9]{1})$");
 
 	options_add(&clarus_switch->options, 0, "gui-readonly", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 	

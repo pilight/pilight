@@ -36,7 +36,9 @@ typedef enum {
 	SCREEN,
 	CONTACT,
 	PENDINGSW,
-	DATETIME
+	DATETIME,
+	XBMC,
+	LIRC
 } devtype_t;
 
 typedef struct protocol_devices_t {
@@ -74,6 +76,7 @@ typedef struct protocol_t {
 	short txrpt;
 	short rxrpt;
 	short multipleId;
+	short config;
 	unsigned short lsb;
 	struct options_t *options;
 	JsonNode *message;

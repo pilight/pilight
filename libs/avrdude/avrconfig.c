@@ -52,12 +52,12 @@ void free_token(TOKEN * tkn)
       case TKN_STRING:
       case TKN_ID:
         if (tkn->value.string)
-          free(tkn->value.string);
+          sfree((void *)&tkn->value.string);
         tkn->value.string = NULL;
         break;
     }
 
-    free(tkn);
+    sfree((void *)&tkn);
   }
 }
 

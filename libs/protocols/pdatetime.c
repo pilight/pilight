@@ -34,6 +34,7 @@
 #include <sys/wait.h>
 #include <netdb.h>
 #include <stdint.h>
+#include <time.h>
 
 #include "../../pilight.h"
 #include "common.h"
@@ -152,13 +153,13 @@ void *pdateTimeParse(void *param) {
 	struct JsonNode *jid = NULL;
 	struct JsonNode *jchild = NULL;
 	struct JsonNode *jchild1 = NULL;
-	char *slongitude = NULL, *slatitude = NULL, *tz = NULL;
+	char *slongitude = NULL, *slatitude = NULL, *tz = NULL, *ntpserver = NULL;
 	double longitude = 0, latitude = 0;
-	int nrloops = 0, interval = 86400;
+	int interval = 86400;
 	
-	time_t nntptime = -1, ntptime = time(NULL);
+	time_t t = -1, ntp = -1;
 	struct tm *tm;
-	int x = 0;
+	int x = 0, diff = 0;
 
 	pdatetime_threads++;
 
@@ -183,6 +184,13 @@ void *pdateTimeParse(void *param) {
 					strcpy(slatitude, jchild1->string_);
 					latitude = atof(jchild1->string_);
 				}
+				if(strcmp(jchild1->key, "ntpserver") == 0) {
+					if(!(ntpserver = malloc(strlen(jchild1->string_)+1))) {
+						logprintf(LOG_ERR, "out of memory");
+						exit(EXIT_FAILURE);
+					}
+					strcpy(ntpserver, jchild1->string_);
+				}
 				jchild1 = jchild1->next;
 			}
 			if(slongitude == NULL && slatitude == NULL) {
@@ -199,54 +207,52 @@ void *pdateTimeParse(void *param) {
 	}
 
 	while(pdatetime_loop) {
-		if(protocol_thread_wait(thread, 1, &nrloops) == ETIMEDOUT) {
-			if(x == interval || nntptime == -1) {
-				nntptime = getntptime("0.south-america.pool.ntp.org");
-				if(nntptime > -1) {
-					ntptime = nntptime;
-				} else {
-					ntptime = time(NULL);
-				}
-				x = 0;
+		t = time(NULL);	
+		if(x == interval || (ntp == -1 && ntpserver != NULL && strlen(ntpserver) > 0)) {
+			ntp = getntptime(ntpserver);
+			if(ntp > -1) {
+				diff = (int)(t - ntp);
 			}
-			ntptime++;
-		
-			pdatetime->message = json_mkobject();
-			
-			JsonNode *code = json_mkobject();
-
-			tm = localtztime(tz, ntptime);
-
-			int year = tm->tm_year+1900;
-			int month = tm->tm_mon+1;
-			int day = tm->tm_mday;
-			int hour = tm->tm_hour;
-			int minute = tm->tm_min;
-			int second = tm->tm_sec;
-
-			json_append_member(code, "longitude", json_mkstring(slongitude));
-			json_append_member(code, "latitude", json_mkstring(slatitude));
-			json_append_member(code, "year", json_mknumber(year));
-			json_append_member(code, "month", json_mknumber(month));
-			json_append_member(code, "day", json_mknumber(day));
-			json_append_member(code, "hour", json_mknumber(hour));
-			json_append_member(code, "minute", json_mknumber(minute));
-			json_append_member(code, "second", json_mknumber(second));
-
-			json_append_member(pdatetime->message, "message", code);
-			json_append_member(pdatetime->message, "origin", json_mkstring("receiver"));
-			json_append_member(pdatetime->message, "protocol", json_mkstring(pdatetime->id));
-
-			pilight.broadcast(pdatetime->id, pdatetime->message);
-			json_delete(pdatetime->message);
-			pdatetime->message = NULL;
-			if(x == 0) {
-				time_t midnight = (datetime2ts(year, month, day, 23, 59, 59, 0)+1);
-				time_t timenow = datetime2ts(year, month, day, hour, minute, second, 0);		
-				interval = (int)(midnight-timenow);
-			}
-			x++;
+			x = 0;
 		}
+
+		pdatetime->message = json_mkobject();
+
+		JsonNode *code = json_mkobject();
+
+		t += diff;
+		tm = localtztime(tz, t);
+
+		int year = tm->tm_year+1900;
+		int month = tm->tm_mon+1;
+		int day = tm->tm_mday;
+		int hour = tm->tm_hour;
+		int minute = tm->tm_min;
+		int second = tm->tm_sec;
+
+		json_append_member(code, "longitude", json_mkstring(slongitude));
+		json_append_member(code, "latitude", json_mkstring(slatitude));
+		json_append_member(code, "year", json_mknumber(year));
+		json_append_member(code, "month", json_mknumber(month));
+		json_append_member(code, "day", json_mknumber(day));
+		json_append_member(code, "hour", json_mknumber(hour));
+		json_append_member(code, "minute", json_mknumber(minute));
+		json_append_member(code, "second", json_mknumber(second));
+
+		json_append_member(pdatetime->message, "message", code);
+		json_append_member(pdatetime->message, "origin", json_mkstring("receiver"));
+		json_append_member(pdatetime->message, "protocol", json_mkstring(pdatetime->id));
+
+		pilight.broadcast(pdatetime->id, pdatetime->message);
+		json_delete(pdatetime->message);
+		pdatetime->message = NULL;
+		if(x == 0) {
+			time_t midnight = (datetime2ts(year, month, day, 23, 59, 59, 0)+1);
+			time_t timenow = datetime2ts(year, month, day, hour, minute, second, 0);		
+			interval = (int)(midnight-timenow);
+		}
+		x++;
+		sleep(1);
 	}
 
 close:
@@ -256,7 +262,10 @@ close:
 	if(slongitude) {
 		sfree((void *)&slongitude);
 	}
-	
+	if(ntpserver) {
+		sfree((void *)&ntpserver);
+	}
+
 	pdatetime_threads--;
 	return (void *)NULL;
 }
@@ -291,6 +300,7 @@ void pdateTimeInit(void) {
 
 	options_add(&pdatetime->options, 'o', "longitude", OPTION_HAS_VALUE, CONFIG_ID, JSON_STRING, NULL, NULL);
 	options_add(&pdatetime->options, 'a', "latitude", OPTION_HAS_VALUE, CONFIG_ID, JSON_STRING, NULL, NULL);
+	options_add(&pdatetime->options, 'n', "ntpserver", OPTION_HAS_VALUE, CONFIG_ID, JSON_STRING, NULL, NULL);
 	options_add(&pdatetime->options, 'y', "year", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, NULL, "^[0-9]{3,4}$");
 	options_add(&pdatetime->options, 'm', "month", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, NULL, "^[0-9]{3,4}$");
 	options_add(&pdatetime->options, 'd', "day", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, NULL, NULL);

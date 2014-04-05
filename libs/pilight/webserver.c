@@ -867,7 +867,9 @@ void *webserver_broadcast(void *param) {
 
 int webserver_handler(struct mg_connection *conn, enum mg_event ev) {
 	if(ev == MG_REQUEST || (ev == MG_POLL && !conn->is_websocket)) {
-		if(ev == MG_POLL || webserver_connect_handler(conn) == MG_TRUE) {
+		if(ev == MG_POLL || 
+		  (!conn->is_websocket && webserver_connect_handler(conn) == MG_TRUE) || 
+		  conn->is_websocket) {
 			return webserver_request_handler(conn);
 		} else {
 			return MG_FALSE;

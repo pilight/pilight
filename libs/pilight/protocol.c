@@ -139,6 +139,12 @@
 #ifdef PROTOCOL_DATETIME
 	#include "../protocols/pdatetime.h"
 #endif
+#ifdef PROTOCOL_XBMC
+	#include "../protocols/xbmc.h"
+#endif
+#ifdef PROTOCOL_LIRC
+	#include "../protocols/lirc.h"
+#endif
 
 void protocol_init(void) {
 	pilightFirmwareInit();
@@ -177,7 +183,7 @@ void protocol_init(void) {
 	rawInit();
 #endif
 #ifdef PROTOCOL_REV
-        revInit();
+	revInit();
 #endif
 #ifdef PROTOCOL_ALECTO
 	alectoInit();
@@ -252,6 +258,12 @@ void protocol_init(void) {
 #ifdef PROTOCOL_DATETIME
 	pdateTimeInit();
 #endif
+#ifdef PROTOCOL_XBMC
+	xbmcInit();
+#endif
+#ifdef PROTOCOL_LIRC
+	lircInit();
+#endif
 }
 
 void protocol_register(protocol_t **proto) {
@@ -272,6 +284,7 @@ void protocol_register(protocol_t **proto) {
 	(*proto)->hwtype = 1;
 	(*proto)->rxrpt = 1;
 	(*proto)->multipleId = 1;
+	(*proto)->config = 1;
 	(*proto)->parseRaw = NULL;
 	(*proto)->parseBinary = NULL;
 	(*proto)->parseCode = NULL;
@@ -467,7 +480,7 @@ int protocol_gc(void) {
 		logprintf(LOG_DEBUG, "protocol %s", ptmp->listener->id);
 		if(ptmp->listener->threadGC) {
 			ptmp->listener->threadGC();
-			logprintf(LOG_DEBUG, "ran garbage collector");
+			logprintf(LOG_DEBUG, "stopped protocol threads");
 		}		
 		if(ptmp->listener->gc) {
 			ptmp->listener->gc();

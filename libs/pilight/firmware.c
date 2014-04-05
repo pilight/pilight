@@ -437,37 +437,37 @@ int firmware_identifymp(struct avrpart **p) {
 main_exit:
 	pgm->close(pgm);
 
-	free(pgm);
+	sfree((void *)&pgm);
 
 	for(i=0;i<AVR_OP_MAX;i++) {
-		free((*p)->op[i]);
+		sfree((void *)&(*p)->op[i]);
 	}
 
 	for(i=0;i<AVR_OP_MAX;i++) {
-		free((*p)->sigmem->op[i]);
+		sfree((void *)&(*p)->sigmem->op[i]);
 	}
-	free((*p)->sigmem->buf);
-	free((*p)->sigmem);
+	sfree((void *)&(*p)->sigmem->buf);
+	sfree((void *)&(*p)->sigmem);
 
 	for(i=0;i<AVR_OP_MAX;i++) {
-		free((*p)->flashmem->op[i]);
+		sfree((void *)&(*p)->flashmem->op[i]);
 	}
-	free((*p)->flashmem->buf);
-	free((*p)->flashmem);
+	sfree((void *)&(*p)->flashmem->buf);
+	sfree((void *)&(*p)->flashmem);
 
 	for(i=0;i<AVR_OP_MAX;i++) {
-		free((*p)->hfusemem->op[i]);
+		sfree((void *)&(*p)->hfusemem->op[i]);
 	}
-	free((*p)->hfusemem->buf);
-	free((*p)->hfusemem);
+	sfree((void *)&(*p)->hfusemem->buf);
+	sfree((void *)&(*p)->hfusemem);
 
 	for(i=0;i<AVR_OP_MAX;i++) {
-		free((*p)->lfusemem->op[i]);
+		sfree((void *)&(*p)->lfusemem->op[i]);
 	}
-	free((*p)->lfusemem->buf);
-	free((*p)->lfusemem);
+	sfree((void *)&(*p)->lfusemem->buf);
+	sfree((void *)&(*p)->lfusemem);
 
-	free(*p);
+	sfree((void *)&*p);
 
 	return exitrc;
 }
@@ -755,77 +755,77 @@ int firmware_write(char *filename, struct avrpart **p) {
 main_exit:
 	pgm->close(pgm);
 
-	free(pgm);
+	sfree((void *)&pgm);
 
-	free(wfile->memtype);
-	free(wfile->filename);
-	free(wfile);
+	sfree((void *)&wfile->memtype);
+	sfree((void *)&wfile->filename);
+	sfree((void *)&wfile);
 
 	if(vfile) {
-		free(vfile->memtype);
-		free(vfile->filename);
-		free(vfile);
+		sfree((void *)&vfile->memtype);
+		sfree((void *)&vfile->filename);
+		sfree((void *)&vfile);
 	}
 
-	free(whfuse->memtype);
-	free(whfuse->filename);
-	free(whfuse);
+	sfree((void *)&whfuse->memtype);
+	sfree((void *)&whfuse->filename);
+	sfree((void *)&whfuse);
 
 	if(vhfuse) {
-		free(vhfuse->memtype);
-		free(vhfuse->filename);
-		free(vhfuse);
+		sfree((void *)&vhfuse->memtype);
+		sfree((void *)&vhfuse->filename);
+		sfree((void *)&vhfuse);
 	}
 
-	free(wlfuse->memtype);
-	free(wlfuse->filename);
-	free(wlfuse);
+	sfree((void *)&wlfuse->memtype);
+	sfree((void *)&wlfuse->filename);
+	sfree((void *)&wlfuse);
 
 	if(vlfuse) {
-		free(vlfuse->memtype);
-		free(vlfuse->filename);
-		free(vlfuse);
+		sfree((void *)&vlfuse->memtype);
+		sfree((void *)&vlfuse->filename);
+		sfree((void *)&vlfuse);
 	}
 
 	for(i=0;i<AVR_OP_MAX;i++) {
-		free((*p)->op[i]);
+		sfree((void *)&(*p)->op[i]);
 	}
 
 	for(i=0;i<AVR_OP_MAX;i++) {
-		free((*p)->sigmem->op[i]);
+		sfree((void *)&(*p)->sigmem->op[i]);
 	}
-	free((*p)->sigmem->buf);
-	free((*p)->sigmem);
+	sfree((void *)&(*p)->sigmem->buf);
+	sfree((void *)&(*p)->sigmem);
 
 	for(i=0;i<AVR_OP_MAX;i++) {
-		free((*p)->flashmem->op[i]);
+		sfree((void *)&(*p)->flashmem->op[i]);
 	}
-	free((*p)->flashmem->buf);
-	free((*p)->flashmem);
+	sfree((void *)&(*p)->flashmem->buf);
+	sfree((void *)&(*p)->flashmem);
 
 	for(i=0;i<AVR_OP_MAX;i++) {
-		free((*p)->hfusemem->op[i]);
+		sfree((void *)&(*p)->hfusemem->op[i]);
 	}
-	free((*p)->hfusemem->buf);
-	free((*p)->hfusemem);
+	sfree((void *)&(*p)->hfusemem->buf);
+	sfree((void *)&(*p)->hfusemem);
 
 	for(i=0;i<AVR_OP_MAX;i++) {
-		free((*p)->lfusemem->op[i]);
+		sfree((void *)&(*p)->lfusemem->op[i]);
 	}
-	free((*p)->lfusemem->buf);
-	free((*p)->lfusemem);
+	sfree((void *)&(*p)->lfusemem->buf);
+	sfree((void *)&(*p)->lfusemem);
 
-	free(v->flashmem->buf);
-	free(v->flashmem);
-	free(v->sigmem->buf);
-	free(v->sigmem);
-	free(v->lfusemem->buf);
-	free(v->lfusemem);
-	free(v->hfusemem->buf);
-	free(v->hfusemem);
+	sfree((void *)&v->flashmem->buf);
+	sfree((void *)&v->flashmem);
+	sfree((void *)&v->sigmem->buf);
+	sfree((void *)&v->sigmem);
+	sfree((void *)&v->lfusemem->buf);
+	sfree((void *)&v->lfusemem);
+	sfree((void *)&v->hfusemem->buf);
+	sfree((void *)&v->hfusemem);
 
-	free(*p);
-	free(v);
+	sfree((void *)&*p);
+	sfree((void *)&v);
 
 	logprintf(LOG_INFO, "Finished updating firmware");
 
@@ -839,7 +839,7 @@ int firmware_check(char **output) {
 	int version = 0;
 
 	if((d = opendir(FIRMWARE_PATH))) {
-		while((file = readdir(d)) !=  NULL) {
+		while((file = readdir(d)) != NULL) {
 			if(file->d_type == DT_REG) {
 				if(strncmp(file->d_name, "pilight_firmware", 16) == 0) {
 					sscanf(file->d_name, "pilight_firmware_v%d.hex", &tmp);

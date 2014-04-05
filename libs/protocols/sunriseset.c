@@ -161,14 +161,14 @@ void *sunRiseSetParse(void *param) {
 			month = current->tm_mon+1;
 			mday = current->tm_mday;
 			year = current->tm_year+1900;
-			
+
 			time_t midnight = (datetime2ts(year, month, mday, 23, 59, 59, 0)+1);
 			time_t sunset = 0;
 			time_t sunrise = 0;
 			offset = tzoffset(UTC, tz);
 
 			sunriseset->message = json_mkobject();
-			
+
 			JsonNode *code = json_mkobject();
 			int risetime = (int)sunRiseSetCalculate(year, month, mday, longitude, latitude, 1, offset);
 			int hour = (int)round(risetime/100);
@@ -179,15 +179,9 @@ void *sunRiseSetParse(void *param) {
 			min = (settime - (hour*100));
 			sunset = datetime2ts(year, month, mday, hour, min, 0, 0);
 
-			/* Send message when sun rises */
-			if(sunrise > timenow) {
-				interval = (int)(sunrise-timenow);
-			/* Send message when sun sets */
-			} else if(sunset > timenow) {
-				interval = (int)(sunset-timenow);
-			/* Update all values when a new day arrives */
-			} else {
-				interval = (int)(midnight-timenow);
+			if(isdst(tz)) {
+				sunrise -= 3600;
+				sunset -= 3600;
 			}
 
 			json_append_member(code, "longitude", json_mkstring(slongitude));
@@ -207,8 +201,20 @@ void *sunRiseSetParse(void *param) {
 			pilight.broadcast(sunriseset->id, sunriseset->message);
 			json_delete(sunriseset->message);
 			sunriseset->message = NULL;
+
 			// Wait for 1 minute so we make sure the new interval is set
 			protocol_thread_wait(thread, 60, &nrloops);
+			
+			/* Send message when sun rises */
+			if(sunrise > timenow) {
+				interval = (int)(sunrise-timenow);
+			/* Send message when sun sets */
+			} else if(sunset > timenow) {
+				interval = (int)(sunset- timenow);
+			/* Update all values when a new day arrives */
+			} else {
+				interval = (int)(midnight-timenow);
+			}			
 		}
 	}
 

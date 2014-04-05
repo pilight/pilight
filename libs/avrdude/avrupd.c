@@ -94,8 +94,8 @@ AVRUPD * parse_op(char * s)
             "    r = read device\n"
             "    w = write device\n"
             "    v = verify device");
-    free(upd->memtype);
-    free(upd);
+    sfree((void *)&upd->memtype);
+    sfree((void *)&upd);
     return NULL;
   }
 
@@ -103,8 +103,8 @@ AVRUPD * parse_op(char * s)
 
   if (*p != ':') {
     logprintf(LOG_ERR, "invalid update specification");
-    free(upd->memtype);
-    free(upd);
+    sfree((void *)&upd->memtype);
+    sfree((void *)&upd);
     return NULL;
   }
 
@@ -144,16 +144,16 @@ AVRUPD * parse_op(char * s)
       case 'o': upd->format = FMT_OCT; break;
       default:
         logprintf(LOG_ERR, "invalid file format '%s' in update specifier", p);
-        free(upd->memtype);
-        free(upd);
+        sfree((void *)&upd->memtype);
+        sfree((void *)&upd);
         return NULL;
     }
   }
 
   if (upd->filename == NULL) {
 	logprintf(LOG_ERR, "out of memory");
-    free(upd->memtype);
-    free(upd);
+    sfree((void *)&upd->memtype);
+    sfree((void *)&upd);
     return NULL;
   }
   memcpy(upd->filename, cp, fnlen);
@@ -326,15 +326,15 @@ int do_op(PROGRAMMER * pgm, struct avrpart * p, AVRUPD * upd, int nowrite,
 
       logprintf(LOG_INFO, "%d bytes of %s verified", rc, mem->desc);
 
-	free(v->sigmem->buf);
-	free(v->sigmem);
-	free(v->flashmem->buf);
-	free(v->flashmem);
-	free(v->hfusemem->buf);
-	free(v->hfusemem);
-	free(v->lfusemem->buf);
-	free(v->lfusemem);
-	free(v);
+	sfree((void *)&v->sigmem->buf);
+	sfree((void *)&v->sigmem);
+	sfree((void *)&v->flashmem->buf);
+	sfree((void *)&v->flashmem);
+	sfree((void *)&v->hfusemem->buf);
+	sfree((void *)&v->hfusemem);
+	sfree((void *)&v->lfusemem->buf);
+	sfree((void *)&v->lfusemem);
+	sfree((void *)&v);
   }
   else {
     logprintf(LOG_ERR, "invalid update operation (%d) requested", upd->op);

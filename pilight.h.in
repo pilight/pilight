@@ -59,6 +59,7 @@
 #cmakedefine PROTOCOL_KAKU_CONTACT
 #cmakedefine PROTOCOL_LM75
 #cmakedefine PROTOCOL_LM76
+#cmakedefine PROTOCOL_LIRC
 #cmakedefine PROTOCOL_MUMBI_SWITCH
 #cmakedefine PROTOCOL_NEXA_SWITCH
 #cmakedefine PROTOCOL_OPENWEATHERMAP
@@ -75,6 +76,7 @@
 #cmakedefine PROTOCOL_THREECHAN
 #cmakedefine PROTOCOL_WUNDERGROUND
 #cmakedefine PROTOCOL_X10
+#cmakedefine PROTOCOL_XBMC
 
 /* Hardware support */
 

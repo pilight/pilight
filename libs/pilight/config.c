@@ -1456,7 +1456,8 @@ int config_parse_locations(JsonNode *jlocations, struct conf_locations_t *locati
 					protocol_t *protocol = NULL;	
 					while(tmp_protocols) {
 						protocol = tmp_protocols->listener;
-						if(protocol_device_exists(protocol, jprotocol->string_) == 0 && match == 0) {
+						if(protocol_device_exists(protocol, jprotocol->string_) == 0 && match == 0
+						   && protocol->config == 1) {
 							if(ptype == -1) {
 								ptype = protocol->hwtype;
 								match = 1;
