@@ -342,7 +342,7 @@ static int webserver_request_handler(struct mg_connection *conn) {
 						logprintf(LOG_ERR, "out of memory");
 						exit(EXIT_FAILURE);
 					}
-					memset(request, '\0', strlen(webserver_root)+strlen(pch)+3);
+					memset(request, '\0', strlen(webserver_root)+strlen(webgui_tpl)+strlen(pch)+4);
 					if(webserver_root[strlen(webserver_root)-1] == '/') {
 #ifdef __FreeBSD__
 						sprintf(request, "%s%s/%s%s", webserver_root, webgui_tpl, conn->uri, pch);

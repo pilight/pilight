@@ -79,6 +79,9 @@
 #ifdef PROTOCOL_GENERIC_DIMMER
 	#include "../protocols/generic_dimmer.h"
 #endif
+#ifdef PROTOCOL_GENERIC_WEBCAM
+	#include "../protocols/generic_webcam.h"
+#endif
 #ifdef PROTOCOL_DS18B20
 	#include "../protocols/ds18b20.h"
 #endif
@@ -198,6 +201,9 @@ void protocol_init(void) {
 #endif
 #ifdef PROTOCOL_GENERIC_DIMMER
 	genDimInit();
+#endif
+#ifdef PROTOCOL_GENERIC_WEBCAM
+	genWebcamInit();
 #endif
 #ifdef PROTOCOL_DS18B20
 	ds18b20Init();

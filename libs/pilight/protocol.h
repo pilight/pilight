@@ -38,7 +38,8 @@ typedef enum {
 	PENDINGSW,
 	DATETIME,
 	XBMC,
-	LIRC
+	LIRC,
+	WEBCAM
 } devtype_t;
 
 typedef struct protocol_devices_t {

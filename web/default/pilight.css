@@ -142,6 +142,13 @@ div.screen {
 	right: -100px;
 }
 
+div.webcam_image {
+	position: absolute;
+	float: right;
+	right: 20px;
+	top: 14px;
+}
+
 .ui-loader-background {
     width:100%;
     height:100%;
