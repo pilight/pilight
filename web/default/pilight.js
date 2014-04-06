@@ -154,6 +154,7 @@ function createPendingSwitchElement(sTabId, sDevId, aValues) {
 		$('#'+sTabId+'_'+sDevId+'_pendingsw').slider();
 		
 		$('#'+sTabId+'_'+sDevId+'_pendingsw').bind("change", function(event, ui) {
+			$('#'+sTabId+'_'+sDevId+'_pendingsw').blur();
 			event.stopPropagation();
 			$('#'+sTabId+'_'+sDevId+'_pendingsw').slider('disable');
 			$('#'+sTabId+'_'+sDevId).addClass('pending');
@@ -393,16 +394,6 @@ function createWeatherElement(sTabId, sDevId, aValues) {
 		if('name' in aValues) {
 			oTab.append($('<li class="weather" id="'+sTabId+'_'+sDevId+'_weather" data-icon="false">'+aValues['name']+'</li>'));
 		}
-		if('gui-show-battery' in aValues && aValues['gui-show-battery'] && 'battery' in aValues) {
-			oTab.find('#'+sTabId+'_'+sDevId+'_weather').append($('<div id="'+sTabId+'_'+sDevId+'_batt" class="battery"></div>'));
-			if('battery' in aValues) {
-				if(aValues['battery']) {
-					$('#'+sTabId+'_'+sDevId+'_batt').addClass('green');
-				} else {
-					$('#'+sTabId+'_'+sDevId+'_batt').addClass('red');
-				}
-			}
-		}
 		if('gui-show-update' in aValues && aValues['gui-show-update']) {
 			oTab.find('#'+sTabId+'_'+sDevId+'_weather').append($('<div class="update_icon" id="'+sTabId+'_'+sDevId+'_upd" title="update">&nbsp;</div>'));
 			$('#'+sTabId+'_'+sDevId+'_upd').click(function() {
@@ -415,7 +406,17 @@ function createWeatherElement(sTabId, sDevId, aValues) {
 					window.setTimeout(function() { bSending = false; }, 1000);
 				}
 			});
-		}		
+		}
+		if('gui-show-battery' in aValues && aValues['gui-show-battery'] && 'battery' in aValues) {
+			oTab.find('#'+sTabId+'_'+sDevId+'_weather').append($('<div id="'+sTabId+'_'+sDevId+'_batt" class="battery"></div>'));
+			if('battery' in aValues) {
+				if(aValues['battery']) {
+					$('#'+sTabId+'_'+sDevId+'_batt').addClass('green');
+				} else {
+					$('#'+sTabId+'_'+sDevId+'_batt').addClass('red');
+				}
+			}
+		}	
 		if('gui-show-humidity' in aValues && aValues['gui-show-humidity'] && 'humidity' in aValues) {
 			oTab.find('#'+sTabId+'_'+sDevId+'_weather').append($('<div class="humidity_icon"></div><div class="humidity" id="'+sTabId+'_'+sDevId+'_humi">'+aValues['humidity'].toFixed(aValues['gui-decimals'])+'</div>'));
 		}
@@ -554,6 +555,155 @@ function createWebcamElement(sTabId, sDevId, aValues) {
 	}
 }
 
+function createXBMCElement(sTabId, sDevId, aValues) {
+	if($('#'+sTabId+'_'+sDevId+'_xbmc').length == 0) {
+		if(bShowTabs) {
+			oTab = $('#'+sTabId).find('ul');
+		} else {
+			oTab = $('#all');
+		}
+		if('name' in aValues) {
+			oTab.append($('<li class="xbmc" id="'+sTabId+'_'+sDevId+'_xbmc" data-icon="false">'+aValues['name']+'</li>'));
+		}
+		if('gui-show-action' in aValues && aValues['gui-show-action']) {
+			oTab.find('#'+sTabId+'_'+sDevId+'_xbmc').append($('<div class="action_icon" id="'+sTabId+'_'+sDevId+'_action">&nbsp;</div>'));
+			if('action' in aValues) {
+				if(aValues['action'] == "play") {
+					$('#'+sTabId+'_'+sDevId+'_action').addClass('play');
+				} else if(aValues['action'] == "pause") {
+					$('#'+sTabId+'_'+sDevId+'_action').addClass('pause');
+				} else if(aValues['action'] == "stop") {
+					$('#'+sTabId+'_'+sDevId+'_action').addClass('stop');
+				} else if(aValues['action'] == "active") {
+					$('#'+sTabId+'_'+sDevId+'_action').addClass('screen_active');
+				} else if(aValues['action'] == "inactive") {
+					$('#'+sTabId+'_'+sDevId+'_action').addClass('screen_inactive');
+				} else if(aValues['action'] == "shutdown") {
+					$('#'+sTabId+'_'+sDevId+'_action').addClass('shutdown');
+				} else if(aValues['action'] == "home") {
+					$('#'+sTabId+'_'+sDevId+'_action').addClass('home');
+				}
+			}
+		}
+		if('gui-show-media' in aValues && aValues['gui-show-media']) {
+			oTab.find('#'+sTabId+'_'+sDevId+'_xbmc').append($('<div class="media_icon" id="'+sTabId+'_'+sDevId+'_media">&nbsp;</div>'));
+			if('media' in aValues) {
+				if(aValues['media'] == "movie") {
+					$('#'+sTabId+'_'+sDevId+'_media').addClass('movie');
+				} else if(aValues['media'] == "episode") {
+					$('#'+sTabId+'_'+sDevId+'_media').addClass('episode');
+				} else if(aValues['media'] == "song") {
+					$('#'+sTabId+'_'+sDevId+'_media').addClass('song');
+				}
+			}
+		}
+	} else {
+		if('gui-show-action' in aValues && aValues['gui-show-action']) {
+			if($('#'+sTabId+'_'+sDevId+'_action').attr("class").indexOf("play") != -1) {
+				$('#'+sTabId+'_'+sDevId+'_action').removeClass("play");
+			}
+			if($('#'+sTabId+'_'+sDevId+'_action').attr("class").indexOf("pause") != -1) {
+				$('#'+sTabId+'_'+sDevId+'_action').removeClass("pause");
+			}
+			if($('#'+sTabId+'_'+sDevId+'_action').attr("class").indexOf("stop") != -1) {
+				$('#'+sTabId+'_'+sDevId+'_action').removeClass("stop");
+			}
+			if($('#'+sTabId+'_'+sDevId+'_action').attr("class").indexOf("screen_active") != -1) {
+				$('#'+sTabId+'_'+sDevId+'_action').removeClass("screen_active");
+			}
+			if($('#'+sTabId+'_'+sDevId+'_action').attr("class").indexOf("screen_inactive") != -1) {
+				$('#'+sTabId+'_'+sDevId+'_action').removeClass("screen_inactive");
+			}
+			if($('#'+sTabId+'_'+sDevId+'_action').attr("class").indexOf("shutdown") != -1) {
+				$('#'+sTabId+'_'+sDevId+'_action').removeClass("shutdown");
+			}
+			if($('#'+sTabId+'_'+sDevId+'_action').attr("class").indexOf("home") != -1) {
+				$('#'+sTabId+'_'+sDevId+'_action').removeClass("home");
+			}
+			if(aValues['action'] == "play") {
+				$('#'+sTabId+'_'+sDevId+'_action').addClass('play');
+			} else if(aValues['action'] == "pause") {
+				$('#'+sTabId+'_'+sDevId+'_action').addClass('pause');
+			} else if(aValues['action'] == "stop") {
+				$('#'+sTabId+'_'+sDevId+'_action').addClass('stop');
+			} else if(aValues['action'] == "active") {
+				$('#'+sTabId+'_'+sDevId+'_action').addClass('screen_active');
+			} else if(aValues['action'] == "inactive") {
+				$('#'+sTabId+'_'+sDevId+'_action').addClass('screen_inactive');
+			} else if(aValues['action'] == "shutdown") {
+				$('#'+sTabId+'_'+sDevId+'_action').addClass('shutdown');
+			} else if(aValues['action'] == "home") {
+				$('#'+sTabId+'_'+sDevId+'_action').addClass('home');
+			}
+		}
+		if('gui-show-media' in aValues && aValues['gui-show-media']) {
+			if('media' in aValues) {
+				if($('#'+sTabId+'_'+sDevId+'_media').attr("class").indexOf("movie") != -1) {
+					$('#'+sTabId+'_'+sDevId+'_media').removeClass("movie");
+				}
+				if($('#'+sTabId+'_'+sDevId+'_media').attr("class").indexOf("episode") != -1) {
+					$('#'+sTabId+'_'+sDevId+'_media').removeClass("episode");
+				}
+				if($('#'+sTabId+'_'+sDevId+'_media').attr("class").indexOf("music") != -1) {
+					$('#'+sTabId+'_'+sDevId+'_media').removeClass("music");
+				}
+				if(aValues['media'] == "movie") {
+					$('#'+sTabId+'_'+sDevId+'_media').addClass('movie');
+				} else if(aValues['media'] == "episode") {
+					$('#'+sTabId+'_'+sDevId+'_media').addClass('episode');
+				} else if(aValues['media'] == "music") {
+					$('#'+sTabId+'_'+sDevId+'_media').addClass('music');
+				}
+			}
+		}			
+	}
+	oTab.listview();
+	oTab.listview("refresh");
+}
+
+function createDateTimeElement(sTabId, sDevId, aValues) {
+	aDateTime[sTabId+'_'+sDevId] = new Array();
+
+	if('month' in aValues && aValues['month'] < 10) {
+		aValues['month'] = '0'+aValues['month'];
+	}
+	if('day' in aValues && aValues['day'] < 10) {
+		aValues['day'] = '0'+aValues['day'];
+	}
+	if('hour' in aValues && aValues['hour'] < 10) {
+		aValues['hour'] = '0'+aValues['hour'];
+	}
+	if('minute' in aValues && aValues['minute'] < 10) {
+		aValues['minute'] = '0'+aValues['minute'];
+	}
+	if('second' in aValues && aValues['second'] < 10) {
+		aValues['second'] = '0'+aValues['second'];
+	}
+
+	aDateTime[sTabId+'_'+sDevId]['year'] = aValues['year'];
+	aDateTime[sTabId+'_'+sDevId]['month'] = aValues['month'];
+	aDateTime[sTabId+'_'+sDevId]['day'] = aValues['day'];
+	aDateTime[sTabId+'_'+sDevId]['hour'] = aValues['hour'];
+	aDateTime[sTabId+'_'+sDevId]['minute'] = aValues['minute'];
+	aDateTime[sTabId+'_'+sDevId]['second'] = aValues['second'];	
+
+	if($('#'+sTabId+'_'+sDevId+'_datetime').length == 0) {
+		if(bShowTabs) {
+			oTab = $('#'+sTabId).find('ul');
+		} else {
+			oTab = $('#all');
+		}	
+		if('name' in aValues) {
+			oTab.append($('<li id="'+sTabId+'_'+sDevId+'_datetime" data-icon="false">'+aValues['name']+'</li>'));
+			oTab.find('#'+sTabId+'_'+sDevId+'_datetime').append($('<div id="'+sTabId+'_'+sDevId+'_text" class="datetime">'+aValues['year']+'-'+aValues['month']+'-'+aValues['day']+' '+aValues['hour']+':'+aValues['minute']+':'+aValues['second']+'</div>'));
+		}
+	} else {
+		$('#'+sTabId+'_'+sDevId+'_text').text(aValues['year']+'-'+aValues['month']+'-'+aValues['day']+' '+aValues['hour']+':'+aValues['minute']+':'+aValues['second']);
+	}
+	oTab.listview();
+	oTab.listview("refresh");
+}
+
 function updateVersions() {
 	if(iPLVersion != iPLNVersion) {
 		if(iFWVersion > 0) {
@@ -635,6 +785,8 @@ function createGUI(data) {
 							createPendingSwitchElement(lindex, dindex, aValues);
 						} else if(aValues['type'] == 8) {
 							createDateTimeElement(lindex, dindex, aValues);
+						} else if(aValues['type'] == 9) {
+							createXBMCElement(lindex, dindex, aValues);
 						} else if(aValues['type'] == 11) {
 							createWebcamElement(lindex, dindex, aValues);
 						}
@@ -809,6 +961,67 @@ function parseData(data) {
 								if($('#'+lindex+'_'+dvalues+'_sunset_icon').attr("class").indexOf("blue") == -1) {
 									$('#'+lindex+'_'+dvalues+'_sunset_icon').removeClass('gray').addClass('blue');
 								}
+							}
+						}
+					} else if(iType == 9) {
+						if(vindex == "action" && $('#'+lindex+'_'+dvalues+'_action')) {
+							if($('#'+lindex+'_'+dvalues+'_action')) {
+								if($('#'+lindex+'_'+dvalues+'_action').attr("class").indexOf("play") != -1) {
+									$('#'+lindex+'_'+dvalues+'_action').removeClass("play");
+								}
+								if($('#'+lindex+'_'+dvalues+'_action').attr("class").indexOf("pause") != -1) {
+									$('#'+lindex+'_'+dvalues+'_action').removeClass("pause");
+								}
+								if($('#'+lindex+'_'+dvalues+'_action').attr("class").indexOf("stop") != -1) {
+									$('#'+lindex+'_'+dvalues+'_action').removeClass("stop");
+								}
+								if($('#'+lindex+'_'+dvalues+'_action').attr("class").indexOf("screen_active") != -1) {
+									$('#'+lindex+'_'+dvalues+'_action').removeClass("screen_active");
+								}
+								if($('#'+lindex+'_'+dvalues+'_action').attr("class").indexOf("screen_inactive") != -1) {
+									$('#'+lindex+'_'+dvalues+'_action').removeClass("screen_inactive");
+								}
+								if($('#'+lindex+'_'+dvalues+'_action').attr("class").indexOf("shutdown") != -1) {
+									$('#'+lindex+'_'+dvalues+'_action').removeClass("shutdown");
+								}
+								if($('#'+lindex+'_'+dvalues+'_action').attr("class").indexOf("home") != -1) {
+									$('#'+lindex+'_'+dvalues+'_action').removeClass("home");
+								}
+							}							
+							if(vvalues == "play") {
+								$('#'+lindex+'_'+dvalues+'_action').addClass("play");
+							} else if(vvalues == "pause") {
+								$('#'+lindex+'_'+dvalues+'_action').addClass("pause");
+							} else if(vvalues == "stop") {
+								$('#'+lindex+'_'+dvalues+'_action').addClass("stop");
+							} else if(vvalues == "active") {
+								$('#'+lindex+'_'+dvalues+'_action').addClass("screen_active");
+							} else if(vvalues == "inactive") {
+								$('#'+lindex+'_'+dvalues+'_action').addClass("screen_inactive");
+							} else if(vvalues == "shutdown") {
+								$('#'+lindex+'_'+dvalues+'_action').addClass("shutdown");
+							} else if(vvalues == "home") {
+								$('#'+lindex+'_'+dvalues+'_action').addClass("home");
+							}
+						}
+						if(vindex == "media" && $('#'+lindex+'_'+dvalues+'_media')) {
+							if($('#'+lindex+'_'+dvalues+'_media')) {
+								if($('#'+lindex+'_'+dvalues+'_media').attr("class").indexOf("movie") != -1) {
+									$('#'+lindex+'_'+dvalues+'_media').removeClass("movie");
+								}
+								if($('#'+lindex+'_'+dvalues+'_media').attr("class").indexOf("episode") != -1) {
+									$('#'+lindex+'_'+dvalues+'_media').removeClass("episode");
+								}
+								if($('#'+lindex+'_'+dvalues+'_media').attr("class").indexOf("song") != -1) {
+									$('#'+lindex+'_'+dvalues+'_media').removeClass("song");
+								}
+							}							
+							if(vvalues == "movie") {
+								$('#'+lindex+'_'+dvalues+'_media').addClass("movie");
+							} else if(vvalues == "episode") {
+								$('#'+lindex+'_'+dvalues+'_media').addClass("episode");
+							} else if(vvalues == "song") {
+								$('#'+lindex+'_'+dvalues+'_media').addClass("song");
 							}
 						}
 					}

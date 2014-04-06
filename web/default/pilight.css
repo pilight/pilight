@@ -53,7 +53,8 @@ div.ui-slider.ui-slider-switch {
 
 div.datetime, div.temperature, div.humidity, div.battery.red, div.update,
 div.battery.green, div.sunrise, div.sunset, div.sunset_icon.gray, 
-div.sunrise_icon.gray, div.sunset_icon.blue, div.sunrise_icon.yellow  {
+div.sunrise_icon.gray, div.sunset_icon.blue, div.sunrise_icon.yellow,
+div.media_icon, div.action_icon {
 	position: relative;
 	float: right;
 	padding: 4px;
@@ -100,13 +101,20 @@ div.sunset_icon.blue {
 	background: url('sunset_blue.png') 0px 0px no-repeat;
 }
 
-div.temperature_icon, div.humidity_icon, div.update_icon {
+div.temperature_icon, div.humidity_icon, 
+div.update_icon, div.action_icon,
+div.media_icon {
 	position: relative;
 	float: right;
 	font-size: 14px;
 	color: #aeaeae;
 	width: 16px;
 	height: 16px;
+}
+
+div.action_icon, div.media_icon {
+	width: 20px;
+	height: 20px;
 }
 
 div.temperature_icon, div.humidity_icon {
@@ -131,6 +139,46 @@ div.humidity_icon {
 
 div.update_icon {
 	background: url('update.png') 0px 0px no-repeat;
+}
+
+div.action_icon.play {
+	background: url('play.png') 0px 0px no-repeat;
+}
+
+div.action_icon.stop {
+	background: url('stop.png') 0px 0px no-repeat;
+}
+
+div.action_icon.pause {
+	background: url('pause.png') 0px 0px no-repeat;
+}
+
+div.action_icon.screen_active {
+	background: url('screen_active.png') 0px 0px no-repeat;
+}
+
+div.action_icon.screen_inactive {
+	background: url('screen_inactive.png') 0px 0px no-repeat;
+}
+
+div.action_icon.shutdown {
+	background: url('shutdown.png') 0px 0px no-repeat;
+}
+
+div.action_icon.home {
+	background: url('home.png') 0px 0px no-repeat;
+}
+
+div.media_icon.movie {
+	background: url('movie.png') 0px 0px no-repeat;
+}
+
+div.media_icon.episode {
+	background: url('episode.png') 0px 0px no-repeat;
+}
+
+div.media_icon.song {
+	background: url('song.png') 0px 0px no-repeat;
 }
 
 div.screen {

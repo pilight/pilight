@@ -56,6 +56,23 @@ struct xbmc_data_t *xbmc_data;
 unsigned short xbmc_loop = 1;
 unsigned short xbmc_threads = 0;
 
+void xbmcCreateMessage(char *server, int port, char *action, char *media) {
+	xbmc->message = json_mkobject();
+	JsonNode *code = json_mkobject();
+	json_append_member(code, "action", json_mkstring(action));
+	json_append_member(code, "media", json_mkstring(media));
+	json_append_member(code, "server", json_mkstring(server));
+	json_append_member(code, "port", json_mknumber(port));
+						
+	json_append_member(xbmc->message, "message", code);
+	json_append_member(xbmc->message, "origin", json_mkstring("receiver"));
+	json_append_member(xbmc->message, "protocol", json_mkstring(xbmc->id));
+						
+	pilight.broadcast(xbmc->id, xbmc->message);
+	json_delete(xbmc->message);
+	xbmc->message = NULL;
+}
+
 void *xbmcParse(void *param) {
 	struct protocol_threads_t *node = (struct protocol_threads_t *)param;
 	struct JsonNode *json = (struct JsonNode *)node->param;
@@ -65,9 +82,13 @@ void *xbmcParse(void *param) {
 	struct sockaddr_in serv_addr;
 	struct xbmc_data_t *xnode = malloc(sizeof(struct xbmc_data_t));
 
-	char recvBuff[BUFFER_SIZE], action[10], type[15];
+	char recvBuff[BUFFER_SIZE], action[10], media[15];
 	char *m = NULL, *t = NULL;
-	int nrloops = 0, bytes = 0, n = 0, has_server = 0, has_port = 0, maxfd = 0;
+	char shutdown[] = "shutdown";
+	char home[] = "home";
+	char none[] = "none";
+	int nrloops = 0, bytes = 0, n = 0, has_server = 0;
+	int has_port = 0, reset = 1, maxfd = 0;
 	fd_set fdsread;	
 	struct timeval timeout;
 	timeout.tv_sec = 1;
@@ -82,7 +103,7 @@ void *xbmcParse(void *param) {
     memset(&serv_addr, '\0', sizeof(serv_addr));
 	memset(&recvBuff, '\0', BUFFER_SIZE);
 	memset(&action, '\0', 10);
-	memset(&type, '\0', 15);
+	memset(&media, '\0', 15);
 	
 	xbmc_threads++;
 
@@ -126,6 +147,12 @@ void *xbmcParse(void *param) {
 	}
 
 	while(xbmc_loop) {
+
+		if(reset == 1) {
+			xbmcCreateMessage(xnode->server, xnode->port, shutdown, none);
+			reset = 0;
+		}
+
 		if(xnode->sockfd > -1) {
 			close(xnode->sockfd);
 			xnode->sockfd = -1;
@@ -145,6 +172,9 @@ void *xbmcParse(void *param) {
 		if(connect(xnode->sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
 			protocol_thread_wait(node, 3, &nrloops);
 			continue;
+		} else {
+			xbmcCreateMessage(xnode->server, xnode->port, home, none);
+			reset = 1;
 		}
 
 		struct xbmc_data_t *xtmp = xbmc_data;
@@ -169,7 +199,7 @@ void *xbmcParse(void *param) {
 				break;
 			}
 
-			if(n == -1) {
+			if(n == -1) {			
 				break;
 			} else if(n == 0) {
 				usleep(10000);
@@ -187,10 +217,10 @@ void *xbmcParse(void *param) {
 
 							if(json_find_string(joutput, "method", &m) == 0) {
 								if(strcmp(m, "GUI.OnScreensaverActivated") == 0) {
-									strcpy(type, "screensaver");
+									strcpy(media, "screensaver");
 									strcpy(action, "active");
 								} else if(strcmp(m, "GUI.OnScreensaverDeactivated") == 0) {
-									strcpy(type, "screensaver");
+									strcpy(media, "screensaver");
 									strcpy(action, "inactive");
 								} else {
 									if((params = json_find_member(joutput, "params")) != NULL) {
@@ -199,38 +229,30 @@ void *xbmcParse(void *param) {
 												if(json_find_string(item, "type", &t) == 0) {
 													xbmc->message = json_mkobject();
 
-													strcpy(type, t);
+													strcpy(media, t);
 													if(strcmp(m, "Player.OnPlay") == 0) {
 														strcpy(action, "play");
 													} else if(strcmp(m, "Player.OnStop") == 0) {
-														strcpy(action, "stop");
+														strcpy(action, home);
+														strcpy(media, none);
 													} else if(strcmp(m, "Player.OnPause") == 0) {
 														strcpy(action, "pause");
 													}
-
-													xbmc->message = json_mkobject();
-													JsonNode *code = json_mkobject();
-													json_append_member(code, "action", json_mkstring(action));
-													json_append_member(code, "type", json_mkstring(type));
-													json_append_member(code, "server", json_mkstring(xnode->server));
-													json_append_member(code, "port", json_mknumber(xnode->port));
-																		
-													json_append_member(xbmc->message, "message", code);
-													json_append_member(xbmc->message, "origin", json_mkstring("receiver"));
-													json_append_member(xbmc->message, "protocol", json_mkstring(xbmc->id));
-																		
-													pilight.broadcast(xbmc->id, xbmc->message);
-													json_delete(xbmc->message);
-													xbmc->message = NULL;
 												}
 											}
 										}
 									}
 								}
+								if(strlen(media) > 0 && strlen(action) > 0) {
+									xbmcCreateMessage(xnode->server, xnode->port, action, media);
+									reset = 1;
+								}							
 							}
 							json_delete(joutput);
 						}
 						memset(recvBuff, '\0', BUFFER_SIZE);
+						memset(&action, '\0', 10);
+						memset(&media, '\0', 15);
 					}
 				}
 			}
@@ -282,9 +304,12 @@ void xbmcInit(void) {
 	xbmc->hwtype = API;
 
 	options_add(&xbmc->options, 'a', "action", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_STRING, NULL, NULL);
-	options_add(&xbmc->options, 't', "type", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_STRING, NULL, NULL);
+	options_add(&xbmc->options, 'm', "media", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_STRING, NULL, NULL);
 	options_add(&xbmc->options, 's', "server", OPTION_HAS_VALUE, CONFIG_ID, JSON_STRING, NULL, NULL);
 	options_add(&xbmc->options, 'p', "port", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, NULL, NULL);
+
+	options_add(&xbmc->options, 0, "gui-show-media", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
+	options_add(&xbmc->options, 0, "gui-show-action", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
 
 	xbmc->initDev=&xbmcInitDev;
 	xbmc->threadGC=&xbmcThreadGC;
