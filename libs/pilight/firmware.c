@@ -850,6 +850,7 @@ int firmware_check(char **output) {
 				}
 			}
 		}
+		closedir(d);
 	}
 
 	if(firmware.version >= version) {

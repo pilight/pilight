@@ -171,7 +171,9 @@ void *ds18b20Parse(void *param) {
 			}
 		}
 	}
-
+	if(ds18b20_sensor) {
+		sfree((void *)&ds18b20_sensor);
+	}
 	if(content) {
 		sfree((void *)&content);
 	}
