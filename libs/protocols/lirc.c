@@ -75,74 +75,80 @@ void *lircParse(void *param) {
 			lirc_sockfd = -1;
 		}
 
-		/* Try to open a new socket */
-		if((lirc_sockfd = socket(AF_UNIX, SOCK_STREAM, 0)) < 0) {
-			logprintf(LOG_DEBUG, "could not create Lirc socket");
-			break;
-		}
-
-		addr.sun_family=AF_UNIX;
-		strcpy(addr.sun_path, lirc_socket);
-		
-		/* Connect to the server */
-		if(connect(lirc_sockfd, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
-			protocol_thread_wait(node, 3, &nrloops);
-			continue;
-		}
-		
-		while(lirc_loop) {
-			FD_ZERO(&fdsread);
-			FD_SET((unsigned long)lirc_sockfd, &fdsread);
-
-			do {
-				n = select(lirc_sockfd+1, &fdsread, NULL, NULL, &timeout);
-			} while(n == -1 && errno == EINTR && lirc_loop);
-
-			if(lirc_loop == 0) {
+		if(path_exists(lirc_socket) == EXIT_SUCCESS) {
+			/* Try to open a new socket */
+			if((lirc_sockfd = socket(AF_UNIX, SOCK_STREAM, 0)) < 0) {
+				logprintf(LOG_DEBUG, "could not create Lirc socket");
 				break;
 			}
 
-			if(n == -1) {
-				break;
-			} else if(n == 0) {
-				usleep(10000);
-			} else if(n > 0) {
-				if(FD_ISSET((unsigned long)lirc_sockfd, &fdsread)) {
-					bytes = recv(lirc_sockfd, recvBuff, BUFFER_SIZE, 0);
-					if(bytes <= 0) {
-						break;
-					} else {
-						int x = 0, nrspace = 0;
-						for(x=0;x<bytes;x++) {
-							if(recvBuff[x] == ' ') {
-								nrspace++;
+			addr.sun_family=AF_UNIX;
+			strcpy(addr.sun_path, lirc_socket);
+			
+			/* Connect to the server */
+			if(connect(lirc_sockfd, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
+				protocol_thread_wait(node, 3, &nrloops);
+				continue;
+			}
+			
+			while(lirc_loop) {
+				FD_ZERO(&fdsread);
+				FD_SET((unsigned long)lirc_sockfd, &fdsread);
+
+				do {
+					n = select(lirc_sockfd+1, &fdsread, NULL, NULL, &timeout);
+				} while(n == -1 && errno == EINTR && lirc_loop);
+
+				if(lirc_loop == 0) {
+					break;
+				}
+				
+				if(path_exists(lirc_socket) == EXIT_FAILURE) {
+					break;
+				}
+
+				if(n == -1) {
+					break;
+				} else if(n == 0) {
+					usleep(10000);
+				} else if(n > 0) {
+					if(FD_ISSET((unsigned long)lirc_sockfd, &fdsread)) {
+						bytes = recv(lirc_sockfd, recvBuff, BUFFER_SIZE, 0);
+						if(bytes <= 0) {
+							break;
+						} else {
+							int x = 0, nrspace = 0;
+							for(x=0;x<bytes;x++) {
+								if(recvBuff[x] == ' ') {
+									nrspace++;
+								}
 							}
-						}
-						if(nrspace >= 3) {
-							char *id = strtok(recvBuff, " ");
-							char *rep = strtok(NULL, " ");
-							char *btn = strtok(NULL, " ");
-							char *remote = strtok(NULL, " ");
-							if(strstr(remote, "\n") != NULL) {
-								remote[strlen(remote)-1] = '\0';
+							if(nrspace >= 3) {
+								char *id = strtok(recvBuff, " ");
+								char *rep = strtok(NULL, " ");
+								char *btn = strtok(NULL, " ");
+								char *remote = strtok(NULL, " ");
+								if(strstr(remote, "\n") != NULL) {
+									remote[strlen(remote)-1] = '\0';
+								}
+							
+								lirc->message = json_mkobject();
+								JsonNode *code = json_mkobject();
+								json_append_member(code, "id", json_mkstring(id));
+								json_append_member(code, "repeat", json_mkstring(rep));
+								json_append_member(code, "button", json_mkstring(btn));
+								json_append_member(code, "remote", json_mkstring(remote));
+													
+								json_append_member(lirc->message, "message", code);
+								json_append_member(lirc->message, "origin", json_mkstring("receiver"));
+								json_append_member(lirc->message, "protocol", json_mkstring(lirc->id));
+													
+								pilight.broadcast(lirc->id, lirc->message);
+								json_delete(lirc->message);
+								lirc->message = NULL;
 							}
-						
-							lirc->message = json_mkobject();
-							JsonNode *code = json_mkobject();
-							json_append_member(code, "id", json_mkstring(id));
-							json_append_member(code, "repeat", json_mkstring(rep));
-							json_append_member(code, "button", json_mkstring(btn));
-							json_append_member(code, "remote", json_mkstring(remote));
-												
-							json_append_member(lirc->message, "message", code);
-							json_append_member(lirc->message, "origin", json_mkstring("receiver"));
-							json_append_member(lirc->message, "protocol", json_mkstring(lirc->id));
-												
-							pilight.broadcast(lirc->id, lirc->message);
-							json_delete(lirc->message);
-							lirc->message = NULL;
+							memset(recvBuff, '\0', BUFFER_SIZE);
 						}
-						memset(recvBuff, '\0', BUFFER_SIZE);
 					}
 				}
 			}

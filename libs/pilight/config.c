@@ -202,36 +202,37 @@ int config_update(char *protoname, JsonNode *json, JsonNode **out) {
 							}
 							sptr = sptr->next;
 						}
-						is_valid = 0;
+						is_valid = 1;
 						/* If we matched a config device, update it's state */
 						if(match1 > 0 && match2 > 0 && match1 == match2) {
-							sptr = dptr->settings;
-							while(sptr) {
-								opt = protocol->options;
-								/* Loop through all protocol options */
-								while(opt) {
-									/* Check if there are values that can be updated */
-									if(strcmp(sptr->name, opt->name) == 0 
-									   && (opt->conftype == CONFIG_VALUE)
-									   && opt->argtype == OPTION_HAS_VALUE) {
+							if(protocol->checkValues) {
+								is_valid = 0;
+								JsonNode *jcode = json_mkobject();
+								sptr = dptr->settings;
+								while(sptr) {
+									opt = protocol->options;
+									/* Loop through all protocol options */
+									while(opt) {
+										/* Check if there are values that can be updated */
+										if(strcmp(sptr->name, opt->name) == 0 
+										   && (opt->conftype == CONFIG_VALUE)
+										   && opt->argtype == OPTION_HAS_VALUE) {
 
-										memset(vstring_, '\0', sizeof(vstring_));
-										vnumber_ = -1;
-										if(json_find_string(message, opt->name, &stmp) == 0) {
-											strcpy(vstring_, stmp);
-											valueType = CONFIG_TYPE_STRING;
-											is_valid = 1;
-										}
-										if(json_find_number(message, opt->name, &itmp) == 0) {
-											vnumber_ = itmp;
-											valueType = CONFIG_TYPE_NUMBER;
-											is_valid = 1;
-										}										
+											memset(vstring_, '\0', sizeof(vstring_));
+											vnumber_ = -1;
+											if(json_find_string(message, opt->name, &stmp) == 0) {
+												strcpy(vstring_, stmp);
+												valueType = CONFIG_TYPE_STRING;
+												is_valid = 1;
+											}
+											if(json_find_number(message, opt->name, &itmp) == 0) {
+												vnumber_ = itmp;
+												valueType = CONFIG_TYPE_NUMBER;
+												is_valid = 1;
+											}								
 
-										/* Check if the protocol settings of this device are valid to 
-										   make sure no errors occur in the config.json. */
-										if(protocol->checkValues) {
-											JsonNode *jcode = json_mkobject();
+											/* Check if the protocol settings of this device are valid to 
+											   make sure no errors occur in the config.json. */
 											JsonNode *jsettings = json_first_child(settings);
 											while(jsettings) {
 												if(jsettings->tag == JSON_NUMBER) {
@@ -247,14 +248,35 @@ int config_update(char *protoname, JsonNode *json, JsonNode **out) {
 											} else {
 												json_append_member(jcode, opt->name, json_mknumber(vnumber_));
 											}
+										}
+										opt = opt->next;
+									}
+									sptr = sptr->next;
+								}
+								if(protocol->checkValues(jcode) != 0) {
+									is_valid = 0;
+								}
+								json_delete(jcode);
+							}
+							sptr = dptr->settings;
+							while(sptr) {
+								opt = protocol->options;
+								/* Loop through all protocol options */
+								while(opt) {
+									/* Check if there are values that can be updated */
+									if(strcmp(sptr->name, opt->name) == 0 
+									   && (opt->conftype == CONFIG_VALUE)
+									   && opt->argtype == OPTION_HAS_VALUE) {
 
-											if(protocol->checkValues(jcode) != 0) {
-												is_valid = 0;
-												json_delete(jcode);
-												break;
-											} else {
-												json_delete(jcode);
-											}
+										memset(vstring_, '\0', sizeof(vstring_));
+										vnumber_ = -1;
+										if(json_find_string(message, opt->name, &stmp) == 0) {
+											strcpy(vstring_, stmp);
+											valueType = CONFIG_TYPE_STRING;
+										}
+										if(json_find_number(message, opt->name, &itmp) == 0) {
+											vnumber_ = itmp;
+											valueType = CONFIG_TYPE_NUMBER;
 										}
 
 										if(is_valid) {

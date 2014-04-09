@@ -27,7 +27,7 @@ typedef struct firmware_t {
 struct firmware_t firmware;
 
 typedef enum {
-	FW_PROG_OP_FAIL,
+	FW_PROG_OP_FAIL = 1,
 	FW_INIT_FAIL,
 	FW_RD_SIG_FAIL,
 	FW_INV_SIG_FAIL,

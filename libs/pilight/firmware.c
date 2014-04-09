@@ -866,7 +866,7 @@ int firmware_update(char *fwfile) {
 	unsigned int match = 0;
 
 	if(fmt_autodetect(fwfile) != FMT_IHEX) {
-		logprintf(LOG_ERR, "Trying to write an invalid firmware file.");
+		logprintf(LOG_ERR, "Trying to write an invalid firmware file");
 		return -1;
 	} else {
 		logprintf(LOG_INFO, "Discovering AVR the firmware is running on");

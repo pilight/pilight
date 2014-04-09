@@ -27,7 +27,8 @@
 #include "options.h"
 #include "protocol.h"
 #include "log.h"
-#include "../protocols/pilight_firmware.h"
+#include "../protocols/pilight_firmware_v2.h"
+#include "../protocols/pilight_firmware_v3.h"
 
 #if defined(PROTOCOL_COCO_SWITCH) || defined(PROTOCOL_DIO_SWITCH) || defined(PROTOCOL_NEXA_SWITCH) || defined(PROTOCOL_KAKU_SWITCH) || defined(PROTOCOL_INTERTECHNO_SWITCH)
 	#include "../protocols/arctech_switch.h"
@@ -151,7 +152,8 @@
 #endif
 
 void protocol_init(void) {
-	pilightFirmwareInit();
+	pilightFirmwareV2Init();
+	pilightFirmwareV3Init();
 #if defined(PROTOCOL_COCO_SWITCH) || defined(PROTOCOL_DIO_SWITCH) || defined(PROTOCOL_NEXA_SWITCH) || defined(PROTOCOL_KAKU_SWITCH) || defined(PROTOCOL_INTERTECHNO_SWITCH)
 	arctechSwInit();
 #endif

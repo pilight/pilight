@@ -124,7 +124,7 @@
 #endif
 
 #ifdef FIRMWARE
-	#define FIRMWARE_PATH				"/usr/local/src/"
+	#define FIRMWARE_PATH				"/etc/pilight/"
 #endif
 
 typedef struct pilight_t {

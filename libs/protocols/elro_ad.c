@@ -3,13 +3,13 @@
 
 	This file is part of pilight.
 
-    pilight is free software: you can redistribute it and/or modify it under the 
-	terms of the GNU General Public License as published by the Free Software 
-	Foundation, either version 3 of the License, or (at your option) any later 
+    pilight is free software: you can redistribute it and/or modify it under the
+	terms of the GNU General Public License as published by the Free Software
+	Foundation, either version 3 of the License, or (at your option) any later
 	version.
 
-    pilight is distributed in the hope that it will be useful, but WITHOUT ANY 
-	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR 
+    pilight is distributed in the hope that it will be useful, but WITHOUT ANY
+	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
@@ -32,8 +32,8 @@
 
 /**
  * Creates as System message informing the daemon about a received or created message
- * 
- * systemcode : integer number, the 32 bit system code 
+ *
+ * systemcode : integer number, the 32 bit system code
  * unitcode : unit being adressed, integer number
  * state : either 2 (off) or 1 (on)
  * group : if 1 this affects a whole group of devices
@@ -54,20 +54,20 @@ void elroADCreateMessage(unsigned long long systemcode, int unitcode, int state,
 	}
 	else if(state == 2) {
 		json_append_member(elro_ad->message, "state", json_mkstring("off"));
-	} 
+	}
 }
 
 /**
  * This is the main method when reading a received code
  * Decodes the received stream
- * 
+ *
  */
 void elroADParseCode(void) {
 	int i = 0;
-	//utilize the "code" field 
+	//utilize the "code" field
 	//at this point the code field holds translated "0" and "1" codes from the received pulses
 	//this means that we have to combine these ourselves into meaningful values in groups of 2
-	
+
 	for(i = 0; i < elro_ad->rawlen/2; i +=1) {
 		if(elro_ad->code[i*2] != 0) {
 			//these are always zero - this is not a valid code
@@ -75,8 +75,8 @@ void elroADParseCode(void) {
 		}
 		elro_ad->binary[i] = elro_ad->code[(i*2)+1];
 	}
-	
-	//chunked code now contains "groups of 2" codes for us to handle. 
+
+	//chunked code now contains "groups of 2" codes for us to handle.
 	unsigned long long systemcode = binToDecRevUl(elro_ad->binary, 11, 42);
 	int groupcode = binToDec(elro_ad->binary, 43, 46);
 	int groupcode2 = binToDec(elro_ad->binary, 49, 50);
@@ -90,9 +90,9 @@ void elroADParseCode(void) {
 	    groupRes = 1;
 	} else {
 	    return;
-	}  
+	}
 	if(state < 1 || state > 2) {
-		return;	
+		return;
 	} else {
 		elroADCreateMessage(systemcode, unitcode, state, groupRes);
 	}
@@ -136,7 +136,7 @@ void elroADClearCode(void) {
 }
 
 /**
- * Takes the passed number 
+ * Takes the passed number
  * converts it into raw and inserts them into the raw code at the appropriate position
  *
  * systemcode : unsigned integer number, the 32 bit system code
@@ -146,7 +146,7 @@ void elroADCreateSystemCode(unsigned long long systemcode) {
 	int length = 0;
 	int i=0, x=0;
 	length = decToBinRevUl(systemcode, binary);
-	for(i=0;i<=length;i++) { 
+	for(i=0;i<=length;i++) {
 		if(binary[(length)-i]==1) {
 			x=i*2;
 			elroADCreateHigh(22+x, 22+x+1);
@@ -176,7 +176,7 @@ void elroADCreateUnitCode(int unitcode) {
 /**
  * Takes the passed number converts it into raw and inserts it into the raw code at the appropriate position
  *
- * state : integer number, state value to set. can be either 1 (on) or 2 (off) 
+ * state : integer number, state value to set. can be either 1 (on) or 2 (off)
  */
 void elroADCreateState(int state) {
 	if(state == 1) {
@@ -189,11 +189,11 @@ void elroADCreateState(int state) {
 	}
 }
 
-/** 
+/**
  * sets the first group code portions to the appropriate raw values.
  * Fro grouped mode this is the equivalent to 1100 and 11, for non-grouped mode 1011 and 01
  *
- * group : integer value, 1 means grouped enabled, 0 means disabled 
+ * group : integer value, 1 means grouped enabled, 0 means disabled
  */
 void elroADCreateGroupCode(int group) {
     if(group == 1) {
@@ -209,7 +209,7 @@ void elroADCreateGroupCode(int group) {
     }
 }
 
-/** 
+/**
  * Inserts the (as far as is known) fixed message preamble
  * First eleven words are the preamble
  */
@@ -221,7 +221,7 @@ void elroADCreatePreamble(void) {
 }
 
 /**
- * Inserts the message trailer (one HIGH) into the raw message 
+ * Inserts the message trailer (one HIGH) into the raw message
  */
 void elroADCreateFooter(void) {
 	elro_ad->raw[114]=(elro_ad->plslen->length);
@@ -232,7 +232,7 @@ void elroADCreateFooter(void) {
 /**
  * Main method for creating a message based on daemon-passed values in the elro_ad protocol.
  * code : JSON Message containing the received parameters to use for message creation
- * 
+ *
  * returns : EXIT_SUCCESS or EXIT_FAILURE on obvious occasions
  */
 int elroADCreateCode(JsonNode *code) {
@@ -241,7 +241,7 @@ int elroADCreateCode(JsonNode *code) {
 	int group = 0;
 	int state = -1;
 	double itmp;
-	
+
 	if(json_find_number(code, "systemcode", &itmp) == 0) {
 		systemcode = (unsigned long long)itmp;
 	}
@@ -261,7 +261,7 @@ int elroADCreateCode(JsonNode *code) {
 	else if(json_find_number(code, "on", &itmp) == 0) {
 		state=1;
 	}
-	
+
 	if(systemcode == 0 || unitcode == -1 || state == -1) {
 		logprintf(LOG_ERR, "elro_ad: insufficient number of arguments");
 		return EXIT_FAILURE;
@@ -293,7 +293,7 @@ void elroADPrintHelp(void) {
 
 /**
  * Main Init method called to init the protocol and register its functions with pilight
- */ 
+ */
 void elroADInit(void) {
 
 	protocol_register(&elro_ad);
@@ -313,7 +313,7 @@ void elroADInit(void) {
 
 	options_add(&elro_ad->options, 0, "gui-readonly", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 
-	
+
 	elro_ad->parseCode=&elroADParseCode;
 	elro_ad->createCode=&elroADCreateCode;
 	elro_ad->printHelp=&elroADPrintHelp;

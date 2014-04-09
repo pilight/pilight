@@ -1970,8 +1970,13 @@ int main(int argc, char **argv) {
 				memset(fwpath, '\0', fwl);
 				sprintf(fwpath, "%s%s", FIRMWARE_PATH, fwfile);
 				logprintf(LOG_INFO, "**** START UPD. FW ****");
-				firmware_update(fwpath);
-				logprintf(LOG_INFO, "**** DONE  UPD. FW ****");
+				if(firmware_update(fwpath) != 0) {
+					fwupdate = 0;
+					logprintf(LOG_INFO, "**** FAILED UPD. FW ****");
+				} else {
+					unlink(fwpath);
+					logprintf(LOG_INFO, "**** DONE  UPD. FW ****");
+				}
 			}
 		}
 #endif

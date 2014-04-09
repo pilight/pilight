@@ -30,7 +30,7 @@
 #include "gc.h"
 #include "generic_webcam.h"
 
-int genericWebcamCheckValues(JsonNode *code) {
+int genWebcamCheckValues(JsonNode *code) {
 	int height = 300;
 	double itmp = -1;
 
@@ -59,5 +59,5 @@ void genWebcamInit(void) {
 	options_add(&generic_webcam->options, 0, "gui-show-webcam", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
 	options_add(&generic_webcam->options, 0, "poll-interval", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)10, "^[10]{2}$");
 
-	generic_webcam->checkValues=genericWebcamCheckValues;
+	generic_webcam->checkValues=genWebcamCheckValues;
 }

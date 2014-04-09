@@ -21,6 +21,6 @@
 
 struct protocol_t *generic_webcam;
 
-void genericWebcamInit(void);
+void genWebcamInit(void);
 
 #endif

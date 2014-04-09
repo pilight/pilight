@@ -295,8 +295,42 @@ void xbmcThreadGC(void) {
 	protocol_thread_free(xbmc);
 }
 
-void xbmcInit(void) {
+int xbmcCheckValues(JsonNode *code) {
+	char *action = NULL;
+	char *media = NULL;
 
+	if(json_find_string(code, "action", &action) == 0 &&
+	   json_find_string(code, "media", &media) == 0) {
+		if(strcmp(media, "none") == 0) {
+			if(!(strcmp(action, "shutdown") == 0 || strcmp(action, "home") == 0)) {
+				return 1;
+			} else {
+				return 0;
+			}
+		} else if(strcmp(media, "episode") == 0 
+		   || strcmp(media, "movie") == 0
+		   || strcmp(media, "song") == 0) {
+			if(!(strcmp(action, "play") == 0 || strcmp(action, "pause") == 0)) {
+				return 1;
+			} else {
+				return 0;
+			}
+		} else if(strcmp(media, "screensaver") == 0) {
+			if(!(strcmp(action, "active") == 0 || strcmp(action, "inactive") == 0)) {
+				return 1;
+			} else {
+				return 0;
+			}
+		} else {
+			return 1;
+		}
+	} else {
+		return 1;
+	}
+	return 0;
+}
+
+void xbmcInit(void) {
 	protocol_register(&xbmc);
 	protocol_set_id(xbmc, "xbmc");
 	protocol_device_add(xbmc, "xbmc", "XBMC API");
@@ -313,4 +347,5 @@ void xbmcInit(void) {
 
 	xbmc->initDev=&xbmcInitDev;
 	xbmc->threadGC=&xbmcThreadGC;
+	xbmc->checkValues=&xbmcCheckValues;
 }

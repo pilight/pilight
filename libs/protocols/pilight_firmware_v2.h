@@ -16,13 +16,13 @@
     along with pilight. If not, see <http://www.gnu.org/licenses/>
 */
 
-#ifndef _PROTOCOL_PILIGHT_FIRMWARE_H_
-#define _PROTOCOL_PILIGHT_FIRMWARE_H_
+#ifndef _PROTOCOL_PILIGHT_FIRMWARE_V2_H_
+#define _PROTOCOL_PILIGHT_FIRMWARE_V2_H_
 
-struct protocol_t *pilight_firmware;
+struct protocol_t *pilight_firmware_v2;
 
-void pilightFirmwareInit(void);
-void pilightFirmwareCreateMessage(int version, int high, int low);
-void pilightFirmwareParseBinary(void);
+void pilightFirmwareV2Init(void);
+void pilightFirmwareV2CreateMessage(int version, int high, int low);
+void pilightFirmwareV2ParseBinary(void);
 
 #endif
