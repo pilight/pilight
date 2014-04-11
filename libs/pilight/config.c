@@ -36,6 +36,7 @@
 #include "protocol.h"
 #include "ssdp.h"
 #include "firmware.h"
+#include "datetime.h"
 
 #ifdef UPDATE
 	#include "update.h"
@@ -94,7 +95,7 @@ int config_update(char *protoname, JsonNode *json, JsonNode **out) {
 	
 	/* Was this device added to the return struct */
 	int have_device = 0;
-	
+
 	/* Is is a valid new state / value */
 	int is_valid = 1;
 
@@ -108,15 +109,19 @@ int config_update(char *protoname, JsonNode *json, JsonNode **out) {
 		pnode = pnode->next;
 	}
 
+	time_t timenow = time(NULL);
+	struct tm *gmt = gmtime(&timenow);
+	char utc[] = "UTC";
+	time_t utct = datetime2ts(gmt->tm_year+1900, gmt->tm_mon+1, gmt->tm_mday, gmt->tm_hour, gmt->tm_min, gmt->tm_sec, utc);
+	json_append_member(rval, "timestamp", json_mknumber(utct));	
+	
 	/* Only loop through all locations if the protocol has options */
 	if((opt = protocol->options)) {
-
 		/* Loop through all locations */
 		while(lptr) {
 			dptr = lptr->devices;
 			/* Loop through all devices of this location */
 			have_device = 0;
-
 			JsonNode *rloc = NULL;
 			while(dptr) {
 				if((uuid && dptr->dev_uuid && strcmp(dptr->dev_uuid, uuid) == 0) || !uuid) {
@@ -303,6 +308,7 @@ int config_update(char *protoname, JsonNode *json, JsonNode **out) {
 												} else if(sptr->values->type == CONFIG_TYPE_NUMBER) {
 													json_append_member(rval, sptr->name, json_mknumber(sptr->values->number_));
 												}
+												dptr->timestamp = utct;
 												update = 1;
 											}
 
@@ -332,12 +338,14 @@ int config_update(char *protoname, JsonNode *json, JsonNode **out) {
 										}
 										strcpy(sptr->values->string_, sstring_);
 										sptr->values->type = CONFIG_TYPE_STRING;
+										dptr->timestamp = utct;
 										update = 1;
 									} else if((stateType == CONFIG_TYPE_NUMBER && 
 									           sptr->values->type == CONFIG_TYPE_NUMBER && 
 											   fabs(sptr->values->number_-snumber_) < EPSILON)) {
 										sptr->values->number_ = snumber_;
 										sptr->values->type = CONFIG_TYPE_NUMBER;
+										dptr->timestamp = utct;
 										update = 1;
 									}
 									if(json_find_string(rval, sptr->name, &stmp) != 0) {
@@ -540,6 +548,7 @@ JsonNode *config2json(short internal) {
 				}
 				if(internal > 0) {
 					json_append_member(jdevice, "origin", json_mkstring(tmp_devices->ori_uuid));
+					json_append_member(jdevice, "timestamp", json_mknumber(tmp_devices->timestamp));
 				}
 				while(tmp_protocols) {
 					json_append_element(jprotocols, json_mkstring(tmp_protocols->name));
@@ -1464,6 +1473,7 @@ int config_parse_locations(JsonNode *jlocations, struct conf_locations_t *locati
 				}
 				strcpy(dnode->name, name);
 				dnode->nrthreads = 0;
+				dnode->timestamp = 0;
 				dnode->threads = NULL;
 				dnode->settings = NULL;
 				dnode->next = NULL;

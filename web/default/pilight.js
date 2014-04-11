@@ -397,7 +397,7 @@ function createWeatherElement(sTabId, sDevId, aValues) {
 		if('gui-show-update' in aValues && aValues['gui-show-update']) {
 			iTime = Math.floor((new Date().getTime())/1000);
 
-			if('timestamp' in aValues && 'min-interval' in aValues && (iTime-aValues['timestamp']) > aValues['min-interval']) {
+			if('timestamp' in aValues && 'min-interval' in aValues && aValues['timestamp'] > 0 && (iTime-aValues['timestamp']) > aValues['min-interval']) {
 				oTab.find('#'+sTabId+'_'+sDevId+'_weather').append($('<div class="update_active" id="'+sTabId+'_'+sDevId+'_upd" title="update">&nbsp;</div>'));
 			} else {
 				oTab.find('#'+sTabId+'_'+sDevId+'_weather').append($('<div class="update_inactive" id="'+sTabId+'_'+sDevId+'_upd" title="update">&nbsp;</div>'));
@@ -421,12 +421,14 @@ function createWeatherElement(sTabId, sDevId, aValues) {
 					}, iTimeOut);
 				}
 			});
-			iTimeOut = (aValues['min-interval']-((iTime-aValues['timestamp'])))*1000;
-			window.setTimeout(function() {
-				if($('#'+sTabId+'_'+sDevId+'_upd').attr("class").indexOf('update_inactive') != -1) {
-					$('#'+sTabId+'_'+sDevId+'_upd').removeClass('update_inactive').addClass('update_active');
-				}
-			}, iTimeOut);
+			if(aValues['timestamp'] > 0) {
+				iTimeOut = (aValues['min-interval']-((iTime-aValues['timestamp'])))*1000;
+				window.setTimeout(function() {
+					if($('#'+sTabId+'_'+sDevId+'_upd').attr("class").indexOf('update_inactive') != -1) {
+						$('#'+sTabId+'_'+sDevId+'_upd').removeClass('update_inactive').addClass('update_active');
+					}
+				}, iTimeOut);
+			}
 		}
 		if('gui-show-battery' in aValues && aValues['gui-show-battery'] && 'battery' in aValues) {
 			oTab.find('#'+sTabId+'_'+sDevId+'_weather').append($('<div id="'+sTabId+'_'+sDevId+'_batt" class="battery"></div>'));

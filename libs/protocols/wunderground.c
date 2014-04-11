@@ -63,7 +63,7 @@ void *wundergroundParse(void *param) {
 	struct wunderground_data_t *wnode = malloc(sizeof(struct wunderground_data_t));
 	int interval = 86400, nrloops = 0, ointerval = 86400;
 	
-	char url[1024], utc[] = "UTC";
+	char url[1024];
 	char *filename = NULL, *data = NULL;
 	char typebuf[70];
 	char *stmp = NULL;
@@ -215,18 +215,15 @@ void *wundergroundParse(void *param) {
 																int month = current->tm_mon+1;
 																int mday = current->tm_mday;
 																int year = current->tm_year+1900;
-																struct tm *gmt = gmtime(&timenow);
-																
+
 																time_t midnight = (datetime2ts(year, month, mday, 23, 59, 59, 0)+1);
 																time_t sunset = 0;
 																time_t sunrise = 0;
 
-																time_t utct = datetime2ts(gmt->tm_year+1900, gmt->tm_mon+1, gmt->tm_mday, gmt->tm_hour, gmt->tm_min, gmt->tm_sec, utc);
 																wunderground->message = json_mkobject();
-																
+
 																JsonNode *code = json_mkobject();
 
-																json_append_member(code, "timestamp", json_mknumber(utct));
 																json_append_member(code, "api", json_mkstring(wnode->api));
 																json_append_member(code, "location", json_mkstring(wnode->location));
 																json_append_member(code, "country", json_mkstring(wnode->country));

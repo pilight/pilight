@@ -90,6 +90,7 @@ struct conf_devices_t {
 	char ori_uuid[21];
 	int cst_uuid;
 	int nrthreads;
+	time_t timestamp;
 	struct protocols_t *protocols;
 	struct conf_settings_t *settings;
 	struct threadqueue_t **threads;

@@ -68,7 +68,7 @@ void *openweathermapParse(void *param) {
 	int interval = 86400, nrloops = 0, ointerval = 86400;
 	double itmp = 0;
 
-	char url[1024], utc[] = "UTC";
+	char url[1024];
 	char *filename = NULL, *data = NULL;
 	char typebuf[70];
 	double temp = 0, sunrise = 0, sunset = 0, humi = 0;
@@ -174,16 +174,13 @@ void *openweathermapParse(void *param) {
 									int month = current->tm_mon+1;
 									int mday = current->tm_mday;
 									int year = current->tm_year+1900;
-									struct tm *gmt = gmtime(&timenow);
 
 									time_t midnight = (datetime2ts(year, month, mday, 23, 59, 59, 0)+1);
-									time_t utct = datetime2ts(gmt->tm_year+1900, gmt->tm_mon+1, gmt->tm_mday, gmt->tm_hour, gmt->tm_min, gmt->tm_sec, utc);
 
 									openweathermap->message = json_mkobject();
 									
 									JsonNode *code = json_mkobject();
-									
-									json_append_member(code, "timestamp", json_mknumber(utct));
+
 									json_append_member(code, "location", json_mkstring(wnode->location));
 									json_append_member(code, "country", json_mkstring(wnode->country));
 									json_append_member(code, "temperature", json_mknumber((int)(round(temp)*100)));
@@ -353,7 +350,6 @@ void openweathermapInit(void) {
 	options_add(&openweathermap->options, 'y', "sunset", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, NULL, "^[0-9]{3,4}$");
 	options_add(&openweathermap->options, 's', "sun", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_STRING, NULL, NULL);	
 	options_add(&openweathermap->options, 'u', "update", OPTION_NO_VALUE, CONFIG_OPTIONAL, JSON_NUMBER, NULL, NULL);
-	options_add(&openweathermap->options, 'z', "timestamp", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, (void *)0, "[0-9]");
 
 	options_add(&openweathermap->options, 0, "device-decimals", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)2, "[0-9]");
 	options_add(&openweathermap->options, 0, "gui-decimals", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)2, "[0-9]");
