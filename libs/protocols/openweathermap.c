@@ -68,7 +68,7 @@ void *openweathermapParse(void *param) {
 	int interval = 86400, nrloops = 0, ointerval = 86400;
 	double itmp = 0;
 
-	char url[1024];
+	char url[1024], utc[] = "UTC";
 	char *filename = NULL, *data = NULL;
 	char typebuf[70];
 	double temp = 0, sunrise = 0, sunset = 0, humi = 0;
@@ -174,13 +174,16 @@ void *openweathermapParse(void *param) {
 									int month = current->tm_mon+1;
 									int mday = current->tm_mday;
 									int year = current->tm_year+1900;
-									
+									struct tm *gmt = gmtime(&timenow);
+
 									time_t midnight = (datetime2ts(year, month, mday, 23, 59, 59, 0)+1);
+									time_t utct = datetime2ts(gmt->tm_year+1900, gmt->tm_mon+1, gmt->tm_mday, gmt->tm_hour, gmt->tm_min, gmt->tm_sec, utc);
 
 									openweathermap->message = json_mkobject();
 									
 									JsonNode *code = json_mkobject();
 									
+									json_append_member(code, "timestamp", json_mknumber(utct));
 									json_append_member(code, "location", json_mkstring(wnode->location));
 									json_append_member(code, "country", json_mkstring(wnode->country));
 									json_append_member(code, "temperature", json_mknumber((int)(round(temp)*100)));
@@ -291,6 +294,11 @@ int openweathermapCreateCode(JsonNode *code) {
 	double itmp = 0;
 	time_t currenttime = 0;
 
+	if(json_find_number(code, "min-interval", &itmp) == 0) {
+		logprintf(LOG_ERR, "you can't override the min-interval setting");
+		return EXIT_FAILURE;
+	}
+
 	if(json_find_string(code, "country", &country) == 0 &&
 	   json_find_string(code, "location", &location) == 0 &&
 	   json_find_number(code, "update", &itmp) == 0) {
@@ -345,6 +353,7 @@ void openweathermapInit(void) {
 	options_add(&openweathermap->options, 'y', "sunset", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, NULL, "^[0-9]{3,4}$");
 	options_add(&openweathermap->options, 's', "sun", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_STRING, NULL, NULL);	
 	options_add(&openweathermap->options, 'u', "update", OPTION_NO_VALUE, CONFIG_OPTIONAL, JSON_NUMBER, NULL, NULL);
+	options_add(&openweathermap->options, 'z', "timestamp", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, (void *)0, "[0-9]");
 
 	options_add(&openweathermap->options, 0, "device-decimals", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)2, "[0-9]");
 	options_add(&openweathermap->options, 0, "gui-decimals", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)2, "[0-9]");
@@ -353,6 +362,7 @@ void openweathermapInit(void) {
 	options_add(&openweathermap->options, 0, "gui-show-sunriseset", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
 	options_add(&openweathermap->options, 0, "gui-show-update", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
 	options_add(&openweathermap->options, 0, "poll-interval", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)86400, "[0-9]");
+	options_add(&openweathermap->options, 0, "min-interval", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)600, "[0-9]");
 
 	openweathermap->createCode=&openweathermapCreateCode;
 	openweathermap->initDev=&openweathermapInitDev;

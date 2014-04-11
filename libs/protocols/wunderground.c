@@ -63,7 +63,7 @@ void *wundergroundParse(void *param) {
 	struct wunderground_data_t *wnode = malloc(sizeof(struct wunderground_data_t));
 	int interval = 86400, nrloops = 0, ointerval = 86400;
 	
-	char url[1024];
+	char url[1024], utc[] = "UTC";
 	char *filename = NULL, *data = NULL;
 	char typebuf[70];
 	char *stmp = NULL;
@@ -215,15 +215,18 @@ void *wundergroundParse(void *param) {
 																int month = current->tm_mon+1;
 																int mday = current->tm_mday;
 																int year = current->tm_year+1900;
+																struct tm *gmt = gmtime(&timenow);
 																
 																time_t midnight = (datetime2ts(year, month, mday, 23, 59, 59, 0)+1);
 																time_t sunset = 0;
 																time_t sunrise = 0;
 
+																time_t utct = datetime2ts(gmt->tm_year+1900, gmt->tm_mon+1, gmt->tm_mday, gmt->tm_hour, gmt->tm_min, gmt->tm_sec, utc);
 																wunderground->message = json_mkobject();
 																
 																JsonNode *code = json_mkobject();
-																
+
+																json_append_member(code, "timestamp", json_mknumber(utct));
 																json_append_member(code, "api", json_mkstring(wnode->api));
 																json_append_member(code, "location", json_mkstring(wnode->location));
 																json_append_member(code, "country", json_mkstring(wnode->country));
@@ -352,7 +355,12 @@ int wundergroundCreateCode(JsonNode *code) {
 	char *api = NULL;
 	double itmp = 0;
 	time_t currenttime = 0;
-	
+
+	if(json_find_number(code, "min-interval", &itmp) == 0) {
+		logprintf(LOG_ERR, "you can't override the min-interval setting");
+		return EXIT_FAILURE;
+	}	
+
 	if(json_find_string(code, "country", &country) == 0 &&
 	   json_find_string(code, "location", &location) == 0 &&
 	   json_find_string(code, "api", &api) == 0 &&
@@ -419,6 +427,7 @@ void wundergroundInit(void) {
 	options_add(&wunderground->options, 0, "gui-show-sunriseset", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
 	options_add(&wunderground->options, 0, "gui-show-update", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
 	options_add(&wunderground->options, 0, "poll-interval", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)86400, "[0-9]");
+	options_add(&wunderground->options, 0, "min-interval", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)900, "[0-9]");	
 
 	wunderground->createCode=&wundergroundCreateCode;
 	wunderground->initDev=&wundergroundInitDev;

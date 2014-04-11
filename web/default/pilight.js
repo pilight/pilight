@@ -395,17 +395,38 @@ function createWeatherElement(sTabId, sDevId, aValues) {
 			oTab.append($('<li class="weather" id="'+sTabId+'_'+sDevId+'_weather" data-icon="false">'+aValues['name']+'</li>'));
 		}
 		if('gui-show-update' in aValues && aValues['gui-show-update']) {
-			oTab.find('#'+sTabId+'_'+sDevId+'_weather').append($('<div class="update_icon" id="'+sTabId+'_'+sDevId+'_upd" title="update">&nbsp;</div>'));
+			iTime = Math.floor((new Date().getTime())/1000);
+
+			if('timestamp' in aValues && 'min-interval' in aValues && (iTime-aValues['timestamp']) > aValues['min-interval']) {
+				oTab.find('#'+sTabId+'_'+sDevId+'_weather').append($('<div class="update_active" id="'+sTabId+'_'+sDevId+'_upd" title="update">&nbsp;</div>'));
+			} else {
+				oTab.find('#'+sTabId+'_'+sDevId+'_weather').append($('<div class="update_inactive" id="'+sTabId+'_'+sDevId+'_upd" title="update">&nbsp;</div>'));
+			}
 			$('#'+sTabId+'_'+sDevId+'_upd').click(function() {
-				var json = '{"message":"send","code":{"location":"'+sTabId+'","device":"'+sDevId+'","values":{"update":1}}}';
-				if(oWebsocket) {
-					oWebsocket.send(json);
-				} else {
-					bSending = true;
-					$.get('http://'+location.host+'/send?'+encodeURIComponent(json));
-					window.setTimeout(function() { bSending = false; }, 1000);
+				if(this.className.indexOf('update_active') == 0) {
+					var json = '{"message":"send","code":{"location":"'+sTabId+'","device":"'+sDevId+'","values":{"update":1}}}';
+					if(oWebsocket) {
+						oWebsocket.send(json);
+					} else {
+						bSending = true;
+						$.get('http://'+location.host+'/send?'+encodeURIComponent(json));
+						window.setTimeout(function() { bSending = false; }, 1000);
+					}
+					$('#'+sTabId+'_'+sDevId+'_upd').removeClass('update_active').addClass('update_inactive');
+					iTimeOut = aValues['min-interval']*1000;
+					window.setTimeout(function() {
+						if($('#'+sTabId+'_'+sDevId+'_upd').attr("class").indexOf('update_inactive') != -1) {
+							$('#'+sTabId+'_'+sDevId+'_upd').removeClass('update_inactive').addClass('update_active');
+						}
+					}, iTimeOut);
 				}
 			});
+			iTimeOut = (aValues['min-interval']-((iTime-aValues['timestamp'])))*1000;
+			window.setTimeout(function() {
+				if($('#'+sTabId+'_'+sDevId+'_upd').attr("class").indexOf('update_inactive') != -1) {
+					$('#'+sTabId+'_'+sDevId+'_upd').removeClass('update_inactive').addClass('update_active');
+				}
+			}, iTimeOut);
 		}
 		if('gui-show-battery' in aValues && aValues['gui-show-battery'] && 'battery' in aValues) {
 			oTab.find('#'+sTabId+'_'+sDevId+'_weather').append($('<div id="'+sTabId+'_'+sDevId+'_batt" class="battery"></div>'));
@@ -439,11 +460,11 @@ function createWeatherElement(sTabId, sDevId, aValues) {
 	} else {
 		if('gui-show-battery' in aValues && aValues['gui-show-battery']) {
 			if(aValues['battery']) {
-				if($('#'+lindex+'_'+dvalues+'_batt').attr("class").indexOf("green") == -1) {
+				if($('#'+sTabId+'_'+sDevId+'_batt').attr("class").indexOf("green") == -1) {
 					$('#'+sTabId+'_'+sDevId+'_batt').removeClass('red').addClass('green');
 				}
 			} else {
-				if($('#'+lindex+'_'+dvalues+'_batt').attr("class").indexOf("red") == -1) {
+				if($('#'+sTabId+'_'+sDevId+'_batt').attr("class").indexOf("red") == -1) {
 					$('#'+sTabId+'_'+sDevId+'_batt').removeClass('green').addClass('red');
 				}
 			}
