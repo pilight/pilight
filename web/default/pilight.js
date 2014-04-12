@@ -10,6 +10,7 @@ var bShowTabs = true;
 var iPLVersion = 0;
 var iPLNVersion = 0;
 var iFWVersion = 0;
+var aTimers = new Array();
 
 var cookieEnabled = (navigator.cookieEnabled) ? true : false;
 
@@ -414,7 +415,8 @@ function createWeatherElement(sTabId, sDevId, aValues) {
 					}
 					$('#'+sTabId+'_'+sDevId+'_upd').removeClass('update_active').addClass('update_inactive');
 					iTimeOut = aValues['min-interval']*1000;
-					window.setTimeout(function() {
+					window.clearTimeout(aTimers[sTabId+'_'+sDevId]);
+					aTimers[sTabId+'_'+sDevId] = window.setTimeout(function() {
 						if($('#'+sTabId+'_'+sDevId+'_upd').attr("class").indexOf('update_inactive') != -1) {
 							$('#'+sTabId+'_'+sDevId+'_upd').removeClass('update_inactive').addClass('update_active');
 						}
@@ -423,7 +425,8 @@ function createWeatherElement(sTabId, sDevId, aValues) {
 			});
 			if(aValues['timestamp'] > 0) {
 				iTimeOut = (aValues['min-interval']-((iTime-aValues['timestamp'])))*1000;
-				window.setTimeout(function() {
+				window.clearTimeout(aTimers[sTabId+'_'+sDevId]);
+				aTimers[sTabId+'_'+sDevId] = window.setTimeout(function() {
 					if($('#'+sTabId+'_'+sDevId+'_upd').attr("class").indexOf('update_inactive') != -1) {
 						$('#'+sTabId+'_'+sDevId+'_upd').removeClass('update_inactive').addClass('update_active');
 					}

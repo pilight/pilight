@@ -123,9 +123,9 @@ int elroHECreateCode(JsonNode *code) {
 	if(json_find_number(code, "unitcode", &itmp) == 0)
 		unitcode = (int)round(itmp);
 	if(json_find_number(code, "off", &itmp) == 0)
-		state=0;
-	else if(json_find_number(code, "on", &itmp) == 0)
 		state=1;
+	else if(json_find_number(code, "on", &itmp) == 0)
+		state=0;
 
 	if(systemcode == -1 || unitcode == -1 || state == -1) {
 		logprintf(LOG_ERR, "elro_he: insufficient number of arguments");
