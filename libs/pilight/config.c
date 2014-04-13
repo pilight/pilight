@@ -1190,9 +1190,10 @@ int config_parse_devices(JsonNode *jdevices, struct conf_devices_t *device) {
 	int	match = 0, has_state = 0;
 	/* Check for any duplicate fields */
 	int nrname = 0, nrprotocol = 0, nrstate = 0, nrorder = 0;
-	int nrsettings = 0, nruuid = 0, nrorigin = 0;
+	int nrsettings = 0, nruuid = 0, nrorigin = 0, nrtimestamps = 0;
 
 	jsettings = json_first_child(jdevices);
+
 	while(jsettings) {
 		i++;
 		/* Check for any duplicate fields */
@@ -1217,8 +1218,11 @@ int config_parse_devices(JsonNode *jdevices, struct conf_devices_t *device) {
 		if(strcmp(jsettings->key, "settings") == 0) {
 			nrsettings++;
 		}
+		if(strcmp(jsettings->key, "timestamp") == 0) {
+			nrtimestamps++;
+		}
 		if(nrstate > 1 || nrprotocol > 1 || nrname > 1 || nrorder > 1 
-		   || nrsettings > 1 || nruuid > 1) {
+		   || nrsettings > 1 || nruuid > 1 || nrtimestamps > 1) {
 			logprintf(LOG_ERR, "settting #%d \"%s\" of \"%s\", duplicate", i, jsettings->key, device->id);
 			have_error = 1;
 			goto clear;
@@ -1247,7 +1251,8 @@ int config_parse_devices(JsonNode *jdevices, struct conf_devices_t *device) {
 			|| (strcmp(jsettings->key, "protocol") == 0 && jsettings->tag == JSON_ARRAY)
 			|| (strcmp(jsettings->key, "type") == 0 && jsettings->tag == JSON_NUMBER)
 			|| (strcmp(jsettings->key, "order") == 0 && jsettings->tag == JSON_NUMBER)
-			|| (strcmp(jsettings->key, "uuid") == 0 && jsettings->tag == JSON_STRING))) {
+			|| (strcmp(jsettings->key, "uuid") == 0 && jsettings->tag == JSON_STRING)
+			|| (strcmp(jsettings->key, "timestamp") == 0 && jsettings->tag == JSON_NUMBER))) {
 
 			/* Check for duplicate settings */
 			tmp_settings = device->settings;
