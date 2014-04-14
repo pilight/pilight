@@ -19,6 +19,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 
 #include "../../pilight.h"
 #include "common.h"
@@ -128,12 +129,13 @@ void conradRSLSwCreateFooter(void) {
 int conradRSLSwCreateCode(JsonNode *code) {
 	int id = -1;
 	int state = -1;
-	int tmp;
+	double itmp = 0;
 
-	json_find_number(code, "id", &id);
-	if(json_find_number(code, "off", &tmp) == 0)
+	if(json_find_number(code, "id", &itmp) == 0)
+		id = (int)round(itmp);
+	if(json_find_number(code, "off", &itmp) == 0)
 		state=0;
-	else if(json_find_number(code, "on", &tmp) == 0)
+	else if(json_find_number(code, "on", &itmp) == 0)
 		state=1;
 
 	if(id == -1 || state == -1) {
@@ -171,12 +173,11 @@ void conradRSLSwInit(void) {
 	conrad_rsl_switch->rawlen = 66;
 	conrad_rsl_switch->binlen = 33;
 
-	options_add(&conrad_rsl_switch->options, 'i', "id", has_value, config_id, "^(([0-9]|([1-9][0-9])|([1-9][0-9]{2})|([1-9][0-9]{3})|([1-9][0-9]{4})|([1-9][0-9]{5})|([1-9][0-9]{6})|((6710886[0-3])|(671088[0-5][0-9])|(67108[0-7][0-9]{2})|(6710[0-7][0-9]{3})|(671[0--1][0-9]{4})|(670[0-9]{5})|(6[0-6][0-9]{6})|(0[0-5][0-9]{7}))))$");
-	options_add(&conrad_rsl_switch->options, 't', "on", no_value, config_state, NULL);
-	options_add(&conrad_rsl_switch->options, 'f', "off", no_value, config_state, NULL);
+	options_add(&conrad_rsl_switch->options, 'i', "id", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, NULL, "^(([0-9]|([1-9][0-9])|([1-9][0-9]{2})|([1-9][0-9]{3})|([1-9][0-9]{4})|([1-9][0-9]{5})|([1-9][0-9]{6})|((6710886[0-3])|(671088[0-5][0-9])|(67108[0-7][0-9]{2})|(6710[0-7][0-9]{3})|(671[0-1][0-9]{4})|(670[0-9]{5})|(6[0-6][0-9]{6})|(0[0-5][0-9]{7}))))$");
+	options_add(&conrad_rsl_switch->options, 't', "on", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
+	options_add(&conrad_rsl_switch->options, 'f', "off", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
 
-	protocol_setting_add_string(conrad_rsl_switch, "states", "on,off");
-	protocol_setting_add_number(conrad_rsl_switch, "readonly", 0);
+	options_add(&conrad_rsl_switch->options, 0, "gui-readonly", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 
 	conrad_rsl_switch->parseCode=&conradRSLSwParseCode;
 	conrad_rsl_switch->createCode=&conradRSLSwCreateCode;

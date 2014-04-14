@@ -19,6 +19,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 
 #include "../../pilight.h"
 #include "common.h"
@@ -44,15 +45,20 @@ void genWeatherCreateMessage(int id, int temperature, int humidity, int battery)
 }
 
 int genWeatherCreateCode(JsonNode *code) {
+	double itmp = 0;
 	int id = -999;
 	int temp = -999;
 	int humi = -999;
 	int batt = -1;
 
-	json_find_number(code, "id", &id);
-	json_find_number(code, "temperature", &temp);
-	json_find_number(code, "humidity", &humi);
-	json_find_number(code, "battery", &batt);
+	if(json_find_number(code, "id", &itmp) == 0)
+		id = (int)round(itmp);
+	if(json_find_number(code, "temperature", &itmp) == 0)
+		temp = (int)round(itmp);
+	if(json_find_number(code, "humidity", &itmp) == 0)
+		humi = (int)round(itmp);
+	if(json_find_number(code, "battery", &itmp) == 0)
+		batt = (int)round(itmp);
 
 	if(id == -999 && temp == -999 && humi == -999 && batt == -1) {
 		logprintf(LOG_ERR, "generic_weather: insufficient number of arguments");
@@ -77,15 +83,16 @@ void genWeatherInit(void) {
 	protocol_device_add(generic_weather, "generic_weather", "Generic Weather Stations");
 	generic_weather->devtype = WEATHER;
 
-	options_add(&generic_weather->options, 'h', "humidity", has_value, config_value, "[0-9]");
-	options_add(&generic_weather->options, 't', "temperature", has_value, config_value, "[0-9]");
-	options_add(&generic_weather->options, 'b', "battery", has_value, config_value, "^[01]$");
-	options_add(&generic_weather->options, 'i', "id", has_value, config_id, "[0-9]");
+	options_add(&generic_weather->options, 'h', "humidity", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, NULL, "[0-9]");
+	options_add(&generic_weather->options, 't', "temperature", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, NULL, "[0-9]");
+	options_add(&generic_weather->options, 'b', "battery", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, NULL, "^[01]$");
+	options_add(&generic_weather->options, 'i', "id", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, NULL, "[0-9]");
 
-	protocol_setting_add_number(generic_weather, "decimals", 2);	
-	protocol_setting_add_number(generic_weather, "humidity", 1);
-	protocol_setting_add_number(generic_weather, "temperature", 1);
-	protocol_setting_add_number(generic_weather, "battery", 0);
+	options_add(&generic_weather->options, 0, "device-decimals", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)2, "[0-9]");
+	options_add(&generic_weather->options, 0, "gui-decimals", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)2, "[0-9]");
+	options_add(&generic_weather->options, 0, "gui-show-humidity", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
+	options_add(&generic_weather->options, 0, "gui-show-temperature", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
+	options_add(&generic_weather->options, 0, "gui-show-battery", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 
 	generic_weather->printHelp=&genWeatherPrintHelp;
 	generic_weather->createCode=&genWeatherCreateCode;

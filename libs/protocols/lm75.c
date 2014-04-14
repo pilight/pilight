@@ -21,11 +21,10 @@
 #include <dirent.h>
 #include <string.h>
 #include <unistd.h>
-#define __USE_GNU
-#include <pthread.h>
 #include <sys/types.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <math.h>
 #include <sys/stat.h>
 #include <sys/time.h>
 
@@ -40,10 +39,12 @@
 #include "json.h"
 #include "lm75.h"
 #include "../pilight/wiringPi.h"
+#ifndef __FreeBSD__
 #include "../pilight/wiringPiI2C.h"
+#endif
 
 unsigned short lm75_loop = 1;
-int lm75_nrfree = 0;
+int lm75_threads = 0;
 
 typedef struct lm75data_t {
 	char **id;
@@ -51,64 +52,42 @@ typedef struct lm75data_t {
 	int *fd;
 } lm75data_t;
 
-void lm75ParseCleanUp(void *arg) {
-	struct lm75data_t *lm75data = (struct lm75data_t *)arg;
-	int i = 0;
-
-	if(lm75data->id) {
-		for(i=0;i<lm75data->nrid;i++) {
-			sfree((void *)&lm75data->id[i]);
-		}
-		sfree((void *)&lm75data->id);
-	}
-	if(lm75data->fd) {
-		for(i=0;i<lm75data->nrid;i++) {
-			if(lm75data->fd[i] > 0) {
-				close(lm75data->fd[i]);
-			}
-		}
-		sfree((void *)&lm75data->fd);
-	}
-	sfree((void *)&lm75data);
-	
-	lm75_loop = 0;
-}
-
 void *lm75Parse(void *param) {
-	struct JsonNode *json = (struct JsonNode *)param;
-	struct JsonNode *jsettings = NULL;
+	struct protocol_threads_t *node = (struct protocol_threads_t *)param;
+	struct JsonNode *json = (struct JsonNode *)node->param;
 	struct JsonNode *jid = NULL;
 	struct JsonNode *jchild = NULL;
 	struct lm75data_t *lm75data = malloc(sizeof(struct lm75data_t));
-	struct timeval tp;
-	struct timespec ts;	
-	int y = 0, interval = 10, temp_corr = 0, rc = 0;
+	int y = 0, interval = 10;
+	int temp_offset = 0, nrloops = 0;
 	char *stmp = NULL;
-	int firstrun = 1;
+	double itmp = -1;
+
+	if(!lm75data) {
+		logprintf(LOG_ERR, "out of memory");
+		exit(EXIT_FAILURE);
+	}
 
 	lm75data->nrid = 0;
 	lm75data->id = NULL;
 	lm75data->fd = 0;
-	
-#ifndef __FreeBSD__
-	pthread_mutex_t mutex = PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP;        
-    pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
-#else
-	pthread_mutex_t mutex;
-	pthread_cond_t cond;
-	pthread_mutexattr_t attr;
 
-	pthread_mutexattr_init(&attr);
-	pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);
-	pthread_mutex_init(&mutex, &attr);
-#endif
+	lm75_threads++;
 
 	if((jid = json_find_member(json, "id"))) {
 		jchild = json_first_child(jid);
 		while(jchild) {
 			if(json_find_string(jchild, "id", &stmp) == 0) {
 				lm75data->id = realloc(lm75data->id, (sizeof(char *)*(size_t)(lm75data->nrid+1)));
+				if(!lm75data->id) {
+					logprintf(LOG_ERR, "out of memory");
+					exit(EXIT_FAILURE);
+				}
 				lm75data->id[lm75data->nrid] = malloc(strlen(stmp)+1);
+				if(!lm75data->id[lm75data->nrid]) {
+					logprintf(LOG_ERR, "out of memory");
+					exit(EXIT_FAILURE);
+				}
 				strcpy(lm75data->id[lm75data->nrid], stmp);
 				lm75data->nrid++;
 			}
@@ -116,35 +95,25 @@ void *lm75Parse(void *param) {
 		}
 	}
 
-	if((jsettings = json_find_member(json, "settings"))) {
-		json_find_number(jsettings, "interval", &interval);
-		json_find_number(jsettings, "temp-corr", &temp_corr);
-	}
-	json_delete(json);
+	if(json_find_number(json, "poll-interval", &itmp) == 0)
+		interval = (int)round(itmp);
+	if(json_find_number(json, "device-temperature-offset", &itmp) == 0)
+		temp_offset = (int)round(itmp);
+
 #ifndef __FreeBSD__	
 	lm75data->fd = realloc(lm75data->fd, (sizeof(int)*(size_t)(lm75data->nrid+1)));
+	if(!lm75data->fd) {
+		logprintf(LOG_ERR, "out of memory");
+		exit(EXIT_FAILURE);
+	}
 	for(y=0;y<lm75data->nrid;y++) {
 		lm75data->fd[y] = wiringPiI2CSetup((int)strtol(lm75data->id[y], NULL, 16));
 	}
 #endif
-
-	pthread_cleanup_push(lm75ParseCleanUp, (void *)lm75data);	
 	
 	while(lm75_loop) {
-		rc = gettimeofday(&tp, NULL);
-		ts.tv_sec = tp.tv_sec;
-		ts.tv_nsec = tp.tv_usec * 1000;
-		if(firstrun) {
-			ts.tv_sec += 1;
-			firstrun = 0;
-		} else {
-			ts.tv_sec += interval;
-		}
-
-		pthread_mutex_lock(&mutex);
-		rc = pthread_cond_timedwait(&cond, &mutex, &ts);
-		if(rc == ETIMEDOUT) {		
-#ifndef __FreeBSD__		
+		if(protocol_thread_wait(node, interval, &nrloops) == ETIMEDOUT) {
+#ifndef __FreeBSD__	
 			for(y=0;y<lm75data->nrid;y++) {
 				if(lm75data->fd[y] > 0) {
 					int raw = wiringPiI2CReadReg16(lm75data->fd[y], 0x00);            
@@ -153,9 +122,9 @@ void *lm75Parse(void *param) {
 					lm75->message = json_mkobject();
 					JsonNode *code = json_mkobject();
 					json_append_member(code, "id", json_mkstring(lm75data->id[y]));
-					json_append_member(code, "temperature", json_mknumber((int)temp+temp_corr));
+					json_append_member(code, "temperature", json_mknumber((int)temp+temp_offset));
 
-					json_append_member(lm75->message, "code", code);
+					json_append_member(lm75->message, "message", code);
 					json_append_member(lm75->message, "origin", json_mkstring("receiver"));
 					json_append_member(lm75->message, "protocol", json_mkstring(lm75->id));
 
@@ -166,25 +135,51 @@ void *lm75Parse(void *param) {
 					logprintf(LOG_DEBUG, "error connecting to lm75");
 					logprintf(LOG_DEBUG, "(probably i2c bus error from wiringPiI2CSetup)");
 					logprintf(LOG_DEBUG, "(maybe wrong id? use i2cdetect to find out)");
-					sleep(1);
+					protocol_thread_wait(node, 1, &nrloops);
 				}
 			}
 #endif
 		}
-		pthread_mutex_unlock(&mutex);
 	}
-	
-	pthread_cleanup_pop(1);
+
+	if(lm75data->id) {
+		for(y=0;y<lm75data->nrid;y++) {
+			sfree((void *)&lm75data->id[y]);
+		}
+		sfree((void *)&lm75data->id);
+	}
+	if(lm75data->fd) {
+		for(y=0;y<lm75data->nrid;y++) {
+			if(lm75data->fd[y] > 0) {
+				close(lm75data->fd[y]);
+			}
+		}
+		sfree((void *)&lm75data->fd);
+	}
+	sfree((void *)&lm75data);
+	lm75_threads--;
 
 	return (void *)NULL;
 }
 
-void lm75InitDev(JsonNode *jdevice) {
+struct threadqueue_t *lm75InitDev(JsonNode *jdevice) {
+	lm75_loop = 1;
 	wiringPiSetup();
 	char *output = json_stringify(jdevice, NULL);
 	JsonNode *json = json_decode(output);
-	threads_register("lm75", &lm75Parse, (void *)json);
 	sfree((void *)&output);
+
+	struct protocol_threads_t *node = protocol_thread_init(lm75, json);
+	return threads_register("lm75", &lm75Parse, (void *)node, 0);
+}
+
+void lm75ThreadGC(void) {
+	lm75_loop = 0;
+	protocol_thread_stop(lm75);
+	while(lm75_threads > 0) {
+		usleep(10);
+	}
+	protocol_thread_free(lm75);
 }
 
 void lm75Init(void) {
@@ -194,14 +189,13 @@ void lm75Init(void) {
 	lm75->devtype = WEATHER;
 	lm75->hwtype = SENSOR;
 
-    options_add(&lm75->options, 't', "temperature", has_value, config_value, "^[0-9]{1,3}$");
-    options_add(&lm75->options, 'i', "id", has_value, config_id, "0x[0-9a-f]{2}");
+	options_add(&lm75->options, 't', "temperature", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, NULL, "^[0-9]{1,3}$");
+	options_add(&lm75->options, 'i', "id", OPTION_HAS_VALUE, CONFIG_ID, JSON_STRING, NULL, "0x[0-9a-f]{2}");
 
-	protocol_setting_add_number(lm75, "decimals", 1);
-	protocol_setting_add_number(lm75, "humidity", 0);
-	protocol_setting_add_number(lm75, "temperature", 1);
-	protocol_setting_add_number(lm75, "battery", 0);
-	protocol_setting_add_number(lm75, "interval", 10);
+	options_add(&lm75->options, 0, "device-decimals", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)1, "[0-9]");
+	options_add(&lm75->options, 0, "gui-decimals", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)1, "[0-9]");
+	options_add(&lm75->options, 0, "gui-show-temperature", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
 
 	lm75->initDev=&lm75InitDev;
+	lm75->threadGC=&lm75ThreadGC;
 }

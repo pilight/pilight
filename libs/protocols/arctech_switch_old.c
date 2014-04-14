@@ -19,6 +19,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 
 #include "../../pilight.h"
 #include "common.h"
@@ -116,13 +117,15 @@ int arctechSwOldCreateCode(JsonNode *code) {
 	int id = -1;
 	int unit = -1;
 	int state = -1;
-	int tmp;
+	double itmp = -1;
 
-	json_find_number(code, "id", &id);
-	json_find_number(code, "unit", &unit);
-	if(json_find_number(code, "off", &tmp) == 0)
+	if(json_find_number(code, "id", &itmp) == 0)
+		id = (int)round(itmp);
+	if(json_find_number(code, "unit", &itmp) == 0)
+		unit = (int)round(itmp);
+	if(json_find_number(code, "off", &itmp) == 0)
 		state=0;
-	else if(json_find_number(code, "on", &tmp) == 0)
+	else if(json_find_number(code, "on", &itmp) == 0)
 		state=1;
 
 	if(id == -1 || unit == -1 || state == -1) {
@@ -170,13 +173,12 @@ void arctechSwOldInit(void) {
 	arctech_switch_old->binlen = 12;
 	arctech_switch_old->lsb = 2;
 
-	options_add(&arctech_switch_old->options, 't', "on", no_value, config_state, NULL);
-	options_add(&arctech_switch_old->options, 'f', "off", no_value, config_state, NULL);
-	options_add(&arctech_switch_old->options, 'u', "unit", has_value, config_id, "^([0-9]{1}|[1][0-5])$");
-	options_add(&arctech_switch_old->options, 'i', "id", has_value, config_id, "^(3[012]?|[012][0-9]|[0-9]{1})$");
+	options_add(&arctech_switch_old->options, 't', "on", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
+	options_add(&arctech_switch_old->options, 'f', "off", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
+	options_add(&arctech_switch_old->options, 'u', "unit", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, NULL, "^([0-9]{1}|[1][0-5])$");
+	options_add(&arctech_switch_old->options, 'i', "id", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, NULL, "^(3[012]?|[012][0-9]|[0-9]{1})$");
 
-	protocol_setting_add_string(arctech_switch_old, "states", "on,off");
-	protocol_setting_add_number(arctech_switch_old, "readonly", 0);
+	options_add(&arctech_switch_old->options, 0, "gui-readonly", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 	
 	arctech_switch_old->parseBinary=&arctechSwOldParseBinary;
 	arctech_switch_old->createCode=&arctechSwOldCreateCode;

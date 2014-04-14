@@ -1,5 +1,5 @@
 /*
-	Copyright (C) 2013 CurlyMo
+	Copyright (C) 2013 - 2014 CurlyMo
 
 	This file is part of pilight.
 
@@ -20,13 +20,15 @@
 #include <stdlib.h>
 #include <string.h>
 #include <regex.h>
+#include <sys/time.h>
 
 #include "../../pilight.h"
 #include "common.h"
 #include "options.h"
 #include "protocol.h"
 #include "log.h"
-#include "../protocols/pilight_firmware.h"
+#include "../protocols/pilight_firmware_v2.h"
+#include "../protocols/pilight_firmware_v3.h"
 
 #if defined(PROTOCOL_COCO_SWITCH) || defined(PROTOCOL_DIO_SWITCH) || defined(PROTOCOL_NEXA_SWITCH) || defined(PROTOCOL_KAKU_SWITCH) || defined(PROTOCOL_INTERTECHNO_SWITCH)
 	#include "../protocols/arctech_switch.h"
@@ -50,6 +52,7 @@
 	#include "../protocols/home_easy_old.h"
 #endif
 #ifdef PROTOCOL_ELRO_SWITCH
+	#include "../protocols/elro_ad.h"
 	#include "../protocols/elro_he.h"
 	#include "../protocols/elro_hc.h"
 #endif
@@ -76,6 +79,9 @@
 #endif
 #ifdef PROTOCOL_GENERIC_DIMMER
 	#include "../protocols/generic_dimmer.h"
+#endif
+#ifdef PROTOCOL_GENERIC_WEBCAM
+	#include "../protocols/generic_webcam.h"
 #endif
 #ifdef PROTOCOL_DS18B20
 	#include "../protocols/ds18b20.h"
@@ -120,9 +126,34 @@
 #ifdef PROTOCOL_SILVERCREST
 	#include "../protocols/silvercrest.h"
 #endif
+#ifdef PROTOCOL_THREECHAN
+	#include "../protocols/threechan.h"
+#endif
+#ifdef PROTOCOL_TEKNIHALL
+	#include "../protocols/teknihall.h"
+#endif
+#ifdef PROTOCOL_X10
+	#include "../protocols/x10.h"
+#endif
+#ifdef PROTOCOL_SUNRISESET
+	#include "../protocols/sunriseset.h"
+#endif
+#ifdef PROTOCOL_PROGRAM
+	#include "../protocols/program.h"
+#endif
+#ifdef PROTOCOL_DATETIME
+	#include "../protocols/pdatetime.h"
+#endif
+#ifdef PROTOCOL_XBMC
+	#include "../protocols/xbmc.h"
+#endif
+#ifdef PROTOCOL_LIRC
+	#include "../protocols/lirc.h"
+#endif
 
 void protocol_init(void) {
-	pilightFirmwareInit();
+	pilightFirmwareV2Init();
+	pilightFirmwareV3Init();
 #if defined(PROTOCOL_COCO_SWITCH) || defined(PROTOCOL_DIO_SWITCH) || defined(PROTOCOL_NEXA_SWITCH) || defined(PROTOCOL_KAKU_SWITCH) || defined(PROTOCOL_INTERTECHNO_SWITCH)
 	arctechSwInit();
 #endif
@@ -145,6 +176,7 @@ void protocol_init(void) {
 	homeEasyOldInit();
 #endif
 #if defined(PROTOCOL_ELRO_SWITCH) || defined(PROTOCOL_BRENNENSTUHL_SWITCH)
+	elroADInit();
 	elroHEInit();
 	elroHCInit();
 #endif
@@ -158,7 +190,7 @@ void protocol_init(void) {
 	rawInit();
 #endif
 #ifdef PROTOCOL_REV
-        revInit();
+	revInit();
 #endif
 #ifdef PROTOCOL_ALECTO
 	alectoInit();
@@ -171,6 +203,9 @@ void protocol_init(void) {
 #endif
 #ifdef PROTOCOL_GENERIC_DIMMER
 	genDimInit();
+#endif
+#ifdef PROTOCOL_GENERIC_WEBCAM
+	genWebcamInit();
 #endif
 #ifdef PROTOCOL_DS18B20
 	ds18b20Init();
@@ -215,14 +250,40 @@ void protocol_init(void) {
 #ifdef PROTOCOL_SILVERCREST
 	silvercrestInit();
 #endif
+#ifdef PROTOCOL_THREECHAN
+	threechanInit();
+#endif
+#ifdef PROTOCOL_TEKNIHALL
+	teknihallInit();
+#endif
+#ifdef PROTOCOL_X10
+	x10Init();
+#endif
+#ifdef PROTOCOL_SUNRISESET
+	sunRiseSetInit();
+#endif
+#ifdef PROTOCOL_PROGRAM
+	programInit();
+#endif
+#ifdef PROTOCOL_DATETIME
+	pdateTimeInit();
+#endif
+#ifdef PROTOCOL_XBMC
+	xbmcInit();
+#endif
+#ifdef PROTOCOL_LIRC
+	lircInit();
+#endif
 }
 
 void protocol_register(protocol_t **proto) {
-	*proto = malloc(sizeof(struct protocol_t));
+	if(!(*proto = malloc(sizeof(struct protocol_t)))) {
+		logprintf(LOG_ERR, "out of memory");
+		exit(EXIT_FAILURE);
+	}
 	(*proto)->options = NULL;
 	(*proto)->devices = NULL;
 	(*proto)->conflicts = NULL;
-	(*proto)->settings = NULL;
 	(*proto)->plslen = NULL;
 
 	(*proto)->pulse = 0;
@@ -232,6 +293,8 @@ void protocol_register(protocol_t **proto) {
 	(*proto)->txrpt = 1;
 	(*proto)->hwtype = 1;
 	(*proto)->rxrpt = 1;
+	(*proto)->multipleId = 1;
+	(*proto)->config = 1;
 	(*proto)->parseRaw = NULL;
 	(*proto)->parseBinary = NULL;
 	(*proto)->parseCode = NULL;
@@ -239,7 +302,10 @@ void protocol_register(protocol_t **proto) {
 	(*proto)->checkValues = NULL;
 	(*proto)->initDev = NULL;
 	(*proto)->printHelp = NULL;
+	(*proto)->threadGC = NULL;
+	(*proto)->gc = NULL;
 	(*proto)->message = NULL;
+	(*proto)->threads = NULL;
 
 	(*proto)->repeats = 0;
 	(*proto)->first = 0;
@@ -251,19 +317,93 @@ void protocol_register(protocol_t **proto) {
 	memset(&(*proto)->binary[0], 0, sizeof((*proto)->binary));
 
 	struct protocols_t *pnode = malloc(sizeof(struct protocols_t));
+	if(!pnode) {
+		logprintf(LOG_ERR, "out of memory");
+		exit(EXIT_FAILURE);
+	}
 	pnode->listener = *proto;
-	pnode->name = malloc(4);
+	if(!(pnode->name = malloc(4))) {
+		logprintf(LOG_ERR, "out of memory");
+		exit(EXIT_FAILURE);
+	}
 	pnode->next = protocols;
 	protocols = pnode;
 }
 
+struct protocol_threads_t *protocol_thread_init(protocol_t *proto, struct JsonNode *param) {
+	struct protocol_threads_t *node = malloc(sizeof(struct protocol_threads_t));
+	node->param = param;
+	pthread_mutexattr_init(&node->attr);
+	pthread_mutexattr_settype(&node->attr, PTHREAD_MUTEX_RECURSIVE);
+	pthread_mutex_init(&node->mutex, &node->attr);
+    pthread_cond_init(&node->cond, NULL);	
+	node->next = proto->threads;
+	proto->threads = node;
+	return node;
+}
+
+int protocol_thread_wait(struct protocol_threads_t *node, int interval, int *nrloops) {
+	struct timeval tp;
+	struct timespec ts;
+
+	pthread_mutex_unlock(&node->mutex);
+
+	gettimeofday(&tp, NULL);
+	ts.tv_sec = tp.tv_sec;
+	ts.tv_nsec = tp.tv_usec * 1000;
+	
+	if(*nrloops == 0) {
+		ts.tv_sec += 1;
+		*nrloops = 1;
+	} else {
+		ts.tv_sec += interval;
+	}
+
+	pthread_mutex_lock(&node->mutex);
+
+	return pthread_cond_timedwait(&node->cond, &node->mutex, &ts);
+}
+
+void protocol_thread_stop(protocol_t *proto) {
+	if(proto->threads) {
+		struct protocol_threads_t *tmp = proto->threads;
+		while(tmp) {
+			pthread_mutex_unlock(&tmp->mutex);
+			pthread_cond_broadcast(&tmp->cond);
+			tmp = tmp->next;
+		}
+	}
+}
+
+void protocol_thread_free(protocol_t *proto) {
+	if(proto->threads) {
+		struct protocol_threads_t *tmp = proto->threads;
+		while(tmp) {
+			tmp = proto->threads;
+			if(tmp->param) {
+				json_delete(tmp->param);
+			}
+			tmp = tmp->next;
+			sfree((void *)&tmp);
+		}
+		sfree((void *)&proto->threads);
+	}
+}
+
 void protocol_set_id(protocol_t *proto, const char *id) {
-	proto->id = malloc(strlen(id)+1);
+	if(!(proto->id = malloc(strlen(id)+1))) {
+		logprintf(LOG_ERR, "out of memory");
+		exit(EXIT_FAILURE);
+	}
 	strcpy(proto->id, id);
 }
 
 void protocol_plslen_add(protocol_t *proto, int plslen) {
 	struct protocol_plslen_t *pnode = malloc(sizeof(struct protocol_plslen_t));
+	if(!pnode) {
+		logprintf(LOG_ERR, "out of memory");
+		exit(EXIT_FAILURE);
+	}
 	pnode->length = plslen;
 	pnode->next	= proto->plslen;
 	proto->plslen = pnode;
@@ -271,9 +411,19 @@ void protocol_plslen_add(protocol_t *proto, int plslen) {
 
 void protocol_device_add(protocol_t *proto, const char *id, const char *desc) {
 	struct protocol_devices_t *dnode = malloc(sizeof(struct protocol_devices_t));
-	dnode->id = malloc(strlen(id)+1);
+	if(!dnode) {
+		logprintf(LOG_ERR, "out of memory");
+		exit(EXIT_FAILURE);
+	}
+	if(!(dnode->id = malloc(strlen(id)+1))) {
+		logprintf(LOG_ERR, "out of memory");
+		exit(EXIT_FAILURE);
+	}
 	strcpy(dnode->id, id);
-	dnode->desc = malloc(strlen(desc)+1);
+	if(!(dnode->desc = malloc(strlen(desc)+1))) {
+		logprintf(LOG_ERR, "out of memory");
+		exit(EXIT_FAILURE);
+	}
 	strcpy(dnode->desc, desc);
 	dnode->next	= proto->devices;
 	proto->devices = dnode;
@@ -281,7 +431,14 @@ void protocol_device_add(protocol_t *proto, const char *id, const char *desc) {
 
 void protocol_conflict_add(protocol_t *proto, const char *id) {
 	struct protocol_conflicts_t *cnode = malloc(sizeof(struct protocol_conflicts_t));
-	cnode->id = malloc(strlen(id)+1);
+	if(!cnode) {
+		logprintf(LOG_ERR, "out of memory");
+		exit(EXIT_FAILURE);
+	}
+	if(!(cnode->id = malloc(strlen(id)+1))) {
+		logprintf(LOG_ERR, "out of memory");
+		exit(EXIT_FAILURE);
+	}
 	strcpy(cnode->id, id);
 	cnode->next	= proto->conflicts;
 	proto->conflicts = cnode;
@@ -309,286 +466,6 @@ void protocol_conflict_remove(protocol_t **proto, const char *id) {
 	}
 }
 
-int protocol_setting_update_string(protocol_t *proto, const char *name, const char *value) {
-	struct protocol_settings_t *tmp_settings = proto->settings;
-
-	while(tmp_settings) {
-		if(strcmp(tmp_settings->name, name) == 0 && tmp_settings->type == 1) {
-			tmp_settings->old_value = realloc(tmp_settings->old_value, strlen(tmp_settings->cur_value)+1);
-			strcpy(tmp_settings->old_value, tmp_settings->cur_value);
-			tmp_settings->cur_value = realloc(tmp_settings->cur_value, strlen(value)+1);
-			strcpy(tmp_settings->cur_value, value);
-			return 0;
-		}
-		tmp_settings = tmp_settings->next;
-	}
-	sfree((void *)&tmp_settings);
-	return 1;
-}
-
-int protocol_setting_update_number(protocol_t *proto, const char *name, int value) {
-	struct protocol_settings_t *tmp_settings = proto->settings;
-
-	while(tmp_settings) {
-		if(strcmp(tmp_settings->name, name) == 0 && tmp_settings->type == 2) {
-			tmp_settings->old_value = realloc(tmp_settings->old_value, strlen(tmp_settings->cur_value)+1);
-			strcpy(tmp_settings->old_value, tmp_settings->cur_value);
-			tmp_settings->cur_value = realloc(tmp_settings->cur_value, sizeof(int)+1);
-			sprintf(tmp_settings->cur_value, "%d", value);
-			return 0;
-		}
-		tmp_settings = tmp_settings->next;
-	}
-	sfree((void *)&tmp_settings);
-	return 1;
-}
-
-int protocol_setting_restore(protocol_t *proto, const char *name) {
-	struct protocol_settings_t *tmp_settings = proto->settings;
-
-	while(tmp_settings) {
-		if(strcmp(tmp_settings->name, name) == 0) {
-			tmp_settings->cur_value = realloc(tmp_settings->cur_value, strlen(tmp_settings->old_value)+1);
-			strcpy(tmp_settings->cur_value, tmp_settings->old_value);
-			tmp_settings->old_value = realloc(tmp_settings->old_value, 4);
-			memset(tmp_settings->old_value, '\0', 4);
-			return 0;
-		}
-		tmp_settings = tmp_settings->next;
-	}
-	sfree((void *)&tmp_settings);
-	return 1;
-}
-
-int protocol_setting_check_string(protocol_t *proto, const char *name, const char *value) {
-	int error = EXIT_SUCCESS;
-
-	switch(proto->devtype) {
-		case DIMMER:
-			if(strcmp(name, "states") != 0) {
-				error=EXIT_FAILURE;
-			}
-		break;
-		case RELAY:
-			if(strcmp(name, "default") != 0 && strcmp(name, "states") != 0) {
-				error=EXIT_FAILURE;
-			}
-		break;
-		case SWITCH:
-		case SCREEN:
-			if(strcmp(name, "states") != 0) {
-				error=EXIT_FAILURE;
-			}
-		break;
-		case WEATHER:
-		case RAW:
-		case INTERNAL:
-		default:
-			error=EXIT_FAILURE;
-		break;
-	}
-
-	if(strcmp(name, "default") == 0 || strcmp(name, "states") == 0) {
-		if(proto->options) {
-			char *nvalue = malloc(strlen(value)+1);
-			strcpy(nvalue, value);
-			char *pch = strtok(nvalue, ",");
-			while(pch) {
-				int valid_state = 0;
-				struct options_t *options = proto->options;
-				while(options) {
-					if(options->conftype == config_state && strcmp(options->name, pch) == 0) {
-						valid_state = 1;
-						break;
-					}
-					options = options->next;
-				}
-				if(valid_state == 0) {
-					error=EXIT_FAILURE;
-				}
-				pch = strtok(NULL, ",");
-			}
-			sfree((void *)&nvalue);
-		}
-	}
-
-	return error;
-}
-
-void protocol_setting_add_string(protocol_t *proto, const char *name, const char *value) {
-	if(protocol_setting_check_string(proto, name, value) == 0) {
-		protocol_setting_remove(&proto, name);
-		struct protocol_settings_t *snode = malloc(sizeof(struct protocol_settings_t));
-		snode->name = malloc(strlen(name)+1);
-		strcpy(snode->name, name);
-		snode->cur_value = malloc(strlen(value)+1);
-		snode->old_value = malloc(4);
-		strcpy(snode->cur_value, value);
-		snode->type = 1;
-		snode->next	= proto->settings;
-		proto->settings = snode;
-	} else {
-		logprintf(LOG_ERR, "protocol \"%s\" setting \"%s\" is invalid", proto->id, name);
-		exit(EXIT_FAILURE);
-	}
-}
-
-int protocol_setting_check_number(protocol_t *proto, const char *name, int value) {
-
-	int error = EXIT_SUCCESS;
-#ifndef __FreeBSD__
-	regex_t regex;
-	int reti;
-#endif
-
-	switch(proto->devtype) {
-		case DIMMER:
-			if(strcmp(name, "max") != 0 && strcmp(name, "min") != 0 && strcmp(name, "readonly") != 0) {
-				error=EXIT_FAILURE;
-			}
-		break;
-		case WEATHER:
-			if(strcmp(name, "decimals") != 0 && strcmp(name, "battery") != 0
-			   && strcmp(name, "temperature") != 0 && strcmp(name, "humidity") != 0
-			   && strcmp(name, "temp-corr") != 0 && strcmp(name, "humi-corr") != 0) {
-			   if(proto->hwtype == SENSOR && strcmp(name, "interval") != 0) {
-					error=EXIT_FAILURE;
-				}
-			}
-		break;
-		case SWITCH:
-		case SCREEN:
-			if(strcmp(name, "readonly") != 0) {
-				error=EXIT_FAILURE;
-			}
-		break;
-		case RELAY:
-			if(strcmp(name, "readonly") != 0) {
-				error=EXIT_FAILURE;
-			}
-		break;
-		case RAW:
-		case INTERNAL:
-		default:
-			error=EXIT_FAILURE;
-		break;
-	}
-
-	if((strcmp(name, "readonly") == 0 ||
-		strcmp(name, "temperature") == 0 ||
-		strcmp(name, "battery") == 0 ||
-		strcmp(name, "humidity") == 0) &&
-		(value < 0 || value > 1)) {
-			error=EXIT_FAILURE;
-	}
-
-	if(strcmp(name, "decimals") == 0 && (value < 0 || value > 3)) {
-		error=EXIT_FAILURE;
-	}
-
-	if(strcmp(name, "interval") == 0 && value < 0) {
-		error=EXIT_FAILURE;
-	}
-
-	if(strcmp(name, "min") == 0 || strcmp(name, "max") == 0) {
-		struct options_t *tmp_options = proto->options;
-		while(tmp_options) {
-			if(tmp_options->conftype == config_value && strlen(tmp_options->mask) > 0) {
-#ifndef __FreeBSD__
-				/* If the argument has a regex mask, check if it passes */
-				reti = regcomp(&regex, tmp_options->mask, REG_EXTENDED);
-				if(reti) {
-					logprintf(LOG_ERR, "could not compile regex");
-					error=EXIT_FAILURE;
-				}
-				char *tmp = malloc(sizeof(value)+1);
-				sprintf(tmp, "%d", value);
-				reti = regexec(&regex, tmp, 0, NULL, 0);
-				if(reti == REG_NOMATCH || reti != 0) {
-					sfree((void *)&tmp);
-					regfree(&regex);
-					error=EXIT_FAILURE;
-				}
-				sfree((void *)&tmp);
-				regfree(&regex);
-#endif
-			}
-			tmp_options = tmp_options->next;
-		}
-	}
-
-	return error;
-}
-
-void protocol_setting_add_number(protocol_t *proto, const char *name, int value) {
-	if(protocol_setting_check_number(proto, name, value) == 0) {
-		protocol_setting_remove(&proto, name);
-		struct protocol_settings_t *snode = malloc(sizeof(struct protocol_settings_t));
-		snode->name = malloc(strlen(name)+1);
-		strcpy(snode->name, name);
-		snode->cur_value = malloc(sizeof(value)+1);
-		snode->old_value = malloc(4);
-		sprintf(snode->cur_value, "%d", value);
-		snode->type = 2;
-		snode->next	= proto->settings;
-		proto->settings = snode;
-	} else {
-		logprintf(LOG_ERR, "protocol \"%s\" setting \"%s\" is invalid", proto->id, name);
-		exit(EXIT_FAILURE);
-	}
-}
-
-int protocol_setting_get_string(protocol_t *proto, const char *name, char **out) {
-	struct protocol_settings_t *tmp_settings = proto->settings;
-
-	while(tmp_settings) {
-		if(strcmp(tmp_settings->name, name) == 0 && tmp_settings->type == 1) {
-			*out = tmp_settings->cur_value;
-			return 0;
-		}
-		tmp_settings = tmp_settings->next;
-	}
-	sfree((void *)&tmp_settings);
-	return 1;
-}
-
-int protocol_setting_get_number(protocol_t *proto, const char *name, int *out) {
-	struct protocol_settings_t *tmp_settings = proto->settings;
-
-	while(tmp_settings) {
-		if(strcmp(tmp_settings->name, name) == 0 && tmp_settings->type == 2) {
-			*out = atoi(tmp_settings->cur_value);
-			return 0;
-		}
-		tmp_settings = tmp_settings->next;
-	}
-	sfree((void *)&tmp_settings);
-	return 1;
-}
-
-void protocol_setting_remove(protocol_t **proto, const char *name) {
-	struct protocol_settings_t *currP, *prevP;
-
-	prevP = NULL;
-
-	for(currP = (*proto)->settings; currP != NULL; prevP = currP, currP = currP->next) {
-
-		if(strcmp(currP->name, name) == 0) {
-			if(prevP == NULL) {
-				(*proto)->settings = currP->next;
-			} else {
-				prevP->next = currP->next;
-			}
-
-			sfree((void *)&currP->name);
-			sfree((void *)&currP->cur_value);
-			sfree((void *)&currP);
-
-			break;
-		}
-	}
-}
-
 int protocol_device_exists(protocol_t *proto, const char *id) {
 	struct protocol_devices_t *temp = proto->devices;
 
@@ -606,11 +483,19 @@ int protocol_gc(void) {
 	struct protocols_t *ptmp;
 	struct protocol_devices_t *dtmp;
 	struct protocol_conflicts_t *ctmp;
-	struct protocol_settings_t *stmp;
 	struct protocol_plslen_t *ttmp;
 
 	while(protocols) {
 		ptmp = protocols;
+		logprintf(LOG_DEBUG, "protocol %s", ptmp->listener->id);
+		if(ptmp->listener->threadGC) {
+			ptmp->listener->threadGC();
+			logprintf(LOG_DEBUG, "stopped protocol threads");
+		}		
+		if(ptmp->listener->gc) {
+			ptmp->listener->gc();
+			logprintf(LOG_DEBUG, "ran garbage collector");
+		}
 		sfree((void *)&ptmp->listener->id);
 		sfree((void *)&ptmp->name);
 		options_delete(ptmp->listener->options);
@@ -641,17 +526,6 @@ int protocol_gc(void) {
 			}
 		}
 		sfree((void *)&ptmp->listener->conflicts);
-		if(ptmp->listener->settings) {
-			while(ptmp->listener->settings) {
-				stmp = ptmp->listener->settings;
-				sfree((void *)&stmp->name);
-				sfree((void *)&stmp->cur_value);
-				sfree((void *)&stmp->old_value);
-				ptmp->listener->settings = ptmp->listener->settings->next;
-				sfree((void *)&stmp);
-			}
-		}
-		sfree((void *)&ptmp->listener->settings);
 		sfree((void *)&ptmp->listener);
 		protocols = protocols->next;
 		sfree((void *)&ptmp);

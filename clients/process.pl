@@ -50,8 +50,16 @@ $socket = new IO::Socket::INET (
 
 $socket->send('{"message":"client receiver"}');
 $socket->recv($recv_data, 1024);
-print $recv_data;
+my $text = '';
 while(1) {
-	$socket->recv($recv_data, 1024);
-	print $recv_data;
+	$text = '';
+	while(1) {
+		$socket->recv($recv_data, 1024);
+		$text .= $recv_data;
+		if($recv_data[(length $recv_data)-1] == '\n' || $recv_data[(length $recv_data)] == '\n') {
+			$text = substr $text, 0, -1;
+			last;
+		}
+	}
+	print $text;
 }

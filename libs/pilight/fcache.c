@@ -85,9 +85,16 @@ int fcache_add(char *filename) {
 		return -1;
 	} else {
 		struct fcache_t *node = malloc(sizeof(struct fcache_t));
-		
+		if(!node) {
+			logprintf(LOG_ERR, "out of memory");
+			exit(EXIT_FAILURE);
+		}
 		filesize = (unsigned long)sb.st_size;
 		node->bytes = malloc(filesize + 100);
+		if(!node->bytes) {
+			logprintf(LOG_ERR, "out of memory");
+			exit(EXIT_FAILURE);
+		}
 		memset(node->bytes, '\0', filesize + 100);
 		int fd = open(filename, O_RDONLY);
 
@@ -100,6 +107,10 @@ int fcache_add(char *filename) {
 
 		node->size = (int)filesize;
 		node->name = malloc(strlen(filename)+1);
+		if(!node->name) {
+			logprintf(LOG_ERR, "out of memory");
+			exit(EXIT_FAILURE);
+		}
 		strcpy(node->name, filename);
 		node->next = fcache;
 		fcache = node;

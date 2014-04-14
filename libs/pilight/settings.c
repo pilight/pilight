@@ -31,18 +31,27 @@
 #include "common.h"
 #include "json.h"
 #include "settings.h"
+#include "http_lib.h"
 #include "log.h"
-
-#ifdef UPDATE
-	#include "http_lib.h"
-#endif
 
 /* Add a string value to the settings struct */
 void settings_add_string(const char *name, char *value) {
 	struct settings_t *snode = malloc(sizeof(struct settings_t));
+	if(!snode) {
+		logprintf(LOG_ERR, "out of memory");
+		exit(EXIT_FAILURE);
+	}
 	snode->name = malloc(strlen(name)+1);
+	if(!snode->name) {
+		logprintf(LOG_ERR, "out of memory");
+		exit(EXIT_FAILURE);
+	}
 	strcpy(snode->name, name);
 	snode->value = malloc(strlen(value)+1);
+	if(!snode->value) {
+		logprintf(LOG_ERR, "out of memory");
+		exit(EXIT_FAILURE);
+	}
 	strcpy(snode->value, value);
 	snode->type = 2;
 	snode->next = settings;
@@ -52,11 +61,23 @@ void settings_add_string(const char *name, char *value) {
 /* Add an int value to the settings struct */
 void settings_add_number(const char *name, int value) {
 	struct settings_t *snode = malloc(sizeof(struct settings_t));
+	if(!snode) {
+		logprintf(LOG_ERR, "out of memory");
+		exit(EXIT_FAILURE);
+	}
 	char ctmp[256];
 	snode->name = malloc(strlen(name)+1);
+	if(!snode->name) {
+		logprintf(LOG_ERR, "out of memory");
+		exit(EXIT_FAILURE);
+	}
 	strcpy(snode->name, name);
 	sprintf(ctmp, "%d", value);
 	snode->value = malloc(strlen(ctmp)+1);
+	if(!snode->value) {
+		logprintf(LOG_ERR, "out of memory");
+		exit(EXIT_FAILURE);
+	}
 	strcpy(snode->value, ctmp);
 	snode->type = 1;
 	snode->next = settings;
@@ -93,36 +114,6 @@ int settings_find_string(const char *name, char **out) {
 	return EXIT_FAILURE;
 }
 
-/* Check if a given path exists */
-int settings_path_exists(char *fil) {
-	struct stat s;
-	char *filename = basename(fil);
-	char path[1024];
-	size_t i = (strlen(fil)-strlen(filename));
-
-	memset(path, '\0', sizeof(path));
-	memcpy(path, fil, i);
-	snprintf(path, i, "%s", fil);
-	
-	if(strcmp(filename, fil) != 0) {
-		int err = stat(path, &s);
-		if(err == -1) {
-			if(ENOENT == errno) {
-				return EXIT_FAILURE;
-			} else {
-				return EXIT_FAILURE;
-			}
-		} else {
-			if(S_ISDIR(s.st_mode)) {
-				return EXIT_SUCCESS;
-			} else {
-				return EXIT_FAILURE;
-			}
-		}
-	}
-	return EXIT_SUCCESS;
-}
-
 /* Check if a given file exists */
 int settings_file_exists(char *filename) {
 	struct stat sb;   
@@ -131,13 +122,22 @@ int settings_file_exists(char *filename) {
 
 int settings_parse(JsonNode *root) {
 	int have_error = 0;
+
+#ifdef WEBSERVER
 	int web_port = 0;
 	int own_port = 0;
 
-#ifdef WEBSERVER
 	char *webgui_tpl = malloc(strlen(WEBGUI_TEMPLATE)+1);
+	if(!webgui_tpl) {
+		logprintf(LOG_ERR, "out of memory");
+		exit(EXIT_FAILURE);
+	}
 	strcpy(webgui_tpl, WEBGUI_TEMPLATE);
 	char *webgui_root = malloc(strlen(WEBSERVER_ROOT)+1);
+	if(!webgui_root) {
+		logprintf(LOG_ERR, "out of memory");
+		exit(EXIT_FAILURE);
+	}
 	strcpy(webgui_root, WEBSERVER_ROOT);
 #endif
 
@@ -157,9 +157,11 @@ int settings_parse(JsonNode *root) {
 				have_error = 1;
 				goto clear;
 			} else {
+#ifdef WEBSERVER			
 				if(strcmp(jsettings->key, "port") == 0) {
 					own_port = (int)jsettings->number_;
 				}
+#endif
 				settings_add_number(jsettings->key, (int)jsettings->number_);
 			}
 		} else if(strcmp(jsettings->key, "standalone") == 0) {
@@ -170,8 +172,16 @@ int settings_parse(JsonNode *root) {
 			} else {
 				settings_add_number(jsettings->key, (int)jsettings->number_);
 			}
+		}  else if(strcmp(jsettings->key, "firmware-update") == 0) {
+			if(jsettings->number_ < 0 || jsettings->number_ > 1) {
+				logprintf(LOG_ERR, "setting \"%s\" must be either 0 or 1", jsettings->key);
+				have_error = 1;
+				goto clear;
+			} else {
+				settings_add_number(jsettings->key, (int)jsettings->number_);
+			}
 		} else if(strcmp(jsettings->key, "log-level") == 0) {
-			if((int)jsettings->number_ == 0 || (int)jsettings->number_ > 5) {
+			if((int)jsettings->number_ < 0 || (int)jsettings->number_ > 5) {
 				logprintf(LOG_ERR, "setting \"%s\" must contain a number from 0 till 5", jsettings->key);
 				have_error = 1;
 				goto clear;
@@ -184,7 +194,7 @@ int settings_parse(JsonNode *root) {
 				have_error = 1;
 				goto clear;
 			} else {
-				if(settings_path_exists(jsettings->string_) != EXIT_SUCCESS) {
+				if(path_exists(jsettings->string_) != EXIT_SUCCESS) {
 					logprintf(LOG_ERR, "setting \"%s\" must point to an existing folder", jsettings->key);
 					have_error = 1;
 					goto clear;				
@@ -248,12 +258,16 @@ int settings_parse(JsonNode *root) {
 				settings_add_number(jsettings->key, (int)jsettings->number_);
 			}
 		} else if(strcmp(jsettings->key, "webserver-root") == 0) {
-			if(!jsettings->string_ || settings_path_exists(jsettings->string_) != 0) {
+			if(!jsettings->string_ || path_exists(jsettings->string_) != 0) {
 				logprintf(LOG_ERR, "setting \"%s\" must contain a valid path", jsettings->key);
 				have_error = 1;
 				goto clear;
 			} else {
 				webgui_root = realloc(webgui_root, strlen(jsettings->string_)+1);
+				if(!webgui_root) {
+					logprintf(LOG_ERR, "out of memory");
+					exit(EXIT_FAILURE);
+				}
 				strcpy(webgui_root, jsettings->string_);
 				settings_add_string(jsettings->key, jsettings->string_);
 			}
@@ -273,18 +287,42 @@ int settings_parse(JsonNode *root) {
 			} else {
 				settings_add_number(jsettings->key, (int)jsettings->number_);
 			} 
-		} else if(strcmp(jsettings->key, "webserver-username") == 0 || strcmp(jsettings->key, "webserver-password") == 0) {
+		} else if(strcmp(jsettings->key, "webserver-user") == 0) {
 			if(jsettings->string_ || strlen(jsettings->string_) > 0) {
-				settings_add_string(jsettings->key, jsettings->string_);
+				if(name2uid(jsettings->string_) == -1) {
+					logprintf(LOG_ERR, "setting \"%s\" must contain a valid system user", jsettings->key);
+					have_error = 1;
+					goto clear;
+				} else {
+					settings_add_string(jsettings->key, jsettings->string_);
+				}
 			}
-		} else if(strcmp(jsettings->key, "webserver-authentication") == 0) {
-			if(jsettings->number_ < 0 || jsettings->number_ > 1) {
-				logprintf(LOG_ERR, "setting \"%s\" must be either 0 or 1", jsettings->key);
-				have_error = 1;
-				goto clear;
-			} else {
-				settings_add_number(jsettings->key, (int)jsettings->number_);
-			}
+		} else if(strcmp(jsettings->key, "webserver-authentication") == 0 && jsettings->tag == JSON_ARRAY) {
+				JsonNode *jtmp = json_first_child(jsettings);
+				unsigned short i = 0;
+				while(jtmp) {
+					i++;
+					if(jtmp->tag == JSON_STRING) {
+						if(i == 1) {
+							settings_add_string("webserver-authentication-username", jtmp->string_);
+						} else if(i == 2) {
+							settings_add_string("webserver-authentication-password", jtmp->string_);
+						}
+					} else {
+						have_error = 1;
+						break;
+					}
+					if(i > 2) {
+						have_error = 1;
+						break;
+					}
+					jtmp = jtmp->next;
+				}
+				if(i != 2 || have_error == 1) {
+					logprintf(LOG_ERR, "setting \"%s\" must be in the format of [ \"username\", \"password\" ]", jsettings->key);
+					have_error = 1;
+					goto clear;
+				}
 		}  else if(strcmp(jsettings->key, "webgui-template") == 0) {
 			if(!jsettings->string_) {
 				logprintf(LOG_ERR, "setting \"%s\" must be a valid template", jsettings->key);
@@ -292,6 +330,10 @@ int settings_parse(JsonNode *root) {
 				goto clear;
 			} else {
 				webgui_tpl = realloc(webgui_tpl, strlen(jsettings->string_)+1);
+				if(!webgui_tpl) {
+					logprintf(LOG_ERR, "out of memory");
+					exit(EXIT_FAILURE);
+				}
 				strcpy(webgui_tpl, jsettings->string_);
 				settings_add_string(jsettings->key, jsettings->string_);
 			}
@@ -322,6 +364,10 @@ int settings_parse(JsonNode *root) {
 
 			if(jsettings->string_) {
 				url = malloc(strlen(jsettings->string_)+1);
+				if(!url) {
+					logprintf(LOG_ERR, "out of memory");
+					exit(EXIT_FAILURE);
+				}
 				strcpy(url, jsettings->string_);
 				http_parse_url(url, &filename);
 			}
@@ -354,12 +400,18 @@ int settings_parse(JsonNode *root) {
 #ifdef WEBSERVER
 	if(webgui_tpl) {
 		char *tmp = malloc(strlen(webgui_root)+strlen(webgui_tpl)+13);
+		if(!tmp) {
+			logprintf(LOG_ERR, "out of memory");
+			exit(EXIT_FAILURE);
+		}
 		sprintf(tmp, "%s/%s/index.html", webgui_root, webgui_tpl);
-		if(settings_path_exists(tmp) != EXIT_SUCCESS) {
+		if(path_exists(tmp) != EXIT_SUCCESS) {
 			logprintf(LOG_ERR, "setting \"webgui-template\", template does not exists");
 			have_error = 1;
+			sfree((void *)&tmp);
 			goto clear;		
 		}
+		sfree((void *)&tmp);
 	}
 
 	if(web_port == own_port) {
@@ -462,6 +514,10 @@ int settings_read(void) {
 int settings_set_file(char *settfile) {
 	if(access(settfile, R_OK | W_OK) != -1) {
 		settingsfile = realloc(settingsfile, strlen(settfile)+1);
+		if(!settingsfile) {
+			logprintf(LOG_ERR, "out of memory");
+			exit(EXIT_FAILURE);
+		}
 		strcpy(settingsfile, settfile);
 	} else {
 		fprintf(stderr, "%s: the settings file %s does not exists\n", progname, settfile);

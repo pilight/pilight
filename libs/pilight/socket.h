@@ -29,12 +29,9 @@ typedef struct socket_callback_t {
 int socket_start(unsigned short port);
 int socket_connect(char *address, unsigned short port);
 void socket_close(int i);
-void socket_write(int sockfd, const char *msg, ...);
-void socket_write_big(int sockfd, const char *msg, ...);
+int socket_write(int sockfd, const char *msg, ...);
 char *socket_read(int sockfd);
-char *socket_read_big(int sockfd);
 void *socket_wait(void *param);
-int socket_check_whitelist(char *ip);
 int socket_gc(void);
 unsigned int socket_get_port(void);
 int socket_get_fd(void);

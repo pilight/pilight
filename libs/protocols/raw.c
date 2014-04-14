@@ -41,6 +41,10 @@ int rawCreateCode(JsonNode *code) {
 	}
 
 	ncode = malloc(strlen(rcode)+1);
+	if(!ncode) {
+		logprintf(LOG_ERR, "out of memory");
+		exit(EXIT_FAILURE);
+	}
 	strcpy(ncode, rcode);
 	pch = strtok(ncode, " ");
 	while(pch != NULL) {
@@ -64,7 +68,7 @@ void rawInit(void) {
 	protocol_device_add(raw, "raw", "Raw Codes");
 	raw->devtype = RAW;
 
-	options_add(&raw->options, 'c', "code", has_value, 0, NULL);
+	options_add(&raw->options, 'c', "code", OPTION_HAS_VALUE, 0, JSON_STRING, NULL, NULL);
 
 	raw->createCode=&rawCreateCode;
 	raw->printHelp=&rawPrintHelp;

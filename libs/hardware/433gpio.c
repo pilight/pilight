@@ -39,10 +39,14 @@ unsigned short gpio433HwInit(void) {
 		return EXIT_FAILURE;
 	}
 	gpio_433_initialized = 1;
-	pinMode(gpio_433_out, OUTPUT);
-	if(wiringPiISR(gpio_433_in, INT_EDGE_BOTH) < 0) {
-		logprintf(LOG_ERR, "unable to register interrupt for pin %d", gpio_433_in) ;
-		return EXIT_SUCCESS;
+	if(gpio_433_out >= 0) {
+		pinMode(gpio_433_out, OUTPUT);
+	}
+	if(gpio_433_in >= 0) {
+		if(wiringPiISR(gpio_433_in, INT_EDGE_BOTH) < 0) {
+			logprintf(LOG_ERR, "unable to register interrupt for pin %d", gpio_433_in) ;
+			return EXIT_SUCCESS;
+		}
 	}
 	return EXIT_SUCCESS;
 }
@@ -50,11 +54,11 @@ unsigned short gpio433HwInit(void) {
 unsigned short gpio433HwDeinit(void) {
 	FILE *fd;
 	if(gpio_433_initialized) {
-		if((fd = fopen ("/sys/class/gpio/unexport", "w"))) {
+		if(gpio_433_out >= 0 && (fd = fopen ("/sys/class/gpio/unexport", "w"))) {
 			fprintf(fd, "%d", wpiPinToGpio(gpio_433_out));
 			fclose(fd);
 		}
-		if((fd = fopen ("/sys/class/gpio/unexport", "w"))) {
+		if(gpio_433_in >= 0 && (fd = fopen ("/sys/class/gpio/unexport", "w"))) {
 			fprintf(fd, "%d", wpiPinToGpio(gpio_433_in));
 			fclose(fd);
 		}
@@ -64,18 +68,26 @@ unsigned short gpio433HwDeinit(void) {
 
 int gpio433Send(int *code) {
 	unsigned short i = 0;
-
-	while(code[i]) {
-		digitalWrite(gpio_433_out, 1);
-		usleep((__useconds_t)code[i++]);
-		digitalWrite(gpio_433_out, 0);
-		usleep((__useconds_t)code[i++]);
+	if(gpio_433_out >= 0) {
+		while(code[i]) {
+			digitalWrite(gpio_433_out, 1);
+			usleep((__useconds_t)code[i++]);
+			digitalWrite(gpio_433_out, 0);
+			usleep((__useconds_t)code[i++]);
+		}
+	} else {
+		sleep(1);
 	}
 	return EXIT_SUCCESS;
 }
 
 int gpio433Receive(void) {
-	return irq_read(gpio_433_in);
+	if(gpio_433_in >= 0) {
+		return irq_read(gpio_433_in);
+	} else {
+		sleep(1);
+		return 0;
+	}
 }
 
 unsigned short gpio433Settings(JsonNode *json) {
@@ -103,8 +115,8 @@ void gpio433Init(void) {
 
 	piHiPri(55);
 
-	options_add(&gpio433->options, 'r', "receiver", has_value, config_value, "^[0-9]+$");
-	options_add(&gpio433->options, 's', "sender", has_value, config_value, "^[0-9]+$");
+	options_add(&gpio433->options, 'r', "receiver", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, NULL, "^[0-9-]+$");
+	options_add(&gpio433->options, 's', "sender", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, NULL, "^[0-9-]+$");
 
 	gpio433->type=RF433;
 	gpio433->init=&gpio433HwInit;

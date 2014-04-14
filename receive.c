@@ -22,7 +22,6 @@
 #include <unistd.h>
 #include <errno.h>
 #include <syslog.h>
-#include <assert.h>
 
 #include "pilight.h"
 #include "common.h"
@@ -47,6 +46,10 @@ int main(int argc, char **argv) {
 	log_level_set(LOG_NOTICE);
 
 	progname = malloc(16);
+	if(!progname) {
+		logprintf(LOG_ERR, "out of memory");
+		exit(EXIT_FAILURE);
+	}
 	strcpy(progname, "pilight-receive");
 	struct options_t *options = NULL;
 	struct ssdp_list_t *ssdp_list = NULL;
@@ -62,10 +65,10 @@ int main(int argc, char **argv) {
 	char *args = NULL;
 	steps_t steps = WELCOME;
 
-	options_add(&options, 'H', "help", no_value, 0, NULL);
-	options_add(&options, 'V', "version", no_value, 0, NULL);
-	options_add(&options, 'S', "server", has_value, 0, "^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]).){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$");
-	options_add(&options, 'P', "port", has_value, 0, "[0-9]{1,4}");
+	options_add(&options, 'H', "help", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
+	options_add(&options, 'V', "version", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
+	options_add(&options, 'S', "server", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, "^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]).){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$");
+	options_add(&options, 'P', "port", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, "[0-9]{1,4}");
 
 	/* Store all CLI arguments for later usage
 	   and also check if the CLI arguments where
@@ -92,6 +95,11 @@ int main(int argc, char **argv) {
 			break;
 			case 'S':
 				server = realloc(server, strlen(args)+1);
+				memset(server, '\0', strlen(args)+1);
+				if(!server) {
+					logprintf(LOG_ERR, "out of memory");
+					exit(EXIT_FAILURE);
+				}
 				strcpy(server, args);
 			break;
 			case 'P':
@@ -103,8 +111,8 @@ int main(int argc, char **argv) {
 			break;
 		}
 	}
-
 	options_delete(options);
+
 	if(server && port > 0) {
 		if((sockfd = socket_connect(server, port)) == -1) {
 			logprintf(LOG_ERR, "could not connect to pilight-daemon");
@@ -118,14 +126,17 @@ int main(int argc, char **argv) {
 			logprintf(LOG_ERR, "could not connect to pilight-daemon");
 			goto close;
 		}
-		sfree((void *)&ssdp_list);
+	}
+	if(ssdp_list) {
+		ssdp_free(ssdp_list);
+	}
+	if(server) {
+		sfree((void *)&server);
 	}
 
 	while(1) {
 		if(steps > WELCOME) {
-			/* Clear the receive buffer again and read the welcome message */
-			recvBuff = socket_read(sockfd);
-			if(recvBuff == NULL) {
+			if((recvBuff = socket_read(sockfd)) == NULL) {
 				goto close;
 			}
 		}
@@ -138,31 +149,32 @@ int main(int argc, char **argv) {
 				//extract the message
 				json = json_decode(recvBuff);
 				json_find_string(json, "message", &message);
-				assert(message != NULL);
 				if(strcmp(message, "accept client") == 0) {
 					steps=RECEIVE;
 				} else if(strcmp(message, "reject client") == 0) {
 					steps=REJECT;
-				} else {
-					assert(false);
 				}
 				//cleanup
 				json_delete(json);
+				sfree((void *)&recvBuff);
 				json = NULL;
 				message = NULL;
+				recvBuff = NULL;
 			break;
 			case RECEIVE: {
-					char *line = strtok(recvBuff, "\n");
-					//for each line
-					while(line) {
-						json = json_decode(recvBuff);
-						assert(json != NULL);
-						char *output = json_stringify(json, "\t");
-						printf("%s\n", output);
-						sfree((void *)&output);
-						json_delete(json);
-						line = strtok(NULL,"\n");
-					}
+				char *line = strtok(recvBuff, "\n");
+				//for each line
+				while(line) {
+					json = json_decode(line);
+					char *output = json_stringify(json, "\t");
+					printf("%s\n", output);
+					sfree((void *)&output);
+					json_delete(json);
+					line = strtok(NULL,"\n");
+				}
+				sfree((void *)&recvBuff);
+				sfree((void *)&line);
+				recvBuff = NULL;
 			} break;
 			case REJECT:
 			default:
@@ -174,13 +186,12 @@ close:
 	if(sockfd > 0) {
 		socket_close(sockfd);
 	}
-	if(server) {
-		sfree((void *)&server);
+	if(recvBuff) {
+		sfree((void *)&recvBuff);
 	}
 	options_gc();
+	log_shell_disable();
 	log_gc();
 	sfree((void *)&progname);
-	sfree((void *)&message);
-
 return EXIT_SUCCESS;
 }

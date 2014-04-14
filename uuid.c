@@ -18,16 +18,19 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdarg.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include <sys/ioctl.h>
-#include <limits.h>
-#include <errno.h>
-#include <syslog.h>
-#include <time.h>
-#include <math.h>
 #include <string.h>
+#include <signal.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <arpa/inet.h>
+#include <netinet/in.h>
+#include <sys/ioctl.h>
+#include <sys/socket.h>
+#include <sys/stat.h>
+#include <sys/time.h>
+#include <pthread.h>
+#include <ctype.h>
 
 #include "pilight.h"
 #include "common.h"
@@ -37,13 +40,13 @@
 #include "gc.h"
 
 unsigned short main_loop = 1;
-pthread_t pth;
 
 int main_gc(void) {
 	log_shell_disable();
 
 	options_gc();
 	log_gc();
+	gc_clear();
 
 	sfree((void *)&progname);
 
@@ -62,14 +65,20 @@ int main(int argc, char **argv) {
 	log_level_set(LOG_NOTICE);
 
 	struct options_t *options = NULL;
-	
+	struct ifaddrs *ifaddr, *ifa;
+	int family = 0;
+	char *p = NULL;	
 	char *args = NULL;	
 	
 	progname = malloc(13);
+	if(!progname) {
+		logprintf(LOG_ERR, "out of memory");
+		exit(EXIT_FAILURE);
+	}
 	strcpy(progname, "pilight-uuid");	
 	
-	options_add(&options, 'H', "help", no_value, 0, NULL);
-	options_add(&options, 'V', "version", no_value, 0, NULL);
+	options_add(&options, 'H', "help", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
+	options_add(&options, 'V', "version", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
 
 	while (1) {
 		int c;
@@ -97,8 +106,42 @@ int main(int argc, char **argv) {
 	}
 	options_delete(options);
 
-	printf("%s\n", ssdp_genuuid());
+#ifdef __FreeBSD__	
+	if(rep_getifaddrs(&ifaddr) == -1) {
+		logprintf(LOG_ERR, "could not get network adapter information");
+		goto clear;
+	}
+#else
+	if(getifaddrs(&ifaddr) == -1) {
+		perror("getifaddrs");
+		goto clear;
+	}
+#endif
 
+	for(ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next) {
+		if(ifa->ifa_addr == NULL) {
+			continue;
+		}
+		
+		family = ifa->ifa_addr->sa_family;
+		
+		if((strstr(ifa->ifa_name, "lo") == NULL && strstr(ifa->ifa_name, "vbox") == NULL 
+		    && strstr(ifa->ifa_name, "dummy") == NULL) && (family == AF_INET || family == AF_INET6)) {
+			if((p = genuuid(ifa->ifa_name)) == NULL) {
+				logprintf(LOG_ERR, "could not generate the device uuid");
+				freeifaddrs(ifaddr);
+				goto clear;
+			} else {
+				printf("%s\n", p);
+				sfree((void *)&p);
+				break;
+			}
+		}
+	}
+
+	freeifaddrs(ifaddr);
+
+clear:
 	main_gc();
 	return (EXIT_FAILURE);
 }

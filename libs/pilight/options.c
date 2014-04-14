@@ -45,6 +45,10 @@ void options_set_value(struct options_t **opt, int id, const char *val) {
 	while(temp) {
 		if(temp->id == id && temp->id > 0) {
 			temp->value = realloc(temp->value, strlen(val)+1);
+			if(!temp->value) {
+				logprintf(LOG_ERR, "out of memory");
+				exit(EXIT_FAILURE);
+			}
 			strcpy(temp->value, val);
 			break;
 		}
@@ -176,6 +180,19 @@ int options_parse(struct options_t **opt, int argc, char **argv, int error_check
 		shortarg = realloc(shortarg, 2);
 		*optarg = realloc(*optarg, 4);
 		
+		if(!longarg) {
+			logprintf(LOG_ERR, "out of memory");
+			exit(EXIT_FAILURE);
+		}
+		if(!shortarg) {
+			logprintf(LOG_ERR, "out of memory");
+			exit(EXIT_FAILURE);
+		}
+		if(!*optarg) {
+			logprintf(LOG_ERR, "out of memory");
+			exit(EXIT_FAILURE);
+		}
+		
 		/* The memory to null */
 		memset(*optarg, '\0', 4);
 		memset(shortarg, '\0', 2);
@@ -187,6 +204,10 @@ int options_parse(struct options_t **opt, int argc, char **argv, int error_check
 			/* Copy all characters until the equals to sign.
 			   This will probably be the name of the argument */
 			longarg = realloc(longarg, strcspn(argv[getOptPos],"=")+1);			
+			if(!longarg) {
+				logprintf(LOG_ERR, "out of memory");
+				exit(EXIT_FAILURE);
+			}
 			memset(longarg, '\0', strcspn(argv[getOptPos],"=")+1);
 			memcpy(longarg, &argv[getOptPos][0], strcspn(argv[getOptPos],"="));
 
@@ -194,18 +215,30 @@ int options_parse(struct options_t **opt, int argc, char **argv, int error_check
 			   This will probably be the value of the argument */
 			size_t i = strlen(&argv[getOptPos][strcspn(argv[getOptPos],"=")+1]);
 			*optarg = realloc(*optarg, i+1);
+			if(!*optarg) {
+				logprintf(LOG_ERR, "out of memory");
+				exit(EXIT_FAILURE);
+			}
 			memset(*optarg, '\0', i+1);
 			memcpy(*optarg, &argv[getOptPos][strcspn(argv[getOptPos],"=")+1], i);
 		} else {
 			/* If the argument does not contain a equals sign.
 			   Store the argument to check later if it's a long argument */
 			longarg = realloc(longarg, strlen(argv[getOptPos])+1);	
+			if(!longarg) {
+				logprintf(LOG_ERR, "out of memory");
+				exit(EXIT_FAILURE);
+			}
 			strcpy(longarg, argv[getOptPos]);
 		}
 
 		/* A short argument only contains of two characters.
 		   So only store the first two characters */
 		shortarg = realloc(shortarg, strlen(argv[getOptPos])+1);
+		if(!shortarg) {
+			logprintf(LOG_ERR, "out of memory");
+			exit(EXIT_FAILURE);
+		}
 		memset(shortarg, '\0', 3);
 		strncpy(shortarg, argv[getOptPos], 2);
 
@@ -216,6 +249,10 @@ int options_parse(struct options_t **opt, int argc, char **argv, int error_check
 		   do this if the first character of the argument doesn't contain*/
 		if(strcmp(longarg, shortarg) == 0 && (getOptPos+1)<argc && argv[getOptPos+1][0] != '-') {
 			*optarg = realloc(*optarg, strlen(argv[getOptPos+1])+1);
+			if(!*optarg) {
+				logprintf(LOG_ERR, "out of memory");
+				exit(EXIT_FAILURE);
+			}
 			strcpy(*optarg, argv[getOptPos+1]);
 			c = shortarg[1];
 			getOptPos++;
@@ -224,6 +261,10 @@ int options_parse(struct options_t **opt, int argc, char **argv, int error_check
 			    then we probably encountered a long argument. */
 			if(longarg[0] == '-' && longarg[1] == '-') {
 				gctmp = realloc(gctmp, strlen(&longarg[2])+1);
+				if(!gctmp) {
+					logprintf(LOG_ERR, "out of memory");
+					exit(EXIT_FAILURE);
+				}
 				strcpy(gctmp, &longarg[2]);
 
 				/* Retrieve the short identifier for the long argument */
@@ -334,9 +375,13 @@ gc:
 }
 
 /* Add a new option to the options struct */
-void options_add(struct options_t **opt, int id, const char *name, int argtype, int conftype, const char *mask) {
+void options_add(struct options_t **opt, int id, const char *name, int argtype, int conftype, int vartype, void *def, const char *mask) {
 	char *ctmp = NULL;
 	char *nname = malloc(strlen(name)+1);
+	if(!nname) {
+		logprintf(LOG_ERR, "out of memory");
+		exit(EXIT_FAILURE);
+	}
 	strcpy(nname, name);
 	int itmp;
 	if(!(argtype >= 0 && argtype <= 3)) {
@@ -351,7 +396,7 @@ void options_add(struct options_t **opt, int id, const char *name, int argtype, 
 		logprintf(LOG_ERR, "trying to add an option without name");
 		sfree((void *)&nname);
 		exit(EXIT_FAILURE);
-	} else if(options_get_name(opt, id, &ctmp) == 0) {
+	} else if(id != 0 && options_get_name(opt, id, &ctmp) == 0) {
 		logprintf(LOG_ERR, "duplicate option id: %c", id);
 		sfree((void *)&nname);
 		exit(EXIT_FAILURE);
@@ -361,18 +406,40 @@ void options_add(struct options_t **opt, int id, const char *name, int argtype, 
 		exit(EXIT_FAILURE);
 	} else {
 		struct options_t *optnode = malloc(sizeof(struct options_t));
+		if(!optnode) {
+			logprintf(LOG_ERR, "out of memory");
+			exit(EXIT_FAILURE);
+		}
 		optnode->id = id;
 		optnode->name = malloc(strlen(name)+1);
+		if(!optnode->name) {
+			logprintf(LOG_ERR, "out of memory");
+			exit(EXIT_FAILURE);
+		}
 		strcpy(optnode->name, name);
 		optnode->argtype = argtype;
 		optnode->conftype = conftype;
+		optnode->vartype = vartype;
+		optnode->def = def;
 		optnode->value = malloc(4);
+		if(!optnode->value) {
+			logprintf(LOG_ERR, "out of memory");
+			exit(EXIT_FAILURE);
+		}
 		memset(optnode->value, '\0', 4);
 		if(mask) {
 			optnode->mask = malloc(strlen(mask)+1);
+			if(!optnode->mask) {
+				logprintf(LOG_ERR, "out of memory");
+				exit(EXIT_FAILURE);
+			}
 			strcpy(optnode->mask, mask);
 		} else {
 			optnode->mask = malloc(4);
+			if(!optnode->mask) {
+				logprintf(LOG_ERR, "out of memory");
+				exit(EXIT_FAILURE);
+			}
 			memset(optnode->mask, '\0', 4);
 		}
 		optnode->next = *opt;
@@ -387,31 +454,61 @@ void options_merge(struct options_t **a, struct options_t **b) {
 	temp = *b;
 	while(temp) {
 		struct options_t *optnode = malloc(sizeof(struct options_t));
+		if(!optnode) {
+			logprintf(LOG_ERR, "out of memory");
+			exit(EXIT_FAILURE);
+		}
 		optnode->id = temp->id;
 		if(temp->name) {
 			optnode->name = malloc(strlen(temp->name)+1);
+			if(!optnode->name) {
+				logprintf(LOG_ERR, "out of memory");
+				exit(EXIT_FAILURE);
+			}
 			memset(optnode->name, '\0', strlen(temp->name)+1);
 			strcpy(optnode->name, temp->name);
 		} else {
 			optnode->name = malloc(4);
+			if(!optnode->name) {
+				logprintf(LOG_ERR, "out of memory");
+				exit(EXIT_FAILURE);
+			}
 			memset(optnode->name, '\0', 4);
 		}
 		if(temp->value) {
 			optnode->value = malloc(strlen(temp->value)+1);
+			if(!optnode->value) {
+				logprintf(LOG_ERR, "out of memory");
+				exit(EXIT_FAILURE);
+			}
 			strcpy(optnode->value, temp->value);
 		} else {
 			optnode->value = malloc(4);
+			if(!optnode->value) {
+				logprintf(LOG_ERR, "out of memory");
+				exit(EXIT_FAILURE);
+			}
 			memset(optnode->value, '\0', 4);
 		}
 		if(temp->mask) {
 			optnode->mask = malloc(strlen(temp->mask)*2);
+			if(!optnode->mask) {
+				logprintf(LOG_ERR, "out of memory");
+				exit(EXIT_FAILURE);
+			}
 			strcpy(optnode->mask, temp->mask);
 		} else {
 			optnode->mask = malloc(4);
+			if(!optnode->mask) {
+				logprintf(LOG_ERR, "out of memory");
+				exit(EXIT_FAILURE);
+			}
 			memset(optnode->mask, '\0', 4);
 		}
 		optnode->argtype = temp->argtype;
 		optnode->conftype = temp->conftype;
+		optnode->vartype = temp->vartype;
+		optnode->def = temp->def;
 		optnode->next = *a;
 		*a = optnode;
 		temp = temp->next;

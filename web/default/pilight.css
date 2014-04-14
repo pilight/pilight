@@ -47,7 +47,14 @@ div.ui-slider.ui-slider-switch {
 	margin: 6px 10px 10px 0px;
 }
 
-div.temperature, div.humidity, div.battery.red, div.battery.green {
+.pendingsw.pending .ui-slider-label {
+	background: #FF9900;
+}
+
+div.datetime, div.temperature, div.humidity, div.battery.red, div.update,
+div.battery.green, div.sunrise, div.sunset, div.sunset_icon.gray, 
+div.sunrise_icon.gray, div.sunset_icon.blue, div.sunrise_icon.yellow,
+div.media_icon, div.action_icon {
 	position: relative;
 	float: right;
 	padding: 4px;
@@ -61,6 +68,15 @@ div.battery.red, div.battery.green {
 	right: -60px;	
 }
 
+div.sunset_icon.gray, div.sunrise_icon.gray,
+div.sunset_icon.blue, div.sunrise_icon.yellow  {
+	width: 19px;
+	height: 16px;
+	top: 0px;
+	right: -50px;	
+	padding: 0;
+}
+
 div.battery.red {
 	background: url('battery_red.png') 0px 0px no-repeat;
 }
@@ -69,21 +85,104 @@ div.battery.green {
 	background: url('battery_green.png') 0px 0px no-repeat;
 }
 
-div.degrees, div.percentage {
+div.sunrise_icon.gray {
+	background: url('sunrise_gray.png') 0px 0px no-repeat;
+}
+
+div.sunrise_icon.yellow {
+	background: url('sunrise_yellow.png') 0px 0px no-repeat;
+}
+
+div.sunset_icon.gray {
+	background: url('sunset_gray.png') 0px 0px no-repeat;
+}
+
+div.sunset_icon.blue {
+	background: url('sunset_blue.png') 0px 0px no-repeat;
+}
+
+div.temperature_icon, div.humidity_icon, 
+div.update_active, div.update_inactive,
+div.action_icon, div.media_icon {
 	position: relative;
 	float: right;
 	font-size: 14px;
 	color: #aeaeae;
+	width: 16px;
+	height: 16px;
 }
 
-div.degrees {
+div.action_icon, div.media_icon {
+	width: 20px;
+	height: 20px;
+}
+
+div.temperature_icon, div.humidity_icon {
 	top: -2px;
 	left: 48px;
 }
 
-div.percentage {
-	top: 5px;
-	left: 50px;
+div.update_active, div.update_inactive {
+	left: 55px;
+	width: 20px;
+	height: 20px;
+	top: 2px;
+}
+
+div.temperature_icon {
+	background: url('temp.png') 0px 0px no-repeat;
+}
+
+div.humidity_icon {
+	background: url('humi.png') 0px 0px no-repeat;
+}
+
+div.update_active {
+	background: url('update_active.png') 0px 0px no-repeat;
+}
+
+div.update_inactive {
+	background: url('update_inactive.png') 0px 0px no-repeat;
+}
+
+div.action_icon.play {
+	background: url('play.png') 0px 0px no-repeat;
+}
+
+div.action_icon.stop {
+	background: url('stop.png') 0px 0px no-repeat;
+}
+
+div.action_icon.pause {
+	background: url('pause.png') 0px 0px no-repeat;
+}
+
+div.action_icon.screen_active {
+	background: url('screen_active.png') 0px 0px no-repeat;
+}
+
+div.action_icon.screen_inactive {
+	background: url('screen_inactive.png') 0px 0px no-repeat;
+}
+
+div.action_icon.shutdown {
+	background: url('shutdown.png') 0px 0px no-repeat;
+}
+
+div.action_icon.home {
+	background: url('home.png') 0px 0px no-repeat;
+}
+
+div.media_icon.movie {
+	background: url('movie.png') 0px 0px no-repeat;
+}
+
+div.media_icon.episode {
+	background: url('episode.png') 0px 0px no-repeat;
+}
+
+div.media_icon.song {
+	background: url('song.png') 0px 0px no-repeat;
 }
 
 div.screen {
@@ -93,6 +192,13 @@ div.screen {
 	height: 0px;
 	top: -25px;
 	right: -100px;
+}
+
+div.webcam_image {
+	position: absolute;
+	float: right;
+	right: 20px;
+	top: 14px;
 }
 
 .ui-loader-background {

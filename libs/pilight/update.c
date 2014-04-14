@@ -30,6 +30,7 @@
 
 #include "http_lib.h"
 #include "common.h"
+#include "datetime.h"
 #include "settings.h"
 #include "log.h"
 #include "../../pilight.h"
@@ -44,8 +45,16 @@ char *update_filename = NULL, *update_data = NULL;
 char update_typebuf[70];
 int update_lg = 0, update_ret = 0;
 
+pthread_mutex_t updatelock;
+pthread_cond_t updatesignal;
+pthread_mutexattr_t updateattr;
+
 int update_gc(void) {
 	update_loop = 0;
+
+	pthread_mutex_unlock(&updatelock);
+	pthread_cond_signal(&updatesignal);
+
 	sfree((void *)&update_latests_ver);
 	sfree((void *)&update_current_ver);
 	/* clean-up http_lib global */
@@ -134,6 +143,10 @@ int update_mirror_list(void) {
 
 	if(settings_find_string("update-mirror", &url) != 0) {
 		url = malloc(strlen(UPDATE_MIRROR)+1);
+		if(!url) {
+			logprintf(LOG_ERR, "out of memory");
+			exit(EXIT_FAILURE);
+		}
 		strcpy(url, UPDATE_MIRROR);
 		furl = 1;
 	}
@@ -147,8 +160,16 @@ int update_mirror_list(void) {
 			if(*tmp == '\n' || *tmp == '\0') {
 				if(strlen(mirror) > 2) {
 					update_mirrors = realloc(update_mirrors, (size_t)((i+1)*(int)sizeof(char *)));
+					if(!update_mirrors) {
+						logprintf(LOG_ERR, "out of memory");
+						exit(EXIT_FAILURE);
+					}
 					mirror[x-1] = '\0';
 					update_mirrors[i] = malloc(strlen(mirror)+1);
+					if(!update_mirrors[i]) {
+						logprintf(LOG_ERR, "out of memory");
+						exit(EXIT_FAILURE);
+					}
 					strcpy(update_mirrors[i], mirror);
 					i++;
 				}
@@ -167,13 +188,6 @@ int update_mirror_list(void) {
 	return i;
 }
 
-void update_rmsubstr(char *s, const char *r) {
-	while((s=strstr(s, r))) {
-		size_t l = strlen(r);
-		memmove(s ,s+l, 1+strlen(s+l));
-	}
-}
-
 char *update_package_version(char *mirror) {
 	int x = 0;
 	size_t l = 0;
@@ -182,14 +196,26 @@ char *update_package_version(char *mirror) {
 	char *nurl = NULL, *output = NULL, *pch = NULL, line[255], *version = malloc(4);
 	int devel = 0;
 	memset(line, '\0', 255);
+	if(!version) {
+		logprintf(LOG_ERR, "out of memory");
+		exit(EXIT_FAILURE);
+	}
 
 	settings_find_number("update-development", &devel);
 
 	if(devel) {
 		nurl = malloc(strlen(mirror)+strlen(development)+41);
+		if(!nurl) {
+			logprintf(LOG_ERR, "out of memory");
+			exit(EXIT_FAILURE);
+		}
 		sprintf(nurl, "%sdists/%s/main/binary-armhf/Packages.gz", mirror, development);
 	} else {
 		nurl = malloc(strlen(mirror)+strlen(stable)+41);
+		if(!nurl) {
+			logprintf(LOG_ERR, "out of memory");
+			exit(EXIT_FAILURE);
+		}
 		sprintf(nurl, "%sdists/%s/main/binary-armhf/Packages.gz", mirror, stable);
 	}
 	http_parse_url(nurl, &update_filename);
@@ -215,6 +241,10 @@ char *update_package_version(char *mirror) {
 			inflate(&strm, Z_NO_FLUSH);
 			l += strlen((char *)out);
 			output = realloc(output, l+1);
+			if(!output) {
+				logprintf(LOG_ERR, "out of memory");
+				exit(EXIT_FAILURE);
+			}
 			strcpy(&output[l-strlen((char *)out)], (char *)out);
 		} while(strm.avail_out == 0);
 		inflateEnd(&strm);
@@ -225,10 +255,14 @@ char *update_package_version(char *mirror) {
 			while(*tmp != '\0') {
 				if(*tmp == '\n' || *tmp == '\0') {
 					if((pch = strstr(line, "Version: ")) > 0) {
-						update_rmsubstr(line, "Version: ");
-						update_rmsubstr(line, "\n");
+						rmsubstr(line, "Version: ");
+						rmsubstr(line, "\n");
 						if(update_vercmp(line, version) >= 0) {
 							version = realloc(version, strlen(line)+1);
+							if(!version) {
+								logprintf(LOG_ERR, "out of memory");
+								exit(EXIT_FAILURE);
+							}
 							strcpy(version, line);
 						}
 					}
@@ -261,14 +295,21 @@ void *update_poll(void *param) {
 	int i = 0;
 	update_current_ver = malloc(strlen(VERSION)+1);
 	update_latests_ver = malloc(strlen(VERSION)+1);
+	if(!update_current_ver) {
+		logprintf(LOG_ERR, "out of memory");
+		exit(EXIT_FAILURE);
+	}
+	if(!update_latests_ver) {
+		logprintf(LOG_ERR, "out of memory");
+		exit(EXIT_FAILURE);
+	}
 	strcpy(update_current_ver, VERSION);
 	strcpy(update_latests_ver, VERSION);
 	char *n = NULL;
-	struct tm tm = {0};
 	struct tm *current;
 	time_t epoch = 0;
 	time_t timenow = 0;
-	char date[20];
+
 
 	while(update_loop) {
 		time(&timenow);
@@ -280,6 +321,10 @@ void *update_poll(void *param) {
 						if(update_vercmp(n, update_current_ver) > 0) {
 							update_needed = 1;
 							update_latests_ver = realloc(update_latests_ver, strlen(n)+1);
+							if(!update_latests_ver) {
+								logprintf(LOG_ERR, "out of memory");
+								exit(EXIT_FAILURE);
+							}
 							strcpy(update_latests_ver, n);
 						}
 						sfree((void *)&n);
@@ -299,11 +344,17 @@ void *update_poll(void *param) {
 			int mday = current->tm_mday;
 			int year = current->tm_year+1900;
 
-			sprintf(date, "%d-%d-%d 00:00:00", year, month, mday+(7-wday));
-			strptime(date, "%Y-%m-%d %T", &tm);
-			epoch = mktime(&tm);
+			epoch = (int)datetime2ts(year, month, mday+(7-wday), 0, 0, 0, 0);
 		}
-		sleep(1);
+		struct timeval tp;
+		struct timespec ts;
+		pthread_mutex_unlock(&updatelock);
+		gettimeofday(&tp, NULL);
+		ts.tv_sec = tp.tv_sec;
+		ts.tv_nsec = tp.tv_usec * 1000;
+		ts.tv_sec += 1;
+		pthread_mutex_lock(&updatelock);
+		pthread_cond_timedwait(&updatesignal, &updatelock, &ts);
 	}
 	return 0;
 }

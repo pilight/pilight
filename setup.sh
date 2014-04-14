@@ -1,4 +1,21 @@
 #!/usr/bin/env bash
+#
+#	Copyright (C) 2014 CurlyMo
+#
+#	This file is part of pilight.
+#
+#   pilight is free software: you can redistribute it and/or modify it under the
+#	terms of the GNU General Public License as published by the Free Software
+#	Foundation, either version 3 of the License, or (at your option) any later
+#	version.
+#
+#   pilight is distributed in the hope that it will be useful, but WITHOUT ANY
+#	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+#	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with pilight. If not, see	<http://www.gnu.org/licenses/>
+#
 
 cmake --help &>/dev/null || { echo "This program requires cmake"; exit; }
 dialog -v &>/dev/null || { echo "This program requires dialog"; exit; }
@@ -8,10 +25,8 @@ fi
 
 function clean {
 	rm -r CMakeFiles 2>/dev/null;
-	rm cmake_install.cmake 2>/dev/null;
-	rm cmake_uninstall.cmake 2>/dev/null;
-	rm cmake_uninstall.cmake.in 2>/dev/null;
-	rm cmake_postinstall.cmake 2>/dev/null;
+	rm -r _CPack_Packages 2>/dev/null;
+	rm *.cmake 2>/dev/null;
 	rm CMakeCache.txt 2>/dev/null;
 	make clean 2>/dev/null;
 	rm Makefile 2>/dev/null;
@@ -24,6 +39,7 @@ function clean {
 	rm pilight-learn 2>/dev/null;
 	rm pilight-debug 2>/dev/null;
 	rm pilight-receive 2>/dev/null;
+	rm pilight-uuid 2>/dev/null;
 	rm *.a* 2>/dev/null;
 	rm *.so* 2>/dev/null;
 }

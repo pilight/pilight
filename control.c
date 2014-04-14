@@ -51,7 +51,10 @@ int main(int argc, char **argv) {
 	log_shell_enable();
 	log_level_set(LOG_NOTICE);
 
-	progname = malloc(16);
+	if((progname = malloc(16)) == NULL) {
+		logprintf(LOG_ERR, "out of memory");
+		exit(EXIT_FAILURE);
+	}
 	strcpy(progname, "pilight-control");
 
 	struct options_t *options = NULL;
@@ -80,14 +83,14 @@ int main(int argc, char **argv) {
 	JsonNode *jvalues = NULL;
 
 	/* Define all CLI arguments of this program */
-	options_add(&options, 'H', "help", no_value, 0, NULL);
-	options_add(&options, 'V', "version", no_value, 0, NULL);
-	options_add(&options, 'l', "location", has_value, 0, NULL);
-	options_add(&options, 'd', "device", has_value, 0,  NULL);
-	options_add(&options, 's', "state", has_value, 0,  NULL);
-	options_add(&options, 'v', "values", has_value, 0,  NULL);
-	options_add(&options, 'S', "server", has_value, 0, "^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]).){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$");
-	options_add(&options, 'P', "port", has_value, 0, "[0-9]{1,4}");
+	options_add(&options, 'H', "help", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
+	options_add(&options, 'V', "version", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
+	options_add(&options, 'l', "location", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, NULL);
+	options_add(&options, 'd', "device", OPTION_HAS_VALUE, 0,  JSON_NULL, NULL, NULL);
+	options_add(&options, 's', "state", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, NULL);
+	options_add(&options, 'v', "values", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, NULL);
+	options_add(&options, 'S', "server", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, "^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]).){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$");
+	options_add(&options, 'P', "port", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, "[0-9]{1,4}");
 
 	/* Store all CLI arguments for later usage
 	   and also check if the CLI arguments where
@@ -131,6 +134,10 @@ int main(int argc, char **argv) {
 			break;
 			case 'S':
 				server = realloc(server, strlen(optarg)+1);
+				if(!server) {
+					logprintf(LOG_ERR, "out of memory");
+					exit(EXIT_FAILURE);
+				}
 				strcpy(server, optarg);
 			break;
 			case 'P':
@@ -162,7 +169,9 @@ int main(int argc, char **argv) {
 			logprintf(LOG_ERR, "could not connect to pilight-daemon");
 			goto close;
 		}
-		sfree((void *)&ssdp_list);
+	}
+	if(ssdp_list) {
+		ssdp_free(ssdp_list);
 	}
 
 	protocol_init();
@@ -170,22 +179,13 @@ int main(int argc, char **argv) {
 	while(1) {
 		if(steps > WELCOME) {
 			/* Clear the receive buffer again and read the welcome message */
-			if(steps == CONFIG) {
-				if((recvBuff = socket_read_big(sockfd)) != NULL) {
-					json = json_decode(recvBuff);
-					json_find_string(json, "message", &message);
-				} else {
-					goto close;
-				}
+			if((recvBuff = socket_read(sockfd))) {
+				json = json_decode(recvBuff);
+				json_find_string(json, "message", &message);
+				sfree((void *)&recvBuff);
 			} else {
-				if((recvBuff = socket_read(sockfd)) != NULL) {
-					json = json_decode(recvBuff);
-					json_find_string(json, "message", &message);
-				} else {
-					goto close;
-				}
+				goto close;
 			}
-		usleep(100);
 		}
 		switch(steps) {
 			case WELCOME:
@@ -227,7 +227,7 @@ int main(int argc, char **argv) {
 									if(pch != NULL) {
 										if(config_valid_value(location, device, name, val) == 0) {
 											if(isNumeric(val) == EXIT_SUCCESS) {
-												json_append_member(jvalues, name, json_mknumber(atoi(val)));
+												json_append_member(jvalues, name, json_mknumber(atof(val)));
 											} else {
 												json_append_member(jvalues, name, json_mkstring(val));
 											}

@@ -514,14 +514,22 @@ int main(int argc, char **argv) {
 	int x = 0;
 	
 	settingsfile = malloc(strlen(SETTINGS_FILE)+1);
+	if(!settingsfile) {
+		logprintf(LOG_ERR, "out of memory");
+		exit(EXIT_FAILURE);
+	}
 	strcpy(settingsfile, SETTINGS_FILE);	
 	
 	progname = malloc(16);
+	if(!progname) {
+		logprintf(LOG_ERR, "out of memory");
+		exit(EXIT_FAILURE);
+	}
 	strcpy(progname, "pilight-learn");
 	
-	options_add(&options, 'H', "help", no_value, 0, NULL);
-	options_add(&options, 'V', "version", no_value, 0, NULL);
-	options_add(&options, 'S', "settings", has_value, 0, NULL);
+	options_add(&options, 'H', "help", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
+	options_add(&options, 'V', "version", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
+	options_add(&options, 'S', "settings", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, NULL);
 
 	while (1) {
 		int c;
@@ -545,6 +553,10 @@ int main(int argc, char **argv) {
 			case 'S': 
 				if(access(args, F_OK) != -1) {
 					settingsfile = realloc(settingsfile, strlen(args)+1);
+					if(!settingsfile) {
+						fprintf(stderr, "out of memory\n");
+						exit(EXIT_FAILURE);
+					}
 					strcpy(settingsfile, args);
 					settings_set_file(args);
 				} else {
@@ -560,20 +572,23 @@ int main(int argc, char **argv) {
 	}
 	options_delete(options);
 
-	if((pid = proc_find("pilight-daemon")) > 0) {
+	char pilight_daemon[] = "pilight-daemon";
+	char pilight_debug[] = "pilight-debug";
+	char pilight_raw[] = "pilight-raw";
+	if((pid = findproc(pilight_daemon, NULL)) > 0) {
 		logprintf(LOG_ERR, "pilight-daemon instance found (%d)", (int)pid);
 		return (EXIT_FAILURE);
 	}
 
-	if((pid = proc_find("pilight-raw")) > 0) {
+	if((pid = findproc(pilight_raw, NULL)) > 0) {
 		logprintf(LOG_ERR, "pilight-raw instance found (%d)", (int)pid);
 		return (EXIT_FAILURE);
 	}
 
-	if((pid = proc_find("pilight-debug")) > 0) {
+	if((pid = findproc(pilight_debug, NULL)) > 0) {
 		logprintf(LOG_ERR, "pilight-debug instance found (%d)", (int)pid);
 		return (EXIT_FAILURE);
-	}	
+	}		
 
 	if(access(settingsfile, F_OK) != -1) {
 		if(settings_read() != 0) {
@@ -600,7 +615,7 @@ int main(int argc, char **argv) {
 			goto clear;
 		}
 		if(x == 0) {
-			threads_register(tmp_confhw->hardware->id, &receive_code, (void *)tmp_confhw->hardware);
+			threads_register(tmp_confhw->hardware->id, &receive_code, (void *)tmp_confhw->hardware, 0);
 		}
 		tmp_confhw = tmp_confhw->next;
 		x++;

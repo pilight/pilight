@@ -21,13 +21,11 @@
 #include <dirent.h>
 #include <string.h>
 #include <unistd.h>
-#define __USE_GNU
-#include <pthread.h>
 #include <sys/types.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <sys/stat.h>
-#include <sys/time.h>
+#include <math.h>
 
 #include "../../pilight.h"
 #include "common.h"
@@ -41,141 +39,115 @@
 #include "rpi_temp.h"
 
 unsigned short rpi_temp_loop = 1;
-unsigned short rpi_temp_nrfree = 0;
-char *rpi_temp_temp = NULL;
-
-void rpiTempParseCleanUp(void *arg) {
-	sfree((void *)&arg);
-	
-	rpi_temp_loop = 0;
-}
+unsigned short rpi_temp_threads = 0;
+char rpi_temp[] = "/sys/class/thermal/thermal_zone0/temp";
 
 void *rpiTempParse(void *param) {
-	struct JsonNode *json = (struct JsonNode *)param;
+	struct protocol_threads_t *node = (struct protocol_threads_t *)param;
+	struct JsonNode *json = (struct JsonNode *)node->param;
 	struct JsonNode *jid = NULL;
 	struct JsonNode *jchild = NULL;
-	struct JsonNode *jsettings = NULL;
-	struct timeval tp;
-	struct timespec ts;	
 	struct stat st;
 
 	FILE *fp = NULL;
-	int itmp = 0;
+	double itmp = 0;
 	int *id = malloc(sizeof(int));
 	char *content = NULL;
-	int interval = 10, temp_corr = 0, nrid = 0, y = 0, rc = 0;
+	int interval = 10, temp_offset = 0;
+	int nrloops = 0, nrid = 0, y = 0;
 	size_t bytes = 0;
-	int firstrun = 1;
 
-#ifndef __FreeBSD__
-	pthread_mutex_t mutex = PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP;        
-    pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
-#else
-	pthread_mutex_t mutex;
-	pthread_cond_t cond;
-	pthread_mutexattr_t attr;
+	rpi_temp_threads++;
 
-	pthread_mutexattr_init(&attr);
-	pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);
-	pthread_mutex_init(&mutex, &attr);
-#endif
+	if(!id) {
+		logprintf(LOG_ERR, "out of memory");
+		exit(EXIT_FAILURE);
+	}
 
 	if((jid = json_find_member(json, "id"))) {
 		jchild = json_first_child(jid);
 		while(jchild) {
 			if(json_find_number(jchild, "id", &itmp) == 0) {
 				id = realloc(id, (sizeof(int)*(size_t)(nrid+1)));
-				id[nrid] = itmp;
+				id[nrid] = (int)round(itmp);
 				nrid++;
 			}
 			jchild = jchild->next;
 		}
 	}
 
-	if((jsettings = json_find_member(json, "settings"))) {
-		json_find_number(jsettings, "interval", &interval);
-		json_find_number(jsettings, "temp-corr", &temp_corr);
-	}
-	json_delete(json);
-
-	pthread_cleanup_push(rpiTempParseCleanUp, (void *)id);
+	if(json_find_number(json, "poll-interval", &itmp) == 0)
+		interval = (int)round(itmp);
+	if(json_find_number(json, "device-temperature-offset", &itmp) == 0)
+		temp_offset = (int)round(itmp);
 
 	while(rpi_temp_loop) {
-		rc = gettimeofday(&tp, NULL);
-		ts.tv_sec = tp.tv_sec;
-		ts.tv_nsec = tp.tv_usec * 1000;
-		if(firstrun) {
-			ts.tv_sec += 1;
-			firstrun = 0;
-		} else {
-			ts.tv_sec += interval;
-		}
-
-		pthread_mutex_lock(&mutex);
-		rc = pthread_cond_timedwait(&cond, &mutex, &ts);
-		if(rc == ETIMEDOUT) {			
+		if(protocol_thread_wait(node, interval, &nrloops) == ETIMEDOUT) {
 			for(y=0;y<nrid;y++) {
-				if((fp = fopen(rpi_temp_temp, "rb"))) {
+				if((fp = fopen(rpi_temp, "rb"))) {
 					fstat(fileno(fp), &st);
 					bytes = (size_t)st.st_size;
 
-					if(!(content = calloc(bytes+1, sizeof(char)))) {
+					if(!(content = realloc(content, bytes+1))) {
 						logprintf(LOG_ERR, "out of memory");
-						fclose(fp);
-						break;
+						exit(EXIT_FAILURE);
 					}
+					memset(content, '\0', bytes+1);
 
 					if(fread(content, sizeof(char), bytes, fp) == -1) {
-						logprintf(LOG_ERR, "cannot read config file: %s", rpi_temp_temp);
+						logprintf(LOG_ERR, "cannot read file: %s", rpi_temp);
 						fclose(fp);
-						sfree((void *)&content);
 						break;
+					} else {
+						fclose(fp);
+						int temp = atoi(content)+temp_offset;
+						sfree((void *)&content);
+
+						rpiTemp->message = json_mkobject();
+						JsonNode *code = json_mkobject();
+						json_append_member(code, "id", json_mknumber(id[y]));
+						json_append_member(code, "temperature", json_mknumber(temp));
+											
+						json_append_member(rpiTemp->message, "message", code);
+						json_append_member(rpiTemp->message, "origin", json_mkstring("receiver"));
+						json_append_member(rpiTemp->message, "protocol", json_mkstring(rpiTemp->id));
+											
+						pilight.broadcast(rpiTemp->id, rpiTemp->message);
+						json_delete(rpiTemp->message);
+						rpiTemp->message = NULL;
 					}
-
-					fclose(fp);
-					int temp = atoi(content)+temp_corr;
-					sfree((void *)&content);
-
-					rpiTemp->message = json_mkobject();
-					JsonNode *code = json_mkobject();
-					json_append_member(code, "id", json_mknumber(id[y]));
-					json_append_member(code, "temperature", json_mknumber(temp));
-										
-					json_append_member(rpiTemp->message, "code", code);
-					json_append_member(rpiTemp->message, "origin", json_mkstring("receiver"));
-					json_append_member(rpiTemp->message, "protocol", json_mkstring(rpiTemp->id));
-										
-					pilight.broadcast(rpiTemp->id, rpiTemp->message);
-					json_delete(rpiTemp->message);
-					rpiTemp->message = NULL;
 				} else {
-					logprintf(LOG_ERR, "CPU RPI device %s does not exists", rpi_temp_temp);
+					logprintf(LOG_ERR, "CPU RPI device %s does not exists", rpi_temp);
 				}
 			}
 		}
-		pthread_mutex_unlock(&mutex);
 	}
 
-	pthread_cleanup_pop(1);
-
+	sfree((void *)&id);
+	rpi_temp_threads--;
 	return (void *)NULL;
 }
 
-void rpiTempInitDev(JsonNode *jdevice) {
+struct threadqueue_t *rpiTempInitDev(JsonNode *jdevice) {
+	rpi_temp_loop = 1;
 	char *output = json_stringify(jdevice, NULL);
 	JsonNode *json = json_decode(output);
-	threads_register("rpi_temp", &rpiTempParse, (void *)json);
 	sfree((void *)&output);
+
+	struct protocol_threads_t *node = protocol_thread_init(rpiTemp, json);	
+	return threads_register("rpi_temp", &rpiTempParse, (void *)node, 0);
 }
 
-int rpiTempGC(void) {
-	sfree((void *)&rpi_temp_temp);
-	return 1;
+void rpiTempThreadGC(void) {
+	rpi_temp_loop = 0;
+	protocol_thread_stop(rpiTemp);
+	while(rpi_temp_threads > 0) {
+		usleep(10);
+	}
+	protocol_thread_free(rpiTemp);
 }
 
 void rpiTempInit(void) {
-	
-	gc_attach(rpiTempGC);
 
 	protocol_register(&rpiTemp);
 	protocol_set_id(rpiTemp, "rpi_temp");
@@ -183,18 +155,15 @@ void rpiTempInit(void) {
 	rpiTemp->devtype = WEATHER;
 	rpiTemp->hwtype = SENSOR;
 
-	options_add(&rpiTemp->options, 't', "temperature", has_value, config_value, "^[0-9]{1,5}$");
-	options_add(&rpiTemp->options, 'i', "id", has_value, config_id, "[0-9]");
+	options_add(&rpiTemp->options, 't', "temperature", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, NULL, "^[0-9]{1,5}$");
+	options_add(&rpiTemp->options, 'i', "id", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, NULL, "[0-9]");
 
-	protocol_setting_add_number(rpiTemp, "decimals", 3);
-	protocol_setting_add_number(rpiTemp, "humidity", 0);
-	protocol_setting_add_number(rpiTemp, "temperature", 1);
-	protocol_setting_add_number(rpiTemp, "battery", 0);
-	protocol_setting_add_number(rpiTemp, "interval", 10);
-
-	rpi_temp_temp = malloc(38);
-	memset(rpi_temp_temp, '\0', 38);
-	strcpy(rpi_temp_temp, "/sys/class/thermal/thermal_zone0/temp");
+	options_add(&rpiTemp->options, 0, "device-decimals", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)3, "[0-9]");
+	options_add(&rpiTemp->options, 0, "device-temperature-offset", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)0, "[0-9]");
+	options_add(&rpiTemp->options, 0, "gui-decimals", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)3, "[0-9]");
+	options_add(&rpiTemp->options, 0, "gui-show-temperature", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
+	options_add(&rpiTemp->options, 0, "poll-interval", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)10, "[0-9]");
 
 	rpiTemp->initDev=&rpiTempInitDev;
+	rpiTemp->threadGC=&rpiTempThreadGC;
 }

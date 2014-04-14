@@ -19,6 +19,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 
 #include "../../pilight.h"
 #include "common.h"
@@ -45,18 +46,23 @@ void genDimCreateMessage(int id, int state, int dimlevel) {
 
 int genDimcheckValues(JsonNode *code) {
 	int dimlevel = -1;
-	int max = 0;
-	int min = 15;
+	int max = 15;
+	int min = 0;
+	double itmp = -1;
 	
-	protocol_setting_get_number(generic_dimmer, "min", &min);
-	protocol_setting_get_number(generic_dimmer, "max", &max);	
+	if(json_find_number(code, "dimlevel-maximum", &itmp) == 0)
+		max = (int)round(itmp);
+	if(json_find_number(code, "dimlevel-minimum", &itmp) == 0)
+		min = (int)round(itmp);	
+	if(json_find_number(code, "dimlevel", &itmp) == 0)
+		dimlevel = (int)round(itmp);
 
 	if(min > max) {
 		return 1;
 	}
 	
-	if(json_find_number(code, "dimlevel", &dimlevel) == 0) {
-		if(dimlevel != -1 && (dimlevel < min || dimlevel > max)) {
+	if(dimlevel != -1) {
+		if(dimlevel < min || dimlevel > max) {
 			return 1;
 		} else {
 			return 0;
@@ -71,16 +77,20 @@ int genDimCreateCode(JsonNode *code) {
 	int dimlevel = -1;
 	int max = 0;
 	int min = 10;
-	int tmp;
+	double itmp = -1;
 
-	protocol_setting_get_number(generic_dimmer, "min", &min);
-	protocol_setting_get_number(generic_dimmer, "max", &max);	
+	if(json_find_number(code, "dimlevel-maximum", &itmp) == 0)
+		max = (int)round(itmp);
+	if(json_find_number(code, "dimlevel-minimum", &itmp) == 0)
+		min = (int)round(itmp);
 
-	json_find_number(code, "id", &id);
-	json_find_number(code, "dimlevel", &dimlevel);
-	if(json_find_number(code, "off", &tmp) == 0)
+	if(json_find_number(code, "id", &itmp) == 0)
+		id = (int)round(itmp);
+	if(json_find_number(code, "dimlevel", &itmp) == 0)
+		dimlevel = (int)round(itmp);
+	if(json_find_number(code, "off", &itmp) == 0)
 		state=0;
-	else if(json_find_number(code, "on", &tmp) == 0)
+	else if(json_find_number(code, "on", &itmp) == 0)
 		state=1;
 
 	if(id == -1 || (dimlevel == -1 && state == -1)) {
@@ -116,15 +126,14 @@ void genDimInit(void) {
 	protocol_device_add(generic_dimmer, "generic_dimmer", "Generic Dimmers");
 	generic_dimmer->devtype = DIMMER;
 
-	options_add(&generic_dimmer->options, 'd', "dimlevel", has_value, config_value, "^([0-9]{1,})$");
-	options_add(&generic_dimmer->options, 't', "on", no_value, config_state, NULL);
-	options_add(&generic_dimmer->options, 'f', "off", no_value, config_state, NULL);
-	options_add(&generic_dimmer->options, 'i', "id", has_value, config_id, "^([0-9]{1,})$");
+	options_add(&generic_dimmer->options, 'd', "dimlevel", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, NULL, "^([0-9]{1,})$");
+	options_add(&generic_dimmer->options, 't', "on", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
+	options_add(&generic_dimmer->options, 'f', "off", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
+	options_add(&generic_dimmer->options, 'i', "id", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, NULL, "^([0-9]{1,})$");
 
-	protocol_setting_add_number(generic_dimmer, "min", 0);
-	protocol_setting_add_number(generic_dimmer, "max", 10);	
-	protocol_setting_add_string(generic_dimmer, "states", "on,off");
-	protocol_setting_add_number(generic_dimmer, "readonly", 1);
+	options_add(&generic_dimmer->options, 0, "dimlevel-minimum", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)0, "^([0-9]{1}|[1][0-5])$");
+	options_add(&generic_dimmer->options, 0, "dimlevel-maximum", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)15, "^([0-9]{1}|[1][0-5])$");
+	options_add(&generic_dimmer->options, 0, "gui-readonly", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 
 	generic_dimmer->printHelp=&genDimPrintHelp;
 	generic_dimmer->createCode=&genDimCreateCode;

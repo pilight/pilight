@@ -21,13 +21,11 @@
 #include <dirent.h>
 #include <string.h>
 #include <unistd.h>
-#define __USE_GNU
-#include <pthread.h>
 #include <sys/types.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <math.h>
 #include <sys/stat.h>
-#include <sys/time.h>
 
 #include "../../pilight.h"
 #include "common.h"
@@ -41,24 +39,16 @@
 #include "ds18s20.h"
 
 unsigned short ds18s20_loop = 1;
-unsigned short ds18s20_nrfree = 0;
-char *ds18s20_path = NULL;
-
-void ds18s20ParseCleanUp(void *arg) {
-	sfree((void *)&arg);
-	
-	ds18s20_loop = 0;
-}
+unsigned short ds18s20_threads = 0;
+char ds18s20_path[21];
 
 void *ds18s20Parse(void *param) {
-	struct JsonNode *json = (struct JsonNode *)param;
+	struct protocol_threads_t *node = (struct protocol_threads_t *)param;
+	struct JsonNode *json = (struct JsonNode *)node->param;
 	struct JsonNode *jid = NULL;
 	struct JsonNode *jchild = NULL;
-	struct JsonNode *jsettings = NULL;
 	struct dirent *file = NULL;
 	struct stat st;
-	struct timeval tp;
-	struct timespec ts;
 
 	DIR *d = NULL;
 	FILE *fp = NULL;
@@ -67,59 +57,46 @@ void *ds18s20Parse(void *param) {
 	char **id = NULL;
 	char *content = NULL;	
 	int w1valid = 0, w1temp = 0, interval = 10, x = 0;
-	int temp_corr = 0, rc = 0, nrid = 0, y = 0;
+	int temp_offset = 0, nrid = 0, y = 0, nrloops = 0;
+	double itmp = 0;
 	size_t bytes = 0;
-	int firstrun = 1;
 
-#ifndef __FreeBSD__
-	pthread_mutex_t mutex = PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP;        
-    pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
-#else
-	pthread_mutex_t mutex;
-	pthread_cond_t cond;
-	pthread_mutexattr_t attr;
-
-	pthread_mutexattr_init(&attr);
-	pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);
-	pthread_mutex_init(&mutex, &attr);
-#endif
+	ds18s20_threads++;
 
 	if((jid = json_find_member(json, "id"))) {
 		jchild = json_first_child(jid);
 		while(jchild) {
 			if(json_find_string(jchild, "id", &stmp) == 0) {
 				id = realloc(id, (sizeof(char *)*(size_t)(nrid+1)));
+				if(!id) {
+					logprintf(LOG_ERR, "out of memory");
+					exit(EXIT_FAILURE);
+				}
 				id[nrid] = malloc(strlen(stmp)+1);
+				if(!id[nrid]) {
+					logprintf(LOG_ERR, "out of memory");
+					exit(EXIT_FAILURE);
+				}
 				strcpy(id[nrid], stmp);
 				nrid++;
 			}
 			jchild = jchild->next;
 		}
 	}
-	if((jsettings = json_find_member(json, "settings"))) {
-		json_find_number(jsettings, "interval", &interval);
-		json_find_number(jsettings, "temp-corr", &temp_corr);
-	}
-	json_delete(json);
 
-	pthread_cleanup_push(ds18s20ParseCleanUp, (void *)id);
+	if(json_find_number(json, "poll-interval", &itmp) == 0)
+		interval = (int)round(itmp);
+	if(json_find_number(json, "device-temperature-offset", &itmp) == 0)
+		temp_offset = (int)round(itmp);
 
 	while(ds18s20_loop) {
-		rc = gettimeofday(&tp, NULL);
-		ts.tv_sec = tp.tv_sec;
-		ts.tv_nsec = tp.tv_usec * 1000;
-		if(firstrun) {
-			ts.tv_sec += 1;
-			firstrun = 0;
-		} else {
-			ts.tv_sec += interval;
-		}
-
-		pthread_mutex_lock(&mutex);
-		rc = pthread_cond_timedwait(&cond, &mutex, &ts);
-		if(rc == ETIMEDOUT) {	
+		if(protocol_thread_wait(node, interval, &nrloops) == ETIMEDOUT) {
 			for(y=0;y<nrid;y++) {
 				ds18s20_sensor = realloc(ds18s20_sensor, strlen(ds18s20_path)+strlen(id[y])+5);
+				if(!ds18s20_sensor) {
+					logprintf(LOG_ERR, "out of memory");
+					exit(EXIT_FAILURE);
+				}
 				sprintf(ds18s20_sensor, "%s10-%s/", ds18s20_path, id[y]);
 				if((d = opendir(ds18s20_sensor))) {
 					while((file = readdir(d)) != NULL) {
@@ -139,16 +116,16 @@ void *ds18s20Parse(void *param) {
 								fstat(fileno(fp), &st);
 								bytes = (size_t)st.st_size;
 
-								if(!(content = calloc(bytes+1, sizeof(char)))) {
+								if(!(content = realloc(content, bytes+1))) {
 									logprintf(LOG_ERR, "out of memory");
 									fclose(fp);
 									break;
 								}
+								memset(content, '\0', bytes+1);
 
 								if(fread(content, sizeof(char), bytes, fp) == -1) {
 									logprintf(LOG_ERR, "cannot read config file: %s", ds18s20_w1slave);
 									fclose(fp);
-									sfree((void *)&content);
 									break;
 								}
 								fclose(fp);
@@ -161,13 +138,13 @@ void *ds18s20Parse(void *param) {
 											w1valid = 1;
 										}
 										if(x == 2) {	
-											w1temp = atoi(pch)+temp_corr;
+											w1temp = atoi(pch)+temp_offset;
 										}
 										x++;
 									}
 									pch = strtok(NULL, "\n=: ");
 								}
-								sfree((void *)&content);
+
 								if(w1valid) {
 									ds18s20->message = json_mkobject();
 									
@@ -176,7 +153,7 @@ void *ds18s20Parse(void *param) {
 									json_append_member(code, "id", json_mkstring(id[y]));
 									json_append_member(code, "temperature", json_mknumber(w1temp));
 									
-									json_append_member(ds18s20->message, "code", code);
+									json_append_member(ds18s20->message, "message", code);
 									json_append_member(ds18s20->message, "origin", json_mkstring("receiver"));
 									json_append_member(ds18s20->message, "protocol", json_mkstring(ds18s20->id));
 									
@@ -193,29 +170,41 @@ void *ds18s20Parse(void *param) {
 				}
 			}
 		}
-		pthread_mutex_unlock(&mutex);
 	}
-	
-	pthread_cleanup_pop(1);
-
+	if(ds18s20_sensor) {
+		sfree((void *)&ds18s20_sensor);
+	}
+	if(content) {
+		sfree((void *)&content);
+	}
+	for(y=0;y<nrid;y++) {
+		sfree((void *)&id[y]);
+	}
+	sfree((void *)&id);
+	ds18s20_threads--;
 	return (void *)NULL;
 }
 
-void ds18s20InitDev(JsonNode *jdevice) {
+struct threadqueue_t *ds18s20InitDev(JsonNode *jdevice) {
+	ds18s20_loop = 1;
 	char *output = json_stringify(jdevice, NULL);
 	JsonNode *json = json_decode(output);
-	threads_register("ds18s20", &ds18s20Parse, (void *)json);
 	sfree((void *)&output);
+
+	struct protocol_threads_t *node = protocol_thread_init(ds18s20, json);
+	return threads_register("ds18s20", &ds18s20Parse, (void *)node, 0);
 }
 
-int ds18s20GC(void) {
-	sfree((void *)&ds18s20_path);
-	return 1;
+void ds18s20ThreadGC(void) {
+	ds18s20_loop = 0;
+	protocol_thread_stop(ds18s20);
+	while(ds18s20_threads > 0) {
+		usleep(10);
+	}
+	protocol_thread_free(ds18s20);
 }
 
 void ds18s20Init(void) {
-	
-	gc_attach(ds18s20GC);
 
 	protocol_register(&ds18s20);
 	protocol_set_id(ds18s20, "ds18s20");
@@ -223,18 +212,18 @@ void ds18s20Init(void) {
 	ds18s20->devtype = WEATHER;
 	ds18s20->hwtype = SENSOR;
 
-	options_add(&ds18s20->options, 't', "temperature", has_value, config_value, "^[0-9]{1,5}$");
-	options_add(&ds18s20->options, 'i', "id", has_value, config_id, "^[a-z0-9]{12}$");
+	options_add(&ds18s20->options, 't', "temperature", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, NULL, "^[0-9]{1,5}$");
+	options_add(&ds18s20->options, 'i', "id", OPTION_HAS_VALUE, CONFIG_ID, JSON_STRING, NULL, "^[a-z0-9]{12}$");
 
-	protocol_setting_add_number(ds18s20, "decimals", 3);
-	protocol_setting_add_number(ds18s20, "humidity", 0);
-	protocol_setting_add_number(ds18s20, "temperature", 1);
-	protocol_setting_add_number(ds18s20, "battery", 0);
-	protocol_setting_add_number(ds18s20, "interval", 10);
+	options_add(&ds18s20->options, 0, "device-decimals", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)3, "[0-9]");
+	options_add(&ds18s20->options, 0, "device-temperature-offset", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)0, "[0-9]");
+	options_add(&ds18s20->options, 0, "gui-decimals", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)3, "[0-9]");
+	options_add(&ds18s20->options, 0, "gui-show-temperature", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
+	options_add(&ds18s20->options, 0, "poll-interval", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)10, "[0-9]");
 
-	ds18s20_path = malloc(21);
 	memset(ds18s20_path, '\0', 21);	
 	strcpy(ds18s20_path, "/sys/bus/w1/devices/");
 
 	ds18s20->initDev=&ds18s20InitDev;
+	ds18s20->threadGC=&ds18s20ThreadGC;
 }

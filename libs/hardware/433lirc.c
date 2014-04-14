@@ -128,6 +128,10 @@ unsigned short lirc433Settings(JsonNode *json) {
 	if(strcmp(json->key, "socket") == 0) {
 		if(json->tag == JSON_STRING) {
 			lirc_433_socket = malloc(strlen(json->string_)+1);
+			if(!lirc_433_socket) {
+				logprintf(LOG_ERR, "out of memory");
+				exit(EXIT_FAILURE);
+			}
 			strcpy(lirc_433_socket, json->string_);
 		} else {
 			return EXIT_FAILURE;
@@ -152,7 +156,7 @@ void lirc433Init(void) {
 	hardware_register(&lirc433);
 	hardware_set_id(lirc433, "433lirc");
 
-	options_add(&lirc433->options, 's', "socket", has_value, config_value, "^/dev/([a-z]+)[0-9]+$");
+	options_add(&lirc433->options, 's', "socket", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_STRING, NULL, "^/dev/([a-z]+)[0-9]+$");
 
 	lirc433->type=RF433;
 	lirc433->init=&lirc433HwInit;

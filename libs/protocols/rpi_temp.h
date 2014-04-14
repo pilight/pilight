@@ -20,10 +20,11 @@
 #define _PROTOCOL_RPI_TEMP_H_
 
 #include "json.h"
+#include "threads.h"
 
 struct protocol_t *rpiTemp;
 
 void rpiTempInit(void);
-void rpiTempInitDev(JsonNode *jdevice);
+struct threadqueue_t *rpiTempInitDev(JsonNode *jdevice);
 
 #endif

@@ -94,6 +94,10 @@ int main(int argc, char **argv) {
 	log_level_set(LOG_NOTICE);
 
 	progname = malloc(13);
+	if(!progname) {
+		logprintf(LOG_ERR, "out of memory");
+		exit(EXIT_FAILURE);
+	}
 	strcpy(progname, "pilight-send");
 
 	struct options_t *options = NULL;
@@ -127,11 +131,11 @@ int main(int argc, char **argv) {
 	JsonNode *code = json_mkobject();
 
 	/* Define all CLI arguments of this program */
-	options_add(&options, 'H', "help", no_value, 0, NULL);
-	options_add(&options, 'V', "version", no_value, 0, NULL);
-	options_add(&options, 'p', "protocol", has_value, 0, NULL);
-	options_add(&options, 'S', "server", has_value, 0, "^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]).){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$");
-	options_add(&options, 'P', "port", has_value, 0, "[0-9]{1,4}");
+	options_add(&options, 'H', "help", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
+	options_add(&options, 'V', "version", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
+	options_add(&options, 'p', "protocol", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, NULL);
+	options_add(&options, 'S', "server", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, "^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]).){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$");
+	options_add(&options, 'P', "port", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, "[0-9]{1,4}");
 
 	/* Initialize protocols */
 	protocol_init();
@@ -162,6 +166,10 @@ int main(int argc, char **argv) {
 			break;
 			case 'S':
 				server = realloc(server, strlen(args)+1);
+				if(!server) {
+					logprintf(LOG_ERR, "out of memory");
+					exit(EXIT_FAILURE);
+				}
 				strcpy(server, args);
 			break;
 			case 'P':
@@ -249,9 +257,21 @@ int main(int argc, char **argv) {
 				if(protocol->createCode) {
 					while(protocol->devices) {
 						struct pname_t *node = malloc(sizeof(struct pname_t));
+						if(!node) {
+							logprintf(LOG_ERR, "out of memory");
+							exit(EXIT_FAILURE);
+						}
 						node->name = malloc(strlen(protocol->devices->id)+1);
+						if(!node->name) {
+							logprintf(LOG_ERR, "out of memory");
+							exit(EXIT_FAILURE);
+						}
 						strcpy(node->name, protocol->devices->id);
 						node->desc = malloc(strlen(protocol->devices->desc)+1);
+						if(!node->desc) {
+							logprintf(LOG_ERR, "out of memory");
+							exit(EXIT_FAILURE);
+						}
 						strcpy(node->desc, protocol->devices->desc);
 						node->next = pname;
 						pname = node;
@@ -289,8 +309,8 @@ int main(int argc, char **argv) {
 			and those that are called by the user */
 			if((options_get_id(&protocol->options, tmp->name, &itmp) == 0)
 			&& strlen(tmp->value) > 0) {
-				if(isNumeric(tmp->value) == EXIT_SUCCESS) {
-					json_append_member(code, tmp->name, json_mknumber(atoi(tmp->value)));
+				if(isNumeric(tmp->value) == 0) {
+					json_append_member(code, tmp->name, json_mknumber(atof(tmp->value)));
 				} else {
 					json_append_member(code, tmp->name, json_mkstring(tmp->value));
 				}
@@ -321,7 +341,9 @@ int main(int argc, char **argv) {
 				logprintf(LOG_ERR, "could not connect to pilight-daemon");
 				goto close;
 			}
-			sfree((void *)&ssdp_list);
+		}
+		if(ssdp_list) {
+			ssdp_free(ssdp_list);
 		}
 
 		while(1) {
@@ -330,10 +352,10 @@ int main(int argc, char **argv) {
 				if((recvBuff = socket_read(sockfd))) {
 					json = json_decode(recvBuff);
 					json_find_string(json, "message", &message);
+					sfree((void *)&recvBuff);
 				} else {
 					goto close;
 				}
-				usleep(100);
 			}
 			switch(steps) {
 				case WELCOME:

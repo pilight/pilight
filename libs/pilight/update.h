@@ -21,7 +21,6 @@
 
 int update_gc(void);
 int update_vercmp(char *val, char *ref);
-void update_rmsubstr(char *s, const char *r);
 char *update_package_version(char *mirror);
 int update_available(void);
 char *update_latests_version(void);

@@ -19,6 +19,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 
 #include "../../pilight.h"
 #include "common.h"
@@ -135,14 +136,17 @@ int homeEasyOldCreateCode(JsonNode *code) {
 	int unitcode = -1;
 	int state = -1;
 	int all = -1;
-	int tmp;
+	double itmp = 0;
 
-	json_find_number(code, "systemcode", &systemcode);
-	json_find_number(code, "unitcode", &unitcode);
-	json_find_number(code, "all", &all);
-	if(json_find_number(code, "off", &tmp) == 0)
+	if(json_find_number(code, "systemcode", &itmp) == 0)
+		systemcode = (int)round(itmp);
+	if(json_find_number(code, "unitcode", &itmp) == 0)
+		unitcode = (int)round(itmp);
+	if(json_find_number(code, "all", &itmp) == 0)
+		all = (int)round(itmp);	
+	if(json_find_number(code, "off", &itmp) == 0)
 		state=0;
-	else if(json_find_number(code, "on", &tmp) == 0)
+	else if(json_find_number(code, "on", &itmp) == 0)
 		state=1;
 
 	if(systemcode == -1 || (unitcode == -1 && all == 0) || state == -1) {
@@ -191,14 +195,13 @@ void homeEasyOldInit(void) {
 	home_easy_old->binlen = 12;
 	home_easy_old->lsb = 3;
 
-	options_add(&home_easy_old->options, 's', "systemcode", has_value, config_id, "^(3[012]?|[012][0-9]|[0-9]{1})$");
-	options_add(&home_easy_old->options, 'u', "unitcode", has_value, config_id, "^(3[012]?|[012][0-9]|[0-9]{1})$");
-	options_add(&home_easy_old->options, 'a', "all", no_value, config_state, NULL);
-	options_add(&home_easy_old->options, 't', "on", no_value, config_state, NULL);
-	options_add(&home_easy_old->options, 'f', "off", no_value, config_state, NULL);
+	options_add(&home_easy_old->options, 's', "systemcode", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, NULL, "^(3[012]?|[012][0-9]|[0-9]{1})$");
+	options_add(&home_easy_old->options, 'u', "unitcode", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, NULL, "^(3[012]?|[012][0-9]|[0-9]{1})$");
+	options_add(&home_easy_old->options, 'a', "all", OPTION_NO_VALUE, CONFIG_STATE, JSON_NUMBER, NULL, NULL);
+	options_add(&home_easy_old->options, 't', "on", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
+	options_add(&home_easy_old->options, 'f', "off", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
 
-	protocol_setting_add_string(home_easy_old, "states", "on,off");	
-	protocol_setting_add_number(home_easy_old, "readonly", 0);
+	options_add(&home_easy_old->options, 0, "gui-readonly", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 	
 	home_easy_old->parseBinary=&homeEasyOldParseBinary;
 	home_easy_old->createCode=&homeEasyOldCreateCode;

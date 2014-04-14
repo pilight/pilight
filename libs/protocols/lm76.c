@@ -21,11 +21,10 @@
 #include <dirent.h>
 #include <string.h>
 #include <unistd.h>
-#define __USE_GNU
-#include <pthread.h>
 #include <sys/types.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <math.h>
 #include <sys/stat.h>
 #include <sys/time.h>
 
@@ -45,7 +44,7 @@
 #endif
 
 unsigned short lm76_loop = 1;
-int lm76_nrfree = 0;
+int lm76_threads = 0;
 
 typedef struct lm76data_t {
 	char **id;
@@ -53,98 +52,67 @@ typedef struct lm76data_t {
 	int *fd;
 } lm76data_t;
 
-void lm76ParseCleanUp(void *arg) {
-	struct lm76data_t *lm76data = (struct lm76data_t *)arg;
-	int i = 0;
-
-	if(lm76data->id) {
-		for(i=0;i<lm76data->nrid;i++) {
-			sfree((void *)&lm76data->id[i]);
-		}
-		sfree((void *)&lm76data->id);
-	}
-	if(lm76data->fd) {
-		for(i=0;i<lm76data->nrid;i++) {
-			if(lm76data->fd[i] > 0) {
-				close(lm76data->fd[i]);
-			}
-		}
-		sfree((void *)&lm76data->fd);
-	}
-	sfree((void *)&lm76data);
-	
-	lm76_loop = 0;
-}
-
 void *lm76Parse(void *param) {
-	struct JsonNode *json = (struct JsonNode *)param;
-	struct JsonNode *jsettings = NULL;
+	struct protocol_threads_t *node = (struct protocol_threads_t *)param;
+	struct JsonNode *json = (struct JsonNode *)node->param;
 	struct JsonNode *jid = NULL;
 	struct JsonNode *jchild = NULL;
-	struct timeval tp;
-	struct timespec ts;	
-	struct lm76data_t *lm76data = malloc(sizeof(struct lm76data_t));	
-	int y = 0, interval = 10, rc = 0;
-	int temp_corr = 0;
+	struct lm76data_t *lm76data = malloc(sizeof(struct lm76data_t));
+	int y = 0, interval = 10;
+	int temp_offset = 0, nrloops = 0;
 	char *stmp = NULL;
-	int firstrun = 1;
+	double itmp = -1;
+
+	if(!lm76data) {
+		logprintf(LOG_ERR, "out of memory");
+		exit(EXIT_FAILURE);
+	}
 
 	lm76data->nrid = 0;
 	lm76data->id = NULL;
 	lm76data->fd = 0;
-	
-#ifndef __FreeBSD__
-	pthread_mutex_t mutex = PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP;        
-    pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
-#else
-	pthread_mutex_t mutex;
-	pthread_cond_t cond;
-	pthread_mutexattr_t attr;
 
-	pthread_mutexattr_init(&attr);
-	pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);
-	pthread_mutex_init(&mutex, &attr);
-#endif
+	lm76_threads++;
 
 	if((jid = json_find_member(json, "id"))) {
 		jchild = json_first_child(jid);
 		while(jchild) {
 			if(json_find_string(jchild, "id", &stmp) == 0) {
 				lm76data->id = realloc(lm76data->id, (sizeof(char *)*(size_t)(lm76data->nrid+1)));
+				if(!lm76data->id) {
+					logprintf(LOG_ERR, "out of memory");
+					exit(EXIT_FAILURE);
+				}
 				lm76data->id[lm76data->nrid] = malloc(strlen(stmp)+1);
+				if(!lm76data->id[lm76data->nrid]) {
+					logprintf(LOG_ERR, "out of memory");
+					exit(EXIT_FAILURE);
+				}
 				strcpy(lm76data->id[lm76data->nrid], stmp);
 				lm76data->nrid++;
 			}
 			jchild = jchild->next;
 		}
 	}
-	if((jsettings = json_find_member(json, "settings"))) {
-		json_find_number(jsettings, "interval", &interval);
-		json_find_number(jsettings, "temp-corr", &temp_corr);
-	}
-	json_delete(json);
+
+	if(json_find_number(json, "poll-interval", &itmp) == 0)
+		interval = (int)round(itmp);
+	if(json_find_number(json, "device-temperature-offset", &itmp) == 0)
+		temp_offset = (int)round(itmp);
+
 #ifndef __FreeBSD__	
 	lm76data->fd = realloc(lm76data->fd, (sizeof(int)*(size_t)(lm76data->nrid+1)));
+	if(!lm76data->fd) {
+		logprintf(LOG_ERR, "out of memory");
+		exit(EXIT_FAILURE);
+	}
 	for(y=0;y<lm76data->nrid;y++) {
 		lm76data->fd[y] = wiringPiI2CSetup((int)strtol(lm76data->id[y], NULL, 16));
 	}
 #endif
-	pthread_cleanup_push(lm76ParseCleanUp, (void *)lm76data);
 	
-	while(lm76_loop) {	
-		rc = gettimeofday(&tp, NULL);
-		ts.tv_sec = tp.tv_sec;
-		ts.tv_nsec = tp.tv_usec * 1000;
-		if(firstrun) {
-			ts.tv_sec += 1;
-			firstrun = 0;
-		} else {
-			ts.tv_sec += interval;
-		}
-
-		pthread_mutex_lock(&mutex);
-		rc = pthread_cond_timedwait(&cond, &mutex, &ts);
-		if(rc == ETIMEDOUT) {
+	while(lm76_loop) {
+		if(protocol_thread_wait(node, interval, &nrloops) == ETIMEDOUT) {
 #ifndef __FreeBSD__	
 			for(y=0;y<lm76data->nrid;y++) {
 				if(lm76data->fd[y] > 0) {		
@@ -154,9 +122,9 @@ void *lm76Parse(void *param) {
 					lm76->message = json_mkobject();
 					JsonNode *code = json_mkobject();
 					json_append_member(code, "id", json_mkstring(lm76data->id[y]));
-					json_append_member(code, "temperature", json_mknumber((int)temp+temp_corr));
+					json_append_member(code, "temperature", json_mknumber((int)temp+temp_offset));
 
-					json_append_member(lm76->message, "code", code);
+					json_append_member(lm76->message, "message", code);
 					json_append_member(lm76->message, "origin", json_mkstring("receiver"));
 					json_append_member(lm76->message, "protocol", json_mkstring(lm76->id));
 
@@ -167,25 +135,51 @@ void *lm76Parse(void *param) {
 					logprintf(LOG_DEBUG, "error connecting to lm76");
 					logprintf(LOG_DEBUG, "(probably i2c bus error from wiringPiI2CSetup)");
 					logprintf(LOG_DEBUG, "(maybe wrong id? use i2cdetect to find out)");
-					sleep(1);
+					protocol_thread_wait(node, 1, &nrloops);
 				}
 			}
 #endif
 		}
-		pthread_mutex_unlock(&mutex);
 	}
-	
-	pthread_cleanup_pop(1);
+
+	if(lm76data->id) {
+		for(y=0;y<lm76data->nrid;y++) {
+			sfree((void *)&lm76data->id[y]);
+		}
+		sfree((void *)&lm76data->id);
+	}
+	if(lm76data->fd) {
+		for(y=0;y<lm76data->nrid;y++) {
+			if(lm76data->fd[y] > 0) {
+				close(lm76data->fd[y]);
+			}
+		}
+		sfree((void *)&lm76data->fd);
+	}
+	sfree((void *)&lm76data);
+	lm76_threads--;
 
 	return (void *)NULL;
 }
 
-void lm76InitDev(JsonNode *jdevice) {
+struct threadqueue_t *lm76InitDev(JsonNode *jdevice) {
+	lm76_loop = 1;
 	wiringPiSetup();
 	char *output = json_stringify(jdevice, NULL);
 	JsonNode *json = json_decode(output);
-	threads_register("lm76", &lm76Parse, (void *)json);
 	sfree((void *)&output);
+
+	struct protocol_threads_t *node = protocol_thread_init(lm76, json);
+	return threads_register("lm76", &lm76Parse, (void *)node, 0);
+}
+
+void lm76ThreadGC(void) {
+	lm76_loop = 0;
+	protocol_thread_stop(lm76);
+	while(lm76_threads > 0) {
+		usleep(10);
+	}
+	protocol_thread_free(lm76);
 }
 
 void lm76Init(void) {
@@ -195,14 +189,13 @@ void lm76Init(void) {
 	lm76->devtype = WEATHER;
 	lm76->hwtype = SENSOR;
 
-	options_add(&lm76->options, 't', "temperature", has_value, config_value, "^[0-9]{1,3}$");
-	options_add(&lm76->options, 'i', "id", has_value, config_id, "0x[0-9a-f]{2}");
+	options_add(&lm76->options, 't', "temperature", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, NULL, "^[0-9]{1,3}$");
+	options_add(&lm76->options, 'i', "id", OPTION_HAS_VALUE, CONFIG_ID, JSON_STRING, NULL, "0x[0-9a-f]{2}");
 
-	protocol_setting_add_number(lm76, "decimals", 3);
-	protocol_setting_add_number(lm76, "humidity", 0);
-	protocol_setting_add_number(lm76, "temperature", 1);
-	protocol_setting_add_number(lm76, "battery", 0);
-	protocol_setting_add_number(lm76, "interval", 10);
+	options_add(&lm76->options, 0, "device-decimals", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)3, "[0-9]");
+	options_add(&lm76->options, 0, "gui-decimals", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)3, "[0-9]");
+	options_add(&lm76->options, 0, "gui-show-temperature", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
 
 	lm76->initDev=&lm76InitDev;
+	lm76->threadGC=&lm76ThreadGC;
 }

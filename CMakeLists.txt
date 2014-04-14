@@ -2,14 +2,17 @@ cmake_minimum_required(VERSION 2.8.8)
 
 project(pilight C)
 
+set(CPACK_PACKAGE_NAME pilight)
+set(PROJECT_VERSION 4.0)
+
 include(${PROJECT_SOURCE_DIR}/CMakeConfig.txt)
 
 if(${CMAKE_SYSTEM_PROCESSOR} MATCHES "armv6")
 	if(${USE_SOFT_FLOAT} MATCHES "OFF")
-		set(CMAKE_C_FLAGS "-Ofast -mfloat-abi=hard -mfpu=vfp -march=armv6 -ffast-math -Wfloat-equal -Wshadow -Wpointer-arith -Wcast-align -Wstrict-overflow=5 -Wwrite-strings -Waggregate-return -Wcast-qual -Wswitch-default -Wswitch-enum -Wformat=2 -g -Wall -Wconversion -Wunreachable-code -Wstrict-prototypes")
+		set(CMAKE_C_FLAGS "-lz -Ofast -mfloat-abi=hard -mfpu=vfp -march=armv6 -ffast-math -Wfloat-equal -Wshadow -Wpointer-arith -Wcast-align -Wstrict-overflow=5 -Wwrite-strings -Waggregate-return -Wcast-qual -Wswitch-default -Wswitch-enum -Wformat=2 -g -Wall -Wconversion -Wunreachable-code -Wstrict-prototypes")
 		file(GLOB CMAKE_ZLIB_LIBS_INIT "/usr/lib/arm-linux-gnueabihf/libz.so")
 	else()
-		set(CMAKE_C_FLAGS "-Ofast -mfloat-abi=soft -msoft-float -mfpu=vfp -march=armv6 -ffast-math -Wfloat-equal -Wshadow -Wpointer-arith -Wcast-align -Wstrict-overflow=5 -Wwrite-strings -Waggregate-return -Wcast-qual -Wswitch-default -Wswitch-enum -Wformat=2 -g -Wall -Wconversion -Wunreachable-code -Wstrict-prototypes")
+		set(CMAKE_C_FLAGS "-lz -Ofast -mfloat-abi=soft -msoft-float -mfpu=vfp -march=armv6 -ffast-math -Wfloat-equal -Wshadow -Wpointer-arith -Wcast-align -Wstrict-overflow=5 -Wwrite-strings -Waggregate-return -Wcast-qual -Wswitch-default -Wswitch-enum -Wformat=2 -g -Wall -Wconversion -Wunreachable-code -Wstrict-prototypes")
 		file(GLOB CMAKE_ZLIB_LIBS_INIT "/usr/lib/arm-linux-gnueabi/libz.so")
 	endif()
 endif()
@@ -78,18 +81,19 @@ STRING(REGEX REPLACE "\n" "" git_ver "${git_ver}")
 add_definitions(-DHASH="${git_ver}")
 
 include_directories("${PROJECT_SOURCE_DIR}/libs/pilight/")
+include_directories("${PROJECT_SOURCE_DIR}/libs/avrdude/")
 
 file(GLOB pilight_headers
 	"${PROJECT_SOURCE_DIR}/libs/hardware/*.h"
 	"${PROJECT_SOURCE_DIR}/libs/pilight/*.h"
 	"${PROJECT_SOURCE_DIR}/libs/protocols/*.h"
-	"${PROJECT_SOURCE_DIR}/libs/websockets/*.h")
+	"${PROJECT_SOURCE_DIR}/libs/avrdude/*.h")
 
 file(GLOB pilight
 	"${PROJECT_SOURCE_DIR}/libs/hardware/*.c"
 	"${PROJECT_SOURCE_DIR}/libs/pilight/*.c"
 	"${PROJECT_SOURCE_DIR}/libs/protocols/*.c"
-	"${PROJECT_SOURCE_DIR}/libs/websockets/*.c")
+	"${PROJECT_SOURCE_DIR}/libs/avrdude/*.c")
 
 if(${PROTOCOL_ALECTO} MATCHES "OFF")
 	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/alecto.h")
@@ -148,8 +152,10 @@ if(${PROTOCOL_DHT22} MATCHES "OFF")
 endif()
 
 if(${PROTOCOL_ELRO_SWITCH} MATCHES "OFF" AND ${PROTOCOL_BRENNENSTUHL_SWITCH} MATCHES "OFF")
+	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/elro_ad.h")
 	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/elro_he.h")
 	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/elro_hc.h")
+	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/elro_ad.c")
 	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/elro_hc.c")
 	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/elro_he.c")
 endif()
@@ -167,6 +173,11 @@ endif()
 if(${PROTOCOL_GENERIC_WEATHER} MATCHES "OFF")
 	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/generic_weather.h")
 	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/generic_weather.c")
+endif()
+
+if(${PROTOCOL_GENERIC_WEBCAM} MATCHES "OFF")
+	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/generic_webcam.h")
+	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/generic_webcam.c")
 endif()
 
 if(${PROTOCOL_HOMEEASY_OLD} MATCHES "OFF")
@@ -260,6 +271,46 @@ if(${PROTOCOL_SILVERCREST} MATCHES "OFF")
 	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/silvercrest.c")
 endif()
 
+if(${PROTOCOL_SUNRISESET} MATCHES "OFF")
+	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/sunriseset.h")
+	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/sunriseset.c")
+endif()
+
+if(${PROTOCOL_THREECHAN} MATCHES "OFF")
+	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/threechan.h")
+	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/threechan.c")
+endif()
+
+if(${PROTOCOL_TEKNIHALL} MATCHES "OFF")
+	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/teknihall.h")
+	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/teknihall.c")
+endif()
+
+if(${PROTOCOL_X10} MATCHES "OFF")
+	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/x10.h")
+	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/x10.c")
+endif()
+
+if(${PROTOCOL_PROGRAM} MATCHES "OFF")
+	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/program.h")
+	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/program.c")
+endif()
+
+if(${PROTOCOL_DATETIME} MATCHES "OFF")
+	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/pdatetime.h")
+	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/pdatetime.c")
+endif()
+
+if(${PROTOCOL_XBMC} MATCHES "OFF")
+	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/xbmc.h")
+	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/xbmc.c")
+endif()
+
+if(${PROTOCOL_LIRC} MATCHES "OFF")
+	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/lirc.h")
+	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/lirc.c")
+endif()
+
 if(${HARDWARE_433_GPIO} MATCHES "OFF")
 	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/hardware/433gpio.h")
 	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/hardware/433gpio.c")
@@ -282,14 +333,20 @@ if(${UPDATE} MATCHES "OFF")
 	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/pilight/http_lib.c")
 endif()
 
-file(GLOB webserver_sources "${PROJECT_SOURCE_DIR}/libs/websockets/*.c")
-
 if(${WEBSERVER} MATCHES "OFF")
 	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/pilight/webserver.h")
+	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/pilight/mongoose.h")
 	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/pilight/webserver.c")
-	list(REMOVE_ITEM pilight ${webserver_sources})
-	file(GLOB webserver_headers "${PROJECT_SOURCE_DIR}/libs/websockets/*.h")
-	list(REMOVE_ITEM pilight ${webserver_headers})
+	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/pilight/mongoose.c")
+endif()
+
+file(GLOB avrdude_sources "${PROJECT_SOURCE_DIR}/libs/avrdude/*.c")
+
+if(${FIRMWARE} MATCHES "OFF")
+	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/pilight/firmware.c")
+	list(REMOVE_ITEM pilight ${avrdude_sources})
+	file(GLOB avrdude_headers "${PROJECT_SOURCE_DIR}/libs/avrdude/*.h")
+	list(REMOVE_ITEM pilight ${avrdude_headers})
 endif()
 
 find_package(Threads REQUIRED)
@@ -304,7 +361,9 @@ add_library(pilight OBJECT ${pilight})
 add_library(pilight_static STATIC $<TARGET_OBJECTS:pilight>)
 add_library(pilight_shared SHARED $<TARGET_OBJECTS:pilight>)
 target_link_libraries(pilight_shared ${CMAKE_THREAD_LIBS_INIT})
+target_link_libraries(pilight_shared m)
 target_link_libraries(pilight_static ${CMAKE_THREAD_LIBS_INIT})
+target_link_libraries(pilight_static m)
 
 if(${UPDATE} MATCHES "ON")
 	target_link_libraries(pilight_shared ${CMAKE_ZLIB_LIBS_INIT})
@@ -317,20 +376,31 @@ set_source_files_properties(${PROJECT_SOURCE_DIR}/libs/pilight/wiringPi.c PROPER
 set_source_files_properties(${PROJECT_SOURCE_DIR}/libs/pilight/wiringPiI2C.c PROPERTIES COMPILE_FLAGS " -w ")
 set_source_files_properties(${PROJECT_SOURCE_DIR}/libs/pilight/json.c PROPERTIES COMPILE_FLAGS " -w ")
 set_source_files_properties(${PROJECT_SOURCE_DIR}/libs/pilight/http_lib.c PROPERTIES COMPILE_FLAGS " -w ")
-set_source_files_properties(${webserver_sources} PROPERTIES COMPILE_FLAGS " -w ")
+set_source_files_properties(${PROJECT_SOURCE_DIR}/libs/pilight/mongoose.c PROPERTIES COMPILE_FLAGS " -w ")
+set_source_files_properties(${avrdude_sources} PROPERTIES COMPILE_FLAGS " -w ")
 
 install(FILES libpilight.so DESTINATION lib/pilight/ RENAME libpilight.so.3)
 install(FILES libpilight.a DESTINATION lib/pilight/ RENAME libpilight.a)
+
+if(EXISTS "/usr/local/lib/libpilight.so")
+	execute_process(COMMAND rm "/usr/local/lib/libpilight.so")
+endif()
+
+if(NOT EXISTS "/usr/local/lib/libpilight.so")
+	execute_process(COMMAND ln -s "/usr/local/lib/pilight/libpilight.so.3" "/usr/local/lib/libpilight.so")
+endif()
 
 if(${WEBSERVER} MATCHES "ON")
 	install(DIRECTORY web/ DESTINATION /usr/local/share/pilight)
 endif()
 
-install(PROGRAMS init/pilight DESTINATION /etc/init.d/)
+install(PROGRAMS init/pilight.initd DESTINATION /etc/init.d/ RENAME pilight)
 
 if(NOT EXISTS "/etc/pilight/settings.json")
 	install(FILES settings.json-default DESTINATION /etc/pilight/ RENAME settings.json)
 endif()
+
+install(FILES tzdata.json DESTINATION /etc/pilight/)
 
 if(NOT EXISTS "/etc/pilight/hardware.json")
 	install(FILES hardware.json DESTINATION /etc/pilight/)
@@ -339,6 +409,7 @@ endif()
 add_executable(pilight-daemon daemon.c)
 target_link_libraries(pilight-daemon pilight_shared)
 target_link_libraries(pilight-daemon ${CMAKE_DL_LIBS})
+target_link_libraries(pilight-daemon m)
 target_link_libraries(pilight-daemon ${CMAKE_THREAD_LIBS_INIT})
 
 if(${UPDATE} MATCHES "ON")
@@ -348,27 +419,31 @@ endif()
 add_executable(pilight-raw raw.c)
 target_link_libraries(pilight-raw pilight_shared)
 target_link_libraries(pilight-raw ${CMAKE_DL_LIBS})
+target_link_libraries(pilight-raw m)
 target_link_libraries(pilight-raw ${CMAKE_THREAD_LIBS_INIT})
 
 add_executable(pilight-send send.c)
 target_link_libraries(pilight-send pilight_shared)
 target_link_libraries(pilight-send ${CMAKE_DL_LIBS})
+target_link_libraries(pilight-send m)
 target_link_libraries(pilight-send ${CMAKE_THREAD_LIBS_INIT})
 
 add_executable(pilight-control control.c)
 target_link_libraries(pilight-control pilight_shared)
 target_link_libraries(pilight-control ${CMAKE_DL_LIBS})
+target_link_libraries(pilight-control m)
 target_link_libraries(pilight-control ${CMAKE_THREAD_LIBS_INIT})
 
 add_executable(pilight-learn learn.c)
 target_link_libraries(pilight-learn pilight_shared)
-target_link_libraries(pilight-learn m)
 target_link_libraries(pilight-learn ${CMAKE_DL_LIBS})
+target_link_libraries(pilight-learn m)
 target_link_libraries(pilight-learn ${CMAKE_THREAD_LIBS_INIT})
 
 add_executable(pilight-receive receive.c)
 target_link_libraries(pilight-receive pilight_shared)
 target_link_libraries(pilight-receive ${CMAKE_DL_LIBS})
+target_link_libraries(pilight-receive m)
 target_link_libraries(pilight-receive ${CMAKE_THREAD_LIBS_INIT})
 
 add_executable(pilight-debug debug.c)
@@ -383,14 +458,30 @@ target_link_libraries(pilight-uuid ${CMAKE_DL_LIBS})
 target_link_libraries(pilight-uuid m)
 target_link_libraries(pilight-uuid ${CMAKE_THREAD_LIBS_INIT})
 
+if(EXISTS "/usr/local/sbin/pilight-send")
+	execute_process(COMMAND rm "/usr/local/sbin/pilight-send")
+endif()
+
+if(EXISTS "/usr/local/sbin/pilight-receive")
+	execute_process(COMMAND rm "/usr/local/sbin/pilight-receive")
+endif()
+
+if(EXISTS "/usr/local/sbin/pilight-control")
+	execute_process(COMMAND rm "/usr/local/sbin/pilight-control")
+endif()
+
+if(EXISTS "/usr/local/sbin/pilight-uuid")
+	execute_process(COMMAND rm "/usr/local/sbin/pilight-uuid")
+endif()
+
 install(PROGRAMS pilight-daemon DESTINATION sbin)
 install(PROGRAMS pilight-raw DESTINATION sbin)
-install(PROGRAMS pilight-send DESTINATION sbin)
-install(PROGRAMS pilight-control DESTINATION sbin)
+install(PROGRAMS pilight-send DESTINATION bin)
+install(PROGRAMS pilight-control DESTINATION bin)
 install(PROGRAMS pilight-learn DESTINATION sbin)
-install(PROGRAMS pilight-receive DESTINATION sbin)
+install(PROGRAMS pilight-receive DESTINATION bin)
 install(PROGRAMS pilight-debug DESTINATION sbin)
-install(PROGRAMS pilight-uuid DESTINATION sbin)
+install(PROGRAMS pilight-uuid DESTINATION bin)
 install(SCRIPT cmake_postinstall.cmake)
 
 WRITE_UNINSTALL_TARGET_SCRIPT()
@@ -398,3 +489,19 @@ configure_file("${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake.in"
 	"${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake"
     IMMEDIATE @ONLY)
 add_custom_target(uninstall COMMAND ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake)
+
+set(CPACK_GENERATOR "DEB")
+set(CPACK_PACKAGING_INSTALL_PREFIX "/usr/local/")
+set(CPACK_PACKAGE_VERSION_MAJOR "4")
+set(CPACK_PACKAGE_VERSION_MINOR "0")
+set(CPACK_PACKAGE_VERSION_PATCH "0")
+set(CPACK_DEBIAN_PACKAGE_DEPENDS "zlib1g-dev")
+set(CPACK_DEBIAN_PACKAGE_PRIORITY "optional")
+set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE armhf)
+set(CPACK_PACKAGE_DESCRIPTION "Control RF devices with the Raspberry Pi")
+set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Control RF devices with the Raspberry Pi")
+set(CPACK_PACKAGE_CONTACT "CurlyMo <info@pilight.org>")
+set(CPACK_DEBIAN_PACKAGE_CONTROL_EXTRA "${CMAKE_CURRENT_SOURCE_DIR}/debian/postinst;${CMAKE_CURRENT_SOURCE_DIR}/debian/preinst;${CMAKE_CURRENT_SOURCE_DIR}/debian/postrm;${CMAKE_CURRENT_SOURCE_DIR}/debian/prerm")
+set(CPACK_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}${PROJECT_VERSION}")
+
+include(CPack)

@@ -19,6 +19,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 
 #include "../../pilight.h"
 #include "common.h"
@@ -119,13 +120,15 @@ int mumbiCreateCode(JsonNode *code) {
 	int systemcode = -1;
 	int unitcode = -1;
 	int state = -1;
-	int tmp;
+	double itmp = 0;
 
-	json_find_number(code, "systemcode", &systemcode);
-	json_find_number(code, "unitcode", &unitcode);
-	if(json_find_number(code, "off", &tmp) == 0)
+	if(json_find_number(code, "systemcode", &itmp) == 0)
+		systemcode = (int)round(itmp);
+	if(json_find_number(code, "unitcode", &itmp) == 0)
+		unitcode = (int)round(itmp);
+	if(json_find_number(code, "off", &itmp) == 0)
 		state=0;
-	else if(json_find_number(code, "on", &tmp) == 0)
+	else if(json_find_number(code, "on", &itmp) == 0)
 		state=1;
 
 	if(systemcode == -1 || unitcode == -1 || state == -1) {
@@ -169,13 +172,12 @@ void mumbiInit(void) {
 	mumbi->binlen = 12;
 	mumbi->lsb = 3;
 
-	options_add(&mumbi->options, 's', "systemcode", has_value, config_id, "^(3[012]?|[012][0-9]|[0-9]{1})$");
-	options_add(&mumbi->options, 'u', "unitcode", has_value, config_id, "^(3[012]?|[012][0-9]|[0-9]{1})$");
-	options_add(&mumbi->options, 't', "on", no_value, config_state, NULL);
-	options_add(&mumbi->options, 'f', "off", no_value, config_state, NULL);
+	options_add(&mumbi->options, 's', "systemcode", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, NULL, "^(3[012]?|[012][0-9]|[0-9]{1})$");
+	options_add(&mumbi->options, 'u', "unitcode", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, NULL, "^(3[012]?|[012][0-9]|[0-9]{1})$");
+	options_add(&mumbi->options, 't', "on", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
+	options_add(&mumbi->options, 'f', "off", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
 
-	protocol_setting_add_string(mumbi, "states", "on,off");	
-	protocol_setting_add_number(mumbi, "readonly", 0);
+	options_add(&mumbi->options, 0, "gui-readonly", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
 	
 	mumbi->parseBinary=&mumbiParseBinary;
 	mumbi->createCode=&mumbiCreateCode;

@@ -19,7 +19,9 @@
 #ifndef _CONFIG_H_
 #define _CONFIG_H_
 
+#include <pthread.h>
 #include "protocol.h"
+#include "threads.h"
 
 typedef struct conf_locations_t conf_locations_t;
 typedef struct conf_devices_t conf_devices_t;
@@ -66,7 +68,10 @@ typedef enum {
 } config_type_t;
 
 struct conf_values_t {
-	char *value;
+	union {
+		char *string_;
+		double number_;
+	};
 	char *name;
 	config_type_t type;
 	struct conf_values_t *next;
@@ -84,8 +89,11 @@ struct conf_devices_t {
 	char dev_uuid[21];
 	char ori_uuid[21];
 	int cst_uuid;
+	int nrthreads;
+	time_t timestamp;
 	struct protocols_t *protocols;
 	struct conf_settings_t *settings;
+	struct threadqueue_t **threads;
 	struct conf_devices_t *next;
 };
 
@@ -109,7 +117,7 @@ JsonNode *config_broadcast_create(void);
 void config_print(void);
 void config_save_setting(int i, JsonNode *jsetting, struct conf_devices_t *device);
 int config_check_state(int i, JsonNode *jsetting, struct conf_devices_t *device);
-int config_check_settings(int i, JsonNode *jsetting, struct conf_devices_t *device);
+int config_check_settings(JsonNode *jsetting, struct conf_devices_t *device);
 int config_parse_devices(JsonNode *jdevices, struct conf_devices_t *device);
 int config_parse_locations(JsonNode *jlocations, struct conf_locations_t *location);
 int config_merge_locations(JsonNode *jlocations, struct conf_locations_t *location);

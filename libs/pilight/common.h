@@ -20,6 +20,7 @@
 #define _COMMON_H_
 
 #include <syslog.h>
+#include <ifaddrs.h>
 
 #include "../../pilight.h"
 
@@ -31,10 +32,27 @@ char debug_log[128];
 
 void logmarkup(void);
 int isNumeric(char *str);
+int name2uid(char const *name);
+int which(const char *program);
+int ishex(int x);
+const char *rstrstr(const char* haystack, const char* needle);
+void alpha_random(char *s, const int len);
+int urldecode(const char *s, char *dec);
+int base64decode(unsigned char *dest, unsigned char *src, int l);
+char *hostname(void);
+char *distroname(void);
+void rmsubstr(char *s, const char *r);
+char *genuuid(char *ifname);
+int whitelist_check(char *ip);
+void whitelist_free(void);
+int path_exists(char *fil);
 #ifdef __FreeBSD__
-int proc_find(const char *name);
+struct sockaddr *sockaddr_dup(struct sockaddr *sa);
+int rep_getifaddrs(struct ifaddrs **ifap);
+void rep_freeifaddrs(struct ifaddrs *ifap);
+int findproc(char *name, char *args);
 #else
-pid_t proc_find(const char *name);
+pid_t findproc(char *name, char *args);
 #endif
 
 #if defined(DEBUG) && !defined(__FreeBSD)

@@ -68,6 +68,7 @@ extern char *malloc();
 #include <stdio.h>
 
 #include "http_lib.h"
+#include "log.h"
 #define h_addr h_addr_list[0]
 
 #define SERVER_DEFAULT "adonis"
@@ -373,6 +374,10 @@ http_retcode http_get(filename, pdata, plength, typebuf)
 					} else {
 						newbuf = realloc(newbuf, len+strlen(buffer)+1);
 					}
+					if(!newbuf) {
+						logprintf(LOG_ERR, "out of memory");
+						exit(EXIT_FAILURE);
+					}
 					len += sprintf(&newbuf[len], "%s", buffer);
 				}
 			}
@@ -389,6 +394,10 @@ http_retcode http_get(filename, pdata, plength, typebuf)
 	if(len > 0) {
 		*plength = len;
 		*pdata = malloc(len+1);
+		if(!*pdata) {
+			logprintf(LOG_ERR, "out of memory");
+			exit(EXIT_FAILURE);
+		}
 		memset(*pdata, '\0', len+1);
 		strcpy(*pdata, newbuf);
 		free(newbuf);
