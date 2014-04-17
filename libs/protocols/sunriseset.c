@@ -109,13 +109,13 @@ void *sunRiseSetParse(void *param) {
 	struct JsonNode *jchild = NULL;
 	struct JsonNode *jchild1 = NULL;
 	char *slongitude = NULL, *slatitude = NULL, *tz = NULL;
-	double longitude = 0, latitude = 0, itmp = -1;
-	int interval = 1, nrloops = 0;
+	double longitude = 0, latitude = 0;
 	char UTC[] = "UTC";	
 	
 	time_t timenow = 0;
 	struct tm *current;
-	int month = 0, mday = 0, year = 0, offset = 0;
+	int month = 0, mday = 0, year = 0, offset = 0, nrloops = 0;
+	int hour = 0, min = 0, sec = 0, risetime = 0, settime = 0;
 
 	sunriseset_threads++;
 
@@ -146,52 +146,56 @@ void *sunRiseSetParse(void *param) {
 		}
 	}
 
-	if(json_find_number(json, "poll-interval", &itmp) == 0)
-		interval = (int)round(itmp);
-
 	if((tz = coord2tz(longitude, latitude)) == NULL) {
 		logprintf(LOG_DEBUG, "could not determine timezone");
 		tz = UTC;
 	}
 
 	while(sunriseset_loop) {
-		if(protocol_thread_wait(thread, interval, &nrloops) == ETIMEDOUT) {
-			timenow = time(NULL);
-			current = localtime(&timenow);
-			month = current->tm_mon+1;
-			mday = current->tm_mday;
-			year = current->tm_year+1900;
+		protocol_thread_wait(thread, 1, &nrloops);	
+		timenow = time(NULL);
+		current = gmtime(&timenow);
 
-			time_t midnight = (datetime2ts(year, month, mday, 23, 59, 59, 0)+1);
-			time_t sunset = 0;
-			time_t sunrise = 0;
-			offset = tzoffset(UTC, tz);
+		sec = current->tm_sec;
+		min = current->tm_min;
+		hour = current->tm_hour;
+		month = current->tm_mon+1;
+		mday = current->tm_mday;
+		year = current->tm_year+1900;
 
+		offset = tzoffset(UTC, tz);		
+
+		int hournow = ((hour+offset+isdst(tz))*100)+min;
+
+		if(hournow >= 2400) {
+			hournow -= 2400;
+		}
+
+		if(((hournow == 0 || hournow == risetime || hournow == settime) && sec == 0)
+		   || (settime == 0 && risetime == 0)) {
 			sunriseset->message = json_mkobject();
-
 			JsonNode *code = json_mkobject();
-			int risetime = (int)sunRiseSetCalculate(year, month, mday, longitude, latitude, 1, offset);
-			int hour = (int)round(risetime/100);
-			int min = (risetime - (hour*100));
-			sunrise = datetime2ts(year, month, mday, hour, min, 0, 0);
-			int settime = (int)sunRiseSetCalculate(year, month, mday, longitude, latitude, 0, offset);
-			hour = (int)round(settime/100);
-			min = (settime - (hour*100));
-			sunset = datetime2ts(year, month, mday, hour, min, 0, 0);
+			risetime = (int)sunRiseSetCalculate(year, month, mday, longitude, latitude, 1, offset);
+			settime = (int)sunRiseSetCalculate(year, month, mday, longitude, latitude, 0, offset);
 
 			if(isdst(tz)) {
-				sunrise -= 3600;
-				sunset -= 3600;
+				risetime += 100;
+				settime += 100;
+				if(risetime > 2400) risetime -= 2400;
+				if(settime > 2400) settime -= 2400;
 			}
 
 			json_append_member(code, "longitude", json_mkstring(slongitude));
 			json_append_member(code, "latitude", json_mkstring(slatitude));
 			json_append_member(code, "sunrise", json_mknumber(risetime));
 			json_append_member(code, "sunset", json_mknumber(settime));
-			if(timenow > sunrise && timenow < sunset) {
-				json_append_member(code, "sun", json_mkstring("rise"));
-			} else {
-				json_append_member(code, "sun", json_mkstring("set"));
+
+			if(hournow != 0) {
+				if(hournow >= risetime && hournow < settime) {
+					json_append_member(code, "sun", json_mkstring("rise"));
+				} else {
+					json_append_member(code, "sun", json_mkstring("set"));
+				}
 			}
 			
 			json_append_member(sunriseset->message, "message", code);
@@ -200,21 +204,7 @@ void *sunRiseSetParse(void *param) {
 
 			pilight.broadcast(sunriseset->id, sunriseset->message);
 			json_delete(sunriseset->message);
-			sunriseset->message = NULL;
-
-			// Wait for 1 minute so we make sure the new interval is set
-			protocol_thread_wait(thread, 60, &nrloops);
-			
-			/* Send message when sun rises */
-			if(sunrise > timenow) {
-				interval = (int)(sunrise-timenow);
-			/* Send message when sun sets */
-			} else if(sunset > timenow) {
-				interval = (int)(sunset- timenow);
-			/* Update all values when a new day arrives */
-			} else {
-				interval = (int)(midnight-timenow);
-			}			
+			sunriseset->message = NULL;	
 		}
 	}
 

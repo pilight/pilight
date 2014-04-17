@@ -73,10 +73,10 @@ int fcache_rm(char *filename) {
 }
 
 int fcache_add(char *filename) {
-
 	unsigned long filesize = 0, i = 0;
 	struct stat sb;
 	ssize_t rc = 0;
+	int fd = 0;
 
 	logprintf(LOG_NOTICE, "caching %s", filename);
 
@@ -90,31 +90,32 @@ int fcache_add(char *filename) {
 			exit(EXIT_FAILURE);
 		}
 		filesize = (unsigned long)sb.st_size;
-		node->bytes = malloc(filesize + 100);
-		if(!node->bytes) {
+		if(!(node->bytes = malloc(filesize + 100))) {
 			logprintf(LOG_ERR, "out of memory");
 			exit(EXIT_FAILURE);
 		}
 		memset(node->bytes, '\0', filesize + 100);
-		int fd = open(filename, O_RDONLY);
+		if((fd = open(filename, O_RDONLY, 0)) > -1) {
+			i = 0;
+			while (i < filesize) {
+				rc = read(fd, node->bytes+i, filesize-i);
+				i += (unsigned long)rc;
+			}
+			close(fd);
 
-		i = 0;
-		while (i < filesize) {
-			rc = read(fd, node->bytes+i, filesize-i);
-			i += (unsigned long)rc;
+			node->size = (int)filesize;
+			node->name = malloc(strlen(filename)+1);
+			if(!node->name) {
+				logprintf(LOG_ERR, "out of memory");
+				exit(EXIT_FAILURE);
+			}
+			strcpy(node->name, filename);
+			node->next = fcache;
+			fcache = node;
+			return 0;			
+		} else {
+			return -1;
 		}
-		close(fd);
-
-		node->size = (int)filesize;
-		node->name = malloc(strlen(filename)+1);
-		if(!node->name) {
-			logprintf(LOG_ERR, "out of memory");
-			exit(EXIT_FAILURE);
-		}
-		strcpy(node->name, filename);
-		node->next = fcache;
-		fcache = node;
-		return 0;
 	}
 	return -1;
 }

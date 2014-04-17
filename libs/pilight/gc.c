@@ -23,16 +23,30 @@
 #include <setjmp.h>
 
 #include "gc.h"
+#include "json.h"
+#include "config.h"
 #include "common.h"
 
 static sigjmp_buf gc_cleanup;
+unsigned short gcenable = 0;
 
 /* The gc uses a observer pattern to
    easily call function when exiting
    the daemon */
 
 void gc_handler(int sig) {
-    siglongjmp(gc_cleanup, sig);
+	if(((sig == SIGINT || sig == SIGTERM || sig == SIGTSTP) && gcenable == 1) || 
+	  (!(sig == SIGINT || sig == SIGTERM || sig == SIGTSTP) && gcenable == 0)) {
+		if(configfile != NULL) {
+			JsonNode *joutput = config2json(-1);
+			char *output = json_stringify(joutput, "\t");
+			config_write(output);
+			json_delete(joutput);
+			sfree((void *)&output);
+			joutput = NULL;
+		}
+		siglongjmp(gc_cleanup, sig);
+	}
 }
 
 /* Add function to gc */
@@ -77,6 +91,10 @@ int gc_run(void) {
 	else
 		return EXIT_SUCCESS;
 }
+
+void gc_enable(void) {
+	gcenable = 1;
+}	
 
 /* Initialize the catch all gc */
 void gc_catch(void) {

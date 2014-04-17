@@ -160,8 +160,6 @@ unsigned short incognito_mode = 0;
 pthread_t pth;
 /* While loop conditions */
 unsigned short main_loop = 1;
-/* Only update the config file on exit when it's valid */
-unsigned short valid_config = 0;
 /* Reset repeats after a certian amount of time */
 struct timeval tv;
 /* How many nodes are connected */
@@ -1481,15 +1479,6 @@ int main_gc(void) {
 	pthread_mutex_unlock(&mainlock);
 	pthread_cond_signal(&mainsignal);
 
-	if(valid_config) {
-		JsonNode *joutput = config2json(-1);
-		char *output = json_stringify(joutput, "\t");
-		config_write(output);
-		json_delete(joutput);
-		sfree((void *)&output);
-		joutput = NULL;
-	}
-
 	struct nodes_t *tmp_nodes;
 	while(nodes) {
 		tmp_nodes = nodes;
@@ -1861,7 +1850,6 @@ int main(int argc, char **argv) {
 				if(config_read() != 0) {
 					goto clear;
 				} else {
-					valid_config = 1;
 					receivers++;
 				}
 
@@ -1958,6 +1946,7 @@ int main(int argc, char **argv) {
 	pthread_mutex_init(&mainlock, &mainattr);
     pthread_cond_init(&mainsignal, NULL);
 
+	unsigned short loop = 0;
 	while(main_loop) {
 #ifdef FIRMWARE
 		/* Check if firmware needs to be updated */
@@ -1980,6 +1969,11 @@ int main(int argc, char **argv) {
 			}
 		}
 #endif
+		loop++;
+		if(loop >= 5) {
+			gc_enable();
+			loop = 0;
+		}
 		struct timeval tp;
 		struct timespec ts;
 		pthread_mutex_unlock(&mainlock);

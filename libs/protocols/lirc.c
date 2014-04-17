@@ -155,6 +155,11 @@ void *lircParse(void *param) {
 		}
 	}
 
+	if(lirc_sockfd > -1) {
+		close(lirc_sockfd);
+		lirc_sockfd = -1;
+	}	
+	
 	lirc_threads--;
 	return (void *)NULL;
 }
@@ -182,6 +187,8 @@ void lircInit(void) {
 	protocol_device_add(lirc, "lirc", "Lirc API");
 	lirc->devtype = LIRC;
 	lirc->hwtype = API;
+	lirc->config = 0;
+	lirc->multipleId = 0;
 
 	options_add(&lirc->options, 'i', "id", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_STRING, NULL, NULL);
 	options_add(&lirc->options, 'a', "repeat", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_STRING, NULL, NULL);

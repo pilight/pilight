@@ -88,15 +88,12 @@ void logprintf(int prio, const char *format_str, ...) {
 			strcat(line, "\n");
 
 			if((stat(logfile, &sb)) != 0) {
-				fclose(lf);
-				lf = NULL;
-				if((lf = fopen(logfile, "a")) == NULL) {
+				if(!(lf = fopen(logfile, "a"))) {
 					filelog = 0;
 				}
 			} else {
 				if(sb.st_nlink == 0) {
-					lf = NULL;
-					if((lf = fopen(logfile, "a")) == NULL) {
+					if(!(lf = fopen(logfile, "a"))) {
 						filelog = 0;
 					}
 				}
@@ -106,15 +103,17 @@ void logprintf(int prio, const char *format_str, ...) {
 					strcpy(tmp, logfile);
 					strcat(tmp, ".old");
 					rename(logfile, tmp);
-					lf = NULL;
-					if((lf = fopen(logfile, "a")) == NULL) {
+					if(!(lf = fopen(logfile, "a"))) {
 						filelog = 0;
 					}
 				}
 			}
-
-			fwrite(line, sizeof(char), strlen(line), lf);
-			fflush(lf);
+			if(lf) {
+				fwrite(line, sizeof(char), strlen(line), lf);
+				fflush(lf);
+				fclose(lf);
+				lf = NULL;
+			}
 			va_end(ap);
 		}
 

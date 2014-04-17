@@ -11,6 +11,8 @@ var iPLVersion = 0;
 var iPLNVersion = 0;
 var iFWVersion = 0;
 var aTimers = new Array();
+var sDateTimeFormat = "HH:mm:ss YYYY-MM-DD";
+var aDateTimeFormats = new Array();
 
 var cookieEnabled = (navigator.cookieEnabled) ? true : false;
 
@@ -713,6 +715,13 @@ function createDateTimeElement(sTabId, sDevId, aValues) {
 	aDateTime[sTabId+'_'+sDevId]['minute'] = aValues['minute'];
 	aDateTime[sTabId+'_'+sDevId]['second'] = aValues['second'];	
 
+	if('gui-datetime-format' in aValues) {
+		sFormat = aValues['gui-datetime-format'];
+	} else {
+		sFormat = sDateTimeFormat;
+	}
+	aDateTimeFormats[sTabId+'_'+sDevId] = sFormat;
+
 	if($('#'+sTabId+'_'+sDevId+'_datetime').length == 0) {
 		if(bShowTabs) {
 			oTab = $('#'+sTabId).find('ul');
@@ -720,11 +729,13 @@ function createDateTimeElement(sTabId, sDevId, aValues) {
 			oTab = $('#all');
 		}	
 		if('name' in aValues) {
+			sDate = moment(aValues['year']+'-'+aValues['month']+'-'+aValues['day']+' '+aValues['hour']+':'+aValues['minute']+':'+aValues['second'], ["YYYY-MM-DD HH:mm:ss"]).format(sFormat);
 			oTab.append($('<li id="'+sTabId+'_'+sDevId+'_datetime" data-icon="false">'+aValues['name']+'</li>'));
-			oTab.find('#'+sTabId+'_'+sDevId+'_datetime').append($('<div id="'+sTabId+'_'+sDevId+'_text" class="datetime">'+aValues['year']+'-'+aValues['month']+'-'+aValues['day']+' '+aValues['hour']+':'+aValues['minute']+':'+aValues['second']+'</div>'));
+			oTab.find('#'+sTabId+'_'+sDevId+'_datetime').append($('<div id="'+sTabId+'_'+sDevId+'_text" class="datetime">'+sDate+'</div>'));
 		}
 	} else {
-		$('#'+sTabId+'_'+sDevId+'_text').text(aValues['year']+'-'+aValues['month']+'-'+aValues['day']+' '+aValues['hour']+':'+aValues['minute']+':'+aValues['second']);
+		sDate = moment(aValues['year']+'-'+aValues['month']+'-'+aValues['day']+' '+aValues['hour']+':'+aValues['minute']+':'+aValues['second'], ["YYYY-MM-DD HH:mm:ss"]).format(sFormat);
+		$('#'+sTabId+'_'+sDevId+'_text').text(sDate);
 	}
 	oTab.listview();
 	oTab.listview("refresh");
@@ -818,12 +829,7 @@ function createGUI(data) {
 						}
 					}
 				});
-			});
-
-			$(document).delegate('#editbtn', 'click', function(e) {
-				document.location = "wakeup.php";
-				//e.preventDefault();
-			});			
+			});	
 
 			if(bShowTabs) {
 				$(document).delegate('[data-role="navbar"] a', 'click', function(e) {
@@ -903,7 +909,8 @@ function parseData(data) {
 							   'minute' in aVal &&
 							   'second' in aVal) {
 								if(vindex == 'second') {
-									$('#'+lindex+'_'+dvalues+'_text').text(aVal['year']+'-'+aVal['month']+'-'+aVal['day']+' '+aVal['hour']+':'+aVal['minute']+':'+aVal['second']);
+									sDate = moment(aVal['year']+'-'+aVal['month']+'-'+aVal['day']+' '+aVal['hour']+':'+aVal['minute']+':'+aVal['second'], ["YYYY-MM-DD HH:mm:ss"]).format(aDateTimeFormats[lindex+'_'+dvalues]);
+									$('#'+lindex+'_'+dvalues+'_text').text(sDate);
 								}
 							}
 						}

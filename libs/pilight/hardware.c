@@ -328,6 +328,7 @@ int hardware_read(void) {
 
 	if(!(content = calloc(bytes+1, sizeof(char)))) {
 		logprintf(LOG_ERR, "out of memory");
+		fclose(fp);
 		return EXIT_FAILURE;
 	}
 

@@ -50,6 +50,7 @@
 
 unsigned short pdatetime_loop = 1;
 unsigned short pdatetime_threads = 0;
+char *pdatetime_format = NULL;
 
 typedef struct {
 	union {
@@ -247,9 +248,7 @@ void *pdateTimeParse(void *param) {
 		json_delete(pdatetime->message);
 		pdatetime->message = NULL;
 		if(x == 0) {
-			time_t midnight = (datetime2ts(year, month, day, 23, 59, 59, 0)+1);
-			time_t timenow = datetime2ts(year, month, day, hour, minute, second, 0);		
-			interval = (int)(midnight-timenow);
+			interval = (int)((23-hour)*10000)+((59-minute)*100)+(60-second);
 		}
 		x++;
 		sleep(1);
@@ -289,7 +288,13 @@ void pdateTimeThreadGC(void) {
 	protocol_thread_free(pdatetime);
 }
 
+void pdatetimeGC(void) {
+	sfree((void *)&pdatetime_format);
+}
+
 void pdateTimeInit(void) {
+	pdatetime_format = malloc(20);
+	strcpy(pdatetime_format, "HH:mm:ss YYYY-MM-DD");
 
 	protocol_register(&pdatetime);
 	protocol_set_id(pdatetime, "datetime");
@@ -308,6 +313,10 @@ void pdateTimeInit(void) {
 	options_add(&pdatetime->options, 'i', "minute", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, NULL, NULL);
 	options_add(&pdatetime->options, 's', "second", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, NULL, NULL);
 
+	options_add(&pdatetime->options, 0, "gui-show-datetime", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
+	options_add(&pdatetime->options, 0, "gui-datetime-format", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_STRING, (void *)pdatetime_format, NULL);
+
 	pdatetime->initDev=&pdateTimeInitDev;
 	pdatetime->threadGC=&pdateTimeThreadGC;
+	pdatetime->gc=&pdatetimeGC;
 }

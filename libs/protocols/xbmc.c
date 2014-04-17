@@ -257,8 +257,8 @@ void *xbmcParse(void *param) {
 				}
 			}
 		}
-	}
-
+	}	
+	
 	xbmc_threads--;
 	return (void *)NULL;
 }
@@ -336,6 +336,7 @@ void xbmcInit(void) {
 	protocol_device_add(xbmc, "xbmc", "XBMC API");
 	xbmc->devtype = XBMC;
 	xbmc->hwtype = API;
+	xbmc->multipleId = 0;
 
 	options_add(&xbmc->options, 'a', "action", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_STRING, NULL, NULL);
 	options_add(&xbmc->options, 'm', "media", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_STRING, NULL, NULL);

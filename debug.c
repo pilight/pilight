@@ -200,7 +200,8 @@ int main(int argc, char **argv) {
 	gc_attach(main_gc);
 
 	/* Catch all exit signals for gc */
-	gc_catch();	
+	gc_catch();
+	gc_enable();
 
 	log_shell_enable();
 	log_file_disable();
