@@ -241,6 +241,11 @@ if(${PROTOCOL_POLLIN_SWITCH} MATCHES "OFF")
 	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/pollin.c")
 endif()
 
+if(${PROTOCOL_QUIGG_SWITCH} MATCHES "OFF")
+    list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/quigg_switch.h")
+    list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/quigg_switch.c")
+endif()
+
 if(${PROTOCOL_MUMBI_SWITCH} MATCHES "OFF")
 	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/mumbi.h")
 	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/mumbi.c")

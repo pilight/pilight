@@ -150,6 +150,9 @@
 #ifdef PROTOCOL_LIRC
 	#include "../protocols/lirc.h"
 #endif
+#ifdef PROTOCOL_QUIGG_SWITCH
+    #include "../protocols/quigg_switch.h"
+#endif
 
 void protocol_init(void) {
 	pilightFirmwareV2Init();
@@ -273,6 +276,9 @@ void protocol_init(void) {
 #endif
 #ifdef PROTOCOL_LIRC
 	lircInit();
+#endif
+#ifdef PROTOCOL_QUIGG_SWITCH
+   quiGGSwInit();
 #endif
 }
 
