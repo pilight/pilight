@@ -19,6 +19,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 
 #include "../../pilight.h"
 #include "common.h"
@@ -155,15 +156,18 @@ int quiGGSwCreateCode(JsonNode *code) {
 	int id = -1;
 	int state = -1;
 	int all = 0;
-	int tmp;
+	double itmp = -1;
 
-        json_find_number(code, "id", &id);
-        json_find_number(code, "unit", &unit);
-        json_find_number(code, "all", &all);
-        if(json_find_number(code, "off", &tmp)==0)
+        if(json_find_number(code, "id", &itmp) == 0)
+                id = (int)round(itmp);
+        if(json_find_number(code, "unit", &itmp) == 0)
+                unit = (int)round(itmp);
+        if(json_find_number(code, "all", &itmp) == 0)
+                all = (int)round(itmp);
+        if(json_find_number(code, "off", &itmp) == 0)
                 state=0;
-        else if(json_find_number(code, "on", &tmp)==0)
-                state = 1;
+        else if(json_find_number(code, "on", &itmp) == 0)
+                state=1;
 
         if(id==-1 || (unit==-1 && all==0) || state==-1) {
                 logprintf(LOG_ERR, "quigg_switch: insufficient number of arguments");
@@ -202,7 +206,7 @@ void quiGGSwInit(void) {
 
 	protocol_register(&quigg_switch);
 	protocol_set_id(quigg_switch, "quigg_switch");
-	protocol_device_add(quigg_switch, "quigg_switch", "Quigg GT7000 Switches");
+	protocol_device_add(quigg_switch, "quigg_switch", "Quigg Switches");
 	protocol_plslen_add(quigg_switch, 120);
 	quigg_switch->devtype = SWITCH;
 	quigg_switch->hwtype = RF433;
@@ -212,15 +216,17 @@ void quiGGSwInit(void) {
 	quigg_switch->binlen = 21;  // 20 id-dev[5], id-dev[5], null[1], unit[2], unit_all[1]
                                     //          on/off[1], dimm[1], null[1], var[1], Parity[1]
 
-	options_add(&quigg_switch->options, 'a', "all", no_value, 0, NULL);
-	options_add(&quigg_switch->options, 't', "on", no_value, config_state, NULL);
-	options_add(&quigg_switch->options, 'f', "off", no_value, config_state, NULL);
-	options_add(&quigg_switch->options, 'i', "id", has_value, config_id, "^([1-9]|([1-2][0-9]|[3][0-1])$");
-	options_add(&quigg_switch->options, 'u', "unit", has_value, config_id, "^([0-4])$");
+        options_add(&quigg_switch->options, 't', "on", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
+        options_add(&quigg_switch->options, 'f', "off", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
+        options_add(&quigg_switch->options, 'u', "unit", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, NULL, "^([0-9]{1}|[1][0-5])$");
+        options_add(&quigg_switch->options, 'i', "id", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, NULL, "^([0-9]{1,7}|[1-5][0-9]{7}|6([0-6][0-9]{6}|7(0[0-9]{5}|10([0-7][0-9]{3}|8([0-7][0-9]{2}|8([0-5][0-9]|6[0-3]))))))$");
+        options_add(&quigg_switch->options, 'a', "all", OPTION_OPT_VALUE, CONFIG_OPTIONAL, JSON_NUMBER, NULL, NULL);
 
+        options_add(&quigg_switch->options, 0, "gui-readonly", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
+/*
 	protocol_setting_add_string(quigg_switch, "states", "on,off");
 	protocol_setting_add_number(quigg_switch, "readonly", 0);
-
+*/
 	quigg_switch->parseCode=&quiGGSwParseCode;
 	quigg_switch->createCode=&quiGGSwCreateCode;
 	quigg_switch->printHelp=&quiGGSwPrintHelp;
