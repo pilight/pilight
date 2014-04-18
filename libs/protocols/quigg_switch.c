@@ -1,5 +1,5 @@
 /*
-	Copyright (C) 2013 CurlyMo & Bram1337
+	Copyright (C) 2014 CurlyMo & wo_rasp
 
 	This file is part of pilight.
 
@@ -15,13 +15,7 @@
     You should have received a copy of the GNU General Public License
     along with pilight. If not, see	<http://www.gnu.org/licenses/>
 */
-/*
-    Copyright (C) 2014 wo_rasp
-    
-    Globaltronics / Quigg GT-7000 Protocol support
-    Support for Aldi / Tevion Power Switches GT-Fsi-04a
-    14.4.2014 V0.9
-*/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
