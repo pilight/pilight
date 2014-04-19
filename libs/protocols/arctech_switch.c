@@ -201,7 +201,6 @@ void arctechSwInit(void) {
 	arctech_switch->pulse = 5;
 	arctech_switch->rawlen = 132;
 	arctech_switch->lsb = 3;
-
 	options_add(&arctech_switch->options, 't', "on", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
 	options_add(&arctech_switch->options, 'f', "off", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
 	options_add(&arctech_switch->options, 'u', "unit", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, NULL, "^([0-9]{1}|[1][0-5])$");
