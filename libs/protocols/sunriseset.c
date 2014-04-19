@@ -113,7 +113,7 @@ void *sunRiseSetParse(void *param) {
 	char UTC[] = "UTC";	
 	
 	time_t timenow = 0;
-	struct tm *current;
+	struct tm *current = NULL;
 	int month = 0, mday = 0, year = 0, offset = 0, nrloops = 0;
 	int hour = 0, min = 0, sec = 0, risetime = 0, settime = 0;
 
@@ -154,7 +154,7 @@ void *sunRiseSetParse(void *param) {
 	while(sunriseset_loop) {
 		protocol_thread_wait(thread, 1, &nrloops);	
 		timenow = time(NULL);
-		current = gmtime(&timenow);
+		current = localtztime(tz, timenow);
 
 		sec = current->tm_sec;
 		min = current->tm_min;
@@ -165,11 +165,7 @@ void *sunRiseSetParse(void *param) {
 
 		offset = tzoffset(UTC, tz);		
 
-		int hournow = ((hour+offset+isdst(tz))*100)+min;
-
-		if(hournow >= 2400) {
-			hournow -= 2400;
-		}
+		int hournow = (hour*100)+min;
 
 		if(((hournow == 0 || hournow == risetime || hournow == settime) && sec == 0)
 		   || (settime == 0 && risetime == 0)) {

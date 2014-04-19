@@ -29,7 +29,6 @@ struct collectors_t *gc;
 void gc_handler(int signal);
 void gc_attach(int (*fp)(void));
 void gc_catch(void);
-void gc_enable(void);
 int gc_run(void);
 void gc_clear(void);
 
