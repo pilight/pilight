@@ -85,6 +85,10 @@ pthread_mutexattr_t webqueue_attr;
 
 int webqueue_number = 0;
 
+struct mg_server {
+  int listening_sock;
+};
+
 int webserver_gc(void) {
 	int i = 0;
 
@@ -99,6 +103,13 @@ int webserver_gc(void) {
 		socket_close(loopfd);
 	}
 
+	for(i=0;i<WEBSERVER_WORKERS;i++) {
+		struct mg_server *server = mgserver[i];
+		if(server && server->listening_sock != -1) {
+			send(server->listening_sock, "1", 1, MSG_NOSIGNAL);
+		}
+	}
+	
 	if(webserver_root_free) {
 		sfree((void *)&webserver_root);
 		webserver_root_free = 0;
@@ -875,6 +886,7 @@ void *webserver_broadcast(void *param) {
 }
 
 void *webserver_start(void *param) {
+	int i = 0;
 
 	if(which("php-cgi") != 0) {
 		webserver_php = 0;
@@ -887,6 +899,10 @@ void *webserver_start(void *param) {
 	if(which("base64") != 0) {
 		webserver_php = 0;
 		logprintf(LOG_ERR, "php support disabled due to missing base64 executable");
+	}
+	
+	for(i=0;i<WEBSERVER_WORKERS;i++) {
+		mgserver[i] = NULL;
 	}
 
 	pthread_mutexattr_init(&webqueue_attr);
@@ -934,7 +950,6 @@ void *webserver_start(void *param) {
 	}
 	char webport[10] = {'\0'};
 	sprintf(webport, "%d", webserver_port);
-	int i = 0;
 	for(i=0;i<WEBSERVER_WORKERS;i++) {
 		char id[2];
 		sprintf(id, "%d", i);

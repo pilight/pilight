@@ -18,11 +18,11 @@ if(${CMAKE_SYSTEM_PROCESSOR} MATCHES "armv6")
 endif()
 
 if(${CMAKE_SYSTEM_PROCESSOR} MATCHES "x86_64")
-	set(CMAKE_C_FLAGS "-Ofast -fPIC -march=native -mtune=native -ffast-math -Wconversion -Wunreachable-code -Wstrict-prototypes -Wfloat-equal -Wshadow -Wpointer-arith -Wcast-align -Wstrict-overflow=5 -Wwrite-strings -Waggregate-return -Wcast-qual -Wswitch-default -Wswitch-enum -Wformat=2 -g -Wall")
+	set(CMAKE_C_FLAGS "-Ofast -fPIC -m32 -ffast-math -Wconversion -Wunreachable-code -Wstrict-prototypes -Wfloat-equal -Wshadow -Wpointer-arith -Wcast-align -Wstrict-overflow=5 -Wwrite-strings -Waggregate-return -Wcast-qual -Wswitch-default -Wswitch-enum -Wformat=2 -g -Wall")
 	file(GLOB CMAKE_ZLIB_LIBS_INIT "/usr/lib/x86_64-linux-gnu/libz.so")
 endif()
 if(${CMAKE_SYSTEM_PROCESSOR} MATCHES "amd64")
-	set(CMAKE_C_FLAGS "-O2 -fPIC -march=native -mtune=native -ffast-math -Wformat=2 -g -Wformat-nonliteral")
+	set(CMAKE_C_FLAGS "-O2 -fPIC -m32 -ffast-math -Wformat=2 -g -Wformat-nonliteral")
 	file(GLOB CMAKE_ZLIB_LIBS_INIT "/usr/lib32/libz.so")
 endif()
 

@@ -205,7 +205,7 @@ void *xbmcParse(void *param) {
 				usleep(10000);
 			} else if(n > 0) {
 				if(FD_ISSET((unsigned long)xnode->sockfd, &fdsread)) {
-					bytes = recv(xnode->sockfd, recvBuff, BUFFER_SIZE, 0);
+					bytes = (int)recv(xnode->sockfd, recvBuff, BUFFER_SIZE, 0);
 					if(bytes <= 0) {
 						break;
 					} else {

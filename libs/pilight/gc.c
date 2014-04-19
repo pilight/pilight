@@ -81,11 +81,15 @@ int gc_run(void) {
     unsigned int s;
 	struct collectors_t *tmp = gc;
 
-	while(gc) {
-		tmp = gc;
-		if(gc->listener() != 0) {
+	while(tmp) {
+		if(tmp->listener() != 0) {
 			s=1;
 		}
+		tmp = tmp->next;
+	}
+	
+	while(gc) {
+		tmp = gc;
 		gc = gc->next;
 		sfree((void *)&tmp);
 	}

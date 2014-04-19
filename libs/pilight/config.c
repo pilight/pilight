@@ -113,7 +113,7 @@ int config_update(char *protoname, JsonNode *json, JsonNode **out) {
 	struct tm *gmt = gmtime(&timenow);
 	char utc[] = "UTC";
 	time_t utct = datetime2ts(gmt->tm_year+1900, gmt->tm_mon+1, gmt->tm_mday, gmt->tm_hour, gmt->tm_min, gmt->tm_sec, utc);
-	json_append_member(rval, "timestamp", json_mknumber(utct));	
+	json_append_member(rval, "timestamp", json_mknumber((double)utct));	
 	
 	/* Only loop through all locations if the protocol has options */
 	if((opt = protocol->options)) {
@@ -548,7 +548,7 @@ JsonNode *config2json(short internal) {
 				}
 				if(internal > 0) {
 					json_append_member(jdevice, "origin", json_mkstring(tmp_devices->ori_uuid));
-					json_append_member(jdevice, "timestamp", json_mknumber(tmp_devices->timestamp));
+					json_append_member(jdevice, "timestamp", json_mknumber((double)tmp_devices->timestamp));
 				}
 				while(tmp_protocols) {
 					json_append_element(jprotocols, json_mkstring(tmp_protocols->name));

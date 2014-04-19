@@ -90,7 +90,7 @@ void *lircParse(void *param) {
 				protocol_thread_wait(node, 3, &nrloops);
 				continue;
 			}
-			
+
 			while(lirc_loop) {
 				FD_ZERO(&fdsread);
 				FD_SET((unsigned long)lirc_sockfd, &fdsread);
@@ -113,7 +113,7 @@ void *lircParse(void *param) {
 					usleep(10000);
 				} else if(n > 0) {
 					if(FD_ISSET((unsigned long)lirc_sockfd, &fdsread)) {
-						bytes = recv(lirc_sockfd, recvBuff, BUFFER_SIZE, 0);
+						bytes = (int)recv(lirc_sockfd, recvBuff, BUFFER_SIZE, 0);
 						if(bytes <= 0) {
 							break;
 						} else {
@@ -158,7 +158,7 @@ void *lircParse(void *param) {
 	if(lirc_sockfd > -1) {
 		close(lirc_sockfd);
 		lirc_sockfd = -1;
-	}	
+	}
 	
 	lirc_threads--;
 	return (void *)NULL;

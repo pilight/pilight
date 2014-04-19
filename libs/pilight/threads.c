@@ -85,6 +85,7 @@ void *threads_start(void *param) {
 	pthread_mutexattr_init(&threadqueue_attr);
 	pthread_mutexattr_settype(&threadqueue_attr, PTHREAD_MUTEX_RECURSIVE);
 	pthread_mutex_init(&threadqueue_lock, &threadqueue_attr);
+	pthread_cond_init(&threadqueue_signal, NULL);	
 
 	struct threadqueue_t *tmp_threads = NULL;
 	

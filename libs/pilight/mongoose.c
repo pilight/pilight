@@ -3739,7 +3739,6 @@ static void read_from_socket(struct connection *conn) {
 #ifdef MONGOOSE_HEXDUMP
   hexdump(conn, buf, n, "<-");
 #endif
-
   if (is_error(n)) {
     if (conn->endpoint_type == EP_CLIENT && conn->local_iobuf.len > 0) {
       call_http_client_handler(conn, MG_DOWNLOAD_SUCCESS);
@@ -3903,6 +3902,9 @@ void add_to_set(sock_t sock, fd_set *set, sock_t *max_fd) {
 }
 
 unsigned int mg_poll_server(struct mg_server *server, int milliseconds) {
+  if(mongoose_stop == 1) {
+	return 0;
+  }
   struct ll *lp, *tmp;
   struct connection *conn;
   struct timeval tv;

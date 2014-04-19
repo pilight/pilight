@@ -1414,6 +1414,7 @@ void *clientize(void *param) {
 void save_pid(pid_t npid) {
 	int f = 0;
 	char buffer[BUFFER_SIZE];
+	memset(buffer, '\0', BUFFER_SIZE);
 	if((f = open(pid_file, O_RDWR | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR)) != -1) {
 		lseek(f, 0, SEEK_SET);
 		sprintf(buffer, "%d", npid);
@@ -1534,7 +1535,11 @@ int main_gc(void) {
 
 	sfree((void *)&nodes);
 	sfree((void *)&progname);
+#ifdef __FreeBSD__
+	exit(EXIT_SUCCESS);
+#else
 	return 0;
+#endif
 }
 
 int main(int argc, char **argv) {
@@ -1933,6 +1938,8 @@ int main(int argc, char **argv) {
 		   the main daemon as if it where a gui */
 		threads_register("webserver client", &webserver_clientize, (void *)NULL, 0);
 		threads_register("webserver broadcast", &webserver_broadcast, (void *)NULL, 0);
+	} else {
+		webserver_enable = 0;
 	}
 #endif
 
@@ -1977,6 +1984,11 @@ int main(int argc, char **argv) {
 		pthread_mutex_lock(&mainlock);
 		pthread_cond_timedwait(&mainsignal, &mainlock, &ts);
 	}
+#ifdef __FreeBSD__
+	while(1) {
+		sleep(1);
+	}
+#endif
 	return EXIT_SUCCESS;
 
 clear:
@@ -1984,7 +1996,9 @@ clear:
 		log_level_set(LOG_NOTICE);
 		log_shell_disable();
 	}
-	main_gc();
-	gc_clear();
+	if(main_loop == 1) {
+		main_gc();
+		gc_clear();
+	}
 	return EXIT_FAILURE;
 }
