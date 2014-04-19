@@ -50,7 +50,7 @@ mongoose.o: mongoose.c mongoose.h
 update.o: update.c update.h
 	$(GCC) $(CFLAGS) -lz -c $(patsubst %.o,%.c,$@) -isystem. -isystem.. $(INCLUDE)
 
-firmware.o: firmware.c update.h
+firmware.o: firmware.c firmware.h
 	$(GCC) $(CFLAGS) -lz -c $(patsubst %.o,%.c,$@) -isystem. -isystem.. $(INCLUDE)	
 	
 %.o: %.c %.h 

@@ -885,8 +885,7 @@ void config_save_setting(int i, JsonNode *jsetting, struct conf_devices_t *devic
 			} else {
 				vnode->next = snode->values;
 				snode->values = vnode;
-			}			
-			jtmp = jtmp->next;
+			}
 		}
 
 		tmp_settings = device->settings;
