@@ -1,5 +1,5 @@
 /*
-	Copyright (C) 2014 CurlyMo & wo_rasp
+	Copyright (C) 2013 - 2014 CurlyMo & wo_rasp
 
 	This file is part of pilight.
 
@@ -30,7 +30,7 @@
 #include "gc.h"
 #include "quigg_switch.h"
 
-void quiGGSwCreateMessage(int id, int state, int unit, int all) {
+void quiggSwCreateMessage(int id, int state, int unit, int all) {
 	quigg_switch->message = json_mkobject();
 	json_append_member(quigg_switch->message, "id", json_mknumber(id));
         if(all==1) {
@@ -46,8 +46,10 @@ void quiGGSwCreateMessage(int id, int state, int unit, int all) {
 	}
 }
 
-void quiGGSwParseCode(void) {
-
+void quiggSwParseCode(void) {
+/* 
+   Conversion code will follow once the Rx part is working together with LPF
+*/
 	int unit = binToDecRev(quigg_switch->binary, 25, 28);
 	int id = binToDecRev(quigg_switch->binary, 3, 12);
 	int all = binToDecRev(quigg_switch->binary, 29, 30);
@@ -55,10 +57,10 @@ void quiGGSwParseCode(void) {
 	int dimm = binToDecRev(quigg_switch->binary, 33, 34);
 
 	if (dimm==1 && unit==3) unit = 5;
-	quiGGSwCreateMessage(id, state, unit, all);
+	quiggSwCreateMessage(id, state, unit, all);
 }
 
-void quiGGSwCreateLow(int s, int e) {
+void quiggSwCreateLow(int s, int e) {
 	int i;
 	for(i = s; i<=e; i+=2) {
 		quigg_switch->raw[i] = ((quigg_switch->pulse+1)*quigg_switch->plslen->length);
@@ -66,7 +68,7 @@ void quiGGSwCreateLow(int s, int e) {
 	}
 }
 
-void quiGGSwCreateHigh(int s, int e) {
+void quiggSwCreateHigh(int s, int e) {
 	int i;
 	for(i = s; i<=e; i+=2) {
 		quigg_switch->raw[i] = quigg_switch->plslen->length*10;
@@ -74,16 +76,16 @@ void quiGGSwCreateHigh(int s, int e) {
 	}
 }
 
-void quiGGSwClearCode(void) {
-	quigg_switch->raw[0] = 700;
-	quiGGSwCreateLow(1,39);
+void quiggSwClearCode(void) {
+	quigg_switch->raw[0] = 720;
+	quiggSwCreateLow(1,39);
 }
 
-void quiGGSwCreateStart(void) {
-	quiGGSwCreateHigh(1, 2);	// Sync
+void quiggSwCreateStart(void) {
+	quiggSwCreateHigh(1, 2);	// Sync
 }
 
-void quiGGSwCreateId(int id) {
+void quiggSwCreateId(int id) {
         int binary[255];
         int length = 0;
         int i = 0, x = 0;
@@ -92,49 +94,49 @@ void quiGGSwCreateId(int id) {
         length = decToBin(id, binary);
         for(i = length; i>=0; i--) {
                 if((binary[i]==1)) {
-                        quiGGSwCreateHigh(x, x+1);
+                        quiggSwCreateHigh(x, x+1);
                 }
 		x = x-2;
         }
 }
 
-void quiGGSwCreateUnit(int unit) {
+void quiggSwCreateUnit(int unit) {
                 switch (unit) {
 			case 0:
-			quiGGSwCreateLow(25, 30);	// 1
+			quiggSwCreateLow(25, 30);	// 1
                         break;
 			case 1:
-			quiGGSwCreateHigh(25, 26);	// 2
-			quiGGSwCreateHigh(37, 38);	// why ???
+			quiggSwCreateHigh(25, 26);	// 2
+			quiggSwCreateHigh(37, 38);	// why ???
 			break;
 			case 2:
-			quiGGSwCreateHigh(25, 28);	// 3
-			quiGGSwCreateHigh(37, 38);	// why ???
+			quiggSwCreateHigh(25, 28);	// 3
+			quiggSwCreateHigh(37, 38);	// why ???
 			break;
 			case 3:
-			quiGGSwCreateHigh(27, 28);	// 4
+			quiggSwCreateHigh(27, 28);	// 4
 			break;
 			case 4:
-			quiGGSwCreateHigh(27, 28);	// Dimm
-			quiGGSwCreateHigh(33, 34);
-			quiGGSwCreateHigh(37, 38);
+			quiggSwCreateHigh(27, 28);	// Dimm
+			quiggSwCreateHigh(33, 34);
+			quiggSwCreateHigh(37, 38);
 			case 5:
-			quiGGSwCreateHigh(25, 30);	// All
+			quiggSwCreateHigh(25, 30);	// All
 			break;
 			default:
 			break;
                 }
 }
 
-void quiGGSwCreateState(int state) {
+void quiggSwCreateState(int state) {
 	if(state==1) {
-		quiGGSwCreateHigh(31, 32);
+		quiggSwCreateHigh(31, 32);
 	} else {
-		quiGGSwCreateLow(31, 32);
+		quiggSwCreateLow(31, 32);
 	}
 }
 
-void quiGGSwCreateParity(void) {
+void quiggSwCreateParity(void) {
 	int i,p;
 	p = -1;
 	for (i = 1; i<=37; i=i+2) {
@@ -143,15 +145,20 @@ void quiGGSwCreateParity(void) {
 		}
 	}
 	if ((p==-1)) {
-		quiGGSwCreateHigh(39,40);
+		quiggSwCreateHigh(39,40);
 	}
 }
 
-void quiGGSwCreateFooter(void) {
-	quigg_switch->raw[41]=PULSE_DIV*quigg_switch->plslen->length*2;
+void quiggSwCreateFooter(void) {
+/*
+ A footer length of PULSE_DIV*plslen->length 
+  is working fine with GT-FSI-04a, including learning mode.
+ A real GT-7000 Transmitter uses a footer length of 88500µS and 4 repeats
+*/
+	quigg_switch->raw[41]=PULSE_DIV*quigg_switch->plslen->length;
 }
 
-int quiGGSwCreateCode(JsonNode *code) {
+int quiggSwCreateCode(JsonNode *code) {
 	int unit = -1;
 	int id = -1;
 	int state = -1;
@@ -182,19 +189,19 @@ int quiGGSwCreateCode(JsonNode *code) {
                 if(unit==-1 && all==1) {
                         unit = 5;
                 }
-		quiGGSwCreateMessage(id, state, unit, all);
-		quiGGSwClearCode();
-		quiGGSwCreateStart();
-		quiGGSwCreateId(id);
-		quiGGSwCreateUnit(unit);
-		quiGGSwCreateState(state);
-		quiGGSwCreateParity();
-		quiGGSwCreateFooter();
+		quiggSwCreateMessage(id, state, unit, all);
+		quiggSwClearCode();
+		quiggSwCreateStart();
+		quiggSwCreateId(id);
+		quiggSwCreateUnit(unit);
+		quiggSwCreateState(state);
+		quiggSwCreateParity();
+		quiggSwCreateFooter();
 	}
 	return EXIT_SUCCESS;
 }
 
-void quiGGSwPrintHelp(void) {
+void quiggSwPrintHelp(void) {
 	printf("\t -i --id=id\t\tcontrol one or multiple devices with this id\n");
 	printf("\t -u --unit=id\t\tcontrol the device unit with this code\n");
 	printf("\t -t --on\t\t\tsend an on signal to device\n");
@@ -202,11 +209,11 @@ void quiGGSwPrintHelp(void) {
 	printf("\t -a --id=all\t\tcommand to all devices with this id\n");
 }
 
-void quiGGSwInit(void) {
+void quiggSwInit(void) {
 
 	protocol_register(&quigg_switch);
 	protocol_set_id(quigg_switch, "quigg_switch");
-	protocol_device_add(quigg_switch, "quigg_switch", "Quigg Switches");
+	protocol_device_add(quigg_switch, "quigg_switch", "Quigg");
 	protocol_plslen_add(quigg_switch, 120);
 	quigg_switch->devtype = SWITCH;
 	quigg_switch->hwtype = RF433;
@@ -224,11 +231,8 @@ void quiGGSwInit(void) {
 
 
         options_add(&quigg_switch->options, 0, "gui-readonly", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
-/*
-	protocol_setting_add_string(quigg_switch, "states", "on,off");
-	protocol_setting_add_number(quigg_switch, "readonly", 0);
-*/
-	quigg_switch->parseCode=&quiGGSwParseCode;
-	quigg_switch->createCode=&quiGGSwCreateCode;
-	quigg_switch->printHelp=&quiGGSwPrintHelp;
+
+	quigg_switch->parseCode=&quiggSwParseCode;
+	quigg_switch->createCode=&quiggSwCreateCode;
+	quigg_switch->printHelp=&quiggSwPrintHelp;
 }

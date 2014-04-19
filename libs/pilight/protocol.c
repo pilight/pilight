@@ -278,7 +278,7 @@ void protocol_init(void) {
 	lircInit();
 #endif
 #ifdef PROTOCOL_QUIGG_SWITCH
-   quiGGSwInit();
+   quiggSwInit();
 #endif
 }
 
