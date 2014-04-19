@@ -183,15 +183,18 @@ void *sunRiseSetParse(void *param) {
 
 			json_append_member(code, "longitude", json_mkstring(slongitude));
 			json_append_member(code, "latitude", json_mkstring(slatitude));
-			json_append_member(code, "sunrise", json_mknumber(risetime));
-			json_append_member(code, "sunset", json_mknumber(settime));
 
+			/* Only communicate the sun state change when they actually occur,
+			   and only communicate the new times when the day changes */
 			if(hournow != 0) {
 				if(hournow >= risetime && hournow < settime) {
 					json_append_member(code, "sun", json_mkstring("rise"));
 				} else {
 					json_append_member(code, "sun", json_mkstring("set"));
 				}
+			} else {
+				json_append_member(code, "sunrise", json_mknumber(risetime));
+				json_append_member(code, "sunset", json_mknumber(settime));
 			}
 			
 			json_append_member(sunriseset->message, "message", code);

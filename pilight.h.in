@@ -66,6 +66,7 @@
 #cmakedefine PROTOCOL_OPENWEATHERMAP
 #cmakedefine PROTOCOL_POLLIN_SWITCH
 #cmakedefine PROTOCOL_PROGRAM
+#cmakedefine PROTOCOL_QUIGG_SWITCH
 #cmakedefine PROTOCOL_RAW
 #cmakedefine PROTOCOL_RELAY
 #cmakedefine PROTOCOL_REV
