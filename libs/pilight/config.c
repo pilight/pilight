@@ -1777,7 +1777,6 @@ int config_write(char *content) {
 }
 
 int config_gc(void) {
-	sfree((void *)&configfile);
 	int i = 0;
 	struct conf_locations_t *ltmp;
 	struct conf_devices_t *dtmp;

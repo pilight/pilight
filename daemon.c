@@ -1521,7 +1521,6 @@ int main_gc(void) {
 
 	datetime_gc();
 	ssdp_gc();
-	config_gc();
 	protocol_gc();
 	hardware_gc();
 	settings_gc();
@@ -1946,7 +1945,6 @@ int main(int argc, char **argv) {
 	pthread_mutex_init(&mainlock, &mainattr);
     pthread_cond_init(&mainsignal, NULL);
 
-	unsigned short loop = 0;
 	while(main_loop) {
 #ifdef FIRMWARE
 		/* Check if firmware needs to be updated */
@@ -1969,11 +1967,6 @@ int main(int argc, char **argv) {
 			}
 		}
 #endif
-		loop++;
-		if(loop >= 5) {
-			gc_enable();
-			loop = 0;
-		}
 		struct timeval tp;
 		struct timespec ts;
 		pthread_mutex_unlock(&mainlock);

@@ -101,12 +101,15 @@ int webserver_gc(void) {
 
 	if(webserver_root_free) {
 		sfree((void *)&webserver_root);
+		webserver_root_free = 0;
 	}
 	if(webgui_tpl_free) {
 		sfree((void *)&webgui_tpl);
+		webgui_tpl_free = 0;
 	}
 	if(webserver_user_free) {
 		sfree((void *)&webserver_user);
+		webserver_user_free = 0;
 	}
 
 	for(i=0;i<WEBSERVER_WORKERS;i++) {

@@ -28,23 +28,28 @@
 #include "common.h"
 
 static sigjmp_buf gc_cleanup;
-unsigned short gcenable = 0;
+unsigned short gc_enable = 1;
 
 /* The gc uses a observer pattern to
    easily call function when exiting
    the daemon */
 
 void gc_handler(int sig) {
-	if(((sig == SIGINT || sig == SIGTERM || sig == SIGTSTP) && gcenable == 1) || 
-	  (!(sig == SIGINT || sig == SIGTERM || sig == SIGTSTP) && gcenable == 0)) {
-		if(configfile != NULL) {
+	if(((sig == SIGINT || sig == SIGTERM || sig == SIGTSTP) && gc_enable == 1) || 
+	  (!(sig == SIGINT || sig == SIGTERM || sig == SIGTSTP) && gc_enable == 0)) {
+		if(configfile != NULL && gc_enable == 1) {
+			gc_enable = 0;	
 			JsonNode *joutput = config2json(-1);
 			char *output = json_stringify(joutput, "\t");
 			config_write(output);
 			json_delete(joutput);
 			sfree((void *)&output);
 			joutput = NULL;
+			sfree((void *)&configfile);
+			configfile = NULL;
+			config_gc();
 		}
+		gc_enable = 0;		
 		siglongjmp(gc_cleanup, sig);
 	}
 }
@@ -91,10 +96,6 @@ int gc_run(void) {
 	else
 		return EXIT_SUCCESS;
 }
-
-void gc_enable(void) {
-	gcenable = 1;
-}	
 
 /* Initialize the catch all gc */
 void gc_catch(void) {

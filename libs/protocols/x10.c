@@ -202,6 +202,8 @@ void x10Init(void) {
 	options_add(&x10->options, 't', "on", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
 	options_add(&x10->options, 'f', "off", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
 	options_add(&x10->options, 'i', "id", OPTION_HAS_VALUE, CONFIG_ID, JSON_STRING, NULL, "^[ABCDEFGHIJKLMNOP]([1][0-6]{1}|[1-9]{1})$");	
+
+	options_add(&x10->options, 0, "gui-readonly", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");	
 	
 	x10->parseCode=&x10ParseCode;
 	x10->createCode=&x10CreateCode;
