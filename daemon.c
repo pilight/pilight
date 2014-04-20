@@ -1535,11 +1535,8 @@ int main_gc(void) {
 
 	sfree((void *)&nodes);
 	sfree((void *)&progname);
-#ifdef __FreeBSD__
-	exit(EXIT_SUCCESS);
-#else
+
 	return 0;
-#endif
 }
 
 int main(int argc, char **argv) {
@@ -1984,11 +1981,7 @@ int main(int argc, char **argv) {
 		pthread_mutex_lock(&mainlock);
 		pthread_cond_timedwait(&mainsignal, &mainlock, &ts);
 	}
-#ifdef __FreeBSD__
-	while(1) {
-		sleep(1);
-	}
-#endif
+
 	return EXIT_SUCCESS;
 
 clear:

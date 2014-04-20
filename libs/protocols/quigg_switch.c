@@ -95,7 +95,7 @@ void quiggSwCreateId(int id) {
 	x = 11;
 	length = decToBin(id, binary);
 	for(i=length;i>=0;i--) {
-		if((binary[i]==1)) {
+		if(binary[i] == 1) {
 			quiggSwCreateHigh(x, x+1);
 		}
 	x = x-2;
@@ -142,7 +142,7 @@ void quiggSwCreateParity(void) {
 	int i,p;
 	p = -1;
 	for(i=1;i<=37;i+=2) {
-		if ((quigg_switch->raw[i]==quigg_switch->plslen->length*10)) {
+		if(quigg_switch->raw[i] == quigg_switch->plslen->length*10) {
 			p = -p;
 		}
 	}

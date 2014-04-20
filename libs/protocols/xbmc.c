@@ -84,7 +84,7 @@ void *xbmcParse(void *param) {
 
 	char recvBuff[BUFFER_SIZE], action[10], media[15];
 	char *m = NULL, *t = NULL;
-	char shutdown[] = "shutdown";
+	char shut[] = "shutdown";
 	char home[] = "home";
 	char none[] = "none";
 	int nrloops = 0, bytes = 0, n = 0, has_server = 0;
@@ -149,7 +149,7 @@ void *xbmcParse(void *param) {
 	while(xbmc_loop) {
 
 		if(reset == 1) {
-			xbmcCreateMessage(xnode->server, xnode->port, shutdown, none);
+			xbmcCreateMessage(xnode->server, xnode->port, shut, none);
 			reset = 0;
 		}
 
