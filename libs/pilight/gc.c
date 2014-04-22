@@ -42,9 +42,9 @@ void gc_handler(int sig) {
 			joutput = NULL;
 			sfree((void *)&configfile);
 			configfile = NULL;
-			config_gc();
 		}
-		gc_enable = 0;		
+		gc_enable = 0;	
+		config_gc();	
 		gc_run();
 	}
 }

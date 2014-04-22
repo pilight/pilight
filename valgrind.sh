@@ -1,3 +1,3 @@
 #!/bin/bash
 
-sudo valgrind --dsymutil=yes --tool=memcheck --leak-check=full --track-origins=yes ./pilight-daemon -D
+sudo valgrind --show-reachable=yes --dsymutil=yes --tool=memcheck --leak-check=full --track-origins=yes ./pilight-daemon -D
