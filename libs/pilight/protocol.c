@@ -69,7 +69,10 @@
 	#include "../protocols/relay.h"
 #endif
 #ifdef PROTOCOL_REV
-        #include "../protocols/rev.h"
+	#include "../protocols/rev.h"
+#endif
+#ifdef PROTOCOL_REV_OLD
+	#include "../protocols/rev_old.h"
 #endif
 #ifdef PROTOCOL_GENERIC_WEATHER
 	#include "../protocols/generic_weather.h"
@@ -194,6 +197,9 @@ void protocol_init(void) {
 #endif
 #ifdef PROTOCOL_REV
 	revInit();
+#endif
+#ifdef PROTOCOL_REV_OLD
+	revOldInit();
 #endif
 #ifdef PROTOCOL_ALECTO
 	alectoInit();

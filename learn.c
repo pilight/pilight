@@ -606,7 +606,7 @@ int main(int argc, char **argv) {
 	}
 
 	/* Start threads library that keeps track of all threads used */
-	pthread_create(&pth, NULL, &threads_start, (void *)NULL);	
+	threads_create(&pth, NULL, &threads_start, (void *)NULL);	
 
 	struct conf_hardware_t *tmp_confhw = conf_hardware;
 	while(tmp_confhw) {

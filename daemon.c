@@ -110,10 +110,13 @@ pthread_mutex_t sendqueue_lock;
 pthread_cond_t sendqueue_signal;
 pthread_mutexattr_t sendqueue_attr;
 
+pthread_mutex_t receive_lock;
+pthread_cond_t receive_signal;
+pthread_mutexattr_t receive_attr;
+
 int sendqueue_number = 0;
 
 typedef struct bcqueue_t {
-	unsigned int id;
 	JsonNode *jmessage;
 	char *protoname;
 	struct bcqueue_t *next;
@@ -219,16 +222,12 @@ void node_remove(int id) {
 }
 
 void broadcast_queue(char *protoname, JsonNode *json) {
-	struct timeval tcurrent;
-	gettimeofday(&tcurrent, NULL);
-
 	pthread_mutex_lock(&bcqueue_lock);
 	struct bcqueue_t *bnode = malloc(sizeof(struct bcqueue_t));
 	if(!bnode) {
 		logprintf(LOG_ERR, "out of memory");
 		exit(EXIT_FAILURE);
 	}
-	bnode->id = 1000000 * (unsigned int)tcurrent.tv_sec + (unsigned int)tcurrent.tv_usec;
 
 	char *jstr = json_stringify(json, NULL);
 	bnode->jmessage = json_decode(jstr);
@@ -255,6 +254,7 @@ void broadcast_queue(char *protoname, JsonNode *json) {
 }
 
 void *broadcast(void *param) {
+
 	int i = 0, broadcasted = 0;
 
 	pthread_mutex_lock(&bcqueue_lock);
@@ -405,9 +405,10 @@ void receiver_parse_code(int *rawcode, int rawlen, int plslen, int hwtype) {
 			}
 
 			if(rawlen == protocol->rawlen && match == 1) {
-
-				for(x=0;x<(int)(double)rawlen;x++) {
-					memcpy(&protocol->raw[x], &rawcode[x], sizeof(int));
+				for(x=0;x<(int)rawlen;x++) {
+					if(x < 254) {
+						memcpy(&protocol->raw[x], &rawcode[x], sizeof(int));
+					}
 				}
 				if(protocol->parseRaw) {
 					logprintf(LOG_DEBUG, "recevied pulse length of %d", plslen);
@@ -421,8 +422,10 @@ void receiver_parse_code(int *rawcode, int rawlen, int plslen, int hwtype) {
 						while(pnode) {
 							struct protocol_t *proto = pnode->listener;
 							if(strcmp(proto->id, tmp_conflicts->id) == 0) {
-								for(x=0;x<(int)(double)rawlen;x++) {
-									proto->raw[x] = protocol->raw[x];
+								for(x=0;x<(int)rawlen;x++) {
+									if(x < 254) {
+										proto->raw[x] = protocol->raw[x];
+									}
 								}
 								proto->repeats = protocol->repeats;
 								/* Not all protocols use the same parsing functions when they conflict.
@@ -576,8 +579,10 @@ void *send_code(void *param) {
 
 	while(main_loop) {
 		if(sendqueue_number > 0) {
-			pthread_mutex_lock(&sendqueue_lock);
 			sending = 1;
+			pthread_mutex_lock(&sendqueue_lock);
+			pthread_mutex_lock(&receive_lock);
+
 			struct protocol_t *protocol = sendqueue->protopt;
 			struct hardware_t *hardware = NULL;
 
@@ -670,9 +675,11 @@ void *send_code(void *param) {
 			sendqueue = sendqueue->next;
 			sfree((void *)&tmp);
 			sendqueue_number--;
-			pthread_mutex_unlock(&sendqueue_lock);
-		} else {
 			sending = 0;
+			pthread_mutex_unlock(&sendqueue_lock);
+			pthread_mutex_unlock(&receive_lock);
+			pthread_cond_signal(&receive_signal);
+		} else {
 			pthread_cond_wait(&sendqueue_signal, &sendqueue_lock);
 		}
 	}
@@ -1248,13 +1255,15 @@ void *receive_code(void *param) {
 
 	struct hardware_t *hardware = (hardware_t *)param;
 
+	pthread_mutex_lock(&receive_lock);
 	while(main_loop && hardware->receive) {
 		if(sending == 0) {
+			pthread_mutex_lock(&receive_lock);
 			duration = hardware->receive();
 
 			rawcode[rawlen] = duration;
 			rawlen++;
-			if(rawlen > 255) {
+			if(rawlen > 254) {
 				rawlen = 0;
 			}
 			if(duration > 4440) {
@@ -1266,8 +1275,9 @@ void *receive_code(void *param) {
 				}
 				rawlen = 0;
 			}
+			pthread_mutex_unlock(&receive_lock);
 		} else {
-			usleep(10);
+			pthread_cond_wait(&receive_signal, &receive_lock);
 		}
 	}
 	return (void *)NULL;
@@ -1402,7 +1412,7 @@ void *clientize(void *param) {
 			config_gc();
 			logprintf(LOG_NOTICE, "connection to main pilight daemon lost");
 			logprintf(LOG_NOTICE, "trying to reconnect...");
-			sleep(3);
+			sleep(1);
 		}
 	}
 
@@ -1473,6 +1483,9 @@ int main_gc(void) {
 
 	pthread_mutex_unlock(&sendqueue_lock);
 	pthread_cond_signal(&sendqueue_signal);
+	
+	pthread_mutex_unlock(&receive_lock);
+	pthread_cond_signal(&receive_signal);
 
 	pthread_mutex_unlock(&bcqueue_lock);
 	pthread_cond_signal(&bcqueue_signal);
@@ -1875,6 +1888,10 @@ int main(int argc, char **argv) {
 	pthread_mutexattr_settype(&sendqueue_attr, PTHREAD_MUTEX_RECURSIVE);
 	pthread_mutex_init(&sendqueue_lock, &sendqueue_attr);
 
+	pthread_mutexattr_init(&receive_attr);
+	pthread_mutexattr_settype(&receive_attr, PTHREAD_MUTEX_RECURSIVE);
+	pthread_mutex_init(&receive_lock, &receive_attr);	
+	
 	pthread_mutexattr_init(&bcqueue_attr);
 	pthread_mutexattr_settype(&bcqueue_attr, PTHREAD_MUTEX_RECURSIVE);
 	pthread_mutex_init(&bcqueue_lock, &bcqueue_attr);
@@ -1893,7 +1910,7 @@ int main(int argc, char **argv) {
     socket_callback.client_data_callback = &socket_parse_data;
 
 	/* Start threads library that keeps track of all threads used */
-	pthread_create(&pth, NULL, &threads_start, (void *)NULL);
+	threads_create(&pth, NULL, &threads_start, (void *)NULL);
 
 	/* The daemon running in client mode, register a seperate thread that
 	   communicates with the server */

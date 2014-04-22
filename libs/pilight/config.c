@@ -124,7 +124,9 @@ int config_update(char *protoname, JsonNode *json, JsonNode **out) {
 			have_device = 0;
 			JsonNode *rloc = NULL;
 			while(dptr) {
-				if((uuid && dptr->dev_uuid && strcmp(dptr->dev_uuid, uuid) == 0) || !uuid) {
+				if(((uuid && dptr->dev_uuid && dptr->ori_uuid) && ((strcmp(dptr->dev_uuid, uuid) == 0)
+				   || dptr->cst_uuid == 0))
+				   || (!uuid)) {
 					struct protocols_t *tmp_protocols = dptr->protocols;
 					match = 0;
 					while(tmp_protocols) {

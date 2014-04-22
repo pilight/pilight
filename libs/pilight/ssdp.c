@@ -186,7 +186,6 @@ void ssdp_free(struct ssdp_list_t *ssdp_list) {
 }
 
 void *ssdp_wait(void *param) {
-
 	struct sockaddr_in addr;
 	struct ifaddrs *ifaddr, *ifa;
 	char message[BUFFER_SIZE];

@@ -19,6 +19,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <signal.h>
 #include <unistd.h>
 #include <pthread.h>
 #include <sys/time.h>
@@ -81,6 +82,17 @@ struct threadqueue_t *threads_register(const char *id, void *(*function)(void *p
 	return tnode;
 }
 
+void threads_create(pthread_t *pth, const pthread_attr_t *attr,  void *(*start_routine) (void *), void *arg) {
+	sigset_t new, old;
+	sigemptyset(&new);
+	sigaddset(&new, SIGINT);
+	sigaddset(&new, SIGQUIT);
+	sigaddset(&new, SIGTERM);
+	pthread_sigmask(SIG_BLOCK, &new, &old);  	
+	pthread_create(pth, attr, start_routine, arg);
+	pthread_sigmask(SIG_SETMASK, &old, NULL);
+}
+
 void *threads_start(void *param) {
 	pthread_mutexattr_init(&threadqueue_attr);
 	pthread_mutexattr_settype(&threadqueue_attr, PTHREAD_MUTEX_RECURSIVE);
@@ -100,7 +112,7 @@ void *threads_start(void *param) {
 				}
 				tmp_threads = tmp_threads->next;
 			}
-			pthread_create(&tmp_threads->pth, NULL, tmp_threads->function, (void *)tmp_threads->param);
+			threads_create(&tmp_threads->pth, NULL, tmp_threads->function, (void *)tmp_threads->param);
 			thread_running++;
 			tmp_threads->running = 1;		
 			if(thread_running == 1) {

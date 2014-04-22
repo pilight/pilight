@@ -133,16 +133,17 @@ int fillTZData(void) {
 }
 
 int datetime_gc(void) {
+	pthread_mutex_unlock(&tzlock);
 	int i = 0, a = 0;
 	if(tzdatafilled) {
 		for(i=0;i<NRCOUNTRIES;i++) {
 			unsigned int n = tznrpolys[i];
 			for(a=0;a<n;a++) {
-				free(tzcoords[i][a]);
+				sfree((void *)&tzcoords[i][a]);
 			}
-			free(tzcoords[i]);
+			sfree((void *)&tzcoords[i]);
 		}
-		free(tzcoords);
+		sfree((void *)&tzcoords);
 		logprintf(LOG_DEBUG, "garbage collected datetime library");
 	}
 	return EXIT_SUCCESS;

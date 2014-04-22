@@ -70,6 +70,7 @@
 #cmakedefine PROTOCOL_RAW
 #cmakedefine PROTOCOL_RELAY
 #cmakedefine PROTOCOL_REV
+#cmakedefine PROTOCOL_REV_OLD
 #cmakedefine PROTOCOL_ELRO_SWITCH
 #cmakedefine PROTOCOL_SELECTREMOTE
 #cmakedefine PROTOCOL_SILVERCREST

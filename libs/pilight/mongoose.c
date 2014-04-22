@@ -44,6 +44,7 @@
 #include <time.h>
 #include <ctype.h>
 #include <stdarg.h>
+#include "threads.h"
 
 int mongoose_stop = 0;
 
@@ -438,7 +439,7 @@ void *mg_start_thread(void *(*f)(void *), void *p) {
   (void) pthread_attr_setstacksize(&attr, MONGOOSE_USE_STACK_SIZE);
 #endif
 
-  pthread_create(&thread_id, &attr, f, p);
+  threads_create(&thread_id, &attr, f, p);
   pthread_attr_destroy(&attr);
 
   return (void *) thread_id;

@@ -270,7 +270,7 @@ int programCreateCode(JsonNode *code) {
 								}
 							
 								tmp->wait = 1;
-								pthread_create(&tmp->pth, NULL, programThread, (void *)tmp);
+								threads_create(&tmp->pth, NULL, programThread, (void *)tmp);
 								pthread_detach(tmp->pth);
 
 								program->message = json_mkobject();

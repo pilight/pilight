@@ -27,12 +27,7 @@
 #include "config.h"
 #include "common.h"
 
-static sigjmp_buf gc_cleanup;
 unsigned short gc_enable = 1;
-
-/* The gc uses a observer pattern to
-   easily call function when exiting
-   the daemon */
 
 void gc_handler(int sig) {
 	if(((sig == SIGINT || sig == SIGTERM || sig == SIGTSTP) && gc_enable == 1) || 
@@ -50,7 +45,7 @@ void gc_handler(int sig) {
 			config_gc();
 		}
 		gc_enable = 0;		
-		siglongjmp(gc_cleanup, sig);
+		gc_run();
 	}
 }
 
@@ -103,27 +98,19 @@ int gc_run(void) {
 
 /* Initialize the catch all gc */
 void gc_catch(void) {
-
-    struct sigaction act, old;
-
-    memset(&act,0,sizeof(act));
+	struct sigaction act;
+    memset(&act, 0, sizeof(act));
     act.sa_handler = gc_handler;
     sigemptyset(&act.sa_mask);
-    sigaction(SIGINT,  &act, &old);
-    sigaction(SIGQUIT, &act, &old);
-    sigaction(SIGTERM, &act, &old);
+    sigaction(SIGINT,  &act, NULL);
+    sigaction(SIGQUIT, &act, NULL);
+    sigaction(SIGTERM, &act, NULL);
 
-    sigaction(SIGABRT, &act, &old);
-    sigaction(SIGTSTP, &act, &old);
+    sigaction(SIGABRT, &act, NULL);
+    sigaction(SIGTSTP, &act, NULL);
 
-    sigaction(SIGBUS,  &act, &old);
-    sigaction(SIGILL,  &act, &old);
-    sigaction(SIGSEGV, &act, &old);
-	sigaction(SIGFPE,  &act, &old);	
-
-    if(sigsetjmp(gc_cleanup, 0) == 0)
-		return;
-
-	/* Call all GC functions */
-	exit(gc_run());
+    sigaction(SIGBUS,  &act, NULL);
+    sigaction(SIGILL,  &act, NULL);
+    sigaction(SIGSEGV, &act, NULL);
+    sigaction(SIGFPE,  &act, NULL);	
 }
