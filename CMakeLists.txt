@@ -7,23 +7,41 @@ set(PROJECT_VERSION 4.0)
 
 include(${PROJECT_SOURCE_DIR}/CMakeConfig.txt)
 
+set(CMAKE_ZLIB_LIBS_INIT)
+
+find_library(CMAKE_ZLIB_LIBS_INIT 
+			NAME z
+            PATHS   /usr/lib
+                    /usr/lib32
+                    /usr/lib64
+                    /usr/lib/x86_64-linux-gnu
+                    /usr/local/lib
+                    /usr/local/lib32
+                    /usr/local/lib64
+                    /usr/lib/arm-linux-gnueabi
+                    /usr/lib/arm-linux-gnueabihf
+			NO_DEFAULT_PATH)
+			
+message(STATUS "Looking for libz")
+if(${CMAKE_ZLIB_LIBS_INIT} MATCHES "CMAKE_ZLIB_LIBS_INIT-NOTFOUND")
+	message(FATAL_ERROR "Looking for libz - not found")
+else()
+	message(STATUS "Looking for libz - found (${CMAKE_ZLIB_LIBS_INIT})")
+endif()
+
 if(${CMAKE_SYSTEM_PROCESSOR} MATCHES "armv6")
 	if(${USE_SOFT_FLOAT} MATCHES "OFF")
 		set(CMAKE_C_FLAGS "-lz -Ofast -mfloat-abi=hard -mfpu=vfp -march=armv6 -ffast-math -Wfloat-equal -Wshadow -Wpointer-arith -Wcast-align -Wstrict-overflow=5 -Wwrite-strings -Waggregate-return -Wcast-qual -Wswitch-default -Wswitch-enum -Wformat=2 -g -Wall -Wconversion -Wunreachable-code -Wstrict-prototypes")
-		file(GLOB CMAKE_ZLIB_LIBS_INIT "/usr/lib/arm-linux-gnueabihf/libz.so")
 	else()
 		set(CMAKE_C_FLAGS "-lz -Ofast -mfloat-abi=soft -msoft-float -mfpu=vfp -march=armv6 -ffast-math -Wfloat-equal -Wshadow -Wpointer-arith -Wcast-align -Wstrict-overflow=5 -Wwrite-strings -Waggregate-return -Wcast-qual -Wswitch-default -Wswitch-enum -Wformat=2 -g -Wall -Wconversion -Wunreachable-code -Wstrict-prototypes")
-		file(GLOB CMAKE_ZLIB_LIBS_INIT "/usr/lib/arm-linux-gnueabi/libz.so")
 	endif()
 endif()
 
 if(${CMAKE_SYSTEM_PROCESSOR} MATCHES "x86_64")
 	set(CMAKE_C_FLAGS "-Ofast -fPIC -march=native -mtune=native -ffast-math -Wconversion -Wunreachable-code -Wstrict-prototypes -Wfloat-equal -Wshadow -Wpointer-arith -Wcast-align -Wstrict-overflow=5 -Wwrite-strings -Waggregate-return -Wcast-qual -Wswitch-default -Wswitch-enum -Wformat=2 -g3 -Wall")
-	file(GLOB CMAKE_ZLIB_LIBS_INIT "/usr/lib/x86_64-linux-gnu/libz.so")
 endif()
 if(${CMAKE_SYSTEM_PROCESSOR} MATCHES "amd64")
 	set(CMAKE_C_FLAGS "-O2 -fPIC -march=native -mtune=native -ffast-math -Wformat=2 -g3 -Wformat-nonliteral")
-	file(GLOB CMAKE_ZLIB_LIBS_INIT "/usr/lib32/libz.so")
 endif()
 
 # Start uninstaller generator
@@ -339,8 +357,6 @@ endif()
 if(${UPDATE} MATCHES "OFF")
 	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/pilight/update.h")
 	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/pilight/update.c")
-	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/pilight/http_lib.h")
-	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/pilight/http_lib.c")
 endif()
 
 if(${WEBSERVER} MATCHES "OFF")

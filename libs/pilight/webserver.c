@@ -174,6 +174,20 @@ void webserver_create_404(const char *in, unsigned char **p) {
 		(const char *)in);
 }
 
+void webserver_create_500(const char *in, unsigned char **p) {
+	char mimetype[] = "text/html";
+	webserver_create_header(p, "500 Internal Server Error", mimetype, (unsigned int)(202+strlen((const char *)in)));
+	*p += sprintf((char *)*p, "<!DOCTYPE HTML PUBLIC \"-//IETF//DTD HTML 2.0//EN\">\x0d\x0a"
+		"<html><head>\x0d\x0a"
+		"<title>500 Internal Server Error</title>\x0d\x0a"
+		"</head><body>\x0d\x0a"
+		"<h1>Internal Server Error</h1>\x0d\x0a"
+		"<p>An error occured while parsing the URL %s</p>\x0d\x0a"
+		"</body></html>",
+		(const char *)in);
+}
+
+
 char *webserver_mimetype(const char *str) {
 	char *mimetype = malloc(strlen(str)+1);
 	if(!mimetype) {
@@ -272,6 +286,8 @@ char *webserver_shell(const char *format_str, struct mg_connection *conn, char *
 		} else {
 			logprintf(LOG_DEBUG, "failed to change webserver uid");
 		}
+	} else {
+		logprintf(LOG_DEBUG, "webserver user \"%s\" does not exist", webserver_user);
 	}
 
 	if(setuid(0) == -1) {
@@ -487,7 +503,7 @@ static int webserver_request_handler(struct mg_connection *conn) {
 				raw = webserver_shell("cat %s | php-cgi %s 2>&1 | base64", conn, request, file, request);
 				unlink(file);
 			} else {
-				raw = webserver_shell("php-cgi %s  2>&1 | base64", conn, request, request);
+				raw = webserver_shell("php-cgi %s 2>&1 | base64", conn, request, request);
 			}
 
 			if(raw != NULL) {
@@ -601,7 +617,8 @@ static int webserver_request_handler(struct mg_connection *conn) {
 				return MG_REQUEST_PROCESSED;
 			} else {
 				logprintf(LOG_NOTICE, "(webserver) invalid php-cgi output from %s", request);
-				webserver_create_404(conn->uri, &p);
+				webserver_create_500(conn->uri, &p);
+				mg_write(conn, buffer, (int)(p-buffer));
 				sfree((void *)&mimetype);
 				sfree((void *)&request);
 
