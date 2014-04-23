@@ -1,5 +1,5 @@
 /*
-	Copyright (C) 2013 CurlyMo
+	Copyright (C) 2013 - 2014 CurlyMo
 
 	This file is part of pilight.
 
@@ -44,12 +44,12 @@ struct {
    Whenever an rising, falling or changing interrupt occurs
    the function given as the last argument will be called */
 int irq_read(int gpio) {
-	if(waitForInterrupt(gpio, -1) > 0) {
+	if(waitForInterrupt(gpio, 1) > 0) {
 		struct timeval tv;
 		gettimeofday(&tv, NULL);
 		timestamp.first = timestamp.second;
 		timestamp.second = 1000000 * (unsigned int)tv.tv_sec + (unsigned int)tv.tv_usec;
 		return (int)timestamp.second-(int)timestamp.first;
 	}
-	return EXIT_FAILURE;
+	return 0;
 }

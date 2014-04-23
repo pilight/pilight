@@ -51,7 +51,7 @@ int main(int argc, char **argv) {
 	log_shell_enable();
 	log_level_set(LOG_NOTICE);
 
-	if((progname = malloc(16)) == NULL) {
+	if(!(progname = malloc(16))) {
 		logprintf(LOG_ERR, "out of memory");
 		exit(EXIT_FAILURE);
 	}
@@ -68,12 +68,17 @@ int main(int argc, char **argv) {
 
 	char device[50];
 	char location[50];
-	char state[10] = {'\0'};
-	char values[255] = {'\0'};
+	char state[10];
+	char values[255];
 	struct conf_locations_t *slocation = NULL;
 	struct conf_devices_t *sdevice = NULL;
 	int has_values = 0;
 
+	memset(device, '\0', 50);
+	memset(location, '\0', 50);
+	memset(state, '\0', 10);
+	memset(values, '\0', 255);
+	
 	char *server = NULL;
 	unsigned short port = 0;
 
@@ -114,11 +119,11 @@ int main(int argc, char **argv) {
 				printf("\t -s --state=state\t\tthe new state of the device\n");
 				printf("\t -v --values=values\t\tspecific comma separated values, e.g.:\n");
 				printf("\t\t\t\t\t-v dimlevel=10\n");
-				exit(EXIT_SUCCESS);
+				goto close;
 			break;
 			case 'V':
 				printf("%s %s\n", progname, VERSION);
-				exit(EXIT_SUCCESS);
+				goto close;
 			break;
 			case 'l':
 				strcpy(location, optarg);
@@ -133,8 +138,7 @@ int main(int argc, char **argv) {
 				strcpy(values, optarg);
 			break;
 			case 'S':
-				server = realloc(server, strlen(optarg)+1);
-				if(!server) {
+				if(!(server = realloc(server, strlen(optarg)+1))) {
 					logprintf(LOG_ERR, "out of memory");
 					exit(EXIT_FAILURE);
 				}
@@ -145,7 +149,7 @@ int main(int argc, char **argv) {
 			break;
 			default:
 				printf("Usage: %s -l location -d device -s state\n", progname);
-				exit(EXIT_SUCCESS);
+				goto close;
 			break;
 		}
 	}
@@ -153,13 +157,13 @@ int main(int argc, char **argv) {
 
 	if(strlen(location) == 0 || strlen(device) == 0 || strlen(state) == 0) {
 		printf("Usage: %s -l location -d device -s state\n", progname);
-		exit(EXIT_SUCCESS);
+		goto close;
 	}
 
 	if(server && port > 0) {
 		if((sockfd = socket_connect(server, port)) == -1) {
 			logprintf(LOG_ERR, "could not connect to pilight-daemon");
-			exit(EXIT_FAILURE);
+			goto close;
 		}
 	} else if(ssdp_seek(&ssdp_list) == -1) {
 		logprintf(LOG_ERR, "no pilight ssdp connections found");
@@ -187,102 +191,107 @@ int main(int argc, char **argv) {
 				goto close;
 			}
 		}
-		switch(steps) {
-			case WELCOME:
-				socket_write(sockfd, "{\"message\":\"client controller\"}");
-				steps=IDENTIFY;
-			break;
-			case IDENTIFY:
-				if(strcmp(message, "accept client") == 0) {
-					steps=REQUEST;
-				}
-				if(strcmp(message, "reject client") == 0) {
-					steps=REJECT;
-				}
-			case REQUEST:
-				socket_write(sockfd, "{\"message\":\"request config\"}");
-				steps=CONFIG;
-				json_delete(json);
-			break;
-			case CONFIG:
-				if((jconfig = json_find_member(json, "config")) != NULL) {
-					config_parse(jconfig);
-					if(config_get_location(location, &slocation) == 0) {
-						if(config_get_device(location, device, &sdevice) == 0) {
-							JsonNode *joutput = json_mkobject();
-							jcode = json_mkobject();
-							jvalues = json_mkobject();
 
-							json_append_member(jcode, "location", json_mkstring(location));
-							json_append_member(jcode, "device", json_mkstring(device));
+		if(message && strlen(message) > 0) {
+			switch(steps) {
+				case WELCOME:
+					socket_write(sockfd, "{\"message\":\"client controller\"}");
+					steps=IDENTIFY;
+				break;
+				case IDENTIFY:
+					if(strcmp(message, "accept client") == 0) {
+						steps=REQUEST;
+					}
+					if(strcmp(message, "reject client") == 0) {
+						steps=REJECT;
+					}
+				case REQUEST:
+					socket_write(sockfd, "{\"message\":\"request config\"}");
+					steps=CONFIG;
+					json_delete(json);
+				break;
+				case CONFIG:
+					if((jconfig = json_find_member(json, "config")) != NULL) {
+						config_parse(jconfig);
+						if(config_get_location(location, &slocation) == 0) {
+							if(config_get_device(location, device, &sdevice) == 0) {
+								JsonNode *joutput = json_mkobject();
+								jcode = json_mkobject();
+								jvalues = json_mkobject();
 
-							pch = strtok(values, ",=");
-							while(pch != NULL) {
-								char *name = strdup(pch);
-								pch = strtok(NULL, ",=");
-								if(pch == NULL) {
-									break;
-								} else {
-									char *val = strdup(pch);
-									if(pch != NULL) {
-										if(config_valid_value(location, device, name, val) == 0) {
-											if(isNumeric(val) == EXIT_SUCCESS) {
-												json_append_member(jvalues, name, json_mknumber(atof(val)));
+								json_append_member(jcode, "location", json_mkstring(location));
+								json_append_member(jcode, "device", json_mkstring(device));
+
+								pch = strtok(values, ",=");
+								while(pch != NULL) {
+									char *name = strdup(pch);
+									pch = strtok(NULL, ",=");
+									if(pch == NULL) {
+										break;
+									} else {
+										char *val = strdup(pch);
+										if(pch != NULL) {
+											if(config_valid_value(location, device, name, val) == 0) {
+												if(isNumeric(val) == EXIT_SUCCESS) {
+													json_append_member(jvalues, name, json_mknumber(atof(val)));
+												} else {
+													json_append_member(jvalues, name, json_mkstring(val));
+												}
+												has_values = 1;
 											} else {
-												json_append_member(jvalues, name, json_mkstring(val));
+												logprintf(LOG_ERR, "\"%s\" is an invalid value for device \"%s\"", name, device);
+												goto close;
 											}
-											has_values = 1;
 										} else {
 											logprintf(LOG_ERR, "\"%s\" is an invalid value for device \"%s\"", name, device);
 											goto close;
 										}
-									} else {
-										logprintf(LOG_ERR, "\"%s\" is an invalid value for device \"%s\"", name, device);
-										goto close;
-									}
-									pch = strtok(NULL, ",=");
-									if(pch == NULL) {
-										break;
+										pch = strtok(NULL, ",=");
+										if(pch == NULL) {
+											break;
+										}
 									}
 								}
-							}
 
-							if(config_valid_state(location, device, state) == 0) {
-								json_append_member(jcode, "state", json_mkstring(state));
+								if(config_valid_state(location, device, state) == 0) {
+									json_append_member(jcode, "state", json_mkstring(state));
+								} else {
+									logprintf(LOG_ERR, "\"%s\" is an invalid state for device \"%s\"", state, device);
+									goto close;
+								}
+
+								if(has_values == 1) {
+									json_append_member(jcode, "values", jvalues);
+								} else {
+									json_delete(jvalues);
+								}
+
+								json_append_member(joutput, "message", json_mkstring("send"));
+								json_append_member(joutput, "code", jcode);
+								char *output = json_stringify(joutput, NULL);
+								socket_write(sockfd, output);
+								sfree((void *)&output);
+								json_delete(joutput);
 							} else {
-								logprintf(LOG_ERR, "\"%s\" is an invalid state for device \"%s\"", state, device);
+								logprintf(LOG_ERR, "the device \"%s\" does not exist", device);
 								goto close;
 							}
-
-							if(has_values == 1) {
-								json_append_member(jcode, "values", jvalues);
-							} else {
-								json_delete(jvalues);
-							}
-
-							json_append_member(joutput, "message", json_mkstring("send"));
-							json_append_member(joutput, "code", jcode);
-							char *output = json_stringify(joutput, NULL);
-							socket_write(sockfd, output);
-							sfree((void *)&output);
-							json_delete(joutput);
 						} else {
-							logprintf(LOG_ERR, "the device \"%s\" does not exist", device);
+							logprintf(LOG_ERR, "the location \"%s\" does not exist", location);
 							goto close;
 						}
-					} else {
-						logprintf(LOG_ERR, "the location \"%s\" does not exist", location);
-						goto close;
 					}
-				}
-				json_delete(json);
-				goto close;
-			break;
-			case REJECT:
-			default:
-				json_delete(json);
-				goto close;
-			break;
+					json_delete(json);
+					goto close;
+				break;
+				case REJECT:
+				default:
+					json_delete(json);
+					goto close;
+				break;
+			}
+		} else {
+			goto close;
 		}
 	}
 close:

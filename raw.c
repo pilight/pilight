@@ -55,7 +55,7 @@ int main_gc(void) {
 		tmp_confhw = tmp_confhw->next;
 	}
 
-	threads_gc();	
+	threads_gc();
 	options_gc();
 	settings_gc();	
 	hardware_gc();
@@ -97,15 +97,13 @@ int main(int argc, char **argv) {
 	char *hwfile = NULL;
 	pid_t pid = 0;
 
-	settingsfile = malloc(strlen(SETTINGS_FILE)+1);
-	if(!settingsfile) {
+	if(!(settingsfile = malloc(strlen(SETTINGS_FILE)+1))) {
 		logprintf(LOG_ERR, "out of memory");
 		exit(EXIT_FAILURE);
 	}
 	strcpy(settingsfile, SETTINGS_FILE);	
 	
-	progname = malloc(12);
-	if(!progname) {
+	if(!(progname = malloc(12))) {
 		logprintf(LOG_ERR, "out of memory");
 		exit(EXIT_FAILURE);
 	}

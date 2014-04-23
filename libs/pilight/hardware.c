@@ -367,8 +367,7 @@ int hardware_read(void) {
 
 int hardware_set_file(char *file) {
 	if(access(file, R_OK | W_OK) != -1) {
-		hwfile = realloc(hwfile, strlen(file)+1);
-		if(!hwfile) {
+		if(!(hwfile = realloc(hwfile, strlen(file)+1))) {
 			logprintf(LOG_ERR, "out of memory");
 			exit(EXIT_FAILURE);
 		}

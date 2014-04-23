@@ -78,15 +78,15 @@ unsigned short lirc433HwDeinit(void) {
 
 		freq = FREQ38;
 
-		/* Restore the lirc_rpi frequency to its default value */
-		if(ioctl(lirc_433_fd, _IOW('i', 0x00000013, __u32), &freq) == -1) {
-			logprintf(LOG_ERR, "could not restore default freq of the lirc_rpi lirc");
-			exit(EXIT_FAILURE);
-		} else {
-			logprintf(LOG_DEBUG, "default freq of the lirc_rpi lirc set");
-		}
-
 		if(lirc_433_fd != 0) {
+			/* Restore the lirc_rpi frequency to its default value */
+			if(ioctl(lirc_433_fd, _IOW('i', 0x00000013, __u32), &freq) == -1) {
+				logprintf(LOG_ERR, "could not restore default freq of the lirc_rpi lirc");
+				exit(EXIT_FAILURE);
+			} else {
+				logprintf(LOG_DEBUG, "default freq of the lirc_rpi lirc set");
+			}
+
 			close(lirc_433_fd);
 			lirc_433_fd = 0;
 		}

@@ -93,8 +93,7 @@ int main(int argc, char **argv) {
 	log_shell_enable();
 	log_level_set(LOG_NOTICE);
 
-	progname = malloc(13);
-	if(!progname) {
+	if(!(progname = malloc(13))) {
 		logprintf(LOG_ERR, "out of memory");
 		exit(EXIT_FAILURE);
 	}
@@ -105,12 +104,12 @@ int main(int argc, char **argv) {
 
 	int sockfd = 0;
     char *recvBuff = NULL;
-    char *message;
+    char *message = NULL;
 	char *args = NULL;
 	steps_t steps = WELCOME;
 
 	/* Hold the name of the protocol */
-	char protobuffer[25] = "\0";
+	char *protobuffer = NULL;
 	/* Does this protocol exists */
 	int match = 0;
 
@@ -141,7 +140,7 @@ int main(int argc, char **argv) {
 	protocol_init();
 
 	/* Get the protocol to be used */
-	while (1) {
+	while(1) {
 		int c;
 		c = options_parse(&options, argc, argv, 0, &args);
 
@@ -155,6 +154,10 @@ int main(int argc, char **argv) {
 					logprintf(LOG_ERR, "options '-p' and '--protocol' require an argument");
 					exit(EXIT_FAILURE);
 				} else {
+					if(!(protobuffer = realloc(protobuffer, strlen(args)+1))) {
+						logprintf(LOG_ERR, "out of memory");
+						exit(EXIT_FAILURE);
+					}
 					strcpy(protobuffer, args);
 				}
 			break;
@@ -165,8 +168,7 @@ int main(int argc, char **argv) {
 				help = 1;
 			break;
 			case 'S':
-				server = realloc(server, strlen(args)+1);
-				if(!server) {
+				if(!(server = realloc(server, strlen(args)+1))) {
 					logprintf(LOG_ERR, "out of memory");
 					exit(EXIT_FAILURE);
 				}
@@ -180,7 +182,7 @@ int main(int argc, char **argv) {
 	}
 
 	/* Check if a protocol was given */
-	if(strlen(protobuffer) > 0 && strcmp(protobuffer,"-V") != 0) {
+	if(strlen(protobuffer) > 0 && strcmp(protobuffer, "-V") != 0) {
 		if(strlen(protobuffer) > 0 && version) {
 			printf("-p and -V cannot be combined\n");
 		} else {
@@ -261,14 +263,12 @@ int main(int argc, char **argv) {
 							logprintf(LOG_ERR, "out of memory");
 							exit(EXIT_FAILURE);
 						}
-						node->name = malloc(strlen(protocol->devices->id)+1);
-						if(!node->name) {
+						if(!(node->name = malloc(strlen(protocol->devices->id)+1))) {
 							logprintf(LOG_ERR, "out of memory");
 							exit(EXIT_FAILURE);
 						}
 						strcpy(node->name, protocol->devices->id);
-						node->desc = malloc(strlen(protocol->devices->desc)+1);
-						if(!node->desc) {
+						if(!(node->desc = malloc(strlen(protocol->devices->desc)+1))) {
 							logprintf(LOG_ERR, "out of memory");
 							exit(EXIT_FAILURE);
 						}
@@ -285,9 +285,9 @@ int main(int argc, char **argv) {
 			while(pname) {
 				ptmp = pname;
 				printf("\t %s\t\t",ptmp->name);
-				if(strlen(ptmp->name)<7)
+				if(strlen(ptmp->name) < 7)
 					printf("\t");
-				if(strlen(ptmp->name)<15)
+				if(strlen(ptmp->name) < 15)
 					printf("\t");
 				printf("%s\n", ptmp->desc);
 				sfree((void *)&ptmp->name);
@@ -308,7 +308,7 @@ int main(int argc, char **argv) {
 			/* Only send the CLI arguments that belong to this protocol, the protocol name
 			and those that are called by the user */
 			if((options_get_id(&protocol->options, tmp->name, &itmp) == 0)
-			&& strlen(tmp->value) > 0) {
+			   && strlen(tmp->value) > 0) {
 				if(isNumeric(tmp->value) == 0) {
 					json_append_member(code, tmp->name, json_mknumber(atof(tmp->value)));
 				} else {
@@ -357,31 +357,35 @@ int main(int argc, char **argv) {
 					goto close;
 				}
 			}
-			switch(steps) {
-				case WELCOME:
-					socket_write(sockfd, "{\"message\":\"client sender\"}");
-					steps=IDENTIFY;
-				case IDENTIFY:
-					if(strcmp(message, "accept client") == 0) {
-						steps=SEND;
-					}
-					if(strcmp(message, "reject client") == 0) {
-						steps=REJECT;
-					}
-				case SEND:
-					json_delete(json);
-					json = json_mkobject();
-					json_append_member(json, "message", json_mkstring("send"));
-					json_append_member(json, "code", code);
-					char *output = json_stringify(json, NULL);
-					socket_write(sockfd, output);
-					sfree((void *)&output);
-					goto close;
-				break;
-				case REJECT:
-				default:
-					goto close;
-				break;
+			if(message && strlen(message) > 0) {
+				switch(steps) {
+					case WELCOME:
+						socket_write(sockfd, "{\"message\":\"client sender\"}");
+						steps=IDENTIFY;
+					case IDENTIFY:
+						if(strcmp(message, "accept client") == 0) {
+							steps=SEND;
+						}
+						if(strcmp(message, "reject client") == 0) {
+							steps=REJECT;
+						}
+					case SEND:
+						json_delete(json);
+						json = json_mkobject();
+						json_append_member(json, "message", json_mkstring("send"));
+						json_append_member(json, "code", code);
+						char *output = json_stringify(json, NULL);
+						socket_write(sockfd, output);
+						sfree((void *)&output);
+						goto close;
+					break;
+					case REJECT:
+					default:
+						goto close;
+					break;
+				}
+			} else {
+				goto close;
 			}
 		}
 	}
@@ -389,11 +393,17 @@ close:
 	if(json) {
 		json_delete(json);
 	}
+	if(code) {
+		json_delete(code);
+	}	
 	if(sockfd) {
 		socket_close(sockfd);
 	}
 	if(server) {
 		sfree((void *)&server);
+	}
+	if(protobuffer) {
+		sfree((void *)&protobuffer);
 	}
 	log_shell_disable();
 	protocol_gc();
