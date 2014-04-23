@@ -405,7 +405,7 @@ set_source_files_properties(${PROJECT_SOURCE_DIR}/libs/pilight/http_lib.c PROPER
 set_source_files_properties(${PROJECT_SOURCE_DIR}/libs/pilight/mongoose.c PROPERTIES COMPILE_FLAGS " -w ")
 set_source_files_properties(${avrdude_sources} PROPERTIES COMPILE_FLAGS " -w ")
 
-install(FILES libpilight.so DESTINATION lib/pilight/ RENAME libpilight.so.3)
+install(FILES libpilight.so DESTINATION lib/pilight/ RENAME libpilight.so.4)
 install(FILES libpilight.a DESTINATION lib/pilight/ RENAME libpilight.a)
 
 if(EXISTS "/usr/local/lib/libpilight.so")
@@ -413,7 +413,7 @@ if(EXISTS "/usr/local/lib/libpilight.so")
 endif()
 
 if(NOT EXISTS "/usr/local/lib/libpilight.so")
-	execute_process(COMMAND ln -s "/usr/local/lib/pilight/libpilight.so.3" "/usr/local/lib/libpilight.so")
+	execute_process(COMMAND ln -s "/usr/local/lib/pilight/libpilight.so.4" "/usr/local/lib/libpilight.so")
 endif()
 
 if(${WEBSERVER} MATCHES "ON")
