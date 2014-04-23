@@ -43,6 +43,8 @@ unsigned short main_loop = 1;
 pthread_t pth;
 
 int main_gc(void) {
+	main_loop = 0;
+
 	log_shell_disable();
 
 	struct conf_hardware_t *tmp_confhw = conf_hardware;
@@ -196,7 +198,7 @@ int main(int argc, char **argv) {
 			logprintf(LOG_ERR, "could not initialize %s hardware mode", tmp_confhw->hardware->id);
 			goto clear;
 		}
-		threads_register(tmp_confhw->hardware->id, &receive_code, (void *)tmp_confhw->hardware, 1);
+		threads_register(tmp_confhw->hardware->id, &receive_code, (void *)tmp_confhw->hardware, 0);
 		tmp_confhw = tmp_confhw->next;
 	}
 
@@ -204,8 +206,6 @@ int main(int argc, char **argv) {
 		sleep(1);
 	}
 
-	main_gc();
-	return (EXIT_SUCCESS);
 clear:
 	main_gc();
 	return (EXIT_FAILURE);
