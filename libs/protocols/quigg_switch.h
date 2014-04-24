@@ -27,7 +27,7 @@ void quiggSwCreateLow(int s, int e);
 void quiggSwCreateHigh(int s, int e);
 void quiggSwClearCode(void);
 void quiggSwCreateId(int id);
-void quiggSwCreateStart(void);
+void quiggSwCreateHeader(void);
 void quiggSwCreateState(int state);
 void quiggSwCreateFooter(void);
 int quiggSwCreateCode(JsonNode *code);
