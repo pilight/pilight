@@ -44,7 +44,7 @@ struct {
    Whenever an rising, falling or changing interrupt occurs
    the function given as the last argument will be called */
 int irq_read(int gpio) {
-	if(waitForInterrupt(gpio, 1) > 0) {
+	if(waitForInterrupt(gpio, 1000) > 0) {
 		struct timeval tv;
 		gettimeofday(&tv, NULL);
 		timestamp.first = timestamp.second;

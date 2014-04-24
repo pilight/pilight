@@ -182,7 +182,7 @@ int main(int argc, char **argv) {
 	}
 
 	/* Check if a protocol was given */
-	if(strlen(protobuffer) > 0 && strcmp(protobuffer, "-V") != 0) {
+	if(protobuffer && strlen(protobuffer) > 0 && strcmp(protobuffer, "-V") != 0) {
 		if(strlen(protobuffer) > 0 && version) {
 			printf("-p and -V cannot be combined\n");
 		} else {
@@ -357,35 +357,36 @@ int main(int argc, char **argv) {
 					goto close;
 				}
 			}
-			if(message && strlen(message) > 0) {
-				switch(steps) {
-					case WELCOME:
-						socket_write(sockfd, "{\"message\":\"client sender\"}");
-						steps=IDENTIFY;
-					case IDENTIFY:
+			switch(steps) {
+				case WELCOME:
+					socket_write(sockfd, "{\"message\":\"client sender\"}");
+					steps=IDENTIFY;
+				break;
+				case IDENTIFY:
+					if(message && strlen(message) > 0) {
 						if(strcmp(message, "accept client") == 0) {
 							steps=SEND;
 						}
 						if(strcmp(message, "reject client") == 0) {
 							steps=REJECT;
 						}
-					case SEND:
-						json_delete(json);
-						json = json_mkobject();
-						json_append_member(json, "message", json_mkstring("send"));
-						json_append_member(json, "code", code);
-						char *output = json_stringify(json, NULL);
-						socket_write(sockfd, output);
-						sfree((void *)&output);
+					} else {
 						goto close;
-					break;
-					case REJECT:
-					default:
-						goto close;
-					break;
-				}
-			} else {
-				goto close;
+					}
+				case SEND:
+					json_delete(json);
+					json = json_mkobject();
+					json_append_member(json, "message", json_mkstring("send"));
+					json_append_member(json, "code", code);
+					char *output = json_stringify(json, NULL);
+					socket_write(sockfd, output);
+					sfree((void *)&output);
+					goto close;
+				break;
+				case REJECT:
+				default:
+					goto close;
+				break;
 			}
 		}
 	}
@@ -412,5 +413,5 @@ close:
 	log_gc();
 	sfree((void *)&progname);
 
-return EXIT_SUCCESS;
+	return EXIT_SUCCESS;
 }
