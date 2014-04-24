@@ -1261,19 +1261,21 @@ void *receive_code(void *param) {
 			pthread_mutex_lock(&receive_lock);
 			duration = hardware->receive();
 
-			rawcode[rawlen] = duration;
-			rawlen++;
-			if(rawlen > 254) {
-				rawlen = 0;
-			}
-			if(duration > 4440) {
-				if((duration/PULSE_DIV) < 1000) {
-					plslen = duration/PULSE_DIV;
+			if(duration > 0) {
+				rawcode[rawlen] = duration;
+				rawlen++;
+				if(rawlen > 254) {
+					rawlen = 0;
 				}
-				if(rawlen > 1) {
-					receiver_parse_code(rawcode, rawlen, plslen, hardware->type);
+				if(duration > 4440) {
+					if((duration/PULSE_DIV) < 1000) {
+						plslen = duration/PULSE_DIV;
+					}
+					if(rawlen > 1) {
+						receiver_parse_code(rawcode, rawlen, plslen, hardware->type);
+					}
+					rawlen = 0;
 				}
-				rawlen = 0;
 			}
 			pthread_mutex_unlock(&receive_lock);
 		} else {

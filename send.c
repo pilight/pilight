@@ -182,7 +182,7 @@ int main(int argc, char **argv) {
 	}
 
 	/* Check if a protocol was given */
-	if(strlen(protobuffer) > 0 && strcmp(protobuffer, "-V") != 0) {
+	if(protobuffer && strlen(protobuffer) > 0 && strcmp(protobuffer, "-V") != 0) {
 		if(strlen(protobuffer) > 0 && version) {
 			printf("-p and -V cannot be combined\n");
 		} else {
@@ -413,5 +413,5 @@ close:
 	log_gc();
 	sfree((void *)&progname);
 
-return EXIT_SUCCESS;
+	return EXIT_SUCCESS;
 }

@@ -742,7 +742,7 @@ function createDateTimeElement(sTabId, sDevId, aValues) {
 }
 
 function updateVersions() {
-	if(iPLVersion != iPLNVersion) {
+	if(iPLVersion < iPLNVersion) {
 		if(iFWVersion > 0) {
 			var obj = $('#version').text("pilight v"+iPLVersion+" - available v"+iPLNVersion+" / filter firmware v"+iFWVersion);
 		} else {
@@ -829,7 +829,7 @@ function createGUI(data) {
 						}
 					}
 				});
-			});	
+			});
 
 			if(bShowTabs) {
 				$(document).delegate('[data-role="navbar"] a', 'click', function(e) {
