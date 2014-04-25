@@ -30,32 +30,6 @@
 #include "gc.h"
 #include "quigg_switch.h"
 
-/*
-void quiggSwPrintBinary(void) {
-	int i;
-	printf ("%d",PULSE_DIV);
-	printf("quigg_switch: dump of quigg_switch binary: <");
-	if(quigg_switch->raw[0] == (quigg_switch->pulse+1)*quigg_switch->plslen->length) {
-			printf("H");
-		} else {
-			printf("?");
-		}
-
-	for(i=1;i<=40;i=i+2) {
-		if(quigg_switch->raw[i] == (quigg_switch->pulse+1)*quigg_switch->plslen->length) {
-			printf("0");
-		} else {
-			printf("1");
-		}
-	}
-	if(quigg_switch->raw[41] == 2*PULSE_DIV*quigg_switch->plslen->length) {
-			printf("F");
-		} else {
-			printf("?");
-		}
-	printf(">\n");
-} 
-*/
 
 void quiggSwCreateMessage(int id, int state, int unit, int all) {
 	quigg_switch->message = json_mkobject();
@@ -74,7 +48,7 @@ void quiggSwCreateMessage(int id, int state, int unit, int all) {
 }
 
 void quiggSwParseCode(void) {
-/* 
+/*
    Conversion code will follow once the Rx part is working together with LPF
 */
 	int id = binToDecRev(quigg_switch->binary, 1, 24);
@@ -82,11 +56,7 @@ void quiggSwParseCode(void) {
 	int all = binToDecRev(quigg_switch->binary, 29, 30);
 	int state = binToDecRev(quigg_switch->binary, 31, 32);
 	int dimm = binToDecRev(quigg_switch->binary, 33, 34);
-/*
-	int unknown1 = binToDecRev(quigg_switch->binary, 35, 36);
-	int unknown2 = binToDecRev(quigg_switch->binary, 37, 38);
-	int evenparity = binToDecRev(quigg_switch->binary, 39, 40);
-*/
+
 	if(dimm==1 && unit==3) {
 		unit = 4;
 	}
@@ -96,36 +66,30 @@ void quiggSwParseCode(void) {
 void quiggSwCreateLow(int s, int e) {
 	int i;
 	for(i=s;i<=e;i+=2) {
-		quigg_switch->raw[i] = ((quigg_switch->pulse+1)*quigg_switch->plslen->length);
-		quigg_switch->raw[i+1] = quigg_switch->plslen->length*10;
+		quigg_switch->raw[i] = quigg_switch->plslen->length*QUIGG_PULSE_LOW;
+		quigg_switch->raw[i+1] = quigg_switch->pulse*quigg_switch->plslen->length;
 	}
 }
 
 void quiggSwCreateHigh(int s, int e) {
 	int i;
 	for(i=s;i<=e;i+=2) {
-		quigg_switch->raw[i] = quigg_switch->plslen->length*10;
-		quigg_switch->raw[i+1] = ((quigg_switch->pulse+1)*quigg_switch->plslen->length);
+		quigg_switch->raw[i] = quigg_switch->pulse*quigg_switch->plslen->length;
+		quigg_switch->raw[i+1] = quigg_switch->plslen->length*QUIGG_PULSE_LOW;
 	}
 }
 
 void quiggSwCreateHeader(void) {
-	quigg_switch->raw[0] = (quigg_switch->pulse+1)*quigg_switch->plslen->length;
+	quigg_switch->raw[0] = quigg_switch->plslen->length*QUIGG_PULSE_LOW;
 }
 
 void quiggSwCreateFooter(void) {
-	/*
-		A footer length of PULSE_DIV*plslen->length
-		is working with GT-FSI-04a for normal operation but
-		some switches require for learning mode twice the length.
-		A real GT-7000 Transmitter uses a footer length of 88500µS and 4 repeats
-	*/
-	quigg_switch->raw[41]=2*PULSE_DIV*quigg_switch->plslen->length;
+	quigg_switch->raw[QUIGG_RAWLEN-1] = PULSE_DIV*quigg_switch->plslen->length;
 }
 
 void quiggSwClearCode(void) {
 	quiggSwCreateHeader();
-	quiggSwCreateLow(1,39);
+	quiggSwCreateLow(1,QUIGG_RAWLEN-3);
 	quiggSwCreateFooter();
 }
 
@@ -184,7 +148,7 @@ void quiggSwCreateParity(void) {
 	int i,p;
 	p = 1;			// init even parity, for data only
 	for(i=25;i<=37;i+=2) {
-		if(quigg_switch->raw[i] == quigg_switch->plslen->length*10) {
+		if(quigg_switch->raw[i] == quigg_switch->pulse*quigg_switch->plslen->length) {
 			p = -p;
 		}
 	}
@@ -247,13 +211,14 @@ void quiggSwInit(void) {
 	protocol_register(&quigg_switch);
 	protocol_set_id(quigg_switch, "quigg_switch");
 	protocol_device_add(quigg_switch, "quigg_switch", "Quigg Switches");
-	protocol_plslen_add(quigg_switch, 130); // optimized value working range of GT-FSI-04a: 103 ... 159
+	protocol_plslen_add(quigg_switch, QUIGG_PULSE_LENGTH); // int opt. value: 260 GT-FSI-04a range: 620... 960
 	quigg_switch->devtype = SWITCH;
 	quigg_switch->hwtype = RF433;
-	quigg_switch->pulse = 5;
-	quigg_switch->rawlen = 42;  // 42 start: short(780); 20 times 0-(short-long) or 1-(long/short)
-								// and footer(8840) - PULSE_DIV*2*(130)
-	quigg_switch->binlen = 21;  // 20 id-dev[12], unit[2], unit_all[1], on/off[1], dimm[1],
+	quigg_switch->pulse = QUIGG_PULSE_HIGH;
+	quigg_switch->lsb = QUIGG_PULSE_LSB;
+	quigg_switch->rawlen = QUIGG_RAWLEN;  // 42 start: short(780); 20 times 0-(short-long) or 1-(long/short)
+								// and footer(8840) - PULSE_DIV*(260)
+	quigg_switch->binlen = QUIGG_BINLEN;  // 20 id-dev[12], unit[2], unit_all[1], on/off[1], dimm[1],
 								// null[1], var[1], Parity[1]
 
 	options_add(&quigg_switch->options, 't', "on", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
