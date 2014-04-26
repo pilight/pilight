@@ -66,7 +66,7 @@ void quiggSwParseCode(void) {
 void quiggSwCreateLow(int s, int e) {
 	int i;
 	for(i=s;i<=e;i+=2) {
-		quigg_switch->raw[i] = quigg_switch->plslen->length*QUIGG_PULSE_LOW;
+		quigg_switch->raw[i] = quigg_switch->plslen->length;
 		quigg_switch->raw[i+1] = quigg_switch->pulse*quigg_switch->plslen->length;
 	}
 }
@@ -75,21 +75,21 @@ void quiggSwCreateHigh(int s, int e) {
 	int i;
 	for(i=s;i<=e;i+=2) {
 		quigg_switch->raw[i] = quigg_switch->pulse*quigg_switch->plslen->length;
-		quigg_switch->raw[i+1] = quigg_switch->plslen->length*QUIGG_PULSE_LOW;
+		quigg_switch->raw[i+1] = quigg_switch->plslen->length;
 	}
 }
 
 void quiggSwCreateHeader(void) {
-	quigg_switch->raw[0] = quigg_switch->plslen->length*QUIGG_PULSE_LOW;
+	quigg_switch->raw[0] = quigg_switch->plslen->length;
 }
 
 void quiggSwCreateFooter(void) {
-	quigg_switch->raw[QUIGG_RAWLEN-1] = PULSE_DIV*quigg_switch->plslen->length;
+	quigg_switch->raw[quigg_switch->rawlen-1] = PULSE_DIV*quigg_switch->plslen->length;
 }
 
 void quiggSwClearCode(void) {
 	quiggSwCreateHeader();
-	quiggSwCreateLow(1,QUIGG_RAWLEN-3);
+	quiggSwCreateLow(1,quigg_switch->rawlen-3);
 	quiggSwCreateFooter();
 }
 
