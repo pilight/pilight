@@ -19,12 +19,6 @@
 #ifndef _PROTOCOL_QUIGG_SWITCH_H_
 #define _PROTOCOL_QUIGG_SWITCH_H_
 
-#define QUIGG_BINLEN		21
-#define QUIGG_PULSE_HIGH	2
-#define QUIGG_PULSE_LENGTH	700
-#define QUIGG_PULSE_LSB		0
-#define QUIGG_RAWLEN		42
-
 struct protocol_t *quigg_switch;
 
 void quiggSwCreateMessage(int id, int state, int unit, int all);

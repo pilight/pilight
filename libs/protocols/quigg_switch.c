@@ -211,14 +211,14 @@ void quiggSwInit(void) {
 	protocol_register(&quigg_switch);
 	protocol_set_id(quigg_switch, "quigg_switch");
 	protocol_device_add(quigg_switch, "quigg_switch", "Quigg Switches");
-	protocol_plslen_add(quigg_switch, QUIGG_PULSE_LENGTH); // SHORT: GT-FSI-04a range: 620... 960
+	protocol_plslen_add(quigg_switch, 700); // SHORT: GT-FSI-04a range: 620... 960
 	quigg_switch->devtype = SWITCH;
 	quigg_switch->hwtype = RF433;
-	quigg_switch->pulse = QUIGG_PULSE_HIGH; // LONG=QUIGG_PULSE_HIGH*SHORT
-	quigg_switch->lsb = QUIGG_PULSE_LSB;
-	quigg_switch->rawlen = QUIGG_RAWLEN;    // 42 start: SHORT (>600); 20 times 0-(SHORT-LONG) or 1-(LONG-SHORT);
+	quigg_switch->pulse = 2;        // LONG=QUIGG_PULSE_HIGH*SHORT
+	quigg_switch->lsb = 0;
+	quigg_switch->rawlen = 42;      // 42 start: SHORT (>600); 20 times 0-(SHORT-LONG) or 1-(LONG-SHORT);
 								// footer PULSE_DIV*SHORT (>6000)
-	quigg_switch->binlen = QUIGG_BINLEN;    // 20 sys-id[12]; unit[2], unit_all[1], on/off[1], dimm[1],
+	quigg_switch->binlen = 21;      // 20 sys-id[12]; unit[2], unit_all[1], on/off[1], dimm[1],
 								// null[1], var[1]; Parity[1]
 
 	options_add(&quigg_switch->options, 't', "on", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
