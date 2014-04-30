@@ -231,6 +231,9 @@ void broadcast_queue(char *protoname, JsonNode *json) {
 
 	char *jstr = json_stringify(json, NULL);
 	bnode->jmessage = json_decode(jstr);
+	if(json_find_member(bnode->jmessage, "uuid") == NULL && strlen(pilight_uuid) > 0) {
+		json_append_member(bnode->jmessage, "uuid", json_mkstring(pilight_uuid));
+	}
 	sfree((void *)&jstr);
 
 	bnode->protoname = malloc(strlen(protoname)+1);

@@ -7,6 +7,13 @@ set(PROJECT_VERSION 4.0)
 
 include(${PROJECT_SOURCE_DIR}/CMakeConfig.txt)
 
+#Final compilation all platforms
+#Removing debugging for final compilation
+#set(CMAKE_SKIP_RPATH TRUE)
+set(CMAKE_EXE_LINKER_FLAGS " -Wl,-rpath=/usr/local/lib/,-rpath=/usr/lib/,-rpath=/lib/")
+set(CMAKE_SHARED_LINKER_FLAGS " -Wl,-rpath=/usr/local/lib/,-rpath=/usr/lib/,-rpath=/lib/")
+set(CMAKE_MODULE_LINKER_FLAGS " -Wl,-rpath=/usr/local/lib/,-rpath=/usr/lib/,-rpath=/lib/")
+
 set(CMAKE_ZLIB_LIBS_INIT)
 
 find_library(CMAKE_ZLIB_LIBS_INIT 
@@ -14,6 +21,7 @@ find_library(CMAKE_ZLIB_LIBS_INIT
             PATHS   /usr/lib
                     /usr/lib32
                     /usr/lib64
+                    /usr/lib/i386-linux-gnu		
                     /usr/lib/x86_64-linux-gnu
                     /usr/local/lib
                     /usr/local/lib32
@@ -43,6 +51,11 @@ endif()
 if(${CMAKE_SYSTEM_PROCESSOR} MATCHES "amd64")
 	set(CMAKE_C_FLAGS "-O2 -fPIC -march=native -mtune=native -ffast-math -Wformat=2 -g3 -Wformat-nonliteral")
 endif()
+
+# Compile final sources for Ubuntu 64bit
+#set (CMAKE_C_FLAGS "-m64 -fPIC")
+# Compile final sources for Ubuntu 32bit
+#set (CMAKE_C_FLAGS "-m32")
 
 # Start uninstaller generator
 function(WRITE_UNINSTALL_TARGET_SCRIPT)

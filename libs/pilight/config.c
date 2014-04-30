@@ -124,9 +124,15 @@ int config_update(char *protoname, JsonNode *json, JsonNode **out) {
 			have_device = 0;
 			JsonNode *rloc = NULL;
 			while(dptr) {
-				if(((uuid && dptr->dev_uuid && dptr->ori_uuid) && ((strcmp(dptr->dev_uuid, uuid) == 0)
-				   || dptr->cst_uuid == 0))
-				   || (!uuid)) {
+				if(((uuid && dptr->dev_uuid && dptr->ori_uuid && strlen(pilight_uuid) > 0) &&
+					(((strcmp(dptr->dev_uuid, uuid) == 0) && dptr->cst_uuid == 1) ||
+					 (strcmp(dptr->dev_uuid, pilight_uuid) == 0 
+					  && strcmp(dptr->dev_uuid, uuid) == 0 
+					  && dptr->cst_uuid == 1) ||
+					 (strcmp(dptr->dev_uuid, dptr->ori_uuid) == 0 
+					  && strcmp(pilight_uuid, dptr->ori_uuid) == 0 
+					  && strcmp(pilight_uuid, uuid) == 0)))
+				   || (!uuid) || strlen(pilight_uuid) == 0) {
 					struct protocols_t *tmp_protocols = dptr->protocols;
 					match = 0;
 					while(tmp_protocols) {
