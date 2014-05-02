@@ -214,7 +214,7 @@ void node_remove(int id) {
 				prevP->next = currP->next;
 			}
 
-			sfree((void *)&currP);
+			sfree((void **)&currP);
 			nrnodes--;
 			break;
 		}
