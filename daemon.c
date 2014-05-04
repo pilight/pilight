@@ -67,12 +67,12 @@ typedef enum {
 } client_type_t;
 
 char clients[6][11] = {
-	"receiver\0",
-	"sender\0",
-	"controller\0",
-	"node\0",
-	"gui\0",
-	"web\0"
+	"receiver",
+	"sender",
+	"controller",
+	"node",
+	"gui",
+	"web"
 };
 
 typedef struct nodes_t {
