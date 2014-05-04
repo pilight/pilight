@@ -1988,7 +1988,7 @@ int main(int argc, char **argv) {
 					logprintf(LOG_INFO, "**** FAILED UPD. FW ****");
 				} else {
 					unlink(fwpath);
-					logprintf(LOG_INFO, "**** DONE  UPD. FW ****");
+					logprintf(LOG_INFO, "**** DONE UPD. FW ****");
 				}
 			}
 		}

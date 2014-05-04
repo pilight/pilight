@@ -69,6 +69,9 @@ pilight-raw: raw.c $(INCLUDES) $(LIBS) libpilight.so
 pilight-uuid: uuid.c $(INCLUDES) $(LIBS) libpilight.so
 	$(GCC) $(CFLAGS) -o $@ $(patsubst pilight-%,%.c,$@) libpilight.so /usr/lib/arm-linux-gnueabihf/libz.so
 
+pilight-flash: flash.c $(INCLUDES) $(LIBS) libpilight.so
+	$(GCC) $(CFLAGS) -o $@ $(patsubst pilight-%,%.c,$@) libpilight.so /usr/lib/arm-linux-gnueabihf/libz.so
+
 install:
 	[ -d /usr/share/images/pilight/ ] && rm -r /usr/share/images/pilight/ || true
 	
@@ -87,6 +90,7 @@ install:
 	install -m 0655 pilight-learn /usr/local/sbin/
 	install -m 0655 pilight-raw /usr/local/sbin/
 	install -m 0655 pilight-uuid /usr/local/bin/
+	install -m 0655 pilight-flash /usr/local/sbin/
 	install -m 0655 libpilight.so /usr/local/lib/pilight/
 	install -m 0655 libpilight.a /usr/local/lib/pilight/
 	install -m 0644 settings.json-default /etc/pilight/

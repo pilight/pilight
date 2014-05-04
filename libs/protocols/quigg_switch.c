@@ -51,13 +51,13 @@ void quiggSwParseCode(void) {
    Conversion code will follow once the Rx part is working together with LPF
 */
 	int unit = binToDecRev(quigg_switch->binary, 25, 28);
-	int id = binToDecRev(quigg_switch->binary, 3, 12);
+	int id = binToDecRev(quigg_switch->binary, 1, 24);
 	int all = binToDecRev(quigg_switch->binary, 29, 30);
 	int state = binToDecRev(quigg_switch->binary, 31, 32);
 	int dimm = binToDecRev(quigg_switch->binary, 33, 34);
 
 	if(dimm==1 && unit==3) {
-		unit = 5;
+		unit = 4;
 	}
 	quiggSwCreateMessage(id, state, unit, all);
 }
@@ -65,26 +65,31 @@ void quiggSwParseCode(void) {
 void quiggSwCreateLow(int s, int e) {
 	int i;
 	for(i=s;i<=e;i+=2) {
-		quigg_switch->raw[i] = ((quigg_switch->pulse+1)*quigg_switch->plslen->length);
-		quigg_switch->raw[i+1] = quigg_switch->plslen->length*10;
+		quigg_switch->raw[i] = quigg_switch->plslen->length;
+		quigg_switch->raw[i+1] = quigg_switch->pulse*quigg_switch->plslen->length;
 	}
 }
 
 void quiggSwCreateHigh(int s, int e) {
 	int i;
 	for(i=s;i<=e;i+=2) {
-		quigg_switch->raw[i] = quigg_switch->plslen->length*10;
-		quigg_switch->raw[i+1] = ((quigg_switch->pulse+1)*quigg_switch->plslen->length);
+		quigg_switch->raw[i] = quigg_switch->pulse*quigg_switch->plslen->length;
+		quigg_switch->raw[i+1] = quigg_switch->plslen->length;
 	}
 }
 
-void quiggSwClearCode(void) {
-	quigg_switch->raw[0] = 720;
-	quiggSwCreateLow(1,39);
+void quiggSwCreateHeader(void) {
+	quigg_switch->raw[0] = quigg_switch->plslen->length;
 }
 
-void quiggSwCreateStart(void) {
-	quiggSwCreateHigh(1, 2);	// Sync
+void quiggSwCreateFooter(void) {
+	quigg_switch->raw[quigg_switch->rawlen-1] = PULSE_DIV*quigg_switch->plslen->length;
+}
+
+void quiggSwClearCode(void) {
+	quiggSwCreateHeader();
+	quiggSwCreateLow(1,quigg_switch->rawlen-3);
+	quiggSwCreateFooter();
 }
 
 void quiggSwCreateId(int id) {
@@ -92,7 +97,7 @@ void quiggSwCreateId(int id) {
 	int length = 0;
 	int i = 0, x = 0;
 
-	x = 11;
+	x = 23;
 	length = decToBin(id, binary);
 	for(i=length;i>=0;i--) {
 		if(binary[i] == 1) {
@@ -105,25 +110,25 @@ void quiggSwCreateId(int id) {
 void quiggSwCreateUnit(int unit) {
 	switch (unit) {
 		case 0:
-			quiggSwCreateLow(25, 30);	// 1
+			quiggSwCreateLow(25, 30);	// 1st row
 		break;
 		case 1:
-			quiggSwCreateHigh(25, 26);	// 2
-			quiggSwCreateHigh(37, 38);	// why ???
+			quiggSwCreateHigh(25, 26);	// 2nd row
+			quiggSwCreateHigh(37, 38);	// needs to be set
 		break;
 		case 2:
-			quiggSwCreateHigh(25, 28);	// 3
-			quiggSwCreateHigh(37, 38);	// why ???
+			quiggSwCreateHigh(25, 28);	// 3rd row
+			quiggSwCreateHigh(37, 38);	// needs to be set
 		break;
 		case 3:
-			quiggSwCreateHigh(27, 28);	// 4
+			quiggSwCreateHigh(27, 28);	// 4th row
 		break;
 		case 4:
-			quiggSwCreateHigh(27, 28);	// Dimm
-			quiggSwCreateHigh(33, 34);
-			quiggSwCreateHigh(37, 38);
+			quiggSwCreateHigh(27, 28);	// 5th row Dimm?
+			quiggSwCreateHigh(33, 34);  //
+			quiggSwCreateHigh(37, 38);  // needs to be set
 		case 5:
-			quiggSwCreateHigh(25, 30);	// All
+			quiggSwCreateHigh(25, 30);	// 6th row MASTER (all)
 		break;
 		default:
 		break;
@@ -140,24 +145,15 @@ void quiggSwCreateState(int state) {
 
 void quiggSwCreateParity(void) {
 	int i,p;
-	p = -1;
-	for(i=1;i<=37;i+=2) {
-		if(quigg_switch->raw[i] == quigg_switch->plslen->length*10) {
+	p = 1;			// init even parity, without system ID
+	for(i=25;i<=37;i+=2) {
+		if(quigg_switch->raw[i] == quigg_switch->pulse*quigg_switch->plslen->length) {
 			p = -p;
 		}
 	}
 	if(p==-1) {
 		quiggSwCreateHigh(39,40);
 	}
-}
-
-void quiggSwCreateFooter(void) {
-	/*
-		A footer length of PULSE_DIV*plslen->length 
-		is working fine with GT-FSI-04a, including learning mode.
-		A real GT-7000 Transmitter uses a footer length of 88500µS and 4 repeats
-	*/
-	quigg_switch->raw[41]=PULSE_DIV*quigg_switch->plslen->length;
 }
 
 int quiggSwCreateCode(JsonNode *code) {
@@ -181,7 +177,7 @@ int quiggSwCreateCode(JsonNode *code) {
 	if(id==-1 || (unit==-1 && all==0) || state==-1) {
 		logprintf(LOG_ERR, "quigg_switch: insufficient number of arguments");
 		return EXIT_FAILURE;
-	} else if(id > 31 || id < 0) {
+	} else if(id > 4095 || id < 0) {
 		logprintf(LOG_ERR, "quigg_switch: invalid programm code id range");
 		return EXIT_FAILURE;
 	} else if((unit > 4 || unit < 0) && all == 0) {
@@ -193,12 +189,10 @@ int quiggSwCreateCode(JsonNode *code) {
 		}
 		quiggSwCreateMessage(id, state, unit, all);
 		quiggSwClearCode();
-		quiggSwCreateStart();
 		quiggSwCreateId(id);
 		quiggSwCreateUnit(unit);
 		quiggSwCreateState(state);
 		quiggSwCreateParity();
-		quiggSwCreateFooter();
 	}
 	return EXIT_SUCCESS;
 }
@@ -216,19 +210,20 @@ void quiggSwInit(void) {
 	protocol_register(&quigg_switch);
 	protocol_set_id(quigg_switch, "quigg_switch");
 	protocol_device_add(quigg_switch, "quigg_switch", "Quigg Switches");
-	protocol_plslen_add(quigg_switch, 120);
+	protocol_plslen_add(quigg_switch, 700); // SHORT: GT-FSI-04a range: 620... 960
 	quigg_switch->devtype = SWITCH;
 	quigg_switch->hwtype = RF433;
-	quigg_switch->pulse = 5;
-	quigg_switch->rawlen = 42;  // 42 start: low-short(700); 20 times high-low 0(short-long) or 1(long/short)
-								// and footer: high-footer 548 times (65760)
-	quigg_switch->binlen = 21;  // 20 id-dev[5], id-dev[5], null[1], unit[2], unit_all[1]
-								// on/off[1], dimm[1], null[1], var[1], Parity[1]
+	quigg_switch->pulse = 2;        // LONG=QUIGG_PULSE_HIGH*SHORT
+	quigg_switch->lsb = 0;
+	quigg_switch->rawlen = 42;      // 42 start: SHORT (>600); 20 times 0-(SHORT-LONG) or 1-(LONG-SHORT);
+								// footer PULSE_DIV*SHORT (>6000)
+	quigg_switch->binlen = 21;      // 20 sys-id[12]; unit[2], unit_all[1], on/off[1], dimm[1],
+								// null[1], var[1]; Parity[1]
 
 	options_add(&quigg_switch->options, 't', "on", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
 	options_add(&quigg_switch->options, 'f', "off", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
 	options_add(&quigg_switch->options, 'u', "unit", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, NULL, "^([0-5])$");
-	options_add(&quigg_switch->options, 'i', "id", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, NULL, "^([1-9]|[1-2][0-9]|3[0-1])$");
+	options_add(&quigg_switch->options, 'i', "id", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, NULL, "^([1-9]|[1-9][0-9]|[1-9][0-9][0-9]|[1-3][0-9][0-9][0-9]|40[0-8][0-9]|409[0-5])$");
 	options_add(&quigg_switch->options, 'a', "all", OPTION_NO_VALUE, CONFIG_SETTING, JSON_NUMBER, NULL, NULL);
 
 	options_add(&quigg_switch->options, 0, "gui-readonly", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
