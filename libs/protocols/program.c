@@ -50,7 +50,10 @@ typedef struct programs_t {
 	char *start;
 	char *stop;
 	int wait;
-	pthread_t pth;	
+	int currentstate;
+	int laststate;
+	pthread_t pth;
+	protocol_threads_t *thread;
 	struct programs_t *next;
 } programs_t;
 
@@ -64,7 +67,7 @@ void *programParse(void *param) {
 	struct JsonNode *jchild1 = NULL;
 	char *prog = NULL, *args = NULL, *stopcmd = NULL, *startcmd = NULL;
 	
-	int interval = 1, nrloops = 0, currentstate = 0, laststate = -1;
+	int interval = 1, nrloops = 0;
 	int pid = 0;
 	double itmp = 0;
 
@@ -137,6 +140,9 @@ void *programParse(void *param) {
 		}
 	}
 
+	lnode->thread = pnode;
+	lnode->laststate = -1;
+
 	struct programs_t *tmp = programs;
 	if(tmp) {
 		while(tmp->next != NULL) {
@@ -160,11 +166,11 @@ void *programParse(void *param) {
 				json_append_member(code, "name", json_mkstring(lnode->name));
 
 				if((pid = (int)findproc(lnode->program, lnode->arguments)) > 0) {
-					currentstate = 1;
+					lnode->currentstate = 1;
 					json_append_member(code, "state", json_mkstring("running"));
 					json_append_member(code, "pid", json_mknumber((int)pid));
 				} else {
-					currentstate = 0;
+					lnode->currentstate = 0;
 					json_append_member(code, "state", json_mkstring("stopped"));
 					json_append_member(code, "pid", json_mknumber(0));
 				}
@@ -173,8 +179,8 @@ void *programParse(void *param) {
 				json_append_member(program->message, "origin", json_mkstring("receiver"));
 				json_append_member(program->message, "protocol", json_mkstring(program->id));
 
-				if(currentstate != laststate) {
-					laststate = currentstate;									
+				if(lnode->currentstate != lnode->laststate) {
+					lnode->laststate = lnode->currentstate;									
 					pilight.broadcast(program->id, program->message);
 				}
 
@@ -221,6 +227,11 @@ void *programThread(void *param) {
 
 	p->wait = 0;
 	p->pth = 0;	
+	p->laststate = -1;
+
+	pthread_mutex_unlock(&p->thread->mutex);
+	pthread_cond_signal(&p->thread->cond);
+
 	return NULL;
 }
 
