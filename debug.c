@@ -91,13 +91,13 @@ void *receive_code(void *param) {
 	int rawLength = 0;
 	int binaryLength = 0;
 
-	struct hardware_t *hardware = (hardware_t *)param;
-	if(hardware->init) {
-		hardware->init();
+	struct hardware_t *hw = (hardware_t *)param;
+	if(hw->init) {
+		hw->init();
 	}
 
-	while(main_loop && hardware->receive) {
-		duration = hardware->receive();
+	while(main_loop && hw->receive) {
+		duration = hw->receive();
 
 		/* If we are recording, keep recording until the next footer has been matched */
 		if(recording == 1) {
@@ -175,11 +175,11 @@ void *receive_code(void *param) {
 	/* Print everything */
 	printf("--[RESULTS]--\n");
 	printf("\n");
-	printf("hardware:\t%s\n",hardware->id);
-	printf("pulse:\t\t%d\n",normalize(pulse));
-	printf("rawlen:\t\t%d\n",rawLength);
-	printf("binlen:\t\t%d\n",binaryLength);
-	printf("pulselen:\t%d\n",pulselen);
+	printf("hardware:\t%s\n", hw->id);
+	printf("pulse:\t\t%d\n", normalize(pulse));
+	printf("rawlen:\t\t%d\n", rawLength);
+	printf("binlen:\t\t%d\n", binaryLength);
+	printf("pulselen:\t%d\n", pulselen);
 	printf("\n");
 	printf("Raw code:\n");
 	for(i=0;i<rawLength;i++) {

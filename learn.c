@@ -158,8 +158,8 @@ void *receive_code(void *param) {
 	memset(all, -1, 75);
 	memset(temp, -1, 75);
 	
-	struct hardware_t *hardware = (hardware_t *)param;
-	while(main_loop && hardware->receive) {
+	struct hardware_t *hw = (hardware_t *)param;
+	while(main_loop && hw->receive) {
 		switch(state) {
 			case CAPTURE:
 				printf("1. Please send and hold one of the OFF buttons.");
@@ -270,7 +270,7 @@ void *receive_code(void *param) {
 		else
 			state=WAIT;	
 
-		duration = hardware->receive();
+		duration = hw->receive();
 
 		/* If we are recording, keep recording until the next footer has been matched */
 		if(recording == 1) {
@@ -402,11 +402,11 @@ void *receive_code(void *param) {
 	/* Print everything */
 	printf("--[RESULTS]--\n");
 	printf("\n");
-	printf("hardware:\t%s\n",hardware->id);
-	printf("pulse:\t\t%d\n",normalize(pulse));
-	printf("rawlen:\t\t%d\n",rawLength);
-	printf("binlen:\t\t%d\n",binaryLength);
-	printf("plslen:\t\t%d\n",pulse_length);
+	printf("hardware:\t%s\n", hw->id);
+	printf("pulse:\t\t%d\n", normalize(pulse));
+	printf("rawlen:\t\t%d\n", rawLength);
+	printf("binlen:\t\t%d\n", binaryLength);
+	printf("plslen:\t\t%d\n", pulse_length);
 	printf("\n");
 	printf("on-off bit(s):\t");
 	z=0;

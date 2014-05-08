@@ -70,11 +70,11 @@ int main_gc(void) {
 void *receive_code(void *param) {
 	int duration = 0;
 	
-	struct hardware_t *hardware = (hardware_t *)param;
-	while(main_loop && hardware->receive) {
-		duration = hardware->receive();
+	struct hardware_t *hw = (hardware_t *)param;
+	while(main_loop && hw->receive) {
+		duration = hw->receive();
 		if(duration > 0) {
-			printf("%s: %d\n", hardware->id, duration);
+			printf("%s: %d\n", hw->id, duration);
 		}
 	};
 	return NULL;

@@ -587,7 +587,7 @@ void *send_code(void *param) {
 			pthread_mutex_lock(&receive_lock);
 
 			struct protocol_t *protocol = sendqueue->protopt;
-			struct hardware_t *hardware = NULL;
+			struct hardware_t *hw = NULL;
 
 			JsonNode *message = NULL;
 
@@ -630,13 +630,13 @@ void *send_code(void *param) {
 			struct conf_hardware_t *tmp_confhw = conf_hardware;
 			while(tmp_confhw) {
 				if(protocol->hwtype == tmp_confhw->hardware->type) {
-					hardware = tmp_confhw->hardware;
+					hw = tmp_confhw->hardware;
 					break;
 				}
 				tmp_confhw = tmp_confhw->next;
 			}
 
-			if(hardware && hardware->send) {
+			if(hw && hw->send) {
 				logprintf(LOG_DEBUG, "**** RAW CODE ****");
 				if(loglevel >= LOG_DEBUG) {
 					for(i=0;i<protocol->rawlen;i++) {
@@ -645,7 +645,7 @@ void *send_code(void *param) {
 					printf("\n");
 				}
 				logprintf(LOG_DEBUG, "**** RAW CODE ****");
-				if(hardware->send(longCode) == 0) {
+				if(hw->send(longCode) == 0) {
 					logprintf(LOG_DEBUG, "successfully send %s code", protocol->id);
 					if(strcmp(protocol->id, "raw") == 0) {
 						int plslen = protocol->raw[protocol->rawlen-1]/PULSE_DIV;
@@ -1256,13 +1256,13 @@ void *receive_code(void *param) {
 	int rawcode[255] = {0};
 	int duration = 0;
 
-	struct hardware_t *hardware = (hardware_t *)param;
+	struct hardware_t *hw = (hardware_t *)param;
 
 	pthread_mutex_lock(&receive_lock);
-	while(main_loop && hardware->receive) {
+	while(main_loop && hw->receive) {
 		if(sending == 0) {
 			pthread_mutex_lock(&receive_lock);
-			duration = hardware->receive();
+			duration = hw->receive();
 
 			if(duration > 0) {
 				rawcode[rawlen] = duration;
@@ -1275,7 +1275,7 @@ void *receive_code(void *param) {
 						plslen = duration/PULSE_DIV;
 					}
 					if(rawlen > 1) {
-						receiver_parse_code(rawcode, rawlen, plslen, hardware->type);
+						receiver_parse_code(rawcode, rawlen, plslen, hw->type);
 					}
 					rawlen = 0;
 				}

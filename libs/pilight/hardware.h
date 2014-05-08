@@ -32,8 +32,6 @@ typedef enum {
 #include "options.h"
 #include "json.h"
 
-typedef struct conf_hardware_t conf_hardware_t;
-
 typedef struct hardware_t {
 	char *id;
 	hwtype_t type;
@@ -44,24 +42,20 @@ typedef struct hardware_t {
 	int (*receive)(void);
 	int (*send)(int *code);
 	unsigned short (*settings)(JsonNode *json);
+	struct hardware_t *next;
 } hardware_t;
 
-struct conf_hardware_t {
+typedef struct conf_hardware_t {
 	hardware_t *hardware;
 	struct conf_hardware_t *next;
-};
+} conf_hardware_t;
 
-typedef struct hwlst_t {
-	struct hardware_t *listener;
-	struct hwlst_t *next;
-} hwlst_t;
-
-struct hwlst_t *hwlst;
+struct hardware_t *hardware;
 struct conf_hardware_t *conf_hardware;
 
 void hardware_init(void);
-void hardware_register(hardware_t **hw);
-void hardware_set_id(hardware_t *hw, const char *id);
+void hardware_register(struct hardware_t **hw);
+void hardware_set_id(struct hardware_t *hw, const char *id);
 int hardware_gc(void);
 int hardware_set_file(char *file);
 int hardware_read(void);

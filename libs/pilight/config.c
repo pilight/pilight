@@ -536,7 +536,7 @@ JsonNode *config2json(short internal) {
 
 			if((strlen(pilight_uuid) > 0 && ((strcmp(tmp_devices->ori_uuid, pilight_uuid) == 0) || 
 			   (tmp_devices->dev_uuid && strcmp(tmp_devices->dev_uuid, pilight_uuid) == 0)))
-			   || internal > 0) {
+			   || internal > 0 || strlen(pilight_uuid) == 0) {
 
 				if(internal > 0) {
 					json_append_member(jdevice, "order", json_mknumber(dorder));
