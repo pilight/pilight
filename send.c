@@ -206,7 +206,7 @@ int main(int argc, char **argv) {
 			}
 			/* If no protocols matches the requested protocol */
 			if(!match) {
-				logprintf(LOG_ERR, "this protocol is not supported");
+				logprintf(LOG_ERR, "this protocol is not supported or doesn't support sending");
 			}
 		}
 	}

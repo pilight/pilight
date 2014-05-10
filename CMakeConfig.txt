@@ -16,6 +16,7 @@ set(PROTOCOL_DS18S20 ON CACHE BOOL "support for the 1-Wire ds18s20 temperature s
 set(PROTOCOL_DHT11 ON CACHE BOOL "support for the DHT11 temperature-humidity sensor")
 set(PROTOCOL_DHT22 ON CACHE BOOL "support for the DHT22/AM2302 temperature-humidity sensor")
 set(PROTOCOL_DIO_SWITCH ON CACHE BOOL "support for the D-IO switch protocol")
+set(PROTOCOL_EHOME ON BOOL "support for the eHome switch protocol")
 set(PROTOCOL_ELRO_SWITCH ON CACHE BOOL "support for the Elro switch protocol")
 set(PROTOCOL_GENERIC_DIMMER ON CACHE BOOL "support for the generic dimmer protocol")
 set(PROTOCOL_GENERIC_SWITCH ON CACHE BOOL "support for the generic switch protocol")

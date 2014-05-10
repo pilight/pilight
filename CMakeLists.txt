@@ -222,6 +222,11 @@ if(${PROTOCOL_IMPULS} MATCHES "OFF"
 	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/impuls.c")
 endif()
 
+if(${PROTOCOL_EHOME} MATCHES "OFF")
+	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/ehome.h")
+	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/ehome.c")
+endif()
+
 if(${PROTOCOL_RAW} MATCHES "OFF")
 	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/raw.h")
 	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/raw.c")
