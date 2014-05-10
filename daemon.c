@@ -406,7 +406,6 @@ void receiver_parse_code(int *rawcode, int rawlen, int plslen, int hwtype) {
 				}
 				plslengths = plslengths->next;
 			}
-
 			if(rawlen == protocol->rawlen && match == 1) {
 				for(x=0;x<(int)rawlen;x++) {
 					if(x < 254) {

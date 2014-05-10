@@ -111,7 +111,7 @@ int config_update(char *protoname, JsonNode *json, JsonNode **out) {
 
 	time_t timenow = time(NULL);
 	struct tm *gmt = gmtime(&timenow);
-	char utc[] = "UTC";
+	char utc[] = "Europe/London";
 	time_t utct = datetime2ts(gmt->tm_year+1900, gmt->tm_mon+1, gmt->tm_mday, gmt->tm_hour, gmt->tm_min, gmt->tm_sec, utc);
 	json_append_member(rval, "timestamp", json_mknumber((double)utct));	
 	

@@ -156,6 +156,9 @@
 #ifdef PROTOCOL_QUIGG_SWITCH
     #include "../protocols/quigg_switch.h"
 #endif
+#ifdef PROTOCOL_CONRAD_WEATHER
+	#include "../protocols/conrad_weather.h"
+#endif
 
 void protocol_init(void) {
 	pilightFirmwareV2Init();
@@ -285,6 +288,9 @@ void protocol_init(void) {
 #endif
 #ifdef PROTOCOL_QUIGG_SWITCH
    quiggSwInit();
+#endif
+#ifdef PROTOCOL_CONRAD_WEATHER
+	conradWeatherInit();
 #endif
 }
 

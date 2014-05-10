@@ -257,6 +257,11 @@ if(${PROTOCOL_CONRAD_RSL_SWITCH} MATCHES "OFF")
 	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/conrad_rsl_switch.c")
 endif()
 
+if(${PROTOCOL_CONRAD_WEATHER} MATCHES "OFF")
+	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/conrad_weather.h")
+	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/conrad_weather.c")
+endif()
+
 if(${PROTOCOL_CONRAD_RSL_CONTACT} MATCHES "OFF")
 	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/conrad_rsl_contact.h")
 	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/conrad_rsl_contact.c")

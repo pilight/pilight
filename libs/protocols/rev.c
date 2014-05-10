@@ -212,6 +212,7 @@ void revInit(void) {
 	protocol_set_id(rev_switch, "rev_switch");	
 	protocol_device_add(rev_switch, "rev_switch", "REV Switches");
 	protocol_conflict_add(rev_switch, "clarus_switch");
+	protocol_conflict_add(rev_switch, "impuls");
 	protocol_plslen_add(rev_switch, 319);
 	protocol_plslen_add(rev_switch, 258);
 	protocol_plslen_add(rev_switch, 186);
