@@ -52,7 +52,7 @@ void conradWeatherParseCode(void) {
 
 	humi1 = binToDecRev(conrad_weather->binary, 26, 29);
 	humi2 = binToDecRev(conrad_weather->binary, 30, 33);
-	humidity = (humi1)+(humi2*16);
+	humidity = ((humi1)+(humi2*16)*100);
 
 	if(binToDecRev(conrad_weather->code, 34, 35) == 1) {
 		battery = 0;
