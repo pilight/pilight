@@ -749,27 +749,31 @@ void *webserver_worker(void *param) {
 
 void webserver_queue(char *message) {
 	pthread_mutex_lock(&webqueue_lock);
-	struct webqueue_t *wnode = malloc(sizeof(struct webqueue_t));
-	if(!wnode) {
-		logprintf(LOG_ERR, "out of memory");
-		exit(EXIT_FAILURE);
-	}
-	wnode->message = malloc(strlen(message)+1);
-	if(!wnode->message) {
-		logprintf(LOG_ERR, "out of memory");
-		exit(EXIT_FAILURE);
-	}
-	strcpy(wnode->message, message);
+	if(webqueue_number <= 1024) {
+		struct webqueue_t *wnode = malloc(sizeof(struct webqueue_t));
+		if(!wnode) {
+			logprintf(LOG_ERR, "out of memory");
+			exit(EXIT_FAILURE);
+		}
+		wnode->message = malloc(strlen(message)+1);
+		if(!wnode->message) {
+			logprintf(LOG_ERR, "out of memory");
+			exit(EXIT_FAILURE);
+		}
+		strcpy(wnode->message, message);
 
-	if(webqueue_number == 0) {
-		webqueue = wnode;
-		webqueue_head = wnode;
+		if(webqueue_number == 0) {
+			webqueue = wnode;
+			webqueue_head = wnode;
+		} else {
+			webqueue_head->next = wnode;
+			webqueue_head = wnode;
+		}
+
+		webqueue_number++;
 	} else {
-		webqueue_head->next = wnode;
-		webqueue_head = wnode;
+		logprintf(LOG_ERR, "webserver queue full");
 	}
-
-	webqueue_number++;
 	pthread_mutex_unlock(&webqueue_lock);
 	pthread_cond_signal(&webqueue_signal);
 }

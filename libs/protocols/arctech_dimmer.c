@@ -258,7 +258,6 @@ void arctechDimInit(void) {
 	protocol_register(&arctech_dimmer);
 	protocol_set_id(arctech_dimmer, "arctech_dimmers");
 	protocol_device_add(arctech_dimmer, "kaku_dimmer", "KlikAanKlikUit Dimmers");
-	protocol_conflict_add(arctech_dimmer, "arctech_contact");
 	protocol_plslen_add(arctech_dimmer, 300);
 	arctech_dimmer->devtype = DIMMER;
 	arctech_dimmer->hwtype = RF433;

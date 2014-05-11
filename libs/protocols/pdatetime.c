@@ -205,6 +205,8 @@ void *pdateTimeParse(void *param) {
 	if((tz = coord2tz(longitude, latitude)) == NULL) {
 		logprintf(LOG_DEBUG, "could not determine timezone");
 		tz = UTC;
+	} else {
+		logprintf(LOG_DEBUG, "%s:%s seems to be in timezone: %s", slongitude, slatitude, tz);
 	}
 
 	while(pdatetime_loop) {

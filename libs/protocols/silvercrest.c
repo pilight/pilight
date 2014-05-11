@@ -159,8 +159,6 @@ void silvercrestInit(void) {
 	protocol_register(&silvercrest);
 	protocol_set_id(silvercrest, "silvercrest");
 	protocol_device_add(silvercrest, "silvercrest", "Silvercrest Switches");
-	protocol_conflict_add(silvercrest, "mumbi");
-	protocol_conflict_add(silvercrest, "arctech_switches_old");
 	protocol_plslen_add(silvercrest, 312);
 	silvercrest->devtype = SWITCH;
 	silvercrest->hwtype = RF433;

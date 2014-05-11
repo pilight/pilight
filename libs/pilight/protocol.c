@@ -307,7 +307,6 @@ void protocol_register(protocol_t **proto) {
 	}
 	(*proto)->options = NULL;
 	(*proto)->devices = NULL;
-	(*proto)->conflicts = NULL;
 	(*proto)->plslen = NULL;
 
 	(*proto)->pulse = 0;
@@ -453,43 +452,6 @@ void protocol_device_add(protocol_t *proto, const char *id, const char *desc) {
 	proto->devices = dnode;
 }
 
-void protocol_conflict_add(protocol_t *proto, const char *id) {
-	struct protocol_conflicts_t *cnode = malloc(sizeof(struct protocol_conflicts_t));
-	if(!cnode) {
-		logprintf(LOG_ERR, "out of memory");
-		exit(EXIT_FAILURE);
-	}
-	if(!(cnode->id = malloc(strlen(id)+1))) {
-		logprintf(LOG_ERR, "out of memory");
-		exit(EXIT_FAILURE);
-	}
-	strcpy(cnode->id, id);
-	cnode->next	= proto->conflicts;
-	proto->conflicts = cnode;
-}
-
-void protocol_conflict_remove(protocol_t **proto, const char *id) {
-	struct protocol_conflicts_t *currP, *prevP;
-
-	prevP = NULL;
-
-	for(currP = (*proto)->conflicts; currP != NULL; prevP = currP, currP = currP->next) {
-
-		if(strcmp(currP->id, id) == 0) {
-			if(prevP == NULL) {
-				(*proto)->conflicts = currP->next;
-			} else {
-				prevP->next = currP->next;
-			}
-
-			sfree((void *)&currP->id);
-			sfree((void *)&currP);
-
-			break;
-		}
-	}
-}
-
 int protocol_device_exists(protocol_t *proto, const char *id) {
 	struct protocol_devices_t *temp = proto->devices;
 
@@ -506,7 +468,6 @@ int protocol_device_exists(protocol_t *proto, const char *id) {
 int protocol_gc(void) {
 	struct protocols_t *ptmp;
 	struct protocol_devices_t *dtmp;
-	struct protocol_conflicts_t *ctmp;
 	struct protocol_plslen_t *ttmp;
 
 	while(protocols) {
@@ -541,15 +502,6 @@ int protocol_gc(void) {
 			}
 		}
 		sfree((void *)&ptmp->listener->devices);
-		if(ptmp->listener->conflicts) {
-			while(ptmp->listener->conflicts) {
-				ctmp = ptmp->listener->conflicts;
-				sfree((void *)&ctmp->id);
-				ptmp->listener->conflicts = ptmp->listener->conflicts->next;
-				sfree((void *)&ctmp);
-			}
-		}
-		sfree((void *)&ptmp->listener->conflicts);
 		sfree((void *)&ptmp->listener);
 		protocols = protocols->next;
 		sfree((void *)&ptmp);

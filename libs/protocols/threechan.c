@@ -58,8 +58,6 @@ void threechanInit(void) {
 	protocol_set_id(threechan, "threechan");
 	protocol_device_add(threechan, "threechan", "3 Channel Weather Stations");
 	protocol_plslen_add(threechan, 266);
-	protocol_conflict_add(threechan, "alecto");
-	protocol_conflict_add(threechan, "teknihall");
 	threechan->devtype = WEATHER;
 	threechan->hwtype = RF433;
 	threechan->pulse = 15;

@@ -48,11 +48,6 @@ typedef struct protocol_devices_t {
 	struct protocol_devices_t *next;
 } protocol_devices_t;
 
-typedef struct protocol_conflicts_t {
-	char *id;
-	struct protocol_conflicts_t *next;
-} protocol_conflicts_t;
-
 typedef struct protocol_plslen_t {
 	int length;
 	struct protocol_plslen_t *next;
@@ -96,7 +91,6 @@ typedef struct protocol_t {
 	hwtype_t hwtype;
 	devtype_t devtype;
 	struct protocol_devices_t *devices;
-	struct protocol_conflicts_t *conflicts;
 	struct protocol_threads_t *threads;
 
 	void (*parseRaw)(void);
@@ -127,8 +121,6 @@ void protocol_set_id(protocol_t *proto, const char *id);
 void protocol_plslen_add(protocol_t *proto, int plslen);
 void protocol_register(protocol_t **proto);
 void protocol_device_add(protocol_t *proto, const char *id, const char *desc);
-void protocol_conflict_add(protocol_t *proto, const char *id);
-void protocol_conflict_remove(protocol_t **proto, const char *id);
 int protocol_device_exists(protocol_t *proto, const char *id);
 int protocol_gc(void);
 

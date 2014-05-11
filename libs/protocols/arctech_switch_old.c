@@ -41,6 +41,7 @@ void arctechSwOldCreateMessage(int id, int unit, int state) {
 }
 
 void arctechSwOldParseBinary(void) {
+
 	int unit = binToDec(arctech_switch_old->binary, 0, 3);
 	int state = arctech_switch_old->binary[11];
 	int id = binToDec(arctech_switch_old->binary, 4, 8);
@@ -162,9 +163,6 @@ void arctechSwOldInit(void) {
 	protocol_device_add(arctech_switch_old, "kaku_switch_old", "Old KlikAanKlikUit Switches");
 	protocol_device_add(arctech_switch_old, "cogex", "Cogex Switches");
 	protocol_device_add(arctech_switch_old, "intertechno_old", "Old Intertechno Switches");
-	protocol_conflict_add(arctech_switch_old, "arctech_screens_old");	
-	protocol_conflict_add(arctech_switch_old, "silvercrest");
-	protocol_conflict_add(arctech_switch_old, "mumbi");
 	protocol_plslen_add(arctech_switch_old, 340);
 	protocol_plslen_add(arctech_switch_old, 330);
 	protocol_plslen_add(arctech_switch_old, 320);	

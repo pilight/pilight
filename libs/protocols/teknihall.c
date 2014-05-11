@@ -58,8 +58,6 @@ void teknihallInit(void) {
 	protocol_set_id(teknihall, "teknihall");
 	protocol_device_add(teknihall, "teknihall", "Teknihall Weather Stations");
 	protocol_plslen_add(teknihall, 266);
-	protocol_conflict_add(teknihall, "alecto");
-	protocol_conflict_add(teknihall, "threechan");
 	teknihall->devtype = WEATHER;
 	teknihall->hwtype = RF433;
 	teknihall->pulse = 15;

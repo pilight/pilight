@@ -113,8 +113,6 @@ void gpio433Init(void) {
 	hardware_register(&gpio433);
 	hardware_set_id(gpio433, "433gpio");
 
-	piHiPri(55);
-
 	options_add(&gpio433->options, 'r', "receiver", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, NULL, "^[0-9-]+$");
 	options_add(&gpio433->options, 's', "sender", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, NULL, "^[0-9-]+$");
 
