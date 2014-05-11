@@ -288,7 +288,7 @@ static int webserver_request_handler(struct mg_connection *conn) {
 	struct filehandler_t *filehandler = (struct filehandler_t *)conn->connection_param;
 	unsigned int chunk = WEBSERVER_CHUNK_SIZE;
 	struct stat st;
-	
+
 	if(!conn->is_websocket) {
 		if(filehandler != NULL) {
 			char buff[WEBSERVER_CHUNK_SIZE];
@@ -359,7 +359,7 @@ static int webserver_request_handler(struct mg_connection *conn) {
 					}
 					pch = strtok(NULL, ",");
 				}
-			} else {
+			} else if(webserver_root != NULL && webgui_tpl != NULL && conn->uri != NULL) {
 				size_t wlen = strlen(webserver_root)+strlen(webgui_tpl)+strlen(conn->uri)+2;
 				request = malloc(wlen);
 				if(!request) {
@@ -379,6 +379,9 @@ static int webserver_request_handler(struct mg_connection *conn) {
 					else
 						sprintf(request, "%s/%s/%s", webserver_root, webgui_tpl, conn->uri);
 				}
+			}
+			if(request == NULL) {
+				return MG_FALSE;
 			}
 
 			char *dot = NULL;

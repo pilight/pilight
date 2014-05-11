@@ -282,7 +282,6 @@ void broadcast_queue(char *protoname, JsonNode *json) {
 }
 
 void *broadcast(void *param) {
-
 	int i = 0, broadcasted = 0;
 
 	pthread_mutex_lock(&bcqueue_lock);
@@ -578,7 +577,14 @@ void *receive_parse_code(void *param) {
 
 void *send_code(void *param) {
 	int i = 0, x = 0;
+	struct sched_param sched;
 
+	/* Make sure the pilight sender gets 
+	   the highest priority available */
+	memset(&sched, 0, sizeof(sched));
+	sched.sched_priority = 80;
+	pthread_setschedparam(pthread_self(), SCHED_FIFO, &sched);	
+	
 	pthread_mutex_lock(&sendqueue_lock);
 
 	while(main_loop) {

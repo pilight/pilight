@@ -220,6 +220,7 @@ int which(const char *program) {
 		strcpy(exec, pch);
 		strcat(exec, "/");
 		strcat(exec, program);
+
 		if(access(exec, X_OK) != -1) {
 			return 0;
 		}
