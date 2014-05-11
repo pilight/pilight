@@ -156,8 +156,8 @@
 #ifdef PROTOCOL_QUIGG_SWITCH
     #include "../protocols/quigg_switch.h"
 #endif
-#ifdef PROTOCOL_CONRAD_WEATHER
-	#include "../protocols/conrad_weather.h"
+#if defined(PROTOCOL_CONRAD_WEATHER) || defined(PROTOCOL_TFA)
+	#include "../protocols/tfa.h"
 #endif
 #ifdef PROTOCOL_EHOME
 	#include "../protocols/ehome.h"
@@ -292,8 +292,8 @@ void protocol_init(void) {
 #ifdef PROTOCOL_QUIGG_SWITCH
    quiggSwInit();
 #endif
-#ifdef PROTOCOL_CONRAD_WEATHER
-	conradWeatherInit();
+#if defined(PROTOCOL_CONRAD_WEATHER) || defined(PROTOCOL_TFA)
+	tfaInit();
 #endif
 #ifdef PROTOCOL_EHOME
 	ehomeInit();
