@@ -50,7 +50,7 @@
 unsigned short sunriseset_loop = 1;
 unsigned short sunriseset_threads = 0;
 
-double sunRiseSetCalculate(int year, int month, int day, double lat, double lon, int rising, int tz) {
+double sunRiseSetCalculate(int year, int month, int day, double lon, double lat, int rising, int tz) {
 	int N = (int)((floor(275 * month / 9)) - ((floor((month + 9) / 12)) * 
 			((1 + floor((year - 4 * floor(year / 4) + 2) / 3)))) + (int)day - 30);
 	
