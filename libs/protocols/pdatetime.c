@@ -148,7 +148,7 @@ close:
 }
 
 void *pdateTimeParse(void *param) {
-	char UTC[] = "UTC";
+	char UTC[] = "Europe/London";
 	struct protocol_threads_t *thread = (struct protocol_threads_t *)param;
 	struct JsonNode *json = (struct JsonNode *)thread->param;
 	struct JsonNode *jid = NULL;

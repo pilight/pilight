@@ -106,7 +106,11 @@ int ssdp_seek(struct ssdp_list_t **ssdp_list) {
 	tv.tv_sec = 0;
 	tv.tv_usec = 100000;
 
-	sock = socket(AF_INET, SOCK_DGRAM, 0);
+	if((sock = socket(AF_INET, SOCK_DGRAM, 0)) < 0){
+		logprintf(LOG_ERR, "could not create ssdp socket");
+		goto end;
+	}
+
 	memset((void *)&addr, '\0', sizeof(addr));
     addr.sin_family = AF_INET;
     addr.sin_port = htons(1900);
@@ -156,7 +160,9 @@ int ssdp_seek(struct ssdp_list_t **ssdp_list) {
 	goto end;
 	
 end:
-	close(sock);
+	if(sock > 0) {
+		close(sock);
+	}
     struct ssdp_list_t *ptr = *ssdp_list, *next = NULL, *prev = NULL;
    	if(match) {
 		while(ptr) {

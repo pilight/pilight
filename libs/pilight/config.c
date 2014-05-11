@@ -111,7 +111,7 @@ int config_update(char *protoname, JsonNode *json, JsonNode **out) {
 
 	time_t timenow = time(NULL);
 	struct tm *gmt = gmtime(&timenow);
-	char utc[] = "UTC";
+	char utc[] = "Europe/London";
 	time_t utct = datetime2ts(gmt->tm_year+1900, gmt->tm_mon+1, gmt->tm_mday, gmt->tm_hour, gmt->tm_min, gmt->tm_sec, utc);
 	json_append_member(rval, "timestamp", json_mknumber((double)utct));	
 	
@@ -124,9 +124,15 @@ int config_update(char *protoname, JsonNode *json, JsonNode **out) {
 			have_device = 0;
 			JsonNode *rloc = NULL;
 			while(dptr) {
-				if(((uuid && dptr->dev_uuid && dptr->ori_uuid) && ((strcmp(dptr->dev_uuid, uuid) == 0)
-				   || dptr->cst_uuid == 0))
-				   || (!uuid)) {
+				if(((uuid && dptr->dev_uuid && dptr->ori_uuid && strlen(pilight_uuid) > 0) &&
+					(((strcmp(dptr->dev_uuid, uuid) == 0) && dptr->cst_uuid == 1) ||
+					 (strcmp(dptr->dev_uuid, pilight_uuid) == 0 
+					  && strcmp(dptr->dev_uuid, uuid) == 0 
+					  && dptr->cst_uuid == 1) ||
+					 (strcmp(dptr->dev_uuid, dptr->ori_uuid) == 0 
+					  && strcmp(pilight_uuid, dptr->ori_uuid) == 0 
+					  && strcmp(pilight_uuid, uuid) == 0)))
+				   || (!uuid) || strlen(pilight_uuid) == 0) {
 					struct protocols_t *tmp_protocols = dptr->protocols;
 					match = 0;
 					while(tmp_protocols) {
@@ -530,7 +536,7 @@ JsonNode *config2json(short internal) {
 
 			if((strlen(pilight_uuid) > 0 && ((strcmp(tmp_devices->ori_uuid, pilight_uuid) == 0) || 
 			   (tmp_devices->dev_uuid && strcmp(tmp_devices->dev_uuid, pilight_uuid) == 0)))
-			   || internal > 0) {
+			   || internal > 0 || strlen(pilight_uuid) == 0) {
 
 				if(internal > 0) {
 					json_append_member(jdevice, "order", json_mknumber(dorder));

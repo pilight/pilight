@@ -110,7 +110,7 @@ void *sunRiseSetParse(void *param) {
 	struct JsonNode *jchild1 = NULL;
 	char *slongitude = NULL, *slatitude = NULL, *tz = NULL;
 	double longitude = 0, latitude = 0;
-	char UTC[] = "UTC";	
+	char UTC[] = "Europe/London";	
 	
 	time_t timenow = 0;
 	struct tm *current = NULL;

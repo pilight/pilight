@@ -260,7 +260,7 @@ int ctzoffset(void) {
 }
 
 int isdst(char *tz) {
-	char UTC[] = "UTC";
+	char UTC[] = "Europe/London";
 	time_t now = 0;
 	struct tm *tm = NULL;
 	now = time(NULL);

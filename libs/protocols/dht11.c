@@ -110,7 +110,7 @@ void *dht11Parse(void *param) {
 					pinMode(id[y], INPUT);
 
 					// detect change and read data
-					for(i=0; i<MAXTIMINGS; i++) {
+					for(i=0; (i<MAXTIMINGS && dht11_loop); i++) {
 						counter = 0;
 						delayMicroseconds(10);
 						while(sizecvt(digitalRead(id[y])) == laststate && dht11_loop) {

@@ -64,7 +64,7 @@ void hardware_init(void) {
 	noneInit();
 }
 
-void hardware_register(hardware_t **hw) {
+void hardware_register(struct hardware_t **hw) {
 	*hw = malloc(sizeof(struct hardware_t));
 	if(!*hw) {
 		logprintf(LOG_ERR, "out of memory");
@@ -78,14 +78,8 @@ void hardware_register(hardware_t **hw) {
 	(*hw)->send = NULL;
 	(*hw)->settings = NULL;
 	
-	struct hwlst_t *hnode = malloc(sizeof(struct hwlst_t));
-	if(!hnode) {
-		logprintf(LOG_ERR, "out of memory");
-		exit(EXIT_FAILURE);
-	}
-	hnode->listener = *hw;
-	hnode->next = hwlst;
-	hwlst = hnode;
+	(*hw)->next = hardware;
+	hardware = (*hw);
 }
 
 void hardware_set_id(hardware_t *hw, const char *id) {
@@ -98,18 +92,17 @@ void hardware_set_id(hardware_t *hw, const char *id) {
 }
 
 int hardware_gc(void) {
-	struct hwlst_t *htmp;
+	struct hardware_t *htmp;
 	struct conf_hardware_t *ctmp = NULL;
 
-	while(hwlst) {
-		htmp = hwlst;
-		sfree((void *)&htmp->listener->id);
-		options_delete(htmp->listener->options);
-		sfree((void *)&htmp->listener);
-		hwlst = hwlst->next;
+	while(hardware) {
+		htmp = hardware;
+		sfree((void *)&htmp->id);
+		options_delete(htmp->options);
+		hardware = hardware->next;
 		sfree((void *)&htmp);
 	}
-	sfree((void *)&hwlst);
+	sfree((void *)&hardware);
 
 	while(conf_hardware) {
 		ctmp = conf_hardware;
@@ -144,8 +137,8 @@ int hardware_parse(JsonNode *root) {
 	struct conf_hardware_t *hnode = NULL;
 	struct conf_hardware_t *tmp_confhw = NULL;
 	struct options_t *hw_options = NULL;
-	struct hwlst_t *tmp_hwlst = NULL;
-	struct hardware_t *hardware = NULL;
+	struct hardware_t *tmp_hardware = NULL;
+	struct hardware_t *hw = NULL;
 	
 	JsonNode *jvalues = NULL;
 	JsonNode *jchilds = json_first_child(root);
@@ -167,15 +160,15 @@ int hardware_parse(JsonNode *root) {
 			goto clear;
 		} else {
 			/* Check if defined hardware module exists */
-			tmp_hwlst = hwlst;
+			tmp_hardware = hardware;
 			match = 0;
-			while(tmp_hwlst) {
-				if(strcmp(tmp_hwlst->listener->id, jchilds->key) == 0) {
-					hardware = tmp_hwlst->listener;
+			while(tmp_hardware) {
+				if(strcmp(tmp_hardware->id, jchilds->key) == 0) {
+					hw = tmp_hardware;
 					match = 1;
 					break;
 				}
-				tmp_hwlst = tmp_hwlst->next;
+				tmp_hardware = tmp_hardware->next;
 			}
 			if(match == 0) {
 				logprintf(LOG_ERR, "hardware module #%d \"%s\" does not exist", i, jchilds->key);
@@ -193,7 +186,7 @@ int hardware_parse(JsonNode *root) {
 					goto clear;
 				}
 				/* And only allow one module covering the same frequency */
-				if(tmp_confhw->hardware->type == hardware->type) {
+				if(tmp_confhw->hardware->type == hw->type) {
 					logprintf(LOG_ERR, "hardware module #%d \"%s\", duplicate freq.", i, jchilds->key);
 					have_error = 1;
 					goto clear;
@@ -202,7 +195,7 @@ int hardware_parse(JsonNode *root) {
 			}	
 
 			/* Check if all options required by the hardware module are present */
-			hw_options = hardware->options;
+			hw_options = hw->options;
 			while(hw_options) {
 				match = 0;
 				jvalues = json_first_child(jchilds);
@@ -261,7 +254,7 @@ int hardware_parse(JsonNode *root) {
 			while(jvalues) {
 				match = 0;
 				if(jvalues->tag == JSON_NUMBER || jvalues->tag == JSON_STRING) {
-					hw_options = hardware->options;
+					hw_options = hw->options;
 					while(hw_options) {
 						if(strcmp(jvalues->key, hw_options->name) == 0 && jvalues->tag == hw_options->vartype) {
 							match = 1;
@@ -278,11 +271,11 @@ int hardware_parse(JsonNode *root) {
 				jvalues = jvalues->next;
 			}
 
-			if(hardware->settings) {
+			if(hw->settings) {
 				/* Sync all settings with the hardware module */
 				jvalues = json_first_child(jchilds);
 				while(jvalues) {
-					if(hardware->settings(jvalues) == EXIT_FAILURE) {
+					if(hw->settings(jvalues) == EXIT_FAILURE) {
 						logprintf(LOG_ERR, "hardware module #%d \"%s\", setting \"%s\" invalid", i, jchilds->key, jvalues->key);
 						have_error = 1;
 						goto clear;							
@@ -296,7 +289,7 @@ int hardware_parse(JsonNode *root) {
 				logprintf(LOG_ERR, "out of memory");
 				exit(EXIT_FAILURE);
 			}
-			hnode->hardware = hardware;
+			hnode->hardware = hw;
 			hnode->next = conf_hardware;
 			conf_hardware = hnode;
 

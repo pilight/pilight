@@ -21,7 +21,7 @@ ifneq (, $(findstring amd64, $(SYS)))
 	OSFLAGS = -O3 -fPIC -march=native -mtune=native -mfpmath=sse -Wno-conversion
 endif
 GIT_HASH := $(shell git describe --always)
-CFLAGS = -ffast-math $(OSFLAGS) -fstack-protector-all -Wfloat-equal -Wshadow -Wpointer-arith -Wcast-align -Wstrict-overflow=5 -Wwrite-strings -Waggregate-return -Wcast-qual -Wswitch-default -Wswitch-enum -Wformat=2 -g -Wall -I. -isystem.. -Ilibs/pilight/ -Ilibs/protocols/ -Ilibs/hardware/ -Ilibs/avrdude/ -pthread -lm -DHASH=\"$(GIT_HASH)\"
+CFLAGS = -ffast-math $(OSFLAGS) -Wl,-rpath=/usr/local/lib/,-rpath=/usr/lib/,-rpath=/lib/ -fstack-protector-all -Wfloat-equal -Wshadow -Wpointer-arith -Wcast-align -Wstrict-overflow=5 -Wwrite-strings -Waggregate-return -Wcast-qual -Wswitch-default -Wswitch-enum -Wformat=2 -g -Wall -I. -isystem.. -Ilibs/pilight/ -Ilibs/protocols/ -Ilibs/hardware/ -Ilibs/avrdude/ -pthread -lm -DHASH=\"$(GIT_HASH)\"
 SUBDIRS = libs/pilight libs/protocols libs/hardware libs/avrdude
 SRC = $(wildcard *.c)
 INCLUDES = $(wildcard protocols/*.h) $(wildcard protocols/*.c) $(wildcard hardware/*.h) $(wildcard hardware/*.c) $(wildcard libs/pilight/*.h) $(wildcard libs/pilight/*.c) $(wildcard libs/avrdude/*.h) $(wildcard libs/avrdude/*.c)
@@ -69,6 +69,9 @@ pilight-raw: raw.c $(INCLUDES) $(LIBS) libpilight.so
 pilight-uuid: uuid.c $(INCLUDES) $(LIBS) libpilight.so
 	$(GCC) $(CFLAGS) -o $@ $(patsubst pilight-%,%.c,$@) libpilight.so /usr/lib/arm-linux-gnueabihf/libz.so
 
+pilight-flash: flash.c $(INCLUDES) $(LIBS) libpilight.so
+	$(GCC) $(CFLAGS) -o $@ $(patsubst pilight-%,%.c,$@) libpilight.so /usr/lib/arm-linux-gnueabihf/libz.so
+
 install:
 	[ -d /usr/share/images/pilight/ ] && rm -r /usr/share/images/pilight/ || true
 	
@@ -87,6 +90,7 @@ install:
 	install -m 0655 pilight-learn /usr/local/sbin/
 	install -m 0655 pilight-raw /usr/local/sbin/
 	install -m 0655 pilight-uuid /usr/local/bin/
+	install -m 0655 pilight-flash /usr/local/sbin/
 	install -m 0655 libpilight.so /usr/local/lib/pilight/
 	install -m 0655 libpilight.a /usr/local/lib/pilight/
 	install -m 0644 settings.json-default /etc/pilight/

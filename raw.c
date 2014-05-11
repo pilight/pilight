@@ -70,11 +70,11 @@ int main_gc(void) {
 void *receive_code(void *param) {
 	int duration = 0;
 	
-	struct hardware_t *hardware = (hardware_t *)param;
-	while(main_loop && hardware->receive) {
-		duration = hardware->receive();
+	struct hardware_t *hw = (hardware_t *)param;
+	while(main_loop && hw->receive) {
+		duration = hw->receive();
 		if(duration > 0) {
-			printf("%s: %d\n", hardware->id, duration);
+			printf("%s: %d\n", hw->id, duration);
 		}
 	};
 	return NULL;
@@ -157,17 +157,17 @@ int main(int argc, char **argv) {
 	char pilight_daemon[] = "pilight-daemon";
 	char pilight_learn[] = "pilight-learn";
 	char pilight_debug[] = "pilight-debug";
-	if((pid = findproc(pilight_daemon, NULL)) > 0) {
+	if((pid = findproc(pilight_daemon, NULL, 1)) > 0) {
 		logprintf(LOG_ERR, "pilight-daemon instance found (%d)", (int)pid);
 		return (EXIT_FAILURE);
 	}
 
-	if((pid = findproc(pilight_learn, NULL)) > 0) {
+	if((pid = findproc(pilight_learn, NULL, 1)) > 0) {
 		logprintf(LOG_ERR, "pilight-learn instance found (%d)", (int)pid);
 		return (EXIT_FAILURE);
 	}
 
-	if((pid = findproc(pilight_debug, NULL)) > 0) {
+	if((pid = findproc(pilight_debug, NULL, 1)) > 0) {
 		logprintf(LOG_ERR, "pilight-debug instance found (%d)", (int)pid);
 		return (EXIT_FAILURE);
 	}	

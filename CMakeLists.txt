@@ -7,6 +7,13 @@ set(PROJECT_VERSION 4.0)
 
 include(${PROJECT_SOURCE_DIR}/CMakeConfig.txt)
 
+#Final compilation all platforms
+#Removing debugging for final compilation
+#set(CMAKE_SKIP_RPATH TRUE)
+set(CMAKE_EXE_LINKER_FLAGS " -Wl,-rpath=/usr/local/lib/,-rpath=/usr/lib/,-rpath=/lib/")
+set(CMAKE_SHARED_LINKER_FLAGS " -Wl,-rpath=/usr/local/lib/,-rpath=/usr/lib/,-rpath=/lib/")
+set(CMAKE_MODULE_LINKER_FLAGS " -Wl,-rpath=/usr/local/lib/,-rpath=/usr/lib/,-rpath=/lib/")
+
 set(CMAKE_ZLIB_LIBS_INIT)
 
 find_library(CMAKE_ZLIB_LIBS_INIT 
@@ -14,6 +21,7 @@ find_library(CMAKE_ZLIB_LIBS_INIT
             PATHS   /usr/lib
                     /usr/lib32
                     /usr/lib64
+                    /usr/lib/i386-linux-gnu		
                     /usr/lib/x86_64-linux-gnu
                     /usr/local/lib
                     /usr/local/lib32
@@ -43,6 +51,11 @@ endif()
 if(${CMAKE_SYSTEM_PROCESSOR} MATCHES "amd64")
 	set(CMAKE_C_FLAGS "-O2 -fPIC -march=native -mtune=native -ffast-math -Wformat=2 -g3 -Wformat-nonliteral")
 endif()
+
+# Compile final sources for Ubuntu 64bit
+#set (CMAKE_C_FLAGS "-m64 -fPIC")
+# Compile final sources for Ubuntu 32bit
+#set (CMAKE_C_FLAGS "-m32")
 
 # Start uninstaller generator
 function(WRITE_UNINSTALL_TARGET_SCRIPT)
@@ -209,6 +222,11 @@ if(${PROTOCOL_IMPULS} MATCHES "OFF"
 	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/impuls.c")
 endif()
 
+if(${PROTOCOL_EHOME} MATCHES "OFF")
+	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/ehome.h")
+	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/ehome.c")
+endif()
+
 if(${PROTOCOL_RAW} MATCHES "OFF")
 	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/raw.h")
 	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/raw.c")
@@ -242,6 +260,11 @@ endif()
 if(${PROTOCOL_CONRAD_RSL_SWITCH} MATCHES "OFF")
 	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/conrad_rsl_switch.h")
 	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/conrad_rsl_switch.c")
+endif()
+
+if(${PROTOCOL_CONRAD_WEATHER} MATCHES "OFF")
+	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/conrad_weather.h")
+	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/conrad_weather.c")
 endif()
 
 if(${PROTOCOL_CONRAD_RSL_CONTACT} MATCHES "OFF")
@@ -484,6 +507,12 @@ target_link_libraries(pilight-uuid ${CMAKE_DL_LIBS})
 target_link_libraries(pilight-uuid m)
 target_link_libraries(pilight-uuid ${CMAKE_THREAD_LIBS_INIT})
 
+add_executable(pilight-flash flash.c)
+target_link_libraries(pilight-flash pilight_shared)
+target_link_libraries(pilight-flash ${CMAKE_DL_LIBS})
+target_link_libraries(pilight-flash m)
+target_link_libraries(pilight-flash ${CMAKE_THREAD_LIBS_INIT})
+
 if(EXISTS "/usr/local/sbin/pilight-send")
 	execute_process(COMMAND rm "/usr/local/sbin/pilight-send")
 endif()
@@ -507,6 +536,7 @@ install(PROGRAMS pilight-control DESTINATION bin)
 install(PROGRAMS pilight-learn DESTINATION sbin)
 install(PROGRAMS pilight-receive DESTINATION bin)
 install(PROGRAMS pilight-debug DESTINATION sbin)
+install(PROGRAMS pilight-flash DESTINATION sbin)
 install(PROGRAMS pilight-uuid DESTINATION bin)
 install(SCRIPT cmake_postinstall.cmake)
 
