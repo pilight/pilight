@@ -253,9 +253,7 @@ void broadcast_queue(char *protoname, JsonNode *json) {
 
 		char *jstr = json_stringify(json, NULL);
 		bnode->jmessage = json_decode(jstr);
-
-		if(strcmp(jstr, "{}") != 0 && (json_find_member(bnode->jmessage, "uuid") == NULL 
-		  && strlen(pilight_uuid) > 0)) {
+		if(json_find_member(bnode->jmessage, "uuid") == NULL && strlen(pilight_uuid) > 0) {
 			json_append_member(bnode->jmessage, "uuid", json_mkstring(pilight_uuid));
 		}
 		sfree((void *)&jstr);
@@ -343,17 +341,25 @@ void *broadcast(void *param) {
 			}
 			broadcasted = 0;
 
+			struct JsonNode *childs = json_first_child(bcqueue->jmessage);
+			int nrchilds = 0;
+			while(childs) {
+				nrchilds++;
+				childs = childs->next;
+			}
+
 			if(receivers > 0) {
 				/* Write the message to all receivers */
 				for(i=0;i<MAX_CLIENTS;i++) {
 					if(handshakes[i] == RECEIVER) {
-						if(strcmp(jbroadcast, "{}") != 0) {
+						if(strcmp(jbroadcast, "{}") != 0 && nrchilds > 1) {
 							socket_write(socket_get_clients(i), jbroadcast);
+							broadcasted = 1;
 						}
-						broadcasted = 1;
 					}
 				}
 			}
+
 			if(runmode == 2 && sockfd > 0) {
 				struct JsonNode *jupdate = json_decode(jinternal);
 				json_append_member(jupdate, "message", json_mkstring("update"));
@@ -363,7 +369,7 @@ void *broadcast(void *param) {
 				json_delete(jupdate);
 				sfree((void *)&ret);
 			}
-			if((broadcasted == 1 || nodaemon == 1) && strcmp(jbroadcast, "{}") != 0) {
+			if((broadcasted == 1 || nodaemon == 1) && (strcmp(jbroadcast, "{}") != 0 && nrchilds > 1)) {
 				logprintf(LOG_DEBUG, "broadcasted: %s", jbroadcast);
 			}
 			sfree((void *)&jinternal);

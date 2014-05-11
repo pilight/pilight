@@ -19,6 +19,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 
 #include "../../pilight.h"
 #include "common.h"
@@ -29,6 +30,16 @@
 #include "gc.h"
 #include "tfa.h"
 
+struct tfa_settings_t {
+	double id;
+	double channel;
+	double temp;
+	double humi;
+	struct tfa_settings_t *next;
+} tfa_settings_t;
+
+struct tfa_settings_t *tfa_settings = NULL;
+
 void tfaParseCode(void) {
 	int temp1 = 0, temp2 = 0, temp3 = 0;
 	int humi1 = 0, humi2 = 0;
@@ -36,6 +47,7 @@ void tfaParseCode(void) {
 	int humidity = 0, battery = 0;
 	int channel = 0;
 	int i = 0, x = 0;
+	int humi_offset = 0, temp_offset = 0;
 
 	for(i=1;i<tfa->rawlen-2;i+=2) {
 		tfa->binary[x++] = tfa->code[i];
@@ -60,12 +72,87 @@ void tfaParseCode(void) {
 		battery = 1;
 	}
 
+	struct tfa_settings_t *tmp = tfa_settings;
+	while(tmp) {
+		if(fabs(tmp->id-id) < EPSILON && fabs(tmp->channel-channel) < EPSILON) {
+			humi_offset = (int)tmp->humi;
+			temp_offset = (int)tmp->temp;
+			break;
+		}
+		tmp = tmp->next;
+	}
+
+	temperature += temp_offset;
+	humidity += humi_offset;
+	
 	tfa->message = json_mkobject();
 	json_append_member(tfa->message, "id", json_mknumber(id));
 	json_append_member(tfa->message, "temperature", json_mknumber(temperature));
 	json_append_member(tfa->message, "humidity", json_mknumber(humidity));
 	json_append_member(tfa->message, "battery", json_mknumber(battery));
 	json_append_member(tfa->message, "channel", json_mknumber(channel));
+}
+
+int tfaCheckValues(struct JsonNode *jvalues) {
+	struct JsonNode *jid = NULL;
+
+	if((jid = json_find_member(jvalues, "id"))) {
+		struct tfa_settings_t *snode = NULL;
+		struct JsonNode *jchild = NULL;
+		struct JsonNode *jchild1 = NULL;
+		double channel = -1, id = -1;
+		int match = 0;
+	
+		jchild = json_first_child(jid);
+		while(jchild) {
+			jchild1 = json_first_child(jchild);
+			while(jchild1) {
+				if(strcmp(jchild1->key, "channel") == 0) {
+					channel = jchild1->number_;
+				}
+				if(strcmp(jchild1->key, "id") == 0) {
+					id = jchild1->number_;
+				}
+				jchild1 = jchild1->next;
+			}
+			jchild = jchild->next;
+		}
+
+		struct tfa_settings_t *tmp = tfa_settings;		
+		while(tmp) {
+			if(fabs(tmp->id-id) < EPSILON && fabs(tmp->channel-channel) < EPSILON) {
+				match = 1;
+				break;
+			}
+			tmp = tmp->next;
+		}
+		
+		if(!match) {
+			if(!(snode = malloc(sizeof(struct tfa_settings_t)))) {
+				logprintf(LOG_ERR, "out of memory");
+				exit(EXIT_FAILURE);
+			}
+			snode->id = id;
+			snode->channel = channel;
+
+			json_find_number(jvalues, "device-temperature-offset", &snode->temp);
+			json_find_number(jvalues, "device-humidity-offset", &snode->humi);
+
+			snode->next = tfa_settings;
+			tfa_settings = snode;
+		}
+	}
+	return 0;
+}
+
+void tfaGC(void) {
+	struct tfa_settings_t *tmp = NULL;		
+	while(tfa_settings) {
+		tmp = tfa_settings;
+		tfa_settings = tfa_settings->next;
+		sfree((void *)&tmp);
+	}
+	sfree((void *)&tfa_settings);
 }
 
 void tfaInit(void) {
@@ -89,10 +176,14 @@ void tfaInit(void) {
 	options_add(&tfa->options, 'b', "battery", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, NULL, "^[01]$");
 
 	options_add(&tfa->options, 0, "device-decimals", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)2, "[0-9]");
+	options_add(&tfa->options, 0, "device-temperature-offset", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)0, "[0-9]");
+	options_add(&tfa->options, 0, "device-humidity-offset", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)0, "[0-9]");
 	options_add(&tfa->options, 0, "gui-decimals", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)2, "[0-9]");
 	options_add(&tfa->options, 0, "gui-show-humidity", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
 	options_add(&tfa->options, 0, "gui-show-temperature", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
 	options_add(&tfa->options, 0, "gui-show-battery", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
 
 	tfa->parseCode=&tfaParseCode;
+	tfa->checkValues=&tfaCheckValues;
+	tfa->gc=&tfaGC;
 }

@@ -288,7 +288,7 @@ static int webserver_request_handler(struct mg_connection *conn) {
 	struct filehandler_t *filehandler = (struct filehandler_t *)conn->connection_param;
 	unsigned int chunk = WEBSERVER_CHUNK_SIZE;
 	struct stat st;
-
+	
 	if(!conn->is_websocket) {
 		if(filehandler != NULL) {
 			char buff[WEBSERVER_CHUNK_SIZE];
