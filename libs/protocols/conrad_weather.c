@@ -72,8 +72,10 @@ void conradWeatherInit(void) {
 	protocol_register(&conrad_weather);
 	protocol_set_id(conrad_weather, "conrad_weather");
 	protocol_device_add(conrad_weather, "conrad_weather", "Conrad Weather Stations");
-	protocol_plslen_add(conrad_weather, 225);
-	protocol_plslen_add(conrad_weather, 235);
+	protocol_plslen_add(conrad_weather, 220);
+	protocol_plslen_add(conrad_weather, 230);
+	protocol_plslen_add(conrad_weather, 240);
+	protocol_plslen_add(conrad_weather, 250);
 	conrad_weather->devtype = WEATHER;
 	conrad_weather->hwtype = RF433;
 	conrad_weather->pulse = 20;

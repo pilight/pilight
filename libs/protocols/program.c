@@ -165,7 +165,7 @@ void *programParse(void *param) {
 				JsonNode *code = json_mkobject();
 				json_append_member(code, "name", json_mkstring(lnode->name));
 
-				if((pid = (int)findproc(lnode->program, lnode->arguments)) > 0) {
+				if((pid = (int)findproc(lnode->program, lnode->arguments, 0)) > 0) {
 					lnode->currentstate = 1;
 					json_append_member(code, "state", json_mkstring("running"));
 					json_append_member(code, "pid", json_mknumber((int)pid));
@@ -209,7 +209,7 @@ void *programThread(void *param) {
 	int pid = 0;
 	int result = 0;
 
-	if((pid = (int)findproc(p->program, p->arguments)) > 0) {
+	if((pid = (int)findproc(p->program, p->arguments, 0)) > 0) {
 		result = system(p->stop);
 	} else {
 		result = system(p->start);
@@ -219,7 +219,7 @@ void *programThread(void *param) {
 	if(WIFSIGNALED(result)) {
 		int ppid = 0;
 		/* Find the pilight daemon pid */
-		if((ppid = (int)findproc(progname, NULL)) > 0) {
+		if((ppid = (int)findproc(progname, NULL, 0)) > 0) {
 			/* Send a sigint to ourself */
 			kill(ppid, SIGINT);
 		}
@@ -254,7 +254,7 @@ int programCreateCode(JsonNode *code) {
 							else if(json_find_number(code, "stopped", &itmp) == 0)
 								state = 0;
 
-							if((pid = (int)findproc(tmp->program, tmp->arguments)) > 0 && state == 1) {
+							if((pid = (int)findproc(tmp->program, tmp->arguments, 0)) > 0 && state == 1) {
 								logprintf(LOG_ERR, "program \"%s\" already running", tmp->name);
 							} else if(pid == -1 && state == 0) {
 								logprintf(LOG_ERR, "program \"%s\" already stopped", tmp->name);

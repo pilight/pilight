@@ -274,17 +274,17 @@ int main(int argc, char **argv) {
 	char pilight_daemon[] = "pilight-daemon";
 	char pilight_learn[] = "pilight-learn";
 	char pilight_raw[] = "pilight-raw";
-	if((pid = findproc(pilight_daemon, NULL)) > 0) {
+	if((pid = findproc(pilight_daemon, NULL, 1)) > 0) {
 		logprintf(LOG_ERR, "pilight-daemon instance found (%d)", (int)pid);
 		return (EXIT_FAILURE);
 	}
 
-	if((pid = findproc(pilight_learn, NULL)) > 0) {
+	if((pid = findproc(pilight_learn, NULL, 1)) > 0) {
 		logprintf(LOG_ERR, "pilight-learn instance found (%d)", (int)pid);
 		return (EXIT_FAILURE);
 	}
 
-	if((pid = findproc(pilight_raw, NULL)) > 0) {
+	if((pid = findproc(pilight_raw, NULL, 1)) > 0) {
 		logprintf(LOG_ERR, "pilight-raw instance found (%d)", (int)pid);
 		return (EXIT_FAILURE);
 	}		

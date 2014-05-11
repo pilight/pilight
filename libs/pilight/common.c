@@ -64,9 +64,9 @@ void logmarkup(void) {
 }
 
 #ifdef __FreeBSD__
-int findproc(char *cmd, char *args) {
+int findproc(char *cmd, char *args, int loosely) {
 #else
-pid_t findproc(char *cmd, char *args) {
+pid_t findproc(char *cmd, char *args, int loosely) {
 #endif
 	DIR* dir;
 	struct dirent* ent;
@@ -97,7 +97,8 @@ pid_t findproc(char *cmd, char *args) {
 						close(fd);
 						continue;
 					}
-					if(strcmp(pch, cmd) == 0) {
+					if((strcmp(pch, cmd) == 0 && loosely == 0)
+					   || (strstr(pch, cmd) != NULL && loosely == 1)) {
 						match++;
 					}
 

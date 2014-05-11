@@ -50,9 +50,9 @@ int path_exists(char *fil);
 struct sockaddr *sockaddr_dup(struct sockaddr *sa);
 int rep_getifaddrs(struct ifaddrs **ifap);
 void rep_freeifaddrs(struct ifaddrs *ifap);
-int findproc(char *name, char *args);
+int findproc(char *name, char *args, int loosely);
 #else
-pid_t findproc(char *name, char *args);
+pid_t findproc(char *name, char *args, int loosely);
 #endif
 
 #if defined(DEBUG) && !defined(__FreeBSD)
