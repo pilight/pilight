@@ -359,7 +359,7 @@ static int webserver_request_handler(struct mg_connection *conn) {
 					}
 					pch = strtok(NULL, ",");
 				}
-			} else {
+			} else if(webserver_root != NULL && webgui_tpl != NULL && conn->uri != NULL) {
 				size_t wlen = strlen(webserver_root)+strlen(webgui_tpl)+strlen(conn->uri)+2;
 				request = malloc(wlen);
 				if(!request) {
@@ -379,6 +379,9 @@ static int webserver_request_handler(struct mg_connection *conn) {
 					else
 						sprintf(request, "%s/%s/%s", webserver_root, webgui_tpl, conn->uri);
 				}
+			}
+			if(request == NULL) {
+				return MG_FALSE;
 			}
 
 			char *dot = NULL;
@@ -749,29 +752,58 @@ void *webserver_worker(void *param) {
 
 void webserver_queue(char *message) {
 	pthread_mutex_lock(&webqueue_lock);
-	struct webqueue_t *wnode = malloc(sizeof(struct webqueue_t));
-	if(!wnode) {
-		logprintf(LOG_ERR, "out of memory");
-		exit(EXIT_FAILURE);
-	}
-	wnode->message = malloc(strlen(message)+1);
-	if(!wnode->message) {
-		logprintf(LOG_ERR, "out of memory");
-		exit(EXIT_FAILURE);
-	}
-	strcpy(wnode->message, message);
+	if(webqueue_number <= 1024) {
+		struct webqueue_t *wnode = malloc(sizeof(struct webqueue_t));
+		if(!wnode) {
+			logprintf(LOG_ERR, "out of memory");
+			exit(EXIT_FAILURE);
+		}
+		wnode->message = malloc(strlen(message)+1);
+		if(!wnode->message) {
+			logprintf(LOG_ERR, "out of memory");
+			exit(EXIT_FAILURE);
+		}
+		strcpy(wnode->message, message);
 
-	if(webqueue_number == 0) {
-		webqueue = wnode;
-		webqueue_head = wnode;
+		if(webqueue_number == 0) {
+			webqueue = wnode;
+			webqueue_head = wnode;
+		} else {
+			webqueue_head->next = wnode;
+			webqueue_head = wnode;
+		}
+
+		webqueue_number++;
 	} else {
-		webqueue_head->next = wnode;
-		webqueue_head = wnode;
+		logprintf(LOG_ERR, "webserver queue full");
 	}
-
-	webqueue_number++;
 	pthread_mutex_unlock(&webqueue_lock);
 	pthread_cond_signal(&webqueue_signal);
+}
+
+void *webserver_broadcast(void *param) {
+	int i = 0;
+	pthread_mutex_lock(&webqueue_lock);
+
+	while(webserver_loop) {
+		if(webqueue_number > 0) {	
+			pthread_mutex_lock(&webqueue_lock);
+
+			for(i=0;i<WEBSERVER_WORKERS;i++) {
+				mg_iterate_over_connections(mgserver[i], webserver_sockets_callback, webqueue->message);
+			}
+
+			struct webqueue_t *tmp = webqueue;
+			sfree((void *)&webqueue->message);
+			webqueue = webqueue->next;
+			sfree((void *)&tmp);
+			webqueue_number--;
+			pthread_mutex_unlock(&webqueue_lock);
+		} else {
+			pthread_cond_wait(&webqueue_signal, &webqueue_lock);
+		}
+	}
+	return (void *)NULL;
 }
 
 void *webserver_clientize(void *param) {
@@ -843,32 +875,6 @@ close:
 	return 0;
 }
 
-void *webserver_broadcast(void *param) {
-	int i = 0;
-
-	pthread_mutex_lock(&webqueue_lock);
-
-	while(webserver_loop) {
-		if(webqueue_number > 0) {
-			pthread_mutex_lock(&webqueue_lock);
-
-			for(i=0;i<WEBSERVER_WORKERS;i++) {
-				mg_iterate_over_connections(mgserver[i], webserver_sockets_callback, webqueue->message);
-			}
-
-			struct webqueue_t *tmp = webqueue;
-			sfree((void *)&webqueue->message);
-			webqueue = webqueue->next;
-			sfree((void *)&tmp);
-			webqueue_number--;
-			pthread_mutex_unlock(&webqueue_lock);
-		} else {
-			pthread_cond_wait(&webqueue_signal, &webqueue_lock);
-		}
-	}
-	return (void *)NULL;
-}
-
 int webserver_handler(struct mg_connection *conn, enum mg_event ev) {
 	if(ev == MG_REQUEST || (ev == MG_POLL && !conn->is_websocket)) {
 		if(ev == MG_POLL ||
@@ -902,8 +908,7 @@ void *webserver_start(void *param) {
 
 	pthread_mutexattr_init(&webqueue_attr);
 	pthread_mutexattr_settype(&webqueue_attr, PTHREAD_MUTEX_RECURSIVE);
-	pthread_cond_init(&webqueue_signal, NULL);
-	pthread_mutex_init(&webqueue_lock, &webqueue_attr);
+	pthread_mutex_init(&webqueue_lock, &webqueue_attr);	
 
 	/* Check on what port the webserver needs to run */
 	settings_find_number("webserver-port", &webserver_port);

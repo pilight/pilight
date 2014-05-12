@@ -16,12 +16,12 @@
     along with pilight. If not, see	<http://www.gnu.org/licenses/>
 */
 
-#ifndef _PROTOCOL_CONRAD_WEATHER_H_
-#define _PROTOCOL_CONRAD_WEATHER_H_
+#ifndef _PROTOCOL_TFA_H_
+#define _PROTOCOL_TFA_H_
 
-struct protocol_t *conrad_weather;
+struct protocol_t *tfa;
 
-void conradWeatherParseCode(void);
-void conradWeatherInit(void);
+void tfaParseCode(void);
+void tfaInit(void);
 
 #endif

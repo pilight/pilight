@@ -1054,7 +1054,23 @@ int config_validate_settings(void) {
 						tmp_values = tmp_settings->values;
 						/* Retrieve all protocol specific settings for this device. Also add all
 						   device values and states so it can be validated by the protocol */
-						if(strcmp(tmp_settings->name, "id") != 0) {
+						if(strcmp(tmp_settings->name, "id") == 0) {
+							JsonNode *jid = json_find_member(jdevice, "id");
+							if(!jid) {
+								jid = json_mkarray();
+								json_append_member(jdevice, tmp_settings->name, jid);
+							}
+							JsonNode *jnid = json_mkobject();
+							while(tmp_values) {
+								if(tmp_values->type == CONFIG_TYPE_NUMBER) {
+									json_append_member(jnid, tmp_values->name, json_mknumber(tmp_values->number_));
+								} else if(tmp_values->type == CONFIG_TYPE_STRING) {
+									json_append_member(jnid, tmp_values->name, json_mkstring(tmp_values->string_));
+								}
+								tmp_values = tmp_values->next;
+							}
+							json_append_element(jid, jnid);
+						} else {
 							if(!tmp_values->next) {
 								if(tmp_values->type == CONFIG_TYPE_STRING) {
 									json_append_member(jdevice, tmp_settings->name, json_mkstring(tmp_values->string_));

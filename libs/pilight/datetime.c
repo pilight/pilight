@@ -158,8 +158,8 @@ char *coord2tz(double longitude, double latitude) {
 	char *tz = NULL;
 
 	margin *= (int)pow(10, PRECISION);
-	int x = (int)round(latitude*(int)pow(10, PRECISION));
-	int y = (int)round(longitude*(int)pow(10, PRECISION));	
+	int y = (int)round(latitude*(int)pow(10, PRECISION));
+	int x = (int)round(longitude*(int)pow(10, PRECISION));	
 	
 	while(!inside && margin < (5*(int)pow(10, PRECISION))) {
 		for(i=0;i<NRCOUNTRIES;i++) {

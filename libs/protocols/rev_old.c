@@ -178,7 +178,6 @@ void revOldInit(void) {
     protocol_register(&rev_old_switch);
     protocol_set_id(rev_old_switch, "rev_switch_old");    
     protocol_device_add(rev_old_switch, "rev_switch_old", "REV Old Switches");
-    protocol_conflict_add(rev_old_switch, "clarus_switch");
     protocol_plslen_add(rev_old_switch, 258);
     rev_old_switch->devtype = SWITCH;
     rev_old_switch->hwtype = RF433;

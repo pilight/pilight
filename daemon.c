@@ -106,15 +106,32 @@ typedef struct sendqueue_t {
 struct sendqueue_t *sendqueue;
 struct sendqueue_t *sendqueue_head;
 
+typedef struct recvqueue_t {
+	int raw[255];
+	int rawlen;
+	int hwtype;
+	int plslen;
+	struct recvqueue_t *next;
+} recvqueue_t;
+
+struct recvqueue_t *recvqueue;
+struct recvqueue_t *recvqueue_head;
+
 pthread_mutex_t sendqueue_lock;
 pthread_cond_t sendqueue_signal;
 pthread_mutexattr_t sendqueue_attr;
+
+int sendqueue_number = 0;
 
 pthread_mutex_t receive_lock;
 pthread_cond_t receive_signal;
 pthread_mutexattr_t receive_attr;
 
-int sendqueue_number = 0;
+int recvqueue_number = 0;
+
+pthread_mutex_t recvqueue_lock;
+pthread_cond_t recvqueue_signal;
+pthread_mutexattr_t recvqueue_attr;
 
 typedef struct bcqueue_t {
 	JsonNode *jmessage;
@@ -169,6 +186,10 @@ struct timeval tv;
 int nrnodes = 0;
 /* Are we running standalone */
 int standalone = 0;
+/* What is the minimum rawlenth to consider a pulse stream valid */
+int minrawlen = 1000;
+/* What is the maximum rawlenth to consider a pulse stream valid */
+int maxrawlen = 0;
 
 #ifdef WEBSERVER
 /* Do we enable the webserver */
@@ -223,41 +244,44 @@ void node_remove(int id) {
 
 void broadcast_queue(char *protoname, JsonNode *json) {
 	pthread_mutex_lock(&bcqueue_lock);
-	struct bcqueue_t *bnode = malloc(sizeof(struct bcqueue_t));
-	if(!bnode) {
-		logprintf(LOG_ERR, "out of memory");
-		exit(EXIT_FAILURE);
-	}
+	if(bcqueue_number <= 1024) {
+		struct bcqueue_t *bnode = malloc(sizeof(struct bcqueue_t));
+		if(!bnode) {
+			logprintf(LOG_ERR, "out of memory");
+			exit(EXIT_FAILURE);
+		}
 
-	char *jstr = json_stringify(json, NULL);
-	bnode->jmessage = json_decode(jstr);
-	if(json_find_member(bnode->jmessage, "uuid") == NULL && strlen(pilight_uuid) > 0) {
-		json_append_member(bnode->jmessage, "uuid", json_mkstring(pilight_uuid));
-	}
-	sfree((void *)&jstr);
+		char *jstr = json_stringify(json, NULL);
+		bnode->jmessage = json_decode(jstr);
+		if(json_find_member(bnode->jmessage, "uuid") == NULL && strlen(pilight_uuid) > 0) {
+			json_append_member(bnode->jmessage, "uuid", json_mkstring(pilight_uuid));
+		}
+		sfree((void *)&jstr);
 
-	bnode->protoname = malloc(strlen(protoname)+1);
-	if(!bnode->protoname) {
-		logprintf(LOG_ERR, "out of memory");
-		exit(EXIT_FAILURE);
-	}
-	strcpy(bnode->protoname, protoname);
+		bnode->protoname = malloc(strlen(protoname)+1);
+		if(!bnode->protoname) {
+			logprintf(LOG_ERR, "out of memory");
+			exit(EXIT_FAILURE);
+		}
+		strcpy(bnode->protoname, protoname);
 
-	if(bcqueue_number == 0) {
-		bcqueue = bnode;
-		bcqueue_head = bnode;
+		if(bcqueue_number == 0) {
+			bcqueue = bnode;
+			bcqueue_head = bnode;
+		} else {
+			bcqueue_head->next = bnode;
+			bcqueue_head = bnode;
+		}
+
+		bcqueue_number++;
 	} else {
-		bcqueue_head->next = bnode;
-		bcqueue_head = bnode;
+		logprintf(LOG_ERR, "broadcast queue full");
 	}
-
-	bcqueue_number++;
 	pthread_mutex_unlock(&bcqueue_lock);
 	pthread_cond_signal(&bcqueue_signal);
 }
 
 void *broadcast(void *param) {
-
 	int i = 0, broadcasted = 0;
 
 	pthread_mutex_lock(&bcqueue_lock);
@@ -316,17 +340,25 @@ void *broadcast(void *param) {
 			}
 			broadcasted = 0;
 
+			struct JsonNode *childs = json_first_child(bcqueue->jmessage);
+			int nrchilds = 0;
+			while(childs) {
+				nrchilds++;
+				childs = childs->next;
+			}
+
 			if(receivers > 0) {
 				/* Write the message to all receivers */
 				for(i=0;i<MAX_CLIENTS;i++) {
 					if(handshakes[i] == RECEIVER) {
-						if(strcmp(jbroadcast, "{}") != 0) {
+						if(strcmp(jbroadcast, "{}") != 0 && nrchilds > 1) {
 							socket_write(socket_get_clients(i), jbroadcast);
+							broadcasted = 1;
 						}
-						broadcasted = 1;
 					}
 				}
 			}
+
 			if(runmode == 2 && sockfd > 0) {
 				struct JsonNode *jupdate = json_decode(jinternal);
 				json_append_member(jupdate, "message", json_mkstring("update"));
@@ -336,7 +368,7 @@ void *broadcast(void *param) {
 				json_delete(jupdate);
 				sfree((void *)&ret);
 			}
-			if((broadcasted == 1 || nodaemon == 1) && strcmp(jbroadcast, "{}") != 0) {
+			if((broadcasted == 1 || nodaemon == 1) && (strcmp(jbroadcast, "{}") != 0 && nrchilds > 1)) {
 				logprintf(LOG_DEBUG, "broadcasted: %s", jbroadcast);
 			}
 			sfree((void *)&jinternal);
@@ -354,6 +386,39 @@ void *broadcast(void *param) {
 		}
 	}
 	return (void *)NULL;
+}
+
+void receive_queue(int *raw, int rawlen, int plslen, int hwtype) {
+	int i = 0;
+
+	pthread_mutex_lock(&recvqueue_lock);
+	if(recvqueue_number <= 1024) {
+		struct recvqueue_t *rnode = malloc(sizeof(struct recvqueue_t));
+		if(!rnode) {
+			logprintf(LOG_ERR, "out of memory");
+			exit(EXIT_FAILURE);
+		}
+		for(i=0;i<rawlen;i++) {
+			rnode->raw[i] = raw[i];
+		}
+		rnode->rawlen = rawlen;
+		rnode->plslen = plslen;
+		rnode->hwtype = hwtype;
+		
+		if(recvqueue_number == 0) {
+			recvqueue = rnode;
+			recvqueue_head = rnode;
+		} else {
+			recvqueue_head->next = rnode;
+			recvqueue_head = rnode;
+		}
+
+		recvqueue_number++;
+	} else {
+		logprintf(LOG_ERR, "receiver queue full");
+	}
+	pthread_mutex_unlock(&recvqueue_lock);
+	pthread_cond_signal(&recvqueue_signal);
 }
 
 void receiver_create_message(protocol_t *protocol) {
@@ -385,198 +450,141 @@ void receiver_create_message(protocol_t *protocol) {
 	}
 }
 
-void receiver_parse_code(int *rawcode, int rawlen, int plslen, int hwtype) {
-	struct protocol_t *protocol = NULL;
-	struct protocols_t *pnode = protocols;
-	struct protocol_plslen_t *plslengths = NULL;
-	int x = 0, match = 0;
+void *receive_parse_code(void *param) {
 
-	while(pnode) {
-		protocol = pnode->listener;
-		match = 0;
+	pthread_mutex_lock(&recvqueue_lock);
+	while(main_loop) {
+		if(recvqueue_number > 0) {
+			pthread_mutex_lock(&recvqueue_lock);
 
-		if((protocol->hwtype == hwtype || protocol->hwtype == -1 || hwtype == -1) &&
-		  ((((protocol->parseRaw || protocol->parseCode) && protocol->rawlen > 0)
-		   || protocol->parseBinary) && protocol->pulse > 0 && protocol->plslen)) {
-			plslengths = protocol->plslen;
-			while(plslengths) {
-				if((plslen >= ((double)plslengths->length-5) && plslen <= ((double)plslengths->length+5))) {
-					match = 1;
-					break;
-				}
-				plslengths = plslengths->next;
-			}
-			if(rawlen == protocol->rawlen && match == 1) {
-				for(x=0;x<(int)rawlen;x++) {
-					if(x < 254) {
-						memcpy(&protocol->raw[x], &rawcode[x], sizeof(int));
-					}
-				}
-				if(protocol->parseRaw) {
-					logprintf(LOG_DEBUG, "recevied pulse length of %d", plslen);
-					logprintf(LOG_DEBUG, "called %s parseRaw()", protocol->id);
-					protocol->parseRaw();
-					protocol->repeats = -1;
-					receiver_create_message(protocol);
-					struct protocol_conflicts_t *tmp_conflicts = protocol->conflicts;
-					while(tmp_conflicts) {
-						pnode = protocols;
-						while(pnode) {
-							struct protocol_t *proto = pnode->listener;
-							if(strcmp(proto->id, tmp_conflicts->id) == 0) {
-								for(x=0;x<(int)rawlen;x++) {
-									if(x < 254) {
-										proto->raw[x] = protocol->raw[x];
-									}
-								}
-								proto->repeats = protocol->repeats;
-								/* Not all protocols use the same parsing functions when they conflict.
-								   Need to fix */
-								if(proto->parseRaw) {
-									proto->parseRaw();
-									receiver_create_message(proto);
-								}
-								break;
-							}
-							pnode = pnode->next;
-						}
-						tmp_conflicts = tmp_conflicts->next;
-					}
-					if(protocol->parseBinary == NULL && protocol->parseCode == NULL) {
-						break;
-					}
-				}
+			struct protocol_t *protocol = NULL;
+			struct protocols_t *pnode = protocols;
+			struct protocol_plslen_t *plslengths = NULL;
+			int x = 0, match = 0;
 
-				/* Convert the raw codes to one's and zero's */
-				for(x=0;x<(int)(double)rawlen;x++) {
-					protocol->pCode[x] = protocol->code[x];
+			while(pnode && main_loop) {
+				protocol = pnode->listener;
+				match = 0;
 
-					if(protocol->raw[x] >= (plslengths->length * (1+protocol->pulse)/2)) {
-						protocol->code[x] = 1;
-					} else {
-						protocol->code[x] = 0;
-					}
-					/* Check if the current code matches the previous one */
-					if(protocol->pCode[x] != protocol->code[x]) {
-						protocol->repeats = 0;
-						protocol->first = 0;
-						protocol->second = 0;
-					}
-				}
-
-				gettimeofday(&tv, NULL);
-				if(protocol->first > 0) {
-					protocol->first = protocol->second;
-				}
-				protocol->second = 1000000 * (unsigned int)tv.tv_sec + (unsigned int)tv.tv_usec;
-				if(protocol->first == 0) {
-					protocol->first = protocol->second;
-				}
-
-				/* Reset # of repeats after a certain delay */
-				if(((int)protocol->second-(int)protocol->first) > 750000) {
-					protocol->repeats = 0;
-				}
-
-				protocol->repeats++;
-				/* Continue if we have recognized enough repeated codes */
-				if(protocol->repeats >= (receive_repeat*protocol->rxrpt) || strcmp(protocol->id, "pilight_firmware") == 0) {
-					if(protocol->parseCode) {
-						logprintf(LOG_DEBUG, "caught minimum # of repeats %d of %s", protocol->repeats, protocol->id);
-						logprintf(LOG_DEBUG, "called %s parseCode()", protocol->id);
-						protocol->parseCode();
-						receiver_create_message(protocol);
-
-						struct protocol_conflicts_t *tmp_conflicts = protocol->conflicts;
-						while(tmp_conflicts) {
-							pnode = protocols;
-							while(pnode) {
-								struct protocol_t *proto = pnode->listener;
-								if(strcmp(proto->id, tmp_conflicts->id) == 0) {
-									for(x=0;x<(int)(double)rawlen;x++) {
-										proto->code[x] = protocol->code[x];
-									}
-									proto->repeats = protocol->repeats;
-									/* Not all protocols use the same parsing functions when they conflict.
-									   Need to fix */
-									if(proto->parseCode) {
-										proto->parseCode();
-										receiver_create_message(proto);
-									}
-									break;
-								}
-								pnode = pnode->next;
-							}
-							tmp_conflicts = tmp_conflicts->next;
-						}
-						if(protocol->parseBinary == NULL) {
+				if((protocol->hwtype == recvqueue->hwtype || protocol->hwtype == -1 || recvqueue->hwtype == -1) &&
+				  ((((protocol->parseRaw || protocol->parseCode) && protocol->rawlen > 0)
+				   || protocol->parseBinary) && protocol->pulse > 0 && protocol->plslen)) {
+					plslengths = protocol->plslen;
+					while(plslengths && main_loop) {
+						if((recvqueue->plslen >= ((double)plslengths->length-5) && 
+						    recvqueue->plslen <= ((double)plslengths->length+5))) {
+							match = 1;
 							break;
 						}
+						plslengths = plslengths->next;
 					}
-
-					if(protocol->parseBinary) {
-						/* Convert the one's and zero's into binary */
-						for(x=0; x<(int)(double)rawlen; x+=4) {
-							if(protocol->code[x+protocol->lsb] == 1) {
-								protocol->binary[x/4] = 1;
-							} else {
-								protocol->binary[x/4] = 0;
+					if(recvqueue->rawlen == protocol->rawlen && match == 1) {
+						for(x=0;x<(int)recvqueue->rawlen;x++) {
+							if(x < 254) {
+								memcpy(&protocol->raw[x], &recvqueue->raw[x], sizeof(int));
 							}
 						}
-
-						if((double)protocol->raw[1]/((plslengths->length * (1+protocol->pulse)/2)) < 2.1) {
-							x -= 4;
-						}
-
-						/* Check if the binary matches the binary length */
-						if((protocol->binlen > 0 && ((x/4) == protocol->binlen)) || (protocol->binlen == 0 && ((x/4) == protocol->rawlen/4))) {
-							logprintf(LOG_DEBUG, "called %s parseBinary()", protocol->id);
-
-							protocol->parseBinary();
+						if(protocol->parseRaw) {
+							logprintf(LOG_DEBUG, "recevied pulse length of %d", recvqueue->plslen);
+							logprintf(LOG_DEBUG, "called %s parseRaw()", protocol->id);
+							protocol->parseRaw();
+							protocol->repeats = -1;
 							receiver_create_message(protocol);
+						}
 
-							struct protocol_conflicts_t *tmp_conflicts = protocol->conflicts;
-							while(tmp_conflicts) {
-								pnode = protocols;
-								while(pnode) {
-									struct protocol_t *proto = pnode->listener;
-									int z = 0;
-									if(strcmp(proto->id, tmp_conflicts->id) == 0) {
-										int binlen = 0;
-										if(protocol->binlen) {
-											binlen = protocol->binlen;
-										} else {
-											binlen = x/4;
-										}
-										for(z=0; z<=binlen; z++) {
-											proto->binary[z] = protocol->binary[z];
-										}
-										proto->repeats = protocol->repeats;
-										/* Not all protocols use the same parsing functions when they conflict.
-										   Need to fix */
-										if(proto->parseBinary) {
-											proto->parseBinary();
-											receiver_create_message(proto);
-										}
-										break;
-									}
-									pnode = pnode->next;
-								}
-								tmp_conflicts = tmp_conflicts->next;
+						/* Convert the raw codes to one's and zero's */
+						for(x=0;x<recvqueue->rawlen;x++) {
+							protocol->pCode[x] = protocol->code[x];
+
+							if(protocol->raw[x] >= (plslengths->length * (1+protocol->pulse)/2)) {
+								protocol->code[x] = 1;
+							} else {
+								protocol->code[x] = 0;
 							}
-							break;
+							/* Check if the current code matches the previous one */
+							// if(protocol->pCode[x] != protocol->code[x]) {
+								// protocol->repeats = 0;
+								// protocol->first = 0;
+								// protocol->second = 0;
+							// }
+						}
+
+						gettimeofday(&tv, NULL);
+						if(protocol->first > 0) {
+							protocol->first = protocol->second;
+						}
+						protocol->second = 1000000 * (unsigned int)tv.tv_sec + (unsigned int)tv.tv_usec;
+						if(protocol->first == 0) {
+							protocol->first = protocol->second;
+						}
+
+						/* Reset # of repeats after a certain delay */
+						if(((int)protocol->second-(int)protocol->first) > 500000) {
+							protocol->repeats = 0;
+						}
+
+						protocol->repeats++;
+						/* Continue if we have recognized enough repeated codes */
+						if(protocol->repeats >= (receive_repeat*protocol->rxrpt) || 
+						   strcmp(protocol->id, "pilight_firmware") == 0) {
+							if(protocol->parseCode) {
+								logprintf(LOG_DEBUG, "caught minimum # of repeats %d of %s", protocol->repeats, protocol->id);
+								logprintf(LOG_DEBUG, "called %s parseCode()", protocol->id);
+								protocol->parseCode();
+								receiver_create_message(protocol);
+							}
+
+							if(protocol->parseBinary) {
+								/* Convert the one's and zero's into binary */
+								for(x=0; x<(int)recvqueue->rawlen; x+=4) {
+									if(protocol->code[x+protocol->lsb] == 1) {
+										protocol->binary[x/4] = 1;
+									} else {
+										protocol->binary[x/4] = 0;
+									}
+								}
+
+								if((double)protocol->raw[1]/((plslengths->length * (1+protocol->pulse)/2)) < 2.1) {
+									x -= 4;
+								}
+
+								/* Check if the binary matches the binary length */
+								if((protocol->binlen > 0 && ((x/4) == protocol->binlen)) 
+								   || (protocol->binlen == 0 && ((x/4) == protocol->rawlen/4))) {
+									logprintf(LOG_DEBUG, "called %s parseBinary()", protocol->id);
+
+									protocol->parseBinary();
+									receiver_create_message(protocol);
+								}
+							}
 						}
 					}
 				}
-			}
+				pnode = pnode->next;
+			}			
+			
+			struct recvqueue_t *tmp = recvqueue;
+			recvqueue = recvqueue->next;
+			sfree((void *)&tmp);
+			recvqueue_number--;
+			pthread_mutex_unlock(&recvqueue_lock);
+		} else {
+			pthread_cond_wait(&recvqueue_signal, &recvqueue_lock);
 		}
-		pnode = pnode->next;
 	}
+	return (void *)NULL;
 }
 
 void *send_code(void *param) {
 	int i = 0, x = 0;
+	struct sched_param sched;
 
+	/* Make sure the pilight sender gets 
+	   the highest priority available */
+	memset(&sched, 0, sizeof(sched));
+	sched.sched_priority = 80;
+	pthread_setschedparam(pthread_self(), SCHED_FIFO, &sched);	
+	
 	pthread_mutex_lock(&sendqueue_lock);
 
 	while(main_loop) {
@@ -648,7 +656,7 @@ void *send_code(void *param) {
 					logprintf(LOG_DEBUG, "successfully send %s code", protocol->id);
 					if(strcmp(protocol->id, "raw") == 0) {
 						int plslen = protocol->raw[protocol->rawlen-1]/PULSE_DIV;
-						receiver_parse_code(protocol->raw, protocol->rawlen, plslen, -1);
+						receive_queue(protocol->raw, protocol->rawlen, plslen, -1);
 					}
 				} else {
 					logprintf(LOG_ERR, "failed to send code");
@@ -656,7 +664,7 @@ void *send_code(void *param) {
 			} else {
 				if(strcmp(protocol->id, "raw") == 0) {
 					int plslen = protocol->raw[protocol->rawlen-1]/PULSE_DIV;
-					receiver_parse_code(protocol->raw, protocol->rawlen, plslen, -1);
+					receive_queue(protocol->raw, protocol->rawlen, plslen, -1);
 				}
 			}
 
@@ -732,73 +740,76 @@ void send_queue(JsonNode *json) {
 				/* Let the protocol create his code */
 				if(protocol->createCode(jcode) == 0) {
 					pthread_mutex_lock(&sendqueue_lock);
-					struct sendqueue_t *mnode = malloc(sizeof(struct sendqueue_t));
-					if(!mnode) {
-						logprintf(LOG_ERR, "out of memory");
-						exit(EXIT_FAILURE);
-					}
-					gettimeofday(&tcurrent, NULL);
-					mnode->id = 1000000 * (unsigned int)tcurrent.tv_sec + (unsigned int)tcurrent.tv_usec;
-					mnode->message = NULL;
-					if(protocol->message) {
-						char *jsonstr = json_stringify(protocol->message, NULL);
-						json_delete(protocol->message);
-						if(json_validate(jsonstr) == true) {
-							mnode->message = malloc(strlen(jsonstr)+1);
-							if(!mnode->message) {
-								logprintf(LOG_ERR, "out of memory");
-								exit(EXIT_FAILURE);
-							}
-							strcpy(mnode->message, jsonstr);
+					if(sendqueue_number <= 1024) {
+						struct sendqueue_t *mnode = malloc(sizeof(struct sendqueue_t));
+						if(!mnode) {
+							logprintf(LOG_ERR, "out of memory");
+							exit(EXIT_FAILURE);
 						}
-						sfree((void *)&jsonstr);
-						protocol->message = NULL;
-					}
-					for(x=0;x<protocol->rawlen;x++) {
-						mnode->code[x]=protocol->raw[x];
-					}
-					mnode->protoname = malloc(strlen(protocol->id)+1);
-					if(!mnode->protoname) {
-						logprintf(LOG_ERR, "out of memory");
-						exit(EXIT_FAILURE);
-					}
-					strcpy(mnode->protoname, protocol->id);
-					mnode->protopt = protocol;
-
-					struct options_t *tmp_options = protocol->options;
-					double itmp = 0;
-					char *stmp = NULL;
-					struct JsonNode *jsettings = json_mkobject();
-					while(tmp_options) {
-						if(tmp_options->conftype == CONFIG_SETTING) {
-							if(tmp_options->vartype == JSON_NUMBER && json_find_number(jcode, tmp_options->name, &itmp) == 0) {
-								json_append_member(jsettings, tmp_options->name, json_mknumber(itmp));
-							} else if(tmp_options->vartype == JSON_STRING && json_find_string(jcode, tmp_options->name, &stmp) == 0) {
-								json_append_member(jsettings, tmp_options->name, json_mkstring(stmp));
+						gettimeofday(&tcurrent, NULL);
+						mnode->id = 1000000 * (unsigned int)tcurrent.tv_sec + (unsigned int)tcurrent.tv_usec;
+						mnode->message = NULL;
+						if(protocol->message) {
+							char *jsonstr = json_stringify(protocol->message, NULL);
+							json_delete(protocol->message);
+							if(json_validate(jsonstr) == true) {
+								mnode->message = malloc(strlen(jsonstr)+1);
+								if(!mnode->message) {
+									logprintf(LOG_ERR, "out of memory");
+									exit(EXIT_FAILURE);
+								}
+								strcpy(mnode->message, jsonstr);
 							}
+							sfree((void *)&jsonstr);
+							protocol->message = NULL;
 						}
-						tmp_options = tmp_options->next;
-					}
-					char *strsett = json_stringify(jsettings, NULL);
-					mnode->settings = malloc(strlen(strsett)+1);
-					strcpy(mnode->settings, strsett);
-					sfree((void *)&strsett);
-					json_delete(jsettings);
+						for(x=0;x<protocol->rawlen;x++) {
+							mnode->code[x]=protocol->raw[x];
+						}
+						mnode->protoname = malloc(strlen(protocol->id)+1);
+						if(!mnode->protoname) {
+							logprintf(LOG_ERR, "out of memory");
+							exit(EXIT_FAILURE);
+						}
+						strcpy(mnode->protoname, protocol->id);
+						mnode->protopt = protocol;
 
-					if(uuid) {
-						strcpy(mnode->uuid, uuid);
-					} else {
-						memset(mnode->uuid, '\0', UUID_LENGTH);
-					}
-					if(sendqueue_number == 0) {
-						sendqueue = mnode;
-						sendqueue_head = mnode;
-					} else {
-						sendqueue_head->next = mnode;
-						sendqueue_head = mnode;
-					}
+						struct options_t *tmp_options = protocol->options;
+						double itmp = 0;
+						char *stmp = NULL;
+						struct JsonNode *jsettings = json_mkobject();
+						while(tmp_options) {
+							if(tmp_options->conftype == CONFIG_SETTING) {
+								if(tmp_options->vartype == JSON_NUMBER && json_find_number(jcode, tmp_options->name, &itmp) == 0) {
+									json_append_member(jsettings, tmp_options->name, json_mknumber(itmp));
+								} else if(tmp_options->vartype == JSON_STRING && json_find_string(jcode, tmp_options->name, &stmp) == 0) {
+									json_append_member(jsettings, tmp_options->name, json_mkstring(stmp));
+								}
+							}
+							tmp_options = tmp_options->next;
+						}
+						char *strsett = json_stringify(jsettings, NULL);
+						mnode->settings = malloc(strlen(strsett)+1);
+						strcpy(mnode->settings, strsett);
+						sfree((void *)&strsett);
+						json_delete(jsettings);
 
-					sendqueue_number++;
+						if(uuid) {
+							strcpy(mnode->uuid, uuid);
+						} else {
+							memset(mnode->uuid, '\0', UUID_LENGTH);
+						}
+						if(sendqueue_number == 0) {
+							sendqueue = mnode;
+							sendqueue_head = mnode;
+						} else {
+							sendqueue_head->next = mnode;
+							sendqueue_head = mnode;
+						}
+						sendqueue_number++;						
+					} else {
+						logprintf(LOG_ERR, "send queue full");
+					}
 					pthread_mutex_unlock(&sendqueue_lock);
 					pthread_cond_signal(&sendqueue_signal);
 				}
@@ -1251,12 +1262,19 @@ void socket_client_disconnected(int i) {
 }
 
 void *receive_code(void *param) {
+	struct sched_param sched;
 	int plslen = 0, rawlen = 0;
 	int rawcode[255] = {0};
 	int duration = 0;
 
-	struct hardware_t *hw = (hardware_t *)param;
-
+	/* Make sure the pilight receiving gets 
+	   the highest priority available */
+	memset(&sched, 0, sizeof(sched));
+	sched.sched_priority = 70;
+	pthread_setschedparam(pthread_self(), SCHED_FIFO, &sched);
+	
+	struct hardware_t *hw = (hardware_t *)param;	
+	
 	pthread_mutex_lock(&receive_lock);
 	while(main_loop && hw->receive) {
 		if(sending == 0) {
@@ -1273,8 +1291,9 @@ void *receive_code(void *param) {
 					if((duration/PULSE_DIV) < 1000) {
 						plslen = duration/PULSE_DIV;
 					}
-					if(rawlen > 1) {
-						receiver_parse_code(rawcode, rawlen, plslen, hw->type);
+					/* Let's do a little filtering here as well */
+					if(rawlen >= minrawlen && rawlen <= maxrawlen) {
+						receive_queue(rawcode, rawlen, plslen, hw->type);
 					}
 					rawlen = 0;
 				}
@@ -1485,9 +1504,13 @@ int main_gc(void) {
 		tmp_confhw = tmp_confhw->next;
 	}
 
+	pthread_mutex_unlock(&recvqueue_lock);
+	pthread_cond_signal(&recvqueue_signal);
+	usleep(1000);
+
 	pthread_mutex_unlock(&sendqueue_lock);
 	pthread_cond_signal(&sendqueue_signal);
-	
+
 	pthread_mutex_unlock(&receive_lock);
 	pthread_cond_signal(&receive_signal);
 
@@ -1836,6 +1859,17 @@ int main(int argc, char **argv) {
 	/* Initialize protocols */
 	protocol_init();
 
+	struct protocols_t *tmp = protocols;
+	while(tmp) {
+		if(tmp->listener->rawlen < minrawlen && tmp->listener->rawlen > 0) {
+			minrawlen = tmp->listener->rawlen;
+		}
+		if(tmp->listener->rawlen > maxrawlen) {
+			maxrawlen = tmp->listener->rawlen;
+		}		
+		tmp = tmp->next;
+	}
+	
 	if(settings_find_string("hardware-file", &hwfile) == 0) {
 		hardware_set_file(hwfile);
 		if(hardware_read() == EXIT_FAILURE) {
@@ -1892,6 +1926,10 @@ int main(int argc, char **argv) {
 	pthread_mutexattr_settype(&sendqueue_attr, PTHREAD_MUTEX_RECURSIVE);
 	pthread_mutex_init(&sendqueue_lock, &sendqueue_attr);
 
+	pthread_mutexattr_init(&recvqueue_attr);
+	pthread_mutexattr_settype(&recvqueue_attr, PTHREAD_MUTEX_RECURSIVE);
+	pthread_mutex_init(&recvqueue_lock, &recvqueue_attr);
+
 	pthread_mutexattr_init(&receive_attr);
 	pthread_mutexattr_settype(&receive_attr, PTHREAD_MUTEX_RECURSIVE);
 	pthread_mutex_init(&receive_lock, &receive_attr);	
@@ -1906,7 +1944,7 @@ int main(int argc, char **argv) {
 	/* Export certain daemon function to global usage */
 	pilight.broadcast = &broadcast_queue;
 	pilight.send = &send_queue;
-	pilight.receive = &receiver_parse_code;
+	pilight.receive = &receive_queue;
 
 	/* Run certain daemon functions from the socket library */
     socket_callback.client_disconnected_callback = &socket_client_disconnected;
@@ -1947,6 +1985,8 @@ int main(int argc, char **argv) {
 		}
 		tmp_confhw = tmp_confhw->next;
 	}
+	
+	threads_register("receive parser", &receive_parse_code, (void *)NULL, 0);
 
 #ifdef WEBSERVER
 	/* Register a seperate thread for the webserver */

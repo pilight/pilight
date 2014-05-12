@@ -78,6 +78,7 @@
 #cmakedefine PROTOCOL_SILVERCREST
 #cmakedefine PROTOCOL_SUNRISESET
 #cmakedefine PROTOCOL_TEKNIHALL
+#cmakedefine PROTOCOL_TFA
 #cmakedefine PROTOCOL_THREECHAN
 #cmakedefine PROTOCOL_WUNDERGROUND
 #cmakedefine PROTOCOL_X10
