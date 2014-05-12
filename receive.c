@@ -193,5 +193,5 @@ close:
 	log_shell_disable();
 	log_gc();
 	sfree((void *)&progname);
-return EXIT_SUCCESS;
+	return EXIT_SUCCESS;
 }

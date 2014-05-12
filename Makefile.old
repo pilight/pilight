@@ -105,8 +105,8 @@ install:
 	[ -f /usr/local/sbin/pilight-uuid ] && rm /usr/local/sbin/pilight-uuid || true
 	cp tzdata.json /etc/pilight/ || true
 
-	mv /usr/local/lib/pilight/libpilight.so /usr/local/lib/pilight/libpilight.so.3
-	ln -sf /usr/local/lib/pilight/libpilight.so.3 /usr/local/lib/libpilight.so
+	mv /usr/local/lib/pilight/libpilight.so /usr/local/lib/pilight/libpilight.so.4
+	ln -sf /usr/local/lib/pilight/libpilight.so.4 /usr/local/lib/libpilight.so
 	ldconfig
 	
 clean:
