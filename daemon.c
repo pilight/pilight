@@ -703,6 +703,13 @@ void send_queue(JsonNode *json) {
 	char *uuid = NULL;
 	/* Hold the final protocol struct */
 	struct protocol_t *protocol = NULL;
+	struct sched_param sched;
+
+	/* Make sure the pilight sender gets 
+	   the highest priority available */
+	memset(&sched, 0, sizeof(sched));
+	sched.sched_priority = 80;
+	pthread_setschedparam(pthread_self(), SCHED_FIFO, &sched);
 
 	JsonNode *jcode = NULL;
 	JsonNode *jprotocols = NULL;
