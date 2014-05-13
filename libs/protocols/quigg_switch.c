@@ -30,6 +30,7 @@
 #include "gc.h"
 #include "quigg_switch.h"
 
+
 void quiggSwCreateMessage(int id, int state, int unit, int all) {
 	quigg_switch->message = json_mkobject();
 	json_append_member(quigg_switch->message, "id", json_mknumber(id));
@@ -47,11 +48,11 @@ void quiggSwCreateMessage(int id, int state, int unit, int all) {
 }
 
 void quiggSwParseCode(void) {
-/* 
+/*
    Conversion code will follow once the Rx part is working together with LPF
 */
-	int unit = binToDecRev(quigg_switch->binary, 25, 28);
 	int id = binToDecRev(quigg_switch->binary, 1, 24);
+	int unit = binToDecRev(quigg_switch->binary, 25, 28);
 	int all = binToDecRev(quigg_switch->binary, 29, 30);
 	int state = binToDecRev(quigg_switch->binary, 31, 32);
 	int dimm = binToDecRev(quigg_switch->binary, 33, 34);
@@ -124,9 +125,9 @@ void quiggSwCreateUnit(int unit) {
 			quiggSwCreateHigh(27, 28);	// 4th row
 		break;
 		case 4:
-			quiggSwCreateHigh(27, 28);	// 5th row Dimm?
-			quiggSwCreateHigh(33, 34);  //
-			quiggSwCreateHigh(37, 38);  // needs to be set
+			quiggSwCreateHigh(27, 28);	// 5th row Dimm ?
+			quiggSwCreateHigh(33, 34);	// 
+			quiggSwCreateHigh(37, 38);	// needs to be set
 		case 5:
 			quiggSwCreateHigh(25, 30);	// 6th row MASTER (all)
 		break;
