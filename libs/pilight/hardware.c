@@ -70,17 +70,18 @@ void hardware_init(void) {
 		hardware_root_free = 1;
 	}
 	size_t len = strlen(hardware_root);
-	if(hardware_root[len] != '/') {
+
+	if(hardware_root[len-1] != '/') {
 		strcat(hardware_root, "/");
 	}
 
-	if((d = opendir(HARDWARE_ROOT))) {
+	if((d = opendir(hardware_root))) {
 		while((file = readdir(d)) != NULL) {
 			if(file->d_type == DT_REG) {
 				if(strstr(file->d_name, ".so") != NULL) {
 					valid = 1;
 					memset(path, '\0', 255);
-					sprintf(path, "%s%s", HARDWARE_ROOT, file->d_name);
+					sprintf(path, "%s%s", hardware_root, file->d_name);
 
 					if((handle = dso_load(path))) {
 						init = dso_function(handle, "init");
@@ -89,7 +90,7 @@ void hardware_init(void) {
 							compatibility(&version, &commit);
 							char ver[strlen(version)];
 							strcpy(ver, version);
-
+					
 							if((check1 = vercmp(ver, pilight_version)) > 0) {
 								valid = 0;
 							}
@@ -97,10 +98,12 @@ void hardware_init(void) {
 								char com[strlen(commit)];
 								strcpy(com, commit);
 								sscanf(HASH, "v%*[0-9].%*[0-9]-%[0-9]-%*[0-9a-zA-Z\n\r]", pilight_commit);
+
 								if(strlen(pilight_commit) > 0 && (check2 = vercmp(com, pilight_commit)) > 0) {
 									valid = 0;
 								}
 							}
+									
 							if(valid) {
 								init();
 								logprintf(LOG_DEBUG, "loaded hardware module %s", file->d_name);

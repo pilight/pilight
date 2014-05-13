@@ -753,15 +753,17 @@ void whitelist_free(void) {
 /* Check if a given path exists */
 int path_exists(char *fil) {
 	struct stat s;
-	char *filename = basename(fil);
-	char path[1024];
-	size_t i = (strlen(fil)-strlen(filename));
+	char tmp[strlen(fil)+1];
+	strcpy(tmp, fil);
+	char *filename = basename(tmp);
+	char path[(strlen(tmp)-strlen(filename))+1];
+	size_t i = (strlen(tmp)-strlen(filename));
 
 	memset(path, '\0', sizeof(path));
-	memcpy(path, fil, i);
-	snprintf(path, i, "%s", fil);
+	memcpy(path, tmp, i);
+	snprintf(path, i, "%s", tmp);
 	
-	if(strcmp(filename, fil) != 0) {
+	if(strcmp(filename, tmp) != 0) {
 		int err = stat(path, &s);
 		if(err == -1) {
 			if(ENOENT == errno) {

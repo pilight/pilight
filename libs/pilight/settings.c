@@ -41,18 +41,16 @@ void settings_add_string(const char *name, char *value) {
 		logprintf(LOG_ERR, "out of memory");
 		exit(EXIT_FAILURE);
 	}
-	snode->name = malloc(strlen(name)+1);
-	if(!snode->name) {
+	if(!(snode->name = malloc(strlen(name)+1))) {
 		logprintf(LOG_ERR, "out of memory");
 		exit(EXIT_FAILURE);
 	}
 	strcpy(snode->name, name);
-	snode->value = malloc(strlen(value)+1);
-	if(!snode->value) {
+	if(!(snode->value.string_ = malloc(strlen(value)+1))) {
 		logprintf(LOG_ERR, "out of memory");
 		exit(EXIT_FAILURE);
 	}
-	strcpy(snode->value, value);
+	strcpy(snode->value.string_, value);
 	snode->type = 2;
 	snode->next = settings;
 	settings = snode;
@@ -65,20 +63,12 @@ void settings_add_number(const char *name, int value) {
 		logprintf(LOG_ERR, "out of memory");
 		exit(EXIT_FAILURE);
 	}
-	char ctmp[256];
-	snode->name = malloc(strlen(name)+1);
-	if(!snode->name) {
+	if(!(snode->name = malloc(strlen(name)+1))) {
 		logprintf(LOG_ERR, "out of memory");
 		exit(EXIT_FAILURE);
 	}
 	strcpy(snode->name, name);
-	sprintf(ctmp, "%d", value);
-	snode->value = malloc(strlen(ctmp)+1);
-	if(!snode->value) {
-		logprintf(LOG_ERR, "out of memory");
-		exit(EXIT_FAILURE);
-	}
-	strcpy(snode->value, ctmp);
+	snode->value.number_ = value;
 	snode->type = 1;
 	snode->next = settings;
 	settings = snode;
@@ -90,7 +80,7 @@ int settings_find_number(const char *name, int *out) {
 
 	while(tmp_settings) {
 		if(strcmp(tmp_settings->name, name) == 0 && tmp_settings->type == 1) {
-			*out = atoi(tmp_settings->value);
+			*out = tmp_settings->value.number_;
 			return EXIT_SUCCESS;
 		}
 		tmp_settings = tmp_settings->next;
@@ -105,7 +95,7 @@ int settings_find_string(const char *name, char **out) {
 
 	while(tmp_settings) {
 		if(strcmp(tmp_settings->name, name) == 0 && tmp_settings->type == 2) {
-			*out = tmp_settings->value;
+			*out = tmp_settings->value.string_;
 			return EXIT_SUCCESS;
 		}
 		tmp_settings = tmp_settings->next;
@@ -469,7 +459,9 @@ int settings_gc(void) {
 	while(settings) {
 		tmp = settings;
 		sfree((void *)&tmp->name);
-		sfree((void *)&tmp->value);
+		if(tmp->type == 2) {
+			sfree((void *)&tmp->value.string_);
+		}
 		settings = settings->next;
 		sfree((void *)&tmp);
 	}
@@ -513,7 +505,6 @@ int settings_read(void) {
 		sfree((void *)&content);
 		return EXIT_FAILURE;
 	}
-
 	root = json_decode(content);
 
 	if(settings_parse(root) != 0) {

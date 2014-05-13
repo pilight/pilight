@@ -60,7 +60,7 @@ void protocol_init(void) {
 		protocol_root_free = 1;
 	}
 	size_t len = strlen(protocol_root);
-	if(protocol_root[len] != '/') {
+	if(protocol_root[len-1] != '/') {
 		strcat(protocol_root, "/");
 	}
 
@@ -87,6 +87,7 @@ void protocol_init(void) {
 								char com[strlen(commit)];
 								strcpy(com, commit);
 								sscanf(HASH, "v%*[0-9].%*[0-9]-%[0-9]-%*[0-9a-zA-Z\n\r]", pilight_commit);
+
 								if(strlen(pilight_commit) > 0 && (check2 = vercmp(com, pilight_commit)) > 0) {
 									valid = 0;
 								}
