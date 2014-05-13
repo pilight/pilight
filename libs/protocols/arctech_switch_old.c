@@ -163,10 +163,9 @@ void arctechSwOldInit(void) {
 	protocol_device_add(arctech_switch_old, "kaku_switch_old", "Old KlikAanKlikUit Switches");
 	protocol_device_add(arctech_switch_old, "cogex", "Cogex Switches");
 	protocol_device_add(arctech_switch_old, "intertechno_old", "Old Intertechno Switches");
-	protocol_plslen_add(arctech_switch_old, 340);
-	protocol_plslen_add(arctech_switch_old, 330);
-	protocol_plslen_add(arctech_switch_old, 320);	
-	protocol_plslen_add(arctech_switch_old, 310);	
+	protocol_plslen_add(arctech_switch_old, 336);
+        protocol_plslen_add(arctech_switch_old, 326);
+        protocol_plslen_add(arctech_switch_old, 330);
 	arctech_switch_old->devtype = SWITCH;
 	arctech_switch_old->hwtype = RF433;
 	arctech_switch_old->pulse = 3;
