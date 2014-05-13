@@ -165,3 +165,12 @@ void lirc433Init(void) {
 	lirc433->receive=&lirc433Receive;
 	lirc433->settings=&lirc433Settings;
 }
+
+void compatibility(const char **version, const char **commit) {
+	*version = "4.0";
+	*commit = "18";
+}
+
+void init(void) {
+	lirc433Init();
+}

@@ -238,3 +238,12 @@ void pilight433Init(void) {
 	pilight433->receive=&pilight433Receive;
 	pilight433->settings=&pilight433Settings;
 }
+
+void compatibility(const char **version, const char **commit) {
+	*version = "4.0";
+	*commit = "18";
+}
+
+void init(void) {
+	pilight433Init();
+}

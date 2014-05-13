@@ -7,6 +7,8 @@ set(PROJECT_VERSION 4.0)
 
 include(${PROJECT_SOURCE_DIR}/CMakeConfig.txt)
 
+set(CMAKE_SKIP_RULE_DEPENDENCY TRUE)
+
 #Final compilation all platforms
 #Removing debugging for final compilation
 #set(CMAKE_SKIP_RPATH TRUE)
@@ -114,48 +116,60 @@ add_definitions(-DHASH="${git_ver}")
 include_directories("${PROJECT_SOURCE_DIR}/libs/pilight/")
 include_directories("${PROJECT_SOURCE_DIR}/libs/avrdude/")
 
-file(GLOB pilight_headers
-	"${PROJECT_SOURCE_DIR}/libs/hardware/*.h"
-	"${PROJECT_SOURCE_DIR}/libs/pilight/*.h"
+file(GLOB protocol_header
 	"${PROJECT_SOURCE_DIR}/libs/protocols/*.h"
+)
+
+file(GLOB protocol
+	"${PROJECT_SOURCE_DIR}/libs/protocols/*.c"
+)
+
+file(GLOB hardware_header
+	"${PROJECT_SOURCE_DIR}/libs/hardware/*.h"
+)
+
+file(GLOB hardware
+	"${PROJECT_SOURCE_DIR}/libs/hardware/*.c"
+)
+
+file(GLOB pilight_headers
+	"${PROJECT_SOURCE_DIR}/libs/pilight/*.h"
 	"${PROJECT_SOURCE_DIR}/libs/avrdude/*.h")
 
 file(GLOB pilight
-	"${PROJECT_SOURCE_DIR}/libs/hardware/*.c"
 	"${PROJECT_SOURCE_DIR}/libs/pilight/*.c"
-	"${PROJECT_SOURCE_DIR}/libs/protocols/*.c"
 	"${PROJECT_SOURCE_DIR}/libs/avrdude/*.c")
 
 if(${PROTOCOL_ALECTO} MATCHES "OFF")
-	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/alecto.h")
-	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/alecto.c")
+	list(REMOVE_ITEM protocol_header "${PROJECT_SOURCE_DIR}/libs/protocols/alecto.h")
+	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/alecto.c")
 endif()
 
 if(${PROTOCOL_COGEX_SWITCH} MATCHES "OFF"
 	AND ${PROTOCOL_KAKU_SWITCH_OLD} MATCHES "OFF"
 	AND ${PROTOCOL_INTERTECHNO_OLD} MATCHES "OFF")
-	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/arctech_switch_old.h")
-	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/arctech_switch_old.c")
+	list(REMOVE_ITEM protocol_header "${PROJECT_SOURCE_DIR}/libs/protocols/arctech_switch_old.h")
+	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/arctech_switch_old.c")
 endif()
 
 if(${PROTOCOL_KAKU_SCREEN_OLD} MATCHES "OFF")
-	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/arctech_screen_old.h")
-	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/arctech_screen_old.c")
+	list(REMOVE_ITEM protocol_header "${PROJECT_SOURCE_DIR}/libs/protocols/arctech_screen_old.h")
+	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/arctech_screen_old.c")
 endif()
 
 if(${PROTOCOL_KAKU_DIMMER} MATCHES "OFF")
-	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/arctech_dimmer.h")
-	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/arctech_dimmer.c")
+	list(REMOVE_ITEM protocol_header "${PROJECT_SOURCE_DIR}/libs/protocols/arctech_dimmer.h")
+	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/arctech_dimmer.c")
 endif()
 
 if(${PROTOCOL_KAKU_SCREEN} MATCHES "OFF")
-	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/arctech_screen.h")
-	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/arctech_screen.c")
+	list(REMOVE_ITEM protocol_header "${PROJECT_SOURCE_DIR}/libs/protocols/arctech_screen.h")
+	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/arctech_screen.c")
 endif()
 
 if(${PROTOCOL_KAKU_CONTACT} MATCHES "OFF")
-  list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/arctech_contact.h")
-  list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/arctech_contact.c")
+  list(REMOVE_ITEM protocol_header "${PROJECT_SOURCE_DIR}/libs/protocols/arctech_contact.h")
+  list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/arctech_contact.c")
 endif()
 
 if(${PROTOCOL_COCO_SWITCH} MATCHES "OFF"
@@ -163,219 +177,219 @@ if(${PROTOCOL_COCO_SWITCH} MATCHES "OFF"
 	AND ${PROTOCOL_NEXA_SWITCH} MATCHES "OFF"
 	AND ${PROTOCOL_KAKU_SWITCH} MATCHES "OFF"
 	AND ${PROTOCOL_INTERTECHNO_SWITCH} MATCHES "OFF")
-	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/arctech_switch.h")
-	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/arctech_switch.c")
+	list(REMOVE_ITEM protocol_header "${PROJECT_SOURCE_DIR}/libs/protocols/arctech_switch.h")
+	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/arctech_switch.c")
 endif()
 
 if(${PROTOCOL_DS18B20} MATCHES "OFF")
-	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/ds18b20.h")
-	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/ds18b20.c")
+	list(REMOVE_ITEM protocol_header "${PROJECT_SOURCE_DIR}/libs/protocols/ds18b20.h")
+	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/ds18b20.c")
 endif()
 
 if(${PROTOCOL_DS18S20} MATCHES "OFF")
-	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/ds18s20.h")
-	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/ds18s20.c")
+	list(REMOVE_ITEM protocol_header "${PROJECT_SOURCE_DIR}/libs/protocols/ds18s20.h")
+	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/ds18s20.c")
 endif()
 
 if(${PROTOCOL_DHT22} MATCHES "OFF")
-	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/dht22.h")
-	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/dht22.c")
+	list(REMOVE_ITEM protocol_header "${PROJECT_SOURCE_DIR}/libs/protocols/dht22.h")
+	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/dht22.c")
 endif()
 
 if(${PROTOCOL_ELRO_SWITCH} MATCHES "OFF" AND ${PROTOCOL_BRENNENSTUHL_SWITCH} MATCHES "OFF")
-	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/elro_ad.h")
-	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/elro_he.h")
-	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/elro_hc.h")
-	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/elro_ad.c")
-	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/elro_hc.c")
-	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/elro_he.c")
+	list(REMOVE_ITEM protocol_header "${PROJECT_SOURCE_DIR}/libs/protocols/elro_ad.h")
+	list(REMOVE_ITEM protocol_header "${PROJECT_SOURCE_DIR}/libs/protocols/elro_he.h")
+	list(REMOVE_ITEM protocol_header "${PROJECT_SOURCE_DIR}/libs/protocols/elro_hc.h")
+	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/elro_ad.c")
+	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/elro_hc.c")
+	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/elro_he.c")
 endif()
 
 if(${PROTOCOL_GENERIC_DIMMER} MATCHES "OFF")
-	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/generic_dimmer.h")
-	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/generic_dimmer.c")
+	list(REMOVE_ITEM protocol_header "${PROJECT_SOURCE_DIR}/libs/protocols/generic_dimmer.h")
+	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/generic_dimmer.c")
 endif()
 
 if(${PROTOCOL_GENERIC_SWITCH} MATCHES "OFF")
-	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/generic_switch.h")
-	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/generic_switch.c")
+	list(REMOVE_ITEM protocol_header "${PROJECT_SOURCE_DIR}/libs/protocols/generic_switch.h")
+	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/generic_switch.c")
 endif()
 
 if(${PROTOCOL_GENERIC_WEATHER} MATCHES "OFF")
-	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/generic_weather.h")
-	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/generic_weather.c")
+	list(REMOVE_ITEM protocol_header "${PROJECT_SOURCE_DIR}/libs/protocols/generic_weather.h")
+	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/generic_weather.c")
 endif()
 
 if(${PROTOCOL_GENERIC_WEBCAM} MATCHES "OFF")
-	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/generic_webcam.h")
-	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/generic_webcam.c")
+	list(REMOVE_ITEM protocol_header "${PROJECT_SOURCE_DIR}/libs/protocols/generic_webcam.h")
+	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/generic_webcam.c")
 endif()
 
 if(${PROTOCOL_HOMEEASY_OLD} MATCHES "OFF")
-	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/home_easy_old.h")
-	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/home_easy_old.c")
+	list(REMOVE_ITEM protocol_header "${PROJECT_SOURCE_DIR}/libs/protocols/home_easy_old.h")
+	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/home_easy_old.c")
 endif()
 
 if(${PROTOCOL_IMPULS} MATCHES "OFF"
 	AND ${PROTOCOL_SELECTREMOTE} MATCHES "OFF")
-	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/impuls.h")
-	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/impuls.c")
+	list(REMOVE_ITEM protocol_header "${PROJECT_SOURCE_DIR}/libs/protocols/impuls.h")
+	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/impuls.c")
 endif()
 
 if(${PROTOCOL_EHOME} MATCHES "OFF")
-	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/ehome.h")
-	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/ehome.c")
+	list(REMOVE_ITEM protocol_header "${PROJECT_SOURCE_DIR}/libs/protocols/ehome.h")
+	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/ehome.c")
 endif()
 
 if(${PROTOCOL_RAW} MATCHES "OFF")
-	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/raw.h")
-	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/raw.c")
+	list(REMOVE_ITEM protocol_header "${PROJECT_SOURCE_DIR}/libs/protocols/raw.h")
+	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/raw.c")
 endif()
 
 if(${PROTOCOL_RELAY} MATCHES "OFF")
-	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/relay.h")
-	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/relay.c")
+	list(REMOVE_ITEM protocol_header "${PROJECT_SOURCE_DIR}/libs/protocols/relay.h")
+	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/relay.c")
 endif()
 
 if(${PROTOCOL_REV} MATCHES "OFF")
-	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/rev.h")
-	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/rev.c")
+	list(REMOVE_ITEM protocol_header "${PROJECT_SOURCE_DIR}/libs/protocols/rev.h")
+	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/rev.c")
 endif()
 
 if(${PROTOCOL_REV_OLD} MATCHES "OFF")
-	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/rev_old.h")
-	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/rev_old.c")
+	list(REMOVE_ITEM protocol_header "${PROJECT_SOURCE_DIR}/libs/protocols/rev_old.h")
+	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/rev_old.c")
 endif()
 
 if(${PROTOCOL_CLARUS} MATCHES "OFF")
-	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/clarus.h")
-	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/clarus.c")
+	list(REMOVE_ITEM protocol_header "${PROJECT_SOURCE_DIR}/libs/protocols/clarus.h")
+	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/clarus.c")
 endif()
 
 if(${PROTOCOL_RPI_TEMP} MATCHES "OFF")
-	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/rpi_temp.h")
-	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/rpi_temp.c")
+	list(REMOVE_ITEM protocol_header "${PROJECT_SOURCE_DIR}/libs/protocols/rpi_temp.h")
+	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/rpi_temp.c")
 endif()
 
 if(${PROTOCOL_CONRAD_RSL_SWITCH} MATCHES "OFF")
-	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/conrad_rsl_switch.h")
-	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/conrad_rsl_switch.c")
+	list(REMOVE_ITEM protocol_header "${PROJECT_SOURCE_DIR}/libs/protocols/conrad_rsl_switch.h")
+	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/conrad_rsl_switch.c")
 endif()
 
 if(${PROTOCOL_CONRAD_WEATHER} MATCHES "OFF"
    AND ${PROTOCOL_TFA} MATCHES "OFF")
-	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/tfa.h")
-	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/tfa.c")
+	list(REMOVE_ITEM protocol_header "${PROJECT_SOURCE_DIR}/libs/protocols/tfa.h")
+	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/tfa.c")
 endif()
 
 if(${PROTOCOL_CONRAD_RSL_CONTACT} MATCHES "OFF")
-	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/conrad_rsl_contact.h")
-	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/conrad_rsl_contact.c")
+	list(REMOVE_ITEM protocol_header "${PROJECT_SOURCE_DIR}/libs/protocols/conrad_rsl_contact.h")
+	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/conrad_rsl_contact.c")
 endif()
 
 if(${PROTOCOL_DHT11} MATCHES "OFF")
-	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/dht11.h")
-	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/dht11.c")
+	list(REMOVE_ITEM protocol_header "${PROJECT_SOURCE_DIR}/libs/protocols/dht11.h")
+	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/dht11.c")
 endif()
 
 if(${PROTOCOL_DHT22} MATCHES "OFF")
-	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/dht22.h")
-	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/dht22.c")
+	list(REMOVE_ITEM protocol_header "${PROJECT_SOURCE_DIR}/libs/protocols/dht22.h")
+	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/dht22.c")
 endif()
 
 if(${PROTOCOL_POLLIN_SWITCH} MATCHES "OFF")
-	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/pollin.h")
-	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/pollin.c")
+	list(REMOVE_ITEM protocol_header "${PROJECT_SOURCE_DIR}/libs/protocols/pollin.h")
+	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/pollin.c")
 endif()
 
 if(${PROTOCOL_QUIGG_SWITCH} MATCHES "OFF")
-    list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/quigg_switch.h")
-    list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/quigg_switch.c")
+    list(REMOVE_ITEM protocol_header "${PROJECT_SOURCE_DIR}/libs/protocols/quigg_switch.h")
+    list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/quigg_switch.c")
 endif()
 
 if(${PROTOCOL_MUMBI_SWITCH} MATCHES "OFF")
-	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/mumbi.h")
-	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/mumbi.c")
+	list(REMOVE_ITEM protocol_header "${PROJECT_SOURCE_DIR}/libs/protocols/mumbi.h")
+	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/mumbi.c")
 endif()
 
 if(${PROTOCOL_LM75} MATCHES "OFF"
    AND ${PROTOCOL_LM76} MATCHES "OFF")
-	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/lm75.h")
-	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/lm76.h")
-	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/lm75.c")
-	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/lm76.c")
-	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/pilight/wiringPiI2C.h")
-	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/pilight/wiringPiI2C.c")
+	list(REMOVE_ITEM protocol_header "${PROJECT_SOURCE_DIR}/libs/protocols/lm75.h")
+	list(REMOVE_ITEM protocol_header "${PROJECT_SOURCE_DIR}/libs/protocols/lm76.h")
+	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/lm75.c")
+	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/lm76.c")
+	list(REMOVE_ITEM protocol_header "${PROJECT_SOURCE_DIR}/libs/protocol/wiringPiI2C.h")
+	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocol/wiringPiI2C.c")
 endif()
 
 if(${PROTOCOL_WUNDERGROUND} MATCHES "OFF")
-	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/wunderground.h")
-	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/wunderground.c")
+	list(REMOVE_ITEM protocol_header "${PROJECT_SOURCE_DIR}/libs/protocols/wunderground.h")
+	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/wunderground.c")
 endif()
 
 if(${PROTOCOL_OPENWEATHERMAP} MATCHES "OFF")
-	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/openweathermap.h")
-	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/openweathermap.c")
+	list(REMOVE_ITEM protocol_header "${PROJECT_SOURCE_DIR}/libs/protocols/openweathermap.h")
+	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/openweathermap.c")
 endif()
 
 if(${PROTOCOL_SILVERCREST} MATCHES "OFF")
-	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/silvercrest.h")
-	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/silvercrest.c")
+	list(REMOVE_ITEM protocol_header "${PROJECT_SOURCE_DIR}/libs/protocols/silvercrest.h")
+	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/silvercrest.c")
 endif()
 
 if(${PROTOCOL_SUNRISESET} MATCHES "OFF")
-	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/sunriseset.h")
-	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/sunriseset.c")
+	list(REMOVE_ITEM protocol_header "${PROJECT_SOURCE_DIR}/libs/protocols/sunriseset.h")
+	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/sunriseset.c")
 endif()
 
 if(${PROTOCOL_THREECHAN} MATCHES "OFF")
-	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/threechan.h")
-	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/threechan.c")
+	list(REMOVE_ITEM protocol_header "${PROJECT_SOURCE_DIR}/libs/protocols/threechan.h")
+	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/threechan.c")
 endif()
 
 if(${PROTOCOL_TEKNIHALL} MATCHES "OFF")
-	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/teknihall.h")
-	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/teknihall.c")
+	list(REMOVE_ITEM protocol_header "${PROJECT_SOURCE_DIR}/libs/protocols/teknihall.h")
+	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/teknihall.c")
 endif()
 
 if(${PROTOCOL_X10} MATCHES "OFF")
-	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/x10.h")
-	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/x10.c")
+	list(REMOVE_ITEM protocol_header "${PROJECT_SOURCE_DIR}/libs/protocols/x10.h")
+	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/x10.c")
 endif()
 
 if(${PROTOCOL_PROGRAM} MATCHES "OFF")
-	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/program.h")
-	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/program.c")
+	list(REMOVE_ITEM protocol_header "${PROJECT_SOURCE_DIR}/libs/protocols/program.h")
+	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/program.c")
 endif()
 
 if(${PROTOCOL_DATETIME} MATCHES "OFF")
-	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/pdatetime.h")
-	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/pdatetime.c")
+	list(REMOVE_ITEM protocol_header "${PROJECT_SOURCE_DIR}/libs/protocols/pdatetime.h")
+	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/pdatetime.c")
 endif()
 
 if(${PROTOCOL_XBMC} MATCHES "OFF")
-	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/xbmc.h")
-	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/xbmc.c")
+	list(REMOVE_ITEM protocol_header "${PROJECT_SOURCE_DIR}/libs/protocols/xbmc.h")
+	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/xbmc.c")
 endif()
 
 if(${PROTOCOL_LIRC} MATCHES "OFF")
-	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/lirc.h")
-	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/lirc.c")
+	list(REMOVE_ITEM protocol_header "${PROJECT_SOURCE_DIR}/libs/protocols/lirc.h")
+	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/lirc.c")
 endif()
 
 if(${HARDWARE_433_GPIO} MATCHES "OFF")
-	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/hardware/433gpio.h")
-	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/hardware/433gpio.c")
+	list(REMOVE_ITEM hardware_headers "${PROJECT_SOURCE_DIR}/libs/hardware/433gpio.h")
+	list(REMOVE_ITEM hardware "${PROJECT_SOURCE_DIR}/libs/hardware/433gpio.c")
 endif()
 
 if(${HARDWARE_433_LIRC} MATCHES "OFF")
-	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/hardware/433module.h")
-	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/hardware/433module.c")
+	list(REMOVE_ITEM hardware_headers "${PROJECT_SOURCE_DIR}/libs/hardware/433module.h")
+	list(REMOVE_ITEM hardware "${PROJECT_SOURCE_DIR}/libs/hardware/433module.c")
 endif()
 
 if(${HARDWARE_433_PILIGHT} MATCHES "OFF")
-	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/hardware/433pilight.h")
-	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/hardware/433pilight.c")
+	list(REMOVE_ITEM hardware_headers "${PROJECT_SOURCE_DIR}/libs/hardware/433pilight.h")
+	list(REMOVE_ITEM hardware "${PROJECT_SOURCE_DIR}/libs/hardware/433pilight.c")
 endif()
 
 if(${UPDATE} MATCHES "OFF")
@@ -407,13 +421,36 @@ endif()
 
 configure_file(pilight.h.in pilight.h)
 
+foreach(file ${protocol})
+	get_filename_component(name ${file} NAME_WE)
+	add_library(${name}_module MODULE ${file})
+	target_link_libraries(${name}_module ${CMAKE_THREAD_LIBS_INIT})
+	target_link_libraries(${name}_module m)
+	target_link_libraries(${name}_module ${CMAKE_DL_LIBS})
+	set_target_properties(${name}_module PROPERTIES OUTPUT_NAME ${name})
+	install(FILES lib${name}.so DESTINATION lib/pilight/protocols RENAME ${name}.so)
+endforeach()
+
+foreach(file ${hardware})
+	get_filename_component(name ${file} NAME_WE)
+	add_library(${name}_module MODULE ${file})
+	target_link_libraries(${name}_module ${CMAKE_THREAD_LIBS_INIT})
+	target_link_libraries(${name}_module m)
+	target_link_libraries(${name}_module ${CMAKE_DL_LIBS})
+	set_target_properties(${name}_module PROPERTIES OUTPUT_NAME ${name})
+	install(FILES lib${name}.so DESTINATION lib/pilight/hardware RENAME ${name}.so)
+endforeach()
+
 add_library(pilight OBJECT ${pilight})
 add_library(pilight_static STATIC $<TARGET_OBJECTS:pilight>)
 add_library(pilight_shared SHARED $<TARGET_OBJECTS:pilight>)
+
 target_link_libraries(pilight_shared ${CMAKE_THREAD_LIBS_INIT})
 target_link_libraries(pilight_shared m)
+target_link_libraries(pilight_shared ${CMAKE_DL_LIBS})
 target_link_libraries(pilight_static ${CMAKE_THREAD_LIBS_INIT})
 target_link_libraries(pilight_static m)
+target_link_libraries(pilight_static ${CMAKE_DL_LIBS})
 
 if(${UPDATE} MATCHES "ON")
 	target_link_libraries(pilight_shared ${CMAKE_ZLIB_LIBS_INIT})
@@ -470,48 +507,56 @@ add_executable(pilight-raw raw.c)
 target_link_libraries(pilight-raw pilight_shared)
 target_link_libraries(pilight-raw ${CMAKE_DL_LIBS})
 target_link_libraries(pilight-raw m)
+target_link_libraries(pilight-raw ${CMAKE_DL_LIBS})
 target_link_libraries(pilight-raw ${CMAKE_THREAD_LIBS_INIT})
 
 add_executable(pilight-send send.c)
 target_link_libraries(pilight-send pilight_shared)
 target_link_libraries(pilight-send ${CMAKE_DL_LIBS})
 target_link_libraries(pilight-send m)
+target_link_libraries(pilight-send ${CMAKE_DL_LIBS})
 target_link_libraries(pilight-send ${CMAKE_THREAD_LIBS_INIT})
 
 add_executable(pilight-control control.c)
 target_link_libraries(pilight-control pilight_shared)
 target_link_libraries(pilight-control ${CMAKE_DL_LIBS})
 target_link_libraries(pilight-control m)
+target_link_libraries(pilight-control ${CMAKE_DL_LIBS})
 target_link_libraries(pilight-control ${CMAKE_THREAD_LIBS_INIT})
 
 add_executable(pilight-learn learn.c)
 target_link_libraries(pilight-learn pilight_shared)
 target_link_libraries(pilight-learn ${CMAKE_DL_LIBS})
 target_link_libraries(pilight-learn m)
+target_link_libraries(pilight-learn ${CMAKE_DL_LIBS})
 target_link_libraries(pilight-learn ${CMAKE_THREAD_LIBS_INIT})
 
 add_executable(pilight-receive receive.c)
 target_link_libraries(pilight-receive pilight_shared)
 target_link_libraries(pilight-receive ${CMAKE_DL_LIBS})
 target_link_libraries(pilight-receive m)
+target_link_libraries(pilight-receive ${CMAKE_DL_LIBS})
 target_link_libraries(pilight-receive ${CMAKE_THREAD_LIBS_INIT})
 
 add_executable(pilight-debug debug.c)
 target_link_libraries(pilight-debug pilight_shared)
 target_link_libraries(pilight-debug ${CMAKE_DL_LIBS})
 target_link_libraries(pilight-debug m)
+target_link_libraries(pilight-debug ${CMAKE_DL_LIBS})
 target_link_libraries(pilight-debug ${CMAKE_THREAD_LIBS_INIT})
 
 add_executable(pilight-uuid uuid.c)
 target_link_libraries(pilight-uuid pilight_shared)
 target_link_libraries(pilight-uuid ${CMAKE_DL_LIBS})
 target_link_libraries(pilight-uuid m)
+target_link_libraries(pilight-uuid ${CMAKE_DL_LIBS})
 target_link_libraries(pilight-uuid ${CMAKE_THREAD_LIBS_INIT})
 
 add_executable(pilight-flash flash.c)
 target_link_libraries(pilight-flash pilight_shared)
 target_link_libraries(pilight-flash ${CMAKE_DL_LIBS})
 target_link_libraries(pilight-flash m)
+target_link_libraries(pilight-flash ${CMAKE_DL_LIBS})
 target_link_libraries(pilight-flash ${CMAKE_THREAD_LIBS_INIT})
 
 if(EXISTS "/usr/local/sbin/pilight-send")

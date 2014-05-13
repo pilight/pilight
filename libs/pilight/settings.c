@@ -164,6 +164,22 @@ int settings_parse(JsonNode *root) {
 #endif
 				settings_add_number(jsettings->key, (int)jsettings->number_);
 			}
+		} else if(strcmp(jsettings->key, "hardware-root") == 0) {
+			if(!jsettings->string_ || path_exists(jsettings->string_) != 0) {
+				logprintf(LOG_ERR, "setting \"%s\" must contain a valid path", jsettings->key);
+				have_error = 1;
+				goto clear;
+			} else {
+				settings_add_string(jsettings->key, jsettings->string_);
+			}
+		} else if(strcmp(jsettings->key, "protocol-root") == 0) {
+			if(!jsettings->string_ || path_exists(jsettings->string_) != 0) {
+				logprintf(LOG_ERR, "setting \"%s\" must contain a valid path", jsettings->key);
+				have_error = 1;
+				goto clear;
+			} else {
+				settings_add_string(jsettings->key, jsettings->string_);
+			}
 		} else if(strcmp(jsettings->key, "standalone") == 0) {
 			if(jsettings->number_ < 0 || jsettings->number_ > 1) {
 				logprintf(LOG_ERR, "setting \"%s\" must be either 0 or 1", jsettings->key);

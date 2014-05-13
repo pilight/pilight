@@ -73,3 +73,12 @@ void pilightFirmwareV2Init(void) {
   pilight_firmware_v2->parseBinary=&pilightFirmwareV2ParseBinary;
   pilight_firmware_v2->parseRaw=&pilightFirmwareV2ParseRaw;
 }
+
+void compatibility(const char **version, const char **commit) {
+	*version = "4.0";
+	*commit = "18";
+}
+
+void init(void) {
+	pilightFirmwareV2Init();
+}

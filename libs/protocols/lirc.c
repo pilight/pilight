@@ -202,3 +202,12 @@ void lircInit(void) {
 	memset(lirc_socket, '\0', BUFFER_SIZE);
 	strcpy(lirc_socket, "/dev/lircd");
 }
+
+void compatibility(const char **version, const char **commit) {
+	*version = "4.0";
+	*commit = "18";
+}
+
+void init(void) {
+	lircInit();
+}

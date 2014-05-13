@@ -199,3 +199,12 @@ void lm75Init(void) {
 	lm75->initDev=&lm75InitDev;
 	lm75->threadGC=&lm75ThreadGC;
 }
+
+void compatibility(const char **version, const char **commit) {
+	*version = "4.0";
+	*commit = "18";
+}
+
+void init(void) {
+	lm75Init();
+}

@@ -199,3 +199,12 @@ void lm76Init(void) {
 	lm76->initDev=&lm76InitDev;
 	lm76->threadGC=&lm76ThreadGC;
 }
+
+void compatibility(const char **version, const char **commit) {
+	*version = "4.0";
+	*commit = "18";
+}
+
+void init(void) {
+	lm76Init();
+}

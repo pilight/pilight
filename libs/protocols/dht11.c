@@ -219,3 +219,12 @@ void dht11Init(void) {
 	dht11->initDev=&dht11InitDev;
 	dht11->threadGC=&dht11ThreadGC;
 }
+
+void compatibility(const char **version, const char **commit) {
+	*version = "4.0";
+	*commit = "18";
+}
+
+void init(void) {
+	dht11Init();
+}

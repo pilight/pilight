@@ -179,3 +179,12 @@ void arctechSrOldInit(void) {
 	arctech_screen_old->createCode=&arctechSrOldCreateCode;
 	arctech_screen_old->printHelp=&arctechSrOldPrintHelp;
 }
+
+void compatibility(const char **version, const char **commit) {
+	*version = "4.0";
+	*commit = "18";
+}
+
+void init(void) {
+	arctechSrOldInit();
+}

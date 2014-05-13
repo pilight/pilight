@@ -47,6 +47,7 @@
 #include "irq.h"
 #include "hardware.h"
 #include "ssdp.h"
+#include "dso.h"
 #include "firmware.h"
 
 #ifdef UPDATE
@@ -1574,6 +1575,7 @@ int main_gc(void) {
 	settings_gc();
 	options_gc();
 	socket_gc();
+	dso_gc();
 
 	whitelist_free();
 	threads_gc();

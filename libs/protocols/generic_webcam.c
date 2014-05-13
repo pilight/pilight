@@ -61,3 +61,12 @@ void genWebcamInit(void) {
 
 	generic_webcam->checkValues=genWebcamCheckValues;
 }
+
+void compatibility(const char **version, const char **commit) {
+	*version = "4.0";
+	*commit = "18";
+}
+
+void init(void) {
+	genWebcamInit();
+}

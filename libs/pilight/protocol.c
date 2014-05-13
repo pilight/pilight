@@ -20,284 +20,97 @@
 #include <stdlib.h>
 #include <string.h>
 #include <regex.h>
+#include <dirent.h>
+#include <dlfcn.h>
 #include <sys/time.h>
 
 #include "../../pilight.h"
 #include "common.h"
+#include "dso.h"
 #include "options.h"
+#include "settings.h"
 #include "protocol.h"
 #include "log.h"
-#include "../protocols/pilight_firmware_v2.h"
-#include "../protocols/pilight_firmware_v3.h"
-
-#if defined(PROTOCOL_COCO_SWITCH) || defined(PROTOCOL_DIO_SWITCH) || defined(PROTOCOL_NEXA_SWITCH) || defined(PROTOCOL_KAKU_SWITCH) || defined(PROTOCOL_INTERTECHNO_SWITCH)
-	#include "../protocols/arctech_switch.h"
-#endif
-#ifdef PROTOCOL_KAKU_SCREEN
-	#include "../protocols/arctech_screen.h"
-#endif
-#ifdef PROTOCOL_KAKU_CONTACT
-  #include "../protocols/arctech_contact.h"
-#endif
-#ifdef PROTOCOL_KAKU_DIMMER
-	#include "../protocols/arctech_dimmer.h"
-#endif
-#if defined(PROTOCOL_COGEX_SWITCH) || defined(PROTOCOL_KAKU_SWITCH_OLD) || defined(PROTOCOL_INTERTECHNO_OLD)
-	#include "../protocols/arctech_switch_old.h"
-#endif
-#ifdef PROTOCOL_KAKU_SCREEN_OLD
-	#include "../protocols/arctech_screen_old.h"
-#endif
-#ifdef PROTOCOL_HOMEEASY_OLD
-	#include "../protocols/home_easy_old.h"
-#endif
-#ifdef PROTOCOL_ELRO_SWITCH
-	#include "../protocols/elro_ad.h"
-	#include "../protocols/elro_he.h"
-	#include "../protocols/elro_hc.h"
-#endif
-#if defined(PROTOCOL_SELECTREMOTE) || defined(PROTOCOL_IMPULS)
-	#include "../protocols/impuls.h"
-#endif
-#ifdef PROTOCOL_ALECTO
-	#include "../protocols/alecto.h"
-#endif
-#ifdef PROTOCOL_RAW
-	#include "../protocols/raw.h"
-#endif
-#ifdef PROTOCOL_RELAY
-	#include "../protocols/relay.h"
-#endif
-#ifdef PROTOCOL_REV
-	#include "../protocols/rev.h"
-#endif
-#ifdef PROTOCOL_REV_OLD
-	#include "../protocols/rev_old.h"
-#endif
-#ifdef PROTOCOL_GENERIC_WEATHER
-	#include "../protocols/generic_weather.h"
-#endif
-#ifdef PROTOCOL_GENERIC_SWITCH
-	#include "../protocols/generic_switch.h"
-#endif
-#ifdef PROTOCOL_GENERIC_DIMMER
-	#include "../protocols/generic_dimmer.h"
-#endif
-#ifdef PROTOCOL_GENERIC_WEBCAM
-	#include "../protocols/generic_webcam.h"
-#endif
-#ifdef PROTOCOL_DS18B20
-	#include "../protocols/ds18b20.h"
-#endif
-#ifdef PROTOCOL_DS18S20
-	#include "../protocols/ds18s20.h"
-#endif
-#ifdef PROTOCOL_DHT22
-	#include "../protocols/dht22.h"
-#endif
-#ifdef PROTOCOL_DHT11
-	#include "../protocols/dht11.h"
-#endif
-#ifdef PROTOCOL_CLARUS
-	#include "../protocols/clarus.h"
-#endif
-#ifdef PROTOCOL_RPI_TEMP
-	#include "../protocols/rpi_temp.h"
-#endif
-#ifdef PROTOCOL_CONRAD_RSL_SWITCH
-	#include "../protocols/conrad_rsl_switch.h"
-#endif
-#ifdef PROTOCOL_CONRAD_RSL_CONTACT
-	#include "../protocols/conrad_rsl_contact.h"
-#endif
-#if defined(PROTOCOL_LM75) || defined(PROTOCOL_LM76)
-	#include "../protocols/lm75.h"
-	#include "../protocols/lm76.h"
-#endif
-#ifdef PROTOCOL_POLLIN_SWITCH
-	#include "../protocols/pollin.h"
-#endif
-#ifdef PROTOCOL_MUMBI_SWITCH
-	#include "../protocols/mumbi.h"
-#endif
-#ifdef PROTOCOL_WUNDERGROUND
-	#include "../protocols/wunderground.h"
-#endif
-#ifdef PROTOCOL_OPENWEATHERMAP
-	#include "../protocols/openweathermap.h"
-#endif
-#ifdef PROTOCOL_SILVERCREST
-	#include "../protocols/silvercrest.h"
-#endif
-#ifdef PROTOCOL_THREECHAN
-	#include "../protocols/threechan.h"
-#endif
-#ifdef PROTOCOL_TEKNIHALL
-	#include "../protocols/teknihall.h"
-#endif
-#ifdef PROTOCOL_X10
-	#include "../protocols/x10.h"
-#endif
-#ifdef PROTOCOL_SUNRISESET
-	#include "../protocols/sunriseset.h"
-#endif
-#ifdef PROTOCOL_PROGRAM
-	#include "../protocols/program.h"
-#endif
-#ifdef PROTOCOL_DATETIME
-	#include "../protocols/pdatetime.h"
-#endif
-#ifdef PROTOCOL_XBMC
-	#include "../protocols/xbmc.h"
-#endif
-#ifdef PROTOCOL_LIRC
-	#include "../protocols/lirc.h"
-#endif
-#ifdef PROTOCOL_QUIGG_SWITCH
-    #include "../protocols/quigg_switch.h"
-#endif
-#if defined(PROTOCOL_CONRAD_WEATHER) || defined(PROTOCOL_TFA)
-	#include "../protocols/tfa.h"
-#endif
-#ifdef PROTOCOL_EHOME
-	#include "../protocols/ehome.h"
-#endif
 
 void protocol_init(void) {
-	pilightFirmwareV2Init();
-	pilightFirmwareV3Init();
-#if defined(PROTOCOL_COCO_SWITCH) || defined(PROTOCOL_DIO_SWITCH) || defined(PROTOCOL_NEXA_SWITCH) || defined(PROTOCOL_KAKU_SWITCH) || defined(PROTOCOL_INTERTECHNO_SWITCH)
-	arctechSwInit();
-#endif
-#ifdef PROTOCOL_KAKU_SCREEN
-	arctechSrInit();
-#endif
-#ifdef PROTOCOL_KAKU_CONTACT
-  arctechContactInit();
-#endif
-#ifdef PROTOCOL_KAKU_DIMMER
-	arctechDimInit();
-#endif
-#if defined(PROTOCOL_COGEX_SWITCH) || defined(PROTOCOL_KAKU_SWITCH_OLD) || defined(PROTOCOL_INTERTECHNO_OLD)
-	arctechSwOldInit();
-#endif
-#ifdef PROTOCOL_KAKU_SCREEN_OLD
-	arctechSrOldInit();
-#endif
-#ifdef PROTOCOL_HOMEEASY_OLD
-	homeEasyOldInit();
-#endif
-#if defined(PROTOCOL_ELRO_SWITCH) || defined(PROTOCOL_BRENNENSTUHL_SWITCH)
-	elroADInit();
-	elroHEInit();
-	elroHCInit();
-#endif
-#if defined(PROTOCOL_SELECTREMOTE) || defined(PROTOCOL_IMPULS)
-	impulsInit();
-#endif
-#ifdef PROTOCOL_RELAY
-	relayInit();
-#endif
-#ifdef PROTOCOL_RAW
-	rawInit();
-#endif
-#ifdef PROTOCOL_REV
-	revInit();
-#endif
-#ifdef PROTOCOL_REV_OLD
-	revOldInit();
-#endif
-#ifdef PROTOCOL_ALECTO
-	alectoInit();
-#endif
-#ifdef PROTOCOL_GENERIC_WEATHER
-	genWeatherInit();
-#endif
-#ifdef PROTOCOL_GENERIC_SWITCH
-	genSwitchInit();
-#endif
-#ifdef PROTOCOL_GENERIC_DIMMER
-	genDimInit();
-#endif
-#ifdef PROTOCOL_GENERIC_WEBCAM
-	genWebcamInit();
-#endif
-#ifdef PROTOCOL_DS18B20
-	ds18b20Init();
-#endif
-#ifdef PROTOCOL_DS18S20
-	ds18s20Init();
-#endif
-#ifdef PROTOCOL_DHT22
-	dht22Init();
-#endif
-#ifdef PROTOCOL_DHT11
-	dht11Init();
-#endif
-#ifdef PROTOCOL_CLARUS
-	clarusSwInit();
-#endif
-#ifdef PROTOCOL_RPI_TEMP
-	rpiTempInit();
-#endif
-#ifdef PROTOCOL_CONRAD_RSL_SWITCH
-	conradRSLSwInit();
-#endif
-#ifdef PROTOCOL_CONRAD_RSL_CONTACT
-	conradRSLCnInit();
-#endif
-#if defined(PROTOCOL_LM75) || defined(PROTOCOL_LM76)
-	lm75Init();
-	lm76Init();
-#endif
-#ifdef PROTOCOL_POLLIN_SWITCH
-	pollinInit();
-#endif
-#ifdef PROTOCOL_MUMBI_SWITCH
-	mumbiInit();
-#endif
-#ifdef PROTOCOL_WUNDERGROUND
-	wundergroundInit();
-#endif
-#ifdef PROTOCOL_OPENWEATHERMAP
-	openweathermapInit();
-#endif
-#ifdef PROTOCOL_SILVERCREST
-	silvercrestInit();
-#endif
-#ifdef PROTOCOL_THREECHAN
-	threechanInit();
-#endif
-#ifdef PROTOCOL_TEKNIHALL
-	teknihallInit();
-#endif
-#ifdef PROTOCOL_X10
-	x10Init();
-#endif
-#ifdef PROTOCOL_SUNRISESET
-	sunRiseSetInit();
-#endif
-#ifdef PROTOCOL_PROGRAM
-	programInit();
-#endif
-#ifdef PROTOCOL_DATETIME
-	pdateTimeInit();
-#endif
-#ifdef PROTOCOL_XBMC
-	xbmcInit();
-#endif
-#ifdef PROTOCOL_LIRC
-	lircInit();
-#endif
-#ifdef PROTOCOL_QUIGG_SWITCH
-   quiggSwInit();
-#endif
-#if defined(PROTOCOL_CONRAD_WEATHER) || defined(PROTOCOL_TFA)
-	tfaInit();
-#endif
-#ifdef PROTOCOL_EHOME
-	ehomeInit();
-#endif
+	void *handle = NULL;
+	void (*init)(void);
+	void (*compatibility)(const char **version, const char **commit);
+	char path[255];
+	const char *version = NULL;
+	const char *commit = NULL;
+	char pilight_version[strlen(VERSION)];
+	char pilight_commit[3];
+	char *protocol_root = NULL;
+	int check1 = 0, check2 = 0, valid = 1, protocol_root_free = 0;
+	strcpy(pilight_version, VERSION);
+
+	struct dirent *file = NULL;
+	DIR *d = NULL;
+
+	memset(pilight_commit, '\0', 3);
+
+	if(settings_find_string("protocol-root", &protocol_root) != 0) {
+		/* If no webserver port was set, use the default webserver port */
+		if(!(protocol_root = malloc(strlen(PROTOCOL_ROOT)+1))) {
+			logprintf(LOG_ERR, "out of memory");
+			exit(EXIT_FAILURE);
+		}
+		strcpy(protocol_root, PROTOCOL_ROOT);
+		protocol_root_free = 1;
+	}
+	size_t len = strlen(protocol_root);
+	if(protocol_root[len] != '/') {
+		strcat(protocol_root, "/");
+	}
+
+	if((d = opendir(protocol_root))) {
+		while((file = readdir(d)) != NULL) {
+			if(file->d_type == DT_REG) {
+				if(strstr(file->d_name, ".so") != NULL) {
+					valid = 1;
+					memset(path, '\0', 255);
+					sprintf(path, "%s%s", protocol_root, file->d_name);
+
+					if((handle = dso_load(path))) {
+						init = dso_function(handle, "init");
+						compatibility = dso_function(handle, "compatibility");
+						if(init && compatibility) {
+							compatibility(&version, &commit);
+							char ver[strlen(version)];
+							strcpy(ver, version);
+
+							if((check1 = vercmp(ver, pilight_version)) > 0) {
+								valid = 0;
+							}
+							if(check1 == 0 && commit) {
+								char com[strlen(commit)];
+								strcpy(com, commit);
+								sscanf(HASH, "v%*[0-9].%*[0-9]-%[0-9]-%*[0-9a-zA-Z\n\r]", pilight_commit);
+								if(strlen(pilight_commit) > 0 && (check2 = vercmp(com, pilight_commit)) > 0) {
+									valid = 0;
+								}
+							}
+							if(valid) {
+								init();
+								logprintf(LOG_DEBUG, "loaded protocol %s", file->d_name);
+							} else {
+								if(commit) {
+									logprintf(LOG_ERR, "protocol %s requires at least pilight v%s (commit %s)", file->d_name, version, commit);
+								} else {
+									logprintf(LOG_ERR, "protocol %s requires at least pilight v%s", file->d_name, version);
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+		closedir(d);
+	}
+	if(protocol_root_free) {
+		sfree((void *)&protocol_root);
+	}
 }
 
 void protocol_register(protocol_t **proto) {

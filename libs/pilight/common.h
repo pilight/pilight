@@ -54,6 +54,7 @@ int findproc(char *name, char *args, int loosely);
 #else
 pid_t findproc(char *name, char *args, int loosely);
 #endif
+int vercmp(char *val, char *ref);
 
 #if defined(DEBUG) && !defined(__FreeBSD)
 

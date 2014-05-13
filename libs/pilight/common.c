@@ -22,6 +22,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <ctype.h>
 #include <libgen.h>
 #include <dlfcn.h>
 #include <dirent.h>
@@ -777,4 +778,79 @@ int path_exists(char *fil) {
 		}
 	}
 	return EXIT_SUCCESS;
+}
+
+/* Copyright (C) 1995 Ian Jackson <iwj10@cus.cam.ac.uk> */
+/* Copyright (C) 1995 Ian Jackson <iwj10@cus.cam.ac.uk> */
+//  1: val > ref
+// -1: val < ref
+//  0: val == ref
+int vercmp(char *val, char *ref) {
+	int vc, rc;
+	long vl, rl;
+	char *vp, *rp;
+	char *vsep, *rsep;
+
+	if(!val) {
+		strcpy(val, "");
+	}
+	if(!ref) {
+		strcpy(ref, "");
+	}
+	while(1) {
+		vp = val;
+		while(*vp && !isdigit(*vp)) {
+			vp++;
+		}
+		rp = ref;
+		while(*rp && !isdigit(*rp)) {
+			rp++;
+		}
+		while(1) {
+			vc =(val == vp) ? 0 : *val++;
+			rc =(ref == rp) ? 0 : *ref++;
+			if(!rc && !vc) {
+				break;
+			}
+			if(vc && !isalpha(vc)) {
+				vc += 256;
+			}
+			if(rc && !isalpha(rc)) {
+				rc += 256;
+			}
+			if(vc != rc) {
+				return vc - rc;
+			}
+		}
+		val = vp;
+		ref = rp;
+		vl = 0;
+		if(isdigit(*vp)) {
+			vl = strtol(val, (char**)&val, 10);
+		}
+		rl = 0;
+		if(isdigit(*rp)) {
+			rl = strtol(ref, (char**)&ref, 10);
+		}
+		if(vl != rl) {
+			return (int)(vl - rl);
+		}
+
+		vc = *val;
+		rc = *ref;
+		vsep = strchr(".-", vc);
+		rsep = strchr(".-", rc);
+
+		if((vsep && !rsep) || !*val) {
+			return 0;
+		}
+
+		if((!vsep && rsep) || !*ref) {
+			return +1;
+		}
+
+		if(!*val && !*ref) {
+			return 0;
+		}
+	}
 }

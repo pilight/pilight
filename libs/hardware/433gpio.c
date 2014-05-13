@@ -123,3 +123,12 @@ void gpio433Init(void) {
 	gpio433->receive=&gpio433Receive;
 	gpio433->settings=&gpio433Settings;
 }
+
+void compatibility(const char **version, const char **commit) {
+	*version = "4.0";
+	*commit = "18";
+}
+
+void init(void) {
+	gpio433Init();
+}

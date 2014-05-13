@@ -432,3 +432,12 @@ void wundergroundInit(void) {
 	wunderground->threadGC=&wundergroundThreadGC;
 	wunderground->printHelp=&wundergroundPrintHelp;
 }
+
+void compatibility(const char **version, const char **commit) {
+	*version = "4.0";
+	*commit = "18";
+}
+
+void init(void) {
+	wundergroundInit();
+}

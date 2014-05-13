@@ -35,6 +35,7 @@
 #include "json.h"
 #include "protocol.h"
 #include "ssdp.h"
+#include "dso.h"
 
 typedef enum {
 	WELCOME,
@@ -58,7 +59,7 @@ void sort_list(void) {
 	struct pname_t *e = NULL;
 	struct pname_t *tmp = NULL;
 
-	while(e != pname->next) {
+	while(pname && e != pname->next) {
 		c = a = pname;
 		b = a->next;
 		while(a != e) {
@@ -410,6 +411,7 @@ close:
 	protocol_gc();
 	options_delete(options);
 	options_gc();
+	dso_gc();
 	log_gc();
 	sfree((void *)&progname);
 

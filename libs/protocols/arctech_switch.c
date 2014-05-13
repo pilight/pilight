@@ -211,3 +211,12 @@ void arctechSwInit(void) {
 	arctech_switch->createCode=&arctechSwCreateCode;
 	arctech_switch->printHelp=&arctechSwPrintHelp;
 }
+
+void compatibility(const char **version, const char **commit) {
+	*version = "4.0";
+	*commit = "18";
+}
+
+void init(void) {
+	arctechSwInit();
+}

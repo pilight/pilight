@@ -176,3 +176,12 @@ void ehomeInit(void) {
 	ehome->createCode=&ehomeCreateCode;
 	ehome->printHelp=&ehomePrintHelp;
 }
+
+void compatibility(const char **version, const char **commit) {
+	*version = "4.0";
+	*commit = "18";
+}
+
+void init(void) {
+	ehomeInit();
+}

@@ -350,3 +350,12 @@ void xbmcInit(void) {
 	xbmc->threadGC=&xbmcThreadGC;
 	xbmc->checkValues=&xbmcCheckValues;
 }
+
+void compatibility(const char **version, const char **commit) {
+	*version = "4.0";
+	*commit = "18";
+}
+
+void init(void) {
+	xbmcInit();
+}

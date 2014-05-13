@@ -227,3 +227,12 @@ void ds18b20Init(void) {
 	ds18b20->initDev=&ds18b20InitDev;
 	ds18b20->threadGC=&ds18b20ThreadGC;
 }
+
+void compatibility(const char **version, const char **commit) {
+	*version = "4.0";
+	*commit = "18";
+}
+
+void init(void) {
+	ds18b20Init();
+}

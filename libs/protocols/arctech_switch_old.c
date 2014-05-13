@@ -185,3 +185,12 @@ void arctechSwOldInit(void) {
 	arctech_switch_old->createCode=&arctechSwOldCreateCode;
 	arctech_switch_old->printHelp=&arctechSwOldPrintHelp;
 }
+
+void compatibility(const char **version, const char **commit) {
+	*version = "4.0";
+	*commit = "18";
+}
+
+void init(void) {
+	arctechSwOldInit();
+}

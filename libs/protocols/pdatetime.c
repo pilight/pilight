@@ -322,3 +322,12 @@ void pdateTimeInit(void) {
 	pdatetime->threadGC=&pdateTimeThreadGC;
 	pdatetime->gc=&pdatetimeGC;
 }
+
+void compatibility(const char **version, const char **commit) {
+	*version = "4.0";
+	*commit = "18";
+}
+
+void init(void) {
+	pdateTimeInit();
+}
