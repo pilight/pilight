@@ -84,7 +84,7 @@ void logprintf(int prio, const char *format_str, ...) {
 		
 		sprintf(debug_log, "[%22.22s] %s: ", buf, progname);	
 
-		if(filelog == 1) {
+		if(filelog == 1 && prio < LOG_DEBUG) {
 			memset(line, '\0', 1024);
 			strcat(line, debug_log);
 			va_start(ap, format_str);

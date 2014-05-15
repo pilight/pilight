@@ -1655,7 +1655,7 @@ int main(int argc, char **argv) {
 	firmware.lpf = 0;
 	firmware.hpf = 0;
 
-	log_level_set(LOG_DEBUG);
+	log_level_set(LOG_INFO);
 
 	log_file_enable();
 	log_shell_disable();
@@ -1858,7 +1858,7 @@ int main(int argc, char **argv) {
 	if(running == 1) {
 		nodaemon=1;
 		logprintf(LOG_NOTICE, "already active (pid %d)", atoi(buffer));
-		log_level_set(LOG_DEBUG);
+		log_level_set(LOG_NOTICE);
 		log_shell_disable();
 		goto clear;
 	}
