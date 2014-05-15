@@ -37,11 +37,14 @@ FILE *lf=NULL;
 
 char *logfile = NULL;
 char *logpath = NULL;
+int filelog = 1;
+int shelllog = 0;
+int loglevel = LOG_DEBUG;
+char debug_log[128];
 
 int log_gc(void) {
 	if(shelllog == 1) {
-		logmarkup();
-		fprintf(stderr, "%sDEBUG: garbage collected log library\n", debug_log);
+		fprintf(stderr, "DEBUG: garbage collected log library\n");
 	}
 	if(lf) {
 		if(fclose(lf) != 0) {
@@ -65,14 +68,23 @@ void logprintf(int prio, const char *format_str, ...) {
 	char line[1024];
 	va_list ap;
 	struct stat sb;
+	char fmt[64], buf[64];
+	struct timeval tv;
+	struct tm *tm;
 
 	if(logfile == NULL && filelog == 0 && shelllog == 0)
 		return;
 
 	if(loglevel >= prio) {
-		if(filelog == 1 && lf != NULL && prio < LOG_DEBUG) {
+		gettimeofday(&tv, NULL);
+		if((tm = localtime(&tv.tv_sec)) != NULL) {
+			strftime(fmt, sizeof(fmt), "%b %d %H:%M:%S", tm);
+			snprintf(buf, sizeof(buf), "%s:%03u", fmt, (unsigned int)tv.tv_usec);
+		}
+		
+		sprintf(debug_log, "[%22.22s] %s: ", buf, progname);	
 
-			logmarkup();
+		if(filelog == 1) {
 			memset(line, '\0', 1024);
 			strcat(line, debug_log);
 			va_start(ap, format_str);
@@ -84,10 +96,12 @@ void logprintf(int prio, const char *format_str, ...) {
 				strcat(line, "INFO: ");
 			if(prio==LOG_NOTICE)
 				strcat(line, "NOTICE: ");
+			if(prio==LOG_DEBUG)
+				strcat(line, "DEBUG: ");
 			vsprintf(&line[strlen(line)], format_str, ap);
 			strcat(line, "\n");
 
-			if((stat(logfile, &sb)) != 0) {
+			if((stat(logfile, &sb)) >= 0) {
 				if(!(lf = fopen(logfile, "a"))) {
 					filelog = 0;
 				}
@@ -118,7 +132,6 @@ void logprintf(int prio, const char *format_str, ...) {
 		}
 
 		if(shelllog == 1 || prio == LOG_ERR) {
-			logmarkup();
 			fputs(debug_log, stderr);
 			va_start(ap, format_str);
 			if(prio==LOG_WARNING)
@@ -228,6 +241,9 @@ void log_file_set(char *log) {
 			sfree((void *)&logpath);
 			sfree((void *)&logfile);
 			exit(EXIT_FAILURE);
+		} else {
+			fclose(lf);
+			lf = NULL;
 		}
 	}
 

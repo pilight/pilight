@@ -81,3 +81,12 @@ void conradRSLCnInit(void) {
 
 	conrad_rsl_contact->parseCode=&conradRSLCnParseCode;
 }
+
+void compatibility(const char **version, const char **commit) {
+	*version = "4.0";
+	*commit = "18";
+}
+
+void init(void) {
+	conradRSLCnInit();
+}

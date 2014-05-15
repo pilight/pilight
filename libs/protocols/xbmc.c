@@ -52,6 +52,9 @@ typedef struct xbmc_data_t {
 	struct xbmc_data_t *next;
 } xbmc_data_t;
 
+pthread_mutex_t xbmclock;
+pthread_mutexattr_t xbmcattr;
+
 struct xbmc_data_t *xbmc_data;
 unsigned short xbmc_loop = 1;
 unsigned short xbmc_threads = 0;
@@ -188,6 +191,7 @@ void *xbmcParse(void *param) {
 		}
 		
 		while(xbmc_loop) {
+			pthread_mutex_lock(&xbmclock);
 			FD_ZERO(&fdsread);
 			FD_SET((unsigned long)xnode->sockfd, &fdsread);
 
@@ -196,10 +200,12 @@ void *xbmcParse(void *param) {
 			} while(n == -1 && errno == EINTR && xbmc_loop);
 
 			if(xbmc_loop == 0) {
+				pthread_mutex_unlock(&xbmclock);
 				break;
 			}
 
-			if(n == -1) {			
+			if(n == -1) {
+				pthread_mutex_unlock(&xbmclock);	
 				break;
 			} else if(n == 0) {
 				usleep(10000);
@@ -207,6 +213,7 @@ void *xbmcParse(void *param) {
 				if(FD_ISSET((unsigned long)xnode->sockfd, &fdsread)) {
 					bytes = (int)recv(xnode->sockfd, recvBuff, BUFFER_SIZE, 0);
 					if(bytes <= 0) {
+						pthread_mutex_unlock(&xbmclock);
 						break;
 					} else {
 						if(json_validate(recvBuff) == true) {
@@ -256,6 +263,7 @@ void *xbmcParse(void *param) {
 					}
 				}
 			}
+			pthread_mutex_unlock(&xbmclock);
 		}
 	}	
 	
@@ -331,6 +339,10 @@ int xbmcCheckValues(JsonNode *code) {
 }
 
 void xbmcInit(void) {
+	pthread_mutexattr_init(&xbmcattr);
+	pthread_mutexattr_settype(&xbmcattr, PTHREAD_MUTEX_RECURSIVE);
+	pthread_mutex_init(&xbmclock, &xbmcattr);
+
 	protocol_register(&xbmc);
 	protocol_set_id(xbmc, "xbmc");
 	protocol_device_add(xbmc, "xbmc", "XBMC API");
@@ -349,4 +361,13 @@ void xbmcInit(void) {
 	xbmc->initDev=&xbmcInitDev;
 	xbmc->threadGC=&xbmcThreadGC;
 	xbmc->checkValues=&xbmcCheckValues;
+}
+
+void compatibility(const char **version, const char **commit) {
+	*version = "4.0";
+	*commit = "18";
+}
+
+void init(void) {
+	xbmcInit();
 }

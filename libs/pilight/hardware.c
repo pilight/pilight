@@ -27,6 +27,8 @@
 #include <sys/ioctl.h>
 #include <time.h>
 #include <libgen.h>
+#include <dirent.h>
+#include <dlfcn.h>
 
 #include "../../pilight.h"
 #include "common.h"
@@ -34,34 +36,94 @@
 #include "wiringPi.h"
 #include "log.h"
 #include "json.h"
-
-#include "../hardware/none.h"
-
-#ifdef HARDWARE_433_GPIO
-	#include "../hardware/433gpio.h"
-#endif
-#ifdef HARDWARE_433_LIRC
-	#include "../hardware/433lirc.h"
-#endif
-#ifdef HARDWARE_433_PILIGHT
-	#include "../hardware/433pilight.h"
-#endif
-
+#include "settings.h"
+#include "dso.h"
 #include "hardware.h"
 
 char *hwfile = NULL;
 
 void hardware_init(void) {
-#ifdef HARDWARE_433_LIRC
-		lirc433Init();
-#endif
-#ifdef HARDWARE_433_GPIO
-		gpio433Init();
-#endif
-#ifdef HARDWARE_433_PILIGHT
-		pilight433Init();
-#endif
-	noneInit();
+	void *handle = NULL;
+	void (*init)(void);
+	void (*compatibility)(const char **version, const char **commit);
+	char path[255];
+	const char *version = NULL;
+	const char *commit = NULL;
+	char pilight_version[strlen(VERSION)];
+	char pilight_commit[3];
+	char *hardware_root = NULL;
+	int check1 = 0, check2 = 0, valid = 1, hardware_root_free = 0;
+	strcpy(pilight_version, VERSION);
+
+	struct dirent *file = NULL;
+	DIR *d = NULL;
+
+	memset(pilight_commit, '\0', 3);
+
+	if(settings_find_string("hardware-root", &hardware_root) != 0) {
+		/* If no webserver port was set, use the default webserver port */
+		if(!(hardware_root = malloc(strlen(HARDWARE_ROOT)+2))) {
+			logprintf(LOG_ERR, "out of memory");
+			exit(EXIT_FAILURE);
+		}
+		strcpy(hardware_root, HARDWARE_ROOT);
+		hardware_root_free = 1;
+	}
+	size_t len = strlen(hardware_root);
+
+	if(hardware_root[len-1] != '/') {
+		strcat(hardware_root, "/");
+	}
+
+	if((d = opendir(hardware_root))) {
+		while((file = readdir(d)) != NULL) {
+			if(file->d_type == DT_REG) {
+				if(strstr(file->d_name, ".so") != NULL) {
+					valid = 1;
+					memset(path, '\0', 255);
+					sprintf(path, "%s%s", hardware_root, file->d_name);
+
+					if((handle = dso_load(path))) {
+						init = dso_function(handle, "init");
+						compatibility = dso_function(handle, "compatibility");
+						if(init && compatibility) {
+							compatibility(&version, &commit);
+							char ver[strlen(version)];
+							strcpy(ver, version);
+
+							if((check1 = vercmp(ver, pilight_version)) > 0) {
+								valid = 0;
+							}
+							if(check1 == 0 && commit) {
+								char com[strlen(commit)];
+								strcpy(com, commit);
+								sscanf(HASH, "v%*[0-9].%*[0-9]-%[0-9]-%*[0-9a-zA-Z\n\r]", pilight_commit);
+
+								if(strlen(pilight_commit) > 0 && (check2 = vercmp(com, pilight_commit)) > 0) {
+									valid = 0;
+								}
+							}
+									
+							if(valid) {
+								init();
+								logprintf(LOG_DEBUG, "loaded hardware module %s", file->d_name);
+							} else {
+								if(commit) {
+									logprintf(LOG_ERR, "hardware module %s requires at least pilight v%s (commit %s)", file->d_name, version, commit);
+								} else {
+									logprintf(LOG_ERR, "hardware module %s requires at least pilight v%s", file->d_name, version);
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+		closedir(d);
+	}
+	if(hardware_root_free) {
+		sfree((void *)&hardware_root);
+	}
 }
 
 void hardware_register(struct hardware_t **hw) {

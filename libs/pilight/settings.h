@@ -24,7 +24,10 @@
 typedef struct settings_t {
 	char *name;
 	int type;
-	char *value;
+	union {
+		char *string_;
+		int number_;
+	} value;
 	struct settings_t *next;
 } settings_t;
 

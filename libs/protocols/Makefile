@@ -17,17 +17,14 @@ endif
 ifneq (, $(findstring amd64, $(SYS)))
 	OSFLAGS = -O3 -fPIC -march=native -mtune=native -mfpmath=sse -Wno-conversion
 endif
-CFLAGS = -ffast-math $(OSFLAGS) -fstack-protector-all -Wfloat-equal -Wshadow -Wpointer-arith -Wcast-align -Wstrict-overflow=5 -Wwrite-strings -Waggregate-return -Wcast-qual -Wswitch-default -Wswitch-enum -Wformat=2 -g -Wall -isystem. -isystem.. -I../pilight/ -pthread
+CFLAGS = -ffast-math $(OSFLAGS) -fstack-protector-all -Wfloat-equal -Wshadow -Wpointer-arith -Wcast-align -Wstrict-overflow=5 -Wwrite-strings -Waggregate-return -Wcast-qual -Wswitch-default -Wswitch-enum -Wformat=2 -g -Wall -isystem. -isystem.. -I../pilight -pthread
 SRC = $(wildcard *.c)
-OBJS = $(SRC:.c=.o)
+OBJS = $(SRC:.c=.so)
 
-all: $(OBJS) protocols.o
-
-%.o: %.c %.h
-	$(GCC) $(CFLAGS) -c $(patsubst %.o,%.c,$@)
-
-protocols.o: $(OBJS)
-	$(CROSS_COMPILE)ld -L/usr/local/lib -r $(OBJS) -o protocols.o
+all: $(OBJS)
+	
+%.so: %.c %.h
+	$(GCC) $(CFLAGS) -shared $(patsubst %.so,%.c,$@) -o $@
 
 dist-clean: clean
 	

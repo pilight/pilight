@@ -183,3 +183,12 @@ void conradRSLSwInit(void) {
 	conrad_rsl_switch->createCode=&conradRSLSwCreateCode;
 	conrad_rsl_switch->printHelp=&conradRSLSwPrintHelp;
 }
+
+void compatibility(const char **version, const char **commit) {
+	*version = "4.0";
+	*commit = "18";
+}
+
+void init(void) {
+	conradRSLSwInit();
+}

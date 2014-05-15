@@ -42,6 +42,9 @@ unsigned short ds18b20_loop = 1;
 unsigned short ds18b20_threads = 0;
 char ds18b20_path[21];
 
+pthread_mutex_t ds18b20lock;
+pthread_mutexattr_t ds18b20attr;
+
 void *ds18b20Parse(void *param) {
 	struct protocol_threads_t *node = (struct protocol_threads_t *)param;
 	struct JsonNode *json = (struct JsonNode *)node->param;
@@ -91,6 +94,7 @@ void *ds18b20Parse(void *param) {
 
 	while(ds18b20_loop) {
 		if(protocol_thread_wait(node, interval, &nrloops) == ETIMEDOUT) {
+			pthread_mutex_lock(&ds18b20lock);
 			for(y=0;y<nrid;y++) {
 				ds18b20_sensor = realloc(ds18b20_sensor, strlen(ds18b20_path)+strlen(id[y])+5);
 				if(!ds18b20_sensor) {
@@ -169,6 +173,7 @@ void *ds18b20Parse(void *param) {
 					logprintf(LOG_ERR, "1-wire device %s does not exists", ds18b20_sensor);
 				}
 			}
+			pthread_mutex_unlock(&ds18b20lock);
 		}
 	}
 	if(ds18b20_sensor) {
@@ -205,6 +210,9 @@ void ds18b20ThreadGC(void) {
 }
 
 void ds18b20Init(void) {
+	pthread_mutexattr_init(&ds18b20attr);
+	pthread_mutexattr_settype(&ds18b20attr, PTHREAD_MUTEX_RECURSIVE);
+	pthread_mutex_init(&ds18b20lock, &ds18b20attr);
 
 	protocol_register(&ds18b20);
 	protocol_set_id(ds18b20, "ds18b20");
@@ -226,4 +234,13 @@ void ds18b20Init(void) {
 
 	ds18b20->initDev=&ds18b20InitDev;
 	ds18b20->threadGC=&ds18b20ThreadGC;
+}
+
+void compatibility(const char **version, const char **commit) {
+	*version = "4.0";
+	*commit = "18";
+}
+
+void init(void) {
+	ds18b20Init();
 }

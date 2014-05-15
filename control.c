@@ -34,6 +34,7 @@
 #include "socket.h"
 #include "json.h"
 #include "ssdp.h"
+#include "dso.h"
 
 #include "protocol.h"
 
@@ -306,6 +307,7 @@ close:
 	protocol_gc();
 	socket_gc();
 	options_gc();
+	dso_gc();
 	log_gc();
 	sfree((void *)&progname);
 

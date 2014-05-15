@@ -22,6 +22,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <ctype.h>
 #include <libgen.h>
 #include <dlfcn.h>
 #include <dirent.h>
@@ -48,20 +49,6 @@
 unsigned int ***whitelist_cache = NULL;
 unsigned int whitelist_number;
 unsigned char validchar[64] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-
-void logmarkup(void) {
-	char fmt[64], buf[64];
-	struct timeval tv;
-	struct tm *tm;
-
-	gettimeofday(&tv, NULL);
-	if((tm = localtime(&tv.tv_sec)) != NULL) {
-		strftime(fmt, sizeof(fmt), "%b %d %H:%M:%S", tm);
-		snprintf(buf, sizeof(buf), "%s:%03u", fmt, (unsigned int)tv.tv_usec);
-	}
-	
-	sprintf(debug_log, "[%22.22s] %s: ", buf, progname);
-}
 
 #ifdef __FreeBSD__
 int findproc(char *cmd, char *args, int loosely) {
@@ -140,56 +127,6 @@ int isNumeric(char * s) {
     return (*p == '\0') ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 
-#ifdef DEBUG
-
-const char *debug_filename(const char *file) {
-	return strrchr(file, '/') ? strrchr(file, '/') + 1 : file;
-}
-
-void *debug_malloc(size_t len, const char *file, int line) {
-	void *(*libc_malloc)(size_t) = dlsym(RTLD_NEXT, "malloc");
-	if(shelllog == 1 && loglevel == LOG_DEBUG) {
-		logmarkup();
-		printf("%s", debug_log);
-		printf("DEBUG: malloc from %s #%d\n", debug_filename(file), line);
-	}
-	return libc_malloc(len);
-}
-
-void *debug_realloc(void *addr, size_t len, const char *file, int line) {
-	void *(*libc_realloc)(void *, size_t) = dlsym(RTLD_NEXT, "realloc");
-	if(addr == NULL) {
-		if(shelllog == 1 && loglevel == LOG_DEBUG) {
-				logmarkup();
-				printf("%s", debug_log);			
-				printf("DEBUG: realloc from %s #%d\n", debug_filename(file), line);
-			}
-			return debug_malloc(len, file, line);
-		} else {
-			return libc_realloc(addr, len);
-	}
-}
-
-void *debug_calloc(size_t nlen, size_t elen) {
-	void *(*libc_calloc)(size_t, size_t) = dlsym(RTLD_NEXT, "calloc");
-	return libc_calloc(size_t, size_t);
-}
-
-void debug_free(void **addr, const char *file, int line) {
-	void ** __p = addr;
-	if(*(__p) != NULL) {
-	if(shelllog == 1 && loglevel == LOG_DEBUG) {
-			logmarkup();
-			printf("%s", debug_log);			
-			printf("DEBUG: free from %s #%d\n", debug_filename(file), line);
-		}
-		free(*(__p));
-		*(__p) = NULL;
-	}
-}
-
-#else
-
 void sfree(void **addr) {
 	void ** __p = addr;
 	if(*(__p) != NULL) {
@@ -197,8 +134,6 @@ void sfree(void **addr) {
 		*(__p) = NULL;
 	}
 }
-
-#endif
 
 int name2uid(char const *name) {
 	if(name) {
@@ -752,15 +687,17 @@ void whitelist_free(void) {
 /* Check if a given path exists */
 int path_exists(char *fil) {
 	struct stat s;
-	char *filename = basename(fil);
-	char path[1024];
-	size_t i = (strlen(fil)-strlen(filename));
+	char tmp[strlen(fil)+1];
+	strcpy(tmp, fil);
+	char *filename = basename(tmp);
+	char path[(strlen(tmp)-strlen(filename))+1];
+	size_t i = (strlen(tmp)-strlen(filename));
 
 	memset(path, '\0', sizeof(path));
-	memcpy(path, fil, i);
-	snprintf(path, i, "%s", fil);
+	memcpy(path, tmp, i);
+	snprintf(path, i, "%s", tmp);
 	
-	if(strcmp(filename, fil) != 0) {
+	if(strcmp(filename, tmp) != 0) {
 		int err = stat(path, &s);
 		if(err == -1) {
 			if(ENOENT == errno) {
@@ -777,4 +714,79 @@ int path_exists(char *fil) {
 		}
 	}
 	return EXIT_SUCCESS;
+}
+
+/* Copyright (C) 1995 Ian Jackson <iwj10@cus.cam.ac.uk> */
+/* Copyright (C) 1995 Ian Jackson <iwj10@cus.cam.ac.uk> */
+//  1: val > ref
+// -1: val < ref
+//  0: val == ref
+int vercmp(char *val, char *ref) {
+	int vc, rc;
+	long vl, rl;
+	char *vp, *rp;
+	char *vsep, *rsep;
+
+	if(!val) {
+		strcpy(val, "");
+	}
+	if(!ref) {
+		strcpy(ref, "");
+	}
+	while(1) {
+		vp = val;
+		while(*vp && !isdigit(*vp)) {
+			vp++;
+		}
+		rp = ref;
+		while(*rp && !isdigit(*rp)) {
+			rp++;
+		}
+		while(1) {
+			vc =(val == vp) ? 0 : *val++;
+			rc =(ref == rp) ? 0 : *ref++;
+			if(!rc && !vc) {
+				break;
+			}
+			if(vc && !isalpha(vc)) {
+				vc += 256;
+			}
+			if(rc && !isalpha(rc)) {
+				rc += 256;
+			}
+			if(vc != rc) {
+				return vc - rc;
+			}
+		}
+		val = vp;
+		ref = rp;
+		vl = 0;
+		if(isdigit(*vp)) {
+			vl = strtol(val, (char**)&val, 10);
+		}
+		rl = 0;
+		if(isdigit(*rp)) {
+			rl = strtol(ref, (char**)&ref, 10);
+		}
+		if(vl != rl) {
+			return (int)(vl - rl);
+		}
+
+		vc = *val;
+		rc = *ref;
+		vsep = strchr(".-", vc);
+		rsep = strchr(".-", rc);
+
+		if((vsep && !rsep) || !*val) {
+			return 0;
+		}
+
+		if((!vsep && rsep) || !*ref) {
+			return +1;
+		}
+
+		if(!*val && !*ref) {
+			return 0;
+		}
+	}
 }

@@ -80,3 +80,12 @@ void pilightFirmwareV3Init(void) {
 
   pilight_firmware_v3->parseBinary=&pilightFirmwareV3ParseBinary;
 }
+
+void compatibility(const char **version, const char **commit) {
+	*version = "4.0";
+	*commit = "18";
+}
+
+void init(void) {
+	pilightFirmwareV3Init();
+}

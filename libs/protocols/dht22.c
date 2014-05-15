@@ -45,6 +45,9 @@
 unsigned short dht22_loop = 1;
 unsigned short dht22_threads = 0;
 
+pthread_mutex_t dht22lock;
+pthread_mutexattr_t dht22attr;
+
 static uint8_t sizecvt(const int read_value) {
 	/* digitalRead() and friends from wiringpi are defined as returning a value
 	   < 256. However, they are returned as int() types. This is a safety function */
@@ -88,6 +91,7 @@ void *dht22Parse(void *param) {
 
 	while(dht22_loop) {
 		if(protocol_thread_wait(node, interval, &nrloops) == ETIMEDOUT) {
+			pthread_mutex_lock(&dht22lock);
 			for(y=0;y<nrid;y++) {
 				int tries = 5;
 				unsigned short got_correct_date = 0;
@@ -169,6 +173,7 @@ void *dht22Parse(void *param) {
 					}
 				}
 			}
+			pthread_mutex_unlock(&dht22lock);
 		}
 	}
 
@@ -198,6 +203,10 @@ void dht22ThreadGC(void) {
 }
 
 void dht22Init(void) {
+	pthread_mutexattr_init(&dht22attr);
+	pthread_mutexattr_settype(&dht22attr, PTHREAD_MUTEX_RECURSIVE);
+	pthread_mutex_init(&dht22lock, &dht22attr);
+
 	protocol_register(&dht22);
 	protocol_set_id(dht22, "dht22");
 	protocol_device_add(dht22, "dht22", "1-wire Temperature and Humidity Sensor");
@@ -219,4 +228,13 @@ void dht22Init(void) {
 
 	dht22->initDev=&dht22InitDev;
 	dht22->threadGC=&dht22ThreadGC;
+}
+
+void compatibility(const char **version, const char **commit) {
+	*version = "4.0";
+	*commit = "18";
+}
+
+void init(void) {
+	dht22Init();
 }

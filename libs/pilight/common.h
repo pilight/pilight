@@ -19,18 +19,12 @@
 #ifndef _COMMON_H_
 #define _COMMON_H_
 
-#include <syslog.h>
 #include <ifaddrs.h>
 
 #include "../../pilight.h"
 
 char *progname;
-int filelog;
-int shelllog;
-int loglevel;
-char debug_log[128];
 
-void logmarkup(void);
 int isNumeric(char *str);
 int name2uid(char const *name);
 int which(const char *program);
@@ -46,6 +40,7 @@ char *genuuid(char *ifname);
 int whitelist_check(char *ip);
 void whitelist_free(void);
 int path_exists(char *fil);
+
 #ifdef __FreeBSD__
 struct sockaddr *sockaddr_dup(struct sockaddr *sa);
 int rep_getifaddrs(struct ifaddrs **ifap);
@@ -55,23 +50,7 @@ int findproc(char *name, char *args, int loosely);
 pid_t findproc(char *name, char *args, int loosely);
 #endif
 
-#if defined(DEBUG) && !defined(__FreeBSD)
-
-void debug_free(void **addr, const char *file, int line);
-const char *debug_filename(const char *file);
-void *debug_malloc(size_t len, const char *file, int line);
-void *debug_realloc(void *addr, size_t len, const char *file, int line);
-void *debug_calloc(size_t nlen, size_t elen, const char *file, int line);
-
-#define sfree(x) debug_free(x, __FILE__, __LINE__);
-#define malloc(x) debug_malloc(x, __FILE__, __LINE__);
-#define realloc(y, x) debug_realloc(y, x, __FILE__, __LINE__);
-#define calloc(y, x) debug_calloc(y, x, __FILE__, __LINE__);
-
-#else
-
+int vercmp(char *val, char *ref);
 void sfree(void **addr);
-
-#endif
 
 #endif

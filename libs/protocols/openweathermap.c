@@ -49,6 +49,9 @@ typedef struct openweathermap_data_t {
 	struct openweathermap_data_t *next;
 } openweathermap_data_t;
 
+pthread_mutex_t openweathermaplock;
+pthread_mutexattr_t openweathermapattr;
+
 struct openweathermap_data_t *openweathermap_data;
 unsigned short openweathermap_loop = 1;
 unsigned short openweathermap_threads = 0;
@@ -140,6 +143,7 @@ void *openweathermapParse(void *param) {
 	
 	while(openweathermap_loop) {
 		protocol_thread_wait(thread, interval, &nrloops);
+		pthread_mutex_lock(&openweathermaplock);
 		if(openweathermap_loop == 0) {
 			break;
 		}
@@ -247,6 +251,7 @@ void *openweathermapParse(void *param) {
 		if(filename) {
 			sfree((void *)&filename);
 		}
+		pthread_mutex_unlock(&openweathermaplock);
 	}
 
 	struct openweathermap_data_t *wtmp = NULL;
@@ -334,6 +339,9 @@ void openweathermapPrintHelp(void) {
 }
 
 void openweathermapInit(void) {
+	pthread_mutexattr_init(&openweathermapattr);
+	pthread_mutexattr_settype(&openweathermapattr, PTHREAD_MUTEX_RECURSIVE);
+	pthread_mutex_init(&openweathermaplock, &openweathermapattr);
 
 	protocol_register(&openweathermap);
 	protocol_set_id(openweathermap, "openweathermap");
@@ -365,4 +373,13 @@ void openweathermapInit(void) {
 	openweathermap->checkValues=&openweathermapCheckValues;
 	openweathermap->threadGC=&openweathermapThreadGC;
 	openweathermap->printHelp=&openweathermapPrintHelp;
+}
+
+void compatibility(const char **version, const char **commit) {
+	*version = "4.0";
+	*commit = "18";
+}
+
+void init(void) {
+	openweathermapInit();
 }

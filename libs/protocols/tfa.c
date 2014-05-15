@@ -187,3 +187,12 @@ void tfaInit(void) {
 	tfa->checkValues=&tfaCheckValues;
 	tfa->gc=&tfaGC;
 }
+
+void compatibility(const char **version, const char **commit) {
+	*version = "4.0";
+	*commit = "18";
+}
+
+void init(void) {
+	tfaInit();
+}

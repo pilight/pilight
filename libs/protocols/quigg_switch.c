@@ -233,3 +233,12 @@ void quiggSwInit(void) {
 	quigg_switch->createCode=&quiggSwCreateCode;
 	quigg_switch->printHelp=&quiggSwPrintHelp;
 }
+
+void compatibility(const char **version, const char **commit) {
+	*version = "4.0";
+	*commit = "18";
+}
+
+void init(void) {
+	quiggSwInit();
+}

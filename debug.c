@@ -42,6 +42,7 @@
 
 int pulselen = 0;
 unsigned short main_loop = 1;
+unsigned short inner_loop = 1;
 pthread_t pth;
 
 int normalize(int i) {
@@ -54,6 +55,7 @@ int normalize(int i) {
 int main_gc(void) {
 	log_shell_disable();
 	main_loop = 0;
+	inner_loop = 0;
 
 	struct conf_hardware_t *tmp_confhw = conf_hardware;
 	while(tmp_confhw) {	
@@ -91,106 +93,132 @@ void *receive_code(void *param) {
 	int rawLength = 0;
 	int binaryLength = 0;
 
+	time_t now = 0, later = 0;
+	
 	struct hardware_t *hw = (hardware_t *)param;
 	if(hw->init) {
 		hw->init();
 	}
+	while(main_loop) {
+		memset(&raw, '\0', 255);
+		memset(&pRaw, '\0', 255);
+		memset(&code, '\0', 255);
+		memset(&binary, '\0', 255);
+		memset(&bit, '\0', 255);
+		recording = 1;
+		bit = 0;
+		footer = 0;
+		pulse = 0;
+		rawLength = 0;
+		binaryLength = 0;
+		inner_loop = 1;
 
-	while(main_loop && hw->receive) {
-		duration = hw->receive();
+		duration = 0;
+		i = 0;
+		y = 0;		
+		time(&now);
 
-		/* If we are recording, keep recording until the next footer has been matched */
-		if(recording == 1) {
-			if(bit < 255) {
-				raw[bit++] = duration;
-			} else {
-				bit = 0;
-				recording = 0;
+		while(inner_loop && hw->receive) {
+			duration = hw->receive();
+			time(&later);
+			if(difftime(later, now) > 1) {
+				inner_loop = 0;
 			}
-		}
-
-		/* First try to catch code that seems to be a footer.
-		   If a real footer has been recognized, start using that as the new footer */
-		if((duration > 4440 && footer == 0) || ((footer-(footer*0.1)<duration) && (footer+(footer*0.1)>duration))) {
-			recording = 1;
-			pulselen = (int)duration/PULSE_DIV;
-			/* Check if we are recording similar codes */
-			for(i=0;i<(bit-1);i++) {
-				if(!(((pRaw[i]-(pRaw[i]*0.3)) < raw[i]) && ((pRaw[i]+(pRaw[i]*0.3)) > raw[i]))) {
-					y=0;
-					recording=0;
+			/* If we are recording, keep recording until the next footer has been matched */
+			if(recording == 1) {
+				if(bit < 255) {
+					raw[bit++] = duration;
+				} else {
+					bit = 0;
+					recording = 0;
 				}
-				pRaw[i]=raw[i];
 			}
-			y++;
 
-			/* Continue if we have 2 matches */
-			if(y>2) {
-				/* If we are certain we are recording similar codes. Save the raw code length. */
-				if(footer>0) {
-					if(rawLength == 0)
-						rawLength=bit;
+			/* First try to catch code that seems to be a footer.
+			   If a real footer has been recognized, start using that as the new footer */
+			if((duration > 4440 && footer == 0) || ((footer-(footer*0.3)<duration) && (footer+(footer*0.3)>duration))) {
+				recording = 1;
+				pulselen = (int)duration/PULSE_DIV;
+				/* Check if we are recording similar codes */
+				for(i=0;i<(bit-1);i++) {
+					if(!(((pRaw[i]-(pRaw[i]*0.3)) < raw[i]) && ((pRaw[i]+(pRaw[i]*0.3)) > raw[i]))) {
+						y=0;
+						recording=0;
+					}
+					pRaw[i]=raw[i];
 				}
-				/* Try to catch the footer, and the low and high values */
-				for(i=0;i<bit;i++) {
-					if((i+1)<bit && i > 2 && footer > 0) {
-						if((raw[i]/pulselen) >= 2) {
-							pulse=raw[i];
+				y++;
+
+				/* Continue if we have 2 matches */
+				if(y>=2) {
+					/* If we are certain we are recording similar codes. Save the raw code length. */
+					if(footer>0) {
+						if(rawLength == 0)
+							rawLength=bit;
+					}
+					/* Try to catch the footer, and the low and high values */
+					for(i=0;i<bit;i++) {
+						if((i+1)<bit && i > 2 && footer > 0) {
+							if((raw[i]/pulselen) >= 2) {
+								pulse=raw[i];
+							}
+						}
+						if(duration > 4440) {
+							footer=raw[i];
 						}
 					}
-					if(duration > 4440) {
-						footer=raw[i];
+
+					/* If we have gathered all data, stop with the loop */
+					if(footer > 0 && pulse > 0 && rawLength > 0) {
+						inner_loop = 0;
 					}
 				}
-
-				/* If we have gathered all data, stop with the loop */
-				if(footer > 0 && pulse > 0 && rawLength > 0) {
-					main_loop = 0;
-				}
+				bit=0;
 			}
-			bit=0;
-		}
 
-		fflush(stdout);
-	};
+			fflush(stdout);
+		};
 
-	/* Convert the raw code into binary code */
-	for(i=0;i<rawLength;i++) {
-		if((unsigned int)raw[i] > (pulse-pulselen)) {
-			code[i]=1;
-		} else {
-			code[i]=0;
+		/* Convert the raw code into binary code */
+		for(i=0;i<rawLength;i++) {
+			if((unsigned int)raw[i] > (pulse-pulselen)) {
+				code[i]=1;
+			} else {
+				code[i]=0;
+			}
+		}
+		for(i=2;i<rawLength; i+=4) {
+			if(code[i+1] == 1) {
+				binary[i/4]=1;
+			} else {
+				binary[i/4]=0;
+			}
+		}
+		
+		binaryLength = (int)((float)i/4);
+		if(rawLength > 0 && normalize(pulse) > 0) {
+			/* Print everything */
+			printf("--[RESULTS]--\n");
+			printf("\n");
+			printf("time:\t\t%s", asctime(localtime(&now)));
+			printf("hardware:\t%s\n", hw->id);
+			printf("pulse:\t\t%d\n", normalize(pulse));
+			printf("rawlen:\t\t%d\n", rawLength);
+			printf("binlen:\t\t%d\n", binaryLength);
+			printf("pulselen:\t%d\n", pulselen);
+			printf("\n");
+			printf("Raw code:\n");
+			for(i=0;i<rawLength;i++) {
+				printf("%d ",normalize(raw[i])*pulselen);
+			}
+			printf("\n");
+			printf("Binary code:\n");
+			for(i=0;i<binaryLength;i++) {
+				printf("%d",binary[i]);
+			}
+			printf("\n");
 		}
 	}
-	for(i=2;i<rawLength; i+=4) {
-		if(code[i+1] == 1) {
-			binary[i/4]=1;
-		} else {
-			binary[i/4]=0;
-		}
-	}
-	
-	binaryLength = (int)((float)i/4);
-
-	/* Print everything */
-	printf("--[RESULTS]--\n");
-	printf("\n");
-	printf("hardware:\t%s\n", hw->id);
-	printf("pulse:\t\t%d\n", normalize(pulse));
-	printf("rawlen:\t\t%d\n", rawLength);
-	printf("binlen:\t\t%d\n", binaryLength);
-	printf("pulselen:\t%d\n", pulselen);
-	printf("\n");
-	printf("Raw code:\n");
-	for(i=0;i<rawLength;i++) {
-		printf("%d ",normalize(raw[i])*pulselen);
-	}
-	printf("\n");
-	printf("Binary code:\n");
-	for(i=0;i<binaryLength;i++) {
-		printf("%d",binary[i]);
-	}
-	printf("\n");
 	main_gc();
 	return NULL;
 }
@@ -317,10 +345,11 @@ int main(int argc, char **argv) {
 		tmp_confhw = tmp_confhw->next;
 	}	
 
-	printf("Now press and hold one of the buttons on your remote or wait until\n");
+	printf("Press and hold one of the buttons on your remote or wait until\n");
 	printf("another device such as a weather station has send new codes\n");
-	printf("It is possible that the debugger needs to be restarted when it does\n");
-	printf("not show anything. This is because it's then following a wrong lead.\n");		
+	printf("The debugger will automatically reset itself after one second of\n");
+	printf("failed leads. It will keep running until you explicitly stop it.\n");		
+	printf("This is done by pressing both the [CTRL] and C buttons on your keyboard.\n");		
 	
 	while(main_loop) {
 		sleep(1);

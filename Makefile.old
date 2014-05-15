@@ -21,12 +21,14 @@ ifneq (, $(findstring amd64, $(SYS)))
 	OSFLAGS = -O3 -fPIC -march=native -mtune=native -mfpmath=sse -Wno-conversion
 endif
 GIT_HASH := $(shell git describe --always)
-CFLAGS = -ffast-math $(OSFLAGS) -Wl,-rpath=/usr/local/lib/,-rpath=/usr/lib/,-rpath=/lib/ -fstack-protector-all -Wfloat-equal -Wshadow -Wpointer-arith -Wcast-align -Wstrict-overflow=5 -Wwrite-strings -Waggregate-return -Wcast-qual -Wswitch-default -Wswitch-enum -Wformat=2 -g -Wall -I. -isystem.. -Ilibs/pilight/ -Ilibs/protocols/ -Ilibs/hardware/ -Ilibs/avrdude/ -pthread -lm -DHASH=\"$(GIT_HASH)\"
+CFLAGS = -ffast-math $(OSFLAGS) -Wl,-rpath=/usr/local/lib/,-rpath=/usr/lib/,-rpath=/lib/ -fstack-protector-all -Wfloat-equal -Wshadow -Wpointer-arith -Wcast-align -Wstrict-overflow=5 -Wwrite-strings -Waggregate-return -Wcast-qual -Wswitch-default -Wswitch-enum -Wformat=2 -g -Wall -I. -isystem.. -Ilibs/pilight/ -Ilibs/protocols/ -Ilibs/hardware/ -Ilibs/avrdude/ -pthread -lm -ldl -DHASH=\"$(GIT_HASH)\"
 SUBDIRS = libs/pilight libs/protocols libs/hardware libs/avrdude
 SRC = $(wildcard *.c)
-INCLUDES = $(wildcard protocols/*.h) $(wildcard protocols/*.c) $(wildcard hardware/*.h) $(wildcard hardware/*.c) $(wildcard libs/pilight/*.h) $(wildcard libs/pilight/*.c) $(wildcard libs/avrdude/*.h) $(wildcard libs/avrdude/*.c)
+INCLUDES = $(wildcard libs/pilight/*.h) $(wildcard libs/pilight/*.c) $(wildcard libs/avrdude/*.h) $(wildcard libs/avrdude/*.c)
 PROGAMS = $(patsubst %.c,pilight-%,$(SRC))
-LIBS = libs/pilight/pilight.o libs/protocols/protocols.o libs/hardware/hardware.o libs/avrdude/avrdude.o
+LIBS = libs/pilight/pilight.o libs/avrdude/avrdude.o
+PROTCOLS := $(shell cd libs/protocols/ && find * -name \*.so)
+HARDWARE := $(shell cd libs/hardware/ && find * -name \*.so)
 WEBFILES := $(shell cd web && find * -type f)
 WEBDIRS := $(shell cd web && find * -type d )
 
@@ -40,42 +42,44 @@ $(SUBDIRS):
 all: $(LIBS) libpilight.so libpilight.a $(PROGAMS) 
 
 libpilight.so: $(LIBS)
-	$(GCC) $(LIBS) -shared -o libpilight.so -lpthread -lm
+	$(GCC) $(LIBS) -shared -o libpilight.so -lpthread -lm -ldl
 	
 libpilight.a: $(LIBS)
 	$(CROSS_COMPILE)ar -rsc libpilight.a $(LIBS)
 
 pilight-daemon: daemon.c $(INCLUDES) $(LIBS) libpilight.so
-	$(GCC) $(CFLAGS) -o $@ $(patsubst pilight-%,%.c,$@) libpilight.so /usr/lib/arm-linux-gnueabihf/libz.so
+	$(GCC) $(CFLAGS) -o $@ $(patsubst pilight-%,%.c,$@) libpilight.so /usr/lib/arm-linux-gnueabihf/libz.so /usr/lib/arm-linux-gnueabihf/libdl.so
 
 pilight-send: send.c $(INCLUDES) $(LIBS) libpilight.so
-	$(GCC) $(CFLAGS) -o $@ $(patsubst pilight-%,%.c,$@) libpilight.so /usr/lib/arm-linux-gnueabihf/libz.so
+	$(GCC) $(CFLAGS) -o $@ $(patsubst pilight-%,%.c,$@) libpilight.so /usr/lib/arm-linux-gnueabihf/libz.so /usr/lib/arm-linux-gnueabihf/libdl.so
 
 pilight-receive: receive.c $(INCLUDES) $(LIBS) libpilight.so
-	$(GCC) $(CFLAGS) -o $@ $(patsubst pilight-%,%.c,$@) libpilight.so /usr/lib/arm-linux-gnueabihf/libz.so
+	$(GCC) $(CFLAGS) -o $@ $(patsubst pilight-%,%.c,$@) libpilight.so /usr/lib/arm-linux-gnueabihf/libz.so /usr/lib/arm-linux-gnueabihf/libdl.so
 
 pilight-debug: debug.c $(INCLUDES) $(LIBS) libpilight.so
-	$(GCC) $(CFLAGS) -o $@ $(patsubst pilight-%,%.c,$@) libpilight.so /usr/lib/arm-linux-gnueabihf/libz.so
+	$(GCC) $(CFLAGS) -o $@ $(patsubst pilight-%,%.c,$@) libpilight.so /usr/lib/arm-linux-gnueabihf/libz.so /usr/lib/arm-linux-gnueabihf/libdl.so
 
 pilight-learn: learn.c $(INCLUDES) $(LIBS) libpilight.so
-	$(GCC) $(CFLAGS) -o $@ $(patsubst pilight-%,%.c,$@) libpilight.so /usr/lib/arm-linux-gnueabihf/libz.so
+	$(GCC) $(CFLAGS) -o $@ $(patsubst pilight-%,%.c,$@) libpilight.so /usr/lib/arm-linux-gnueabihf/libz.so /usr/lib/arm-linux-gnueabihf/libdl.so
 
 pilight-control: control.c $(INCLUDES) $(LIBS) libpilight.so
-	$(GCC) $(CFLAGS) -o $@ $(patsubst pilight-%,%.c,$@) libpilight.so /usr/lib/arm-linux-gnueabihf/libz.so
+	$(GCC) $(CFLAGS) -o $@ $(patsubst pilight-%,%.c,$@) libpilight.so /usr/lib/arm-linux-gnueabihf/libz.so /usr/lib/arm-linux-gnueabihf/libdl.so
 
 pilight-raw: raw.c $(INCLUDES) $(LIBS) libpilight.so
-	$(GCC) $(CFLAGS) -o $@ $(patsubst pilight-%,%.c,$@) libpilight.so /usr/lib/arm-linux-gnueabihf/libz.so
+	$(GCC) $(CFLAGS) -o $@ $(patsubst pilight-%,%.c,$@) libpilight.so /usr/lib/arm-linux-gnueabihf/libz.so /usr/lib/arm-linux-gnueabihf/libdl.so
 	
 pilight-uuid: uuid.c $(INCLUDES) $(LIBS) libpilight.so
-	$(GCC) $(CFLAGS) -o $@ $(patsubst pilight-%,%.c,$@) libpilight.so /usr/lib/arm-linux-gnueabihf/libz.so
+	$(GCC) $(CFLAGS) -o $@ $(patsubst pilight-%,%.c,$@) libpilight.so /usr/lib/arm-linux-gnueabihf/libz.so /usr/lib/arm-linux-gnueabihf/libdl.so
 
 pilight-flash: flash.c $(INCLUDES) $(LIBS) libpilight.so
-	$(GCC) $(CFLAGS) -o $@ $(patsubst pilight-%,%.c,$@) libpilight.so /usr/lib/arm-linux-gnueabihf/libz.so
+	$(GCC) $(CFLAGS) -o $@ $(patsubst pilight-%,%.c,$@) libpilight.so /usr/lib/arm-linux-gnueabihf/libz.so /usr/lib/arm-linux-gnueabihf/libdl.so
 
 install:
 	[ -d /usr/share/images/pilight/ ] && rm -r /usr/share/images/pilight/ || true
 	
 	install -m 0755 -d /usr/local/lib/pilight/
+	install -m 0755 -d /usr/local/lib/pilight/protocols/
+	install -m 0755 -d /usr/local/lib/pilight/hardware/
 	install -m 0755 -d /usr/local/sbin
 	install -m 0755 -d /usr/local/bin
 	install -m 0755 -d /etc/pilight
@@ -97,6 +101,12 @@ install:
 	for f in $(WEBFILES) ; do \
 		cd web/ && install -D $$f /usr/local/share/pilight/`dirname $$f` || true && cd ..; \
 	done
+	for f in $(PROTCOLS) ; do \
+		cd libs/protocols/ && install -D $$f /usr/local/lib/pilight/protocols/ || true && cd .. && cd ..; \
+	done
+	for f in $(HARDWARE) ; do \
+		cd libs/hardware/ && install -D $$f /usr/local/lib/pilight/hardware/ || true && cd .. && cd ..; \
+	done	
 	install -m 0755 init/pilight.initd /etc/init.d/
 	mv /etc/init.d/pilight.initd /etc/init.d/pilight
 	update-rc.d pilight defaults

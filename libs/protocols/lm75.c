@@ -46,6 +46,9 @@
 unsigned short lm75_loop = 1;
 int lm75_threads = 0;
 
+pthread_mutex_t lm75lock;
+pthread_mutexattr_t lm75attr;
+
 typedef struct lm75data_t {
 	char **id;
 	int nrid;
@@ -114,6 +117,7 @@ void *lm75Parse(void *param) {
 	while(lm75_loop) {
 		if(protocol_thread_wait(node, interval, &nrloops) == ETIMEDOUT) {
 #ifndef __FreeBSD__	
+			pthread_mutex_lock(&lm75lock);
 			for(y=0;y<lm75data->nrid;y++) {
 				if(lm75data->fd[y] > 0) {
 					int raw = wiringPiI2CReadReg16(lm75data->fd[y], 0x00);            
@@ -138,6 +142,7 @@ void *lm75Parse(void *param) {
 					protocol_thread_wait(node, 1, &nrloops);
 				}
 			}
+			pthread_mutex_unlock(&lm75lock);
 #endif
 		}
 	}
@@ -183,6 +188,10 @@ void lm75ThreadGC(void) {
 }
 
 void lm75Init(void) {
+	pthread_mutexattr_init(&lm75attr);
+	pthread_mutexattr_settype(&lm75attr, PTHREAD_MUTEX_RECURSIVE);
+	pthread_mutex_init(&lm75lock, &lm75attr);
+
 	protocol_register(&lm75);
 	protocol_set_id(lm75, "lm75");
 	protocol_device_add(lm75, "lm75", "TI I2C Temperature Sensor");
@@ -198,4 +207,13 @@ void lm75Init(void) {
 
 	lm75->initDev=&lm75InitDev;
 	lm75->threadGC=&lm75ThreadGC;
+}
+
+void compatibility(const char **version, const char **commit) {
+	*version = "4.0";
+	*commit = "18";
+}
+
+void init(void) {
+	lm75Init();
 }

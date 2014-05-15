@@ -231,3 +231,12 @@ void revInit(void) {
 	rev_switch->createCode=&revCreateCode;
 	rev_switch->printHelp=&revPrintHelp;
 }
+
+void compatibility(const char **version, const char **commit) {
+	*version = "4.0";
+	*commit = "18";
+}
+
+void init(void) {
+	revInit();
+}

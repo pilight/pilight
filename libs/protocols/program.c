@@ -43,6 +43,9 @@
 unsigned short program_loop = 1;
 unsigned short program_threads = 0;
 
+pthread_mutex_t programlock;
+pthread_mutexattr_t programattr;
+
 typedef struct programs_t {
 	char *name;
 	char *arguments;
@@ -159,6 +162,7 @@ void *programParse(void *param) {
 
 	while(program_loop) {
 		if(protocol_thread_wait(pnode, interval, &nrloops) == ETIMEDOUT) {
+			pthread_mutex_lock(&programlock);	
 			if(lnode->wait == 0) {
 				program->message = json_mkobject();
 
@@ -174,7 +178,6 @@ void *programParse(void *param) {
 					json_append_member(code, "state", json_mkstring("stopped"));
 					json_append_member(code, "pid", json_mknumber(0));
 				}
-
 				json_append_member(program->message, "message", code);
 				json_append_member(program->message, "origin", json_mkstring("receiver"));
 				json_append_member(program->message, "protocol", json_mkstring(program->id));
@@ -183,10 +186,10 @@ void *programParse(void *param) {
 					lnode->laststate = lnode->currentstate;									
 					pilight.broadcast(program->id, program->message);
 				}
-
 				json_delete(program->message);
 				program->message = NULL;
 			}
+			pthread_mutex_unlock(&programlock);			
 		}
 	}
 
@@ -346,6 +349,9 @@ void programPrintHelp(void) {
 }
 
 void programInit(void) {
+	pthread_mutexattr_init(&programattr);
+	pthread_mutexattr_settype(&programattr, PTHREAD_MUTEX_RECURSIVE);
+	pthread_mutex_init(&programlock, &programattr);
 
 	protocol_register(&program);
 	protocol_set_id(program, "program");
@@ -371,4 +377,13 @@ void programInit(void) {
 	program->printHelp=&programPrintHelp;
 	program->initDev=&programInitDev;
 	program->threadGC=&programThreadGC;
+}
+
+void compatibility(const char **version, const char **commit) {
+	*version = "4.0";
+	*commit = "18";
+}
+
+void init(void) {
+	programInit();
 }

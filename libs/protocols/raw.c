@@ -74,3 +74,12 @@ void rawInit(void) {
 	raw->createCode=&rawCreateCode;
 	raw->printHelp=&rawPrintHelp;
 }
+
+void compatibility(const char **version, const char **commit) {
+	*version = "4.0";
+	*commit = "18";
+}
+
+void init(void) {
+	rawInit();
+}

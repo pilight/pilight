@@ -42,6 +42,9 @@ unsigned short rpi_temp_loop = 1;
 unsigned short rpi_temp_threads = 0;
 char rpi_temp[] = "/sys/class/thermal/thermal_zone0/temp";
 
+pthread_mutex_t rpi_templock;
+pthread_mutexattr_t rpi_tempattr;
+
 void *rpiTempParse(void *param) {
 	struct protocol_threads_t *node = (struct protocol_threads_t *)param;
 	struct JsonNode *json = (struct JsonNode *)node->param;
@@ -83,6 +86,7 @@ void *rpiTempParse(void *param) {
 
 	while(rpi_temp_loop) {
 		if(protocol_thread_wait(node, interval, &nrloops) == ETIMEDOUT) {
+			pthread_mutex_lock(&rpi_templock);
 			for(y=0;y<nrid;y++) {
 				if((fp = fopen(rpi_temp, "rb"))) {
 					fstat(fileno(fp), &st);
@@ -120,6 +124,7 @@ void *rpiTempParse(void *param) {
 					logprintf(LOG_ERR, "CPU RPI device %s does not exists", rpi_temp);
 				}
 			}
+			pthread_mutex_unlock(&rpi_templock);
 		}
 	}
 
@@ -148,6 +153,9 @@ void rpiTempThreadGC(void) {
 }
 
 void rpiTempInit(void) {
+	pthread_mutexattr_init(&rpi_tempattr);
+	pthread_mutexattr_settype(&rpi_tempattr, PTHREAD_MUTEX_RECURSIVE);
+	pthread_mutex_init(&rpi_templock, &rpi_tempattr);
 
 	protocol_register(&rpiTemp);
 	protocol_set_id(rpiTemp, "rpi_temp");
@@ -166,4 +174,13 @@ void rpiTempInit(void) {
 
 	rpiTemp->initDev=&rpiTempInitDev;
 	rpiTemp->threadGC=&rpiTempThreadGC;
+}
+
+void compatibility(const char **version, const char **commit) {
+	*version = "4.0";
+	*commit = "18";
+}
+
+void init(void) {
+	rpiTempInit();
 }

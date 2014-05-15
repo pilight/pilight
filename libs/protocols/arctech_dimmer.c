@@ -281,3 +281,12 @@ void arctechDimInit(void) {
 	arctech_dimmer->printHelp=&arctechDimPrintHelp;
 	arctech_dimmer->checkValues=&arctechDimCheckValues;
 }
+
+void compatibility(const char **version, const char **commit) {
+	*version = "4.0";
+	*commit = "18";
+}
+
+void init(void) {
+	arctechDimInit();
+}

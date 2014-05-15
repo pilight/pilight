@@ -207,3 +207,12 @@ void homeEasyOldInit(void) {
 	home_easy_old->createCode=&homeEasyOldCreateCode;
 	home_easy_old->printHelp=&homeEasyOldPrintHelp;
 }
+
+void compatibility(const char **version, const char **commit) {
+	*version = "4.0";
+	*commit = "18";
+}
+
+void init(void) {
+	homeEasyOldInit();
+}

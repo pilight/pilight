@@ -46,6 +46,9 @@
 unsigned short lm76_loop = 1;
 int lm76_threads = 0;
 
+pthread_mutex_t lm76lock;
+pthread_mutexattr_t lm76attr;
+
 typedef struct lm76data_t {
 	char **id;
 	int nrid;
@@ -113,7 +116,8 @@ void *lm76Parse(void *param) {
 	
 	while(lm76_loop) {
 		if(protocol_thread_wait(node, interval, &nrloops) == ETIMEDOUT) {
-#ifndef __FreeBSD__	
+#ifndef __FreeBSD__
+			pthread_mutex_lock(&lm76lock);
 			for(y=0;y<lm76data->nrid;y++) {
 				if(lm76data->fd[y] > 0) {		
 					int raw = wiringPiI2CReadReg16(lm76data->fd[y], 0x00);            
@@ -138,6 +142,7 @@ void *lm76Parse(void *param) {
 					protocol_thread_wait(node, 1, &nrloops);
 				}
 			}
+			pthread_mutex_unlock(&lm76lock);
 #endif
 		}
 	}
@@ -183,6 +188,10 @@ void lm76ThreadGC(void) {
 }
 
 void lm76Init(void) {
+	pthread_mutexattr_init(&lm76attr);
+	pthread_mutexattr_settype(&lm76attr, PTHREAD_MUTEX_RECURSIVE);
+	pthread_mutex_init(&lm76lock, &lm76attr);
+
 	protocol_register(&lm76);
 	protocol_set_id(lm76, "lm76");
 	protocol_device_add(lm76, "lm76", "TI I2C Temperature Sensor");
@@ -198,4 +207,13 @@ void lm76Init(void) {
 
 	lm76->initDev=&lm76InitDev;
 	lm76->threadGC=&lm76ThreadGC;
+}
+
+void compatibility(const char **version, const char **commit) {
+	*version = "4.0";
+	*commit = "18";
+}
+
+void init(void) {
+	lm76Init();
 }

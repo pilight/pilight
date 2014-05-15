@@ -209,3 +209,12 @@ void x10Init(void) {
 	x10->createCode=&x10CreateCode;
 	x10->printHelp=&x10PrintHelp;
 }
+
+void compatibility(const char **version, const char **commit) {
+	*version = "4.0";
+	*commit = "18";
+}
+
+void init(void) {
+	x10Init();
+}

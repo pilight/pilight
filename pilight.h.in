@@ -24,71 +24,8 @@
 /* Internals */
 
 #cmakedefine WEBSERVER
-#cmakedefine DEBUG
 #cmakedefine UPDATE
 #cmakedefine FIRMWARE
-
-/* Protocol support */
-
-#cmakedefine PROTOCOL_ALECTO
-#cmakedefine PROTOCOL_RPI_TEMP
-#cmakedefine PROTOCOL_BRENNENSTUHL_SWITCH
-#cmakedefine PROTOCOL_CLARUS
-#cmakedefine PROTOCOL_COCO_SWITCH
-#cmakedefine PROTOCOL_COGEX_SWITCH
-#cmakedefine PROTOCOL_CONRAD_RSL_SWITCH
-#cmakedefine PROTOCOL_CONRAD_RSL_CONTACT
-#cmakedefine PROTOCOL_CONRAD_WEATHER
-#cmakedefine PROTOCOL_DATETIME
-#cmakedefine PROTOCOL_DS18B20
-#cmakedefine PROTOCOL_DS18S20
-#cmakedefine PROTOCOL_DHT11
-#cmakedefine PROTOCOL_DHT22
-#cmakedefine PROTOCOL_DIO_SWITCH
-#cmakedefine PROTOCOL_EHOME
-#cmakedefine PROTOCOL_ELRO_SWITCH
-#cmakedefine PROTOCOL_GENERIC_DIMMER
-#cmakedefine PROTOCOL_GENERIC_SWITCH
-#cmakedefine PROTOCOL_GENERIC_WEATHER
-#cmakedefine PROTOCOL_GENERIC_WEBCAM
-#cmakedefine PROTOCOL_HOMEEASY_OLD
-#cmakedefine PROTOCOL_IMPULS
-#cmakedefine PROTOCOL_INTERTECHNO_SWITCH
-#cmakedefine PROTOCOL_INTERTECHNO_OLD
-#cmakedefine PROTOCOL_KAKU_DIMMER
-#cmakedefine PROTOCOL_KAKU_SWITCH_OLD
-#cmakedefine PROTOCOL_KAKU_SCREEN_OLD
-#cmakedefine PROTOCOL_KAKU_SWITCH
-#cmakedefine PROTOCOL_KAKU_SCREEN
-#cmakedefine PROTOCOL_KAKU_CONTACT
-#cmakedefine PROTOCOL_LM75
-#cmakedefine PROTOCOL_LM76
-#cmakedefine PROTOCOL_LIRC
-#cmakedefine PROTOCOL_MUMBI_SWITCH
-#cmakedefine PROTOCOL_NEXA_SWITCH
-#cmakedefine PROTOCOL_OPENWEATHERMAP
-#cmakedefine PROTOCOL_POLLIN_SWITCH
-#cmakedefine PROTOCOL_PROGRAM
-#cmakedefine PROTOCOL_QUIGG_SWITCH
-#cmakedefine PROTOCOL_RAW
-#cmakedefine PROTOCOL_RELAY
-#cmakedefine PROTOCOL_REV
-#cmakedefine PROTOCOL_REV_OLD
-#cmakedefine PROTOCOL_SELECTREMOTE
-#cmakedefine PROTOCOL_SILVERCREST
-#cmakedefine PROTOCOL_SUNRISESET
-#cmakedefine PROTOCOL_TEKNIHALL
-#cmakedefine PROTOCOL_TFA
-#cmakedefine PROTOCOL_THREECHAN
-#cmakedefine PROTOCOL_WUNDERGROUND
-#cmakedefine PROTOCOL_X10
-#cmakedefine PROTOCOL_XBMC
-
-/* Hardware support */
-
-#cmakedefine HARDWARE_433_GPIO
-#cmakedefine HARDWARE_433_LIRC
-#cmakedefine HARDWARE_433_PILIGHT
 
 #define VERSION					"4.0"
 #define PULSE_DIV				34
@@ -110,6 +47,9 @@
 #define MAX_CLIENTS					30
 #define BUFFER_SIZE					1025
 #define EOSS						"\n\n" // End Of Socket Stream
+
+#define PROTOCOL_ROOT				"/usr/local/lib/pilight/protocols/"
+#define HARDWARE_ROOT				"/usr/local/lib/pilight/hardware/"
 
 #define PID_FILE					"/var/run/pilight.pid"
 #define CONFIG_FILE					"/etc/pilight/config.json"

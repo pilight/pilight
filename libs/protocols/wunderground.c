@@ -49,6 +49,9 @@ typedef struct wunderground_data_t {
 	struct wunderground_data_t *next;
 } wunderground_data_t;
 
+pthread_mutex_t wundergroundlock;
+pthread_mutexattr_t wundergroundattr;
+
 struct wunderground_data_t *wunderground_data;
 unsigned short wunderground_loop = 1;
 unsigned short wunderground_threads = 0;
@@ -156,6 +159,7 @@ void *wundergroundParse(void *param) {
 
 	while(wunderground_loop) {
 		protocol_thread_wait(thread, interval, &nrloops);
+		pthread_mutex_lock(&wundergroundlock);
 		if(wunderground_loop == 0) {
 			break;
 		}		
@@ -308,6 +312,7 @@ void *wundergroundParse(void *param) {
 		if(filename) {
 			sfree((void *)&filename);
 		}
+		pthread_mutex_unlock(&wundergroundlock);
 	}
 
 	struct wunderground_data_t *wtmp = NULL;
@@ -399,6 +404,9 @@ void wundergroundPrintHelp(void) {
 }
 
 void wundergroundInit(void) {
+	pthread_mutexattr_init(&wundergroundattr);
+	pthread_mutexattr_settype(&wundergroundattr, PTHREAD_MUTEX_RECURSIVE);
+	pthread_mutex_init(&wundergroundlock, &wundergroundattr);
 
 	protocol_register(&wunderground);
 	protocol_set_id(wunderground, "wunderground");
@@ -431,4 +439,13 @@ void wundergroundInit(void) {
 	wunderground->checkValues=&wundergroundCheckValues;
 	wunderground->threadGC=&wundergroundThreadGC;
 	wunderground->printHelp=&wundergroundPrintHelp;
+}
+
+void compatibility(const char **version, const char **commit) {
+	*version = "4.0";
+	*commit = "18";
+}
+
+void init(void) {
+	wundergroundInit();
 }

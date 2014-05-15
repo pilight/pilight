@@ -47,6 +47,7 @@
 #include "irq.h"
 #include "hardware.h"
 #include "ssdp.h"
+#include "dso.h"
 #include "firmware.h"
 
 #ifdef UPDATE
@@ -645,7 +646,7 @@ void *send_code(void *param) {
 
 			if(hw && hw->send) {
 				logprintf(LOG_DEBUG, "**** RAW CODE ****");
-				if(loglevel >= LOG_DEBUG) {
+				if(log_level_get() >= LOG_DEBUG) {
 					for(i=0;i<protocol->rawlen;i++) {
 						printf("%d ", protocol->raw[i]);
 					}
@@ -703,6 +704,13 @@ void send_queue(JsonNode *json) {
 	char *uuid = NULL;
 	/* Hold the final protocol struct */
 	struct protocol_t *protocol = NULL;
+	struct sched_param sched;
+
+	/* Make sure the pilight sender gets 
+	   the highest priority available */
+	memset(&sched, 0, sizeof(sched));
+	sched.sched_priority = 80;
+	pthread_setschedparam(pthread_self(), SCHED_FIFO, &sched);
 
 	JsonNode *jcode = NULL;
 	JsonNode *jprotocols = NULL;
@@ -1567,6 +1575,7 @@ int main_gc(void) {
 	settings_gc();
 	options_gc();
 	socket_gc();
+	dso_gc();
 
 	whitelist_free();
 	threads_gc();
@@ -1646,7 +1655,7 @@ int main(int argc, char **argv) {
 	firmware.lpf = 0;
 	firmware.hpf = 0;
 
-	loglevel = LOG_INFO;
+	log_level_set(LOG_DEBUG);
 
 	log_file_enable();
 	log_shell_disable();
@@ -1849,7 +1858,7 @@ int main(int argc, char **argv) {
 	if(running == 1) {
 		nodaemon=1;
 		logprintf(LOG_NOTICE, "already active (pid %d)", atoi(buffer));
-		log_level_set(LOG_NOTICE);
+		log_level_set(LOG_DEBUG);
 		log_shell_disable();
 		goto clear;
 	}
@@ -1905,7 +1914,7 @@ int main(int argc, char **argv) {
 					receivers++;
 				}
 
-				if(log_level_get() >= LOG_DEBUG) {
+				if(log_level_get() >= LOG_DEBUG && nodaemon == 1) {
 					config_print();
 				}
 			}
