@@ -24,7 +24,6 @@
 /* Internals */
 
 #cmakedefine WEBSERVER
-#cmakedefine DEBUG
 #cmakedefine UPDATE
 #cmakedefine FIRMWARE
 

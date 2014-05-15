@@ -90,7 +90,7 @@ void hardware_init(void) {
 							compatibility(&version, &commit);
 							char ver[strlen(version)];
 							strcpy(ver, version);
-					
+
 							if((check1 = vercmp(ver, pilight_version)) > 0) {
 								valid = 0;
 							}
