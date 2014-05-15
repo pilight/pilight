@@ -46,6 +46,8 @@
 unsigned short lm75_loop = 1;
 int lm75_threads = 0;
 
+pthread_mutex_t lm75lock;
+
 typedef struct lm75data_t {
 	char **id;
 	int nrid;
@@ -114,6 +116,7 @@ void *lm75Parse(void *param) {
 	while(lm75_loop) {
 		if(protocol_thread_wait(node, interval, &nrloops) == ETIMEDOUT) {
 #ifndef __FreeBSD__	
+			pthread_mutex_lock(&lm75lock);
 			for(y=0;y<lm75data->nrid;y++) {
 				if(lm75data->fd[y] > 0) {
 					int raw = wiringPiI2CReadReg16(lm75data->fd[y], 0x00);            
@@ -138,6 +141,7 @@ void *lm75Parse(void *param) {
 					protocol_thread_wait(node, 1, &nrloops);
 				}
 			}
+			pthread_mutex_unlock(&lm75lock);
 #endif
 		}
 	}

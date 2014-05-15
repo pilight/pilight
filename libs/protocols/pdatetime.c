@@ -52,6 +52,8 @@ unsigned short pdatetime_loop = 1;
 unsigned short pdatetime_threads = 0;
 char *pdatetime_format = NULL;
 
+pthread_mutex_t pdatetimelock;
+
 typedef struct {
 	union {
 		unsigned int Xl_ui;
@@ -210,6 +212,7 @@ void *pdateTimeParse(void *param) {
 	}
 
 	while(pdatetime_loop) {
+		pthread_mutex_lock(&pdatetimelock);
 		t = time(NULL);	
 		if(x == interval || (ntp == -1 && ntpserver != NULL && strlen(ntpserver) > 0)) {
 			ntp = getntptime(ntpserver);
@@ -253,6 +256,7 @@ void *pdateTimeParse(void *param) {
 			interval = (int)((23-hour)*10000)+((59-minute)*100)+(60-second);
 		}
 		x++;
+		pthread_mutex_unlock(&pdatetimelock);
 		sleep(1);
 	}
 

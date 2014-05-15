@@ -52,6 +52,8 @@ int lirc_sockfd = -1;
 unsigned short lirc_loop = 1;
 unsigned short lirc_threads = 0;
 
+pthread_mutex_t lirclock;
+
 void *lircParse(void *param) {
 	struct protocol_threads_t *node = (struct protocol_threads_t *)param;
 	struct sockaddr_un addr;
@@ -92,6 +94,7 @@ void *lircParse(void *param) {
 			}
 
 			while(lirc_loop) {
+				pthread_mutex_lock(&lirclock);
 				FD_ZERO(&fdsread);
 				FD_SET((unsigned long)lirc_sockfd, &fdsread);
 
@@ -100,14 +103,17 @@ void *lircParse(void *param) {
 				} while(n == -1 && errno == EINTR && lirc_loop);
 
 				if(lirc_loop == 0) {
+					pthread_mutex_unlock(&lirclock);
 					break;
 				}
 				
 				if(path_exists(lirc_socket) == EXIT_FAILURE) {
+					pthread_mutex_unlock(&lirclock);
 					break;
 				}
 
 				if(n == -1) {
+					pthread_mutex_unlock(&lirclock);
 					break;
 				} else if(n == 0) {
 					usleep(10000);
@@ -115,6 +121,7 @@ void *lircParse(void *param) {
 					if(FD_ISSET((unsigned long)lirc_sockfd, &fdsread)) {
 						bytes = (int)recv(lirc_sockfd, recvBuff, BUFFER_SIZE, 0);
 						if(bytes <= 0) {
+							pthread_mutex_unlock(&lirclock);
 							break;
 						} else {
 							int x = 0, nrspace = 0;
@@ -151,6 +158,7 @@ void *lircParse(void *param) {
 						}
 					}
 				}
+				pthread_mutex_unlock(&lirclock);
 			}
 		}
 	}

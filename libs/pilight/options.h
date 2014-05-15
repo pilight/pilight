@@ -19,8 +19,8 @@
 #ifndef _OPTIONS_H_
 #define _OPTIONS_H_
 
-#define OPTION_NO_VALUE				1
-#define OPTION_HAS_VALUE	 		2
+#define OPTION_NO_VALUE			1
+#define OPTION_HAS_VALUE	 	2
 #define OPTION_OPT_VALUE	 	3
 
 #define CONFIG_ID		1

@@ -43,6 +43,8 @@
 unsigned short program_loop = 1;
 unsigned short program_threads = 0;
 
+pthread_mutex_t programlock;
+
 typedef struct programs_t {
 	char *name;
 	char *arguments;
@@ -157,14 +159,15 @@ void *programParse(void *param) {
 	if(json_find_number(json, "poll-interval", &itmp) == 0)
 		interval = (int)round(itmp);
 
-	while(program_loop) {
+	while(program_loop) {				
 		if(protocol_thread_wait(pnode, interval, &nrloops) == ETIMEDOUT) {
+			pthread_mutex_lock(&programlock);	
 			if(lnode->wait == 0) {
 				program->message = json_mkobject();
 
 				JsonNode *code = json_mkobject();
 				json_append_member(code, "name", json_mkstring(lnode->name));
-
+	
 				if((pid = (int)findproc(lnode->program, lnode->arguments, 0)) > 0) {
 					lnode->currentstate = 1;
 					json_append_member(code, "state", json_mkstring("running"));
@@ -174,7 +177,6 @@ void *programParse(void *param) {
 					json_append_member(code, "state", json_mkstring("stopped"));
 					json_append_member(code, "pid", json_mknumber(0));
 				}
-
 				json_append_member(program->message, "message", code);
 				json_append_member(program->message, "origin", json_mkstring("receiver"));
 				json_append_member(program->message, "protocol", json_mkstring(program->id));
@@ -183,10 +185,10 @@ void *programParse(void *param) {
 					lnode->laststate = lnode->currentstate;									
 					pilight.broadcast(program->id, program->message);
 				}
-
 				json_delete(program->message);
 				program->message = NULL;
 			}
+			pthread_mutex_unlock(&programlock);			
 		}
 	}
 

@@ -45,6 +45,8 @@
 unsigned short dht11_loop = 1;
 unsigned short dht11_threads = 0;
 
+pthread_mutex_t dht11lock;
+
 static uint8_t sizecvt(const int read_value) {
 	/* digitalRead() and friends from wiringpi are defined as returning a value
 	   < 256. However, they are returned as int() types. This is a safety function */
@@ -88,6 +90,7 @@ void *dht11Parse(void *param) {
 
 	while(dht11_loop) {
 		if(protocol_thread_wait(node, interval, &nrloops) == ETIMEDOUT) {
+			pthread_mutex_lock(&dht11lock);
 			for(y=0;y<nrid;y++) {
 				int tries = 5;
 				unsigned short got_correct_date = 0;
@@ -169,6 +172,7 @@ void *dht11Parse(void *param) {
 					}
 				}
 			}
+			pthread_mutex_unlock(&dht11lock);
 		}
 	}
 

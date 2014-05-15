@@ -45,6 +45,8 @@
 unsigned short dht22_loop = 1;
 unsigned short dht22_threads = 0;
 
+pthread_mutex_t dht22lock;
+
 static uint8_t sizecvt(const int read_value) {
 	/* digitalRead() and friends from wiringpi are defined as returning a value
 	   < 256. However, they are returned as int() types. This is a safety function */
@@ -88,6 +90,7 @@ void *dht22Parse(void *param) {
 
 	while(dht22_loop) {
 		if(protocol_thread_wait(node, interval, &nrloops) == ETIMEDOUT) {
+			pthread_mutex_lock(&dht22lock);
 			for(y=0;y<nrid;y++) {
 				int tries = 5;
 				unsigned short got_correct_date = 0;
@@ -169,6 +172,7 @@ void *dht22Parse(void *param) {
 					}
 				}
 			}
+			pthread_mutex_unlock(&dht22lock);
 		}
 	}
 

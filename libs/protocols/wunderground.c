@@ -49,6 +49,8 @@ typedef struct wunderground_data_t {
 	struct wunderground_data_t *next;
 } wunderground_data_t;
 
+pthread_mutex_t wundergroundlock;
+
 struct wunderground_data_t *wunderground_data;
 unsigned short wunderground_loop = 1;
 unsigned short wunderground_threads = 0;
@@ -156,6 +158,7 @@ void *wundergroundParse(void *param) {
 
 	while(wunderground_loop) {
 		protocol_thread_wait(thread, interval, &nrloops);
+		pthread_mutex_lock(&wundergroundlock);
 		if(wunderground_loop == 0) {
 			break;
 		}		
@@ -308,6 +311,7 @@ void *wundergroundParse(void *param) {
 		if(filename) {
 			sfree((void *)&filename);
 		}
+		pthread_mutex_unlock(&wundergroundlock);
 	}
 
 	struct wunderground_data_t *wtmp = NULL;
