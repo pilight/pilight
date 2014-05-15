@@ -47,6 +47,7 @@ unsigned short lm75_loop = 1;
 int lm75_threads = 0;
 
 pthread_mutex_t lm75lock;
+pthread_mutexattr_t lm75attr;
 
 typedef struct lm75data_t {
 	char **id;
@@ -187,6 +188,10 @@ void lm75ThreadGC(void) {
 }
 
 void lm75Init(void) {
+	pthread_mutexattr_init(&lm75attr);
+	pthread_mutexattr_settype(&lm75attr, PTHREAD_MUTEX_RECURSIVE);
+	pthread_mutex_init(&lm75lock, &lm75attr);
+
 	protocol_register(&lm75);
 	protocol_set_id(lm75, "lm75");
 	protocol_device_add(lm75, "lm75", "TI I2C Temperature Sensor");

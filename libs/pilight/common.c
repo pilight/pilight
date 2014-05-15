@@ -50,20 +50,6 @@ unsigned int ***whitelist_cache = NULL;
 unsigned int whitelist_number;
 unsigned char validchar[64] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
-void logmarkup(void) {
-	char fmt[64], buf[64];
-	struct timeval tv;
-	struct tm *tm;
-
-	gettimeofday(&tv, NULL);
-	if((tm = localtime(&tv.tv_sec)) != NULL) {
-		strftime(fmt, sizeof(fmt), "%b %d %H:%M:%S", tm);
-		snprintf(buf, sizeof(buf), "%s:%03u", fmt, (unsigned int)tv.tv_usec);
-	}
-	
-	sprintf(debug_log, "[%22.22s] %s: ", buf, progname);
-}
-
 #ifdef __FreeBSD__
 int findproc(char *cmd, char *args, int loosely) {
 #else

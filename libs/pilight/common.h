@@ -19,18 +19,12 @@
 #ifndef _COMMON_H_
 #define _COMMON_H_
 
-#include <syslog.h>
 #include <ifaddrs.h>
 
 #include "../../pilight.h"
 
 char *progname;
-int filelog;
-int shelllog;
-int loglevel;
-char debug_log[128];
 
-void logmarkup(void);
 int isNumeric(char *str);
 int name2uid(char const *name);
 int which(const char *program);

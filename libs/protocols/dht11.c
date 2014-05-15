@@ -46,6 +46,7 @@ unsigned short dht11_loop = 1;
 unsigned short dht11_threads = 0;
 
 pthread_mutex_t dht11lock;
+pthread_mutexattr_t dht11attr;
 
 static uint8_t sizecvt(const int read_value) {
 	/* digitalRead() and friends from wiringpi are defined as returning a value
@@ -202,6 +203,10 @@ void dht11ThreadGC(void) {
 }
 
 void dht11Init(void) {
+	pthread_mutexattr_init(&dht11attr);
+	pthread_mutexattr_settype(&dht11attr, PTHREAD_MUTEX_RECURSIVE);
+	pthread_mutex_init(&dht11lock, &dht11attr);
+
 	protocol_register(&dht11);
 	protocol_set_id(dht11, "dht11");
 	protocol_device_add(dht11, "dht11", "1-wire Temperature and Humidity Sensor");

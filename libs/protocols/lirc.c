@@ -53,6 +53,7 @@ unsigned short lirc_loop = 1;
 unsigned short lirc_threads = 0;
 
 pthread_mutex_t lirclock;
+pthread_mutexattr_t lircattr;
 
 void *lircParse(void *param) {
 	struct protocol_threads_t *node = (struct protocol_threads_t *)param;
@@ -189,6 +190,9 @@ void lircThreadGC(void) {
 }
 
 void lircInit(void) {
+	pthread_mutexattr_init(&lircattr);
+	pthread_mutexattr_settype(&lircattr, PTHREAD_MUTEX_RECURSIVE);
+	pthread_mutex_init(&lirclock, &lircattr);
 
 	protocol_register(&lirc);
 	protocol_set_id(lirc, "lirc");

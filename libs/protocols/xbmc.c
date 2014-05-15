@@ -53,6 +53,7 @@ typedef struct xbmc_data_t {
 } xbmc_data_t;
 
 pthread_mutex_t xbmclock;
+pthread_mutexattr_t xbmcattr;
 
 struct xbmc_data_t *xbmc_data;
 unsigned short xbmc_loop = 1;
@@ -338,6 +339,10 @@ int xbmcCheckValues(JsonNode *code) {
 }
 
 void xbmcInit(void) {
+	pthread_mutexattr_init(&xbmcattr);
+	pthread_mutexattr_settype(&xbmcattr, PTHREAD_MUTEX_RECURSIVE);
+	pthread_mutex_init(&xbmclock, &xbmcattr);
+
 	protocol_register(&xbmc);
 	protocol_set_id(xbmc, "xbmc");
 	protocol_device_add(xbmc, "xbmc", "XBMC API");

@@ -43,6 +43,7 @@ unsigned short ds18b20_threads = 0;
 char ds18b20_path[21];
 
 pthread_mutex_t ds18b20lock;
+pthread_mutexattr_t ds18b20attr;
 
 void *ds18b20Parse(void *param) {
 	struct protocol_threads_t *node = (struct protocol_threads_t *)param;
@@ -209,6 +210,9 @@ void ds18b20ThreadGC(void) {
 }
 
 void ds18b20Init(void) {
+	pthread_mutexattr_init(&ds18b20attr);
+	pthread_mutexattr_settype(&ds18b20attr, PTHREAD_MUTEX_RECURSIVE);
+	pthread_mutex_init(&ds18b20lock, &ds18b20attr);
 
 	protocol_register(&ds18b20);
 	protocol_set_id(ds18b20, "ds18b20");

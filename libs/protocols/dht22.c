@@ -46,6 +46,7 @@ unsigned short dht22_loop = 1;
 unsigned short dht22_threads = 0;
 
 pthread_mutex_t dht22lock;
+pthread_mutexattr_t dht22attr;
 
 static uint8_t sizecvt(const int read_value) {
 	/* digitalRead() and friends from wiringpi are defined as returning a value
@@ -202,6 +203,10 @@ void dht22ThreadGC(void) {
 }
 
 void dht22Init(void) {
+	pthread_mutexattr_init(&dht22attr);
+	pthread_mutexattr_settype(&dht22attr, PTHREAD_MUTEX_RECURSIVE);
+	pthread_mutex_init(&dht22lock, &dht22attr);
+
 	protocol_register(&dht22);
 	protocol_set_id(dht22, "dht22");
 	protocol_device_add(dht22, "dht22", "1-wire Temperature and Humidity Sensor");

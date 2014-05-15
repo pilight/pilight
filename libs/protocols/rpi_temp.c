@@ -43,6 +43,7 @@ unsigned short rpi_temp_threads = 0;
 char rpi_temp[] = "/sys/class/thermal/thermal_zone0/temp";
 
 pthread_mutex_t rpi_templock;
+pthread_mutexattr_t rpi_tempattr;
 
 void *rpiTempParse(void *param) {
 	struct protocol_threads_t *node = (struct protocol_threads_t *)param;
@@ -152,6 +153,9 @@ void rpiTempThreadGC(void) {
 }
 
 void rpiTempInit(void) {
+	pthread_mutexattr_init(&rpi_tempattr);
+	pthread_mutexattr_settype(&rpi_tempattr, PTHREAD_MUTEX_RECURSIVE);
+	pthread_mutex_init(&rpi_templock, &rpi_tempattr);
 
 	protocol_register(&rpiTemp);
 	protocol_set_id(rpiTemp, "rpi_temp");

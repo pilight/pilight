@@ -53,6 +53,7 @@ unsigned short pdatetime_threads = 0;
 char *pdatetime_format = NULL;
 
 pthread_mutex_t pdatetimelock;
+pthread_mutexattr_t pdatetimeattr;
 
 typedef struct {
 	union {
@@ -299,6 +300,10 @@ void pdatetimeGC(void) {
 }
 
 void pdateTimeInit(void) {
+	pthread_mutexattr_init(&pdatetimeattr);
+	pthread_mutexattr_settype(&pdatetimeattr, PTHREAD_MUTEX_RECURSIVE);
+	pthread_mutex_init(&pdatetimelock, &pdatetimeattr);
+
 	pdatetime_format = malloc(20);
 	strcpy(pdatetime_format, "HH:mm:ss YYYY-MM-DD");
 

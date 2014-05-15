@@ -50,6 +50,7 @@ typedef struct openweathermap_data_t {
 } openweathermap_data_t;
 
 pthread_mutex_t openweathermaplock;
+pthread_mutexattr_t openweathermapattr;
 
 struct openweathermap_data_t *openweathermap_data;
 unsigned short openweathermap_loop = 1;
@@ -338,6 +339,9 @@ void openweathermapPrintHelp(void) {
 }
 
 void openweathermapInit(void) {
+	pthread_mutexattr_init(&openweathermapattr);
+	pthread_mutexattr_settype(&openweathermapattr, PTHREAD_MUTEX_RECURSIVE);
+	pthread_mutex_init(&openweathermaplock, &openweathermapattr);
 
 	protocol_register(&openweathermap);
 	protocol_set_id(openweathermap, "openweathermap");

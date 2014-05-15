@@ -46,8 +46,17 @@ unsigned int tznrpolys[NRCOUNTRIES];
 char tznames[NRCOUNTRIES][30];
 int tzdatafilled = 0;
 pthread_mutex_t tzlock;
+pthread_mutexattr_t tzattr;
+int tz_lock_initialized = 0;
 
 int fillTZData(void) {
+	if(tz_lock_initialized == 0) {
+		pthread_mutexattr_init(&tzattr);
+		pthread_mutexattr_settype(&tzattr, PTHREAD_MUTEX_RECURSIVE);
+		pthread_mutex_init(&tzlock, &tzattr);
+		tz_lock_initialized = 1;
+	}
+
 	pthread_mutex_lock(&tzlock);
 	if(tzdatafilled == 1) {
 		return EXIT_SUCCESS;

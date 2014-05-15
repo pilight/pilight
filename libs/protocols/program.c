@@ -44,6 +44,7 @@ unsigned short program_loop = 1;
 unsigned short program_threads = 0;
 
 pthread_mutex_t programlock;
+pthread_mutexattr_t programattr;
 
 typedef struct programs_t {
 	char *name;
@@ -159,7 +160,7 @@ void *programParse(void *param) {
 	if(json_find_number(json, "poll-interval", &itmp) == 0)
 		interval = (int)round(itmp);
 
-	while(program_loop) {				
+	while(program_loop) {
 		if(protocol_thread_wait(pnode, interval, &nrloops) == ETIMEDOUT) {
 			pthread_mutex_lock(&programlock);	
 			if(lnode->wait == 0) {
@@ -167,7 +168,7 @@ void *programParse(void *param) {
 
 				JsonNode *code = json_mkobject();
 				json_append_member(code, "name", json_mkstring(lnode->name));
-	
+
 				if((pid = (int)findproc(lnode->program, lnode->arguments, 0)) > 0) {
 					lnode->currentstate = 1;
 					json_append_member(code, "state", json_mkstring("running"));
@@ -348,6 +349,9 @@ void programPrintHelp(void) {
 }
 
 void programInit(void) {
+	pthread_mutexattr_init(&programattr);
+	pthread_mutexattr_settype(&programattr, PTHREAD_MUTEX_RECURSIVE);
+	pthread_mutex_init(&programlock, &programattr);
 
 	protocol_register(&program);
 	protocol_set_id(program, "program");

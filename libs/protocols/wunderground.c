@@ -50,6 +50,7 @@ typedef struct wunderground_data_t {
 } wunderground_data_t;
 
 pthread_mutex_t wundergroundlock;
+pthread_mutexattr_t wundergroundattr;
 
 struct wunderground_data_t *wunderground_data;
 unsigned short wunderground_loop = 1;
@@ -403,6 +404,9 @@ void wundergroundPrintHelp(void) {
 }
 
 void wundergroundInit(void) {
+	pthread_mutexattr_init(&wundergroundattr);
+	pthread_mutexattr_settype(&wundergroundattr, PTHREAD_MUTEX_RECURSIVE);
+	pthread_mutex_init(&wundergroundlock, &wundergroundattr);
 
 	protocol_register(&wunderground);
 	protocol_set_id(wunderground, "wunderground");
