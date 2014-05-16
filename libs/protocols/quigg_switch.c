@@ -181,7 +181,7 @@ int quiggSwCreateCode(JsonNode *code) {
 	} else if(id > 4095 || id < 0) {
 		logprintf(LOG_ERR, "quigg_switch: invalid programm code id range");
 		return EXIT_FAILURE;
-	} else if((unit > 4 || unit < 0) && all == 0) {
+	} else if((unit > 5 || unit < 0) && all == 0) {
 		logprintf(LOG_ERR, "quigg_switch: invalid button code unit range");
 		return EXIT_FAILURE;
 	} else {
