@@ -30,9 +30,17 @@
 #include "gc.h"
 #include "conrad_rsl_switch.h"
 
-void conradRSLSwCreateMessage(int id, int state) {
+int conradRSLCodes[5][4][2];
+
+void conradRSLSwCreateMessage(int id, int unit, int state) {
 	conrad_rsl_switch->message = json_mkobject();
-	json_append_member(conrad_rsl_switch->message, "id", json_mknumber(id));
+
+	if(id == 4) {
+		json_append_member(conrad_rsl_switch->message, "all", json_mknumber(1));
+	} else {
+		json_append_member(conrad_rsl_switch->message, "id", json_mknumber(id+1));
+	}
+	json_append_member(conrad_rsl_switch->message, "unit", json_mknumber(unit+1));	
 	if(state == 1) {
 		json_append_member(conrad_rsl_switch->message, "state", json_mkstring("on"));
 	} else {
@@ -42,25 +50,38 @@ void conradRSLSwCreateMessage(int id, int state) {
 
 void conradRSLSwParseCode(void) {
 	int x = 0;
+	int id = 0, unit = 0, state = 0;
 
 	/* Convert the one's and zero's into binary */
-	for(x=0; x<conrad_rsl_switch->rawlen; x+=2) {
+	for(x=0;x<conrad_rsl_switch->rawlen;x+=2) {
 		if(conrad_rsl_switch->code[x+1] == 1) {
-			conrad_rsl_switch->binary[x/2]=1;
-		} else {
 			conrad_rsl_switch->binary[x/2]=0;
+		} else {
+			conrad_rsl_switch->binary[x/2]=1;
 		}
 	}
 
-	int id = binToDecRev(conrad_rsl_switch->binary, 6, 31);
-	int check = binToDecRev(conrad_rsl_switch->binary, 0, 3);
-	int check1 = conrad_rsl_switch->binary[32];
-	int state1 = conrad_rsl_switch->binary[4];
-	int state2 = conrad_rsl_switch->binary[5];
-
-	if(check == 4 && check1 == 1 && state1 != state2) {
-		conradRSLSwCreateMessage(id, state2);
+	int check = binToDecRev(conrad_rsl_switch->binary, 0, 7);
+	int match = 0;
+	for(id=0;id<5;id++) {
+		for(unit=0;unit<4;unit++) {
+			if(conradRSLCodes[id][unit][0] == check) {
+				state = 0;
+				match = 1;
+			}
+			if(conradRSLCodes[id][unit][1] == check) {
+				state = 1;
+				match = 1;
+			}
+			if(match) {
+				break;
+			}
+		}
+		if(match) {
+			break;
+		}
 	}
+	conradRSLSwCreateMessage(id, unit, state);
 }
 
 void conradRSLSwCreateLow(int s, int e) {
@@ -82,42 +103,29 @@ void conradRSLSwCreateHigh(int s, int e) {
 }
 
 void conradRSLSwClearCode(void) {
+	int i = 0, x = 0;
 	conradRSLSwCreateLow(0,65);
+	for(i=0;i<65;i+=2) {
+		x=i*2;
+		conradRSLSwCreateHigh(x,x+1);
+	}
 }
 
-void conradRSLSwCreateId(int id) {
+void conradRSLSwCreateId(int id, int unit, int state) {
 	int binary[255];
 	int length = 0;
 	int i=0, x=0;
 
-	length = decToBin(id, binary);
+	int code = conradRSLCodes[id][unit][state];
+
+	length = decToBin(code, binary);
 	for(i=0;i<=length;i++) {
+		x=i*2;
 		if(binary[i]==1) {
-			x=i*2;
-			conradRSLSwCreateHigh(12+x, 12+x+1);
+			conradRSLSwCreateLow(x, x+1);
+		} else {
+			conradRSLSwCreateHigh(x, x+1);
 		}
-	}
-}
-
-void conradRSLSwCreateStart(int start) {
-	int binary[255];
-	int length = 0;
-	int i=0, x=0;
-
-	length = decToBin(start, binary);
-	for(i=0;i<=length;i++) {
-		if(binary[i]==1) {
-			x=i*2;
-			conradRSLSwCreateHigh(2+x, 2+x+1);
-		}
-	}
-}
-
-void conradRSLSwCreateState(int state) {
-	if(state == 1) {
-		conradRSLSwCreateHigh(10, 11);
-	} else {
-		conradRSLSwCreateHigh(8, 9);
 	}
 }
 
@@ -129,27 +137,39 @@ void conradRSLSwCreateFooter(void) {
 int conradRSLSwCreateCode(JsonNode *code) {
 	int id = -1;
 	int state = -1;
+	int unit = -1;
+	int all = 0;
 	double itmp = 0;
 
 	if(json_find_number(code, "id", &itmp) == 0)
 		id = (int)round(itmp);
+	if(json_find_number(code, "unit", &itmp) == 0)
+		unit = (int)round(itmp);
+	if(json_find_number(code, "all", &itmp) == 0)
+		all = 1;
 	if(json_find_number(code, "off", &itmp) == 0)
 		state=0;
 	else if(json_find_number(code, "on", &itmp) == 0)
 		state=1;
 
-	if(id == -1 || state == -1) {
+	if(unit == -1 || (id == -1 && all == 0) || state == -1) {
 		logprintf(LOG_ERR, "conrad_rsl_switch: insufficient number of arguments");
 		return EXIT_FAILURE;
-	} else if(id > 67108863 || id < 0) {
-		logprintf(LOG_ERR, "conrad_rsl_switch: invalid programcode range");
+	} else if((id > 5 || id < 0) && all == 0) {
+		logprintf(LOG_ERR, "conrad_rsl_switch: invalid id range");
+		return EXIT_FAILURE;
+	} else if(unit > 5 || unit < 0) {
+		logprintf(LOG_ERR, "conrad_rsl_switch: invalid unit range");
 		return EXIT_FAILURE;
 	} else {
-		conradRSLSwCreateMessage(id, state);
+		if(all == 1) {
+			id = 5;
+		}
+		id -= 1;
+		unit -= 1;
+		conradRSLSwCreateMessage(id, unit, state);
 		conradRSLSwClearCode();
-		conradRSLSwCreateStart(4);
-		conradRSLSwCreateId(id);
-		conradRSLSwCreateState(state);
+		conradRSLSwCreateId(id, unit, state);
 		conradRSLSwCreateFooter();
 	}
 	return EXIT_SUCCESS;
@@ -157,25 +177,70 @@ int conradRSLSwCreateCode(JsonNode *code) {
 
 void conradRSLSwPrintHelp(void) {
 	printf("\t -i --id=id\tcontrol a device with this id\n");
+	printf("\t -i --unit=unit\tcontrol a device with this unit\n");
 	printf("\t -t --on\t\t\tsend an on signal\n");
 	printf("\t -f --off\t\t\tsend an off signal\n");
+	printf("\t -a --all\t\t\tsend an all signal\n");
 }
 
 void conradRSLSwInit(void) {
+
+	memset(conradRSLCodes, 0, 33);
+	conradRSLCodes[0][0][0] = 190;
+	conradRSLCodes[0][0][1] = 182;
+	conradRSLCodes[0][1][0] = 129;
+	conradRSLCodes[0][1][1] = 142;
+	conradRSLCodes[0][2][0] = 174;
+	conradRSLCodes[0][2][1] = 166;
+	conradRSLCodes[0][3][0] = 158;
+	conradRSLCodes[0][3][1] = 150;
+
+	conradRSLCodes[1][0][0] = 181;
+	conradRSLCodes[1][0][1] = 185;
+	conradRSLCodes[1][1][0] = 141;
+	conradRSLCodes[1][1][1] = 133;
+	conradRSLCodes[1][2][0] = 165;
+	conradRSLCodes[1][2][1] = 169;
+	conradRSLCodes[1][3][0] = 149;
+	conradRSLCodes[1][3][1] = 153;
+
+	conradRSLCodes[2][0][0] = 184;
+	conradRSLCodes[2][0][1] = 176;
+	conradRSLCodes[2][1][0] = 132;
+	conradRSLCodes[2][1][1] = 136;
+	conradRSLCodes[2][2][0] = 168;
+	conradRSLCodes[2][2][1] = 160;
+	conradRSLCodes[2][3][0] = 152;
+	conradRSLCodes[2][3][1] = 144;
+
+	conradRSLCodes[3][0][0] = 178;
+	conradRSLCodes[3][0][1] = 188;
+	conradRSLCodes[3][1][0] = 138;
+	conradRSLCodes[3][1][1] = 130;
+	conradRSLCodes[3][2][0] = 162;
+	conradRSLCodes[3][2][1] = 172;
+	conradRSLCodes[3][3][0] = 146;
+	conradRSLCodes[3][3][1] = 156;
+
+	conradRSLCodes[4][0][0] = 163;
+	conradRSLCodes[4][0][1] = 147;
 
 	protocol_register(&conrad_rsl_switch);
 	protocol_set_id(conrad_rsl_switch, "conrad_rsl_switch");
 	protocol_device_add(conrad_rsl_switch, "conrad_rsl_switch", "Conrad RSL Switches");
 	protocol_plslen_add(conrad_rsl_switch, 204);
+	protocol_plslen_add(conrad_rsl_switch, 194);
 	conrad_rsl_switch->devtype = SWITCH;
 	conrad_rsl_switch->hwtype = RF433;
-	conrad_rsl_switch->pulse = 5;
+	conrad_rsl_switch->pulse = 6;
 	conrad_rsl_switch->rawlen = 66;
 	conrad_rsl_switch->binlen = 33;
 
-	options_add(&conrad_rsl_switch->options, 'i', "id", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, NULL, "^(([0-9]|([1-9][0-9])|([1-9][0-9]{2})|([1-9][0-9]{3})|([1-9][0-9]{4})|([1-9][0-9]{5})|([1-9][0-9]{6})|((6710886[0-3])|(671088[0-5][0-9])|(67108[0-7][0-9]{2})|(6710[0-7][0-9]{3})|(671[0-1][0-9]{4})|(670[0-9]{5})|(6[0-6][0-9]{6})|(0[0-5][0-9]{7}))))$");
+	options_add(&conrad_rsl_switch->options, 'i', "id", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, NULL, "^[1-4]$");
+	options_add(&conrad_rsl_switch->options, 'u', "unit", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, NULL, "^[1-4]$");
 	options_add(&conrad_rsl_switch->options, 't', "on", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
 	options_add(&conrad_rsl_switch->options, 'f', "off", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
+	options_add(&conrad_rsl_switch->options, 'a', "all", OPTION_OPT_VALUE, CONFIG_OPTIONAL, JSON_NUMBER, NULL, NULL);
 
 	options_add(&conrad_rsl_switch->options, 0, "gui-readonly", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 

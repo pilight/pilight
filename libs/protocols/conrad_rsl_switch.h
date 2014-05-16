@@ -21,14 +21,12 @@
 
 struct protocol_t *conrad_rsl_switch;
 
-void conradRSLSwCreateMessage(int id, int state);
+void conradRSLSwCreateMessage(int id, int unit, int state);
 void conradRSLSwParseCode(void);
 void conradRSLSwCreateLow(int s, int e);
 void conradRSLSwCreateHigh(int s, int e);
 void conradRSLSwClearCode(void);
-void conradRSLSwCreateId(int id);
-void conradRSLSwCreateStart(int start);
-void conradRSLSwCreateState(int state);
+void conradRSLSwCreateId(int id, int unit, int state);
 void conradRSLSwCreateFooter(void);
 int conradRSLSwCreateCode(JsonNode *code);
 void conradRSLSwPrintHelp(void);
