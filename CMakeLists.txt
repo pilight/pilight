@@ -215,6 +215,11 @@ if(${PROTOCOL_GENERIC_SWITCH} MATCHES "OFF")
 	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/generic_switch.c")
 endif()
 
+if(${PROTOCOL_GENERIC_SCREEN} MATCHES "OFF")
+	list(REMOVE_ITEM protocol_header "${PROJECT_SOURCE_DIR}/libs/protocols/generic_screen.h")
+	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/generic_screen.c")
+endif()
+
 if(${PROTOCOL_GENERIC_WEATHER} MATCHES "OFF")
 	list(REMOVE_ITEM protocol_header "${PROJECT_SOURCE_DIR}/libs/protocols/generic_weather.h")
 	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/generic_weather.c")

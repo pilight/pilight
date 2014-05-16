@@ -48,5 +48,6 @@ typedef enum {
 
 int firmware_update(char *fwfile);
 int firmware_check(char **output);
+int firmware_getmp(void);
 
 #endif
