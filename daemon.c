@@ -1655,7 +1655,7 @@ int main(int argc, char **argv) {
 	firmware.lpf = 0;
 	firmware.hpf = 0;
 
-	log_level_set(LOG_DEBUG);
+	log_level_set(LOG_INFO);
 
 	log_file_enable();
 	log_shell_disable();
@@ -1858,7 +1858,7 @@ int main(int argc, char **argv) {
 	if(running == 1) {
 		nodaemon=1;
 		logprintf(LOG_NOTICE, "already active (pid %d)", atoi(buffer));
-		log_level_set(LOG_DEBUG);
+		log_level_set(LOG_NOTICE);
 		log_shell_disable();
 		goto clear;
 	}
@@ -2019,6 +2019,7 @@ int main(int argc, char **argv) {
 	pthread_mutex_init(&mainlock, &mainattr);
     pthread_cond_init(&mainsignal, NULL);
 
+	int interval = 1;
 	while(main_loop) {
 #ifdef FIRMWARE
 		/* Check if firmware needs to be updated */
@@ -2032,13 +2033,13 @@ int main(int argc, char **argv) {
 				sprintf(fwpath, "%s%s", FIRMWARE_PATH, fwfile);
 				logprintf(LOG_INFO, "**** START UPD. FW ****");
 				if(firmware_update(fwpath) != 0) {
-					fwupdate = 0;
 					logprintf(LOG_INFO, "**** FAILED UPD. FW ****");
 				} else {
-					unlink(fwpath);
 					logprintf(LOG_INFO, "**** DONE UPD. FW ****");
 				}
+				fwupdate = 0;
 			}
+			interval = 60;
 		}
 #endif
 		struct timeval tp;
@@ -2047,7 +2048,7 @@ int main(int argc, char **argv) {
 		gettimeofday(&tp, NULL);
 		ts.tv_sec = tp.tv_sec;
 		ts.tv_nsec = tp.tv_usec * 1000;
-		ts.tv_sec += 1;
+		ts.tv_sec += interval;
 		pthread_mutex_lock(&mainlock);
 		pthread_cond_timedwait(&mainsignal, &mainlock, &ts);
 	}

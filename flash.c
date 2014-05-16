@@ -85,7 +85,7 @@ int main(int argc, char **argv) {
 				}
 			break;
 			default:
-				printf("Usage: %s -f pilight_firmware_v3.hex\n", progname);
+				printf("Usage: %s -f pilight_firmware_tX5_v3.hex\n", progname);
 				return (EXIT_FAILURE);
 			break;
 		}
@@ -93,12 +93,13 @@ int main(int argc, char **argv) {
 	options_delete(options);
 
 	if(strlen(fwfile) == 0) {
-		printf("Usage: %s -f pilight_firmware_vX.hex\n", progname);
+		printf("Usage: %s -f pilight_firmware_tX5_vX.hex\n", progname);
 		return (EXIT_FAILURE);	
 	}
 
 	firmware.version = 0;
 	logprintf(LOG_INFO, "**** START UPD. FW ****");
+	firmware_getmp();
 	if(firmware_update(fwfile) != 0) {
 		logprintf(LOG_INFO, "**** FAILED UPD. FW ****");
 	} else {
