@@ -41,7 +41,6 @@ void arctechSwOldCreateMessage(int id, int unit, int state) {
 }
 
 void arctechSwOldParseBinary(void) {
-
 	int unit = binToDec(arctech_switch_old->binary, 0, 3);
 	int state = arctech_switch_old->binary[11];
 	int id = binToDec(arctech_switch_old->binary, 4, 8);

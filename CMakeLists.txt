@@ -342,6 +342,11 @@ if(${PROTOCOL_SILVERCREST} MATCHES "OFF")
 	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/silvercrest.c")
 endif()
 
+if(${PROTOCOL_CLEVERWATTS} MATCHES "OFF")
+	list(REMOVE_ITEM protocol_header "${PROJECT_SOURCE_DIR}/libs/protocols/cleverwatts.h")
+	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/cleverwatts.c")
+endif()
+
 if(${PROTOCOL_SUNRISESET} MATCHES "OFF")
 	list(REMOVE_ITEM protocol_header "${PROJECT_SOURCE_DIR}/libs/protocols/sunriseset.h")
 	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/sunriseset.c")

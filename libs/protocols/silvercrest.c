@@ -44,8 +44,11 @@ void silvercrestCreateMessage(int systemcode, int unitcode, int state) {
 void silvercrestParseBinary(void) {
 	int systemcode = binToDec(silvercrest->binary, 0, 4);
 	int unitcode = binToDec(silvercrest->binary, 5, 9);
+	int check = silvercrest->binary[10];
 	int state = silvercrest->binary[11];
-	silvercrestCreateMessage(systemcode, unitcode, state);
+	if(check != state) {
+		silvercrestCreateMessage(systemcode, unitcode, state);
+	}
 }
 
 void silvercrestCreateLow(int s, int e) {

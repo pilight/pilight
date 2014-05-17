@@ -5,6 +5,7 @@ set(PROTOCOL_ALECTO ON CACHE BOOL "support for the Alecto weather stations proto
 set(PROTOCOL_RPI_TEMP ON CACHE BOOL "support for the RPi temperature sensor")
 set(PROTOCOL_BRENNENSTUHL_SWITCH ON CACHE BOOL "support for the Brennenstuhl switch protocol")
 set(PROTOCOL_CLARUS ON CACHE BOOL "support for the Clarus switch protocol")
+set(PROTOCOL_CLEVERWATTS ON CACHE BOOL "support for the Cleverwatts switch protocol")
 set(PROTOCOL_COCO_SWITCH ON CACHE BOOL "support for the new ClickOnClickOff switch protocol")
 set(PROTOCOL_COGEX_SWITCH ON CACHE BOOL "support for the Cogex switch protocol")
 set(PROTOCOL_CONRAD_RSL_SWITCH ON CACHE BOOL "support for the Conrad RSL switch protocol")
