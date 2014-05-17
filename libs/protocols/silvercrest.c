@@ -104,6 +104,8 @@ void silvercrestCreateUnitCode(int unitcode) {
 void silvercrestCreateState(int state) {
 	if(state == 1) {
 		silvercrestCreateHigh(44, 47);
+	} else {
+		silvercrestCreateHigh(40, 43);
 	}
 }
 
