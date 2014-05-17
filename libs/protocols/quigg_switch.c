@@ -174,7 +174,6 @@ int quiggSwCreateCode(JsonNode *code) {
 		state=0;
 	else if(json_find_number(code, "on", &itmp) == 0)
 		state=1;
-
 	if(id==-1 || (unit==-1 && all==0) || state==-1) {
 		logprintf(LOG_ERR, "quigg_switch: insufficient number of arguments");
 		return EXIT_FAILURE;
