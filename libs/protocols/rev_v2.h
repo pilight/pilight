@@ -16,18 +16,18 @@
     along with pilight. If not, see	<http://www.gnu.org/licenses/>
 */
 
-#ifndef _PROTOCOL_REV_H_
-#define _PROTOCOL_REV_H_
+#ifndef _PROTOCOL_REV2_H_
+#define _PROTOCOL_REV2_H_
 
-struct protocol_t *rev_switch;
+struct protocol_t *rev2_switch;
 
-void revInit(void);
-void revCreateMessage(char *id, int unit, int state);
-void revParseCode(void);
-int revCreateCode(JsonNode *code);
-void revCreateUnit(int unit);
-void revCreateId(char *id);
-void revCreateState(int state);
-void revPrintHelp(void);
+void rev2Init(void);
+void rev2CreateMessage(char *id, int unit, int state);
+void rev2ParseCode(void);
+int rev2CreateCode(JsonNode *code);
+void rev2CreateUnit(int unit);
+void rev2CreateId(char *id);
+void rev2CreateState(int state);
+void rev2PrintHelp(void);
 
 #endif
