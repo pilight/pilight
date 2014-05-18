@@ -3,13 +3,13 @@
 
 	This file is part of pilight.
 
-    pilight is free software: you can redistribute it and/or modify it under the 
-	terms of the GNU General Public License as published by the Free Software 
-	Foundation, either version 3 of the License, or (at your option) any later 
+    pilight is free software: you can redistribute it and/or modify it under the
+	terms of the GNU General Public License as published by the Free Software
+	Foundation, either version 3 of the License, or (at your option) any later
 	version.
 
-    pilight is distributed in the hope that it will be useful, but WITHOUT ANY 
-	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR 
+    pilight is distributed in the hope that it will be useful, but WITHOUT ANY
+	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
@@ -40,11 +40,11 @@ void rev2CreateMessage(char *id, int unit, int state) {
 		json_append_member(rev2_switch->message, "state", json_mkstring("off"));
 }
 
-void rev2ParseCode(void) {	
+void rev2ParseCode(void) {
 	int x = 0;
 	int z = 65;
 	char id[3] = {'\0'};
-	
+
 	/* Convert the one's and zero's into binary */
 	for(x=0; x<rev2_switch->rawlen; x+=4) {
 		if(rev2_switch->code[x+3] == 1) {
@@ -55,7 +55,7 @@ void rev2ParseCode(void) {
 			rev2_switch->binary[x/4]=0;
 		}
 	}
-		
+
 	for(x=9;x>=5;--x) {
 		if(rev2_switch->binary[x] == 2) {
 			break;
@@ -129,7 +129,7 @@ void rev2CreateId(char *id) {
 	int binary[255];
 	int length = 0;
 	int i=0, x=0;
-	
+
 	length = decToBinRev(y, binary);
 	for(i=0;i<=length;i++) {
 		x=i*4;
@@ -164,10 +164,10 @@ int rev2CreateCode(JsonNode *code) {
 	char *stmp;
 
 	strcpy(id, "-1");
-	
+
 	if(json_find_string(code, "id", &stmp) == 0)
 		strcpy(id, stmp);
-		
+
 	if(json_find_number(code, "off", &itmp) == 0)
 		state=0;
 	else if(json_find_number(code, "on", &itmp) == 0)
@@ -175,7 +175,7 @@ int rev2CreateCode(JsonNode *code) {
 
 	if(json_find_number(code, "unit", &itmp) == 0)
 		unit = (int)round(itmp);
-		
+
 	if(strcmp(id, "-1") == 0 || unit == -1 || state == -1) {
 		logprintf(LOG_ERR, "rev2_switch: insufficient number of arguments");
 		return EXIT_FAILURE;
@@ -209,7 +209,7 @@ void rev2PrintHelp(void) {
 void rev2Init(void) {
 
 	protocol_register(&rev2_switch);
-	protocol_set_id(rev2_switch, "rev2_switch");	
+	protocol_set_id(rev2_switch, "rev2_switch");
 	protocol_device_add(rev2_switch, "rev2_switch", "Rev Switches v2");
 	protocol_plslen_add(rev2_switch, 258);
 	protocol_plslen_add(rev2_switch, 186);
@@ -226,7 +226,7 @@ void rev2Init(void) {
 	options_add(&rev2_switch->options, 'i', "id", OPTION_HAS_VALUE, CONFIG_ID, JSON_STRING, NULL, "^[ABCDEF](3[012]?|[012][0-9]|[0-9]{1})$");
 
 	options_add(&rev2_switch->options, 0, "gui-readonly", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
-	
+
 	rev2_switch->parseCode=&rev2ParseCode;
 	rev2_switch->createCode=&rev2CreateCode;
 	rev2_switch->printHelp=&rev2PrintHelp;

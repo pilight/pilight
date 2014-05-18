@@ -142,7 +142,7 @@ void rev1CreateId(char *id) {
 }
 
 void rev1CreateState(int state) {
-	if(state == 0) {
+	if(state == 1) {
 		rev1CreateMed(40,43);
 		rev1CreateHigh(44,47);
 	} else {
