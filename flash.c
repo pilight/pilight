@@ -3,13 +3,13 @@
 
 	This file is part of pilight.
 
-    pilight is free software: you can redistribute it and/or modify it under the 
-	terms of the GNU General Public License as published by the Free Software 
-	Foundation, either version 3 of the License, or (at your option) any later 
+    pilight is free software: you can redistribute it and/or modify it under the
+	terms of the GNU General Public License as published by the Free Software
+	Foundation, either version 3 of the License, or (at your option) any later
 	version.
 
-    pilight is distributed in the hope that it will be useful, but WITHOUT ANY 
-	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR 
+    pilight is distributed in the hope that it will be useful, but WITHOUT ANY
+	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
@@ -41,11 +41,11 @@ int main(int argc, char **argv) {
 	log_file_disable();
 	log_level_set(LOG_DEBUG);
 
-	struct options_t *options = NULL;	
-	
+	struct options_t *options = NULL;
+
 	char *args = NULL;
 	char fwfile[4096] = {'\0'};
-	
+
 	progname = malloc(15);
 	if(!progname) {
 		logprintf(LOG_ERR, "out of memory");
@@ -68,33 +68,34 @@ int main(int argc, char **argv) {
 			case 'H':
 				printf("Usage: %s [options]\n", progname);
 				printf("\t -H --help\t\tdisplay usage summary\n");
-				printf("\t -V --version\t\tdisplay version\n");		
+				printf("\t -V --version\t\tdisplay version\n");
 				printf("\t -f --file=firmware\tfirmware file\n");
-				return (EXIT_SUCCESS);
+				goto close;
 			break;
 			case 'V':
 				printf("%s %s\n", progname, VERSION);
-				return (EXIT_SUCCESS);
-			break;	
-			case 'f': 
+				goto close;
+			break;
+			case 'f':
 				if(access(args, F_OK) != -1) {
 					strcpy(fwfile, args);
 				} else {
 					fprintf(stderr, "%s: the firmware file %s does not exists\n", progname, args);
-					return EXIT_FAILURE;
+					goto close;
 				}
 			break;
 			default:
 				printf("Usage: %s -f pilight_firmware_tX5_v3.hex\n", progname);
-				return (EXIT_FAILURE);
+				goto close;
 			break;
 		}
 	}
 	options_delete(options);
 
+#ifdef FIRMWARE
 	if(strlen(fwfile) == 0) {
 		printf("Usage: %s -f pilight_firmware_tX5_vX.hex\n", progname);
-		return (EXIT_FAILURE);	
+		goto close;
 	}
 
 	firmware.version = 0;
@@ -105,6 +106,14 @@ int main(int argc, char **argv) {
 	} else {
 		logprintf(LOG_INFO, "**** DONE UPD. FW ****");
 	}
+#else
+	logprintf(LOG_ERR, "pilight was compiled without firmware flashing support");
+#endif
 
+close:
+	log_shell_disable();
+	options_gc();
+	log_gc();
+	sfree((void *)&progname);
 	return (EXIT_SUCCESS);
 }

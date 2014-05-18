@@ -277,16 +277,16 @@ int main(int argc, char **argv) {
 							logprintf(LOG_ERR, "out of memory");
 							exit(EXIT_FAILURE);
 						}
-						if(!(node->name = malloc(strlen(protocol->devices->id)+1))) {
+						if(!(node->name = malloc(strlen(tmpdev->id)+1))) {
 							logprintf(LOG_ERR, "out of memory");
 							exit(EXIT_FAILURE);
 						}
-						strcpy(node->name, protocol->devices->id);
-						if(!(node->desc = malloc(strlen(protocol->devices->desc)+1))) {
+						strcpy(node->name, tmpdev->id);
+						if(!(node->desc = malloc(strlen(tmpdev->desc)+1))) {
 							logprintf(LOG_ERR, "out of memory");
 							exit(EXIT_FAILURE);
 						}
-						strcpy(node->desc, protocol->devices->desc);
+						strcpy(node->desc, tmpdev->desc);
 						node->next = pname;
 						pname = node;
 						tmpdev = tmpdev->next;

@@ -235,10 +235,14 @@ if(${PROTOCOL_HOMEEASY_OLD} MATCHES "OFF")
 	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/home_easy_old.c")
 endif()
 
-if(${PROTOCOL_IMPULS} MATCHES "OFF"
-	AND ${PROTOCOL_SELECTREMOTE} MATCHES "OFF")
+if(${PROTOCOL_IMPULS} MATCHES "OFF")
 	list(REMOVE_ITEM protocol_header "${PROJECT_SOURCE_DIR}/libs/protocols/impuls.h")
 	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/impuls.c")
+endif()
+
+if(${PROTOCOL_SELECTREMOTE} MATCHES "OFF")
+	list(REMOVE_ITEM protocol_header "${PROJECT_SOURCE_DIR}/libs/protocols/selectremote.h")
+	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/selectremote.c")
 endif()
 
 if(${PROTOCOL_EHOME} MATCHES "OFF")

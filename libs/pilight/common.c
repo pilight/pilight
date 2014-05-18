@@ -3,13 +3,13 @@
 
 	This file is part of pilight.
 
-    pilight is free software: you can redistribute it and/or modify it under the 
-	terms of the GNU General Public License as published by the Free Software 
-	Foundation, either version 3 of the License, or (at your option) any later 
+    pilight is free software: you can redistribute it and/or modify it under the
+	terms of the GNU General Public License as published by the Free Software
+	Foundation, either version 3 of the License, or (at your option) any later
 	version.
 
-    pilight is distributed in the hope that it will be useful, but WITHOUT ANY 
-	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR 
+    pilight is distributed in the hope that it will be useful, but WITHOUT ANY
+	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
@@ -303,7 +303,7 @@ char *distroname(void) {
 	strcpy(dist, "FreeBSD/0.0");
 #else
 	int rc = 1;
-	struct stat sb;		
+	struct stat sb;
 	if((rc = stat("/etc/redhat-release", &sb)) == 0) {
 		strcpy(dist, "RedHat/0.0");
 	} else if((rc = stat("/etc/SuSE-release", &sb)) == 0) {
@@ -332,7 +332,7 @@ char *distroname(void) {
 
 
 char *genuuid(char *ifname) {
-	char *mac = NULL, *upnp_id = NULL;	
+	char *mac = NULL, *upnp_id = NULL;
 	char a[1024], serial[UUID_LENGTH];
 
 	memset(serial, '\0', UUID_LENGTH);
@@ -360,7 +360,7 @@ char *genuuid(char *ifname) {
 		}
 		fclose(fp);
 	}
-	
+
 #if defined(SIOCGIFHWADDR)
 	int i = 0;
 	int fd = socket(PF_INET, SOCK_DGRAM, IPPROTO_IP);
@@ -371,7 +371,7 @@ char *genuuid(char *ifname) {
 	memset(mac, '\0', 13);
 	struct ifreq s;
 
-	memset(&s, '\0', sizeof(struct ifreq));	
+	memset(&s, '\0', sizeof(struct ifreq));
 	strcpy(s.ifr_name, ifname);
 	if(ioctl(fd, SIOCGIFHWADDR, &s) == 0) {
 		for(i = 0; i < 12; i+=2) {
@@ -414,7 +414,7 @@ char *genuuid(char *ifname) {
 
 	if(strlen(mac) > 0) {
 		upnp_id = malloc(UUID_LENGTH);
-		sprintf(upnp_id, 
+		sprintf(upnp_id,
 				"0000-%c%c-%c%c-%c%c-%c%c%c%c%c%c",
 				mac[0], mac[1], mac[2],
 				mac[3], mac[4], mac[5],
@@ -458,7 +458,7 @@ int rep_getifaddrs(struct ifaddrs **ifap) {
 	if ((fd = socket(AF_INET, SOCK_DGRAM, 0)) == -1) {
 		return -1;
 	}
-  
+
 	ifc.ifc_len = sizeof(buff);
 	ifc.ifc_buf = buff;
 
@@ -466,7 +466,7 @@ int rep_getifaddrs(struct ifaddrs **ifap) {
 		close(fd);
 		return -1;
 	}
-  
+
 #ifndef max
 #define max(a,b) ((a) > (b) ? (a) : (b))
 #endif
@@ -474,7 +474,7 @@ int rep_getifaddrs(struct ifaddrs **ifap) {
 #define ifreq_size(i) max(sizeof(struct ifreq),\
      sizeof((i).ifr_name)+(i).ifr_addr.sa_len)
 #else
-#define ifreq_size(i) sizeof(struct ifreq)  
+#define ifreq_size(i) sizeof(struct ifreq)
 #endif
 
 	n = ifc.ifc_len;
@@ -582,7 +582,7 @@ int whitelist_check(char *ip) {
 
 	if(strlen(whitelist) == 0) {
 		return 0;
-	}	
+	}
 
 	/* Explode ip address to a 4 elements int array */
 	pch = strtok(ip, ".");
@@ -658,7 +658,7 @@ int whitelist_check(char *ip) {
 	for(x=0;x<whitelist_number;x++) {
 		/* Turn the different ip addresses into one single number and compare those
 		   against each other to see if the ip address is inside the lower and upper
-		   whitelisted boundary */	
+		   whitelisted boundary */
 		unsigned int wlower = whitelist_cache[x][0][0] << 24 | whitelist_cache[x][0][1] << 16 | whitelist_cache[x][0][2] << 8 | whitelist_cache[x][0][3];
 		unsigned int wupper = whitelist_cache[x][1][0] << 24 | whitelist_cache[x][1][1] << 16 | whitelist_cache[x][1][2] << 8 | whitelist_cache[x][1][3];
 		unsigned int nip = client[0] << 24 | client[1] << 16 | client[2] << 8 | client[3];
@@ -696,7 +696,7 @@ int path_exists(char *fil) {
 	memset(path, '\0', sizeof(path));
 	memcpy(path, tmp, i);
 	snprintf(path, i, "%s", tmp);
-	
+
 	if(strcmp(filename, tmp) != 0) {
 		int err = stat(path, &s);
 		if(err == -1) {

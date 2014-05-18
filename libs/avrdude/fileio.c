@@ -162,8 +162,7 @@ static int ihex_readrec(struct ihexrec * ihex, char * rec)
   if (e == buf || *e != 0)
     return -1;
 
-  cksum = ihex->reclen + ((ihex->loadofs >> 8) & 0x0ff) +
-    (ihex->loadofs & 0x0ff) + ihex->rectyp;
+  cksum = ihex->reclen + ((ihex->loadofs >> 8) & 0x0ff) + (ihex->loadofs & 0x0ff) + ihex->rectyp;
 
   /* data */
   for (j=0; j<ihex->reclen; j++) {
