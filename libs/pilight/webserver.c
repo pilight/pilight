@@ -786,7 +786,7 @@ void *webserver_broadcast(void *param) {
 	pthread_mutex_lock(&webqueue_lock);
 
 	while(webserver_loop) {
-		if(webqueue_number > 0) {	
+		if(webqueue_number > 0) {
 			pthread_mutex_lock(&webqueue_lock);
 
 			for(i=0;i<WEBSERVER_WORKERS;i++) {
@@ -908,7 +908,7 @@ void *webserver_start(void *param) {
 
 	pthread_mutexattr_init(&webqueue_attr);
 	pthread_mutexattr_settype(&webqueue_attr, PTHREAD_MUTEX_RECURSIVE);
-	pthread_mutex_init(&webqueue_lock, &webqueue_attr);	
+	pthread_mutex_init(&webqueue_lock, &webqueue_attr);
 
 	/* Check on what port the webserver needs to run */
 	settings_find_number("webserver-port", &webserver_port);

@@ -3,13 +3,13 @@
 
 	This file is part of pilight.
 
-    pilight is free software: you can redistribute it and/or modify it under the 
-	terms of the GNU General Public License as published by the Free Software 
-	Foundation, either version 3 of the License, or (at your option) any later 
+    pilight is free software: you can redistribute it and/or modify it under the
+	terms of the GNU General Public License as published by the Free Software
+	Foundation, either version 3 of the License, or (at your option) any later
 	version.
 
-    pilight is distributed in the hope that it will be useful, but WITHOUT ANY 
-	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR 
+    pilight is distributed in the hope that it will be useful, but WITHOUT ANY
+	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
@@ -61,7 +61,7 @@ int relayCreateCode(JsonNode *code) {
 		free_def = 1;
 		strcpy(def, "off");
 	}
-	
+
 	if(json_find_number(code, "gpio", &itmp) == 0)
 		gpio = (int)round(itmp);
 	if(json_find_number(code, "off", &itmp) == 0)
@@ -99,7 +99,7 @@ int relayCreateCode(JsonNode *code) {
 				}
 			}
 			relayCreateMessage(gpio, state);
-			goto clear;			
+			goto clear;
 		}
 	}
 
@@ -159,7 +159,7 @@ void relayInit(void) {
 	strcpy(relay_state, "off");
 	options_add(&relay->options, 0, "default-state", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_STRING, (void *)relay_state, NULL);
 	options_add(&relay->options, 0, "gui-readonly", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
-	
+
 	relay->checkValues=&relayCheckValues;
 	relay->createCode=&relayCreateCode;
 	relay->printHelp=&relayPrintHelp;

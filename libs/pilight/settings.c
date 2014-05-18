@@ -3,13 +3,13 @@
 
 	This file is part of pilight.
 
-    pilight is free software: you can redistribute it and/or modify it under the 
-	terms of the GNU General Public License as published by the Free Software 
-	Foundation, either version 3 of the License, or (at your option) any later 
+    pilight is free software: you can redistribute it and/or modify it under the
+	terms of the GNU General Public License as published by the Free Software
+	Foundation, either version 3 of the License, or (at your option) any later
 	version.
 
-    pilight is distributed in the hope that it will be useful, but WITHOUT ANY 
-	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR 
+    pilight is distributed in the hope that it will be useful, but WITHOUT ANY
+	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
@@ -33,6 +33,9 @@
 #include "settings.h"
 #include "http_lib.h"
 #include "log.h"
+
+/* The location of the settings file */
+char *settingsfile = NULL;
 
 /* Add a string value to the settings struct */
 void settings_add_string(const char *name, char *value) {
@@ -106,7 +109,7 @@ int settings_find_string(const char *name, char **out) {
 
 /* Check if a given file exists */
 int settings_file_exists(char *filename) {
-	struct stat sb;   
+	struct stat sb;
 	return stat(filename, &sb);
 }
 
@@ -131,15 +134,15 @@ int settings_parse(JsonNode *root) {
 	strcpy(webgui_root, WEBSERVER_ROOT);
 #endif
 
-#ifndef __FreeBSD__	
+#ifndef __FreeBSD__
 	regex_t regex;
 	int reti;
-#endif	
-	
+#endif
+
 	JsonNode *jsettings = json_first_child(root);
-	
+
 	while(jsettings) {
-		if(strcmp(jsettings->key, "port") == 0 
+		if(strcmp(jsettings->key, "port") == 0
 		   || strcmp(jsettings->key, "send-repeats") == 0
 		   || strcmp(jsettings->key, "receive-repeats") == 0) {
 			if((int)jsettings->number_ == 0) {
@@ -147,7 +150,7 @@ int settings_parse(JsonNode *root) {
 				have_error = 1;
 				goto clear;
 			} else {
-#ifdef WEBSERVER			
+#ifdef WEBSERVER
 				if(strcmp(jsettings->key, "port") == 0) {
 					own_port = (int)jsettings->number_;
 				}
@@ -203,7 +206,7 @@ int settings_parse(JsonNode *root) {
 				if(path_exists(jsettings->string_) != EXIT_SUCCESS) {
 					logprintf(LOG_ERR, "setting \"%s\" must point to an existing folder", jsettings->key);
 					have_error = 1;
-					goto clear;				
+					goto clear;
 				} else {
 					settings_add_string(jsettings->key, jsettings->string_);
 				}
@@ -228,7 +231,7 @@ int settings_parse(JsonNode *root) {
 				have_error = 1;
 				goto clear;
 			} else if(strlen(jsettings->string_) > 0) {
-#ifndef __FreeBSD__			
+#ifndef __FreeBSD__
 				char validate[] = "^((\\*|[0-9]|[1-9][0-9]|1[0-9][0-9]|2([0-4][0-9]|5[0-5]))\\.(\\*|[0-9]|[1-9][0-9]|1[0-9][0-9]|2([0-4][0-9]|5[0-5]))\\.(\\*|[0-9]|[1-9][0-9]|1[0-9][0-9]|2([0-4][0-9]|5[0-5]))\\.(\\*|[0-9]|[1-9][0-9]|1[0-9][0-9]|2([0-4][0-9]|5[0-5]))(,[\\ ]|,|$))+$";
 				reti = regcomp(&regex, validate, REG_EXTENDED);
 				if(reti) {
@@ -292,7 +295,7 @@ int settings_parse(JsonNode *root) {
 				goto clear;
 			} else {
 				settings_add_number(jsettings->key, (int)jsettings->number_);
-			} 
+			}
 		} else if(strcmp(jsettings->key, "webserver-user") == 0) {
 			if(jsettings->string_ || strlen(jsettings->string_) > 0) {
 				if(name2uid(jsettings->string_) == -1) {
@@ -352,7 +355,7 @@ int settings_parse(JsonNode *root) {
 				goto clear;
 			} else {
 				settings_add_number(jsettings->key, (int)jsettings->number_);
-			} 
+			}
 		} else if(strcmp(jsettings->key, "update-development") == 0) {
 			if(jsettings->number_ < 0 || jsettings->number_ > 1) {
 				logprintf(LOG_ERR, "setting \"%s\" must be either 0 or 1", jsettings->key);
@@ -394,7 +397,7 @@ int settings_parse(JsonNode *root) {
 				if(url) sfree((void *)&url);
 				if(data) sfree((void *)&data);
 			}
-#endif		
+#endif
 		} else {
 			logprintf(LOG_ERR, "setting \"%s\" is invalid", jsettings->key);
 			have_error = 1;
@@ -415,7 +418,7 @@ int settings_parse(JsonNode *root) {
 			logprintf(LOG_ERR, "setting \"webgui-template\", template does not exists");
 			have_error = 1;
 			sfree((void *)&tmp);
-			goto clear;		
+			goto clear;
 		}
 		sfree((void *)&tmp);
 	}
@@ -466,7 +469,7 @@ int settings_gc(void) {
 		sfree((void *)&tmp);
 	}
 	sfree((void *)&settings);
-	
+
 	sfree((void *)&settingsfile);
 	logprintf(LOG_DEBUG, "garbage collected settings library");
 	return 1;
@@ -514,7 +517,7 @@ int settings_read(void) {
 	char *output = json_stringify(root, "\t");
 	settings_write(output);
 	json_delete(root);
-	sfree((void *)&output);	
+	sfree((void *)&output);
 	sfree((void *)&content);
 	return EXIT_SUCCESS;
 }

@@ -44,7 +44,7 @@ void pilightFirmwareV3ParseBinary(void) {
 	int lpf = low;
 	int hpf = high;
 	int ver = version;
-	
+
 	while(hpf > 10) {
 		hpf /= 10;
 	}
@@ -54,7 +54,7 @@ void pilightFirmwareV3ParseBinary(void) {
 	while(ver > 10) {
 		ver /= 10;
 	}
-	
+
 	if((((ver&0xf)+(lpf&0xf)+(hpf&0xf))&0xf) == chk) {
 		pilightFirmwareV3CreateMessage(version, high, low);
 	}

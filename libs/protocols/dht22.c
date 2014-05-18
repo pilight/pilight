@@ -3,13 +3,13 @@
 
 	This file is part of pilight.
 
-	pilight is free software: you can redistribute it and/or modify it under the 
-	terms of the GNU General Public License as published by the Free Software 
-	Foundation, either version 3 of the License, or (at your option) any later 
+	pilight is free software: you can redistribute it and/or modify it under the
+	terms of the GNU General Public License as published by the Free Software
+	Foundation, either version 3 of the License, or (at your option) any later
 	version.
 
-	pilight is distributed in the hope that it will be useful, but WITHOUT ANY 
-	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR 
+	pilight is distributed in the hope that it will be useful, but WITHOUT ANY
+	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
 	You should have received a copy of the GNU General Public License
@@ -39,7 +39,7 @@
 #include "json.h"
 #include "dht22.h"
 #include "../pilight/wiringPi.h"
-	
+
 #define MAXTIMINGS 100
 
 unsigned short dht22_loop = 1;
@@ -54,7 +54,7 @@ static uint8_t sizecvt(const int read_value) {
 	if(read_value > 255 || read_value < 0) {
 		logprintf(LOG_NOTICE, "invalid data from wiringPi library");
 	}
-  
+
 	return (uint8_t)read_value;
 }
 
@@ -104,7 +104,7 @@ void *dht22Parse(void *param) {
 					int dht22_dat[5] = {0,0,0,0,0};
 
 					// pull pin down for 18 milliseconds
-					pinMode(id[y], OUTPUT);			
+					pinMode(id[y], OUTPUT);
 					digitalWrite(id[y], HIGH);
 					usleep(500000);  // 500 ms
 					// then pull it up for 40 microseconds
@@ -126,12 +126,12 @@ void *dht22Parse(void *param) {
 						}
 						laststate = sizecvt(digitalRead(id[y]));
 
-						if(counter == 255) 
+						if(counter == 255)
 							break;
 
 						// ignore first 3 transitions
 						if((i >= 4) && (i%2 == 0)) {
-						
+
 							// shove each bit into the storage bytes
 							dht22_dat[(int)((double)j/8)] <<= 1;
 							if(counter > 16)
@@ -150,7 +150,7 @@ void *dht22Parse(void *param) {
 						t += temp_offset;
 						h += humi_offset;
 
-						if((dht22_dat[2] & 0x80) != 0) 
+						if((dht22_dat[2] & 0x80) != 0)
 							t *= -1;
 
 						dht22->message = json_mkobject();
@@ -210,7 +210,7 @@ void dht22Init(void) {
 	protocol_register(&dht22);
 	protocol_set_id(dht22, "dht22");
 	protocol_device_add(dht22, "dht22", "1-wire Temperature and Humidity Sensor");
-	protocol_device_add(dht22, "am2302", "1-wire Temperature and Humidity Sensor");	
+	protocol_device_add(dht22, "am2302", "1-wire Temperature and Humidity Sensor");
 	dht22->devtype = WEATHER;
 	dht22->hwtype = SENSOR;
 

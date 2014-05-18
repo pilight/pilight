@@ -126,9 +126,10 @@ int main(int argc, char **argv) {
 
 	/* Hold the final protocol struct */
 	protocol_t *protocol = NULL;
+	JsonNode *code = NULL;
 
-	JsonNode *json = json_mkobject();
-	JsonNode *code = json_mkobject();
+	char settingstmp[] = SETTINGS_FILE;
+	settings_set_file(settingstmp);
 
 	/* Define all CLI arguments of this program */
 	options_add(&options, 'H', "help", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
@@ -136,9 +137,7 @@ int main(int argc, char **argv) {
 	options_add(&options, 'p', "protocol", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, NULL);
 	options_add(&options, 'S', "server", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, "^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]).){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$");
 	options_add(&options, 'P', "port", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, "[0-9]{1,4}");
-
-	/* Initialize protocols */
-	protocol_init();
+	options_add(&options, 'F', "settings", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, NULL);
 
 	/* Get the protocol to be used */
 	while(1) {
@@ -168,6 +167,11 @@ int main(int argc, char **argv) {
 			case 'H':
 				help = 1;
 			break;
+			case 'F':
+				if(settings_set_file(args) == EXIT_FAILURE) {
+					return EXIT_FAILURE;
+				}
+			break;
 			case 'S':
 				if(!(server = realloc(server, strlen(args)+1))) {
 					logprintf(LOG_ERR, "out of memory");
@@ -181,6 +185,13 @@ int main(int argc, char **argv) {
 			default:;
 		}
 	}
+
+	if(settings_read() != 0) {
+		return EXIT_FAILURE;
+	}
+
+	/* Initialize protocols */
+	protocol_init();
 
 	/* Check if a protocol was given */
 	if(protobuffer && strlen(protobuffer) > 0 && strcmp(protobuffer, "-V") != 0) {
@@ -247,6 +258,7 @@ int main(int argc, char **argv) {
 			printf("\t -p --protocol=protocol\t\tthe protocol that you want to control\n");
 			printf("\t -S --server=x.x.x.x\t\tconnect to server address\n");
 			printf("\t -P --port=xxxx\t\t\tconnect to server port\n");
+			printf("\t -F --settings\t\t\tsettings file\n");
 		}
 		if(protohelp == 1 && match == 1 && protocol->printHelp) {
 			printf("\n\t[%s]\n", protobuffer);
@@ -258,7 +270,8 @@ int main(int argc, char **argv) {
 			while(pnode) {
 				protocol = pnode->listener;
 				if(protocol->createCode) {
-					while(protocol->devices) {
+					struct protocol_devices_t *tmpdev = protocol->devices;
+					while(tmpdev) {
 						struct pname_t *node = malloc(sizeof(struct pname_t));
 						if(!node) {
 							logprintf(LOG_ERR, "out of memory");
@@ -276,7 +289,7 @@ int main(int argc, char **argv) {
 						strcpy(node->desc, protocol->devices->desc);
 						node->next = pname;
 						pname = node;
-						protocol->devices = protocol->devices->next;
+						tmpdev = tmpdev->next;
 					}
 				}
 				pnode = pnode->next;
@@ -301,7 +314,8 @@ int main(int argc, char **argv) {
 		goto close;
 	}
 
-	int itmp;
+	code = json_mkobject();
+	int itmp = 0;
 	/* Check if we got sufficient arguments from this protocol */
 	struct options_t *tmp = options;
 	while(tmp) {
@@ -351,9 +365,10 @@ int main(int argc, char **argv) {
 			if(steps > WELCOME) {
 				/* Clear the receive buffer again and read the welcome message */
 				if((recvBuff = socket_read(sockfd))) {
-					json = json_decode(recvBuff);
-					json_find_string(json, "message", &message);
+					JsonNode *jrecv = json_decode(recvBuff);
+					json_find_string(jrecv, "message", &message);
 					sfree((void *)&recvBuff);
+					json_delete(jrecv);
 				} else {
 					goto close;
 				}
@@ -374,16 +389,17 @@ int main(int argc, char **argv) {
 					} else {
 						goto close;
 					}
-				case SEND:
-					json_delete(json);
-					json = json_mkobject();
+				case SEND: {
+					JsonNode *json = json_mkobject();
 					json_append_member(json, "message", json_mkstring("send"));
 					json_append_member(json, "code", code);
 					char *output = json_stringify(json, NULL);
 					socket_write(sockfd, output);
 					sfree((void *)&output);
+					json_delete(json);
+					code = NULL;
 					goto close;
-				break;
+				} break;
 				case REJECT:
 				default:
 					goto close;
@@ -392,12 +408,9 @@ int main(int argc, char **argv) {
 		}
 	}
 close:
-	if(json) {
-		json_delete(json);
-	}
 	if(code) {
 		json_delete(code);
-	}	
+	}
 	if(sockfd) {
 		socket_close(sockfd);
 	}
@@ -411,6 +424,7 @@ close:
 	protocol_gc();
 	options_delete(options);
 	options_gc();
+	settings_gc();
 	dso_gc();
 	log_gc();
 	sfree((void *)&progname);

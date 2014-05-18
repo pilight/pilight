@@ -3,13 +3,13 @@
 
 	This file is part of pilight.
 
-    pilight is free software: you can redistribute it and/or modify it under the 
-	terms of the GNU General Public License as published by the Free Software 
-	Foundation, either version 3 of the License, or (at your option) any later 
+    pilight is free software: you can redistribute it and/or modify it under the
+	terms of the GNU General Public License as published by the Free Software
+	Foundation, either version 3 of the License, or (at your option) any later
 	version.
 
-    pilight is distributed in the hope that it will be useful, but WITHOUT ANY 
-	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR 
+    pilight is distributed in the hope that it will be useful, but WITHOUT ANY
+	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
@@ -106,7 +106,7 @@ void elroHCCreateUnitCode(int unitcode) {
 }
 
 void elroHCCreateState(int state) {
-	if(state == 1) {	
+	if(state == 1) {
 		elroHCCreateLow(44, 47);
 		elroHCCreateLow(40, 43);
 	} else {
@@ -181,7 +181,7 @@ void elroHCInit(void) {
 	options_add(&elro_hc->options, 'f', "off", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
 
 	options_add(&elro_hc->options, 0, "gui-readonly", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
-	
+
 	elro_hc->parseBinary=&elroHCParseBinary;
 	elro_hc->createCode=&elroHCCreateCode;
 	elro_hc->printHelp=&elroHCPrintHelp;

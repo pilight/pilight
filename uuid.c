@@ -3,13 +3,13 @@
 
 	This file is part of pilight.
 
-    pilight is free software: you can redistribute it and/or modify it under the 
-	terms of the GNU General Public License as published by the Free Software 
-	Foundation, either version 3 of the License, or (at your option) any later 
+    pilight is free software: you can redistribute it and/or modify it under the
+	terms of the GNU General Public License as published by the Free Software
+	Foundation, either version 3 of the License, or (at your option) any later
 	version.
 
-    pilight is distributed in the hope that it will be useful, but WITHOUT ANY 
-	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR 
+    pilight is distributed in the hope that it will be useful, but WITHOUT ANY
+	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
@@ -67,16 +67,16 @@ int main(int argc, char **argv) {
 	struct options_t *options = NULL;
 	struct ifaddrs *ifaddr, *ifa;
 	int family = 0;
-	char *p = NULL;	
-	char *args = NULL;	
-	
+	char *p = NULL;
+	char *args = NULL;
+
 	progname = malloc(13);
 	if(!progname) {
 		logprintf(LOG_ERR, "out of memory");
 		exit(EXIT_FAILURE);
 	}
-	strcpy(progname, "pilight-uuid");	
-	
+	strcpy(progname, "pilight-uuid");
+
 	options_add(&options, 'H', "help", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
 	options_add(&options, 'V', "version", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
 
@@ -91,13 +91,13 @@ int main(int argc, char **argv) {
 			case 'H':
 				printf("Usage: %s [options]\n", progname);
 				printf("\t -H --help\t\tdisplay usage summary\n");
-				printf("\t -V --version\t\tdisplay version\n");		
+				printf("\t -V --version\t\tdisplay version\n");
 				return (EXIT_SUCCESS);
 			break;
 			case 'V':
 				printf("%s %s\n", progname, VERSION);
 				return (EXIT_SUCCESS);
-			break;	
+			break;
 			default:
 				printf("Usage: %s [options]\n", progname);
 				return (EXIT_FAILURE);
@@ -106,7 +106,7 @@ int main(int argc, char **argv) {
 	}
 	options_delete(options);
 
-#ifdef __FreeBSD__	
+#ifdef __FreeBSD__
 	if(rep_getifaddrs(&ifaddr) == -1) {
 		logprintf(LOG_ERR, "could not get network adapter information");
 		goto clear;
@@ -122,10 +122,10 @@ int main(int argc, char **argv) {
 		if(ifa->ifa_addr == NULL) {
 			continue;
 		}
-		
+
 		family = ifa->ifa_addr->sa_family;
-		
-		if((strstr(ifa->ifa_name, "lo") == NULL && strstr(ifa->ifa_name, "vbox") == NULL 
+
+		if((strstr(ifa->ifa_name, "lo") == NULL && strstr(ifa->ifa_name, "vbox") == NULL
 		    && strstr(ifa->ifa_name, "dummy") == NULL) && (family == AF_INET || family == AF_INET6)) {
 			if((p = genuuid(ifa->ifa_name)) == NULL) {
 				logprintf(LOG_ERR, "could not generate the device uuid");

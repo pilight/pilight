@@ -3,13 +3,13 @@
 
 	This file is part of pilight.
 
-    pilight is free software: you can redistribute it and/or modify it under the 
-	terms of the GNU General Public License as published by the Free Software 
-	Foundation, either version 3 of the License, or (at your option) any later 
+    pilight is free software: you can redistribute it and/or modify it under the
+	terms of the GNU General Public License as published by the Free Software
+	Foundation, either version 3 of the License, or (at your option) any later
 	version.
 
-    pilight is distributed in the hope that it will be useful, but WITHOUT ANY 
-	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR 
+    pilight is distributed in the hope that it will be useful, but WITHOUT ANY
+	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
@@ -158,14 +158,14 @@ void arctechSwOldPrintHelp(void) {
 void arctechSwOldInit(void) {
 
 	protocol_register(&arctech_switch_old);
-	protocol_set_id(arctech_switch_old, "arctech_switches_old");	
+	protocol_set_id(arctech_switch_old, "arctech_switches_old");
 	protocol_device_add(arctech_switch_old, "kaku_switch_old", "Old KlikAanKlikUit Switches");
 	protocol_device_add(arctech_switch_old, "cogex", "Cogex Switches");
 	protocol_device_add(arctech_switch_old, "intertechno_old", "Old Intertechno Switches");
 	protocol_plslen_add(arctech_switch_old, 340);
 	protocol_plslen_add(arctech_switch_old, 330);
-	protocol_plslen_add(arctech_switch_old, 320);	
-	protocol_plslen_add(arctech_switch_old, 310);	
+	protocol_plslen_add(arctech_switch_old, 320);
+	protocol_plslen_add(arctech_switch_old, 310);
 	arctech_switch_old->devtype = SWITCH;
 	arctech_switch_old->hwtype = RF433;
 	arctech_switch_old->pulse = 3;
@@ -179,7 +179,7 @@ void arctechSwOldInit(void) {
 	options_add(&arctech_switch_old->options, 'i', "id", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, NULL, "^(3[012]?|[012][0-9]|[0-9]{1})$");
 
 	options_add(&arctech_switch_old->options, 0, "gui-readonly", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
-	
+
 	arctech_switch_old->parseBinary=&arctechSwOldParseBinary;
 	arctech_switch_old->createCode=&arctechSwOldCreateCode;
 	arctech_switch_old->printHelp=&arctechSwOldPrintHelp;

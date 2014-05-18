@@ -3,13 +3,13 @@
 
 	This file is part of pilight.
 
-    pilight is free software: you can redistribute it and/or modify it under the 
-	terms of the GNU General Public License as published by the Free Software 
-	Foundation, either version 3 of the License, or (at your option) any later 
+    pilight is free software: you can redistribute it and/or modify it under the
+	terms of the GNU General Public License as published by the Free Software
+	Foundation, either version 3 of the License, or (at your option) any later
 	version.
 
-    pilight is distributed in the hope that it will be useful, but WITHOUT ANY 
-	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR 
+    pilight is distributed in the hope that it will be useful, but WITHOUT ANY
+	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
@@ -137,7 +137,7 @@ int fillTZData(void) {
 	json_delete(root);
 	sfree((void *)&content);
 	tzdatafilled = 1;
-	pthread_mutex_unlock(&tzlock);	
+	pthread_mutex_unlock(&tzlock);
 	return EXIT_SUCCESS;
 }
 
@@ -168,8 +168,8 @@ char *coord2tz(double longitude, double latitude) {
 
 	margin *= (int)pow(10, PRECISION);
 	int y = (int)round(latitude*(int)pow(10, PRECISION));
-	int x = (int)round(longitude*(int)pow(10, PRECISION));	
-	
+	int x = (int)round(longitude*(int)pow(10, PRECISION));
+
 	while(!inside && margin < (5*(int)pow(10, PRECISION))) {
 		for(i=0;i<NRCOUNTRIES;i++) {
 			unsigned int n = tznrpolys[i];
@@ -183,12 +183,12 @@ char *coord2tz(double longitude, double latitude) {
 					if(tzcoords[i][a][1] < p1y && ((int)p1y == 0)) {
 						p1y = tzcoords[i][a][1];
 					}
-				} 
+				}
 				for(a=0;a<n+1;a++) {
 					int p2x = tzcoords[i][a % (int)n][0];
 					int p2y = tzcoords[i][a % (int)n][1];
 					if((round(p2x)-margin < round(x) && round(p2x)+margin > round(x))
-					   &&(round(p2y)-margin < round(y) && round(p2y)+margin > round(y))) {				   
+					   &&(round(p2y)-margin < round(y) && round(p2y)+margin > round(y))) {
 						int xinters = 0;
 						if(y > min(p1y, p2y)) {
 							if(y <= max(p1y, p2y)) {
@@ -227,7 +227,7 @@ time_t datetime2ts(int year, int month, int day, int hour, int minutes, int seco
 	sprintf(date, "%d-%d-%d %d:%d:%d", year, month, day, hour, minutes, seconds);
 	strptime(date, "%Y-%m-%d %T", &tm);
 	if(tz) {
-		setenv("TZ", tz, 1);	
+		setenv("TZ", tz, 1);
 	}
 	t = mktime(&tm);
 	if(tz) {
@@ -250,7 +250,7 @@ int tzoffset(char *tz1, char *tz2) {
 	now = time(NULL);
 	tm = localtime(&now);
 
-	setenv("TZ", tz1, 1);	
+	setenv("TZ", tz1, 1);
 	utc = mktime(tm);
 	setenv("TZ", tz2, 1);
 	tzsearch = mktime(tm);

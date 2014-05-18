@@ -3,13 +3,13 @@
 
 	This file is part of pilight.
 
-    pilight is free software: you can redistribute it and/or modify it under the 
-	terms of the GNU General Public License as published by the Free Software 
-	Foundation, either version 3 of the License, or (at your option) any later 
+    pilight is free software: you can redistribute it and/or modify it under the
+	terms of the GNU General Public License as published by the Free Software
+	Foundation, either version 3 of the License, or (at your option) any later
 	version.
 
-    pilight is distributed in the hope that it will be useful, but WITHOUT ANY 
-	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR 
+    pilight is distributed in the hope that it will be useful, but WITHOUT ANY
+	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
@@ -59,8 +59,8 @@ void alectoParseCode(void) {
 		tmp = tmp->next;
 	}
 
-	temperature += temp_offset;	
-	
+	temperature += temp_offset;
+
 	alecto->message = json_mkobject();
 	json_append_member(alecto->message, "id", json_mknumber(id));
 	json_append_member(alecto->message, "temperature", json_mknumber(temperature));
@@ -75,7 +75,7 @@ int alectoCheckValues(struct JsonNode *jvalues) {
 		struct JsonNode *jchild1 = NULL;
 		double id = -1;
 		int match = 0;
-	
+
 		jchild = json_first_child(jid);
 		while(jchild) {
 			jchild1 = json_first_child(jchild);
@@ -88,7 +88,7 @@ int alectoCheckValues(struct JsonNode *jvalues) {
 			jchild = jchild->next;
 		}
 
-		struct alecto_settings_t *tmp = alecto_settings;		
+		struct alecto_settings_t *tmp = alecto_settings;
 		while(tmp) {
 			if(fabs(tmp->id-id) < EPSILON) {
 				match = 1;
@@ -96,7 +96,7 @@ int alectoCheckValues(struct JsonNode *jvalues) {
 			}
 			tmp = tmp->next;
 		}
-		
+
 		if(!match) {
 			if(!(snode = malloc(sizeof(struct alecto_settings_t)))) {
 				logprintf(LOG_ERR, "out of memory");
@@ -114,7 +114,7 @@ int alectoCheckValues(struct JsonNode *jvalues) {
 }
 
 void alectoGC(void) {
-	struct alecto_settings_t *tmp = NULL;		
+	struct alecto_settings_t *tmp = NULL;
 	while(alecto_settings) {
 		tmp = alecto_settings;
 		alecto_settings = alecto_settings->next;
@@ -124,7 +124,7 @@ void alectoGC(void) {
 }
 
 void alectoInit(void) {
-	
+
 	protocol_register(&alecto);
 	protocol_set_id(alecto, "alecto");
 	protocol_device_add(alecto, "alecto", "Alecto Weather Stations");
@@ -147,7 +147,7 @@ void alectoInit(void) {
 
 	alecto->parseCode=&alectoParseCode;
 	alecto->checkValues=&alectoCheckValues;
-	alecto->gc=&alectoGC;	
+	alecto->gc=&alectoGC;
 }
 
 void compatibility(const char **version, const char **commit) {

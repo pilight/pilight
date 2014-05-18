@@ -1,15 +1,15 @@
 /*
-	Copyright (C) 2013 CurlyMo
+	Copyright (C) 2014 CurlyMo
 
 	This file is part of pilight.
 
-    pilight is free software: you can redistribute it and/or modify it under the 
-	terms of the GNU General Public License as published by the Free Software 
-	Foundation, either version 3 of the License, or (at your option) any later 
+    pilight is free software: you can redistribute it and/or modify it under the
+	terms of the GNU General Public License as published by the Free Software
+	Foundation, either version 3 of the License, or (at your option) any later
 	version.
 
-    pilight is distributed in the hope that it will be useful, but WITHOUT ANY 
-	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR 
+    pilight is distributed in the hope that it will be useful, but WITHOUT ANY
+	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
@@ -44,10 +44,10 @@ void cleverwattsCreateMessage(int id, int unit, int state, int all) {
 		json_append_member(cleverwatts->message, "state", json_mkstring("off"));
 }
 
-void cleverwattsParseCode(void) {	
+void cleverwattsParseCode(void) {
 	int i = 0, x = 0;
 	int id = 0, state = 0, unit = 0, all = 0;
-	
+
 	for(i=1;i<cleverwatts->rawlen-1;i+=2) {
 		cleverwatts->binary[x++] = cleverwatts->code[i];
 	}
@@ -179,7 +179,7 @@ void cleverwattsPrintHelp(void) {
 void cleverwattsInit(void) {
 
 	protocol_register(&cleverwatts);
-	protocol_set_id(cleverwatts, "cleverwatts");	
+	protocol_set_id(cleverwatts, "cleverwatts");
 	protocol_device_add(cleverwatts, "cleverwatts", "Cleverwatts Switches");
 	protocol_plslen_add(cleverwatts, 269);
 	cleverwatts->devtype = SWITCH;
@@ -195,7 +195,7 @@ void cleverwattsInit(void) {
 	options_add(&cleverwatts->options, 'a', "all", OPTION_OPT_VALUE, CONFIG_OPTIONAL, JSON_NUMBER, NULL, NULL);
 
 	options_add(&cleverwatts->options, 0, "gui-readonly", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
-	
+
 	cleverwatts->parseCode=&cleverwattsParseCode;
 	cleverwatts->createCode=&cleverwattsCreateCode;
 	cleverwatts->printHelp=&cleverwattsPrintHelp;

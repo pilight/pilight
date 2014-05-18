@@ -3,13 +3,13 @@
 
 	This file is part of pilight.
 
-    pilight is free software: you can redistribute it and/or modify it under the 
-	terms of the GNU General Public License as published by the Free Software 
-	Foundation, either version 3 of the License, or (at your option) any later 
+    pilight is free software: you can redistribute it and/or modify it under the
+	terms of the GNU General Public License as published by the Free Software
+	Foundation, either version 3 of the License, or (at your option) any later
 	version.
 
-    pilight is distributed in the hope that it will be useful, but WITHOUT ANY 
-	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR 
+    pilight is distributed in the hope that it will be useful, but WITHOUT ANY
+	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
@@ -111,11 +111,11 @@ void *rpiTempParse(void *param) {
 						JsonNode *code = json_mkobject();
 						json_append_member(code, "id", json_mknumber(id[y]));
 						json_append_member(code, "temperature", json_mknumber(temp));
-											
+
 						json_append_member(rpiTemp->message, "message", code);
 						json_append_member(rpiTemp->message, "origin", json_mkstring("receiver"));
 						json_append_member(rpiTemp->message, "protocol", json_mkstring(rpiTemp->id));
-											
+
 						pilight.broadcast(rpiTemp->id, rpiTemp->message);
 						json_delete(rpiTemp->message);
 						rpiTemp->message = NULL;
@@ -139,7 +139,7 @@ struct threadqueue_t *rpiTempInitDev(JsonNode *jdevice) {
 	JsonNode *json = json_decode(output);
 	sfree((void *)&output);
 
-	struct protocol_threads_t *node = protocol_thread_init(rpiTemp, json);	
+	struct protocol_threads_t *node = protocol_thread_init(rpiTemp, json);
 	return threads_register("rpi_temp", &rpiTempParse, (void *)node, 0);
 }
 

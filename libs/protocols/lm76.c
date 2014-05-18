@@ -3,13 +3,13 @@
 
 	This file is part of pilight.
 
-	pilight is free software: you can redistribute it and/or modify it under the 
-	terms of the GNU General Public License as published by the Free Software 
-	Foundation, either version 3 of the License, or (at your option) any later 
+	pilight is free software: you can redistribute it and/or modify it under the
+	terms of the GNU General Public License as published by the Free Software
+	Foundation, either version 3 of the License, or (at your option) any later
 	version.
 
-	pilight is distributed in the hope that it will be useful, but WITHOUT ANY 
-	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR 
+	pilight is distributed in the hope that it will be useful, but WITHOUT ANY
+	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
 	You should have received a copy of the GNU General Public License
@@ -103,7 +103,7 @@ void *lm76Parse(void *param) {
 	if(json_find_number(json, "device-temperature-offset", &itmp) == 0)
 		temp_offset = (int)round(itmp);
 
-#ifndef __FreeBSD__	
+#ifndef __FreeBSD__
 	lm76data->fd = realloc(lm76data->fd, (sizeof(int)*(size_t)(lm76data->nrid+1)));
 	if(!lm76data->fd) {
 		logprintf(LOG_ERR, "out of memory");
@@ -113,14 +113,14 @@ void *lm76Parse(void *param) {
 		lm76data->fd[y] = wiringPiI2CSetup((int)strtol(lm76data->id[y], NULL, 16));
 	}
 #endif
-	
+
 	while(lm76_loop) {
 		if(protocol_thread_wait(node, interval, &nrloops) == ETIMEDOUT) {
 #ifndef __FreeBSD__
 			pthread_mutex_lock(&lm76lock);
 			for(y=0;y<lm76data->nrid;y++) {
-				if(lm76data->fd[y] > 0) {		
-					int raw = wiringPiI2CReadReg16(lm76data->fd[y], 0x00);            
+				if(lm76data->fd[y] > 0) {
+					int raw = wiringPiI2CReadReg16(lm76data->fd[y], 0x00);
 					float temp = ((float)((raw&0x00ff)+((raw>>12)*0.0625))*1000);
 
 					lm76->message = json_mkobject();

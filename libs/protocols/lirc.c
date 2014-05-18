@@ -3,13 +3,13 @@
 
 	This file is part of pilight.
 
-    pilight is free software: you can redistribute it and/or modify it under the 
-	terms of the GNU General Public License as published by the Free Software 
-	Foundation, either version 3 of the License, or (at your option) any later 
+    pilight is free software: you can redistribute it and/or modify it under the
+	terms of the GNU General Public License as published by the Free Software
+	Foundation, either version 3 of the License, or (at your option) any later
 	version.
 
-    pilight is distributed in the hope that it will be useful, but WITHOUT ANY 
-	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR 
+    pilight is distributed in the hope that it will be useful, but WITHOUT ANY
+	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
@@ -59,17 +59,17 @@ void *lircParse(void *param) {
 	struct protocol_threads_t *node = (struct protocol_threads_t *)param;
 	struct sockaddr_un addr;
 	struct timeval timeout;
-	
+
 	int nrloops = 0, n = -1, bytes = 0;
 	char recvBuff[BUFFER_SIZE];
-	fd_set fdsread;	
+	fd_set fdsread;
 	timeout.tv_sec = 1;
 	timeout.tv_usec = 0;
 
 	/* Clear the server address */
     memset(&addr, '\0', sizeof(addr));
 	memset(&recvBuff, '\0', BUFFER_SIZE);
-	
+
 	lirc_threads++;
 
 	while(lirc_loop) {
@@ -87,7 +87,7 @@ void *lircParse(void *param) {
 
 			addr.sun_family=AF_UNIX;
 			strcpy(addr.sun_path, lirc_socket);
-			
+
 			/* Connect to the server */
 			if(connect(lirc_sockfd, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
 				protocol_thread_wait(node, 3, &nrloops);
@@ -107,7 +107,7 @@ void *lircParse(void *param) {
 					pthread_mutex_unlock(&lirclock);
 					break;
 				}
-				
+
 				if(path_exists(lirc_socket) == EXIT_FAILURE) {
 					pthread_mutex_unlock(&lirclock);
 					break;
@@ -139,18 +139,18 @@ void *lircParse(void *param) {
 								if(strstr(remote, "\n") != NULL) {
 									remote[strlen(remote)-1] = '\0';
 								}
-							
+
 								lirc->message = json_mkobject();
 								JsonNode *code = json_mkobject();
 								json_append_member(code, "id", json_mkstring(id));
 								json_append_member(code, "repeat", json_mkstring(rep));
 								json_append_member(code, "button", json_mkstring(btn));
 								json_append_member(code, "remote", json_mkstring(remote));
-													
+
 								json_append_member(lirc->message, "message", code);
 								json_append_member(lirc->message, "origin", json_mkstring("receiver"));
 								json_append_member(lirc->message, "protocol", json_mkstring(lirc->id));
-													
+
 								pilight.broadcast(lirc->id, lirc->message);
 								json_delete(lirc->message);
 								lirc->message = NULL;
@@ -168,7 +168,7 @@ void *lircParse(void *param) {
 		close(lirc_sockfd);
 		lirc_sockfd = -1;
 	}
-	
+
 	lirc_threads--;
 	return (void *)NULL;
 }
@@ -176,7 +176,7 @@ void *lircParse(void *param) {
 struct threadqueue_t *lircInitDev(JsonNode *jdevice) {
 	lirc_loop = 1;
 
-	struct protocol_threads_t *node = protocol_thread_init(lirc, NULL);	
+	struct protocol_threads_t *node = protocol_thread_init(lirc, NULL);
 	return threads_register("lirc", &lircParse, (void *)node, 0);
 }
 
@@ -210,7 +210,7 @@ void lircInit(void) {
 	lirc->initDev=&lircInitDev;
 	lirc->threadGC=&lircThreadGC;
 	lirc->initDev(NULL);
-	
+
 	memset(lirc_socket, '\0', BUFFER_SIZE);
 	strcpy(lirc_socket, "/dev/lircd");
 }

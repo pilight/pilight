@@ -81,8 +81,8 @@ void logprintf(int prio, const char *format_str, ...) {
 			strftime(fmt, sizeof(fmt), "%b %d %H:%M:%S", tm);
 			snprintf(buf, sizeof(buf), "%s:%03u", fmt, (unsigned int)tv.tv_usec);
 		}
-		
-		sprintf(debug_log, "[%22.22s] %s: ", buf, progname);	
+
+		sprintf(debug_log, "[%22.22s] %s: ", buf, progname);
 
 		if(filelog == 1 && prio < LOG_DEBUG) {
 			memset(line, '\0', 1024);

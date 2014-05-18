@@ -2564,8 +2564,7 @@ static int deliver_websocket_frame(struct connection *conn) {
       data_len = ((((int) buf[2]) << 8) + buf[3]);
     } else if (buf_len >= 10 + mask_len) {
       header_len = 10 + mask_len;
-      data_len = (int) (((uint64_t) htonl(* (uint32_t *) &buf[2])) << 32) +
-        htonl(* (uint32_t *) &buf[6]);
+      data_len = (int) (((uint64_t) htonl(* (uint32_t *) &buf[2])) << 32) + htonl(* (uint32_t *) &buf[6]);
     }
   }
 

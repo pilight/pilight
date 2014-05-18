@@ -33,9 +33,6 @@ typedef struct settings_t {
 
 struct settings_t *settings;
 
-/* The location of the settings file */
-char *settingsfile;
-
 void settings_add_string(const char *name, char *value);
 void settings_add_int(const char *name, int value);
 int settings_find_number(const char *name, int *out);

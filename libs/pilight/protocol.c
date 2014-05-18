@@ -173,7 +173,7 @@ struct protocol_threads_t *protocol_thread_init(protocol_t *proto, struct JsonNo
 	pthread_mutexattr_init(&node->attr);
 	pthread_mutexattr_settype(&node->attr, PTHREAD_MUTEX_RECURSIVE);
 	pthread_mutex_init(&node->mutex, &node->attr);
-    pthread_cond_init(&node->cond, NULL);	
+    pthread_cond_init(&node->cond, NULL);
 	node->next = proto->threads;
 	proto->threads = node;
 	return node;
@@ -188,7 +188,7 @@ int protocol_thread_wait(struct protocol_threads_t *node, int interval, int *nrl
 	gettimeofday(&tp, NULL);
 	ts.tv_sec = tp.tv_sec;
 	ts.tv_nsec = tp.tv_usec * 1000;
-	
+
 	if(*nrloops == 0) {
 		ts.tv_sec += 1;
 		*nrloops = 1;
@@ -290,7 +290,7 @@ int protocol_gc(void) {
 		if(ptmp->listener->threadGC) {
 			ptmp->listener->threadGC();
 			logprintf(LOG_DEBUG, "stopped protocol threads");
-		}		
+		}
 		if(ptmp->listener->gc) {
 			ptmp->listener->gc();
 			logprintf(LOG_DEBUG, "ran garbage collector");

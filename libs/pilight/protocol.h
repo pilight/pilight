@@ -3,13 +3,13 @@
 
 	This file is part of pilight.
 
-    pilight is free software: you can redistribute it and/or modify it under the 
-	terms of the GNU General Public License as published by the Free Software 
-	Foundation, either version 3 of the License, or (at your option) any later 
+    pilight is free software: you can redistribute it and/or modify it under the
+	terms of the GNU General Public License as published by the Free Software
+	Foundation, either version 3 of the License, or (at your option) any later
 	version.
 
-    pilight is distributed in the hope that it will be useful, but WITHOUT ANY 
-	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR 
+    pilight is distributed in the hope that it will be useful, but WITHOUT ANY
+	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
@@ -65,7 +65,7 @@ typedef struct protocol_t {
 	char *id;
 	int header;
 	int pulse;
-	struct protocol_plslen_t *plslen;	
+	struct protocol_plslen_t *plslen;
 	int footer;
 	int rawlen;
 	int binlen;
@@ -79,8 +79,8 @@ typedef struct protocol_t {
 
 	int repeats;
 	unsigned long first;
-	unsigned long second;	
-	
+	unsigned long second;
+
 	int bit;
 	int recording;
 	int raw[255];

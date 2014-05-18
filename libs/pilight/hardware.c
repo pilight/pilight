@@ -3,13 +3,13 @@
 
 	This file is part of pilight.
 
-    pilight is free software: you can redistribute it and/or modify it under the 
-	terms of the GNU General Public License as published by the Free Software 
-	Foundation, either version 3 of the License, or (at your option) any later 
+    pilight is free software: you can redistribute it and/or modify it under the
+	terms of the GNU General Public License as published by the Free Software
+	Foundation, either version 3 of the License, or (at your option) any later
 	version.
 
-    pilight is distributed in the hope that it will be useful, but WITHOUT ANY 
-	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR 
+    pilight is distributed in the hope that it will be useful, but WITHOUT ANY
+	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
@@ -103,7 +103,7 @@ void hardware_init(void) {
 									valid = 0;
 								}
 							}
-									
+
 							if(valid) {
 								init();
 								logprintf(LOG_DEBUG, "loaded hardware module %s", file->d_name);
@@ -139,13 +139,13 @@ void hardware_register(struct hardware_t **hw) {
 	(*hw)->receive = NULL;
 	(*hw)->send = NULL;
 	(*hw)->settings = NULL;
-	
+
 	(*hw)->next = hardware;
 	hardware = (*hw);
 }
 
 void hardware_set_id(hardware_t *hw, const char *id) {
-	hw->id = malloc(strlen(id)+1);	
+	hw->id = malloc(strlen(id)+1);
 	if(!hw->id) {
 		logprintf(LOG_ERR, "out of memory");
 		exit(EXIT_FAILURE);
@@ -171,11 +171,11 @@ int hardware_gc(void) {
 		conf_hardware = conf_hardware->next;
 		sfree((void *)&ctmp);
 	}
-	
+
 	if(hwfile) {
 		sfree((void *)&hwfile);
 	}
-	
+
 	logprintf(LOG_DEBUG, "garbage collected hardware library");
 	return EXIT_SUCCESS;
 }
@@ -201,21 +201,21 @@ int hardware_parse(JsonNode *root) {
 	struct options_t *hw_options = NULL;
 	struct hardware_t *tmp_hardware = NULL;
 	struct hardware_t *hw = NULL;
-	
+
 	JsonNode *jvalues = NULL;
 	JsonNode *jchilds = json_first_child(root);
 
-#ifndef __FreeBSD__	
+#ifndef __FreeBSD__
 	regex_t regex;
 	int reti;
 	char *stmp = NULL;
 #endif
-	
+
 	int i = 0, have_error = 0, match = 0;
 
 	while(jchilds) {
 		i++;
-		/* A hardware module can only be a JSON object */		
+		/* A hardware module can only be a JSON object */
 		if(jchilds->tag != 5) {
 			logprintf(LOG_ERR, "hardware module #%d \"%s\", invalid format", i, jchilds->key);
 			have_error = 1;
@@ -237,7 +237,7 @@ int hardware_parse(JsonNode *root) {
 				have_error = 1;
 				goto clear;
 			}
-			
+
 			/* Check for duplicate hardware modules */
 			tmp_confhw = conf_hardware;
 			while(tmp_confhw) {
@@ -254,7 +254,7 @@ int hardware_parse(JsonNode *root) {
 					goto clear;
 				}
 				tmp_confhw = tmp_confhw->next;
-			}	
+			}
 
 			/* Check if all options required by the hardware module are present */
 			hw_options = hw->options;
@@ -276,7 +276,7 @@ int hardware_parse(JsonNode *root) {
 					goto clear;
 				} else {
 					/* Check if setting contains a valid value */
-#ifndef __FreeBSD__	
+#ifndef __FreeBSD__
 					if(jvalues->tag == JSON_NUMBER) {
 						stmp = realloc(stmp, sizeof(jvalues->number_));
 						if(!stmp) {
@@ -327,7 +327,7 @@ int hardware_parse(JsonNode *root) {
 					if(!match) {
 						logprintf(LOG_ERR, "hardware module #%d \"%s\", setting \"%s\" invalid", i, jchilds->key, jvalues->key);
 						have_error = 1;
-						goto clear;				
+						goto clear;
 					}
 				}
 				jvalues = jvalues->next;
@@ -340,12 +340,12 @@ int hardware_parse(JsonNode *root) {
 					if(hw->settings(jvalues) == EXIT_FAILURE) {
 						logprintf(LOG_ERR, "hardware module #%d \"%s\", setting \"%s\" invalid", i, jchilds->key, jvalues->key);
 						have_error = 1;
-						goto clear;							
+						goto clear;
 					}
 					jvalues = jvalues->next;
 				}
 			}
-			
+
 			hnode = malloc(sizeof(struct conf_hardware_t));
 			if(!hnode) {
 				logprintf(LOG_ERR, "out of memory");
@@ -358,7 +358,7 @@ int hardware_parse(JsonNode *root) {
 			jchilds = jchilds->next;
 		}
 	}
-	
+
 	sfree((void *)&tmp_confhw);
 	json_delete(jchilds);
 clear:
@@ -406,7 +406,7 @@ int hardware_read(void) {
 		return EXIT_FAILURE;
 	}
 
-	if(!conf_hardware) {	
+	if(!conf_hardware) {
 		json_delete(root);
 		root = json_decode("{\"none\":{}}");
 		hardware_parse(root);
@@ -415,7 +415,7 @@ int hardware_read(void) {
 	char *output = json_stringify(root, "\t");
 	hardware_write(output);
 	json_delete(root);
-	sfree((void *)&output);	
+	sfree((void *)&output);
 	sfree((void *)&content);
 	return EXIT_SUCCESS;
 }

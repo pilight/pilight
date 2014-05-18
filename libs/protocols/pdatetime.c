@@ -3,13 +3,13 @@
 
 	This file is part of pilight.
 
-    pilight is free software: you can redistribute it and/or modify it under the 
-	terms of the GNU General Public License as published by the Free Software 
-	Foundation, either version 3 of the License, or (at your option) any later 
+    pilight is free software: you can redistribute it and/or modify it under the
+	terms of the GNU General Public License as published by the Free Software
+	Foundation, either version 3 of the License, or (at your option) any later
 	version.
 
-    pilight is distributed in the hope that it will be useful, but WITHOUT ANY 
-	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR 
+    pilight is distributed in the hope that it will be useful, but WITHOUT ANY
+	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
@@ -86,8 +86,8 @@ time_t getntptime(const char *ntpserver) {
 	struct timeval tv;
 
 	tv.tv_sec = 1;
-	tv.tv_usec = 0;	
-	
+	tv.tv_usec = 0;
+
 	memset(&msg, '\0', sizeof(struct pkt));
 	memset(&servaddr, '\0', sizeof(struct sockaddr_in));
 	memset(&str, '\0', 50);
@@ -109,8 +109,8 @@ time_t getntptime(const char *ntpserver) {
 		goto close;
 	}
 
-	setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, (char *)&tv, sizeof(struct timeval));		
-	
+	setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, (char *)&tv, sizeof(struct timeval));
+
 	bzero(&servaddr, sizeof(servaddr));
 	servaddr.sin_family = AF_INET;
 	servaddr.sin_port = htons(123);
@@ -122,7 +122,7 @@ time_t getntptime(const char *ntpserver) {
 	}
 
 	msg.li_vn_mode=227;
-	
+
 	if(sendto(sockfd, (char *)&msg, 48, 0, (struct sockaddr *)&servaddr, sizeof(servaddr)) < -1) {
 		logprintf(LOG_DEBUG, "error in sending");
 		goto close;
@@ -160,7 +160,7 @@ void *pdateTimeParse(void *param) {
 	char *slongitude = NULL, *slatitude = NULL, *tz = NULL, *ntpserver = NULL;
 	double longitude = 0, latitude = 0;
 	int interval = 86400;
-	
+
 	time_t t = -1, ntp = -1;
 	struct tm *tm;
 	int x = 0, diff = 0;
@@ -214,7 +214,7 @@ void *pdateTimeParse(void *param) {
 
 	while(pdatetime_loop) {
 		pthread_mutex_lock(&pdatetimelock);
-		t = time(NULL);	
+		t = time(NULL);
 		if(x == interval || (ntp == -1 && ntpserver != NULL && strlen(ntpserver) > 0)) {
 			ntp = getntptime(ntpserver);
 			if(ntp > -1) {
@@ -282,7 +282,7 @@ struct threadqueue_t *pdateTimeInitDev(JsonNode *jdevice) {
 	JsonNode *json = json_decode(output);
 	sfree((void *)&output);
 
-	struct protocol_threads_t *node = protocol_thread_init(pdatetime, json);	
+	struct protocol_threads_t *node = protocol_thread_init(pdatetime, json);
 	return threads_register("datetime", &pdateTimeParse, (void *)node, 0);
 }
 

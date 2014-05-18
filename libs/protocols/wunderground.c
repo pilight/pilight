@@ -3,13 +3,13 @@
 
 	This file is part of pilight.
 
-    pilight is free software: you can redistribute it and/or modify it under the 
-	terms of the GNU General Public License as published by the Free Software 
-	Foundation, either version 3 of the License, or (at your option) any later 
+    pilight is free software: you can redistribute it and/or modify it under the
+	terms of the GNU General Public License as published by the Free Software
+	Foundation, either version 3 of the License, or (at your option) any later
 	version.
 
-    pilight is distributed in the hope that it will be useful, but WITHOUT ANY 
-	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR 
+    pilight is distributed in the hope that it will be useful, but WITHOUT ANY
+	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
@@ -45,7 +45,7 @@ typedef struct wunderground_data_t {
 	char *country;
 	char *location;
 	time_t update;
-	protocol_threads_t *thread;	
+	protocol_threads_t *thread;
 	struct wunderground_data_t *next;
 } wunderground_data_t;
 
@@ -65,7 +65,7 @@ void *wundergroundParse(void *param) {
 	struct JsonNode *node = NULL;
 	struct wunderground_data_t *wnode = malloc(sizeof(struct wunderground_data_t));
 	int interval = 86400, nrloops = 0, ointerval = 86400;
-	
+
 	char url[1024];
 	char *filename = NULL, *data = NULL;
 	char typebuf[70];
@@ -85,12 +85,12 @@ void *wundergroundParse(void *param) {
 	if(!wnode) {
 		logprintf(LOG_ERR, "out of memory");
 		exit(EXIT_FAILURE);
-	}	
+	}
 
 	time_t timenow = 0;
 
-	wunderground_threads++;	
-	
+	wunderground_threads++;
+
 	int has_country = 0, has_api = 0, has_location = 0;
 	if((jid = json_find_member(json, "id"))) {
 		jchild = json_first_child(jid);
@@ -141,7 +141,7 @@ void *wundergroundParse(void *param) {
 				}
 				if(has_api == 1) {
 					sfree((void *)&wnode->api);
-				}			
+				}
 				sfree((void *)&wnode);
 				wnode = NULL;
 			}
@@ -162,11 +162,11 @@ void *wundergroundParse(void *param) {
 		pthread_mutex_lock(&wundergroundlock);
 		if(wunderground_loop == 0) {
 			break;
-		}		
+		}
 		interval = ointerval;
 		filename = NULL;
 		data = NULL;
-		sprintf(url, "http://api.wunderground.com/api/%s/geolookup/conditions/q/%s/%s.json", wnode->api, wnode->country, wnode->location);	
+		sprintf(url, "http://api.wunderground.com/api/%s/geolookup/conditions/q/%s/%s.json", wnode->api, wnode->country, wnode->location);
 		http_parse_url(url, &filename);
 		ret = http_get(filename, &data, &lg, typebuf);
 
@@ -192,9 +192,9 @@ void *wundergroundParse(void *param) {
 										filename = NULL;
 									}
 
-									sprintf(url, "http://api.wunderground.com/api/%s/astronomy/q/%s/%s.json", wnode->api, wnode->country, wnode->location);	
+									sprintf(url, "http://api.wunderground.com/api/%s/astronomy/q/%s/%s.json", wnode->api, wnode->country, wnode->location);
 									http_parse_url(url, &filename);
-									ret = http_get(filename, &data, &lg, typebuf);										
+									ret = http_get(filename, &data, &lg, typebuf);
 									if(ret == 200) {
 										if(strcmp(typebuf, "application/json;") == 0) {
 											if(json_validate(data) == true) {
@@ -246,7 +246,7 @@ void *wundergroundParse(void *param) {
 																json_append_member(wunderground->message, "message", code);
 																json_append_member(wunderground->message, "origin", json_mkstring("receiver"));
 																json_append_member(wunderground->message, "protocol", json_mkstring(wunderground->id));
-																
+
 																pilight.broadcast(wunderground->id, wunderground->message);
 																json_delete(wunderground->message);
 																wunderground->message = NULL;
@@ -342,7 +342,7 @@ int wundergroundCheckValues(JsonNode *code) {
 	double interval = 900;
 
 	json_find_number(code, "poll-interval", &interval);
-		
+
 	if((int)round(interval) < 900) {
 		return 1;
 	}
@@ -361,7 +361,7 @@ int wundergroundCreateCode(JsonNode *code) {
 	if(json_find_number(code, "min-interval", &itmp) == 0) {
 		logprintf(LOG_ERR, "you can't override the min-interval setting");
 		return EXIT_FAILURE;
-	}	
+	}
 
 	if(json_find_string(code, "country", &country) == 0 &&
 	   json_find_string(code, "location", &location) == 0 &&
@@ -369,7 +369,7 @@ int wundergroundCreateCode(JsonNode *code) {
 	   json_find_number(code, "update", &itmp) == 0) {
 
 		while(wtmp) {
-			if(strcmp(wtmp->country, country) == 0 
+			if(strcmp(wtmp->country, country) == 0
 			   && strcmp(wtmp->location, location) == 0
 			   && strcmp(wtmp->api, api) == 0) {
 				if((currenttime-wtmp->update) > 900) {
@@ -422,7 +422,7 @@ void wundergroundInit(void) {
 	options_add(&wunderground->options, 'c', "country", OPTION_HAS_VALUE, CONFIG_ID, JSON_STRING, NULL, "^[a-z]+$");
 	options_add(&wunderground->options, 'x', "sunrise", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, NULL, "^[0-9]{3,4}$");
 	options_add(&wunderground->options, 'y', "sunset", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, NULL, "^[0-9]{3,4}$");
-	options_add(&wunderground->options, 's', "sun", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_STRING, NULL, NULL);	
+	options_add(&wunderground->options, 's', "sun", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_STRING, NULL, NULL);
 	options_add(&wunderground->options, 'u', "update", OPTION_NO_VALUE, CONFIG_OPTIONAL, JSON_NUMBER, NULL, NULL);
 
 	options_add(&wunderground->options, 0, "device-decimals", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)2, "[0-9]");
@@ -432,7 +432,7 @@ void wundergroundInit(void) {
 	options_add(&wunderground->options, 0, "gui-show-sunriseset", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
 	options_add(&wunderground->options, 0, "gui-show-update", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
 	options_add(&wunderground->options, 0, "poll-interval", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)86400, "[0-9]");
-	options_add(&wunderground->options, 0, "min-interval", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)900, "[0-9]");	
+	options_add(&wunderground->options, 0, "min-interval", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)900, "[0-9]");
 
 	wunderground->createCode=&wundergroundCreateCode;
 	wunderground->initDev=&wundergroundInitDev;

@@ -41,7 +41,7 @@ void revOldCreateMessage(int id, int unit, int state) {
 	}
 }
 
-void revOldParseBinary(void) {      
+void revOldParseBinary(void) {
 	int x = 0;
 
 	/* Convert the one's and zero's into binary */
@@ -104,7 +104,7 @@ void revOldCreateId(int id) {
     int binary[255];
     int length = 0;
     int i=0, x=0;
-    
+
     length = decToBinRev(id, binary);
     for(i=0;i<=length;i++) {
         x=i*4;
@@ -134,10 +134,10 @@ int revOldCreateCode(JsonNode *code) {
     int unit = -1;
     int state = -1;
     double itmp = -1;
-    
+
     if(json_find_number(code, "id", &itmp) == 0)
 		id = (int)round(itmp);
-        
+
     if(json_find_number(code, "off", &itmp) == 0)
         state=0;
     else if(json_find_number(code, "on", &itmp) == 0)
@@ -145,7 +145,7 @@ int revOldCreateCode(JsonNode *code) {
 
     if(json_find_number(code, "unit", &itmp) == 0)
         unit = (int)round(itmp);
-        
+
     if(id == -1 || unit == -1 || state == -1) {
         logprintf(LOG_ERR, "rev_old_switch: insufficient number of arguments");
         return EXIT_FAILURE;
@@ -176,7 +176,7 @@ void revOldPrintHelp(void) {
 void revOldInit(void) {
 
     protocol_register(&rev_old_switch);
-    protocol_set_id(rev_old_switch, "rev_switch_old");    
+    protocol_set_id(rev_old_switch, "rev_switch_old");
     protocol_device_add(rev_old_switch, "rev_switch_old", "REV Old Switches");
     protocol_plslen_add(rev_old_switch, 258);
     rev_old_switch->devtype = SWITCH;
@@ -191,7 +191,7 @@ void revOldInit(void) {
     options_add(&rev_old_switch->options, 'i', "id", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, NULL, "^(6[0123]|[12345][0-9]|[0-9]{1})$");
 
     options_add(&rev_old_switch->options, 0, "gui-readonly", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
-    
+
     rev_old_switch->parseBinary=&revOldParseBinary;
     rev_old_switch->createCode=&revOldCreateCode;
     rev_old_switch->printHelp=&revOldPrintHelp;

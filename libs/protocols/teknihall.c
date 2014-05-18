@@ -64,8 +64,8 @@ void teknihallParseCode(void) {
 	}
 
 	temperature += temp_offset;
-	humidity += humi_offset;		
-	
+	humidity += humi_offset;
+
 	teknihall->message = json_mkobject();
 	json_append_member(teknihall->message, "id", json_mknumber(id));
 	json_append_member(teknihall->message, "temperature", json_mknumber(temperature));
@@ -82,7 +82,7 @@ int teknihallCheckValues(struct JsonNode *jvalues) {
 		struct JsonNode *jchild1 = NULL;
 		double id = -1;
 		int match = 0;
-	
+
 		jchild = json_first_child(jid);
 		while(jchild) {
 			jchild1 = json_first_child(jchild);
@@ -95,7 +95,7 @@ int teknihallCheckValues(struct JsonNode *jvalues) {
 			jchild = jchild->next;
 		}
 
-		struct teknihall_settings_t *tmp = teknihall_settings;		
+		struct teknihall_settings_t *tmp = teknihall_settings;
 		while(tmp) {
 			if(fabs(tmp->id-id) < EPSILON) {
 				match = 1;
@@ -103,7 +103,7 @@ int teknihallCheckValues(struct JsonNode *jvalues) {
 			}
 			tmp = tmp->next;
 		}
-		
+
 		if(!match) {
 			if(!(snode = malloc(sizeof(struct teknihall_settings_t)))) {
 				logprintf(LOG_ERR, "out of memory");
@@ -122,7 +122,7 @@ int teknihallCheckValues(struct JsonNode *jvalues) {
 }
 
 void teknihallGC(void) {
-	struct teknihall_settings_t *tmp = NULL;		
+	struct teknihall_settings_t *tmp = NULL;
 	while(teknihall_settings) {
 		tmp = teknihall_settings;
 		teknihall_settings = teknihall_settings->next;

@@ -3,13 +3,13 @@
 
 	This file is part of pilight.
 
-    pilight is free software: you can redistribute it and/or modify it under the 
-	terms of the GNU General Public License as published by the Free Software 
-	Foundation, either version 3 of the License, or (at your option) any later 
+    pilight is free software: you can redistribute it and/or modify it under the
+	terms of the GNU General Public License as published by the Free Software
+	Foundation, either version 3 of the License, or (at your option) any later
 	version.
 
-    pilight is distributed in the hope that it will be useful, but WITHOUT ANY 
-	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR 
+    pilight is distributed in the hope that it will be useful, but WITHOUT ANY
+	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
@@ -162,7 +162,7 @@ int arctechDimCheckValues(JsonNode *code) {
 	if(json_find_number(code, "dimlevel-maximum", &itmp) == 0)
 		max = (int)round(itmp);
 	if(json_find_number(code, "dimlevel-minimum", &itmp) == 0)
-		min = (int)round(itmp);	
+		min = (int)round(itmp);
 	if(json_find_number(code, "dimlevel", &itmp) == 0)
 		dimlevel = (int)round(itmp);
 

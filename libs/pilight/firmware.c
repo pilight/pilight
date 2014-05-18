@@ -863,16 +863,18 @@ int firmware_getmp(void) {
 }
 
 int firmware_check(char **output) {
+	int version = 0;
+#ifdef FIRMWARE	
 	struct dirent *file = NULL;
 	DIR *d = NULL;
 	int tmp = 0;
-	int version = 0;
 	int num = 0;
 
 	if(mptype == FW_MP_UNKNOWN) {
 		logprintf(LOG_INFO, "Discovering AVR the firmware is running on");
 		firmware_getmp();
 	}
+
 	if(mptype != FW_MP_UNKNOWN) {
 		if((d = opendir(FIRMWARE_PATH))) {
 			while((file = readdir(d)) != NULL) {
@@ -889,7 +891,7 @@ int firmware_check(char **output) {
 						break;
 						default:
 						break;
-					}						
+					}
 					char name[strlen(file->d_name)+2];
 					memset(name, '\0', strlen(file->d_name)+2);
 					sprintf(name, "pilight_firmware_t%d5", num);
@@ -905,7 +907,7 @@ int firmware_check(char **output) {
 			closedir(d);
 		}
 	}
-
+#endif
 	if(firmware.version >= version) {
 		return -1;
 	} else {

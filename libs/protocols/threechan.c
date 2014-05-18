@@ -64,8 +64,8 @@ void threechanParseCode(void) {
 	}
 
 	temperature += temp_offset;
-	humidity += humi_offset;	
-	
+	humidity += humi_offset;
+
 	threechan->message = json_mkobject();
 	json_append_member(threechan->message, "id", json_mknumber(id));
 	json_append_member(threechan->message, "temperature", json_mknumber(temperature));
@@ -82,7 +82,7 @@ int threechanCheckValues(struct JsonNode *jvalues) {
 		struct JsonNode *jchild1 = NULL;
 		double id = -1;
 		int match = 0;
-	
+
 		jchild = json_first_child(jid);
 		while(jchild) {
 			jchild1 = json_first_child(jchild);
@@ -95,7 +95,7 @@ int threechanCheckValues(struct JsonNode *jvalues) {
 			jchild = jchild->next;
 		}
 
-		struct threechan_settings_t *tmp = threechan_settings;		
+		struct threechan_settings_t *tmp = threechan_settings;
 		while(tmp) {
 			if(fabs(tmp->id-id) < EPSILON) {
 				match = 1;
@@ -103,7 +103,7 @@ int threechanCheckValues(struct JsonNode *jvalues) {
 			}
 			tmp = tmp->next;
 		}
-		
+
 		if(!match) {
 			if(!(snode = malloc(sizeof(struct threechan_settings_t)))) {
 				logprintf(LOG_ERR, "out of memory");
@@ -122,7 +122,7 @@ int threechanCheckValues(struct JsonNode *jvalues) {
 }
 
 void threechanGC(void) {
-	struct threechan_settings_t *tmp = NULL;		
+	struct threechan_settings_t *tmp = NULL;
 	while(threechan_settings) {
 		tmp = threechan_settings;
 		threechan_settings = threechan_settings->next;

@@ -3,13 +3,13 @@
 
 	This file is part of pilight.
 
-    pilight is free software: you can redistribute it and/or modify it under the 
-	terms of the GNU General Public License as published by the Free Software 
-	Foundation, either version 3 of the License, or (at your option) any later 
+    pilight is free software: you can redistribute it and/or modify it under the
+	terms of the GNU General Public License as published by the Free Software
+	Foundation, either version 3 of the License, or (at your option) any later
 	version.
 
-    pilight is distributed in the hope that it will be useful, but WITHOUT ANY 
-	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR 
+    pilight is distributed in the hope that it will be useful, but WITHOUT ANY
+	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
@@ -58,7 +58,7 @@ void *ds18s20Parse(void *param) {
 	char *ds18s20_sensor = NULL;
 	char *stmp = NULL;
 	char **id = NULL;
-	char *content = NULL;	
+	char *content = NULL;
 	int w1valid = 0, w1temp = 0, interval = 10, x = 0;
 	int temp_offset = 0, nrid = 0, y = 0, nrloops = 0;
 	double itmp = 0;
@@ -141,7 +141,7 @@ void *ds18s20Parse(void *param) {
 										if(x == 1 && strstr(pch, "YES")) {
 											w1valid = 1;
 										}
-										if(x == 2) {	
+										if(x == 2) {
 											w1temp = atoi(pch)+temp_offset;
 										}
 										x++;
@@ -151,16 +151,16 @@ void *ds18s20Parse(void *param) {
 
 								if(w1valid) {
 									ds18s20->message = json_mkobject();
-									
+
 									JsonNode *code = json_mkobject();
-									
+
 									json_append_member(code, "id", json_mkstring(id[y]));
 									json_append_member(code, "temperature", json_mknumber(w1temp));
-									
+
 									json_append_member(ds18s20->message, "message", code);
 									json_append_member(ds18s20->message, "origin", json_mkstring("receiver"));
 									json_append_member(ds18s20->message, "protocol", json_mkstring(ds18s20->id));
-									
+
 									pilight.broadcast(ds18s20->id, ds18s20->message);
 									json_delete(ds18s20->message);
 									ds18s20->message = NULL;
@@ -229,7 +229,7 @@ void ds18s20Init(void) {
 	options_add(&ds18s20->options, 0, "gui-show-temperature", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
 	options_add(&ds18s20->options, 0, "poll-interval", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)10, "[0-9]");
 
-	memset(ds18s20_path, '\0', 21);	
+	memset(ds18s20_path, '\0', 21);
 	strcpy(ds18s20_path, "/sys/bus/w1/devices/");
 
 	ds18s20->initDev=&ds18s20InitDev;

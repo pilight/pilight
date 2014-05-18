@@ -30,6 +30,10 @@
 #include "options.h"
 #include "socket.h"
 #include "ssdp.h"
+#include "gc.h"
+
+int main_loop = 1;
+int sockfd = 0;
 
 typedef enum {
 	WELCOME,
@@ -38,7 +42,21 @@ typedef enum {
 	RECEIVE
 } steps_t;
 
+int main_gc(void) {
+	main_loop = 0;
+	if(sockfd > 0) {
+		socket_write(sockfd, "HEART");
+	}
+	sfree((void *)&progname);
+	return 0;
+}
+
 int main(int argc, char **argv) {
+
+	gc_attach(main_gc);
+
+	/* Catch all exit signals for gc */
+	gc_catch();
 
 	log_shell_enable();
 	log_file_disable();
@@ -54,12 +72,9 @@ int main(int argc, char **argv) {
 	struct options_t *options = NULL;
 	struct ssdp_list_t *ssdp_list = NULL;
 
-	JsonNode *json = NULL;
-
 	char *server = NULL;
 	unsigned short port = 0;
 
-    int sockfd = 0;
     char *recvBuff = NULL;
 	char *message = NULL;
 	char *args = NULL;
@@ -134,7 +149,7 @@ int main(int argc, char **argv) {
 		sfree((void *)&server);
 	}
 
-	while(1) {
+	while(main_loop) {
 		if(steps > WELCOME) {
 			if((recvBuff = socket_read(sockfd)) == NULL) {
 				goto close;
@@ -145,9 +160,9 @@ int main(int argc, char **argv) {
 				socket_write(sockfd, "{\"message\":\"client receiver\"}");
 				steps=IDENTIFY;
 			break;
-			case IDENTIFY:
+			case IDENTIFY: {
 				//extract the message
-				json = json_decode(recvBuff);
+				JsonNode *json = json_decode(recvBuff);
 				json_find_string(json, "message", &message);
 				if(strcmp(message, "accept client") == 0) {
 					steps=RECEIVE;
@@ -160,12 +175,12 @@ int main(int argc, char **argv) {
 				json = NULL;
 				message = NULL;
 				recvBuff = NULL;
-			break;
+			} break;
 			case RECEIVE: {
 				char *line = strtok(recvBuff, "\n");
 				//for each line
 				while(line) {
-					json = json_decode(line);
+					JsonNode *json = json_decode(line);
 					char *output = json_stringify(json, "\t");
 					printf("%s\n", output);
 					sfree((void *)&output);
@@ -192,6 +207,5 @@ close:
 	options_gc();
 	log_shell_disable();
 	log_gc();
-	sfree((void *)&progname);
 	return EXIT_SUCCESS;
 }

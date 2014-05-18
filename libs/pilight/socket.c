@@ -3,13 +3,13 @@
 
 	This file is part of pilight.
 
-    pilight is free software: you can redistribute it and/or modify it under the 
-	terms of the GNU General Public License as published by the Free Software 
-	Foundation, either version 3 of the License, or (at your option) any later 
+    pilight is free software: you can redistribute it and/or modify it under the
+	terms of the GNU General Public License as published by the Free Software
+	Foundation, either version 3 of the License, or (at your option) any later
 	version.
 
-    pilight is distributed in the hope that it will be useful, but WITHOUT ANY 
-	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR 
+    pilight is distributed in the hope that it will be useful, but WITHOUT ANY
+	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
@@ -55,7 +55,7 @@ int socket_gc(void) {
 
 	socket_loop = 0;
 	/* Wakeup all our select statement so the socket_wait and
-       socket_read functions can actually close and the 
+       socket_read functions can actually close and the
 	   all threads using sockets can end gracefully */
 
 	for(x=1;x<MAX_CLIENTS;x++) {
@@ -125,9 +125,9 @@ int socket_start(unsigned short port) {
 		perror("getsockname");
 	else
 		socket_port = ntohs(address.sin_port);
-	
+
 	/* Make a loopback socket we can close when pilight needs to be stopped
-	   or else the select statement will wait forever for an activity */	
+	   or else the select statement will wait forever for an activity */
 	char localhost[16] = "127.0.0.1";
 	socket_loopback = socket_connect(localhost, (unsigned short)socket_port);
 	socket_clients[0] = socket_loopback;
@@ -151,7 +151,7 @@ int socket_get_clients(int i) {
 int socket_connect(char *address, unsigned short port) {
 	struct sockaddr_in serv_addr;
 	int sockfd;
-	
+
 	/* Try to open a new socket */
     if((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
         logprintf(LOG_ERR, "could not create socket");
@@ -181,7 +181,7 @@ void socket_close(int sockfd) {
 
 	if(sockfd > 0) {
 		if(getpeername(sockfd, (struct sockaddr*)&address, (socklen_t*)&addrlen) == 0) {
-			logprintf(LOG_DEBUG, "client disconnected, ip %s, port %d", inet_ntoa(address.sin_addr), ntohs(address.sin_port));				
+			logprintf(LOG_DEBUG, "client disconnected, ip %s, port %d", inet_ntoa(address.sin_addr), ntohs(address.sin_port));
 		}
 
 		for(i=0;i<MAX_CLIENTS;i++) {
@@ -217,7 +217,7 @@ int socket_write(int sockfd, const char *msg, ...) {
 		va_end(ap);
 
 		memcpy(&sendBuff[n-len], EOSS, (size_t)len);
-				
+
 		while(ptr < n) {
 			if((n-ptr) < BUFFER_SIZE) {
 				x = (n-ptr);
@@ -287,7 +287,7 @@ char *socket_read(int sockfd) {
 		} else if(n > 0) {
 			if(FD_ISSET((unsigned long)sockfd, &fdsread)) {
 				bytes = (int)recv(sockfd, recvBuff, BUFFER_SIZE, 0);
-				
+
 				if(bytes <= 0) {
 					return NULL;
 				} else {
@@ -299,14 +299,14 @@ char *socket_read(int sockfd) {
 					memset(&message[(ptr-bytes)], '\0', (size_t)bytes+1);
 					memcpy(&message[(ptr-bytes)], recvBuff, (size_t)bytes);
 					msglen = strlen(message);
-				}			
+				}
 				if(message && msglen > 0) {
 					/* When a stream is larger then the buffer size, it has to contain
 					   the pilight delimiter to know when the stream ends. If the stream
 					   is shorter then the buffer size, we know we received the full stream */
 					int l = 0;
 					if(((l = strncmp(&message[ptr-(len)], EOSS, (unsigned int)(len))) == 0) || ptr < BUFFER_SIZE) {
-						/* If the socket contains buffered TCP messages, separate them by 
+						/* If the socket contains buffered TCP messages, separate them by
 						   changing the delimiters into newlines */
 						if(ptr > msglen) {
 							int i = 0;
@@ -399,7 +399,7 @@ void *socket_wait(void *param) {
 
 				static struct linger linger = { 0, 0 };
 				socklen_t lsize = sizeof(struct linger);
-				setsockopt(socket_client, SOL_SOCKET, SO_LINGER, (void *)&linger, lsize); 
+				setsockopt(socket_client, SOL_SOCKET, SO_LINGER, (void *)&linger, lsize);
 				int flags = fcntl(socket_client, F_GETFL, 0);
 				if(flags != -1) {
 					fcntl(socket_client, F_SETFL, flags | O_NONBLOCK);

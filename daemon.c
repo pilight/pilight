@@ -405,7 +405,7 @@ void receive_queue(int *raw, int rawlen, int plslen, int hwtype) {
 		rnode->rawlen = rawlen;
 		rnode->plslen = plslen;
 		rnode->hwtype = hwtype;
-		
+
 		if(recvqueue_number == 0) {
 			recvqueue = rnode;
 			recvqueue_head = rnode;
@@ -472,7 +472,7 @@ void *receive_parse_code(void *param) {
 				   || protocol->parseBinary) && protocol->pulse > 0 && protocol->plslen)) {
 					plslengths = protocol->plslen;
 					while(plslengths && main_loop) {
-						if((recvqueue->plslen >= ((double)plslengths->length-5) && 
+						if((recvqueue->plslen >= ((double)plslengths->length-5) &&
 						    recvqueue->plslen <= ((double)plslengths->length+5))) {
 							match = 1;
 							break;
@@ -526,7 +526,7 @@ void *receive_parse_code(void *param) {
 
 						protocol->repeats++;
 						/* Continue if we have recognized enough repeated codes */
-						if(protocol->repeats >= (receive_repeat*protocol->rxrpt) || 
+						if(protocol->repeats >= (receive_repeat*protocol->rxrpt) ||
 						   strcmp(protocol->id, "pilight_firmware") == 0) {
 							if(protocol->parseCode) {
 								logprintf(LOG_DEBUG, "caught minimum # of repeats %d of %s", protocol->repeats, protocol->id);
@@ -550,7 +550,7 @@ void *receive_parse_code(void *param) {
 								}
 
 								/* Check if the binary matches the binary length */
-								if((protocol->binlen > 0 && ((x/4) == protocol->binlen)) 
+								if((protocol->binlen > 0 && ((x/4) == protocol->binlen))
 								   || (protocol->binlen == 0 && ((x/4) == protocol->rawlen/4))) {
 									logprintf(LOG_DEBUG, "called %s parseBinary()", protocol->id);
 
@@ -562,8 +562,8 @@ void *receive_parse_code(void *param) {
 					}
 				}
 				pnode = pnode->next;
-			}			
-			
+			}
+
 			struct recvqueue_t *tmp = recvqueue;
 			recvqueue = recvqueue->next;
 			sfree((void *)&tmp);
@@ -580,12 +580,12 @@ void *send_code(void *param) {
 	int i = 0, x = 0;
 	struct sched_param sched;
 
-	/* Make sure the pilight sender gets 
+	/* Make sure the pilight sender gets
 	   the highest priority available */
 	memset(&sched, 0, sizeof(sched));
 	sched.sched_priority = 80;
-	pthread_setschedparam(pthread_self(), SCHED_FIFO, &sched);	
-	
+	pthread_setschedparam(pthread_self(), SCHED_FIFO, &sched);
+
 	pthread_mutex_lock(&sendqueue_lock);
 
 	while(main_loop) {
@@ -706,7 +706,7 @@ void send_queue(JsonNode *json) {
 	struct protocol_t *protocol = NULL;
 	struct sched_param sched;
 
-	/* Make sure the pilight sender gets 
+	/* Make sure the pilight sender gets
 	   the highest priority available */
 	memset(&sched, 0, sizeof(sched));
 	sched.sched_priority = 80;
@@ -814,7 +814,7 @@ void send_queue(JsonNode *json) {
 							sendqueue_head->next = mnode;
 							sendqueue_head = mnode;
 						}
-						sendqueue_number++;						
+						sendqueue_number++;
 					} else {
 						logprintf(LOG_ERR, "send queue full");
 					}
@@ -1275,14 +1275,14 @@ void *receive_code(void *param) {
 	int rawcode[255] = {0};
 	int duration = 0;
 
-	/* Make sure the pilight receiving gets 
+	/* Make sure the pilight receiving gets
 	   the highest priority available */
 	memset(&sched, 0, sizeof(sched));
 	sched.sched_priority = 70;
 	pthread_setschedparam(pthread_self(), SCHED_FIFO, &sched);
-	
-	struct hardware_t *hw = (hardware_t *)param;	
-	
+
+	struct hardware_t *hw = (hardware_t *)param;
+
 	pthread_mutex_lock(&receive_lock);
 	while(main_loop && hw->receive) {
 		if(sending == 0) {
@@ -1660,12 +1660,8 @@ int main(int argc, char **argv) {
 	log_file_enable();
 	log_shell_disable();
 
-	settingsfile = malloc(strlen(SETTINGS_FILE)+1);
-	if(!settingsfile) {
-		logprintf(LOG_ERR, "out of memory");
-		exit(EXIT_FAILURE);
-	}
-	strcpy(settingsfile, SETTINGS_FILE);
+	char settingstmp[] = SETTINGS_FILE;
+	settings_set_file(settingstmp);
 
 	struct socket_callback_t socket_callback;
 	struct options_t *options = NULL;
@@ -1687,7 +1683,7 @@ int main(int argc, char **argv) {
 	options_add(&options, 'H', "help", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
 	options_add(&options, 'V', "version", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
 	options_add(&options, 'D', "nodaemon", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
-	options_add(&options, 'S', "settings", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, NULL);
+	options_add(&options, 'F', "settings", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, NULL);
 
 	while(1) {
 		int c;
@@ -1705,18 +1701,9 @@ int main(int argc, char **argv) {
 			case 'V':
 				show_version = 1;
 			break;
-			case 'S':
-				if(access(args, F_OK) != -1) {
-					settingsfile = realloc(settingsfile, strlen(args)+1);
-					if(!settingsfile) {
-						logprintf(LOG_ERR, "out of memory");
-						exit(EXIT_FAILURE);
-					}
-					strcpy(settingsfile, args);
-					settings_set_file(args);
-				} else {
-					fprintf(stderr, "%s: the settings file %s does not exists\n", progname, args);
-					goto clear;
+			case 'F':
+				if(settings_set_file(args) == EXIT_FAILURE) {
+					return EXIT_FAILURE;
 				}
 			break;
 			case 'D':
@@ -1733,7 +1720,7 @@ int main(int argc, char **argv) {
 		printf("Usage: %s [options]\n", progname);
 		printf("\t -H --help\t\tdisplay usage summary\n");
 		printf("\t -V --version\t\tdisplay version\n");
-		printf("\t -S --settings\t\tsettings file\n");
+		printf("\t -F --settings\t\tsettings file\n");
 		printf("\t -D --nodaemon\t\tdo not daemonize and\n");
 		printf("\t\t\t\tshow debug information\n");
 		goto clear;
@@ -1752,25 +1739,21 @@ int main(int argc, char **argv) {
 	char pilight_raw[] = "pilight-raw";
 	if((pid = findproc(pilight_raw, NULL, 1)) > 0) {
 		logprintf(LOG_ERR, "pilight-raw instance found (%d)", (int)pid);
-		return (EXIT_FAILURE);
+		goto clear;
 	}
 
 	if((pid = findproc(pilight_learn, NULL, 1)) > 0) {
 		logprintf(LOG_ERR, "pilight-learn instance found (%d)", (int)pid);
-		return (EXIT_FAILURE);
+		goto clear;
 	}
 
 	if((pid = findproc(pilight_debug, NULL, 1)) > 0) {
 		logprintf(LOG_ERR, "pilight-debug instance found (%d)", (int)pid);
-		return (EXIT_FAILURE);
+		goto clear;
 	}
 
-	if(access(settingsfile, F_OK) != -1) {
-		if(settings_read() != 0) {
-			sfree((void *)&settingsfile);
-			goto clear;
-		}
-		sfree((void *)&settingsfile);
+	if(settings_read() != 0) {
+		goto clear;
 	}
 
 #ifdef WEBSERVER
@@ -1875,10 +1858,10 @@ int main(int argc, char **argv) {
 		}
 		if(tmp->listener->rawlen > maxrawlen) {
 			maxrawlen = tmp->listener->rawlen;
-		}		
+		}
 		tmp = tmp->next;
 	}
-	
+
 	if(settings_find_string("hardware-file", &hwfile) == 0) {
 		hardware_set_file(hwfile);
 		if(hardware_read() == EXIT_FAILURE) {
@@ -1941,8 +1924,8 @@ int main(int argc, char **argv) {
 
 	pthread_mutexattr_init(&receive_attr);
 	pthread_mutexattr_settype(&receive_attr, PTHREAD_MUTEX_RECURSIVE);
-	pthread_mutex_init(&receive_lock, &receive_attr);	
-	
+	pthread_mutex_init(&receive_lock, &receive_attr);
+
 	pthread_mutexattr_init(&bcqueue_attr);
 	pthread_mutexattr_settype(&bcqueue_attr, PTHREAD_MUTEX_RECURSIVE);
 	pthread_mutex_init(&bcqueue_lock, &bcqueue_attr);
@@ -1994,7 +1977,7 @@ int main(int argc, char **argv) {
 		}
 		tmp_confhw = tmp_confhw->next;
 	}
-	
+
 	threads_register("receive parser", &receive_parse_code, (void *)NULL, 0);
 
 #ifdef WEBSERVER

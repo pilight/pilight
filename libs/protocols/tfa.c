@@ -66,7 +66,7 @@ void tfaParseCode(void) {
 	humi2 = binToDecRev(tfa->binary, 30, 33);
 	humidity = ((humi1)+(humi2*16))*100;
 
-	if(binToDecRev(tfa->code, 34, 35) == 1) {
+	if(binToDecRev(tfa->code, 34, 35) > 1) {
 		battery = 0;
 	} else {
 		battery = 1;
@@ -84,7 +84,7 @@ void tfaParseCode(void) {
 
 	temperature += temp_offset;
 	humidity += humi_offset;
-	
+
 	tfa->message = json_mkobject();
 	json_append_member(tfa->message, "id", json_mknumber(id));
 	json_append_member(tfa->message, "temperature", json_mknumber(temperature));
@@ -102,7 +102,7 @@ int tfaCheckValues(struct JsonNode *jvalues) {
 		struct JsonNode *jchild1 = NULL;
 		double channel = -1, id = -1;
 		int match = 0;
-	
+
 		jchild = json_first_child(jid);
 		while(jchild) {
 			jchild1 = json_first_child(jchild);
@@ -118,7 +118,7 @@ int tfaCheckValues(struct JsonNode *jvalues) {
 			jchild = jchild->next;
 		}
 
-		struct tfa_settings_t *tmp = tfa_settings;		
+		struct tfa_settings_t *tmp = tfa_settings;
 		while(tmp) {
 			if(fabs(tmp->id-id) < EPSILON && fabs(tmp->channel-channel) < EPSILON) {
 				match = 1;
@@ -126,7 +126,7 @@ int tfaCheckValues(struct JsonNode *jvalues) {
 			}
 			tmp = tmp->next;
 		}
-		
+
 		if(!match) {
 			if(!(snode = malloc(sizeof(struct tfa_settings_t)))) {
 				logprintf(LOG_ERR, "out of memory");
@@ -146,7 +146,7 @@ int tfaCheckValues(struct JsonNode *jvalues) {
 }
 
 void tfaGC(void) {
-	struct tfa_settings_t *tmp = NULL;		
+	struct tfa_settings_t *tmp = NULL;
 	while(tfa_settings) {
 		tmp = tfa_settings;
 		tfa_settings = tfa_settings->next;
