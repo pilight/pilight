@@ -149,7 +149,7 @@ int ehomeCreateCode(JsonNode *code) {
 }
 
 void ehomePrintHelp(void) {
-	printf("\t -s --id=id\t\tcontrol a device with this id\n");
+	printf("\t -i --id=id\t\t\tcontrol a device with this id\n");
 	printf("\t -t --on\t\t\tsend an on signal\n");
 	printf("\t -f --off\t\t\tsend an off signal\n");
 }
