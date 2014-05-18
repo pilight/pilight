@@ -388,17 +388,17 @@ if(${PROTOCOL_LIRC} MATCHES "OFF")
 endif()
 
 if(${HARDWARE_433_GPIO} MATCHES "OFF")
-	list(REMOVE_ITEM hardware_headers "${PROJECT_SOURCE_DIR}/libs/hardware/433gpio.h")
+	list(REMOVE_ITEM hardware_header "${PROJECT_SOURCE_DIR}/libs/hardware/433gpio.h")
 	list(REMOVE_ITEM hardware "${PROJECT_SOURCE_DIR}/libs/hardware/433gpio.c")
 endif()
 
 if(${HARDWARE_433_LIRC} MATCHES "OFF")
-	list(REMOVE_ITEM hardware_headers "${PROJECT_SOURCE_DIR}/libs/hardware/433module.h")
+	list(REMOVE_ITEM hardware_header "${PROJECT_SOURCE_DIR}/libs/hardware/433module.h")
 	list(REMOVE_ITEM hardware "${PROJECT_SOURCE_DIR}/libs/hardware/433module.c")
 endif()
 
 if(${HARDWARE_433_PILIGHT} MATCHES "OFF")
-	list(REMOVE_ITEM hardware_headers "${PROJECT_SOURCE_DIR}/libs/hardware/433pilight.h")
+	list(REMOVE_ITEM hardware_header "${PROJECT_SOURCE_DIR}/libs/hardware/433pilight.h")
 	list(REMOVE_ITEM hardware "${PROJECT_SOURCE_DIR}/libs/hardware/433pilight.c")
 endif()
 
