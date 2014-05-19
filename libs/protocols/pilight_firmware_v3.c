@@ -81,6 +81,7 @@ void pilightFirmwareV3Init(void) {
   pilight_firmware_v3->parseBinary=&pilightFirmwareV3ParseBinary;
 }
 
+#ifdef MODULAR
 void compatibility(const char **version, const char **commit) {
 	*version = "4.0";
 	*commit = "18";
@@ -89,3 +90,4 @@ void compatibility(const char **version, const char **commit) {
 void init(void) {
 	pilightFirmwareV3Init();
 }
+#endif

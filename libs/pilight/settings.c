@@ -157,6 +157,7 @@ int settings_parse(JsonNode *root) {
 #endif
 				settings_add_number(jsettings->key, (int)jsettings->number_);
 			}
+#ifdef MODULAR			
 		} else if(strcmp(jsettings->key, "hardware-root") == 0) {
 			if(!jsettings->string_ || path_exists(jsettings->string_) != 0) {
 				logprintf(LOG_ERR, "setting \"%s\" must contain a valid path", jsettings->key);
@@ -173,6 +174,7 @@ int settings_parse(JsonNode *root) {
 			} else {
 				settings_add_string(jsettings->key, jsettings->string_);
 			}
+#endif			
 		} else if(strcmp(jsettings->key, "standalone") == 0) {
 			if(jsettings->number_ < 0 || jsettings->number_ > 1) {
 				logprintf(LOG_ERR, "setting \"%s\" must be either 0 or 1", jsettings->key);

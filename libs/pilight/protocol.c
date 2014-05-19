@@ -32,7 +32,12 @@
 #include "protocol.h"
 #include "log.h"
 
+#ifndef MODULAR
+	#include "protocol_header.h"
+#endif
+
 void protocol_init(void) {
+#ifdef MODULAR
 	void *handle = NULL;
 	void (*init)(void);
 	void (*compatibility)(const char **version, const char **commit);
@@ -112,6 +117,9 @@ void protocol_init(void) {
 	if(protocol_root_free) {
 		sfree((void *)&protocol_root);
 	}
+#else
+	#include "protocol_init.h"
+#endif
 }
 
 void protocol_register(protocol_t **proto) {

@@ -160,6 +160,7 @@ void threechanInit(void) {
 	threechan->gc=&threechanGC;
 }
 
+#ifdef MODULAR
 void compatibility(const char **version, const char **commit) {
 	*version = "4.0";
 	*commit = "18";
@@ -168,3 +169,4 @@ void compatibility(const char **version, const char **commit) {
 void init(void) {
 	threechanInit();
 }
+#endif

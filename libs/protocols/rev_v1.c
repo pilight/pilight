@@ -230,6 +230,7 @@ void rev1Init(void) {
 	rev1_switch->printHelp=&rev1PrintHelp;
 }
 
+#ifdef MODULAR
 void compatibility(const char **version, const char **commit) {
 	*version = "4.0";
 	*commit = "18";
@@ -238,3 +239,4 @@ void compatibility(const char **version, const char **commit) {
 void init(void) {
 	rev1Init();
 }
+#endif

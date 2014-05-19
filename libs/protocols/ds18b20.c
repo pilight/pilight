@@ -236,6 +236,7 @@ void ds18b20Init(void) {
 	ds18b20->threadGC=&ds18b20ThreadGC;
 }
 
+#ifdef MODULAR
 void compatibility(const char **version, const char **commit) {
 	*version = "4.0";
 	*commit = "18";
@@ -244,3 +245,4 @@ void compatibility(const char **version, const char **commit) {
 void init(void) {
 	ds18b20Init();
 }
+#endif

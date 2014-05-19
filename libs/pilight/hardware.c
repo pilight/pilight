@@ -42,7 +42,12 @@
 
 char *hwfile = NULL;
 
+#ifndef MODULAR
+	#include "hardware_header.h"
+#endif
+
 void hardware_init(void) {
+#ifdef MODULAR
 	void *handle = NULL;
 	void (*init)(void);
 	void (*compatibility)(const char **version, const char **commit);
@@ -124,6 +129,9 @@ void hardware_init(void) {
 	if(hardware_root_free) {
 		sfree((void *)&hardware_root);
 	}
+#else
+	#include "hardware_init.h"
+#endif
 }
 
 void hardware_register(struct hardware_t **hw) {

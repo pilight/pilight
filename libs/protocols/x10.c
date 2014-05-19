@@ -209,6 +209,7 @@ void x10Init(void) {
 	x10->printHelp=&x10PrintHelp;
 }
 
+#ifdef MODULAR
 void compatibility(const char **version, const char **commit) {
 	*version = "4.0";
 	*commit = "18";
@@ -217,3 +218,4 @@ void compatibility(const char **version, const char **commit) {
 void init(void) {
 	x10Init();
 }
+#endif

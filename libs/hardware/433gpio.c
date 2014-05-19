@@ -124,6 +124,7 @@ void gpio433Init(void) {
 	gpio433->settings=&gpio433Settings;
 }
 
+#ifdef MODULAR
 void compatibility(const char **version, const char **commit) {
 	*version = "4.0";
 	*commit = "18";
@@ -132,3 +133,4 @@ void compatibility(const char **version, const char **commit) {
 void init(void) {
 	gpio433Init();
 }
+#endif

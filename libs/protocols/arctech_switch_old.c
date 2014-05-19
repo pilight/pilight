@@ -185,6 +185,7 @@ void arctechSwOldInit(void) {
 	arctech_switch_old->printHelp=&arctechSwOldPrintHelp;
 }
 
+#ifdef MODULAR
 void compatibility(const char **version, const char **commit) {
 	*version = "4.0";
 	*commit = "18";
@@ -193,3 +194,4 @@ void compatibility(const char **version, const char **commit) {
 void init(void) {
 	arctechSwOldInit();
 }
+#endif

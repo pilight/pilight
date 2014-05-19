@@ -59,7 +59,7 @@ void arctechContactInit(void) {
   protocol_register(&arctech_contact);
   protocol_set_id(arctech_contact, "arctech_contact");
   protocol_device_add(arctech_contact, "kaku_contact", "KlikAanKlikUit Contact Sensor");
-  protocol_device_add(arctech_contact, "dio_contact", "D-IO (Chacon) Contact Sensor");
+  protocol_device_add(arctech_contact, "dio_contact", "D-IO Contact Sensor");
   protocol_plslen_add(arctech_contact, 294);
 
   arctech_contact->devtype = SWITCH;
@@ -79,6 +79,7 @@ void arctechContactInit(void) {
   arctech_contact->parseBinary=&arctechContactParseBinary;
 }
 
+#ifdef MODULAR
 void compatibility(const char **version, const char **commit) {
 	*version = "4.0";
 	*commit = "18";
@@ -87,3 +88,4 @@ void compatibility(const char **version, const char **commit) {
 void init(void) {
 	arctechContactInit();
 }
+#endif
