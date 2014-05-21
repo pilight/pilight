@@ -30,7 +30,7 @@
 #include "gc.h"
 #include "arctech_switch.h"
 
-void arctechSwCreateMessage(int id, int unit, int state, int all) {
+static void arctechSwCreateMessage(int id, int unit, int state, int all) {
 	arctech_switch->message = json_mkobject();
 	json_append_member(arctech_switch->message, "id", json_mknumber(id));
 	if(all == 1) {
@@ -46,7 +46,7 @@ void arctechSwCreateMessage(int id, int unit, int state, int all) {
 	}
 }
 
-void arctechSwParseBinary(void) {
+static void arctechSwParseBinary(void) {
 	int unit = binToDecRev(arctech_switch->binary, 28, 31);
 	int state = arctech_switch->binary[27];
 	int all = arctech_switch->binary[26];
@@ -55,7 +55,7 @@ void arctechSwParseBinary(void) {
 	arctechSwCreateMessage(id, unit, state, all);
 }
 
-void arctechSwCreateLow(int s, int e) {
+static void arctechSwCreateLow(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=4) {
@@ -66,7 +66,7 @@ void arctechSwCreateLow(int s, int e) {
 	}
 }
 
-void arctechSwCreateHigh(int s, int e) {
+static void arctechSwCreateHigh(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=4) {
@@ -77,16 +77,16 @@ void arctechSwCreateHigh(int s, int e) {
 	}
 }
 
-void arctechSwClearCode(void) {
+static void arctechSwClearCode(void) {
 	arctechSwCreateLow(2, 132);
 }
 
-void arctechSwCreateStart(void) {
+static void arctechSwCreateStart(void) {
 	arctech_switch->raw[0]=(arctech_switch->plslen->length);
 	arctech_switch->raw[1]=(9*arctech_switch->plslen->length);
 }
 
-void arctechSwCreateId(int id) {
+static void arctechSwCreateId(int id) {
 	int binary[255];
 	int length = 0;
 	int i=0, x=0;
@@ -100,19 +100,19 @@ void arctechSwCreateId(int id) {
 	}
 }
 
-void arctechSwCreateAll(int all) {
+static void arctechSwCreateAll(int all) {
 	if(all == 1) {
 		arctechSwCreateHigh(106, 109);
 	}
 }
 
-void arctechSwCreateState(int state) {
+static void arctechSwCreateState(int state) {
 	if(state == 1) {
 		arctechSwCreateHigh(110, 113);
 	}
 }
 
-void arctechSwCreateUnit(int unit) {
+static void arctechSwCreateUnit(int unit) {
 	int binary[255];
 	int length = 0;
 	int i=0, x=0;
@@ -126,11 +126,11 @@ void arctechSwCreateUnit(int unit) {
 	}
 }
 
-void arctechSwCreateFooter(void) {
+static void arctechSwCreateFooter(void) {
 	arctech_switch->raw[131]=(PULSE_DIV*arctech_switch->plslen->length);
 }
 
-int arctechSwCreateCode(JsonNode *code) {
+static int arctechSwCreateCode(JsonNode *code) {
 	int id = -1;
 	int unit = -1;
 	int state = -1;
@@ -173,7 +173,7 @@ int arctechSwCreateCode(JsonNode *code) {
 	return EXIT_SUCCESS;
 }
 
-void arctechSwPrintHelp(void) {
+static void arctechSwPrintHelp(void) {
 	printf("\t -t --on\t\t\tsend an on signal\n");
 	printf("\t -f --off\t\t\tsend an off signal\n");
 	printf("\t -u --unit=unit\t\t\tcontrol a device with this unit code\n");
@@ -181,6 +181,9 @@ void arctechSwPrintHelp(void) {
 	printf("\t -a --all\t\t\tsend command to all devices with this id\n");
 }
 
+#ifndef MODULE
+__attribute__((weak))
+#endif
 void arctechSwInit(void) {
 
 	protocol_register(&arctech_switch);
@@ -212,13 +215,15 @@ void arctechSwInit(void) {
 	arctech_switch->printHelp=&arctechSwPrintHelp;
 }
 
-#ifdef MODULAR
-void compatibility(const char **version, const char **commit) {
-	*version = "4.0";
-	*commit = "18";
+#ifdef MODULE
+static void compatibility(const char **name, const char **version, const char **reqversion, const char **reqcommit) {
+	*name = "arctech_switch";
+	*version = "1.0";
+	*reqversion = "4.0";
+	*reqcommit = "18";
 }
 
-void init(void) {
+static void init(void) {
 	arctechSwInit();
 }
 #endif

@@ -26,7 +26,6 @@
 #cmakedefine WEBSERVER
 #cmakedefine UPDATE
 #cmakedefine FIRMWARE
-#cmakedefine MODULAR
 
 #define VERSION					"4.0"
 #define PULSE_DIV				34

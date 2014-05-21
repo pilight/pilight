@@ -23,8 +23,6 @@
 #include "threads.h"
 
 struct protocol_t *program;
-
 void programInit(void);
-struct threadqueue_t *programInitDev(JsonNode *jdevice);
 
 #endif

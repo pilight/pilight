@@ -20,18 +20,6 @@
 #define _PROTOCOL_MUMBI_H_
 
 struct protocol_t *mumbi;
-
 void mumbiInit(void);
-void mumbiCreateMessage(int systemcode, int unitcode, int state);
-void mumbiParseBinary(void);
-int mumbiCreateCode(JsonNode *code);
-void mumbiCreateLow(int s, int e);
-void mumbiCreateHigh(int s, int e);
-void mumbiClearCode(void);
-void mumbiCreateSystemCode(int systemcode);
-void mumbiCreateUnitCode(int unitcode);
-void mumbiCreateState(int state);
-void mumbiCreateFooter(void);
-void mumbiPrintHelp(void);
 
 #endif

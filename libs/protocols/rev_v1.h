@@ -20,14 +20,6 @@
 #define _PROTOCOL_REV1_H_
 
 struct protocol_t *rev1_switch;
-
 void rev1Init(void);
-void rev1CreateMessage(char *id, int unit, int state);
-void rev1ParseCode(void);
-int rev1CreateCode(JsonNode *code);
-void rev1CreateUnit(int unit);
-void rev1CreateId(char *id);
-void rev1CreateState(int state);
-void rev1PrintHelp(void);
 
 #endif

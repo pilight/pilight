@@ -30,7 +30,7 @@
 #include "gc.h"
 #include "elro_he.h"
 
-void elroHECreateMessage(int systemcode, int unitcode, int state) {
+static void elroHECreateMessage(int systemcode, int unitcode, int state) {
 	elro_he->message = json_mkobject();
 	json_append_member(elro_he->message, "systemcode", json_mknumber(systemcode));
 	json_append_member(elro_he->message, "unitcode", json_mknumber(unitcode));
@@ -41,14 +41,14 @@ void elroHECreateMessage(int systemcode, int unitcode, int state) {
 	}
 }
 
-void elroHEParseBinary(void) {
+static void elroHEParseBinary(void) {
 	int systemcode = binToDec(elro_he->binary, 0, 4);
 	int unitcode = binToDec(elro_he->binary, 5, 9);
 	int state = elro_he->binary[11];
 	elroHECreateMessage(systemcode, unitcode, state);
 }
 
-void elroHECreateLow(int s, int e) {
+static void elroHECreateLow(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=4) {
@@ -59,7 +59,7 @@ void elroHECreateLow(int s, int e) {
 	}
 }
 
-void elroHECreateHigh(int s, int e) {
+static void elroHECreateHigh(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=4) {
@@ -69,11 +69,11 @@ void elroHECreateHigh(int s, int e) {
 		elro_he->raw[i+3]=(elro_he->pulse*elro_he->plslen->length);
 	}
 }
-void elroHEClearCode(void) {
+static void elroHEClearCode(void) {
 	elroHECreateLow(0,47);
 }
 
-void elroHECreateSystemCode(int systemcode) {
+static void elroHECreateSystemCode(int systemcode) {
 	int binary[255];
 	int length = 0;
 	int i=0, x=0;
@@ -87,7 +87,7 @@ void elroHECreateSystemCode(int systemcode) {
 	}
 }
 
-void elroHECreateUnitCode(int unitcode) {
+static void elroHECreateUnitCode(int unitcode) {
 	int binary[255];
 	int length = 0;
 	int i=0, x=0;
@@ -101,18 +101,18 @@ void elroHECreateUnitCode(int unitcode) {
 	}
 }
 
-void elroHECreateState(int state) {
+static void elroHECreateState(int state) {
 	if(state == 1) {
 		elroHECreateHigh(44, 47);
 	}
 }
 
-void elroHECreateFooter(void) {
+static void elroHECreateFooter(void) {
 	elro_he->raw[48]=(elro_he->plslen->length);
 	elro_he->raw[49]=(PULSE_DIV*elro_he->plslen->length);
 }
 
-int elroHECreateCode(JsonNode *code) {
+static int elroHECreateCode(JsonNode *code) {
 	int systemcode = -1;
 	int unitcode = -1;
 	int state = -1;
@@ -147,13 +147,16 @@ int elroHECreateCode(JsonNode *code) {
 	return EXIT_SUCCESS;
 }
 
-void elroHEPrintHelp(void) {
+static void elroHEPrintHelp(void) {
 	printf("\t -s --systemcode=systemcode\tcontrol a device with this systemcode\n");
 	printf("\t -u --unitcode=unitcode\t\tcontrol a device with this unitcode\n");
 	printf("\t -t --on\t\t\tsend an on signal\n");
 	printf("\t -f --off\t\t\tsend an off signal\n");
 }
 
+#ifndef MODULE
+__attribute__((weak))
+#endif
 void elroHEInit(void) {
 
 	protocol_register(&elro_he);
@@ -179,13 +182,15 @@ void elroHEInit(void) {
 	elro_he->printHelp=&elroHEPrintHelp;
 }
 
-#ifdef MODULAR
-void compatibility(const char **version, const char **commit) {
-	*version = "4.0";
-	*commit = "18";
+#ifdef MODULE
+static void compatibility(const char **name, const char **version, const char **reqversion, const char **reqcommit) {
+	*name = "elro_he";
+	*version = "1.0";
+	*reqversion = "4.0";
+	*reqcommit = "18";
 }
 
-void init(void) {
+static void init(void) {
 	elroHEInit();
 }
 #endif

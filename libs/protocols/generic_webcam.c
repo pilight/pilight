@@ -30,7 +30,7 @@
 #include "gc.h"
 #include "generic_webcam.h"
 
-int genWebcamCheckValues(JsonNode *code) {
+static int genWebcamCheckValues(JsonNode *code) {
 	int height = 300;
 	double itmp = -1;
 
@@ -44,6 +44,9 @@ int genWebcamCheckValues(JsonNode *code) {
 	return 0;
 }
 
+#ifndef MODULE
+__attribute__((weak))
+#endif
 void genWebcamInit(void) {
 
 	protocol_register(&generic_webcam);
@@ -62,13 +65,15 @@ void genWebcamInit(void) {
 	generic_webcam->checkValues=genWebcamCheckValues;
 }
 
-#ifdef MODULAR
-void compatibility(const char **version, const char **commit) {
-	*version = "4.0";
-	*commit = "18";
+#ifdef MODULE
+static void compatibility(const char **name, const char **version, const char **reqversion, const char **reqcommit) {
+	*name = "generic_webcam";
+	*version = "1.0";
+	*reqversion = "4.0";
+	*reqcommit = "18";
 }
 
-void init(void) {
+static void init(void) {
 	genWebcamInit();
 }
 #endif

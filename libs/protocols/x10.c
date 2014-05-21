@@ -30,9 +30,9 @@
 #include "gc.h"
 #include "x10.h"
 
-char x10letters[18] = {"MNOPCDABEFGHKL IJ"};
+static char x10letters[18] = {"MNOPCDABEFGHKL IJ"};
 
-void x10CreateMessage(char *id, int state) {
+static void x10CreateMessage(char *id, int state) {
 	x10->message = json_mkobject();
 	json_append_member(x10->message, "id", json_mkstring(id));
 	if(state == 0) {
@@ -42,7 +42,7 @@ void x10CreateMessage(char *id, int state) {
 	}
 }
 
-void x10ParseCode(void) {
+static void x10ParseCode(void) {
 	int x = 0;
 	int y = 0;
 
@@ -68,7 +68,7 @@ void x10ParseCode(void) {
 	}
 }
 
-void x10CreateLow(int s, int e) {
+static void x10CreateLow(int s, int e) {
 	int i;
 	for(i=s;i<=e;i+=2) {
 		x10->raw[i]=(x10->plslen->length*(int)round(x10->pulse/3));
@@ -76,7 +76,7 @@ void x10CreateLow(int s, int e) {
 	}
 }
 
-void x10CreateHigh(int s, int e) {
+static void x10CreateHigh(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=2) {
@@ -85,14 +85,14 @@ void x10CreateHigh(int s, int e) {
 	}
 }
 
-void x10ClearCode(void) {
+static void x10ClearCode(void) {
 	x10CreateLow(0, 15);
 	x10CreateHigh(16, 31);
 	x10CreateLow(32, 47);
 	x10CreateHigh(48, 63);
 }
 
-void x10CreateLetter(int l) {
+static void x10CreateLetter(int l) {
 	int binary[255];
 	int length = 0;
 	int i=0, x=0, y = 0;
@@ -112,7 +112,7 @@ void x10CreateLetter(int l) {
 	}
 }
 
-void x10CreateNumber(int n) {
+static void x10CreateNumber(int n) {
 	if(n >= 8) {
 		x10CreateHigh(10, 10);
 		x10CreateLow(26, 26);
@@ -133,21 +133,21 @@ void x10CreateNumber(int n) {
 	}
 }
 
-void x10CreateState(int state) {
+static void x10CreateState(int state) {
 	if(state == 0) {
 		x10CreateHigh(36, 36);
 		x10CreateLow(52, 52);
 	}
 }
 
-void x10CreateFooter(void) {
+static void x10CreateFooter(void) {
 	x10->raw[64]=(x10->plslen->length*(int)round(x10->pulse/3));
 	x10->raw[65]=(PULSE_DIV*x10->plslen->length*9);
 	x10->raw[66]=(PULSE_DIV*x10->plslen->length*2);
 	x10->raw[67]=(PULSE_DIV*x10->plslen->length);
 }
 
-int x10CreateCode(JsonNode *code) {
+static int x10CreateCode(JsonNode *code) {
 	char id[4] = {'\0'};
 	int state = -1;
 	double itmp = -1;
@@ -182,12 +182,15 @@ int x10CreateCode(JsonNode *code) {
 	return EXIT_SUCCESS;
 }
 
-void x10PrintHelp(void) {
+static void x10PrintHelp(void) {
 	printf("\t -t --on\t\t\tsend an on signal\n");
 	printf("\t -f --off\t\t\tsend an off signal\n");
 	printf("\t -i --id=id\t\t\tcontrol a device with this id\n");
 }
 
+#ifndef MODULE
+__attribute__((weak))
+#endif
 void x10Init(void) {
 	protocol_register(&x10);
 	protocol_set_id(x10, "x10");
@@ -209,10 +212,12 @@ void x10Init(void) {
 	x10->printHelp=&x10PrintHelp;
 }
 
-#ifdef MODULAR
-void compatibility(const char **version, const char **commit) {
-	*version = "4.0";
-	*commit = "18";
+#ifdef MODULE
+void compatibility(const char **name, const char **version, const char **reqversion, const char **reqcommit) {
+	*name = "x10";
+	*version = "1.0";
+	*reqversion = "4.0";
+	*reqcommit = "18";
 }
 
 void init(void) {

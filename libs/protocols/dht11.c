@@ -42,11 +42,11 @@
 
 #define MAXTIMINGS 100
 
-unsigned short dht11_loop = 1;
-unsigned short dht11_threads = 0;
+static unsigned short dht11_loop = 1;
+static unsigned short dht11_threads = 0;
 
-pthread_mutex_t dht11lock;
-pthread_mutexattr_t dht11attr;
+static pthread_mutex_t dht11lock;
+static pthread_mutexattr_t dht11attr;
 
 static uint8_t sizecvt(const int read_value) {
 	/* digitalRead() and friends from wiringpi are defined as returning a value
@@ -58,7 +58,7 @@ static uint8_t sizecvt(const int read_value) {
 	return (uint8_t)read_value;
 }
 
-void *dht11Parse(void *param) {
+static void *dht11Parse(void *param) {
 	struct protocol_threads_t *node = (struct protocol_threads_t *)param;
 	struct JsonNode *json = (struct JsonNode *)node->param;
 	struct JsonNode *jid = NULL;
@@ -193,7 +193,7 @@ struct threadqueue_t *dht11InitDev(JsonNode *jdevice) {
 	return threads_register("dht11", &dht11Parse, (void *)node, 0);
 }
 
-void dht11ThreadGC(void) {
+static void dht11ThreadGC(void) {
 	dht11_loop = 0;
 	protocol_thread_stop(dht11);
 	while(dht11_threads > 0) {
@@ -202,6 +202,9 @@ void dht11ThreadGC(void) {
 	protocol_thread_free(dht11);
 }
 
+#ifndef MODULE
+__attribute__((weak))
+#endif
 void dht11Init(void) {
 	pthread_mutexattr_init(&dht11attr);
 	pthread_mutexattr_settype(&dht11attr, PTHREAD_MUTEX_RECURSIVE);
@@ -229,13 +232,15 @@ void dht11Init(void) {
 	dht11->threadGC=&dht11ThreadGC;
 }
 
-#ifdef MODULAR
-void compatibility(const char **version, const char **commit) {
-	*version = "4.0";
-	*commit = "18";
+#ifdef MODULE
+static void compatibility(const char **name, const char **version, const char **reqversion, const char **reqcommit) {
+	*name = "dht11";
+	*version = "1.0";
+	*reqversion = "4.0";
+	*reqcommit = "18";
 }
 
-void init(void) {
+static void init(void) {
 	dht11Init();
 }
 #endif

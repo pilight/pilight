@@ -30,7 +30,7 @@
 #include "gc.h"
 #include "tfa.h"
 
-struct tfa_settings_t {
+typedef struct tfa_settings_t {
 	double id;
 	double channel;
 	double temp;
@@ -38,9 +38,9 @@ struct tfa_settings_t {
 	struct tfa_settings_t *next;
 } tfa_settings_t;
 
-struct tfa_settings_t *tfa_settings = NULL;
+static struct tfa_settings_t *tfa_settings = NULL;
 
-void tfaParseCode(void) {
+static void tfaParseCode(void) {
 	int temp1 = 0, temp2 = 0, temp3 = 0;
 	int humi1 = 0, humi2 = 0;
 	int temperature = 0, id = 0;
@@ -93,7 +93,7 @@ void tfaParseCode(void) {
 	json_append_member(tfa->message, "channel", json_mknumber(channel));
 }
 
-int tfaCheckValues(struct JsonNode *jvalues) {
+static int tfaCheckValues(struct JsonNode *jvalues) {
 	struct JsonNode *jid = NULL;
 
 	if((jid = json_find_member(jvalues, "id"))) {
@@ -145,7 +145,7 @@ int tfaCheckValues(struct JsonNode *jvalues) {
 	return 0;
 }
 
-void tfaGC(void) {
+static void tfaGC(void) {
 	struct tfa_settings_t *tmp = NULL;
 	while(tfa_settings) {
 		tmp = tfa_settings;
@@ -155,6 +155,9 @@ void tfaGC(void) {
 	sfree((void *)&tfa_settings);
 }
 
+#ifndef MODULE
+__attribute__((weak))
+#endif
 void tfaInit(void) {
 	protocol_register(&tfa);
 	protocol_set_id(tfa, "tfa");
@@ -188,13 +191,15 @@ void tfaInit(void) {
 	tfa->gc=&tfaGC;
 }
 
-#ifdef MODULAR
-void compatibility(const char **version, const char **commit) {
-	*version = "4.0";
-	*commit = "18";
+#ifdef MODULE
+static void compatibility(const char **name, const char **version, const char **reqversion, const char **reqcommit) {
+	*name = "tfa";
+	*version = "0.8";
+	*reqversion = "4.0";
+	*reqcommit = "18";
 }
 
-void init(void) {
+static void init(void) {
 	tfaInit();
 }
 #endif

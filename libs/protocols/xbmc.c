@@ -52,14 +52,14 @@ typedef struct xbmc_data_t {
 	struct xbmc_data_t *next;
 } xbmc_data_t;
 
-pthread_mutex_t xbmclock;
-pthread_mutexattr_t xbmcattr;
+static pthread_mutex_t xbmclock;
+static pthread_mutexattr_t xbmcattr;
 
-struct xbmc_data_t *xbmc_data;
-unsigned short xbmc_loop = 1;
-unsigned short xbmc_threads = 0;
+static struct xbmc_data_t *xbmc_data;
+static unsigned short xbmc_loop = 1;
+static unsigned short xbmc_threads = 0;
 
-void xbmcCreateMessage(char *server, int port, char *action, char *media) {
+static void xbmcCreateMessage(char *server, int port, char *action, char *media) {
 	xbmc->message = json_mkobject();
 	JsonNode *code = json_mkobject();
 	json_append_member(code, "action", json_mkstring(action));
@@ -76,7 +76,7 @@ void xbmcCreateMessage(char *server, int port, char *action, char *media) {
 	xbmc->message = NULL;
 }
 
-void *xbmcParse(void *param) {
+static void *xbmcParse(void *param) {
 	struct protocol_threads_t *node = (struct protocol_threads_t *)param;
 	struct JsonNode *json = (struct JsonNode *)node->param;
 	struct JsonNode *jid = NULL;
@@ -281,7 +281,7 @@ struct threadqueue_t *xbmcInitDev(JsonNode *jdevice) {
 	return threads_register("xbmc", &xbmcParse, (void *)node, 0);
 }
 
-void xbmcThreadGC(void) {
+static void xbmcThreadGC(void) {
 	xbmc_loop = 0;
 	struct xbmc_data_t *xtmp = NULL;
 
@@ -303,7 +303,7 @@ void xbmcThreadGC(void) {
 	protocol_thread_free(xbmc);
 }
 
-int xbmcCheckValues(JsonNode *code) {
+static int xbmcCheckValues(JsonNode *code) {
 	char *action = NULL;
 	char *media = NULL;
 
@@ -338,6 +338,9 @@ int xbmcCheckValues(JsonNode *code) {
 	return 0;
 }
 
+#ifndef MODULE
+__attribute__((weak))
+#endif
 void xbmcInit(void) {
 	pthread_mutexattr_init(&xbmcattr);
 	pthread_mutexattr_settype(&xbmcattr, PTHREAD_MUTEX_RECURSIVE);
@@ -363,13 +366,15 @@ void xbmcInit(void) {
 	xbmc->checkValues=&xbmcCheckValues;
 }
 
-#ifdef MODULAR
-void compatibility(const char **version, const char **commit) {
-	*version = "4.0";
-	*commit = "18";
+#ifdef MODULE
+static void compatibility(const char **name, const char **version, const char **reqversion, const char **reqcommit) {
+	*name = "xbmc";
+	*version = "1.0";
+	*reqversion = "4.0";
+	*reqcommit = "18";
 }
 
-void init(void) {
+static void init(void) {
 	xbmcInit();
 }
 #endif

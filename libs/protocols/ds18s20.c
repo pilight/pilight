@@ -38,14 +38,14 @@
 #include "gc.h"
 #include "ds18s20.h"
 
-unsigned short ds18s20_loop = 1;
-unsigned short ds18s20_threads = 0;
-char ds18s20_path[21];
+static unsigned short ds18s20_loop = 1;
+static unsigned short ds18s20_threads = 0;
+static char ds18s20_path[21];
 
-pthread_mutex_t ds18s20lock;
-pthread_mutexattr_t ds18s20attr;
+static pthread_mutex_t ds18s20lock;
+static pthread_mutexattr_t ds18s20attr;
 
-void *ds18s20Parse(void *param) {
+static void *ds18s20Parse(void *param) {
 	struct protocol_threads_t *node = (struct protocol_threads_t *)param;
 	struct JsonNode *json = (struct JsonNode *)node->param;
 	struct JsonNode *jid = NULL;
@@ -190,7 +190,7 @@ void *ds18s20Parse(void *param) {
 	return (void *)NULL;
 }
 
-struct threadqueue_t *ds18s20InitDev(JsonNode *jdevice) {
+static struct threadqueue_t *ds18s20InitDev(JsonNode *jdevice) {
 	ds18s20_loop = 1;
 	char *output = json_stringify(jdevice, NULL);
 	JsonNode *json = json_decode(output);
@@ -200,7 +200,7 @@ struct threadqueue_t *ds18s20InitDev(JsonNode *jdevice) {
 	return threads_register("ds18s20", &ds18s20Parse, (void *)node, 0);
 }
 
-void ds18s20ThreadGC(void) {
+static void ds18s20ThreadGC(void) {
 	ds18s20_loop = 0;
 	protocol_thread_stop(ds18s20);
 	while(ds18s20_threads > 0) {
@@ -209,6 +209,9 @@ void ds18s20ThreadGC(void) {
 	protocol_thread_free(ds18s20);
 }
 
+#ifndef MODULE
+__attribute__((weak))
+#endif
 void ds18s20Init(void) {
 	pthread_mutexattr_init(&ds18s20attr);
 	pthread_mutexattr_settype(&ds18s20attr, PTHREAD_MUTEX_RECURSIVE);
@@ -236,13 +239,15 @@ void ds18s20Init(void) {
 	ds18s20->threadGC=&ds18s20ThreadGC;
 }
 
-#ifdef MODULAR
-void compatibility(const char **version, const char **commit) {
-	*version = "4.0";
-	*commit = "18";
+#ifdef MODULE
+static void compatibility(const char **name, const char **version, const char **reqversion, const char **reqcommit) {
+	*name = "ds18s20";
+	*version = "1.0";
+	*reqversion = "4.0";
+	*reqcommit = "18";
 }
 
-void init(void) {
+static void init(void) {
 	ds18s20Init();
 }
 #endif

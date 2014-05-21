@@ -23,8 +23,6 @@
 #include "threads.h"
 
 struct protocol_t *dht22;
-
 void dht22Init(void);
-struct threadqueue_t *dht22InitDev(JsonNode *jdevice);
 
 #endif

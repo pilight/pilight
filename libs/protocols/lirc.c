@@ -46,16 +46,16 @@
 #include "gc.h"
 #include "lirc.h"
 
-char lirc_socket[BUFFER_SIZE];
-int lirc_sockfd = -1;
+static char lirc_socket[BUFFER_SIZE];
+static int lirc_sockfd = -1;
 
-unsigned short lirc_loop = 1;
-unsigned short lirc_threads = 0;
+static unsigned short lirc_loop = 1;
+static unsigned short lirc_threads = 0;
 
-pthread_mutex_t lirclock;
-pthread_mutexattr_t lircattr;
+static pthread_mutex_t lirclock;
+static pthread_mutexattr_t lircattr;
 
-void *lircParse(void *param) {
+static void *lircParse(void *param) {
 	struct protocol_threads_t *node = (struct protocol_threads_t *)param;
 	struct sockaddr_un addr;
 	struct timeval timeout;
@@ -180,7 +180,7 @@ struct threadqueue_t *lircInitDev(JsonNode *jdevice) {
 	return threads_register("lirc", &lircParse, (void *)node, 0);
 }
 
-void lircThreadGC(void) {
+static void lircThreadGC(void) {
 	lirc_loop = 0;
 	protocol_thread_stop(lirc);
 	while(lirc_threads > 0) {
@@ -189,6 +189,9 @@ void lircThreadGC(void) {
 	protocol_thread_free(lirc);
 }
 
+#ifndef MODULE
+__attribute__((weak))
+#endif
 void lircInit(void) {
 	pthread_mutexattr_init(&lircattr);
 	pthread_mutexattr_settype(&lircattr, PTHREAD_MUTEX_RECURSIVE);
@@ -215,13 +218,15 @@ void lircInit(void) {
 	strcpy(lirc_socket, "/dev/lircd");
 }
 
-#ifdef MODULAR
-void compatibility(const char **version, const char **commit) {
-	*version = "4.0";
-	*commit = "18";
+#ifdef MODULE
+static void compatibility(const char **name, const char **version, const char **reqversion, const char **reqcommit) {
+	*name = "lirc";
+	*version = "1.0";
+	*reqversion = "4.0";
+	*reqcommit = "18";
 }
 
-void init(void) {
+static void init(void) {
 	lircInit();
 }
 #endif

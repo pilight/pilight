@@ -2,12 +2,15 @@ cmake_minimum_required(VERSION 2.8.8)
 
 project(pilight C)
 
-set(CPACK_PACKAGE_NAME pilight)
 set(PROJECT_VERSION 4.0)
+set(PROJECT_NAME pilight)
 
 include(${PROJECT_SOURCE_DIR}/CMakeConfig.txt)
 
+set(MODULES OFF)
+
 set(CMAKE_SKIP_RULE_DEPENDENCY TRUE)
+set(CPACK_DEB_COMPONENT_INSTALL TRUE)
 
 #Final compilation all platforms
 #Removing debugging for final compilation
@@ -41,6 +44,7 @@ endif()
 
 if(${CMAKE_SYSTEM_PROCESSOR} MATCHES "armv6")
 	if(${USE_SOFT_FLOAT} MATCHES "OFF")
+		set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE armhf)
 		set(CMAKE_C_FLAGS "-lz -Ofast -mfloat-abi=hard -mfpu=vfp -march=armv6 -ffast-math -Wfloat-equal -Wshadow -Wpointer-arith -Wcast-align -Wstrict-overflow=5 -Wwrite-strings -Waggregate-return -Wcast-qual -Wswitch-default -Wswitch-enum -Wformat=2 -g -Wall -Wconversion -Wunreachable-code -Wstrict-prototypes")
 	else()
 		set(CMAKE_C_FLAGS "-lz -Ofast -mfloat-abi=soft -msoft-float -mfpu=vfp -march=armv6 -ffast-math -Wfloat-equal -Wshadow -Wpointer-arith -Wcast-align -Wstrict-overflow=5 -Wwrite-strings -Waggregate-return -Wcast-qual -Wswitch-default -Wswitch-enum -Wformat=2 -g -Wall -Wconversion -Wunreachable-code -Wstrict-prototypes")
@@ -48,16 +52,20 @@ if(${CMAKE_SYSTEM_PROCESSOR} MATCHES "armv6")
 endif()
 
 if(${CMAKE_SYSTEM_PROCESSOR} MATCHES "x86_64")
+	set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE i386)
 	set(CMAKE_C_FLAGS "-Ofast -fPIC -march=native -mtune=native -ffast-math -Wconversion -Wunreachable-code -Wstrict-prototypes -Wfloat-equal -Wshadow -Wpointer-arith -Wcast-align -Wstrict-overflow=5 -Wwrite-strings -Waggregate-return -Wcast-qual -Wswitch-default -Wswitch-enum -Wformat=2 -g3 -Wall")
 endif()
 if(${CMAKE_SYSTEM_PROCESSOR} MATCHES "amd64")
+	set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE amd64)
 	set(CMAKE_C_FLAGS "-O2 -fPIC -march=native -mtune=native -ffast-math -Wformat=2 -g3 -Wformat-nonliteral")
 endif()
 
 # Compile final sources for Ubuntu 64bit
-#set (CMAKE_C_FLAGS "-m64 -fPIC")
+# set(CMAKE_C_FLAGS "-m64 -fPIC")
+# set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE amd64)
 # Compile final sources for Ubuntu 32bit
-#set (CMAKE_C_FLAGS "-m32")
+# set(CMAKE_C_FLAGS "-m32")
+# set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE i386)
 
 # Start uninstaller generator
 function(WRITE_UNINSTALL_TARGET_SCRIPT)
@@ -113,6 +121,10 @@ execute_process(COMMAND git describe --always
 STRING(REGEX REPLACE "\n" "" git_ver "${git_ver}")
 add_definitions(-DHASH="${git_ver}")
 
+if(${MODULES} MATCHES "ON")
+	add_definitions(-DMODULES="1")
+endif()
+
 include_directories("${PROJECT_SOURCE_DIR}/libs/pilight/")
 include_directories("${PROJECT_SOURCE_DIR}/libs/avrdude/")
 
@@ -139,7 +151,7 @@ file(GLOB pilight_headers
 file(GLOB pilight
 	"${PROJECT_SOURCE_DIR}/libs/pilight/*.c"
 	"${PROJECT_SOURCE_DIR}/libs/avrdude/*.c")
-
+	
 if(${PROTOCOL_ALECTO} MATCHES "OFF")
 	list(REMOVE_ITEM protocol_headers "${PROJECT_SOURCE_DIR}/libs/protocols/alecto.h")
 	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/alecto.c")
@@ -428,11 +440,11 @@ endif()
 
 find_package(Threads REQUIRED)
 
-if(${UPDATE} MATCHES "ON")
-	find_package(ZLIB REQUIRED)
-endif()
+if(${MODULES} MATCHES "OFF")
+	if(${UPDATE} MATCHES "ON")
+		find_package(ZLIB REQUIRED)
+	endif()
 
-if(${MODULAR} MATCHES "OFF")
 	foreach(header ${protocol_headers})
 		string(REPLACE ${PROJECT_SOURCE_DIR}/libs "	#include \".." header1 ${header}) 
 		string(REPLACE ".h" ".h\"!" header2 ${header1})
@@ -442,7 +454,7 @@ if(${MODULAR} MATCHES "OFF")
 	string(REPLACE "!" "\n" header4 ${header3})
 	set(PROTOCOL_HEADERS ${header4})
 	configure_file(libs/pilight/protocol_header.h.in libs/pilight/protocol_header.h)	
-	
+
 	execute_process(
 	COMMAND grep -h "void .*Init(void)" ${protocol}
 		WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
@@ -469,7 +481,7 @@ if(${MODULAR} MATCHES "OFF")
 	string(REPLACE "!" "\n" header4 ${header3})
 	set(HARDWARE_HEADERS ${header4})
 	configure_file(libs/pilight/hardware_header.h.in libs/pilight/hardware_header.h)	
-	
+
 	execute_process(
 	COMMAND grep -h "void .*Init(void)" ${hardware}
 		WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
@@ -486,11 +498,11 @@ if(${MODULAR} MATCHES "OFF")
 	string(REPLACE "!" ";" init4 ${init3})
 	set(HARDWARE_INIT ${init4})
 	configure_file(libs/pilight/hardware_init.h.in libs/pilight/hardware_init.h)	
+
+	configure_file(pilight.h.in pilight.h)
 endif()
 
-configure_file(pilight.h.in pilight.h)
-
-if(${MODULAR} MATCHES "ON")
+if(${MODULES} MATCHES "ON")
 	foreach(file ${protocol})
 		get_filename_component(name ${file} NAME_WE)
 		add_library(${name}_module MODULE ${file})
@@ -498,7 +510,8 @@ if(${MODULAR} MATCHES "ON")
 		target_link_libraries(${name}_module m)
 		target_link_libraries(${name}_module ${CMAKE_DL_LIBS})
 		set_target_properties(${name}_module PROPERTIES OUTPUT_NAME ${name})
-		install(FILES lib${name}.so DESTINATION lib/pilight/protocols RENAME ${name}.so)
+		string(REPLACE "_" "-" debname ${name})
+		install(FILES lib${name}.so DESTINATION lib/pilight/protocols RENAME ${name}.so COMPONENT pilight-protocol-${debname})
 	endforeach()
 
 	foreach(file ${hardware})
@@ -508,159 +521,151 @@ if(${MODULAR} MATCHES "ON")
 		target_link_libraries(${name}_module m)
 		target_link_libraries(${name}_module ${CMAKE_DL_LIBS})
 		set_target_properties(${name}_module PROPERTIES OUTPUT_NAME ${name})
-		install(FILES lib${name}.so DESTINATION lib/pilight/hardware RENAME ${name}.so)
+		string(REPLACE "_" "-" debname ${name})
+		install(FILES lib${name}.so DESTINATION lib/pilight/hardware RENAME ${name}.so COMPONENT pilight-hardware-${debname})
 	endforeach()	
 endif()
 
-if(${MODULAR} MATCHES "OFF")
+if(${MODULES} MATCHES "OFF")
 	add_library(pilight OBJECT ${pilight} ${protocol} ${hardware})
-else()
-	add_library(pilight OBJECT ${pilight})
+
+	add_library(pilight_static STATIC $<TARGET_OBJECTS:pilight>)
+	add_library(pilight_shared SHARED $<TARGET_OBJECTS:pilight>)
+
+	target_link_libraries(pilight_shared ${CMAKE_THREAD_LIBS_INIT})
+	target_link_libraries(pilight_shared m)
+	target_link_libraries(pilight_shared ${CMAKE_DL_LIBS})
+	target_link_libraries(pilight_static ${CMAKE_THREAD_LIBS_INIT})
+	target_link_libraries(pilight_static m)
+	target_link_libraries(pilight_static ${CMAKE_DL_LIBS})
+
+	if(${UPDATE} MATCHES "ON")
+		target_link_libraries(pilight_shared ${CMAKE_ZLIB_LIBS_INIT})
+		target_link_libraries(pilight_static ${CMAKE_ZLIB_LIBS_INIT})
+	endif()
+
+	set_target_properties(pilight_shared pilight_static PROPERTIES OUTPUT_NAME pilight)
+
+	set_source_files_properties(${PROJECT_SOURCE_DIR}/libs/pilight/wiringPi.c PROPERTIES COMPILE_FLAGS " -w ")
+	set_source_files_properties(${PROJECT_SOURCE_DIR}/libs/pilight/wiringPiI2C.c PROPERTIES COMPILE_FLAGS " -w ")
+	set_source_files_properties(${PROJECT_SOURCE_DIR}/libs/pilight/json.c PROPERTIES COMPILE_FLAGS " -w ")
+	set_source_files_properties(${PROJECT_SOURCE_DIR}/libs/pilight/http_lib.c PROPERTIES COMPILE_FLAGS " -w ")
+	set_source_files_properties(${PROJECT_SOURCE_DIR}/libs/pilight/mongoose.c PROPERTIES COMPILE_FLAGS " -w ")
+	set_source_files_properties(${avrdude_sources} PROPERTIES COMPILE_FLAGS " -w ")
+
+	install(FILES libpilight.so DESTINATION lib/pilight/ RENAME libpilight.so.${PROJECT_VERSION} COMPONENT pilight)
+	install(FILES libpilight.a DESTINATION lib/pilight/ RENAME libpilight.a COMPONENT pilight)
+
+	if(EXISTS "/usr/local/lib/libpilight.so")
+		execute_process(COMMAND rm "/usr/local/lib/libpilight.so")
+	endif()
+
+	#if(NOT EXISTS "/usr/local/lib/libpilight.so")
+		execute_process(COMMAND ln -s "/usr/local/lib/pilight/libpilight.so.${PROJECT_VERSION}" "/usr/local/lib/libpilight.so")
+	#endif()
+
+	if(${WEBSERVER} MATCHES "ON")
+		install(DIRECTORY web/ DESTINATION /usr/local/share/pilight COMPONENT pilight)
+	endif()
+
+	install(PROGRAMS init/pilight.initd DESTINATION /etc/init.d/ RENAME pilight)
+	install(FILES settings.json-default DESTINATION /etc/pilight/ RENAME settings.json COMPONENT pilight)
+	install(FILES tzdata.json DESTINATION /etc/pilight/ COMPONENT pilight)
+	install(FILES hardware.json DESTINATION /etc/pilight/ COMPONENT pilight)
+
+	add_executable(pilight-daemon daemon.c)
+	target_link_libraries(pilight-daemon pilight_shared)
+	target_link_libraries(pilight-daemon ${CMAKE_DL_LIBS})
+	target_link_libraries(pilight-daemon m)
+	target_link_libraries(pilight-daemon ${CMAKE_THREAD_LIBS_INIT})
+
+	if(${UPDATE} MATCHES "ON")
+		target_link_libraries(pilight-daemon ${CMAKE_ZLIB_LIBS_INIT})
+	endif()
+
+	add_executable(pilight-raw raw.c)
+	target_link_libraries(pilight-raw pilight_shared)
+	target_link_libraries(pilight-raw ${CMAKE_DL_LIBS})
+	target_link_libraries(pilight-raw m)
+	target_link_libraries(pilight-raw ${CMAKE_DL_LIBS})
+	target_link_libraries(pilight-raw ${CMAKE_THREAD_LIBS_INIT})
+
+	add_executable(pilight-send send.c)
+	target_link_libraries(pilight-send pilight_shared)
+	target_link_libraries(pilight-send ${CMAKE_DL_LIBS})
+	target_link_libraries(pilight-send m)
+	target_link_libraries(pilight-send ${CMAKE_DL_LIBS})
+	target_link_libraries(pilight-send ${CMAKE_THREAD_LIBS_INIT})
+
+	add_executable(pilight-control control.c)
+	target_link_libraries(pilight-control pilight_shared)
+	target_link_libraries(pilight-control ${CMAKE_DL_LIBS})
+	target_link_libraries(pilight-control m)
+	target_link_libraries(pilight-control ${CMAKE_DL_LIBS})
+	target_link_libraries(pilight-control ${CMAKE_THREAD_LIBS_INIT})
+
+	add_executable(pilight-learn learn.c)
+	target_link_libraries(pilight-learn pilight_shared)
+	target_link_libraries(pilight-learn ${CMAKE_DL_LIBS})
+	target_link_libraries(pilight-learn m)
+	target_link_libraries(pilight-learn ${CMAKE_DL_LIBS})
+	target_link_libraries(pilight-learn ${CMAKE_THREAD_LIBS_INIT})
+
+	add_executable(pilight-receive receive.c)
+	target_link_libraries(pilight-receive pilight_shared)
+	target_link_libraries(pilight-receive ${CMAKE_DL_LIBS})
+	target_link_libraries(pilight-receive m)
+	target_link_libraries(pilight-receive ${CMAKE_DL_LIBS})
+	target_link_libraries(pilight-receive ${CMAKE_THREAD_LIBS_INIT})
+
+	add_executable(pilight-debug debug.c)
+	target_link_libraries(pilight-debug pilight_shared)
+	target_link_libraries(pilight-debug ${CMAKE_DL_LIBS})
+	target_link_libraries(pilight-debug m)
+	target_link_libraries(pilight-debug ${CMAKE_DL_LIBS})
+	target_link_libraries(pilight-debug ${CMAKE_THREAD_LIBS_INIT})
+
+	add_executable(pilight-uuid uuid.c)
+	target_link_libraries(pilight-uuid pilight_shared)
+	target_link_libraries(pilight-uuid ${CMAKE_DL_LIBS})
+	target_link_libraries(pilight-uuid m)
+	target_link_libraries(pilight-uuid ${CMAKE_DL_LIBS})
+	target_link_libraries(pilight-uuid ${CMAKE_THREAD_LIBS_INIT})
+
+	add_executable(pilight-flash flash.c)
+	target_link_libraries(pilight-flash pilight_shared)
+	target_link_libraries(pilight-flash ${CMAKE_DL_LIBS})
+	target_link_libraries(pilight-flash m)
+	target_link_libraries(pilight-flash ${CMAKE_DL_LIBS})
+	target_link_libraries(pilight-flash ${CMAKE_THREAD_LIBS_INIT})
+
+	if(EXISTS "/usr/local/sbin/pilight-send")
+		execute_process(COMMAND rm "/usr/local/sbin/pilight-send")
+	endif()
+
+	if(EXISTS "/usr/local/sbin/pilight-receive")
+		execute_process(COMMAND rm "/usr/local/sbin/pilight-receive")
+	endif()
+
+	if(EXISTS "/usr/local/sbin/pilight-control")
+		execute_process(COMMAND rm "/usr/local/sbin/pilight-control")
+	endif()
+
+	if(EXISTS "/usr/local/sbin/pilight-uuid")
+		execute_process(COMMAND rm "/usr/local/sbin/pilight-uuid")
+	endif()
+
+	install(PROGRAMS pilight-daemon DESTINATION sbin COMPONENT pilight)
+	install(PROGRAMS pilight-raw DESTINATION sbin COMPONENT pilight)
+	install(PROGRAMS pilight-send DESTINATION bin COMPONENT pilight)
+	install(PROGRAMS pilight-control DESTINATION bin COMPONENT pilight)
+	install(PROGRAMS pilight-learn DESTINATION sbin COMPONENT pilight)
+	install(PROGRAMS pilight-receive DESTINATION bin COMPONENT pilight)
+	install(PROGRAMS pilight-debug DESTINATION sbin COMPONENT pilight)
+	install(PROGRAMS pilight-flash DESTINATION sbin COMPONENT pilight)
+	install(PROGRAMS pilight-uuid DESTINATION bin COMPONENT pilight)
+	install(SCRIPT cmake_postinstall.cmake)
 endif()
-
-add_library(pilight_static STATIC $<TARGET_OBJECTS:pilight>)
-add_library(pilight_shared SHARED $<TARGET_OBJECTS:pilight>)
-
-target_link_libraries(pilight_shared ${CMAKE_THREAD_LIBS_INIT})
-target_link_libraries(pilight_shared m)
-target_link_libraries(pilight_shared ${CMAKE_DL_LIBS})
-target_link_libraries(pilight_static ${CMAKE_THREAD_LIBS_INIT})
-target_link_libraries(pilight_static m)
-target_link_libraries(pilight_static ${CMAKE_DL_LIBS})
-
-if(${UPDATE} MATCHES "ON")
-	target_link_libraries(pilight_shared ${CMAKE_ZLIB_LIBS_INIT})
-	target_link_libraries(pilight_static ${CMAKE_ZLIB_LIBS_INIT})
-endif()
-
-set_target_properties(pilight_shared pilight_static PROPERTIES OUTPUT_NAME pilight)
-
-set_source_files_properties(${PROJECT_SOURCE_DIR}/libs/pilight/wiringPi.c PROPERTIES COMPILE_FLAGS " -w ")
-set_source_files_properties(${PROJECT_SOURCE_DIR}/libs/pilight/wiringPiI2C.c PROPERTIES COMPILE_FLAGS " -w ")
-set_source_files_properties(${PROJECT_SOURCE_DIR}/libs/pilight/json.c PROPERTIES COMPILE_FLAGS " -w ")
-set_source_files_properties(${PROJECT_SOURCE_DIR}/libs/pilight/http_lib.c PROPERTIES COMPILE_FLAGS " -w ")
-set_source_files_properties(${PROJECT_SOURCE_DIR}/libs/pilight/mongoose.c PROPERTIES COMPILE_FLAGS " -w ")
-set_source_files_properties(${avrdude_sources} PROPERTIES COMPILE_FLAGS " -w ")
-
-install(FILES libpilight.so DESTINATION lib/pilight/ RENAME libpilight.so.4)
-install(FILES libpilight.a DESTINATION lib/pilight/ RENAME libpilight.a)
-
-if(EXISTS "/usr/local/lib/libpilight.so")
-	execute_process(COMMAND rm "/usr/local/lib/libpilight.so")
-endif()
-
-if(NOT EXISTS "/usr/local/lib/libpilight.so")
-	execute_process(COMMAND ln -s "/usr/local/lib/pilight/libpilight.so.4" "/usr/local/lib/libpilight.so")
-endif()
-
-if(${WEBSERVER} MATCHES "ON")
-	install(DIRECTORY web/ DESTINATION /usr/local/share/pilight)
-endif()
-
-install(PROGRAMS init/pilight.initd DESTINATION /etc/init.d/ RENAME pilight)
-
-if(NOT EXISTS "/etc/pilight/settings.json")
-	install(FILES settings.json-default DESTINATION /etc/pilight/ RENAME settings.json)
-endif()
-
-install(FILES tzdata.json DESTINATION /etc/pilight/)
-
-if(NOT EXISTS "/etc/pilight/hardware.json")
-	install(FILES hardware.json DESTINATION /etc/pilight/)
-endif()
-
-add_executable(pilight-daemon daemon.c)
-target_link_libraries(pilight-daemon pilight_shared)
-target_link_libraries(pilight-daemon ${CMAKE_DL_LIBS})
-target_link_libraries(pilight-daemon m)
-target_link_libraries(pilight-daemon ${CMAKE_THREAD_LIBS_INIT})
-
-if(${UPDATE} MATCHES "ON")
-	target_link_libraries(pilight-daemon ${CMAKE_ZLIB_LIBS_INIT})
-endif()
-
-add_executable(pilight-raw raw.c)
-target_link_libraries(pilight-raw pilight_shared)
-target_link_libraries(pilight-raw ${CMAKE_DL_LIBS})
-target_link_libraries(pilight-raw m)
-target_link_libraries(pilight-raw ${CMAKE_DL_LIBS})
-target_link_libraries(pilight-raw ${CMAKE_THREAD_LIBS_INIT})
-
-add_executable(pilight-send send.c)
-target_link_libraries(pilight-send pilight_shared)
-target_link_libraries(pilight-send ${CMAKE_DL_LIBS})
-target_link_libraries(pilight-send m)
-target_link_libraries(pilight-send ${CMAKE_DL_LIBS})
-target_link_libraries(pilight-send ${CMAKE_THREAD_LIBS_INIT})
-
-add_executable(pilight-control control.c)
-target_link_libraries(pilight-control pilight_shared)
-target_link_libraries(pilight-control ${CMAKE_DL_LIBS})
-target_link_libraries(pilight-control m)
-target_link_libraries(pilight-control ${CMAKE_DL_LIBS})
-target_link_libraries(pilight-control ${CMAKE_THREAD_LIBS_INIT})
-
-add_executable(pilight-learn learn.c)
-target_link_libraries(pilight-learn pilight_shared)
-target_link_libraries(pilight-learn ${CMAKE_DL_LIBS})
-target_link_libraries(pilight-learn m)
-target_link_libraries(pilight-learn ${CMAKE_DL_LIBS})
-target_link_libraries(pilight-learn ${CMAKE_THREAD_LIBS_INIT})
-
-add_executable(pilight-receive receive.c)
-target_link_libraries(pilight-receive pilight_shared)
-target_link_libraries(pilight-receive ${CMAKE_DL_LIBS})
-target_link_libraries(pilight-receive m)
-target_link_libraries(pilight-receive ${CMAKE_DL_LIBS})
-target_link_libraries(pilight-receive ${CMAKE_THREAD_LIBS_INIT})
-
-add_executable(pilight-debug debug.c)
-target_link_libraries(pilight-debug pilight_shared)
-target_link_libraries(pilight-debug ${CMAKE_DL_LIBS})
-target_link_libraries(pilight-debug m)
-target_link_libraries(pilight-debug ${CMAKE_DL_LIBS})
-target_link_libraries(pilight-debug ${CMAKE_THREAD_LIBS_INIT})
-
-add_executable(pilight-uuid uuid.c)
-target_link_libraries(pilight-uuid pilight_shared)
-target_link_libraries(pilight-uuid ${CMAKE_DL_LIBS})
-target_link_libraries(pilight-uuid m)
-target_link_libraries(pilight-uuid ${CMAKE_DL_LIBS})
-target_link_libraries(pilight-uuid ${CMAKE_THREAD_LIBS_INIT})
-
-add_executable(pilight-flash flash.c)
-target_link_libraries(pilight-flash pilight_shared)
-target_link_libraries(pilight-flash ${CMAKE_DL_LIBS})
-target_link_libraries(pilight-flash m)
-target_link_libraries(pilight-flash ${CMAKE_DL_LIBS})
-target_link_libraries(pilight-flash ${CMAKE_THREAD_LIBS_INIT})
-
-if(EXISTS "/usr/local/sbin/pilight-send")
-	execute_process(COMMAND rm "/usr/local/sbin/pilight-send")
-endif()
-
-if(EXISTS "/usr/local/sbin/pilight-receive")
-	execute_process(COMMAND rm "/usr/local/sbin/pilight-receive")
-endif()
-
-if(EXISTS "/usr/local/sbin/pilight-control")
-	execute_process(COMMAND rm "/usr/local/sbin/pilight-control")
-endif()
-
-if(EXISTS "/usr/local/sbin/pilight-uuid")
-	execute_process(COMMAND rm "/usr/local/sbin/pilight-uuid")
-endif()
-
-install(PROGRAMS pilight-daemon DESTINATION sbin)
-install(PROGRAMS pilight-raw DESTINATION sbin)
-install(PROGRAMS pilight-send DESTINATION bin)
-install(PROGRAMS pilight-control DESTINATION bin)
-install(PROGRAMS pilight-learn DESTINATION sbin)
-install(PROGRAMS pilight-receive DESTINATION bin)
-install(PROGRAMS pilight-debug DESTINATION sbin)
-install(PROGRAMS pilight-flash DESTINATION sbin)
-install(PROGRAMS pilight-uuid DESTINATION bin)
-install(SCRIPT cmake_postinstall.cmake)
 
 WRITE_UNINSTALL_TARGET_SCRIPT()
 configure_file("${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake.in"
@@ -670,16 +675,14 @@ add_custom_target(uninstall COMMAND ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_BINARY_D
 
 set(CPACK_GENERATOR "DEB")
 set(CPACK_PACKAGING_INSTALL_PREFIX "/usr/local/")
-set(CPACK_PACKAGE_VERSION_MAJOR "4")
-set(CPACK_PACKAGE_VERSION_MINOR "0")
-set(CPACK_PACKAGE_VERSION_PATCH "0")
+set(CPACK_SOURCE_STRIP_FILES TRUE)
+set(CPACK_STRIP_FILES TRUE)
+set(CPACK_PACKAGE_CONTACT "CurlyMo <info@pilight.org>")
+set(CPACK_PACKAGE_VERSION ${PROJECT_VERSION})
+set(CPACK_PACKAGE_NAME "pilight")
 set(CPACK_DEBIAN_PACKAGE_DEPENDS "zlib1g-dev")
 set(CPACK_DEBIAN_PACKAGE_PRIORITY "optional")
-set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE armhf)
 set(CPACK_PACKAGE_DESCRIPTION "Control RF devices with the Raspberry Pi")
 set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Control RF devices with the Raspberry Pi")
-set(CPACK_PACKAGE_CONTACT "CurlyMo <info@pilight.org>")
-set(CPACK_DEBIAN_PACKAGE_CONTROL_EXTRA "${CMAKE_CURRENT_SOURCE_DIR}/debian/postinst;${CMAKE_CURRENT_SOURCE_DIR}/debian/preinst;${CMAKE_CURRENT_SOURCE_DIR}/debian/postrm;${CMAKE_CURRENT_SOURCE_DIR}/debian/prerm")
-set(CPACK_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}${PROJECT_VERSION}")
 
 include(CPack)

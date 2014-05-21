@@ -20,18 +20,6 @@
 #define _PROTOCOL_SILVERCREST_H_
 
 struct protocol_t *silvercrest;
-
 void silvercrestInit(void);
-void silvercrestCreateMessage(int systemcode, int unitcode, int state);
-void silvercrestParseBinary(void);
-int silvercrestCreateCode(JsonNode *code);
-void silvercrestCreateLow(int s, int e);
-void silvercrestCreateHigh(int s, int e);
-void silvercrestClearCode(void);
-void silvercrestCreateSystemCode(int systemcode);
-void silvercrestCreateUnitCode(int unitcode);
-void silvercrestCreateState(int state);
-void silvercrestCreateFooter(void);
-void silvercrestPrintHelp(void);
 
 #endif

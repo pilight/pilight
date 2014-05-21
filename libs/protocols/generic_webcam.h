@@ -20,7 +20,6 @@
 #define _PROTOCOL_GENERIC_WEBCAM_H_
 
 struct protocol_t *generic_webcam;
-
 void genWebcamInit(void);
 
 #endif

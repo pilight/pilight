@@ -23,9 +23,6 @@
 #include "threads.h"
 
 struct protocol_t *wunderground;
-
 void wundergroundInit(void);
-int wundergroundCheckValues(JsonNode *code);
-struct threadqueue_t *wundergroundInitDev(JsonNode *jdevice);
 
 #endif

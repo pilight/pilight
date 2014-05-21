@@ -23,8 +23,6 @@
 #include "threads.h"
 
 struct protocol_t *ds18s20;
-
 void ds18s20Init(void);
-struct threadqueue_t *ds18s20InitDev(JsonNode *jdevice);
 
 #endif

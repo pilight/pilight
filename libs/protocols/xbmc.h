@@ -23,8 +23,6 @@
 #include "threads.h"
 
 struct protocol_t *xbmc;
-
 void xbmcInit(void);
-struct threadqueue_t *xbmcInitDev(JsonNode *jdevice);
 
 #endif

@@ -20,14 +20,6 @@
 #define _PROTOCOL_ARCTECH_SWITCH_OLD_H_
 
 struct protocol_t *arctech_switch_old;
-
 void arctechSwOldInit(void);
-void arctechSwOldCreateMessage(int id, int unit, int state);
-void arctechSwOldParseBinary(void);
-int arctechSwOldCreateCode(JsonNode *code);
-void arctechSwOldCreateUnit(int unit);
-void arctechSwOldCreateId(int id);
-void arctechSwOldCreateState(int state);
-void arctechSwOldPrintHelp(void);
 
 #endif

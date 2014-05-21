@@ -30,7 +30,7 @@
 #include "gc.h"
 #include "quigg_switch.h"
 
-void quiggSwCreateMessage(int id, int state, int unit, int all) {
+static void quiggSwCreateMessage(int id, int state, int unit, int all) {
 	quigg_switch->message = json_mkobject();
 	json_append_member(quigg_switch->message, "id", json_mknumber(id));
 	if(all==1) {
@@ -46,7 +46,7 @@ void quiggSwCreateMessage(int id, int state, int unit, int all) {
 	}
 }
 
-void quiggSwParseCode(void) {
+static void quiggSwParseCode(void) {
 /*
    Conversion code will follow once the Rx part is working together with LPF
 */
@@ -62,7 +62,7 @@ void quiggSwParseCode(void) {
 	quiggSwCreateMessage(id, state, unit, all);
 }
 
-void quiggSwCreateLow(int s, int e) {
+static void quiggSwCreateLow(int s, int e) {
 	int i;
 	for(i=s;i<=e;i+=2) {
 		quigg_switch->raw[i] = quigg_switch->plslen->length;
@@ -70,7 +70,7 @@ void quiggSwCreateLow(int s, int e) {
 	}
 }
 
-void quiggSwCreateHigh(int s, int e) {
+static void quiggSwCreateHigh(int s, int e) {
 	int i;
 	for(i=s;i<=e;i+=2) {
 		quigg_switch->raw[i] = quigg_switch->pulse*quigg_switch->plslen->length;
@@ -78,21 +78,21 @@ void quiggSwCreateHigh(int s, int e) {
 	}
 }
 
-void quiggSwCreateHeader(void) {
+static void quiggSwCreateHeader(void) {
 	quigg_switch->raw[0] = quigg_switch->plslen->length;
 }
 
-void quiggSwCreateFooter(void) {
+static void quiggSwCreateFooter(void) {
 	quigg_switch->raw[quigg_switch->rawlen-1] = PULSE_DIV*quigg_switch->plslen->length;
 }
 
-void quiggSwClearCode(void) {
+static void quiggSwClearCode(void) {
 	quiggSwCreateHeader();
 	quiggSwCreateLow(1,quigg_switch->rawlen-3);
 	quiggSwCreateFooter();
 }
 
-void quiggSwCreateId(int id) {
+static void quiggSwCreateId(int id) {
 	int binary[255];
 	int length = 0;
 	int i = 0, x = 0;
@@ -107,7 +107,7 @@ void quiggSwCreateId(int id) {
 	}
 }
 
-void quiggSwCreateUnit(int unit) {
+static void quiggSwCreateUnit(int unit) {
 	switch (unit) {
 		case 0:
 			quiggSwCreateLow(25, 30);	// 1st row
@@ -135,7 +135,7 @@ void quiggSwCreateUnit(int unit) {
 	}
 }
 
-void quiggSwCreateState(int state) {
+static void quiggSwCreateState(int state) {
 	if(state==1) {
 		quiggSwCreateHigh(31, 32);
 	} else {
@@ -143,7 +143,7 @@ void quiggSwCreateState(int state) {
 	}
 }
 
-void quiggSwCreateParity(void) {
+static void quiggSwCreateParity(void) {
 	int i,p;
 	p = 1;			// init even parity, without system ID
 	for(i=25;i<=37;i+=2) {
@@ -156,7 +156,7 @@ void quiggSwCreateParity(void) {
 	}
 }
 
-int quiggSwCreateCode(JsonNode *code) {
+static int quiggSwCreateCode(JsonNode *code) {
 	int unit = -1;
 	int id = -1;
 	int state = -1;
@@ -197,7 +197,7 @@ int quiggSwCreateCode(JsonNode *code) {
 	return EXIT_SUCCESS;
 }
 
-void quiggSwPrintHelp(void) {
+static void quiggSwPrintHelp(void) {
 	printf("\t -i --id=id\t\t\tcontrol one or multiple devices with this id\n");
 	printf("\t -u --unit=unit\t\t\tcontrol the device unit with this code\n");
 	printf("\t -t --on\t\t\tsend an on signal to device\n");
@@ -205,6 +205,9 @@ void quiggSwPrintHelp(void) {
 	printf("\t -a --id=all\t\t\tcommand to all devices with this id\n");
 }
 
+#ifndef MODULE
+__attribute__((weak))
+#endif
 void quiggSwInit(void) {
 
 	protocol_register(&quigg_switch);
@@ -233,13 +236,15 @@ void quiggSwInit(void) {
 	quigg_switch->printHelp=&quiggSwPrintHelp;
 }
 
-#ifdef MODULAR
-void compatibility(const char **version, const char **commit) {
-	*version = "4.0";
-	*commit = "18";
+#ifdef MODULE
+static void compatibility(const char **name, const char **version, const char **reqversion, const char **reqcommit) {
+	*name = "quigg_switch";
+	*version = "1.0";
+	*reqversion = "4.0";
+	*reqcommit = "18";
 }
 
-void init(void) {
+static void init(void) {
 	quiggSwInit();
 }
 #endif

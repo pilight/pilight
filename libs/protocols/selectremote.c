@@ -30,7 +30,7 @@
 #include "gc.h"
 #include "selectremote.h"
 
-void selectremoteCreateMessage(int id, int state) {
+static void selectremoteCreateMessage(int id, int state) {
 	selectremote->message = json_mkobject();
 	json_append_member(selectremote->message, "id", json_mknumber(id));
 	if(state == 1) {
@@ -40,14 +40,14 @@ void selectremoteCreateMessage(int id, int state) {
 	}
 }
 
-void selectremoteParseBinary(void) {
+static void selectremoteParseBinary(void) {
 	int id = 7-binToDec(selectremote->binary, 1, 3);
 	int state = selectremote->binary[8];
 
 	selectremoteCreateMessage(id, state);
 }
 
-void selectremoteCreateLow(int s, int e) {
+static void selectremoteCreateLow(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=4) {
@@ -58,7 +58,7 @@ void selectremoteCreateLow(int s, int e) {
 	}
 }
 
-void selectremoteCreateHigh(int s, int e) {
+static void selectremoteCreateHigh(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=4) {
@@ -69,11 +69,11 @@ void selectremoteCreateHigh(int s, int e) {
 	}
 }
 
-void selectremoteClearCode(void) {
+static void selectremoteClearCode(void) {
 	selectremoteCreateHigh(0,47);
 }
 
-void selectremoteCreateId(int id) {
+static void selectremoteCreateId(int id) {
 	int binary[255];
 	int length = 0;
 	int i=0, x=0;
@@ -88,18 +88,18 @@ void selectremoteCreateId(int id) {
 	}
 }
 
-void selectremoteCreateState(int state) {
+static void selectremoteCreateState(int state) {
 	if(state == 1) {
 		selectremoteCreateLow(32, 35);
 	}
 }
 
-void selectremoteCreateFooter(void) {
+static void selectremoteCreateFooter(void) {
 	selectremote->raw[48]=(selectremote->plslen->length);
 	selectremote->raw[49]=(PULSE_DIV*selectremote->plslen->length);
 }
 
-int selectremoteCreateCode(JsonNode *code) {
+static int selectremoteCreateCode(JsonNode *code) {
 	int id = -1;
 	int state = -1;
 	double itmp = 0;
@@ -127,12 +127,15 @@ int selectremoteCreateCode(JsonNode *code) {
 	return EXIT_SUCCESS;
 }
 
-void selectremotePrintHelp(void) {
+static void selectremotePrintHelp(void) {
 	printf("\t -i --id=systemcode\tcontrol a device with this id\n");
 	printf("\t -t --on\t\t\tsend an on signal\n");
 	printf("\t -f --off\t\t\tsend an off signal\n");
 }
 
+#ifndef MODULE
+__attribute__((weak))
+#endif
 void selectremoteInit(void) {
 
 	protocol_register(&selectremote);
@@ -156,13 +159,15 @@ void selectremoteInit(void) {
 	selectremote->printHelp=&selectremotePrintHelp;
 }
 
-#ifdef MODULAR
-void compatibility(const char **version, const char **commit) {
-	*version = "4.0";
-	*commit = "18";
+#ifdef MODULE
+static void compatibility(const char **name, const char **version, const char **reqversion, const char **reqcommit) {
+	*name = "selectremote";
+	*version = "0.8";
+	*reqversion = "4.0";
+	*reqcommit = "18";
 }
 
-void init(void) {
+static void init(void) {
 	selectremoteInit();
 }
 #endif

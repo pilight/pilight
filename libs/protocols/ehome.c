@@ -30,7 +30,7 @@
 #include "gc.h"
 #include "ehome.h"
 
-void ehomeCreateMessage(int id, int state) {
+static void ehomeCreateMessage(int id, int state) {
 	ehome->message = json_mkobject();
 	json_append_member(ehome->message, "id", json_mknumber(id));
 	if(state == 1) {
@@ -40,7 +40,7 @@ void ehomeCreateMessage(int id, int state) {
 	}
 }
 
-void ehomeParseCode(void) {
+static void ehomeParseCode(void) {
 	int i = 0;
 	for(i=0; i<ehome->rawlen; i+=4) {
 		if(ehome->code[i+3] == 1) {
@@ -56,7 +56,7 @@ void ehomeParseCode(void) {
 	ehomeCreateMessage(id, state);
 }
 
-void ehomeCreateLow(int s, int e) {
+static void ehomeCreateLow(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=4) {
@@ -67,7 +67,7 @@ void ehomeCreateLow(int s, int e) {
 	}
 }
 
-void ehomeCreateMed(int s, int e) {
+static void ehomeCreateMed(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=4) {
@@ -78,7 +78,7 @@ void ehomeCreateMed(int s, int e) {
 	}
 }
 
-void ehomeCreateHigh(int s, int e) {
+static void ehomeCreateHigh(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=4) {
@@ -89,11 +89,11 @@ void ehomeCreateHigh(int s, int e) {
 	}
 }
 
-void ehomeClearCode(void) {
+static void ehomeClearCode(void) {
 	ehomeCreateLow(0,47);
 }
 
-void ehomeCreateId(int id) {
+static void ehomeCreateId(int id) {
 	int binary[255];
 	int length = 0;
 	int i=0, x=0;
@@ -107,7 +107,7 @@ void ehomeCreateId(int id) {
 	}
 }
 
-void ehomeCreateState(int state) {
+static void ehomeCreateState(int state) {
 	if(state == 0) {
 		ehomeCreateMed(0, 3);
 	} else {
@@ -115,12 +115,12 @@ void ehomeCreateState(int state) {
 	}
 }
 
-void ehomeCreateFooter(void) {
+static void ehomeCreateFooter(void) {
 	ehome->raw[48]=(ehome->plslen->length);
 	ehome->raw[49]=(PULSE_DIV*ehome->plslen->length);
 }
 
-int ehomeCreateCode(JsonNode *code) {
+static int ehomeCreateCode(JsonNode *code) {
 	int id = -1;
 	int state = -1;
 	double itmp = 0;
@@ -148,12 +148,15 @@ int ehomeCreateCode(JsonNode *code) {
 	return EXIT_SUCCESS;
 }
 
-void ehomePrintHelp(void) {
+static void ehomePrintHelp(void) {
 	printf("\t -i --id=id\t\t\tcontrol a device with this id\n");
 	printf("\t -t --on\t\t\tsend an on signal\n");
 	printf("\t -f --off\t\t\tsend an off signal\n");
 }
 
+#ifndef MODULE
+__attribute__((weak))
+#endif
 void ehomeInit(void) {
 
 	protocol_register(&ehome);
@@ -177,13 +180,15 @@ void ehomeInit(void) {
 	ehome->printHelp=&ehomePrintHelp;
 }
 
-#ifdef MODULAR
-void compatibility(const char **version, const char **commit) {
-	*version = "4.0";
-	*commit = "18";
+#ifdef MODULE
+static void compatibility(const char **name, const char **version, const char **reqversion, const char **reqcommit) {
+	*name = "ehome";
+	*version = "0.3";
+	*reqversion = "4.0";
+	*reqcommit = "18";
 }
 
-void init(void) {
+static void init(void) {
 	ehomeInit();
 }
 #endif

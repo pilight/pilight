@@ -20,18 +20,6 @@
 #define _PROTOCOL_POLLIN_H_
 
 struct protocol_t *pollin;
-
 void pollinInit(void);
-void pollinCreateMessage(int systemcode, int unitcode, int state);
-void pollinParseBinary(void);
-int pollinCreateCode(JsonNode *code);
-void pollinCreateLow(int s, int e);
-void pollinCreateHigh(int s, int e);
-void pollinClearCode(void);
-void pollinCreateSystemCode(int systemcode);
-void pollinCreateUnitCode(int unitcode);
-void pollinCreateState(int state);
-void pollinCreateFooter(void);
-void pollinPrintHelp(void);
 
 #endif

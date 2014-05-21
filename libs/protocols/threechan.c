@@ -30,16 +30,16 @@
 #include "gc.h"
 #include "threechan.h"
 
-struct threechan_settings_t {
+typedef struct threechan_settings_t {
 	double id;
 	double temp;
 	double humi;
 	struct threechan_settings_t *next;
 } threechan_settings_t;
 
-struct threechan_settings_t *threechan_settings = NULL;
+static struct threechan_settings_t *threechan_settings = NULL;
 
-void threechanParseCode(void) {
+static void threechanParseCode(void) {
 	int i = 0, x = 0;
 	int temperature = 0, id = 0, humidity = 0, battery = 0;
 	int humi_offset = 0, temp_offset = 0;
@@ -73,7 +73,7 @@ void threechanParseCode(void) {
 	json_append_member(threechan->message, "battery", json_mknumber(battery));
 }
 
-int threechanCheckValues(struct JsonNode *jvalues) {
+static int threechanCheckValues(struct JsonNode *jvalues) {
 	struct JsonNode *jid = NULL;
 
 	if((jid = json_find_member(jvalues, "id"))) {
@@ -121,7 +121,7 @@ int threechanCheckValues(struct JsonNode *jvalues) {
 	return 0;
 }
 
-void threechanGC(void) {
+static void threechanGC(void) {
 	struct threechan_settings_t *tmp = NULL;
 	while(threechan_settings) {
 		tmp = threechan_settings;
@@ -131,6 +131,9 @@ void threechanGC(void) {
 	sfree((void *)&threechan_settings);
 }
 
+#ifndef MODULE
+__attribute__((weak))
+#endif
 void threechanInit(void) {
 
 	protocol_register(&threechan);
@@ -160,13 +163,15 @@ void threechanInit(void) {
 	threechan->gc=&threechanGC;
 }
 
-#ifdef MODULAR
-void compatibility(const char **version, const char **commit) {
-	*version = "4.0";
-	*commit = "18";
+#ifdef MODULE
+static void compatibility(const char **name, const char **version, const char **reqversion, const char **reqcommit) {
+	*name = "threechan";
+	*version = "1.0";
+	*reqversion = "4.0";
+	*reqcommit = "18";
 }
 
-void init(void) {
+static void init(void) {
 	threechanInit();
 }
 #endif

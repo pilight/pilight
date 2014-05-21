@@ -20,14 +20,6 @@
 #define _PROTOCOL_ARCTECH_SCREEN_OLD_H_
 
 struct protocol_t *arctech_screen_old;
-
 void arctechSrOldInit(void);
-void arctechSrOldCreateMessage(int id, int unit, int state);
-void arctechSrOldParseBinary(void);
-int arctechSrOldCreateCode(JsonNode *code);
-void arctechSrOldCreateUnit(int unit);
-void arctechSrOldCreateId(int id);
-void arctechSrOldCreateState(int state);
-void arctechSrOldPrintHelp(void);
 
 #endif

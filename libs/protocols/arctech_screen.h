@@ -20,20 +20,6 @@
 #define _PROTOCOL_ARCTECH_SCREEN_H_
 
 struct protocol_t *arctech_screen;
-
 void arctechSrInit(void);
-void arctechSrCreateMessage(int id, int unit, int state, int all);
-void arctechSrParseBinary(void);
-int arctechSrCreateCode(JsonNode *code);
-void arctechSrCreateLow(int s, int e);
-void arctechSrCreateHigh(int s, int e);
-void arctechSrClearCode(void);
-void arctechSrCreateStart(void);
-void arctechSrCreateId(int id);
-void arctechSrCreateAll(int all);
-void arctechSrCreateState(int state);
-void arctechSrCreateUnit(int unit);
-void arctechSrCreateFooter(void);
-void arctechSrPrintHelp(void);
 
 #endif

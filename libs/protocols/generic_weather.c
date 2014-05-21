@@ -30,7 +30,7 @@
 #include "gc.h"
 #include "generic_weather.h"
 
-void genWeatherCreateMessage(int id, int temperature, int humidity, int battery) {
+static void genWeatherCreateMessage(int id, int temperature, int humidity, int battery) {
 	generic_weather->message = json_mkobject();
 	json_append_member(generic_weather->message, "id", json_mknumber(id));
 	if(temperature > -999) {
@@ -44,7 +44,7 @@ void genWeatherCreateMessage(int id, int temperature, int humidity, int battery)
 	}
 }
 
-int genWeatherCreateCode(JsonNode *code) {
+static int genWeatherCreateCode(JsonNode *code) {
 	double itmp = 0;
 	int id = -999;
 	int temp = -999;
@@ -69,13 +69,16 @@ int genWeatherCreateCode(JsonNode *code) {
 	return EXIT_SUCCESS;
 }
 
-void genWeatherPrintHelp(void) {
+static void genWeatherPrintHelp(void) {
 	printf("\t -t --temperature=temperature\tset the temperature\n");
 	printf("\t -h --humidity=humidity\t\tset the humidity\n");
 	printf("\t -b --battery=battery\t\tset the battery level\n");
 	printf("\t -i --id=id\t\t\tcontrol a device with this id\n");
 }
 
+#ifndef MODULE
+__attribute__((weak))
+#endif
 void genWeatherInit(void) {
 
 	protocol_register(&generic_weather);
@@ -98,13 +101,15 @@ void genWeatherInit(void) {
 	generic_weather->createCode=&genWeatherCreateCode;
 }
 
-#ifdef MODULAR
-void compatibility(const char **version, const char **commit) {
-	*version = "4.0";
-	*commit = "18";
+#ifdef MODULE
+static void compatibility(const char **name, const char **version, const char **reqversion, const char **reqcommit) {
+	*name = "generic_weather";
+	*version = "1.0";
+	*reqversion = "4.0";
+	*reqcommit = "18";
 }
 
-void init(void) {
+static void init(void) {
 	genWeatherInit();
 }
 #endif

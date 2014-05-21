@@ -30,7 +30,7 @@
 #include "gc.h"
 #include "clarus.h"
 
-void clarusSwCreateMessage(char *id, int unit, int state) {
+static void clarusSwCreateMessage(char *id, int unit, int state) {
 	clarus_switch->message = json_mkobject();
 	json_append_member(clarus_switch->message, "id", json_mkstring(id));
 	json_append_member(clarus_switch->message, "unit", json_mknumber(unit));
@@ -40,7 +40,7 @@ void clarusSwCreateMessage(char *id, int unit, int state) {
 		json_append_member(clarus_switch->message, "state", json_mkstring("off"));
 }
 
-void clarusSwParseCode(void) {
+static void clarusSwParseCode(void) {
 	int x = 0;
 	int z = 65;
 	char id[3] = {'\0'};
@@ -71,7 +71,7 @@ void clarusSwParseCode(void) {
 	clarusSwCreateMessage(id, unit, state);
 }
 
-void clarusSwCreateLow(int s, int e) {
+static void clarusSwCreateLow(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=4) {
@@ -82,7 +82,7 @@ void clarusSwCreateLow(int s, int e) {
 	}
 }
 
-void clarusSwCreateMed(int s, int e) {
+static void clarusSwCreateMed(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=4) {
@@ -93,7 +93,7 @@ void clarusSwCreateMed(int s, int e) {
 	}
 }
 
-void clarusSwCreateHigh(int s, int e) {
+static void clarusSwCreateHigh(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=4) {
@@ -104,11 +104,11 @@ void clarusSwCreateHigh(int s, int e) {
 	}
 }
 
-void clarusSwClearCode(void) {
+static void clarusSwClearCode(void) {
 	clarusSwCreateLow(0,47);
 }
 
-void clarusSwCreateUnit(int unit) {
+static void clarusSwCreateUnit(int unit) {
 	int binary[255];
 	int length = 0;
 	int i=0, x=0;
@@ -122,7 +122,7 @@ void clarusSwCreateUnit(int unit) {
 	}
 }
 
-void clarusSwCreateId(char *id) {
+static void clarusSwCreateId(char *id) {
 	int l = ((int)(id[0]))-65;
 	int y = atoi(&id[1]);
 	int binary[255];
@@ -140,7 +140,7 @@ void clarusSwCreateId(char *id) {
 	clarusSwCreateMed(39-(x+3), 39-x);
 }
 
-void clarusSwCreateState(int state) {
+static void clarusSwCreateState(int state) {
 	if(state == 0) {
 		clarusSwCreateMed(40,43);
 		clarusSwCreateHigh(44,47);
@@ -150,12 +150,12 @@ void clarusSwCreateState(int state) {
 	}
 }
 
-void clarusSwCreateFooter(void) {
+static void clarusSwCreateFooter(void) {
 	clarus_switch->raw[48]=(clarus_switch->plslen->length);
 	clarus_switch->raw[49]=(PULSE_DIV*clarus_switch->plslen->length);
 }
 
-int clarusSwCreateCode(JsonNode *code) {
+static int clarusSwCreateCode(JsonNode *code) {
 	char id[3] = {'\0'};
 	int unit = -1;
 	int state = -1;
@@ -196,13 +196,16 @@ int clarusSwCreateCode(JsonNode *code) {
 	return EXIT_SUCCESS;
 }
 
-void clarusSwPrintHelp(void) {
+static void clarusSwPrintHelp(void) {
 	printf("\t -t --on\t\t\tsend an on signal\n");
 	printf("\t -f --off\t\t\tsend an off signal\n");
 	printf("\t -u --unit=unit\t\t\tcontrol a device with this unit code\n");
 	printf("\t -i --id=id\t\t\tcontrol a device with this id\n");
 }
 
+#ifndef MODULE
+__attribute__((weak))
+#endif
 void clarusSwInit(void) {
 
 	protocol_register(&clarus_switch);
@@ -228,13 +231,15 @@ void clarusSwInit(void) {
 	clarus_switch->printHelp=&clarusSwPrintHelp;
 }
 
-#ifdef MODULAR
-void compatibility(const char **version, const char **commit) {
-	*version = "4.0";
-	*commit = "18";
+#ifdef MODULE
+static void compatibility(const char **name, const char **version, const char **reqversion, const char **reqcommit) {
+	*name = "clarus";
+	*version = "0.8";
+	*reqversion = "4.0";
+	*reqcommit = "18";
 }
 
-void init(void) {
+static void init(void) {
 	clarusSwInit();
 }
 #endif

@@ -20,14 +20,6 @@
 #define _PROTOCOL_CLEVERWATTS_H_
 
 struct protocol_t *cleverwatts;
-
 void cleverwattsInit(void);
-void cleverwattsCreateMessage(int id, int unit, int state, int all);
-void cleverwattsParseCode(void);
-int cleverwattsCreateCode(JsonNode *code);
-void cleverwattsCreateUnit(int unit);
-void cleverwattsCreateId(int id);
-void cleverwattsCreateState(int state);
-void cleverwattsPrintHelp(void);
 
 #endif

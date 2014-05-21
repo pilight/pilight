@@ -30,7 +30,7 @@
 #include "gc.h"
 #include "home_easy_old.h"
 
-void homeEasyOldCreateMessage(int systemcode, int unitcode, int state, int all) {
+static void homeEasyOldCreateMessage(int systemcode, int unitcode, int state, int all) {
 	home_easy_old->message = json_mkobject();
 	json_append_member(home_easy_old->message, "systemcode", json_mknumber(systemcode));
 	if(all == 1) {
@@ -45,7 +45,7 @@ void homeEasyOldCreateMessage(int systemcode, int unitcode, int state, int all) 
 	}
 }
 
-void homeEasyOldParseBinary(void) {
+static void homeEasyOldParseBinary(void) {
 	int systemcode = 15-binToDecRev(home_easy_old->binary, 1, 4);
 	int unitcode = 15-binToDecRev(home_easy_old->binary, 5, 8);
 	int all = home_easy_old->binary[9];
@@ -56,7 +56,7 @@ void homeEasyOldParseBinary(void) {
 	}
 }
 
-void homeEasyOldCreateHigh(int s, int e) {
+static void homeEasyOldCreateHigh(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=4) {
@@ -67,7 +67,7 @@ void homeEasyOldCreateHigh(int s, int e) {
 	}
 }
 
-void homeEasyOldCreateLow(int s, int e) {
+static void homeEasyOldCreateLow(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=4) {
@@ -78,15 +78,15 @@ void homeEasyOldCreateLow(int s, int e) {
 	}
 }
 
-void homeEasyOldClearCode(void) {
+static void homeEasyOldClearCode(void) {
 	homeEasyOldCreateHigh(0,47);
 }
 
-void homeEasyOldCreateStart(void) {
+static void homeEasyOldCreateStart(void) {
 	homeEasyOldCreateLow(0,3);
 }
 
-void homeEasyOldCreateSystemCode(int systemcode) {
+static void homeEasyOldCreateSystemCode(int systemcode) {
 	int binary[255];
 	int length = 0;
 	int i=0, x=0;
@@ -100,7 +100,7 @@ void homeEasyOldCreateSystemCode(int systemcode) {
 	}
 }
 
-void homeEasyOldCreateUnitCode(int unitcode) {
+static void homeEasyOldCreateUnitCode(int unitcode) {
 	int binary[255];
 	int length = 0;
 	int i=0, x=0;
@@ -114,24 +114,24 @@ void homeEasyOldCreateUnitCode(int unitcode) {
 	}
 }
 
-void homeEasyOldCreateAll(int all) {
+static void homeEasyOldCreateAll(int all) {
 	if(all == 1) {
 		homeEasyOldCreateHigh(36, 39);
 	}
 }
 
-void homeEasyOldCreateState(int state) {
+static void homeEasyOldCreateState(int state) {
 	if(state == 0) {
 		homeEasyOldCreateHigh(44, 47);
 	}
 }
 
-void homeEasyOldCreateFooter(void) {
+static void homeEasyOldCreateFooter(void) {
 	home_easy_old->raw[48]=(home_easy_old->plslen->length);
 	home_easy_old->raw[49]=(PULSE_DIV*home_easy_old->plslen->length);
 }
 
-int homeEasyOldCreateCode(JsonNode *code) {
+static int homeEasyOldCreateCode(JsonNode *code) {
 	int systemcode = -1;
 	int unitcode = -1;
 	int state = -1;
@@ -174,7 +174,7 @@ int homeEasyOldCreateCode(JsonNode *code) {
 	return EXIT_SUCCESS;
 }
 
-void homeEasyOldPrintHelp(void) {
+static void homeEasyOldPrintHelp(void) {
 	printf("\t -s --systemcode=systemcode\tcontrol a device with this systemcode\n");
 	printf("\t -u --unitcode=unitcode\t\tcontrol a device with this unitcode\n");
 	printf("\t -a --all\t\t\tsend command to all devices with this id\n");
@@ -182,6 +182,9 @@ void homeEasyOldPrintHelp(void) {
 	printf("\t -f --off\t\t\tsend an off signal\n");
 }
 
+#ifndef MODULE
+__attribute__((weak))
+#endif
 void homeEasyOldInit(void) {
 
 	protocol_register(&home_easy_old);
@@ -208,13 +211,15 @@ void homeEasyOldInit(void) {
 	home_easy_old->printHelp=&homeEasyOldPrintHelp;
 }
 
-#ifdef MODULAR
-void compatibility(const char **version, const char **commit) {
-	*version = "4.0";
-	*commit = "18";
+#ifdef MODULE
+static void compatibility(const char **name, const char **version, const char **reqversion, const char **reqcommit) {
+	*name = "home_easy_old";
+	*version = "1.0";
+	*reqversion = "4.0";
+	*reqcommit = "18";
 }
 
-void init(void) {
+static void init(void) {
 	homeEasyOldInit();
 }
 #endif

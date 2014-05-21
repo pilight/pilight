@@ -29,14 +29,14 @@
 #include "gc.h"
 #include "pilight_firmware_v3.h"
 
-void pilightFirmwareV3CreateMessage(int version, int high, int low) {
+static void pilightFirmwareV3CreateMessage(int version, int high, int low) {
 	pilight_firmware_v3->message = json_mkobject();
 	json_append_member(pilight_firmware_v3->message, "version", json_mknumber(version));
 	json_append_member(pilight_firmware_v3->message, "lpf", json_mknumber(high*10));
 	json_append_member(pilight_firmware_v3->message, "hpf", json_mknumber(low*10));
 }
 
-void pilightFirmwareV3ParseBinary(void) {
+static void pilightFirmwareV3ParseBinary(void) {
 	int version = binToDec(pilight_firmware_v3->binary, 0, 15);
 	int high = binToDec(pilight_firmware_v3->binary, 16, 31);
 	int low = binToDec(pilight_firmware_v3->binary, 32, 47);
@@ -60,6 +60,9 @@ void pilightFirmwareV3ParseBinary(void) {
 	}
 }
 
+#ifndef MODULE
+__attribute__((weak))
+#endif
 void pilightFirmwareV3Init(void) {
 
   protocol_register(&pilight_firmware_v3);
@@ -81,13 +84,15 @@ void pilightFirmwareV3Init(void) {
   pilight_firmware_v3->parseBinary=&pilightFirmwareV3ParseBinary;
 }
 
-#ifdef MODULAR
-void compatibility(const char **version, const char **commit) {
-	*version = "4.0";
-	*commit = "18";
+#ifdef MODULE
+static void compatibility(const char **name, const char **version, const char **reqversion, const char **reqcommit) {
+	*name = "pilight_firmware";
+	*version = "1.0";
+	*reqversion = "4.0";
+	*reqcommit = "18";
 }
 
-void init(void) {
+static void init(void) {
 	pilightFirmwareV3Init();
 }
 #endif

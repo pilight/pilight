@@ -20,11 +20,6 @@
 #define _PROTOCOL_GENDIMMER_H_
 
 struct protocol_t *generic_dimmer;
-
 void genDimInit(void);
-void genDimCreateMessage(int id, int state, int dimlevel);
-int genDimCheckSettings(JsonNode *code);
-int genDimCreateCode(JsonNode *code);
-void genDimPrintHelp(void);
 
 #endif

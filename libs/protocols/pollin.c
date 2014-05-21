@@ -30,7 +30,7 @@
 #include "gc.h"
 #include "pollin.h"
 
-void pollinCreateMessage(int systemcode, int unitcode, int state) {
+static void pollinCreateMessage(int systemcode, int unitcode, int state) {
 	pollin->message = json_mkobject();
 	json_append_member(pollin->message, "systemcode", json_mknumber(systemcode));
 	json_append_member(pollin->message, "unitcode", json_mknumber(unitcode));
@@ -41,14 +41,14 @@ void pollinCreateMessage(int systemcode, int unitcode, int state) {
 	}
 }
 
-void pollinParseBinary(void) {
+static void pollinParseBinary(void) {
 	int systemcode = binToDec(pollin->binary, 0, 4);
 	int unitcode = binToDec(pollin->binary, 5, 9);
 	int state = pollin->binary[11];
 	pollinCreateMessage(systemcode, unitcode, state);
 }
 
-void pollinCreateLow(int s, int e) {
+static void pollinCreateLow(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=4) {
@@ -59,7 +59,7 @@ void pollinCreateLow(int s, int e) {
 	}
 }
 
-void pollinCreateHigh(int s, int e) {
+static void pollinCreateHigh(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=4) {
@@ -69,11 +69,11 @@ void pollinCreateHigh(int s, int e) {
 		pollin->raw[i+3]=(pollin->pulse*pollin->plslen->length);
 	}
 }
-void pollinClearCode(void) {
+static void pollinClearCode(void) {
 	pollinCreateLow(0,47);
 }
 
-void pollinCreateSystemCode(int systemcode) {
+static void pollinCreateSystemCode(int systemcode) {
 	int binary[255];
 	int length = 0;
 	int i=0, x=0;
@@ -87,7 +87,7 @@ void pollinCreateSystemCode(int systemcode) {
 	}
 }
 
-void pollinCreateUnitCode(int unitcode) {
+static void pollinCreateUnitCode(int unitcode) {
 	int binary[255];
 	int length = 0;
 	int i=0, x=0;
@@ -101,18 +101,18 @@ void pollinCreateUnitCode(int unitcode) {
 	}
 }
 
-void pollinCreateState(int state) {
+static void pollinCreateState(int state) {
 	if(state == 1) {
 		pollinCreateHigh(44, 47);
 	}
 }
 
-void pollinCreateFooter(void) {
+static void pollinCreateFooter(void) {
 	pollin->raw[48]=(pollin->plslen->length);
 	pollin->raw[49]=(PULSE_DIV*pollin->plslen->length);
 }
 
-int pollinCreateCode(JsonNode *code) {
+static int pollinCreateCode(JsonNode *code) {
 	int systemcode = -1;
 	int unitcode = -1;
 	int state = -1;
@@ -147,13 +147,16 @@ int pollinCreateCode(JsonNode *code) {
 	return EXIT_SUCCESS;
 }
 
-void pollinPrintHelp(void) {
+static void pollinPrintHelp(void) {
 	printf("\t -s --systemcode=systemcode\tcontrol a device with this systemcode\n");
 	printf("\t -u --unitcode=unitcode\t\tcontrol a device with this unitcode\n");
 	printf("\t -t --on\t\t\tsend an on signal\n");
 	printf("\t -f --off\t\t\tsend an off signal\n");
 }
 
+#ifndef MODULE
+__attribute__((weak))
+#endif
 void pollinInit(void) {
 
 	protocol_register(&pollin);
@@ -179,13 +182,15 @@ void pollinInit(void) {
 	pollin->printHelp=&pollinPrintHelp;
 }
 
-#ifdef MODULAR
-void compatibility(const char **version, const char **commit) {
-	*version = "4.0";
-	*commit = "18";
+#ifdef MODULE
+static void compatibility(const char **name, const char **version, const char **reqversion, const char **reqcommit) {
+	*name = "pollin";
+	*version = "1.0";
+	*reqversion = "4.0";
+	*reqcommit = "18";
 }
 
-void init(void) {
+static void init(void) {
 	pollinInit();
 }
 #endif

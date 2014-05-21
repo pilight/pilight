@@ -32,9 +32,9 @@
 #include "gc.h"
 #include "wiringPi.h"
 
-char *relay_state = NULL;
+static char *relay_state = NULL;
 
-void relayCreateMessage(int gpio, int state) {
+static void relayCreateMessage(int gpio, int state) {
 	relay->message = json_mkobject();
 	json_append_member(relay->message, "gpio", json_mknumber(gpio));
 	if(state == 1)
@@ -43,7 +43,7 @@ void relayCreateMessage(int gpio, int state) {
 		json_append_member(relay->message, "state", json_mkstring("off"));
 }
 
-int relayCreateCode(JsonNode *code) {
+static int relayCreateCode(JsonNode *code) {
 	int gpio = -1;
 	int state = -1;
 	double itmp = -1;
@@ -112,13 +112,13 @@ clear:
 	}
 }
 
-void relayPrintHelp(void) {
+static void relayPrintHelp(void) {
 	printf("\t -t --on\t\t\tturn the relay on\n");
 	printf("\t -f --off\t\t\tturn the relay off\n");
 	printf("\t -g --gpio=gpio\t\t\tthe gpio the relay is connected to\n");
 }
 
-int relayCheckValues(JsonNode *code) {
+static int relayCheckValues(JsonNode *code) {
 	char *def = NULL;
 	int free_def = 0;
 
@@ -139,10 +139,13 @@ int relayCheckValues(JsonNode *code) {
 	return 0;
 }
 
-void relayGC(void) {
+static void relayGC(void) {
 	sfree((void *)&relay_state);
 }
 
+#ifndef MODULE
+__attribute__((weak))
+#endif
 void relayInit(void) {
 
 	protocol_register(&relay);
@@ -166,13 +169,15 @@ void relayInit(void) {
 	relay->gc=&relayGC;
 }
 
-#ifdef MODULAR
-void compatibility(const char **version, const char **commit) {
-	*version = "4.0";
-	*commit = "18";
+#ifdef MODULE
+static void compatibility(const char **name, const char **version, const char **reqversion, const char **reqcommit) {
+	*name = "relay";
+	*version = "1.0";
+	*reqversion = "4.0";
+	*reqcommit = "18";
 }
 
-void init(void) {
+static void init(void) {
 	relayInit();
 }
 #endif

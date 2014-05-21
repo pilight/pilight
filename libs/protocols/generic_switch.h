@@ -20,10 +20,6 @@
 #define _PROTOCOL_GENSWITCH_H_
 
 struct protocol_t *generic_switch;
-
 void genSwitchInit(void);
-void genSwitchCreateMessage(int id, int state);
-int genSwitchCreateCode(JsonNode *code);
-void genSwitchPrintHelp(void);
 
 #endif

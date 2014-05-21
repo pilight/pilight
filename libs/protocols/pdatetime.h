@@ -23,9 +23,6 @@
 #include "threads.h"
 
 struct protocol_t *pdatetime;
-
 void pdateTimeInit(void);
-int pdateTimeCheckValues(JsonNode *code);
-struct threadqueue_t *pdateTimeInitDev(JsonNode *jdevice);
 
 #endif

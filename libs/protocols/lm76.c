@@ -43,19 +43,19 @@
 #include "../pilight/wiringPiI2C.h"
 #endif
 
-unsigned short lm76_loop = 1;
-int lm76_threads = 0;
-
-pthread_mutex_t lm76lock;
-pthread_mutexattr_t lm76attr;
-
 typedef struct lm76data_t {
 	char **id;
 	int nrid;
 	int *fd;
 } lm76data_t;
 
-void *lm76Parse(void *param) {
+static unsigned short lm76_loop = 1;
+static int lm76_threads = 0;
+
+static pthread_mutex_t lm76lock;
+static pthread_mutexattr_t lm76attr;
+
+static void *lm76Parse(void *param) {
 	struct protocol_threads_t *node = (struct protocol_threads_t *)param;
 	struct JsonNode *json = (struct JsonNode *)node->param;
 	struct JsonNode *jid = NULL;
@@ -178,7 +178,7 @@ struct threadqueue_t *lm76InitDev(JsonNode *jdevice) {
 	return threads_register("lm76", &lm76Parse, (void *)node, 0);
 }
 
-void lm76ThreadGC(void) {
+static void lm76ThreadGC(void) {
 	lm76_loop = 0;
 	protocol_thread_stop(lm76);
 	while(lm76_threads > 0) {
@@ -187,6 +187,9 @@ void lm76ThreadGC(void) {
 	protocol_thread_free(lm76);
 }
 
+#ifndef MODULE
+__attribute__((weak))
+#endif
 void lm76Init(void) {
 	pthread_mutexattr_init(&lm76attr);
 	pthread_mutexattr_settype(&lm76attr, PTHREAD_MUTEX_RECURSIVE);
@@ -209,13 +212,15 @@ void lm76Init(void) {
 	lm76->threadGC=&lm76ThreadGC;
 }
 
-#ifdef MODULAR
-void compatibility(const char **version, const char **commit) {
-	*version = "4.0";
-	*commit = "18";
+#ifdef MODULE
+static void compatibility(const char **name, const char **version, const char **reqversion, const char **reqcommit) {
+	*name = "lm76";
+	*version = "1.0";
+	*reqversion = "4.0";
+	*reqcommit = "18";
 }
 
-void init(void) {
+static void init(void) {
 	lm76Init();
 }
 #endif

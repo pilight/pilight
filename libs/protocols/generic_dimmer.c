@@ -30,7 +30,7 @@
 #include "gc.h"
 #include "generic_dimmer.h"
 
-void genDimCreateMessage(int id, int state, int dimlevel) {
+static void genDimCreateMessage(int id, int state, int dimlevel) {
 	generic_dimmer->message = json_mkobject();
 	json_append_member(generic_dimmer->message, "id", json_mknumber(id));
 	if(dimlevel >= 0) {
@@ -44,7 +44,7 @@ void genDimCreateMessage(int id, int state, int dimlevel) {
 	}
 }
 
-int genDimcheckValues(JsonNode *code) {
+static int genDimcheckValues(JsonNode *code) {
 	int dimlevel = -1;
 	int max = 15;
 	int min = 0;
@@ -71,7 +71,7 @@ int genDimcheckValues(JsonNode *code) {
 	return 0;
 }
 
-int genDimCreateCode(JsonNode *code) {
+static int genDimCreateCode(JsonNode *code) {
 	int id = -1;
 	int state = -1;
 	int dimlevel = -1;
@@ -112,13 +112,16 @@ int genDimCreateCode(JsonNode *code) {
 
 }
 
-void genDimPrintHelp(void) {
+static void genDimPrintHelp(void) {
 	printf("\t -t --on\t\t\tsend an on signal\n");
 	printf("\t -f --off\t\t\tsend an off signal\n");
 	printf("\t -i --id=id\t\t\tcontrol a device with this id\n");
 	printf("\t -d --dimlevel=dimlevel\t\tsend a specific dimlevel\n");
 }
 
+#ifndef MODULE
+__attribute__((weak))
+#endif
 void genDimInit(void) {
 
 	protocol_register(&generic_dimmer);
@@ -140,13 +143,15 @@ void genDimInit(void) {
 	generic_dimmer->checkValues=&genDimcheckValues;
 }
 
-#ifdef MODULAR
-void compatibility(const char **version, const char **commit) {
-	*version = "4.0";
-	*commit = "18";
+#ifdef MODULE
+static void compatibility(const char **name, const char **version, const char **reqversion, const char **reqcommit) {
+	*name = "generic_dimmer";
+	*version = "1.0";
+	*reqversion = "4.0";
+	*reqcommit = "18";
 }
 
-void init(void) {
+static void init(void) {
 	genDimInit();
 }
 #endif

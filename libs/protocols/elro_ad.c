@@ -38,7 +38,7 @@
  * state : either 2 (off) or 1 (on)
  * group : if 1 this affects a whole group of devices
  */
-void elroADCreateMessage(unsigned long long systemcode, int unitcode, int state, int group) {
+static void elroADCreateMessage(unsigned long long systemcode, int unitcode, int state, int group) {
 	elro_ad->message = json_mkobject();
 	//aka address
 	json_append_member(elro_ad->message, "systemcode", json_mknumber((double)systemcode));
@@ -62,7 +62,7 @@ void elroADCreateMessage(unsigned long long systemcode, int unitcode, int state,
  * Decodes the received stream
  *
  */
-void elroADParseCode(void) {
+static void elroADParseCode(void) {
 	int i = 0;
 	//utilize the "code" field
 	//at this point the code field holds translated "0" and "1" codes from the received pulses
@@ -104,7 +104,7 @@ void elroADParseCode(void) {
  * s : start position in the raw code (inclusive)
  * e : end position in the raw code (inclusive)
  */
-void elroADCreateLow(int s, int e) {
+static void elroADCreateLow(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=2) {
@@ -119,7 +119,7 @@ void elroADCreateLow(int s, int e) {
  * s : start position in the raw code (inclusive)
  * e : end position in the raw code (inclusive)
  */
-void elroADCreateHigh(int s, int e) {
+static void elroADCreateHigh(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=2) {
@@ -131,7 +131,7 @@ void elroADCreateHigh(int s, int e) {
 /**
  * This simply clears the full length of the code to be all "zeroes" (LOW entries)
  */
-void elroADClearCode(void) {
+static void elroADClearCode(void) {
 	elroADCreateLow(0,116);
 }
 
@@ -141,7 +141,7 @@ void elroADClearCode(void) {
  *
  * systemcode : unsigned integer number, the 32 bit system code
  */
-void elroADCreateSystemCode(unsigned long long systemcode) {
+static void elroADCreateSystemCode(unsigned long long systemcode) {
 	int binary[255];
 	int length = 0;
 	int i=0, x=0;
@@ -159,7 +159,7 @@ void elroADCreateSystemCode(unsigned long long systemcode) {
  *
  * unitcode : integer number, id of the unit to control
  */
-void elroADCreateUnitCode(int unitcode) {
+static void elroADCreateUnitCode(int unitcode) {
 	int binary[255];
 	int length = 0;
 	int i=0, x=0;
@@ -178,7 +178,7 @@ void elroADCreateUnitCode(int unitcode) {
  *
  * state : integer number, state value to set. can be either 1 (on) or 2 (off)
  */
-void elroADCreateState(int state) {
+static void elroADCreateState(int state) {
 	if(state == 1) {
 		elroADCreateHigh(94, 95);
 		elroADCreateLow(96, 97);
@@ -195,7 +195,7 @@ void elroADCreateState(int state) {
  *
  * group : integer value, 1 means grouped enabled, 0 means disabled
  */
-void elroADCreateGroupCode(int group) {
+static void elroADCreateGroupCode(int group) {
     if(group == 1) {
 		elroADCreateHigh(86, 89);
 		elroADCreateLow(90, 93);
@@ -213,7 +213,7 @@ void elroADCreateGroupCode(int group) {
  * Inserts the (as far as is known) fixed message preamble
  * First eleven words are the preamble
  */
-void elroADCreatePreamble(void) {
+static void elroADCreatePreamble(void) {
 	elroADCreateHigh(0,3);
 	elroADCreateLow(4,9);
 	elroADCreateHigh(10,17);
@@ -223,7 +223,7 @@ void elroADCreatePreamble(void) {
 /**
  * Inserts the message trailer (one HIGH) into the raw message
  */
-void elroADCreateFooter(void) {
+static void elroADCreateFooter(void) {
 	elro_ad->raw[114]=(elro_ad->plslen->length);
 	elro_ad->raw[115]=(PULSE_DIV*elro_ad->plslen->length);
 }
@@ -235,7 +235,7 @@ void elroADCreateFooter(void) {
  *
  * returns : EXIT_SUCCESS or EXIT_FAILURE on obvious occasions
  */
-int elroADCreateCode(JsonNode *code) {
+static int elroADCreateCode(JsonNode *code) {
 	unsigned long long systemcode = 0;
 	int unitcode = -1;
 	int group = 0;
@@ -283,7 +283,7 @@ int elroADCreateCode(JsonNode *code) {
 /**
  * Outputs help messages directly to the current output target (probably the console)
  */
-void elroADPrintHelp(void) {
+static void elroADPrintHelp(void) {
 	printf("\t -s --systemcode=systemcode\tcontrol a device with this systemcode\n");
 	printf("\t -a --all\t\t\ttoggle switching all devices on or off\n");
 	printf("\t -u --unitcode=unitcode\t\tcontrol a device with this unitcode\n");
@@ -294,6 +294,9 @@ void elroADPrintHelp(void) {
 /**
  * Main Init method called to init the protocol and register its functions with pilight
  */
+#ifndef MODULE
+__attribute__((weak))
+#endif
 void elroADInit(void) {
 
 	protocol_register(&elro_ad);
@@ -319,13 +322,15 @@ void elroADInit(void) {
 	elro_ad->printHelp=&elroADPrintHelp;
 }
 
-#ifdef MODULAR
-void compatibility(const char **version, const char **commit) {
-	*version = "4.0";
-	*commit = "18";
+#ifdef MODULE
+static void compatibility(const char **name, const char **version, const char **reqversion, const char **reqcommit) {
+	*name = "elro_ad";
+	*version = "1.0";
+	*reqversion = "4.0";
+	*reqcommit = "18";
 }
 
-void init(void) {
+static void init(void) {
 	elroADInit();
 }
 #endif

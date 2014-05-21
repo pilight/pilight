@@ -20,14 +20,6 @@
 #define _PROTOCOL_REV3_H_
 
 struct protocol_t *rev3_switch;
-
 void rev3Init(void);
-void rev3CreateMessage(int id, int unit, int state);
-void rev3ParseBinary(void);
-int rev3CreateCode(JsonNode *code);
-void rev3CreateUnit(int unit);
-void rev3CreateId(int id);
-void rev3CreateState(int state);
-void rev3PrintHelp(void);
 
 #endif

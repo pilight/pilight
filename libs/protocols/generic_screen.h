@@ -20,10 +20,6 @@
 #define _PROTOCOL_GENSCREEN_H_
 
 struct protocol_t *generic_screen;
-
 void genScreenInit(void);
-void genScreenCreateMessage(int id, int state);
-int genScreenCreateCode(JsonNode *code);
-void genScreenPrintHelp(void);
 
 #endif

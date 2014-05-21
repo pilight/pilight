@@ -20,17 +20,6 @@
 #define _PROTOCOL_SELECTREMOTE_H_
 
 struct protocol_t *selectremote;
-
 void selectremoteInit(void);
-void selectremoteCreateMessage(int id, int state);
-void selectremoteParseCode(void);
-int selectremoteCreateCode(JsonNode *code);
-void selectremoteCreateLow(int s, int e);
-void selectremoteCreateHigh(int s, int e);
-void selectremoteClearCode(void);
-void selectremoteCreateId(int id);
-void selectremoteCreateState(int state);
-void selectremoteCreateFooter(void);
-void selectremotePrintHelp(void);
 
 #endif

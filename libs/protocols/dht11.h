@@ -23,8 +23,6 @@
 #include "threads.h"
 
 struct protocol_t *dht11;
-
 void dht11Init(void);
-struct threadqueue_t *dht11InitDev(JsonNode *jdevice);
 
 #endif

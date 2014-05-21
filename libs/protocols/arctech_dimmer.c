@@ -30,7 +30,7 @@
 #include "gc.h"
 #include "arctech_dimmer.h"
 
-void arctechDimCreateMessage(int id, int unit, int state, int all, int dimlevel) {
+static void arctechDimCreateMessage(int id, int unit, int state, int all, int dimlevel) {
 	arctech_dimmer->message = json_mkobject();
 	json_append_member(arctech_dimmer->message, "id", json_mknumber(id));
 	if(all == 1) {
@@ -49,7 +49,7 @@ void arctechDimCreateMessage(int id, int unit, int state, int all, int dimlevel)
 	}
 }
 
-void arctechDimParseBinary(void) {
+static void arctechDimParseBinary(void) {
 	int dimlevel = binToDecRev(arctech_dimmer->binary, 32, 35);
 	int unit = binToDecRev(arctech_dimmer->binary, 28, 31);
 	int state = arctech_dimmer->binary[27];
@@ -59,7 +59,7 @@ void arctechDimParseBinary(void) {
 	arctechDimCreateMessage(id, unit, state, all, dimlevel);
 }
 
-void arctechDimCreateLow(int s, int e) {
+static void arctechDimCreateLow(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=4) {
@@ -70,7 +70,7 @@ void arctechDimCreateLow(int s, int e) {
 	}
 }
 
-void arctechDimCreateHigh(int s, int e) {
+static void arctechDimCreateHigh(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=4) {
@@ -81,16 +81,16 @@ void arctechDimCreateHigh(int s, int e) {
 	}
 }
 
-void arctechDimClearCode(void) {
+static void arctechDimClearCode(void) {
 	arctechDimCreateLow(2,147);
 }
 
-void arctechDimCreateStart(void) {
+static void arctechDimCreateStart(void) {
 	arctech_dimmer->raw[0]=arctech_dimmer->plslen->length;
 	arctech_dimmer->raw[1]=(10*arctech_dimmer->plslen->length);
 }
 
-void arctechDimCreateId(int id) {
+static void arctechDimCreateId(int id) {
 	int binary[255];
 	int length = 0;
 	int i=0, x=0;
@@ -104,13 +104,13 @@ void arctechDimCreateId(int id) {
 	}
 }
 
-void arctechDimCreateAll(int all) {
+static void arctechDimCreateAll(int all) {
 	if(all == 1) {
 		arctechDimCreateHigh(106, 109);
 	}
 }
 
-void arctechDimCreateState(int state) {
+static void arctechDimCreateState(int state) {
 	if(state == 1) {
 		arctechDimCreateHigh(110, 113);
 	} else if(state == -1) {
@@ -121,7 +121,7 @@ void arctechDimCreateState(int state) {
 	}
 }
 
-void arctechDimCreateUnit(int unit) {
+static void arctechDimCreateUnit(int unit) {
 	int binary[255];
 	int length = 0;
 	int i=0, x=0;
@@ -135,7 +135,7 @@ void arctechDimCreateUnit(int unit) {
 	}
 }
 
-void arctechDimCreateDimlevel(int dimlevel) {
+static void arctechDimCreateDimlevel(int dimlevel) {
 	int binary[255];
 	int length = 0;
 	int i=0, x=0;
@@ -149,11 +149,11 @@ void arctechDimCreateDimlevel(int dimlevel) {
 	}
 }
 
-void arctechDimCreateFooter(void) {
+static void arctechDimCreateFooter(void) {
 	arctech_dimmer->raw[147]=(PULSE_DIV*arctech_dimmer->plslen->length);
 }
 
-int arctechDimCheckValues(JsonNode *code) {
+static int arctechDimCheckValues(JsonNode *code) {
 	int dimlevel = -1;
 	int max = 15;
 	int min = 0;
@@ -180,7 +180,7 @@ int arctechDimCheckValues(JsonNode *code) {
 	return 0;
 }
 
-int arctechDimCreateCode(JsonNode *code) {
+static int arctechDimCreateCode(JsonNode *code) {
 	int id = -1;
 	int unit = -1;
 	int state = -1;
@@ -246,13 +246,16 @@ int arctechDimCreateCode(JsonNode *code) {
 	return EXIT_SUCCESS;
 }
 
-void arctechDimPrintHelp(void) {
+static void arctechDimPrintHelp(void) {
 	printf("\t -u --unit=unit\t\t\tcontrol a device with this unit code\n");
 	printf("\t -i --id=id\t\t\tcontrol a device with this id\n");
 	printf("\t -a --all\t\t\tsend command to all devices with this id\n");
 	printf("\t -d --dimlevel=dimlevel\t\tsend a specific dimlevel\n");
 }
 
+#ifndef MODULE
+__attribute__((weak))
+#endif
 void arctechDimInit(void) {
 
 	protocol_register(&arctech_dimmer);
@@ -282,13 +285,15 @@ void arctechDimInit(void) {
 	arctech_dimmer->checkValues=&arctechDimCheckValues;
 }
 
-#ifdef MODULAR
-void compatibility(const char **version, const char **commit) {
-	*version = "4.0";
-	*commit = "18";
+#ifdef MODULE
+static void compatibility(const char **name, const char **version, const char **reqversion, const char **reqcommit) {
+	*name = "arctech_dimmer";
+	*version = "1.0";
+	*reqversion = "4.0";
+	*reqcommit = "18";
 }
 
-void init(void) {
+static void init(void) {
 	arctechDimInit();
 }
 #endif

@@ -40,11 +40,11 @@
 #include "gc.h"
 #include "program.h"
 
-unsigned short program_loop = 1;
-unsigned short program_threads = 0;
+static unsigned short program_loop = 1;
+static unsigned short program_threads = 0;
 
-pthread_mutex_t programlock;
-pthread_mutexattr_t programattr;
+static pthread_mutex_t programlock;
+static pthread_mutexattr_t programattr;
 
 typedef struct programs_t {
 	char *name;
@@ -60,9 +60,9 @@ typedef struct programs_t {
 	struct programs_t *next;
 } programs_t;
 
-struct programs_t *programs = NULL;
+static struct programs_t *programs = NULL;
 
-void *programParse(void *param) {
+static void *programParse(void *param) {
 	struct protocol_threads_t *pnode = (struct protocol_threads_t *)param;
 	struct JsonNode *json = (struct JsonNode *)pnode->param;
 	struct JsonNode *jid = NULL;
@@ -207,7 +207,7 @@ struct threadqueue_t *programInitDev(JsonNode *jdevice) {
 	return threads_register("program", &programParse, (void *)node, 0);
 }
 
-void *programThread(void *param) {
+static void *programThread(void *param) {
 	struct programs_t *p = (struct programs_t *)param;
 	int pid = 0;
 	int result = 0;
@@ -238,7 +238,7 @@ void *programThread(void *param) {
 	return NULL;
 }
 
-int programCreateCode(JsonNode *code) {
+static int programCreateCode(JsonNode *code) {
 	char *name = NULL;
 	double itmp = -1;
 	int state = -1;
@@ -319,7 +319,7 @@ int programCreateCode(JsonNode *code) {
 	return EXIT_SUCCESS;
 }
 
-void programThreadGC(void) {
+static void programThreadGC(void) {
 	program_loop = 0;
 	protocol_thread_stop(program);
 	while(program_threads > 0) {
@@ -342,12 +342,15 @@ void programThreadGC(void) {
 	sfree((void *)&programs);
 }
 
-void programPrintHelp(void) {
+static void programPrintHelp(void) {
 	printf("\t -t --running\t\t\tstart the program\n");
 	printf("\t -f --stopped\t\t\tstop the program\n");
 	printf("\t -n --name=name\t\t\tname of the program\n");
 }
 
+#ifndef MODULE
+__attribute__((weak))
+#endif
 void programInit(void) {
 	pthread_mutexattr_init(&programattr);
 	pthread_mutexattr_settype(&programattr, PTHREAD_MUTEX_RECURSIVE);
@@ -379,13 +382,15 @@ void programInit(void) {
 	program->threadGC=&programThreadGC;
 }
 
-#ifdef MODULAR
-void compatibility(const char **version, const char **commit) {
-	*version = "4.0";
-	*commit = "18";
+#ifdef MODULE
+static void compatibility(const char **name, const char **version, const char **reqversion, const char **reqcommit) {
+	*name = "program";
+	*version = "1.0";
+	*reqversion = "4.0";
+	*reqcommit = "18";
 }
 
-void init(void) {
+static void init(void) {
 	programInit();
 }
 #endif

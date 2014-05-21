@@ -20,18 +20,6 @@
 #define _PROTOCOL_EHOME_H_
 
 struct protocol_t *ehome;
-
 void ehomeInit(void);
-void ehomeCreateMessage(int id, int state);
-void ehomeParseCode(void);
-int ehomeCreateCode(JsonNode *code);
-void ehomeCreateLow(int s, int e);
-void ehomeCreateMed(int s, int e);
-void ehomeCreateHigh(int s, int e);
-void ehomeClearCode(void);
-void ehomeCreateId(int id);
-void ehomeCreateState(int state);
-void ehomeCreateFooter(void);
-void ehomePrintHelp(void);
 
 #endif

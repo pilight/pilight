@@ -23,8 +23,6 @@
 #include "threads.h"
 
 struct protocol_t *lirc;
-
 void lircInit(void);
-struct threadqueue_t *lircInitDev(JsonNode *jdevice);
 
 #endif

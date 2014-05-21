@@ -42,11 +42,11 @@
 
 #define MAXTIMINGS 100
 
-unsigned short dht22_loop = 1;
-unsigned short dht22_threads = 0;
+static unsigned short dht22_loop = 1;
+static unsigned short dht22_threads = 0;
 
-pthread_mutex_t dht22lock;
-pthread_mutexattr_t dht22attr;
+static pthread_mutex_t dht22lock;
+static pthread_mutexattr_t dht22attr;
 
 static uint8_t sizecvt(const int read_value) {
 	/* digitalRead() and friends from wiringpi are defined as returning a value
@@ -58,7 +58,7 @@ static uint8_t sizecvt(const int read_value) {
 	return (uint8_t)read_value;
 }
 
-void *dht22Parse(void *param) {
+static void *dht22Parse(void *param) {
 	struct protocol_threads_t *node = (struct protocol_threads_t *)param;
 	struct JsonNode *json = (struct JsonNode *)node->param;
 	struct JsonNode *jid = NULL;
@@ -182,7 +182,7 @@ void *dht22Parse(void *param) {
 	return (void *)NULL;
 }
 
-struct threadqueue_t *dht22InitDev(JsonNode *jdevice) {
+static struct threadqueue_t *dht22InitDev(JsonNode *jdevice) {
 	dht22_loop = 1;
 	wiringPiSetup();
 	char *output = json_stringify(jdevice, NULL);
@@ -193,7 +193,7 @@ struct threadqueue_t *dht22InitDev(JsonNode *jdevice) {
 	return threads_register("dht22", &dht22Parse, (void *)node, 0);
 }
 
-void dht22ThreadGC(void) {
+static void dht22ThreadGC(void) {
 	dht22_loop = 0;
 	protocol_thread_stop(dht22);
 	while(dht22_threads > 0) {
@@ -202,6 +202,9 @@ void dht22ThreadGC(void) {
 	protocol_thread_free(dht22);
 }
 
+#ifndef MODULE
+__attribute__((weak))
+#endif
 void dht22Init(void) {
 	pthread_mutexattr_init(&dht22attr);
 	pthread_mutexattr_settype(&dht22attr, PTHREAD_MUTEX_RECURSIVE);
@@ -230,13 +233,15 @@ void dht22Init(void) {
 	dht22->threadGC=&dht22ThreadGC;
 }
 
-#ifdef MODULAR
-void compatibility(const char **version, const char **commit) {
-	*version = "4.0";
-	*commit = "18";
+#ifdef MODULE
+static void compatibility(const char **name, const char **version, const char **reqversion, const char **reqcommit) {
+	*name = "dht22";
+	*version = "1.0";
+	*reqversion = "4.0";
+	*reqcommit = "18";
 }
 
-void init(void) {
+static void init(void) {
 	dht22Init();
 }
 #endif

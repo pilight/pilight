@@ -30,7 +30,7 @@
 #include "gc.h"
 #include "mumbi.h"
 
-void mumbiCreateMessage(int systemcode, int unitcode, int state) {
+static void mumbiCreateMessage(int systemcode, int unitcode, int state) {
 	mumbi->message = json_mkobject();
 	json_append_member(mumbi->message, "systemcode", json_mknumber(systemcode));
 	json_append_member(mumbi->message, "unitcode", json_mknumber(unitcode));
@@ -41,7 +41,7 @@ void mumbiCreateMessage(int systemcode, int unitcode, int state) {
 	}
 }
 
-void mumbiParseBinary(void) {
+static void mumbiParseBinary(void) {
 	int systemcode = binToDec(mumbi->binary, 0, 4);
 	int unitcode = binToDec(mumbi->binary, 5, 9);
 	int state = mumbi->binary[11];
@@ -50,7 +50,7 @@ void mumbiParseBinary(void) {
 	}
 }
 
-void mumbiCreateLow(int s, int e) {
+static void mumbiCreateLow(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=4) {
@@ -61,7 +61,7 @@ void mumbiCreateLow(int s, int e) {
 	}
 }
 
-void mumbiCreateHigh(int s, int e) {
+static void mumbiCreateHigh(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=4) {
@@ -71,11 +71,11 @@ void mumbiCreateHigh(int s, int e) {
 		mumbi->raw[i+3]=(mumbi->pulse*mumbi->plslen->length);
 	}
 }
-void mumbiClearCode(void) {
+static void mumbiClearCode(void) {
 	mumbiCreateLow(0,47);
 }
 
-void mumbiCreateSystemCode(int systemcode) {
+static void mumbiCreateSystemCode(int systemcode) {
 	int binary[255];
 	int length = 0;
 	int i=0, x=0;
@@ -89,7 +89,7 @@ void mumbiCreateSystemCode(int systemcode) {
 	}
 }
 
-void mumbiCreateUnitCode(int unitcode) {
+static void mumbiCreateUnitCode(int unitcode) {
 	int binary[255];
 	int length = 0;
 	int i=0, x=0;
@@ -103,7 +103,7 @@ void mumbiCreateUnitCode(int unitcode) {
 	}
 }
 
-void mumbiCreateState(int state) {
+static void mumbiCreateState(int state) {
 	if(state == 0) {
 		mumbiCreateHigh(44, 47);
 	} else {
@@ -111,12 +111,12 @@ void mumbiCreateState(int state) {
 	}
 }
 
-void mumbiCreateFooter(void) {
+static void mumbiCreateFooter(void) {
 	mumbi->raw[48]=(mumbi->plslen->length);
 	mumbi->raw[49]=(PULSE_DIV*mumbi->plslen->length);
 }
 
-int mumbiCreateCode(JsonNode *code) {
+static int mumbiCreateCode(JsonNode *code) {
 	int systemcode = -1;
 	int unitcode = -1;
 	int state = -1;
@@ -151,13 +151,16 @@ int mumbiCreateCode(JsonNode *code) {
 	return EXIT_SUCCESS;
 }
 
-void mumbiPrintHelp(void) {
+static void mumbiPrintHelp(void) {
 	printf("\t -s --systemcode=systemcode\tcontrol a device with this systemcode\n");
 	printf("\t -u --unitcode=unitcode\t\tcontrol a device with this unitcode\n");
 	printf("\t -t --on\t\t\tsend an on signal\n");
 	printf("\t -f --off\t\t\tsend an off signal\n");
 }
 
+#ifndef MODULE
+__attribute__((weak))
+#endif
 void mumbiInit(void) {
 
 	protocol_register(&mumbi);
@@ -183,13 +186,15 @@ void mumbiInit(void) {
 	mumbi->printHelp=&mumbiPrintHelp;
 }
 
-#ifdef MODULAR
-void compatibility(const char **version, const char **commit) {
-	*version = "4.0";
-	*commit = "18";
+#ifdef MODULE
+static void compatibility(const char **name, const char **version, const char **reqversion, const char **reqcommit) {
+	*name = "mumbi";
+	*version = "0.1";
+	*reqversion = "4.0";
+	*reqcommit = "18";
 }
 
-void init(void) {
+static void init(void) {
 	mumbiInit();
 }
 #endif

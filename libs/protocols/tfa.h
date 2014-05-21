@@ -20,8 +20,6 @@
 #define _PROTOCOL_TFA_H_
 
 struct protocol_t *tfa;
-
-void tfaParseCode(void);
 void tfaInit(void);
 
 #endif

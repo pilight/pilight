@@ -23,9 +23,6 @@
 #include "threads.h"
 
 struct protocol_t *openweathermap;
-
 void openweathermapInit(void);
-int openweathermapCheckValues(JsonNode *code);
-struct threadqueue_t *openweathermapInitDev(JsonNode *jdevice);
 
 #endif

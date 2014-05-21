@@ -20,22 +20,6 @@
 #define _PROTOCOL_ARCTECH_DIMMER_H_
 
 struct protocol_t *arctech_dimmer;
-
 void arctechDimInit(void);
-void arctechDimCreateMessage(int id, int unit, int state, int all, int dimlevel);
-void arctechDimParseBinary(void);
-int arctechDimCheckSettings(JsonNode *code);
-int arctechDimCreateCode(JsonNode *code);
-void arctechDimCreateLow(int s, int e);
-void arctechDimCreateHigh(int s, int e);
-void arctechDimClearCode(void);
-void arctechDimCreateStart(void);
-void arctechDimCreateId(int id);
-void arctechDimCreateAll(int all);
-void arctechDimCreateState(int state);
-void arctechDimCreateUnit(int unit);
-void arctechDimCreateDimlevel(int dimlevel);
-void arctechDimCreateFooter(void);
-void arctechDimPrintHelp(void);
 
 #endif

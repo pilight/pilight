@@ -49,14 +49,14 @@ typedef struct wunderground_data_t {
 	struct wunderground_data_t *next;
 } wunderground_data_t;
 
-pthread_mutex_t wundergroundlock;
-pthread_mutexattr_t wundergroundattr;
+static pthread_mutex_t wundergroundlock;
+static pthread_mutexattr_t wundergroundattr;
 
-struct wunderground_data_t *wunderground_data;
-unsigned short wunderground_loop = 1;
-unsigned short wunderground_threads = 0;
+static struct wunderground_data_t *wunderground_data;
+static unsigned short wunderground_loop = 1;
+static unsigned short wunderground_threads = 0;
 
-void *wundergroundParse(void *param) {
+static void *wundergroundParse(void *param) {
 	struct protocol_threads_t *thread = (struct protocol_threads_t *)param;
 	struct JsonNode *json = (struct JsonNode *)thread->param;
 	struct JsonNode *jid = NULL;
@@ -328,7 +328,7 @@ void *wundergroundParse(void *param) {
 	return (void *)NULL;
 }
 
-struct threadqueue_t *wundergroundInitDev(JsonNode *jdevice) {
+static struct threadqueue_t *wundergroundInitDev(JsonNode *jdevice) {
 	wunderground_loop = 1;
 	char *output = json_stringify(jdevice, NULL);
 	JsonNode *json = json_decode(output);
@@ -338,7 +338,7 @@ struct threadqueue_t *wundergroundInitDev(JsonNode *jdevice) {
 	return threads_register("wunderground", &wundergroundParse, (void *)node, 0);
 }
 
-int wundergroundCheckValues(JsonNode *code) {
+static int wundergroundCheckValues(JsonNode *code) {
 	double interval = 900;
 
 	json_find_number(code, "poll-interval", &interval);
@@ -350,7 +350,7 @@ int wundergroundCheckValues(JsonNode *code) {
 	return 0;
 }
 
-int wundergroundCreateCode(JsonNode *code) {
+static int wundergroundCreateCode(JsonNode *code) {
 	struct wunderground_data_t *wtmp = wunderground_data;
 	char *country = NULL;
 	char *location = NULL;
@@ -387,7 +387,7 @@ int wundergroundCreateCode(JsonNode *code) {
 	return EXIT_SUCCESS;
 }
 
-void wundergroundThreadGC(void) {
+static void wundergroundThreadGC(void) {
 	wunderground_loop = 0;
 	protocol_thread_stop(wunderground);
 	while(wunderground_threads > 0) {
@@ -396,13 +396,16 @@ void wundergroundThreadGC(void) {
 	protocol_thread_free(wunderground);
 }
 
-void wundergroundPrintHelp(void) {
+static void wundergroundPrintHelp(void) {
 	printf("\t -c --country=country\t\tupdate an entry with this country\n");
 	printf("\t -l --location=location\t\tupdate an entry with this location\n");
 	printf("\t -a --api=api\t\t\tupdate an entry with this api code\n");
 	printf("\t -u --update\t\t\tupdate the defined weather entry\n");
 }
 
+#ifndef MODULE
+__attribute__((weak))
+#endif
 void wundergroundInit(void) {
 	pthread_mutexattr_init(&wundergroundattr);
 	pthread_mutexattr_settype(&wundergroundattr, PTHREAD_MUTEX_RECURSIVE);
@@ -441,13 +444,15 @@ void wundergroundInit(void) {
 	wunderground->printHelp=&wundergroundPrintHelp;
 }
 
-#ifdef MODULAR
-void compatibility(const char **version, const char **commit) {
-	*version = "4.0";
-	*commit = "18";
+#ifdef MODULE
+static void compatibility(const char **name, const char **version, const char **reqversion, const char **reqcommit) {
+	*name = "wunderground";
+	*version = "1.0";
+	*reqversion = "4.0";
+	*reqcommit = "18";
 }
 
-void init(void) {
+static void init(void) {
 	wundergroundInit();
 }
 #endif

@@ -30,9 +30,9 @@
 #include "gc.h"
 #include "conrad_rsl_switch.h"
 
-int conradRSLCodes[5][4][2];
+static int conradRSLCodes[5][4][2];
 
-void conradRSLSwCreateMessage(int id, int unit, int state) {
+static void conradRSLSwCreateMessage(int id, int unit, int state) {
 	conrad_rsl_switch->message = json_mkobject();
 
 	if(id == 4) {
@@ -48,7 +48,7 @@ void conradRSLSwCreateMessage(int id, int unit, int state) {
 	}
 }
 
-void conradRSLSwParseCode(void) {
+static void conradRSLSwParseCode(void) {
 	int x = 0;
 	int id = 0, unit = 0, state = 0;
 
@@ -84,7 +84,7 @@ void conradRSLSwParseCode(void) {
 	conradRSLSwCreateMessage(id, unit, state);
 }
 
-void conradRSLSwCreateLow(int s, int e) {
+static void conradRSLSwCreateLow(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=2) {
@@ -93,7 +93,7 @@ void conradRSLSwCreateLow(int s, int e) {
 	}
 }
 
-void conradRSLSwCreateHigh(int s, int e) {
+static void conradRSLSwCreateHigh(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=2) {
@@ -102,7 +102,7 @@ void conradRSLSwCreateHigh(int s, int e) {
 	}
 }
 
-void conradRSLSwClearCode(void) {
+static void conradRSLSwClearCode(void) {
 	int i = 0, x = 0;
 	conradRSLSwCreateLow(0,65);
 	for(i=0;i<65;i+=2) {
@@ -111,7 +111,7 @@ void conradRSLSwClearCode(void) {
 	}
 }
 
-void conradRSLSwCreateId(int id, int unit, int state) {
+static void conradRSLSwCreateId(int id, int unit, int state) {
 	int binary[255];
 	int length = 0;
 	int i=0, x=0;
@@ -129,12 +129,12 @@ void conradRSLSwCreateId(int id, int unit, int state) {
 	}
 }
 
-void conradRSLSwCreateFooter(void) {
+static void conradRSLSwCreateFooter(void) {
 	conrad_rsl_switch->raw[64]=(conrad_rsl_switch->plslen->length);
 	conrad_rsl_switch->raw[65]=(PULSE_DIV*conrad_rsl_switch->plslen->length);
 }
 
-int conradRSLSwCreateCode(JsonNode *code) {
+static int conradRSLSwCreateCode(JsonNode *code) {
 	int id = -1;
 	int state = -1;
 	int unit = -1;
@@ -175,7 +175,7 @@ int conradRSLSwCreateCode(JsonNode *code) {
 	return EXIT_SUCCESS;
 }
 
-void conradRSLSwPrintHelp(void) {
+static void conradRSLSwPrintHelp(void) {
 	printf("\t -i --id=id\tcontrol a device with this id\n");
 	printf("\t -i --unit=unit\tcontrol a device with this unit\n");
 	printf("\t -t --on\t\t\tsend an on signal\n");
@@ -183,6 +183,9 @@ void conradRSLSwPrintHelp(void) {
 	printf("\t -a --all\t\t\tsend an all signal\n");
 }
 
+#ifndef MODULE
+__attribute__((weak))
+#endif
 void conradRSLSwInit(void) {
 
 	memset(conradRSLCodes, 0, 33);
@@ -249,13 +252,15 @@ void conradRSLSwInit(void) {
 	conrad_rsl_switch->printHelp=&conradRSLSwPrintHelp;
 }
 
-#ifdef MODULAR
-void compatibility(const char **version, const char **commit) {
-	*version = "4.0";
-	*commit = "18";
+#ifdef MODULE
+static void compatibility(const char **name, const char **version, const char **reqversion, const char **reqcommit) {
+	*name = "conrad_rsl_switch";
+	*version = "0.3";
+	*reqversion = "4.0";
+	*reqcommit = "18";
 }
 
-void init(void) {
+static void init(void) {
 	conradRSLSwInit();
 }
 #endif

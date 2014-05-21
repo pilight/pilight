@@ -23,9 +23,6 @@
 #include "threads.h"
 
 struct protocol_t *sunriseset;
-
 void sunRiseSetInit(void);
-int sunRiseSetCheckValues(JsonNode *code);
-struct threadqueue_t *sunRiseSetInitDev(JsonNode *jdevice);
 
 #endif

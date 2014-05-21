@@ -30,7 +30,7 @@
 #include "gc.h"
 #include "generic_switch.h"
 
-void genSwitchCreateMessage(int id, int state) {
+static void genSwitchCreateMessage(int id, int state) {
 	generic_switch->message = json_mkobject();
 	json_append_member(generic_switch->message, "id", json_mknumber(id));
 	if(state == 1) {
@@ -40,7 +40,7 @@ void genSwitchCreateMessage(int id, int state) {
 	}
 }
 
-int genSwitchCreateCode(JsonNode *code) {
+static int genSwitchCreateCode(JsonNode *code) {
 	int id = -1;
 	int state = -1;
 	double itmp = 0;
@@ -63,12 +63,15 @@ int genSwitchCreateCode(JsonNode *code) {
 
 }
 
-void genSwitchPrintHelp(void) {
+static void genSwitchPrintHelp(void) {
 	printf("\t -t --on\t\t\tsend an on signal\n");
 	printf("\t -f --off\t\t\tsend an off signal\n");
 	printf("\t -i --id=id\t\t\tcontrol a device with this id\n");
 }
 
+#ifndef MODULE
+__attribute__((weak))
+#endif
 void genSwitchInit(void) {
 
 	protocol_register(&generic_switch);
@@ -86,13 +89,15 @@ void genSwitchInit(void) {
 	generic_switch->createCode=&genSwitchCreateCode;
 }
 
-#ifdef MODULAR
-void compatibility(const char **version, const char **commit) {
-	*version = "4.0";
-	*commit = "18";
+#ifdef MODULE
+static void compatibility(const char **name, const char **version, const char **reqversion, const char **reqcommit) {
+	*name = "generic_switch";
+	*version = "1.0";
+	*reqversion = "4.0";
+	*reqcommit = "18";
 }
 
-void init(void) {
+static void init(void) {
 	genSwitchInit();
 }
 #endif

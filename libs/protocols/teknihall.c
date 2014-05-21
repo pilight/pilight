@@ -30,16 +30,16 @@
 #include "gc.h"
 #include "teknihall.h"
 
-struct teknihall_settings_t {
+typedef struct teknihall_settings_t {
 	double id;
 	double temp;
 	double humi;
 	struct teknihall_settings_t *next;
 } teknihall_settings_t;
 
-struct teknihall_settings_t *teknihall_settings = NULL;
+static struct teknihall_settings_t *teknihall_settings = NULL;
 
-void teknihallParseCode(void) {
+static void teknihallParseCode(void) {
 	int i = 0, x = 0;
 	int temperature = 0, id = 0, humidity = 0, battery = 0;
 	int humi_offset = 0, temp_offset = 0;
@@ -73,7 +73,7 @@ void teknihallParseCode(void) {
 	json_append_member(teknihall->message, "battery", json_mknumber(battery));
 }
 
-int teknihallCheckValues(struct JsonNode *jvalues) {
+static int teknihallCheckValues(struct JsonNode *jvalues) {
 	struct JsonNode *jid = NULL;
 
 	if((jid = json_find_member(jvalues, "id"))) {
@@ -121,7 +121,7 @@ int teknihallCheckValues(struct JsonNode *jvalues) {
 	return 0;
 }
 
-void teknihallGC(void) {
+static void teknihallGC(void) {
 	struct teknihall_settings_t *tmp = NULL;
 	while(teknihall_settings) {
 		tmp = teknihall_settings;
@@ -131,6 +131,9 @@ void teknihallGC(void) {
 	sfree((void *)&teknihall_settings);
 }
 
+#ifndef MODULE
+__attribute__((weak))
+#endif
 void teknihallInit(void) {
 
 	protocol_register(&teknihall);
@@ -160,13 +163,15 @@ void teknihallInit(void) {
 	teknihall->gc=&teknihallGC;
 }
 
-#ifdef MODULAR
-void compatibility(const char **version, const char **commit) {
-	*version = "4.0";
-	*commit = "18";
+#ifdef MODULE
+static void compatibility(const char **name, const char **version, const char **reqversion, const char **reqcommit) {
+	*name = "teknihall";
+	*version = "1.0";
+	*reqversion = "4.0";
+	*reqcommit = "18";
 }
 
-void init(void) {
+static void init(void) {
 	teknihallInit();
 }
 #endif

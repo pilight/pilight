@@ -30,7 +30,7 @@
 #include "gc.h"
 #include "rev_v3.h"
 
-void rev3CreateMessage(int id, int unit, int state) {
+static void rev3CreateMessage(int id, int unit, int state) {
     rev3_switch->message = json_mkobject();
     json_append_member(rev3_switch->message, "id", json_mknumber(id));
     json_append_member(rev3_switch->message, "unit", json_mknumber(unit));
@@ -41,7 +41,7 @@ void rev3CreateMessage(int id, int unit, int state) {
 	}
 }
 
-void rev3ParseBinary(void) {
+static void rev3ParseBinary(void) {
 	int x = 0;
 
 	/* Convert the one's and zero's into binary */
@@ -60,7 +60,7 @@ void rev3ParseBinary(void) {
 	rev3CreateMessage(id, unit, state);
 }
 
-void rev3CreateLow(int s, int e) {
+static void rev3CreateLow(int s, int e) {
     int i;
 
     for(i=s;i<=e;i+=4) {
@@ -70,7 +70,7 @@ void rev3CreateLow(int s, int e) {
         rev3_switch->raw[i+3]=(rev3_switch->plslen->length);
     }
 }
-void rev3CreateHigh(int s, int e) {
+static void rev3CreateHigh(int s, int e) {
     int i;
 
     for(i=s;i<=e;i+=4) {
@@ -81,12 +81,12 @@ void rev3CreateHigh(int s, int e) {
     }
 }
 
-void rev3ClearCode(void) {
+static void rev3ClearCode(void) {
     rev3CreateHigh(0,3);
     rev3CreateLow(4,47);
 }
 
-void rev3CreateUnit(int unit) {
+static void rev3CreateUnit(int unit) {
     int binary[255];
     int length = 0;
     int i=0, x=0;
@@ -100,7 +100,7 @@ void rev3CreateUnit(int unit) {
     }
 }
 
-void rev3CreateId(int id) {
+static void rev3CreateId(int id) {
     int binary[255];
     int length = 0;
     int i=0, x=0;
@@ -114,7 +114,7 @@ void rev3CreateId(int id) {
     }
 }
 
-void rev3CreateState(int state) {
+static void rev3CreateState(int state) {
     if(state == 0) {
         rev3CreateHigh(40,43);
         rev3CreateLow(44,47);
@@ -124,12 +124,12 @@ void rev3CreateState(int state) {
     }
 }
 
-void rev3CreateFooter(void) {
+static void rev3CreateFooter(void) {
     rev3_switch->raw[48]=(rev3_switch->plslen->length);
     rev3_switch->raw[49]=(PULSE_DIV*rev3_switch->plslen->length);
 }
 
-int rev3CreateCode(JsonNode *code) {
+static int rev3CreateCode(JsonNode *code) {
     int id = -1;
     int unit = -1;
     int state = -1;
@@ -166,17 +166,20 @@ int rev3CreateCode(JsonNode *code) {
     return EXIT_SUCCESS;
 }
 
-void rev3PrintHelp(void) {
+static void rev3PrintHelp(void) {
     printf("\t -t --on\t\t\tsend an on signal\n");
     printf("\t -f --off\t\t\tsend an off signal\n");
     printf("\t -u --unit=unit\t\t\tcontrol a device with this unit code\n");
     printf("\t -i --id=id\t\t\tcontrol a device with this id\n");
 }
 
+#ifndef MODULE
+__attribute__((weak))
+#endif
 void rev3Init(void) {
 
     protocol_register(&rev3_switch);
-    protocol_set_id(rev3_switch, "rev_3switch");
+    protocol_set_id(rev3_switch, "rev3_switch");
     protocol_device_add(rev3_switch, "rev3_switch", "Rev Switches v3");
     protocol_plslen_add(rev3_switch, 264);
     protocol_plslen_add(rev3_switch, 258);
@@ -198,13 +201,15 @@ void rev3Init(void) {
     rev3_switch->printHelp=&rev3PrintHelp;
 }
 
-#ifdef MODULAR
-void compatibility(const char **version, const char **commit) {
-	*version = "4.0";
-	*commit = "18";
+#ifdef MODULE
+static void compatibility(const char **name, const char **version, const char **reqversion, const char **reqcommit) {
+	*name = "rev3_switch";
+	*version = "0.8";
+	*reqversion = "4.0";
+	*reqcommit = "18";
 }
 
-void init(void) {
+static void init(void) {
 	rev3Init();
 }
 #endif

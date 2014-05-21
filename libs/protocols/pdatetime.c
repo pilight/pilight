@@ -48,14 +48,7 @@
 #include "pdatetime.h"
 #include "datetime.h"
 
-unsigned short pdatetime_loop = 1;
-unsigned short pdatetime_threads = 0;
-char *pdatetime_format = NULL;
-
-pthread_mutex_t pdatetimelock;
-pthread_mutexattr_t pdatetimeattr;
-
-typedef struct {
+typedef struct l_fp {
 	union {
 		unsigned int Xl_ui;
 		int Xl_i;
@@ -66,17 +59,24 @@ typedef struct {
 	} Ul_f;
 } l_fp;
 
-struct pkt {
+typedef struct pkt {
 	int	li_vn_mode;
 	int rootdelay;
 	int rootdispersion;
 	int refid;
-	l_fp ref;
-	l_fp org;
-	l_fp rec;
-};
+	struct l_fp ref;
+	struct l_fp org;
+	struct l_fp rec;
+} pkt;
 
-time_t getntptime(const char *ntpserver) {
+static unsigned short pdatetime_loop = 1;
+static unsigned short pdatetime_threads = 0;
+static char *pdatetime_format = NULL;
+
+static pthread_mutex_t pdatetimelock;
+static pthread_mutexattr_t pdatetimeattr;
+
+static time_t getntptime(const char *ntpserver) {
 	struct sockaddr_in servaddr;
 	struct hostent *hptr = NULL;
 	struct pkt msg;
@@ -150,7 +150,7 @@ close:
 	return -1;
 }
 
-void *pdateTimeParse(void *param) {
+static void *pdateTimeParse(void *param) {
 	char UTC[] = "Europe/London";
 	struct protocol_threads_t *thread = (struct protocol_threads_t *)param;
 	struct JsonNode *json = (struct JsonNode *)thread->param;
@@ -276,7 +276,7 @@ close:
 	return (void *)NULL;
 }
 
-struct threadqueue_t *pdateTimeInitDev(JsonNode *jdevice) {
+static struct threadqueue_t *pdateTimeInitDev(JsonNode *jdevice) {
 	pdatetime_loop = 1;
 	char *output = json_stringify(jdevice, NULL);
 	JsonNode *json = json_decode(output);
@@ -286,7 +286,7 @@ struct threadqueue_t *pdateTimeInitDev(JsonNode *jdevice) {
 	return threads_register("datetime", &pdateTimeParse, (void *)node, 0);
 }
 
-void pdateTimeThreadGC(void) {
+static void pdateTimeThreadGC(void) {
 	pdatetime_loop = 0;
 	protocol_thread_stop(pdatetime);
 	while(pdatetime_threads > 0) {
@@ -295,10 +295,13 @@ void pdateTimeThreadGC(void) {
 	protocol_thread_free(pdatetime);
 }
 
-void pdatetimeGC(void) {
+static void pdatetimeGC(void) {
 	sfree((void *)&pdatetime_format);
 }
 
+#ifndef MODULE
+__attribute__((weak))
+#endif
 void pdateTimeInit(void) {
 	pthread_mutexattr_init(&pdatetimeattr);
 	pthread_mutexattr_settype(&pdatetimeattr, PTHREAD_MUTEX_RECURSIVE);
@@ -332,13 +335,15 @@ void pdateTimeInit(void) {
 	pdatetime->gc=&pdatetimeGC;
 }
 
-#ifdef MODULAR
-void compatibility(const char **version, const char **commit) {
-	*version = "4.0";
-	*commit = "18";
+#ifdef MODULE
+static void compatibility(const char **name, const char **version, const char **reqversion, const char **reqcommit) {
+	*name = "datetime";
+	*version = "1.0";
+	*reqversion = "4.0";
+	*reqcommit = "18";
 }
 
-void init(void) {
+static void init(void) {
 	pdateTimeInit();
 }
 #endif

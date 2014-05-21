@@ -30,7 +30,7 @@
 #include "gc.h"
 #include "cleverwatts.h"
 
-void cleverwattsCreateMessage(int id, int unit, int state, int all) {
+static void cleverwattsCreateMessage(int id, int unit, int state, int all) {
 	cleverwatts->message = json_mkobject();
 	json_append_member(cleverwatts->message, "id", json_mknumber(id));
 	if(all == 0) {
@@ -44,7 +44,7 @@ void cleverwattsCreateMessage(int id, int unit, int state, int all) {
 		json_append_member(cleverwatts->message, "state", json_mkstring("off"));
 }
 
-void cleverwattsParseCode(void) {
+static void cleverwattsParseCode(void) {
 	int i = 0, x = 0;
 	int id = 0, state = 0, unit = 0, all = 0;
 
@@ -59,7 +59,7 @@ void cleverwattsParseCode(void) {
 	cleverwattsCreateMessage(id, unit, state, all);
 }
 
-void cleverwattsCreateLow(int s, int e) {
+static void cleverwattsCreateLow(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=2) {
@@ -68,7 +68,7 @@ void cleverwattsCreateLow(int s, int e) {
 	}
 }
 
-void cleverwattsCreateHigh(int s, int e) {
+static void cleverwattsCreateHigh(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=2) {
@@ -77,11 +77,11 @@ void cleverwattsCreateHigh(int s, int e) {
 	}
 }
 
-void cleverwattsClearCode(void) {
+static void cleverwattsClearCode(void) {
 	cleverwattsCreateHigh(0,47);
 }
 
-void cleverwattsCreateId(int id) {
+static void cleverwattsCreateId(int id) {
 	int binary[255];
 	int length = 0;
 	int i=0, x=0;
@@ -95,19 +95,19 @@ void cleverwattsCreateId(int id) {
 	}
 }
 
-void cleverwattsCreateAll(int all) {
+static void cleverwattsCreateAll(int all) {
 	if(all == 0) {
 		cleverwattsCreateLow(46, 47);
 	}
 }
 
-void cleverwattsCreateState(int state) {
+static void cleverwattsCreateState(int state) {
 	if(state == 1) {
 		cleverwattsCreateLow(40, 41);
 	}
 }
 
-void cleverwattsCreateUnit(int unit) {
+static void cleverwattsCreateUnit(int unit) {
 	int binary[255];
 	int length = 0;
 	int i=0, x=0;
@@ -121,12 +121,12 @@ void cleverwattsCreateUnit(int unit) {
 	}
 }
 
-void cleverwattsCreateFooter(void) {
+static void cleverwattsCreateFooter(void) {
 	cleverwatts->raw[48]=(cleverwatts->plslen->length);
 	cleverwatts->raw[49]=(PULSE_DIV*cleverwatts->plslen->length);
 }
 
-int cleverwattsCreateCode(JsonNode *code) {
+static int cleverwattsCreateCode(JsonNode *code) {
 	int id = -1;
 	int unit = -1;
 	int state = -1;
@@ -168,7 +168,7 @@ int cleverwattsCreateCode(JsonNode *code) {
 	return EXIT_SUCCESS;
 }
 
-void cleverwattsPrintHelp(void) {
+static void cleverwattsPrintHelp(void) {
 	printf("\t -t --on\t\t\tsend an on signal\n");
 	printf("\t -f --off\t\t\tsend an off signal\n");
 	printf("\t -u --unit=unit\t\t\tcontrol a device with this unit code\n");
@@ -176,6 +176,9 @@ void cleverwattsPrintHelp(void) {
 	printf("\t -a --all\t\t\tsend command to all devices with this id\n");
 }
 
+#ifndef MODULE
+__attribute__((weak))
+#endif
 void cleverwattsInit(void) {
 
 	protocol_register(&cleverwatts);
@@ -201,13 +204,15 @@ void cleverwattsInit(void) {
 	cleverwatts->printHelp=&cleverwattsPrintHelp;
 }
 
-#ifdef MODULAR
-void compatibility(const char **version, const char **commit) {
-	*version = "4.0";
-	*commit = "18";
+#ifdef MODULE
+static void compatibility(const char **name, const char **version, const char **reqversion, const char **reqcommit) {
+	*name = "cleverwatts";
+	*version = "0.8";
+	*reqversion = "4.0";
+	*reqcommit = "18";
 }
 
-void init(void) {
+static void init(void) {
 	cleverwattsInit();
 }
 #endif

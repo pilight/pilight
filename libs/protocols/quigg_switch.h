@@ -20,18 +20,6 @@
 #define _PROTOCOL_QUIGG_SWITCH_H_
 
 struct protocol_t *quigg_switch;
-
-void quiggSwCreateMessage(int id, int state, int unit, int all);
-void quiggSwParseCode(void);
-void quiggSwCreateLow(int s, int e);
-void quiggSwCreateHigh(int s, int e);
-void quiggSwClearCode(void);
-void quiggSwCreateId(int id);
-void quiggSwCreateHeader(void);
-void quiggSwCreateState(int state);
-void quiggSwCreateFooter(void);
-int quiggSwCreateCode(JsonNode *code);
-void quiggSwPrintHelp(void);
 void quiggSwInit(void);
 
 #endif

@@ -26,7 +26,7 @@ SUBDIRS = libs/pilight libs/protocols libs/hardware libs/avrdude
 SRC = $(wildcard *.c)
 INCLUDES = $(wildcard libs/pilight/*.h) $(wildcard libs/pilight/*.c) $(wildcard libs/avrdude/*.h) $(wildcard libs/avrdude/*.c)
 PROGAMS = $(patsubst %.c,pilight-%,$(SRC))
-LIBS = libs/pilight/pilight.o libs/avrdude/avrdude.o
+LIBS = libs/pilight/pilight.o libs/avrdude/avrdude.o libs/protocols/protocols.o libs/hardware/hardware.o
 PROTCOLS := $(shell cd libs/protocols/ && find * -name \*.so)
 HARDWARE := $(shell cd libs/hardware/ && find * -name \*.so)
 WEBFILES := $(shell cd web && find * -type f)
@@ -34,7 +34,13 @@ WEBDIRS := $(shell cd web && find * -type d )
 
 .PHONY: subdirs $(SUBDIRS)
 
-subdirs: $(SUBDIRS) all
+subdirs: modules $(SUBDIRS) all
+
+modules:
+	ls libs/protocols/*.h | sed -e"" 's/libs/	#include "../g' -e"" 's/\.h/\.h"/g' > libs/pilight/protocol_header.h
+	grep -h ".*Init(void)" libs/protocols/*.c | sed -e"" "s/void /	/" -e"" "s/(void) {/();/" > libs/pilight/protocol_init.h
+	ls libs/hardware/*.h | sed -e"" 's/libs/	#include "../g' -e"" 's/\.h/\.h"/g' > libs/pilight/hardware_header.h
+	grep -h "void .*Init(void)" libs/hardware/*.c | sed -e"" "s/void /	/" -e"" "s/(void) {/();/" > libs/pilight/hardware_init.h
 
 $(SUBDIRS):
 	$(MAKE) -C $@ GIT_HASH=$(GIT_HASH)

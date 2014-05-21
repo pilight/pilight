@@ -29,60 +29,65 @@
 #include "gc.h"
 #include "arctech_contact.h"
 
-void arctechContactCreateMessage(int id, int unit, int state, int all) {
-  arctech_contact->message = json_mkobject();
-  json_append_member(arctech_contact->message, "id", json_mknumber(id));
-  if(all == 1) {
-          json_append_member(arctech_contact->message, "all", json_mknumber(all));
-  } else {
-          json_append_member(arctech_contact->message, "unit", json_mknumber(unit));
-  }
+static void arctechContactCreateMessage(int id, int unit, int state, int all) {
+	arctech_contact->message = json_mkobject();
+	json_append_member(arctech_contact->message, "id", json_mknumber(id));
+	if(all == 1) {
+		json_append_member(arctech_contact->message, "all", json_mknumber(all));
+	} else {
+		json_append_member(arctech_contact->message, "unit", json_mknumber(unit));
+	}
 
-  if(state == 1) {
-          json_append_member(arctech_contact->message, "state", json_mkstring("opened"));
-  } else {
-          json_append_member(arctech_contact->message, "state", json_mkstring("closed"));
-  }
+	if(state == 1) {
+		json_append_member(arctech_contact->message, "state", json_mkstring("opened"));
+	} else {
+		json_append_member(arctech_contact->message, "state", json_mkstring("closed"));
+	}
 }
 
-void arctechContactParseBinary(void) {
-  int unit = binToDecRev(arctech_contact->binary, 28, 31);
-  int state = arctech_contact->binary[27];
-  int all = arctech_contact->binary[26];
-  int id = binToDecRev(arctech_contact->binary, 0, 25);
+static void arctechContactParseBinary(void) {
+	int unit = binToDecRev(arctech_contact->binary, 28, 31);
+	int state = arctech_contact->binary[27];
+	int all = arctech_contact->binary[26];
+	int id = binToDecRev(arctech_contact->binary, 0, 25);
 
-  arctechContactCreateMessage(id, unit, state, all);
+	arctechContactCreateMessage(id, unit, state, all);
 }
 
+#ifndef MODULE
+__attribute__((weak))
+#endif
 void arctechContactInit(void) {
 
-  protocol_register(&arctech_contact);
-  protocol_set_id(arctech_contact, "arctech_contact");
-  protocol_device_add(arctech_contact, "kaku_contact", "KlikAanKlikUit Contact Sensor");
-  protocol_device_add(arctech_contact, "dio_contact", "D-IO Contact Sensor");
-  protocol_plslen_add(arctech_contact, 294);
+	protocol_register(&arctech_contact);
+	protocol_set_id(arctech_contact, "arctech_contact");
+	protocol_device_add(arctech_contact, "kaku_contact", "KlikAanKlikUit Contact Sensor");
+	protocol_device_add(arctech_contact, "dio_contact", "D-IO Contact Sensor");
+	protocol_plslen_add(arctech_contact, 294);
 
-  arctech_contact->devtype = SWITCH;
-  arctech_contact->hwtype = RF433;
-  arctech_contact->pulse = 4;
-  arctech_contact->rawlen = 148;
-  arctech_contact->lsb = 3;
+	arctech_contact->devtype = SWITCH;
+	arctech_contact->hwtype = RF433;
+	arctech_contact->pulse = 4;
+	arctech_contact->rawlen = 148;
+	arctech_contact->lsb = 3;
 
-  options_add(&arctech_contact->options, 'u', "unit", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, NULL, "^([0-9]{1}|[1][0-5])$");
-  options_add(&arctech_contact->options, 'i', "id", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, NULL, "^([0-9]{1,7}|[1-5][0-9]{7}|6([0-6][0-9]{6}|7(0[0-9]{5}|10([0-7][0-9]{3}|8([0-7][0-9]{2}|8([0-5][0-9]|6[0-3]))))))$");
-  options_add(&arctech_contact->options, 't', "opened", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
-  options_add(&arctech_contact->options, 'f', "closed", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
+	options_add(&arctech_contact->options, 'u', "unit", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, NULL, "^([0-9]{1}|[1][0-5])$");
+	options_add(&arctech_contact->options, 'i', "id", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, NULL, "^([0-9]{1,7}|[1-5][0-9]{7}|6([0-6][0-9]{6}|7(0[0-9]{5}|10([0-7][0-9]{3}|8([0-7][0-9]{2}|8([0-5][0-9]|6[0-3]))))))$");
+	options_add(&arctech_contact->options, 't', "opened", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
+	options_add(&arctech_contact->options, 'f', "closed", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
 
-  options_add(&arctech_contact->options, 'a', "all", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
-  options_add(&arctech_contact->options, 0, "gui-readonly", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
+	options_add(&arctech_contact->options, 'a', "all", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
+	options_add(&arctech_contact->options, 0, "gui-readonly", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 
-  arctech_contact->parseBinary=&arctechContactParseBinary;
+	arctech_contact->parseBinary=&arctechContactParseBinary;
 }
 
-#ifdef MODULAR
-void compatibility(const char **version, const char **commit) {
-	*version = "4.0";
-	*commit = "18";
+#ifdef MODULE
+void compatibility(const char **name, const char **version, const char **reqversion, const char **reqcommit) {
+	*name = "arctech_contact";
+	*version = "1.0";
+	*reqversion = "4.0";
+	*reqcommit = "18";
 }
 
 void init(void) {

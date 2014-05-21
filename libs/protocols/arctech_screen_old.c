@@ -30,7 +30,7 @@
 #include "gc.h"
 #include "arctech_screen_old.h"
 
-void arctechSrOldCreateMessage(int id, int unit, int state) {
+static void arctechSrOldCreateMessage(int id, int unit, int state) {
 	arctech_screen_old->message = json_mkobject();
 	json_append_member(arctech_screen_old->message, "id", json_mknumber(id));
 	json_append_member(arctech_screen_old->message, "unit", json_mknumber(unit));
@@ -40,14 +40,14 @@ void arctechSrOldCreateMessage(int id, int unit, int state) {
 		json_append_member(arctech_screen_old->message, "state", json_mkstring("down"));
 }
 
-void arctechSrOldParseBinary(void) {
+static void arctechSrOldParseBinary(void) {
 	int unit = binToDec(arctech_screen_old->binary, 0, 3);
 	int state = arctech_screen_old->binary[11];
 	int id = binToDec(arctech_screen_old->binary, 4, 8);
 	arctechSrOldCreateMessage(id, unit, state);
 }
 
-void arctechSrOldCreateLow(int s, int e) {
+static void arctechSrOldCreateLow(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=4) {
@@ -58,7 +58,7 @@ void arctechSrOldCreateLow(int s, int e) {
 	}
 }
 
-void arctechSrOldCreateHigh(int s, int e) {
+static void arctechSrOldCreateHigh(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=4) {
@@ -69,12 +69,12 @@ void arctechSrOldCreateHigh(int s, int e) {
 	}
 }
 
-void arctechSrOldClearCode(void) {
+static void arctechSrOldClearCode(void) {
 	arctechSrOldCreateHigh(0,35);
 	arctechSrOldCreateLow(36,47);
 }
 
-void arctechSrOldCreateUnit(int unit) {
+static void arctechSrOldCreateUnit(int unit) {
 	int binary[255];
 	int length = 0;
 	int i=0, x=0;
@@ -88,7 +88,7 @@ void arctechSrOldCreateUnit(int unit) {
 	}
 }
 
-void arctechSrOldCreateId(int id) {
+static void arctechSrOldCreateId(int id) {
 	int binary[255];
 	int length = 0;
 	int i=0, x=0;
@@ -102,18 +102,18 @@ void arctechSrOldCreateId(int id) {
 	}
 }
 
-void arctechSrOldCreateState(int state) {
+static void arctechSrOldCreateState(int state) {
 	if(state == 0) {
 		arctechSrOldCreateHigh(44,47);
 	}
 }
 
-void arctechSrOldCreateFooter(void) {
+static void arctechSrOldCreateFooter(void) {
 	arctech_screen_old->raw[48]=(arctech_screen_old->plslen->length);
 	arctech_screen_old->raw[49]=(PULSE_DIV*arctech_screen_old->plslen->length);
 }
 
-int arctechSrOldCreateCode(JsonNode *code) {
+static int arctechSrOldCreateCode(JsonNode *code) {
 	int id = -1;
 	int unit = -1;
 	int state = -1;
@@ -148,13 +148,16 @@ int arctechSrOldCreateCode(JsonNode *code) {
 	return EXIT_SUCCESS;
 }
 
-void arctechSrOldPrintHelp(void) {
+static void arctechSrOldPrintHelp(void) {
 	printf("\t -t --up\t\t\tsend an up signal\n");
 	printf("\t -f --down\t\t\tsend an down signal\n");
 	printf("\t -u --unit=unit\t\t\tcontrol a device with this unit code\n");
 	printf("\t -i --id=id\t\t\tcontrol a device with this id\n");
 }
 
+#ifndef MODULE
+__attribute__((weak))
+#endif
 void arctechSrOldInit(void) {
 
 	protocol_register(&arctech_screen_old);
@@ -180,13 +183,15 @@ void arctechSrOldInit(void) {
 	arctech_screen_old->printHelp=&arctechSrOldPrintHelp;
 }
 
-#ifdef MODULAR
-void compatibility(const char **version, const char **commit) {
-	*version = "4.0";
-	*commit = "18";
+#ifdef MODULE
+static void compatibility(const char **name, const char **version, const char **reqversion, const char **reqcommit) {
+	*name = "arctech_screen_old";
+	*version = "1.0";
+	*reqversion = "4.0";
+	*reqcommit = "18";
 }
 
-void init(void) {
+static void init(void) {
 	arctechSrOldInit();
 }
 #endif

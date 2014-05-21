@@ -20,9 +20,6 @@
 #define _PROTOCOL_RAW_H_
 
 struct protocol_t *raw;
-
 void rawInit(void);
-int rawCreateCode(JsonNode *code);
-void rawPrintHelp(void);
 
 #endif

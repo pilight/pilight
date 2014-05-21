@@ -38,14 +38,14 @@
 #include "gc.h"
 #include "rpi_temp.h"
 
-unsigned short rpi_temp_loop = 1;
-unsigned short rpi_temp_threads = 0;
-char rpi_temp[] = "/sys/class/thermal/thermal_zone0/temp";
+static unsigned short rpi_temp_loop = 1;
+static unsigned short rpi_temp_threads = 0;
+static char rpi_temp[] = "/sys/class/thermal/thermal_zone0/temp";
 
-pthread_mutex_t rpi_templock;
-pthread_mutexattr_t rpi_tempattr;
+static pthread_mutex_t rpi_templock;
+static pthread_mutexattr_t rpi_tempattr;
 
-void *rpiTempParse(void *param) {
+static void *rpiTempParse(void *param) {
 	struct protocol_threads_t *node = (struct protocol_threads_t *)param;
 	struct JsonNode *json = (struct JsonNode *)node->param;
 	struct JsonNode *jid = NULL;
@@ -133,7 +133,7 @@ void *rpiTempParse(void *param) {
 	return (void *)NULL;
 }
 
-struct threadqueue_t *rpiTempInitDev(JsonNode *jdevice) {
+static struct threadqueue_t *rpiTempInitDev(JsonNode *jdevice) {
 	rpi_temp_loop = 1;
 	char *output = json_stringify(jdevice, NULL);
 	JsonNode *json = json_decode(output);
@@ -143,7 +143,7 @@ struct threadqueue_t *rpiTempInitDev(JsonNode *jdevice) {
 	return threads_register("rpi_temp", &rpiTempParse, (void *)node, 0);
 }
 
-void rpiTempThreadGC(void) {
+static void rpiTempThreadGC(void) {
 	rpi_temp_loop = 0;
 	protocol_thread_stop(rpiTemp);
 	while(rpi_temp_threads > 0) {
@@ -152,6 +152,9 @@ void rpiTempThreadGC(void) {
 	protocol_thread_free(rpiTemp);
 }
 
+#ifndef MODULE
+__attribute__((weak))
+#endif
 void rpiTempInit(void) {
 	pthread_mutexattr_init(&rpi_tempattr);
 	pthread_mutexattr_settype(&rpi_tempattr, PTHREAD_MUTEX_RECURSIVE);
@@ -176,13 +179,15 @@ void rpiTempInit(void) {
 	rpiTemp->threadGC=&rpiTempThreadGC;
 }
 
-#ifdef MODULAR
-void compatibility(const char **version, const char **commit) {
-	*version = "4.0";
-	*commit = "18";
+#ifdef MODULE
+static void compatibility(const char **name, const char **version, const char **reqversion, const char **reqcommit) {
+	*name = "rpi_temp";
+	*version = "1.0";
+	*reqversion = "4.0";
+	*reqcommit = "18";
 }
 
-void init(void) {
+static void init(void) {
 	rpiTempInit();
 }
 #endif

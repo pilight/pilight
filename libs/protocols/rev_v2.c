@@ -30,7 +30,7 @@
 #include "gc.h"
 #include "rev_v2.h"
 
-void rev2CreateMessage(char *id, int unit, int state) {
+static void rev2CreateMessage(char *id, int unit, int state) {
 	rev2_switch->message = json_mkobject();
 	json_append_member(rev2_switch->message, "id", json_mkstring(id));
 	json_append_member(rev2_switch->message, "unit", json_mknumber(unit));
@@ -40,7 +40,7 @@ void rev2CreateMessage(char *id, int unit, int state) {
 		json_append_member(rev2_switch->message, "state", json_mkstring("off"));
 }
 
-void rev2ParseCode(void) {
+static void rev2ParseCode(void) {
 	int x = 0;
 	int z = 65;
 	char id[3] = {'\0'};
@@ -71,7 +71,7 @@ void rev2ParseCode(void) {
 	rev2CreateMessage(id, unit, state);
 }
 
-void rev2CreateLow(int s, int e) {
+static void rev2CreateLow(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=4) {
@@ -82,7 +82,7 @@ void rev2CreateLow(int s, int e) {
 	}
 }
 
-void rev2CreateMed(int s, int e) {
+static void rev2CreateMed(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=4) {
@@ -93,7 +93,7 @@ void rev2CreateMed(int s, int e) {
 	}
 }
 
-void rev2CreateHigh(int s, int e) {
+static void rev2CreateHigh(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=4) {
@@ -104,12 +104,12 @@ void rev2CreateHigh(int s, int e) {
 	}
 }
 
-void rev2ClearCode(void) {
+static void rev2ClearCode(void) {
 	rev2CreateMed(0,4);
 	rev2CreateLow(4,47);
 }
 
-void rev2CreateUnit(int unit) {
+static void rev2CreateUnit(int unit) {
 	int binary[255];
 	int length = 0;
 	int i=0, x=0;
@@ -123,7 +123,7 @@ void rev2CreateUnit(int unit) {
 	}
 }
 
-void rev2CreateId(char *id) {
+static void rev2CreateId(char *id) {
 	int l = ((int)(id[0]))-65;
 	int y = atoi(&id[1]);
 	int binary[255];
@@ -141,7 +141,7 @@ void rev2CreateId(char *id) {
 	rev2CreateMed(39-(x+3), 39-x);
 }
 
-void rev2CreateState(int state) {
+static void rev2CreateState(int state) {
 	if(state == 0) {
 		rev2CreateMed(40,43);
 		rev2CreateHigh(44,47);
@@ -151,12 +151,12 @@ void rev2CreateState(int state) {
 	}
 }
 
-void rev2CreateFooter(void) {
+static void rev2CreateFooter(void) {
 	rev2_switch->raw[48]=(rev2_switch->plslen->length);
 	rev2_switch->raw[49]=(PULSE_DIV*rev2_switch->plslen->length);
 }
 
-int rev2CreateCode(JsonNode *code) {
+static int rev2CreateCode(JsonNode *code) {
 	char id[3] = {'\0'};
 	int unit = -1;
 	int state = -1;
@@ -199,13 +199,16 @@ int rev2CreateCode(JsonNode *code) {
 	return EXIT_SUCCESS;
 }
 
-void rev2PrintHelp(void) {
+static void rev2PrintHelp(void) {
 	printf("\t -t --on\t\t\tsend an on signal\n");
 	printf("\t -f --off\t\t\tsend an off signal\n");
 	printf("\t -u --unit=unit\t\t\tcontrol a device with this unit code\n");
 	printf("\t -i --id=id\t\t\tcontrol a device with this id\n");
 }
 
+#ifndef MODULE
+__attribute__((weak))
+#endif
 void rev2Init(void) {
 
 	protocol_register(&rev2_switch);
@@ -232,13 +235,15 @@ void rev2Init(void) {
 	rev2_switch->printHelp=&rev2PrintHelp;
 }
 
-#ifdef MODULAR
-void compatibility(const char **version, const char **commit) {
-	*version = "4.0";
-	*commit = "18";
+#ifdef MODULE
+static void compatibility(const char **name, const char **version, const char **reqversion, const char **reqcommit) {
+	*name = "rev2_switch";
+	*version = "0.8";
+	*reqversion = "4.0";
+	*reqcommit = "18";
 }
 
-void init(void) {
+static void init(void) {
 	rev2Init();
 }
 #endif

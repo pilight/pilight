@@ -47,10 +47,10 @@
 #define PIX 57.29578049044297 // 180 / PI
 #define ZENITH 90.83333333333333
 
-unsigned short sunriseset_loop = 1;
-unsigned short sunriseset_threads = 0;
+static unsigned short sunriseset_loop = 1;
+static unsigned short sunriseset_threads = 0;
 
-double sunRiseSetCalculate(int year, int month, int day, double lon, double lat, int rising, int tz) {
+static double sunRiseSetCalculate(int year, int month, int day, double lon, double lat, int rising, int tz) {
 	int N = (int)((floor(275 * month / 9)) - ((floor((month + 9) / 12)) *
 			((1 + floor((year - 4 * floor(year / 4) + 2) / 3)))) + (int)day - 30);
 
@@ -102,7 +102,7 @@ double sunRiseSetCalculate(int year, int month, int day, double lon, double lat,
 	return ((round(hour)+min)+tz)*100;
 }
 
-void *sunRiseSetParse(void *param) {
+static void *sunRiseSetParse(void *param) {
 	struct protocol_threads_t *thread = (struct protocol_threads_t *)param;
 	struct JsonNode *json = (struct JsonNode *)thread->param;
 	struct JsonNode *jid = NULL;
@@ -226,7 +226,7 @@ struct threadqueue_t *sunRiseSetInitDev(JsonNode *jdevice) {
 	return threads_register("sunriseset", &sunRiseSetParse, (void *)node, 0);
 }
 
-void sunRiseSetThreadGC(void) {
+static void sunRiseSetThreadGC(void) {
 	sunriseset_loop = 0;
 	protocol_thread_stop(sunriseset);
 	while(sunriseset_threads > 0) {
@@ -235,7 +235,7 @@ void sunRiseSetThreadGC(void) {
 	protocol_thread_free(sunriseset);
 }
 
-int sunRiseSetCheckValues(JsonNode *code) {
+static int sunRiseSetCheckValues(JsonNode *code) {
 	char *sun = NULL;
 
 	if(json_find_string(code, "sun", &sun) == 0) {
@@ -246,6 +246,9 @@ int sunRiseSetCheckValues(JsonNode *code) {
 	return 0;
 }
 
+#ifndef MODULE
+__attribute__((weak))
+#endif
 void sunRiseSetInit(void) {
 
 	protocol_register(&sunriseset);
@@ -270,13 +273,15 @@ void sunRiseSetInit(void) {
 	sunriseset->checkValues=&sunRiseSetCheckValues;
 }
 
-#ifdef MODULAR
-void compatibility(const char **version, const char **commit) {
-	*version = "4.0";
-	*commit = "18";
+#ifdef MODULE
+static void compatibility(const char **name, const char **version, const char **reqversion, const char **reqcommit) {
+	*name = "sunriseset";
+	*version = "1.0";
+	*reqversion = "4.0";
+	*reqcommit = "18";
 }
 
-void init(void) {
+static void init(void) {
 	sunRiseSetInit();
 }
 #endif

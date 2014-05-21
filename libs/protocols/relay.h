@@ -20,10 +20,6 @@
 #define _PROTOCOL_RELAY_H_
 
 struct protocol_t *relay;
-
 void relayInit(void);
-int relayCreateCode(JsonNode *code);
-void relayCreateMessage(int gpio, int state);
-void relayPrintHelp(void);
 
 #endif

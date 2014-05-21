@@ -29,7 +29,7 @@
 #include "gc.h"
 #include "raw.h"
 
-int rawCreateCode(JsonNode *code) {
+static int rawCreateCode(JsonNode *code) {
 	char *rcode = NULL;
 	char *ncode = NULL;
 	char *pch = NULL;
@@ -57,10 +57,13 @@ int rawCreateCode(JsonNode *code) {
 	return EXIT_SUCCESS;
 }
 
-void rawPrintHelp(void) {
+static void rawPrintHelp(void) {
 	printf("\t -c --code=\"raw\"\t\traw code devided by spaces\n\t\t\t\t\t(just like the output of debug)\n");
 }
 
+#ifndef MODULE
+__attribute__((weak))
+#endif
 void rawInit(void) {
 
 	protocol_register(&raw);
@@ -75,13 +78,15 @@ void rawInit(void) {
 	raw->printHelp=&rawPrintHelp;
 }
 
-#ifdef MODULAR
-void compatibility(const char **version, const char **commit) {
-	*version = "4.0";
-	*commit = "18";
+#ifdef MODULE
+static void compatibility(const char **name, const char **version, const char **reqversion, const char **reqcommit) {
+	*name = "raw";
+	*version = "1.0";
+	*reqversion = "4.0";
+	*reqcommit = "18";
 }
 
-void init(void) {
+static void init(void) {
 	rawInit();
 }
 #endif

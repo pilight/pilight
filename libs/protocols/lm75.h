@@ -23,8 +23,6 @@
 #include "threads.h"
 
 struct protocol_t *lm75;
-
 void lm75Init(void);
-struct threadqueue_t *lm75InitDev(JsonNode *jdevice);
 
 #endif

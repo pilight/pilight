@@ -32,18 +32,72 @@
 #include "protocol.h"
 #include "log.h"
 
-#ifndef MODULAR
-	#include "protocol_header.h"
-#endif
+#include "protocol_header.h"
+
+void protocol_remove(char *name) {
+	struct protocols_t *currP, *prevP;
+
+	prevP = NULL;
+
+	for(currP = protocols; currP != NULL; prevP = currP, currP = currP->next) {
+
+		if(strcmp(currP->listener->id, name) == 0) {
+			if(prevP == NULL) {
+				protocols = currP->next;
+			} else {
+				prevP->next = currP->next;
+			}
+
+			struct protocol_devices_t *dtmp;
+			struct protocol_plslen_t *ttmp;
+			logprintf(LOG_DEBUG, "removed protocol %s", currP->listener->id);
+			if(currP->listener->threadGC) {
+				currP->listener->threadGC();
+				logprintf(LOG_DEBUG, "stopped protocol threads");
+			}
+			if(currP->listener->gc) {
+				currP->listener->gc();
+				logprintf(LOG_DEBUG, "ran garbage collector");
+			}
+			sfree((void *)&currP->listener->id);
+			sfree((void *)&currP->name);
+			options_delete(currP->listener->options);
+			if(currP->listener->plslen) {
+				while(currP->listener->plslen) {
+					ttmp = currP->listener->plslen;
+					currP->listener->plslen = currP->listener->plslen->next;
+					sfree((void *)&ttmp);
+				}
+			}
+			sfree((void *)&currP->listener->plslen);
+			if(currP->listener->devices) {
+				while(currP->listener->devices) {
+					dtmp = currP->listener->devices;
+					sfree((void *)&dtmp->id);
+					sfree((void *)&dtmp->desc);
+					currP->listener->devices = currP->listener->devices->next;
+					sfree((void *)&dtmp);
+				}
+			}
+			sfree((void *)&currP->listener->devices);
+			sfree((void *)&currP->listener);
+			sfree((void *)&currP);			
+
+			break;
+		}
+	}
+}
 
 void protocol_init(void) {
-#ifdef MODULAR
+	#include "protocol_init.h"
 	void *handle = NULL;
 	void (*init)(void);
-	void (*compatibility)(const char **version, const char **commit);
+	void (*compatibility)(const char **name, const char **pversion, const char **version, const char **commit);
 	char path[255];
 	const char *version = NULL;
 	const char *commit = NULL;
+	const char *pversion = NULL;
+	const char *name = NULL;
 	char pilight_version[strlen(VERSION)];
 	char pilight_commit[3];
 	char *protocol_root = NULL;
@@ -81,8 +135,8 @@ void protocol_init(void) {
 						init = dso_function(handle, "init");
 						compatibility = dso_function(handle, "compatibility");
 						if(init && compatibility) {
-							compatibility(&version, &commit);
-							char ver[strlen(version)];
+							compatibility(&name, &pversion, &version, &commit);
+							char ver[strlen(version)+1];
 							strcpy(ver, version);
 
 							if((check1 = vercmp(ver, pilight_version)) > 0) {
@@ -98,6 +152,9 @@ void protocol_init(void) {
 								}
 							}
 							if(valid) {
+								char tmp[strlen(name)];
+								strcpy(tmp, name);
+								protocol_remove(tmp);
 								init();
 								logprintf(LOG_DEBUG, "loaded protocol %s", file->d_name);
 							} else {
@@ -117,9 +174,6 @@ void protocol_init(void) {
 	if(protocol_root_free) {
 		sfree((void *)&protocol_root);
 	}
-#else
-	#include "protocol_init.h"
-#endif
 }
 
 void protocol_register(protocol_t **proto) {

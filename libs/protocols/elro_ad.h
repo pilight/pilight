@@ -20,20 +20,6 @@
 #define _PROTOCOL_ELRO_AD_H_
 
 struct protocol_t *elro_ad;
-
 void elroADInit(void);
-void elroADCreateMessage(unsigned long long systemcode, int unitcode, int state, int groupEnabled);
-void elroADParseCode(void);
-int elroADCreateCode(JsonNode *code);
-void elroADCreateLow(int s, int e);
-void elroADCreateHigh(int s, int e);
-void elroADClearCode(void);
-void elroADCreateSystemCode(unsigned long long systemcode);
-void elroADCreateGroupCode(int group);
-void elroADCreateUnitCode(int unitcode);
-void elroADCreateState(int state);
-void elroADCreatePreamble(void);
-void elroADCreateFooter(void);
-void elroADPrintHelp(void);
 
 #endif

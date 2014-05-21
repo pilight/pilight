@@ -42,18 +42,41 @@
 
 char *hwfile = NULL;
 
-#ifndef MODULAR
-	#include "hardware_header.h"
-#endif
+#include "hardware_header.h"
+
+void hardware_remove(char *name) {
+	struct hardware_t *currP, *prevP;
+
+	prevP = NULL;
+
+	for(currP = hardware; currP != NULL; prevP = currP, currP = currP->next) {
+
+		if(strcmp(currP->id, name) == 0) {
+			if(prevP == NULL) {
+				hardware = currP->next;
+			} else {
+				prevP->next = currP->next;
+			}
+
+			sfree((void *)&currP->id);
+			options_delete(currP->options);
+			sfree((void *)&currP);
+
+			break;
+		}
+	}
+}
 
 void hardware_init(void) {
-#ifdef MODULAR
+	#include "hardware_init.h"
 	void *handle = NULL;
 	void (*init)(void);
-	void (*compatibility)(const char **version, const char **commit);
+	void (*compatibility)(const char **name, const char **pversion, const char **version, const char **commit);
 	char path[255];
 	const char *version = NULL;
 	const char *commit = NULL;
+	const char *pversion = NULL;
+	const char *name = NULL;
 	char pilight_version[strlen(VERSION)];
 	char pilight_commit[3];
 	char *hardware_root = NULL;
@@ -92,7 +115,7 @@ void hardware_init(void) {
 						init = dso_function(handle, "init");
 						compatibility = dso_function(handle, "compatibility");
 						if(init && compatibility) {
-							compatibility(&version, &commit);
+							compatibility(&name, &pversion, &version, &commit);
 							char ver[strlen(version)];
 							strcpy(ver, version);
 
@@ -110,6 +133,9 @@ void hardware_init(void) {
 							}
 
 							if(valid) {
+								char tmp[strlen(name)];
+								strcpy(tmp, name);
+								hardware_remove(tmp);
 								init();
 								logprintf(LOG_DEBUG, "loaded hardware module %s", file->d_name);
 							} else {
@@ -129,9 +155,6 @@ void hardware_init(void) {
 	if(hardware_root_free) {
 		sfree((void *)&hardware_root);
 	}
-#else
-	#include "hardware_init.h"
-#endif
 }
 
 void hardware_register(struct hardware_t **hw) {

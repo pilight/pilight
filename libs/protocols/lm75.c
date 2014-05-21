@@ -43,19 +43,19 @@
 #include "../pilight/wiringPiI2C.h"
 #endif
 
-unsigned short lm75_loop = 1;
-int lm75_threads = 0;
-
-pthread_mutex_t lm75lock;
-pthread_mutexattr_t lm75attr;
-
 typedef struct lm75data_t {
 	char **id;
 	int nrid;
 	int *fd;
 } lm75data_t;
 
-void *lm75Parse(void *param) {
+static unsigned short lm75_loop = 1;
+static int lm75_threads = 0;
+
+static pthread_mutex_t lm75lock;
+static pthread_mutexattr_t lm75attr;
+
+static void *lm75Parse(void *param) {
 	struct protocol_threads_t *node = (struct protocol_threads_t *)param;
 	struct JsonNode *json = (struct JsonNode *)node->param;
 	struct JsonNode *jid = NULL;
@@ -167,7 +167,7 @@ void *lm75Parse(void *param) {
 	return (void *)NULL;
 }
 
-struct threadqueue_t *lm75InitDev(JsonNode *jdevice) {
+static struct threadqueue_t *lm75InitDev(JsonNode *jdevice) {
 	lm75_loop = 1;
 	wiringPiSetup();
 	char *output = json_stringify(jdevice, NULL);
@@ -178,7 +178,7 @@ struct threadqueue_t *lm75InitDev(JsonNode *jdevice) {
 	return threads_register("lm75", &lm75Parse, (void *)node, 0);
 }
 
-void lm75ThreadGC(void) {
+static void lm75ThreadGC(void) {
 	lm75_loop = 0;
 	protocol_thread_stop(lm75);
 	while(lm75_threads > 0) {
@@ -187,6 +187,9 @@ void lm75ThreadGC(void) {
 	protocol_thread_free(lm75);
 }
 
+#ifndef MODULE
+__attribute__((weak))
+#endif
 void lm75Init(void) {
 	pthread_mutexattr_init(&lm75attr);
 	pthread_mutexattr_settype(&lm75attr, PTHREAD_MUTEX_RECURSIVE);
@@ -209,13 +212,15 @@ void lm75Init(void) {
 	lm75->threadGC=&lm75ThreadGC;
 }
 
-#ifdef MODULAR
-void compatibility(const char **version, const char **commit) {
-	*version = "4.0";
-	*commit = "18";
+#ifdef MODULE
+static void compatibility(const char **name, const char **version, const char **reqversion, const char **reqcommit) {
+	*name = "lm75";
+	*version = "1.0";
+	*reqversion = "4.0";
+	*reqcommit = "18";
 }
 
-void init(void) {
+static void init(void) {
 	lm75Init();
 }
 #endif

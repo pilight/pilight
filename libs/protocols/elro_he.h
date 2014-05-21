@@ -20,18 +20,6 @@
 #define _PROTOCOL_ELRO_HE_H_
 
 struct protocol_t *elro_he;
-
 void elroHEInit(void);
-void elroHECreateMessage(int systemcode, int unitcode, int state);
-void elroHEParseBinary(void);
-int elroHECreateCode(JsonNode *code);
-void elroHECreateLow(int s, int e);
-void elroHECreateHigh(int s, int e);
-void elroHEClearCode(void);
-void elroHECreateSystemCode(int systemcode);
-void elroHECreateUnitCode(int unitcode);
-void elroHECreateState(int state);
-void elroHECreateFooter(void);
-void elroHEPrintHelp(void);
 
 #endif

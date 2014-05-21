@@ -20,10 +20,6 @@
 #define _PROTOCOL_GENWEATHER_H_
 
 struct protocol_t *generic_weather;
-
 void genWeatherInit(void);
-void genWeatherCreateMessage(int id, int temperature, int humidity, int battery);
-int genWeatherCreateCode(JsonNode *code);
-void genWeatherPrintHelp(void);
 
 #endif

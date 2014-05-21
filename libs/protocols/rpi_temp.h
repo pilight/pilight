@@ -23,8 +23,6 @@
 #include "threads.h"
 
 struct protocol_t *rpiTemp;
-
 void rpiTempInit(void);
-struct threadqueue_t *rpiTempInitDev(JsonNode *jdevice);
 
 #endif

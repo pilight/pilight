@@ -16,12 +16,10 @@
     along with pilight. If not, see	<http://www.gnu.org/licenses/>
 */
 
-#ifndef _PROTOCOL_ALECTO_H_
-#define _PROTOCOL_ALECTO_H_
+#ifndef _PROTOCOL_ALECTO_WSD17_H_
+#define _PROTOCOL_ALECTO_WSD17_H_
 
-struct protocol_t *alecto;
-
-void alectoParseCode(void);
-void alectoInit(void);
+struct protocol_t *alecto_wsd17;
+void alectoWSD17Init(void);
 
 #endif

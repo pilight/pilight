@@ -30,7 +30,7 @@
 #include "gc.h"
 #include "generic_screen.h"
 
-void genScreenCreateMessage(int id, int state) {
+static void genScreenCreateMessage(int id, int state) {
 	generic_screen->message = json_mkobject();
 	json_append_member(generic_screen->message, "id", json_mknumber(id));
 	if(state == 1) {
@@ -40,7 +40,7 @@ void genScreenCreateMessage(int id, int state) {
 	}
 }
 
-int genScreenCreateCode(JsonNode *code) {
+static int genScreenCreateCode(JsonNode *code) {
 	int id = -1;
 	int state = -1;
 	double itmp = 0;
@@ -62,12 +62,15 @@ int genScreenCreateCode(JsonNode *code) {
 	return EXIT_SUCCESS;
 }
 
-void genScreenPrintHelp(void) {
+static void genScreenPrintHelp(void) {
 	printf("\t -t --up\t\t\tsend an up signal\n");
 	printf("\t -f --down\t\t\tsend an down signal\n");
 	printf("\t -i --id=id\t\t\tcontrol a device with this id\n");
 }
 
+#ifndef MODULE
+__attribute__((weak))
+#endif
 void genScreenInit(void) {
 
 	protocol_register(&generic_screen);
@@ -85,13 +88,15 @@ void genScreenInit(void) {
 	generic_screen->createCode=&genScreenCreateCode;
 }
 
-#ifdef MODULAR
-void compatibility(const char **version, const char **commit) {
-	*version = "4.0";
-	*commit = "18";
+#ifdef MODULE
+static void compatibility(const char **name, const char **version, const char **reqversion, const char **reqcommit) {
+	*name = "generic_screen";
+	*version = "1.0";
+	*reqversion = "4.0";
+	*reqcommit = "18";
 }
 
-void init(void) {
+static void init(void) {
 	genScreenInit();
 }
 #endif

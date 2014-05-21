@@ -20,14 +20,6 @@
 #define _PROTOCOL_CLARUS_H_
 
 struct protocol_t *clarus_switch;
-
 void clarusSwInit(void);
-void clarusSwCreateMessage(char *id, int unit, int state);
-void clarusSwParseCode(void);
-int clarusSwCreateCode(JsonNode *code);
-void clarusSwCreateUnit(int unit);
-void clarusSwCreateId(char *id);
-void clarusSwCreateState(int state);
-void clarusSwPrintHelp(void);
 
 #endif
