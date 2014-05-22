@@ -41,7 +41,13 @@ void *dso_load(char *object) {
 		return NULL;
 	}
 
+#if defined(RTLD_GROUP) && defined(RTLD_WORLD) && defined(RTLD_PARENT)
+	if(!(handle = dlopen(object, RTLD_LAZY | RTLD_GLOBAL | RTLD_GROUP | RTLD_WORLD | RTLD_PARENT))) {
+#elif defined(RTLD_DEEPBIND)
+	if(!(handle = dlopen(object, RTLD_LAZY | RTLD_GLOBAL | RTLD_DEEPBIND))) {
+#else
 	if(!(handle = dlopen(object, RTLD_LAZY))) {
+#endif
 		logprintf(LOG_ERR, dlerror());
 		return NULL;
 	} else {

@@ -212,14 +212,14 @@ void homeEasyOldInit(void) {
 }
 
 #ifdef MODULE
-static void compatibility(const char **name, const char **version, const char **reqversion, const char **reqcommit) {
+void compatibility(const char **name, const char **version, const char **reqversion, const char **reqcommit) {
 	*name = "home_easy_old";
 	*version = "1.0";
 	*reqversion = "4.0";
 	*reqcommit = "18";
 }
 
-static void init(void) {
+void init(void) {
 	homeEasyOldInit();
 }
 #endif

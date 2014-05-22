@@ -20,11 +20,6 @@
 #define _HARDWARE_GPIO_433_H_
 
 struct hardware_t *gpio433;
-
-unsigned short gpio433HwInit(void);
-unsigned short gpio433HwDeinit(void);
-int gpio433Send(int *code);
-int gpio433Receive(void);
 void gpio433Init(void);
 
 #endif

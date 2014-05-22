@@ -240,14 +240,14 @@ void ds18b20Init(void) {
 }
 
 #ifdef MODULE
-static void compatibility(const char **name, const char **version, const char **reqversion, const char **reqcommit) {
+void compatibility(const char **name, const char **version, const char **reqversion, const char **reqcommit) {
 	*name = "ds18b20";
 	*version = "1.0";
 	*reqversion = "4.0";
 	*reqcommit = "18";
 }
 
-static void init(void) {
+void init(void) {
 	ds18b20Init();
 }
 #endif

@@ -42,18 +42,18 @@
 #define IOCTL_START_TRANSMITTER		17
 #define IOCTL_STOP_TRANSMITTER		18
 
-int pilight_433_rec_initialized = 0;
-int pilight_433_trans_initialized = 0;
-int pilight_433_fd_rec = 0;
-int pilight_433_fd_trans = 0;
-int pilight_433_out = 0;
-int pilight_433_in = 0;
-int pilight_433_prefilter = 0;
-int pilight_433_svp = 0;
-int pilight_433_lvp = 0;
-char *pilight_433_socket = NULL;
+static int pilight_433_rec_initialized = 0;
+static int pilight_433_trans_initialized = 0;
+static int pilight_433_fd_rec = 0;
+static int pilight_433_fd_trans = 0;
+static int pilight_433_out = 0;
+static int pilight_433_in = 0;
+static int pilight_433_prefilter = 0;
+static int pilight_433_svp = 0;
+static int pilight_433_lvp = 0;
+static char *pilight_433_socket = NULL;
 
-unsigned short pilight433HwInit(void) {
+static unsigned short pilight433HwInit(void) {
 	int filter_on = 1;
 
 	if(pilight_433_prefilter == 1){
@@ -104,7 +104,7 @@ unsigned short pilight433HwInit(void) {
 	return EXIT_SUCCESS;
 }
 
-unsigned short pilight433HwDeinit(void) {
+static unsigned short pilight433HwDeinit(void) {
 	if(pilight_433_rec_initialized == 1) {
 		ioctl(pilight_433_fd_rec, IOCTL_STOP_RECEIVER, 0);
 		if(pilight_433_fd_rec != 0) {
@@ -129,7 +129,7 @@ unsigned short pilight433HwDeinit(void) {
 	return EXIT_SUCCESS;
 }
 
-int pilight433Send(int *code) {
+static int pilight433Send(int *code) {
 	ssize_t ret = 0;
 	unsigned long code_len = 0;
 
@@ -147,7 +147,7 @@ int pilight433Send(int *code) {
 	return EXIT_FAILURE;
 }
 
-int pilight433Receive(void) {
+static int pilight433Receive(void) {
 	char buff[255] = {0};
 	if((read(pilight_433_fd_rec, buff, sizeof(buff))) < 0) {
 		usleep(5000*1000);
@@ -156,7 +156,7 @@ int pilight433Receive(void) {
 	return (atoi(buff));
 }
 
-unsigned short pilight433Settings(JsonNode *json) {
+static unsigned short pilight433Settings(JsonNode *json) {
 	if(strcmp(json->key, "socket") == 0) {
 		if(json->tag == JSON_STRING) {
 			pilight_433_socket = malloc(strlen(json->string_)+1);
@@ -208,7 +208,7 @@ unsigned short pilight433Settings(JsonNode *json) {
 	return EXIT_SUCCESS;
 }
 
-int pilight433gc(void) {
+static int pilight433gc(void) {
 	if(pilight_433_socket) {
 		sfree((void *)&pilight_433_socket);
 	}
@@ -216,7 +216,9 @@ int pilight433gc(void) {
 	return EXIT_SUCCESS;
 }
 
-
+#ifndef MODULE
+__attribute__((weak))
+#endif
 void pilight433Init(void) {
 
 	gc_attach(pilight433gc);
@@ -239,10 +241,12 @@ void pilight433Init(void) {
 	pilight433->settings=&pilight433Settings;
 }
 
-#ifdef MODULAR
-void compatibility(const char **version, const char **commit) {
-	*version = "4.0";
-	*commit = "18";
+#ifdef MODULE
+void compatibility(const char **name, const char **version, const char **reqversion, const char **reqcommit) {
+	*name = "433pilight";
+	*version = "1.0";
+	*reqversion = "4.0";
+	*reqcommit = "18";
 }
 
 void init(void) {

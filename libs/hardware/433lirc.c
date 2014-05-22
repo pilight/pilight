@@ -34,14 +34,14 @@
 #define FREQ433				433920
 #define FREQ38				38000
 
-int lirc_433_initialized = 0;
-int lirc_433_setfreq = 0;
-int lirc_433_fd = 0;
-char *lirc_433_socket = NULL;
+static int lirc_433_initialized = 0;
+static int lirc_433_setfreq = 0;
+static int lirc_433_fd = 0;
+static char *lirc_433_socket = NULL;
 
 typedef unsigned long __u32;
 
-unsigned short lirc433HwInit(void) {
+static unsigned short lirc433HwInit(void) {
 	unsigned int freq = 0;
 
 	if(strcmp(lirc_433_socket, "/var/lirc/lircd") == 0) {
@@ -71,7 +71,7 @@ unsigned short lirc433HwInit(void) {
 	return EXIT_SUCCESS;
 }
 
-unsigned short lirc433HwDeinit(void) {
+static unsigned short lirc433HwDeinit(void) {
 	unsigned int freq = 0;
 
 	if(lirc_433_initialized == 1) {
@@ -98,7 +98,7 @@ unsigned short lirc433HwDeinit(void) {
 	return EXIT_SUCCESS;
 }
 
-int lirc433Send(int *code) {
+static int lirc433Send(int *code) {
 	size_t i = 0;
 	while(code[i]) {
 		i++;
@@ -114,7 +114,7 @@ int lirc433Send(int *code) {
 	}
 }
 
-int lirc433Receive(void) {
+static int lirc433Receive(void) {
 	int data = 0;
 
 	if((read(lirc_433_fd, &data, sizeof(data))) == 0) {
@@ -124,7 +124,7 @@ int lirc433Receive(void) {
 	return (data & 0x00FFFFFF);
 }
 
-unsigned short lirc433Settings(JsonNode *json) {
+static unsigned short lirc433Settings(JsonNode *json) {
 	if(strcmp(json->key, "socket") == 0) {
 		if(json->tag == JSON_STRING) {
 			lirc_433_socket = malloc(strlen(json->string_)+1);
@@ -141,7 +141,7 @@ unsigned short lirc433Settings(JsonNode *json) {
 }
 
 
-int lirc433gc(void) {
+static int lirc433gc(void) {
 	if(lirc_433_socket) {
 		sfree((void *)&lirc_433_socket);
 	}
@@ -149,6 +149,9 @@ int lirc433gc(void) {
 	return 1;
 }
 
+#ifndef MODULE
+__attribute__((weak))
+#endif
 void lirc433Init(void) {
 
 	gc_attach(lirc433gc);
@@ -166,10 +169,12 @@ void lirc433Init(void) {
 	lirc433->settings=&lirc433Settings;
 }
 
-#ifdef MODULAR
-void compatibility(const char **version, const char **commit) {
-	*version = "4.0";
-	*commit = "18";
+#ifdef MODULE
+void compatibility(const char **name, const char **version, const char **reqversion, const char **reqcommit) {
+	*name = "433lirc";
+	*version = "1.0";
+	*reqversion = "4.0";
+	*reqcommit = "18";
 }
 
 void init(void) {

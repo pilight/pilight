@@ -20,11 +20,6 @@
 #define _HARDWARE_LIRC_433_H_
 
 struct hardware_t *lirc433;
-
-unsigned short lirc433HwInit(void);
-unsigned short lirc433HwDeinit(void);
-int lirc433Send(int *code);
-int lirc433Receive(void);
 void lirc433Init(void);
 
 #endif

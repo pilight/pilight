@@ -253,14 +253,14 @@ void conradRSLSwInit(void) {
 }
 
 #ifdef MODULE
-static void compatibility(const char **name, const char **version, const char **reqversion, const char **reqcommit) {
+void compatibility(const char **name, const char **version, const char **reqversion, const char **reqcommit) {
 	*name = "conrad_rsl_switch";
 	*version = "0.3";
 	*reqversion = "4.0";
 	*reqcommit = "18";
 }
 
-static void init(void) {
+void init(void) {
 	conradRSLSwInit();
 }
 #endif

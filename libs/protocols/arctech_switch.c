@@ -193,7 +193,6 @@ void arctechSwInit(void) {
 	protocol_device_add(arctech_switch, "nexa_switch", "Nexa Switches");
 	protocol_device_add(arctech_switch, "coco_switch", "CoCo Technologies Switches");
 	protocol_device_add(arctech_switch, "intertechno_switch", "Intertechno Switches");
-
 	protocol_plslen_add(arctech_switch, 315);
 	protocol_plslen_add(arctech_switch, 303);
 	protocol_plslen_add(arctech_switch, 251);
@@ -216,14 +215,14 @@ void arctechSwInit(void) {
 }
 
 #ifdef MODULE
-static void compatibility(const char **name, const char **version, const char **reqversion, const char **reqcommit) {
+void compatibility(const char **name, const char **version, const char **reqversion, const char **reqcommit) {
 	*name = "arctech_switch";
 	*version = "1.0";
 	*reqversion = "4.0";
 	*reqcommit = "18";
 }
 
-static void init(void) {
+void init(void) {
 	arctechSwInit();
 }
 #endif

@@ -236,14 +236,14 @@ void rev2Init(void) {
 }
 
 #ifdef MODULE
-static void compatibility(const char **name, const char **version, const char **reqversion, const char **reqcommit) {
+void compatibility(const char **name, const char **version, const char **reqversion, const char **reqcommit) {
 	*name = "rev2_switch";
 	*version = "0.8";
 	*reqversion = "4.0";
 	*reqcommit = "18";
 }
 
-static void init(void) {
+void init(void) {
 	rev2Init();
 }
 #endif

@@ -30,11 +30,11 @@
 #include "irq.h"
 #include "433gpio.h"
 
-int gpio_433_in = 0;
-int gpio_433_out = 0;
-int gpio_433_initialized = 0;
+static int gpio_433_in = 0;
+static int gpio_433_out = 0;
+static int gpio_433_initialized = 0;
 
-unsigned short gpio433HwInit(void) {
+static unsigned short gpio433HwInit(void) {
 	if(wiringPiSetup() == -1) {
 		return EXIT_FAILURE;
 	}
@@ -51,7 +51,7 @@ unsigned short gpio433HwInit(void) {
 	return EXIT_SUCCESS;
 }
 
-unsigned short gpio433HwDeinit(void) {
+static unsigned short gpio433HwDeinit(void) {
 	FILE *fd;
 	if(gpio_433_initialized) {
 		if(gpio_433_out >= 0 && (fd = fopen ("/sys/class/gpio/unexport", "w"))) {
@@ -66,7 +66,7 @@ unsigned short gpio433HwDeinit(void) {
 	return EXIT_SUCCESS;
 }
 
-int gpio433Send(int *code) {
+static int gpio433Send(int *code) {
 	unsigned short i = 0;
 	if(gpio_433_out >= 0) {
 		while(code[i]) {
@@ -81,7 +81,7 @@ int gpio433Send(int *code) {
 	return EXIT_SUCCESS;
 }
 
-int gpio433Receive(void) {
+static int gpio433Receive(void) {
 	if(gpio_433_in >= 0) {
 		return irq_read(gpio_433_in);
 	} else {
@@ -90,7 +90,7 @@ int gpio433Receive(void) {
 	}
 }
 
-unsigned short gpio433Settings(JsonNode *json) {
+static unsigned short gpio433Settings(JsonNode *json) {
 	if(strcmp(json->key, "receiver") == 0) {
 		if(json->tag == JSON_NUMBER) {
 			gpio_433_in = (int)json->number_;
@@ -108,8 +108,10 @@ unsigned short gpio433Settings(JsonNode *json) {
 	return EXIT_SUCCESS;
 }
 
+#ifndef MODULE
+__attribute__((weak))
+#endif
 void gpio433Init(void) {
-
 	hardware_register(&gpio433);
 	hardware_set_id(gpio433, "433gpio");
 
@@ -124,10 +126,12 @@ void gpio433Init(void) {
 	gpio433->settings=&gpio433Settings;
 }
 
-#ifdef MODULAR
-void compatibility(const char **version, const char **commit) {
-	*version = "4.0";
-	*commit = "18";
+#ifdef MODULE
+void compatibility(const char **name, const char **version, const char **reqversion, const char **reqcommit) {
+	*name = "433gpio";
+	*version = "1.0";
+	*reqversion = "4.0";
+	*reqcommit = "18";
 }
 
 void init(void) {

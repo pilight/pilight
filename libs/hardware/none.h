@@ -20,9 +20,6 @@
 #define _HARDWARE_NONE_H_
 
 struct hardware_t *none;
-
-int noneHwReceive(void);
-int noneHwSend(int *code);
 void noneInit(void);
 
 #endif

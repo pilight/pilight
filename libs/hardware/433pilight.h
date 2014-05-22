@@ -20,11 +20,6 @@
 #define _HARDWARE_PILIGHT433_H_
 
 struct hardware_t *pilight433;
-
-unsigned short pilight433HwInit(void);
-unsigned short pilight433HwDeinit(void);
-int pilight433Send(int *code);
-int pilight433Receive(void);
 void pilight433Init(void);
 
 #endif

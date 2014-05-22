@@ -25,16 +25,19 @@
 #include "common.h"
 #include "none.h"
 
-int noneSend(int *code) {
+static int noneSend(int *code) {
 	sleep(1);
 	return EXIT_SUCCESS;
 }
 
-int noneReceive(void) {
+static int noneReceive(void) {
 	sleep(1);
 	return EXIT_SUCCESS;
 }
 
+#ifndef MODULE
+__attribute__((weak))
+#endif
 void noneInit(void) {
 	hardware_register(&none);
 	hardware_set_id(none, "none");
@@ -43,13 +46,15 @@ void noneInit(void) {
 	none->send=&noneSend;
 }
 
-#ifdef MODULAR
-void compatibility(const char **version, const char **commit) {
-	*version = "4.0";
-	*commit = "18";
+#ifdef MODULE
+void compatibility(const char **name, const char **version, const char **reqversion, const char **reqcommit) {
+	*name = "none";
+	*version = "1.0";
+	*reqversion = "4.0";
+	*reqcommit = "18";
 }
 
 void init(void) {
-	noneInit();
+	none433Init();
 }
 #endif

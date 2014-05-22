@@ -81,7 +81,7 @@ void protocol_remove(char *name) {
 			}
 			sfree((void *)&currP->listener->devices);
 			sfree((void *)&currP->listener);
-			sfree((void *)&currP);			
+			sfree((void *)&currP);
 
 			break;
 		}
