@@ -191,6 +191,9 @@ int standalone = 0;
 int minrawlen = 1000;
 /* What is the maximum rawlenth to consider a pulse stream valid */
 int maxrawlen = 0;
+/* Do we need to connect to a master server:port? */
+char *master_server = NULL;
+unsigned short master_port = 0;
 
 #ifdef WEBSERVER
 /* Do we enable the webserver */
@@ -1329,8 +1332,14 @@ void *clientize(void *param) {
 	while(main_loop) {
 		client_loop = 1;
 		steps = WELCOME;
+
 		ssdp_list = NULL;
-		if(ssdp_seek(&ssdp_list) == -1) {
+		if(master_server && master_port > 0) {
+			if((sockfd = socket_connect(master_server, master_port)) == -1) {
+				logprintf(LOG_ERR, "could not connect to pilight-daemon");
+				client_loop = 0;
+			}
+		} else if(ssdp_seek(&ssdp_list) == -1) {
 			logprintf(LOG_ERR, "no pilight ssdp connections found");
 			client_loop = 0;
 		} else {
@@ -1568,6 +1577,10 @@ int main_gc(void) {
 	}
 #endif
 
+	if(master_server) {
+		sfree((void *)&master_server);
+	}
+
 	datetime_gc();
 	ssdp_gc();
 	protocol_gc();
@@ -1684,6 +1697,8 @@ int main(int argc, char **argv) {
 	options_add(&options, 'V', "version", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
 	options_add(&options, 'D', "nodaemon", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
 	options_add(&options, 'F', "settings", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, NULL);
+	options_add(&options, 'S', "server", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, "^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]).){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$");
+	options_add(&options, 'P', "port", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, "[0-9]{1,4}");
 
 	while(1) {
 		int c;
@@ -1706,6 +1721,16 @@ int main(int argc, char **argv) {
 					return EXIT_FAILURE;
 				}
 			break;
+			case 'S':
+				if(!(master_server = malloc(strlen(args)+1))) {
+					logprintf(LOG_ERR, "out of memory");
+					exit(EXIT_FAILURE);
+				}
+				strcpy(master_server, args);
+			break;
+			case 'P':
+				master_port = (unsigned short)atoi(args);
+			break;			
 			case 'D':
 				nodaemon=1;
 			break;
@@ -1718,11 +1743,13 @@ int main(int argc, char **argv) {
 
 	if(show_help) {
 		printf("Usage: %s [options]\n", progname);
-		printf("\t -H --help\t\tdisplay usage summary\n");
-		printf("\t -V --version\t\tdisplay version\n");
-		printf("\t -F --settings\t\tsettings file\n");
-		printf("\t -D --nodaemon\t\tdo not daemonize and\n");
-		printf("\t\t\t\tshow debug information\n");
+		printf("\t -H --help\t\t\tdisplay usage summary\n");
+		printf("\t -V --version\t\t\tdisplay version\n");
+		printf("\t -F --settings\t\t\tsettings file\n");
+		printf("\t -D --nodaemon\t\t\tdo not daemonize and\n");
+		printf("\t -S --server=x.x.x.x\t\tconnect to server address\n");
+		printf("\t -P --port=xxxx\t\t\tconnect to server port\n");		
+		printf("\t\t\t\t\tshow debug information\n");
 		goto clear;
 	}
 	if(show_version) {
@@ -1876,8 +1903,15 @@ int main(int argc, char **argv) {
 	settings_find_number("port", &port);
 	settings_find_number("standalone", &standalone);
 
-	if(standalone == 0) {
-		if(ssdp_seek(&ssdp_list) == -1) {
+	if(standalone == 0 || (master_server && master_port > 0)) {
+		if(master_server && master_port > 0) {
+			if((sockfd = socket_connect(master_server, master_port)) == -1) {
+				logprintf(LOG_NOTICE, "no pilight daemon found, daemonizing");
+			} else {
+				logprintf(LOG_NOTICE, "a pilight daemon was found, clientizing");
+				runmode = 2;
+			}
+		} else if(ssdp_seek(&ssdp_list) == -1) {
 			logprintf(LOG_NOTICE, "no pilight daemon found, daemonizing");
 		} else {
 			logprintf(LOG_NOTICE, "a pilight daemon was found, clientizing");

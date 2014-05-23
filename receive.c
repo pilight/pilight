@@ -109,9 +109,7 @@ int main(int argc, char **argv) {
 				exit(EXIT_SUCCESS);
 			break;
 			case 'S':
-				server = realloc(server, strlen(args)+1);
-				memset(server, '\0', strlen(args)+1);
-				if(!server) {
+				if(!(server = malloc(strlen(args)+1))) {
 					logprintf(LOG_ERR, "out of memory");
 					exit(EXIT_FAILURE);
 				}
