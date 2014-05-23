@@ -157,7 +157,7 @@ static int cleverwattsCreateCode(JsonNode *code) {
 		if(unit == -1 && all == 1) {
 			unit = 3;
 		}
-		cleverwattsCreateMessage(id, unit, state, all);
+		cleverwattsCreateMessage(id, unit, state, all ^ 1);
 		cleverwattsClearCode();
 		cleverwattsCreateId(id);
 		cleverwattsCreateState(state);
