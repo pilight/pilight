@@ -34,11 +34,23 @@
 #include "http_lib.h"
 #include "log.h"
 
+typedef struct settings_t {
+	char *name;
+	int type;
+	union {
+		char *string_;
+		int number_;
+	} value;
+	struct settings_t *next;
+} settings_t;
+
+struct settings_t *settings;
+
 /* The location of the settings file */
-char *settingsfile = NULL;
+static char *settingsfile = NULL;
 
 /* Add a string value to the settings struct */
-void settings_add_string(const char *name, char *value) {
+static void settings_add_string(const char *name, char *value) {
 	struct settings_t *snode = malloc(sizeof(struct settings_t));
 	if(!snode) {
 		logprintf(LOG_ERR, "out of memory");
@@ -60,7 +72,7 @@ void settings_add_string(const char *name, char *value) {
 }
 
 /* Add an int value to the settings struct */
-void settings_add_number(const char *name, int value) {
+static void settings_add_number(const char *name, int value) {
 	struct settings_t *snode = malloc(sizeof(struct settings_t));
 	if(!snode) {
 		logprintf(LOG_ERR, "out of memory");

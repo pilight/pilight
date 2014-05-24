@@ -32,8 +32,8 @@
 #include "ssdp.h"
 #include "gc.h"
 
-int main_loop = 1;
-int sockfd = 0;
+static int main_loop = 1;
+static int sockfd = 0;
 
 typedef enum {
 	WELCOME,

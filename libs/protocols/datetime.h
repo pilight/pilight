@@ -16,13 +16,13 @@
     along with pilight. If not, see	<http://www.gnu.org/licenses/>
 */
 
-#ifndef _PROTOCOL_PpdateTime_H_
-#define _PROTOCOL_PpdateTime_H_
+#ifndef _PROTOCOL_DATETIME_H_
+#define _PROTOCOL_DATETIME_H_
 
 #include "json.h"
 #include "threads.h"
 
-struct protocol_t *pdatetime;
-void pdateTimeInit(void);
+struct protocol_t *datetime;
+void datetimeInit(void);
 
 #endif

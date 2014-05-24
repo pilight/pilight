@@ -39,8 +39,6 @@
 #include "ssdp.h"
 #include "gc.h"
 
-unsigned short main_loop = 1;
-
 int main_gc(void) {
 	log_shell_disable();
 

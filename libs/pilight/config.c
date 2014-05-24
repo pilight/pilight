@@ -43,7 +43,7 @@
 #endif
 
 /* Struct to store the locations */
-struct conf_locations_t *conf_locations = NULL;
+static struct conf_locations_t *conf_locations = NULL;
 
 int config_update(char *protoname, JsonNode *json, JsonNode **out) {
 	/* The pointer to the config locations */
@@ -668,7 +668,7 @@ void config_print(void) {
 }
 
 /* Save the device settings to the device struct */
-void config_save_setting(int i, JsonNode *jsetting, struct conf_devices_t *device) {
+static void config_save_setting(int i, JsonNode *jsetting, struct conf_devices_t *device) {
 	/* Struct to store the values */
 	struct conf_values_t *vnode = NULL;
 	struct conf_settings_t *snode = NULL;
@@ -909,7 +909,7 @@ void config_save_setting(int i, JsonNode *jsetting, struct conf_devices_t *devic
 	}
 }
 
-int config_check_id(int i, JsonNode *jsetting, struct conf_devices_t *device) {
+static int config_check_id(int i, JsonNode *jsetting, struct conf_devices_t *device) {
 	/* Temporary options pointer */
 	struct options_t *tmp_options = NULL;
 	/* Temporary ID array pointer */
@@ -1020,7 +1020,7 @@ int config_check_id(int i, JsonNode *jsetting, struct conf_devices_t *device) {
 	return have_error;
 }
 
-int config_validate_settings(void) {
+static int config_validate_settings(void) {
 	/* Temporary pointer to the different structure */
 	struct conf_locations_t *tmp_locations = NULL;
 	struct conf_devices_t *tmp_devices = NULL;
@@ -1116,7 +1116,7 @@ clear:
 	return have_error;
 }
 
-int config_check_state(int i, JsonNode *jsetting, struct conf_devices_t *device) {
+static int config_check_state(int i, JsonNode *jsetting, struct conf_devices_t *device) {
 	/* Temporary options pointer */
 	struct options_t *tmp_options;
 
@@ -1199,7 +1199,7 @@ clear:
 	return have_error;
 }
 
-int config_parse_devices(JsonNode *jdevices, struct conf_devices_t *device) {
+static int config_parse_devices(JsonNode *jdevices, struct conf_devices_t *device) {
 	/* Temporary settings holder */
 	struct conf_settings_t *tmp_settings = NULL;
 	/* JSON devices iterator */
@@ -1404,7 +1404,7 @@ clear:
 	return have_error;
 }
 
-int config_parse_locations(JsonNode *jlocations, struct conf_locations_t *location) {
+static int config_parse_locations(JsonNode *jlocations, struct conf_locations_t *location) {
 	/* Struct to store the devices */
 	struct conf_devices_t *dnode = NULL;
 	/* Temporary JSON devices  */

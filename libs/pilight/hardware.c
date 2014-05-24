@@ -40,7 +40,7 @@
 #include "dso.h"
 #include "hardware.h"
 
-char *hwfile = NULL;
+static char *hwfile = NULL;
 
 #include "hardware_header.h"
 
@@ -58,6 +58,7 @@ void hardware_remove(char *name) {
 				prevP->next = currP->next;
 			}
 
+			logprintf(LOG_DEBUG, "removed hardware module %s", currP->id);
 			sfree((void *)&currP->id);
 			options_delete(currP->options);
 			sfree((void *)&currP);

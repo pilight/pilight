@@ -46,23 +46,23 @@
 #include "ssdp.h"
 #include "fcache.h"
 
-int webserver_port = WEBSERVER_PORT;
-int webserver_cache = 1;
-char *webserver_user = NULL;
-char *webserver_authentication_username = NULL;
-char *webserver_authentication_password = NULL;
-unsigned short webserver_loop = 1;
-unsigned short webserver_php = 1;
-char *webserver_root = NULL;
-char *webgui_tpl = NULL;
-struct mg_server *mgserver[WEBSERVER_WORKERS];
+static int webserver_port = WEBSERVER_PORT;
+static int webserver_cache = 1;
+static char *webserver_user = NULL;
+static char *webserver_authentication_username = NULL;
+static char *webserver_authentication_password = NULL;
+static unsigned short webserver_loop = 1;
+static unsigned short webserver_php = 1;
+static char *webserver_root = NULL;
+static char *webgui_tpl = NULL;
+static struct mg_server *mgserver[WEBSERVER_WORKERS];
 
-unsigned short webgui_tpl_free = 0;
-unsigned short webserver_root_free = 0;
-unsigned short webserver_user_free = 0;
+static unsigned short webgui_tpl_free = 0;
+static unsigned short webserver_root_free = 0;
+static unsigned short webserver_user_free = 0;
 
-int loopfd = 0;
-int sockfd = 0;
+static int loopfd = 0;
+static int sockfd = 0;
 
 typedef enum {
 	WELCOME,
@@ -76,14 +76,14 @@ typedef struct webqueue_t {
 	struct webqueue_t *next;
 } webqueue_t;
 
-struct webqueue_t *webqueue;
-struct webqueue_t *webqueue_head;
+static struct webqueue_t *webqueue;
+static struct webqueue_t *webqueue_head;
 
-pthread_mutex_t webqueue_lock;
-pthread_cond_t webqueue_signal;
-pthread_mutexattr_t webqueue_attr;
+static pthread_mutex_t webqueue_lock;
+static pthread_cond_t webqueue_signal;
+static pthread_mutexattr_t webqueue_attr;
 
-int webqueue_number = 0;
+static int webqueue_number = 0;
 
 int webserver_gc(void) {
 	int i = 0;
@@ -112,7 +112,7 @@ int webserver_gc(void) {
 	return 1;
 }
 
-struct filehandler_t {
+static struct filehandler_t {
 	unsigned char *bytes;
 	FILE *fp;
 	unsigned int ptr;
@@ -131,7 +131,7 @@ void webserver_create_header(unsigned char **p, const char *message, char *mimet
 		len);
 }
 
-void webserver_create_minimal_header(unsigned char **p, const char *message, unsigned int len) {
+static void webserver_create_minimal_header(unsigned char **p, const char *message, unsigned int len) {
 	*p += sprintf((char *)*p,
 		"HTTP/1.1 %s\r\n"
 		"Server: pilight\r\n",
@@ -141,7 +141,7 @@ void webserver_create_minimal_header(unsigned char **p, const char *message, uns
 		len);
 }
 
-void webserver_create_404(const char *in, unsigned char **p) {
+static void webserver_create_404(const char *in, unsigned char **p) {
 	char mimetype[] = "text/html";
 	webserver_create_header(p, "404 Not Found", mimetype, (unsigned int)(202+strlen((const char *)in)));
 	*p += sprintf((char *)*p, "<!DOCTYPE HTML PUBLIC \"-//IETF//DTD HTML 2.0//EN\">\x0d\x0a"
@@ -165,7 +165,7 @@ char *webserver_mimetype(const char *str) {
 	return mimetype;
 }
 
-char *webserver_shell(const char *format_str, struct mg_connection *conn, char *request, ...) {
+static char *webserver_shell(const char *format_str, struct mg_connection *conn, char *request, ...) {
 	size_t n = 0;
 	char *output = NULL;
 	const char *type = NULL;
@@ -728,7 +728,7 @@ filenotfound:
 	return MG_TRUE;
 }
 
-int webserver_connect_handler(struct mg_connection *conn) {
+static int webserver_connect_handler(struct mg_connection *conn) {
 	char ip[17];
 	strcpy(ip, conn->remote_ip);
 	if(whitelist_check(conn->remote_ip) != 0) {
@@ -741,7 +741,7 @@ int webserver_connect_handler(struct mg_connection *conn) {
 	return MG_FALSE;
 }
 
-void *webserver_worker(void *param) {
+static void *webserver_worker(void *param) {
 	while(webserver_loop) {
 		if(mg_poll_server(mgserver[(intptr_t)param], 1000) == 0) {
 			sleep(1);
@@ -750,7 +750,7 @@ void *webserver_worker(void *param) {
 	return NULL;
 }
 
-void webserver_queue(char *message) {
+static void webserver_queue(char *message) {
 	pthread_mutex_lock(&webqueue_lock);
 	if(webqueue_number <= 1024) {
 		struct webqueue_t *wnode = malloc(sizeof(struct webqueue_t));
@@ -875,7 +875,7 @@ close:
 	return 0;
 }
 
-int webserver_handler(struct mg_connection *conn, enum mg_event ev) {
+static int webserver_handler(struct mg_connection *conn, enum mg_event ev) {
 	if(ev == MG_REQUEST || (ev == MG_POLL && !conn->is_websocket)) {
 		if(ev == MG_POLL ||
 		  (!conn->is_websocket && webserver_connect_handler(conn) == MG_TRUE) ||

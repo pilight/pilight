@@ -33,12 +33,14 @@
 #include "log.h"
 #include "wiringPi.h"
 
-struct {
+typedef struct timestamp_t {
 	unsigned long first;
 	unsigned long second;
 	int old_period;
 	int new_period;
-} timestamp;
+} timestamp_t;
+
+timestamp_t timestamp;
 
 /* Attaches an interrupt handler to a specific GPIO pin
    Whenever an rising, falling or changing interrupt occurs

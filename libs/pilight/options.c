@@ -25,10 +25,10 @@
 #include "common.h"
 #include "options.h"
 
-int getOptPos = 0;
-char *longarg = NULL;
-char *shortarg = NULL;
-char *gctmp = NULL;
+static int getOptPos = 0;
+static char *longarg = NULL;
+static char *shortarg = NULL;
+static char *gctmp = NULL;
 
 int options_gc(void) {
 	sfree((void *)&longarg);

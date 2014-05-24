@@ -33,14 +33,14 @@
 #include "gc.h"
 #include "log.h"
 
-FILE *lf=NULL;
+static FILE *lf=NULL;
 
-char *logfile = NULL;
-char *logpath = NULL;
-int filelog = 1;
-int shelllog = 0;
-int loglevel = LOG_DEBUG;
-char debug_log[128];
+static char *logfile = NULL;
+static char *logpath = NULL;
+static int filelog = 1;
+static int shelllog = 0;
+static int loglevel = LOG_DEBUG;
+static char debug_log[128];
 
 int log_gc(void) {
 	if(shelllog == 1) {

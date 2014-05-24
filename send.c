@@ -44,15 +44,15 @@ typedef enum {
 	SEND
 } steps_t;
 
-struct pname_t {
+typedef struct pname_t {
 	char *name;
 	char *desc;
 	struct pname_t *next;
-};
+} pname_t;
 
-struct pname_t *pname = NULL;
+static struct pname_t *pname = NULL;
 
-void sort_list(void) {
+static void sort_list(void) {
 	struct pname_t *a = NULL;
 	struct pname_t *b = NULL;
 	struct pname_t *c = NULL;

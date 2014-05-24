@@ -41,12 +41,12 @@
 #include "gc.h"
 #include "dso.h"
 
-int pulselen = 0;
-unsigned short main_loop = 1;
-unsigned short inner_loop = 1;
-pthread_t pth;
+static int pulselen = 0;
+static unsigned short main_loop = 1;
+static unsigned short inner_loop = 1;
+static pthread_t pth;
 
-int normalize(int i) {
+static int normalize(int i) {
 	double x;
 	x=(double)i/pulselen;
 

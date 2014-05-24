@@ -25,8 +25,7 @@ int webserver_gc(void);
 void *webserver_start(void *param);
 void *webserver_clientize(void *param);
 void *webserver_broadcast(void *param);
-void webserver_create_header(unsigned char **p, const char *message, char *mimetype, unsigned int len);
 char *webserver_mimetype(const char *str);
-void webserver_create_minimal_header(unsigned char **p, const char *message, unsigned int len);
+void webserver_create_header(unsigned char **p, const char *message, char *mimetype, unsigned int len);
 
 #endif

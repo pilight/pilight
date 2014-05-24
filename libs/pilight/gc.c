@@ -27,7 +27,7 @@
 #include "config.h"
 #include "common.h"
 
-unsigned short gc_enable = 1;
+static unsigned short gc_enable = 1;
 
 void gc_handler(int sig) {
 	if(((sig == SIGINT || sig == SIGTERM || sig == SIGTSTP) && gc_enable == 1) ||

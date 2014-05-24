@@ -58,7 +58,7 @@
 
 static int mptype = FW_MP_UNKNOWN;
 
-void firmware_attiny25(struct avrpart **p) {
+static void firmware_attiny25(struct avrpart **p) {
 	char pgm_bits[] = "1 0 1 0 1 1 0 0 0 1 0 1 0 0 1 1 x x x x x x x x x x x x x x x x";
 	char read_bits[] = "0 0 1 1 0 0 0 0 0 0 0 x x x x x x x x x x x a1 a0 o o o o o o o o";
 	char erase_bits[] = "1 0 1 0 1 1 0 0 1 0 0 x x x x x x x x x x x x x x x x x x x x x";
@@ -151,7 +151,7 @@ void firmware_attiny25(struct avrpart **p) {
 	parse_cmdbits((*p)->hfusemem->op[AVR_OP_WRITE], hfusewrite_bits);
 }
 
-void firmware_attiny45(struct avrpart **p) {
+static void firmware_attiny45(struct avrpart **p) {
 	char pgm_bits[] = "1 0 1 0 1 1 0 0 0 1 0 1 0 0 1 1 x x x x x x x x x x x x x x x x";
 	char read_bits[] = "0 0 1 1 0 0 0 0 0 0 0 x x x x x x x x x x x a1 a0 o o o o o o o o";
 	char erase_bits[] = "1 0 1 0 1 1 0 0 1 0 0 x x x x x x x x x x x x x x x x x x x x x";
@@ -244,7 +244,7 @@ void firmware_attiny45(struct avrpart **p) {
 	parse_cmdbits((*p)->hfusemem->op[AVR_OP_WRITE], hfusewrite_bits);
 }
 
-void firmware_attiny85(struct avrpart **p) {
+static void firmware_attiny85(struct avrpart **p) {
 	char pgm_bits[] = "1 0 1 0 1 1 0 0 0 1 0 1 0 0 1 1 x x x x x x x x x x x x x x x x";
 	char read_bits[] = "0 0 1 1 0 0 0 0 0 0 0 x x x x x x x x x x x a1 a0 o o o o o o o o";
 	char erase_bits[] = "1 0 1 0 1 1 0 0 1 0 0 x x x x x x x x x x x x x x x x x x x x x";
@@ -337,7 +337,7 @@ void firmware_attiny85(struct avrpart **p) {
 	parse_cmdbits((*p)->hfusemem->op[AVR_OP_WRITE], hfusewrite_bits);
 }
 
-void firmware_init_pgm(PROGRAMMER **pgm) {
+static void firmware_init_pgm(PROGRAMMER **pgm) {
 	*pgm = pgm_new();
 	gpio_initpgm(*pgm);
 	(*pgm)->pinno[3] = 8;
@@ -350,11 +350,11 @@ void firmware_init_pgm(PROGRAMMER **pgm) {
 	}
 }
 
-void firmware_process(int percent, double etime, char *hdr) {
+static void firmware_process(int percent, double etime, char *hdr) {
   //printf("%d\n", percent);
 }
 
-int firmware_identifymp(struct avrpart **p) {
+static int firmware_identifymp(struct avrpart **p) {
 	int exitrc = 0, i = 0;
 	int init_ok = 0;
 	PROGRAMMER *pgm = NULL;
@@ -474,7 +474,7 @@ main_exit:
 	return exitrc;
 }
 
-int firmware_write(char *filename, struct avrpart **p) {
+static int firmware_write(char *filename, struct avrpart **p) {
 	int exitrc = 0, i = 0, erase = 1, nowrite = 0, verify = 1;
 	int safemode = 1, init_ok = 0;
 	unsigned char safemode_lfuse = 0xff, safemode_hfuse = 0xff;

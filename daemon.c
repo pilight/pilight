@@ -67,7 +67,7 @@ typedef enum {
 	WEB
 } client_type_t;
 
-char clients[6][11] = {
+static char clients[6][11] = {
 	"receiver",
 	"sender",
 	"controller",
@@ -82,7 +82,7 @@ typedef struct nodes_t {
 	struct nodes_t *next;
 } nodes_t;
 
-struct nodes_t *nodes = NULL;
+static struct nodes_t *nodes = NULL;
 
 typedef enum {
 	WELCOME,
@@ -104,8 +104,8 @@ typedef struct sendqueue_t {
 	struct sendqueue_t *next;
 } sendqueue_t;
 
-struct sendqueue_t *sendqueue;
-struct sendqueue_t *sendqueue_head;
+static struct sendqueue_t *sendqueue;
+static struct sendqueue_t *sendqueue_head;
 
 typedef struct recvqueue_t {
 	int raw[255];
@@ -115,24 +115,24 @@ typedef struct recvqueue_t {
 	struct recvqueue_t *next;
 } recvqueue_t;
 
-struct recvqueue_t *recvqueue;
-struct recvqueue_t *recvqueue_head;
+static struct recvqueue_t *recvqueue;
+static struct recvqueue_t *recvqueue_head;
 
-pthread_mutex_t sendqueue_lock;
-pthread_cond_t sendqueue_signal;
-pthread_mutexattr_t sendqueue_attr;
+static pthread_mutex_t sendqueue_lock;
+static pthread_cond_t sendqueue_signal;
+static pthread_mutexattr_t sendqueue_attr;
 
-int sendqueue_number = 0;
+static int sendqueue_number = 0;
 
-pthread_mutex_t receive_lock;
-pthread_cond_t receive_signal;
-pthread_mutexattr_t receive_attr;
+static pthread_mutex_t receive_lock;
+static pthread_cond_t receive_signal;
+static pthread_mutexattr_t receive_attr;
 
-int recvqueue_number = 0;
+static int recvqueue_number = 0;
 
-pthread_mutex_t recvqueue_lock;
-pthread_cond_t recvqueue_signal;
-pthread_mutexattr_t recvqueue_attr;
+static pthread_mutex_t recvqueue_lock;
+static pthread_cond_t recvqueue_signal;
+static pthread_mutexattr_t recvqueue_attr;
 
 typedef struct bcqueue_t {
 	JsonNode *jmessage;
@@ -140,79 +140,79 @@ typedef struct bcqueue_t {
 	struct bcqueue_t *next;
 } bcqueue_t;
 
-struct bcqueue_t *bcqueue = NULL;
-struct bcqueue_t *bcqueue_head = NULL;
+static struct bcqueue_t *bcqueue = NULL;
+static struct bcqueue_t *bcqueue_head = NULL;
 
-pthread_mutex_t bcqueue_lock;
-pthread_cond_t bcqueue_signal;
-pthread_mutexattr_t bcqueue_attr;
+static pthread_mutex_t bcqueue_lock;
+static pthread_cond_t bcqueue_signal;
+static pthread_mutexattr_t bcqueue_attr;
 
-pthread_mutex_t mainlock;
-pthread_cond_t mainsignal;
-pthread_mutexattr_t mainattr;
+static pthread_mutex_t mainlock;
+static pthread_cond_t mainsignal;
+static pthread_mutexattr_t mainattr;
 
-int bcqueue_number = 0;
+static int bcqueue_number = 0;
 
 /* The pid_file and pid of this daemon */
-char *pid_file;
-unsigned short pid_file_free = 0;
-pid_t pid;
+static char *pid_file;
+static unsigned short pid_file_free = 0;
+static pid_t pid;
 /* The number of receivers connected */
-int receivers = 0;
+static int receivers = 0;
 /* Daemonize or not */
-int nodaemon = 0;
+static int nodaemon = 0;
 /* Are we already running */
-int running = 1;
+static int running = 1;
 /* How many times does the code need to be resend */
-int send_repeat;
+static int send_repeat = 0;
 /* How many times does a code need to received*/
-int receive_repeat = RECEIVE_REPEATS;
+static int receive_repeat = RECEIVE_REPEATS;
 /* Are we currently sending code */
-int sending = 0;
+static int sending = 0;
 /* If we have accepted a client, handshakes will store the type of client */
-short handshakes[MAX_CLIENTS];
+static short handshakes[MAX_CLIENTS];
 /* Which mode are we running in: 1 = server, 2 = client */
-unsigned short runmode = 1;
+static unsigned short runmode = 1;
 /* Socket identifier to the server if we are running as client */
-int sockfd = 0;
+static int sockfd = 0;
 /* In the client running in incognito mode */
-unsigned short incognito_mode = 0;
+static unsigned short incognito_mode = 0;
 /* Thread pointers */
-pthread_t pth;
+static pthread_t pth;
 /* While loop conditions */
-unsigned short main_loop = 1;
+static unsigned short main_loop = 1;
 /* Reset repeats after a certian amount of time */
-struct timeval tv;
+static struct timeval tv;
 /* How many nodes are connected */
-int nrnodes = 0;
+static int nrnodes = 0;
 /* Are we running standalone */
-int standalone = 0;
+static int standalone = 0;
 /* What is the minimum rawlenth to consider a pulse stream valid */
-int minrawlen = 1000;
+static int minrawlen = 1000;
 /* What is the maximum rawlenth to consider a pulse stream valid */
-int maxrawlen = 0;
+static int maxrawlen = 0;
 /* Do we need to connect to a master server:port? */
-char *master_server = NULL;
-unsigned short master_port = 0;
+static char *master_server = NULL;
+static unsigned short master_port = 0;
 
 #ifdef WEBSERVER
 /* Do we enable the webserver */
-int webserver_enable = WEBSERVER_ENABLE;
+static int webserver_enable = WEBSERVER_ENABLE;
 /* On what port does the webserver run */
-int webserver_port = WEBSERVER_PORT;
+static int webserver_port = WEBSERVER_PORT;
 /* The webroot of pilight */
-char *webserver_root;
-char *webgui_tpl = NULL;
-int webserver_root_free = 0;
-int webgui_tpl_free = 0;
+static char *webserver_root;
+static char *webgui_tpl = NULL;
+static int webserver_root_free = 0;
+static int webgui_tpl_free = 0;
 #endif
 
 #ifdef UPDATE
 /* Do we need to check for updates */
-int update_check = UPDATE_CHECK;
+static int update_check = UPDATE_CHECK;
 #endif
 
-void node_add(int id, char uuid[21]) {
+static void node_add(int id, char uuid[21]) {
 	struct nodes_t *node = malloc(sizeof(struct nodes_t));
 	if(!node) {
 		logprintf(LOG_ERR, "out of memory");
@@ -225,7 +225,7 @@ void node_add(int id, char uuid[21]) {
 	nrnodes++;
 }
 
-void node_remove(int id) {
+static void node_remove(int id) {
 	struct nodes_t *currP, *prevP;
 
 	prevP = NULL;
@@ -246,7 +246,7 @@ void node_remove(int id) {
 	}
 }
 
-void broadcast_queue(char *protoname, JsonNode *json) {
+static void broadcast_queue(char *protoname, JsonNode *json) {
 	pthread_mutex_lock(&bcqueue_lock);
 	if(bcqueue_number <= 1024) {
 		struct bcqueue_t *bnode = malloc(sizeof(struct bcqueue_t));
@@ -392,7 +392,7 @@ void *broadcast(void *param) {
 	return (void *)NULL;
 }
 
-void receive_queue(int *raw, int rawlen, int plslen, int hwtype) {
+static void receive_queue(int *raw, int rawlen, int plslen, int hwtype) {
 	int i = 0;
 
 	pthread_mutex_lock(&recvqueue_lock);
@@ -425,7 +425,7 @@ void receive_queue(int *raw, int rawlen, int plslen, int hwtype) {
 	pthread_cond_signal(&recvqueue_signal);
 }
 
-void receiver_create_message(protocol_t *protocol) {
+static void receiver_create_message(protocol_t *protocol) {
 	if(protocol->message) {
 		char *valid = json_stringify(protocol->message, NULL);
 		json_delete(protocol->message);
@@ -471,8 +471,9 @@ void *receive_parse_code(void *param) {
 				match = 0;
 
 				if((protocol->hwtype == recvqueue->hwtype || protocol->hwtype == -1 || recvqueue->hwtype == -1) &&
-				  ((((protocol->parseRaw || protocol->parseCode) && protocol->rawlen > 0)
-				   || protocol->parseBinary) && protocol->pulse > 0 && protocol->plslen)) {
+				   ((((protocol->parseRaw || protocol->parseCode) &&
+					  (protocol->rawlen > 0 || (protocol->minrawlen > 0 && protocol->maxrawlen > 0)))
+					   || protocol->parseBinary) && protocol->pulse > 0 && protocol->plslen)) {
 					plslengths = protocol->plslen;
 					while(plslengths && main_loop) {
 						if((recvqueue->plslen >= ((double)plslengths->length-5) &&
@@ -482,7 +483,10 @@ void *receive_parse_code(void *param) {
 						}
 						plslengths = plslengths->next;
 					}
-					if(recvqueue->rawlen == protocol->rawlen && match == 1) {
+					if((recvqueue->rawlen == protocol->rawlen || (
+					   (protocol->minrawlen > 0 && protocol->maxrawlen > 0 &&
+					    recvqueue->rawlen >= protocol->minrawlen && recvqueue->rawlen <= protocol->maxrawlen)))
+					    && match == 1) {
 						for(x=0;x<(int)recvqueue->rawlen;x++) {
 							if(x < 254) {
 								memcpy(&protocol->raw[x], &recvqueue->raw[x], sizeof(int));
@@ -701,7 +705,7 @@ void *send_code(void *param) {
 }
 
 /* Send a specific code */
-void send_queue(JsonNode *json) {
+static void send_queue(JsonNode *json) {
 	int match = 0, x = 0;
 	struct timeval tcurrent;
 	char *uuid = NULL;
@@ -833,7 +837,7 @@ void send_queue(JsonNode *json) {
 	}
 }
 
-void client_sender_parse_code(int i, JsonNode *json) {
+static void client_sender_parse_code(int i, JsonNode *json) {
 	int sd = socket_get_clients(i);
 
 	if(incognito_mode == 0 && i > -1 && handshakes[i] != NODE) {
@@ -845,7 +849,7 @@ void client_sender_parse_code(int i, JsonNode *json) {
 	send_queue(json);
 }
 
-void control_device(struct conf_devices_t *dev, char *state, JsonNode *values) {
+static void control_device(struct conf_devices_t *dev, char *state, JsonNode *values) {
 	struct conf_settings_t *sett = NULL;
 	struct conf_values_t *val = NULL;
 	struct options_t *opt = NULL;
@@ -943,7 +947,7 @@ void control_device(struct conf_devices_t *dev, char *state, JsonNode *values) {
 	json_delete(json);
 }
 
-void client_node_parse_code(int i, JsonNode *json) {
+static void client_node_parse_code(int i, JsonNode *json) {
 	int sd = socket_get_clients(i);
 	char *message = NULL;
 
@@ -974,7 +978,7 @@ void client_node_parse_code(int i, JsonNode *json) {
 	}
 }
 
-void client_controller_parse_code(int i, JsonNode *json) {
+static void client_controller_parse_code(int i, JsonNode *json) {
 	int sd = socket_get_clients(i);
 	char *message = NULL;
 	char *location = NULL;
@@ -1051,7 +1055,7 @@ void client_controller_parse_code(int i, JsonNode *json) {
 }
 
 #ifdef WEBSERVER
-void client_webserver_parse_code(int i, char buffer[BUFFER_SIZE]) {
+static void client_webserver_parse_code(int i, char buffer[BUFFER_SIZE]) {
 	int sd = socket_get_clients(i);
 	int x = 0;
 	FILE *f;
@@ -1135,7 +1139,7 @@ void client_webserver_parse_code(int i, char buffer[BUFFER_SIZE]) {
 #endif
 
 /* Parse the incoming buffer from the client */
-void socket_parse_data(int i, char *buffer) {
+static void socket_parse_data(int i, char *buffer) {
 	int sd = socket_get_clients(i);
 	struct sockaddr_in address;
 	int addrlen = sizeof(address);
@@ -1260,7 +1264,7 @@ void socket_parse_data(int i, char *buffer) {
 	}
 }
 
-void socket_client_disconnected(int i) {
+static void socket_client_disconnected(int i) {
 	if(handshakes[i] == RECEIVER || handshakes[i] == GUI || handshakes[i] == NODE)
 		receivers--;
 
@@ -1299,7 +1303,7 @@ void *receive_code(void *param) {
 					rawlen = 0;
 				}
 				if(duration > 4440) {
-					if((duration/PULSE_DIV) < 1000) {
+					if((duration/PULSE_DIV) < 3000) { // Maximum footer pulse of 100000
 						plslen = duration/PULSE_DIV;
 					}
 					/* Let's do a little filtering here as well */
@@ -1461,7 +1465,7 @@ void *clientize(void *param) {
 	return NULL;
 }
 
-void save_pid(pid_t npid) {
+static void save_pid(pid_t npid) {
 	int f = 0;
 	char buffer[BUFFER_SIZE];
 	memset(buffer, '\0', BUFFER_SIZE);
@@ -1476,7 +1480,7 @@ void save_pid(pid_t npid) {
 	close(f);
 }
 
-void daemonize(void) {
+static void daemonize(void) {
 	log_file_enable();
 	log_shell_disable();
 	/* Get the pid of the fork */
@@ -1730,7 +1734,7 @@ int main(int argc, char **argv) {
 			break;
 			case 'P':
 				master_port = (unsigned short)atoi(args);
-			break;			
+			break;
 			case 'D':
 				nodaemon=1;
 			break;
@@ -1748,7 +1752,7 @@ int main(int argc, char **argv) {
 		printf("\t -F --settings\t\t\tsettings file\n");
 		printf("\t -D --nodaemon\t\t\tdo not daemonize and\n");
 		printf("\t -S --server=x.x.x.x\t\tconnect to server address\n");
-		printf("\t -P --port=xxxx\t\t\tconnect to server port\n");		
+		printf("\t -P --port=xxxx\t\t\tconnect to server port\n");
 		printf("\t\t\t\t\tshow debug information\n");
 		goto clear;
 	}
@@ -1883,8 +1887,14 @@ int main(int argc, char **argv) {
 		if(tmp->listener->rawlen < minrawlen && tmp->listener->rawlen > 0) {
 			minrawlen = tmp->listener->rawlen;
 		}
+		if(tmp->listener->minrawlen < minrawlen && tmp->listener->minrawlen > 0) {
+			minrawlen = tmp->listener->minrawlen;
+		}
 		if(tmp->listener->rawlen > maxrawlen) {
 			maxrawlen = tmp->listener->rawlen;
+		}
+		if(tmp->listener->maxrawlen > maxrawlen) {
+			maxrawlen = tmp->listener->maxrawlen;
 		}
 		tmp = tmp->next;
 	}

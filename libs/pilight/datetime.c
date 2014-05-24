@@ -41,15 +41,15 @@
 #define min(a,b) (((a)<(b))?(a):(b))
 #define max(a,b) (((a)>(b))?(a):(b))
 
-int ***tzcoords;
-unsigned int tznrpolys[NRCOUNTRIES];
-char tznames[NRCOUNTRIES][30];
-int tzdatafilled = 0;
-pthread_mutex_t tzlock;
-pthread_mutexattr_t tzattr;
-int tz_lock_initialized = 0;
+static int ***tzcoords;
+static unsigned int tznrpolys[NRCOUNTRIES];
+static char tznames[NRCOUNTRIES][30];
+static int tzdatafilled = 0;
+static pthread_mutex_t tzlock;
+static pthread_mutexattr_t tzattr;
+static int tz_lock_initialized = 0;
 
-int fillTZData(void) {
+static int fillTZData(void) {
 	if(tz_lock_initialized == 0) {
 		pthread_mutexattr_init(&tzattr);
 		pthread_mutexattr_settype(&tzattr, PTHREAD_MUTEX_RECURSIVE);

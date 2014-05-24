@@ -21,20 +21,6 @@
 
 #include "json.h"
 
-typedef struct settings_t {
-	char *name;
-	int type;
-	union {
-		char *string_;
-		int number_;
-	} value;
-	struct settings_t *next;
-} settings_t;
-
-struct settings_t *settings;
-
-void settings_add_string(const char *name, char *value);
-void settings_add_int(const char *name, int value);
 int settings_find_number(const char *name, int *out);
 int settings_find_string(const char *name, char **out);
 int settings_path_exists(char *fil);

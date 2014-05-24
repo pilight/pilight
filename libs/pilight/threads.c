@@ -28,16 +28,15 @@
 #include "common.h"
 #include "log.h"
 
-unsigned short thread_loop = 1;
-unsigned short thread_running = 0;
+static unsigned short thread_loop = 1;
+static unsigned short thread_running = 0;
 
-pthread_mutex_t threadqueue_lock;
-pthread_cond_t threadqueue_signal;
-pthread_mutexattr_t threadqueue_attr;
+static pthread_mutex_t threadqueue_lock;
+static pthread_cond_t threadqueue_signal;
+static pthread_mutexattr_t threadqueue_attr;
 
-int threadqueue_number = 0;
-struct threadqueue_t *threadqueue = NULL;
-struct threadqueue_t *threadqueue_head = NULL;
+static int threadqueue_number = 0;
+static struct threadqueue_t *threadqueue = NULL;
 
 struct threadqueue_t *threads_register(const char *id, void *(*function)(void *param), void *param, int force) {
 	pthread_mutex_lock(&threadqueue_lock);

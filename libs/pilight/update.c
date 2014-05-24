@@ -36,19 +36,18 @@
 #include "log.h"
 #include "../../pilight.h"
 
-unsigned short update_loop = 1;
-unsigned short update_needed = 0;
-char *update_latests_ver = NULL;
-char *update_current_ver = NULL;
-time_t update_last_check = 0;
-char **update_mirrors = NULL;
-char *update_filename = NULL, *update_data = NULL;
-char update_typebuf[70];
-int update_lg = 0, update_ret = 0;
+static unsigned short update_loop = 1;
+static unsigned short update_needed = 0;
+static char *update_latests_ver = NULL;
+static char *update_current_ver = NULL;
+static time_t update_last_check = 0;
+static char **update_mirrors = NULL;
+static char *update_filename = NULL, *update_data = NULL;
+static char update_typebuf[70];
+static int update_lg = 0, update_ret = 0;
 
-pthread_mutex_t updatelock;
-pthread_cond_t updatesignal;
-pthread_mutexattr_t updateattr;
+static pthread_mutex_t updatelock;
+static pthread_cond_t updatesignal;
 
 int update_gc(void) {
 	update_loop = 0;
@@ -65,7 +64,7 @@ int update_gc(void) {
 	return 1;
 }
 
-int update_mirror_list(void) {
+static int update_mirror_list(void) {
 	int i = 0, x = 0, furl = 0;
 	char *url = NULL;
 	char mirror[255];
@@ -118,7 +117,7 @@ int update_mirror_list(void) {
 	return i;
 }
 
-char *update_package_version(char *mirror) {
+static char *update_package_version(char *mirror) {
 	int x = 0;
 	size_t l = 0;
 	char stable[] = "stable";

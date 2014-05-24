@@ -38,8 +38,8 @@
 #include "gc.h"
 #include "ssdp.h"
 
-int ssdp_socket = 0;
-int ssdp_loop = 1;
+static int ssdp_socket = 0;
+static int ssdp_loop = 1;
 
 int ssdp_gc(void) {
 	struct sockaddr_in addr;

@@ -52,5 +52,7 @@ pid_t findproc(char *name, char *args, int loosely);
 
 int vercmp(char *val, char *ref);
 void sfree(void **addr);
+int str_replace(char *search, char *replace, char **str);
+int strcicmp(char const *a, char const *b);
 
 #endif

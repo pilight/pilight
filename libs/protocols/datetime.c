@@ -45,7 +45,7 @@
 #include "binary.h"
 #include "json.h"
 #include "gc.h"
-#include "pdatetime.h"
+#include "../pilight/datetime.h"
 #include "datetime.h"
 
 typedef struct l_fp {
@@ -69,12 +69,12 @@ typedef struct pkt {
 	struct l_fp rec;
 } pkt;
 
-static unsigned short pdatetime_loop = 1;
-static unsigned short pdatetime_threads = 0;
-static char *pdatetime_format = NULL;
+static unsigned short datetime_loop = 1;
+static unsigned short datetime_threads = 0;
+static char *datetime_format = NULL;
 
-static pthread_mutex_t pdatetimelock;
-static pthread_mutexattr_t pdatetimeattr;
+static pthread_mutex_t datetimelock;
+static pthread_mutexattr_t datetimeattr;
 
 static time_t getntptime(const char *ntpserver) {
 	struct sockaddr_in servaddr;
@@ -150,7 +150,7 @@ close:
 	return -1;
 }
 
-static void *pdateTimeParse(void *param) {
+static void *datetimeParse(void *param) {
 	char UTC[] = "Europe/London";
 	struct protocol_threads_t *thread = (struct protocol_threads_t *)param;
 	struct JsonNode *json = (struct JsonNode *)thread->param;
@@ -165,7 +165,7 @@ static void *pdateTimeParse(void *param) {
 	struct tm *tm;
 	int x = 0, diff = 0;
 
-	pdatetime_threads++;
+	datetime_threads++;
 
 	if((jid = json_find_member(json, "id"))) {
 		jchild = json_first_child(jid);
@@ -212,8 +212,8 @@ static void *pdateTimeParse(void *param) {
 		logprintf(LOG_DEBUG, "%s:%s seems to be in timezone: %s", slongitude, slatitude, tz);
 	}
 
-	while(pdatetime_loop) {
-		pthread_mutex_lock(&pdatetimelock);
+	while(datetime_loop) {
+		pthread_mutex_lock(&datetimelock);
 		t = time(NULL);
 		if(x == interval || (ntp == -1 && ntpserver != NULL && strlen(ntpserver) > 0)) {
 			ntp = getntptime(ntpserver);
@@ -223,7 +223,7 @@ static void *pdateTimeParse(void *param) {
 			x = 0;
 		}
 
-		pdatetime->message = json_mkobject();
+		datetime->message = json_mkobject();
 
 		JsonNode *code = json_mkobject();
 
@@ -246,18 +246,18 @@ static void *pdateTimeParse(void *param) {
 		json_append_member(code, "minute", json_mknumber(minute));
 		json_append_member(code, "second", json_mknumber(second));
 
-		json_append_member(pdatetime->message, "message", code);
-		json_append_member(pdatetime->message, "origin", json_mkstring("receiver"));
-		json_append_member(pdatetime->message, "protocol", json_mkstring(pdatetime->id));
+		json_append_member(datetime->message, "message", code);
+		json_append_member(datetime->message, "origin", json_mkstring("receiver"));
+		json_append_member(datetime->message, "protocol", json_mkstring(datetime->id));
 
-		pilight.broadcast(pdatetime->id, pdatetime->message);
-		json_delete(pdatetime->message);
-		pdatetime->message = NULL;
+		pilight.broadcast(datetime->id, datetime->message);
+		json_delete(datetime->message);
+		datetime->message = NULL;
 		if(x == 0) {
 			interval = (int)((23-hour)*10000)+((59-minute)*100)+(60-second);
 		}
 		x++;
-		pthread_mutex_unlock(&pdatetimelock);
+		pthread_mutex_unlock(&datetimelock);
 		sleep(1);
 	}
 
@@ -272,67 +272,67 @@ close:
 		sfree((void *)&ntpserver);
 	}
 
-	pdatetime_threads--;
+	datetime_threads--;
 	return (void *)NULL;
 }
 
-static struct threadqueue_t *pdateTimeInitDev(JsonNode *jdevice) {
-	pdatetime_loop = 1;
+static struct threadqueue_t *datetimeInitDev(JsonNode *jdevice) {
+	datetime_loop = 1;
 	char *output = json_stringify(jdevice, NULL);
 	JsonNode *json = json_decode(output);
 	sfree((void *)&output);
 
-	struct protocol_threads_t *node = protocol_thread_init(pdatetime, json);
-	return threads_register("datetime", &pdateTimeParse, (void *)node, 0);
+	struct protocol_threads_t *node = protocol_thread_init(datetime, json);
+	return threads_register("datetime", &datetimeParse, (void *)node, 0);
 }
 
-static void pdateTimeThreadGC(void) {
-	pdatetime_loop = 0;
-	protocol_thread_stop(pdatetime);
-	while(pdatetime_threads > 0) {
+static void datetimeThreadGC(void) {
+	datetime_loop = 0;
+	protocol_thread_stop(datetime);
+	while(datetime_threads > 0) {
 		usleep(10);
 	}
-	protocol_thread_free(pdatetime);
+	protocol_thread_free(datetime);
 }
 
-static void pdatetimeGC(void) {
-	sfree((void *)&pdatetime_format);
+static void datetimeGC(void) {
+	sfree((void *)&datetime_format);
 }
 
 #ifndef MODULE
 __attribute__((weak))
 #endif
-void pdateTimeInit(void) {
-	pthread_mutexattr_init(&pdatetimeattr);
-	pthread_mutexattr_settype(&pdatetimeattr, PTHREAD_MUTEX_RECURSIVE);
-	pthread_mutex_init(&pdatetimelock, &pdatetimeattr);
+void datetimeInit(void) {
+	pthread_mutexattr_init(&datetimeattr);
+	pthread_mutexattr_settype(&datetimeattr, PTHREAD_MUTEX_RECURSIVE);
+	pthread_mutex_init(&datetimelock, &datetimeattr);
 
-	pdatetime_format = malloc(20);
-	strcpy(pdatetime_format, "HH:mm:ss YYYY-MM-DD");
+	datetime_format = malloc(20);
+	strcpy(datetime_format, "HH:mm:ss YYYY-MM-DD");
 
-	protocol_register(&pdatetime);
-	protocol_set_id(pdatetime, "datetime");
-	protocol_device_add(pdatetime, "datetime", "Date and Time protocol");
-	pdatetime->devtype = DATETIME;
-	pdatetime->hwtype = API;
-	pdatetime->multipleId = 0;
+	protocol_register(&datetime);
+	protocol_set_id(datetime, "datetime");
+	protocol_device_add(datetime, "datetime", "Date and Time protocol");
+	datetime->devtype = DATETIME;
+	datetime->hwtype = API;
+	datetime->multipleId = 0;
 
-	options_add(&pdatetime->options, 'o', "longitude", OPTION_HAS_VALUE, CONFIG_ID, JSON_STRING, NULL, NULL);
-	options_add(&pdatetime->options, 'a', "latitude", OPTION_HAS_VALUE, CONFIG_ID, JSON_STRING, NULL, NULL);
-	options_add(&pdatetime->options, 'n', "ntpserver", OPTION_HAS_VALUE, CONFIG_ID, JSON_STRING, NULL, NULL);
-	options_add(&pdatetime->options, 'y', "year", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, NULL, "^[0-9]{3,4}$");
-	options_add(&pdatetime->options, 'm', "month", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, NULL, "^[0-9]{3,4}$");
-	options_add(&pdatetime->options, 'd', "day", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, NULL, NULL);
-	options_add(&pdatetime->options, 'h', "hour", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, NULL, NULL);
-	options_add(&pdatetime->options, 'i', "minute", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, NULL, NULL);
-	options_add(&pdatetime->options, 's', "second", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, NULL, NULL);
+	options_add(&datetime->options, 'o', "longitude", OPTION_HAS_VALUE, CONFIG_ID, JSON_STRING, NULL, NULL);
+	options_add(&datetime->options, 'a', "latitude", OPTION_HAS_VALUE, CONFIG_ID, JSON_STRING, NULL, NULL);
+	options_add(&datetime->options, 'n', "ntpserver", OPTION_HAS_VALUE, CONFIG_ID, JSON_STRING, NULL, NULL);
+	options_add(&datetime->options, 'y', "year", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, NULL, "^[0-9]{3,4}$");
+	options_add(&datetime->options, 'm', "month", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, NULL, "^[0-9]{3,4}$");
+	options_add(&datetime->options, 'd', "day", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, NULL, NULL);
+	options_add(&datetime->options, 'h', "hour", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, NULL, NULL);
+	options_add(&datetime->options, 'i', "minute", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, NULL, NULL);
+	options_add(&datetime->options, 's', "second", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, NULL, NULL);
 
-	options_add(&pdatetime->options, 0, "gui-show-datetime", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
-	options_add(&pdatetime->options, 0, "gui-datetime-format", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_STRING, (void *)pdatetime_format, NULL);
+	options_add(&datetime->options, 0, "gui-show-datetime", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
+	options_add(&datetime->options, 0, "gui-datetime-format", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_STRING, (void *)datetime_format, NULL);
 
-	pdatetime->initDev=&pdateTimeInitDev;
-	pdatetime->threadGC=&pdateTimeThreadGC;
-	pdatetime->gc=&pdatetimeGC;
+	datetime->initDev=&datetimeInitDev;
+	datetime->threadGC=&datetimeThreadGC;
+	datetime->gc=&datetimeGC;
 }
 
 #ifdef MODULE
@@ -344,6 +344,6 @@ void compatibility(const char **name, const char **version, const char **reqvers
 }
 
 void init(void) {
-	pdateTimeInit();
+	datetimeInit();
 }
 #endif

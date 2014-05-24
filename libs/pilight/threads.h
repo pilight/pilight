@@ -21,7 +21,7 @@
 
 #include <pthread.h>
 
-struct threadqueue_t {
+typedef struct threadqueue_t {
 	unsigned int ts;
 	pthread_t pth;
 	int force;

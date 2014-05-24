@@ -68,6 +68,8 @@ typedef struct protocol_t {
 	struct protocol_plslen_t *plslen;
 	int footer;
 	int rawlen;
+	int minrawlen;
+	int maxrawlen;
 	int binlen;
 	short txrpt;
 	short rxrpt;

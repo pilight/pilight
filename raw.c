@@ -40,8 +40,8 @@
 #include "dso.h"
 #include "gc.h"
 
-unsigned short main_loop = 1;
-pthread_t pth;
+static unsigned short main_loop = 1;
+static pthread_t pth;
 
 int main_gc(void) {
 	main_loop = 0;

@@ -46,9 +46,9 @@
 #include "common.h"
 #include "log.h"
 
-unsigned int ***whitelist_cache = NULL;
-unsigned int whitelist_number;
-unsigned char validchar[64] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+static unsigned int ***whitelist_cache = NULL;
+static unsigned int whitelist_number;
+static unsigned char validchar[64] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
 #ifdef __FreeBSD__
 int findproc(char *cmd, char *args, int loosely) {
@@ -789,4 +789,52 @@ int vercmp(char *val, char *ref) {
 			return 0;
 		}
 	}
+}
+
+int str_replace(char *search, char *replace, char **str) {
+	char *target = *str;
+	unsigned short match = 0;
+	unsigned int len = strlen(target);
+	unsigned int nlen = 0;
+	unsigned int slen = strlen(search);
+	unsigned int rlen = strlen(replace);
+	unsigned int x = 0;
+
+	while(x < len) {
+		if(strncmp(&target[x], search, slen) == 0) {
+			match = 1;
+			unsigned int rpos = (x + (slen - rlen));
+			if(rpos < 0) {
+				slen -= rpos;
+				rpos = 0;
+			}
+			nlen = len - (slen - rlen);
+			if(len < nlen) {
+				if(!(target = realloc(target, nlen+1))) {
+					printf("out of memory\n");
+				}
+				memset(&target[len], '\0', nlen-len);
+			}
+			len = nlen;
+
+			memmove(&target[x], &target[rpos], len-x);
+			strncpy(&target[x], replace, rlen);
+			target[len] = '\0';
+			x += rlen-1;
+		}
+		x++;
+	}
+	if(match) {
+		return (int)len;
+	} else {
+		return -1;
+	}
+}
+
+int stricmp(char const *a, char const *b) {
+    for(;; a++, b++) {
+        int d = tolower(*a) - tolower(*b);
+        if (d != 0 || !*a)
+            return d;
+    }
 }

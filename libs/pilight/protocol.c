@@ -187,6 +187,8 @@ void protocol_register(protocol_t **proto) {
 
 	(*proto)->pulse = 0;
 	(*proto)->rawlen = 0;
+	(*proto)->minrawlen = 0;
+	(*proto)->maxrawlen = 0;
 	(*proto)->binlen = 0;
 	(*proto)->lsb = 0;
 	(*proto)->txrpt = 1;

@@ -43,12 +43,12 @@
 #include "settings.h"
 #include "socket.h"
 
-char recvBuff[BUFFER_SIZE];
-unsigned short socket_loop = 1;
-unsigned int socket_port = 0;
-int socket_loopback = 0;
-int socket_server = 0;
-int socket_clients[MAX_CLIENTS];
+static char recvBuff[BUFFER_SIZE];
+static unsigned short socket_loop = 1;
+static unsigned int socket_port = 0;
+static int socket_loopback = 0;
+static int socket_server = 0;
+static int socket_clients[MAX_CLIENTS];
 
 int socket_gc(void) {
 	int x = 0;

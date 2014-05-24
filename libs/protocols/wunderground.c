@@ -29,7 +29,7 @@
 
 #include "../../pilight.h"
 #include "common.h"
-#include "datetime.h"
+#include "../pilight/datetime.h" // Full path because we also have a datetime protocol
 #include "log.h"
 #include "threads.h"
 #include "http_lib.h"

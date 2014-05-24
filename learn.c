@@ -41,9 +41,9 @@
 #include "gc.h"
 #include "dso.h"
 
-int pulse_length = 0;
-unsigned short main_loop = 1;
-pthread_t pth;
+static int pulse_length = 0;
+static unsigned short main_loop = 1;
+static pthread_t pth;
 
 typedef enum {
 	WAIT,
@@ -57,7 +57,7 @@ typedef enum {
 	STOP
 } steps_t;
 
-void rmDup(int *a, int *b) {
+static void rmDup(int *a, int *b) {
 	int x=0, y=0, i=0;
 	int temp[75];
 	int match = 0;
@@ -83,7 +83,7 @@ void rmDup(int *a, int *b) {
 	}
 }
 
-int normalize(int i) {
+static int normalize(int i) {
 	double x;
 	x=(double)i/pulse_length;
 
