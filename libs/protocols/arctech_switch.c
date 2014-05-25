@@ -194,7 +194,6 @@ void arctechSwInit(void) {
 	protocol_device_add(arctech_switch, "coco_switch", "CoCo Technologies Switches");
 	protocol_device_add(arctech_switch, "intertechno_switch", "Intertechno Switches");
 	protocol_plslen_add(arctech_switch, 315);
-	protocol_plslen_add(arctech_switch, 303);
 	protocol_plslen_add(arctech_switch, 251);
 	arctech_switch->devtype = SWITCH;
 	arctech_switch->hwtype = RF433;
