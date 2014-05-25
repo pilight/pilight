@@ -34,7 +34,7 @@
 #include "socket.h"
 #include "json.h"
 #include "ssdp.h"
-
+#include "dso.h"
 #include "protocol.h"
 
 typedef enum {
@@ -59,8 +59,8 @@ int main(int argc, char **argv) {
 
 	struct options_t *options = NULL;
 	struct ssdp_list_t *ssdp_list = NULL;
-
 	int sockfd = 0;
+
     char *recvBuff = NULL;
 	char *message = NULL;
 	char *pch = NULL;
@@ -78,7 +78,7 @@ int main(int argc, char **argv) {
 	memset(location, '\0', 50);
 	memset(state, '\0', 10);
 	memset(values, '\0', 255);
-	
+
 	char *server = NULL;
 	unsigned short port = 0;
 
@@ -86,6 +86,9 @@ int main(int argc, char **argv) {
 	JsonNode *jconfig = NULL;
 	JsonNode *jcode = NULL;
 	JsonNode *jvalues = NULL;
+
+	char settingstmp[] = SETTINGS_FILE;
+	settings_set_file(settingstmp);
 
 	/* Define all CLI arguments of this program */
 	options_add(&options, 'H', "help", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
@@ -96,6 +99,7 @@ int main(int argc, char **argv) {
 	options_add(&options, 'v', "values", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, NULL);
 	options_add(&options, 'S', "server", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, "^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]).){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$");
 	options_add(&options, 'P', "port", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, "[0-9]{1,4}");
+	options_add(&options, 'F', "settings", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, NULL);
 
 	/* Store all CLI arguments for later usage
 	   and also check if the CLI arguments where
@@ -113,6 +117,7 @@ int main(int argc, char **argv) {
 				printf("\t -H --help\t\t\tdisplay this message\n");
 				printf("\t -V --version\t\t\tdisplay version\n");
 				printf("\t -S --server=x.x.x.x\t\tconnect to server address\n");
+				printf("\t -F --settings\t\tsettings file\n");
 				printf("\t -P --port=xxxx\t\t\tconnect to server port\n");
 				printf("\t -l --location=location\t\tthe location in which the device resides\n");
 				printf("\t -d --device=device\t\tthe device that you want to control\n");
@@ -136,6 +141,11 @@ int main(int argc, char **argv) {
 			break;
 			case 'v':
 				strcpy(values, optarg);
+			break;
+			case 'F':
+				if(settings_set_file(optarg) == EXIT_FAILURE) {
+					return EXIT_FAILURE;
+				}
 			break;
 			case 'S':
 				if(!(server = realloc(server, strlen(optarg)+1))) {
@@ -176,6 +186,10 @@ int main(int argc, char **argv) {
 	}
 	if(ssdp_list) {
 		ssdp_free(ssdp_list);
+	}
+
+	if(settings_read() != 0) {
+		return EXIT_FAILURE;
 	}
 
 	protocol_init();
@@ -230,6 +244,7 @@ int main(int argc, char **argv) {
 								char *name = strdup(pch);
 								pch = strtok(NULL, ",=");
 								if(pch == NULL) {
+									sfree((void *)&name);
 									break;
 								} else {
 									char *val = strdup(pch);
@@ -243,23 +258,29 @@ int main(int argc, char **argv) {
 											has_values = 1;
 										} else {
 											logprintf(LOG_ERR, "\"%s\" is an invalid value for device \"%s\"", name, device);
+											sfree((void *)&name);
+											json_delete(json);
 											goto close;
 										}
 									} else {
 										logprintf(LOG_ERR, "\"%s\" is an invalid value for device \"%s\"", name, device);
+										json_delete(json);
 										goto close;
 									}
 									pch = strtok(NULL, ",=");
 									if(pch == NULL) {
+										sfree((void *)&name);
 										break;
 									}
 								}
+								sfree((void *)&name);
 							}
 
 							if(config_valid_state(location, device, state) == 0) {
 								json_append_member(jcode, "state", json_mkstring(state));
 							} else {
 								logprintf(LOG_ERR, "\"%s\" is an invalid state for device \"%s\"", state, device);
+								json_delete(json);
 								goto close;
 							}
 
@@ -277,10 +298,12 @@ int main(int argc, char **argv) {
 							json_delete(joutput);
 						} else {
 							logprintf(LOG_ERR, "the device \"%s\" does not exist", device);
+							json_delete(json);
 							goto close;
 						}
 					} else {
 						logprintf(LOG_ERR, "the location \"%s\" does not exist", location);
+						json_delete(json);
 						goto close;
 					}
 				}
@@ -306,6 +329,8 @@ close:
 	protocol_gc();
 	socket_gc();
 	options_gc();
+	settings_gc();
+	dso_gc();
 	log_gc();
 	sfree((void *)&progname);
 

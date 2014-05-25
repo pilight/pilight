@@ -3,13 +3,13 @@
 
 	This file is part of pilight.
 
-    pilight is free software: you can redistribute it and/or modify it under the 
-	terms of the GNU General Public License as published by the Free Software 
-	Foundation, either version 3 of the License, or (at your option) any later 
+    pilight is free software: you can redistribute it and/or modify it under the
+	terms of the GNU General Public License as published by the Free Software
+	Foundation, either version 3 of the License, or (at your option) any later
 	version.
 
-    pilight is distributed in the hope that it will be useful, but WITHOUT ANY 
-	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR 
+    pilight is distributed in the hope that it will be useful, but WITHOUT ANY
+	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
@@ -48,11 +48,6 @@ typedef struct protocol_devices_t {
 	struct protocol_devices_t *next;
 } protocol_devices_t;
 
-typedef struct protocol_conflicts_t {
-	char *id;
-	struct protocol_conflicts_t *next;
-} protocol_conflicts_t;
-
 typedef struct protocol_plslen_t {
 	int length;
 	struct protocol_plslen_t *next;
@@ -70,9 +65,11 @@ typedef struct protocol_t {
 	char *id;
 	int header;
 	int pulse;
-	struct protocol_plslen_t *plslen;	
+	struct protocol_plslen_t *plslen;
 	int footer;
 	int rawlen;
+	int minrawlen;
+	int maxrawlen;
 	int binlen;
 	short txrpt;
 	short rxrpt;
@@ -84,8 +81,8 @@ typedef struct protocol_t {
 
 	int repeats;
 	unsigned long first;
-	unsigned long second;	
-	
+	unsigned long second;
+
 	int bit;
 	int recording;
 	int raw[255];
@@ -96,7 +93,6 @@ typedef struct protocol_t {
 	hwtype_t hwtype;
 	devtype_t devtype;
 	struct protocol_devices_t *devices;
-	struct protocol_conflicts_t *conflicts;
 	struct protocol_threads_t *threads;
 
 	void (*parseRaw)(void);
@@ -127,8 +123,6 @@ void protocol_set_id(protocol_t *proto, const char *id);
 void protocol_plslen_add(protocol_t *proto, int plslen);
 void protocol_register(protocol_t **proto);
 void protocol_device_add(protocol_t *proto, const char *id, const char *desc);
-void protocol_conflict_add(protocol_t *proto, const char *id);
-void protocol_conflict_remove(protocol_t **proto, const char *id);
 int protocol_device_exists(protocol_t *proto, const char *id);
 int protocol_gc(void);
 

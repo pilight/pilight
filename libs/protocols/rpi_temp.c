@@ -3,13 +3,13 @@
 
 	This file is part of pilight.
 
-    pilight is free software: you can redistribute it and/or modify it under the 
-	terms of the GNU General Public License as published by the Free Software 
-	Foundation, either version 3 of the License, or (at your option) any later 
+    pilight is free software: you can redistribute it and/or modify it under the
+	terms of the GNU General Public License as published by the Free Software
+	Foundation, either version 3 of the License, or (at your option) any later
 	version.
 
-    pilight is distributed in the hope that it will be useful, but WITHOUT ANY 
-	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR 
+    pilight is distributed in the hope that it will be useful, but WITHOUT ANY
+	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
@@ -38,11 +38,14 @@
 #include "gc.h"
 #include "rpi_temp.h"
 
-unsigned short rpi_temp_loop = 1;
-unsigned short rpi_temp_threads = 0;
-char rpi_temp[] = "/sys/class/thermal/thermal_zone0/temp";
+static unsigned short rpi_temp_loop = 1;
+static unsigned short rpi_temp_threads = 0;
+static char rpi_temp[] = "/sys/class/thermal/thermal_zone0/temp";
 
-void *rpiTempParse(void *param) {
+static pthread_mutex_t rpi_templock;
+static pthread_mutexattr_t rpi_tempattr;
+
+static void *rpiTempParse(void *param) {
 	struct protocol_threads_t *node = (struct protocol_threads_t *)param;
 	struct JsonNode *json = (struct JsonNode *)node->param;
 	struct JsonNode *jid = NULL;
@@ -83,6 +86,7 @@ void *rpiTempParse(void *param) {
 
 	while(rpi_temp_loop) {
 		if(protocol_thread_wait(node, interval, &nrloops) == ETIMEDOUT) {
+			pthread_mutex_lock(&rpi_templock);
 			for(y=0;y<nrid;y++) {
 				if((fp = fopen(rpi_temp, "rb"))) {
 					fstat(fileno(fp), &st);
@@ -107,11 +111,11 @@ void *rpiTempParse(void *param) {
 						JsonNode *code = json_mkobject();
 						json_append_member(code, "id", json_mknumber(id[y]));
 						json_append_member(code, "temperature", json_mknumber(temp));
-											
+
 						json_append_member(rpiTemp->message, "message", code);
 						json_append_member(rpiTemp->message, "origin", json_mkstring("receiver"));
 						json_append_member(rpiTemp->message, "protocol", json_mkstring(rpiTemp->id));
-											
+
 						pilight.broadcast(rpiTemp->id, rpiTemp->message);
 						json_delete(rpiTemp->message);
 						rpiTemp->message = NULL;
@@ -120,6 +124,7 @@ void *rpiTempParse(void *param) {
 					logprintf(LOG_ERR, "CPU RPI device %s does not exists", rpi_temp);
 				}
 			}
+			pthread_mutex_unlock(&rpi_templock);
 		}
 	}
 
@@ -128,17 +133,17 @@ void *rpiTempParse(void *param) {
 	return (void *)NULL;
 }
 
-struct threadqueue_t *rpiTempInitDev(JsonNode *jdevice) {
+static struct threadqueue_t *rpiTempInitDev(JsonNode *jdevice) {
 	rpi_temp_loop = 1;
 	char *output = json_stringify(jdevice, NULL);
 	JsonNode *json = json_decode(output);
 	sfree((void *)&output);
 
-	struct protocol_threads_t *node = protocol_thread_init(rpiTemp, json);	
+	struct protocol_threads_t *node = protocol_thread_init(rpiTemp, json);
 	return threads_register("rpi_temp", &rpiTempParse, (void *)node, 0);
 }
 
-void rpiTempThreadGC(void) {
+static void rpiTempThreadGC(void) {
 	rpi_temp_loop = 0;
 	protocol_thread_stop(rpiTemp);
 	while(rpi_temp_threads > 0) {
@@ -147,7 +152,13 @@ void rpiTempThreadGC(void) {
 	protocol_thread_free(rpiTemp);
 }
 
+#ifndef MODULE
+__attribute__((weak))
+#endif
 void rpiTempInit(void) {
+	pthread_mutexattr_init(&rpi_tempattr);
+	pthread_mutexattr_settype(&rpi_tempattr, PTHREAD_MUTEX_RECURSIVE);
+	pthread_mutex_init(&rpi_templock, &rpi_tempattr);
 
 	protocol_register(&rpiTemp);
 	protocol_set_id(rpiTemp, "rpi_temp");
@@ -167,3 +178,16 @@ void rpiTempInit(void) {
 	rpiTemp->initDev=&rpiTempInitDev;
 	rpiTemp->threadGC=&rpiTempThreadGC;
 }
+
+#ifdef MODULE
+void compatibility(const char **name, const char **version, const char **reqversion, const char **reqcommit) {
+	*name = "rpi_temp";
+	*version = "1.0";
+	*reqversion = "4.0";
+	*reqcommit = "38";
+}
+
+void init(void) {
+	rpiTempInit();
+}
+#endif

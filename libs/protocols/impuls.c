@@ -30,7 +30,7 @@
 #include "gc.h"
 #include "impuls.h"
 
-void impulsCreateMessage(int systemcode, int programcode, int state) {
+static void impulsCreateMessage(int systemcode, int programcode, int state) {
 	impuls->message = json_mkobject();
 	json_append_member(impuls->message, "systemcode", json_mknumber(systemcode));
 	json_append_member(impuls->message, "programcode", json_mknumber(programcode));
@@ -41,7 +41,7 @@ void impulsCreateMessage(int systemcode, int programcode, int state) {
 	}
 }
 
-void impulsParseCode(void) {
+static void impulsParseCode(void) {
 	int x = 0;
 
 	/* Convert the one's and zero's into binary */
@@ -63,7 +63,7 @@ void impulsParseCode(void) {
 	}
 }
 
-void impulsCreateLow(int s, int e) {
+static void impulsCreateLow(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=4) {
@@ -74,7 +74,7 @@ void impulsCreateLow(int s, int e) {
 	}
 }
 
-void impulsCreateMed(int s, int e) {
+static void impulsCreateMed(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=4) {
@@ -85,7 +85,7 @@ void impulsCreateMed(int s, int e) {
 	}
 }
 
-void impulsCreateHigh(int s, int e) {
+static void impulsCreateHigh(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=4) {
@@ -96,11 +96,11 @@ void impulsCreateHigh(int s, int e) {
 	}
 }
 
-void impulsClearCode(void) {
+static void impulsClearCode(void) {
 	impulsCreateLow(0,47);
 }
 
-void impulsCreateSystemCode(int systemcode) {
+static void impulsCreateSystemCode(int systemcode) {
 	int binary[255];
 	int length = 0;
 	int i=0, x=0;
@@ -114,7 +114,7 @@ void impulsCreateSystemCode(int systemcode) {
 	}
 }
 
-void impulsCreateProgramCode(int programcode) {
+static void impulsCreateProgramCode(int programcode) {
 	int binary[255];
 	int length = 0;
 	int i=0, x=0;
@@ -128,7 +128,7 @@ void impulsCreateProgramCode(int programcode) {
 	}
 }
 
-void impulsCreateState(int state) {
+static void impulsCreateState(int state) {
 	if(state == 0) {
 		impulsCreateHigh(40, 43);
 	} else {
@@ -136,12 +136,12 @@ void impulsCreateState(int state) {
 	}
 }
 
-void impulsCreateFooter(void) {
+static void impulsCreateFooter(void) {
 	impuls->raw[48]=(impuls->plslen->length);
 	impuls->raw[49]=(PULSE_DIV*impuls->plslen->length);
 }
 
-int impulsCreateCode(JsonNode *code) {
+static int impulsCreateCode(JsonNode *code) {
 	int systemcode = -1;
 	int programcode = -1;
 	int state = -1;
@@ -176,23 +176,24 @@ int impulsCreateCode(JsonNode *code) {
 	return EXIT_SUCCESS;
 }
 
-void impulsPrintHelp(void) {
+static void impulsPrintHelp(void) {
 	printf("\t -s --systemcode=systemcode\tcontrol a device with this systemcode\n");
 	printf("\t -u --programcode=programcode\tcontrol a device with this programcode\n");
 	printf("\t -t --on\t\t\tsend an on signal\n");
 	printf("\t -f --off\t\t\tsend an off signal\n");
 }
 
+#ifndef MODULE
+__attribute__((weak))
+#endif
 void impulsInit(void) {
 
 	protocol_register(&impuls);
 	protocol_set_id(impuls, "impuls");
 	protocol_device_add(impuls, "impuls", "Impuls Switches");
-	protocol_device_add(impuls, "select-remote", "SelectRemote Switches");
-	protocol_conflict_add(impuls, "rev_switch");
-	protocol_plslen_add(impuls, 171);
-	protocol_plslen_add(impuls, 141);
-	protocol_plslen_add(impuls, 133);
+	protocol_plslen_add(impuls, 170);
+	protocol_plslen_add(impuls, 140);
+	protocol_plslen_add(impuls, 130);
 	impuls->devtype = SWITCH;
 	impuls->hwtype = RF433;
 	impuls->pulse = 3;
@@ -210,3 +211,16 @@ void impulsInit(void) {
 	impuls->createCode=&impulsCreateCode;
 	impuls->printHelp=&impulsPrintHelp;
 }
+
+#ifdef MODULE
+void compatibility(const char **name, const char **version, const char **reqversion, const char **reqcommit) {
+	*name = "impuls";
+	*version = "1.0";
+	*reqversion = "4.0";
+	*reqcommit = "38";
+}
+
+void init(void) {
+	impulsInit();
+}
+#endif

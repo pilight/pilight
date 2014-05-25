@@ -3,13 +3,13 @@
 
 	This file is part of pilight.
 
-    pilight is free software: you can redistribute it and/or modify it under the 
-	terms of the GNU General Public License as published by the Free Software 
-	Foundation, either version 3 of the License, or (at your option) any later 
+    pilight is free software: you can redistribute it and/or modify it under the
+	terms of the GNU General Public License as published by the Free Software
+	Foundation, either version 3 of the License, or (at your option) any later
 	version.
 
-    pilight is distributed in the hope that it will be useful, but WITHOUT ANY 
-	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR 
+    pilight is distributed in the hope that it will be useful, but WITHOUT ANY
+	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
@@ -30,7 +30,7 @@
 #include "gc.h"
 #include "generic_weather.h"
 
-void genWeatherCreateMessage(int id, int temperature, int humidity, int battery) {
+static void genWeatherCreateMessage(int id, int temperature, int humidity, int battery) {
 	generic_weather->message = json_mkobject();
 	json_append_member(generic_weather->message, "id", json_mknumber(id));
 	if(temperature > -999) {
@@ -44,7 +44,7 @@ void genWeatherCreateMessage(int id, int temperature, int humidity, int battery)
 	}
 }
 
-int genWeatherCreateCode(JsonNode *code) {
+static int genWeatherCreateCode(JsonNode *code) {
 	double itmp = 0;
 	int id = -999;
 	int temp = -999;
@@ -69,15 +69,18 @@ int genWeatherCreateCode(JsonNode *code) {
 	return EXIT_SUCCESS;
 }
 
-void genWeatherPrintHelp(void) {
+static void genWeatherPrintHelp(void) {
 	printf("\t -t --temperature=temperature\tset the temperature\n");
 	printf("\t -h --humidity=humidity\t\tset the humidity\n");
 	printf("\t -b --battery=battery\t\tset the battery level\n");
 	printf("\t -i --id=id\t\t\tcontrol a device with this id\n");
 }
 
+#ifndef MODULE
+__attribute__((weak))
+#endif
 void genWeatherInit(void) {
-	
+
 	protocol_register(&generic_weather);
 	protocol_set_id(generic_weather, "generic_weather");
 	protocol_device_add(generic_weather, "generic_weather", "Generic Weather Stations");
@@ -97,3 +100,16 @@ void genWeatherInit(void) {
 	generic_weather->printHelp=&genWeatherPrintHelp;
 	generic_weather->createCode=&genWeatherCreateCode;
 }
+
+#ifdef MODULE
+void compatibility(const char **name, const char **version, const char **reqversion, const char **reqcommit) {
+	*name = "generic_weather";
+	*version = "1.0";
+	*reqversion = "4.0";
+	*reqcommit = "38";
+}
+
+void init(void) {
+	genWeatherInit();
+}
+#endif

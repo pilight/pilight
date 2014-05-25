@@ -20,9 +20,6 @@
 #define _PROTOCOL_ARCTECH_CONTACT_H_
 
 struct protocol_t *arctech_contact;
-
 void arctechContactInit(void);
-void arctechContactCreateMessage(int id, int unit, int state, int all);
-void arctechContactParseBinary(void);
 
 #endif

@@ -3,13 +3,13 @@
 
 	This file is part of pilight.
 
-	pilight is free software: you can redistribute it and/or modify it under the 
-	terms of the GNU General Public License as published by the Free Software 
-	Foundation, either version 3 of the License, or (at your option) any later 
+	pilight is free software: you can redistribute it and/or modify it under the
+	terms of the GNU General Public License as published by the Free Software
+	Foundation, either version 3 of the License, or (at your option) any later
 	version.
 
-	pilight is distributed in the hope that it will be useful, but WITHOUT ANY 
-	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR 
+	pilight is distributed in the hope that it will be useful, but WITHOUT ANY
+	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
 	You should have received a copy of the GNU General Public License
@@ -38,8 +38,8 @@
 #include "gc.h"
 #include "ssdp.h"
 
-int ssdp_socket = 0;
-int ssdp_loop = 1;
+static int ssdp_socket = 0;
+static int ssdp_loop = 1;
 
 int ssdp_gc(void) {
 	struct sockaddr_in addr;
@@ -50,14 +50,14 @@ int ssdp_gc(void) {
 	/* Make a loopback socket we can close when pilight needs to be stopped
 	   or else the select statement will wait forever for an activity */
 	if((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) >= 0) {
-	/* Wakeup our recvfrom statement so the ssdp_wait function can 
-	   actually close and the thread can end gracefully */	
+	/* Wakeup our recvfrom statement so the ssdp_wait function can
+	   actually close and the thread can end gracefully */
 		addr.sin_family = AF_INET;
 		addr.sin_port = htons(1900);
-		addr.sin_addr.s_addr = inet_addr("239.255.255.250");	
+		addr.sin_addr.s_addr = inet_addr("239.255.255.250");
 		sendto(sockfd, "1", 1, 0, (struct sockaddr *)&addr, sizeof(addr));
 	}
-	
+
 	logprintf(LOG_DEBUG, "garbage collected ssdp library");
 	return EXIT_SUCCESS;
 }
@@ -88,8 +88,8 @@ int ssdp_start(void) {
 	if(bind(ssdp_socket, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
 		perror("bind");
 		return 0;
-	}	
-	
+	}
+
 	return 1;
 }
 
@@ -102,18 +102,22 @@ int ssdp_seek(struct ssdp_list_t **ssdp_list) {
 	ssize_t len = 0;
 	socklen_t addrlen = sizeof(addr);
 	unsigned short int nip[4], port = 0;
-	
+
 	tv.tv_sec = 0;
 	tv.tv_usec = 100000;
 
-	sock = socket(AF_INET, SOCK_DGRAM, 0);
+	if((sock = socket(AF_INET, SOCK_DGRAM, 0)) < 0){
+		logprintf(LOG_ERR, "could not create ssdp socket");
+		goto end;
+	}
+
 	memset((void *)&addr, '\0', sizeof(addr));
     addr.sin_family = AF_INET;
     addr.sin_port = htons(1900);
     addr.sin_addr.s_addr = inet_addr("239.255.255.250");
-	
-	setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, (char *)&tv, sizeof(struct timeval));	
-	
+
+	setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, (char *)&tv, sizeof(struct timeval));
+
 	strcpy(header,  "M-SEARCH * HTTP/1.1\r\n"
 					"Host:239.255.255.250:1900\r\n"
 					"ST:urn:schemas-upnp-org:service:pilight:1\r\n"
@@ -122,7 +126,7 @@ int ssdp_seek(struct ssdp_list_t **ssdp_list) {
 	if((len = sendto(sock, header, BUFFER_SIZE, 0, (struct sockaddr *)&addr, sizeof(addr))) >= 0) {
 		logprintf(LOG_DEBUG, "ssdp sent search");
 	}
-	
+
 	while(ssdp_loop) {
 		memset(message, '\0', BUFFER_SIZE);
 		if(recvfrom(sock, message, sizeof(message), 0, (struct sockaddr *)&addr, &addrlen) < 1) {
@@ -154,9 +158,11 @@ int ssdp_seek(struct ssdp_list_t **ssdp_list) {
 		}
 	}
 	goto end;
-	
+
 end:
-	close(sock);
+	if(sock > 0) {
+		close(sock);
+	}
     struct ssdp_list_t *ptr = *ssdp_list, *next = NULL, *prev = NULL;
    	if(match) {
 		while(ptr) {
@@ -199,13 +205,13 @@ void *ssdp_wait(void *param) {
 	char *distro = distroname();
 	char *hname = hostname();
 
-	
+
 	if(distro == NULL) {
 		logprintf(LOG_ERR, "failed to determine the distribution");
 		exit(EXIT_FAILURE);
 	}
 
-#ifdef __FreeBSD__	
+#ifdef __FreeBSD__
 	if(rep_getifaddrs(&ifaddr) == -1) {
 		logprintf(LOG_ERR, "could not get network adapter information");
 		exit(EXIT_FAILURE);
@@ -221,10 +227,10 @@ void *ssdp_wait(void *param) {
 		if(ifa->ifa_addr == NULL) {
 			continue;
 		}
-		
+
 		family = ifa->ifa_addr->sa_family;
-		
-		if((strstr(ifa->ifa_name, "lo") == NULL && strstr(ifa->ifa_name, "vbox") == NULL 
+
+		if((strstr(ifa->ifa_name, "lo") == NULL && strstr(ifa->ifa_name, "vbox") == NULL
 		    && strstr(ifa->ifa_name, "dummy") == NULL) && (family == AF_INET || family == AF_INET6)) {
 			if((id = genuuid(ifa->ifa_name)) == NULL) {
 				logprintf(LOG_ERR, "could not generate the device uuid");
@@ -249,7 +255,7 @@ void *ssdp_wait(void *param) {
 					logprintf(LOG_ERR, "out of memory");
 					exit(EXIT_FAILURE);
 				}
-				memset(header[nrheader], '\0', BUFFER_SIZE);	
+				memset(header[nrheader], '\0', BUFFER_SIZE);
 				sprintf(header[nrheader], "NOTIFY * HTTP/1.1\r\n"
 					"Host:239.255.255.250:1900\r\n"
 					"Cache-Control:max-age=900\r\n"
@@ -258,11 +264,11 @@ void *ssdp_wait(void *param) {
 					"USN:uuid:%s::urn:schemas-upnp-org:service:pilight:1\r\n"
 					"NTS:ssdp:alive\r\n"
 					"SERVER: %s UPnP/1.1 pilight (%s)/%s\r\n\r\n", host, socket_get_port(), id, distro, hname, VERSION);
-				nrheader++;	
+				nrheader++;
 			}
 		}
-	}	
-	
+	}
+
 	freeifaddrs(ifaddr);
 
 	if(id) {
@@ -293,7 +299,7 @@ void *ssdp_wait(void *param) {
 		sfree((void *)&header[x]);
 	}
 
-	sfree((void *)&header);	
+	sfree((void *)&header);
 	return 0;
 }
 

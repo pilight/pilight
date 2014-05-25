@@ -3,13 +3,13 @@
 
 	This file is part of pilight.
 
-	pilight is free software: you can redistribute it and/or modify it under the 
-	terms of the GNU General Public License as published by the Free Software 
-	Foundation, either version 3 of the License, or (at your option) any later 
+	pilight is free software: you can redistribute it and/or modify it under the
+	terms of the GNU General Public License as published by the Free Software
+	Foundation, either version 3 of the License, or (at your option) any later
 	version.
 
-	pilight is distributed in the hope that it will be useful, but WITHOUT ANY 
-	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR 
+	pilight is distributed in the hope that it will be useful, but WITHOUT ANY
+	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
 	You should have received a copy of the GNU General Public License
@@ -39,11 +39,14 @@
 #include "json.h"
 #include "dht11.h"
 #include "../pilight/wiringPi.h"
-	
+
 #define MAXTIMINGS 100
 
-unsigned short dht11_loop = 1;
-unsigned short dht11_threads = 0;
+static unsigned short dht11_loop = 1;
+static unsigned short dht11_threads = 0;
+
+static pthread_mutex_t dht11lock;
+static pthread_mutexattr_t dht11attr;
 
 static uint8_t sizecvt(const int read_value) {
 	/* digitalRead() and friends from wiringpi are defined as returning a value
@@ -51,11 +54,11 @@ static uint8_t sizecvt(const int read_value) {
 	if(read_value > 255 || read_value < 0) {
 		logprintf(LOG_NOTICE, "invalid data from wiringPi library");
 	}
-  
+
 	return (uint8_t)read_value;
 }
 
-void *dht11Parse(void *param) {
+static void *dht11Parse(void *param) {
 	struct protocol_threads_t *node = (struct protocol_threads_t *)param;
 	struct JsonNode *json = (struct JsonNode *)node->param;
 	struct JsonNode *jid = NULL;
@@ -88,6 +91,7 @@ void *dht11Parse(void *param) {
 
 	while(dht11_loop) {
 		if(protocol_thread_wait(node, interval, &nrloops) == ETIMEDOUT) {
+			pthread_mutex_lock(&dht11lock);
 			for(y=0;y<nrid;y++) {
 				int tries = 5;
 				unsigned short got_correct_date = 0;
@@ -100,7 +104,7 @@ void *dht11Parse(void *param) {
 					int dht11_dat[5] = {0,0,0,0,0};
 
 					// pull pin down for 18 milliseconds
-					pinMode(id[y], OUTPUT);			
+					pinMode(id[y], OUTPUT);
 					digitalWrite(id[y], HIGH);
 					usleep(500000);  // 500 ms
 					// then pull it up for 40 microseconds
@@ -110,7 +114,7 @@ void *dht11Parse(void *param) {
 					pinMode(id[y], INPUT);
 
 					// detect change and read data
-					for(i=0; i<MAXTIMINGS; i++) {
+					for(i=0; (i<MAXTIMINGS && dht11_loop); i++) {
 						counter = 0;
 						delayMicroseconds(10);
 						while(sizecvt(digitalRead(id[y])) == laststate && dht11_loop) {
@@ -122,12 +126,12 @@ void *dht11Parse(void *param) {
 						}
 						laststate = sizecvt(digitalRead(id[y]));
 
-						if(counter == 255) 
+						if(counter == 255)
 							break;
 
 						// ignore first 3 transitions
 						if((i >= 4) && (i%2 == 0)) {
-						
+
 							// shove each bit into the storage bytes
 							dht11_dat[(int)((double)j/8)] <<= 1;
 							if(counter > 16)
@@ -146,7 +150,7 @@ void *dht11Parse(void *param) {
 						t += temp_offset;
 						h += humi_offset;
 
-						if((dht11_dat[2] & 0x80) != 0) 
+						if((dht11_dat[2] & 0x80) != 0)
 							t *= -1;
 
 						dht11->message = json_mkobject();
@@ -169,6 +173,7 @@ void *dht11Parse(void *param) {
 					}
 				}
 			}
+			pthread_mutex_unlock(&dht11lock);
 		}
 	}
 
@@ -188,7 +193,7 @@ struct threadqueue_t *dht11InitDev(JsonNode *jdevice) {
 	return threads_register("dht11", &dht11Parse, (void *)node, 0);
 }
 
-void dht11ThreadGC(void) {
+static void dht11ThreadGC(void) {
 	dht11_loop = 0;
 	protocol_thread_stop(dht11);
 	while(dht11_threads > 0) {
@@ -197,7 +202,14 @@ void dht11ThreadGC(void) {
 	protocol_thread_free(dht11);
 }
 
+#ifndef MODULE
+__attribute__((weak))
+#endif
 void dht11Init(void) {
+	pthread_mutexattr_init(&dht11attr);
+	pthread_mutexattr_settype(&dht11attr, PTHREAD_MUTEX_RECURSIVE);
+	pthread_mutex_init(&dht11lock, &dht11attr);
+
 	protocol_register(&dht11);
 	protocol_set_id(dht11, "dht11");
 	protocol_device_add(dht11, "dht11", "1-wire Temperature and Humidity Sensor");
@@ -219,3 +231,16 @@ void dht11Init(void) {
 	dht11->initDev=&dht11InitDev;
 	dht11->threadGC=&dht11ThreadGC;
 }
+
+#ifdef MODULE
+void compatibility(const char **name, const char **version, const char **reqversion, const char **reqcommit) {
+	*name = "dht11";
+	*version = "1.0";
+	*reqversion = "4.0";
+	*reqcommit = "38";
+}
+
+void init(void) {
+	dht11Init();
+}
+#endif

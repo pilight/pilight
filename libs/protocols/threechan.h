@@ -20,8 +20,6 @@
 #define _PROTOCOL_THREECHAN_H_
 
 struct protocol_t *threechan;
-
-void threechanParseCode(void);
 void threechanInit(void);
 
 #endif

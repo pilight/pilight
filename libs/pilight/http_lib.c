@@ -82,7 +82,7 @@ char *http_proxy_server=NULL;
 /* proxy server port number or 0 */
 int http_proxy_port=0;
 /* user agent id string */
-static char *http_user_agent="pilight";
+char *http_user_agent="pilight";
 
 /*
  * read a line from file descriptor

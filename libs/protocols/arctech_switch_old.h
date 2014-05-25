@@ -3,13 +3,13 @@
 
 	This file is part of pilight.
 
-    pilight is free software: you can redistribute it and/or modify it under the 
-	terms of the GNU General Public License as published by the Free Software 
-	Foundation, either version 3 of the License, or (at your option) any later 
+    pilight is free software: you can redistribute it and/or modify it under the
+	terms of the GNU General Public License as published by the Free Software
+	Foundation, either version 3 of the License, or (at your option) any later
 	version.
 
-    pilight is distributed in the hope that it will be useful, but WITHOUT ANY 
-	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR 
+    pilight is distributed in the hope that it will be useful, but WITHOUT ANY
+	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
@@ -20,14 +20,6 @@
 #define _PROTOCOL_ARCTECH_SWITCH_OLD_H_
 
 struct protocol_t *arctech_switch_old;
-
 void arctechSwOldInit(void);
-void arctechSwOldCreateMessage(int id, int unit, int state);
-void arctechSwOldParseBinary(void);
-int arctechSwOldCreateCode(JsonNode *code);
-void arctechSwOldCreateUnit(int unit);
-void arctechSwOldCreateId(int id);
-void arctechSwOldCreateState(int state);
-void arctechSwOldPrintHelp(void);
 
 #endif

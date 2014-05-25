@@ -3,13 +3,13 @@
 
 	This file is part of pilight.
 
-    pilight is free software: you can redistribute it and/or modify it under the 
-	terms of the GNU General Public License as published by the Free Software 
-	Foundation, either version 3 of the License, or (at your option) any later 
+    pilight is free software: you can redistribute it and/or modify it under the
+	terms of the GNU General Public License as published by the Free Software
+	Foundation, either version 3 of the License, or (at your option) any later
 	version.
 
-    pilight is distributed in the hope that it will be useful, but WITHOUT ANY 
-	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR 
+    pilight is distributed in the hope that it will be useful, but WITHOUT ANY
+	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
@@ -37,10 +37,11 @@
 #include "wiringPi.h"
 #include "threads.h"
 #include "irq.h"
+#include "dso.h"
 #include "gc.h"
 
-unsigned short main_loop = 1;
-pthread_t pth;
+static unsigned short main_loop = 1;
+static pthread_t pth;
 
 int main_gc(void) {
 	main_loop = 0;
@@ -48,7 +49,7 @@ int main_gc(void) {
 	log_shell_disable();
 
 	struct conf_hardware_t *tmp_confhw = conf_hardware;
-	while(tmp_confhw) {	
+	while(tmp_confhw) {
 		if(tmp_confhw->hardware->deinit) {
 			tmp_confhw->hardware->deinit();
 		}
@@ -56,25 +57,27 @@ int main_gc(void) {
 	}
 
 	threads_gc();
+	pthread_join(pth, NULL);
+
 	options_gc();
-	settings_gc();	
+	settings_gc();
 	hardware_gc();
+	dso_gc();
 	log_gc();
 
 	sfree((void *)&progname);
-	sfree((void *)&settingsfile);	
 
 	return EXIT_SUCCESS;
 }
 
 void *receive_code(void *param) {
 	int duration = 0;
-	
-	struct hardware_t *hardware = (hardware_t *)param;
-	while(main_loop && hardware->receive) {
-		duration = hardware->receive();
+
+	struct hardware_t *hw = (hardware_t *)param;
+	while(main_loop && hw->receive) {
+		duration = hw->receive();
 		if(duration > 0) {
-			printf("%s: %d\n", hardware->id, duration);
+			printf("%s: %d\n", hw->id, duration);
 		}
 	};
 	return NULL;
@@ -92,26 +95,23 @@ int main(int argc, char **argv) {
 	log_level_set(LOG_NOTICE);
 
 	struct options_t *options = NULL;
-	
+
 	char *args = NULL;
 	char *hwfile = NULL;
 	pid_t pid = 0;
 
-	if(!(settingsfile = malloc(strlen(SETTINGS_FILE)+1))) {
-		logprintf(LOG_ERR, "out of memory");
-		exit(EXIT_FAILURE);
-	}
-	strcpy(settingsfile, SETTINGS_FILE);	
-	
+	char settingstmp[] = SETTINGS_FILE;
+	settings_set_file(settingstmp);
+
 	if(!(progname = malloc(12))) {
 		logprintf(LOG_ERR, "out of memory");
 		exit(EXIT_FAILURE);
 	}
-	strcpy(progname, "pilight-raw");	
+	strcpy(progname, "pilight-raw");
 
 	options_add(&options, 'H', "help", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
 	options_add(&options, 'V', "version", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
-	options_add(&options, 'S', "settings", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, NULL);
+	options_add(&options, 'F', "settings", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, NULL);
 
 	while (1) {
 		int c;
@@ -124,31 +124,22 @@ int main(int argc, char **argv) {
 			case 'H':
 				printf("Usage: %s [options]\n", progname);
 				printf("\t -H --help\t\tdisplay usage summary\n");
-				printf("\t -V --version\t\tdisplay version\n");		
-				printf("\t -S --settings\t\tsettings file\n");
-				return (EXIT_SUCCESS);
+				printf("\t -V --version\t\tdisplay version\n");
+				printf("\t -F --settings\t\tsettings file\n");
+				goto close;
 			break;
 			case 'V':
 				printf("%s %s\n", progname, VERSION);
-				return (EXIT_SUCCESS);
-			break;	
-			case 'S': 
-				if(access(args, F_OK) != -1) {
-					settingsfile = realloc(settingsfile, strlen(args)+1);
-					if(!settingsfile) {
-						logprintf(LOG_ERR, "out of memory");
-						exit(EXIT_FAILURE);
-					}
-					strcpy(settingsfile, args);
-					settings_set_file(args);
-				} else {
-					fprintf(stderr, "%s: the settings file %s does not exists\n", progname, args);
-					return EXIT_FAILURE;
+				goto close;
+			break;
+			case 'F':
+				if(settings_set_file(args) == EXIT_FAILURE) {
+					goto close;
 				}
 			break;
 			default:
 				printf("Usage: %s [options]\n", progname);
-				return (EXIT_FAILURE);
+				goto close;
 			break;
 		}
 	}
@@ -157,33 +148,31 @@ int main(int argc, char **argv) {
 	char pilight_daemon[] = "pilight-daemon";
 	char pilight_learn[] = "pilight-learn";
 	char pilight_debug[] = "pilight-debug";
-	if((pid = findproc(pilight_daemon, NULL)) > 0) {
+	if((pid = findproc(pilight_daemon, NULL, 1)) > 0) {
 		logprintf(LOG_ERR, "pilight-daemon instance found (%d)", (int)pid);
-		return (EXIT_FAILURE);
+		goto close;
 	}
 
-	if((pid = findproc(pilight_learn, NULL)) > 0) {
+	if((pid = findproc(pilight_learn, NULL, 1)) > 0) {
 		logprintf(LOG_ERR, "pilight-learn instance found (%d)", (int)pid);
-		return (EXIT_FAILURE);
+		goto close;
 	}
 
-	if((pid = findproc(pilight_debug, NULL)) > 0) {
+	if((pid = findproc(pilight_debug, NULL, 1)) > 0) {
 		logprintf(LOG_ERR, "pilight-debug instance found (%d)", (int)pid);
-		return (EXIT_FAILURE);
-	}	
-	
-	if(access(settingsfile, F_OK) != -1) {
-		if(settings_read() != 0) {
-			return EXIT_FAILURE;
-		}
-	}	
-	
+		goto close;
+	}
+
+	if(settings_read() != 0) {
+		goto close;
+	}
+
 	hardware_init();
-	
+
 	if(settings_find_string("hardware-file", &hwfile) == 0) {
 		hardware_set_file(hwfile);
 		if(hardware_read() == EXIT_FAILURE) {
-			goto clear;
+			goto close;
 		}
 	}
 
@@ -194,7 +183,7 @@ int main(int argc, char **argv) {
 	while(tmp_confhw) {
 		if(tmp_confhw->hardware->init() == EXIT_FAILURE) {
 			logprintf(LOG_ERR, "could not initialize %s hardware mode", tmp_confhw->hardware->id);
-			goto clear;
+			goto close;
 		}
 		threads_register(tmp_confhw->hardware->id, &receive_code, (void *)tmp_confhw->hardware, 0);
 		tmp_confhw = tmp_confhw->next;
@@ -204,7 +193,7 @@ int main(int argc, char **argv) {
 		sleep(1);
 	}
 
-clear:
+close:
 	main_gc();
 	return (EXIT_FAILURE);
 }

@@ -3,13 +3,13 @@
 
 	This file is part of pilight.
 
-    pilight is free software: you can redistribute it and/or modify it under the 
-	terms of the GNU General Public License as published by the Free Software 
-	Foundation, either version 3 of the License, or (at your option) any later 
+    pilight is free software: you can redistribute it and/or modify it under the
+	terms of the GNU General Public License as published by the Free Software
+	Foundation, either version 3 of the License, or (at your option) any later
 	version.
 
-    pilight is distributed in the hope that it will be useful, but WITHOUT ANY 
-	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR 
+    pilight is distributed in the hope that it will be useful, but WITHOUT ANY
+	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
@@ -52,28 +52,31 @@ typedef struct xbmc_data_t {
 	struct xbmc_data_t *next;
 } xbmc_data_t;
 
-struct xbmc_data_t *xbmc_data;
-unsigned short xbmc_loop = 1;
-unsigned short xbmc_threads = 0;
+static pthread_mutex_t xbmclock;
+static pthread_mutexattr_t xbmcattr;
 
-void xbmcCreateMessage(char *server, int port, char *action, char *media) {
+static struct xbmc_data_t *xbmc_data;
+static unsigned short xbmc_loop = 1;
+static unsigned short xbmc_threads = 0;
+
+static void xbmcCreateMessage(char *server, int port, char *action, char *media) {
 	xbmc->message = json_mkobject();
 	JsonNode *code = json_mkobject();
 	json_append_member(code, "action", json_mkstring(action));
 	json_append_member(code, "media", json_mkstring(media));
 	json_append_member(code, "server", json_mkstring(server));
 	json_append_member(code, "port", json_mknumber(port));
-						
+
 	json_append_member(xbmc->message, "message", code);
 	json_append_member(xbmc->message, "origin", json_mkstring("receiver"));
 	json_append_member(xbmc->message, "protocol", json_mkstring(xbmc->id));
-						
+
 	pilight.broadcast(xbmc->id, xbmc->message);
 	json_delete(xbmc->message);
 	xbmc->message = NULL;
 }
 
-void *xbmcParse(void *param) {
+static void *xbmcParse(void *param) {
 	struct protocol_threads_t *node = (struct protocol_threads_t *)param;
 	struct JsonNode *json = (struct JsonNode *)node->param;
 	struct JsonNode *jid = NULL;
@@ -89,7 +92,7 @@ void *xbmcParse(void *param) {
 	char none[] = "none";
 	int nrloops = 0, bytes = 0, n = 0, has_server = 0;
 	int has_port = 0, reset = 1, maxfd = 0;
-	fd_set fdsread;	
+	fd_set fdsread;
 	struct timeval timeout;
 	timeout.tv_sec = 1;
 	timeout.tv_usec = 0;
@@ -97,14 +100,14 @@ void *xbmcParse(void *param) {
 	if(!xnode) {
 		logprintf(LOG_ERR, "out of memory");
 		exit(EXIT_FAILURE);
-	}	
-	
+	}
+
 	/* Clear the server address */
     memset(&serv_addr, '\0', sizeof(serv_addr));
 	memset(&recvBuff, '\0', BUFFER_SIZE);
 	memset(&action, '\0', 10);
 	memset(&media, '\0', 15);
-	
+
 	xbmc_threads++;
 
 	if((jid = json_find_member(json, "id"))) {
@@ -166,8 +169,8 @@ void *xbmcParse(void *param) {
 
 		serv_addr.sin_family = AF_INET;
 		serv_addr.sin_port = htons((unsigned short)xnode->port);
-		inet_pton(AF_INET, xnode->server, &serv_addr.sin_addr);	
-		
+		inet_pton(AF_INET, xnode->server, &serv_addr.sin_addr);
+
 		/* Connect to the server */
 		if(connect(xnode->sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
 			protocol_thread_wait(node, 3, &nrloops);
@@ -186,8 +189,9 @@ void *xbmcParse(void *param) {
 			}
 			xtmp = xtmp->next;
 		}
-		
+
 		while(xbmc_loop) {
+			pthread_mutex_lock(&xbmclock);
 			FD_ZERO(&fdsread);
 			FD_SET((unsigned long)xnode->sockfd, &fdsread);
 
@@ -196,10 +200,12 @@ void *xbmcParse(void *param) {
 			} while(n == -1 && errno == EINTR && xbmc_loop);
 
 			if(xbmc_loop == 0) {
+				pthread_mutex_unlock(&xbmclock);
 				break;
 			}
 
-			if(n == -1) {			
+			if(n == -1) {
+				pthread_mutex_unlock(&xbmclock);
 				break;
 			} else if(n == 0) {
 				usleep(10000);
@@ -207,6 +213,7 @@ void *xbmcParse(void *param) {
 				if(FD_ISSET((unsigned long)xnode->sockfd, &fdsread)) {
 					bytes = (int)recv(xnode->sockfd, recvBuff, BUFFER_SIZE, 0);
 					if(bytes <= 0) {
+						pthread_mutex_unlock(&xbmclock);
 						break;
 					} else {
 						if(json_validate(recvBuff) == true) {
@@ -246,7 +253,7 @@ void *xbmcParse(void *param) {
 								if(strlen(media) > 0 && strlen(action) > 0) {
 									xbmcCreateMessage(xnode->server, xnode->port, action, media);
 									reset = 1;
-								}							
+								}
 							}
 							json_delete(joutput);
 						}
@@ -256,9 +263,10 @@ void *xbmcParse(void *param) {
 					}
 				}
 			}
+			pthread_mutex_unlock(&xbmclock);
 		}
-	}	
-	
+	}
+
 	xbmc_threads--;
 	return (void *)NULL;
 }
@@ -269,14 +277,14 @@ struct threadqueue_t *xbmcInitDev(JsonNode *jdevice) {
 	JsonNode *json = json_decode(output);
 	sfree((void *)&output);
 
-	struct protocol_threads_t *node = protocol_thread_init(xbmc, json);	
+	struct protocol_threads_t *node = protocol_thread_init(xbmc, json);
 	return threads_register("xbmc", &xbmcParse, (void *)node, 0);
 }
 
-void xbmcThreadGC(void) {
+static void xbmcThreadGC(void) {
 	xbmc_loop = 0;
 	struct xbmc_data_t *xtmp = NULL;
-	
+
 	while(xbmc_data) {
 		xtmp = xbmc_data;
 		if(xtmp->sockfd > -1) {
@@ -295,7 +303,7 @@ void xbmcThreadGC(void) {
 	protocol_thread_free(xbmc);
 }
 
-int xbmcCheckValues(JsonNode *code) {
+static int xbmcCheckValues(JsonNode *code) {
 	char *action = NULL;
 	char *media = NULL;
 
@@ -307,7 +315,7 @@ int xbmcCheckValues(JsonNode *code) {
 			} else {
 				return 0;
 			}
-		} else if(strcmp(media, "episode") == 0 
+		} else if(strcmp(media, "episode") == 0
 		   || strcmp(media, "movie") == 0
 		   || strcmp(media, "song") == 0) {
 			if(!(strcmp(action, "play") == 0 || strcmp(action, "pause") == 0)) {
@@ -330,7 +338,14 @@ int xbmcCheckValues(JsonNode *code) {
 	return 0;
 }
 
+#ifndef MODULE
+__attribute__((weak))
+#endif
 void xbmcInit(void) {
+	pthread_mutexattr_init(&xbmcattr);
+	pthread_mutexattr_settype(&xbmcattr, PTHREAD_MUTEX_RECURSIVE);
+	pthread_mutex_init(&xbmclock, &xbmcattr);
+
 	protocol_register(&xbmc);
 	protocol_set_id(xbmc, "xbmc");
 	protocol_device_add(xbmc, "xbmc", "XBMC API");
@@ -350,3 +365,16 @@ void xbmcInit(void) {
 	xbmc->threadGC=&xbmcThreadGC;
 	xbmc->checkValues=&xbmcCheckValues;
 }
+
+#ifdef MODULE
+void compatibility(const char **name, const char **version, const char **reqversion, const char **reqcommit) {
+	*name = "xbmc";
+	*version = "1.0";
+	*reqversion = "4.0";
+	*reqcommit = "38";
+}
+
+void init(void) {
+	xbmcInit();
+}
+#endif

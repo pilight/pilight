@@ -20,9 +20,6 @@
 #define _PROTOCOL_CONRAD_RSL_CN_H_
 
 struct protocol_t *conrad_rsl_contact;
-
-void conradRSLCnCreateMessage(int id, int state);
-void conradRSLCnParseCode(void);
 void conradRSLCnInit(void);
 
 #endif

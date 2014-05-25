@@ -20,18 +20,6 @@
 #define _PROTOCOL_CONRAD_RSL_SW_H_
 
 struct protocol_t *conrad_rsl_switch;
-
-void conradRSLSwCreateMessage(int id, int state);
-void conradRSLSwParseCode(void);
-void conradRSLSwCreateLow(int s, int e);
-void conradRSLSwCreateHigh(int s, int e);
-void conradRSLSwClearCode(void);
-void conradRSLSwCreateId(int id);
-void conradRSLSwCreateStart(int start);
-void conradRSLSwCreateState(int state);
-void conradRSLSwCreateFooter(void);
-int conradRSLSwCreateCode(JsonNode *code);
-void conradRSLSwPrintHelp(void);
 void conradRSLSwInit(void);
 
 #endif

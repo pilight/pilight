@@ -3,13 +3,13 @@
 
 	This file is part of pilight.
 
-    pilight is free software: you can redistribute it and/or modify it under the 
-	terms of the GNU General Public License as published by the Free Software 
-	Foundation, either version 3 of the License, or (at your option) any later 
+    pilight is free software: you can redistribute it and/or modify it under the
+	terms of the GNU General Public License as published by the Free Software
+	Foundation, either version 3 of the License, or (at your option) any later
 	version.
 
-    pilight is distributed in the hope that it will be useful, but WITHOUT ANY 
-	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR 
+    pilight is distributed in the hope that it will be useful, but WITHOUT ANY
+	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
@@ -30,7 +30,7 @@
 #include "gc.h"
 #include "arctech_screen_old.h"
 
-void arctechSrOldCreateMessage(int id, int unit, int state) {
+static void arctechSrOldCreateMessage(int id, int unit, int state) {
 	arctech_screen_old->message = json_mkobject();
 	json_append_member(arctech_screen_old->message, "id", json_mknumber(id));
 	json_append_member(arctech_screen_old->message, "unit", json_mknumber(unit));
@@ -40,14 +40,14 @@ void arctechSrOldCreateMessage(int id, int unit, int state) {
 		json_append_member(arctech_screen_old->message, "state", json_mkstring("down"));
 }
 
-void arctechSrOldParseBinary(void) {
+static void arctechSrOldParseBinary(void) {
 	int unit = binToDec(arctech_screen_old->binary, 0, 3);
 	int state = arctech_screen_old->binary[11];
 	int id = binToDec(arctech_screen_old->binary, 4, 8);
 	arctechSrOldCreateMessage(id, unit, state);
 }
 
-void arctechSrOldCreateLow(int s, int e) {
+static void arctechSrOldCreateLow(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=4) {
@@ -58,7 +58,7 @@ void arctechSrOldCreateLow(int s, int e) {
 	}
 }
 
-void arctechSrOldCreateHigh(int s, int e) {
+static void arctechSrOldCreateHigh(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=4) {
@@ -69,12 +69,12 @@ void arctechSrOldCreateHigh(int s, int e) {
 	}
 }
 
-void arctechSrOldClearCode(void) {
+static void arctechSrOldClearCode(void) {
 	arctechSrOldCreateHigh(0,35);
 	arctechSrOldCreateLow(36,47);
 }
 
-void arctechSrOldCreateUnit(int unit) {
+static void arctechSrOldCreateUnit(int unit) {
 	int binary[255];
 	int length = 0;
 	int i=0, x=0;
@@ -88,7 +88,7 @@ void arctechSrOldCreateUnit(int unit) {
 	}
 }
 
-void arctechSrOldCreateId(int id) {
+static void arctechSrOldCreateId(int id) {
 	int binary[255];
 	int length = 0;
 	int i=0, x=0;
@@ -102,18 +102,18 @@ void arctechSrOldCreateId(int id) {
 	}
 }
 
-void arctechSrOldCreateState(int state) {
+static void arctechSrOldCreateState(int state) {
 	if(state == 0) {
 		arctechSrOldCreateHigh(44,47);
 	}
 }
 
-void arctechSrOldCreateFooter(void) {
+static void arctechSrOldCreateFooter(void) {
 	arctech_screen_old->raw[48]=(arctech_screen_old->plslen->length);
 	arctech_screen_old->raw[49]=(PULSE_DIV*arctech_screen_old->plslen->length);
 }
 
-int arctechSrOldCreateCode(JsonNode *code) {
+static int arctechSrOldCreateCode(JsonNode *code) {
 	int id = -1;
 	int unit = -1;
 	int state = -1;
@@ -148,19 +148,21 @@ int arctechSrOldCreateCode(JsonNode *code) {
 	return EXIT_SUCCESS;
 }
 
-void arctechSrOldPrintHelp(void) {
+static void arctechSrOldPrintHelp(void) {
 	printf("\t -t --up\t\t\tsend an up signal\n");
 	printf("\t -f --down\t\t\tsend an down signal\n");
 	printf("\t -u --unit=unit\t\t\tcontrol a device with this unit code\n");
 	printf("\t -i --id=id\t\t\tcontrol a device with this id\n");
 }
 
+#ifndef MODULE
+__attribute__((weak))
+#endif
 void arctechSrOldInit(void) {
 
 	protocol_register(&arctech_screen_old);
 	protocol_set_id(arctech_screen_old, "arctech_screens_old");
 	protocol_device_add(arctech_screen_old, "kaku_screen_old", "Old KlikAanKlikUit Screens");
-	protocol_conflict_add(arctech_screen_old, "arctech_switches_old");	
 	protocol_plslen_add(arctech_screen_old, 336);
 	arctech_screen_old->devtype = SCREEN;
 	arctech_screen_old->hwtype = RF433;
@@ -175,8 +177,21 @@ void arctechSrOldInit(void) {
 	options_add(&arctech_screen_old->options, 'i', "id", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, NULL, "^(3[012]?|[012][0-9]|[0-9]{1})$");
 
 	options_add(&arctech_screen_old->options, 0, "gui-readonly", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
-	
+
 	arctech_screen_old->parseBinary=&arctechSrOldParseBinary;
 	arctech_screen_old->createCode=&arctechSrOldCreateCode;
 	arctech_screen_old->printHelp=&arctechSrOldPrintHelp;
 }
+
+#ifdef MODULE
+void compatibility(const char **name, const char **version, const char **reqversion, const char **reqcommit) {
+	*name = "arctech_screen_old";
+	*version = "1.0";
+	*reqversion = "4.0";
+	*reqcommit = "38";
+}
+
+void init(void) {
+	arctechSrOldInit();
+}
+#endif

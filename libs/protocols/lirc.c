@@ -3,13 +3,13 @@
 
 	This file is part of pilight.
 
-    pilight is free software: you can redistribute it and/or modify it under the 
-	terms of the GNU General Public License as published by the Free Software 
-	Foundation, either version 3 of the License, or (at your option) any later 
+    pilight is free software: you can redistribute it and/or modify it under the
+	terms of the GNU General Public License as published by the Free Software
+	Foundation, either version 3 of the License, or (at your option) any later
 	version.
 
-    pilight is distributed in the hope that it will be useful, but WITHOUT ANY 
-	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR 
+    pilight is distributed in the hope that it will be useful, but WITHOUT ANY
+	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
@@ -46,27 +46,30 @@
 #include "gc.h"
 #include "lirc.h"
 
-char lirc_socket[BUFFER_SIZE];
-int lirc_sockfd = -1;
+static char lirc_socket[BUFFER_SIZE];
+static int lirc_sockfd = -1;
 
-unsigned short lirc_loop = 1;
-unsigned short lirc_threads = 0;
+static unsigned short lirc_loop = 1;
+static unsigned short lirc_threads = 0;
 
-void *lircParse(void *param) {
+static pthread_mutex_t lirclock;
+static pthread_mutexattr_t lircattr;
+
+static void *lircParse(void *param) {
 	struct protocol_threads_t *node = (struct protocol_threads_t *)param;
 	struct sockaddr_un addr;
 	struct timeval timeout;
-	
+
 	int nrloops = 0, n = -1, bytes = 0;
 	char recvBuff[BUFFER_SIZE];
-	fd_set fdsread;	
+	fd_set fdsread;
 	timeout.tv_sec = 1;
 	timeout.tv_usec = 0;
 
 	/* Clear the server address */
     memset(&addr, '\0', sizeof(addr));
 	memset(&recvBuff, '\0', BUFFER_SIZE);
-	
+
 	lirc_threads++;
 
 	while(lirc_loop) {
@@ -84,7 +87,7 @@ void *lircParse(void *param) {
 
 			addr.sun_family=AF_UNIX;
 			strcpy(addr.sun_path, lirc_socket);
-			
+
 			/* Connect to the server */
 			if(connect(lirc_sockfd, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
 				protocol_thread_wait(node, 3, &nrloops);
@@ -92,6 +95,7 @@ void *lircParse(void *param) {
 			}
 
 			while(lirc_loop) {
+				pthread_mutex_lock(&lirclock);
 				FD_ZERO(&fdsread);
 				FD_SET((unsigned long)lirc_sockfd, &fdsread);
 
@@ -100,14 +104,17 @@ void *lircParse(void *param) {
 				} while(n == -1 && errno == EINTR && lirc_loop);
 
 				if(lirc_loop == 0) {
+					pthread_mutex_unlock(&lirclock);
 					break;
 				}
-				
+
 				if(path_exists(lirc_socket) == EXIT_FAILURE) {
+					pthread_mutex_unlock(&lirclock);
 					break;
 				}
 
 				if(n == -1) {
+					pthread_mutex_unlock(&lirclock);
 					break;
 				} else if(n == 0) {
 					usleep(10000);
@@ -115,6 +122,7 @@ void *lircParse(void *param) {
 					if(FD_ISSET((unsigned long)lirc_sockfd, &fdsread)) {
 						bytes = (int)recv(lirc_sockfd, recvBuff, BUFFER_SIZE, 0);
 						if(bytes <= 0) {
+							pthread_mutex_unlock(&lirclock);
 							break;
 						} else {
 							int x = 0, nrspace = 0;
@@ -131,18 +139,18 @@ void *lircParse(void *param) {
 								if(strstr(remote, "\n") != NULL) {
 									remote[strlen(remote)-1] = '\0';
 								}
-							
+
 								lirc->message = json_mkobject();
 								JsonNode *code = json_mkobject();
 								json_append_member(code, "id", json_mkstring(id));
 								json_append_member(code, "repeat", json_mkstring(rep));
 								json_append_member(code, "button", json_mkstring(btn));
 								json_append_member(code, "remote", json_mkstring(remote));
-													
+
 								json_append_member(lirc->message, "message", code);
 								json_append_member(lirc->message, "origin", json_mkstring("receiver"));
 								json_append_member(lirc->message, "protocol", json_mkstring(lirc->id));
-													
+
 								pilight.broadcast(lirc->id, lirc->message);
 								json_delete(lirc->message);
 								lirc->message = NULL;
@@ -151,6 +159,7 @@ void *lircParse(void *param) {
 						}
 					}
 				}
+				pthread_mutex_unlock(&lirclock);
 			}
 		}
 	}
@@ -159,7 +168,7 @@ void *lircParse(void *param) {
 		close(lirc_sockfd);
 		lirc_sockfd = -1;
 	}
-	
+
 	lirc_threads--;
 	return (void *)NULL;
 }
@@ -167,11 +176,11 @@ void *lircParse(void *param) {
 struct threadqueue_t *lircInitDev(JsonNode *jdevice) {
 	lirc_loop = 1;
 
-	struct protocol_threads_t *node = protocol_thread_init(lirc, NULL);	
+	struct protocol_threads_t *node = protocol_thread_init(lirc, NULL);
 	return threads_register("lirc", &lircParse, (void *)node, 0);
 }
 
-void lircThreadGC(void) {
+static void lircThreadGC(void) {
 	lirc_loop = 0;
 	protocol_thread_stop(lirc);
 	while(lirc_threads > 0) {
@@ -180,7 +189,13 @@ void lircThreadGC(void) {
 	protocol_thread_free(lirc);
 }
 
+#ifndef MODULE
+__attribute__((weak))
+#endif
 void lircInit(void) {
+	pthread_mutexattr_init(&lircattr);
+	pthread_mutexattr_settype(&lircattr, PTHREAD_MUTEX_RECURSIVE);
+	pthread_mutex_init(&lirclock, &lircattr);
 
 	protocol_register(&lirc);
 	protocol_set_id(lirc, "lirc");
@@ -198,7 +213,20 @@ void lircInit(void) {
 	lirc->initDev=&lircInitDev;
 	lirc->threadGC=&lircThreadGC;
 	lirc->initDev(NULL);
-	
+
 	memset(lirc_socket, '\0', BUFFER_SIZE);
 	strcpy(lirc_socket, "/dev/lircd");
 }
+
+#ifdef MODULE
+void compatibility(const char **name, const char **version, const char **reqversion, const char **reqcommit) {
+	*name = "lirc";
+	*version = "1.0";
+	*reqversion = "4.0";
+	*reqcommit = "38";
+}
+
+void init(void) {
+	lircInit();
+}
+#endif

@@ -56,7 +56,9 @@
 #include "safemode.h"
 #include "firmware.h"
 
-void firmware_attiny25(struct avrpart **p) {
+static int mptype = FW_MP_UNKNOWN;
+
+static void firmware_attiny25(struct avrpart **p) {
 	char pgm_bits[] = "1 0 1 0 1 1 0 0 0 1 0 1 0 0 1 1 x x x x x x x x x x x x x x x x";
 	char read_bits[] = "0 0 1 1 0 0 0 0 0 0 0 x x x x x x x x x x x a1 a0 o o o o o o o o";
 	char erase_bits[] = "1 0 1 0 1 1 0 0 1 0 0 x x x x x x x x x x x x x x x x x x x x x";
@@ -149,7 +151,7 @@ void firmware_attiny25(struct avrpart **p) {
 	parse_cmdbits((*p)->hfusemem->op[AVR_OP_WRITE], hfusewrite_bits);
 }
 
-void firmware_attiny45(struct avrpart **p) {
+static void firmware_attiny45(struct avrpart **p) {
 	char pgm_bits[] = "1 0 1 0 1 1 0 0 0 1 0 1 0 0 1 1 x x x x x x x x x x x x x x x x";
 	char read_bits[] = "0 0 1 1 0 0 0 0 0 0 0 x x x x x x x x x x x a1 a0 o o o o o o o o";
 	char erase_bits[] = "1 0 1 0 1 1 0 0 1 0 0 x x x x x x x x x x x x x x x x x x x x x";
@@ -242,7 +244,7 @@ void firmware_attiny45(struct avrpart **p) {
 	parse_cmdbits((*p)->hfusemem->op[AVR_OP_WRITE], hfusewrite_bits);
 }
 
-void firmware_attiny85(struct avrpart **p) {
+static void firmware_attiny85(struct avrpart **p) {
 	char pgm_bits[] = "1 0 1 0 1 1 0 0 0 1 0 1 0 0 1 1 x x x x x x x x x x x x x x x x";
 	char read_bits[] = "0 0 1 1 0 0 0 0 0 0 0 x x x x x x x x x x x a1 a0 o o o o o o o o";
 	char erase_bits[] = "1 0 1 0 1 1 0 0 1 0 0 x x x x x x x x x x x x x x x x x x x x x";
@@ -335,7 +337,7 @@ void firmware_attiny85(struct avrpart **p) {
 	parse_cmdbits((*p)->hfusemem->op[AVR_OP_WRITE], hfusewrite_bits);
 }
 
-void firmware_init_pgm(PROGRAMMER **pgm) {
+static void firmware_init_pgm(PROGRAMMER **pgm) {
 	*pgm = pgm_new();
 	gpio_initpgm(*pgm);
 	(*pgm)->pinno[3] = 8;
@@ -348,11 +350,11 @@ void firmware_init_pgm(PROGRAMMER **pgm) {
 	}
 }
 
-void firmware_process(int percent, double etime, char *hdr) {
+static void firmware_process(int percent, double etime, char *hdr) {
   //printf("%d\n", percent);
 }
 
-int firmware_identifymp(struct avrpart **p) {
+static int firmware_identifymp(struct avrpart **p) {
 	int exitrc = 0, i = 0;
 	int init_ok = 0;
 	PROGRAMMER *pgm = NULL;
@@ -472,7 +474,7 @@ main_exit:
 	return exitrc;
 }
 
-int firmware_write(char *filename, struct avrpart **p) {
+static int firmware_write(char *filename, struct avrpart **p) {
 	int exitrc = 0, i = 0, erase = 1, nowrite = 0, verify = 1;
 	int safemode = 1, init_ok = 0;
 	unsigned char safemode_lfuse = 0xff, safemode_hfuse = 0xff;
@@ -832,27 +834,80 @@ main_exit:
 	return exitrc;
 }
 
+int firmware_getmp(void) {
+	struct avrpart *p = NULL;
+	unsigned int match = 0;
+	firmware_attiny25(&p);
+	if(!match && firmware_identifymp(&p) != 0) {
+		mptype = FW_MP_ATTINY45;
+		match = 0;
+		firmware_attiny45(&p);
+	} else {
+		return mptype;
+	}
+	if(!match && firmware_identifymp(&p) != 0) {
+		mptype = FW_MP_ATTINY85;
+		match = 0;
+		firmware_attiny85(&p);
+	} else {
+		return mptype;
+	}
+	if(!match && firmware_identifymp(&p) != 0) {
+		mptype = FW_MP_UNKNOWN;
+		logprintf(LOG_ERR, "AVR unknown");
+		return -1;
+	} else {
+		return mptype;
+	}
+	return -1;
+}
+
 int firmware_check(char **output) {
+	int version = 0;
+#ifdef FIRMWARE
 	struct dirent *file = NULL;
 	DIR *d = NULL;
 	int tmp = 0;
-	int version = 0;
+	int num = 0;
 
-	if((d = opendir(FIRMWARE_PATH))) {
-		while((file = readdir(d)) != NULL) {
-			if(file->d_type == DT_REG) {
-				if(strncmp(file->d_name, "pilight_firmware", 16) == 0) {
-					sscanf(file->d_name, "pilight_firmware_v%d.hex", &tmp);
-					if(tmp > version) {
-						version = tmp;
-						strcpy(*output, file->d_name);
+	if(mptype == FW_MP_UNKNOWN) {
+		logprintf(LOG_INFO, "Discovering AVR the firmware is running on");
+		firmware_getmp();
+	}
+
+	if(mptype != FW_MP_UNKNOWN) {
+		if((d = opendir(FIRMWARE_PATH))) {
+			while((file = readdir(d)) != NULL) {
+				if(file->d_type == DT_REG) {
+					switch(mptype) {
+						case FW_MP_ATTINY25:
+							num = 2;
+						break;
+						case FW_MP_ATTINY45:
+							num = 4;
+						break;
+						case FW_MP_ATTINY85:
+							num = 8;
+						break;
+						default:
+						break;
+					}
+					char name[strlen(file->d_name)+2];
+					memset(name, '\0', strlen(file->d_name)+2);
+					sprintf(name, "pilight_firmware_t%d5", num);
+					if(strncmp(file->d_name, name, 19) == 0) {
+						sscanf(file->d_name, "pilight_firmware_t%*[0-9]_v%d.hex", &tmp);
+						if(tmp > version) {
+							version = tmp;
+							strcpy(*output, file->d_name);
+						}
 					}
 				}
 			}
+			closedir(d);
 		}
-		closedir(d);
 	}
-
+#endif
 	if(firmware.version >= version) {
 		return -1;
 	} else {
@@ -862,38 +917,11 @@ int firmware_check(char **output) {
 
 int firmware_update(char *fwfile) {
 	struct avrpart *p = NULL;
-	unsigned int type = FW_MP_ATTINY25;
-	unsigned int match = 0;
-
 	if(fmt_autodetect(fwfile) != FMT_IHEX) {
 		logprintf(LOG_ERR, "Trying to write an invalid firmware file");
 		return -1;
 	} else {
-		logprintf(LOG_INFO, "Discovering AVR the firmware is running on");
-		firmware_attiny25(&p);
-		if(!match && firmware_identifymp(&p) != 0) {
-			type = FW_MP_ATTINY45;
-			match = 0;
-			firmware_attiny45(&p);
-		} else {
-			match = 1;
-		}
-		if(!match && firmware_identifymp(&p) != 0) {
-			type = FW_MP_ATTINY85;
-			match = 0;
-			firmware_attiny85(&p);
-		} else {
-			match = 1;
-		}
-		if(!match && firmware_identifymp(&p) != 0) {
-			type = FW_MP_UNKNOWN;
-			logprintf(LOG_ERR, "AVR unknown");
-			return -1;
-		} else {
-			match = 1;
-		}
-
-		switch(type) {
+		switch(mptype) {
 			case FW_MP_ATTINY25:
 				logprintf(LOG_INFO, "Firmware running on an ATTiny25");
 				firmware_attiny25(&p);
@@ -907,8 +935,13 @@ int firmware_update(char *fwfile) {
 				firmware_attiny85(&p);
 			break;
 			default:
+				logprintf(LOG_INFO, "First run firmware_getmp");
+				return -1;
 			break;
 		}
-		return firmware_write(fwfile, &p);
+
+		int ret = firmware_write(fwfile, &p);
+		mptype = FW_MP_UNKNOWN;
+		return ret;
 	}
 }

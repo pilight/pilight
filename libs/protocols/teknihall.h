@@ -20,8 +20,6 @@
 #define _PROTOCOL_TEKNIHALL_H_
 
 struct protocol_t *teknihall;
-
-void teknihallParseCode(void);
 void teknihallInit(void);
 
 #endif

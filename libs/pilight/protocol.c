@@ -20,272 +20,165 @@
 #include <stdlib.h>
 #include <string.h>
 #include <regex.h>
+#include <dirent.h>
+#include <dlfcn.h>
+#include <pthread.h>
 #include <sys/time.h>
 
 #include "../../pilight.h"
 #include "common.h"
+#include "dso.h"
 #include "options.h"
+#include "settings.h"
 #include "protocol.h"
 #include "log.h"
-#include "../protocols/pilight_firmware_v2.h"
-#include "../protocols/pilight_firmware_v3.h"
 
-#if defined(PROTOCOL_COCO_SWITCH) || defined(PROTOCOL_DIO_SWITCH) || defined(PROTOCOL_NEXA_SWITCH) || defined(PROTOCOL_KAKU_SWITCH) || defined(PROTOCOL_INTERTECHNO_SWITCH)
-	#include "../protocols/arctech_switch.h"
-#endif
-#ifdef PROTOCOL_KAKU_SCREEN
-	#include "../protocols/arctech_screen.h"
-#endif
-#ifdef PROTOCOL_KAKU_CONTACT
-  #include "../protocols/arctech_contact.h"
-#endif
-#ifdef PROTOCOL_KAKU_DIMMER
-	#include "../protocols/arctech_dimmer.h"
-#endif
-#if defined(PROTOCOL_COGEX_SWITCH) || defined(PROTOCOL_KAKU_SWITCH_OLD) || defined(PROTOCOL_INTERTECHNO_OLD)
-	#include "../protocols/arctech_switch_old.h"
-#endif
-#ifdef PROTOCOL_KAKU_SCREEN_OLD
-	#include "../protocols/arctech_screen_old.h"
-#endif
-#ifdef PROTOCOL_HOMEEASY_OLD
-	#include "../protocols/home_easy_old.h"
-#endif
-#ifdef PROTOCOL_ELRO_SWITCH
-	#include "../protocols/elro_ad.h"
-	#include "../protocols/elro_he.h"
-	#include "../protocols/elro_hc.h"
-#endif
-#if defined(PROTOCOL_SELECTREMOTE) || defined(PROTOCOL_IMPULS)
-	#include "../protocols/impuls.h"
-#endif
-#ifdef PROTOCOL_ALECTO
-	#include "../protocols/alecto.h"
-#endif
-#ifdef PROTOCOL_RAW
-	#include "../protocols/raw.h"
-#endif
-#ifdef PROTOCOL_RELAY
-	#include "../protocols/relay.h"
-#endif
-#ifdef PROTOCOL_REV
-	#include "../protocols/rev.h"
-#endif
-#ifdef PROTOCOL_REV_OLD
-	#include "../protocols/rev_old.h"
-#endif
-#ifdef PROTOCOL_GENERIC_WEATHER
-	#include "../protocols/generic_weather.h"
-#endif
-#ifdef PROTOCOL_GENERIC_SWITCH
-	#include "../protocols/generic_switch.h"
-#endif
-#ifdef PROTOCOL_GENERIC_DIMMER
-	#include "../protocols/generic_dimmer.h"
-#endif
-#ifdef PROTOCOL_GENERIC_WEBCAM
-	#include "../protocols/generic_webcam.h"
-#endif
-#ifdef PROTOCOL_DS18B20
-	#include "../protocols/ds18b20.h"
-#endif
-#ifdef PROTOCOL_DS18S20
-	#include "../protocols/ds18s20.h"
-#endif
-#ifdef PROTOCOL_DHT22
-	#include "../protocols/dht22.h"
-#endif
-#ifdef PROTOCOL_DHT11
-	#include "../protocols/dht11.h"
-#endif
-#ifdef PROTOCOL_CLARUS
-	#include "../protocols/clarus.h"
-#endif
-#ifdef PROTOCOL_RPI_TEMP
-	#include "../protocols/rpi_temp.h"
-#endif
-#ifdef PROTOCOL_CONRAD_RSL_SWITCH
-	#include "../protocols/conrad_rsl_switch.h"
-#endif
-#ifdef PROTOCOL_CONRAD_RSL_CONTACT
-	#include "../protocols/conrad_rsl_contact.h"
-#endif
-#if defined(PROTOCOL_LM75) || defined(PROTOCOL_LM76)
-	#include "../protocols/lm75.h"
-	#include "../protocols/lm76.h"
-#endif
-#ifdef PROTOCOL_POLLIN_SWITCH
-	#include "../protocols/pollin.h"
-#endif
-#ifdef PROTOCOL_MUMBI_SWITCH
-	#include "../protocols/mumbi.h"
-#endif
-#ifdef PROTOCOL_WUNDERGROUND
-	#include "../protocols/wunderground.h"
-#endif
-#ifdef PROTOCOL_OPENWEATHERMAP
-	#include "../protocols/openweathermap.h"
-#endif
-#ifdef PROTOCOL_SILVERCREST
-	#include "../protocols/silvercrest.h"
-#endif
-#ifdef PROTOCOL_THREECHAN
-	#include "../protocols/threechan.h"
-#endif
-#ifdef PROTOCOL_TEKNIHALL
-	#include "../protocols/teknihall.h"
-#endif
-#ifdef PROTOCOL_X10
-	#include "../protocols/x10.h"
-#endif
-#ifdef PROTOCOL_SUNRISESET
-	#include "../protocols/sunriseset.h"
-#endif
-#ifdef PROTOCOL_PROGRAM
-	#include "../protocols/program.h"
-#endif
-#ifdef PROTOCOL_DATETIME
-	#include "../protocols/pdatetime.h"
-#endif
-#ifdef PROTOCOL_XBMC
-	#include "../protocols/xbmc.h"
-#endif
-#ifdef PROTOCOL_LIRC
-	#include "../protocols/lirc.h"
-#endif
-#ifdef PROTOCOL_QUIGG_SWITCH
-    #include "../protocols/quigg_switch.h"
-#endif
+#include "protocol_header.h"
+
+void protocol_remove(char *name) {
+	struct protocols_t *currP, *prevP;
+
+	prevP = NULL;
+
+	for(currP = protocols; currP != NULL; prevP = currP, currP = currP->next) {
+
+		if(strcmp(currP->listener->id, name) == 0) {
+			if(prevP == NULL) {
+				protocols = currP->next;
+			} else {
+				prevP->next = currP->next;
+			}
+
+			struct protocol_devices_t *dtmp;
+			struct protocol_plslen_t *ttmp;
+			logprintf(LOG_DEBUG, "removed protocol %s", currP->listener->id);
+			if(currP->listener->threadGC) {
+				currP->listener->threadGC();
+				logprintf(LOG_DEBUG, "stopped protocol threads");
+			}
+			if(currP->listener->gc) {
+				currP->listener->gc();
+				logprintf(LOG_DEBUG, "ran garbage collector");
+			}
+			sfree((void *)&currP->listener->id);
+			sfree((void *)&currP->name);
+			options_delete(currP->listener->options);
+			if(currP->listener->plslen) {
+				while(currP->listener->plslen) {
+					ttmp = currP->listener->plslen;
+					currP->listener->plslen = currP->listener->plslen->next;
+					sfree((void *)&ttmp);
+				}
+			}
+			sfree((void *)&currP->listener->plslen);
+			if(currP->listener->devices) {
+				while(currP->listener->devices) {
+					dtmp = currP->listener->devices;
+					sfree((void *)&dtmp->id);
+					sfree((void *)&dtmp->desc);
+					currP->listener->devices = currP->listener->devices->next;
+					sfree((void *)&dtmp);
+				}
+			}
+			sfree((void *)&currP->listener->devices);
+			sfree((void *)&currP->listener);
+			sfree((void *)&currP);
+
+			break;
+		}
+	}
+}
 
 void protocol_init(void) {
-	pilightFirmwareV2Init();
-	pilightFirmwareV3Init();
-#if defined(PROTOCOL_COCO_SWITCH) || defined(PROTOCOL_DIO_SWITCH) || defined(PROTOCOL_NEXA_SWITCH) || defined(PROTOCOL_KAKU_SWITCH) || defined(PROTOCOL_INTERTECHNO_SWITCH)
-	arctechSwInit();
-#endif
-#ifdef PROTOCOL_KAKU_SCREEN
-	arctechSrInit();
-#endif
-#ifdef PROTOCOL_KAKU_CONTACT
-  arctechContactInit();
-#endif
-#ifdef PROTOCOL_KAKU_DIMMER
-	arctechDimInit();
-#endif
-#if defined(PROTOCOL_COGEX_SWITCH) || defined(PROTOCOL_KAKU_SWITCH_OLD) || defined(PROTOCOL_INTERTECHNO_OLD)
-	arctechSwOldInit();
-#endif
-#ifdef PROTOCOL_KAKU_SCREEN_OLD
-	arctechSrOldInit();
-#endif
-#ifdef PROTOCOL_HOMEEASY_OLD
-	homeEasyOldInit();
-#endif
-#if defined(PROTOCOL_ELRO_SWITCH) || defined(PROTOCOL_BRENNENSTUHL_SWITCH)
-	elroADInit();
-	elroHEInit();
-	elroHCInit();
-#endif
-#if defined(PROTOCOL_SELECTREMOTE) || defined(PROTOCOL_IMPULS)
-	impulsInit();
-#endif
-#ifdef PROTOCOL_RELAY
-	relayInit();
-#endif
-#ifdef PROTOCOL_RAW
-	rawInit();
-#endif
-#ifdef PROTOCOL_REV
-	revInit();
-#endif
-#ifdef PROTOCOL_REV_OLD
-	revOldInit();
-#endif
-#ifdef PROTOCOL_ALECTO
-	alectoInit();
-#endif
-#ifdef PROTOCOL_GENERIC_WEATHER
-	genWeatherInit();
-#endif
-#ifdef PROTOCOL_GENERIC_SWITCH
-	genSwitchInit();
-#endif
-#ifdef PROTOCOL_GENERIC_DIMMER
-	genDimInit();
-#endif
-#ifdef PROTOCOL_GENERIC_WEBCAM
-	genWebcamInit();
-#endif
-#ifdef PROTOCOL_DS18B20
-	ds18b20Init();
-#endif
-#ifdef PROTOCOL_DS18S20
-	ds18s20Init();
-#endif
-#ifdef PROTOCOL_DHT22
-	dht22Init();
-#endif
-#ifdef PROTOCOL_DHT11
-	dht11Init();
-#endif
-#ifdef PROTOCOL_CLARUS
-	clarusSwInit();
-#endif
-#ifdef PROTOCOL_RPI_TEMP
-	rpiTempInit();
-#endif
-#ifdef PROTOCOL_CONRAD_RSL_SWITCH
-	conradRSLSwInit();
-#endif
-#ifdef PROTOCOL_CONRAD_RSL_CONTACT
-	conradRSLCnInit();
-#endif
-#if defined(PROTOCOL_LM75) || defined(PROTOCOL_LM76)
-	lm75Init();
-	lm76Init();
-#endif
-#ifdef PROTOCOL_POLLIN_SWITCH
-	pollinInit();
-#endif
-#ifdef PROTOCOL_MUMBI_SWITCH
-	mumbiInit();
-#endif
-#ifdef PROTOCOL_WUNDERGROUND
-	wundergroundInit();
-#endif
-#ifdef PROTOCOL_OPENWEATHERMAP
-	openweathermapInit();
-#endif
-#ifdef PROTOCOL_SILVERCREST
-	silvercrestInit();
-#endif
-#ifdef PROTOCOL_THREECHAN
-	threechanInit();
-#endif
-#ifdef PROTOCOL_TEKNIHALL
-	teknihallInit();
-#endif
-#ifdef PROTOCOL_X10
-	x10Init();
-#endif
-#ifdef PROTOCOL_SUNRISESET
-	sunRiseSetInit();
-#endif
-#ifdef PROTOCOL_PROGRAM
-	programInit();
-#endif
-#ifdef PROTOCOL_DATETIME
-	pdateTimeInit();
-#endif
-#ifdef PROTOCOL_XBMC
-	xbmcInit();
-#endif
-#ifdef PROTOCOL_LIRC
-	lircInit();
-#endif
-#ifdef PROTOCOL_QUIGG_SWITCH
-   quiggSwInit();
-#endif
+	#include "protocol_init.h"
+	void *handle = NULL;
+	void (*init)(void);
+	void (*compatibility)(const char **name, const char **pversion, const char **version, const char **commit);
+	char path[255];
+	const char *version = NULL;
+	const char *commit = NULL;
+	const char *pversion = NULL;
+	const char *name = NULL;
+	char pilight_version[strlen(VERSION)];
+	char pilight_commit[3];
+	char *protocol_root = NULL;
+	int check1 = 0, check2 = 0, valid = 1, protocol_root_free = 0;
+	strcpy(pilight_version, VERSION);
+
+	struct dirent *file = NULL;
+	DIR *d = NULL;
+
+	memset(pilight_commit, '\0', 3);
+
+	if(settings_find_string("protocol-root", &protocol_root) != 0) {
+		/* If no webserver port was set, use the default webserver port */
+		if(!(protocol_root = malloc(strlen(PROTOCOL_ROOT)+1))) {
+			logprintf(LOG_ERR, "out of memory");
+			exit(EXIT_FAILURE);
+		}
+		strcpy(protocol_root, PROTOCOL_ROOT);
+		protocol_root_free = 1;
+	}
+	size_t len = strlen(protocol_root);
+	if(protocol_root[len-1] != '/') {
+		strcat(protocol_root, "/");
+	}
+
+	if((d = opendir(protocol_root))) {
+		while((file = readdir(d)) != NULL) {
+			if(file->d_type == DT_REG) {
+				if(strstr(file->d_name, ".so") != NULL) {
+					valid = 1;
+					memset(path, '\0', 255);
+					sprintf(path, "%s%s", protocol_root, file->d_name);
+
+					if((handle = dso_load(path))) {
+						init = dso_function(handle, "init");
+						compatibility = dso_function(handle, "compatibility");
+						if(init && compatibility) {
+							compatibility(&name, &pversion, &version, &commit);
+							if(name && version && pversion) {
+								char ver[strlen(version)+1];
+								strcpy(ver, version);
+
+								if((check1 = vercmp(ver, pilight_version)) > 0) {
+									valid = 0;
+								}
+								if(check1 == 0 && commit) {
+									char com[strlen(commit)];
+									strcpy(com, commit);
+									sscanf(HASH, "v%*[0-9].%*[0-9]-%[0-9]-%*[0-9a-zA-Z\n\r]", pilight_commit);
+
+									if(strlen(pilight_commit) > 0 && (check2 = vercmp(com, pilight_commit)) > 0) {
+										valid = 0;
+									}
+								}
+								if(valid) {
+									char tmp[strlen(name)];
+									strcpy(tmp, name);
+									protocol_remove(tmp);
+									init();
+									logprintf(LOG_DEBUG, "loaded protocol %s", file->d_name);
+								} else {
+									if(commit) {
+										logprintf(LOG_ERR, "protocol %s requires at least pilight v%s (commit %s)", file->d_name, version, commit);
+									} else {
+										logprintf(LOG_ERR, "protocol %s requires at least pilight v%s", file->d_name, version);
+									}
+								}
+							} else {
+								logprintf(LOG_ERR, "invalid module %s", file->d_name, version);
+							}
+						}
+					}
+				}
+			}
+		}
+		closedir(d);
+	}
+	if(protocol_root_free) {
+		sfree((void *)&protocol_root);
+	}
 }
 
 void protocol_register(protocol_t **proto) {
@@ -295,11 +188,12 @@ void protocol_register(protocol_t **proto) {
 	}
 	(*proto)->options = NULL;
 	(*proto)->devices = NULL;
-	(*proto)->conflicts = NULL;
 	(*proto)->plslen = NULL;
 
 	(*proto)->pulse = 0;
 	(*proto)->rawlen = 0;
+	(*proto)->minrawlen = 0;
+	(*proto)->maxrawlen = 0;
 	(*proto)->binlen = 0;
 	(*proto)->lsb = 0;
 	(*proto)->txrpt = 1;
@@ -348,7 +242,7 @@ struct protocol_threads_t *protocol_thread_init(protocol_t *proto, struct JsonNo
 	pthread_mutexattr_init(&node->attr);
 	pthread_mutexattr_settype(&node->attr, PTHREAD_MUTEX_RECURSIVE);
 	pthread_mutex_init(&node->mutex, &node->attr);
-    pthread_cond_init(&node->cond, NULL);	
+    pthread_cond_init(&node->cond, NULL);
 	node->next = proto->threads;
 	proto->threads = node;
 	return node;
@@ -363,7 +257,7 @@ int protocol_thread_wait(struct protocol_threads_t *node, int interval, int *nrl
 	gettimeofday(&tp, NULL);
 	ts.tv_sec = tp.tv_sec;
 	ts.tv_nsec = tp.tv_usec * 1000;
-	
+
 	if(*nrloops == 0) {
 		ts.tv_sec += 1;
 		*nrloops = 1;
@@ -441,43 +335,6 @@ void protocol_device_add(protocol_t *proto, const char *id, const char *desc) {
 	proto->devices = dnode;
 }
 
-void protocol_conflict_add(protocol_t *proto, const char *id) {
-	struct protocol_conflicts_t *cnode = malloc(sizeof(struct protocol_conflicts_t));
-	if(!cnode) {
-		logprintf(LOG_ERR, "out of memory");
-		exit(EXIT_FAILURE);
-	}
-	if(!(cnode->id = malloc(strlen(id)+1))) {
-		logprintf(LOG_ERR, "out of memory");
-		exit(EXIT_FAILURE);
-	}
-	strcpy(cnode->id, id);
-	cnode->next	= proto->conflicts;
-	proto->conflicts = cnode;
-}
-
-void protocol_conflict_remove(protocol_t **proto, const char *id) {
-	struct protocol_conflicts_t *currP, *prevP;
-
-	prevP = NULL;
-
-	for(currP = (*proto)->conflicts; currP != NULL; prevP = currP, currP = currP->next) {
-
-		if(strcmp(currP->id, id) == 0) {
-			if(prevP == NULL) {
-				(*proto)->conflicts = currP->next;
-			} else {
-				prevP->next = currP->next;
-			}
-
-			sfree((void *)&currP->id);
-			sfree((void *)&currP);
-
-			break;
-		}
-	}
-}
-
 int protocol_device_exists(protocol_t *proto, const char *id) {
 	struct protocol_devices_t *temp = proto->devices;
 
@@ -494,7 +351,6 @@ int protocol_device_exists(protocol_t *proto, const char *id) {
 int protocol_gc(void) {
 	struct protocols_t *ptmp;
 	struct protocol_devices_t *dtmp;
-	struct protocol_conflicts_t *ctmp;
 	struct protocol_plslen_t *ttmp;
 
 	while(protocols) {
@@ -503,7 +359,7 @@ int protocol_gc(void) {
 		if(ptmp->listener->threadGC) {
 			ptmp->listener->threadGC();
 			logprintf(LOG_DEBUG, "stopped protocol threads");
-		}		
+		}
 		if(ptmp->listener->gc) {
 			ptmp->listener->gc();
 			logprintf(LOG_DEBUG, "ran garbage collector");
@@ -529,15 +385,6 @@ int protocol_gc(void) {
 			}
 		}
 		sfree((void *)&ptmp->listener->devices);
-		if(ptmp->listener->conflicts) {
-			while(ptmp->listener->conflicts) {
-				ctmp = ptmp->listener->conflicts;
-				sfree((void *)&ctmp->id);
-				ptmp->listener->conflicts = ptmp->listener->conflicts->next;
-				sfree((void *)&ctmp);
-			}
-		}
-		sfree((void *)&ptmp->listener->conflicts);
 		sfree((void *)&ptmp->listener);
 		protocols = protocols->next;
 		sfree((void *)&ptmp);

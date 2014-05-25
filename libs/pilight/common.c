@@ -3,13 +3,13 @@
 
 	This file is part of pilight.
 
-    pilight is free software: you can redistribute it and/or modify it under the 
-	terms of the GNU General Public License as published by the Free Software 
-	Foundation, either version 3 of the License, or (at your option) any later 
+    pilight is free software: you can redistribute it and/or modify it under the
+	terms of the GNU General Public License as published by the Free Software
+	Foundation, either version 3 of the License, or (at your option) any later
 	version.
 
-    pilight is distributed in the hope that it will be useful, but WITHOUT ANY 
-	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR 
+    pilight is distributed in the hope that it will be useful, but WITHOUT ANY
+	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
@@ -22,6 +22,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <ctype.h>
 #include <libgen.h>
 #include <dlfcn.h>
 #include <dirent.h>
@@ -45,28 +46,14 @@
 #include "common.h"
 #include "log.h"
 
-unsigned int ***whitelist_cache = NULL;
-unsigned int whitelist_number;
-unsigned char validchar[64] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-
-void logmarkup(void) {
-	char fmt[64], buf[64];
-	struct timeval tv;
-	struct tm *tm;
-
-	gettimeofday(&tv, NULL);
-	if((tm = localtime(&tv.tv_sec)) != NULL) {
-		strftime(fmt, sizeof(fmt), "%b %d %H:%M:%S", tm);
-		snprintf(buf, sizeof(buf), "%s:%03u", fmt, (unsigned int)tv.tv_usec);
-	}
-	
-	sprintf(debug_log, "[%22.22s] %s: ", buf, progname);
-}
+static unsigned int ***whitelist_cache = NULL;
+static unsigned int whitelist_number;
+static unsigned char validchar[64] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
 #ifdef __FreeBSD__
-int findproc(char *cmd, char *args) {
+int findproc(char *cmd, char *args, int loosely) {
 #else
-pid_t findproc(char *cmd, char *args) {
+pid_t findproc(char *cmd, char *args, int loosely) {
 #endif
 	DIR* dir;
 	struct dirent* ent;
@@ -97,7 +84,8 @@ pid_t findproc(char *cmd, char *args) {
 						close(fd);
 						continue;
 					}
-					if(strcmp(pch, cmd) == 0) {
+					if((strcmp(pch, cmd) == 0 && loosely == 0)
+					   || (strstr(pch, cmd) != NULL && loosely == 1)) {
 						match++;
 					}
 
@@ -139,56 +127,6 @@ int isNumeric(char * s) {
     return (*p == '\0') ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 
-#ifdef DEBUG
-
-const char *debug_filename(const char *file) {
-	return strrchr(file, '/') ? strrchr(file, '/') + 1 : file;
-}
-
-void *debug_malloc(size_t len, const char *file, int line) {
-	void *(*libc_malloc)(size_t) = dlsym(RTLD_NEXT, "malloc");
-	if(shelllog == 1 && loglevel == LOG_DEBUG) {
-		logmarkup();
-		printf("%s", debug_log);
-		printf("DEBUG: malloc from %s #%d\n", debug_filename(file), line);
-	}
-	return libc_malloc(len);
-}
-
-void *debug_realloc(void *addr, size_t len, const char *file, int line) {
-	void *(*libc_realloc)(void *, size_t) = dlsym(RTLD_NEXT, "realloc");
-	if(addr == NULL) {
-		if(shelllog == 1 && loglevel == LOG_DEBUG) {
-				logmarkup();
-				printf("%s", debug_log);			
-				printf("DEBUG: realloc from %s #%d\n", debug_filename(file), line);
-			}
-			return debug_malloc(len, file, line);
-		} else {
-			return libc_realloc(addr, len);
-	}
-}
-
-void *debug_calloc(size_t nlen, size_t elen) {
-	void *(*libc_calloc)(size_t, size_t) = dlsym(RTLD_NEXT, "calloc");
-	return libc_calloc(size_t, size_t);
-}
-
-void debug_free(void **addr, const char *file, int line) {
-	void ** __p = addr;
-	if(*(__p) != NULL) {
-	if(shelllog == 1 && loglevel == LOG_DEBUG) {
-			logmarkup();
-			printf("%s", debug_log);			
-			printf("DEBUG: free from %s #%d\n", debug_filename(file), line);
-		}
-		free(*(__p));
-		*(__p) = NULL;
-	}
-}
-
-#else
-
 void sfree(void **addr) {
 	void ** __p = addr;
 	if(*(__p) != NULL) {
@@ -196,8 +134,6 @@ void sfree(void **addr) {
 		*(__p) = NULL;
 	}
 }
-
-#endif
 
 int name2uid(char const *name) {
 	if(name) {
@@ -219,6 +155,7 @@ int which(const char *program) {
 		strcpy(exec, pch);
 		strcat(exec, "/");
 		strcat(exec, program);
+
 		if(access(exec, X_OK) != -1) {
 			return 0;
 		}
@@ -366,7 +303,7 @@ char *distroname(void) {
 	strcpy(dist, "FreeBSD/0.0");
 #else
 	int rc = 1;
-	struct stat sb;		
+	struct stat sb;
 	if((rc = stat("/etc/redhat-release", &sb)) == 0) {
 		strcpy(dist, "RedHat/0.0");
 	} else if((rc = stat("/etc/SuSE-release", &sb)) == 0) {
@@ -395,7 +332,7 @@ char *distroname(void) {
 
 
 char *genuuid(char *ifname) {
-	char *mac = NULL, *upnp_id = NULL;	
+	char *mac = NULL, *upnp_id = NULL;
 	char a[1024], serial[UUID_LENGTH];
 
 	memset(serial, '\0', UUID_LENGTH);
@@ -423,7 +360,7 @@ char *genuuid(char *ifname) {
 		}
 		fclose(fp);
 	}
-	
+
 #if defined(SIOCGIFHWADDR)
 	int i = 0;
 	int fd = socket(PF_INET, SOCK_DGRAM, IPPROTO_IP);
@@ -434,7 +371,7 @@ char *genuuid(char *ifname) {
 	memset(mac, '\0', 13);
 	struct ifreq s;
 
-	memset(&s, '\0', sizeof(struct ifreq));	
+	memset(&s, '\0', sizeof(struct ifreq));
 	strcpy(s.ifr_name, ifname);
 	if(ioctl(fd, SIOCGIFHWADDR, &s) == 0) {
 		for(i = 0; i < 12; i+=2) {
@@ -477,7 +414,7 @@ char *genuuid(char *ifname) {
 
 	if(strlen(mac) > 0) {
 		upnp_id = malloc(UUID_LENGTH);
-		sprintf(upnp_id, 
+		sprintf(upnp_id,
 				"0000-%c%c-%c%c-%c%c-%c%c%c%c%c%c",
 				mac[0], mac[1], mac[2],
 				mac[3], mac[4], mac[5],
@@ -521,7 +458,7 @@ int rep_getifaddrs(struct ifaddrs **ifap) {
 	if ((fd = socket(AF_INET, SOCK_DGRAM, 0)) == -1) {
 		return -1;
 	}
-  
+
 	ifc.ifc_len = sizeof(buff);
 	ifc.ifc_buf = buff;
 
@@ -529,7 +466,7 @@ int rep_getifaddrs(struct ifaddrs **ifap) {
 		close(fd);
 		return -1;
 	}
-  
+
 #ifndef max
 #define max(a,b) ((a) > (b) ? (a) : (b))
 #endif
@@ -537,7 +474,7 @@ int rep_getifaddrs(struct ifaddrs **ifap) {
 #define ifreq_size(i) max(sizeof(struct ifreq),\
      sizeof((i).ifr_name)+(i).ifr_addr.sa_len)
 #else
-#define ifreq_size(i) sizeof(struct ifreq)  
+#define ifreq_size(i) sizeof(struct ifreq)
 #endif
 
 	n = ifc.ifc_len;
@@ -645,7 +582,7 @@ int whitelist_check(char *ip) {
 
 	if(strlen(whitelist) == 0) {
 		return 0;
-	}	
+	}
 
 	/* Explode ip address to a 4 elements int array */
 	pch = strtok(ip, ".");
@@ -721,7 +658,7 @@ int whitelist_check(char *ip) {
 	for(x=0;x<whitelist_number;x++) {
 		/* Turn the different ip addresses into one single number and compare those
 		   against each other to see if the ip address is inside the lower and upper
-		   whitelisted boundary */	
+		   whitelisted boundary */
 		unsigned int wlower = whitelist_cache[x][0][0] << 24 | whitelist_cache[x][0][1] << 16 | whitelist_cache[x][0][2] << 8 | whitelist_cache[x][0][3];
 		unsigned int wupper = whitelist_cache[x][1][0] << 24 | whitelist_cache[x][1][1] << 16 | whitelist_cache[x][1][2] << 8 | whitelist_cache[x][1][3];
 		unsigned int nip = client[0] << 24 | client[1] << 16 | client[2] << 8 | client[3];
@@ -750,15 +687,17 @@ void whitelist_free(void) {
 /* Check if a given path exists */
 int path_exists(char *fil) {
 	struct stat s;
-	char *filename = basename(fil);
-	char path[1024];
-	size_t i = (strlen(fil)-strlen(filename));
+	char tmp[strlen(fil)+1];
+	strcpy(tmp, fil);
+	char *filename = basename(tmp);
+	char path[(strlen(tmp)-strlen(filename))+1];
+	size_t i = (strlen(tmp)-strlen(filename));
 
 	memset(path, '\0', sizeof(path));
-	memcpy(path, fil, i);
-	snprintf(path, i, "%s", fil);
-	
-	if(strcmp(filename, fil) != 0) {
+	memcpy(path, tmp, i);
+	snprintf(path, i, "%s", tmp);
+
+	if(strcmp(filename, tmp) != 0) {
 		int err = stat(path, &s);
 		if(err == -1) {
 			if(ENOENT == errno) {
@@ -775,4 +714,127 @@ int path_exists(char *fil) {
 		}
 	}
 	return EXIT_SUCCESS;
+}
+
+/* Copyright (C) 1995 Ian Jackson <iwj10@cus.cam.ac.uk> */
+/* Copyright (C) 1995 Ian Jackson <iwj10@cus.cam.ac.uk> */
+//  1: val > ref
+// -1: val < ref
+//  0: val == ref
+int vercmp(char *val, char *ref) {
+	int vc, rc;
+	long vl, rl;
+	char *vp, *rp;
+	char *vsep, *rsep;
+
+	if(!val) {
+		strcpy(val, "");
+	}
+	if(!ref) {
+		strcpy(ref, "");
+	}
+	while(1) {
+		vp = val;
+		while(*vp && !isdigit(*vp)) {
+			vp++;
+		}
+		rp = ref;
+		while(*rp && !isdigit(*rp)) {
+			rp++;
+		}
+		while(1) {
+			vc =(val == vp) ? 0 : *val++;
+			rc =(ref == rp) ? 0 : *ref++;
+			if(!rc && !vc) {
+				break;
+			}
+			if(vc && !isalpha(vc)) {
+				vc += 256;
+			}
+			if(rc && !isalpha(rc)) {
+				rc += 256;
+			}
+			if(vc != rc) {
+				return vc - rc;
+			}
+		}
+		val = vp;
+		ref = rp;
+		vl = 0;
+		if(isdigit(*vp)) {
+			vl = strtol(val, (char**)&val, 10);
+		}
+		rl = 0;
+		if(isdigit(*rp)) {
+			rl = strtol(ref, (char**)&ref, 10);
+		}
+		if(vl != rl) {
+			return (int)(vl - rl);
+		}
+
+		vc = *val;
+		rc = *ref;
+		vsep = strchr(".-", vc);
+		rsep = strchr(".-", rc);
+
+		if((vsep && !rsep) || !*val) {
+			return 0;
+		}
+
+		if((!vsep && rsep) || !*ref) {
+			return +1;
+		}
+
+		if(!*val && !*ref) {
+			return 0;
+		}
+	}
+}
+
+int str_replace(char *search, char *replace, char **str) {
+	char *target = *str;
+	unsigned short match = 0;
+	unsigned int len = strlen(target);
+	unsigned int nlen = 0;
+	unsigned int slen = strlen(search);
+	unsigned int rlen = strlen(replace);
+	unsigned int x = 0;
+
+	while(x < len) {
+		if(strncmp(&target[x], search, slen) == 0) {
+			match = 1;
+			unsigned int rpos = (x + (slen - rlen));
+			if(rpos < 0) {
+				slen -= rpos;
+				rpos = 0;
+			}
+			nlen = len - (slen - rlen);
+			if(len < nlen) {
+				if(!(target = realloc(target, nlen+1))) {
+					printf("out of memory\n");
+				}
+				memset(&target[len], '\0', nlen-len);
+			}
+			len = nlen;
+
+			memmove(&target[x], &target[rpos], len-x);
+			strncpy(&target[x], replace, rlen);
+			target[len] = '\0';
+			x += rlen-1;
+		}
+		x++;
+	}
+	if(match) {
+		return (int)len;
+	} else {
+		return -1;
+	}
+}
+
+int stricmp(char const *a, char const *b) {
+    for(;; a++, b++) {
+        int d = tolower(*a) - tolower(*b);
+        if (d != 0 || !*a)
+            return d;
+    }
 }

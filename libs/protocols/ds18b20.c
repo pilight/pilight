@@ -3,13 +3,13 @@
 
 	This file is part of pilight.
 
-    pilight is free software: you can redistribute it and/or modify it under the 
-	terms of the GNU General Public License as published by the Free Software 
-	Foundation, either version 3 of the License, or (at your option) any later 
+    pilight is free software: you can redistribute it and/or modify it under the
+	terms of the GNU General Public License as published by the Free Software
+	Foundation, either version 3 of the License, or (at your option) any later
 	version.
 
-    pilight is distributed in the hope that it will be useful, but WITHOUT ANY 
-	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR 
+    pilight is distributed in the hope that it will be useful, but WITHOUT ANY
+	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
@@ -38,11 +38,14 @@
 #include "gc.h"
 #include "ds18b20.h"
 
-unsigned short ds18b20_loop = 1;
-unsigned short ds18b20_threads = 0;
-char ds18b20_path[21];
+static unsigned short ds18b20_loop = 1;
+static unsigned short ds18b20_threads = 0;
+static char ds18b20_path[21];
 
-void *ds18b20Parse(void *param) {
+static pthread_mutex_t ds18b20lock;
+static pthread_mutexattr_t ds18b20attr;
+
+static void *ds18b20Parse(void *param) {
 	struct protocol_threads_t *node = (struct protocol_threads_t *)param;
 	struct JsonNode *json = (struct JsonNode *)node->param;
 	struct JsonNode *jid = NULL;
@@ -91,6 +94,7 @@ void *ds18b20Parse(void *param) {
 
 	while(ds18b20_loop) {
 		if(protocol_thread_wait(node, interval, &nrloops) == ETIMEDOUT) {
+			pthread_mutex_lock(&ds18b20lock);
 			for(y=0;y<nrid;y++) {
 				ds18b20_sensor = realloc(ds18b20_sensor, strlen(ds18b20_path)+strlen(id[y])+5);
 				if(!ds18b20_sensor) {
@@ -137,7 +141,7 @@ void *ds18b20Parse(void *param) {
 										if(x == 1 && strstr(pch, "YES")) {
 											w1valid = 1;
 										}
-										if(x == 2) {	
+										if(x == 2) {
 											w1temp = atoi(pch)+temp_offset;
 										}
 										x++;
@@ -147,16 +151,16 @@ void *ds18b20Parse(void *param) {
 
 								if(w1valid) {
 									ds18b20->message = json_mkobject();
-									
+
 									JsonNode *code = json_mkobject();
-									
+
 									json_append_member(code, "id", json_mkstring(id[y]));
 									json_append_member(code, "temperature", json_mknumber(w1temp));
-									
+
 									json_append_member(ds18b20->message, "message", code);
 									json_append_member(ds18b20->message, "origin", json_mkstring("receiver"));
 									json_append_member(ds18b20->message, "protocol", json_mkstring(ds18b20->id));
-									
+
 									pilight.broadcast(ds18b20->id, ds18b20->message);
 									json_delete(ds18b20->message);
 									ds18b20->message = NULL;
@@ -169,6 +173,7 @@ void *ds18b20Parse(void *param) {
 					logprintf(LOG_ERR, "1-wire device %s does not exists", ds18b20_sensor);
 				}
 			}
+			pthread_mutex_unlock(&ds18b20lock);
 		}
 	}
 	if(ds18b20_sensor) {
@@ -185,7 +190,7 @@ void *ds18b20Parse(void *param) {
 	return (void *)NULL;
 }
 
-struct threadqueue_t *ds18b20InitDev(JsonNode *jdevice) {
+static struct threadqueue_t *ds18b20InitDev(JsonNode *jdevice) {
 	ds18b20_loop = 1;
 	char *output = json_stringify(jdevice, NULL);
 	JsonNode *json = json_decode(output);
@@ -195,7 +200,7 @@ struct threadqueue_t *ds18b20InitDev(JsonNode *jdevice) {
 	return threads_register("ds18b20", &ds18b20Parse, (void *)node, 0);
 }
 
-void ds18b20ThreadGC(void) {
+static void ds18b20ThreadGC(void) {
 	ds18b20_loop = 0;
 	protocol_thread_stop(ds18b20);
 	while(ds18b20_threads > 0) {
@@ -204,7 +209,13 @@ void ds18b20ThreadGC(void) {
 	protocol_thread_free(ds18b20);
 }
 
+#ifndef MODULE
+__attribute__((weak))
+#endif
 void ds18b20Init(void) {
+	pthread_mutexattr_init(&ds18b20attr);
+	pthread_mutexattr_settype(&ds18b20attr, PTHREAD_MUTEX_RECURSIVE);
+	pthread_mutex_init(&ds18b20lock, &ds18b20attr);
 
 	protocol_register(&ds18b20);
 	protocol_set_id(ds18b20, "ds18b20");
@@ -221,9 +232,22 @@ void ds18b20Init(void) {
 	options_add(&ds18b20->options, 0, "gui-show-temperature", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
 	options_add(&ds18b20->options, 0, "poll-interval", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)10, "[0-9]");
 
-	memset(ds18b20_path, '\0', 21);	
+	memset(ds18b20_path, '\0', 21);
 	strcpy(ds18b20_path, "/sys/bus/w1/devices/");
 
 	ds18b20->initDev=&ds18b20InitDev;
 	ds18b20->threadGC=&ds18b20ThreadGC;
 }
+
+#ifdef MODULE
+void compatibility(const char **name, const char **version, const char **reqversion, const char **reqcommit) {
+	*name = "ds18b20";
+	*version = "1.0";
+	*reqversion = "4.0";
+	*reqcommit = "38";
+}
+
+void init(void) {
+	ds18b20Init();
+}
+#endif

@@ -3,13 +3,13 @@
 
 	This file is part of pilight.
 
-    pilight is free software: you can redistribute it and/or modify it under the 
-	terms of the GNU General Public License as published by the Free Software 
-	Foundation, either version 3 of the License, or (at your option) any later 
+    pilight is free software: you can redistribute it and/or modify it under the
+	terms of the GNU General Public License as published by the Free Software
+	Foundation, either version 3 of the License, or (at your option) any later
 	version.
 
-    pilight is distributed in the hope that it will be useful, but WITHOUT ANY 
-	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR 
+    pilight is distributed in the hope that it will be useful, but WITHOUT ANY
+	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
@@ -27,13 +27,13 @@
 #include "config.h"
 #include "common.h"
 
-unsigned short gc_enable = 1;
+static unsigned short gc_enable = 1;
 
 void gc_handler(int sig) {
-	if(((sig == SIGINT || sig == SIGTERM || sig == SIGTSTP) && gc_enable == 1) || 
+	if(((sig == SIGINT || sig == SIGTERM || sig == SIGTSTP) && gc_enable == 1) ||
 	  (!(sig == SIGINT || sig == SIGTERM || sig == SIGTSTP) && gc_enable == 0)) {
 		if(configfile != NULL && gc_enable == 1) {
-			gc_enable = 0;	
+			gc_enable = 0;
 			JsonNode *joutput = config2json(-1);
 			char *output = json_stringify(joutput, "\t");
 			config_write(output);
@@ -43,8 +43,8 @@ void gc_handler(int sig) {
 			sfree((void *)&configfile);
 			configfile = NULL;
 		}
-		gc_enable = 0;	
-		config_gc();	
+		gc_enable = 0;
+		config_gc();
 		gc_run();
 	}
 }
@@ -82,14 +82,14 @@ int gc_run(void) {
 		}
 		tmp = tmp->next;
 	}
-	
+
 	while(gc) {
 		tmp = gc;
 		gc = gc->next;
 		sfree((void *)&tmp);
 	}
 	sfree((void *)&gc);
-	
+
 	if(s)
 		return EXIT_FAILURE;
 	else
@@ -112,5 +112,5 @@ void gc_catch(void) {
     sigaction(SIGBUS,  &act, NULL);
     sigaction(SIGILL,  &act, NULL);
     sigaction(SIGSEGV, &act, NULL);
-    sigaction(SIGFPE,  &act, NULL);	
+    sigaction(SIGFPE,  &act, NULL);
 }

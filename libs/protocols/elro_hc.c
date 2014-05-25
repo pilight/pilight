@@ -3,13 +3,13 @@
 
 	This file is part of pilight.
 
-    pilight is free software: you can redistribute it and/or modify it under the 
-	terms of the GNU General Public License as published by the Free Software 
-	Foundation, either version 3 of the License, or (at your option) any later 
+    pilight is free software: you can redistribute it and/or modify it under the
+	terms of the GNU General Public License as published by the Free Software
+	Foundation, either version 3 of the License, or (at your option) any later
 	version.
 
-    pilight is distributed in the hope that it will be useful, but WITHOUT ANY 
-	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR 
+    pilight is distributed in the hope that it will be useful, but WITHOUT ANY
+	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
@@ -30,7 +30,7 @@
 #include "gc.h"
 #include "elro_hc.h"
 
-void elroHCCreateMessage(int systemcode, int unitcode, int state) {
+static void elroHCCreateMessage(int systemcode, int unitcode, int state) {
 	elro_hc->message = json_mkobject();
 	json_append_member(elro_hc->message, "systemcode", json_mknumber(systemcode));
 	json_append_member(elro_hc->message, "unitcode", json_mknumber(unitcode));
@@ -41,7 +41,7 @@ void elroHCCreateMessage(int systemcode, int unitcode, int state) {
 	}
 }
 
-void elroHCParseBinary(void) {
+static void elroHCParseBinary(void) {
 	int x = 0;
 	for(x=0;x<elro_hc->binlen;x++) {
 		elro_hc->binary[x] ^= 1;
@@ -52,7 +52,7 @@ void elroHCParseBinary(void) {
 	elroHCCreateMessage(systemcode, unitcode, state);
 }
 
-void elroHCCreateLow(int s, int e) {
+static void elroHCCreateLow(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=4) {
@@ -63,7 +63,7 @@ void elroHCCreateLow(int s, int e) {
 	}
 }
 
-void elroHCCreateHigh(int s, int e) {
+static void elroHCCreateHigh(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=4) {
@@ -73,11 +73,11 @@ void elroHCCreateHigh(int s, int e) {
 		elro_hc->raw[i+3]=(elro_hc->pulse*elro_hc->plslen->length);
 	}
 }
-void elroHCClearCode(void) {
+static void elroHCClearCode(void) {
 	elroHCCreateHigh(0,47);
 }
 
-void elroHCCreateSystemCode(int systemcode) {
+static void elroHCCreateSystemCode(int systemcode) {
 	int binary[255];
 	int length = 0;
 	int i=0, x=0;
@@ -91,7 +91,7 @@ void elroHCCreateSystemCode(int systemcode) {
 	}
 }
 
-void elroHCCreateUnitCode(int unitcode) {
+static void elroHCCreateUnitCode(int unitcode) {
 	int binary[255];
 	int length = 0;
 	int i=0, x=0;
@@ -105,8 +105,8 @@ void elroHCCreateUnitCode(int unitcode) {
 	}
 }
 
-void elroHCCreateState(int state) {
-	if(state == 1) {	
+static void elroHCCreateState(int state) {
+	if(state == 1) {
 		elroHCCreateLow(44, 47);
 		elroHCCreateLow(40, 43);
 	} else {
@@ -114,12 +114,12 @@ void elroHCCreateState(int state) {
 	}
 }
 
-void elroHCCreateFooter(void) {
+static void elroHCCreateFooter(void) {
 	elro_hc->raw[48]=(elro_hc->plslen->length);
 	elro_hc->raw[49]=(PULSE_DIV*elro_hc->plslen->length);
 }
 
-int elroHCCreateCode(JsonNode *code) {
+static int elroHCCreateCode(JsonNode *code) {
 	int systemcode = -1;
 	int unitcode = -1;
 	int state = -1;
@@ -154,13 +154,16 @@ int elroHCCreateCode(JsonNode *code) {
 	return EXIT_SUCCESS;
 }
 
-void elroHCPrintHelp(void) {
+static void elroHCPrintHelp(void) {
 	printf("\t -s --systemcode=systemcode\tcontrol a device with this systemcode\n");
 	printf("\t -u --unitcode=unitcode\t\tcontrol a device with this unitcode\n");
 	printf("\t -t --on\t\t\tsend an on signal\n");
 	printf("\t -f --off\t\t\tsend an off signal\n");
 }
 
+#ifndef MODULE
+__attribute__((weak))
+#endif
 void elroHCInit(void) {
 
 	protocol_register(&elro_hc);
@@ -181,8 +184,21 @@ void elroHCInit(void) {
 	options_add(&elro_hc->options, 'f', "off", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
 
 	options_add(&elro_hc->options, 0, "gui-readonly", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
-	
+
 	elro_hc->parseBinary=&elroHCParseBinary;
 	elro_hc->createCode=&elroHCCreateCode;
 	elro_hc->printHelp=&elroHCPrintHelp;
 }
+
+#ifdef MODULE
+void compatibility(const char **name, const char **version, const char **reqversion, const char **reqcommit) {
+	*name = "elro_hc";
+	*version = "1.0";
+	*reqversion = "4.0";
+	*reqcommit = "38";
+}
+
+void init(void) {
+	elroHCInit();
+}
+#endif

@@ -29,7 +29,7 @@
 #include "gc.h"
 #include "conrad_rsl_contact.h"
 
-void conradRSLCnCreateMessage(int id, int state) {
+static void conradRSLCnCreateMessage(int id, int state) {
 	conrad_rsl_contact->message = json_mkobject();
 	json_append_member(conrad_rsl_contact->message, "id", json_mknumber(id));
 	if(state == 1) {
@@ -39,7 +39,7 @@ void conradRSLCnCreateMessage(int id, int state) {
 	}
 }
 
-void conradRSLCnParseCode(void) {
+static void conradRSLCnParseCode(void) {
 	int x = 0;
 
 	/* Convert the one's and zero's into binary */
@@ -61,6 +61,9 @@ void conradRSLCnParseCode(void) {
 	}
 }
 
+#ifndef MODULE
+__attribute__((weak))
+#endif
 void conradRSLCnInit(void) {
 
 	protocol_register(&conrad_rsl_contact);
@@ -81,3 +84,16 @@ void conradRSLCnInit(void) {
 
 	conrad_rsl_contact->parseCode=&conradRSLCnParseCode;
 }
+
+#ifdef MODULE
+void compatibility(const char **name, const char **version, const char **reqversion, const char **reqcommit) {
+	*name = "conrad_rsl_contact";
+	*version = "0.1";
+	*reqversion = "4.0";
+	*reqcommit = "38";
+}
+
+void init(void) {
+	conradRSLCnInit();
+}
+#endif

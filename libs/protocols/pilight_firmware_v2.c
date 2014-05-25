@@ -29,14 +29,14 @@
 #include "gc.h"
 #include "pilight_firmware_v2.h"
 
-void pilightFirmwareV2CreateMessage(int version, int high, int low) {
+static void pilightFirmwareV2CreateMessage(int version, int high, int low) {
 	pilight_firmware_v2->message = json_mkobject();
 	json_append_member(pilight_firmware_v2->message, "version", json_mknumber(version));
 	json_append_member(pilight_firmware_v2->message, "lpf", json_mknumber(high*10));
 	json_append_member(pilight_firmware_v2->message, "hpf", json_mknumber(low*10));
 }
 
-void pilightFirmwareV2ParseRaw(void) {
+static void pilightFirmwareV2ParseRaw(void) {
 	int i = 0;
 	for(i=0;i<pilight_firmware_v2->rawlen;i++) {
 		if(pilight_firmware_v2->raw[i] < 100) {
@@ -45,13 +45,16 @@ void pilightFirmwareV2ParseRaw(void) {
 	}
 }
 
-void pilightFirmwareV2ParseBinary(void) {
+static void pilightFirmwareV2ParseBinary(void) {
 	int version = binToDec(pilight_firmware_v2->binary, 0, 15);
 	int high = binToDec(pilight_firmware_v2->binary, 16, 31);
 	int low = binToDec(pilight_firmware_v2->binary, 32, 47);
 	pilightFirmwareV2CreateMessage(version, high, low);
 }
 
+#ifndef MODULE
+__attribute__((weak))
+#endif
 void pilightFirmwareV2Init(void) {
 
   protocol_register(&pilight_firmware_v2);
@@ -73,3 +76,16 @@ void pilightFirmwareV2Init(void) {
   pilight_firmware_v2->parseBinary=&pilightFirmwareV2ParseBinary;
   pilight_firmware_v2->parseRaw=&pilightFirmwareV2ParseRaw;
 }
+
+#ifdef MODULE
+void compatibility(const char **name, const char **version, const char **reqversion, const char **reqcommit) {
+	*name = "pilight_firmware";
+	*version = "1.0";
+	*reqversion = "4.0";
+	*reqcommit = "38";
+}
+
+void init(void) {
+	pilightFirmwareV2Init();
+}
+#endif

@@ -3,13 +3,13 @@
 
 	This file is part of pilight.
 
-    pilight is free software: you can redistribute it and/or modify it under the 
-	terms of the GNU General Public License as published by the Free Software 
-	Foundation, either version 3 of the License, or (at your option) any later 
+    pilight is free software: you can redistribute it and/or modify it under the
+	terms of the GNU General Public License as published by the Free Software
+	Foundation, either version 3 of the License, or (at your option) any later
 	version.
 
-    pilight is distributed in the hope that it will be useful, but WITHOUT ANY 
-	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR 
+    pilight is distributed in the hope that it will be useful, but WITHOUT ANY
+	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
@@ -25,10 +25,10 @@
 #include "common.h"
 #include "options.h"
 
-int getOptPos = 0;
-char *longarg = NULL;
-char *shortarg = NULL;
-char *gctmp = NULL;
+static int getOptPos = 0;
+static char *longarg = NULL;
+static char *shortarg = NULL;
+static char *gctmp = NULL;
 
 int options_gc(void) {
 	sfree((void *)&longarg);
@@ -59,7 +59,7 @@ void options_set_value(struct options_t **opt, int id, const char *val) {
 /* Get a certain option value identified by the id */
 int options_get_value(struct options_t **opt, int id, char **out) {
 	struct options_t *temp = *opt;
-	*out = NULL;	
+	*out = NULL;
 	while(temp) {
 		if(temp->id == id && temp->id > 0) {
 			if(temp->value) {
@@ -157,14 +157,14 @@ int options_get_id(struct options_t **opt, char *name, int *out) {
 int options_parse(struct options_t **opt, int argc, char **argv, int error_check, char **optarg) {
 	int c = 0;
 	int itmp = 0;
-#ifndef __FreeBSD__	
+#ifndef __FreeBSD__
 	char *mask;
 	regex_t regex;
 	int reti;
 #endif
 
 	char *ctmp = NULL;
-	
+
 	/* If have read all arguments, exit and reset */
 	if(getOptPos>=(argc-1)) {
 		getOptPos=0;
@@ -179,7 +179,7 @@ int options_parse(struct options_t **opt, int argc, char **argv, int error_check
 		longarg = realloc(longarg, 4);
 		shortarg = realloc(shortarg, 2);
 		*optarg = realloc(*optarg, 4);
-		
+
 		if(!longarg) {
 			logprintf(LOG_ERR, "out of memory");
 			exit(EXIT_FAILURE);
@@ -192,18 +192,18 @@ int options_parse(struct options_t **opt, int argc, char **argv, int error_check
 			logprintf(LOG_ERR, "out of memory");
 			exit(EXIT_FAILURE);
 		}
-		
+
 		/* The memory to null */
 		memset(*optarg, '\0', 4);
 		memset(shortarg, '\0', 2);
 		memset(longarg, '\0', 4);
-		
+
 		/* Check if the CLI character contains an equals to (=) sign.
 		   If it does, we have probably encountered a long argument */
 		if(strchr(argv[getOptPos],'=')) {
 			/* Copy all characters until the equals to sign.
 			   This will probably be the name of the argument */
-			longarg = realloc(longarg, strcspn(argv[getOptPos],"=")+1);			
+			longarg = realloc(longarg, strcspn(argv[getOptPos],"=")+1);
 			if(!longarg) {
 				logprintf(LOG_ERR, "out of memory");
 				exit(EXIT_FAILURE);
@@ -224,7 +224,7 @@ int options_parse(struct options_t **opt, int argc, char **argv, int error_check
 		} else {
 			/* If the argument does not contain a equals sign.
 			   Store the argument to check later if it's a long argument */
-			longarg = realloc(longarg, strlen(argv[getOptPos])+1);	
+			longarg = realloc(longarg, strlen(argv[getOptPos])+1);
 			if(!longarg) {
 				logprintf(LOG_ERR, "out of memory");
 				exit(EXIT_FAILURE);
@@ -335,7 +335,7 @@ int options_parse(struct options_t **opt, int argc, char **argv, int error_check
 			if(strlen(*optarg) == 0) {
 				options_set_value(opt, c, "1");
 			} else {
-#ifndef __FreeBSD__	
+#ifndef __FreeBSD__
 				if(error_check != 2) {
 					/* If the argument has a regex mask, check if it passes */
 					if(options_get_mask(opt, c, &mask) == 0) {
@@ -526,6 +526,6 @@ void options_delete(struct options_t *options) {
 		sfree((void *)&tmp);
 	}
 	sfree((void *)&options);
-	
+
 	logprintf(LOG_DEBUG, "freed options struct");
 }

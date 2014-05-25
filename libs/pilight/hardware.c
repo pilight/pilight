@@ -3,13 +3,13 @@
 
 	This file is part of pilight.
 
-    pilight is free software: you can redistribute it and/or modify it under the 
-	terms of the GNU General Public License as published by the Free Software 
-	Foundation, either version 3 of the License, or (at your option) any later 
+    pilight is free software: you can redistribute it and/or modify it under the
+	terms of the GNU General Public License as published by the Free Software
+	Foundation, either version 3 of the License, or (at your option) any later
 	version.
 
-    pilight is distributed in the hope that it will be useful, but WITHOUT ANY 
-	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR 
+    pilight is distributed in the hope that it will be useful, but WITHOUT ANY
+	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
@@ -27,6 +27,8 @@
 #include <sys/ioctl.h>
 #include <time.h>
 #include <libgen.h>
+#include <dirent.h>
+#include <dlfcn.h>
 
 #include "../../pilight.h"
 #include "common.h"
@@ -34,37 +36,133 @@
 #include "wiringPi.h"
 #include "log.h"
 #include "json.h"
-
-#include "../hardware/none.h"
-
-#ifdef HARDWARE_433_GPIO
-	#include "../hardware/433gpio.h"
-#endif
-#ifdef HARDWARE_433_LIRC
-	#include "../hardware/433lirc.h"
-#endif
-#ifdef HARDWARE_433_PILIGHT
-	#include "../hardware/433pilight.h"
-#endif
-
+#include "settings.h"
+#include "dso.h"
 #include "hardware.h"
 
-char *hwfile = NULL;
+static char *hwfile = NULL;
 
-void hardware_init(void) {
-#ifdef HARDWARE_433_LIRC
-		lirc433Init();
-#endif
-#ifdef HARDWARE_433_GPIO
-		gpio433Init();
-#endif
-#ifdef HARDWARE_433_PILIGHT
-		pilight433Init();
-#endif
-	noneInit();
+#include "hardware_header.h"
+
+void hardware_remove(char *name) {
+	struct hardware_t *currP, *prevP;
+
+	prevP = NULL;
+
+	for(currP = hardware; currP != NULL; prevP = currP, currP = currP->next) {
+
+		if(strcmp(currP->id, name) == 0) {
+			if(prevP == NULL) {
+				hardware = currP->next;
+			} else {
+				prevP->next = currP->next;
+			}
+
+			logprintf(LOG_DEBUG, "removed hardware module %s", currP->id);
+			sfree((void *)&currP->id);
+			options_delete(currP->options);
+			sfree((void *)&currP);
+
+			break;
+		}
+	}
 }
 
-void hardware_register(hardware_t **hw) {
+void hardware_init(void) {
+	#include "hardware_init.h"
+	void *handle = NULL;
+	void (*init)(void);
+	void (*compatibility)(const char **name, const char **pversion, const char **version, const char **commit);
+	char path[255];
+	const char *version = NULL;
+	const char *commit = NULL;
+	const char *pversion = NULL;
+	const char *name = NULL;
+	char pilight_version[strlen(VERSION)];
+	char pilight_commit[3];
+	char *hardware_root = NULL;
+	int check1 = 0, check2 = 0, valid = 1, hardware_root_free = 0;
+	strcpy(pilight_version, VERSION);
+
+	struct dirent *file = NULL;
+	DIR *d = NULL;
+
+	memset(pilight_commit, '\0', 3);
+
+	if(settings_find_string("hardware-root", &hardware_root) != 0) {
+		/* If no webserver port was set, use the default webserver port */
+		if(!(hardware_root = malloc(strlen(HARDWARE_ROOT)+2))) {
+			logprintf(LOG_ERR, "out of memory");
+			exit(EXIT_FAILURE);
+		}
+		strcpy(hardware_root, HARDWARE_ROOT);
+		hardware_root_free = 1;
+	}
+	size_t len = strlen(hardware_root);
+
+	if(hardware_root[len-1] != '/') {
+		strcat(hardware_root, "/");
+	}
+
+	if((d = opendir(hardware_root))) {
+		while((file = readdir(d)) != NULL) {
+			if(file->d_type == DT_REG) {
+				if(strstr(file->d_name, ".so") != NULL) {
+					valid = 1;
+					memset(path, '\0', 255);
+					sprintf(path, "%s%s", hardware_root, file->d_name);
+
+					if((handle = dso_load(path))) {
+						init = dso_function(handle, "init");
+						compatibility = dso_function(handle, "compatibility");
+						if(init && compatibility) {
+							compatibility(&name, &pversion, &version, &commit);
+							if(name && version && pversion) {
+								char ver[strlen(version)];
+								strcpy(ver, version);
+
+								if((check1 = vercmp(ver, pilight_version)) > 0) {
+									valid = 0;
+								}
+								if(check1 == 0 && commit) {
+									char com[strlen(commit)];
+									strcpy(com, commit);
+									sscanf(HASH, "v%*[0-9].%*[0-9]-%[0-9]-%*[0-9a-zA-Z\n\r]", pilight_commit);
+
+									if(strlen(pilight_commit) > 0 && (check2 = vercmp(com, pilight_commit)) > 0) {
+										valid = 0;
+									}
+								}
+
+								if(valid) {
+									char tmp[strlen(name)];
+									strcpy(tmp, name);
+									hardware_remove(tmp);
+									init();
+									logprintf(LOG_DEBUG, "loaded hardware module %s", file->d_name);
+								} else {
+									if(commit) {
+										logprintf(LOG_ERR, "hardware module %s requires at least pilight v%s (commit %s)", file->d_name, version, commit);
+									} else {
+										logprintf(LOG_ERR, "hardware module %s requires at least pilight v%s", file->d_name, version);
+									}
+								}
+							} else {
+								logprintf(LOG_ERR, "invalid module %s", file->d_name, version);
+							}
+						}
+					}
+				}
+			}
+		}
+		closedir(d);
+	}
+	if(hardware_root_free) {
+		sfree((void *)&hardware_root);
+	}
+}
+
+void hardware_register(struct hardware_t **hw) {
 	*hw = malloc(sizeof(struct hardware_t));
 	if(!*hw) {
 		logprintf(LOG_ERR, "out of memory");
@@ -77,19 +175,13 @@ void hardware_register(hardware_t **hw) {
 	(*hw)->receive = NULL;
 	(*hw)->send = NULL;
 	(*hw)->settings = NULL;
-	
-	struct hwlst_t *hnode = malloc(sizeof(struct hwlst_t));
-	if(!hnode) {
-		logprintf(LOG_ERR, "out of memory");
-		exit(EXIT_FAILURE);
-	}
-	hnode->listener = *hw;
-	hnode->next = hwlst;
-	hwlst = hnode;
+
+	(*hw)->next = hardware;
+	hardware = (*hw);
 }
 
 void hardware_set_id(hardware_t *hw, const char *id) {
-	hw->id = malloc(strlen(id)+1);	
+	hw->id = malloc(strlen(id)+1);
 	if(!hw->id) {
 		logprintf(LOG_ERR, "out of memory");
 		exit(EXIT_FAILURE);
@@ -98,29 +190,28 @@ void hardware_set_id(hardware_t *hw, const char *id) {
 }
 
 int hardware_gc(void) {
-	struct hwlst_t *htmp;
+	struct hardware_t *htmp;
 	struct conf_hardware_t *ctmp = NULL;
 
-	while(hwlst) {
-		htmp = hwlst;
-		sfree((void *)&htmp->listener->id);
-		options_delete(htmp->listener->options);
-		sfree((void *)&htmp->listener);
-		hwlst = hwlst->next;
+	while(hardware) {
+		htmp = hardware;
+		sfree((void *)&htmp->id);
+		options_delete(htmp->options);
+		hardware = hardware->next;
 		sfree((void *)&htmp);
 	}
-	sfree((void *)&hwlst);
+	sfree((void *)&hardware);
 
 	while(conf_hardware) {
 		ctmp = conf_hardware;
 		conf_hardware = conf_hardware->next;
 		sfree((void *)&ctmp);
 	}
-	
+
 	if(hwfile) {
 		sfree((void *)&hwfile);
 	}
-	
+
 	logprintf(LOG_DEBUG, "garbage collected hardware library");
 	return EXIT_SUCCESS;
 }
@@ -144,45 +235,45 @@ int hardware_parse(JsonNode *root) {
 	struct conf_hardware_t *hnode = NULL;
 	struct conf_hardware_t *tmp_confhw = NULL;
 	struct options_t *hw_options = NULL;
-	struct hwlst_t *tmp_hwlst = NULL;
-	struct hardware_t *hardware = NULL;
-	
+	struct hardware_t *tmp_hardware = NULL;
+	struct hardware_t *hw = NULL;
+
 	JsonNode *jvalues = NULL;
 	JsonNode *jchilds = json_first_child(root);
 
-#ifndef __FreeBSD__	
+#ifndef __FreeBSD__
 	regex_t regex;
 	int reti;
 	char *stmp = NULL;
 #endif
-	
+
 	int i = 0, have_error = 0, match = 0;
 
 	while(jchilds) {
 		i++;
-		/* A hardware module can only be a JSON object */		
+		/* A hardware module can only be a JSON object */
 		if(jchilds->tag != 5) {
 			logprintf(LOG_ERR, "hardware module #%d \"%s\", invalid format", i, jchilds->key);
 			have_error = 1;
 			goto clear;
 		} else {
 			/* Check if defined hardware module exists */
-			tmp_hwlst = hwlst;
+			tmp_hardware = hardware;
 			match = 0;
-			while(tmp_hwlst) {
-				if(strcmp(tmp_hwlst->listener->id, jchilds->key) == 0) {
-					hardware = tmp_hwlst->listener;
+			while(tmp_hardware) {
+				if(strcmp(tmp_hardware->id, jchilds->key) == 0) {
+					hw = tmp_hardware;
 					match = 1;
 					break;
 				}
-				tmp_hwlst = tmp_hwlst->next;
+				tmp_hardware = tmp_hardware->next;
 			}
 			if(match == 0) {
 				logprintf(LOG_ERR, "hardware module #%d \"%s\" does not exist", i, jchilds->key);
 				have_error = 1;
 				goto clear;
 			}
-			
+
 			/* Check for duplicate hardware modules */
 			tmp_confhw = conf_hardware;
 			while(tmp_confhw) {
@@ -193,16 +284,16 @@ int hardware_parse(JsonNode *root) {
 					goto clear;
 				}
 				/* And only allow one module covering the same frequency */
-				if(tmp_confhw->hardware->type == hardware->type) {
+				if(tmp_confhw->hardware->type == hw->type) {
 					logprintf(LOG_ERR, "hardware module #%d \"%s\", duplicate freq.", i, jchilds->key);
 					have_error = 1;
 					goto clear;
 				}
 				tmp_confhw = tmp_confhw->next;
-			}	
+			}
 
 			/* Check if all options required by the hardware module are present */
-			hw_options = hardware->options;
+			hw_options = hw->options;
 			while(hw_options) {
 				match = 0;
 				jvalues = json_first_child(jchilds);
@@ -221,7 +312,7 @@ int hardware_parse(JsonNode *root) {
 					goto clear;
 				} else {
 					/* Check if setting contains a valid value */
-#ifndef __FreeBSD__	
+#ifndef __FreeBSD__
 					if(jvalues->tag == JSON_NUMBER) {
 						stmp = realloc(stmp, sizeof(jvalues->number_));
 						if(!stmp) {
@@ -261,7 +352,7 @@ int hardware_parse(JsonNode *root) {
 			while(jvalues) {
 				match = 0;
 				if(jvalues->tag == JSON_NUMBER || jvalues->tag == JSON_STRING) {
-					hw_options = hardware->options;
+					hw_options = hw->options;
 					while(hw_options) {
 						if(strcmp(jvalues->key, hw_options->name) == 0 && jvalues->tag == hw_options->vartype) {
 							match = 1;
@@ -272,38 +363,38 @@ int hardware_parse(JsonNode *root) {
 					if(!match) {
 						logprintf(LOG_ERR, "hardware module #%d \"%s\", setting \"%s\" invalid", i, jchilds->key, jvalues->key);
 						have_error = 1;
-						goto clear;				
+						goto clear;
 					}
 				}
 				jvalues = jvalues->next;
 			}
 
-			if(hardware->settings) {
+			if(hw->settings) {
 				/* Sync all settings with the hardware module */
 				jvalues = json_first_child(jchilds);
 				while(jvalues) {
-					if(hardware->settings(jvalues) == EXIT_FAILURE) {
+					if(hw->settings(jvalues) == EXIT_FAILURE) {
 						logprintf(LOG_ERR, "hardware module #%d \"%s\", setting \"%s\" invalid", i, jchilds->key, jvalues->key);
 						have_error = 1;
-						goto clear;							
+						goto clear;
 					}
 					jvalues = jvalues->next;
 				}
 			}
-			
+
 			hnode = malloc(sizeof(struct conf_hardware_t));
 			if(!hnode) {
 				logprintf(LOG_ERR, "out of memory");
 				exit(EXIT_FAILURE);
 			}
-			hnode->hardware = hardware;
+			hnode->hardware = hw;
 			hnode->next = conf_hardware;
 			conf_hardware = hnode;
 
 			jchilds = jchilds->next;
 		}
 	}
-	
+
 	sfree((void *)&tmp_confhw);
 	json_delete(jchilds);
 clear:
@@ -351,7 +442,7 @@ int hardware_read(void) {
 		return EXIT_FAILURE;
 	}
 
-	if(!conf_hardware) {	
+	if(!conf_hardware) {
 		json_delete(root);
 		root = json_decode("{\"none\":{}}");
 		hardware_parse(root);
@@ -360,7 +451,7 @@ int hardware_read(void) {
 	char *output = json_stringify(root, "\t");
 	hardware_write(output);
 	json_delete(root);
-	sfree((void *)&output);	
+	sfree((void *)&output);
 	sfree((void *)&content);
 	return EXIT_SUCCESS;
 }

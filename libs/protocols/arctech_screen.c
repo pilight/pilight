@@ -30,7 +30,7 @@
 #include "gc.h"
 #include "arctech_screen.h"
 
-void arctechSrCreateMessage(int id, int unit, int state, int all) {
+static void arctechSrCreateMessage(int id, int unit, int state, int all) {
 	arctech_screen->message = json_mkobject();
 	json_append_member(arctech_screen->message, "id", json_mknumber(id));
 	if(all == 1) {
@@ -46,7 +46,7 @@ void arctechSrCreateMessage(int id, int unit, int state, int all) {
 	}
 }
 
-void arctechSrParseBinary(void) {
+static void arctechSrParseBinary(void) {
 	int unit = binToDecRev(arctech_screen->binary, 28, 31);
 	int state = arctech_screen->binary[27];
 	int all = arctech_screen->binary[26];
@@ -55,7 +55,7 @@ void arctechSrParseBinary(void) {
 	arctechSrCreateMessage(id, unit, state, all);
 }
 
-void arctechSrCreateLow(int s, int e) {
+static void arctechSrCreateLow(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=4) {
@@ -66,7 +66,7 @@ void arctechSrCreateLow(int s, int e) {
 	}
 }
 
-void arctechSrCreateHigh(int s, int e) {
+static void arctechSrCreateHigh(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=4) {
@@ -77,16 +77,16 @@ void arctechSrCreateHigh(int s, int e) {
 	}
 }
 
-void arctechSrClearCode(void) {
+static void arctechSrClearCode(void) {
 	arctechSrCreateLow(2, 132);
 }
 
-void arctechSrCreateStart(void) {
+static void arctechSrCreateStart(void) {
 	arctech_screen->raw[0]=(arctech_screen->plslen->length);
 	arctech_screen->raw[1]=(9*arctech_screen->plslen->length);
 }
 
-void arctechSrCreateId(int id) {
+static void arctechSrCreateId(int id) {
 	int binary[255];
 	int length = 0;
 	int i=0, x=0;
@@ -100,19 +100,19 @@ void arctechSrCreateId(int id) {
 	}
 }
 
-void arctechSrCreateAll(int all) {
+static void arctechSrCreateAll(int all) {
 	if(all == 1) {
 		arctechSrCreateHigh(106, 109);
 	}
 }
 
-void arctechSrCreateState(int state) {
+static void arctechSrCreateState(int state) {
 	if(state == 1) {
 		arctechSrCreateHigh(110, 113);
 	}
 }
 
-void arctechSrCreateUnit(int unit) {
+static void arctechSrCreateUnit(int unit) {
 	int binary[255];
 	int length = 0;
 	int i=0, x=0;
@@ -126,11 +126,11 @@ void arctechSrCreateUnit(int unit) {
 	}
 }
 
-void arctechSrCreateFooter(void) {
+static void arctechSrCreateFooter(void) {
 	arctech_screen->raw[131]=(PULSE_DIV*arctech_screen->plslen->length);
 }
 
-int arctechSrCreateCode(JsonNode *code) {
+static int arctechSrCreateCode(JsonNode *code) {
 	int id = -1;
 	int unit = -1;
 	int state = -1;
@@ -173,7 +173,7 @@ int arctechSrCreateCode(JsonNode *code) {
 	return EXIT_SUCCESS;
 }
 
-void arctechSrPrintHelp(void) {
+static void arctechSrPrintHelp(void) {
 	printf("\t -t --up\t\t\tsend an up signal\n");
 	printf("\t -f --down\t\t\tsend an down signal\n");
 	printf("\t -u --unit=unit\t\t\tcontrol a device with this unit code\n");
@@ -181,16 +181,16 @@ void arctechSrPrintHelp(void) {
 	printf("\t -a --all\t\t\tsend command to all devices with this id\n");
 }
 
+#ifndef MODULE
+__attribute__((weak))
+#endif
 void arctechSrInit(void) {
 
 	protocol_register(&arctech_screen);
 	protocol_set_id(arctech_screen, "arctech_screens");
 	protocol_device_add(arctech_screen, "kaku_screen", "KlikAanKlikUit Screens");
-	protocol_conflict_add(arctech_screen, "arctech_switches");
-	protocol_conflict_add(arctech_screen, "arctech_contact");
-	protocol_plslen_add(arctech_screen, 303);
 	protocol_plslen_add(arctech_screen, 251);
-	protocol_plslen_add(arctech_screen, 294);
+	protocol_plslen_add(arctech_screen, 303);
 	arctech_screen->devtype = SCREEN;
 	arctech_screen->hwtype = RF433;
 	arctech_screen->pulse = 5;
@@ -201,7 +201,7 @@ void arctechSrInit(void) {
 	options_add(&arctech_screen->options, 'f', "down", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
 	options_add(&arctech_screen->options, 'u', "unit", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, NULL, "^([0-9]{1}|[1][0-5])$");
 	options_add(&arctech_screen->options, 'i', "id", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, NULL, "^([0-9]{1,7}|[1-5][0-9]{7}|6([0-6][0-9]{6}|7(0[0-9]{5}|10([0-7][0-9]{3}|8([0-7][0-9]{2}|8([0-5][0-9]|6[0-3]))))))$");
-	options_add(&arctech_screen->options, 'a', "all", OPTION_OPT_VALUE, CONFIG_OPTIONAL, JSON_NUMBER, NULL, NULL);	
+	options_add(&arctech_screen->options, 'a', "all", OPTION_OPT_VALUE, CONFIG_OPTIONAL, JSON_NUMBER, NULL, NULL);
 
 	options_add(&arctech_screen->options, 0, "gui-readonly", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 
@@ -209,3 +209,16 @@ void arctechSrInit(void) {
 	arctech_screen->createCode=&arctechSrCreateCode;
 	arctech_screen->printHelp=&arctechSrPrintHelp;
 }
+
+#ifdef MODULE
+void compatibility(const char **name, const char **version, const char **reqversion, const char **reqcommit) {
+	*name = "arctech_screen";
+	*version = "1.0";
+	*reqversion = "4.0";
+	*reqcommit = "38";
+}
+
+void init(void) {
+	arctechSrInit();
+}
+#endif

@@ -3,13 +3,13 @@
 
 	This file is part of pilight.
 
-    pilight is free software: you can redistribute it and/or modify it under the 
-	terms of the GNU General Public License as published by the Free Software 
-	Foundation, either version 3 of the License, or (at your option) any later 
+    pilight is free software: you can redistribute it and/or modify it under the
+	terms of the GNU General Public License as published by the Free Software
+	Foundation, either version 3 of the License, or (at your option) any later
 	version.
 
-    pilight is distributed in the hope that it will be useful, but WITHOUT ANY 
-	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR 
+    pilight is distributed in the hope that it will be useful, but WITHOUT ANY
+	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
@@ -30,7 +30,7 @@
 #include "gc.h"
 #include "generic_switch.h"
 
-void genSwitchCreateMessage(int id, int state) {
+static void genSwitchCreateMessage(int id, int state) {
 	generic_switch->message = json_mkobject();
 	json_append_member(generic_switch->message, "id", json_mknumber(id));
 	if(state == 1) {
@@ -40,7 +40,7 @@ void genSwitchCreateMessage(int id, int state) {
 	}
 }
 
-int genSwitchCreateCode(JsonNode *code) {
+static int genSwitchCreateCode(JsonNode *code) {
 	int id = -1;
 	int state = -1;
 	double itmp = 0;
@@ -63,12 +63,15 @@ int genSwitchCreateCode(JsonNode *code) {
 
 }
 
-void genSwitchPrintHelp(void) {
+static void genSwitchPrintHelp(void) {
 	printf("\t -t --on\t\t\tsend an on signal\n");
 	printf("\t -f --off\t\t\tsend an off signal\n");
 	printf("\t -i --id=id\t\t\tcontrol a device with this id\n");
 }
 
+#ifndef MODULE
+__attribute__((weak))
+#endif
 void genSwitchInit(void) {
 
 	protocol_register(&generic_switch);
@@ -85,3 +88,16 @@ void genSwitchInit(void) {
 	generic_switch->printHelp=&genSwitchPrintHelp;
 	generic_switch->createCode=&genSwitchCreateCode;
 }
+
+#ifdef MODULE
+void compatibility(const char **name, const char **version, const char **reqversion, const char **reqcommit) {
+	*name = "generic_switch";
+	*version = "1.0";
+	*reqversion = "4.0";
+	*reqcommit = "38";
+}
+
+void init(void) {
+	genSwitchInit();
+}
+#endif

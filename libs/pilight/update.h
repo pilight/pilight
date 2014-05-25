@@ -20,7 +20,6 @@
 #define _UPDATE_H_
 
 int update_gc(void);
-int update_vercmp(char *val, char *ref);
 char *update_package_version(char *mirror);
 int update_available(void);
 char *update_latests_version(void);

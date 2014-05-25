@@ -20,9 +20,6 @@
 #define _PROTOCOL_PILIGHT_FIRMWARE_V3_H_
 
 struct protocol_t *pilight_firmware_v3;
-
 void pilightFirmwareV3Init(void);
-void pilightFirmwareV3CreateMessage(int version, int high, int low);
-void pilightFirmwareV3ParseBinary(void);
 
 #endif

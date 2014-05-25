@@ -3,13 +3,13 @@
 
 	This file is part of pilight.
 
-    pilight is free software: you can redistribute it and/or modify it under the 
-	terms of the GNU General Public License as published by the Free Software 
-	Foundation, either version 3 of the License, or (at your option) any later 
+    pilight is free software: you can redistribute it and/or modify it under the
+	terms of the GNU General Public License as published by the Free Software
+	Foundation, either version 3 of the License, or (at your option) any later
 	version.
 
-    pilight is distributed in the hope that it will be useful, but WITHOUT ANY 
-	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR 
+    pilight is distributed in the hope that it will be useful, but WITHOUT ANY
+	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
@@ -34,51 +34,56 @@
 #include "http_lib.h"
 #include "log.h"
 
+typedef struct settings_t {
+	char *name;
+	int type;
+	union {
+		char *string_;
+		int number_;
+	} value;
+	struct settings_t *next;
+} settings_t;
+
+struct settings_t *settings;
+
+/* The location of the settings file */
+static char *settingsfile = NULL;
+
 /* Add a string value to the settings struct */
-void settings_add_string(const char *name, char *value) {
+static void settings_add_string(const char *name, char *value) {
 	struct settings_t *snode = malloc(sizeof(struct settings_t));
 	if(!snode) {
 		logprintf(LOG_ERR, "out of memory");
 		exit(EXIT_FAILURE);
 	}
-	snode->name = malloc(strlen(name)+1);
-	if(!snode->name) {
+	if(!(snode->name = malloc(strlen(name)+1))) {
 		logprintf(LOG_ERR, "out of memory");
 		exit(EXIT_FAILURE);
 	}
 	strcpy(snode->name, name);
-	snode->value = malloc(strlen(value)+1);
-	if(!snode->value) {
+	if(!(snode->value.string_ = malloc(strlen(value)+1))) {
 		logprintf(LOG_ERR, "out of memory");
 		exit(EXIT_FAILURE);
 	}
-	strcpy(snode->value, value);
+	strcpy(snode->value.string_, value);
 	snode->type = 2;
 	snode->next = settings;
 	settings = snode;
 }
 
 /* Add an int value to the settings struct */
-void settings_add_number(const char *name, int value) {
+static void settings_add_number(const char *name, int value) {
 	struct settings_t *snode = malloc(sizeof(struct settings_t));
 	if(!snode) {
 		logprintf(LOG_ERR, "out of memory");
 		exit(EXIT_FAILURE);
 	}
-	char ctmp[256];
-	snode->name = malloc(strlen(name)+1);
-	if(!snode->name) {
+	if(!(snode->name = malloc(strlen(name)+1))) {
 		logprintf(LOG_ERR, "out of memory");
 		exit(EXIT_FAILURE);
 	}
 	strcpy(snode->name, name);
-	sprintf(ctmp, "%d", value);
-	snode->value = malloc(strlen(ctmp)+1);
-	if(!snode->value) {
-		logprintf(LOG_ERR, "out of memory");
-		exit(EXIT_FAILURE);
-	}
-	strcpy(snode->value, ctmp);
+	snode->value.number_ = value;
 	snode->type = 1;
 	snode->next = settings;
 	settings = snode;
@@ -90,7 +95,7 @@ int settings_find_number(const char *name, int *out) {
 
 	while(tmp_settings) {
 		if(strcmp(tmp_settings->name, name) == 0 && tmp_settings->type == 1) {
-			*out = atoi(tmp_settings->value);
+			*out = tmp_settings->value.number_;
 			return EXIT_SUCCESS;
 		}
 		tmp_settings = tmp_settings->next;
@@ -105,7 +110,7 @@ int settings_find_string(const char *name, char **out) {
 
 	while(tmp_settings) {
 		if(strcmp(tmp_settings->name, name) == 0 && tmp_settings->type == 2) {
-			*out = tmp_settings->value;
+			*out = tmp_settings->value.string_;
 			return EXIT_SUCCESS;
 		}
 		tmp_settings = tmp_settings->next;
@@ -116,7 +121,7 @@ int settings_find_string(const char *name, char **out) {
 
 /* Check if a given file exists */
 int settings_file_exists(char *filename) {
-	struct stat sb;   
+	struct stat sb;
 	return stat(filename, &sb);
 }
 
@@ -141,15 +146,15 @@ int settings_parse(JsonNode *root) {
 	strcpy(webgui_root, WEBSERVER_ROOT);
 #endif
 
-#ifndef __FreeBSD__	
+#ifndef __FreeBSD__
 	regex_t regex;
 	int reti;
-#endif	
-	
+#endif
+
 	JsonNode *jsettings = json_first_child(root);
-	
+
 	while(jsettings) {
-		if(strcmp(jsettings->key, "port") == 0 
+		if(strcmp(jsettings->key, "port") == 0
 		   || strcmp(jsettings->key, "send-repeats") == 0
 		   || strcmp(jsettings->key, "receive-repeats") == 0) {
 			if((int)jsettings->number_ == 0) {
@@ -157,12 +162,28 @@ int settings_parse(JsonNode *root) {
 				have_error = 1;
 				goto clear;
 			} else {
-#ifdef WEBSERVER			
+#ifdef WEBSERVER
 				if(strcmp(jsettings->key, "port") == 0) {
 					own_port = (int)jsettings->number_;
 				}
 #endif
 				settings_add_number(jsettings->key, (int)jsettings->number_);
+			}
+		} else if(strcmp(jsettings->key, "hardware-root") == 0) {
+			if(!jsettings->string_ || path_exists(jsettings->string_) != 0) {
+				logprintf(LOG_ERR, "setting \"%s\" must contain a valid path", jsettings->key);
+				have_error = 1;
+				goto clear;
+			} else {
+				settings_add_string(jsettings->key, jsettings->string_);
+			}
+		} else if(strcmp(jsettings->key, "protocol-root") == 0) {
+			if(!jsettings->string_ || path_exists(jsettings->string_) != 0) {
+				logprintf(LOG_ERR, "setting \"%s\" must contain a valid path", jsettings->key);
+				have_error = 1;
+				goto clear;
+			} else {
+				settings_add_string(jsettings->key, jsettings->string_);
 			}
 		} else if(strcmp(jsettings->key, "standalone") == 0) {
 			if(jsettings->number_ < 0 || jsettings->number_ > 1) {
@@ -197,7 +218,7 @@ int settings_parse(JsonNode *root) {
 				if(path_exists(jsettings->string_) != EXIT_SUCCESS) {
 					logprintf(LOG_ERR, "setting \"%s\" must point to an existing folder", jsettings->key);
 					have_error = 1;
-					goto clear;				
+					goto clear;
 				} else {
 					settings_add_string(jsettings->key, jsettings->string_);
 				}
@@ -222,7 +243,7 @@ int settings_parse(JsonNode *root) {
 				have_error = 1;
 				goto clear;
 			} else if(strlen(jsettings->string_) > 0) {
-#ifndef __FreeBSD__			
+#ifndef __FreeBSD__
 				char validate[] = "^((\\*|[0-9]|[1-9][0-9]|1[0-9][0-9]|2([0-4][0-9]|5[0-5]))\\.(\\*|[0-9]|[1-9][0-9]|1[0-9][0-9]|2([0-4][0-9]|5[0-5]))\\.(\\*|[0-9]|[1-9][0-9]|1[0-9][0-9]|2([0-4][0-9]|5[0-5]))\\.(\\*|[0-9]|[1-9][0-9]|1[0-9][0-9]|2([0-4][0-9]|5[0-5]))(,[\\ ]|,|$))+$";
 				reti = regcomp(&regex, validate, REG_EXTENDED);
 				if(reti) {
@@ -286,7 +307,7 @@ int settings_parse(JsonNode *root) {
 				goto clear;
 			} else {
 				settings_add_number(jsettings->key, (int)jsettings->number_);
-			} 
+			}
 		} else if(strcmp(jsettings->key, "webserver-user") == 0) {
 			if(jsettings->string_ || strlen(jsettings->string_) > 0) {
 				if(name2uid(jsettings->string_) == -1) {
@@ -346,7 +367,7 @@ int settings_parse(JsonNode *root) {
 				goto clear;
 			} else {
 				settings_add_number(jsettings->key, (int)jsettings->number_);
-			} 
+			}
 		} else if(strcmp(jsettings->key, "update-development") == 0) {
 			if(jsettings->number_ < 0 || jsettings->number_ > 1) {
 				logprintf(LOG_ERR, "setting \"%s\" must be either 0 or 1", jsettings->key);
@@ -388,7 +409,7 @@ int settings_parse(JsonNode *root) {
 				if(url) sfree((void *)&url);
 				if(data) sfree((void *)&data);
 			}
-#endif		
+#endif
 		} else {
 			logprintf(LOG_ERR, "setting \"%s\" is invalid", jsettings->key);
 			have_error = 1;
@@ -409,7 +430,7 @@ int settings_parse(JsonNode *root) {
 			logprintf(LOG_ERR, "setting \"webgui-template\", template does not exists");
 			have_error = 1;
 			sfree((void *)&tmp);
-			goto clear;		
+			goto clear;
 		}
 		sfree((void *)&tmp);
 	}
@@ -453,12 +474,14 @@ int settings_gc(void) {
 	while(settings) {
 		tmp = settings;
 		sfree((void *)&tmp->name);
-		sfree((void *)&tmp->value);
+		if(tmp->type == 2) {
+			sfree((void *)&tmp->value.string_);
+		}
 		settings = settings->next;
 		sfree((void *)&tmp);
 	}
 	sfree((void *)&settings);
-	
+
 	sfree((void *)&settingsfile);
 	logprintf(LOG_DEBUG, "garbage collected settings library");
 	return 1;
@@ -497,7 +520,6 @@ int settings_read(void) {
 		sfree((void *)&content);
 		return EXIT_FAILURE;
 	}
-
 	root = json_decode(content);
 
 	if(settings_parse(root) != 0) {
@@ -507,7 +529,7 @@ int settings_read(void) {
 	char *output = json_stringify(root, "\t");
 	settings_write(output);
 	json_delete(root);
-	sfree((void *)&output);	
+	sfree((void *)&output);
 	sfree((void *)&content);
 	return EXIT_SUCCESS;
 }

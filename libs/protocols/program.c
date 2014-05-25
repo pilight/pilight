@@ -3,13 +3,13 @@
 
 	This file is part of pilight.
 
-    pilight is free software: you can redistribute it and/or modify it under the 
-	terms of the GNU General Public License as published by the Free Software 
-	Foundation, either version 3 of the License, or (at your option) any later 
+    pilight is free software: you can redistribute it and/or modify it under the
+	terms of the GNU General Public License as published by the Free Software
+	Foundation, either version 3 of the License, or (at your option) any later
 	version.
 
-    pilight is distributed in the hope that it will be useful, but WITHOUT ANY 
-	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR 
+    pilight is distributed in the hope that it will be useful, but WITHOUT ANY
+	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
@@ -40,8 +40,11 @@
 #include "gc.h"
 #include "program.h"
 
-unsigned short program_loop = 1;
-unsigned short program_threads = 0;
+static unsigned short program_loop = 1;
+static unsigned short program_threads = 0;
+
+static pthread_mutex_t programlock;
+static pthread_mutexattr_t programattr;
 
 typedef struct programs_t {
 	char *name;
@@ -50,35 +53,38 @@ typedef struct programs_t {
 	char *start;
 	char *stop;
 	int wait;
-	pthread_t pth;	
+	int currentstate;
+	int laststate;
+	pthread_t pth;
+	protocol_threads_t *thread;
 	struct programs_t *next;
 } programs_t;
 
-struct programs_t *programs = NULL;
+static struct programs_t *programs = NULL;
 
-void *programParse(void *param) {
+static void *programParse(void *param) {
 	struct protocol_threads_t *pnode = (struct protocol_threads_t *)param;
 	struct JsonNode *json = (struct JsonNode *)pnode->param;
 	struct JsonNode *jid = NULL;
 	struct JsonNode *jchild = NULL;
 	struct JsonNode *jchild1 = NULL;
 	char *prog = NULL, *args = NULL, *stopcmd = NULL, *startcmd = NULL;
-	
-	int interval = 1, nrloops = 0, currentstate = 0, laststate = -1;
+
+	int interval = 1, nrloops = 0;
 	int pid = 0;
 	double itmp = 0;
 
 	program_threads++;
 
-	json_find_string(json, "program", &prog);	
+	json_find_string(json, "program", &prog);
 	json_find_string(json, "arguments", &args);
 	json_find_string(json, "stop-command", &stopcmd);
 	json_find_string(json, "start-command", &startcmd);
-	
-	struct programs_t *lnode = malloc(sizeof(struct programs_t));	
+
+	struct programs_t *lnode = malloc(sizeof(struct programs_t));
 	lnode->wait = 0;
 	lnode->pth = 0;
-	
+
 	if(args && strlen(args) > 0) {
 		if(!(lnode->arguments = malloc(strlen(args)+1))) {
 			logprintf(LOG_ERR, "out of memory");
@@ -137,6 +143,9 @@ void *programParse(void *param) {
 		}
 	}
 
+	lnode->thread = pnode;
+	lnode->laststate = -1;
+
 	struct programs_t *tmp = programs;
 	if(tmp) {
 		while(tmp->next != NULL) {
@@ -147,40 +156,40 @@ void *programParse(void *param) {
 		lnode->next = tmp;
 		programs = lnode;
 	}
-	
+
 	if(json_find_number(json, "poll-interval", &itmp) == 0)
 		interval = (int)round(itmp);
 
 	while(program_loop) {
 		if(protocol_thread_wait(pnode, interval, &nrloops) == ETIMEDOUT) {
+			pthread_mutex_lock(&programlock);
 			if(lnode->wait == 0) {
 				program->message = json_mkobject();
 
 				JsonNode *code = json_mkobject();
 				json_append_member(code, "name", json_mkstring(lnode->name));
 
-				if((pid = (int)findproc(lnode->program, lnode->arguments)) > 0) {
-					currentstate = 1;
+				if((pid = (int)findproc(lnode->program, lnode->arguments, 0)) > 0) {
+					lnode->currentstate = 1;
 					json_append_member(code, "state", json_mkstring("running"));
 					json_append_member(code, "pid", json_mknumber((int)pid));
 				} else {
-					currentstate = 0;
+					lnode->currentstate = 0;
 					json_append_member(code, "state", json_mkstring("stopped"));
 					json_append_member(code, "pid", json_mknumber(0));
 				}
-
 				json_append_member(program->message, "message", code);
 				json_append_member(program->message, "origin", json_mkstring("receiver"));
 				json_append_member(program->message, "protocol", json_mkstring(program->id));
 
-				if(currentstate != laststate) {
-					laststate = currentstate;									
+				if(lnode->currentstate != lnode->laststate) {
+					lnode->laststate = lnode->currentstate;
 					pilight.broadcast(program->id, program->message);
 				}
-
 				json_delete(program->message);
 				program->message = NULL;
 			}
+			pthread_mutex_unlock(&programlock);
 		}
 	}
 
@@ -194,16 +203,16 @@ struct threadqueue_t *programInitDev(JsonNode *jdevice) {
 	JsonNode *json = json_decode(output);
 	sfree((void *)&output);
 
-	struct protocol_threads_t *node = protocol_thread_init(program, json);	
+	struct protocol_threads_t *node = protocol_thread_init(program, json);
 	return threads_register("program", &programParse, (void *)node, 0);
 }
 
-void *programThread(void *param) {
+static void *programThread(void *param) {
 	struct programs_t *p = (struct programs_t *)param;
 	int pid = 0;
 	int result = 0;
 
-	if((pid = (int)findproc(p->program, p->arguments)) > 0) {
+	if((pid = (int)findproc(p->program, p->arguments, 0)) > 0) {
 		result = system(p->stop);
 	} else {
 		result = system(p->start);
@@ -213,18 +222,23 @@ void *programThread(void *param) {
 	if(WIFSIGNALED(result)) {
 		int ppid = 0;
 		/* Find the pilight daemon pid */
-		if((ppid = (int)findproc(progname, NULL)) > 0) {
+		if((ppid = (int)findproc(progname, NULL, 0)) > 0) {
 			/* Send a sigint to ourself */
 			kill(ppid, SIGINT);
 		}
 	}
 
 	p->wait = 0;
-	p->pth = 0;	
+	p->pth = 0;
+	p->laststate = -1;
+
+	pthread_mutex_unlock(&p->thread->mutex);
+	pthread_cond_signal(&p->thread->cond);
+
 	return NULL;
 }
 
-int programCreateCode(JsonNode *code) {
+static int programCreateCode(JsonNode *code) {
 	char *name = NULL;
 	double itmp = -1;
 	int state = -1;
@@ -237,13 +251,13 @@ int programCreateCode(JsonNode *code) {
 				if(strcmp(tmp->name, name) == 0) {
 					if(tmp->wait == 0 && tmp->pth == 0) {
 						if(tmp->name != NULL && tmp->stop != NULL && tmp->start != NULL) {
-						
+
 							if(json_find_number(code, "running", &itmp) == 0)
 								state = 1;
 							else if(json_find_number(code, "stopped", &itmp) == 0)
 								state = 0;
 
-							if((pid = (int)findproc(tmp->program, tmp->arguments)) > 0 && state == 1) {
+							if((pid = (int)findproc(tmp->program, tmp->arguments, 0)) > 0 && state == 1) {
 								logprintf(LOG_ERR, "program \"%s\" already running", tmp->name);
 							} else if(pid == -1 && state == 0) {
 								logprintf(LOG_ERR, "program \"%s\" already stopped", tmp->name);
@@ -259,22 +273,22 @@ int programCreateCode(JsonNode *code) {
 									} else {
 										json_append_member(code1, "state", json_mkstring("stopped"));
 									}
-									
+
 									json_append_member(program->message, "message", code1);
 									json_append_member(program->message, "origin", json_mkstring("receiver"));
 									json_append_member(program->message, "protocol", json_mkstring(program->id));
-														
+
 									pilight.broadcast(program->id, program->message);
 									json_delete(program->message);
 									program->message = NULL;
 								}
-							
+
 								tmp->wait = 1;
 								threads_create(&tmp->pth, NULL, programThread, (void *)tmp);
 								pthread_detach(tmp->pth);
 
 								program->message = json_mkobject();
-								json_append_member(program->message, "name", json_mkstring(name));					
+								json_append_member(program->message, "name", json_mkstring(name));
 								json_append_member(program->message, "state", json_mkstring("pending"));
 							}
 						} else {
@@ -295,7 +309,7 @@ int programCreateCode(JsonNode *code) {
 			else if(json_find_number(code, "stopped", &itmp) == 0)
 				json_append_member(program->message, "state", json_mkstring("stopped"));
 
-			json_append_member(program->message, "name", json_mkstring(name));					
+			json_append_member(program->message, "name", json_mkstring(name));
 			json_append_member(program->message, "state", json_mkstring("pending"));
 		}
 	} else {
@@ -305,14 +319,14 @@ int programCreateCode(JsonNode *code) {
 	return EXIT_SUCCESS;
 }
 
-void programThreadGC(void) {
+static void programThreadGC(void) {
 	program_loop = 0;
 	protocol_thread_stop(program);
 	while(program_threads > 0) {
 		usleep(10);
 	}
 	protocol_thread_free(program);
-	
+
 	struct programs_t *tmp;
 	while(programs) {
 		tmp = programs;
@@ -328,13 +342,19 @@ void programThreadGC(void) {
 	sfree((void *)&programs);
 }
 
-void programPrintHelp(void) {
+static void programPrintHelp(void) {
 	printf("\t -t --running\t\t\tstart the program\n");
 	printf("\t -f --stopped\t\t\tstop the program\n");
 	printf("\t -n --name=name\t\t\tname of the program\n");
 }
 
+#ifndef MODULE
+__attribute__((weak))
+#endif
 void programInit(void) {
+	pthread_mutexattr_init(&programattr);
+	pthread_mutexattr_settype(&programattr, PTHREAD_MUTEX_RECURSIVE);
+	pthread_mutex_init(&programlock, &programattr);
 
 	protocol_register(&program);
 	protocol_set_id(program, "program");
@@ -361,3 +381,16 @@ void programInit(void) {
 	program->initDev=&programInitDev;
 	program->threadGC=&programThreadGC;
 }
+
+#ifdef MODULE
+void compatibility(const char **name, const char **version, const char **reqversion, const char **reqcommit) {
+	*name = "program";
+	*version = "1.0";
+	*reqversion = "4.0";
+	*reqcommit = "38";
+}
+
+void init(void) {
+	programInit();
+}
+#endif

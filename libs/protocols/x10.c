@@ -3,13 +3,13 @@
 
 	This file is part of pilight.
 
-    pilight is free software: you can redistribute it and/or modify it under the 
-	terms of the GNU General Public License as published by the Free Software 
-	Foundation, either version 3 of the License, or (at your option) any later 
+    pilight is free software: you can redistribute it and/or modify it under the
+	terms of the GNU General Public License as published by the Free Software
+	Foundation, either version 3 of the License, or (at your option) any later
 	version.
 
-    pilight is distributed in the hope that it will be useful, but WITHOUT ANY 
-	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR 
+    pilight is distributed in the hope that it will be useful, but WITHOUT ANY
+	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
@@ -30,9 +30,9 @@
 #include "gc.h"
 #include "x10.h"
 
-char x10letters[18] = {"MNOPCDABEFGHKL IJ"};
+static char x10letters[18] = {"MNOPCDABEFGHKL IJ"};
 
-void x10CreateMessage(char *id, int state) {
+static void x10CreateMessage(char *id, int state) {
 	x10->message = json_mkobject();
 	json_append_member(x10->message, "id", json_mkstring(id));
 	if(state == 0) {
@@ -42,7 +42,7 @@ void x10CreateMessage(char *id, int state) {
 	}
 }
 
-void x10ParseCode(void) {
+static void x10ParseCode(void) {
 	int x = 0;
 	int y = 0;
 
@@ -68,7 +68,7 @@ void x10ParseCode(void) {
 	}
 }
 
-void x10CreateLow(int s, int e) {
+static void x10CreateLow(int s, int e) {
 	int i;
 	for(i=s;i<=e;i+=2) {
 		x10->raw[i]=(x10->plslen->length*(int)round(x10->pulse/3));
@@ -76,7 +76,7 @@ void x10CreateLow(int s, int e) {
 	}
 }
 
-void x10CreateHigh(int s, int e) {
+static void x10CreateHigh(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=2) {
@@ -85,14 +85,14 @@ void x10CreateHigh(int s, int e) {
 	}
 }
 
-void x10ClearCode(void) {
+static void x10ClearCode(void) {
 	x10CreateLow(0, 15);
 	x10CreateHigh(16, 31);
 	x10CreateLow(32, 47);
 	x10CreateHigh(48, 63);
 }
 
-void x10CreateLetter(int l) {
+static void x10CreateLetter(int l) {
 	int binary[255];
 	int length = 0;
 	int i=0, x=0, y = 0;
@@ -112,7 +112,7 @@ void x10CreateLetter(int l) {
 	}
 }
 
-void x10CreateNumber(int n) {
+static void x10CreateNumber(int n) {
 	if(n >= 8) {
 		x10CreateHigh(10, 10);
 		x10CreateLow(26, 26);
@@ -133,35 +133,35 @@ void x10CreateNumber(int n) {
 	}
 }
 
-void x10CreateState(int state) {
+static void x10CreateState(int state) {
 	if(state == 0) {
 		x10CreateHigh(36, 36);
 		x10CreateLow(52, 52);
 	}
 }
 
-void x10CreateFooter(void) {
+static void x10CreateFooter(void) {
 	x10->raw[64]=(x10->plslen->length*(int)round(x10->pulse/3));
 	x10->raw[65]=(PULSE_DIV*x10->plslen->length*9);
 	x10->raw[66]=(PULSE_DIV*x10->plslen->length*2);
 	x10->raw[67]=(PULSE_DIV*x10->plslen->length);
 }
 
-int x10CreateCode(JsonNode *code) {
+static int x10CreateCode(JsonNode *code) {
 	char id[4] = {'\0'};
 	int state = -1;
 	double itmp = -1;
 	char *stmp = NULL;
 
 	strcpy(id, "-1");
-	
+
 	if(json_find_string(code, "id", &stmp) == 0)
 		strcpy(id, stmp);
 	if(json_find_number(code, "off", &itmp) == 0)
 		state=0;
 	else if(json_find_number(code, "on", &itmp) == 0)
 		state=1;
-		
+
 	if(strcmp(id, "-1") == 0 || state == -1) {
 		logprintf(LOG_ERR, "x10: insufficient number of arguments");
 		return EXIT_FAILURE;
@@ -182,14 +182,16 @@ int x10CreateCode(JsonNode *code) {
 	return EXIT_SUCCESS;
 }
 
-void x10PrintHelp(void) {
+static void x10PrintHelp(void) {
 	printf("\t -t --on\t\t\tsend an on signal\n");
 	printf("\t -f --off\t\t\tsend an off signal\n");
 	printf("\t -i --id=id\t\t\tcontrol a device with this id\n");
 }
 
+#ifndef MODULE
+__attribute__((weak))
+#endif
 void x10Init(void) {
-	
 	protocol_register(&x10);
 	protocol_set_id(x10, "x10");
 	protocol_device_add(x10, "x10", "x10 based devices");
@@ -201,11 +203,24 @@ void x10Init(void) {
 
 	options_add(&x10->options, 't', "on", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
 	options_add(&x10->options, 'f', "off", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
-	options_add(&x10->options, 'i', "id", OPTION_HAS_VALUE, CONFIG_ID, JSON_STRING, NULL, "^[ABCDEFGHIJKLMNOP]([1][0-6]{1}|[1-9]{1})$");	
+	options_add(&x10->options, 'i', "id", OPTION_HAS_VALUE, CONFIG_ID, JSON_STRING, NULL, "^[ABCDEFGHIJKLMNOP]([1][0-6]{1}|[1-9]{1})$");
 
-	options_add(&x10->options, 0, "gui-readonly", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");	
-	
+	options_add(&x10->options, 0, "gui-readonly", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
+
 	x10->parseCode=&x10ParseCode;
 	x10->createCode=&x10CreateCode;
 	x10->printHelp=&x10PrintHelp;
 }
+
+#ifdef MODULE
+void compatibility(const char **name, const char **version, const char **reqversion, const char **reqcommit) {
+	*name = "x10";
+	*version = "1.0";
+	*reqversion = "4.0";
+	*reqcommit = "38";
+}
+
+void init(void) {
+	x10Init();
+}
+#endif

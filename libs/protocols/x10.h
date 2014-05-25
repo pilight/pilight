@@ -3,13 +3,13 @@
 
 	This file is part of pilight.
 
-    pilight is free software: you can redistribute it and/or modify it under the 
-	terms of the GNU General Public License as published by the Free Software 
-	Foundation, either version 3 of the License, or (at your option) any later 
+    pilight is free software: you can redistribute it and/or modify it under the
+	terms of the GNU General Public License as published by the Free Software
+	Foundation, either version 3 of the License, or (at your option) any later
 	version.
 
-    pilight is distributed in the hope that it will be useful, but WITHOUT ANY 
-	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR 
+    pilight is distributed in the hope that it will be useful, but WITHOUT ANY
+	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
@@ -20,18 +20,6 @@
 #define _PROTOCOL_X10_H_
 
 struct protocol_t *x10;
-
-void x10CreateMessage(char *id, int state);
-void x10ParseCode(void);
-void x10CreateLow(int s, int e);
-void x10CreateHigh(int s, int e);
-void x10ClearCode(void);
-void x10CreateLetter(int l);
-void x10CreateNumber(int n);
-void x10CreateState(int state);
-void x10CreateFooter(void);
-int x10CreateCode(JsonNode *code);
-void x10PrintHelp(void);
 void x10Init(void);
 
 #endif

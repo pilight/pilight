@@ -29,14 +29,14 @@
 #include "gc.h"
 #include "pilight_firmware_v3.h"
 
-void pilightFirmwareV3CreateMessage(int version, int high, int low) {
+static void pilightFirmwareV3CreateMessage(int version, int high, int low) {
 	pilight_firmware_v3->message = json_mkobject();
 	json_append_member(pilight_firmware_v3->message, "version", json_mknumber(version));
 	json_append_member(pilight_firmware_v3->message, "lpf", json_mknumber(high*10));
 	json_append_member(pilight_firmware_v3->message, "hpf", json_mknumber(low*10));
 }
 
-void pilightFirmwareV3ParseBinary(void) {
+static void pilightFirmwareV3ParseBinary(void) {
 	int version = binToDec(pilight_firmware_v3->binary, 0, 15);
 	int high = binToDec(pilight_firmware_v3->binary, 16, 31);
 	int low = binToDec(pilight_firmware_v3->binary, 32, 47);
@@ -44,7 +44,7 @@ void pilightFirmwareV3ParseBinary(void) {
 	int lpf = low;
 	int hpf = high;
 	int ver = version;
-	
+
 	while(hpf > 10) {
 		hpf /= 10;
 	}
@@ -54,12 +54,15 @@ void pilightFirmwareV3ParseBinary(void) {
 	while(ver > 10) {
 		ver /= 10;
 	}
-	
+
 	if((((ver&0xf)+(lpf&0xf)+(hpf&0xf))&0xf) == chk) {
 		pilightFirmwareV3CreateMessage(version, high, low);
 	}
 }
 
+#ifndef MODULE
+__attribute__((weak))
+#endif
 void pilightFirmwareV3Init(void) {
 
   protocol_register(&pilight_firmware_v3);
@@ -80,3 +83,16 @@ void pilightFirmwareV3Init(void) {
 
   pilight_firmware_v3->parseBinary=&pilightFirmwareV3ParseBinary;
 }
+
+#ifdef MODULE
+void compatibility(const char **name, const char **version, const char **reqversion, const char **reqcommit) {
+	*name = "pilight_firmware";
+	*version = "1.0";
+	*reqversion = "4.0";
+	*reqcommit = "38";
+}
+
+void init(void) {
+	pilightFirmwareV3Init();
+}
+#endif

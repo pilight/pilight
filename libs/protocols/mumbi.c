@@ -3,13 +3,13 @@
 
 	This file is part of pilight.
 
-    pilight is free software: you can redistribute it and/or modify it under the 
-	terms of the GNU General Public License as published by the Free Software 
-	Foundation, either version 3 of the License, or (at your option) any later 
+    pilight is free software: you can redistribute it and/or modify it under the
+	terms of the GNU General Public License as published by the Free Software
+	Foundation, either version 3 of the License, or (at your option) any later
 	version.
 
-    pilight is distributed in the hope that it will be useful, but WITHOUT ANY 
-	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR 
+    pilight is distributed in the hope that it will be useful, but WITHOUT ANY
+	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
@@ -30,7 +30,7 @@
 #include "gc.h"
 #include "mumbi.h"
 
-void mumbiCreateMessage(int systemcode, int unitcode, int state) {
+static void mumbiCreateMessage(int systemcode, int unitcode, int state) {
 	mumbi->message = json_mkobject();
 	json_append_member(mumbi->message, "systemcode", json_mknumber(systemcode));
 	json_append_member(mumbi->message, "unitcode", json_mknumber(unitcode));
@@ -41,7 +41,7 @@ void mumbiCreateMessage(int systemcode, int unitcode, int state) {
 	}
 }
 
-void mumbiParseBinary(void) {
+static void mumbiParseBinary(void) {
 	int systemcode = binToDec(mumbi->binary, 0, 4);
 	int unitcode = binToDec(mumbi->binary, 5, 9);
 	int state = mumbi->binary[11];
@@ -50,7 +50,7 @@ void mumbiParseBinary(void) {
 	}
 }
 
-void mumbiCreateLow(int s, int e) {
+static void mumbiCreateLow(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=4) {
@@ -61,7 +61,7 @@ void mumbiCreateLow(int s, int e) {
 	}
 }
 
-void mumbiCreateHigh(int s, int e) {
+static void mumbiCreateHigh(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=4) {
@@ -71,11 +71,11 @@ void mumbiCreateHigh(int s, int e) {
 		mumbi->raw[i+3]=(mumbi->pulse*mumbi->plslen->length);
 	}
 }
-void mumbiClearCode(void) {
+static void mumbiClearCode(void) {
 	mumbiCreateLow(0,47);
 }
 
-void mumbiCreateSystemCode(int systemcode) {
+static void mumbiCreateSystemCode(int systemcode) {
 	int binary[255];
 	int length = 0;
 	int i=0, x=0;
@@ -89,7 +89,7 @@ void mumbiCreateSystemCode(int systemcode) {
 	}
 }
 
-void mumbiCreateUnitCode(int unitcode) {
+static void mumbiCreateUnitCode(int unitcode) {
 	int binary[255];
 	int length = 0;
 	int i=0, x=0;
@@ -103,7 +103,7 @@ void mumbiCreateUnitCode(int unitcode) {
 	}
 }
 
-void mumbiCreateState(int state) {
+static void mumbiCreateState(int state) {
 	if(state == 0) {
 		mumbiCreateHigh(44, 47);
 	} else {
@@ -111,12 +111,12 @@ void mumbiCreateState(int state) {
 	}
 }
 
-void mumbiCreateFooter(void) {
+static void mumbiCreateFooter(void) {
 	mumbi->raw[48]=(mumbi->plslen->length);
 	mumbi->raw[49]=(PULSE_DIV*mumbi->plslen->length);
 }
 
-int mumbiCreateCode(JsonNode *code) {
+static int mumbiCreateCode(JsonNode *code) {
 	int systemcode = -1;
 	int unitcode = -1;
 	int state = -1;
@@ -146,24 +146,26 @@ int mumbiCreateCode(JsonNode *code) {
 		mumbiCreateSystemCode(systemcode);
 		mumbiCreateUnitCode(unitcode);
 		mumbiCreateState(state);
-		mumbiCreateFooter();	
+		mumbiCreateFooter();
 	}
 	return EXIT_SUCCESS;
 }
 
-void mumbiPrintHelp(void) {
+static void mumbiPrintHelp(void) {
 	printf("\t -s --systemcode=systemcode\tcontrol a device with this systemcode\n");
 	printf("\t -u --unitcode=unitcode\t\tcontrol a device with this unitcode\n");
 	printf("\t -t --on\t\t\tsend an on signal\n");
 	printf("\t -f --off\t\t\tsend an off signal\n");
 }
 
+#ifndef MODULE
+__attribute__((weak))
+#endif
 void mumbiInit(void) {
 
 	protocol_register(&mumbi);
 	protocol_set_id(mumbi, "mumbi");
 	protocol_device_add(mumbi, "mumbi", "Mumbi Switches");
-	protocol_conflict_add(mumbi, "silvercrest");	
 	protocol_plslen_add(mumbi, 312);
 	mumbi->devtype = SWITCH;
 	mumbi->hwtype = RF433;
@@ -178,8 +180,21 @@ void mumbiInit(void) {
 	options_add(&mumbi->options, 'f', "off", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
 
 	options_add(&mumbi->options, 0, "gui-readonly", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
-	
+
 	mumbi->parseBinary=&mumbiParseBinary;
 	mumbi->createCode=&mumbiCreateCode;
 	mumbi->printHelp=&mumbiPrintHelp;
 }
+
+#ifdef MODULE
+void compatibility(const char **name, const char **version, const char **reqversion, const char **reqcommit) {
+	*name = "mumbi";
+	*version = "0.1";
+	*reqversion = "4.0";
+	*reqcommit = "38";
+}
+
+void init(void) {
+	mumbiInit();
+}
+#endif
