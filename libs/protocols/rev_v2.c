@@ -240,7 +240,7 @@ void compatibility(const char **name, const char **version, const char **reqvers
 	*name = "rev2_switch";
 	*version = "0.8";
 	*reqversion = "4.0";
-	*reqcommit = "18";
+	*reqcommit = "38";
 }
 
 void init(void) {

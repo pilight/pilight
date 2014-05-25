@@ -257,7 +257,7 @@ void compatibility(const char **name, const char **version, const char **reqvers
 	*name = "conrad_rsl_switch";
 	*version = "0.3";
 	*reqversion = "4.0";
-	*reqcommit = "18";
+	*reqcommit = "38";
 }
 
 void init(void) {

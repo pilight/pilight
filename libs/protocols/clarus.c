@@ -236,7 +236,7 @@ void compatibility(const char **name, const char **version, const char **reqvers
 	*name = "clarus";
 	*version = "0.8";
 	*reqversion = "4.0";
-	*reqcommit = "18";
+	*reqcommit = "38";
 }
 
 void init(void) {

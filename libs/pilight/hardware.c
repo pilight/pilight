@@ -117,34 +117,38 @@ void hardware_init(void) {
 						compatibility = dso_function(handle, "compatibility");
 						if(init && compatibility) {
 							compatibility(&name, &pversion, &version, &commit);
-							char ver[strlen(version)];
-							strcpy(ver, version);
+							if(name && version && pversion) {
+								char ver[strlen(version)];
+								strcpy(ver, version);
 
-							if((check1 = vercmp(ver, pilight_version)) > 0) {
-								valid = 0;
-							}
-							if(check1 == 0 && commit) {
-								char com[strlen(commit)];
-								strcpy(com, commit);
-								sscanf(HASH, "v%*[0-9].%*[0-9]-%[0-9]-%*[0-9a-zA-Z\n\r]", pilight_commit);
-
-								if(strlen(pilight_commit) > 0 && (check2 = vercmp(com, pilight_commit)) > 0) {
+								if((check1 = vercmp(ver, pilight_version)) > 0) {
 									valid = 0;
 								}
-							}
+								if(check1 == 0 && commit) {
+									char com[strlen(commit)];
+									strcpy(com, commit);
+									sscanf(HASH, "v%*[0-9].%*[0-9]-%[0-9]-%*[0-9a-zA-Z\n\r]", pilight_commit);
 
-							if(valid) {
-								char tmp[strlen(name)];
-								strcpy(tmp, name);
-								hardware_remove(tmp);
-								init();
-								logprintf(LOG_DEBUG, "loaded hardware module %s", file->d_name);
-							} else {
-								if(commit) {
-									logprintf(LOG_ERR, "hardware module %s requires at least pilight v%s (commit %s)", file->d_name, version, commit);
-								} else {
-									logprintf(LOG_ERR, "hardware module %s requires at least pilight v%s", file->d_name, version);
+									if(strlen(pilight_commit) > 0 && (check2 = vercmp(com, pilight_commit)) > 0) {
+										valid = 0;
+									}
 								}
+
+								if(valid) {
+									char tmp[strlen(name)];
+									strcpy(tmp, name);
+									hardware_remove(tmp);
+									init();
+									logprintf(LOG_DEBUG, "loaded hardware module %s", file->d_name);
+								} else {
+									if(commit) {
+										logprintf(LOG_ERR, "hardware module %s requires at least pilight v%s (commit %s)", file->d_name, version, commit);
+									} else {
+										logprintf(LOG_ERR, "hardware module %s requires at least pilight v%s", file->d_name, version);
+									}
+								}
+							} else {
+								logprintf(LOG_ERR, "invalid module %s", file->d_name, version);
 							}
 						}
 					}

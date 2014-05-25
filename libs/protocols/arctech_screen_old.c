@@ -188,7 +188,7 @@ void compatibility(const char **name, const char **version, const char **reqvers
 	*name = "arctech_screen_old";
 	*version = "1.0";
 	*reqversion = "4.0";
-	*reqcommit = "18";
+	*reqcommit = "38";
 }
 
 void init(void) {

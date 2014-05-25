@@ -223,7 +223,7 @@ void compatibility(const char **name, const char **version, const char **reqvers
 	*name = "lirc";
 	*version = "1.0";
 	*reqversion = "4.0";
-	*reqcommit = "18";
+	*reqcommit = "38";
 }
 
 void init(void) {
