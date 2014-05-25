@@ -50,8 +50,8 @@ static void quiggSwParseCode(void) {
 /*
    Conversion code will follow once the Rx part is working together with LPF
 */
-	int unit = binToDecRev(quigg_switch->binary, 25, 28);
 	int id = binToDecRev(quigg_switch->binary, 1, 24);
+	int unit = binToDecRev(quigg_switch->binary, 25, 28);
 	int all = binToDecRev(quigg_switch->binary, 29, 30);
 	int state = binToDecRev(quigg_switch->binary, 31, 32);
 	int dimm = binToDecRev(quigg_switch->binary, 33, 34);
@@ -124,9 +124,9 @@ static void quiggSwCreateUnit(int unit) {
 			quiggSwCreateHigh(27, 28);	// 4th row
 		break;
 		case 4:
-			quiggSwCreateHigh(27, 28);	// 5th row Dimm?
-			quiggSwCreateHigh(33, 34);  //
-			quiggSwCreateHigh(37, 38);  // needs to be set
+			quiggSwCreateHigh(27, 28);	// 5th row Dimm ?
+			quiggSwCreateHigh(33, 34);	// 
+			quiggSwCreateHigh(37, 38);	// needs to be set
 		case 5:
 			quiggSwCreateHigh(25, 30);	// 6th row MASTER (all)
 		break;
@@ -173,7 +173,6 @@ static int quiggSwCreateCode(JsonNode *code) {
 		state=0;
 	else if(json_find_number(code, "on", &itmp) == 0)
 		state=1;
-
 	if(id==-1 || (unit==-1 && all==0) || state==-1) {
 		logprintf(LOG_ERR, "quigg_switch: insufficient number of arguments");
 		return EXIT_FAILURE;
