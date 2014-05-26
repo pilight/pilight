@@ -54,7 +54,7 @@ libpilight.a: $(LIBS)
 	$(CROSS_COMPILE)ar -rsc libpilight.a $(LIBS)
 
 pilight-daemon: daemon.c $(INCLUDES) $(LIBS) libpilight.so
-	$(GCC) $(CFLAGS) -o $@ $(patsubst pilight-%,%.c,$@) libpilight.so /usr/lib/arm-linux-gnueabihf/libz.so /usr/lib/arm-linux-gnueabihf/libdl.so
+	$(GCC) $(CFLAGS) -o $@ $(patsubst pilight-%,%.c,$@) libpilight.so /usr/lib/arm-linux-gnueabihf/librt-2.13.so /usr/lib/arm-linux-gnueabihf/libz.so /usr/lib/arm-linux-gnueabihf/libdl.so
 
 pilight-send: send.c $(INCLUDES) $(LIBS) libpilight.so
 	$(GCC) $(CFLAGS) -o $@ $(patsubst pilight-%,%.c,$@) libpilight.so /usr/lib/arm-linux-gnueabihf/libz.so /usr/lib/arm-linux-gnueabihf/libdl.so

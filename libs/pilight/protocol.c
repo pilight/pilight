@@ -142,6 +142,7 @@ void protocol_init(void) {
 								if((check1 = vercmp(ver, pilight_version)) > 0) {
 									valid = 0;
 								}
+
 								if(check1 == 0 && module.reqcommit) {
 									char com[strlen(module.reqcommit)];
 									strcpy(com, module.reqcommit);
