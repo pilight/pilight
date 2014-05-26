@@ -54,7 +54,7 @@ firmware.o: firmware.c firmware.h
 	$(GCC) $(CFLAGS) -lz -c $(patsubst %.o,%.c,$@) -isystem. -isystem.. $(INCLUDE)	
 	
 %.o: %.c %.h 
-	$(GCC) $(CFLAGS) -c $(patsubst %.o,%.c,$@)
+	$(GCC) $(CFLAGS) -pthread -c $(patsubst %.o,%.c,$@)
 
 pilight.o: $(OBJS) json.o http_lib.o wiringPi.o wiringPiI2C.o update.o mongoose.o firmware.o
 	$(CROSS_COMPILE)ld -L/usr/local/lib -r $(OBJS) json.o http_lib.o wiringPi.o wiringPiI2C.o mongoose.o update.o firmware.o -o pilight.o

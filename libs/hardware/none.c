@@ -23,6 +23,7 @@
 
 #include "hardware.h"
 #include "common.h"
+#include "dso.h"
 #include "none.h"
 
 static int noneSend(int *code) {
@@ -47,11 +48,11 @@ void noneInit(void) {
 }
 
 #ifdef MODULE
-void compatibility(const char **name, const char **version, const char **reqversion, const char **reqcommit) {
-	*name = "none";
-	*version = "1.0";
-	*reqversion = "4.0";
-	*reqcommit = "38";
+void compatibility(struct module_t *module) {
+	module->name =  "none";
+	module->version =  "1.0";
+	module->reqversion =  "4.0";
+	module->reqcommit =  "45";
 }
 
 void init(void) {

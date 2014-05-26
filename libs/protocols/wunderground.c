@@ -29,6 +29,7 @@
 
 #include "../../pilight.h"
 #include "common.h"
+#include "dso.h"
 #include "../pilight/datetime.h" // Full path because we also have a datetime protocol
 #include "log.h"
 #include "threads.h"
@@ -445,11 +446,11 @@ void wundergroundInit(void) {
 }
 
 #ifdef MODULE
-void compatibility(const char **name, const char **version, const char **reqversion, const char **reqcommit) {
-	*name = "wunderground";
-	*version = "1.0";
-	*reqversion = "4.0";
-	*reqcommit = "38";
+void compatibility(struct module_t *module) {
+	module->name =  "wunderground";
+	module->version =  "1.0";
+	module->reqversion =  "4.0";
+	module->reqcommit =  "45";
 }
 
 void init(void) {

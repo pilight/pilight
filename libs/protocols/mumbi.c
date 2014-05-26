@@ -23,6 +23,7 @@
 
 #include "../../pilight.h"
 #include "common.h"
+#include "dso.h"
 #include "log.h"
 #include "protocol.h"
 #include "hardware.h"
@@ -187,11 +188,11 @@ void mumbiInit(void) {
 }
 
 #ifdef MODULE
-void compatibility(const char **name, const char **version, const char **reqversion, const char **reqcommit) {
-	*name = "mumbi";
-	*version = "0.1";
-	*reqversion = "4.0";
-	*reqcommit = "38";
+void compatibility(struct module_t *module) {
+	module->name =  "mumbi";
+	module->version =  "0.1";
+	module->reqversion =  "4.0";
+	module->reqcommit =  "45";
 }
 
 void init(void) {
