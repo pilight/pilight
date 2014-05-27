@@ -84,7 +84,8 @@ static void quiggSwCreateHeader(void) {
 }
 
 static void quiggSwCreateFooter(void) {
-	quigg_switch->raw[quigg_switch->rawlen-1] = PULSE_DIV*quigg_switch->plslen->length;
+	quigg_switch->raw[quigg_switch->rawlen-1] = 88000;
+//	quigg_switch->raw[quigg_switch->rawlen-1] = PULSE_DIV*quigg_switch->plslen->length;
 }
 
 static void quiggSwClearCode(void) {
