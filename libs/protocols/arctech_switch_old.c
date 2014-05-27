@@ -166,6 +166,7 @@ void arctechSwOldInit(void) {
 	protocol_device_add(arctech_switch_old, "kaku_switch_old", "Old KlikAanKlikUit Switches");
 	protocol_device_add(arctech_switch_old, "cogex", "Cogex Switches");
 	protocol_device_add(arctech_switch_old, "intertechno_old", "Old Intertechno Switches");
+	protocol_device_add(arctech_switch_old, "byebyestandbye", "Bye Bye Standbye Switches");
 	protocol_plslen_add(arctech_switch_old, 336);
 	protocol_plslen_add(arctech_switch_old, 320);
 
