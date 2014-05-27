@@ -577,6 +577,7 @@ if(${MODULES} MATCHES "OFF")
 	target_link_libraries(pilight-daemon pilight_shared)
 	target_link_libraries(pilight-daemon ${CMAKE_DL_LIBS})
 	target_link_libraries(pilight-daemon m)
+	target_link_libraries(pilight-daemon rt)
 	target_link_libraries(pilight-daemon ${CMAKE_THREAD_LIBS_INIT})
 
 	if(${UPDATE} MATCHES "ON")

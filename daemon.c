@@ -29,6 +29,7 @@
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/time.h>
+#include <time.h>
 #include <pthread.h>
 #include <ctype.h>
 
@@ -147,11 +148,9 @@ static pthread_mutex_t bcqueue_lock;
 static pthread_cond_t bcqueue_signal;
 static pthread_mutexattr_t bcqueue_attr;
 
-static pthread_mutex_t mainlock;
-static pthread_cond_t mainsignal;
-static pthread_mutexattr_t mainattr;
-
 static int bcqueue_number = 0;
+
+static struct protocol_t *procProtocol;
 
 /* The pid_file and pid of this daemon */
 static char *pid_file;
@@ -211,6 +210,66 @@ static int webgui_tpl_free = 0;
 /* Do we need to check for updates */
 static int update_check = UPDATE_CHECK;
 #endif
+
+/* CPU usage */
+static double start_seconds = 0.0;
+static double stop_seconds = 0.0;
+static double diff_seconds = 0.0;
+static double cpu_seconds = 0.0;
+static struct timespec cputp;
+static clock_t starts;
+
+/* RAM usage */
+unsigned long totalram = 0;
+
+static double getCPUUsage(void) {
+	clock_gettime(CLOCK_REALTIME, &cputp);
+	stop_seconds = cputp.tv_sec + cputp.tv_nsec / 1e9; 
+
+	diff_seconds = stop_seconds - start_seconds;
+	cpu_seconds = (double)(clock() - starts)/(double)CLOCKS_PER_SEC;
+
+	return (cpu_seconds / diff_seconds * 100.0);
+}
+
+static double getRAMUsage(void) {
+	static char statusfile[] = "/proc/self/status";
+    static char memfile[] = "/proc/meminfo";
+    unsigned long VmRSS = 0, value = 0, total = 0;
+    char title[32] = "";
+    char units[32] = "";
+    int ret = 0;    
+    FILE *fp = NULL;
+
+    fp = fopen(statusfile, "r");
+    if(fp) {
+        while(ret != EOF) {
+            ret = fscanf(fp, "%31s %lu %s\n", title, &value, units);
+            if(strcmp(title, "VmRSS:") == 0) {
+                VmRSS = value * 1024;
+				break;
+            }
+        }
+        fclose(fp);
+    }
+
+    fp = fopen(memfile, "r");
+    if(fp) {
+        while(ret != EOF) {
+            ret = fscanf(fp, "%31s %lu %s\n", title, &value, units);
+            if(strcmp(title, "MemTotal:") == 0) {
+                total = value * 1024;
+                break;
+            }
+        }
+        fclose(fp);
+    }
+	if(VmRSS > 0 && total > 0) {
+		return ((double)VmRSS*100)/(double)total;
+	} else {
+		return 0.0;
+	}
+}
 
 static void node_add(int id, char uuid[21]) {
 	struct nodes_t *node = malloc(sizeof(struct nodes_t));
@@ -1540,9 +1599,6 @@ int main_gc(void) {
 	pthread_mutex_unlock(&bcqueue_lock);
 	pthread_cond_signal(&bcqueue_signal);
 
-	pthread_mutex_unlock(&mainlock);
-	pthread_cond_signal(&mainsignal);
-
 	struct nodes_t *tmp_nodes;
 	while(nodes) {
 		tmp_nodes = nodes;
@@ -1607,7 +1663,66 @@ int main_gc(void) {
 	return 0;
 }
 
+static void procProtocolInit(void) {
+	clock_gettime(CLOCK_REALTIME, &cputp);
+	start_seconds = cputp.tv_sec + cputp.tv_nsec / 1e9; 
+	starts = clock();
+
+	protocol_register(&procProtocol);
+	protocol_set_id(procProtocol, "process");
+	protocol_device_add(procProtocol, "lirc", "pilight proc. API");
+	procProtocol->devtype = PROC;
+	procProtocol->hwtype = API;
+	procProtocol->config = 0;
+	procProtocol->multipleId = 0;
+	
+	options_add(&procProtocol->options, 'i', "id", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_STRING, NULL, NULL);
+	options_add(&procProtocol->options, 'c', "cpu", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, NULL, NULL);
+	options_add(&procProtocol->options, 'r', "ram", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, NULL, NULL);
+	
+#if defined(_SC_PHYS_PAGES) && defined(_SC_PAGESIZE)
+	totalram = (size_t)sysconf(_SC_PHYS_PAGES)*(size_t)sysconf(_SC_PAGESIZE);
+#endif	
+}
+
+#ifdef FIRMWARE
+void *firmware_loop(void *param) {
+	unsigned int interval = 1;
+	char fwfile[4096] = {'\0'};
+	int fwupdate = 0;
+
+	settings_find_number("firmware-update", &fwupdate);
+	
+	while(main_loop) {
+		/* Check if firmware needs to be updated */
+		if(fwupdate == 1 && firmware.version > 0) {
+			char *fwtmp = fwfile;
+			if(firmware_check(&fwtmp) == 0) {
+				firmware.version = 0;
+				size_t fwl = strlen(FIRMWARE_PATH)+strlen(fwfile)+2;
+				char fwpath[fwl];
+				memset(fwpath, '\0', fwl);
+				sprintf(fwpath, "%s%s", FIRMWARE_PATH, fwfile);
+				logprintf(LOG_INFO, "**** START UPD. FW ****");
+				if(firmware_update(fwpath) != 0) {
+					logprintf(LOG_INFO, "**** FAILED UPD. FW ****");
+				} else {
+					logprintf(LOG_INFO, "**** DONE UPD. FW ****");
+				}
+				fwupdate = 0;
+			}
+		interval = 60;
+		}
+		
+		sleep(interval);
+	}
+	return NULL;
+}
+#endif
+
 int main(int argc, char **argv) {
+
+	procProtocolInit();
 
 	struct ifaddrs *ifaddr, *ifa;
 	int family = 0;
@@ -1687,10 +1802,6 @@ int main(int argc, char **argv) {
 	struct ssdp_list_t *ssdp_list = NULL;
 
 	char buffer[BUFFER_SIZE];
-#ifdef FIRMWARE
-	char fwfile[4096] = {'\0'};
-	int fwupdate = 0;
-#endif
 	int f, itmp, show_help = 0, show_version = 0, show_default = 0;
 	char *hwfile = NULL;
 	char *stmp = NULL;
@@ -2040,46 +2151,69 @@ int main(int argc, char **argv) {
 #endif
 
 #ifdef FIRMWARE
-	settings_find_number("firmware-update", &fwupdate);
+	threads_register("firmware upgrader", &firmware_loop, (void *)NULL, 0);
 #endif
 
-	pthread_mutexattr_init(&mainattr);
-	pthread_mutexattr_settype(&mainattr, PTHREAD_MUTEX_RECURSIVE);
-	pthread_mutex_init(&mainlock, &mainattr);
-    pthread_cond_init(&mainsignal, NULL);
-
-	int interval = 1;
+	int checkram = 0, checkcpu = 0;
+	int i = -1;
 	while(main_loop) {
-#ifdef FIRMWARE
-		/* Check if firmware needs to be updated */
-		if(fwupdate == 1 && firmware.version > 0) {
-			char *fwtmp = fwfile;
-			if(firmware_check(&fwtmp) == 0) {
-				firmware.version = 0;
-				size_t fwl = strlen(FIRMWARE_PATH)+strlen(fwfile)+2;
-				char fwpath[fwl];
-				memset(fwpath, '\0', fwl);
-				sprintf(fwpath, "%s%s", FIRMWARE_PATH, fwfile);
-				logprintf(LOG_INFO, "**** START UPD. FW ****");
-				if(firmware_update(fwpath) != 0) {
-					logprintf(LOG_INFO, "**** FAILED UPD. FW ****");
-				} else {
-					logprintf(LOG_INFO, "**** DONE UPD. FW ****");
-				}
-				fwupdate = 0;
+		double cpu = 0.0, ram = 0.0;
+		cpu = getCPUUsage();
+		ram = getRAMUsage();
+
+		if((i > -1) && (cpu > 90)) {
+			logprintf(LOG_ERR, "cpu usage way too high %f%, exiting", cpu);
+			exit(EXIT_FAILURE);
+		} else if((i > -1) && (cpu > 60)) {
+			if(checkcpu == 0) {
+				logprintf(LOG_ERR, "cpu usage too high %f%", cpu);
+				logprintf(LOG_ERR, "checking again in 10 seconds");
+				sleep(10);
+			} else {
+				logprintf(LOG_ERR, "cpu usage still too high %f%, stopping", cpu);
 			}
-			interval = 60;
-		}
+			if(checkcpu == 1) {
+				goto clear;
+			}
+			checkcpu = 1;
+#ifndef __FreeBSD__
+		} else if((i > -1) && (ram > 90)) {
+			logprintf(LOG_ERR, "ram usage way too high %f%, exiting", ram);
+			exit(EXIT_FAILURE);
+		} else if((i > -1) && (ram > 60)) {
+			if(checkram == 0) {
+				logprintf(LOG_ERR, "ram usage too high %f%", ram);
+				logprintf(LOG_ERR, "checking again in 10 seconds");
+				sleep(10);
+			} else {
+				logprintf(LOG_ERR, "ram usage still too high %f%, stopping", ram);
+			}
+			if(checkram == 1) {
+				goto clear;
+			}
+			checkram = 1;
 #endif
-		struct timeval tp;
-		struct timespec ts;
-		pthread_mutex_unlock(&mainlock);
-		gettimeofday(&tp, NULL);
-		ts.tv_sec = tp.tv_sec;
-		ts.tv_nsec = tp.tv_usec * 1000;
-		ts.tv_sec += interval;
-		pthread_mutex_lock(&mainlock);
-		pthread_cond_timedwait(&mainsignal, &mainlock, &ts);
+		} else {
+			if((i%5 == 0) || (i == -1)) {
+				procProtocol->message = json_mkobject();
+				JsonNode *code = json_mkobject();
+				json_append_member(code, "cpu", json_mknumber(cpu));
+#ifndef __FreeBSD__				
+				json_append_member(code, "ram", json_mknumber(ram));
+#endif
+
+				json_append_member(procProtocol->message, "message", code);
+				json_append_member(procProtocol->message, "origin", json_mkstring("receiver"));
+				json_append_member(procProtocol->message, "protocol", json_mkstring(procProtocol->id));
+
+				pilight.broadcast(procProtocol->id, procProtocol->message);
+				json_delete(procProtocol->message);
+				procProtocol->message = NULL;
+				i=0;
+			}
+			i++;
+		}
+		sleep(1);
 	}
 
 	return EXIT_SUCCESS;

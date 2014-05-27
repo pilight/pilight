@@ -23,6 +23,7 @@
 
 #include "../../pilight.h"
 #include "common.h"
+#include "dso.h"
 #include "log.h"
 #include "protocol.h"
 #include "hardware.h"
@@ -214,11 +215,11 @@ void arctechSwInit(void) {
 }
 
 #ifdef MODULE
-void compatibility(const char **name, const char **version, const char **reqversion, const char **reqcommit) {
-	*name = "arctech_switch";
-	*version = "1.0";
-	*reqversion = "4.0";
-	*reqcommit = "38";
+void compatibility(struct module_t *module) {
+	module->name =  "arctech_switch";
+	module->version =  "1.0";
+	module->reqversion =  "4.0";
+	module->reqcommit =  "45";
 }
 
 void init(void) {

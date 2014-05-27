@@ -36,6 +36,7 @@
 
 #include "../../pilight.h"
 #include "common.h"
+#include "dso.h"
 #include "log.h"
 #include "threads.h"
 #include "protocol.h"
@@ -367,11 +368,11 @@ void xbmcInit(void) {
 }
 
 #ifdef MODULE
-void compatibility(const char **name, const char **version, const char **reqversion, const char **reqcommit) {
-	*name = "xbmc";
-	*version = "1.0";
-	*reqversion = "4.0";
-	*reqcommit = "38";
+void compatibility(struct module_t *module) {
+	module->name =  "xbmc";
+	module->version =  "1.0";
+	module->reqversion =  "4.0";
+	module->reqcommit =  "45";
 }
 
 void init(void) {

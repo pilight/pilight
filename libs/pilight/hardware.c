@@ -72,12 +72,9 @@ void hardware_init(void) {
 	#include "hardware_init.h"
 	void *handle = NULL;
 	void (*init)(void);
-	void (*compatibility)(const char **name, const char **pversion, const char **version, const char **commit);
+	void (*compatibility)(struct module_t *module);
 	char path[255];
-	const char *version = NULL;
-	const char *commit = NULL;
-	const char *pversion = NULL;
-	const char *name = NULL;
+	struct module_t module;
 	char pilight_version[strlen(VERSION)];
 	char pilight_commit[3];
 	char *hardware_root = NULL;
@@ -116,17 +113,17 @@ void hardware_init(void) {
 						init = dso_function(handle, "init");
 						compatibility = dso_function(handle, "compatibility");
 						if(init && compatibility) {
-							compatibility(&name, &pversion, &version, &commit);
-							if(name && version && pversion) {
-								char ver[strlen(version)];
-								strcpy(ver, version);
+							compatibility(&module);
+							if(module.name && module.version && module.reqversion) {
+								char ver[strlen(module.reqversion)];
+								strcpy(ver, module.reqversion);
 
 								if((check1 = vercmp(ver, pilight_version)) > 0) {
 									valid = 0;
 								}
-								if(check1 == 0 && commit) {
-									char com[strlen(commit)];
-									strcpy(com, commit);
+								if(check1 == 0 && module.reqcommit) {
+									char com[strlen(module.reqcommit)];
+									strcpy(com, module.reqcommit);
 									sscanf(HASH, "v%*[0-9].%*[0-9]-%[0-9]-%*[0-9a-zA-Z\n\r]", pilight_commit);
 
 									if(strlen(pilight_commit) > 0 && (check2 = vercmp(com, pilight_commit)) > 0) {
@@ -135,20 +132,20 @@ void hardware_init(void) {
 								}
 
 								if(valid) {
-									char tmp[strlen(name)];
-									strcpy(tmp, name);
+									char tmp[strlen(module.name)];
+									strcpy(tmp, module.name);
 									hardware_remove(tmp);
 									init();
 									logprintf(LOG_DEBUG, "loaded hardware module %s", file->d_name);
 								} else {
-									if(commit) {
-										logprintf(LOG_ERR, "hardware module %s requires at least pilight v%s (commit %s)", file->d_name, version, commit);
+									if(module.reqcommit) {
+										logprintf(LOG_ERR, "hardware module %s requires at least pilight v%s (commit %s)", file->d_name, module.reqversion, module.reqcommit);
 									} else {
-										logprintf(LOG_ERR, "hardware module %s requires at least pilight v%s", file->d_name, version);
+										logprintf(LOG_ERR, "hardware module %s requires at least pilight v%s", file->d_name, module.reqversion);
 									}
 								}
 							} else {
-								logprintf(LOG_ERR, "invalid module %s", file->d_name, version);
+								logprintf(LOG_ERR, "invalid module %s", file->d_name);
 							}
 						}
 					}

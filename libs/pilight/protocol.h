@@ -39,7 +39,8 @@ typedef enum {
 	DATETIME,
 	XBMC,
 	LIRC,
-	WEBCAM
+	WEBCAM,
+	PROC
 } devtype_t;
 
 typedef struct protocol_devices_t {
