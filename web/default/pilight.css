@@ -18,15 +18,26 @@ body {
 	overflow: hidden;
 }
 
+#proc {
+	font-size: 10px;
+	margin: 0px;
+	padding-left: 3px;
+	position: aboslute;
+	height: 15px;
+	top: 10px;
+	left: 0px;
+	overflow: hidden;
+}
+
 #header {
 	height: 40px;
 }
 
 #header h1 {
-	margin-top: -5px;
+	margin-top: -15px;
 }
 
-.heading { 
+.heading {
 	font-size: 16px;
 }
 
@@ -52,9 +63,9 @@ div.ui-slider.ui-slider-switch {
 }
 
 div.datetime, div.temperature, div.humidity, div.battery.red, div.update,
-div.battery.green, div.sunrise, div.sunset, div.sunset_icon.gray, 
+div.battery.green, div.sunrise, div.sunset, div.sunset_icon.gray,
 div.sunrise_icon.gray, div.sunset_icon.blue, div.sunrise_icon.yellow,
-div.media_icon, div.action_icon {
+div.media_icon, div.action_icon{
 	position: relative;
 	float: right;
 	padding: 4px;
@@ -65,7 +76,7 @@ div.battery.red, div.battery.green {
 	width: 10px;
 	height: 16px;
 	top: 4px;
-	right: -60px;	
+	right: -60px;
 }
 
 div.sunset_icon.gray, div.sunrise_icon.gray,
@@ -73,7 +84,7 @@ div.sunset_icon.blue, div.sunrise_icon.yellow  {
 	width: 19px;
 	height: 16px;
 	top: 0px;
-	right: -50px;	
+	right: -50px;
 	padding: 0;
 }
 
@@ -101,7 +112,7 @@ div.sunset_icon.blue {
 	background: url('sunset_blue.png') 0px 0px no-repeat;
 }
 
-div.temperature_icon, div.humidity_icon, 
+div.temperature_icon, div.humidity_icon,
 div.update_active, div.update_inactive,
 div.action_icon, div.media_icon {
 	position: relative;
