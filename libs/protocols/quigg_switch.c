@@ -31,7 +31,7 @@
 #include "gc.h"
 #include "quigg_switch.h"
 
-static void quiggSwCreateMessage(int id, int state, int unit, int all) {
+static void quiggSwCreateMessage(int id, int state, int unit, int all, int dimm) {
 	quigg_switch->message = json_mkobject();
 	json_append_member(quigg_switch->message, "id", json_mknumber(id));
 	if(all==1) {
@@ -41,26 +41,50 @@ static void quiggSwCreateMessage(int id, int state, int unit, int all) {
 	}
 
 	if(state==1) {
-		json_append_member(quigg_switch->message, "state", json_mkstring("on"));
+		if(unit==4) {
+			json_append_member(quigg_switch->message, "state", json_mkstring("down"));
+		} else {
+			json_append_member(quigg_switch->message, "state", json_mkstring("on"));
+		}
 	} else {
-		json_append_member(quigg_switch->message, "state", json_mkstring("off"));
+		if(unit==4) {
+			json_append_member(quigg_switch->message, "state", json_mkstring("up"));
+		} else {
+			json_append_member(quigg_switch->message, "state", json_mkstring("off"));
+		}
 	}
+
 }
 
 static void quiggSwParseCode(void) {
 /*
-   Conversion code will follow once the Rx part is working together with LPF
+   LPF does not pass thru first 4 bytes of quigg_switch protocol
 */
-	int id = binToDecRev(quigg_switch->binary, 1, 24);
-	int unit = binToDecRev(quigg_switch->binary, 25, 28);
-	int all = binToDecRev(quigg_switch->binary, 29, 30);
-	int state = binToDecRev(quigg_switch->binary, 31, 32);
-	int dimm = binToDecRev(quigg_switch->binary, 33, 34);
+        int x=0, dec_unit[6]={0,3,1,2,4,5};
 
-	if(dimm==1 && unit==3) {
+	for(x=0; x<quigg_switch->rawlen; x+=2) {
+		quigg_switch->binary[x/2]=quigg_switch->code[x+1];
+        }
+	int id = binToDecRev(quigg_switch->binary, 0, 11);
+	int unit = binToDecRev(quigg_switch->binary, 12, 13);
+	int all = binToDecRev(quigg_switch->binary, 14, 14);
+	int state = binToDecRev(quigg_switch->binary, 15, 15);
+	int dimm = binToDecRev(quigg_switch->binary, 16, 16);
+
+	if(dimm==1) {
 		unit = 4;
 	}
-	quiggSwCreateMessage(id, state, unit, all);
+	if(all==1) {
+		unit = 5;
+	}
+	if(unit>5) {
+		unit = 5;
+	}
+	if(unit<0) {
+		unit = 5;
+	}
+	unit = dec_unit[unit];
+	quiggSwCreateMessage(id, state, unit, all, dimm);
 }
 
 static void quiggSwCreateLow(int s, int e) {
@@ -84,8 +108,7 @@ static void quiggSwCreateHeader(void) {
 }
 
 static void quiggSwCreateFooter(void) {
-	quigg_switch->raw[quigg_switch->rawlen-1] = 88000;
-//	quigg_switch->raw[quigg_switch->rawlen-1] = PULSE_DIV*quigg_switch->plslen->length;
+	quigg_switch->raw[quigg_switch->rawlen-1] = PULSE_DIV*quigg_switch->plslen->length;
 }
 
 static void quiggSwClearCode(void) {
@@ -163,6 +186,7 @@ static int quiggSwCreateCode(JsonNode *code) {
 	int id = -1;
 	int state = -1;
 	int all = 0;
+	int dimm = -1;
 	double itmp = -1;
 
 	if(json_find_number(code, "id", &itmp) == 0)
@@ -188,7 +212,7 @@ static int quiggSwCreateCode(JsonNode *code) {
 		if(unit == -1 && all == 1) {
 			unit = 5;
 		}
-		quiggSwCreateMessage(id, state, unit, all);
+		quiggSwCreateMessage(id, state, unit, all, dimm);
 		quiggSwClearCode();
 		quiggSwCreateId(id);
 		quiggSwCreateUnit(unit);
