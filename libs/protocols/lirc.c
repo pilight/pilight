@@ -148,6 +148,21 @@ static void *lircParse(void *param) {
 								json_append_member(code, "button", json_mkstring(btn));
 								json_append_member(code, "remote", json_mkstring(remote));
 
+								json_append_member(lirc->message, "values", code);
+								json_append_member(lirc->message, "origin", json_mkstring("config"));
+								json_append_member(lirc->message, "type", json_mknumber(LIRC));
+
+								pilight.broadcast(lirc->id, lirc->message);
+								json_delete(lirc->message);
+								lirc->message = NULL;
+
+								lirc->message = json_mkobject();
+								code = json_mkobject();
+								json_append_member(code, "id", json_mkstring(id));
+								json_append_member(code, "repeat", json_mkstring(rep));
+								json_append_member(code, "button", json_mkstring(btn));
+								json_append_member(code, "remote", json_mkstring(remote));
+
 								json_append_member(lirc->message, "message", code);
 								json_append_member(lirc->message, "origin", json_mkstring("receiver"));
 								json_append_member(lirc->message, "protocol", json_mkstring(lirc->id));

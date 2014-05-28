@@ -32,6 +32,7 @@
 #include <time.h>
 #include <pthread.h>
 #include <ctype.h>
+#include <dirent.h>
 
 #include "pilight.h"
 #include "datetime.h"
@@ -222,23 +223,35 @@ static clock_t starts;
 /* RAM usage */
 unsigned long totalram = 0;
 
+/* Mounting proc subsystem */
+unsigned short mountproc = 1;
+
 static double getCPUUsage(void) {
 	clock_gettime(CLOCK_REALTIME, &cputp);
-	stop_seconds = cputp.tv_sec + cputp.tv_nsec / 1e9; 
+	stop_seconds = cputp.tv_sec + cputp.tv_nsec / 1e9;
 
 	diff_seconds = stop_seconds - start_seconds;
 	cpu_seconds = (double)(clock() - starts)/(double)CLOCKS_PER_SEC;
+
+	clock_gettime(CLOCK_REALTIME, &cputp);
+	start_seconds = cputp.tv_sec + cputp.tv_nsec / 1e9;
+	starts = clock();
 
 	return (cpu_seconds / diff_seconds * 100.0);
 }
 
 static double getRAMUsage(void) {
+#ifdef __FreeBSD__
+	static char statusfile[] = "/compat/proc/self/status";
+    static char memfile[] = "/compat/proc/meminfo";
+#else
 	static char statusfile[] = "/proc/self/status";
     static char memfile[] = "/proc/meminfo";
+#endif
     unsigned long VmRSS = 0, value = 0, total = 0;
     char title[32] = "";
     char units[32] = "";
-    int ret = 0;    
+    int ret = 0;
     FILE *fp = NULL;
 
     fp = fopen(statusfile, "r");
@@ -251,7 +264,29 @@ static double getRAMUsage(void) {
             }
         }
         fclose(fp);
+#ifdef __FreeBSD__
+		if(mountproc) {
+			DIR* dir;
+			if(!(dir = opendir("/compat"))) {
+				mkdir("/compat", 0755);
+			} else {
+				closedir(dir);
+			}
+			if(!(dir = opendir("/compat/proc"))) {
+				mkdir("/compat/proc", 0755);
+			} else {
+				closedir(dir);
+			}
+			if(!(dir = opendir("/compat/proc/self"))) {
+				system("mount -t linprocfs none /compat/proc 2>/dev/null 1>/dev/null");
+				mountproc = 0;
+			} else {
+				closedir(dir);
+			}
+		}
+#endif
     }
+
 
     fp = fopen(memfile, "r");
     if(fp) {
@@ -354,89 +389,105 @@ void *broadcast(void *param) {
 
 			broadcasted = 0;
 			JsonNode *jret = NULL;
-
-			/* Update the config */
-			if(config_update(bcqueue->protoname, bcqueue->jmessage, &jret) == 0) {
-				char *conf = json_stringify(jret, NULL);
-				for(i=0;i<MAX_CLIENTS;i++) {
-					if(handshakes[i] == GUI) {
-						socket_write(socket_get_clients(i), conf);
-						broadcasted = 1;
-					}
-				}
-
-				if(broadcasted == 1) {
-					logprintf(LOG_DEBUG, "broadcasted: %s", conf);
-				}
-				sfree((void *)&conf);
-			}
-			if(jret) {
-				json_delete(jret);
-			}
-
-			/* The message and settings objects inside the broadcast queue is only
-			   of interest for the internal pilight functions. For the outside world
-			   we only communicate the message part of the queue so we rename it
-			   to code for clarity and we remove the settings */
-			JsonNode *jcode = NULL;
-			if((jcode = json_find_member(bcqueue->jmessage, "message")) != NULL) {
-				jcode->key = realloc(jcode->key, 5);
-				strcpy(jcode->key, "code");
-			}
-
-			char *jinternal = json_stringify(bcqueue->jmessage, NULL);
-
-			JsonNode *jsettings = NULL;
-			if((jsettings = json_find_member(bcqueue->jmessage, "settings"))) {
-				json_remove_from_parent(jsettings);
-			}
-
-			char *jbroadcast = json_stringify(bcqueue->jmessage, NULL);
-
-			if(strcmp(bcqueue->protoname, "pilight_firmware") == 0) {
-				JsonNode *code = NULL;
-				if((code = json_find_member(bcqueue->jmessage, "code")) != NULL) {
-					json_find_number(code, "version", &firmware.version);
-					json_find_number(code, "lpf", &firmware.lpf);
-					json_find_number(code, "hpf", &firmware.hpf);
-				}
-			}
-			broadcasted = 0;
-
-			struct JsonNode *childs = json_first_child(bcqueue->jmessage);
-			int nrchilds = 0;
-			while(childs) {
-				nrchilds++;
-				childs = childs->next;
-			}
-
-			if(receivers > 0) {
-				/* Write the message to all receivers */
-				for(i=0;i<MAX_CLIENTS;i++) {
-					if(handshakes[i] == RECEIVER) {
-						if(strcmp(jbroadcast, "{}") != 0 && nrchilds > 1) {
-							socket_write(socket_get_clients(i), jbroadcast);
+			char *origin = NULL;
+			if(json_find_string(bcqueue->jmessage, "origin", &origin) == 0) {
+				if(strcmp(origin, "config") == 0) {
+					char *conf = json_stringify(bcqueue->jmessage, NULL);
+					for(i=0;i<MAX_CLIENTS;i++) {
+						if(handshakes[i] == GUI) {
+							socket_write(socket_get_clients(i), conf);
 							broadcasted = 1;
 						}
 					}
+					if(broadcasted == 1) {
+						logprintf(LOG_DEBUG, "broadcasted: %s", conf);
+					}
+					sfree((void *)&conf);
+				}
+				if(strcmp(origin, "receiver") == 0) {
+					/* Update the config */
+					if(config_update(bcqueue->protoname, bcqueue->jmessage, &jret) == 0) {
+						char *conf = json_stringify(jret, NULL);
+						for(i=0;i<MAX_CLIENTS;i++) {
+							if(handshakes[i] == GUI) {
+								socket_write(socket_get_clients(i), conf);
+								broadcasted = 1;
+							}
+						}
+
+						if(broadcasted == 1) {
+							logprintf(LOG_DEBUG, "broadcasted: %s", conf);
+						}
+						sfree((void *)&conf);
+					}
+					if(jret) {
+						json_delete(jret);
+					}
+
+					/* The message and settings objects inside the broadcast queue is only
+					   of interest for the internal pilight functions. For the outside world
+					   we only communicate the message part of the queue so we rename it
+					   to code for clarity and we remove the settings */
+					JsonNode *jcode = NULL;
+					if((jcode = json_find_member(bcqueue->jmessage, "message")) != NULL) {
+						jcode->key = realloc(jcode->key, 5);
+						strcpy(jcode->key, "code");
+					}
+
+					char *jinternal = json_stringify(bcqueue->jmessage, NULL);
+
+					JsonNode *jsettings = NULL;
+					if((jsettings = json_find_member(bcqueue->jmessage, "settings"))) {
+						json_remove_from_parent(jsettings);
+					}
+
+					char *jbroadcast = json_stringify(bcqueue->jmessage, NULL);
+
+					if(strcmp(bcqueue->protoname, "pilight_firmware") == 0) {
+						JsonNode *code = NULL;
+						if((code = json_find_member(bcqueue->jmessage, "code")) != NULL) {
+							json_find_number(code, "version", &firmware.version);
+							json_find_number(code, "lpf", &firmware.lpf);
+							json_find_number(code, "hpf", &firmware.hpf);
+						}
+					}
+					broadcasted = 0;
+
+					struct JsonNode *childs = json_first_child(bcqueue->jmessage);
+					int nrchilds = 0;
+					while(childs) {
+						nrchilds++;
+						childs = childs->next;
+					}
+
+					if(receivers > 0) {
+						/* Write the message to all receivers */
+						for(i=0;i<MAX_CLIENTS;i++) {
+							if(handshakes[i] == RECEIVER) {
+								if(strcmp(jbroadcast, "{}") != 0 && nrchilds > 1) {
+									socket_write(socket_get_clients(i), jbroadcast);
+									broadcasted = 1;
+								}
+							}
+						}
+					}
+
+					if(runmode == 2 && sockfd > 0) {
+						struct JsonNode *jupdate = json_decode(jinternal);
+						json_append_member(jupdate, "message", json_mkstring("update"));
+						char *ret = json_stringify(jupdate, NULL);
+						socket_write(sockfd, ret);
+						broadcasted = 1;
+						json_delete(jupdate);
+						sfree((void *)&ret);
+					}
+					if((broadcasted == 1 || nodaemon == 1) && (strcmp(jbroadcast, "{}") != 0 && nrchilds > 1)) {
+						logprintf(LOG_DEBUG, "broadcasted: %s", jbroadcast);
+					}
+					sfree((void *)&jinternal);
+					sfree((void *)&jbroadcast);
 				}
 			}
-
-			if(runmode == 2 && sockfd > 0) {
-				struct JsonNode *jupdate = json_decode(jinternal);
-				json_append_member(jupdate, "message", json_mkstring("update"));
-				char *ret = json_stringify(jupdate, NULL);
-				socket_write(sockfd, ret);
-				broadcasted = 1;
-				json_delete(jupdate);
-				sfree((void *)&ret);
-			}
-			if((broadcasted == 1 || nodaemon == 1) && (strcmp(jbroadcast, "{}") != 0 && nrchilds > 1)) {
-				logprintf(LOG_DEBUG, "broadcasted: %s", jbroadcast);
-			}
-			sfree((void *)&jinternal);
-			sfree((void *)&jbroadcast);
-
 			struct bcqueue_t *tmp = bcqueue;
 			sfree((void *)&tmp->protoname);
 			json_delete(tmp->jmessage);
@@ -535,7 +586,7 @@ void *receive_parse_code(void *param) {
 					   || protocol->parseBinary) && protocol->pulse > 0 && protocol->plslen)) {
 					plslengths = protocol->plslen;
 					while(plslengths && main_loop) {
-						if((recvqueue->plslen >= (plslengths->length - (int)(plslengths->length * 0.5))) && 
+						if((recvqueue->plslen >= (plslengths->length - (int)(plslengths->length * 0.5))) &&
 						    (recvqueue->plslen <= (plslengths->length + (int)(plslengths->length * 0.5)))) {
 						// if((recvqueue->plslen >= ((double)plslengths->length-5) &&
 						    // recvqueue->plslen <= ((double)plslengths->length+5))) {
@@ -1664,25 +1715,20 @@ int main_gc(void) {
 }
 
 static void procProtocolInit(void) {
-	clock_gettime(CLOCK_REALTIME, &cputp);
-	start_seconds = cputp.tv_sec + cputp.tv_nsec / 1e9; 
-	starts = clock();
-
 	protocol_register(&procProtocol);
 	protocol_set_id(procProtocol, "process");
-	protocol_device_add(procProtocol, "lirc", "pilight proc. API");
+	protocol_device_add(procProtocol, "process", "pilight proc. API");
 	procProtocol->devtype = PROC;
 	procProtocol->hwtype = API;
-	procProtocol->config = 0;
 	procProtocol->multipleId = 0;
-	
-	options_add(&procProtocol->options, 'i', "id", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_STRING, NULL, NULL);
+	procProtocol->config = 0;
+
 	options_add(&procProtocol->options, 'c', "cpu", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, NULL, NULL);
 	options_add(&procProtocol->options, 'r', "ram", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, NULL, NULL);
-	
+
 #if defined(_SC_PHYS_PAGES) && defined(_SC_PAGESIZE)
 	totalram = (size_t)sysconf(_SC_PHYS_PAGES)*(size_t)sysconf(_SC_PAGESIZE);
-#endif	
+#endif
 }
 
 #ifdef FIRMWARE
@@ -1692,7 +1738,7 @@ void *firmware_loop(void *param) {
 	int fwupdate = 0;
 
 	settings_find_number("firmware-update", &fwupdate);
-	
+
 	while(main_loop) {
 		/* Check if firmware needs to be updated */
 		if(fwupdate == 1 && firmware.version > 0) {
@@ -1713,7 +1759,7 @@ void *firmware_loop(void *param) {
 			}
 		interval = 60;
 		}
-		
+
 		sleep(interval);
 	}
 	return NULL;
@@ -2176,7 +2222,6 @@ int main(int argc, char **argv) {
 				goto clear;
 			}
 			checkcpu = 1;
-#ifndef __FreeBSD__
 		} else if((i > -1) && (ram > 90)) {
 			logprintf(LOG_ERR, "ram usage way too high %f%, exiting", ram);
 			exit(EXIT_FAILURE);
@@ -2192,24 +2237,21 @@ int main(int argc, char **argv) {
 				goto clear;
 			}
 			checkram = 1;
-#endif
 		} else {
-			if((i%5 == 0) || (i == -1)) {
+			if((i%3 == 0) || (i == -1)) {
 				procProtocol->message = json_mkobject();
 				JsonNode *code = json_mkobject();
 				json_append_member(code, "cpu", json_mknumber(cpu));
-#ifndef __FreeBSD__				
-				json_append_member(code, "ram", json_mknumber(ram));
-#endif
+				if(ram > 0) {
+					json_append_member(code, "ram", json_mknumber(ram));
+				}
 
-				json_append_member(procProtocol->message, "message", code);
-				json_append_member(procProtocol->message, "origin", json_mkstring("receiver"));
-				json_append_member(procProtocol->message, "protocol", json_mkstring(procProtocol->id));
-
+				json_append_member(procProtocol->message, "values", code);
+				json_append_member(procProtocol->message, "origin", json_mkstring("config"));
+				json_append_member(procProtocol->message, "type", json_mknumber(PROC));
 				pilight.broadcast(procProtocol->id, procProtocol->message);
-				json_delete(procProtocol->message);
 				procProtocol->message = NULL;
-				i=0;
+				i = 0;
 			}
 			i++;
 		}

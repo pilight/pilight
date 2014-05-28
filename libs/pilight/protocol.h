@@ -27,7 +27,8 @@
 #include "json.h"
 
 typedef enum {
-	INTERNAL = -1,
+	INTERNAL = -2,
+	PROC = -1,
 	RAW = 0,
 	SWITCH,
 	DIMMER,
@@ -39,8 +40,7 @@ typedef enum {
 	DATETIME,
 	XBMC,
 	LIRC,
-	WEBCAM,
-	PROC
+	WEBCAM
 } devtype_t;
 
 typedef struct protocol_devices_t {

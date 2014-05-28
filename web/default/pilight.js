@@ -155,7 +155,7 @@ function createPendingSwitchElement(sTabId, sDevId, aValues) {
 			oTab.append($('<li id="'+sTabId+'_'+sDevId+'" class="pendingsw" data-icon="false">'+aValues['name']+'<select id="'+sTabId+'_'+sDevId+'_pendingsw" data-role="slider"><option value="stopped">Stopped</option><option value="running">Running</option></select></li>'));
 		}
 		$('#'+sTabId+'_'+sDevId+'_pendingsw').slider();
-		
+
 		$('#'+sTabId+'_'+sDevId+'_pendingsw').bind("change", function(event, ui) {
 			$('#'+sTabId+'_'+sDevId+'_pendingsw').blur();
 			event.stopPropagation();
@@ -444,7 +444,7 @@ function createWeatherElement(sTabId, sDevId, aValues) {
 					$('#'+sTabId+'_'+sDevId+'_batt').addClass('red');
 				}
 			}
-		}	
+		}
 		if('gui-show-humidity' in aValues && aValues['gui-show-humidity'] && 'humidity' in aValues) {
 			oTab.find('#'+sTabId+'_'+sDevId+'_weather').append($('<div class="humidity_icon"></div><div class="humidity" id="'+sTabId+'_'+sDevId+'_humi">'+aValues['humidity'].toFixed(aValues['gui-decimals'])+'</div>'));
 		}
@@ -502,10 +502,15 @@ function createWeatherElement(sTabId, sDevId, aValues) {
 		if('gui-show-sunriseset' in aValues && aValues['gui-show-sunriseset'] && 'sunrise' in aValues && 'sunset' in aValues) {
 			$('#'+sTabId+'_'+sDevId+'_sunrise').text(aValues['sunrise'].toFixed(aValues['gui-decimals']));
 			$('#'+sTabId+'_'+sDevId+'_sunset').text(aValues['sunset'].toFixed(aValues['gui-decimals']));
-		}		
+		}
 	}
 	oTab.listview();
 	oTab.listview("refresh");
+}
+
+function updateProcStatus(aValues) {
+	var obj = $('#proc').text("CPU: "+aValues['cpu'].toFixed(2)+"% / RAM: "+aValues['ram'].toFixed(2)+"%");
+	obj.html(obj.html().replace(/\n/g,'<br/>'));
 }
 
 function createDateTimeElement(sTabId, sDevId, aValues) {
@@ -532,14 +537,14 @@ function createDateTimeElement(sTabId, sDevId, aValues) {
 	aDateTime[sTabId+'_'+sDevId]['day'] = aValues['day'];
 	aDateTime[sTabId+'_'+sDevId]['hour'] = aValues['hour'];
 	aDateTime[sTabId+'_'+sDevId]['minute'] = aValues['minute'];
-	aDateTime[sTabId+'_'+sDevId]['second'] = aValues['second'];	
+	aDateTime[sTabId+'_'+sDevId]['second'] = aValues['second'];
 
 	if($('#'+sTabId+'_'+sDevId+'_datetime').length == 0) {
 		if(bShowTabs) {
 			oTab = $('#'+sTabId).find('ul');
 		} else {
 			oTab = $('#all');
-		}	
+		}
 		if('name' in aValues) {
 			oTab.append($('<li id="'+sTabId+'_'+sDevId+'_datetime" data-icon="false">'+aValues['name']+'</li>'));
 			oTab.find('#'+sTabId+'_'+sDevId+'_datetime').append($('<div id="'+sTabId+'_'+sDevId+'_text" class="datetime">'+aValues['year']+'-'+aValues['month']+'-'+aValues['day']+' '+aValues['hour']+':'+aValues['minute']+':'+aValues['second']+'</div>'));
@@ -683,7 +688,7 @@ function createXBMCElement(sTabId, sDevId, aValues) {
 					$('#'+sTabId+'_'+sDevId+'_media').addClass('music');
 				}
 			}
-		}			
+		}
 	}
 	oTab.listview();
 	oTab.listview("refresh");
@@ -713,7 +718,7 @@ function createDateTimeElement(sTabId, sDevId, aValues) {
 	aDateTime[sTabId+'_'+sDevId]['day'] = aValues['day'];
 	aDateTime[sTabId+'_'+sDevId]['hour'] = aValues['hour'];
 	aDateTime[sTabId+'_'+sDevId]['minute'] = aValues['minute'];
-	aDateTime[sTabId+'_'+sDevId]['second'] = aValues['second'];	
+	aDateTime[sTabId+'_'+sDevId]['second'] = aValues['second'];
 
 	if('gui-datetime-format' in aValues) {
 		sFormat = aValues['gui-datetime-format'];
@@ -727,7 +732,7 @@ function createDateTimeElement(sTabId, sDevId, aValues) {
 			oTab = $('#'+sTabId).find('ul');
 		} else {
 			oTab = $('#all');
-		}	
+		}
 		if('name' in aValues) {
 			sDate = moment(aValues['year']+'-'+aValues['month']+'-'+aValues['day']+' '+aValues['hour']+':'+aValues['minute']+':'+aValues['second'], ["YYYY-MM-DD HH:mm:ss"]).format(sFormat);
 			oTab.append($('<li id="'+sTabId+'_'+sDevId+'_datetime" data-icon="false">'+aValues['name']+'</li>'));
@@ -865,202 +870,207 @@ function createGUI(data) {
 function parseData(data) {
 	if(data.hasOwnProperty("config")) {
 		createGUI(data);
-	} else if(data.hasOwnProperty("values") && data.hasOwnProperty("origin") && data.hasOwnProperty("devices") && data.hasOwnProperty("type")) {
+	} else if(data.hasOwnProperty("values") && data.hasOwnProperty("origin") && data.hasOwnProperty("type")) {
 		var aValues = data.values;
-		var aLocations = data.devices;
 		var iType = data.type;
-		$.each(aLocations, function(lindex, lvalues) {
-			$.each(lvalues, function(dindex, dvalues) {
-				$.each(aValues, function(vindex, vvalues) {
-					if(iType == 1 || iType == 4) {
-						if(vindex == 'state') {
-							if(vvalues == 'on' || vvalues == 'opened') {
-								$('#'+lindex+'_'+dvalues+'_switch')[0].selectedIndex = 1;
-							} else {
-								$('#'+lindex+'_'+dvalues+'_switch')[0].selectedIndex = 0;
+
+		if(iType == -1) {
+			updateProcStatus(aValues);
+		} else if(data.hasOwnProperty("devices")) {
+			var aLocations = data.devices;
+			$.each(aLocations, function(lindex, lvalues) {
+				$.each(lvalues, function(dindex, dvalues) {
+					$.each(aValues, function(vindex, vvalues) {
+						if(iType == 1 || iType == 4) {
+							if(vindex == 'state') {
+								if(vvalues == 'on' || vvalues == 'opened') {
+									$('#'+lindex+'_'+dvalues+'_switch')[0].selectedIndex = 1;
+								} else {
+									$('#'+lindex+'_'+dvalues+'_switch')[0].selectedIndex = 0;
+								}
+								$('#'+lindex+'_'+dvalues+'_switch').slider('refresh');
 							}
-							$('#'+lindex+'_'+dvalues+'_switch').slider('refresh');
+						} else if(iType == 2) {
+							if(vindex == 'state') {
+								if(vvalues == 'on') {
+									$('#'+lindex+'_'+dvalues+'_switch')[0].selectedIndex = 1;
+								} else {
+									$('#'+lindex+'_'+dvalues+'_switch')[0].selectedIndex = 0;
+								}
+								$('#'+lindex+'_'+dvalues+'_switch').slider('refresh');
+							}
+							if(vindex == 'dimlevel') {
+								$('#'+lindex+'_'+dvalues+'_dimmer').val(vvalues);
+								$('#'+lindex+'_'+dvalues+'_dimmer').slider('refresh');
+							}
+						} else if(iType == 8) {
+							if(lindex+'_'+dvalues in aDateTime &&
+							   vindex in aDateTime[lindex+'_'+dvalues]) {
+								if(vvalues < 10) {
+									vvalues = '0'+vvalues;
+								}
+								aDateTime[lindex+'_'+dvalues][vindex] = vvalues;
+								aVal = aDateTime[lindex+'_'+dvalues];
+								if('year' in aVal &&
+								   'month' in aVal &&
+								   'day' in aVal &&
+								   'hour' in aVal &&
+								   'minute' in aVal &&
+								   'second' in aVal) {
+									if(vindex == 'second') {
+										sDate = moment(aVal['year']+'-'+aVal['month']+'-'+aVal['day']+' '+aVal['hour']+':'+aVal['minute']+':'+aVal['second'], ["YYYY-MM-DD HH:mm:ss"]).format(aDateTimeFormats[lindex+'_'+dvalues]);
+										$('#'+lindex+'_'+dvalues+'_text').text(sDate);
+									}
+								}
+							}
+						} else if(iType == 7) {
+							if(vindex == 'state') {
+								if(vvalues == 'running') {
+									$('#'+lindex+'_'+dvalues+'_pendingsw')[0].selectedIndex = 1;
+									if($('#'+lindex+'_'+dvalues).attr("class").indexOf("pending") >= 0) {
+										$('#'+lindex+'_'+dvalues).removeClass('pending');
+									}
+									if(lindex+'_'+dvalues in aReadOnly && aReadOnly[lindex+'_'+dvalues] == 0) {
+										$('#'+lindex+'_'+dvalues+'_pendingsw').slider('enable');
+									}
+								} else if(vvalues == 'pending') {
+									$('#'+lindex+'_'+dvalues+'_pendingsw').slider('disable');
+									if($('#'+lindex+'_'+dvalues).attr("class").indexOf("pending") <= 0) {
+										$('#'+lindex+'_'+dvalues).addClass('pending');
+									}
+								} else {
+									$('#'+lindex+'_'+dvalues+'_pendingsw')[0].selectedIndex = 0;
+									if($('#'+lindex+'_'+dvalues).attr("class").indexOf("pending") >= 0) {
+										$('#'+lindex+'_'+dvalues).removeClass('pending');
+									}
+									if(lindex+'_'+dvalues in aReadOnly && aReadOnly[lindex+'_'+dvalues] == 0) {
+										$('#'+lindex+'_'+dvalues+'_pendingsw').slider('enable');
+									}
+								}
+								$('#'+lindex+'_'+dvalues+'_pendingsw').slider('refresh');
+							}
+						} else if(iType == 3) {
+							if(vindex == 'temperature' && $('#'+lindex+'_'+dvalues+'_temp')) {
+								if(lindex+'_'+dvalues in aDecimals
+								&& 'device' in aDecimals[lindex+'_'+dvalues]
+								&& 'gui' in aDecimals[lindex+'_'+dvalues]) {
+									vvalues /= Math.pow(10, aDecimals[lindex+'_'+dvalues]['device']);
+									$('#'+lindex+'_'+dvalues+'_temp').text(vvalues.toFixed(aDecimals[lindex+'_'+dvalues]['gui']));
+								}
+							} else if(vindex == 'humidity' && $('#'+lindex+'_'+dvalues+'_humi')) {
+								if(lindex+'_'+dvalues in aDecimals
+								&& 'device' in aDecimals[lindex+'_'+dvalues]
+								&& 'gui' in aDecimals[lindex+'_'+dvalues]) {
+									vvalues /= Math.pow(10, aDecimals[lindex+'_'+dvalues]['device']);
+									$('#'+lindex+'_'+dvalues+'_humi').text(vvalues.toFixed(aDecimals[lindex+'_'+dvalues]['gui']));
+								}
+							} else if(vindex == 'sunrise' && $('#'+lindex+'_'+dvalues+'_sunrise')) {
+								if(lindex+'_'+dvalues in aDecimals
+								&& 'device' in aDecimals[lindex+'_'+dvalues]
+								&& 'gui' in aDecimals[lindex+'_'+dvalues]) {
+									vvalues /= Math.pow(10, aDecimals[lindex+'_'+dvalues]['device']);
+									$('#'+lindex+'_'+dvalues+'_sunrise').text(vvalues.toFixed(aDecimals[lindex+'_'+dvalues]['gui']));
+								}
+							} else if(vindex == 'sunset' && $('#'+lindex+'_'+dvalues+'_sunset')) {
+								if(lindex+'_'+dvalues in aDecimals
+								&& 'device' in aDecimals[lindex+'_'+dvalues]
+								&& 'gui' in aDecimals[lindex+'_'+dvalues]) {
+									vvalues /= Math.pow(10, aDecimals[lindex+'_'+dvalues]['device']);
+									$('#'+lindex+'_'+dvalues+'_sunset').text(vvalues.toFixed(aDecimals[lindex+'_'+dvalues]['gui']));
+								}
+							} else if(vindex == 'battery' && $('#'+lindex+'_'+dvalues+'_batt')) {
+								if(vvalues == 1) {
+									if($('#'+lindex+'_'+dvalues+'_batt').attr("class").indexOf("green") == -1) {
+										$('#'+lindex+'_'+dvalues+'_batt').removeClass('red').addClass('green');
+									}
+								} else {
+									if($('#'+lindex+'_'+dvalues+'_batt').attr("class").indexOf("red") == -1) {
+										$('#'+lindex+'_'+dvalues+'_batt').removeClass('green').addClass('red');
+									}
+								}
+							} else if(vindex == 'sun' && $('#'+lindex+'_'+dvalues+'_sunrise_icon') && $('#'+lindex+'_'+dvalues+'_sunset_icon')) {
+								if(vvalues == 'rise') {
+									if($('#'+lindex+'_'+dvalues+'_sunrise_icon').attr("class").indexOf("yellow") == -1) {
+										$('#'+lindex+'_'+dvalues+'_sunrise_icon').removeClass('gray').addClass('yellow');
+									}
+									if($('#'+lindex+'_'+dvalues+'_sunset_icon').attr("class").indexOf("gray") == -1) {
+										$('#'+lindex+'_'+dvalues+'_sunset_icon').removeClass('blue').addClass('gray');
+									}
+								} else {
+									if($('#'+lindex+'_'+dvalues+'_sunrise_icon').attr("class").indexOf("gray") == -1) {
+										$('#'+lindex+'_'+dvalues+'_sunrise_icon').removeClass('yellow').addClass('gray');
+									}
+									if($('#'+lindex+'_'+dvalues+'_sunset_icon').attr("class").indexOf("blue") == -1) {
+										$('#'+lindex+'_'+dvalues+'_sunset_icon').removeClass('gray').addClass('blue');
+									}
+								}
+							}
+						} else if(iType == 9) {
+							if(vindex == "action" && $('#'+lindex+'_'+dvalues+'_action')) {
+								if($('#'+lindex+'_'+dvalues+'_action')) {
+									if($('#'+lindex+'_'+dvalues+'_action').attr("class").indexOf("play") != -1) {
+										$('#'+lindex+'_'+dvalues+'_action').removeClass("play");
+									}
+									if($('#'+lindex+'_'+dvalues+'_action').attr("class").indexOf("pause") != -1) {
+										$('#'+lindex+'_'+dvalues+'_action').removeClass("pause");
+									}
+									if($('#'+lindex+'_'+dvalues+'_action').attr("class").indexOf("stop") != -1) {
+										$('#'+lindex+'_'+dvalues+'_action').removeClass("stop");
+									}
+									if($('#'+lindex+'_'+dvalues+'_action').attr("class").indexOf("screen_active") != -1) {
+										$('#'+lindex+'_'+dvalues+'_action').removeClass("screen_active");
+									}
+									if($('#'+lindex+'_'+dvalues+'_action').attr("class").indexOf("screen_inactive") != -1) {
+										$('#'+lindex+'_'+dvalues+'_action').removeClass("screen_inactive");
+									}
+									if($('#'+lindex+'_'+dvalues+'_action').attr("class").indexOf("shutdown") != -1) {
+										$('#'+lindex+'_'+dvalues+'_action').removeClass("shutdown");
+									}
+									if($('#'+lindex+'_'+dvalues+'_action').attr("class").indexOf("home") != -1) {
+										$('#'+lindex+'_'+dvalues+'_action').removeClass("home");
+									}
+								}
+								if(vvalues == "play") {
+									$('#'+lindex+'_'+dvalues+'_action').addClass("play");
+								} else if(vvalues == "pause") {
+									$('#'+lindex+'_'+dvalues+'_action').addClass("pause");
+								} else if(vvalues == "stop") {
+									$('#'+lindex+'_'+dvalues+'_action').addClass("stop");
+								} else if(vvalues == "active") {
+									$('#'+lindex+'_'+dvalues+'_action').addClass("screen_active");
+								} else if(vvalues == "inactive") {
+									$('#'+lindex+'_'+dvalues+'_action').addClass("screen_inactive");
+								} else if(vvalues == "shutdown") {
+									$('#'+lindex+'_'+dvalues+'_action').addClass("shutdown");
+								} else if(vvalues == "home") {
+									$('#'+lindex+'_'+dvalues+'_action').addClass("home");
+								}
+							}
+							if(vindex == "media" && $('#'+lindex+'_'+dvalues+'_media')) {
+								if($('#'+lindex+'_'+dvalues+'_media')) {
+									if($('#'+lindex+'_'+dvalues+'_media').attr("class").indexOf("movie") != -1) {
+										$('#'+lindex+'_'+dvalues+'_media').removeClass("movie");
+									}
+									if($('#'+lindex+'_'+dvalues+'_media').attr("class").indexOf("episode") != -1) {
+										$('#'+lindex+'_'+dvalues+'_media').removeClass("episode");
+									}
+									if($('#'+lindex+'_'+dvalues+'_media').attr("class").indexOf("song") != -1) {
+										$('#'+lindex+'_'+dvalues+'_media').removeClass("song");
+									}
+								}
+								if(vvalues == "movie") {
+									$('#'+lindex+'_'+dvalues+'_media').addClass("movie");
+								} else if(vvalues == "episode") {
+									$('#'+lindex+'_'+dvalues+'_media').addClass("episode");
+								} else if(vvalues == "song") {
+									$('#'+lindex+'_'+dvalues+'_media').addClass("song");
+								}
+							}
 						}
-					} else if(iType == 2) {
-						if(vindex == 'state') {
-							if(vvalues == 'on') {
-								$('#'+lindex+'_'+dvalues+'_switch')[0].selectedIndex = 1;
-							} else {
-								$('#'+lindex+'_'+dvalues+'_switch')[0].selectedIndex = 0;
-							}
-							$('#'+lindex+'_'+dvalues+'_switch').slider('refresh');
-						}
-						if(vindex == 'dimlevel') {
-							$('#'+lindex+'_'+dvalues+'_dimmer').val(vvalues);
-							$('#'+lindex+'_'+dvalues+'_dimmer').slider('refresh');
-						}
-					} else if(iType == 8) {
-						if(lindex+'_'+dvalues in aDateTime &&
-						   vindex in aDateTime[lindex+'_'+dvalues]) {
-							if(vvalues < 10) {
-								vvalues = '0'+vvalues;
-							}
-							aDateTime[lindex+'_'+dvalues][vindex] = vvalues;
-							aVal = aDateTime[lindex+'_'+dvalues];
-							if('year' in aVal &&
-							   'month' in aVal &&
-							   'day' in aVal &&
-							   'hour' in aVal &&
-							   'minute' in aVal &&
-							   'second' in aVal) {
-								if(vindex == 'second') {
-									sDate = moment(aVal['year']+'-'+aVal['month']+'-'+aVal['day']+' '+aVal['hour']+':'+aVal['minute']+':'+aVal['second'], ["YYYY-MM-DD HH:mm:ss"]).format(aDateTimeFormats[lindex+'_'+dvalues]);
-									$('#'+lindex+'_'+dvalues+'_text').text(sDate);
-								}
-							}
-						}
-					} else if(iType == 7) {
-						if(vindex == 'state') {
-							if(vvalues == 'running') {
-								$('#'+lindex+'_'+dvalues+'_pendingsw')[0].selectedIndex = 1;
-								if($('#'+lindex+'_'+dvalues).attr("class").indexOf("pending") >= 0) {
-									$('#'+lindex+'_'+dvalues).removeClass('pending');
-								}
-								if(lindex+'_'+dvalues in aReadOnly && aReadOnly[lindex+'_'+dvalues] == 0) {
-									$('#'+lindex+'_'+dvalues+'_pendingsw').slider('enable');
-								}
-							} else if(vvalues == 'pending') {
-								$('#'+lindex+'_'+dvalues+'_pendingsw').slider('disable');
-								if($('#'+lindex+'_'+dvalues).attr("class").indexOf("pending") <= 0) {
-									$('#'+lindex+'_'+dvalues).addClass('pending');
-								}
-							} else {
-								$('#'+lindex+'_'+dvalues+'_pendingsw')[0].selectedIndex = 0;
-								if($('#'+lindex+'_'+dvalues).attr("class").indexOf("pending") >= 0) {
-									$('#'+lindex+'_'+dvalues).removeClass('pending');
-								}
-								if(lindex+'_'+dvalues in aReadOnly && aReadOnly[lindex+'_'+dvalues] == 0) {
-									$('#'+lindex+'_'+dvalues+'_pendingsw').slider('enable');
-								}
-							}
-							$('#'+lindex+'_'+dvalues+'_pendingsw').slider('refresh');
-						}
-					} else if(iType == 3) {
-						if(vindex == 'temperature' && $('#'+lindex+'_'+dvalues+'_temp')) {
-							if(lindex+'_'+dvalues in aDecimals
-							&& 'device' in aDecimals[lindex+'_'+dvalues]
-							&& 'gui' in aDecimals[lindex+'_'+dvalues]) {
-								vvalues /= Math.pow(10, aDecimals[lindex+'_'+dvalues]['device']);
-								$('#'+lindex+'_'+dvalues+'_temp').text(vvalues.toFixed(aDecimals[lindex+'_'+dvalues]['gui']));
-							}
-						} else if(vindex == 'humidity' && $('#'+lindex+'_'+dvalues+'_humi')) {
-							if(lindex+'_'+dvalues in aDecimals
-							&& 'device' in aDecimals[lindex+'_'+dvalues]
-							&& 'gui' in aDecimals[lindex+'_'+dvalues]) {
-								vvalues /= Math.pow(10, aDecimals[lindex+'_'+dvalues]['device']);
-								$('#'+lindex+'_'+dvalues+'_humi').text(vvalues.toFixed(aDecimals[lindex+'_'+dvalues]['gui']));
-							}
-						} else if(vindex == 'sunrise' && $('#'+lindex+'_'+dvalues+'_sunrise')) {
-							if(lindex+'_'+dvalues in aDecimals
-							&& 'device' in aDecimals[lindex+'_'+dvalues]
-							&& 'gui' in aDecimals[lindex+'_'+dvalues]) {
-								vvalues /= Math.pow(10, aDecimals[lindex+'_'+dvalues]['device']);
-								$('#'+lindex+'_'+dvalues+'_sunrise').text(vvalues.toFixed(aDecimals[lindex+'_'+dvalues]['gui']));
-							}
-						} else if(vindex == 'sunset' && $('#'+lindex+'_'+dvalues+'_sunset')) {
-							if(lindex+'_'+dvalues in aDecimals
-							&& 'device' in aDecimals[lindex+'_'+dvalues]
-							&& 'gui' in aDecimals[lindex+'_'+dvalues]) {
-								vvalues /= Math.pow(10, aDecimals[lindex+'_'+dvalues]['device']);
-								$('#'+lindex+'_'+dvalues+'_sunset').text(vvalues.toFixed(aDecimals[lindex+'_'+dvalues]['gui']));
-							}
-						} else if(vindex == 'battery' && $('#'+lindex+'_'+dvalues+'_batt')) {
-							if(vvalues == 1) {
-								if($('#'+lindex+'_'+dvalues+'_batt').attr("class").indexOf("green") == -1) {
-									$('#'+lindex+'_'+dvalues+'_batt').removeClass('red').addClass('green');
-								}
-							} else {
-								if($('#'+lindex+'_'+dvalues+'_batt').attr("class").indexOf("red") == -1) {
-									$('#'+lindex+'_'+dvalues+'_batt').removeClass('green').addClass('red');
-								}
-							}
-						} else if(vindex == 'sun' && $('#'+lindex+'_'+dvalues+'_sunrise_icon') && $('#'+lindex+'_'+dvalues+'_sunset_icon')) {
-							if(vvalues == 'rise') {
-								if($('#'+lindex+'_'+dvalues+'_sunrise_icon').attr("class").indexOf("yellow") == -1) {
-									$('#'+lindex+'_'+dvalues+'_sunrise_icon').removeClass('gray').addClass('yellow');
-								}
-								if($('#'+lindex+'_'+dvalues+'_sunset_icon').attr("class").indexOf("gray") == -1) {
-									$('#'+lindex+'_'+dvalues+'_sunset_icon').removeClass('blue').addClass('gray');
-								}
-							} else {
-								if($('#'+lindex+'_'+dvalues+'_sunrise_icon').attr("class").indexOf("gray") == -1) {
-									$('#'+lindex+'_'+dvalues+'_sunrise_icon').removeClass('yellow').addClass('gray');
-								}
-								if($('#'+lindex+'_'+dvalues+'_sunset_icon').attr("class").indexOf("blue") == -1) {
-									$('#'+lindex+'_'+dvalues+'_sunset_icon').removeClass('gray').addClass('blue');
-								}
-							}
-						}
-					} else if(iType == 9) {
-						if(vindex == "action" && $('#'+lindex+'_'+dvalues+'_action')) {
-							if($('#'+lindex+'_'+dvalues+'_action')) {
-								if($('#'+lindex+'_'+dvalues+'_action').attr("class").indexOf("play") != -1) {
-									$('#'+lindex+'_'+dvalues+'_action').removeClass("play");
-								}
-								if($('#'+lindex+'_'+dvalues+'_action').attr("class").indexOf("pause") != -1) {
-									$('#'+lindex+'_'+dvalues+'_action').removeClass("pause");
-								}
-								if($('#'+lindex+'_'+dvalues+'_action').attr("class").indexOf("stop") != -1) {
-									$('#'+lindex+'_'+dvalues+'_action').removeClass("stop");
-								}
-								if($('#'+lindex+'_'+dvalues+'_action').attr("class").indexOf("screen_active") != -1) {
-									$('#'+lindex+'_'+dvalues+'_action').removeClass("screen_active");
-								}
-								if($('#'+lindex+'_'+dvalues+'_action').attr("class").indexOf("screen_inactive") != -1) {
-									$('#'+lindex+'_'+dvalues+'_action').removeClass("screen_inactive");
-								}
-								if($('#'+lindex+'_'+dvalues+'_action').attr("class").indexOf("shutdown") != -1) {
-									$('#'+lindex+'_'+dvalues+'_action').removeClass("shutdown");
-								}
-								if($('#'+lindex+'_'+dvalues+'_action').attr("class").indexOf("home") != -1) {
-									$('#'+lindex+'_'+dvalues+'_action').removeClass("home");
-								}
-							}							
-							if(vvalues == "play") {
-								$('#'+lindex+'_'+dvalues+'_action').addClass("play");
-							} else if(vvalues == "pause") {
-								$('#'+lindex+'_'+dvalues+'_action').addClass("pause");
-							} else if(vvalues == "stop") {
-								$('#'+lindex+'_'+dvalues+'_action').addClass("stop");
-							} else if(vvalues == "active") {
-								$('#'+lindex+'_'+dvalues+'_action').addClass("screen_active");
-							} else if(vvalues == "inactive") {
-								$('#'+lindex+'_'+dvalues+'_action').addClass("screen_inactive");
-							} else if(vvalues == "shutdown") {
-								$('#'+lindex+'_'+dvalues+'_action').addClass("shutdown");
-							} else if(vvalues == "home") {
-								$('#'+lindex+'_'+dvalues+'_action').addClass("home");
-							}
-						}
-						if(vindex == "media" && $('#'+lindex+'_'+dvalues+'_media')) {
-							if($('#'+lindex+'_'+dvalues+'_media')) {
-								if($('#'+lindex+'_'+dvalues+'_media').attr("class").indexOf("movie") != -1) {
-									$('#'+lindex+'_'+dvalues+'_media').removeClass("movie");
-								}
-								if($('#'+lindex+'_'+dvalues+'_media').attr("class").indexOf("episode") != -1) {
-									$('#'+lindex+'_'+dvalues+'_media').removeClass("episode");
-								}
-								if($('#'+lindex+'_'+dvalues+'_media').attr("class").indexOf("song") != -1) {
-									$('#'+lindex+'_'+dvalues+'_media').removeClass("song");
-								}
-							}							
-							if(vvalues == "movie") {
-								$('#'+lindex+'_'+dvalues+'_media').addClass("movie");
-							} else if(vvalues == "episode") {
-								$('#'+lindex+'_'+dvalues+'_media').addClass("episode");
-							} else if(vvalues == "song") {
-								$('#'+lindex+'_'+dvalues+'_media').addClass("song");
-							}
-						}
-					}
+					});
 				});
 			});
-		});
+		}
 	}
 }
 
@@ -1099,7 +1109,7 @@ $(document).ready(function() {
 
 		if(!bForceAjax && oWebsocket) {
 			oWebsocket.onopen = function(evt) {
-				bConnected = true;		
+				bConnected = true;
 				oWebsocket.send("{\"message\":\"request config\"}");
 			};
 			oWebsocket.onclose = function(evt) {

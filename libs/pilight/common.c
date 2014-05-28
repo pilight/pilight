@@ -61,7 +61,14 @@ pid_t findproc(char *cmd, char *args, int loosely) {
 	int fd = 0, ptr = 0, match = 0, i = 0, y = '\n';
 
 	if(!(dir = opendir("/proc"))) {
+#ifdef __FreeBSD__
+		system("mount -t procfs proc /proc");
+		if(!(dir = opendir("/proc"))) {
+			return -1;
+		}
+#else
        	return -1;
+#endif
 	}
 
     while((ent = readdir(dir)) != NULL) {
