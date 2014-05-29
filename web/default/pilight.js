@@ -765,7 +765,9 @@ function updateVersions() {
 
 function createGUI(data) {
 	$.each(data, function(root, locations) {
-		$('#proc').text("CPU: ...% / RAM: ...%");
+		if(oWebsocket) {
+			$('#proc').text("CPU: ...% / RAM: ...%");
+		}
 		if(root == 'version') {
 			iPLVersion = locations[0];
 			iPLNVersion = locations[1];
