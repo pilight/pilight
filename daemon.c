@@ -2238,7 +2238,7 @@ int main(int argc, char **argv) {
 			}
 			checkram = 1;
 		} else {
-			if((i%3 == 0) || (i == -1)) {
+			if((i > 0 && i%3 == 0) || (i == -1)) {
 				procProtocol->message = json_mkobject();
 				JsonNode *code = json_mkobject();
 				json_append_member(code, "cpu", json_mknumber(cpu));
