@@ -390,6 +390,7 @@ void *broadcast(void *param) {
 			broadcasted = 0;
 			JsonNode *jret = NULL;
 			char *origin = NULL;
+
 			if(json_find_string(bcqueue->jmessage, "origin", &origin) == 0) {
 				if(strcmp(origin, "config") == 0) {
 					char *conf = json_stringify(bcqueue->jmessage, NULL);
@@ -403,8 +404,7 @@ void *broadcast(void *param) {
 						logprintf(LOG_DEBUG, "broadcasted: %s", conf);
 					}
 					sfree((void *)&conf);
-				}
-				if(strcmp(origin, "receiver") == 0) {
+				} else {
 					/* Update the config */
 					if(config_update(bcqueue->protoname, bcqueue->jmessage, &jret) == 0) {
 						char *conf = json_stringify(jret, NULL);
