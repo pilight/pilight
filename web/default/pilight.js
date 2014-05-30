@@ -105,7 +105,7 @@ function createSwitchElement(sTabId, sDevId, aValues) {
 			oTab = $('#all');
 		}
 		if('name' in aValues) {
-			oTab.append($('<li id="'+sTabId+'_'+sDevId+'" class="switch" data-icon="false">'+aValues['name']+'<select id="'+sTabId+'_'+sDevId+'_switch" data-role="slider"><option value="off">Off</option><option value="on">On</option></select></li>'));
+			oTab.append($('<li id="'+sTabId+'_'+sDevId+'" class="switch" data-icon="false"><div class="name">'+aValues['name']+'</div><select id="'+sTabId+'_'+sDevId+'_switch" data-role="slider"><option value="off">Off</option><option value="on">On</option></select></li>'));
 		}
 		$('#'+sTabId+'_'+sDevId+'_switch').slider();
 		$('#'+sTabId+'_'+sDevId+'_switch').bind("change", function(event, ui) {
@@ -152,7 +152,7 @@ function createPendingSwitchElement(sTabId, sDevId, aValues) {
 		}
 
 		if('name' in aValues) {
-			oTab.append($('<li id="'+sTabId+'_'+sDevId+'" class="pendingsw" data-icon="false">'+aValues['name']+'<select id="'+sTabId+'_'+sDevId+'_pendingsw" data-role="slider"><option value="stopped">Stopped</option><option value="running">Running</option></select></li>'));
+			oTab.append($('<li id="'+sTabId+'_'+sDevId+'" class="pendingsw" data-icon="false"><div class="name">'+aValues['name']+'</div><select id="'+sTabId+'_'+sDevId+'_pendingsw" data-role="slider"><option value="stopped">Stopped</option><option value="running">Running</option></select></li>'));
 		}
 		$('#'+sTabId+'_'+sDevId+'_pendingsw').slider();
 
@@ -207,7 +207,7 @@ function createScreenElement(sTabId, sDevId, aValues) {
 			oTab = $('#all');
 		}
 		if('name' in aValues) {
-			oTab.append($('<li  id="'+sTabId+'_'+sDevId+'" class="screen" data-icon="false">'+aValues['name']+'<div id="'+sTabId+'_'+sDevId+'_screen" class="screen" data-role="fieldcontain" data-type="horizontal"><fieldset data-role="controlgroup" class="controlgroup" data-type="horizontal" data-mini="true"><input type="radio" name="'+sTabId+'_'+sDevId+'_screen" id="'+sTabId+'_'+sDevId+'_screen_down" value="down" /><label for="'+sTabId+'_'+sDevId+'_screen_down">Down</label><input type="radio" name="'+sTabId+'_'+sDevId+'_screen" id="'+sTabId+'_'+sDevId+'_screen_up" value="up" /><label for="'+sTabId+'_'+sDevId+'_screen_up">Up</label></fieldset></div></li>'));
+			oTab.append($('<li  id="'+sTabId+'_'+sDevId+'" class="screen" data-icon="false"><div class="name">'+aValues['name']+'</div><div id="'+sTabId+'_'+sDevId+'_screen" class="screen" data-role="fieldcontain" data-type="horizontal"><fieldset data-role="controlgroup" class="controlgroup" data-type="horizontal" data-mini="true"><input type="radio" name="'+sTabId+'_'+sDevId+'_screen" id="'+sTabId+'_'+sDevId+'_screen_down" value="down" /><label for="'+sTabId+'_'+sDevId+'_screen_down">Down</label><input type="radio" name="'+sTabId+'_'+sDevId+'_screen" id="'+sTabId+'_'+sDevId+'_screen_up" value="up" /><label for="'+sTabId+'_'+sDevId+'_screen_up">Up</label></fieldset></div></li>'));
 		}
 		$("div").trigger("create");
 		$('#'+sTabId+'_'+sDevId+'_screen_down').checkboxradio();
@@ -223,9 +223,9 @@ function createScreenElement(sTabId, sDevId, aValues) {
 					$(oLabel).removeClass('ui-btn-active');
 				else
 					$(oLabel).addClass('ui-btn-active');
-				if(i==4)
+				if(i==2)
 					window.clearInterval(x);
-			}, 150);
+			}, 100);
 			if('all' in aValues && aValues['all'] == 1) {
 				var json = '{"message":"send","code":{"location":"'+sTabId+'","device":"'+sDevId+'","state":"'+this.value+'","values":{"all": 1}}}';
 			} else {
@@ -250,9 +250,9 @@ function createScreenElement(sTabId, sDevId, aValues) {
 					$(oLabel).removeClass('ui-btn-active');
 				else
 					$(oLabel).addClass('ui-btn-active');
-				if(i==4)
+				if(i==2)
 					window.clearInterval(x);
-			}, 150);
+			}, 100);
 			if('all' in aValues && aValues['all'] == 1) {
 				var json = '{"message":"send","code":{"location":"'+sTabId+'","device":"'+sDevId+'","state":"'+this.value+'","values":{"all": 1}}}';
 			} else {
@@ -300,7 +300,7 @@ function createDimmerElement(sTabId, sDevId, aValues) {
 			oTab = $('#all');
 		}
 		if('name' in aValues && 'dimlevel-minimum' in aValues && 'dimlevel-maximum' in aValues) {
-			oTab.append($('<li id="'+sTabId+'_'+sDevId+'" class="dimmer" data-icon="false">'+aValues['name']+'<select id="'+sTabId+'_'+sDevId+'_switch" data-role="slider"><option value="off">Off</option><option value="on">On</option></select><div id="'+sTabId+'_'+sDevId+'_dimmer" min="'+aValues['dimlevel-minimum']+'" max="'+aValues['dimlevel-maximum']+'" data-highlight="true" ><input type="value" id="'+sTabId+'_'+sDevId+'_value" class="slider-value dimmer-slider ui-slider-input ui-input-text ui-body-c ui-corner-all ui-shadow-inset" /></div></li>'));
+			oTab.append($('<li id="'+sTabId+'_'+sDevId+'" class="dimmer" data-icon="false"><div class="name">'+aValues['name']+'</div><select id="'+sTabId+'_'+sDevId+'_switch" data-role="slider"><option value="off">Off</option><option value="on">On</option></select><div id="'+sTabId+'_'+sDevId+'_dimmer" min="'+aValues['dimlevel-minimum']+'" max="'+aValues['dimlevel-maximum']+'" data-highlight="true" ><input type="value" id="'+sTabId+'_'+sDevId+'_value" class="slider-value dimmer-slider ui-slider-input ui-input-text ui-body-c ui-corner-all ui-shadow-inset" /></div></li>'));
 		}
 		$('#'+sTabId+'_'+sDevId+'_switch').slider();
 		$('#'+sTabId+'_'+sDevId+'_switch').bind("change", function(event, ui) {
@@ -395,7 +395,7 @@ function createWeatherElement(sTabId, sDevId, aValues) {
 			oTab = $('#all');
 		}
 		if('name' in aValues) {
-			oTab.append($('<li class="weather" id="'+sTabId+'_'+sDevId+'_weather" data-icon="false">'+aValues['name']+'</li>'));
+			oTab.append($('<li class="weather" id="'+sTabId+'_'+sDevId+'_weather" data-icon="false"><div class="name">'+aValues['name']+'</div></li>'));
 		}
 		if('gui-show-update' in aValues && aValues['gui-show-update']) {
 			iTime = Math.floor((new Date().getTime())/1000);
@@ -546,7 +546,7 @@ function createDateTimeElement(sTabId, sDevId, aValues) {
 			oTab = $('#all');
 		}
 		if('name' in aValues) {
-			oTab.append($('<li id="'+sTabId+'_'+sDevId+'_datetime" data-icon="false">'+aValues['name']+'</li>'));
+			oTab.append($('<li id="'+sTabId+'_'+sDevId+'_datetime" data-icon="false"><div class="name">'+aValues['name']+'</div></li>'));
 			oTab.find('#'+sTabId+'_'+sDevId+'_datetime').append($('<div id="'+sTabId+'_'+sDevId+'_text" class="datetime">'+aValues['year']+'-'+aValues['month']+'-'+aValues['day']+' '+aValues['hour']+':'+aValues['minute']+':'+aValues['second']+'</div>'));
 		}
 	} else {
@@ -564,7 +564,7 @@ function createWebcamElement(sTabId, sDevId, aValues) {
 			oTab = $('#all');
 		}
 		if('name' in aValues) {
-			oTab.append($('<li class="webcam" id="'+sTabId+'_'+sDevId+'_webcam" data-icon="false" style="height: '+aValues['gui-image-height']+'px;">'+aValues['name']+'</li>'));
+			oTab.append($('<li class="webcam" id="'+sTabId+'_'+sDevId+'_webcam" data-icon="false" style="height: '+aValues['gui-image-height']+'px;"><div class="name">'+aValues['name']+'</div></li>'));
 		}
 		if('id' in aValues && 'url' in aValues['id'][0] && 'gui-image-height' in aValues) {
 			oTab.find('#'+sTabId+'_'+sDevId+'_webcam').append($('<div class="webcam_image" id="'+sTabId+'_'+sDevId+'_image"><img id="'+sTabId+'_'+sDevId+'_img" src="'+aValues['id'][0]['url']+'" height="'+aValues['gui-image-height']+'"></div>'));
@@ -596,7 +596,7 @@ function createXBMCElement(sTabId, sDevId, aValues) {
 			oTab = $('#all');
 		}
 		if('name' in aValues) {
-			oTab.append($('<li class="xbmc" id="'+sTabId+'_'+sDevId+'_xbmc" data-icon="false">'+aValues['name']+'</li>'));
+			oTab.append($('<li class="xbmc" id="'+sTabId+'_'+sDevId+'_xbmc" data-icon="false"><div class="name">'+aValues['name']+'</div></li>'));
 		}
 		if('gui-show-action' in aValues && aValues['gui-show-action']) {
 			oTab.find('#'+sTabId+'_'+sDevId+'_xbmc').append($('<div class="action_icon" id="'+sTabId+'_'+sDevId+'_action">&nbsp;</div>'));
@@ -735,7 +735,7 @@ function createDateTimeElement(sTabId, sDevId, aValues) {
 		}
 		if('name' in aValues) {
 			sDate = moment(aValues['year']+'-'+aValues['month']+'-'+aValues['day']+' '+aValues['hour']+':'+aValues['minute']+':'+aValues['second'], ["YYYY-MM-DD HH:mm:ss"]).format(sFormat);
-			oTab.append($('<li id="'+sTabId+'_'+sDevId+'_datetime" data-icon="false">'+aValues['name']+'</li>'));
+			oTab.append($('<li id="'+sTabId+'_'+sDevId+'_datetime" data-icon="false"><div class="name">'+aValues['name']+'</div></li>'));
 			oTab.find('#'+sTabId+'_'+sDevId+'_datetime').append($('<div id="'+sTabId+'_'+sDevId+'_text" class="datetime">'+sDate+'</div>'));
 		}
 	} else {
@@ -864,7 +864,7 @@ function createGUI(data) {
 					});
 				}
 			}
-			$.mobile.hidePageLoadingMsg();
+			$.mobile.loading("hide");
 			bInitialized = true;
 		}
 	});
@@ -1079,7 +1079,11 @@ function parseData(data) {
 
 $(document).ready(function() {
 	if($('body').length == 1) {
-		$.mobile.showPageLoadingMsg("b", "Connecting...", true);
+		$.mobile.loading('show', {
+			'text': 'Connecting...',
+			'textVisible': true,
+			'theme': 'b'
+		});
 
 		if(navigator.userAgent.indexOf("Safari") > -1) {
 			bForceAjax = true;
@@ -1100,10 +1104,18 @@ $(document).ready(function() {
 				}).fail(function() {
 					window.clearInterval(load);
 					if(bConnected) {
-						$.mobile.showPageLoadingMsg("b", "Connection lost, touch to reload", true);
+						$.mobile.loading('show', {
+							'text': 'Connection lost, touch to reload',
+							'textVisible': true,
+							'theme': 'b'
+						});
 						$('html').on({ 'touchstart mousedown' : function(){location.reload();}});
 					} else {
-						$.mobile.showPageLoadingMsg("b", "Failed to connect, touch to reload", true);
+						$.mobile.loading('show', {
+							'text': 'Failed to connect, touch to reload',
+							'textVisible': true,
+							'theme': 'b'
+						});
 						$('html').on({ 'touchstart mousedown' : function(){location.reload();}});
 					}
 				});
@@ -1117,15 +1129,27 @@ $(document).ready(function() {
 			};
 			oWebsocket.onclose = function(evt) {
 				if(bConnected) {
-					$.mobile.showPageLoadingMsg("b", "Connection lost, touch to reload", true);
+					$.mobile.loading('show', {
+						'text': 'Connection lost, touch to reload',
+						'textVisible': true,
+						'theme': 'b'
+					});
 					$('html').on({ 'touchstart mousedown' : function(){location.reload();}});
 				} else {
-					$.mobile.showPageLoadingMsg("b", "Failed to connect, touch to reload", true);
+					$.mobile.loading('show', {
+						'text': 'Failed to connect, touch to reload',
+						'textVisible': true,
+						'theme': 'b'
+					});
 					$('html').on({ 'touchstart mousedown' : function(){location.reload();}});
 				}
 			};
 			oWebsocket.onerror = function(evt) {
-				$.mobile.showPageLoadingMsg("b", "An unexpected error occured", true);
+				$.mobile.loading('show', {
+					'text': 'An unexpected error occured',
+					'textVisible': true,
+					'theme': 'b'
+				});
 			};
 			oWebsocket.onmessage = function(evt) {
 				var data = $.parseJSON(evt.data);
