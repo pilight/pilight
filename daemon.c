@@ -2238,6 +2238,8 @@ int main(int argc, char **argv) {
 			}
 			checkram = 1;
 		} else {
+			checkcpu = 0;
+			checkram = 0;
 			if((i > 0 && i%3 == 0) || (i == -1)) {
 				procProtocol->message = json_mkobject();
 				JsonNode *code = json_mkobject();
