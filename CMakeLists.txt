@@ -553,16 +553,24 @@ if(${MODULES} MATCHES "OFF")
 	set_source_files_properties(${PROJECT_SOURCE_DIR}/libs/pilight/mongoose.c PROPERTIES COMPILE_FLAGS " -w ")
 	set_source_files_properties(${avrdude_sources} PROPERTIES COMPILE_FLAGS " -w ")
 
+	if(EXISTS "/usr/local/lib/libpilight.so")
+		install(CODE "execute_process(COMMAND rm /usr/local/lib/libpilight.so)")
+	endif()
+
 	install(FILES libpilight.so DESTINATION lib/pilight/ RENAME libpilight.so.${PROJECT_VERSION} COMPONENT pilight)
 	install(FILES libpilight.a DESTINATION lib/pilight/ RENAME libpilight.a COMPONENT pilight)
 
-	if(EXISTS "/usr/local/lib/libpilight.so")
-		execute_process(COMMAND rm "/usr/local/lib/libpilight.so")
+	if(NOT EXISTS "/usr/local/lib/libpilight.so")
+		install(CODE "execute_process(COMMAND ln -s \"/usr/local/lib/pilight/libpilight.so.${PROJECT_VERSION}\" \"/usr/local/lib/libpilight.so\")")
+	endif()		
+	
+	if(EXISTS "/etc/pilight/settings.json")
+		install(CODE "execute_process(COMMAND mv /etc/pilight/settings.json /etc/pilight/settings.json.bak)")
 	endif()
 
-	#if(NOT EXISTS "/usr/local/lib/libpilight.so")
-		execute_process(COMMAND ln -s "/usr/local/lib/pilight/libpilight.so.${PROJECT_VERSION}" "/usr/local/lib/libpilight.so")
-	#endif()
+	if(EXISTS "/etc/pilight/hardware.json")
+		install(CODE "execute_process(COMMAND mv /etc/pilight/hardware.json /etc/pilight/hardware.json.bak)")
+	endif()
 
 	if(${WEBSERVER} MATCHES "ON")
 		install(DIRECTORY web/ DESTINATION /usr/local/share/pilight COMPONENT pilight)
@@ -641,19 +649,19 @@ if(${MODULES} MATCHES "OFF")
 	target_link_libraries(pilight-flash ${CMAKE_THREAD_LIBS_INIT})
 
 	if(EXISTS "/usr/local/sbin/pilight-send")
-		execute_process(COMMAND rm "/usr/local/sbin/pilight-send")
+		install(CODE "execute_process(COMMAND rm /usr/local/sbin/pilight-send)")
 	endif()
 
 	if(EXISTS "/usr/local/sbin/pilight-receive")
-		execute_process(COMMAND rm "/usr/local/sbin/pilight-receive")
+		install(CODE "execute_process(COMMAND rm /usr/local/sbin/pilight-receive)")
 	endif()
 
 	if(EXISTS "/usr/local/sbin/pilight-control")
-		execute_process(COMMAND rm "/usr/local/sbin/pilight-control")
+		install(CODE "execute_process(COMMAND rm /usr/local/sbin/pilight-control)")
 	endif()
 
 	if(EXISTS "/usr/local/sbin/pilight-uuid")
-		execute_process(COMMAND rm "/usr/local/sbin/pilight-uuid")
+		install(CODE "execute_process(COMMAND rm /usr/local/sbin/pilight-uuid)")
 	endif()
 
 	install(PROGRAMS pilight-daemon DESTINATION sbin COMPONENT pilight)
@@ -665,7 +673,8 @@ if(${MODULES} MATCHES "OFF")
 	install(PROGRAMS pilight-debug DESTINATION sbin COMPONENT pilight)
 	install(PROGRAMS pilight-flash DESTINATION sbin COMPONENT pilight)
 	install(PROGRAMS pilight-uuid DESTINATION bin COMPONENT pilight)
-	install(SCRIPT cmake_postinstall.cmake)
+	install(CODE "execute_process(COMMAND update-rc.d pilight defaults)")
+	install(CODE "execute_process(COMMAND ldconfig)")
 endif()
 
 WRITE_UNINSTALL_TARGET_SCRIPT()

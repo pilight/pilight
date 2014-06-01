@@ -390,6 +390,7 @@ void *broadcast(void *param) {
 			broadcasted = 0;
 			JsonNode *jret = NULL;
 			char *origin = NULL;
+
 			if(json_find_string(bcqueue->jmessage, "origin", &origin) == 0) {
 				if(strcmp(origin, "config") == 0) {
 					char *conf = json_stringify(bcqueue->jmessage, NULL);
@@ -403,8 +404,7 @@ void *broadcast(void *param) {
 						logprintf(LOG_DEBUG, "broadcasted: %s", conf);
 					}
 					sfree((void *)&conf);
-				}
-				if(strcmp(origin, "receiver") == 0) {
+				} else {
 					/* Update the config */
 					if(config_update(bcqueue->protoname, bcqueue->jmessage, &jret) == 0) {
 						char *conf = json_stringify(jret, NULL);
@@ -2240,7 +2240,9 @@ int main(int argc, char **argv) {
 			}
 			checkram = 1;
 		} else {
-			if((i%3 == 0) || (i == -1)) {
+			checkcpu = 0;
+			checkram = 0;
+			if((i > 0 && i%3 == 0) || (i == -1)) {
 				procProtocol->message = json_mkobject();
 				JsonNode *code = json_mkobject();
 				json_append_member(code, "cpu", json_mknumber(cpu));
