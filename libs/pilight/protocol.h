@@ -51,6 +51,7 @@ typedef struct protocol_devices_t {
 
 typedef struct protocol_plslen_t {
 	int length;
+	int footerlength;
 	struct protocol_plslen_t *next;
 } protocol_plslen_t;
 

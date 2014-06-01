@@ -57,9 +57,6 @@ static void quiggSwCreateMessage(int id, int state, int unit, int all, int dimm)
 }
 
 static void quiggSwParseCode(void) {
-/*
-   LPF does not pass thru first 4 bytes of quigg_switch protocol
-*/
         int x=0, dec_unit[6]={0,3,1,2,4,5};
 
 	for(x=0; x<quigg_switch->rawlen; x+=2) {
@@ -108,6 +105,7 @@ static void quiggSwCreateHeader(void) {
 }
 
 static void quiggSwCreateFooter(void) {
+//	quigg_switch->raw[quigg_switch->rawlen-1] = 80700;
 	quigg_switch->raw[quigg_switch->rawlen-1] = PULSE_DIV*quigg_switch->plslen->length;
 }
 
@@ -239,6 +237,7 @@ void quiggSwInit(void) {
 	protocol_set_id(quigg_switch, "quigg_switch");
 	protocol_device_add(quigg_switch, "quigg_switch", "Quigg Switches");
 	protocol_plslen_add(quigg_switch, 700); // SHORT: GT-FSI-04a range: 620... 960
+	quigg_switch->plslen->footerlength=2400;
 	quigg_switch->devtype = SWITCH;
 	quigg_switch->hwtype = RF433;
 	quigg_switch->pulse = 2;        // LONG=QUIGG_PULSE_HIGH*SHORT
