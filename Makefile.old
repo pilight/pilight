@@ -24,7 +24,7 @@ GIT_HASH := $(shell git describe --always)
 CFLAGS = -ffast-math $(OSFLAGS) -Wl,-rpath=/usr/local/lib/,-rpath=/usr/lib/,-rpath=/lib/ -fstack-protector-all -Wfloat-equal -Wshadow -Wpointer-arith -Wcast-align -Wstrict-overflow=5 -Wwrite-strings -Waggregate-return -Wcast-qual -Wswitch-default -Wswitch-enum -Wformat=2 -g -Wall -I. -isystem.. -Ilibs/pilight/ -Ilibs/protocols/ -Ilibs/hardware/ -Ilibs/avrdude/ -pthread -lm -ldl -DHASH=\"$(GIT_HASH)\"
 SUBDIRS = libs/pilight libs/protocols libs/hardware libs/avrdude
 SRC = $(wildcard *.c)
-INCLUDES = $(wildcard libs/pilight/*.h) $(wildcard libs/pilight/*.c) $(wildcard libs/avrdude/*.h) $(wildcard libs/avrdude/*.c)
+INCLUDES = $(wildcard libs/pilight/*.c) $(wildcard libs/avrdude/*.c)
 PROGAMS = $(patsubst %.c,pilight-%,$(SRC))
 LIBS = libs/pilight/pilight.o libs/avrdude/avrdude.o libs/protocols/protocols.o libs/hardware/hardware.o
 PROTCOLS := $(shell cd libs/protocols/ && find * -name \*.so)
