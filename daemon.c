@@ -2205,34 +2205,53 @@ int main(int argc, char **argv) {
 		cpu = getCPUUsage();
 		ram = getRAMUsage();
 
-		if((i > -1) && (cpu > 90)) {
-			logprintf(LOG_ERR, "cpu usage way too high %f%, exiting", cpu);
-			exit(EXIT_FAILURE);
-		} else if((i > -1) && (cpu > 60)) {
+		if((i > -1) && (cpu > 60)) {
 			if(checkcpu == 0) {
-				logprintf(LOG_ERR, "cpu usage too high %f%", cpu);
+				if(cpu > 90) {
+					logprintf(LOG_ERR, "cpu usage way too high %f%", cpu);
+				} else {
+					logprintf(LOG_ERR, "cpu usage too high %f%", cpu);
+				}
 				logprintf(LOG_ERR, "checking again in 10 seconds");
 				sleep(10);
 			} else {
-				logprintf(LOG_ERR, "cpu usage still too high %f%, stopping", cpu);
+				if(cpu > 90) {
+					logprintf(LOG_ERR, "cpu usage still way too high %f%, stopping", cpu);
+				} else {
+					logprintf(LOG_ERR, "cpu usage still too high %f%, stopping", cpu);
+				}
 			}
 			if(checkcpu == 1) {
-				goto clear;
+				if(cpu > 90) {
+					exit(EXIT_FAILURE);
+				} else {
+					goto clear;
+				}
 			}
 			checkcpu = 1;
-		} else if((i > -1) && (ram > 90)) {
-			logprintf(LOG_ERR, "ram usage way too high %f%, exiting", ram);
-			exit(EXIT_FAILURE);
 		} else if((i > -1) && (ram > 60)) {
 			if(checkram == 0) {
-				logprintf(LOG_ERR, "ram usage too high %f%", ram);
+				if(ram > 90) {
+					logprintf(LOG_ERR, "ram usage way too high %f%", ram);
+					exit(EXIT_FAILURE);
+				} else {
+					logprintf(LOG_ERR, "ram usage too high %f%", ram);
+				}
 				logprintf(LOG_ERR, "checking again in 10 seconds");
 				sleep(10);
 			} else {
-				logprintf(LOG_ERR, "ram usage still too high %f%, stopping", ram);
+				if(ram > 90) {
+					logprintf(LOG_ERR, "ram usage still way too high %f%, stopping", ram);
+				} else {
+					logprintf(LOG_ERR, "ram usage still too high %f%, stopping", ram);
+				}
 			}
 			if(checkram == 1) {
-				goto clear;
+				if(ram > 90) {
+					exit(EXIT_FAILURE);
+				} else {
+					goto clear;
+				}
 			}
 			checkram = 1;
 		} else {
