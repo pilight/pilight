@@ -164,8 +164,10 @@ void tfaInit(void) {
 	protocol_set_id(tfa, "tfa");
 	protocol_device_add(tfa, "tfa", "TFA weather stations");
 	protocol_device_add(tfa, "conrad_weather", "Conrad Weather Stations");
-	protocol_plslen_add(tfa, 225);
-	protocol_plslen_add(tfa, 245);
+	protocol_plslen_add(tfa, 220);
+	protocol_plslen_add(tfa, 230);
+	protocol_plslen_add(tfa, 240);
+	protocol_plslen_add(tfa, 250);
 	tfa->devtype = WEATHER;
 	tfa->hwtype = RF433;
 	tfa->pulse = 20;
