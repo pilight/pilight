@@ -131,7 +131,7 @@ void logprintf(int prio, const char *format_str, ...) {
 			va_end(ap);
 		}
 
-		if(shelllog == 1 || prio == LOG_ERR) {
+		if(shelllog == 1) {
 			fputs(debug_log, stderr);
 			va_start(ap, format_str);
 			if(prio==LOG_WARNING)

@@ -51,6 +51,7 @@
 #include "ssdp.h"
 #include "dso.h"
 #include "firmware.h"
+#include "proc.h"
 
 #ifdef UPDATE
 	#include "update.h"
@@ -211,100 +212,6 @@ static int webgui_tpl_free = 0;
 /* Do we need to check for updates */
 static int update_check = UPDATE_CHECK;
 #endif
-
-/* CPU usage */
-static double start_seconds = 0.0;
-static double stop_seconds = 0.0;
-static double diff_seconds = 0.0;
-static double cpu_seconds = 0.0;
-static struct timespec cputp;
-static clock_t starts;
-
-/* RAM usage */
-unsigned long totalram = 0;
-
-/* Mounting proc subsystem */
-unsigned short mountproc = 1;
-
-static double getCPUUsage(void) {
-	clock_gettime(CLOCK_REALTIME, &cputp);
-	stop_seconds = cputp.tv_sec + cputp.tv_nsec / 1e9;
-
-	diff_seconds = stop_seconds - start_seconds;
-	cpu_seconds = (double)(clock() - starts)/(double)CLOCKS_PER_SEC;
-
-	clock_gettime(CLOCK_REALTIME, &cputp);
-	start_seconds = cputp.tv_sec + cputp.tv_nsec / 1e9;
-	starts = clock();
-
-	return (cpu_seconds / diff_seconds * 100.0);
-}
-
-static double getRAMUsage(void) {
-#ifdef __FreeBSD__
-	static char statusfile[] = "/compat/proc/self/status";
-    static char memfile[] = "/compat/proc/meminfo";
-#else
-	static char statusfile[] = "/proc/self/status";
-    static char memfile[] = "/proc/meminfo";
-#endif
-    unsigned long VmRSS = 0, value = 0, total = 0;
-    char title[32] = "";
-    char units[32] = "";
-    int ret = 0;
-    FILE *fp = NULL;
-
-    fp = fopen(statusfile, "r");
-    if(fp) {
-        while(ret != EOF) {
-            ret = fscanf(fp, "%31s %lu %s\n", title, &value, units);
-            if(strcmp(title, "VmRSS:") == 0) {
-                VmRSS = value * 1024;
-				break;
-            }
-        }
-        fclose(fp);
-#ifdef __FreeBSD__
-		if(mountproc) {
-			DIR* dir;
-			if(!(dir = opendir("/compat"))) {
-				mkdir("/compat", 0755);
-			} else {
-				closedir(dir);
-			}
-			if(!(dir = opendir("/compat/proc"))) {
-				mkdir("/compat/proc", 0755);
-			} else {
-				closedir(dir);
-			}
-			if(!(dir = opendir("/compat/proc/self"))) {
-				system("mount -t linprocfs none /compat/proc 2>/dev/null 1>/dev/null");
-				mountproc = 0;
-			} else {
-				closedir(dir);
-			}
-		}
-#endif
-    }
-
-
-    fp = fopen(memfile, "r");
-    if(fp) {
-        while(ret != EOF) {
-            ret = fscanf(fp, "%31s %lu %s\n", title, &value, units);
-            if(strcmp(title, "MemTotal:") == 0) {
-                total = value * 1024;
-                break;
-            }
-        }
-        fclose(fp);
-    }
-	if(VmRSS > 0 && total > 0) {
-		return ((double)VmRSS*100)/(double)total;
-	} else {
-		return 0.0;
-	}
-}
 
 static void node_add(int id, char uuid[21]) {
 	struct nodes_t *node = malloc(sizeof(struct nodes_t));
@@ -1702,6 +1609,7 @@ int main_gc(void) {
 	dso_gc();
 
 	whitelist_free();
+	proc_gc();
 	threads_gc();
 	pthread_join(pth, NULL);
 	log_gc();
@@ -1723,10 +1631,6 @@ static void procProtocolInit(void) {
 
 	options_add(&procProtocol->options, 'c', "cpu", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, NULL, NULL);
 	options_add(&procProtocol->options, 'r', "ram", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, NULL, NULL);
-
-#if defined(_SC_PHYS_PAGES) && defined(_SC_PAGESIZE)
-	totalram = (size_t)sysconf(_SC_PHYS_PAGES)*(size_t)sysconf(_SC_PAGESIZE);
-#endif
 }
 
 #ifdef FIRMWARE
@@ -2147,6 +2051,9 @@ int main(int argc, char **argv) {
 	/* Start threads library that keeps track of all threads used */
 	threads_create(&pth, NULL, &threads_start, (void *)NULL);
 
+	/* Start the CPU usage plain seconds calculator */
+	threads_register("second parser", &calcSec, (void *)NULL, 0);
+
 	/* The daemon running in client mode, register a seperate thread that
 	   communicates with the server */
 	if(runmode == 2) {
@@ -2184,7 +2091,7 @@ int main(int argc, char **argv) {
 #ifdef WEBSERVER
 	/* Register a seperate thread for the webserver */
 	if(webserver_enable == 1 && runmode == 1) {
-		threads_register("webserver daemon", &webserver_start, (void *)NULL, 0);
+		webserver_start();
 		/* Register a seperate thread in which the webserver communicates
 		   the main daemon as if it where a gui */
 		threads_register("webserver client", &webserver_clientize, (void *)NULL, 0);
@@ -2204,8 +2111,8 @@ int main(int argc, char **argv) {
 		double cpu = 0.0, ram = 0.0;
 		cpu = getCPUUsage();
 		ram = getRAMUsage();
-
 		if((i > -1) && (cpu > 60)) {
+			threads_cpu_usage();
 			if(checkcpu == 0) {
 				if(cpu > 90) {
 					logprintf(LOG_ERR, "cpu usage way too high %f%", cpu);
@@ -2216,7 +2123,7 @@ int main(int argc, char **argv) {
 				sleep(10);
 			} else {
 				if(cpu > 90) {
-					logprintf(LOG_ERR, "cpu usage still way too high %f%, stopping", cpu);
+					logprintf(LOG_ERR, "cpu usage still way too high %f%, exiting", cpu);
 				} else {
 					logprintf(LOG_ERR, "cpu usage still too high %f%, stopping", cpu);
 				}
@@ -2241,7 +2148,7 @@ int main(int argc, char **argv) {
 				sleep(10);
 			} else {
 				if(ram > 90) {
-					logprintf(LOG_ERR, "ram usage still way too high %f%, stopping", ram);
+					logprintf(LOG_ERR, "ram usage still way too high %f%, exiting", ram);
 				} else {
 					logprintf(LOG_ERR, "ram usage still too high %f%, stopping", ram);
 				}

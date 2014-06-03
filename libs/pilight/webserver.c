@@ -891,7 +891,7 @@ static int webserver_handler(struct mg_connection *conn, enum mg_event ev) {
 	}
 }
 
-void *webserver_start(void *param) {
+int webserver_start(void) {
 
 	if(which("php-cgi") != 0) {
 		webserver_php = 0;
@@ -965,10 +965,6 @@ void *webserver_start(void *param) {
 	char localhost[16] = "127.0.0.1";
 	loopfd = socket_connect(localhost, (unsigned short)webserver_port);
 	logprintf(LOG_DEBUG, "webserver listening to port %s", webport);
-	/* Main webserver loop */
-	while(webserver_loop) {
-		sleep(1);
-	}
 
 	return 0;
 }
