@@ -41,13 +41,13 @@ static void quiggSwCreateMessage(int id, int state, int unit, int all, int dimm)
 	}
 
 	if(state==1) {
-		if(unit==4) {
+		if(dimm==1) {
 			json_append_member(quigg_switch->message, "state", json_mkstring("down"));
 		} else {
 			json_append_member(quigg_switch->message, "state", json_mkstring("on"));
 		}
 	} else {
-		if(unit==4) {
+		if(dimm==1) {
 			json_append_member(quigg_switch->message, "state", json_mkstring("up"));
 		} else {
 			json_append_member(quigg_switch->message, "state", json_mkstring("off"));
@@ -57,7 +57,7 @@ static void quiggSwCreateMessage(int id, int state, int unit, int all, int dimm)
 }
 
 static void quiggSwParseCode(void) {
-        int x=0, dec_unit[6]={0,3,1,2,4,5};
+        int x=0, dec_unit[4]={0,3,1,2};
 
 	for(x=0; x<quigg_switch->rawlen; x+=2) {
 		quigg_switch->binary[x/2]=quigg_switch->code[x+1];
@@ -68,18 +68,6 @@ static void quiggSwParseCode(void) {
 	int state = binToDecRev(quigg_switch->binary, 15, 15);
 	int dimm = binToDecRev(quigg_switch->binary, 16, 16);
 
-	if(dimm==1) {
-		unit = 4;
-	}
-	if(all==1) {
-		unit = 5;
-	}
-	if(unit>5) {
-		unit = 5;
-	}
-	if(unit<0) {
-		unit = 5;
-	}
 	unit = dec_unit[unit];
 	quiggSwCreateMessage(id, state, unit, all, dimm);
 }
@@ -130,7 +118,7 @@ static void quiggSwCreateId(int id) {
 	}
 }
 
-static void quiggSwCreateUnit(int unit) {
+static void quiggSwCreateUnit(int unit, int dimm) {
 	switch (unit) {
 		case 0:
 			quiggSwCreateLow(25, 30);	// 1st row
@@ -147,14 +135,14 @@ static void quiggSwCreateUnit(int unit) {
 			quiggSwCreateHigh(27, 28);	// 4th row
 		break;
 		case 4:
-			quiggSwCreateHigh(27, 28);	// 5th row Dimm ?
-			quiggSwCreateHigh(33, 34);	// 
-			quiggSwCreateHigh(37, 38);	// needs to be set
-		case 5:
 			quiggSwCreateHigh(25, 30);	// 6th row MASTER (all)
-		break;
 		default:
 		break;
+	}
+	if (dimm==1) {
+		quiggSwCreateHigh(27, 28);	// 5th row Dimm ?
+		quiggSwCreateHigh(33, 34);	// 
+		quiggSwCreateHigh(37, 38);	// needs to be set
 	}
 }
 
@@ -197,23 +185,25 @@ static int quiggSwCreateCode(JsonNode *code) {
 		state=0;
 	else if(json_find_number(code, "on", &itmp) == 0)
 		state=1;
+	if(json_find_number(code, "dimm", &itmp) == 0)
+		dimm=1;
 	if(id==-1 || (unit==-1 && all==0) || state==-1) {
 		logprintf(LOG_ERR, "quigg_switch: insufficient number of arguments");
 		return EXIT_FAILURE;
 	} else if(id > 4095 || id < 0) {
 		logprintf(LOG_ERR, "quigg_switch: invalid programm code id range");
 		return EXIT_FAILURE;
-	} else if((unit > 5 || unit < 0) && all == 0) {
+	} else if((unit > 3 || unit < 0) && all == 0) {
 		logprintf(LOG_ERR, "quigg_switch: invalid button code unit range");
 		return EXIT_FAILURE;
 	} else {
 		if(unit == -1 && all == 1) {
-			unit = 5;
+			unit = 4;
 		}
 		quiggSwCreateMessage(id, state, unit, all, dimm);
 		quiggSwClearCode();
 		quiggSwCreateId(id);
-		quiggSwCreateUnit(unit);
+		quiggSwCreateUnit(unit, dimm);
 		quiggSwCreateState(state);
 		quiggSwCreateParity();
 	}
@@ -225,6 +215,7 @@ static void quiggSwPrintHelp(void) {
 	printf("\t -u --unit=unit\t\t\tcontrol the device unit with this code\n");
 	printf("\t -t --on\t\t\tsend an on signal to device\n");
 	printf("\t -f --off\t\t\tsend an off signal to device\n");
+	printf("\t -d --dimm\t\t\tsend a dimm signal to device\n");
 	printf("\t -a --id=all\t\t\tcommand to all devices with this id\n");
 }
 
@@ -249,6 +240,7 @@ void quiggSwInit(void) {
 
 	options_add(&quigg_switch->options, 't', "on", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
 	options_add(&quigg_switch->options, 'f', "off", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
+	options_add(&quigg_switch->options, 'd', "dimm", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
 	options_add(&quigg_switch->options, 'u', "unit", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, NULL, "^([0-5])$");
 	options_add(&quigg_switch->options, 'i', "id", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, NULL, "^([1-9]|[1-9][0-9]|[1-9][0-9][0-9]|[1-3][0-9][0-9][0-9]|40[0-8][0-9]|409[0-5])$");
 	options_add(&quigg_switch->options, 'a', "all", OPTION_NO_VALUE, CONFIG_SETTING, JSON_NUMBER, NULL, NULL);
@@ -265,7 +257,7 @@ void compatibility(struct module_t *module) {
 	module->name =  "quigg_switch";
 	module->version =  "1.0";
 	module->reqversion =  "4.0";
-	module->reqcommit =  "45";
+	module->reqcommit =  "55";
 }
 
 void init(void) {
