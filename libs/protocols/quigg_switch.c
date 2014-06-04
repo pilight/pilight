@@ -48,19 +48,35 @@ static void quiggSwCreateMessage(int id, int state, int unit, int all) {
 }
 
 static void quiggSwParseCode(void) {
-/*
-   Conversion code will follow once the Rx part is working together with LPF
-*/
-	int unit = binToDecRev(quigg_switch->binary, 25, 28);
-	int id = binToDecRev(quigg_switch->binary, 1, 24);
-	int all = binToDecRev(quigg_switch->binary, 29, 30);
-	int state = binToDecRev(quigg_switch->binary, 31, 32);
-	int dimm = binToDecRev(quigg_switch->binary, 33, 34);
+	int x=0, dec_unit[6] = {0, 3, 1, 2, 4, 5};
 
-	if(dimm==1 && unit==3) {
+	for(x=0; x<quigg_switch->rawlen; x+=2) {
+		quigg_switch->binary[x/2]=quigg_switch->code[x+1];
+	}
+
+	int id = binToDecRev(quigg_switch->binary, 0, 11);
+	int unit = binToDecRev(quigg_switch->binary, 12, 13);
+	int all = quigg_switch->binary[14];
+	int state = quigg_switch->binary[15];
+	int dimm = quigg_switch->binary[16];
+
+	if(dimm == 1) {
 		unit = 4;
 	}
-	quiggSwCreateMessage(id, state, unit, all);
+	if(all == 1) {
+		unit = 5;
+	}
+	if(unit > 5) {
+		unit = 5;
+	}
+	if(unit < 0) {
+		unit = 5;
+	}
+	unit = dec_unit[unit];
+
+	if(unit != 4) {
+		quiggSwCreateMessage(id, state, unit, all);
+	}
 }
 
 static void quiggSwCreateLow(int s, int e) {
