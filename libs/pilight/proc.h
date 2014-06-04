@@ -33,7 +33,6 @@ typedef struct cpu_usage_t {
 
 double getCPUUsage(void);
 double getRAMUsage(void);
-void *calcSec(void *param);
 void getThreadCPUUsage(pthread_t *pth, struct cpu_usage_t *cpu_usage);
-int proc_gc(void);
+
 #endif

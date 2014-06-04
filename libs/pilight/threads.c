@@ -171,11 +171,7 @@ void threads_cpu_usage(void) {
 	while(tmp_threads) {
 		getThreadCPUUsage(&tmp_threads->pth, &tmp_threads->cpu_usage);
 		if(tmp_threads->cpu_usage.cpu_per > 0) {
-			if(tmp_threads->cpu_usage.cpu_per > 100) {
-				logprintf(LOG_ERR, "- thread %s: 99%%", tmp_threads->id);
-			} else {
-				logprintf(LOG_ERR, "- thread %s: %f%%", tmp_threads->id, tmp_threads->cpu_usage.cpu_per);
-			}
+			logprintf(LOG_ERR, "- thread %s: %f%%", tmp_threads->id, tmp_threads->cpu_usage.cpu_per);
 		} else {
 			logprintf(LOG_ERR, "- thread %s: 0.000000%%", tmp_threads->id);
 		}

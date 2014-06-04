@@ -152,9 +152,9 @@ file(GLOB pilight
 	"${PROJECT_SOURCE_DIR}/libs/pilight/*.c"
 	"${PROJECT_SOURCE_DIR}/libs/avrdude/*.c")
 	
-if(${PROTOCOL_ALECTO} MATCHES "OFF")
-	list(REMOVE_ITEM protocol_headers "${PROJECT_SOURCE_DIR}/libs/protocols/alecto.h")
-	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/alecto.c")
+if(${PROTOCOL_ALECTO_WSD17} MATCHES "OFF")
+	list(REMOVE_ITEM protocol_headers "${PROJECT_SOURCE_DIR}/libs/protocols/alecto_wsd17.h")
+	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/alecto_wsd17.c")
 endif()
 
 if(${PROTOCOL_COGEX_SWITCH} MATCHES "OFF"

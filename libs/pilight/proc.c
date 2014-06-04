@@ -40,53 +40,45 @@ static unsigned long totalram = 0;
 	static unsigned short mountproc = 1;
 #endif
 
-static double seconds = 0.0;
-
-static int proc_loop = 1;
-
-void *calcSec(void *param) {
-	struct timespec ts;
-	double sec_stop = 0.0, sec_start = 0.0;
-	
-	while(proc_loop) {
-		/* Time difference */
-		clock_gettime(CLOCK_REALTIME, &ts);
-		sec_stop = ts.tv_sec + ts.tv_nsec / 1e9;
-
-		seconds = sec_stop - sec_start;
-
-		clock_gettime(CLOCK_REALTIME, &ts);
-		sec_start = ts.tv_sec + ts.tv_nsec / 1e9;		
-		sleep(1);
-	}
-	return 0;
-}
-
 double getCPUUsage(void) {
 	static struct cpu_usage_t cpu_usage;
-	
+
 	clock_gettime(CLOCK_REALTIME, &cpu_usage.ts);
 	cpu_usage.sec_stop = cpu_usage.ts.tv_sec + cpu_usage.ts.tv_nsec / 1e9;
 
 	cpu_usage.sec_diff = cpu_usage.sec_stop - cpu_usage.sec_start;
-	cpu_usage.cpu_new = (double)(clock() - cpu_usage.starts)/(double)CLOCKS_PER_SEC;
+
+	clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &cpu_usage.ts);	
+	cpu_usage.cpu_new = (cpu_usage.ts.tv_sec + (cpu_usage.ts.tv_nsec / 1e9));
+	double a = ((cpu_usage.cpu_new-cpu_usage.cpu_old) / cpu_usage.sec_diff * 100.0);
+	cpu_usage.cpu_old = cpu_usage.cpu_new;	
 
 	clock_gettime(CLOCK_REALTIME, &cpu_usage.ts);
-	cpu_usage.sec_start = cpu_usage.ts.tv_sec + cpu_usage.ts.tv_nsec / 1e9;
-	cpu_usage.starts = clock();
-
-	return (cpu_usage.cpu_new / cpu_usage.sec_diff * 100.0);
+	cpu_usage.sec_start = cpu_usage.ts.tv_sec + cpu_usage.ts.tv_nsec / 1e9;	
+	
+	return a;
 }
 
 void getThreadCPUUsage(pthread_t *pth, struct cpu_usage_t *cpu_usage) {
 	clockid_t cid;
 
+	clock_gettime(CLOCK_REALTIME, &cpu_usage->ts);
+	cpu_usage->sec_stop = cpu_usage->ts.tv_sec + cpu_usage->ts.tv_nsec / 1e9;	
+
+	cpu_usage->sec_diff = cpu_usage->sec_stop - cpu_usage->sec_start;	
+	
 	pthread_getcpuclockid(*pth, &cid);
 	clock_gettime(cid, &cpu_usage->ts);
 
 	cpu_usage->cpu_new = (cpu_usage->ts.tv_sec + (cpu_usage->ts.tv_nsec / 1e9));
-	cpu_usage->cpu_per = ((cpu_usage->cpu_new-cpu_usage->cpu_old) / seconds * 100.0);
+	cpu_usage->cpu_per = ((cpu_usage->cpu_new-cpu_usage->cpu_old) / cpu_usage->sec_diff * 100.0);
+	if(cpu_usage->cpu_per > 100) {
+		cpu_usage->cpu_per = 0;
+	}
 	cpu_usage->cpu_old = cpu_usage->cpu_new;
+	
+	clock_gettime(CLOCK_REALTIME, &cpu_usage->ts);
+	cpu_usage->sec_start = cpu_usage->ts.tv_sec + cpu_usage->ts.tv_nsec / 1e9;
 }
 
 double getRAMUsage(void) {
@@ -159,9 +151,4 @@ double getRAMUsage(void) {
 	} else {
 		return 0.0;
 	}
-}
-
-int proc_gc(void) {
-	proc_loop = 0;
-	return 0;
 }
