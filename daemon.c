@@ -51,6 +51,7 @@
 #include "ssdp.h"
 #include "dso.h"
 #include "firmware.h"
+#include "proc.h"
 
 #ifdef UPDATE
 	#include "update.h"
@@ -211,100 +212,6 @@ static int webgui_tpl_free = 0;
 /* Do we need to check for updates */
 static int update_check = UPDATE_CHECK;
 #endif
-
-/* CPU usage */
-static double start_seconds = 0.0;
-static double stop_seconds = 0.0;
-static double diff_seconds = 0.0;
-static double cpu_seconds = 0.0;
-static struct timespec cputp;
-static clock_t starts;
-
-/* RAM usage */
-unsigned long totalram = 0;
-
-/* Mounting proc subsystem */
-unsigned short mountproc = 1;
-
-static double getCPUUsage(void) {
-	clock_gettime(CLOCK_REALTIME, &cputp);
-	stop_seconds = cputp.tv_sec + cputp.tv_nsec / 1e9;
-
-	diff_seconds = stop_seconds - start_seconds;
-	cpu_seconds = (double)(clock() - starts)/(double)CLOCKS_PER_SEC;
-
-	clock_gettime(CLOCK_REALTIME, &cputp);
-	start_seconds = cputp.tv_sec + cputp.tv_nsec / 1e9;
-	starts = clock();
-
-	return (cpu_seconds / diff_seconds * 100.0);
-}
-
-static double getRAMUsage(void) {
-#ifdef __FreeBSD__
-	static char statusfile[] = "/compat/proc/self/status";
-    static char memfile[] = "/compat/proc/meminfo";
-#else
-	static char statusfile[] = "/proc/self/status";
-    static char memfile[] = "/proc/meminfo";
-#endif
-    unsigned long VmRSS = 0, value = 0, total = 0;
-    char title[32] = "";
-    char units[32] = "";
-    int ret = 0;
-    FILE *fp = NULL;
-
-    fp = fopen(statusfile, "r");
-    if(fp) {
-        while(ret != EOF) {
-            ret = fscanf(fp, "%31s %lu %s\n", title, &value, units);
-            if(strcmp(title, "VmRSS:") == 0) {
-                VmRSS = value * 1024;
-				break;
-            }
-        }
-        fclose(fp);
-#ifdef __FreeBSD__
-		if(mountproc) {
-			DIR* dir;
-			if(!(dir = opendir("/compat"))) {
-				mkdir("/compat", 0755);
-			} else {
-				closedir(dir);
-			}
-			if(!(dir = opendir("/compat/proc"))) {
-				mkdir("/compat/proc", 0755);
-			} else {
-				closedir(dir);
-			}
-			if(!(dir = opendir("/compat/proc/self"))) {
-				system("mount -t linprocfs none /compat/proc 2>/dev/null 1>/dev/null");
-				mountproc = 0;
-			} else {
-				closedir(dir);
-			}
-		}
-#endif
-    }
-
-
-    fp = fopen(memfile, "r");
-    if(fp) {
-        while(ret != EOF) {
-            ret = fscanf(fp, "%31s %lu %s\n", title, &value, units);
-            if(strcmp(title, "MemTotal:") == 0) {
-                total = value * 1024;
-                break;
-            }
-        }
-        fclose(fp);
-    }
-	if(VmRSS > 0 && total > 0) {
-		return ((double)VmRSS*100)/(double)total;
-	} else {
-		return 0.0;
-	}
-}
 
 static void node_add(int id, char uuid[21]) {
 	struct nodes_t *node = malloc(sizeof(struct nodes_t));
@@ -586,12 +493,15 @@ void *receive_parse_code(void *param) {
 					   || protocol->parseBinary) && protocol->pulse > 0 && protocol->plslen)) {
 					plslengths = protocol->plslen;
 					while(plslengths && main_loop) {
+// Start Quigg - footerlength
 						if(((recvqueue->plslen >= (plslengths->length - (int)(plslengths->length * 0.9))) &&
 						    (recvqueue->plslen <= (plslengths->length + (int)(plslengths->length * 0.9))))
 						|| ((recvqueue->plslen >= (plslengths->footerlength - (int)(plslengths->footerlength * 0.9))) &&
 						    (recvqueue->plslen <= (plslengths->footerlength + (int)(plslengths->footerlength * 0.9))))) {
+// ========
 						// if((recvqueue->plslen >= ((double)plslengths->length-5) &&
 						    // recvqueue->plslen <= ((double)plslengths->length+5))) {
+// End
 							match = 1;
 							break;
 						}
@@ -1395,6 +1305,11 @@ void *receive_code(void *param) {
 	int plslen = 0, rawlen = 0;
 	int rawcode[255] = {0};
 	int duration = 0;
+	struct timeval t;
+
+	unsigned long first = 0;
+	unsigned long second = 0;
+	unsigned long noisecount = 0;
 
 	/* Make sure the pilight receiving gets
 	   the highest priority available */
@@ -1409,6 +1324,26 @@ void *receive_code(void *param) {
 		if(sending == 0) {
 			pthread_mutex_lock(&receive_lock);
 			duration = hw->receive();
+
+			/* Noise detection
+			   This detector sleeps 1 second if we detected more than 100 subsequent
+			   pulses that are lower than 25ms. With a properly functioning receiver
+			   this should never happen. So either the system is failing and receiving
+			   wouldn't have worked anyway or something else is making receiving
+			   impossible. A 1 second sleep should be harmless either way. */
+
+			gettimeofday(&t, NULL);
+			first = second;
+			second = 1000000 * (unsigned int)t.tv_sec + (unsigned int)t.tv_usec;
+			if(((int)second-(int)first) <= 25) {
+				noisecount++;
+				if(noisecount > 100) {
+					noisecount = 0;
+					sleep(1);
+				}
+			} else {
+				noisecount = 0;
+			}
 
 			if(duration > 0) {
 				rawcode[rawlen] = duration;
@@ -1727,10 +1662,6 @@ static void procProtocolInit(void) {
 
 	options_add(&procProtocol->options, 'c', "cpu", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, NULL, NULL);
 	options_add(&procProtocol->options, 'r', "ram", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, NULL, NULL);
-
-#if defined(_SC_PHYS_PAGES) && defined(_SC_PAGESIZE)
-	totalram = (size_t)sysconf(_SC_PHYS_PAGES)*(size_t)sysconf(_SC_PAGESIZE);
-#endif
 }
 
 #ifdef FIRMWARE
@@ -2188,7 +2119,7 @@ int main(int argc, char **argv) {
 #ifdef WEBSERVER
 	/* Register a seperate thread for the webserver */
 	if(webserver_enable == 1 && runmode == 1) {
-		threads_register("webserver daemon", &webserver_start, (void *)NULL, 0);
+		webserver_start();
 		/* Register a seperate thread in which the webserver communicates
 		   the main daemon as if it where a gui */
 		threads_register("webserver client", &webserver_clientize, (void *)NULL, 0);
@@ -2209,34 +2140,54 @@ int main(int argc, char **argv) {
 		cpu = getCPUUsage();
 		ram = getRAMUsage();
 
-		if((i > -1) && (cpu > 90)) {
-			logprintf(LOG_ERR, "cpu usage way too high %f%, exiting", cpu);
-			exit(EXIT_FAILURE);
-		} else if((i > -1) && (cpu > 60)) {
+		if((i > -1) && (cpu > 60)) {
+			threads_cpu_usage();
 			if(checkcpu == 0) {
-				logprintf(LOG_ERR, "cpu usage too high %f%", cpu);
+				if(cpu > 90) {
+					logprintf(LOG_ERR, "cpu usage way too high %f%", cpu);
+				} else {
+					logprintf(LOG_ERR, "cpu usage too high %f%", cpu);
+				}
 				logprintf(LOG_ERR, "checking again in 10 seconds");
 				sleep(10);
 			} else {
-				logprintf(LOG_ERR, "cpu usage still too high %f%, stopping", cpu);
+				if(cpu > 90) {
+					logprintf(LOG_ERR, "cpu usage still way too high %f%, exiting", cpu);
+				} else {
+					logprintf(LOG_ERR, "cpu usage still too high %f%, stopping", cpu);
+				}
 			}
 			if(checkcpu == 1) {
-				goto clear;
+				if(cpu > 90) {
+					exit(EXIT_FAILURE);
+				} else {
+					goto clear;
+				}
 			}
 			checkcpu = 1;
-		} else if((i > -1) && (ram > 90)) {
-			logprintf(LOG_ERR, "ram usage way too high %f%, exiting", ram);
-			exit(EXIT_FAILURE);
 		} else if((i > -1) && (ram > 60)) {
 			if(checkram == 0) {
-				logprintf(LOG_ERR, "ram usage too high %f%", ram);
+				if(ram > 90) {
+					logprintf(LOG_ERR, "ram usage way too high %f%", ram);
+					exit(EXIT_FAILURE);
+				} else {
+					logprintf(LOG_ERR, "ram usage too high %f%", ram);
+				}
 				logprintf(LOG_ERR, "checking again in 10 seconds");
 				sleep(10);
 			} else {
-				logprintf(LOG_ERR, "ram usage still too high %f%, stopping", ram);
+				if(ram > 90) {
+					logprintf(LOG_ERR, "ram usage still way too high %f%, exiting", ram);
+				} else {
+					logprintf(LOG_ERR, "ram usage still too high %f%, stopping", ram);
+				}
 			}
 			if(checkram == 1) {
-				goto clear;
+				if(ram > 90) {
+					exit(EXIT_FAILURE);
+				} else {
+					goto clear;
+				}
 			}
 			checkram = 1;
 		} else {

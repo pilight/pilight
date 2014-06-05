@@ -151,6 +151,8 @@ int socket_get_clients(int i) {
 int socket_connect(char *address, unsigned short port) {
 	struct sockaddr_in serv_addr;
 	int sockfd;
+	fd_set fdset;
+	struct timeval tv;
 
 	/* Try to open a new socket */
     if((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
@@ -165,11 +167,29 @@ int socket_connect(char *address, unsigned short port) {
     serv_addr.sin_port = htons(port);
     inet_pton(AF_INET, address, &serv_addr.sin_addr);
 
+	fcntl(sockfd, F_SETFL, O_NONBLOCK);
+
+	FD_ZERO(&fdset);
+    FD_SET(sockfd, &fdset);
+    tv.tv_sec = 3;
+    tv.tv_usec = 0;
+
 	/* Connect to the server */
-    if(connect(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
-		return -1;
+	connect(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr));
+
+	if(select(sockfd+1, NULL, &fdset, NULL, &tv) == 1) {
+        int error = -1;
+        socklen_t len = sizeof(error);
+
+        getsockopt(sockfd, SOL_SOCKET, SO_ERROR, &error, &len);
+
+        if(error == 0) {
+            return sockfd;
+		} else {
+			return -1;
+        }
     } else {
-		return sockfd;
+		return -1;
 	}
 }
 

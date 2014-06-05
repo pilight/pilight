@@ -118,7 +118,7 @@ static void *lircParse(void *param) {
 					pthread_mutex_unlock(&lirclock);
 					break;
 				} else if(n == 0) {
-					usleep(10000);
+					usleep(100000);
 				} else if(n > 0) {
 					if(FD_ISSET((unsigned long)lirc_sockfd, &fdsread)) {
 						bytes = (int)recv(lirc_sockfd, recvBuff, BUFFER_SIZE, 0);

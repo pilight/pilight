@@ -165,6 +165,21 @@ void thread_stop(struct threadqueue_t *node) {
 	}
 }
 
+void threads_cpu_usage(void) {
+	logprintf(LOG_ERR, "----- Thread Profiling -----");
+	struct threadqueue_t *tmp_threads = threadqueue;
+	while(tmp_threads) {
+		getThreadCPUUsage(&tmp_threads->pth, &tmp_threads->cpu_usage);
+		if(tmp_threads->cpu_usage.cpu_per > 0) {
+			logprintf(LOG_ERR, "- thread %s: %f%%", tmp_threads->id, tmp_threads->cpu_usage.cpu_per);
+		} else {
+			logprintf(LOG_ERR, "- thread %s: 0.000000%%", tmp_threads->id);
+		}
+		tmp_threads = tmp_threads->next;
+	}
+	logprintf(LOG_ERR, "----- Thread Profiling -----");
+}
+
 int threads_gc(void) {
 	thread_loop = 0;
 

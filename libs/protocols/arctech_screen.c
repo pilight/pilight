@@ -191,6 +191,7 @@ void arctechSrInit(void) {
 	protocol_set_id(arctech_screen, "arctech_screens");
 	protocol_device_add(arctech_screen, "kaku_screen", "KlikAanKlikUit Screens");
 	protocol_plslen_add(arctech_screen, 251);
+	protocol_plslen_add(arctech_screen, 294);
 	protocol_plslen_add(arctech_screen, 303);
 	arctech_screen->devtype = SCREEN;
 	arctech_screen->hwtype = RF433;

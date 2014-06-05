@@ -141,7 +141,7 @@ void selectremoteInit(void) {
 
 	protocol_register(&selectremote);
 	protocol_set_id(selectremote, "selectremote");
-	protocol_device_add(selectremote, "selectremote", "selectremote Switches");
+	protocol_device_add(selectremote, "selectremote", "SelectRemote Switches");
 	protocol_plslen_add(selectremote, 396);
 	selectremote->devtype = SWITCH;
 	selectremote->hwtype = RF433;

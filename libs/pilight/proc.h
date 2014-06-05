@@ -1,5 +1,5 @@
 /*
-	Copyright (C) 2013 CurlyMo
+	Copyright (C) 2014 CurlyMo
 
 	This file is part of pilight.
 
@@ -16,16 +16,23 @@
     along with pilight. If not, see	<http://www.gnu.org/licenses/>
 */
 
-#ifndef _WEBSERVER_H_
-#define _WEBSERVER_H_
+#ifndef _PROC_H_
+#define _PROC_H_
 
-#include <pwd.h>
+/* CPU usage */
+typedef struct cpu_usage_t {
+	double sec_start;
+	double sec_stop;
+	double sec_diff;
+	double cpu_old;
+	double cpu_new;
+	double cpu_per;
+	struct timespec ts;
+	clock_t starts;
+} cpu_usage_t;
 
-int webserver_gc(void);
-int webserver_start(void);
-void *webserver_clientize(void *param);
-void *webserver_broadcast(void *param);
-char *webserver_mimetype(const char *str);
-void webserver_create_header(unsigned char **p, const char *message, char *mimetype, unsigned int len);
+double getCPUUsage(void);
+double getRAMUsage(void);
+void getThreadCPUUsage(pthread_t *pth, struct cpu_usage_t *cpu_usage);
 
 #endif

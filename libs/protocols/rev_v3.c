@@ -183,6 +183,7 @@ void rev3Init(void) {
     protocol_set_id(rev3_switch, "rev3_switch");
     protocol_device_add(rev3_switch, "rev3_switch", "Rev Switches v3");
     protocol_plslen_add(rev3_switch, 264);
+    protocol_plslen_add(rev3_switch, 258);
     rev3_switch->devtype = SWITCH;
     rev3_switch->hwtype = RF433;
     rev3_switch->pulse = 3;

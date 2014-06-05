@@ -209,7 +209,7 @@ static void *xbmcParse(void *param) {
 				pthread_mutex_unlock(&xbmclock);
 				break;
 			} else if(n == 0) {
-				usleep(10000);
+				usleep(100000);
 			} else if(n > 0) {
 				if(FD_ISSET((unsigned long)xnode->sockfd, &fdsread)) {
 					bytes = (int)recv(xnode->sockfd, recvBuff, BUFFER_SIZE, 0);

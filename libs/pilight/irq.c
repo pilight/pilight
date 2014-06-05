@@ -36,8 +36,6 @@
 typedef struct timestamp_t {
 	unsigned long first;
 	unsigned long second;
-	int old_period;
-	int new_period;
 } timestamp_t;
 
 timestamp_t timestamp;

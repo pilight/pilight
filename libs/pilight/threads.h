@@ -20,6 +20,7 @@
 #define _THREADS_H_
 
 #include <pthread.h>
+#include "proc.h"
 
 typedef struct threadqueue_t {
 	unsigned int ts;
@@ -28,6 +29,7 @@ typedef struct threadqueue_t {
 	char *id;
 	void *param;
 	unsigned int running;
+	struct cpu_usage_t cpu_usage;
 	void *(*function)(void *param);
 	struct threadqueue_t *next;
 } threadqueue_t;
@@ -36,6 +38,7 @@ struct threadqueue_t *threads_register(const char *id, void *(*function)(void* p
 void threads_create(pthread_t *pth, const pthread_attr_t *attr,  void *(*start_routine) (void *), void *arg);
 void *threads_start(void *param);
 void thread_stop(struct threadqueue_t *node);
+void threads_cpu_usage(void);
 int threads_gc(void);
 
 #endif
