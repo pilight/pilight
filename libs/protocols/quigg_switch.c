@@ -60,8 +60,12 @@ static void quiggSwParseCode(void) {
         int x=0, dec_unit[4]={0,3,1,2};
 
 	for(x=0; x<quigg_switch->rawlen; x+=2) {
-		quigg_switch->binary[x/2]=quigg_switch->code[x+1];
-        }
+		if(quigg_switch->raw[x+1] > 1050) {
+			quigg_switch->binary[x/2] = 1;
+		} else {
+			quigg_switch->binary[x/2] = 0;
+		}
+	}
 	int id = binToDecRev(quigg_switch->binary, 0, 11);
 	int unit = binToDecRev(quigg_switch->binary, 12, 13);
 	int all = binToDecRev(quigg_switch->binary, 14, 14);
@@ -93,7 +97,7 @@ static void quiggSwCreateHeader(void) {
 }
 
 static void quiggSwCreateFooter(void) {
-//	quigg_switch->raw[quigg_switch->rawlen-1] = 80700;
+//	quigg_switch->raw[quigg_switch->rawlen-1] = 81192;
 	quigg_switch->raw[quigg_switch->rawlen-1] = PULSE_DIV*quigg_switch->plslen->length;
 }
 
@@ -227,8 +231,9 @@ void quiggSwInit(void) {
 	protocol_register(&quigg_switch);
 	protocol_set_id(quigg_switch, "quigg_switch");
 	protocol_device_add(quigg_switch, "quigg_switch", "Quigg Switches");
-	protocol_plslen_add(quigg_switch, 700); // SHORT: GT-FSI-04a range: 620... 960
-	quigg_switch->plslen->footerlength=2400;
+	protocol_plslen_add(quigg_switch, 700);		// SHORT: GT-FSI-04a range: 620... 960
+//	protocol_plslen_add(quigg_switch, 2388);	// GT-7000 Footer length: 8192/PULSE_DIV
+	quigg_switch->plslen->footerlength=2388;
 	quigg_switch->devtype = SWITCH;
 	quigg_switch->hwtype = RF433;
 	quigg_switch->pulse = 2;        // LONG=QUIGG_PULSE_HIGH*SHORT
@@ -257,7 +262,7 @@ void compatibility(struct module_t *module) {
 	module->name =  "quigg_switch";
 	module->version =  "1.0";
 	module->reqversion =  "4.0";
-	module->reqcommit =  "55";
+	module->reqcommit =  "62";
 }
 
 void init(void) {
