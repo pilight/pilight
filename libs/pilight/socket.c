@@ -167,13 +167,13 @@ int socket_connect(char *address, unsigned short port) {
     serv_addr.sin_port = htons(port);
     inet_pton(AF_INET, address, &serv_addr.sin_addr);
 
-	fcntl(sockfd, F_SETFL, O_NONBLOCK);	
+	fcntl(sockfd, F_SETFL, O_NONBLOCK);
 
 	FD_ZERO(&fdset);
     FD_SET(sockfd, &fdset);
     tv.tv_sec = 3;
     tv.tv_usec = 0;
-	
+
 	/* Connect to the server */
 	connect(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr));
 

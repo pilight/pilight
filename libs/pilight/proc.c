@@ -48,14 +48,14 @@ double getCPUUsage(void) {
 
 	cpu_usage.sec_diff = cpu_usage.sec_stop - cpu_usage.sec_start;
 
-	clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &cpu_usage.ts);	
+	clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &cpu_usage.ts);
 	cpu_usage.cpu_new = (cpu_usage.ts.tv_sec + (cpu_usage.ts.tv_nsec / 1e9));
 	double a = ((cpu_usage.cpu_new-cpu_usage.cpu_old) / cpu_usage.sec_diff * 100.0);
-	cpu_usage.cpu_old = cpu_usage.cpu_new;	
+	cpu_usage.cpu_old = cpu_usage.cpu_new;
 
 	clock_gettime(CLOCK_REALTIME, &cpu_usage.ts);
-	cpu_usage.sec_start = cpu_usage.ts.tv_sec + cpu_usage.ts.tv_nsec / 1e9;	
-	
+	cpu_usage.sec_start = cpu_usage.ts.tv_sec + cpu_usage.ts.tv_nsec / 1e9;
+
 	return a;
 }
 
@@ -63,10 +63,10 @@ void getThreadCPUUsage(pthread_t *pth, struct cpu_usage_t *cpu_usage) {
 	clockid_t cid;
 
 	clock_gettime(CLOCK_REALTIME, &cpu_usage->ts);
-	cpu_usage->sec_stop = cpu_usage->ts.tv_sec + cpu_usage->ts.tv_nsec / 1e9;	
+	cpu_usage->sec_stop = cpu_usage->ts.tv_sec + cpu_usage->ts.tv_nsec / 1e9;
 
-	cpu_usage->sec_diff = cpu_usage->sec_stop - cpu_usage->sec_start;	
-	
+	cpu_usage->sec_diff = cpu_usage->sec_stop - cpu_usage->sec_start;
+
 	pthread_getcpuclockid(*pth, &cid);
 	clock_gettime(cid, &cpu_usage->ts);
 
@@ -76,7 +76,7 @@ void getThreadCPUUsage(pthread_t *pth, struct cpu_usage_t *cpu_usage) {
 		cpu_usage->cpu_per = 0;
 	}
 	cpu_usage->cpu_old = cpu_usage->cpu_new;
-	
+
 	clock_gettime(CLOCK_REALTIME, &cpu_usage->ts);
 	cpu_usage->sec_start = cpu_usage->ts.tv_sec + cpu_usage->ts.tv_nsec / 1e9;
 }

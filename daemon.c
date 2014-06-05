@@ -1318,7 +1318,7 @@ void *receive_code(void *param) {
 			pthread_mutex_lock(&receive_lock);
 			duration = hw->receive();
 
-			/* Noise detection 
+			/* Noise detection
 			   This detector sleeps 1 second if we detected more than 100 subsequent
 			   pulses that are lower than 25ms. With a properly functioning receiver
 			   this should never happen. So either the system is failing and receiving
@@ -1337,7 +1337,7 @@ void *receive_code(void *param) {
 			} else {
 				noisecount = 0;
 			}
-	
+
 			if(duration > 0) {
 				rawcode[rawlen] = duration;
 				rawlen++;

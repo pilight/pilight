@@ -7,7 +7,7 @@ set(PROJECT_NAME pilight)
 
 include(${PROJECT_SOURCE_DIR}/CMakeConfig.txt)
 
-set(MODULES OFF)
+set(MODULESPACK OFF)
 
 set(CMAKE_SKIP_RULE_DEPENDENCY TRUE)
 set(CPACK_DEB_COMPONENT_INSTALL TRUE)
@@ -121,7 +121,7 @@ execute_process(COMMAND git describe --always
 STRING(REGEX REPLACE "\n" "" git_ver "${git_ver}")
 add_definitions(-DHASH="${git_ver}")
 
-if(${MODULES} MATCHES "ON")
+if(${MODULESPACK} MATCHES "ON")
 	add_definitions(-DMODULES="1")
 endif()
 
@@ -440,7 +440,7 @@ endif()
 
 find_package(Threads REQUIRED)
 
-if(${MODULES} MATCHES "OFF")
+if(${MODULESPACK} MATCHES "OFF")
 	if(${UPDATE} MATCHES "ON")
 		find_package(ZLIB REQUIRED)
 	endif()
@@ -502,7 +502,7 @@ if(${MODULES} MATCHES "OFF")
 	configure_file(pilight.h.in pilight.h)
 endif()
 
-if(${MODULES} MATCHES "ON")
+if(${MODULESPACK} MATCHES "ON")
 	foreach(file ${protocol})
 		get_filename_component(name ${file} NAME_WE)
 		add_library(${name}_module MODULE ${file})
@@ -526,7 +526,7 @@ if(${MODULES} MATCHES "ON")
 	endforeach()	
 endif()
 
-if(${MODULES} MATCHES "OFF")
+if(${MODULESPACK} MATCHES "OFF")
 	add_library(pilight OBJECT ${pilight} ${protocol} ${hardware})
 
 	add_library(pilight_static STATIC $<TARGET_OBJECTS:pilight>)
@@ -575,7 +575,7 @@ if(${MODULES} MATCHES "OFF")
 	endif()
 
 	if(${WEBSERVER} MATCHES "ON")
-		install(DIRECTORY web/ DESTINATION /usr/local/share/pilight COMPONENT pilight)
+		install(DIRECTORY web/ DESTINATION /usr/local/share/pilight COMPONENT webserver)
 	endif()
 
 	install(PROGRAMS init/pilight.initd DESTINATION /etc/init.d/ RENAME pilight)
