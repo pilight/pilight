@@ -144,8 +144,7 @@ static void quiggSwCreateUnit(int unit, int dimm) {
 		break;
 	}
 	if (dimm==1) {
-		quiggSwCreateHigh(27, 28);	// 5th row Dimm ?
-		quiggSwCreateHigh(33, 34);	// 
+		quiggSwCreateHigh(33, 34);	// 5th row dimm 
 		quiggSwCreateHigh(37, 38);	// needs to be set
 	}
 }
