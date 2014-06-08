@@ -126,7 +126,7 @@ STRING(REGEX REPLACE "\n" "" git_ver "${git_ver}")
 add_definitions(-DHASH="${git_ver}")
 
 if(${MODULESPACK} MATCHES "ON")
-	add_definitions(-DMODULES="1")
+	add_definitions(-DMODULE="1")
 endif()
 
 include_directories("${PROJECT_SOURCE_DIR}/libs/pilight/")
