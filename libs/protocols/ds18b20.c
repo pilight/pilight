@@ -41,6 +41,7 @@
 unsigned short ds18b20_loop = 1;
 unsigned short ds18b20_threads = 0;
 char ds18b20_path[21];
+char ds18b20_path_DS2482_800[21];
 
 void *ds18b20Parse(void *param) {
 	struct protocol_threads_t *node = (struct protocol_threads_t *)param;
@@ -89,84 +90,152 @@ void *ds18b20Parse(void *param) {
 	if(json_find_number(json, "device-temperature-offset", &itmp) == 0)
 		temp_offset = (int)round(itmp);
 
-	while(ds18b20_loop) {
-		if(protocol_thread_wait(node, interval, &nrloops) == ETIMEDOUT) {
-			for(y=0;y<nrid;y++) {
-				ds18b20_sensor = realloc(ds18b20_sensor, strlen(ds18b20_path)+strlen(id[y])+5);
-				if(!ds18b20_sensor) {
-					logprintf(LOG_ERR, "out of memory");
-					exit(EXIT_FAILURE);
-				}
-				sprintf(ds18b20_sensor, "%s28-%s/", ds18b20_path, id[y]);
-				if((d = opendir(ds18b20_sensor))) {
-					while((file = readdir(d)) != NULL) {
-						if(file->d_type == DT_REG) {
-							if(strcmp(file->d_name, "w1_slave") == 0) {
-								size_t w1slavelen = strlen(ds18b20_sensor)+10;
-								char ds18b20_w1slave[w1slavelen];
-								memset(ds18b20_w1slave, '\0', w1slavelen);
-								strncpy(ds18b20_w1slave, ds18b20_sensor, strlen(ds18b20_sensor));
-								strcat(ds18b20_w1slave, "w1_slave");
+	if(strlen(id[0])==12)
+	{
+		while(ds18b20_loop) {
+			if(protocol_thread_wait(node, interval, &nrloops) == ETIMEDOUT) {
+				for(y=0;y<nrid;y++) {
+					ds18b20_sensor = realloc(ds18b20_sensor, strlen(ds18b20_path)+strlen(id[y])+5);
+					if(!ds18b20_sensor) {
+						logprintf(LOG_ERR, "out of memory");
+						exit(EXIT_FAILURE);
+					}
+					sprintf(ds18b20_sensor, "%s28-%s/", ds18b20_path, id[y]);
+					if((d = opendir(ds18b20_sensor))) {
+						while((file = readdir(d)) != NULL) {
+							if(file->d_type == DT_REG) {
+								if(strcmp(file->d_name, "w1_slave") == 0) {
+									size_t w1slavelen = strlen(ds18b20_sensor)+10;
+									char ds18b20_w1slave[w1slavelen];
+									memset(ds18b20_w1slave, '\0', w1slavelen);
+									strncpy(ds18b20_w1slave, ds18b20_sensor, strlen(ds18b20_sensor));
+									strcat(ds18b20_w1slave, "w1_slave");
 
-								if(!(fp = fopen(ds18b20_w1slave, "rb"))) {
-									logprintf(LOG_ERR, "cannot read w1 file: %s", ds18b20_w1slave);
-									break;
-								}
-
-								fstat(fileno(fp), &st);
-								bytes = (size_t)st.st_size;
-
-								if(!(content = realloc(content, bytes+1))) {
-									logprintf(LOG_ERR, "out of memory");
-									fclose(fp);
-									break;
-								}
-								memset(content, '\0', bytes+1);
-
-								if(fread(content, sizeof(char), bytes, fp) == -1) {
-									logprintf(LOG_ERR, "cannot read config file: %s", ds18b20_w1slave);
-									fclose(fp);
-									break;
-								}
-								fclose(fp);
-								w1valid = 0;
-								char *pch = strtok(content, "\n=: ");
-								x = 0;
-								while(pch) {
-									if(strlen(pch) > 2) {
-										if(x == 1 && strstr(pch, "YES")) {
-											w1valid = 1;
-										}
-										if(x == 2) {	
-											w1temp = atoi(pch)+temp_offset;
-										}
-										x++;
+									if(!(fp = fopen(ds18b20_w1slave, "rb"))) {
+										logprintf(LOG_ERR, "cannot read w1 file: %s", ds18b20_w1slave);
+										break;
 									}
-									pch = strtok(NULL, "\n=: ");
-								}
 
-								if(w1valid) {
-									ds18b20->message = json_mkobject();
-									
-									JsonNode *code = json_mkobject();
-									
-									json_append_member(code, "id", json_mkstring(id[y]));
-									json_append_member(code, "temperature", json_mknumber(w1temp));
-									
-									json_append_member(ds18b20->message, "message", code);
-									json_append_member(ds18b20->message, "origin", json_mkstring("receiver"));
-									json_append_member(ds18b20->message, "protocol", json_mkstring(ds18b20->id));
-									
-									pilight.broadcast(ds18b20->id, ds18b20->message);
-									json_delete(ds18b20->message);
-									ds18b20->message = NULL;
+									fstat(fileno(fp), &st);
+									bytes = (size_t)st.st_size;
+
+									if(!(content = realloc(content, bytes+1))) {
+										logprintf(LOG_ERR, "out of memory");
+										fclose(fp);
+										break;
+									}
+									memset(content, '\0', bytes+1);
+
+									if(fread(content, sizeof(char), bytes, fp) == -1) {
+										logprintf(LOG_ERR, "cannot read config file: %s", ds18b20_w1slave);
+										fclose(fp);
+										break;
+									}
+									fclose(fp);
+									w1valid = 0;
+									char *pch = strtok(content, "\n=: ");
+									x = 0;
+									while(pch) {
+										if(strlen(pch) > 2) {
+											if(x == 1 && strstr(pch, "YES")) {
+												w1valid = 1;
+											}
+											if(x == 2) {	
+												w1temp = atoi(pch)+temp_offset;
+											}
+											x++;
+										}
+										pch = strtok(NULL, "\n=: ");
+									}
+
+									if(w1valid) {
+										ds18b20->message = json_mkobject();
+										
+										JsonNode *code = json_mkobject();
+										
+										json_append_member(code, "id", json_mkstring(id[y]));
+										json_append_member(code, "temperature", json_mknumber(w1temp));
+										
+										json_append_member(ds18b20->message, "message", code);
+										json_append_member(ds18b20->message, "origin", json_mkstring("receiver"));
+										json_append_member(ds18b20->message, "protocol", json_mkstring(ds18b20->id));
+										
+										pilight.broadcast(ds18b20->id, ds18b20->message);
+										json_delete(ds18b20->message);
+										ds18b20->message = NULL;
+									}
 								}
 							}
 						}
+						closedir(d);
+					} else {
+						logprintf(LOG_ERR, "1-wire device %s does not exists", ds18b20_sensor);
 					}
-					closedir(d);
-				} else {
-					logprintf(LOG_ERR, "1-wire device %s does not exists", ds18b20_sensor);
+				}
+			}
+		}
+	}
+	else if(strlen(id[0])==15)
+	{
+	    //logprintf(LOG_INFO,"i15.");
+		while(ds18b20_loop) {
+			if(protocol_thread_wait(node, interval, &nrloops) == ETIMEDOUT) {
+				for(y=0;y<nrid;y++) {
+					ds18b20_sensor = realloc(ds18b20_sensor, strlen(ds18b20_path_DS2482_800)+strlen(id[y])+5);
+					if(!ds18b20_sensor) {
+						logprintf(LOG_ERR, "out of memory");
+						exit(EXIT_FAILURE);
+					}
+					sprintf(ds18b20_sensor, "%s%s/", ds18b20_path_DS2482_800, id[y]);
+					if((d = opendir(ds18b20_sensor))) {
+					    //logprintf(LOG_INFO,"ds18b20_sensor found");//MMt
+						char ds18b20_temperature_file[50];
+						memset(ds18b20_temperature_file, '\0', 50);
+						strncpy(ds18b20_temperature_file, ds18b20_sensor, strlen(ds18b20_sensor));
+						strcat(ds18b20_temperature_file, "temperature");
+						logprintf(LOG_INFO,"plik temp:%s",ds18b20_temperature_file);//MMt
+
+						if(!(fp = fopen(ds18b20_temperature_file, "rb"))) {
+							logprintf(LOG_ERR, "cannot read w1 file: %s", ds18b20_temperature_file);
+							break;
+						}			
+						fstat(fileno(fp), &st);
+						bytes = (size_t)st.st_size;
+
+						if(!(content = realloc(content, bytes+1))) {
+							logprintf(LOG_ERR, "out of memory");
+							fclose(fp);
+							break;
+						}
+						memset(content, '\0', bytes+1);
+
+						if(fread(content, sizeof(char), bytes, fp) == -1) {
+							logprintf(LOG_ERR, "cannot read config file: %s", ds18b20_temperature_file);
+							fclose(fp);
+							break;
+						}
+						fclose(fp);
+						//logprintf(LOG_ERR,"content:%s",content);//MMt	
+						w1temp=(int)(1000*atof(content));
+						if(true) {
+							ds18b20->message = json_mkobject();
+							
+							JsonNode *code = json_mkobject();
+							
+							json_append_member(code, "id", json_mkstring(id[y]));
+							json_append_member(code, "temperature", json_mknumber(w1temp));
+							
+							json_append_member(ds18b20->message, "message", code);
+							json_append_member(ds18b20->message, "origin", json_mkstring("receiver"));
+							json_append_member(ds18b20->message, "protocol", json_mkstring(ds18b20->id));
+							
+							pilight.broadcast(ds18b20->id, ds18b20->message);
+							json_delete(ds18b20->message);
+							ds18b20->message = NULL;
+						}						
+					} else {
+						logprintf(LOG_ERR, "1-wire device %s does not exists", ds18b20_sensor);
+					}
 				}
 			}
 		}
@@ -213,7 +282,7 @@ void ds18b20Init(void) {
 	ds18b20->hwtype = SENSOR;
 
 	options_add(&ds18b20->options, 't', "temperature", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, NULL, "^[0-9]{1,5}$");
-	options_add(&ds18b20->options, 'i', "id", OPTION_HAS_VALUE, CONFIG_ID, JSON_STRING, NULL, "^[a-z0-9]{12}$");
+	options_add(&ds18b20->options, 'i', "id", OPTION_HAS_VALUE, CONFIG_ID, JSON_STRING, NULL, "^(28.)?[a-zA-Z0-9]{12}$");
 
 	options_add(&ds18b20->options, 0, "device-decimals", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)3, "[0-9]");
 	options_add(&ds18b20->options, 0, "device-temperature-offset", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)0, "[0-9]");
@@ -223,6 +292,9 @@ void ds18b20Init(void) {
 
 	memset(ds18b20_path, '\0', 21);	
 	strcpy(ds18b20_path, "/sys/bus/w1/devices/");
+	
+	memset(ds18b20_path_DS2482_800, '\0', 21);	
+	strcpy(ds18b20_path_DS2482_800, "/mnt/1wire/");	
 
 	ds18b20->initDev=&ds18b20InitDev;
 	ds18b20->threadGC=&ds18b20ThreadGC;
