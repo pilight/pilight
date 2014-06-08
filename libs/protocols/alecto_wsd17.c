@@ -155,10 +155,10 @@ void alectoWSD17Init(void) {
 
 #ifdef MODULE
 void compatibility(struct module_t *module) {
-	module->name =  "alecto_wsd17";
-	module->version =  "0.7";
-	module->reqversion =  "4.0";
-	module->reqcommit =  "45";
+	module->name = "alecto_wsd17";
+	module->version = "0.7";
+	module->reqversion = "4.0";
+	module->reqcommit = "45";
 }
 
 void init(void) {

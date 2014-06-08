@@ -235,10 +235,10 @@ void dht11Init(void) {
 
 #ifdef MODULE
 void compatibility(struct module_t *module) {
-	module->name =  "dht11";
-	module->version =  "1.0";
-	module->reqversion =  "4.0";
-	module->reqcommit =  "45";
+	module->name = "dht11";
+	module->version = "1.0";
+	module->reqversion = "4.0";
+	module->reqcommit = "45";
 }
 
 void init(void) {

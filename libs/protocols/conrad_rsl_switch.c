@@ -255,10 +255,10 @@ void conradRSLSwInit(void) {
 
 #ifdef MODULE
 void compatibility(struct module_t *module) {
-	module->name =  "conrad_rsl_switch";
-	module->version =  "0.3";
-	module->reqversion =  "4.0";
-	module->reqcommit =  "45";
+	module->name = "conrad_rsl_switch";
+	module->version = "0.3";
+	module->reqversion = "4.0";
+	module->reqcommit = "45";
 }
 
 void init(void) {

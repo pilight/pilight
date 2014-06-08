@@ -215,10 +215,10 @@ void x10Init(void) {
 
 #ifdef MODULE
 void compatibility(struct module_t *module) {
-	module->name =  "x10";
-	module->version =  "1.0";
-	module->reqversion =  "4.0";
-	module->reqcommit =  "45";
+	module->name = "x10";
+	module->version = "1.0";
+	module->reqversion = "4.0";
+	module->reqcommit = "45";
 }
 
 void init(void) {

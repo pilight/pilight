@@ -85,10 +85,10 @@ void arctechContactInit(void) {
 
 #ifdef MODULE
 void compatibility(struct module_t *module) {
-	module->name =  "arctech_contact";
-	module->version =  "1.0";
-	module->reqversion =  "4.0";
-	module->reqcommit =  "45";
+	module->name = "arctech_contact";
+	module->version = "1.0";
+	module->reqversion = "4.0";
+	module->reqcommit = "45";
 }
 
 void init(void) {

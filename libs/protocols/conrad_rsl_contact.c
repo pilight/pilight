@@ -88,10 +88,10 @@ void conradRSLCnInit(void) {
 
 #ifdef MODULE
 void compatibility(struct module_t *module) {
-	module->name =  "conrad_rsl_contact";
-	module->version =  "0.1";
-	module->reqversion =  "4.0";
-	module->reqcommit =  "45";
+	module->name = "conrad_rsl_contact";
+	module->version = "0.1";
+	module->reqversion = "4.0";
+	module->reqcommit = "45";
 }
 
 void init(void) {

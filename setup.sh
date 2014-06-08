@@ -36,6 +36,7 @@ function clean {
 	rm pilight-daemon 2>/dev/null 1>/dev/null >/dev/null || true;
 	rm pilight-raw 2>/dev/null 1>/dev/null >/dev/null || true;
 	rm pilight-send 2>/dev/null 1>/dev/null >/dev/null || true;
+	rm pilight-flash 2>/dev/null 1>/dev/null >/dev/null || true;
 	rm pilight-learn 2>/dev/null 1>/dev/null >/dev/null || true;
 	rm pilight-debug 2>/dev/null 1>/dev/null >/dev/null || true;
 	rm pilight-receive 2>/dev/null 1>/dev/null >/dev/null || true;
