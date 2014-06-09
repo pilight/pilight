@@ -188,8 +188,8 @@ void arctechSrOldInit(void) {
 void compatibility(struct module_t *module) {
 	module->name = "arctech_screen_old";
 	module->version = "1.0";
-	module->reqversion = "4.0";
-	module->reqcommit = "45";
+	module->reqversion = "5.0";
+	module->reqcommit = NULL;
 }
 
 void init(void) {

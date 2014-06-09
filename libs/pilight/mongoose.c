@@ -1147,7 +1147,7 @@ static const char *static_config_options[] = {
 #ifndef MONGOOSE_NO_FILESYSTEM
   "access_log_file", NULL,
 #ifndef MONGOOSE_NO_AUTH
-  "auth_domain", "mydomain.com",
+  "auth_domain", "pilight.org",
 #endif
 #ifndef MONGOOSE_NO_CGI
   "cgi_interpreter", NULL,

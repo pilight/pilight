@@ -206,8 +206,8 @@ void rev3Init(void) {
 void compatibility(struct module_t *module) {
 	module->name = "rev3_switch";
 	module->version = "0.8";
-	module->reqversion = "4.0";
-	module->reqcommit = "45";
+	module->reqversion = "5.0";
+	module->reqcommit = NULL;
 }
 
 void init(void) {

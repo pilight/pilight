@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 2.8.8)
 
 project(pilight C)
 
-set(PROJECT_VERSION 4.0)
+set(PROJECT_VERSION 5.0)
 set(PROJECT_NAME pilight)
 
 include(${PROJECT_SOURCE_DIR}/CMakeConfig.txt)
@@ -42,7 +42,7 @@ else()
 	message(STATUS "Looking for libz - found (${CMAKE_ZLIB_LIBS_INIT})")
 endif()
 
-if(${CMAKE_SYSTEM_PROCESSOR} MATCHES "armv6" OR ${CPACK_DEBIAN_PACKAGE_ARCHITECTURE} MATCHES "armhf")
+if(${CMAKE_SYSTEM_PROCESSOR} MATCHES "armv6" OR CPACK_DEBIAN_PACKAGE_ARCHITECTURE MATCHES "armhf")
 	if(${USE_SOFT_FLOAT} MATCHES "OFF")
 		set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE armhf)
 		set(CMAKE_C_FLAGS "-lz -Ofast -mfloat-abi=hard -mfpu=vfp -march=armv6 -ffast-math -Wfloat-equal -Wshadow -Wpointer-arith -Wcast-align -Wstrict-overflow=5 -Wwrite-strings -Waggregate-return -Wcast-qual -Wswitch-default -Wswitch-enum -Wformat=2 -g -Wall -Wconversion -Wunreachable-code -Wstrict-prototypes")
@@ -61,12 +61,12 @@ if(${CMAKE_SYSTEM_PROCESSOR} MATCHES "amd64")
 endif()
 
 # Compile final sources for Ubuntu 64bit
-if(${CPACK_DEBIAN_PACKAGE_ARCHITECTURE} MATCHES "amd64")
+if(CPACK_DEBIAN_PACKAGE_ARCHITECTURE MATCHES "amd64")
 	set(CMAKE_C_FLAGS "-m64 -fPIC")
 	set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE amd64)
 endif()
 # Compile final sources for Ubuntu 32bit
-if(${CPACK_DEBIAN_PACKAGE_ARCHITECTURE} MATCHES "i386")
+if(CPACK_DEBIAN_PACKAGE_ARCHITECTURE MATCHES "i386")
 	set(CMAKE_C_FLAGS "-m32")
 	set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE i386)
 endif()
