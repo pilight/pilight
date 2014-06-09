@@ -285,6 +285,11 @@ if(${PROTOCOL_REV} MATCHES "OFF")
 	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/rev_v3.c")
 endif()
 
+if(${PROTOCOL_RSL366} MATCHES "OFF")
+	list(REMOVE_ITEM protocol_headers "${PROJECT_SOURCE_DIR}/libs/protocols/rsl366.h")
+	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/rsl366.c")
+endif()
+
 if(${PROTOCOL_CLARUS} MATCHES "OFF")
 	list(REMOVE_ITEM protocol_headers "${PROJECT_SOURCE_DIR}/libs/protocols/clarus.h")
 	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/clarus.c")
