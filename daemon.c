@@ -1984,7 +1984,7 @@ int main(int argc, char **argv) {
 		} else if(ssdp_seek(&ssdp_list) == -1) {
 			logprintf(LOG_NOTICE, "no pilight daemon found, daemonizing");
 		} else {
-			logprintf(LOG_NOTICE, "a pilight daemon was found, clientizing");
+			logprintf(LOG_NOTICE, "a pilight daemon was found @%s, clientizing", ssdp_list->ip);
 			runmode = 2;
 		}
 		if(ssdp_list) {
