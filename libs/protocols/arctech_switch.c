@@ -188,7 +188,7 @@ __attribute__((weak))
 void arctechSwInit(void) {
 
 	protocol_register(&arctech_switch);
-	protocol_set_id(arctech_switch, "arctech_switches");
+	protocol_set_id(arctech_switch, "arctech_switch");
 	protocol_device_add(arctech_switch, "kaku_switch", "KlikAanKlikUit Switches");
 	protocol_device_add(arctech_switch, "dio_switch", "D-IO Switches");
 	protocol_device_add(arctech_switch, "nexa_switch", "Nexa Switches");

@@ -188,7 +188,7 @@ __attribute__((weak))
 void arctechSrInit(void) {
 
 	protocol_register(&arctech_screen);
-	protocol_set_id(arctech_screen, "arctech_screens");
+	protocol_set_id(arctech_screen, "arctech_screen");
 	protocol_device_add(arctech_screen, "kaku_screen", "KlikAanKlikUit Screens");
 	protocol_plslen_add(arctech_screen, 251);
 	protocol_plslen_add(arctech_screen, 294);
