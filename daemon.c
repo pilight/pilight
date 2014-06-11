@@ -493,15 +493,9 @@ void *receive_parse_code(void *param) {
 					   || protocol->parseBinary) && protocol->pulse > 0 && protocol->plslen)) {
 					plslengths = protocol->plslen;
 					while(plslengths && main_loop) {
-// Start Quigg - footerlength
-						if(((recvqueue->plslen >= (plslengths->length - (int)(plslengths->length * 0.9))) &&
-						    (recvqueue->plslen <= (plslengths->length + (int)(plslengths->length * 0.9))))
-						|| ((recvqueue->plslen >= (plslengths->footerlength - (int)(plslengths->footerlength * 0.9))) &&
-						    (recvqueue->plslen <= (plslengths->footerlength + (int)(plslengths->footerlength * 0.9))))) {
-// ========
-						// if((recvqueue->plslen >= ((double)plslengths->length-5) &&
-						    // recvqueue->plslen <= ((double)plslengths->length+5))) {
-// End
+						if((recvqueue->plslen >= ((double)plslengths->length-5) &&
+						    recvqueue->plslen <= ((double)plslengths->length+5))) {
+
 							match = 1;
 							break;
 						}

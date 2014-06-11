@@ -97,7 +97,6 @@ static void quiggSwCreateHeader(void) {
 }
 
 static void quiggSwCreateFooter(void) {
-//	quigg_switch->raw[quigg_switch->rawlen-1] = 81192;
 	quigg_switch->raw[quigg_switch->rawlen-1] = PULSE_DIV*quigg_switch->plslen->length;
 }
 
@@ -231,8 +230,7 @@ void quiggSwInit(void) {
 	protocol_set_id(quigg_switch, "quigg_switch");
 	protocol_device_add(quigg_switch, "quigg_switch", "Quigg Switches");
 	protocol_plslen_add(quigg_switch, 700);		// SHORT: GT-FSI-04a range: 620... 960
-//	protocol_plslen_add(quigg_switch, 2388);	// GT-7000 Footer length: 8192/PULSE_DIV
-	quigg_switch->plslen->footerlength=2388;
+	protocol_plslen_add(quigg_switch, 2388);	// GT-7000 Footer length: 8192/PULSE_DIV
 	quigg_switch->devtype = SWITCH;
 	quigg_switch->hwtype = RF433;
 	quigg_switch->pulse = 2;        // LONG=QUIGG_PULSE_HIGH*SHORT
@@ -260,8 +258,8 @@ void quiggSwInit(void) {
 void compatibility(struct module_t *module) {
 	module->name =  "quigg_switch";
 	module->version =  "1.0";
-	module->reqversion =  "4.0";
-	module->reqcommit =  "62";
+	module->reqversion =  "5.0";
+	module->reqcommit = NULL;
 }
 
 void init(void) {
