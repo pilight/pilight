@@ -68,8 +68,15 @@ static void *dht11Parse(void *param) {
 	int nrid = 0, y = 0, interval = 10, nrloops = 0;
 	int temp_offset = 0, humi_offset = 0;
 	double itmp = 0;
+	struct sched_param sched;
 
 	dht11_threads++;
+
+	/* Make sure the pilight sender gets
+	   the highest priority available */
+	memset(&sched, 0, sizeof(sched));
+	sched.sched_priority = 60;
+	pthread_setschedparam(pthread_self(), SCHED_FIFO, &sched);
 
 	if((jid = json_find_member(json, "id"))) {
 		jchild = json_first_child(jid);
