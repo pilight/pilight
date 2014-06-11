@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 2.8.8)
 
 project(pilight C)
 
-set(PROJECT_VERSION 4.0)
+set(PROJECT_VERSION 5.0)
 set(PROJECT_NAME pilight)
 
 include(${PROJECT_SOURCE_DIR}/CMakeConfig.txt)
@@ -14,7 +14,7 @@ set(CPACK_DEB_COMPONENT_INSTALL TRUE)
 
 #Final compilation all platforms
 #Removing debugging for final compilation
-#set(CMAKE_SKIP_RPATH TRUE)
+set(CMAKE_SKIP_RPATH TRUE)
 set(CMAKE_EXE_LINKER_FLAGS " -Wl,-rpath=/usr/local/lib/,-rpath=/usr/lib/,-rpath=/lib/")
 set(CMAKE_SHARED_LINKER_FLAGS " -Wl,-rpath=/usr/local/lib/,-rpath=/usr/lib/,-rpath=/lib/")
 set(CMAKE_MODULE_LINKER_FLAGS " -Wl,-rpath=/usr/local/lib/,-rpath=/usr/lib/,-rpath=/lib/")
@@ -42,7 +42,7 @@ else()
 	message(STATUS "Looking for libz - found (${CMAKE_ZLIB_LIBS_INIT})")
 endif()
 
-if(${CMAKE_SYSTEM_PROCESSOR} MATCHES "armv6")
+if(${CMAKE_SYSTEM_PROCESSOR} MATCHES "armv6" OR CPACK_DEBIAN_PACKAGE_ARCHITECTURE MATCHES "armhf")
 	if(${USE_SOFT_FLOAT} MATCHES "OFF")
 		set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE armhf)
 		set(CMAKE_C_FLAGS "-lz -Ofast -mfloat-abi=hard -mfpu=vfp -march=armv6 -ffast-math -Wfloat-equal -Wshadow -Wpointer-arith -Wcast-align -Wstrict-overflow=5 -Wwrite-strings -Waggregate-return -Wcast-qual -Wswitch-default -Wswitch-enum -Wformat=2 -g -Wall -Wconversion -Wunreachable-code -Wstrict-prototypes")
@@ -61,11 +61,15 @@ if(${CMAKE_SYSTEM_PROCESSOR} MATCHES "amd64")
 endif()
 
 # Compile final sources for Ubuntu 64bit
-# set(CMAKE_C_FLAGS "-m64 -fPIC")
-# set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE amd64)
+if(CPACK_DEBIAN_PACKAGE_ARCHITECTURE MATCHES "amd64")
+	set(CMAKE_C_FLAGS "-m64 -fPIC")
+	set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE amd64)
+endif()
 # Compile final sources for Ubuntu 32bit
-# set(CMAKE_C_FLAGS "-m32")
-# set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE i386)
+if(CPACK_DEBIAN_PACKAGE_ARCHITECTURE MATCHES "i386")
+	set(CMAKE_C_FLAGS "-m32")
+	set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE i386)
+endif()
 
 # Start uninstaller generator
 function(WRITE_UNINSTALL_TARGET_SCRIPT)
@@ -122,7 +126,7 @@ STRING(REGEX REPLACE "\n" "" git_ver "${git_ver}")
 add_definitions(-DHASH="${git_ver}")
 
 if(${MODULESPACK} MATCHES "ON")
-	add_definitions(-DMODULES="1")
+	add_definitions(-DMODULE="1")
 endif()
 
 include_directories("${PROJECT_SOURCE_DIR}/libs/pilight/")
@@ -279,6 +283,11 @@ if(${PROTOCOL_REV} MATCHES "OFF")
 	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/rev_v1.c")
 	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/rev_v2.c")
 	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/rev_v3.c")
+endif()
+
+if(${PROTOCOL_RSL366} MATCHES "OFF")
+	list(REMOVE_ITEM protocol_headers "${PROJECT_SOURCE_DIR}/libs/protocols/rsl366.h")
+	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/rsl366.c")
 endif()
 
 if(${PROTOCOL_CLARUS} MATCHES "OFF")
@@ -575,7 +584,7 @@ if(${MODULESPACK} MATCHES "OFF")
 	endif()
 
 	if(${WEBSERVER} MATCHES "ON")
-		install(DIRECTORY web/ DESTINATION /usr/local/share/pilight COMPONENT webserver)
+		install(DIRECTORY web/ DESTINATION /usr/local/share/pilight COMPONENT webgui)
 	endif()
 
 	install(PROGRAMS init/pilight.initd DESTINATION /etc/init.d/ RENAME pilight)

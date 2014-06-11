@@ -91,10 +91,10 @@ void genScreenInit(void) {
 
 #ifdef MODULE
 void compatibility(struct module_t *module) {
-	module->name =  "generic_screen";
-	module->version =  "1.0";
-	module->reqversion =  "4.0";
-	module->reqcommit =  "45";
+	module->name = "generic_screen";
+	module->version = "1.0";
+	module->reqversion = "5.0";
+	module->reqcommit = NULL;
 }
 
 void init(void) {

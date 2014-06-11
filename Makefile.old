@@ -21,7 +21,7 @@ ifneq (, $(findstring amd64, $(SYS)))
 	OSFLAGS = -O3 -fPIC -march=native -mtune=native -mfpmath=sse -Wno-conversion
 endif
 GIT_HASH := $(shell git describe --always)
-CFLAGS = -ffast-math $(OSFLAGS) -Wl,-rpath=/usr/local/lib/,-rpath=/usr/lib/,-rpath=/lib/ -fstack-protector-all -Wfloat-equal -Wshadow -Wpointer-arith -Wcast-align -Wstrict-overflow=5 -Wwrite-strings -Waggregate-return -Wcast-qual -Wswitch-default -Wswitch-enum -Wformat=2 -g -Wall -I. -isystem.. -Ilibs/pilight/ -Ilibs/protocols/ -Ilibs/hardware/ -Ilibs/avrdude/ -pthread -lm -ldl -DHASH=\"$(GIT_HASH)\"
+CFLAGS = -ffast-math $(OSFLAGS) -Wl,-rpath=/usr/local/lib/,-rpath=/usr/lib/,-rpath=/lib/ -Wfloat-equal -Wshadow -Wpointer-arith -Wcast-align -Wstrict-overflow=5 -Wwrite-strings -Waggregate-return -Wcast-qual -Wswitch-default -Wswitch-enum -Wformat=2 -g -Wall -I. -isystem.. -Ilibs/pilight/ -Ilibs/protocols/ -Ilibs/hardware/ -Ilibs/avrdude/ -pthread -lm -ldl -DHASH=\"$(GIT_HASH)\"
 SUBDIRS = libs/pilight libs/protocols libs/hardware libs/avrdude
 SRC = $(wildcard *.c)
 INCLUDES = $(wildcard libs/pilight/*.c) $(wildcard libs/avrdude/*.c)
@@ -54,31 +54,31 @@ libpilight.a: $(LIBS)
 	$(CROSS_COMPILE)ar -rsc libpilight.a $(LIBS)
 
 pilight-daemon: daemon.c $(INCLUDES) $(LIBS) libpilight.so
-	$(GCC) $(CFLAGS) -o $@ $(patsubst pilight-%,%.c,$@) libpilight.so /usr/lib/arm-linux-gnueabihf/librt-2.13.so /usr/lib/arm-linux-gnueabihf/libz.so /usr/lib/arm-linux-gnueabihf/libdl.so
+	$(GCC) $(CFLAGS) -o $@ $(patsubst pilight-%,%.c,$@) libpilight.so -lz -lrt
 
 pilight-send: send.c $(INCLUDES) $(LIBS) libpilight.so
-	$(GCC) $(CFLAGS) -o $@ $(patsubst pilight-%,%.c,$@) libpilight.so /usr/lib/arm-linux-gnueabihf/librt-2.13.so /usr/lib/arm-linux-gnueabihf/libz.so /usr/lib/arm-linux-gnueabihf/libdl.so
+	$(GCC) $(CFLAGS) -o $@ $(patsubst pilight-%,%.c,$@) libpilight.so -lz -lrt
 
 pilight-receive: receive.c $(INCLUDES) $(LIBS) libpilight.so
-	$(GCC) $(CFLAGS) -o $@ $(patsubst pilight-%,%.c,$@) libpilight.so /usr/lib/arm-linux-gnueabihf/librt-2.13.so /usr/lib/arm-linux-gnueabihf/libz.so /usr/lib/arm-linux-gnueabihf/libdl.so
+	$(GCC) $(CFLAGS) -o $@ $(patsubst pilight-%,%.c,$@) libpilight.so -lz -lrt
 
 pilight-debug: debug.c $(INCLUDES) $(LIBS) libpilight.so
-	$(GCC) $(CFLAGS) -o $@ $(patsubst pilight-%,%.c,$@) libpilight.so /usr/lib/arm-linux-gnueabihf/librt-2.13.so /usr/lib/arm-linux-gnueabihf/libz.so /usr/lib/arm-linux-gnueabihf/libdl.so
+	$(GCC) $(CFLAGS) -o $@ $(patsubst pilight-%,%.c,$@) libpilight.so -lz -lrt
 
 pilight-learn: learn.c $(INCLUDES) $(LIBS) libpilight.so
-	$(GCC) $(CFLAGS) -o $@ $(patsubst pilight-%,%.c,$@) libpilight.so /usr/lib/arm-linux-gnueabihf/librt-2.13.so /usr/lib/arm-linux-gnueabihf/libz.so /usr/lib/arm-linux-gnueabihf/libdl.so
+	$(GCC) $(CFLAGS) -o $@ $(patsubst pilight-%,%.c,$@) libpilight.so -lz -lrt
 
 pilight-control: control.c $(INCLUDES) $(LIBS) libpilight.so
-	$(GCC) $(CFLAGS) -o $@ $(patsubst pilight-%,%.c,$@) libpilight.so /usr/lib/arm-linux-gnueabihf/librt-2.13.so /usr/lib/arm-linux-gnueabihf/libz.so /usr/lib/arm-linux-gnueabihf/libdl.so
+	$(GCC) $(CFLAGS) -o $@ $(patsubst pilight-%,%.c,$@) libpilight.so -lz -lrt
 
 pilight-raw: raw.c $(INCLUDES) $(LIBS) libpilight.so
-	$(GCC) $(CFLAGS) -o $@ $(patsubst pilight-%,%.c,$@) libpilight.so /usr/lib/arm-linux-gnueabihf/librt-2.13.so /usr/lib/arm-linux-gnueabihf/libz.so /usr/lib/arm-linux-gnueabihf/libdl.so
+	$(GCC) $(CFLAGS) -o $@ $(patsubst pilight-%,%.c,$@) libpilight.so -lz -lrt
 	
 pilight-uuid: uuid.c $(INCLUDES) $(LIBS) libpilight.so
-	$(GCC) $(CFLAGS) -o $@ $(patsubst pilight-%,%.c,$@) libpilight.so /usr/lib/arm-linux-gnueabihf/librt-2.13.so /usr/lib/arm-linux-gnueabihf/libz.so /usr/lib/arm-linux-gnueabihf/libdl.so
+	$(GCC) $(CFLAGS) -o $@ $(patsubst pilight-%,%.c,$@) libpilight.so -lz -lrt
 
 pilight-flash: flash.c $(INCLUDES) $(LIBS) libpilight.so
-	$(GCC) $(CFLAGS) -o $@ $(patsubst pilight-%,%.c,$@) libpilight.so /usr/lib/arm-linux-gnueabihf/librt-2.13.so /usr/lib/arm-linux-gnueabihf/libz.so /usr/lib/arm-linux-gnueabihf/libdl.so
+	$(GCC) $(CFLAGS) -o $@ $(patsubst pilight-%,%.c,$@) libpilight.so -lz -lrt
 
 install:
 	[ -d /usr/share/images/pilight/ ] && rm -r /usr/share/images/pilight/ || true
@@ -125,8 +125,8 @@ install:
 	[ -f /usr/local/sbin/pilight-uuid ] && rm /usr/local/sbin/pilight-uuid || true
 	cp tzdata.json /etc/pilight/ || true
 
-	mv /usr/local/lib/pilight/libpilight.so /usr/local/lib/pilight/libpilight.so.4
-	ln -sf /usr/local/lib/pilight/libpilight.so.4 /usr/local/lib/libpilight.so
+	mv /usr/local/lib/pilight/libpilight.so /usr/local/lib/pilight/libpilight.so.5.0
+	ln -sf /usr/local/lib/pilight/libpilight.so.5.0 /usr/local/lib/libpilight.so
 	ldconfig
 	
 clean:

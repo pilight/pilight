@@ -162,7 +162,7 @@ __attribute__((weak))
 void arctechSrOldInit(void) {
 
 	protocol_register(&arctech_screen_old);
-	protocol_set_id(arctech_screen_old, "arctech_screens_old");
+	protocol_set_id(arctech_screen_old, "arctech_screen_old");
 	protocol_device_add(arctech_screen_old, "kaku_screen_old", "Old KlikAanKlikUit Screens");
 	protocol_plslen_add(arctech_screen_old, 336);
 	arctech_screen_old->devtype = SCREEN;
@@ -186,10 +186,10 @@ void arctechSrOldInit(void) {
 
 #ifdef MODULE
 void compatibility(struct module_t *module) {
-	module->name =  "arctech_screen_old";
-	module->version =  "1.0";
-	module->reqversion =  "4.0";
-	module->reqcommit =  "45";
+	module->name = "arctech_screen_old";
+	module->version = "1.0";
+	module->reqversion = "5.0";
+	module->reqcommit = NULL;
 }
 
 void init(void) {

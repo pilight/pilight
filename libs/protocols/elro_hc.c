@@ -193,10 +193,10 @@ void elroHCInit(void) {
 
 #ifdef MODULE
 void compatibility(struct module_t *module) {
-	module->name =  "elro_hc";
-	module->version =  "1.0";
-	module->reqversion =  "4.0";
-	module->reqcommit =  "45";
+	module->name = "elro_hc";
+	module->version = "1.0";
+	module->reqversion = "5.0";
+	module->reqcommit = NULL;
 }
 
 void init(void) {

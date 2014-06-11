@@ -1299,11 +1299,6 @@ void *receive_code(void *param) {
 	int plslen = 0, rawlen = 0;
 	int rawcode[255] = {0};
 	int duration = 0;
-	struct timeval t;
-
-	unsigned long first = 0;
-	unsigned long second = 0;
-	unsigned long noisecount = 0;
 
 	/* Make sure the pilight receiving gets
 	   the highest priority available */
@@ -1318,26 +1313,6 @@ void *receive_code(void *param) {
 		if(sending == 0) {
 			pthread_mutex_lock(&receive_lock);
 			duration = hw->receive();
-
-			/* Noise detection
-			   This detector sleeps 1 second if we detected more than 100 subsequent
-			   pulses that are lower than 25ms. With a properly functioning receiver
-			   this should never happen. So either the system is failing and receiving
-			   wouldn't have worked anyway or something else is making receiving
-			   impossible. A 1 second sleep should be harmless either way. */
-
-			gettimeofday(&t, NULL);
-			first = second;
-			second = 1000000 * (unsigned int)t.tv_sec + (unsigned int)t.tv_usec;
-			if(((int)second-(int)first) <= 25) {
-				noisecount++;
-				if(noisecount > 100) {
-					noisecount = 0;
-					sleep(1);
-				}
-			} else {
-				noisecount = 0;
-			}
 
 			if(duration > 0) {
 				rawcode[rawlen] = duration;
@@ -2010,7 +1985,7 @@ int main(int argc, char **argv) {
 		} else if(ssdp_seek(&ssdp_list) == -1) {
 			logprintf(LOG_NOTICE, "no pilight daemon found, daemonizing");
 		} else {
-			logprintf(LOG_NOTICE, "a pilight daemon was found, clientizing");
+			logprintf(LOG_NOTICE, "a pilight daemon was found @%s, clientizing", ssdp_list->ip);
 			runmode = 2;
 		}
 		if(ssdp_list) {
