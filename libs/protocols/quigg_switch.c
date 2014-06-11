@@ -59,7 +59,7 @@ static void quiggSwCreateMessage(int id, int state, int unit, int all, int dimm)
 static void quiggSwParseCode(void) {
         int x=0, dec_unit[4]={0,3,1,2};
 
-	for(x=0; x<quigg_switch->rawlen; x+=2) {
+	for(x=0; x<quigg_switch->rawlen-1; x+=2) {
 		if(quigg_switch->raw[x+1] > 1050) {
 			quigg_switch->binary[x/2] = 1;
 		} else {
@@ -230,14 +230,14 @@ void quiggSwInit(void) {
 	protocol_set_id(quigg_switch, "quigg_switch");
 	protocol_device_add(quigg_switch, "quigg_switch", "Quigg Switches");
 	protocol_plslen_add(quigg_switch, 700);		// SHORT: GT-FSI-04a range: 620... 960
-	protocol_plslen_add(quigg_switch, 2388);	// GT-7000 Footer length: 8192/PULSE_DIV
+	protocol_plslen_add(quigg_switch, 2388);	// GT-7000 Footer length: 81192/PULSE_DIV
 	quigg_switch->devtype = SWITCH;
 	quigg_switch->hwtype = RF433;
 	quigg_switch->pulse = 2;        // LONG=QUIGG_PULSE_HIGH*SHORT
 	quigg_switch->lsb = 0;
-	quigg_switch->rawlen = 42;      // 42 start: SHORT (>600); 20 times 0-(SHORT-LONG) or 1-(LONG-SHORT);
-								// footer PULSE_DIV*SHORT (>6000)
-	quigg_switch->binlen = 21;      // 20 sys-id[12]; unit[2], unit_all[1], on/off[1], dimm[1],
+	quigg_switch->rawlen = 42;      // 41 SHORT (>600)[0]; 20 times 0-(SHORT-LONG) or 1-(LONG-SHORT) [1-2 ...39-40];
+								// footer PULSE_DIV*SHORT (>6000) [41]
+	quigg_switch->binlen = 20;      // 20 sys-id[12]; unit[2], unit_all[1], on/off[1], dimm[1],
 								// null[1], var[1]; Parity[1]
 
 	options_add(&quigg_switch->options, 't', "on", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
