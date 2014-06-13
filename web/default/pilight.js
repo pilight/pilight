@@ -152,15 +152,30 @@ function createPendingSwitchElement(sTabId, sDevId, aValues) {
 		}
 
 		if('name' in aValues) {
-			oTab.append($('<li id="'+sTabId+'_'+sDevId+'" class="pendingsw" data-icon="false"><div class="name">'+aValues['name']+'</div><select id="'+sTabId+'_'+sDevId+'_pendingsw" data-role="slider"><option value="stopped">Stopped</option><option value="running">Running</option></select></li>'));
+			oTab.append($('<li id="'+sTabId+'_'+sDevId+'" class="pendingsw" data-icon="false"><div class="name">'+aValues['name']+'</div><a data-role="button" data-inline="true" data-mini="true" data-icon="on" id="'+sTabId+'_'+sDevId+'_pendingsw">&nbsp;</a></li>'));
 		}
-		$('#'+sTabId+'_'+sDevId+'_pendingsw').slider();
-
-		$('#'+sTabId+'_'+sDevId+'_pendingsw').bind("change", function(event, ui) {
-			$('#'+sTabId+'_'+sDevId+'_pendingsw').blur();
+		$('#'+sTabId+'_'+sDevId+'_pendingsw').button();
+		$('#'+sTabId+'_'+sDevId+'_pendingsw').bind("click", function(event, ui) {
 			event.stopPropagation();
-			$('#'+sTabId+'_'+sDevId+'_pendingsw').slider('disable');
-			$('#'+sTabId+'_'+sDevId).addClass('pending');
+			$('#'+sTabId+'_'+sDevId+'_pendingsw').parent().removeClass('ui-icon-on').removeClass('ui-icon-off').addClass('ui-icon-loader');
+			$('#'+sTabId+'_'+sDevId+'_pendingsw').button('disable');
+			$('#'+sTabId+'_'+sDevId+'_pendingsw').text('toggling');
+			$('#'+sTabId+'_'+sDevId+'_pendingsw').button('refresh');
+			var json = '{"message":"send","code":{"location":"'+sTabId+'","device":"'+sDevId+'","state":"'+this.value+'"}}';
+			if(oWebsocket) {
+				oWebsocket.send(json);
+			} else {
+				bSending = true;
+				$.get('http://'+location.host+'/send?'+encodeURIComponent(json));
+				window.setTimeout(function() { bSending = false; }, 1000);
+			}
+		});
+		$('#'+sTabId+'_'+sDevId).bind("click", function(event, ui) {
+			event.stopPropagation();
+			$('#'+sTabId+'_'+sDevId+'_pendingsw').parent().removeClass('ui-icon-on').removeClass('ui-icon-off').addClass('ui-icon-loader');
+			$('#'+sTabId+'_'+sDevId+'_pendingsw').button('disable');
+			$('#'+sTabId+'_'+sDevId+'_pendingsw').text('toggling');
+			$('#'+sTabId+'_'+sDevId+'_pendingsw').button('refresh');
 			var json = '{"message":"send","code":{"location":"'+sTabId+'","device":"'+sDevId+'","state":"'+this.value+'"}}';
 			if(oWebsocket) {
 				oWebsocket.send(json);
@@ -174,26 +189,36 @@ function createPendingSwitchElement(sTabId, sDevId, aValues) {
 		oTab.listview("refresh");
 	}
 	if('state' in aValues) {
+		if($('#'+sTabId+'_'+sDevId+'_pendingsw').parent().attr("class").indexOf("ui-icon-loader") >= 0) {
+			$('#'+sTabId+'_'+sDevId+'_pendingsw').parent().removeClass('ui-icon-loader');
+		}
+		if($('#'+sTabId+'_'+sDevId+'_pendingsw').parent().attr("class").indexOf("ui-icon-on") >= 0) {
+			$('#'+sTabId+'_'+sDevId+'_pendingsw').parent().removeClass('ui-icon-on');
+		}
+		if($('#'+sTabId+'_'+sDevId+'_pendingsw').parent().attr("class").indexOf("ui-icon-off") >= 0) {
+			$('#'+sTabId+'_'+sDevId+'_pendingsw').parent().removeClass('ui-icon-off');
+		}	
+
 		if(aValues['state'] === "running") {
-			$('#'+sTabId+'_'+sDevId+'_pendingsw')[0].selectedIndex = 1;
-			$('#'+sTabId+'_'+sDevId+'_pendingsw').slider('refresh');
-			$('#'+sTabId+'_'+sDevId).removeClass('pending');
-			$('#'+sTabId+'_'+sDevId+'_pendingsw').slider('enable');
+			$('#'+sTabId+'_'+sDevId+'_pendingsw').parent().addClass('ui-icon-on');
+			$('#'+sTabId+'_'+sDevId+'_pendingsw').button('enable');
+			$('#'+sTabId+'_'+sDevId+'_pendingsw').text("running");
+			$('#'+sTabId+'_'+sDevId+'_pendingsw').button('refresh');
 		} else if(aValues['state'] === "pending") {
-			$('#'+sTabId+'_'+sDevId+'_pendingsw').slider('disable');
-			if($('#'+sTabId+'_'+sDevId).attr("class").indexOf("pending") == -1) {
-				$('#'+sTabId+'_'+sDevId).addClass('pending');
-			}
-		}else {
-			$('#'+sTabId+'_'+sDevId+'_pendingsw')[0].selectedIndex = 0;
-			$('#'+sTabId+'_'+sDevId+'_pendingsw').slider('refresh');
-			$('#'+sTabId+'_'+sDevId).removeClass('pending');
-			$('#'+sTabId+'_'+sDevId+'_pendingsw').slider('enable');
+			$('#'+sTabId+'_'+sDevId+'_pendingsw').parent().addClass('ui-icon-loader');
+			$('#'+sTabId+'_'+sDevId+'_pendingsw').button('disable');
+			$('#'+sTabId+'_'+sDevId+'_pendingsw').text("toggling");
+			$('#'+sTabId+'_'+sDevId+'_pendingsw').button('refresh');
+		} else {
+			$('#'+sTabId+'_'+sDevId+'_pendingsw').parent().addClass('ui-icon-off');
+			$('#'+sTabId+'_'+sDevId+'_pendingsw').text("stopped");
+			$('#'+sTabId+'_'+sDevId+'_pendingsw').button('enable');
+			$('#'+sTabId+'_'+sDevId+'_pendingsw').button('refresh');
 		}
 	}
 	if('gui-readonly' in aValues && aValues['gui-readonly']) {
 		aReadOnly[sTabId+'_'+sDevId] = 1;
-		$('#'+sTabId+'_'+sDevId+'_pendingsw').slider('disable');
+		$('#'+sTabId+'_'+sDevId+'_pendingsw').button('disable');
 	} else {
 		aReadOnly[sTabId+'_'+sDevId] = 0;
 	}
@@ -928,29 +953,31 @@ function parseData(data) {
 							}
 						} else if(iType == 7) {
 							if(vindex == 'state') {
-								if(vvalues == 'running') {
-									$('#'+lindex+'_'+dvalues+'_pendingsw')[0].selectedIndex = 1;
-									if($('#'+lindex+'_'+dvalues).attr("class").indexOf("pending") >= 0) {
-										$('#'+lindex+'_'+dvalues).removeClass('pending');
-									}
-									if(lindex+'_'+dvalues in aReadOnly && aReadOnly[lindex+'_'+dvalues] == 0) {
-										$('#'+lindex+'_'+dvalues+'_pendingsw').slider('enable');
-									}
-								} else if(vvalues == 'pending') {
-									$('#'+lindex+'_'+dvalues+'_pendingsw').slider('disable');
-									if($('#'+lindex+'_'+dvalues).attr("class").indexOf("pending") <= 0) {
-										$('#'+lindex+'_'+dvalues).addClass('pending');
-									}
-								} else {
-									$('#'+lindex+'_'+dvalues+'_pendingsw')[0].selectedIndex = 0;
-									if($('#'+lindex+'_'+dvalues).attr("class").indexOf("pending") >= 0) {
-										$('#'+lindex+'_'+dvalues).removeClass('pending');
-									}
-									if(lindex+'_'+dvalues in aReadOnly && aReadOnly[lindex+'_'+dvalues] == 0) {
-										$('#'+lindex+'_'+dvalues+'_pendingsw').slider('enable');
-									}
+								if($('#'+lindex+'_'+dvalues+'_pendingsw').parent().attr("class").indexOf("ui-icon-loader") >= 0) {
+									$('#'+lindex+'_'+dvalues+'_pendingsw').parent().removeClass('ui-icon-loader');
 								}
-								$('#'+lindex+'_'+dvalues+'_pendingsw').slider('refresh');
+								if($('#'+lindex+'_'+dvalues+'_pendingsw').parent().attr("class").indexOf("ui-icon-on") >= 0) {
+									$('#'+lindex+'_'+dvalues+'_pendingsw').parent().removeClass('ui-icon-on');
+								}
+								if($('#'+lindex+'_'+dvalues+'_pendingsw').parent().attr("class").indexOf("ui-icon-off") >= 0) {
+									$('#'+lindex+'_'+dvalues+'_pendingsw').parent().removeClass('ui-icon-off');
+								}
+								if(vvalues == 'running') {
+									if(lindex+'_'+dvalues in aReadOnly && aReadOnly[lindex+'_'+dvalues] == 0) {
+										$('#'+lindex+'_'+dvalues+'_pendingsw').button('enable');
+									}
+									$('#'+lindex+'_'+dvalues+'_pendingsw').text("running");
+									$('#'+lindex+'_'+dvalues+'_pendingsw').parent().addClass('ui-icon-on');
+								} else if(vvalues == 'pending') {
+									$('#'+lindex+'_'+dvalues+'_pendingsw').button('disable');
+									$('#'+lindex+'_'+dvalues+'_pendingsw').text("toggling");
+									$('#'+lindex+'_'+dvalues+'_pendingsw').parent().addClass('ui-icon-loader')
+								} else {
+									$('#'+lindex+'_'+dvalues+'_pendingsw').button('enable');
+									$('#'+lindex+'_'+dvalues+'_pendingsw').text("stopped");
+									$('#'+lindex+'_'+dvalues+'_pendingsw').parent().addClass('ui-icon-off')
+								}
+								$('#'+lindex+'_'+dvalues+'_pendingsw').button('refresh');
 							}
 						} else if(iType == 3) {
 							if(vindex == 'temperature' && $('#'+lindex+'_'+dvalues+'_temp')) {

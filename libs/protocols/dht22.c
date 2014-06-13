@@ -72,8 +72,6 @@ static void *dht22Parse(void *param) {
 
 	dht22_threads++;
 
-	/* Make sure the pilight sender gets
-	   the highest priority available */
 	memset(&sched, 0, sizeof(sched));
 	sched.sched_priority = 60;
 	pthread_setschedparam(pthread_self(), SCHED_FIFO, &sched);	
@@ -244,7 +242,7 @@ void dht22Init(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name = "dht22";
-	module->version = "1.0";
+	module->version = "1.1";
 	module->reqversion = "5.0";
 	module->reqcommit = NULL;
 }

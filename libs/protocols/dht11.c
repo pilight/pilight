@@ -72,8 +72,6 @@ static void *dht11Parse(void *param) {
 
 	dht11_threads++;
 
-	/* Make sure the pilight sender gets
-	   the highest priority available */
 	memset(&sched, 0, sizeof(sched));
 	sched.sched_priority = 60;
 	pthread_setschedparam(pthread_self(), SCHED_FIFO, &sched);
@@ -243,7 +241,7 @@ void dht11Init(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name = "dht11";
-	module->version = "1.0";
+	module->version = "1.1";
 	module->reqversion = "5.0";
 	module->reqcommit = NULL;
 }
