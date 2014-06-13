@@ -50,13 +50,13 @@
 
 .pendingsw .ui-btn {
     position: absolute;
-    top: -2px;
+    top: 0px;
 	right: 0px;
 	height: 16px;
-	padding-top: 7px;
+	padding-top: 5px;
 }
 
-.pendingsw .ui-btn * {
+.pendingsw .ui-btn *, .pendingsw .ui-btn *:hover {
 	color: black;
 }
 
@@ -65,15 +65,15 @@
 }
 
 .pendingsw .ui-icon-loader {
-	background: transparent url('smallloader.gif') no-repeat 10px 8px;
+	background: transparent url('smallloader.gif') no-repeat 10px 7px;
 }
 
 .pendingsw .ui-icon-off {
-	background: transparent url('off.png') no-repeat 10px 6px;
+	background: transparent url('off.png') no-repeat 10px 5px;
 }
 
 .pendingsw .ui-icon-on {
-	background: transparent url('on.png') no-repeat 10px 6px;
+	background: transparent url('on.png') no-repeat 10px 5px;
 }
 
 .pendingsw .ui-icon-loader.ui-btn-icon-left:after {
