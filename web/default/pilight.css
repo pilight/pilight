@@ -65,15 +65,15 @@
 }
 
 .pendingsw .ui-icon-loader {
-	background: transparent url('smallloader.gif') no-repeat 10px 6px;
+	background: transparent url('smallloader.gif') no-repeat 10px 7px;
 }
 
 .pendingsw .ui-icon-off {
-	background: transparent url('off.png') no-repeat 10px 4px;
+	background: transparent url('off.png') no-repeat 10px 5px;
 }
 
 .pendingsw .ui-icon-on {
-	background: transparent url('on.png') no-repeat 10px 4px;
+	background: transparent url('on.png') no-repeat 10px 5px;
 }
 
 @media screen and (-webkit-min-device-pixel-ratio:0) {
@@ -81,6 +81,18 @@
 		height: 15px;
 		padding-top: 6px;
 	}
+	
+	.pendingsw .ui-icon-loader {
+		background-position: 10px 6px;
+	}
+
+	.pendingsw .ui-icon-off {
+		background-position: 10px 4px;
+	}
+
+	.pendingsw .ui-icon-on {
+		background-position: 10px 4px;
+	}	
 }
 
 .pendingsw .ui-icon-loader.ui-btn-icon-left:after {
