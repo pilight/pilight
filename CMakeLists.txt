@@ -103,7 +103,7 @@ foreach (file \${files})
 endforeach(file)
 
 execute_process(COMMAND update-rc.d pilight remove)
-execute_process(COMMAND ln -sf /usr/local/lib/pilight/libpilight.so.3 /usr/local/lib/libpilight.so)
+execute_process(COMMAND ln -sf /usr/local/lib/pilight/libpilight.so.5.0 /usr/local/lib/libpilight.so)
 execute_process(COMMAND ldconfig)
 
 ") # END of appending to file...
