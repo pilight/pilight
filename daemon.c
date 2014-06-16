@@ -2121,7 +2121,7 @@ int main(int argc, char **argv) {
 		}
 
 		if((i > -1) && (cpu > 60)) {
-			if(nodaemon == 1) {
+			if(nodaemon <= 1) {
 				threads_cpu_usage();
 			}
 			if(checkcpu == 0) {
