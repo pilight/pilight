@@ -653,6 +653,12 @@ JsonNode *config_broadcast_create(void) {
 	json_append_member(jfirmware, "lpf", json_mknumber(firmware.lpf));
 	json_append_member(jsend, "firmware", jfirmware);
 
+	time_t timenow = time(NULL);
+	struct tm *gmt = gmtime(&timenow);
+	char utc[] = "Europe/London";
+	time_t utct = datetime2ts(gmt->tm_year+1900, gmt->tm_mon+1, gmt->tm_mday, gmt->tm_hour, gmt->tm_min, gmt->tm_sec, utc);
+	json_append_member(jsend, "timestamp", json_mknumber((double)utct));
+
 	return jsend;
 }
 

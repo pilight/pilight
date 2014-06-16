@@ -388,7 +388,7 @@ void *broadcast(void *param) {
 						json_delete(jupdate);
 						sfree((void *)&ret);
 					}
-					if((broadcasted == 1 || nodaemon == 1) && (strcmp(jbroadcast, "{}") != 0 && nrchilds > 1)) {
+					if((broadcasted == 1 || nodaemon > 0) && (strcmp(jbroadcast, "{}") != 0 && nrchilds > 1)) {
 						logprintf(LOG_DEBUG, "broadcasted: %s", jbroadcast);
 					}
 					sfree((void *)&jinternal);
@@ -1760,6 +1760,7 @@ int main(int argc, char **argv) {
 	options_add(&options, 'H', "help", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
 	options_add(&options, 'V', "version", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
 	options_add(&options, 'D', "nodaemon", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
+	options_add(&options, 'Z', "stats", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
 	options_add(&options, 'F', "settings", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, NULL);
 	options_add(&options, 'S', "server", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, "^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]).){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$");
 	options_add(&options, 'P', "port", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, "[0-9]{1,4}");
@@ -1797,6 +1798,9 @@ int main(int argc, char **argv) {
 			break;
 			case 'D':
 				nodaemon=1;
+			break;
+			case 'Z':
+				nodaemon=2;
 			break;
 			default:
 				show_default = 1;
@@ -1917,10 +1921,14 @@ int main(int argc, char **argv) {
 
 	logprintf(LOG_INFO, "version %s, commit %s", VERSION, HASH);
 
-	if(nodaemon == 1 || running == 1) {
+	if(nodaemon > 0 || running == 1) {
 		log_file_disable();
 		log_shell_enable();
-		log_level_set(LOG_DEBUG);
+		if(nodaemon == 1) {
+			log_level_set(LOG_DEBUG);
+		} else {
+			log_level_set(LOG_ERR);
+		}
 	}
 
 	if(settings_find_number("send-repeats", &send_repeat) != 0) {
@@ -1930,7 +1938,7 @@ int main(int argc, char **argv) {
 	settings_find_number("receive-repeats", &receive_repeat);
 
 	if(running == 1) {
-		nodaemon=1;
+		nodaemon = 1;
 		logprintf(LOG_NOTICE, "already active (pid %d)", atoi(buffer));
 		log_level_set(LOG_NOTICE);
 		log_shell_disable();
@@ -2001,7 +2009,7 @@ int main(int argc, char **argv) {
 					receivers++;
 				}
 
-				if(log_level_get() >= LOG_DEBUG && nodaemon == 1) {
+				if(log_level_get() >= LOG_DEBUG && nodaemon > 0) {
 					config_print();
 				}
 			}
@@ -2108,8 +2116,14 @@ int main(int argc, char **argv) {
 		cpu = getCPUUsage();
 		ram = getRAMUsage();
 
-		if((i > -1) && (cpu > 60)) {
+		if(nodaemon == 2) {
 			threads_cpu_usage();
+		}
+
+		if((i > -1) && (cpu > 60)) {
+			if(nodaemon == 1) {
+				threads_cpu_usage();
+			}
 			if(checkcpu == 0) {
 				if(cpu > 90) {
 					logprintf(LOG_ERR, "cpu usage way too high %f%", cpu);
