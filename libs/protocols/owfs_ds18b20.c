@@ -38,11 +38,11 @@
 #include "gc.h"
 #include "owfs_ds18b20.h"
 
-unsigned short owfs_ds18b20_loop = 1;
-unsigned short owfs_ds18b20_threads = 0;
-char owfs_ds18b20_path[21];
+static unsigned short owfs_ds18b20_loop = 1;
+static unsigned short owfs_ds18b20_threads = 0;
+static char owfs_ds18b20_path[21];
 
-void *owfs_ds18b20Parse(void *param) {
+static void *owfs_ds18b20Parse(void *param) {
 	struct protocol_threads_t *node = (struct protocol_threads_t *)param;
 	struct JsonNode *json = (struct JsonNode *)node->param;
 	struct JsonNode *jid = NULL;
@@ -100,12 +100,10 @@ void *owfs_ds18b20Parse(void *param) {
 				}
 				sprintf(owfs_ds18b20_sensor, "%s%s/", owfs_ds18b20_path, id[y]);
 				if((d = opendir(owfs_ds18b20_sensor))) {
-					logprintf(LOG_INFO,"owfs_ds18b20_sensor found");//MMt
 					char owfs_ds18b20_temperature_file[50];
 					memset(owfs_ds18b20_temperature_file, '\0', 50);
 					strncpy(owfs_ds18b20_temperature_file, owfs_ds18b20_sensor, strlen(owfs_ds18b20_sensor));
 					strcat(owfs_ds18b20_temperature_file, "temperature");
-					logprintf(LOG_INFO,"plik temp:%s",owfs_ds18b20_temperature_file);//MMt
 
 					if(!(fp = fopen(owfs_ds18b20_temperature_file, "rb"))) {
 						logprintf(LOG_ERR, "cannot read w1 file: %s", owfs_ds18b20_temperature_file);
@@ -130,13 +128,11 @@ void *owfs_ds18b20Parse(void *param) {
 					//logprintf(LOG_ERR,"content:%s",content);//MMt	
 					w1temp=(int)(1000*atof(content)+temp_offset);
 					if(true) {
-						owfs_ds18b20->message = json_mkobject();
-						
+						owfs_ds18b20->message = json_mkobject();						
 						JsonNode *code = json_mkobject();
 						
 						json_append_member(code, "id", json_mkstring(id[y]));
 						json_append_member(code, "temperature", json_mknumber(w1temp));
-						
 						json_append_member(owfs_ds18b20->message, "message", code);
 						json_append_member(owfs_ds18b20->message, "origin", json_mkstring("receiver"));
 						json_append_member(owfs_ds18b20->message, "protocol", json_mkstring(owfs_ds18b20->id));
@@ -166,7 +162,7 @@ void *owfs_ds18b20Parse(void *param) {
 	return (void *)NULL;
 }
 
-struct threadqueue_t *owfs_ds18b20InitDev(JsonNode *jdevice) {
+static struct threadqueue_t *owfs_ds18b20InitDev(JsonNode *jdevice) {
 	owfs_ds18b20_loop = 1;
 	char *output = json_stringify(jdevice, NULL);
 	JsonNode *json = json_decode(output);
@@ -176,7 +172,7 @@ struct threadqueue_t *owfs_ds18b20InitDev(JsonNode *jdevice) {
 	return threads_register("owfs_ds18b20", &owfs_ds18b20Parse, (void *)node, 0);
 }
 
-void owfs_ds18b20ThreadGC(void) {
+static void owfs_ds18b20ThreadGC(void) {
 	owfs_ds18b20_loop = 0;
 	protocol_thread_stop(owfs_ds18b20);
 	while(owfs_ds18b20_threads > 0) {
@@ -185,8 +181,10 @@ void owfs_ds18b20ThreadGC(void) {
 	protocol_thread_free(owfs_ds18b20);
 }
 
+#ifndef MODULE
+__attribute__((weak))
+#endif
 void owfs_ds18b20Init(void) {
-logprintf(LOG_ERR, "MM:init: owfs_ds18b20");
 	protocol_register(&owfs_ds18b20);
 	protocol_set_id(owfs_ds18b20, "owfs_ds18b20");
 	protocol_device_add(owfs_ds18b20, "owfs_ds18b20", "1-wire Temperature Sensor");
