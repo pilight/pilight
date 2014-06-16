@@ -168,9 +168,11 @@ void arctechSwOldInit(void) {
 	protocol_device_add(arctech_switch_old, "intertechno_old", "Old Intertechno Switches");
 	protocol_device_add(arctech_switch_old, "byebyestandbye", "Bye Bye Standbye Switches");
 	protocol_device_add(arctech_switch_old, "duwi", "Düwi Terminal Switches");
+	protocol_device_add(arctech_switch_old, "promax", "PRO max Switches");
 	protocol_plslen_add(arctech_switch_old, 336);
 	protocol_plslen_add(arctech_switch_old, 326);
 	protocol_plslen_add(arctech_switch_old, 390);
+	protocol_plslen_add(arctech_switch_old, 400);
 	protocol_plslen_add(arctech_switch_old, 330);
 
 	arctech_switch_old->devtype = SWITCH;
@@ -195,7 +197,7 @@ void arctechSwOldInit(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name = "arctech_switch_old";
-	module->version = "1.1";
+	module->version = "1.2";
 	module->reqversion = "5.0";
 	module->reqcommit = NULL;
 }

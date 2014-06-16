@@ -52,8 +52,8 @@
     position: absolute;
     top: 0px;
 	right: 0px;
-	height: 16px;
-	padding-top: 5px;
+	height: 15px;
+	padding-top: 6px;
 }
 
 .pendingsw .ui-btn *, .pendingsw .ui-btn *:hover {
@@ -69,19 +69,14 @@
 }
 
 .pendingsw .ui-icon-off {
-	background: transparent url('off.png') no-repeat 10px 5px;
+	background: transparent url('off.png') no-repeat 10px 6px;
 }
 
 .pendingsw .ui-icon-on {
-	background: transparent url('on.png') no-repeat 10px 5px;
+	background: transparent url('on.png') no-repeat 10px 6px;
 }
 
-@media screen and (-webkit-min-device-pixel-ratio:0) {
-	.pendingsw .ui-btn {
-		height: 15px;
-		padding-top: 6px;
-	}
-	
+@media screen and (-webkit-min-device-pixel-ratio:0) {	
 	.pendingsw .ui-icon-loader {
 		background-position: 10px 6px;
 	}
