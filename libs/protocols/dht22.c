@@ -68,9 +68,14 @@ static void *dht22Parse(void *param) {
 	int nrid = 0, y = 0, interval = 10, nrloops = 0;
 	int temp_offset = 0, humi_offset = 0;
 	double itmp = 0;
+	struct sched_param sched;
 
 	dht22_threads++;
 
+	memset(&sched, 0, sizeof(sched));
+	sched.sched_priority = 60;
+	pthread_setschedparam(pthread_self(), SCHED_FIFO, &sched);	
+	
 	if((jid = json_find_member(json, "id"))) {
 		jchild = json_first_child(jid);
 		while(jchild) {
@@ -237,7 +242,7 @@ void dht22Init(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name = "dht22";
-	module->version = "1.0";
+	module->version = "1.1";
 	module->reqversion = "5.0";
 	module->reqcommit = NULL;
 }

@@ -103,7 +103,6 @@ foreach (file \${files})
 endforeach(file)
 
 execute_process(COMMAND update-rc.d pilight remove)
-execute_process(COMMAND ln -sf /usr/local/lib/pilight/libpilight.so.3 /usr/local/lib/libpilight.so)
 execute_process(COMMAND ldconfig)
 
 ") # END of appending to file...
@@ -163,6 +162,9 @@ endif()
 
 if(${PROTOCOL_COGEX_SWITCH} MATCHES "OFF"
 	AND ${PROTOCOL_KAKU_SWITCH_OLD} MATCHES "OFF"
+	AND ${PROTOCOL_BYEBYESTANDBYE_SWITCH} MATCHES "OFF"
+	AND ${PROTOCOL_DUWI_SWITCH} MATCHES "OFF"
+	AND ${PROTOCOL_PROMAX_SWITCH} MATCHES "OFF"
 	AND ${PROTOCOL_INTERTECHNO_OLD} MATCHES "OFF")
 	list(REMOVE_ITEM protocol_headers "${PROJECT_SOURCE_DIR}/libs/protocols/arctech_switch_old.h")
 	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/arctech_switch_old.c")

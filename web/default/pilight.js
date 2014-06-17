@@ -13,6 +13,45 @@ var iFWVersion = 0;
 var aTimers = new Array();
 var sDateTimeFormat = "HH:mm:ss YYYY-MM-DD";
 var aDateTimeFormats = new Array();
+var userLang = navigator.language || navigator.userLanguage;
+
+var language_en = {
+	off: "Off",
+	on: "On",
+	stopped: "Stopped",
+	started: "Started",
+	toggling: "Toggling",
+	up: "Up",
+	down: "Down",
+	update: "Update",
+	available: "available",
+	connecting: "Connecting",
+	connection_lost: "Connection lost, touch to reload",
+	connection_failed: "Failed to connect, touch to reload",
+	unexpected_error: "An unexpected error occured"
+}
+
+var language_nl = {
+	off: "Uit",
+	on: "Aan",
+	stopped: "Gestopt",
+	started: "Gestart",
+	toggling: "Omzetten",
+	up: "Omhoog",
+	down: "Omlaag",
+	update: "Bijwerken",
+	loading: "Verbinding maken",
+	available: "beschikbaar",
+	connection_lost: "Verbinding verloren, klik om te herladen",
+	connection_failed: "Kan niet verbinden, klik om te herhalen",
+	unexpected_error: "An unexpected error occured"
+}
+
+var language = language_en;
+
+if(userLang.indexOf('nl') != -1) {
+	language = language_nl;
+}
 
 var cookieEnabled = (navigator.cookieEnabled) ? true : false;
 
@@ -105,7 +144,7 @@ function createSwitchElement(sTabId, sDevId, aValues) {
 			oTab = $('#all');
 		}
 		if('name' in aValues) {
-			oTab.append($('<li id="'+sTabId+'_'+sDevId+'" class="switch" data-icon="false"><div class="name">'+aValues['name']+'</div><select id="'+sTabId+'_'+sDevId+'_switch" data-role="slider"><option value="off">Off</option><option value="on">On</option></select></li>'));
+			oTab.append($('<li id="'+sTabId+'_'+sDevId+'" class="switch" data-icon="false"><div class="name">'+aValues['name']+'</div><select id="'+sTabId+'_'+sDevId+'_switch" data-role="slider"><option value="off">'+language.off+'</option><option value="on">'+language.on+'</option></select></li>'));
 		}
 		$('#'+sTabId+'_'+sDevId+'_switch').slider();
 		$('#'+sTabId+'_'+sDevId+'_switch').bind("change", function(event, ui) {
@@ -152,15 +191,30 @@ function createPendingSwitchElement(sTabId, sDevId, aValues) {
 		}
 
 		if('name' in aValues) {
-			oTab.append($('<li id="'+sTabId+'_'+sDevId+'" class="pendingsw" data-icon="false"><div class="name">'+aValues['name']+'</div><select id="'+sTabId+'_'+sDevId+'_pendingsw" data-role="slider"><option value="stopped">Stopped</option><option value="running">Running</option></select></li>'));
+			oTab.append($('<li id="'+sTabId+'_'+sDevId+'" class="pendingsw" data-icon="false"><div class="name">'+aValues['name']+'</div><a data-role="button" data-inline="true" data-mini="true" data-icon="on" id="'+sTabId+'_'+sDevId+'_pendingsw">&nbsp;</a></li>'));
 		}
-		$('#'+sTabId+'_'+sDevId+'_pendingsw').slider();
-
-		$('#'+sTabId+'_'+sDevId+'_pendingsw').bind("change", function(event, ui) {
-			$('#'+sTabId+'_'+sDevId+'_pendingsw').blur();
+		$('#'+sTabId+'_'+sDevId+'_pendingsw').button();
+		$('#'+sTabId+'_'+sDevId+'_pendingsw').bind("click", function(event, ui) {
 			event.stopPropagation();
-			$('#'+sTabId+'_'+sDevId+'_pendingsw').slider('disable');
-			$('#'+sTabId+'_'+sDevId).addClass('pending');
+			$('#'+sTabId+'_'+sDevId+'_pendingsw').parent().removeClass('ui-icon-on').removeClass('ui-icon-off').addClass('ui-icon-loader');
+			$('#'+sTabId+'_'+sDevId+'_pendingsw').button('disable');
+			$('#'+sTabId+'_'+sDevId+'_pendingsw').text(language.toggling);
+			$('#'+sTabId+'_'+sDevId+'_pendingsw').button('refresh');
+			var json = '{"message":"send","code":{"location":"'+sTabId+'","device":"'+sDevId+'","state":"'+this.value+'"}}';
+			if(oWebsocket) {
+				oWebsocket.send(json);
+			} else {
+				bSending = true;
+				$.get('http://'+location.host+'/send?'+encodeURIComponent(json));
+				window.setTimeout(function() { bSending = false; }, 1000);
+			}
+		});
+		$('#'+sTabId+'_'+sDevId).bind("click", function(event, ui) {
+			event.stopPropagation();
+			$('#'+sTabId+'_'+sDevId+'_pendingsw').parent().removeClass('ui-icon-on').removeClass('ui-icon-off').addClass('ui-icon-loader');
+			$('#'+sTabId+'_'+sDevId+'_pendingsw').button('disable');
+			$('#'+sTabId+'_'+sDevId+'_pendingsw').text(language.toggling);
+			$('#'+sTabId+'_'+sDevId+'_pendingsw').button('refresh');
 			var json = '{"message":"send","code":{"location":"'+sTabId+'","device":"'+sDevId+'","state":"'+this.value+'"}}';
 			if(oWebsocket) {
 				oWebsocket.send(json);
@@ -174,26 +228,36 @@ function createPendingSwitchElement(sTabId, sDevId, aValues) {
 		oTab.listview("refresh");
 	}
 	if('state' in aValues) {
-		if(aValues['state'] === "running") {
-			$('#'+sTabId+'_'+sDevId+'_pendingsw')[0].selectedIndex = 1;
-			$('#'+sTabId+'_'+sDevId+'_pendingsw').slider('refresh');
-			$('#'+sTabId+'_'+sDevId).removeClass('pending');
-			$('#'+sTabId+'_'+sDevId+'_pendingsw').slider('enable');
-		} else if(aValues['state'] === "pending") {
-			$('#'+sTabId+'_'+sDevId+'_pendingsw').slider('disable');
-			if($('#'+sTabId+'_'+sDevId).attr("class").indexOf("pending") == -1) {
-				$('#'+sTabId+'_'+sDevId).addClass('pending');
-			}
-		}else {
-			$('#'+sTabId+'_'+sDevId+'_pendingsw')[0].selectedIndex = 0;
-			$('#'+sTabId+'_'+sDevId+'_pendingsw').slider('refresh');
-			$('#'+sTabId+'_'+sDevId).removeClass('pending');
-			$('#'+sTabId+'_'+sDevId+'_pendingsw').slider('enable');
+		if($('#'+sTabId+'_'+sDevId+'_pendingsw').parent().attr("class").indexOf("ui-icon-loader") >= 0) {
+			$('#'+sTabId+'_'+sDevId+'_pendingsw').parent().removeClass('ui-icon-loader');
+		}
+		if($('#'+sTabId+'_'+sDevId+'_pendingsw').parent().attr("class").indexOf("ui-icon-on") >= 0) {
+			$('#'+sTabId+'_'+sDevId+'_pendingsw').parent().removeClass('ui-icon-on');
+		}
+		if($('#'+sTabId+'_'+sDevId+'_pendingsw').parent().attr("class").indexOf("ui-icon-off") >= 0) {
+			$('#'+sTabId+'_'+sDevId+'_pendingsw').parent().removeClass('ui-icon-off');
+		}	
+
+		if(aValues['state'] == "running") {
+			$('#'+sTabId+'_'+sDevId+'_pendingsw').parent().addClass('ui-icon-on');
+			$('#'+sTabId+'_'+sDevId+'_pendingsw').button('enable');
+			$('#'+sTabId+'_'+sDevId+'_pendingsw').text(language.started);
+			$('#'+sTabId+'_'+sDevId+'_pendingsw').button('refresh');
+		} else if(aValues['state'] == "pending") {
+			$('#'+sTabId+'_'+sDevId+'_pendingsw').parent().addClass('ui-icon-loader');
+			$('#'+sTabId+'_'+sDevId+'_pendingsw').button('disable');
+			$('#'+sTabId+'_'+sDevId+'_pendingsw').text(language.toggling);
+			$('#'+sTabId+'_'+sDevId+'_pendingsw').button('refresh');
+		} else {
+			$('#'+sTabId+'_'+sDevId+'_pendingsw').parent().addClass('ui-icon-off');
+			$('#'+sTabId+'_'+sDevId+'_pendingsw').text(language.stopped);
+			$('#'+sTabId+'_'+sDevId+'_pendingsw').button('enable');
+			$('#'+sTabId+'_'+sDevId+'_pendingsw').button('refresh');
 		}
 	}
 	if('gui-readonly' in aValues && aValues['gui-readonly']) {
 		aReadOnly[sTabId+'_'+sDevId] = 1;
-		$('#'+sTabId+'_'+sDevId+'_pendingsw').slider('disable');
+		$('#'+sTabId+'_'+sDevId+'_pendingsw').button('disable');
 	} else {
 		aReadOnly[sTabId+'_'+sDevId] = 0;
 	}
@@ -207,7 +271,7 @@ function createScreenElement(sTabId, sDevId, aValues) {
 			oTab = $('#all');
 		}
 		if('name' in aValues) {
-			oTab.append($('<li  id="'+sTabId+'_'+sDevId+'" class="screen" data-icon="false"><div class="name">'+aValues['name']+'</div><div id="'+sTabId+'_'+sDevId+'_screen" class="screen" data-role="fieldcontain" data-type="horizontal"><fieldset data-role="controlgroup" class="controlgroup" data-type="horizontal" data-mini="true"><input type="radio" name="'+sTabId+'_'+sDevId+'_screen" id="'+sTabId+'_'+sDevId+'_screen_down" value="down" /><label for="'+sTabId+'_'+sDevId+'_screen_down">Down</label><input type="radio" name="'+sTabId+'_'+sDevId+'_screen" id="'+sTabId+'_'+sDevId+'_screen_up" value="up" /><label for="'+sTabId+'_'+sDevId+'_screen_up">Up</label></fieldset></div></li>'));
+			oTab.append($('<li  id="'+sTabId+'_'+sDevId+'" class="screen" data-icon="false"><div class="name">'+aValues['name']+'</div><div id="'+sTabId+'_'+sDevId+'_screen" class="screen" data-role="fieldcontain" data-type="horizontal"><fieldset data-role="controlgroup" class="controlgroup" data-type="horizontal" data-mini="true"><input type="radio" name="'+sTabId+'_'+sDevId+'_screen" id="'+sTabId+'_'+sDevId+'_screen_down" value="down" /><label for="'+sTabId+'_'+sDevId+'_screen_down">'+language.down+'</label><input type="radio" name="'+sTabId+'_'+sDevId+'_screen" id="'+sTabId+'_'+sDevId+'_screen_up" value="up" /><label for="'+sTabId+'_'+sDevId+'_screen_up">'+language.up+'</label></fieldset></div></li>'));
 		}
 		$("div").trigger("create");
 		$('#'+sTabId+'_'+sDevId+'_screen_down').checkboxradio();
@@ -300,7 +364,7 @@ function createDimmerElement(sTabId, sDevId, aValues) {
 			oTab = $('#all');
 		}
 		if('name' in aValues && 'dimlevel-minimum' in aValues && 'dimlevel-maximum' in aValues) {
-			oTab.append($('<li id="'+sTabId+'_'+sDevId+'" class="dimmer" data-icon="false"><div class="name">'+aValues['name']+'</div><select id="'+sTabId+'_'+sDevId+'_switch" data-role="slider"><option value="off">Off</option><option value="on">On</option></select><div id="'+sTabId+'_'+sDevId+'_dimmer" min="'+aValues['dimlevel-minimum']+'" max="'+aValues['dimlevel-maximum']+'" data-highlight="true" ><input type="value" id="'+sTabId+'_'+sDevId+'_value" class="slider-value dimmer-slider ui-slider-input ui-input-text ui-body-c ui-corner-all ui-shadow-inset" /></div></li>'));
+			oTab.append($('<li id="'+sTabId+'_'+sDevId+'" class="dimmer" data-icon="false"><div class="name">'+aValues['name']+'</div><select id="'+sTabId+'_'+sDevId+'_switch" data-role="slider"><option value="off">'+language.off+'</option><option value="on">'+language.on+'</option></select><div id="'+sTabId+'_'+sDevId+'_dimmer" min="'+aValues['dimlevel-minimum']+'" max="'+aValues['dimlevel-maximum']+'" data-highlight="true" ><input type="value" id="'+sTabId+'_'+sDevId+'_value" class="slider-value dimmer-slider ui-slider-input ui-input-text ui-body-c ui-corner-all ui-shadow-inset" /></div></li>'));
 		}
 		$('#'+sTabId+'_'+sDevId+'_switch').slider();
 		$('#'+sTabId+'_'+sDevId+'_switch').bind("change", function(event, ui) {
@@ -401,9 +465,9 @@ function createWeatherElement(sTabId, sDevId, aValues) {
 			iTime = Math.floor((new Date().getTime())/1000);
 
 			if('timestamp' in aValues && 'min-interval' in aValues && aValues['timestamp'] > 0 && (iTime-aValues['timestamp']) > aValues['min-interval']) {
-				oTab.find('#'+sTabId+'_'+sDevId+'_weather').append($('<div class="update_active" id="'+sTabId+'_'+sDevId+'_upd" title="update">&nbsp;</div>'));
+				oTab.find('#'+sTabId+'_'+sDevId+'_weather').append($('<div class="update_active" id="'+sTabId+'_'+sDevId+'_upd" title="'+language.update+'">&nbsp;</div>'));
 			} else {
-				oTab.find('#'+sTabId+'_'+sDevId+'_weather').append($('<div class="update_inactive" id="'+sTabId+'_'+sDevId+'_upd" title="update">&nbsp;</div>'));
+				oTab.find('#'+sTabId+'_'+sDevId+'_weather').append($('<div class="update_inactive" id="'+sTabId+'_'+sDevId+'_upd" title="'+language.update+'">&nbsp;</div>'));
 			}
 			$('#'+sTabId+'_'+sDevId+'_upd').click(function() {
 				if(this.className.indexOf('update_active') == 0) {
@@ -476,7 +540,8 @@ function createWeatherElement(sTabId, sDevId, aValues) {
 				}
 			}
 		}
-		if('sun' in aValues) {
+		if('sun' in aValues && $('#'+sTabId+'_'+sDevId+'_sunrise_icon').attr("class")
+		   && $('#'+sTabId+'_'+sDevId+'_sunset_icon').attr("class")) {
 			if(aValues['sun'] == 'rise') {
 				if($('#'+sTabId+'_'+sDevId+'_sunrise_icon').attr("class").indexOf("yellow") == -1) {
 					$('#'+sTabId+'_'+sDevId+'_sunrise_icon').removeClass('gray').addClass('yellow');
@@ -749,9 +814,9 @@ function createDateTimeElement(sTabId, sDevId, aValues) {
 function updateVersions() {
 	if(iPLVersion < iPLNVersion) {
 		if(iFWVersion > 0) {
-			var obj = $('#version').text("pilight v"+iPLVersion+" - available v"+iPLNVersion+" / filter firmware v"+iFWVersion);
+			var obj = $('#version').text("pilight v"+iPLVersion+" - "+language.available+" v"+iPLNVersion+" / filter firmware v"+iFWVersion);
 		} else {
-			var obj = $('#version').text("pilight v"+iPLVersion+" - available v"+iPLNVersion);
+			var obj = $('#version').text("pilight v"+iPLVersion+" - "+language.available+" v"+iPLNVersion);
 		}
 	} else {
 		if(iFWVersion > 0) {
@@ -928,29 +993,31 @@ function parseData(data) {
 							}
 						} else if(iType == 7) {
 							if(vindex == 'state') {
-								if(vvalues == 'running') {
-									$('#'+lindex+'_'+dvalues+'_pendingsw')[0].selectedIndex = 1;
-									if($('#'+lindex+'_'+dvalues).attr("class").indexOf("pending") >= 0) {
-										$('#'+lindex+'_'+dvalues).removeClass('pending');
-									}
-									if(lindex+'_'+dvalues in aReadOnly && aReadOnly[lindex+'_'+dvalues] == 0) {
-										$('#'+lindex+'_'+dvalues+'_pendingsw').slider('enable');
-									}
-								} else if(vvalues == 'pending') {
-									$('#'+lindex+'_'+dvalues+'_pendingsw').slider('disable');
-									if($('#'+lindex+'_'+dvalues).attr("class").indexOf("pending") <= 0) {
-										$('#'+lindex+'_'+dvalues).addClass('pending');
-									}
-								} else {
-									$('#'+lindex+'_'+dvalues+'_pendingsw')[0].selectedIndex = 0;
-									if($('#'+lindex+'_'+dvalues).attr("class").indexOf("pending") >= 0) {
-										$('#'+lindex+'_'+dvalues).removeClass('pending');
-									}
-									if(lindex+'_'+dvalues in aReadOnly && aReadOnly[lindex+'_'+dvalues] == 0) {
-										$('#'+lindex+'_'+dvalues+'_pendingsw').slider('enable');
-									}
+								if($('#'+lindex+'_'+dvalues+'_pendingsw').parent().attr("class").indexOf("ui-icon-loader") >= 0) {
+									$('#'+lindex+'_'+dvalues+'_pendingsw').parent().removeClass('ui-icon-loader');
 								}
-								$('#'+lindex+'_'+dvalues+'_pendingsw').slider('refresh');
+								if($('#'+lindex+'_'+dvalues+'_pendingsw').parent().attr("class").indexOf("ui-icon-on") >= 0) {
+									$('#'+lindex+'_'+dvalues+'_pendingsw').parent().removeClass('ui-icon-on');
+								}
+								if($('#'+lindex+'_'+dvalues+'_pendingsw').parent().attr("class").indexOf("ui-icon-off") >= 0) {
+									$('#'+lindex+'_'+dvalues+'_pendingsw').parent().removeClass('ui-icon-off');
+								}
+								if(vvalues == 'running') {
+									if(lindex+'_'+dvalues in aReadOnly && aReadOnly[lindex+'_'+dvalues] == 0) {
+										$('#'+lindex+'_'+dvalues+'_pendingsw').button('enable');
+									}
+									$('#'+lindex+'_'+dvalues+'_pendingsw').text(language.running);
+									$('#'+lindex+'_'+dvalues+'_pendingsw').parent().addClass('ui-icon-on');
+								} else if(vvalues == 'pending') {
+									$('#'+lindex+'_'+dvalues+'_pendingsw').button('disable');
+									$('#'+lindex+'_'+dvalues+'_pendingsw').text(language.toggling);
+									$('#'+lindex+'_'+dvalues+'_pendingsw').parent().addClass('ui-icon-loader')
+								} else {
+									$('#'+lindex+'_'+dvalues+'_pendingsw').button('enable');
+									$('#'+lindex+'_'+dvalues+'_pendingsw').text(language.stopped);
+									$('#'+lindex+'_'+dvalues+'_pendingsw').parent().addClass('ui-icon-off')
+								}
+								$('#'+lindex+'_'+dvalues+'_pendingsw').button('refresh');
 							}
 						} else if(iType == 3) {
 							if(vindex == 'temperature' && $('#'+lindex+'_'+dvalues+'_temp')) {
@@ -1080,12 +1147,14 @@ function parseData(data) {
 $(document).ready(function() {
 	if($('body').length == 1) {
 		$.mobile.loading('show', {
-			'text': 'Connecting...',
+			'text': language.connecting,
 			'textVisible': true,
 			'theme': 'b'
 		});
 
-		if(navigator.userAgent.indexOf("Safari") > -1) {
+		if((navigator.userAgent.match(/iPhone/i)) || 
+		   (navigator.userAgent.match(/iPod/i)) || 
+		   (navigator.userAgent.match(/iPad/i))) {
 			bForceAjax = true;
 		}
 		if(!bForceAjax && typeof MozWebSocket != "undefined") {
@@ -1105,14 +1174,14 @@ $(document).ready(function() {
 					window.clearInterval(load);
 					if(bConnected) {
 						$.mobile.loading('show', {
-							'text': 'Connection lost, touch to reload',
+							'text': language.connection_lost,
 							'textVisible': true,
 							'theme': 'b'
 						});
 						$('html').on({ 'touchstart mousedown' : function(){location.reload();}});
 					} else {
 						$.mobile.loading('show', {
-							'text': 'Failed to connect, touch to reload',
+							'text': language.connection_failed,
 							'textVisible': true,
 							'theme': 'b'
 						});
@@ -1130,14 +1199,14 @@ $(document).ready(function() {
 			oWebsocket.onclose = function(evt) {
 				if(bConnected) {
 					$.mobile.loading('show', {
-						'text': 'Connection lost, touch to reload',
+						'text': language.connection_lost,
 						'textVisible': true,
 						'theme': 'b'
 					});
 					$('html').on({ 'touchstart mousedown' : function(){location.reload();}});
 				} else {
 					$.mobile.loading('show', {
-						'text': 'Failed to connect, touch to reload',
+						'text': language.connection_failed,
 						'textVisible': true,
 						'theme': 'b'
 					});
@@ -1146,7 +1215,7 @@ $(document).ready(function() {
 			};
 			oWebsocket.onerror = function(evt) {
 				$.mobile.loading('show', {
-					'text': 'An unexpected error occured',
+					'text': language.unexpected_error,
 					'textVisible': true,
 					'theme': 'b'
 				});

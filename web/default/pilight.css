@@ -48,6 +48,70 @@
 	height: 70px;
 }
 
+.pendingsw .ui-btn {
+    position: absolute;
+    top: 0px;
+	right: 0px;
+	height: 15px;
+	padding-top: 6px;
+}
+
+.pendingsw .ui-btn *, .pendingsw .ui-btn *:hover {
+	color: black;
+}
+
+.pendingsw .ui-btn-icon-left:after, .ui-btn-icon-right:after, .ui-btn-icon-top:after, .ui-btn-icon-bottom:after, .ui-btn-icon-notext:after {
+	background-color: transparent !important;
+}
+
+.pendingsw .ui-icon-loader {
+	background: transparent url('smallloader.gif') no-repeat 10px 7px;
+}
+
+.pendingsw .ui-icon-off {
+	background: transparent url('off.png') no-repeat 10px 6px;
+}
+
+.pendingsw .ui-icon-on {
+	background: transparent url('on.png') no-repeat 10px 6px;
+}
+
+@media screen and (-webkit-min-device-pixel-ratio:0) {	
+	.pendingsw .ui-icon-loader {
+		background-position: 10px 6px;
+	}
+
+	.pendingsw .ui-icon-off {
+		background-position: 10px 4px;
+	}
+
+	.pendingsw .ui-icon-on {
+		background-position: 10px 4px;
+	}	
+}
+
+.pendingsw .ui-icon-loader.ui-btn-icon-left:after {
+	background-color: transparent !important;
+}
+
+.pendingsw .ui-icon-on.ui-btn-icon-left:after {
+	background-color: transparent !important;
+}
+
+.pendingsw .ui-icon-off.ui-btn-icon-left:after {
+	background-color: transparent !important;
+}
+
+.pendingsw  a {
+	text-decoration: none;
+	color: black;
+}
+
+.ui-btn-right {
+    position: absolute;
+	top: 2px;
+}
+
 .ui-slider {
     position: relative;
     top: 25px;
