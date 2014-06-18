@@ -120,11 +120,9 @@ static void ninjablocksSwCreateZero(int e) {
 	if (k>ninjablocks->maxrawlen) {
 		logprintf(LOG_ERR, "**** ninjablocks create zero error: invalid raw data pointer %d", k);
 	} else {
-printf("-ZpRaw %d k: %d-",ninjablocks->rawlen,k);
 		for(i=ninjablocks->rawlen;i<=k;i++) {
 			ninjablocks->raw[i] = (int)(ninjablocks->pulse*ninjablocks->plslen->length/2.1199);
 			ninjablocks->rawlen++;
-printf("ZERO ");
 		}
 	}
 }
@@ -135,13 +133,11 @@ static void ninjablocksSwCreateOne(int e) {
 	if ((k+1)>ninjablocks->maxrawlen) {
 		logprintf(LOG_ERR, "**** ninjablocks create one error: invalid raw data pointer %d", k);
 	} else {
-printf("-OpRaw %d k: %d-",ninjablocks->rawlen,k);
 		for(i=ninjablocks->rawlen;i<=k;i+=2) {
 			ninjablocks->raw[i] = (int)(ninjablocks->plslen->length/2.1199);	// code a logical 1 pulse
 			ninjablocks->raw[i+1] = ninjablocks->raw[i];
 			ninjablocks->raw[ninjablocks->maxrawlen+1]=-ninjablocks->raw[ninjablocks->maxrawlen+1];		// toogle parity bit
 			ninjablocks->rawlen+=2;
-printf("ONE ");
 		}
 	}
 }
@@ -151,7 +147,6 @@ static void ninjablocksSwCreateData(int iParam, int iLength) {
 	int i, length, emptylength;
 
 	length = decToBin(iParam, binary);
-printf("\nData length: %d iParam: %d",length,iParam);
 // Create leading empty zero pulses and data pulses
 	emptylength=iLength-length-1;
 	for(i=0;i<emptylength;i++) {
@@ -213,7 +208,6 @@ static void ninjablocksSwCreateFooter(void) {
 	if (ninjablocks->rawlen>ninjablocks->maxrawlen) {
 		logprintf(LOG_ERR, "**** ninjablocks create footer: invalid raw data pointer %d", ninjablocks->rawlen);
 	} else {
-//		ninjablocks->raw[ninjablocks->rawlen] = 72075;
 		ninjablocks->raw[ninjablocks->rawlen] = PULSE_DIV*ninjablocks->plslen->length;
 		ninjablocks->rawlen++;
 	}
@@ -275,9 +269,7 @@ void ninjablocksSwInit(void) {
 	protocol_register(&ninjablocks);
 	protocol_set_id(ninjablocks, "ninjablocks");
 	protocol_device_add(ninjablocks, "ninjablocks", "ninjablocks Sensors");
-//	protocol_plslen_add(ninjablocks, 1000);		// SHORT: 1000
 	protocol_plslen_add(ninjablocks, 2120);		// Footer length: 72075/PULSE_DIV/2120=2,1199
-//	ninjablocks->plslen->footerlength=2120;
 	ninjablocks->devtype = SENSOR;
 	ninjablocks->hwtype = RF433;
 	ninjablocks->pulse = 2;		// LONG=ninjablocks_PULSE_HIGH*SHORT

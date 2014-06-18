@@ -298,9 +298,7 @@ void quiggSwInit(void) {
 	protocol_register(&quigg_switch);
 	protocol_set_id(quigg_switch, "quigg_switch");
 	protocol_device_add(quigg_switch, "quigg_switch", "Quigg Switches");
-//	protocol_plslen_add(quigg_switch, 700);		// SHORT: GT-FSI-04a range: 620... 960
-	protocol_plslen_add(quigg_switch, 2388);		// SHORT: GT-FSI-04a range: 620... 960
-//	quigg_switch->plslen->footerlength=2388;	// GT-7000 Footer length: 81192/PULSE_DIV
+	protocol_plslen_add(quigg_switch, 2388);	// SHORT: GT-FSI-04a range: 620... 960
 
 	quigg_switch->devtype = SWITCH;
 	quigg_switch->hwtype = RF433;
