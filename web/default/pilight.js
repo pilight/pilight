@@ -5,6 +5,8 @@ var bInitialized = false;
 var bSending = false;
 var aDecimals = new Array();
 var aDateTime = new Array();
+var aMinInterval = new Array();
+var aPollInterval = new Array();
 var aReadOnly = new Array();
 var bShowTabs = true;
 var iPLVersion = 0;
@@ -429,6 +431,8 @@ function createDimmerElement(sTabId, sDevId, aValues) {
 
 function createWeatherElement(sTabId, sDevId, aValues) {
 	aDecimals[sTabId+'_'+sDevId] = new Array();
+	aMinInterval[sTabId+'_'+sDevId] = new Array();
+	aPollInterval[sTabId+'_'+sDevId] = new Array();
 	if('gui-decimals' in aValues) {
 		aDecimals[sTabId+'_'+sDevId]['gui'] = aValues['gui-decimals'];
 	} else {
@@ -438,6 +442,12 @@ function createWeatherElement(sTabId, sDevId, aValues) {
 		aDecimals[sTabId+'_'+sDevId]['device'] = aValues['device-decimals'];
 	} else {
 		aDecimals[sTabId+'_'+sDevId]['device'] = 0;
+	}
+	if('min-interval' in aValues) {
+		aMinInterval[sTabId+'_'+sDevId] = aValues['min-interval'];
+	}
+	if('poll-interval' in aValues) {
+		aPollInterval[sTabId+'_'+sDevId] = aValues['poll-interval'];
 	}
 	if('temperature' in aValues) {
 		aValues['temperature'] /= Math.pow(10, aValues['device-decimals']);
@@ -567,6 +577,19 @@ function createWeatherElement(sTabId, sDevId, aValues) {
 		if('gui-show-sunriseset' in aValues && aValues['gui-show-sunriseset'] && 'sunrise' in aValues && 'sunset' in aValues) {
 			$('#'+sTabId+'_'+sDevId+'_sunrise').text(aValues['sunrise'].toFixed(aValues['gui-decimals']));
 			$('#'+sTabId+'_'+sDevId+'_sunset').text(aValues['sunset'].toFixed(aValues['gui-decimals']));
+		}
+		if('gui-show-update' in aValues && aValues['gui-show-update']) {
+			iTime = Math.floor((new Date().getTime())/1000);
+
+			if('timestamp' in aValues && 'min-interval' in aValues && aValues['timestamp'] > 0 && (iTime-aValues['timestamp']) > aValues['min-interval']) {
+				if($('#'+sTabId+'_'+sDevId+'_weather_upd').attr('class').indexOf('update_active') == -1) {
+					$('#'+sTabId+'_'+sDevId+'_weather_upd').removeClass('update_inactive').addClass('update_active');
+				}
+			} else {
+				if($('#'+sTabId+'_'+sDevId+'_weather_upd').attr('class').indexOf('update_inactive') == -1) {
+					$('#'+sTabId+'_'+sDevId+'_weather_upd').removeClass('update_active').addClass('update_inactive');
+				}
+			}
 		}
 	}
 	oTab.listview();
@@ -749,7 +772,7 @@ function createXBMCElement(sTabId, sDevId, aValues) {
 					$('#'+sTabId+'_'+sDevId+'_media').addClass('movie');
 				} else if(aValues['media'] == "episode") {
 					$('#'+sTabId+'_'+sDevId+'_media').addClass('episode');
-				} else if(aValues['media'] == "music") {
+				} else if(aValues['media'] == "song") {
 					$('#'+sTabId+'_'+sDevId+'_media').addClass('music');
 				}
 			}
@@ -1074,6 +1097,19 @@ function parseData(data) {
 										$('#'+lindex+'_'+dvalues+'_sunset_icon').removeClass('gray').addClass('blue');
 									}
 								}
+							}
+							if(vindex == 'timestamp' && aTimers[lindex+'_'+dvalues] && aMinInterval[lindex+'_'+dvalues] && aPollInterval[lindex+'_'+dvalues]) {
+								iTime = Math.floor((new Date().getTime())/1000);
+								iTimeOut = (aMinInterval[lindex+'_'+dvalues]-((vvalues-aValues['timestamp'])))*1000;
+								if($('#'+lindex+'_'+dvalues+'_upd').attr('class').indexOf('update_inactive') == -1) {
+									$('#'+lindex+'_'+dvalues+'_upd').removeClass('update_active').addClass('update_inactive');
+								}
+								window.clearTimeout(aTimers[lindex+'_'+dvalues]);
+								aTimers[lindex+'_'+dvalues] = window.setTimeout(function() {
+									if($('#'+lindex+'_'+dvalues+'_upd').attr("class").indexOf('update_inactive') != -1) {
+										$('#'+lindex+'_'+dvalues+'_upd').removeClass('update_inactive').addClass('update_active');
+									}
+								}, iTimeOut);
 							}
 						} else if(iType == 9) {
 							if(vindex == "action" && $('#'+lindex+'_'+dvalues+'_action')) {
