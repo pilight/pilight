@@ -26,6 +26,7 @@ var language_en = {
 	up: "Up",
 	down: "Down",
 	update: "Update",
+	loading: "Loading",
 	available: "available",
 	connecting: "Connecting",
 	connection_lost: "Connection lost, touch to reload",

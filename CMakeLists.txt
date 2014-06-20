@@ -165,6 +165,7 @@ if(${PROTOCOL_COGEX_SWITCH} MATCHES "OFF"
 	AND ${PROTOCOL_BYEBYESTANDBYE_SWITCH} MATCHES "OFF"
 	AND ${PROTOCOL_DUWI_SWITCH} MATCHES "OFF"
 	AND ${PROTOCOL_PROMAX_SWITCH} MATCHES "OFF"
+	AND ${PROTOCOL_RSL366} MATCHES "OFF"
 	AND ${PROTOCOL_INTERTECHNO_OLD} MATCHES "OFF")
 	list(REMOVE_ITEM protocol_headers "${PROJECT_SOURCE_DIR}/libs/protocols/arctech_switch_old.h")
 	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/arctech_switch_old.c")
@@ -285,11 +286,6 @@ if(${PROTOCOL_REV} MATCHES "OFF")
 	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/rev_v1.c")
 	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/rev_v2.c")
 	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/rev_v3.c")
-endif()
-
-if(${PROTOCOL_RSL366} MATCHES "OFF")
-	list(REMOVE_ITEM protocol_headers "${PROJECT_SOURCE_DIR}/libs/protocols/rsl366.h")
-	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/rsl366.c")
 endif()
 
 if(${PROTOCOL_CLARUS} MATCHES "OFF")
