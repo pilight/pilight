@@ -213,18 +213,20 @@ function createPendingSwitchElement(sTabId, sDevId, aValues) {
 			}
 		});
 		$('#'+sTabId+'_'+sDevId).bind("click", function(event, ui) {
-			event.stopPropagation();
-			$('#'+sTabId+'_'+sDevId+'_pendingsw').parent().removeClass('ui-icon-on').removeClass('ui-icon-off').addClass('ui-icon-loader');
-			$('#'+sTabId+'_'+sDevId+'_pendingsw').button('disable');
-			$('#'+sTabId+'_'+sDevId+'_pendingsw').text(language.toggling);
-			$('#'+sTabId+'_'+sDevId+'_pendingsw').button('refresh');
-			var json = '{"message":"send","code":{"location":"'+sTabId+'","device":"'+sDevId+'","state":"'+this.value+'"}}';
-			if(oWebsocket) {
-				oWebsocket.send(json);
-			} else {
-				bSending = true;
-				$.get('http://'+location.host+'/send?'+encodeURIComponent(json));
-				window.setTimeout(function() { bSending = false; }, 1000);
+			if(!$('#'+sTabId+'_'+sDevId+'_pendingsw').prop("disabled")) {
+				event.stopPropagation();
+				$('#'+sTabId+'_'+sDevId+'_pendingsw').parent().removeClass('ui-icon-on').removeClass('ui-icon-off').addClass('ui-icon-loader');
+				$('#'+sTabId+'_'+sDevId+'_pendingsw').button('disable');
+				$('#'+sTabId+'_'+sDevId+'_pendingsw').text(language.toggling);
+				$('#'+sTabId+'_'+sDevId+'_pendingsw').button('refresh');
+				var json = '{"message":"send","code":{"location":"'+sTabId+'","device":"'+sDevId+'","state":"'+this.value+'"}}';
+				if(oWebsocket) {
+					oWebsocket.send(json);
+				} else {
+					bSending = true;
+					$.get('http://'+location.host+'/send?'+encodeURIComponent(json));
+					window.setTimeout(function() { bSending = false; }, 1000);
+				}
 			}
 		});
 		oTab.listview();
