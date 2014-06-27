@@ -31,18 +31,24 @@
 #include "gc.h"
 #include "ninjablocks.h"
 
+#define	PULSE_NINJA_SHORT	1000
+#define PULSE_NINJA_LONG	2000
+#define PULSE_NINJA_FOOTER	72080	// 2120*PULSE_DIV
+#define PULSE_NINJA_LOWER	750	// SHORT*0,75
+#define PULSE_NINJA_UPPER	1250	// SHORT * 1,25
+
 static void ninjablocksSwCreateMessage(int id, int unit, int temperature, int humidity) {
 	ninjablocks->message = json_mkobject();
 	json_append_member(ninjablocks->message, "id", json_mknumber(id));
 	json_append_member(ninjablocks->message, "unit", json_mknumber(unit));
 	json_append_member(ninjablocks->message, "temperature", json_mknumber(temperature));
-	json_append_member(ninjablocks->message, "humidity", json_mknumber(humidity));
+	json_append_member(ninjablocks->message, "humidity", json_mknumber(humidity*100));
 }
 
 static void ninjablocksSwParseCode(void) {
         int x=0, pRaw=0;
-	int iPlslenUpper=(int)(ninjablocks->plslen->length/2.1199 * 1.25);
-	int iPlslenLower=(int)(ninjablocks->plslen->length/2.1199 * 0.75);
+	int iPlslenUpper=(int)PULSE_NINJA_UPPER;
+	int iPlslenLower=(int)PULSE_NINJA_LOWER;
 	int iParity=1, iParityData=-1;	// init for even parity
 	int iHeaderSync=12;		// 1100
 	int iDataSync=6;		// 110
@@ -69,13 +75,13 @@ static void ninjablocksSwParseCode(void) {
 	int humidity = binToDecRev(ninjablocks->binary, 13,19);	// %
 	int temperature = binToDecRev(ninjablocks->binary, 20,34);
 	temperature=temperature*100/128-5000;			// temp=(temp+50)*128 °C, 2 digits
-	int parity = binToDecRev(ninjablocks->binary, 35,35);
+//	int parity = binToDecRev(ninjablocks->binary, 35,35);
 
 	if (iParityData==0 && (iHeaderSync==headerSync || dataSync==iDataSync)) {
 		ninjablocksSwCreateMessage(id, unit, temperature, humidity);
 	} else {
-		logprintf(LOG_ERR, "**** ninjablocks parsecode Error: invalid Parity Bit or Header:");
 		if(log_level_get() >= LOG_DEBUG) {
+			logprintf(LOG_ERR, "Parsecode Error: Invalid Parity Bit or Header:");
 			for(x=0;x<=ninjablocks->rawlen;x++) {
 				printf("%d ", ninjablocks->raw[x]);
 			}
@@ -84,20 +90,10 @@ static void ninjablocksSwParseCode(void) {
 				printf("%d", ninjablocks->binary[x]);
 				switch (x) {
 					case 3:
-					printf(" ");
-					break;
 					case 7:
-					printf(" ");
-					break;
 					case 9:
-					printf(" ");
-					break;
 					case 12:
-					printf(" ");
-					break;
 					case 19:
-					printf(" ");
-					break;
 					case 34:
 					printf(" ");
 					break;
@@ -105,7 +101,6 @@ static void ninjablocksSwParseCode(void) {
 					break;
 				}
 			}
-			printf("**** ninjablocks: Parity Bit found: %d, expected: %d. Sync values found - Header: %d Data: %d.\n", parity, iParityData, headerSync, dataSync);
 		}
 		id=-1;
 		unit=-1;
@@ -117,11 +112,9 @@ static void ninjablocksSwParseCode(void) {
 static void ninjablocksSwCreateZero(int e) {
 	int i,k;
 	k = ninjablocks->rawlen+e-1;
-	if (k>ninjablocks->maxrawlen) {
-		logprintf(LOG_ERR, "**** ninjablocks create zero error: invalid raw data pointer %d", k);
-	} else {
+	if (k<=ninjablocks->maxrawlen) {
 		for(i=ninjablocks->rawlen;i<=k;i++) {
-			ninjablocks->raw[i] = (int)(ninjablocks->pulse*ninjablocks->plslen->length/2.1199);
+			ninjablocks->raw[i] = (int)PULSE_NINJA_LONG;
 			ninjablocks->rawlen++;
 		}
 	}
@@ -130,11 +123,9 @@ static void ninjablocksSwCreateZero(int e) {
 static void ninjablocksSwCreateOne(int e) {
 	int i,k;
 	k = ninjablocks->rawlen+e+e-1;
-	if ((k+1)>ninjablocks->maxrawlen) {
-		logprintf(LOG_ERR, "**** ninjablocks create one error: invalid raw data pointer %d", k);
-	} else {
+	if ((k+1)<=ninjablocks->maxrawlen) {
 		for(i=ninjablocks->rawlen;i<=k;i+=2) {
-			ninjablocks->raw[i] = (int)(ninjablocks->plslen->length/2.1199);	// code a logical 1 pulse
+			ninjablocks->raw[i] = (int)PULSE_NINJA_SHORT;	// code a logical 1 pulse
 			ninjablocks->raw[i+1] = ninjablocks->raw[i];
 			ninjablocks->raw[ninjablocks->maxrawlen+1]=-ninjablocks->raw[ninjablocks->maxrawlen+1];		// toogle parity bit
 			ninjablocks->rawlen+=2;
@@ -205,9 +196,7 @@ static void ninjablocksSwCreateParity(void) {
 }
 
 static void ninjablocksSwCreateFooter(void) {
-	if (ninjablocks->rawlen>ninjablocks->maxrawlen) {
-		logprintf(LOG_ERR, "**** ninjablocks create footer: invalid raw data pointer %d", ninjablocks->rawlen);
-	} else {
+	if (ninjablocks->rawlen<=ninjablocks->maxrawlen) {
 		ninjablocks->raw[ninjablocks->rawlen] = PULSE_DIV*ninjablocks->plslen->length;
 		ninjablocks->rawlen++;
 	}
@@ -220,23 +209,19 @@ static int ninjablocksSwCreateCode(JsonNode *code) {
 	int temperature = -1;
 	double itmp = -1;
 
-	if(json_find_number(code, "id", &itmp) == 0)
-		id = (int)round(itmp);
-	if(json_find_number(code, "unit", &itmp) == 0)
-		unit = (int)round(itmp);
-	if(json_find_number(code, "temperature", &itmp) == 0)
-		temperature = (int)round(itmp);
-	if(json_find_number(code, "humidity", &itmp) == 0)
-		humidity = (int)round(itmp);
+	if(json_find_number(code, "id", &itmp) == 0)	id = (int)round(itmp);
+	if(json_find_number(code, "unit", &itmp) == 0)	unit = (int)round(itmp);
+	if(json_find_number(code, "temperature", &itmp) == 0)	temperature = (int)round(itmp);
+	if(json_find_number(code, "humidity", &itmp) == 0)	humidity = (int)round(itmp)/100;
 
 	if(id==-1 || unit==-1 || (temperature==-1 && humidity ==-1)) {
-		logprintf(LOG_ERR, "**** ninjablocks: insufficient number of arguments");
+		logprintf(LOG_ERR, "insufficient number of arguments");
 		return EXIT_FAILURE;
 	} else if(id > 3 || id < 0) {
-		logprintf(LOG_ERR, "**** ninjablocks: invalid channel id range");
+		logprintf(LOG_ERR, "invalid channel id range");
 		return EXIT_FAILURE;
 	} else if(unit > 15 || unit < 0) {
-		logprintf(LOG_ERR, "**** ninjablocks: invalid main code unit range");
+		logprintf(LOG_ERR, "invalid main code unit range");
 		return EXIT_FAILURE;
 	} else {
 
@@ -276,7 +261,7 @@ void ninjablocksSwInit(void) {
 	ninjablocks->rawlen = 70;	// dynamically between 41..70 footer is depending on raw pulse code
 	ninjablocks->minrawlen = 41;
 	ninjablocks->maxrawlen = 70;
-	ninjablocks->binlen = 35;      // sync-id[4]; Homecode[4], Channel Code[2], Sync[3], Humidity[7], Temperature[15], Footer [1]
+	ninjablocks->binlen = 35;	// sync-id[4]; Homecode[4], Channel Code[2], Sync[3], Humidity[7], Temperature[15], Footer [1]
 
 	options_add(&ninjablocks->options, 'u', "unit", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, NULL, "^([0-9]|1[0-5])$");
 	options_add(&ninjablocks->options, 'i', "id", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, NULL, "^([0-3])$");

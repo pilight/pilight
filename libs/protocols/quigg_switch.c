@@ -31,8 +31,13 @@
 #include "gc.h"
 #include "quigg_switch.h"
 
-static void quiggSwCreateMessage(int id, int state, int unit, int all, int dimm) {
-	logprintf(LOG_DEBUG, "**** quigg_switch: CreateMessage id:%d state:%d unit:%d all:%d dimm:%d",id, state, unit, all, dimm);
+#define	PULSE_QUIGG_SHORT	700
+#define	PULSE_QUIGG_LONG	1400
+#define	PULSE_QUIGG_FOOTER	81192
+#define	PULSE_QUIGG_50		PULSE_QUIGG_SHORT+(PULSE_QUIGG_LONG-PULSE_QUIGG_SHORT)/2
+
+static void quiggSwCreateMessage(int id, int state, int unit, int all) {
+	logprintf(LOG_DEBUG, "CreateMessage id:%d state:%d unit:%d all:%d dimm:%d",id, state, unit, all);
 
 	quigg_switch->message = json_mkobject();
 	json_append_member(quigg_switch->message, "id", json_mknumber(id));
@@ -42,25 +47,17 @@ static void quiggSwCreateMessage(int id, int state, int unit, int all, int dimm)
 		json_append_member(quigg_switch->message, "unit", json_mknumber(unit));
 	}
 
-	if (dimm<1) {
-		if (state==1)
-			json_append_member(quigg_switch->message, "state", json_mkstring("on"));
-		if (state==0)
-			json_append_member(quigg_switch->message, "state", json_mkstring("off"));
-	}
+	if (state==1)	json_append_member(quigg_switch->message, "state", json_mkstring("on"));
+	if (state==0)	json_append_member(quigg_switch->message, "state", json_mkstring("off"));
 
-	if(dimm==1)
-		json_append_member(quigg_switch->message, "state", json_mkstring("dim_up"));
-	if(dimm==2)
-		json_append_member(quigg_switch->message, "state", json_mkstring("dim_down"));
 }
 
 static void quiggSwParseCode(void) {
         int x=0, dec_unit[4]={0,3,1,2}, i=0;
 	int iParity=1, iParityData=-1;	// init for even parity
 
-	logprintf(LOG_DEBUG, "**** quigg_switch: ParseCode raw:");
 	if(log_level_get() >= LOG_DEBUG) {
+		logprintf(LOG_DEBUG, "ParseCode raw:");
 		for(i=0;i<=quigg_switch->rawlen;i++) {
 			printf("%d ", quigg_switch->raw[i]);
 		}
@@ -69,7 +66,7 @@ static void quiggSwParseCode(void) {
 // 42 bytes are the number of raw bytes
 // Byte 1,2 in raw buffer is the first logical byte, rawlen-3,-2 is the parity bit, rawlen-1 is the footer
 	for(x=0; x<quigg_switch->rawlen-1; x+=2) {
-		if(quigg_switch->raw[x+1] > 1050) {
+		if(quigg_switch->raw[x+1] > PULSE_QUIGG_50) {
 			quigg_switch->binary[x/2] = 1;
 			if(x/2>11&&x/2<19) {
 				iParityData=iParity;
@@ -91,76 +88,59 @@ static void quiggSwParseCode(void) {
 
 	if ((dimm==1) && (state==1)) dimm=2;
 
-	logprintf(LOG_DEBUG, "**** quigg_switch: ParseCode id:%d state:%d unit:%d all:%d dimm:%d parity:%d",id, state, unit, all, dimm, parity);
-	logprintf(LOG_DEBUG, "**** quigg_switch: ParseCode binary:");
 	if(log_level_get() >= LOG_DEBUG) {
+		logprintf(LOG_DEBUG, "ParseCode id:%d state:%d unit:%d all:%d dimm:%d parity:%d",id, state, unit, all, dimm, parity);
+		logprintf(LOG_DEBUG, "ParseCode binary:");
 		for(i=0;i<quigg_switch->binlen;i++) {
 			printf("%d", quigg_switch->binary[i]);
 			switch (i) {
 				case 11:
-				printf(" ");
-				break;
 				case 13:
-				printf(" ");
-				break;
 				case 14:
-				printf(" ");
-				break;
 				case 15:
-				printf(" ");
-				break;
 				case 16:
-				printf(" ");
-				break;
 				case 18:
 				printf(" ");
-				break;
 				default:
 				break;
 			}
 		}
 		printf("\n");
 	}
-        if (iParityData==parity) {
-		quiggSwCreateMessage(id, state, unit, all, dimm);
+        if (iParityData==parity && dimm<1) {
+		quiggSwCreateMessage(id, state, unit, all);
         } else {
-                logprintf(LOG_ERR, "**** quigg_switch: ParseCode error: invalid Parity Bit");
-		id=-1;
-		unit=-1;
-		state=-1;
-		dimm=0;
-		all=0;
+                logprintf(LOG_ERR, "ParseCode error: Invalid Parity Bit or Command"); // Dimm command handled by screen protocol
 	}
 }
 
 static void quiggSwCreateZero(int s, int e) {
 	int i;
 	for(i=s;i<=e;i+=2) {
-		quigg_switch->raw[i] = (int)(quigg_switch->plslen->length/3.415);
-		quigg_switch->raw[i+1] = (int)(quigg_switch->pulse*quigg_switch->plslen->length/3.415);
+		quigg_switch->raw[i] = PULSE_QUIGG_SHORT;
+		quigg_switch->raw[i+1] = PULSE_QUIGG_LONG;
 	}
 }
 
 static void quiggSwCreateOne(int s, int e) {
 	int i;
 	for(i=s;i<=e;i+=2) {
-		quigg_switch->raw[i] = (int)(quigg_switch->pulse*quigg_switch->plslen->length/3.415);
-		quigg_switch->raw[i+1] = (int)(quigg_switch->plslen->length/3.415);
+		quigg_switch->raw[i] = PULSE_QUIGG_LONG;
+		quigg_switch->raw[i+1] = PULSE_QUIGG_SHORT;
 	}
 }
 
 static void quiggSwCreateHeader(void) {
-	quigg_switch->raw[0] = (int)(quigg_switch->plslen->length/3.415);
+	quigg_switch->raw[0] = PULSE_QUIGG_SHORT;
 }
 
 static void quiggSwCreateFooter(void) {
-	quigg_switch->raw[quigg_switch->rawlen-1] = PULSE_DIV*quigg_switch->plslen->length;
+	quigg_switch->raw[quigg_switch->rawlen-1] = PULSE_QUIGG_FOOTER;
 }
 
 static void quiggSwClearCode(void) {
 	quiggSwCreateHeader();
 	quiggSwCreateZero(1,quigg_switch->rawlen-3);
-	quiggSwCreateFooter();
 }
 
 static void quiggSwCreateId(int id) {
@@ -178,59 +158,39 @@ static void quiggSwCreateId(int id) {
 	}
 }
 
-static void quiggSwCreateUnit(int unit, int dimm) {
+static void quiggSwCreateUnit(int unit) {
 	switch (unit) {
 		case 0:
 			quiggSwCreateZero(25, 30);	// 1st row
-			if (dimm>0) {
-				quiggSwCreateOne(33, 34);	// 5th row (dimm)
-				quiggSwCreateOne(37, 38);
-			}
 		break;
 		case 1:
 			quiggSwCreateOne(25, 26);	// 2nd row
-			if (dimm>0) {
-				quiggSwCreateOne(33, 34);	// 5th row (dimm)
-			} else {
-				quiggSwCreateOne(37, 38);	// Normal Mode
-			}
+			quiggSwCreateOne(37, 38);	// Normal Mode
 		break;
 		case 2:
 			quiggSwCreateOne(25, 28);	// 3rd row
-			if (dimm>0) {
-				quiggSwCreateOne(33, 34);	// 5th row (dimm)
-			} else {
-				quiggSwCreateOne(37, 38);	// Normal Mode
-			}
+			quiggSwCreateOne(37, 38);	// Normal Mode
 		break;
 		case 3:
 			quiggSwCreateOne(27, 28);	// 4th row
-			if (dimm>0) {
-				quiggSwCreateOne(33, 34);	// 5th row (dimm)
-				quiggSwCreateOne(37, 38);
-			}
 		break;
 		case 4:
 			quiggSwCreateOne(25, 30);	// 6th row MASTER (all)
-			if (dimm>0) {
-				quiggSwCreateOne(33, 34);	// 5th row dimm
-				quiggSwCreateOne(37, 38);
-			}
 		break;
 		default:
 		break;
 	}
 }
 
-static void quiggSwCreateState(int state, int dimm) {
-	if((dimm<1 && state==1) || (dimm==2)) quiggSwCreateOne(31, 32);	//on or dim down
+static void quiggSwCreateState(int state) {
+	if(state==1) quiggSwCreateOne(31, 32);	//on
 }
 
 static void quiggSwCreateParity(void) {
 	int i,p;
 	p = 1;			// init even parity, without system ID
 	for(i=25;i<=37;i+=2) {
-		if(quigg_switch->raw[i] == (int)(quigg_switch->pulse*quigg_switch->plslen->length/3.415)) {
+		if(quigg_switch->raw[i] == PULSE_QUIGG_LONG) {
 			p = -p;
 		}
 	}
@@ -244,38 +204,33 @@ static int quiggSwCreateCode(JsonNode *code) {
 	int id = -1;
 	int state = -1;
 	int all = 0;
-	int dimm = -1;
 	double itmp = -1;
 
 	if(json_find_number(code, "id", &itmp) == 0)   id = (int)round(itmp);
 	if(json_find_number(code, "unit", &itmp) == 0) unit = (int)round(itmp);
 	if(json_find_number(code, "all", &itmp) == 0)  all = (int)round(itmp);
-	if(json_find_number(code, "dim_up", &itmp) == 0) dimm=1;
-	if(json_find_number(code, "dim_down", &itmp) == 0) dimm=2;
 	if(json_find_number(code, "on", &itmp) == 0) state=1;
 	if(json_find_number(code, "off", &itmp) == 0) state=0;
-	if(id==-1 || (unit==-1 && all==0) || (state==-1 && dimm==-1)) {
-		logprintf(LOG_ERR, "**** quigg_switch: insufficient number of arguments");
-		return EXIT_FAILURE;
-	} else if (state!=-1 && dimm!=-1) {
-		logprintf(LOG_ERR, "**** quigg_switch: invalid combination of commands");
+	if(id==-1 || (unit==-1 && all==0) || state==-1) {
+		logprintf(LOG_ERR, "insufficient number of arguments");
 		return EXIT_FAILURE;
 	} else if(id > 4095 || id < 0) {
-		logprintf(LOG_ERR, "**** quigg_switch: invalid system id range");
+		logprintf(LOG_ERR, "invalid system id range");
 		return EXIT_FAILURE;
 	} else if((unit > 3 || unit < 0) && all == 0) {
-		logprintf(LOG_ERR, "**** quigg_switch: invalid unit code range");
+		logprintf(LOG_ERR, "invalid unit code range");
 		return EXIT_FAILURE;
 	} else {
 		if(unit == -1 && all == 1) {
 			unit = 4;
 		}
-		quiggSwCreateMessage(id, state, unit, all, dimm);
+		quiggSwCreateMessage(id, state, unit, all);
 		quiggSwClearCode();
 		quiggSwCreateId(id);
-		quiggSwCreateUnit(unit, dimm);
-		quiggSwCreateState(state, dimm);
+		quiggSwCreateUnit(unit);
+		quiggSwCreateState(state);
 		quiggSwCreateParity();
+		quiggSwCreateFooter();
 	}
 	return EXIT_SUCCESS;
 }
@@ -285,8 +240,6 @@ static void quiggSwPrintHelp(void) {
 	printf("\t -u --unit=unit\t\t\tselect the individual device unit\n");
 	printf("\t -t --on\t\t\tsend an on command to the selected device\n");
 	printf("\t -f --off\t\t\tsend an off command to the selected device\n");
-	printf("\t -p --dim_up\t\t\tsend a dim_up command to the selected device\n");
-	printf("\t -n --dim_down\t\t\tsend a dim_down up command to the selected device\n");
 	printf("\t -a --id=all\t\t\tsend the command to all devices listening to this system id\n");
 }
 
@@ -298,7 +251,7 @@ void quiggSwInit(void) {
 	protocol_register(&quigg_switch);
 	protocol_set_id(quigg_switch, "quigg_switch");
 	protocol_device_add(quigg_switch, "quigg_switch", "Quigg Switches");
-	protocol_plslen_add(quigg_switch, 2388);	// SHORT: GT-FSI-04a range: 620... 960
+	protocol_plslen_add(quigg_switch, (int)PULSE_QUIGG_FOOTER/PULSE_DIV);	// SHORT: GT-FSI-04a range: 620... 960
 
 	quigg_switch->devtype = SWITCH;
 	quigg_switch->hwtype = RF433;
@@ -311,8 +264,6 @@ void quiggSwInit(void) {
 
 	options_add(&quigg_switch->options, 't', "on", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
 	options_add(&quigg_switch->options, 'f', "off", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
-	options_add(&quigg_switch->options, 'n', "dim_down", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
-	options_add(&quigg_switch->options, 'p', "dim_up", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
 	options_add(&quigg_switch->options, 'u', "unit", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, NULL, "^([0-3])$");
 	options_add(&quigg_switch->options, 'i', "id", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, NULL, "^([1-9]|[1-9][0-9]|[1-9][0-9][0-9]|[1-3][0-9][0-9][0-9]|40[0-8][0-9]|409[0-5])$");
 	options_add(&quigg_switch->options, 'a', "all", OPTION_NO_VALUE, CONFIG_SETTING, JSON_NUMBER, NULL, NULL);
@@ -327,7 +278,7 @@ void quiggSwInit(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name = "quigg_switch";
-	module->version = "1.0";
+	module->version = "1.1";
 	module->reqversion = "5.0";
 	module->reqcommit = NULL;
 }

@@ -43,6 +43,7 @@ set(PROTOCOL_OPENWEATHERMAP ON CACHE BOOL "support for the Open Weather Map API"
 set(PROTOCOL_POLLIN_SWITCH ON CACHE BOOL "support for the polling switch protocol")
 set(PROTOCOL_PROGRAM ON CACHE BOOL "support for the program switching protocol")
 set(PROTOCOL_QUIGG_SWITCH ON CACHE BOOL "support for Quigg switch protocol")
+set(PROTOCOL_QUIGG_SCREEN ON CACHE BOOL "support for Quigg switch w screen protocol")
 set(PROTOCOL_RAW ON CACHE BOOL "support for the raw / simulator")
 set(PROTOCOL_REV ON CACHE BOOL "support for the Rev protocol")
 set(PROTOCOL_RELAY ON CACHE BOOL "support for GPIO relay devices")

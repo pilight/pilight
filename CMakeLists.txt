@@ -331,6 +331,11 @@ if(${PROTOCOL_QUIGG_SWITCH} MATCHES "OFF")
     list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/quigg_switch.c")
 endif()
 
+if(${PROTOCOL_QUIGG_SCREEN} MATCHES "OFF")
+    list(REMOVE_ITEM protocol_headers "${PROJECT_SOURCE_DIR}/libs/protocols/quigg_screen.h")
+    list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/quigg_screen.c")
+endif()
+
 if(${PROTOCOL_MUMBI_SWITCH} MATCHES "OFF")
 	list(REMOVE_ITEM protocol_headers "${PROJECT_SOURCE_DIR}/libs/protocols/mumbi.h")
 	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/mumbi.c")
