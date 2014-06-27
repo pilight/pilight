@@ -909,6 +909,7 @@ int webserver_start(void) {
 	pthread_mutexattr_init(&webqueue_attr);
 	pthread_mutexattr_settype(&webqueue_attr, PTHREAD_MUTEX_RECURSIVE);
 	pthread_mutex_init(&webqueue_lock, &webqueue_attr);
+	pthread_cond_init(&webqueue_signal, NULL);
 
 	/* Check on what port the webserver needs to run */
 	settings_find_number("webserver-port", &webserver_port);
