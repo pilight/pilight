@@ -33,7 +33,7 @@
 
 #define	PULSE_NINJA_SHORT	1000
 #define PULSE_NINJA_LONG	2000
-#define PULSE_NINJA_FOOTER	72080	// 2120*PULSE_DIV
+#define PULSE_NINJA_FOOTER	2120	// 72080/PULSE_DIV
 #define PULSE_NINJA_LOWER	750	// SHORT*0,75
 #define PULSE_NINJA_UPPER	1250	// SHORT * 1,25
 
@@ -47,15 +47,13 @@ static void ninjablocksSwCreateMessage(int id, int unit, int temperature, int hu
 
 static void ninjablocksSwParseCode(void) {
         int x=0, pRaw=0;
-	int iPlslenUpper=(int)PULSE_NINJA_UPPER;
-	int iPlslenLower=(int)PULSE_NINJA_LOWER;
 	int iParity=1, iParityData=-1;	// init for even parity
 	int iHeaderSync=12;		// 1100
 	int iDataSync=6;		// 110
 
 // Decode Biphase Mark Coded Differential Manchester (BMCDM) pulse stream into binary
 	for(x=0; x<=ninjablocks->binlen; x++) {
-		if( ninjablocks->raw[pRaw] > iPlslenLower && ninjablocks->raw[pRaw] < iPlslenUpper) {
+		if( ninjablocks->raw[pRaw] > PULSE_NINJA_LOWER && ninjablocks->raw[pRaw] < PULSE_NINJA_UPPER) {
 			ninjablocks->binary[x] = 1;
 			iParityData=iParity;
 			iParity=-iParity;
@@ -254,7 +252,7 @@ void ninjablocksSwInit(void) {
 	protocol_register(&ninjablocks);
 	protocol_set_id(ninjablocks, "ninjablocks");
 	protocol_device_add(ninjablocks, "ninjablocks", "ninjablocks Sensors");
-	protocol_plslen_add(ninjablocks, 2120);		// Footer length: 72075/PULSE_DIV/2120=2,1199
+	protocol_plslen_add(ninjablocks, PULSE_NINJA_FOOTER);		// Footer length ratio: (72080/PULSE_DIV)/2120=2,120
 	ninjablocks->devtype = SENSOR;
 	ninjablocks->hwtype = RF433;
 	ninjablocks->pulse = 2;		// LONG=ninjablocks_PULSE_HIGH*SHORT

@@ -15,6 +15,7 @@
 	elroHEInit();
 	pollinInit();
 	pilightFirmwareV3Init();
+	ninjablocksSwInit();
 	homeEasyOldInit();
 	lm76Init();
 	ds18b20Init();
@@ -27,10 +28,10 @@
 	arctechSrInit();
 	alectoWSD17Init();
 	arctechDimInit();
-	rsl366Init();
 	dht11Init();
 	rev1Init();
 	xbmcInit();
+	quiggScreenInit();
 	ehomeInit();
 	arctechContactInit();
 	genSwitchInit();
@@ -49,6 +50,7 @@
 	elroADInit();
 	relayInit();
 	arctechSrOldInit();
+	quiggSwInit();
 	ds18s20Init();
 	silvercrestInit();
 
