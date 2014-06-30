@@ -106,7 +106,7 @@ static void *owfs_ds18b20Parse(void *param) {
 					strcat(owfs_ds18b20_temperature_file, "temperature");
 
 					if(!(fp = fopen(owfs_ds18b20_temperature_file, "rb"))) {
-						logprintf(LOG_ERR, "cannot read w1 file: %s", owfs_ds18b20_temperature_file);
+						logprintf(LOG_ERR, "cannot read temperature file: %s", owfs_ds18b20_temperature_file);
 						break;
 					}			
 					fstat(fileno(fp), &st);
@@ -125,18 +125,15 @@ static void *owfs_ds18b20Parse(void *param) {
 						break;
 					}
 					fclose(fp);
-					//logprintf(LOG_ERR,"content:%s",content);//MMt	
 					w1temp=(int)(1000*atof(content)+temp_offset);
 					if(true) {
-						owfs_ds18b20->message = json_mkobject();						
+						owfs_ds18b20->message = json_mkobject();
 						JsonNode *code = json_mkobject();
-						
 						json_append_member(code, "id", json_mkstring(id[y]));
 						json_append_member(code, "temperature", json_mknumber(w1temp));
 						json_append_member(owfs_ds18b20->message, "message", code);
 						json_append_member(owfs_ds18b20->message, "origin", json_mkstring("receiver"));
 						json_append_member(owfs_ds18b20->message, "protocol", json_mkstring(owfs_ds18b20->id));
-						
 						pilight.broadcast(owfs_ds18b20->id, owfs_ds18b20->message);
 						json_delete(owfs_ds18b20->message);
 						owfs_ds18b20->message = NULL;
@@ -200,7 +197,7 @@ void owfs_ds18b20Init(void) {
 	options_add(&owfs_ds18b20->options, 0, "gui-show-temperature", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
 	options_add(&owfs_ds18b20->options, 0, "poll-interval", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)10, "[0-9]");
 
-	memset(owfs_ds18b20_path, '\0', 21);	
+	memset(owfs_ds18b20_path, '\0', 21);
 	strcpy(owfs_ds18b20_path, "/mnt/1wire/");
 
 	owfs_ds18b20->initDev=&owfs_ds18b20InitDev;

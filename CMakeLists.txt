@@ -103,7 +103,7 @@ foreach (file \${files})
 endforeach(file)
 
 execute_process(COMMAND update-rc.d pilight remove)
-execute_process(COMMAND ln -sf /usr/local/lib/pilight/libpilight.so.3 /usr/local/lib/libpilight.so)
+# execute_process(COMMAND ln -sf /usr/local/lib/pilight/libpilight.so.3 /usr/local/lib/libpilight.so)
 execute_process(COMMAND ldconfig)
 
 ") # END of appending to file...
@@ -210,6 +210,11 @@ endif()
 if(${PROTOCOL_OWFS_DS18B20} MATCHES "OFF")
 	list(REMOVE_ITEM protocol_headers "${PROJECT_SOURCE_DIR}/libs/protocols/owfs_ds18b20.h")
 	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/owfs_ds18b20.c")
+endif()
+
+if(${PROTOCOL_OWFS_DS2408} MATCHES "OFF")
+	list(REMOVE_ITEM protocol_headers "${PROJECT_SOURCE_DIR}/libs/protocols/owfs_ds2408.h")
+	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/owfs_ds2408.c")
 endif()
 
 if(${PROTOCOL_DHT22} MATCHES "OFF")
@@ -565,7 +570,7 @@ if(${MODULESPACK} MATCHES "OFF")
 	set_source_files_properties(${avrdude_sources} PROPERTIES COMPILE_FLAGS " -w ")
 
 	if(EXISTS "/usr/local/lib/libpilight.so")
-		install(CODE "execute_process(COMMAND rm /usr/local/lib/libpilight.so)")
+		#mmt install(CODE "execute_process(COMMAND rm /usr/local/lib/libpilight.so)")
 	endif()
 
 	install(FILES libpilight.so DESTINATION lib/pilight/ RENAME libpilight.so.${PROJECT_VERSION} COMPONENT pilight)
@@ -576,11 +581,11 @@ if(${MODULESPACK} MATCHES "OFF")
 	endif()		
 	
 	if(EXISTS "/etc/pilight/settings.json")
-		install(CODE "execute_process(COMMAND mv /etc/pilight/settings.json /etc/pilight/settings.json.bak)")
+		#mmt install(CODE "execute_process(COMMAND mv /etc/pilight/settings.json /etc/pilight/settings.json.bak)")
 	endif()
 
 	if(EXISTS "/etc/pilight/hardware.json")
-		install(CODE "execute_process(COMMAND mv /etc/pilight/hardware.json /etc/pilight/hardware.json.bak)")
+		#mmt install(CODE "execute_process(COMMAND mv /etc/pilight/hardware.json /etc/pilight/hardware.json.bak)")
 	endif()
 
 	if(${WEBSERVER} MATCHES "ON")
@@ -588,9 +593,9 @@ if(${MODULESPACK} MATCHES "OFF")
 	endif()
 
 	install(PROGRAMS init/pilight.initd DESTINATION /etc/init.d/ RENAME pilight)
-	install(FILES settings.json-default DESTINATION /etc/pilight/ RENAME settings.json COMPONENT pilight)
+	#mmt install(FILES settings.json-default DESTINATION /etc/pilight/ RENAME settings.json COMPONENT pilight)
 	install(FILES tzdata.json DESTINATION /etc/pilight/ COMPONENT pilight)
-	install(FILES hardware.json DESTINATION /etc/pilight/ COMPONENT pilight)
+	#mmt install(FILES hardware.json DESTINATION /etc/pilight/ COMPONENT pilight)
 
 	add_executable(pilight-daemon daemon.c)
 	target_link_libraries(pilight-daemon pilight_shared)

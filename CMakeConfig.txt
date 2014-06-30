@@ -15,6 +15,7 @@ set(PROTOCOL_DATETIME ON CACHE BOOL "support for the (NTP) date and time protoco
 set(PROTOCOL_DS18B20 ON CACHE BOOL "support for the 1-Wire ds18b20 temperature sensor")
 set(PROTOCOL_DS18S20 ON CACHE BOOL "support for the 1-Wire ds18s20 temperature sensor")
 set(PROTOCOL_OWFS_DS18B20 ON CACHE BOOL "support for the 1-Wire ds18s20 temperature sensor with OWFS")
+set(PROTOCOL_OWFS_DS2408 ON CACHE BOOL "support for the 1-Wire ds2408 8-channel relay switch with OWFS")
 set(PROTOCOL_DHT11 ON CACHE BOOL "support for the DHT11 temperature-humidity sensor")
 set(PROTOCOL_DHT22 ON CACHE BOOL "support for the DHT22/AM2302 temperature-humidity sensor")
 set(PROTOCOL_DIO_SWITCH ON CACHE BOOL "support for the D-IO switch protocol")
