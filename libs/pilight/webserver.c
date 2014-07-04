@@ -339,7 +339,7 @@ static int webserver_request_handler(struct mg_connection *conn) {
 				char *pch = strtok((char *)indexes, ",");
 				/* Check if the webserver_root is terminated by a slash. If not, than add it */
 				while(pch) {
-					request = realloc(request, strlen(webserver_root)+strlen(webgui_tpl)+strlen(pch)+4);
+					request = realloc(request, strlen(webserver_root)+strlen(webgui_tpl)+strlen(conn->uri)+strlen(pch)+4);
 					if(!request) {
 						logprintf(LOG_ERR, "out of memory");
 						exit(EXIT_FAILURE);
