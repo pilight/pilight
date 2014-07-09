@@ -51,6 +51,13 @@ if(${CMAKE_SYSTEM_PROCESSOR} MATCHES "armv6" OR CPACK_DEBIAN_PACKAGE_ARCHITECTUR
 	endif()
 endif()
 
+if(${CMAKE_SYSTEM_PROCESSOR} MATCHES "armv7l")
+	if(${USE_SOFT_FLOAT} MATCHES "OFF")
+		set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE armhf)
+		set(CMAKE_C_FLAGS "-lz -Ofast -fPIC -mfloat-abi=hard -mfpu=vfp -march=armv7 -ffast-math -Wfloat-equal -Wshadow -Wpointer-arith -Wcast-align -Wstrict-overflow=5 -Wwrite-strings -Waggregate-return -Wcast-qual -Wswitch-default -Wswitch-enum -Wformat=2 -g -Wall -Wconversion -Wunreachable-code -Wstrict-prototypes")
+	endif()
+endif()
+
 if(${CMAKE_SYSTEM_PROCESSOR} MATCHES "x86_64")
 	set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE i386)
 	set(CMAKE_C_FLAGS "-Ofast -fPIC -march=native -mtune=native -ffast-math -Wconversion -Wunreachable-code -Wstrict-prototypes -Wfloat-equal -Wshadow -Wpointer-arith -Wcast-align -Wstrict-overflow=5 -Wwrite-strings -Waggregate-return -Wcast-qual -Wswitch-default -Wswitch-enum -Wformat=2 -g3 -Wall")
