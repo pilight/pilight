@@ -492,24 +492,27 @@ void *receive_parse_code(void *param) {
 					  (protocol->rawlen > 0 || (protocol->minrawlen > 0 && protocol->maxrawlen > 0)))
 					   || protocol->parseBinary) && protocol->pulse > 0 && protocol->plslen)) {
 					plslengths = protocol->plslen;
+
 					while(plslengths && main_loop) {
 						if((recvqueue->plslen >= ((double)plslengths->length-5) &&
 						    recvqueue->plslen <= ((double)plslengths->length+5))) {
-
 							match = 1;
 							break;
 						}
 						plslengths = plslengths->next;
 					}
+
 					if((recvqueue->rawlen == protocol->rawlen || (
 					   (protocol->minrawlen > 0 && protocol->maxrawlen > 0 &&
-					    recvqueue->rawlen >= protocol->minrawlen && recvqueue->rawlen <= protocol->maxrawlen)))
+					   (recvqueue->rawlen >= protocol->minrawlen && recvqueue->rawlen <= protocol->maxrawlen))))
 					    && match == 1) {
-						for(x=0;x<(int)recvqueue->rawlen;x++) {
+
+						for(x=0;x < (int)recvqueue->rawlen;x++) {
 							if(x < 254) {
 								memcpy(&protocol->raw[x], &recvqueue->raw[x], sizeof(int));
 							}
 						}
+
 						if(protocol->parseRaw) {
 							logprintf(LOG_DEBUG, "recevied pulse length of %d", recvqueue->plslen);
 							logprintf(LOG_DEBUG, "called %s parseRaw()", protocol->id);
@@ -550,9 +553,11 @@ void *receive_parse_code(void *param) {
 						}
 
 						protocol->repeats++;
+
 						/* Continue if we have recognized enough repeated codes */
 						if(protocol->repeats >= (receive_repeat*protocol->rxrpt) ||
 						   strcmp(protocol->id, "pilight_firmware") == 0) {
+
 							if(protocol->parseCode) {
 								logprintf(LOG_DEBUG, "caught minimum # of repeats %d of %s", protocol->repeats, protocol->id);
 								logprintf(LOG_DEBUG, "called %s parseCode()", protocol->id);
@@ -570,13 +575,20 @@ void *receive_parse_code(void *param) {
 									}
 								}
 
-								if((double)protocol->raw[1]/((plslengths->length * (1+protocol->pulse)/2)) < 2.1) {
+							if((double)protocol->raw[1]/((plslengths->length * (1+protocol->pulse)/2)) < 2.1) {
 									x -= 4;
 								}
-
 								/* Check if the binary matches the binary length */
-								if((protocol->binlen > 0 && ((x/4) == protocol->binlen))
-								   || (protocol->binlen == 0 && ((x/4) == protocol->rawlen/4))) {
+								if(
+								   ((protocol->binlen > 0) && ((x/4) == protocol->binlen) )
+								   ||
+								   ((protocol->binlen == 0) &&
+								    (  (x == protocol->rawlen)
+								       || (x == protocol->minrawlen)
+								       || (x == protocol->maxrawlen)
+								    )
+								   )
+                                                                  ) {
 									logprintf(LOG_DEBUG, "called %s parseBinary()", protocol->id);
 
 									protocol->parseBinary();
