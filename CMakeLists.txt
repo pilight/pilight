@@ -318,6 +318,11 @@ if(${PROTOCOL_CONRAD_RSL_CONTACT} MATCHES "OFF")
 	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/conrad_rsl_contact.c")
 endif()
 
+if(${PROTOCOL_BEAMISH_SWITCH} MATCHES "OFF")
+	list(REMOVE_ITEM protocol_headers "${PROJECT_SOURCE_DIR}/libs/protocols/beamish_switch.h")
+	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/beamish_switch.c")
+endif()
+
 if(${PROTOCOL_DHT11} MATCHES "OFF")
 	list(REMOVE_ITEM protocol_headers "${PROJECT_SOURCE_DIR}/libs/protocols/dht11.h")
 	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/dht11.c")
