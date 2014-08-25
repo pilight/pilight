@@ -20,6 +20,8 @@ var userLang = navigator.language || navigator.userLanguage;
 var language_en = {
 	off: "Off",
 	on: "On",
+	opened: "Opened",
+	closed: "Closed",
 	stopped: "Stopped",
 	started: "Started",
 	toggling: "Toggling",
@@ -37,6 +39,8 @@ var language_en = {
 var language_nl = {
 	off: "Uit",
 	on: "Aan",
+	opened: "Omhoog",
+	closed: "Te",
 	stopped: "Gestopt",
 	started: "Gestart",
 	toggling: "Omzetten",
@@ -48,6 +52,24 @@ var language_nl = {
 	connection_lost: "Verbinding verloren, klik om te herladen",
 	connection_failed: "Kan niet verbinden, klik om te herhalen",
 	unexpected_error: "An unexpected error occured"
+}
+
+var language_ge = {
+	off: "Aus",
+	on: "An",
+	opened: "Offen",
+	closed: "Zu",
+	stopped: "Angehalten",
+	started: "Gestarted",
+	toggling: "umschalten",
+	up: "Oben",
+	down: "Unten",
+	update: "aktualisieren",
+	loading: "laden",
+	available: "verfügbar",
+	connection_lost: "Verbinding unterbrochen, klick zum wiederherstellen",
+	connection_failed: "Verbindungsfehler, klick zum wiederherstellen",
+	unexpected_error: "Unbekannter Fehler aufgetreten"
 }
 
 var language = language_en;
@@ -180,6 +202,52 @@ function createSwitchElement(sTabId, sDevId, aValues) {
 	if('gui-readonly' in aValues && aValues['gui-readonly']) {
 		aReadOnly[sTabId+'_'+sDevId] = 1;
 		$('#'+sTabId+'_'+sDevId+'_switch').slider('disable');
+	} else {
+		aReadOnly[sTabId+'_'+sDevId] = 0;
+	}
+}
+
+function createContactElement(sTabId, sDevId, aValues) {
+	if($('#'+sTabId+'_'+sDevId+'_contact').length == 0) {
+		if(bShowTabs) {
+			oTab = $('#'+sTabId).find('ul');
+		} else {
+			oTab = $('#all');
+		}
+		if('name' in aValues) {
+			oTab.append($('<li id="'+sTabId+'_'+sDevId+'" class="contact" data-icon="false"><div class="name">'+aValues['name']+'</div><select id="'+sTabId+'_'+sDevId+'_contact" data-role="slider"><option value="closed">'+language.closed+'</option><option value="opened">'+language.opened+'</option></select></li>'));
+		}
+		$('#'+sTabId+'_'+sDevId+'_contact').slider();
+		$('#'+sTabId+'_'+sDevId+'_contact').bind("change", function(event, ui) {
+			event.stopPropagation();
+			if('all' in aValues && aValues['all'] == 1) {
+				var json = '{"message":"send","code":{"location":"'+sTabId+'","device":"'+sDevId+'","state":"'+this.value+'","values":{"all": 1}}}';
+			} else {
+				var json = '{"message":"send","code":{"location":"'+sTabId+'","device":"'+sDevId+'","state":"'+this.value+'"}}';
+			}
+			if(oWebsocket) {
+				oWebsocket.send(json);
+			} else {
+				bSending = true;
+				$.get('http://'+location.host+'/send?'+encodeURIComponent(json));
+				window.setTimeout(function() { bSending = false; }, 1000);
+			}
+		});
+		oTab.listview();
+		oTab.listview("refresh");
+	}
+	if('state' in aValues) {
+		if(aValues['state'] === "on" || aValues['state'] === "opened") {
+			$('#'+sTabId+'_'+sDevId+'_contact')[0].selectedIndex = 1;
+			$('#'+sTabId+'_'+sDevId+'_contact').slider('refresh');
+		} else {
+			$('#'+sTabId+'_'+sDevId+'_contact')[0].selectedIndex = 0;
+			$('#'+sTabId+'_'+sDevId+'_contact').slider('refresh');
+		}
+	}
+	if('gui-readonly' in aValues && aValues['gui-readonly']) {
+		aReadOnly[sTabId+'_'+sDevId] = 1;
+		$('#'+sTabId+'_'+sDevId+'_contact').slider('disable');
 	} else {
 		aReadOnly[sTabId+'_'+sDevId] = 0;
 	}
@@ -917,6 +985,8 @@ function createGUI(data) {
 							createWeatherElement(lindex, dindex, aValues);
 						} else if(aValues['type'] == 5) {
 							createScreenElement(lindex, dindex, aValues);
+						} else if(aValues['type'] == 6) {
+							createContactElement(lindex, dindex, aValues);
 						} else if(aValues['type'] == 7) {
 							createPendingSwitchElement(lindex, dindex, aValues);
 						} else if(aValues['type'] == 8) {
@@ -975,7 +1045,7 @@ function parseData(data) {
 			$.each(aLocations, function(lindex, lvalues) {
 				$.each(lvalues, function(dindex, dvalues) {
 					$.each(aValues, function(vindex, vvalues) {
-						if(iType == 1 || iType == 4) {
+						if(iType == 1 || iType == 4 ) {
 							if(vindex == 'state') {
 								if(vvalues == 'on' || vvalues == 'opened') {
 									$('#'+lindex+'_'+dvalues+'_switch')[0].selectedIndex = 1;
@@ -996,6 +1066,15 @@ function parseData(data) {
 							if(vindex == 'dimlevel') {
 								$('#'+lindex+'_'+dvalues+'_dimmer').val(vvalues);
 								$('#'+lindex+'_'+dvalues+'_dimmer').slider('refresh');
+							}
+						} else if(iType == 6) {
+							if(vindex == 'state') {
+								if(vvalues == 'on' || vvalues == 'opened') {
+									$('#'+lindex+'_'+dvalues+'_contact')[0].selectedIndex = 1;
+								} else {
+									$('#'+lindex+'_'+dvalues+'_contact')[0].selectedIndex = 0;
+								}
+								$('#'+lindex+'_'+dvalues+'_contact').slider('refresh');
 							}
 						} else if(iType == 8) {
 							if(lindex+'_'+dvalues in aDateTime &&

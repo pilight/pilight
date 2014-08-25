@@ -14,6 +14,8 @@
 
     You should have received a copy of the GNU General Public License
     along with pilight. If not, see	<http://www.gnu.org/licenses/>
+Incorporation of posting 'din4711' pid='7323' dateline='1406304421'
+
 */
 
 #include <stdio.h>
@@ -35,10 +37,18 @@ static void rev1CreateMessage(char *id, int unit, int state) {
 	rev1_switch->message = json_mkobject();
 	json_append_member(rev1_switch->message, "id", json_mkstring(id));
 	json_append_member(rev1_switch->message, "unit", json_mknumber(unit));
+// Incorporation of posting 'din4711' pid='7323' dateline='1406304421'
+	if(state == 1)
+		json_append_member(rev1_switch->message, "state", json_mkstring("off"));
+	else
+		json_append_member(rev1_switch->message, "state", json_mkstring("on"));
+/*
+old code
 	if(state == 1)
 		json_append_member(rev1_switch->message, "state", json_mkstring("on"));
 	else
 		json_append_member(rev1_switch->message, "state", json_mkstring("off"));
+*/
 }
 
 static void rev1ParseCode(void) {
@@ -143,6 +153,7 @@ static void rev1CreateId(char *id) {
 }
 
 static void rev1CreateState(int state) {
+//	if(state == 0) {
 	if(state == 1) {
 		rev1CreateMed(40,43);
 		rev1CreateHigh(44,47);

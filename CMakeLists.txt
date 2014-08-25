@@ -110,6 +110,7 @@ foreach (file \${files})
 endforeach(file)
 
 execute_process(COMMAND update-rc.d pilight remove)
+execute_process(COMMAND ln -sf /usr/local/lib/pilight/libpilight.so.3 /usr/local/lib/libpilight.so)
 execute_process(COMMAND ldconfig)
 
 ") # END of appending to file...
@@ -169,10 +170,6 @@ endif()
 
 if(${PROTOCOL_COGEX_SWITCH} MATCHES "OFF"
 	AND ${PROTOCOL_KAKU_SWITCH_OLD} MATCHES "OFF"
-	AND ${PROTOCOL_BYEBYESTANDBYE_SWITCH} MATCHES "OFF"
-	AND ${PROTOCOL_DUWI_SWITCH} MATCHES "OFF"
-	AND ${PROTOCOL_PROMAX_SWITCH} MATCHES "OFF"
-	AND ${PROTOCOL_RSL366} MATCHES "OFF"
 	AND ${PROTOCOL_INTERTECHNO_OLD} MATCHES "OFF")
 	list(REMOVE_ITEM protocol_headers "${PROJECT_SOURCE_DIR}/libs/protocols/arctech_switch_old.h")
 	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/arctech_switch_old.c")
@@ -321,6 +318,11 @@ if(${PROTOCOL_CONRAD_RSL_CONTACT} MATCHES "OFF")
 	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/conrad_rsl_contact.c")
 endif()
 
+if(${PROTOCOL_BEAMISH_SWITCH} MATCHES "OFF")
+	list(REMOVE_ITEM protocol_headers "${PROJECT_SOURCE_DIR}/libs/protocols/beamish_switch.h")
+	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/beamish_switch.c")
+endif()
+
 if(${PROTOCOL_DHT11} MATCHES "OFF")
 	list(REMOVE_ITEM protocol_headers "${PROJECT_SOURCE_DIR}/libs/protocols/dht11.h")
 	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/dht11.c")
@@ -339,6 +341,11 @@ endif()
 if(${PROTOCOL_QUIGG_SWITCH} MATCHES "OFF")
     list(REMOVE_ITEM protocol_headers "${PROJECT_SOURCE_DIR}/libs/protocols/quigg_switch.h")
     list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/quigg_switch.c")
+endif()
+
+if(${PROTOCOL_QUIGG_SCREEN} MATCHES "OFF")
+    list(REMOVE_ITEM protocol_headers "${PROJECT_SOURCE_DIR}/libs/protocols/quigg_screen.h")
+    list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/quigg_screen.c")
 endif()
 
 if(${PROTOCOL_MUMBI_SWITCH} MATCHES "OFF")
@@ -414,6 +421,11 @@ endif()
 if(${PROTOCOL_LIRC} MATCHES "OFF")
 	list(REMOVE_ITEM protocol_headers "${PROJECT_SOURCE_DIR}/libs/protocols/lirc.h")
 	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/lirc.c")
+endif()
+
+if(${PROTOCOL_NINJABLOCKS} MATCHES "OFF")
+	list(REMOVE_ITEM protocol_headers "${PROJECT_SOURCE_DIR}/libs/protocols/ninjablocks.h")
+	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/ninjablocks.c")
 endif()
 
 if(${HARDWARE_433_GPIO} MATCHES "OFF")
