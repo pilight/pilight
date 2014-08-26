@@ -339,7 +339,7 @@ static int webserver_request_handler(struct mg_connection *conn) {
 				char *pch = strtok((char *)indexes, ",");
 				/* Check if the webserver_root is terminated by a slash. If not, than add it */
 				while(pch) {
-					request = realloc(request, strlen(webserver_root)+strlen(webgui_tpl)+strlen(pch)+4);
+					request = realloc(request, strlen(webserver_root)+strlen(webgui_tpl)+strlen(conn->uri)+strlen(pch)+4);
 					if(!request) {
 						logprintf(LOG_ERR, "out of memory");
 						exit(EXIT_FAILURE);
@@ -909,6 +909,7 @@ int webserver_start(void) {
 	pthread_mutexattr_init(&webqueue_attr);
 	pthread_mutexattr_settype(&webqueue_attr, PTHREAD_MUTEX_RECURSIVE);
 	pthread_mutex_init(&webqueue_lock, &webqueue_attr);
+	pthread_cond_init(&webqueue_signal, NULL);
 
 	/* Check on what port the webserver needs to run */
 	settings_find_number("webserver-port", &webserver_port);

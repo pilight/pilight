@@ -56,6 +56,6 @@ void compatibility(struct module_t *module) {
 }
 
 void init(void) {
-	none433Init();
+	noneInit();
 }
 #endif

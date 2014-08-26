@@ -260,7 +260,7 @@ __attribute__((weak))
 void arctechDimInit(void) {
 
 	protocol_register(&arctech_dimmer);
-	protocol_set_id(arctech_dimmer, "arctech_dimmers");
+	protocol_set_id(arctech_dimmer, "arctech_dimmer");
 	protocol_device_add(arctech_dimmer, "kaku_dimmer", "KlikAanKlikUit Dimmers");
 	protocol_plslen_add(arctech_dimmer, 300);
 	arctech_dimmer->devtype = DIMMER;
@@ -289,7 +289,7 @@ void arctechDimInit(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name = "arctech_dimmer";
-	module->version = "1.0";
+	module->version = "1.1";
 	module->reqversion = "5.0";
 	module->reqcommit = NULL;
 }
