@@ -502,7 +502,7 @@ void *receive_parse_code(void *param) {
 					}
 					if((recvqueue->rawlen == protocol->rawlen || (
 					   (protocol->minrawlen > 0 && protocol->maxrawlen > 0 &&
-					    recvqueue->rawlen >= protocol->minrawlen && recvqueue->rawlen <= protocol->maxrawlen)))
+					    (recvqueue->rawlen >= protocol->minrawlen && recvqueue->rawlen <= protocol->maxrawlen))))
 					    && match == 1) {
 						for(x=0;x<(int)recvqueue->rawlen;x++) {
 							if(x < 254) {

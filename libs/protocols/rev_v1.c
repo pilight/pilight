@@ -36,9 +36,9 @@ static void rev1CreateMessage(char *id, int unit, int state) {
 	json_append_member(rev1_switch->message, "id", json_mkstring(id));
 	json_append_member(rev1_switch->message, "unit", json_mknumber(unit));
 	if(state == 1)
-		json_append_member(rev1_switch->message, "state", json_mkstring("on"));
-	else
 		json_append_member(rev1_switch->message, "state", json_mkstring("off"));
+	else
+		json_append_member(rev1_switch->message, "state", json_mkstring("on"));
 }
 
 static void rev1ParseCode(void) {
@@ -143,7 +143,7 @@ static void rev1CreateId(char *id) {
 }
 
 static void rev1CreateState(int state) {
-	if(state == 1) {
+	if(state == 0) {
 		rev1CreateMed(40,43);
 		rev1CreateHigh(44,47);
 	} else {

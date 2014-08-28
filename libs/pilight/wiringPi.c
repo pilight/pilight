@@ -237,7 +237,7 @@ static int *pinToGpio ;
 
 static int pinToGpioR1 [64] =
 {
-  17, 18, 21, 22, 23, 24, 25, 4,	// From the Original Wiki - GPIO 0 through 7:	wpi  0 -  7
+  17, 72, 21, 22, 23, 24, 25, 4,	// From the Original Wiki - GPIO 0 through 7:	wpi  0 -  7
    0,  1,				// I2C  - SDA0, SCL0				wpi  8 -  9
    8,  7,				// SPI  - CE1, CE0				wpi 10 - 11
   10,  9, 11, 				// SPI  - MOSI, MISO, SCLK			wpi 12 - 14
@@ -523,6 +523,7 @@ int wiringPiGetPin (int pin)
 	int boardRev;
 
 	boardRev = piBoardRev();
+
 	if (boardRev == 1) {
 		pinToGpio =  pinToGpioR1 ;
 	} else{
@@ -986,7 +987,7 @@ void pinMode (int pin, int mode)
 
     fSel    = gpioToGPFSEL [pin] ;
     shift   = gpioToShift  [pin] ;
-
+	printf("%d %d %d %d\n", pin, fSel, shift, gpio);
     /**/ if (mode == INPUT)
       *(gpio + fSel) = (*(gpio + fSel) & ~(7 << shift)) ; // Sets bits to zero = input
     else if (mode == OUTPUT)

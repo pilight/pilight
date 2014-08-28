@@ -1,10 +1,12 @@
 	alectoWSD17Init();
 	arctechContactInit();
 	arctechDimInit();
+	arctechDuskInit();
 	arctechSrInit();
 	arctechSrOldInit();
 	arctechSwInit();
 	arctechSwOldInit();
+	beamishSwInit();
 	clarusSwInit();
 	cleverwattsInit();
 	conradRSLCnInit();
@@ -29,11 +31,13 @@
 	lm75Init();
 	lm76Init();
 	mumbiInit();
+	ninjablocksWeatherInit();
 	openweathermapInit();
 	pilightFirmwareV2Init();
 	pilightFirmwareV3Init();
 	pollinInit();
 	programInit();
+	quiggScreenInit();
 	quiggSwInit();
 	rawInit();
 	relayInit();
@@ -41,7 +45,6 @@
 	rev2Init();
 	rev3Init();
 	rpiTempInit();
-	rsl366Init();
 	selectremoteInit();
 	silvercrestInit();
 	sunRiseSetInit();
