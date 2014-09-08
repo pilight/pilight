@@ -52,8 +52,7 @@ static void auriolParseCode(void) {
 	battery = auriol->binary[8];
 	channel = 1 + binToDecRev(auriol->binary, 10, 11); // channel as id
 	temperature = binToDecRev(auriol->binary, 12, 23);
-	humidity = binToDecRev(auriol->binary, 24, 29);
-	humidity_second_part = binToDecRev(auriol->binary, 30, 33);
+	humidity = binToDecRev(auriol->binary, 24, 31);
 	struct auriol_settings_t *tmp = auriol_settings;
 	while(tmp) {
 		if(fabs(tmp->id-id) < EPSILON) {
@@ -70,7 +69,7 @@ static void auriolParseCode(void) {
 		auriol->message = json_mkobject();
 		json_append_member(auriol->message, "id", json_mknumber(channel));
 		json_append_member(auriol->message, "temperature", json_mknumber(temperature));
-		json_append_member(auriol->message, "humidity", json_mknumber(humidity*10+(humidity_second_part/10)));
+		json_append_member(auriol->message, "humidity", json_mknumber(humidity));
 		json_append_member(auriol->message, "battery", json_mknumber(battery));
 	}
 }
