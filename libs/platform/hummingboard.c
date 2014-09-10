@@ -255,7 +255,7 @@ static int hummingboardISR(int pin, int mode) {
 	return 0;
 }
 
-int hummingboardWaitForInterrupt(int pin, int ms) {
+static int hummingboardWaitForInterrupt(int pin, int ms) {
 	int x = 0;
 	uint8_t c = 0;
 	struct pollfd polls;
@@ -276,7 +276,7 @@ int hummingboardWaitForInterrupt(int pin, int ms) {
 	return x;
 }
 
-int hummingboardGC(void) {
+static int hummingboardGC(void) {
 	int i = 0, fd = 0;
 	char path[30];
 	FILE *f = NULL;
@@ -307,31 +307,31 @@ int hummingboardGC(void) {
 	return 0;
 }
 
-int hummingboardI2CRead(int fd) {
+static int hummingboardI2CRead(int fd) {
 	return i2c_smbus_read_byte(fd);
 }
 
-int hummingboardI2CReadReg8(int fd, int reg) {
+static int hummingboardI2CReadReg8(int fd, int reg) {
 	return i2c_smbus_read_byte_data(fd, reg);
 }
 
-int hummingboardI2CReadReg16(int fd, int reg) {
+static int hummingboardI2CReadReg16(int fd, int reg) {
 	return i2c_smbus_read_word_data(fd, reg);
 }
 
-int hummingboardI2CWrite(int fd, int data) {
+static int hummingboardI2CWrite(int fd, int data) {
 	return i2c_smbus_write_byte(fd, data);
 }
 
-int hummingboardI2CWriteReg8(int fd, int reg, int data) {
+static int hummingboardI2CWriteReg8(int fd, int reg, int data) {
 	return i2c_smbus_write_byte_data(fd, reg, data);
 }
 
-int hummingboardI2CWriteReg16(int fd, int reg, int data) {
+static int hummingboardI2CWriteReg16(int fd, int reg, int data) {
 	return i2c_smbus_write_word_data(fd, reg, data);
 }
 
-int hummingboardI2CSetup(int devId) {
+static int hummingboardI2CSetup(int devId) {
 	int fd = 0;
 	const char *device = NULL;
 

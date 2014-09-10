@@ -101,89 +101,89 @@ static uint8_t gpioToGPFSEL[] = {
 static int *pinToGpio;
 
 static int pinToGpioR1[64] = {
-  17, 18, 21, 22, 23, 24, 25, 4,	// From the Original Wiki - GPIO 0 through 7:	wpi  0 -  7
-   0,  1,							// I2C  - SDA1, SCL1				wpi  8 -  9
-   8,  7,							// SPI  - CE1, CE0				wpi 10 - 11
-  10,  9, 11, 						// SPI  - MOSI, MISO, SCLK			wpi 12 - 14
-  14, 15,							// UART - Tx, Rx				wpi 15 - 16
-// Padding:
-      -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,	// ... 31
-  -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,	// ... 47
-  -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,	// ... 63
+	17, 18, 21, 22, 23, 24, 25, 4,	// From the Original Wiki - GPIO 0 through 7:	wpi  0 -  7
+	0,  1,							// I2C  - SDA1, SCL1							wpi  8 -  9
+	8,  7,							// SPI  - CE1, CE0								wpi 10 - 11
+	10,  9, 11, 					// SPI  - MOSI, MISO, SCLK						wpi 12 - 14
+	14, 15,							// UART - Tx, Rx								wpi 15 - 16
+	// Padding:
+	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,	// ... 31
+	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,	// ... 47
+	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,	// ... 63
 };
 
 static int pinToGpioR2[64] = {
-  17, 18, 27, 22, 23, 24, 25, 4,	// From the Original Wiki - GPIO 0 through 7:	wpi  0 -  7
-   2,  3,							// I2C  - SDA0, SCL0				wpi  8 -  9
-   8,  7,							// SPI  - CE1, CE0				wpi 10 - 11
-  10,  9, 11, 						// SPI  - MOSI, MISO, SCLK			wpi 12 - 14
-  14, 15,							// UART - Tx, Rx				wpi 15 - 16
-  28, 29, 30, 31,					// Rev 2: New GPIOs 8 though 11			wpi 17 - 20
-   5,  6, 13, 19, 26,				// B+						wpi 21, 22, 23, 24, 25
-  12, 16, 20, 21,					// B+						wpi 26, 27, 28, 29
-   0,  1,							// B+						wpi 30, 31
-// Padding:
-  -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,	// ... 47
-  -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,	// ... 63
+	17, 18, 27, 22, 23, 24, 25, 4,	// From the Original Wiki - GPIO 0 through 7:	wpi  0 -  7
+	2, 3,							// I2C  - SDA0, SCL0							wpi  8 -  9
+	8, 7,							// SPI  - CE1, CE0								wpi	 10 - 11
+	10, 9, 11, 						// SPI  - MOSI, MISO, SCLK						wpi 12 - 14
+	14, 15,							// UART - Tx, Rx								wpi 15 - 16
+	28, 29, 30, 31,					// Rev 2: New GPIOs 8 though 11					wpi 17 - 20
+	5, 6, 13, 19, 26,				// B+											wpi 21, 22, 23, 24, 25
+	12, 16, 20, 21,					// B+											wpi 26, 27, 28, 29
+	0, 1,							// B+											wpi 30, 31
+	// Padding:
+	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,	// ... 47
+	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,	// ... 63
 };
 
 static int *physToGpio;
 
 static int physToGpioR1[64] = {
-  -1,		// 0
-  -1, -1,	// 1, 2
-   0, -1,
-   1, -1,
-   4, 14,
-  -1, 15,
-  17, 18,
-  21, -1,
-  22, 23,
-  -1, 24,
-  10, -1,
-   9, 25,
-  11,  8,
-  -1,  7,	// 25, 26
-					 -1, -1, -1, -1, -1,	// ... 31
-  -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,	// ... 47
-  -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,	// ... 63
+	-1,		// 0
+	-1, -1,	// 1, 2
+	0, -1,
+	1, -1,
+	4, 14,
+	-1, 15,
+	17, 18,
+	21, -1,
+	22, 23,
+	-1, 24,
+	10, -1,
+	9, 25,
+	11,  8,
+	-1,  7,	// 25, 26
+	-1, -1, -1, -1, -1,	// ... 31
+	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,	// ... 47
+	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,	// ... 63
 } ;
 
 static int physToGpioR2[64] = {
-  -1,		// 0
-  -1, -1,	// 1, 2
-   2, -1,
-   3, -1,
-   4, 14,
-  -1, 15,
-  17, 18,
-  27, -1,
-  22, 23,
-  -1, 24,
-  10, -1,
-   9, 25,
-  11,  8,
-  -1,  7,	// 25, 26
+	-1,		// 0
+	-1, -1,	// 1, 2
+	2, -1,
+	3, -1,
+	4, 14,
+	-1, 15,
+	17, 18,
+	27, -1,
+	22, 23,
+	-1, 24,
+	10, -1,
+	9, 25,
+	11,  8,
+	-1,  7,	// 25, 26
 // B+
-   0,  1,
-   5, -1,
-   6, 12,
-  13, -1,
-  19, 16,
-  26, 20,
-  -1, 21,
+	0,  1,
+	5, -1,
+	6, 12,
+	13, -1,
+	19, 16,
+	26, 20,
+	-1, 21,
 // the P5 connector on the Rev 2 boards:
-  -1, -1,
-  -1, -1,
-  -1, -1,
-  -1, -1,
-  -1, -1,
-  28, 29,
-  30, 31,
-  -1, -1,
-  -1, -1,
-  -1, -1,
-  -1, -1,
+	-1, -1,
+	-1, -1,
+	-1, -1,
+	-1, -1,
+	-1, -1,
+	28, 29,
+	30, 31,
+	-1, -1,
+	-1, -1,
+	-1, -1,
+	-1, -1,
 };
 
 static uint8_t gpioToGPSET[] = {
@@ -192,13 +192,13 @@ static uint8_t gpioToGPSET[] = {
 } ;
 
 static uint8_t gpioToGPCLR[] = {
-	10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,
-	11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,
+	10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,
+	11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11,
 };
 
 static uint8_t gpioToGPLEV[] = {
-	13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,
-	14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,14,
+	13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13, 13,
+	14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14,
 };
 
 static int sysFds[64] = {
@@ -233,6 +233,7 @@ static int piBoardRev(void) {
 
 	if((cpuFd = fopen("/proc/cpuinfo", "r")) == NULL) {
 		logprintf(LOG_ERR, "raspberrypi->identify: Unable open /proc/cpuinfo");
+		return -1;
 	}
 
 	while(fgets(line, 120, cpuFd) != NULL) {
@@ -250,7 +251,7 @@ static int piBoardRev(void) {
 
 	if(strstr(name, "BCM2708") != NULL) {
 		if(boardRev != -1) {
-			return boardRev ;
+			return boardRev;
 		}
 
 		if((cpuFd = fopen("/proc/cpuinfo", "r")) == NULL) {
@@ -684,31 +685,31 @@ static int raspberrypiGC(void) {
 	return 0;
 }
 
-int raspberrypiI2CRead(int fd) {
+static int raspberrypiI2CRead(int fd) {
 	return i2c_smbus_read_byte(fd);
 }
 
-int raspberrypiI2CReadReg8(int fd, int reg) {
+static int raspberrypiI2CReadReg8(int fd, int reg) {
 	return i2c_smbus_read_byte_data(fd, reg);
 }
 
-int raspberrypiI2CReadReg16(int fd, int reg) {
+static int raspberrypiI2CReadReg16(int fd, int reg) {
 	return i2c_smbus_read_word_data(fd, reg);
 }
 
-int raspberrypiI2CWrite(int fd, int data) {
+static int raspberrypiI2CWrite(int fd, int data) {
 	return i2c_smbus_write_byte(fd, data);
 }
 
-int raspberrypiI2CWriteReg8(int fd, int reg, int data) {
+static int raspberrypiI2CWriteReg8(int fd, int reg, int data) {
 	return i2c_smbus_write_byte_data(fd, reg, data);
 }
 
-int raspberrypiI2CWriteReg16(int fd, int reg, int data) {
+static int raspberrypiI2CWriteReg16(int fd, int reg, int data) {
 	return i2c_smbus_write_word_data(fd, reg, data);
 }
 
-int raspberrypiI2CSetup(int devId) {
+static int raspberrypiI2CSetup(int devId) {
 	int rev = 0, fd = 0;
 	const char *device = NULL;
 

@@ -31,6 +31,7 @@
 #include "wiringX.h"
 #include "hummingboard.h"
 #include "raspberrypi.h"
+#include "bananapi.h"
 
 static struct devices_t *device = NULL;
 static int setup = -2;
@@ -289,6 +290,7 @@ int wiringXSetup(void) {
 	if(setup == -2) {
 		hummingboardInit();
 		raspberrypiInit();
+		bananapiInit();
 
 		int match = 0;
 		struct devices_t *tmp = devices;
@@ -306,7 +308,7 @@ int wiringXSetup(void) {
 			wiringXGC();
 			return -1;
 		} else {
-			logprintf(LOG_ERR, "running on a %s", device->name);
+			logprintf(LOG_NOTICE, "running on a %s", device->name);
 		}
 		setup = device->setup();
 		return setup;
