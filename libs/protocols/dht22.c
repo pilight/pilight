@@ -74,8 +74,8 @@ static void *dht22Parse(void *param) {
 
 	memset(&sched, 0, sizeof(sched));
 	sched.sched_priority = 60;
-	pthread_setschedparam(pthread_self(), SCHED_FIFO, &sched);	
-	
+	pthread_setschedparam(pthread_self(), SCHED_FIFO, &sched);
+
 	if((jid = json_find_member(json, "id"))) {
 		jchild = json_first_child(jid);
 		while(jchild) {

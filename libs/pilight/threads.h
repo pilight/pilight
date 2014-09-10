@@ -38,7 +38,7 @@ struct threadqueue_t *threads_register(const char *id, void *(*function)(void* p
 void threads_create(pthread_t *pth, const pthread_attr_t *attr,  void *(*start_routine) (void *), void *arg);
 void *threads_start(void *param);
 void thread_stop(struct threadqueue_t *node);
-void threads_cpu_usage(void);
+void threads_cpu_usage(int print);
 int threads_gc(void);
 
 #endif

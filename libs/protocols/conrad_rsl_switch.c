@@ -122,7 +122,7 @@ static void conradRSLSwClearCode(void) {
 		} else {
 			conradRSLSwCreateHigh(x+16, x+16+1);
 		}
-	}	
+	}
 }
 
 static void conradRSLSwCreateId(int id, int unit, int state) {

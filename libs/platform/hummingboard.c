@@ -14,7 +14,7 @@
 	You should have received a copy of the GNU General Public License
 	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
-	
+
 #include <stdio.h>
 #include <stdarg.h>
 #include <stdint.h>
@@ -49,7 +49,7 @@ static int pinsToGPIO[NUM_PINS] = { 73, 72, 71, 70, 194, 195, 67, 1 };
 static int pinToBin[NUM_PINS] = { 9, 8, 7, 6, 2, 3, 3, 1 } ;
 static int pinToMuxAddr[NUM_PINS] = { 0, 0, 0, 0, 4, 4, 4, 4 };
 
-static int pinToGPIOAddr[NUM_PINS] = { 
+static int pinToGPIOAddr[NUM_PINS] = {
 	0xa4000, 0xa4000, 0xa4000, 0xa4000, // GPIO 0, 1, 2, 3 --> GPIO3_DR
 	0xb4000, 0xb4000, // GPIO 4, 5 --> GPIO7_DR
 	0xa4000, // GPIO 6 --> GPIO3_DR
@@ -104,7 +104,7 @@ static int hummingboardPinMode(int pin, int direction) {
 	} else {
 		logprintf(LOG_ERR, "hummingboard->pinMode: Pin modes can only be OUTPUT or INPUT");
 		return -1;
-	}	
+	}
 
 	pinModes[pin] = direction;
 	return 0;
@@ -113,18 +113,18 @@ static int hummingboardPinMode(int pin, int direction) {
 static int identify(void) {
 	FILE *cpuFd;
 	char line[120], revision[120], hardware[120], name[120];
-	
+
 	if((cpuFd = fopen("/proc/cpuinfo", "r")) == NULL) {
 		logprintf(LOG_ERR, "hummingboard->identify: Unable open /proc/cpuinfo");
 	}
-	
+
 	while(fgets(line, 120, cpuFd) != NULL) {
 		if(strncmp(line, "Revision", 8) == 0) {
 			strcpy(revision, line);
 		}
 		if(strncmp(line, "Hardware", 8) == 0) {
 			strcpy(hardware, line);
-		}		
+		}
 	}
 
 	fclose(cpuFd) ;
@@ -298,7 +298,7 @@ int hummingboardGC(void) {
 		}
 		if(sysFds[i] > 0) {
 			close(sysFds[i]);
-		}		
+		}
 	}
 
 	if(gpio) {
@@ -365,6 +365,6 @@ void hummingboardInit(void) {
 	hummingboard->I2CWrite=&hummingboardI2CWrite;
 	hummingboard->I2CWriteReg8=&hummingboardI2CWriteReg8;
 	hummingboard->I2CWriteReg16=&hummingboardI2CWriteReg16;
-	hummingboard->I2CSetup=&hummingboardI2CSetup;	
+	hummingboard->I2CSetup=&hummingboardI2CSetup;
 	hummingboard->gc=&hummingboardGC;
 }

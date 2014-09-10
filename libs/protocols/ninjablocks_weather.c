@@ -62,7 +62,7 @@ static void ninjablocksWeatherParseCode(void) {
 	int iDataSync = 6;					// 110
 	int temp_offset = 0;
 	int humi_offset = 0;
-	
+
 	// Decode Biphase Mark Coded Differential Manchester (BMCDM) pulse stream into binary
 	for(x=0; x<=ninjablocks_weather->binlen; x++) {
 		if(ninjablocks_weather->raw[pRaw] > PULSE_NINJA_WEATHER_LOWER && ninjablocks_weather->raw[pRaw] < PULSE_NINJA_WEATHER_UPPER) {
@@ -99,7 +99,7 @@ static void ninjablocksWeatherParseCode(void) {
 	}
 
 	temperature += temp_offset;
-	humidity += humi_offset;	
+	humidity += humi_offset;
 
 	if(iParityData == 0 && (iHeaderSync == headerSync || dataSync == iDataSync)) {
 		ninjablocksWeatherCreateMessage(id, unit, temperature, humidity);

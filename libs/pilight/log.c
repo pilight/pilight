@@ -73,7 +73,7 @@ void logprintf(int prio, const char *format_str, ...) {
 	struct tm *tm;
 	int restore_shell = 0;
 	int restore_file = 0;
-	
+
 	if(logfile == NULL) {
 		if(shelllog == 0) {
 			restore_shell = 1;

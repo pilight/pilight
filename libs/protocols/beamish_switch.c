@@ -140,7 +140,7 @@ static int beamishSwCreateCode(JsonNode *code) {
 	int all = 0;
 	double itmp = -1;
 
-	if(json_find_number(code, "id", &itmp) == 0) 
+	if(json_find_number(code, "id", &itmp) == 0)
 		id = (int)round(itmp);
 	if(json_find_number(code, "unit", &itmp) == 0)
 		unit = (int)round(itmp);
@@ -161,7 +161,7 @@ static int beamishSwCreateCode(JsonNode *code) {
 		logprintf(LOG_ERR, "beamish_switch: invalid unit range");
 		return EXIT_FAILURE;
 	} else {
-		if(all == 1 && state == 1) 
+		if(all == 1 && state == 1)
 			unit = 5;
 		if(all == 1 && state == 0)
 			unit = 6;

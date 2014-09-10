@@ -81,7 +81,7 @@ static void quiggSwParseCode(void) {
 	unit = dec_unit[unit];
 
 	if((dimm == 1) && (state == 1))
-		dimm = 2;	
+		dimm = 2;
 
 	if (iParityData == parity && dimm < 1) {
 		quiggSwCreateMessage(id, state, unit, all);
@@ -243,7 +243,7 @@ void quiggSwInit(void) {
 	// 20 sys-id[0 .. 11]; unit[12,13], unit_all[14], on/off[15], dimm[16],
 	// null[17], var[18]; Parity[19]
 	quigg_switch->binlen = 20;
-	
+
 
 	options_add(&quigg_switch->options, 't', "on", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
 	options_add(&quigg_switch->options, 'f', "off", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);

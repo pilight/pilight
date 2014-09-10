@@ -2127,18 +2127,20 @@ int main(int argc, char **argv) {
 
 	int checkram = 0, checkcpu = 0;
 	int i = -1;
+	int x = 0;
 	while(main_loop) {
 		double cpu = 0.0, ram = 0.0;
 		cpu = getCPUUsage();
 		ram = getRAMUsage();
 
 		if(nodaemon == 2) {
-			threads_cpu_usage();
+			threads_cpu_usage(1);
 		}
 
 		if((i > -1) && (cpu > 60)) {
 			if(nodaemon <= 1) {
-				threads_cpu_usage();
+				threads_cpu_usage(x);
+				x ^= 1;
 			}
 			if(checkcpu == 0) {
 				if(cpu > 90) {
@@ -2205,6 +2207,7 @@ int main(int argc, char **argv) {
 				pilight.broadcast(procProtocol->id, procProtocol->message);
 				procProtocol->message = NULL;
 				i = 0;
+				x = 0;
 			}
 			i++;
 		}

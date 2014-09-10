@@ -243,7 +243,7 @@ void *update_poll(void *param) {
 	pthread_mutexattr_init(&updateattr);
 	pthread_mutexattr_settype(&updateattr, PTHREAD_MUTEX_RECURSIVE);
 	pthread_mutex_init(&updatelock, &updateattr);
-	pthread_cond_init(&updatesignal, NULL);	
+	pthread_cond_init(&updatesignal, NULL);
 
 	while(update_loop) {
 		time(&timenow);

@@ -14,7 +14,7 @@
 	You should have received a copy of the GNU General Public License
 	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
-	
+
 #include <stdio.h>
 #include <stdarg.h>
 #include <stdint.h>
@@ -150,7 +150,7 @@ int wiringXISR(int pin, int mode) {
 				wiringXGC();
 			} else {
 				return x;
-			}		
+			}
 		} else {
 			logprintf(LOG_ERR, "%s: device doesn't support isr", device->name);
 			wiringXGC();
