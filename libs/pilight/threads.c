@@ -181,7 +181,7 @@ void threads_cpu_usage(int print) {
 		}
 		tmp_threads = tmp_threads->next;
 	}
-	if(print) {	
+	if(print) {
 		logprintf(LOG_ERR, "----- Thread Profiling -----");
 	}
 }
