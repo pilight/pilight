@@ -45,7 +45,7 @@
 #include "threads.h"
 #include "socket.h"
 #include "json.h"
-#include "wiringPi.h"
+#include "wiringX.h"
 #include "irq.h"
 #include "hardware.h"
 #include "ssdp.h"
@@ -1298,6 +1298,8 @@ void *receive_code(void *param) {
 	int plslen = 0, rawlen = 0;
 	int rawcode[255] = {0};
 	int duration = 0;
+	struct timeval tp;
+	struct timespec ts;
 
 	/* Make sure the pilight receiving gets
 	   the highest priority available */
@@ -1329,6 +1331,15 @@ void *receive_code(void *param) {
 					}
 					rawlen = 0;
 				}
+			/* Hardware failure */
+			} else if(duration == -1) {
+				pthread_mutex_unlock(&receive_lock);
+				gettimeofday(&tp, NULL);
+				ts.tv_sec = tp.tv_sec;
+				ts.tv_nsec = tp.tv_usec * 1000;
+				ts.tv_sec += 1;
+				pthread_mutex_lock(&receive_lock);
+				pthread_cond_timedwait(&receive_signal, &receive_lock, &ts);
 			}
 			pthread_mutex_unlock(&receive_lock);
 		} else {
@@ -1611,6 +1622,7 @@ int main_gc(void) {
 	whitelist_free();
 	threads_gc();
 	pthread_join(pth, NULL);
+	wiringXGC();
 	log_gc();
 
 	sfree((void *)&nodes);

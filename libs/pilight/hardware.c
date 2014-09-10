@@ -33,7 +33,7 @@
 #include "../../pilight.h"
 #include "common.h"
 #include "irq.h"
-#include "wiringPi.h"
+#include "wiringX.h"
 #include "log.h"
 #include "json.h"
 #include "settings.h"

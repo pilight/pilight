@@ -6,6 +6,7 @@
 	arctechSrOldInit();
 	arctechSwInit();
 	arctechSwOldInit();
+	auriolInit();
 	beamishSwInit();
 	clarusSwInit();
 	cleverwattsInit();

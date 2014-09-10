@@ -31,7 +31,7 @@
 #include "hardware.h"
 #include "relay.h"
 #include "gc.h"
-#include "wiringPi.h"
+#include "wiringX.h"
 
 static char *relay_state = NULL;
 
@@ -80,8 +80,8 @@ static int relayCreateCode(JsonNode *code) {
 		goto clear;
 	} else {
 		if(strstr(progname, "daemon") != NULL) {
-			if(wiringPiSetup() < 0) {
-				logprintf(LOG_ERR, "unable to setup wiringPi") ;
+			if(wiringXSetup() < 0) {
+				logprintf(LOG_ERR, "unable to setup wiringX") ;
 				return EXIT_FAILURE;
 			} else {
 				pinMode(gpio, OUTPUT);

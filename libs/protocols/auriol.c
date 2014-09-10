@@ -42,7 +42,7 @@ static struct auriol_settings_t *auriol_settings = NULL;
 
 static void auriolParseCode(void) {
 	int i = 0, x = 0;
-	int channel = 0, temperature = 0, id = 0, humidity = 0, humidity_second_part = 0, battery = 0;
+	int channel = 0, temperature = 0, id = 0, humidity = 0, battery = 0;
 	int humi_offset = 0, temp_offset = 0;
 	for(i=1;i<auriol->rawlen-1;i+=2) {
 		auriol->binary[x++] = auriol->code[i];

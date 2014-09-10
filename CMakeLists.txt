@@ -137,6 +137,7 @@ endif()
 
 include_directories("${PROJECT_SOURCE_DIR}/libs/pilight/")
 include_directories("${PROJECT_SOURCE_DIR}/libs/avrdude/")
+include_directories("${PROJECT_SOURCE_DIR}/libs/platform/")
 
 file(GLOB protocol_headers
 	"${PROJECT_SOURCE_DIR}/libs/protocols/*.h"
@@ -144,6 +145,14 @@ file(GLOB protocol_headers
 
 file(GLOB protocol
 	"${PROJECT_SOURCE_DIR}/libs/protocols/*.c"
+)
+
+file(GLOB platform_headers
+	"${PROJECT_SOURCE_DIR}/libs/platform/*.h"
+)
+
+file(GLOB platform
+	"${PROJECT_SOURCE_DIR}/libs/platform/*.c"
 )
 
 file(GLOB hardware_headers
@@ -352,8 +361,6 @@ if(${PROTOCOL_LM75} MATCHES "OFF"
 	list(REMOVE_ITEM protocol_headers "${PROJECT_SOURCE_DIR}/libs/protocols/lm76.h")
 	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/lm75.c")
 	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/lm76.c")
-	list(REMOVE_ITEM protocol_headers "${PROJECT_SOURCE_DIR}/libs/protocol/wiringPiI2C.h")
-	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocol/wiringPiI2C.c")
 endif()
 
 if(${PROTOCOL_WUNDERGROUND} MATCHES "OFF")
@@ -444,11 +451,6 @@ endif()
 if(${HARDWARE_433_LIRC} MATCHES "OFF")
 	list(REMOVE_ITEM hardware_headers "${PROJECT_SOURCE_DIR}/libs/hardware/433module.h")
 	list(REMOVE_ITEM hardware "${PROJECT_SOURCE_DIR}/libs/hardware/433module.c")
-endif()
-
-if(${HARDWARE_433_PILIGHT} MATCHES "OFF")
-	list(REMOVE_ITEM hardware_headers "${PROJECT_SOURCE_DIR}/libs/hardware/433pilight.h")
-	list(REMOVE_ITEM hardware "${PROJECT_SOURCE_DIR}/libs/hardware/433pilight.c")
 endif()
 
 if(${UPDATE} MATCHES "OFF")
@@ -561,7 +563,7 @@ if(${MODULESPACK} MATCHES "ON")
 endif()
 
 if(${MODULESPACK} MATCHES "OFF")
-	add_library(pilight OBJECT ${pilight} ${protocol} ${hardware})
+	add_library(pilight OBJECT ${pilight} ${protocol} ${hardware} ${platform})
 
 	add_library(pilight_static STATIC $<TARGET_OBJECTS:pilight>)
 	add_library(pilight_shared SHARED $<TARGET_OBJECTS:pilight>)
@@ -582,8 +584,9 @@ if(${MODULESPACK} MATCHES "OFF")
 
 	set_target_properties(pilight_shared pilight_static PROPERTIES OUTPUT_NAME pilight)
 
-	set_source_files_properties(${PROJECT_SOURCE_DIR}/libs/pilight/wiringPi.c PROPERTIES COMPILE_FLAGS " -w ")
-	set_source_files_properties(${PROJECT_SOURCE_DIR}/libs/pilight/wiringPiI2C.c PROPERTIES COMPILE_FLAGS " -w ")
+	set_source_files_properties(${PROJECT_SOURCE_DIR}/libs/pilight/wiringX.c PROPERTIES COMPILE_FLAGS " -w ")
+	set_source_files_properties(${PROJECT_SOURCE_DIR}/libs/platform/hummingboard.c PROPERTIES COMPILE_FLAGS " -w ")
+	set_source_files_properties(${PROJECT_SOURCE_DIR}/libs/platform/raspberrypi.c PROPERTIES COMPILE_FLAGS " -w ")
 	set_source_files_properties(${PROJECT_SOURCE_DIR}/libs/pilight/json.c PROPERTIES COMPILE_FLAGS " -w ")
 	set_source_files_properties(${PROJECT_SOURCE_DIR}/libs/pilight/http_lib.c PROPERTIES COMPILE_FLAGS " -w ")
 	set_source_files_properties(${PROJECT_SOURCE_DIR}/libs/pilight/mongoose.c PROPERTIES COMPILE_FLAGS " -w ")

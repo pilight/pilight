@@ -6,6 +6,7 @@
 	#include "../protocols/arctech_screen_old.h"
 	#include "../protocols/arctech_switch.h"
 	#include "../protocols/arctech_switch_old.h"
+	#include "../protocols/auriol.h"
 	#include "../protocols/beamish_switch.h"
 	#include "../protocols/clarus.h"
 	#include "../protocols/cleverwatts.h"

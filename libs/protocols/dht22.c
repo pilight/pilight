@@ -39,7 +39,7 @@
 #include "gc.h"
 #include "json.h"
 #include "dht22.h"
-#include "../pilight/wiringPi.h"
+#include "../pilight/wiringX.h"
 
 #define MAXTIMINGS 100
 
@@ -50,10 +50,10 @@ static pthread_mutex_t dht22lock;
 static pthread_mutexattr_t dht22attr;
 
 static uint8_t sizecvt(const int read_value) {
-	/* digitalRead() and friends from wiringpi are defined as returning a value
+	/* digitalRead() and friends from wiringx are defined as returning a value
 	   < 256. However, they are returned as int() types. This is a safety function */
 	if(read_value > 255 || read_value < 0) {
-		logprintf(LOG_NOTICE, "invalid data from wiringPi library");
+		logprintf(LOG_NOTICE, "invalid data from wiringX library");
 	}
 
 	return (uint8_t)read_value;
@@ -122,10 +122,10 @@ static void *dht22Parse(void *param) {
 					// detect change and read data
 					for(i=0; (i<MAXTIMINGS && dht22_loop); i++) {
 						counter = 0;
-						delayMicroseconds(10);
+						usleep(10);
 						while(sizecvt(digitalRead(id[y])) == laststate && dht22_loop) {
 							counter++;
-							delayMicroseconds(1);
+							usleep(1);
 							if(counter == 255) {
 								break;
 							}
@@ -190,7 +190,7 @@ static void *dht22Parse(void *param) {
 
 static struct threadqueue_t *dht22InitDev(JsonNode *jdevice) {
 	dht22_loop = 1;
-	wiringPiSetup();
+	wiringXSetup();
 	char *output = json_stringify(jdevice, NULL);
 	JsonNode *json = json_decode(output);
 	sfree((void *)&output);

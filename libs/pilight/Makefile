@@ -26,11 +26,11 @@ endif
 ifneq (, $(findstring amd64, $(SYS)))
 	OSFLAGS = -O3 -fPIC -march=native -mtune=native -mfpmath=sse -Wno-conversion
 endif
-CFLAGS = -ffast-math $(OSFLAGS) -Wfloat-equal -Wshadow -Wpointer-arith -Wcast-align -Wformat-nonliteral -Wstrict-overflow=5 -Wwrite-strings -Waggregate-return -Wcast-qual -Wswitch-default -Wswitch-enum -Wformat=2 -g -Wall -isystem. -isystem.. -I../avrdude/ -DHASH=\"$(GIT_HASH)\"
+CFLAGS = -ffast-math $(OSFLAGS) -Wfloat-equal -Wshadow -Wpointer-arith -Wcast-align -Wformat-nonliteral -Wstrict-overflow=5 -Wwrite-strings -Waggregate-return -Wcast-qual -Wswitch-default -Wswitch-enum -Wformat=2 -g -Wall -isystem. -isystem.. -I../avrdude/ -I../platform/ -DHASH=\"$(GIT_HASH)\"
 SRC = $(wildcard *.c)
-OBJS = $(filter-out wiringPi.o wiringPiI2C.o mongoose.o http_lib.o json.o update.o firmware.o, $(SRC:.c=.o))
+OBJS = $(filter-out wiringX.o mongoose.o http_lib.o json.o update.o firmware.o, $(SRC:.c=.o))
 
-all: json.o wiringPi.o wiringPiI2C.o http_lib.o mongoose.o update.o firmware.o $(OBJS) pilight.o
+all: json.o wiringX.o http_lib.o mongoose.o update.o firmware.o $(OBJS) pilight.o
 
 json.o: json.c json.h
 	$(GCC) -ffast-math $(OSFLAGS) -Wno-conversion -g -isystem. -isystem.. -c $(patsubst %.o,%.c,$@)
@@ -38,11 +38,8 @@ json.o: json.c json.h
 http_lib.o: http_lib.c http_lib.h
 	$(GCC) -ffast-math $(OSFLAGS) -Wno-conversion -g -isystem. -isystem.. -c $(patsubst %.o,%.c,$@)
 	
-wiringPi.o: wiringPi.c wiringPi.h
-	$(GCC) -ffast-math $(OSFLAGS) -w -g -isystem. -isystem.. -pthread -lm -c $(patsubst %.o,%.c,$@)
-
-wiringPiI2C.o: wiringPiI2C.c wiringPiI2C.h
-	$(GCC) -ffast-math $(OSFLAGS) -w -g -isystem. -isystem.. -pthread -lm -c $(patsubst %.o,%.c,$@)
+wiringX.o: wiringX.c wiringX.h
+	$(GCC) -ffast-math $(OSFLAGS) -w -g -isystem. -isystem.. -pthread -lm -c $(patsubst %.o,%.c,$@) -I../platform/
 	
 mongoose.o: mongoose.c mongoose.h
 	$(GCC) -ffast-math $(OSFLAGS) -w -g -isystem. -isystem.. -pthread -lm -c $(patsubst %.o,%.c,$@)
@@ -56,8 +53,8 @@ firmware.o: firmware.c firmware.h
 %.o: %.c %.h 
 	$(GCC) $(CFLAGS) -pthread -c $(patsubst %.o,%.c,$@)
 
-pilight.o: $(OBJS) json.o http_lib.o wiringPi.o wiringPiI2C.o update.o mongoose.o firmware.o
-	$(CROSS_COMPILE)ld -L/usr/local/lib -r $(OBJS) json.o http_lib.o wiringPi.o wiringPiI2C.o mongoose.o update.o firmware.o -o pilight.o
+pilight.o: $(OBJS) json.o http_lib.o wiringX.o update.o mongoose.o firmware.o
+	$(CROSS_COMPILE)ld -L/usr/local/lib -r $(OBJS) json.o http_lib.o wiringX.o mongoose.o update.o firmware.o -o pilight.o
 
 dist-clean: clean
 
