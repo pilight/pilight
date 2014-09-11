@@ -63,8 +63,8 @@ int main_gc(void) {
 	settings_gc();
 	hardware_gc();
 	dso_gc();
-	log_gc();
 	wiringXGC();
+	log_gc();
 
 	sfree((void *)&progname);
 

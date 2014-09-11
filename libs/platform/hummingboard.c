@@ -43,7 +43,7 @@
 
 volatile void *gpio = NULL;
 
-static int pinModes[NUM_PINS] = { 0 };
+static int pinModes[NUM_PINS];
 static int sysFds[NUM_PINS] = { 0 };
 static int pinsToGPIO[NUM_PINS] = { 73, 72, 71, 70, 194, 195, 67, 1 };
 static int pinToBin[NUM_PINS] = { 9, 8, 7, 6, 2, 3, 3, 1 } ;
@@ -351,6 +351,9 @@ static int hummingboardI2CSetup(int devId) {
 }
 
 void hummingboardInit(void) {
+
+	memset(pinModes, -1, NUM_PINS);
+
 	device_register(&hummingboard, "hummingboard");
 	hummingboard->setup=&setup;
 	hummingboard->pinMode=&hummingboardPinMode;

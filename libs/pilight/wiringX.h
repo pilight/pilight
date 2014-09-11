@@ -26,7 +26,6 @@
 #define HIGH		1
 #define LOW			0
 
-#define SYS					-1
 #define INPUT				0
 #define OUTPUT				1
 #define	PWM_OUTPUT			2
@@ -34,6 +33,7 @@
 #define	SOFT_PWM_OUTPUT		4
 #define	SOFT_TONE_OUTPUT	5
 #define	PWM_TONE_OUTPUT		6
+#define SYS					7
 
 #define	INT_EDGE_SETUP		0
 #define INT_EDGE_FALLING	1
