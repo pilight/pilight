@@ -73,8 +73,8 @@ int main_gc(void) {
 	settings_gc();
 	hardware_gc();
 	dso_gc();
-	log_gc();
 	wiringXGC();
+	log_gc();
 
 	sfree((void *)&progname);
 
@@ -223,7 +223,7 @@ void *receive_code(void *param) {
 			printf("\n");
 		}
 	}
-	main_gc();
+	main_loop = 0;
 	return NULL;
 }
 
@@ -345,6 +345,8 @@ int main(int argc, char **argv) {
 	}
 
 clear:
-	main_gc();
+	if(main_loop) {
+		main_gc();
+	}
 	return (EXIT_FAILURE);
 }

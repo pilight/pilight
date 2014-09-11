@@ -54,7 +54,7 @@ endif()
 if(${CMAKE_SYSTEM_PROCESSOR} MATCHES "armv7l")
 	if(${USE_SOFT_FLOAT} MATCHES "OFF")
 		set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE armhf)
-		set(CMAKE_C_FLAGS "-lz -Ofast -fPIC -mfloat-abi=hard -mfpu=vfp -march=armv7 -ffast-math -Wfloat-equal -Wshadow -Wpointer-arith -Wcast-align -Wstrict-overflow=5 -Wwrite-strings -Waggregate-return -Wcast-qual -Wswitch-default -Wswitch-enum -Wformat=2 -g -Wall -Wconversion -Wunreachable-code -Wstrict-prototypes")
+		set(CMAKE_C_FLAGS "-lz -Ofast -fPIC -mfloat-abi=hard -mfpu=vfp -march=armv7-a -ffast-math -Wfloat-equal -Wshadow -Wpointer-arith -Wcast-align -Wstrict-overflow=5 -Wwrite-strings -Waggregate-return -Wcast-qual -Wswitch-default -Wswitch-enum -Wformat=2 -g -Wall -Wconversion -Wunreachable-code -Wstrict-prototypes")
 	endif()
 endif()
 
@@ -111,6 +111,7 @@ endforeach(file)
 
 execute_process(COMMAND update-rc.d pilight remove)
 execute_process(COMMAND ldconfig)
+execute_process(COMMAND rm /usr/local/lib/libpilight.so 2>/dev/null)
 
 ") # END of appending to file...
     endif()
@@ -587,21 +588,17 @@ if(${MODULESPACK} MATCHES "OFF")
 	set_source_files_properties(${PROJECT_SOURCE_DIR}/libs/pilight/wiringX.c PROPERTIES COMPILE_FLAGS " -w ")
 	set_source_files_properties(${PROJECT_SOURCE_DIR}/libs/platform/hummingboard.c PROPERTIES COMPILE_FLAGS " -w ")
 	set_source_files_properties(${PROJECT_SOURCE_DIR}/libs/platform/raspberrypi.c PROPERTIES COMPILE_FLAGS " -w ")
+	set_source_files_properties(${PROJECT_SOURCE_DIR}/libs/platform/bananapi.c PROPERTIES COMPILE_FLAGS " -w ")
 	set_source_files_properties(${PROJECT_SOURCE_DIR}/libs/pilight/json.c PROPERTIES COMPILE_FLAGS " -w ")
 	set_source_files_properties(${PROJECT_SOURCE_DIR}/libs/pilight/http_lib.c PROPERTIES COMPILE_FLAGS " -w ")
 	set_source_files_properties(${PROJECT_SOURCE_DIR}/libs/pilight/mongoose.c PROPERTIES COMPILE_FLAGS " -w ")
 	set_source_files_properties(${avrdude_sources} PROPERTIES COMPILE_FLAGS " -w ")
 
-	if(EXISTS "/usr/local/lib/libpilight.so")
-		install(CODE "execute_process(COMMAND rm /usr/local/lib/libpilight.so)")
-	endif()
 
 	install(FILES libpilight.so DESTINATION lib/pilight/ RENAME libpilight.so.${PROJECT_VERSION} COMPONENT pilight)
 	install(FILES libpilight.a DESTINATION lib/pilight/ RENAME libpilight.a COMPONENT pilight)
 
-	if(NOT EXISTS "/usr/local/lib/libpilight.so")
-		install(CODE "execute_process(COMMAND ln -s \"/usr/local/lib/pilight/libpilight.so.${PROJECT_VERSION}\" \"/usr/local/lib/libpilight.so\")")
-	endif()		
+	install(CODE "execute_process(COMMAND ln -s \"/usr/local/lib/pilight/libpilight.so.${PROJECT_VERSION}\" \"/usr/local/lib/libpilight.so\")")	
 	
 	if(EXISTS "/etc/pilight/settings.json")
 		install(CODE "execute_process(COMMAND mv /etc/pilight/settings.json /etc/pilight/settings.json.bak)")

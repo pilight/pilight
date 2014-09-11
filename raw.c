@@ -195,6 +195,8 @@ int main(int argc, char **argv) {
 	}
 
 close:
-	main_gc();
+	if(main_loop) {
+		main_gc();
+	}
 	return (EXIT_FAILURE);
 }

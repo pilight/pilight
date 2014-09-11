@@ -74,7 +74,7 @@ int wiringXGC(void) {
 		free(tmp);
 	}
 	free(devices);
-	logprintf(LOG_NOTICE, "garbage collected wiringX library");
+	logprintf(LOG_DEBUG, "garbage collected wiringX library");
 	return i;
 }
 

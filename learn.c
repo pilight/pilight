@@ -496,7 +496,7 @@ void *receive_code(void *param) {
 	for(i=0;i<binaryLength;i++) {
 		printf("%d",unit3Binary[i]);
 	}
-	main_gc();
+	main_loop = 0;
 	return NULL;
 }
 
@@ -618,6 +618,8 @@ int main(int argc, char **argv) {
 	}
 
 clear:
-	main_gc();
+	if(main_loop) {
+		main_gc();
+	}
 	return (EXIT_FAILURE);
 }
