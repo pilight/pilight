@@ -126,6 +126,7 @@ static void *programParse(void *param) {
 		lnode->start = NULL;
 	}
 
+	lnode->name = NULL;
 	if((jid = json_find_member(json, "id"))) {
 		jchild = json_first_child(jid);
 		while(jchild) {
@@ -147,16 +148,8 @@ static void *programParse(void *param) {
 	lnode->thread = pnode;
 	lnode->laststate = -1;
 
-	struct programs_t *tmp = programs;
-	if(tmp) {
-		while(tmp->next != NULL) {
-			tmp = tmp->next;
-		}
-		tmp->next = lnode;
-	} else {
-		lnode->next = tmp;
-		programs = lnode;
-	}
+	lnode->next = programs;
+	programs = lnode;	
 
 	if(json_find_number(json, "poll-interval", &itmp) == 0)
 		interval = (int)round(itmp);
