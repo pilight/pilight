@@ -2205,6 +2205,7 @@ int main(int argc, char **argv) {
 				json_append_member(procProtocol->message, "origin", json_mkstring("config"));
 				json_append_member(procProtocol->message, "type", json_mknumber(PROC));
 				pilight.broadcast(procProtocol->id, procProtocol->message);
+				json_delete(procProtocol->message);
 				procProtocol->message = NULL;
 				i = 0;
 				x = 0;
