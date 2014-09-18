@@ -149,7 +149,7 @@ static void *programParse(void *param) {
 	lnode->laststate = -1;
 
 	lnode->next = programs;
-	programs = lnode;	
+	programs = lnode;
 
 	if(json_find_number(json, "poll-interval", &itmp) == 0)
 		interval = (int)round(itmp);

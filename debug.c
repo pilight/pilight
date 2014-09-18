@@ -97,7 +97,7 @@ void *receive_code(void *param) {
 	int binaryLength = 0;
 
 	time_t now = 0, later = 0;
-	
+
 	struct hardware_t *hw = (hardware_t *)param;
 	if(hw->init) {
 		hw->init();
@@ -223,7 +223,7 @@ void *receive_code(void *param) {
 	}
 
 	main_loop = 0;
-	
+
 	return NULL;
 }
 

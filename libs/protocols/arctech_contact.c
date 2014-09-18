@@ -1,16 +1,16 @@
 /*
-  Copyright (C) 2014 CurlyMo & lvdp
+	Copyright (C) 2014 CurlyMo & lvdp
 
-  This file is part of pilight.
+	This file is part of pilight.
 
     pilight is free software: you can redistribute it and/or modify it under the
-  terms of the GNU General Public License as published by the Free Software
-  Foundation, either version 3 of the License, or (at your option) any later
-  version.
+	terms of the GNU General Public License as published by the Free Software
+	Foundation, either version 3 of the License, or (at your option) any later
+	version.
 
     pilight is distributed in the hope that it will be useful, but WITHOUT ANY
-  WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
-  A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
     along with pilight. If not, see <http://www.gnu.org/licenses/>
@@ -72,7 +72,9 @@ void arctechContactInit(void) {
 	arctech_contact->devtype = SWITCH;
 	arctech_contact->hwtype = RF433;
 	arctech_contact->pulse = 4;
-	arctech_contact->rawlen = 148;
+	arctech_contact->rawlen = 140;
+	arctech_contact->minrawlen = 132;
+	arctech_contact->maxrawlen = 148;
 	arctech_contact->lsb = 3;
 
 	options_add(&arctech_contact->options, 'u', "unit", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, NULL, "^([0-9]{1}|[1][0-5])$");
@@ -89,9 +91,9 @@ void arctechContactInit(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name = "arctech_contact";
-	module->version = "1.0";
+	module->version = "1.1";
 	module->reqversion = "5.0";
-	module->reqcommit = NULL;
+	module->reqcommit = "38";
 }
 
 void init(void) {

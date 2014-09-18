@@ -574,8 +574,10 @@ void *receive_parse_code(void *param) {
 								}
 
 								/* Check if the binary matches the binary length */
-								if((protocol->binlen > 0 && ((x/4) == protocol->binlen))
-								   || (protocol->binlen == 0 && ((x/4) == protocol->rawlen/4))) {
+								if(((protocol->binlen > 0) && ((x/4) == protocol->binlen)) ||
+								   ((protocol->binlen == 0) && ((x == protocol->rawlen) ||
+																(x == protocol->minrawlen) ||
+																(x == protocol->maxrawlen)))) {
 									logprintf(LOG_DEBUG, "called %s parseBinary()", protocol->id);
 
 									protocol->parseBinary();
