@@ -385,7 +385,7 @@ static int setup(void)	{
 static int bananapiDigitalRead(int pin) {
 	uint32_t regval = 0;
 	int bank = pin >> 5;
-	int index = pin - (bank << 5);
+	int i = pin - (bank << 5);
 	uint32_t phyaddr = SUNXI_GPIO_BASE + (bank * 36) + 0x10; // +0x10 -> data reg
 
 	if(pinModes[pin] != INPUT) {
@@ -393,7 +393,7 @@ static int bananapiDigitalRead(int pin) {
 		return -1;
 	}
 
-	if(BP_PIN_MASK[bank][index] != -1) {
+	if(BP_PIN_MASK[bank][i] != -1) {
 		if((pin & PI_GPIO_MASK) == 0) {
 			if(wiringPiMode == WPI_MODE_PINS)
 				pin = pinToGpioR3[pin];
@@ -405,7 +405,7 @@ static int bananapiDigitalRead(int pin) {
 				return -1;
 
 			regval = readl(phyaddr);
-			regval = regval >> index;
+			regval = regval >> i;
 			regval &= 1;
 			return regval;
 		}
@@ -416,7 +416,7 @@ static int bananapiDigitalRead(int pin) {
 static int bananapiDigitalWrite(int pin, int value) {
 	uint32_t regval = 0;
 	int bank = pin >> 5;
-	int index = pin - (bank << 5);
+	int i = pin - (bank << 5);
 	uint32_t phyaddr = SUNXI_GPIO_BASE + (bank * 36) + 0x10; // +0x10 -> data reg
 
 	if(pinModes[pin] != OUTPUT) {
@@ -424,7 +424,7 @@ static int bananapiDigitalWrite(int pin, int value) {
 		return -1;
 	}
 
-	if(BP_PIN_MASK[bank][index] != -1) {
+	if(BP_PIN_MASK[bank][i] != -1) {
 		if((pin & PI_GPIO_MASK) == 0) {
 			regval = readl(phyaddr);
 			if(wiringPiMode == WPI_MODE_GPIO_SYS) {
@@ -438,11 +438,11 @@ static int bananapiDigitalWrite(int pin, int value) {
 					return -1;
 
 				if(value == LOW) {
-					regval &= ~(1 << index);
+					regval &= ~(1 << i);
 					writel(regval, phyaddr);
 					regval = readl(phyaddr);
 				} else {
-					regval |= (1 << index);
+					regval |= (1 << i);
 					writel(regval, phyaddr);
 					regval = readl(phyaddr);
 				}
@@ -455,11 +455,11 @@ static int bananapiDigitalWrite(int pin, int value) {
 static int bananapiPinMode(int pin, int mode) {
 	uint32_t regval = 0;
 	int bank = pin >> 5;
-	int index = pin - (bank << 5);
-	int offset = ((index - ((index >> 3) << 3)) << 2);
-	uint32_t phyaddr = SUNXI_GPIO_BASE + (bank * 36) + ((index >> 3) << 2);
+	int i = pin - (bank << 5);
+	int offset = ((i - ((i >> 3) << 3)) << 2);
+	uint32_t phyaddr = SUNXI_GPIO_BASE + (bank * 36) + ((i >> 3) << 2);
 
-	if(BP_PIN_MASK[bank][index] != -1) {
+	if(BP_PIN_MASK[bank][i] != -1) {
 		if((pin & PI_GPIO_MASK) == 0) {
 			regval = readl(phyaddr);
 			pinModes[pin] = mode;

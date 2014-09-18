@@ -308,7 +308,7 @@ int wiringXSetup(void) {
 			wiringXGC();
 			return -1;
 		} else {
-			logprintf(LOG_NOTICE, "running on a %s", device->name);
+			logprintf(LOG_DEBUG, "running on a %s", device->name);
 		}
 		setup = device->setup();
 		return setup;
