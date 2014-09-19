@@ -76,7 +76,7 @@
 	background: transparent url('on.png') no-repeat 10px 6px;
 }
 
-@media screen and (-webkit-min-device-pixel-ratio:0) {	
+@media screen and (-webkit-min-device-pixel-ratio:0) {
 	.pendingsw .ui-icon-loader {
 		background-position: 10px 6px;
 	}
@@ -87,7 +87,7 @@
 
 	.pendingsw .ui-icon-on {
 		background-position: 10px 4px;
-	}	
+	}
 }
 
 .pendingsw .ui-icon-loader.ui-btn-icon-left:after {
@@ -146,7 +146,10 @@ div.name {
 }
 
 div.humidity, div.temperature,
+div.rain, div.windavg, div.windgust, div.winddir,
 div.temperature_icon, div.humidity_icon,
+div.rain_icon, div.windavg_icon,
+div.windgust_icon, div.winddir_icon,
 div.update_active, div.update_inactive,
 div.sunrise, div.sunset, div.sunset_icon.gray,
 div.sunrise_icon.gray, div.sunset_icon.blue,
@@ -170,10 +173,28 @@ div.sunset_icon.blue, div.sunrise_icon.yellow  {
 	margin-right: 4px;
 }
 
-div.temperature_icon, div.humidity_icon {
+div.temperature_icon, div.humidity_icon,
+div.rain_icon, div.windavg_icon,
+div.windgust_icon {
 	width: 16px;
 	height: 16px;
 	margin-right: 4px;
+}
+
+div.winddir_icon {
+	width: 10px;
+	height: 10px;
+	margin-right: 4px;	
+}
+
+div.windgust_icon {
+	margin-right: 0px;
+	margin-left: -16px;
+}
+
+div.winddir_icon {
+	margin-top: 14px;
+	margin-left: 2px;
 }
 
 div.update_active, div.update_inactive,
@@ -232,6 +253,22 @@ div.temperature_icon {
 
 div.humidity_icon {
 	background: url('humi.png') 0px 0px no-repeat;
+}
+
+div.rain_icon {
+	background: url('rain.png') 0px 0px no-repeat;
+}
+
+div.windavg_icon {
+	background: url('windavg.png') 0px 0px no-repeat;
+}
+
+div.winddir_icon {
+	background: url('winddir.png') 0px 0px no-repeat;
+}
+
+div.windgust_icon {
+	background: url('windgust.png') 0px 0px no-repeat;
 }
 
 div.update_active {

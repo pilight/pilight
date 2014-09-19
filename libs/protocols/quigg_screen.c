@@ -58,13 +58,6 @@ static void quiggScreenParseCode(void) {
 	int iParity = 1, iParityData = -1;	// init for even parity
 	int iSwitch = 0;
 
-	// if(log_level_get() >= LOG_DEBUG) {
-		// logprintf(LOG_DEBUG, "ParseCode raw:");
-		// for(i=0;i<=quigg_screen->rawlen;i++) {
-			// printf("%d ", quigg_screen->raw[i]);
-		// }
-		// printf("\n");
-	// }
 	// 42 bytes are the number of raw bytes
 	// Byte 1,2 in raw buffer is the first logical byte, rawlen-3,-2 is the parity bit, rawlen-1 is the footer
 	for(x=0; x<quigg_screen->rawlen-1; x+=2) {
@@ -103,30 +96,9 @@ static void quiggScreenParseCode(void) {
 		default:
 		break;
 	}
-	// if(log_level_get() >= LOG_DEBUG) {
-		// logprintf(LOG_DEBUG, "ParseCode id:%d state:%d unit:%d all:%d screen:%d parity:%d",id, state, unit, all, screen, parity);
-		// logprintf(LOG_DEBUG, "ParseCode binary:");
-		// for(i=0;i<quigg_screen->binlen;i++) {
-			// printf("%d", quigg_screen->binary[i]);
-			// switch (i) {
-				// case 11:
-				// case 13:
-				// case 14:
-				// case 15:
-				// case 16:
-				// case 18:
-				// printf(" ");
-				// default:
-				// break;
-			// }
-		// }
-		// printf("\n");
-	// }
 	if((iParityData == parity) && (screen != -1)) {
 		quiggScreenCreateMessage(id, state, unit, all);
-	}/* else {
-		logprintf(LOG_ERR, "ParseCode: Invalid Parity Bit or command");
-	}*/
+	}
 }
 
 static void quiggScreenCreateZero(int s, int e) {

@@ -241,7 +241,7 @@ function createPendingSwitchElement(sTabId, sDevId, aValues) {
 		}
 		if($('#'+sTabId+'_'+sDevId+'_pendingsw').parent().attr("class").indexOf("ui-icon-off") >= 0) {
 			$('#'+sTabId+'_'+sDevId+'_pendingsw').parent().removeClass('ui-icon-off');
-		}	
+		}
 
 		if(aValues['state'] == "running") {
 			$('#'+sTabId+'_'+sDevId+'_pendingsw').parent().addClass('ui-icon-on');
@@ -458,6 +458,9 @@ function createWeatherElement(sTabId, sDevId, aValues) {
 	if('humidity' in aValues) {
 		aValues['humidity'] /= Math.pow(10, aValues['device-decimals']);
 	}
+	if('rain' in aValues) {
+		aValues['rain'] /= Math.pow(10, aValues['device-decimals']);
+	}
 	if('sunrise' in aValues) {
 		aValues['sunrise'] /= Math.pow(10, aValues['device-decimals']);
 	}
@@ -522,6 +525,20 @@ function createWeatherElement(sTabId, sDevId, aValues) {
 				}
 			}
 		}
+		if('gui-show-rain' in aValues && aValues['gui-show-rain'] && 'rain' in aValues) {
+			oTab.find('#'+sTabId+'_'+sDevId+'_weather').append($('<div class="rain_icon"></div><div class="rain" id="'+sTabId+'_'+sDevId+'_rain">'+aValues['rain'].toFixed(aValues['gui-decimals'])+'</div>'));
+		}
+		if('gui-show-wind' in aValues && aValues['gui-show-wind']) {
+			if('windavg' in aValues) {
+				oTab.find('#'+sTabId+'_'+sDevId+'_weather').append($('<div class="windavg_icon"></div><div class="windavg" id="'+sTabId+'_'+sDevId+'_windavg">'+aValues['windavg']+'</div>'));
+			}
+			if('windgust' in aValues) {
+				oTab.find('#'+sTabId+'_'+sDevId+'_weather').append($('<div class="windgust_icon"></div><div class="winddir_icon"></div><div class="windgust" id="'+sTabId+'_'+sDevId+'_windgust">'+aValues['windgust']+'</div>'));
+			}
+			if('winddir' in aValues) {
+				$('#'+sTabId+'_'+sDevId+'_weather .winddir_icon').css({transform: 'rotate(' + aValues['winddir'] + 'deg)'});
+			}
+		}
 		if('gui-show-humidity' in aValues && aValues['gui-show-humidity'] && 'humidity' in aValues) {
 			oTab.find('#'+sTabId+'_'+sDevId+'_weather').append($('<div class="humidity_icon"></div><div class="humidity" id="'+sTabId+'_'+sDevId+'_humi">'+aValues['humidity'].toFixed(aValues['gui-decimals'])+'</div>'));
 		}
@@ -573,6 +590,20 @@ function createWeatherElement(sTabId, sDevId, aValues) {
 		}
 		if('gui-show-humidity' in aValues && aValues['gui-show-humidity'] && 'humidity' in aValues) {
 			$('#'+sTabId+'_'+sDevId+'_humi').text(aValues['humidity'].toFixed(aValues['gui-decimals']));
+		}
+		if('gui-show-rain' in aValues && aValues['gui-show-rain'] && 'rain' in aValues) {
+			$('#'+sTabId+'_'+sDevId+'_rain').text(aValues['rain'].toFixed(aValues['gui-decimals']));
+		}
+		if('gui-show-wind' in aValues && aValues['gui-show-wind']) {
+			if('windavg' in aValues) {
+				$('#'+sTabId+'_'+sDevId+'_windavg').text(aValues['windavg']);
+			}
+			if('winddir' in aValues) {
+				$('#'+sTabId+'_'+sDevId+'_weather .winddir_icon').css({transform: 'rotate(' + aValues['winddir'] + 'deg)'});
+			}
+			if('windgust' in aValues) {	
+				$('#'+sTabId+'_'+sDevId+'_windgust').text(aValues['windgust']);
+			}
 		}
 		if('gui-show-temperature' in aValues && aValues['gui-show-temperature'] && 'temperature' in aValues) {
 			$('#'+sTabId+'_'+sDevId+'_temp').text(aValues['temperature'].toFixed(aValues['gui-decimals']));
@@ -1060,6 +1091,19 @@ function parseData(data) {
 									vvalues /= Math.pow(10, aDecimals[lindex+'_'+dvalues]['device']);
 									$('#'+lindex+'_'+dvalues+'_humi').text(vvalues.toFixed(aDecimals[lindex+'_'+dvalues]['gui']));
 								}
+							} else if(vindex == 'rain' && $('#'+lindex+'_'+dvalues+'_rain')) {
+								if(lindex+'_'+dvalues in aDecimals
+								&& 'device' in aDecimals[lindex+'_'+dvalues]
+								&& 'gui' in aDecimals[lindex+'_'+dvalues]) {
+									vvalues /= Math.pow(10, aDecimals[lindex+'_'+dvalues]['device']);
+									$('#'+lindex+'_'+dvalues+'_rain').text(vvalues.toFixed(aDecimals[lindex+'_'+dvalues]['gui']));
+								}
+							} else if(vindex == 'windgust' && $('#'+lindex+'_'+dvalues+'_windgust')) {
+								$('#'+lindex+'_'+dvalues+'_windgust').text(vvalues);
+							} else if(vindex == 'winddir' && $('#'+lindex+'_'+dvalues+'_winddir')) {
+								$('#'+lindex+'_'+dvalues+'_weather .winddir_icon').css({transform: 'rotate(' + vvalues + 'deg)'});
+							} else if(vindex == 'windavg' && $('#'+lindex+'_'+dvalues+'_windavg')) {
+								$('#'+lindex+'_'+dvalues+'_windavg').text(vvalues);
 							} else if(vindex == 'sunrise' && $('#'+lindex+'_'+dvalues+'_sunrise')) {
 								if(lindex+'_'+dvalues in aDecimals
 								&& 'device' in aDecimals[lindex+'_'+dvalues]
@@ -1191,8 +1235,8 @@ $(document).ready(function() {
 			'theme': 'b'
 		});
 
-		if((navigator.userAgent.match(/iPhone/i)) || 
-		   (navigator.userAgent.match(/iPod/i)) || 
+		if((navigator.userAgent.match(/iPhone/i)) ||
+		   (navigator.userAgent.match(/iPod/i)) ||
 		   (navigator.userAgent.match(/iPad/i))) {
 			bForceAjax = true;
 		}
