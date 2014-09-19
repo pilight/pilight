@@ -30,6 +30,7 @@
 
 #include "../../pilight.h"
 #include "common.h"
+#include "dso.h"
 #include "../pilight/datetime.h" // Full path because we also have a datetime protocol
 #include "log.h"
 #include "threads.h"
@@ -379,11 +380,11 @@ void openweathermapInit(void) {
 }
 
 #ifdef MODULE
-void compatibility(const char **name, const char **version, const char **reqversion, const char **reqcommit) {
-	*name = "openweathermap";
-	*version = "1.0";
-	*reqversion = "4.0";
-	*reqcommit = "38";
+void compatibility(struct module_t *module) {
+	module->name = "openweathermap";
+	module->version = "1.0";
+	module->reqversion = "5.0";
+	module->reqcommit = NULL;
 }
 
 void init(void) {

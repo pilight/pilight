@@ -37,6 +37,7 @@
 
 #include "../../pilight.h"
 #include "common.h"
+#include "dso.h"
 #include "log.h"
 #include "threads.h"
 #include "protocol.h"
@@ -117,7 +118,7 @@ static void *lircParse(void *param) {
 					pthread_mutex_unlock(&lirclock);
 					break;
 				} else if(n == 0) {
-					usleep(10000);
+					usleep(100000);
 				} else if(n > 0) {
 					if(FD_ISSET((unsigned long)lirc_sockfd, &fdsread)) {
 						bytes = (int)recv(lirc_sockfd, recvBuff, BUFFER_SIZE, 0);
@@ -142,6 +143,21 @@ static void *lircParse(void *param) {
 
 								lirc->message = json_mkobject();
 								JsonNode *code = json_mkobject();
+								json_append_member(code, "id", json_mkstring(id));
+								json_append_member(code, "repeat", json_mkstring(rep));
+								json_append_member(code, "button", json_mkstring(btn));
+								json_append_member(code, "remote", json_mkstring(remote));
+
+								json_append_member(lirc->message, "values", code);
+								json_append_member(lirc->message, "origin", json_mkstring("config"));
+								json_append_member(lirc->message, "type", json_mknumber(LIRC));
+
+								pilight.broadcast(lirc->id, lirc->message);
+								json_delete(lirc->message);
+								lirc->message = NULL;
+
+								lirc->message = json_mkobject();
+								code = json_mkobject();
 								json_append_member(code, "id", json_mkstring(id));
 								json_append_member(code, "repeat", json_mkstring(rep));
 								json_append_member(code, "button", json_mkstring(btn));
@@ -219,11 +235,11 @@ void lircInit(void) {
 }
 
 #ifdef MODULE
-void compatibility(const char **name, const char **version, const char **reqversion, const char **reqcommit) {
-	*name = "lirc";
-	*version = "1.0";
-	*reqversion = "4.0";
-	*reqcommit = "38";
+void compatibility(struct module_t *module) {
+	module->name = "lirc";
+	module->version = "1.0";
+	module->reqversion = "5.0";
+	module->reqcommit = NULL;
 }
 
 void init(void) {

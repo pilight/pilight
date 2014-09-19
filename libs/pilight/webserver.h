@@ -22,7 +22,7 @@
 #include <pwd.h>
 
 int webserver_gc(void);
-void *webserver_start(void *param);
+int webserver_start(void);
 void *webserver_clientize(void *param);
 void *webserver_broadcast(void *param);
 char *webserver_mimetype(const char *str);

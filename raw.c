@@ -34,7 +34,7 @@
 #include "settings.h"
 #include "hardware.h"
 #include "log.h"
-#include "wiringPi.h"
+#include "wiringX.h"
 #include "threads.h"
 #include "irq.h"
 #include "dso.h"
@@ -63,6 +63,7 @@ int main_gc(void) {
 	settings_gc();
 	hardware_gc();
 	dso_gc();
+	wiringXGC();
 	log_gc();
 
 	sfree((void *)&progname);
@@ -194,6 +195,8 @@ int main(int argc, char **argv) {
 	}
 
 close:
-	main_gc();
+	if(main_loop) {
+		main_gc();
+	}
 	return (EXIT_FAILURE);
 }

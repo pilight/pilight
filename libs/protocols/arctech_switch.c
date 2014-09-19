@@ -23,6 +23,7 @@
 
 #include "../../pilight.h"
 #include "common.h"
+#include "dso.h"
 #include "log.h"
 #include "protocol.h"
 #include "hardware.h"
@@ -187,13 +188,14 @@ __attribute__((weak))
 void arctechSwInit(void) {
 
 	protocol_register(&arctech_switch);
-	protocol_set_id(arctech_switch, "arctech_switches");
+	protocol_set_id(arctech_switch, "arctech_switch");
 	protocol_device_add(arctech_switch, "kaku_switch", "KlikAanKlikUit Switches");
 	protocol_device_add(arctech_switch, "dio_switch", "D-IO Switches");
 	protocol_device_add(arctech_switch, "nexa_switch", "Nexa Switches");
 	protocol_device_add(arctech_switch, "coco_switch", "CoCo Technologies Switches");
 	protocol_device_add(arctech_switch, "intertechno_switch", "Intertechno Switches");
 	protocol_plslen_add(arctech_switch, 315);
+	protocol_plslen_add(arctech_switch, 303);
 	protocol_plslen_add(arctech_switch, 251);
 	arctech_switch->devtype = SWITCH;
 	arctech_switch->hwtype = RF433;
@@ -214,11 +216,11 @@ void arctechSwInit(void) {
 }
 
 #ifdef MODULE
-void compatibility(const char **name, const char **version, const char **reqversion, const char **reqcommit) {
-	*name = "arctech_switch";
-	*version = "1.0";
-	*reqversion = "4.0";
-	*reqcommit = "38";
+void compatibility(struct module_t *module) {
+	module->name = "arctech_switch";
+	module->version = "1.0";
+	module->reqversion = "5.0";
+	module->reqcommit = NULL;
 }
 
 void init(void) {

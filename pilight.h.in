@@ -27,7 +27,7 @@
 #cmakedefine UPDATE
 #cmakedefine FIRMWARE
 
-#define VERSION					"4.0"
+#define VERSION					"5.0"
 #define PULSE_DIV				34
 #define EPSILON					0.00001
 

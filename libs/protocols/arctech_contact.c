@@ -1,16 +1,16 @@
 /*
-  Copyright (C) 2014 CurlyMo & lvdp
+	Copyright (C) 2014 CurlyMo & lvdp
 
-  This file is part of pilight.
+	This file is part of pilight.
 
     pilight is free software: you can redistribute it and/or modify it under the
-  terms of the GNU General Public License as published by the Free Software
-  Foundation, either version 3 of the License, or (at your option) any later
-  version.
+	terms of the GNU General Public License as published by the Free Software
+	Foundation, either version 3 of the License, or (at your option) any later
+	version.
 
     pilight is distributed in the hope that it will be useful, but WITHOUT ANY
-  WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
-  A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
     along with pilight. If not, see <http://www.gnu.org/licenses/>
@@ -19,9 +19,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 
 #include "../../pilight.h"
 #include "common.h"
+#include "dso.h"
 #include "log.h"
 #include "protocol.h"
 #include "hardware.h"
@@ -64,11 +66,15 @@ void arctechContactInit(void) {
 	protocol_device_add(arctech_contact, "kaku_contact", "KlikAanKlikUit Contact Sensor");
 	protocol_device_add(arctech_contact, "dio_contact", "D-IO Contact Sensor");
 	protocol_plslen_add(arctech_contact, 294);
+	protocol_plslen_add(arctech_contact, 305);
+	protocol_plslen_add(arctech_contact, 294);
 
 	arctech_contact->devtype = SWITCH;
 	arctech_contact->hwtype = RF433;
 	arctech_contact->pulse = 4;
-	arctech_contact->rawlen = 148;
+	arctech_contact->rawlen = 140;
+	arctech_contact->minrawlen = 132;
+	arctech_contact->maxrawlen = 148;
 	arctech_contact->lsb = 3;
 
 	options_add(&arctech_contact->options, 'u', "unit", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, NULL, "^([0-9]{1}|[1][0-5])$");
@@ -83,11 +89,11 @@ void arctechContactInit(void) {
 }
 
 #ifdef MODULE
-void compatibility(const char **name, const char **version, const char **reqversion, const char **reqcommit) {
-	*name = "arctech_contact";
-	*version = "1.0";
-	*reqversion = "4.0";
-	*reqcommit = "38";
+void compatibility(struct module_t *module) {
+	module->name = "arctech_contact";
+	module->version = "1.1";
+	module->reqversion = "5.0";
+	module->reqcommit = "38";
 }
 
 void init(void) {

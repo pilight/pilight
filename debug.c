@@ -36,7 +36,7 @@
 #include "log.h"
 #include "options.h"
 #include "threads.h"
-#include "wiringPi.h"
+#include "wiringX.h"
 #include "irq.h"
 #include "gc.h"
 #include "dso.h"
@@ -73,10 +73,10 @@ int main_gc(void) {
 	settings_gc();
 	hardware_gc();
 	dso_gc();
+	wiringXGC();
 	log_gc();
 
 	sfree((void *)&progname);
-
 	return EXIT_SUCCESS;
 }
 
@@ -107,7 +107,6 @@ void *receive_code(void *param) {
 		memset(&pRaw, '\0', 255);
 		memset(&code, '\0', 255);
 		memset(&binary, '\0', 255);
-		memset(&bit, '\0', 255);
 		recording = 1;
 		bit = 0;
 		footer = 0;
@@ -222,7 +221,9 @@ void *receive_code(void *param) {
 			printf("\n");
 		}
 	}
-	main_gc();
+
+	main_loop = 0;
+
 	return NULL;
 }
 
@@ -344,6 +345,8 @@ int main(int argc, char **argv) {
 	}
 
 clear:
-	main_gc();
+	if(main_loop) {
+		main_gc();
+	}
 	return (EXIT_FAILURE);
 }

@@ -23,6 +23,7 @@
 
 #include "../../pilight.h"
 #include "common.h"
+#include "dso.h"
 #include "log.h"
 #include "protocol.h"
 #include "hardware.h"
@@ -90,11 +91,11 @@ void genSwitchInit(void) {
 }
 
 #ifdef MODULE
-void compatibility(const char **name, const char **version, const char **reqversion, const char **reqcommit) {
-	*name = "generic_switch";
-	*version = "1.0";
-	*reqversion = "4.0";
-	*reqcommit = "38";
+void compatibility(struct module_t *module) {
+	module->name = "generic_switch";
+	module->version = "1.0";
+	module->reqversion = "5.0";
+	module->reqcommit = NULL;
 }
 
 void init(void) {

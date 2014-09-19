@@ -23,6 +23,7 @@
 
 #include "../../pilight.h"
 #include "common.h"
+#include "dso.h"
 #include "log.h"
 #include "protocol.h"
 #include "hardware.h"
@@ -89,7 +90,7 @@ static void conradRSLSwCreateLow(int s, int e) {
 
 	for(i=s;i<=e;i+=2) {
 		conrad_rsl_switch->raw[i]=((conrad_rsl_switch->pulse+1)*conrad_rsl_switch->plslen->length);
-		conrad_rsl_switch->raw[i+1]=conrad_rsl_switch->plslen->length*2;
+		conrad_rsl_switch->raw[i+1]=conrad_rsl_switch->plslen->length*3;
 	}
 }
 
@@ -97,17 +98,30 @@ static void conradRSLSwCreateHigh(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=2) {
-		conrad_rsl_switch->raw[i]=conrad_rsl_switch->plslen->length*2;
+		conrad_rsl_switch->raw[i]=conrad_rsl_switch->plslen->length*3;
 		conrad_rsl_switch->raw[i+1]=((conrad_rsl_switch->pulse+1)*conrad_rsl_switch->plslen->length);
 	}
 }
 
 static void conradRSLSwClearCode(void) {
 	int i = 0, x = 0;
-	conradRSLSwCreateLow(0,65);
-	for(i=0;i<65;i+=2) {
+	conradRSLSwCreateHigh(0,65);
+	// for(i=0;i<65;i+=2) {
+		// x=i*2;
+		// conradRSLSwCreateHigh(x,x+1);
+	// }
+
+	int binary[255];
+	int length = 0;
+
+	length = decToBinRev(23876, binary);
+	for(i=0;i<=length;i++) {
 		x=i*2;
-		conradRSLSwCreateHigh(x,x+1);
+		if(binary[i]==1) {
+			conradRSLSwCreateLow(x+16, x+16+1);
+		} else {
+			conradRSLSwCreateHigh(x+16, x+16+1);
+		}
 	}
 }
 
@@ -130,7 +144,7 @@ static void conradRSLSwCreateId(int id, int unit, int state) {
 }
 
 static void conradRSLSwCreateFooter(void) {
-	conrad_rsl_switch->raw[64]=(conrad_rsl_switch->plslen->length);
+	conrad_rsl_switch->raw[64]=(conrad_rsl_switch->plslen->length*3);
 	conrad_rsl_switch->raw[65]=(PULSE_DIV*conrad_rsl_switch->plslen->length);
 }
 
@@ -253,11 +267,11 @@ void conradRSLSwInit(void) {
 }
 
 #ifdef MODULE
-void compatibility(const char **name, const char **version, const char **reqversion, const char **reqcommit) {
-	*name = "conrad_rsl_switch";
-	*version = "0.3";
-	*reqversion = "4.0";
-	*reqcommit = "38";
+void compatibility(struct module_t *module) {
+	module->name = "conrad_rsl_switch";
+	module->version = "0.4";
+	module->reqversion = "5.0";
+	module->reqcommit = NULL;
 }
 
 void init(void) {

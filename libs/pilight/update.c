@@ -47,6 +47,7 @@ static char update_typebuf[70];
 static int update_lg = 0, update_ret = 0;
 
 static pthread_mutex_t updatelock;
+static pthread_mutexattr_t updateattr;
 static pthread_cond_t updatesignal;
 
 int update_gc(void) {
@@ -239,6 +240,10 @@ void *update_poll(void *param) {
 	time_t epoch = 0;
 	time_t timenow = 0;
 
+	pthread_mutexattr_init(&updateattr);
+	pthread_mutexattr_settype(&updateattr, PTHREAD_MUTEX_RECURSIVE);
+	pthread_mutex_init(&updatelock, &updateattr);
+	pthread_cond_init(&updatesignal, NULL);
 
 	while(update_loop) {
 		time(&timenow);

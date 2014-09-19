@@ -23,6 +23,7 @@
 
 #include "../../pilight.h"
 #include "common.h"
+#include "dso.h"
 #include "log.h"
 #include "protocol.h"
 #include "hardware.h"
@@ -167,6 +168,7 @@ void silvercrestInit(void) {
 	protocol_register(&silvercrest);
 	protocol_set_id(silvercrest, "silvercrest");
 	protocol_device_add(silvercrest, "silvercrest", "Silvercrest Switches");
+	protocol_device_add(silvercrest, "unitech", "Unitech Switches");
 	protocol_plslen_add(silvercrest, 312);
 	silvercrest->devtype = SWITCH;
 	silvercrest->hwtype = RF433;
@@ -188,11 +190,11 @@ void silvercrestInit(void) {
 }
 
 #ifdef MODULE
-void compatibility(const char **name, const char **version, const char **reqversion, const char **reqcommit) {
-	*name = "silvercrest";
-	*version = "1.0";
-	*reqversion = "4.0";
-	*reqcommit = "38";
+void compatibility(struct module_t *module) {
+	module->name = "silvercrest";
+	module->version = "1.0";
+	module->reqversion = "5.0";
+	module->reqcommit = NULL;
 }
 
 void init(void) {

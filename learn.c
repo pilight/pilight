@@ -36,7 +36,7 @@
 #include "log.h"
 #include "options.h"
 #include "threads.h"
-#include "wiringPi.h"
+#include "wiringX.h"
 #include "irq.h"
 #include "gc.h"
 #include "dso.h"
@@ -111,6 +111,7 @@ int main_gc(void) {
 	settings_gc();
 	hardware_gc();
 	dso_gc();
+	wiringXGC();
 	log_gc();
 
 	sfree((void *)&progname);
@@ -495,7 +496,7 @@ void *receive_code(void *param) {
 	for(i=0;i<binaryLength;i++) {
 		printf("%d",unit3Binary[i]);
 	}
-	main_gc();
+	main_loop = 0;
 	return NULL;
 }
 
@@ -617,6 +618,8 @@ int main(int argc, char **argv) {
 	}
 
 clear:
-	main_gc();
+	if(main_loop) {
+		main_gc();
+	}
 	return (EXIT_FAILURE);
 }

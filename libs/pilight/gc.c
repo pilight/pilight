@@ -30,6 +30,13 @@
 static unsigned short gc_enable = 1;
 
 void gc_handler(int sig) {
+	if(sig == SIGSEGV) {
+		fprintf(stderr, "segmentation fault\n");
+		exit(EXIT_FAILURE);
+	} else if(sig == SIGBUS) {
+		fprintf(stderr, "buserror\n");
+		exit(EXIT_FAILURE);
+	}
 	if(((sig == SIGINT || sig == SIGTERM || sig == SIGTSTP) && gc_enable == 1) ||
 	  (!(sig == SIGINT || sig == SIGTERM || sig == SIGTSTP) && gc_enable == 0)) {
 		if(configfile != NULL && gc_enable == 1) {

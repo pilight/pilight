@@ -23,6 +23,7 @@
 
 #include "../../pilight.h"
 #include "common.h"
+#include "dso.h"
 #include "log.h"
 #include "protocol.h"
 #include "hardware.h"
@@ -140,7 +141,7 @@ void selectremoteInit(void) {
 
 	protocol_register(&selectremote);
 	protocol_set_id(selectremote, "selectremote");
-	protocol_device_add(selectremote, "selectremote", "selectremote Switches");
+	protocol_device_add(selectremote, "selectremote", "SelectRemote Switches");
 	protocol_plslen_add(selectremote, 396);
 	selectremote->devtype = SWITCH;
 	selectremote->hwtype = RF433;
@@ -160,11 +161,11 @@ void selectremoteInit(void) {
 }
 
 #ifdef MODULE
-void compatibility(const char **name, const char **version, const char **reqversion, const char **reqcommit) {
-	*name = "selectremote";
-	*version = "0.8";
-	*reqversion = "4.0";
-	*reqcommit = "38";
+void compatibility(struct module_t *module) {
+	module->name = "selectremote";
+	module->version = "0.8";
+	module->reqversion = "5.0";
+	module->reqcommit = NULL;
 }
 
 void init(void) {

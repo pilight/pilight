@@ -23,6 +23,7 @@
 
 #include "../../pilight.h"
 #include "common.h"
+#include "dso.h"
 #include "log.h"
 #include "protocol.h"
 #include "hardware.h"
@@ -182,6 +183,7 @@ void rev3Init(void) {
     protocol_set_id(rev3_switch, "rev3_switch");
     protocol_device_add(rev3_switch, "rev3_switch", "Rev Switches v3");
     protocol_plslen_add(rev3_switch, 264);
+    protocol_plslen_add(rev3_switch, 258);
     rev3_switch->devtype = SWITCH;
     rev3_switch->hwtype = RF433;
     rev3_switch->pulse = 3;
@@ -201,11 +203,11 @@ void rev3Init(void) {
 }
 
 #ifdef MODULE
-void compatibility(const char **name, const char **version, const char **reqversion, const char **reqcommit) {
-	*name = "rev3_switch";
-	*version = "0.8";
-	*reqversion = "4.0";
-	*reqcommit = "38";
+void compatibility(struct module_t *module) {
+	module->name = "rev3_switch";
+	module->version = "0.8";
+	module->reqversion = "5.0";
+	module->reqcommit = NULL;
 }
 
 void init(void) {

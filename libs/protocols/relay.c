@@ -25,12 +25,13 @@
 
 #include "../../pilight.h"
 #include "common.h"
+#include "dso.h"
 #include "log.h"
 #include "protocol.h"
 #include "hardware.h"
 #include "relay.h"
 #include "gc.h"
-#include "wiringPi.h"
+#include "wiringX.h"
 
 static char *relay_state = NULL;
 
@@ -79,8 +80,8 @@ static int relayCreateCode(JsonNode *code) {
 		goto clear;
 	} else {
 		if(strstr(progname, "daemon") != NULL) {
-			if(wiringPiSetup() < 0) {
-				logprintf(LOG_ERR, "unable to setup wiringPi") ;
+			if(wiringXSetup() < 0) {
+				logprintf(LOG_ERR, "unable to setup wiringX") ;
 				return EXIT_FAILURE;
 			} else {
 				pinMode(gpio, OUTPUT);
@@ -170,11 +171,11 @@ void relayInit(void) {
 }
 
 #ifdef MODULE
-void compatibility(const char **name, const char **version, const char **reqversion, const char **reqcommit) {
-	*name = "relay";
-	*version = "1.0";
-	*reqversion = "4.0";
-	*reqcommit = "38";
+void compatibility(struct module_t *module) {
+	module->name = "relay";
+	module->version = "1.0";
+	module->reqversion = "5.0";
+	module->reqcommit = NULL;
 }
 
 void init(void) {

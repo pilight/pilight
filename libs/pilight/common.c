@@ -61,7 +61,14 @@ pid_t findproc(char *cmd, char *args, int loosely) {
 	int fd = 0, ptr = 0, match = 0, i = 0, y = '\n';
 
 	if(!(dir = opendir("/proc"))) {
+#ifdef __FreeBSD__
+		system("mount -t procfs proc /proc");
+		if(!(dir = opendir("/proc"))) {
+			return -1;
+		}
+#else
        	return -1;
+#endif
 	}
 
     while((ent = readdir(dir)) != NULL) {
@@ -794,31 +801,31 @@ int vercmp(char *val, char *ref) {
 int str_replace(char *search, char *replace, char **str) {
 	char *target = *str;
 	unsigned short match = 0;
-	unsigned int len = strlen(target);
-	unsigned int nlen = 0;
-	unsigned int slen = strlen(search);
-	unsigned int rlen = strlen(replace);
-	unsigned int x = 0;
+	int len = (int)strlen(target);
+	int nlen = 0;
+	int slen = (int)strlen(search);
+	int rlen = (int)strlen(replace);
+	int x = 0;
 
 	while(x < len) {
-		if(strncmp(&target[x], search, slen) == 0) {
+		if(strncmp(&target[x], search, (size_t)slen) == 0) {
 			match = 1;
-			unsigned int rpos = (x + (slen - rlen));
+			int rpos = (x + (slen - rlen));
 			if(rpos < 0) {
 				slen -= rpos;
 				rpos = 0;
 			}
 			nlen = len - (slen - rlen);
 			if(len < nlen) {
-				if(!(target = realloc(target, nlen+1))) {
+				if(!(target = realloc(target, (size_t)nlen+1))) {
 					printf("out of memory\n");
 				}
-				memset(&target[len], '\0', nlen-len);
+				memset(&target[len], '\0', (size_t)(nlen-len));
 			}
 			len = nlen;
 
-			memmove(&target[x], &target[rpos], len-x);
-			strncpy(&target[x], replace, rlen);
+			memmove(&target[x], &target[rpos], (size_t)(len-x));
+			strncpy(&target[x], replace, (size_t)rlen);
 			target[len] = '\0';
 			x += rlen-1;
 		}

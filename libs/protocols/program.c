@@ -31,6 +31,7 @@
 
 #include "../../pilight.h"
 #include "common.h"
+#include "dso.h"
 #include "log.h"
 #include "threads.h"
 #include "protocol.h"
@@ -125,6 +126,7 @@ static void *programParse(void *param) {
 		lnode->start = NULL;
 	}
 
+	lnode->name = NULL;
 	if((jid = json_find_member(json, "id"))) {
 		jchild = json_first_child(jid);
 		while(jchild) {
@@ -146,16 +148,8 @@ static void *programParse(void *param) {
 	lnode->thread = pnode;
 	lnode->laststate = -1;
 
-	struct programs_t *tmp = programs;
-	if(tmp) {
-		while(tmp->next != NULL) {
-			tmp = tmp->next;
-		}
-		tmp->next = lnode;
-	} else {
-		lnode->next = tmp;
-		programs = lnode;
-	}
+	lnode->next = programs;
+	programs = lnode;
 
 	if(json_find_number(json, "poll-interval", &itmp) == 0)
 		interval = (int)round(itmp);
@@ -383,11 +377,11 @@ void programInit(void) {
 }
 
 #ifdef MODULE
-void compatibility(const char **name, const char **version, const char **reqversion, const char **reqcommit) {
-	*name = "program";
-	*version = "1.0";
-	*reqversion = "4.0";
-	*reqcommit = "38";
+void compatibility(struct module_t *module) {
+	module->name = "program";
+	module->version = "1.0";
+	module->reqversion = "5.0";
+	module->reqcommit = NULL;
 }
 
 void init(void) {

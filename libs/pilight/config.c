@@ -280,25 +280,25 @@ int config_update(char *protoname, JsonNode *json, JsonNode **out) {
 									if(strcmp(sptr->name, opt->name) == 0
 									   && (opt->conftype == CONFIG_VALUE)
 									   && opt->argtype == OPTION_HAS_VALUE) {
-
+									    int upd_value = 1;
 										memset(vstring_, '\0', sizeof(vstring_));
 										vnumber_ = -1;
 										if(json_find_string(message, opt->name, &stmp) == 0) {
 											strcpy(vstring_, stmp);
 											valueType = CONFIG_TYPE_STRING;
-										}
-										if(json_find_number(message, opt->name, &itmp) == 0) {
+										} else if(json_find_number(message, opt->name, &itmp) == 0) {
 											vnumber_ = itmp;
 											valueType = CONFIG_TYPE_NUMBER;
+										} else {
+											upd_value = 0;
 										}
 
-										if(is_valid) {
+										if(is_valid && upd_value) {
 											if(valueType == CONFIG_TYPE_STRING &&
 											   strlen(vstring_) > 0 &&
 											   sptr->values->type == CONFIG_TYPE_STRING &&
 											   strcmp(sptr->values->string_, vstring_) != 0) {
-												sptr->values->string_ = realloc(sptr->values->string_, strlen(vstring_)+1);
-												if(!sptr->values->string_) {
+												if(!(sptr->values->string_ = realloc(sptr->values->string_, strlen(vstring_)+1))) {
 													logprintf(LOG_ERR, "out of memory");
 													exit(EXIT_FAILURE);
 												}
@@ -652,6 +652,12 @@ JsonNode *config_broadcast_create(void) {
 	json_append_member(jfirmware, "hpf", json_mknumber(firmware.hpf));
 	json_append_member(jfirmware, "lpf", json_mknumber(firmware.lpf));
 	json_append_member(jsend, "firmware", jfirmware);
+
+	time_t timenow = time(NULL);
+	struct tm *gmt = gmtime(&timenow);
+	char utc[] = "Europe/London";
+	time_t utct = datetime2ts(gmt->tm_year+1900, gmt->tm_mon+1, gmt->tm_mday, gmt->tm_hour, gmt->tm_min, gmt->tm_sec, utc);
+	json_append_member(jsend, "timestamp", json_mknumber((double)utct));
 
 	return jsend;
 }

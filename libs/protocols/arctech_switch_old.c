@@ -23,6 +23,7 @@
 
 #include "../../pilight.h"
 #include "common.h"
+#include "dso.h"
 #include "log.h"
 #include "protocol.h"
 #include "hardware.h"
@@ -161,12 +162,18 @@ __attribute__((weak))
 void arctechSwOldInit(void) {
 
 	protocol_register(&arctech_switch_old);
-	protocol_set_id(arctech_switch_old, "arctech_switches_old");
+	protocol_set_id(arctech_switch_old, "arctech_switch_old");
 	protocol_device_add(arctech_switch_old, "kaku_switch_old", "Old KlikAanKlikUit Switches");
 	protocol_device_add(arctech_switch_old, "cogex", "Cogex Switches");
 	protocol_device_add(arctech_switch_old, "intertechno_old", "Old Intertechno Switches");
+	protocol_device_add(arctech_switch_old, "byebyestandbye", "Bye Bye Standbye Switches");
+	protocol_device_add(arctech_switch_old, "duwi", "Düwi Terminal Switches");
+	protocol_device_add(arctech_switch_old, "promax", "PRO max Switches");
 	protocol_plslen_add(arctech_switch_old, 336);
-	protocol_plslen_add(arctech_switch_old, 320);
+	protocol_plslen_add(arctech_switch_old, 326);
+	protocol_plslen_add(arctech_switch_old, 390);
+	protocol_plslen_add(arctech_switch_old, 400);
+	protocol_plslen_add(arctech_switch_old, 330);
 
 	arctech_switch_old->devtype = SWITCH;
 	arctech_switch_old->hwtype = RF433;
@@ -188,11 +195,11 @@ void arctechSwOldInit(void) {
 }
 
 #ifdef MODULE
-void compatibility(const char **name, const char **version, const char **reqversion, const char **reqcommit) {
-	*name = "arctech_switch_old";
-	*version = "1.0";
-	*reqversion = "4.0";
-	*reqcommit = "38";
+void compatibility(struct module_t *module) {
+	module->name = "arctech_switch_old";
+	module->version = "1.2";
+	module->reqversion = "5.0";
+	module->reqcommit = NULL;
 }
 
 void init(void) {

@@ -19,12 +19,19 @@
 #ifndef _DSO_H_
 #define _DSO_H_
 
-struct dso_t {
+typedef struct dso_t {
 	void *handle;
 	char *name;
 	ssize_t size;
 	struct dso_t *next;
 } dso_t;
+
+typedef struct module_t {
+	const char *name;
+	const char *version;
+	const char *reqversion;
+	const char *reqcommit;
+} module_t;
 
 struct dso_t *dso;
 

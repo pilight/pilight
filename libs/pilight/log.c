@@ -71,9 +71,19 @@ void logprintf(int prio, const char *format_str, ...) {
 	char fmt[64], buf[64];
 	struct timeval tv;
 	struct tm *tm;
+	int restore_shell = 0;
+	int restore_file = 0;
 
-	if(logfile == NULL && filelog == 0 && shelllog == 0)
-		return;
+	if(logfile == NULL) {
+		if(shelllog == 0) {
+			restore_shell = 1;
+		}
+		shelllog = 1;
+		if(filelog == 1) {
+			restore_file = 1;
+		}
+		filelog = 0;
+	}
 
 	if(loglevel >= prio) {
 		gettimeofday(&tv, NULL);
@@ -131,7 +141,7 @@ void logprintf(int prio, const char *format_str, ...) {
 			va_end(ap);
 		}
 
-		if(shelllog == 1 || prio == LOG_ERR) {
+		if(shelllog == 1) {
 			fputs(debug_log, stderr);
 			va_start(ap, format_str);
 			if(prio==LOG_WARNING)
@@ -151,6 +161,12 @@ void logprintf(int prio, const char *format_str, ...) {
 		}
 	}
 	errno = save_errno;
+	if(restore_shell) {
+		shelllog = 0;
+	}
+	if(restore_file) {
+		filelog = 1;
+	}
 }
 
 void logperror(int prio, const char *s) {

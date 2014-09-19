@@ -23,6 +23,7 @@
 
 #include "../../pilight.h"
 #include "common.h"
+#include "dso.h"
 #include "log.h"
 #include "protocol.h"
 #include "hardware.h"
@@ -163,6 +164,7 @@ void elroHEInit(void) {
 	protocol_set_id(elro_he, "elro_he");
 	protocol_device_add(elro_he, "elro_he", "Elro Home Easy Switches");
 	protocol_plslen_add(elro_he, 288);
+	protocol_plslen_add(elro_he, 300);
 	elro_he->devtype = SWITCH;
 	elro_he->hwtype = RF433;
 	elro_he->pulse = 3;
@@ -183,11 +185,11 @@ void elroHEInit(void) {
 }
 
 #ifdef MODULE
-void compatibility(const char **name, const char **version, const char **reqversion, const char **reqcommit) {
-	*name = "elro_he";
-	*version = "1.0";
-	*reqversion = "4.0";
-	*reqcommit = "38";
+void compatibility(struct module_t *module) {
+	module->name = "elro_he";
+	module->version = "1.1";
+	module->reqversion = "5.0";
+	module->reqcommit = NULL;
 }
 
 void init(void) {

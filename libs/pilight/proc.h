@@ -1,5 +1,5 @@
 /*
-	Copyright (C) 2013 - 2014 CurlyMo
+	Copyright (C) 2014 CurlyMo
 
 	This file is part of pilight.
 
@@ -16,10 +16,23 @@
     along with pilight. If not, see	<http://www.gnu.org/licenses/>
 */
 
-#ifndef _HARDWARE_PILIGHT433_H_
-#define _HARDWARE_PILIGHT433_H_
+#ifndef _PROC_H_
+#define _PROC_H_
 
-struct hardware_t *pilight433;
-void pilight433Init(void);
+/* CPU usage */
+typedef struct cpu_usage_t {
+	double sec_start;
+	double sec_stop;
+	double sec_diff;
+	double cpu_old;
+	double cpu_new;
+	double cpu_per;
+	struct timespec ts;
+	clock_t starts;
+} cpu_usage_t;
+
+double getCPUUsage(void);
+double getRAMUsage(void);
+void getThreadCPUUsage(pthread_t *pth, struct cpu_usage_t *cpu_usage);
 
 #endif

@@ -1,80 +1,226 @@
-body {
-	margin: 0px;
+#header {
+	height: 41px;
+	font-weight: normal;
+	color: black;
 }
 
-#content div.content {
-	display: none;
-	width: 100%;
+
+#version, #proc {
+	position: absolute;
+	float: left;
+	font-size: 10px;
+	left: 4px;
+}
+
+#helpdlg {
+	background: #efefef;
+}
+
+.ui-loader-background {
+    width: 100%;
+    height: 100%;
+    top:0;
+    margin: 0;
+    background: rgba(0, 0, 0, 0.3);
+    display: none;
+    position: fixed;
+    z-index: 100;
+}
+
+.ui-loading .ui-loader-background {
+    display:block;
 }
 
 #version {
-	font-size: 10px;
-	margin: 0px;
-	padding-left: 3px;
-	position: aboslute;
+	top: 5px;
+}
+
+#proc {
+	top: 20px;
+}
+
+.ui-li-static {
+	height: 27px;
+	padding: 5px 0px 5px 0px;
+}
+
+.dimmer {
+	height: 70px;
+}
+
+.pendingsw .ui-btn {
+    position: absolute;
+    top: 0px;
+	right: 0px;
 	height: 15px;
-	top: 0px;
-	left: 0px;
-	overflow: hidden;
+	padding-top: 6px;
 }
 
-#header {
-	height: 40px;
+.pendingsw .ui-btn *, .pendingsw .ui-btn *:hover {
+	color: black;
 }
 
-#header h1 {
-	margin-top: -5px;
+.pendingsw .ui-btn-icon-left:after, .ui-btn-icon-right:after, .ui-btn-icon-top:after, .ui-btn-icon-bottom:after, .ui-btn-icon-notext:after {
+	background-color: transparent !important;
 }
 
-.heading { 
-	font-size: 16px;
+.pendingsw .ui-icon-loader {
+	background: transparent url('smallloader.gif') no-repeat 10px 7px;
+}
+
+.pendingsw .ui-icon-off {
+	background: transparent url('off.png') no-repeat 10px 6px;
+}
+
+.pendingsw .ui-icon-on {
+	background: transparent url('on.png') no-repeat 10px 6px;
+}
+
+@media screen and (-webkit-min-device-pixel-ratio:0) {
+	.pendingsw .ui-icon-loader {
+		background-position: 10px 6px;
+	}
+
+	.pendingsw .ui-icon-off {
+		background-position: 10px 4px;
+	}
+
+	.pendingsw .ui-icon-on {
+		background-position: 10px 4px;
+	}
+}
+
+.pendingsw .ui-icon-loader.ui-btn-icon-left:after {
+	background-color: transparent !important;
+}
+
+.pendingsw .ui-icon-on.ui-btn-icon-left:after {
+	background-color: transparent !important;
+}
+
+.pendingsw .ui-icon-off.ui-btn-icon-left:after {
+	background-color: transparent !important;
+}
+
+.pendingsw  a {
+	text-decoration: none;
+	color: black;
+}
+
+.ui-btn-right {
+    position: absolute;
+	top: 2px;
+}
+
+.ui-slider {
+    position: relative;
+    top: 25px;
+	width: 100%;
+}
+
+.slider-value {
+    position: absolute;
+	float: left;
+	left: 10px;
+}
+
+div.ui-slider-switch, div.screen {
+    position: absolute;
+    right: 10px;
+}
+
+div.screen {
+	right: -20px;
+	top: -10px;
+	width: 140px;
 }
 
 .ui-li .ui-btn-inner a.ui-link-inherit, .ui-li-static.ui-li {
-	display: block;
-	padding: 15px 75px 14px 15px;
+    display: block;
 }
 
-.ui-li.dimmer {
-	padding: 15px 75px 1px 15px;
+div.name {
+	padding-top: 4px;
+    position: relative;
+	float: left;
 }
 
-div.ui-slider.ui-slider-switch {
-	position: absolute;
+div.humidity, div.temperature,
+div.rain, div.windavg, div.windgust, div.winddir,
+div.temperature_icon, div.humidity_icon,
+div.rain_icon, div.windavg_icon,
+div.windgust_icon, div.winddir_icon,
+div.update_active, div.update_inactive,
+div.sunrise, div.sunset, div.sunset_icon.gray,
+div.sunrise_icon.gray, div.sunset_icon.blue,
+div.sunrise_icon.yellow, div.media_icon, div.action_icon,
+div.battery.red, div.battery.green,
+div.datetime {
+    position: relative;
 	float: right;
-	right: 0px;
-	width: 100px;
-	margin: 6px 10px 10px 0px;
-}
-
-.pendingsw.pending .ui-slider-label {
-	background: #FF9900;
-}
-
-div.datetime, div.temperature, div.humidity, div.battery.red, div.update,
-div.battery.green, div.sunrise, div.sunset, div.sunset_icon.gray, 
-div.sunrise_icon.gray, div.sunset_icon.blue, div.sunrise_icon.yellow,
-div.media_icon, div.action_icon {
-	position: relative;
-	float: right;
-	padding: 4px;
-	right: -50px;
+	padding: 6px 0px 0px 0px;
 }
 
 div.battery.red, div.battery.green {
-	width: 10px;
-	height: 16px;
-	top: 4px;
-	right: -60px;	
+	margin: 6px 0px 0px 0px;
 }
+
 
 div.sunset_icon.gray, div.sunrise_icon.gray,
 div.sunset_icon.blue, div.sunrise_icon.yellow  {
 	width: 19px;
 	height: 16px;
-	top: 0px;
-	right: -50px;	
-	padding: 0;
+	margin-right: 4px;
+}
+
+div.temperature_icon, div.humidity_icon,
+div.rain_icon, div.windavg_icon,
+div.windgust_icon {
+	width: 16px;
+	height: 16px;
+	margin-right: 4px;
+}
+
+div.winddir_icon {
+	width: 10px;
+	height: 10px;
+	margin-right: 4px;	
+}
+
+div.windgust_icon {
+	margin-right: 0px;
+	margin-left: -16px;
+}
+
+div.winddir_icon {
+	margin-top: 14px;
+	margin-left: 2px;
+}
+
+div.update_active, div.update_inactive,
+div.media_icon, div.action_icon {
+	width: 20px;
+	height: 20px;
+}
+
+div.update_active, div.update_inactive {
+	margin: 7px 0px 0px 4px;
+}
+
+div.media_icon, div.action_icon {
+	margin: 5px 10px 0px 4px;
+}
+
+div.battery.red, div.battery.green {
+	width: 10px;
+	height: 16px;
+}
+
+div.webcam_image {
+	position: absolute;
+	float: right;
+	right: 10px;
+	top: 14px;
 }
 
 div.battery.red {
@@ -101,40 +247,28 @@ div.sunset_icon.blue {
 	background: url('sunset_blue.png') 0px 0px no-repeat;
 }
 
-div.temperature_icon, div.humidity_icon, 
-div.update_active, div.update_inactive,
-div.action_icon, div.media_icon {
-	position: relative;
-	float: right;
-	font-size: 14px;
-	color: #aeaeae;
-	width: 16px;
-	height: 16px;
-}
-
-div.action_icon, div.media_icon {
-	width: 20px;
-	height: 20px;
-}
-
-div.temperature_icon, div.humidity_icon {
-	top: -2px;
-	left: 48px;
-}
-
-div.update_active, div.update_inactive {
-	left: 55px;
-	width: 20px;
-	height: 20px;
-	top: 2px;
-}
-
 div.temperature_icon {
 	background: url('temp.png') 0px 0px no-repeat;
 }
 
 div.humidity_icon {
 	background: url('humi.png') 0px 0px no-repeat;
+}
+
+div.rain_icon {
+	background: url('rain.png') 0px 0px no-repeat;
+}
+
+div.windavg_icon {
+	background: url('windavg.png') 0px 0px no-repeat;
+}
+
+div.winddir_icon {
+	background: url('winddir.png') 0px 0px no-repeat;
+}
+
+div.windgust_icon {
+	background: url('windgust.png') 0px 0px no-repeat;
 }
 
 div.update_active {
@@ -183,42 +317,4 @@ div.media_icon.episode {
 
 div.media_icon.song {
 	background: url('song.png') 0px 0px no-repeat;
-}
-
-div.screen {
-	position: relative;
-	float: right;
-	width: 135px;
-	height: 0px;
-	top: -25px;
-	right: -100px;
-}
-
-div.webcam_image {
-	position: absolute;
-	float: right;
-	right: 20px;
-	top: 14px;
-}
-
-.ui-loader-background {
-    width:100%;
-    height:100%;
-    top:0;
-    padding: 0;
-    margin: 0;
-    background: rgba(0, 0, 0, 0.3);
-    display:none;
-    position: fixed;
-    z-index:100;
-}
-
-.ui-loading .ui-loader-background {
-    display:block;
-}
-
-.ui-disabled {
-	filter: Alpha(Opacity=75);
-	opacity: .7;
-	zoom: 1;
 }

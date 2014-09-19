@@ -23,6 +23,7 @@
 
 #include "../../pilight.h"
 #include "common.h"
+#include "dso.h"
 #include "log.h"
 #include "protocol.h"
 #include "hardware.h"
@@ -35,9 +36,9 @@ static void rev1CreateMessage(char *id, int unit, int state) {
 	json_append_member(rev1_switch->message, "id", json_mkstring(id));
 	json_append_member(rev1_switch->message, "unit", json_mknumber(unit));
 	if(state == 1)
-		json_append_member(rev1_switch->message, "state", json_mkstring("on"));
-	else
 		json_append_member(rev1_switch->message, "state", json_mkstring("off"));
+	else
+		json_append_member(rev1_switch->message, "state", json_mkstring("on"));
 }
 
 static void rev1ParseCode(void) {
@@ -142,7 +143,7 @@ static void rev1CreateId(char *id) {
 }
 
 static void rev1CreateState(int state) {
-	if(state == 1) {
+	if(state == 0) {
 		rev1CreateMed(40,43);
 		rev1CreateHigh(44,47);
 	} else {
@@ -234,11 +235,11 @@ void rev1Init(void) {
 }
 
 #ifdef MODULE
-void compatibility(const char **name, const char **version, const char **reqversion, const char **reqcommit) {
-	*name = "rev1_switch";
-	*version = "0.8";
-	*reqversion = "4.0";
-	*reqcommit = "38";
+void compatibility(struct module_t *module) {
+	module->name = "rev1_switch";
+	module->version = "0.8";
+	module->reqversion = "5.0";
+	module->reqcommit = NULL;
 }
 
 void init(void) {

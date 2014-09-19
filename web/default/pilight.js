@@ -5,6 +5,8 @@ var bInitialized = false;
 var bSending = false;
 var aDecimals = new Array();
 var aDateTime = new Array();
+var aMinInterval = new Array();
+var aPollInterval = new Array();
 var aReadOnly = new Array();
 var bShowTabs = true;
 var iPLVersion = 0;
@@ -13,6 +15,46 @@ var iFWVersion = 0;
 var aTimers = new Array();
 var sDateTimeFormat = "HH:mm:ss YYYY-MM-DD";
 var aDateTimeFormats = new Array();
+var userLang = navigator.language || navigator.userLanguage;
+
+var language_en = {
+	off: "Off",
+	on: "On",
+	stopped: "Stopped",
+	started: "Started",
+	toggling: "Toggling",
+	up: "Up",
+	down: "Down",
+	update: "Update",
+	loading: "Loading",
+	available: "available",
+	connecting: "Connecting",
+	connection_lost: "Connection lost, touch to reload",
+	connection_failed: "Failed to connect, touch to reload",
+	unexpected_error: "An unexpected error occured"
+}
+
+var language_nl = {
+	off: "Uit",
+	on: "Aan",
+	stopped: "Gestopt",
+	started: "Gestart",
+	toggling: "Omzetten",
+	up: "Omhoog",
+	down: "Omlaag",
+	update: "Bijwerken",
+	loading: "Verbinding maken",
+	available: "beschikbaar",
+	connection_lost: "Verbinding verloren, klik om te herladen",
+	connection_failed: "Kan niet verbinden, klik om te herhalen",
+	unexpected_error: "An unexpected error occured"
+}
+
+var language = language_en;
+
+if(userLang.indexOf('nl') != -1) {
+	language = language_nl;
+}
 
 var cookieEnabled = (navigator.cookieEnabled) ? true : false;
 
@@ -105,7 +147,7 @@ function createSwitchElement(sTabId, sDevId, aValues) {
 			oTab = $('#all');
 		}
 		if('name' in aValues) {
-			oTab.append($('<li id="'+sTabId+'_'+sDevId+'" class="switch" data-icon="false">'+aValues['name']+'<select id="'+sTabId+'_'+sDevId+'_switch" data-role="slider"><option value="off">Off</option><option value="on">On</option></select></li>'));
+			oTab.append($('<li id="'+sTabId+'_'+sDevId+'" class="switch" data-icon="false"><div class="name">'+aValues['name']+'</div><select id="'+sTabId+'_'+sDevId+'_switch" data-role="slider"><option value="off">'+language.off+'</option><option value="on">'+language.on+'</option></select></li>'));
 		}
 		$('#'+sTabId+'_'+sDevId+'_switch').slider();
 		$('#'+sTabId+'_'+sDevId+'_switch').bind("change", function(event, ui) {
@@ -152,15 +194,15 @@ function createPendingSwitchElement(sTabId, sDevId, aValues) {
 		}
 
 		if('name' in aValues) {
-			oTab.append($('<li id="'+sTabId+'_'+sDevId+'" class="pendingsw" data-icon="false">'+aValues['name']+'<select id="'+sTabId+'_'+sDevId+'_pendingsw" data-role="slider"><option value="stopped">Stopped</option><option value="running">Running</option></select></li>'));
+			oTab.append($('<li id="'+sTabId+'_'+sDevId+'" class="pendingsw" data-icon="false"><div class="name">'+aValues['name']+'</div><a data-role="button" data-inline="true" data-mini="true" data-icon="on" id="'+sTabId+'_'+sDevId+'_pendingsw">&nbsp;</a></li>'));
 		}
-		$('#'+sTabId+'_'+sDevId+'_pendingsw').slider();
-		
-		$('#'+sTabId+'_'+sDevId+'_pendingsw').bind("change", function(event, ui) {
-			$('#'+sTabId+'_'+sDevId+'_pendingsw').blur();
+		$('#'+sTabId+'_'+sDevId+'_pendingsw').button();
+		$('#'+sTabId+'_'+sDevId+'_pendingsw').bind("click", function(event, ui) {
 			event.stopPropagation();
-			$('#'+sTabId+'_'+sDevId+'_pendingsw').slider('disable');
-			$('#'+sTabId+'_'+sDevId).addClass('pending');
+			$('#'+sTabId+'_'+sDevId+'_pendingsw').parent().removeClass('ui-icon-on').removeClass('ui-icon-off').addClass('ui-icon-loader');
+			$('#'+sTabId+'_'+sDevId+'_pendingsw').button('disable');
+			$('#'+sTabId+'_'+sDevId+'_pendingsw').text(language.toggling);
+			$('#'+sTabId+'_'+sDevId+'_pendingsw').button('refresh');
 			var json = '{"message":"send","code":{"location":"'+sTabId+'","device":"'+sDevId+'","state":"'+this.value+'"}}';
 			if(oWebsocket) {
 				oWebsocket.send(json);
@@ -170,30 +212,57 @@ function createPendingSwitchElement(sTabId, sDevId, aValues) {
 				window.setTimeout(function() { bSending = false; }, 1000);
 			}
 		});
+		$('#'+sTabId+'_'+sDevId).bind("click", function(event, ui) {
+			if(!$('#'+sTabId+'_'+sDevId+'_pendingsw').prop("disabled")) {
+				event.stopPropagation();
+				$('#'+sTabId+'_'+sDevId+'_pendingsw').parent().removeClass('ui-icon-on').removeClass('ui-icon-off').addClass('ui-icon-loader');
+				$('#'+sTabId+'_'+sDevId+'_pendingsw').button('disable');
+				$('#'+sTabId+'_'+sDevId+'_pendingsw').text(language.toggling);
+				$('#'+sTabId+'_'+sDevId+'_pendingsw').button('refresh');
+				var json = '{"message":"send","code":{"location":"'+sTabId+'","device":"'+sDevId+'","state":"'+this.value+'"}}';
+				if(oWebsocket) {
+					oWebsocket.send(json);
+				} else {
+					bSending = true;
+					$.get('http://'+location.host+'/send?'+encodeURIComponent(json));
+					window.setTimeout(function() { bSending = false; }, 1000);
+				}
+			}
+		});
 		oTab.listview();
 		oTab.listview("refresh");
 	}
 	if('state' in aValues) {
-		if(aValues['state'] === "running") {
-			$('#'+sTabId+'_'+sDevId+'_pendingsw')[0].selectedIndex = 1;
-			$('#'+sTabId+'_'+sDevId+'_pendingsw').slider('refresh');
-			$('#'+sTabId+'_'+sDevId).removeClass('pending');
-			$('#'+sTabId+'_'+sDevId+'_pendingsw').slider('enable');
-		} else if(aValues['state'] === "pending") {
-			$('#'+sTabId+'_'+sDevId+'_pendingsw').slider('disable');
-			if($('#'+sTabId+'_'+sDevId).attr("class").indexOf("pending") == -1) {
-				$('#'+sTabId+'_'+sDevId).addClass('pending');
-			}
-		}else {
-			$('#'+sTabId+'_'+sDevId+'_pendingsw')[0].selectedIndex = 0;
-			$('#'+sTabId+'_'+sDevId+'_pendingsw').slider('refresh');
-			$('#'+sTabId+'_'+sDevId).removeClass('pending');
-			$('#'+sTabId+'_'+sDevId+'_pendingsw').slider('enable');
+		if($('#'+sTabId+'_'+sDevId+'_pendingsw').parent().attr("class").indexOf("ui-icon-loader") >= 0) {
+			$('#'+sTabId+'_'+sDevId+'_pendingsw').parent().removeClass('ui-icon-loader');
+		}
+		if($('#'+sTabId+'_'+sDevId+'_pendingsw').parent().attr("class").indexOf("ui-icon-on") >= 0) {
+			$('#'+sTabId+'_'+sDevId+'_pendingsw').parent().removeClass('ui-icon-on');
+		}
+		if($('#'+sTabId+'_'+sDevId+'_pendingsw').parent().attr("class").indexOf("ui-icon-off") >= 0) {
+			$('#'+sTabId+'_'+sDevId+'_pendingsw').parent().removeClass('ui-icon-off');
+		}
+
+		if(aValues['state'] == "running") {
+			$('#'+sTabId+'_'+sDevId+'_pendingsw').parent().addClass('ui-icon-on');
+			$('#'+sTabId+'_'+sDevId+'_pendingsw').button('enable');
+			$('#'+sTabId+'_'+sDevId+'_pendingsw').text(language.started);
+			$('#'+sTabId+'_'+sDevId+'_pendingsw').button('refresh');
+		} else if(aValues['state'] == "pending") {
+			$('#'+sTabId+'_'+sDevId+'_pendingsw').parent().addClass('ui-icon-loader');
+			$('#'+sTabId+'_'+sDevId+'_pendingsw').button('disable');
+			$('#'+sTabId+'_'+sDevId+'_pendingsw').text(language.toggling);
+			$('#'+sTabId+'_'+sDevId+'_pendingsw').button('refresh');
+		} else {
+			$('#'+sTabId+'_'+sDevId+'_pendingsw').parent().addClass('ui-icon-off');
+			$('#'+sTabId+'_'+sDevId+'_pendingsw').text(language.stopped);
+			$('#'+sTabId+'_'+sDevId+'_pendingsw').button('enable');
+			$('#'+sTabId+'_'+sDevId+'_pendingsw').button('refresh');
 		}
 	}
 	if('gui-readonly' in aValues && aValues['gui-readonly']) {
 		aReadOnly[sTabId+'_'+sDevId] = 1;
-		$('#'+sTabId+'_'+sDevId+'_pendingsw').slider('disable');
+		$('#'+sTabId+'_'+sDevId+'_pendingsw').button('disable');
 	} else {
 		aReadOnly[sTabId+'_'+sDevId] = 0;
 	}
@@ -207,7 +276,7 @@ function createScreenElement(sTabId, sDevId, aValues) {
 			oTab = $('#all');
 		}
 		if('name' in aValues) {
-			oTab.append($('<li  id="'+sTabId+'_'+sDevId+'" class="screen" data-icon="false">'+aValues['name']+'<div id="'+sTabId+'_'+sDevId+'_screen" class="screen" data-role="fieldcontain" data-type="horizontal"><fieldset data-role="controlgroup" class="controlgroup" data-type="horizontal" data-mini="true"><input type="radio" name="'+sTabId+'_'+sDevId+'_screen" id="'+sTabId+'_'+sDevId+'_screen_down" value="down" /><label for="'+sTabId+'_'+sDevId+'_screen_down">Down</label><input type="radio" name="'+sTabId+'_'+sDevId+'_screen" id="'+sTabId+'_'+sDevId+'_screen_up" value="up" /><label for="'+sTabId+'_'+sDevId+'_screen_up">Up</label></fieldset></div></li>'));
+			oTab.append($('<li  id="'+sTabId+'_'+sDevId+'" class="screen" data-icon="false"><div class="name">'+aValues['name']+'</div><div id="'+sTabId+'_'+sDevId+'_screen" class="screen" data-role="fieldcontain" data-type="horizontal"><fieldset data-role="controlgroup" class="controlgroup" data-type="horizontal" data-mini="true"><input type="radio" name="'+sTabId+'_'+sDevId+'_screen" id="'+sTabId+'_'+sDevId+'_screen_down" value="down" /><label for="'+sTabId+'_'+sDevId+'_screen_down">'+language.down+'</label><input type="radio" name="'+sTabId+'_'+sDevId+'_screen" id="'+sTabId+'_'+sDevId+'_screen_up" value="up" /><label for="'+sTabId+'_'+sDevId+'_screen_up">'+language.up+'</label></fieldset></div></li>'));
 		}
 		$("div").trigger("create");
 		$('#'+sTabId+'_'+sDevId+'_screen_down').checkboxradio();
@@ -223,9 +292,9 @@ function createScreenElement(sTabId, sDevId, aValues) {
 					$(oLabel).removeClass('ui-btn-active');
 				else
 					$(oLabel).addClass('ui-btn-active');
-				if(i==4)
+				if(i==2)
 					window.clearInterval(x);
-			}, 150);
+			}, 100);
 			if('all' in aValues && aValues['all'] == 1) {
 				var json = '{"message":"send","code":{"location":"'+sTabId+'","device":"'+sDevId+'","state":"'+this.value+'","values":{"all": 1}}}';
 			} else {
@@ -250,9 +319,9 @@ function createScreenElement(sTabId, sDevId, aValues) {
 					$(oLabel).removeClass('ui-btn-active');
 				else
 					$(oLabel).addClass('ui-btn-active');
-				if(i==4)
+				if(i==2)
 					window.clearInterval(x);
-			}, 150);
+			}, 100);
 			if('all' in aValues && aValues['all'] == 1) {
 				var json = '{"message":"send","code":{"location":"'+sTabId+'","device":"'+sDevId+'","state":"'+this.value+'","values":{"all": 1}}}';
 			} else {
@@ -300,7 +369,7 @@ function createDimmerElement(sTabId, sDevId, aValues) {
 			oTab = $('#all');
 		}
 		if('name' in aValues && 'dimlevel-minimum' in aValues && 'dimlevel-maximum' in aValues) {
-			oTab.append($('<li id="'+sTabId+'_'+sDevId+'" class="dimmer" data-icon="false">'+aValues['name']+'<select id="'+sTabId+'_'+sDevId+'_switch" data-role="slider"><option value="off">Off</option><option value="on">On</option></select><div id="'+sTabId+'_'+sDevId+'_dimmer" min="'+aValues['dimlevel-minimum']+'" max="'+aValues['dimlevel-maximum']+'" data-highlight="true" ><input type="value" id="'+sTabId+'_'+sDevId+'_value" class="slider-value dimmer-slider ui-slider-input ui-input-text ui-body-c ui-corner-all ui-shadow-inset" /></div></li>'));
+			oTab.append($('<li id="'+sTabId+'_'+sDevId+'" class="dimmer" data-icon="false"><div class="name">'+aValues['name']+'</div><select id="'+sTabId+'_'+sDevId+'_switch" data-role="slider"><option value="off">'+language.off+'</option><option value="on">'+language.on+'</option></select><div id="'+sTabId+'_'+sDevId+'_dimmer" min="'+aValues['dimlevel-minimum']+'" max="'+aValues['dimlevel-maximum']+'" data-highlight="true" ><input type="value" id="'+sTabId+'_'+sDevId+'_value" class="slider-value dimmer-slider ui-slider-input ui-input-text ui-body-c ui-corner-all ui-shadow-inset" /></div></li>'));
 		}
 		$('#'+sTabId+'_'+sDevId+'_switch').slider();
 		$('#'+sTabId+'_'+sDevId+'_switch').bind("change", function(event, ui) {
@@ -365,6 +434,8 @@ function createDimmerElement(sTabId, sDevId, aValues) {
 
 function createWeatherElement(sTabId, sDevId, aValues) {
 	aDecimals[sTabId+'_'+sDevId] = new Array();
+	aMinInterval[sTabId+'_'+sDevId] = new Array();
+	aPollInterval[sTabId+'_'+sDevId] = new Array();
 	if('gui-decimals' in aValues) {
 		aDecimals[sTabId+'_'+sDevId]['gui'] = aValues['gui-decimals'];
 	} else {
@@ -375,11 +446,20 @@ function createWeatherElement(sTabId, sDevId, aValues) {
 	} else {
 		aDecimals[sTabId+'_'+sDevId]['device'] = 0;
 	}
+	if('min-interval' in aValues) {
+		aMinInterval[sTabId+'_'+sDevId] = aValues['min-interval'];
+	}
+	if('poll-interval' in aValues) {
+		aPollInterval[sTabId+'_'+sDevId] = aValues['poll-interval'];
+	}
 	if('temperature' in aValues) {
 		aValues['temperature'] /= Math.pow(10, aValues['device-decimals']);
 	}
 	if('humidity' in aValues) {
 		aValues['humidity'] /= Math.pow(10, aValues['device-decimals']);
+	}
+	if('rain' in aValues) {
+		aValues['rain'] /= Math.pow(10, aValues['device-decimals']);
 	}
 	if('sunrise' in aValues) {
 		aValues['sunrise'] /= Math.pow(10, aValues['device-decimals']);
@@ -395,15 +475,15 @@ function createWeatherElement(sTabId, sDevId, aValues) {
 			oTab = $('#all');
 		}
 		if('name' in aValues) {
-			oTab.append($('<li class="weather" id="'+sTabId+'_'+sDevId+'_weather" data-icon="false">'+aValues['name']+'</li>'));
+			oTab.append($('<li class="weather" id="'+sTabId+'_'+sDevId+'_weather" data-icon="false"><div class="name">'+aValues['name']+'</div></li>'));
 		}
 		if('gui-show-update' in aValues && aValues['gui-show-update']) {
 			iTime = Math.floor((new Date().getTime())/1000);
 
 			if('timestamp' in aValues && 'min-interval' in aValues && aValues['timestamp'] > 0 && (iTime-aValues['timestamp']) > aValues['min-interval']) {
-				oTab.find('#'+sTabId+'_'+sDevId+'_weather').append($('<div class="update_active" id="'+sTabId+'_'+sDevId+'_upd" title="update">&nbsp;</div>'));
+				oTab.find('#'+sTabId+'_'+sDevId+'_weather').append($('<div class="update_active" id="'+sTabId+'_'+sDevId+'_upd" title="'+language.update+'">&nbsp;</div>'));
 			} else {
-				oTab.find('#'+sTabId+'_'+sDevId+'_weather').append($('<div class="update_inactive" id="'+sTabId+'_'+sDevId+'_upd" title="update">&nbsp;</div>'));
+				oTab.find('#'+sTabId+'_'+sDevId+'_weather').append($('<div class="update_inactive" id="'+sTabId+'_'+sDevId+'_upd" title="'+language.update+'">&nbsp;</div>'));
 			}
 			$('#'+sTabId+'_'+sDevId+'_upd').click(function() {
 				if(this.className.indexOf('update_active') == 0) {
@@ -444,7 +524,21 @@ function createWeatherElement(sTabId, sDevId, aValues) {
 					$('#'+sTabId+'_'+sDevId+'_batt').addClass('red');
 				}
 			}
-		}	
+		}
+		if('gui-show-rain' in aValues && aValues['gui-show-rain'] && 'rain' in aValues) {
+			oTab.find('#'+sTabId+'_'+sDevId+'_weather').append($('<div class="rain_icon"></div><div class="rain" id="'+sTabId+'_'+sDevId+'_rain">'+aValues['rain'].toFixed(aValues['gui-decimals'])+'</div>'));
+		}
+		if('gui-show-wind' in aValues && aValues['gui-show-wind']) {
+			if('windavg' in aValues) {
+				oTab.find('#'+sTabId+'_'+sDevId+'_weather').append($('<div class="windavg_icon"></div><div class="windavg" id="'+sTabId+'_'+sDevId+'_windavg">'+aValues['windavg']+'</div>'));
+			}
+			if('windgust' in aValues) {
+				oTab.find('#'+sTabId+'_'+sDevId+'_weather').append($('<div class="windgust_icon"></div><div class="winddir_icon"></div><div class="windgust" id="'+sTabId+'_'+sDevId+'_windgust">'+aValues['windgust']+'</div>'));
+			}
+			if('winddir' in aValues) {
+				$('#'+sTabId+'_'+sDevId+'_weather .winddir_icon').css({transform: 'rotate(' + aValues['winddir'] + 'deg)'});
+			}
+		}
 		if('gui-show-humidity' in aValues && aValues['gui-show-humidity'] && 'humidity' in aValues) {
 			oTab.find('#'+sTabId+'_'+sDevId+'_weather').append($('<div class="humidity_icon"></div><div class="humidity" id="'+sTabId+'_'+sDevId+'_humi">'+aValues['humidity'].toFixed(aValues['gui-decimals'])+'</div>'));
 		}
@@ -476,7 +570,8 @@ function createWeatherElement(sTabId, sDevId, aValues) {
 				}
 			}
 		}
-		if('sun' in aValues) {
+		if('sun' in aValues && $('#'+sTabId+'_'+sDevId+'_sunrise_icon').attr("class")
+		   && $('#'+sTabId+'_'+sDevId+'_sunset_icon').attr("class")) {
 			if(aValues['sun'] == 'rise') {
 				if($('#'+sTabId+'_'+sDevId+'_sunrise_icon').attr("class").indexOf("yellow") == -1) {
 					$('#'+sTabId+'_'+sDevId+'_sunrise_icon').removeClass('gray').addClass('yellow');
@@ -496,16 +591,48 @@ function createWeatherElement(sTabId, sDevId, aValues) {
 		if('gui-show-humidity' in aValues && aValues['gui-show-humidity'] && 'humidity' in aValues) {
 			$('#'+sTabId+'_'+sDevId+'_humi').text(aValues['humidity'].toFixed(aValues['gui-decimals']));
 		}
+		if('gui-show-rain' in aValues && aValues['gui-show-rain'] && 'rain' in aValues) {
+			$('#'+sTabId+'_'+sDevId+'_rain').text(aValues['rain'].toFixed(aValues['gui-decimals']));
+		}
+		if('gui-show-wind' in aValues && aValues['gui-show-wind']) {
+			if('windavg' in aValues) {
+				$('#'+sTabId+'_'+sDevId+'_windavg').text(aValues['windavg']);
+			}
+			if('winddir' in aValues) {
+				$('#'+sTabId+'_'+sDevId+'_weather .winddir_icon').css({transform: 'rotate(' + aValues['winddir'] + 'deg)'});
+			}
+			if('windgust' in aValues) {	
+				$('#'+sTabId+'_'+sDevId+'_windgust').text(aValues['windgust']);
+			}
+		}
 		if('gui-show-temperature' in aValues && aValues['gui-show-temperature'] && 'temperature' in aValues) {
 			$('#'+sTabId+'_'+sDevId+'_temp').text(aValues['temperature'].toFixed(aValues['gui-decimals']));
 		}
 		if('gui-show-sunriseset' in aValues && aValues['gui-show-sunriseset'] && 'sunrise' in aValues && 'sunset' in aValues) {
 			$('#'+sTabId+'_'+sDevId+'_sunrise').text(aValues['sunrise'].toFixed(aValues['gui-decimals']));
 			$('#'+sTabId+'_'+sDevId+'_sunset').text(aValues['sunset'].toFixed(aValues['gui-decimals']));
-		}		
+		}
+		if('gui-show-update' in aValues && aValues['gui-show-update']) {
+			iTime = Math.floor((new Date().getTime())/1000);
+
+			if('timestamp' in aValues && 'min-interval' in aValues && aValues['timestamp'] > 0 && (iTime-aValues['timestamp']) > aValues['min-interval']) {
+				if($('#'+sTabId+'_'+sDevId+'_weather_upd').attr('class').indexOf('update_active') == -1) {
+					$('#'+sTabId+'_'+sDevId+'_weather_upd').removeClass('update_inactive').addClass('update_active');
+				}
+			} else {
+				if($('#'+sTabId+'_'+sDevId+'_weather_upd').attr('class').indexOf('update_inactive') == -1) {
+					$('#'+sTabId+'_'+sDevId+'_weather_upd').removeClass('update_active').addClass('update_inactive');
+				}
+			}
+		}
 	}
 	oTab.listview();
 	oTab.listview("refresh");
+}
+
+function updateProcStatus(aValues) {
+	var obj = $('#proc').text("CPU: "+aValues['cpu'].toFixed(2)+"% / RAM: "+aValues['ram'].toFixed(2)+"%");
+	obj.html(obj.html().replace(/\n/g,'<br/>'));
 }
 
 function createDateTimeElement(sTabId, sDevId, aValues) {
@@ -532,16 +659,16 @@ function createDateTimeElement(sTabId, sDevId, aValues) {
 	aDateTime[sTabId+'_'+sDevId]['day'] = aValues['day'];
 	aDateTime[sTabId+'_'+sDevId]['hour'] = aValues['hour'];
 	aDateTime[sTabId+'_'+sDevId]['minute'] = aValues['minute'];
-	aDateTime[sTabId+'_'+sDevId]['second'] = aValues['second'];	
+	aDateTime[sTabId+'_'+sDevId]['second'] = aValues['second'];
 
 	if($('#'+sTabId+'_'+sDevId+'_datetime').length == 0) {
 		if(bShowTabs) {
 			oTab = $('#'+sTabId).find('ul');
 		} else {
 			oTab = $('#all');
-		}	
+		}
 		if('name' in aValues) {
-			oTab.append($('<li id="'+sTabId+'_'+sDevId+'_datetime" data-icon="false">'+aValues['name']+'</li>'));
+			oTab.append($('<li id="'+sTabId+'_'+sDevId+'_datetime" data-icon="false"><div class="name">'+aValues['name']+'</div></li>'));
 			oTab.find('#'+sTabId+'_'+sDevId+'_datetime').append($('<div id="'+sTabId+'_'+sDevId+'_text" class="datetime">'+aValues['year']+'-'+aValues['month']+'-'+aValues['day']+' '+aValues['hour']+':'+aValues['minute']+':'+aValues['second']+'</div>'));
 		}
 	} else {
@@ -559,7 +686,7 @@ function createWebcamElement(sTabId, sDevId, aValues) {
 			oTab = $('#all');
 		}
 		if('name' in aValues) {
-			oTab.append($('<li class="webcam" id="'+sTabId+'_'+sDevId+'_webcam" data-icon="false" style="height: '+aValues['gui-image-height']+'px;">'+aValues['name']+'</li>'));
+			oTab.append($('<li class="webcam" id="'+sTabId+'_'+sDevId+'_webcam" data-icon="false" style="height: '+aValues['gui-image-height']+'px;"><div class="name">'+aValues['name']+'</div></li>'));
 		}
 		if('id' in aValues && 'url' in aValues['id'][0] && 'gui-image-height' in aValues) {
 			oTab.find('#'+sTabId+'_'+sDevId+'_webcam').append($('<div class="webcam_image" id="'+sTabId+'_'+sDevId+'_image"><img id="'+sTabId+'_'+sDevId+'_img" src="'+aValues['id'][0]['url']+'" height="'+aValues['gui-image-height']+'"></div>'));
@@ -591,7 +718,7 @@ function createXBMCElement(sTabId, sDevId, aValues) {
 			oTab = $('#all');
 		}
 		if('name' in aValues) {
-			oTab.append($('<li class="xbmc" id="'+sTabId+'_'+sDevId+'_xbmc" data-icon="false">'+aValues['name']+'</li>'));
+			oTab.append($('<li class="xbmc" id="'+sTabId+'_'+sDevId+'_xbmc" data-icon="false"><div class="name">'+aValues['name']+'</div></li>'));
 		}
 		if('gui-show-action' in aValues && aValues['gui-show-action']) {
 			oTab.find('#'+sTabId+'_'+sDevId+'_xbmc').append($('<div class="action_icon" id="'+sTabId+'_'+sDevId+'_action">&nbsp;</div>'));
@@ -679,11 +806,11 @@ function createXBMCElement(sTabId, sDevId, aValues) {
 					$('#'+sTabId+'_'+sDevId+'_media').addClass('movie');
 				} else if(aValues['media'] == "episode") {
 					$('#'+sTabId+'_'+sDevId+'_media').addClass('episode');
-				} else if(aValues['media'] == "music") {
+				} else if(aValues['media'] == "song") {
 					$('#'+sTabId+'_'+sDevId+'_media').addClass('music');
 				}
 			}
-		}			
+		}
 	}
 	oTab.listview();
 	oTab.listview("refresh");
@@ -713,7 +840,7 @@ function createDateTimeElement(sTabId, sDevId, aValues) {
 	aDateTime[sTabId+'_'+sDevId]['day'] = aValues['day'];
 	aDateTime[sTabId+'_'+sDevId]['hour'] = aValues['hour'];
 	aDateTime[sTabId+'_'+sDevId]['minute'] = aValues['minute'];
-	aDateTime[sTabId+'_'+sDevId]['second'] = aValues['second'];	
+	aDateTime[sTabId+'_'+sDevId]['second'] = aValues['second'];
 
 	if('gui-datetime-format' in aValues) {
 		sFormat = aValues['gui-datetime-format'];
@@ -727,10 +854,10 @@ function createDateTimeElement(sTabId, sDevId, aValues) {
 			oTab = $('#'+sTabId).find('ul');
 		} else {
 			oTab = $('#all');
-		}	
+		}
 		if('name' in aValues) {
 			sDate = moment(aValues['year']+'-'+aValues['month']+'-'+aValues['day']+' '+aValues['hour']+':'+aValues['minute']+':'+aValues['second'], ["YYYY-MM-DD HH:mm:ss"]).format(sFormat);
-			oTab.append($('<li id="'+sTabId+'_'+sDevId+'_datetime" data-icon="false">'+aValues['name']+'</li>'));
+			oTab.append($('<li id="'+sTabId+'_'+sDevId+'_datetime" data-icon="false"><div class="name">'+aValues['name']+'</div></li>'));
 			oTab.find('#'+sTabId+'_'+sDevId+'_datetime').append($('<div id="'+sTabId+'_'+sDevId+'_text" class="datetime">'+sDate+'</div>'));
 		}
 	} else {
@@ -744,9 +871,9 @@ function createDateTimeElement(sTabId, sDevId, aValues) {
 function updateVersions() {
 	if(iPLVersion < iPLNVersion) {
 		if(iFWVersion > 0) {
-			var obj = $('#version').text("pilight v"+iPLVersion+" - available v"+iPLNVersion+" / filter firmware v"+iFWVersion);
+			var obj = $('#version').text("pilight v"+iPLVersion+" - "+language.available+" v"+iPLNVersion+" / filter firmware v"+iFWVersion);
 		} else {
-			var obj = $('#version').text("pilight v"+iPLVersion+" - available v"+iPLNVersion);
+			var obj = $('#version').text("pilight v"+iPLVersion+" - "+language.available+" v"+iPLNVersion);
 		}
 	} else {
 		if(iFWVersion > 0) {
@@ -760,6 +887,9 @@ function updateVersions() {
 
 function createGUI(data) {
 	$.each(data, function(root, locations) {
+		if(oWebsocket) {
+			$('#proc').text("CPU: ...% / RAM: ...%");
+		}
 		if(root == 'version') {
 			iPLVersion = locations[0];
 			iPLNVersion = locations[1];
@@ -856,7 +986,7 @@ function createGUI(data) {
 					});
 				}
 			}
-			$.mobile.hidePageLoadingMsg();
+			$.mobile.loading("hide");
 			bInitialized = true;
 		}
 	});
@@ -865,210 +995,249 @@ function createGUI(data) {
 function parseData(data) {
 	if(data.hasOwnProperty("config")) {
 		createGUI(data);
-	} else if(data.hasOwnProperty("values") && data.hasOwnProperty("origin") && data.hasOwnProperty("devices") && data.hasOwnProperty("type")) {
+	} else if(data.hasOwnProperty("values") && data.hasOwnProperty("origin") && data.hasOwnProperty("type")) {
 		var aValues = data.values;
-		var aLocations = data.devices;
 		var iType = data.type;
-		$.each(aLocations, function(lindex, lvalues) {
-			$.each(lvalues, function(dindex, dvalues) {
-				$.each(aValues, function(vindex, vvalues) {
-					if(iType == 1 || iType == 4) {
-						if(vindex == 'state') {
-							if(vvalues == 'on' || vvalues == 'opened') {
-								$('#'+lindex+'_'+dvalues+'_switch')[0].selectedIndex = 1;
-							} else {
-								$('#'+lindex+'_'+dvalues+'_switch')[0].selectedIndex = 0;
+
+		if(iType == -1) {
+			updateProcStatus(aValues);
+		} else if(data.hasOwnProperty("devices")) {
+			var aLocations = data.devices;
+			$.each(aLocations, function(lindex, lvalues) {
+				$.each(lvalues, function(dindex, dvalues) {
+					$.each(aValues, function(vindex, vvalues) {
+						if(iType == 1 || iType == 4) {
+							if(vindex == 'state') {
+								if(vvalues == 'on' || vvalues == 'opened') {
+									$('#'+lindex+'_'+dvalues+'_switch')[0].selectedIndex = 1;
+								} else {
+									$('#'+lindex+'_'+dvalues+'_switch')[0].selectedIndex = 0;
+								}
+								$('#'+lindex+'_'+dvalues+'_switch').slider('refresh');
 							}
-							$('#'+lindex+'_'+dvalues+'_switch').slider('refresh');
+						} else if(iType == 2) {
+							if(vindex == 'state') {
+								if(vvalues == 'on') {
+									$('#'+lindex+'_'+dvalues+'_switch')[0].selectedIndex = 1;
+								} else {
+									$('#'+lindex+'_'+dvalues+'_switch')[0].selectedIndex = 0;
+								}
+								$('#'+lindex+'_'+dvalues+'_switch').slider('refresh');
+							}
+							if(vindex == 'dimlevel') {
+								$('#'+lindex+'_'+dvalues+'_dimmer').val(vvalues);
+								$('#'+lindex+'_'+dvalues+'_dimmer').slider('refresh');
+							}
+						} else if(iType == 8) {
+							if(lindex+'_'+dvalues in aDateTime &&
+							   vindex in aDateTime[lindex+'_'+dvalues]) {
+								if(vvalues < 10) {
+									vvalues = '0'+vvalues;
+								}
+								aDateTime[lindex+'_'+dvalues][vindex] = vvalues;
+								aVal = aDateTime[lindex+'_'+dvalues];
+								if('year' in aVal &&
+								   'month' in aVal &&
+								   'day' in aVal &&
+								   'hour' in aVal &&
+								   'minute' in aVal &&
+								   'second' in aVal) {
+									if(vindex == 'second') {
+										sDate = moment(aVal['year']+'-'+aVal['month']+'-'+aVal['day']+' '+aVal['hour']+':'+aVal['minute']+':'+aVal['second'], ["YYYY-MM-DD HH:mm:ss"]).format(aDateTimeFormats[lindex+'_'+dvalues]);
+										$('#'+lindex+'_'+dvalues+'_text').text(sDate);
+									}
+								}
+							}
+						} else if(iType == 7) {
+							if(vindex == 'state') {
+								if($('#'+lindex+'_'+dvalues+'_pendingsw').parent().attr("class").indexOf("ui-icon-loader") >= 0) {
+									$('#'+lindex+'_'+dvalues+'_pendingsw').parent().removeClass('ui-icon-loader');
+								}
+								if($('#'+lindex+'_'+dvalues+'_pendingsw').parent().attr("class").indexOf("ui-icon-on") >= 0) {
+									$('#'+lindex+'_'+dvalues+'_pendingsw').parent().removeClass('ui-icon-on');
+								}
+								if($('#'+lindex+'_'+dvalues+'_pendingsw').parent().attr("class").indexOf("ui-icon-off") >= 0) {
+									$('#'+lindex+'_'+dvalues+'_pendingsw').parent().removeClass('ui-icon-off');
+								}
+								if(vvalues == 'running') {
+									if(lindex+'_'+dvalues in aReadOnly && aReadOnly[lindex+'_'+dvalues] == 0) {
+										$('#'+lindex+'_'+dvalues+'_pendingsw').button('enable');
+									}
+									$('#'+lindex+'_'+dvalues+'_pendingsw').text(language.running);
+									$('#'+lindex+'_'+dvalues+'_pendingsw').parent().addClass('ui-icon-on');
+								} else if(vvalues == 'pending') {
+									$('#'+lindex+'_'+dvalues+'_pendingsw').button('disable');
+									$('#'+lindex+'_'+dvalues+'_pendingsw').text(language.toggling);
+									$('#'+lindex+'_'+dvalues+'_pendingsw').parent().addClass('ui-icon-loader')
+								} else {
+									$('#'+lindex+'_'+dvalues+'_pendingsw').button('enable');
+									$('#'+lindex+'_'+dvalues+'_pendingsw').text(language.stopped);
+									$('#'+lindex+'_'+dvalues+'_pendingsw').parent().addClass('ui-icon-off')
+								}
+								$('#'+lindex+'_'+dvalues+'_pendingsw').button('refresh');
+							}
+						} else if(iType == 3) {
+							if(vindex == 'temperature' && $('#'+lindex+'_'+dvalues+'_temp')) {
+								if(lindex+'_'+dvalues in aDecimals
+								&& 'device' in aDecimals[lindex+'_'+dvalues]
+								&& 'gui' in aDecimals[lindex+'_'+dvalues]) {
+									vvalues /= Math.pow(10, aDecimals[lindex+'_'+dvalues]['device']);
+									$('#'+lindex+'_'+dvalues+'_temp').text(vvalues.toFixed(aDecimals[lindex+'_'+dvalues]['gui']));
+								}
+							} else if(vindex == 'humidity' && $('#'+lindex+'_'+dvalues+'_humi')) {
+								if(lindex+'_'+dvalues in aDecimals
+								&& 'device' in aDecimals[lindex+'_'+dvalues]
+								&& 'gui' in aDecimals[lindex+'_'+dvalues]) {
+									vvalues /= Math.pow(10, aDecimals[lindex+'_'+dvalues]['device']);
+									$('#'+lindex+'_'+dvalues+'_humi').text(vvalues.toFixed(aDecimals[lindex+'_'+dvalues]['gui']));
+								}
+							} else if(vindex == 'rain' && $('#'+lindex+'_'+dvalues+'_rain')) {
+								if(lindex+'_'+dvalues in aDecimals
+								&& 'device' in aDecimals[lindex+'_'+dvalues]
+								&& 'gui' in aDecimals[lindex+'_'+dvalues]) {
+									vvalues /= Math.pow(10, aDecimals[lindex+'_'+dvalues]['device']);
+									$('#'+lindex+'_'+dvalues+'_rain').text(vvalues.toFixed(aDecimals[lindex+'_'+dvalues]['gui']));
+								}
+							} else if(vindex == 'windgust' && $('#'+lindex+'_'+dvalues+'_windgust')) {
+								$('#'+lindex+'_'+dvalues+'_windgust').text(vvalues);
+							} else if(vindex == 'winddir' && $('#'+lindex+'_'+dvalues+'_winddir')) {
+								$('#'+lindex+'_'+dvalues+'_weather .winddir_icon').css({transform: 'rotate(' + vvalues + 'deg)'});
+							} else if(vindex == 'windavg' && $('#'+lindex+'_'+dvalues+'_windavg')) {
+								$('#'+lindex+'_'+dvalues+'_windavg').text(vvalues);
+							} else if(vindex == 'sunrise' && $('#'+lindex+'_'+dvalues+'_sunrise')) {
+								if(lindex+'_'+dvalues in aDecimals
+								&& 'device' in aDecimals[lindex+'_'+dvalues]
+								&& 'gui' in aDecimals[lindex+'_'+dvalues]) {
+									vvalues /= Math.pow(10, aDecimals[lindex+'_'+dvalues]['device']);
+									$('#'+lindex+'_'+dvalues+'_sunrise').text(vvalues.toFixed(aDecimals[lindex+'_'+dvalues]['gui']));
+								}
+							} else if(vindex == 'sunset' && $('#'+lindex+'_'+dvalues+'_sunset')) {
+								if(lindex+'_'+dvalues in aDecimals
+								&& 'device' in aDecimals[lindex+'_'+dvalues]
+								&& 'gui' in aDecimals[lindex+'_'+dvalues]) {
+									vvalues /= Math.pow(10, aDecimals[lindex+'_'+dvalues]['device']);
+									$('#'+lindex+'_'+dvalues+'_sunset').text(vvalues.toFixed(aDecimals[lindex+'_'+dvalues]['gui']));
+								}
+							} else if(vindex == 'battery' && $('#'+lindex+'_'+dvalues+'_batt')) {
+								if(vvalues == 1) {
+									if($('#'+lindex+'_'+dvalues+'_batt').attr("class").indexOf("green") == -1) {
+										$('#'+lindex+'_'+dvalues+'_batt').removeClass('red').addClass('green');
+									}
+								} else {
+									if($('#'+lindex+'_'+dvalues+'_batt').attr("class").indexOf("red") == -1) {
+										$('#'+lindex+'_'+dvalues+'_batt').removeClass('green').addClass('red');
+									}
+								}
+							} else if(vindex == 'sun' && $('#'+lindex+'_'+dvalues+'_sunrise_icon') && $('#'+lindex+'_'+dvalues+'_sunset_icon')) {
+								if(vvalues == 'rise') {
+									if($('#'+lindex+'_'+dvalues+'_sunrise_icon').attr("class").indexOf("yellow") == -1) {
+										$('#'+lindex+'_'+dvalues+'_sunrise_icon').removeClass('gray').addClass('yellow');
+									}
+									if($('#'+lindex+'_'+dvalues+'_sunset_icon').attr("class").indexOf("gray") == -1) {
+										$('#'+lindex+'_'+dvalues+'_sunset_icon').removeClass('blue').addClass('gray');
+									}
+								} else {
+									if($('#'+lindex+'_'+dvalues+'_sunrise_icon').attr("class").indexOf("gray") == -1) {
+										$('#'+lindex+'_'+dvalues+'_sunrise_icon').removeClass('yellow').addClass('gray');
+									}
+									if($('#'+lindex+'_'+dvalues+'_sunset_icon').attr("class").indexOf("blue") == -1) {
+										$('#'+lindex+'_'+dvalues+'_sunset_icon').removeClass('gray').addClass('blue');
+									}
+								}
+							}
+							if(vindex == 'timestamp' && aTimers[lindex+'_'+dvalues] && aMinInterval[lindex+'_'+dvalues] && aPollInterval[lindex+'_'+dvalues]) {
+								iTime = Math.floor((new Date().getTime())/1000);
+								iTimeOut = (aMinInterval[lindex+'_'+dvalues]-((vvalues-aValues['timestamp'])))*1000;
+								if($('#'+lindex+'_'+dvalues+'_upd').attr('class').indexOf('update_inactive') == -1) {
+									$('#'+lindex+'_'+dvalues+'_upd').removeClass('update_active').addClass('update_inactive');
+								}
+								window.clearTimeout(aTimers[lindex+'_'+dvalues]);
+								aTimers[lindex+'_'+dvalues] = window.setTimeout(function() {
+									if($('#'+lindex+'_'+dvalues+'_upd').attr("class").indexOf('update_inactive') != -1) {
+										$('#'+lindex+'_'+dvalues+'_upd').removeClass('update_inactive').addClass('update_active');
+									}
+								}, iTimeOut);
+							}
+						} else if(iType == 9) {
+							if(vindex == "action" && $('#'+lindex+'_'+dvalues+'_action')) {
+								if($('#'+lindex+'_'+dvalues+'_action')) {
+									if($('#'+lindex+'_'+dvalues+'_action').attr("class").indexOf("play") != -1) {
+										$('#'+lindex+'_'+dvalues+'_action').removeClass("play");
+									}
+									if($('#'+lindex+'_'+dvalues+'_action').attr("class").indexOf("pause") != -1) {
+										$('#'+lindex+'_'+dvalues+'_action').removeClass("pause");
+									}
+									if($('#'+lindex+'_'+dvalues+'_action').attr("class").indexOf("stop") != -1) {
+										$('#'+lindex+'_'+dvalues+'_action').removeClass("stop");
+									}
+									if($('#'+lindex+'_'+dvalues+'_action').attr("class").indexOf("screen_active") != -1) {
+										$('#'+lindex+'_'+dvalues+'_action').removeClass("screen_active");
+									}
+									if($('#'+lindex+'_'+dvalues+'_action').attr("class").indexOf("screen_inactive") != -1) {
+										$('#'+lindex+'_'+dvalues+'_action').removeClass("screen_inactive");
+									}
+									if($('#'+lindex+'_'+dvalues+'_action').attr("class").indexOf("shutdown") != -1) {
+										$('#'+lindex+'_'+dvalues+'_action').removeClass("shutdown");
+									}
+									if($('#'+lindex+'_'+dvalues+'_action').attr("class").indexOf("home") != -1) {
+										$('#'+lindex+'_'+dvalues+'_action').removeClass("home");
+									}
+								}
+								if(vvalues == "play") {
+									$('#'+lindex+'_'+dvalues+'_action').addClass("play");
+								} else if(vvalues == "pause") {
+									$('#'+lindex+'_'+dvalues+'_action').addClass("pause");
+								} else if(vvalues == "stop") {
+									$('#'+lindex+'_'+dvalues+'_action').addClass("stop");
+								} else if(vvalues == "active") {
+									$('#'+lindex+'_'+dvalues+'_action').addClass("screen_active");
+								} else if(vvalues == "inactive") {
+									$('#'+lindex+'_'+dvalues+'_action').addClass("screen_inactive");
+								} else if(vvalues == "shutdown") {
+									$('#'+lindex+'_'+dvalues+'_action').addClass("shutdown");
+								} else if(vvalues == "home") {
+									$('#'+lindex+'_'+dvalues+'_action').addClass("home");
+								}
+							}
+							if(vindex == "media" && $('#'+lindex+'_'+dvalues+'_media')) {
+								if($('#'+lindex+'_'+dvalues+'_media')) {
+									if($('#'+lindex+'_'+dvalues+'_media').attr("class").indexOf("movie") != -1) {
+										$('#'+lindex+'_'+dvalues+'_media').removeClass("movie");
+									}
+									if($('#'+lindex+'_'+dvalues+'_media').attr("class").indexOf("episode") != -1) {
+										$('#'+lindex+'_'+dvalues+'_media').removeClass("episode");
+									}
+									if($('#'+lindex+'_'+dvalues+'_media').attr("class").indexOf("song") != -1) {
+										$('#'+lindex+'_'+dvalues+'_media').removeClass("song");
+									}
+								}
+								if(vvalues == "movie") {
+									$('#'+lindex+'_'+dvalues+'_media').addClass("movie");
+								} else if(vvalues == "episode") {
+									$('#'+lindex+'_'+dvalues+'_media').addClass("episode");
+								} else if(vvalues == "song") {
+									$('#'+lindex+'_'+dvalues+'_media').addClass("song");
+								}
+							}
 						}
-					} else if(iType == 2) {
-						if(vindex == 'state') {
-							if(vvalues == 'on') {
-								$('#'+lindex+'_'+dvalues+'_switch')[0].selectedIndex = 1;
-							} else {
-								$('#'+lindex+'_'+dvalues+'_switch')[0].selectedIndex = 0;
-							}
-							$('#'+lindex+'_'+dvalues+'_switch').slider('refresh');
-						}
-						if(vindex == 'dimlevel') {
-							$('#'+lindex+'_'+dvalues+'_dimmer').val(vvalues);
-							$('#'+lindex+'_'+dvalues+'_dimmer').slider('refresh');
-						}
-					} else if(iType == 8) {
-						if(lindex+'_'+dvalues in aDateTime &&
-						   vindex in aDateTime[lindex+'_'+dvalues]) {
-							if(vvalues < 10) {
-								vvalues = '0'+vvalues;
-							}
-							aDateTime[lindex+'_'+dvalues][vindex] = vvalues;
-							aVal = aDateTime[lindex+'_'+dvalues];
-							if('year' in aVal &&
-							   'month' in aVal &&
-							   'day' in aVal &&
-							   'hour' in aVal &&
-							   'minute' in aVal &&
-							   'second' in aVal) {
-								if(vindex == 'second') {
-									sDate = moment(aVal['year']+'-'+aVal['month']+'-'+aVal['day']+' '+aVal['hour']+':'+aVal['minute']+':'+aVal['second'], ["YYYY-MM-DD HH:mm:ss"]).format(aDateTimeFormats[lindex+'_'+dvalues]);
-									$('#'+lindex+'_'+dvalues+'_text').text(sDate);
-								}
-							}
-						}
-					} else if(iType == 7) {
-						if(vindex == 'state') {
-							if(vvalues == 'running') {
-								$('#'+lindex+'_'+dvalues+'_pendingsw')[0].selectedIndex = 1;
-								if($('#'+lindex+'_'+dvalues).attr("class").indexOf("pending") >= 0) {
-									$('#'+lindex+'_'+dvalues).removeClass('pending');
-								}
-								if(lindex+'_'+dvalues in aReadOnly && aReadOnly[lindex+'_'+dvalues] == 0) {
-									$('#'+lindex+'_'+dvalues+'_pendingsw').slider('enable');
-								}
-							} else if(vvalues == 'pending') {
-								$('#'+lindex+'_'+dvalues+'_pendingsw').slider('disable');
-								if($('#'+lindex+'_'+dvalues).attr("class").indexOf("pending") <= 0) {
-									$('#'+lindex+'_'+dvalues).addClass('pending');
-								}
-							} else {
-								$('#'+lindex+'_'+dvalues+'_pendingsw')[0].selectedIndex = 0;
-								if($('#'+lindex+'_'+dvalues).attr("class").indexOf("pending") >= 0) {
-									$('#'+lindex+'_'+dvalues).removeClass('pending');
-								}
-								if(lindex+'_'+dvalues in aReadOnly && aReadOnly[lindex+'_'+dvalues] == 0) {
-									$('#'+lindex+'_'+dvalues+'_pendingsw').slider('enable');
-								}
-							}
-							$('#'+lindex+'_'+dvalues+'_pendingsw').slider('refresh');
-						}
-					} else if(iType == 3) {
-						if(vindex == 'temperature' && $('#'+lindex+'_'+dvalues+'_temp')) {
-							if(lindex+'_'+dvalues in aDecimals
-							&& 'device' in aDecimals[lindex+'_'+dvalues]
-							&& 'gui' in aDecimals[lindex+'_'+dvalues]) {
-								vvalues /= Math.pow(10, aDecimals[lindex+'_'+dvalues]['device']);
-								$('#'+lindex+'_'+dvalues+'_temp').text(vvalues.toFixed(aDecimals[lindex+'_'+dvalues]['gui']));
-							}
-						} else if(vindex == 'humidity' && $('#'+lindex+'_'+dvalues+'_humi')) {
-							if(lindex+'_'+dvalues in aDecimals
-							&& 'device' in aDecimals[lindex+'_'+dvalues]
-							&& 'gui' in aDecimals[lindex+'_'+dvalues]) {
-								vvalues /= Math.pow(10, aDecimals[lindex+'_'+dvalues]['device']);
-								$('#'+lindex+'_'+dvalues+'_humi').text(vvalues.toFixed(aDecimals[lindex+'_'+dvalues]['gui']));
-							}
-						} else if(vindex == 'sunrise' && $('#'+lindex+'_'+dvalues+'_sunrise')) {
-							if(lindex+'_'+dvalues in aDecimals
-							&& 'device' in aDecimals[lindex+'_'+dvalues]
-							&& 'gui' in aDecimals[lindex+'_'+dvalues]) {
-								vvalues /= Math.pow(10, aDecimals[lindex+'_'+dvalues]['device']);
-								$('#'+lindex+'_'+dvalues+'_sunrise').text(vvalues.toFixed(aDecimals[lindex+'_'+dvalues]['gui']));
-							}
-						} else if(vindex == 'sunset' && $('#'+lindex+'_'+dvalues+'_sunset')) {
-							if(lindex+'_'+dvalues in aDecimals
-							&& 'device' in aDecimals[lindex+'_'+dvalues]
-							&& 'gui' in aDecimals[lindex+'_'+dvalues]) {
-								vvalues /= Math.pow(10, aDecimals[lindex+'_'+dvalues]['device']);
-								$('#'+lindex+'_'+dvalues+'_sunset').text(vvalues.toFixed(aDecimals[lindex+'_'+dvalues]['gui']));
-							}
-						} else if(vindex == 'battery' && $('#'+lindex+'_'+dvalues+'_batt')) {
-							if(vvalues == 1) {
-								if($('#'+lindex+'_'+dvalues+'_batt').attr("class").indexOf("green") == -1) {
-									$('#'+lindex+'_'+dvalues+'_batt').removeClass('red').addClass('green');
-								}
-							} else {
-								if($('#'+lindex+'_'+dvalues+'_batt').attr("class").indexOf("red") == -1) {
-									$('#'+lindex+'_'+dvalues+'_batt').removeClass('green').addClass('red');
-								}
-							}
-						} else if(vindex == 'sun' && $('#'+lindex+'_'+dvalues+'_sunrise_icon') && $('#'+lindex+'_'+dvalues+'_sunset_icon')) {
-							if(vvalues == 'rise') {
-								if($('#'+lindex+'_'+dvalues+'_sunrise_icon').attr("class").indexOf("yellow") == -1) {
-									$('#'+lindex+'_'+dvalues+'_sunrise_icon').removeClass('gray').addClass('yellow');
-								}
-								if($('#'+lindex+'_'+dvalues+'_sunset_icon').attr("class").indexOf("gray") == -1) {
-									$('#'+lindex+'_'+dvalues+'_sunset_icon').removeClass('blue').addClass('gray');
-								}
-							} else {
-								if($('#'+lindex+'_'+dvalues+'_sunrise_icon').attr("class").indexOf("gray") == -1) {
-									$('#'+lindex+'_'+dvalues+'_sunrise_icon').removeClass('yellow').addClass('gray');
-								}
-								if($('#'+lindex+'_'+dvalues+'_sunset_icon').attr("class").indexOf("blue") == -1) {
-									$('#'+lindex+'_'+dvalues+'_sunset_icon').removeClass('gray').addClass('blue');
-								}
-							}
-						}
-					} else if(iType == 9) {
-						if(vindex == "action" && $('#'+lindex+'_'+dvalues+'_action')) {
-							if($('#'+lindex+'_'+dvalues+'_action')) {
-								if($('#'+lindex+'_'+dvalues+'_action').attr("class").indexOf("play") != -1) {
-									$('#'+lindex+'_'+dvalues+'_action').removeClass("play");
-								}
-								if($('#'+lindex+'_'+dvalues+'_action').attr("class").indexOf("pause") != -1) {
-									$('#'+lindex+'_'+dvalues+'_action').removeClass("pause");
-								}
-								if($('#'+lindex+'_'+dvalues+'_action').attr("class").indexOf("stop") != -1) {
-									$('#'+lindex+'_'+dvalues+'_action').removeClass("stop");
-								}
-								if($('#'+lindex+'_'+dvalues+'_action').attr("class").indexOf("screen_active") != -1) {
-									$('#'+lindex+'_'+dvalues+'_action').removeClass("screen_active");
-								}
-								if($('#'+lindex+'_'+dvalues+'_action').attr("class").indexOf("screen_inactive") != -1) {
-									$('#'+lindex+'_'+dvalues+'_action').removeClass("screen_inactive");
-								}
-								if($('#'+lindex+'_'+dvalues+'_action').attr("class").indexOf("shutdown") != -1) {
-									$('#'+lindex+'_'+dvalues+'_action').removeClass("shutdown");
-								}
-								if($('#'+lindex+'_'+dvalues+'_action').attr("class").indexOf("home") != -1) {
-									$('#'+lindex+'_'+dvalues+'_action').removeClass("home");
-								}
-							}							
-							if(vvalues == "play") {
-								$('#'+lindex+'_'+dvalues+'_action').addClass("play");
-							} else if(vvalues == "pause") {
-								$('#'+lindex+'_'+dvalues+'_action').addClass("pause");
-							} else if(vvalues == "stop") {
-								$('#'+lindex+'_'+dvalues+'_action').addClass("stop");
-							} else if(vvalues == "active") {
-								$('#'+lindex+'_'+dvalues+'_action').addClass("screen_active");
-							} else if(vvalues == "inactive") {
-								$('#'+lindex+'_'+dvalues+'_action').addClass("screen_inactive");
-							} else if(vvalues == "shutdown") {
-								$('#'+lindex+'_'+dvalues+'_action').addClass("shutdown");
-							} else if(vvalues == "home") {
-								$('#'+lindex+'_'+dvalues+'_action').addClass("home");
-							}
-						}
-						if(vindex == "media" && $('#'+lindex+'_'+dvalues+'_media')) {
-							if($('#'+lindex+'_'+dvalues+'_media')) {
-								if($('#'+lindex+'_'+dvalues+'_media').attr("class").indexOf("movie") != -1) {
-									$('#'+lindex+'_'+dvalues+'_media').removeClass("movie");
-								}
-								if($('#'+lindex+'_'+dvalues+'_media').attr("class").indexOf("episode") != -1) {
-									$('#'+lindex+'_'+dvalues+'_media').removeClass("episode");
-								}
-								if($('#'+lindex+'_'+dvalues+'_media').attr("class").indexOf("song") != -1) {
-									$('#'+lindex+'_'+dvalues+'_media').removeClass("song");
-								}
-							}							
-							if(vvalues == "movie") {
-								$('#'+lindex+'_'+dvalues+'_media').addClass("movie");
-							} else if(vvalues == "episode") {
-								$('#'+lindex+'_'+dvalues+'_media').addClass("episode");
-							} else if(vvalues == "song") {
-								$('#'+lindex+'_'+dvalues+'_media').addClass("song");
-							}
-						}
-					}
+					});
 				});
 			});
-		});
+		}
 	}
 }
 
 $(document).ready(function() {
 	if($('body').length == 1) {
-		$.mobile.showPageLoadingMsg("b", "Connecting...", true);
+		$.mobile.loading('show', {
+			'text': language.connecting,
+			'textVisible': true,
+			'theme': 'b'
+		});
 
-		if(navigator.userAgent.indexOf("Safari") > -1) {
+		if((navigator.userAgent.match(/iPhone/i)) ||
+		   (navigator.userAgent.match(/iPod/i)) ||
+		   (navigator.userAgent.match(/iPad/i))) {
 			bForceAjax = true;
 		}
 		if(!bForceAjax && typeof MozWebSocket != "undefined") {
@@ -1087,10 +1256,18 @@ $(document).ready(function() {
 				}).fail(function() {
 					window.clearInterval(load);
 					if(bConnected) {
-						$.mobile.showPageLoadingMsg("b", "Connection lost, touch to reload", true);
+						$.mobile.loading('show', {
+							'text': language.connection_lost,
+							'textVisible': true,
+							'theme': 'b'
+						});
 						$('html').on({ 'touchstart mousedown' : function(){location.reload();}});
 					} else {
-						$.mobile.showPageLoadingMsg("b", "Failed to connect, touch to reload", true);
+						$.mobile.loading('show', {
+							'text': language.connection_failed,
+							'textVisible': true,
+							'theme': 'b'
+						});
 						$('html').on({ 'touchstart mousedown' : function(){location.reload();}});
 					}
 				});
@@ -1099,20 +1276,32 @@ $(document).ready(function() {
 
 		if(!bForceAjax && oWebsocket) {
 			oWebsocket.onopen = function(evt) {
-				bConnected = true;		
+				bConnected = true;
 				oWebsocket.send("{\"message\":\"request config\"}");
 			};
 			oWebsocket.onclose = function(evt) {
 				if(bConnected) {
-					$.mobile.showPageLoadingMsg("b", "Connection lost, touch to reload", true);
+					$.mobile.loading('show', {
+						'text': language.connection_lost,
+						'textVisible': true,
+						'theme': 'b'
+					});
 					$('html').on({ 'touchstart mousedown' : function(){location.reload();}});
 				} else {
-					$.mobile.showPageLoadingMsg("b", "Failed to connect, touch to reload", true);
+					$.mobile.loading('show', {
+						'text': language.connection_failed,
+						'textVisible': true,
+						'theme': 'b'
+					});
 					$('html').on({ 'touchstart mousedown' : function(){location.reload();}});
 				}
 			};
 			oWebsocket.onerror = function(evt) {
-				$.mobile.showPageLoadingMsg("b", "An unexpected error occured", true);
+				$.mobile.loading('show', {
+					'text': language.unexpected_error,
+					'textVisible': true,
+					'theme': 'b'
+				});
 			};
 			oWebsocket.onmessage = function(evt) {
 				var data = $.parseJSON(evt.data);

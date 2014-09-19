@@ -27,7 +27,8 @@
 #include "json.h"
 
 typedef enum {
-	INTERNAL = -1,
+	INTERNAL = -2,
+	PROC = -1,
 	RAW = 0,
 	SWITCH,
 	DIMMER,

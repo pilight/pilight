@@ -30,6 +30,7 @@
 
 #include "../../pilight.h"
 #include "common.h"
+#include "dso.h"
 #include "log.h"
 #include "threads.h"
 #include "protocol.h"
@@ -38,7 +39,7 @@
 #include "gc.h"
 #include "json.h"
 #include "dht11.h"
-#include "../pilight/wiringPi.h"
+#include "../pilight/wiringX.h"
 
 #define MAXTIMINGS 100
 
@@ -49,10 +50,10 @@ static pthread_mutex_t dht11lock;
 static pthread_mutexattr_t dht11attr;
 
 static uint8_t sizecvt(const int read_value) {
-	/* digitalRead() and friends from wiringpi are defined as returning a value
+	/* digitalRead() and friends from wiringx are defined as returning a value
 	   < 256. However, they are returned as int() types. This is a safety function */
 	if(read_value > 255 || read_value < 0) {
-		logprintf(LOG_NOTICE, "invalid data from wiringPi library");
+		logprintf(LOG_NOTICE, "invalid data from wiringX library");
 	}
 
 	return (uint8_t)read_value;
@@ -67,8 +68,13 @@ static void *dht11Parse(void *param) {
 	int nrid = 0, y = 0, interval = 10, nrloops = 0;
 	int temp_offset = 0, humi_offset = 0;
 	double itmp = 0;
+	struct sched_param sched;
 
 	dht11_threads++;
+
+	memset(&sched, 0, sizeof(sched));
+	sched.sched_priority = 60;
+	pthread_setschedparam(pthread_self(), SCHED_FIFO, &sched);
 
 	if((jid = json_find_member(json, "id"))) {
 		jchild = json_first_child(jid);
@@ -116,10 +122,10 @@ static void *dht11Parse(void *param) {
 					// detect change and read data
 					for(i=0; (i<MAXTIMINGS && dht11_loop); i++) {
 						counter = 0;
-						delayMicroseconds(10);
+						usleep(10);
 						while(sizecvt(digitalRead(id[y])) == laststate && dht11_loop) {
 							counter++;
-							delayMicroseconds(1);
+							usleep(1);
 							if(counter == 255) {
 								break;
 							}
@@ -184,7 +190,7 @@ static void *dht11Parse(void *param) {
 
 struct threadqueue_t *dht11InitDev(JsonNode *jdevice) {
 	dht11_loop = 1;
-	wiringPiSetup();
+	wiringXSetup();
 	char *output = json_stringify(jdevice, NULL);
 	JsonNode *json = json_decode(output);
 	sfree((void *)&output);
@@ -233,11 +239,11 @@ void dht11Init(void) {
 }
 
 #ifdef MODULE
-void compatibility(const char **name, const char **version, const char **reqversion, const char **reqcommit) {
-	*name = "dht11";
-	*version = "1.0";
-	*reqversion = "4.0";
-	*reqcommit = "38";
+void compatibility(struct module_t *module) {
+	module->name = "dht11";
+	module->version = "1.1";
+	module->reqversion = "5.0";
+	module->reqcommit = NULL;
 }
 
 void init(void) {

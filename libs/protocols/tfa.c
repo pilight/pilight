@@ -23,6 +23,7 @@
 
 #include "../../pilight.h"
 #include "common.h"
+#include "dso.h"
 #include "log.h"
 #include "protocol.h"
 #include "hardware.h"
@@ -163,8 +164,10 @@ void tfaInit(void) {
 	protocol_set_id(tfa, "tfa");
 	protocol_device_add(tfa, "tfa", "TFA weather stations");
 	protocol_device_add(tfa, "conrad_weather", "Conrad Weather Stations");
-	protocol_plslen_add(tfa, 225);
-	protocol_plslen_add(tfa, 245);
+	protocol_plslen_add(tfa, 220);
+	protocol_plslen_add(tfa, 230);
+	protocol_plslen_add(tfa, 240);
+	protocol_plslen_add(tfa, 250);
 	tfa->devtype = WEATHER;
 	tfa->hwtype = RF433;
 	tfa->pulse = 20;
@@ -190,11 +193,11 @@ void tfaInit(void) {
 }
 
 #ifdef MODULE
-void compatibility(const char **name, const char **version, const char **reqversion, const char **reqcommit) {
-	*name = "tfa";
-	*version = "0.8";
-	*reqversion = "4.0";
-	*reqcommit = "38";
+void compatibility(struct module_t *module) {
+	module->name = "tfa";
+	module->version = "0.8";
+	module->reqversion = "5.0";
+	module->reqcommit = NULL;
 }
 
 void init(void) {

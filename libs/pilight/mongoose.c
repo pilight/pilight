@@ -1147,7 +1147,7 @@ static const char *static_config_options[] = {
 #ifndef MONGOOSE_NO_FILESYSTEM
   "access_log_file", NULL,
 #ifndef MONGOOSE_NO_AUTH
-  "auth_domain", "mydomain.com",
+  "auth_domain", "pilight.org",
 #endif
 #ifndef MONGOOSE_NO_CGI
   "cgi_interpreter", NULL,
@@ -3775,8 +3775,8 @@ static int parse_header(const char *str, int str_len, const char *var_name,
     s += n + 1;
     if (*s == '"' || *s == '\'') ch = *s++;
     p = s;
-    while (p < end && p[0] != ch && p[0] != ',' && len < (int) buf_size) {
-      if (p[0] == '\\' && p[1] == ch) p++;
+    while (p < end && p[0] != ch && (!(p[0] == ',' && (strlen(p) > 1 && p[1] == ' ')) || p[0] != ',') && len < (int) buf_size) {
+	if (p[0] == '\\' && p[1] == ch) p++;
       buf[len++] = *p++;
     }
     if (len >= (int) buf_size || (ch != ' ' && *p != ch)) {

@@ -23,9 +23,10 @@
 
 #include "../../pilight.h"
 #include "common.h"
+#include "dso.h"
 #include "log.h"
 #include "hardware.h"
-#include "wiringPi.h"
+#include "wiringX.h"
 #include "json.h"
 #include "irq.h"
 #include "433gpio.h"
@@ -35,7 +36,7 @@ static int gpio_433_out = 0;
 static int gpio_433_initialized = 0;
 
 static unsigned short gpio433HwInit(void) {
-	if(wiringPiSetup() == -1) {
+	if(wiringXSetup() == -1) {
 		return EXIT_FAILURE;
 	}
 	gpio_433_initialized = 1;
@@ -43,7 +44,7 @@ static unsigned short gpio433HwInit(void) {
 		pinMode(gpio_433_out, OUTPUT);
 	}
 	if(gpio_433_in >= 0) {
-		if(wiringPiISR(gpio_433_in, INT_EDGE_BOTH) < 0) {
+		if(wiringXISR(gpio_433_in, INT_EDGE_BOTH) < 0) {
 			logprintf(LOG_ERR, "unable to register interrupt for pin %d", gpio_433_in) ;
 			return EXIT_SUCCESS;
 		}
@@ -52,17 +53,6 @@ static unsigned short gpio433HwInit(void) {
 }
 
 static unsigned short gpio433HwDeinit(void) {
-	FILE *fd;
-	if(gpio_433_initialized) {
-		if(gpio_433_out >= 0 && (fd = fopen ("/sys/class/gpio/unexport", "w"))) {
-			fprintf(fd, "%d", wpiPinToGpio(gpio_433_out));
-			fclose(fd);
-		}
-		if(gpio_433_in >= 0 && (fd = fopen ("/sys/class/gpio/unexport", "w"))) {
-			fprintf(fd, "%d", wpiPinToGpio(gpio_433_in));
-			fclose(fd);
-		}
-	}
 	return EXIT_SUCCESS;
 }
 
@@ -127,11 +117,11 @@ void gpio433Init(void) {
 }
 
 #ifdef MODULE
-void compatibility(const char **name, const char **version, const char **reqversion, const char **reqcommit) {
-	*name = "433gpio";
-	*version = "1.0";
-	*reqversion = "4.0";
-	*reqcommit = "38";
+void compatibility(struct module_t *module) {
+	module->name = "433gpio";
+	module->version = "1.0";
+	module->reqversion = "5.0";
+	module->reqcommit = NULL;
 }
 
 void init(void) {

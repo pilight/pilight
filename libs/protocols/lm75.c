@@ -30,6 +30,7 @@
 
 #include "../../pilight.h"
 #include "common.h"
+#include "dso.h"
 #include "log.h"
 #include "threads.h"
 #include "protocol.h"
@@ -38,10 +39,7 @@
 #include "gc.h"
 #include "json.h"
 #include "lm75.h"
-#include "../pilight/wiringPi.h"
-#ifndef __FreeBSD__
-#include "../pilight/wiringPiI2C.h"
-#endif
+#include "../pilight/wiringX.h"
 
 typedef struct lm75data_t {
 	char **id;
@@ -110,7 +108,7 @@ static void *lm75Parse(void *param) {
 		exit(EXIT_FAILURE);
 	}
 	for(y=0;y<lm75data->nrid;y++) {
-		lm75data->fd[y] = wiringPiI2CSetup((int)strtol(lm75data->id[y], NULL, 16));
+		lm75data->fd[y] = wiringXI2CSetup((int)strtol(lm75data->id[y], NULL, 16));
 	}
 #endif
 
@@ -120,7 +118,7 @@ static void *lm75Parse(void *param) {
 			pthread_mutex_lock(&lm75lock);
 			for(y=0;y<lm75data->nrid;y++) {
 				if(lm75data->fd[y] > 0) {
-					int raw = wiringPiI2CReadReg16(lm75data->fd[y], 0x00);
+					int raw = wiringXI2CReadReg16(lm75data->fd[y], 0x00);
 					float temp = ((float)((raw&0x00ff)+((raw>>15)?0:0.5))*10);
 
 					lm75->message = json_mkobject();
@@ -169,7 +167,7 @@ static void *lm75Parse(void *param) {
 
 static struct threadqueue_t *lm75InitDev(JsonNode *jdevice) {
 	lm75_loop = 1;
-	wiringPiSetup();
+	wiringXSetup();
 	char *output = json_stringify(jdevice, NULL);
 	JsonNode *json = json_decode(output);
 	sfree((void *)&output);
@@ -213,11 +211,11 @@ void lm75Init(void) {
 }
 
 #ifdef MODULE
-void compatibility(const char **name, const char **version, const char **reqversion, const char **reqcommit) {
-	*name = "lm75";
-	*version = "1.0";
-	*reqversion = "4.0";
-	*reqcommit = "38";
+void compatibility(struct module_t *module) {
+	module->name = "lm75";
+	module->version = "1.0";
+	module->reqversion = "5.0";
+	module->reqcommit = NULL;
 }
 
 void init(void) {
