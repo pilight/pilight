@@ -3,17 +3,17 @@
 
 	This file is part of pilight.
 
-    pilight is free software: you can redistribute it and/or modify it under the
+	pilight is free software: you can redistribute it and/or modify it under the
 	terms of the GNU General Public License as published by the Free Software
 	Foundation, either version 3 of the License, or (at your option) any later
 	version.
 
-    pilight is distributed in the hope that it will be useful, but WITHOUT ANY
+	pilight is distributed in the hope that it will be useful, but WITHOUT ANY
 	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-    You should have received a copy of the GNU General Public License
-    along with pilight. If not, see	<http://www.gnu.org/licenses/>
+	You should have received a copy of the GNU General Public License
+	along with pilight. If not, see	<http://www.gnu.org/licenses/>
 */
 
 #include <stdio.h>
@@ -33,7 +33,7 @@
 
 #define PULSE_QUIGG_SHORT 700
 #define PULSE_QUIGG_LONG 1400
-#define PULSE_QUIGG_FOOTER 81192
+#define PULSE_QUIGG_FOOTER 81000
 #define PULSE_QUIGG_50 PULSE_QUIGG_SHORT+(PULSE_QUIGG_LONG-PULSE_QUIGG_SHORT)/2
 
 static void quiggSwCreateMessage(int id, int state, int unit, int all) {
@@ -232,7 +232,7 @@ void quiggSwInit(void) {
 	protocol_register(&quigg_switch);
 	protocol_set_id(quigg_switch, "quigg_switch");
 	protocol_device_add(quigg_switch, "quigg_switch", "Quigg Switches");
-	protocol_plslen_add(quigg_switch, 700); // SHORT: GT-FSI-04a range: 620... 960
+	protocol_plslen_add(quigg_switch, (int)PULSE_QUIGG_FOOTER/PULSE_DIV); // SHORT: GT-FSI-04a range: 620... 960
 	quigg_switch->devtype = SWITCH;
 	quigg_switch->hwtype = RF433;
 	quigg_switch->pulse = 2;        // LONG=QUIGG_PULSE_HIGH*SHORT
@@ -243,7 +243,6 @@ void quiggSwInit(void) {
 	// 20 sys-id[0 .. 11]; unit[12,13], unit_all[14], on/off[15], dimm[16],
 	// null[17], var[18]; Parity[19]
 	quigg_switch->binlen = 20;
-
 
 	options_add(&quigg_switch->options, 't', "on", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
 	options_add(&quigg_switch->options, 'f', "off", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
