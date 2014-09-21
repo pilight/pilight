@@ -1,5 +1,5 @@
 /*
-	Copyright (C) 2014 CurlyMo & wo-rasp
+	Copyright (C) 2013 CurlyMo
 
 	This file is part of pilight.
 
@@ -16,11 +16,10 @@
 	along with pilight. If not, see	<http://www.gnu.org/licenses/>
 */
 
-#ifndef _PROTOCOL_BEAMISH_SWITCH_H_
-#define _PROTOCOL_BEAMISH_SWITCH_H_
+#ifndef _PROTOCOL_WS1700_H_
+#define _PROTOCOL_WS1700_H_
 
-struct protocol_t *beamish_switch;
-void beamishSwInit(void);
+struct protocol_t *alecto_ws1700;
+void alectoWS1700Init(void);
 
 #endif
-

@@ -1,7 +1,10 @@
+	alectoWS1700Init();
 	alectoWSD17Init();
+	alectoWX500Init();
 	arctechContactInit();
 	arctechDimInit();
 	arctechDuskInit();
+	arctechMotionInit();
 	arctechSrInit();
 	arctechSrOldInit();
 	arctechSwInit();
@@ -51,7 +54,6 @@
 	sunRiseSetInit();
 	teknihallInit();
 	tfaInit();
-	threechanInit();
 	wundergroundInit();
 	x10Init();
 	xbmcInit();
