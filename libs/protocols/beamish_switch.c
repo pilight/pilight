@@ -1,5 +1,5 @@
 /*
-	Copyright (C) 2014 CurlyMo
+	Copyright (C) 2014 CurlyMo & wo-rasp
 
 	This file is part of pilight.
 
@@ -13,7 +13,7 @@
 	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
 	You should have received a copy of the GNU General Public License
-	along with pilight. If not, see     <http://www.gnu.org/licenses/>
+	along with pilight. If not, see	<http://www.gnu.org/licenses/>
 */
 
 #include <stdio.h>

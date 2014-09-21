@@ -404,9 +404,9 @@ if(${PROTOCOL_SUNRISESET} MATCHES "OFF")
 	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/sunriseset.c")
 endif()
 
-if(${PROTOCOL_THREECHAN} MATCHES "OFF")
-	list(REMOVE_ITEM protocol_headers "${PROJECT_SOURCE_DIR}/libs/protocols/threechan.h")
-	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/threechan.c")
+if(${PROTOCOL_ALECTO_WS1700} MATCHES "OFF")
+	list(REMOVE_ITEM protocol_headers "${PROJECT_SOURCE_DIR}/libs/protocols/alecto_ws1700.h")
+	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/alecto_ws1700.c")
 endif()
 
 if(${PROTOCOL_AURIOL} MATCHES "OFF")
