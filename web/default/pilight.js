@@ -467,6 +467,12 @@ function createWeatherElement(sTabId, sDevId, aValues) {
 	if('sunset' in aValues) {
 		aValues['sunset'] /= Math.pow(10, aValues['device-decimals']);
 	}
+	if('windavg' in aValues) {
+		aValues['windavg'] /= Math.pow(10, aValues['device-decimals']);
+	}
+	if('windgust' in aValues) {
+		aValues['windgust'] /= Math.pow(10, aValues['device-decimals']);
+	}
 
 	if($('#'+sTabId+'_'+sDevId+'_weather').length == 0) {
 		if(bShowTabs) {
