@@ -138,7 +138,7 @@ void *receive_code(void *param) {
 
 			/* First try to catch code that seems to be a footer.
 			   If a real footer has been recognized, start using that as the new footer */
-			if((duration > 4440 && footer == 0) || ((footer-(footer*0.3)<duration) && (footer+(footer*0.3)>duration))) {
+			if((duration > 5100 && footer == 0) || ((footer-(footer*0.3)<duration) && (footer+(footer*0.3)>duration))) {
 				recording = 1;
 				pulselen = (int)duration/PULSE_DIV;
 				/* Check if we are recording similar codes */
@@ -165,7 +165,7 @@ void *receive_code(void *param) {
 								pulse=raw[i];
 							}
 						}
-						if(duration > 4440) {
+						if(duration > 5100) {
 							footer=raw[i];
 						}
 					}

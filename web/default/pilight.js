@@ -602,13 +602,13 @@ function createWeatherElement(sTabId, sDevId, aValues) {
 		}
 		if('gui-show-wind' in aValues && aValues['gui-show-wind']) {
 			if('windavg' in aValues) {
-				$('#'+sTabId+'_'+sDevId+'_windavg').text(aValues['windavg']);
+				$('#'+sTabId+'_'+sDevId+'_windavg').text(aValues['windavg'].toFixed(aValues['gui-decimals']);
 			}
 			if('winddir' in aValues) {
 				$('#'+sTabId+'_'+sDevId+'_weather .winddir_icon').css({transform: 'rotate(' + aValues['winddir'] + 'deg)'});
 			}
 			if('windgust' in aValues) {	
-				$('#'+sTabId+'_'+sDevId+'_windgust').text(aValues['windgust']);
+				$('#'+sTabId+'_'+sDevId+'_windgust').text(aValues['windgust'].toFixed(aValues['gui-decimals']);
 			}
 		}
 		if('gui-show-temperature' in aValues && aValues['gui-show-temperature'] && 'temperature' in aValues) {
@@ -1105,11 +1105,19 @@ function parseData(data) {
 									$('#'+lindex+'_'+dvalues+'_rain').text(vvalues.toFixed(aDecimals[lindex+'_'+dvalues]['gui']));
 								}
 							} else if(vindex == 'windgust' && $('#'+lindex+'_'+dvalues+'_windgust')) {
-								$('#'+lindex+'_'+dvalues+'_windgust').text(vvalues);
+								if(lindex+'_'+dvalues in aDecimals
+								&& 'device' in aDecimals[lindex+'_'+dvalues]
+								&& 'gui' in aDecimals[lindex+'_'+dvalues]) {
+									$('#'+lindex+'_'+dvalues+'_windgust').text(vvalues.toFixed(aDecimals[lindex+'_'+dvalues]['gui']));
+								}
 							} else if(vindex == 'winddir' && $('#'+lindex+'_'+dvalues+'_winddir')) {
 								$('#'+lindex+'_'+dvalues+'_weather .winddir_icon').css({transform: 'rotate(' + vvalues + 'deg)'});
 							} else if(vindex == 'windavg' && $('#'+lindex+'_'+dvalues+'_windavg')) {
-								$('#'+lindex+'_'+dvalues+'_windavg').text(vvalues);
+								if(lindex+'_'+dvalues in aDecimals
+								&& 'device' in aDecimals[lindex+'_'+dvalues]
+								&& 'gui' in aDecimals[lindex+'_'+dvalues]) {
+									$('#'+lindex+'_'+dvalues+'_windavg').text(vvalues.toFixed(aDecimals[lindex+'_'+dvalues]['gui']));
+								}
 							} else if(vindex == 'sunrise' && $('#'+lindex+'_'+dvalues+'_sunrise')) {
 								if(lindex+'_'+dvalues in aDecimals
 								&& 'device' in aDecimals[lindex+'_'+dvalues]

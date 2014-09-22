@@ -1323,7 +1323,7 @@ void *receive_code(void *param) {
 				if(rawlen > 254) {
 					rawlen = 0;
 				}
-				if(duration > 4440) {
+				if(duration > 5100) {
 					if((duration/PULSE_DIV) < 3000) { // Maximum footer pulse of 100000
 						plslen = duration/PULSE_DIV;
 					}
