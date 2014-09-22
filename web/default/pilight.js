@@ -602,13 +602,13 @@ function createWeatherElement(sTabId, sDevId, aValues) {
 		}
 		if('gui-show-wind' in aValues && aValues['gui-show-wind']) {
 			if('windavg' in aValues) {
-				$('#'+sTabId+'_'+sDevId+'_windavg').text(aValues['windavg'].toFixed(aValues['gui-decimals']);
+				$('#'+sTabId+'_'+sDevId+'_windavg').text(aValues['windavg'].toFixed(aValues['gui-decimals']));
 			}
 			if('winddir' in aValues) {
 				$('#'+sTabId+'_'+sDevId+'_weather .winddir_icon').css({transform: 'rotate(' + aValues['winddir'] + 'deg)'});
 			}
 			if('windgust' in aValues) {	
-				$('#'+sTabId+'_'+sDevId+'_windgust').text(aValues['windgust'].toFixed(aValues['gui-decimals']);
+				$('#'+sTabId+'_'+sDevId+'_windgust').text(aValues['windgust'].toFixed(aValues['gui-decimals']));
 			}
 		}
 		if('gui-show-temperature' in aValues && aValues['gui-show-temperature'] && 'temperature' in aValues) {
