@@ -144,6 +144,7 @@ static void alectoWX500ParseCode(void) {
 			json_append_member(alectoWX500->message, "winddir", json_mknumber(winddir));
 			json_append_member(alectoWX500->message, "windgust", json_mknumber(windgust));
 			json_append_member(alectoWX500->message, "battery", json_mknumber(battery));
+		break;
 		case 4:
 			id = binToDec(alectoWX500->binary, 0, 7);
 			rain = binToDec(alectoWX500->binary, 16, 30) * 5;
