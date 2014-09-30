@@ -43,7 +43,8 @@ static void beamishSwCreateMessage(int id, int unit, int state, int all) {
 	}
 	if(state == 0) {
 		json_append_member(beamish_switch->message, "state", json_mkstring("off"));
-	} else {
+	}
+	if(state == 1) {
 		json_append_member(beamish_switch->message, "state", json_mkstring("on"));
 	}
 }
@@ -215,7 +216,7 @@ void beamishSwInit(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name = "beamish_switch";
-	module->version = "0.9";
+	module->version = "0.91";
 	module->reqversion = "5.0";
 	module->reqcommit = NULL;
 }
