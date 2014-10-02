@@ -21,6 +21,7 @@ Change Log:
 	- rename somfySw... to SomfyScreen..
 	- Help Text
 	- more meaningful abbreviated letters for options MY (-m) and -PROG (-g)
+0.90b	- Footer Bug fixed
 */
 #include <stdio.h>
 #include <stdlib.h>
@@ -38,21 +39,25 @@ Change Log:
 #include "gc.h"
 #include "somfy.h"
 
-#define	PULSE_SOMFY_SHORT	604	// Clock and short pulse duration
+// #define	PULSE_SOMFY_SHORT	604	// Clock and short pulse duration
+#define	PULSE_SOMFY_SHORT	807	// Clock and short pulse duration
 #define PULSE_SOMFY_SHORT_L	PULSE_SOMFY_SHORT-154
 #define PULSE_SOMFY_SHORT_H	PULSE_SOMFY_SHORT+236
-#define PULSE_SOMFY_LONG	1208	// long pulse duration
+// #define PULSE_SOMFY_LONG	1208	// long pulse duration
+#define PULSE_SOMFY_LONG	1614	// long pulse duration
 #define PULSE_SOMFY_LONG_L	PULSE_SOMFY_LONG-158
 #define PULSE_SOMFY_LONG_H	PULSE_SOMFY_LONG+492
 #define PULSE_SOMFY_START	4650	// Start of payload
 #define PULSE_SOMFY_START_L	PULSE_SOMFY_START-400
 #define PULSE_SOMFY_START_H	PULSE_SOMFY_START+400
-#define PULSE_SOMFY_FOOTER	895	// 30415/PULSE_DIV, if last symbol is low plus _SHORT
 // #define PULSE_SOMFY_FOOTER	1498	// 50932/PULSE_DIV, if last symbol is low plus _SHORT
+// #define PULSE_SOMFY_FOOTER	895	// 30415/PULSE_DIV, if last symbol is low plus _SHORT
 // #define PULSE_SOMFY_FOOTER	809	// 27500/PULSE_DIV, if last symbol is low plus _SHORT
+#define PULSE_SOMFY_FOOTER	800	// 27200/PULSE_DIV, if last symbol is low plus _SHORT
 #define PULSE_SOMFY_FOOTER_L	PULSE_SOMFY_FOOTER*PULSE_DIV-215
 #define PULSE_SOMFY_FOOTER_H	PULSE_SOMFY_FOOTER*PULSE_DIV+185+PULSE_SOMFY_SHORT
 #define PULSE_SOMFY_SYNC	2416	// 4 or 7
+// to be implemented
 #define PULSE_SOMFY_WAKEUP	9415	// Wakeup pulse followed by _WAIT
 #define PULSE_SOMFY_WAKEUP_WAIT	89565
 
@@ -292,9 +297,10 @@ static void somfyScreenCreatePulse(int e, int pulse) {
 
 static void somfyScreenCreateFooter(void) {
 	if (sDataLow) {
-		somfyScreenCreatePulse(1,PULSE_SOMFY_SHORT+(PULSE_SOMFY_FOOTER*PULSE_DIV));
-	} else {
+		somfyScreenCreatePulse(1,PULSE_SOMFY_SHORT);
 		somfyScreenCreatePulse(1,PULSE_SOMFY_FOOTER*PULSE_DIV);
+	} else {
+		somfyScreenCreatePulse(1,PULSE_SOMFY_FOOTER*PULSE_DIV+PULSE_SOMFY_SHORT);
 	}
 }
 
@@ -490,7 +496,7 @@ void somfyScreenInit(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name =  "somfy";
-	module->version =  "0.90a";
+	module->version =  "0.90b";
 	module->reqversion =  "6.0";
 	module->reqcommit =  NULL;
 }

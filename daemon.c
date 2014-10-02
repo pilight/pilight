@@ -493,8 +493,8 @@ void *receive_parse_code(void *param) {
 					   || protocol->parseBinary) && protocol->pulse > 0 && protocol->plslen)) {
 					plslengths = protocol->plslen;
 					while(plslengths && main_loop) {
-						if((recvqueue->plslen >= ((double)plslengths->length-5) &&
-						    recvqueue->plslen <= ((double)plslengths->length+5))) {
+						if((recvqueue->plslen >= ((double)plslengths->length-25) &&
+						    recvqueue->plslen <= ((double)plslengths->length+25))) {
 							match = 1;
 							break;
 						}
