@@ -22,6 +22,7 @@ Change Log:
 	- Help Text
 	- more meaningful abbreviated letters for options MY (-m) and -PROG (-g)
 0.90b	- Footer Bug fixed
+0.90c	- Adaption to pulse length in Somfy Documentation
 */
 #include <stdio.h>
 #include <stdlib.h>
@@ -39,11 +40,11 @@ Change Log:
 #include "gc.h"
 #include "somfy.h"
 
-// #define	PULSE_SOMFY_SHORT	604	// Clock and short pulse duration
+// #define	PULSE_SOMFY_SHORT	640	// Somfy Docu Clock and short pulse duration
 #define	PULSE_SOMFY_SHORT	807	// Clock and short pulse duration
 #define PULSE_SOMFY_SHORT_L	PULSE_SOMFY_SHORT-154
 #define PULSE_SOMFY_SHORT_H	PULSE_SOMFY_SHORT+236
-// #define PULSE_SOMFY_LONG	1208	// long pulse duration
+// #define PULSE_SOMFY_LONG	1280	// Somfy Docu long pulse duration
 #define PULSE_SOMFY_LONG	1614	// long pulse duration
 #define PULSE_SOMFY_LONG_L	PULSE_SOMFY_LONG-158
 #define PULSE_SOMFY_LONG_H	PULSE_SOMFY_LONG+492
@@ -57,6 +58,16 @@ Change Log:
 #define PULSE_SOMFY_FOOTER_L	PULSE_SOMFY_FOOTER*PULSE_DIV-215
 #define PULSE_SOMFY_FOOTER_H	PULSE_SOMFY_FOOTER*PULSE_DIV+185+PULSE_SOMFY_SHORT
 #define PULSE_SOMFY_SYNC	2416	// 4 or 7
+// Rawlength definitions
+// binlen original protocol: 56
+#define BINLEN_SOMFY_PROT	56
+#define	MINRAWLEN_SOMFY_PROT	73
+#define MAXRAWLEN_SOMFY_PROT	129
+// binlen new protocol: 56+24=80
+// #define BINLEN_SOMFY_PROT	80
+// #define MINRAWLEN_SOMFY_PROT	97
+// #define MAXRAWLEN_SOMFY_PROT	175
+
 // to be implemented
 #define PULSE_SOMFY_WAKEUP	9415	// Wakeup pulse followed by _WAIT
 #define PULSE_SOMFY_WAKEUP_WAIT	89565
@@ -140,6 +151,7 @@ static void somfyScreenParseCode(void) {
 				rDataTime=0;
 			} else {
 			// 1st pulse, we are now in the middile of the pulse windows
+				logprintf(LOG_ERR, "somfy: First pulse detected");
 				rDataTime = PULSE_SOMFY_SHORT;
 				somfy->binary[x]=1;
 				x=x+1;
@@ -150,6 +162,7 @@ static void somfyScreenParseCode(void) {
 			rDataLow = -rDataLow;
 			if( somfy->raw[pRaw] > PULSE_SOMFY_FOOTER_L && somfy->raw[pRaw] < PULSE_SOMFY_FOOTER_H) {
 				protocol_sync=98; // We should not end up here as binary bits are missing
+				logprintf(LOG_ERR, "somfy: Err 21. Incomplete payload");
 				break;
 			}
 			rDataTime= rDataTime+somfy->raw[pRaw];
@@ -172,6 +185,7 @@ static void somfyScreenParseCode(void) {
 			if ( (rDataTime > PULSE_SOMFY_LONG_L) && (rDataTime < PULSE_SOMFY_LONG_H) ) protocol_sync=99;
 			case 98:
 			// We decoded a footer pulse without decoding the correct number of binary bits
+			logprintf(LOG_ERR, "somfy: Err 98. EOF");
 			case 99:
 			// We have reached the end of processing raw data
 			default:
@@ -470,12 +484,13 @@ void somfyScreenInit(void) {
 	somfy->hwtype = RF433;
 	somfy->pulse = 2;	// LONG pulse
 	somfy->rawlen = 128;	// dynamically depending on 1st or repeated frame and binary value of 1st bit
-	somfy->minrawlen = 73;
-	somfy->maxrawlen = 129;	// Hardware Sync: 2416.2416 or 2416.2416.2416.2416.2416.2416.2416
-				// 4550.604.604 1st Data bit=0 or 4550.1208 1st Data bit=1
-				// 55 data bits: Byte structure command/rollingkey, ctrl/cks, rolling code[2] bE, address[3]lE
-				// 30415 footer
-	somfy->binlen = 56;
+	somfy->minrawlen = MINRAWLEN_SOMFY_PROT;
+	somfy->maxrawlen = MAXRAWLEN_SOMFY_PROT;
+	// Hardware Sync: 2416.2416 or 2416.2416.2416.2416.2416.2416.2416
+	// 4550.604.604 1st Data bit=0 or 4550.1208 1st Data bit=1
+	// 55 data bits: Byte structure command/rollingkey, ctrl/cks, rolling code[2] bE, address[3]lE
+	// 30415 footer
+	somfy->binlen = BINLEN_SOMFY_PROT;
 	options_add(&somfy->options, 'a', "address", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, NULL, "^([0-9]{1,6}|[1-5][0-9]{6}|16[0-6][0-9]{5}|167[0-6][0-9]{4}|1677[0-6][0-9]{3}| 16777[0-1][0-9]{2}|1677720[0-9]|1677721[0-6])$");
 	options_add(&somfy->options, 'c', "rollingcode", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, NULL, "^([0-9]{1,4}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5])$");
 	options_add(&somfy->options, 'k', "rollingkey", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, NULL, "^([0-9]|1[0-5])$");
@@ -496,7 +511,7 @@ void somfyScreenInit(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name =  "somfy";
-	module->version =  "0.90b";
+	module->version =  "0.90c";
 	module->reqversion =  "6.0";
 	module->reqcommit =  NULL;
 }
