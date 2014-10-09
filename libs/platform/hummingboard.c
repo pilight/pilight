@@ -130,7 +130,9 @@ static int identify(void) {
 	fclose(cpuFd) ;
 
 	sscanf(hardware, "Hardware%*[ \t]:%*[ ]%[a-zA-Z0-9 ./()]%*[\n]", name);
-	if(strstr(name, "Freescale i.MX6") != NULL || strstr(name, "SolidRun i.MX6")) {
+	if(strstr(name, "Freescale i.MX6") != NULL
+	   || strstr(name, "SolidRun i.MX6") != NULL
+	   || strstr(name, "HummingBoard") != NULL) {
 		return 0;
 	} else {
 		return -1;
@@ -270,7 +272,7 @@ static int hummingboardWaitForInterrupt(int pin, int ms) {
 
 	x = poll(&polls, 1, ms);
 
-	(void)read(sysFds[pin], &c, 4);
+	(void)read(sysFds[pin], &c, 1);
 	lseek(sysFds[pin], 0, SEEK_SET);
 
 	return x;
