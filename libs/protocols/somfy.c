@@ -40,12 +40,12 @@ Change Log:
 #include "gc.h"
 #include "somfy.h"
 
-// #define	PULSE_SOMFY_SHORT	640	// Somfy Docu Clock and short pulse duration
-#define	PULSE_SOMFY_SHORT	807	// Clock and short pulse duration
+#define	PULSE_SOMFY_SHORT	640	// Somfy Docu Clock and short pulse duration
+//#define	PULSE_SOMFY_SHORT	807	// Clock and short pulse duration
 #define PULSE_SOMFY_SHORT_L	PULSE_SOMFY_SHORT-154
 #define PULSE_SOMFY_SHORT_H	PULSE_SOMFY_SHORT+236
-// #define PULSE_SOMFY_LONG	1280	// Somfy Docu long pulse duration
-#define PULSE_SOMFY_LONG	1614	// long pulse duration
+#define PULSE_SOMFY_LONG	1280	// Somfy Docu long pulse duration
+// #define PULSE_SOMFY_LONG	1614	// long pulse duration
 #define PULSE_SOMFY_LONG_L	PULSE_SOMFY_LONG-158
 #define PULSE_SOMFY_LONG_H	PULSE_SOMFY_LONG+492
 #define PULSE_SOMFY_START	4650	// Start of payload
@@ -67,7 +67,8 @@ Change Log:
 // #define BINLEN_SOMFY_PROT	80
 // #define MINRAWLEN_SOMFY_PROT	97
 // #define MAXRAWLEN_SOMFY_PROT	175
-
+#define BIN_ARRAY_CLASSIC	7
+#define BIN_ARRAY_NEW_GEN	10
 // to be implemented
 #define PULSE_SOMFY_WAKEUP	9415	// Wakeup pulse followed by _WAIT
 #define PULSE_SOMFY_WAKEUP_WAIT	89565
@@ -90,7 +91,7 @@ static struct somfy_settings_t *somfy_settings = NULL;
 static uint8_t somfyScreenCodeChkSum (uint8_t *p_frame) {
 	uint8_t cksum, i;
 	cksum = 0;
-	for (i=0; i < 7; i++) {
+	for (i=0; i < BIN_ARRAY_CLASSIC; i++) {
  		cksum = cksum ^ *(p_frame+i) ^ (*(p_frame+i) >> 4);
 	}
 	cksum = cksum & 0xf;
@@ -98,6 +99,7 @@ static uint8_t somfyScreenCodeChkSum (uint8_t *p_frame) {
 }
 
 static void somfyScreenCreateMessage(int address, int command, int rollingcode, int rollingkey) {
+	char str [9];
 	somfy->message = json_mkobject();
 	json_append_member(somfy->message, "address", json_mknumber(address));
         if(command==1) {
@@ -106,8 +108,11 @@ static void somfyScreenCreateMessage(int address, int command, int rollingcode, 
 		json_append_member(somfy->message, "state", json_mkstring("up"));
 	} else if (command==4) {
 		json_append_member(somfy->message, "state", json_mkstring("down"));
-	} else if (command==8) { 
+	} else if (command==8) {
 		json_append_member(somfy->message, "state", json_mkstring("prog"));
+	} else {
+		sprintf(str, "%d", command);
+		json_append_member(somfy->message, "state", json_mkstring(str));
 	}
 	if (rollingcode != -1) {
 		json_append_member(somfy->message, "rollingcode", json_mknumber(rollingcode));
@@ -123,8 +128,8 @@ static void somfyScreenParseCode(void) {
 	int protocol_sync = 0;
 	int rDataLow = 0, rDataTime = 0;
 	int rollingcode = 0, rollingkey = 0;
-	uint8_t	dec_frame[7];
-	uint8_t frame[7];
+	uint8_t	dec_frame[BIN_ARRAY_CLASSIC];
+	uint8_t frame[BIN_ARRAY_CLASSIC];
 
 	int cksum = 0;
 	int key_left = 0, command = 0, address = 0;
@@ -162,7 +167,7 @@ static void somfyScreenParseCode(void) {
 			rDataLow = -rDataLow;
 			if( somfy->raw[pRaw] > PULSE_SOMFY_FOOTER_L && somfy->raw[pRaw] < PULSE_SOMFY_FOOTER_H) {
 				protocol_sync=98; // We should not end up here as binary bits are missing
-				logprintf(LOG_ERR, "somfy: Err 21. Incomplete payload");
+				logprintf(LOG_ERR, "somfy: Err 21. Incomplete payload at binlen[%d]",x);
 				break;
 			}
 			rDataTime= rDataTime+somfy->raw[pRaw];
@@ -182,7 +187,9 @@ static void somfyScreenParseCode(void) {
 			break;
 			case 3:
 			// We got all bits, immediately followed by the footer pulse
+			logprintf(LOG_ERR, "somfy: End of data - %d", x);
 			if ( (rDataTime > PULSE_SOMFY_LONG_L) && (rDataTime < PULSE_SOMFY_LONG_H) ) protocol_sync=99;
+			break;
 			case 98:
 			// We decoded a footer pulse without decoding the correct number of binary bits
 			logprintf(LOG_ERR, "somfy: Err 98. EOF");
@@ -206,7 +213,7 @@ static void somfyScreenParseCode(void) {
 	frame[6] = (uint8_t) binToDecRev(somfy->binary, 48,55);
 
 	dec_frame[0]=frame[0];
-	for (i=1; i < 7; i++) {
+	for (i=1; i < BIN_ARRAY_CLASSIC; i++) {
 		dec_frame[i] = frame[i] ^ frame[i-1];
 	}
 
@@ -228,6 +235,16 @@ static void somfyScreenParseCode(void) {
 		}
 	tmp = tmp->next;
 	}
+
+	logprintf(LOG_DEBUG, "**** Somfy BIN CODE ****");
+	if(log_level_get() >= LOG_DEBUG) {
+		for(i=0;i<BIN_ARRAY_CLASSIC;i++) {
+			printf("%d ", dec_frame[i]);
+		}
+		printf(" - addr: %d - rk: %d - rc: %d", address, rollingkey, rollingcode);
+		printf("\n");
+	}
+
 
 	if ( ( key_left == 10 && 0 == cksum)) {
 		somfyScreenCreateMessage(address, command, rollingcode, rollingkey);
