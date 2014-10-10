@@ -75,7 +75,7 @@ void hardware_init(void) {
 	void (*compatibility)(struct module_t *module);
 	char path[255];
 	struct module_t module;
-	char pilight_version[strlen(VERSION)];
+	char pilight_version[strlen(VERSION)+1];
 	char pilight_commit[3];
 	char *hardware_root = NULL;
 	int check1 = 0, check2 = 0, valid = 1, hardware_root_free = 0;
