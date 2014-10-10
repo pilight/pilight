@@ -17,12 +17,19 @@
 */
 /*
 Change Log:
-0.90a	- rollover of rollingcode at 65535
+0.90a	- special version of daemon.c (increased window for footer length variation +/-25 instead +/-5)
+	- rollover of rollingcode at 65535
 	- rename somfySw... to SomfyScreen..
 	- Help Text
 	- more meaningful abbreviated letters for options MY (-m) and -PROG (-g)
 0.90b	- Footer Bug fixed
-0.90c	- Adaption to pulse length in Somfy Documentation
+0.90c	- Adaption of pulse length in Somfy Documentation, additions to debug log
+	- decode of all 16 commands on receive
+0.90d	- Bugfixing, Adaption of parameters, additional error checking, more log information
+0.90e	- Cleanup of pulse values
+	  Handling of all 15 commands using the new optional command "-n ##"
+	  ## is the decimal command equivalent (range 0 to 15)
+	  Hooks for handling of new generation data frame
 */
 #include <stdio.h>
 #include <stdlib.h>
@@ -42,31 +49,31 @@ Change Log:
 
 #define	PULSE_SOMFY_SHORT	640	// Somfy Docu Clock and short pulse duration
 //#define	PULSE_SOMFY_SHORT	807	// Clock and short pulse duration
-#define PULSE_SOMFY_SHORT_L	PULSE_SOMFY_SHORT-154
-#define PULSE_SOMFY_SHORT_H	PULSE_SOMFY_SHORT+236
+#define PULSE_SOMFY_SHORT_L	PULSE_SOMFY_SHORT-192
+#define PULSE_SOMFY_SHORT_H	PULSE_SOMFY_SHORT+192
 #define PULSE_SOMFY_LONG	1280	// Somfy Docu long pulse duration
 // #define PULSE_SOMFY_LONG	1614	// long pulse duration
-#define PULSE_SOMFY_LONG_L	PULSE_SOMFY_LONG-158
-#define PULSE_SOMFY_LONG_H	PULSE_SOMFY_LONG+492
-#define PULSE_SOMFY_START	4650	// Start of payload
-#define PULSE_SOMFY_START_L	PULSE_SOMFY_START-400
-#define PULSE_SOMFY_START_H	PULSE_SOMFY_START+400
+#define PULSE_SOMFY_LONG_L	PULSE_SOMFY_LONG-192
+#define PULSE_SOMFY_LONG_H	PULSE_SOMFY_LONG+192
+#define PULSE_SOMFY_START	4760	// Start of payload
+#define PULSE_SOMFY_START_L	PULSE_SOMFY_START-350
+#define PULSE_SOMFY_START_H	PULSE_SOMFY_START+350	// Max data pulse handled by pilight is 5100
 // #define PULSE_SOMFY_FOOTER	1498	// 50932/PULSE_DIV, if last symbol is low plus _SHORT
-// #define PULSE_SOMFY_FOOTER	895	// 30415/PULSE_DIV, if last symbol is low plus _SHORT
-// #define PULSE_SOMFY_FOOTER	809	// 27500/PULSE_DIV, if last symbol is low plus _SHORT
-#define PULSE_SOMFY_FOOTER	800	// 27200/PULSE_DIV, if last symbol is low plus _SHORT
-#define PULSE_SOMFY_FOOTER_L	PULSE_SOMFY_FOOTER*PULSE_DIV-215
-#define PULSE_SOMFY_FOOTER_H	PULSE_SOMFY_FOOTER*PULSE_DIV+185+PULSE_SOMFY_SHORT
-#define PULSE_SOMFY_SYNC	2416	// 4 or 7
+// #define PULSE_SOMFY_FOOTER	895	// 30430/PULSE_DIV, if last symbol is low plus _SHORT
+#define PULSE_SOMFY_FOOTER	809	// 27506/PULSE_DIV, if last symbol is low plus _SHORT
+// #define PULSE_SOMFY_FOOTER	800	// 27200/PULSE_DIV, if last symbol is low plus _SHORT
+#define PULSE_SOMFY_FOOTER_L	PULSE_SOMFY_FOOTER*PULSE_DIV-25*PULSE_DIV
+#define PULSE_SOMFY_FOOTER_H	PULSE_SOMFY_FOOTER*PULSE_DIV+25*PULSE_DIV+PULSE_SOMFY_SHORT
+#define PULSE_SOMFY_SYNC	PULSE_SOMFY_SHORT*4	// 2 pairs 1st-, 7 pairs Repeated-Pulses
 // Rawlength definitions
 // binlen original protocol: 56
 #define BINLEN_SOMFY_PROT	56
 #define	MINRAWLEN_SOMFY_PROT	73
 #define MAXRAWLEN_SOMFY_PROT	129
-// binlen new protocol: 56+24=80
-// #define BINLEN_SOMFY_PROT	80
+// binlen new_gen protocol: 56+24=80
+// #define BINLEN_SOMFY_NEW_PROT	80
 // #define MINRAWLEN_SOMFY_PROT	97
-// #define MAXRAWLEN_SOMFY_PROT	175
+// #define MAXRAWLEN_SOMFY_PROT	177
 #define BIN_ARRAY_CLASSIC	7
 #define BIN_ARRAY_NEW_GEN	10
 // to be implemented
@@ -166,8 +173,8 @@ static void somfyScreenParseCode(void) {
 			// Determine if we have a rising/falling edge in the middle
 			rDataLow = -rDataLow;
 			if( somfy->raw[pRaw] > PULSE_SOMFY_FOOTER_L && somfy->raw[pRaw] < PULSE_SOMFY_FOOTER_H) {
-				protocol_sync=98; // We should not end up here as binary bits are missing
-				logprintf(LOG_ERR, "somfy: Err 21. Incomplete payload at binlen[%d]",x);
+				protocol_sync=97; // We should not end up here as binary bits are missing
+				logprintf(LOG_ERR, "somfy: Err 21. Payload incomplete.");
 				break;
 			}
 			rDataTime= rDataTime+somfy->raw[pRaw];
@@ -182,24 +189,41 @@ static void somfyScreenParseCode(void) {
 				}
 				x=x+1;
 				rDataTime = PULSE_SOMFY_SHORT;
-				if ( x >= somfy->binlen) protocol_sync = 3; // We got all bits
+				if ( x >= somfy->binlen) {
+					protocol_sync = 3;	// We got all bits for classic data frame
+				}
 			}
 			break;
 			case 3:
-			// We got all bits, immediately followed by the footer pulse
-			logprintf(LOG_ERR, "somfy: End of data - %d", x);
-			if ( (rDataTime > PULSE_SOMFY_LONG_L) && (rDataTime < PULSE_SOMFY_LONG_H) ) protocol_sync=99;
+			// We decoded the number of bis for callsic data, check for footer pulse
+			logprintf(LOG_ERR, "somfy: End of classic data. pulse: %d - pRaw: %d - bin: %d", somfy->raw[pRaw], pRaw, x);
+			if ( (somfy->raw[pRaw] > PULSE_SOMFY_FOOTER_L) && (somfy->raw[pRaw] < PULSE_SOMFY_FOOTER_H) ) {
+				protocol_sync = 98;
+			} else {
+				protocol_sync = 4;
+			}
 			break;
-			case 98:
+			case 4:
+			// Reserved: handle new Generation Frame decoding Interframe Gap old-new
+			protocol_sync = 5;
+			break;
+			case 5: 
+			// Reserved: handle new Generation Frame decoding 24 Bit
+			logprintf(LOG_ERR, "somfy: Skip new generation data processing for now. pulse: %d pRaw: %d - bin: %d", somfy->raw[pRaw], pRaw, x);
+			protocol_sync = 99;
+			break;
+			case 97:
 			// We decoded a footer pulse without decoding the correct number of binary bits
-			logprintf(LOG_ERR, "somfy: Err 98. EOF");
-			case 99:
+			logprintf(LOG_ERR, "somfy: Err 98 unexpected EOF.");
+			case 98:
+			logprintf(LOG_ERR, "somfy: End of data. pulse: %d - pRaw: %d - bin: %d", somfy->raw[pRaw], pRaw, x);
 			// We have reached the end of processing raw data
+			case 99:
 			default:
 			break;
 		}
 	pRaw++;
-	if (protocol_sync > 97) break;
+	if (protocol_sync > 95) break;
 	}
 
 	frame[0] = (uint8_t) (binToDecRev(somfy->binary, 0, 3) << 4);		// Key
@@ -399,7 +423,7 @@ static void somfyScreenCreateData(int iParam, int iLength) {
 static int somfyScreenCreateCode(JsonNode *code) {
 	int key_left = 160;
 	int rollingkey = -1;
-	int command = -1;
+	int command = -1, command_code = -1;
 	int rollingcode = -1;
 	int address = -1;
 	double itmp = -1;
@@ -417,6 +441,15 @@ static int somfyScreenCreateCode(JsonNode *code) {
 		command=4;
 	} else if (json_find_number(code, "prog", &itmp) == 0) {
 		command=8;
+	}
+	if(json_find_number(code, "command_code", &itmp) == 0)	command_code = (int)round(itmp);
+
+	if( command != -1 && command_code != -1 ) {
+		logprintf(LOG_ERR, "too many arguments: either command or command_code");
+		return EXIT_FAILURE;
+	}
+	if (command_code != -1) {
+		command=command_code;
 	}
 
 	if( address==-1 || command==-1 ) {
@@ -487,6 +520,7 @@ static void somfyScreenPrintHelp(void) {
 	printf("\t -g --prog\t\t\tCommand PROG\n");
 	printf("\t -c --rollingcode=rollingcode\t\t\tset rollingcode\n");
 	printf("\t -k --rollingkey=rollingkey\t\t\tset rollingkey\n");
+	printf("\t -n --command_code=command\t\t\tNumeric Command Code\n");
 }
 
 #ifndef MODULE
@@ -511,6 +545,7 @@ void somfyScreenInit(void) {
 	options_add(&somfy->options, 'a', "address", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, NULL, "^([0-9]{1,6}|[1-5][0-9]{6}|16[0-6][0-9]{5}|167[0-6][0-9]{4}|1677[0-6][0-9]{3}| 16777[0-1][0-9]{2}|1677720[0-9]|1677721[0-6])$");
 	options_add(&somfy->options, 'c', "rollingcode", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, NULL, "^([0-9]{1,4}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5])$");
 	options_add(&somfy->options, 'k', "rollingkey", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, NULL, "^([0-9]|1[0-5])$");
+	options_add(&somfy->options, 'n', "command_code", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, NULL, "^([0-9]|1[0-5])$");
 	options_add(&somfy->options, 't', "up", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
 	options_add(&somfy->options, 'f', "down", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
 	options_add(&somfy->options, 'm', "my", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
@@ -528,7 +563,7 @@ void somfyScreenInit(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name =  "somfy";
-	module->version =  "0.90c";
+	module->version =  "0.90e";
 	module->reqversion =  "6.0";
 	module->reqcommit =  NULL;
 }
