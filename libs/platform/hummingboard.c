@@ -170,7 +170,7 @@ static int hummingboardDigitalRead(int pin) {
 static int hummingboardISR(int pin, int mode) {
 	int i = 0, fd = 0, match = 0, count = 0;
 	const char *sMode = NULL;
-	char path[30], c;
+	char path[35], c;
 	pinModes[pin] = SYS;
 
 	if(mode == INT_EDGE_FALLING) {
@@ -280,7 +280,7 @@ static int hummingboardWaitForInterrupt(int pin, int ms) {
 
 static int hummingboardGC(void) {
 	int i = 0, fd = 0;
-	char path[30];
+	char path[35];
 	FILE *f = NULL;
 
 	for(i=0;i<NUM_PINS;i++) {

@@ -199,7 +199,7 @@ static int changeOwner(char *file) {
 static int bananapiISR(int pin, int mode) {
 	int i = 0, fd = 0, count = 0, npin = pinToGpioR2[pin];
 	const char *sMode = NULL;
-	char path[30], c;
+	char path[35], c;
 	FILE *f = NULL;
 
 	pinModes[npin] = SYS;
@@ -488,7 +488,7 @@ static int bananapiPinMode(int pin, int mode) {
 
 static int bananapiGC(void) {
 	int i = 0, fd = 0;
-	char path[30];
+	char path[35];
 	FILE *f = NULL;
 
 	for(i=0;i<NUM_PINS;i++) {

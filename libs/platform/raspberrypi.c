@@ -541,7 +541,7 @@ static int raspberrypiPinMode(int pin, int mode) {
 static int raspberrypiISR(int pin, int mode) {
 	int i = 0, fd = 0, match = 0, count = 0;
 	const char *sMode = NULL;
-	char path[30], c;
+	char path[35], c;
 
 	pinModes[pin] = SYS;
 
@@ -657,7 +657,7 @@ static int raspberrypiWaitForInterrupt(int pin, int ms) {
 
 static int raspberrypiGC(void) {
 	int i = 0, fd = 0;
-	char path[30];
+	char path[35];
 	FILE *f = NULL;
 
 	for(i=0;i<NUM_PINS;i++) {
