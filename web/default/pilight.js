@@ -607,7 +607,7 @@ function createWeatherElement(sTabId, sDevId, aValues) {
 			if('winddir' in aValues) {
 				$('#'+sTabId+'_'+sDevId+'_weather .winddir_icon').css({transform: 'rotate(' + aValues['winddir'] + 'deg)'});
 			}
-			if('windgust' in aValues) {	
+			if('windgust' in aValues) {
 				$('#'+sTabId+'_'+sDevId+'_windgust').text(aValues['windgust'].toFixed(aValues['gui-decimals']));
 			}
 		}
