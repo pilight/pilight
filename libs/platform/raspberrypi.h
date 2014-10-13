@@ -20,7 +20,7 @@
 
 #include "wiringX.h"
 
-struct devices_t *raspberrypi;
+struct platform_t *raspberrypi;
 
 void raspberrypiInit(void);
 

@@ -43,7 +43,7 @@
 #define	PWM_MODE_MS			0
 #define	PWM_MODE_BAL		1
 
-typedef struct devices_t {
+typedef struct platform_t {
 	char *name;
 	int (*setup)(void);
 	int (*pinMode)(int pin, int mode);
@@ -61,11 +61,11 @@ typedef struct devices_t {
 	int (*I2CSetup)(int devId);
 	int (*gc)(void);
 	struct devices_t *next;
-} devices_t;
+} platform_t;
 
-struct devices_t *devices;
+struct platform_t *platforms;
 
-void device_register(struct devices_t **device, const char *name);
+void platform_register(struct platform_t **platform, const char *name);
 void pinMode(int pin, int mode);
 void digitalWrite(int pin, int value);
 int digitalRead(int pin);

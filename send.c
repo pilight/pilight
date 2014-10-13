@@ -28,7 +28,7 @@
 
 #include "pilight.h"
 #include "common.h"
-#include "settings.h"
+#include "config.h"
 #include "log.h"
 #include "options.h"
 #include "socket.h"
@@ -36,13 +36,6 @@
 #include "protocol.h"
 #include "ssdp.h"
 #include "dso.h"
-
-typedef enum {
-	WELCOME,
-	IDENTIFY,
-	REJECT,
-	SEND
-} steps_t;
 
 typedef struct pname_t {
 	char *name;
@@ -104,10 +97,7 @@ int main(int argc, char **argv) {
 	struct ssdp_list_t *ssdp_list = NULL;
 
 	int sockfd = 0;
-    char *recvBuff = NULL;
-    char *message = NULL;
-	char *args = NULL;
-	steps_t steps = WELCOME;
+	char *args = NULL, *recvBuff = NULL;
 
 	/* Hold the name of the protocol */
 	char *protobuffer = NULL;
@@ -128,16 +118,12 @@ int main(int argc, char **argv) {
 	protocol_t *protocol = NULL;
 	JsonNode *code = NULL;
 
-	char settingstmp[] = SETTINGS_FILE;
-	settings_set_file(settingstmp);
-
 	/* Define all CLI arguments of this program */
 	options_add(&options, 'H', "help", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
 	options_add(&options, 'V', "version", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
 	options_add(&options, 'p', "protocol", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, NULL);
 	options_add(&options, 'S', "server", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, "^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]).){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$");
 	options_add(&options, 'P', "port", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, "[0-9]{1,4}");
-	options_add(&options, 'F', "settings", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, NULL);
 
 	/* Get the protocol to be used */
 	while(1) {
@@ -167,11 +153,6 @@ int main(int argc, char **argv) {
 			case 'H':
 				help = 1;
 			break;
-			case 'F':
-				if(settings_set_file(args) == EXIT_FAILURE) {
-					return EXIT_FAILURE;
-				}
-			break;
 			case 'S':
 				if(!(server = realloc(server, strlen(args)+1))) {
 					logprintf(LOG_ERR, "out of memory");
@@ -184,10 +165,6 @@ int main(int argc, char **argv) {
 			break;
 			default:;
 		}
-	}
-
-	if(settings_read() != 0) {
-		return EXIT_FAILURE;
 	}
 
 	/* Initialize protocols */
@@ -258,7 +235,7 @@ int main(int argc, char **argv) {
 			printf("\t -p --protocol=protocol\t\tthe protocol that you want to control\n");
 			printf("\t -S --server=x.x.x.x\t\tconnect to server address\n");
 			printf("\t -P --port=xxxx\t\t\tconnect to server port\n");
-			printf("\t -F --settings\t\t\tsettings file\n");
+			printf("\t -F --config\t\t\tconfig file\n");
 		}
 		if(protohelp == 1 && match == 1 && protocol->printHelp) {
 			printf("\n\t[%s]\n", protobuffer);
@@ -323,16 +300,17 @@ int main(int argc, char **argv) {
 			/* Only send the CLI arguments that belong to this protocol, the protocol name
 			and those that are called by the user */
 			if((options_get_id(&protocol->options, tmp->name, &itmp) == 0)
-			   && strlen(tmp->value) > 0) {
-				if(isNumeric(tmp->value) == 0) {
-					json_append_member(code, tmp->name, json_mknumber(atof(tmp->value)));
+			    && tmp->vartype == JSON_STRING && tmp->string_ != NULL 
+				&& (strlen(tmp->string_) > 0)) {
+				if(isNumeric(tmp->string_) == 0) {
+					json_append_member(code, tmp->name, json_mknumber(atof(tmp->string_)));
 				} else {
-					json_append_member(code, tmp->name, json_mkstring(tmp->value));
+					json_append_member(code, tmp->name, json_mkstring(tmp->string_));
 				}
 			}
-			if(strcmp(tmp->name, "protocol") == 0 && strlen(tmp->value) > 0) {
+			if(strcmp(tmp->name, "protocol") == 0 && strlen(tmp->string_) > 0) {
 				JsonNode *jprotocol = json_mkarray();
-				json_append_element(jprotocol, json_mkstring(tmp->value));
+				json_append_element(jprotocol, json_mkstring(tmp->string_));
 				json_append_member(code, "protocol", jprotocol);
 			}
 		}
@@ -361,56 +339,27 @@ int main(int argc, char **argv) {
 			ssdp_free(ssdp_list);
 		}
 
-		while(1) {
-			if(steps > WELCOME) {
-				/* Clear the receive buffer again and read the welcome message */
-				if((recvBuff = socket_read(sockfd))) {
-					JsonNode *jrecv = json_decode(recvBuff);
-					json_find_string(jrecv, "message", &message);
-					sfree((void *)&recvBuff);
-					json_delete(jrecv);
-				} else {
-					goto close;
-				}
-			}
-			switch(steps) {
-				case WELCOME:
-					socket_write(sockfd, "{\"message\":\"client sender\"}");
-					steps=IDENTIFY;
-				break;
-				case IDENTIFY:
-					if(message && strlen(message) > 0) {
-						if(strcmp(message, "accept client") == 0) {
-							steps=SEND;
-						}
-						if(strcmp(message, "reject client") == 0) {
-							steps=REJECT;
-						}
-					} else {
-						goto close;
-					}
-				case SEND: {
-					JsonNode *json = json_mkobject();
-					json_append_member(json, "message", json_mkstring("send"));
-					json_append_member(json, "code", code);
-					char *output = json_stringify(json, NULL);
-					socket_write(sockfd, output);
-					sfree((void *)&output);
-					json_delete(json);
-					code = NULL;
-					goto close;
-				} break;
-				case REJECT:
-				default:
-					goto close;
-				break;
-			}
+		socket_write(sockfd, "{\"action\":\"identify\"}");
+		if(socket_read(sockfd, &recvBuff) == 1 
+		   || strcmp(recvBuff, "success") != 0) {
+			goto close;
 		}
+
+		JsonNode *json = json_mkobject();
+		json_append_member(json, "action", json_mkstring("send"));
+		json_append_member(json, "code", code);
+		char *output = json_stringify(json, NULL);
+		socket_write(sockfd, output);
+		sfree((void *)&output);
+		json_delete(json);
+
+		if(socket_read(sockfd, &recvBuff) == 1 
+		   || strcmp(recvBuff, "success") != 0) {
+			logprintf(LOG_ERR, "failed to send codes");
+			goto close;
+		}		
 	}
 close:
-	if(code) {
-		json_delete(code);
-	}
 	if(sockfd) {
 		socket_close(sockfd);
 	}
@@ -424,7 +373,7 @@ close:
 	protocol_gc();
 	options_delete(options);
 	options_gc();
-	settings_gc();
+	config_gc();
 	dso_gc();
 	log_gc();
 	sfree((void *)&progname);

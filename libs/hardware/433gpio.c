@@ -56,14 +56,16 @@ static unsigned short gpio433HwDeinit(void) {
 	return EXIT_SUCCESS;
 }
 
-static int gpio433Send(int *code) {
-	unsigned short i = 0;
+static int gpio433Send(int *code, int rawlen, int repeats) {
+	unsigned short r = 0, x = 0;
 	if(gpio_433_out >= 0) {
-		while(code[i]) {
-			digitalWrite(gpio_433_out, 1);
-			usleep((__useconds_t)code[i++]);
-			digitalWrite(gpio_433_out, 0);
-			usleep((__useconds_t)code[i++]);
+		for(r=0;r<repeats;r++) {
+			for(x=0;x<rawlen;x+=2) {
+				digitalWrite(gpio_433_out, 1);
+				usleep((__useconds_t)code[x]);
+				digitalWrite(gpio_433_out, 0);
+				usleep((__useconds_t)code[x+1]);
+			}
 		}
 	} else {
 		sleep(1);
@@ -105,8 +107,8 @@ void gpio433Init(void) {
 	hardware_register(&gpio433);
 	hardware_set_id(gpio433, "433gpio");
 
-	options_add(&gpio433->options, 'r', "receiver", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, NULL, "^[0-9-]+$");
-	options_add(&gpio433->options, 's', "sender", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, NULL, "^[0-9-]+$");
+	options_add(&gpio433->options, 'r', "receiver", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9-]+$");
+	options_add(&gpio433->options, 's', "sender", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9-]+$");
 
 	gpio433->type=RF433;
 	gpio433->init=&gpio433HwInit;

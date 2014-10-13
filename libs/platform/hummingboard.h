@@ -20,7 +20,7 @@
 
 #include "wiringX.h"
 
-struct devices_t *hummingboard;
+struct platform_t *hummingboard;
 
 void hummingboardInit(void);
 

@@ -35,13 +35,6 @@
 static int main_loop = 1;
 static int sockfd = 0;
 
-typedef enum {
-	WELCOME,
-	IDENTIFY,
-	REJECT,
-	RECEIVE
-} steps_t;
-
 int main_gc(void) {
 	main_loop = 0;
 	if(sockfd > 0) {
@@ -76,9 +69,7 @@ int main(int argc, char **argv) {
 	unsigned short port = 0;
 
     char *recvBuff = NULL;
-	char *message = NULL;
 	char *args = NULL;
-	steps_t steps = WELCOME;
 
 	options_add(&options, 'H', "help", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
 	options_add(&options, 'V', "version", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
@@ -146,55 +137,29 @@ int main(int argc, char **argv) {
 	if(server) {
 		sfree((void *)&server);
 	}
+	struct JsonNode *jclient = json_mkobject();
+	struct JsonNode *joptions = json_mkobject();
+	json_append_member(jclient, "action", json_mkstring("identify"));
+	json_append_member(joptions, "receiver", json_mknumber(1));
+	json_append_member(joptions, "stats", json_mknumber(1));
+	json_append_member(jclient, "options", joptions);
+	char *out = json_stringify(jclient, NULL);
+	socket_write(sockfd, out);
+	sfree((void *)&out);
+	json_delete(jclient);
 
+	if(socket_read(sockfd, &recvBuff) == 1 
+	   || strcmp(recvBuff, "success") != 0) {
+		goto close;
+	}	
+	
 	while(main_loop) {
-		if(steps > WELCOME) {
-			if((recvBuff = socket_read(sockfd)) == NULL) {
-				goto close;
-			}
+		if(socket_read(sockfd, &recvBuff) == 1) {
+			goto close;
 		}
-		switch(steps) {
-			case WELCOME:
-				socket_write(sockfd, "{\"message\":\"client receiver\"}");
-				steps=IDENTIFY;
-			break;
-			case IDENTIFY: {
-				//extract the message
-				JsonNode *json = json_decode(recvBuff);
-				json_find_string(json, "message", &message);
-				if(strcmp(message, "accept client") == 0) {
-					steps=RECEIVE;
-				} else if(strcmp(message, "reject client") == 0) {
-					steps=REJECT;
-				}
-				//cleanup
-				json_delete(json);
-				sfree((void *)&recvBuff);
-				json = NULL;
-				message = NULL;
-				recvBuff = NULL;
-			} break;
-			case RECEIVE: {
-				char *line = strtok(recvBuff, "\n");
-				//for each line
-				while(line) {
-					JsonNode *json = json_decode(line);
-					char *output = json_stringify(json, "\t");
-					printf("%s\n", output);
-					sfree((void *)&output);
-					json_delete(json);
-					line = strtok(NULL,"\n");
-				}
-				sfree((void *)&recvBuff);
-				sfree((void *)&line);
-				recvBuff = NULL;
-			} break;
-			case REJECT:
-			default:
-				goto close;
-			break;
-		}
+		printf("%s\n", recvBuff);
 	}
+
 close:
 	if(sockfd > 0) {
 		socket_close(sockfd);

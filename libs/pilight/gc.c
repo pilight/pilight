@@ -24,7 +24,7 @@
 
 #include "gc.h"
 #include "json.h"
-#include "config.h"
+#include "devices.h"
 #include "common.h"
 
 static unsigned short gc_enable = 1;
@@ -39,19 +39,19 @@ void gc_handler(int sig) {
 	}
 	if(((sig == SIGINT || sig == SIGTERM || sig == SIGTSTP) && gc_enable == 1) ||
 	  (!(sig == SIGINT || sig == SIGTERM || sig == SIGTSTP) && gc_enable == 0)) {
-		if(configfile != NULL && gc_enable == 1) {
+		if(devicesfile != NULL && gc_enable == 1) {
 			gc_enable = 0;
-			JsonNode *joutput = config2json(-1);
-			char *output = json_stringify(joutput, "\t");
-			config_write(output);
-			json_delete(joutput);
-			sfree((void *)&output);
-			joutput = NULL;
-			sfree((void *)&configfile);
-			configfile = NULL;
+			// JsonNode *joutput = devices2json(-1);
+			// char *output = json_stringify(joutput, "\t");
+			// devices_write(output);
+			// json_delete(joutput);
+			// sfree((void *)&output);
+			// joutput = NULL;
+			// sfree((void *)&devicesfile);
+			// devicesfile = NULL;
 		}
 		gc_enable = 0;
-		config_gc();
+		// devices_gc();
 		gc_run();
 	}
 }
@@ -80,7 +80,7 @@ void gc_clear(void) {
 
 /* Run the GC manually */
 int gc_run(void) {
-    unsigned int s;
+    unsigned int s = 0;
 	struct collectors_t *tmp = gc;
 
 	while(tmp) {

@@ -20,7 +20,7 @@
 
 #include "wiringX.h"
 
-struct devices_t *bananapi;
+struct platform_t *bananapi;
 
 void bananapiInit(void);
 

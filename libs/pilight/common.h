@@ -1,5 +1,5 @@
 /*
-	Copyright (C) 2013 CurlyMo
+	Copyright (C) 2013 - 2014 CurlyMo
 
 	This file is part of pilight.
 
@@ -39,6 +39,7 @@ void rmsubstr(char *s, const char *r);
 char *genuuid(char *ifname);
 int whitelist_check(char *ip);
 void whitelist_free(void);
+int file_exists(char *fil);
 int path_exists(char *fil);
 
 #ifdef __FreeBSD__

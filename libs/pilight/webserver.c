@@ -35,7 +35,7 @@
 #include "../../pilight.h"
 #include "common.h"
 #include "mongoose.h"
-#include "config.h"
+#include "devices.h"
 #include "gc.h"
 #include "log.h"
 #include "threads.h"
@@ -57,6 +57,7 @@ static char *webserver_root = NULL;
 static char *webgui_tpl = NULL;
 static struct mg_server *mgserver[WEBSERVER_WORKERS];
 
+static char *recvBuff = NULL;
 static unsigned short webgui_tpl_free = 0;
 static unsigned short webserver_root_free = 0;
 static unsigned short webserver_user_free = 0;
@@ -327,7 +328,7 @@ static int webserver_request_handler(struct mg_connection *conn) {
 				}
 				return MG_TRUE;
 			} else if(strcmp(conn->uri, "/config") == 0) {
-				JsonNode *jsend = config_broadcast_create();
+				JsonNode *jsend = config_print();
 				char *output = json_stringify(jsend, NULL);
 				mg_printf_data(conn, output);
 				json_delete(jsend);
@@ -702,7 +703,7 @@ static int webserver_request_handler(struct mg_connection *conn) {
 			char *message = NULL;
 			if(json_find_string(json, "message", &message) != -1) {
 				if(strcmp(message, "request config") == 0) {
-					JsonNode *jsend = config_broadcast_create();
+					JsonNode *jsend = config_print();
 					char *output = json_stringify(jsend, NULL);
 					size_t output_len = strlen(output);
 					mg_websocket_write(conn, 1, output, output_len);
@@ -807,9 +808,6 @@ void *webserver_broadcast(void *param) {
 }
 
 void *webserver_clientize(void *param) {
-	steps_t steps = WELCOME;
-	char *message = NULL;
-	char *sockReadBuff = NULL;
 	struct ssdp_list_t *ssdp_list = NULL;
 	int standalone = 0;
 
@@ -831,46 +829,33 @@ void *webserver_clientize(void *param) {
 		ssdp_free(ssdp_list);
 	}
 
+	struct JsonNode *jclient = json_mkobject();
+	struct JsonNode *joptions = json_mkobject();
+	json_append_member(jclient, "action", json_mkstring("identify"));
+	json_append_member(joptions, "config", json_mknumber(1));
+	json_append_member(joptions, "stats", json_mknumber(1));
+	json_append_member(jclient, "options", joptions);
+	char *out = json_stringify(jclient, NULL);
+	socket_write(sockfd, out);
+	sfree((void *)&out);
+	json_delete(jclient);
+
+	if(socket_read(sockfd, &recvBuff) == 1 
+	   || strcmp(recvBuff, "success") != 0) {
+		goto close;
+	}		
+	
 	while(webserver_loop) {
-		if(steps > WELCOME) {
-			if((sockReadBuff = socket_read(sockfd)) == NULL) {
-				goto close;
-			}
-			if(!webserver_loop) {
-				sfree((void *)&sockReadBuff);
-				break;
-			}
+		if(socket_read(sockfd, &recvBuff) == 1) {
+			goto close;
 		}
-		switch(steps) {
-			case WELCOME:
-				socket_write(sockfd, "{\"message\":\"client gui\"}");
-				steps=IDENTIFY;
-			break;
-			case IDENTIFY: {
-				JsonNode *json = json_decode(sockReadBuff);
-				json_find_string(json, "message", &message);
-				if(strcmp(message, "accept client") == 0) {
-					steps=SYNC;
-				}
-				if(strcmp(message, "reject client") == 0) {
-					steps=REJECT;
-				}
-				json_delete(json);
-				sfree((void *)&sockReadBuff);
-			}
-			break;
-			case SYNC:
-				webserver_queue(sockReadBuff);
-				sfree((void *)&sockReadBuff);
-			break;
-			case REJECT:
-			default:
-				sfree((void *)&sockReadBuff);
-				goto close;
-			break;
-		}
+		webserver_queue(recvBuff);
 	}
+
 close:
+	if(recvBuff) {
+		recvBuff = NULL;
+	}
 	socket_close(sockfd);
 	return 0;
 }

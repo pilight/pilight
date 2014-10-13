@@ -1,5 +1,5 @@
 /*
-	Copyright (C) 2013 CurlyMo
+	Copyright (C) 2013 - 2014 CurlyMo
 
 	This file is part of pilight.
 
@@ -23,16 +23,22 @@
 #define OPTION_HAS_VALUE	 	2
 #define OPTION_OPT_VALUE	 	3
 
-#define CONFIG_ID		1
-#define CONFIG_STATE	2
-#define CONFIG_VALUE	3
-#define CONFIG_SETTING	4
-#define CONFIG_OPTIONAL	5
+#define DEVICES_ID			1
+#define DEVICES_STATE		2
+#define DEVICES_VALUE		3
+#define DEVICES_SETTING		4
+#define DEVICES_OPTIONAL	5
+#define GUI_SETTING			6
+#define NROPTIONTYPES		6
+
 
 typedef struct options_t {
 	int id;
 	char *name;
-	char *value;
+	union {
+		char *string_;
+		double number_;
+	};
 	char *mask;
 	void *def;
 	int argtype;
@@ -42,8 +48,10 @@ typedef struct options_t {
 } options_t;
 
 int options_gc(void);
-void options_set_value(struct options_t **options, int id, const char *val);
-int options_get_value(struct options_t **options, int id, char **out);
+void options_set_string(struct options_t **options, int id, const char *val);
+void options_set_number(struct options_t **options, int id, double val);
+int options_get_string(struct options_t **options, int id, char **out);
+int options_get_number(struct options_t **options, int id, double *out);
 int options_get_argtype(struct options_t **options, int id, int *out);
 int options_get_name(struct options_t **options, int id, char **out);
 int options_get_id(struct options_t **options, char *name, int *out);

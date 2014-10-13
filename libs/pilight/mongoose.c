@@ -1101,7 +1101,7 @@ struct dir_entry {
   file_stat_t st;
 };
 
-// NOTE(lsm): this enum shoulds be in sync with the config_options.
+// NOTE(lsm): this enum shoulds be in sync with the devices_options.
 enum {
   ACCESS_CONTROL_LIST,
 #ifndef MONGOOSE_NO_FILESYSTEM
@@ -1142,7 +1142,7 @@ enum {
   NUM_OPTIONS
 };
 
-static const char *static_config_options[] = {
+static const char *static_devices_options[] = {
   "access_control_list", NULL,
 #ifndef MONGOOSE_NO_FILESYSTEM
   "access_log_file", NULL,
@@ -1186,7 +1186,7 @@ struct mg_server {
   struct ns_server ns_server;
   union socket_address lsa;   // Listening socket address
   mg_handler_t event_handler;
-  char *config_options[NUM_OPTIONS];
+  char *devices_options[NUM_OPTIONS];
 };
 
 // Local endpoint representation
@@ -1480,7 +1480,7 @@ static int call_user(struct connection *conn, enum mg_event ev) {
 static void send_http_error(struct connection *conn, int code,
                             const char *fmt, ...) {
   const char *message = status_code_to_str(code);
-  const char *rewrites = conn->server->config_options[URL_REWRITES];
+  const char *rewrites = conn->server->devices_options[URL_REWRITES];
   char headers[200], body[200];
   struct vec a, b;
   va_list ap;
@@ -1777,7 +1777,7 @@ static void prepare_cgi_environment(struct connection *conn,
                                     struct cgi_env_block *blk) {
   struct mg_connection *ri = &conn->mg_conn;
   const char *s, *slash;
-  char *p, **opts = conn->server->config_options;
+  char *p, **opts = conn->server->devices_options;
   int  i;
 
   blk->len = blk->nvars = 0;
@@ -1897,7 +1897,7 @@ static void open_cgi_endpoint(struct connection *conn, const char *prog) {
     ns_socketpair(fds);
   } while (fds[0] == INVALID_SOCKET);
 
-  if (start_process(conn->server->config_options[CGI_INTERPRETER],
+  if (start_process(conn->server->devices_options[CGI_INTERPRETER],
                     prog, blk.buf, blk.vars, dir, fds[1]) > 0) {
     conn->endpoint_type = EP_CGI;
     conn->endpoint.cgi_conn = ns_add_sock(&conn->server->ns_server,
@@ -2228,7 +2228,7 @@ void mg_template(struct mg_connection *conn, const char *s,
 #ifndef MONGOOSE_NO_FILESYSTEM
 static int must_hide_file(struct connection *conn, const char *path) {
   const char *pw_pattern = "**" PASSWORDS_FILE_NAME "$";
-  const char *pattern = conn->server->config_options[HIDE_FILES_PATTERN];
+  const char *pattern = conn->server->devices_options[HIDE_FILES_PATTERN];
   return mg_match_prefix(pw_pattern, strlen(pw_pattern), path) > 0 ||
     (pattern != NULL && mg_match_prefix(pattern, strlen(pattern), path) > 0);
 }
@@ -2237,10 +2237,10 @@ static int must_hide_file(struct connection *conn, const char *path) {
 static int convert_uri_to_file_name(struct connection *conn, char *buf,
                                     size_t buf_len, file_stat_t *st) {
   struct vec a, b;
-  const char *rewrites = conn->server->config_options[URL_REWRITES];
-  const char *root = conn->server->config_options[DOCUMENT_ROOT];
+  const char *rewrites = conn->server->devices_options[URL_REWRITES];
+  const char *root = conn->server->devices_options[DOCUMENT_ROOT];
 #ifndef MONGOOSE_NO_CGI
-  const char *cgi_pat = conn->server->config_options[CGI_PATTERN];
+  const char *cgi_pat = conn->server->devices_options[CGI_PATTERN];
   char *p;
 #endif
   const char *uri = conn->mg_conn.uri;
@@ -2267,7 +2267,7 @@ static int convert_uri_to_file_name(struct connection *conn, char *buf,
 
   // Handle URL rewrites
   mg_snprintf(buf, buf_len, "%.*s%s", root_len, root, uri);
-  rewrites = conn->server->config_options[URL_REWRITES];  // Re-initialize!
+  rewrites = conn->server->devices_options[URL_REWRITES];  // Re-initialize!
   while ((rewrites = next_option(rewrites, &a, &b)) != NULL) {
     if ((match_len = mg_match_prefix(a.ptr, a.len, uri)) > 0) {
       mg_snprintf(buf, buf_len, "%.*s%s", (int) b.len, b.ptr, uri + match_len);
@@ -2770,7 +2770,7 @@ static void get_mime_type(const struct mg_server *server, const char *path,
 
   // Scan user-defined mime types first, in case user wants to
   // override default mime types.
-  list = server->config_options[EXTRA_MIME_TYPES];
+  list = server->devices_options[EXTRA_MIME_TYPES];
   while ((list = next_option(list, &ext_vec, &mime_vec)) != NULL) {
     // ext now points to the path suffix
     ext = path + path_len - ext_vec.len;
@@ -2809,7 +2809,7 @@ static int is_not_modified(const struct connection *conn,
 // If the file is found, it's stats is returned in stp.
 static int find_index_file(struct connection *conn, char *path,
                            size_t path_len, file_stat_t *stp) {
-  const char *list = conn->server->config_options[INDEX_FILES];
+  const char *list = conn->server->devices_options[INDEX_FILES];
   file_stat_t st;
   struct vec filename_vec;
   size_t n = strlen(path), found = 0;
@@ -3208,7 +3208,7 @@ static void handle_propfind(struct connection *conn, const char *path,
     "<d:multistatus xmlns:d='DAV:'>\n";
   static const char footer[] = "</d:multistatus>";
   const char *depth = mg_get_header(&conn->mg_conn, "Depth"),
-        *list_dir = conn->server->config_options[ENABLE_DIRECTORY_LISTING];
+        *list_dir = conn->server->devices_options[ENABLE_DIRECTORY_LISTING];
 
   conn->mg_conn.status_code = 207;
 
@@ -3389,7 +3389,7 @@ void mg_send_digest_auth_request(struct mg_connection *c) {
             "HTTP/1.1 401 Unauthorized\r\n"
             "WWW-Authenticate: Digest qop=\"auth\", "
             "realm=\"%s\", nonce=\"%lu\"\r\n\r\n",
-            conn->server->config_options[AUTH_DOMAIN],
+            conn->server->devices_options[AUTH_DOMAIN],
             (unsigned long) time(NULL));
   close_local_endpoint(conn);
 }
@@ -3398,7 +3398,7 @@ void mg_send_digest_auth_request(struct mg_connection *c) {
 // or search for .htpasswd in the requested directory.
 static FILE *open_auth_file(struct connection *conn, const char *path) {
   char name[MAX_PATH_SIZE];
-  const char *p, *gpass = conn->server->config_options[GLOBAL_AUTH_FILE];
+  const char *p, *gpass = conn->server->devices_options[GLOBAL_AUTH_FILE];
   file_stat_t st;
   FILE *fp = NULL;
 
@@ -3686,7 +3686,7 @@ int mg_authorize_digest(struct mg_connection *c, FILE *fp) {
     if (sscanf(line, "%[^:]:%[^:]:%s", f_user, f_domain, ha1) == 3 &&
         !strcmp(user, f_user) &&
         // NOTE(lsm): due to a bug in MSIE, we do not compare URIs
-        !strcmp(conn->server->config_options[AUTH_DOMAIN], f_domain))
+        !strcmp(conn->server->devices_options[AUTH_DOMAIN], f_domain))
       return check_password(c->request_method, ha1, uri,
                             nonce, nc, cnonce, qop, resp);
   }
@@ -3711,7 +3711,7 @@ int mg_authorize_input(struct mg_connection *c, char *username, char *password, 
   if (!mg_parse_header(hdr, "nonce", nonce, sizeof(nonce))) return 0;
 
   if(strcmp(user, username) == 0 &&
-        strcmp(conn->server->config_options[AUTH_DOMAIN], domain) == 0) {
+        strcmp(conn->server->devices_options[AUTH_DOMAIN], domain) == 0) {
 		mg_md5(ha1, username, ":", domain, ":", password, NULL);
 
       return check_password(c->request_method, ha1, uri,
@@ -3735,7 +3735,7 @@ static int is_authorized(struct connection *conn, const char *path) {
 }
 
 static int is_authorized_for_dav(struct connection *conn) {
-  const char *auth_file = conn->server->config_options[DAV_AUTH_FILE];
+  const char *auth_file = conn->server->devices_options[DAV_AUTH_FILE];
   const char *method = conn->mg_conn.request_method;
   FILE *fp;
   int authorized = MG_FALSE;
@@ -3810,7 +3810,7 @@ static void send_file_data(struct mg_connection *conn, FILE *fp) {
 static void do_ssi_include(struct mg_connection *conn, const char *ssi,
                            char *tag, int include_level) {
   char file_name[IOBUF_SIZE], path[MAX_PATH_SIZE], *p;
-  char **opts = (MG_CONN_2_CONN(conn))->server->config_options;
+  char **opts = (MG_CONN_2_CONN(conn))->server->devices_options;
   FILE *fp;
 
   // sscanf() is safe here, since send_ssi_file() also uses buffer
@@ -3959,12 +3959,12 @@ static void open_local_endpoint(struct connection *conn, int skip_user) {
   char path[MAX_PATH_SIZE];
   int exists = 0, is_directory = 0;
 #ifndef MONGOOSE_NO_CGI
-  const char *cgi_pat = conn->server->config_options[CGI_PATTERN];
+  const char *cgi_pat = conn->server->devices_options[CGI_PATTERN];
 #else
   const char *cgi_pat = DEFAULT_CGI_PATTERN;
 #endif
 #ifndef MONGOOSE_NO_DIRECTORY_LISTING
-  const char *dir_lst = conn->server->config_options[ENABLE_DIRECTORY_LISTING];
+  const char *dir_lst = conn->server->devices_options[ENABLE_DIRECTORY_LISTING];
 #else
   const char *dir_lst = "yes";
 #endif
@@ -4009,7 +4009,7 @@ static void open_local_endpoint(struct connection *conn, int skip_user) {
 
   if (!strcmp(conn->mg_conn.request_method, "OPTIONS")) {
     send_options(conn);
-  } else if (conn->server->config_options[DOCUMENT_ROOT] == NULL) {
+  } else if (conn->server->devices_options[DOCUMENT_ROOT] == NULL) {
     send_http_error(conn, 404, NULL);
 #ifndef MONGOOSE_NO_AUTH
   } else if ((!is_dav_request(conn) && !is_authorized(conn, path)) ||
@@ -4052,8 +4052,8 @@ static void open_local_endpoint(struct connection *conn, int skip_user) {
     send_http_error(conn, 501, NULL);
 #endif // !MONGOOSE_NO_CGI
 #ifndef MONGOOSE_NO_SSI
-  } else if (mg_match_prefix(conn->server->config_options[SSI_PATTERN],
-                             strlen(conn->server->config_options[SSI_PATTERN]),
+  } else if (mg_match_prefix(conn->server->devices_options[SSI_PATTERN],
+                             strlen(conn->server->devices_options[SSI_PATTERN]),
                              path) > 0) {
     handle_ssi_request(conn, path);
 #endif
@@ -4267,7 +4267,7 @@ static void close_local_endpoint(struct connection *conn) {
 #ifndef MONGOOSE_NO_LOGGING
   if (c->status_code > 0 && conn->endpoint_type != EP_CLIENT &&
       c->status_code != 400) {
-    log_access(conn, conn->server->config_options[ACCESS_LOG_FILE]);
+    log_access(conn, conn->server->devices_options[ACCESS_LOG_FILE]);
   }
 #endif
 
@@ -4317,8 +4317,8 @@ void mg_destroy_server(struct mg_server **server) {
     int i;
 
     ns_server_free(&s->ns_server);
-    for (i = 0; i < (int) ARRAY_SIZE(s->config_options); i++) {
-      free(s->config_options[i]);  // It is OK to free(NULL)
+    for (i = 0; i < (int) ARRAY_SIZE(s->devices_options); i++) {
+      free(s->devices_options[i]);  // It is OK to free(NULL)
     }
     free(s);
     *server = NULL;
@@ -4449,14 +4449,14 @@ int mg_parse_multipart(const char *buf, int buf_len,
 }
 
 const char **mg_get_valid_option_names(void) {
-  return static_config_options;
+  return static_devices_options;
 }
 
 static int get_option_index(const char *name) {
   int i;
 
-  for (i = 0; static_config_options[i * 2] != NULL; i++) {
-    if (strcmp(static_config_options[i * 2], name) == 0) {
+  for (i = 0; static_devices_options[i * 2] != NULL; i++) {
+    if (strcmp(static_devices_options[i * 2], name) == 0) {
       return i;
     }
   }
@@ -4482,7 +4482,7 @@ const char *mg_set_option(struct mg_server *server, const char *name,
   char **v = NULL;
 
   if (ind < 0) return  "No such option";
-  v = &server->config_options[ind];
+  v = &server->devices_options[ind];
 
   // Return success immediately if setting to the same value
   if ((*v == NULL && value == NULL) ||
@@ -4553,7 +4553,7 @@ static void on_accept(struct ns_connection *nc, union socket_address *sa) {
   struct mg_server *server = (struct mg_server *) nc->server;
   struct connection *conn;
 
-  if (!check_acl(server->config_options[ACCESS_CONTROL_LIST],
+  if (!check_acl(server->devices_options[ACCESS_CONTROL_LIST],
                  ntohl(* (uint32_t *) &sa->sin.sin_addr)) ||
       (conn = (struct connection *) calloc(1, sizeof(*conn))) == NULL) {
     nc->flags |= NSF_CLOSE_IMMEDIATELY;
@@ -4632,7 +4632,7 @@ static void mg_ev_handler(struct ns_connection *nc, enum ns_event ev, void *p) {
 
     case NS_RECV:
 #ifndef MONGOOSE_NO_FILESYSTEM
-      hexdump(nc, server->config_options[HEXDUMP_FILE], * (int *) p, 0);
+      hexdump(nc, server->devices_options[HEXDUMP_FILE], * (int *) p, 0);
 #endif
       if (nc->flags & NSF_ACCEPTED) {
         process_request(conn);
@@ -4647,7 +4647,7 @@ static void mg_ev_handler(struct ns_connection *nc, enum ns_event ev, void *p) {
 
     case NS_SEND:
 #ifndef MONGOOSE_NO_FILESYSTEM
-      hexdump(nc, server->config_options[HEXDUMP_FILE], * (int *) p, 1);
+      hexdump(nc, server->devices_options[HEXDUMP_FILE], * (int *) p, 1);
 #endif
       break;
 
@@ -4716,7 +4716,7 @@ int mg_get_listening_socket(struct mg_server *server) {
 }
 
 const char *mg_get_option(const struct mg_server *server, const char *name) {
-  const char **opts = (const char **) server->config_options;
+  const char **opts = (const char **) server->devices_options;
   int i = get_option_index(name);
   return i == -1 ? NULL : opts[i] == NULL ? "" : opts[i];
 }
@@ -4724,7 +4724,7 @@ const char *mg_get_option(const struct mg_server *server, const char *name) {
 struct mg_server *mg_create_server(void *server_data, mg_handler_t handler) {
   struct mg_server *server = (struct mg_server *) calloc(1, sizeof(*server));
   ns_server_init(&server->ns_server, server_data, mg_ev_handler);
-  set_default_option_values(server->config_options);
+  set_default_option_values(server->devices_options);
   server->event_handler = handler;
   return server;
 }

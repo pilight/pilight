@@ -44,6 +44,7 @@
 #include "socket.h"
 
 static char recvBuff[BUFFER_SIZE];
+static char *waitMessage = NULL;
 static unsigned short socket_loop = 1;
 static unsigned int socket_port = 0;
 static int socket_loopback = 0;
@@ -67,6 +68,10 @@ int socket_gc(void) {
 	if(socket_loopback > 0) {
 		send(socket_loopback, "1", 1, MSG_NOSIGNAL);
 		socket_close(socket_loopback);
+	}
+	
+	if(waitMessage) {
+		sfree((void *)&waitMessage);
 	}
 
 	logprintf(LOG_DEBUG, "garbage collected socket library");
@@ -282,14 +287,13 @@ void socket_rm_client(int i, struct socket_callback_t *socket_callback) {
 	socket_clients[i] = 0;
 }
 
-char *socket_read(int sockfd) {
+int socket_read(int sockfd, char **message) {
 	int bytes = 0;
 	size_t msglen = 0;
 	int ptr = 0, n = 0, len = (int)strlen(EOSS);
 	fd_set fdsread;
-	char *message = NULL;
 	fcntl(sockfd, F_SETFL, O_NONBLOCK);
-
+	
 	while(socket_loop) {
 		FD_ZERO(&fdsread);
 		FD_SET((unsigned long)sockfd, &fdsread);
@@ -303,60 +307,59 @@ char *socket_read(int sockfd) {
 			break;
 		}
 		if(n == -1) {
-			return NULL;
+			return 1;
 		} else if(n > 0) {
 			if(FD_ISSET((unsigned long)sockfd, &fdsread)) {
 				bytes = (int)recv(sockfd, recvBuff, BUFFER_SIZE, 0);
 
 				if(bytes <= 0) {
-					return NULL;
+					return 1;
 				} else {
 					ptr+=bytes;
-					if((message = realloc(message, (size_t)ptr+1)) == NULL) {
+					if((*message = realloc(*message, (size_t)ptr+1)) == NULL) {
 						logprintf(LOG_ERR, "out of memory");
 						exit(EXIT_FAILURE);
 					}
-					memset(&message[(ptr-bytes)], '\0', (size_t)bytes+1);
-					memcpy(&message[(ptr-bytes)], recvBuff, (size_t)bytes);
-					msglen = strlen(message);
+					memset(message[(ptr-bytes)], '\0', (size_t)bytes+1);
+					memcpy(message[(ptr-bytes)], recvBuff, (size_t)bytes);
+					msglen = strlen(*message);
 				}
-				if(message && msglen > 0) {
+				if(*message && msglen > 0) {
 					/* When a stream is larger then the buffer size, it has to contain
 					   the pilight delimiter to know when the stream ends. If the stream
 					   is shorter then the buffer size, we know we received the full stream */
 					int l = 0;
-					if(((l = strncmp(&message[ptr-(len)], EOSS, (unsigned int)(len))) == 0) || ptr < BUFFER_SIZE) {
+					if(((l = strncmp(&(*message)[ptr-(len)], EOSS, (unsigned int)(len))) == 0) || ptr < BUFFER_SIZE) {
 						/* If the socket contains buffered TCP messages, separate them by
 						   changing the delimiters into newlines */
 						if(ptr > msglen) {
 							int i = 0;
 							for(i=0;i<ptr;i++) {
-								if(i+(len-1) < ptr && strncmp(&message[i], EOSS, (size_t)len) == 0) {
-									memmove(&message[i], &message[i+(len-1)], (size_t)(ptr-(i+(len-1))));
+								if(i+(len-1) < ptr && strncmp(&(*message)[i], EOSS, (size_t)len) == 0) {
+									memmove(message[i], message[i+(len-1)], (size_t)(ptr-(i+(len-1))));
 									ptr-=(len-1);
-									message[i] = '\n';
+									(*message)[i] = '\n';
 								}
 							}
-							message[ptr] = '\0';
+							(*message)[ptr] = '\0';
 						} else {
 							if(l == 0) {
-								message[ptr-(len)] = '\0'; // remove delimiter
+								(*message)[ptr-(len)] = '\0'; // remove delimiter
 							} else {
-								message[ptr] = '\0';
+								(*message)[ptr] = '\0';
 							}
-							if(strcmp(message, "1") == 0 || strcmp(message, "BEAT") == 0) {
-								sfree((void *)&message);
-								return NULL;
+							if(strcmp(*message, "1") == 0 || strcmp(*message, "BEAT") == 0) {
+								return 1;
 							}
 						}
-						return message;
+						return 0;
 					}
 				}
 			}
 		}
 	}
 
-	return NULL;
+	return 1;
 }
 
 void *socket_wait(void *param) {
@@ -444,27 +447,21 @@ void *socket_wait(void *param) {
 			sd = socket_clients[i];
 			if(FD_ISSET((unsigned long)socket_clients[i], &readfds)) {
 				FD_CLR((unsigned long)socket_clients[i], &readfds);
-				char *message = NULL;
-				if((message = socket_read(sd)) != NULL) {
+				if(socket_read(sd, &waitMessage) == 0) {
 					if(socket_callback->client_data_callback) {
-						size_t l = strlen(message);
+						size_t l = strlen(waitMessage);
 						if(l > 0) {
-							if(strstr(message, "\n") != NULL) {
-								char *buffer = malloc(l+1);
-								strcpy(buffer, message);
-								char *pch = strtok(buffer, "\n");
+							if(strstr(waitMessage, "\n") != NULL) {
+								char *pch = strtok(waitMessage, "\n");
 								while(pch != NULL) {
 									socket_callback->client_data_callback(i, pch);
 									pch = strtok(NULL, "\n");
 								}
-								sfree((void *)&pch);
-								sfree((void *)&buffer);
 							} else {
-								socket_callback->client_data_callback(i, message);
+								socket_callback->client_data_callback(i, waitMessage);
 							}
 						}
 					}
-					sfree((void *)&message);
 				} else {
 					socket_rm_client(i, socket_callback);
 					i--;

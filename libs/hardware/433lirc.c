@@ -99,16 +99,24 @@ static unsigned short lirc433HwDeinit(void) {
 	return EXIT_SUCCESS;
 }
 
-static int lirc433Send(int *code) {
-	size_t i = 0;
-	while(code[i]) {
-		i++;
-	}
-	i++;
-	i*=sizeof(int);
-	ssize_t n = write(lirc_433_fd, code, i);
+static int lirc433Send(int *code, int rawlen, int repeats) {
+	/* Create a single code with all repeats included */
+	int code_len = (rawlen*repeats)+1;
+	size_t send_len = (size_t)(code_len * (int)sizeof(int));
+	int longCode[code_len], i = 0, x = 0;
+	memset(longCode, 0, send_len);
 
-	if(n == i) {
+	for(i=0;i<repeats;i++) {
+		for(x=0;x<rawlen;x++) {
+			longCode[x+(rawlen*i)]=code[x];
+		}
+	}
+	longCode[code_len] = 0;
+
+	code_len *= (int)sizeof(int);
+	ssize_t n = write(lirc_433_fd, code, (size_t)code_len);
+
+	if(n == code_len) {
 		return EXIT_SUCCESS;
 	} else {
 		return EXIT_FAILURE;
@@ -160,7 +168,7 @@ void lirc433Init(void) {
 	hardware_register(&lirc433);
 	hardware_set_id(lirc433, "433lirc");
 
-	options_add(&lirc433->options, 's', "socket", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_STRING, NULL, "^/dev/([a-z]+)[0-9]+$");
+	options_add(&lirc433->options, 's', "socket", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_STRING, NULL, "^/dev/([a-z]+)[0-9]+$");
 
 	lirc433->type=RF433;
 	lirc433->init=&lirc433HwInit;

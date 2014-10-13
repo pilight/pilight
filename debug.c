@@ -31,7 +31,7 @@
 
 #include "pilight.h"
 #include "common.h"
-#include "settings.h"
+#include "config.h"
 #include "hardware.h"
 #include "log.h"
 #include "options.h"
@@ -70,8 +70,6 @@ int main_gc(void) {
 	pthread_join(pth, NULL);
 
 	options_gc();
-	settings_gc();
-	hardware_gc();
 	dso_gc();
 	wiringXGC();
 	log_gc();
@@ -241,11 +239,10 @@ int main(int argc, char **argv) {
 	struct options_t *options = NULL;
 
 	char *args = NULL;
-	char *hwfile = NULL;
 	pid_t pid = 0;
 
-	char settingstmp[] = SETTINGS_FILE;
-	settings_set_file(settingstmp);
+	char configtmp[] = CONFIG_FILE;
+	config_set_file(configtmp);
 
 	progname = malloc(15);
 	if(!progname) {
@@ -256,7 +253,7 @@ int main(int argc, char **argv) {
 
 	options_add(&options, 'H', "help", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
 	options_add(&options, 'V', "version", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
-	options_add(&options, 'F', "settings", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, NULL);
+	options_add(&options, 'C', "config", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, NULL);
 
 	while (1) {
 		int c;
@@ -270,15 +267,15 @@ int main(int argc, char **argv) {
 				printf("Usage: %s [options]\n", progname);
 				printf("\t -H --help\t\tdisplay usage summary\n");
 				printf("\t -V --version\t\tdisplay version\n");
-				printf("\t -F --settings\t\tsettings file\n");
+				printf("\t -C --config\t\tconfig file\n");
 				goto clear;
 			break;
 			case 'V':
 				printf("%s %s\n", progname, VERSION);
 				goto clear;
 			break;
-			case 'F':
-				if(settings_set_file(args) == EXIT_FAILURE) {
+			case 'C':
+				if(config_set_file(args) == EXIT_FAILURE) {
 					goto clear;
 				}
 			break;
@@ -290,36 +287,54 @@ int main(int argc, char **argv) {
 	}
 	options_delete(options);
 
-	char pilight_daemon[] = "pilight-daemon";
-	char pilight_learn[] = "pilight-learn";
-	char pilight_raw[] = "pilight-raw";
+	char *pilight_daemon = strdup("pilight-daemon");
+	if(!pilight_daemon) {
+		logprintf(LOG_ERR, "out of memory");
+		exit(EXIT_FAILURE);
+	}
 	if((pid = findproc(pilight_daemon, NULL, 1)) > 0) {
 		logprintf(LOG_ERR, "pilight-daemon instance found (%d)", (int)pid);
+		sfree((void *)&pilight_daemon);
 		goto clear;
 	}
-
-	if((pid = findproc(pilight_learn, NULL, 1)) > 0) {
-		logprintf(LOG_ERR, "pilight-learn instance found (%d)", (int)pid);
-		goto clear;
+	sfree((void *)&pilight_daemon);	
+	
+	char *pilight_raw = strdup("pilight-raw");
+	if(!pilight_raw) {
+		logprintf(LOG_ERR, "out of memory");
+		exit(EXIT_FAILURE);
 	}
-
 	if((pid = findproc(pilight_raw, NULL, 1)) > 0) {
 		logprintf(LOG_ERR, "pilight-raw instance found (%d)", (int)pid);
+		sfree((void *)&pilight_raw);
 		goto clear;
 	}
+	sfree((void *)&pilight_raw);
 
-	if(settings_read() != 0) {
+	char *pilight_learn = strdup("pilight-learn");
+	if(!pilight_learn) {
+		logprintf(LOG_ERR, "out of memory");
+		exit(EXIT_FAILURE);
+	}
+	if((pid = findproc(pilight_learn, NULL, 1)) > 0) {
+		logprintf(LOG_ERR, "pilight-learn instance found (%d)", (int)pid);
+		sfree((void *)&pilight_learn);
+		goto clear;
+	}
+	sfree((void *)&pilight_learn);
+
+	if(config_read() != 0) {
 		goto clear;
 	}
 
 	hardware_init();
 
-	if(settings_find_string("hardware-file", &hwfile) == 0) {
-		hardware_set_file(hwfile);
-		if(hardware_read() == EXIT_FAILURE) {
-			goto clear;
-		}
-	}
+	// if(config_find_string("hardware-file", &hwfile) == 0) {
+		// hardware_set_file(hwfile);
+		// if(hardware_read() == EXIT_FAILURE) {
+			// goto clear;
+		// }
+	// }
 
 	/* Start threads library that keeps track of all threads used */
 	threads_create(&pth, NULL, &threads_start, (void *)NULL);

@@ -78,6 +78,8 @@ int dso_gc(void) {
 		sfree((void *)&tmp);
 	}
 	sfree((void *)&dso);
+
+	logprintf(LOG_DEBUG, "garbage collected dso library");
 	return 0;
 }
 

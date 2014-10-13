@@ -1,5 +1,5 @@
 /*
-	Copyright (C) 2013 CurlyMo
+	Copyright (C) 2013 - 2014 CurlyMo
 
 	This file is part of pilight.
 
@@ -73,10 +73,11 @@ pid_t findproc(char *cmd, char *args, int loosely) {
 
     while((ent = readdir(dir)) != NULL) {
 		if(isNumeric(ent->d_name) == 0) {
-			snprintf(fname, sizeof(fname), "/proc/%s/cmdline", ent->d_name);
+			sprintf(fname, "/proc/%s/cmdline", ent->d_name);
 			if((fd = open(fname, O_RDONLY, 0)) > -1) {
+				memset(cmdline, '\0', sizeof(cmdline));
 				if((ptr = (int)read(fd, cmdline, sizeof(cmdline)-1)) > -1) {
-					i = 0, match = 0, y = 0, y = '\n';
+					i = 0, match = 0, y = '\n';
 					/* Replace all NULL terminators for newlines */
 					for(i=0;i<ptr;i++) {
 						if(i < ptr && cmdline[i] == '\0') {
@@ -84,7 +85,7 @@ pid_t findproc(char *cmd, char *args, int loosely) {
 							y = ' ';
 						}
 					}
-					cmdline[ptr-1] = '\0';
+					cmdline[ptr] = '\0';
 					match = 0;
 					/* Check if program matches */
 					if((pch = strtok(cmdline, "\n")) == NULL) {
@@ -337,12 +338,14 @@ char *distroname(void) {
 	}
 }
 
-
+/* The UUID is either generated from the
+   processor serial number or from the
+   onboard LAN controller mac address */
 char *genuuid(char *ifname) {
 	char *mac = NULL, *upnp_id = NULL;
-	char a[1024], serial[UUID_LENGTH];
+	char a[1024], serial[UUID_LENGTH+1];
 
-	memset(serial, '\0', UUID_LENGTH);
+	memset(serial, '\0', UUID_LENGTH+1);
 	FILE *fp = fopen("/proc/cpuinfo", "r");
 	if(fp != NULL) {
 		while(!feof(fp)) {
@@ -350,19 +353,21 @@ char *genuuid(char *ifname) {
 				break;
 			}
 			if(strstr(a, "Serial") != NULL) {
-				sscanf(a, "Serial          : %s\n", (char *)&serial);
-				memmove(&serial[5], &serial[4], 16);
-				serial[4] = '-';
-				memmove(&serial[8], &serial[7], 13);
-				serial[7] = '-';
-				memmove(&serial[11], &serial[10], 10);
-				serial[10] = '-';
-				memmove(&serial[14], &serial[13], 7);
-				serial[13] = '-';
-				upnp_id = malloc(UUID_LENGTH);
-				strcpy(upnp_id, serial);
-				fclose(fp);
-				return upnp_id;
+				sscanf(a, "Serial          : %16s%*[ \n\r]", (char *)&serial);
+				if(atoi(serial) != 0) {
+					memmove(&serial[5], &serial[4], 16);
+					serial[4] = '-';
+					memmove(&serial[8], &serial[7], 13);
+					serial[7] = '-';
+					memmove(&serial[11], &serial[10], 10);
+					serial[10] = '-';
+					memmove(&serial[14], &serial[13], 7);
+					serial[13] = '-';
+					upnp_id = malloc(UUID_LENGTH+1);
+					strcpy(upnp_id, serial);
+					fclose(fp);
+					return upnp_id;
+				}
 			}
 		}
 		fclose(fp);
@@ -689,6 +694,12 @@ void whitelist_free(void) {
 		}
 		sfree((void *)&whitelist_cache);
 	}
+}
+
+/* Check if a given file exists */
+int file_exists(char *filename) {
+	struct stat sb;
+	return stat(filename, &sb);
 }
 
 /* Check if a given path exists */

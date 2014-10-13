@@ -4,32 +4,33 @@ ifdef CROSS_COMPILE
 	INCLUDE = -isystem/usr/include/ -isystem/usr/include/x86_64-linux-gnu/
 endif
 ifneq (, $(findstring x86_64, $(SYS)))
-	OSFLAGS = -Ofast -fPIC -march=native -mtune=native -mfpmath=sse -Wconversion -Wunreachable-code -Wstrict-prototypes 
+	OSFLAGS =  -O0 -fPIC -march=native -mtune=native -mfpmath=sse -Wconversion -Wunreachable-code -Wstrict-prototypes 
 endif
 ifneq (, $(findstring arm, $(SYS)))
 	ifneq (, $(findstring gnueabihf, $(SYS)))
-		OSFLAGS = -Ofast -mfloat-abi=hard -mfpu=vfp -march=armv6 -Wconversion -Wunreachable-code -Wstrict-prototypes 
+		OSFLAGS =  -O0 -mfloat-abi=hard -mfpu=vfp -march=armv6 -Wconversion -Wunreachable-code -Wstrict-prototypes 
 	endif
 	ifneq (, $(findstring gnueabi, $(SYS)))
-		OSFLAGS = -Ofast -mfloat-abi=hard -mfpu=vfp -march=armv6 -Wconversion -Wunreachable-code -Wstrict-prototypes 
+		OSFLAGS =  -O0 -mfloat-abi=hard -mfpu=vfp -march=armv6 -Wconversion -Wunreachable-code -Wstrict-prototypes 
 	endif	
 	ifneq (, $(findstring gnueabisf, $(SYS)))
-		OSFLAGS = -Ofast -mfloat-abi=soft -mfpu=vfp -march=armv6 -Wconversion -Wunreachable-code -Wstrict-prototypes 
+		OSFLAGS =  -O0 -mfloat-abi=soft -mfpu=vfp -march=armv6 -Wconversion -Wunreachable-code -Wstrict-prototypes 
 	endif
 endif
 ifneq (, $(findstring amd64, $(SYS)))
-	OSFLAGS = -O3 -fPIC -march=native -mtune=native -mfpmath=sse -Wno-conversion
+	OSFLAGS =  -O0 -fPIC -march=native -mtune=native -mfpmath=sse -Wno-conversion
 endif
 GIT_HASH := $(shell git describe --always)
-CFLAGS = -ffast-math $(OSFLAGS) -Wl,-rpath=/usr/local/lib/,-rpath=/usr/lib/,-rpath=/lib/ -Wfloat-equal -Wshadow -Wpointer-arith -Wcast-align -Wstrict-overflow=5 -Wwrite-strings -Waggregate-return -Wcast-qual -Wswitch-default -Wswitch-enum -Wformat=2 -g -Wall -I. -isystem.. -Ilibs/pilight/ -Ilibs/protocols/ -Ilibs/hardware/ -Ilibs/avrdude/ -Ilibs/platform/ -pthread -lm -ldl -DHASH=\"$(GIT_HASH)\"
-SUBDIRS = libs/pilight libs/protocols libs/hardware libs/avrdude libs/platform
+CFLAGS = -ffast-math $(OSFLAGS) -Wl,-rpath=/usr/local/lib/,-rpath=/usr/lib/,-rpath=/lib/ -Wfloat-equal -Wshadow -Wpointer-arith -Wcast-align -Wstrict-overflow=5 -Wwrite-strings -Waggregate-return -Wcast-qual -Wswitch-default -Wswitch-enum -Wformat=2 -g -Wall -I. -isystem.. -Ilibs/pilight/ -Ilibs/protocols/ -Ilibs/hardware/ -Ilibs/avrdude/ -Ilibs/platform/ -Ilibs/config/ -pthread -lm -ldl -DHASH=\"$(GIT_HASH)\"
+SUBDIRS = libs/pilight libs/protocols libs/hardware libs/avrdude libs/platform libs/config
 SRC = $(wildcard *.c)
 INCLUDES = $(wildcard libs/pilight/*.c) $(wildcard libs/avrdude/*.c)
 PROGAMS = $(patsubst %.c,pilight-%,$(SRC))
-LIBS = libs/pilight/pilight.o libs/avrdude/avrdude.o libs/protocols/protocols.o libs/hardware/hardware.o libs/platform/platform.o
+LIBS = libs/pilight/pilight.o libs/avrdude/avrdude.o libs/protocols/protocols.o libs/hardware/hardware.o libs/platform/platform.o libs/config/config.o
 PROTCOLS := $(shell cd libs/protocols/ && find * -name \*.so)
 HARDWARE := $(shell cd libs/hardware/ && find * -name \*.so)
 PLATFORM := $(shell cd libs/platform/ && find * -name \*.so)
+CONFIG := $(shell cd libs/config/ && find * -name \*.so)
 WEBFILES := $(shell cd web && find * -type f)
 WEBDIRS := $(shell cd web && find * -type d )
 
@@ -40,8 +41,8 @@ subdirs: modules $(SUBDIRS) all
 modules:
 	ls libs/protocols/*.h | sed -e"" 's/libs/	#include "../g' -e"" 's/\.h/\.h"/g' > libs/pilight/protocol_header.h
 	grep -h ".*Init(void)" libs/protocols/*.c | sed -e"" "s/void /	/" -e"" "s/(void) {/();/" > libs/pilight/protocol_init.h
-	ls libs/hardware/*.h | sed -e"" 's/libs/	#include "../g' -e"" 's/\.h/\.h"/g' > libs/pilight/hardware_header.h
-	grep -h "void .*Init(void)" libs/hardware/*.c | sed -e"" "s/void /	/" -e"" "s/(void) {/();/" > libs/pilight/hardware_init.h
+	ls libs/hardware/*.h | sed -e"" 's/libs/	#include "../g' -e"" 's/\.h/\.h"/g' > libs/config/hardware_header.h
+	grep -h "void .*Init(void)" libs/hardware/*.c | sed -e"" "s/void /	/" -e"" "s/(void) {/();/" > libs/config/hardware_init.h
 
 $(SUBDIRS):
 	$(MAKE) -C $@ GIT_HASH=$(GIT_HASH)
@@ -64,9 +65,6 @@ pilight-receive: receive.c $(INCLUDES) $(LIBS) libpilight.so
 	$(GCC) $(CFLAGS) -o $@ $(patsubst pilight-%,%.c,$@) libpilight.so -lz -lrt
 
 pilight-debug: debug.c $(INCLUDES) $(LIBS) libpilight.so
-	$(GCC) $(CFLAGS) -o $@ $(patsubst pilight-%,%.c,$@) libpilight.so -lz -lrt
-
-pilight-learn: learn.c $(INCLUDES) $(LIBS) libpilight.so
 	$(GCC) $(CFLAGS) -o $@ $(patsubst pilight-%,%.c,$@) libpilight.so -lz -lrt
 
 pilight-control: control.c $(INCLUDES) $(LIBS) libpilight.so
@@ -98,7 +96,6 @@ install:
 	install -m 0655 pilight-receive /usr/local/bin/
 	install -m 0655 pilight-control /usr/local/bin/
 	install -m 0655 pilight-debug /usr/local/sbin/
-	install -m 0655 pilight-learn /usr/local/sbin/
 	install -m 0655 pilight-raw /usr/local/sbin/
 	install -m 0655 pilight-uuid /usr/local/bin/
 	install -m 0655 pilight-flash /usr/local/sbin/
