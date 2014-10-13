@@ -895,15 +895,15 @@ int webserver_start(void) {
 
 	if(which("php-cgi") != 0) {
 		webserver_php = 0;
-		logprintf(LOG_ERR, "php support disabled due to missing php-cgi executable");
+		logprintf(LOG_NOTICE, "php support disabled due to missing php-cgi executable");
 	}
 	if(which("cat") != 0) {
 		webserver_php = 0;
-		logprintf(LOG_ERR, "php support disabled due to missing cat executable");
+		logprintf(LOG_NOTICE, "php support disabled due to missing cat executable");
 	}
 	if(which("base64") != 0) {
 		webserver_php = 0;
-		logprintf(LOG_ERR, "php support disabled due to missing base64 executable");
+		logprintf(LOG_NOTICE, "php support disabled due to missing base64 executable");
 	}
 
 	pthread_mutexattr_init(&webqueue_attr);

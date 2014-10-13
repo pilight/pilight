@@ -425,13 +425,13 @@ char *genuuid(char *ifname) {
 #endif
 
 	if(strlen(mac) > 0) {
-		upnp_id = malloc(UUID_LENGTH);
+		upnp_id = malloc(UUID_LENGTH+1);
 		sprintf(upnp_id,
-				"0000-%c%c-%c%c-%c%c-%c%c%c%c%c%c",
+				"0000-%c%c-%c%c-%c%c-%c%c%c%c%c0",
 				mac[0], mac[1], mac[2],
 				mac[3], mac[4], mac[5],
 				mac[6], mac[7], mac[9],
-				mac[10], mac[11], mac[12]);
+				mac[10], mac[11]);
 		sfree((void *)&mac);
 		return upnp_id;
 	}
