@@ -115,14 +115,14 @@ void hardware_init(void) {
 						if(init && compatibility) {
 							compatibility(&module);
 							if(module.name && module.version && module.reqversion) {
-								char ver[strlen(module.reqversion)];
+								char ver[strlen(module.reqversion)+1];
 								strcpy(ver, module.reqversion);
 
 								if((check1 = vercmp(ver, pilight_version)) > 0) {
 									valid = 0;
 								}
 								if(check1 == 0 && module.reqcommit) {
-									char com[strlen(module.reqcommit)];
+									char com[strlen(module.reqcommit)+1];
 									strcpy(com, module.reqcommit);
 									sscanf(HASH, "v%*[0-9].%*[0-9]-%[0-9]-%*[0-9a-zA-Z\n\r]", pilight_commit);
 
@@ -132,7 +132,7 @@ void hardware_init(void) {
 								}
 
 								if(valid) {
-									char tmp[strlen(module.name)];
+									char tmp[strlen(module.name)+1];
 									strcpy(tmp, module.name);
 									hardware_remove(tmp);
 									init();

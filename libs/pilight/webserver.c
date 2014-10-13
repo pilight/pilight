@@ -320,7 +320,7 @@ static int webserver_request_handler(struct mg_connection *conn) {
 		} else if(conn->uri) {
 			if(strcmp(conn->uri, "/send") == 0) {
 				if(conn->query_string != NULL) {
-					char out[strlen(conn->query_string)];
+					char out[strlen(conn->query_string)+1];
 					urldecode(conn->query_string, out);
 					socket_write(sockfd, out);
 					mg_printf_data(conn, "{\"message\":\"success\"}");

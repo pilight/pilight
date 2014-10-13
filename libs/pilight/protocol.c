@@ -144,7 +144,7 @@ void protocol_init(void) {
 								}
 
 								if(check1 == 0 && module.reqcommit) {
-									char com[strlen(module.reqcommit)];
+									char com[strlen(module.reqcommit)+1];
 									strcpy(com, module.reqcommit);
 									sscanf(HASH, "v%*[0-9].%*[0-9]-%[0-9]-%*[0-9a-zA-Z\n\r]", pilight_commit);
 
@@ -153,7 +153,7 @@ void protocol_init(void) {
 									}
 								}
 								if(valid) {
-									char tmp[strlen(module.name)];
+									char tmp[strlen(module.name)+1];
 									strcpy(tmp, module.name);
 									protocol_remove(tmp);
 									init();
