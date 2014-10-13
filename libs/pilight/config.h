@@ -39,6 +39,7 @@ int config_set_file(char *settfile);
 void config_register(config_t **listener, const char *name);
 int config_gc(void);
 int config_set_file(char *settfile);
+char *config_get_file(void);
 void config_init(void);
 
 #endif

@@ -39,19 +39,12 @@ void gc_handler(int sig) {
 	}
 	if(((sig == SIGINT || sig == SIGTERM || sig == SIGTSTP) && gc_enable == 1) ||
 	  (!(sig == SIGINT || sig == SIGTERM || sig == SIGTSTP) && gc_enable == 0)) {
-		if(devicesfile != NULL && gc_enable == 1) {
+		if(config_get_file() != NULL && gc_enable == 1) {
 			gc_enable = 0;
-			// JsonNode *joutput = devices2json(-1);
-			// char *output = json_stringify(joutput, "\t");
-			// devices_write(output);
-			// json_delete(joutput);
-			// sfree((void *)&output);
-			// joutput = NULL;
-			// sfree((void *)&devicesfile);
-			// devicesfile = NULL;
+			config_write();
 		}
 		gc_enable = 0;
-		// devices_gc();
+		config_gc();
 		gc_run();
 	}
 }

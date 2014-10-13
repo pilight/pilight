@@ -31,7 +31,9 @@
 
 #include "log.h"
 #include "wiringX.h"
-#include "i2c-dev.h"
+#ifndef __FreeBSD__
+	#include "i2c-dev.h"
+#endif
 #include "hummingboard.h"
 
 #define FUNC_GPIO					0x5
@@ -309,6 +311,7 @@ static int hummingboardGC(void) {
 	return 0;
 }
 
+#ifndef __FreeBSD__
 static int hummingboardI2CRead(int fd) {
 	return i2c_smbus_read_byte(fd);
 }
@@ -351,6 +354,7 @@ static int hummingboardI2CSetup(int devId) {
 
 	return fd;
 }
+#endif
 
 void hummingboardInit(void) {
 
@@ -364,6 +368,7 @@ void hummingboardInit(void) {
 	hummingboard->identify=&identify;
 	hummingboard->isr=&hummingboardISR;
 	hummingboard->waitForInterrupt=&hummingboardWaitForInterrupt;
+#ifndef __FreeBSD__
 	hummingboard->I2CRead=&hummingboardI2CRead;
 	hummingboard->I2CReadReg8=&hummingboardI2CReadReg8;
 	hummingboard->I2CReadReg16=&hummingboardI2CReadReg16;
@@ -371,5 +376,6 @@ void hummingboardInit(void) {
 	hummingboard->I2CWriteReg8=&hummingboardI2CWriteReg8;
 	hummingboard->I2CWriteReg16=&hummingboardI2CWriteReg16;
 	hummingboard->I2CSetup=&hummingboardI2CSetup;
+#endif
 	hummingboard->gc=&hummingboardGC;
 }

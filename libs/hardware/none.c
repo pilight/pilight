@@ -26,7 +26,7 @@
 #include "dso.h"
 #include "none.h"
 
-static int noneSend(int *code) {
+static int noneSend(int *code, int rawlen, int repeats) {
 	sleep(1);
 	return EXIT_SUCCESS;
 }

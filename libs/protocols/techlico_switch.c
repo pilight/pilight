@@ -180,12 +180,12 @@ void techlicoSwInit(void) {
 	techlico_switch->rawlen = 50;
 	techlico_switch->binlen = 12;
 
-	options_add(&techlico_switch->options, 't', "on", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
-	options_add(&techlico_switch->options, 'f', "off", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
-	options_add(&techlico_switch->options, 'u', "unit", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, NULL, "^([1-4])$");
-	options_add(&techlico_switch->options, 'i', "id", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, NULL, "^([0-9]{1,4}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5])$");
+	options_add(&techlico_switch->options, 't', "on", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
+	options_add(&techlico_switch->options, 'f', "off", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
+	options_add(&techlico_switch->options, 'u', "unit", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^([1-4])$");
+	options_add(&techlico_switch->options, 'i', "id", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^([0-9]{1,4}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5])$");
 
-	options_add(&techlico_switch->options, 0, "gui-readonly", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
+	options_add(&techlico_switch->options, 0, "readonly", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 
 	techlico_switch->parseCode=&techlicoSwParseCode;
 	techlico_switch->createCode=&techlicoSwCreateCode;
@@ -196,7 +196,7 @@ void techlicoSwInit(void) {
 void compatibility(struct module_t *module) {
 	module->name = "techlico_switch";
 	module->version = "0.9";
-	module->reqversion = "5.0";
+	module->reqversion = "6.0";
 	module->reqcommit = NULL;
 }
 
@@ -204,5 +204,3 @@ void init(void) {
 	techlicoSwInit();
 }
 #endif
-
-

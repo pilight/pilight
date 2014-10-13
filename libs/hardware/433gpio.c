@@ -57,7 +57,7 @@ static unsigned short gpio433HwDeinit(void) {
 }
 
 static int gpio433Send(int *code, int rawlen, int repeats) {
-	unsigned short r = 0, x = 0;
+	int r = 0, x = 0;
 	if(gpio_433_out >= 0) {
 		for(r=0;r<repeats;r++) {
 			for(x=0;x<rawlen;x+=2) {

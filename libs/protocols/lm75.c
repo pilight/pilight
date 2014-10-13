@@ -98,7 +98,7 @@ static void *lm75Parse(void *param) {
 
 	if(json_find_number(json, "poll-interval", &itmp) == 0)
 		interval = (int)round(itmp);
-	if(json_find_number(json, "device-temperature-offset", &itmp) == 0)
+	if(json_find_number(json, "temperature-offset", &itmp) == 0)
 		temp_offset = (int)round(itmp);
 
 #ifndef __FreeBSD__
@@ -199,12 +199,12 @@ void lm75Init(void) {
 	lm75->devtype = WEATHER;
 	lm75->hwtype = SENSOR;
 
-	options_add(&lm75->options, 't', "temperature", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, NULL, "^[0-9]{1,3}$");
-	options_add(&lm75->options, 'i', "id", OPTION_HAS_VALUE, CONFIG_ID, JSON_STRING, NULL, "0x[0-9a-f]{2}");
+	options_add(&lm75->options, 't', "temperature", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9]{1,3}$");
+	options_add(&lm75->options, 'i', "id", OPTION_HAS_VALUE, DEVICES_ID, JSON_STRING, NULL, "0x[0-9a-f]{2}");
 
-	options_add(&lm75->options, 0, "device-decimals", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)1, "[0-9]");
-	options_add(&lm75->options, 0, "gui-decimals", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)1, "[0-9]");
-	options_add(&lm75->options, 0, "gui-show-temperature", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
+	options_add(&lm75->options, 0, "decimals", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *)1, "[0-9]");
+	options_add(&lm75->options, 0, "decimals", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)1, "[0-9]");
+	options_add(&lm75->options, 0, "show-temperature", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
 
 	lm75->initDev=&lm75InitDev;
 	lm75->threadGC=&lm75ThreadGC;
@@ -214,7 +214,7 @@ void lm75Init(void) {
 void compatibility(struct module_t *module) {
 	module->name = "lm75";
 	module->version = "1.0";
-	module->reqversion = "5.0";
+	module->reqversion = "6.0";
 	module->reqcommit = NULL;
 }
 

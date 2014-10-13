@@ -28,6 +28,7 @@
 #include <sys/ioctl.h>
 
 #include "log.h"
+
 #include "wiringX.h"
 #include "hummingboard.h"
 #include "raspberrypi.h"

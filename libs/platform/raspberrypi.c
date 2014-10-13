@@ -35,7 +35,9 @@
 
 #include "log.h"
 #include "wiringX.h"
-#include "i2c-dev.h"
+#ifndef __FreeBSD__
+	#include "i2c-dev.h"
+#endif
 #include "raspberrypi.h"
 
 #define	WPI_MODE_PINS		 0
@@ -685,6 +687,7 @@ static int raspberrypiGC(void) {
 	return 0;
 }
 
+#ifndef __FreeBSD__
 static int raspberrypiI2CRead(int fd) {
 	return i2c_smbus_read_byte(fd);
 }
@@ -735,6 +738,7 @@ static int raspberrypiI2CSetup(int devId) {
 
 	return fd;
 }
+#endif
 
 void raspberrypiInit(void) {
 
@@ -748,6 +752,7 @@ void raspberrypiInit(void) {
 	raspberrypi->identify=&piBoardRev;
 	raspberrypi->isr=&raspberrypiISR;
 	raspberrypi->waitForInterrupt=&raspberrypiWaitForInterrupt;
+#ifndef __FreeBSD__	
 	raspberrypi->I2CRead=&raspberrypiI2CRead;
 	raspberrypi->I2CReadReg8=&raspberrypiI2CReadReg8;
 	raspberrypi->I2CReadReg16=&raspberrypiI2CReadReg16;
@@ -755,5 +760,6 @@ void raspberrypiInit(void) {
 	raspberrypi->I2CWriteReg8=&raspberrypiI2CWriteReg8;
 	raspberrypi->I2CWriteReg16=&raspberrypiI2CWriteReg16;
 	raspberrypi->I2CSetup=&raspberrypiI2CSetup;
+#endif
 	raspberrypi->gc=&raspberrypiGC;
 }

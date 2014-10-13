@@ -134,6 +134,7 @@ if(${MODULESPACK} MATCHES "ON")
 endif()
 
 include_directories("${PROJECT_SOURCE_DIR}/libs/pilight/")
+include_directories("${PROJECT_SOURCE_DIR}/libs/config/")
 include_directories("${PROJECT_SOURCE_DIR}/libs/avrdude/")
 include_directories("${PROJECT_SOURCE_DIR}/libs/platform/")
 
@@ -151,6 +152,10 @@ file(GLOB platform_headers
 
 file(GLOB platform
 	"${PROJECT_SOURCE_DIR}/libs/platform/*.c"
+)
+
+file(GLOB config
+	"${PROJECT_SOURCE_DIR}/libs/config/*.c"
 )
 
 file(GLOB hardware_headers
@@ -534,7 +539,7 @@ if(${MODULESPACK} MATCHES "OFF")
 
 	string(REPLACE "!" "\n" header4 ${header3})
 	set(HARDWARE_HEADERS ${header4})
-	configure_file(libs/pilight/hardware_header.h.in libs/pilight/hardware_header.h)	
+	configure_file(libs/config/hardware_header.h.in libs/config/hardware_header.h)	
 
 	execute_process(
 	COMMAND grep -h "void .*Init(void)" ${hardware}
@@ -551,7 +556,7 @@ if(${MODULESPACK} MATCHES "OFF")
 
 	string(REPLACE "!" ";" init4 ${init3})
 	set(HARDWARE_INIT ${init4})
-	configure_file(libs/pilight/hardware_init.h.in libs/pilight/hardware_init.h)	
+	configure_file(libs/config/hardware_init.h.in libs/config/hardware_init.h)	
 
 	configure_file(pilight.h.in pilight.h)
 endif()
@@ -581,7 +586,7 @@ if(${MODULESPACK} MATCHES "ON")
 endif()
 
 if(${MODULESPACK} MATCHES "OFF")
-	add_library(pilight OBJECT ${pilight} ${protocol} ${hardware} ${platform})
+	add_library(pilight OBJECT ${pilight} ${protocol} ${hardware} ${platform} ${config})
 
 	add_library(pilight_static STATIC $<TARGET_OBJECTS:pilight>)
 	add_library(pilight_shared SHARED $<TARGET_OBJECTS:pilight>)
@@ -661,12 +666,6 @@ if(${MODULESPACK} MATCHES "OFF")
 	target_link_libraries(pilight-control ${CMAKE_DL_LIBS})
 	target_link_libraries(pilight-control m)
 	target_link_libraries(pilight-control ${CMAKE_THREAD_LIBS_INIT})
-
-	add_executable(pilight-learn learn.c)
-	target_link_libraries(pilight-learn pilight_shared)
-	target_link_libraries(pilight-learn ${CMAKE_DL_LIBS})
-	target_link_libraries(pilight-learn m)
-	target_link_libraries(pilight-learn ${CMAKE_THREAD_LIBS_INIT})
 
 	add_executable(pilight-receive receive.c)
 	target_link_libraries(pilight-receive pilight_shared)

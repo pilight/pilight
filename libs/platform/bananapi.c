@@ -35,7 +35,9 @@
 
 #include "log.h"
 #include "wiringX.h"
-#include "i2c-dev.h"
+#ifndef __FreeBSD__
+	#include "i2c-dev.h"
+#endif
 #include "bananapi.h"
 
 #define	WPI_MODE_PINS		 0
@@ -516,6 +518,7 @@ static int bananapiGC(void) {
 	return 0;
 }
 
+#ifndef __FreeBSD__
 static int bananapiI2CRead(int fd) {
 	return i2c_smbus_read_byte(fd);
 }
@@ -566,6 +569,7 @@ static int bananapiI2CSetup(int devId) {
 
 	return fd;
 }
+#endif
 
 void bananapiInit(void) {
 
@@ -579,6 +583,7 @@ void bananapiInit(void) {
 	bananapi->identify=&piBoardRev;
 	bananapi->isr=&bananapiISR;
 	bananapi->waitForInterrupt=&bananapiWaitForInterrupt;
+#ifndef __FreeBSD__	
 	bananapi->I2CRead=&bananapiI2CRead;
 	bananapi->I2CReadReg8=&bananapiI2CReadReg8;
 	bananapi->I2CReadReg16=&bananapiI2CReadReg16;
@@ -586,5 +591,6 @@ void bananapiInit(void) {
 	bananapi->I2CWriteReg8=&bananapiI2CWriteReg8;
 	bananapi->I2CWriteReg16=&bananapiI2CWriteReg16;
 	bananapi->I2CSetup=&bananapiI2CSetup;
+#endif
 	bananapi->gc=&bananapiGC;
 }

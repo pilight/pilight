@@ -244,6 +244,10 @@ int config_set_file(char *settfile) {
 	return EXIT_SUCCESS;
 }
 
+char *config_get_file(void) {
+	return configfile;
+}
+
 void config_init() {
 	hardware_init();
 	settings_init();
