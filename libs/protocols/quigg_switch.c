@@ -61,7 +61,7 @@ static void quiggSwParseCode(void) {
 			quigg_switch->binary[x/2] = 1;
 			if((x / 2) > 11 && (x / 2) < 19) {
 				iParityData = iParity;
-				iParity =- iParity;
+				iParity = -iParity;
 			}
 		} else {
 			quigg_switch->binary[x/2] = 0;

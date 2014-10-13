@@ -1,5 +1,5 @@
 /*
-	Copyright (C) 2013 CurlyMo
+	Copyright (C) 2013 - 2014 CurlyMo
 
 	This file is part of pilight.
 
@@ -338,7 +338,9 @@ char *distroname(void) {
 	}
 }
 
-
+/* The UUID is either generated from the
+   processor serial number or from the
+   onboard LAN controller mac address */
 char *genuuid(char *ifname) {
 	char *mac = NULL, *upnp_id = NULL;
 	char a[1024], serial[UUID_LENGTH+1];
@@ -352,18 +354,20 @@ char *genuuid(char *ifname) {
 			}
 			if(strstr(a, "Serial") != NULL) {
 				sscanf(a, "Serial          : %16s%*[ \n\r]", (char *)&serial);
-				memmove(&serial[5], &serial[4], 16);
-				serial[4] = '-';
-				memmove(&serial[8], &serial[7], 13);
-				serial[7] = '-';
-				memmove(&serial[11], &serial[10], 10);
-				serial[10] = '-';
-				memmove(&serial[14], &serial[13], 7);
-				serial[13] = '-';
-				upnp_id = malloc(UUID_LENGTH+1);
-				strcpy(upnp_id, serial);
-				fclose(fp);
-				return upnp_id;
+				if(atoi(serial) != 0) {
+					memmove(&serial[5], &serial[4], 16);
+					serial[4] = '-';
+					memmove(&serial[8], &serial[7], 13);
+					serial[7] = '-';
+					memmove(&serial[11], &serial[10], 10);
+					serial[10] = '-';
+					memmove(&serial[14], &serial[13], 7);
+					serial[13] = '-';
+					upnp_id = malloc(UUID_LENGTH+1);
+					strcpy(upnp_id, serial);
+					fclose(fp);
+					return upnp_id;
+				}
 			}
 		}
 		fclose(fp);
@@ -690,6 +694,12 @@ void whitelist_free(void) {
 		}
 		sfree((void *)&whitelist_cache);
 	}
+}
+
+/* Check if a given file exists */
+int file_exists(char *filename) {
+	struct stat sb;
+	return stat(filename, &sb);
 }
 
 /* Check if a given path exists */
