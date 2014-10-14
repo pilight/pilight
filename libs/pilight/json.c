@@ -1031,7 +1031,7 @@ static void emit_array_indented(SB *out, const JsonNode *array, const char *spac
 	const JsonNode *tmp = json_first_child(array);
 	int i, x;
 
-	if(tmp->tag == JSON_STRING || tmp->tag == JSON_NUMBER) {
+	if(tmp && (tmp->tag == JSON_STRING || tmp->tag == JSON_NUMBER)) {
 		emit_array(out, array);
 	} else {
 		if (element == NULL) {

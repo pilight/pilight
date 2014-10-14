@@ -97,7 +97,7 @@ void protocol_init(void) {
 	void (*compatibility)(struct module_t *module);
 	char path[255];
 	struct module_t module;
-	char pilight_version[strlen(VERSION)];
+	char pilight_version[strlen(VERSION)+1];
 	char pilight_commit[3];
 	char *protocol_root = NULL;
 	int check1 = 0, check2 = 0, valid = 1, protocol_root_free = 0;
@@ -144,7 +144,7 @@ void protocol_init(void) {
 								}
 
 								if(check1 == 0 && module.reqcommit) {
-									char com[strlen(module.reqcommit)];
+									char com[strlen(module.reqcommit)+1];
 									strcpy(com, module.reqcommit);
 									sscanf(HASH, "v%*[0-9].%*[0-9]-%[0-9]-%*[0-9a-zA-Z\n\r]", pilight_commit);
 
@@ -153,7 +153,7 @@ void protocol_init(void) {
 									}
 								}
 								if(valid) {
-									char tmp[strlen(module.name)];
+									char tmp[strlen(module.name)+1];
 									strcpy(tmp, module.name);
 									protocol_remove(tmp);
 									init();

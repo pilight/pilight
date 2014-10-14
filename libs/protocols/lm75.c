@@ -135,7 +135,7 @@ static void *lm75Parse(void *param) {
 					lm75->message = NULL;
 				} else {
 					logprintf(LOG_DEBUG, "error connecting to lm75");
-					logprintf(LOG_DEBUG, "(probably i2c bus error from wiringPiI2CSetup)");
+					logprintf(LOG_DEBUG, "(probably i2c bus error from wiringXI2CSetup)");
 					logprintf(LOG_DEBUG, "(maybe wrong id? use i2cdetect to find out)");
 					protocol_thread_wait(node, 1, &nrloops);
 				}

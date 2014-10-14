@@ -130,7 +130,9 @@ static int identify(void) {
 	fclose(cpuFd) ;
 
 	sscanf(hardware, "Hardware%*[ \t]:%*[ ]%[a-zA-Z0-9 ./()]%*[\n]", name);
-	if(strstr(name, "Freescale i.MX6") != NULL) {
+	if(strstr(name, "Freescale i.MX6") != NULL
+	   || strstr(name, "SolidRun i.MX6") != NULL
+	   || strstr(name, "HummingBoard") != NULL) {
 		return 0;
 	} else {
 		return -1;
@@ -168,7 +170,7 @@ static int hummingboardDigitalRead(int pin) {
 static int hummingboardISR(int pin, int mode) {
 	int i = 0, fd = 0, match = 0, count = 0;
 	const char *sMode = NULL;
-	char path[30], c;
+	char path[35], c;
 	pinModes[pin] = SYS;
 
 	if(mode == INT_EDGE_FALLING) {
@@ -270,7 +272,7 @@ static int hummingboardWaitForInterrupt(int pin, int ms) {
 
 	x = poll(&polls, 1, ms);
 
-	(void)read(sysFds[pin], &c, 4);
+	(void)read(sysFds[pin], &c, 1);
 	lseek(sysFds[pin], 0, SEEK_SET);
 
 	return x;
@@ -278,7 +280,7 @@ static int hummingboardWaitForInterrupt(int pin, int ms) {
 
 static int hummingboardGC(void) {
 	int i = 0, fd = 0;
-	char path[30];
+	char path[35];
 	FILE *f = NULL;
 
 	for(i=0;i<NUM_PINS;i++) {

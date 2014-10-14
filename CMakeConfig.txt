@@ -62,6 +62,7 @@ set(PROTOCOL_SELECTREMOTE ON CACHE BOOL "support for the Selectremote switch pro
 set(PROTOCOL_SILVERCREST ON CACHE BOOL "support for the Silvercrest switch protocol")
 set(PROTOCOL_SOMFY ON CACHE BOOL "support for the Somfy Telis-1 protocol")
 set(PROTOCOL_SUNRISESET ON CACHE BOOL "support for the Sunrise / Sunset calculator")
+set(PROTOCOL_TECHLICO ON CACHE BOOL "support for TechLiCo Lamps protocol")
 set(PROTOCOL_TEKNIHALL ON CACHE BOOL "support for the Teknihall weather station protocol")
 set(PROTOCOL_TFA ON CACHE BOOL "support for the TFA weather station protocol")
 set(PROTOCOL_WUNDERGROUND ON CACHE BOOL "support for the Weather Underground API")

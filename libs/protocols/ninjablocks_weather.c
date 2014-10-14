@@ -178,7 +178,7 @@ void ninjablocksWeatherInit(void) {
 	protocol_device_add(ninjablocks_weather, "ninjablocks_weather", "Ninjablocks Weather Sensors");
 	// Footer length ratio: (72080/PULSE_DIV)/2120=2,120
 	protocol_plslen_add(ninjablocks_weather, PULSE_NINJA_WEATHER_FOOTER);
-	ninjablocks_weather->devtype = SENSOR;
+	ninjablocks_weather->devtype = WEATHER;
 	ninjablocks_weather->hwtype = RF433;
 	// LONG=ninjablocks_PULSE_HIGH*SHORT
 	ninjablocks_weather->pulse = 2;
@@ -207,10 +207,10 @@ void ninjablocksWeatherInit(void) {
 
 #ifdef MODULE
 void compatibility(struct module_t *module) {
-	module->name =  "ninjablocks_weather";
-	module->version =  "0.9";
-	module->reqversion =  "5.0";
-	module->reqcommit =  NULL;
+	module->name = "ninjablocks_weather";
+	module->version = "0.9";
+	module->reqversion = "5.0";
+	module->reqcommit = NULL;
 }
 
 void init(void) {

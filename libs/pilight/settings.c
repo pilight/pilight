@@ -417,7 +417,7 @@ int settings_parse(JsonNode *root) {
 		}
 		jsettings = jsettings->next;
 	}
-	json_delete(jsettings);
+
 #ifdef WEBSERVER
 	if(webgui_tpl) {
 		char *tmp = malloc(strlen(webgui_root)+strlen(webgui_tpl)+13);
