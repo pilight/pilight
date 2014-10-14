@@ -169,12 +169,17 @@ static void somfyScreenParseCode(void) {
 			if( rDataTime > PULSE_SOMFY_SHORT_L && rDataTime < PULSE_SOMFY_SHORT_H) {
 			// No Data pulse, Sync only
 				rDataTime=0;
-			} else {
-			// 1st pulse, we are now in the middile of the pulse windows
-				logprintf(LOG_DEBUG, "somfy: First pulse detected");
+				logprintf(LOG_DEBUG, "somfy: First pulse is sync detected");
+			} else if  (rDataTime > PULSE_SOMFY_LONG_L && rDataTime < PULSE_SOMFY_LONG_H) {
+			// if it is 1st pulse, we are now in the middile of the pulse windows
+				logprintf(LOG_DEBUG, "somfy: First pulse is data detected");
 				rDataTime = PULSE_SOMFY_SHORT;
 				somfy->binary[pBin]=1;
 				pBin=pBin+1;
+			} else {
+			// if it is neither a short nor a long pulse, we try to find another SYNC pulse
+				protocol_sync=0;
+				logprintf(LOG_DEBUG, "somfy: First pulse not followed by valid data pulse");
 			}
 			break;
 			case 2:
@@ -208,7 +213,6 @@ static void somfyScreenParseCode(void) {
 			if ( (somfy->raw[pRaw] > PULSE_SOMFY_FOOTER_L) && (somfy->raw[pRaw] < PULSE_SOMFY_FOOTER_H) ) {
 				protocol_sync = 98;
 			} else {
-				int somfy_raw3=somfy->raw[pRaw];
 				protocol_sync = 4;
 				logprintf(LOG_DEBUG, "somfy: protocol 4");
 			}
@@ -219,7 +223,6 @@ static void somfyScreenParseCode(void) {
 			if ( (somfy->raw[pRaw] > PULSE_SOMFY_FOOTER_L) && (somfy->raw[pRaw] < PULSE_SOMFY_FOOTER_H) ) {
 				protocol_sync = 98;
 			} else {
-				int somfy_raw4=somfy->raw[pRaw];
 				protocol_sync = 5;
 				logprintf(LOG_ERR, "somfy: somfy protocol 5");
 			}
@@ -246,7 +249,8 @@ static void somfyScreenParseCode(void) {
 		if (protocol_sync > 95) {
 			logprintf(LOG_DEBUG, "**** Somfy RAW CODE ****");
 			if(log_level_get() >= LOG_DEBUG) {
-				for(x=0;x<pRaw;x++) {
+//				for(x=0;x<pRaw;x++) {
+				for(x=0;x<=somfy->rawlen;x++) {
 					printf("%d ", somfy->raw[x]);
 				}
 				printf("\n");
@@ -599,7 +603,7 @@ void somfyScreenInit(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name =  "somfy";
-	module->version =  "0.91";
+	module->version =  "0.91a";
 	module->reqversion =  "6.0";
 	module->reqcommit =  NULL;
 }
