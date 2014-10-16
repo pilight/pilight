@@ -661,18 +661,19 @@ static int raspberrypiGC(void) {
 	FILE *f = NULL;
 
 	for(i=0;i<NUM_PINS;i++) {
-		if(wiringPiMode == WPI_MODE_PINS || wiringPiMode == WPI_MODE_PHYS || wiringPiMode != WPI_MODE_GPIO) {
+		if(pinModes[i] == OUTPUT) {
 			pinMode(i, INPUT);
-		}
-		sprintf(path, "/sys/class/gpio/gpio%d/value", pinToGpio[i]);
-		if((fd = open(path, O_RDWR)) > 0) {
-			if((f = fopen("/sys/class/gpio/unexport", "w")) == NULL) {
-				logprintf(LOG_ERR, "raspberrypi->gc: Unable to open GPIO unexport interface");
-			}
+		} else if(pinModes[i] == SYS) {
+			sprintf(path, "/sys/class/gpio/gpio%d/value", pinToGpio[i]);
+			if((fd = open(path, O_RDWR)) > 0) {
+				if((f = fopen("/sys/class/gpio/unexport", "w")) == NULL) {
+					logprintf(LOG_ERR, "raspberrypi->gc: Unable to open GPIO unexport interface");
+				}
 
-			fprintf(f, "%d\n", pinToGpio[i]);
-			fclose(f);
-			close(fd);
+				fprintf(f, "%d\n", pinToGpio[i]);
+				fclose(f);
+				close(fd);
+			}
 		}
 		if(sysFds[i] > 0) {
 			close(sysFds[i]);
