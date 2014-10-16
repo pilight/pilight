@@ -495,13 +495,13 @@ static int bananapiGC(void) {
 		if(pinModes[i] == OUTPUT) {
 			pinMode(i, INPUT);
 		} else if(pinModes[i] == SYS) {
-			sprintf(path, "/sys/class/gpio/gpio%d/value", pinToGpio[i]);
+			sprintf(path, "/sys/class/gpio/gpio%d/value", pinToGpioR2[i]);
 			if((fd = open(path, O_RDWR)) > 0) {
 				if((f = fopen("/sys/class/gpio/unexport", "w")) == NULL) {
 					logprintf(LOG_ERR, "bananapi->gc: Unable to open GPIO unexport interface");
 				}
 
-				fprintf(f, "%d\n", pinToGpio[i]);
+				fprintf(f, "%d\n", pinToGpioR2[i]);
 				fclose(f);
 				close(fd);
 			}
