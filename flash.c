@@ -92,7 +92,7 @@ int main(int argc, char **argv) {
 	}
 	options_delete(options);
 
-#ifdef FIRMWARE
+#ifdef FIRMWARE_UPDATER
 	if(strlen(fwfile) == 0) {
 		printf("Usage: %s -f pilight_firmware_tX5_vX.hex\n", progname);
 		goto close;

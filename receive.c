@@ -140,8 +140,8 @@ int main(int argc, char **argv) {
 	struct JsonNode *jclient = json_mkobject();
 	struct JsonNode *joptions = json_mkobject();
 	json_append_member(jclient, "action", json_mkstring("identify"));
-	json_append_member(joptions, "receiver", json_mknumber(1));
-	json_append_member(joptions, "stats", json_mknumber(1));
+	json_append_member(joptions, "receiver", json_mknumber(1, 0));
+	json_append_member(joptions, "stats", json_mknumber(1, 0));
 	json_append_member(jclient, "options", joptions);
 	char *out = json_stringify(jclient, NULL);
 	socket_write(sockfd, out);

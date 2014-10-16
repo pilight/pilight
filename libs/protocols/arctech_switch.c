@@ -33,11 +33,11 @@
 
 static void arctechSwCreateMessage(int id, int unit, int state, int all) {
 	arctech_switch->message = json_mkobject();
-	json_append_member(arctech_switch->message, "id", json_mknumber(id));
+	json_append_member(arctech_switch->message, "id", json_mknumber(id, 0));
 	if(all == 1) {
-		json_append_member(arctech_switch->message, "all", json_mknumber(all));
+		json_append_member(arctech_switch->message, "all", json_mknumber(all, 0));
 	} else {
-		json_append_member(arctech_switch->message, "unit", json_mknumber(unit));
+		json_append_member(arctech_switch->message, "unit", json_mknumber(unit, 0));
 	}
 
 	if(state == 1) {

@@ -36,8 +36,8 @@ static int techlicoSwMap[SWMAP]={0, 3, 192, 15, 12};
 
 static void techlicoSwCreateMessage(int id, int unit, int state) {
 	techlico_switch->message = json_mkobject();
-	json_append_member(techlico_switch->message, "id", json_mknumber(id));
-	json_append_member(techlico_switch->message, "unit", json_mknumber(unit));
+	json_append_member(techlico_switch->message, "id", json_mknumber(id, 0));
+	json_append_member(techlico_switch->message, "unit", json_mknumber(unit, 0));
 	if(state == 0) {
 		json_append_member(techlico_switch->message, "state", json_mkstring("off"));
 	}

@@ -864,7 +864,7 @@ int firmware_getmp(void) {
 
 int firmware_check(char **output) {
 	int version = 0;
-#ifdef FIRMWARE
+#ifdef FIRMWARE_UPDATER
 	struct dirent *file = NULL;
 	DIR *d = NULL;
 	int tmp = 0;

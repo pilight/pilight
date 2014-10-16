@@ -320,8 +320,8 @@ int socket_read(int sockfd, char **message) {
 						logprintf(LOG_ERR, "out of memory");
 						exit(EXIT_FAILURE);
 					}
-					memset(message[(ptr-bytes)], '\0', (size_t)bytes+1);
-					memcpy(message[(ptr-bytes)], recvBuff, (size_t)bytes);
+					memset(&(*message)[(ptr-bytes)], '\0', (size_t)bytes+1);
+					memcpy(&(*message)[(ptr-bytes)], recvBuff, (size_t)bytes);
 					msglen = strlen(*message);
 				}
 				if(*message && msglen > 0) {
@@ -336,7 +336,7 @@ int socket_read(int sockfd, char **message) {
 							int i = 0;
 							for(i=0;i<ptr;i++) {
 								if(i+(len-1) < ptr && strncmp(&(*message)[i], EOSS, (size_t)len) == 0) {
-									memmove(message[i], message[i+(len-1)], (size_t)(ptr-(i+(len-1))));
+									memmove(&(*message)[i], message[i+(len-1)], (size_t)(ptr-(i+(len-1))));
 									ptr-=(len-1);
 									(*message)[i] = '\n';
 								}

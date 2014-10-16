@@ -35,11 +35,11 @@ static int beamishSwMap[7]={0, 192, 48, 12, 3, 15, 195};
 
 static void beamishSwCreateMessage(int id, int unit, int state, int all) {
 	beamish_switch->message = json_mkobject();
-	json_append_member(beamish_switch->message, "id", json_mknumber(id));
+	json_append_member(beamish_switch->message, "id", json_mknumber(id, 0));
 	if(all == 1) {
-		json_append_member(beamish_switch->message, "all", json_mknumber(1));
+		json_append_member(beamish_switch->message, "all", json_mknumber(1, 0));
 	} else {
-		json_append_member(beamish_switch->message, "unit", json_mknumber(unit));
+		json_append_member(beamish_switch->message, "unit", json_mknumber(unit, 0));
 	}
 	if(state == 0) {
 		json_append_member(beamish_switch->message, "state", json_mkstring("off"));

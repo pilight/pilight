@@ -111,6 +111,7 @@ int main(int argc, char **argv) {
 	/* Do we need to print the protocol help */
 	int protohelp = 0;
 
+	char *uuid = NULL;
 	char *server = NULL;
 	unsigned short port = 0;
 
@@ -124,12 +125,12 @@ int main(int argc, char **argv) {
 	options_add(&options, 'p', "protocol", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, NULL);
 	options_add(&options, 'S', "server", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, "^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]).){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$");
 	options_add(&options, 'P', "port", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, "[0-9]{1,4}");
+	options_add(&options, 'U', "uuid", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, "[a-zA-Z0-9]{4}-[a-zA-Z0-9]{2}-[a-zA-Z0-9]{2}-[a-zA-Z0-9]{2}-[a-zA-Z0-9]{6}");
 
 	/* Get the protocol to be used */
 	while(1) {
 		int c;
 		c = options_parse(&options, argc, argv, 0, &args);
-
 		if(c == -1)
 			break;
 		if(c == -2)
@@ -162,6 +163,13 @@ int main(int argc, char **argv) {
 			break;
 			case 'P':
 				port = (unsigned short)atoi(args);
+			break;
+			case 'U':
+				if(!(uuid = realloc(uuid, strlen(args)+1))) {
+					logprintf(LOG_ERR, "out of memory");
+					exit(EXIT_FAILURE);
+				}
+				strcpy(uuid, args);
 			break;
 			default:;
 		}
@@ -236,6 +244,7 @@ int main(int argc, char **argv) {
 			printf("\t -S --server=x.x.x.x\t\tconnect to server address\n");
 			printf("\t -P --port=xxxx\t\t\tconnect to server port\n");
 			printf("\t -F --config\t\t\tconfig file\n");
+			printf("\t -U --uuid=xxx-xx-xx-xx-xxxxxx\tUUID\n");
 		}
 		if(protohelp == 1 && match == 1 && protocol->printHelp) {
 			printf("\n\t[%s]\n", protobuffer);
@@ -303,7 +312,12 @@ int main(int argc, char **argv) {
 			    && tmp->vartype == JSON_STRING && tmp->string_ != NULL 
 				&& (strlen(tmp->string_) > 0)) {
 				if(isNumeric(tmp->string_) == 0) {
-					json_append_member(code, tmp->name, json_mknumber(atof(tmp->string_)));
+					char *ptr = strstr(tmp->string_, ".");
+					int decimals = 0;
+					if(ptr != NULL) {
+						decimals = (int)(strlen(tmp->string_)-((size_t)(ptr-tmp->string_)+1));
+					}
+					json_append_member(code, tmp->name, json_mknumber(atof(tmp->string_), decimals));
 				} else {
 					json_append_member(code, tmp->name, json_mkstring(tmp->string_));
 				}
@@ -347,6 +361,9 @@ int main(int argc, char **argv) {
 
 		JsonNode *json = json_mkobject();
 		json_append_member(json, "action", json_mkstring("send"));
+		if(uuid) {
+			json_append_member(code, "uuid", json_mkstring(uuid));
+		}		
 		json_append_member(json, "code", code);
 		char *output = json_stringify(json, NULL);
 		socket_write(sockfd, output);
@@ -368,6 +385,9 @@ close:
 	}
 	if(protobuffer) {
 		sfree((void *)&protobuffer);
+	}
+	if(uuid) {
+		sfree((void *)&uuid);
 	}
 	log_shell_disable();
 	protocol_gc();

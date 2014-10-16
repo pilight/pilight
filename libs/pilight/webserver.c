@@ -62,7 +62,6 @@ static unsigned short webgui_tpl_free = 0;
 static unsigned short webserver_root_free = 0;
 static unsigned short webserver_user_free = 0;
 
-static int loopfd = 0;
 static int sockfd = 0;
 
 typedef enum {
@@ -328,7 +327,14 @@ static int webserver_request_handler(struct mg_connection *conn) {
 				}
 				return MG_TRUE;
 			} else if(strcmp(conn->uri, "/config") == 0) {
-				JsonNode *jsend = config_print();
+				JsonNode *jsend = config_print(0);
+				char *output = json_stringify(jsend, NULL);
+				mg_printf_data(conn, output);
+				json_delete(jsend);
+				jsend = NULL;
+				return MG_TRUE;
+			} else if(strcmp(conn->uri, "/values") == 0) {
+				JsonNode *jsend = devices_values();
 				char *output = json_stringify(jsend, NULL);
 				mg_printf_data(conn, output);
 				json_delete(jsend);
@@ -700,16 +706,36 @@ static int webserver_request_handler(struct mg_connection *conn) {
 
 		if(json_validate(input) == true) {
 			JsonNode *json = json_decode(input);
-			char *message = NULL;
-			if(json_find_string(json, "message", &message) != -1) {
-				if(strcmp(message, "request config") == 0) {
-					JsonNode *jsend = config_print();
+			char *action = NULL;
+			if(json_find_string(json, "action", &action) == 0) {
+				if(strcmp(action, "request config") == 0) {
+					JsonNode *jsend = config_print(0);
 					char *output = json_stringify(jsend, NULL);
 					size_t output_len = strlen(output);
 					mg_websocket_write(conn, 1, output, output_len);
 					sfree((void *)&output);
 					json_delete(jsend);
-				} else if(strcmp(message, "send") == 0) {
+				} else if(strcmp(action, "request values") == 0) {
+					JsonNode *jsend = devices_values();
+					char *output = json_stringify(jsend, NULL);
+					size_t output_len = strlen(output);
+					mg_websocket_write(conn, 1, output, output_len);
+					sfree((void *)&output);
+					json_delete(jsend);
+
+					struct JsonNode *jmessage = json_mkobject();
+					struct JsonNode *jcode = json_mkobject();
+					json_append_member(jcode, "version", json_mkstring(VERSION));
+					json_append_member(jmessage, "values", jcode);
+					json_append_member(jmessage, "origin", json_mkstring("core"));
+					json_append_member(jmessage, "type", json_mknumber(PLVERSION, 0));
+					output = json_stringify(jmessage, NULL);
+					output_len = strlen(output);
+					mg_websocket_write(conn, 1, output, output_len);
+					sfree((void *)&output);
+					json_delete(jmessage);
+					jmessage = NULL;
+				} else if(strcmp(action, "control") == 0) {
 					/* Write all codes coming from the webserver to the daemon */
 					socket_write(sockfd, input);
 				}
@@ -832,8 +858,8 @@ void *webserver_clientize(void *param) {
 	struct JsonNode *jclient = json_mkobject();
 	struct JsonNode *joptions = json_mkobject();
 	json_append_member(jclient, "action", json_mkstring("identify"));
-	json_append_member(joptions, "config", json_mknumber(1));
-	json_append_member(joptions, "stats", json_mknumber(1));
+	json_append_member(joptions, "config", json_mknumber(1, 0));
+	json_append_member(joptions, "core", json_mknumber(1, 0));
 	json_append_member(jclient, "options", joptions);
 	char *out = json_stringify(jclient, NULL);
 	socket_write(sockfd, out);
@@ -948,8 +974,6 @@ int webserver_start(void) {
 		threads_register(msg, &webserver_worker, (void *)(intptr_t)i, 0);
 	}
 
-	char localhost[16] = "127.0.0.1";
-	loopfd = socket_connect(localhost, (unsigned short)webserver_port);
 	logprintf(LOG_DEBUG, "webserver listening to port %s", webport);
 
 	return 0;

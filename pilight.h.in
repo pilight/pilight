@@ -24,8 +24,7 @@
 /* Internals */
 
 #cmakedefine WEBSERVER
-#cmakedefine UPDATE
-#cmakedefine FIRMWARE
+#cmakedefine PILIGHT_UPDATER
 
 #define VERSION					"5.0"
 #define PULSE_DIV				34
@@ -52,7 +51,7 @@
 #define HARDWARE_ROOT				"/usr/local/lib/pilight/hardware/"
 
 #define PID_FILE					"/var/run/pilight.pid"
-#define CONFIG_FILE					"/etc/pilight/config.json"
+#define CONFIG_FILE					"/media/rpi/433.92/daemon2/config.json"
 #define LOG_FILE					"/var/log/pilight.log"
 #define TZDATA_FILE					"/etc/pilight/tzdata.json"
 #define LOG_MAX_SIZE 				1048576 // 1024*1024
@@ -60,12 +59,6 @@
 #define SEND_REPEATS				10
 #define RECEIVE_REPEATS				1
 #define UUID_LENGTH					21
-
-#ifdef UPDATE
-	#define UPDATE_MIRROR			"http://apt.pilight.org/mirror.txt"
-	#define UPDATE_CHECK			1
-	#define UPDATE_DEVELOPMENT		0
-#endif
 
 #ifdef FIRMWARE
 	#define FIRMWARE_PATH				"/etc/pilight/"

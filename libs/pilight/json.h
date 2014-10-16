@@ -57,6 +57,9 @@ struct JsonNode
 
 		/* JSON_NUMBER */
 		double number_;
+		
+		/* Decimals */
+		int decimals_;
 
 		/* JSON_ARRAY */
 		/* JSON_OBJECT */
@@ -93,7 +96,7 @@ JsonNode   *json_first_child    (const JsonNode *node);
 JsonNode *json_mknull(void);
 JsonNode *json_mkbool(bool b);
 JsonNode *json_mkstring(const char *s);
-JsonNode *json_mknumber(double n);
+JsonNode *json_mknumber(double n, int decimals);
 JsonNode *json_mkarray(void);
 JsonNode *json_mkobject(void);
 

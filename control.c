@@ -207,7 +207,12 @@ int main(int argc, char **argv) {
 										if(pch != NULL) {
 											if(devices_valid_value(device, name, val) == 0) {
 												if(isNumeric(val) == EXIT_SUCCESS) {
-													json_append_member(jvalues, name, json_mknumber(atof(val)));
+													char *ptr = strstr(pch, ".");
+													int decimals = 0;
+													if(ptr != NULL) {
+														decimals = (int)(strlen(pch)-((size_t)(ptr-pch)+1));
+													}
+													json_append_member(jvalues, name, json_mknumber(atof(val), decimals));
 												} else {
 													json_append_member(jvalues, name, json_mkstring(val));
 												}

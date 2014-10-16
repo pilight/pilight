@@ -21,6 +21,9 @@
 #include <stdio.h>
 #include <signal.h>
 #include <setjmp.h>
+#include <execinfo.h>
+#include <unistd.h>
+#include <errno.h>
 
 #include "gc.h"
 #include "json.h"
@@ -30,6 +33,20 @@
 static unsigned short gc_enable = 1;
 
 void gc_handler(int sig) {
+	switch(sig) {
+		case SIGSEGV:
+		case SIGBUS:
+		case SIGILL:
+		case SIGABRT:
+		case SIGFPE: {
+			void *stack[50];
+			int n = backtrace(stack, 50);
+			printf("-- STACKTRACE (%d FRAMES) --", n);
+			backtrace_symbols_fd(stack, n, STDERR_FILENO);
+		}
+		break;
+		default:;
+	}
 	if(sig == SIGSEGV) {
 		fprintf(stderr, "segmentation fault\n");
 		exit(EXIT_FAILURE);
@@ -41,7 +58,7 @@ void gc_handler(int sig) {
 	  (!(sig == SIGINT || sig == SIGTERM || sig == SIGTSTP) && gc_enable == 0)) {
 		if(config_get_file() != NULL && gc_enable == 1) {
 			gc_enable = 0;
-			config_write();
+			// config_write();
 		}
 		gc_enable = 0;
 		config_gc();

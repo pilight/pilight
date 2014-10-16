@@ -27,7 +27,8 @@
 #include "json.h"
 
 typedef enum {
-	INTERNAL = -2,
+	PLVERSION = -3,
+	FIRMWARE = -2,
 	PROC = -1,
 	RAW = 0,
 	SWITCH,

@@ -59,10 +59,9 @@ static void *lm76Parse(void *param) {
 	struct JsonNode *jid = NULL;
 	struct JsonNode *jchild = NULL;
 	struct lm76data_t *lm76data = malloc(sizeof(struct lm76data_t));
-	int y = 0, interval = 10;
-	int temp_offset = 0, nrloops = 0;
+	int y = 0, interval = 10, nrloops = 0;
 	char *stmp = NULL;
-	double itmp = -1;
+	double itmp = -1, temp_offset = 0;
 
 	if(!lm76data) {
 		logprintf(LOG_ERR, "out of memory");
@@ -98,8 +97,7 @@ static void *lm76Parse(void *param) {
 
 	if(json_find_number(json, "poll-interval", &itmp) == 0)
 		interval = (int)round(itmp);
-	if(json_find_number(json, "temperature-offset", &itmp) == 0)
-		temp_offset = (int)round(itmp);
+	json_find_number(json, "temperature-offset", &temp_offset);
 
 #ifndef __FreeBSD__
 	lm76data->fd = realloc(lm76data->fd, (sizeof(int)*(size_t)(lm76data->nrid+1)));
@@ -119,12 +117,12 @@ static void *lm76Parse(void *param) {
 			for(y=0;y<lm76data->nrid;y++) {
 				if(lm76data->fd[y] > 0) {
 					int raw = wiringXI2CReadReg16(lm76data->fd[y], 0x00);
-					float temp = ((float)((raw&0x00ff)+((raw>>12)*0.0625))*1000);
+					float temp = ((float)((raw&0x00ff)+((raw>>12)*0.0625)));
 
 					lm76->message = json_mkobject();
 					JsonNode *code = json_mkobject();
 					json_append_member(code, "id", json_mkstring(lm76data->id[y]));
-					json_append_member(code, "temperature", json_mknumber((int)temp+temp_offset));
+					json_append_member(code, "temperature", json_mknumber(temp+temp_offset, 3));
 
 					json_append_member(lm76->message, "message", code);
 					json_append_member(lm76->message, "origin", json_mkstring("receiver"));
@@ -202,7 +200,7 @@ void lm76Init(void) {
 	options_add(&lm76->options, 't', "temperature", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9]{1,3}$");
 	options_add(&lm76->options, 'i', "id", OPTION_HAS_VALUE, DEVICES_ID, JSON_STRING, NULL, "0x[0-9a-f]{2}");
 
-	options_add(&lm76->options, 0, "decimals", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *)3, "[0-9]");
+	// options_add(&lm76->options, 0, "decimals", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *)3, "[0-9]");
 	options_add(&lm76->options, 0, "decimals", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)3, "[0-9]");
 	options_add(&lm76->options, 0, "show-temperature", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
 

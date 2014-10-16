@@ -426,6 +426,7 @@ char *genuuid(char *ifname) {
 
 	if(strlen(mac) > 0) {
 		upnp_id = malloc(UUID_LENGTH+1);
+		memset(upnp_id, '\0', UUID_LENGTH+1);
 		sprintf(upnp_id,
 				"0000-%c%c-%c%c-%c%c-%c%c%c%c%c0",
 				mac[0], mac[1], mac[2],

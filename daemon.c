@@ -55,10 +55,6 @@
 #include "firmware.h"
 #include "proc.h"
 
-#ifdef UPDATE
-	#include "update.h"
-#endif
-
 #ifdef WEBSERVER
 	#include "webserver.h"
 #endif
@@ -69,7 +65,7 @@ typedef struct clients_t {
 	int receiver;
 	int sender;
 	int config;
-	int stats;
+	int core;
 	int forward;
 	double cpu;
 	double ram;
@@ -182,11 +178,6 @@ static int webserver_root_free = 0;
 static int webgui_tpl_free = 0;
 #endif
 
-#ifdef UPDATE
-/* Do we need to check for updates */
-static int update_check = UPDATE_CHECK;
-#endif
-
 static void client_remove(int id) {
 	struct clients_t *currP, *prevP;
 
@@ -259,13 +250,13 @@ void *broadcast(void *param) {
 			char *origin = NULL;
 
 			if(json_find_string(bcqueue->jmessage, "origin", &origin) == 0) {
-				if(strcmp(origin, "config") == 0) {
+				if(strcmp(origin, "core") == 0) {
 					double tmp = 0;
 					json_find_number(bcqueue->jmessage, "type", &tmp);
 					char *conf = json_stringify(bcqueue->jmessage, NULL);
 					struct clients_t *tmp_clients = clients;
 					while(tmp_clients) {
-						if(((int)tmp == PROC && tmp_clients->stats == 1) || 
+						if(((int)tmp < 0 && tmp_clients->core == 1) || 
 						   ((int)tmp >= 0 && tmp_clients->config == 1)) {
 							socket_write(tmp_clients->id, conf);
 							broadcasted = 1;
@@ -325,6 +316,20 @@ void *broadcast(void *param) {
 							json_find_number(code, "version", &firmware.version);
 							json_find_number(code, "lpf", &firmware.lpf);
 							json_find_number(code, "hpf", &firmware.hpf);
+
+							struct JsonNode *jmessage = json_mkobject();
+							struct JsonNode *jcode = json_mkobject();
+							json_append_member(jcode, "version", json_mknumber(firmware.version, 0));
+							json_append_member(jcode, "lpf", json_mknumber(firmware.lpf, 0));
+							json_append_member(jcode, "hpf", json_mknumber(firmware.hpf, 0));
+							json_append_member(jmessage, "values", jcode);
+							json_append_member(jmessage, "origin", json_mkstring("core"));
+							json_append_member(jmessage, "type", json_mknumber(FIRMWARE, 0));
+							char pname[17];
+							strcpy(pname, "pilight-firmware");
+							pilight.broadcast(pname, jmessage);
+							json_delete(jmessage);
+							jmessage = NULL;
 						}
 					}
 					broadcasted = 0;
@@ -425,7 +430,7 @@ static void receiver_create_message(protocol_t *protocol) {
 				json_append_member(jmessage, "uuid", json_mkstring(pilight_uuid));
 			}
 			if(protocol->repeats > -1) {
-				json_append_member(jmessage, "repeats", json_mknumber(protocol->repeats));
+				json_append_member(jmessage, "repeats", json_mknumber(protocol->repeats, 0));
 			}
 			char *output = json_stringify(jmessage, NULL);
 			JsonNode *json = json_decode(output);
@@ -605,7 +610,7 @@ void *send_code(void *param) {
 					if(strlen(sendqueue->uuid) > 0) {
 						json_append_member(message, "uuid", json_mkstring(sendqueue->uuid));
 					}
-					json_append_member(message, "repeat", json_mknumber(1));
+					json_append_member(message, "repeat", json_mknumber(1, 0));
 				}
 			}
 			if(sendqueue->settings && strcmp(sendqueue->settings, "{}") != 0) {
@@ -768,13 +773,15 @@ static int send_queue(JsonNode *json) {
 						mnode->protopt = protocol;
 
 						struct options_t *tmp_options = protocol->options;
-						double itmp = 0;
 						char *stmp = NULL;
 						struct JsonNode *jsettings = json_mkobject();
+						struct JsonNode *jtmp = NULL;
 						while(tmp_options) {
 							if(tmp_options->conftype == DEVICES_SETTING) {
-								if(tmp_options->vartype == JSON_NUMBER && json_find_number(jcode, tmp_options->name, &itmp) == 0) {
-									json_append_member(jsettings, tmp_options->name, json_mknumber(itmp));
+								if(tmp_options->vartype == JSON_NUMBER && 
+								  (jtmp = json_find_member(jcode, tmp_options->name)) != NULL &&
+								   jtmp->tag == JSON_NUMBER) {
+									json_append_member(jsettings, tmp_options->name, json_mknumber(jtmp->number_, jtmp->decimals_));
 								} else if(tmp_options->vartype == JSON_STRING && json_find_string(jcode, tmp_options->name, &stmp) == 0) {
 									json_append_member(jsettings, tmp_options->name, json_mkstring(stmp));
 								}
@@ -811,10 +818,8 @@ static int send_queue(JsonNode *json) {
 					return -1;
 				}
 			}
-		}
-
-		if(jcode) {
-			json_delete(jcode);
+		} else {
+			return 0;
 		}
 	}
 	return -1;
@@ -932,7 +937,7 @@ static int control_device(struct devices_t *dev, char *state, JsonNode *values) 
 								if(val->type == JSON_STRING) {
 									json_append_member(code, val->name, json_mkstring(val->string_));
 								} else if(val->type == JSON_NUMBER) {
-									json_append_member(code, val->name, json_mknumber(val->number_));
+									json_append_member(code, val->name, json_mknumber(val->number_, val->decimals));
 								}
 							}
 							val = val->next;
@@ -945,7 +950,7 @@ static int control_device(struct devices_t *dev, char *state, JsonNode *values) 
 							if(val->type == JSON_STRING) {
 								json_append_member(code, opt->name, json_mkstring(val->string_));
 							} else if(val->type == JSON_NUMBER) {
-								json_append_member(code, opt->name, json_mknumber(val->number_));
+								json_append_member(code, opt->name, json_mknumber(val->number_, val->decimals));
 							}
 						}
 					}
@@ -962,7 +967,7 @@ static int control_device(struct devices_t *dev, char *state, JsonNode *values) 
 						if(values->tag == JSON_STRING) {
 							json_append_member(code, values->key, json_mkstring(values->string_));
 						} else if(values->tag == JSON_NUMBER) {
-							json_append_member(code, values->key, json_mknumber(values->number_));
+							json_append_member(code, values->key, json_mknumber(values->number_, values->decimals_));
 						}
 					}
 					opt = opt->next;
@@ -975,7 +980,7 @@ static int control_device(struct devices_t *dev, char *state, JsonNode *values) 
 			while(opt) {
 				if(json_find_member(code, opt->name) == NULL) {
 					if(opt->conftype == DEVICES_STATE && opt->argtype == OPTION_NO_VALUE && strcmp(opt->name, state) == 0) {
-						json_append_member(code, opt->name, json_mknumber(1));
+						json_append_member(code, opt->name, json_mknumber(1, 0));
 						break;
 					} else if(opt->conftype == DEVICES_STATE && opt->argtype == OPTION_HAS_VALUE) {
 						json_append_member(code, opt->name, json_mkstring(state));
@@ -1066,7 +1071,7 @@ static void socket_parse_data(int i, char *buffer) {
 					}
 					if(exists == 0) {
 						client = malloc(sizeof(struct clients_t));
-						client->stats = 0;
+						client->core = 0;
 						client->config = 0;
 						client->receiver = 0;
 						client->sender = 0;
@@ -1081,12 +1086,12 @@ static void socket_parse_data(int i, char *buffer) {
 					if((options = json_find_member(json, "options")) != NULL) {
 						struct JsonNode *childs = json_first_child(options);						
 						while(childs) {
-							if(strcmp(childs->key, "stats") == 0 && 
+							if(strcmp(childs->key, "core") == 0 && 
 							   childs->tag == JSON_NUMBER) {
 								if((int)childs->number_ == 1) {
-									client->stats = 1;
+									client->core = 1;
 								} else {
-									client->stats = 0;
+									client->core = 0;
 								}
 							} else if(strcmp(childs->key, "receiver") == 0 && 
 							   childs->tag == JSON_NUMBER) {
@@ -1145,6 +1150,8 @@ static void socket_parse_data(int i, char *buffer) {
 				} else if(strcmp(action, "send") == 0) {
 					if(send_queue(json) == 0) {
 						socket_write(sd, "success");
+					} else {
+						socket_write(sd, "failure");
 					}
 				} else if(strcmp(action, "control") == 0) {
 					struct JsonNode *code = NULL;
@@ -1168,6 +1175,8 @@ static void socket_parse_data(int i, char *buffer) {
 
 							if(control_device(dev, state, values) == 0) {
 								socket_write(sd, "success");
+							} else {
+								socket_write(sd, "failure");
 							}
 						} else {
 							logprintf(LOG_ERR, "the device \"%s\" does not exist", device);
@@ -1175,16 +1184,49 @@ static void socket_parse_data(int i, char *buffer) {
 					}
 				} else if(strcmp(action, "request config") == 0) {
 					struct JsonNode *jsend = json_mkobject();
-					struct JsonNode *jconfig = config_print();
+					struct JsonNode *jconfig = config_print(0);
 					json_append_member(jsend, "message", json_mkstring("config"));
 					json_append_member(jsend, "config", jconfig);
 					char *output = json_stringify(jsend, NULL);
 					socket_write(sd, output);
 					sfree((void *)&output);
 					json_delete(jsend);
+				} else if(strcmp(action, "request values") == 0) {
+					struct JsonNode *jsend = json_mkobject();
+					struct JsonNode *jvalues = devices_values();
+					json_append_member(jsend, "message", json_mkstring("values"));
+					json_append_member(jsend, "values", jvalues);
+					char *output = json_stringify(jsend, NULL);
+					socket_write(sd, output);
+					sfree((void *)&output);
+					json_delete(jsend);
+
+					exists = 0;
+					tmp_clients = clients;
+					while(tmp_clients) {
+						if(tmp_clients->id == sd) {
+							exists = 1;
+							client = tmp_clients;
+							break;
+						}
+						tmp_clients = tmp_clients->next;
+					}
+					if(exists == 1&& client->core == 1) {
+						struct JsonNode *jmessage = json_mkobject();
+						struct JsonNode *jcode = json_mkobject();
+						json_append_member(jcode, "version", json_mkstring(VERSION));
+						json_append_member(jmessage, "values", jcode);
+						json_append_member(jmessage, "origin", json_mkstring("core"));
+						json_append_member(jmessage, "type", json_mknumber(PLVERSION, 0));
+						output = json_stringify(jmessage, NULL);
+						socket_write(sd, output);
+						sfree((void *)&output);
+						json_delete(jmessage);
+						jmessage = NULL;
+					}
 				/*
 				 * Parse received codes from nodes
-				 */
+				 */				
 				} else if(strcmp(action, "update") == 0) {
 					struct JsonNode *jvalues = NULL;
 					char *pname = NULL;
@@ -1205,15 +1247,15 @@ static void socket_parse_data(int i, char *buffer) {
 						}
 					}
 					if(json_find_string(json, "protocol", &pname) == 0) {
-						JsonNode *jcode = NULL;
-						JsonNode *jmessage = NULL;
-						if((jmessage = json_find_member(json, "message")) != NULL) {
-							json_remove_from_parent(jmessage);
-						}
-						if((jcode = json_find_member(json, "code")) != NULL) {
-							jcode->key = realloc(jcode->key, 9);
-							strcpy(jcode->key, "message");
-						}
+						// JsonNode *jcode = NULL;
+						// JsonNode *jmessage = NULL;
+						// if((jmessage = json_find_member(json, "message")) != NULL) {
+							// json_remove_from_parent(jmessage);
+						// }
+						// if((jcode = json_find_member(json, "code")) != NULL) {
+							// jcode->key = realloc(jcode->key, 9);
+							// strcpy(jcode->key, "message");
+						// }
 
 						broadcast_queue(pname, json);
 					}
@@ -1333,9 +1375,9 @@ void *clientize(void *param) {
 		json = json_mkobject();
 		joptions = json_mkobject();
 		json_append_member(json, "action", json_mkstring("identify"));
-		json_append_member(joptions, "receiver", json_mknumber(1));
-		json_append_member(joptions, "forward", json_mknumber(1));
-		json_append_member(joptions, "config", json_mknumber(1));
+		json_append_member(joptions, "receiver", json_mknumber(1, 0));
+		json_append_member(joptions, "forward", json_mknumber(1, 0));
+		json_append_member(joptions, "config", json_mknumber(1, 0));
 		json_append_member(joptions, "uuid", json_mkstring(pilight_uuid));
 		json_append_member(json, "options", joptions);
 		output = json_stringify(json, NULL);
@@ -1532,12 +1574,6 @@ int main_gc(void) {
 	}
 #endif
 
-#ifdef UPDATE
-	if(update_check) {
-		update_gc();
-	}
-#endif
-
 	if(master_server) {
 		sfree((void *)&master_server);
 	}
@@ -1574,7 +1610,7 @@ static void procProtocolInit(void) {
 	options_add(&procProtocol->options, 'r', "ram", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, NULL);
 }
 
-#ifdef FIRMWARE
+#ifdef FIRMWARE_UPDATER
 void *firmware_loop(void *param) {
 	unsigned int interval = 1;
 	char fwfile[4096] = {'\0'};
@@ -1839,10 +1875,6 @@ int main(int argc, char **argv) {
 	}
 #endif
 
-#ifdef UPDATE
-	settings_find_number("update-check", &update_check);
-#endif
-
 	if(settings_find_string("pid-file", &pid_file) != 0) {
 		pid_file = realloc(pid_file, strlen(PID_FILE)+1);
 		if(!pid_file) {
@@ -2008,12 +2040,6 @@ int main(int argc, char **argv) {
 	threads_register("sender", &send_code, (void *)NULL, 0);
 	threads_register("broadcaster", &broadcast, (void *)NULL, 0);
 
-#ifdef UPDATE
-	if(update_check && runmode == 1) {
-		threads_register("updater", &update_poll, (void *)NULL, 0);
-	}
-#endif
-
 	struct conf_hardware_t *tmp_confhw = conf_hardware;
 	while(tmp_confhw) {
 		if(tmp_confhw->hardware->init) {
@@ -2041,7 +2067,7 @@ int main(int argc, char **argv) {
 	}
 #endif
 
-#ifdef FIRMWARE
+#ifdef FIRMWARE_UPDATER
 	threads_register("firmware upgrader", &firmware_loop, (void *)NULL, 0);
 #endif
 
@@ -2114,27 +2140,28 @@ int main(int argc, char **argv) {
 			checkcpu = 0;
 			checkram = 0;
 			if((i > 0 && i%3 == 0) || (i == -1)) {
-				// procProtocol->message = json_mkobject();
-				// JsonNode *code = json_mkobject();
-				// json_append_member(code, "cpu", json_mknumber(cpu));
-				// if(ram > 0) {
-					// json_append_member(code, "ram", json_mknumber(ram));
-				// }
-				// logprintf(LOG_DEBUG, "cpu: %f% ram: %f%", cpu, ram);
-				// json_append_member(procProtocol->message, "values", code);
-				// json_append_member(procProtocol->message, "origin", json_mkstring("config"));
-				// json_append_member(procProtocol->message, "type", json_mknumber(PROC));
-				// struct clients_t *tmp_clients = clients;
-				// while(tmp_clients) {
-					// if(tmp_clients->cpu > 0 && tmp_clients->ram > 0) {
-						// logprintf(LOG_DEBUG, "- client: %s cpu: %f% ram: %f%", 
-								  // tmp_clients->uuid, tmp_clients->cpu, tmp_clients->ram);
-					// }
-					// tmp_clients = tmp_clients->next;
-				// }
-				// pilight.broadcast(procProtocol->id, procProtocol->message);
-				// json_delete(procProtocol->message);
-				// procProtocol->message = NULL;
+				procProtocol->message = json_mkobject();
+				JsonNode *code = json_mkobject();
+				json_append_member(code, "cpu", json_mknumber(cpu, 16));
+				if(ram > 0) {
+					json_append_member(code, "ram", json_mknumber(ram, 16));
+				}
+				logprintf(LOG_DEBUG, "cpu: %f% ram: %f%", cpu, ram);
+				json_append_member(procProtocol->message, "values", code);
+				json_append_member(procProtocol->message, "origin", json_mkstring("core"));
+				json_append_member(procProtocol->message, "type", json_mknumber(PROC, 0));
+				struct clients_t *tmp_clients = clients;
+				while(tmp_clients) {
+					if(tmp_clients->cpu > 0 && tmp_clients->ram > 0) {
+						logprintf(LOG_DEBUG, "- client: %s cpu: %f% ram: %f%", 
+								  tmp_clients->uuid, tmp_clients->cpu, tmp_clients->ram);
+					}
+					tmp_clients = tmp_clients->next;
+				}
+				pilight.broadcast(procProtocol->id, procProtocol->message);
+				json_delete(procProtocol->message);
+				procProtocol->message = NULL;
+
 				i = 0;
 				x = 0;
 			}

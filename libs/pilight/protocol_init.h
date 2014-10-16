@@ -15,6 +15,7 @@
 	cleverwattsInit();
 	conradRSLCnInit();
 	conradRSLSwInit();
+	cpuTempInit();
 	datetimeInit();
 	dht11Init();
 	dht22Init();
@@ -48,7 +49,6 @@
 	rev1Init();
 	rev2Init();
 	rev3Init();
-	rpiTempInit();
 	selectremoteInit();
 	silvercrestInit();
 	sunRiseSetInit();

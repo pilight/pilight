@@ -41,12 +41,11 @@ typedef struct alecto_settings_t {
 static struct alecto_settings_t *alecto_settings = NULL;
 
 static void alectoWX500ParseCode(void) {
-	int i = 0, x = 0, type = 0;
-	int temperature = 0, id = 0;
-	int temp_offset = 0, humi_offset = 0;
-	int battery = 0;
+	int i = 0, x = 0, type = 0, id = 0;
+	double temp_offset = 0.0, humi_offset = 0.0;
+	double humidity = 0.0, temperature = 0.0;
 	int winddir = 0, windavg = 0, windgust = 0;
-	int rain = 0, humidity = 0;
+	int rain = 0, battery = 0;
 	int n0 = 0, n1 = 0, n2 = 0, n3 = 0;
 	int n4 = 0, n5 = 0, n6 = 0, n7 = 0, n8 = 0;
 	int checksum = 1;
@@ -68,8 +67,8 @@ static void alectoWX500ParseCode(void) {
 	struct alecto_settings_t *tmp = alecto_settings;
 	while(tmp) {
 		if(fabs(tmp->id-id) < EPSILON){
-			humi_offset = (int)tmp->humi;
-			temp_offset = (int)tmp->temp;
+			humi_offset = tmp->humi;
+			temp_offset = tmp->temp;
 			break;
 		}
 		tmp = tmp->next;
@@ -123,17 +122,17 @@ static void alectoWX500ParseCode(void) {
 			temperature += temp_offset;
 			humidity += humi_offset;
 
-			json_append_member(alectoWX500->message, "temperature", json_mknumber(temperature));
-			json_append_member(alectoWX500->message, "humidity", json_mknumber(humidity));
-			json_append_member(alectoWX500->message, "battery", json_mknumber(battery));
+			json_append_member(alectoWX500->message, "temperature", json_mknumber(temperature/10, 1));
+			json_append_member(alectoWX500->message, "humidity", json_mknumber(humidity/10, 1));
+			json_append_member(alectoWX500->message, "battery", json_mknumber(battery, 0));
 		break;
 		case 2:
 			id = binToDec(alectoWX500->binary, 0, 7);
 			windavg = binToDec(alectoWX500->binary, 24, 31) * 2;
 			battery = !alectoWX500->binary[8];
 
-			json_append_member(alectoWX500->message, "windavg", json_mknumber(windavg));
-			json_append_member(alectoWX500->message, "battery", json_mknumber(battery));
+			json_append_member(alectoWX500->message, "windavg", json_mknumber(windavg/10, 1));
+			json_append_member(alectoWX500->message, "battery", json_mknumber(battery, 0));
 		break;
 		case 3:
 			id = binToDec(alectoWX500->binary, 0, 7);
@@ -141,16 +140,16 @@ static void alectoWX500ParseCode(void) {
 			windgust = binToDec(alectoWX500->binary, 24, 31) * 2;
 			battery = !alectoWX500->binary[8];
 
-			json_append_member(alectoWX500->message, "winddir", json_mknumber(winddir));
-			json_append_member(alectoWX500->message, "windgust", json_mknumber(windgust));
-			json_append_member(alectoWX500->message, "battery", json_mknumber(battery));
+			json_append_member(alectoWX500->message, "winddir", json_mknumber(winddir/10, 1));
+			json_append_member(alectoWX500->message, "windgust", json_mknumber(windgust/10, 1));
+			json_append_member(alectoWX500->message, "battery", json_mknumber(battery, 0));
 		break;
 		case 4:
 			id = binToDec(alectoWX500->binary, 0, 7);
 			rain = binToDec(alectoWX500->binary, 16, 30) * 5;
 			battery = !alectoWX500->binary[8];
-			json_append_member(alectoWX500->message, "rain", json_mknumber(rain));
-			json_append_member(alectoWX500->message, "battery", json_mknumber(battery));
+			json_append_member(alectoWX500->message, "rain", json_mknumber(rain/10, 1));
+			json_append_member(alectoWX500->message, "battery", json_mknumber(battery, 0));
 		break;
 		default:
 			type=0x5;
@@ -251,7 +250,7 @@ void alectoWX500Init(void) {
 	options_add(&alectoWX500->options, 'g', "windgust", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9]{1,3}$");
 	options_add(&alectoWX500->options, 'r', "rain", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9]{1,3}$");
 
-	options_add(&alectoWX500->options, 0, "decimals", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *)1, "[0-9]");
+	// options_add(&alectoWX500->options, 0, "decimals", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *)1, "[0-9]");
 	options_add(&alectoWX500->options, 0, "decimals", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)1, "[0-9]");
 	options_add(&alectoWX500->options, 0, "humidity-offset", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *)0, "[0-9]");
 	options_add(&alectoWX500->options, 0, "temperature-offset", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *)0, "[0-9]");

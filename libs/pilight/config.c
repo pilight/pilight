@@ -121,14 +121,14 @@ int config_parse(JsonNode *root) {
 	}
 }
 
-JsonNode *config_print(void) {
+JsonNode *config_print(int level) {
 	struct JsonNode *root = json_mkobject();
 
 	sort_list(0);
 	struct config_t *listeners = config;
 	while(listeners) {
 		if(listeners->sync) {
-			json_append_member(root, listeners->name, listeners->sync());
+			json_append_member(root, listeners->name, listeners->sync(level));
 		}
 		listeners = listeners->next;
 	}
@@ -136,7 +136,7 @@ JsonNode *config_print(void) {
 	return root;
 }
 
-int config_write(void) {
+int config_write(int level) {
 	struct JsonNode *root = json_mkobject();
 	FILE *fp;
 
@@ -144,7 +144,7 @@ int config_write(void) {
 	struct config_t *listeners = config;
 	while(listeners) {
 		if(listeners->sync) {
-			json_append_member(root, listeners->name, listeners->sync());
+			json_append_member(root, listeners->name, listeners->sync(level));
 		}
 		listeners = listeners->next;
 	}
@@ -205,7 +205,7 @@ int config_read(void) {
 		return EXIT_FAILURE;
 	}
 	json_delete(root);
-	//config_write();
+	config_write(1);
 	sfree((void *)&content);
 	return EXIT_SUCCESS;
 }

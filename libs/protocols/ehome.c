@@ -33,7 +33,7 @@
 
 static void ehomeCreateMessage(int id, int state) {
 	ehome->message = json_mkobject();
-	json_append_member(ehome->message, "id", json_mknumber(id));
+	json_append_member(ehome->message, "id", json_mknumber(id, 0));
 	if(state == 1) {
 		json_append_member(ehome->message, "state", json_mkstring("on"));
 	} else {

@@ -59,10 +59,9 @@ static void *lm75Parse(void *param) {
 	struct JsonNode *jid = NULL;
 	struct JsonNode *jchild = NULL;
 	struct lm75data_t *lm75data = malloc(sizeof(struct lm75data_t));
-	int y = 0, interval = 10;
-	int temp_offset = 0, nrloops = 0;
+	int y = 0, interval = 10, nrloops = 0;
 	char *stmp = NULL;
-	double itmp = -1;
+	double itmp = -1, temp_offset = 0.0;
 
 	if(!lm75data) {
 		logprintf(LOG_ERR, "out of memory");
@@ -98,8 +97,7 @@ static void *lm75Parse(void *param) {
 
 	if(json_find_number(json, "poll-interval", &itmp) == 0)
 		interval = (int)round(itmp);
-	if(json_find_number(json, "temperature-offset", &itmp) == 0)
-		temp_offset = (int)round(itmp);
+	json_find_number(json, "temperature-offset", &temp_offset);
 
 #ifndef __FreeBSD__
 	lm75data->fd = realloc(lm75data->fd, (sizeof(int)*(size_t)(lm75data->nrid+1)));
@@ -124,7 +122,7 @@ static void *lm75Parse(void *param) {
 					lm75->message = json_mkobject();
 					JsonNode *code = json_mkobject();
 					json_append_member(code, "id", json_mkstring(lm75data->id[y]));
-					json_append_member(code, "temperature", json_mknumber((int)temp+temp_offset));
+					json_append_member(code, "temperature", json_mknumber((temp+temp_offset)/10, 1));
 
 					json_append_member(lm75->message, "message", code);
 					json_append_member(lm75->message, "origin", json_mkstring("receiver"));

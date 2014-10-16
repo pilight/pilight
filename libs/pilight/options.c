@@ -526,7 +526,7 @@ void options_merge(struct options_t **a, struct options_t **b) {
 			optnode->string_ = NULL;
 		}
 		if(temp->mask) {
-			optnode->mask = malloc(strlen(temp->mask)*2);
+			optnode->mask = malloc(strlen(temp->mask)+1);
 			if(!optnode->mask) {
 				logprintf(LOG_ERR, "out of memory");
 				exit(EXIT_FAILURE);

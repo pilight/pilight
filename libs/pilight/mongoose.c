@@ -413,7 +413,7 @@ static void ns_call(struct ns_connection *conn, enum ns_event ev, void *p) {
 }
 
 static void ns_close_conn(struct ns_connection *conn) {
-  DBG(("%p %d", conn, conn->flags));
+  //DBG(("%p %d", conn, conn->flags));
   ns_call(conn, NS_CLOSE, NULL);
   ns_remove_conn(conn);
   closesocket(conn->sock);
@@ -588,7 +588,7 @@ static struct ns_connection *accept_conn(struct ns_server *server) {
   } else if (server->ssl_ctx != NULL &&
              ((c->ssl = SSL_new(server->ssl_ctx)) == NULL ||
               SSL_set_fd(c->ssl, sock) != 1)) {
-    DBG(("SSL error"));
+    //DBG(("SSL error"));
     closesocket(sock);
     free(c);
     c = NULL;
@@ -602,7 +602,7 @@ static struct ns_connection *accept_conn(struct ns_server *server) {
 
     ns_add_conn(server, c);
     ns_call(c, NS_ACCEPT, &sa);
-    DBG(("%p %d %p %p", c, c->sock, c->ssl, server->ssl_ctx));
+    // DBG(("%p %d %p %p", c, c->sock, c->ssl, server->ssl_ctx));
   }
 
   return c;
@@ -685,7 +685,7 @@ static void ns_read_from_socket(struct ns_connection *conn) {
     if (ret == 0 && ok == 0 && conn->ssl != NULL) {
       int res = SSL_connect(conn->ssl);
       int ssl_err = SSL_get_error(conn->ssl, res);
-      DBG(("%p res %d %d", conn, res, ssl_err));
+      //DBG(("%p res %d %d", conn, res, ssl_err));
       if (res == 1) {
         conn->flags = NSF_SSL_HANDSHAKE_DONE;
       } else if (res == 0 || ssl_err == 2 || ssl_err == 3) {
@@ -696,7 +696,7 @@ static void ns_read_from_socket(struct ns_connection *conn) {
     }
 #endif
     conn->flags &= ~NSF_CONNECTING;
-    DBG(("%p ok=%d", conn, ok));
+    //DBG(("%p ok=%d", conn, ok));
     if (ok != 0) {
       conn->flags |= NSF_CLOSE_IMMEDIATELY;
     }
@@ -711,7 +711,7 @@ static void ns_read_from_socket(struct ns_connection *conn) {
     } else {
       int res = SSL_accept(conn->ssl);
       int ssl_err = SSL_get_error(conn->ssl, res);
-      DBG(("%p res %d %d", conn, res, ssl_err));
+      //DBG(("%p res %d %d", conn, res, ssl_err));
       if (res == 1) {
         conn->flags |= NSF_SSL_HANDSHAKE_DONE;
       } else if (res == 0 || ssl_err == 2 || ssl_err == 3) {
@@ -727,8 +727,8 @@ static void ns_read_from_socket(struct ns_connection *conn) {
     n = recv(conn->sock, buf, sizeof(buf), 0);
   }
 
-  DBG(("%p <- %d bytes [%.*s%s]",
-       conn, n, n < 40 ? n : 40, buf, n < 40 ? "" : "..."));
+  //DBG(("%p <- %d bytes [%.*s%s]",
+  //     conn, n, n < 40 ? n : 40, buf, n < 40 ? "" : "..."));
 
   if (ns_is_error(n)) {
     conn->flags |= NSF_CLOSE_IMMEDIATELY;
@@ -747,7 +747,7 @@ static void ns_write_to_socket(struct ns_connection *conn) {
     n = SSL_write(conn->ssl, io->buf, io->len);
     if (n < 0) {
       int ssl_err = SSL_get_error(conn->ssl, n);
-      DBG(("%p %d %d", conn, n, ssl_err));
+      //DBG(("%p %d %d", conn, n, ssl_err));
       if (ssl_err == 2 || ssl_err == 3) {
         return; // Call us again
       } else {
@@ -758,8 +758,8 @@ static void ns_write_to_socket(struct ns_connection *conn) {
 #endif
   { n = send(conn->sock, io->buf, io->len, 0); }
 
-  DBG(("%p -> %d bytes [%.*s%s]", conn, n, io->len < 40 ? io->len : 40,
-       io->buf, io->len < 40 ? "" : "..."));
+  //DBG(("%p -> %d bytes [%.*s%s]", conn, n, io->len < 40 ? io->len : 40,
+  //     io->buf, io->len < 40 ? "" : "..."));
 
   ns_call(conn, NS_SEND, &n);
   if (ns_is_error(n)) {
@@ -818,8 +818,8 @@ int ns_server_poll(struct ns_server *server, int milli) {
 
   tv.tv_sec = milli / 1000;
   tv.tv_usec = (milli % 1000) * 1000;
-
-  if (select((int) max_fd + 1, &read_set, &write_set, NULL, &tv) > 0) {
+  int x = select((int) max_fd + 1, &read_set, &write_set, NULL, &tv);
+  if (x > 0) {
 
     // Accept new connections
     if (server->listening_sock != INVALID_SOCKET &&
@@ -881,7 +881,7 @@ struct ns_connection *ns_connect(struct ns_server *server, const char *host,
 
   if (host == NULL || (he = gethostbyname(host)) == NULL ||
       (sock = socket(AF_INET, SOCK_STREAM, 0)) == INVALID_SOCKET) {
-    DBG(("gethostbyname(%s) failed: %s", host, strerror(errno)));
+    //DBG(("gethostbyname(%s) failed: %s", host, strerror(errno)));
     return NULL;
   }
 
@@ -915,7 +915,7 @@ struct ns_connection *ns_connect(struct ns_server *server, const char *host,
 #endif
 
   ns_add_conn(server, conn);
-  DBG(("%p %s:%d %d %p", conn, host, port, conn->sock, conn->ssl));
+  //DBG(("%p %s:%d %d %p", conn, host, port, conn->sock, conn->ssl));
 
   return conn;
 }
@@ -930,7 +930,7 @@ struct ns_connection *ns_add_sock(struct ns_server *s, sock_t sock, void *p) {
     conn->server = s;
     conn->last_io_time = time(NULL);
     ns_add_conn(s, conn);
-    DBG(("%p %d", conn, sock));
+    //DBG(("%p %d", conn, sock));
   }
   return conn;
 }
@@ -981,7 +981,7 @@ void ns_server_init(struct ns_server *s, void *server_data, ns_callback_t cb) {
 void ns_server_free(struct ns_server *s) {
   struct ns_connection *conn, *tmp_conn;
 
-  DBG(("%p", s));
+  //DBG(("%p", s));
   if (s == NULL) return;
   // Do one last poll, see https://github.com/cesanta/mongoose/issues/286
   ns_server_poll(s, 0);
@@ -1310,7 +1310,7 @@ static void to_wchar(const char *path, wchar_t *wbuf, size_t wbuf_len) {
 static int mg_stat(const char *path, file_stat_t *st) {
   wchar_t wpath[MAX_PATH_SIZE];
   to_wchar(path, wpath, ARRAY_SIZE(wpath));
-  DBG(("[%ls] -> %d", wpath, _wstati64(wpath, st)));
+  //DBG(("[%ls] -> %d", wpath, _wstati64(wpath, st)));
   return _wstati64(wpath, st);
 }
 
@@ -1575,7 +1575,7 @@ static void *push_to_stdin(void *arg) {
       if (!WriteFile(tp->hPipe, buf + sent, n - sent, &k, 0)) stop = 1;
     }
   }
-  DBG(("%s", "FORWARED EVERYTHING TO CGI"));
+  //DBG(("%s", "FORWARED EVERYTHING TO CGI"));
   CloseHandle(tp->hPipe);
   free(tp);
   _endthread();
@@ -1594,7 +1594,7 @@ static void *pull_from_stdout(void *arg) {
           (k = send(tp->s, buf + sent, n - sent, 0)) <= 0) stop = 1;
     }
   }
-  DBG(("%s", "EOF FROM CGI"));
+  //DBG(("%s", "EOF FROM CGI"));
   CloseHandle(tp->hPipe);
   shutdown(tp->s, 2);  // Without this, IO thread may get truncated data
   closesocket(tp->s);
@@ -1673,7 +1673,7 @@ static process_id_t start_process(char *interp, const char *cmd,
     CloseHandle(b[0]);
     closesocket(sock);
   }
-  DBG(("CGI command: [%ls] -> %p", wcmd, pi.hProcess));
+  //DBG(("CGI command: [%ls] -> %p", wcmd, pi.hProcess));
 
   CloseHandle(si.hStdOutput);
   CloseHandle(si.hStdInput);
@@ -2284,7 +2284,7 @@ static int convert_uri_to_file_name(struct connection *conn, char *buf,
       *p = '\0';
       if (mg_match_prefix(cgi_pat, strlen(cgi_pat), buf) > 0 &&
           !stat(buf, st)) {
-      DBG(("!!!! [%s]", buf));
+      //DBG(("!!!! [%s]", buf));
         *p = '/';
         conn->path_info = mg_strdup(p);
         *p = '\0';
@@ -3343,7 +3343,7 @@ static void handle_put(struct connection *conn, const char *path) {
 #endif
     send_http_error(conn, 500, "open(%s): %s", path, strerror(errno));
   } else {
-    DBG(("PUT [%s] %d", path, conn->ns_conn->recv_iobuf.len));
+    //DBG(("PUT [%s] %d", path, conn->ns_conn->recv_iobuf.len));
     conn->endpoint_type = EP_PUT;
     ns_set_close_on_exec(conn->endpoint.fd);
     range = mg_get_header(&conn->mg_conn, "Content-Range");
@@ -4094,7 +4094,7 @@ static void try_parse(struct connection *conn) {
     // become invalid.
     conn->request = (char *) malloc(conn->request_len);
     memcpy(conn->request, io->buf, conn->request_len);
-    DBG(("%p [%.*s]", conn, conn->request_len, conn->request));
+    //DBG(("%p [%.*s]", conn, conn->request_len, conn->request));
     iobuf_remove(io, conn->request_len);
     conn->request_len = parse_http_message(conn->request, conn->request_len,
                                            &conn->mg_conn);
@@ -4110,8 +4110,8 @@ static void process_request(struct connection *conn) {
   struct iobuf *io = &conn->ns_conn->recv_iobuf;
 
   try_parse(conn);
-  DBG(("%p %d %d %d [%.*s]", conn, conn->request_len, io->len,
-       conn->ns_conn->flags, io->len, io->buf));
+  //DBG(("%p %d %d %d [%.*s]", conn, conn->request_len, io->len,
+  //    conn->ns_conn->flags, io->len, io->buf));
   if (conn->request_len < 0 ||
       (conn->request_len > 0 && !is_valid_uri(conn->mg_conn.uri))) {
     send_http_error(conn, 400, NULL);
@@ -4165,8 +4165,8 @@ static void process_response(struct connection *conn) {
   struct iobuf *io = &conn->ns_conn->recv_iobuf;
 
   try_parse(conn);
-  DBG(("%p %d %d [%.*s]", conn, conn->request_len, io->len,
-       io->len > 40 ? 40 : io->len, io->buf));
+  //DBG(("%p %d %d [%.*s]", conn, conn->request_len, io->len,
+  //     io->len > 40 ? 40 : io->len, io->buf));
   if (conn->request_len < 0 ||
       (conn->request_len == 0 && io->len > MAX_REQUEST_SIZE)) {
     call_http_client_handler(conn);
@@ -4247,8 +4247,8 @@ static void close_local_endpoint(struct connection *conn) {
   // Must be done before free()
   int keep_alive = should_keep_alive(&conn->mg_conn) &&
     (conn->endpoint_type == EP_FILE || conn->endpoint_type == EP_USER);
-  DBG(("%p %d %d %d", conn, conn->endpoint_type, keep_alive,
-       conn->ns_conn->flags));
+  //DBG(("%p %d %d %d", conn, conn->endpoint_type, keep_alive,
+  //     conn->ns_conn->flags));
 
   switch (conn->endpoint_type) {
     case EP_PUT:
@@ -4498,7 +4498,7 @@ const char *mg_set_option(struct mg_server *server, const char *name,
   if (value == NULL || value[0] == '\0') return NULL;
 
   *v = mg_strdup(value);
-  DBG(("%s [%s]", name, *v));
+  //DBG(("%s [%s]", name, *v));
 
   if (ind == LISTENING_PORT) {
     int port = ns_bind(&server->ns_server, value);
@@ -4659,7 +4659,7 @@ static void mg_ev_handler(struct ns_connection *nc, enum ns_event ev, void *p) {
           NSF_FINISHED_SENDING_DATA : NSF_CLOSE_IMMEDIATELY;
         conn->endpoint.cgi_conn = NULL;
       } else if (conn != NULL) {
-        DBG(("%p %d closing", conn, conn->endpoint_type));
+        //DBG(("%p %d closing", conn, conn->endpoint_type));
 
         if (conn->endpoint_type == EP_CLIENT && nc->recv_iobuf.len > 0) {
           call_http_client_handler(conn);

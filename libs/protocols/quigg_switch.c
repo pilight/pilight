@@ -38,11 +38,11 @@
 
 static void quiggSwCreateMessage(int id, int state, int unit, int all) {
 	quigg_switch->message = json_mkobject();
-	json_append_member(quigg_switch->message, "id", json_mknumber(id));
+	json_append_member(quigg_switch->message, "id", json_mknumber(id, 0));
 	if(all==1) {
-		json_append_member(quigg_switch->message, "all", json_mknumber(all));
+		json_append_member(quigg_switch->message, "all", json_mknumber(all, 0));
 	} else {
-		json_append_member(quigg_switch->message, "unit", json_mknumber(unit));
+		json_append_member(quigg_switch->message, "unit", json_mknumber(unit, 0));
 	}
 
 	if(state==1) {

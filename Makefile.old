@@ -21,7 +21,7 @@ ifneq (, $(findstring amd64, $(SYS)))
 	OSFLAGS =  -O0 -fPIC -march=native -mtune=native -mfpmath=sse -Wno-conversion
 endif
 GIT_HASH := $(shell git describe --always)
-CFLAGS = -ffast-math $(OSFLAGS) -Wl,-rpath=/usr/local/lib/,-rpath=/usr/lib/,-rpath=/lib/ -Wfloat-equal -Wshadow -Wpointer-arith -Wcast-align -Wstrict-overflow=5 -Wwrite-strings -Waggregate-return -Wcast-qual -Wswitch-default -Wswitch-enum -Wformat=2 -g -Wall -I. -isystem.. -Ilibs/pilight/ -Ilibs/protocols/ -Ilibs/hardware/ -Ilibs/avrdude/ -Ilibs/platform/ -Ilibs/config/ -pthread -lm -ldl -DHASH=\"$(GIT_HASH)\"
+CFLAGS = -ffast-math -rdynamic -funwind-tables $(OSFLAGS) -Wl,-rpath=/usr/local/lib/,-rpath=/usr/lib/,-rpath=/lib/ -Wfloat-equal -Wshadow -Wpointer-arith -Wcast-align -Wstrict-overflow=5 -Wwrite-strings -Waggregate-return -Wcast-qual -Wswitch-default -Wswitch-enum -Wformat=2 -g -Wall -I. -isystem.. -Ilibs/pilight/ -Ilibs/protocols/ -Ilibs/hardware/ -Ilibs/avrdude/ -Ilibs/platform/ -Ilibs/config/ -pthread -lm -ldl -DHASH=\"$(GIT_HASH)\"
 SUBDIRS = libs/pilight libs/protocols libs/hardware libs/avrdude libs/platform libs/config
 SRC = $(wildcard *.c)
 INCLUDES = $(wildcard libs/pilight/*.c) $(wildcard libs/avrdude/*.c)

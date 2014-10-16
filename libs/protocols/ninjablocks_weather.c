@@ -47,12 +47,12 @@ typedef struct ninjablocks_weather_settings_t {
 
 static struct ninjablocks_weather_settings_t *ninjablocks_weather_settings = NULL;
 
-static void ninjablocksWeatherCreateMessage(int id, int unit, int temperature, int humidity) {
+static void ninjablocksWeatherCreateMessage(int id, int unit, double temperature, double humidity) {
 	ninjablocks_weather->message = json_mkobject();
-	json_append_member(ninjablocks_weather->message, "id", json_mknumber(id));
-	json_append_member(ninjablocks_weather->message, "unit", json_mknumber(unit));
-	json_append_member(ninjablocks_weather->message, "temperature", json_mknumber(temperature));
-	json_append_member(ninjablocks_weather->message, "humidity", json_mknumber(humidity*100));
+	json_append_member(ninjablocks_weather->message, "id", json_mknumber(id, 0));
+	json_append_member(ninjablocks_weather->message, "unit", json_mknumber(unit, 0));
+	json_append_member(ninjablocks_weather->message, "temperature", json_mknumber(temperature/100, 2));
+	json_append_member(ninjablocks_weather->message, "humidity", json_mknumber(humidity, 0));
 }
 
 static void ninjablocksWeatherParseCode(void) {
@@ -60,8 +60,8 @@ static void ninjablocksWeatherParseCode(void) {
 	int iParity = 1, iParityData = -1;	// init for even parity
 	int iHeaderSync = 12;				// 1100
 	int iDataSync = 6;					// 110
-	int temp_offset = 0;
-	int humi_offset = 0;
+	double temp_offset = 0.0;
+	double humi_offset = 0.0;
 
 	// Decode Biphase Mark Coded Differential Manchester (BMCDM) pulse stream into binary
 	for(x=0; x<=ninjablocks_weather->binlen; x++) {
@@ -83,16 +83,16 @@ static void ninjablocksWeatherParseCode(void) {
 	int unit = binToDecRev(ninjablocks_weather->binary, 4,7);
 	int id = binToDecRev(ninjablocks_weather->binary, 8,9);
 	int dataSync = binToDecRev(ninjablocks_weather->binary, 10,12);
-	int humidity = binToDecRev(ninjablocks_weather->binary, 13,19);	// %
-	int temperature = binToDecRev(ninjablocks_weather->binary, 20,34);
+	double humidity = binToDecRev(ninjablocks_weather->binary, 13,19);	// %
+	double temperature = binToDecRev(ninjablocks_weather->binary, 20,34);
 	// ((temp * (100 / 128)) - 5000) * 10 °C, 2 digits
 	temperature = ((int)((double)(temperature * 0.78125)) - 5000);
 
 	struct ninjablocks_weather_settings_t *tmp = ninjablocks_weather_settings;
 	while(tmp) {
 		if(fabs(tmp->id-id) < EPSILON && fabs(tmp->unit-unit) < EPSILON) {
-			humi_offset = (int)tmp->humi;
-			temp_offset = (int)tmp->temp;
+			humi_offset = tmp->humi;
+			temp_offset = tmp->temp;
 			break;
 		}
 		tmp = tmp->next;
@@ -194,7 +194,7 @@ void ninjablocksWeatherInit(void) {
 	options_add(&ninjablocks_weather->options, 't', "temperature", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9]{1,5}$");
 	options_add(&ninjablocks_weather->options, 'h', "humidity", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9]{1,5}$");
 
-	options_add(&ninjablocks_weather->options, 0, "decimals", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *)2, "[0-9]");
+	// options_add(&ninjablocks_weather->options, 0, "decimals", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *)2, "[0-9]");
 	options_add(&ninjablocks_weather->options, 0, "decimals", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)2, "[0-9]");
 	options_add(&ninjablocks_weather->options, 0, "readonly", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 	options_add(&ninjablocks_weather->options, 0, "show-humidity", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
