@@ -32,6 +32,7 @@
 #include "hummingboard.h"
 #include "raspberrypi.h"
 #include "bananapi.h"
+#include "radxa.h"
 
 static struct devices_t *device = NULL;
 static int setup = -2;
@@ -286,11 +287,16 @@ int wiringXI2CSetup(int devId) {
 	return -1;
 }
 
+char *wiringXPlatform(void) {
+	return device->name;
+}
+
 int wiringXSetup(void) {
 	if(setup == -2) {
 		hummingboardInit();
 		raspberrypiInit();
 		bananapiInit();
+		radxaInit();
 
 		int match = 0;
 		struct devices_t *tmp = devices;

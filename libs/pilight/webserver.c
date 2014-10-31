@@ -61,7 +61,6 @@ static unsigned short webgui_tpl_free = 0;
 static unsigned short webserver_root_free = 0;
 static unsigned short webserver_user_free = 0;
 
-static int loopfd = 0;
 static int sockfd = 0;
 
 typedef enum {
@@ -700,7 +699,7 @@ static int webserver_request_handler(struct mg_connection *conn) {
 		if(json_validate(input) == true) {
 			JsonNode *json = json_decode(input);
 			char *message = NULL;
-			if(json_find_string(json, "message", &message) != -1) {
+			if(json_find_string(json, "message", &message) == 0) {
 				if(strcmp(message, "request config") == 0) {
 					JsonNode *jsend = config_broadcast_create();
 					char *output = json_stringify(jsend, NULL);
@@ -963,8 +962,6 @@ int webserver_start(void) {
 		threads_register(msg, &webserver_worker, (void *)(intptr_t)i, 0);
 	}
 
-	char localhost[16] = "127.0.0.1";
-	loopfd = socket_connect(localhost, (unsigned short)webserver_port);
 	logprintf(LOG_DEBUG, "webserver listening to port %s", webport);
 
 	return 0;

@@ -541,7 +541,7 @@ static int raspberrypiPinMode(int pin, int mode) {
 static int raspberrypiISR(int pin, int mode) {
 	int i = 0, fd = 0, match = 0, count = 0;
 	const char *sMode = NULL;
-	char path[35], c;
+	char path[35], c, line[120];
 
 	pinModes[pin] = SYS;
 
@@ -607,6 +607,25 @@ static int raspberrypiISR(int pin, int mode) {
 		logprintf(LOG_ERR, "raspberrypi->isr: Invalid mode: %s. Should be rising, falling or both", sMode);
 		return -1;
 	}
+	fclose(f);
+
+	if((f = fopen(path, "r")) == NULL) {
+		fprintf(stderr, "raspberrypi->isr: Unable to open GPIO edge interface for pin %d: %s\n", pin, strerror(errno));
+		return -1;
+	}
+
+	while(fgets(line, 120, f) != NULL) {
+		if(strstr(line, sMode) != NULL) {
+			match = 1;
+			break;
+		}
+	}
+	fclose(f);
+
+	if(match == 0) {
+		fprintf(stderr, "raspberrypi->isr: Failed to set interrupt edge to %s\n", sMode);
+		return -1;	
+	}
 
 	sprintf(path, "/sys/class/gpio/gpio%d/value", pinToGpio[pin]);
 	if((sysFds[pin] = open(path, O_RDONLY)) < 0) {
@@ -617,8 +636,6 @@ static int raspberrypiISR(int pin, int mode) {
 
 	sprintf(path, "/sys/class/gpio/gpio%d/edge", pinToGpio[pin]);
 	changeOwner(path);
-
-	fclose(f);
 
 	ioctl(fd, FIONREAD, &count);
 	for(i=0; i<count; ++i) {

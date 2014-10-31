@@ -81,5 +81,6 @@ int wiringXI2CWrite(int fd, int data);
 int wiringXI2CWriteReg8(int fd, int reg, int data);
 int wiringXI2CWriteReg16(int fd, int reg, int data);
 int wiringXI2CSetup(int devId);
+char *wiringXPlatform(void);
 
 #endif
