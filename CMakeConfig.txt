@@ -31,6 +31,7 @@ set(PROTOCOL_GENERIC_SCREEN ON CACHE BOOL "support for the generic screen protoc
 set(PROTOCOL_GENERIC_SWITCH ON CACHE BOOL "support for the generic switch protocol")
 set(PROTOCOL_GENERIC_WEATHER ON CACHE BOOL "support for the generic weather protocol")
 set(PROTOCOL_GENERIC_WEBCAM ON CACHE BOOL "support for the generic webcam protocol")
+set(PROTOCOL_GPIO_SWITCH ON CACHE BOOL "support for the GPIO switch protocol")
 set(PROTOCOL_HOMEEASY_OLD ON CACHE BOOL "support for the Home Easy switch protocol")
 set(PROTOCOL_IMPULS ON CACHE BOOL "support for the Impuls switch protocol")
 set(PROTOCOL_INTERTECHNO_SWITCH ON CACHE BOOL "support for the new Intertechno switch protocol")

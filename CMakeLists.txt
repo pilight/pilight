@@ -279,6 +279,11 @@ if(${PROTOCOL_GENERIC_WEBCAM} MATCHES "OFF")
 	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/generic_webcam.c")
 endif()
 
+if(${PROTOCOL_GPIO_SWITCH} MATCHES "OFF")
+	list(REMOVE_ITEM protocol_headers "${PROJECT_SOURCE_DIR}/libs/protocols/gpio_switch.h")
+	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/gpio_switch.c")
+endif()
+
 if(${PROTOCOL_HOMEEASY_OLD} MATCHES "OFF")
 	list(REMOVE_ITEM protocol_headers "${PROJECT_SOURCE_DIR}/libs/protocols/home_easy_old.h")
 	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/home_easy_old.c")
