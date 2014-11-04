@@ -291,6 +291,18 @@ char *wiringXPlatform(void) {
 	return device->name;
 }
 
+int wiringXValidGPIO(int gpio) {
+	if(device) {
+		if(device->validGPIO) {
+			return device->validGPIO(gpio);
+		} else {
+			logprintf(LOG_ERR, "%s: device doesn't support gpio number validation", device->name);
+			wiringXGC();
+		}
+	}
+	return -1;
+}
+
 int wiringXSetup(void) {
 	if(setup == -2) {
 		hummingboardInit();

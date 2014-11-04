@@ -369,6 +369,13 @@ static int hummingboardI2CSetup(int devId) {
 	return fd;
 }
 
+int hummingboardValidGPIO(int gpio) {
+	if(gpio >= 0 && gpio <= 8) {
+		return 0;
+	}
+	return 1;	
+}
+
 void hummingboardInit(void) {
 
 	memset(pinModes, -1, NUM_PINS);
@@ -389,4 +396,5 @@ void hummingboardInit(void) {
 	hummingboard->I2CWriteReg16=&hummingboardI2CWriteReg16;
 	hummingboard->I2CSetup=&hummingboardI2CSetup;
 	hummingboard->gc=&hummingboardGC;
+	hummingboard->validGPIO=&hummingboardValidGPIO;
 }

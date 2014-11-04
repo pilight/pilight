@@ -754,6 +754,13 @@ static int raspberrypiI2CSetup(int devId) {
 	return fd;
 }
 
+int raspberrypiValidGPIO(int gpio) {
+	if(pinToGpio[gpio] != -1) {
+		return 0;
+	}
+	return 1;	
+}
+
 void raspberrypiInit(void) {
 
 	memset(pinModes, -1, NUM_PINS);
@@ -774,4 +781,5 @@ void raspberrypiInit(void) {
 	raspberrypi->I2CWriteReg16=&raspberrypiI2CWriteReg16;
 	raspberrypi->I2CSetup=&raspberrypiI2CSetup;
 	raspberrypi->gc=&raspberrypiGC;
+	raspberrypi->validGPIO=&raspberrypiValidGPIO;
 }

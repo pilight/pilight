@@ -105,6 +105,30 @@ static struct threadqueue_t *gpioSwitchInitDev(JsonNode *jdevice) {
 	return threads_register("gpio_switch", &gpioSwitchParse, (void *)node, 0);
 }
 
+static int gpioSwitchCheckValues(struct JsonNode *jvalues) {
+	struct JsonNode *jid = NULL;
+
+	if((jid = json_find_member(jvalues, "id"))) {
+		struct JsonNode *jchild = NULL;
+		struct JsonNode *jchild1 = NULL;
+
+		jchild = json_first_child(jid);
+		while(jchild) {
+			jchild1 = json_first_child(jchild);
+			while(jchild1) {
+				if(strcmp(jchild1->key, "gpio") == 0) {
+					if(wiringXValidGPIO((int)round(jchild1->number_)) != 0) {
+						return -1;
+					}
+				}
+				jchild1 = jchild1->next;
+			}
+			jchild = jchild->next;
+		}
+	}
+	return 0;
+}
+
 static void gpioSwitchThreadGC(void) {
 	gpio_switch_loop = 0;
 	protocol_thread_stop(gpio_switch);
@@ -133,6 +157,7 @@ void gpioSwitchInit(void) {
 
 	gpio_switch->initDev=&gpioSwitchInitDev;
 	gpio_switch->threadGC=&gpioSwitchThreadGC;	
+	gpio_switch->checkValues=&gpioSwitchCheckValues;	
 }
 
 #ifdef MODULE

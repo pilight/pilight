@@ -586,6 +586,13 @@ static int bananapiI2CSetup(int devId) {
 	return fd;
 }
 
+int bananapiValidGPIO(int gpio) {
+	if(pinToGpio[gpio] != -1) {
+		return 0;
+	}
+	return 1;	
+}
+
 void bananapiInit(void) {
 
 	memset(pinModes, -1, 278);
@@ -606,4 +613,5 @@ void bananapiInit(void) {
 	bananapi->I2CWriteReg16=&bananapiI2CWriteReg16;
 	bananapi->I2CSetup=&bananapiI2CSetup;
 	bananapi->gc=&bananapiGC;
+	bananapi->validGPIO=&bananapiValidGPIO;
 }
