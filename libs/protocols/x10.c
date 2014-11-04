@@ -159,9 +159,9 @@ static int x10CreateCode(JsonNode *code) {
 	if(json_find_string(code, "id", &stmp) == 0)
 		strcpy(id, stmp);
 	if(json_find_number(code, "off", &itmp) == 0)
-		state=0;
-	else if(json_find_number(code, "on", &itmp) == 0)
 		state=1;
+	else if(json_find_number(code, "on", &itmp) == 0)
+		state=0;
 
 	if(strcmp(id, "-1") == 0 || state == -1) {
 		logprintf(LOG_ERR, "x10: insufficient number of arguments");
