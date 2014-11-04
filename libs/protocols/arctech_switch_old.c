@@ -169,6 +169,7 @@ void arctechSwOldInit(void) {
 	protocol_device_add(arctech_switch_old, "byebyestandbye", "Bye Bye Standbye Switches");
 	protocol_device_add(arctech_switch_old, "duwi", "Düwi Terminal Switches");
 	protocol_device_add(arctech_switch_old, "promax", "PRO max Switches");
+	protocol_device_add(arctech_switch_old, "eurodomest", "Eurodomest Switches");
 	protocol_plslen_add(arctech_switch_old, 336);
 	protocol_plslen_add(arctech_switch_old, 326);
 	protocol_plslen_add(arctech_switch_old, 390);
