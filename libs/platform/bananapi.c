@@ -407,7 +407,7 @@ static int bananapiDigitalRead(int pin) {
 		phyaddr = SUNXI_GPIO_BASE + (bank * 36) + 0x10; // +0x10 -> data reg
 
 		if(BP_PIN_MASK[bank][i] != -1) {
-			if(pinModes[pin] != INPUT) {
+			if(pinModes[pin] != INPUT && pinModes[pin] != SYS) {
 				logprintf(LOG_ERR, "bananapi->digitalWrite: Trying to write to pin %d, but it's not configured as input", pin);
 				return -1;
 			}

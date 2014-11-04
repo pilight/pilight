@@ -155,7 +155,7 @@ static int hummingboardDigitalWrite(int pin, int value) {
 }
 
 static int hummingboardDigitalRead(int pin) {
-	if(pinModes[pin] != INPUT) {
+	if(pinModes[pin] != INPUT && pinModes[pin] != SYS) {
 		logprintf(LOG_ERR, "hummingboard->digitalRead: Trying to write to pin %d, but it's not configured as input", pin);
 		return -1;
 	}

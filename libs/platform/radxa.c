@@ -600,7 +600,7 @@ static int radxaDigitalRead(int pin) {
 		return -1;
 	}
 
-	if(pinModes[npin] != INPUT) {
+	if(pinModes[npin] != INPUT && pinModes[npin] != SYS) {
 		logprintf(LOG_ERR, "radxa->digitalRead: Trying to write to pin %d, but it's not configured as input", pin);
 		return -1;
 	}
