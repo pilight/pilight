@@ -772,10 +772,10 @@ static int radxaI2CSetup(int devId) {
 	return fd;
 }
 
-int radxaValidGPIO(int gpio) {
+int radxaValidGPIO(int pin) {
 	int i = 0;
 	for(i=0;i<NUM_PINS;i++) {
-		if(validGPIO[i] == gpio) {
+		if(validGPIO[i] == pin) {
 			return 0;
 		}
 	}

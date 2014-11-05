@@ -754,8 +754,8 @@ static int raspberrypiI2CSetup(int devId) {
 	return fd;
 }
 
-int raspberrypiValidGPIO(int gpio) {
-	if(pinToGpio[gpio] != -1) {
+int raspberrypiValidGPIO(int pin) {
+	if(pinToGpio[pin] != -1) {
 		return 0;
 	}
 	return 1;	

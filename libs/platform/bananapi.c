@@ -586,8 +586,8 @@ static int bananapiI2CSetup(int devId) {
 	return fd;
 }
 
-int bananapiValidGPIO(int gpio) {
-	if(pinToGpio[gpio] != -1) {
+int bananapiValidGPIO(int pin) {
+	if(pinToGpio[pin] != -1) {
 		return 0;
 	}
 	return 1;	

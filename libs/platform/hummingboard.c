@@ -369,8 +369,8 @@ static int hummingboardI2CSetup(int devId) {
 	return fd;
 }
 
-int hummingboardValidGPIO(int gpio) {
-	if(gpio >= 0 && gpio <= 8) {
+int hummingboardValidGPIO(int pin) {
+	if(pin >= 0 && pin <= 8) {
 		return 0;
 	}
 	return 1;	
