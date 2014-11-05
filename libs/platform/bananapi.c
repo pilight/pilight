@@ -199,9 +199,10 @@ static int changeOwner(char *file) {
 }
 
 static int bananapiISR(int pin, int mode) {
-	int i = 0, fd = 0, count = 0, npin = pinToGpioR2[pin];
+	int i = 0, fd = 0, count = 0;
+	int npin = pinToGpioR2[pin], match = 0;
 	const char *sMode = NULL;
-	char path[35], c;
+	char path[35], c, line[120];
 	FILE *f = NULL;
 
 	pinModes[pin] = SYS;
@@ -261,6 +262,25 @@ static int bananapiISR(int pin, int mode) {
 		logprintf(LOG_ERR, "bananapi->isr: Invalid mode: %s. Should be rising, falling or both", sMode);
 		return -1;
 	}
+	fclose(f);
+
+	if((f = fopen(path, "r")) == NULL) {
+		logprintf(LOG_ERR, "bananapi->isr: Unable to open GPIO edge interface for pin %d: %s", pin, strerror(errno));
+		return -1;
+	}
+
+	while(fgets(line, 120, f) != NULL) {
+		if(strstr(line, sMode) != NULL) {
+			match = 1;
+			break;
+		}
+	}
+	fclose(f);
+
+	if(match == 0) {
+		logprintf(LOG_ERR, "bananapi->isr: Failed to set interrupt edge to %s", sMode);
+		return -1;	
+	}
 
 	sprintf(path, "/sys/class/gpio/gpio%d/value", npin);
 	if((sysFds[pin] = open(path, O_RDONLY)) < 0) {
@@ -272,8 +292,6 @@ static int bananapiISR(int pin, int mode) {
 	sprintf(path, "/sys/class/gpio/gpio%d/edge", npin);
 	changeOwner(path);
 
-	fclose(f);
-
 	ioctl(fd, FIONREAD, &count);
 	for(i=0; i<count; ++i) {
 		read(fd, &c, 1);
@@ -284,7 +302,7 @@ static int bananapiISR(int pin, int mode) {
 }
 
 static int bananapiWaitForInterrupt(int pin, int ms) {
-	int x = 0, npin = pinToGpioR2[pin];
+	int x = 0;
 	uint8_t c = 0;
 	struct pollfd polls;
 
@@ -391,7 +409,7 @@ static int bananapiDigitalRead(int pin) {
 		phyaddr = SUNXI_GPIO_BASE + (bank * 36) + 0x10; // +0x10 -> data reg
 
 		if(BP_PIN_MASK[bank][i] != -1) {
-			if(pinModes[pin] != INPUT) {
+			if(pinModes[pin] != INPUT && pinModes[pin] != SYS) {
 				logprintf(LOG_ERR, "bananapi->digitalWrite: Trying to write to pin %d, but it's not configured as input", pin);
 				return -1;
 			}
@@ -572,6 +590,13 @@ static int bananapiI2CSetup(int devId) {
 }
 #endif
 
+int bananapiValidGPIO(int pin) {
+	if(pinToGpio[pin] != -1) {
+		return 0;
+	}
+	return 1;	
+}
+
 void bananapiInit(void) {
 
 	memset(pinModes, -1, 278);
@@ -594,4 +619,5 @@ void bananapiInit(void) {
 	bananapi->I2CSetup=&bananapiI2CSetup;
 #endif
 	bananapi->gc=&bananapiGC;
+	bananapi->validGPIO=&bananapiValidGPIO;
 }

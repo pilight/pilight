@@ -33,6 +33,7 @@
 #include "hummingboard.h"
 #include "raspberrypi.h"
 #include "bananapi.h"
+#include "radxa.h"
 
 static struct platform_t *platform = NULL;
 static int setup = -2;
@@ -287,11 +288,28 @@ int wiringXI2CSetup(int devId) {
 	return -1;
 }
 
+char *wiringXPlatform(void) {
+	return device->name;
+}
+
+int wiringXValidGPIO(int gpio) {
+	if(device) {
+		if(device->validGPIO) {
+			return device->validGPIO(gpio);
+		} else {
+			logprintf(LOG_ERR, "%s: device doesn't support gpio number validation", device->name);
+			wiringXGC();
+		}
+	}
+	return -1;
+}
+
 int wiringXSetup(void) {
 	if(setup == -2) {
 		hummingboardInit();
 		raspberrypiInit();
 		bananapiInit();
+		radxaInit();
 
 		int match = 0;
 		struct platform_t *tmp = platforms;

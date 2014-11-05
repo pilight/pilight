@@ -41,11 +41,19 @@ static unsigned short gpio433HwInit(void) {
 	}
 	gpio_433_initialized = 1;
 	if(gpio_433_out >= 0) {
+		if(wiringXValidGPIO(gpio_433_out) != 0) {
+			logprintf(LOG_ERR, "invalid sender pin: %d", gpio_433_out);
+			return EXIT_FAILURE;
+		}
 		pinMode(gpio_433_out, OUTPUT);
 	}
 	if(gpio_433_in >= 0) {
+		if(wiringXValidGPIO(gpio_433_in) != 0) {
+			logprintf(LOG_ERR, "invalid receiver pin: %d", gpio_433_in);
+			return EXIT_FAILURE;
+		}
 		if(wiringXISR(gpio_433_in, INT_EDGE_BOTH) < 0) {
-			logprintf(LOG_ERR, "unable to register interrupt for pin %d", gpio_433_in) ;
+			logprintf(LOG_ERR, "unable to register interrupt for pin %d", gpio_433_in);
 			return EXIT_SUCCESS;
 		}
 	}

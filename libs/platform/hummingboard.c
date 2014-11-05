@@ -157,7 +157,7 @@ static int hummingboardDigitalWrite(int pin, int value) {
 }
 
 static int hummingboardDigitalRead(int pin) {
-	if(pinModes[pin] != INPUT) {
+	if(pinModes[pin] != INPUT && pinModes[pin] != SYS) {
 		logprintf(LOG_ERR, "hummingboard->digitalRead: Trying to write to pin %d, but it's not configured as input", pin);
 		return -1;
 	}
@@ -172,7 +172,7 @@ static int hummingboardDigitalRead(int pin) {
 static int hummingboardISR(int pin, int mode) {
 	int i = 0, fd = 0, match = 0, count = 0;
 	const char *sMode = NULL;
-	char path[35], c;
+	char path[35], c, line[120];
 	pinModes[pin] = SYS;
 
 	if(mode == INT_EDGE_FALLING) {
@@ -237,6 +237,25 @@ static int hummingboardISR(int pin, int mode) {
 		logprintf(LOG_ERR, "hummingboard->isr: Invalid mode: %s. Should be rising, falling or both", sMode);
 		return -1;
 	}
+	fclose(f);
+
+	if((f = fopen(path, "r")) == NULL) {
+		fprintf(stderr, "hummingboard->isr: Unable to open GPIO edge interface for pin %d: %s\n", pin, strerror(errno));
+		return -1;
+	}
+
+	while(fgets(line, 120, f) != NULL) {
+		if(strstr(line, sMode) != NULL) {
+			match = 1;
+			break;
+		}
+	}
+	fclose(f);
+
+	if(match == 0) {
+		fprintf(stderr, "hummingboard->isr: Failed to set interrupt edge to %s\n", sMode);
+		return -1;	
+	}
 
 	sprintf(path, "/sys/class/gpio/gpio%d/value", pinsToGPIO[pin]);
 	if((sysFds[pin] = open(path, O_RDONLY)) < 0) {
@@ -247,8 +266,6 @@ static int hummingboardISR(int pin, int mode) {
 
 	sprintf(path, "/sys/class/gpio/gpio%d/edge", pinsToGPIO[pin]);
 	changeOwner(path);
-
-	fclose(f);
 
 	ioctl(fd, FIONREAD, &count);
 	for(i=0; i<count; ++i) {
@@ -356,6 +373,13 @@ static int hummingboardI2CSetup(int devId) {
 }
 #endif
 
+int hummingboardValidGPIO(int pin) {
+	if(pin >= 0 && pin <= 8) {
+		return 0;
+	}
+	return 1;	
+}
+
 void hummingboardInit(void) {
 
 	memset(pinModes, -1, NUM_PINS);
@@ -378,4 +402,5 @@ void hummingboardInit(void) {
 	hummingboard->I2CSetup=&hummingboardI2CSetup;
 #endif
 	hummingboard->gc=&hummingboardGC;
+	hummingboard->validGPIO=&hummingboardValidGPIO;
 }

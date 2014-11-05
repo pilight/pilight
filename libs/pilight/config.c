@@ -193,7 +193,7 @@ int config_read(void) {
 
 	/* Validate JSON and turn into JSON object */
 	if(json_validate(content) == false) {
-		logprintf(LOG_ERR, "config are not in a valid json format", content);
+		logprintf(LOG_ERR, "config is not in a valid json format", content);
 		sfree((void *)&content);
 		return EXIT_FAILURE;
 	}

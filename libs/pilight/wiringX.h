@@ -59,6 +59,7 @@ typedef struct platform_t {
 	int (*I2CWriteReg8)(int fd, int reg, int data);
 	int (*I2CWriteReg16)(int fd, int reg, int data);
 	int (*I2CSetup)(int devId);
+	int (*validGPIO)(int gpio);
 	int (*gc)(void);
 	struct devices_t *next;
 } platform_t;
@@ -81,5 +82,7 @@ int wiringXI2CWrite(int fd, int data);
 int wiringXI2CWriteReg8(int fd, int reg, int data);
 int wiringXI2CWriteReg16(int fd, int reg, int data);
 int wiringXI2CSetup(int devId);
+char *wiringXPlatform(void);
+int wiringXValidGPIO(int gpio);
 
 #endif

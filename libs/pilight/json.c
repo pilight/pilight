@@ -1040,7 +1040,21 @@ static void emit_array_indented(SB *out, const JsonNode *array, const char *spac
 	int i, x;
 
 	if(tmp && (tmp->tag == JSON_STRING || tmp->tag == JSON_NUMBER)) {
-		emit_array(out, array);
+		const JsonNode *element1 = array->children.head;
+		int i;
+
+		if (element1 == NULL) {
+			sb_puts(out, "[]");
+			return;
+		}
+
+		sb_puts(out, "[ ");
+		while (element1 != NULL) {
+			emit_value(out, element1);
+			element1 = element1->next;
+			sb_puts(out, element1 != NULL ? ", " : "");
+		}
+		sb_puts(out, " ]");
 	} else {
 		if (element == NULL) {
 			sb_puts(out, "[]");

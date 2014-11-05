@@ -148,7 +148,7 @@ static void alectoWX500ParseCode(void) {
 			id = binToDec(alectoWX500->binary, 0, 7);
 			rain = binToDec(alectoWX500->binary, 16, 30) * 5;
 			battery = !alectoWX500->binary[8];
-			json_append_member(alectoWX500->message, "rain", json_mknumber(rain/10, 1));
+			//json_append_member(alectoWX500->message, "rain", json_mknumber(rain/10, 1));
 			json_append_member(alectoWX500->message, "battery", json_mknumber(battery, 0));
 		break;
 		default:
@@ -248,17 +248,17 @@ void alectoWX500Init(void) {
 	options_add(&alectoWX500->options, 'w', "windavg", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9]{1,3}$");
 	options_add(&alectoWX500->options, 'd', "winddir", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9]{1,3}$");
 	options_add(&alectoWX500->options, 'g', "windgust", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9]{1,3}$");
-	options_add(&alectoWX500->options, 'r', "rain", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9]{1,3}$");
+	//options_add(&alectoWX500->options, 'r', "rain", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9]{1,3}$");
 
 	// options_add(&alectoWX500->options, 0, "decimals", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *)1, "[0-9]");
 	options_add(&alectoWX500->options, 0, "decimals", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)1, "[0-9]");
 	options_add(&alectoWX500->options, 0, "humidity-offset", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *)0, "[0-9]");
 	options_add(&alectoWX500->options, 0, "temperature-offset", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *)0, "[0-9]");
-	options_add(&alectoWX500->options, 0, "humidity", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
-	options_add(&alectoWX500->options, 0, "temperature", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
-	options_add(&alectoWX500->options, 0, "battery", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
-	options_add(&alectoWX500->options, 0, "wind", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
-	options_add(&alectoWX500->options, 0, "rain", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
+	options_add(&alectoWX500->options, 0, "show-humidity", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
+	options_add(&alectoWX500->options, 0, "show-temperature", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
+	options_add(&alectoWX500->options, 0, "show-battery", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
+	options_add(&alectoWX500->options, 0, "show-wind", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
+	//options_add(&alectoWX500->options, 0, "show-rain", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 
 	alectoWX500->parseCode=&alectoWX500ParseCode;
 	alectoWX500->checkValues=&alectoWX500CheckValues;
