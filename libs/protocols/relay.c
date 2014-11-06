@@ -173,9 +173,9 @@ void relayInit(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name = "relay";
-	module->version = "1.0";
+	module->version = "1.1";
 	module->reqversion = "5.0";
-	module->reqcommit = NULL;
+	module->reqcommit = "70";
 }
 
 void init(void) {
