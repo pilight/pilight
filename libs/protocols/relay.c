@@ -157,7 +157,7 @@ void relayInit(void) {
 
 	options_add(&relay->options, 't', "on", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
 	options_add(&relay->options, 'f', "off", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
-	options_add(&relay->options, 'g', "gpio", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, NULL, "^([0-9]{1}|1[0-9]|20)$");
+	options_add(&relay->options, 'g', "gpio", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, NULL, "[0-9]");
 
 	relay_state = malloc(4);
 	strcpy(relay_state, "off");
@@ -173,7 +173,7 @@ void relayInit(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name = "relay";
-	module->version = "1.1";
+	module->version = "1.2";
 	module->reqversion = "5.0";
 	module->reqcommit = "70";
 }
