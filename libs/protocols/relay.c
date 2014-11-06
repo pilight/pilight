@@ -74,16 +74,16 @@ static int relayCreateCode(JsonNode *code) {
 		logprintf(LOG_ERR, "relay: insufficient number of arguments");
 		have_error = 1;
 		goto clear;
-	} else if(wiringXValidGPIO(gpio) != 0) {
-		logprintf(LOG_ERR, "relay: invalid gpio range");
-		have_error = 1;
-		goto clear;
+	} else if(wiringXSetup() < 0) {
+		logprintf(LOG_ERR, "unable to setup wiringX") ;
+		return EXIT_FAILURE;
 	} else {
-		if(strstr(progname, "daemon") != NULL) {
-			if(wiringXSetup() < 0) {
-				logprintf(LOG_ERR, "unable to setup wiringX") ;
-				return EXIT_FAILURE;
-			} else {
+		if(wiringXValidGPIO(gpio) != 0) {
+			logprintf(LOG_ERR, "relay: invalid gpio range");
+			have_error = 1;
+			goto clear;
+		} else {
+			if(strstr(progname, "daemon") != NULL) {
 				pinMode(gpio, OUTPUT);
 				if(strcmp(def, "off") == 0) {
 					if(state == 1) {
@@ -98,6 +98,8 @@ static int relayCreateCode(JsonNode *code) {
 						digitalWrite(gpio, HIGH);
 					}
 				}
+			} else {
+				wiringXGC();
 			}
 			relayCreateMessage(gpio, state);
 			goto clear;
@@ -173,7 +175,7 @@ void relayInit(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name = "relay";
-	module->version = "1.2";
+	module->version = "1.3";
 	module->reqversion = "5.0";
 	module->reqcommit = "70";
 }
