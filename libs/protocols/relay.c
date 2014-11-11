@@ -74,16 +74,16 @@ static int relayCreateCode(JsonNode *code) {
 		logprintf(LOG_ERR, "relay: insufficient number of arguments");
 		have_error = 1;
 		goto clear;
-	} else if(wiringXValidGPIO(gpio) != 0) {
-		logprintf(LOG_ERR, "relay: invalid gpio range");
-		have_error = 1;
-		goto clear;
+	} else if(wiringXSetup() < 0) {
+		logprintf(LOG_ERR, "unable to setup wiringX") ;
+		return EXIT_FAILURE;
 	} else {
-		if(strstr(progname, "daemon") != NULL) {
-			if(wiringXSetup() < 0) {
-				logprintf(LOG_ERR, "unable to setup wiringX") ;
-				return EXIT_FAILURE;
-			} else {
+		if(wiringXValidGPIO(gpio) != 0) {
+			logprintf(LOG_ERR, "relay: invalid gpio range");
+			have_error = 1;
+			goto clear;
+		} else {
+			if(strstr(progname, "daemon") != NULL) {
 				pinMode(gpio, OUTPUT);
 				if(strcmp(def, "off") == 0) {
 					if(state == 1) {
@@ -98,6 +98,8 @@ static int relayCreateCode(JsonNode *code) {
 						digitalWrite(gpio, HIGH);
 					}
 				}
+			} else {
+				wiringXGC();
 			}
 			relayCreateMessage(gpio, state);
 			goto clear;
@@ -157,7 +159,7 @@ void relayInit(void) {
 
 	options_add(&relay->options, 't', "on", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
 	options_add(&relay->options, 'f', "off", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
-	options_add(&relay->options, 'g', "gpio", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, NULL, "^([0-9]{1}|1[0-9]|20)$");
+	options_add(&relay->options, 'g', "gpio", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, NULL, "[0-9]");
 
 	relay_state = malloc(4);
 	strcpy(relay_state, "off");

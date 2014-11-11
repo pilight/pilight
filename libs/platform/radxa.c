@@ -687,7 +687,7 @@ static int radxaPinMode(int pin, int mode) {
 
 	/* set bit to 1 for output, 0 for input */
 	offset = npin - bank->pin_base;
-	if(mode == INPUT) {
+	if(mode != INPUT) {
 		data |= BIT(offset);
 	} else {
 		data &= ~BIT(offset);
