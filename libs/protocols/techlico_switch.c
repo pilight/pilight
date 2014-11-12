@@ -195,9 +195,9 @@ void techlicoSwInit(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name = "techlico_switch";
-	module->version = "0.9";
-	module->reqversion = "6.0";
-	module->reqcommit = NULL;
+	module->version = "0.10";
+	module->reqversion = "5.0";
+	module->reqcommit = "84";
 }
 
 void init(void) {

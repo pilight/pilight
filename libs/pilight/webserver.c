@@ -3,17 +3,17 @@
 
 	This file is part of pilight.
 
-    pilight is free software: you can redistribute it and/or modify it under the
+	pilight is free software: you can redistribute it and/or modify it under the
 	terms of the GNU General Public License as published by the Free Software
 	Foundation, either version 3 of the License, or (at your option) any later
 	version.
 
-    pilight is distributed in the hope that it will be useful, but WITHOUT ANY
+	pilight is distributed in the hope that it will be useful, but WITHOUT ANY
 	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-    You should have received a copy of the GNU General Public License
-    along with pilight. If not, see	<http://www.gnu.org/licenses/>
+	You should have received a copy of the GNU General Public License
+	along with pilight. If not, see	<http://www.gnu.org/licenses/>
 */
 
 #include <stdio.h>
@@ -48,6 +48,7 @@
 
 static int webserver_port = WEBSERVER_PORT;
 static int webserver_cache = 1;
+static int webgui_websockets = WEBGUI_WEBSOCKETS;
 static char *webserver_user = NULL;
 static char *webserver_authentication_username = NULL;
 static char *webserver_authentication_password = NULL;
@@ -296,7 +297,7 @@ static int webserver_request_handler(struct mg_connection *conn) {
 				chunk = (unsigned int)(filehandler->length-filehandler->ptr);
 			}
 			if(filehandler->fp != NULL) {
-				chunk = (unsigned int)fread(buff, sizeof(char), WEBSERVER_CHUNK_SIZE, filehandler->fp);
+				chunk = (unsigned int)fread(buff, sizeof(char), WEBSERVER_CHUNK_SIZE-1, filehandler->fp);
 				mg_send_data(conn, buff, (int)chunk);
 			} else {
 				mg_send_data(conn, &filehandler->bytes[filehandler->ptr], (int)chunk);
@@ -317,7 +318,7 @@ static int webserver_request_handler(struct mg_connection *conn) {
 			} else {
 				return MG_MORE;
 			}
-		} else if(conn->uri) {
+		} else if(conn->uri != NULL) {
 			if(strcmp(conn->uri, "/send") == 0) {
 				if(conn->query_string != NULL) {
 					char out[strlen(conn->query_string)+1];
@@ -331,6 +332,7 @@ static int webserver_request_handler(struct mg_connection *conn) {
 				char *output = json_stringify(jsend, NULL);
 				mg_printf_data(conn, output);
 				json_delete(jsend);
+				sfree((void *)&output);
 				jsend = NULL;
 				return MG_TRUE;
 			} else if(strcmp(conn->uri, "/values") == 0) {
@@ -338,6 +340,7 @@ static int webserver_request_handler(struct mg_connection *conn) {
 				char *output = json_stringify(jsend, NULL);
 				mg_printf_data(conn, output);
 				json_delete(jsend);
+				sfree((void *)&output);
 				jsend = NULL;
 				return MG_TRUE;
 			} else if(strcmp(&conn->uri[(rstrstr(conn->uri, "/")-conn->uri)], "/") == 0) {
@@ -346,12 +349,13 @@ static int webserver_request_handler(struct mg_connection *conn) {
 				char *pch = strtok((char *)indexes, ",");
 				/* Check if the webserver_root is terminated by a slash. If not, than add it */
 				while(pch) {
-					request = realloc(request, strlen(webserver_root)+strlen(webgui_tpl)+strlen(conn->uri)+strlen(pch)+4);
+					size_t l = strlen(webserver_root)+strlen(webgui_tpl)+strlen(conn->uri)+strlen(pch)+4;
+					request = realloc(request, l);
 					if(!request) {
 						logprintf(LOG_ERR, "out of memory");
 						exit(EXIT_FAILURE);
 					}
-					memset(request, '\0', strlen(webserver_root)+strlen(webgui_tpl)+strlen(pch)+4);
+					memset(request, '\0', l);
 					if(webserver_root[strlen(webserver_root)-1] == '/') {
 #ifdef __FreeBSD__
 						sprintf(request, "%s%s/%s%s", webserver_root, webgui_tpl, conn->uri, pch);
@@ -437,17 +441,19 @@ static int webserver_request_handler(struct mg_connection *conn) {
 				if(webserver_cache && st.st_size <= MAX_CACHE_FILESIZE &&
 				   strcmp(mimetype, "application/x-httpd-php") != 0 &&
 				   fcache_get_size(request, &size) != 0 && fcache_add(request) != 0) {
+					sfree((void *)&mimetype);
 					goto filenotfound;
 				}
 			} else {
+				sfree((void *)&mimetype);
 				goto filenotfound;
 			}
 
 			const char *cl = NULL;
 			if((cl = mg_get_header(conn, "Content-Length"))) {
 				if(atoi(cl) > MAX_UPLOAD_FILESIZE) {
-					sfree((void *)&mimetype);
 					char line[1024] = {'\0'};
+					sfree((void *)&mimetype);
 					mimetype = webserver_mimetype("text/plain");
 					sprintf(line, "Webserver Warning: POST Content-Length of %d bytes exceeds the limit of %d bytes in Unknown on line 0", MAX_UPLOAD_FILESIZE, atoi(cl));
 					webserver_create_header(&p, "200 OK", mimetype, (unsigned int)strlen(line));
@@ -460,7 +466,7 @@ static int webserver_request_handler(struct mg_connection *conn) {
 			}
 
 			/* If webserver caching is enabled, first load all files in the memory */
-			if(strcmp(mimetype, "application/x-httpd-php") == 0 && webserver_php) {
+			if(strcmp(mimetype, "application/x-httpd-php") == 0 && webserver_php == 1) {
 				char *raw = NULL;
 				if(strcmp(conn->request_method, "POST") == 0) {
 					/* Store all (binary) post data in a file so we
@@ -483,7 +489,6 @@ static int webserver_request_handler(struct mg_connection *conn) {
 
 				if(raw != NULL) {
 					char *output = malloc(strlen(raw)+1);
-					memset(output, '\0', strlen(raw)+1);
 					if(!output) {
 						logprintf(LOG_ERR, "out of memory");
 						exit(EXIT_FAILURE);
@@ -553,7 +558,7 @@ static int webserver_request_handler(struct mg_connection *conn) {
 							sfree((void *)&output);
 						} else {
 							if(filehandler == NULL) {
-								filehandler = malloc(sizeof(filehandler_t));
+								filehandler = malloc(sizeof(struct filehandler_t));
 								filehandler->bytes = malloc(olen);
 								memcpy(filehandler->bytes, output, olen);
 								filehandler->length = (unsigned int)olen;
@@ -699,7 +704,7 @@ static int webserver_request_handler(struct mg_connection *conn) {
 				sfree((void *)&request);
 			}
 		}
-	} else {
+	} else if(webgui_websockets == 1) {
 		char input[conn->content_len+1];
 		strncpy(input, conn->content, conn->content_len);
 		input[conn->content_len] = '\0';
@@ -722,20 +727,7 @@ static int webserver_request_handler(struct mg_connection *conn) {
 					mg_websocket_write(conn, 1, output, output_len);
 					sfree((void *)&output);
 					json_delete(jsend);
-
-					struct JsonNode *jmessage = json_mkobject();
-					struct JsonNode *jcode = json_mkobject();
-					json_append_member(jcode, "version", json_mkstring(VERSION));
-					json_append_member(jmessage, "values", jcode);
-					json_append_member(jmessage, "origin", json_mkstring("core"));
-					json_append_member(jmessage, "type", json_mknumber(PLVERSION, 0));
-					output = json_stringify(jmessage, NULL);
-					output_len = strlen(output);
-					mg_websocket_write(conn, 1, output, output_len);
-					sfree((void *)&output);
-					json_delete(jmessage);
-					jmessage = NULL;
-				} else if(strcmp(action, "control") == 0) {
+				} else if(strcmp(action, "control") == 0 || strcmp(action, "registry") == 0) {
 					/* Write all codes coming from the webserver to the daemon */
 					socket_write(sockfd, input);
 				}
@@ -866,13 +858,13 @@ void *webserver_clientize(void *param) {
 	sfree((void *)&out);
 	json_delete(jclient);
 
-	if(socket_read(sockfd, &recvBuff) == 1 
-	   || strcmp(recvBuff, "success") != 0) {
+	if(socket_read(sockfd, &recvBuff) != 0
+	   || strcmp(recvBuff, "{\"status\":\"success\"}") != 0) {
 		goto close;
-	}		
-	
+	}
+
 	while(webserver_loop) {
-		if(socket_read(sockfd, &recvBuff) == 1) {
+		if(socket_read(sockfd, &recvBuff) != 0) {
 			goto close;
 		}
 		webserver_queue(recvBuff);
@@ -944,6 +936,7 @@ int webserver_start(void) {
 		strcpy(webgui_tpl, WEBGUI_TEMPLATE);
 		webgui_tpl_free = 1;
 	}
+	settings_find_number("webgui-websockets", &webgui_websockets);
 
 	/* Do we turn on webserver caching. This means that all requested files are
 	   loaded into the memory so they aren't read from the FS anymore */

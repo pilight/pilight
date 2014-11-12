@@ -409,7 +409,7 @@ static int radxaISR(int pin, int mode) {
 
 	if(match == 0) {
 		logprintf(LOG_ERR, "radxa->isr: Failed to set interrupt edge to %s", sMode);
-		return -1;	
+		return -1;
 	}
 
 	sprintf(path, "/sys/class/gpio/gpio%d/value", pin);
@@ -786,7 +786,7 @@ void radxaInit(void) {
 
 	memset(pinModes, -1, 128);
 
-	device_register(&radxa, "radxa");
+	platform_register(&radxa, "radxa");
 	radxa->setup=&setup;
 	radxa->pinMode=&radxaPinMode;
 	radxa->digitalWrite=&radxaDigitalWrite;

@@ -1,5 +1,6 @@
 /*
 	Copyright (c) 2014 CurlyMo <curlymoo1@gmail.com>
+	              2014 lemaker http://www.lemaker.org
 
 	This program is free software: you can redistribute it and/or modify
 	it under the terms of the GNU General Public License as published by
@@ -279,7 +280,7 @@ static int bananapiISR(int pin, int mode) {
 
 	if(match == 0) {
 		logprintf(LOG_ERR, "bananapi->isr: Failed to set interrupt edge to %s", sMode);
-		return -1;	
+		return -1;
 	}
 
 	sprintf(path, "/sys/class/gpio/gpio%d/value", npin);
@@ -594,7 +595,7 @@ int bananapiValidGPIO(int pin) {
 	if(pinToGpio[pin] != -1) {
 		return 0;
 	}
-	return 1;	
+	return 1;
 }
 
 void bananapiInit(void) {
@@ -609,7 +610,7 @@ void bananapiInit(void) {
 	bananapi->identify=&piBoardRev;
 	bananapi->isr=&bananapiISR;
 	bananapi->waitForInterrupt=&bananapiWaitForInterrupt;
-#ifndef __FreeBSD__	
+#ifndef __FreeBSD__
 	bananapi->I2CRead=&bananapiI2CRead;
 	bananapi->I2CReadReg8=&bananapiI2CReadReg8;
 	bananapi->I2CReadReg16=&bananapiI2CReadReg16;

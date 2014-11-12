@@ -198,9 +198,9 @@ void arctechSwOldInit(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name = "arctech_switch_old";
-	module->version = "1.2";
-	module->reqversion = "6.0";
-	module->reqcommit = NULL;
+	module->version = "1.3";
+	module->reqversion = "5.0";
+	module->reqcommit = "84";
 }
 
 void init(void) {

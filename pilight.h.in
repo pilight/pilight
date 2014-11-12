@@ -41,6 +41,7 @@
 	#define WEBSERVER_WORKERS		1
 	#define WEBSERVER_CHUNK_SIZE 	4096
 	#define WEBSERVER_USER 			"www-data"
+	#define WEBGUI_WEBSOCKETS	1
 #endif
 
 #define MAX_CLIENTS					30
@@ -51,7 +52,7 @@
 #define HARDWARE_ROOT				"/usr/local/lib/pilight/hardware/"
 
 #define PID_FILE					"/var/run/pilight.pid"
-#define CONFIG_FILE					"/media/rpi/433.92/daemon2/config.json"
+#define CONFIG_FILE					"/etc/pilight/config.json"
 #define LOG_FILE					"/var/log/pilight.log"
 #define TZDATA_FILE					"/etc/pilight/tzdata.json"
 #define LOG_MAX_SIZE 				1048576 // 1024*1024

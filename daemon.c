@@ -54,6 +54,7 @@
 #include "dso.h"
 #include "firmware.h"
 #include "proc.h"
+#include "registry.h"
 
 #ifdef WEBSERVER
 	#include "webserver.h"
@@ -63,9 +64,9 @@ typedef struct clients_t {
 	char uuid[21];
 	int id;
 	int receiver;
-	int sender;
 	int config;
 	int core;
+	int stats;
 	int forward;
 	double cpu;
 	double ram;
@@ -169,6 +170,7 @@ static unsigned short master_port = 0;
 #ifdef WEBSERVER
 /* Do we enable the webserver */
 static int webserver_enable = WEBSERVER_ENABLE;
+static int webgui_websockets = WEBGUI_WEBSOCKETS;
 /* On what port does the webserver run */
 static int webserver_port = WEBSERVER_PORT;
 /* The webroot of pilight */
@@ -256,9 +258,10 @@ void *broadcast(void *param) {
 					char *conf = json_stringify(bcqueue->jmessage, NULL);
 					struct clients_t *tmp_clients = clients;
 					while(tmp_clients) {
-						if(((int)tmp < 0 && tmp_clients->core == 1) || 
-						   ((int)tmp >= 0 && tmp_clients->config == 1)) {
-							socket_write(tmp_clients->id, conf);
+						if(((int)tmp < 0 && tmp_clients->core == 1) ||
+						   ((int)tmp >= 0 && tmp_clients->config == 1) ||
+							 ((int)tmp == PROC && tmp_clients->stats == 1)) {
+								socket_write(tmp_clients->id, conf);
 							broadcasted = 1;
 						}
 						tmp_clients = tmp_clients->next;
@@ -298,14 +301,15 @@ void *broadcast(void *param) {
 						json_delete(jret);
 					}
 
-					/* The settings objects inside the broadcast queue is only of interest for the 
-					   internal pilight functions. For the outside world we only communicate the 
+					/* The settings objects inside the broadcast queue is only of interest for the
+					   internal pilight functions. For the outside world we only communicate the
 					   message part of the queue so we remove the settings */
 					char *jinternal = json_stringify(bcqueue->jmessage, NULL);
 
 					JsonNode *jsettings = NULL;
 					if((jsettings = json_find_member(bcqueue->jmessage, "settings"))) {
 						json_remove_from_parent(jsettings);
+						json_delete(jsettings);
 					}
 
 					char *jbroadcast = json_stringify(bcqueue->jmessage, NULL);
@@ -323,7 +327,7 @@ void *broadcast(void *param) {
 							json_append_member(jcode, "lpf", json_mknumber(firmware.lpf, 0));
 							json_append_member(jcode, "hpf", json_mknumber(firmware.hpf, 0));
 							json_append_member(jmessage, "values", jcode);
-							json_append_member(jmessage, "origin", json_mkstring("core"));
+							json_append_member(jmessage, "origin", json_mkstring("receiver"));
 							json_append_member(jmessage, "type", json_mknumber(FIRMWARE, 0));
 							char pname[17];
 							strcpy(pname, "pilight-firmware");
@@ -778,7 +782,7 @@ static int send_queue(JsonNode *json) {
 						struct JsonNode *jtmp = NULL;
 						while(tmp_options) {
 							if(tmp_options->conftype == DEVICES_SETTING) {
-								if(tmp_options->vartype == JSON_NUMBER && 
+								if(tmp_options->vartype == JSON_NUMBER &&
 								  (jtmp = json_find_member(jcode, tmp_options->name)) != NULL &&
 								   jtmp->tag == JSON_NUMBER) {
 									json_append_member(jsettings, tmp_options->name, json_mknumber(jtmp->number_, jtmp->decimals_));
@@ -1037,7 +1041,7 @@ static void socket_parse_data(int i, char *buffer) {
 			logprintf(LOG_DEBUG, "socket recv: %s", buffer);
 		}
 		/* Serve static webserver page. This is the only request that is
-		   expected not to be a json object */		   
+		   expected not to be a json object */
 #ifdef WEBSERVER
 		if(strstr(buffer, " HTTP/")) {
 			client_webserver_parse_code(i, buffer);
@@ -1048,7 +1052,7 @@ static void socket_parse_data(int i, char *buffer) {
 #endif
 			json = json_decode(buffer);
 			if((json_find_string(json, "action", &action)) == 0) {
-				if(strcmp(action, "send") == 0 || 
+				if(strcmp(action, "send") == 0 ||
 				   strcmp(action, "control") == 0) {
 					tmp_clients = clients;
 					while(tmp_clients) {
@@ -1074,7 +1078,6 @@ static void socket_parse_data(int i, char *buffer) {
 						client->core = 0;
 						client->config = 0;
 						client->receiver = 0;
-						client->sender = 0;
 						client->forward = 0;
 						client->cpu = 0;
 						client->ram = 0;
@@ -1082,39 +1085,39 @@ static void socket_parse_data(int i, char *buffer) {
 						client->id = sd;
 						memset(client->uuid, '\0', sizeof(client->uuid));
 					}
-				
+
 					if((options = json_find_member(json, "options")) != NULL) {
-						struct JsonNode *childs = json_first_child(options);						
+						struct JsonNode *childs = json_first_child(options);
 						while(childs) {
-							if(strcmp(childs->key, "core") == 0 && 
+							if(strcmp(childs->key, "core") == 0 &&
 							   childs->tag == JSON_NUMBER) {
 								if((int)childs->number_ == 1) {
 									client->core = 1;
 								} else {
 									client->core = 0;
 								}
-							} else if(strcmp(childs->key, "receiver") == 0 && 
+							} else if(strcmp(childs->key, "stats") == 0 &&
+							   childs->tag == JSON_NUMBER) {
+								if((int)childs->number_ == 1) {
+									client->stats = 1;
+								} else {
+									client->stats = 0;
+								}
+							} else if(strcmp(childs->key, "receiver") == 0 &&
 							   childs->tag == JSON_NUMBER) {
 								if((int)childs->number_ == 1) {
 									client->receiver = 1;
 								} else {
 									client->receiver = 0;
 								}
-							} else if(strcmp(childs->key, "sender") == 0 && 
-							   childs->tag == JSON_NUMBER) {
-								if((int)childs->number_ == 1) {
-									client->sender = 1;
-								} else {
-									client->sender = 0;
-								}
-							} else if(strcmp(childs->key, "config") == 0 && 
+							} else if(strcmp(childs->key, "config") == 0 &&
 							   childs->tag == JSON_NUMBER) {
 								if((int)childs->number_ == 1) {
 									client->config = 1;
 								} else {
 									client->config = 0;
 								}
-							} else if(strcmp(childs->key, "forward") == 0 && 
+							} else if(strcmp(childs->key, "forward") == 0 &&
 							   childs->tag == JSON_NUMBER) {
 								if((int)childs->number_ == 1) {
 									client->forward = 1;
@@ -1146,18 +1149,18 @@ static void socket_parse_data(int i, char *buffer) {
 							}
 						}
 					}
-					socket_write(sd, "success");
+					socket_write(sd, "{\"status\":\"success\"}");
 				} else if(strcmp(action, "send") == 0) {
 					if(send_queue(json) == 0) {
-						socket_write(sd, "success");
+						socket_write(sd, "{\"status\":\"success\"}");
 					} else {
-						socket_write(sd, "failure");
+						socket_write(sd, "{\"status\":\"failed\"}");
 					}
 				} else if(strcmp(action, "control") == 0) {
 					struct JsonNode *code = NULL;
 					struct devices_t *dev = NULL;
 					char *device = NULL;
-					if(!(code = json_find_member(json, "code"))) {
+					if(!(code = json_find_member(json, "code")) || code->tag != JSON_OBJECT) {
 						logprintf(LOG_ERR, "client did not send any codes");
 					} else {
 						/* Check if a location and device are given */
@@ -1174,12 +1177,88 @@ static void socket_parse_data(int i, char *buffer) {
 							}
 
 							if(control_device(dev, state, values) == 0) {
-								socket_write(sd, "success");
+								socket_write(sd, "{\"status\":\"success\"}");
 							} else {
-								socket_write(sd, "failure");
+								socket_write(sd, "{\"status\":\"failed\"}");
 							}
 						} else {
 							logprintf(LOG_ERR, "the device \"%s\" does not exist", device);
+						}
+					}
+				} else if(strcmp(action, "registry") == 0) {
+					struct JsonNode *value = NULL;
+					char *type = NULL;
+					char *key = NULL;
+					char *sval = NULL;
+					double nval = 0.0;
+					int dec = 0;
+					if(json_find_string(json, "type", &type) != 0) {
+						logprintf(LOG_ERR, "client did not send a type of action");
+					} else {
+						if(strcmp(type, "set") == 0) {
+							if(json_find_string(json, "key", &key) != 0) {
+								logprintf(LOG_ERR, "client did not send a registry key");
+								socket_write(sd, "{\"status\":\"failed\"}");
+							} else if((value = json_find_member(json, "value")) == NULL) {
+								logprintf(LOG_ERR, "client did not send a registry value");
+								socket_write(sd, "{\"status\":\"failed\"}");
+							} else {
+								if(value->tag == JSON_NUMBER) {
+									if(registry_set_number(key, value->number_, value->decimals_) == 0) {
+										socket_write(sd, "{\"status\":\"success\"}");
+									} else {
+										socket_write(sd, "{\"status\":\"failed\"}");
+									}
+								} else if(value->tag == JSON_STRING) {
+									if(registry_set_string(key, value->string_) == 0) {
+										socket_write(sd, "{\"status\":\"success\"}");
+									} else {
+										socket_write(sd, "{\"status\":\"failed\"}");
+									}
+								} else {
+									logprintf(LOG_ERR, "registry value can only be a string or number");
+									socket_write(sd, "{\"status\":\"failed\"}");
+								}
+							}
+						} else if(strcmp(type, "remove") == 0) {
+							if(json_find_string(json, "key", &key) != 0) {
+								logprintf(LOG_ERR, "client did not send a registry key");
+								socket_write(sd, "{\"status\":\"failed\"}");
+							} else {
+								if(registry_remove_value(key) == 0) {
+									socket_write(sd, "{\"status\":\"success\"}");
+								} else {
+									socket_write(sd, "{\"status\":\"failed\"}");
+								}
+							}
+						} else if(strcmp(type, "get") == 0) {
+							if(json_find_string(json, "key", &key) != 0) {
+								logprintf(LOG_ERR, "client did not send a registry key");
+								socket_write(sd, "{\"status\":\"failed\"}");
+							} else {
+								if(registry_get_number(key, &nval, &dec) == 0) {
+									struct JsonNode *jsend = json_mkobject();
+									json_append_member(jsend, "message", json_mkstring("registry"));
+									json_append_member(jsend, "value", json_mknumber(nval, dec));
+									json_append_member(jsend, "key", json_mkstring(key));
+									char *output = json_stringify(jsend, NULL);
+									socket_write(sd, output);
+									sfree((void *)&output);
+									json_delete(jsend);
+								} else if(registry_get_string(key, &sval) == 0) {
+									struct JsonNode *jsend = json_mkobject();
+									json_append_member(jsend, "message", json_mkstring("registry"));
+									json_append_member(jsend, "value", json_mkstring(sval));
+									json_append_member(jsend, "key", json_mkstring(key));
+									char *output = json_stringify(jsend, NULL);
+									socket_write(sd, output);
+									sfree((void *)&output);
+									json_delete(jsend);
+								} else {
+									logprintf(LOG_ERR, "registry key '%s' doesn't exists", key);
+									socket_write(sd, "{\"status\":\"failed\"}");
+								}
+							}
 						}
 					}
 				} else if(strcmp(action, "request config") == 0) {
@@ -1200,33 +1279,9 @@ static void socket_parse_data(int i, char *buffer) {
 					socket_write(sd, output);
 					sfree((void *)&output);
 					json_delete(jsend);
-
-					exists = 0;
-					tmp_clients = clients;
-					while(tmp_clients) {
-						if(tmp_clients->id == sd) {
-							exists = 1;
-							client = tmp_clients;
-							break;
-						}
-						tmp_clients = tmp_clients->next;
-					}
-					if(exists == 1&& client->core == 1) {
-						struct JsonNode *jmessage = json_mkobject();
-						struct JsonNode *jcode = json_mkobject();
-						json_append_member(jcode, "version", json_mkstring(VERSION));
-						json_append_member(jmessage, "values", jcode);
-						json_append_member(jmessage, "origin", json_mkstring("core"));
-						json_append_member(jmessage, "type", json_mknumber(PLVERSION, 0));
-						output = json_stringify(jmessage, NULL);
-						socket_write(sd, output);
-						sfree((void *)&output);
-						json_delete(jmessage);
-						jmessage = NULL;
-					}
 				/*
 				 * Parse received codes from nodes
-				 */				
+				 */
 				} else if(strcmp(action, "update") == 0) {
 					struct JsonNode *jvalues = NULL;
 					char *pname = NULL;
@@ -1338,19 +1393,19 @@ void *clientize(void *param) {
 	struct JsonNode *json = NULL;
 	struct JsonNode *joptions = NULL;
 	struct JsonNode *jchilds = NULL;
-    char *recvBuff = NULL, *output = NULL;
+  char *recvBuff = NULL, *output = NULL;
 	char *message = NULL, *action = NULL;
 	char *origin = NULL, *protocol = NULL;
 	int client_loop = 0;
 
 	while(main_loop) {
-	
+
 		if(client_loop == 1) {
 			logprintf(LOG_NOTICE, "connection to main pilight daemon lost");
 			logprintf(LOG_NOTICE, "trying to reconnect...");
 			sleep(1);
-		}	
-	
+		}
+
 		client_loop = 1;
 
 		ssdp_list = NULL;
@@ -1385,8 +1440,8 @@ void *clientize(void *param) {
 		sfree((void *)&output);
 		json_delete(json);
 
-		if(socket_read(sockfd, &recvBuff) == 1 
-		   || strcmp(recvBuff, "success") != 0) {
+		if(socket_read(sockfd, &recvBuff) != 0
+		   || strcmp(recvBuff, "{\"status\":\"success\"}") != 0) {
 			goto close;
 		}
 		logprintf(LOG_DEBUG, "socket recv: %s", recvBuff);
@@ -1397,13 +1452,13 @@ void *clientize(void *param) {
 		socket_write(sockfd, output);
 		sfree((void *)&output);
 		json_delete(json);
-		
+
 		if(socket_read(sockfd, &recvBuff) == 0) {
 			logprintf(LOG_DEBUG, "socket recv: %s", recvBuff);
 			if(json_validate(recvBuff) == true) {
 				json = json_decode(recvBuff);
 				if(json_find_string(json, "message", &message) == 0) {
-					if(strcmp(message, "config") == 0) {	
+					if(strcmp(message, "config") == 0) {
 						struct JsonNode *jconfig = NULL;
 						if((jconfig = json_find_member(json, "config")) != NULL) {
 							gui_gc();
@@ -1415,6 +1470,7 @@ void *clientize(void *param) {
 								while(jchilds) {
 									if(strcmp(jchilds->key, "devices") != 0) {
 										json_remove_from_parent(jchilds);
+										json_delete(jchilds);
 										match = 1;
 									}
 									jchilds = jchilds->next;
@@ -1433,7 +1489,7 @@ void *clientize(void *param) {
 			if(main_loop == 0) {
 				break;
 			}
-			if(socket_read(sockfd, &recvBuff) == 1) {
+			if(socket_read(sockfd, &recvBuff) != 0) {
 				break;
 			}
 			logprintf(LOG_DEBUG, "socket recv: %s", recvBuff);
@@ -1645,6 +1701,15 @@ void *firmware_loop(void *param) {
 }
 #endif
 
+#pragma GCC diagnostic push  // require GCC 4.6
+#pragma GCC diagnostic ignored "-Wcast-qual"
+void registerVersion(void) {
+	registry_remove_value("pilight.version");
+	registry_set_string("pilight.version.current", (char *)VERSION);
+}
+#pragma GCC diagnostic pop   // require GCC 4.6
+
+
 int main(int argc, char **argv) {
 
 	procProtocolInit();
@@ -1737,7 +1802,8 @@ int main(int argc, char **argv) {
 	options_add(&options, 'H', "help", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
 	options_add(&options, 'V', "version", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
 	options_add(&options, 'D', "nodaemon", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
-	options_add(&options, 'Z', "stats", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
+	options_add(&options, 'Z', "threadstats", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
+	options_add(&options, 'Y', "stats", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
 	options_add(&options, 'C', "config", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, NULL);
 	options_add(&options, 'S', "server", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, "^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]).){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$");
 	options_add(&options, 'P', "port", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, "[0-9]{1,4}");
@@ -1778,6 +1844,9 @@ int main(int argc, char **argv) {
 			case 'Z':
 				nodaemon=2;
 			break;
+			case 'Y':
+				nodaemon=3;
+			break;
 			default:
 				show_default = 1;
 			break;
@@ -1804,7 +1873,7 @@ int main(int argc, char **argv) {
 		printf("Usage: %s [options]\n", progname);
 		goto clear;
 	}
-	
+
 	char *pilight_raw = strdup("pilight-raw");
 	if(!pilight_raw) {
 		logprintf(LOG_ERR, "out of memory");
@@ -1850,6 +1919,8 @@ int main(int argc, char **argv) {
 	if(config_read() != EXIT_SUCCESS) {
 		goto clear;
 	}
+
+	registerVersion();
 
 #ifdef WEBSERVER
 	settings_find_number("webserver-enable", &webserver_enable);
@@ -2055,13 +2126,16 @@ int main(int argc, char **argv) {
 	threads_register("receive parser", &receive_parse_code, (void *)NULL, 0);
 
 #ifdef WEBSERVER
+	settings_find_number("webgui-websockets", &webgui_websockets);
+
 	/* Register a seperate thread for the webserver */
 	if(webserver_enable == 1 && runmode == 1) {
 		webserver_start();
-		/* Register a seperate thread in which the webserver communicates
-		   the main daemon as if it where a gui */
+		/* Register a seperate thread in which the webserver communicates the main daemon */
 		threads_register("webserver client", &webserver_clientize, (void *)NULL, 0);
-		threads_register("webserver broadcast", &webserver_broadcast, (void *)NULL, 0);
+		if(webgui_websockets == 1) {
+			threads_register("webserver broadcast", &webserver_broadcast, (void *)NULL, 0);
+		}
 	} else {
 		webserver_enable = 0;
 	}
@@ -2075,6 +2149,8 @@ int main(int argc, char **argv) {
 	int i = -1;
 	int x = 0;
 	while(main_loop) {
+		registerVersion();
+
 		double cpu = 0.0, ram = 0.0;
 		cpu = getCPUUsage();
 		ram = getRAMUsage();
@@ -2139,7 +2215,7 @@ int main(int argc, char **argv) {
 		} else {
 			checkcpu = 0;
 			checkram = 0;
-			if((i > 0 && i%3 == 0) || (i == -1)) {
+			if((i > 0 && i%3 == 0) || (i == -1) || (nodaemon == 3)) {
 				procProtocol->message = json_mkobject();
 				JsonNode *code = json_mkobject();
 				json_append_member(code, "cpu", json_mknumber(cpu, 16));
@@ -2153,10 +2229,13 @@ int main(int argc, char **argv) {
 				struct clients_t *tmp_clients = clients;
 				while(tmp_clients) {
 					if(tmp_clients->cpu > 0 && tmp_clients->ram > 0) {
-						logprintf(LOG_DEBUG, "- client: %s cpu: %f% ram: %f%", 
+						logprintf(LOG_DEBUG, "- client: %s cpu: %f% ram: %f%",
 								  tmp_clients->uuid, tmp_clients->cpu, tmp_clients->ram);
 					}
 					tmp_clients = tmp_clients->next;
+				}
+				if(nodaemon == 3) {
+					logprintf(LOG_ERR, "cpu: %.16f% ram: %.16f%", cpu, ram);
 				}
 				pilight.broadcast(procProtocol->id, procProtocol->message);
 				json_delete(procProtocol->message);

@@ -3,17 +3,17 @@
 
 	This file is part of pilight.
 
-    pilight is free software: you can redistribute it and/or modify it under the
+	pilight is free software: you can redistribute it and/or modify it under the
 	terms of the GNU General Public License as published by the Free Software
 	Foundation, either version 3 of the License, or (at your option) any later
 	version.
 
-    pilight is distributed in the hope that it will be useful, but WITHOUT ANY
+	pilight is distributed in the hope that it will be useful, but WITHOUT ANY
 	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-    You should have received a copy of the GNU General Public License
-    along with pilight. If not, see	<http://www.gnu.org/licenses/>
+	You should have received a copy of the GNU General Public License
+	along with pilight. If not, see	<http://www.gnu.org/licenses/>
 */
 
 #include <stdio.h>
@@ -42,7 +42,7 @@ int main(int argc, char **argv) {
 	struct ssdp_list_t *ssdp_list = NULL;
 	struct devices_t *dev = NULL;
 	struct JsonNode *json = NULL;
-    char *recvBuff = NULL, *message = NULL, *output = NULL;
+	char *recvBuff = NULL, *message = NULL, *output = NULL;
 	char *device = NULL, *state = NULL, *values = NULL;
 	char *server = NULL;
 	int has_values = 0, sockfd = 0;
@@ -57,7 +57,7 @@ int main(int argc, char **argv) {
 		exit(EXIT_FAILURE);
 	}
 	strcpy(progname, "pilight-control");
-	
+
 	/* Define all CLI arguments of this program */
 	options_add(&options, 'H', "help", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
 	options_add(&options, 'V', "version", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
@@ -168,8 +168,8 @@ int main(int argc, char **argv) {
 	config_init();
 
 	socket_write(sockfd, "{\"action\":\"identify\"}");
-	if(socket_read(sockfd, &recvBuff) == 1 
-	   || strcmp(recvBuff, "success") != 0) {
+	if(socket_read(sockfd, &recvBuff) != 0
+	   || strcmp(recvBuff, "{\"status\":\"success\"}") != 0) {
 		goto close;
 	}
 
@@ -250,15 +250,15 @@ int main(int argc, char **argv) {
 								json_append_member(jcode, "values", jvalues);
 							} else {
 								json_delete(jvalues);
-							}							
+							}
 							json_append_member(joutput, "action", json_mkstring("control"));
 							json_append_member(joutput, "code", jcode);
 							output = json_stringify(joutput, NULL);
 							socket_write(sockfd, output);
 							sfree((void *)&output);
 							json_delete(joutput);
-							if(socket_read(sockfd, &recvBuff) == 1 
-							   || strcmp(recvBuff, "success") != 0) {
+							if(socket_read(sockfd, &recvBuff) != 0
+							   || strcmp(recvBuff, "{\"status\":\"success\"}") != 0) {
 								logprintf(LOG_ERR, "failed to control %s", device);
 							}
 						} else {
@@ -267,7 +267,7 @@ int main(int argc, char **argv) {
 							goto close;
 						}
 					}
-				}		
+				}
 			}
 			json_delete(json);
 		}

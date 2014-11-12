@@ -3,17 +3,17 @@
 
 	This file is part of pilight.
 
-    pilight is free software: you can redistribute it and/or modify it under the
+	pilight is free software: you can redistribute it and/or modify it under the
 	terms of the GNU General Public License as published by the Free Software
 	Foundation, either version 3 of the License, or (at your option) any later
 	version.
 
-    pilight is distributed in the hope that it will be useful, but WITHOUT ANY
+	pilight is distributed in the hope that it will be useful, but WITHOUT ANY
 	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-    You should have received a copy of the GNU General Public License
-    along with pilight. If not, see	<http://www.gnu.org/licenses/>
+	You should have received a copy of the GNU General Public License
+	along with pilight. If not, see	<http://www.gnu.org/licenses/>
 */
 
 #include <stdio.h>
@@ -69,7 +69,7 @@ int socket_gc(void) {
 		send(socket_loopback, "1", 1, MSG_NOSIGNAL);
 		socket_close(socket_loopback);
 	}
-	
+
 	if(waitMessage) {
 		sfree((void *)&waitMessage);
 	}
@@ -293,7 +293,7 @@ int socket_read(int sockfd, char **message) {
 	int ptr = 0, n = 0, len = (int)strlen(EOSS);
 	fd_set fdsread;
 	fcntl(sockfd, F_SETFL, O_NONBLOCK);
-	
+
 	while(socket_loop) {
 		FD_ZERO(&fdsread);
 		FD_SET((unsigned long)sockfd, &fdsread);
@@ -307,13 +307,13 @@ int socket_read(int sockfd, char **message) {
 			break;
 		}
 		if(n == -1) {
-			return 1;
+			return -1;
 		} else if(n > 0) {
 			if(FD_ISSET((unsigned long)sockfd, &fdsread)) {
 				bytes = (int)recv(sockfd, recvBuff, BUFFER_SIZE, 0);
 
 				if(bytes <= 0) {
-					return 1;
+					return -1;
 				} else {
 					ptr+=bytes;
 					if((*message = realloc(*message, (size_t)ptr+1)) == NULL) {
@@ -349,7 +349,7 @@ int socket_read(int sockfd, char **message) {
 								(*message)[ptr] = '\0';
 							}
 							if(strcmp(*message, "1") == 0 || strcmp(*message, "BEAT") == 0) {
-								return 1;
+								return -1;
 							}
 						}
 						return 0;
@@ -359,7 +359,7 @@ int socket_read(int sockfd, char **message) {
 		}
 	}
 
-	return 1;
+	return -1;
 }
 
 void *socket_wait(void *param) {

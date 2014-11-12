@@ -3,17 +3,17 @@
 
 	This file is part of pilight.
 
-    pilight is free software: you can redistribute it and/or modify it under the
+	pilight is free software: you can redistribute it and/or modify it under the
 	terms of the GNU General Public License as published by the Free Software
 	Foundation, either version 3 of the License, or (at your option) any later
 	version.
 
-    pilight is distributed in the hope that it will be useful, but WITHOUT ANY
+	pilight is distributed in the hope that it will be useful, but WITHOUT ANY
 	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-    You should have received a copy of the GNU General Public License
-    along with pilight. If not, see	<http://www.gnu.org/licenses/>
+	You should have received a copy of the GNU General Public License
+	along with pilight. If not, see	<http://www.gnu.org/licenses/>
 */
 
 #include <stdio.h>
@@ -309,7 +309,7 @@ int main(int argc, char **argv) {
 			/* Only send the CLI arguments that belong to this protocol, the protocol name
 			and those that are called by the user */
 			if((options_get_id(&protocol->options, tmp->name, &itmp) == 0)
-			    && tmp->vartype == JSON_STRING && tmp->string_ != NULL 
+			    && tmp->vartype == JSON_STRING && tmp->string_ != NULL
 				&& (strlen(tmp->string_) > 0)) {
 				if(isNumeric(tmp->string_) == 0) {
 					char *ptr = strstr(tmp->string_, ".");
@@ -354,8 +354,8 @@ int main(int argc, char **argv) {
 		}
 
 		socket_write(sockfd, "{\"action\":\"identify\"}");
-		if(socket_read(sockfd, &recvBuff) == 1 
-		   || strcmp(recvBuff, "success") != 0) {
+		if(socket_read(sockfd, &recvBuff) != 0
+		   || strcmp(recvBuff, "{\"status\":\"success\"}") != 0) {
 			goto close;
 		}
 
@@ -363,18 +363,18 @@ int main(int argc, char **argv) {
 		json_append_member(json, "action", json_mkstring("send"));
 		if(uuid) {
 			json_append_member(code, "uuid", json_mkstring(uuid));
-		}		
+		}
 		json_append_member(json, "code", code);
 		char *output = json_stringify(json, NULL);
 		socket_write(sockfd, output);
 		sfree((void *)&output);
 		json_delete(json);
 
-		if(socket_read(sockfd, &recvBuff) == 1 
-		   || strcmp(recvBuff, "success") != 0) {
+		if(socket_read(sockfd, &recvBuff) != 0
+		   || strcmp(recvBuff, "{\"status\":\"success\"}") != 0) {
 			logprintf(LOG_ERR, "failed to send codes");
 			goto close;
-		}		
+		}
 	}
 close:
 	if(sockfd) {

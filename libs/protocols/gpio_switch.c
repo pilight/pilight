@@ -40,7 +40,7 @@ static int gpio_switch_threads = 0;
 static void gpioSwitchCreateMessage(int gpio, int state) {
 	gpio_switch->message = json_mkobject();
 	JsonNode *code = json_mkobject();
-	json_append_member(code, "gpio", json_mknumber(gpio));
+	json_append_member(code, "gpio", json_mknumber(gpio, 0));
 	if(state) {
 		json_append_member(code, "state", json_mkstring("on"));
 	} else {
@@ -149,23 +149,23 @@ void gpioSwitchInit(void) {
 	gpio_switch->devtype = SWITCH;
 	gpio_switch->hwtype = SENSOR;
 
-	options_add(&gpio_switch->options, 't', "on", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
-	options_add(&gpio_switch->options, 'f', "off", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
-	options_add(&gpio_switch->options, 'g', "gpio", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, NULL, "^([0-9]{1}|1[0-9]|20)$");
+	options_add(&gpio_switch->options, 't', "on", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
+	options_add(&gpio_switch->options, 'f', "off", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
+	options_add(&gpio_switch->options, 'g', "gpio", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^([0-9]{1}|1[0-9]|20)$");
 
-	options_add(&gpio_switch->options, 0, "gui-readonly", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
+	options_add(&gpio_switch->options, 0, "readonly", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 
 	gpio_switch->initDev=&gpioSwitchInitDev;
-	gpio_switch->threadGC=&gpioSwitchThreadGC;	
-	gpio_switch->checkValues=&gpioSwitchCheckValues;	
+	gpio_switch->threadGC=&gpioSwitchThreadGC;
+	gpio_switch->checkValues=&gpioSwitchCheckValues;
 }
 
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name = "gpio_switch";
-	module->version = "1.1";
-	module->reqversion = "6.0";
-	module->reqcommit = NULL;
+	module->version = "1.2";
+	module->reqversion = "5.0";
+	module->reqcommit = "84";
 }
 
 void init(void) {

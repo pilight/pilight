@@ -184,9 +184,9 @@ void ehomeInit(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name = "ehome";
-	module->version = "0.3";
-	module->reqversion = "6.0";
-	module->reqcommit = NULL;
+	module->version = "0.4";
+	module->reqversion = "5.0";
+	module->reqcommit = "84";
 }
 
 void init(void) {

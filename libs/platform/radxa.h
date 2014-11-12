@@ -20,7 +20,7 @@
 
 #include "wiringX.h"
 
-struct devices_t *radxa;
+struct platform_t *radxa;
 
 void radxaInit(void);
 

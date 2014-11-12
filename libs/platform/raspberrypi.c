@@ -1,5 +1,6 @@
 /*
 	Copyright (c) 2014 CurlyMo <curlymoo1@gmail.com>
+								2012 Gordon Henderson
 
 	This program is free software: you can redistribute it and/or modify
 	it under the terms of the GNU General Public License as published by
@@ -626,7 +627,7 @@ static int raspberrypiISR(int pin, int mode) {
 
 	if(match == 0) {
 		fprintf(stderr, "raspberrypi->isr: Failed to set interrupt edge to %s\n", sMode);
-		return -1;	
+		return -1;
 	}
 
 	sprintf(path, "/sys/class/gpio/gpio%d/value", pinToGpio[pin]);
@@ -762,7 +763,7 @@ int raspberrypiValidGPIO(int pin) {
 	if(pinToGpio[pin] != -1) {
 		return 0;
 	}
-	return 1;	
+	return 1;
 }
 
 void raspberrypiInit(void) {
@@ -777,7 +778,7 @@ void raspberrypiInit(void) {
 	raspberrypi->identify=&piBoardRev;
 	raspberrypi->isr=&raspberrypiISR;
 	raspberrypi->waitForInterrupt=&raspberrypiWaitForInterrupt;
-#ifndef __FreeBSD__	
+#ifndef __FreeBSD__
 	raspberrypi->I2CRead=&raspberrypiI2CRead;
 	raspberrypi->I2CReadReg8=&raspberrypiI2CReadReg8;
 	raspberrypi->I2CReadReg16=&raspberrypiI2CReadReg16;

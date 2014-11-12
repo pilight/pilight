@@ -289,15 +289,15 @@ int wiringXI2CSetup(int devId) {
 }
 
 char *wiringXPlatform(void) {
-	return device->name;
+	return platform->name;
 }
 
 int wiringXValidGPIO(int gpio) {
-	if(device) {
-		if(device->validGPIO) {
-			return device->validGPIO(gpio);
+	if(platform) {
+		if(platform->validGPIO) {
+			return platform->validGPIO(gpio);
 		} else {
-			logprintf(LOG_ERR, "%s: device doesn't support gpio number validation", device->name);
+			logprintf(LOG_ERR, "%s: platform doesn't support gpio number validation", platform->name);
 			wiringXGC();
 		}
 	}

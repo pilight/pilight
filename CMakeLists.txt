@@ -637,9 +637,8 @@ if(${MODULESPACK} MATCHES "OFF")
 	endif()
 
 	install(PROGRAMS init/pilight.initd DESTINATION /etc/init.d/ RENAME pilight)
-	install(FILES settings.json-default DESTINATION /etc/pilight/ RENAME settings.json COMPONENT pilight)
+	install(FILES config.json-default DESTINATION /etc/pilight/ RENAME config.json COMPONENT pilight)
 	install(FILES tzdata.json DESTINATION /etc/pilight/ COMPONENT pilight)
-	install(FILES hardware.json DESTINATION /etc/pilight/ COMPONENT pilight)
 
 	add_executable(pilight-daemon daemon.c)
 	target_link_libraries(pilight-daemon pilight_shared)

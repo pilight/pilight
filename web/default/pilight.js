@@ -1,5 +1,4 @@
 var oWebsocket = false;
-var bForceAjax = false;
 var bConnected = false;
 var bInitialized = false;
 var bSending = false;
@@ -57,92 +56,73 @@ if(userLang.indexOf('nl') != -1) {
 	language = language_nl;
 }
 
-var cookieEnabled = (navigator.cookieEnabled) ? true : false;
-
-if(typeof navigator.cookieEnabled == "undefined" && !cookieEnabled) {
-	document.cookie="testcookie";
-	cookieEnabled = (document.cookie.indexOf("testcookie") != -1) ? true : false;
-	document.cookie = 'testcookie=; expires=Thu, 01 Jan 1970 00:00:01 GMT;';
-}
-
-function toggleTabs() {
-	if(cookieEnabled && typeof(localStorage) != 'undefined') {
-		try {
-			if(localStorage.getItem("tabs") == "true") {
-				localStorage.setItem("tabs", "false");
-			} else {
-				localStorage.setItem("tabs", "true");
-			}
-		} catch (e) {
-			if (e == QUOTA_EXCEEDED_ERR) {
-				alert('Quota exceeded!');
-			}
-		}
-		document.location = document.location;
-	}
-}
-
 function alphaNum(string) {
 	return string.replace(/\W/g, '');
 }
 
-if(cookieEnabled && typeof(localStorage) != 'undefined') {
-	var iLatestTap1 = 0;
-	var iLatestTap2 = 0;
+var iLatestTap1 = 0;
+var iLatestTap2 = 0;
 
-	if(localStorage.getItem("tabs") === null) {
-		localStorage.setItem("tabs", "true");
+function toggleTabs() {
+	if(bShowTabs) {
+		var json = '{"action":"registry","type":"set","key":"webgui.tabs","value":0}';
+	} else {
+		var json = '{"action":"registry","type":"set","key":"webgui.tabs","value":1}';
 	}
-
-	if(localStorage.getItem("tabs") == "false") {
-		bShowTabs = false;
+	if(oWebsocket) {
+		oWebsocket.send(json);
+	} else {
+		bSending = true;
+		$.get('http://'+location.host+'/send?'+encodeURIComponent(json));
+		window.setTimeout(function() { bSending = false; }, 1000);
 	}
+	document.location = document.location;
+}
 
-	$(document).click(function(e) {
+$(document).click(function(e) {
+	if($('#helpdlg').length == 1) {
+		$('#helpdlg').remove();
+	}
+});
+
+$(document).mouseup(function(e) {
+	if(e.target.className.indexOf('ui-page') == 0 || e.target.className.indexOf('ui-content') == 0) {
+		iDate = new Date().getTime();
+		if((iLatestTap1-iDate) > 2000) {
+			iLatestTap1 = 0;
+			iLatestTap2 = 0;
+		}
+		if(iLatestTap1 == 0) {
+			iLatestTap1=new Date().getTime();
+		} else if(iLatestTap2 == 0) {
+			iLatestTap2=new Date().getTime();
+			if((iLatestTap2-iLatestTap1) > 250 && (iLatestTap2-iLatestTap1) < 1000) {
+				toggleTabs();
+			}
+			iLatestTap1 = 0;
+			iLatestTap2 = 0;
+		}
+	}
+});
+
+$(document).keydown(function(e) {
+	if(e.keyCode == 72) {
+		if($('#helpdlg').length == 1) {
+			$('#helpdlg').remove();
+		} else {
+			$("<div data-theme='a' id='helpdlg' class='ui-loader ui-overlay-shadow ui-body-e ui-corner-all'><b>Short Cuts</b><br /><ul><li>[ctrl] + [alt] + [shift] + t<br />Switch between tabular or vertical view</li></ul></div>")
+			.appendTo($('body'));
+			$('#helpdlg').css({ "display": "block", "padding": "10px", "width": "300px", "position": "relative", "left" : ($(window).width() / 2)-150+'px', "top" : (($(window).height() / 2)-($('#helpdlg').height() / 2))+'px'})
+		}
+	} else {
 		if($('#helpdlg').length == 1) {
 			$('#helpdlg').remove();
 		}
-	});
-
-	$(document).mouseup(function(e) {
-		if(e.target.className.indexOf('ui-page') == 0 || e.target.className.indexOf('ui-content') == 0) {
-			iDate = new Date().getTime();
-			if((iLatestTap1-iDate) > 2000) {
-				iLatestTap1 = 0;
-				iLatestTap2 = 0;
-			}
-			if(iLatestTap1 == 0) {
-				iLatestTap1=new Date().getTime();
-			} else if(iLatestTap2 == 0) {
-				iLatestTap2=new Date().getTime();
-				if((iLatestTap2-iLatestTap1) > 250 && (iLatestTap2-iLatestTap1) < 1000) {
-					toggleTabs();
-				}
-				iLatestTap1 = 0;
-				iLatestTap2 = 0;
-			}
-		}
-	});
-
-	$(document).keydown(function(e) {
-		if(e.keyCode == 72) {
-			if($('#helpdlg').length == 1) {
-				$('#helpdlg').remove();
-			} else {
-				$("<div data-theme='a' id='helpdlg' class='ui-loader ui-overlay-shadow ui-body-e ui-corner-all'><b>Short Cuts</b><br /><ul><li>[ctrl] + [alt] + [shift] + t<br />Switch between tabular or vertical view</li></ul></div>")
-				.appendTo($('body'));
-				$('#helpdlg').css({ "display": "block", "padding": "10px", "width": "300px", "position": "relative", "left" : ($(window).width() / 2)-150+'px', "top" : (($(window).height() / 2)-($('#helpdlg').height() / 2))+'px'})
-			}
-		} else {
-			if($('#helpdlg').length == 1) {
-				$('#helpdlg').remove();
-			}
-		}
-		if(e.keyCode == 84 && e.altKey && e.ctrlKey && e.shiftKey) {
-			toggleTabs();
-		}
-	});
-}
+	}
+	if(e.keyCode == 84 && e.altKey && e.ctrlKey && e.shiftKey) {
+		toggleTabs();
+	}
+});
 
 function createSwitchElement(sTabId, sDevId, aValues) {
 	if($('#'+sDevId+'_switch').length == 0) {
@@ -711,7 +691,7 @@ function createGUI(data) {
 function parseValues(data) {
 	if(data.hasOwnProperty("devices")) {
 		var aValues = data.values;
-		var iType = data.type;	
+		var iType = data.type;
 		var aDevices = data['devices'];
 		$.each(aDevices, function(dindex, dvalues) {
 			$.each(aValues, function(vindex, vvalues) {
@@ -829,7 +809,7 @@ function parseValues(data) {
 								$('#'+dvalues+'_batt').removeClass('green').addClass('red');
 							}
 						}
-					} else if(vindex == 'sun' && $('#'+dvalues+'_sunrise_icon').length > 0 && $('#'+dvalues+'_sunset_icon').length > 0) {	
+					} else if(vindex == 'sun' && $('#'+dvalues+'_sunrise_icon').length > 0 && $('#'+dvalues+'_sunset_icon').length > 0) {
 						if(vvalues == 'rise') {
 							if($('#'+dvalues+'_sunrise_icon').attr("class").indexOf("yellow") == -1) {
 								$('#'+dvalues+'_sunrise_icon').removeClass('gray').addClass('yellow');
@@ -922,6 +902,16 @@ function parseValues(data) {
 function parseData(data) {
 	if(data.hasOwnProperty("gui") && data.hasOwnProperty("devices")) {
 		createGUI(data);
+		if('registry' in data && 'pilight' in data['registry'] &&
+		   'version' in data['registry']['pilight']) {
+			if('current' in data['registry']['pilight']['version']) {
+				iPLVersion = data['registry']['pilight']['version']['current'];
+			}
+			if('available' in data['registry']['pilight']['version']) {
+				iNPLVersion = data['registry']['pilight']['version']['available'];
+			}
+			updateVersions();
+		}
 		oWebsocket.send("{\"action\":\"request values\"}");
 	} else if(data.hasOwnProperty("origin")) {
 		if(data['origin'] == "update") {
@@ -929,15 +919,12 @@ function parseData(data) {
 		} else if(data['origin'] == "core") {
 			if(data['type'] == -1) {
 				updateProcStatus(data['values']);
-			} else if(data['type'] == -3) {
-				iPLVersion = data['values']['version'];
-				updateVersions();
 			} else if(data['type'] == -2) {
 				iFWVersion = data['values']['version'];
 				updateVersions();
 			}
 		}
-	} else if(data.constructor === Array && 
+	} else if(data.constructor === Array &&
 			data[0]['devices'].length > 0) {
 		$.each(data, function(dindex, dvalues) {
 			parseValues(dvalues);
@@ -945,11 +932,110 @@ function parseData(data) {
 	}
 }
 
-$(window).bind('beforeunload', function() {
-	if(oWebsocket && bConnected) {
+window.onbeforeunload = function() {
+	if(oWebsocket) {
+		oWebsocket.onclose = function() {}
 		oWebsocket.close();
 	}
-});
+}
+
+function startAjax() {
+	$.get('http://'+location.host+'/config?'+$.now(), function(txt) {
+		bConnected = true;
+		if(!bSending) {
+			var data = $.parseJSON(txt);
+			parseData(data);
+		}
+	}).fail(function() {
+		window.clearInterval(load);
+		if(bConnected) {
+			$.mobile.loading('show', {
+				'text': language.connection_lost,
+				'textVisible': true,
+				'theme': 'b'
+			});
+			$('html').on({ 'touchstart mousedown' : function(){location.reload();}});
+		} else {
+			$.mobile.loading('show', {
+				'text': language.connection_failed,
+				'textVisible': true,
+				'theme': 'b'
+			});
+			$('html').on({ 'touchstart mousedown' : function(){location.reload();}});
+		}
+	});
+	var load = window.setInterval(function() {
+		$.get('http://'+location.host+'/values?'+$.now(), function(txt) {
+			bConnected = true;
+			if(!bSending) {
+				var data = $.parseJSON(txt);
+				parseData(data);
+			}
+		}).fail(function() {
+			window.clearInterval(load);
+			if(bConnected) {
+				$.mobile.loading('show', {
+					'text': language.connection_lost,
+					'textVisible': true,
+					'theme': 'b'
+				});
+				$('html').on({ 'touchstart mousedown' : function(){location.reload();}});
+			} else {
+				$.mobile.loading('show', {
+					'text': language.connection_failed,
+					'textVisible': true,
+					'theme': 'b'
+				});
+				$('html').on({ 'touchstart mousedown' : function(){location.reload();}});
+			}
+		});
+	}, 1000);
+}
+
+function startWebsockets() {
+	if(typeof MozWebSocket != "undefined") {
+		oWebsocket = new MozWebSocket("ws://"+location.host);
+	} else if(typeof WebSocket != "undefined") {
+		/* The characters after the trailing slash are needed for a wierd IE 10 bug */
+		oWebsocket = new WebSocket("ws://"+location.host+'/websocket');
+	}
+	if(oWebsocket) {
+		oWebsocket.onopen = function(evt) {
+			bConnected = true;
+			oWebsocket.send("{\"action\":\"request config\"}");
+		};
+		oWebsocket.onclose = function(evt) {
+			if(bConnected) {
+				$.mobile.loading('show', {
+					'text': language.connection_lost,
+					'textVisible': true,
+					'theme': 'b'
+				});
+				$('html').on({ 'touchstart mousedown' : function(){location.reload();}});
+			} else {
+				$.mobile.loading('show', {
+					'text': language.connection_failed,
+					'textVisible': true,
+					'theme': 'b'
+				});
+				$('html').on({ 'touchstart mousedown' : function(){location.reload();}});
+			}
+		};
+		oWebsocket.onerror = function(evt) {
+			$.mobile.loading('show', {
+				'text': language.unexpected_error,
+				'textVisible': true,
+				'theme': 'b'
+			});
+		};
+		oWebsocket.onmessage = function(evt) {
+			if(evt.data != "success" && evt.data != "failure") {
+				var data = $.parseJSON(evt.data);
+				parseData(data);
+			}
+		}
+	}
+}
 
 $(document).ready(function() {
 	if($('body').length == 1) {
@@ -959,105 +1045,25 @@ $(document).ready(function() {
 			'theme': 'b'
 		});
 
-		if((navigator.userAgent.match(/iPhone/i)) ||
-		   (navigator.userAgent.match(/iPod/i)) ||
-		   (navigator.userAgent.match(/iPad/i))) {
-			bForceAjax = true;
-		}
-		if(!bForceAjax && typeof MozWebSocket != "undefined") {
-			oWebsocket = new MozWebSocket("ws://"+location.host);
-		} else if(!bForceAjax && typeof WebSocket != "undefined") {
-			/* The characters after the trailing slash are needed for a wierd IE 10 bug */
-			oWebsocket = new WebSocket("ws://"+location.host+'/websocket');
-		} else {
-			$.get('http://'+location.host+'/config?'+$.now(), function(txt) {
-				bConnected = true;
-				if(!bSending) {
-					var data = $.parseJSON(txt);
-					parseData(data);
-				}
-			}).fail(function() {
-				window.clearInterval(load);
-				if(bConnected) {
-					$.mobile.loading('show', {
-						'text': language.connection_lost,
-						'textVisible': true,
-						'theme': 'b'
-					});
-					$('html').on({ 'touchstart mousedown' : function(){location.reload();}});
-				} else {
-					$.mobile.loading('show', {
-						'text': language.connection_failed,
-						'textVisible': true,
-						'theme': 'b'
-					});
-					$('html').on({ 'touchstart mousedown' : function(){location.reload();}});
-				}
-			});
-			var load = window.setInterval(function() {
-				$.get('http://'+location.host+'/values?'+$.now(), function(txt) {
-					bConnected = true;
-					if(!bSending) {
-						var data = $.parseJSON(txt);
-						parseData(data);
-					}
-				}).fail(function() {
-					window.clearInterval(load);
-					if(bConnected) {
-						$.mobile.loading('show', {
-							'text': language.connection_lost,
-							'textVisible': true,
-							'theme': 'b'
-						});
-						$('html').on({ 'touchstart mousedown' : function(){location.reload();}});
-					} else {
-						$.mobile.loading('show', {
-							'text': language.connection_failed,
-							'textVisible': true,
-							'theme': 'b'
-						});
-						$('html').on({ 'touchstart mousedown' : function(){location.reload();}});
-					}
-				});
-			}, 1000);
-		}
-
-		if(!bForceAjax && oWebsocket) {
-			oWebsocket.onopen = function(evt) {
-				bConnected = true;
-				oWebsocket.send("{\"action\":\"request config\"}");
-			};
-			oWebsocket.onclose = function(evt) {
-				if(bConnected) {
-					$.mobile.loading('show', {
-						'text': language.connection_lost,
-						'textVisible': true,
-						'theme': 'b'
-					});
-					$('html').on({ 'touchstart mousedown' : function(){location.reload();}});
-				} else {
-					$.mobile.loading('show', {
-						'text': language.connection_failed,
-						'textVisible': true,
-						'theme': 'b'
-					});
-					$('html').on({ 'touchstart mousedown' : function(){location.reload();}});
-				}
-			};
-			oWebsocket.onerror = function(evt) {
-				$.mobile.loading('show', {
-					'text': language.unexpected_error,
-					'textVisible': true,
-					'theme': 'b'
-				});
-			};
-			oWebsocket.onmessage = function(evt) {
-				if(evt.data != "success" && evt.data != "failure") {
-					var data = $.parseJSON(evt.data);
-					parseData(data);
-				}
+		/* Use an AJAX request to check if the user want to enforce
+		   an AJAX connection, or if he wants to use websockets */
+		$.get('http://'+location.host+'/config?'+$.now(), function(txt) {
+			var data = $.parseJSON(txt);
+			if('registry' in data && 'webgui' in data['registry'] &&
+				 'tabs' in data['registry']['webgui']) {
+				 bShowTabs = data['registry']['webgui']['tabs'];
 			}
-		}
+			if('settings' in data && 'webgui-websockets' in data['settings']) {
+				if(data['settings']['webgui-websockets'] == 0) {
+					startAjax();
+				} else {
+					startWebsockets();
+				}
+			} else {
+				startWebsockets();
+			}
+		});
+
 		$('div[data-role="header"] h1').css({'white-space':'normal'});
 	}
 });

@@ -37,7 +37,7 @@ static char *relay_state = NULL;
 
 static void relayCreateMessage(int gpio, int state) {
 	relay->message = json_mkobject();
-	json_append_member(relay->message, "gpio", json_mknumber(gpio));
+	json_append_member(relay->message, "gpio", json_mknumber(gpio, 0));
 	if(state == 1)
 		json_append_member(relay->message, "state", json_mkstring("on"));
 	else
@@ -157,14 +157,14 @@ void relayInit(void) {
 	relay->devtype = RELAY;
 	relay->hwtype = HWRELAY;
 
-	options_add(&relay->options, 't', "on", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
-	options_add(&relay->options, 'f', "off", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
-	options_add(&relay->options, 'g', "gpio", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, NULL, "[0-9]");
+	options_add(&relay->options, 't', "on", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
+	options_add(&relay->options, 'f', "off", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
+	options_add(&relay->options, 'g', "gpio", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "[0-9]");
 
 	relay_state = malloc(4);
 	strcpy(relay_state, "off");
-	options_add(&relay->options, 0, "default-state", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_STRING, (void *)relay_state, NULL);
-	options_add(&relay->options, 0, "gui-readonly", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
+	options_add(&relay->options, 0, "default-state", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_STRING, (void *)relay_state, NULL);
+	options_add(&relay->options, 0, "readonly", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 
 	relay->checkValues=&relayCheckValues;
 	relay->createCode=&relayCreateCode;
@@ -175,9 +175,9 @@ void relayInit(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name = "relay";
-	module->version = "1.2";
-	module->reqversion = "6.0";
-	module->reqcommit = NULL;
+	module->version = "1.3";
+	module->reqversion = "5.0";
+	module->reqcommit = "84";
 }
 
 void init(void) {

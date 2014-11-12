@@ -216,9 +216,9 @@ void arctechSrInit(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name = "arctech_screen";
-	module->version = "1.0";
-	module->reqversion = "6.0";
-	module->reqcommit = NULL;
+	module->version = "1.1";
+	module->reqversion = "5.0";
+	module->reqcommit = "84";
 }
 
 void init(void) {

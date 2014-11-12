@@ -48,9 +48,9 @@ socket_close($rSocket);
 $sLine = '';
 if(count($aHosts) > 0) {
 	$fp = fsockopen($aHosts[0]['ip'], $aHosts[0]['port'], $errno, $errdesc) or die ("Couldn't connect to server");
-	fputs($fp, '{"message":"client receiver"}');
+	fputs($fp, '{"action":"identify","options":{"receiver":1}}');
 	$sLine = fgets($fp, 1024);
-	if($sLine == "{\"message\":\"accept client\"}\n") {
+	if($sLine == "{\"status\":\"success\"}\n") {
 		$iLen = 0;
 		$sLine = '';
 		while(true) {

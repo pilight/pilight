@@ -923,7 +923,7 @@ bool parse_number(const char **sp, double *out, int *decimals)
 	if(decimals != NULL) {
 		(*decimals) = 0;
 	}
-	
+
 	/* '-'? */
 	if (*s == '-')
 		s++;

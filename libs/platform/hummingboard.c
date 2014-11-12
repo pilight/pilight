@@ -254,7 +254,7 @@ static int hummingboardISR(int pin, int mode) {
 
 	if(match == 0) {
 		fprintf(stderr, "hummingboard->isr: Failed to set interrupt edge to %s\n", sMode);
-		return -1;	
+		return -1;
 	}
 
 	sprintf(path, "/sys/class/gpio/gpio%d/value", pinsToGPIO[pin]);
@@ -377,7 +377,7 @@ int hummingboardValidGPIO(int pin) {
 	if(pin >= 0 && pin <= 8) {
 		return 0;
 	}
-	return 1;	
+	return 1;
 }
 
 void hummingboardInit(void) {

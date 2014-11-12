@@ -211,9 +211,9 @@ void lm75Init(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name = "lm75";
-	module->version = "1.0";
-	module->reqversion = "6.0";
-	module->reqcommit = NULL;
+	module->version = "1.1";
+	module->reqversion = "5.0";
+	module->reqcommit = "84";
 }
 
 void init(void) {
