@@ -4,7 +4,6 @@
 	"settings": {
 		"log-level": 4,
 		"pid-file": "/var/run/pilight.pid",
-		"hardware-file": "/etc/pilight/hardware.json",
 		"log-file": "/var/log/pilight.log",
 		"send-repeats": 10,
 		"receive-repeats": 1,
@@ -13,7 +12,6 @@
 		"webserver-port": 5001,
 		"webserver-cache": 1,
 		"whitelist": "",
-		"update-check": 1,
 		"firmware-update": 0
 	},
 	"hardware": {
