@@ -624,12 +624,8 @@ if(${MODULESPACK} MATCHES "OFF")
 
 	install(CODE "execute_process(COMMAND ln -s \"/usr/local/lib/pilight/libpilight.so.${PROJECT_VERSION}\" \"/usr/local/lib/libpilight.so\")")	
 	
-	if(EXISTS "/etc/pilight/settings.json")
-		install(CODE "execute_process(COMMAND mv /etc/pilight/settings.json /etc/pilight/settings.json.bak)")
-	endif()
-
-	if(EXISTS "/etc/pilight/hardware.json")
-		install(CODE "execute_process(COMMAND mv /etc/pilight/hardware.json /etc/pilight/hardware.json.bak)")
+	if(EXISTS "/etc/pilight/config.json")
+		install(CODE "execute_process(COMMAND mv /etc/pilight/config.json /etc/pilight/config.json.bak)")
 	endif()
 
 	if(${WEBSERVER} MATCHES "ON")

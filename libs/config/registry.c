@@ -115,10 +115,10 @@ static int registry_set_value_recursive(struct JsonNode *root, const char *key, 
 static void registry_remove_empty_parent(struct JsonNode *root) {
 	struct JsonNode *parent = root->parent;
 	if(json_first_child(root) == NULL) {
-		json_remove_from_parent(root);
-		json_delete(root);
 		if(parent != NULL) {
+			json_remove_from_parent(root);
 			registry_remove_empty_parent(parent);
+			json_delete(root);
 		}
 	}
 }
@@ -195,9 +195,14 @@ int registry_remove_value(const char *key) {
 }
 
 static int registry_parse(JsonNode *root) {
-	char *content = json_stringify(root, NULL);
-	registry = json_decode(content);
-	sfree((void *)&content);
+	if(root->tag == JSON_OBJECT) {
+		char *content = json_stringify(root, NULL);
+		registry = json_decode(content);
+		sfree((void *)&content);
+	} else {
+		logprintf(LOG_ERR, "config registry should be of an object type");
+		return -1;
+	}
 	return 0;
 }
 
