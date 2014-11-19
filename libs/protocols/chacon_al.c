@@ -285,17 +285,17 @@ void chaconALInit(void) {
 	chacon_al->pulse = 3;
 	chacon_al->rawlen = 66;
 
-	options_add(&chacon_al->options, 'u', "unitcode", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, NULL, "^([0-9]{1,4}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5]|[01]{16})$");
-    options_add(&chacon_al->options, 'c', "checksum", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, NULL, "^(-1|[0-9]{1,2}|1[0-9]{2}|2[0-4][0-9]|25[0-5]|[01]{8})$");
-	options_add(&chacon_al->options, 't', "on", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
-	options_add(&chacon_al->options, 'f', "off", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
-	options_add(&chacon_al->options, 'a', "panic", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
+	options_add(&chacon_al->options, 'u', "unitcode", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^([0-9]{1,4}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5]|[01]{16})$");
+    options_add(&chacon_al->options, 'c', "checksum", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^(-1|[0-9]{1,2}|1[0-9]{2}|2[0-4][0-9]|25[0-5]|[01]{8})$");
+	options_add(&chacon_al->options, 't', "on", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
+	options_add(&chacon_al->options, 'f', "off", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
+	options_add(&chacon_al->options, 'a', "panic", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
     
-    options_add(&chacon_al->options, 0, "on-checksum", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)-1, "^([0-9]{1,2}|1[0-9]{2}|2[0-4][0-9]|25[0-5]|[01]{8})$");
-    options_add(&chacon_al->options, 0, "off-checksum", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)-1, "^([0-9]{1,2}|1[0-9]{2}|2[0-4][0-9]|25[0-5]|[01]{8})$");
-    options_add(&chacon_al->options, 0, "on-command", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)2, "^([0-9]{1,2}|1[0-9]{2}|2[0-4][0-9]|25[0-5]|[01]{8})$");
-    options_add(&chacon_al->options, 0, "off-command", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)4, "^([0-9]{1,2}|1[0-9]{2}|2[0-4][0-9]|25[0-5]|[01]{8})$");
-	options_add(&chacon_al->options, 0, "gui-readonly", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
+    options_add(&chacon_al->options, 0, "on-checksum", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *)-1, "^([0-9]{1,2}|1[0-9]{2}|2[0-4][0-9]|25[0-5]|[01]{8})$");
+    options_add(&chacon_al->options, 0, "off-checksum", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *)-1, "^([0-9]{1,2}|1[0-9]{2}|2[0-4][0-9]|25[0-5]|[01]{8})$");
+    options_add(&chacon_al->options, 0, "on-command", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *)2, "^([0-9]{1,2}|1[0-9]{2}|2[0-4][0-9]|25[0-5]|[01]{8})$");
+    options_add(&chacon_al->options, 0, "off-command", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *)4, "^([0-9]{1,2}|1[0-9]{2}|2[0-4][0-9]|25[0-5]|[01]{8})$");
+	options_add(&chacon_al->options, 0, "gui-readonly", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 
 
 	chacon_al->parseCode=&chaconALParseCode;
