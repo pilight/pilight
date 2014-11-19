@@ -45,15 +45,16 @@ static void chaconALCreateMessage(int unitcode, int state, int checksum, int on_
 	char buffer[32];
 	chacon_al->message = json_mkobject();
 	json_append_member(chacon_al->message, "unitcode", json_mknumber(unitcode, 0));
-	if(state == 1) {
-		json_append_member(chacon_al->message, "state", json_mkstring("panic"));
-	}
-	else if(state == on_cmd) {
+	if(state == on_cmd) {
 		json_append_member(chacon_al->message, "state", json_mkstring("on"));
 	}
 	else if(state == off_cmd) {
 		json_append_member(chacon_al->message, "state", json_mkstring("off"));
-	} else {
+	}
+	else if(state == 1) {
+		json_append_member(chacon_al->message, "state", json_mkstring("panic"));
+	}
+	else {
 		sprintf(buffer, "%d", state);
 		json_append_member(chacon_al->message, "state", json_mkstring(buffer));
 	}
@@ -208,6 +209,7 @@ static int chaconALCreateCode(JsonNode *code) {
 	int unitcode = -1;
 	int state = -1;
 	int checksum = -1;
+	int checksum_id = -1;
 	int on_cmd = 2;
 	int off_cmd = 4;
 	double itmp;
@@ -218,6 +220,7 @@ static int chaconALCreateCode(JsonNode *code) {
 	}
 	if(json_find_number(code, "checksum", &itmp) == 0) {
 		checksum = (int)round(itmp);
+		checksum_id = checksum;
 	}
 	if(json_find_number(code, "on-command", &itmp) == 0) {
 		on_cmd = (int)round(itmp);
@@ -246,7 +249,7 @@ static int chaconALCreateCode(JsonNode *code) {
 		logprintf(LOG_ERR, "chacon_al: insufficient number of arguments");
 		return EXIT_FAILURE;
 	} else {
-		chaconALCreateMessage(unitcode, state, checksum, on_cmd, off_cmd);
+		chaconALCreateMessage(unitcode, state, checksum_id, on_cmd, off_cmd);
 		chaconALClearCode();
 		chaconALCreateUnitCode(unitcode);
 		chaconALCreateState(state);
