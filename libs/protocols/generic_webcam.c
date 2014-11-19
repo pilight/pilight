@@ -1,19 +1,19 @@
 /*
-	Copyright (C) 2014 1000io
+	Copyright (C) 2014 CurlyMo & 1000io
 
 	This file is part of pilight.
 
-    pilight is free software: you can redistribute it and/or modify it under the
+	pilight is free software: you can redistribute it and/or modify it under the
 	terms of the GNU General Public License as published by the Free Software
 	Foundation, either version 3 of the License, or (at your option) any later
 	version.
 
-    pilight is distributed in the hope that it will be useful, but WITHOUT ANY
+	pilight is distributed in the hope that it will be useful, but WITHOUT ANY
 	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-    You should have received a copy of the GNU General Public License
-    along with pilight. If not, see	<http://www.gnu.org/licenses/>
+	You should have received a copy of the GNU General Public License
+	along with pilight. If not, see	<http://www.gnu.org/licenses/>
 */
 
 #include <stdio.h>
@@ -56,12 +56,12 @@ void genWebcamInit(void) {
 	generic_webcam->devtype = WEBCAM;
 	generic_webcam->multipleId = 0;
 
-	options_add(&generic_webcam->options, 'u', "url", OPTION_HAS_VALUE, CONFIG_ID, JSON_STRING, NULL, NULL);
+	options_add(&generic_webcam->options, 'u', "url", OPTION_HAS_VALUE, DEVICES_ID, JSON_STRING, NULL, NULL);
 
-	options_add(&generic_webcam->options, 0, "gui-image-width", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)0, "[0-9]");
-	options_add(&generic_webcam->options, 0, "gui-image-height", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)300, "[0-9]");
-	options_add(&generic_webcam->options, 0, "gui-show-webcam", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
-	options_add(&generic_webcam->options, 0, "poll-interval", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)10, "^[10]{2}$");
+	options_add(&generic_webcam->options, 0, "image-width", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "[0-9]");
+	options_add(&generic_webcam->options, 0, "image-height", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)300, "[0-9]");
+	options_add(&generic_webcam->options, 0, "show-webcam", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
+	options_add(&generic_webcam->options, 0, "poll-interval", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *)10, "^[10]{2}$");
 
 	generic_webcam->checkValues=genWebcamCheckValues;
 }
@@ -69,9 +69,9 @@ void genWebcamInit(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name = "generic_webcam";
-	module->version = "1.0";
+	module->version = "1.1";
 	module->reqversion = "5.0";
-	module->reqcommit = NULL;
+	module->reqcommit = "84";
 }
 
 void init(void) {

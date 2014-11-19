@@ -1,19 +1,19 @@
 /*
-	Copyright (C) 2013 CurlyMo
+	Copyright (C) 2013 - 2014 CurlyMo
 
 	This file is part of pilight.
 
-    pilight is free software: you can redistribute it and/or modify it under the
+	pilight is free software: you can redistribute it and/or modify it under the
 	terms of the GNU General Public License as published by the Free Software
 	Foundation, either version 3 of the License, or (at your option) any later
 	version.
 
-    pilight is distributed in the hope that it will be useful, but WITHOUT ANY
+	pilight is distributed in the hope that it will be useful, but WITHOUT ANY
 	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-    You should have received a copy of the GNU General Public License
-    along with pilight. If not, see	<http://www.gnu.org/licenses/>
+	You should have received a copy of the GNU General Public License
+	along with pilight. If not, see	<http://www.gnu.org/licenses/>
 */
 
 #include <stdlib.h>
@@ -62,6 +62,16 @@ struct threadqueue_t *threads_register(const char *id, void *(*function)(void *p
 	strcpy(tnode->id, id);
 	tnode->param = param;
 	tnode->next = NULL;
+
+	memset(&tnode->cpu_usage, '\0', sizeof(struct cpu_usage_t));
+	tnode->cpu_usage.cpu_old = 0;
+	tnode->cpu_usage.cpu_per = 0;
+	tnode->cpu_usage.cpu_new = 0;
+	tnode->cpu_usage.sec_start = 0;
+	tnode->cpu_usage.sec_stop = 0;
+	tnode->cpu_usage.sec_diff = 0;
+	memset(&tnode->cpu_usage.ts, '\0', sizeof(struct timespec));
+	tnode->cpu_usage.starts = 0;
 
 	struct threadqueue_t *tmp = threadqueue;
 	if(tmp) {
@@ -165,19 +175,25 @@ void thread_stop(struct threadqueue_t *node) {
 	}
 }
 
-void threads_cpu_usage(void) {
-	logprintf(LOG_ERR, "----- Thread Profiling -----");
+void threads_cpu_usage(int print) {
+	if(print) {
+		logprintf(LOG_ERR, "----- Thread Profiling -----");
+	}
 	struct threadqueue_t *tmp_threads = threadqueue;
 	while(tmp_threads) {
 		getThreadCPUUsage(&tmp_threads->pth, &tmp_threads->cpu_usage);
-		if(tmp_threads->cpu_usage.cpu_per > 0) {
-			logprintf(LOG_ERR, "- thread %s: %f%%", tmp_threads->id, tmp_threads->cpu_usage.cpu_per);
-		} else {
-			logprintf(LOG_ERR, "- thread %s: 0.000000%%", tmp_threads->id);
+		if(print) {
+			if(tmp_threads->cpu_usage.cpu_per > 0) {
+				logprintf(LOG_ERR, "- thread %s: %f%%", tmp_threads->id, tmp_threads->cpu_usage.cpu_per);
+			} else {
+				logprintf(LOG_ERR, "- thread %s: 0.000000%%", tmp_threads->id);
+			}
 		}
 		tmp_threads = tmp_threads->next;
 	}
-	logprintf(LOG_ERR, "----- Thread Profiling -----");
+	if(print) {
+		logprintf(LOG_ERR, "----- Thread Profiling -----");
+	}
 }
 
 int threads_gc(void) {

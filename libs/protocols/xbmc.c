@@ -3,17 +3,17 @@
 
 	This file is part of pilight.
 
-    pilight is free software: you can redistribute it and/or modify it under the
+	pilight is free software: you can redistribute it and/or modify it under the
 	terms of the GNU General Public License as published by the Free Software
 	Foundation, either version 3 of the License, or (at your option) any later
 	version.
 
-    pilight is distributed in the hope that it will be useful, but WITHOUT ANY
+	pilight is distributed in the hope that it will be useful, but WITHOUT ANY
 	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-    You should have received a copy of the GNU General Public License
-    along with pilight. If not, see	<http://www.gnu.org/licenses/>
+	You should have received a copy of the GNU General Public License
+	along with pilight. If not, see	<http://www.gnu.org/licenses/>
 */
 
 #include <stdio.h>
@@ -66,7 +66,7 @@ static void xbmcCreateMessage(char *server, int port, char *action, char *media)
 	json_append_member(code, "action", json_mkstring(action));
 	json_append_member(code, "media", json_mkstring(media));
 	json_append_member(code, "server", json_mkstring(server));
-	json_append_member(code, "port", json_mknumber(port));
+	json_append_member(code, "port", json_mknumber(port, 0));
 
 	json_append_member(xbmc->message, "message", code);
 	json_append_member(xbmc->message, "origin", json_mkstring("receiver"));
@@ -354,13 +354,13 @@ void xbmcInit(void) {
 	xbmc->hwtype = API;
 	xbmc->multipleId = 0;
 
-	options_add(&xbmc->options, 'a', "action", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_STRING, NULL, NULL);
-	options_add(&xbmc->options, 'm', "media", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_STRING, NULL, NULL);
-	options_add(&xbmc->options, 's', "server", OPTION_HAS_VALUE, CONFIG_ID, JSON_STRING, NULL, NULL);
-	options_add(&xbmc->options, 'p', "port", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, NULL, NULL);
+	options_add(&xbmc->options, 'a', "action", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_STRING, NULL, NULL);
+	options_add(&xbmc->options, 'm', "media", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_STRING, NULL, NULL);
+	options_add(&xbmc->options, 's', "server", OPTION_HAS_VALUE, DEVICES_ID, JSON_STRING, NULL, NULL);
+	options_add(&xbmc->options, 'p', "port", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, NULL);
 
-	options_add(&xbmc->options, 0, "gui-show-media", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
-	options_add(&xbmc->options, 0, "gui-show-action", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
+	options_add(&xbmc->options, 0, "show-media", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
+	options_add(&xbmc->options, 0, "show-action", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
 
 	xbmc->initDev=&xbmcInitDev;
 	xbmc->threadGC=&xbmcThreadGC;
@@ -370,9 +370,9 @@ void xbmcInit(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name = "xbmc";
-	module->version = "1.0";
+	module->version = "1.1";
 	module->reqversion = "5.0";
-	module->reqcommit = NULL;
+	module->reqcommit = "84";
 }
 
 void init(void) {

@@ -3,17 +3,17 @@
 
 	This file is part of pilight.
 
-    pilight is free software: you can redistribute it and/or modify it under the
+	pilight is free software: you can redistribute it and/or modify it under the
 	terms of the GNU General Public License as published by the Free Software
 	Foundation, either version 3 of the License, or (at your option) any later
 	version.
 
-    pilight is distributed in the hope that it will be useful, but WITHOUT ANY
+	pilight is distributed in the hope that it will be useful, but WITHOUT ANY
 	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-    You should have received a copy of the GNU General Public License
-    along with pilight. If not, see	<http://www.gnu.org/licenses/>
+	You should have received a copy of the GNU General Public License
+	along with pilight. If not, see	<http://www.gnu.org/licenses/>
 */
 
 #include <stdio.h>
@@ -31,12 +31,12 @@
 
 #include "pilight.h"
 #include "common.h"
-#include "settings.h"
+#include "config.h"
 #include "hardware.h"
 #include "log.h"
 #include "options.h"
 #include "threads.h"
-#include "wiringPi.h"
+#include "wiringX.h"
 #include "irq.h"
 #include "gc.h"
 #include "dso.h"
@@ -70,13 +70,11 @@ int main_gc(void) {
 	pthread_join(pth, NULL);
 
 	options_gc();
-	settings_gc();
-	hardware_gc();
 	dso_gc();
+	wiringXGC();
 	log_gc();
 
 	sfree((void *)&progname);
-
 	return EXIT_SUCCESS;
 }
 
@@ -107,7 +105,6 @@ void *receive_code(void *param) {
 		memset(&pRaw, '\0', 255);
 		memset(&code, '\0', 255);
 		memset(&binary, '\0', 255);
-		memset(&bit, '\0', 255);
 		recording = 1;
 		bit = 0;
 		footer = 0;
@@ -139,7 +136,7 @@ void *receive_code(void *param) {
 
 			/* First try to catch code that seems to be a footer.
 			   If a real footer has been recognized, start using that as the new footer */
-			if((duration > 4440 && footer == 0) || ((footer-(footer*0.3)<duration) && (footer+(footer*0.3)>duration))) {
+			if((duration > 5100 && footer == 0) || ((footer-(footer*0.3)<duration) && (footer+(footer*0.3)>duration))) {
 				recording = 1;
 				pulselen = (int)duration/PULSE_DIV;
 				/* Check if we are recording similar codes */
@@ -166,7 +163,7 @@ void *receive_code(void *param) {
 								pulse=raw[i];
 							}
 						}
-						if(duration > 4440) {
+						if(duration > 5100) {
 							footer=raw[i];
 						}
 					}
@@ -222,7 +219,9 @@ void *receive_code(void *param) {
 			printf("\n");
 		}
 	}
-	main_gc();
+
+	main_loop = 0;
+
 	return NULL;
 }
 
@@ -240,11 +239,10 @@ int main(int argc, char **argv) {
 	struct options_t *options = NULL;
 
 	char *args = NULL;
-	char *hwfile = NULL;
 	pid_t pid = 0;
 
-	char settingstmp[] = SETTINGS_FILE;
-	settings_set_file(settingstmp);
+	char configtmp[] = CONFIG_FILE;
+	config_set_file(configtmp);
 
 	progname = malloc(15);
 	if(!progname) {
@@ -255,7 +253,7 @@ int main(int argc, char **argv) {
 
 	options_add(&options, 'H', "help", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
 	options_add(&options, 'V', "version", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
-	options_add(&options, 'F', "settings", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, NULL);
+	options_add(&options, 'C', "config", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, NULL);
 
 	while (1) {
 		int c;
@@ -269,15 +267,15 @@ int main(int argc, char **argv) {
 				printf("Usage: %s [options]\n", progname);
 				printf("\t -H --help\t\tdisplay usage summary\n");
 				printf("\t -V --version\t\tdisplay version\n");
-				printf("\t -F --settings\t\tsettings file\n");
+				printf("\t -C --config\t\tconfig file\n");
 				goto clear;
 			break;
 			case 'V':
 				printf("%s %s\n", progname, VERSION);
 				goto clear;
 			break;
-			case 'F':
-				if(settings_set_file(args) == EXIT_FAILURE) {
+			case 'C':
+				if(config_set_file(args) == EXIT_FAILURE) {
 					goto clear;
 				}
 			break;
@@ -289,36 +287,54 @@ int main(int argc, char **argv) {
 	}
 	options_delete(options);
 
-	char pilight_daemon[] = "pilight-daemon";
-	char pilight_learn[] = "pilight-learn";
-	char pilight_raw[] = "pilight-raw";
+	char *pilight_daemon = strdup("pilight-daemon");
+	if(!pilight_daemon) {
+		logprintf(LOG_ERR, "out of memory");
+		exit(EXIT_FAILURE);
+	}
 	if((pid = findproc(pilight_daemon, NULL, 1)) > 0) {
 		logprintf(LOG_ERR, "pilight-daemon instance found (%d)", (int)pid);
+		sfree((void *)&pilight_daemon);
 		goto clear;
 	}
+	sfree((void *)&pilight_daemon);
 
-	if((pid = findproc(pilight_learn, NULL, 1)) > 0) {
-		logprintf(LOG_ERR, "pilight-learn instance found (%d)", (int)pid);
-		goto clear;
+	char *pilight_raw = strdup("pilight-raw");
+	if(!pilight_raw) {
+		logprintf(LOG_ERR, "out of memory");
+		exit(EXIT_FAILURE);
 	}
-
 	if((pid = findproc(pilight_raw, NULL, 1)) > 0) {
 		logprintf(LOG_ERR, "pilight-raw instance found (%d)", (int)pid);
+		sfree((void *)&pilight_raw);
 		goto clear;
 	}
+	sfree((void *)&pilight_raw);
 
-	if(settings_read() != 0) {
+	char *pilight_learn = strdup("pilight-learn");
+	if(!pilight_learn) {
+		logprintf(LOG_ERR, "out of memory");
+		exit(EXIT_FAILURE);
+	}
+	if((pid = findproc(pilight_learn, NULL, 1)) > 0) {
+		logprintf(LOG_ERR, "pilight-learn instance found (%d)", (int)pid);
+		sfree((void *)&pilight_learn);
+		goto clear;
+	}
+	sfree((void *)&pilight_learn);
+
+	if(config_read() != 0) {
 		goto clear;
 	}
 
 	hardware_init();
 
-	if(settings_find_string("hardware-file", &hwfile) == 0) {
-		hardware_set_file(hwfile);
-		if(hardware_read() == EXIT_FAILURE) {
-			goto clear;
-		}
-	}
+	// if(config_find_string("hardware-file", &hwfile) == 0) {
+		// hardware_set_file(hwfile);
+		// if(hardware_read() == EXIT_FAILURE) {
+			// goto clear;
+		// }
+	// }
 
 	/* Start threads library that keeps track of all threads used */
 	threads_create(&pth, NULL, &threads_start, (void *)NULL);
@@ -344,6 +360,8 @@ int main(int argc, char **argv) {
 	}
 
 clear:
-	main_gc();
+	if(main_loop) {
+		main_gc();
+	}
 	return (EXIT_FAILURE);
 }

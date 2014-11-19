@@ -45,18 +45,22 @@ endif()
 if(${CMAKE_SYSTEM_PROCESSOR} MATCHES "armv6" OR CPACK_DEBIAN_PACKAGE_ARCHITECTURE MATCHES "armhf")
 	if(${USE_SOFT_FLOAT} MATCHES "OFF")
 		set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE armhf)
-		set(CMAKE_C_FLAGS "-lz -Ofast -mfloat-abi=hard -mfpu=vfp -march=armv6 -ffast-math -Wfloat-equal -Wshadow -Wpointer-arith -Wcast-align -Wstrict-overflow=5 -Wwrite-strings -Waggregate-return -Wcast-qual -Wswitch-default -Wswitch-enum -Wformat=2 -g -Wall -Wconversion -Wunreachable-code -Wstrict-prototypes")
+		set(CMAKE_C_FLAGS "-rdynamic -funwind-tables -lz -Ofast -mfloat-abi=hard -mfpu=vfp -march=armv6 -ffast-math -Wfloat-equal -Wshadow -Wpointer-arith -Wcast-align -Wstrict-overflow=5 -Wwrite-strings -Waggregate-return -Wcast-qual -Wswitch-default -Wswitch-enum -Wformat=2 -g -Wall -Wconversion -Wunreachable-code -Wstrict-prototypes")
 	else()
-		set(CMAKE_C_FLAGS "-lz -Ofast -mfloat-abi=soft -msoft-float -mfpu=vfp -march=armv6 -ffast-math -Wfloat-equal -Wshadow -Wpointer-arith -Wcast-align -Wstrict-overflow=5 -Wwrite-strings -Waggregate-return -Wcast-qual -Wswitch-default -Wswitch-enum -Wformat=2 -g -Wall -Wconversion -Wunreachable-code -Wstrict-prototypes")
+		set(CMAKE_C_FLAGS "-rdynamic -funwind-tables -lz -Ofast -mfloat-abi=soft -msoft-float -mfpu=vfp -march=armv6 -ffast-math -Wfloat-equal -Wshadow -Wpointer-arith -Wcast-align -Wstrict-overflow=5 -Wwrite-strings -Waggregate-return -Wcast-qual -Wswitch-default -Wswitch-enum -Wformat=2 -g -Wall -Wconversion -Wunreachable-code -Wstrict-prototypes")
 	endif()
-endif()
-
-if(${CMAKE_SYSTEM_PROCESSOR} MATCHES "x86_64")
-	set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE i386)
-	set(CMAKE_C_FLAGS "-Ofast -fPIC -march=native -mtune=native -ffast-math -Wconversion -Wunreachable-code -Wstrict-prototypes -Wfloat-equal -Wshadow -Wpointer-arith -Wcast-align -Wstrict-overflow=5 -Wwrite-strings -Waggregate-return -Wcast-qual -Wswitch-default -Wswitch-enum -Wformat=2 -g3 -Wall")
-endif()
-if(${CMAKE_SYSTEM_PROCESSOR} MATCHES "amd64")
+elseif(${CMAKE_SYSTEM_PROCESSOR} MATCHES "armv7l")
+	if(${USE_SOFT_FLOAT} MATCHES "OFF")
+		set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE armhf)
+		set(CMAKE_C_FLAGS "-rdynamic -funwind-tables -lz -Ofast -fPIC -mfloat-abi=hard -mfpu=vfp -march=armv7-a -ffast-math -Wfloat-equal -Wshadow -Wpointer-arith -Wcast-align -Wstrict-overflow=5 -Wwrite-strings -Waggregate-return -Wcast-qual -Wswitch-default -Wswitch-enum -Wformat=2 -g -Wall -Wconversion -Wunreachable-code -Wstrict-prototypes")
+	else()
+		message(FATAL_ERROR "Architecture not supported")
+	endif()
+elseif(${CMAKE_SYSTEM_PROCESSOR} MATCHES "64")
 	set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE amd64)
+	set(CMAKE_C_FLAGS "-Ofast -fPIC -march=native -mtune=native -ffast-math -Wconversion -Wunreachable-code -Wstrict-prototypes -Wfloat-equal -Wshadow -Wpointer-arith -Wcast-align -Wstrict-overflow=5 -Wwrite-strings -Waggregate-return -Wcast-qual -Wswitch-default -Wswitch-enum -Wformat=2 -g3 -Wall")
+elseif()
+	set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE i386)
 	set(CMAKE_C_FLAGS "-O2 -fPIC -march=native -mtune=native -ffast-math -Wformat=2 -g3 -Wformat-nonliteral")
 endif()
 
@@ -103,8 +107,8 @@ foreach (file \${files})
 endforeach(file)
 
 execute_process(COMMAND update-rc.d pilight remove)
-execute_process(COMMAND ln -sf /usr/local/lib/pilight/libpilight.so.3 /usr/local/lib/libpilight.so)
 execute_process(COMMAND ldconfig)
+execute_process(COMMAND rm /usr/local/lib/libpilight.so 2>/dev/null)
 
 ") # END of appending to file...
     endif()
@@ -130,7 +134,9 @@ if(${MODULESPACK} MATCHES "ON")
 endif()
 
 include_directories("${PROJECT_SOURCE_DIR}/libs/pilight/")
+include_directories("${PROJECT_SOURCE_DIR}/libs/config/")
 include_directories("${PROJECT_SOURCE_DIR}/libs/avrdude/")
+include_directories("${PROJECT_SOURCE_DIR}/libs/platform/")
 
 file(GLOB protocol_headers
 	"${PROJECT_SOURCE_DIR}/libs/protocols/*.h"
@@ -138,6 +144,18 @@ file(GLOB protocol_headers
 
 file(GLOB protocol
 	"${PROJECT_SOURCE_DIR}/libs/protocols/*.c"
+)
+
+file(GLOB platform_headers
+	"${PROJECT_SOURCE_DIR}/libs/platform/*.h"
+)
+
+file(GLOB platform
+	"${PROJECT_SOURCE_DIR}/libs/platform/*.c"
+)
+
+file(GLOB config
+	"${PROJECT_SOURCE_DIR}/libs/config/*.c"
 )
 
 file(GLOB hardware_headers
@@ -161,8 +179,18 @@ if(${PROTOCOL_ALECTO_WSD17} MATCHES "OFF")
 	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/alecto_wsd17.c")
 endif()
 
+if(${PROTOCOL_ALECTO_WX500} MATCHES "OFF")
+	list(REMOVE_ITEM protocol_headers "${PROJECT_SOURCE_DIR}/libs/protocols/alecto_wx500.h")
+	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/alecto_wx500.c")
+endif()
+
 if(${PROTOCOL_COGEX_SWITCH} MATCHES "OFF"
 	AND ${PROTOCOL_KAKU_SWITCH_OLD} MATCHES "OFF"
+	AND ${PROTOCOL_BYEBYESTANDBYE_SWITCH} MATCHES "OFF"
+	AND ${PROTOCOL_DUWI_SWITCH} MATCHES "OFF"
+	AND ${PROTOCOL_PROMAX_SWITCH} MATCHES "OFF"
+	AND ${PROTOCOL_RSL366} MATCHES "OFF"
+	AND ${PROTOCOL_EURODOMEST_SWITCH} MATCHES "OFF"
 	AND ${PROTOCOL_INTERTECHNO_OLD} MATCHES "OFF")
 	list(REMOVE_ITEM protocol_headers "${PROJECT_SOURCE_DIR}/libs/protocols/arctech_switch_old.h")
 	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/arctech_switch_old.c")
@@ -171,6 +199,16 @@ endif()
 if(${PROTOCOL_KAKU_SCREEN_OLD} MATCHES "OFF")
 	list(REMOVE_ITEM protocol_headers "${PROJECT_SOURCE_DIR}/libs/protocols/arctech_screen_old.h")
 	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/arctech_screen_old.c")
+endif()
+
+if(${PROTOCOL_KAKU_DUSK} MATCHES "OFF")
+	list(REMOVE_ITEM protocol_headers "${PROJECT_SOURCE_DIR}/libs/protocols/arctech_dusk.h")
+	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/arctech_dusk.c")
+endif()
+
+if(${PROTOCOL_KAKU_MOTION} MATCHES "OFF")
+	list(REMOVE_ITEM protocol_headers "${PROJECT_SOURCE_DIR}/libs/protocols/arctech_motion.h")
+	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/arctech_motion.c")
 endif()
 
 if(${PROTOCOL_KAKU_DIMMER} MATCHES "OFF")
@@ -246,6 +284,11 @@ if(${PROTOCOL_GENERIC_WEBCAM} MATCHES "OFF")
 	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/generic_webcam.c")
 endif()
 
+if(${PROTOCOL_GPIO_SWITCH} MATCHES "OFF")
+	list(REMOVE_ITEM protocol_headers "${PROJECT_SOURCE_DIR}/libs/protocols/gpio_switch.h")
+	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/gpio_switch.c")
+endif()
+
 if(${PROTOCOL_HOMEEASY_OLD} MATCHES "OFF")
 	list(REMOVE_ITEM protocol_headers "${PROJECT_SOURCE_DIR}/libs/protocols/home_easy_old.h")
 	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/home_easy_old.c")
@@ -290,9 +333,9 @@ if(${PROTOCOL_CLARUS} MATCHES "OFF")
 	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/clarus.c")
 endif()
 
-if(${PROTOCOL_RPI_TEMP} MATCHES "OFF")
-	list(REMOVE_ITEM protocol_headers "${PROJECT_SOURCE_DIR}/libs/protocols/rpi_temp.h")
-	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/rpi_temp.c")
+if(${PROTOCOL_CPU_TEMP} MATCHES "OFF")
+	list(REMOVE_ITEM protocol_headers "${PROJECT_SOURCE_DIR}/libs/protocols/cpu_temp.h")
+	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/cpu_temp.c")
 endif()
 
 if(${PROTOCOL_CONRAD_RSL_SWITCH} MATCHES "OFF")
@@ -342,8 +385,6 @@ if(${PROTOCOL_LM75} MATCHES "OFF"
 	list(REMOVE_ITEM protocol_headers "${PROJECT_SOURCE_DIR}/libs/protocols/lm76.h")
 	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/lm75.c")
 	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/lm76.c")
-	list(REMOVE_ITEM protocol_headers "${PROJECT_SOURCE_DIR}/libs/protocol/wiringPiI2C.h")
-	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocol/wiringPiI2C.c")
 endif()
 
 if(${PROTOCOL_WUNDERGROUND} MATCHES "OFF")
@@ -371,9 +412,14 @@ if(${PROTOCOL_SUNRISESET} MATCHES "OFF")
 	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/sunriseset.c")
 endif()
 
-if(${PROTOCOL_THREECHAN} MATCHES "OFF")
-	list(REMOVE_ITEM protocol_headers "${PROJECT_SOURCE_DIR}/libs/protocols/threechan.h")
-	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/threechan.c")
+if(${PROTOCOL_ALECTO_WS1700} MATCHES "OFF")
+	list(REMOVE_ITEM protocol_headers "${PROJECT_SOURCE_DIR}/libs/protocols/alecto_ws1700.h")
+	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/alecto_ws1700.c")
+endif()
+
+if(${PROTOCOL_AURIOL} MATCHES "OFF")
+	list(REMOVE_ITEM protocol_headers "${PROJECT_SOURCE_DIR}/libs/protocols/auriol.h")
+	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/auriol.c")
 endif()
 
 if(${PROTOCOL_TEKNIHALL} MATCHES "OFF")
@@ -401,9 +447,34 @@ if(${PROTOCOL_XBMC} MATCHES "OFF")
 	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/xbmc.c")
 endif()
 
+if(${PROTOCOL_CHACON_AL} MATCHES "OFF")
+	list(REMOVE_ITEM protocol_headers "${PROJECT_SOURCE_DIR}/libs/protocols/chacon_al.h")
+	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/chacon_al.c")
+endif()
+
 if(${PROTOCOL_LIRC} MATCHES "OFF")
 	list(REMOVE_ITEM protocol_headers "${PROJECT_SOURCE_DIR}/libs/protocols/lirc.h")
 	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/lirc.c")
+endif()
+
+if(${PROTOCOL_BEAMISH_SWITCH} MATCHES "OFF")
+	list(REMOVE_ITEM protocol_headers "${PROJECT_SOURCE_DIR}/libs/protocols/beamish_switch.h")
+	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/beamish_switch.c")
+endif()
+
+if(${PROTOCOL_QUIGG_SCREEN} MATCHES "OFF")
+	list(REMOVE_ITEM protocol_headers "${PROJECT_SOURCE_DIR}/libs/protocols/quigg_screen.h")
+	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/quigg_screen.c")
+endif()
+
+if(${PROTOCOL_NINJABLOCKS_WEATHER} MATCHES "OFF")
+	list(REMOVE_ITEM protocol_headers "${PROJECT_SOURCE_DIR}/libs/protocols/ninjablocks_weather.h")
+	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/ninjablocks_weather.c")
+endif()
+
+if(${PROTOCOL_TECHLICO} MATCHES "OFF")
+	list(REMOVE_ITEM protocol_headers "${PROJECT_SOURCE_DIR}/libs/protocols/techlico_switch.h")
+	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/techlico_switch.c")
 endif()
 
 if(${HARDWARE_433_GPIO} MATCHES "OFF")
@@ -414,16 +485,6 @@ endif()
 if(${HARDWARE_433_LIRC} MATCHES "OFF")
 	list(REMOVE_ITEM hardware_headers "${PROJECT_SOURCE_DIR}/libs/hardware/433module.h")
 	list(REMOVE_ITEM hardware "${PROJECT_SOURCE_DIR}/libs/hardware/433module.c")
-endif()
-
-if(${HARDWARE_433_PILIGHT} MATCHES "OFF")
-	list(REMOVE_ITEM hardware_headers "${PROJECT_SOURCE_DIR}/libs/hardware/433pilight.h")
-	list(REMOVE_ITEM hardware "${PROJECT_SOURCE_DIR}/libs/hardware/433pilight.c")
-endif()
-
-if(${UPDATE} MATCHES "OFF")
-	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/pilight/update.h")
-	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/pilight/update.c")
 endif()
 
 if(${WEBSERVER} MATCHES "OFF")
@@ -484,7 +545,7 @@ if(${MODULESPACK} MATCHES "OFF")
 
 	string(REPLACE "!" "\n" header4 ${header3})
 	set(HARDWARE_HEADERS ${header4})
-	configure_file(libs/pilight/hardware_header.h.in libs/pilight/hardware_header.h)	
+	configure_file(libs/config/hardware_header.h.in libs/config/hardware_header.h)	
 
 	execute_process(
 	COMMAND grep -h "void .*Init(void)" ${hardware}
@@ -501,7 +562,7 @@ if(${MODULESPACK} MATCHES "OFF")
 
 	string(REPLACE "!" ";" init4 ${init3})
 	set(HARDWARE_INIT ${init4})
-	configure_file(libs/pilight/hardware_init.h.in libs/pilight/hardware_init.h)	
+	configure_file(libs/config/hardware_init.h.in libs/config/hardware_init.h)	
 
 	configure_file(pilight.h.in pilight.h)
 endif()
@@ -531,7 +592,7 @@ if(${MODULESPACK} MATCHES "ON")
 endif()
 
 if(${MODULESPACK} MATCHES "OFF")
-	add_library(pilight OBJECT ${pilight} ${protocol} ${hardware})
+	add_library(pilight OBJECT ${pilight} ${protocol} ${hardware} ${platform} ${config})
 
 	add_library(pilight_static STATIC $<TARGET_OBJECTS:pilight>)
 	add_library(pilight_shared SHARED $<TARGET_OBJECTS:pilight>)
@@ -552,23 +613,21 @@ if(${MODULESPACK} MATCHES "OFF")
 
 	set_target_properties(pilight_shared pilight_static PROPERTIES OUTPUT_NAME pilight)
 
-	set_source_files_properties(${PROJECT_SOURCE_DIR}/libs/pilight/wiringPi.c PROPERTIES COMPILE_FLAGS " -w ")
-	set_source_files_properties(${PROJECT_SOURCE_DIR}/libs/pilight/wiringPiI2C.c PROPERTIES COMPILE_FLAGS " -w ")
+	set_source_files_properties(${PROJECT_SOURCE_DIR}/libs/pilight/wiringX.c PROPERTIES COMPILE_FLAGS " -w ")
+	set_source_files_properties(${PROJECT_SOURCE_DIR}/libs/platform/hummingboard.c PROPERTIES COMPILE_FLAGS " -w ")
+	set_source_files_properties(${PROJECT_SOURCE_DIR}/libs/platform/raspberrypi.c PROPERTIES COMPILE_FLAGS " -w ")
+	set_source_files_properties(${PROJECT_SOURCE_DIR}/libs/platform/bananapi.c PROPERTIES COMPILE_FLAGS " -w ")
+	set_source_files_properties(${PROJECT_SOURCE_DIR}/libs/platform/radxa.c PROPERTIES COMPILE_FLAGS " -w ")
 	set_source_files_properties(${PROJECT_SOURCE_DIR}/libs/pilight/json.c PROPERTIES COMPILE_FLAGS " -w ")
 	set_source_files_properties(${PROJECT_SOURCE_DIR}/libs/pilight/http_lib.c PROPERTIES COMPILE_FLAGS " -w ")
 	set_source_files_properties(${PROJECT_SOURCE_DIR}/libs/pilight/mongoose.c PROPERTIES COMPILE_FLAGS " -w ")
 	set_source_files_properties(${avrdude_sources} PROPERTIES COMPILE_FLAGS " -w ")
 
-	if(EXISTS "/usr/local/lib/libpilight.so")
-		install(CODE "execute_process(COMMAND rm /usr/local/lib/libpilight.so)")
-	endif()
 
 	install(FILES libpilight.so DESTINATION lib/pilight/ RENAME libpilight.so.${PROJECT_VERSION} COMPONENT pilight)
 	install(FILES libpilight.a DESTINATION lib/pilight/ RENAME libpilight.a COMPONENT pilight)
 
-	if(NOT EXISTS "/usr/local/lib/libpilight.so")
-		install(CODE "execute_process(COMMAND ln -s \"/usr/local/lib/pilight/libpilight.so.${PROJECT_VERSION}\" \"/usr/local/lib/libpilight.so\")")
-	endif()		
+	install(CODE "execute_process(COMMAND ln -s \"/usr/local/lib/pilight/libpilight.so.${PROJECT_VERSION}\" \"/usr/local/lib/libpilight.so\")")	
 	
 	if(EXISTS "/etc/pilight/settings.json")
 		install(CODE "execute_process(COMMAND mv /etc/pilight/settings.json /etc/pilight/settings.json.bak)")
@@ -583,9 +642,8 @@ if(${MODULESPACK} MATCHES "OFF")
 	endif()
 
 	install(PROGRAMS init/pilight.initd DESTINATION /etc/init.d/ RENAME pilight)
-	install(FILES settings.json-default DESTINATION /etc/pilight/ RENAME settings.json COMPONENT pilight)
+	install(FILES config.json-default DESTINATION /etc/pilight/ RENAME config.json COMPONENT pilight)
 	install(FILES tzdata.json DESTINATION /etc/pilight/ COMPONENT pilight)
-	install(FILES hardware.json DESTINATION /etc/pilight/ COMPONENT pilight)
 
 	add_executable(pilight-daemon daemon.c)
 	target_link_libraries(pilight-daemon pilight_shared)
@@ -614,12 +672,6 @@ if(${MODULESPACK} MATCHES "OFF")
 	target_link_libraries(pilight-control ${CMAKE_DL_LIBS})
 	target_link_libraries(pilight-control m)
 	target_link_libraries(pilight-control ${CMAKE_THREAD_LIBS_INIT})
-
-	add_executable(pilight-learn learn.c)
-	target_link_libraries(pilight-learn pilight_shared)
-	target_link_libraries(pilight-learn ${CMAKE_DL_LIBS})
-	target_link_libraries(pilight-learn m)
-	target_link_libraries(pilight-learn ${CMAKE_THREAD_LIBS_INIT})
 
 	add_executable(pilight-receive receive.c)
 	target_link_libraries(pilight-receive pilight_shared)
@@ -665,7 +717,6 @@ if(${MODULESPACK} MATCHES "OFF")
 	install(PROGRAMS pilight-raw DESTINATION sbin COMPONENT pilight)
 	install(PROGRAMS pilight-send DESTINATION bin COMPONENT pilight)
 	install(PROGRAMS pilight-control DESTINATION bin COMPONENT pilight)
-	install(PROGRAMS pilight-learn DESTINATION sbin COMPONENT pilight)
 	install(PROGRAMS pilight-receive DESTINATION bin COMPONENT pilight)
 	install(PROGRAMS pilight-debug DESTINATION sbin COMPONENT pilight)
 	install(PROGRAMS pilight-flash DESTINATION sbin COMPONENT pilight)

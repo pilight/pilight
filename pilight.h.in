@@ -24,8 +24,7 @@
 /* Internals */
 
 #cmakedefine WEBSERVER
-#cmakedefine UPDATE
-#cmakedefine FIRMWARE
+#cmakedefine PILIGHT_UPDATER
 
 #define VERSION					"5.0"
 #define PULSE_DIV				34
@@ -42,6 +41,7 @@
 	#define WEBSERVER_WORKERS		1
 	#define WEBSERVER_CHUNK_SIZE 	4096
 	#define WEBSERVER_USER 			"www-data"
+	#define WEBGUI_WEBSOCKETS	1
 #endif
 
 #define MAX_CLIENTS					30
@@ -54,7 +54,6 @@
 #define PID_FILE					"/var/run/pilight.pid"
 #define CONFIG_FILE					"/etc/pilight/config.json"
 #define LOG_FILE					"/var/log/pilight.log"
-#define SETTINGS_FILE				"/etc/pilight/settings.json"
 #define TZDATA_FILE					"/etc/pilight/tzdata.json"
 #define LOG_MAX_SIZE 				1048576 // 1024*1024
 
@@ -62,19 +61,13 @@
 #define RECEIVE_REPEATS				1
 #define UUID_LENGTH					21
 
-#ifdef UPDATE
-	#define UPDATE_MIRROR			"http://apt.pilight.org/mirror.txt"
-	#define UPDATE_CHECK			1
-	#define UPDATE_DEVELOPMENT		0
-#endif
-
 #ifdef FIRMWARE
 	#define FIRMWARE_PATH				"/etc/pilight/"
 #endif
 
 typedef struct pilight_t {
     void (*broadcast)(char *name, JsonNode *message);
-    void (*send)(JsonNode *json);
+    int (*send)(JsonNode *json);
     void (*receive)(int *rawcode, int rawlen, int plslen, int hwtype);
 } pilight_t;
 

@@ -39,10 +39,7 @@
 #include "gc.h"
 #include "json.h"
 #include "lm75.h"
-#include "../pilight/wiringPi.h"
-#ifndef __FreeBSD__
-#include "../pilight/wiringPiI2C.h"
-#endif
+#include "../pilight/wiringX.h"
 
 typedef struct lm75data_t {
 	char **id;
@@ -62,10 +59,9 @@ static void *lm75Parse(void *param) {
 	struct JsonNode *jid = NULL;
 	struct JsonNode *jchild = NULL;
 	struct lm75data_t *lm75data = malloc(sizeof(struct lm75data_t));
-	int y = 0, interval = 10;
-	int temp_offset = 0, nrloops = 0;
+	int y = 0, interval = 10, nrloops = 0;
 	char *stmp = NULL;
-	double itmp = -1;
+	double itmp = -1, temp_offset = 0.0;
 
 	if(!lm75data) {
 		logprintf(LOG_ERR, "out of memory");
@@ -101,8 +97,7 @@ static void *lm75Parse(void *param) {
 
 	if(json_find_number(json, "poll-interval", &itmp) == 0)
 		interval = (int)round(itmp);
-	if(json_find_number(json, "device-temperature-offset", &itmp) == 0)
-		temp_offset = (int)round(itmp);
+	json_find_number(json, "temperature-offset", &temp_offset);
 
 #ifndef __FreeBSD__
 	lm75data->fd = realloc(lm75data->fd, (sizeof(int)*(size_t)(lm75data->nrid+1)));
@@ -111,7 +106,7 @@ static void *lm75Parse(void *param) {
 		exit(EXIT_FAILURE);
 	}
 	for(y=0;y<lm75data->nrid;y++) {
-		lm75data->fd[y] = wiringPiI2CSetup((int)strtol(lm75data->id[y], NULL, 16));
+		lm75data->fd[y] = wiringXI2CSetup((int)strtol(lm75data->id[y], NULL, 16));
 	}
 #endif
 
@@ -121,13 +116,13 @@ static void *lm75Parse(void *param) {
 			pthread_mutex_lock(&lm75lock);
 			for(y=0;y<lm75data->nrid;y++) {
 				if(lm75data->fd[y] > 0) {
-					int raw = wiringPiI2CReadReg16(lm75data->fd[y], 0x00);
+					int raw = wiringXI2CReadReg16(lm75data->fd[y], 0x00);
 					float temp = ((float)((raw&0x00ff)+((raw>>15)?0:0.5))*10);
 
 					lm75->message = json_mkobject();
 					JsonNode *code = json_mkobject();
 					json_append_member(code, "id", json_mkstring(lm75data->id[y]));
-					json_append_member(code, "temperature", json_mknumber((int)temp+temp_offset));
+					json_append_member(code, "temperature", json_mknumber((temp+temp_offset)/10, 1));
 
 					json_append_member(lm75->message, "message", code);
 					json_append_member(lm75->message, "origin", json_mkstring("receiver"));
@@ -138,7 +133,7 @@ static void *lm75Parse(void *param) {
 					lm75->message = NULL;
 				} else {
 					logprintf(LOG_DEBUG, "error connecting to lm75");
-					logprintf(LOG_DEBUG, "(probably i2c bus error from wiringPiI2CSetup)");
+					logprintf(LOG_DEBUG, "(probably i2c bus error from wiringXI2CSetup)");
 					logprintf(LOG_DEBUG, "(maybe wrong id? use i2cdetect to find out)");
 					protocol_thread_wait(node, 1, &nrloops);
 				}
@@ -170,7 +165,7 @@ static void *lm75Parse(void *param) {
 
 static struct threadqueue_t *lm75InitDev(JsonNode *jdevice) {
 	lm75_loop = 1;
-	wiringPiSetup();
+	wiringXSetup();
 	char *output = json_stringify(jdevice, NULL);
 	JsonNode *json = json_decode(output);
 	sfree((void *)&output);
@@ -202,12 +197,12 @@ void lm75Init(void) {
 	lm75->devtype = WEATHER;
 	lm75->hwtype = SENSOR;
 
-	options_add(&lm75->options, 't', "temperature", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, NULL, "^[0-9]{1,3}$");
-	options_add(&lm75->options, 'i', "id", OPTION_HAS_VALUE, CONFIG_ID, JSON_STRING, NULL, "0x[0-9a-f]{2}");
+	options_add(&lm75->options, 't', "temperature", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9]{1,3}$");
+	options_add(&lm75->options, 'i', "id", OPTION_HAS_VALUE, DEVICES_ID, JSON_STRING, NULL, "0x[0-9a-f]{2}");
 
-	options_add(&lm75->options, 0, "device-decimals", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)1, "[0-9]");
-	options_add(&lm75->options, 0, "gui-decimals", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)1, "[0-9]");
-	options_add(&lm75->options, 0, "gui-show-temperature", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
+	options_add(&lm75->options, 0, "decimals", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *)1, "[0-9]");
+	options_add(&lm75->options, 0, "decimals", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)1, "[0-9]");
+	options_add(&lm75->options, 0, "show-temperature", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
 
 	lm75->initDev=&lm75InitDev;
 	lm75->threadGC=&lm75ThreadGC;
@@ -216,9 +211,9 @@ void lm75Init(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name = "lm75";
-	module->version = "1.0";
+	module->version = "1.1";
 	module->reqversion = "5.0";
-	module->reqcommit = NULL;
+	module->reqcommit = "84";
 }
 
 void init(void) {

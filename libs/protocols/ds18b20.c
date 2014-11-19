@@ -3,17 +3,17 @@
 
 	This file is part of pilight.
 
-    pilight is free software: you can redistribute it and/or modify it under the
+	pilight is free software: you can redistribute it and/or modify it under the
 	terms of the GNU General Public License as published by the Free Software
 	Foundation, either version 3 of the License, or (at your option) any later
 	version.
 
-    pilight is distributed in the hope that it will be useful, but WITHOUT ANY
+	pilight is distributed in the hope that it will be useful, but WITHOUT ANY
 	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-    You should have received a copy of the GNU General Public License
-    along with pilight. If not, see	<http://www.gnu.org/licenses/>
+	You should have received a copy of the GNU General Public License
+	along with pilight. If not, see	<http://www.gnu.org/licenses/>
 */
 
 #include <stdio.h>
@@ -60,9 +60,9 @@ static void *ds18b20Parse(void *param) {
 	char *stmp = NULL;
 	char **id = NULL;
 	char *content = NULL;
-	int w1valid = 0, w1temp = 0, interval = 10, x = 0;
-	int temp_offset = 0, nrid = 0, y = 0, nrloops = 0;
-	double itmp = 0;
+	int w1valid = 0, interval = 10, x = 0;
+	int nrid = 0, y = 0, nrloops = 0;
+	double temp_offset = 0.0, w1temp = 0.0, itmp = 0.0;
 	size_t bytes = 0;
 
 	ds18b20_threads++;
@@ -90,8 +90,7 @@ static void *ds18b20Parse(void *param) {
 
 	if(json_find_number(json, "poll-interval", &itmp) == 0)
 		interval = (int)round(itmp);
-	if(json_find_number(json, "device-temperature-offset", &itmp) == 0)
-		temp_offset = (int)round(itmp);
+	json_find_number(json, "temperature-offset", &temp_offset);
 
 	while(ds18b20_loop) {
 		if(protocol_thread_wait(node, interval, &nrloops) == ETIMEDOUT) {
@@ -143,7 +142,7 @@ static void *ds18b20Parse(void *param) {
 											w1valid = 1;
 										}
 										if(x == 2) {
-											w1temp = atoi(pch)+temp_offset;
+											w1temp = atof(pch)+temp_offset;
 										}
 										x++;
 									}
@@ -156,9 +155,10 @@ static void *ds18b20Parse(void *param) {
 									JsonNode *code = json_mkobject();
 
 									json_append_member(code, "id", json_mkstring(id[y]));
-									json_append_member(code, "temperature", json_mknumber(w1temp));
+									json_append_member(code, "temperature", json_mknumber(w1temp, 3));
 
 									json_append_member(ds18b20->message, "message", code);
+									json_append_member(ds18b20->message, "origin", json_mkstring("receiver"));
 									json_append_member(ds18b20->message, "origin", json_mkstring("receiver"));
 									json_append_member(ds18b20->message, "protocol", json_mkstring(ds18b20->id));
 
@@ -224,14 +224,14 @@ void ds18b20Init(void) {
 	ds18b20->devtype = WEATHER;
 	ds18b20->hwtype = SENSOR;
 
-	options_add(&ds18b20->options, 't', "temperature", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, NULL, "^[0-9]{1,5}$");
-	options_add(&ds18b20->options, 'i', "id", OPTION_HAS_VALUE, CONFIG_ID, JSON_STRING, NULL, "^[a-z0-9]{12}$");
+	options_add(&ds18b20->options, 't', "temperature", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9]{1,5}$");
+	options_add(&ds18b20->options, 'i', "id", OPTION_HAS_VALUE, DEVICES_ID, JSON_STRING, NULL, "^[a-z0-9]{12}$");
 
-	options_add(&ds18b20->options, 0, "device-decimals", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)3, "[0-9]");
-	options_add(&ds18b20->options, 0, "device-temperature-offset", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)0, "[0-9]");
-	options_add(&ds18b20->options, 0, "gui-decimals", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)3, "[0-9]");
-	options_add(&ds18b20->options, 0, "gui-show-temperature", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
-	options_add(&ds18b20->options, 0, "poll-interval", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)10, "[0-9]");
+	options_add(&ds18b20->options, 0, "decimals", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *)3, "[0-9]");
+	options_add(&ds18b20->options, 0, "temperature-offset", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *)0, "[0-9]");
+	options_add(&ds18b20->options, 0, "decimals", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)3, "[0-9]");
+	options_add(&ds18b20->options, 0, "show-temperature", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
+	options_add(&ds18b20->options, 0, "poll-interval", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *)10, "[0-9]");
 
 	memset(ds18b20_path, '\0', 21);
 	strcpy(ds18b20_path, "/sys/bus/w1/devices/");
@@ -243,9 +243,9 @@ void ds18b20Init(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name = "ds18b20";
-	module->version = "1.0";
+	module->version = "1.1";
 	module->reqversion = "5.0";
-	module->reqcommit = NULL;
+	module->reqcommit = "84";
 }
 
 void init(void) {

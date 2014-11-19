@@ -17,7 +17,7 @@ endif
 ifneq (, $(findstring amd64, $(SYS)))
 	OSFLAGS = -O3 -fPIC -march=native -mtune=native -mfpmath=sse -Wno-conversion
 endif
-CFLAGS = $(OSFLAGS) -Wno-conversion -g -isystem. -isystem.. -isystem. -I../pilight/
+CFLAGS = -rdynamic -funwind-tables $(OSFLAGS) -Wno-conversion -g -isystem. -isystem.. -isystem. -I../pilight/
 SRC = $(wildcard *.c)
 OBJS = $(SRC:.c=.o)
 

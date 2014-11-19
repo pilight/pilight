@@ -3,17 +3,17 @@
 
 	This file is part of pilight.
 
-    pilight is free software: you can redistribute it and/or modify it under the
+	pilight is free software: you can redistribute it and/or modify it under the
 	terms of the GNU General Public License as published by the Free Software
 	Foundation, either version 3 of the License, or (at your option) any later
 	version.
 
-    pilight is distributed in the hope that it will be useful, but WITHOUT ANY
+	pilight is distributed in the hope that it will be useful, but WITHOUT ANY
 	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-    You should have received a copy of the GNU General Public License
-    along with pilight. If not, see	<http://www.gnu.org/licenses/>
+	You should have received a copy of the GNU General Public License
+	along with pilight. If not, see	<http://www.gnu.org/licenses/>
 */
 
 #include <stdio.h>
@@ -97,7 +97,7 @@ void protocol_init(void) {
 	void (*compatibility)(struct module_t *module);
 	char path[255];
 	struct module_t module;
-	char pilight_version[strlen(VERSION)];
+	char pilight_version[strlen(VERSION)+1];
 	char pilight_commit[3];
 	char *protocol_root = NULL;
 	int check1 = 0, check2 = 0, valid = 1, protocol_root_free = 0;
@@ -144,7 +144,7 @@ void protocol_init(void) {
 								}
 
 								if(check1 == 0 && module.reqcommit) {
-									char com[strlen(module.reqcommit)];
+									char com[strlen(module.reqcommit)+1];
 									strcpy(com, module.reqcommit);
 									sscanf(HASH, "v%*[0-9].%*[0-9]-%[0-9]-%*[0-9a-zA-Z\n\r]", pilight_commit);
 
@@ -153,7 +153,7 @@ void protocol_init(void) {
 									}
 								}
 								if(valid) {
-									char tmp[strlen(module.name)];
+									char tmp[strlen(module.name)+1];
 									strcpy(tmp, module.name);
 									protocol_remove(tmp);
 									init();

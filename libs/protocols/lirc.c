@@ -3,17 +3,17 @@
 
 	This file is part of pilight.
 
-    pilight is free software: you can redistribute it and/or modify it under the
+	pilight is free software: you can redistribute it and/or modify it under the
 	terms of the GNU General Public License as published by the Free Software
 	Foundation, either version 3 of the License, or (at your option) any later
 	version.
 
-    pilight is distributed in the hope that it will be useful, but WITHOUT ANY
+	pilight is distributed in the hope that it will be useful, but WITHOUT ANY
 	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-    You should have received a copy of the GNU General Public License
-    along with pilight. If not, see	<http://www.gnu.org/licenses/>
+	You should have received a copy of the GNU General Public License
+	along with pilight. If not, see	<http://www.gnu.org/licenses/>
 */
 
 #include <stdio.h>
@@ -150,7 +150,7 @@ static void *lircParse(void *param) {
 
 								json_append_member(lirc->message, "values", code);
 								json_append_member(lirc->message, "origin", json_mkstring("config"));
-								json_append_member(lirc->message, "type", json_mknumber(LIRC));
+								json_append_member(lirc->message, "type", json_mknumber(LIRC, 0));
 
 								pilight.broadcast(lirc->id, lirc->message);
 								json_delete(lirc->message);
@@ -221,10 +221,10 @@ void lircInit(void) {
 	lirc->config = 0;
 	lirc->multipleId = 0;
 
-	options_add(&lirc->options, 'i', "id", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_STRING, NULL, NULL);
-	options_add(&lirc->options, 'a', "repeat", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_STRING, NULL, NULL);
-	options_add(&lirc->options, 'b', "button", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_STRING, NULL, NULL);
-	options_add(&lirc->options, 'r', "remote", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_STRING, NULL, NULL);
+	options_add(&lirc->options, 'i', "id", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_STRING, NULL, NULL);
+	options_add(&lirc->options, 'a', "repeat", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_STRING, NULL, NULL);
+	options_add(&lirc->options, 'b', "button", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_STRING, NULL, NULL);
+	options_add(&lirc->options, 'r', "remote", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_STRING, NULL, NULL);
 
 	lirc->initDev=&lircInitDev;
 	lirc->threadGC=&lircThreadGC;
@@ -237,9 +237,9 @@ void lircInit(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name = "lirc";
-	module->version = "1.0";
+	module->version = "1.1";
 	module->reqversion = "5.0";
-	module->reqcommit = NULL;
+	module->reqcommit = "84";
 }
 
 void init(void) {

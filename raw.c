@@ -3,17 +3,17 @@
 
 	This file is part of pilight.
 
-    pilight is free software: you can redistribute it and/or modify it under the
+	pilight is free software: you can redistribute it and/or modify it under the
 	terms of the GNU General Public License as published by the Free Software
 	Foundation, either version 3 of the License, or (at your option) any later
 	version.
 
-    pilight is distributed in the hope that it will be useful, but WITHOUT ANY
+	pilight is distributed in the hope that it will be useful, but WITHOUT ANY
 	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-    You should have received a copy of the GNU General Public License
-    along with pilight. If not, see	<http://www.gnu.org/licenses/>
+	You should have received a copy of the GNU General Public License
+	along with pilight. If not, see	<http://www.gnu.org/licenses/>
 */
 
 #include <stdio.h>
@@ -30,11 +30,12 @@
 #include <string.h>
 
 #include "pilight.h"
+#include "protocol.h"
 #include "common.h"
-#include "settings.h"
+#include "config.h"
 #include "hardware.h"
 #include "log.h"
-#include "wiringPi.h"
+#include "wiringX.h"
 #include "threads.h"
 #include "irq.h"
 #include "dso.h"
@@ -60,9 +61,9 @@ int main_gc(void) {
 	pthread_join(pth, NULL);
 
 	options_gc();
-	settings_gc();
-	hardware_gc();
+	config_gc();
 	dso_gc();
+	wiringXGC();
 	log_gc();
 
 	sfree((void *)&progname);
@@ -85,6 +86,13 @@ void *receive_code(void *param) {
 
 int main(int argc, char **argv) {
 
+	struct options_t *options = NULL;
+	char *args = NULL;
+	char *configtmp = malloc(strlen(CONFIG_FILE)+1);
+	pid_t pid = 0;
+
+	strcpy(configtmp, CONFIG_FILE);
+
 	gc_attach(main_gc);
 
 	/* Catch all exit signals for gc */
@@ -94,15 +102,6 @@ int main(int argc, char **argv) {
 	log_file_disable();
 	log_level_set(LOG_NOTICE);
 
-	struct options_t *options = NULL;
-
-	char *args = NULL;
-	char *hwfile = NULL;
-	pid_t pid = 0;
-
-	char settingstmp[] = SETTINGS_FILE;
-	settings_set_file(settingstmp);
-
 	if(!(progname = malloc(12))) {
 		logprintf(LOG_ERR, "out of memory");
 		exit(EXIT_FAILURE);
@@ -111,7 +110,7 @@ int main(int argc, char **argv) {
 
 	options_add(&options, 'H', "help", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
 	options_add(&options, 'V', "version", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
-	options_add(&options, 'F', "settings", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, NULL);
+	options_add(&options, 'F', "config", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, NULL);
 
 	while (1) {
 		int c;
@@ -125,7 +124,7 @@ int main(int argc, char **argv) {
 				printf("Usage: %s [options]\n", progname);
 				printf("\t -H --help\t\tdisplay usage summary\n");
 				printf("\t -V --version\t\tdisplay version\n");
-				printf("\t -F --settings\t\tsettings file\n");
+				printf("\t -F --config\t\tconfig file\n");
 				goto close;
 			break;
 			case 'V':
@@ -133,9 +132,8 @@ int main(int argc, char **argv) {
 				goto close;
 			break;
 			case 'F':
-				if(settings_set_file(args) == EXIT_FAILURE) {
-					goto close;
-				}
+				configtmp = realloc(configtmp, strlen(args)+1);
+				strcpy(configtmp, args);
 			break;
 			default:
 				printf("Usage: %s [options]\n", progname);
@@ -145,36 +143,53 @@ int main(int argc, char **argv) {
 	}
 	options_delete(options);
 
-	char pilight_daemon[] = "pilight-daemon";
-	char pilight_learn[] = "pilight-learn";
-	char pilight_debug[] = "pilight-debug";
+	char *pilight_daemon = strdup("pilight-daemon");
+	if(!pilight_daemon) {
+		logprintf(LOG_ERR, "out of memory");
+		exit(EXIT_FAILURE);
+	}
 	if((pid = findproc(pilight_daemon, NULL, 1)) > 0) {
 		logprintf(LOG_ERR, "pilight-daemon instance found (%d)", (int)pid);
+		sfree((void *)&pilight_daemon);
 		goto close;
 	}
+	sfree((void *)&pilight_daemon);
 
+	char *pilight_learn = strdup("pilight-learn");
+	if(!pilight_learn) {
+		logprintf(LOG_ERR, "out of memory");
+		exit(EXIT_FAILURE);
+	}
 	if((pid = findproc(pilight_learn, NULL, 1)) > 0) {
 		logprintf(LOG_ERR, "pilight-learn instance found (%d)", (int)pid);
+		sfree((void *)&pilight_learn);
 		goto close;
 	}
+	sfree((void *)&pilight_learn);
 
+	char *pilight_debug = strdup("pilight-debug");
+	if(!pilight_debug) {
+		logprintf(LOG_ERR, "out of memory");
+		exit(EXIT_FAILURE);
+	}
 	if((pid = findproc(pilight_debug, NULL, 1)) > 0) {
 		logprintf(LOG_ERR, "pilight-debug instance found (%d)", (int)pid);
+		sfree((void *)&pilight_debug);
 		goto close;
 	}
+	sfree((void *)&pilight_debug);
 
-	if(settings_read() != 0) {
+	if(config_set_file(configtmp) == EXIT_FAILURE) {
+		return EXIT_FAILURE;
+	}
+
+	protocol_init();
+	config_init();
+	if(config_read() != EXIT_SUCCESS) {
+		sfree((void *)&configtmp);
 		goto close;
 	}
-
-	hardware_init();
-
-	if(settings_find_string("hardware-file", &hwfile) == 0) {
-		hardware_set_file(hwfile);
-		if(hardware_read() == EXIT_FAILURE) {
-			goto close;
-		}
-	}
+	sfree((void *)&configtmp);
 
 	/* Start threads library that keeps track of all threads used */
 	threads_create(&pth, NULL, &threads_start, (void *)NULL);
@@ -194,6 +209,8 @@ int main(int argc, char **argv) {
 	}
 
 close:
-	main_gc();
+	if(main_loop) {
+		main_gc();
+	}
 	return (EXIT_FAILURE);
 }
