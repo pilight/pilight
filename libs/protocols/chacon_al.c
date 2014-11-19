@@ -3,7 +3,7 @@
 
 	This file is part of pilight.
 
-    pilight is free software: you can redistribute it and/or modify it under the
+	pilight is free software: you can redistribute it and/or modify it under the
 	terms of the GNU General Public License as published by the Free Software
 	Foundation, either version 3 of the License, or (at your option) any later
 	version.
@@ -12,8 +12,8 @@
 	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-    You should have received a copy of the GNU General Public License
-    along with pilight. If not, see	<http://www.gnu.org/licenses/>
+	You should have received a copy of the GNU General Public License
+	along with pilight. If not, see	<http://www.gnu.org/licenses/>
 */
 
 #include <stdio.h>
@@ -42,22 +42,22 @@
  * 
  */
 static void chaconALCreateMessage(int unitcode, int state, int checksum, int on_cmd, int off_cmd) {
-    char buffer[32];
+	char buffer[32];
 	chacon_al->message = json_mkobject();
-    json_append_member(chacon_al->message, "unitcode", json_mknumber(unitcode, 0));
+	json_append_member(chacon_al->message, "unitcode", json_mknumber(unitcode, 0));
 	if(state == 1) {
 		json_append_member(chacon_al->message, "state", json_mkstring("panic"));
 	}
 	else if(state == on_cmd) {
 		json_append_member(chacon_al->message, "state", json_mkstring("on"));
 	}
-    else if(state == off_cmd) {
+	else if(state == off_cmd) {
 		json_append_member(chacon_al->message, "state", json_mkstring("off"));
 	} else {
-        sprintf(buffer, "%d", state);
-        json_append_member(chacon_al->message, "state", json_mkstring(buffer));
-    }
-    json_append_member(chacon_al->message, "checksum", json_mknumber(checksum, 0));
+		sprintf(buffer, "%d", state);
+		json_append_member(chacon_al->message, "state", json_mkstring(buffer));
+	}
+	json_append_member(chacon_al->message, "checksum", json_mknumber(checksum, 0));
 }
 
 /**
@@ -70,7 +70,7 @@ static void chaconALParseCode(void) {
 	//utilize the "code" field
 	//at this point the code field holds translated "0" and "1" codes from the received pulses
 	//this means that we have to combine these ourselves into meaningful values in groups of 2
-
+	
 	for(i = 0; i < chacon_al->rawlen/2; i+=1) {
 		if(chacon_al->code[i*2] == chacon_al->code[i*2+1]) {
 			//these should always be different - this is not a valid code
@@ -78,12 +78,12 @@ static void chaconALParseCode(void) {
 		}
 		chacon_al->binary[i] = chacon_al->code[(i*2)];
 	}
-
+	
 	//chunked code now contains "groups of 2" codes for us to handle.
-    int unitcode = binToDec(chacon_al->binary, 0, 15);
-    int state = binToDec(chacon_al->binary, 16, 23);
-    int checksum = binToDec(chacon_al->binary, 24, 31);
-    
+	int unitcode = binToDec(chacon_al->binary, 0, 15);
+	int state = binToDec(chacon_al->binary, 16, 23);
+	int checksum = binToDec(chacon_al->binary, 24, 31);
+	
 	if(state < 1) {
 		return;
 	} else {
@@ -99,7 +99,7 @@ static void chaconALParseCode(void) {
  */
 static void chaconALCreateLow(int s, int e) {
 	int i;
-
+	
 	for(i=s;i<=e;i+=2) {
 		chacon_al->raw[i]=(chacon_al->plslen->length);
 		chacon_al->raw[i+1]=(chacon_al->pulse*chacon_al->plslen->length);
@@ -114,7 +114,7 @@ static void chaconALCreateLow(int s, int e) {
  */
 static void chaconALCreateHigh(int s, int e) {
 	int i;
-
+	
 	for(i=s;i<=e;i+=2) {
 		chacon_al->raw[i]=(chacon_al->pulse*chacon_al->plslen->length);
 		chacon_al->raw[i+1]=(chacon_al->plslen->length);
@@ -207,42 +207,41 @@ static void chaconALCreateFooter(void) {
 static int chaconALCreateCode(JsonNode *code) {
 	int unitcode = -1;
 	int state = -1;
-    int checksum = -1;
-    int on_cmd = 2;
-    int off_cmd = 4;
+	int checksum = -1;
+	int on_cmd = 2;
+	int off_cmd = 4;
 	double itmp;
-    double jtmp;
-
+	double jtmp;
+	
 	if(json_find_number(code, "unitcode", &itmp) == 0) {
 		unitcode = (int)round(itmp);
 	}
-    if(json_find_number(code, "checksum", &itmp) == 0) {
+	if(json_find_number(code, "checksum", &itmp) == 0) {
 		checksum = (int)round(itmp);
 	}
-    if(json_find_number(code, "on-command", &itmp) == 0) {
+	if(json_find_number(code, "on-command", &itmp) == 0) {
 		on_cmd = (int)round(itmp);
 	}
-    if(json_find_number(code, "off-command", &itmp) == 0) {
+	if(json_find_number(code, "off-command", &itmp) == 0) {
 		off_cmd = (int)round(itmp);
 	}
-    
+	
 	if(json_find_number(code, "off", &itmp) == 0) {
-        if((checksum == -1)&&(json_find_number(code, "off-checksum", &jtmp) == 0)) {
-            checksum = (int)round(jtmp);
-        }
+		if((checksum == -1)&&(json_find_number(code, "off-checksum", &jtmp) == 0)) {
+			checksum = (int)round(jtmp);
+		}
 		state = off_cmd;
 	}
 	else if(json_find_number(code, "on", &itmp) == 0) {
-        if((checksum == -1)&&(json_find_number(code, "on-checksum", &jtmp) == 0)) {
-            checksum = (int)round(jtmp);
-        }
+		if((checksum == -1)&&(json_find_number(code, "on-checksum", &jtmp) == 0)) {
+			checksum = (int)round(jtmp);
+		}
 		state = on_cmd;
 	}
-    else if(json_find_number(code, "panic", &itmp) == 0) {
+	else if(json_find_number(code, "panic", &itmp) == 0) {
 		state=1;
 	}
-    
-
+	
 	if(unitcode == -1 || state == -1 || checksum == -1) {
 		logprintf(LOG_ERR, "chacon_al: insufficient number of arguments");
 		return EXIT_FAILURE;
@@ -286,17 +285,16 @@ void chaconALInit(void) {
 	chacon_al->rawlen = 66;
 
 	options_add(&chacon_al->options, 'u', "unitcode", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^([0-9]{1,4}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5]|[01]{16})$");
-    options_add(&chacon_al->options, 'c', "checksum", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^(-1|[0-9]{1,2}|1[0-9]{2}|2[0-4][0-9]|25[0-5]|[01]{8})$");
+	options_add(&chacon_al->options, 'c', "checksum", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^(-1|[0-9]{1,2}|1[0-9]{2}|2[0-4][0-9]|25[0-5]|[01]{8})$");
 	options_add(&chacon_al->options, 't', "on", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
 	options_add(&chacon_al->options, 'f', "off", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
 	options_add(&chacon_al->options, 'a', "panic", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
-    
-    options_add(&chacon_al->options, 0, "on-checksum", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *)-1, "^([0-9]{1,2}|1[0-9]{2}|2[0-4][0-9]|25[0-5]|[01]{8})$");
-    options_add(&chacon_al->options, 0, "off-checksum", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *)-1, "^([0-9]{1,2}|1[0-9]{2}|2[0-4][0-9]|25[0-5]|[01]{8})$");
-    options_add(&chacon_al->options, 0, "on-command", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *)2, "^([0-9]{1,2}|1[0-9]{2}|2[0-4][0-9]|25[0-5]|[01]{8})$");
-    options_add(&chacon_al->options, 0, "off-command", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *)4, "^([0-9]{1,2}|1[0-9]{2}|2[0-4][0-9]|25[0-5]|[01]{8})$");
-	options_add(&chacon_al->options, 0, "gui-readonly", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 
+	options_add(&chacon_al->options, 0, "on-checksum", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *)-1, "^([0-9]{1,2}|1[0-9]{2}|2[0-4][0-9]|25[0-5]|[01]{8})$");
+	options_add(&chacon_al->options, 0, "off-checksum", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *)-1, "^([0-9]{1,2}|1[0-9]{2}|2[0-4][0-9]|25[0-5]|[01]{8})$");
+	options_add(&chacon_al->options, 0, "on-command", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *)2, "^([0-9]{1,2}|1[0-9]{2}|2[0-4][0-9]|25[0-5]|[01]{8})$");
+	options_add(&chacon_al->options, 0, "off-command", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *)4, "^([0-9]{1,2}|1[0-9]{2}|2[0-4][0-9]|25[0-5]|[01]{8})$");
+	options_add(&chacon_al->options, 0, "gui-readonly", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 
 	chacon_al->parseCode=&chaconALParseCode;
 	chacon_al->createCode=&chaconALCreateCode;
