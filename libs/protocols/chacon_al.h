@@ -19,8 +19,6 @@
 #ifndef _PROTOCOL_CHACON_AL_H_
 #define _PROTOCOL_CHACON_AL_H_
 
-#define CHACON_AL_PULSE_DIV 10
-
 struct protocol_t *chacon_al;
 void chaconALInit(void);
 

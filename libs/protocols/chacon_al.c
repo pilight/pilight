@@ -31,6 +31,8 @@
 #include "gc.h"
 #include "chacon_al.h"
 
+#define CHACON_AL_PULSE_DIV 10
+
 /**
  * Creates as System message informing the daemon about a received or created message
  *
@@ -42,7 +44,7 @@
 static void chaconALCreateMessage(int unitcode, int state, int checksum, int on_cmd, int off_cmd) {
     char buffer[32];
 	chacon_al->message = json_mkobject();
-    json_append_member(chacon_al->message, "unitcode", json_mknumber(unitcode));
+    json_append_member(chacon_al->message, "unitcode", json_mknumber(unitcode, 0));
 	if(state == 1) {
 		json_append_member(chacon_al->message, "state", json_mkstring("panic"));
 	}
@@ -55,7 +57,7 @@ static void chaconALCreateMessage(int unitcode, int state, int checksum, int on_
         sprintf(buffer, "%d", state);
         json_append_member(chacon_al->message, "state", json_mkstring(buffer));
     }
-    json_append_member(chacon_al->message, "checksum", json_mknumber(checksum));
+    json_append_member(chacon_al->message, "checksum", json_mknumber(checksum, 0));
 }
 
 /**
@@ -203,7 +205,6 @@ static void chaconALCreateFooter(void) {
  * returns : EXIT_SUCCESS or EXIT_FAILURE on obvious occasions
  */
 static int chaconALCreateCode(JsonNode *code) {
-    int i;
 	int unitcode = -1;
 	int state = -1;
     int checksum = -1;
