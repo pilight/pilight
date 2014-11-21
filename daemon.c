@@ -55,6 +55,7 @@
 #include "firmware.h"
 #include "proc.h"
 #include "registry.h"
+#include "events.h"
 
 #ifdef WEBSERVER
 	#include "webserver.h"
@@ -141,12 +142,13 @@ static pid_t pid;
 static int nodaemon = 0;
 /* Are we already running */
 static int running = 1;
+/* Are we currently sending code */
+static int sending = 0;
+static char *sendhw = NULL;
 /* How many times does the code need to be resend */
 static int send_repeat = 0;
 /* How many times does a code need to received*/
 static int receive_repeat = RECEIVE_REPEATS;
-/* Are we currently sending code */
-static int sending = 0;
 /* Which mode are we running in: 1 = server, 2 = client */
 static unsigned short runmode = 1;
 /* Socket identifier to the server if we are running as client */
@@ -179,6 +181,43 @@ static char *webgui_tpl = NULL;
 static int webserver_root_free = 0;
 static int webgui_tpl_free = 0;
 #endif
+
+struct receive_wait_t {
+	char *id;
+	unsigned short wait;
+	struct receive_wait_t *next;
+} receive_wait_t;
+
+struct receive_wait_t *receive_wait;
+
+/* Gracefully stop receiving from a certain
+   frequency when we are also sending it */
+static void receive_signal_handler(int sig) {
+	struct receive_wait_t *tmp = receive_wait;
+	if(sig == SIGUSR1) {
+		pthread_mutex_lock(&receive_lock);
+		while(tmp) {
+			if(strcmp(tmp->id, sendhw) == 0) {
+				tmp->wait = 1;
+				break;
+			}
+			tmp = tmp->next;
+		}
+		pthread_mutex_unlock(&receive_lock);
+		pthread_cond_signal(&receive_signal);
+	} else if(sig == SIGUSR2) {
+		pthread_mutex_lock(&receive_lock);
+		while(tmp) {
+			if(strcmp(tmp->id, sendhw) == 0) {
+				tmp->wait = 0;
+				break;
+			}
+			tmp = tmp->next;
+		}
+		pthread_mutex_unlock(&receive_lock);
+		pthread_cond_signal(&receive_signal);
+	}
+}
 
 static void client_remove(int id) {
 	struct clients_t *currP, *prevP;
@@ -282,6 +321,8 @@ void *broadcast(void *param) {
 				} else {
 					/* Update the config */
 					if(devices_update(bcqueue->protoname, bcqueue->jmessage, &jret) == 0) {
+						events_update(jret);
+
 						char *conf = json_stringify(jret, NULL);
 						struct clients_t *tmp_clients = clients;
 						while(tmp_clients) {
@@ -594,9 +635,8 @@ void *send_code(void *param) {
 
 	while(main_loop) {
 		if(sendqueue_number > 0) {
-			sending = 1;
 			pthread_mutex_lock(&sendqueue_lock);
-			pthread_mutex_lock(&receive_lock);
+			sending = 1;
 
 			struct protocol_t *protocol = sendqueue->protopt;
 			struct hardware_t *hw = NULL;
@@ -630,12 +670,16 @@ void *send_code(void *param) {
 			while(tmp_confhw) {
 				if(protocol->hwtype == tmp_confhw->hardware->type) {
 					hw = tmp_confhw->hardware;
+					sendhw = hw->id;
 					break;
 				}
 				tmp_confhw = tmp_confhw->next;
 			}
 
 			if(hw && hw->send) {
+				if(hw->receive) {
+					thread_signal(hw->id, SIGUSR1);
+				}
 				logprintf(LOG_DEBUG, "**** RAW CODE ****");
 				if(log_level_get() >= LOG_DEBUG) {
 					for(i=0;i<protocol->rawlen;i++) {
@@ -653,6 +697,9 @@ void *send_code(void *param) {
 				} else {
 					logprintf(LOG_ERR, "failed to send code");
 				}
+				if(hw->receive) {
+					thread_signal(hw->id, SIGUSR2);
+				}			
 			} else {
 				if(strcmp(protocol->id, "raw") == 0) {
 					int plslen = protocol->raw[protocol->rawlen-1]/PULSE_DIV;
@@ -679,8 +726,6 @@ void *send_code(void *param) {
 			sendqueue_number--;
 			sending = 0;
 			pthread_mutex_unlock(&sendqueue_lock);
-			pthread_mutex_unlock(&receive_lock);
-			pthread_cond_signal(&receive_signal);
 		} else {
 			pthread_cond_wait(&sendqueue_signal, &sendqueue_lock);
 		}
@@ -1134,7 +1179,7 @@ static void socket_parse_data(int i, char *buffer) {
 						}
 					}
 					if(exists == 0) {
-						if(error) {
+						if(error == 1) {
 							sfree((void *)&client);
 						} else {
 							tmp_clients = clients;
@@ -1339,6 +1384,14 @@ void *receive_code(void *param) {
 	int duration = 0;
 	struct timeval tp;
 	struct timespec ts;
+	struct sigaction act;
+	struct receive_wait_t *tmp = receive_wait;
+
+	memset(&act, 0, sizeof(act));
+	act.sa_handler = receive_signal_handler;
+	sigemptyset(&act.sa_mask);
+	sigaction(SIGUSR1, &act, NULL);
+	sigaction(SIGUSR2, &act, NULL);
 
 	/* Make sure the pilight receiving gets
 	   the highest priority available */
@@ -1347,10 +1400,15 @@ void *receive_code(void *param) {
 	pthread_setschedparam(pthread_self(), SCHED_FIFO, &sched);
 
 	struct hardware_t *hw = (hardware_t *)param;
-
+	while(tmp) {
+		if(strcmp(tmp->id, hw->id) == 0) {
+			break;
+		}
+		tmp = tmp->next;
+	}
 	pthread_mutex_lock(&receive_lock);
 	while(main_loop && hw->receive) {
-		if(sending == 0) {
+		if(tmp->wait == 0) {
 			pthread_mutex_lock(&receive_lock);
 			duration = hw->receive();
 
@@ -1561,7 +1619,18 @@ static void daemonize(void) {
 int main_gc(void) {
 
 	main_loop = 0;
-	sending = 0;
+
+	while(sending) {
+		usleep(1000);
+	}	
+	
+	struct receive_wait_t *tmp = receive_wait;
+	while(tmp) {
+		tmp->wait = 0;
+		tmp = tmp->next;
+	}
+	pthread_mutex_unlock(&receive_lock);
+	pthread_cond_signal(&receive_signal);
 
 	/* If we are running in node mode, the clientize
 	   thread is waiting for a response from the main
@@ -1573,9 +1642,11 @@ int main_gc(void) {
 	if(runmode == 2) {
 		socket_write(sockfd, "HEART");
 	}
+	events_gc();
 
 	struct conf_hardware_t *tmp_confhw = conf_hardware;
 	while(tmp_confhw) {
+		thread_signal(tmp_confhw->hardware->id, SIGUSR2);
 		if(tmp_confhw->hardware->deinit) {
 			tmp_confhw->hardware->deinit();
 		}
@@ -1648,6 +1719,14 @@ int main_gc(void) {
 	wiringXGC();
 	log_gc();
 
+	while(receive_wait) {
+		tmp = receive_wait;
+		sfree((void *)&tmp->id);
+		receive_wait = receive_wait->next;
+		sfree((void *)&tmp);
+	}
+	sfree((void *)&receive_wait);
+	
 	sfree((void *)&progname);
 
 	return 0;
@@ -2088,11 +2167,12 @@ int main(int argc, char **argv) {
 	pilight.broadcast = &broadcast_queue;
 	pilight.send = &send_queue;
 	pilight.receive = &receive_queue;
+	pilight.control = &control_device;
 
 	/* Run certain daemon functions from the socket library */
-    socket_callback.client_disconnected_callback = &socket_client_disconnected;
-    socket_callback.client_connected_callback = NULL;
-    socket_callback.client_data_callback = &socket_parse_data;
+	socket_callback.client_disconnected_callback = &socket_client_disconnected;
+	socket_callback.client_connected_callback = NULL;
+	socket_callback.client_data_callback = &socket_parse_data;
 
 	/* Start threads library that keeps track of all threads used */
 	threads_create(&pth, NULL, &threads_start, (void *)NULL);
@@ -2118,12 +2198,29 @@ int main(int argc, char **argv) {
 				logprintf(LOG_ERR, "could not initialize %s hardware mode", tmp_confhw->hardware->id);
 				goto clear;
 			}
+
+			struct receive_wait_t *node = malloc(sizeof(struct receive_wait_t));
+			if(!node) {
+				logprintf(LOG_ERR, "out of memory");
+				goto clear;
+			}
+			if(!(node->id = malloc(strlen(tmp_confhw->hardware->id)+1))) {
+				logprintf(LOG_ERR, "out of memory");
+				sfree((void *)&node);
+				goto clear;
+			}
+			strcpy(node->id, tmp_confhw->hardware->id);
+			node->wait = 0;
+			node->next = receive_wait;
+			receive_wait = node;
+
 			threads_register(tmp_confhw->hardware->id, &receive_code, (void *)tmp_confhw->hardware, 0);
 		}
 		tmp_confhw = tmp_confhw->next;
 	}
 
 	threads_register("receive parser", &receive_parse_code, (void *)NULL, 0);
+	threads_register("events loop", &events_loop, (void *)NULL, 0);
 
 #ifdef WEBSERVER
 	settings_find_number("webgui-websockets", &webgui_websockets);

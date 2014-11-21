@@ -393,6 +393,8 @@ int devices_update(char *protoname, JsonNode *json, JsonNode **out) {
 
 		*out = rroot;
 	} else {
+		json_delete(rdev);
+		json_delete(rval);
 		json_delete(rroot);
 	}
 
@@ -1567,7 +1569,7 @@ int devices_gc(void) {
 		}
 		if(dtmp->nrthreads > 0) {
 			for(i=0;i<dtmp->nrthreads;i++) {
-				thread_stop(dtmp->threads[i]);
+				thread_stop(dtmp->threads[i]->id);
 			}
 		}
 		sfree((void *)&dtmp->protocols);

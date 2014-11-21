@@ -344,7 +344,7 @@ void hardware_init(void) {
 	memset(pilight_commit, '\0', 3);
 
 	if(settings_find_string("hardware-root", &hardware_root) != 0) {
-		/* If no webserver port was set, use the default webserver port */
+		/* If no hardware root was set, use the default hardware root */
 		if(!(hardware_root = malloc(strlen(HARDWARE_ROOT)+2))) {
 			logprintf(LOG_ERR, "out of memory");
 			exit(EXIT_FAILURE);

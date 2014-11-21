@@ -102,6 +102,17 @@ void threads_create(pthread_t *pth, const pthread_attr_t *attr,  void *(*start_r
 	pthread_sigmask(SIG_SETMASK, &old, NULL);
 }
 
+void thread_signal(char *id, int s) {
+	struct threadqueue_t *tmp_threads = threadqueue;
+	while(tmp_threads) {
+		if(strcmp(tmp_threads->id, id) == 0) {
+			pthread_kill(tmp_threads->pth, s);
+			break;
+		}
+		tmp_threads = tmp_threads->next;
+	}
+}
+
 void *threads_start(void *param) {
 	pthread_mutexattr_init(&threadqueue_attr);
 	pthread_mutexattr_settype(&threadqueue_attr, PTHREAD_MUTEX_RECURSIVE);
@@ -139,14 +150,14 @@ void *threads_start(void *param) {
 	return (void *)NULL;
 }
 
-void thread_stop(struct threadqueue_t *node) {
+void thread_stop(char *id) {
 	struct threadqueue_t *currP, *prevP;
 
 	prevP = NULL;
 
 	for(currP = threadqueue; currP != NULL; prevP = currP, currP = currP->next) {
 
-		if(currP->ts == node->ts) {
+		if(strcmp(currP->id, id) == 0) {
 			if(prevP == NULL) {
 				threadqueue = currP->next;
 			} else {

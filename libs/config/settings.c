@@ -142,8 +142,8 @@ static int settings_parse(JsonNode *root) {
 	int have_error = 0;
 
 #ifdef WEBSERVER
-	int web_port = 0;
-	int own_port = 0;
+	int web_port = WEBSERVER_PORT;
+	int own_port = -1;
 
 	char *webgui_tpl = malloc(strlen(WEBGUI_TEMPLATE)+1);
 	if(!webgui_tpl) {
@@ -343,6 +343,17 @@ static int settings_parse(JsonNode *root) {
 				settings_add_string(jsettings->key, jsettings->string_);
 			}
 #endif
+		} else if(strcmp(jsettings->key, "protocol-root") == 0 ||
+							strcmp(jsettings->key, "hardware-root") == 0 ||
+							strcmp(jsettings->key, "action-root") == 0 ||
+							strcmp(jsettings->key, "operator-root") == 0) {
+			if(!jsettings->string_ || path_exists(jsettings->string_) != 0) {
+				logprintf(LOG_ERR, "config setting \"%s\" must contain a valid path", jsettings->key);
+				have_error = 1;
+				goto clear;
+			} else {
+				settings_add_string(jsettings->key, jsettings->string_);
+			}
 		} else {
 			logprintf(LOG_ERR, "config setting \"%s\" is invalid", jsettings->key);
 			have_error = 1;

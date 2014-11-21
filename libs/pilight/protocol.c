@@ -109,7 +109,7 @@ void protocol_init(void) {
 	memset(pilight_commit, '\0', 3);
 
 	if(settings_find_string("protocol-root", &protocol_root) != 0) {
-		/* If no webserver port was set, use the default webserver port */
+		/* If no protocol root was set, use the default protocol root */
 		if(!(protocol_root = malloc(strlen(PROTOCOL_ROOT)+1))) {
 			logprintf(LOG_ERR, "out of memory");
 			exit(EXIT_FAILURE);

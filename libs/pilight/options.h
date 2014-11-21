@@ -23,13 +23,13 @@
 #define OPTION_HAS_VALUE	 	2
 #define OPTION_OPT_VALUE	 	3
 
-#define DEVICES_ID			1
-#define DEVICES_STATE		2
-#define DEVICES_VALUE		3
-#define DEVICES_SETTING		4
-#define DEVICES_OPTIONAL	5
-#define GUI_SETTING			6
-#define NROPTIONTYPES		6
+#define DEVICES_ID					1
+#define DEVICES_STATE				2
+#define DEVICES_VALUE				3
+#define DEVICES_SETTING			4
+#define DEVICES_OPTIONAL		5
+#define GUI_SETTING					6
+#define NROPTIONTYPES				6
 
 
 typedef struct options_t {

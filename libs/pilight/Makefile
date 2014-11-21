@@ -26,7 +26,7 @@ endif
 ifneq (, $(findstring amd64, $(SYS)))
 	OSFLAGS = -O3 -fPIC -march=native -mtune=native -mfpmath=sse -Wno-conversion
 endif
-CFLAGS = -ffast-math -rdynamic -funwind-tables $(OSFLAGS) -Wfloat-equal -Wshadow -Wpointer-arith -Wcast-align -Wformat-nonliteral -Wstrict-overflow=5 -Wwrite-strings -Waggregate-return -Wcast-qual -Wswitch-default -Wswitch-enum -Wformat=2 -g -Wall -isystem. -isystem.. -I../avrdude/ -I../platform/ -I../config/  -DHASH=\"$(GIT_HASH)\"
+CFLAGS = -ffast-math -rdynamic -funwind-tables $(OSFLAGS) -Wfloat-equal -Wshadow -Wpointer-arith -Wcast-align -Wformat-nonliteral -Wstrict-overflow=5 -Wwrite-strings -Waggregate-return -Wcast-qual -Wswitch-default -Wswitch-enum -Wformat=2 -g -Wall -isystem. -isystem.. -I../avrdude/ -I../platform/ -I../config/ -I../actions/  -DHASH=\"$(GIT_HASH)\"
 SRC = $(wildcard *.c)
 OBJS = $(filter-out wiringX.o mongoose.o http_lib.o json.o firmware.o, $(SRC:.c=.o))
 

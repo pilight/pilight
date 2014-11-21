@@ -439,8 +439,8 @@ static int webserver_request_handler(struct mg_connection *conn) {
 			if(access(request, F_OK) == 0) {
 				stat(request, &st);
 				if(webserver_cache && st.st_size <= MAX_CACHE_FILESIZE &&
-				   strcmp(mimetype, "application/x-httpd-php") != 0 &&
-				   fcache_get_size(request, &size) != 0 && fcache_add(request) != 0) {
+				  strcmp(mimetype, "application/x-httpd-php") != 0 &&
+				  fcache_get_size(request, &size) != 0 && fcache_add(request) != 0) {
 					sfree((void *)&mimetype);
 					goto filenotfound;
 				}
@@ -872,6 +872,7 @@ void *webserver_clientize(void *param) {
 
 close:
 	if(recvBuff) {
+		sfree((void *)&recvBuff);
 		recvBuff = NULL;
 	}
 	socket_close(sockfd);

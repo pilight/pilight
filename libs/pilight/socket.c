@@ -82,45 +82,45 @@ int socket_gc(void) {
 int socket_start(unsigned short port) {
 	//gc_attach(socket_gc);
 
-    struct sockaddr_in address;
+	struct sockaddr_in address;
 	unsigned int addrlen = sizeof(address);
 	int opt = 1;
 
 	memset(&address, '\0', sizeof(struct sockaddr_in));
 	memset(socket_clients, 0, sizeof(socket_clients));
 
-    //create a master socket
-    if((socket_server = socket(AF_INET , SOCK_STREAM , 0)) == 0)  {
-        logprintf(LOG_ERR, "could not create new socket");
-        exit(EXIT_FAILURE);
-    }
+	//create a master socket
+	if((socket_server = socket(AF_INET , SOCK_STREAM , 0)) == 0)  {
+		logprintf(LOG_ERR, "could not create new socket");
+		exit(EXIT_FAILURE);
+	}
 
-    //set master socket to allow multiple connections , this is just a good habit, it will work without this
-    if(setsockopt(socket_server, SOL_SOCKET, SO_REUSEADDR, (char *)&opt, sizeof(opt)) < 0 ) {
-        logprintf(LOG_ERR, "could not set proper socket options");
-        exit(EXIT_FAILURE);
-    }
+	//set master socket to allow multiple connections , this is just a good habit, it will work without this
+	if(setsockopt(socket_server, SOL_SOCKET, SO_REUSEADDR, (char *)&opt, sizeof(opt)) < 0 ) {
+		logprintf(LOG_ERR, "could not set proper socket options");
+		exit(EXIT_FAILURE);
+	}
 
-    //type of socket created
-    address.sin_family = AF_INET;
-    address.sin_addr.s_addr = INADDR_ANY;
+	//type of socket created
+	address.sin_family = AF_INET;
+	address.sin_addr.s_addr = INADDR_ANY;
 	if(port <= 0) {
 		address.sin_port = 0;
 	} else {
 		address.sin_port = htons(port);
 	}
 
-    //bind the socket to localhost
-    if (bind(socket_server, (struct sockaddr *)&address, sizeof(address)) < 0) {
-        logprintf(LOG_ERR, "cannot bind to socket port %d, address already in use?", address);
-        exit(EXIT_FAILURE);
-    }
+	//bind the socket to localhost
+	if (bind(socket_server, (struct sockaddr *)&address, sizeof(address)) < 0) {
+		logprintf(LOG_ERR, "cannot bind to socket port %d, address already in use?", address);
+		exit(EXIT_FAILURE);
+	}
 
-    //try to specify maximum of 3 pending connections for the master socket
-    if(listen(socket_server, 3) < 0) {
-        logprintf(LOG_ERR, "failed to listen to socket");
-        exit(EXIT_FAILURE);
-    }
+	//try to specify maximum of 3 pending connections for the master socket
+	if(listen(socket_server, 3) < 0) {
+		logprintf(LOG_ERR, "failed to listen to socket");
+		exit(EXIT_FAILURE);
+	}
 
 	static struct linger linger = { 0, 0 };
 	socklen_t lsize = sizeof(struct linger);
@@ -138,7 +138,7 @@ int socket_start(unsigned short port) {
 	socket_clients[0] = socket_loopback;
 	logprintf(LOG_INFO, "daemon listening to port: %d", socket_port);
 
-    return 0;
+	return 0;
 }
 
 unsigned int socket_get_port(void) {
@@ -160,36 +160,36 @@ int socket_connect(char *address, unsigned short port) {
 	struct timeval tv;
 
 	/* Try to open a new socket */
-    if((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
-        logprintf(LOG_ERR, "could not create socket");
+	if((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+		logprintf(LOG_ERR, "could not create socket");
 		return -1;
-    }
+	}
 
 	/* Clear the server address */
-    memset(&serv_addr, '\0', sizeof(serv_addr));
+	memset(&serv_addr, '\0', sizeof(serv_addr));
 
-    serv_addr.sin_family = AF_INET;
-    serv_addr.sin_port = htons(port);
-    inet_pton(AF_INET, address, &serv_addr.sin_addr);
+	serv_addr.sin_family = AF_INET;
+	serv_addr.sin_port = htons(port);
+	inet_pton(AF_INET, address, &serv_addr.sin_addr);
 
 	fcntl(sockfd, F_SETFL, O_NONBLOCK);
 
 	FD_ZERO(&fdset);
-    FD_SET(sockfd, &fdset);
-    tv.tv_sec = 3;
-    tv.tv_usec = 0;
+	FD_SET((long unsigned int)sockfd, &fdset);
+	tv.tv_sec = 3;
+	tv.tv_usec = 0;
 
 	/* Connect to the server */
 	connect(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr));
 
 	if(select(sockfd+1, NULL, &fdset, NULL, &tv) == 1) {
-        int error = -1;
-        socklen_t len = sizeof(error);
+		int error = -1;
+		socklen_t len = sizeof(error);
 
-        getsockopt(sockfd, SOL_SOCKET, SO_ERROR, &error, &len);
+		getsockopt(sockfd, SOL_SOCKET, SO_ERROR, &error, &len);
 
-        if(error == 0) {
-            return sockfd;
+		if(error == 0) {
+			return sockfd;
 		} else {
 			return -1;
         }
@@ -367,8 +367,8 @@ void *socket_wait(void *param) {
 
 	int activity;
 	int i, sd;
-    int max_sd;
-    struct sockaddr_in address;
+	int max_sd;
+	struct sockaddr_in address;
 	int socket_client;
 	int addrlen = sizeof(address);
 	fd_set readfds;
@@ -403,12 +403,12 @@ void *socket_wait(void *param) {
 			break;
 		}
 
-        //If something happened on the master socket, then its an incoming connection
-        if(FD_ISSET((unsigned long)socket_get_fd(), &readfds)) {
-            if((socket_client = accept(socket_get_fd(), (struct sockaddr *)&address, (socklen_t*)&addrlen))<0) {
-                logprintf(LOG_ERR, "failed to accept client");
-                exit(EXIT_FAILURE);
-            }
+			//If something happened on the master socket, then its an incoming connection
+			if(FD_ISSET((unsigned long)socket_get_fd(), &readfds)) {
+				if((socket_client = accept(socket_get_fd(), (struct sockaddr *)&address, (socklen_t*)&addrlen))<0) {
+					logprintf(LOG_ERR, "failed to accept client");
+					exit(EXIT_FAILURE);
+				}
 			if(whitelist_check(inet_ntoa(address.sin_addr)) != 0) {
 				logprintf(LOG_INFO, "rejected client, ip: %s, port: %d", inet_ntoa(address.sin_addr), ntohs(address.sin_port));
 				shutdown(socket_client, 2);
@@ -468,6 +468,6 @@ void *socket_wait(void *param) {
 				}
 			}
 		}
-    }
+	}
 	return NULL;
 }

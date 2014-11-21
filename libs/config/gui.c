@@ -438,8 +438,8 @@ int gui_parse_elements(struct JsonNode *root, struct gui_elements_t *parent, int
 				goto clear;
 			} else {
 				struct JsonNode *jvalues = json_first_child(jsettings);
-				int nrvalues = 0;
-				int hasall = 0;
+				unsigned int nrvalues = 0;
+				unsigned int hasall = 0;
 				while(jvalues) {
 					if(jvalues->tag == JSON_STRING) {
 						if(strcmp(jvalues->string_, "web") != 0 &&

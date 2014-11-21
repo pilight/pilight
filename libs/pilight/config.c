@@ -36,12 +36,13 @@
 #include "devices.h"
 #include "settings.h"
 #include "registry.h"
+#include "rules.h"
 #include "hardware.h"
 #include "gui.h"
 
 static struct config_t *config;
 
-static void sort_list(int read) {
+static void sort_list(int r) {
 	struct config_t *a = NULL;
 	struct config_t *b = NULL;
 	struct config_t *c = NULL;
@@ -52,8 +53,8 @@ static void sort_list(int read) {
 		c = a = config;
 		b = a->next;
 		while(a != e) {
-			if((read == 0 && a->writeorder > b->writeorder) ||
-			   (read == 1 && a->readorder > b->readorder)) {
+			if((r == 0 && a->writeorder > b->writeorder) ||
+			   (r == 1 && a->readorder > b->readorder)) {
 				if(a == config) {
 					tmp = b->next;
 					b->next = a;
@@ -259,5 +260,6 @@ void config_init() {
 	settings_init();
 	devices_init();
 	gui_init();
+	rules_init();
 	registry_init();
 }

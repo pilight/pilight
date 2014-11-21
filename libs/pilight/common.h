@@ -26,6 +26,7 @@
 char *progname;
 
 int isNumeric(char *str);
+int nrDecimals(char *str);
 int name2uid(char const *name);
 int which(const char *program);
 int ishex(int x);

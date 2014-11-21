@@ -163,16 +163,20 @@ int main(int argc, char **argv) {
 		if(socket_read(sockfd, &recvBuff) != 0) {
 			goto close;
 		}
-		struct JsonNode *jcontent = json_decode(recvBuff);
-		struct JsonNode *jtype = json_find_member(jcontent, "type");
-		if(jtype != NULL) {
-			json_remove_from_parent(jtype);
-			json_delete(jtype);
+		char *pch = strtok(recvBuff, "\n");
+		while(pch) {
+			struct JsonNode *jcontent = json_decode(pch);
+			struct JsonNode *jtype = json_find_member(jcontent, "type");
+			if(jtype != NULL) {
+				json_remove_from_parent(jtype);
+				json_delete(jtype);
+			}
+			char *content = json_stringify(jcontent, "\t");
+			printf("%s\n", content);
+			json_delete(jcontent);
+			sfree((void *)&content);
+			pch = strtok(NULL, "\n");
 		}
-		char *content = json_stringify(jcontent, "\t");
-		printf("%s\n", content);
-		json_delete(jcontent);
-		sfree((void *)&content);
 	}
 
 close:

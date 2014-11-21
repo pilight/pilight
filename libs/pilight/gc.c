@@ -56,7 +56,7 @@ void gc_handler(int sig) {
 		exit(EXIT_FAILURE);
 	}
 	if(((sig == SIGINT || sig == SIGTERM || sig == SIGTSTP) && gc_enable == 1) ||
-	  (!(sig == SIGINT || sig == SIGTERM || sig == SIGTSTP) && gc_enable == 0)) {
+		(!(sig == SIGINT || sig == SIGTERM || sig == SIGTSTP) && gc_enable == 0)) {
 		if(config_get_file() != NULL && gc_enable == 1) {
 			gc_enable = 0;
 			config_write(1);
@@ -117,18 +117,18 @@ int gc_run(void) {
 /* Initialize the catch all gc */
 void gc_catch(void) {
 	struct sigaction act;
-    memset(&act, 0, sizeof(act));
-    act.sa_handler = gc_handler;
-    sigemptyset(&act.sa_mask);
-    sigaction(SIGINT,  &act, NULL);
-    sigaction(SIGQUIT, &act, NULL);
-    sigaction(SIGTERM, &act, NULL);
+	memset(&act, 0, sizeof(act));
+	act.sa_handler = gc_handler;
+	sigemptyset(&act.sa_mask);
+	sigaction(SIGINT,  &act, NULL);
+	sigaction(SIGQUIT, &act, NULL);
+	sigaction(SIGTERM, &act, NULL);
 
-    sigaction(SIGABRT, &act, NULL);
-    sigaction(SIGTSTP, &act, NULL);
+	sigaction(SIGABRT, &act, NULL);
+	sigaction(SIGTSTP, &act, NULL);
 
-    sigaction(SIGBUS,  &act, NULL);
-    sigaction(SIGILL,  &act, NULL);
-    sigaction(SIGSEGV, &act, NULL);
-    sigaction(SIGFPE,  &act, NULL);
+	sigaction(SIGBUS,  &act, NULL);
+	sigaction(SIGILL,  &act, NULL);
+	sigaction(SIGSEGV, &act, NULL);
+	sigaction(SIGFPE,  &act, NULL);
 }

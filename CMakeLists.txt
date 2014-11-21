@@ -135,6 +135,8 @@ endif()
 
 include_directories("${PROJECT_SOURCE_DIR}/libs/pilight/")
 include_directories("${PROJECT_SOURCE_DIR}/libs/config/")
+include_directories("${PROJECT_SOURCE_DIR}/libs/operators/")
+include_directories("${PROJECT_SOURCE_DIR}/libs/actions/")
 include_directories("${PROJECT_SOURCE_DIR}/libs/avrdude/")
 include_directories("${PROJECT_SOURCE_DIR}/libs/platform/")
 
@@ -173,7 +175,23 @@ file(GLOB pilight_headers
 file(GLOB pilight
 	"${PROJECT_SOURCE_DIR}/libs/pilight/*.c"
 	"${PROJECT_SOURCE_DIR}/libs/avrdude/*.c")
-	
+
+file(GLOB operators
+	"${PROJECT_SOURCE_DIR}/libs/operators/*.c"
+)
+
+file(GLOB operators_headers
+	"${PROJECT_SOURCE_DIR}/libs/operators/*.h"
+)
+
+file(GLOB actions
+	"${PROJECT_SOURCE_DIR}/libs/actions/*.c"
+)
+
+file(GLOB actions_headers
+	"${PROJECT_SOURCE_DIR}/libs/actions/*.h"
+)
+
 if(${PROTOCOL_ALECTO_WSD17} MATCHES "OFF")
 	list(REMOVE_ITEM protocol_headers "${PROJECT_SOURCE_DIR}/libs/protocols/alecto_wsd17.h")
 	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/alecto_wsd17.c")
@@ -545,11 +563,11 @@ if(${MODULESPACK} MATCHES "OFF")
 	execute_process(
 	COMMAND grep -h "void .*Init(void)" ${hardware}
 		WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
-		RESULT_VARIABLE protocol_result
-		OUTPUT_VARIABLE protocol_init)
+		RESULT_VARIABLE hardware_result
+		OUTPUT_VARIABLE hardware_init)
 
 	set(init3)
-	foreach(init ${protocol_init})
+	foreach(init ${hardware_init})
 		string(REPLACE "void " "	" init1 ${init})
 		string(REPLACE "(void) {" "()!" init2 ${init1})
 		list(APPEND init3 ${init2})
@@ -558,6 +576,62 @@ if(${MODULESPACK} MATCHES "OFF")
 	string(REPLACE "!" ";" init4 ${init3})
 	set(HARDWARE_INIT ${init4})
 	configure_file(libs/config/hardware_init.h.in libs/config/hardware_init.h)	
+
+	set(header3)
+	foreach(header ${operators_headers})
+		string(REPLACE ${PROJECT_SOURCE_DIR}/libs "	#include \".." header1 ${header}) 
+		string(REPLACE ".h" ".h\"!" header2 ${header1})
+		list(APPEND header3 ${header2})
+	endforeach(header)
+
+	string(REPLACE "!" "\n" header4 ${header3})
+	set(OPERATORS_HEADERS ${header4})
+	configure_file(libs/pilight/operator_header.h.in libs/pilight/operator_header.h)	
+
+	execute_process(
+	COMMAND grep -h "void .*Init(void)" ${operators}
+		WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+		RESULT_VARIABLE operators_result
+		OUTPUT_VARIABLE operators_init)
+
+	set(init3)
+	foreach(init ${operators_init})
+		string(REPLACE "void " "	" init1 ${init})
+		string(REPLACE "(void) {" "()!" init2 ${init1})
+		list(APPEND init3 ${init2})
+	endforeach(init)
+
+	string(REPLACE "!" ";" init4 ${init3})
+	set(OPERATORS_INIT ${init4})
+	configure_file(libs/pilight/operator_init.h.in libs/pilight/operator_init.h)
+
+	set(header3)
+	foreach(header ${actions_headers})
+		string(REPLACE ${PROJECT_SOURCE_DIR}/libs "	#include \".." header1 ${header}) 
+		string(REPLACE ".h" ".h\"!" header2 ${header1})
+		list(APPEND header3 ${header2})
+	endforeach(header)
+
+	string(REPLACE "!" "\n" header4 ${header3})
+	set(ACTIONS_HEADERS ${header4})
+	configure_file(libs/pilight/action_header.h.in libs/pilight/action_header.h)	
+
+	execute_process(
+	COMMAND grep -h "void .*Init(void)" ${actions}
+		WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+		RESULT_VARIABLE actions_result
+		OUTPUT_VARIABLE actions_init)
+
+	set(init3)
+	foreach(init ${actions_init})
+		string(REPLACE "void " "	" init1 ${init})
+		string(REPLACE "(void) {" "()!" init2 ${init1})
+		list(APPEND init3 ${init2})
+	endforeach(init)
+
+	string(REPLACE "!" ";" init4 ${init3})
+	set(ACTIONS_INIT ${init4})
+	configure_file(libs/pilight/action_init.h.in libs/pilight/action_init.h)
 
 	configure_file(pilight.h.in pilight.h)
 endif()
@@ -587,7 +661,7 @@ if(${MODULESPACK} MATCHES "ON")
 endif()
 
 if(${MODULESPACK} MATCHES "OFF")
-	add_library(pilight OBJECT ${pilight} ${protocol} ${hardware} ${platform} ${config})
+	add_library(pilight OBJECT ${pilight} ${protocol} ${hardware} ${platform} ${config} ${operators} ${actions})
 
 	add_library(pilight_static STATIC $<TARGET_OBJECTS:pilight>)
 	add_library(pilight_shared SHARED $<TARGET_OBJECTS:pilight>)

@@ -127,12 +127,26 @@ pid_t findproc(char *cmd, char *args, int loosely) {
 	return -1;
 }
 
-int isNumeric(char * s) {
-    if(s == NULL || *s == '\0' || *s == ' ')
+int isNumeric(char *s) {
+	if(s == NULL || *s == '\0' || *s == ' ')
 		return EXIT_FAILURE;
-    char *p;
-    strtod(s, &p);
-    return (*p == '\0') ? EXIT_SUCCESS : EXIT_FAILURE;
+	char *p;
+	strtod(s, &p);
+	return (*p == '\0') ? EXIT_SUCCESS : EXIT_FAILURE;
+}
+
+int nrDecimals(char *s) {
+	unsigned int b = 0, c = strlen(s), i = 0;
+	int a = 0;
+	for(i=0;i<c;i++) {
+		if(b == 1) {
+			a++;
+		}
+		if(s[i] == '.') {
+			b = 1;
+		}
+	}
+	return a;
 }
 
 void sfree(void **addr) {

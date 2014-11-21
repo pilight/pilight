@@ -35,11 +35,10 @@
 #include "log.h"
 
 struct JsonNode *registry = NULL;
-static char *buff = NULL;
 
 static int registry_get_value_recursive(struct JsonNode *root, const char *key, void **value, void **decimals, int type) {
 	char *sub = strstr(key, ".");
-	buff = realloc(buff, strlen(key)+1);
+	char *buff = malloc(strlen(key)+1);
 	strcpy(buff, key);
 	if(sub != NULL) {
 		int pos = sub-key;
@@ -54,6 +53,7 @@ static int registry_get_value_recursive(struct JsonNode *root, const char *key, 
 			} else if(type == JSON_STRING) {
 				*value = (void *)member->string_;
 			}
+			sfree((void *)&buff);
 			return 0;
 		} else if(member->tag == JSON_OBJECT) {
 			if(sub != NULL) {
@@ -61,15 +61,17 @@ static int registry_get_value_recursive(struct JsonNode *root, const char *key, 
 				strcpy(buff, &key[pos+1]);
 			}
 			int ret = registry_get_value_recursive(member, buff, value, decimals, type);
+			sfree((void *)&buff);
 			return ret;
 		}
 	}
+	sfree((void *)&buff);
 	return -1;
 }
 
 static int registry_set_value_recursive(struct JsonNode *root, const char *key, void *value, int decimals, int type) {
 	char *sub = strstr(key, ".");
-	buff = realloc(buff, strlen(key)+1);
+	char *buff = malloc(strlen(key)+1);
 	strcpy(buff, key);
 	if(sub != NULL) {
 		int pos = sub-key;
@@ -85,6 +87,7 @@ static int registry_set_value_recursive(struct JsonNode *root, const char *key, 
 				member->string_ = realloc(member->string_, strlen(value)+1);
 				strcpy(member->string_, (char *)value);
 			}
+			sfree((void *)&buff);
 			return 0;
 		} else if(member->tag == JSON_OBJECT) {
 			if(sub != NULL) {
@@ -92,6 +95,7 @@ static int registry_set_value_recursive(struct JsonNode *root, const char *key, 
 				strcpy(buff, &key[pos+1]);
 			}
 			int ret = registry_set_value_recursive(member, buff, value, decimals, type);
+			sfree((void *)&buff);
 			return ret;
 		}
 	} else if(sub != NULL) {
@@ -100,6 +104,7 @@ static int registry_set_value_recursive(struct JsonNode *root, const char *key, 
 		int pos = sub-key;
 		strcpy(buff, &key[pos+1]);
 		int ret = registry_set_value_recursive(member, buff, value, decimals, type);
+		sfree((void *)&buff);
 		return ret;
 	} else {
 		if(type == JSON_NUMBER) {
@@ -107,8 +112,10 @@ static int registry_set_value_recursive(struct JsonNode *root, const char *key, 
 		} else if(type == JSON_STRING) {
 			json_append_member(root, buff, json_mkstring(value));
 		}
+		sfree((void *)&buff);
 		return 0;
 	}
+	sfree((void *)&buff);
 	return -1;
 }
 
@@ -125,7 +132,7 @@ static void registry_remove_empty_parent(struct JsonNode *root) {
 
 static int registry_remove_value_recursive(struct JsonNode *root, const char *key) {
 	char *sub = strstr(key, ".");
-	buff = realloc(buff, strlen(key)+1);
+	char *buff = malloc(strlen(key)+1);
 	strcpy(buff, key);
 	if(sub != NULL) {
 		int pos = sub-key;
@@ -137,6 +144,7 @@ static int registry_remove_value_recursive(struct JsonNode *root, const char *ke
 			json_remove_from_parent(member);
 			json_delete(member);
 			registry_remove_empty_parent(root);
+			sfree((void *)&buff);
 			return 0;
 		}
 		if(member->tag == JSON_OBJECT) {
@@ -145,9 +153,11 @@ static int registry_remove_value_recursive(struct JsonNode *root, const char *ke
 				strcpy(buff, &key[pos+1]);
 			}
 			int ret = registry_remove_value_recursive(member, buff);
+			sfree((void *)&buff);
 			return ret;
 		}
 	}
+	sfree((void *)&buff);
 	return -1;
 }
 
@@ -220,10 +230,6 @@ static JsonNode *registry_sync(int level) {
 static int registry_gc(void) {
 	if(registry != NULL) {
 		json_delete(registry);
-	}
-	if(buff) {
-		sfree((void *)&buff);
-		buff = NULL;
 	}
 	logprintf(LOG_DEBUG, "garbage collected config registry library");
 	return 1;
