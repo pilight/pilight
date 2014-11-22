@@ -23,6 +23,7 @@
 
 #include "operator.h"
 #include "lt.h"
+#include "dso.h"
 
 static void operatorLtCallback(double a, double b, char **ret) {
 	if(a < b) {

@@ -120,7 +120,7 @@ static int event_lookup_variable(char *var, struct rules_t *obj, unsigned int nr
 			}
 			if(validate == 1) {
 				struct protocols_t *tmp = dev->protocols;
-				int match1 = 0, match2 = 0, match3 = 0;
+				unsigned int match1 = 0, match2 = 0, match3 = 0;
 				while(tmp) {
 					struct options_t *opt = tmp->listener->options;
 					while(opt) {

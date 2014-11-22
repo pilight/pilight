@@ -23,6 +23,7 @@
 
 #include "operator.h"
 #include "and.h"
+#include "dso.h"
 
 static void operatorAndCallback(double a, double b, char **ret) {
 	if(a > 0 && b > 0) {

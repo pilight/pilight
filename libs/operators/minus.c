@@ -23,6 +23,7 @@
 
 #include "operator.h"
 #include "minus.h"
+#include "dso.h"
 
 static void operatorMinusCallback(double a, double b, char **ret) {
 	sprintf(*ret, "%f", (a - b));

@@ -26,6 +26,7 @@
 #include "toggle.h"
 #include "log.h"
 #include "devices.h"
+#include "dso.h"
 #include "../../pilight.h"
 
 static int actionToggleArguments(struct JsonNode *arguments) {
@@ -152,7 +153,7 @@ void compatibility(struct module_t *module) {
 	module->name = "toggle";
 	module->version = "1.0";
 	module->reqversion = "5.0";
-	*reqcommit = "87";
+	module->reqcommit = "87";
 }
 
 void init(void) {

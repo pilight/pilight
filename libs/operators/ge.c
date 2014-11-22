@@ -23,6 +23,7 @@
 
 #include "operator.h"
 #include "ge.h"
+#include "dso.h"
 
 static void operatorGeCallback(double a, double b, char **ret) {
 	if(a >= b) {

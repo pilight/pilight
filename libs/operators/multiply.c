@@ -23,6 +23,7 @@
 
 #include "operator.h"
 #include "multiply.h"
+#include "dso.h"
 
 static void operatorMultiplyCallback(double a, double b, char **ret) {
 	sprintf(*ret, "%f", (a * b));

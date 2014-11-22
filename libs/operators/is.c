@@ -23,6 +23,7 @@
 
 #include "operator.h"
 #include "is.h"
+#include "dso.h"
 
 static void operatorIsCallback(char *a, char *b, char **ret) {
 	if(strcmp(a, b) == 0) {

@@ -23,6 +23,7 @@
 
 #include "operator.h"
 #include "le.h"
+#include "dso.h"
 
 static void operatorLeCallback(double a, double b, char **ret) {
 	if(a <= b) {

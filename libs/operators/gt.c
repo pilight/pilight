@@ -23,6 +23,7 @@
 
 #include "operator.h"
 #include "gt.h"
+#include "dso.h"
 
 static void operatorGtCallback(double a, double b, char **ret) {
 	if(a > b) {

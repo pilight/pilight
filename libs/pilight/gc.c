@@ -42,7 +42,7 @@ void gc_handler(int sig) {
 		case SIGFPE: {
 			void *stack[50];
 			int n = backtrace(stack, 50);
-			printf("-- STACKTRACE (%d FRAMES) --", n);
+			printf("-- STACKTRACE (%d FRAMES) --\n", n);
 			backtrace_symbols_fd(stack, n, STDERR_FILENO);
 		}
 		break;

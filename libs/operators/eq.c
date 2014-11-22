@@ -25,6 +25,7 @@
 #include "../../pilight.h"
 #include "operator.h"
 #include "eq.h"
+#include "dso.h"
 
 static void operatorEqCallback(double a, double b, char **ret) {
 	if(fabs(a-b) < EPSILON) {

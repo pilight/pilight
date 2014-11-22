@@ -23,6 +23,7 @@
 
 #include "operator.h"
 #include "or.h"
+#include "dso.h"
 
 static void operatorOrCallback(double a, double b, char **ret) {
 	if(a > 0 || b > 0) {

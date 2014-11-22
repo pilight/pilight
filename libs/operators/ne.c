@@ -25,6 +25,7 @@
 #include "../../pilight.h"
 #include "operator.h"
 #include "ne.h"
+#include "dso.h"
 
 static void operatorNeCallback(double a, double b, char **ret) {
 	if(fabs(a-b) >= EPSILON) {

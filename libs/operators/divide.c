@@ -23,6 +23,7 @@
 
 #include "operator.h"
 #include "divide.h"
+#include "dso.h"
 
 static void operatorDivideCallback(double a, double b, char **ret) {
 	sprintf(*ret, "%f", (a / b));

@@ -39,10 +39,6 @@
 
 static struct rules_t *rules = NULL;
 
-/*
-	FIXME: duplicate rule names
-*/
-
 static int rules_parse(JsonNode *root) {
 	int have_error = 0, i = 0, match = 0;
 	struct JsonNode *jrules = NULL;
@@ -81,6 +77,7 @@ static int rules_parse(JsonNode *root) {
 						logprintf(LOG_ERR, "out of memory");
 						exit(EXIT_FAILURE);
 					}
+					node->next = NULL;
 					node->nrdevices = 0;
 					node->status = 0;
 					node->devices = NULL;

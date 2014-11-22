@@ -23,6 +23,7 @@
 
 #include "operator.h"
 #include "plus.h"
+#include "dso.h"
 
 static void operatorPlusCallback(double a, double b, char **ret) {
 	sprintf(*ret, "%f", (a + b));
