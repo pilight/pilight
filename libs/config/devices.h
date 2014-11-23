@@ -29,10 +29,10 @@ typedef struct devices_values_t devices_values_t;
 
 /*
 |------------------|
-| devices_devices_t|
+|    devices_t     |
 |------------------|
 | id               |
-| name		       |
+| name		         |
 | protocols	       | --> protocols_t <protocol.h>
 | settings	       | ---
 |------------------|   |
@@ -41,14 +41,14 @@ typedef struct devices_values_t devices_values_t;
 |devices_settings_t| <--
 |------------------|
 | name             |
-| values	       | ---
+| values	         | ---
 |------------------|   |
-				       |
+                       |
 |------------------|   |
 | devices_values_t | <--
 |------------------|
 | value            |
-| type		       |
+| type		         |
 |------------------|
 */
 

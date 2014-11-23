@@ -78,6 +78,7 @@ static int rules_parse(JsonNode *root) {
 						exit(EXIT_FAILURE);
 					}
 					node->next = NULL;
+					node->values = NULL;
 					node->nrdevices = 0;
 					node->status = 0;
 					node->devices = NULL;
@@ -144,19 +145,28 @@ struct rules_t *rules_get(void) {
 }
 
 static int rules_gc(void) {
-	struct rules_t *tmp = NULL;
+	struct rules_t *tmp_rules = NULL;
+	struct rules_values_t *tmp_values = NULL;
 	int i = 0;
 
 	while(rules) {
-		tmp = rules;
-		sfree((void *)&tmp->name);
-		sfree((void *)&tmp->rule);
-		for(i=0;i<tmp->nrdevices;i++) {
-			sfree((void *)&tmp->devices[i]);
+		tmp_rules = rules;
+		sfree((void *)&tmp_rules->name);
+		sfree((void *)&tmp_rules->rule);
+		for(i=0;i<tmp_rules->nrdevices;i++) {
+			sfree((void *)&tmp_rules->devices[i]);
 		}
-		sfree((void *)&tmp->devices);
+		while(tmp_rules->values) {
+			tmp_values = tmp_rules->values;
+			sfree((void *)&tmp_values->name);
+			sfree((void *)&tmp_values->device);
+			tmp_rules->values = tmp_rules->values->next;
+			sfree((void *)&tmp_values);
+		}
+		sfree((void *)&tmp_rules->values);
+		sfree((void *)&tmp_rules->devices);
 		rules = rules->next;
-		sfree((void *)&tmp);
+		sfree((void *)&tmp_rules);
 	}
 	sfree((void *)&rules);
 	rules = NULL;

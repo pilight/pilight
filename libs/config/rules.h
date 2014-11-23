@@ -22,14 +22,22 @@
 #include "json.h"
 #include "config.h"
 
+typedef struct rules_values_t {
+	char *device;
+	char *name;
+	struct devices_settings_t *settings;
+	struct rules_values_t *next;
+} rules_values_t;
+
 typedef struct rules_t {
 	char *rule;
 	char *name;
 	char **devices;
 	int nrdevices;
+	int status;
 	unsigned short active;
 	struct JsonNode *arguments;
-	int status;
+	struct rules_values_t *values;
 	struct rules_t *next;
 } rules_t;
 

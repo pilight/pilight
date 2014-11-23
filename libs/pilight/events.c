@@ -72,10 +72,49 @@ int events_gc(void) {
 	return 1;
 }
 
+static int event_store_val_ptr(struct rules_t *obj, char *device, char *name, struct devices_settings_t *settings) {
+	struct rules_values_t *tmp_values = obj->values;
+	int match = 0;
+	while(tmp_values) {
+		if(strcmp(tmp_values->device, device) == 0 &&
+		   strcmp(tmp_values->name, name) == 0) {
+				match = 1;
+				break;
+		}
+		tmp_values = tmp_values->next;
+	}
+	
+	if(match == 0) {
+		if(!(tmp_values = malloc(sizeof(rules_values_t)))) {
+			logprintf(LOG_ERR, "out of memory");
+			exit(EXIT_FAILURE);
+		}
+		tmp_values->next = NULL;
+		if(!(tmp_values->name = malloc(strlen(name)+1))) {
+			logprintf(LOG_ERR, "out of memory");
+			sfree((void *)&tmp_values);
+			exit(EXIT_FAILURE);
+		}
+		strcpy(tmp_values->name, name);
+		if(!(tmp_values->device = malloc(strlen(device)+1))) {
+			logprintf(LOG_ERR, "out of memory");
+			sfree((void *)&tmp_values->name);
+			sfree((void *)&tmp_values);
+			exit(EXIT_FAILURE);
+		}
+		strcpy(tmp_values->device, device);
+		tmp_values->settings = settings;
+		tmp_values->next = obj->values;
+		obj->values = tmp_values;
+	}
+	return 0;
+}
+
 /* This functions checks if the defined event variable
    is part of one of devices in the config. If it is,
    replace the variable with the actual value */
 static int event_lookup_variable(char *var, struct rules_t *obj, unsigned int nr, int type, union varcont_t *varcont, unsigned short validate) {
+	int cached = 0;
 	if(strcmp(var, "1") == 0 || strcmp(var, "0") == 0 || isNumeric(var) == 0) {
 		if(type == JSON_NUMBER) {
 			varcont->number_ = atof(var);
@@ -84,6 +123,7 @@ static int event_lookup_variable(char *var, struct rules_t *obj, unsigned int nr
 		}
 		return 0;
 	}
+
 	int len = (int)strlen(var);
 	int i = 0;
 	int nrdots = 0;
@@ -96,102 +136,125 @@ static int event_lookup_variable(char *var, struct rules_t *obj, unsigned int nr
 	if(nrdots == 1) {
 		char *device = strtok(var, ".");
 		char *name = strtok(NULL, ".");
-		struct devices_t *dev = NULL;
-		if(devices_get(device, &dev) == 0) {
-			/* Store all devices that are present in this rule */
-			int match = 0;
-			for(i=0;i<obj->nrdevices;i++) {
-				if(strcmp(obj->devices[i], device) == 0) {
-					match = 1;
+
+		/* Check if the values are not already cached */
+		struct rules_values_t *tmp_values = obj->values;
+		while(tmp_values) {
+			if(strcmp(tmp_values->device, device) == 0 &&
+				 strcmp(tmp_values->name, name) == 0) {
+					if(tmp_values->settings->values->type == JSON_STRING) {
+						varcont->string_ = tmp_values->settings->values->string_;
+					} else if(tmp_values->settings->values->type == JSON_NUMBER) {
+						varcont->number_ = tmp_values->settings->values->number_;
+					}
+					cached = 1;
 					break;
-				}
 			}
-			if(match == 0) {
-				if(!(obj->devices = realloc(obj->devices, sizeof(char **)*(unsigned int)(obj->nrdevices+1)))) {
-					logprintf(LOG_ERR, "out of memory");
-					exit(EXIT_FAILURE);
-				}
-				if(!(obj->devices[obj->nrdevices] = malloc(strlen(device)+1))) {
-					logprintf(LOG_ERR, "out of memory");
-					exit(EXIT_FAILURE);
-				}
-				strcpy(obj->devices[obj->nrdevices], device);
-				obj->nrdevices++;
-			}
-			if(validate == 1) {
-				struct protocols_t *tmp = dev->protocols;
-				unsigned int match1 = 0, match2 = 0, match3 = 0;
-				while(tmp) {
-					struct options_t *opt = tmp->listener->options;
-					while(opt) {
-						if(opt->conftype == DEVICES_STATE && strcmp("state", name) == 0) {
-							match1 = 1;
-							match2 = 1;
-							match3 = 1;
+			tmp_values = tmp_values->next;
+		}
+
+		struct devices_t *dev = NULL;
+		if(cached == 0) {
+			if(devices_get(device, &dev) == 0) {
+				if(validate == 1) {
+					int exists = 0;
+					for(i=0;i<obj->nrdevices;i++) {
+						if(strcmp(obj->devices[i], device) == 0) {
+							exists = 1;
 							break;
-						} else if(strcmp(opt->name, name) == 0) { 
-							match1 = 1;
-							if(opt->conftype == DEVICES_VALUE || opt->conftype == DEVICES_STATE) {
+						}
+					}
+					if(exists == 0) {
+						/* Store all devices that are present in this rule */					
+						if(!(obj->devices = realloc(obj->devices, sizeof(char *)*(unsigned int)(obj->nrdevices+1)))) {
+							logprintf(LOG_ERR, "out of memory");
+							exit(EXIT_FAILURE);
+						}
+						if(!(obj->devices[obj->nrdevices] = malloc(strlen(device)+1))) {
+							logprintf(LOG_ERR, "out of memory");
+							exit(EXIT_FAILURE);
+						}
+						strcpy(obj->devices[obj->nrdevices], device);
+						obj->nrdevices++;
+					}
+					struct protocols_t *tmp = dev->protocols;
+					unsigned int match1 = 0, match2 = 0, match3 = 0;
+					while(tmp) {
+						struct options_t *opt = tmp->listener->options;
+						while(opt) {
+							if(opt->conftype == DEVICES_STATE && strcmp("state", name) == 0) {
+								match1 = 1;
 								match2 = 1;
-								if(opt->vartype == JSON_STRING && type == JSON_STRING) {
-									match3 = 1;
-								} else if(opt->vartype == JSON_NUMBER && type == JSON_NUMBER) {
-									match3 = 1;
-								}
+								match3 = 1;
 								break;
+							} else if(strcmp(opt->name, name) == 0) { 
+								match1 = 1;
+								if(opt->conftype == DEVICES_VALUE || opt->conftype == DEVICES_STATE) {
+									match2 = 1;
+									if(opt->vartype == JSON_STRING && type == JSON_STRING) {
+										match3 = 1;
+									} else if(opt->vartype == JSON_NUMBER && type == JSON_NUMBER) {
+										match3 = 1;
+									}
+									break;
+								}
+							}
+							opt = opt->next;
+						}
+						tmp = tmp->next;
+					}
+					if(!match1) {
+						logprintf(LOG_ERR, "rule #%d invalid: device \"%s\" has no variable \"%s\"", nr, device, name);
+					} else if(!match2) {
+						logprintf(LOG_ERR, "rule #%d invalid: variable \"%s\" of device \"%s\" cannot be used in event rules", nr, device, name);
+					} else if(!match3) {
+						logprintf(LOG_ERR, "rule #%d invalid: trying to compare a integer variable \"%s.%s\" to a string", nr, device, name);
+					}
+					if(!match1 || !match2 || !match3) {
+						varcont->string_ = NULL;
+						varcont->number_ = 0;
+						return -1;
+					}
+				}
+				struct devices_settings_t *tmp_settings = dev->settings;
+				while(tmp_settings) {
+					if(strcmp(tmp_settings->name, name) == 0) {
+						if(tmp_settings->values->type == JSON_STRING) {
+							if(type == JSON_STRING) {
+								/* Cache values for faster future lookup */
+								event_store_val_ptr(obj, device, name, tmp_settings);
+								varcont->string_ = tmp_settings->values->string_;
+								return 0;
+							} else {
+								logprintf(LOG_ERR, "rule #%d invalid: trying to compare integer variable \"%s.%s\" to a string", nr, device, name);
+								varcont->string_ = NULL;
+								return -1;
+							}
+						} else if(tmp_settings->values->type == JSON_NUMBER) {
+							if(type == JSON_NUMBER) {
+								/* Cache values for faster future lookup */
+								event_store_val_ptr(obj, device, name, tmp_settings);
+								varcont->number_ = tmp_settings->values->number_;
+								return 0;
+							} else {
+								logprintf(LOG_ERR, "rule #%d invalid: trying to compare string variable \"%s.%s\" to an integer", nr, device, name);
+								varcont->number_ = 0;
+								return -1;
 							}
 						}
-						opt = opt->next;
 					}
-					tmp = tmp->next;
+					tmp_settings = tmp_settings->next;
 				}
-				if(!match1) {
-					logprintf(LOG_ERR, "rule #%d invalid: device \"%s\" has no variable \"%s\"", nr, device, name);
-				} else if(!match2) {
-					logprintf(LOG_ERR, "rule #%d invalid: variable \"%s\" of device \"%s\" cannot be used in event rules", nr, device, name);
-				} else if(!match3) {
-					logprintf(LOG_ERR, "rule #%d invalid: trying to compare a integer variable \"%s.%s\" to a string", nr, device, name);
-				}
-				if(!match1 || !match2 || !match3) {
-					varcont->string_ = NULL;
-					varcont->number_ = 0;
-					return -1;
-				}
+				logprintf(LOG_ERR, "rule #%d invalid: device \"%s\" has no variable \"%s\"", nr, device, name);
+				varcont->string_ = NULL;
+				varcont->number_ = 0;
+				return -1;
+			} else {
+				logprintf(LOG_ERR, "rule #%d invalid: device \"%s\" does not exist in the config", nr, device);
+				varcont->string_ = NULL;
+				varcont->number_ = 0;
+				return -1;
 			}
-			struct devices_settings_t *tmp_settings = dev->settings;
-			while(tmp_settings) {
-				if(strcmp(tmp_settings->name, name) == 0) {
-					if(tmp_settings->values->type == JSON_STRING) {
-						if(type == JSON_STRING) {
-							varcont->string_ = tmp_settings->values->string_;
-							return 0;
-						} else {
-							logprintf(LOG_ERR, "rule #%d invalid: trying to compare integer variable \"%s.%s\" to a string", nr, device, name);
-							varcont->string_ = NULL;
-							return -1;
-						}
-					} else if(tmp_settings->values->type == JSON_NUMBER) {
-						if(type == JSON_NUMBER) {
-							varcont->number_ = tmp_settings->values->number_;
-							return 0;
-						} else {
-							logprintf(LOG_ERR, "rule #%d invalid: trying to compare string variable \"%s.%s\" to an integer", nr, device, name);
-							varcont->number_ = 0;
-							return -1;
-						}
-					}
-				}
-				tmp_settings = tmp_settings->next;
-			}
-			logprintf(LOG_ERR, "rule #%d invalid: device \"%s\" has no variable \"%s\"", nr, device, name);
-			varcont->string_ = NULL;
-			varcont->number_ = 0;
-			return -1;
-		} else {
-			logprintf(LOG_ERR, "rule #%d invalid: device \"%s\" does not exist in the config", nr, device);
-			varcont->string_ = NULL;
-			varcont->number_ = 0;
-			return -1;
 		}
 		return 1;
 	} else if(nrdots > 2) {
