@@ -1521,6 +1521,7 @@ void *clientize(void *param) {
 						if((jconfig = json_find_member(json, "config")) != NULL) {
 							gui_gc();
 							devices_gc();
+							rules_gc();
 							int match = 1;
 							while(match) {
 								jchilds = json_first_child(jconfig);

@@ -144,7 +144,7 @@ struct rules_t *rules_get(void) {
 	return rules;
 }
 
-static int rules_gc(void) {
+int rules_gc(void) {
 	struct rules_t *tmp_rules = NULL;
 	struct rules_values_t *tmp_values = NULL;
 	int i = 0;

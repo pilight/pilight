@@ -44,6 +44,7 @@ typedef struct rules_t {
 struct config_t *config_rules;
 
 void rules_init(void);
+int rules_gc(void);
 struct rules_t *rules_get(void);
 
 #endif
