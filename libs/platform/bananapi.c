@@ -322,6 +322,11 @@ static int bananapiWaitForInterrupt(int pin, int ms) {
 
 	x = poll(&polls, 1, ms);
 
+	/* Don't react to signals */
+	if(x == -1 && errno == EINTR) {
+		x = 0;
+	}
+
 	(void)read(sysFds[pin], &c, 1);
 	lseek(sysFds[pin], 0, SEEK_SET);
 

@@ -472,6 +472,11 @@ static int radxaWaitForInterrupt(int pin, int ms) {
 
 	x = poll(&polls, 1, ms);
 
+	/* Don't react to signals */
+	if(x == -1 && errno == EINTR) {
+		x = 0;
+	}
+
 	(void)read(sysFds[npin], &c, 1);
 	lseek(sysFds[npin], 0, SEEK_SET);
 

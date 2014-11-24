@@ -46,6 +46,8 @@
 #include "rules.h"
 
 static unsigned short loop = 1;
+static const char *true_ = "1";
+static const char *false_ = "0";
 
 typedef union varcont_t {
 	char *string_;
@@ -115,11 +117,25 @@ static int event_store_val_ptr(struct rules_t *obj, char *device, char *name, st
    replace the variable with the actual value */
 static int event_lookup_variable(char *var, struct rules_t *obj, unsigned int nr, int type, union varcont_t *varcont, unsigned short validate) {
 	int cached = 0;
-	if(strcmp(var, "1") == 0 || strcmp(var, "0") == 0 || isNumeric(var) == 0) {
+	if(strcmp(var, "1") == 0 || strcmp(var, "0") == 0 || 
+		 isNumeric(var) == 0 || strcmp(var, "true") == 0 ||
+		 strcmp(var, "false") == 0) {
 		if(type == JSON_NUMBER) {
-			varcont->number_ = atof(var);
+			if(strcmp(var, "true") == 0) {
+				varcont->number_ = 1;
+			} else if(strcmp(var, "false") == 0) {
+				varcont->number_ = 0;
+			} else {
+				varcont->number_ = atof(var);
+			}
 		} else if(type == JSON_STRING) {
-			varcont->string_ = var;
+			if(strcmp(var, "true") == 0) {
+				varcont->string_ = true_;
+			} else if(strcmp(var, "false") == 0) {
+				varcont->string_ = false_;
+			} else {
+				varcont->string_ = var;
+			}
 		}
 		return 0;
 	}
