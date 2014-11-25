@@ -323,9 +323,28 @@ static int webserver_request_handler(struct mg_connection *conn) {
 				if(conn->query_string != NULL) {
 					char out[strlen(conn->query_string)+1];
 					urldecode(conn->query_string, out);
-					socket_write(sockfd, out);
-					mg_printf_data(conn, "{\"message\":\"success\"}");
+					if(json_validate(out) == true) {
+						struct JsonNode *json = json_decode(out);
+						struct JsonNode *jmessage = NULL;
+						struct JsonNode *jcode = NULL;
+						if((jmessage = json_find_member(json, "action")) != NULL) {
+							if(jmessage->tag == JSON_STRING && strcmp(jmessage->string_, "send") == 0) {
+								if((jcode = json_find_member(json, "code")) != NULL) {
+									if(json_find_member(jcode, "device") != NULL) {
+										if(json_find_member(jcode, "state") != NULL) {
+											socket_write(sockfd, out);
+											mg_printf_data(conn, "{\"message\":\"success\"}");
+											json_delete(json);
+											return MG_TRUE;
+										}
+									}
+								}
+							}
+						}
+						json_delete(json);
+					}
 				}
+				mg_printf_data(conn, "{\"message\":\"failed\"}");
 				return MG_TRUE;
 			} else if(strcmp(conn->uri, "/config") == 0) {
 				char media[15];

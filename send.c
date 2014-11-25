@@ -361,7 +361,7 @@ int main(int argc, char **argv) {
 
 		JsonNode *json = json_mkobject();
 		json_append_member(json, "action", json_mkstring("send"));
-		if(uuid) {
+		if(uuid != NULL) {
 			json_append_member(code, "uuid", json_mkstring(uuid));
 		}
 		json_append_member(json, "code", code);

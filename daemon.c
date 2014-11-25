@@ -1409,7 +1409,8 @@ static void socket_parse_data(int i, char *buffer) {
 			json_delete(json);
 		}
 	}
-	if(error) {
+	if(error == 1) {
+		client_remove(sd);
 		socket_close(sd);
 	}
 }
