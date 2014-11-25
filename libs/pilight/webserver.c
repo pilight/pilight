@@ -329,7 +329,7 @@ static int webserver_request_handler(struct mg_connection *conn) {
 				return MG_TRUE;
 			} else if(strcmp(conn->uri, "/config") == 0) {
 				char media[15];
-				strcpy(media, "all");
+				strcpy(media, "web");
 				if(conn->query_string != NULL) {
 					sscanf(conn->query_string, "media=%14s%*[ \n\r]", media);
 				}
@@ -342,7 +342,7 @@ static int webserver_request_handler(struct mg_connection *conn) {
 				return MG_TRUE;
 			} else if(strcmp(conn->uri, "/values") == 0) {
 				char media[15];
-				strcpy(media, "all");
+				strcpy(media, "web");
 				if(conn->query_string != NULL) {
 					sscanf(conn->query_string, "media=%14s%*[ \n\r]", media);
 				}
