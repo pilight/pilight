@@ -324,24 +324,9 @@ static int webserver_request_handler(struct mg_connection *conn) {
 					char out[strlen(conn->query_string)+1];
 					urldecode(conn->query_string, out);
 					if(json_validate(out) == true) {
-						struct JsonNode *json = json_decode(out);
-						struct JsonNode *jmessage = NULL;
-						struct JsonNode *jcode = NULL;
-						if((jmessage = json_find_member(json, "action")) != NULL) {
-							if(jmessage->tag == JSON_STRING && strcmp(jmessage->string_, "send") == 0) {
-								if((jcode = json_find_member(json, "code")) != NULL) {
-									if(json_find_member(jcode, "device") != NULL) {
-										if(json_find_member(jcode, "state") != NULL) {
-											socket_write(sockfd, out);
-											mg_printf_data(conn, "{\"message\":\"success\"}");
-											json_delete(json);
-											return MG_TRUE;
-										}
-									}
-								}
-							}
-						}
-						json_delete(json);
+						socket_write(sockfd, out);
+						mg_printf_data(conn, "{\"message\":\"success\"}");
+						return MG_TRUE;
 					}
 				}
 				mg_printf_data(conn, "{\"message\":\"failed\"}");
@@ -855,52 +840,57 @@ void *webserver_broadcast(void *param) {
 }
 
 void *webserver_clientize(void *param) {
-	struct ssdp_list_t *ssdp_list = NULL;
-	int standalone = 0;
-
-	settings_find_number("standalone", &standalone);
-	if(ssdp_seek(&ssdp_list) == -1 || standalone == 1) {
-		logprintf(LOG_DEBUG, "no pilight ssdp connections found");
-		char server[16] = "127.0.0.1";
-		if((sockfd = socket_connect(server, (unsigned short)socket_get_port())) == -1) {
-			logprintf(LOG_DEBUG, "could not connect to pilight-daemon");
-			goto close;
+	unsigned int failures = 0;
+	while(webserver_loop && failures <= 5) {
+		struct ssdp_list_t *ssdp_list = NULL;
+		int standalone = 0;
+		settings_find_number("standalone", &standalone);
+		if(ssdp_seek(&ssdp_list) == -1 || standalone == 1) {
+			logprintf(LOG_DEBUG, "no pilight ssdp connections found");
+			char server[16] = "127.0.0.1";
+			if((sockfd = socket_connect(server, (unsigned short)socket_get_port())) == -1) {
+				logprintf(LOG_DEBUG, "could not connect to pilight-daemon");
+				failures++;
+				continue;
+			}
+		} else {
+			if((sockfd = socket_connect(ssdp_list->ip, ssdp_list->port)) == -1) {
+				logprintf(LOG_DEBUG, "could not connect to pilight-daemon");
+				failures++;
+				continue;
+			}
 		}
-	} else {
-		if((sockfd = socket_connect(ssdp_list->ip, ssdp_list->port)) == -1) {
-			logprintf(LOG_DEBUG, "could not connect to pilight-daemon");
-			goto close;
+		if(ssdp_list) {
+			ssdp_free(ssdp_list);
+		}
+
+		struct JsonNode *jclient = json_mkobject();
+		struct JsonNode *joptions = json_mkobject();
+		json_append_member(jclient, "action", json_mkstring("identify"));
+		json_append_member(joptions, "config", json_mknumber(1, 0));
+		json_append_member(joptions, "core", json_mknumber(1, 0));
+		json_append_member(jclient, "options", joptions);
+		json_append_member(jclient, "media", json_mkstring("web"));
+		char *out = json_stringify(jclient, NULL);
+		socket_write(sockfd, out);
+		sfree((void *)&out);
+		json_delete(jclient);
+
+		if(socket_read(sockfd, &recvBuff) != 0
+			 || strcmp(recvBuff, "{\"status\":\"success\"}") != 0) {
+				failures++;
+			continue;
+		}
+		failures = 0;
+		while(webserver_loop) {
+			if(socket_read(sockfd, &recvBuff) != 0) {
+				break;
+			} else {
+				webserver_queue(recvBuff);
+			}
 		}
 	}
-	if(ssdp_list) {
-		ssdp_free(ssdp_list);
-	}
 
-	struct JsonNode *jclient = json_mkobject();
-	struct JsonNode *joptions = json_mkobject();
-	json_append_member(jclient, "action", json_mkstring("identify"));
-	json_append_member(joptions, "config", json_mknumber(1, 0));
-	json_append_member(joptions, "core", json_mknumber(1, 0));
-	json_append_member(jclient, "options", joptions);
-	json_append_member(jclient, "media", json_mkstring("web"));
-	char *out = json_stringify(jclient, NULL);
-	socket_write(sockfd, out);
-	sfree((void *)&out);
-	json_delete(jclient);
-
-	if(socket_read(sockfd, &recvBuff) != 0
-	   || strcmp(recvBuff, "{\"status\":\"success\"}") != 0) {
-		goto close;
-	}
-
-	while(webserver_loop) {
-		if(socket_read(sockfd, &recvBuff) != 0) {
-			goto close;
-		}
-		webserver_queue(recvBuff);
-	}
-
-close:
 	if(recvBuff) {
 		sfree((void *)&recvBuff);
 		recvBuff = NULL;
