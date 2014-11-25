@@ -216,7 +216,7 @@ static int registry_parse(JsonNode *root) {
 	return 0;
 }
 
-static JsonNode *registry_sync(int level) {
+static JsonNode *registry_sync(int level, const char *display) {
 	if(registry != NULL) {
 		char *content = json_stringify(registry, NULL);
 		struct JsonNode *jret = json_decode(content);

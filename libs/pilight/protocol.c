@@ -241,7 +241,7 @@ struct protocol_threads_t *protocol_thread_init(protocol_t *proto, struct JsonNo
 	pthread_mutexattr_init(&node->attr);
 	pthread_mutexattr_settype(&node->attr, PTHREAD_MUTEX_RECURSIVE);
 	pthread_mutex_init(&node->mutex, &node->attr);
-    pthread_cond_init(&node->cond, NULL);
+	pthread_cond_init(&node->cond, NULL);
 	node->next = proto->threads;
 	proto->threads = node;
 	return node;
@@ -282,13 +282,13 @@ void protocol_thread_stop(protocol_t *proto) {
 
 void protocol_thread_free(protocol_t *proto) {
 	if(proto->threads) {
-		struct protocol_threads_t *tmp = proto->threads;
-		while(tmp) {
+		struct protocol_threads_t *tmp = NULL;
+		while(proto->threads) {
 			tmp = proto->threads;
-			if(tmp->param) {
-				json_delete(tmp->param);
+			if(proto->threads->param) {
+				json_delete(proto->threads->param);
 			}
-			tmp = tmp->next;
+			proto->threads = proto->threads->next;
 			sfree((void *)&tmp);
 		}
 		sfree((void *)&proto->threads);

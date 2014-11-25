@@ -328,7 +328,12 @@ static int webserver_request_handler(struct mg_connection *conn) {
 				}
 				return MG_TRUE;
 			} else if(strcmp(conn->uri, "/config") == 0) {
-				JsonNode *jsend = config_print(0);
+				char media[15];
+				strcpy(media, "all");
+				if(conn->query_string != NULL) {
+					sscanf(conn->query_string, "media=%14s%*[ \n\r]", media);
+				}
+				JsonNode *jsend = config_print(1, media);
 				char *output = json_stringify(jsend, NULL);
 				mg_printf_data(conn, output);
 				json_delete(jsend);
@@ -336,7 +341,12 @@ static int webserver_request_handler(struct mg_connection *conn) {
 				jsend = NULL;
 				return MG_TRUE;
 			} else if(strcmp(conn->uri, "/values") == 0) {
-				JsonNode *jsend = devices_values();
+				char media[15];
+				strcpy(media, "all");
+				if(conn->query_string != NULL) {
+					sscanf(conn->query_string, "media=%14s%*[ \n\r]", media);
+				}
+				JsonNode *jsend = devices_values(media);
 				char *output = json_stringify(jsend, NULL);
 				mg_printf_data(conn, output);
 				json_delete(jsend);
@@ -714,14 +724,14 @@ static int webserver_request_handler(struct mg_connection *conn) {
 			char *action = NULL;
 			if(json_find_string(json, "action", &action) == 0) {
 				if(strcmp(action, "request config") == 0) {
-					JsonNode *jsend = config_print(0);
+					JsonNode *jsend = config_print(0, "web");
 					char *output = json_stringify(jsend, NULL);
 					size_t output_len = strlen(output);
 					mg_websocket_write(conn, 1, output, output_len);
 					sfree((void *)&output);
 					json_delete(jsend);
 				} else if(strcmp(action, "request values") == 0) {
-					JsonNode *jsend = devices_values();
+					JsonNode *jsend = devices_values("web");
 					char *output = json_stringify(jsend, NULL);
 					size_t output_len = strlen(output);
 					mg_websocket_write(conn, 1, output, output_len);
@@ -853,6 +863,7 @@ void *webserver_clientize(void *param) {
 	json_append_member(joptions, "config", json_mknumber(1, 0));
 	json_append_member(joptions, "core", json_mknumber(1, 0));
 	json_append_member(jclient, "options", joptions);
+	json_append_member(jclient, "media", json_mkstring("web"));
 	char *out = json_stringify(jclient, NULL);
 	socket_write(sockfd, out);
 	sfree((void *)&out);

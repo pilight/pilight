@@ -69,6 +69,7 @@ typedef struct clients_t {
 	int core;
 	int stats;
 	int forward;
+	char media[8];
 	double cpu;
 	double ram;
 	struct clients_t *next;
@@ -123,8 +124,8 @@ typedef struct bcqueue_t {
 	struct bcqueue_t *next;
 } bcqueue_t;
 
-static struct bcqueue_t *bcqueue = NULL;
-static struct bcqueue_t *bcqueue_head = NULL;
+static struct bcqueue_t *bcqueue;
+static struct bcqueue_t *bcqueue_head;
 
 static pthread_mutex_t bcqueue_lock;
 static pthread_cond_t bcqueue_signal;
@@ -321,24 +322,56 @@ void *broadcast(void *param) {
 				} else {
 					/* Update the config */
 					if(devices_update(bcqueue->protoname, bcqueue->jmessage, &jret) == 0) {
-						events_update(jret);
-
-						char *conf = json_stringify(jret, NULL);
+						events_queue(jret);
+						char *tmp = json_stringify(jret, NULL);
 						struct clients_t *tmp_clients = clients;
+						unsigned short match1 = 0, match2 = 0;
+
 						while(tmp_clients) {
 							if(tmp_clients->config == 1) {
-								socket_write(tmp_clients->id, conf);
-								broadcasted = 1;
+								struct JsonNode *jtmp = json_decode(tmp);
+								struct JsonNode *jdevices = json_find_member(jtmp, "devices");
+								if(jdevices != NULL) {
+									match1 = 0;
+									struct JsonNode *jchilds = json_first_child(jdevices);
+									struct gui_values_t *gui_values = NULL;
+									while(jchilds) {
+										match2 = 0;
+										if(jchilds->tag == JSON_STRING && (gui_values = gui_media(jchilds->string_)) != NULL) {
+											while(gui_values) {
+												if(gui_values->type == JSON_STRING) {
+													if(strcmp(gui_values->string_, tmp_clients->media) == 0 ||
+														 strcmp(gui_values->string_, "all") == 0 ||
+														 strcmp(tmp_clients->media, "all") == 0) {
+															match1 = 1;
+															match2 = 1;
+													}
+												}
+												gui_values = gui_values->next;
+											}
+										}
+										if(match2 == 0) {
+											json_remove_from_parent(jchilds);
+										}
+										struct JsonNode *jtmp1 = jchilds;
+										jchilds = jchilds->next;
+										if(match2 == 0) {
+											json_delete(jtmp1);
+										}
+									}
+								}
+								if(match1 == 1) {
+									char *conf = json_stringify(jtmp, NULL);
+									socket_write(tmp_clients->id, conf);
+									logprintf(LOG_DEBUG, "broadcasted: %s", conf);
+									sfree((void *)&conf);
+								}
+								json_delete(jtmp);
 							}
 							tmp_clients = tmp_clients->next;
 						}
 
-						if(broadcasted == 1) {
-							logprintf(LOG_DEBUG, "broadcasted: %s", conf);
-						}
-						sfree((void *)&conf);
-					}
-					if(jret) {
+						sfree((void *)&tmp);
 						json_delete(jret);
 					}
 
@@ -699,7 +732,7 @@ void *send_code(void *param) {
 				}
 				if(hw->receive) {
 					thread_signal(hw->id, SIGUSR2);
-				}			
+				}
 			} else {
 				if(strcmp(protocol->id, "raw") == 0) {
 					int plslen = protocol->raw[protocol->rawlen-1]/PULSE_DIV;
@@ -1069,7 +1102,7 @@ static void socket_parse_data(int i, char *buffer) {
 	struct clients_t *client = NULL;
 	int sd = -1;
 	int addrlen = sizeof(address);
-	char *action = NULL;
+	char *action = NULL, *media = NULL;
 	int error = 0, exists = 0;
 
 	if(runmode == 2) {
@@ -1107,17 +1140,17 @@ static void socket_parse_data(int i, char *buffer) {
 						tmp_clients = tmp_clients->next;
 					}
 				}
+				tmp_clients = clients;
+				while(tmp_clients) {
+					if(tmp_clients->id == sd) {
+						exists = 1;
+						client = tmp_clients;
+						break;
+					}
+					tmp_clients = tmp_clients->next;
+				}
 				if(strcmp(action, "identify") == 0) {
 					/* Check if client doesn't already exist */
-					tmp_clients = clients;
-					while(tmp_clients) {
-						if(tmp_clients->id == sd) {
-							exists = 1;
-							client = tmp_clients;
-							break;
-						}
-						tmp_clients = tmp_clients->next;
-					}
 					if(exists == 0) {
 						client = malloc(sizeof(struct clients_t));
 						client->core = 0;
@@ -1126,11 +1159,19 @@ static void socket_parse_data(int i, char *buffer) {
 						client->forward = 0;
 						client->cpu = 0;
 						client->ram = 0;
+						strcpy(client->media, "all");
 						client->next = NULL;
 						client->id = sd;
 						memset(client->uuid, '\0', sizeof(client->uuid));
 					}
-
+					if(json_find_string(json, "media", &media) == 0) {
+						if(strcmp(media, "all") == 0 || strcmp(media, "mobile") == 0 ||
+						   strcmp(media, "desktop") == 0 || strcmp(media, "web") == 0) {
+								strcpy(client->media, media);
+							 }
+					} else {
+						strcpy(client->media, "all");
+					}
 					if((options = json_find_member(json, "options")) != NULL) {
 						struct JsonNode *childs = json_first_child(options);
 						while(childs) {
@@ -1308,7 +1349,7 @@ static void socket_parse_data(int i, char *buffer) {
 					}
 				} else if(strcmp(action, "request config") == 0) {
 					struct JsonNode *jsend = json_mkobject();
-					struct JsonNode *jconfig = config_print(0);
+					struct JsonNode *jconfig = config_print(0, client->media);
 					json_append_member(jsend, "message", json_mkstring("config"));
 					json_append_member(jsend, "config", jconfig);
 					char *output = json_stringify(jsend, NULL);
@@ -1317,7 +1358,7 @@ static void socket_parse_data(int i, char *buffer) {
 					json_delete(jsend);
 				} else if(strcmp(action, "request values") == 0) {
 					struct JsonNode *jsend = json_mkobject();
-					struct JsonNode *jvalues = devices_values();
+					struct JsonNode *jvalues = devices_values(client->media);
 					json_append_member(jsend, "message", json_mkstring("values"));
 					json_append_member(jsend, "values", jvalues);
 					char *output = json_stringify(jsend, NULL);
@@ -1623,8 +1664,8 @@ int main_gc(void) {
 
 	while(sending) {
 		usleep(1000);
-	}	
-	
+	}
+
 	struct receive_wait_t *tmp = receive_wait;
 	while(tmp) {
 		tmp->wait = 0;
@@ -1727,7 +1768,7 @@ int main_gc(void) {
 		sfree((void *)&tmp);
 	}
 	sfree((void *)&receive_wait);
-	
+
 	sfree((void *)&progname);
 
 	return 0;
@@ -1965,18 +2006,6 @@ int main(int argc, char **argv) {
 		goto clear;
 	}
 	sfree((void *)&pilight_raw);
-
-	char *pilight_learn = strdup("pilight-learn");
-	if(!pilight_learn) {
-		logprintf(LOG_ERR, "out of memory");
-		exit(EXIT_FAILURE);
-	}
-	if((pid = findproc(pilight_learn, NULL, 1)) > 0) {
-		logprintf(LOG_ERR, "pilight-learn instance found (%d)", (int)pid);
-		sfree((void *)&pilight_learn);
-		goto clear;
-	}
-	sfree((void *)&pilight_learn);
 
 	char *pilight_debug = strdup("pilight-debug");
 	if(!pilight_debug) {

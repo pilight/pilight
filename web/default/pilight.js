@@ -596,9 +596,6 @@ function updateVersions() {
 function createGUI(data) {
 	$('#tabs').append($("<ul></ul>"));
 	$.each(data['gui'], function(dindex, dvalues) {
-		if(dvalues['media'].indexOf("web") == -1 && dvalues['media'].indexOf("all") == -1) {
-			return;
-		}
 		var lindex = dvalues['group'][0];
 		if(oWebsocket) {
 			$('#proc').text("CPU: ...% / RAM: ...%");

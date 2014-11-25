@@ -3,13 +3,13 @@
 
 	This file is part of pilight.
 
-	pilight is free software: you can redistribute it and/or modify it under the 
-	terms of the GNU General Public License as published by the Free Software 
-	Foundation, either version 3 of the License, or (at your option) any later 
+	pilight is free software: you can redistribute it and/or modify it under the
+	terms of the GNU General Public License as published by the Free Software
+	Foundation, either version 3 of the License, or (at your option) any later
 	version.
 
-	pilight is distributed in the hope that it will be useful, but WITHOUT ANY 
-	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR 
+	pilight is distributed in the hope that it will be useful, but WITHOUT ANY
+	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
 	You should have received a copy of the GNU General Public License
@@ -72,7 +72,7 @@ void event_action_init(void) {
 	void (*init)(void);
 	void (*compatibility)(struct module_t *module);
 	char path[255];
-	struct module_t module;	
+	struct module_t module;
 	char pilight_version[strlen(VERSION)+1];
 	char pilight_commit[3];
 	char *action_root = NULL;
@@ -163,14 +163,14 @@ void event_action_register(struct event_actions_t **act, const char *name) {
 	}
 	if(!((*act)->name = malloc(strlen(name)+1))) {
 		logprintf(LOG_ERR, "out of memory");
-		exit(EXIT_FAILURE);		
+		exit(EXIT_FAILURE);
 	}
 	strcpy((*act)->name, name);
 
 	(*act)->options = NULL;
 	(*act)->run = NULL;
 	(*act)->checkArguments = NULL;
-	
+
 	(*act)->next = event_actions;
 	event_actions = (*act);
 }

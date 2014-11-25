@@ -88,7 +88,7 @@ int devices_update(char *protoname, JsonNode *message, JsonNode **out);
 int devices_get(char *sid, struct devices_t **dev);
 int devices_valid_state(char *sid, char *state);
 int devices_valid_value(char *sid, char *name, char *value);
-struct JsonNode *devices_values(void);
+struct JsonNode *devices_values(const char *media);
 void devices_init(void);
 int devices_gc(void);
 

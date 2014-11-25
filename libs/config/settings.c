@@ -397,7 +397,7 @@ clear:
 	return have_error;
 }
 
-static JsonNode *settings_sync(int level) {
+static JsonNode *settings_sync(int level, const char *display) {
 	struct JsonNode *root = json_mkobject();
 	struct settings_t *tmp = settings;
 	while(tmp) {

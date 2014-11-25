@@ -59,7 +59,7 @@ void gc_handler(int sig) {
 		(!(sig == SIGINT || sig == SIGTERM || sig == SIGTSTP) && gc_enable == 0)) {
 		if(config_get_file() != NULL && gc_enable == 1) {
 			gc_enable = 0;
-			config_write(1);
+			config_write(1, "all");
 		}
 		gc_enable = 0;
 		config_gc();

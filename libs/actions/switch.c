@@ -53,7 +53,7 @@ static int actionSwitchArguments(struct JsonNode *arguments) {
 	}
 	json_find_string(jdevice, "value", &value1);
 	json_find_string(jstate, "value", &value2);
-	
+
 	struct devices_t *dev = NULL;
 	if(devices_get(value1, &dev) == 0) {
 		struct protocols_t *tmp = dev->protocols;
@@ -80,7 +80,7 @@ static int actionSwitchArguments(struct JsonNode *arguments) {
 		}
 	} else {
 		logprintf(LOG_ERR, "device \"%s\" doesn't exists", value1);
-		return -1;		
+		return -1;
 	}
 	return 0;
 }
@@ -108,7 +108,7 @@ __attribute__((weak))
 #endif
 void actionSwitchInit(void) {
 	event_action_register(&action_switch, "switch");
-	
+
 	options_add(&action_switch->options, 'a', "DEVICE", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_STRING, NULL, NULL);
 	options_add(&action_switch->options, 'b', "TO", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_STRING, NULL, NULL);
 

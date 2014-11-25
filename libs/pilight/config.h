@@ -26,15 +26,15 @@ typedef struct config_t {
 	int (*parse)(JsonNode *);
 	int readorder;
 	int writeorder;
-	JsonNode *(*sync)(int level);
+	JsonNode *(*sync)(int level, const char *media);
 	int (*gc)(void);
 	struct config_t *next;
 } config_t;
 
-int config_write(int level);
+int config_write(int level, const char *media);
 int config_read(void);
 int config_parse(struct JsonNode *root);
-struct JsonNode *config_print(int level);
+struct JsonNode *config_print(int level, const char *media);
 int config_set_file(char *settfile);
 void config_register(config_t **listener, const char *name);
 int config_gc(void);

@@ -35,6 +35,7 @@
 #include "options.h"
 #include "protocol.h"
 #include "config.h"
+#include "gui.h"
 #include "ssdp.h"
 #include "firmware.h"
 #include "datetime.h"
@@ -312,15 +313,14 @@ int devices_update(char *protoname, JsonNode *json, JsonNode **out) {
 											sptr->values->decimals = vdecimals_;
 											sptr->values->type = JSON_NUMBER;
 										}
-										if(json_find_string(rval, sptr->name, &stmp) != 0) {
-											if(sptr->values->type == JSON_STRING) {
-												json_append_member(rval, sptr->name, json_mkstring(sptr->values->string_));
-											} else if(sptr->values->type == JSON_NUMBER) {
-												json_append_member(rval, sptr->name, json_mknumber(sptr->values->number_, sptr->values->decimals));
-											}
-											dptr->timestamp = utct;
+										if(sptr->values->type == JSON_STRING && json_find_string(rval, sptr->name, &stmp) != 0) {
+											json_append_member(rval, sptr->name, json_mkstring(sptr->values->string_));
+											update = 1;
+										} else if(sptr->values->type == JSON_NUMBER && json_find_number(rval, sptr->name, &itmp) != 0) {
+											json_append_member(rval, sptr->name, json_mknumber(sptr->values->number_, sptr->values->decimals));
 											update = 1;
 										}
+										dptr->timestamp = utct;
 									}
 									//break;
 								}
@@ -350,16 +350,14 @@ int devices_update(char *protoname, JsonNode *json, JsonNode **out) {
 									dptr->timestamp = utct;
 									update = 1;
 								}
-								if(json_find_string(rval, sptr->name, &stmp) != 0) {
-									if(sptr->values->type == JSON_STRING) {
-										json_append_member(rval, sptr->name, json_mkstring(sptr->values->string_));
-									} else if(sptr->values->type == JSON_NUMBER) {
-										json_append_member(rval, sptr->name, json_mknumber(sptr->values->number_, sptr->values->decimals));
-									}
+								if(sptr->values->type == JSON_STRING && json_find_string(rval, sptr->name, &stmp) != 0) {
+									json_append_member(rval, sptr->name, json_mkstring(sptr->values->string_));
+								} else if(sptr->values->type == JSON_NUMBER && json_find_number(rval, sptr->name, &itmp) != 0) {
+									json_append_member(rval, sptr->name, json_mknumber(sptr->values->number_, sptr->values->decimals));
 								}
 								//break;
 							}
-							if(update) {
+							if(update == 1) {
 								match = 0;
 								struct JsonNode *jchild = json_first_child(rdev);
 								while(jchild) {
@@ -485,11 +483,12 @@ int devices_valid_value(char *sid, char *name, char *value) {
 	return 1;
 }
 
-struct JsonNode *devices_values(void) {
+struct JsonNode *devices_values(const char *media) {
 	/* Temporary pointer to the different structure */
 	struct devices_t *tmp_devices = NULL;
 	struct devices_settings_t *tmp_settings = NULL;
 	struct devices_values_t *tmp_values = NULL;
+	struct gui_values_t *gui_values = NULL;
 
 	/* Pointers to the newly created JSON object */
 	struct JsonNode *jroot = json_mkarray();
@@ -498,67 +497,89 @@ struct JsonNode *devices_values(void) {
 	struct JsonNode *jdevices = NULL;
 	struct options_t *opt = NULL;
 
+	int match = 0;
+
 	tmp_devices = devices;
 
 	while(tmp_devices) {
-		jelement = json_mkobject();
-		jdevices = json_mkarray();
-		jvalues = json_mkobject();
-
-		struct protocols_t *tmp_protocols = tmp_devices->protocols;
-		json_append_member(jelement, "type", json_mknumber(tmp_protocols->listener->devtype, 0));
-		json_append_element(jdevices, json_mkstring(tmp_devices->id));
-		json_append_member(jelement, "devices", jdevices);
-
-		json_append_member(jvalues, "timestamp", json_mknumber(tmp_devices->timestamp, 0));
-
-		tmp_settings = tmp_devices->settings;
-		while(tmp_settings) {
-			if(strcmp(tmp_settings->name, "state") == 0) {
-				tmp_values = tmp_settings->values;
-				if(tmp_values->type == JSON_NUMBER) {
-					json_append_member(jvalues, tmp_settings->name, json_mknumber(tmp_values->number_, tmp_values->decimals));
-				} else if(tmp_values->type == JSON_STRING) {
-					json_append_member(jvalues, tmp_settings->name, json_mkstring(tmp_values->string_));
-				}
-			}
-			tmp_settings = tmp_settings->next;
-		}
-
-		while(tmp_protocols) {
-			opt = tmp_protocols->listener->options;
-			while(opt) {
-				if(opt->conftype == DEVICES_VALUE || opt->conftype == DEVICES_OPTIONAL) {
-					tmp_settings = tmp_devices->settings;
-					while(tmp_settings) {
-						if(strcmp(tmp_settings->name, opt->name) == 0) {
-							tmp_values = tmp_settings->values;
-							if(tmp_values->type == JSON_NUMBER) {
-								json_append_member(jvalues, tmp_settings->name, json_mknumber(tmp_values->number_, tmp_values->decimals));
-							} else if(tmp_values->type == JSON_STRING) {
-								json_append_member(jvalues, tmp_settings->name, json_mkstring(tmp_values->string_));
-							}
-						}
-						tmp_settings = tmp_settings->next;
+		match = 0;
+		if((gui_values = gui_media(tmp_devices->id)) != NULL) {
+			while(gui_values) {
+				if(gui_values->type == JSON_STRING) {
+					if(strcmp(gui_values->string_, media) == 0 ||
+						 strcmp(gui_values->string_, "all") == 0 ||
+						 strcmp(media, "all") == 0) {
+							match = 1;
 					}
 				}
-				opt = opt->next;
+				gui_values = gui_values->next;
 			}
-			tmp_protocols = tmp_protocols->next;
 		}
-		json_append_member(jelement, "values", jvalues);
-		json_append_element(jroot, jelement);
+		if(strcmp(media, "all") == 0) {
+			match = 1;
+		}
+		if(match == 1) {
+			jelement = json_mkobject();
+			jdevices = json_mkarray();
+			jvalues = json_mkobject();
+
+			struct protocols_t *tmp_protocols = tmp_devices->protocols;
+			json_append_member(jelement, "type", json_mknumber(tmp_protocols->listener->devtype, 0));
+			json_append_element(jdevices, json_mkstring(tmp_devices->id));
+			json_append_member(jelement, "devices", jdevices);
+
+			json_append_member(jvalues, "timestamp", json_mknumber(tmp_devices->timestamp, 0));
+
+			tmp_settings = tmp_devices->settings;
+			while(tmp_settings) {
+				if(strcmp(tmp_settings->name, "state") == 0) {
+					tmp_values = tmp_settings->values;
+					if(tmp_values->type == JSON_NUMBER) {
+						json_append_member(jvalues, tmp_settings->name, json_mknumber(tmp_values->number_, tmp_values->decimals));
+					} else if(tmp_values->type == JSON_STRING) {
+						json_append_member(jvalues, tmp_settings->name, json_mkstring(tmp_values->string_));
+					}
+				}
+				tmp_settings = tmp_settings->next;
+			}
+
+			while(tmp_protocols) {
+				opt = tmp_protocols->listener->options;
+				while(opt) {
+					if(opt->conftype == DEVICES_VALUE || opt->conftype == DEVICES_OPTIONAL) {
+						tmp_settings = tmp_devices->settings;
+						while(tmp_settings) {
+							if(strcmp(tmp_settings->name, opt->name) == 0) {
+								tmp_values = tmp_settings->values;
+								if(tmp_values->type == JSON_NUMBER) {
+									json_append_member(jvalues, tmp_settings->name, json_mknumber(tmp_values->number_, tmp_values->decimals));
+								} else if(tmp_values->type == JSON_STRING) {
+									json_append_member(jvalues, tmp_settings->name, json_mkstring(tmp_values->string_));
+								}
+							}
+							tmp_settings = tmp_settings->next;
+						}
+					}
+					opt = opt->next;
+				}
+				tmp_protocols = tmp_protocols->next;
+			}
+			json_append_member(jelement, "values", jvalues);
+			json_append_element(jroot, jelement);
+		}
 		tmp_devices = tmp_devices->next;
 	}
 
 	return jroot;
 }
 
-struct JsonNode *devices_sync(int level) {
+struct JsonNode *devices_sync(int level, const char *media) {
 	/* Temporary pointer to the different structure */
 	struct devices_t *tmp_devices = NULL;
 	struct devices_settings_t *tmp_settings = NULL;
 	struct devices_values_t *tmp_values = NULL;
+	struct gui_values_t *gui_values = NULL;
+	int match = 0;
 
 	/* Pointers to the newly created JSON object */
 	struct JsonNode *jroot = json_mkobject();
@@ -570,84 +591,102 @@ struct JsonNode *devices_sync(int level) {
 	tmp_devices = devices;
 
 	while(tmp_devices) {
-		jdevice = json_mkobject();
-
-		struct protocols_t *tmp_protocols = tmp_devices->protocols;
-		struct JsonNode *jprotocols = json_mkarray();
-
-		if(level == 0 || (strlen(pilight_uuid) > 0 &&
-			(strcmp(tmp_devices->ori_uuid, pilight_uuid) == 0) &&
-			(strcmp(tmp_devices->dev_uuid, pilight_uuid) != 0))
-			|| tmp_devices->cst_uuid == 1) {
-			json_append_member(jdevice, "uuid", json_mkstring(tmp_devices->dev_uuid));
-		}
-		if(level == 0) {
-			json_append_member(jdevice, "origin", json_mkstring(tmp_devices->ori_uuid));
-			json_append_member(jdevice, "timestamp", json_mknumber((double)tmp_devices->timestamp, 0));
-		}
-
-		while(tmp_protocols) {
-			json_append_element(jprotocols, json_mkstring(tmp_protocols->name));
-			tmp_protocols = tmp_protocols->next;
-		}
-		json_append_member(jdevice, "protocol", jprotocols);
-		json_append_member(jdevice, "id", json_mkarray());
-
-		tmp_settings = tmp_devices->settings;
-		while(tmp_settings) {
-			tmp_values = tmp_settings->values;
-			if(strcmp(tmp_settings->name, "id") == 0) {
-				jid = json_find_member(jdevice, tmp_settings->name);
-				JsonNode *jnid = json_mkobject();
-				while(tmp_values) {
-					if(tmp_values->type == JSON_NUMBER) {
-						json_append_member(jnid, tmp_values->name, json_mknumber(tmp_values->number_, tmp_values->decimals));
-					} else if(tmp_values->type == JSON_STRING) {
-						json_append_member(jnid, tmp_values->name, json_mkstring(tmp_values->string_));
+		match = 0;
+		if((gui_values = gui_media(tmp_devices->id)) != NULL) {
+			while(gui_values) {
+				if(gui_values->type == JSON_STRING) {
+					if(strcmp(gui_values->string_, media) == 0 ||
+						 strcmp(gui_values->string_, "all") == 0 ||
+						 strcmp(media, "all") == 0) {
+							match = 1;
 					}
-					tmp_values = tmp_values->next;
 				}
-				json_append_element(jid, jnid);
-			} else if(!tmp_values->next) {
-				if(tmp_values->type == JSON_NUMBER) {
-					json_append_member(jdevice, tmp_settings->name, json_mknumber(tmp_values->number_, tmp_values->decimals));
-				} else if(tmp_values->type == JSON_STRING) {
-					json_append_member(jdevice, tmp_settings->name, json_mkstring(tmp_values->string_));
-				}
-			} else {
-				joptions = json_mkarray();
-				while(tmp_values) {
-					if(tmp_values->type == JSON_NUMBER) {
-						json_append_element(joptions, json_mknumber(tmp_values->number_, tmp_values->decimals));
-					} else if(tmp_values->type == JSON_STRING) {
-						json_append_element(joptions, json_mkstring(tmp_values->string_));
-					}
-					tmp_values = tmp_values->next;
-				}
-				json_append_member(jdevice, tmp_settings->name, joptions);
+				gui_values = gui_values->next;
 			}
-			tmp_settings = tmp_settings->next;
 		}
+		if(strcmp(media, "all") == 0) {
+			match = 1;
+		}
+		if(match == 1) {
+			jdevice = json_mkobject();
 
-		tmp_protocols = tmp_devices->protocols;
-		while(tmp_protocols) {
-			tmp_options = tmp_protocols->listener->options;
-			if(tmp_options) {
-				while(tmp_options) {
-					if(level == 0 && (tmp_options->conftype == DEVICES_SETTING)
-					&& json_find_member(jdevice, tmp_options->name) == NULL) {
-						if(tmp_options->vartype == JSON_NUMBER) {
-							json_append_member(jdevice, tmp_options->name, json_mknumber((int)(intptr_t)tmp_options->def, 0));
-						} else if(tmp_options->vartype == JSON_STRING) {
-							json_append_member(jdevice, tmp_options->name, json_mkstring((char *)tmp_options->def));
+			struct protocols_t *tmp_protocols = tmp_devices->protocols;
+			struct JsonNode *jprotocols = json_mkarray();
+
+			if(level == 0 || (strlen(pilight_uuid) > 0 &&
+				(strcmp(tmp_devices->ori_uuid, pilight_uuid) == 0) &&
+				(strcmp(tmp_devices->dev_uuid, pilight_uuid) != 0))
+				|| tmp_devices->cst_uuid == 1) {
+				json_append_member(jdevice, "uuid", json_mkstring(tmp_devices->dev_uuid));
+			}
+			if(level == 0) {
+				json_append_member(jdevice, "origin", json_mkstring(tmp_devices->ori_uuid));
+				json_append_member(jdevice, "timestamp", json_mknumber((double)tmp_devices->timestamp, 0));
+			}
+
+			while(tmp_protocols) {
+				json_append_element(jprotocols, json_mkstring(tmp_protocols->name));
+				tmp_protocols = tmp_protocols->next;
+			}
+			json_append_member(jdevice, "protocol", jprotocols);
+			json_append_member(jdevice, "id", json_mkarray());
+
+			tmp_settings = tmp_devices->settings;
+			while(tmp_settings) {
+				tmp_values = tmp_settings->values;
+				if(strcmp(tmp_settings->name, "id") == 0) {
+					jid = json_find_member(jdevice, tmp_settings->name);
+					JsonNode *jnid = json_mkobject();
+					while(tmp_values) {
+						if(tmp_values->type == JSON_NUMBER) {
+							json_append_member(jnid, tmp_values->name, json_mknumber(tmp_values->number_, tmp_values->decimals));
+						} else if(tmp_values->type == JSON_STRING) {
+							json_append_member(jnid, tmp_values->name, json_mkstring(tmp_values->string_));
 						}
+						tmp_values = tmp_values->next;
 					}
-					tmp_options = tmp_options->next;
+					json_append_element(jid, jnid);
+				} else if(!tmp_values->next) {
+					if(tmp_values->type == JSON_NUMBER) {
+						json_append_member(jdevice, tmp_settings->name, json_mknumber(tmp_values->number_, tmp_values->decimals));
+					} else if(tmp_values->type == JSON_STRING) {
+						json_append_member(jdevice, tmp_settings->name, json_mkstring(tmp_values->string_));
+					}
+				} else {
+					joptions = json_mkarray();
+					while(tmp_values) {
+						if(tmp_values->type == JSON_NUMBER) {
+							json_append_element(joptions, json_mknumber(tmp_values->number_, tmp_values->decimals));
+						} else if(tmp_values->type == JSON_STRING) {
+							json_append_element(joptions, json_mkstring(tmp_values->string_));
+						}
+						tmp_values = tmp_values->next;
+					}
+					json_append_member(jdevice, tmp_settings->name, joptions);
 				}
+				tmp_settings = tmp_settings->next;
 			}
-			tmp_protocols = tmp_protocols->next;
+
+			tmp_protocols = tmp_devices->protocols;
+			while(tmp_protocols) {
+				tmp_options = tmp_protocols->listener->options;
+				if(tmp_options) {
+					while(tmp_options) {
+						if(level == 0 && (tmp_options->conftype == DEVICES_SETTING)
+						&& json_find_member(jdevice, tmp_options->name) == NULL) {
+							if(tmp_options->vartype == JSON_NUMBER) {
+								json_append_member(jdevice, tmp_options->name, json_mknumber((int)(intptr_t)tmp_options->def, 0));
+							} else if(tmp_options->vartype == JSON_STRING) {
+								json_append_member(jdevice, tmp_options->name, json_mkstring((char *)tmp_options->def));
+							}
+						}
+						tmp_options = tmp_options->next;
+					}
+				}
+				tmp_protocols = tmp_protocols->next;
+			}
+			json_append_member(jroot, tmp_devices->id, jdevice);
 		}
-		json_append_member(jroot, tmp_devices->id, jdevice);
 		tmp_devices = tmp_devices->next;
 	}
 

@@ -243,7 +243,7 @@ int main(int argc, char **argv) {
 			printf("\t -p --protocol=protocol\t\tthe protocol that you want to control\n");
 			printf("\t -S --server=x.x.x.x\t\tconnect to server address\n");
 			printf("\t -P --port=xxxx\t\t\tconnect to server port\n");
-			printf("\t -F --config\t\t\tconfig file\n");
+			printf("\t -C --config\t\t\tconfig file\n");
 			printf("\t -U --uuid=xxx-xx-xx-xx-xxxxxx\tUUID\n");
 		}
 		if(protohelp == 1 && match == 1 && protocol->printHelp) {

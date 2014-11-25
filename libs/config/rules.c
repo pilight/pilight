@@ -31,6 +31,7 @@
 #include "common.h"
 #include "json.h"
 #include "rules.h"
+#include "gui.h"
 #include "http_lib.h"
 #include "log.h"
 #include "events.h"
@@ -70,7 +71,7 @@ static int rules_parse(JsonNode *root) {
 					if(match == 1) {
 						logprintf(LOG_ERR, "config rules #%d \"%s\" already exists", i, jrules->key);
 						have_error = 1;
-						break;					
+						break;
 					}
 					struct rules_t *node = malloc(sizeof(struct rules_t));
 					if(!node) {
@@ -118,23 +119,45 @@ static int rules_parse(JsonNode *root) {
 	} else {
 			logprintf(LOG_ERR, "config rules should be placed in an object");
 			have_error = 1;
-	}	
+	}
 
 	return have_error;
 }
 
-static JsonNode *rules_sync(int level) {
+static JsonNode *rules_sync(int level, const char *media) {
 	struct JsonNode *root = json_mkobject();
 	struct JsonNode *rule = NULL;
 	struct rules_t *tmp = NULL;
+	struct gui_values_t *gui_values = NULL;
+	int match = 0, i = 0;
 
 	tmp = rules;
-	
+
 	while(tmp) {
-		rule = json_mkobject();
-		json_append_member(rule, "rule", json_mkstring(tmp->rule));
-		json_append_member(rule, "active", json_mknumber((double)tmp->active, 0));
-		json_append_member(root, tmp->name, rule);
+		match = 0;
+		for(i=0;i<tmp->nrdevices;i++) {
+			if((gui_values = gui_media(tmp->devices[i])) != NULL) {
+				while(gui_values) {
+					if(gui_values->type == JSON_STRING) {
+						if(strcmp(gui_values->string_, media) == 0 ||
+							 strcmp(gui_values->string_, "all") == 0 ||
+							 strcmp(media, "all") == 0) {
+								match++;
+						}
+					}
+					gui_values = gui_values->next;
+				}
+			}
+		}
+		if(strcmp(media, "all") == 0) {
+			match = tmp->nrdevices;
+		}
+		if(match == tmp->nrdevices) {
+			rule = json_mkobject();
+			json_append_member(rule, "rule", json_mkstring(tmp->rule));
+			json_append_member(rule, "active", json_mknumber((double)tmp->active, 0));
+			json_append_member(root, tmp->name, rule);
+		}
 		tmp = tmp->next;
 	}
 	return root;

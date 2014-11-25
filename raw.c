@@ -124,7 +124,7 @@ int main(int argc, char **argv) {
 				printf("Usage: %s [options]\n", progname);
 				printf("\t -H --help\t\tdisplay usage summary\n");
 				printf("\t -V --version\t\tdisplay version\n");
-				printf("\t -F --config\t\tconfig file\n");
+				printf("\t -C --config\t\tconfig file\n");
 				goto close;
 			break;
 			case 'V':
@@ -154,18 +154,6 @@ int main(int argc, char **argv) {
 		goto close;
 	}
 	sfree((void *)&pilight_daemon);
-
-	char *pilight_learn = strdup("pilight-learn");
-	if(!pilight_learn) {
-		logprintf(LOG_ERR, "out of memory");
-		exit(EXIT_FAILURE);
-	}
-	if((pid = findproc(pilight_learn, NULL, 1)) > 0) {
-		logprintf(LOG_ERR, "pilight-learn instance found (%d)", (int)pid);
-		sfree((void *)&pilight_learn);
-		goto close;
-	}
-	sfree((void *)&pilight_learn);
 
 	char *pilight_debug = strdup("pilight-debug");
 	if(!pilight_debug) {

@@ -84,7 +84,7 @@ int main(int argc, char **argv) {
 				printf("\t -H --help\t\t\tdisplay this message\n");
 				printf("\t -V --version\t\t\tdisplay version\n");
 				printf("\t -S --server=x.x.x.x\t\tconnect to server address\n");
-				printf("\t -C --config\t\tconfig file\n");
+				printf("\t -C --config\t\t\tconfig file\n");
 				printf("\t -P --port=xxxx\t\t\tconnect to server port\n");
 				printf("\t -d --device=device\t\tthe device that you want to control\n");
 				printf("\t -s --state=state\t\tthe new state of the device\n");

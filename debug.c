@@ -311,30 +311,11 @@ int main(int argc, char **argv) {
 	}
 	sfree((void *)&pilight_raw);
 
-	char *pilight_learn = strdup("pilight-learn");
-	if(!pilight_learn) {
-		logprintf(LOG_ERR, "out of memory");
-		exit(EXIT_FAILURE);
-	}
-	if((pid = findproc(pilight_learn, NULL, 1)) > 0) {
-		logprintf(LOG_ERR, "pilight-learn instance found (%d)", (int)pid);
-		sfree((void *)&pilight_learn);
+	protocol_init();
+	config_init();
+	if(config_read() != EXIT_SUCCESS) {
 		goto clear;
 	}
-	sfree((void *)&pilight_learn);
-
-	if(config_read() != 0) {
-		goto clear;
-	}
-
-	hardware_init();
-
-	// if(config_find_string("hardware-file", &hwfile) == 0) {
-		// hardware_set_file(hwfile);
-		// if(hardware_read() == EXIT_FAILURE) {
-			// goto clear;
-		// }
-	// }
 
 	/* Start threads library that keeps track of all threads used */
 	threads_create(&pth, NULL, &threads_start, (void *)NULL);

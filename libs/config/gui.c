@@ -36,6 +36,30 @@
 
 static struct gui_elements_t *gui_elements = NULL;
 
+struct gui_values_t *gui_media(char *name) {
+	struct gui_elements_t *tmp_gui = NULL;
+	struct gui_settings_t *tmp_settings = NULL;
+	struct gui_values_t *tmp_values = NULL;
+	tmp_gui = gui_elements;
+
+	while(tmp_gui) {
+		if(strcmp(tmp_gui->id, name) == 0) {
+			tmp_settings = tmp_gui->settings;
+			while(tmp_settings) {
+				tmp_values = tmp_settings->values;
+				if(strcmp(tmp_settings->name, "media") == 0) {
+					return tmp_values;
+				}
+				tmp_settings = tmp_settings->next;
+			}
+			break;
+		}
+
+		tmp_gui = tmp_gui->next;
+	}
+	return NULL;
+}
+
 int gui_gc(void) {
 	struct gui_elements_t *dtmp;
 	struct gui_settings_t *stmp;
@@ -76,13 +100,13 @@ int gui_gc(void) {
 	return EXIT_SUCCESS;
 }
 
-struct JsonNode *gui_sync(int level) {
+struct JsonNode *gui_sync(int level, const char *media) {
 	/* Temporary pointer to the different structure */
 	struct gui_elements_t *tmp_gui = NULL;
 	struct gui_settings_t *tmp_settings = NULL;
 	struct gui_values_t *tmp_values = NULL;
 	struct options_t *tmp_options = NULL;
-	int i = 0;
+	int i = 0, match = 0;
 
 	/* Pointers to the newly created JSON object */
 	struct JsonNode *jroot = json_mkobject();
@@ -101,6 +125,7 @@ struct JsonNode *gui_sync(int level) {
 		}
 
 		tmp_settings = tmp_gui->settings;
+		match = 0;
 		while(tmp_settings) {
 			tmp_values = tmp_settings->values;
 			if(strcmp(tmp_settings->name, "group") == 0 || strcmp(tmp_settings->name, "media") == 0) {
@@ -112,6 +137,13 @@ struct JsonNode *gui_sync(int level) {
 					if(tmp_values->type == JSON_NUMBER) {
 						json_append_element(jarray, json_mknumber(tmp_values->number_, tmp_values->decimals));
 					} else if(tmp_values->type == JSON_STRING) {
+						if(strcmp(tmp_settings->name, "media") == 0) {
+							if(strcmp(tmp_values->string_, media) == 0 ||
+								 strcmp(tmp_values->string_, "all") == 0 ||
+							   strcmp(media, "all") == 0) {
+								match = 1;
+							}
+						}
 						json_append_element(jarray, json_mkstring(tmp_values->string_));
 					}
 					tmp_values = tmp_values->next;
@@ -141,6 +173,7 @@ struct JsonNode *gui_sync(int level) {
 			jarray = json_mkarray();
 			json_append_element(jarray, json_mkstring("all"));
 			json_append_member(jelements, "media", jarray);
+			match = 1;
 		}
 
 		struct protocols_t *tmp_protocols = tmp_gui->device->protocols;
@@ -161,7 +194,11 @@ struct JsonNode *gui_sync(int level) {
 			}
 			tmp_protocols = tmp_protocols->next;
 		}
-		json_append_member(jroot, tmp_gui->id, jelements);
+		if(match == 0) {
+			json_delete(jelements);
+		} else {
+			json_append_member(jroot, tmp_gui->id, jelements);
+		}
 		tmp_gui = tmp_gui->next;
 	}
 
@@ -407,7 +444,7 @@ int gui_parse_elements(struct JsonNode *root, struct gui_elements_t *parent, int
 			nrmedia++;
 		} else if(strcmp(jsettings->key, "name") == 0) {
 			nrname++;
-		} else if(strcmp(jsettings->key, "name") == 0) {
+		} else if(strcmp(jsettings->key, "order") == 0) {
 			nrorder++;
 		}
 		if(nrmedia > 1 || nrgroup > 1 || nrname > 1 || nrorder > 1) {
@@ -501,6 +538,16 @@ int gui_parse_elements(struct JsonNode *root, struct gui_elements_t *parent, int
 		}
 
 		jsettings = jsettings->next;
+	}
+	if(nrgroup == 0) {
+			logprintf(LOG_ERR, "config gui element #%d \"%s\", missing \"group\"", i, root->key);
+			have_error = 1;
+			goto clear;
+	}
+	if(nrname == 0) {
+			logprintf(LOG_ERR, "config gui element #%d \"%s\", missing \"name\"", i, root->key);
+			have_error = 1;
+			goto clear;
 	}
 
 clear:

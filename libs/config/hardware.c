@@ -122,7 +122,7 @@ static int hardware_gc(void) {
 	return EXIT_SUCCESS;
 }
 
-static JsonNode *hardware_sync(int level) {
+static JsonNode *hardware_sync(int level, const char *display) {
 	struct conf_hardware_t *tmp = conf_hardware;
 	struct JsonNode *root = json_mkobject();
 	while(tmp) {

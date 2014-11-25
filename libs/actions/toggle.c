@@ -32,7 +32,7 @@
 static int actionToggleArguments(struct JsonNode *arguments) {
 	struct JsonNode *jdevice = NULL;
 	struct JsonNode *jstate1 = NULL;
-	struct JsonNode *jstate2 = NULL;	
+	struct JsonNode *jstate2 = NULL;
 	double nr1 = 0.0, nr2 = 0.0, nr3 = 0.0;
 	char *value1 = NULL, *value2 = NULL, *value3 = NULL;
 	jdevice = json_find_member(arguments, "DEVICE");
@@ -49,7 +49,7 @@ static int actionToggleArguments(struct JsonNode *arguments) {
 	}
 	json_find_number(jdevice, "order", &nr1);
 	json_find_number(jstate1, "order", &nr2);
-	json_find_number(jstate2, "order", &nr3);	
+	json_find_number(jstate2, "order", &nr3);
 	if((int)nr1 != 1 || (int)nr2 != 2 || (int)nr3 != 3) {
 		logprintf(LOG_ERR, "toggle actions are formatted as \"toggle DEVICE ... BETWEEN ... AND ...\"");
 		return -1;
@@ -57,7 +57,7 @@ static int actionToggleArguments(struct JsonNode *arguments) {
 	json_find_string(jdevice, "value", &value1);
 	json_find_string(jstate1, "value", &value2);
 	json_find_string(jstate2, "value", &value3);
-	
+
 	struct devices_t *dev = NULL;
 	if(devices_get(value1, &dev) == 0) {
 		struct protocols_t *tmp = dev->protocols;
@@ -93,7 +93,7 @@ static int actionToggleArguments(struct JsonNode *arguments) {
 		}
 	} else {
 		logprintf(LOG_ERR, "device \"%s\" doesn't exists", value1);
-		return -1;		
+		return -1;
 	}
 	return 0;
 }
@@ -139,7 +139,7 @@ __attribute__((weak))
 #endif
 void actionToggleInit(void) {
 	event_action_register(&action_toggle, "toggle");
-	
+
 	options_add(&action_toggle->options, 'a', "DEVICE", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_STRING, NULL, NULL);
 	options_add(&action_toggle->options, 'b', "BETWEEN", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_STRING, NULL, NULL);
 	options_add(&action_toggle->options, 'c', "AND", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_STRING, NULL, NULL);
