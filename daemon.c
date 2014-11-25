@@ -62,7 +62,7 @@
 #endif
 
 typedef struct clients_t {
-	char uuid[21];
+	char uuid[UUID_LENGTH];
 	int id;
 	int receiver;
 	int config;
@@ -1172,6 +1172,8 @@ static void socket_parse_data(int i, char *buffer) {
 					} else {
 						strcpy(client->media, "all");
 					}
+					char *t = clients->uuid;
+					json_find_string(json, "uuid", &t);
 					if((options = json_find_member(json, "options")) != NULL) {
 						struct JsonNode *childs = json_first_child(options);
 						while(childs) {
@@ -1210,8 +1212,6 @@ static void socket_parse_data(int i, char *buffer) {
 								} else {
 									client->forward = 0;
 								}
-							} else if(strcmp(childs->key, "uuid") == 0 && childs->tag == JSON_STRING) {
-								strcpy(client->uuid, childs->string_);
 							} else {
 							   error = 1;
 							   break;
@@ -1532,7 +1532,7 @@ void *clientize(void *param) {
 		json_append_member(joptions, "receiver", json_mknumber(1, 0));
 		json_append_member(joptions, "forward", json_mknumber(1, 0));
 		json_append_member(joptions, "config", json_mknumber(1, 0));
-		json_append_member(joptions, "uuid", json_mkstring(pilight_uuid));
+		json_append_member(json, "uuid", json_mkstring(pilight_uuid));
 		json_append_member(json, "options", joptions);
 		output = json_stringify(json, NULL);
 		socket_write(sockfd, output);
