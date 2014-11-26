@@ -214,6 +214,7 @@ void clarusSwInit(void) {
 	protocol_device_add(clarus_switch, "clarus_switch", "Clarus Switches");
 	protocol_plslen_add(clarus_switch, 190);
 	protocol_plslen_add(clarus_switch, 180);
+	protocol_plslen_add(clarus_switch, 165);
 	clarus_switch->devtype = SWITCH;
 	clarus_switch->hwtype = RF433;
 	clarus_switch->pulse = 3;
@@ -235,7 +236,7 @@ void clarusSwInit(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name = "clarus_switch";
-	module->version = "0.9";
+	module->version = "0.10";
 	module->reqversion = "5.0";
 	module->reqcommit = "84";
 }
