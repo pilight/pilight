@@ -65,7 +65,7 @@ void arctechMotionInit(void) {
 	protocol_device_add(arctech_motion, "kaku_motion", "KlikAanKlikUit Motion Sensor");
 	protocol_plslen_add(arctech_motion, 279);
 
-	arctech_motion->devtype = SWITCH;
+	arctech_motion->devtype = MOTION;
 	arctech_motion->hwtype = RF433;
 	arctech_motion->pulse = 4;
 	arctech_motion->rawlen = 132;
@@ -85,9 +85,9 @@ void arctechMotionInit(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name = "arctech_motion";
-	module->version = "0.2";
+	module->version = "1.0";
 	module->reqversion = "5.0";
-	module->reqcommit = "84";
+	module->reqcommit = "99";
 }
 
 void init(void) {

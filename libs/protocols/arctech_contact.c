@@ -69,7 +69,7 @@ void arctechContactInit(void) {
 	protocol_plslen_add(arctech_contact, 305);
 	protocol_plslen_add(arctech_contact, 294);
 
-	arctech_contact->devtype = SWITCH;
+	arctech_contact->devtype = CONTACT;
 	arctech_contact->hwtype = RF433;
 	arctech_contact->pulse = 4;
 	arctech_contact->rawlen = 140;
@@ -91,7 +91,7 @@ void arctechContactInit(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name = "arctech_contact";
-	module->version = "1.2";
+	module->version = "1.3";
 	module->reqversion = "5.0";
 	module->reqcommit = "38";
 }

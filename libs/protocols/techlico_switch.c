@@ -64,7 +64,9 @@ static void techlicoSwParseCode(void) {
 		}
 	}
 
-	techlicoSwCreateMessage(id, unit, state);
+	if(unit > -1) {
+		techlicoSwCreateMessage(id, unit, state);
+	}
 }
 
 static void techlicoSwCreateHigh(int s, int e) {

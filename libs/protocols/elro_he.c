@@ -105,6 +105,8 @@ static void elroHECreateUnitCode(int unitcode) {
 static void elroHECreateState(int state) {
 	if(state == 1) {
 		elroHECreateHigh(44, 47);
+	} else {
+		elroHECreateHigh(40, 43);
 	}
 }
 
@@ -163,6 +165,7 @@ void elroHEInit(void) {
 	protocol_register(&elro_he);
 	protocol_set_id(elro_he, "elro_he");
 	protocol_device_add(elro_he, "elro_he", "Elro Home Easy Switches");
+	protocol_device_add(elro_he, "brennenstuhl", "Brennenstuhl Comfort");
 	protocol_plslen_add(elro_he, 288);
 	protocol_plslen_add(elro_he, 300);
 	elro_he->devtype = SWITCH;
@@ -187,7 +190,7 @@ void elroHEInit(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name = "elro_he";
-	module->version = "1.2";
+	module->version = "1.3";
 	module->reqversion = "5.0";
 	module->reqcommit = "84";
 }

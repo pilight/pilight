@@ -170,7 +170,6 @@ void elroHCInit(void) {
 	protocol_register(&elro_hc);
 	protocol_set_id(elro_hc, "elro_hc");
 	protocol_device_add(elro_hc, "elro_hc", "Elro Home Control Switches");
-	protocol_device_add(elro_hc, "brennenstuhl", "Brennenstuhl Comfort");
 	protocol_plslen_add(elro_hc, 296);
 	elro_hc->devtype = SWITCH;
 	elro_hc->hwtype = RF433;
@@ -194,7 +193,7 @@ void elroHCInit(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name = "elro_hc";
-	module->version = "1.1";
+	module->version = "1.2";
 	module->reqversion = "5.0";
 	module->reqcommit = "84";
 }

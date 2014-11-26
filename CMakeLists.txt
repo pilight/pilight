@@ -490,6 +490,11 @@ if(${PROTOCOL_TECHLICO} MATCHES "OFF")
 	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/techlico_switch.c")
 endif()
 
+if(${PROTOCOL_SC2262} MATCHES "OFF")
+	list(REMOVE_ITEM protocol_headers "${PROJECT_SOURCE_DIR}/libs/protocols/sc2262.h")
+	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/sc2262.c")
+endif()
+
 if(${HARDWARE_433_GPIO} MATCHES "OFF")
 	list(REMOVE_ITEM hardware_headers "${PROJECT_SOURCE_DIR}/libs/hardware/433gpio.h")
 	list(REMOVE_ITEM hardware "${PROJECT_SOURCE_DIR}/libs/hardware/433gpio.c")

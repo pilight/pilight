@@ -71,7 +71,7 @@ void conradRSLCnInit(void) {
 	protocol_set_id(conrad_rsl_contact, "conrad_rsl_contact");
 	protocol_device_add(conrad_rsl_contact, "conrad_rsl_contact", "Conrad RSL Contact Sensor");
 	protocol_plslen_add(conrad_rsl_contact, 190);
-	conrad_rsl_contact->devtype = SWITCH;
+	conrad_rsl_contact->devtype = CONTACT;
 	conrad_rsl_contact->hwtype = RF433;
 	conrad_rsl_contact->pulse = 5;
 	conrad_rsl_contact->rawlen = 66;
@@ -89,9 +89,9 @@ void conradRSLCnInit(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name = "conrad_rsl_contact";
-	module->version = "0.2";
+	module->version = "0.3";
 	module->reqversion = "5.0";
-	module->reqcommit = "84";
+	module->reqcommit = "99";
 }
 
 void init(void) {

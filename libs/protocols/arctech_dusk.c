@@ -65,7 +65,7 @@ void arctechDuskInit(void) {
 	protocol_device_add(arctech_dusk, "kaku_dusk", "KlikAanKlikUit Dusk Sensor");
 	protocol_plslen_add(arctech_dusk, 277);
 
-	arctech_dusk->devtype = SWITCH;
+	arctech_dusk->devtype = DUSK;
 	arctech_dusk->hwtype = RF433;
 	arctech_dusk->pulse = 4;
 	arctech_dusk->rawlen = 132;
@@ -85,7 +85,7 @@ void arctechDuskInit(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name = "arctech_dusk";
-	module->version = "1.0";
+	module->version = "1.1";
 	module->reqversion = "5.0";
 	module->reqcommit = "84";
 }

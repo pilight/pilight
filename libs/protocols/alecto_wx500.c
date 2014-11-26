@@ -122,6 +122,7 @@ static void alectoWX500ParseCode(void) {
 			temperature += temp_offset;
 			humidity += humi_offset;
 
+			json_append_member(alectoWX500->message, "id", json_mknumber(id, 0));
 			json_append_member(alectoWX500->message, "temperature", json_mknumber(temperature, 1));
 			json_append_member(alectoWX500->message, "humidity", json_mknumber(humidity, 1));
 			json_append_member(alectoWX500->message, "battery", json_mknumber(battery, 0));
@@ -131,6 +132,7 @@ static void alectoWX500ParseCode(void) {
 			windavg = binToDec(alectoWX500->binary, 24, 31) * 2;
 			battery = !alectoWX500->binary[8];
 
+			json_append_member(alectoWX500->message, "id", json_mknumber(id, 0));
 			json_append_member(alectoWX500->message, "windavg", json_mknumber((double)windavg/10, 1));
 			json_append_member(alectoWX500->message, "battery", json_mknumber(battery, 0));
 		break;
@@ -140,6 +142,7 @@ static void alectoWX500ParseCode(void) {
 			windgust = binToDec(alectoWX500->binary, 24, 31) * 2;
 			battery = !alectoWX500->binary[8];
 
+			json_append_member(alectoWX500->message, "id", json_mknumber(id, 0));
 			json_append_member(alectoWX500->message, "winddir", json_mknumber((double)winddir/10, 1));
 			json_append_member(alectoWX500->message, "windgust", json_mknumber((double)windgust/10, 1));
 			json_append_member(alectoWX500->message, "battery", json_mknumber(battery, 0));
@@ -149,6 +152,7 @@ static void alectoWX500ParseCode(void) {
 			/*rain = binToDec(alectoWX500->binary, 16, 30) * 5;*/
 			battery = !alectoWX500->binary[8];
 			//json_append_member(alectoWX500->message, "rain", json_mknumber((double)rain/10, 1));
+			json_append_member(alectoWX500->message, "id", json_mknumber(id, 0));
 			json_append_member(alectoWX500->message, "battery", json_mknumber(battery, 0));
 		break;
 		default:
@@ -268,7 +272,7 @@ void alectoWX500Init(void) {
 #ifdef MODULAR
 void compatibility(const char **version, const char **commit) {
 	module->name = "alecto_wx500";
-	module->version = "0.9";
+	module->version = "0.10";
 	module->reqversion = "5.0";
 	module->reqcommit = "84";
 }
