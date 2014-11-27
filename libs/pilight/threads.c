@@ -36,7 +36,7 @@ static pthread_cond_t threadqueue_signal;
 static pthread_mutexattr_t threadqueue_attr;
 
 static int threadqueue_number = 0;
-static struct threadqueue_t *threadqueue = NULL;
+static struct threadqueue_t *threadqueue;
 
 struct threadqueue_t *threads_register(const char *id, void *(*function)(void *param), void *param, int force) {
 	pthread_mutex_lock(&threadqueue_lock);

@@ -35,6 +35,9 @@
 #include "config.h"
 #include "hardware.h"
 #include "log.h"
+#include "datetime.h"
+#include "ssdp.h"
+#include "socket.h"
 #include "wiringX.h"
 #include "threads.h"
 #include "irq.h"
@@ -57,12 +60,18 @@ int main_gc(void) {
 		tmp_confhw = tmp_confhw->next;
 	}
 
+	datetime_gc();
+	ssdp_gc();
+	protocol_gc();
+	options_gc();
+	socket_gc();
+	dso_gc();
+
+	config_gc();
+	whitelist_free();
 	threads_gc();
 	pthread_join(pth, NULL);
 
-	options_gc();
-	config_gc();
-	dso_gc();
 	wiringXGC();
 	log_gc();
 

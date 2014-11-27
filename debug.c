@@ -37,6 +37,9 @@
 #include "options.h"
 #include "threads.h"
 #include "wiringX.h"
+#include "datetime.h"
+#include "ssdp.h"
+#include "socket.h"
 #include "irq.h"
 #include "gc.h"
 #include "dso.h"
@@ -66,11 +69,18 @@ int main_gc(void) {
 		tmp_confhw = tmp_confhw->next;
 	}
 
+	datetime_gc();
+	ssdp_gc();
+	protocol_gc();
+	options_gc();
+	socket_gc();
+	dso_gc();
+
+	config_gc();
+	whitelist_free();
 	threads_gc();
 	pthread_join(pth, NULL);
 
-	options_gc();
-	dso_gc();
 	wiringXGC();
 	log_gc();
 
@@ -81,7 +91,7 @@ int main_gc(void) {
 void *receive_code(void *param) {
 	int duration = 0;
 	int i = 0;
-	int y = 0;
+	unsigned int y = 0;
 
 	int recording = 1;
 	int bit = 0;
@@ -150,7 +160,7 @@ void *receive_code(void *param) {
 				y++;
 
 				/* Continue if we have 2 matches */
-				if(y>=2) {
+				if(y>=1) {
 					/* If we are certain we are recording similar codes. Save the raw code length. */
 					if(footer>0) {
 						if(rawLength == 0)
@@ -196,7 +206,7 @@ void *receive_code(void *param) {
 		}
 
 		binaryLength = (int)((float)i/4);
-		if(rawLength > 0 && normalize(pulse) > 0) {
+		if(rawLength > 0 && normalize(pulse) > 0 && rawLength > 25) {
 			/* Print everything */
 			printf("--[RESULTS]--\n");
 			printf("\n");

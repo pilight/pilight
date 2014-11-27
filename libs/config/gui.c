@@ -169,10 +169,12 @@ struct JsonNode *gui_sync(int level, const char *media) {
 			tmp_settings = tmp_settings->next;
 		}
 
-		if(level == 0 && !(jarray = json_find_member(jelements, "media"))) {
-			jarray = json_mkarray();
-			json_append_element(jarray, json_mkstring("all"));
-			json_append_member(jelements, "media", jarray);
+		if(!(jarray = json_find_member(jelements, "media"))) {
+			if(level == 0) {
+				jarray = json_mkarray();
+				json_append_element(jarray, json_mkstring("all"));
+				json_append_member(jelements, "media", jarray);
+			}
 			match = 1;
 		}
 

@@ -59,15 +59,13 @@ struct JsonNode
 		/* JSON_NUMBER */
 		double number_;
 
-		/* Decimals */
-		int decimals_;
-
 		/* JSON_ARRAY */
 		/* JSON_OBJECT */
 		struct {
 			JsonNode *head, *tail;
 		} children;
 	};
+	int decimals_;
 };
 
 /*** Encoding, decoding, and validation ***/

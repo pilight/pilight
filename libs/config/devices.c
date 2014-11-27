@@ -514,6 +514,8 @@ struct JsonNode *devices_values(const char *media) {
 				}
 				gui_values = gui_values->next;
 			}
+		} else {
+			match = 1;
 		}
 		if(strcmp(media, "all") == 0) {
 			match = 1;
@@ -603,6 +605,8 @@ struct JsonNode *devices_sync(int level, const char *media) {
 				}
 				gui_values = gui_values->next;
 			}
+		} else {
+			match = 1;
 		}
 		if(strcmp(media, "all") == 0) {
 			match = 1;

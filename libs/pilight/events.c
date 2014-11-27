@@ -176,7 +176,7 @@ static int event_lookup_variable(char *var, struct rules_t *obj, unsigned int nr
 						varcont->number_ = tmp_values->settings->values->number_;
 					}
 					cached = 1;
-					break;
+					return 0;
 			}
 			tmp_values = tmp_values->next;
 		}
@@ -422,7 +422,6 @@ static int event_parse_formula(char **rule, struct rules_t *obj, int depth, unsi
 		if(func && strlen(func) > 0 &&
 		   var1 && strlen(var1) > 0 &&
 		   var2 && strlen(var2) > 0) {
-
 			i = 0;
 			/* Check if the operator exists */
 			match = 0;
