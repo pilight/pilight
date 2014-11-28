@@ -658,7 +658,6 @@ static int event_parse_action(char *action, int validate) {
 		}
 		actions = actions->next;
 	}
-
 	if(match == 1) {
 		struct options_t *opt = actions->options;
 		struct JsonNode *joption = NULL;
@@ -708,7 +707,7 @@ static int event_parse_action(char *action, int validate) {
 			}
 		}
 		if(error == 0) {
-			if(validate) {
+			if(validate == 1) {
 				if(actions->checkArguments) {
 					error = actions->checkArguments(jargs);
 				}
@@ -718,6 +717,9 @@ static int event_parse_action(char *action, int validate) {
 				}
 			}
 		}
+	} else {
+		logprintf(LOG_ERR, "action \"%s\" doesn't exists", func);
+		error = 1;
 	}
 	json_delete(jargs);
 	if(func) {

@@ -236,7 +236,7 @@ void clarusSwInit(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name = "clarus_switch";
-	module->version = "0.10";
+	module->version = "1.0";
 	module->reqversion = "5.0";
 	module->reqcommit = "84";
 }
