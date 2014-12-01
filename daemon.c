@@ -284,7 +284,13 @@ void *broadcast(void *param) {
 
 	pthread_mutex_lock(&bcqueue_lock);
 	while(main_loop) {
-		if(bcqueue_number > 0) {
+		/* Check if we are called by an
+		   event action. If so, we don't
+			 want to trigger new broadcast 
+			 to prevent infinite event
+			 loops and therefore a deadlocks 
+			 in the events_queue function */
+		if(bcqueue_number > 0 && events_running() == -1) {
 			pthread_mutex_lock(&bcqueue_lock);
 
 			broadcasted = 0;
@@ -337,17 +343,23 @@ void *broadcast(void *param) {
 									struct gui_values_t *gui_values = NULL;
 									while(jchilds) {
 										match2 = 0;
-										if(jchilds->tag == JSON_STRING && (gui_values = gui_media(jchilds->string_)) != NULL) {
-											while(gui_values) {
-												if(gui_values->type == JSON_STRING) {
-													if(strcmp(gui_values->string_, tmp_clients->media) == 0 ||
-														 strcmp(gui_values->string_, "all") == 0 ||
-														 strcmp(tmp_clients->media, "all") == 0) {
-															match1 = 1;
-															match2 = 1;
+										if(jchilds->tag == JSON_STRING) {
+											if((gui_values = gui_media(jchilds->string_)) != NULL) {
+												printf("\n\n%s\n\n", bcqueue->protoname);
+												while(gui_values) {
+													if(gui_values->type == JSON_STRING) {
+														if(strcmp(gui_values->string_, tmp_clients->media) == 0 ||
+															 strcmp(gui_values->string_, "all") == 0 ||
+															 strcmp(tmp_clients->media, "all") == 0) {
+																match1 = 1;
+																match2 = 1;
+														}
 													}
+													gui_values = gui_values->next;
 												}
-												gui_values = gui_values->next;
+											} else {
+												match1 = 1;
+												match2 = 1;
 											}
 										}
 										if(match2 == 0) {

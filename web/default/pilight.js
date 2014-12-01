@@ -1025,10 +1025,14 @@ function startWebsockets() {
 				'theme': 'b'
 			});
 		};
+		run = 0;
 		oWebsocket.onmessage = function(evt) {
-			if(evt.data != "success" && evt.data != "failure") {
+			if(evt.data.indexOf('cpu') == -1 || run == 0) {
+				run = 1;
 				var data = $.parseJSON(evt.data);
-				parseData(data);
+				if(!('status' in data)) {
+					parseData(data);
+				}
 			}
 		}
 	}

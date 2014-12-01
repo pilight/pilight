@@ -66,6 +66,7 @@ typedef struct eventsqueue_t {
 static struct eventsqueue_t *eventsqueue;
 static struct eventsqueue_t *eventsqueue_head;
 static int eventsqueue_number = 0;
+static int running = 0;
 
 int event_parse_rule(char *rule, struct rules_t *obj, int depth, unsigned int nr, unsigned short validate);
 
@@ -853,6 +854,7 @@ void *events_loop(void *param) {
 	while(loop) {
 		if(eventsqueue_number > 0) {
 			pthread_mutex_lock(&events_lock);
+			running = 1;
 
 			jdevices = json_find_member(eventsqueue->jconfig, "devices");
 			tmp_rules = rules_get();
@@ -878,13 +880,13 @@ void *events_loop(void *param) {
 						}
 					}
 
-					if(match == 1) {
-						tmp_rules->status = 0;
+					if(match == 1 && tmp_rules->status == 0) {
 						if(event_parse_rule(str, tmp_rules, 0, 1, 0) == 0) {
 							if(tmp_rules->status) {
 								logprintf(LOG_DEBUG, "executed rule: %s", tmp_rules->name);
 							}
 						}
+						tmp_rules->status = 0;
 					}
 					sfree((void *)&str);
 				}
@@ -895,12 +897,17 @@ void *events_loop(void *param) {
 			eventsqueue = eventsqueue->next;
 			sfree((void *)&tmp);
 			eventsqueue_number--;
+			running = 0;
 			pthread_mutex_unlock(&events_lock);
 		} else {
 			pthread_cond_wait(&events_signal, &events_lock);
 		}
 	}
 	return (void *)NULL;
+}
+
+int events_running(void) {
+		return (running == 1) ? 0 : -1;
 }
 
 void events_queue(struct JsonNode *root) {
