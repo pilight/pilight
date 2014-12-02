@@ -85,12 +85,12 @@ static int actionDimArguments(struct JsonNode *arguments) {
 					struct options_t *opt = tmp_protocols->listener->options;
 					while(opt) {
 						if(match2 == 0 && strcmp(opt->name, "dimlevel-minimum") == 0 && 
-							opt->vartype == JSON_NUMBER && (int)opt->def > (int)value2) {
+							opt->vartype == JSON_NUMBER && (int)(intptr_t)opt->def > (int)value2) {
 							logprintf(LOG_ERR, "device \"%s\" can't be set to dimlevel \"%d\"", value1, (int)value2);
 							return -1;
 						}
 						if(match1 == 0 && strcmp(opt->name, "dimlevel-minimum") == 0 && 
-							opt->vartype == JSON_NUMBER && (int)opt->def > (int)value2) {
+							opt->vartype == JSON_NUMBER && (int)(intptr_t)opt->def > (int)value2) {
 							logprintf(LOG_ERR, "device \"%s\" can't be set to dimlevel \"%d\"", value1, (int)value2);
 							return -1;
 						}
