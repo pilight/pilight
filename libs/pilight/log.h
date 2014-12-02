@@ -21,6 +21,8 @@
 
 #include <syslog.h>
 
+#define LOG_STACK		255
+
 void logprintf(int prio, const char *format_str, ...);
 void logperror(int prio, const char *s);
 void log_file_enable(void);

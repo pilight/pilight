@@ -32,6 +32,8 @@ static char *shortarg = NULL;
 static char *gctmp = NULL;
 
 int options_gc(void) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	sfree((void *)&longarg);
 	sfree((void *)&shortarg);
 	sfree((void *)&gctmp);
@@ -42,6 +44,8 @@ int options_gc(void) {
 
 /* Add a value to the specific struct id */
 void options_set_string(struct options_t **opt, int id, const char *val) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	struct options_t *temp = *opt;
 	while(temp) {
 		if(temp->id == id && temp->id > 0) {
@@ -60,6 +64,8 @@ void options_set_string(struct options_t **opt, int id, const char *val) {
 
 /* Add a value to the specific struct id */
 void options_set_number(struct options_t **opt, int id, double val) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	struct options_t *temp = *opt;
 	while(temp) {
 		if(temp->id == id && temp->id > 0) {
@@ -73,6 +79,8 @@ void options_set_number(struct options_t **opt, int id, double val) {
 
 /* Get a certain option value identified by the id */
 int options_get_string(struct options_t **opt, int id, char **out) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	struct options_t *temp = *opt;
 	*out = NULL;
 	while(temp) {
@@ -92,6 +100,8 @@ int options_get_string(struct options_t **opt, int id, char **out) {
 
 /* Get a certain option value identified by the id */
 int options_get_number(struct options_t **opt, int id, double *out) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	struct options_t *temp = *opt;
 	*out = 0;
 	while(temp) {
@@ -109,6 +119,8 @@ int options_get_number(struct options_t **opt, int id, double *out) {
 
 /* Get a certain option argument type identified by the id */
 int options_get_argtype(struct options_t **opt, int id, int *out) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	struct options_t *temp = *opt;
 	*out = 0;
 	while(temp) {
@@ -128,6 +140,8 @@ int options_get_argtype(struct options_t **opt, int id, int *out) {
 
 /* Get a certain option argument type identified by the id */
 int options_get_conftype(struct options_t **opt, int id, int *out) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	struct options_t *temp = *opt;
 	*out = 0;
 	while(temp) {
@@ -147,6 +161,8 @@ int options_get_conftype(struct options_t **opt, int id, int *out) {
 
 /* Get a certain option name identified by the id */
 int options_get_name(struct options_t **opt, int id, char **out) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	struct options_t *temp = *opt;
 	*out = NULL;
 	while(temp) {
@@ -166,6 +182,8 @@ int options_get_name(struct options_t **opt, int id, char **out) {
 
 /* Get a certain regex mask identified by the name */
 int options_get_mask(struct options_t **opt, int id, char **out) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	struct options_t *temp = *opt;
 	*out = NULL;
 	while(temp) {
@@ -185,6 +203,8 @@ int options_get_mask(struct options_t **opt, int id, char **out) {
 
 /* Get a certain option id identified by the name */
 int options_get_id(struct options_t **opt, char *name, int *out) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	struct options_t *temp = *opt;
 	*out = 0;
 	while(temp) {
@@ -206,6 +226,8 @@ int options_get_id(struct options_t **opt, char *name, int *out) {
 
 /* Parse all CLI arguments */
 int options_parse(struct options_t **opt, int argc, char **argv, int error_check, char **optarg) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	int c = 0;
 	int itmp = 0;
 #ifndef __FreeBSD__
@@ -427,6 +449,8 @@ gc:
 
 /* Add a new option to the options struct */
 void options_add(struct options_t **opt, int id, const char *name, int argtype, int conftype, int vartype, void *def, const char *mask) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	char *ctmp = NULL;
 	char *nname = malloc(strlen(name)+1);
 	int sid = 0;
@@ -494,6 +518,8 @@ void options_add(struct options_t **opt, int id, const char *name, int argtype, 
 
 /* Merge two options structs */
 void options_merge(struct options_t **a, struct options_t **b) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	struct options_t *temp = NULL;
 	temp = *b;
 	while(temp) {
@@ -546,6 +572,8 @@ void options_merge(struct options_t **a, struct options_t **b) {
 }
 
 void options_delete(struct options_t *options) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	struct options_t *tmp;
 	while(options) {
 		tmp = options;

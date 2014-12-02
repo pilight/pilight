@@ -31,6 +31,7 @@
 #include <dirent.h>
 
 #include "proc.h"
+#include "log.h"
 
 /* RAM usage */
 static unsigned long totalram = 0;
@@ -42,6 +43,8 @@ static unsigned short initialized = 0;
 #endif
 
 double getCPUUsage(void) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	static struct cpu_usage_t cpu_usage;
 	if(!initialized) {
 		memset(&cpu_usage, '\0', sizeof(struct cpu_usage_t));
@@ -73,6 +76,8 @@ double getCPUUsage(void) {
 }
 
 void getThreadCPUUsage(pthread_t *pth, struct cpu_usage_t *cpu_usage) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	clockid_t cid;
 	memset(&cid, '\0', sizeof(cid));
 
@@ -96,6 +101,8 @@ void getThreadCPUUsage(pthread_t *pth, struct cpu_usage_t *cpu_usage) {
 }
 
 double getRAMUsage(void) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 #if defined(_SC_PHYS_PAGES) && defined(_SC_PAGESIZE)
 	if(totalram == 0) {
 		totalram = (size_t)sysconf(_SC_PHYS_PAGES)*(size_t)sysconf(_SC_PAGESIZE);

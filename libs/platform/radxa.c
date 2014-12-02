@@ -36,7 +36,9 @@
 
 #include "log.h"
 #include "radxa.h"
-#include "i2c-dev.h"
+#ifndef __FreeBSD__
+	#include "i2c-dev.h"
+#endif
 
 #define NUM_PINS	37
 
@@ -731,6 +733,7 @@ static int radxaGC(void) {
 	return 0;
 }
 
+#ifndef __FreeBSD__
 static int radxaI2CRead(int fd) {
 	return i2c_smbus_read_byte(fd);
 }
@@ -776,6 +779,7 @@ static int radxaI2CSetup(int devId) {
 
 	return fd;
 }
+#endif
 
 int radxaValidGPIO(int pin) {
 	int i = 0;
@@ -799,6 +803,7 @@ void radxaInit(void) {
 	radxa->identify=&radxaBoardRev;
 	radxa->isr=&radxaISR;
 	radxa->waitForInterrupt=&radxaWaitForInterrupt;
+#ifndef __FreeBSD__	
 	radxa->I2CRead=&radxaI2CRead;
 	radxa->I2CReadReg8=&radxaI2CReadReg8;
 	radxa->I2CReadReg16=&radxaI2CReadReg16;
@@ -806,6 +811,7 @@ void radxaInit(void) {
 	radxa->I2CWriteReg8=&radxaI2CWriteReg8;
 	radxa->I2CWriteReg16=&radxaI2CWriteReg16;
 	radxa->I2CSetup=&radxaI2CSetup;
+#endif
 	radxa->gc=&radxaGC;
 	radxa->validGPIO=&radxaValidGPIO;
 }

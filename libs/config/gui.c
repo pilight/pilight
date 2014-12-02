@@ -37,6 +37,8 @@
 static struct gui_elements_t *gui_elements = NULL;
 
 struct gui_values_t *gui_media(char *name) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	struct gui_elements_t *tmp_gui = NULL;
 	struct gui_settings_t *tmp_settings = NULL;
 	struct gui_values_t *tmp_values = NULL;

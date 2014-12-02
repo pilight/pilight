@@ -420,7 +420,13 @@ function createWeatherElement(sTabId, sDevId, aValues) {
 }
 
 function updateProcStatus(aValues) {
-	var obj = $('#proc').text("CPU: "+aValues['cpu'].toFixed(2)+"% / RAM: "+aValues['ram'].toFixed(2)+"%");
+	if('ram' in aValues && 'cpu' in aValues) {
+		var obj = $('#proc').text("CPU: "+aValues['cpu'].toFixed(2)+"% / RAM: "+aValues['ram'].toFixed(2)+"%");
+	} else if('ram' in aValues) {
+		var obj = $('#proc').text("RAM: "+aValues['ram'].toFixed(2)+"%");
+	} else if('cpu' in aValues) {
+		var obj = $('#proc').text("CPU: "+aValues['cpu'].toFixed(2)+"%");
+	}
 	obj.html(obj.html().replace(/\n/g,'<br/>'));
 }
 
@@ -597,9 +603,9 @@ function createGUI(data) {
 	$('#tabs').append($("<ul></ul>"));
 	$.each(data['gui'], function(dindex, dvalues) {
 		var lindex = dvalues['group'][0];
-		if(oWebsocket) {
-			$('#proc').text("CPU: ...% / RAM: ...%");
-		}
+		// if(oWebsocket) {
+			// $('#proc').text("CPU: ...% / RAM: ...%");
+		// }
 		if($('#'+alphaNum(lindex)).length == 0) {
 			if(bShowTabs) {
 				var oNavBar = $('#tabs');
@@ -1025,14 +1031,10 @@ function startWebsockets() {
 				'theme': 'b'
 			});
 		};
-		run = 0;
 		oWebsocket.onmessage = function(evt) {
-			if(evt.data.indexOf('cpu') == -1 || run == 0) {
-				run = 1;
-				var data = $.parseJSON(evt.data);
-				if(!('status' in data)) {
-					parseData(data);
-				}
+			var data = $.parseJSON(evt.data);
+			if(!('status' in data)) {
+				parseData(data);
 			}
 		}
 	}

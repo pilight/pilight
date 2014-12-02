@@ -37,6 +37,8 @@
 #include "protocol_header.h"
 
 void protocol_remove(char *name) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	struct protocols_t *currP, *prevP;
 
 	prevP = NULL;
@@ -91,6 +93,8 @@ void protocol_remove(char *name) {
 }
 
 void protocol_init(void) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	#include "protocol_init.h"
 	void *handle = NULL;
 	void (*init)(void);
@@ -181,6 +185,8 @@ void protocol_init(void) {
 }
 
 void protocol_register(protocol_t **proto) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	if(!(*proto = malloc(sizeof(struct protocol_t)))) {
 		logprintf(LOG_ERR, "out of memory");
 		exit(EXIT_FAILURE);
@@ -236,6 +242,8 @@ void protocol_register(protocol_t **proto) {
 }
 
 struct protocol_threads_t *protocol_thread_init(protocol_t *proto, struct JsonNode *param) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	struct protocol_threads_t *node = malloc(sizeof(struct protocol_threads_t));
 	node->param = param;
 	pthread_mutexattr_init(&node->attr);
@@ -248,6 +256,8 @@ struct protocol_threads_t *protocol_thread_init(protocol_t *proto, struct JsonNo
 }
 
 int protocol_thread_wait(struct protocol_threads_t *node, int interval, int *nrloops) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	struct timeval tp;
 	struct timespec ts;
 
@@ -270,6 +280,8 @@ int protocol_thread_wait(struct protocol_threads_t *node, int interval, int *nrl
 }
 
 void protocol_thread_stop(protocol_t *proto) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	if(proto->threads) {
 		struct protocol_threads_t *tmp = proto->threads;
 		while(tmp) {
@@ -281,6 +293,8 @@ void protocol_thread_stop(protocol_t *proto) {
 }
 
 void protocol_thread_free(protocol_t *proto) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	if(proto->threads) {
 		struct protocol_threads_t *tmp = NULL;
 		while(proto->threads) {
@@ -296,6 +310,8 @@ void protocol_thread_free(protocol_t *proto) {
 }
 
 void protocol_set_id(protocol_t *proto, const char *id) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	if(!(proto->id = malloc(strlen(id)+1))) {
 		logprintf(LOG_ERR, "out of memory");
 		exit(EXIT_FAILURE);
@@ -304,6 +320,8 @@ void protocol_set_id(protocol_t *proto, const char *id) {
 }
 
 void protocol_plslen_add(protocol_t *proto, int plslen) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	struct protocol_plslen_t *pnode = malloc(sizeof(struct protocol_plslen_t));
 	if(!pnode) {
 		logprintf(LOG_ERR, "out of memory");
@@ -315,6 +333,8 @@ void protocol_plslen_add(protocol_t *proto, int plslen) {
 }
 
 void protocol_device_add(protocol_t *proto, const char *id, const char *desc) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	struct protocol_devices_t *dnode = malloc(sizeof(struct protocol_devices_t));
 	if(!dnode) {
 		logprintf(LOG_ERR, "out of memory");
@@ -335,6 +355,8 @@ void protocol_device_add(protocol_t *proto, const char *id, const char *desc) {
 }
 
 int protocol_device_exists(protocol_t *proto, const char *id) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	struct protocol_devices_t *temp = proto->devices;
 
 	while(temp) {
@@ -348,6 +370,8 @@ int protocol_device_exists(protocol_t *proto, const char *id) {
 }
 
 int protocol_gc(void) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	struct protocols_t *ptmp;
 	struct protocol_devices_t *dtmp;
 	struct protocol_plslen_t *ttmp;

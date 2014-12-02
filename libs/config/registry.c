@@ -37,6 +37,8 @@
 struct JsonNode *registry = NULL;
 
 static int registry_get_value_recursive(struct JsonNode *root, const char *key, void **value, void **decimals, int type) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	char *sub = strstr(key, ".");
 	char *buff = malloc(strlen(key)+1);
 	strcpy(buff, key);
@@ -70,6 +72,8 @@ static int registry_get_value_recursive(struct JsonNode *root, const char *key, 
 }
 
 static int registry_set_value_recursive(struct JsonNode *root, const char *key, void *value, int decimals, int type) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	char *sub = strstr(key, ".");
 	char *buff = malloc(strlen(key)+1);
 	strcpy(buff, key);
@@ -120,6 +124,8 @@ static int registry_set_value_recursive(struct JsonNode *root, const char *key, 
 }
 
 static void registry_remove_empty_parent(struct JsonNode *root) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	struct JsonNode *parent = root->parent;
 	if(json_first_child(root) == NULL) {
 		if(parent != NULL) {
@@ -131,6 +137,8 @@ static void registry_remove_empty_parent(struct JsonNode *root) {
 }
 
 static int registry_remove_value_recursive(struct JsonNode *root, const char *key) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	char *sub = strstr(key, ".");
 	char *buff = malloc(strlen(key)+1);
 	strcpy(buff, key);
@@ -162,6 +170,8 @@ static int registry_remove_value_recursive(struct JsonNode *root, const char *ke
 }
 
 int registry_get_string(const char *key, char **value) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	if(registry == NULL) {
 		return -1;
 	}
@@ -169,6 +179,8 @@ int registry_get_string(const char *key, char **value) {
 }
 
 int registry_get_number(const char *key, double *value, int *decimals) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	if(registry == NULL) {
 		return -1;
 	}
@@ -183,6 +195,8 @@ int registry_get_number(const char *key, double *value, int *decimals) {
 }
 
 int registry_set_string(const char *key, char *value) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	if(registry == NULL) {
 		registry = json_mkobject();
 	}
@@ -190,6 +204,8 @@ int registry_set_string(const char *key, char *value) {
 }
 
 int registry_set_number(const char *key, double value, int decimals) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	if(registry == NULL) {
 		registry = json_mkobject();
 	}
@@ -198,6 +214,8 @@ int registry_set_number(const char *key, double value, int decimals) {
 }
 
 int registry_remove_value(const char *key) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	if(registry == NULL) {
 		return -1;
 	}

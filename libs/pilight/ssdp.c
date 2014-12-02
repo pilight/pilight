@@ -42,6 +42,8 @@ static int ssdp_socket = 0;
 static int ssdp_loop = 1;
 
 int ssdp_gc(void) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	struct sockaddr_in addr;
 	int sockfd = 0;
 
@@ -63,6 +65,8 @@ int ssdp_gc(void) {
 }
 
 int ssdp_start(void) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	struct sockaddr_in addr;
 	struct ip_mreq mreq;
 	int opt = 1;
@@ -94,6 +98,8 @@ int ssdp_start(void) {
 }
 
 int ssdp_seek(struct ssdp_list_t **ssdp_list) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	struct sockaddr_in addr;
 	struct timeval tv;
 	char message[BUFFER_SIZE] = {'\0'};
@@ -182,6 +188,8 @@ end:
 }
 
 void ssdp_free(struct ssdp_list_t *ssdp_list) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	struct ssdp_list_t *tmp = NULL;
 	while(ssdp_list) {
 		tmp = ssdp_list;
@@ -192,6 +200,8 @@ void ssdp_free(struct ssdp_list_t *ssdp_list) {
 }
 
 void *ssdp_wait(void *param) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	struct sockaddr_in addr;
 	struct ifaddrs *ifaddr, *ifa;
 	char message[BUFFER_SIZE];
@@ -304,5 +314,7 @@ void *ssdp_wait(void *param) {
 }
 
 void ssdp_close(int sock) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	close(sock);
 }

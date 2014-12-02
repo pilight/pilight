@@ -50,6 +50,8 @@ static pthread_mutexattr_t tzattr;
 static int tz_lock_initialized = 0;
 
 static int fillTZData(void) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	if(tz_lock_initialized == 0) {
 		pthread_mutexattr_init(&tzattr);
 		pthread_mutexattr_settype(&tzattr, PTHREAD_MUTEX_RECURSIVE);
@@ -159,6 +161,8 @@ int datetime_gc(void) {
 }
 
 char *coord2tz(double longitude, double latitude) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	if(fillTZData() == EXIT_FAILURE) {
 		return NULL;
 	}
@@ -221,6 +225,8 @@ char *coord2tz(double longitude, double latitude) {
 }
 
 time_t datetime2ts(int year, int month, int day, int hour, int minutes, int seconds, char *tz) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	char date[20];
 	time_t t;
 	struct tm tm = {0};
@@ -237,6 +243,8 @@ time_t datetime2ts(int year, int month, int day, int hour, int minutes, int seco
 }
 
 struct tm *localtztime(char *tz, time_t t) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	struct tm *tm = NULL;
 	setenv("TZ", tz, 1);
 	tm = localtime(&t);
@@ -245,7 +253,9 @@ struct tm *localtztime(char *tz, time_t t) {
 }
 
 int tzoffset(char *tz1, char *tz2) {
-    time_t utc, tzsearch, now;
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
+	time_t utc, tzsearch, now;
 	struct tm *tm = NULL;
 	now = time(NULL);
 	tm = localtime(&now);
@@ -259,16 +269,20 @@ int tzoffset(char *tz1, char *tz2) {
 }
 
 int ctzoffset(void) {
-    time_t tm1, tm2;
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
+	time_t tm1, tm2;
 	struct tm *t2;
-    tm1 = time(NULL);
-    t2 = gmtime(&tm1);
-    tm2 = mktime(t2);
+	tm1 = time(NULL);
+	t2 = gmtime(&tm1);
+	tm2 = mktime(t2);
 	localtime(&tm1);
 	return (int)((tm1 - tm2)/3600);
 }
 
 int isdst(char *tz) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	char UTC[] = "Europe/London";
 	time_t now = 0;
 	struct tm *tm = NULL;

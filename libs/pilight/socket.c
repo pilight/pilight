@@ -52,6 +52,8 @@ static int socket_server = 0;
 static int socket_clients[MAX_CLIENTS];
 
 int socket_gc(void) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	int x = 0;
 
 	socket_loop = 0;
@@ -80,6 +82,8 @@ int socket_gc(void) {
 
 /* Start the socket server */
 int socket_start(unsigned short port) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	//gc_attach(socket_gc);
 
 	struct sockaddr_in address;
@@ -142,18 +146,26 @@ int socket_start(unsigned short port) {
 }
 
 unsigned int socket_get_port(void) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	return socket_port;
 }
 
 int socket_get_fd(void) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	return socket_server;
 }
 
 int socket_get_clients(int i) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	return socket_clients[i];
 }
 
 int socket_connect(char *address, unsigned short port) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	struct sockaddr_in serv_addr;
 	int sockfd;
 	fd_set fdset;
@@ -198,8 +210,9 @@ int socket_connect(char *address, unsigned short port) {
 	}
 }
 
-
 void socket_close(int sockfd) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	int i = 0;
 	struct sockaddr_in address;
 	int addrlen = sizeof(address);
@@ -221,6 +234,8 @@ void socket_close(int sockfd) {
 }
 
 int socket_write(int sockfd, const char *msg, ...) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	va_list ap;
 	int bytes = -1;
 	int ptr = 0, n = 0, x = BUFFER_SIZE, len = (int)strlen(EOSS);
@@ -272,7 +287,9 @@ int socket_write(int sockfd, const char *msg, ...) {
 }
 
 void socket_rm_client(int i, struct socket_callback_t *socket_callback) {
-    struct sockaddr_in address;
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
+	struct sockaddr_in address;
 	int addrlen = sizeof(address);
 	int sd = socket_clients[i];
 
@@ -288,6 +305,8 @@ void socket_rm_client(int i, struct socket_callback_t *socket_callback) {
 }
 
 int socket_read(int sockfd, char **message) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	int bytes = 0;
 	size_t msglen = 0;
 	int ptr = 0, n = 0, len = (int)strlen(EOSS);
@@ -363,6 +382,8 @@ int socket_read(int sockfd, char **message) {
 }
 
 void *socket_wait(void *param) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	struct socket_callback_t *socket_callback = (struct socket_callback_t *)param;
 
 	int activity;

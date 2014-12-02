@@ -108,6 +108,8 @@ void logprintf(int prio, const char *format_str, ...) {
 				strcat(line, "NOTICE: ");
 			if(prio==LOG_DEBUG)
 				strcat(line, "DEBUG: ");
+			if(prio==LOG_STACK)
+				strcat(line, "STACK: ");
 			vsprintf(&line[strlen(line)], format_str, ap);
 			strcat(line, "\n");
 
@@ -154,6 +156,8 @@ void logprintf(int prio, const char *format_str, ...) {
 				fprintf(stderr, "NOTICE: ");
 			if(prio==LOG_DEBUG)
 				fprintf(stderr, "DEBUG: ");
+			if(prio==LOG_STACK)
+				fprintf(stderr, "STACK: ");
 			vfprintf(stderr, format_str, ap);
 			fputc('\n', stderr);
 			fflush(stderr);

@@ -43,6 +43,8 @@
 static struct config_t *config;
 
 static void sort_list(int r) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	struct config_t *a = NULL;
 	struct config_t *b = NULL;
 	struct config_t *c = NULL;
@@ -83,6 +85,8 @@ static void sort_list(int r) {
 static char *configfile = NULL;
 
 int config_gc(void) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	struct config_t *listeners;
 	while(config) {
 		listeners = config;
@@ -98,6 +102,8 @@ int config_gc(void) {
 }
 
 int config_parse(JsonNode *root) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	struct JsonNode *jconfig = NULL;
 	unsigned short error = 0;
 
@@ -124,6 +130,8 @@ int config_parse(JsonNode *root) {
 }
 
 JsonNode *config_print(int level, const char *media) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	struct JsonNode *root = json_mkobject();
 
 	sort_list(0);
@@ -142,6 +150,8 @@ JsonNode *config_print(int level, const char *media) {
 }
 
 int config_write(int level, const char *media) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	struct JsonNode *root = json_mkobject();
 	FILE *fp;
 
@@ -172,6 +182,8 @@ int config_write(int level, const char *media) {
 }
 
 int config_read(void) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	FILE *fp = NULL;
 	char *content = NULL;
 	size_t bytes = 0;
@@ -218,6 +230,8 @@ int config_read(void) {
 }
 
 void config_register(config_t **listener, const char *name) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	if(!(*listener = malloc(sizeof(config_t)))) {
 		logprintf(LOG_ERR, "out of memory");
 		exit(EXIT_FAILURE);
@@ -236,6 +250,8 @@ void config_register(config_t **listener, const char *name) {
 }
 
 int config_set_file(char *settfile) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	if(access(settfile, R_OK | W_OK) != -1) {
 		configfile = realloc(configfile, strlen(settfile)+1);
 		if(!configfile) {
@@ -252,10 +268,14 @@ int config_set_file(char *settfile) {
 }
 
 char *config_get_file(void) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	return configfile;
 }
 
 void config_init() {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	hardware_init();
 	settings_init();
 	devices_init();

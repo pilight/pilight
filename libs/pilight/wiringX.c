@@ -39,6 +39,8 @@ static struct platform_t *platform = NULL;
 static int setup = -2;
 
 void platform_register(struct platform_t **dev, const char *name) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	*dev = malloc(sizeof(struct platform_t));
 	(*dev)->pinMode = NULL;
 	(*dev)->digitalWrite = NULL;
@@ -63,6 +65,8 @@ void platform_register(struct platform_t **dev, const char *name) {
 }
 
 int wiringXGC(void) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	int i = 0;
 	if(platform) {
 		i = platform->gc();
@@ -81,6 +85,8 @@ int wiringXGC(void) {
 }
 
 void pinMode(int pin, int mode) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	if(platform) {
 		if(platform->pinMode) {
 			if(platform->pinMode(pin, mode) == -1) {
@@ -95,6 +101,8 @@ void pinMode(int pin, int mode) {
 }
 
 void digitalWrite(int pin, int value) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	if(platform) {
 		if(platform->digitalWrite) {
 			if(platform->digitalWrite(pin, value) == -1) {
@@ -109,6 +117,8 @@ void digitalWrite(int pin, int value) {
 }
 
 int digitalRead(int pin) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	if(platform) {
 		if(platform->digitalRead) {
 			int x = platform->digitalRead(pin);
@@ -127,6 +137,8 @@ int digitalRead(int pin) {
 }
 
 int waitForInterrupt(int pin, int ms) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	if(platform) {
 		if(platform->waitForInterrupt) {
 			int x = platform->waitForInterrupt(pin, ms);
@@ -145,6 +157,8 @@ int waitForInterrupt(int pin, int ms) {
 }
 
 int wiringXISR(int pin, int mode) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	if(platform) {
 		if(platform->isr) {
 			int x = platform->isr(pin, mode);
@@ -163,6 +177,8 @@ int wiringXISR(int pin, int mode) {
 }
 
 int wiringXI2CRead(int fd) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	if(platform) {
 		if(platform->I2CRead) {
 			int x = platform->I2CRead(fd);
@@ -181,6 +197,8 @@ int wiringXI2CRead(int fd) {
 }
 
 int wiringXI2CReadReg8(int fd, int reg) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	if(platform) {
 		if(platform->I2CReadReg8) {
 			int x = platform->I2CReadReg8(fd, reg);
@@ -199,6 +217,8 @@ int wiringXI2CReadReg8(int fd, int reg) {
 }
 
 int wiringXI2CReadReg16(int fd, int reg) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	if(platform) {
 		if(platform->I2CReadReg16) {
 			int x = platform->I2CReadReg16(fd, reg);
@@ -217,6 +237,8 @@ int wiringXI2CReadReg16(int fd, int reg) {
 }
 
 int wiringXI2CWrite(int fd, int data) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	if(platform) {
 		if(platform->I2CWrite) {
 			int x = platform->I2CWrite(fd, data);
@@ -235,6 +257,8 @@ int wiringXI2CWrite(int fd, int data) {
 }
 
 int wiringXI2CWriteReg8(int fd, int reg, int data) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	if(platform) {
 		if(platform->I2CWriteReg8) {
 			int x = platform->I2CWriteReg8(fd, reg, data);
@@ -253,6 +277,8 @@ int wiringXI2CWriteReg8(int fd, int reg, int data) {
 }
 
 int wiringXI2CWriteReg16(int fd, int reg, int data) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	if(platform) {
 		if(platform->I2CWriteReg16) {
 			int x = platform->I2CWriteReg16(fd, reg, data);
@@ -289,10 +315,14 @@ int wiringXI2CSetup(int devId) {
 }
 
 char *wiringXPlatform(void) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	return platform->name;
 }
 
 int wiringXValidGPIO(int gpio) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	if(platform) {
 		if(platform->validGPIO) {
 			return platform->validGPIO(gpio);
@@ -305,6 +335,9 @@ int wiringXValidGPIO(int gpio) {
 }
 
 int wiringXSetup(void) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
+#ifndef __FreeBSD__
 	if(setup == -2) {
 		hummingboardInit();
 		raspberrypiInit();
@@ -334,4 +367,6 @@ int wiringXSetup(void) {
 	} else {
 		return setup;
 	}
+#endif
+	return 0;
 }

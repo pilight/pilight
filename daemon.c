@@ -194,6 +194,10 @@ struct receive_wait_t *receive_wait;
 /* Gracefully stop receiving from a certain
    frequency when we are also sending it */
 static void receive_signal_handler(int sig) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
+	logprintf(LOG_STACK, "%s", __FUNCTION__);
+
 	struct receive_wait_t *tmp = receive_wait;
 	if(sig == SIGUSR1) {
 		pthread_mutex_lock(&receive_lock);
@@ -221,6 +225,8 @@ static void receive_signal_handler(int sig) {
 }
 
 static void client_remove(int id) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	struct clients_t *currP, *prevP;
 
 	prevP = NULL;
@@ -241,6 +247,8 @@ static void client_remove(int id) {
 }
 
 static void broadcast_queue(char *protoname, JsonNode *json) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	pthread_mutex_lock(&bcqueue_lock);
 	if(bcqueue_number <= 1024) {
 		struct bcqueue_t *bnode = malloc(sizeof(struct bcqueue_t));
@@ -280,6 +288,8 @@ static void broadcast_queue(char *protoname, JsonNode *json) {
 }
 
 void *broadcast(void *param) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	int broadcasted = 0;
 
 	pthread_mutex_lock(&bcqueue_lock);
@@ -292,6 +302,8 @@ void *broadcast(void *param) {
 			 in the events_queue function */
 		if(bcqueue_number > 0 && events_running() == -1) {
 			pthread_mutex_lock(&bcqueue_lock);
+
+			logprintf(LOG_STACK, "%s::unlocked", __FUNCTION__);
 
 			broadcasted = 0;
 			JsonNode *jret = NULL;
@@ -474,6 +486,8 @@ void *broadcast(void *param) {
 }
 
 static void receive_queue(int *raw, int rawlen, int plslen, int hwtype) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	int i = 0;
 
 	pthread_mutex_lock(&recvqueue_lock);
@@ -507,6 +521,8 @@ static void receive_queue(int *raw, int rawlen, int plslen, int hwtype) {
 }
 
 static void receiver_create_message(protocol_t *protocol) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	if(protocol->message) {
 		char *valid = json_stringify(protocol->message, NULL);
 		json_delete(protocol->message);
@@ -536,11 +552,14 @@ static void receiver_create_message(protocol_t *protocol) {
 }
 
 void *receive_parse_code(void *param) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
 	pthread_mutex_lock(&recvqueue_lock);
 	while(main_loop) {
 		if(recvqueue_number > 0) {
 			pthread_mutex_lock(&recvqueue_lock);
+
+			logprintf(LOG_STACK, "%s::unlocked", __FUNCTION__);
 
 			struct protocol_t *protocol = NULL;
 			struct protocols_t *pnode = protocols;
@@ -667,6 +686,8 @@ void *receive_parse_code(void *param) {
 }
 
 void *send_code(void *param) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	int i = 0;
 	struct sched_param sched;
 
@@ -681,6 +702,9 @@ void *send_code(void *param) {
 	while(main_loop) {
 		if(sendqueue_number > 0) {
 			pthread_mutex_lock(&sendqueue_lock);
+
+			logprintf(LOG_STACK, "%s::unlocked", __FUNCTION__);
+
 			sending = 1;
 
 			struct protocol_t *protocol = sendqueue->protopt;
@@ -780,6 +804,8 @@ void *send_code(void *param) {
 
 /* Send a specific code */
 static int send_queue(JsonNode *json) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	int match = 0, x = 0;
 	struct timeval tcurrent;
 	char *uuid = NULL;
@@ -921,6 +947,8 @@ static int send_queue(JsonNode *json) {
 
 #ifdef WEBSERVER
 static void client_webserver_parse_code(int i, char buffer[BUFFER_SIZE]) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	int sd = socket_get_clients(i);
 	int x = 0;
 	FILE *f;
@@ -1004,6 +1032,8 @@ static void client_webserver_parse_code(int i, char buffer[BUFFER_SIZE]) {
 #endif
 
 static int control_device(struct devices_t *dev, char *state, JsonNode *values) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	struct devices_settings_t *sett = NULL;
 	struct devices_values_t *val = NULL;
 	struct options_t *opt = NULL;
@@ -1107,6 +1137,8 @@ static int control_device(struct devices_t *dev, char *state, JsonNode *values) 
 
 /* Parse the incoming buffer from the client */
 static void socket_parse_data(int i, char *buffer) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	struct sockaddr_in address;
 	struct JsonNode *json = NULL;
 	struct JsonNode *options = NULL;
@@ -1428,10 +1460,14 @@ static void socket_parse_data(int i, char *buffer) {
 }
 
 static void socket_client_disconnected(int i) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	client_remove(socket_get_clients(i));
 }
 
 void *receive_code(void *param) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	struct sched_param sched;
 	int plslen = 0, rawlen = 0;
 	int rawcode[255] = {0};
@@ -1464,6 +1500,8 @@ void *receive_code(void *param) {
 	while(main_loop && hw->receive) {
 		if(tmp->wait == 0) {
 			pthread_mutex_lock(&receive_lock);
+
+			logprintf(LOG_STACK, "%s::unlocked", __FUNCTION__);
 			duration = hw->receive();
 
 			if(duration > 0) {
@@ -1501,6 +1539,8 @@ void *receive_code(void *param) {
 }
 
 void *clientize(void *param) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	struct ssdp_list_t *ssdp_list = NULL;
 	struct JsonNode *json = NULL;
 	struct JsonNode *joptions = NULL;
@@ -1636,6 +1676,8 @@ close:
 }
 
 static void save_pid(pid_t npid) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	int f = 0;
 	char buffer[BUFFER_SIZE];
 	memset(buffer, '\0', BUFFER_SIZE);
@@ -1651,6 +1693,8 @@ static void save_pid(pid_t npid) {
 }
 
 static void daemonize(void) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	log_file_enable();
 	log_shell_disable();
 	/* Get the pid of the fork */
@@ -1672,6 +1716,7 @@ static void daemonize(void) {
 
 /* Garbage collector of main program */
 int main_gc(void) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
 	main_loop = 0;
 
@@ -1788,6 +1833,8 @@ int main_gc(void) {
 }
 
 static void procProtocolInit(void) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	protocol_register(&procProtocol);
 	protocol_set_id(procProtocol, "process");
 	protocol_device_add(procProtocol, "process", "pilight proc. API");
@@ -1802,6 +1849,8 @@ static void procProtocolInit(void) {
 
 #ifdef FIRMWARE_UPDATER
 void *firmware_loop(void *param) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	unsigned int interval = 1;
 	char fwfile[4096] = {'\0'};
 	int fwupdate = 0;
@@ -1838,6 +1887,8 @@ void *firmware_loop(void *param) {
 #pragma GCC diagnostic push  // require GCC 4.6
 #pragma GCC diagnostic ignored "-Wcast-qual"
 void registerVersion(void) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	registry_remove_value("pilight.version");
 	registry_set_string("pilight.version.current", (char *)VERSION);
 }
@@ -1850,6 +1901,7 @@ int main(int argc, char **argv) {
 
 	struct ifaddrs *ifaddr, *ifa;
 	int family = 0;
+	int verbosity = LOG_DEBUG;
 	char *p = NULL;
 
 	progname = malloc(16);
@@ -1936,6 +1988,7 @@ int main(int argc, char **argv) {
 	options_add(&options, 'H', "help", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
 	options_add(&options, 'V', "version", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
 	options_add(&options, 'D', "nodaemon", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
+	options_add(&options, 'X', "verbose-stack", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
 	options_add(&options, 'Z', "threadstats", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
 	options_add(&options, 'Y', "stats", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
 	options_add(&options, 'C', "config", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, NULL);
@@ -1957,6 +2010,9 @@ int main(int argc, char **argv) {
 			break;
 			case 'V':
 				show_version = 1;
+			break;
+			case 'X':
+				verbosity = LOG_STACK;
 			break;
 			case 'C':
 				configtmp = realloc(configtmp, strlen(args)+1);
@@ -2115,7 +2171,7 @@ int main(int argc, char **argv) {
 		log_shell_enable();
 
 		if(nodaemon == 1) {
-			log_level_set(LOG_DEBUG);
+			log_level_set(verbosity);
 		} else {
 			log_level_set(LOG_ERR);
 		}
@@ -2362,20 +2418,20 @@ int main(int argc, char **argv) {
 				if(ram > 0) {
 					json_append_member(code, "ram", json_mknumber(ram, 16));
 				}
-				logprintf(LOG_DEBUG, "cpu: %f% ram: %f%", cpu, ram);
+				logprintf(LOG_DEBUG, "cpu: %f%, ram: %f%", cpu, ram);
 				json_append_member(procProtocol->message, "values", code);
 				json_append_member(procProtocol->message, "origin", json_mkstring("core"));
 				json_append_member(procProtocol->message, "type", json_mknumber(PROC, 0));
 				struct clients_t *tmp_clients = clients;
 				while(tmp_clients) {
 					if(tmp_clients->cpu > 0 && tmp_clients->ram > 0) {
-						logprintf(LOG_DEBUG, "- client: %s cpu: %f% ram: %f%",
+						logprintf(LOG_DEBUG, "- client: %s cpu: %f%, ram: %f%",
 								  tmp_clients->uuid, tmp_clients->cpu, tmp_clients->ram);
 					}
 					tmp_clients = tmp_clients->next;
 				}
 				if(nodaemon == 3) {
-					logprintf(LOG_ERR, "cpu: %.16f% ram: %.16f%", cpu, ram);
+					logprintf(LOG_DEBUG, "cpu: %.16f%, ram: %.16f%", cpu, ram);
 				}
 				pilight.broadcast(procProtocol->id, procProtocol->message);
 				json_delete(procProtocol->message);

@@ -44,6 +44,8 @@
 static struct devices_t *devices = NULL;
 
 int devices_update(char *protoname, JsonNode *json, JsonNode **out) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	/* The pointer to the devices devices */
 	struct devices_t *dptr = devices;
 	/* The pointer to the device settings */
@@ -400,6 +402,8 @@ int devices_update(char *protoname, JsonNode *json, JsonNode **out) {
 }
 
 int devices_get(char *sid, struct devices_t **dev) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	struct devices_t *dptr = NULL;
 
 	dptr = devices;
@@ -417,6 +421,8 @@ int devices_get(char *sid, struct devices_t **dev) {
 }
 
 int devices_valid_state(char *sid, char *state) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	struct devices_t *dptr = NULL;
 	struct protocol_t *protocol = NULL;
 	struct options_t *options = NULL;
@@ -443,6 +449,8 @@ int devices_valid_state(char *sid, char *state) {
 }
 
 int devices_valid_value(char *sid, char *name, char *value) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	struct devices_t *dptr = NULL;
 	struct options_t *opt = NULL;
 	struct protocols_t *tmp_protocol = NULL;

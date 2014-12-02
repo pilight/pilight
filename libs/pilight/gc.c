@@ -27,6 +27,7 @@
 
 #include "gc.h"
 #include "json.h"
+#include "log.h"
 #include "devices.h"
 #include "common.h"
 #include "config.h"
@@ -34,6 +35,8 @@
 static unsigned short gc_enable = 1;
 
 void gc_handler(int sig) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	switch(sig) {
 		case SIGSEGV:
 		case SIGBUS:
@@ -69,6 +72,8 @@ void gc_handler(int sig) {
 
 /* Add function to gc */
 void gc_attach(int (*fp)(void)) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	struct collectors_t *gnode = malloc(sizeof(struct collectors_t));
 	if(!gnode) {
 		fprintf(stderr, "out of memory\n");
@@ -80,6 +85,8 @@ void gc_attach(int (*fp)(void)) {
 }
 
 void gc_clear(void) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	struct collectors_t *tmp = gc;
 	while(gc) {
 		tmp = gc;
@@ -91,7 +98,9 @@ void gc_clear(void) {
 
 /* Run the GC manually */
 int gc_run(void) {
-    unsigned int s = 0;
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
+	unsigned int s = 0;
 	struct collectors_t *tmp = gc;
 
 	while(tmp) {
@@ -116,6 +125,8 @@ int gc_run(void) {
 
 /* Initialize the catch all gc */
 void gc_catch(void) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	struct sigaction act;
 	memset(&act, 0, sizeof(act));
 	act.sa_handler = gc_handler;

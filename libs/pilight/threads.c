@@ -39,6 +39,8 @@ static int threadqueue_number = 0;
 static struct threadqueue_t *threadqueue;
 
 struct threadqueue_t *threads_register(const char *id, void *(*function)(void *param), void *param, int force) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	pthread_mutex_lock(&threadqueue_lock);
 
 	struct threadqueue_t *tnode = malloc(sizeof(struct threadqueue_t));
@@ -92,6 +94,8 @@ struct threadqueue_t *threads_register(const char *id, void *(*function)(void *p
 }
 
 void threads_create(pthread_t *pth, const pthread_attr_t *attr,  void *(*start_routine) (void *), void *arg) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	sigset_t new, old;
 	sigemptyset(&new);
 	sigaddset(&new, SIGINT);
@@ -103,6 +107,8 @@ void threads_create(pthread_t *pth, const pthread_attr_t *attr,  void *(*start_r
 }
 
 void thread_signal(char *id, int s) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	struct threadqueue_t *tmp_threads = threadqueue;
 	while(tmp_threads) {
 		if(strcmp(tmp_threads->id, id) == 0) {
@@ -114,6 +120,8 @@ void thread_signal(char *id, int s) {
 }
 
 void *threads_start(void *param) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	pthread_mutexattr_init(&threadqueue_attr);
 	pthread_mutexattr_settype(&threadqueue_attr, PTHREAD_MUTEX_RECURSIVE);
 	pthread_mutex_init(&threadqueue_lock, &threadqueue_attr);
@@ -125,6 +133,9 @@ void *threads_start(void *param) {
 	while(thread_loop) {
 		if(threadqueue_number > 0) {
 			pthread_mutex_lock(&threadqueue_lock);
+
+			logprintf(LOG_STACK, "%s::unlocked", __FUNCTION__);
+
 			tmp_threads = threadqueue;
 			while(tmp_threads) {
 				if(tmp_threads->running == 0) {
@@ -151,6 +162,8 @@ void *threads_start(void *param) {
 }
 
 void thread_stop(char *id) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	struct threadqueue_t *currP, *prevP;
 
 	prevP = NULL;
@@ -187,6 +200,8 @@ void thread_stop(char *id) {
 }
 
 void threads_cpu_usage(int print) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	if(print) {
 		logprintf(LOG_ERR, "----- Thread Profiling -----");
 	}
@@ -208,6 +223,8 @@ void threads_cpu_usage(int print) {
 }
 
 int threads_gc(void) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	thread_loop = 0;
 
 	pthread_mutex_unlock(&threadqueue_lock);

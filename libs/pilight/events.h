@@ -25,5 +25,6 @@ int event_parse_rule(char *rule, struct rules_t *obj, int depth, unsigned int nr
 void events_queue(struct JsonNode *jconfig);
 int events_gc(void);
 void *events_loop(void *param);
+int events_running(void);
 
 #endif

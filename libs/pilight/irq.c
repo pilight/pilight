@@ -44,6 +44,8 @@ timestamp_t timestamp;
    Whenever an rising, falling or changing interrupt occurs
    the function given as the last argument will be called */
 int irq_read(int gpio) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	int x = waitForInterrupt(gpio, 1000);
 	if(x > 0) {
 		struct timeval tv;

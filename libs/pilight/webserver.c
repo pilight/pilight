@@ -87,6 +87,8 @@ static pthread_mutexattr_t webqueue_attr;
 static int webqueue_number = 0;
 
 int webserver_gc(void) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	int i = 0;
 
 	webserver_loop = 0;
@@ -122,6 +124,8 @@ static struct filehandler_t {
 } filehandler_t;
 
 void webserver_create_header(unsigned char **p, const char *message, char *mimetype, unsigned int len) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	*p += sprintf((char *)*p,
 		"HTTP/1.0 %s\r\n"
 		"Server: pilight\r\n"
@@ -133,6 +137,8 @@ void webserver_create_header(unsigned char **p, const char *message, char *mimet
 }
 
 static void webserver_create_minimal_header(unsigned char **p, const char *message, unsigned int len) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	*p += sprintf((char *)*p,
 		"HTTP/1.1 %s\r\n"
 		"Server: pilight\r\n",
@@ -143,6 +149,8 @@ static void webserver_create_minimal_header(unsigned char **p, const char *messa
 }
 
 static void webserver_create_404(const char *in, unsigned char **p) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	char mimetype[] = "text/html";
 	webserver_create_header(p, "404 Not Found", mimetype, (unsigned int)(202+strlen((const char *)in)));
 	*p += sprintf((char *)*p, "<!DOCTYPE HTML PUBLIC \"-//IETF//DTD HTML 2.0//EN\">\x0d\x0a"
@@ -156,6 +164,8 @@ static void webserver_create_404(const char *in, unsigned char **p) {
 }
 
 char *webserver_mimetype(const char *str) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	char *mimetype = malloc(strlen(str)+1);
 	if(!mimetype) {
 		logprintf(LOG_ERR, "out of memory");
@@ -167,6 +177,8 @@ char *webserver_mimetype(const char *str) {
 }
 
 static char *webserver_shell(const char *format_str, struct mg_connection *conn, char *request, ...) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	size_t n = 0;
 	char *output = NULL;
 	const char *type = NULL;
@@ -265,6 +277,8 @@ static char *webserver_shell(const char *format_str, struct mg_connection *conn,
 }
 
 static int webserver_sockets_callback(struct mg_connection *c, enum mg_event ev) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	if(c->is_websocket) {
 		mg_websocket_write(c, 1, (char *)c->callback_param, strlen((char *)c->callback_param));
 	}
@@ -272,6 +286,8 @@ static int webserver_sockets_callback(struct mg_connection *c, enum mg_event ev)
 }
 
 static int webserver_auth_handler(struct mg_connection *conn) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	if(webserver_authentication_username != NULL && webserver_authentication_password != NULL) {
 		return mg_authorize_input(conn, webserver_authentication_username, webserver_authentication_password, mg_get_option(mgserver[0], "auth_domain"));
 	} else {
@@ -280,6 +296,8 @@ static int webserver_auth_handler(struct mg_connection *conn) {
 }
 
 static int webserver_request_handler(struct mg_connection *conn) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	char *request = NULL;
 	char *ext = NULL;
 	char *mimetype = NULL;
@@ -762,6 +780,8 @@ filenotfound:
 }
 
 static int webserver_connect_handler(struct mg_connection *conn) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	char ip[17];
 	strcpy(ip, conn->remote_ip);
 	if(whitelist_check(conn->remote_ip) != 0) {
@@ -775,6 +795,8 @@ static int webserver_connect_handler(struct mg_connection *conn) {
 }
 
 static void *webserver_worker(void *param) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	while(webserver_loop) {
 		if(mg_poll_server(mgserver[(intptr_t)param], 1000) == 0) {
 			sleep(1);
@@ -784,6 +806,8 @@ static void *webserver_worker(void *param) {
 }
 
 static void webserver_queue(char *message) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	pthread_mutex_lock(&webqueue_lock);
 	if(webqueue_number <= 1024) {
 		struct webqueue_t *wnode = malloc(sizeof(struct webqueue_t));
@@ -815,12 +839,16 @@ static void webserver_queue(char *message) {
 }
 
 void *webserver_broadcast(void *param) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	int i = 0;
 	pthread_mutex_lock(&webqueue_lock);
 
 	while(webserver_loop) {
 		if(webqueue_number > 0) {
 			pthread_mutex_lock(&webqueue_lock);
+
+			logprintf(LOG_STACK, "%s::unlocked", __FUNCTION__);
 
 			for(i=0;i<WEBSERVER_WORKERS;i++) {
 				mg_iterate_over_connections(mgserver[i], webserver_sockets_callback, webqueue->message);
@@ -840,6 +868,8 @@ void *webserver_broadcast(void *param) {
 }
 
 void *webserver_clientize(void *param) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	unsigned int failures = 0;
 	while(webserver_loop && failures <= 5) {
 		struct ssdp_list_t *ssdp_list = NULL;
@@ -900,6 +930,8 @@ void *webserver_clientize(void *param) {
 }
 
 static int webserver_handler(struct mg_connection *conn, enum mg_event ev) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	if(ev == MG_REQUEST || (ev == MG_POLL && !conn->is_websocket)) {
 		if(ev == MG_POLL ||
 		  (!conn->is_websocket && webserver_connect_handler(conn) == MG_TRUE) ||
@@ -916,6 +948,7 @@ static int webserver_handler(struct mg_connection *conn, enum mg_event ev) {
 }
 
 int webserver_start(void) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
 	if(which("php-cgi") != 0) {
 		webserver_php = 0;

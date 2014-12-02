@@ -44,6 +44,8 @@
 #include "action_header.h"
 
 void event_action_remove(char *name) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	struct event_actions_t *currP, *prevP;
 
 	prevP = NULL;
@@ -67,6 +69,8 @@ void event_action_remove(char *name) {
 }
 
 void event_action_init(void) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	#include "action_init.h"
 	void *handle = NULL;
 	void (*init)(void);
@@ -157,6 +161,8 @@ void event_action_init(void) {
 }
 
 void event_action_register(struct event_actions_t **act, const char *name) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	if(!(*act = malloc(sizeof(struct event_actions_t)))) {
 		logprintf(LOG_ERR, "out of memory");
 		exit(EXIT_FAILURE);
@@ -176,6 +182,8 @@ void event_action_register(struct event_actions_t **act, const char *name) {
 }
 
 int event_action_gc(void) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	struct event_actions_t *tmp_action = NULL;
 	while(event_actions) {
 		tmp_action = event_actions;

@@ -71,6 +71,8 @@ static int running = 0;
 int event_parse_rule(char *rule, struct rules_t *obj, int depth, unsigned int nr, unsigned short validate);
 
 int events_gc(void) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	loop = 0;
 	pthread_mutex_unlock(&events_lock);
 	pthread_cond_signal(&events_signal);
@@ -82,6 +84,8 @@ int events_gc(void) {
 }
 
 static int event_store_val_ptr(struct rules_t *obj, char *device, char *name, struct devices_settings_t *settings) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	struct rules_values_t *tmp_values = obj->values;
 	int match = 0;
 	while(tmp_values) {
@@ -123,6 +127,8 @@ static int event_store_val_ptr(struct rules_t *obj, char *device, char *name, st
    is part of one of devices in the config. If it is,
    replace the variable with the actual value */
 static int event_lookup_variable(char *var, struct rules_t *obj, unsigned int nr, int type, union varcont_t *varcont, unsigned short validate) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	int cached = 0;
 	if(strcmp(true_, "1") != 0) {
 		strcpy(true_, "1");
@@ -302,6 +308,8 @@ static int event_lookup_variable(char *var, struct rules_t *obj, unsigned int nr
 }
 
 static int event_parse_hooks(char **rule, struct rules_t *obj, int depth, unsigned int nr, int (func)(char *rule, struct rules_t *obj, int depth, unsigned int nr, unsigned short validate), unsigned short validate) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	int hooks = 0, res = 0;
 	unsigned long buflen = MEMBUFFER, len = 0, i = 0;
 	char *subrule = malloc(buflen);
@@ -367,6 +375,8 @@ static int event_parse_hooks(char **rule, struct rules_t *obj, int depth, unsign
 }
 
 static int event_parse_formula(char **rule, struct rules_t *obj, int depth, unsigned int nr, unsigned short validate) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	union varcont_t v1;
 	union varcont_t v2;
 	char *var1 = NULL, *func = NULL, *var2 = NULL, *tmp = *rule, *search = NULL;
@@ -617,6 +627,8 @@ close:
 }
 
 static int event_parse_action(char *action, int validate) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	char tmp[strlen(action)+1];
 	char *pch = NULL;
 	char *func = NULL;
@@ -730,6 +742,8 @@ static int event_parse_action(char *action, int validate) {
 }
 
 int event_parse_rule(char *rule, struct rules_t *obj, int depth, unsigned int nr, unsigned short validate) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	char *tloc = 0, *condition = NULL, *action = NULL;
 	unsigned int tpos = 0, rlen = strlen(rule), tlen = 0;
 	int x = 0, nrhooks = 0, has_hooks = 0, error = 0;
@@ -839,6 +853,8 @@ close:
 }
 
 void *events_loop(void *param) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	pthread_mutexattr_init(&events_attr);
 	pthread_mutexattr_settype(&events_attr, PTHREAD_MUTEX_RECURSIVE);
 	pthread_mutex_init(&events_lock, &events_attr);
@@ -854,6 +870,9 @@ void *events_loop(void *param) {
 	while(loop) {
 		if(eventsqueue_number > 0) {
 			pthread_mutex_lock(&events_lock);
+
+			logprintf(LOG_STACK, "%s::unlocked", __FUNCTION__);
+
 			running = 1;
 
 			jdevices = json_find_member(eventsqueue->jconfig, "devices");
@@ -907,10 +926,14 @@ void *events_loop(void *param) {
 }
 
 int events_running(void) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 		return (running == 1) ? 0 : -1;
 }
 
 void events_queue(struct JsonNode *root) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	pthread_mutex_lock(&events_lock);
 	if(eventsqueue_number < 1024) {
 		struct eventsqueue_t *enode = malloc(sizeof(eventsqueue_t));

@@ -40,6 +40,8 @@
 #include "operator_header.h"
 
 void event_operator_remove(char *name) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	struct event_operators_t *currP, *prevP;
 
 	prevP = NULL;
@@ -63,6 +65,8 @@ void event_operator_remove(char *name) {
 }
 
 void event_operator_init(void) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	#include "operator_init.h"
 	void *handle = NULL;
 	void (*init)(void);
@@ -153,6 +157,8 @@ void event_operator_init(void) {
 }
 
 void event_operator_register(struct event_operators_t **op, const char *name) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	if(!(*op = malloc(sizeof(struct event_operators_t)))) {
 		logprintf(LOG_ERR, "out of memory");
 		exit(EXIT_FAILURE);
@@ -171,6 +177,8 @@ void event_operator_register(struct event_operators_t **op, const char *name) {
 }
 
 int event_operator_gc(void) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	struct event_operators_t *tmp_operator = NULL;
 	while(event_operators) {
 		tmp_operator = event_operators;
