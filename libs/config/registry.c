@@ -22,7 +22,6 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <unistd.h>
-#include <regex.h>
 #include <sys/stat.h>
 #include <time.h>
 #include <libgen.h>

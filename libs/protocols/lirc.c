@@ -153,6 +153,8 @@ static void *lircParse(void *param) {
 					}
 				}
 			}
+		} else {
+			sleep(1);
 		}
 	}
 

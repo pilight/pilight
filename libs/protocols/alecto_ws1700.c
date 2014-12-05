@@ -52,7 +52,7 @@ static void alectoWS1700ParseCode(void) {
 
 	id = binToDecRev(alecto_ws1700->binary, 0, 11);
 	battery = alecto_ws1700->binary[12];
-	temperature = (double)binToDecRev(alecto_ws1700->binary, 18, 27);
+	temperature = ((double)binToDecRev(alecto_ws1700->binary, 18, 27))/10;
 	humidity = (double)binToDecRev(alecto_ws1700->binary, 28, 35);
 
 	struct alecto_ws1700_settings_t *tmp = alecto_ws1700_settings;

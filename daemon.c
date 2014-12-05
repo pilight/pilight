@@ -1760,9 +1760,6 @@ int main_gc(void) {
 	pthread_mutex_unlock(&sendqueue_lock);
 	pthread_cond_signal(&sendqueue_signal);
 
-	pthread_mutex_unlock(&receive_lock);
-	pthread_cond_signal(&receive_signal);
-
 	pthread_mutex_unlock(&bcqueue_lock);
 	pthread_cond_signal(&bcqueue_signal);
 

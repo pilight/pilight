@@ -19,6 +19,8 @@
 #ifndef _PROC_H_
 #define _PROC_H_
 
+#include <time.h>
+
 /* CPU usage */
 typedef struct cpu_usage_t {
 	double sec_start;
