@@ -21,10 +21,8 @@
 #include <stdarg.h>
 #include <unistd.h>
 #include <fcntl.h>
-#include <sys/ioctl.h>
 #include <limits.h>
 #include <errno.h>
-#include <syslog.h>
 #include <time.h>
 #include <math.h>
 #include <string.h>
@@ -36,9 +34,7 @@
 #include "config.h"
 #include "log.h"
 #include "options.h"
-#include "socket.h"
 #include "json.h"
-#include "ssdp.h"
 
 #include "protocol.h"
 #include "operator.h"

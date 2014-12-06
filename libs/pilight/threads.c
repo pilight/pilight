@@ -207,7 +207,7 @@ void threads_cpu_usage(int print) {
 	}
 	struct threadqueue_t *tmp_threads = threadqueue;
 	while(tmp_threads) {
-		getThreadCPUUsage(&tmp_threads->pth, &tmp_threads->cpu_usage);
+		getThreadCPUUsage(tmp_threads->pth, &tmp_threads->cpu_usage);
 		if(print) {
 			if(tmp_threads->cpu_usage.cpu_per > 0) {
 				logprintf(LOG_ERR, "- thread %s: %f%%", tmp_threads->id, tmp_threads->cpu_usage.cpu_per);

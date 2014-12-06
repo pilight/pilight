@@ -23,7 +23,6 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <errno.h>
-#include <syslog.h>
 
 #include "pilight.h"
 #include "common.h"

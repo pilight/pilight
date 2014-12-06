@@ -260,7 +260,7 @@ int config_set_file(char *settfile) {
 		}
 		strcpy(configfile, settfile);
 	} else {
-		fprintf(stderr, "%s: the config file %s does not exists\n", progname, settfile);
+		logprintf(LOG_ERR, "%s: the config file %s does not exists", progname, settfile);
 		return EXIT_FAILURE;
 	}
 

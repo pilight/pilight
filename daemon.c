@@ -196,8 +196,6 @@ struct receive_wait_t *receive_wait;
 static void receive_signal_handler(int sig) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
-	logprintf(LOG_STACK, "%s", __FUNCTION__);
-
 	struct receive_wait_t *tmp = receive_wait;
 	if(sig == SIGUSR1) {
 		pthread_mutex_lock(&receive_lock);
@@ -1790,15 +1788,15 @@ int main_gc(void) {
 	if(webserver_enable == 1) {
 		webserver_gc();
 	}
-	if(webserver_root_free) {
+	if(webserver_root_free == 1) {
 		sfree((void *)&webserver_root);
 	}
-	if(webgui_tpl_free) {
+	if(webgui_tpl_free == 1) {
 		sfree((void *)&webgui_tpl);
 	}
 #endif
 
-	if(master_server) {
+	if(master_server != NULL) {
 		sfree((void *)&master_server);
 	}
 

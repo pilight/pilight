@@ -142,7 +142,7 @@ static void *ds18b20Parse(void *param) {
 											w1valid = 1;
 										}
 										if(x == 2) {
-											w1temp = (atof(pch)/100)+temp_offset;
+											w1temp = (atof(pch)/1000)+temp_offset;
 										}
 										x++;
 									}

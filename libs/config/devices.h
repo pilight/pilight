@@ -71,8 +71,8 @@ struct devices_settings_t {
 
 struct devices_t {
 	char *id;
-	char dev_uuid[21];
-	char ori_uuid[21];
+	char dev_uuid[22];
+	char ori_uuid[22];
 	int cst_uuid;
 	int nrthreads;
 	time_t timestamp;

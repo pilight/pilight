@@ -340,6 +340,7 @@ void hardware_init(void) {
 
 	struct dirent *file = NULL;
 	DIR *d = NULL;
+	struct stat s;
 
 	memset(pilight_commit, '\0', 3);
 
@@ -360,7 +361,8 @@ void hardware_init(void) {
 
 	if((d = opendir(hardware_root))) {
 		while((file = readdir(d)) != NULL) {
-			if(file->d_type == DT_REG) {
+			stat(file->d_name, &s);
+			if(s.st_mode == S_IFDIR) {
 				if(strstr(file->d_name, ".so") != NULL) {
 					valid = 1;
 					memset(path, '\0', 255);

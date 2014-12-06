@@ -227,11 +227,15 @@ char *coord2tz(double longitude, double latitude) {
 time_t datetime2ts(int year, int month, int day, int hour, int minutes, int seconds, char *tz) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
-	char date[20];
-	time_t t;
-	struct tm tm = {0};
-	sprintf(date, "%d-%d-%d %d:%d:%d", year, month, day, hour, minutes, seconds);
-	strptime(date, "%Y-%m-%d %T", &tm);
+ 	time_t t;
+ 	struct tm tm = {0};
+	tm.tm_sec = seconds;
+	tm.tm_min = minutes;
+	tm.tm_hour = hour;
+	tm.tm_mday = day;
+	tm.tm_mon = month-1;
+	tm.tm_year = year-1900;
+
 	if(tz) {
 		setenv("TZ", tz, 1);
 	}

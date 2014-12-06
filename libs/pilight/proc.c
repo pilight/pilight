@@ -75,7 +75,7 @@ double getCPUUsage(void) {
 	return a;
 }
 
-void getThreadCPUUsage(pthread_t *pth, struct cpu_usage_t *cpu_usage) {
+void getThreadCPUUsage(pthread_t pth, struct cpu_usage_t *cpu_usage) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
 	clockid_t cid;
@@ -86,7 +86,7 @@ void getThreadCPUUsage(pthread_t *pth, struct cpu_usage_t *cpu_usage) {
 
 	cpu_usage->sec_diff = cpu_usage->sec_stop - cpu_usage->sec_start;
 
-	pthread_getcpuclockid(*pth, &cid);
+	pthread_getcpuclockid(pth, &cid);
 	clock_gettime(cid, &cpu_usage->ts);
 
 	cpu_usage->cpu_new = (cpu_usage->ts.tv_sec + (cpu_usage->ts.tv_nsec / 1e9));

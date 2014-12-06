@@ -24,7 +24,6 @@
 #include <sys/ioctl.h>
 #include <limits.h>
 #include <errno.h>
-#include <syslog.h>
 #include <time.h>
 #include <math.h>
 #include <string.h>

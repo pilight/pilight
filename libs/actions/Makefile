@@ -21,7 +21,7 @@ CFLAGS = -ffast-math $(OSFLAGS) -Wfloat-equal -Wshadow -Wpointer-arith -Wcast-al
 SRC = $(wildcard *.c)
 OBJS = $(SRC:.c=.o)
 
-: $(OBJS) actions.o
+all: $(OBJS) actions.o
 
 %.o: %.c %.h
 	$(GCC) $(CFLAGS) -c $(patsubst %.o,%.c,$@)
