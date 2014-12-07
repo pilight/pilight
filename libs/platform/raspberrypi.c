@@ -545,6 +545,7 @@ static int raspberrypiISR(int pin, int mode) {
 	int i = 0, fd = 0, match = 0, count = 0;
 	const char *sMode = NULL;
 	char path[35], c, line[120];
+	FILE *f = NULL;
 
 	pinModes[pin] = SYS;
 
@@ -559,19 +560,8 @@ static int raspberrypiISR(int pin, int mode) {
 		return -1;
 	}
 
-	FILE *f = NULL;
-	for(i=0;i<NUM_PINS;i++) {
-		if(pin == i) {
-			sprintf(path, "/sys/class/gpio/gpio%d/value", pinToGpio[i]);
-			fd = open(path, O_RDWR);
-			match = 1;
-		}
-	}
-
-	if(!match) {
-		logprintf(LOG_ERR, "raspberrypi->isr: Invalid GPIO: %d", pin);
-		exit(0);
-	}
+	sprintf(path, "/sys/class/gpio/gpio%d/value", pinToGpio[i]);
+	fd = open(path, O_RDWR);
 
 	if(fd < 0) {
 		if((f = fopen("/sys/class/gpio/export", "w")) == NULL) {

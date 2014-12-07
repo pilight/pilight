@@ -36,12 +36,12 @@
 #endif
 #include "hummingboard.h"
 
-#define FUNC_GPIO					0x5
+#define FUNC_GPIO								0x5
 #define MX6Q_IOMUXC_BASE_ADDR		0x02000000
-#define GPIO_MUX_REG				0x000e0224
-#define GPIO_MUX_CTRL				0x000e05f4
-#define NUM_PINS					8
-#define MAP_SIZE 					1024*1024
+#define GPIO_MUX_REG						0x000e0224
+#define GPIO_MUX_CTRL						0x000e05f4
+#define NUM_PINS								8
+#define MAP_SIZE								1024*1024
 
 volatile void *gpio = NULL;
 
@@ -174,6 +174,7 @@ static int hummingboardISR(int pin, int mode) {
 	const char *sMode = NULL;
 	char path[35], c, line[120];
 	pinModes[pin] = SYS;
+	FILE *f = NULL;
 
 	if(mode == INT_EDGE_FALLING) {
 		sMode = "falling" ;
@@ -186,19 +187,8 @@ static int hummingboardISR(int pin, int mode) {
 		return -1;
 	}
 
-	FILE *f = NULL;
-	for(i=0;i<NUM_PINS;i++) {
-		if(pin == i) {
-			sprintf(path, "/sys/class/gpio/gpio%d/value", pinsToGPIO[i]);
-			fd = open(path, O_RDWR);
-			match = 1;
-		}
-	}
-
-	if(!match) {
-		logprintf(LOG_ERR, "hummingboard->isr: Invalid GPIO: %d", pin);
-		return -1;
-	}
+	sprintf(path, "/sys/class/gpio/gpio%d/value", pinsToGPIO[i]);
+	fd = open(path, O_RDWR);
 
 	if(fd < 0) {
 		if((f = fopen("/sys/class/gpio/export", "w")) == NULL) {
