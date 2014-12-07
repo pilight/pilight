@@ -187,7 +187,7 @@ static int hummingboardISR(int pin, int mode) {
 		return -1;
 	}
 
-	sprintf(path, "/sys/class/gpio/gpio%d/value", pinsToGPIO[i]);
+	sprintf(path, "/sys/class/gpio/gpio%d/value", pinsToGPIO[pin]);
 	fd = open(path, O_RDWR);
 
 	if(fd < 0) {
@@ -201,13 +201,22 @@ static int hummingboardISR(int pin, int mode) {
 	}
 
 	sprintf(path, "/sys/class/gpio/gpio%d/direction", pinsToGPIO[pin]);
-	if((f = fopen(path, "w")) == NULL) {
+	if((f = fopen(path, "r")) == NULL) {
 		logprintf(LOG_ERR, "hummingboard->isr: Unable to open GPIO direction interface for pin %d", pin);
 		return -1;
+	} else {
+		fgets(line, 120, f);
+		fclose(f);
 	}
 
-	fprintf(f, "in");
-	fclose(f);
+	if(strstr(line, "in") == NULL) {
+		if((f = fopen(path, "w")) == NULL) {
+			logprintf(LOG_ERR, "hummingboard->isr: Unable to open GPIO direction interface for pin %d", pin);
+			return -1;
+		}
+		fprintf(f, "in");
+		fclose(f);
+	}
 
 	sprintf(path, "/sys/class/gpio/gpio%d/edge", pinsToGPIO[pin]);
 	if((f = fopen(path, "w")) == NULL) {

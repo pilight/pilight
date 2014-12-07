@@ -560,7 +560,7 @@ static int raspberrypiISR(int pin, int mode) {
 		return -1;
 	}
 
-	sprintf(path, "/sys/class/gpio/gpio%d/value", pinToGpio[i]);
+	sprintf(path, "/sys/class/gpio/gpio%d/value", pinToGpio[pin]);
 	fd = open(path, O_RDWR);
 
 	if(fd < 0) {
