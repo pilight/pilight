@@ -31,80 +31,119 @@
 
 static int actionDimArguments(struct JsonNode *arguments) {
 	struct JsonNode *jdevice = NULL;
-	struct JsonNode *jdimlevel = NULL;
+	struct JsonNode *jto = NULL;
+	struct JsonNode *jsvalues = NULL;
+	struct JsonNode *jdvalues = NULL;
+	struct JsonNode *jschild = NULL;
+	struct JsonNode *jdchild = NULL;
 	double nr1 = 0.0, nr2 = 0.0;
-	char *value1 = NULL;
-	double value2 = 0.0;
+	int nrvalues = 0;
+	char *device = NULL, *state = NULL;
 	jdevice = json_find_member(arguments, "DEVICE");
-	jdimlevel = json_find_member(arguments, "TO");
+	jto = json_find_member(arguments, "TO");
 
 	if(jdevice == NULL) {
 		logprintf(LOG_ERR, "dim action is missing a \"DEVICE\"");
 		return -1;
 	}
-	if(jdimlevel == NULL) {
+	if(jto == NULL) {
 		logprintf(LOG_ERR, "dim action is missing a \"TO ...\" statement");
 		return -1;
 	}
 	json_find_number(jdevice, "order", &nr1);
-	json_find_number(jdimlevel, "order", &nr2);
+	json_find_number(jto, "order", &nr2);
 	if((int)nr1 != 1 || (int)nr2 != 2) {
 		logprintf(LOG_ERR, "dim actions are formatted as \"dim DEVICE ... TO ...\"");
 		return -1;
 	}
-	json_find_string(jdevice, "value", &value1);
-	json_find_number(jdimlevel, "value", &value2);
+	if((jsvalues = json_find_member(jto, "value")) != NULL) {
+		jschild = json_first_child(jsvalues);
+		while(jschild) {
+			nrvalues++;
+			jschild = jschild->next;
+		}
+	}
+	if(nrvalues != 1) {
+		logprintf(LOG_ERR, "dim actions are formatted as \"dim DEVICE ... TO ...\"");
+		return -1;	
+	}
 
-	struct devices_t *dev = NULL;
-	if(devices_get(value1, &dev) == 0) {
-		struct protocols_t *tmp_protocols = dev->protocols;
-		if(tmp_protocols->listener->devtype == DIMMER) {
-			struct devices_settings_t *tmp_settings = dev->settings;
-			int match1 = 0, match2 = 0;
-			while(tmp_settings) {
-				if(strcmp(tmp_settings->name, "dimlevel-maximum") == 0) {
-					if(tmp_settings->values->type == JSON_NUMBER && 
-					  (int)tmp_settings->values->number_ < (int)value2) {
-						logprintf(LOG_ERR, "device \"%s\" can't be set to dimlevel \"%d\"", value1, (int)value2);
+	if((jdvalues = json_find_member(jdevice, "value")) != NULL) {
+		jdchild = json_first_child(jdvalues);
+		while(jdchild) {
+			if(jdchild->tag == JSON_STRING) {
+				struct devices_t *dev = NULL;
+				if(devices_get(jdchild->string_, &dev) == 0) {
+					if((jsvalues = json_find_member(jto, "value")) != NULL) {
+						jschild = json_first_child(jsvalues);
+						while(jschild) {
+							if(jschild->tag == JSON_NUMBER) {
+								struct protocols_t *tmp_protocols = dev->protocols;
+								if(tmp_protocols->listener->devtype == DIMMER) {
+									struct devices_settings_t *tmp_settings = dev->settings;
+									int match1 = 0, match2 = 0;
+									while(tmp_settings) {
+										if(strcmp(tmp_settings->name, "dimlevel-maximum") == 0) {
+											if(tmp_settings->values->type == JSON_NUMBER && 
+												(int)tmp_settings->values->number_ < (int)jschild->number_) {
+												logprintf(LOG_ERR, "device \"%s\" can't be set to dimlevel \"%d\"", jdchild->string_, (int)jschild->number_);
+												return -1;
+											}
+											match1 = 1;
+										}
+										if(strcmp(tmp_settings->name, "dimlevel-minimum") == 0) {
+											if(tmp_settings->values->type == JSON_NUMBER && 
+												(int)tmp_settings->values->number_ > (int)jschild->number_) {
+												logprintf(LOG_ERR, "device \"%s\" can't be set to dimlevel \"%d\"", jdchild->string_, (int)jschild->number_);
+												return -1;
+											}
+											match2 = 1;
+										}
+										tmp_settings = tmp_settings->next;
+									}
+									if(match1 == 0 || match2 == 0) {
+										while(tmp_protocols) {
+											struct options_t *opt = tmp_protocols->listener->options;
+											while(opt) {
+												if(match2 == 0 && strcmp(opt->name, "dimlevel-maximum") == 0 && 
+													opt->vartype == JSON_NUMBER && (int)(intptr_t)opt->def < (int)jschild->number_) {
+													logprintf(LOG_ERR, "device \"%s\" can't be set to dimlevel \"%d\"", jdchild->string_, (int)jschild->number_);
+													return -1;
+												}
+												if(match1 == 0 && strcmp(opt->name, "dimlevel-minimum") == 0 && 
+													opt->vartype == JSON_NUMBER && (int)(intptr_t)opt->def > (int)jschild->number_) {
+													logprintf(LOG_ERR, "device \"%s\" can't be set to dimlevel \"%d\"", jdchild->string_, (int)jschild->number_);
+													return -1;
+												}
+												opt = opt->next;
+											}
+											tmp_protocols = tmp_protocols->next;
+										}
+									} else {
+										return -1;
+									}
+								} else {
+									logprintf(LOG_ERR, "device \"%s\" doesn't support dimming", jdchild->string_);
+									return -1;
+								}
+							} else {
+								logprintf(LOG_ERR, "device \"%s\" doesn't exists", jdchild->string_);
+								return -1;
+							}
+						jschild = jschild->next;
+						}
+					} else {
 						return -1;
 					}
-					match1 = 1;
+				} else {
+					return -1;
 				}
-				if(strcmp(tmp_settings->name, "dimlevel-minimum") == 0) {
-					if(tmp_settings->values->type == JSON_NUMBER && 
-					  (int)tmp_settings->values->number_ > (int)value2) {
-						logprintf(LOG_ERR, "device \"%s\" can't be set to dimlevel \"%d\"", value1, (int)value2);
-						return -1;
-					}
-					match2 = 1;
-				}
-				tmp_settings = tmp_settings->next;
+			} else {
+				return -1;
 			}
-			if(match1 == 0 || match2 == 0) {
-				while(tmp_protocols) {
-					struct options_t *opt = tmp_protocols->listener->options;
-					while(opt) {
-						if(match2 == 0 && strcmp(opt->name, "dimlevel-minimum") == 0 && 
-							opt->vartype == JSON_NUMBER && (int)(intptr_t)opt->def > (int)value2) {
-							logprintf(LOG_ERR, "device \"%s\" can't be set to dimlevel \"%d\"", value1, (int)value2);
-							return -1;
-						}
-						if(match1 == 0 && strcmp(opt->name, "dimlevel-minimum") == 0 && 
-							opt->vartype == JSON_NUMBER && (int)(intptr_t)opt->def > (int)value2) {
-							logprintf(LOG_ERR, "device \"%s\" can't be set to dimlevel \"%d\"", value1, (int)value2);
-							return -1;
-						}
-						opt = opt->next;
-					}
-					tmp_protocols = tmp_protocols->next;
-				}
-			}
-		} else {
-			logprintf(LOG_ERR, "device \"%s\" doesn't support dimming", value1);
-			return -1;
+			jdchild = jdchild->next;
 		}
 	} else {
-		logprintf(LOG_ERR, "device \"%s\" doesn't exists", value1);
 		return -1;
 	}
 	return 0;
@@ -112,21 +151,35 @@ static int actionDimArguments(struct JsonNode *arguments) {
 
 static int actionDimRun(struct JsonNode *arguments) {
 	struct JsonNode *jdevice = NULL;
-	struct JsonNode *jstate = NULL;
-	char *device = NULL, state[3];
+	struct JsonNode *jto = NULL;
+	struct JsonNode *jsvalues = NULL;
+	struct JsonNode *jdvalues = NULL;
+	struct JsonNode *jdchild = NULL;
+	struct JsonNode *jdimlevel = NULL;
 	double dimlevel = 0.0;
+	char state[3];
 	if((jdevice = json_find_member(arguments, "DEVICE")) != NULL &&
-		 (jstate = json_find_member(arguments, "TO")) != NULL) {
-		if(json_find_string(jdevice, "value", &device) == 0 &&
-			 json_find_number(jstate, "value", &dimlevel) == 0) {
-
-			struct devices_t *dev = NULL;
-			if(devices_get(device, &dev) == 0) {
-				strcpy(state, "on");
-				JsonNode *jvalues = json_mkobject();
-				json_append_member(jvalues, "dimlevel", json_mknumber(dimlevel, 0));
-				pilight.control(dev, state, json_first_child(jvalues));
-				json_delete(jvalues);
+		 (jto = json_find_member(arguments, "TO")) != NULL) {
+		if((jdvalues = json_find_member(jdevice, "value")) != NULL) {
+			jdchild = json_first_child(jdvalues);
+			while(jdchild) {
+				if(jdchild->tag == JSON_STRING) {
+					struct devices_t *dev = NULL;
+					if(devices_get(jdchild->string_, &dev) == 0) {
+						if((jsvalues = json_find_member(jto, "value")) != NULL) {
+							jdimlevel = json_find_element(jsvalues, 0);
+							if(jdimlevel != NULL && jdimlevel->tag == JSON_NUMBER) {
+								dimlevel = (int)jdimlevel->number_;
+								strcpy(state, "on");
+								JsonNode *jvalues = json_mkobject();
+								json_append_member(jvalues, "dimlevel", json_mknumber(dimlevel, 0));
+								pilight.control(dev, state, json_first_child(jvalues));
+								json_delete(jvalues);
+							}
+						}
+					}
+				}
+				jdchild = jdchild->next;
 			}
 		}
 	}

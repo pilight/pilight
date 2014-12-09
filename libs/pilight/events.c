@@ -625,114 +625,340 @@ close:
 static int event_parse_action(char *action, int validate) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
-	char tmp[strlen(action)+1];
-	char *pch = NULL;
-	char *func = NULL;
-	int error = 0, match = 0, i = 0;
 	struct JsonNode *jargs = json_mkobject();
-	strcpy(tmp, action);
-
-	pch = strtok(tmp, " ");
-	if(pch) {
-		func = malloc(strlen(pch)+1);
-		strcpy(func, pch);
-	}
-
-	pch = strtok(NULL, " ");
-	while(pch) {
-		char name[strlen(pch)+1];
-		strcpy(name, pch);
-		if((pch = strtok(NULL, " "))) {
-			i++;
-			char val[strlen(pch)+1];
-			strcpy(val, pch);
-			struct JsonNode *jobj = json_mkobject();
-			if(isNumeric(val) == 0) {
-				json_append_member(jobj, "value", json_mknumber(atof(val), nrDecimals(val)));
-				json_append_member(jobj, "order", json_mknumber(i, 0));
+	struct JsonNode *jvalues = NULL;
+	struct event_actions_t *actions = NULL;	
+	char *var1 = NULL, *func = NULL, *var2 = NULL, *tmp = action;
+	char *var3 = NULL, *var4 = NULL;
+	int element = 0, match = 0, error = 0, order = 0;
+	int hasaction = 0, hasquote = 0, match1 = 0, match2 = 0;
+	unsigned long len = strlen(tmp), pos = 0, word = 0, hadquote = 0;
+	
+	while(pos <= len) {
+		/* If we encounter a space we have the formula part */
+		if(tmp[pos] == '"') {
+			hasquote ^= 1;
+			if(hasquote == 1) {
+				word++;
 			} else {
-				json_append_member(jobj, "value", json_mkstring(val));
-				json_append_member(jobj, "order", json_mknumber(i, 0));
+				hadquote = 1;
 			}
-			json_append_member(jargs, name, jobj);
 		}
-		pch = strtok(NULL, " ");
-	}
-
-	struct event_actions_t *actions = event_actions;
-	while(actions) {
-		if(strcmp(actions->name, func) == 0) {
-			match = 1;
-			break;
+		if(hasquote == 0 && (tmp[pos] == ' ' || pos == len)) {
+			switch(element) {
+				/* The first value of three is always the first variable.
+				   The second value is always the function.
+				   The third value of the three is always the second variable (or second formula).
+				*/
+				case 0:
+					var1 = realloc(var1, ((pos-word)+1));
+					memset(var1, '\0', ((pos-word)+1));
+					strncpy(var1, &tmp[word], (pos-word)-hadquote);
+				break;
+				case 1:
+					func = realloc(func, ((pos-word)+1));
+					memset(func, '\0', ((pos-word)+1));
+					strncpy(func, &tmp[word], (pos-word)-hadquote);
+				break;
+				case 2:
+					var2 = realloc(var2, ((pos-word)+1));
+					memset(var2, '\0', ((pos-word)+1));
+					strncpy(var2, &tmp[word], (pos-word)-hadquote);
+				break;
+				default:;
+			}
+			hadquote = 0;
+			word = pos+1;
+			element++;
+			if(element > 2) {
+				element = 0;
+			}
 		}
-		actions = actions->next;
-	}
-	if(match == 1) {
-		struct options_t *opt = actions->options;
-		struct JsonNode *joption = NULL;
-		struct JsonNode *jvalue = NULL;
-		struct JsonNode *jchild = NULL;
-		while(opt) {
-			if((joption = json_find_member(jargs, opt->name)) == NULL) {
-				if(opt->conftype == DEVICES_VALUE) {
-					logprintf(LOG_ERR, "action \"%s\" is missing option \"%s\"", actions->name, opt->name);
-					error = 1;
+		if(hasaction == 0 && var1 && strlen(var1) > 0) {
+			match = 0;
+			actions = event_actions;
+			while(actions) {
+				if(strcmp(actions->name, var1) == 0) {
+					match = 1;
 					break;
 				}
+				actions = actions->next;
+			}
+			if(match == 1) {
+				hasaction = 1;
+				element = 0;
 			} else {
-				if((jvalue = json_find_member(joption, "value")) != NULL) {
-					if(jvalue->tag != JSON_NUMBER && opt->vartype == JSON_NUMBER) {
-						logprintf(LOG_ERR, "action \"%s\" option \"%s\" only accepts numbers", actions->name, opt->name);
+				logprintf(LOG_ERR, "action \"%s\" doesn't exists", var1);
+				error = 1;
+				break;
+			}
+		} else if(func && strlen(func) > 0 &&
+		   var1 && strlen(var1) > 0 &&
+		   var2 && strlen(var2) > 0) {
+			 int hasand = 0;
+			if(strcmp(var2, "AND") == 0) {
+				hasand = 1;
+				word -= strlen(var2)+1;
+				if(jvalues == NULL) {
+					jvalues = json_mkarray();
+				}
+				if(isNumeric(func) == 0) {
+					json_append_element(jvalues, json_mknumber(atof(func), nrDecimals(func)));
+				} else {
+					json_append_element(jvalues, json_mkstring(func));
+				}
+				element = 0;
+				while(pos <= len) {
+					if(tmp[pos] == '"') {
+						hasquote ^= 1;
+						if(hasquote == 1) {
+							word++;
+						} else {
+							hadquote = 1;
+						}
+					}
+					if(hasquote == 0 && (tmp[pos] == ' ' || pos == len)) {
+						switch(element) {
+							/* The first value of three is always the first variable.
+								 The second value is always the function.
+								 The third value of the three is always the second variable (or second formula).
+							*/
+							case 0:
+								var3 = realloc(var3, ((pos-word)+1));
+								memset(var3, '\0', ((pos-word)+1));
+								strncpy(var3, &tmp[word], (pos-word)-hadquote);
+							break;
+							case 1:
+								var4 = realloc(var4, ((pos-word)+1));
+								memset(var4, '\0', ((pos-word)+1));
+								strncpy(var4, &tmp[word], (pos-word)-hadquote);
+							break;
+							default:;
+						}
+						hadquote = 0;
+						word = pos+1;
+						element++;
+						if(element > 1) {
+							element = 0;
+						}
+					}
+					pos++;
+					if(var3 && strlen(var3) > 0 &&
+						 var4 && strlen(var4) > 0) {
+						if(strcmp(var3, "AND") != 0) {
+							var2 = realloc(var2, strlen(var3)+1);
+							strcpy(var2, var3);
+							pos -= strlen(var3)+strlen(var4)+2;
+							word -= strlen(var3)+strlen(var4)+2;
+							break;
+						}
+						if(isNumeric(var4) == 0) {
+							json_append_element(jvalues, json_mknumber(atof(var4), nrDecimals(var4)));
+						} else {
+							json_append_element(jvalues, json_mkstring(var4));
+						}
+						element = 0;
+						if(var3) {
+							memset(var3, '\0', strlen(var3));
+						} if(var4) {
+							memset(var4, '\0', strlen(var4));
+						}
+					}
+				}
+			}
+			match1 = 0, match2 = 0;
+			struct options_t *opt = actions->options;
+			while(opt) {
+				if(strcmp(opt->name, var1) == 0) {
+					match1 = 1;
+				}
+				if(strcmp(opt->name, var2) == 0) {
+					match2 = 1;
+				}
+				if(match1 == 1 && match2 == 1) {
+					break;
+				}
+				opt = opt->next;
+			}
+			/* If we are at the end of our rule
+			   we only match the first option */
+			if(pos == len+1) {
+				match2 = 1;
+			}
+			if(match1 == 1 && match2 == 1) {
+				struct JsonNode *jobj = json_mkobject();
+				order++;
+				if(hasand == 1) {
+					json_append_member(jobj, "value", jvalues);
+					json_append_member(jobj, "order", json_mknumber(order, 0));
+					jvalues = NULL;
+				} else {
+					jvalues = json_mkarray();
+					if(isNumeric(func) == 0) {
+						json_append_element(jvalues, json_mknumber(atof(func), nrDecimals(func)));
+						json_append_member(jobj, "value", jvalues);
+						json_append_member(jobj, "order", json_mknumber(order, 0));
+						jvalues = NULL;
+					} else {
+						json_append_element(jvalues, json_mkstring(func));
+						json_append_member(jobj, "value", jvalues);
+						json_append_member(jobj, "order", json_mknumber(order, 0));
+						jvalues = NULL;
+					}
+				}
+				json_append_member(jargs, var1, jobj);
+			} else if(match1 == 0) {
+				logprintf(LOG_ERR, "action \"%s\" doesn't accept option \"%s\"", actions->name, var1);
+				error = 1;
+				if(jvalues) {
+					json_delete(jvalues);
+				}
+				break;
+			} else if(match2 == 0) {
+				logprintf(LOG_ERR, "action \"%s\" doesn't accept option \"%s\"", actions->name, var2);
+				error = 1;
+				if(jvalues) {
+					json_delete(jvalues);
+				}
+				break;
+			}
+			element = 0, match1 = 0, match2 = 0;
+			if(hasand == 0) {
+				pos -= strlen(var2)+1;
+				word -= strlen(var2)+1;
+			}
+			if(var1) {
+				memset(var1, '\0', strlen(var1));
+			} if(func) {
+				memset(func, '\0', strlen(func));
+			} if(var2) {
+				memset(var2, '\0', strlen(var2));
+			} if(var3) {
+				memset(var3, '\0', strlen(var3));
+			} if(var4) {
+				memset(var4, '\0', strlen(var4));
+			}
+			hasand = 0;
+		}
+		pos++;
+	}
+	if(error == 0) {
+		if(var1 && strlen(var1) > 0 &&
+			 func && strlen(func) > 0) {
+			match1 = 0;
+			struct options_t *opt = actions->options;
+			while(opt) {
+				if(strcmp(opt->name, var1) == 0) {
+					match1 = 1;
+				}
+				if(match1 == 1) {
+					break;
+				}
+				opt = opt->next;
+			}
+			if(match1 == 1) {
+				struct JsonNode *jobj = json_mkobject();
+				order++;
+				jvalues = json_mkarray();
+				if(isNumeric(func) == 0) {
+					json_append_element(jvalues, json_mknumber(atof(func), nrDecimals(func)));
+					json_append_member(jobj, "value", jvalues);
+					json_append_member(jobj, "order", json_mknumber(order, 0));
+					jvalues = NULL;
+				} else {
+					json_append_element(jvalues, json_mkstring(func));
+					json_append_member(jobj, "value", jvalues);
+					json_append_member(jobj, "order", json_mknumber(order, 0));
+					jvalues = NULL;
+				}
+				json_append_member(jargs, var1, jobj);
+			} else {
+				error = 1;
+			}
+		}
+		if(error == 0) {
+			struct options_t *opt = actions->options;
+			struct JsonNode *joption = NULL;
+			struct JsonNode *jvalue = NULL;
+			struct JsonNode *jchild = NULL;
+			while(opt) {
+				if((joption = json_find_member(jargs, opt->name)) == NULL) {
+					if(opt->conftype == DEVICES_VALUE) {
+						logprintf(LOG_ERR, "action \"%s\" is missing option \"%s\"", actions->name, opt->name);
 						error = 1;
 						break;
 					}
-					if(jvalue->tag != JSON_STRING && opt->vartype == JSON_STRING) {
-						logprintf(LOG_ERR, "action \"%s\" option \"%s\" only accepts strings", actions->name, opt->name);
+				} else {
+					if((jvalue = json_find_member(joption, "value")) != NULL) {
+						if(jvalue->tag == JSON_ARRAY) {
+							jchild = json_first_child(jvalue);
+							while(jchild) {
+								if(jchild->tag != JSON_NUMBER && opt->vartype == JSON_NUMBER) {
+									logprintf(LOG_ERR, "action \"%s\" option \"%s\" only accepts numbers", actions->name, opt->name);
+									error = 1;
+									break;
+								}
+								if(jchild->tag != JSON_STRING && opt->vartype == JSON_STRING) {
+									logprintf(LOG_ERR, "action \"%s\" option \"%s\" only accepts strings", actions->name, opt->name);
+									error = 1;
+									break;
+								}
+								jchild = jchild->next;
+							}
+						}
+					}
+				}
+				opt = opt->next;
+			}
+			if(error == 0) {
+				jchild = json_first_child(jargs);
+				while(jchild) {
+					match = 0;
+					opt = actions->options;
+					while(opt) {
+						if(strcmp(jchild->key, opt->name) == 0) {
+							match = 1;
+							break;
+						}
+						opt = opt->next;
+					}
+					if(match == 0) {
+						logprintf(LOG_ERR, "action \"%s\" doesn't accept option \"%s\"", actions->name, jchild->key);
 						error = 1;
 						break;
 					}
+					jchild = jchild->next;
 				}
 			}
-			opt = opt->next;
-		}
-		if(error == 0) {
-			jchild = json_first_child(jargs);
-			while(jchild) {
-				match = 0;
-				opt = actions->options;
-				while(opt) {
-					if(strcmp(jchild->key, opt->name) == 0) {
-						match = 1;
-						break;
+			if(error == 0) {
+				if(validate == 1) {
+					if(actions->checkArguments) {
+						error = actions->checkArguments(jargs);
 					}
-					opt = opt->next;
-				}
-				if(match == 0) {
-					logprintf(LOG_ERR, "action \"%s\" doesn't accept option \"%s\"", actions->name, jchild->key);
-					error = 1;
-					break;
-				}
-				jchild = jchild->next;
-			}
-		}
-		if(error == 0) {
-			if(validate == 1) {
-				if(actions->checkArguments) {
-					error = actions->checkArguments(jargs);
-				}
-			} else {
-				if(actions->run) {
-					error = actions->run(jargs);
+				} else {
+					if(actions->run) {
+						error = actions->run(jargs);
+					}
 				}
 			}
 		}
-	} else {
-		logprintf(LOG_ERR, "action \"%s\" doesn't exists", func);
-		error = 1;
 	}
 	json_delete(jargs);
-	if(func) {
+	if(var1) {
+		sfree((void *)&var1);
+		var1 = NULL;
+	} if(func) {
 		sfree((void *)&func);
+		func = NULL;
+	} if(var2) {
+		sfree((void *)&var2);
+		var2 = NULL;
+	}	if(var3) {
+		sfree((void *)&var3);
+		var3 = NULL;
+	} if(var4) {
+		sfree((void *)&var4);
+		var4 = NULL;
 	}
 	return error;
 }
@@ -894,7 +1120,10 @@ void *events_loop(void *param) {
 							jchilds = jchilds->next;
 						}
 					}
-
+					/*
+					 * FIXME
+					 */
+					tmp_rules->status = 0;
 					if(match == 1 && tmp_rules->status == 0) {
 						if(event_parse_rule(str, tmp_rules, 0, 1, 0) == 0) {
 							if(tmp_rules->status) {

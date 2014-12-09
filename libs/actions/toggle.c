@@ -31,68 +31,87 @@
 
 static int actionToggleArguments(struct JsonNode *arguments) {
 	struct JsonNode *jdevice = NULL;
-	struct JsonNode *jstate1 = NULL;
-	struct JsonNode *jstate2 = NULL;
-	double nr1 = 0.0, nr2 = 0.0, nr3 = 0.0;
-	char *value1 = NULL, *value2 = NULL, *value3 = NULL;
+	struct JsonNode *jbetween = NULL;
+	struct JsonNode *jsvalues = NULL;
+	struct JsonNode *jdvalues = NULL;
+	struct JsonNode *jschild = NULL;
+	struct JsonNode *jdchild = NULL;
+	double nr1 = 0.0, nr2 = 0.0;
+	int nrvalues = 0;
+	char *device = NULL, *state = NULL;
 	jdevice = json_find_member(arguments, "DEVICE");
-	jstate1 = json_find_member(arguments, "BETWEEN");
-	jstate2 = json_find_member(arguments, "AND");
+	jbetween = json_find_member(arguments, "BETWEEN");
 
 	if(jdevice == NULL) {
 		logprintf(LOG_ERR, "toggle action is missing a \"DEVICE\"");
 		return -1;
 	}
-	if(jstate1 == NULL || jstate2 == NULL) {
+	if(jbetween == NULL && jbetween->tag != JSON_ARRAY) {
 		logprintf(LOG_ERR, "toggle action is missing a \"BETWEEN ... AND ...\" statement");
 		return -1;
 	}
 	json_find_number(jdevice, "order", &nr1);
-	json_find_number(jstate1, "order", &nr2);
-	json_find_number(jstate2, "order", &nr3);
-	if((int)nr1 != 1 || (int)nr2 != 2 || (int)nr3 != 3) {
+	json_find_number(jbetween, "order", &nr2);
+	if((int)nr1 != 1 || (int)nr2 != 2) {
 		logprintf(LOG_ERR, "toggle actions are formatted as \"toggle DEVICE ... BETWEEN ... AND ...\"");
 		return -1;
 	}
-	json_find_string(jdevice, "value", &value1);
-	json_find_string(jstate1, "value", &value2);
-	json_find_string(jstate2, "value", &value3);
-
-	struct devices_t *dev = NULL;
-	if(devices_get(value1, &dev) == 0) {
-		struct protocols_t *tmp = dev->protocols;
-		int match1 = 0, match2 = 0;
-		while(tmp) {
-			struct options_t *opt = tmp->listener->options;
-			while(opt) {
-				if(opt->conftype == DEVICES_STATE) {
-					if(strcmp(opt->name, value2) == 0) {
-						match1 = 1;
+	if((jsvalues = json_find_member(jbetween, "value")) != NULL) {
+		jschild = json_first_child(jsvalues);
+		while(jschild) {
+			nrvalues++;
+			jschild = jschild->next;
+		}
+	}
+	if(nrvalues != 2) {
+		logprintf(LOG_ERR, "toggle actions are formatted as \"toggle DEVICE ... BETWEEN ... AND ...\"");
+		return -1;	
+	}
+	if((jdvalues = json_find_member(jdevice, "value")) != NULL) {
+		jdchild = json_first_child(jdvalues);
+		while(jdchild) {
+			if(jdchild->tag == JSON_STRING) {
+				struct devices_t *dev = NULL;
+				if(devices_get(jdchild->string_, &dev) == 0) {
+					if((jsvalues = json_find_member(jbetween, "value")) != NULL) {
+						jschild = json_first_child(jsvalues);
+						while(jschild) {
+							if(jschild->tag == JSON_STRING) {
+									struct protocols_t *tmp = dev->protocols;
+									int match1 = 0, match2 = 0;
+									while(tmp) {
+										struct options_t *opt = tmp->listener->options;
+										while(opt) {
+											if(opt->conftype == DEVICES_STATE) {
+												if(strcmp(opt->name, jschild->string_) == 0) {
+													match1 = 1;
+													break;
+												}
+											}
+											opt = opt->next;
+										}
+										tmp = tmp->next;
+									}
+									if(match1 == 0) {
+										logprintf(LOG_ERR, "device \"%s\" can't be set to state \"%s\"", jdchild->string_, jschild->string_);
+										return -1;
+									}
+								} else {
+									return -1;
+								}
+							jschild = jschild->next;
+						}
 					}
-					if(strcmp(opt->name, value3) == 0) {
-						match2 = 1;
-					}
-					if(match1 == 1 && match2 == 1) {
-						break;
-					}
+				} else {
+					logprintf(LOG_ERR, "device \"%s\" doesn't exists", jdchild->string_);
+					return -1;
 				}
-				opt = opt->next;
+			} else {
+				return -1;
 			}
-			if(match1 == 1 && match2 == 1) {
-				break;
-			}
-			tmp = tmp->next;
-		}
-		if(match1 == 0) {
-			logprintf(LOG_ERR, "device \"%s\" can't be set to state \"%s\"", value1, value2);
-			return -1;
-		}
-		if(match2 == 0) {
-			logprintf(LOG_ERR, "device \"%s\" can't be set to state \"%s\"", value1, value3);
-			return -1;
+			jdchild = jdchild->next;
 		}
 	} else {
-		logprintf(LOG_ERR, "device \"%s\" doesn't exists", value1);
 		return -1;
 	}
 	return 0;
@@ -100,34 +119,49 @@ static int actionToggleArguments(struct JsonNode *arguments) {
 
 static int actionToggleRun(struct JsonNode *arguments) {
 	struct JsonNode *jdevice = NULL;
+	struct JsonNode *jbetween = NULL;
+	struct JsonNode *jsvalues = NULL;
+	struct JsonNode *jdvalues = NULL;
+	struct JsonNode *jdchild = NULL;
 	struct JsonNode *jstate1 = NULL;
 	struct JsonNode *jstate2 = NULL;
-	char *device = NULL, *state1 = NULL, *state2 = NULL, *cstate = NULL;
+	char *cstate = NULL, *state1 = NULL, *state2 = NULL;
 	if((jdevice = json_find_member(arguments, "DEVICE")) != NULL &&
-		 (jstate1 = json_find_member(arguments, "BETWEEN")) != NULL &&
-		 (jstate2 = json_find_member(arguments, "AND")) != NULL) {
-		if(json_find_string(jdevice, "value", &device) == 0 &&
-			 json_find_string(jstate1, "value", &state1) == 0 &&
-			 json_find_string(jstate2, "value", &state2) == 0) {
-
-
-			struct devices_t *dev = NULL;
-			if(devices_get(device, &dev) == 0) {
-				struct devices_settings_t *tmp_settings = dev->settings;
-				while(tmp_settings) {
-					if(strcmp(tmp_settings->name, "state") == 0) {
-						if(tmp_settings->values->type == JSON_STRING) {
-								cstate = tmp_settings->values->string_;
-								break;
+		 (jbetween = json_find_member(arguments, "BETWEEN")) != NULL) {
+		if((jdvalues = json_find_member(jdevice, "value")) != NULL) {
+			jdchild = json_first_child(jdvalues);
+			while(jdchild) {
+				if(jdchild->tag == JSON_STRING) {
+					struct devices_t *dev = NULL;
+					if(devices_get(jdchild->string_, &dev) == 0) {
+						struct devices_settings_t *tmp_settings = dev->settings;
+						while(tmp_settings) {
+							if(strcmp(tmp_settings->name, "state") == 0) {
+								if(tmp_settings->values->type == JSON_STRING) {
+										cstate = tmp_settings->values->string_;
+										break;
+								}
+							}
+							tmp_settings = tmp_settings->next;
+						}
+						if((jsvalues = json_find_member(jbetween, "value")) != NULL) {
+							jstate1 = json_find_element(jsvalues, 0);
+							jstate2 = json_find_element(jsvalues, 1);
+							if(jstate1 != NULL && jstate2 != NULL &&
+								 jstate1->tag == JSON_STRING && jstate2->tag == JSON_STRING) {
+								 state1 = jstate1->string_;
+								 state2 = jstate2->string_;
+								 
+								if(strcmp(state1, cstate) == 0) {
+									pilight.control(dev, state2, NULL);
+								} else if(strcmp(state2, cstate) == 0) {
+									pilight.control(dev, state1, NULL);
+								}
+							}
 						}
 					}
-					tmp_settings = tmp_settings->next;
 				}
-				if(strcmp(state1, cstate) == 0) {
-					pilight.control(dev, state2, NULL);
-				} else if(strcmp(state2, cstate) == 0) {
-					pilight.control(dev, state1, NULL);
-				}
+				jdchild = jdchild->next;
 			}
 		}
 	}
@@ -142,7 +176,6 @@ void actionToggleInit(void) {
 
 	options_add(&action_toggle->options, 'a', "DEVICE", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_STRING, NULL, NULL);
 	options_add(&action_toggle->options, 'b', "BETWEEN", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_STRING, NULL, NULL);
-	options_add(&action_toggle->options, 'c', "AND", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_STRING, NULL, NULL);
 
 	action_toggle->run = &actionToggleRun;
 	action_toggle->checkArguments = &actionToggleArguments;
