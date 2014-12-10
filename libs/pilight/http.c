@@ -73,10 +73,12 @@ char *http_process_request(char *url, int method, char **type, int *code, int *s
 	char recvBuff[BUFFER_SIZE+1], header[1024];
 	unsigned int port = 0;
 	size_t len = 0, tlen = 0, plen = 0;
-	
+
 	entropy_context entropy;
 	ctr_drbg_context ctr_drbg;
 	ssl_context ssl;	
+
+	*size = 0;
 
 	memset(header, '\0', 1024);
 	memset(recvBuff, '\0', BUFFER_SIZE+1);
@@ -219,6 +221,7 @@ char *http_process_request(char *url, int method, char **type, int *code, int *s
 		} else {
 			bytes = recv(sockfd, recvBuff, BUFFER_SIZE, 0);
 		}
+
 		if(bytes <= 0) {
 			if(*size == 0) {
 				logprintf(LOG_ERR, "http(s) read failed");
