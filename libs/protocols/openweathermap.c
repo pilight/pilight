@@ -34,7 +34,7 @@
 #include "../pilight/datetime.h" // Full path because we also have a datetime protocol
 #include "log.h"
 #include "threads.h"
-#include "http_lib.h"
+#include "http.h"
 #include "protocol.h"
 #include "hardware.h"
 #include "binary.h"
@@ -76,10 +76,10 @@ static void *openweathermapParse(void *param) {
 	double itmp = 0;
 
 	char url[1024];
-	char *filename = NULL, *data = NULL;
-	char typebuf[70];
+	char *data = NULL;
+	char typebuf[255], *tp = typebuf;
 	double temp = 0, sunrise = 0, sunset = 0, humi = 0;
-	int lg = 0, ret = 0;
+	int ret = 0, size = 0;
 
 	time_t timenow = 0;
 	struct tm *tm;
@@ -156,11 +156,9 @@ static void *openweathermapParse(void *param) {
 			timeout = 0;
 			interval = ointerval;
 
-			filename = NULL;
 			data = NULL;
 			sprintf(url, "http://api.openweathermap.org/data/2.5/weather?q=%s,%s&APPID=8db24c4ac56251371c7ea87fd3115493", wnode->location, wnode->country);
-			http_parse_url(url, &filename);
-			ret = http_get(filename, &data, &lg, typebuf);
+			data = http_get_content(url, &tp, &ret, &size);
 			if(ret == 200) {
 				if(strcmp(typebuf, "application/json;") == 0) {
 					if(json_validate(data) == true) {
@@ -256,9 +254,6 @@ static void *openweathermapParse(void *param) {
 			}
 			if(data) {
 				sfree((void *)&data);
-			}
-			if(filename) {
-				sfree((void *)&filename);
 			}
 		} else {
 			openweathermap->message = json_mkobject();

@@ -30,7 +30,6 @@
 #include "common.h"
 #include "json.h"
 #include "registry.h"
-#include "http_lib.h"
 #include "log.h"
 
 struct JsonNode *registry = NULL;

@@ -30,12 +30,12 @@ CFLAGS = -ffast-math -rdynamic -funwind-tables $(OSFLAGS) -Wfloat-equal -Wshadow
 SRC = $(wildcard *.c)
 OBJS = $(SRC:.c=.o)
 
-all: $(OBJS) pilight.o
+all: $(OBJS) config.o
 
 %.o: %.c %.h 
 	$(GCC) $(CFLAGS) -pthread -c $(patsubst %.o,%.c,$@)
 
-pilight.o: $(OBJS)
+config.o: $(OBJS)
 	$(CROSS_COMPILE)ld -L/usr/local/lib -r $(OBJS) -o config.o
 
 dist-clean: clean

@@ -31,7 +31,6 @@
 #include "json.h"
 #include "rules.h"
 #include "gui.h"
-#include "http_lib.h"
 #include "log.h"
 #include "events.h"
 #include "operator.h"

@@ -23,6 +23,7 @@
 #include <errno.h>
 #include <unistd.h>
 #include <sys/stat.h>
+#include <sys/types.h>
 #include <time.h>
 #include <libgen.h>
 #include <dirent.h>
@@ -99,7 +100,8 @@ void event_operator_init(void) {
 	if((d = opendir(operator_root))) {
 		while((file = readdir(d)) != NULL) {
 			stat(file->d_name, &s);
-			if(s.st_mode == S_IFDIR) {
+			/* Check if is file */
+			if(s.st_mode == 8) {
 				if(strstr(file->d_name, ".so") != NULL) {
 					valid = 1;
 					memset(path, '\0', 255);

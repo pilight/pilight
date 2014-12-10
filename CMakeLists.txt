@@ -142,6 +142,7 @@ if(${EVENTS} MATCHES "ON")
 endif()
 
 include_directories("${PROJECT_SOURCE_DIR}/libs/avrdude/")
+include_directories("${PROJECT_SOURCE_DIR}/libs/polarssl/")
 include_directories("${PROJECT_SOURCE_DIR}/libs/platform/")
 
 file(GLOB protocol_headers
@@ -178,11 +179,16 @@ file(GLOB hardware
 
 file(GLOB pilight_headers
 	"${PROJECT_SOURCE_DIR}/libs/pilight/*.h"
-	"${PROJECT_SOURCE_DIR}/libs/avrdude/*.h")
+	"${PROJECT_SOURCE_DIR}/libs/avrdude/*.h"
+	"${PROJECT_SOURCE_DIR}/libs/polarssl/*.h")
 
 file(GLOB pilight
 	"${PROJECT_SOURCE_DIR}/libs/pilight/*.c"
-	"${PROJECT_SOURCE_DIR}/libs/avrdude/*.c")
+	"${PROJECT_SOURCE_DIR}/libs/avrdude/*.c"
+	"${PROJECT_SOURCE_DIR}/libs/polarssl/*.c")
+
+file(GLOB avrdude_sources "${PROJECT_SOURCE_DIR}/libs/avrdude/*.c")
+file(GLOB polarssl_sources "${PROJECT_SOURCE_DIR}/libs/polarssl/*.c")
 
 
 if(${EVENTS} MATCHES "ON")
@@ -545,8 +551,6 @@ if(${EVENTS} MATCHES "OFF")
 	list(REMOVE_ITEM config "${PROJECT_SOURCE_DIR}/libs/config/rules.c")
 endif()
 
-file(GLOB avrdude_sources "${PROJECT_SOURCE_DIR}/libs/avrdude/*.c")
-
 if(${FIRMWARE_UPDATER} MATCHES "OFF")
 	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/pilight/firmware.c")
 	list(REMOVE_ITEM pilight ${avrdude_sources})
@@ -777,6 +781,7 @@ if(${MODULESPACK} MATCHES "OFF")
 	set_source_files_properties(${PROJECT_SOURCE_DIR}/libs/pilight/http_lib.c PROPERTIES COMPILE_FLAGS " -w ")
 	set_source_files_properties(${PROJECT_SOURCE_DIR}/libs/pilight/mongoose.c PROPERTIES COMPILE_FLAGS " -w ")
 	set_source_files_properties(${avrdude_sources} PROPERTIES COMPILE_FLAGS " -w ")
+	set_source_files_properties(${polarssl_sources} PROPERTIES COMPILE_FLAGS " -w ")
 
 
 	install(CODE "execute_process(COMMAND rm /usr/local/lib/libpilight.so)")

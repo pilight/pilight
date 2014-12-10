@@ -38,7 +38,6 @@ static int actionToggleArguments(struct JsonNode *arguments) {
 	struct JsonNode *jdchild = NULL;
 	double nr1 = 0.0, nr2 = 0.0;
 	int nrvalues = 0;
-	char *device = NULL, *state = NULL;
 	jdevice = json_find_member(arguments, "DEVICE");
 	jbetween = json_find_member(arguments, "BETWEEN");
 
@@ -78,7 +77,7 @@ static int actionToggleArguments(struct JsonNode *arguments) {
 						while(jschild) {
 							if(jschild->tag == JSON_STRING) {
 									struct protocols_t *tmp = dev->protocols;
-									int match1 = 0, match2 = 0;
+									int match1 = 0;
 									while(tmp) {
 										struct options_t *opt = tmp->listener->options;
 										while(opt) {

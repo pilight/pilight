@@ -33,7 +33,7 @@
 #include "../pilight/datetime.h" // Full path because we also have a datetime protocol
 #include "log.h"
 #include "threads.h"
-#include "http_lib.h"
+#include "http.h"
 #include "protocol.h"
 #include "hardware.h"
 #include "binary.h"
@@ -73,10 +73,10 @@ static void *wundergroundParse(void *param) {
 
 	char url[1024];
 	char *filename = NULL, *data = NULL;
-	char typebuf[70];
+	char typebuf[255], *tp = typebuf;
 	char *stmp = NULL;
 	double temp = 0, itmp = -1;
-	int humi = 0, lg = 0, ret = 0;
+	int humi = 0, ret = 0, size = 0;
 
 	JsonNode *jdata = NULL;
 	JsonNode *jdata1 = NULL;
@@ -172,12 +172,9 @@ static void *wundergroundParse(void *param) {
 		if(timeout >= interval || event != ETIMEDOUT || firstrun == 1) {
 			timeout = 0;
 			interval = ointerval;
-			filename = NULL;
 			data = NULL;
 			sprintf(url, "http://api.wunderground.com/api/%s/geolookup/conditions/q/%s/%s.json", wnode->api, wnode->country, wnode->location);
-			http_parse_url(url, &filename);
-			ret = http_get(filename, &data, &lg, typebuf);
-
+			data = http_get_content(url, &tp, &ret, &size);
 			if(ret == 200) {
 				if(strcmp(typebuf, "application/json;") == 0) {
 					if(json_validate(data) == true) {
@@ -195,14 +192,9 @@ static void *wundergroundParse(void *param) {
 											sfree((void *)&data);
 											data = NULL;
 										}
-										if(filename) {
-											sfree((void *)&filename);
-											filename = NULL;
-										}
 
 										sprintf(url, "http://api.wunderground.com/api/%s/astronomy/q/%s/%s.json", wnode->api, wnode->country, wnode->location);
-										http_parse_url(url, &filename);
-										ret = http_get(filename, &data, &lg, typebuf);
+										data = http_get_content(url, &tp, &ret, &size);
 										if(ret == 200) {
 											if(strcmp(typebuf, "application/json;") == 0) {
 												if(json_validate(data) == true) {

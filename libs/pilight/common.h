@@ -33,6 +33,7 @@ int ishex(int x);
 const char *rstrstr(const char* haystack, const char* needle);
 void alpha_random(char *s, const int len);
 int urldecode(const char *s, char *dec);
+char *urlencode(char *str);
 int base64decode(unsigned char *dest, unsigned char *src, int l);
 char *hostname(void);
 char *distroname(void);

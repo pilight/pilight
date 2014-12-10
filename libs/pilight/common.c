@@ -255,6 +255,26 @@ int urldecode(const char *s, char *dec) {
 	return (int)(o - dec);
 }
 
+static char to_hex(char code) {
+  static char hex[] = "0123456789abcdef";
+  return hex[code & 15];
+}
+
+char *urlencode(char *str) {
+	char *pstr = str, *buf = malloc(strlen(str) * 3 + 1), *pbuf = buf;
+	while(*pstr) {
+		if(isalnum(*pstr) || *pstr == '-' || *pstr == '_' || *pstr == '.' || *pstr == '~') 
+			*pbuf++ = *pstr;
+		else if(*pstr == ' ') 
+			*pbuf++ = '+';
+		else 
+			*pbuf++ = '%', *pbuf++ = to_hex(*pstr >> 4), *pbuf++ = to_hex(*pstr & 15);
+		pstr++;
+	}
+	*pbuf = '\0';
+	return buf;
+}
+
 int base64decode(unsigned char *dest, unsigned char *src, int l) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 

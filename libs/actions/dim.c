@@ -38,7 +38,6 @@ static int actionDimArguments(struct JsonNode *arguments) {
 	struct JsonNode *jdchild = NULL;
 	double nr1 = 0.0, nr2 = 0.0;
 	int nrvalues = 0;
-	char *device = NULL, *state = NULL;
 	jdevice = json_find_member(arguments, "DEVICE");
 	jto = json_find_member(arguments, "TO");
 

@@ -31,7 +31,6 @@
 #include "common.h"
 #include "json.h"
 #include "settings.h"
-#include "http_lib.h"
 #include "log.h"
 
 typedef struct settings_t {

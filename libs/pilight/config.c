@@ -31,7 +31,6 @@
 #include "common.h"
 #include "json.h"
 #include "config.h"
-#include "http_lib.h"
 #include "log.h"
 #include "devices.h"
 #include "settings.h"
