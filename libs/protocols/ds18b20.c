@@ -62,7 +62,7 @@ static void *ds18b20Parse(void *param) {
 	char *content = NULL;
 	int w1valid = 0, interval = 10, x = 0;
 	int nrid = 0, y = 0, nrloops = 0;
-	double temp_offset = 0.0, w1temp = 0.0, itmp = 0.0;
+	double temp_offset = 0.0, w1temp = 0.0, itmp = 0.0, decimals = 0.0;
 	size_t bytes = 0;
 
 	ds18b20_threads++;
@@ -91,6 +91,7 @@ static void *ds18b20Parse(void *param) {
 	if(json_find_number(json, "poll-interval", &itmp) == 0)
 		interval = (int)round(itmp);
 	json_find_number(json, "temperature-offset", &temp_offset);
+	json_find_number(json, "decimals", &decimals);
 
 	while(ds18b20_loop) {
 		if(protocol_thread_wait(node, interval, &nrloops) == ETIMEDOUT) {
@@ -142,7 +143,7 @@ static void *ds18b20Parse(void *param) {
 											w1valid = 1;
 										}
 										if(x == 2) {
-											w1temp = (atof(pch)/1000)+temp_offset;
+											w1temp = (atof(pch)/pow(10, decimals))+temp_offset;
 										}
 										x++;
 									}
