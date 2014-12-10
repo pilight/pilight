@@ -52,13 +52,13 @@ char *http_get_ip(char *host) {
 	char *ip = malloc(17);
 	memset(ip, '\0', 17);
 	if(!(hent = gethostbyname(host))) {
-		herror("Can't get IP");
-		exit(EXIT_FAILURE);
+		logprintf(LOG_ERR, "can't get http IP");
+		return NULL;
 	}
 
 	if(!(inet_ntop(AF_INET, (void *)hent->h_addr_list[0], ip, 16))) {
-		perror("Can't resolve host");
-		exit(EXIT_FAILURE);
+		logprintf(LOG_ERR, "can't resolve http host");
+		return NULL;
 	}
 	return ip;
 }
@@ -120,7 +120,10 @@ char *http_process_request(char *url, int method, char **type, int *code, int *s
 	}
   setsockopt(sockfd, SOL_SOCKET, SO_KEEPALIVE, 0, 0);
 
-	ip = http_get_ip(host);
+	if((ip = http_get_ip(host)) == NULL) {
+		*code = -1;
+		goto exit;		
+	}
 
 	serv_addr.sin_family = AF_INET;
 	if(inet_pton(AF_INET, ip, (void *)(&(serv_addr.sin_addr.s_addr))) <= 0) {
