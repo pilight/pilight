@@ -511,7 +511,8 @@ static int radxaBoardRev(void) {
 	for(d = &line[strlen(line) - 1]; (*d == '\n') || (*d == '\r') ; --d)
 		*d = 0 ;
 
-	if(strstr(line, "RK30board") != NULL) {
+	if(strstr(line, "RK30board") != NULL ||
+	   strstr(line, "Rockchip") != NULL) {
 		return 0;
 	} else {
 		return -1;

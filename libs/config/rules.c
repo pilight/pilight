@@ -82,11 +82,14 @@ static int rules_parse(JsonNode *root) {
 					node->nrdevices = 0;
 					node->status = 0;
 					node->devices = NULL;
+					node->action = NULL;
+					node->arguments = NULL;
 					if(event_parse_rule(rule, node, 0, 1, 1) == -1) {
 						sfree((void *)&node);
 						have_error = 1;
 						break;
 					}
+					node->status = 0;
 					node->rule = malloc(strlen(rule)+1);
 					if(!node->rule) {
 						logprintf(LOG_ERR, "out of memory");
@@ -184,6 +187,9 @@ int rules_gc(void) {
 			sfree((void *)&tmp_values->device);
 			tmp_rules->values = tmp_rules->values->next;
 			sfree((void *)&tmp_values);
+		}
+		if(tmp_rules->arguments) {
+			json_delete(tmp_rules->arguments);
 		}
 		sfree((void *)&tmp_rules->values);
 		sfree((void *)&tmp_rules->devices);

@@ -22,7 +22,7 @@
 #include "rules.h"
 
 int event_parse_rule(char *rule, struct rules_t *obj, int depth, unsigned int nr, int validate);
-void events_queue(struct JsonNode *jconfig);
+void *events_clientize(void *param);
 int events_gc(void);
 void *events_loop(void *param);
 int events_running(void);

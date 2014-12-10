@@ -25,7 +25,8 @@
 /* Internals */
 
 #cmakedefine WEBSERVER
-#cmakedefine PILIGHT_UPDATER
+#cmakedefine EVENTS
+#cmakedefine FIRMWARE_UPDATER
 
 #define VERSION									"5.0"
 #define PULSE_DIV								34
@@ -65,7 +66,7 @@
 #define RECEIVE_REPEATS					1
 #define UUID_LENGTH							21
 
-#ifdef FIRMWARE
+#ifdef FIRMWARE_UPDATER
 	#define FIRMWARE_PATH				"/etc/pilight/"
 #endif
 

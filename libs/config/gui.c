@@ -435,7 +435,7 @@ static void gui_save_setting(int i, JsonNode *jsetting, struct gui_elements_t *e
 
 int gui_parse_elements(struct JsonNode *root, struct gui_elements_t *parent, int i) {
 	struct JsonNode *jsettings = NULL;
-	int nrgroup = 0, nrmedia = 0, nrname = 0, nrorder = 0;
+	unsigned int nrgroup = 0, nrmedia = 0, nrname = 0, nrorder = 0;
 	int valid_setting = 0;
 	int have_error = 0;
 

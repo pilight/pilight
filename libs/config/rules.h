@@ -36,7 +36,9 @@ typedef struct rules_t {
 	int nrdevices;
 	int status;
 	unsigned short active;
+	/* Arguments to be send to the action */
 	struct JsonNode *arguments;
+	struct event_actions_t *action;
 	struct rules_values_t *values;
 	struct rules_t *next;
 } rules_t;

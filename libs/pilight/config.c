@@ -36,7 +36,9 @@
 #include "devices.h"
 #include "settings.h"
 #include "registry.h"
-#include "rules.h"
+#ifdef EVENTS
+	#include "rules.h"
+#endif
 #include "hardware.h"
 #include "gui.h"
 
@@ -280,6 +282,8 @@ void config_init() {
 	settings_init();
 	devices_init();
 	gui_init();
+#ifdef EVENTS
 	rules_init();
+#endif
 	registry_init();
 }

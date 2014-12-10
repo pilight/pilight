@@ -55,7 +55,10 @@
 #include "firmware.h"
 #include "proc.h"
 #include "registry.h"
-#include "events.h"
+
+#ifdef EVENTS
+	#include "events.h"
+#endif
 
 #ifdef WEBSERVER
 	#include "webserver.h"
@@ -292,13 +295,7 @@ void *broadcast(void *param) {
 
 	pthread_mutex_lock(&bcqueue_lock);
 	while(main_loop) {
-		/* Check if we are called by an
-		   event action. If so, we don't
-			 want to trigger new broadcast 
-			 to prevent infinite event
-			 loops and therefore a deadlocks 
-			 in the events_queue function */
-		if(bcqueue_number > 0 && events_running() == -1) {
+		if(bcqueue_number > 0) {
 			pthread_mutex_lock(&bcqueue_lock);
 
 			logprintf(LOG_STACK, "%s::unlocked", __FUNCTION__);
@@ -338,7 +335,6 @@ void *broadcast(void *param) {
 				} else {
 					/* Update the config */
 					if(devices_update(bcqueue->protoname, bcqueue->jmessage, &jret) == 0) {
-						events_queue(jret);
 						char *tmp = json_stringify(jret, NULL);
 						struct clients_t *tmp_clients = clients;
 						unsigned short match1 = 0, match2 = 0;
@@ -1613,7 +1609,9 @@ void *clientize(void *param) {
 						if((jconfig = json_find_member(json, "config")) != NULL) {
 							gui_gc();
 							devices_gc();
+#ifdef EVENTS
 							rules_gc();
+#endif
 							int match = 1;
 							while(match) {
 								jchilds = json_first_child(jconfig);
@@ -1740,7 +1738,10 @@ int main_gc(void) {
 	if(runmode == 2) {
 		socket_write(sockfd, "HEART");
 	}
+
+#ifdef EVENTS
 	events_gc();
+#endif
 
 	struct conf_hardware_t *tmp_confhw = conf_hardware;
 	while(tmp_confhw) {
@@ -2314,7 +2315,15 @@ int main(int argc, char **argv) {
 	}
 
 	threads_register("receive parser", &receive_parse_code, (void *)NULL, 0);
-	threads_register("events loop", &events_loop, (void *)NULL, 0);
+
+#ifdef EVENTS
+	/* Register a seperate thread for the events parser */
+	if(runmode == 1) {
+		/* Register a seperate thread in which the daemon communicates the events library */
+		threads_register("events client", &events_clientize, (void *)NULL, 0);
+		threads_register("events loop", &events_loop, (void *)NULL, 0);
+	}
+#endif
 
 #ifdef WEBSERVER
 	settings_find_number("webgui-websockets", &webgui_websockets);
