@@ -159,7 +159,6 @@ static void *ds18b20Parse(void *param) {
 
 									json_append_member(ds18b20->message, "message", code);
 									json_append_member(ds18b20->message, "origin", json_mkstring("receiver"));
-									json_append_member(ds18b20->message, "origin", json_mkstring("receiver"));
 									json_append_member(ds18b20->message, "protocol", json_mkstring(ds18b20->id));
 
 									pilight.broadcast(ds18b20->id, ds18b20->message);
