@@ -67,6 +67,7 @@ typedef struct platform_t {
 struct platform_t *platforms;
 
 void platform_register(struct platform_t **platform, const char *name);
+void delayMicroseconds(unsigned int howLong);
 void pinMode(int pin, int mode);
 void digitalWrite(int pin, int value);
 int digitalRead(int pin);

@@ -351,7 +351,6 @@ void *broadcast(void *param) {
 										match2 = 0;
 										if(jchilds->tag == JSON_STRING) {
 											if((gui_values = gui_media(jchilds->string_)) != NULL) {
-												printf("\n\n%s\n\n", bcqueue->protoname);
 												while(gui_values) {
 													if(gui_values->type == JSON_STRING) {
 														if(strcmp(gui_values->string_, tmp_clients->media) == 0 ||

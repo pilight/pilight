@@ -67,13 +67,8 @@ static void *dht11Parse(void *param) {
 	int *id = 0;
 	int nrid = 0, y = 0, interval = 10, nrloops = 0;
 	double temp_offset = 0.0, humi_offset = 0.0, itmp = 0.0;
-	struct sched_param sched;
 
 	dht11_threads++;
-
-	memset(&sched, 0, sizeof(sched));
-	sched.sched_priority = 60;
-	pthread_setschedparam(pthread_self(), SCHED_FIFO, &sched);
 
 	if((jid = json_find_member(json, "id"))) {
 		jchild = json_first_child(jid);
@@ -119,10 +114,10 @@ static void *dht11Parse(void *param) {
 					// detect change and read data
 					for(i=0; (i<MAXTIMINGS && dht11_loop); i++) {
 						counter = 0;
-						usleep(10);
+						delayMicroseconds(10);
 						while(sizecvt(digitalRead(id[y])) == laststate && dht11_loop) {
 							counter++;
-							usleep(1);
+							delayMicroseconds(1);
 							if(counter == 255) {
 								break;
 							}
@@ -238,7 +233,7 @@ void dht11Init(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name = "dht11";
-	module->version = "1.2";
+	module->version = "1.3";
 	module->reqversion = "5.0";
 	module->reqcommit = "84";
 }
