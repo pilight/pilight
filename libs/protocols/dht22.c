@@ -154,7 +154,7 @@ static void *dht22Parse(void *param) {
 						dht22->message = json_mkobject();
 						JsonNode *code = json_mkobject();
 						json_append_member(code, "gpio", json_mknumber(id[y], 0));
-						json_append_member(code, "temperature", json_mknumber(t/10, 1));
+						json_append_member(code, "temperature", json_mknumber(t, 1));
 						json_append_member(code, "humidity", json_mknumber(h/10, 1));
 
 						json_append_member(dht22->message, "message", code);
