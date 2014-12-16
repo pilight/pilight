@@ -107,7 +107,7 @@ void event_action_init(void) {
 		while((file = readdir(d)) != NULL) {
 			stat(file->d_name, &s);
 			/* Check if file */
-			if(s.st_mode == 8) {
+			if(S_ISREG(s.st_mode) == 0) {
 				if(strstr(file->d_name, ".so") != NULL) {
 					valid = 1;
 					memset(path, '\0', 255);

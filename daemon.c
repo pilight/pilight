@@ -2087,6 +2087,10 @@ int main(int argc, char **argv) {
 		return EXIT_FAILURE;
 	}
 
+	if(nodaemon == 1) {
+		log_level_set(verbosity);
+	}
+
 	protocol_init();
 	config_init();
 	if(config_read() != EXIT_SUCCESS) {
