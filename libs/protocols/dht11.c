@@ -155,7 +155,7 @@ static void *dht11Parse(void *param) {
 						JsonNode *code = json_mkobject();
 						json_append_member(code, "gpio", json_mknumber(id[y], 0));
 						json_append_member(code, "temperature", json_mknumber(t, 1));
-						json_append_member(code, "humidity", json_mknumber(h/10, 1));
+						json_append_member(code, "humidity", json_mknumber(h, 1));
 
 						json_append_member(dht11->message, "message", code);
 						json_append_member(dht11->message, "origin", json_mkstring("receiver"));
