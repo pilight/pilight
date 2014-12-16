@@ -19,11 +19,13 @@ set(CMAKE_EXE_LINKER_FLAGS " -Wl,-rpath=/usr/local/lib/,-rpath=/usr/lib/,-rpath=
 set(CMAKE_SHARED_LINKER_FLAGS " -Wl,-rpath=/usr/local/lib/,-rpath=/usr/lib/,-rpath=/lib/")
 set(CMAKE_MODULE_LINKER_FLAGS " -Wl,-rpath=/usr/local/lib/,-rpath=/usr/lib/,-rpath=/lib/")
 
-set(CMAKE_ZLIB_LIBS_INIT)
+set(CMAKE_UNWIND_LIBS_INIT)
 
-find_library(CMAKE_ZLIB_LIBS_INIT 
-			NAME z
-            PATHS   /usr/lib
+find_library(CMAKE_UNWIND_LIBS_INIT 
+			NAME unwind
+            PATHS
+										${CROSS_COMPILE_LIBS}
+										/usr/lib
                     /usr/lib32
                     /usr/lib64
                     /usr/lib/i386-linux-gnu		
@@ -33,26 +35,26 @@ find_library(CMAKE_ZLIB_LIBS_INIT
                     /usr/local/lib64
                     /usr/lib/arm-linux-gnueabi
                     /usr/lib/arm-linux-gnueabihf
-			NO_DEFAULT_PATH)
-			
-message(STATUS "Looking for libz")
-if(${CMAKE_ZLIB_LIBS_INIT} MATCHES "CMAKE_ZLIB_LIBS_INIT-NOTFOUND")
-	message(FATAL_ERROR "Looking for libz - not found")
+			NO_DEFAULT_PATH)	
+
+message(STATUS "Looking for libunwind")
+if(${CMAKE_UNWIND_LIBS_INIT} MATCHES "CMAKE_UNWIND_LIBS_INIT-NOTFOUND")
+	message(FATAL_ERROR "Looking for libunwind - not found")
 else()
-	message(STATUS "Looking for libz - found (${CMAKE_ZLIB_LIBS_INIT})")
+	message(STATUS "Looking for libunwind - found (${CMAKE_UNWIND_LIBS_INIT})")
 endif()
 
 if(${CMAKE_SYSTEM_PROCESSOR} MATCHES "armv6" OR CPACK_DEBIAN_PACKAGE_ARCHITECTURE MATCHES "armhf")
 	if(${USE_SOFT_FLOAT} MATCHES "OFF")
 		set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE armhf)
-		set(CMAKE_C_FLAGS "-rdynamic -funwind-tables -lz -Ofast -mfloat-abi=hard -mfpu=vfp -march=armv6 -ffast-math -Wfloat-equal -Wshadow -Wpointer-arith -Wcast-align -Wstrict-overflow=5 -Wwrite-strings -Waggregate-return -Wcast-qual -Wswitch-default -Wswitch-enum -Wformat=2 -g -Wall -Wconversion -Wunreachable-code -Wstrict-prototypes")
+		set(CMAKE_C_FLAGS "-rdynamic -funwind-tables -lunwind -Ofast -mfloat-abi=hard -mfpu=vfp -march=armv6 -ffast-math -Wfloat-equal -Wshadow -Wpointer-arith -Wcast-align -Wstrict-overflow=5 -Wwrite-strings -Waggregate-return -Wcast-qual -Wswitch-default -Wswitch-enum -Wformat=2 -g -Wall -Wconversion -Wunreachable-code -Wstrict-prototypes")
 	else()
-		set(CMAKE_C_FLAGS "-rdynamic -funwind-tables -lz -Ofast -mfloat-abi=soft -msoft-float -mfpu=vfp -march=armv6 -ffast-math -Wfloat-equal -Wshadow -Wpointer-arith -Wcast-align -Wstrict-overflow=5 -Wwrite-strings -Waggregate-return -Wcast-qual -Wswitch-default -Wswitch-enum -Wformat=2 -g -Wall -Wconversion -Wunreachable-code -Wstrict-prototypes")
+		set(CMAKE_C_FLAGS "-rdynamic -funwind-tables -lunwind -Ofast -mfloat-abi=soft -msoft-float -mfpu=vfp -march=armv6 -ffast-math -Wfloat-equal -Wshadow -Wpointer-arith -Wcast-align -Wstrict-overflow=5 -Wwrite-strings -Waggregate-return -Wcast-qual -Wswitch-default -Wswitch-enum -Wformat=2 -g -Wall -Wconversion -Wunreachable-code -Wstrict-prototypes")
 	endif()
 elseif(${CMAKE_SYSTEM_PROCESSOR} MATCHES "armv7l")
 	if(${USE_SOFT_FLOAT} MATCHES "OFF")
 		set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE armhf)
-		set(CMAKE_C_FLAGS "-rdynamic -funwind-tables -lz -Ofast -fPIC -mfloat-abi=hard -mfpu=vfp -march=armv7-a -ffast-math -Wfloat-equal -Wshadow -Wpointer-arith -Wcast-align -Wstrict-overflow=5 -Wwrite-strings -Waggregate-return -Wcast-qual -Wswitch-default -Wswitch-enum -Wformat=2 -g -Wall -Wconversion -Wunreachable-code -Wstrict-prototypes")
+		set(CMAKE_C_FLAGS "-rdynamic -funwind-tables -lunwind -Ofast -fPIC -mfloat-abi=hard -mfpu=vfp -march=armv7-a -ffast-math -Wfloat-equal -Wshadow -Wpointer-arith -Wcast-align -Wstrict-overflow=5 -Wwrite-strings -Waggregate-return -Wcast-qual -Wswitch-default -Wswitch-enum -Wformat=2 -g -Wall -Wconversion -Wunreachable-code -Wstrict-prototypes")
 	else()
 		message(FATAL_ERROR "Architecture not supported")
 	endif()
@@ -765,10 +767,8 @@ if(${MODULESPACK} MATCHES "OFF")
 	target_link_libraries(pilight_static rt)
 	target_link_libraries(pilight_static ${CMAKE_DL_LIBS})
 
-	if(${UPDATE} MATCHES "ON")
-		target_link_libraries(pilight_shared ${CMAKE_ZLIB_LIBS_INIT})
-		target_link_libraries(pilight_static ${CMAKE_ZLIB_LIBS_INIT})
-	endif()
+	target_link_libraries(pilight_shared ${CMAKE_UNWIND_LIBS_INIT})
+	target_link_libraries(pilight_static ${CMAKE_UNWIND_LIBS_INIT})
 
 	set_target_properties(pilight_shared pilight_static PROPERTIES OUTPUT_NAME pilight)
 
@@ -810,10 +810,6 @@ if(${MODULESPACK} MATCHES "OFF")
 		target_link_libraries(pilight-daemon execinfo)
 	endif()
 	target_link_libraries(pilight-daemon ${CMAKE_THREAD_LIBS_INIT})
-
-	if(${UPDATE} MATCHES "ON")
-		target_link_libraries(pilight-daemon ${CMAKE_ZLIB_LIBS_INIT})
-	endif()
 
 	add_executable(pilight-raw raw.c)
 	target_link_libraries(pilight-raw pilight_shared)

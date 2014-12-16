@@ -10,17 +10,17 @@ ifneq (, $(findstring x86_64, $(SYS)))
 endif
 ifneq (, $(findstring arm, $(SYS)))
 	ifneq (, $(findstring gnueabihf, $(SYS)))
-		OSFLAGS = -Ofast -mfloat-abi=hard -mfpu=vfp -march=armv6 -Wconversion -Wunreachable-code -Wstrict-prototypes 
+		OSFLAGS = -fno-omit-frame-pointer -Ofast -mfloat-abi=hard -mfpu=vfp -march=armv6 -Wconversion -Wunreachable-code -Wstrict-prototypes 
 	endif
 	ifneq (, $(findstring gnueabi, $(SYS)))
 		ifeq (, $(findstring FreeBSD, $(SYS)))
-			OSFLAGS = -isystem../../../../x-tools/arm-unknown-linux-gnueabi/sysroot/usr/include/ -nostdinc  -mfloat-abi=hard -mfpu=vfp -march=armv6 -Wconversion -Wunreachable-code -Wstrict-prototypes 
+			OSFLAGS = -fno-omit-frame-pointer -isystem../../../../x-tools/arm-unknown-linux-gnueabi/sysroot/usr/include/ -nostdinc  -mfloat-abi=hard -mfpu=vfp -march=armv6 -Wconversion -Wunreachable-code -Wstrict-prototypes 
 		else
-			OSFLAGS = -Ofast -mfloat-abi=hard -mfpu=vfp -march=armv6 -Wconversion -Wunreachable-code -Wstrict-prototypes 
+			OSFLAGS = -fno-omit-frame-pointer -Ofast -mfloat-abi=hard -mfpu=vfp -march=armv6 -Wconversion -Wunreachable-code -Wstrict-prototypes 
 		endif
 	endif	
 	ifneq (, $(findstring gnueabisf, $(SYS)))
-		OSFLAGS = -Ofast -mfloat-abi=soft -mfpu=vfp -march=armv6 -Wconversion -Wunreachable-code -Wstrict-prototypes 
+		OSFLAGS = -fno-omit-frame-pointer -Ofast -mfloat-abi=soft -mfpu=vfp -march=armv6 -Wconversion -Wunreachable-code -Wstrict-prototypes 
 	endif
 endif
 ifneq (, $(findstring amd64, $(SYS)))
@@ -36,7 +36,7 @@ all: $(OBJS) config.o
 	$(GCC) $(CFLAGS) -pthread -c $(patsubst %.o,%.c,$@)
 
 config.o: $(OBJS)
-	$(CROSS_COMPILE)ld -L/usr/local/lib -r $(OBJS) -o config.o
+	$(CROSS_COMPILE)ld -L/usr/local/lib -g -r $(OBJS) -o config.o
 
 dist-clean: clean
 

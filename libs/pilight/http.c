@@ -71,7 +71,7 @@ char *http_process_request(char *url, int method, char **type, int *code, int *s
 	char *ip = NULL, *content = NULL, *host = NULL;
 	char *page = NULL, *tok = NULL;
 	char recvBuff[BUFFER_SIZE+1], header[1024];
-	unsigned int port = 0;
+	unsigned short port = 0;
 	size_t len = 0, tlen = 0, plen = 0;
 
 	entropy_context entropy;
@@ -148,7 +148,7 @@ char *http_process_request(char *url, int method, char **type, int *code, int *s
 										 "Content-Type: application/x-www-form-urlencoded\r\n"
 										 "Content-Length: %d\r\n\r\n"
 										 "%s",
-										 page, host, USERAGENT, strlen(post), post);
+										 page, host, USERAGENT, (int)strlen(post), post);
 	} else if(method == HTTP_GET) {
 		len = (size_t)sprintf(header, 
 						"GET %s HTTP/1.0\r\n"

@@ -24,6 +24,8 @@
 #include <execinfo.h>
 #include <unistd.h>
 #include <errno.h>
+#define UNW_LOCAL_ONLY
+#include <libunwind.h>
 
 #include "gc.h"
 #include "json.h"
@@ -36,6 +38,9 @@ static unsigned short gc_enable = 1;
 
 void gc_handler(int sig) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+	char name[256];
+	unw_cursor_t cursor; unw_context_t uc;
+	unw_word_t ip, sp, offp;
 
 	switch(sig) {
 		case SIGSEGV:
@@ -43,10 +48,22 @@ void gc_handler(int sig) {
 		case SIGILL:
 		case SIGABRT:
 		case SIGFPE: {
+			log_shell_disable();
 			void *stack[50];
 			int n = backtrace(stack, 50);
 			printf("-- STACKTRACE (%d FRAMES) --\n", n);
-			backtrace_symbols_fd(stack, n, STDERR_FILENO);
+
+			unw_getcontext (&uc);
+			unw_init_local (&cursor, &uc);
+
+			while(unw_step(&cursor) > 0) {	
+				name[0] = '\0';
+				unw_get_proc_name(&cursor, name, 256, &offp);
+				unw_get_reg(&cursor, UNW_REG_IP, &ip);
+				unw_get_reg(&cursor, UNW_REG_SP, &sp);
+
+				printf("%-30s ip = %10p, sp = %10p\n", name, (void *)ip, (void *)sp);
+			}
 		}
 		break;
 		default:;
