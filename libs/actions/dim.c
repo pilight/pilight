@@ -118,8 +118,6 @@ static int actionDimArguments(struct JsonNode *arguments) {
 											}
 											tmp_protocols = tmp_protocols->next;
 										}
-									} else {
-										return -1;
 									}
 								} else {
 									logprintf(LOG_ERR, "device \"%s\" doesn't support dimming", jdchild->string_);
