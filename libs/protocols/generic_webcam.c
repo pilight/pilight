@@ -56,7 +56,8 @@ void genWebcamInit(void) {
 	generic_webcam->devtype = WEBCAM;
 	generic_webcam->multipleId = 0;
 
-	options_add(&generic_webcam->options, 'u', "url", OPTION_HAS_VALUE, DEVICES_ID, JSON_STRING, NULL, NULL);
+	options_add(&generic_webcam->options, 'u', "url", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_STRING, NULL, NULL);
+	options_add(&generic_webcam->options, 'i', "id", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^([0-9]{1,})$");
 
 	options_add(&generic_webcam->options, 0, "image-width", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "[0-9]");
 	options_add(&generic_webcam->options, 0, "image-height", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)300, "[0-9]");
@@ -69,7 +70,7 @@ void genWebcamInit(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name = "generic_webcam";
-	module->version = "1.1";
+	module->version = "1.2";
 	module->reqversion = "5.0";
 	module->reqcommit = "84";
 }
