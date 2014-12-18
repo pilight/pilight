@@ -153,8 +153,6 @@ static char *sendhw = NULL;
 static int send_repeat = 0;
 /* How many times does a code need to received*/
 static int receive_repeat = RECEIVE_REPEATS;
-/* Which mode are we running in: 1 = server, 2 = client */
-static unsigned short runmode = 1;
 /* Socket identifier to the server if we are running as client */
 static int sockfd = 0;
 /* Thread pointers */
@@ -319,7 +317,7 @@ void *broadcast(void *param) {
 						}
 						tmp_clients = tmp_clients->next;
 					}
-					if(runmode == 2 && sockfd > 0) {
+					if(pilight.runmode == ADHOC && sockfd > 0) {
 						struct JsonNode *jupdate = json_decode(conf);
 						json_append_member(jupdate, "action", json_mkstring("update"));
 						char *ret = json_stringify(jupdate, NULL);
@@ -448,7 +446,7 @@ void *broadcast(void *param) {
 						tmp_clients = tmp_clients->next;
 					}
 
-					if(runmode == 2 && sockfd > 0) {
+					if(pilight.runmode == ADHOC && sockfd > 0) {
 						struct JsonNode *jupdate = json_decode(jinternal);
 						json_append_member(jupdate, "action", json_mkstring("update"));
 						char *ret = json_stringify(jupdate, NULL);
@@ -1142,7 +1140,7 @@ static void socket_parse_data(int i, char *buffer) {
 	char *action = NULL, *media = NULL;
 	int error = 0, exists = 0;
 
-	if(runmode == 2) {
+	if(pilight.runmode == ADHOC) {
 		sd = sockfd;
 	} else {
 		sd = socket_get_clients(i);
@@ -1152,7 +1150,7 @@ static void socket_parse_data(int i, char *buffer) {
 	if(strcmp(buffer, "HEART") == 0) {
 		socket_write(sd, "BEAT");
 	} else {
-		if(runmode != 2) {
+		if(pilight.runmode != ADHOC) {
 			logprintf(LOG_DEBUG, "socket recv: %s", buffer);
 		}
 		/* Serve static webserver page. This is the only request that is
@@ -1713,6 +1711,7 @@ static void daemonize(void) {
 int main_gc(void) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
+	pilight.runmode = STANDALONE;
 	main_loop = 0;
 
 	while(sending) {
@@ -1734,7 +1733,7 @@ int main_gc(void) {
 	   main daemon will response with a BEAT. This allows
 	   us to stop the socket_read function and properly
 	   stop the clientize thread. */
-	if(runmode == 2) {
+	if(pilight.runmode == ADHOC) {
 		socket_write(sockfd, "HEART");
 	}
 
@@ -2216,20 +2215,20 @@ int main(int argc, char **argv) {
 				logprintf(LOG_NOTICE, "no pilight daemon found, daemonizing");
 			} else {
 				logprintf(LOG_NOTICE, "a pilight daemon was found, clientizing");
-				runmode = 2;
+				pilight.runmode = ADHOC;
 			}
 		} else if(ssdp_seek(&ssdp_list) == -1) {
 			logprintf(LOG_NOTICE, "no pilight daemon found, daemonizing");
 		} else {
 			logprintf(LOG_NOTICE, "a pilight daemon was found @%s, clientizing", ssdp_list->ip);
-			runmode = 2;
+			pilight.runmode = ADHOC;
 		}
 		if(ssdp_list) {
 			ssdp_free(ssdp_list);
 		}
 	}
 
-	if(runmode == 1) {
+	if(pilight.runmode == STANDALONE) {
 		socket_start((unsigned short)port);
 		if(standalone == 0) {
 			ssdp_start();
@@ -2277,7 +2276,7 @@ int main(int argc, char **argv) {
 
 	/* The daemon running in client mode, register a seperate thread that
 	   communicates with the server */
-	if(runmode == 2) {
+	if(pilight.runmode == ADHOC) {
 		threads_register("node", &clientize, (void *)NULL, 0);
 	} else {
 		/* Register a seperate thread for the socket server */
@@ -2321,7 +2320,7 @@ int main(int argc, char **argv) {
 
 #ifdef EVENTS
 	/* Register a seperate thread for the events parser */
-	if(runmode == 1) {
+	if(pilight.runmode == STANDALONE) {
 		/* Register a seperate thread in which the daemon communicates the events library */
 		threads_register("events client", &events_clientize, (void *)NULL, 0);
 		threads_register("events loop", &events_loop, (void *)NULL, 0);
@@ -2332,7 +2331,7 @@ int main(int argc, char **argv) {
 	settings_find_number("webgui-websockets", &webgui_websockets);
 
 	/* Register a seperate thread for the webserver */
-	if(webserver_enable == 1 && runmode == 1) {
+	if(webserver_enable == 1 && pilight.runmode == STANDALONE) {
 		webserver_start();
 		/* Register a seperate thread in which the webserver communicates the main daemon */
 		threads_register("webserver client", &webserver_clientize, (void *)NULL, 0);

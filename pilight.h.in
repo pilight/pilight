@@ -70,11 +70,17 @@
 	#define FIRMWARE_PATH				"/etc/pilight/"
 #endif
 
+typedef enum runmode_t {
+	STANDALONE,
+	ADHOC
+} runmode_t;
+
 typedef struct pilight_t {
     void (*broadcast)(char *name, JsonNode *message);
     int (*send)(JsonNode *json);
     int (*control)(struct devices_t *dev, char *state, JsonNode *values);
     void (*receive)(int *rawcode, int rawlen, int plslen, int hwtype);
+    runmode_t runmode;
 } pilight_t;
 
 struct pilight_t pilight;

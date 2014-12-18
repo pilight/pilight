@@ -225,7 +225,7 @@ static int event_lookup_variable(char *var, struct rules_t *obj, unsigned int nr
 								break;
 							} else if(strcmp(opt->name, name) == 0) {
 								match1 = 1;
-								if(opt->conftype == DEVICES_VALUE || opt->conftype == DEVICES_STATE) {
+								if(opt->conftype == DEVICES_VALUE || opt->conftype == DEVICES_STATE || opt->conftype == DEVICES_SETTING) {
 									match2 = 1;
 									if(opt->vartype == JSON_STRING && type == JSON_STRING) {
 										match3 = 1;
