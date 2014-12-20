@@ -615,9 +615,9 @@ function createGUI(data) {
 	$('#tabs').append($("<ul></ul>"));
 	$.each(data['gui'], function(dindex, dvalues) {
 		var lindex = dvalues['group'][0];
-		// if(oWebsocket) {
-			// $('#proc').text("CPU: ...% / RAM: ...%");
-		// }
+		if(oWebsocket) {
+			$('#proc').text("CPU: ...% / RAM: ...%");
+		}
 		if($('#'+alphaNum(lindex)).length == 0) {
 			if(bShowTabs) {
 				var oNavBar = $('#tabs');
@@ -959,7 +959,7 @@ window.onbeforeunload = function() {
 }
 
 function startAjax() {
-	$.get('http://'+location.host+'/config?'+$.now(), function(txt) {
+	$.get('http://'+location.host+'/config?internal&'+$.now(), function(txt) {
 		bConnected = true;
 		if(!bSending) {
 			var data = $.parseJSON(txt);
@@ -1066,7 +1066,7 @@ $(document).ready(function() {
 
 		/* Use an AJAX request to check if the user want to enforce
 		   an AJAX connection, or if he wants to use websockets */
-		$.get('http://'+location.host+'/config?'+$.now(), function(txt) {
+		$.get('http://'+location.host+'/config?internal&'+$.now(), function(txt) {
 			var data = $.parseJSON(txt);
 			if('registry' in data && 'webgui' in data['registry'] &&
 				 'tabs' in data['registry']['webgui']) {

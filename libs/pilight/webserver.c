@@ -351,11 +351,15 @@ static int webserver_request_handler(struct mg_connection *conn) {
 				return MG_TRUE;
 			} else if(strcmp(conn->uri, "/config") == 0) {
 				char media[15];
+				int internal = 1;
 				strcpy(media, "web");
 				if(conn->query_string != NULL) {
 					sscanf(conn->query_string, "media=%14s%*[ \n\r]", media);
+					if(strstr(conn->query_string, "internal") != NULL) {
+						internal = 0;
+					}
 				}
-				JsonNode *jsend = config_print(1, media);
+				JsonNode *jsend = config_print(internal, media);
 				char *output = json_stringify(jsend, NULL);
 				mg_printf_data(conn, output);
 				json_delete(jsend);
