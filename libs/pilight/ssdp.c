@@ -85,7 +85,7 @@ int ssdp_start(void) {
 	mreq.imr_multiaddr.s_addr = inet_addr("239.255.255.250");
 	mreq.imr_interface.s_addr = htonl(INADDR_ANY);
 	if(setsockopt(ssdp_socket, IPPROTO_IP, IP_ADD_MEMBERSHIP, &mreq, sizeof(mreq)) < 0) {
-		perror("setsockopt");
+		logprintf(LOG_ERR, "cannot bind to the ssdp multicast network");
 		return 0;
 	}
 
