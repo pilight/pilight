@@ -143,13 +143,10 @@ static void *dht11Parse(void *param) {
 					if((j >= 40) && (dht11_dat[4] == ((dht11_dat[0] + dht11_dat[1] + dht11_dat[2] + dht11_dat[3]) & 0xFF))) {
 						got_correct_date = 1;
 
-						double h = dht11_dat[0] + dht11_dat[1];
-						double t = (dht11_dat[2] & 0x7F) + dht11_dat[3];
+						double h = dht11_dat[0];
+						double t = dht11_dat[2];
 						t += temp_offset;
 						h += humi_offset;
-
-						if((dht11_dat[2] & 0x80) != 0)
-							t *= -1;
 
 						dht11->message = json_mkobject();
 						JsonNode *code = json_mkobject();
