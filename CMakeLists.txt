@@ -525,6 +525,11 @@ if(${PROTOCOL_RC101} MATCHES "OFF" AND
 	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/rc101.c")
 endif()
 
+if(${PROTOCOL_PING} MATCHES "OFF")
+	list(REMOVE_ITEM protocol_headers "${PROJECT_SOURCE_DIR}/libs/protocols/ping.h")
+	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/ping.c")
+endif()
+
 if(${HARDWARE_433_GPIO} MATCHES "OFF")
 	list(REMOVE_ITEM hardware_headers "${PROJECT_SOURCE_DIR}/libs/hardware/433gpio.h")
 	list(REMOVE_ITEM hardware "${PROJECT_SOURCE_DIR}/libs/hardware/433gpio.c")
@@ -778,8 +783,8 @@ if(${MODULESPACK} MATCHES "OFF")
 	set_source_files_properties(${PROJECT_SOURCE_DIR}/libs/platform/bananapi.c PROPERTIES COMPILE_FLAGS " -w ")
 	set_source_files_properties(${PROJECT_SOURCE_DIR}/libs/platform/radxa.c PROPERTIES COMPILE_FLAGS " -w ")
 	set_source_files_properties(${PROJECT_SOURCE_DIR}/libs/pilight/json.c PROPERTIES COMPILE_FLAGS " -w ")
-	set_source_files_properties(${PROJECT_SOURCE_DIR}/libs/pilight/http_lib.c PROPERTIES COMPILE_FLAGS " -w ")
 	set_source_files_properties(${PROJECT_SOURCE_DIR}/libs/pilight/mongoose.c PROPERTIES COMPILE_FLAGS " -w ")
+	set_source_files_properties(${PROJECT_SOURCE_DIR}/libs/pilight/ping.c PROPERTIES COMPILE_FLAGS " -w ")
 	set_source_files_properties(${avrdude_sources} PROPERTIES COMPILE_FLAGS " -w ")
 	set_source_files_properties(${polarssl_sources} PROPERTIES COMPILE_FLAGS " -w ")
 
