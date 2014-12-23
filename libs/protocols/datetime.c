@@ -174,34 +174,27 @@ static void *datetimeParse(void *param) {
 			jchild1 = json_first_child(jchild);
 			while(jchild1) {
 				if(strcmp(jchild1->key, "longitude") == 0) {
-					if(!(slongitude = malloc(strlen(jchild1->string_)+1))) {
-						logprintf(LOG_ERR, "out of memory");
-						exit(EXIT_FAILURE);
-					}
-					strcpy(slongitude, jchild1->string_);
-					longitude = atof(jchild1->string_);
+					// if(!(slongitude = malloc(strlen(jchild1->string_)+1))) {
+						// logprintf(LOG_ERR, "out of memory");
+						// exit(EXIT_FAILURE);
+					// }
+					// strcpy(slongitude, jchild1->string_);
+					longitude = jchild1->number_;
 				}
 				if(strcmp(jchild1->key, "latitude") == 0) {
-					if(!(slatitude = malloc(strlen(jchild1->string_)+1))) {
-						logprintf(LOG_ERR, "out of memory");
-						exit(EXIT_FAILURE);
-					}
-					strcpy(slatitude, jchild1->string_);
-					latitude = atof(jchild1->string_);
-				}
-				if(strcmp(jchild1->key, "ntpserver") == 0) {
-					if(!(ntpserver = malloc(strlen(jchild1->string_)+1))) {
-						logprintf(LOG_ERR, "out of memory");
-						exit(EXIT_FAILURE);
-					}
-					strcpy(ntpserver, jchild1->string_);
+					// if(!(slatitude = malloc(strlen(jchild1->string_)+1))) {
+						// logprintf(LOG_ERR, "out of memory");
+						// exit(EXIT_FAILURE);
+					// }
+					// strcpy(slatitude, jchild1->string_);
+					latitude = jchild1->number_;
 				}
 				jchild1 = jchild1->next;
 			}
-			if(slongitude == NULL && slatitude == NULL) {
-				logprintf(LOG_DEBUG, "no longitude and latitude set");
-				goto close;
-			}
+			// if(slongitude == NULL && slatitude == NULL) {
+				// logprintf(LOG_DEBUG, "no longitude and latitude set");
+				// goto close;
+			// }
 			jchild = jchild->next;
 		}
 	}
@@ -210,7 +203,7 @@ static void *datetimeParse(void *param) {
 		logprintf(LOG_DEBUG, "could not determine timezone");
 		tz = UTC;
 	} else {
-		logprintf(LOG_DEBUG, "%s:%s seems to be in timezone: %s", slongitude, slatitude, tz);
+		logprintf(LOG_DEBUG, "%.6f:%.6f seems to be in timezone: %s", longitude, latitude, tz);
 	}
 
 	while(datetime_loop) {
@@ -238,8 +231,8 @@ static void *datetimeParse(void *param) {
 		int minute = tm->tm_min;
 		int second = tm->tm_sec;
 
-		json_append_member(code, "longitude", json_mkstring(slongitude));
-		json_append_member(code, "latitude", json_mkstring(slatitude));
+		json_append_member(code, "longitude", json_mknumber(longitude, 6));
+		json_append_member(code, "latitude", json_mknumber(latitude, 6));
 		json_append_member(code, "year", json_mknumber(year, 0));
 		json_append_member(code, "month", json_mknumber(month, 0));
 		json_append_member(code, "day", json_mknumber(day, 0));
@@ -262,7 +255,6 @@ static void *datetimeParse(void *param) {
 		sleep(1);
 	}
 
-close:
 	if(slatitude) {
 		sfree((void *)&slatitude);
 	}
@@ -318,8 +310,8 @@ void datetimeInit(void) {
 	datetime->hwtype = API;
 	datetime->multipleId = 0;
 
-	options_add(&datetime->options, 'o', "longitude", OPTION_HAS_VALUE, DEVICES_ID, JSON_STRING, NULL, NULL);
-	options_add(&datetime->options, 'a', "latitude", OPTION_HAS_VALUE, DEVICES_ID, JSON_STRING, NULL, NULL);
+	options_add(&datetime->options, 'o', "longitude", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, NULL);
+	options_add(&datetime->options, 'a', "latitude", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, NULL);
 	options_add(&datetime->options, 'n', "ntpserver", OPTION_HAS_VALUE, DEVICES_ID, JSON_STRING, NULL, NULL);
 	options_add(&datetime->options, 'y', "year", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9]{3,4}$");
 	options_add(&datetime->options, 'm', "month", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9]{3,4}$");
@@ -339,7 +331,7 @@ void datetimeInit(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name = "datetime";
-	module->version = "1.1";
+	module->version = "1.2";
 	module->reqversion = "5.0";
 	module->reqcommit = "84";
 }
