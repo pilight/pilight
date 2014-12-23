@@ -171,6 +171,7 @@ static void *dht11Parse(void *param) {
 			pthread_mutex_unlock(&dht11lock);
 		}
 	}
+	pthread_mutex_unlock(&dht11lock);
 
 	sfree((void *)&id);
 	dht11_threads--;
@@ -230,7 +231,7 @@ void dht11Init(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name = "dht11";
-	module->version = "1.4";
+	module->version = "1.5";
 	module->reqversion = "5.0";
 	module->reqcommit = "84";
 }

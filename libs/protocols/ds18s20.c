@@ -176,6 +176,8 @@ static void *ds18s20Parse(void *param) {
 			pthread_mutex_unlock(&ds18s20lock);
 		}
 	}
+	pthread_mutex_unlock(&ds18s20lock);
+
 	if(ds18s20_sensor) {
 		sfree((void *)&ds18s20_sensor);
 	}
@@ -242,7 +244,7 @@ void ds18s20Init(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name = "ds18s20";
-	module->version = "1.1";
+	module->version = "1.2";
 	module->reqversion = "5.0";
 	module->reqcommit = "84";
 }

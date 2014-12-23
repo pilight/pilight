@@ -267,6 +267,7 @@ static void *xbmcParse(void *param) {
 			pthread_mutex_unlock(&xbmclock);
 		}
 	}
+	pthread_mutex_unlock(&xbmclock);
 
 	xbmc_threads--;
 	return (void *)NULL;
@@ -370,7 +371,7 @@ void xbmcInit(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name = "xbmc";
-	module->version = "1.1";
+	module->version = "1.2";
 	module->reqversion = "5.0";
 	module->reqcommit = "84";
 }

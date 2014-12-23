@@ -186,6 +186,7 @@ static void *programParse(void *param) {
 			pthread_mutex_unlock(&programlock);
 		}
 	}
+	pthread_mutex_unlock(&programlock);
 
 	program_threads--;
 	return (void *)NULL;
@@ -379,7 +380,7 @@ void programInit(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name = "program";
-	module->version = "1.1";
+	module->version = "1.2";
 	module->reqversion = "5.0";
 	module->reqcommit = "84";
 }

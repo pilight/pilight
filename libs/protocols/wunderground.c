@@ -329,6 +329,7 @@ static void *wundergroundParse(void *param) {
 		firstrun = 0;
 		pthread_mutex_unlock(&wundergroundlock);
 	}
+	pthread_mutex_unlock(&wundergroundlock);
 
 	struct wunderground_data_t *wtmp = NULL;
 	while(wunderground_data) {
@@ -461,7 +462,7 @@ void wundergroundInit(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name = "wunderground";
-	module->version = "1.1";
+	module->version = "1.2";
 	module->reqversion = "5.0";
 	module->reqcommit = "84";
 }

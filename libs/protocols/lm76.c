@@ -142,6 +142,7 @@ static void *lm76Parse(void *param) {
 #endif
 		}
 	}
+	pthread_mutex_unlock(&lm76lock);
 
 	if(lm76data->id) {
 		for(y=0;y<lm76data->nrid;y++) {
@@ -211,7 +212,7 @@ void lm76Init(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name = "lm76";
-	module->version = "1.1";
+	module->version = "1.2";
 	module->reqversion = "5.0";
 	module->reqcommit = "84";
 }

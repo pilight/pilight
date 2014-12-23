@@ -272,6 +272,7 @@ static void *openweathermapParse(void *param) {
 
 		pthread_mutex_unlock(&openweathermaplock);
 	}
+	pthread_mutex_unlock(&openweathermaplock);
 
 	struct openweathermap_data_t *wtmp = NULL;
 	while(openweathermap_data) {
@@ -399,7 +400,7 @@ void openweathermapInit(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name = "openweathermap";
-	module->version = "1.1";
+	module->version = "1.2";
 	module->reqversion = "5.0";
 	module->reqcommit = "84";
 }

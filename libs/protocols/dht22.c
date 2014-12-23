@@ -174,6 +174,7 @@ static void *dht22Parse(void *param) {
 			pthread_mutex_unlock(&dht22lock);
 		}
 	}
+	pthread_mutex_unlock(&dht22lock);
 
 	sfree((void *)&id);
 	dht22_threads--;
@@ -234,7 +235,7 @@ void dht22Init(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name = "dht22";
-	module->version = "1.4";
+	module->version = "1.5";
 	module->reqversion = "5.0";
 	module->reqcommit = "84";
 }

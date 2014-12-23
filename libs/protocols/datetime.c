@@ -254,6 +254,7 @@ static void *datetimeParse(void *param) {
 		pthread_mutex_unlock(&datetimelock);
 		sleep(1);
 	}
+	pthread_mutex_unlock(&datetimelock);
 
 	if(slatitude) {
 		sfree((void *)&slatitude);
@@ -331,7 +332,7 @@ void datetimeInit(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name = "datetime";
-	module->version = "1.2";
+	module->version = "1.3";
 	module->reqversion = "5.0";
 	module->reqcommit = "84";
 }

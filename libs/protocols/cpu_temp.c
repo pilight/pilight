@@ -127,6 +127,7 @@ static void *cpuTempParse(void *param) {
 			pthread_mutex_unlock(&cpu_templock);
 		}
 	}
+	pthread_mutex_unlock(&cpu_templock);
 
 	sfree((void *)&id);
 	cpu_temp_threads--;
@@ -182,7 +183,7 @@ void cpuTempInit(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name = "cpu_temp";
-	module->version = "1.1";
+	module->version = "1.2";
 	module->reqversion = "5.0";
 	module->reqcommit = "84";
 }
