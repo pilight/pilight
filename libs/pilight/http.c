@@ -239,14 +239,13 @@ char *http_process_request(char *url, int method, char **type, int *code, int *s
 		*size += bytes;
 
 		char *pch = strtok(recvBuff, "\n\r");
+		int z = 0;
+		char tmp[255];
 		while(pch && (has_type == 0 || has_code == 0)) {
-			if(sscanf(pch, "HTTP/1.1%*[ ]%d%*s%*[ \n\r]", code)) {
+			if(sscanf(pch, "HTTP/1.%d%*[ ]%d%*s%*[ \n\r]", &z, code)) {
 				has_code = 1;
 			}
-			if(sscanf(pch, "Content-type:%*[ ]%s%*[ \n\r]", tp)) {
-				has_type = 1;
-			}
-			if(sscanf(pch, "Content-Type:%*[ ]%s%*[ \n\r]", tp)) {
+			if(sscanf(pch, "Content-%[tT]ype:%*[ ]%s%*[ \n\r]", &tmp, tp)) {
 				has_type = 1;
 			}
 			pch = strtok(NULL, "\n\r");
