@@ -42,7 +42,8 @@ typedef enum {
 	LIRC,
 	WEBCAM,
 	MOTION,
-	DUSK
+	DUSK,
+	PING
 } devtype_t;
 
 typedef struct protocol_devices_t {
