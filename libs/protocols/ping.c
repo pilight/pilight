@@ -145,7 +145,7 @@ void pingInit(void) {
 	protocol_register(&pping);
 	protocol_set_id(pping, "ping");
 	protocol_device_add(pping, "ping", "Ping network devices");
-	pping->devtype = SWITCH;
+	pping->devtype = PING;
 	pping->hwtype = API;
 	pping->multipleId = 0;
 

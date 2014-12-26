@@ -119,7 +119,7 @@ int main(int argc, char **argv) {
 
 	options_add(&options, 'H', "help", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
 	options_add(&options, 'V', "version", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
-	options_add(&options, 'F', "config", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, NULL);
+	options_add(&options, 'C', "config", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, NULL);
 
 	while (1) {
 		int c;
@@ -140,7 +140,7 @@ int main(int argc, char **argv) {
 				printf("%s %s\n", progname, VERSION);
 				goto close;
 			break;
-			case 'F':
+			case 'C':
 				configtmp = realloc(configtmp, strlen(args)+1);
 				strcpy(configtmp, args);
 			break;
