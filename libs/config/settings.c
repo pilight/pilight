@@ -399,11 +399,22 @@ clear:
 static JsonNode *settings_sync(int level, const char *display) {
 	struct JsonNode *root = json_mkobject();
 	struct settings_t *tmp = settings;
+	char *username = NULL, *password = NULL;
 	while(tmp) {
-		if(tmp->type == JSON_NUMBER) {
+		if(strcmp(tmp->name, "webserver-authentication-username") == 0 && tmp->type == JSON_STRING) {
+			username = tmp->string_;
+		} else if(strcmp(tmp->name, "webserver-authentication-password") == 0 && tmp->type == JSON_STRING) {
+			password = tmp->string_;
+		} else if(tmp->type == JSON_NUMBER) {
 			json_append_member(root, tmp->name, json_mknumber((double)tmp->number_, 0));
 		} else if(tmp->type == JSON_STRING) {
 			json_append_member(root, tmp->name, json_mkstring(tmp->string_));
+		}
+		if(username != NULL && password != NULL && json_find_member(root, "webserver-authentication") == NULL) {
+			struct JsonNode *jarray = json_mkarray();
+			json_append_element(jarray, json_mkstring(username));
+			json_append_element(jarray, json_mkstring(password));
+			json_append_member(root, "webserver-authentication", jarray);
 		}
 		tmp = tmp->next;
 	}

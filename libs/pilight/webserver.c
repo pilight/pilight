@@ -57,6 +57,7 @@ static unsigned short webserver_php = 1;
 static char *webserver_root = NULL;
 static char *webgui_tpl = NULL;
 static struct mg_server *mgserver[WEBSERVER_WORKERS];
+static int active_workers = 0;
 
 static char *recvBuff = NULL;
 static unsigned short webgui_tpl_free = 0;
@@ -104,6 +105,10 @@ int webserver_gc(void) {
 	}
 	if(webserver_user_free) {
 		sfree((void *)&webserver_user);
+	}
+
+	while(active_workers > 0) {
+		usleep(10);
 	}
 
 	for(i=0;i<WEBSERVER_WORKERS;i++) {
@@ -274,15 +279,6 @@ static char *webserver_shell(const char *format_str, struct mg_connection *conn,
 	}
 
 	return NULL;
-}
-
-static int webserver_sockets_callback(struct mg_connection *c, enum mg_event ev) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
-
-	if(c->is_websocket) {
-		mg_websocket_write(c, 1, (char *)c->callback_param, strlen((char *)c->callback_param));
-	}
-	return MG_TRUE;
 }
 
 static int webserver_auth_handler(struct mg_connection *conn) {
@@ -800,12 +796,13 @@ static int webserver_connect_handler(struct mg_connection *conn) {
 
 static void *webserver_worker(void *param) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
-
+	active_workers++;
 	while(webserver_loop) {
 		if(mg_poll_server(mgserver[(intptr_t)param], 1000) == 0) {
 			sleep(1);
 		}
 	}
+	active_workers--;
 	return NULL;
 }
 
@@ -847,7 +844,8 @@ void *webserver_broadcast(void *param) {
 
 	int i = 0;
 	pthread_mutex_lock(&webqueue_lock);
-
+	struct mg_connection *c = NULL;
+	
 	while(webserver_loop) {
 		if(webqueue_number > 0) {
 			pthread_mutex_lock(&webqueue_lock);
@@ -855,7 +853,11 @@ void *webserver_broadcast(void *param) {
 			logprintf(LOG_STACK, "%s::unlocked", __FUNCTION__);
 
 			for(i=0;i<WEBSERVER_WORKERS;i++) {
-				mg_iterate_over_connections(mgserver[i], webserver_sockets_callback, webqueue->message);
+				for(c=mg_next(mgserver[i], NULL); c != NULL; c = mg_next(mgserver[i], c)) {
+					if(c->is_websocket && webserver_loop == 1) {
+						mg_websocket_write(c, 1, webqueue->message, strlen(webqueue->message));
+					}
+				}
 			}
 
 			struct webqueue_t *tmp = webqueue;
