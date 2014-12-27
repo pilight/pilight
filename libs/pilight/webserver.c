@@ -57,7 +57,6 @@ static unsigned short webserver_php = 1;
 static char *webserver_root = NULL;
 static char *webgui_tpl = NULL;
 static struct mg_server *mgserver[WEBSERVER_WORKERS];
-static int active_workers = 0;
 
 static char *recvBuff = NULL;
 static unsigned short webgui_tpl_free = 0;
@@ -107,11 +106,8 @@ int webserver_gc(void) {
 		sfree((void *)&webserver_user);
 	}
 
-	while(active_workers > 0) {
-		usleep(10);
-	}
-
 	for(i=0;i<WEBSERVER_WORKERS;i++) {
+		mg_wakeup_server(mgserver[i]);
 		mg_destroy_server(&mgserver[i]);
 	}
 
@@ -796,13 +792,11 @@ static int webserver_connect_handler(struct mg_connection *conn) {
 
 static void *webserver_worker(void *param) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
-	active_workers++;
 	while(webserver_loop) {
 		if(mg_poll_server(mgserver[(intptr_t)param], 1000) == 0) {
 			sleep(1);
 		}
 	}
-	active_workers--;
 	return NULL;
 }
 
