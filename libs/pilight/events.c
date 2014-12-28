@@ -78,6 +78,10 @@ int events_gc(void) {
 	pthread_mutex_unlock(&events_lock);
 	pthread_cond_signal(&events_signal);
 
+	while(running == 1) {
+		usleep(10);
+	}
+	
 	event_operator_gc();
 	event_action_gc();
 	logprintf(LOG_DEBUG, "garbage collected events library");

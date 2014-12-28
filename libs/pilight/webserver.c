@@ -107,7 +107,9 @@ int webserver_gc(void) {
 	}
 
 	for(i=0;i<WEBSERVER_WORKERS;i++) {
-		mg_wakeup_server(mgserver[i]);
+		if(mgserver[i] != NULL) {
+			mg_wakeup_server(mgserver[i]);
+		}
 		mg_destroy_server(&mgserver[i]);
 	}
 
