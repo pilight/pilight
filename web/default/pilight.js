@@ -733,8 +733,7 @@ function parseValues(data) {
 						$('#'+dvalues+'_dimmer').slider('refresh');
 					}
 				} else if(iType == 8) {
-					if(dvalues in aDateTime &&
-					   vindex in aDateTime[dvalues] && $('#'+dvalues+'_text').length > 0) {
+					if(dvalues in aDateTime && $('#'+dvalues+'_text').length > 0) {
 						if(vvalues < 10) {
 							vvalues = '0'+vvalues;
 						}
