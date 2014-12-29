@@ -19,9 +19,35 @@ set(CMAKE_EXE_LINKER_FLAGS " -Wl,-rpath=/usr/local/lib/,-rpath=/usr/lib/,-rpath=
 set(CMAKE_SHARED_LINKER_FLAGS " -Wl,-rpath=/usr/local/lib/,-rpath=/usr/lib/,-rpath=/lib/")
 set(CMAKE_MODULE_LINKER_FLAGS " -Wl,-rpath=/usr/local/lib/,-rpath=/usr/lib/,-rpath=/lib/")
 
+if(${PROTOCOL_ARPING} MATCHES "ON")
+	set(CMAKE_PCAP_LIBS_INIT)
+
+	find_library(CMAKE_PCAP_LIBS_INIT
+				NAME pcap
+							PATHS
+											${CROSS_COMPILE_LIBS}
+											/usr/lib
+											/usr/lib32
+											/usr/lib64
+											/usr/lib/i386-linux-gnu		
+											/usr/lib/x86_64-linux-gnu
+											/usr/local/lib
+											/usr/local/lib32
+											/usr/local/lib64
+											/usr/lib/arm-linux-gnueabi
+											/usr/lib/arm-linux-gnueabihf
+				NO_DEFAULT_PATH)	
+
+	if(${CMAKE_PCAP_LIBS_INIT} MATCHES "CMAKE_PCAP_LIBS_INIT-NOTFOUND")
+		message(FATAL_ERROR "Looking for libpcap - not found")
+	else()
+		message(STATUS "Looking for libpcap - found (${CMAKE_PCAP_LIBS_INIT})")
+	endif()
+endif()
+
 set(CMAKE_UNWIND_LIBS_INIT)
 
-find_library(CMAKE_UNWIND_LIBS_INIT 
+find_library(CMAKE_UNWIND_LIBS_INIT
 			NAME unwind
             PATHS
 										${CROSS_COMPILE_LIBS}
@@ -37,7 +63,6 @@ find_library(CMAKE_UNWIND_LIBS_INIT
                     /usr/lib/arm-linux-gnueabihf
 			NO_DEFAULT_PATH)	
 
-message(STATUS "Looking for libunwind")
 if(${CMAKE_UNWIND_LIBS_INIT} MATCHES "CMAKE_UNWIND_LIBS_INIT-NOTFOUND")
 	message(FATAL_ERROR "Looking for libunwind - not found")
 else()
@@ -530,6 +555,13 @@ if(${PROTOCOL_PING} MATCHES "OFF")
 	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/ping.c")
 endif()
 
+if(${PROTOCOL_ARPING} MATCHES "OFF")
+	list(REMOVE_ITEM protocol_headers "${PROJECT_SOURCE_DIR}/libs/protocols/arping.h")
+	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/pilight/arp.h")
+	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/arping.c")
+	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/pilight/arp.c")
+endif()
+
 if(${HARDWARE_433_GPIO} MATCHES "OFF")
 	list(REMOVE_ITEM hardware_headers "${PROJECT_SOURCE_DIR}/libs/hardware/433gpio.h")
 	list(REMOVE_ITEM hardware "${PROJECT_SOURCE_DIR}/libs/hardware/433gpio.c")
@@ -772,6 +804,10 @@ if(${MODULESPACK} MATCHES "OFF")
 	target_link_libraries(pilight_static rt)
 	target_link_libraries(pilight_static ${CMAKE_DL_LIBS})
 
+	if(${PROTOCOL_ARPING} MATCHES "ON")
+		target_link_libraries(pilight_shared ${CMAKE_PCAP_LIBS_INIT})
+		target_link_libraries(pilight_static ${CMAKE_PCAP_LIBS_INIT})
+	endif()
 	target_link_libraries(pilight_shared ${CMAKE_UNWIND_LIBS_INIT})
 	target_link_libraries(pilight_static ${CMAKE_UNWIND_LIBS_INIT})
 
