@@ -278,7 +278,6 @@ int log_level_get(void) {
 	return loglevel;
 }
 
-
 void logerror(const char *format_str, ...) {
 	char line[1024];
 	va_list ap;
@@ -287,6 +286,7 @@ void logerror(const char *format_str, ...) {
 	char fmt[64], buf[64];
 	struct timeval tv;
 	struct tm *tm;
+	char date[128];
 
 	memset(line, '\0', 1024);
 	gettimeofday(&tv, NULL);
@@ -295,8 +295,8 @@ void logerror(const char *format_str, ...) {
 		snprintf(buf, sizeof(buf), "%s:%03u", fmt, (unsigned int)tv.tv_usec);
 	}
 
-	sprintf(debug_log, "[%22.22s] %s: ", buf, progname);
-	strcat(line, debug_log);
+	sprintf(date, "[%22.22s] %s: ", buf, progname);
+	strcat(line, date);
 	va_start(ap, format_str);
 	vsprintf(&line[strlen(line)], format_str, ap);
 	strcat(line, "\n");

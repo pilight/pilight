@@ -130,8 +130,10 @@ static void *lircParse(void *param) {
 								char *rep = strtok(NULL, " ");
 								char *btn = strtok(NULL, " ");
 								char *remote = strtok(NULL, " ");
-								if(strstr(remote, "\n") != NULL) {
-									remote[strlen(remote)-1] = '\0';
+								char *y = NULL;
+								if((y = strstr(remote, "\n")) != NULL) {
+									size_t pos = (size_t)(y-remote);
+									remote[pos] = '\0';
 								}
 								int r = strtol(rep, NULL, 16);
 								lirc->message = json_mkobject();
