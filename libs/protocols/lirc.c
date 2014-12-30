@@ -52,6 +52,7 @@ static int lirc_sockfd = -1;
 
 static unsigned short lirc_loop = 1;
 static unsigned short lirc_threads = 0;
+static unsigned short lirc_init = 0;
 
 static void *lircParse(void *param) {
 	struct protocol_threads_t *node = (struct protocol_threads_t *)param;
@@ -169,9 +170,13 @@ static void *lircParse(void *param) {
 
 struct threadqueue_t *lircInitDev(JsonNode *jdevice) {
 	lirc_loop = 1;
-
-	struct protocol_threads_t *node = protocol_thread_init(lirc, NULL);
-	return threads_register("lirc", &lircParse, (void *)node, 0);
+	if(lirc_init == 0) {
+		lirc_init = 1;
+		struct protocol_threads_t *node = protocol_thread_init(lirc, NULL);
+		return threads_register("lirc", &lircParse, (void *)node, 0);
+	} else {
+		return NULL;
+	}
 }
 
 static void lircThreadGC(void) {
@@ -181,6 +186,7 @@ static void lircThreadGC(void) {
 		usleep(10);
 	}
 	protocol_thread_free(lirc);
+	lirc_init = 0;
 }
 
 #ifndef MODULE
@@ -209,7 +215,7 @@ void lircInit(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name = "lirc";
-	module->version = "1.1";
+	module->version = "1.2";
 	module->reqversion = "5.0";
 	module->reqcommit = "84";
 }

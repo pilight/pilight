@@ -1405,9 +1405,12 @@ static int devices_parse_elements(JsonNode *jdevices, struct devices_t *device) 
 		tmp_protocols = device->protocols;
 		while(tmp_protocols) {
 			if(tmp_protocols->listener->initDev) {
-				device->threads = realloc(device->threads, (sizeof(struct threadqueue_t *)*(size_t)(device->nrthreads+1)));
-				device->threads[device->nrthreads] = tmp_protocols->listener->initDev(jdevices);
-				device->nrthreads++;
+				struct threadqueue_t *tmp = tmp_protocols->listener->initDev(jdevices);
+				if(tmp != NULL) {
+					device->threads = realloc(device->threads, (sizeof(struct threadqueue_t *)*(size_t)(device->nrthreads+1)));
+					device->threads[device->nrthreads] = tmp;
+					device->nrthreads++;
+				}
 			}
 			tmp_protocols = tmp_protocols->next;
 		}
