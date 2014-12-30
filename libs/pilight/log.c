@@ -277,3 +277,56 @@ void log_level_set(int level) {
 int log_level_get(void) {
 	return loglevel;
 }
+
+
+void logerror(const char *format_str, ...) {
+	char line[1024];
+	va_list ap;
+	struct stat sb;
+	FILE *f = NULL;
+	char fmt[64], buf[64];
+	struct timeval tv;
+	struct tm *tm;
+
+	memset(line, '\0', 1024);
+	gettimeofday(&tv, NULL);
+	if((tm = localtime(&tv.tv_sec)) != NULL) {
+		strftime(fmt, sizeof(fmt), "%b %d %H:%M:%S", tm);
+		snprintf(buf, sizeof(buf), "%s:%03u", fmt, (unsigned int)tv.tv_usec);
+	}
+
+	sprintf(debug_log, "[%22.22s] %s: ", buf, progname);
+	strcat(line, debug_log);
+	va_start(ap, format_str);
+	vsprintf(&line[strlen(line)], format_str, ap);
+	strcat(line, "\n");
+
+	if((stat("/var/log/pilight.err", &sb)) >= 0) {
+		if(!(f = fopen("/var/log/pilight.err", "a"))) {
+			return;
+		}
+	} else {
+		if(sb.st_nlink == 0) {
+			if(!(f = fopen("/var/log/pilight.err", "a"))) {
+				return;
+			}
+		}
+		if(sb.st_size > LOG_MAX_SIZE) {
+			fclose(f);
+			char tmp[strlen("/var/log/pilight.err")+5];
+			strcpy(tmp, "/var/log/pilight.err");
+			strcat(tmp, ".old");
+			rename("/var/log/pilight.err", tmp);
+			if(!(f = fopen("/var/log/pilight.err", "a"))) {
+				return;
+			}
+		}
+	}
+	if(f) {
+		fwrite(line, sizeof(char), strlen(line), f);
+		fflush(f);
+		fclose(f);
+		f = NULL;
+	}
+	va_end(ap);
+}

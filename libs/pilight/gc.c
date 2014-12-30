@@ -52,9 +52,10 @@ void gc_handler(int sig) {
 			void *stack[50];
 			int n = backtrace(stack, 50);
 			printf("-- STACKTRACE (%d FRAMES) --\n", n);
+			logerror("-- STACKTRACE (%d FRAMES) --", n);
 
-			unw_getcontext (&uc);
-			unw_init_local (&cursor, &uc);
+			unw_getcontext(&uc);
+			unw_init_local(&cursor, &uc);
 
 			while(unw_step(&cursor) > 0) {	
 				name[0] = '\0';
@@ -63,6 +64,7 @@ void gc_handler(int sig) {
 				unw_get_reg(&cursor, UNW_REG_SP, &sp);
 
 				printf("%-30s ip = %10p, sp = %10p\n", name, (void *)ip, (void *)sp);
+				logerror("%-30s ip = %10p, sp = %10p", name, (void *)ip, (void *)sp);
 			}
 		}
 		break;

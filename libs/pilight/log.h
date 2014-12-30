@@ -33,5 +33,6 @@ void log_file_set(char *file);
 void log_level_set(int level);
 int log_level_get(void);
 int log_gc(void);
+void logerror(const char *format_str, ...);
 
 #endif
