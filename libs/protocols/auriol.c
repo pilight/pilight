@@ -34,7 +34,6 @@
 typedef struct auriol_settings_t {
 	double id;
 	double temp;
-	double humi;
 	struct auriol_settings_t *next;
 } auriol_settings_t;
 
@@ -43,7 +42,7 @@ static struct auriol_settings_t *auriol_settings = NULL;
 static void auriolParseCode(void) {
 	int i = 0, x = 0;
 	int channel = 0, id = 0, battery = 0;
-	double humi_offset = 0.0, temp_offset = 0.0, temperature = 0.0, humidity = 0.0;
+	double temp_offset = 0.0, temperature = 0.0;
 	for(i=1;i<auriol->rawlen-1;i+=2) {
 		auriol->binary[x++] = auriol->code[i];
 	}
@@ -52,11 +51,10 @@ static void auriolParseCode(void) {
 	battery = auriol->binary[8];
 	channel = 1 + binToDecRev(auriol->binary, 10, 11); // channel as id
 	temperature = (double)binToDecRev(auriol->binary, 12, 23)/10;
-	humidity = (double)binToDecRev(auriol->binary, 24, 31)/10;
+	// checksum = (double)binToDecRev(auriol->binary, 24, 31); been unable to deciper it
 	struct auriol_settings_t *tmp = auriol_settings;
 	while(tmp) {
 		if(fabs(tmp->id-id) < EPSILON) {
-			humi_offset = tmp->humi;
 			temp_offset = tmp->temp;
 			break;
 		}
@@ -64,13 +62,11 @@ static void auriolParseCode(void) {
 	}
 
 	temperature += temp_offset;
-	humidity += humi_offset;
 
 	if (channel != 4) {
 		auriol->message = json_mkobject();
 		json_append_member(auriol->message, "id", json_mknumber(channel, 0));
 		json_append_member(auriol->message, "temperature", json_mknumber(temperature, 1));
-		json_append_member(auriol->message, "humidity", json_mknumber(humidity, 1));
 		json_append_member(auriol->message, "battery", json_mknumber(battery, 0));
 	}
 }
@@ -114,7 +110,6 @@ static int auriolCheckValues(struct JsonNode *jvalues) {
 			snode->id = id;
 
 			json_find_number(jvalues, "temperature-offset", &snode->temp);
-			json_find_number(jvalues, "humidity-offset", &snode->humi);
 
 			snode->next = auriol_settings;
 			auriol_settings = snode;
@@ -149,14 +144,11 @@ void auriolInit(void) {
 
 	options_add(&auriol->options, 'i', "id", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "[1-3]");
 	options_add(&auriol->options, 't', "temperature", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9]{1,3}$");
-	options_add(&auriol->options, 'h', "humidity", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "[0-9]");
 	options_add(&auriol->options, 'b', "battery", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[01]$");
 
 	// options_add(&auriol->options, 0, "decimals", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *)1, "[0-9]");
 	options_add(&auriol->options, 0, "temperature-offset", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *)0, "[0-9]");
-	options_add(&auriol->options, 0, "humidity-offset", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *)0, "[0-9]");
 	options_add(&auriol->options, 0, "decimals", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)1, "[0-9]");
-	options_add(&auriol->options, 0, "show-humidity", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
 	options_add(&auriol->options, 0, "show-temperature", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
 	options_add(&auriol->options, 0, "show-battery", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
 
