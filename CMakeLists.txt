@@ -12,6 +12,26 @@ set(MODULESPACK OFF)
 set(CMAKE_SKIP_RULE_DEPENDENCY TRUE)
 set(CPACK_DEB_COMPONENT_INSTALL TRUE)
 
+if(NOT WIN32)
+  string(ASCII 27 Esc)
+  set(ColorReset "${Esc}[m")
+  set(ColorBold  "${Esc}[1m")
+  set(Red         "${Esc}[31m")
+  set(Green       "${Esc}[32m")
+  set(Yellow      "${Esc}[33m")
+  set(Blue        "${Esc}[34m")
+  set(Magenta     "${Esc}[35m")
+  set(Cyan        "${Esc}[36m")
+  set(White       "${Esc}[37m")
+  set(BoldRed     "${Esc}[1;31m")
+  set(BoldGreen   "${Esc}[1;32m")
+  set(BoldYellow  "${Esc}[1;33m")
+  set(BoldBlue    "${Esc}[1;34m")
+  set(BoldMagenta "${Esc}[1;35m")
+  set(BoldCyan    "${Esc}[1;36m")
+  set(BoldWhite   "${Esc}[1;37m")
+endif()
+
 #Final compilation all platforms
 #Removing debugging for final compilation
 set(CMAKE_SKIP_RPATH TRUE)
@@ -824,12 +844,23 @@ if(${MODULESPACK} MATCHES "OFF")
 	set_source_files_properties(${avrdude_sources} PROPERTIES COMPILE_FLAGS " -w ")
 	set_source_files_properties(${polarssl_sources} PROPERTIES COMPILE_FLAGS " -w ")
 
-
 	install(CODE "execute_process(COMMAND rm /usr/local/lib/libpilight.so)")
 	install(FILES libpilight.so DESTINATION lib/pilight/ RENAME libpilight.so.${PROJECT_VERSION} COMPONENT pilight)
 	install(FILES libpilight.a DESTINATION lib/pilight/ RENAME libpilight.a COMPONENT pilight)
 
 	install(CODE "execute_process(COMMAND ln -s \"/usr/local/lib/pilight/libpilight.so.${PROJECT_VERSION}\" \"/usr/local/lib/libpilight.so\")")	
+	if(EXISTS "/usr/local/lib/pilight/protocols")
+		install(CODE "execute_process(COMMAND find /usr/local/lib/pilight/protocols/ -type f -exec rm {} \\;)")
+	endif()
+	if(EXISTS "/usr/local/lib/pilight/hardware")
+		install(CODE "execute_process(COMMAND find /usr/local/lib/pilight/hardware/ -type f -exec rm {} \\;)")
+	endif()
+	if(EXISTS "/usr/local/lib/pilight/actions")
+		install(CODE "execute_process(COMMAND find /usr/local/lib/pilight/actions/ -type f -exec rm {} \\;)")
+	endif()
+	if(EXISTS "/usr/local/lib/pilight/operators")
+		install(CODE "execute_process(COMMAND find /usr/local/lib/pilight/operators/ -type f -exec rm {} \\;)")
+	endif()
 	
 	if(EXISTS "/etc/pilight/config.json")
 		install(CODE "execute_process(COMMAND mv /etc/pilight/config.json /etc/pilight/config.json.bak)")
@@ -962,3 +993,13 @@ set(CPACK_PACKAGE_DESCRIPTION "Control RF devices with the Raspberry Pi")
 set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Control RF devices with the Raspberry Pi")
 
 include(CPack)
+
+message("")
+message("${Red}-- WARNING --${ColorReset}")
+message("${Yellow}Manually compiling and installing pilight will also clear all module folders:
+/usr/local/lib/pilight/protocols/
+/usr/local/lib/pilight/hardware/
+/usr/local/lib/pilight/actions/
+/usr/local/lib/pilight/operators/${ColorReset}")
+message("${Red}-- WARNING --${ColorReset}")
+message("")
