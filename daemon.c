@@ -1633,6 +1633,7 @@ void *clientize(void *param) {
 
 		while(client_loop) {
 			if(main_loop == 0) {
+				client_loop = 0;
 				break;
 			}
 			if(socket_read(sockfd, &recvBuff) != 0) {

@@ -1266,29 +1266,60 @@ static int devices_parse_elements(JsonNode *jdevices, struct devices_t *device) 
 		}
 
 		/* Parse the state setting separately from the other settings. */
-		if(strcmp(jsettings->key, "state") == 0 && (jsettings->tag == JSON_STRING || jsettings->tag == JSON_NUMBER)) {
-			if(devices_check_state(i, jsettings, device) != 0) {
+		if(strcmp(jsettings->key, "state") == 0) {
+			if(jsettings->tag == JSON_STRING || jsettings->tag == JSON_NUMBER) {
+				if(devices_check_state(i, jsettings, device) != 0) {
+					have_error = 1;
+					goto clear;
+				}
+				devices_save_setting(i, jsettings, device);
+			} else {
+				logprintf(LOG_ERR, "config device setting #%d \"%s\" of \"%s\", invalid", i, jsettings->key, device->id);
 				have_error = 1;
 				goto clear;
 			}
-			devices_save_setting(i, jsettings, device);
-		} else if(strcmp(jsettings->key, "id") == 0 && jsettings->tag == JSON_ARRAY) {
-			if(devices_check_id(i, jsettings, device) == EXIT_FAILURE) {
+		} else if(strcmp(jsettings->key, "id") == 0) {
+			if(jsettings->tag == JSON_ARRAY) {
+				if(devices_check_id(i, jsettings, device) == EXIT_FAILURE) {
+					have_error = 1;
+					goto clear;
+				}
+				devices_save_setting(i, jsettings, device);
+			} else {
+				logprintf(LOG_ERR, "config device setting #%d \"%s\" of \"%s\", invalid", i, jsettings->key, device->id);
 				have_error = 1;
 				goto clear;
 			}
-			devices_save_setting(i, jsettings, device);
-		} else if(strcmp(jsettings->key, "uuid") == 0 && jsettings->tag == JSON_STRING) {
-			strcpy(device->dev_uuid, jsettings->string_);
-			device->cst_uuid = 1;
-		} else if(strcmp(jsettings->key, "timestamp") == 0 && jsettings->tag == JSON_NUMBER) {
-			device->timestamp = (int)jsettings->number_;
-		} else if(strcmp(jsettings->key, "origin") == 0 && jsettings->tag == JSON_STRING) {
-			strcpy(device->ori_uuid, jsettings->string_);
+		} else if(strcmp(jsettings->key, "uuid") == 0) {
+			if(jsettings->tag == JSON_STRING) {
+				strcpy(device->dev_uuid, jsettings->string_);
+				device->cst_uuid = 1;
+			} else {
+				logprintf(LOG_ERR, "config device setting #%d \"%s\" of \"%s\", invalid", i, jsettings->key, device->id);
+				have_error = 1;
+				goto clear;
+			}
+		} else if(strcmp(jsettings->key, "timestamp") == 0) {
+			if(jsettings->tag == JSON_NUMBER) {
+				device->timestamp = (int)jsettings->number_;
+			} else {
+				logprintf(LOG_ERR, "config device setting #%d \"%s\" of \"%s\", invalid", i, jsettings->key, device->id);
+				have_error = 1;
+				goto clear;
+			}
+		} else if(strcmp(jsettings->key, "origin") == 0) {
+			if(jsettings->tag == JSON_STRING) {
+				strcpy(device->ori_uuid, jsettings->string_);
+			} else {
+				logprintf(LOG_ERR, "config device setting #%d \"%s\" of \"%s\", invalid", i, jsettings->key, device->id);
+				have_error = 1;
+				goto clear;
+			}
 		/* The protocol and name settings are already saved in the device struct */
-		}  else if(!((strcmp(jsettings->key, "protocol") == 0 && jsettings->tag == JSON_ARRAY)
+		} else if(!((strcmp(jsettings->key, "protocol") == 0 && jsettings->tag == JSON_ARRAY)
 			|| (strcmp(jsettings->key, "uuid") == 0 && jsettings->tag == JSON_STRING)
-			|| (strcmp(jsettings->key, "timestamp") == 0 && jsettings->tag == JSON_NUMBER))) {
+			|| (strcmp(jsettings->key, "timestamp") == 0 && jsettings->tag == JSON_NUMBER))
+			|| ((strcmp(jsettings->key, "id") == 0) && jsettings->tag == JSON_ARRAY)) {
 
 			/* Check for duplicate settings */
 			tmp_settings = device->settings;
