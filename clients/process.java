@@ -112,7 +112,7 @@ public class process {
 				if(printStream == null) {
 					printStream = new PrintStream(socket.getOutputStream(), false);
 				}
-				printStream.print("{\"message\":\"client receiver\"}\n");
+				printStream.print("{\"action\":\"identify\",\"options\":{\"receiver\":1}}\n");
 				printStream.flush();
 			} catch(IOException e) {
 				System.out.println("failed to write messages to server");
@@ -126,10 +126,13 @@ public class process {
 				if(bufferedReader == null) {
 					bufferedReader = new BufferedReader(new InputStreamReader(socket.getInputStream(), "UTF-8"), size);
 				}
+				int c = 0;
+				StringBuilder response = new StringBuilder();
 				if(bufferedReader.ready()) {
-					while((line = bufferedReader.readLine()) != null) {
-						System.out.println(line);
+					while((c = bufferedReader.read()) > 0) {
+						response.append((char)c);
 					}
+					System.out.println(response.toString());
 				}
 			} catch(IOException e) {
 				System.out.println("failed to receive messages from server");

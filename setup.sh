@@ -1,29 +1,48 @@
-#!/bin/bash
+#!/usr/bin/env bash
+#
+#	Copyright (C) 2014 CurlyMo
+#
+#	This file is part of pilight.
+#
+#   pilight is free software: you can redistribute it and/or modify it under the
+#	terms of the GNU General Public License as published by the Free Software
+#	Foundation, either version 3 of the License, or (at your option) any later
+#	version.
+#
+#   pilight is distributed in the hope that it will be useful, but WITHOUT ANY
+#	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+#	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with pilight. If not, see	<http://www.gnu.org/licenses/>
+#
 
 cmake --help &>/dev/null || { echo "This program requires cmake"; exit; }
 dialog -v &>/dev/null || { echo "This program requires dialog"; exit; }
-dpkg --get-selections | grep -c libc6 &>/dev/null || { echo "This program requires libc6"; exit; }
+if [ $(uname -a | grep -c "FreeBSD") -eq 0 ] && [ $(uname -a | grep -c "ARCH") -eq 0 ]; then
+	dpkg --get-selections | grep -c libc6 &>/dev/null || { echo "This program requires libc6"; exit; }
+fi
 
 function clean {
-	rm -r CMakeFiles 2>/dev/null;
-	rm cmake_install.cmake 2>/dev/null;
-	rm cmake_uninstall.cmake 2>/dev/null;
-	rm cmake_uninstall.cmake.in 2>/dev/null;
-	rm cmake_postinstall.cmake 2>/dev/null;
-	rm CMakeCache.txt 2>/dev/null;
-	make clean 2>/dev/null;
-	rm Makefile 2>/dev/null;
-	rm install_manifest.txt 2>/dev/null;
-	rm config.h 2>/dev/null;
-	rm pilight-control 2>/dev/null;
-	rm pilight-daemon 2>/dev/null;
-	rm pilight-raw 2>/dev/null;
-	rm pilight-send 2>/dev/null;
-	rm pilight-learn 2>/dev/null;
-	rm pilight-debug 2>/dev/null;
-	rm pilight-receive 2>/dev/null;
-	rm *.a* 2>/dev/null;
-	rm *.so* 2>/dev/null;
+	rm -r CMakeFiles 2>/dev/null 1>/dev/null >/dev/null || true;
+	rm -r _CPack_Packages 2>/dev/null 1>/dev/null >/dev/null || true;
+	rm *.cmake 2>/dev/null 1>/dev/null >/dev/null || true;
+	rm CMakeCache.txt 2>/dev/null 1>/dev/null >/dev/null || true;
+	make clean 2>/dev/null 1>/dev/null >/dev/null || true;
+	rm Makefile 2>/dev/null 1>/dev/null >/dev/null || true;
+	rm install_manifest.txt 2>/dev/null 1>/dev/null >/dev/null || true;
+	rm config.h 2>/dev/null 1>/dev/null >/dev/null || true;
+	rm pilight-control 2>/dev/null 1>/dev/null >/dev/null || true;
+	rm pilight-daemon 2>/dev/null 1>/dev/null >/dev/null || true;
+	rm pilight-raw 2>/dev/null 1>/dev/null >/dev/null || true;
+	rm pilight-send 2>/dev/null 1>/dev/null >/dev/null || true;
+	rm pilight-flash 2>/dev/null 1>/dev/null >/dev/null || true;
+	rm pilight-learn 2>/dev/null 1>/dev/null >/dev/null || true;
+	rm pilight-debug 2>/dev/null 1>/dev/null >/dev/null || true;
+	rm pilight-receive 2>/dev/null 1>/dev/null >/dev/null || true;
+	rm pilight-uuid 2>/dev/null 1>/dev/null >/dev/null || true;
+	rm *.a* 2>/dev/null 1>/dev/null >/dev/null || true;
+	rm *.so* 2>/dev/null 1>/dev/null >/dev/null || true;
 }
 
 if [ $# -eq 1 ]; then
@@ -78,7 +97,11 @@ else
 				if [ "$ROW1" == "$NAME" ]; then
 					if [[ "$ROW" =~ " OFF " ]]; then
 						UPDATE=1
-						sed -i "s/\(.*\)\($NAME\) OFF \(.*\)/\1$NAME ON \3/" CMakeConfig.txt
+						if [ $(uname -a | grep -c "FreeBSD") -eq 0 ]; then
+							sed -i "s/\(.*\)\($NAME\) OFF \(.*\)/\1$NAME ON \3/" CMakeConfig.txt
+						else
+							sed -i "" "s/\(.*\)\($NAME\) OFF \(.*\)/\1$NAME ON \3/" CMakeConfig.txt
+						fi
 					fi
 					MATCH=1
 				fi
@@ -86,7 +109,11 @@ else
 			if [ $MATCH -eq 0 ]; then
 				if [[ "$ROW" =~ " ON " ]]; then
 					UPDATE=1
-					sed -i "s/\(.*\)\($NAME\) ON \(.*\)/\1$NAME OFF \3/" CMakeConfig.txt
+					if [ $(uname -a | grep -c "FreeBSD") -eq 0 ]; then
+						sed -i "s/\(.*\)\($NAME\) ON \(.*\)/\1$NAME OFF \3/" CMakeConfig.txt
+					else
+						sed -i "" "s/\(.*\)\($NAME\) ON \(.*\)/\1$NAME OFF \3/" CMakeConfig.txt
+					fi
 				fi
 			fi
 		done

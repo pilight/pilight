@@ -3,25 +3,27 @@
 
 	This file is part of pilight.
 
-    pilight is free software: you can redistribute it and/or modify it under the 
-	terms of the GNU General Public License as published by the Free Software 
-	Foundation, either version 3 of the License, or (at your option) any later 
+	pilight is free software: you can redistribute it and/or modify it under the
+	terms of the GNU General Public License as published by the Free Software
+	Foundation, either version 3 of the License, or (at your option) any later
 	version.
 
-    pilight is distributed in the hope that it will be useful, but WITHOUT ANY 
-	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR 
+	pilight is distributed in the hope that it will be useful, but WITHOUT ANY
+	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-    You should have received a copy of the GNU General Public License
-    along with pilight. If not, see	<http://www.gnu.org/licenses/>
+	You should have received a copy of the GNU General Public License
+	along with pilight. If not, see	<http://www.gnu.org/licenses/>
 */
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 
 #include "../../pilight.h"
 #include "common.h"
+#include "dso.h"
 #include "log.h"
 #include "protocol.h"
 #include "hardware.h"
@@ -29,17 +31,17 @@
 #include "gc.h"
 #include "arctech_dimmer.h"
 
-void arctechDimCreateMessage(int id, int unit, int state, int all, int dimlevel) {
+static void arctechDimCreateMessage(int id, int unit, int state, int all, int dimlevel) {
 	arctech_dimmer->message = json_mkobject();
-	json_append_member(arctech_dimmer->message, "id", json_mknumber(id));
+	json_append_member(arctech_dimmer->message, "id", json_mknumber(id, 0));
 	if(all == 1) {
-		json_append_member(arctech_dimmer->message, "all", json_mknumber(all));
+		json_append_member(arctech_dimmer->message, "all", json_mknumber(all, 0));
 	} else {
-		json_append_member(arctech_dimmer->message, "unit", json_mknumber(unit));
+		json_append_member(arctech_dimmer->message, "unit", json_mknumber(unit, 0));
 	}
 	if(dimlevel >= 0) {
 		state = 1;
-		json_append_member(arctech_dimmer->message, "dimlevel", json_mknumber(dimlevel));
+		json_append_member(arctech_dimmer->message, "dimlevel", json_mknumber(dimlevel, 0));
 	}
 	if(state == 1) {
 		json_append_member(arctech_dimmer->message, "state", json_mkstring("on"));
@@ -48,7 +50,7 @@ void arctechDimCreateMessage(int id, int unit, int state, int all, int dimlevel)
 	}
 }
 
-void arctechDimParseBinary(void) {
+static void arctechDimParseBinary(void) {
 	int dimlevel = binToDecRev(arctech_dimmer->binary, 32, 35);
 	int unit = binToDecRev(arctech_dimmer->binary, 28, 31);
 	int state = arctech_dimmer->binary[27];
@@ -58,7 +60,7 @@ void arctechDimParseBinary(void) {
 	arctechDimCreateMessage(id, unit, state, all, dimlevel);
 }
 
-void arctechDimCreateLow(int s, int e) {
+static void arctechDimCreateLow(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=4) {
@@ -69,7 +71,7 @@ void arctechDimCreateLow(int s, int e) {
 	}
 }
 
-void arctechDimCreateHigh(int s, int e) {
+static void arctechDimCreateHigh(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=4) {
@@ -80,16 +82,16 @@ void arctechDimCreateHigh(int s, int e) {
 	}
 }
 
-void arctechDimClearCode(void) {
+static void arctechDimClearCode(void) {
 	arctechDimCreateLow(2,147);
 }
 
-void arctechDimCreateStart(void) {
+static void arctechDimCreateStart(void) {
 	arctech_dimmer->raw[0]=arctech_dimmer->plslen->length;
 	arctech_dimmer->raw[1]=(10*arctech_dimmer->plslen->length);
 }
 
-void arctechDimCreateId(int id) {
+static void arctechDimCreateId(int id) {
 	int binary[255];
 	int length = 0;
 	int i=0, x=0;
@@ -103,13 +105,13 @@ void arctechDimCreateId(int id) {
 	}
 }
 
-void arctechDimCreateAll(int all) {
+static void arctechDimCreateAll(int all) {
 	if(all == 1) {
 		arctechDimCreateHigh(106, 109);
 	}
 }
 
-void arctechDimCreateState(int state) {
+static void arctechDimCreateState(int state) {
 	if(state == 1) {
 		arctechDimCreateHigh(110, 113);
 	} else if(state == -1) {
@@ -120,7 +122,7 @@ void arctechDimCreateState(int state) {
 	}
 }
 
-void arctechDimCreateUnit(int unit) {
+static void arctechDimCreateUnit(int unit) {
 	int binary[255];
 	int length = 0;
 	int i=0, x=0;
@@ -134,7 +136,7 @@ void arctechDimCreateUnit(int unit) {
 	}
 }
 
-void arctechDimCreateDimlevel(int dimlevel) {
+static void arctechDimCreateDimlevel(int dimlevel) {
 	int binary[255];
 	int length = 0;
 	int i=0, x=0;
@@ -148,26 +150,29 @@ void arctechDimCreateDimlevel(int dimlevel) {
 	}
 }
 
-void arctechDimCreateFooter(void) {
+static void arctechDimCreateFooter(void) {
 	arctech_dimmer->raw[147]=(PULSE_DIV*arctech_dimmer->plslen->length);
 }
 
-int arctechDimcheckValues(JsonNode *code) {
+static int arctechDimCheckValues(JsonNode *code) {
 	int dimlevel = -1;
-	int max = 0;
-	int min = 15;
-	char *tmp;
-	
-	protocol_setting_get_number(arctech_dimmer, "min", &min);
-	protocol_setting_get_number(arctech_dimmer, "max", &max);	
+	int max = 15;
+	int min = 0;
+	double itmp = -1;
+
+	if(json_find_number(code, "dimlevel-maximum", &itmp) == 0)
+		max = (int)round(itmp);
+	if(json_find_number(code, "dimlevel-minimum", &itmp) == 0)
+		min = (int)round(itmp);
+	if(json_find_number(code, "dimlevel", &itmp) == 0)
+		dimlevel = (int)round(itmp);
 
 	if(min > max) {
 		return 1;
 	}
-	
-	if(json_find_string(code, "dimlevel", &tmp) == 0) {
-		dimlevel = atoi(tmp);	
-		if(dimlevel != -1 && (dimlevel < min || dimlevel > max)) {
+
+	if(dimlevel != -1) {
+		if(dimlevel < min || dimlevel > max) {
 			return 1;
 		} else {
 			return 0;
@@ -176,31 +181,34 @@ int arctechDimcheckValues(JsonNode *code) {
 	return 0;
 }
 
-int arctechDimCreateCode(JsonNode *code) {
+static int arctechDimCreateCode(JsonNode *code) {
 	int id = -1;
 	int unit = -1;
 	int state = -1;
 	int all = 0;
 	int dimlevel = -1;
-	int max = 0;
-	int min = 15;
-	char *tmp;
+	int max = 15;
+	int min = 0;
+	double itmp = -1;
 
-	protocol_setting_get_number(arctech_dimmer, "min", &min);
-	protocol_setting_get_number(arctech_dimmer, "max", &max);
+	if(json_find_number(code, "dimlevel-maximum", &itmp) == 0)
+		max = (int)round(itmp);
+	if(json_find_number(code, "dimlevel-minimum", &itmp) == 0)
+		min = (int)round(itmp);
 
-	if(json_find_string(code, "id", &tmp) == 0)
-		id=atoi(tmp);
-	if(json_find_string(code, "off", &tmp) == 0)
+	if(json_find_number(code, "id", &itmp) == 0)
+		id = (int)round(itmp);
+	if(json_find_number(code, "unit", &itmp) == 0)
+		unit = (int)round(itmp);
+	if(json_find_number(code, "dimlevel", &itmp) == 0)
+		dimlevel = (int)round(itmp);
+	if(json_find_number(code, "all", &itmp) == 0)
+		all = (int)round(itmp);
+
+	if(json_find_number(code, "off", &itmp) == 0)
 		state=0;
-	else if(json_find_string(code, "on", &tmp) == 0)
+	else if(json_find_number(code, "on", &itmp) == 0)
 		state=1;
-	if(json_find_string(code, "unit", &tmp) == 0)
-		unit = atoi(tmp);
-	if(json_find_string(code, "dimlevel", &tmp) == 0)
-		dimlevel = atoi(tmp);
-	if(json_find_string(code, "all", &tmp) == 0)
-		all = 1;
 
 	if(id == -1 || (unit == -1 && all == 0) || (dimlevel == -1 && state == -1)) {
 		logprintf(LOG_ERR, "arctech_dimmer: insufficient number of arguments");
@@ -211,11 +219,11 @@ int arctechDimCreateCode(JsonNode *code) {
 	} else if((unit > 15 || unit < 0) && all == 0) {
 		logprintf(LOG_ERR, "arctech_dimmer: invalid unit range");
 		return EXIT_FAILURE;
-	} else if(dimlevel != -1 && (dimlevel > max || dimlevel < min)) {
+	} else if(dimlevel != -1 && (dimlevel > max || dimlevel < min) ) {
 		logprintf(LOG_ERR, "arctech_dimmer: invalid dimlevel range");
 		return EXIT_FAILURE;
 	} else if(dimlevel >= 0 && state == 0) {
-		logprintf(LOG_ERR, "arctech_dimmer: dimlevel and state cannot be combined");
+		logprintf(LOG_ERR, "arctech_dimmer: dimlevel and off state cannot be combined");
 		return EXIT_FAILURE;
 	} else {
 		if(unit == -1 && all == 1) {
@@ -239,39 +247,54 @@ int arctechDimCreateCode(JsonNode *code) {
 	return EXIT_SUCCESS;
 }
 
-void arctechDimPrintHelp(void) {
+static void arctechDimPrintHelp(void) {
 	printf("\t -u --unit=unit\t\t\tcontrol a device with this unit code\n");
 	printf("\t -i --id=id\t\t\tcontrol a device with this id\n");
 	printf("\t -a --all\t\t\tsend command to all devices with this id\n");
 	printf("\t -d --dimlevel=dimlevel\t\tsend a specific dimlevel\n");
 }
 
+#ifndef MODULE
+__attribute__((weak))
+#endif
 void arctechDimInit(void) {
 
 	protocol_register(&arctech_dimmer);
-	protocol_set_id(arctech_dimmer, "arctech_dimmers");
+	protocol_set_id(arctech_dimmer, "arctech_dimmer");
 	protocol_device_add(arctech_dimmer, "kaku_dimmer", "KlikAanKlikUit Dimmers");
 	protocol_plslen_add(arctech_dimmer, 300);
 	arctech_dimmer->devtype = DIMMER;
-	arctech_dimmer->hwtype = RX433;
+	arctech_dimmer->hwtype = RF433;
 	arctech_dimmer->pulse = 5;
 	arctech_dimmer->rawlen = 148;
 	arctech_dimmer->lsb = 3;
 
-	options_add(&arctech_dimmer->options, 'd', "dimlevel", has_value, config_value, "^([0-9]{1}|[1][0-5])$");
-	options_add(&arctech_dimmer->options, 'a', "all", no_value, 0, NULL);
-	options_add(&arctech_dimmer->options, 'u', "unit", has_value, config_id, "^([0-9]{1}|[1][0-5])$");
-	options_add(&arctech_dimmer->options, 'i', "id", has_value, config_id, "^([0-9]{1,7}|[1-5][0-9]{7}|6([0-6][0-9]{6}|7(0[0-9]{5}|10([0-7][0-9]{3}|8([0-7][0-9]{2}|8([0-5][0-9]|6[0-3]))))))$");
-	options_add(&arctech_dimmer->options, 't', "on", no_value, config_state, NULL);
-	options_add(&arctech_dimmer->options, 'f', "off", no_value, config_state, NULL);
-	
-	protocol_setting_add_number(arctech_dimmer, "min", 0);
-	protocol_setting_add_number(arctech_dimmer, "max", 15);
-	protocol_setting_add_string(arctech_dimmer, "states", "on,off");
-	protocol_setting_add_number(arctech_dimmer, "readonly", 0);
+	options_add(&arctech_dimmer->options, 'd', "dimlevel", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^([0-9]{1}|[1][0-5])$");
+	options_add(&arctech_dimmer->options, 'u', "unit", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^([0-9]{1}|[1][0-5])$");
+	options_add(&arctech_dimmer->options, 'i', "id", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^([0-9]{1,7}|[1-5][0-9]{7}|6([0-6][0-9]{6}|7(0[0-9]{5}|10([0-7][0-9]{3}|8([0-7][0-9]{2}|8([0-5][0-9]|6[0-3]))))))$");
+	options_add(&arctech_dimmer->options, 't', "on", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
+	options_add(&arctech_dimmer->options, 'f', "off", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
+	options_add(&arctech_dimmer->options, 'a', "all", OPTION_OPT_VALUE, DEVICES_OPTIONAL, JSON_NUMBER, NULL, NULL);
+
+	options_add(&arctech_dimmer->options, 0, "dimlevel-minimum", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *)0, "^([0-9]{1}|[1][0-5])$");
+	options_add(&arctech_dimmer->options, 0, "dimlevel-maximum", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *)15, "^([0-9]{1}|[1][0-5])$");
+	options_add(&arctech_dimmer->options, 0, "readonly", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 
 	arctech_dimmer->parseBinary=&arctechDimParseBinary;
 	arctech_dimmer->createCode=&arctechDimCreateCode;
 	arctech_dimmer->printHelp=&arctechDimPrintHelp;
-	arctech_dimmer->checkValues=&arctechDimcheckValues;
+	arctech_dimmer->checkValues=&arctechDimCheckValues;
 }
+
+#ifdef MODULE
+void compatibility(struct module_t *module) {
+	module->name = "arctech_dimmer";
+	module->version = "1.2";
+	module->reqversion = "5.0";
+	module->reqcommit = "84";
+}
+
+void init(void) {
+	arctechDimInit();
+}
+#endif

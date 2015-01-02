@@ -1,5 +1,6 @@
 GCC = $(CROSS_COMPILE)gcc
 SYS := $(shell $(GCC) -dumpmachine)
+OS := $(shell uname)
 
 ifdef CROSS_COMPILE
 	INCLUDE = -isystem/usr/include/ -isystem/usr/include/x86_64-linux-gnu/
@@ -9,43 +10,45 @@ ifneq (, $(findstring x86_64, $(SYS)))
 endif
 ifneq (, $(findstring arm, $(SYS)))
 	ifneq (, $(findstring gnueabihf, $(SYS)))
-		OSFLAGS = -Ofast -mfloat-abi=hard -mfpu=vfp -march=armv6 -Wconversion -Wunreachable-code -Wstrict-prototypes 
+		OSFLAGS = -fno-omit-frame-pointer -Ofast -mfloat-abi=hard -mfpu=vfp -march=armv6 -Wconversion -Wunreachable-code -Wstrict-prototypes 
 	endif
 	ifneq (, $(findstring gnueabi, $(SYS)))
-		OSFLAGS = -Ofast -mfloat-abi=hard -mfpu=vfp -march=armv6 -Wconversion -Wunreachable-code -Wstrict-prototypes 
+		ifeq (, $(findstring FreeBSD, $(SYS)))
+			OSFLAGS = -fno-omit-frame-pointer -isystem../../../../x-tools/arm-unknown-linux-gnueabi/sysroot/usr/include/ -nostdinc  -mfloat-abi=hard -mfpu=vfp -march=armv6 -Wconversion -Wunreachable-code -Wstrict-prototypes 
+		else
+			OSFLAGS = -fno-omit-frame-pointer -Ofast -mfloat-abi=hard -mfpu=vfp -march=armv6 -Wconversion -Wunreachable-code -Wstrict-prototypes 
+		endif
 	endif	
 	ifneq (, $(findstring gnueabisf, $(SYS)))
-		OSFLAGS = -Ofast -mfloat-abi=soft -mfpu=vfp -march=armv6 -Wconversion -Wunreachable-code -Wstrict-prototypes 
+		OSFLAGS = -fno-omit-frame-pointer -Ofast -mfloat-abi=soft -mfpu=vfp -march=armv6 -Wconversion -Wunreachable-code -Wstrict-prototypes 
 	endif
 endif
 ifneq (, $(findstring amd64, $(SYS)))
 	OSFLAGS = -O3 -fPIC -march=native -mtune=native -mfpmath=sse -Wno-conversion
 endif
-CFLAGS = -ffast-math $(OSFLAGS) -Wfloat-equal -Wshadow -Wpointer-arith -Wcast-align -Wstrict-overflow=5 -Wwrite-strings -Waggregate-return -Wcast-qual -Wswitch-default -Wswitch-enum -Wformat=2 -g -Wall -isystem. -isystem..
+CFLAGS = -ffast-math -rdynamic -funwind-tables $(OSFLAGS) -Wfloat-equal -Wshadow -Wpointer-arith -Wcast-align -Wformat-nonliteral -Wstrict-overflow=5 -Wwrite-strings -Waggregate-return -Wcast-qual -Wswitch-default -Wswitch-enum -Wformat=2 -g -Wall -isystem. -isystem.. -I/usr/local/include/ -I../avrdude/ -I../platform/ -I../config/ -I../actions/ -lunwind -DHASH=\"$(GIT_HASH)\"
 SRC = $(wildcard *.c)
-OBJS = $(filter-out wiringPi.o http_lib.o json.o update.o, $(SRC:.c=.o))
+OBJS = $(filter-out wiringX.o mongoose.o http.o json.o firmware.o, $(SRC:.c=.o))
 
-
-all: json.o wiringPi.o http_lib.o update.o $(OBJS) pilight.o
+all: json.o wiringX.o http.o mongoose.o firmware.o $(OBJS) pilight.o
 
 json.o: json.c json.h
 	$(GCC) -ffast-math $(OSFLAGS) -Wno-conversion -g -isystem. -isystem.. -c $(patsubst %.o,%.c,$@)
 
-http_lib.o: http_lib.c http_lib.h
-	$(info $(GCC))
-	$(GCC) -ffast-math $(OSFLAGS) -Wno-conversion -g -isystem. -isystem.. -c $(patsubst %.o,%.c,$@)
+wiringX.o: wiringX.c wiringX.h
+	$(GCC) -ffast-math $(OSFLAGS) -w -g -isystem. -isystem.. -pthread -lm -c $(patsubst %.o,%.c,$@) -I../platform/
 	
-wiringPi.o: wiringPi.c wiringPi.h
-	$(GCC) -ffast-math $(OSFLAGS) -Wno-conversion -g -isystem. -isystem.. -pthread -lm -c $(patsubst %.o,%.c,$@)
+mongoose.o: mongoose.c mongoose.h
+	$(GCC) -ffast-math $(OSFLAGS) -w -g -isystem. -isystem.. -pthread -lm -c $(patsubst %.o,%.c,$@)
 
-update.o: update.c update.h
-	$(GCC) $(CFLAGS) -lz -c $(patsubst %.o,%.c,$@) -isystem. -isystem.. $(INCLUDE)
-
+firmware.o: firmware.c firmware.h
+	$(GCC) $(CFLAGS) -c $(patsubst %.o,%.c,$@) -isystem. -isystem.. $(INCLUDE)	
+	
 %.o: %.c %.h 
-	$(GCC) $(CFLAGS) -c $(patsubst %.o,%.c,$@)
+	$(GCC) $(CFLAGS) -pthread -c $(patsubst %.o,%.c,$@)
 
-pilight.o: $(OBJS) json.o http_lib.o wiringpi.o update.o
-	$(CROSS_COMPILE)ld -L/usr/local/lib -r $(OBJS) json.o http_lib.o wiringpi.o update.o -o pilight.o
+pilight.o: $(OBJS) json.o http.o wiringX.o mongoose.o firmware.o
+	$(CROSS_COMPILE)ld -L/usr/local/lib -r $(OBJS) -g json.o http.o wiringX.o mongoose.o firmware.o -o pilight.o
 
 dist-clean: clean
 

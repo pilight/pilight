@@ -1,27 +1,29 @@
 /*
-	Copyright (C) 2013 CurlyMo & Bram1337
+	Copyright (C) 2013 Bram1337 & CurlyMo
 
 	This file is part of pilight.
 
-    pilight is free software: you can redistribute it and/or modify it under the
+	pilight is free software: you can redistribute it and/or modify it under the
 	terms of the GNU General Public License as published by the Free Software
 	Foundation, either version 3 of the License, or (at your option) any later
 	version.
 
-    pilight is distributed in the hope that it will be useful, but WITHOUT ANY
+	pilight is distributed in the hope that it will be useful, but WITHOUT ANY
 	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-    You should have received a copy of the GNU General Public License
-    along with pilight. If not, see	<http://www.gnu.org/licenses/>
+	You should have received a copy of the GNU General Public License
+	along with pilight. If not, see	<http://www.gnu.org/licenses/>
 */
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 
 #include "../../pilight.h"
 #include "common.h"
+#include "dso.h"
 #include "log.h"
 #include "protocol.h"
 #include "hardware.h"
@@ -29,10 +31,10 @@
 #include "gc.h"
 #include "impuls.h"
 
-void impulsCreateMessage(int systemcode, int programcode, int state) {
+static void impulsCreateMessage(int systemcode, int programcode, int state) {
 	impuls->message = json_mkobject();
-	json_append_member(impuls->message, "systemcode", json_mknumber(systemcode));
-	json_append_member(impuls->message, "programcode", json_mknumber(programcode));
+	json_append_member(impuls->message, "systemcode", json_mknumber(systemcode, 0));
+	json_append_member(impuls->message, "programcode", json_mknumber(programcode, 0));
 	if(state == 1) {
 		json_append_member(impuls->message, "state", json_mkstring("on"));
 	} else {
@@ -40,7 +42,7 @@ void impulsCreateMessage(int systemcode, int programcode, int state) {
 	}
 }
 
-void impulsParseCode(void) {
+static void impulsParseCode(void) {
 	int x = 0;
 
 	/* Convert the one's and zero's into binary */
@@ -62,7 +64,7 @@ void impulsParseCode(void) {
 	}
 }
 
-void impulsCreateLow(int s, int e) {
+static void impulsCreateLow(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=4) {
@@ -73,7 +75,7 @@ void impulsCreateLow(int s, int e) {
 	}
 }
 
-void impulsCreateMed(int s, int e) {
+static void impulsCreateMed(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=4) {
@@ -84,7 +86,7 @@ void impulsCreateMed(int s, int e) {
 	}
 }
 
-void impulsCreateHigh(int s, int e) {
+static void impulsCreateHigh(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=4) {
@@ -95,11 +97,11 @@ void impulsCreateHigh(int s, int e) {
 	}
 }
 
-void impulsClearCode(void) {
+static void impulsClearCode(void) {
 	impulsCreateLow(0,47);
 }
 
-void impulsCreateSystemCode(int systemcode) {
+static void impulsCreateSystemCode(int systemcode) {
 	int binary[255];
 	int length = 0;
 	int i=0, x=0;
@@ -113,7 +115,7 @@ void impulsCreateSystemCode(int systemcode) {
 	}
 }
 
-void impulsCreateProgramCode(int programcode) {
+static void impulsCreateProgramCode(int programcode) {
 	int binary[255];
 	int length = 0;
 	int i=0, x=0;
@@ -127,7 +129,7 @@ void impulsCreateProgramCode(int programcode) {
 	}
 }
 
-void impulsCreateState(int state) {
+static void impulsCreateState(int state) {
 	if(state == 0) {
 		impulsCreateHigh(40, 43);
 	} else {
@@ -135,28 +137,25 @@ void impulsCreateState(int state) {
 	}
 }
 
-void impulsCreateFooter(void) {
+static void impulsCreateFooter(void) {
 	impuls->raw[48]=(impuls->plslen->length);
 	impuls->raw[49]=(PULSE_DIV*impuls->plslen->length);
 }
 
-int impulsCreateCode(JsonNode *code) {
+static int impulsCreateCode(JsonNode *code) {
 	int systemcode = -1;
 	int programcode = -1;
 	int state = -1;
-	char *tmp;
+	double itmp = 0;
 
-	if(json_find_string(code, "systemcode", &tmp) == 0) {
-		systemcode=atoi(tmp);
-	}
-	if(json_find_string(code, "programcode", &tmp) == 0) {
-		programcode=atoi(tmp);
-	}
-	if(json_find_string(code, "off", &tmp) == 0) {
+	if(json_find_number(code, "systemcode", &itmp) == 0)
+		systemcode = (int)round(itmp);
+	if(json_find_number(code, "programcode", &itmp) == 0)
+		programcode = (int)round(itmp);
+	if(json_find_number(code, "off", &itmp) == 0)
 		state=0;
-	} else if(json_find_string(code, "on", &tmp) == 0) {
+	else if(json_find_number(code, "on", &itmp) == 0)
 		state=1;
-	}
 
 	if(systemcode == -1 || programcode == -1 || state == -1) {
 		logprintf(LOG_ERR, "impuls: insufficient number of arguments");
@@ -178,38 +177,51 @@ int impulsCreateCode(JsonNode *code) {
 	return EXIT_SUCCESS;
 }
 
-void impulsPrintHelp(void) {
+static void impulsPrintHelp(void) {
 	printf("\t -s --systemcode=systemcode\tcontrol a device with this systemcode\n");
 	printf("\t -u --programcode=programcode\tcontrol a device with this programcode\n");
 	printf("\t -t --on\t\t\tsend an on signal\n");
 	printf("\t -f --off\t\t\tsend an off signal\n");
 }
 
+#ifndef MODULE
+__attribute__((weak))
+#endif
 void impulsInit(void) {
 
 	protocol_register(&impuls);
 	protocol_set_id(impuls, "impuls");
 	protocol_device_add(impuls, "impuls", "Impuls Switches");
-	protocol_device_add(impuls, "select-remote", "SelectRemote Switches");
-	protocol_conflict_add(impuls, "rev_switch");
-	protocol_plslen_add(impuls, 133);
-	protocol_plslen_add(impuls, 141);
-	protocol_plslen_add(impuls, 171);
+	protocol_plslen_add(impuls, 170);
+	protocol_plslen_add(impuls, 140);
+	protocol_plslen_add(impuls, 130);
 	impuls->devtype = SWITCH;
-	impuls->hwtype = RX433;
+	impuls->hwtype = RF433;
 	impuls->pulse = 3;
 	impuls->rawlen = 50;
 	impuls->binlen = 12;
 
-	options_add(&impuls->options, 's', "systemcode", has_value, config_id, "^(3[012]?|[012][0-9]|[0-9]{1})$");
-	options_add(&impuls->options, 'u', "programcode", has_value, config_id, "^(3[012]?|[012][0-9]|[0-9]{1})$");
-	options_add(&impuls->options, 't', "on", no_value, config_state, NULL);
-	options_add(&impuls->options, 'f', "off", no_value, config_state, NULL);
+	options_add(&impuls->options, 's', "systemcode", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^(3[012]?|[012][0-9]|[0-9]{1})$");
+	options_add(&impuls->options, 'u', "programcode", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^(3[012]?|[012][0-9]|[0-9]{1})$");
+	options_add(&impuls->options, 't', "on", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
+	options_add(&impuls->options, 'f', "off", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
 
-	protocol_setting_add_string(impuls, "states", "on,off");
-	protocol_setting_add_number(impuls, "readonly", 0);
+	options_add(&impuls->options, 0, "readonly", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 
 	impuls->parseCode=&impulsParseCode;
 	impuls->createCode=&impulsCreateCode;
 	impuls->printHelp=&impulsPrintHelp;
 }
+
+#ifdef MODULE
+void compatibility(struct module_t *module) {
+	module->name = "impuls";
+	module->version = "1.1";
+	module->reqversion = "5.0";
+	module->reqcommit = "84";
+}
+
+void init(void) {
+	impulsInit();
+}
+#endif

@@ -1,19 +1,19 @@
 /*
-	Copyright (C) 2013 CurlyMo
+	Copyright (C) 2013 - 2014 CurlyMo
 
 	This file is part of pilight.
 
-    pilight is free software: you can redistribute it and/or modify it under the
+	pilight is free software: you can redistribute it and/or modify it under the
 	terms of the GNU General Public License as published by the Free Software
 	Foundation, either version 3 of the License, or (at your option) any later
 	version.
 
-    pilight is distributed in the hope that it will be useful, but WITHOUT ANY
+	pilight is distributed in the hope that it will be useful, but WITHOUT ANY
 	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-    You should have received a copy of the GNU General Public License
-    along with pilight. If not, see	<http://www.gnu.org/licenses/>
+	You should have received a copy of the GNU General Public License
+	along with pilight. If not, see	<http://www.gnu.org/licenses/>
 */
 
 #include <stdio.h>
@@ -22,7 +22,6 @@
 #include <unistd.h>
 #include <errno.h>
 #include <syslog.h>
-#include <assert.h>
 
 #include "pilight.h"
 #include "common.h"
@@ -31,35 +30,53 @@
 #include "options.h"
 #include "socket.h"
 #include "ssdp.h"
+#include "gc.h"
 
-typedef enum {
-	WELCOME,
-	IDENTIFY,
-	REJECT,
-	RECEIVE
-} steps_t;
+static int main_loop = 1;
+static int sockfd = 0;
+
+int main_gc(void) {
+	main_loop = 0;
+	if(sockfd > 0) {
+		socket_write(sockfd, "HEART");
+	}
+	sfree((void *)&progname);
+	return 0;
+}
 
 int main(int argc, char **argv) {
+
+	gc_attach(main_gc);
+
+	/* Catch all exit signals for gc */
+	gc_catch();
+
 	log_shell_enable();
 	log_file_disable();
 
 	log_level_set(LOG_NOTICE);
 
 	progname = malloc(16);
+	if(!progname) {
+		logprintf(LOG_ERR, "out of memory");
+		exit(EXIT_FAILURE);
+	}
 	strcpy(progname, "pilight-receive");
 	struct options_t *options = NULL;
 	struct ssdp_list_t *ssdp_list = NULL;
 
-	JsonNode *json = NULL;
+	char *server = NULL;
+	unsigned short port = 0;
+	unsigned short stats = 0;
 
-    int sockfd = 0;
-    char *recvBuff = NULL;
-	char *message = NULL;
+	char *recvBuff = NULL;
 	char *args = NULL;
-	steps_t steps = WELCOME;
 
-	options_add(&options, 'H', "help", no_value, 0, NULL);
-	options_add(&options, 'V', "version", no_value, 0, NULL);
+	options_add(&options, 'H', "help", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
+	options_add(&options, 'V', "version", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
+	options_add(&options, 'S', "server", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, "^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]).){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$");
+	options_add(&options, 'P', "port", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, "[0-9]{1,4}");
+	options_add(&options, 's', "statistics", OPTION_NO_VALUE, 0, JSON_NULL, NULL, "[0-9]{1,4}");
 
 	/* Store all CLI arguments for later usage
 	   and also check if the CLI arguments where
@@ -68,17 +85,35 @@ int main(int argc, char **argv) {
 	while(1) {
 		int c;
 		c = options_parse(&options, argc, argv, 1, &args);
-		if(c == -1 || c == -2)
+		if(c == -1)
 			break;
+		if(c == -2)
+			c = 'H';
 		switch(c) {
 			case 'H':
 				printf("\t -H --help\t\t\tdisplay this message\n");
 				printf("\t -V --version\t\t\tdisplay version\n");
+				printf("\t -S --server=x.x.x.x\t\tconnect to server address\n");
+				printf("\t -P --port=xxxx\t\t\tconnect to server port\n");
+				printf("\t -s --stats\t\t\tshow CPU and RAM statistics\n");
 				exit(EXIT_SUCCESS);
 			break;
 			case 'V':
 				printf("%s %s\n", progname, VERSION);
 				exit(EXIT_SUCCESS);
+			break;
+			case 'S':
+				if(!(server = malloc(strlen(args)+1))) {
+					logprintf(LOG_ERR, "out of memory");
+					exit(EXIT_FAILURE);
+				}
+				strcpy(server, args);
+			break;
+			case 'P':
+				port = (unsigned short)atoi(args);
+			break;
+			case 's':
+				stats = 1;
 			break;
 			default:
 				printf("Usage: %s -l location -d device\n", progname);
@@ -86,9 +121,14 @@ int main(int argc, char **argv) {
 			break;
 		}
 	}
-
 	options_delete(options);
-    if(ssdp_seek(&ssdp_list) == -1) {
+
+	if(server && port > 0) {
+		if((sockfd = socket_connect(server, port)) == -1) {
+			logprintf(LOG_ERR, "could not connect to pilight-daemon");
+			return EXIT_FAILURE;
+		}
+	} else if(ssdp_seek(&ssdp_list) == -1) {
 		logprintf(LOG_ERR, "no pilight ssdp connections found");
 		goto close;
 	} else {
@@ -96,67 +136,58 @@ int main(int argc, char **argv) {
 			logprintf(LOG_ERR, "could not connect to pilight-daemon");
 			goto close;
 		}
-		sfree((void *)&ssdp_list);
+	}
+	if(ssdp_list) {
+		ssdp_free(ssdp_list);
+	}
+	if(server) {
+		sfree((void *)&server);
+	}
+	struct JsonNode *jclient = json_mkobject();
+	struct JsonNode *joptions = json_mkobject();
+	json_append_member(jclient, "action", json_mkstring("identify"));
+	json_append_member(joptions, "receiver", json_mknumber(1, 0));
+	json_append_member(joptions, "stats", json_mknumber(stats, 0));
+	json_append_member(jclient, "options", joptions);
+	char *out = json_stringify(jclient, NULL);
+	socket_write(sockfd, out);
+	sfree((void *)&out);
+	json_delete(jclient);
+
+	if(socket_read(sockfd, &recvBuff) != 0 ||
+     strcmp(recvBuff, "{\"status\":\"success\"}") != 0) {
+		goto close;
 	}
 
-	while(1) {
-		if(steps > WELCOME) {
-			/* Clear the receive buffer again and read the welcome message */
-			recvBuff = socket_read(sockfd);
-			if(recvBuff == NULL) {
-				goto close;
-			}
+	while(main_loop) {
+		if(socket_read(sockfd, &recvBuff) != 0) {
+			goto close;
 		}
-		switch(steps) {
-			case WELCOME:
-				socket_write(sockfd, "{\"message\":\"client receiver\"}");
-				steps=IDENTIFY;
-			break;
-			case IDENTIFY:
-				//extract the message
-				json = json_decode(recvBuff);
-				json_find_string(json, "message", &message);
-				assert(message != NULL);
-				if(strcmp(message, "accept client") == 0) {
-					steps=RECEIVE;
-				} else if(strcmp(message, "reject client") == 0) {
-					steps=REJECT;
-				} else {
-					assert(false);
-				}
-				//cleanup
-				json_delete(json);
-				json = NULL;
-				message = NULL;
-			break;
-			case RECEIVE: {
-					char *line = strtok(recvBuff, "\n");
-					//for each line
-					while(line) {
-						json = json_decode(recvBuff);
-						assert(json != NULL);
-						char *output = json_stringify(json, "\t");
-						printf("%s\n", output);
-						sfree((void *)&output);
-						json_delete(json);
-						line = strtok(NULL,"\n");
-					}
-			} break;
-			case REJECT:
-			default:
-				goto close;
-			break;
+		char *pch = strtok(recvBuff, "\n");
+		while(pch) {
+			struct JsonNode *jcontent = json_decode(pch);
+			struct JsonNode *jtype = json_find_member(jcontent, "type");
+			if(jtype != NULL) {
+				json_remove_from_parent(jtype);
+				json_delete(jtype);
+			}
+			char *content = json_stringify(jcontent, "\t");
+			printf("%s\n", content);
+			json_delete(jcontent);
+			sfree((void *)&content);
+			pch = strtok(NULL, "\n");
 		}
 	}
+
 close:
 	if(sockfd > 0) {
 		socket_close(sockfd);
 	}
-
-	protocol_gc();
+	if(recvBuff) {
+		sfree((void *)&recvBuff);
+	}
 	options_gc();
-	sfree((void *)&progname);
-	sfree((void *)&message);
-
-return EXIT_SUCCESS;
+	log_shell_disable();
+	log_gc();
+	return EXIT_SUCCESS;
 }
