@@ -42,8 +42,15 @@
 #include "json.h"
 #include "socket.h"
 #include "webserver.h"
+<<<<<<< HEAD
+#include "socket.h"
+<<<<<<< HEAD
+=======
 #include "settings.h"
+>>>>>>> upstream/development
 #include "ssdp.h"
+=======
+>>>>>>> origin/master
 #include "fcache.h"
 
 static int webserver_port = WEBSERVER_PORT;
@@ -72,11 +79,38 @@ typedef enum {
 	SYNC
 } steps_t;
 
+<<<<<<< HEAD
+struct per_session_data__http {
+	struct libwebsocket *wsi;
+	unsigned short loggedin;
+};
+
+struct libwebsocket_protocols libwebsocket_protocols[] = {
+	{ "http-only", webserver_callback_http, sizeof(struct per_session_data__http), 0 },
+	{ "data", webserver_callback_data, 0, 0 },
+	{ NULL, NULL, 0, 0 }
+};
+
+<<<<<<< HEAD
+=======
+>>>>>>> upstream/development
 typedef struct webqueue_t {
 	char *message;
 	struct webqueue_t *next;
 } webqueue_t;
 
+<<<<<<< HEAD
+struct webqueue_t *webqueue;
+struct webqueue_t *webqueue_head;
+pthread_mutex_t webqueue_lock = PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP;
+pthread_cond_t webqueue_signal = PTHREAD_COND_INITIALIZER;
+int webqueue_number = 0;
+=======
+struct per_session_data__http {
+	struct libwebsocket *wsi;
+};
+>>>>>>> origin/master
+=======
 static struct webqueue_t *webqueue;
 static struct webqueue_t *webqueue_head;
 
@@ -85,6 +119,7 @@ static pthread_cond_t webqueue_signal;
 static pthread_mutexattr_t webqueue_attr;
 
 static int webqueue_number = 0;
+>>>>>>> upstream/development
 
 int webserver_gc(void) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
@@ -134,6 +169,7 @@ void webserver_create_header(unsigned char **p, const char *message, char *mimet
 		"Server: pilight\r\n"
 		"Content-Type: %s\r\n",
 		message, mimetype);
+<<<<<<< HEAD
 	*p += sprintf((char *)*p,
 		"Content-Length: %u\r\n\r\n",
 		len);
@@ -143,12 +179,35 @@ static void webserver_create_minimal_header(unsigned char **p, const char *messa
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
 	*p += sprintf((char *)*p,
+<<<<<<< HEAD
+		"HTTP/1.1 401 Authorization Required\r\n"
+		"WWW-Authenticate: Basic realm=\"pilight\"\r\n"
+		"Server: pilight\r\n"
+		"Content-Length: 40\r\n"
+		"Content-Type: text/html\r\n\r\n");
+	*p += sprintf((char *)*p, "401 Authorization Required");
+=======
+	*p += sprintf((char *)*p,
+		"Content-Length: %u\r\n\r\n",
+		len);
+}
+
+void webserver_create_wsi(struct libwebsocket **wsi, int fd, unsigned char *stream, size_t size) {
+	(*wsi)->u.http.fd = fd;
+	(*wsi)->u.http.stream = stream;
+	(*wsi)->u.http.filelen = size;
+	(*wsi)->u.http.filepos = 0;
+	(*wsi)->u.http.choke = 1;
+	(*wsi)->state = WSI_STATE_HTTP_ISSUING_FILE;
+>>>>>>> origin/master
+=======
 		"HTTP/1.1 %s\r\n"
 		"Server: pilight\r\n",
 		message);
 	*p += sprintf((char *)*p,
 		"Content-Length: %u\r\n\r\n",
 		len);
+>>>>>>> upstream/development
 }
 
 static void webserver_create_404(const char *in, unsigned char **p) {
@@ -463,6 +522,39 @@ static int webserver_request_handler(struct mg_connection *conn) {
 			}
 			sfree((void *)&ext);
 
+<<<<<<< HEAD
+			ext = realloc(ext, strlen(dot)+1);
+			memset(ext, '\0', strlen(dot)+1);
+			strcpy(ext, dot+1);
+
+			if(strcmp(ext, "html") == 0) {
+				mimetype = malloc(10);
+				memset(mimetype, '\0', 10);
+				strcpy(mimetype, "text/html");
+<<<<<<< HEAD
+			} else if(strcmp(ext, "xml") == 0) {
+				mimetype = malloc(10);
+				memset(mimetype, '\0', 10);
+				strcpy(mimetype, "text/xml");
+=======
+>>>>>>> origin/master
+			} else if(strcmp(ext, "png") == 0) {
+				mimetype = malloc(10);
+				memset(mimetype, '\0', 10);
+				strcpy(mimetype, "image/png");
+			} else if(strcmp(ext, "ico") == 0) {
+				mimetype = malloc(13);
+				memset(mimetype, '\0', 13);
+				strcpy(mimetype, "image/x-icon");
+			} else if(strcmp(ext, "css") == 0) {
+				mimetype = malloc(9);
+				memset(mimetype, '\0', 9);
+				strcpy(mimetype, "text/css");
+			} else if(strcmp(ext, "js") == 0) {
+				mimetype = malloc(16);
+				memset(mimetype, '\0', 16);
+				strcpy(mimetype, "text/javascript");
+=======
 			memset(buffer, '\0', 4096);
 			p = buffer;
 
@@ -477,6 +569,7 @@ static int webserver_request_handler(struct mg_connection *conn) {
 			} else {
 				sfree((void *)&mimetype);
 				goto filenotfound;
+>>>>>>> upstream/development
 			}
 
 			const char *cl = NULL;
@@ -733,7 +826,60 @@ static int webserver_request_handler(struct mg_connection *conn) {
 				sfree((void *)&mimetype);
 				sfree((void *)&request);
 			}
+			return 0;
 		}
+<<<<<<< HEAD
+		break;
+		case LWS_CALLBACK_FILTER_NETWORK_CONNECTION:
+			if((int)in > 0) {
+				struct sockaddr_in address;
+				int addrlen = sizeof(address);
+				getpeername((int)in, (struct sockaddr*)&address, (socklen_t*)&addrlen);
+				if(socket_check_whitelist(inet_ntoa(address.sin_addr)) != 0) {
+					logprintf(LOG_INFO, "rejected client, ip: %s, port: %d", inet_ntoa(address.sin_addr), ntohs(address.sin_port));
+					return -1;
+<<<<<<< HEAD
+				} else {
+					logprintf(LOG_INFO, "client connected, ip %s, port %d", inet_ntoa(address.sin_addr), ntohs(address.sin_port));
+=======
+				} else {			
+					logprintf(LOG_INFO, "client connected, ip %s, port %d", inet_ntoa(address.sin_addr), ntohs(address.sin_port));				
+>>>>>>> origin/master
+					return 0;
+				}
+			}
+		break;		
+<<<<<<< HEAD
+		case LWS_CALLBACK_HTTP:
+		case LWS_CALLBACK_HTTP_FILE_COMPLETION:
+		case LWS_CALLBACK_HTTP_WRITEABLE:
+		case LWS_CALLBACK_ESTABLISHED:
+		case LWS_CALLBACK_CLIENT_CONNECTION_ERROR:
+		case LWS_CALLBACK_CLIENT_FILTER_PRE_ESTABLISH:
+		case LWS_CALLBACK_CLIENT_ESTABLISHED:
+		case LWS_CALLBACK_CLOSED:
+		case LWS_CALLBACK_CLOSED_HTTP:
+		case LWS_CALLBACK_CLIENT_RECEIVE:
+		case LWS_CALLBACK_CLIENT_RECEIVE_PONG:
+		case LWS_CALLBACK_CLIENT_WRITEABLE:
+=======
+>>>>>>> origin/master
+		case LWS_CALLBACK_FILTER_PROTOCOL_CONNECTION:
+		case LWS_CALLBACK_OPENSSL_LOAD_EXTRA_CLIENT_VERIFY_CERTS:
+		case LWS_CALLBACK_OPENSSL_LOAD_EXTRA_SERVER_VERIFY_CERTS:
+		case LWS_CALLBACK_OPENSSL_PERFORM_CLIENT_CERT_VERIFICATION:
+		case LWS_CALLBACK_CLIENT_APPEND_HANDSHAKE_HEADER:
+		case LWS_CALLBACK_CONFIRM_EXTENSION_OKAY:
+		case LWS_CALLBACK_CLIENT_CONFIRM_EXTENSION_SUPPORTED:
+		case LWS_CALLBACK_PROTOCOL_INIT:
+		case LWS_CALLBACK_PROTOCOL_DESTROY:
+		case LWS_CALLBACK_ADD_POLL_FD:
+		case LWS_CALLBACK_DEL_POLL_FD:
+		case LWS_CALLBACK_SET_MODE_POLL_FD:
+		case LWS_CALLBACK_CLEAR_MODE_POLL_FD:
+		default:
+		break;
+=======
 	} else if(webgui_websockets == 1) {
 		char input[conn->content_len+1];
 		strncpy(input, conn->content, conn->content_len);
@@ -765,6 +911,7 @@ static int webserver_request_handler(struct mg_connection *conn) {
 			json_delete(json);
 		}
 		return MG_TRUE;
+>>>>>>> upstream/development
 	}
 	return MG_MORE;
 
@@ -997,6 +1144,37 @@ int webserver_start(void) {
 	/* Do we turn on webserver caching. This means that all requested files are
 	   loaded into the memory so they aren't read from the FS anymore */
 	settings_find_number("webserver-cache", &webserver_cache);
+<<<<<<< HEAD
+	settings_find_number("webserver-authentication", &webserver_authentication);
+	settings_find_string("webserver-password", &webserver_password);
+	settings_find_string("webserver-username", &webserver_username);
+
+	/* Default websockets info */
+	memset(&info, 0, sizeof info);
+	info.port = webserver_port;
+	info.protocols = libwebsocket_protocols;
+	info.ssl_cert_filepath = NULL;
+	info.ssl_private_key_filepath = NULL;
+	info.gid = -1;
+	info.uid = -1;
+
+	/* Start the libwebsocket server */
+	struct libwebsocket_context *context = libwebsocket_create_context(&info);
+	if(context == NULL) {
+		lwsl_err("libwebsocket init failed\n");
+	} else {
+		/* Register a seperate thread in which the webserver communicates
+		   the main daemon as if it where a gui */
+		threads_register("webserver client", &webserver_clientize, (void *)NULL);
+<<<<<<< HEAD
+		threads_register("webserver broadcast", &webserver_broadcast, (void *)NULL);
+=======
+		sleep(1);
+>>>>>>> origin/master
+		/* Main webserver loop */
+		while(n >= 0 && webserver_loop) {
+			n = libwebsocket_service(context, 50);
+=======
 	settings_find_string("webserver-authentication-password", &webserver_authentication_password);
 	settings_find_string("webserver-authentication-username", &webserver_authentication_username);
 	if(settings_find_string("webserver-user", &webserver_user) != 0) {
@@ -1005,6 +1183,7 @@ int webserver_start(void) {
 		if(!webserver_user) {
 			logprintf(LOG_ERR, "out of memory");
 			exit(EXIT_FAILURE);
+>>>>>>> upstream/development
 		}
 		strcpy(webserver_user, WEBSERVER_USER);
 		webserver_user_free = 1;

@@ -60,6 +60,10 @@
 	#include "events.h"
 #endif
 
+#ifdef UPDATE
+	#include "update.h"
+#endif
+
 #ifdef WEBSERVER
 	#include "webserver.h"
 #endif
@@ -2163,6 +2167,17 @@ int main(int argc, char **argv) {
 		log_file_set(stmp);
 	}
 
+<<<<<<< HEAD
+=======
+	if(settings_find_string("mode", &stmp) == 0) {
+		if(strcmp(stmp, "client") == 0) {
+			runmode = 2;
+		} else if(strcmp(stmp, "server") == 0) {
+			runmode = 1;
+		}
+	}
+
+>>>>>>> origin/master
 	logprintf(LOG_INFO, "version %s, commit %s", VERSION, HASH);
 
 	if(nodaemon > 0 || running == 1) {
@@ -2277,6 +2292,33 @@ int main(int argc, char **argv) {
 
 	/* The daemon running in client mode, register a seperate thread that
 	   communicates with the server */
+<<<<<<< HEAD
+	if(runmode == 2) {
+		threads_register("node", &clientize, (void *)NULL);
+<<<<<<< HEAD
+	} else {
+		/* Register a seperate thread for the socket server */
+		threads_register("socket", &socket_wait, (void *)&socket_callback);
+		threads_register("ssdp", &ssdp_wait, (void *)NULL);
+=======
+>>>>>>> origin/master
+	}
+	threads_register("sender", &send_code, (void *)NULL);
+	threads_register("broadcaster", &broadcast, (void *)NULL);
+
+#ifdef UPDATE
+	if(update_check) {
+		threads_register("updater", &update_poll, (void *)NULL);
+	}
+#endif
+
+<<<<<<< HEAD
+=======
+	/* Register a seperate thread for the socket server */
+	threads_register("socket", &socket_wait, (void *)&socket_callback);
+	threads_register("sender", &send_code, (void *)NULL);
+	threads_register("broadcaster", &broadcast, (void *)NULL);
+=======
 	if(pilight.runmode == ADHOC) {
 		threads_register("node", &clientize, (void *)NULL, 0);
 	} else {
@@ -2311,12 +2353,18 @@ int main(int argc, char **argv) {
 			node->wait = 0;
 			node->next = receive_wait;
 			receive_wait = node;
+>>>>>>> upstream/development
 
 			threads_register(tmp_confhw->hardware->id, &receive_code, (void *)tmp_confhw->hardware, 0);
 		}
 		tmp_confhw = tmp_confhw->next;
 	}
 
+<<<<<<< HEAD
+>>>>>>> origin/master
+	if(match == 1) {
+		threads_register("receiver", &receive_code, (void *)NULL);
+=======
 	threads_register("receive parser", &receive_parse_code, (void *)NULL, 0);
 
 #ifdef EVENTS
@@ -2325,6 +2373,7 @@ int main(int argc, char **argv) {
 		/* Register a seperate thread in which the daemon communicates the events library */
 		threads_register("events client", &events_clientize, (void *)NULL, 0);
 		threads_register("events loop", &events_loop, (void *)NULL, 0);
+>>>>>>> upstream/development
 	}
 #endif
 

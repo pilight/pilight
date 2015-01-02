@@ -1,4 +1,10 @@
 set(WEBSERVER ON CACHE BOOL "enable the built-in webserver")
+<<<<<<< HEAD
+set(UPDATE ON CACHE BOOL "enable the built-in update checker")
+set(PROTOCOL_ALECTO ON CACHE BOOL "support for the Alecto weather stations protocol")
+<<<<<<< HEAD
+set(PROTOCOL_RPI_TEMP ON CACHE BOOL "support for the RPi temperature sensor")
+=======
 set(EVENTS ON CACHE BOOL "enable the eventing functionality")
 set(FIRMWARE_UPDATER ON CACHE BOOL "auto update the pilight firmware")
 set(PROTOCOL_ALECTO_WS1700 ON CACHE BOOL "support for the Alecto WS1700 protocol")
@@ -7,10 +13,18 @@ set(PROTOCOL_ALECTO_WX500 ON CACHE BOOL "support for the Alecto WX500 protocol")
 set(PROTOCOL_AURIOL ON CACHE BOOL "support for the Auriol weather station protocol")
 set(PROTOCOL_ARPING ON CACHE BOOL "support for the MAC based ping protocol")
 set(PROTOCOL_BEAMISH_SWITCH ON CACHE BOOL "support for the Beamish switch protocol")
+>>>>>>> upstream/development
 set(PROTOCOL_BRENNENSTUHL_SWITCH ON CACHE BOOL "support for the Brennenstuhl switch protocol")
 set(PROTOCOL_BYEBYESTANDBYE_SWITCH ON CACHE BOOL "support for the ByeByeStandBye switch protocol")
 set(PROTOCOL_CLARUS ON CACHE BOOL "support for the Clarus switch protocol")
+<<<<<<< HEAD
+=======
+set(PROTOCOL_CLARUS ON CACHE BOOL "support for the Clarus switch protocol")
+set(PROTOCOL_COGEX_SWITCH ON CACHE BOOL "support for the Cogex switch protocol")
+>>>>>>> origin/master
+=======
 set(PROTOCOL_CLEVERWATTS ON CACHE BOOL "support for the Cleverwatts switch protocol")
+>>>>>>> upstream/development
 set(PROTOCOL_COCO_SWITCH ON CACHE BOOL "support for the new ClickOnClickOff switch protocol")
 set(PROTOCOL_COGEX_SWITCH ON CACHE BOOL "support for the Cogex switch protocol")
 set(PROTOCOL_CONRAD_RSL_SWITCH ON CACHE BOOL "support for the Conrad RSL switch protocol")
@@ -19,8 +33,14 @@ set(PROTOCOL_CONRAD_WEATHER ON CACHE BOOL "support for the Conrad weather statio
 set(PROTOCOL_CPU_TEMP ON CACHE BOOL "support for CPU temperature sensor")
 set(PROTOCOL_DATETIME ON CACHE BOOL "support for the (NTP) date and time protocol")
 set(PROTOCOL_DS18B20 ON CACHE BOOL "support for the 1-Wire ds18b20 temperature sensor")
+<<<<<<< HEAD
+<<<<<<< HEAD
+=======
 set(PROTOCOL_DS18S20 ON CACHE BOOL "support for the 1-Wire ds18s20 temperature sensor")
+>>>>>>> upstream/development
 set(PROTOCOL_DHT11 ON CACHE BOOL "support for the DHT11 temperature-humidity sensor")
+=======
+>>>>>>> origin/master
 set(PROTOCOL_DHT22 ON CACHE BOOL "support for the DHT22/AM2302 temperature-humidity sensor")
 set(PROTOCOL_DIO_SWITCH ON CACHE BOOL "support for the D-IO switch protocol")
 set(PROTOCOL_DUWI_SWITCH ON CACHE BOOL "support for the Düwi Terminal switch protocol")
@@ -76,5 +96,15 @@ set(PROTOCOL_WUNDERGROUND ON CACHE BOOL "support for the Weather Underground API
 set(PROTOCOL_X10 ON CACHE BOOL "support for the X10 protocol")
 set(PROTOCOL_XBMC ON CACHE BOOL "support for the XBMC API")
 set(HARDWARE_433_GPIO ON CACHE BOOL "support for the direct GPIO communication")
+<<<<<<< HEAD
+set(HARDWARE_433_MODULE ON CACHE BOOL "support for the lirc_rpi kernel module")
+<<<<<<< HEAD
+set(HARDWARE_433_PILIGHT ON CACHE BOOL "support for the pilight kernel module")
+set(DEBUG OFF CACHE BOOL "turn on extended memory debug information")
+=======
 set(HARDWARE_433_LIRC ON CACHE BOOL "support for the lirc_rpi kernel module")
+>>>>>>> upstream/development
 set(USE_SOFT_FLOAT OFF CACHE BOOL "Compile for soft float abi kernels")
+=======
+set(DEBUG OFF CACHE BOOL "turn on extended memory debug information")
+>>>>>>> origin/master

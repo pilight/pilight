@@ -332,7 +332,19 @@ if(${PROTOCOL_DHT22} MATCHES "OFF")
 	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/dht22.c")
 endif()
 
+<<<<<<< HEAD
 if(${PROTOCOL_ELRO_SWITCH} MATCHES "OFF" AND ${PROTOCOL_BRENNENSTUHL_SWITCH} MATCHES "OFF")
+<<<<<<< HEAD
+	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/elro_he.h")
+	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/elro_hc.h")
+	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/elro_hc.c")
+	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/elro_he.c")
+=======
+if(${PROTOCOL_ELRO_SWITCH} MATCHES "OFF")
+	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/sartano.h")
+	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/sartano.c")
+>>>>>>> origin/master
+=======
 	list(REMOVE_ITEM protocol_headers "${PROJECT_SOURCE_DIR}/libs/protocols/elro_ad.h")
 	list(REMOVE_ITEM protocol_headers "${PROJECT_SOURCE_DIR}/libs/protocols/elro_he_switch.h")
 	list(REMOVE_ITEM protocol_headers "${PROJECT_SOURCE_DIR}/libs/protocols/elro_hc.h")
@@ -344,6 +356,7 @@ endif()
 if(${PROTOCOL_ELRO_CONTACT} MATCHES "OFF")
 	list(REMOVE_ITEM protocol_headers "${PROJECT_SOURCE_DIR}/libs/protocols/elro_he_contact.h")
 	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/elro_he_contact.c")
+>>>>>>> upstream/development
 endif()
 
 if(${PROTOCOL_GENERIC_DIMMER} MATCHES "OFF")
@@ -406,6 +419,7 @@ if(${PROTOCOL_RELAY} MATCHES "OFF")
 	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/relay.c")
 endif()
 
+<<<<<<< HEAD
 if(${PROTOCOL_REV} MATCHES "OFF")
 	list(REMOVE_ITEM protocol_headers "${PROJECT_SOURCE_DIR}/libs/protocols/rev_v1.h")
 	list(REMOVE_ITEM protocol_headers "${PROJECT_SOURCE_DIR}/libs/protocols/rev_v2.h")
@@ -415,14 +429,23 @@ if(${PROTOCOL_REV} MATCHES "OFF")
 	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/rev_v3.c")
 endif()
 
+=======
+>>>>>>> origin/master
 if(${PROTOCOL_CLARUS} MATCHES "OFF")
 	list(REMOVE_ITEM protocol_headers "${PROJECT_SOURCE_DIR}/libs/protocols/clarus.h")
 	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/clarus.c")
 endif()
 
+<<<<<<< HEAD
+<<<<<<< HEAD
+if(${PROTOCOL_RPI_TEMP} MATCHES "OFF")
+	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/rpi_temp.h")
+	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/rpi_temp.c")
+=======
 if(${PROTOCOL_CPU_TEMP} MATCHES "OFF")
 	list(REMOVE_ITEM protocol_headers "${PROJECT_SOURCE_DIR}/libs/protocols/cpu_temp.h")
 	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/cpu_temp.c")
+>>>>>>> upstream/development
 endif()
 
 if(${PROTOCOL_CONRAD_RSL_SWITCH} MATCHES "OFF")
@@ -451,9 +474,17 @@ if(${PROTOCOL_DHT22} MATCHES "OFF")
 	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/dht22.c")
 endif()
 
+<<<<<<< HEAD
+=======
+>>>>>>> origin/master
+if(${HARDWARE_433_GPIO} MATCHES "OFF")
+	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/hardwares/gpio.h")
+	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/hardwares/gpio.c")
+=======
 if(${PROTOCOL_POLLIN_SWITCH} MATCHES "OFF")
 	list(REMOVE_ITEM protocol_headers "${PROJECT_SOURCE_DIR}/libs/protocols/pollin.h")
 	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/pollin.c")
+>>>>>>> upstream/development
 endif()
 
 if(${PROTOCOL_QUIGG_SWITCH} MATCHES "OFF")
@@ -461,6 +492,21 @@ if(${PROTOCOL_QUIGG_SWITCH} MATCHES "OFF")
     list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/quigg_switch.c")
 endif()
 
+<<<<<<< HEAD
+<<<<<<< HEAD
+if(${HARDWARE_433_PILIGHT} MATCHES "OFF")
+	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/hardwares/pilight.h")
+	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/hardwares/pilight.c")
+endif()
+
+=======
+>>>>>>> origin/master
+if(${UPDATE} MATCHES "OFF")
+	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/pilight/update.h")
+	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/pilight/update.c")
+	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/pilight/http_lib.h")
+	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/pilight/http_lib.c")	
+=======
 if(${PROTOCOL_MUMBI_SWITCH} MATCHES "OFF")
 	list(REMOVE_ITEM protocol_headers "${PROJECT_SOURCE_DIR}/libs/protocols/mumbi.h")
 	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/mumbi.c")
@@ -472,6 +518,7 @@ if(${PROTOCOL_LM75} MATCHES "OFF"
 	list(REMOVE_ITEM protocol_headers "${PROJECT_SOURCE_DIR}/libs/protocols/lm76.h")
 	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/lm75.c")
 	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/lm76.c")
+>>>>>>> upstream/development
 endif()
 
 if(${PROTOCOL_WUNDERGROUND} MATCHES "OFF")
@@ -489,9 +536,19 @@ if(${PROTOCOL_SILVERCREST} MATCHES "OFF")
 	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/silvercrest.c")
 endif()
 
+<<<<<<< HEAD
+if(${UPDATE} MATCHES "ON")
+	find_package(ZLIB REQUIRED)
+<<<<<<< HEAD
+	file(GLOB CMAKE_ZLIB_LIBS_INIT ${ZLIB_PATH})
+=======
+	file(GLOB CMAKE_ZLIB_LIBS_INIT "/usr/lib/arm-linux-gnueabihf/libz.so")
+>>>>>>> origin/master
+=======
 if(${PROTOCOL_CLEVERWATTS} MATCHES "OFF")
 	list(REMOVE_ITEM protocol_headers "${PROJECT_SOURCE_DIR}/libs/protocols/cleverwatts.h")
 	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/cleverwatts.c")
+>>>>>>> upstream/development
 endif()
 
 if(${PROTOCOL_SUNRISESET} MATCHES "OFF")

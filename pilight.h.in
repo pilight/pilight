@@ -25,8 +25,91 @@
 /* Internals */
 
 #cmakedefine WEBSERVER
+<<<<<<< HEAD
+#cmakedefine DEBUG
+#cmakedefine UPDATE
+
+/* Protocol support */
+
+#cmakedefine PROTOCOL_ALECTO
+<<<<<<< HEAD
+#cmakedefine PROTOCOL_RPI_TEMP
+#cmakedefine PROTOCOL_BRENNENSTUHL_SWITCH
+#cmakedefine PROTOCOL_CLARUS
+=======
+#cmakedefine PROTOCOL_CLARUS
+#cmakedefine PROTOCOL_COGEX_SWITCH
+>>>>>>> origin/master
+#cmakedefine PROTOCOL_COCO_SWITCH
+#cmakedefine PROTOCOL_COGEX_SWITCH
+#cmakedefine PROTOCOL_CONRAD_RSL_SWITCH
+#cmakedefine PROTOCOL_CONRAD_RSL_CONTACT
+#cmakedefine PROTOCOL_DS18B20
+<<<<<<< HEAD
+#cmakedefine PROTOCOL_DHT11
+=======
+>>>>>>> origin/master
+#cmakedefine PROTOCOL_DHT22
+#cmakedefine PROTOCOL_DIO_SWITCH
+#cmakedefine PROTOCOL_GENERIC_DIMMER
+#cmakedefine PROTOCOL_GENERIC_SWITCH
+#cmakedefine PROTOCOL_GENERIC_WEATHER
+#cmakedefine PROTOCOL_HOMEEASY_OLD
+#cmakedefine PROTOCOL_IMPULS
+#cmakedefine PROTOCOL_INTERTECHNO_SWITCH
+#cmakedefine PROTOCOL_INTERTECHNO_OLD
+#cmakedefine PROTOCOL_KAKU_DIMMER
+#cmakedefine PROTOCOL_KAKU_SWITCH_OLD
+#cmakedefine PROTOCOL_KAKU_SCREEN_OLD
+#cmakedefine PROTOCOL_KAKU_SWITCH
+#cmakedefine PROTOCOL_KAKU_SCREEN
+#cmakedefine PROTOCOL_NEXA_SWITCH
+#cmakedefine PROTOCOL_RAW
+#cmakedefine PROTOCOL_RELAY
+#cmakedefine PROTOCOL_REV
+#cmakedefine PROTOCOL_ELRO_SWITCH
+#cmakedefine PROTOCOL_SELECTREMOTE
+
+/* Hardware support */
+
+#cmakedefine HARDWARE_433_GPIO
+#cmakedefine HARDWARE_433_MODULE
+#cmakedefine HARDWARE_433_PILIGHT
+
+#define VERSION					"2.1"
+
+#ifdef HARDWARE_433_PILIGHT
+	#define HW_MODE				"pilight"
+#elif defined(HARDWARE_433_GPIO)
+	#define HW_MODE				"gpio"
+#elif defined(HARDWARE_433_MODULE)
+	#define HW_MODE				"module"
+#else
+	#define HW_MODE				"none"
+#endif
+
+#ifdef HARDWARE_433_GPIO
+	#define GPIO_IN_PIN			1
+	#define GPIO_OUT_PIN		0
+
+	#define POLL_TIMEOUT		1000
+	#define RDBUF_LEN			5
+	#define GPIO_FN_MAXLEN		32
+#endif
+
+#ifdef HARDWARE_433_MODULE
+	#define DEFAULT_LIRC_SOCKET	"/dev/lirc0"
+	#define FREQ433				433920
+	#define FREQ38				38000
+#endif
+
+#ifdef HARDWARE_433_PILIGHT
+	#define DEFAULT_PILIGHT_SOCKET	"/dev/pilight0"
+#endif
+=======
 #cmakedefine EVENTS
 #cmakedefine FIRMWARE_UPDATER
+>>>>>>> upstream/development
 
 #define VERSION									"5.0"
 #define PULSE_DIV								34
