@@ -12,9 +12,12 @@
 	"webserver-root": "/usr/local/share/pilight/",
 	"webserver-port": 5001,
 	"webserver-cache": 1,
+<<<<<<< HEAD
     "webserver-authentication": 0,
     "webserver-username": "",
     "webserver-password": "",
+=======
+>>>>>>> origin/master
 	"whitelist": "",
 	"update-check": 1
 }

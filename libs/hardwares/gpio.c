@@ -61,7 +61,11 @@ unsigned short gpioHwDeinit(void) {
 		fprintf(fd, "%d\n", wpiPinToGpio(gpio_out));
 		fclose(fd);
 	}
+<<<<<<< HEAD
 	return EXIT_SUCCESS;
+=======
+	return 0;
+>>>>>>> origin/master
 }
 
 int gpioSend(int *code) {

@@ -38,10 +38,16 @@
 #include "dht22.h"
 #include "../pilight/wiringPi.h"
 	
+<<<<<<< HEAD
 #define MAXTIMINGS 100
 
 unsigned short dht22_loop = 1;
 int dht22_nrfree = 0;
+=======
+#define MAXTIMINGS 85
+
+unsigned short dht22_loop = 1;
+>>>>>>> origin/master
 
 static uint8_t sizecvt(const int read_value)
 {
@@ -58,6 +64,7 @@ void *dht22Parse(void *param) {
 
 	struct JsonNode *json = (struct JsonNode *)param;
 	struct JsonNode *jsettings = NULL;
+<<<<<<< HEAD
 	struct JsonNode *jid = NULL;
 	struct JsonNode *jchild = NULL;
 	int *id = 0;
@@ -181,10 +188,104 @@ void *dht22Parse(void *param) {
 	if(id) sfree((void *)&id);
 	dht22_nrfree--;
 
+=======
+	int interval = 5;
+	int dht_pin = 7;
+
+	json_find_number(json, "gpio", &dht_pin);
+	if((jsettings = json_find_member(json, "settings"))) {
+		json_find_number(jsettings, "interval", &interval);
+	}
+	json_delete(json);	
+	
+	while(dht22_loop) {
+
+		int tries = 5;
+		unsigned short got_correct_date = 0;
+
+		while(tries && !got_correct_date) {
+
+			uint8_t laststate = HIGH;
+			uint8_t counter = 0;
+			uint8_t j = 0, i = 0;
+
+			int dht22_dat[5] = {0,0,0,0,0};
+
+			// pull pin down for 18 milliseconds
+			pinMode(dht_pin, OUTPUT);
+			digitalWrite(dht_pin, LOW);
+			delay(18);
+			// then pull it up for 40 microseconds
+			digitalWrite(dht_pin, HIGH);
+			delayMicroseconds(40);
+			// prepare to read the pin
+			pinMode(dht_pin, INPUT);
+
+			// detect change and read data
+			for(i=0; i<MAXTIMINGS; i++) {
+				counter = 0;
+				while(sizecvt(digitalRead(dht_pin)) == laststate) {
+					counter++;
+					delayMicroseconds(1);
+					if (counter == 255) {
+						break;
+					}
+				}
+				laststate = sizecvt(digitalRead(dht_pin));
+
+				if(counter == 255) 
+					break;
+
+				// ignore first 3 transitions
+				if((i >= 4) && (i%2 == 0)) {
+					// shove each bit into the storage bytes
+					dht22_dat[j/8] <<= 1;
+					if (counter > 16)
+						dht22_dat[j/8] |= 1;
+						j++;
+				  	}
+				}
+
+			// check we read 40 bits (8bit x 5 ) + verify checksum in the last byte
+			// print it out if data is good
+			if((j >= 40) && (dht22_dat[4] == ((dht22_dat[0] + dht22_dat[1] + dht22_dat[2] + dht22_dat[3]) & 0xFF))) {
+
+				got_correct_date = 1;
+
+				int h = dht22_dat[0] * 256 + dht22_dat[1];
+				int t = (dht22_dat[2] & 0x7F)* 256 + dht22_dat[3];
+
+				if((dht22_dat[2] & 0x80) != 0) 
+					t *= -1;
+
+				
+				dht22->message = json_mkobject();
+				JsonNode *code = json_mkobject();
+				json_append_member(code, "id", json_mkstring(dht22->id));
+				json_append_member(code, "temperature", json_mknumber(t));
+				json_append_member(code, "humidity", json_mknumber(h));
+
+				json_append_member(dht22->message, "code", code);
+				json_append_member(dht22->message, "origin", json_mkstring("receiver"));
+				json_append_member(dht22->message, "protocol", json_mkstring(dht22->id));
+				pilight.broadcast(dht22->id, dht22->message);
+				json_delete(dht22->message);
+				dht22->message = NULL;
+			} else {
+				logprintf(LOG_DEBUG, "dht22 data checksum was wrong");
+				tries--;
+				sleep(1);
+			}
+		}
+		sleep((unsigned int)interval);
+	}
+
+>>>>>>> origin/master
 	return (void *)NULL;
 }
 
 void dht22InitDev(JsonNode *jdevice) {
+<<<<<<< HEAD
 
 #if defined(HARDWARE_433_GPIO) || defined(HARDWARE_433_PILIGHT)
 	JsonNode *jid = NULL;
@@ -227,23 +328,31 @@ void dht22InitDev(JsonNode *jdevice) {
 	}
 #endif
 
+=======
+>>>>>>> origin/master
 	char *output = json_stringify(jdevice, NULL);
 	JsonNode *json = json_decode(output);
 	threads_register("dht22", &dht22Parse, (void *)json);
 	sfree((void *)&output);
+<<<<<<< HEAD
 
 #ifdef HARDWARE_433_GPIO	
 clear:
 	if(free_hw_mode) sfree((void *)&hw_mode);
 	if(id) sfree((void *)&id);
 #endif
+=======
+>>>>>>> origin/master
 }
 
 int dht22GC(void) {
 	dht22_loop = 0;
+<<<<<<< HEAD
 	while(dht22_nrfree > 0) {
 		usleep(100);
 	}
+=======
+>>>>>>> origin/master
 	return 1;
 }
 
@@ -253,13 +362,22 @@ void dht22Init(void) {
 	protocol_register(&dht22);
 	protocol_set_id(dht22, "dht22");
 	protocol_device_add(dht22, "dht22", "1-wire temperature and humidity sensor");
+<<<<<<< HEAD
+=======
+	protocol_device_add(dht22, "dht11", "1-wire temperature and humidity sensor");
+>>>>>>> origin/master
 	protocol_device_add(dht22, "am2302", "1-wire temperature and humidity sensor");	
 	dht22->devtype = WEATHER;
 	dht22->hwtype = SENSOR;
 
 	options_add(&dht22->options, 't', "temperature", has_value, config_value, "^[0-9]{1,3}$");
 	options_add(&dht22->options, 'h', "humidity", has_value, config_value, "^[0-9]{1,3}$");
+<<<<<<< HEAD
 	options_add(&dht22->options, 'g', "gpio", has_value, config_id, "^([0-9]{1}|1[0-9]|20)$");
+=======
+	options_add(&dht22->options, 'i', "id", has_value, config_id, ".+");
+	options_add(&dht22->options, 'g', "gpio", has_value, config_value, "^[0-9]{1,2}$");
+>>>>>>> origin/master
 
 	protocol_setting_add_number(dht22, "decimals", 1);
 	protocol_setting_add_number(dht22, "humidity", 1);

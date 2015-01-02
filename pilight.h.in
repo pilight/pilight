@@ -30,15 +30,23 @@
 /* Protocol support */
 
 #cmakedefine PROTOCOL_ALECTO
+<<<<<<< HEAD
 #cmakedefine PROTOCOL_RPI_TEMP
 #cmakedefine PROTOCOL_BRENNENSTUHL_SWITCH
 #cmakedefine PROTOCOL_CLARUS
+=======
+#cmakedefine PROTOCOL_CLARUS
+#cmakedefine PROTOCOL_COGEX_SWITCH
+>>>>>>> origin/master
 #cmakedefine PROTOCOL_COCO_SWITCH
 #cmakedefine PROTOCOL_COGEX_SWITCH
 #cmakedefine PROTOCOL_CONRAD_RSL_SWITCH
 #cmakedefine PROTOCOL_CONRAD_RSL_CONTACT
 #cmakedefine PROTOCOL_DS18B20
+<<<<<<< HEAD
 #cmakedefine PROTOCOL_DHT11
+=======
+>>>>>>> origin/master
 #cmakedefine PROTOCOL_DHT22
 #cmakedefine PROTOCOL_DIO_SWITCH
 #cmakedefine PROTOCOL_GENERIC_DIMMER

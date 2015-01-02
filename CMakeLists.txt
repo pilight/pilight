@@ -131,11 +131,17 @@ if(${PROTOCOL_DHT22} MATCHES "OFF")
 	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/dht22.c")
 endif()
 
+<<<<<<< HEAD
 if(${PROTOCOL_ELRO_SWITCH} MATCHES "OFF" AND ${PROTOCOL_BRENNENSTUHL_SWITCH} MATCHES "OFF")
 	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/elro_he.h")
 	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/elro_hc.h")
 	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/elro_hc.c")
 	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/elro_he.c")
+=======
+if(${PROTOCOL_ELRO_SWITCH} MATCHES "OFF")
+	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/sartano.h")
+	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/sartano.c")
+>>>>>>> origin/master
 endif()
 
 if(${PROTOCOL_GENERIC_DIMMER} MATCHES "OFF")
@@ -174,16 +180,20 @@ if(${PROTOCOL_RELAY} MATCHES "OFF")
 	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/relay.c")
 endif()
 
+<<<<<<< HEAD
 if(${PROTOCOL_REV} MATCHES "OFF")
 	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/rev.h")
 	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/rev.c")
 endif()
 
+=======
+>>>>>>> origin/master
 if(${PROTOCOL_CLARUS} MATCHES "OFF")
 	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/clarus.h")
 	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/clarus.c")
 endif()
 
+<<<<<<< HEAD
 if(${PROTOCOL_RPI_TEMP} MATCHES "OFF")
 	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/rpi_temp.h")
 	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/rpi_temp.c")
@@ -209,6 +219,8 @@ if(${PROTOCOL_DHT22} MATCHES "OFF")
 	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/dht22.c")
 endif()
 
+=======
+>>>>>>> origin/master
 if(${HARDWARE_433_GPIO} MATCHES "OFF")
 	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/hardwares/gpio.h")
 	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/hardwares/gpio.c")
@@ -219,11 +231,14 @@ if(${HARDWARE_433_MODULE} MATCHES "OFF")
 	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/hardwares/module.c")
 endif()
 
+<<<<<<< HEAD
 if(${HARDWARE_433_PILIGHT} MATCHES "OFF")
 	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/hardwares/pilight.h")
 	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/hardwares/pilight.c")
 endif()
 
+=======
+>>>>>>> origin/master
 if(${UPDATE} MATCHES "OFF")
 	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/pilight/update.h")
 	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/pilight/update.c")
@@ -251,7 +266,11 @@ find_package(Threads REQUIRED)
 
 if(${UPDATE} MATCHES "ON")
 	find_package(ZLIB REQUIRED)
+<<<<<<< HEAD
 	file(GLOB CMAKE_ZLIB_LIBS_INIT ${ZLIB_PATH})
+=======
+	file(GLOB CMAKE_ZLIB_LIBS_INIT "/usr/lib/arm-linux-gnueabihf/libz.so")
+>>>>>>> origin/master
 endif()
 
 configure_file(pilight.h.in pilight.h)

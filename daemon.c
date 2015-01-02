@@ -52,6 +52,10 @@
 	#include "update.h"
 #endif
 
+#ifdef UPDATE
+	#include "update.h"
+#endif
+
 #ifdef WEBSERVER
 	#include "webserver.h"
 #endif
@@ -1375,6 +1379,17 @@ int main(int argc, char **argv) {
 		log_file_set(stmp);
 	}
 
+<<<<<<< HEAD
+=======
+	if(settings_find_string("mode", &stmp) == 0) {
+		if(strcmp(stmp, "client") == 0) {
+			runmode = 2;
+		} else if(strcmp(stmp, "server") == 0) {
+			runmode = 1;
+		}
+	}
+
+>>>>>>> origin/master
 	logprintf(LOG_INFO, "version %s, commit %s", VERSION, HASH);
 
 	if(nodaemon == 1 || running == 1) {
@@ -1480,10 +1495,13 @@ int main(int argc, char **argv) {
 	   communicates with the server */
 	if(runmode == 2) {
 		threads_register("node", &clientize, (void *)NULL);
+<<<<<<< HEAD
 	} else {
 		/* Register a seperate thread for the socket server */
 		threads_register("socket", &socket_wait, (void *)&socket_callback);
 		threads_register("ssdp", &ssdp_wait, (void *)NULL);
+=======
+>>>>>>> origin/master
 	}
 	threads_register("sender", &send_code, (void *)NULL);
 	threads_register("broadcaster", &broadcast, (void *)NULL);
@@ -1494,6 +1512,20 @@ int main(int argc, char **argv) {
 	}
 #endif
 
+<<<<<<< HEAD
+=======
+	/* Register a seperate thread for the socket server */
+	threads_register("socket", &socket_wait, (void *)&socket_callback);
+	threads_register("sender", &send_code, (void *)NULL);
+	threads_register("broadcaster", &broadcast, (void *)NULL);
+
+#ifdef UPDATE
+	if(update_check) {
+		threads_register("updater", &update_poll, (void *)NULL);
+	}
+#endif
+
+>>>>>>> origin/master
 	if(match == 1) {
 		threads_register("receiver", &receive_code, (void *)NULL);
 	}

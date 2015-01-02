@@ -42,7 +42,10 @@
 #include "socket.h"
 #include "webserver.h"
 #include "socket.h"
+<<<<<<< HEAD
 #include "ssdp.h"
+=======
+>>>>>>> origin/master
 #include "fcache.h"
 
 int webserver_port = WEBSERVER_PORT;
@@ -80,6 +83,7 @@ struct libwebsocket_protocols libwebsocket_protocols[] = {
 	{ NULL, NULL, 0, 0 }
 };
 
+<<<<<<< HEAD
 typedef struct webqueue_t {
 	char *message;
 	struct webqueue_t *next;
@@ -90,6 +94,11 @@ struct webqueue_t *webqueue_head;
 pthread_mutex_t webqueue_lock = PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP;
 pthread_cond_t webqueue_signal = PTHREAD_COND_INITIALIZER;
 int webqueue_number = 0;
+=======
+struct per_session_data__http {
+	struct libwebsocket *wsi;
+};
+>>>>>>> origin/master
 
 int webserver_gc(void) {
 	webserver_loop = 0;
@@ -133,6 +142,7 @@ void webserver_create_header(unsigned char **p, const char *message, char *mimet
 		"Server: pilight\r\n"
 		"Content-Type: %s\r\n",
 		message, mimetype);
+<<<<<<< HEAD
 	*p += sprintf((char *)*p,
 		"Content-Length: %u\r\n\r\n",
 		len);
@@ -155,6 +165,20 @@ void webserver_create_401(unsigned char **p) {
 		"Content-Length: 40\r\n"
 		"Content-Type: text/html\r\n\r\n");
 	*p += sprintf((char *)*p, "401 Authorization Required");
+=======
+	*p += sprintf((char *)*p,
+		"Content-Length: %u\r\n\r\n",
+		len);
+}
+
+void webserver_create_wsi(struct libwebsocket **wsi, int fd, unsigned char *stream, size_t size) {
+	(*wsi)->u.http.fd = fd;
+	(*wsi)->u.http.stream = stream;
+	(*wsi)->u.http.filelen = size;
+	(*wsi)->u.http.filepos = 0;
+	(*wsi)->u.http.choke = 1;
+	(*wsi)->state = WSI_STATE_HTTP_ISSUING_FILE;
+>>>>>>> origin/master
 }
 
 void webserver_create_404(const char *in, unsigned char **p) {
@@ -352,10 +376,13 @@ int webserver_callback_http(struct libwebsocket_context *webcontext, struct libw
 				mimetype = malloc(10);
 				memset(mimetype, '\0', 10);
 				strcpy(mimetype, "text/html");
+<<<<<<< HEAD
 			} else if(strcmp(ext, "xml") == 0) {
 				mimetype = malloc(10);
 				memset(mimetype, '\0', 10);
 				strcpy(mimetype, "text/xml");
+=======
+>>>>>>> origin/master
 			} else if(strcmp(ext, "png") == 0) {
 				mimetype = malloc(10);
 				memset(mimetype, '\0', 10);
@@ -568,6 +595,7 @@ int webserver_callback_data(struct libwebsocket_context *webcontext, struct libw
 				}			
 				return 0;
 			}
+			return 0;
 		}
 		break;
 		case LWS_CALLBACK_FILTER_NETWORK_CONNECTION:
@@ -578,12 +606,18 @@ int webserver_callback_data(struct libwebsocket_context *webcontext, struct libw
 				if(socket_check_whitelist(inet_ntoa(address.sin_addr)) != 0) {
 					logprintf(LOG_INFO, "rejected client, ip: %s, port: %d", inet_ntoa(address.sin_addr), ntohs(address.sin_port));
 					return -1;
+<<<<<<< HEAD
 				} else {
 					logprintf(LOG_INFO, "client connected, ip %s, port %d", inet_ntoa(address.sin_addr), ntohs(address.sin_port));
+=======
+				} else {			
+					logprintf(LOG_INFO, "client connected, ip %s, port %d", inet_ntoa(address.sin_addr), ntohs(address.sin_port));				
+>>>>>>> origin/master
 					return 0;
 				}
 			}
 		break;		
+<<<<<<< HEAD
 		case LWS_CALLBACK_HTTP:
 		case LWS_CALLBACK_HTTP_FILE_COMPLETION:
 		case LWS_CALLBACK_HTTP_WRITEABLE:
@@ -596,6 +630,8 @@ int webserver_callback_data(struct libwebsocket_context *webcontext, struct libw
 		case LWS_CALLBACK_CLIENT_RECEIVE:
 		case LWS_CALLBACK_CLIENT_RECEIVE_PONG:
 		case LWS_CALLBACK_CLIENT_WRITEABLE:
+=======
+>>>>>>> origin/master
 		case LWS_CALLBACK_FILTER_PROTOCOL_CONNECTION:
 		case LWS_CALLBACK_OPENSSL_LOAD_EXTRA_CLIENT_VERIFY_CERTS:
 		case LWS_CALLBACK_OPENSSL_LOAD_EXTRA_SERVER_VERIFY_CERTS:
@@ -766,7 +802,11 @@ void *webserver_start(void *param) {
 		/* Register a seperate thread in which the webserver communicates
 		   the main daemon as if it where a gui */
 		threads_register("webserver client", &webserver_clientize, (void *)NULL);
+<<<<<<< HEAD
 		threads_register("webserver broadcast", &webserver_broadcast, (void *)NULL);
+=======
+		sleep(1);
+>>>>>>> origin/master
 		/* Main webserver loop */
 		while(n >= 0 && webserver_loop) {
 			n = libwebsocket_service(context, 50);

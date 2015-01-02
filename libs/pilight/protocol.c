@@ -79,6 +79,10 @@
 #ifdef PROTOCOL_DHT22
 	#include "../protocols/dht22.h"
 #endif
+<<<<<<< HEAD
+#ifdef PROTOCOL_DHT22
+	#include "../protocols/dht22.h"
+#endif
 #ifdef PROTOCOL_DHT11
 	#include "../protocols/dht11.h"
 #endif
@@ -94,6 +98,11 @@
 #ifdef PROTOCOL_CONRAD_RSL_CONTACT
 	#include "../protocols/conrad_rsl_contact.h"
 #endif
+=======
+#ifdef PROTOCOL_CLARUS
+	#include "../protocols/clarus.h"
+#endif
+>>>>>>> origin/master
 
 void protocol_init(void) {
 #if defined(PROTOCOL_COCO_SWITCH) || defined(PROTOCOL_DIO_SWITCH) || defined(PROTOCOL_NEXA_SWITCH) || defined(PROTOCOL_KAKU_SWITCH) || defined(PROTOCOL_INTERTECHNO_SWITCH)
@@ -148,6 +157,7 @@ void protocol_init(void) {
 #ifdef PROTOCOL_DHT22
 	dht22Init();
 #endif
+<<<<<<< HEAD
 #ifdef PROTOCOL_DHT11
 	dht11Init();
 #endif
@@ -163,6 +173,11 @@ void protocol_init(void) {
 #ifdef PROTOCOL_CONRAD_RSL_CONTACT
 	conradRSLCnInit();
 #endif
+=======
+#ifdef PROTOCOL_CLARUS
+	clarusSwInit();
+#endif
+>>>>>>> origin/master
 }
 
 void protocol_register(protocol_t **proto) {

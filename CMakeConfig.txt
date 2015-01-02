@@ -1,15 +1,23 @@
 set(WEBSERVER ON CACHE BOOL "enable the built-in webserver")
 set(UPDATE ON CACHE BOOL "enable the built-in update checker")
 set(PROTOCOL_ALECTO ON CACHE BOOL "support for the Alecto weather stations protocol")
+<<<<<<< HEAD
 set(PROTOCOL_RPI_TEMP ON CACHE BOOL "support for the RPi temperature sensor")
 set(PROTOCOL_BRENNENSTUHL_SWITCH ON CACHE BOOL "support for the Brennenstuhl switch protocol")
 set(PROTOCOL_CLARUS ON CACHE BOOL "support for the Clarus switch protocol")
+=======
+set(PROTOCOL_CLARUS ON CACHE BOOL "support for the Clarus switch protocol")
+set(PROTOCOL_COGEX_SWITCH ON CACHE BOOL "support for the Cogex switch protocol")
+>>>>>>> origin/master
 set(PROTOCOL_COCO_SWITCH ON CACHE BOOL "support for the new ClickOnClickOff switch protocol")
 set(PROTOCOL_COGEX_SWITCH ON CACHE BOOL "support for the Cogex switch protocol")
 set(PROTOCOL_CONRAD_RSL_SWITCH ON CACHE BOOL "support for the Conrad RSL switch protocol")
 set(PROTOCOL_CONRAD_RSL_CONTACT ON CACHE BOOL "support for the Conrad RSL contact sensor protocol")
 set(PROTOCOL_DS18B20 ON CACHE BOOL "support for the 1-Wire ds18b20 temperature sensor")
+<<<<<<< HEAD
 set(PROTOCOL_DHT11 ON CACHE BOOL "support for the DHT11 temperature-humidity sensor")
+=======
+>>>>>>> origin/master
 set(PROTOCOL_DHT22 ON CACHE BOOL "support for the DHT22/AM2302 temperature-humidity sensor")
 set(PROTOCOL_DIO_SWITCH ON CACHE BOOL "support for the D-IO switch protocol")
 set(PROTOCOL_ELRO_SWITCH ON CACHE BOOL "support for the Elro switch protocol")
@@ -32,6 +40,10 @@ set(PROTOCOL_RELAY ON CACHE BOOL "support for relay devices")
 set(PROTOCOL_SELECTREMOTE ON CACHE BOOL "support for the Select-Remote switch protocol")
 set(HARDWARE_433_GPIO ON CACHE BOOL "support for the direct GPIO communication")
 set(HARDWARE_433_MODULE ON CACHE BOOL "support for the lirc_rpi kernel module")
+<<<<<<< HEAD
 set(HARDWARE_433_PILIGHT ON CACHE BOOL "support for the pilight kernel module")
 set(DEBUG OFF CACHE BOOL "turn on extended memory debug information")
 set(USE_SOFT_FLOAT OFF CACHE BOOL "Compile for soft float abi kernels")
+=======
+set(DEBUG OFF CACHE BOOL "turn on extended memory debug information")
+>>>>>>> origin/master
