@@ -77,12 +77,10 @@ static char *datetime_format = NULL;
 static pthread_mutex_t datetimelock;
 static pthread_mutexattr_t datetimeattr;
 
-static time_t getntptime(const char *ntpserver) {
+static time_t getntptime(char *ntpserver) {
 	struct sockaddr_in servaddr;
-	struct hostent *hptr = NULL;
 	struct pkt msg;
-	char **pptr = NULL;
-	char str[50];
+	char *ip = NULL;
 	int sockfd = 0;
 	struct timeval tv;
 
@@ -91,20 +89,11 @@ static time_t getntptime(const char *ntpserver) {
 
 	memset(&msg, '\0', sizeof(struct pkt));
 	memset(&servaddr, '\0', sizeof(struct sockaddr_in));
-	memset(&str, '\0', 50);
 
-	if(!(hptr = gethostbyname(ntpserver))) {
-		logprintf(LOG_DEBUG, "gethostbyname error for host: %s: %s", ntpserver, hstrerror(h_errno));
-		goto close;
+	if((ip = host2ip(ntpserver)) == NULL) {
+		goto close;		
 	}
-
-	if(hptr->h_addrtype == AF_INET && (pptr = hptr->h_addr_list) != NULL) {
-		inet_ntop(hptr->h_addrtype, *pptr, str, sizeof(str));
-	} else {
-		logprintf(LOG_DEBUG, "error call inet_ntop");
-		goto close;
-	}
-
+	
 	if((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) == -1) {
 		logprintf(LOG_DEBUG, "error in socket");
 		goto close;
@@ -116,7 +105,7 @@ static time_t getntptime(const char *ntpserver) {
 	servaddr.sin_family = AF_INET;
 	servaddr.sin_port = htons(123);
 
-	inet_pton(AF_INET, str, &servaddr.sin_addr);
+	inet_pton(AF_INET, ip, &servaddr.sin_addr);
 	if(connect(sockfd, (struct sockaddr *)&servaddr, sizeof(servaddr)) == -1) {
 		logprintf(LOG_DEBUG, "error in connect");
 		goto close;
@@ -145,6 +134,9 @@ static time_t getntptime(const char *ntpserver) {
 	}
 
 close:
+	if(ip) {
+		sfree((void *)&ip);
+	}
 	if(sockfd > 0) {
 		close(sockfd);
 	}

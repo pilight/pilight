@@ -25,6 +25,7 @@
 
 char *progname;
 
+char *host2ip(char *host);
 int isNumeric(char *str);
 int nrDecimals(char *str);
 int name2uid(char const *name);

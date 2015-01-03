@@ -41,6 +41,9 @@
 #include <net/if.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <netinet/tcp.h>
+#include <netdb.h>
+#include <arpa/inet.h>
 
 #include "settings.h"
 #include "common.h"
@@ -49,6 +52,31 @@
 static unsigned int ***whitelist_cache = NULL;
 static unsigned int whitelist_number;
 static unsigned char validchar[64] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
+char *host2ip(char *host) {
+	int rv = 0;
+	struct addrinfo hints, *servinfo, *p;
+	struct sockaddr_in *h = NULL;
+	char *ip = malloc(17);
+	memset(ip, '\0', 17);
+
+	memset(&hints, 0, sizeof hints);
+	hints.ai_family = AF_INET;
+	hints.ai_socktype = SOCK_STREAM;
+
+	if((rv = getaddrinfo(host, NULL , NULL, &servinfo)) != 0) {
+		fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
+		return NULL;
+	}
+
+	for(p = servinfo; p != NULL; p = p->ai_next) {
+		h = (struct sockaddr_in *)p->ai_addr;
+		strcpy(ip, inet_ntoa(h->sin_addr));
+	}
+
+	freeaddrinfo(servinfo);
+	return ip;
+}
 
 #ifdef __FreeBSD__
 int findproc(char *cmd, char *args, int loosely) {

@@ -39,6 +39,7 @@
 
 #include "../../pilight.h"
 #include "log.h"
+#include "common.h"
 #include "../polarssl/ssl.h"
 #include "../polarssl/entropy.h"
 #include "../polarssl/ctr_drbg.h"
@@ -46,22 +47,6 @@
 #define USERAGENT			"pilight"
 #define HTTP_POST			1
 #define HTTP_GET			0
-
-char *http_get_ip(char *host) {
-	struct hostent *hent;
-	char *ip = malloc(17);
-	memset(ip, '\0', 17);
-	if(!(hent = gethostbyname(host))) {
-		logprintf(LOG_ERR, "can't get http IP");
-		return NULL;
-	}
-
-	if(!(inet_ntop(AF_INET, (void *)hent->h_addr_list[0], ip, 16))) {
-		logprintf(LOG_ERR, "can't resolve http host");
-		return NULL;
-	}
-	return ip;
-}
 
 char *http_process_request(char *url, int method, char **type, int *code, int *size, char *post) {
 	struct sockaddr_in serv_addr;
@@ -122,7 +107,7 @@ char *http_process_request(char *url, int method, char **type, int *code, int *s
 	}
   setsockopt(sockfd, SOL_SOCKET, SO_KEEPALIVE, 0, 0);
 
-	if((ip = http_get_ip(host)) == NULL) {
+	if((ip = host2ip(host)) == NULL) {
 		*code = -1;
 		goto exit;		
 	}
