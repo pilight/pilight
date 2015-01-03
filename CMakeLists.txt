@@ -592,6 +592,16 @@ if(${HARDWARE_433_LIRC} MATCHES "OFF")
 	list(REMOVE_ITEM hardware "${PROJECT_SOURCE_DIR}/libs/hardware/433module.c")
 endif()
 
+if(${PROTOCOL_KAMBROOK} MATCHES "OFF")
+    list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/kambrook.h")
+    list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/kambrook.c")
+endif()
+
+if(${PROTOCOL_DOGCOLLAR} MATCHES "OFF")
+    list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/dogcollar.h")
+    list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/dogcollar.c")
+endif()
+
 if(${WEBSERVER} MATCHES "OFF")
 	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/pilight/webserver.h")
 	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/pilight/mongoose.h")
