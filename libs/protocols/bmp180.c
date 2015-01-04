@@ -161,10 +161,10 @@ static void *bmp180Parse(void *param) {
 		exit(EXIT_FAILURE);
 	}
 	for (y = 0; y < bmp180data->nrid; y++) {
-		// Setup i2c
+		// setup i2c
 		bmp180data->fd[y] = wiringXI2CSetup((int) strtol(bmp180data->id[y], NULL, 16));
 
-		// Read 0xD0 to check i2c setup: setup is ok if result contains constant value 0x55
+		// read 0xD0 to check i2c setup: setup is ok if result contains constant value 0x55
 		int id = wiringXI2CReadReg8(bmp180data->fd[y], 0xD0);
 		if (id != 0x55) {
 			logprintf(LOG_ERR, "wrong device detected");
@@ -340,13 +340,6 @@ static void bmp180ThreadGC(void) {
 	protocol_thread_free(bmp180);
 }
 
-static void bmp180PrintHelp(void) {
-	printf("\t -i --id=id\t\t\tcontrol a device with this id\n");
-	printf("\t -o --oversampling=oversampling\tset the oversampling mode (0, 1, 2, 3)\n");
-	printf("\t -p --pressure=pressure\t\tset the barometric pressure in hPa\n");
-	printf("\t -t --temperature=temperature\tset the temperature in deg C\n");
-}
-
 #ifndef MODULE
 __attribute__((weak))
 #endif
@@ -385,7 +378,6 @@ void bmp180Init(void) {
 
 	bmp180->initDev = &bmp180InitDev;
 	bmp180->threadGC = &bmp180ThreadGC;
-	bmp180->printHelp = &bmp180PrintHelp;
 }
 
 #ifdef MODULE
