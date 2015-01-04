@@ -3,17 +3,17 @@
 
 	This file is part of pilight.
 
-    pilight is free software: you can redistribute it and/or modify it under the
+	pilight is free software: you can redistribute it and/or modify it under the
 	terms of the GNU General Public License as published by the Free Software
 	Foundation, either version 3 of the License, or (at your option) any later
 	version.
 
-    pilight is distributed in the hope that it will be useful, but WITHOUT ANY
+	pilight is distributed in the hope that it will be useful, but WITHOUT ANY
 	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-    You should have received a copy of the GNU General Public License
-    along with pilight. If not, see	<http://www.gnu.org/licenses/>
+	You should have received a copy of the GNU General Public License
+	along with pilight. If not, see	<http://www.gnu.org/licenses/>
 */
 
 #include <stdio.h>
@@ -44,6 +44,7 @@
 #include "socket.h"
 
 static char recvBuff[BUFFER_SIZE];
+static char *waitMessage = NULL;
 static unsigned short socket_loop = 1;
 static unsigned int socket_port = 0;
 static int socket_loopback = 0;
@@ -51,6 +52,8 @@ static int socket_server = 0;
 static int socket_clients[MAX_CLIENTS];
 
 int socket_gc(void) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	int x = 0;
 
 	socket_loop = 0;
@@ -69,53 +72,59 @@ int socket_gc(void) {
 		socket_close(socket_loopback);
 	}
 
+	if(waitMessage) {
+		sfree((void *)&waitMessage);
+	}
+
 	logprintf(LOG_DEBUG, "garbage collected socket library");
 	return EXIT_SUCCESS;
 }
 
 /* Start the socket server */
 int socket_start(unsigned short port) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	//gc_attach(socket_gc);
 
-    struct sockaddr_in address;
+	struct sockaddr_in address;
 	unsigned int addrlen = sizeof(address);
 	int opt = 1;
 
 	memset(&address, '\0', sizeof(struct sockaddr_in));
 	memset(socket_clients, 0, sizeof(socket_clients));
 
-    //create a master socket
-    if((socket_server = socket(AF_INET , SOCK_STREAM , 0)) == 0)  {
-        logprintf(LOG_ERR, "could not create new socket");
-        exit(EXIT_FAILURE);
-    }
+	//create a master socket
+	if((socket_server = socket(AF_INET , SOCK_STREAM , 0)) == 0)  {
+		logprintf(LOG_ERR, "could not create new socket");
+		exit(EXIT_FAILURE);
+	}
 
-    //set master socket to allow multiple connections , this is just a good habit, it will work without this
-    if(setsockopt(socket_server, SOL_SOCKET, SO_REUSEADDR, (char *)&opt, sizeof(opt)) < 0 ) {
-        logprintf(LOG_ERR, "could not set proper socket options");
-        exit(EXIT_FAILURE);
-    }
+	//set master socket to allow multiple connections , this is just a good habit, it will work without this
+	if(setsockopt(socket_server, SOL_SOCKET, SO_REUSEADDR, (char *)&opt, sizeof(opt)) < 0 ) {
+		logprintf(LOG_ERR, "could not set proper socket options");
+		exit(EXIT_FAILURE);
+	}
 
-    //type of socket created
-    address.sin_family = AF_INET;
-    address.sin_addr.s_addr = INADDR_ANY;
+	//type of socket created
+	address.sin_family = AF_INET;
+	address.sin_addr.s_addr = INADDR_ANY;
 	if(port <= 0) {
 		address.sin_port = 0;
 	} else {
 		address.sin_port = htons(port);
 	}
 
-    //bind the socket to localhost
-    if (bind(socket_server, (struct sockaddr *)&address, sizeof(address)) < 0) {
-        logprintf(LOG_ERR, "cannot bind to socket port %d, address already in use?", address);
-        exit(EXIT_FAILURE);
-    }
+	//bind the socket to localhost
+	if (bind(socket_server, (struct sockaddr *)&address, sizeof(address)) < 0) {
+		logprintf(LOG_ERR, "cannot bind to socket port %d, address already in use?", address);
+		exit(EXIT_FAILURE);
+	}
 
-    //try to specify maximum of 3 pending connections for the master socket
-    if(listen(socket_server, 3) < 0) {
-        logprintf(LOG_ERR, "failed to listen to socket");
-        exit(EXIT_FAILURE);
-    }
+	//try to specify maximum of 3 pending connections for the master socket
+	if(listen(socket_server, 3) < 0) {
+		logprintf(LOG_ERR, "failed to listen to socket");
+		exit(EXIT_FAILURE);
+	}
 
 	static struct linger linger = { 0, 0 };
 	socklen_t lsize = sizeof(struct linger);
@@ -133,58 +142,66 @@ int socket_start(unsigned short port) {
 	socket_clients[0] = socket_loopback;
 	logprintf(LOG_INFO, "daemon listening to port: %d", socket_port);
 
-    return 0;
+	return 0;
 }
 
 unsigned int socket_get_port(void) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	return socket_port;
 }
 
 int socket_get_fd(void) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	return socket_server;
 }
 
 int socket_get_clients(int i) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	return socket_clients[i];
 }
 
 int socket_connect(char *address, unsigned short port) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	struct sockaddr_in serv_addr;
 	int sockfd;
 	fd_set fdset;
 	struct timeval tv;
 
 	/* Try to open a new socket */
-    if((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
-        logprintf(LOG_ERR, "could not create socket");
+	if((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+		logprintf(LOG_ERR, "could not create socket");
 		return -1;
-    }
+	}
 
 	/* Clear the server address */
-    memset(&serv_addr, '\0', sizeof(serv_addr));
+	memset(&serv_addr, '\0', sizeof(serv_addr));
 
-    serv_addr.sin_family = AF_INET;
-    serv_addr.sin_port = htons(port);
-    inet_pton(AF_INET, address, &serv_addr.sin_addr);
+	serv_addr.sin_family = AF_INET;
+	serv_addr.sin_port = htons(port);
+	inet_pton(AF_INET, address, &serv_addr.sin_addr);
 
 	fcntl(sockfd, F_SETFL, O_NONBLOCK);
 
 	FD_ZERO(&fdset);
-    FD_SET(sockfd, &fdset);
-    tv.tv_sec = 3;
-    tv.tv_usec = 0;
+	FD_SET((long unsigned int)sockfd, &fdset);
+	tv.tv_sec = 3;
+	tv.tv_usec = 0;
 
 	/* Connect to the server */
 	connect(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr));
 
 	if(select(sockfd+1, NULL, &fdset, NULL, &tv) == 1) {
-        int error = -1;
-        socklen_t len = sizeof(error);
+		int error = -1;
+		socklen_t len = sizeof(error);
 
-        getsockopt(sockfd, SOL_SOCKET, SO_ERROR, &error, &len);
+		getsockopt(sockfd, SOL_SOCKET, SO_ERROR, &error, &len);
 
-        if(error == 0) {
-            return sockfd;
+		if(error == 0) {
+			return sockfd;
 		} else {
 			return -1;
         }
@@ -193,8 +210,9 @@ int socket_connect(char *address, unsigned short port) {
 	}
 }
 
-
 void socket_close(int sockfd) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	int i = 0;
 	struct sockaddr_in address;
 	int addrlen = sizeof(address);
@@ -216,6 +234,8 @@ void socket_close(int sockfd) {
 }
 
 int socket_write(int sockfd, const char *msg, ...) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	va_list ap;
 	int bytes = -1;
 	int ptr = 0, n = 0, x = BUFFER_SIZE, len = (int)strlen(EOSS);
@@ -267,7 +287,9 @@ int socket_write(int sockfd, const char *msg, ...) {
 }
 
 void socket_rm_client(int i, struct socket_callback_t *socket_callback) {
-    struct sockaddr_in address;
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
+	struct sockaddr_in address;
 	int addrlen = sizeof(address);
 	int sd = socket_clients[i];
 
@@ -282,12 +304,13 @@ void socket_rm_client(int i, struct socket_callback_t *socket_callback) {
 	socket_clients[i] = 0;
 }
 
-char *socket_read(int sockfd) {
+int socket_read(int sockfd, char **message) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	int bytes = 0;
 	size_t msglen = 0;
 	int ptr = 0, n = 0, len = (int)strlen(EOSS);
 	fd_set fdsread;
-	char *message = NULL;
 	fcntl(sockfd, F_SETFL, O_NONBLOCK);
 
 	while(socket_loop) {
@@ -303,69 +326,70 @@ char *socket_read(int sockfd) {
 			break;
 		}
 		if(n == -1) {
-			return NULL;
+			return -1;
 		} else if(n > 0) {
 			if(FD_ISSET((unsigned long)sockfd, &fdsread)) {
 				bytes = (int)recv(sockfd, recvBuff, BUFFER_SIZE, 0);
 
 				if(bytes <= 0) {
-					return NULL;
+					return -1;
 				} else {
 					ptr+=bytes;
-					if((message = realloc(message, (size_t)ptr+1)) == NULL) {
+					if((*message = realloc(*message, (size_t)ptr+1)) == NULL) {
 						logprintf(LOG_ERR, "out of memory");
 						exit(EXIT_FAILURE);
 					}
-					memset(&message[(ptr-bytes)], '\0', (size_t)bytes+1);
-					memcpy(&message[(ptr-bytes)], recvBuff, (size_t)bytes);
-					msglen = strlen(message);
+					memset(&(*message)[(ptr-bytes)], '\0', (size_t)bytes+1);
+					memcpy(&(*message)[(ptr-bytes)], recvBuff, (size_t)bytes);
+					msglen = strlen(*message);
 				}
-				if(message && msglen > 0) {
+				if(*message && msglen > 0) {
 					/* When a stream is larger then the buffer size, it has to contain
 					   the pilight delimiter to know when the stream ends. If the stream
 					   is shorter then the buffer size, we know we received the full stream */
 					int l = 0;
-					if(((l = strncmp(&message[ptr-(len)], EOSS, (unsigned int)(len))) == 0) || ptr < BUFFER_SIZE) {
+					if(((l = strncmp(&(*message)[ptr-(len)], EOSS, (unsigned int)(len))) == 0) || ptr < BUFFER_SIZE) {
 						/* If the socket contains buffered TCP messages, separate them by
 						   changing the delimiters into newlines */
 						if(ptr > msglen) {
 							int i = 0;
 							for(i=0;i<ptr;i++) {
-								if(i+(len-1) < ptr && strncmp(&message[i], EOSS, (size_t)len) == 0) {
-									memmove(&message[i], &message[i+(len-1)], (size_t)(ptr-(i+(len-1))));
+								if(i+(len-1) < ptr && strncmp(&(*message)[i], EOSS, (size_t)len) == 0) {
+									memmove(&(*message)[i], message[i+(len-1)], (size_t)(ptr-(i+(len-1))));
 									ptr-=(len-1);
-									message[i] = '\n';
+									(*message)[i] = '\n';
 								}
 							}
-							message[ptr] = '\0';
+							(*message)[ptr] = '\0';
 						} else {
 							if(l == 0) {
-								message[ptr-(len)] = '\0'; // remove delimiter
+								(*message)[ptr-(len)] = '\0'; // remove delimiter
 							} else {
-								message[ptr] = '\0';
+								(*message)[ptr] = '\0';
 							}
-							if(strcmp(message, "1") == 0 || strcmp(message, "BEAT") == 0) {
-								sfree((void *)&message);
-								return NULL;
+							if(strcmp(*message, "1") == 0 || strcmp(*message, "BEAT") == 0) {
+								return -1;
 							}
 						}
-						return message;
+						return 0;
 					}
 				}
 			}
 		}
 	}
 
-	return NULL;
+	return -1;
 }
 
 void *socket_wait(void *param) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	struct socket_callback_t *socket_callback = (struct socket_callback_t *)param;
 
 	int activity;
 	int i, sd;
-    int max_sd;
-    struct sockaddr_in address;
+	int max_sd;
+	struct sockaddr_in address;
 	int socket_client;
 	int addrlen = sizeof(address);
 	fd_set readfds;
@@ -400,12 +424,12 @@ void *socket_wait(void *param) {
 			break;
 		}
 
-        //If something happened on the master socket, then its an incoming connection
-        if(FD_ISSET((unsigned long)socket_get_fd(), &readfds)) {
-            if((socket_client = accept(socket_get_fd(), (struct sockaddr *)&address, (socklen_t*)&addrlen))<0) {
-                logprintf(LOG_ERR, "failed to accept client");
-                exit(EXIT_FAILURE);
-            }
+			//If something happened on the master socket, then its an incoming connection
+			if(FD_ISSET((unsigned long)socket_get_fd(), &readfds)) {
+				if((socket_client = accept(socket_get_fd(), (struct sockaddr *)&address, (socklen_t*)&addrlen))<0) {
+					logprintf(LOG_ERR, "failed to accept client");
+					exit(EXIT_FAILURE);
+				}
 			if(whitelist_check(inet_ntoa(address.sin_addr)) != 0) {
 				logprintf(LOG_INFO, "rejected client, ip: %s, port: %d", inet_ntoa(address.sin_addr), ntohs(address.sin_port));
 				shutdown(socket_client, 2);
@@ -444,33 +468,27 @@ void *socket_wait(void *param) {
 			sd = socket_clients[i];
 			if(FD_ISSET((unsigned long)socket_clients[i], &readfds)) {
 				FD_CLR((unsigned long)socket_clients[i], &readfds);
-				char *message = NULL;
-				if((message = socket_read(sd)) != NULL) {
+				if(socket_read(sd, &waitMessage) == 0) {
 					if(socket_callback->client_data_callback) {
-						size_t l = strlen(message);
+						size_t l = strlen(waitMessage);
 						if(l > 0) {
-							if(strstr(message, "\n") != NULL) {
-								char *buffer = malloc(l+1);
-								strcpy(buffer, message);
-								char *pch = strtok(buffer, "\n");
+							if(strstr(waitMessage, "\n") != NULL) {
+								char *pch = strtok(waitMessage, "\n");
 								while(pch != NULL) {
 									socket_callback->client_data_callback(i, pch);
 									pch = strtok(NULL, "\n");
 								}
-								sfree((void *)&pch);
-								sfree((void *)&buffer);
 							} else {
-								socket_callback->client_data_callback(i, message);
+								socket_callback->client_data_callback(i, waitMessage);
 							}
 						}
 					}
-					sfree((void *)&message);
 				} else {
 					socket_rm_client(i, socket_callback);
 					i--;
 				}
 			}
 		}
-    }
+	}
 	return NULL;
 }

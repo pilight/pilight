@@ -1,19 +1,19 @@
 /*
-	Copyright (C) 2013 CurlyMo
+	Copyright (C) 2013 - 2014 CurlyMo
 
 	This file is part of pilight.
 
-    pilight is free software: you can redistribute it and/or modify it under the
+	pilight is free software: you can redistribute it and/or modify it under the
 	terms of the GNU General Public License as published by the Free Software
 	Foundation, either version 3 of the License, or (at your option) any later
 	version.
 
-    pilight is distributed in the hope that it will be useful, but WITHOUT ANY
+	pilight is distributed in the hope that it will be useful, but WITHOUT ANY
 	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-    You should have received a copy of the GNU General Public License
-    along with pilight. If not, see	<http://www.gnu.org/licenses/>
+	You should have received a copy of the GNU General Public License
+	along with pilight. If not, see	<http://www.gnu.org/licenses/>
 */
 
 #ifndef __FreeBSD__
@@ -41,6 +41,9 @@
 #include <net/if.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <netinet/tcp.h>
+#include <netdb.h>
+#include <arpa/inet.h>
 
 #include "settings.h"
 #include "common.h"
@@ -50,11 +53,38 @@ static unsigned int ***whitelist_cache = NULL;
 static unsigned int whitelist_number;
 static unsigned char validchar[64] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
+char *host2ip(char *host) {
+	int rv = 0;
+	struct addrinfo hints, *servinfo, *p;
+	struct sockaddr_in *h = NULL;
+	char *ip = malloc(17);
+	memset(ip, '\0', 17);
+
+	memset(&hints, 0, sizeof hints);
+	hints.ai_family = AF_INET;
+	hints.ai_socktype = SOCK_STREAM;
+
+	if((rv = getaddrinfo(host, NULL , NULL, &servinfo)) != 0) {
+		fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
+		return NULL;
+	}
+
+	for(p = servinfo; p != NULL; p = p->ai_next) {
+		h = (struct sockaddr_in *)p->ai_addr;
+		strcpy(ip, inet_ntoa(h->sin_addr));
+	}
+
+	freeaddrinfo(servinfo);
+	return ip;
+}
+
 #ifdef __FreeBSD__
 int findproc(char *cmd, char *args, int loosely) {
 #else
 pid_t findproc(char *cmd, char *args, int loosely) {
 #endif
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	DIR* dir;
 	struct dirent* ent;
 	char *pch = NULL, fname[512], cmdline[1024];
@@ -73,10 +103,11 @@ pid_t findproc(char *cmd, char *args, int loosely) {
 
     while((ent = readdir(dir)) != NULL) {
 		if(isNumeric(ent->d_name) == 0) {
-			snprintf(fname, sizeof(fname), "/proc/%s/cmdline", ent->d_name);
+			sprintf(fname, "/proc/%s/cmdline", ent->d_name);
 			if((fd = open(fname, O_RDONLY, 0)) > -1) {
+				memset(cmdline, '\0', sizeof(cmdline));
 				if((ptr = (int)read(fd, cmdline, sizeof(cmdline)-1)) > -1) {
-					i = 0, match = 0, y = 0, y = '\n';
+					i = 0, match = 0, y = '\n';
 					/* Replace all NULL terminators for newlines */
 					for(i=0;i<ptr;i++) {
 						if(i < ptr && cmdline[i] == '\0') {
@@ -84,7 +115,7 @@ pid_t findproc(char *cmd, char *args, int loosely) {
 							y = ' ';
 						}
 					}
-					cmdline[ptr-1] = '\0';
+					cmdline[ptr] = '\0';
 					match = 0;
 					/* Check if program matches */
 					if((pch = strtok(cmdline, "\n")) == NULL) {
@@ -126,12 +157,30 @@ pid_t findproc(char *cmd, char *args, int loosely) {
 	return -1;
 }
 
-int isNumeric(char * s) {
-    if(s == NULL || *s == '\0' || *s == ' ')
+int isNumeric(char *s) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
+	if(s == NULL || *s == '\0' || *s == ' ')
 		return EXIT_FAILURE;
-    char *p;
-    strtod(s, &p);
-    return (*p == '\0') ? EXIT_SUCCESS : EXIT_FAILURE;
+	char *p;
+	strtod(s, &p);
+	return (*p == '\0') ? EXIT_SUCCESS : EXIT_FAILURE;
+}
+
+int nrDecimals(char *s) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
+	unsigned int b = 0, c = strlen(s), i = 0;
+	int a = 0;
+	for(i=0;i<c;i++) {
+		if(b == 1) {
+			a++;
+		}
+		if(s[i] == '.') {
+			b = 1;
+		}
+	}
+	return a;
 }
 
 void sfree(void **addr) {
@@ -143,6 +192,8 @@ void sfree(void **addr) {
 }
 
 int name2uid(char const *name) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	if(name) {
 		struct passwd *pwd = getpwnam(name); /* don't free, see getpwnam() for details */
 		if(pwd) {
@@ -154,6 +205,8 @@ int name2uid(char const *name) {
 
 
 int which(const char *program) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	char path[1024];
 	strcpy(path, getenv("PATH"));
 	char *pch = strtok(path, ":");
@@ -172,10 +225,14 @@ int which(const char *program) {
 }
 
 int ishex(int x) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	return(x >= '0' && x <= '9') || (x >= 'a' && x <= 'f') || (x >= 'A' && x <= 'F');
 }
 
 const char *rstrstr(const char* haystack, const char* needle) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	char* loc = 0;
 	char* found = 0;
 	size_t pos = 0;
@@ -189,20 +246,24 @@ const char *rstrstr(const char* haystack, const char* needle) {
 }
 
 void alpha_random(char *s, const int len) {
-    static const char alphanum[] =
-        "0123456789"
-        "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-        "abcdefghijklmnopqrstuvwxyz";
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
+	static const char alphanum[] =
+			"0123456789"
+			"ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+			"abcdefghijklmnopqrstuvwxyz";
 	int i = 0;
 
-    for(i = 0; i < len; ++i) {
-        s[i] = alphanum[(unsigned int)rand() % (sizeof(alphanum) - 1)];
-    }
+	for(i = 0; i < len; ++i) {
+			s[i] = alphanum[(unsigned int)rand() % (sizeof(alphanum) - 1)];
+	}
 
-    s[len] = 0;
+	s[len] = 0;
 }
 
 int urldecode(const char *s, char *dec) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	char *o;
 	const char *end = s + strlen(s);
 	int c;
@@ -222,7 +283,29 @@ int urldecode(const char *s, char *dec) {
 	return (int)(o - dec);
 }
 
+static char to_hex(char code) {
+  static char hex[] = "0123456789abcdef";
+  return hex[code & 15];
+}
+
+char *urlencode(char *str) {
+	char *pstr = str, *buf = malloc(strlen(str) * 3 + 1), *pbuf = buf;
+	while(*pstr) {
+		if(isalnum(*pstr) || *pstr == '-' || *pstr == '_' || *pstr == '.' || *pstr == '~') 
+			*pbuf++ = *pstr;
+		else if(*pstr == ' ') 
+			*pbuf++ = '+';
+		else 
+			*pbuf++ = '%', *pbuf++ = to_hex(*pstr >> 4), *pbuf++ = to_hex(*pstr & 15);
+		pstr++;
+	}
+	*pbuf = '\0';
+	return buf;
+}
+
 int base64decode(unsigned char *dest, unsigned char *src, int l) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	static char inalphabet[256], decoder[256];
 	int i, bits, c, char_count;
 	int rpos;
@@ -277,13 +360,17 @@ int base64decode(unsigned char *dest, unsigned char *src, int l) {
 }
 
 void rmsubstr(char *s, const char *r) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	while((s=strstr(s, r))) {
 		size_t l = strlen(r);
-		memmove(s ,s+l, 1+strlen(s+l));
+		memmove(s, s+l, 1+strlen(s+l));
 	}
 }
 
 char *hostname(void) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	char name[255] = {'\0'};
 	char *host = NULL;
 	gethostname(name, 254);
@@ -302,6 +389,8 @@ char *hostname(void) {
 
 
 char *distroname(void) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	char dist[32];
 	memset(dist, '\0', 32);
 	char *distro = NULL;
@@ -337,12 +426,16 @@ char *distroname(void) {
 	}
 }
 
-
+/* The UUID is either generated from the
+   processor serial number or from the
+   onboard LAN controller mac address */
 char *genuuid(char *ifname) {
-	char *mac = NULL, *upnp_id = NULL;
-	char a[1024], serial[UUID_LENGTH];
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
-	memset(serial, '\0', UUID_LENGTH);
+	char *mac = NULL, *upnp_id = NULL;
+	char a[1024], serial[UUID_LENGTH+1];
+
+	memset(serial, '\0', UUID_LENGTH+1);
 	FILE *fp = fopen("/proc/cpuinfo", "r");
 	if(fp != NULL) {
 		while(!feof(fp)) {
@@ -350,19 +443,21 @@ char *genuuid(char *ifname) {
 				break;
 			}
 			if(strstr(a, "Serial") != NULL) {
-				sscanf(a, "Serial          : %s\n", (char *)&serial);
-				memmove(&serial[5], &serial[4], 16);
-				serial[4] = '-';
-				memmove(&serial[8], &serial[7], 13);
-				serial[7] = '-';
-				memmove(&serial[11], &serial[10], 10);
-				serial[10] = '-';
-				memmove(&serial[14], &serial[13], 7);
-				serial[13] = '-';
-				upnp_id = malloc(UUID_LENGTH);
-				strcpy(upnp_id, serial);
-				fclose(fp);
-				return upnp_id;
+				sscanf(a, "Serial          : %16s%*[ \n\r]", (char *)&serial);
+				if(atoi(serial) != 0) {
+					memmove(&serial[5], &serial[4], 16);
+					serial[4] = '-';
+					memmove(&serial[8], &serial[7], 13);
+					serial[7] = '-';
+					memmove(&serial[11], &serial[10], 10);
+					serial[10] = '-';
+					memmove(&serial[14], &serial[13], 7);
+					serial[13] = '-';
+					upnp_id = malloc(UUID_LENGTH+1);
+					strcpy(upnp_id, serial);
+					fclose(fp);
+					return upnp_id;
+				}
 			}
 		}
 		fclose(fp);
@@ -420,13 +515,14 @@ char *genuuid(char *ifname) {
 #endif
 
 	if(strlen(mac) > 0) {
-		upnp_id = malloc(UUID_LENGTH);
+		upnp_id = malloc(UUID_LENGTH+1);
+		memset(upnp_id, '\0', UUID_LENGTH+1);
 		sprintf(upnp_id,
-				"0000-%c%c-%c%c-%c%c-%c%c%c%c%c%c",
+				"0000-%c%c-%c%c-%c%c-%c%c%c%c%c0",
 				mac[0], mac[1], mac[2],
 				mac[3], mac[4], mac[5],
 				mac[6], mac[7], mac[9],
-				mac[10], mac[11], mac[12]);
+				mac[10], mac[11]);
 		sfree((void *)&mac);
 		return upnp_id;
 	}
@@ -435,6 +531,8 @@ char *genuuid(char *ifname) {
 
 #ifdef __FreeBSD__
 struct sockaddr *sockaddr_dup(struct sockaddr *sa) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	struct sockaddr *ret;
 	socklen_t socklen;
 #ifdef HAVE_SOCKADDR_SA_LEN
@@ -453,6 +551,8 @@ struct sockaddr *sockaddr_dup(struct sockaddr *sa) {
 }
 
 int rep_getifaddrs(struct ifaddrs **ifap) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	struct ifconf ifc;
 	char buff[8192];
 	int fd, i, n;
@@ -532,7 +632,6 @@ int rep_getifaddrs(struct ifaddrs **ifap) {
 			}
 		}
 
-
 		curif->ifa_netmask = NULL;
 		if (ioctl(fd, SIOCGIFNETMASK, &ifr) != -1) {
 			curif->ifa_netmask = sockaddr_dup(&ifr.ifr_addr);
@@ -562,6 +661,8 @@ int rep_getifaddrs(struct ifaddrs **ifap) {
 }
 
 void rep_freeifaddrs(struct ifaddrs *ifaddr) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	struct ifaddrs *ifa;
 	while(ifaddr) {
 		ifa = ifaddr;
@@ -576,6 +677,8 @@ void rep_freeifaddrs(struct ifaddrs *ifaddr) {
 #endif
 
 int whitelist_check(char *ip) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	char *whitelist = NULL;
 	unsigned int client[4] = {0};
 	int x = 0, i = 0, error = 1;
@@ -680,6 +783,8 @@ int whitelist_check(char *ip) {
 }
 
 void whitelist_free(void) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	int i = 0;
 	if(whitelist_cache) {
 		for(i=0;i<whitelist_number;i++) {
@@ -691,8 +796,18 @@ void whitelist_free(void) {
 	}
 }
 
+/* Check if a given file exists */
+int file_exists(char *filename) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
+	struct stat sb;
+	return stat(filename, &sb);
+}
+
 /* Check if a given path exists */
 int path_exists(char *fil) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	struct stat s;
 	char tmp[strlen(fil)+1];
 	strcpy(tmp, fil);
@@ -729,6 +844,8 @@ int path_exists(char *fil) {
 // -1: val < ref
 //  0: val == ref
 int vercmp(char *val, char *ref) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	int vc, rc;
 	long vl, rl;
 	char *vp, *rp;
@@ -799,6 +916,8 @@ int vercmp(char *val, char *ref) {
 }
 
 int str_replace(char *search, char *replace, char **str) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	char *target = *str;
 	unsigned short match = 0;
 	int len = (int)strlen(target);
@@ -839,9 +958,11 @@ int str_replace(char *search, char *replace, char **str) {
 }
 
 int stricmp(char const *a, char const *b) {
-    for(;; a++, b++) {
-        int d = tolower(*a) - tolower(*b);
-        if (d != 0 || !*a)
-            return d;
-    }
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
+	for(;; a++, b++) {
+			int d = tolower(*a) - tolower(*b);
+			if(d != 0 || !*a)
+				return d;
+	}
 }

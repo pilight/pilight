@@ -3,17 +3,17 @@
 
 	This file is part of pilight.
 
-    pilight is free software: you can redistribute it and/or modify it under the
+	pilight is free software: you can redistribute it and/or modify it under the
 	terms of the GNU General Public License as published by the Free Software
 	Foundation, either version 3 of the License, or (at your option) any later
 	version.
 
-    pilight is distributed in the hope that it will be useful, but WITHOUT ANY
+	pilight is distributed in the hope that it will be useful, but WITHOUT ANY
 	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-    You should have received a copy of the GNU General Public License
-    along with pilight. If not, see	<http://www.gnu.org/licenses/>
+	You should have received a copy of the GNU General Public License
+	along with pilight. If not, see	<http://www.gnu.org/licenses/>
 */
 
 #include <stdio.h>
@@ -24,6 +24,7 @@
 #include <dlfcn.h>
 #include <pthread.h>
 #include <sys/time.h>
+#include <sys/stat.h>
 
 #include "../../pilight.h"
 #include "common.h"
@@ -37,6 +38,8 @@
 #include "protocol_header.h"
 
 void protocol_remove(char *name) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	struct protocols_t *currP, *prevP;
 
 	prevP = NULL;
@@ -91,13 +94,15 @@ void protocol_remove(char *name) {
 }
 
 void protocol_init(void) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	#include "protocol_init.h"
 	void *handle = NULL;
 	void (*init)(void);
 	void (*compatibility)(struct module_t *module);
 	char path[255];
 	struct module_t module;
-	char pilight_version[strlen(VERSION)];
+	char pilight_version[strlen(VERSION)+1];
 	char pilight_commit[3];
 	char *protocol_root = NULL;
 	int check1 = 0, check2 = 0, valid = 1, protocol_root_free = 0;
@@ -105,11 +110,12 @@ void protocol_init(void) {
 
 	struct dirent *file = NULL;
 	DIR *d = NULL;
+	struct stat s;
 
 	memset(pilight_commit, '\0', 3);
 
 	if(settings_find_string("protocol-root", &protocol_root) != 0) {
-		/* If no webserver port was set, use the default webserver port */
+		/* If no protocol root was set, use the default protocol root */
 		if(!(protocol_root = malloc(strlen(PROTOCOL_ROOT)+1))) {
 			logprintf(LOG_ERR, "out of memory");
 			exit(EXIT_FAILURE);
@@ -124,7 +130,9 @@ void protocol_init(void) {
 
 	if((d = opendir(protocol_root))) {
 		while((file = readdir(d)) != NULL) {
-			if(file->d_type == DT_REG) {
+			stat(file->d_name, &s);
+			/* Check if file */
+			if(S_ISREG(s.st_mode) == 0) {
 				if(strstr(file->d_name, ".so") != NULL) {
 					valid = 1;
 					memset(path, '\0', 255);
@@ -144,7 +152,7 @@ void protocol_init(void) {
 								}
 
 								if(check1 == 0 && module.reqcommit) {
-									char com[strlen(module.reqcommit)];
+									char com[strlen(module.reqcommit)+1];
 									strcpy(com, module.reqcommit);
 									sscanf(HASH, "v%*[0-9].%*[0-9]-%[0-9]-%*[0-9a-zA-Z\n\r]", pilight_commit);
 
@@ -153,7 +161,7 @@ void protocol_init(void) {
 									}
 								}
 								if(valid) {
-									char tmp[strlen(module.name)];
+									char tmp[strlen(module.name)+1];
 									strcpy(tmp, module.name);
 									protocol_remove(tmp);
 									init();
@@ -181,6 +189,8 @@ void protocol_init(void) {
 }
 
 void protocol_register(protocol_t **proto) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	if(!(*proto = malloc(sizeof(struct protocol_t)))) {
 		logprintf(LOG_ERR, "out of memory");
 		exit(EXIT_FAILURE);
@@ -236,18 +246,22 @@ void protocol_register(protocol_t **proto) {
 }
 
 struct protocol_threads_t *protocol_thread_init(protocol_t *proto, struct JsonNode *param) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	struct protocol_threads_t *node = malloc(sizeof(struct protocol_threads_t));
 	node->param = param;
 	pthread_mutexattr_init(&node->attr);
 	pthread_mutexattr_settype(&node->attr, PTHREAD_MUTEX_RECURSIVE);
 	pthread_mutex_init(&node->mutex, &node->attr);
-    pthread_cond_init(&node->cond, NULL);
+	pthread_cond_init(&node->cond, NULL);
 	node->next = proto->threads;
 	proto->threads = node;
 	return node;
 }
 
 int protocol_thread_wait(struct protocol_threads_t *node, int interval, int *nrloops) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	struct timeval tp;
 	struct timespec ts;
 
@@ -270,6 +284,8 @@ int protocol_thread_wait(struct protocol_threads_t *node, int interval, int *nrl
 }
 
 void protocol_thread_stop(protocol_t *proto) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	if(proto->threads) {
 		struct protocol_threads_t *tmp = proto->threads;
 		while(tmp) {
@@ -281,14 +297,16 @@ void protocol_thread_stop(protocol_t *proto) {
 }
 
 void protocol_thread_free(protocol_t *proto) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	if(proto->threads) {
-		struct protocol_threads_t *tmp = proto->threads;
-		while(tmp) {
+		struct protocol_threads_t *tmp = NULL;
+		while(proto->threads) {
 			tmp = proto->threads;
-			if(tmp->param) {
-				json_delete(tmp->param);
+			if(proto->threads->param) {
+				json_delete(proto->threads->param);
 			}
-			tmp = tmp->next;
+			proto->threads = proto->threads->next;
 			sfree((void *)&tmp);
 		}
 		sfree((void *)&proto->threads);
@@ -296,6 +314,8 @@ void protocol_thread_free(protocol_t *proto) {
 }
 
 void protocol_set_id(protocol_t *proto, const char *id) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	if(!(proto->id = malloc(strlen(id)+1))) {
 		logprintf(LOG_ERR, "out of memory");
 		exit(EXIT_FAILURE);
@@ -304,6 +324,8 @@ void protocol_set_id(protocol_t *proto, const char *id) {
 }
 
 void protocol_plslen_add(protocol_t *proto, int plslen) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	struct protocol_plslen_t *pnode = malloc(sizeof(struct protocol_plslen_t));
 	if(!pnode) {
 		logprintf(LOG_ERR, "out of memory");
@@ -315,6 +337,8 @@ void protocol_plslen_add(protocol_t *proto, int plslen) {
 }
 
 void protocol_device_add(protocol_t *proto, const char *id, const char *desc) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	struct protocol_devices_t *dnode = malloc(sizeof(struct protocol_devices_t));
 	if(!dnode) {
 		logprintf(LOG_ERR, "out of memory");
@@ -335,6 +359,8 @@ void protocol_device_add(protocol_t *proto, const char *id, const char *desc) {
 }
 
 int protocol_device_exists(protocol_t *proto, const char *id) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	struct protocol_devices_t *temp = proto->devices;
 
 	while(temp) {
@@ -348,6 +374,8 @@ int protocol_device_exists(protocol_t *proto, const char *id) {
 }
 
 int protocol_gc(void) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	struct protocols_t *ptmp;
 	struct protocol_devices_t *dtmp;
 	struct protocol_plslen_t *ttmp;

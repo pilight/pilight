@@ -3,17 +3,17 @@
 
 	This file is part of pilight.
 
-    pilight is free software: you can redistribute it and/or modify it under the
+	pilight is free software: you can redistribute it and/or modify it under the
 	terms of the GNU General Public License as published by the Free Software
 	Foundation, either version 3 of the License, or (at your option) any later
 	version.
 
-    pilight is distributed in the hope that it will be useful, but WITHOUT ANY
+	pilight is distributed in the hope that it will be useful, but WITHOUT ANY
 	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-    You should have received a copy of the GNU General Public License
-    along with pilight. If not, see	<http://www.gnu.org/licenses/>
+	You should have received a copy of the GNU General Public License
+	along with pilight. If not, see	<http://www.gnu.org/licenses/>
 */
 
 #include <stdio.h>
@@ -29,6 +29,8 @@
 #include "gc.h"
 
 int fcache_gc(void) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	struct fcache_t *tmp = fcache;
 	while(fcache) {
 		tmp = fcache;
@@ -44,6 +46,8 @@ int fcache_gc(void) {
 }
 
 void fcache_remove_node(struct fcache_t **cache, char *name) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	struct fcache_t *currP, *prevP;
 
 	prevP = NULL;
@@ -67,12 +71,16 @@ void fcache_remove_node(struct fcache_t **cache, char *name) {
 }
 
 int fcache_rm(char *filename) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	fcache_remove_node(&fcache, filename);
 	logprintf(LOG_DEBUG, "removed %s from cache", filename);
 	return 1;
 }
 
 int fcache_add(char *filename) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	unsigned long filesize = 0, i = 0;
 	struct stat sb;
 	ssize_t rc = 0;
@@ -121,6 +129,8 @@ int fcache_add(char *filename) {
 }
 
 short fcache_get_size(char *filename, int *out) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	struct fcache_t *ftmp = fcache;
 	while(ftmp) {
 		if(strcmp(ftmp->name, filename) == 0) {
@@ -133,6 +143,8 @@ short fcache_get_size(char *filename, int *out) {
 }
 
 unsigned char *fcache_get_bytes(char *filename) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	struct fcache_t *ftmp = fcache;
 	while(ftmp) {
 		if(strcmp(ftmp->name, filename) == 0) {

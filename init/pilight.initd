@@ -17,8 +17,12 @@
 PATH=/sbin:/usr/sbin:/bin:/usr/bin:/usr/local/bin:/usr/local/sbin
 NAME=pilight
 DAEMON=/usr/local/sbin/pilight-daemon
-#Should be the same as in: /etc/pilight/settings.json
-PIDFILE=$(sed -ne 's/\(.*\)"pid-file":[\ ]\{0,\}"\(.*\)",/\2/p' /etc/pilight/settings.json);
+#Should be the same as in: /etc/pilight/config.json
+if [ -f /etc/pilight/config.json ] && [ $(grep -c pid-file /etc/pilight/config.json) -ge 1 ]; then
+	PIDFILE=$(sed -ne 's/\(.*\)"pid-file":[\ ]\{0,\}"\(.*\)",/\2/p' /etc/pilight/config.json);
+else
+	PIDFILE="/var/run/pilight.pid"
+fi
 DAEMON_ARGS=
 SCRIPTNAME=/etc/init.d/$NAME
 # Exit if the package is not installed

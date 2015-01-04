@@ -1,19 +1,19 @@
 /*
-	Copyright (C) 2013 CurlyMo
+	Copyright (C) 2013 - 2014 CurlyMo
 
 	This file is part of pilight.
 
-    pilight is free software: you can redistribute it and/or modify it under the
+	pilight is free software: you can redistribute it and/or modify it under the
 	terms of the GNU General Public License as published by the Free Software
 	Foundation, either version 3 of the License, or (at your option) any later
 	version.
 
-    pilight is distributed in the hope that it will be useful, but WITHOUT ANY
+	pilight is distributed in the hope that it will be useful, but WITHOUT ANY
 	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-    You should have received a copy of the GNU General Public License
-    along with pilight. If not, see	<http://www.gnu.org/licenses/>
+	You should have received a copy of the GNU General Public License
+	along with pilight. If not, see	<http://www.gnu.org/licenses/>
 */
 
 #include <regex.h>
@@ -24,6 +24,7 @@
 #include "log.h"
 #include "common.h"
 #include "options.h"
+#include "json.h"
 
 static int getOptPos = 0;
 static char *longarg = NULL;
@@ -31,6 +32,8 @@ static char *shortarg = NULL;
 static char *gctmp = NULL;
 
 int options_gc(void) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	sfree((void *)&longarg);
 	sfree((void *)&shortarg);
 	sfree((void *)&gctmp);
@@ -40,16 +43,34 @@ int options_gc(void) {
 }
 
 /* Add a value to the specific struct id */
-void options_set_value(struct options_t **opt, int id, const char *val) {
+void options_set_string(struct options_t **opt, int id, const char *val) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	struct options_t *temp = *opt;
 	while(temp) {
 		if(temp->id == id && temp->id > 0) {
-			temp->value = realloc(temp->value, strlen(val)+1);
-			if(!temp->value) {
+			temp->string_ = realloc(temp->string_, strlen(val)+1);
+			if(!temp->string_) {
 				logprintf(LOG_ERR, "out of memory");
 				exit(EXIT_FAILURE);
 			}
-			strcpy(temp->value, val);
+			temp->vartype = JSON_STRING;
+			strcpy(temp->string_, val);
+			break;
+		}
+		temp = temp->next;
+	}
+}
+
+/* Add a value to the specific struct id */
+void options_set_number(struct options_t **opt, int id, double val) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
+	struct options_t *temp = *opt;
+	while(temp) {
+		if(temp->id == id && temp->id > 0) {
+			temp->number_ = val;
+			temp->vartype = JSON_NUMBER;
 			break;
 		}
 		temp = temp->next;
@@ -57,13 +78,15 @@ void options_set_value(struct options_t **opt, int id, const char *val) {
 }
 
 /* Get a certain option value identified by the id */
-int options_get_value(struct options_t **opt, int id, char **out) {
+int options_get_string(struct options_t **opt, int id, char **out) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	struct options_t *temp = *opt;
 	*out = NULL;
 	while(temp) {
 		if(temp->id == id && temp->id > 0) {
-			if(temp->value) {
-				*out = temp->value;
+			if(temp->string_ && temp->vartype == JSON_STRING) {
+				*out = temp->string_;
 				return 0;
 			} else {
 				return 1;
@@ -75,8 +98,29 @@ int options_get_value(struct options_t **opt, int id, char **out) {
 	return 1;
 }
 
+/* Get a certain option value identified by the id */
+int options_get_number(struct options_t **opt, int id, double *out) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
+	struct options_t *temp = *opt;
+	*out = 0;
+	while(temp) {
+		if(temp->id == id && temp->id > 0) {
+			if(temp->vartype == JSON_NUMBER) {
+				*out = temp->number_;
+			}
+			return 0;
+		}
+		temp = temp->next;
+	}
+
+	return 1;
+}
+
 /* Get a certain option argument type identified by the id */
 int options_get_argtype(struct options_t **opt, int id, int *out) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	struct options_t *temp = *opt;
 	*out = 0;
 	while(temp) {
@@ -94,8 +138,31 @@ int options_get_argtype(struct options_t **opt, int id, int *out) {
 	return 1;
 }
 
+/* Get a certain option argument type identified by the id */
+int options_get_conftype(struct options_t **opt, int id, int *out) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
+	struct options_t *temp = *opt;
+	*out = 0;
+	while(temp) {
+		if(temp->id == id && temp->id > 0) {
+			if(temp->argtype != 0) {
+				*out = temp->conftype;
+				return 0;
+			} else {
+				return 1;
+			}
+		}
+		temp = temp->next;
+	}
+
+	return 1;
+}
+
 /* Get a certain option name identified by the id */
 int options_get_name(struct options_t **opt, int id, char **out) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	struct options_t *temp = *opt;
 	*out = NULL;
 	while(temp) {
@@ -115,6 +182,8 @@ int options_get_name(struct options_t **opt, int id, char **out) {
 
 /* Get a certain regex mask identified by the name */
 int options_get_mask(struct options_t **opt, int id, char **out) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	struct options_t *temp = *opt;
 	*out = NULL;
 	while(temp) {
@@ -134,6 +203,8 @@ int options_get_mask(struct options_t **opt, int id, char **out) {
 
 /* Get a certain option id identified by the name */
 int options_get_id(struct options_t **opt, char *name, int *out) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	struct options_t *temp = *opt;
 	*out = 0;
 	while(temp) {
@@ -155,6 +226,8 @@ int options_get_id(struct options_t **opt, char *name, int *out) {
 
 /* Parse all CLI arguments */
 int options_parse(struct options_t **opt, int argc, char **argv, int error_check, char **optarg) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	int c = 0;
 	int itmp = 0;
 #ifndef __FreeBSD__
@@ -333,7 +406,7 @@ int options_parse(struct options_t **opt, int argc, char **argv, int error_check
 		} else {
 			/* If the argument didn't have a value, set it to 1 */
 			if(strlen(*optarg) == 0) {
-				options_set_value(opt, c, "1");
+				options_set_string(opt, c, "1");
 			} else {
 #ifndef __FreeBSD__
 				if(error_check != 2) {
@@ -361,7 +434,7 @@ int options_parse(struct options_t **opt, int argc, char **argv, int error_check
 					}
 				}
 #endif
-				options_set_value(opt, c, *optarg);
+				options_set_string(opt, c, *optarg);
 			}
 			return c;
 		}
@@ -376,20 +449,23 @@ gc:
 
 /* Add a new option to the options struct */
 void options_add(struct options_t **opt, int id, const char *name, int argtype, int conftype, int vartype, void *def, const char *mask) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	char *ctmp = NULL;
 	char *nname = malloc(strlen(name)+1);
+	int sid = 0;
 	if(!nname) {
 		logprintf(LOG_ERR, "out of memory");
 		exit(EXIT_FAILURE);
 	}
 	strcpy(nname, name);
-	int itmp;
+	int itmp = 0;
 	if(!(argtype >= 0 && argtype <= 3)) {
 		logprintf(LOG_ERR, "tying to add an invalid option type");
 		sfree((void *)&nname);
 		exit(EXIT_FAILURE);
-	} else if(!(conftype >= 0 && conftype <= 5)) {
-		logprintf(LOG_ERR, "trying to add an option with an invalid config type");
+	} else if(!(conftype >= 0 && conftype <= NROPTIONTYPES)) {
+		logprintf(LOG_ERR, "trying to add an option of an invalid type");
 		sfree((void *)&nname);
 		exit(EXIT_FAILURE);
 	} else if(!name) {
@@ -400,7 +476,9 @@ void options_add(struct options_t **opt, int id, const char *name, int argtype, 
 		logprintf(LOG_ERR, "duplicate option id: %c", id);
 		sfree((void *)&nname);
 		exit(EXIT_FAILURE);
-	} else if(options_get_id(opt, nname, &itmp) == 0) {
+	} else if(options_get_id(opt, nname, &sid) == 0 &&
+			((options_get_conftype(opt, sid, &itmp) == 0 && itmp == conftype) ||
+			(options_get_conftype(opt, sid, &itmp) != 0))) {
 		logprintf(LOG_ERR, "duplicate option name: %s", name);
 		sfree((void *)&nname);
 		exit(EXIT_FAILURE);
@@ -421,12 +499,7 @@ void options_add(struct options_t **opt, int id, const char *name, int argtype, 
 		optnode->conftype = conftype;
 		optnode->vartype = vartype;
 		optnode->def = def;
-		optnode->value = malloc(4);
-		if(!optnode->value) {
-			logprintf(LOG_ERR, "out of memory");
-			exit(EXIT_FAILURE);
-		}
-		memset(optnode->value, '\0', 4);
+		optnode->string_ = NULL;
 		if(mask) {
 			optnode->mask = malloc(strlen(mask)+1);
 			if(!optnode->mask) {
@@ -435,12 +508,7 @@ void options_add(struct options_t **opt, int id, const char *name, int argtype, 
 			}
 			strcpy(optnode->mask, mask);
 		} else {
-			optnode->mask = malloc(4);
-			if(!optnode->mask) {
-				logprintf(LOG_ERR, "out of memory");
-				exit(EXIT_FAILURE);
-			}
-			memset(optnode->mask, '\0', 4);
+			optnode->mask = NULL;
 		}
 		optnode->next = *opt;
 		*opt = optnode;
@@ -450,6 +518,8 @@ void options_add(struct options_t **opt, int id, const char *name, int argtype, 
 
 /* Merge two options structs */
 void options_merge(struct options_t **a, struct options_t **b) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	struct options_t *temp = NULL;
 	temp = *b;
 	while(temp) {
@@ -468,42 +538,28 @@ void options_merge(struct options_t **a, struct options_t **b) {
 			memset(optnode->name, '\0', strlen(temp->name)+1);
 			strcpy(optnode->name, temp->name);
 		} else {
-			optnode->name = malloc(4);
-			if(!optnode->name) {
-				logprintf(LOG_ERR, "out of memory");
-				exit(EXIT_FAILURE);
-			}
-			memset(optnode->name, '\0', 4);
+			optnode->name = NULL;
 		}
-		if(temp->value) {
-			optnode->value = malloc(strlen(temp->value)+1);
-			if(!optnode->value) {
+		if(temp->string_) {
+			optnode->string_ = malloc(strlen(temp->string_)+1);
+			if(!optnode->string_) {
 				logprintf(LOG_ERR, "out of memory");
 				exit(EXIT_FAILURE);
 			}
-			strcpy(optnode->value, temp->value);
+			optnode->vartype = JSON_STRING;
+			strcpy(optnode->string_, temp->string_);
 		} else {
-			optnode->value = malloc(4);
-			if(!optnode->value) {
-				logprintf(LOG_ERR, "out of memory");
-				exit(EXIT_FAILURE);
-			}
-			memset(optnode->value, '\0', 4);
+			optnode->string_ = NULL;
 		}
 		if(temp->mask) {
-			optnode->mask = malloc(strlen(temp->mask)*2);
+			optnode->mask = malloc(strlen(temp->mask)+1);
 			if(!optnode->mask) {
 				logprintf(LOG_ERR, "out of memory");
 				exit(EXIT_FAILURE);
 			}
 			strcpy(optnode->mask, temp->mask);
 		} else {
-			optnode->mask = malloc(4);
-			if(!optnode->mask) {
-				logprintf(LOG_ERR, "out of memory");
-				exit(EXIT_FAILURE);
-			}
-			memset(optnode->mask, '\0', 4);
+			optnode->mask = NULL;
 		}
 		optnode->argtype = temp->argtype;
 		optnode->conftype = temp->conftype;
@@ -516,11 +572,17 @@ void options_merge(struct options_t **a, struct options_t **b) {
 }
 
 void options_delete(struct options_t *options) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	struct options_t *tmp;
 	while(options) {
 		tmp = options;
-		sfree((void *)&tmp->mask);
-		sfree((void *)&tmp->value);
+		if(tmp->mask) {
+			sfree((void *)&tmp->mask);
+		}
+		if(tmp->vartype == JSON_STRING && tmp->string_) {
+			sfree((void *)&tmp->string_);
+		}
 		sfree((void *)&tmp->name);
 		options = options->next;
 		sfree((void *)&tmp);

@@ -3,17 +3,17 @@
 
 	This file is part of pilight.
 
-    pilight is free software: you can redistribute it and/or modify it under the
+	pilight is free software: you can redistribute it and/or modify it under the
 	terms of the GNU General Public License as published by the Free Software
 	Foundation, either version 3 of the License, or (at your option) any later
 	version.
 
-    pilight is distributed in the hope that it will be useful, but WITHOUT ANY
+	pilight is distributed in the hope that it will be useful, but WITHOUT ANY
 	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-    You should have received a copy of the GNU General Public License
-    along with pilight. If not, see	<http://www.gnu.org/licenses/>
+	You should have received a copy of the GNU General Public License
+	along with pilight. If not, see	<http://www.gnu.org/licenses/>
 */
 
 #include <stdio.h>
@@ -35,7 +35,7 @@
 #include "../../pilight.h"
 #include "common.h"
 #include "mongoose.h"
-#include "config.h"
+#include "devices.h"
 #include "gc.h"
 #include "log.h"
 #include "threads.h"
@@ -48,6 +48,7 @@
 
 static int webserver_port = WEBSERVER_PORT;
 static int webserver_cache = 1;
+static int webgui_websockets = WEBGUI_WEBSOCKETS;
 static char *webserver_user = NULL;
 static char *webserver_authentication_username = NULL;
 static char *webserver_authentication_password = NULL;
@@ -57,11 +58,11 @@ static char *webserver_root = NULL;
 static char *webgui_tpl = NULL;
 static struct mg_server *mgserver[WEBSERVER_WORKERS];
 
+static char *recvBuff = NULL;
 static unsigned short webgui_tpl_free = 0;
 static unsigned short webserver_root_free = 0;
 static unsigned short webserver_user_free = 0;
 
-static int loopfd = 0;
 static int sockfd = 0;
 
 typedef enum {
@@ -86,6 +87,8 @@ static pthread_mutexattr_t webqueue_attr;
 static int webqueue_number = 0;
 
 int webserver_gc(void) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	int i = 0;
 
 	webserver_loop = 0;
@@ -104,6 +107,9 @@ int webserver_gc(void) {
 	}
 
 	for(i=0;i<WEBSERVER_WORKERS;i++) {
+		if(mgserver[i] != NULL) {
+			mg_wakeup_server(mgserver[i]);
+		}
 		mg_destroy_server(&mgserver[i]);
 	}
 
@@ -121,6 +127,8 @@ static struct filehandler_t {
 } filehandler_t;
 
 void webserver_create_header(unsigned char **p, const char *message, char *mimetype, unsigned int len) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	*p += sprintf((char *)*p,
 		"HTTP/1.0 %s\r\n"
 		"Server: pilight\r\n"
@@ -132,6 +140,8 @@ void webserver_create_header(unsigned char **p, const char *message, char *mimet
 }
 
 static void webserver_create_minimal_header(unsigned char **p, const char *message, unsigned int len) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	*p += sprintf((char *)*p,
 		"HTTP/1.1 %s\r\n"
 		"Server: pilight\r\n",
@@ -142,6 +152,8 @@ static void webserver_create_minimal_header(unsigned char **p, const char *messa
 }
 
 static void webserver_create_404(const char *in, unsigned char **p) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	char mimetype[] = "text/html";
 	webserver_create_header(p, "404 Not Found", mimetype, (unsigned int)(202+strlen((const char *)in)));
 	*p += sprintf((char *)*p, "<!DOCTYPE HTML PUBLIC \"-//IETF//DTD HTML 2.0//EN\">\x0d\x0a"
@@ -155,6 +167,8 @@ static void webserver_create_404(const char *in, unsigned char **p) {
 }
 
 char *webserver_mimetype(const char *str) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	char *mimetype = malloc(strlen(str)+1);
 	if(!mimetype) {
 		logprintf(LOG_ERR, "out of memory");
@@ -166,6 +180,8 @@ char *webserver_mimetype(const char *str) {
 }
 
 static char *webserver_shell(const char *format_str, struct mg_connection *conn, char *request, ...) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	size_t n = 0;
 	char *output = NULL;
 	const char *type = NULL;
@@ -263,14 +279,9 @@ static char *webserver_shell(const char *format_str, struct mg_connection *conn,
 	return NULL;
 }
 
-static int webserver_sockets_callback(struct mg_connection *c, enum mg_event ev) {
-	if(c->is_websocket) {
-		mg_websocket_write(c, 1, (char *)c->callback_param, strlen((char *)c->callback_param));
-	}
-	return MG_TRUE;
-}
-
 static int webserver_auth_handler(struct mg_connection *conn) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	if(webserver_authentication_username != NULL && webserver_authentication_password != NULL) {
 		return mg_authorize_input(conn, webserver_authentication_username, webserver_authentication_password, mg_get_option(mgserver[0], "auth_domain"));
 	} else {
@@ -279,6 +290,8 @@ static int webserver_auth_handler(struct mg_connection *conn) {
 }
 
 static int webserver_request_handler(struct mg_connection *conn) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	char *request = NULL;
 	char *ext = NULL;
 	char *mimetype = NULL;
@@ -296,7 +309,7 @@ static int webserver_request_handler(struct mg_connection *conn) {
 				chunk = (unsigned int)(filehandler->length-filehandler->ptr);
 			}
 			if(filehandler->fp != NULL) {
-				chunk = (unsigned int)fread(buff, sizeof(char), WEBSERVER_CHUNK_SIZE, filehandler->fp);
+				chunk = (unsigned int)fread(buff, sizeof(char), WEBSERVER_CHUNK_SIZE-1, filehandler->fp);
 				mg_send_data(conn, buff, (int)chunk);
 			} else {
 				mg_send_data(conn, &filehandler->bytes[filehandler->ptr], (int)chunk);
@@ -317,20 +330,47 @@ static int webserver_request_handler(struct mg_connection *conn) {
 			} else {
 				return MG_MORE;
 			}
-		} else if(conn->uri) {
+		} else if(conn->uri != NULL) {
 			if(strcmp(conn->uri, "/send") == 0) {
 				if(conn->query_string != NULL) {
-					char out[strlen(conn->query_string)];
+					char out[strlen(conn->query_string)+1];
 					urldecode(conn->query_string, out);
-					socket_write(sockfd, out);
-					mg_printf_data(conn, "{\"message\":\"success\"}");
+					if(json_validate(out) == true) {
+						socket_write(sockfd, out);
+						mg_printf_data(conn, "{\"message\":\"success\"}");
+						return MG_TRUE;
+					}
 				}
+				mg_printf_data(conn, "{\"message\":\"failed\"}");
 				return MG_TRUE;
 			} else if(strcmp(conn->uri, "/config") == 0) {
-				JsonNode *jsend = config_broadcast_create();
+				char media[15];
+				int internal = 1;
+				strcpy(media, "web");
+				if(conn->query_string != NULL) {
+					sscanf(conn->query_string, "media=%14s%*[ \n\r]", media);
+					if(strstr(conn->query_string, "internal") != NULL) {
+						internal = 0;
+					}
+				}
+				JsonNode *jsend = config_print(internal, media);
 				char *output = json_stringify(jsend, NULL);
 				mg_printf_data(conn, output);
 				json_delete(jsend);
+				sfree((void *)&output);
+				jsend = NULL;
+				return MG_TRUE;
+			} else if(strcmp(conn->uri, "/values") == 0) {
+				char media[15];
+				strcpy(media, "web");
+				if(conn->query_string != NULL) {
+					sscanf(conn->query_string, "media=%14s%*[ \n\r]", media);
+				}
+				JsonNode *jsend = devices_values(media);
+				char *output = json_stringify(jsend, NULL);
+				mg_printf_data(conn, output);
+				json_delete(jsend);
+				sfree((void *)&output);
 				jsend = NULL;
 				return MG_TRUE;
 			} else if(strcmp(&conn->uri[(rstrstr(conn->uri, "/")-conn->uri)], "/") == 0) {
@@ -339,12 +379,13 @@ static int webserver_request_handler(struct mg_connection *conn) {
 				char *pch = strtok((char *)indexes, ",");
 				/* Check if the webserver_root is terminated by a slash. If not, than add it */
 				while(pch) {
-					request = realloc(request, strlen(webserver_root)+strlen(webgui_tpl)+strlen(pch)+4);
+					size_t l = strlen(webserver_root)+strlen(webgui_tpl)+strlen(conn->uri)+strlen(pch)+4;
+					request = realloc(request, l);
 					if(!request) {
 						logprintf(LOG_ERR, "out of memory");
 						exit(EXIT_FAILURE);
 					}
-					memset(request, '\0', strlen(webserver_root)+strlen(webgui_tpl)+strlen(pch)+4);
+					memset(request, '\0', l);
 					if(webserver_root[strlen(webserver_root)-1] == '/') {
 #ifdef __FreeBSD__
 						sprintf(request, "%s%s/%s%s", webserver_root, webgui_tpl, conn->uri, pch);
@@ -428,19 +469,21 @@ static int webserver_request_handler(struct mg_connection *conn) {
 			if(access(request, F_OK) == 0) {
 				stat(request, &st);
 				if(webserver_cache && st.st_size <= MAX_CACHE_FILESIZE &&
-				   strcmp(mimetype, "application/x-httpd-php") != 0 &&
-				   fcache_get_size(request, &size) != 0 && fcache_add(request) != 0) {
+				  strcmp(mimetype, "application/x-httpd-php") != 0 &&
+				  fcache_get_size(request, &size) != 0 && fcache_add(request) != 0) {
+					sfree((void *)&mimetype);
 					goto filenotfound;
 				}
 			} else {
+				sfree((void *)&mimetype);
 				goto filenotfound;
 			}
 
 			const char *cl = NULL;
 			if((cl = mg_get_header(conn, "Content-Length"))) {
 				if(atoi(cl) > MAX_UPLOAD_FILESIZE) {
-					sfree((void *)&mimetype);
 					char line[1024] = {'\0'};
+					sfree((void *)&mimetype);
 					mimetype = webserver_mimetype("text/plain");
 					sprintf(line, "Webserver Warning: POST Content-Length of %d bytes exceeds the limit of %d bytes in Unknown on line 0", MAX_UPLOAD_FILESIZE, atoi(cl));
 					webserver_create_header(&p, "200 OK", mimetype, (unsigned int)strlen(line));
@@ -453,7 +496,7 @@ static int webserver_request_handler(struct mg_connection *conn) {
 			}
 
 			/* If webserver caching is enabled, first load all files in the memory */
-			if(strcmp(mimetype, "application/x-httpd-php") == 0 && webserver_php) {
+			if(strcmp(mimetype, "application/x-httpd-php") == 0 && webserver_php == 1) {
 				char *raw = NULL;
 				if(strcmp(conn->request_method, "POST") == 0) {
 					/* Store all (binary) post data in a file so we
@@ -476,7 +519,6 @@ static int webserver_request_handler(struct mg_connection *conn) {
 
 				if(raw != NULL) {
 					char *output = malloc(strlen(raw)+1);
-					memset(output, '\0', strlen(raw)+1);
 					if(!output) {
 						logprintf(LOG_ERR, "out of memory");
 						exit(EXIT_FAILURE);
@@ -546,7 +588,7 @@ static int webserver_request_handler(struct mg_connection *conn) {
 							sfree((void *)&output);
 						} else {
 							if(filehandler == NULL) {
-								filehandler = malloc(sizeof(filehandler_t));
+								filehandler = malloc(sizeof(struct filehandler_t));
 								filehandler->bytes = malloc(olen);
 								memcpy(filehandler->bytes, output, olen);
 								filehandler->length = (unsigned int)olen;
@@ -692,23 +734,30 @@ static int webserver_request_handler(struct mg_connection *conn) {
 				sfree((void *)&request);
 			}
 		}
-	} else {
+	} else if(webgui_websockets == 1) {
 		char input[conn->content_len+1];
 		strncpy(input, conn->content, conn->content_len);
 		input[conn->content_len] = '\0';
 
 		if(json_validate(input) == true) {
 			JsonNode *json = json_decode(input);
-			char *message = NULL;
-			if(json_find_string(json, "message", &message) != -1) {
-				if(strcmp(message, "request config") == 0) {
-					JsonNode *jsend = config_broadcast_create();
+			char *action = NULL;
+			if(json_find_string(json, "action", &action) == 0) {
+				if(strcmp(action, "request config") == 0) {
+					JsonNode *jsend = config_print(0, "web");
 					char *output = json_stringify(jsend, NULL);
 					size_t output_len = strlen(output);
 					mg_websocket_write(conn, 1, output, output_len);
 					sfree((void *)&output);
 					json_delete(jsend);
-				} else if(strcmp(message, "send") == 0) {
+				} else if(strcmp(action, "request values") == 0) {
+					JsonNode *jsend = devices_values("web");
+					char *output = json_stringify(jsend, NULL);
+					size_t output_len = strlen(output);
+					mg_websocket_write(conn, 1, output, output_len);
+					sfree((void *)&output);
+					json_delete(jsend);
+				} else if(strcmp(action, "control") == 0 || strcmp(action, "registry") == 0) {
 					/* Write all codes coming from the webserver to the daemon */
 					socket_write(sockfd, input);
 				}
@@ -729,6 +778,8 @@ filenotfound:
 }
 
 static int webserver_connect_handler(struct mg_connection *conn) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	char ip[17];
 	strcpy(ip, conn->remote_ip);
 	if(whitelist_check(conn->remote_ip) != 0) {
@@ -742,6 +793,7 @@ static int webserver_connect_handler(struct mg_connection *conn) {
 }
 
 static void *webserver_worker(void *param) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 	while(webserver_loop) {
 		if(mg_poll_server(mgserver[(intptr_t)param], 1000) == 0) {
 			sleep(1);
@@ -751,6 +803,8 @@ static void *webserver_worker(void *param) {
 }
 
 static void webserver_queue(char *message) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	pthread_mutex_lock(&webqueue_lock);
 	if(webqueue_number <= 1024) {
 		struct webqueue_t *wnode = malloc(sizeof(struct webqueue_t));
@@ -782,15 +836,24 @@ static void webserver_queue(char *message) {
 }
 
 void *webserver_broadcast(void *param) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	int i = 0;
 	pthread_mutex_lock(&webqueue_lock);
-
+	struct mg_connection *c = NULL;
+	
 	while(webserver_loop) {
 		if(webqueue_number > 0) {
 			pthread_mutex_lock(&webqueue_lock);
 
+			logprintf(LOG_STACK, "%s::unlocked", __FUNCTION__);
+
 			for(i=0;i<WEBSERVER_WORKERS;i++) {
-				mg_iterate_over_connections(mgserver[i], webserver_sockets_callback, webqueue->message);
+				for(c=mg_next(mgserver[i], NULL); c != NULL; c = mg_next(mgserver[i], c)) {
+					if(c->is_websocket && webserver_loop == 1) {
+						mg_websocket_write(c, 1, webqueue->message, strlen(webqueue->message));
+					}
+				}
 			}
 
 			struct webqueue_t *tmp = webqueue;
@@ -807,75 +870,70 @@ void *webserver_broadcast(void *param) {
 }
 
 void *webserver_clientize(void *param) {
-	steps_t steps = WELCOME;
-	char *message = NULL;
-	char *sockReadBuff = NULL;
-	struct ssdp_list_t *ssdp_list = NULL;
-	int standalone = 0;
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
-	settings_find_number("standalone", &standalone);
-	if(ssdp_seek(&ssdp_list) == -1 || standalone == 1) {
-		logprintf(LOG_DEBUG, "no pilight ssdp connections found");
-		char server[16] = "127.0.0.1";
-		if((sockfd = socket_connect(server, (unsigned short)socket_get_port())) == -1) {
-			logprintf(LOG_DEBUG, "could not connect to pilight-daemon");
-			goto close;
-		}
-	} else {
-		if((sockfd = socket_connect(ssdp_list->ip, ssdp_list->port)) == -1) {
-			logprintf(LOG_DEBUG, "could not connect to pilight-daemon");
-			goto close;
-		}
-	}
-	if(ssdp_list) {
-		ssdp_free(ssdp_list);
-	}
-
-	while(webserver_loop) {
-		if(steps > WELCOME) {
-			if((sockReadBuff = socket_read(sockfd)) == NULL) {
-				goto close;
+	unsigned int failures = 0;
+	while(webserver_loop && failures <= 5) {
+		struct ssdp_list_t *ssdp_list = NULL;
+		int standalone = 0;
+		settings_find_number("standalone", &standalone);
+		if(ssdp_seek(&ssdp_list) == -1 || standalone == 1) {
+			logprintf(LOG_DEBUG, "no pilight ssdp connections found");
+			char server[16] = "127.0.0.1";
+			if((sockfd = socket_connect(server, (unsigned short)socket_get_port())) == -1) {
+				logprintf(LOG_DEBUG, "could not connect to pilight-daemon");
+				failures++;
+				continue;
 			}
-			if(!webserver_loop) {
-				sfree((void *)&sockReadBuff);
+		} else {
+			if((sockfd = socket_connect(ssdp_list->ip, ssdp_list->port)) == -1) {
+				logprintf(LOG_DEBUG, "could not connect to pilight-daemon");
+				failures++;
+				continue;
+			}
+		}
+		if(ssdp_list) {
+			ssdp_free(ssdp_list);
+		}
+
+		struct JsonNode *jclient = json_mkobject();
+		struct JsonNode *joptions = json_mkobject();
+		json_append_member(jclient, "action", json_mkstring("identify"));
+		json_append_member(joptions, "config", json_mknumber(1, 0));
+		json_append_member(joptions, "core", json_mknumber(1, 0));
+		json_append_member(jclient, "options", joptions);
+		json_append_member(jclient, "media", json_mkstring("web"));
+		char *out = json_stringify(jclient, NULL);
+		socket_write(sockfd, out);
+		sfree((void *)&out);
+		json_delete(jclient);
+
+		if(socket_read(sockfd, &recvBuff) != 0
+			 || strcmp(recvBuff, "{\"status\":\"success\"}") != 0) {
+				failures++;
+			continue;
+		}
+		failures = 0;
+		while(webserver_loop) {
+			if(socket_read(sockfd, &recvBuff) != 0) {
 				break;
+			} else {
+				webserver_queue(recvBuff);
 			}
-		}
-		switch(steps) {
-			case WELCOME:
-				socket_write(sockfd, "{\"message\":\"client gui\"}");
-				steps=IDENTIFY;
-			break;
-			case IDENTIFY: {
-				JsonNode *json = json_decode(sockReadBuff);
-				json_find_string(json, "message", &message);
-				if(strcmp(message, "accept client") == 0) {
-					steps=SYNC;
-				}
-				if(strcmp(message, "reject client") == 0) {
-					steps=REJECT;
-				}
-				json_delete(json);
-				sfree((void *)&sockReadBuff);
-			}
-			break;
-			case SYNC:
-				webserver_queue(sockReadBuff);
-				sfree((void *)&sockReadBuff);
-			break;
-			case REJECT:
-			default:
-				sfree((void *)&sockReadBuff);
-				goto close;
-			break;
 		}
 	}
-close:
+
+	if(recvBuff) {
+		sfree((void *)&recvBuff);
+		recvBuff = NULL;
+	}
 	socket_close(sockfd);
 	return 0;
 }
 
 static int webserver_handler(struct mg_connection *conn, enum mg_event ev) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	if(ev == MG_REQUEST || (ev == MG_POLL && !conn->is_websocket)) {
 		if(ev == MG_POLL ||
 		  (!conn->is_websocket && webserver_connect_handler(conn) == MG_TRUE) ||
@@ -892,23 +950,25 @@ static int webserver_handler(struct mg_connection *conn, enum mg_event ev) {
 }
 
 int webserver_start(void) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
 	if(which("php-cgi") != 0) {
 		webserver_php = 0;
-		logprintf(LOG_ERR, "php support disabled due to missing php-cgi executable");
+		logprintf(LOG_NOTICE, "php support disabled due to missing php-cgi executable");
 	}
 	if(which("cat") != 0) {
 		webserver_php = 0;
-		logprintf(LOG_ERR, "php support disabled due to missing cat executable");
+		logprintf(LOG_NOTICE, "php support disabled due to missing cat executable");
 	}
 	if(which("base64") != 0) {
 		webserver_php = 0;
-		logprintf(LOG_ERR, "php support disabled due to missing base64 executable");
+		logprintf(LOG_NOTICE, "php support disabled due to missing base64 executable");
 	}
 
 	pthread_mutexattr_init(&webqueue_attr);
 	pthread_mutexattr_settype(&webqueue_attr, PTHREAD_MUTEX_RECURSIVE);
 	pthread_mutex_init(&webqueue_lock, &webqueue_attr);
+	pthread_cond_init(&webqueue_signal, NULL);
 
 	/* Check on what port the webserver needs to run */
 	settings_find_number("webserver-port", &webserver_port);
@@ -932,6 +992,7 @@ int webserver_start(void) {
 		strcpy(webgui_tpl, WEBGUI_TEMPLATE);
 		webgui_tpl_free = 1;
 	}
+	settings_find_number("webgui-websockets", &webgui_websockets);
 
 	/* Do we turn on webserver caching. This means that all requested files are
 	   loaded into the memory so they aren't read from the FS anymore */
@@ -962,8 +1023,6 @@ int webserver_start(void) {
 		threads_register(msg, &webserver_worker, (void *)(intptr_t)i, 0);
 	}
 
-	char localhost[16] = "127.0.0.1";
-	loopfd = socket_connect(localhost, (unsigned short)webserver_port);
 	logprintf(LOG_DEBUG, "webserver listening to port %s", webport);
 
 	return 0;

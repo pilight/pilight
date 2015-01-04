@@ -3,17 +3,17 @@
 
 	This file is part of pilight.
 
-    pilight is free software: you can redistribute it and/or modify it under the
+	pilight is free software: you can redistribute it and/or modify it under the
 	terms of the GNU General Public License as published by the Free Software
 	Foundation, either version 3 of the License, or (at your option) any later
 	version.
 
-    pilight is distributed in the hope that it will be useful, but WITHOUT ANY
+	pilight is distributed in the hope that it will be useful, but WITHOUT ANY
 	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-    You should have received a copy of the GNU General Public License
-    along with pilight. If not, see	<http://www.gnu.org/licenses/>
+	You should have received a copy of the GNU General Public License
+	along with pilight. If not, see	<http://www.gnu.org/licenses/>
 */
 
 #include <stdlib.h>
@@ -50,6 +50,8 @@ static pthread_mutexattr_t tzattr;
 static int tz_lock_initialized = 0;
 
 static int fillTZData(void) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	if(tz_lock_initialized == 0) {
 		pthread_mutexattr_init(&tzattr);
 		pthread_mutexattr_settype(&tzattr, PTHREAD_MUTEX_RECURSIVE);
@@ -159,6 +161,8 @@ int datetime_gc(void) {
 }
 
 char *coord2tz(double longitude, double latitude) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	if(fillTZData() == EXIT_FAILURE) {
 		return NULL;
 	}
@@ -221,11 +225,17 @@ char *coord2tz(double longitude, double latitude) {
 }
 
 time_t datetime2ts(int year, int month, int day, int hour, int minutes, int seconds, char *tz) {
-	char date[20];
-	time_t t;
-	struct tm tm = {0};
-	sprintf(date, "%d-%d-%d %d:%d:%d", year, month, day, hour, minutes, seconds);
-	strptime(date, "%Y-%m-%d %T", &tm);
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
+ 	time_t t;
+ 	struct tm tm = {0};
+	tm.tm_sec = seconds;
+	tm.tm_min = minutes;
+	tm.tm_hour = hour;
+	tm.tm_mday = day;
+	tm.tm_mon = month-1;
+	tm.tm_year = year-1900;
+
 	if(tz) {
 		setenv("TZ", tz, 1);
 	}
@@ -237,6 +247,8 @@ time_t datetime2ts(int year, int month, int day, int hour, int minutes, int seco
 }
 
 struct tm *localtztime(char *tz, time_t t) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	struct tm *tm = NULL;
 	setenv("TZ", tz, 1);
 	tm = localtime(&t);
@@ -245,7 +257,9 @@ struct tm *localtztime(char *tz, time_t t) {
 }
 
 int tzoffset(char *tz1, char *tz2) {
-    time_t utc, tzsearch, now;
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
+	time_t utc, tzsearch, now;
 	struct tm *tm = NULL;
 	now = time(NULL);
 	tm = localtime(&now);
@@ -259,16 +273,20 @@ int tzoffset(char *tz1, char *tz2) {
 }
 
 int ctzoffset(void) {
-    time_t tm1, tm2;
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
+	time_t tm1, tm2;
 	struct tm *t2;
-    tm1 = time(NULL);
-    t2 = gmtime(&tm1);
-    tm2 = mktime(t2);
+	tm1 = time(NULL);
+	t2 = gmtime(&tm1);
+	tm2 = mktime(t2);
 	localtime(&tm1);
 	return (int)((tm1 - tm2)/3600);
 }
 
 int isdst(char *tz) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	char UTC[] = "Europe/London";
 	time_t now = 0;
 	struct tm *tm = NULL;

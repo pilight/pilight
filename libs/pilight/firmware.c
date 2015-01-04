@@ -59,6 +59,8 @@
 static int mptype = FW_MP_UNKNOWN;
 
 static void firmware_attiny25(struct avrpart **p) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	char pgm_bits[] = "1 0 1 0 1 1 0 0 0 1 0 1 0 0 1 1 x x x x x x x x x x x x x x x x";
 	char read_bits[] = "0 0 1 1 0 0 0 0 0 0 0 x x x x x x x x x x x a1 a0 o o o o o o o o";
 	char erase_bits[] = "1 0 1 0 1 1 0 0 1 0 0 x x x x x x x x x x x x x x x x x x x x x";
@@ -152,6 +154,8 @@ static void firmware_attiny25(struct avrpart **p) {
 }
 
 static void firmware_attiny45(struct avrpart **p) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	char pgm_bits[] = "1 0 1 0 1 1 0 0 0 1 0 1 0 0 1 1 x x x x x x x x x x x x x x x x";
 	char read_bits[] = "0 0 1 1 0 0 0 0 0 0 0 x x x x x x x x x x x a1 a0 o o o o o o o o";
 	char erase_bits[] = "1 0 1 0 1 1 0 0 1 0 0 x x x x x x x x x x x x x x x x x x x x x";
@@ -245,6 +249,8 @@ static void firmware_attiny45(struct avrpart **p) {
 }
 
 static void firmware_attiny85(struct avrpart **p) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	char pgm_bits[] = "1 0 1 0 1 1 0 0 0 1 0 1 0 0 1 1 x x x x x x x x x x x x x x x x";
 	char read_bits[] = "0 0 1 1 0 0 0 0 0 0 0 x x x x x x x x x x x a1 a0 o o o o o o o o";
 	char erase_bits[] = "1 0 1 0 1 1 0 0 1 0 0 x x x x x x x x x x x x x x x x x x x x x";
@@ -338,6 +344,8 @@ static void firmware_attiny85(struct avrpart **p) {
 }
 
 static void firmware_init_pgm(PROGRAMMER **pgm) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	*pgm = pgm_new();
 	gpio_initpgm(*pgm);
 	(*pgm)->pinno[3] = 8;
@@ -351,10 +359,14 @@ static void firmware_init_pgm(PROGRAMMER **pgm) {
 }
 
 static void firmware_process(int percent, double etime, char *hdr) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
   //printf("%d\n", percent);
 }
 
 static int firmware_identifymp(struct avrpart **p) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	int exitrc = 0, i = 0;
 	int init_ok = 0;
 	PROGRAMMER *pgm = NULL;
@@ -475,6 +487,8 @@ main_exit:
 }
 
 static int firmware_write(char *filename, struct avrpart **p) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	int exitrc = 0, i = 0, erase = 1, nowrite = 0, verify = 1;
 	int safemode = 1, init_ok = 0;
 	unsigned char safemode_lfuse = 0xff, safemode_hfuse = 0xff;
@@ -835,6 +849,8 @@ main_exit:
 }
 
 int firmware_getmp(void) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	struct avrpart *p = NULL;
 	unsigned int match = 0;
 	firmware_attiny25(&p);
@@ -863,8 +879,10 @@ int firmware_getmp(void) {
 }
 
 int firmware_check(char **output) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	int version = 0;
-#ifdef FIRMWARE
+#ifdef FIRMWARE_UPDATER
 	struct dirent *file = NULL;
 	DIR *d = NULL;
 	int tmp = 0;
@@ -916,6 +934,8 @@ int firmware_check(char **output) {
 }
 
 int firmware_update(char *fwfile) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	struct avrpart *p = NULL;
 	if(fmt_autodetect(fwfile) != FMT_IHEX) {
 		logprintf(LOG_ERR, "Trying to write an invalid firmware file");

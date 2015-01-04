@@ -3,17 +3,17 @@
 
 	This file is part of pilight.
 
-    pilight is free software: you can redistribute it and/or modify it under the
+	pilight is free software: you can redistribute it and/or modify it under the
 	terms of the GNU General Public License as published by the Free Software
 	Foundation, either version 3 of the License, or (at your option) any later
 	version.
 
-    pilight is distributed in the hope that it will be useful, but WITHOUT ANY
+	pilight is distributed in the hope that it will be useful, but WITHOUT ANY
 	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-    You should have received a copy of the GNU General Public License
-    along with pilight. If not, see	<http://www.gnu.org/licenses/>
+	You should have received a copy of the GNU General Public License
+	along with pilight. If not, see	<http://www.gnu.org/licenses/>
 */
 
 #ifndef _SOCKETS_H_
@@ -30,7 +30,7 @@ int socket_start(unsigned short port);
 int socket_connect(char *address, unsigned short port);
 void socket_close(int i);
 int socket_write(int sockfd, const char *msg, ...);
-char *socket_read(int sockfd);
+int socket_read(int sockfd, char **out);
 void *socket_wait(void *param);
 int socket_gc(void);
 unsigned int socket_get_port(void);

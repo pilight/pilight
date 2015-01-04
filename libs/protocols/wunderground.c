@@ -3,17 +3,17 @@
 
 	This file is part of pilight.
 
-    pilight is free software: you can redistribute it and/or modify it under the
+	pilight is free software: you can redistribute it and/or modify it under the
 	terms of the GNU General Public License as published by the Free Software
 	Foundation, either version 3 of the License, or (at your option) any later
 	version.
 
-    pilight is distributed in the hope that it will be useful, but WITHOUT ANY
+	pilight is distributed in the hope that it will be useful, but WITHOUT ANY
 	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-    You should have received a copy of the GNU General Public License
-    along with pilight. If not, see	<http://www.gnu.org/licenses/>
+	You should have received a copy of the GNU General Public License
+	along with pilight. If not, see	<http://www.gnu.org/licenses/>
 */
 
 #include <stdio.h>
@@ -33,13 +33,15 @@
 #include "../pilight/datetime.h" // Full path because we also have a datetime protocol
 #include "log.h"
 #include "threads.h"
-#include "http_lib.h"
+#include "http.h"
 #include "protocol.h"
 #include "hardware.h"
 #include "binary.h"
 #include "json.h"
 #include "gc.h"
 #include "wunderground.h"
+
+#define INTERVAL	900
 
 typedef struct wunderground_data_t {
 	char *api;
@@ -65,14 +67,16 @@ static void *wundergroundParse(void *param) {
 	struct JsonNode *jchild1 = NULL;
 	struct JsonNode *node = NULL;
 	struct wunderground_data_t *wnode = malloc(sizeof(struct wunderground_data_t));
-	int interval = 86400, nrloops = 0, ointerval = 86400;
+
+	int interval = 86400, ointerval = 86400, event = 0;
+	int firstrun = 1, nrloops = 0, timeout = 0;
 
 	char url[1024];
 	char *filename = NULL, *data = NULL;
-	char typebuf[70];
+	char typebuf[255], *tp = typebuf;
 	char *stmp = NULL;
 	double temp = 0, itmp = -1;
-	int humi = 0, lg = 0, ret = 0;
+	int humi = 0, ret = 0, size = 0;
 
 	JsonNode *jdata = NULL;
 	JsonNode *jdata1 = NULL;
@@ -159,162 +163,173 @@ static void *wundergroundParse(void *param) {
 	ointerval = interval;
 
 	while(wunderground_loop) {
-		protocol_thread_wait(thread, interval, &nrloops);
+		event = protocol_thread_wait(thread, INTERVAL, &nrloops);
 		pthread_mutex_lock(&wundergroundlock);
 		if(wunderground_loop == 0) {
 			break;
 		}
-		interval = ointerval;
-		filename = NULL;
-		data = NULL;
-		sprintf(url, "http://api.wunderground.com/api/%s/geolookup/conditions/q/%s/%s.json", wnode->api, wnode->country, wnode->location);
-		http_parse_url(url, &filename);
-		ret = http_get(filename, &data, &lg, typebuf);
-
-		if(ret == 200) {
-			if(strcmp(typebuf, "application/json;") == 0) {
-				if(json_validate(data) == true) {
-					if((jdata = json_decode(data)) != NULL) {
-						if((jobs = json_find_member(jdata, "current_observation")) != NULL) {
-							if((node = json_find_member(jobs, "temp_c")) == NULL) {
-								printf("api.wunderground.com json has no temp_c key");
-							} else if(json_find_string(jobs, "relative_humidity", &stmp) != 0) {
-								printf("api.wunderground.com json has no relative_humidity key");
-							} else {
-								if(node->tag != JSON_NUMBER) {
+		timeout += INTERVAL;
+		if(timeout >= interval || event != ETIMEDOUT || firstrun == 1) {
+			timeout = 0;
+			interval = ointerval;
+			data = NULL;
+			sprintf(url, "http://api.wunderground.com/api/%s/geolookup/conditions/q/%s/%s.json", wnode->api, wnode->country, wnode->location);
+			data = http_get_content(url, &tp, &ret, &size);
+			if(ret == 200) {
+				if(strcmp(typebuf, "application/json;") == 0) {
+					if(json_validate(data) == true) {
+						if((jdata = json_decode(data)) != NULL) {
+							if((jobs = json_find_member(jdata, "current_observation")) != NULL) {
+								if((node = json_find_member(jobs, "temp_c")) == NULL) {
 									printf("api.wunderground.com json has no temp_c key");
+								} else if(json_find_string(jobs, "relative_humidity", &stmp) != 0) {
+									printf("api.wunderground.com json has no relative_humidity key");
 								} else {
-									if(data) {
-										sfree((void *)&data);
-										data = NULL;
-									}
-									if(filename) {
-										sfree((void *)&filename);
-										filename = NULL;
-									}
+									if(node->tag != JSON_NUMBER) {
+										printf("api.wunderground.com json has no temp_c key");
+									} else {
+										if(data) {
+											sfree((void *)&data);
+											data = NULL;
+										}
 
-									sprintf(url, "http://api.wunderground.com/api/%s/astronomy/q/%s/%s.json", wnode->api, wnode->country, wnode->location);
-									http_parse_url(url, &filename);
-									ret = http_get(filename, &data, &lg, typebuf);
-									if(ret == 200) {
-										if(strcmp(typebuf, "application/json;") == 0) {
-											if(json_validate(data) == true) {
-												if((jdata1 = json_decode(data)) != NULL) {
-													if((jsun = json_find_member(jdata1, "sun_phase")) != NULL) {
-														if((jsunr = json_find_member(jsun, "sunrise")) != NULL
-														   && (jsuns = json_find_member(jsun, "sunset")) != NULL) {
-															if(json_find_string(jsuns, "hour", &shour) != 0) {
-																printf("api.wunderground.com json has no sunset hour key");
-															} else if(json_find_string(jsuns, "minute", &smin) != 0) {
-																printf("api.wunderground.com json has no sunset minute key");
-															} else if(json_find_string(jsunr, "hour", &rhour) != 0) {
-																printf("api.wunderground.com json has no sunrise hour key");
-															} else if(json_find_string(jsunr, "minute", &rmin) != 0) {
-																printf("api.wunderground.com json has no sunrise minute key");
+										sprintf(url, "http://api.wunderground.com/api/%s/astronomy/q/%s/%s.json", wnode->api, wnode->country, wnode->location);
+										data = http_get_content(url, &tp, &ret, &size);
+										if(ret == 200) {
+											if(strcmp(typebuf, "application/json;") == 0) {
+												if(json_validate(data) == true) {
+													if((jdata1 = json_decode(data)) != NULL) {
+														if((jsun = json_find_member(jdata1, "sun_phase")) != NULL) {
+															if((jsunr = json_find_member(jsun, "sunrise")) != NULL
+															   && (jsuns = json_find_member(jsun, "sunset")) != NULL) {
+																if(json_find_string(jsuns, "hour", &shour) != 0) {
+																	printf("api.wunderground.com json has no sunset hour key");
+																} else if(json_find_string(jsuns, "minute", &smin) != 0) {
+																	printf("api.wunderground.com json has no sunset minute key");
+																} else if(json_find_string(jsunr, "hour", &rhour) != 0) {
+																	printf("api.wunderground.com json has no sunrise hour key");
+																} else if(json_find_string(jsunr, "minute", &rmin) != 0) {
+																	printf("api.wunderground.com json has no sunrise minute key");
+																} else {
+																	temp = node->number_;
+																	sscanf(stmp, "%d%%", &humi);
+
+																	timenow = time(NULL);
+																	struct tm *current = localtime(&timenow);
+																	int month = current->tm_mon+1;
+																	int mday = current->tm_mday;
+																	int year = current->tm_year+1900;
+
+																	time_t midnight = (datetime2ts(year, month, mday, 23, 59, 59, 0)+1);
+																	time_t sunset = 0;
+																	time_t sunrise = 0;
+
+																	wunderground->message = json_mkobject();
+
+																	JsonNode *code = json_mkobject();
+
+																	json_append_member(code, "api", json_mkstring(wnode->api));
+																	json_append_member(code, "location", json_mkstring(wnode->location));
+																	json_append_member(code, "country", json_mkstring(wnode->country));
+																	json_append_member(code, "temperature", json_mknumber((double)(temp/100), 2));
+																	json_append_member(code, "humidity", json_mknumber((double)(humi/100), 2));
+																	sunrise = datetime2ts(year, month, mday, atoi(rhour), atoi(rmin), 0, 0);
+																	json_append_member(code, "sunrise", json_mknumber((double)((atoi(rhour)*100)+atoi(rmin))/100, 2));
+																	sunset = datetime2ts(year, month, mday, atoi(shour), atoi(smin), 0, 0);
+																	json_append_member(code, "sunset", json_mknumber((double)((atoi(shour)*100)+atoi(smin))/100, 2));
+																	if(timenow > sunrise && timenow < sunset) {
+																		json_append_member(code, "sun", json_mkstring("rise"));
+																	} else {
+																		json_append_member(code, "sun", json_mkstring("set"));
+																	}
+
+																	json_append_member(wunderground->message, "message", code);
+																	json_append_member(wunderground->message, "origin", json_mkstring("receiver"));
+																	json_append_member(wunderground->message, "protocol", json_mkstring(wunderground->id));
+
+																	pilight.broadcast(wunderground->id, wunderground->message);
+																	json_delete(wunderground->message);
+																	wunderground->message = NULL;
+																	/* Send message when sun rises */
+																	if(sunrise > timenow) {
+																		if((sunrise-timenow) < ointerval) {
+																			interval = (int)(sunrise-timenow);
+																		}
+																	/* Send message when sun sets */
+																	} else if(sunset > timenow) {
+																		if((sunset-timenow) < ointerval) {
+																			interval = (int)(sunset-timenow);
+																		}
+																	/* Update all values when a new day arrives */
+																	} else {
+																		if((midnight-timenow) < ointerval) {
+																			interval = (int)(midnight-timenow);
+																		}
+																	}
+
+																	wnode->update = time(NULL);
+																}
 															} else {
-																temp = node->number_;
-																sscanf(stmp, "%d%%", &humi);
-
-																timenow = time(NULL);
-																struct tm *current = localtime(&timenow);
-																int month = current->tm_mon+1;
-																int mday = current->tm_mday;
-																int year = current->tm_year+1900;
-
-																time_t midnight = (datetime2ts(year, month, mday, 23, 59, 59, 0)+1);
-																time_t sunset = 0;
-																time_t sunrise = 0;
-
-																wunderground->message = json_mkobject();
-
-																JsonNode *code = json_mkobject();
-
-																json_append_member(code, "api", json_mkstring(wnode->api));
-																json_append_member(code, "location", json_mkstring(wnode->location));
-																json_append_member(code, "country", json_mkstring(wnode->country));
-																json_append_member(code, "temperature", json_mknumber((int)(temp*100)));
-																json_append_member(code, "humidity", json_mknumber((int)(humi*100)));
-																sunrise = datetime2ts(year, month, mday, atoi(rhour), atoi(rmin), 0, 0);
-																json_append_member(code, "sunrise", json_mknumber((atoi(rhour)*100)+atoi(rmin)));
-																sunset = datetime2ts(year, month, mday, atoi(shour), atoi(smin), 0, 0);
-																json_append_member(code, "sunset", json_mknumber((atoi(shour)*100)+atoi(smin)));
-																if(timenow > sunrise && timenow < sunset) {
-																	json_append_member(code, "sun", json_mkstring("rise"));
-																} else {
-																	json_append_member(code, "sun", json_mkstring("set"));
-																}
-
-																json_append_member(wunderground->message, "message", code);
-																json_append_member(wunderground->message, "origin", json_mkstring("receiver"));
-																json_append_member(wunderground->message, "protocol", json_mkstring(wunderground->id));
-
-																pilight.broadcast(wunderground->id, wunderground->message);
-																json_delete(wunderground->message);
-																wunderground->message = NULL;
-																/* Send message when sun rises */
-																if(sunrise > timenow) {
-																	if((sunrise-timenow) < ointerval) {
-																		interval = (int)(sunrise-timenow);
-																	}
-																/* Send message when sun sets */
-																} else if(sunset > timenow) {
-																	if((sunset-timenow) < ointerval) {
-																		interval = (int)(sunset-timenow);
-																	}
-																/* Update all values when a new day arrives */
-																} else {
-																	if((midnight-timenow) < ointerval) {
-																		interval = (int)(midnight-timenow);
-																	}
-																}
-
-																wnode->update = time(NULL);
+																logprintf(LOG_NOTICE, "api.wunderground.com json has no sunset and/or sunrise key");
 															}
 														} else {
-															logprintf(LOG_NOTICE, "api.wunderground.com json has no sunset and/or sunrise key");
+															logprintf(LOG_NOTICE, "api.wunderground.com json has no sun_phase key");
 														}
+														json_delete(jdata1);
 													} else {
-														logprintf(LOG_NOTICE, "api.wunderground.com json has no sun_phase key");
+														logprintf(LOG_NOTICE, "api.wunderground.com json could not be parsed");
 													}
-													json_delete(jdata1);
-												} else {
-													logprintf(LOG_NOTICE, "api.wunderground.com json could not be parsed");
+												}  else {
+													logprintf(LOG_NOTICE, "api.wunderground.com response was not in a valid json format");
 												}
-											}  else {
-												logprintf(LOG_NOTICE, "api.wunderground.com response was not in a valid json format");
+											} else {
+													logprintf(LOG_NOTICE, "api.wunderground.com response was not in a valid json format");
 											}
 										} else {
-												logprintf(LOG_NOTICE, "api.wunderground.com response was not in a valid json format");
+											logprintf(LOG_NOTICE, "could not reach api.wundergrond.com");
 										}
-									} else {
-										logprintf(LOG_NOTICE, "could not reach api.wundergrond.com");
 									}
 								}
+							} else {
+								logprintf(LOG_NOTICE, "api.wunderground.com json has no current_observation key");
 							}
+							json_delete(jdata);
 						} else {
-							logprintf(LOG_NOTICE, "api.wunderground.com json has no current_observation key");
+							logprintf(LOG_NOTICE, "api.wunderground.com json could not be parsed");
 						}
-						json_delete(jdata);
 					} else {
-						logprintf(LOG_NOTICE, "api.wunderground.com json could not be parsed");
+						logprintf(LOG_NOTICE, "api.wunderground.com response was not in a valid json format");
 					}
 				} else {
 					logprintf(LOG_NOTICE, "api.wunderground.com response was not in a valid json format");
 				}
 			} else {
-				logprintf(LOG_NOTICE, "api.wunderground.com response was not in a valid json format");
+				logprintf(LOG_NOTICE, "could not reach api.wundergrond.com");
+			}
+			if(data) {
+				sfree((void *)&data);
+			}
+			if(filename) {
+				sfree((void *)&filename);
 			}
 		} else {
-			logprintf(LOG_NOTICE, "could not reach api.wundergrond.com");
+			wunderground->message = json_mkobject();
+			JsonNode *code = json_mkobject();
+			json_append_member(code, "api", json_mkstring(wnode->api));
+			json_append_member(code, "location", json_mkstring(wnode->location));
+			json_append_member(code, "country", json_mkstring(wnode->country));
+			json_append_member(code, "update", json_mknumber(1, 0));
+			json_append_member(wunderground->message, "message", code);
+			json_append_member(wunderground->message, "origin", json_mkstring("receiver"));
+			json_append_member(wunderground->message, "protocol", json_mkstring(wunderground->id));
+			pilight.broadcast(wunderground->id, wunderground->message);
+			json_delete(wunderground->message);
+			wunderground->message = NULL;
 		}
-		if(data) {
-			sfree((void *)&data);
-		}
-		if(filename) {
-			sfree((void *)&filename);
-		}
+		firstrun = 0;
 		pthread_mutex_unlock(&wundergroundlock);
 	}
+	pthread_mutex_unlock(&wundergroundlock);
 
 	struct wunderground_data_t *wtmp = NULL;
 	while(wunderground_data) {
@@ -340,11 +355,11 @@ static struct threadqueue_t *wundergroundInitDev(JsonNode *jdevice) {
 }
 
 static int wundergroundCheckValues(JsonNode *code) {
-	double interval = 900;
+	double interval = INTERVAL;
 
 	json_find_number(code, "poll-interval", &interval);
 
-	if((int)round(interval) < 900) {
+	if((int)round(interval) < INTERVAL) {
 		return 1;
 	}
 
@@ -373,7 +388,7 @@ static int wundergroundCreateCode(JsonNode *code) {
 			if(strcmp(wtmp->country, country) == 0
 			   && strcmp(wtmp->location, location) == 0
 			   && strcmp(wtmp->api, api) == 0) {
-				if((currenttime-wtmp->update) > 900) {
+				if((currenttime-wtmp->update) > INTERVAL) {
 					pthread_mutex_unlock(&wtmp->thread->mutex);
 					pthread_cond_signal(&wtmp->thread->cond);
 					wtmp->update = time(NULL);
@@ -419,24 +434,23 @@ void wundergroundInit(void) {
 	wunderground->hwtype = API;
 	wunderground->multipleId = 0;
 
-	options_add(&wunderground->options, 't', "temperature", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, NULL, "^[0-9]{1,5}$");
-	options_add(&wunderground->options, 'h', "humidity", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, NULL, "^[0-9]{1,5}$");
-	options_add(&wunderground->options, 'a', "api", OPTION_HAS_VALUE, CONFIG_ID, JSON_STRING, NULL, "^[a-z0-9]+$");
-	options_add(&wunderground->options, 'l', "location", OPTION_HAS_VALUE, CONFIG_ID, JSON_STRING, NULL, "^[a-z]+$");
-	options_add(&wunderground->options, 'c', "country", OPTION_HAS_VALUE, CONFIG_ID, JSON_STRING, NULL, "^[a-z]+$");
-	options_add(&wunderground->options, 'x', "sunrise", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, NULL, "^[0-9]{3,4}$");
-	options_add(&wunderground->options, 'y', "sunset", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, NULL, "^[0-9]{3,4}$");
-	options_add(&wunderground->options, 's', "sun", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_STRING, NULL, NULL);
-	options_add(&wunderground->options, 'u', "update", OPTION_NO_VALUE, CONFIG_OPTIONAL, JSON_NUMBER, NULL, NULL);
+	options_add(&wunderground->options, 't', "temperature", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9]{1,5}$");
+	options_add(&wunderground->options, 'h', "humidity", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9]{1,5}$");
+	options_add(&wunderground->options, 'a', "api", OPTION_HAS_VALUE, DEVICES_ID, JSON_STRING, NULL, "^[a-z0-9]+$");
+	options_add(&wunderground->options, 'l', "location", OPTION_HAS_VALUE, DEVICES_ID, JSON_STRING, NULL, "^[a-z]+$");
+	options_add(&wunderground->options, 'c', "country", OPTION_HAS_VALUE, DEVICES_ID, JSON_STRING, NULL, "^[a-z]+$");
+	options_add(&wunderground->options, 'x', "sunrise", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9]{3,4}$");
+	options_add(&wunderground->options, 'y', "sunset", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9]{3,4}$");
+	options_add(&wunderground->options, 's', "sun", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_STRING, NULL, NULL);
+	options_add(&wunderground->options, 'u', "update", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, NULL);
 
-	options_add(&wunderground->options, 0, "device-decimals", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)2, "[0-9]");
-	options_add(&wunderground->options, 0, "gui-decimals", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)2, "[0-9]");
-	options_add(&wunderground->options, 0, "gui-show-humidity", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
-	options_add(&wunderground->options, 0, "gui-show-temperature", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
-	options_add(&wunderground->options, 0, "gui-show-sunriseset", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
-	options_add(&wunderground->options, 0, "gui-show-update", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
-	options_add(&wunderground->options, 0, "poll-interval", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)86400, "[0-9]");
-	options_add(&wunderground->options, 0, "min-interval", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)900, "[0-9]");
+	// options_add(&wunderground->options, 0, "decimals", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *)2, "[0-9]");
+	options_add(&wunderground->options, 0, "decimals", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)2, "[0-9]");
+	options_add(&wunderground->options, 0, "show-humidity", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
+	options_add(&wunderground->options, 0, "show-temperature", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
+	options_add(&wunderground->options, 0, "show-sunriseset", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
+	options_add(&wunderground->options, 0, "show-update", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
+	options_add(&wunderground->options, 0, "poll-interval", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *)86400, "[0-9]");
 
 	wunderground->createCode=&wundergroundCreateCode;
 	wunderground->initDev=&wundergroundInitDev;
@@ -448,9 +462,9 @@ void wundergroundInit(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name = "wunderground";
-	module->version = "1.0";
+	module->version = "1.2";
 	module->reqversion = "5.0";
-	module->reqcommit = NULL;
+	module->reqcommit = "84";
 }
 
 void init(void) {
