@@ -179,9 +179,9 @@ void rsl366Init(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name = "rsl366";
-	module->version = "0.8";
+	module->version = "1.0";
 	module->reqversion = "5.0";
-	module->reqcommit = NULL;
+	module->reqcommit = "84";
 }
 
 void init(void) {
