@@ -409,6 +409,9 @@ function createWeatherElement(sTabId, sDevId, aValues) {
 		if('show-temperature' in aValues && aValues['show-temperature']) {
 			oTab.find('#'+sDevId+'_weather').append($('<div class="temperature_icon"></div><div class="temperature" id="'+sDevId+'_temp"></div>'));
 		}
+		if('show-pressure' in aValues && aValues['show-pressure']) {
+			oTab.find('#'+sDevId+'_weather').append($('<div class="pressure_icon"></div><div class="pressure" id="'+sDevId+'_pres"></div>'));
+		}
 		if('show-sunriseset' in aValues && aValues['show-sunriseset']) {
 			oTab.find('#'+sDevId+'_weather').append($('<div id="'+sDevId+'_sunset_icon" class="sunset_icon"></div><div class="sunset" id="'+sDevId+'_sunset"></div>'));
 			oTab.find('#'+sDevId+'_weather').append($('<div id="'+sDevId+'_sunrise_icon" class="sunrise_icon"></div><div class="sunrise" id="'+sDevId+'_sunrise"></div>'));
@@ -790,6 +793,10 @@ function parseValues(data) {
 					} else if(vindex == 'humidity' && $('#'+dvalues+'_humi').length > 0) {
 						if(dvalues in aDecimals) {
 							$('#'+dvalues+'_humi').text(vvalues.toFixed(aDecimals[dvalues]));
+						}
+					} else if(vindex == 'pressure' && $('#'+dvalues+'_pres').length > 0) {
+						if(dvalues in aDecimals) {
+							$('#'+dvalues+'_pres').text(vvalues.toFixed(aDecimals[dvalues]));
 						}
 					} else if(vindex == 'rain' && $('#'+dvalues+'_rain').length > 0) {
 						if(dvalues in aDecimals) {
