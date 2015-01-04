@@ -266,6 +266,11 @@ if(${PROTOCOL_ALECTO_WX500} MATCHES "OFF")
 	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/alecto_wx500.c")
 endif()
 
+if(${PROTOCOL_BMP180} MATCHES "OFF")
+  list(REMOVE_ITEM protocol_headers "${PROJECT_SOURCE_DIR}/libs/protocols/bmp180.h")
+  list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/bmp180.c")
+endif()
+
 if(${PROTOCOL_COGEX_SWITCH} MATCHES "OFF"
 	AND ${PROTOCOL_KAKU_SWITCH_OLD} MATCHES "OFF"
 	AND ${PROTOCOL_BYEBYESTANDBYE_SWITCH} MATCHES "OFF"
