@@ -33,8 +33,8 @@
 
 static void rsl366CreateMessage(int systemcode, int programcode, int state) {
 	rsl366->message = json_mkobject();
-	json_append_member(rsl366->message, "systemcode", json_mknumber(systemcode));
-	json_append_member(rsl366->message, "programcode", json_mknumber(programcode));
+	json_append_member(rsl366->message, "systemcode", json_mknumber(systemcode, 0));
+	json_append_member(rsl366->message, "programcode", json_mknumber(programcode, 0));
 	if(state == 1) {
 		json_append_member(rsl366->message, "state", json_mkstring("on"));
 	} else {
@@ -164,12 +164,12 @@ void rsl366Init(void) {
 	rsl366->rawlen = 50;
 	rsl366->binlen = 12;
 
-	options_add(&rsl366->options, 's', "systemcode", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, NULL, "^([1234]{1})$");
-	options_add(&rsl366->options, 'u', "programcode", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, NULL, "^([1234]{1})$");
-	options_add(&rsl366->options, 't', "on", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
-	options_add(&rsl366->options, 'f', "off", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
+	options_add(&rsl366->options, 's', "systemcode", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^([1234]{1})$");
+	options_add(&rsl366->options, 'u', "programcode", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^([1234]{1})$");
+	options_add(&rsl366->options, 't', "on", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
+	options_add(&rsl366->options, 'f', "off", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
 
-	options_add(&rsl366->options, 0, "gui-readonly", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
+	options_add(&rsl366->options, 0, "readonly", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 
 	rsl366->parseCode=&rsl366ParseCode;
 	rsl366->createCode=&rsl366CreateCode;
