@@ -1,22 +1,20 @@
 /*
- Copyright (C) 2014 CurlyMo & hstroh
+	Copyright (C) 2014 CurlyMo & hstroh
 
- This file is part of pilight.
+	This file is part of pilight.
 
- pilight is free software: you can redistribute it and/or modify it under the
- terms of the GNU General Public License as published by the Free Software
- Foundation, either version 3 of the License, or (at your option) any later
- version.
+	pilight is free software: you can redistribute it and/or modify it under the
+	terms of the GNU General Public License as published by the Free Software
+	Foundation, either version 3 of the License, or (at your option) any later
+	version.
 
- pilight is distributed in the hope that it will be useful, but WITHOUT ANY
- WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
- A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+	pilight is distributed in the hope that it will be useful, but WITHOUT ANY
+	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
- You should have received a copy of the GNU General Public License
- along with pilight. If not, see	<http://www.gnu.org/licenses/>
- */
-
-#include "bmp180.h"
+	You should have received a copy of the GNU General Public License
+	along with pilight. If not, see	<http://www.gnu.org/licenses/>
+*/
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -40,25 +38,13 @@
 #include "binary.h"
 #include "gc.h"
 #include "json.h"
+#include "bmp180.h"
 #include "../pilight/wiringX.h"
 
-// structure for storing sensor data
 typedef struct bmp180data_t {
 	char **id;
 	int nrid;
 	int *fd;
-	// Calibration values (stored in BMP180/085)
-	short *ac1;
-	short *ac2;
-	short *ac3;
-	unsigned short *ac4;
-	unsigned short *ac5;
-	unsigned short *ac6;
-	short *b1;
-	short *b2;
-	short *mb;
-	short *mc;
-	short *md;
 } bmp180data_t;
 
 static unsigned short bmp180_loop = 1;
@@ -83,8 +69,7 @@ static void *bmp180Parse(void *param) {
 	int y = 0, interval = 10, nrloops = 0;
 	char *stmp = NULL;
 	double itmp = -1, temp_offset = 0.0, pressure_offset = 0.0;
-	// oversampling setting: 2 samples, 7.5 ms conversion time
-	unsigned char oversampling_setting = 1;
+	unsigned char oversampling = 1;
 
 	if (!bmp180data) {
 		logprintf(LOG_ERR, "out of memory");
@@ -94,17 +79,6 @@ static void *bmp180Parse(void *param) {
 	bmp180data->nrid = 0;
 	bmp180data->id = NULL;
 	bmp180data->fd = 0;
-	bmp180data->ac1 = 0;
-	bmp180data->ac2 = 0;
-	bmp180data->ac3 = 0;
-	bmp180data->ac4 = 0;
-	bmp180data->ac5 = 0;
-	bmp180data->ac6 = 0;
-	bmp180data->b1 = 0;
-	bmp180data->b2 = 0;
-	bmp180data->mb = 0;
-	bmp180data->mc = 0;
-	bmp180data->md = 0;
 
 	bmp180_threads++;
 
@@ -134,32 +108,32 @@ static void *bmp180Parse(void *param) {
 	json_find_number(json, "temperature-offset", &temp_offset);
 	json_find_number(json, "pressure-offset", &pressure_offset);
 	if (json_find_number(json, "oversampling", &itmp) == 0) {
-		oversampling_setting = (unsigned char) itmp;
+		oversampling = (unsigned char) itmp;
 	}
 
 #ifndef __FreeBSD__
 	// resize the memory blocks pointed to by the different pointers
-	size_t sz = (size_t) bmp180data->nrid + 1;
-	unsigned long int sizeShort = sizeof(short) * sz;
-	unsigned long int sizeUShort = sizeof(unsigned short) * sz;
-	bmp180data->fd = realloc(bmp180data->fd, (sizeof(int) * sz));
-	bmp180data->ac1 = realloc(bmp180data->ac1, sizeShort);
-	bmp180data->ac2 = realloc(bmp180data->ac2, sizeShort);
-	bmp180data->ac3 = realloc(bmp180data->ac3, sizeShort);
-	bmp180data->ac4 = realloc(bmp180data->ac4, sizeUShort);
-	bmp180data->ac5 = realloc(bmp180data->ac5, sizeUShort);
-	bmp180data->ac6 = realloc(bmp180data->ac6, sizeUShort);
-	bmp180data->b1 = realloc(bmp180data->b1, sizeShort);
-	bmp180data->b2 = realloc(bmp180data->b2, sizeShort);
-	bmp180data->mb = realloc(bmp180data->mb, sizeShort);
-	bmp180data->mc = realloc(bmp180data->mc, sizeShort);
-	bmp180data->md = realloc(bmp180data->md, sizeShort);
-	if (!bmp180data->ac1 || !bmp180data->ac2 || !bmp180data->ac3 || !bmp180data->ac4 || !bmp180data->ac5
-			|| !bmp180data->ac6 || !bmp180data->b1 || !bmp180data->b2 || !bmp180data->mb || !bmp180data->mc
-			|| !bmp180data->md || !bmp180data->fd) {
+	bmp180data->fd = realloc(bmp180data->fd, (sizeof(int) * (size_t) bmp180data->nrid + 1));
+	if (!bmp180data->fd) {
 		logprintf(LOG_ERR, "out of memory");
 		exit(EXIT_FAILURE);
 	}
+
+	// structure for calibration data (stored in each BMP180/085)
+	struct {
+		short ac1;
+		short ac2;
+		short ac3;
+		unsigned short ac4;
+		unsigned short ac5;
+		unsigned short ac6;
+		short b1;
+		short b2;
+		short mb;
+		short mc;
+		short md;
+	} cd[bmp180data->nrid];
+
 	for (y = 0; y < bmp180data->nrid; y++) {
 		// setup i2c
 		bmp180data->fd[y] = wiringXI2CSetup((int) strtol(bmp180data->id[y], NULL, 16));
@@ -172,30 +146,30 @@ static void *bmp180Parse(void *param) {
 		}
 
 		// read calibration coefficients from register addresses
-		bmp180data->ac1[y] = (short) readReg16(bmp180data->fd[y], 0xAA);
-		bmp180data->ac2[y] = (short) readReg16(bmp180data->fd[y], 0xAC);
-		bmp180data->ac3[y] = (short) readReg16(bmp180data->fd[y], 0xAE);
-		bmp180data->ac4[y] = (unsigned short) readReg16(bmp180data->fd[y], 0xB0);
-		bmp180data->ac5[y] = (unsigned short) readReg16(bmp180data->fd[y], 0xB2);
-		bmp180data->ac6[y] = (unsigned short) readReg16(bmp180data->fd[y], 0xB4);
-		bmp180data->b1[y] = (short) readReg16(bmp180data->fd[y], 0xB6);
-		bmp180data->b2[y] = (short) readReg16(bmp180data->fd[y], 0xB8);
-		bmp180data->mb[y] = (short) readReg16(bmp180data->fd[y], 0xBA);
-		bmp180data->mc[y] = (short) readReg16(bmp180data->fd[y], 0xBC);
-		bmp180data->md[y] = (short) readReg16(bmp180data->fd[y], 0xBE);
+		cd[y].ac1 = (short) readReg16(bmp180data->fd[y], 0xAA);
+		cd[y].ac2 = (short) readReg16(bmp180data->fd[y], 0xAC);
+		cd[y].ac3 = (short) readReg16(bmp180data->fd[y], 0xAE);
+		cd[y].ac4 = (unsigned short) readReg16(bmp180data->fd[y], 0xB0);
+		cd[y].ac5 = (unsigned short) readReg16(bmp180data->fd[y], 0xB2);
+		cd[y].ac6 = (unsigned short) readReg16(bmp180data->fd[y], 0xB4);
+		cd[y].b1 = (short) readReg16(bmp180data->fd[y], 0xB6);
+		cd[y].b2 = (short) readReg16(bmp180data->fd[y], 0xB8);
+		cd[y].mb = (short) readReg16(bmp180data->fd[y], 0xBA);
+		cd[y].mc = (short) readReg16(bmp180data->fd[y], 0xBC);
+		cd[y].md = (short) readReg16(bmp180data->fd[y], 0xBE);
 
 		// check communication: no result must equal 0 or 0xFFFF (=65535)
-		if (bmp180data->ac1[y] == 0 || bmp180data->ac1[y] == 0xFFFF ||
-				bmp180data->ac2[y] == 0 || bmp180data->ac2[y] == 0xFFFF ||
-				bmp180data->ac3[y] == 0 || bmp180data->ac3[y] == 0xFFFF ||
-				bmp180data->ac4[y] == 0 || bmp180data->ac4[y] == 0xFFFF ||
-				bmp180data->ac5[y] == 0 || bmp180data->ac5[y] == 0xFFFF ||
-				bmp180data->ac6[y] == 0 || bmp180data->ac6[y] == 0xFFFF ||
-				bmp180data->b1[y] == 0 || bmp180data->b1[y] == 0xFFFF ||
-				bmp180data->b2[y] == 0 || bmp180data->b2[y] == 0xFFFF ||
-				bmp180data->mb[y] == 0 || bmp180data->mb[y] == 0xFFFF ||
-				bmp180data->mc[y] == 0 || bmp180data->mc[y] == 0xFFFF ||
-				bmp180data->md[y] == 0 || bmp180data->md[y] == 0xFFFF) {
+		if (cd[y].ac1 == 0 || cd[y].ac1 == 0xFFFF ||
+				cd[y].ac2 == 0 || cd[y].ac2 == 0xFFFF ||
+				cd[y].ac3 == 0 || cd[y].ac3 == 0xFFFF ||
+				cd[y].ac4 == 0 || cd[y].ac4 == 0xFFFF ||
+				cd[y].ac5 == 0 || cd[y].ac5 == 0xFFFF ||
+				cd[y].ac6 == 0 || cd[y].ac6 == 0xFFFF ||
+				cd[y].b1 == 0 || cd[y].b1 == 0xFFFF ||
+				cd[y].b2 == 0 || cd[y].b2 == 0xFFFF ||
+				cd[y].mb == 0 || cd[y].mb == 0xFFFF ||
+				cd[y].mc == 0 || cd[y].mc == 0xFFFF ||
+				cd[y].md == 0 || cd[y].md == 0xFFFF) {
 			logprintf(LOG_ERR, "data communication error");
 			exit(EXIT_FAILURE);
 		}
@@ -211,64 +185,64 @@ static void *bmp180Parse(void *param) {
 					// uncompensated temperature value
 					unsigned short ut = 0;
 
-					// Write 0x2E into Register 0xF4 to request a temperature reading.
+					// write 0x2E into Register 0xF4 to request a temperature reading.
 					wiringXI2CWriteReg8(bmp180data->fd[y], 0xF4, 0x2E);
 
-					// Wait at least 4.5ms: we suspend execution for 5000 microseconds.
+					// wait at least 4.5ms: we suspend execution for 5000 microseconds.
 					usleep(5000);
 
-					// Read the two byte result from address 0xF6.
+					// read the two byte result from address 0xF6.
 					ut = (unsigned short) readReg16(bmp180data->fd[y], 0xF6);
 
-					// Calculate temperature (in units of 0.1 deg C) given uncompensated value
+					// calculate temperature (in units of 0.1 deg C) given uncompensated value
 					int x1, x2;
-					x1 = (((int) ut - (int) bmp180data->ac6[y])) * (int) bmp180data->ac5[y] >> 15;
-					x2 = ((int) bmp180data->mc[y] << 11) / (x1 + bmp180data->md[y]);
+					x1 = (((int) ut - (int) cd[y].ac6)) * (int) cd[y].ac5 >> 15;
+					x2 = ((int) cd[y].mc << 11) / (x1 + cd[y].md);
 					int b5 = x1 + x2;
 					int temp = ((b5 + 8) >> 4);
 
 					// uncompensated pressure value
 					unsigned int up = 0;
 
-					// Write 0x34+(BMP085_OVERSAMPLING_SETTING<<6) into register 0xF4
-					// Request a pressure reading with specified oversampling setting
+					// write 0x34+(BMP085_OVERSAMPLING_SETTING<<6) into register 0xF4
+					// request a pressure reading with specified oversampling setting
 					wiringXI2CWriteReg8(bmp180data->fd[y], 0xF4,
-							0x34 + (oversampling_setting << 6));
+							0x34 + (oversampling << 6));
 
-					// Wait for conversion, delay time dependent on oversampling setting
-					unsigned int delay = (unsigned int) ((2 + (3 << oversampling_setting)) * 1000);
+					// wait for conversion, delay time dependent on oversampling setting
+					unsigned int delay = (unsigned int) ((2 + (3 << oversampling)) * 1000);
 					usleep(delay);
 
-					// Read the three byte result (block data): 0xF6 = MSB, 0xF7 = LSB and 0xF8 = XLSB
+					// read the three byte result (block data): 0xF6 = MSB, 0xF7 = LSB and 0xF8 = XLSB
 					int msb = wiringXI2CReadReg8(bmp180data->fd[y], 0xF6);
 					int lsb = wiringXI2CReadReg8(bmp180data->fd[y], 0xF7);
 					int xlsb = wiringXI2CReadReg8(bmp180data->fd[y], 0xF8);
 					up = (((unsigned int) msb << 16) | ((unsigned int) lsb << 8) | (unsigned int) xlsb)
-							>> (8 - oversampling_setting);
+							>> (8 - oversampling);
 
-					// Calculate pressure (in Pa) given uncompensated value
+					// calculate pressure (in Pa) given uncompensated value
 					int x3, b3, b6, pressure;
 					unsigned int b4, b7;
 
-					// Calculate B6
+					// calculate B6
 					b6 = b5 - 4000;
 
-					// Calculate B3
-					x1 = (bmp180data->b2[y] * (b6 * b6) >> 12) >> 11;
-					x2 = (bmp180data->ac2[y] * b6) >> 11;
+					// calculate B3
+					x1 = (cd[y].b2 * (b6 * b6) >> 12) >> 11;
+					x2 = (cd[y].ac2 * b6) >> 11;
 					x3 = x1 + x2;
-					b3 = (((bmp180data->ac1[y] * 4 + x3) << oversampling_setting) + 2) >> 2;
+					b3 = (((cd[y].ac1 * 4 + x3) << oversampling) + 2) >> 2;
 
-					// Calculate B4
-					x1 = (bmp180data->ac3[y] * b6) >> 13;
-					x2 = (bmp180data->b1[y] * ((b6 * b6) >> 12)) >> 16;
+					// calculate B4
+					x1 = (cd[y].ac3 * b6) >> 13;
+					x2 = (cd[y].b1 * ((b6 * b6) >> 12)) >> 16;
 					x3 = ((x1 + x2) + 2) >> 2;
-					b4 = (bmp180data->ac4[y] * (unsigned int) (x3 + 32768)) >> 15;
+					b4 = (cd[y].ac4 * (unsigned int) (x3 + 32768)) >> 15;
 
-					// Calculate B7
-					b7 = ((up - (unsigned int) b3) * ((unsigned int) 50000 >> oversampling_setting));
+					// calculate B7
+					b7 = ((up - (unsigned int) b3) * ((unsigned int) 50000 >> oversampling));
 
-					// Calculate pressure in Pa
+					// calculate pressure in Pa
 					pressure = b7 < 0x80000000 ? (int) ((b7 << 1) / b4) : (int) ((b7 / b4) << 1);
 					x1 = (pressure >> 8) * (pressure >> 8);
 					x1 = (x1 * 3038) >> 16;
@@ -357,7 +331,7 @@ void bmp180Init(void) {
 
 	options_add(&bmp180->options, 'i', "id", OPTION_HAS_VALUE, DEVICES_ID, JSON_STRING, NULL, "0x[0-9a-f]{2}");
 	options_add(&bmp180->options, 'o', "oversampling", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *) 1,
-				"^[0123]$");
+			"^[0123]$");
 	options_add(&bmp180->options, 'p', "pressure", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, (void *) 0,
 			"^[0-9]{1,3}$");
 	options_add(&bmp180->options, 't', "temperature", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, (void *) 0,
@@ -372,7 +346,6 @@ void bmp180Init(void) {
 	options_add(&bmp180->options, 0, "decimals", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *) 1, "[0-9]");
 	options_add(&bmp180->options, 0, "show-pressure", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *) 1,
 			"^[10]{1}$");
-
 	options_add(&bmp180->options, 0, "show-temperature", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *) 1,
 			"^[10]{1}$");
 
