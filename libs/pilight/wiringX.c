@@ -35,7 +35,6 @@
 #include "hummingboard.h"
 #include "raspberrypi.h"
 #include "bananapi.h"
-#include "radxa.h"
 
 static struct platform_t *platform = NULL;
 static int setup = -2;
@@ -374,7 +373,6 @@ int wiringXSetup(void) {
 		hummingboardInit();
 		raspberrypiInit();
 		bananapiInit();
-		radxaInit();
 
 		int match = 0;
 		struct platform_t *tmp = platforms;
