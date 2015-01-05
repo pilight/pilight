@@ -138,40 +138,42 @@ static void *bmp180Parse(void *param) {
 		// setup i2c
 		bmp180data->fd[y] = wiringXI2CSetup((int) strtol(bmp180data->id[y], NULL, 16));
 
-		// read 0xD0 to check i2c setup: setup is ok if result contains constant value 0x55
-		int id = wiringXI2CReadReg8(bmp180data->fd[y], 0xD0);
-		if (id != 0x55) {
-			logprintf(LOG_ERR, "wrong device detected");
-			exit(EXIT_FAILURE);
-		}
+		if (bmp180data->fd[y] > 0) {
+			// read 0xD0 to check i2c setup: setup is ok if result contains constant value 0x55
+			int id = wiringXI2CReadReg8(bmp180data->fd[y], 0xD0);
+			if (id != 0x55) {
+				logprintf(LOG_ERR, "wrong device detected");
+				exit(EXIT_FAILURE);
+			}
 
-		// read calibration coefficients from register addresses
-		cd[y].ac1 = (short) readReg16(bmp180data->fd[y], 0xAA);
-		cd[y].ac2 = (short) readReg16(bmp180data->fd[y], 0xAC);
-		cd[y].ac3 = (short) readReg16(bmp180data->fd[y], 0xAE);
-		cd[y].ac4 = (unsigned short) readReg16(bmp180data->fd[y], 0xB0);
-		cd[y].ac5 = (unsigned short) readReg16(bmp180data->fd[y], 0xB2);
-		cd[y].ac6 = (unsigned short) readReg16(bmp180data->fd[y], 0xB4);
-		cd[y].b1 = (short) readReg16(bmp180data->fd[y], 0xB6);
-		cd[y].b2 = (short) readReg16(bmp180data->fd[y], 0xB8);
-		cd[y].mb = (short) readReg16(bmp180data->fd[y], 0xBA);
-		cd[y].mc = (short) readReg16(bmp180data->fd[y], 0xBC);
-		cd[y].md = (short) readReg16(bmp180data->fd[y], 0xBE);
+			// read calibration coefficients from register addresses
+			cd[y].ac1 = (short) readReg16(bmp180data->fd[y], 0xAA);
+			cd[y].ac2 = (short) readReg16(bmp180data->fd[y], 0xAC);
+			cd[y].ac3 = (short) readReg16(bmp180data->fd[y], 0xAE);
+			cd[y].ac4 = (unsigned short) readReg16(bmp180data->fd[y], 0xB0);
+			cd[y].ac5 = (unsigned short) readReg16(bmp180data->fd[y], 0xB2);
+			cd[y].ac6 = (unsigned short) readReg16(bmp180data->fd[y], 0xB4);
+			cd[y].b1 = (short) readReg16(bmp180data->fd[y], 0xB6);
+			cd[y].b2 = (short) readReg16(bmp180data->fd[y], 0xB8);
+			cd[y].mb = (short) readReg16(bmp180data->fd[y], 0xBA);
+			cd[y].mc = (short) readReg16(bmp180data->fd[y], 0xBC);
+			cd[y].md = (short) readReg16(bmp180data->fd[y], 0xBE);
 
-		// check communication: no result must equal 0 or 0xFFFF (=65535)
-		if (cd[y].ac1 == 0 || cd[y].ac1 == 0xFFFF ||
-				cd[y].ac2 == 0 || cd[y].ac2 == 0xFFFF ||
-				cd[y].ac3 == 0 || cd[y].ac3 == 0xFFFF ||
-				cd[y].ac4 == 0 || cd[y].ac4 == 0xFFFF ||
-				cd[y].ac5 == 0 || cd[y].ac5 == 0xFFFF ||
-				cd[y].ac6 == 0 || cd[y].ac6 == 0xFFFF ||
-				cd[y].b1 == 0 || cd[y].b1 == 0xFFFF ||
-				cd[y].b2 == 0 || cd[y].b2 == 0xFFFF ||
-				cd[y].mb == 0 || cd[y].mb == 0xFFFF ||
-				cd[y].mc == 0 || cd[y].mc == 0xFFFF ||
-				cd[y].md == 0 || cd[y].md == 0xFFFF) {
-			logprintf(LOG_ERR, "data communication error");
-			exit(EXIT_FAILURE);
+			// check communication: no result must equal 0 or 0xFFFF (=65535)
+			if (cd[y].ac1 == 0 || cd[y].ac1 == 0xFFFF ||
+					cd[y].ac2 == 0 || cd[y].ac2 == 0xFFFF ||
+					cd[y].ac3 == 0 || cd[y].ac3 == 0xFFFF ||
+					cd[y].ac4 == 0 || cd[y].ac4 == 0xFFFF ||
+					cd[y].ac5 == 0 || cd[y].ac5 == 0xFFFF ||
+					cd[y].ac6 == 0 || cd[y].ac6 == 0xFFFF ||
+					cd[y].b1 == 0 || cd[y].b1 == 0xFFFF ||
+					cd[y].b2 == 0 || cd[y].b2 == 0xFFFF ||
+					cd[y].mb == 0 || cd[y].mb == 0xFFFF ||
+					cd[y].mc == 0 || cd[y].mc == 0xFFFF ||
+					cd[y].md == 0 || cd[y].md == 0xFFFF) {
+				logprintf(LOG_ERR, "data communication error");
+				exit(EXIT_FAILURE);
+			}
 		}
 	}
 #endif
