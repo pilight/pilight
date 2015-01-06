@@ -45,6 +45,18 @@ typedef struct bmp180data_t {
 	char **id;
 	int nrid;
 	int *fd;
+	// calibration values (stored in each BMP180/085)
+	short *ac1;
+	short *ac2;
+	short *ac3;
+	unsigned short *ac4;
+	unsigned short *ac5;
+	unsigned short *ac6;
+	short *b1;
+	short *b2;
+	short *mb;
+	short *mc;
+	short *md;
 } bmp180data_t;
 
 static unsigned short bmp180_loop = 1;
@@ -56,7 +68,7 @@ static pthread_mutexattr_t bmp180attr;
 // helper function with built-in result conversion
 static int readReg16(int fd, int reg) {
 	int res = wiringXI2CReadReg16(fd, reg);
-	// Convert result to 16 bits and swap bytes
+	// convert result to 16 bits and swap bytes
 	return ((res << 8) & 0xFF00) | ((res >> 8) & 0xFF);
 }
 
@@ -79,6 +91,17 @@ static void *bmp180Parse(void *param) {
 	bmp180data->nrid = 0;
 	bmp180data->id = NULL;
 	bmp180data->fd = 0;
+	bmp180data->ac1 = 0;
+	bmp180data->ac2 = 0;
+	bmp180data->ac3 = 0;
+	bmp180data->ac4 = 0;
+	bmp180data->ac5 = 0;
+	bmp180data->ac6 = 0;
+	bmp180data->b1 = 0;
+	bmp180data->b2 = 0;
+	bmp180data->mb = 0;
+	bmp180data->mc = 0;
+	bmp180data->md = 0;
 
 	bmp180_threads++;
 
@@ -113,31 +136,31 @@ static void *bmp180Parse(void *param) {
 
 #ifndef __FreeBSD__
 	// resize the memory blocks pointed to by the different pointers
-	bmp180data->fd = realloc(bmp180data->fd, (sizeof(int) * (size_t) bmp180data->nrid + 1));
-	if (!bmp180data->fd) {
+	size_t sz = (size_t) bmp180data->nrid + 1;
+	unsigned long int sizeShort = sizeof(short) * sz;
+	unsigned long int sizeUShort = sizeof(unsigned short) * sz;
+	bmp180data->fd = realloc(bmp180data->fd, (sizeof(int) * sz));
+	bmp180data->ac1 = realloc(bmp180data->ac1, sizeShort);
+	bmp180data->ac2 = realloc(bmp180data->ac2, sizeShort);
+	bmp180data->ac3 = realloc(bmp180data->ac3, sizeShort);
+	bmp180data->ac4 = realloc(bmp180data->ac4, sizeUShort);
+	bmp180data->ac5 = realloc(bmp180data->ac5, sizeUShort);
+	bmp180data->ac6 = realloc(bmp180data->ac6, sizeUShort);
+	bmp180data->b1 = realloc(bmp180data->b1, sizeShort);
+	bmp180data->b2 = realloc(bmp180data->b2, sizeShort);
+	bmp180data->mb = realloc(bmp180data->mb, sizeShort);
+	bmp180data->mc = realloc(bmp180data->mc, sizeShort);
+	bmp180data->md = realloc(bmp180data->md, sizeShort);
+	if (!bmp180data->ac1 || !bmp180data->ac2 || !bmp180data->ac3 || !bmp180data->ac4 || !bmp180data->ac5
+			|| !bmp180data->ac6 || !bmp180data->b1 || !bmp180data->b2 || !bmp180data->mb || !bmp180data->mc
+			|| !bmp180data->md || !bmp180data->fd) {
 		logprintf(LOG_ERR, "out of memory");
 		exit(EXIT_FAILURE);
 	}
-
-	// structure for calibration data (stored in each BMP180/085)
-	struct {
-		short ac1;
-		short ac2;
-		short ac3;
-		unsigned short ac4;
-		unsigned short ac5;
-		unsigned short ac6;
-		short b1;
-		short b2;
-		short mb;
-		short mc;
-		short md;
-	} cd[bmp180data->nrid];
-
+	
 	for (y = 0; y < bmp180data->nrid; y++) {
 		// setup i2c
 		bmp180data->fd[y] = wiringXI2CSetup((int) strtol(bmp180data->id[y], NULL, 16));
-
 		if (bmp180data->fd[y] > 0) {
 			// read 0xD0 to check i2c setup: setup is ok if result contains constant value 0x55
 			int id = wiringXI2CReadReg8(bmp180data->fd[y], 0xD0);
@@ -147,30 +170,30 @@ static void *bmp180Parse(void *param) {
 			}
 
 			// read calibration coefficients from register addresses
-			cd[y].ac1 = (short) readReg16(bmp180data->fd[y], 0xAA);
-			cd[y].ac2 = (short) readReg16(bmp180data->fd[y], 0xAC);
-			cd[y].ac3 = (short) readReg16(bmp180data->fd[y], 0xAE);
-			cd[y].ac4 = (unsigned short) readReg16(bmp180data->fd[y], 0xB0);
-			cd[y].ac5 = (unsigned short) readReg16(bmp180data->fd[y], 0xB2);
-			cd[y].ac6 = (unsigned short) readReg16(bmp180data->fd[y], 0xB4);
-			cd[y].b1 = (short) readReg16(bmp180data->fd[y], 0xB6);
-			cd[y].b2 = (short) readReg16(bmp180data->fd[y], 0xB8);
-			cd[y].mb = (short) readReg16(bmp180data->fd[y], 0xBA);
-			cd[y].mc = (short) readReg16(bmp180data->fd[y], 0xBC);
-			cd[y].md = (short) readReg16(bmp180data->fd[y], 0xBE);
+			bmp180data->ac1[y] = (short) readReg16(bmp180data->fd[y], 0xAA);
+			bmp180data->ac2[y] = (short) readReg16(bmp180data->fd[y], 0xAC);
+			bmp180data->ac3[y] = (short) readReg16(bmp180data->fd[y], 0xAE);
+			bmp180data->ac4[y] = (unsigned short) readReg16(bmp180data->fd[y], 0xB0);
+			bmp180data->ac5[y] = (unsigned short) readReg16(bmp180data->fd[y], 0xB2);
+			bmp180data->ac6[y] = (unsigned short) readReg16(bmp180data->fd[y], 0xB4);
+			bmp180data->b1[y] = (short) readReg16(bmp180data->fd[y], 0xB6);
+			bmp180data->b2[y] = (short) readReg16(bmp180data->fd[y], 0xB8);
+			bmp180data->mb[y] = (short) readReg16(bmp180data->fd[y], 0xBA);
+			bmp180data->mc[y] = (short) readReg16(bmp180data->fd[y], 0xBC);
+			bmp180data->md[y] = (short) readReg16(bmp180data->fd[y], 0xBE);
 
 			// check communication: no result must equal 0 or 0xFFFF (=65535)
-			if (cd[y].ac1 == 0 || cd[y].ac1 == 0xFFFF ||
-					cd[y].ac2 == 0 || cd[y].ac2 == 0xFFFF ||
-					cd[y].ac3 == 0 || cd[y].ac3 == 0xFFFF ||
-					cd[y].ac4 == 0 || cd[y].ac4 == 0xFFFF ||
-					cd[y].ac5 == 0 || cd[y].ac5 == 0xFFFF ||
-					cd[y].ac6 == 0 || cd[y].ac6 == 0xFFFF ||
-					cd[y].b1 == 0 || cd[y].b1 == 0xFFFF ||
-					cd[y].b2 == 0 || cd[y].b2 == 0xFFFF ||
-					cd[y].mb == 0 || cd[y].mb == 0xFFFF ||
-					cd[y].mc == 0 || cd[y].mc == 0xFFFF ||
-					cd[y].md == 0 || cd[y].md == 0xFFFF) {
+			if (bmp180data->ac1[y] == 0 || bmp180data->ac1[y] == 0xFFFF ||
+					bmp180data->ac2[y] == 0 || bmp180data->ac2[y] == 0xFFFF ||
+					bmp180data->ac3[y] == 0 || bmp180data->ac3[y] == 0xFFFF ||
+					bmp180data->ac4[y] == 0 || bmp180data->ac4[y] == 0xFFFF ||
+					bmp180data->ac5[y] == 0 || bmp180data->ac5[y] == 0xFFFF ||
+					bmp180data->ac6[y] == 0 || bmp180data->ac6[y] == 0xFFFF ||
+					bmp180data->b1[y] == 0 || bmp180data->b1[y] == 0xFFFF ||
+					bmp180data->b2[y] == 0 || bmp180data->b2[y] == 0xFFFF ||
+					bmp180data->mb[y] == 0 || bmp180data->mb[y] == 0xFFFF ||
+					bmp180data->mc[y] == 0 || bmp180data->mc[y] == 0xFFFF ||
+					bmp180data->md[y] == 0 || bmp180data->md[y] == 0xFFFF) {
 				logprintf(LOG_ERR, "data communication error");
 				exit(EXIT_FAILURE);
 			}
@@ -198,8 +221,8 @@ static void *bmp180Parse(void *param) {
 
 					// calculate temperature (in units of 0.1 deg C) given uncompensated value
 					int x1, x2;
-					x1 = (((int) ut - (int) cd[y].ac6)) * (int) cd[y].ac5 >> 15;
-					x2 = ((int) cd[y].mc << 11) / (x1 + cd[y].md);
+					x1 = (((int) ut - (int) bmp180data->ac6[y])) * (int) bmp180data->ac5[y] >> 15;
+					x2 = ((int) bmp180data->mc[y] << 11) / (x1 + bmp180data->md[y]);
 					int b5 = x1 + x2;
 					int temp = ((b5 + 8) >> 4);
 
@@ -230,16 +253,16 @@ static void *bmp180Parse(void *param) {
 					b6 = b5 - 4000;
 
 					// calculate B3
-					x1 = (cd[y].b2 * (b6 * b6) >> 12) >> 11;
-					x2 = (cd[y].ac2 * b6) >> 11;
+					x1 = (bmp180data->b2[y] * (b6 * b6) >> 12) >> 11;
+					x2 = (bmp180data->ac2[y] * b6) >> 11;
 					x3 = x1 + x2;
-					b3 = (((cd[y].ac1 * 4 + x3) << oversampling) + 2) >> 2;
+					b3 = (((bmp180data->ac1[y] * 4 + x3) << oversampling) + 2) >> 2;
 
 					// calculate B4
-					x1 = (cd[y].ac3 * b6) >> 13;
-					x2 = (cd[y].b1 * ((b6 * b6) >> 12)) >> 16;
+					x1 = (bmp180data->ac3[y] * b6) >> 13;
+					x2 = (bmp180data->b1[y] * ((b6 * b6) >> 12)) >> 16;
 					x3 = ((x1 + x2) + 2) >> 2;
-					b4 = (cd[y].ac4 * (unsigned int) (x3 + 32768)) >> 15;
+					b4 = (bmp180data->ac4[y] * (unsigned int) (x3 + 32768)) >> 15;
 
 					// calculate B7
 					b7 = ((up - (unsigned int) b3) * ((unsigned int) 50000 >> oversampling));
