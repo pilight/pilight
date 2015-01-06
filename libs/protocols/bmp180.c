@@ -305,6 +305,72 @@ static void *bmp180Parse(void *param) {
 		}
 		sfree((void *) &bmp180data->id);
 	}
+	if (bmp180data->ac1) {
+		for (y = 0; y < bmp180data->nrid; y++) {
+			sfree((void *) &bmp180data->ac1[y]);
+		}
+		sfree((void *) &bmp180data->ac1);
+	}
+	if (bmp180data->ac2) {
+		for (y = 0; y < bmp180data->nrid; y++) {
+			sfree((void *) &bmp180data->ac2[y]);
+		}
+		sfree((void *) &bmp180data->ac2);
+	}
+	if (bmp180data->ac3) {
+		for (y = 0; y < bmp180data->nrid; y++) {
+			sfree((void *) &bmp180data->ac3[y]);
+		}
+		sfree((void *) &bmp180data->ac3);
+	}
+	if (bmp180data->ac4) {
+		for (y = 0; y < bmp180data->nrid; y++) {
+			sfree((void *) &bmp180data->ac4[y]);
+		}
+		sfree((void *) &bmp180data->ac4);
+	}
+	if (bmp180data->ac5) {
+		for (y = 0; y < bmp180data->nrid; y++) {
+			sfree((void *) &bmp180data->ac5[y]);
+		}
+		sfree((void *) &bmp180data->ac5);
+	}
+	if (bmp180data->ac6) {
+		for (y = 0; y < bmp180data->nrid; y++) {
+			sfree((void *) &bmp180data->ac6[y]);
+		}
+		sfree((void *) &bmp180data->ac6);
+	}
+	if (bmp180data->b1) {
+		for (y = 0; y < bmp180data->nrid; y++) {
+			sfree((void *) &bmp180data->b1[y]);
+		}
+		sfree((void *) &bmp180data->b1);
+	}
+	if (bmp180data->b2) {
+		for (y = 0; y < bmp180data->nrid; y++) {
+			sfree((void *) &bmp180data->b2[y]);
+		}
+		sfree((void *) &bmp180data->b2);
+	}
+	if (bmp180data->mb) {
+		for (y = 0; y < bmp180data->nrid; y++) {
+			sfree((void *) &bmp180data->mb[y]);
+		}
+		sfree((void *) &bmp180data->mb);
+	}
+	if (bmp180data->mc) {
+		for (y = 0; y < bmp180data->nrid; y++) {
+			sfree((void *) &bmp180data->mc[y]);
+		}
+		sfree((void *) &bmp180data->mc);
+	}
+	if (bmp180data->md) {
+		for (y = 0; y < bmp180data->nrid; y++) {
+			sfree((void *) &bmp180data->md[y]);
+		}
+		sfree((void *) &bmp180data->md);
+	}
 	if (bmp180data->fd) {
 		for (y = 0; y < bmp180data->nrid; y++) {
 			if (bmp180data->fd[y] > 0) {
