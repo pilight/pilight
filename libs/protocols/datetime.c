@@ -302,7 +302,7 @@ void datetimeInit(void) {
 	options_add(&datetime->options, 'i', "minute", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, NULL);
 	options_add(&datetime->options, 's', "second", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, NULL);
 
-	options_add(&datetime->options, 0, "datetime", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
+	options_add(&datetime->options, 0, "show-datetime", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 	options_add(&datetime->options, 0, "format", OPTION_HAS_VALUE, GUI_SETTING, JSON_STRING, (void *)datetime_format, NULL);
 
 	datetime->initDev=&datetimeInitDev;
@@ -313,7 +313,7 @@ void datetimeInit(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name = "datetime";
-	module->version = "1.4";
+	module->version = "1.5";
 	module->reqversion = "5.0";
 	module->reqcommit = "84";
 }
