@@ -86,7 +86,7 @@ typedef struct sendqueue_t {
 	char *protoname;
 	char *settings;
 	struct protocol_t *protopt;
-	int code[255];
+	int code[MAXPULSESTREAMLENGTH];
 	char uuid[UUID_LENGTH];
 	struct sendqueue_t *next;
 } sendqueue_t;
@@ -95,7 +95,7 @@ static struct sendqueue_t *sendqueue;
 static struct sendqueue_t *sendqueue_head;
 
 typedef struct recvqueue_t {
-	int raw[255];
+	int raw[MAXPULSESTREAMLENGTH];
 	int rawlen;
 	int hwtype;
 	int plslen;
@@ -579,7 +579,7 @@ void *receive_parse_code(void *param) {
 					    (recvqueue->rawlen >= protocol->minrawlen && recvqueue->rawlen <= protocol->maxrawlen))))
 					    && match == 1) {
 						for(x=0;x<(int)recvqueue->rawlen;x++) {
-							if(x < 254) {
+							if(x < MAXPULSESTREAMLENGTH) {
 								memcpy(&protocol->raw[x], &recvqueue->raw[x], sizeof(int));
 							}
 						}
@@ -1461,7 +1461,7 @@ void *receive_code(void *param) {
 
 	struct sched_param sched;
 	int plslen = 0, rawlen = 0;
-	int rawcode[255] = {0};
+	int rawcode[MAXPULSESTREAMLENGTH] = {0};
 	int duration = 0;
 	struct timeval tp;
 	struct timespec ts;
@@ -1498,7 +1498,7 @@ void *receive_code(void *param) {
 			if(duration > 0) {
 				rawcode[rawlen] = duration;
 				rawlen++;
-				if(rawlen > 254) {
+				if(rawlen > MAXPULSESTREAMLENGTH) {
 					rawlen = 0;
 				}
 				if(duration > 5100) {

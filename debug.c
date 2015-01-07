@@ -94,10 +94,10 @@ void *receive_code(void *param) {
 
 	int recording = 1;
 	int bit = 0;
-	int raw[255] = {0};
-	int pRaw[255] = {0};
-	int code[255] = {0};
-	int binary[255] = {0};
+	int raw[MAXPULSESTREAMLENGTH] = {0};
+	int pRaw[MAXPULSESTREAMLENGTH] = {0};
+	int code[MAXPULSESTREAMLENGTH] = {0};
+	int binary[MAXPULSESTREAMLENGTH/2] = {0};
 	int footer = 0;
 	int pulse = 0;
 	int rawLength = 0;
@@ -110,10 +110,10 @@ void *receive_code(void *param) {
 		hw->init();
 	}
 	while(main_loop) {
-		memset(&raw, '\0', 255);
-		memset(&pRaw, '\0', 255);
-		memset(&code, '\0', 255);
-		memset(&binary, '\0', 255);
+		memset(&raw, '\0', MAXPULSESTREAMLENGTH);
+		memset(&pRaw, '\0', MAXPULSESTREAMLENGTH);
+		memset(&code, '\0', MAXPULSESTREAMLENGTH);
+		memset(&binary, '\0', MAXPULSESTREAMLENGTH/2);
 		recording = 1;
 		bit = 0;
 		footer = 0;
@@ -135,7 +135,7 @@ void *receive_code(void *param) {
 			}
 			/* If we are recording, keep recording until the next footer has been matched */
 			if(recording == 1) {
-				if(bit < 255) {
+				if(bit < MAXPULSESTREAMLENGTH) {
 					raw[bit++] = duration;
 				} else {
 					bit = 0;

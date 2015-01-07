@@ -69,7 +69,7 @@ void event_operator_init(void) {
 	void *handle = NULL;
 	void (*init)(void);
 	void (*compatibility)(struct module_t *module);
-	char path[255];
+	char path[PATH_MAX];
 	struct module_t module;
 	char pilight_version[strlen(VERSION)+1];
 	char pilight_commit[3];
@@ -104,7 +104,7 @@ void event_operator_init(void) {
 			if(S_ISREG(s.st_mode) == 0) {
 				if(strstr(file->d_name, ".so") != NULL) {
 					valid = 1;
-					memset(path, '\0', 255);
+					memset(path, '\0', PATH_MAX);
 					sprintf(path, "%s%s", operator_root, file->d_name);
 
 					if((handle = dso_load(path))) {
