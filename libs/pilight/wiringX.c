@@ -73,6 +73,7 @@ void platform_register(struct platform_t **dev, const char *name) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
 	*dev = malloc(sizeof(struct platform_t));
+	(*dev)->name = NULL;
 	(*dev)->pinMode = NULL;
 	(*dev)->digitalWrite = NULL;
 	(*dev)->digitalRead = NULL;
