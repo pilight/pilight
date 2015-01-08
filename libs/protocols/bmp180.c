@@ -162,9 +162,16 @@ static void *bmp180Parse(void *param) {
 		// setup i2c
 		bmp180data->fd[y] = wiringXI2CSetup((int) strtol(bmp180data->id[y], NULL, 16));
 		if (bmp180data->fd[y] > 0) {
-			// read 0xD0 to check i2c setup: setup is ok if result contains constant value 0x55
+			// read 0xD0 to check chip id: must equal 0x55 for BMP085/180
 			int id = wiringXI2CReadReg8(bmp180data->fd[y], 0xD0);
 			if (id != 0x55) {
+				logprintf(LOG_ERR, "wrong device detected");
+				exit(EXIT_FAILURE);
+			}
+
+			// read 0xD1 to check chip version: must equal 0x01 for BMP085 or 0x02 for BMP180
+			int version = wiringXI2CReadReg8(bmp180data->fd[y], 0xD1);
+			if (version != 0x01 && version != 0x02) {
 				logprintf(LOG_ERR, "wrong device detected");
 				exit(EXIT_FAILURE);
 			}
