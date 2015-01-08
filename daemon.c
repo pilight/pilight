@@ -1810,7 +1810,9 @@ int main_gc(void) {
 	config_gc();
 	whitelist_free();
 	threads_gc();
-	pthread_join(pth, NULL);
+	if(pth != NULL) {
+		pthread_join(pth, NULL);
+	}
 	wiringXGC();
 	log_gc();
 
