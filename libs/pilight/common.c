@@ -54,6 +54,8 @@ static unsigned int whitelist_number;
 static unsigned char validchar[64] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
 char *host2ip(char *host) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	int rv = 0;
 	struct addrinfo hints, *servinfo, *p;
 	struct sockaddr_in *h = NULL;
@@ -65,7 +67,7 @@ char *host2ip(char *host) {
 	hints.ai_socktype = SOCK_STREAM;
 
 	if((rv = getaddrinfo(host, NULL , NULL, &servinfo)) != 0) {
-		fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
+		logprintf(LOG_NOTICE, "getaddrinfo: %s, %s", host, gai_strerror(rv));
 		return NULL;
 	}
 
