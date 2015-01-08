@@ -45,7 +45,7 @@
 #include "gc.h"
 
 static unsigned short main_loop = 1;
-static pthread_t pth = NULL;
+static pthread_t pth;
 
 int main_gc(void) {
 	main_loop = 0;
@@ -70,9 +70,6 @@ int main_gc(void) {
 	config_gc();
 	whitelist_free();
 	threads_gc();
-	if(pth != NULL) {
-		pthread_join(pth, NULL);
-	}
 
 	wiringXGC();
 	log_gc();

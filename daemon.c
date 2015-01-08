@@ -156,7 +156,7 @@ static int receive_repeat = RECEIVE_REPEATS;
 /* Socket identifier to the server if we are running as client */
 static int sockfd = 0;
 /* Thread pointers */
-static pthread_t pth = NULL;
+static pthread_t pth;
 /* While loop conditions */
 static unsigned short main_loop = 1;
 /* Reset repeats after a certain amount of time */
@@ -1810,9 +1810,6 @@ int main_gc(void) {
 	config_gc();
 	whitelist_free();
 	threads_gc();
-	if(pth != NULL) {
-		pthread_join(pth, NULL);
-	}
 	wiringXGC();
 	log_gc();
 

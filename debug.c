@@ -46,7 +46,7 @@
 static int pulselen = 0;
 static unsigned short main_loop = 1;
 static unsigned short inner_loop = 1;
-static pthread_t pth = NULL;
+static pthread_t pth;
 
 static int normalize(int i) {
 	double x;
@@ -78,9 +78,6 @@ int main_gc(void) {
 	config_gc();
 	whitelist_free();
 	threads_gc();
-	if(pth != NULL) {
-		pthread_join(pth, NULL);
-	}
 
 	wiringXGC();
 	log_gc();
