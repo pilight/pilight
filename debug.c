@@ -46,7 +46,7 @@
 static int pulselen = 0;
 static unsigned short main_loop = 1;
 static unsigned short inner_loop = 1;
-static pthread_t pth;
+static pthread_t pth = NULL;
 
 static int normalize(int i) {
 	double x;

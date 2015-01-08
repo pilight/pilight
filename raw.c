@@ -45,7 +45,7 @@
 #include "gc.h"
 
 static unsigned short main_loop = 1;
-static pthread_t pth;
+static pthread_t pth = NULL;
 
 int main_gc(void) {
 	main_loop = 0;

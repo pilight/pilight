@@ -156,7 +156,7 @@ static int receive_repeat = RECEIVE_REPEATS;
 /* Socket identifier to the server if we are running as client */
 static int sockfd = 0;
 /* Thread pointers */
-static pthread_t pth;
+static pthread_t pth = NULL;
 /* While loop conditions */
 static unsigned short main_loop = 1;
 /* Reset repeats after a certain amount of time */
