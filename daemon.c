@@ -1498,7 +1498,7 @@ void *receive_code(void *param) {
 			if(duration > 0) {
 				rawcode[rawlen] = duration;
 				rawlen++;
-				if(rawlen > MAXPULSESTREAMLENGTH) {
+				if(rawlen > MAXPULSESTREAMLENGTH-1) {
 					rawlen = 0;
 				}
 				if(duration > 5100) {
