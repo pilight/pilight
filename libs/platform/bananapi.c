@@ -208,7 +208,7 @@ static int bananapiISR(int pin, int mode) {
 
 	if(bananapiValidGPIO(pin) != 0) {
 		logprintf(LOG_ERR, "bananapi->isr: Invalid pin number %d", pin);
-		exit(0);
+		return -1;
 	}
 
 	pinModes[pin] = SYS;
@@ -319,7 +319,7 @@ static int bananapiWaitForInterrupt(int pin, int ms) {
 
 	if(bananapiValidGPIO(pin) != 0) {
 		logprintf(LOG_ERR, "bananapi->waitForInterrupt: Invalid pin number %d", pin);
-		exit(0);
+		return -1;
 	}
 
 	if(sysFds[pin] == -1) {
@@ -411,7 +411,7 @@ static int bananapiDigitalRead(int pin) {
 
 	if(bananapiValidGPIO(pin) != 0) {
 		logprintf(LOG_ERR, "bananapi->digitalRead: Invalid pin number %d", pin);
-		exit(0);
+		return -1;
 	}
 
 	if((pin & PI_GPIO_MASK) == 0) {
@@ -450,7 +450,7 @@ static int bananapiDigitalWrite(int pin, int value) {
 
 	if(bananapiValidGPIO(pin) != 0) {
 		logprintf(LOG_ERR, "bananapi->digitalWrite: Invalid pin number %d", pin);
-		exit(0);
+		return -1;
 	}
 
 	if((pin & PI_GPIO_MASK) == 0) {
@@ -495,7 +495,7 @@ static int bananapiPinMode(int pin, int mode) {
 
 	if(bananapiValidGPIO(pin) != 0) {
 		logprintf(LOG_ERR, "bananapi->pinMode: Invalid pin number %d", pin);
-		exit(0);
+		return -1;
 	}
 
 	if((pin & PI_GPIO_MASK) == 0) {

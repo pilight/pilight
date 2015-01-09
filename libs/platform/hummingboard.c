@@ -94,11 +94,11 @@ static int setup(void) {
 static int hummingboardPinMode(int pin, int direction) {
 	if(!gpio) {
 		logprintf(LOG_ERR, "hummingboard->pinMode: Please run wiringXSetup before running pinMode");
-		exit(0);
+		return -1;
 	}
 	if(hummingboardValidGPIO(pin) != 0) {
 		logprintf(LOG_ERR, "hummingboard->pinMode: Invalid pin number %d (0 >= pin <= 7)", pin);
-		exit(0);
+		return -1;
 	}
 
 	*((unsigned long *)(gpio + GPIO_MUX_REG + pinToMuxAddr[pin] )) = FUNC_GPIO;
@@ -153,7 +153,7 @@ static int hummingboardDigitalWrite(int pin, int value) {
 	}
 	if(hummingboardValidGPIO(pin) != 0) {
 		logprintf(LOG_ERR, "hummingboard->digitalWrite: Invalid pin number %d (0 >= pin <= 7)", pin);
-		exit(0);
+		return -1;
 	}
 
 	if(value) {
@@ -172,7 +172,7 @@ static int hummingboardDigitalRead(int pin) {
 	}
 	if(hummingboardValidGPIO(pin) != 0) {
 		logprintf(LOG_ERR, "hummingboard->digitalRead: Invalid pin number %d (0 >= pin <= 7)", pin);
-		exit(0);
+		return -1;
 	}
 
 	if((*((int *)(gpio + pinToGPIOAddr[pin] + 8)) & (1 << pinToBin[pin])) != 0) {
@@ -191,7 +191,7 @@ static int hummingboardISR(int pin, int mode) {
 
 	if(hummingboardValidGPIO(pin) != 0) {
 		logprintf(LOG_ERR, "hummingboard->isr: Invalid pin number %d (0 >= pin <= 7)", pin);
-		exit(0);
+		return -1;
 	}
 
 	if(mode == INT_EDGE_FALLING) {
@@ -305,7 +305,7 @@ static int hummingboardWaitForInterrupt(int pin, int ms) {
 
 	if(hummingboardValidGPIO(pin) != 0) {
 		logprintf(LOG_ERR, "hummingboard->waitForInterrupt: Invalid pin number %d (0 >= pin <= 7)", pin);
-		exit(0);
+		return -1;
 	}
 
 	polls.fd = sysFds[pin];
