@@ -274,7 +274,7 @@ int ctr_drbg_reseed( ctr_drbg_context *ctx,
 
     return( 0 );
 }
-    
+
 int ctr_drbg_random_with_add( void *p_rng,
                               unsigned char *output, size_t output_len,
                               const unsigned char *additional, size_t add_len )

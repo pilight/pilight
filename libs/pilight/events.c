@@ -81,7 +81,7 @@ int events_gc(void) {
 	while(running == 1) {
 		usleep(10);
 	}
-	
+
 	event_operator_gc();
 	event_action_gc();
 	logprintf(LOG_DEBUG, "garbage collected events library");

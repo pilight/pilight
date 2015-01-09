@@ -3,17 +3,17 @@
  * NTA Monitor Ltd.
  *
  * This file is part of arp-scan.
- * 
+ *
  * arp-scan is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- * 
+ *
  * arp-scan is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with arp-scan.  If not, see <http://www.gnu.org/licenses/>.
  *
@@ -31,9 +31,9 @@
  * and displays any responses received.
  *
  * The ARP protocol is defined in RFC 826 Ethernet Address Resolution Protocol
- * 
+ *
  * arp-scan was stripped and adapter by CurlyMo 2014 for pilight.
- * 
+ *
  */
 
 #include <stdio.h>
@@ -64,7 +64,7 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <unistd.h>
- 
+
 #include "arp.h"
 
 #define MAXLINE 						255
@@ -256,7 +256,7 @@ void arp_add_host(const char *host_name) {
 	helist[num_hosts]->found = 0;
 	helist[num_hosts]->last_send_time.tv_sec = 0;
 	helist[num_hosts]->last_send_time.tv_usec = 0;
-	num_hosts++;	
+	num_hosts++;
 }
 
 static int send_packet(pcap_t *pcap_handle, host_entry *he, struct timeval *last_packet_time, unsigned char source_mac[6]) {
@@ -264,7 +264,7 @@ static int send_packet(pcap_t *pcap_handle, host_entry *he, struct timeval *last
 	struct arp_ether_ipv4 arpei;
 	unsigned char buf[MAX_FRAME];
 	unsigned char target_mac[6] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
-	unsigned char arp_tha[6] = {0, 0, 0, 0, 0, 0};	
+	unsigned char arp_tha[6] = {0, 0, 0, 0, 0, 0};
 	int buflen = 0;
 	int nsent = 0;
 
@@ -344,7 +344,7 @@ static void callback(u_char *args, const struct pcap_pkthdr *header, const u_cha
 	size_t n = header->caplen;
 	struct in_addr source_ip;
 	struct host_entry *temp_cursor = NULL;
-	
+
 	if(n < ETHER_HDR_SIZE + ARP_PKT_SIZE) {
 		printf("%d byte packet too short to decode\n", n);
 		return;
@@ -396,14 +396,14 @@ int arp_resolv(char *if_name, char *mac, char **ip) {
 	int reset_cum_err = 0, first_timeout = 1;
 	int i = 0, pcap_fd = 0, packet_out_len = 0;
 	pcap_t *pcap_handle = NULL;
-	
+
 #ifdef __FreeBSD__
 	struct if_msghdr *ifm = NULL;
 	struct sockaddr_dl *sdl=NULL;
 	unsigned char *p = NULL;
 	unsigned char *buf = NULL;
 	size_t len = 0;
-	int mib[] = { CTL_NET, PF_ROUTE, 0, AF_LINK, NET_RT_IFLIST, 0 };	 
+	int mib[] = { CTL_NET, PF_ROUTE, 0, AF_LINK, NET_RT_IFLIST, 0 };
 
 	if(sysctl(mib, 6, NULL, &len, NULL, 0) < 0) {
 		fprintf(stderr, "sysctl");

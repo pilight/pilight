@@ -71,7 +71,7 @@ static int actionPushoverArguments(struct JsonNode *arguments) {
 	}
 	if(nrvalues != 1) {
 		logprintf(LOG_ERR, "pushover action \"TITLE\" only takes one argument");
-		return -1;	
+		return -1;
 	}
 	nrvalues = 0;
 	if((jvalues = json_find_member(jmessage, "value")) != NULL) {
@@ -83,7 +83,7 @@ static int actionPushoverArguments(struct JsonNode *arguments) {
 	}
 	if(nrvalues != 1) {
 		logprintf(LOG_ERR, "pushover action \"MESSAGE\" only takes one argument");
-		return -1;	
+		return -1;
 	}
 	nrvalues = 0;
 	if((jtoken = json_find_member(jmessage, "value")) != NULL) {
@@ -95,7 +95,7 @@ static int actionPushoverArguments(struct JsonNode *arguments) {
 	}
 	if(nrvalues != 1) {
 		logprintf(LOG_ERR, "pushover action \"TOKEN\" only takes one argument");
-		return -1;	
+		return -1;
 	}
 	nrvalues = 0;
 	if((jvalues = json_find_member(juser, "value")) != NULL) {
@@ -107,7 +107,7 @@ static int actionPushoverArguments(struct JsonNode *arguments) {
 	}
 	if(nrvalues != 1) {
 		logprintf(LOG_ERR, "pushover action \"USER\" only takes one argument");
-		return -1;	
+		return -1;
 	}
 	return 0;
 }
@@ -146,7 +146,7 @@ static int actionPushoverRun(struct JsonNode *arguments) {
 			jval3 = json_find_element(jvalues3, 0);
 			jval4 = json_find_element(jvalues4, 0);
 			if(jval1 != NULL && jval2 != NULL && jval3 != NULL && jval4 != NULL &&
-			 jval1->tag == JSON_STRING && jval2->tag == JSON_STRING && 
+			 jval1->tag == JSON_STRING && jval2->tag == JSON_STRING &&
 			 jval3->tag == JSON_STRING && jval4->tag == JSON_STRING) {
 				data = NULL;
 				strcpy(url, "https://api.pushover.net/1/messages.json");

@@ -82,7 +82,7 @@ int main(int argc, char **argv) {
 			case 'C':
 				configtmp = realloc(configtmp, strlen(args)+1);
 				strcpy(configtmp, args);
-			break;			
+			break;
 			case 'f':
 				if(access(args, F_OK) != -1) {
 					strcpy(fwfile, args);
@@ -98,7 +98,7 @@ int main(int argc, char **argv) {
 		}
 	}
 	options_delete(options);
-	
+
 #ifdef FIRMWARE_UPDATER
 	if(config_set_file(configtmp) == EXIT_FAILURE) {
 		return EXIT_FAILURE;

@@ -57,7 +57,7 @@ void gc_handler(int sig) {
 			unw_getcontext(&uc);
 			unw_init_local(&cursor, &uc);
 
-			while(unw_step(&cursor) > 0) {	
+			while(unw_step(&cursor) > 0) {
 				name[0] = '\0';
 				unw_get_proc_name(&cursor, name, 256, &offp);
 				unw_get_reg(&cursor, UNW_REG_IP, &ip);

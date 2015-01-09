@@ -174,7 +174,7 @@ int entropy_func( void *data, unsigned char *output, size_t len );
 /**
  * \brief           Add data to the accumulator manually
  *                  (Thread-safe if POLARSSL_THREADING_C is enabled)
- * 
+ *
  * \param ctx       Entropy context
  * \param data      Data to add
  * \param len       Length of data

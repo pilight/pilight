@@ -61,7 +61,7 @@ char *http_process_request(char *url, int method, char **type, int *code, int *s
 
 	entropy_context entropy;
 	ctr_drbg_context ctr_drbg;
-	ssl_context ssl;	
+	ssl_context ssl;
 
 	*size = 0;
 
@@ -99,7 +99,7 @@ char *http_process_request(char *url, int method, char **type, int *code, int *s
 		page = malloc(2);
 		strcpy(page, "/");
 	}
-	
+
 	if((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0){
 		logprintf(LOG_ERR, "could not http create socket");
 		*code = -1;
@@ -109,7 +109,7 @@ char *http_process_request(char *url, int method, char **type, int *code, int *s
 
 	if((ip = host2ip(host)) == NULL) {
 		*code = -1;
-		goto exit;		
+		goto exit;
 	}
 
 	serv_addr.sin_family = AF_INET;
@@ -135,7 +135,7 @@ char *http_process_request(char *url, int method, char **type, int *code, int *s
 										 "%s",
 										 page, host, USERAGENT, (int)strlen(post), post);
 	} else if(method == HTTP_GET) {
-		len = (size_t)sprintf(header, 
+		len = (size_t)sprintf(header,
 						"GET %s HTTP/1.0\r\n"
 						"Host: %s\r\n"
 						"User-Agent: pilight\r\n"
@@ -151,13 +151,13 @@ char *http_process_request(char *url, int method, char **type, int *code, int *s
 			*code = -1;
 			goto exit;
 		}
-		
+
 		if((ssl_init(&ssl)) != 0) {
 			logprintf(LOG_ERR, "ssl_init failed");
 			*code = -1;
 			goto exit;
 		}
-		
+
 		ssl_set_endpoint(&ssl, SSL_IS_CLIENT);
 		ssl_set_rng(&ssl, ctr_drbg_random, &ctr_drbg);
 		ssl_set_bio(&ssl, net_recv, &sockfd, net_send, &sockfd);
@@ -177,14 +177,14 @@ char *http_process_request(char *url, int method, char **type, int *code, int *s
 					logprintf(LOG_ERR, "ssl_write timed out");
 				} else {
 					logprintf(LOG_ERR, "ssl_write failed");
-				}	
+				}
 				*code = -1;
 				goto exit;
 			}
-		}		
+		}
 	} else {
 		if((bytes = send(sockfd, header, len, 0)) <= 0) {
-			logprintf(LOG_ERR, "sending header to http server failed");			
+			logprintf(LOG_ERR, "sending header to http server failed");
 			*code = -1;
 			goto exit;
 		}
@@ -234,7 +234,7 @@ char *http_process_request(char *url, int method, char **type, int *code, int *s
 				has_type = 1;
 			}
 			pch = strtok(NULL, "\n\r");
-		}		
+		}
 		memset(recvBuff, '\0', sizeof(recvBuff));
 	}
 
@@ -251,18 +251,18 @@ char *http_process_request(char *url, int method, char **type, int *code, int *s
 		}
 	}
 
-exit:	
+exit:
 	if(port == 443) {
 		ssl_free(&ssl);
 		entropy_free(&entropy);
 
-		memset(&ssl, '\0', sizeof(ssl));	
+		memset(&ssl, '\0', sizeof(ssl));
 	}
-	
+
 	if(ip) free(ip);
 	if(page) free(page);
 	if(host) free(host);
-	close(sockfd);	
+	close(sockfd);
 
 	if(*size > 0) {
 		content[*size] = '\0';

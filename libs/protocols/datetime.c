@@ -91,9 +91,9 @@ static time_t getntptime(char *ntpserver) {
 	memset(&servaddr, '\0', sizeof(struct sockaddr_in));
 
 	if((ip = host2ip(ntpserver)) == NULL) {
-		goto close;		
+		goto close;
 	}
-	
+
 	if((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) == -1) {
 		logprintf(LOG_DEBUG, "error in socket");
 		goto close;

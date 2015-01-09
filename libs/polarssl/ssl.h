@@ -381,7 +381,7 @@ extern "C" {
  */
 typedef int (*rsa_decrypt_func)( void *ctx, int mode, size_t *olen,
                         const unsigned char *input, unsigned char *output,
-                        size_t output_max_len ); 
+                        size_t output_max_len );
 typedef int (*rsa_sign_func)( void *ctx,
                      int (*f_rng)(void *, unsigned char *, size_t), void *p_rng,
                      int mode, md_type_t md_alg, unsigned int hashlen,
@@ -1381,7 +1381,7 @@ void ssl_set_renegotiation( ssl_context *ssl, int renegotiation );
 /**
  * \brief          Prevent or allow legacy renegotiation.
  *                 (Default: SSL_LEGACY_NO_RENEGOTIATION)
- *                 
+ *
  *                 SSL_LEGACY_NO_RENEGOTIATION allows connections to
  *                 be established even if the peer does not support
  *                 secure renegotiation, but does not allow renegotiation

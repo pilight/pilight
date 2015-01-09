@@ -1629,7 +1629,7 @@ static int ssl_decrypt_buf( ssl_context *ssl )
              * Process MAC and always update for padlen afterwards to make
              * total time independent of padlen
              *
-             * extra_run compensates MAC check for padlen 
+             * extra_run compensates MAC check for padlen
              *
              * Known timing attacks:
              *  - Lucky Thirteen (http://www.isg.rhul.ac.uk/tls/TLStiming.pdf)

@@ -1007,7 +1007,7 @@ static int ssl_write_certificate_request( ssl_context *ssl )
      *     4  .   4   cert type count
      *     5  .. m-1  cert types
      *     m  .. m+1  sig alg length (TLS 1.2 only)
-     *    m+1 .. n-1  SignatureAndHashAlgorithms (TLS 1.2 only) 
+     *    m+1 .. n-1  SignatureAndHashAlgorithms (TLS 1.2 only)
      *     n  .. n+1  length of all DNs
      *    n+2 .. n+3  length of DN 1
      *    n+4 .. ...  Distinguished Name #1

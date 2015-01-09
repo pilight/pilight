@@ -173,7 +173,7 @@ static int settings_parse(JsonNode *root) {
 			if(jsettings->tag != JSON_NUMBER) {
 				logprintf(LOG_ERR, "config setting \"%s\" must contain a number larger than 0", jsettings->key);
 				have_error = 1;
-				goto clear;				
+				goto clear;
 			} else if((int)jsettings->number_ == 0) {
 				logprintf(LOG_ERR, "config setting \"%s\" must contain a number larger than 0", jsettings->key);
 				have_error = 1;
@@ -186,7 +186,7 @@ static int settings_parse(JsonNode *root) {
 #endif
 				settings_add_number(jsettings->key, (int)jsettings->number_);
 			}
-#ifdef FIRMWARE_UPDATER			
+#ifdef FIRMWARE_UPDATER
 		} else if(strcmp(jsettings->key, "firmware-gpio-reset") == 0
 			|| strcmp(jsettings->key, "firmware-gpio-sck") == 0
 			|| strcmp(jsettings->key, "firmware-gpio-mosi") == 0
@@ -210,7 +210,7 @@ static int settings_parse(JsonNode *root) {
 			if(jsettings->tag != JSON_NUMBER) {
 				logprintf(LOG_ERR, "config setting \"%s\" must be either 0 or 1", jsettings->key);
 				have_error = 1;
-				goto clear;				
+				goto clear;
 			} else if(jsettings->number_ < 0 || jsettings->number_ > 1) {
 				logprintf(LOG_ERR, "config setting \"%s\" must be either 0 or 1", jsettings->key);
 				have_error = 1;
@@ -222,7 +222,7 @@ static int settings_parse(JsonNode *root) {
 			if(jsettings->tag != JSON_NUMBER) {
 				logprintf(LOG_ERR, "config setting \"%s\" must be either 0 or 1", jsettings->key);
 				have_error = 1;
-				goto clear;				
+				goto clear;
 			} else if(jsettings->number_ < 0 || jsettings->number_ > 1) {
 				logprintf(LOG_ERR, "config setting \"%s\" must be either 0 or 1", jsettings->key);
 				have_error = 1;
@@ -234,7 +234,7 @@ static int settings_parse(JsonNode *root) {
 			if(jsettings->tag != JSON_NUMBER) {
 				logprintf(LOG_ERR, "config setting \"%s\" must contain a number from 0 till 5", jsettings->key);
 				have_error = 1;
-				goto clear;				
+				goto clear;
 			} else if((int)jsettings->number_ < 0 || (int)jsettings->number_ > 5) {
 				logprintf(LOG_ERR, "config setting \"%s\" must contain a number from 0 till 5", jsettings->key);
 				have_error = 1;
@@ -246,7 +246,7 @@ static int settings_parse(JsonNode *root) {
 			if(jsettings->tag != JSON_STRING) {
 				logprintf(LOG_ERR, "config setting \"%s\" must contain an existing path", jsettings->key);
 				have_error = 1;
-				goto clear;				
+				goto clear;
 			} else if(!jsettings->string_) {
 				logprintf(LOG_ERR, "config setting \"%s\" must contain an existing file path", jsettings->key);
 				have_error = 1;
@@ -264,7 +264,7 @@ static int settings_parse(JsonNode *root) {
 			if(jsettings->tag != JSON_STRING) {
 				logprintf(LOG_ERR, "config setting \"%s\" must contain a valid ip address", jsettings->key);
 				have_error = 1;
-				goto clear;				
+				goto clear;
 			} else if(!jsettings->string_) {
 				logprintf(LOG_ERR, "config setting \"%s\" must contain a valid ip addresses", jsettings->key);
 				have_error = 1;
@@ -300,7 +300,7 @@ static int settings_parse(JsonNode *root) {
 			if(jsettings->tag != JSON_NUMBER) {
 				logprintf(LOG_ERR, "config setting \"%s\" must contain a number larget than 0", jsettings->key);
 				have_error = 1;
-				goto clear;				
+				goto clear;
 			} else if(jsettings->number_ < 0) {
 				logprintf(LOG_ERR, "config setting \"%s\" must contain a number larger than 0", jsettings->key);
 				have_error = 1;
@@ -313,7 +313,7 @@ static int settings_parse(JsonNode *root) {
 			if(jsettings->tag != JSON_STRING) {
 				logprintf(LOG_ERR, "config setting \"%s\" must contain a valid path", jsettings->key);
 				have_error = 1;
-				goto clear;				
+				goto clear;
 			} else if(!jsettings->string_ || path_exists(jsettings->string_) != 0) {
 				logprintf(LOG_ERR, "config setting \"%s\" must contain a valid path", jsettings->key);
 				have_error = 1;
@@ -331,7 +331,7 @@ static int settings_parse(JsonNode *root) {
 			if(jsettings->tag != JSON_NUMBER) {
 				logprintf(LOG_ERR, "config setting \"%s\" must be either 0 or 1", jsettings->key);
 				have_error = 1;
-				goto clear;				
+				goto clear;
 			} else if(jsettings->number_ < 0 || jsettings->number_ > 1) {
 				logprintf(LOG_ERR, "config setting \"%s\" must be either 0 or 1", jsettings->key);
 				have_error = 1;
@@ -344,7 +344,7 @@ static int settings_parse(JsonNode *root) {
 			if(jsettings->tag != JSON_NUMBER) {
 				logprintf(LOG_ERR, "config setting \"%s\" must be either 0 or 1", jsettings->key);
 				have_error = 1;
-				goto clear;				
+				goto clear;
 			} else if(jsettings->number_ < 0 || jsettings->number_ > 1) {
 				logprintf(LOG_ERR, "config setting \"%s\" must be either 0 or 1", jsettings->key);
 				have_error = 1;
@@ -356,7 +356,7 @@ static int settings_parse(JsonNode *root) {
 			if(jsettings->tag != JSON_STRING) {
 				logprintf(LOG_ERR, "config setting \"%s\" must contain a valid system user", jsettings->key);
 				have_error = 1;
-				goto clear;				
+				goto clear;
 			} else if(jsettings->string_ || strlen(jsettings->string_) > 0) {
 				if(name2uid(jsettings->string_) == -1) {
 					logprintf(LOG_ERR, "config setting \"%s\" must contain a valid system user", jsettings->key);
@@ -396,7 +396,7 @@ static int settings_parse(JsonNode *root) {
 			if(jsettings->tag != JSON_STRING) {
 				logprintf(LOG_ERR, "config setting \"%s\" must be a valid template", jsettings->key);
 				have_error = 1;
-				goto clear;				
+				goto clear;
 			} else if(!jsettings->string_) {
 				logprintf(LOG_ERR, "config setting \"%s\" must be a valid template", jsettings->key);
 				have_error = 1;
@@ -418,7 +418,7 @@ static int settings_parse(JsonNode *root) {
 			if(jsettings->tag != JSON_STRING) {
 				logprintf(LOG_ERR, "config setting \"%s\" must contain a valid path", jsettings->key);
 				have_error = 1;
-				goto clear;				
+				goto clear;
 			} else if(!jsettings->string_ || path_exists(jsettings->string_) != 0) {
 				logprintf(LOG_ERR, "config setting \"%s\" must contain a valid path", jsettings->key);
 				have_error = 1;

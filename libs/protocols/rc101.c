@@ -140,7 +140,7 @@ static int rc101CreateCode(JsonNode *code) {
 	if(json_find_number(code, "unit", &itmp) == 0)
 		unit = (int)round(itmp);
 	if(json_find_number(code, "all", &itmp) == 0)
-		all = (int)round(itmp);			
+		all = (int)round(itmp);
 	if(json_find_number(code, "off", &itmp) == 0)
 		state=0;
 	else if(json_find_number(code, "on", &itmp) == 0)

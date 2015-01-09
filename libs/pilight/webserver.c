@@ -841,7 +841,7 @@ void *webserver_broadcast(void *param) {
 	int i = 0;
 	pthread_mutex_lock(&webqueue_lock);
 	struct mg_connection *c = NULL;
-	
+
 	while(webserver_loop) {
 		if(webqueue_number > 0) {
 			pthread_mutex_lock(&webqueue_lock);

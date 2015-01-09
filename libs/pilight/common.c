@@ -293,11 +293,11 @@ static char to_hex(char code) {
 char *urlencode(char *str) {
 	char *pstr = str, *buf = malloc(strlen(str) * 3 + 1), *pbuf = buf;
 	while(*pstr) {
-		if(isalnum(*pstr) || *pstr == '-' || *pstr == '_' || *pstr == '.' || *pstr == '~') 
+		if(isalnum(*pstr) || *pstr == '-' || *pstr == '_' || *pstr == '.' || *pstr == '~')
 			*pbuf++ = *pstr;
-		else if(*pstr == ' ') 
+		else if(*pstr == ' ')
 			*pbuf++ = '+';
-		else 
+		else
 			*pbuf++ = '%', *pbuf++ = to_hex(*pstr >> 4), *pbuf++ = to_hex(*pstr & 15);
 		pstr++;
 	}
