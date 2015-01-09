@@ -168,6 +168,13 @@ static int physToGpioR3[64] = {
 	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, // ... 63
 };
 
+int bananapiValidGPIO(int pin) {
+	if(pinToGpio[pin] != -1) {
+		return 0;
+	}
+	return 1;
+}
+
 static uint32_t readl(uint32_t addr) {
 	uint32_t val = 0;
 	uint32_t mmap_base = (addr & ~MAP_MASK);
@@ -620,13 +627,6 @@ static int bananapiI2CSetup(int devId) {
 	return fd;
 }
 #endif
-
-int bananapiValidGPIO(int pin) {
-	if(pinToGpio[pin] != -1) {
-		return 0;
-	}
-	return 1;
-}
 
 void bananapiInit(void) {
 

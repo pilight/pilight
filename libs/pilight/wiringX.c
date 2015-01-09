@@ -28,6 +28,7 @@
 #include <sys/ioctl.h>
 #include <sys/time.h>
 #include <sys/wait.h>
+#include <time.h>
 
 #include "log.h"
 
@@ -45,8 +46,8 @@ static void delayMicrosecondsHard(unsigned int howLong) {
 	struct timeval tNow, tLong, tEnd ;
 
 	gettimeofday(&tNow, NULL);
-	tLong.tv_sec  = howLong / 1000000;
-	tLong.tv_usec = howLong % 1000000;
+	tLong.tv_sec  = (__time_t)howLong / 1000000;
+	tLong.tv_usec = (__suseconds_t)howLong % 1000000;
 	timeradd(&tNow, &tLong, &tEnd);
 
 	while(timercmp(&tNow, &tEnd, <))
@@ -55,7 +56,7 @@ static void delayMicrosecondsHard(unsigned int howLong) {
 
 void delayMicroseconds(unsigned int howLong) {
 	struct timespec sleeper;
-	unsigned int uSecs = howLong % 1000000;
+	long int uSecs = (__time_t)howLong % 1000000;
 	unsigned int wSecs = howLong / 1000000;
 
 	if(howLong == 0) {
@@ -63,7 +64,7 @@ void delayMicroseconds(unsigned int howLong) {
 	} else if(howLong  < 100) {
 		delayMicrosecondsHard(howLong);
 	} else {
-		sleeper.tv_sec  = wSecs;
+		sleeper.tv_sec  =(__time_t)wSecs;
 		sleeper.tv_nsec = (long)(uSecs * 1000L);
 		nanosleep(&sleeper, NULL);
 	}

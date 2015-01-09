@@ -72,7 +72,7 @@ char *host2ip(char *host) {
 	}
 
 	for(p = servinfo; p != NULL; p = p->ai_next) {
-		h = (struct sockaddr_in *)p->ai_addr;
+		memcpy(&h, &p->ai_addr, sizeof(struct sockaddr_in *));
 		strcpy(ip, inet_ntoa(h->sin_addr));
 	}
 

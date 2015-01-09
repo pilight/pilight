@@ -58,6 +58,14 @@ static int pinToGPIOAddr[NUM_PINS] = {
 	0x9c000 // GPIO 7 --> GPIO1_DR
 };
 
+
+int hummingboardValidGPIO(int pin) {
+	if(pin >= 0 && pin <= 7) {
+		return 0;
+	}
+	return 1;
+}
+
 static int changeOwner(char *file) {
 	uid_t uid = getuid();
 	uid_t gid = getgid();
@@ -398,13 +406,6 @@ static int hummingboardI2CSetup(int devId) {
 	return fd;
 }
 #endif
-
-int hummingboardValidGPIO(int pin) {
-	if(pin >= 0 && pin <= 7) {
-		return 0;
-	}
-	return 1;
-}
 
 void hummingboardInit(void) {
 
