@@ -46,6 +46,7 @@
 
 #include "../../pilight.h"
 #include "common.h"
+#include "settings.h"
 #include "log.h"
 #include "avr.h"
 #include "avrgpio.h"
@@ -348,10 +349,17 @@ static void firmware_init_pgm(PROGRAMMER **pgm) {
 
 	*pgm = pgm_new();
 	gpio_initpgm(*pgm);
-	(*pgm)->pinno[3] = 8;
-	(*pgm)->pinno[4] = 11;
-	(*pgm)->pinno[5] = 10;
-	(*pgm)->pinno[6] = 9;
+
+	(*pgm)->pinno[3] = FIRMWARE_GPIO_RESET;
+	(*pgm)->pinno[4] = FIRMWARE_GPIO_SCK;
+	(*pgm)->pinno[5] = FIRMWARE_GPIO_MOSI;
+	(*pgm)->pinno[6] = FIRMWARE_GPIO_MISO;
+	// (*pgm)->ispdelay = 50;
+
+	settings_find_number("firmware-gpio-reset", (int *)&(*pgm)->pinno[3]);
+	settings_find_number("firmware-gpio-sck", (int *)&(*pgm)->pinno[4]);
+	settings_find_number("firmware-gpio-mosi", (int *)&(*pgm)->pinno[5]);
+	settings_find_number("firmware-gpio-miso", (int *)&(*pgm)->pinno[6]);
 
 	if((*pgm)->setup) {
 		(*pgm)->setup(*pgm);

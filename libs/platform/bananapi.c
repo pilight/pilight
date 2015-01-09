@@ -206,6 +206,11 @@ static int bananapiISR(int pin, int mode) {
 	char path[35], c, line[120];
 	FILE *f = NULL;
 
+	if(bananapiValidGPIO(pin) != 0) {
+		logprintf(LOG_ERR, "bananapi->isr: Invalid pin number %d", pin);
+		exit(0);
+	}
+
 	pinModes[pin] = SYS;
 
 	if(mode == INT_EDGE_FALLING) {
@@ -312,6 +317,11 @@ static int bananapiWaitForInterrupt(int pin, int ms) {
 		return -1;
 	}
 
+	if(bananapiValidGPIO(pin) != 0) {
+		logprintf(LOG_ERR, "bananapi->waitForInterrupt: Invalid pin number %d", pin);
+		exit(0);
+	}
+
 	if(sysFds[pin] == -1) {
 		logprintf(LOG_ERR, "bananapi->waitForInterrupt: GPIO %d not set as interrupt", pin);
 		return -1;
@@ -399,6 +409,11 @@ static int bananapiDigitalRead(int pin) {
 	uint32_t regval = 0, phyaddr = 0;
 	int bank = 0, i = 0;
 
+	if(bananapiValidGPIO(pin) != 0) {
+		logprintf(LOG_ERR, "bananapi->digitalRead: Invalid pin number %d", pin);
+		exit(0);
+	}
+
 	if((pin & PI_GPIO_MASK) == 0) {
 		if(wiringBPMode == WPI_MODE_PINS)
 			pin = pinToGpioR3[pin];
@@ -416,7 +431,7 @@ static int bananapiDigitalRead(int pin) {
 
 		if(BP_PIN_MASK[bank][i] != -1) {
 			if(pinModes[pin] != INPUT && pinModes[pin] != SYS) {
-				logprintf(LOG_ERR, "bananapi->digitalWrite: Trying to write to pin %d, but it's not configured as input", pin);
+				logprintf(LOG_ERR, "bananapi->digitalRead: Trying to write to pin %d, but it's not configured as input", pin);
 				return -1;
 			}
 
@@ -432,6 +447,11 @@ static int bananapiDigitalRead(int pin) {
 static int bananapiDigitalWrite(int pin, int value) {
 	uint32_t regval = 0, phyaddr = 0;
 	int bank = 0, i = 0;
+
+	if(bananapiValidGPIO(pin) != 0) {
+		logprintf(LOG_ERR, "bananapi->digitalWrite: Invalid pin number %d", pin);
+		exit(0);
+	}
 
 	if((pin & PI_GPIO_MASK) == 0) {
 		if(wiringBPMode == WPI_MODE_PINS)
@@ -472,6 +492,11 @@ static int bananapiDigitalWrite(int pin, int value) {
 static int bananapiPinMode(int pin, int mode) {
 	uint32_t regval = 0, phyaddr = 0;
 	int bank = 0, i = 0, offset = 0;
+
+	if(bananapiValidGPIO(pin) != 0) {
+		logprintf(LOG_ERR, "bananapi->pinMode: Invalid pin number %d", pin);
+		exit(0);
+	}
 
 	if((pin & PI_GPIO_MASK) == 0) {
 

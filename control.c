@@ -166,6 +166,10 @@ int main(int argc, char **argv) {
 	protocol_init();
 	config_init();
 
+	if(config_read() != EXIT_SUCCESS) {
+		goto close;
+	}
+
 	socket_write(sockfd, "{\"action\":\"identify\"}");
 	if(socket_read(sockfd, &recvBuff) != 0
 	   || strcmp(recvBuff, "{\"status\":\"success\"}") != 0) {

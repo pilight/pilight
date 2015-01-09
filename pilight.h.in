@@ -68,6 +68,10 @@
 
 #ifdef FIRMWARE_UPDATER
 	#define FIRMWARE_PATH				"/etc/pilight/"
+	#define FIRMWARE_GPIO_RESET	10
+	#define FIRMWARE_GPIO_SCK		14
+	#define FIRMWARE_GPIO_MOSI	12
+	#define FIRMWARE_GPIO_MISO	13
 #endif
 
 #include "devices.h"

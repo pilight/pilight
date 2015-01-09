@@ -96,6 +96,11 @@ static int hummingboardPinMode(int pin, int direction) {
 		logprintf(LOG_ERR, "hummingboard->pinMode: Please run wiringXSetup before running pinMode");
 		exit(0);
 	}
+	if(hummingboardValidGPIO(pin) != 0) {
+		logprintf(LOG_ERR, "hummingboard->pinMode: Invalid pin number %d (0 >= pin <= 7)", pin);
+		exit(0);
+	}
+
 	*((unsigned long *)(gpio + GPIO_MUX_REG + pinToMuxAddr[pin] )) = FUNC_GPIO;
 	*((unsigned long *)(gpio + GPIO_MUX_CTRL + pinToMuxAddr[pin] )) = 0xF;
 
@@ -146,6 +151,10 @@ static int hummingboardDigitalWrite(int pin, int value) {
 		logprintf(LOG_ERR, "hummingboard->digitalWrite: Trying to write to pin %d, but it's not configured as output", pin);
 		return -1;
 	}
+	if(hummingboardValidGPIO(pin) != 0) {
+		logprintf(LOG_ERR, "hummingboard->digitalWrite: Invalid pin number %d (0 >= pin <= 7)", pin);
+		exit(0);
+	}
 
 	if(value) {
 		*((unsigned long *)(gpio + pinToGPIOAddr[pin])) = *((unsigned long *)(gpio + pinToGPIOAddr[pin])) | (1 << pinToBin[pin]);
@@ -161,6 +170,10 @@ static int hummingboardDigitalRead(int pin) {
 		logprintf(LOG_ERR, "hummingboard->digitalRead: Trying to write to pin %d, but it's not configured as input", pin);
 		return -1;
 	}
+	if(hummingboardValidGPIO(pin) != 0) {
+		logprintf(LOG_ERR, "hummingboard->digitalRead: Invalid pin number %d (0 >= pin <= 7)", pin);
+		exit(0);
+	}
 
 	if((*((int *)(gpio + pinToGPIOAddr[pin] + 8)) & (1 << pinToBin[pin])) != 0) {
 		return 1;
@@ -175,6 +188,11 @@ static int hummingboardISR(int pin, int mode) {
 	char path[35], c, line[120];
 	pinModes[pin] = SYS;
 	FILE *f = NULL;
+
+	if(hummingboardValidGPIO(pin) != 0) {
+		logprintf(LOG_ERR, "hummingboard->isr: Invalid pin number %d (0 >= pin <= 7)", pin);
+		exit(0);
+	}
 
 	if(mode == INT_EDGE_FALLING) {
 		sMode = "falling" ;
@@ -285,6 +303,11 @@ static int hummingboardWaitForInterrupt(int pin, int ms) {
 		return -1;
 	}
 
+	if(hummingboardValidGPIO(pin) != 0) {
+		logprintf(LOG_ERR, "hummingboard->waitForInterrupt: Invalid pin number %d (0 >= pin <= 7)", pin);
+		exit(0);
+	}
+
 	polls.fd = sysFds[pin];
 	polls.events = POLLPRI;
 
@@ -377,7 +400,7 @@ static int hummingboardI2CSetup(int devId) {
 #endif
 
 int hummingboardValidGPIO(int pin) {
-	if(pin >= 0 && pin <= 8) {
+	if(pin >= 0 && pin <= 7) {
 		return 0;
 	}
 	return 1;

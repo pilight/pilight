@@ -41,9 +41,11 @@ int main(int argc, char **argv) {
 	log_level_set(LOG_DEBUG);
 
 	struct options_t *options = NULL;
-
+	char *configtmp = malloc(strlen(CONFIG_FILE)+1);
 	char *args = NULL;
 	char fwfile[4096] = {'\0'};
+
+	strcpy(configtmp, CONFIG_FILE);
 
 	progname = malloc(15);
 	if(!progname) {
@@ -54,6 +56,7 @@ int main(int argc, char **argv) {
 
 	options_add(&options, 'H', "help", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
 	options_add(&options, 'V', "version", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
+	options_add(&options, 'C', "config", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, NULL);
 	options_add(&options, 'f', "file", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, NULL);
 
 	while (1) {
@@ -68,6 +71,7 @@ int main(int argc, char **argv) {
 				printf("Usage: %s [options]\n", progname);
 				printf("\t -H --help\t\tdisplay usage summary\n");
 				printf("\t -V --version\t\tdisplay version\n");
+				printf("\t -C --config\t\t\tconfig file\n");
 				printf("\t -f --file=firmware\tfirmware file\n");
 				goto close;
 			break;
@@ -75,6 +79,10 @@ int main(int argc, char **argv) {
 				printf("%s %s\n", progname, VERSION);
 				goto close;
 			break;
+			case 'C':
+				configtmp = realloc(configtmp, strlen(args)+1);
+				strcpy(configtmp, args);
+			break;			
 			case 'f':
 				if(access(args, F_OK) != -1) {
 					strcpy(fwfile, args);
@@ -90,8 +98,20 @@ int main(int argc, char **argv) {
 		}
 	}
 	options_delete(options);
-
+	
 #ifdef FIRMWARE_UPDATER
+	if(config_set_file(configtmp) == EXIT_FAILURE) {
+		return EXIT_FAILURE;
+	}
+
+	protocol_init();
+	config_init();
+	if(config_read() != EXIT_SUCCESS) {
+		sfree((void *)&configtmp);
+		goto close;
+	}
+	sfree((void *)&configtmp);
+
 	if(strlen(fwfile) == 0) {
 		printf("Usage: %s -f pilight_firmware_tX5_vX.hex\n", progname);
 		goto close;

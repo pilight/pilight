@@ -20,12 +20,13 @@
 #define _DEVICES_H_
 
 #include <pthread.h>
-#include "protocol.h"
 #include "threads.h"
 #include "config.h"
 
 typedef struct devices_settings_t devices_settings_t;
 typedef struct devices_values_t devices_values_t;
+/* Defined in protocol.h included below */
+typedef struct protocols_t protocols_t;
 
 /*
 |------------------|
@@ -81,6 +82,8 @@ struct devices_t {
 	struct threadqueue_t **threads;
 	struct devices_t *next;
 };
+
+#include "protocol.h"
 
 struct config_t *config_devices;
 

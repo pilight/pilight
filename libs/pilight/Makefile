@@ -28,9 +28,9 @@ ifneq (, $(findstring amd64, $(SYS)))
 endif
 CFLAGS = -ffast-math -rdynamic -funwind-tables $(OSFLAGS) -Wfloat-equal -Wshadow -Wpointer-arith -Wcast-align -Wformat-nonliteral -Wstrict-overflow=5 -Wwrite-strings -Waggregate-return -Wcast-qual -Wswitch-default -Wswitch-enum -Wformat=2 -g -Wall -isystem. -isystem.. -I/usr/local/include/ -I../avrdude/ -I../platform/ -I../config/ -I../actions/ -lunwind -DHASH=\"$(GIT_HASH)\"
 SRC = $(wildcard *.c)
-OBJS = $(filter-out wiringX.o mongoose.o http.o json.o firmware.o, $(SRC:.c=.o))
+OBJS = $(filter-out wiringX.o mongoose.o http.o json.o firmware.o ping.o, $(SRC:.c=.o))
 
-all: json.o wiringX.o http.o mongoose.o firmware.o $(OBJS) pilight.o
+all: json.o wiringX.o http.o mongoose.o firmware.o ping.o $(OBJS) pilight.o
 
 json.o: json.c json.h
 	$(GCC) -ffast-math $(OSFLAGS) -Wno-conversion -g -isystem. -isystem.. -c $(patsubst %.o,%.c,$@)
@@ -42,13 +42,16 @@ mongoose.o: mongoose.c mongoose.h
 	$(GCC) -ffast-math $(OSFLAGS) -w -g -isystem. -isystem.. -pthread -lm -c $(patsubst %.o,%.c,$@)
 
 firmware.o: firmware.c firmware.h
-	$(GCC) $(CFLAGS) -c $(patsubst %.o,%.c,$@) -isystem. -isystem.. $(INCLUDE)	
+	$(GCC) $(CFLAGS) -c -g $(patsubst %.o,%.c,$@) -isystem. -isystem.. $(INCLUDE)
+
+ping.o: ping.c ping.h
+	$(GCC) $(CFLAGS) -c -w -g $(patsubst %.o,%.c,$@) -isystem. -isystem.. $(INCLUDE)	
 	
 %.o: %.c %.h 
 	$(GCC) $(CFLAGS) -pthread -c $(patsubst %.o,%.c,$@)
 
-pilight.o: $(OBJS) json.o http.o wiringX.o mongoose.o firmware.o
-	$(CROSS_COMPILE)ld -L/usr/local/lib -r $(OBJS) -g json.o http.o wiringX.o mongoose.o firmware.o -o pilight.o
+pilight.o: $(OBJS) json.o http.o wiringX.o mongoose.o firmware.o ping.o
+	$(CROSS_COMPILE)ld -L/usr/local/lib -r $(OBJS) -g json.o http.o wiringX.o mongoose.o firmware.o ping.o -o pilight.o
 
 dist-clean: clean
 
