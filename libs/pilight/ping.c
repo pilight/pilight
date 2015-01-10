@@ -115,8 +115,8 @@ static int initpacket(char *buf) {
 	struct ip *ip = (struct ip *)buf;
 	struct icmp *icmp = (struct icmp *)(ip + 1);
 	int icmplen = 20;
-  struct in_addr fromaddr;
-  fromaddr.s_addr = 0;
+	struct in_addr fromaddr;
+	fromaddr.s_addr = 0;
 
 	ip->ip_src = fromaddr;
 	ip->ip_v = 4;

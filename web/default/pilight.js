@@ -572,8 +572,8 @@ function createXBMCElement(sTabId, sDevId, aValues) {
 function createDateTimeElement(sTabId, sDevId, aValues) {
 	aDateTime[sDevId] = new Array();
 
-	if('datetime-format' in aValues) {
-		sFormat = aValues['datetime-format'];
+	if('format' in aValues) {
+		sFormat = aValues['format'];
 	} else {
 		sFormat = sDateTimeFormat;
 	}
