@@ -19,6 +19,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <signal.h>
 #include <fcntl.h>
 #include <errno.h>
 #include <unistd.h>
@@ -39,6 +40,7 @@
 #include "settings.h"
 #include "dso.h"
 #include "hardware.h"
+#include "threads.h"
 
 static char *hwfile = NULL;
 
@@ -96,11 +98,19 @@ void hardware_set_id(hardware_t *hw, const char *id) {
 }
 
 static int hardware_gc(void) {
-	struct hardware_t *htmp;
+	struct hardware_t *htmp = hardware;
 	struct conf_hardware_t *ctmp = NULL;
 
+	while(htmp) {
+		thread_signal(htmp->id, SIGUSR2);
+		htmp = htmp->next;
+	}
+	
 	while(hardware) {
 		htmp = hardware;
+		if(htmp->deinit != NULL) {
+			htmp->deinit();
+		}
 		sfree((void *)&htmp->id);
 		options_delete(htmp->options);
 		hardware = hardware->next;

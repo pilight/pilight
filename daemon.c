@@ -201,7 +201,7 @@ static void receive_signal_handler(int sig) {
 	if(sig == SIGUSR1) {
 		pthread_mutex_lock(&receive_lock);
 		while(tmp) {
-			if(strcmp(tmp->id, sendhw) == 0) {
+			if(sendhw != NULL && strcmp(tmp->id, sendhw) == 0) {
 				tmp->wait = 1;
 				break;
 			}
@@ -212,7 +212,7 @@ static void receive_signal_handler(int sig) {
 	} else if(sig == SIGUSR2) {
 		pthread_mutex_lock(&receive_lock);
 		while(tmp) {
-			if(strcmp(tmp->id, sendhw) == 0) {
+			if(sendhw != NULL && strcmp(tmp->id, sendhw) == 0) {
 				tmp->wait = 0;
 				break;
 			}
@@ -730,7 +730,8 @@ void *send_code(void *param) {
 			while(tmp_confhw) {
 				if(protocol->hwtype == tmp_confhw->hardware->type) {
 					hw = tmp_confhw->hardware;
-					sendhw = hw->id;
+					sendhw = realloc(sendhw, strlen(hw->id)+1);
+					strcpy(sendhw, hw->id);
 					break;
 				}
 				tmp_confhw = tmp_confhw->next;
@@ -1742,15 +1743,6 @@ int main_gc(void) {
 	events_gc();
 #endif
 
-	struct conf_hardware_t *tmp_confhw = conf_hardware;
-	while(tmp_confhw) {
-		thread_signal(tmp_confhw->hardware->id, SIGUSR2);
-		if(tmp_confhw->hardware->deinit) {
-			tmp_confhw->hardware->deinit();
-		}
-		tmp_confhw = tmp_confhw->next;
-	}
-
 	pthread_mutex_unlock(&recvqueue_lock);
 	pthread_cond_signal(&recvqueue_signal);
 	usleep(1000);
@@ -1820,7 +1812,7 @@ int main_gc(void) {
 		sfree((void *)&tmp);
 	}
 	sfree((void *)&receive_wait);
-
+	sfree((void *)&sendhw);
 	sfree((void *)&progname);
 
 	return 0;

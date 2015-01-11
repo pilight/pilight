@@ -55,6 +55,8 @@ static unsigned short lirc433HwInit(void) {
 			logprintf(LOG_ERR, "could not open %s", lirc_433_socket);
 			return EXIT_FAILURE;
 		} else {
+			int flags = fcntl(lirc_433_fd, F_GETFL, 0);
+			fcntl(lirc_433_fd, F_SETFL, flags | O_NONBLOCK);
 			/* Only set the frequency once */
 			if(lirc_433_setfreq == 0) {
 				freq = FREQ433;
@@ -104,6 +106,8 @@ static int lirc433Send(int *code, int rawlen, int repeats) {
 	int code_len = (rawlen*repeats)+1;
 	size_t send_len = (size_t)(code_len * (int)sizeof(int));
 	int longCode[code_len], i = 0, x = 0;
+	size_t y = 0;
+	ssize_t n = 0;
 	memset(longCode, 0, send_len);
 
 	for(i=0;i<repeats;i++) {
@@ -113,10 +117,14 @@ static int lirc433Send(int *code, int rawlen, int repeats) {
 	}
 	longCode[code_len] = 0;
 
-	code_len *= (int)sizeof(int);
-	ssize_t n = write(lirc_433_fd, code, (size_t)code_len);
+	while(longCode[y]) {
+		y++;
+	}
+	y++;
+	y *= sizeof(int);
+	n = write(lirc_433_fd, longCode, y);
 
-	if(n == code_len) {
+	if(n == y) {
 		return EXIT_SUCCESS;
 	} else {
 		return EXIT_FAILURE;
@@ -126,8 +134,9 @@ static int lirc433Send(int *code, int rawlen, int repeats) {
 static int lirc433Receive(void) {
 	int data = 0;
 
-	if((read(lirc_433_fd, &data, sizeof(data))) == 0) {
+	if(read(lirc_433_fd, &data, sizeof(data)) <= 0) {
 		data = 1;
+		sleep(1);
 	}
 
 	return (data & 0x00FFFFFF);
