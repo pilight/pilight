@@ -50,7 +50,7 @@
 
 #define	PI_GPIO_MASK	(0xFFFFFFC0)
 
-#define NUM_PINS		17
+#define NUM_PINS		32
 
 #define	PI_MODEL_UNKNOWN	0
 #define	PI_MODEL_A		1
