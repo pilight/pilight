@@ -61,7 +61,7 @@ typedef struct platform_t {
 	int (*I2CSetup)(int devId);
 	int (*validGPIO)(int gpio);
 	int (*gc)(void);
-	struct devices_t *next;
+	struct platform_t *next;
 } platform_t;
 
 struct platform_t *platforms;

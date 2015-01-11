@@ -11,7 +11,7 @@
  * All rights reserved.
  * This information is subject to change without notice and does not
  * represent a commitment on the part of David G. Andersen.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -23,10 +23,10 @@
  * 3. The name of David G. Andersen may not
  *    be used to endorse or promote products derived from this software
  *    without specific prior written permission.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
- * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  
+ * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
  * IN NO EVENT SHALL DAVID G. ANDERSEN BE LIABLE FOR ANY DIRECT, INDIRECT,
  * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
  * NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
@@ -115,8 +115,8 @@ static int initpacket(char *buf) {
 	struct ip *ip = (struct ip *)buf;
 	struct icmp *icmp = (struct icmp *)(ip + 1);
 	int icmplen = 20;
-  struct in_addr fromaddr;
-  fromaddr.s_addr = 0;
+	struct in_addr fromaddr;
+	fromaddr.s_addr = 0;
 
 	ip->ip_src = fromaddr;
 	ip->ip_v = 4;
@@ -162,9 +162,9 @@ int ping(char *addr) {
 	tv.tv_usec = 5000;
 	if(setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, (char *)&tv, sizeof(struct timeval)) < 0) {
 		perror("SO_RCVTIMEO");
-		return -1;		
+		return -1;
 	}
-	
+
 	memset(buf, '\0', 1500);
 	icmplen = initpacket(buf);
 	dst.sin_family = AF_INET;

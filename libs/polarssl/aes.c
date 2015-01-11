@@ -336,10 +336,10 @@ static const uint32_t RCON[10] =
  * Forward S-box & tables
  */
 static unsigned char FSb[256];
-static uint32_t FT0[256]; 
-static uint32_t FT1[256]; 
-static uint32_t FT2[256]; 
-static uint32_t FT3[256]; 
+static uint32_t FT0[256];
+static uint32_t FT1[256];
+static uint32_t FT2[256];
+static uint32_t FT3[256];
 
 /*
  * Reverse S-box & tables

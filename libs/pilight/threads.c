@@ -37,6 +37,7 @@ static pthread_mutexattr_t threadqueue_attr;
 
 static int threadqueue_number = 0;
 static struct threadqueue_t *threadqueue;
+static pthread_t *pthcpy = NULL;
 
 struct threadqueue_t *threads_register(const char *id, void *(*function)(void *param), void *param, int force) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
@@ -96,6 +97,7 @@ struct threadqueue_t *threads_register(const char *id, void *(*function)(void *p
 void threads_create(pthread_t *pth, const pthread_attr_t *attr,  void *(*start_routine) (void *), void *arg) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
+	pthcpy = pth;
 	sigset_t new, old;
 	sigemptyset(&new);
 	sigaddset(&new, SIGINT);
@@ -260,6 +262,9 @@ int threads_gc(void) {
 	}
 	sfree((void *)&threadqueue);
 
+	if(pthcpy != NULL) {
+		pthread_join(*pthcpy, NULL);
+	}
 	logprintf(LOG_DEBUG, "garbage collected threads library");
 	return EXIT_SUCCESS;
 }

@@ -21,6 +21,7 @@
 
 #include <pthread.h>
 
+#include "../../pilight.h"
 #include "options.h"
 #include "threads.h"
 #include "hardware.h"
@@ -89,10 +90,10 @@ typedef struct protocol_t {
 
 	int bit;
 	int recording;
-	int raw[255];
-	int code[255];
-	int pCode[255];
-	int binary[128]; // Max. the half the raw length
+	int raw[MAXPULSESTREAMLENGTH];
+	int code[MAXPULSESTREAMLENGTH];
+	int pCode[MAXPULSESTREAMLENGTH];
+	int binary[MAXPULSESTREAMLENGTH/2]; // Max. the half the raw length
 
 	hwtype_t hwtype;
 	devtype_t devtype;

@@ -566,7 +566,7 @@ static int raspberrypiISR(int pin, int mode) {
 	if(fd < 0) {
 		if((f = fopen("/sys/class/gpio/export", "w")) == NULL) {
 			logprintf(LOG_ERR, "raspberrypi->isr: Unable to open GPIO export interface");
-			exit(0);
+			return -1;
 		}
 
 		fprintf(f, "%d\n", pinToGpio[pin]);

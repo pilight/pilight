@@ -20,7 +20,6 @@
 #define _PILIGHT_H_
 
 #include "json.h"
-#include "devices.h"
 
 /* Internals */
 
@@ -30,6 +29,7 @@
 
 #define VERSION									"5.0"
 #define PULSE_DIV								34
+#define MAXPULSESTREAMLENGTH		512
 #define EPSILON									0.00001
 
 #ifdef WEBSERVER
@@ -68,7 +68,13 @@
 
 #ifdef FIRMWARE_UPDATER
 	#define FIRMWARE_PATH				"/etc/pilight/"
+	#define FIRMWARE_GPIO_RESET	10
+	#define FIRMWARE_GPIO_SCK		14
+	#define FIRMWARE_GPIO_MOSI	12
+	#define FIRMWARE_GPIO_MISO	13
 #endif
+
+#include "devices.h"
 
 typedef enum runmode_t {
 	STANDALONE,

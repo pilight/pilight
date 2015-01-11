@@ -75,7 +75,7 @@ void event_action_init(void) {
 	void *handle = NULL;
 	void (*init)(void);
 	void (*compatibility)(struct module_t *module);
-	char path[255];
+	char path[PATH_MAX];
 	struct module_t module;
 	char pilight_version[strlen(VERSION)+1];
 	char pilight_commit[3];
@@ -107,18 +107,18 @@ void event_action_init(void) {
 		while((file = readdir(d)) != NULL) {
 			stat(file->d_name, &s);
 			/* Check if file */
-			if(S_ISREG(s.st_mode) == 0) {
+			if(S_ISREG(s.st_mode) == 1) {
 				if(strstr(file->d_name, ".so") != NULL) {
 					valid = 1;
-					memset(path, '\0', 255);
+					memset(path, '\0', PATH_MAX);
 					sprintf(path, "%s%s", action_root, file->d_name);
 
-					if((handle = dso_load(path))) {
+					if((handle = dso_load(path)) != NULL) {
 						init = dso_function(handle, "init");
 						compatibility = dso_function(handle, "compatibility");
 						if(init && compatibility) {
 							compatibility(&module);
-							if(module.name && module.version && module.reqversion) {
+							if(module.name != NULL && module.version != NULL && module.reqversion != NULL) {
 								char ver[strlen(module.reqversion)+1];
 								strcpy(ver, module.reqversion);
 
@@ -126,7 +126,7 @@ void event_action_init(void) {
 									valid = 0;
 								}
 
-								if(check1 == 0 && module.reqcommit) {
+								if(check1 == 0 && module.reqcommit != NULL) {
 									char com[strlen(module.reqcommit)+1];
 									strcpy(com, module.reqcommit);
 									sscanf(HASH, "v%*[0-9].%*[0-9]-%[0-9]-%*[0-9a-zA-Z\n\r]", pilight_commit);
@@ -135,14 +135,14 @@ void event_action_init(void) {
 										valid = 0;
 									}
 								}
-								if(valid) {
+								if(valid == 1) {
 									char tmp[strlen(module.name)+1];
 									strcpy(tmp, module.name);
 									event_action_remove(tmp);
 									init();
-									logprintf(LOG_DEBUG, "loaded event action %s", file->d_name);
+									logprintf(LOG_DEBUG, "loaded event action %s v%s", file->d_name, module.version);
 								} else {
-									if(module.reqcommit) {
+									if(module.reqcommit != NULL) {
 										logprintf(LOG_ERR, "event action %s requires at least pilight v%s (commit %s)", file->d_name, module.reqversion, module.reqcommit);
 									} else {
 										logprintf(LOG_ERR, "event action %s requires at least pilight v%s", file->d_name, module.reqversion);

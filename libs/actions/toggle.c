@@ -64,7 +64,7 @@ static int actionToggleArguments(struct JsonNode *arguments) {
 	}
 	if(nrvalues != 2) {
 		logprintf(LOG_ERR, "toggle actions are formatted as \"toggle DEVICE ... BETWEEN ... AND ...\"");
-		return -1;	
+		return -1;
 	}
 	if((jdvalues = json_find_member(jdevice, "value")) != NULL) {
 		jdchild = json_first_child(jdvalues);
@@ -150,7 +150,7 @@ static int actionToggleRun(struct JsonNode *arguments) {
 								 jstate1->tag == JSON_STRING && jstate2->tag == JSON_STRING) {
 								 state1 = jstate1->string_;
 								 state2 = jstate2->string_;
-								 
+
 								if(strcmp(state1, cstate) == 0) {
 									pilight.control(dev, state2, NULL);
 								} else if(strcmp(state2, cstate) == 0) {

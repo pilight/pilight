@@ -54,6 +54,8 @@ static unsigned int whitelist_number;
 static unsigned char validchar[64] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
 char *host2ip(char *host) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	int rv = 0;
 	struct addrinfo hints, *servinfo, *p;
 	struct sockaddr_in *h = NULL;
@@ -65,12 +67,12 @@ char *host2ip(char *host) {
 	hints.ai_socktype = SOCK_STREAM;
 
 	if((rv = getaddrinfo(host, NULL , NULL, &servinfo)) != 0) {
-		fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
+		logprintf(LOG_NOTICE, "getaddrinfo: %s, %s", host, gai_strerror(rv));
 		return NULL;
 	}
 
 	for(p = servinfo; p != NULL; p = p->ai_next) {
-		h = (struct sockaddr_in *)p->ai_addr;
+		memcpy(&h, &p->ai_addr, sizeof(struct sockaddr_in *));
 		strcpy(ip, inet_ntoa(h->sin_addr));
 	}
 
@@ -291,11 +293,11 @@ static char to_hex(char code) {
 char *urlencode(char *str) {
 	char *pstr = str, *buf = malloc(strlen(str) * 3 + 1), *pbuf = buf;
 	while(*pstr) {
-		if(isalnum(*pstr) || *pstr == '-' || *pstr == '_' || *pstr == '.' || *pstr == '~') 
+		if(isalnum(*pstr) || *pstr == '-' || *pstr == '_' || *pstr == '.' || *pstr == '~')
 			*pbuf++ = *pstr;
-		else if(*pstr == ' ') 
+		else if(*pstr == ' ')
 			*pbuf++ = '+';
-		else 
+		else
 			*pbuf++ = '%', *pbuf++ = to_hex(*pstr >> 4), *pbuf++ = to_hex(*pstr & 15);
 		pstr++;
 	}

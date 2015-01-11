@@ -640,7 +640,7 @@ int mpi_mod_int( t_uint *r, const mpi *A, t_sint b );
 /**
  * \brief          Sliding-window exponentiation: X = A^E mod N
  *
- * \param X        Destination MPI 
+ * \param X        Destination MPI
  * \param A        Left-hand MPI
  * \param E        Exponent MPI
  * \param N        Modular MPI

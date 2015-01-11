@@ -64,7 +64,7 @@ static int actionSwitchArguments(struct JsonNode *arguments) {
 	}
 	if(nrvalues != 1) {
 		logprintf(LOG_ERR, "switch actions are formatted as \"switch DEVICE ... TO ...\"");
-		return -1;	
+		return -1;
 	}
 	if((jdvalues = json_find_member(jdevice, "value")) != NULL) {
 		jdchild = json_first_child(jdvalues);
@@ -136,7 +136,7 @@ static int actionSwitchRun(struct JsonNode *arguments) {
 							jstate = json_find_element(jsvalues, 0);
 							if(jstate != NULL && jstate->tag == JSON_STRING) {
 								 state = jstate->string_;
-								 
+
 								 pilight.control(dev, state, NULL);
 							}
 						}

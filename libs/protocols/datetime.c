@@ -91,9 +91,9 @@ static time_t getntptime(char *ntpserver) {
 	memset(&servaddr, '\0', sizeof(struct sockaddr_in));
 
 	if((ip = host2ip(ntpserver)) == NULL) {
-		goto close;		
+		goto close;
 	}
-	
+
 	if((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) == -1) {
 		logprintf(LOG_DEBUG, "error in socket");
 		goto close;
@@ -166,27 +166,13 @@ static void *datetimeParse(void *param) {
 			jchild1 = json_first_child(jchild);
 			while(jchild1) {
 				if(strcmp(jchild1->key, "longitude") == 0) {
-					// if(!(slongitude = malloc(strlen(jchild1->string_)+1))) {
-						// logprintf(LOG_ERR, "out of memory");
-						// exit(EXIT_FAILURE);
-					// }
-					// strcpy(slongitude, jchild1->string_);
 					longitude = jchild1->number_;
 				}
 				if(strcmp(jchild1->key, "latitude") == 0) {
-					// if(!(slatitude = malloc(strlen(jchild1->string_)+1))) {
-						// logprintf(LOG_ERR, "out of memory");
-						// exit(EXIT_FAILURE);
-					// }
-					// strcpy(slatitude, jchild1->string_);
 					latitude = jchild1->number_;
 				}
 				jchild1 = jchild1->next;
 			}
-			// if(slongitude == NULL && slatitude == NULL) {
-				// logprintf(LOG_DEBUG, "no longitude and latitude set");
-				// goto close;
-			// }
 			jchild = jchild->next;
 		}
 	}
@@ -222,12 +208,14 @@ static void *datetimeParse(void *param) {
 		int hour = tm->tm_hour;
 		int minute = tm->tm_min;
 		int second = tm->tm_sec;
+		int weekday = tm->tm_wday+1;
 
 		json_append_member(code, "longitude", json_mknumber(longitude, 6));
 		json_append_member(code, "latitude", json_mknumber(latitude, 6));
 		json_append_member(code, "year", json_mknumber(year, 0));
 		json_append_member(code, "month", json_mknumber(month, 0));
 		json_append_member(code, "day", json_mknumber(day, 0));
+		json_append_member(code, "weekday", json_mknumber(weekday, 0));
 		json_append_member(code, "hour", json_mknumber(hour, 0));
 		json_append_member(code, "minute", json_mknumber(minute, 0));
 		json_append_member(code, "second", json_mknumber(second, 0));
@@ -309,11 +297,12 @@ void datetimeInit(void) {
 	options_add(&datetime->options, 'y', "year", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9]{3,4}$");
 	options_add(&datetime->options, 'm', "month", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9]{3,4}$");
 	options_add(&datetime->options, 'd', "day", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, NULL);
+	options_add(&datetime->options, 'w', "weekday", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, NULL);
 	options_add(&datetime->options, 'h', "hour", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, NULL);
 	options_add(&datetime->options, 'i', "minute", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, NULL);
 	options_add(&datetime->options, 's', "second", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, NULL);
 
-	options_add(&datetime->options, 0, "datetime", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
+	options_add(&datetime->options, 0, "show-datetime", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 	options_add(&datetime->options, 0, "format", OPTION_HAS_VALUE, GUI_SETTING, JSON_STRING, (void *)datetime_format, NULL);
 
 	datetime->initDev=&datetimeInitDev;
@@ -324,7 +313,7 @@ void datetimeInit(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name = "datetime";
-	module->version = "1.3";
+	module->version = "1.5";
 	module->reqversion = "5.0";
 	module->reqcommit = "84";
 }

@@ -276,11 +276,15 @@ if(${PROTOCOL_COGEX_SWITCH} MATCHES "OFF"
 	AND ${PROTOCOL_BYEBYESTANDBYE_SWITCH} MATCHES "OFF"
 	AND ${PROTOCOL_DUWI_SWITCH} MATCHES "OFF"
 	AND ${PROTOCOL_PROMAX_SWITCH} MATCHES "OFF"
-	AND ${PROTOCOL_RSL366} MATCHES "OFF"
 	AND ${PROTOCOL_EURODOMEST_SWITCH} MATCHES "OFF"
 	AND ${PROTOCOL_INTERTECHNO_OLD} MATCHES "OFF")
 	list(REMOVE_ITEM protocol_headers "${PROJECT_SOURCE_DIR}/libs/protocols/arctech_switch_old.h")
 	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/arctech_switch_old.c")
+endif()
+
+if(${PROTOCOL_RSL366} MATCHES "OFF")
+	list(REMOVE_ITEM protocol_headers "${PROJECT_SOURCE_DIR}/libs/protocols/rsl366.h")
+	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/rsl366.c")
 endif()
 
 if(${PROTOCOL_KAKU_SCREEN_OLD} MATCHES "OFF")
@@ -838,11 +842,9 @@ if(${MODULESPACK} MATCHES "OFF")
 
 	set_target_properties(pilight_shared pilight_static PROPERTIES OUTPUT_NAME pilight)
 
-	set_source_files_properties(${PROJECT_SOURCE_DIR}/libs/pilight/wiringX.c PROPERTIES COMPILE_FLAGS " -w ")
 	set_source_files_properties(${PROJECT_SOURCE_DIR}/libs/platform/hummingboard.c PROPERTIES COMPILE_FLAGS " -w ")
 	set_source_files_properties(${PROJECT_SOURCE_DIR}/libs/platform/raspberrypi.c PROPERTIES COMPILE_FLAGS " -w ")
 	set_source_files_properties(${PROJECT_SOURCE_DIR}/libs/platform/bananapi.c PROPERTIES COMPILE_FLAGS " -w ")
-	set_source_files_properties(${PROJECT_SOURCE_DIR}/libs/platform/radxa.c PROPERTIES COMPILE_FLAGS " -w ")
 	set_source_files_properties(${PROJECT_SOURCE_DIR}/libs/pilight/json.c PROPERTIES COMPILE_FLAGS " -w ")
 	set_source_files_properties(${PROJECT_SOURCE_DIR}/libs/pilight/mongoose.c PROPERTIES COMPILE_FLAGS " -w ")
 	set_source_files_properties(${PROJECT_SOURCE_DIR}/libs/pilight/ping.c PROPERTIES COMPILE_FLAGS " -w ")

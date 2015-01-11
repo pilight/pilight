@@ -64,7 +64,7 @@ static int actionDimArguments(struct JsonNode *arguments) {
 	}
 	if(nrvalues != 1) {
 		logprintf(LOG_ERR, "dim actions are formatted as \"dim DEVICE ... TO ...\"");
-		return -1;	
+		return -1;
 	}
 
 	if((jdvalues = json_find_member(jdevice, "value")) != NULL) {
@@ -83,7 +83,7 @@ static int actionDimArguments(struct JsonNode *arguments) {
 									int match1 = 0, match2 = 0;
 									while(tmp_settings) {
 										if(strcmp(tmp_settings->name, "dimlevel-maximum") == 0) {
-											if(tmp_settings->values->type == JSON_NUMBER && 
+											if(tmp_settings->values->type == JSON_NUMBER &&
 												(int)tmp_settings->values->number_ < (int)jschild->number_) {
 												logprintf(LOG_ERR, "device \"%s\" can't be set to dimlevel \"%d\"", jdchild->string_, (int)jschild->number_);
 												return -1;
@@ -91,7 +91,7 @@ static int actionDimArguments(struct JsonNode *arguments) {
 											match1 = 1;
 										}
 										if(strcmp(tmp_settings->name, "dimlevel-minimum") == 0) {
-											if(tmp_settings->values->type == JSON_NUMBER && 
+											if(tmp_settings->values->type == JSON_NUMBER &&
 												(int)tmp_settings->values->number_ > (int)jschild->number_) {
 												logprintf(LOG_ERR, "device \"%s\" can't be set to dimlevel \"%d\"", jdchild->string_, (int)jschild->number_);
 												return -1;
@@ -104,12 +104,12 @@ static int actionDimArguments(struct JsonNode *arguments) {
 										while(tmp_protocols) {
 											struct options_t *opt = tmp_protocols->listener->options;
 											while(opt) {
-												if(match2 == 0 && strcmp(opt->name, "dimlevel-maximum") == 0 && 
+												if(match2 == 0 && strcmp(opt->name, "dimlevel-maximum") == 0 &&
 													opt->vartype == JSON_NUMBER && (int)(intptr_t)opt->def < (int)jschild->number_) {
 													logprintf(LOG_ERR, "device \"%s\" can't be set to dimlevel \"%d\"", jdchild->string_, (int)jschild->number_);
 													return -1;
 												}
-												if(match1 == 0 && strcmp(opt->name, "dimlevel-minimum") == 0 && 
+												if(match1 == 0 && strcmp(opt->name, "dimlevel-minimum") == 0 &&
 													opt->vartype == JSON_NUMBER && (int)(intptr_t)opt->def > (int)jschild->number_) {
 													logprintf(LOG_ERR, "device \"%s\" can't be set to dimlevel \"%d\"", jdchild->string_, (int)jschild->number_);
 													return -1;
