@@ -61,7 +61,7 @@ int hummingboardValidGPIO(int pin) {
 	if(pin >= 0 && pin <= 7) {
 		return 0;
 	}
-	return -1;	
+	return -1;
 }
 
 static int changeOwner(char *file) {
@@ -280,9 +280,9 @@ static int hummingboardISR(int pin, int mode) {
 
 	if(match == 0) {
 		wiringXLog(LOG_ERR, "hummingboard->isr: Failed to set interrupt edge to %s", sMode);
-		return -1;	
+		return -1;
 	}
-	
+
 	sprintf(path, "/sys/class/gpio/gpio%d/value", pinsToGPIO[pin]);
 	if((sysFds[pin] = open(path, O_RDONLY)) < 0) {
 		wiringXLog(LOG_ERR, "hummingboard->isr: Unable to open GPIO value interface: %s", strerror(errno));
@@ -416,7 +416,7 @@ void hummingboardInit(void) {
 	hummingboard->identify=&identify;
 	hummingboard->isr=&hummingboardISR;
 	hummingboard->waitForInterrupt=&hummingboardWaitForInterrupt;
-#ifndef __FreeBSD__	
+#ifndef __FreeBSD__
 	hummingboard->I2CRead=&hummingboardI2CRead;
 	hummingboard->I2CReadReg8=&hummingboardI2CReadReg8;
 	hummingboard->I2CReadReg16=&hummingboardI2CReadReg16;

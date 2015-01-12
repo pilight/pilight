@@ -487,7 +487,7 @@ static int raspberrypiDigitalRead(int pin) {
 	if(raspberrypiValidGPIO(pin) != 0) {
 		wiringXLog(LOG_ERR, "raspberrypi->digitalRead: Invalid pin number %d (0 >= pin <= 31)", pin);
 		return -1;
-	}	
+	}
 
 	if((pin & PI_GPIO_MASK) == 0) {
 		if(wiringPiMode == WPI_MODE_PINS) {
@@ -516,7 +516,7 @@ static int raspberrypiDigitalWrite(int pin, int value) {
 	if(raspberrypiValidGPIO(pin) != 0) {
 		wiringXLog(LOG_ERR, "raspberrypi->digitalWrite: Invalid pin number %d (0 >= pin <= 31)", pin);
 		return -1;
-	}	
+	}
 
 	if((pin & PI_GPIO_MASK) == 0) {
 		if(wiringPiMode == WPI_MODE_PINS) {
@@ -541,7 +541,7 @@ static int raspberrypiPinMode(int pin, int mode) {
 	if(raspberrypiValidGPIO(pin) != 0) {
 		wiringXLog(LOG_ERR, "raspberrypi->pinMode: Invalid pin number %d (0 >= pin <= 31)", pin);
 		return -1;
-	}	
+	}
 
 	if((pin & PI_GPIO_MASK) == 0) {
 		pinModes[pin] = mode;
@@ -573,7 +573,7 @@ static int raspberrypiISR(int pin, int mode) {
 	if(raspberrypiValidGPIO(pin) != 0) {
 		wiringXLog(LOG_ERR, "raspberrypi->isr: Invalid pin number %d (0 >= pin <= 31)", pin);
 		return -1;
-	}	
+	}
 
 	pinModes[pin] = SYS;
 
@@ -646,7 +646,7 @@ static int raspberrypiISR(int pin, int mode) {
 
 	if(match == 0) {
 		wiringXLog(LOG_ERR, "raspberrypi->isr: Failed to set interrupt edge to %s", sMode);
-		return -1;	
+		return -1;
 	}
 
 	sprintf(path, "/sys/class/gpio/gpio%d/value", pinToGpio[pin]);
@@ -697,7 +697,7 @@ static int raspberrypiWaitForInterrupt(int pin, int ms) {
 	if(x == -1 && errno == EINTR) {
 		x = 0;
 	}
-	
+
 	(void)read(sysFds[pin], &c, 1);
 	lseek(sysFds[pin], 0, SEEK_SET);
 

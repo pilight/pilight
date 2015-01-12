@@ -105,7 +105,7 @@ static int hardware_gc(void) {
 		thread_signal(htmp->id, SIGUSR2);
 		htmp = htmp->next;
 	}
-	
+
 	while(hardware) {
 		htmp = hardware;
 		if(htmp->deinit != NULL) {

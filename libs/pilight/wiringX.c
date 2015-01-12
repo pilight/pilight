@@ -95,7 +95,7 @@ void platform_register(struct platform_t **dev, const char *name) {
 	(*dev)->I2CWriteReg16 = NULL;
 
 	if(!((*dev)->name = malloc(strlen(name)+1))) {
-		wiringXLog(LOG_ERR, "wiringX: out of memory");
+		wiringXLog(LOG_ERR, "out of memory");
 		exit(0);
 	}
 	strcpy((*dev)->name, name);
@@ -350,7 +350,7 @@ int wiringXSetup(void) {
 	if(wiringXLog == NULL) {
 		wiringXLog = _fprintf;
 	}
-#ifndef __FreeBSD__	
+#ifndef __FreeBSD__
 	if(setup == -2) {
 		hummingboardInit();
 		raspberrypiInit();
@@ -368,7 +368,7 @@ int wiringXSetup(void) {
 		}
 
 		if(match == 0) {
-			wiringXLog(LOG_ERR, "wiringX: hardware not supported");
+			wiringXLog(LOG_ERR, "hardware not supported");
 			wiringXGC();
 			return -1;
 		} else {

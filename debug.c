@@ -245,7 +245,7 @@ int main(int argc, char **argv) {
 	log_level_set(LOG_NOTICE);
 
 	wiringXLog = logprintf;
-	
+
 	struct options_t *options = NULL;
 
 	char *args = NULL;

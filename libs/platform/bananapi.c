@@ -171,7 +171,7 @@ int bananapiValidGPIO(int pin) {
 	if(pinToGpio[pin] != -1) {
 		return 0;
 	}
-	return -1;	
+	return -1;
 }
 
 static uint32_t readl(uint32_t addr) {
@@ -233,8 +233,8 @@ static int bananapiISR(int pin, int mode) {
 	if(edge[npin] == -1) {
 		wiringXLog(LOG_ERR, "bananapi->isr: Invalid GPIO: %d", pin);
 		return -1;
-	}	
-	
+	}
+
 	sprintf(path, "/sys/class/gpio/gpio%d/value", npin);
 	if((fd = open(path, O_RDWR)) < 0) {
 		if((f = fopen("/sys/class/gpio/export", "w")) == NULL) {
@@ -290,7 +290,7 @@ static int bananapiISR(int pin, int mode) {
 
 	if(match == 0) {
 		wiringXLog(LOG_ERR, "bananapi->isr: Failed to set interrupt edge to %s", sMode);
-		return -1;	
+		return -1;
 	}
 
 	sprintf(path, "/sys/class/gpio/gpio%d/value", npin);
@@ -457,7 +457,7 @@ static int bananapiDigitalWrite(int pin, int value) {
 		wiringXLog(LOG_ERR, "bananapi->digitalWrite: Invalid pin number %d", pin);
 		return -1;
 	}
-	
+
 	if((pin & PI_GPIO_MASK) == 0) {
 		if(wiringBPMode == WPI_MODE_PINS)
 			pin = pinToGpioR3[pin];
@@ -638,7 +638,7 @@ void bananapiInit(void) {
 	bananapi->identify=&piBoardRev;
 	bananapi->isr=&bananapiISR;
 	bananapi->waitForInterrupt=&bananapiWaitForInterrupt;
-#ifndef __FreeBSD__	
+#ifndef __FreeBSD__
 	bananapi->I2CRead=&bananapiI2CRead;
 	bananapi->I2CReadReg8=&bananapiI2CReadReg8;
 	bananapi->I2CReadReg16=&bananapiI2CReadReg16;

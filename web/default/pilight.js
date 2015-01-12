@@ -732,6 +732,14 @@ function parseValues(data) {
 						$('#'+dvalues+'_dimmer').val(vvalues);
 						$('#'+dvalues+'_dimmer').slider('refresh');
 					}
+				} else if(iType == 5) {
+					if(vindex == 'state' && $('#'+dvalues+'_screen').length > 0) {
+						if(vvalues == 'up') {
+							$('#'+dvalues+'_screen_up').parent().find("label").addClass("ui-btn-active");
+						} else {
+							$('#'+dvalues+'_screen_down').parent().find("label").addClass("ui-btn-active");
+						}
+					}
 				} else if(iType == 8) {
 					if(dvalues in aDateTime && $('#'+dvalues+'_text').length > 0) {
 						if(vvalues < 10) {
