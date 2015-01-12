@@ -1909,6 +1909,8 @@ int main(int argc, char **argv) {
 	/* Catch all exit signals for gc */
 	gc_catch();
 
+	wiringXLog = logprintf;
+	
 #ifdef __FreeBSD__
 	if(rep_getifaddrs(&ifaddr) == -1) {
 		logprintf(LOG_ERR, "could not get network adapter information");

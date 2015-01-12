@@ -34,7 +34,6 @@
 #include <sys/wait.h>
 #include <sys/ioctl.h>
 
-#include "log.h"
 #include "wiringX.h"
 #ifndef __FreeBSD__
 	#include "i2c-dev.h"
@@ -211,16 +210,23 @@ static int sysFds[64] = {
 	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
 };
 
+int raspberrypiValidGPIO(int pin) {
+	if(pinToGpio[pin] != -1) {
+		return 0;
+	}
+	return -1;
+}
+
 static int changeOwner(char *file) {
 	uid_t uid = getuid();
 	uid_t gid = getgid();
 
 	if(chown(file, uid, gid) != 0) {
 		if(errno == ENOENT)	{
-			logprintf(LOG_ERR, "raspberrypi->changeOwner: File not present: %s", file);
+			wiringXLog(LOG_ERR, "raspberrypi->changeOwner: File not present: %s", file);
 			return -1;
 		} else {
-			logprintf(LOG_ERR, "raspberrypi->changeOwner: Unable to change ownership of %s", file);
+			wiringXLog(LOG_ERR, "raspberrypi->changeOwner: Unable to change ownership of %s: %s", file, strerror (errno));
 			return -1;
 		}
 	}
@@ -235,7 +241,7 @@ static int piBoardRev(void) {
 	static int boardRev = -1;
 
 	if((cpuFd = fopen("/proc/cpuinfo", "r")) == NULL) {
-		logprintf(LOG_ERR, "raspberrypi->identify: Unable open /proc/cpuinfo");
+		wiringXLog(LOG_ERR, "raspberrypi->identify: Unable open /proc/cpuinfo");
 		return -1;
 	}
 
@@ -258,7 +264,7 @@ static int piBoardRev(void) {
 		}
 
 		if((cpuFd = fopen("/proc/cpuinfo", "r")) == NULL) {
-			logprintf(LOG_ERR, "raspberrypi->identify: Unable to open /proc/cpuinfo");
+			wiringXLog(LOG_ERR, "raspberrypi->identify: Unable to open /proc/cpuinfo");
 			return -1;
 		}
 
@@ -271,7 +277,7 @@ static int piBoardRev(void) {
 		fclose(cpuFd);
 
 		if(strncmp(line, "Revision", 8) != 0) {
-			logprintf(LOG_ERR, "raspberrypi->identify: No \"Revision\" line");
+			wiringXLog(LOG_ERR, "raspberrypi->identify: No \"Revision\" line");
 			return -1;
 		}
 
@@ -286,12 +292,12 @@ static int piBoardRev(void) {
 		}
 
 		if(!isdigit(*c)) {
-			logprintf(LOG_ERR, "raspberrypi->identify: No numeric revision string");
+			wiringXLog(LOG_ERR, "raspberrypi->identify: No numeric revision string");
 			return -1;
 		}
 
 		if(strlen(c) < 4) {
-			logprintf(LOG_ERR, "raspberrypi->identify: Bogus \"Revision\" line (too small)");
+			wiringXLog(LOG_ERR, "raspberrypi->identify: Bogus \"Revision\" line (too small)");
 			return -1;
 		}
 
@@ -316,7 +322,7 @@ static int piBoardId(int *model, int *rev, int *mem, int *maker, int *overVolted
 	(void)piBoardRev();	// Call this first to make sure all's OK. Don't care about the result.
 
 	if((cpuFd = fopen("/proc/cpuinfo", "r")) == NULL) {
-		logprintf(LOG_ERR, "raspberrypi->piBoardId: Unable to open /proc/cpuinfo");
+		wiringXLog(LOG_ERR, "raspberrypi->piBoardId: Unable to open /proc/cpuinfo");
 		return -1;
 	}
 
@@ -329,7 +335,7 @@ static int piBoardId(int *model, int *rev, int *mem, int *maker, int *overVolted
 	fclose(cpuFd);
 
 	if(strncmp(line, "Revision", 8) != 0) {
-		logprintf(LOG_ERR, "raspberrypi->piBoardId: No \"Revision\" line");
+		wiringXLog(LOG_ERR, "raspberrypi->piBoardId: No \"Revision\" line");
 		return -1;
 	}
 
@@ -347,7 +353,7 @@ static int piBoardId(int *model, int *rev, int *mem, int *maker, int *overVolted
 
 	// Make sure its long enough
 	if(strlen(c) < 4) {
-		logprintf(LOG_ERR, "raspberrypi->piBoardId: Bogus \"Revision\" line");
+		wiringXLog(LOG_ERR, "raspberrypi->piBoardId: Bogus \"Revision\" line");
 		return -1;
 	}
 
@@ -450,13 +456,13 @@ static int setup(void) {
 	}
 
 	if((fd = open("/dev/mem", O_RDWR | O_SYNC | O_CLOEXEC) ) < 0) {
-		logprintf(LOG_ERR, "raspberrypi->setup: Unable to open /dev/mem");
+		wiringXLog(LOG_ERR, "raspberrypi->setup: Unable to open /dev/mem: %s", strerror(errno));
 		return -1;
 	}
 
 	gpio = (uint32_t *)mmap(0, BLOCK_SIZE, PROT_READ|PROT_WRITE, MAP_SHARED, fd, GPIO_BASE);
 	if((int32_t)gpio == -1) {
-		logprintf(LOG_ERR, "raspberrypi->setup: mmap (GPIO) failed");
+		wiringXLog(LOG_ERR, "raspberrypi->setup: mmap (GPIO) failed: %s", strerror(errno));
 		return -1;
 	}
 
@@ -474,17 +480,23 @@ static int setup(void) {
 
 static int raspberrypiDigitalRead(int pin) {
 	if(pinModes[pin] != INPUT && pinModes[pin] != SYS) {
-		logprintf(LOG_ERR, "raspberrypi->digitalRead: Trying to write to pin %d, but it's not configured as input", pin);
+		wiringXLog(LOG_ERR, "raspberrypi->digitalRead: Trying to write to pin %d, but it's not configured as input", pin);
 		return -1;
 	}
 
+	if(raspberrypiValidGPIO(pin) != 0) {
+		wiringXLog(LOG_ERR, "raspberrypi->digitalRead: Invalid pin number %d (0 >= pin <= 31)", pin);
+		return -1;
+	}	
+
 	if((pin & PI_GPIO_MASK) == 0) {
-		if(wiringPiMode == WPI_MODE_PINS)
+		if(wiringPiMode == WPI_MODE_PINS) {
 			pin = pinToGpio[pin] ;
-		else if (wiringPiMode == WPI_MODE_PHYS)
+		} else if (wiringPiMode == WPI_MODE_PHYS) {
 			pin = physToGpio[pin] ;
-		else if (wiringPiMode != WPI_MODE_GPIO)
+		} else if (wiringPiMode != WPI_MODE_GPIO) {
 			return -1;
+		}
 
 		if((*(gpio + gpioToGPLEV[pin]) & (1 << (pin & 31))) != 0) {
 			return HIGH;
@@ -497,17 +509,23 @@ static int raspberrypiDigitalRead(int pin) {
 
 static int raspberrypiDigitalWrite(int pin, int value) {
 	if(pinModes[pin] != OUTPUT) {
-		logprintf(LOG_ERR, "raspberrypi->digitalWrite: Trying to write to pin %d, but it's not configured as output", pin);
+		wiringXLog(LOG_ERR, "raspberrypi->digitalWrite: Trying to write to pin %d, but it's not configured as output", pin);
 		return -1;
 	}
 
+	if(raspberrypiValidGPIO(pin) != 0) {
+		wiringXLog(LOG_ERR, "raspberrypi->digitalWrite: Invalid pin number %d (0 >= pin <= 31)", pin);
+		return -1;
+	}	
+
 	if((pin & PI_GPIO_MASK) == 0) {
-		if(wiringPiMode == WPI_MODE_PINS)
+		if(wiringPiMode == WPI_MODE_PINS) {
 			pin = pinToGpio[pin] ;
-		else if(wiringPiMode == WPI_MODE_PHYS)
+		} else if(wiringPiMode == WPI_MODE_PHYS) {
 			pin = physToGpio[pin] ;
-		else if(wiringPiMode != WPI_MODE_GPIO)
+		} else if(wiringPiMode != WPI_MODE_GPIO) {
 			return -1;
+		}
 
 		if(value == LOW)
 			*(gpio + gpioToGPCLR [pin]) = 1 << (pin & 31);
@@ -520,11 +538,16 @@ static int raspberrypiDigitalWrite(int pin, int value) {
 static int raspberrypiPinMode(int pin, int mode) {
 	int fSel, shift;
 
+	if(raspberrypiValidGPIO(pin) != 0) {
+		wiringXLog(LOG_ERR, "raspberrypi->pinMode: Invalid pin number %d (0 >= pin <= 31)", pin);
+		return -1;
+	}	
+
 	if((pin & PI_GPIO_MASK) == 0) {
 		pinModes[pin] = mode;
-		if(wiringPiMode == WPI_MODE_PINS)
+		if(wiringPiMode == WPI_MODE_PINS) {
 			pin = pinToGpio[pin];
-		else if(wiringPiMode == WPI_MODE_PHYS)
+		} else if(wiringPiMode == WPI_MODE_PHYS)
 			pin = physToGpio[pin];
 		else if(wiringPiMode != WPI_MODE_GPIO)
 			return -1;
@@ -547,6 +570,11 @@ static int raspberrypiISR(int pin, int mode) {
 	char path[35], c, line[120];
 	FILE *f = NULL;
 
+	if(raspberrypiValidGPIO(pin) != 0) {
+		wiringXLog(LOG_ERR, "raspberrypi->isr: Invalid pin number %d (0 >= pin <= 31)", pin);
+		return -1;
+	}	
+
 	pinModes[pin] = SYS;
 
 	if(mode == INT_EDGE_FALLING) {
@@ -556,7 +584,7 @@ static int raspberrypiISR(int pin, int mode) {
 	} else if(mode == INT_EDGE_BOTH) {
 		sMode = "both";
 	} else {
-		logprintf(LOG_ERR, "raspberrypi->isr: Invalid mode. Should be INT_EDGE_BOTH, INT_EDGE_RISING, or INT_EDGE_FALLING");
+		wiringXLog(LOG_ERR, "raspberrypi->isr: Invalid mode. Should be INT_EDGE_BOTH, INT_EDGE_RISING, or INT_EDGE_FALLING");
 		return -1;
 	}
 
@@ -565,7 +593,7 @@ static int raspberrypiISR(int pin, int mode) {
 
 	if(fd < 0) {
 		if((f = fopen("/sys/class/gpio/export", "w")) == NULL) {
-			logprintf(LOG_ERR, "raspberrypi->isr: Unable to open GPIO export interface");
+			wiringXLog(LOG_ERR, "raspberrypi->isr: Unable to open GPIO export interface: %s", strerror(errno));
 			return -1;
 		}
 
@@ -575,7 +603,7 @@ static int raspberrypiISR(int pin, int mode) {
 
 	sprintf(path, "/sys/class/gpio/gpio%d/direction", pinToGpio[pin]);
 	if((f = fopen(path, "w")) == NULL) {
-		logprintf(LOG_ERR, "raspberrypi->isr: Unable to open GPIO direction interface for pin %d", pin);
+		wiringXLog(LOG_ERR, "raspberrypi->isr: Unable to open GPIO direction interface for pin %d: %s", pin, strerror(errno));
 		return -1;
 	}
 
@@ -584,7 +612,7 @@ static int raspberrypiISR(int pin, int mode) {
 
 	sprintf(path, "/sys/class/gpio/gpio%d/edge", pinToGpio[pin]);
 	if((f = fopen(path, "w")) == NULL) {
-		logprintf(LOG_ERR, "raspberrypi->isr: Unable to open GPIO edge interface for pin %d", pin);
+		wiringXLog(LOG_ERR, "raspberrypi->isr: Unable to open GPIO edge interface for pin %d: %s", pin, strerror(errno));
 		return -1;
 	}
 
@@ -597,16 +625,17 @@ static int raspberrypiISR(int pin, int mode) {
 	} else if(strcasecmp (sMode, "both") == 0) {
 		fprintf(f, "both\n");
 	} else {
-		logprintf(LOG_ERR, "raspberrypi->isr: Invalid mode: %s. Should be rising, falling or both", sMode);
+		wiringXLog(LOG_ERR, "raspberrypi->isr: Invalid mode: %s. Should be rising, falling or both", sMode);
 		return -1;
 	}
 	fclose(f);
 
 	if((f = fopen(path, "r")) == NULL) {
-		fprintf(stderr, "raspberrypi->isr: Unable to open GPIO edge interface for pin %d: %s\n", pin, strerror(errno));
+		wiringXLog(LOG_ERR, "raspberrypi->isr: Unable to open GPIO edge interface for pin %d: %s", pin, strerror(errno));
 		return -1;
 	}
 
+	match = 0;
 	while(fgets(line, 120, f) != NULL) {
 		if(strstr(line, sMode) != NULL) {
 			match = 1;
@@ -616,13 +645,13 @@ static int raspberrypiISR(int pin, int mode) {
 	fclose(f);
 
 	if(match == 0) {
-		fprintf(stderr, "raspberrypi->isr: Failed to set interrupt edge to %s\n", sMode);
-		return -1;
+		wiringXLog(LOG_ERR, "raspberrypi->isr: Failed to set interrupt edge to %s", sMode);
+		return -1;	
 	}
 
 	sprintf(path, "/sys/class/gpio/gpio%d/value", pinToGpio[pin]);
 	if((sysFds[pin] = open(path, O_RDONLY)) < 0) {
-		logprintf(LOG_ERR, "raspberrypi->isr: Unable to open GPIO value interface");
+		wiringXLog(LOG_ERR, "raspberrypi->isr: Unable to open GPIO value interface: %s", strerror(errno));
 		return -1;
 	}
 	changeOwner(path);
@@ -644,13 +673,18 @@ static int raspberrypiWaitForInterrupt(int pin, int ms) {
 	uint8_t c = 0;
 	struct pollfd polls;
 
+	if(raspberrypiValidGPIO(pin) != 0) {
+		wiringXLog(LOG_ERR, "raspberrypi->waitForInterrupt: Invalid pin number %d (0 >= pin <= 31)", pin);
+		return -1;
+	}
+
 	if(pinModes[pin] != SYS) {
-		logprintf(LOG_ERR, "raspberrypi->waitForInterrupt: Trying to read from pin %d, but it's not configured as interrupt", pin);
+		wiringXLog(LOG_ERR, "raspberrypi->waitForInterrupt: Trying to read from pin %d, but it's not configured as interrupt", pin);
 		return -1;
 	}
 
 	if(sysFds[pin] == -1) {
-		logprintf(LOG_ERR, "raspberrypi->waitForInterrupt: GPIO %d not set as interrupt", pin);
+		wiringXLog(LOG_ERR, "raspberrypi->waitForInterrupt: GPIO %d not set as interrupt", pin);
 		return -1;
 	}
 
@@ -663,7 +697,7 @@ static int raspberrypiWaitForInterrupt(int pin, int ms) {
 	if(x == -1 && errno == EINTR) {
 		x = 0;
 	}
-
+	
 	(void)read(sysFds[pin], &c, 1);
 	lseek(sysFds[pin], 0, SEEK_SET);
 
@@ -682,7 +716,7 @@ static int raspberrypiGC(void) {
 			sprintf(path, "/sys/class/gpio/gpio%d/value", pinToGpio[i]);
 			if((fd = open(path, O_RDWR)) > 0) {
 				if((f = fopen("/sys/class/gpio/unexport", "w")) == NULL) {
-					logprintf(LOG_ERR, "raspberrypi->gc: Unable to open GPIO unexport interface");
+					wiringXLog(LOG_ERR, "raspberrypi->gc: Unable to open GPIO unexport interface: %s", strerror(errno));
 				}
 
 				fprintf(f, "%d\n", pinToGpio[i]);
@@ -731,7 +765,7 @@ static int raspberrypiI2CSetup(int devId) {
 	const char *device = NULL;
 
 	if((rev = piBoardRev ()) < 0) {
-		logprintf(LOG_ERR, "raspberrypi->I2CSetup: Unable to determine Pi board revision");
+		wiringXLog(LOG_ERR, "raspberrypi->I2CSetup: Unable to determine Pi board revision");
 		return -1;
 	}
 
@@ -741,25 +775,18 @@ static int raspberrypiI2CSetup(int devId) {
 		device = "/dev/i2c-1";
 
 	if((fd = open(device, O_RDWR)) < 0) {
-		logprintf(LOG_ERR, "raspberrypi->I2CSetup: Unable to open %s", device);
+		wiringXLog(LOG_ERR, "raspberrypi->I2CSetup: Unable to open %s: %s", device, strerror(errno));
 		return -1;
 	}
 
 	if(ioctl(fd, I2C_SLAVE, devId) < 0) {
-		logprintf(LOG_ERR, "raspberrypi->I2CSetup: Unable to set %s to slave mode", device);
+		wiringXLog(LOG_ERR, "raspberrypi->I2CSetup: Unable to set %s to slave mode: %s", device, strerror(errno));
 		return -1;
 	}
 
 	return fd;
 }
 #endif
-
-int raspberrypiValidGPIO(int pin) {
-	if(pinToGpio[pin] != -1) {
-		return 0;
-	}
-	return 1;
-}
 
 void raspberrypiInit(void) {
 

@@ -110,6 +110,8 @@ int main(int argc, char **argv) {
 	log_file_disable();
 	log_level_set(LOG_NOTICE);
 
+	wiringXLog = logprintf;
+	
 	if(!(progname = malloc(12))) {
 		logprintf(LOG_ERR, "out of memory");
 		exit(EXIT_FAILURE);
