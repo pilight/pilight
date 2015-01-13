@@ -39,6 +39,7 @@ static int lirc_433_initialized = 0;
 static int lirc_433_setfreq = 0;
 static int lirc_433_fd = 0;
 static char *lirc_433_socket = NULL;
+static fd_set lirc_read;
 
 typedef unsigned long __u32;
 
@@ -132,11 +133,19 @@ static int lirc433Send(int *code, int rawlen, int repeats) {
 }
 
 static int lirc433Receive(void) {
-	int data = 0;
+	int data = 0, n = 0;
+	struct timeval tv;
+	tv.tv_sec = 0;
+	tv.tv_usec = 1000;
 
-	if(read(lirc_433_fd, &data, sizeof(data)) <= 0) {
+	FD_ZERO(&lirc_read);
+	FD_SET((unsigned long)lirc_433_fd, &lirc_read);
+	n = select(lirc_433_fd+1, &lirc_read, NULL, NULL, &tv);
+
+	if(n >= 0) {
 		data = 1;
-		sleep(1);
+	} else if((read(lirc_433_fd, &data, sizeof(data))) <= 0) {
+		data = 1;
 	}
 
 	return (data & 0x00FFFFFF);
