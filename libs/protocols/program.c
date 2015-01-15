@@ -82,12 +82,12 @@ static void *programParse(void *param) {
 	json_find_string(json, "stop-command", &stopcmd);
 	json_find_string(json, "start-command", &startcmd);
 
-	struct programs_t *lnode = malloc(sizeof(struct programs_t));
+	struct programs_t *lnode = MALLOC(sizeof(struct programs_t));
 	lnode->wait = 0;
 	lnode->pth = 0;
 
 	if(args && strlen(args) > 0) {
-		if(!(lnode->arguments = malloc(strlen(args)+1))) {
+		if(!(lnode->arguments = MALLOC(strlen(args)+1))) {
 			logprintf(LOG_ERR, "out of memory");
 			exit(EXIT_FAILURE);
 		}
@@ -97,7 +97,7 @@ static void *programParse(void *param) {
 	}
 
 	if(prog) {
-		if(!(lnode->program = malloc(strlen(prog)+1))) {
+		if(!(lnode->program = MALLOC(strlen(prog)+1))) {
 			logprintf(LOG_ERR, "out of memory");
 			exit(EXIT_FAILURE);
 		}
@@ -107,7 +107,7 @@ static void *programParse(void *param) {
 	}
 
 	if(stopcmd) {
-		if(!(lnode->stop = malloc(strlen(stopcmd)+1))) {
+		if(!(lnode->stop = MALLOC(strlen(stopcmd)+1))) {
 			logprintf(LOG_ERR, "out of memory");
 			exit(EXIT_FAILURE);
 		}
@@ -117,7 +117,7 @@ static void *programParse(void *param) {
 	}
 
 	if(startcmd) {
-		if(!(lnode->start = malloc(strlen(startcmd)+1))) {
+		if(!(lnode->start = MALLOC(strlen(startcmd)+1))) {
 			logprintf(LOG_ERR, "out of memory");
 			exit(EXIT_FAILURE);
 		}
@@ -133,7 +133,7 @@ static void *programParse(void *param) {
 			jchild1 = json_first_child(jchild);
 			while(jchild1) {
 				if(strcmp(jchild1->key, "name") == 0) {
-					if(!(lnode->name = malloc(strlen(jchild1->string_)+1))) {
+					if(!(lnode->name = MALLOC(strlen(jchild1->string_)+1))) {
 						logprintf(LOG_ERR, "out of memory");
 						exit(EXIT_FAILURE);
 					}
@@ -196,7 +196,7 @@ struct threadqueue_t *programInitDev(JsonNode *jdevice) {
 	program_loop = 1;
 	char *output = json_stringify(jdevice, NULL);
 	JsonNode *json = json_decode(output);
-	sfree((void *)&output);
+	FREE(output);
 
 	struct protocol_threads_t *node = protocol_thread_init(program, json);
 	return threads_register("program", &programParse, (void *)node, 0);
@@ -325,16 +325,16 @@ static void programThreadGC(void) {
 	struct programs_t *tmp;
 	while(programs) {
 		tmp = programs;
-		if(tmp->stop) sfree((void *)&tmp->stop);
-		if(tmp->start) sfree((void *)&tmp->start);
-		if(tmp->name) sfree((void *)&tmp->name);
-		if(tmp->arguments) sfree((void *)&tmp->arguments);
-		if(tmp->program) sfree((void *)&tmp->program);
+		if(tmp->stop) FREE(tmp->stop);
+		if(tmp->start) FREE(tmp->start);
+		if(tmp->name) FREE(tmp->name);
+		if(tmp->arguments) FREE(tmp->arguments);
+		if(tmp->program) FREE(tmp->program);
 		if(tmp->pth > 0) pthread_cancel(tmp->pth);
 		programs = programs->next;
-		sfree((void *)&tmp);
+		FREE(tmp);
 	}
-	sfree((void *)&programs);
+	FREE(programs);
 }
 
 static void programPrintHelp(void) {
@@ -380,9 +380,9 @@ void programInit(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name = "program";
-	module->version = "1.2";
+	module->version = "1.3";
 	module->reqversion = "5.0";
-	module->reqcommit = "84";
+	module->reqcommit = "187";
 }
 
 void init(void) {

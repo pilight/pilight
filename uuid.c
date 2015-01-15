@@ -46,12 +46,14 @@ int main_gc(void) {
 	log_gc();
 	gc_clear();
 
-	sfree((void *)&progname);
+	FREE(progname);
+	xfree();
 
 	return EXIT_SUCCESS;
 }
 
 int main(int argc, char **argv) {
+	// memtrack();
 
 	gc_attach(main_gc);
 
@@ -68,7 +70,7 @@ int main(int argc, char **argv) {
 	char *p = NULL;
 	char *args = NULL;
 
-	progname = malloc(13);
+	progname = MALLOC(13);
 	if(!progname) {
 		logprintf(LOG_ERR, "out of memory");
 		exit(EXIT_FAILURE);
@@ -131,7 +133,7 @@ int main(int argc, char **argv) {
 				goto clear;
 			} else {
 				printf("%s\n", p);
-				sfree((void *)&p);
+				FREE(p);
 				break;
 			}
 		}

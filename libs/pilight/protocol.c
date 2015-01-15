@@ -64,29 +64,29 @@ void protocol_remove(char *name) {
 				currP->listener->gc();
 				logprintf(LOG_DEBUG, "ran garbage collector");
 			}
-			sfree((void *)&currP->listener->id);
-			sfree((void *)&currP->name);
+			FREE(currP->listener->id);
+			FREE(currP->name);
 			options_delete(currP->listener->options);
 			if(currP->listener->plslen) {
 				while(currP->listener->plslen) {
 					ttmp = currP->listener->plslen;
 					currP->listener->plslen = currP->listener->plslen->next;
-					sfree((void *)&ttmp);
+					FREE(ttmp);
 				}
 			}
-			sfree((void *)&currP->listener->plslen);
+			FREE(currP->listener->plslen);
 			if(currP->listener->devices) {
 				while(currP->listener->devices) {
 					dtmp = currP->listener->devices;
-					sfree((void *)&dtmp->id);
-					sfree((void *)&dtmp->desc);
+					FREE(dtmp->id);
+					FREE(dtmp->desc);
 					currP->listener->devices = currP->listener->devices->next;
-					sfree((void *)&dtmp);
+					FREE(dtmp);
 				}
 			}
-			sfree((void *)&currP->listener->devices);
-			sfree((void *)&currP->listener);
-			sfree((void *)&currP);
+			FREE(currP->listener->devices);
+			FREE(currP->listener);
+			FREE(currP);
 
 			break;
 		}
@@ -116,7 +116,7 @@ void protocol_init(void) {
 
 	if(settings_find_string("protocol-root", &protocol_root) != 0) {
 		/* If no protocol root was set, use the default protocol root */
-		if(!(protocol_root = malloc(strlen(PROTOCOL_ROOT)+1))) {
+		if(!(protocol_root = MALLOC(strlen(PROTOCOL_ROOT)+1))) {
 			logprintf(LOG_ERR, "out of memory");
 			exit(EXIT_FAILURE);
 		}
@@ -184,14 +184,14 @@ void protocol_init(void) {
 		closedir(d);
 	}
 	if(protocol_root_free) {
-		sfree((void *)&protocol_root);
+		FREE(protocol_root);
 	}
 }
 
 void protocol_register(protocol_t **proto) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
-	if(!(*proto = malloc(sizeof(struct protocol_t)))) {
+	if(!(*proto = MALLOC(sizeof(struct protocol_t)))) {
 		logprintf(LOG_ERR, "out of memory");
 		exit(EXIT_FAILURE);
 	}
@@ -231,13 +231,13 @@ void protocol_register(protocol_t **proto) {
 	memset(&(*proto)->pCode[0], 0, sizeof((*proto)->pCode));
 	memset(&(*proto)->binary[0], 0, sizeof((*proto)->binary));
 
-	struct protocols_t *pnode = malloc(sizeof(struct protocols_t));
+	struct protocols_t *pnode = MALLOC(sizeof(struct protocols_t));
 	if(!pnode) {
 		logprintf(LOG_ERR, "out of memory");
 		exit(EXIT_FAILURE);
 	}
 	pnode->listener = *proto;
-	if(!(pnode->name = malloc(4))) {
+	if(!(pnode->name = MALLOC(4))) {
 		logprintf(LOG_ERR, "out of memory");
 		exit(EXIT_FAILURE);
 	}
@@ -248,7 +248,7 @@ void protocol_register(protocol_t **proto) {
 struct protocol_threads_t *protocol_thread_init(protocol_t *proto, struct JsonNode *param) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
-	struct protocol_threads_t *node = malloc(sizeof(struct protocol_threads_t));
+	struct protocol_threads_t *node = MALLOC(sizeof(struct protocol_threads_t));
 	node->param = param;
 	pthread_mutexattr_init(&node->attr);
 	pthread_mutexattr_settype(&node->attr, PTHREAD_MUTEX_RECURSIVE);
@@ -307,16 +307,16 @@ void protocol_thread_free(protocol_t *proto) {
 				json_delete(proto->threads->param);
 			}
 			proto->threads = proto->threads->next;
-			sfree((void *)&tmp);
+			FREE(tmp);
 		}
-		sfree((void *)&proto->threads);
+		FREE(proto->threads);
 	}
 }
 
 void protocol_set_id(protocol_t *proto, const char *id) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
-	if(!(proto->id = malloc(strlen(id)+1))) {
+	if(!(proto->id = MALLOC(strlen(id)+1))) {
 		logprintf(LOG_ERR, "out of memory");
 		exit(EXIT_FAILURE);
 	}
@@ -326,7 +326,7 @@ void protocol_set_id(protocol_t *proto, const char *id) {
 void protocol_plslen_add(protocol_t *proto, int plslen) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
-	struct protocol_plslen_t *pnode = malloc(sizeof(struct protocol_plslen_t));
+	struct protocol_plslen_t *pnode = MALLOC(sizeof(struct protocol_plslen_t));
 	if(!pnode) {
 		logprintf(LOG_ERR, "out of memory");
 		exit(EXIT_FAILURE);
@@ -339,17 +339,17 @@ void protocol_plslen_add(protocol_t *proto, int plslen) {
 void protocol_device_add(protocol_t *proto, const char *id, const char *desc) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
-	struct protocol_devices_t *dnode = malloc(sizeof(struct protocol_devices_t));
+	struct protocol_devices_t *dnode = MALLOC(sizeof(struct protocol_devices_t));
 	if(!dnode) {
 		logprintf(LOG_ERR, "out of memory");
 		exit(EXIT_FAILURE);
 	}
-	if(!(dnode->id = malloc(strlen(id)+1))) {
+	if(!(dnode->id = MALLOC(strlen(id)+1))) {
 		logprintf(LOG_ERR, "out of memory");
 		exit(EXIT_FAILURE);
 	}
 	strcpy(dnode->id, id);
-	if(!(dnode->desc = malloc(strlen(desc)+1))) {
+	if(!(dnode->desc = MALLOC(strlen(desc)+1))) {
 		logprintf(LOG_ERR, "out of memory");
 		exit(EXIT_FAILURE);
 	}
@@ -369,7 +369,7 @@ int protocol_device_exists(protocol_t *proto, const char *id) {
 		}
 		temp = temp->next;
 	}
-	sfree((void *)&temp);
+	FREE(temp);
 	return 1;
 }
 
@@ -391,32 +391,32 @@ int protocol_gc(void) {
 			ptmp->listener->gc();
 			logprintf(LOG_DEBUG, "ran garbage collector");
 		}
-		sfree((void *)&ptmp->listener->id);
-		sfree((void *)&ptmp->name);
+		FREE(ptmp->listener->id);
+		FREE(ptmp->name);
 		options_delete(ptmp->listener->options);
 		if(ptmp->listener->plslen) {
 			while(ptmp->listener->plslen) {
 				ttmp = ptmp->listener->plslen;
 				ptmp->listener->plslen = ptmp->listener->plslen->next;
-				sfree((void *)&ttmp);
+				FREE(ttmp);
 			}
 		}
-		sfree((void *)&ptmp->listener->plslen);
+		FREE(ptmp->listener->plslen);
 		if(ptmp->listener->devices) {
 			while(ptmp->listener->devices) {
 				dtmp = ptmp->listener->devices;
-				sfree((void *)&dtmp->id);
-				sfree((void *)&dtmp->desc);
+				FREE(dtmp->id);
+				FREE(dtmp->desc);
 				ptmp->listener->devices = ptmp->listener->devices->next;
-				sfree((void *)&dtmp);
+				FREE(dtmp);
 			}
 		}
-		sfree((void *)&ptmp->listener->devices);
-		sfree((void *)&ptmp->listener);
+		FREE(ptmp->listener->devices);
+		FREE(ptmp->listener);
 		protocols = protocols->next;
-		sfree((void *)&ptmp);
+		FREE(ptmp);
 	}
-	sfree((void *)&protocols);
+	FREE(protocols);
 
 	logprintf(LOG_DEBUG, "garbage collected protocol library");
 	return EXIT_SUCCESS;

@@ -1,9 +1,9 @@
 /*
 	Copyright (c) 2014 CurlyMo <curlymoo1@gmail.com>
 
-	This program is free software: you can redistribute it and/or modify
+	This program is FREE software: you can redistribute it and/or modify
 	it under the terms of the GNU General Public License as published by
-	the Free Software Foundation, either version 3 of the License, or
+	the FREE Software Foundation, either version 3 of the License, or
 	(at your option) any later version.
 
 	This program is distributed in the hope that it will be useful,
@@ -34,6 +34,7 @@
 #include "hummingboard.h"
 #include "raspberrypi.h"
 #include "bananapi.h"
+#include "mem.h"
 
 static struct platform_t *platform = NULL;
 static int setup = -2;
@@ -79,7 +80,7 @@ void delayMicroseconds(unsigned int howLong) {
 }
 
 void platform_register(struct platform_t **dev, const char *name) {
-	*dev = malloc(sizeof(struct platform_t));
+	*dev = MALLOC(sizeof(struct platform_t));
 	(*dev)->name = NULL;
 	(*dev)->pinMode = NULL;
 	(*dev)->digitalWrite = NULL;
@@ -94,7 +95,7 @@ void platform_register(struct platform_t **dev, const char *name) {
 	(*dev)->I2CWriteReg8 = NULL;
 	(*dev)->I2CWriteReg16 = NULL;
 
-	if(!((*dev)->name = malloc(strlen(name)+1))) {
+	if(!((*dev)->name = MALLOC(strlen(name)+1))) {
 		wiringXLog(LOG_ERR, "out of memory");
 		exit(0);
 	}
@@ -112,11 +113,11 @@ int wiringXGC(void) {
 	struct platform_t *tmp = platforms;
 	while(platforms) {
 		tmp = platforms;
-		free(platforms->name);
+		FREE(platforms->name);
 		platforms = platforms->next;
-		free(tmp);
+		FREE(tmp);
 	}
-	free(platforms);
+	FREE(platforms);
 
 	wiringXLog(LOG_DEBUG, "garbage collected wiringX library");
 	return i;
@@ -350,7 +351,7 @@ int wiringXSetup(void) {
 	if(wiringXLog == NULL) {
 		wiringXLog = _fprintf;
 	}
-#ifndef __FreeBSD__
+#ifndef __FREEBSD__
 	if(setup == -2) {
 		hummingboardInit();
 		raspberrypiInit();

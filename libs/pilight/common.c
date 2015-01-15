@@ -46,6 +46,7 @@
 #include <arpa/inet.h>
 
 #include "settings.h"
+#include "mem.h"
 #include "common.h"
 #include "log.h"
 
@@ -59,7 +60,7 @@ char *host2ip(char *host) {
 	int rv = 0;
 	struct addrinfo hints, *servinfo, *p;
 	struct sockaddr_in *h = NULL;
-	char *ip = malloc(17);
+	char *ip = MALLOC(17);
 	memset(ip, '\0', 17);
 
 	memset(&hints, 0, sizeof hints);
@@ -185,14 +186,6 @@ int nrDecimals(char *s) {
 	return a;
 }
 
-void sfree(void **addr) {
-	void ** __p = addr;
-	if(*(__p) != NULL) {
-		free(*(__p));
-		*(__p) = NULL;
-	}
-}
-
 int name2uid(char const *name) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
@@ -291,7 +284,7 @@ static char to_hex(char code) {
 }
 
 char *urlencode(char *str) {
-	char *pstr = str, *buf = malloc(strlen(str) * 3 + 1), *pbuf = buf;
+	char *pstr = str, *buf = MALLOC(strlen(str) * 3 + 1), *pbuf = buf;
 	while(*pstr) {
 		if(isalnum(*pstr) || *pstr == '-' || *pstr == '_' || *pstr == '.' || *pstr == '~')
 			*pbuf++ = *pstr;
@@ -379,7 +372,7 @@ char *hostname(void) {
 	if(strlen(name) > 0) {
 		char *pch = strtok(name, ".");
 		if(pch != NULL) {
-			if(!(host = malloc(strlen(pch)+1))) {
+			if(!(host = MALLOC(strlen(pch)+1))) {
 				logprintf(LOG_ERR, "out of memory");
 				exit(EXIT_FAILURE);
 			}
@@ -417,7 +410,7 @@ char *distroname(void) {
 	}
 #endif
 	if(strlen(dist) > 0) {
-		if(!(distro = malloc(strlen(dist)+1))) {
+		if(!(distro = MALLOC(strlen(dist)+1))) {
 			logprintf(LOG_ERR, "out of memory");
 			exit(EXIT_FAILURE);
 		}
@@ -455,7 +448,7 @@ char *genuuid(char *ifname) {
 					serial[10] = '-';
 					memmove(&serial[14], &serial[13], 7);
 					serial[13] = '-';
-					upnp_id = malloc(UUID_LENGTH+1);
+					upnp_id = MALLOC(UUID_LENGTH+1);
 					strcpy(upnp_id, serial);
 					fclose(fp);
 					return upnp_id;
@@ -468,7 +461,7 @@ char *genuuid(char *ifname) {
 #if defined(SIOCGIFHWADDR)
 	int i = 0;
 	int fd = socket(PF_INET, SOCK_DGRAM, IPPROTO_IP);
-	if(!(mac = malloc(13))) {
+	if(!(mac = MALLOC(13))) {
 		logprintf(LOG_ERR, "out of memory");
 		exit(EXIT_FAILURE);
 	}
@@ -485,7 +478,7 @@ char *genuuid(char *ifname) {
 	close(fd);
 #elif defined(SIOCGIFADDR)
 	int fd = socket(PF_INET, SOCK_DGRAM, IPPROTO_IP);
-	if(!(mac = malloc(13))) {
+	if(!(mac = MALLOC(13))) {
 		logprintf(LOG_ERR, "out of memory");
 		exit(EXIT_FAILURE);
 	}
@@ -517,7 +510,7 @@ char *genuuid(char *ifname) {
 #endif
 
 	if(strlen(mac) > 0) {
-		upnp_id = malloc(UUID_LENGTH+1);
+		upnp_id = MALLOC(UUID_LENGTH+1);
 		memset(upnp_id, '\0', UUID_LENGTH+1);
 		sprintf(upnp_id,
 				"0000-%c%c-%c%c-%c%c-%c%c%c%c%c0",
@@ -525,7 +518,7 @@ char *genuuid(char *ifname) {
 				mac[3], mac[4], mac[5],
 				mac[6], mac[7], mac[9],
 				mac[10], mac[11]);
-		sfree((void *)&mac);
+		FREE(mac);
 		return upnp_id;
 	}
 	return NULL;
@@ -607,7 +600,7 @@ int rep_getifaddrs(struct ifaddrs **ifap) {
 			return -1;
 		}
 
-		curif->ifa_name = malloc(sizeof(IFNAMSIZ)+1);
+		curif->ifa_name = MALLOC(sizeof(IFNAMSIZ)+1);
 		if(curif->ifa_name == NULL) {
 			free(curif);
 			freeifaddrs(*ifap);
@@ -668,13 +661,13 @@ void rep_freeifaddrs(struct ifaddrs *ifaddr) {
 	struct ifaddrs *ifa;
 	while(ifaddr) {
 		ifa = ifaddr;
-		sfree((void *)&ifa->ifa_name);
-		sfree((void *)&ifa->ifa_addr);
-		sfree((void *)&ifa->ifa_netmask);
+		FREE(ifa->ifa_name);
+		FREE(ifa->ifa_addr);
+		FREE(ifa->ifa_netmask);
 		ifaddr = ifaddr->ifa_next;
-		sfree((void *)&ifa);
+		FREE(ifa);
 	}
-	sfree((void *)&ifaddr);
+	FREE(ifaddr);
 }
 #endif
 
@@ -704,7 +697,7 @@ int whitelist_check(char *ip) {
 		x++;
 		pch = strtok(NULL, ".");
 	}
-	sfree((void *)&pch);
+	FREE(pch);
 
 	if(!whitelist_cache) {
 		char *tmp = whitelist;
@@ -723,21 +716,21 @@ int whitelist_check(char *ip) {
 			/* Each ip address is either terminated by a comma or EOL delimiter */
 			if(*tmp == '\0' || *tmp == ',') {
 				x = 0;
-				if((whitelist_cache = realloc(whitelist_cache, (sizeof(unsigned int ***)*(whitelist_number+1)))) == NULL) {
+				if((whitelist_cache = REALLOC(whitelist_cache, (sizeof(unsigned int ***)*(whitelist_number+1)))) == NULL) {
 					logprintf(LOG_ERR, "out of memory");
 					exit(EXIT_FAILURE);
 				}
-				if((whitelist_cache[whitelist_number] = malloc(sizeof(unsigned int **)*2)) == NULL) {
+				if((whitelist_cache[whitelist_number] = MALLOC(sizeof(unsigned int **)*2)) == NULL) {
 					logprintf(LOG_ERR, "out of memory");
 					exit(EXIT_FAILURE);
 				}
 				/* Lower boundary */
-				if((whitelist_cache[whitelist_number][0] = malloc(sizeof(unsigned int *)*4)) == NULL) {
+				if((whitelist_cache[whitelist_number][0] = MALLOC(sizeof(unsigned int *)*4)) == NULL) {
 					logprintf(LOG_ERR, "out of memory");
 					exit(EXIT_FAILURE);
 				}
 				/* Upper boundary */
-				if((whitelist_cache[whitelist_number][1] = malloc(sizeof(unsigned int *)*4)) == NULL) {
+				if((whitelist_cache[whitelist_number][1] = MALLOC(sizeof(unsigned int *)*4)) == NULL) {
 					logprintf(LOG_ERR, "out of memory");
 					exit(EXIT_FAILURE);
 				}
@@ -760,7 +753,7 @@ int whitelist_check(char *ip) {
 					pch = strtok(NULL, ".");
 					i++;
 				}
-				sfree((void *)&pch);
+				FREE(pch);
 				memset(wip, '\0', 16);
 				whitelist_number++;
 			}
@@ -790,11 +783,11 @@ void whitelist_free(void) {
 	int i = 0;
 	if(whitelist_cache) {
 		for(i=0;i<whitelist_number;i++) {
-			sfree((void *)&whitelist_cache[i][0]);
-			sfree((void *)&whitelist_cache[i][1]);
-			sfree((void *)&whitelist_cache[i]);
+			FREE(whitelist_cache[i][0]);
+			FREE(whitelist_cache[i][1]);
+			FREE(whitelist_cache[i]);
 		}
-		sfree((void *)&whitelist_cache);
+		FREE(whitelist_cache);
 	}
 }
 
@@ -938,7 +931,7 @@ int str_replace(char *search, char *replace, char **str) {
 			}
 			nlen = len - (slen - rlen);
 			if(len < nlen) {
-				if(!(target = realloc(target, (size_t)nlen+1))) {
+				if(!(target = REALLOC(target, (size_t)nlen+1))) {
 					printf("out of memory\n");
 				}
 				memset(&target[len], '\0', (size_t)(nlen-len));

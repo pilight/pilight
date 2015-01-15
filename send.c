@@ -82,12 +82,13 @@ static void sort_list(void) {
 }
 
 int main(int argc, char **argv) {
+	// memtrack();
 
 	log_file_disable();
 	log_shell_enable();
 	log_level_set(LOG_NOTICE);
 
-	if(!(progname = malloc(13))) {
+	if(!(progname = MALLOC(13))) {
 		logprintf(LOG_ERR, "out of memory");
 		exit(EXIT_FAILURE);
 	}
@@ -141,7 +142,7 @@ int main(int argc, char **argv) {
 					logprintf(LOG_ERR, "options '-p' and '--protocol' require an argument");
 					exit(EXIT_FAILURE);
 				} else {
-					if(!(protobuffer = realloc(protobuffer, strlen(args)+1))) {
+					if(!(protobuffer = REALLOC(protobuffer, strlen(args)+1))) {
 						logprintf(LOG_ERR, "out of memory");
 						exit(EXIT_FAILURE);
 					}
@@ -155,7 +156,7 @@ int main(int argc, char **argv) {
 				help = 1;
 			break;
 			case 'S':
-				if(!(server = realloc(server, strlen(args)+1))) {
+				if(!(server = REALLOC(server, strlen(args)+1))) {
 					logprintf(LOG_ERR, "out of memory");
 					exit(EXIT_FAILURE);
 				}
@@ -165,7 +166,7 @@ int main(int argc, char **argv) {
 				port = (unsigned short)atoi(args);
 			break;
 			case 'U':
-				if(!(uuid = realloc(uuid, strlen(args)+1))) {
+				if(!(uuid = REALLOC(uuid, strlen(args)+1))) {
 					logprintf(LOG_ERR, "out of memory");
 					exit(EXIT_FAILURE);
 				}
@@ -258,17 +259,17 @@ int main(int argc, char **argv) {
 				if(protocol->createCode) {
 					struct protocol_devices_t *tmpdev = protocol->devices;
 					while(tmpdev) {
-						struct pname_t *node = malloc(sizeof(struct pname_t));
+						struct pname_t *node = MALLOC(sizeof(struct pname_t));
 						if(!node) {
 							logprintf(LOG_ERR, "out of memory");
 							exit(EXIT_FAILURE);
 						}
-						if(!(node->name = malloc(strlen(tmpdev->id)+1))) {
+						if(!(node->name = MALLOC(strlen(tmpdev->id)+1))) {
 							logprintf(LOG_ERR, "out of memory");
 							exit(EXIT_FAILURE);
 						}
 						strcpy(node->name, tmpdev->id);
-						if(!(node->desc = malloc(strlen(tmpdev->desc)+1))) {
+						if(!(node->desc = MALLOC(strlen(tmpdev->desc)+1))) {
 							logprintf(LOG_ERR, "out of memory");
 							exit(EXIT_FAILURE);
 						}
@@ -290,12 +291,12 @@ int main(int argc, char **argv) {
 				if(strlen(ptmp->name) < 15)
 					printf("\t");
 				printf("%s\n", ptmp->desc);
-				sfree((void *)&ptmp->name);
-				sfree((void *)&ptmp->desc);
+				FREE(ptmp->name);
+				FREE(ptmp->desc);
 				pname = pname->next;
-				sfree((void *)&ptmp);
+				FREE(ptmp);
 			}
-			sfree((void *)&pname);
+			FREE(pname);
 		}
 		goto close;
 	}
@@ -367,7 +368,7 @@ int main(int argc, char **argv) {
 		json_append_member(json, "code", code);
 		char *output = json_stringify(json, NULL);
 		socket_write(sockfd, output);
-		sfree((void *)&output);
+		FREE(output);
 		json_delete(json);
 
 		if(socket_read(sockfd, &recvBuff) != 0
@@ -380,23 +381,28 @@ close:
 	if(sockfd) {
 		socket_close(sockfd);
 	}
+	if(recvBuff) {
+		FREE(recvBuff);
+	}
 	if(server) {
-		sfree((void *)&server);
+		FREE(server);
 	}
 	if(protobuffer) {
-		sfree((void *)&protobuffer);
+		FREE(protobuffer);
 	}
 	if(uuid) {
-		sfree((void *)&uuid);
+		FREE(uuid);
 	}
 	log_shell_disable();
 	protocol_gc();
 	options_delete(options);
 	options_gc();
 	config_gc();
+	threads_gc();
 	dso_gc();
 	log_gc();
-	sfree((void *)&progname);
+	FREE(progname);
+	xfree();
 
 	return EXIT_SUCCESS;
 }

@@ -32,6 +32,7 @@
 
 #include "proc.h"
 #include "log.h"
+#include "mem.h"
 
 /* RAM usage */
 static unsigned long totalram = 0;

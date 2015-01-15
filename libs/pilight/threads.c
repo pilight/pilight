@@ -27,6 +27,7 @@
 #include "threads.h"
 #include "common.h"
 #include "log.h"
+#include "mem.h"
 
 static unsigned short thread_loop = 1;
 static unsigned short thread_running = 0;
@@ -44,7 +45,7 @@ struct threadqueue_t *threads_register(const char *id, void *(*function)(void *p
 
 	pthread_mutex_lock(&threadqueue_lock);
 
-	struct threadqueue_t *tnode = malloc(sizeof(struct threadqueue_t));
+	struct threadqueue_t *tnode = MALLOC(sizeof(struct threadqueue_t));
 	if(!tnode) {
 		logprintf(LOG_ERR, "out of memory");
 		exit(EXIT_FAILURE);
@@ -57,7 +58,7 @@ struct threadqueue_t *threads_register(const char *id, void *(*function)(void *p
 	tnode->function = function;
 	tnode->running = 0;
 	tnode->force = force;
-	tnode->id = malloc(strlen(id)+1);
+	tnode->id = MALLOC(strlen(id)+1);
 	if(!tnode->id) {
 		logprintf(LOG_ERR, "out of memory");
 		exit(EXIT_FAILURE);
@@ -193,8 +194,8 @@ void thread_stop(char *id) {
 				}
 			}
 
-			sfree((void *)&currP->id);
-			sfree((void *)&currP);
+			FREE(currP->id);
+			FREE(currP);
 
 			break;
 		}
@@ -256,11 +257,11 @@ int threads_gc(void) {
 	struct threadqueue_t *ttmp = NULL;
 	while(threadqueue) {
 		ttmp = threadqueue;
-		sfree((void *)&ttmp->id);
+		FREE(ttmp->id);
 		threadqueue = threadqueue->next;
-		sfree((void *)&ttmp);
+		FREE(ttmp);
 	}
-	sfree((void *)&threadqueue);
+	FREE(threadqueue);
 
 	if(pthcpy != NULL) {
 		pthread_join(*pthcpy, NULL);

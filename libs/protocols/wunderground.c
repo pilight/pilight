@@ -66,7 +66,7 @@ static void *wundergroundParse(void *param) {
 	struct JsonNode *jchild = NULL;
 	struct JsonNode *jchild1 = NULL;
 	struct JsonNode *node = NULL;
-	struct wunderground_data_t *wnode = malloc(sizeof(struct wunderground_data_t));
+	struct wunderground_data_t *wnode = MALLOC(sizeof(struct wunderground_data_t));
 
 	int interval = 86400, ointerval = 86400, event = 0;
 	int firstrun = 1, nrloops = 0, timeout = 0;
@@ -106,7 +106,7 @@ static void *wundergroundParse(void *param) {
 			while(jchild1) {
 				if(strcmp(jchild1->key, "api") == 0) {
 					has_api = 1;
-					wnode->api = malloc(strlen(jchild1->string_)+1);
+					wnode->api = MALLOC(strlen(jchild1->string_)+1);
 					if(!wnode->api) {
 						logprintf(LOG_ERR, "out of memory");
 						exit(EXIT_FAILURE);
@@ -115,7 +115,7 @@ static void *wundergroundParse(void *param) {
 				}
 				if(strcmp(jchild1->key, "location") == 0) {
 					has_location = 1;
-					wnode->location = malloc(strlen(jchild1->string_)+1);
+					wnode->location = MALLOC(strlen(jchild1->string_)+1);
 					if(!wnode->location) {
 						logprintf(LOG_ERR, "out of memory");
 						exit(EXIT_FAILURE);
@@ -124,7 +124,7 @@ static void *wundergroundParse(void *param) {
 				}
 				if(strcmp(jchild1->key, "country") == 0) {
 					has_country = 1;
-					wnode->country = malloc(strlen(jchild1->string_)+1);
+					wnode->country = MALLOC(strlen(jchild1->string_)+1);
 					if(!wnode->country) {
 						logprintf(LOG_ERR, "out of memory");
 						exit(EXIT_FAILURE);
@@ -139,15 +139,15 @@ static void *wundergroundParse(void *param) {
 				wunderground_data = wnode;
 			} else {
 				if(has_country == 1) {
-					sfree((void *)&wnode->country);
+					FREE(wnode->country);
 				}
 				if(has_location == 1) {
-					sfree((void *)&wnode->location);
+					FREE(wnode->location);
 				}
 				if(has_api == 1) {
-					sfree((void *)&wnode->api);
+					FREE(wnode->api);
 				}
-				sfree((void *)&wnode);
+				FREE(wnode);
 				wnode = NULL;
 			}
 			jchild = jchild->next;
@@ -189,7 +189,7 @@ static void *wundergroundParse(void *param) {
 										printf("api.wunderground.com json has no temp_c key");
 									} else {
 										if(data) {
-											sfree((void *)&data);
+											FREE(data);
 											data = NULL;
 										}
 
@@ -307,10 +307,10 @@ static void *wundergroundParse(void *param) {
 				logprintf(LOG_NOTICE, "could not reach api.wundergrond.com");
 			}
 			if(data) {
-				sfree((void *)&data);
+				FREE(data);
 			}
 			if(filename) {
-				sfree((void *)&filename);
+				FREE(filename);
 			}
 		} else {
 			wunderground->message = json_mkobject();
@@ -334,12 +334,12 @@ static void *wundergroundParse(void *param) {
 	struct wunderground_data_t *wtmp = NULL;
 	while(wunderground_data) {
 		wtmp = wunderground_data;
-		sfree((void *)&wunderground_data->country);
-		sfree((void *)&wunderground_data->location);
+		FREE(wunderground_data->country);
+		FREE(wunderground_data->location);
 		wunderground_data = wunderground_data->next;
-		sfree((void *)&wtmp);
+		FREE(wtmp);
 	}
-	sfree((void *)&wunderground_data);
+	FREE(wunderground_data);
 	wunderground_threads--;
 	return (void *)NULL;
 }
@@ -348,7 +348,7 @@ static struct threadqueue_t *wundergroundInitDev(JsonNode *jdevice) {
 	wunderground_loop = 1;
 	char *output = json_stringify(jdevice, NULL);
 	JsonNode *json = json_decode(output);
-	sfree((void *)&output);
+	FREE(output);
 
 	struct protocol_threads_t *node = protocol_thread_init(wunderground, json);
 	return threads_register("wunderground", &wundergroundParse, (void *)node, 0);
@@ -360,6 +360,7 @@ static int wundergroundCheckValues(JsonNode *code) {
 	json_find_number(code, "poll-interval", &interval);
 
 	if((int)round(interval) < INTERVAL) {
+		logprintf(LOG_ERR, "wunderground poll-interval cannot be lower than %d", INTERVAL);
 		return 1;
 	}
 
@@ -462,9 +463,9 @@ void wundergroundInit(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name = "wunderground";
-	module->version = "1.2";
+	module->version = "1.4";
 	module->reqversion = "5.0";
-	module->reqcommit = "84";
+	module->reqcommit = "187";
 }
 
 void init(void) {

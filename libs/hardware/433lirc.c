@@ -154,7 +154,7 @@ static int lirc433Receive(void) {
 static unsigned short lirc433Settings(JsonNode *json) {
 	if(strcmp(json->key, "socket") == 0) {
 		if(json->tag == JSON_STRING) {
-			lirc_433_socket = malloc(strlen(json->string_)+1);
+			lirc_433_socket = MALLOC(strlen(json->string_)+1);
 			if(!lirc_433_socket) {
 				logprintf(LOG_ERR, "out of memory");
 				exit(EXIT_FAILURE);
@@ -170,7 +170,7 @@ static unsigned short lirc433Settings(JsonNode *json) {
 
 static int lirc433gc(void) {
 	if(lirc_433_socket) {
-		sfree((void *)&lirc_433_socket);
+		FREE(lirc_433_socket);
 	}
 
 	return 1;

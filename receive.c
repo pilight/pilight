@@ -34,17 +34,28 @@
 
 static int main_loop = 1;
 static int sockfd = 0;
+static char *recvBuff = NULL;
 
 int main_gc(void) {
 	main_loop = 0;
+	sleep(1);
+
+	if(recvBuff) {
+		FREE(recvBuff);
+	}
 	if(sockfd > 0) {
 		socket_write(sockfd, "HEART");
+		socket_close(sockfd);
 	}
-	sfree((void *)&progname);
+	gc_clear();
+	FREE(progname);
+	xfree();
+
 	return 0;
 }
 
 int main(int argc, char **argv) {
+	// memtrack();
 
 	gc_attach(main_gc);
 
@@ -56,7 +67,7 @@ int main(int argc, char **argv) {
 
 	log_level_set(LOG_NOTICE);
 
-	progname = malloc(16);
+	progname = MALLOC(16);
 	if(!progname) {
 		logprintf(LOG_ERR, "out of memory");
 		exit(EXIT_FAILURE);
@@ -69,7 +80,6 @@ int main(int argc, char **argv) {
 	unsigned short port = 0;
 	unsigned short stats = 0;
 
-	char *recvBuff = NULL;
 	char *args = NULL;
 
 	options_add(&options, 'H', "help", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
@@ -103,7 +113,7 @@ int main(int argc, char **argv) {
 				exit(EXIT_SUCCESS);
 			break;
 			case 'S':
-				if(!(server = malloc(strlen(args)+1))) {
+				if(!(server = MALLOC(strlen(args)+1))) {
 					logprintf(LOG_ERR, "out of memory");
 					exit(EXIT_FAILURE);
 				}
@@ -141,7 +151,7 @@ int main(int argc, char **argv) {
 		ssdp_free(ssdp_list);
 	}
 	if(server) {
-		sfree((void *)&server);
+		FREE(server);
 	}
 	struct JsonNode *jclient = json_mkobject();
 	struct JsonNode *joptions = json_mkobject();
@@ -151,7 +161,7 @@ int main(int argc, char **argv) {
 	json_append_member(jclient, "options", joptions);
 	char *out = json_stringify(jclient, NULL);
 	socket_write(sockfd, out);
-	sfree((void *)&out);
+	FREE(out);
 	json_delete(jclient);
 
 	if(socket_read(sockfd, &recvBuff) != 0 ||
@@ -174,7 +184,7 @@ int main(int argc, char **argv) {
 			char *content = json_stringify(jcontent, "\t");
 			printf("%s\n", content);
 			json_delete(jcontent);
-			sfree((void *)&content);
+			FREE(content);
 			pch = strtok(NULL, "\n");
 		}
 	}
@@ -184,7 +194,7 @@ close:
 		socket_close(sockfd);
 	}
 	if(recvBuff) {
-		sfree((void *)&recvBuff);
+		FREE(recvBuff);
 	}
 	options_gc();
 	log_shell_disable();

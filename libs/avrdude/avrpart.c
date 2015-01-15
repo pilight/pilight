@@ -29,6 +29,7 @@
 #include "avrdude.h"
 #include "avrpart.h"
 #include "pindefs.h"
+#include "mem.h"
 
 /***
  *** Elementary functions dealing with OPCODE structures
@@ -38,7 +39,7 @@ OPCODE * avr_new_opcode(void)
 {
   OPCODE * m;
 
-  m = (OPCODE *)malloc(sizeof(*m));
+  m = (OPCODE *)MALLOC(sizeof(*m));
   if (m == NULL) {
     logprintf(LOG_ERR, "out of memory");
     exit(1);
@@ -171,7 +172,7 @@ AVRMEM * avr_new_memtype(void)
 {
   AVRMEM * m;
 
-  m = (AVRMEM *)malloc(sizeof(*m));
+  m = (AVRMEM *)MALLOC(sizeof(*m));
   if (m == NULL) {
     logprintf(LOG_ERR, "out of memory");
     exit(1);
@@ -191,7 +192,7 @@ AVRMEM * avr_dup_mem(AVRMEM * m)
 
   *n = *m;
 
-  n->buf = (unsigned char *)malloc(n->size);
+  n->buf = (unsigned char *)MALLOC(n->size);
   if (n->buf == NULL) {
     logprintf(LOG_ERR, "out of memory");
     exit(1);
@@ -210,7 +211,7 @@ AVRPART * avr_new_part(void)
 {
   AVRPART * p;
 
-  p = (AVRPART *)malloc(sizeof(AVRPART));
+  p = (AVRPART *)MALLOC(sizeof(AVRPART));
   if (p == NULL) {
     logprintf(LOG_ERR, "out of memory");
     exit(1);

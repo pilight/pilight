@@ -77,6 +77,8 @@
 #include <signal.h>
 #include <arpa/inet.h>
 
+#include "mem.h"
+
 /*
  * in_cksum --
  *	Checksum routine for Internet Protocol family headers (C Version)
@@ -158,8 +160,8 @@ int ping(char *addr) {
 		return -1;
 	}
 
-	tv.tv_sec = 0;
-	tv.tv_usec = 5000;
+	tv.tv_sec = 1;
+	tv.tv_usec = 0;
 	if(setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, (char *)&tv, sizeof(struct timeval)) < 0) {
 		perror("SO_RCVTIMEO");
 		return -1;

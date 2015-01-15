@@ -41,7 +41,7 @@ static int rawCreateCode(JsonNode *code) {
 		return EXIT_FAILURE;
 	}
 
-	ncode = malloc(strlen(rcode)+1);
+	ncode = MALLOC(strlen(rcode)+1);
 	if(!ncode) {
 		logprintf(LOG_ERR, "out of memory");
 		exit(EXIT_FAILURE);
@@ -53,7 +53,7 @@ static int rawCreateCode(JsonNode *code) {
 		pch = strtok(NULL, " ");
 		i++;
 	}
-	sfree((void *)&ncode);
+	FREE(ncode);
 	raw->rawlen=i;
 	return EXIT_SUCCESS;
 }
@@ -82,9 +82,9 @@ void rawInit(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name = "raw";
-	module->version = "1.1";
+	module->version = "1.2";
 	module->reqversion = "5.0";
-	module->reqcommit = "84";
+	module->reqcommit = "187";
 }
 
 void init(void) {

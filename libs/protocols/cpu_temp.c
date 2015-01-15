@@ -55,7 +55,7 @@ static void *cpuTempParse(void *param) {
 
 	FILE *fp = NULL;
 	double itmp = 0;
-	int *id = malloc(sizeof(int));
+	int *id = MALLOC(sizeof(int));
 	char *content = NULL;
 	int nrloops = 0, nrid = 0, y = 0, interval = 0;
 	double temp_offset = 0.0;
@@ -72,7 +72,7 @@ static void *cpuTempParse(void *param) {
 		jchild = json_first_child(jid);
 		while(jchild) {
 			if(json_find_number(jchild, "id", &itmp) == 0) {
-				id = realloc(id, (sizeof(int)*(size_t)(nrid+1)));
+				id = REALLOC(id, (sizeof(int)*(size_t)(nrid+1)));
 				id[nrid] = (int)round(itmp);
 				nrid++;
 			}
@@ -92,7 +92,7 @@ static void *cpuTempParse(void *param) {
 					fstat(fileno(fp), &st);
 					bytes = (size_t)st.st_size;
 
-					if(!(content = realloc(content, bytes+1))) {
+					if(!(content = REALLOC(content, bytes+1))) {
 						logprintf(LOG_ERR, "out of memory");
 						exit(EXIT_FAILURE);
 					}
@@ -105,7 +105,7 @@ static void *cpuTempParse(void *param) {
 					} else {
 						fclose(fp);
 						double temp = atof(content)+temp_offset;
-						sfree((void *)&content);
+						FREE(content);
 
 						cpuTemp->message = json_mkobject();
 						JsonNode *code = json_mkobject();
@@ -129,7 +129,7 @@ static void *cpuTempParse(void *param) {
 	}
 	pthread_mutex_unlock(&cpu_templock);
 
-	sfree((void *)&id);
+	FREE(id);
 	cpu_temp_threads--;
 	return (void *)NULL;
 }
@@ -138,7 +138,7 @@ static struct threadqueue_t *cpuTempInitDev(JsonNode *jdevice) {
 	cpu_temp_loop = 1;
 	char *output = json_stringify(jdevice, NULL);
 	JsonNode *json = json_decode(output);
-	sfree((void *)&output);
+	FREE(output);
 
 	struct protocol_threads_t *node = protocol_thread_init(cpuTemp, json);
 	return threads_register("cpu_temp", &cpuTempParse, (void *)node, 0);
@@ -183,9 +183,9 @@ void cpuTempInit(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name = "cpu_temp";
-	module->version = "1.2";
+	module->version = "1.3";
 	module->reqversion = "5.0";
-	module->reqcommit = "84";
+	module->reqcommit = "187";
 }
 
 void init(void) {

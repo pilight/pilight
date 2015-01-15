@@ -99,7 +99,7 @@ static struct threadqueue_t *gpioSwitchInitDev(JsonNode *jdevice) {
 	wiringXSetup();
 	char *output = json_stringify(jdevice, NULL);
 	JsonNode *json = json_decode(output);
-	sfree((void *)&output);
+	FREE(output);
 
 	struct protocol_threads_t *node = protocol_thread_init(gpio_switch, json);
 	return threads_register("gpio_switch", &gpioSwitchParse, (void *)node, 0);
@@ -163,9 +163,9 @@ void gpioSwitchInit(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name = "gpio_switch";
-	module->version = "1.2";
+	module->version = "1.3";
 	module->reqversion = "5.0";
-	module->reqcommit = "84";
+	module->reqcommit = "187";
 }
 
 void init(void) {

@@ -23,6 +23,7 @@
 #include <dlfcn.h>
 
 #include "common.h"
+#include "mem.h"
 #include "log.h"
 #include "dso.h"
 
@@ -53,13 +54,13 @@ void *dso_load(char *object) {
 		logprintf(LOG_ERR, dlerror());
 		return NULL;
 	} else {
-		struct dso_t *node = malloc(sizeof(struct dso_t));
+		struct dso_t *node = MALLOC(sizeof(struct dso_t));
 		if(!node) {
 			logprintf(LOG_ERR, "out of memory");
 			exit(EXIT_FAILURE);
 		}
 		node->handle = handle;
-		if(!(node->name = malloc(strlen(object)+1))) {
+		if(!(node->name = MALLOC(strlen(object)+1))) {
 			logprintf(LOG_ERR, "out of memory");
 			exit(EXIT_FAILURE);
 		}
@@ -77,11 +78,11 @@ int dso_gc(void) {
 	while(dso) {
 		tmp = dso;
 		dlclose(tmp->handle);
-		sfree((void *)&tmp->name);
+		FREE(tmp->name);
 		dso = dso->next;
-		sfree((void *)&tmp);
+		FREE(tmp);
 	}
-	sfree((void *)&dso);
+	FREE(dso);
 
 	logprintf(LOG_DEBUG, "garbage collected dso library");
 	return 0;

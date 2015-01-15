@@ -53,6 +53,7 @@ static pthread_mutexattr_t arpingattr;
 
 #define CONNECTED				1
 #define DISCONNECTED 		0
+#define INTERVAL				5
 
 static void *arpingParse(void *param) {
 	struct protocol_threads_t *node = (struct protocol_threads_t *)param;
@@ -64,7 +65,7 @@ static void *arpingParse(void *param) {
 	char *srcmac = NULL, tmpip[17], dstip[17];
 	char ip[17], *p = ip, *if_name = NULL;
 	double itmp = 0.0;
-	int state = 0, nrloops = 0, interval = 10, i = 0, srcip[4];
+	int state = 0, nrloops = 0, interval = INTERVAL, i = 0, srcip[4];
 
 	arping_threads++;
 
@@ -127,7 +128,8 @@ static void *arpingParse(void *param) {
 					state = CONNECTED;
 					arping->message = json_mkobject();
 					JsonNode *code = json_mkobject();
-					json_append_member(code, "id", json_mkstring(srcmac));
+					json_append_member(code, "mac", json_mkstring(srcmac));
+					json_append_member(code, "ip", json_mkstring(ip));
 					json_append_member(code, "state", json_mkstring("connected"));
 
 					json_append_member(arping->message, "message", code);
@@ -143,7 +145,8 @@ static void *arpingParse(void *param) {
 
 				arping->message = json_mkobject();
 				JsonNode *code = json_mkobject();
-				json_append_member(code, "id", json_mkstring(srcmac));
+				json_append_member(code, "mac", json_mkstring(srcmac));
+				json_append_member(code, "ip", json_mkstring("0.0.0.0"));
 				json_append_member(code, "state", json_mkstring("disconnected"));
 
 				json_append_member(arping->message, "message", code);
@@ -167,7 +170,7 @@ static struct threadqueue_t *arpingInitDev(JsonNode *jdevice) {
 	arping_loop = 1;
 	char *output = json_stringify(jdevice, NULL);
 	JsonNode *json = json_decode(output);
-	sfree((void *)&output);
+	FREE(output);
 
 	struct protocol_threads_t *node = protocol_thread_init(arping, json);
 	return threads_register("arping", &arpingParse, (void *)node, 0);
@@ -180,6 +183,19 @@ static void arpingThreadGC(void) {
 		usleep(10);
 	}
 	protocol_thread_free(arping);
+}
+
+static int arpingCheckValues(JsonNode *code) {
+	double interval = INTERVAL;
+
+	json_find_number(code, "poll-interval", &interval);
+
+	if((int)round(interval) < INTERVAL) {
+		logprintf(LOG_ERR, "arping poll-interval cannot be lower than %d", INTERVAL);
+		return 1;
+	}
+
+	return 0;
 }
 
 #ifndef MODULE
@@ -200,19 +216,21 @@ void arpingInit(void) {
 	options_add(&arping->options, 'c', "connected", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
 	options_add(&arping->options, 'd', "disconnected", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
 	options_add(&arping->options, 'm', "mac", OPTION_HAS_VALUE, DEVICES_ID, JSON_STRING, NULL, "^[0-9A-Fa-f]{2}:[0-9A-Fa-f]{2}:[0-9A-Fa-f]{2}:[0-9A-Fa-f]{2}:[0-9A-Fa-f]{2}:[0-9A-Fa-f]{2}$");
+	options_add(&arping->options, 'i', "ip", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_STRING, NULL, "^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]).){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$");
 
 	options_add(&arping->options, 0, "poll-interval", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *)10, "[0-9]");
 
 	arping->initDev=&arpingInitDev;
 	arping->threadGC=&arpingThreadGC;
+	arping->checkValues=&arpingCheckValues;
 }
 
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name = "arping";
-	module->version = "1.0";
+	module->version = "1.2";
 	module->reqversion = "5.0";
-	module->reqcommit = "84";
+	module->reqcommit = "187";
 }
 
 void init(void) {

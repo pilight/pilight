@@ -103,21 +103,21 @@ static int event_store_val_ptr(struct rules_t *obj, char *device, char *name, st
 	}
 
 	if(match == 0) {
-		if(!(tmp_values = malloc(sizeof(rules_values_t)))) {
+		if(!(tmp_values = MALLOC(sizeof(rules_values_t)))) {
 			logprintf(LOG_ERR, "out of memory");
 			exit(EXIT_FAILURE);
 		}
 		tmp_values->next = NULL;
-		if(!(tmp_values->name = malloc(strlen(name)+1))) {
+		if(!(tmp_values->name = MALLOC(strlen(name)+1))) {
 			logprintf(LOG_ERR, "out of memory");
-			sfree((void *)&tmp_values);
+			FREE(tmp_values);
 			exit(EXIT_FAILURE);
 		}
 		strcpy(tmp_values->name, name);
-		if(!(tmp_values->device = malloc(strlen(device)+1))) {
+		if(!(tmp_values->device = MALLOC(strlen(device)+1))) {
 			logprintf(LOG_ERR, "out of memory");
-			sfree((void *)&tmp_values->name);
-			sfree((void *)&tmp_values);
+			FREE(tmp_values->name);
+			FREE(tmp_values);
 			exit(EXIT_FAILURE);
 		}
 		strcpy(tmp_values->device, device);
@@ -206,11 +206,11 @@ static int event_lookup_variable(char *var, struct rules_t *obj, unsigned int nr
 					}
 					if(exists == 0) {
 						/* Store all devices that are present in this rule */
-						if(!(obj->devices = realloc(obj->devices, sizeof(char *)*(unsigned int)(obj->nrdevices+1)))) {
+						if(!(obj->devices = REALLOC(obj->devices, sizeof(char *)*(unsigned int)(obj->nrdevices+1)))) {
 							logprintf(LOG_ERR, "out of memory");
 							exit(EXIT_FAILURE);
 						}
-						if(!(obj->devices[obj->nrdevices] = malloc(strlen(device)+1))) {
+						if(!(obj->devices[obj->nrdevices] = MALLOC(strlen(device)+1))) {
 							logprintf(LOG_ERR, "out of memory");
 							exit(EXIT_FAILURE);
 						}
@@ -317,7 +317,7 @@ static int event_parse_hooks(char **rule, struct rules_t *obj, int depth, unsign
 
 	int hooks = 0, res = 0;
 	unsigned long buflen = MEMBUFFER, len = 0, i = 0;
-	char *subrule = malloc(buflen);
+	char *subrule = MALLOC(buflen);
 	char *tmp = *rule;
 
 	if(!subrule) {
@@ -337,13 +337,13 @@ static int event_parse_hooks(char **rule, struct rules_t *obj, int depth, unsign
 			subrule[len++] = tmp[i+1];
 			if(buflen <= len) {
 				buflen *= 2;
-				subrule = realloc(subrule, buflen);
+				subrule = REALLOC(subrule, buflen);
 				memset(&subrule[len], '\0', buflen-(unsigned long)len);
 			}
 		} else {
 			if(len > 0) {
 				unsigned long z = 1;
-				char *replace = malloc(len+3);
+				char *replace = MALLOC(len+3);
 
 				subrule[len-1] = '\0';
 
@@ -362,10 +362,10 @@ static int event_parse_hooks(char **rule, struct rules_t *obj, int depth, unsign
 					// printf("Replace \"%s\" with \"%s\" in \"%s\"\n", replace, subrule, tmp);
 					str_replace(replace, subrule, &tmp);
 
-					sfree((void *)&replace);
+					FREE(replace);
 				} else {
-					sfree((void *)&subrule);
-					sfree((void *)&replace);
+					FREE(subrule);
+					FREE(replace);
 					return -1;
 				}
 				memset(subrule, '\0', (unsigned long)len);
@@ -375,7 +375,7 @@ static int event_parse_hooks(char **rule, struct rules_t *obj, int depth, unsign
 		}
 		i++;
 	}
-	sfree((void *)&subrule);
+	FREE(subrule);
 	return 0;
 }
 
@@ -387,7 +387,7 @@ static int event_parse_formula(char **rule, struct rules_t *obj, int depth, unsi
 	char *var1 = NULL, *func = NULL, *var2 = NULL, *tmp = *rule, *search = NULL;
 	int element = 0, i = 0, match = 0, error = 0;
 	unsigned long len = strlen(tmp), pos = 0, word = 0;
-	char *res = malloc(255);
+	char *res = MALLOC(255);
 	memset(res, '\0', 255);
 
 	/* If there are no hooks, we are going to solve the whole (sub)formula.
@@ -406,22 +406,22 @@ static int event_parse_formula(char **rule, struct rules_t *obj, int depth, unsi
 				   The third value of the three is always the second variable (or second formula).
 				*/
 				case 0:
-					var1 = realloc(var1, ((pos-word)+1));
+					var1 = REALLOC(var1, ((pos-word)+1));
 					memset(var1, '\0', ((pos-word)+1));
 					strncpy(var1, &tmp[word], (pos-word));
 				break;
 				case 1:
-					func = realloc(func, ((pos-word)+1));
+					func = REALLOC(func, ((pos-word)+1));
 					memset(func, '\0', ((pos-word)+1));
 					strncpy(func, &tmp[word], (pos-word));
 				break;
 				case 2:
-					var2 = realloc(var2, ((pos-word)+1));
+					var2 = REALLOC(var2, ((pos-word)+1));
 					memset(var2, '\0', ((pos-word)+1));
 					strncpy(var2, &tmp[word], (pos-word));
 
 					unsigned long l = (strlen(var1)+strlen(var2)+strlen(func))+2;
-					search = realloc(search, (l+1));
+					search = REALLOC(search, (l+1));
 					memset(search, '\0', l+1);
 					l = (unsigned long)sprintf(search, "%s %s %s", var1, func, var2);
 					search[l] = '\0';
@@ -482,7 +482,7 @@ static int event_parse_formula(char **rule, struct rules_t *obj, int depth, unsi
 							int flen = (int)strlen(func)+3, rlen = (int)strlen(tmp), nrspaces = 0;
 							char *subrule = NULL;
 							unsigned long buflen = MEMBUFFER, part2len = 0, sublen = 0;
-							if(!(subrule = malloc(buflen))) {
+							if(!(subrule = MALLOC(buflen))) {
 								logprintf(LOG_ERR, "out of memory");
 								exit(EXIT_FAILURE);
 							}
@@ -499,7 +499,7 @@ static int event_parse_formula(char **rule, struct rules_t *obj, int depth, unsi
 								subrule[sublen++] = tmp[flen];
 								if(buflen <= sublen) {
 									buflen *= 2;
-									subrule = realloc(subrule, buflen);
+									subrule = REALLOC(subrule, buflen);
 									memset(&subrule[sublen], '\0', buflen-sublen);
 								}
 								flen++;
@@ -507,10 +507,10 @@ static int event_parse_formula(char **rule, struct rules_t *obj, int depth, unsi
 
 							if(subrule != NULL) {
 								subrule[sublen] = '\0';
-								search = realloc(search, strlen(subrule)+1);
+								search = REALLOC(search, strlen(subrule)+1);
 								strcpy(search, subrule);
 								if(event_parse_formula(&subrule, obj, depth, nr, validate) == 0) {
-									char *res1 = malloc(255);
+									char *res1 = MALLOC(255);
 									memset(res, '\0', 255);
 									if(tmp_operator->callback_number) {
 										tmp_operator->callback_number(atof(var1), atof(subrule), &res1);
@@ -520,30 +520,30 @@ static int event_parse_formula(char **rule, struct rules_t *obj, int depth, unsi
 										tmp_operator->callback_string(var1, r, &res1);
 									}
 									unsigned long r = 0;
-									char *t = malloc(strlen(res1)+1);
+									char *t = MALLOC(strlen(res1)+1);
 									strcpy(t, res1);
 									// printf("Replace \"%s\" with \"%s\" in \"%s\"\n", search, t, tmp);
 									if((r = (unsigned long)str_replace(search, t, &tmp)) == -1) {
 										logprintf(LOG_ERR, "rule #%d: an unexpected error occured while parsing", nr);
 										error = -1;
-										sfree((void *)&res1);
-										sfree((void *)&t);
-										sfree((void *)&subrule);
+										FREE(res1);
+										FREE(t);
+										FREE(subrule);
 										goto close;
 									} else {
 										len = r;
 									}
-									var2 = realloc(var2, strlen(res1)+1);
+									var2 = REALLOC(var2, strlen(res1)+1);
 									strcpy(var2, res1);
-									sfree((void *)&res1);
-									sfree((void *)&t);
+									FREE(res1);
+									FREE(t);
 								} else {
 									logprintf(LOG_ERR, "rule #%d: an unexpected error occured while parsing", nr);
 									error = -1;
-									sfree((void *)&subrule);
+									FREE(subrule);
 									goto close;
 								}
-								sfree((void *)&subrule);
+								FREE(subrule);
 								subrule = NULL;
 							} else {
 								logprintf(LOG_ERR, "rule #%d: an unexpected error occured while parsing", nr);
@@ -552,7 +552,7 @@ static int event_parse_formula(char **rule, struct rules_t *obj, int depth, unsi
 							}
 							/* Adapt the search string to be replaced */
 							unsigned long l = strlen(var1)+strlen(func)+strlen(var2)+2;
-							search = realloc(search, l+1);
+							search = REALLOC(search, l+1);
 							sprintf(search, "%s %s %s", var1, func, var2);
 						}
 
@@ -575,18 +575,18 @@ static int event_parse_formula(char **rule, struct rules_t *obj, int depth, unsi
 						   e.g.: 0 AND 1 AND 1 AND 0
 								     0 AND 1 AND 0
 						*/
-						char *p = malloc(strlen(res)+1);
+						char *p = MALLOC(strlen(res)+1);
 						strcpy(p, res);
 						unsigned long r = 0;
 						// printf("Replace \"%s\" with \"%s\" in \"%s\"\n", search, p, tmp);
 						if((r = (unsigned long)str_replace(search, p, &tmp)) == -1) {
 							logprintf(LOG_ERR, "rule #%d: an unexpected error occured while parsing", nr);
-							sfree((void *)&p);
+							FREE(p);
 							error = -1;
 							goto close;
 						}
 						len = r;
-						sfree((void *)&p);
+						FREE(p);
 					}
 					pos = 0, word = 0, element = 0;
 					break;
@@ -613,18 +613,18 @@ static int event_parse_formula(char **rule, struct rules_t *obj, int depth, unsi
 	}
 
 close:
-	sfree((void *)&res);
+	FREE(res);
 	if(var1) {
-		sfree((void *)&var1);
+		FREE(var1);
 		var1 = NULL;
 	} if(func) {
-		sfree((void *)&func);
+		FREE(func);
 		func = NULL;
 	} if(var2) {
-		sfree((void *)&var2);
+		FREE(var2);
 		var2 = NULL;
 	} if(search) {
-		sfree((void *)&search);
+		FREE(search);
 		search = NULL;
 	}
 
@@ -660,17 +660,17 @@ static int event_parse_action(char *action, struct rules_t *obj, int validate) {
 						 The third value of the three is always the second variable (or second formula).
 					*/
 					case 0:
-						var1 = realloc(var1, ((pos-word)+1));
+						var1 = REALLOC(var1, ((pos-word)+1));
 						memset(var1, '\0', ((pos-word)+1));
 						strncpy(var1, &tmp[word], (pos-word)-hadquote);
 					break;
 					case 1:
-						func = realloc(func, ((pos-word)+1));
+						func = REALLOC(func, ((pos-word)+1));
 						memset(func, '\0', ((pos-word)+1));
 						strncpy(func, &tmp[word], (pos-word)-hadquote);
 					break;
 					case 2:
-						var2 = realloc(var2, ((pos-word)+1));
+						var2 = REALLOC(var2, ((pos-word)+1));
 						memset(var2, '\0', ((pos-word)+1));
 						strncpy(var2, &tmp[word], (pos-word)-hadquote);
 					break;
@@ -733,12 +733,12 @@ static int event_parse_action(char *action, struct rules_t *obj, int validate) {
 									 The third value of the three is always the second variable (or second formula).
 								*/
 								case 0:
-									var3 = realloc(var3, ((pos-word)+1));
+									var3 = REALLOC(var3, ((pos-word)+1));
 									memset(var3, '\0', ((pos-word)+1));
 									strncpy(var3, &tmp[word], (pos-word)-hadquote);
 								break;
 								case 1:
-									var4 = realloc(var4, ((pos-word)+1));
+									var4 = REALLOC(var4, ((pos-word)+1));
 									memset(var4, '\0', ((pos-word)+1));
 									strncpy(var4, &tmp[word], (pos-word)-hadquote);
 								break;
@@ -755,7 +755,7 @@ static int event_parse_action(char *action, struct rules_t *obj, int validate) {
 						if(var3 && strlen(var3) > 0 &&
 							 var4 && strlen(var4) > 0) {
 							if(strcmp(var3, "AND") != 0) {
-								var2 = realloc(var2, strlen(var3)+1);
+								var2 = REALLOC(var2, strlen(var3)+1);
 								strcpy(var2, var3);
 								pos -= strlen(var3)+strlen(var4)+2;
 								word -= strlen(var3)+strlen(var4)+2;
@@ -955,19 +955,19 @@ static int event_parse_action(char *action, struct rules_t *obj, int validate) {
 		}
 	}
 	if(var1) {
-		sfree((void *)&var1);
+		FREE(var1);
 		var1 = NULL;
 	} if(func) {
-		sfree((void *)&func);
+		FREE(func);
 		func = NULL;
 	} if(var2) {
-		sfree((void *)&var2);
+		FREE(var2);
 		var2 = NULL;
 	}	if(var3) {
-		sfree((void *)&var3);
+		FREE(var3);
 		var3 = NULL;
 	} if(var4) {
-		sfree((void *)&var4);
+		FREE(var4);
 		var4 = NULL;
 	}
 	return error;
@@ -1011,7 +1011,7 @@ int event_parse_rule(char *rule, struct rules_t *obj, int depth, unsigned int nr
 
 		tpos = (size_t)(tloc-rule);
 
-		if(!(action = malloc((rlen-tpos)+6+1))) {
+		if(!(action = MALLOC((rlen-tpos)+6+1))) {
 			logprintf(LOG_ERR, "out of memory");
 			exit(EXIT_FAILURE);
 		}
@@ -1028,7 +1028,7 @@ int event_parse_rule(char *rule, struct rules_t *obj, int depth, unsigned int nr
 
 		/* Extract the command part between the IF and THEN
 		   ("IF " length = 3) */
-		if(!(condition = malloc(rlen-tlen+3+1))) {
+		if(!(condition = MALLOC(rlen-tlen+3+1))) {
 			logprintf(LOG_ERR, "out of memory");
 			exit(EXIT_FAILURE);
 		}
@@ -1075,10 +1075,10 @@ int event_parse_rule(char *rule, struct rules_t *obj, int depth, unsigned int nr
 
 close:
 	if(depth == 0) {
-		if(condition) sfree((void *)&condition);
+		if(condition) FREE(condition);
 	}
 	if(action) {
-		sfree((void *)&action);
+		FREE(action);
 	}
 
 	return error;
@@ -1138,14 +1138,14 @@ void *events_loop(void *param) {
 						}
 						tmp_rules->status = 0;
 					}
-					sfree((void *)&str);
+					FREE(str);
 				}
 				tmp_rules = tmp_rules->next;
 			}
 			struct eventsqueue_t *tmp = eventsqueue;
 			json_delete(tmp->jconfig);
 			eventsqueue = eventsqueue->next;
-			sfree((void *)&tmp);
+			FREE(tmp);
 			eventsqueue_number--;
 			running = 0;
 			pthread_mutex_unlock(&events_lock);
@@ -1166,7 +1166,7 @@ static void events_queue(char *message) {
 
 	pthread_mutex_lock(&events_lock);
 	if(eventsqueue_number < 1024) {
-		struct eventsqueue_t *enode = malloc(sizeof(eventsqueue_t));
+		struct eventsqueue_t *enode = MALLOC(sizeof(eventsqueue_t));
 		if(!enode) {
 			logprintf(LOG_ERR, "out of memory");
 			exit(EXIT_FAILURE);
@@ -1224,7 +1224,7 @@ void *events_clientize(void *param) {
 		json_append_member(jclient, "media", json_mkstring("all"));
 		char *out = json_stringify(jclient, NULL);
 		socket_write(sockfd, out);
-		sfree((void *)&out);
+		FREE(out);
 		json_delete(jclient);
 
 		if(socket_read(sockfd, &recvBuff) != 0
@@ -1243,7 +1243,7 @@ void *events_clientize(void *param) {
 	}
 
 	if(recvBuff) {
-		sfree((void *)&recvBuff);
+		FREE(recvBuff);
 		recvBuff = NULL;
 	}
 	socket_close(sockfd);

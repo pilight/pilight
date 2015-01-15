@@ -129,7 +129,7 @@ static int tfaCheckValues(struct JsonNode *jvalues) {
 		}
 
 		if(!match) {
-			if(!(snode = malloc(sizeof(struct tfa_settings_t)))) {
+			if(!(snode = MALLOC(sizeof(struct tfa_settings_t)))) {
 				logprintf(LOG_ERR, "out of memory");
 				exit(EXIT_FAILURE);
 			}
@@ -151,9 +151,9 @@ static void tfaGC(void) {
 	while(tfa_settings) {
 		tmp = tfa_settings;
 		tfa_settings = tfa_settings->next;
-		sfree((void *)&tmp);
+		FREE(tmp);
 	}
-	sfree((void *)&tfa_settings);
+	FREE(tfa_settings);
 }
 
 #ifndef MODULE
@@ -195,9 +195,9 @@ void tfaInit(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name = "tfa";
-	module->version = "0.9";
+	module->version = "0.10";
 	module->reqversion = "5.0";
-	module->reqcommit = "84";
+	module->reqcommit = "187";
 }
 
 void init(void) {

@@ -168,7 +168,7 @@ void silvercrestInit(void) {
 	protocol_register(&silvercrest);
 	protocol_set_id(silvercrest, "silvercrest");
 	protocol_device_add(silvercrest, "silvercrest", "Silvercrest Switches");
-	protocol_device_add(silvercrest, "unitech", "Unitech Switches");
+	protocol_device_add(silvercrest, "unitec", "Unitec Switches");
 	protocol_plslen_add(silvercrest, 312);
 	silvercrest->devtype = SWITCH;
 	silvercrest->hwtype = RF433;

@@ -3,8 +3,8 @@
 
 	This file is part of pilight.
 
-	pilight is free software: you can redistribute it and/or modify it under the
-	terms of the GNU General Public License as published by the Free Software
+	pilight is FREE software: you can redistribute it and/or modify it under the
+	terms of the GNU General Public License as published by the FREE Software
 	Foundation, either version 3 of the License, or (at your option) any later
 	version.
 
@@ -86,17 +86,17 @@ char *http_process_request(char *url, int method, char **type, int *code, int *s
 	len = strlen(url);
 	if((tok = strstr(&url[plen], "/"))) {
 		tlen = (size_t)(tok-url)-plen+1;
-		host = malloc(tlen+1);
+		host = MALLOC(tlen+1);
 		strncpy(host, &url[plen-1], tlen);
 		host[tlen] = '\0';
-		page = malloc(len-tlen);
+		page = MALLOC(len-tlen);
 		strcpy(page, &url[tlen+(plen-1)]);
 	} else {
 		tlen = strlen(url)-(plen-1);
-		host = malloc(tlen+1);
+		host = MALLOC(tlen+1);
 		strncpy(host, &url[(plen-1)], tlen);
 		host[tlen] = '\0';
-		page = malloc(2);
+		page = MALLOC(2);
 		strcpy(page, "/");
 	}
 
@@ -214,7 +214,7 @@ char *http_process_request(char *url, int method, char **type, int *code, int *s
 			break;
 		}
 
-		if(!(content = realloc(content, (size_t)(*size+bytes+1)))) {
+		if(!(content = REALLOC(content, (size_t)(*size+bytes+1)))) {
 			logprintf(LOG_ERR, "out of memory");
 			exit(0);
 		}
@@ -259,9 +259,9 @@ exit:
 		memset(&ssl, '\0', sizeof(ssl));
 	}
 
-	if(ip) free(ip);
-	if(page) free(page);
-	if(host) free(host);
+	if(ip) FREE(ip);
+	if(page) FREE(page);
+	if(host) FREE(host);
 	close(sockfd);
 
 	if(*size > 0) {

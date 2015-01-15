@@ -71,12 +71,12 @@ static void *ds18b20Parse(void *param) {
 		jchild = json_first_child(jid);
 		while(jchild) {
 			if(json_find_string(jchild, "id", &stmp) == 0) {
-				id = realloc(id, (sizeof(char *)*(size_t)(nrid+1)));
+				id = REALLOC(id, (sizeof(char *)*(size_t)(nrid+1)));
 				if(!id) {
 					logprintf(LOG_ERR, "out of memory");
 					exit(EXIT_FAILURE);
 				}
-				id[nrid] = malloc(strlen(stmp)+1);
+				id[nrid] = MALLOC(strlen(stmp)+1);
 				if(!id[nrid]) {
 					logprintf(LOG_ERR, "out of memory");
 					exit(EXIT_FAILURE);
@@ -96,7 +96,7 @@ static void *ds18b20Parse(void *param) {
 		if(protocol_thread_wait(node, interval, &nrloops) == ETIMEDOUT) {
 			pthread_mutex_lock(&ds18b20lock);
 			for(y=0;y<nrid;y++) {
-				ds18b20_sensor = realloc(ds18b20_sensor, strlen(ds18b20_path)+strlen(id[y])+5);
+				ds18b20_sensor = REALLOC(ds18b20_sensor, strlen(ds18b20_path)+strlen(id[y])+5);
 				if(!ds18b20_sensor) {
 					logprintf(LOG_ERR, "out of memory");
 					exit(EXIT_FAILURE);
@@ -120,7 +120,7 @@ static void *ds18b20Parse(void *param) {
 								fstat(fileno(fp), &st);
 								bytes = (size_t)st.st_size;
 
-								if(!(content = realloc(content, bytes+1))) {
+								if(!(content = REALLOC(content, bytes+1))) {
 									logprintf(LOG_ERR, "out of memory");
 									fclose(fp);
 									break;
@@ -179,15 +179,15 @@ static void *ds18b20Parse(void *param) {
 	pthread_mutex_unlock(&ds18b20lock);
 
 	if(ds18b20_sensor) {
-		sfree((void *)&ds18b20_sensor);
+		FREE(ds18b20_sensor);
 	}
 	if(content) {
-		sfree((void *)&content);
+		FREE(content);
 	}
 	for(y=0;y<nrid;y++) {
-		sfree((void *)&id[y]);
+		FREE(id[y]);
 	}
-	sfree((void *)&id);
+	FREE(id);
 	ds18b20_threads--;
 	return (void *)NULL;
 }
@@ -196,7 +196,7 @@ static struct threadqueue_t *ds18b20InitDev(JsonNode *jdevice) {
 	ds18b20_loop = 1;
 	char *output = json_stringify(jdevice, NULL);
 	JsonNode *json = json_decode(output);
-	sfree((void *)&output);
+	FREE(output);
 
 	struct protocol_threads_t *node = protocol_thread_init(ds18b20, json);
 	return threads_register("ds18b20", &ds18b20Parse, (void *)node, 0);
@@ -244,9 +244,9 @@ void ds18b20Init(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name = "ds18b20";
-	module->version = "1.2";
+	module->version = "1.3";
 	module->reqversion = "5.0";
-	module->reqcommit = "84";
+	module->reqcommit = "187";
 }
 
 void init(void) {

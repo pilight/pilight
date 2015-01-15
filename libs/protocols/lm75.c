@@ -58,7 +58,7 @@ static void *lm75Parse(void *param) {
 	struct JsonNode *json = (struct JsonNode *)node->param;
 	struct JsonNode *jid = NULL;
 	struct JsonNode *jchild = NULL;
-	struct lm75data_t *lm75data = malloc(sizeof(struct lm75data_t));
+	struct lm75data_t *lm75data = MALLOC(sizeof(struct lm75data_t));
 	int y = 0, interval = 10, nrloops = 0;
 	char *stmp = NULL;
 	double itmp = -1, temp_offset = 0.0;
@@ -78,12 +78,12 @@ static void *lm75Parse(void *param) {
 		jchild = json_first_child(jid);
 		while(jchild) {
 			if(json_find_string(jchild, "id", &stmp) == 0) {
-				lm75data->id = realloc(lm75data->id, (sizeof(char *)*(size_t)(lm75data->nrid+1)));
+				lm75data->id = REALLOC(lm75data->id, (sizeof(char *)*(size_t)(lm75data->nrid+1)));
 				if(!lm75data->id) {
 					logprintf(LOG_ERR, "out of memory");
 					exit(EXIT_FAILURE);
 				}
-				lm75data->id[lm75data->nrid] = malloc(strlen(stmp)+1);
+				lm75data->id[lm75data->nrid] = MALLOC(strlen(stmp)+1);
 				if(!lm75data->id[lm75data->nrid]) {
 					logprintf(LOG_ERR, "out of memory");
 					exit(EXIT_FAILURE);
@@ -100,7 +100,7 @@ static void *lm75Parse(void *param) {
 	json_find_number(json, "temperature-offset", &temp_offset);
 
 #ifndef __FreeBSD__
-	lm75data->fd = realloc(lm75data->fd, (sizeof(int)*(size_t)(lm75data->nrid+1)));
+	lm75data->fd = REALLOC(lm75data->fd, (sizeof(int)*(size_t)(lm75data->nrid+1)));
 	if(!lm75data->fd) {
 		logprintf(LOG_ERR, "out of memory");
 		exit(EXIT_FAILURE);
@@ -146,9 +146,9 @@ static void *lm75Parse(void *param) {
 
 	if(lm75data->id) {
 		for(y=0;y<lm75data->nrid;y++) {
-			sfree((void *)&lm75data->id[y]);
+			FREE(lm75data->id[y]);
 		}
-		sfree((void *)&lm75data->id);
+		FREE(lm75data->id);
 	}
 	if(lm75data->fd) {
 		for(y=0;y<lm75data->nrid;y++) {
@@ -156,9 +156,9 @@ static void *lm75Parse(void *param) {
 				close(lm75data->fd[y]);
 			}
 		}
-		sfree((void *)&lm75data->fd);
+		FREE(lm75data->fd);
 	}
-	sfree((void *)&lm75data);
+	FREE(lm75data);
 	lm75_threads--;
 
 	return (void *)NULL;
@@ -169,7 +169,7 @@ static struct threadqueue_t *lm75InitDev(JsonNode *jdevice) {
 	wiringXSetup();
 	char *output = json_stringify(jdevice, NULL);
 	JsonNode *json = json_decode(output);
-	sfree((void *)&output);
+	FREE(output);
 
 	struct protocol_threads_t *node = protocol_thread_init(lm75, json);
 	return threads_register("lm75", &lm75Parse, (void *)node, 0);
@@ -212,9 +212,9 @@ void lm75Init(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name = "lm75";
-	module->version = "1.2";
+	module->version = "1.3";
 	module->reqversion = "5.0";
-	module->reqcommit = "84";
+	module->reqcommit = "187";
 }
 
 void init(void) {

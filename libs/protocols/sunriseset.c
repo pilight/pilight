@@ -127,19 +127,9 @@ static void *sunRiseSetParse(void *param) {
 			jchild1 = json_first_child(jchild);
 			while(jchild1) {
 				if(strcmp(jchild1->key, "longitude") == 0) {
-					// if(!(slongitude = malloc(strlen(jchild1->string_)+1))) {
-						// logprintf(LOG_ERR, "out of memory");
-						// exit(EXIT_FAILURE);
-					// }
-					// strcpy(slongitude, jchild1->string_);
 					longitude = jchild1->number_;
 				}
 				if(strcmp(jchild1->key, "latitude") == 0) {
-					// if(!(slatitude = malloc(strlen(jchild1->string_)+1))) {
-						// logprintf(LOG_ERR, "out of memory");
-						// exit(EXIT_FAILURE);
-					// }
-					// strcpy(slatitude, jchild1->string_);
 					latitude = jchild1->number_;
 				}
 				jchild1 = jchild1->next;
@@ -217,9 +207,6 @@ static void *sunRiseSetParse(void *param) {
 		}
 	}
 
-	// sfree((void *)&slatitude);
-	// sfree((void *)&slongitude);
-
 	sunriseset_threads--;
 	return (void *)NULL;
 }
@@ -228,7 +215,7 @@ struct threadqueue_t *sunRiseSetInitDev(JsonNode *jdevice) {
 	sunriseset_loop = 1;
 	char *output = json_stringify(jdevice, NULL);
 	JsonNode *json = json_decode(output);
-	sfree((void *)&output);
+	FREE(output);
 
 	struct protocol_threads_t *node = protocol_thread_init(sunriseset, json);
 	return threads_register("sunriseset", &sunRiseSetParse, (void *)node, 0);
@@ -284,9 +271,9 @@ void sunRiseSetInit(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name = "sunriseset";
-	module->version = "1.1";
+	module->version = "1.2";
 	module->reqversion = "5.0";
-	module->reqcommit = "84";
+	module->reqcommit = "187";
 }
 
 void init(void) {

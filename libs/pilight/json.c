@@ -28,6 +28,7 @@
 #include <string.h>
 
 #include "json.h"
+#include "mem.h"
 
 #define out_of_memory() do {                    \
 		fprintf(stderr, "Out of memory.\n");    \

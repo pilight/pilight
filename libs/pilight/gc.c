@@ -30,6 +30,7 @@
 #include "gc.h"
 #include "json.h"
 #include "log.h"
+#include "mem.h"
 #include "devices.h"
 #include "common.h"
 #include "config.h"
@@ -79,6 +80,13 @@ void gc_handler(int sig) {
 	}
 	if(((sig == SIGINT || sig == SIGTERM || sig == SIGTSTP) && gc_enable == 1) ||
 		(!(sig == SIGINT || sig == SIGTERM || sig == SIGTSTP) && gc_enable == 0)) {
+		if(sig == SIGINT) {
+			logprintf(LOG_DEBUG, "received interrupt signal, stopping pilight...");
+		} else if(sig == SIGTERM) {
+			logprintf(LOG_DEBUG, "received terminate signal, stopping pilight...");
+		} else {
+			logprintf(LOG_DEBUG, "received stop signal, stopping pilight...");
+		}
 		if(config_get_file() != NULL && gc_enable == 1) {
 			gc_enable = 0;
 			if(pilight.runmode == STANDALONE) {
@@ -95,7 +103,7 @@ void gc_handler(int sig) {
 void gc_attach(int (*fp)(void)) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
-	struct collectors_t *gnode = malloc(sizeof(struct collectors_t));
+	struct collectors_t *gnode = MALLOC(sizeof(struct collectors_t));
 	if(!gnode) {
 		fprintf(stderr, "out of memory\n");
 		exit(EXIT_FAILURE);
@@ -112,9 +120,9 @@ void gc_clear(void) {
 	while(gc) {
 		tmp = gc;
 		gc = gc->next;
-		sfree((void *)&tmp);
+		FREE(tmp);
 	}
-	sfree((void *)&gc);
+	FREE(gc);
 }
 
 /* Run the GC manually */
@@ -134,9 +142,9 @@ int gc_run(void) {
 	while(gc) {
 		tmp = gc;
 		gc = gc->next;
-		sfree((void *)&tmp);
+		FREE(tmp);
 	}
-	sfree((void *)&gc);
+	FREE(gc);
 
 	if(s)
 		return EXIT_FAILURE;

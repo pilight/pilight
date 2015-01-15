@@ -135,7 +135,7 @@ static time_t getntptime(char *ntpserver) {
 
 close:
 	if(ip) {
-		sfree((void *)&ip);
+		FREE(ip);
 	}
 	if(sockfd > 0) {
 		close(sockfd);
@@ -150,7 +150,7 @@ static void *datetimeParse(void *param) {
 	struct JsonNode *jid = NULL;
 	struct JsonNode *jchild = NULL;
 	struct JsonNode *jchild1 = NULL;
-	char *slongitude = NULL, *slatitude = NULL, *tz = NULL, *ntpserver = NULL;
+	char *tz = NULL, *ntpserver = NULL;
 	double longitude = 0, latitude = 0;
 	int interval = 86400;
 
@@ -183,7 +183,7 @@ static void *datetimeParse(void *param) {
 	} else {
 		logprintf(LOG_DEBUG, "%.6f:%.6f seems to be in timezone: %s", longitude, latitude, tz);
 	}
-
+	printf("a\n");
 	while(datetime_loop) {
 		pthread_mutex_lock(&datetimelock);
 		t = time(NULL);
@@ -236,14 +236,8 @@ static void *datetimeParse(void *param) {
 	}
 	pthread_mutex_unlock(&datetimelock);
 
-	if(slatitude) {
-		sfree((void *)&slatitude);
-	}
-	if(slongitude) {
-		sfree((void *)&slongitude);
-	}
 	if(ntpserver) {
-		sfree((void *)&ntpserver);
+		FREE(ntpserver);
 	}
 
 	datetime_threads--;
@@ -254,7 +248,7 @@ static struct threadqueue_t *datetimeInitDev(JsonNode *jdevice) {
 	datetime_loop = 1;
 	char *output = json_stringify(jdevice, NULL);
 	JsonNode *json = json_decode(output);
-	sfree((void *)&output);
+	FREE(output);
 
 	struct protocol_threads_t *node = protocol_thread_init(datetime, json);
 	return threads_register("datetime", &datetimeParse, (void *)node, 0);
@@ -270,7 +264,7 @@ static void datetimeThreadGC(void) {
 }
 
 static void datetimeGC(void) {
-	sfree((void *)&datetime_format);
+	FREE(datetime_format);
 }
 
 #ifndef MODULE
@@ -281,7 +275,7 @@ void datetimeInit(void) {
 	pthread_mutexattr_settype(&datetimeattr, PTHREAD_MUTEX_RECURSIVE);
 	pthread_mutex_init(&datetimelock, &datetimeattr);
 
-	datetime_format = malloc(20);
+	datetime_format = MALLOC(20);
 	strcpy(datetime_format, "HH:mm:ss YYYY-MM-DD");
 
 	protocol_register(&datetime);
@@ -313,9 +307,9 @@ void datetimeInit(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name = "datetime";
-	module->version = "1.5";
+	module->version = "1.6";
 	module->reqversion = "5.0";
-	module->reqcommit = "84";
+	module->reqcommit = "187";
 }
 
 void init(void) {

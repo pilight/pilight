@@ -60,8 +60,8 @@ void event_action_remove(char *name) {
 			}
 
 			logprintf(LOG_DEBUG, "removed event action %s", currP->name);
-			sfree((void *)&currP->name);
-			sfree((void *)&currP);
+			FREE(currP->name);
+			FREE(currP);
 
 			break;
 		}
@@ -91,7 +91,7 @@ void event_action_init(void) {
 
 	if(settings_find_string("action-root", &action_root) != 0) {
 		/* If no action root was set, use the default action root */
-		if(!(action_root = malloc(strlen(ACTION_ROOT)+1))) {
+		if(!(action_root = MALLOC(strlen(ACTION_ROOT)+1))) {
 			logprintf(LOG_ERR, "out of memory");
 			exit(EXIT_FAILURE);
 		}
@@ -159,18 +159,18 @@ void event_action_init(void) {
 		closedir(d);
 	}
 	if(action_root_free) {
-		sfree((void *)&action_root);
+		FREE(action_root);
 	}
 }
 
 void event_action_register(struct event_actions_t **act, const char *name) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
-	if(!(*act = malloc(sizeof(struct event_actions_t)))) {
+	if(!(*act = MALLOC(sizeof(struct event_actions_t)))) {
 		logprintf(LOG_ERR, "out of memory");
 		exit(EXIT_FAILURE);
 	}
-	if(!((*act)->name = malloc(strlen(name)+1))) {
+	if(!((*act)->name = MALLOC(strlen(name)+1))) {
 		logprintf(LOG_ERR, "out of memory");
 		exit(EXIT_FAILURE);
 	}
@@ -190,12 +190,12 @@ int event_action_gc(void) {
 	struct event_actions_t *tmp_action = NULL;
 	while(event_actions) {
 		tmp_action = event_actions;
-		sfree((void *)&tmp_action->name);
+		FREE(tmp_action->name);
 		options_delete(tmp_action->options);
 		event_actions = event_actions->next;
-		sfree((void *)&tmp_action);
+		FREE(tmp_action);
 	}
-	sfree((void *)&event_actions);
+	FREE(event_actions);
 	logprintf(LOG_DEBUG, "garbage collected event action library");
 	return 0;
 }

@@ -25,6 +25,7 @@
 
 #include "fcache.h"
 #include "common.h"
+#include "mem.h"
 #include "log.h"
 #include "gc.h"
 
@@ -34,12 +35,12 @@ int fcache_gc(void) {
 	struct fcache_t *tmp = fcache;
 	while(fcache) {
 		tmp = fcache;
-		sfree((void *)&tmp->name);
-		sfree((void *)&tmp->bytes);
+		FREE(tmp->name);
+		FREE(tmp->bytes);
 		fcache = fcache->next;
-		sfree((void *)&tmp);
+		FREE(tmp);
 	}
-	sfree((void *)&fcache);
+	FREE(fcache);
 
 	logprintf(LOG_DEBUG, "garbage collected fcache library");
 	return 1;
@@ -61,9 +62,9 @@ void fcache_remove_node(struct fcache_t **cache, char *name) {
 				prevP->next = currP->next;
 			}
 
-			sfree((void *)&currP->name);
-			sfree((void *)&currP->bytes);
-			sfree((void *)&currP);
+			FREE(currP->name);
+			FREE(currP->bytes);
+			FREE(currP);
 
 			break;
 		}
@@ -92,13 +93,13 @@ int fcache_add(char *filename) {
 		logprintf(LOG_NOTICE, "failed to stat %s", filename);
 		return -1;
 	} else {
-		struct fcache_t *node = malloc(sizeof(struct fcache_t));
+		struct fcache_t *node = MALLOC(sizeof(struct fcache_t));
 		if(!node) {
 			logprintf(LOG_ERR, "out of memory");
 			exit(EXIT_FAILURE);
 		}
 		filesize = (unsigned long)sb.st_size;
-		if(!(node->bytes = malloc(filesize + 100))) {
+		if(!(node->bytes = MALLOC(filesize + 100))) {
 			logprintf(LOG_ERR, "out of memory");
 			exit(EXIT_FAILURE);
 		}
@@ -112,7 +113,7 @@ int fcache_add(char *filename) {
 			close(fd);
 
 			node->size = (int)filesize;
-			node->name = malloc(strlen(filename)+1);
+			node->name = MALLOC(strlen(filename)+1);
 			if(!node->name) {
 				logprintf(LOG_ERR, "out of memory");
 				exit(EXIT_FAILURE);

@@ -31,6 +31,7 @@
 #include "irq.h"
 #include "gc.h"
 #include "log.h"
+#include "mem.h"
 #include "wiringX.h"
 
 typedef struct timestamp_t {

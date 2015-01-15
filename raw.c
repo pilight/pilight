@@ -73,8 +73,10 @@ int main_gc(void) {
 
 	wiringXGC();
 	log_gc();
+	gc_clear();
 
-	sfree((void *)&progname);
+	FREE(progname);
+	xfree();
 
 	return EXIT_SUCCESS;
 }
@@ -93,10 +95,11 @@ void *receive_code(void *param) {
 }
 
 int main(int argc, char **argv) {
+	memtrack();
 
 	struct options_t *options = NULL;
 	char *args = NULL;
-	char *configtmp = malloc(strlen(CONFIG_FILE)+1);
+	char *configtmp = MALLOC(strlen(CONFIG_FILE)+1);
 	pid_t pid = 0;
 
 	strcpy(configtmp, CONFIG_FILE);
@@ -112,7 +115,7 @@ int main(int argc, char **argv) {
 
 	wiringXLog = logprintf;
 
-	if(!(progname = malloc(12))) {
+	if(!(progname = MALLOC(12))) {
 		logprintf(LOG_ERR, "out of memory");
 		exit(EXIT_FAILURE);
 	}
@@ -142,7 +145,7 @@ int main(int argc, char **argv) {
 				goto close;
 			break;
 			case 'C':
-				configtmp = realloc(configtmp, strlen(args)+1);
+				configtmp = REALLOC(configtmp, strlen(args)+1);
 				strcpy(configtmp, args);
 			break;
 			default:
@@ -160,10 +163,10 @@ int main(int argc, char **argv) {
 	}
 	if((pid = findproc(pilight_daemon, NULL, 1)) > 0) {
 		logprintf(LOG_ERR, "pilight-daemon instance found (%d)", (int)pid);
-		sfree((void *)&pilight_daemon);
+		FREE(pilight_daemon);
 		goto close;
 	}
-	sfree((void *)&pilight_daemon);
+	FREE(pilight_daemon);
 
 	char *pilight_debug = strdup("pilight-debug");
 	if(!pilight_debug) {
@@ -172,22 +175,23 @@ int main(int argc, char **argv) {
 	}
 	if((pid = findproc(pilight_debug, NULL, 1)) > 0) {
 		logprintf(LOG_ERR, "pilight-debug instance found (%d)", (int)pid);
-		sfree((void *)&pilight_debug);
+		FREE(pilight_debug);
 		goto close;
 	}
-	sfree((void *)&pilight_debug);
+	FREE(pilight_debug);
 
 	if(config_set_file(configtmp) == EXIT_FAILURE) {
+		FREE(configtmp);
 		return EXIT_FAILURE;
 	}
 
 	protocol_init();
 	config_init();
 	if(config_read() != EXIT_SUCCESS) {
-		sfree((void *)&configtmp);
+		FREE(configtmp);
 		goto close;
 	}
-	sfree((void *)&configtmp);
+	FREE(configtmp);
 
 	/* Start threads library that keeps track of all threads used */
 	threads_create(&pth, NULL, &threads_start, (void *)NULL);
@@ -207,6 +211,9 @@ int main(int argc, char **argv) {
 	}
 
 close:
+	if(args) {
+		FREE(args);
+	}
 	if(main_loop) {
 		main_gc();
 	}

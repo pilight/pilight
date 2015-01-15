@@ -34,6 +34,7 @@
 #include "json.h"
 #include "common.h"
 #include "log.h"
+#include "mem.h"
 
 #define NRCOUNTRIES 	408
 #define PRECISION 		1
@@ -61,6 +62,7 @@ static int fillTZData(void) {
 
 	pthread_mutex_lock(&tzlock);
 	if(tzdatafilled == 1) {
+		pthread_mutex_unlock(&tzlock);
 		return EXIT_SUCCESS;
 	}
 	char *content = NULL;
@@ -93,7 +95,7 @@ static int fillTZData(void) {
 	/* Validate JSON and turn into JSON object */
 	if(json_validate(content) == false) {
 		logprintf(LOG_ERR, "tzdata is not in a valid json format");
-		sfree((void *)&content);
+		free(content);
 		return EXIT_FAILURE;
 	}
 
@@ -137,7 +139,7 @@ static int fillTZData(void) {
 		alist = alist->next;
 	}
 	json_delete(root);
-	sfree((void *)&content);
+	free(content);
 	tzdatafilled = 1;
 	pthread_mutex_unlock(&tzlock);
 	return EXIT_SUCCESS;
@@ -150,11 +152,11 @@ int datetime_gc(void) {
 		for(i=0;i<NRCOUNTRIES;i++) {
 			unsigned int n = tznrpolys[i];
 			for(a=0;a<n;a++) {
-				sfree((void *)&tzcoords[i][a]);
+				free(tzcoords[i][a]);
 			}
-			sfree((void *)&tzcoords[i]);
+			free(tzcoords[i]);
 		}
-		sfree((void *)&tzcoords);
+		free(tzcoords);
 		logprintf(LOG_DEBUG, "garbage collected datetime library");
 	}
 	return EXIT_SUCCESS;
