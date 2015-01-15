@@ -56,8 +56,6 @@ static unsigned short lirc433HwInit(void) {
 			logprintf(LOG_ERR, "could not open %s", lirc_433_socket);
 			return EXIT_FAILURE;
 		} else {
-			int flags = fcntl(lirc_433_fd, F_GETFL, 0);
-			fcntl(lirc_433_fd, F_SETFL, flags | O_NONBLOCK);
 			/* Only set the frequency once */
 			if(lirc_433_setfreq == 0) {
 				freq = FREQ433;
@@ -82,6 +80,7 @@ static unsigned short lirc433HwDeinit(void) {
 
 		freq = FREQ38;
 
+		write(lirc_433_fd, "0", 1);
 		if(lirc_433_fd != 0) {
 			/* Restore the lirc_rpi frequency to its default value */
 			if(ioctl(lirc_433_fd, _IOW('i', 0x00000013, __u32), &freq) == -1) {
@@ -133,19 +132,10 @@ static int lirc433Send(int *code, int rawlen, int repeats) {
 }
 
 static int lirc433Receive(void) {
-	int data = 0, n = 0;
-	struct timeval tv;
-	tv.tv_sec = 0;
-	tv.tv_usec = 1000;
+	int data = 0;
 
-	FD_ZERO(&lirc_read);
-	FD_SET((unsigned long)lirc_433_fd, &lirc_read);
-	n = select(lirc_433_fd+1, &lirc_read, NULL, NULL, &tv);
-
-	if(n >= 0) {
-		data = 1;
-	} else if((read(lirc_433_fd, &data, sizeof(data))) <= 0) {
-		data = 1;
+	if((read(lirc_433_fd, &data, sizeof(data))) <= 0) {
+		return -1;
 	}
 
 	return (data & 0x00FFFFFF);
@@ -199,9 +189,9 @@ void lirc433Init(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name = "433lirc";
-	module->version = "1.0";
+	module->version = "1.1";
 	module->reqversion = "5.0";
-	module->reqcommit = NULL;
+	module->reqcommit = "86";
 }
 
 void init(void) {
