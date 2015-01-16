@@ -341,10 +341,16 @@ static int webserver_request_handler(struct mg_connection *conn) {
 		} else if(conn->uri != NULL) {
 			if(strcmp(conn->uri, "/send") == 0) {
 				if(conn->query_string != NULL) {
-					char out[strlen(conn->query_string)+1];
-					urldecode(conn->query_string, out);
-					if(json_validate(out) == true) {
-						socket_write(sockfd, out);
+					char decoded[strlen(conn->query_string)+1];
+					char output[strlen(conn->query_string)+1];
+					strcpy(output, conn->query_string);
+					char *z = strstr(output, "&");
+					if(z != NULL) {
+						output[z-output] = '\0';
+					}
+					urldecode(output, decoded);
+					if(json_validate(decoded) == true) {
+						socket_write(sockfd, decoded);
 						mg_printf_data(conn, "{\"message\":\"success\"}");
 						return MG_TRUE;
 					}
