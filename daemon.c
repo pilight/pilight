@@ -1887,10 +1887,10 @@ int main(int argc, char **argv) {
 	struct ssdp_list_t *ssdp_list = NULL;
 
 	char buffer[BUFFER_SIZE];
-	int f, itmp, show_help = 0, show_version = 0, show_default = 0;
+	int f = 0, itmp = 0, show_help = 0, show_version = 0, show_default = 0;
 	char *stmp = NULL;
 	char *args = NULL;
-	int port = 0;
+	int port = 0, watchdog = 1;
 
 	memset(buffer, '\0', BUFFER_SIZE);
 
@@ -2244,6 +2244,8 @@ int main(int argc, char **argv) {
 	threads_register("firmware upgrader", &firmware_loop, (void *)NULL, 0);
 #endif
 
+	settings_find_number("watchdog-enable", &watchdog);
+
 	int checkram = 0, checkcpu = 0;
 	int i = -1;
 	int x = 0;
@@ -2258,7 +2260,7 @@ int main(int argc, char **argv) {
 			threads_cpu_usage(1);
 		}
 
-		if((i > -1) && (cpu > 60)) {
+		if(watchdog == 1 && (i > -1) && (cpu > 60)) {
 			if(nodaemon <= 1) {
 				threads_cpu_usage(x);
 				x ^= 1;
@@ -2286,7 +2288,7 @@ int main(int argc, char **argv) {
 				}
 			}
 			checkcpu = 1;
-		} else if((i > -1) && (ram > 60)) {
+		} else if(watchdog == 1 && (i > -1) && (ram > 60)) {
 			if(checkram == 0) {
 				if(ram > 90) {
 					logprintf(LOG_ERR, "ram usage way too high %f%", ram);

@@ -98,7 +98,7 @@ static unsigned short lirc433HwDeinit(void) {
 
 		freq = FREQ38;
 
-		if(lirc_433_fd != 0) {
+		if(lirc_433_fd > 0) {
 			/* Restore the lirc_rpi frequency to its default value */
 			if(ioctl(lirc_433_fd, _IOW('i', 0x00000013, __u32), &freq) == -1) {
 				logprintf(LOG_ERR, "could not restore default freq of the lirc_rpi lirc");
@@ -157,13 +157,14 @@ static int lirc433Receive(void) {
 	polls.events = POLLIN;
 
 	x = poll(&polls, 1, ms);
-	if(x == -1 && errno == EINTR) {
+
+	if(x > 0) {
+		(void)read(lirc_433_fd, &data, sizeof(data));
+		lseek(lirc_433_fd, 0, SEEK_SET);
+		return (data & 0x00FFFFFF);
+	} else {
 		return -1;
 	}
-
-	(void)read(lirc_433_fd, &data, sizeof(data));
-	lseek(lirc_433_fd, 0, SEEK_SET);
-	return (data & 0x00FFFFFF);
 }
 
 static unsigned short lirc433Settings(JsonNode *json) {

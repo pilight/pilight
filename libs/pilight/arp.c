@@ -354,7 +354,7 @@ static void callback(u_char *args, const struct pcap_pkthdr *header, const u_cha
 	unmarshal_arp_pkt(packet_in, n, &frame_hdr, &arpei, NULL, NULL);
 	source_ip.s_addr = arpei.ar_sip;
 	temp_cursor = find_host(cursor, &source_ip);
-	// printf("%s\n", inet_ntoa(source_ip));
+
 	if(temp_cursor != NULL) {
 		temp_cursor->num_recv++;
 		if(temp_cursor->live == 1) {

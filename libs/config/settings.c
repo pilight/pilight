@@ -206,7 +206,8 @@ static int settings_parse(JsonNode *root) {
 				settings_add_number(jsettings->key, (int)jsettings->number_);
 			}
 #endif
-		} else if(strcmp(jsettings->key, "standalone") == 0) {
+		} else if(strcmp(jsettings->key, "standalone") == 0 ||
+							strcmp(jsettings->key, "watchdog-enable") == 0) {
 			if(jsettings->tag != JSON_NUMBER) {
 				logprintf(LOG_ERR, "config setting \"%s\" must be either 0 or 1", jsettings->key);
 				have_error = 1;

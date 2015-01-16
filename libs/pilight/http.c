@@ -262,7 +262,9 @@ exit:
 	if(ip) FREE(ip);
 	if(page) FREE(page);
 	if(host) FREE(host);
-	close(sockfd);
+	if(sockfd > 0) {
+		close(sockfd);
+	}
 
 	if(*size > 0) {
 		content[*size] = '\0';
