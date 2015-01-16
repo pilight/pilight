@@ -138,12 +138,14 @@ int main(int argc, char **argv) {
 
 close:
 	log_shell_disable();
+	log_level_set(LOG_ERR);	
 	config_gc();
 	protocol_gc();
 	event_operator_gc();
 	event_action_gc();
 	options_gc();
 	threads_gc();
+	wiringXGC();
 	log_gc();
 	gc_clear();
 	FREE(progname);

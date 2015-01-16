@@ -233,6 +233,7 @@ static void *wundergroundParse(void *param) {
 																	json_append_member(code, "country", json_mkstring(wnode->country));
 																	json_append_member(code, "temperature", json_mknumber((double)(temp/100), 2));
 																	json_append_member(code, "humidity", json_mknumber((double)(humi/100), 2));
+																	json_append_member(code, "update", json_mknumber(0, 0));
 																	sunrise = datetime2ts(year, month, mday, atoi(rhour), atoi(rmin), 0, 0);
 																	json_append_member(code, "sunrise", json_mknumber((double)((atoi(rhour)*100)+atoi(rmin))/100, 2));
 																	sunset = datetime2ts(year, month, mday, atoi(shour), atoi(smin), 0, 0);
@@ -334,6 +335,7 @@ static void *wundergroundParse(void *param) {
 	struct wunderground_data_t *wtmp = NULL;
 	while(wunderground_data) {
 		wtmp = wunderground_data;
+		FREE(wunderground_data->api);
 		FREE(wunderground_data->country);
 		FREE(wunderground_data->location);
 		wunderground_data = wunderground_data->next;
@@ -463,7 +465,7 @@ void wundergroundInit(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name = "wunderground";
-	module->version = "1.4";
+	module->version = "1.5";
 	module->reqversion = "5.0";
 	module->reqcommit = "187";
 }
