@@ -110,11 +110,6 @@ static pthread_cond_t sendqueue_signal;
 static pthread_mutexattr_t sendqueue_attr;
 
 static int sendqueue_number = 0;
-
-static pthread_mutex_t receive_lock;
-static pthread_cond_t receive_signal;
-static pthread_mutexattr_t receive_attr;
-
 static int recvqueue_number = 0;
 
 static pthread_mutex_t recvqueue_lock;
@@ -148,7 +143,6 @@ static int nodaemon = 0;
 static int running = 1;
 /* Are we currently sending code */
 static int sending = 0;
-static char *sendhw = NULL;
 /* How many times does the code need to be resend */
 static int send_repeat = 0;
 /* How many times does a code need to received*/
@@ -183,45 +177,6 @@ static char *webgui_tpl = NULL;
 static int webserver_root_free = 0;
 static int webgui_tpl_free = 0;
 #endif
-
-struct receive_wait_t {
-	char *id;
-	unsigned short wait;
-	struct receive_wait_t *next;
-} receive_wait_t;
-
-struct receive_wait_t *receive_wait;
-
-/* Gracefully stop receiving from a certain
-   frequency when we are also sending it */
-static void receive_signal_handler(int sig) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
-
-	struct receive_wait_t *tmp = receive_wait;
-	if(sig == SIGUSR1) {
-		pthread_mutex_lock(&receive_lock);
-		while(tmp) {
-			if(sendhw != NULL && strcmp(tmp->id, sendhw) == 0) {
-				tmp->wait = 1;
-				break;
-			}
-			tmp = tmp->next;
-		}
-		pthread_mutex_unlock(&receive_lock);
-		pthread_cond_signal(&receive_signal);
-	} else if(sig == SIGUSR2) {
-		pthread_mutex_lock(&receive_lock);
-		while(tmp) {
-			if(sendhw != NULL && strcmp(tmp->id, sendhw) == 0) {
-				tmp->wait = 0;
-				break;
-			}
-			tmp = tmp->next;
-		}
-		pthread_mutex_unlock(&receive_lock);
-		pthread_cond_signal(&receive_signal);
-	}
-}
 
 static void client_remove(int id) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
@@ -734,8 +689,6 @@ void *send_code(void *param) {
 			while(tmp_confhw) {
 				if(protocol->hwtype == tmp_confhw->hardware->type) {
 					hw = tmp_confhw->hardware;
-					sendhw = REALLOC(sendhw, strlen(hw->id)+1);
-					strcpy(sendhw, hw->id);
 					break;
 				}
 				tmp_confhw = tmp_confhw->next;
@@ -743,7 +696,9 @@ void *send_code(void *param) {
 
 			if(hw && hw->send) {
 				if(hw->receive) {
-					thread_signal(hw->id, SIGUSR1);
+					hw->wait = 1;
+					pthread_mutex_unlock(&hw->lock);
+					pthread_cond_signal(&hw->signal);
 				}
 				logprintf(LOG_DEBUG, "**** RAW CODE ****");
 				if(log_level_get() >= LOG_DEBUG) {
@@ -763,7 +718,9 @@ void *send_code(void *param) {
 					logprintf(LOG_ERR, "failed to send code");
 				}
 				if(hw->receive) {
-					thread_signal(hw->id, SIGUSR2);
+					hw->wait = 0;
+					pthread_mutex_unlock(&hw->lock);
+					pthread_cond_signal(&hw->signal);
 				}
 			} else {
 				if(strcmp(protocol->id, "raw") == 0) {
@@ -1428,16 +1385,6 @@ static void socket_parse_data(int i, char *buffer) {
 						}
 					}
 					if(json_find_string(json, "protocol", &pname) == 0) {
-						// JsonNode *jcode = NULL;
-						// JsonNode *jmessage = NULL;
-						// if((jmessage = json_find_member(json, "message")) != NULL) {
-							// json_remove_from_parent(jmessage);
-						// }
-						// if((jcode = json_find_member(json, "code")) != NULL) {
-							// jcode->key = REALLOC(jcode->key, 9);
-							// strcpy(jcode->key, "message");
-						// }
-
 						broadcast_queue(pname, json);
 					}
 				} else {
@@ -1470,14 +1417,6 @@ void *receive_code(void *param) {
 	int duration = 0;
 	struct timeval tp;
 	struct timespec ts;
-	struct sigaction act;
-	struct receive_wait_t *tmp = receive_wait;
-
-	memset(&act, 0, sizeof(act));
-	act.sa_handler = receive_signal_handler;
-	sigemptyset(&act.sa_mask);
-	sigaction(SIGUSR1, &act, NULL);
-	sigaction(SIGUSR2, &act, NULL);
 
 	/* Make sure the pilight receiving gets
 	   the highest priority available */
@@ -1486,17 +1425,11 @@ void *receive_code(void *param) {
 	pthread_setschedparam(pthread_self(), SCHED_FIFO, &sched);
 
 	struct hardware_t *hw = (hardware_t *)param;
-	while(tmp) {
-		if(strcmp(tmp->id, hw->id) == 0) {
-			break;
-		}
-		tmp = tmp->next;
-	}
-	pthread_mutex_lock(&receive_lock);
-	while(main_loop && hw->receive) {
-		if(tmp->wait == 0) {
-			pthread_mutex_lock(&receive_lock);
-
+	pthread_mutex_lock(&hw->lock);
+	hw->running = 1;
+	while(main_loop == 1 && hw->receive != NULL && hw->stop == 0) {
+		if(hw->wait == 0) {
+			pthread_mutex_lock(&hw->lock);
 			logprintf(LOG_STACK, "%s::unlocked", __FUNCTION__);
 			duration = hw->receive();
 
@@ -1518,19 +1451,20 @@ void *receive_code(void *param) {
 				}
 			/* Hardware failure */
 			} else if(duration == -1) {
-				pthread_mutex_unlock(&receive_lock);
+				pthread_mutex_unlock(&hw->lock);
 				gettimeofday(&tp, NULL);
 				ts.tv_sec = tp.tv_sec;
 				ts.tv_nsec = tp.tv_usec * 1000;
 				ts.tv_sec += 1;
-				pthread_mutex_lock(&receive_lock);
-				pthread_cond_timedwait(&receive_signal, &receive_lock, &ts);
+				pthread_mutex_lock(&hw->lock);
+				pthread_cond_timedwait(&hw->signal, &hw->lock, &ts);
 			}
-			pthread_mutex_unlock(&receive_lock);
+			pthread_mutex_unlock(&hw->lock);
 		} else {
-			pthread_cond_wait(&receive_signal, &receive_lock);
+			pthread_cond_wait(&hw->signal, &hw->lock);
 		}
 	}
+	hw->running = 0;
 	return (void *)NULL;
 }
 
@@ -1724,14 +1658,6 @@ int main_gc(void) {
 		usleep(1000);
 	}
 
-	struct receive_wait_t *tmp = receive_wait;
-	while(tmp) {
-		tmp->wait = 0;
-		tmp = tmp->next;
-	}
-	pthread_mutex_unlock(&receive_lock);
-	pthread_cond_signal(&receive_signal);
-
 	/* If we are running in node mode, the clientize
 	   thread is waiting for a response from the main
 	   daemon. This means we can't gracefull stop that
@@ -1809,14 +1735,6 @@ int main_gc(void) {
 	wiringXGC();
 	log_gc();
 
-	while(receive_wait) {
-		tmp = receive_wait;
-		FREE(tmp->id);
-		receive_wait = receive_wait->next;
-		FREE(tmp);
-	}
-	FREE(receive_wait);
-	FREE(sendhw);
 	FREE(progname);
 	xfree();
 	return 0;
@@ -2248,11 +2166,6 @@ int main(int argc, char **argv) {
 	pthread_mutex_init(&recvqueue_lock, &recvqueue_attr);
 	pthread_cond_init(&recvqueue_signal, NULL);
 
-	pthread_mutexattr_init(&receive_attr);
-	pthread_mutexattr_settype(&receive_attr, PTHREAD_MUTEX_RECURSIVE);
-	pthread_mutex_init(&receive_lock, &receive_attr);
-	pthread_cond_init(&receive_signal, NULL);
-
 	pthread_mutexattr_init(&bcqueue_attr);
 	pthread_mutexattr_settype(&bcqueue_attr, PTHREAD_MUTEX_RECURSIVE);
 	pthread_mutex_init(&bcqueue_lock, &bcqueue_attr);
@@ -2293,22 +2206,8 @@ int main(int argc, char **argv) {
 				logprintf(LOG_ERR, "could not initialize %s hardware mode", tmp_confhw->hardware->id);
 				goto clear;
 			}
-
-			struct receive_wait_t *node = MALLOC(sizeof(struct receive_wait_t));
-			if(!node) {
-				logprintf(LOG_ERR, "out of memory");
-				goto clear;
-			}
-			if(!(node->id = MALLOC(strlen(tmp_confhw->hardware->id)+1))) {
-				logprintf(LOG_ERR, "out of memory");
-				FREE(node);
-				goto clear;
-			}
-			strcpy(node->id, tmp_confhw->hardware->id);
-			node->wait = 0;
-			node->next = receive_wait;
-			receive_wait = node;
-
+			tmp_confhw->hardware->wait = 0;
+			tmp_confhw->hardware->stop = 0;
 			threads_register(tmp_confhw->hardware->id, &receive_code, (void *)tmp_confhw->hardware, 0);
 		}
 		tmp_confhw = tmp_confhw->next;

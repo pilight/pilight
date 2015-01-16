@@ -77,12 +77,19 @@ void hardware_register(struct hardware_t **hw) {
 		exit(EXIT_FAILURE);
 	}
 	(*hw)->options = NULL;
+	(*hw)->wait = 0;
+	(*hw)->stop = 0;
 
 	(*hw)->init = NULL;
 	(*hw)->deinit = NULL;
 	(*hw)->receive = NULL;
 	(*hw)->send = NULL;
 	(*hw)->settings = NULL;
+	
+	pthread_mutexattr_init(&(*hw)->attr);
+	pthread_mutexattr_settype(&(*hw)->attr, PTHREAD_MUTEX_RECURSIVE);
+	pthread_mutex_init(&(*hw)->lock, &(*hw)->attr);
+	pthread_cond_init(&(*hw)->signal, NULL);	
 
 	(*hw)->next = hardware;
 	hardware = (*hw);
@@ -101,13 +108,15 @@ static int hardware_gc(void) {
 	struct hardware_t *htmp = hardware;
 	struct conf_hardware_t *ctmp = NULL;
 
-	while(htmp) {
-		thread_signal(htmp->id, SIGUSR2);
-		htmp = htmp->next;
-	}
-
 	while(hardware) {
 		htmp = hardware;
+		htmp->stop = 1;
+		pthread_mutex_unlock(&htmp->lock);
+		pthread_cond_signal(&htmp->signal);
+		while(htmp->running == 1) {
+			usleep(10);
+		}
+		thread_stop(htmp->id);
 		if(htmp->deinit != NULL) {
 			htmp->deinit();
 		}

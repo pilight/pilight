@@ -17,11 +17,22 @@
 */
 
 #include <stdio.h>
+#include <stdarg.h>
+#include <stdint.h>
 #include <stdlib.h>
-#include <string.h>
-#include <sys/ioctl.h>
-#include <fcntl.h>
+#include <ctype.h>
+#include <poll.h>
 #include <unistd.h>
+#include <errno.h>
+#include <string.h>
+#include <time.h>
+#include <fcntl.h>
+#include <pthread.h>
+#include <sys/time.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <sys/wait.h>
+#include <sys/ioctl.h>
 
 #include "../../pilight.h"
 #include "common.h"
@@ -39,12 +50,13 @@ static int lirc_433_initialized = 0;
 static int lirc_433_setfreq = 0;
 static int lirc_433_fd = 0;
 static char *lirc_433_socket = NULL;
-static fd_set lirc_read;
 
 typedef unsigned long __u32;
 
 static unsigned short lirc433HwInit(void) {
 	unsigned int freq = 0;
+	int fd = 0, i = 0, count = 0;
+	int c = 0;
 
 	if(strcmp(lirc_433_socket, "/var/lirc/lircd") == 0) {
 		logprintf(LOG_ERR, "refusing to connect to lircd socket");
@@ -64,6 +76,12 @@ static unsigned short lirc433HwInit(void) {
 					logprintf(LOG_ERR, "could not set lirc_rpi send frequency");
 					exit(EXIT_FAILURE);
 				}
+				fd = open(lirc_433_socket, O_RDWR);
+				ioctl(fd, FIONREAD, &count);
+				for(i=0; i<count; ++i) {
+					read(lirc_433_fd, &c, sizeof(c));
+				}
+				close(fd);
 				lirc_433_setfreq = 1;
 			}
 			logprintf(LOG_DEBUG, "initialized lirc_rpi lirc");
@@ -80,7 +98,6 @@ static unsigned short lirc433HwDeinit(void) {
 
 		freq = FREQ38;
 
-		write(lirc_433_fd, "0", 1);
 		if(lirc_433_fd != 0) {
 			/* Restore the lirc_rpi frequency to its default value */
 			if(ioctl(lirc_433_fd, _IOW('i', 0x00000013, __u32), &freq) == -1) {
@@ -132,12 +149,20 @@ static int lirc433Send(int *code, int rawlen, int repeats) {
 }
 
 static int lirc433Receive(void) {
+	struct pollfd polls;
 	int data = 0;
+	int x = 0;
+	int ms = 10;
+	polls.fd = lirc_433_fd;
+	polls.events = POLLIN;
 
-	if((read(lirc_433_fd, &data, sizeof(data))) <= 0) {
+	x = poll(&polls, 1, ms);
+	if(x == -1 && errno == EINTR) {
 		return -1;
 	}
 
+	(void)read(lirc_433_fd, &data, sizeof(data));
+	lseek(lirc_433_fd, 0, SEEK_SET);
 	return (data & 0x00FFFFFF);
 }
 
@@ -189,7 +214,7 @@ void lirc433Init(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name = "433lirc";
-	module->version = "1.1";
+	module->version = "1.2";
 	module->reqversion = "5.0";
 	module->reqcommit = "86";
 }
