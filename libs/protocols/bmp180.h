@@ -16,8 +16,8 @@
 	along with pilight. If not, see	<http://www.gnu.org/licenses/>
 */
 
-#ifndef _PROTOCOL_bmp180_H_
-#define _PROTOCOL_bmp180_H_
+#ifndef _PROTOCOL_BMP180_H_
+#define _PROTOCOL_BMP180_H_
 
 #include "json.h"
 #include "threads.h"

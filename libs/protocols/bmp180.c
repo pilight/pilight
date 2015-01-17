@@ -77,10 +77,10 @@ static void *bmp180Parse(void *param) {
 	struct JsonNode *json = (struct JsonNode *) node->param;
 	struct JsonNode *jid = NULL;
 	struct JsonNode *jchild = NULL;
-	struct bmp180data_t *bmp180data = malloc(sizeof(struct bmp180data_t));
+	struct bmp180data_t *bmp180data = MALLOC(sizeof(struct bmp180data_t));
 	int y = 0, interval = 10, nrloops = 0;
 	char *stmp = NULL;
-	double itmp = -1, temp_offset = 0.0, pressure_offset = 0.0;
+	double itmp = -1, temp_offset = 0, pressure_offset = 0;
 	unsigned char oversampling = 1;
 
 	if (!bmp180data) {
@@ -109,7 +109,7 @@ static void *bmp180Parse(void *param) {
 		jchild = json_first_child(jid);
 		while (jchild) {
 			if (json_find_string(jchild, "id", &stmp) == 0) {
-				bmp180data->id = realloc(bmp180data->id, (sizeof(char *) * (size_t)(bmp180data->nrid + 1)));
+				bmp180data->id = REALLOC(bmp180data->id, (sizeof(char *) * (size_t)(bmp180data->nrid + 1)));
 				if (!bmp180data->id) {
 					logprintf(LOG_ERR, "out of memory");
 					exit(EXIT_FAILURE);
@@ -136,21 +136,21 @@ static void *bmp180Parse(void *param) {
 
 #ifndef __FreeBSD__
 	// resize the memory blocks pointed to by the different pointers
-	size_t sz = (size_t) bmp180data->nrid + 1;
+	size_t sz = (size_t) (bmp180data->nrid + 1);
 	unsigned long int sizeShort = sizeof(short) * sz;
 	unsigned long int sizeUShort = sizeof(unsigned short) * sz;
-	bmp180data->fd = realloc(bmp180data->fd, (sizeof(int) * sz));
-	bmp180data->ac1 = realloc(bmp180data->ac1, sizeShort);
-	bmp180data->ac2 = realloc(bmp180data->ac2, sizeShort);
-	bmp180data->ac3 = realloc(bmp180data->ac3, sizeShort);
-	bmp180data->ac4 = realloc(bmp180data->ac4, sizeUShort);
-	bmp180data->ac5 = realloc(bmp180data->ac5, sizeUShort);
-	bmp180data->ac6 = realloc(bmp180data->ac6, sizeUShort);
-	bmp180data->b1 = realloc(bmp180data->b1, sizeShort);
-	bmp180data->b2 = realloc(bmp180data->b2, sizeShort);
-	bmp180data->mb = realloc(bmp180data->mb, sizeShort);
-	bmp180data->mc = realloc(bmp180data->mc, sizeShort);
-	bmp180data->md = realloc(bmp180data->md, sizeShort);
+	bmp180data->fd = REALLOC(bmp180data->fd, (sizeof(int) * sz));
+	bmp180data->ac1 = REALLOC(bmp180data->ac1, sizeShort);
+	bmp180data->ac2 = REALLOC(bmp180data->ac2, sizeShort);
+	bmp180data->ac3 = REALLOC(bmp180data->ac3, sizeShort);
+	bmp180data->ac4 = REALLOC(bmp180data->ac4, sizeUShort);
+	bmp180data->ac5 = REALLOC(bmp180data->ac5, sizeUShort);
+	bmp180data->ac6 = REALLOC(bmp180data->ac6, sizeUShort);
+	bmp180data->b1 = REALLOC(bmp180data->b1, sizeShort);
+	bmp180data->b2 = REALLOC(bmp180data->b2, sizeShort);
+	bmp180data->mb = REALLOC(bmp180data->mb, sizeShort);
+	bmp180data->mc = REALLOC(bmp180data->mc, sizeShort);
+	bmp180data->md = REALLOC(bmp180data->md, sizeShort);
 	if (!bmp180data->ac1 || !bmp180data->ac2 || !bmp180data->ac3 || !bmp180data->ac4 || !bmp180data->ac5
 			|| !bmp180data->ac6 || !bmp180data->b1 || !bmp180data->b2 || !bmp180data->mb || !bmp180data->mc
 			|| !bmp180data->md || !bmp180data->fd) {
@@ -308,42 +308,42 @@ static void *bmp180Parse(void *param) {
 
 	if (bmp180data->id) {
 		for (y = 0; y < bmp180data->nrid; y++) {
-			sfree((void *) &bmp180data->id[y]);
+			FREE(bmp180data->id[y]);
 		}
-		sfree((void *) &bmp180data->id);
+		FREE(bmp180data->id);
 	}
 	if (bmp180data->ac1) {
-		sfree((void *) &bmp180data->ac1);
+		FREE(bmp180data->ac1);
 	}
 	if (bmp180data->ac2) {
-		sfree((void *) &bmp180data->ac2);
+		FREE(bmp180data->ac2);
 	}
 	if (bmp180data->ac3) {
-		sfree((void *) &bmp180data->ac3);
+		FREE(bmp180data->ac3);
 	}
 	if (bmp180data->ac4) {
-		sfree((void *) &bmp180data->ac4);
+		FREE(bmp180data->ac4);
 	}
 	if (bmp180data->ac5) {
-		sfree((void *) &bmp180data->ac5);
+		FREE(bmp180data->ac5);
 	}
 	if (bmp180data->ac6) {
-		sfree((void *) &bmp180data->ac6);
+		FREE(bmp180data->ac6);
 	}
 	if (bmp180data->b1) {
-		sfree((void *) &bmp180data->b1);
+		FREE(bmp180data->b1);
 	}
 	if (bmp180data->b2) {
-		sfree((void *) &bmp180data->b2);
+		FREE(bmp180data->b2);
 	}
 	if (bmp180data->mb) {
-		sfree((void *) &bmp180data->mb);
+		FREE(bmp180data->mb);
 	}
 	if (bmp180data->mc) {
-		sfree((void *) &bmp180data->mc);
+		FREE(bmp180data->mc);
 	}
 	if (bmp180data->md) {
-		sfree((void *) &bmp180data->md);
+		FREE(bmp180data->md);
 	}
 	if (bmp180data->fd) {
 		for (y = 0; y < bmp180data->nrid; y++) {
@@ -351,9 +351,9 @@ static void *bmp180Parse(void *param) {
 				close(bmp180data->fd[y]);
 			}
 		}
-		sfree((void *) &bmp180data->fd);
+		FREE(bmp180data->fd);
 	}
-	sfree((void *) &bmp180data);
+	FREE(bmp180data);
 	bmp180_threads--;
 
 	return (void *) NULL;
@@ -364,7 +364,7 @@ struct threadqueue_t *bmp180InitDev(JsonNode *jdevice) {
 	wiringXSetup();
 	char *output = json_stringify(jdevice, NULL);
 	JsonNode *json = json_decode(output);
-	sfree((void *) &output);
+	FREE(output);
 
 	struct protocol_threads_t *node = protocol_thread_init(bmp180, json);
 	return threads_register("bmp180", &bmp180Parse, (void *) node, 0);
@@ -423,7 +423,7 @@ void compatibility(struct module_t *module) {
 	module->name = "bmp180";
 	module->version = "1.0";
 	module->reqversion = "5.0";
-	module->reqcommit = "84";
+	module->reqcommit = "187";
 }
 
 void init(void) {
