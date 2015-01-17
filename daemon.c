@@ -2231,8 +2231,8 @@ int main(int argc, char **argv) {
 	if(webserver_enable == 1 && pilight.runmode == STANDALONE) {
 		webserver_start();
 		/* Register a seperate thread in which the webserver communicates the main daemon */
-		threads_register("webserver client", &webserver_clientize, (void *)NULL, 0);
 		if(webgui_websockets == 1) {
+			threads_register("webserver client", &webserver_clientize, (void *)NULL, 0);
 			threads_register("webserver broadcast", &webserver_broadcast, (void *)NULL, 0);
 		}
 	} else {
