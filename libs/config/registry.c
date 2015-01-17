@@ -38,7 +38,7 @@ static int registry_get_value_recursive(struct JsonNode *root, const char *key, 
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
 	char *sub = strstr(key, ".");
-	char *buff = malloc(strlen(key)+1);
+	char *buff = MALLOC(strlen(key)+1);
 	strcpy(buff, key);
 	if(sub != NULL) {
 		int pos = sub-key;
@@ -53,7 +53,7 @@ static int registry_get_value_recursive(struct JsonNode *root, const char *key, 
 			} else if(type == JSON_STRING) {
 				*value = (void *)member->string_;
 			}
-			sfree((void *)&buff);
+			FREE(buff);
 			return 0;
 		} else if(member->tag == JSON_OBJECT) {
 			if(sub != NULL) {
@@ -61,11 +61,11 @@ static int registry_get_value_recursive(struct JsonNode *root, const char *key, 
 				strcpy(buff, &key[pos+1]);
 			}
 			int ret = registry_get_value_recursive(member, buff, value, decimals, type);
-			sfree((void *)&buff);
+			FREE(buff);
 			return ret;
 		}
 	}
-	sfree((void *)&buff);
+	FREE(buff);
 	return -1;
 }
 
@@ -73,7 +73,7 @@ static int registry_set_value_recursive(struct JsonNode *root, const char *key, 
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
 	char *sub = strstr(key, ".");
-	char *buff = malloc(strlen(key)+1);
+	char *buff = MALLOC(strlen(key)+1);
 	strcpy(buff, key);
 	if(sub != NULL) {
 		int pos = sub-key;
@@ -86,10 +86,10 @@ static int registry_set_value_recursive(struct JsonNode *root, const char *key, 
 				member->number_ = *(double *)value;
 				member->decimals_ = decimals;
 			} else if(type == JSON_STRING) {
-				member->string_ = realloc(member->string_, strlen(value)+1);
+				member->string_ = REALLOC(member->string_, strlen(value)+1);
 				strcpy(member->string_, (char *)value);
 			}
-			sfree((void *)&buff);
+			FREE(buff);
 			return 0;
 		} else if(member->tag == JSON_OBJECT) {
 			if(sub != NULL) {
@@ -97,7 +97,7 @@ static int registry_set_value_recursive(struct JsonNode *root, const char *key, 
 				strcpy(buff, &key[pos+1]);
 			}
 			int ret = registry_set_value_recursive(member, buff, value, decimals, type);
-			sfree((void *)&buff);
+			FREE(buff);
 			return ret;
 		}
 	} else if(sub != NULL) {
@@ -106,7 +106,7 @@ static int registry_set_value_recursive(struct JsonNode *root, const char *key, 
 		int pos = sub-key;
 		strcpy(buff, &key[pos+1]);
 		int ret = registry_set_value_recursive(member, buff, value, decimals, type);
-		sfree((void *)&buff);
+		FREE(buff);
 		return ret;
 	} else {
 		if(type == JSON_NUMBER) {
@@ -114,10 +114,10 @@ static int registry_set_value_recursive(struct JsonNode *root, const char *key, 
 		} else if(type == JSON_STRING) {
 			json_append_member(root, buff, json_mkstring(value));
 		}
-		sfree((void *)&buff);
+		FREE(buff);
 		return 0;
 	}
-	sfree((void *)&buff);
+	FREE(buff);
 	return -1;
 }
 
@@ -138,7 +138,7 @@ static int registry_remove_value_recursive(struct JsonNode *root, const char *ke
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
 	char *sub = strstr(key, ".");
-	char *buff = malloc(strlen(key)+1);
+	char *buff = MALLOC(strlen(key)+1);
 	strcpy(buff, key);
 	if(sub != NULL) {
 		int pos = sub-key;
@@ -150,7 +150,7 @@ static int registry_remove_value_recursive(struct JsonNode *root, const char *ke
 			json_remove_from_parent(member);
 			json_delete(member);
 			registry_remove_empty_parent(root);
-			sfree((void *)&buff);
+			FREE(buff);
 			return 0;
 		}
 		if(member->tag == JSON_OBJECT) {
@@ -159,11 +159,11 @@ static int registry_remove_value_recursive(struct JsonNode *root, const char *ke
 				strcpy(buff, &key[pos+1]);
 			}
 			int ret = registry_remove_value_recursive(member, buff);
-			sfree((void *)&buff);
+			FREE(buff);
 			return ret;
 		}
 	}
-	sfree((void *)&buff);
+	FREE(buff);
 	return -1;
 }
 
@@ -224,7 +224,7 @@ static int registry_parse(JsonNode *root) {
 	if(root->tag == JSON_OBJECT) {
 		char *content = json_stringify(root, NULL);
 		registry = json_decode(content);
-		sfree((void *)&content);
+		FREE(content);
 	} else {
 		logprintf(LOG_ERR, "config registry should be of an object type");
 		return -1;
@@ -236,7 +236,7 @@ static JsonNode *registry_sync(int level, const char *display) {
 	if(registry != NULL) {
 		char *content = json_stringify(registry, NULL);
 		struct JsonNode *jret = json_decode(content);
-		sfree((void *)&content);
+		FREE(content);
 		return jret;
 	} else {
 		return NULL;

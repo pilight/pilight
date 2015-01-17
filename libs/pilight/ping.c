@@ -77,6 +77,8 @@
 #include <signal.h>
 #include <arpa/inet.h>
 
+#include "mem.h"
+
 /*
  * in_cksum --
  *	Checksum routine for Internet Protocol family headers (C Version)
@@ -155,13 +157,15 @@ int ping(char *addr) {
 
 	if(setsockopt(sockfd, IPPROTO_IP, IP_HDRINCL, &on, sizeof(on)) < 0) {
 		perror("IP_HDRINCL");
+		close(sockfd);
 		return -1;
 	}
 
-	tv.tv_sec = 0;
-	tv.tv_usec = 5000;
+	tv.tv_sec = 1;
+	tv.tv_usec = 0;
 	if(setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, (char *)&tv, sizeof(struct timeval)) < 0) {
 		perror("SO_RCVTIMEO");
+		close(sockfd);
 		return -1;
 	}
 
@@ -174,17 +178,21 @@ int ping(char *addr) {
 	icmp->icmp_cksum = 0;
 	icmp->icmp_cksum = in_cksum((u_short *)icmp, icmplen);
 	if(sendto(sockfd, buf, ip->ip_len, 0, (struct sockaddr *)&dst, sizeof(dst)) < 0) {
+		close(sockfd);
 		return -1;
 	}
 
 	memset(buf, '\0', sizeof(buf));
 	if((recvfrom(sockfd, buf, sizeof(buf), 0, NULL, (unsigned int *)&fromlen)) < 0) {
+		close(sockfd);
 		return -1;
 	}
 
 	icmp = (struct icmp *)(buf + (ip->ip_hl << 2));
 	if(!(icmp->icmp_type == ICMP_TSTAMPREPLY && strcmp(inet_ntoa(ip->ip_src), addr) == 0)) {
+		close(sockfd);
 		return -1;
 	}
+	close(sockfd);
 	return 0;
 }

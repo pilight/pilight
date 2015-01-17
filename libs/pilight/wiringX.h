@@ -18,6 +18,9 @@
 #ifndef _WIRING_X_H_
 #define _WIRING_X_H_
 
+#include <errno.h>
+#include <syslog.h>
+
 #ifndef	TRUE
 #define	TRUE	(1==1)
 #define	FALSE	(1==2)
@@ -42,6 +45,8 @@
 
 #define	PWM_MODE_MS			0
 #define	PWM_MODE_BAL		1
+
+void (*wiringXLog)(int prio, const char *format_str, ...);
 
 typedef struct platform_t {
 	char *name;
@@ -71,7 +76,6 @@ void delayMicroseconds(unsigned int howLong);
 void pinMode(int pin, int mode);
 void digitalWrite(int pin, int value);
 int digitalRead(int pin);
-void isr(int pin, int mode);
 int waitForInterrupt(int pin, int ms);
 int wiringXGC(void);
 int wiringXISR(int pin, int mode);

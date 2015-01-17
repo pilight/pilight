@@ -20,6 +20,7 @@
 #define _PILIGHT_H_
 
 #include "json.h"
+#include "mem.h"
 
 /* Internals */
 

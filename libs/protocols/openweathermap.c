@@ -69,7 +69,7 @@ static void *openweathermapParse(void *param) {
 	struct JsonNode *jdata = NULL;
 	struct JsonNode *jmain = NULL;
 	struct JsonNode *jsys = NULL;
-	struct openweathermap_data_t *wnode = malloc(sizeof(struct openweathermap_data_t));
+	struct openweathermap_data_t *wnode = MALLOC(sizeof(struct openweathermap_data_t));
 
 	int interval = 86400, ointerval = 86400, event = 0;
 	int firstrun = 1, nrloops = 0, timeout = 0;
@@ -101,7 +101,7 @@ static void *openweathermapParse(void *param) {
 			while(jchild1) {
 				if(strcmp(jchild1->key, "location") == 0) {
 					has_location = 1;
-					wnode->location = malloc(strlen(jchild1->string_)+1);
+					wnode->location = MALLOC(strlen(jchild1->string_)+1);
 					if(!wnode->location) {
 						logprintf(LOG_ERR, "out of memory");
 						exit(EXIT_FAILURE);
@@ -110,7 +110,7 @@ static void *openweathermapParse(void *param) {
 				}
 				if(strcmp(jchild1->key, "country") == 0) {
 					has_country = 1;
-					wnode->country = malloc(strlen(jchild1->string_)+1);
+					wnode->country = MALLOC(strlen(jchild1->string_)+1);
 					if(!wnode->country) {
 						logprintf(LOG_ERR, "out of memory");
 						exit(EXIT_FAILURE);
@@ -125,12 +125,12 @@ static void *openweathermapParse(void *param) {
 				openweathermap_data = wnode;
 			} else {
 				if(has_country == 1) {
-					sfree((void *)&wnode->country);
+					FREE(wnode->country);
 				}
 				if(has_location == 1) {
-					sfree((void *)&wnode->location);
+					FREE(wnode->location);
 				}
-				sfree((void *)&wnode);
+				FREE(wnode);
 				wnode = NULL;
 			}
 			jchild = jchild->next;
@@ -253,7 +253,7 @@ static void *openweathermapParse(void *param) {
 				logprintf(LOG_NOTICE, "could not reach api.openweathermap.org");
 			}
 			if(data) {
-				sfree((void *)&data);
+				FREE(data);
 			}
 		} else {
 			openweathermap->message = json_mkobject();
@@ -277,12 +277,12 @@ static void *openweathermapParse(void *param) {
 	struct openweathermap_data_t *wtmp = NULL;
 	while(openweathermap_data) {
 		wtmp = openweathermap_data;
-		sfree((void *)&openweathermap_data->country);
-		sfree((void *)&openweathermap_data->location);
+		FREE(openweathermap_data->country);
+		FREE(openweathermap_data->location);
 		openweathermap_data = openweathermap_data->next;
-		sfree((void *)&wtmp);
+		FREE(wtmp);
 	}
-	sfree((void *)&openweathermap_data);
+	FREE(openweathermap_data);
 	openweathermap_threads--;
 	return (void *)NULL;
 }
@@ -291,7 +291,7 @@ static struct threadqueue_t *openweathermapInitDev(JsonNode *jdevice) {
 	openweathermap_loop = 1;
 	char *output = json_stringify(jdevice, NULL);
 	JsonNode *json = json_decode(output);
-	sfree((void *)&output);
+	FREE(output);
 
 	struct protocol_threads_t *node = protocol_thread_init(openweathermap, json);
 	return threads_register("openweathermap", &openweathermapParse, (void *)node, 0);
@@ -303,6 +303,7 @@ static int openweathermapCheckValues(JsonNode *code) {
 	json_find_number(code, "poll-interval", &interval);
 
 	if((int)round(interval) < INTERVAL) {
+		logprintf(LOG_ERR, "openweathermap poll-interval cannot be lower than %d", INTERVAL);
 		return 1;
 	}
 
@@ -400,9 +401,9 @@ void openweathermapInit(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name = "openweathermap";
-	module->version = "1.2";
+	module->version = "1.4";
 	module->reqversion = "5.0";
-	module->reqcommit = "84";
+	module->reqcommit = "187";
 }
 
 void init(void) {

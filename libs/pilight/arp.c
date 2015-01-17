@@ -4,9 +4,9 @@
  *
  * This file is part of arp-scan.
  *
- * arp-scan is free software: you can redistribute it and/or modify
+ * arp-scan is FREE software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
+ * the FREE Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
  * arp-scan is distributed in the hope that it will be useful,
@@ -43,7 +43,7 @@
 #include <sys/socket.h>
 #include <ifaddrs.h>
 #include <net/if.h>
-#ifdef __FreeBSD__
+#ifdef __FREEBSD__
 	#include <net/if_dl.h>
 	#include <net/if_types.h>
 #endif
@@ -65,6 +65,8 @@
 #include <stdio.h>
 #include <unistd.h>
 
+#include "mem.h"
+#include "log.h"
 #include "arp.h"
 
 #define MAXLINE 						255
@@ -202,7 +204,6 @@ static void marshal_arp_pkt(unsigned char *buffer, ether_hdr *frame_hdr, arp_eth
 static int unmarshal_arp_pkt(const unsigned char *buffer, size_t buf_len, ether_hdr *frame_hdr, arp_ether_ipv4 *arp_pkt, unsigned char *extra_data, size_t *extra_data_len) {
 	const unsigned char *cp;
 	int framing = FRAMING_ETHERNET_II;
-
 	cp = buffer;
 
 	memcpy(&(frame_hdr->dest_addr), cp, sizeof(frame_hdr->dest_addr));
@@ -242,12 +243,12 @@ static int unmarshal_arp_pkt(const unsigned char *buffer, size_t buf_len, ether_
 
 void arp_add_host(const char *host_name) {
 
-	if((helist = realloc(helist, ((num_hosts+1) * sizeof(struct host_entry *)))) == NULL) {
-		fprintf(stderr, "out of memory\n");
+	if((helist = REALLOC(helist, ((num_hosts+1) * sizeof(struct host_entry *)))) == NULL) {
+		logprintf(LOG_ERR, "out of memory\n");
 		exit(EXIT_FAILURE);
 	}
 
-	helist[num_hosts] = malloc(sizeof(struct host_entry));
+	helist[num_hosts] = MALLOC(sizeof(struct host_entry));
 	helist[num_hosts]->addr.s_addr = inet_addr(host_name);
 	helist[num_hosts]->live = 1;
 	helist[num_hosts]->timeout = 500 * 1000;	/* Convert from ms to us */
@@ -292,7 +293,7 @@ static int send_packet(pcap_t *pcap_handle, host_entry *he, struct timeval *last
 	}
 
 	if(he->live == 0) {
-		fprintf(stderr, "***\tsend_packet called on non-live host: SHOULDN'T HAPPEN");
+		logprintf(LOG_ERR, "send_packet called on non-live host");
 		return 0;
 	}
 
@@ -303,7 +304,7 @@ static int send_packet(pcap_t *pcap_handle, host_entry *he, struct timeval *last
 
 	nsent = pcap_sendpacket(pcap_handle, buf, buflen);
 	if(nsent < 0) {
-		fprintf(stderr, "ERROR: failed to send packet");
+		logprintf(LOG_ERR, "ERROR: failed to send packet");
 	}
 
 	return buflen;
@@ -353,6 +354,7 @@ static void callback(u_char *args, const struct pcap_pkthdr *header, const u_cha
 	unmarshal_arp_pkt(packet_in, n, &frame_hdr, &arpei, NULL, NULL);
 	source_ip.s_addr = arpei.ar_sip;
 	temp_cursor = find_host(cursor, &source_ip);
+
 	if(temp_cursor != NULL) {
 		temp_cursor->num_recv++;
 		if(temp_cursor->live == 1) {
@@ -375,13 +377,13 @@ static void recvfrom_wto(int sock_fd, long unsigned int tmo, pcap_t *pcap_handle
 	to.tv_usec = (__suseconds_t)(tmo - (long unsigned int)((time_t)1000000 * to.tv_sec));
 	n = select(sock_fd+1, &readset, NULL, NULL, &to);
 	if(n < 0) {
-		fprintf(stderr, "select");
+		logprintf(LOG_ERR, "select");
 	} else if (n == 0 && sock_fd >= 0) {
 		return;
 	}
 	if(pcap_handle != NULL) {
 		if((pcap_dispatch(pcap_handle, -1, callback, NULL)) == -1) {
-			fprintf(stderr, "pcap_dispatch: %s\n", pcap_geterr(pcap_handle));
+			logprintf(LOG_ERR, "pcap_dispatch: %s", pcap_geterr(pcap_handle));
 		}
 	}
 }
@@ -394,10 +396,10 @@ int arp_resolv(char *if_name, char *mac, char **ip) {
 	unsigned char interface_mac[ETH_ALEN];
 	int found = -1;
 	int reset_cum_err = 0, first_timeout = 1;
-	int i = 0, pcap_fd = 0, packet_out_len = 0;
+	int i = 0, pcap_fd = 0;
 	pcap_t *pcap_handle = NULL;
 
-#ifdef __FreeBSD__
+#ifdef __FREEBSD__
 	struct if_msghdr *ifm = NULL;
 	struct sockaddr_dl *sdl=NULL;
 	unsigned char *p = NULL;
@@ -406,13 +408,13 @@ int arp_resolv(char *if_name, char *mac, char **ip) {
 	int mib[] = { CTL_NET, PF_ROUTE, 0, AF_LINK, NET_RT_IFLIST, 0 };
 
 	if(sysctl(mib, 6, NULL, &len, NULL, 0) < 0) {
-		fprintf(stderr, "sysctl");
+		logprintf(LOG_ERR, "sysctl");
 	}
 
-	buf = malloc(len);
+	buf = MALLOC(len);
 
 	if(sysctl(mib, 6, buf, &len, NULL, 0) < 0) {
-		fprintf(stderr, "sysctl");
+		logprintf(LOG_ERR, "sysctl");
 	}
 
 	for(p = buf; p < buf + len; p += ifm->ifm_msglen) {
@@ -433,11 +435,11 @@ int arp_resolv(char *if_name, char *mac, char **ip) {
 	}
 
 	if(p >= buf + len) {
-		fprintf(stderr, "Could not get hardware address for interface %s", if_name);
+		logprintf(LOG_ERR, "Could not get hardware address for interface %s", if_name);
 	}
 
 	memcpy(interface_mac, sdl->sdl_data + sdl->sdl_nlen, ETH_ALEN);
-	free(buf);
+	FREE(buf);
 #endif
 
 #ifdef linux
@@ -445,35 +447,40 @@ int arp_resolv(char *if_name, char *mac, char **ip) {
 	struct ifreq ifr;
 
 	if((sockfd = socket(PF_PACKET, SOCK_RAW, 0)) < 0) {
-		fprintf(stderr, "ERROR: Cannot open raw packet socket");
-		fprintf(stderr, "socket");
+		logprintf(LOG_ERR, "ERROR: Cannot open raw packet socket");
+		return -1;
 	}
 	strncpy(ifr.ifr_name, if_name, sizeof(ifr.ifr_name));
-	if ((ioctl(sockfd, SIOCGIFINDEX, &(ifr))) != 0)
-		fprintf(stderr, "ioctl");
-
+	if((ioctl(sockfd, SIOCGIFINDEX, &(ifr))) != 0) {
+		logprintf(LOG_ERR, "ioctl");
+		return -1;
+	}
 	if((ioctl(sockfd, SIOCGIFHWADDR, &(ifr))) != 0) {
-		fprintf(stderr, "ioctl");
+		logprintf(LOG_ERR, "ioctl");
+		return -1;
 	}
 
-	close(sockfd);
+	if(sockfd >= 0) {
+		close(sockfd);
+	}
+
 	memcpy(interface_mac, ifr.ifr_ifru.ifru_hwaddr.sa_data, ETH_ALEN);
 #endif
 
-	if(interface_mac[0] ==  0 && interface_mac[1] == 0 &&
+	if(interface_mac[0] == 0 && interface_mac[1] == 0 &&
 		interface_mac[2] == 0 && interface_mac[3] == 0 &&
 		interface_mac[4] == 0 && interface_mac[5] == 0) {
-			fprintf(stderr, "ERROR: Could not obtain MAC address for interface %s", if_name);
+			logprintf(LOG_ERR, "ERROR: Could not obtain MAC address for interface %s", if_name);
 	}
 
 	if((pcap_handle = pcap_open_live(if_name, 64, 0, 3, NULL)) == NULL) {
-		fprintf(stderr, "pcap_open_live");
+		logprintf(LOG_ERR, "pcap_open_live");
 	}
 	if((pcap_fd=pcap_get_selectable_fd(pcap_handle)) < 0) {
-		fprintf(stderr, "pcap_fileno: %s", pcap_geterr(pcap_handle));
+		logprintf(LOG_ERR, "pcap_fileno: %s", pcap_geterr(pcap_handle));
 	}
 	if((pcap_setnonblock(pcap_handle, 1, NULL)) < 0) {
-		fprintf(stderr, "pcap_setnonblock");
+		logprintf(LOG_ERR, "pcap_setnonblock");
 	}
 
 	live_count = num_hosts;
@@ -481,11 +488,7 @@ int arp_resolv(char *if_name, char *mac, char **ip) {
 	last_packet_time.tv_sec=0;
 	last_packet_time.tv_usec=0;
 
-	packet_out_len = send_packet(NULL, NULL, NULL, interface_mac);
-	if(packet_out_len < MINIMUM_FRAME_SIZE)
-		packet_out_len = MINIMUM_FRAME_SIZE;
-		packet_out_len += PACKET_OVERHEAD;
-	interval = ((unsigned long int)packet_out_len * 8 * 1000000) / 256000;
+	interval = 10000;
 
 	reset_cum_err = 1;
 	req_interval = interval;
@@ -565,9 +568,9 @@ int arp_resolv(char *if_name, char *mac, char **ip) {
 	}
 
   for(i=0;i<num_hosts;i++) {
-		free(helist[i]);
+		FREE(helist[i]);
 	}
-	free(helist);
+	FREE(helist);
 	helist = NULL;
 	num_hosts = 0;
 

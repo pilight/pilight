@@ -54,7 +54,7 @@ static int relayCreateCode(JsonNode *code) {
 
 	relay->rawlen = 0;
 	if(json_find_string(code, "default-state", &def) != 0) {
-		def = malloc(4);
+		def = MALLOC(4);
 		if(!def) {
 			logprintf(LOG_ERR, "out of memory");
 			exit(EXIT_FAILURE);
@@ -107,7 +107,7 @@ static int relayCreateCode(JsonNode *code) {
 	}
 
 clear:
-	if(free_def) sfree((void *)&def);
+	if(free_def) FREE(def);
 	if(have_error) {
 		return EXIT_FAILURE;
 	} else {
@@ -126,7 +126,7 @@ static int relayCheckValues(JsonNode *code) {
 	int free_def = 0;
 
 	if(json_find_string(code, "default-state", &def) != 0) {
-		def = malloc(4);
+		def = MALLOC(4);
 		if(!def) {
 			logprintf(LOG_ERR, "out of memory");
 			exit(EXIT_FAILURE);
@@ -135,15 +135,15 @@ static int relayCheckValues(JsonNode *code) {
 		strcpy(def, "off");
 	}
 	if(strcmp(def, "on") != 0 && strcmp(def, "off") != 0) {
-		if(free_def) sfree((void *)&def);
+		if(free_def) FREE(def);
 		return 1;
 	}
-	if(free_def) sfree((void *)&def);
+	if(free_def) FREE(def);
 	return 0;
 }
 
 static void relayGC(void) {
-	sfree((void *)&relay_state);
+	FREE(relay_state);
 }
 
 #ifndef MODULE
@@ -161,7 +161,7 @@ void relayInit(void) {
 	options_add(&relay->options, 'f', "off", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
 	options_add(&relay->options, 'g', "gpio", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "[0-9]");
 
-	relay_state = malloc(4);
+	relay_state = MALLOC(4);
 	strcpy(relay_state, "off");
 	options_add(&relay->options, 0, "default-state", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_STRING, (void *)relay_state, NULL);
 	options_add(&relay->options, 0, "readonly", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
@@ -175,9 +175,9 @@ void relayInit(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name = "relay";
-	module->version = "1.3";
+	module->version = "1.4";
 	module->reqversion = "5.0";
-	module->reqcommit = "84";
+	module->reqcommit = "187";
 }
 
 void init(void) {

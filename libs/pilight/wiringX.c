@@ -1,9 +1,9 @@
 /*
 	Copyright (c) 2014 CurlyMo <curlymoo1@gmail.com>
 
-	This program is free software: you can redistribute it and/or modify
+	This program is FREE software: you can redistribute it and/or modify
 	it under the terms of the GNU General Public License as published by
-	the Free Software Foundation, either version 3 of the License, or
+	the FREE Software Foundation, either version 3 of the License, or
 	(at your option) any later version.
 
 	This program is distributed in the hope that it will be useful,
@@ -27,18 +27,27 @@
 #include <sys/mman.h>
 #include <sys/ioctl.h>
 #include <sys/time.h>
-#include <sys/wait.h>
 #include <time.h>
-
-#include "log.h"
+#include <sys/wait.h>
 
 #include "wiringX.h"
 #include "hummingboard.h"
 #include "raspberrypi.h"
 #include "bananapi.h"
+#include "mem.h"
 
 static struct platform_t *platform = NULL;
 static int setup = -2;
+
+void _fprintf(int prio, const char *format_str, ...) {
+	char line[1024];
+	va_list ap;
+	va_start(ap, format_str);
+	vsprintf(line, format_str, ap);
+	strcat(line, "\n");
+	fprintf(stderr, line);
+	va_end(ap);
+}
 
 /* Both the delayMicroseconds and the delayMicrosecondsHard
    are taken from wiringPi */
@@ -64,16 +73,14 @@ void delayMicroseconds(unsigned int howLong) {
 	} else if(howLong  < 100) {
 		delayMicrosecondsHard(howLong);
 	} else {
-		sleeper.tv_sec  =(__time_t)wSecs;
+		sleeper.tv_sec = (__time_t)wSecs;
 		sleeper.tv_nsec = (long)(uSecs * 1000L);
 		nanosleep(&sleeper, NULL);
 	}
 }
 
 void platform_register(struct platform_t **dev, const char *name) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
-
-	*dev = malloc(sizeof(struct platform_t));
+	*dev = MALLOC(sizeof(struct platform_t));
 	(*dev)->name = NULL;
 	(*dev)->pinMode = NULL;
 	(*dev)->digitalWrite = NULL;
@@ -88,8 +95,8 @@ void platform_register(struct platform_t **dev, const char *name) {
 	(*dev)->I2CWriteReg8 = NULL;
 	(*dev)->I2CWriteReg16 = NULL;
 
-	if(!((*dev)->name = malloc(strlen(name)+1))) {
-		logprintf(LOG_ERR, "out of memory");
+	if(!((*dev)->name = MALLOC(strlen(name)+1))) {
+		wiringXLog(LOG_ERR, "out of memory");
 		exit(0);
 	}
 	strcpy((*dev)->name, name);
@@ -98,71 +105,64 @@ void platform_register(struct platform_t **dev, const char *name) {
 }
 
 int wiringXGC(void) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
-
 	int i = 0;
-	if(platform) {
+	if(platform != NULL) {
 		i = platform->gc();
 	}
 	platform = NULL;
 	struct platform_t *tmp = platforms;
 	while(platforms) {
 		tmp = platforms;
-		free(platforms->name);
+		FREE(platforms->name);
 		platforms = platforms->next;
-		free(tmp);
+		FREE(tmp);
 	}
-	free(platforms);
-	logprintf(LOG_DEBUG, "garbage collected wiringX library");
+	FREE(platforms);
+
+	wiringXLog(LOG_DEBUG, "garbage collected wiringX library");
 	return i;
 }
 
 void pinMode(int pin, int mode) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
-
-	if(platform) {
+	if(platform != NULL) {
 		if(platform->pinMode) {
 			if(platform->pinMode(pin, mode) == -1) {
-				logprintf(LOG_ERR, "%s: error while calling pinMode", platform->name);
+				wiringXLog(LOG_ERR, "%s: error while calling pinMode", platform->name);
 				wiringXGC();
 			}
 		} else {
-			logprintf(LOG_ERR, "%s: platform doesn't support pinMode", platform->name);
+			wiringXLog(LOG_ERR, "%s: platform doesn't support pinMode", platform->name);
 			wiringXGC();
 		}
 	}
 }
 
 void digitalWrite(int pin, int value) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
-
-	if(platform) {
+	if(platform != NULL) {
 		if(platform->digitalWrite) {
 			if(platform->digitalWrite(pin, value) == -1) {
-				logprintf(LOG_ERR, "%s: error while calling digitalWrite", platform->name);
+				wiringXLog(LOG_ERR, "%s: error while calling digitalWrite", platform->name);
 				wiringXGC();
 			}
 		} else {
-			logprintf(LOG_ERR, "%s: platform doesn't support digitalWrite", platform->name);
+			wiringXLog(LOG_ERR, "%s: platform doesn't support digitalWrite", platform->name);
 			wiringXGC();
 		}
 	}
 }
 
 int digitalRead(int pin) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
-
-	if(platform) {
+	if(platform != NULL) {
 		if(platform->digitalRead) {
 			int x = platform->digitalRead(pin);
 			if(x == -1) {
-				logprintf(LOG_ERR, "%s: error while calling digitalRead", platform->name);
+				wiringXLog(LOG_ERR, "%s: error while calling digitalRead", platform->name);
 				wiringXGC();
 			} else {
 				return x;
 			}
 		} else {
-			logprintf(LOG_ERR, "%s: platform doesn't support digitalRead", platform->name);
+			wiringXLog(LOG_ERR, "%s: platform doesn't support digitalRead", platform->name);
 			wiringXGC();
 		}
 	}
@@ -170,19 +170,17 @@ int digitalRead(int pin) {
 }
 
 int waitForInterrupt(int pin, int ms) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
-
-	if(platform) {
+	if(platform != NULL) {
 		if(platform->waitForInterrupt) {
 			int x = platform->waitForInterrupt(pin, ms);
 			if(x == -1) {
-				logprintf(LOG_ERR, "%s: error while calling waitForInterrupt", platform->name);
+				wiringXLog(LOG_ERR, "%s: error while calling waitForInterrupt", platform->name);
 				wiringXGC();
 			} else {
 				return x;
 			}
 		} else {
-			logprintf(LOG_ERR, "%s: platform doesn't support waitForInterrupt", platform->name);
+			wiringXLog(LOG_ERR, "%s: platform doesn't support waitForInterrupt", platform->name);
 			wiringXGC();
 		}
 	}
@@ -190,19 +188,17 @@ int waitForInterrupt(int pin, int ms) {
 }
 
 int wiringXISR(int pin, int mode) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
-
-	if(platform) {
+	if(platform != NULL) {
 		if(platform->isr) {
 			int x = platform->isr(pin, mode);
 			if(x == -1) {
-				logprintf(LOG_ERR, "%s: error while calling isr", platform->name);
+				wiringXLog(LOG_ERR, "%s: error while calling isr", platform->name);
 				wiringXGC();
 			} else {
 				return x;
 			}
 		} else {
-			logprintf(LOG_ERR, "%s: platform doesn't support isr", platform->name);
+			wiringXLog(LOG_ERR, "%s: platform doesn't support isr", platform->name);
 			wiringXGC();
 		}
 	}
@@ -210,19 +206,17 @@ int wiringXISR(int pin, int mode) {
 }
 
 int wiringXI2CRead(int fd) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
-
-	if(platform) {
+	if(platform != NULL) {
 		if(platform->I2CRead) {
 			int x = platform->I2CRead(fd);
 			if(x == -1) {
-				logprintf(LOG_ERR, "%s: error while calling I2CRead", platform->name);
+				wiringXLog(LOG_ERR, "%s: error while calling I2CRead", platform->name);
 				wiringXGC();
 			} else {
 				return x;
 			}
 		} else {
-			logprintf(LOG_ERR, "%s: platform doesn't support I2CRead", platform->name);
+			wiringXLog(LOG_ERR, "%s: platform doesn't support I2CRead", platform->name);
 			wiringXGC();
 		}
 	}
@@ -230,19 +224,17 @@ int wiringXI2CRead(int fd) {
 }
 
 int wiringXI2CReadReg8(int fd, int reg) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
-
-	if(platform) {
+	if(platform != NULL) {
 		if(platform->I2CReadReg8) {
 			int x = platform->I2CReadReg8(fd, reg);
 			if(x == -1) {
-				logprintf(LOG_ERR, "%s: error while calling I2CReadReg8", platform->name);
+				wiringXLog(LOG_ERR, "%s: error while calling I2CReadReg8", platform->name);
 				wiringXGC();
 			} else {
 				return x;
 			}
 		} else {
-			logprintf(LOG_ERR, "%s: platform doesn't support I2CReadReg8", platform->name);
+			wiringXLog(LOG_ERR, "%s: platform doesn't support I2CReadReg8", platform->name);
 			wiringXGC();
 		}
 	}
@@ -250,19 +242,17 @@ int wiringXI2CReadReg8(int fd, int reg) {
 }
 
 int wiringXI2CReadReg16(int fd, int reg) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
-
-	if(platform) {
+	if(platform != NULL) {
 		if(platform->I2CReadReg16) {
 			int x = platform->I2CReadReg16(fd, reg);
 			if(x == -1) {
-				logprintf(LOG_ERR, "%s: error while calling I2CReadReg16", platform->name);
+				wiringXLog(LOG_ERR, "%s: error while calling I2CReadReg16", platform->name);
 				wiringXGC();
 			} else {
 				return x;
 			}
 		} else {
-			logprintf(LOG_ERR, "%s: platform doesn't support I2CReadReg16", platform->name);
+			wiringXLog(LOG_ERR, "%s: platform doesn't support I2CReadReg16", platform->name);
 			wiringXGC();
 		}
 	}
@@ -270,19 +260,17 @@ int wiringXI2CReadReg16(int fd, int reg) {
 }
 
 int wiringXI2CWrite(int fd, int data) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
-
-	if(platform) {
+	if(platform != NULL) {
 		if(platform->I2CWrite) {
 			int x = platform->I2CWrite(fd, data);
 			if(x == -1) {
-				logprintf(LOG_ERR, "%s: error while calling I2CWrite", platform->name);
+				wiringXLog(LOG_ERR, "%s: error while calling I2CWrite", platform->name);
 				wiringXGC();
 			} else {
 				return x;
 			}
 		} else {
-			logprintf(LOG_ERR, "%s: platform doesn't support I2CWrite", platform->name);
+			wiringXLog(LOG_ERR, "%s: platform doesn't support I2CWrite", platform->name);
 			wiringXGC();
 		}
 	}
@@ -290,19 +278,17 @@ int wiringXI2CWrite(int fd, int data) {
 }
 
 int wiringXI2CWriteReg8(int fd, int reg, int data) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
-
-	if(platform) {
+	if(platform != NULL) {
 		if(platform->I2CWriteReg8) {
 			int x = platform->I2CWriteReg8(fd, reg, data);
 			if(x == -1) {
-				logprintf(LOG_ERR, "%s: error while calling I2CWriteReg8", platform->name);
+				wiringXLog(LOG_ERR, "%s: error while calling I2CWriteReg8", platform->name);
 				wiringXGC();
 			} else {
 				return x;
 			}
 		} else {
-			logprintf(LOG_ERR, "%s: platform doesn't support I2CWriteReg8", platform->name);
+			wiringXLog(LOG_ERR, "%s: platform doesn't support I2CWriteReg8", platform->name);
 			wiringXGC();
 		}
 	}
@@ -310,19 +296,17 @@ int wiringXI2CWriteReg8(int fd, int reg, int data) {
 }
 
 int wiringXI2CWriteReg16(int fd, int reg, int data) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
-
-	if(platform) {
+	if(platform != NULL) {
 		if(platform->I2CWriteReg16) {
 			int x = platform->I2CWriteReg16(fd, reg, data);
 			if(x == -1) {
-				logprintf(LOG_ERR, "%s: error while calling I2CWriteReg16", platform->name);
+				wiringXLog(LOG_ERR, "%s: error while calling I2CWriteReg16", platform->name);
 				wiringXGC();
 			} else {
 				return x;
 			}
 		} else {
-			logprintf(LOG_ERR, "%s: platform doesn't support I2CWriteReg16", platform->name);
+			wiringXLog(LOG_ERR, "%s: platform doesn't support I2CWriteReg16", platform->name);
 			wiringXGC();
 		}
 	}
@@ -330,17 +314,17 @@ int wiringXI2CWriteReg16(int fd, int reg, int data) {
 }
 
 int wiringXI2CSetup(int devId) {
-	if(platform) {
+	if(platform != NULL) {
 		if(platform->I2CSetup) {
 			int x = platform->I2CSetup(devId);
 			if(x == -1) {
-				logprintf(LOG_ERR, "%s: error while calling I2CSetup", platform->name);
+				wiringXLog(LOG_ERR, "%s: error while calling I2CSetup", platform->name);
 				wiringXGC();
 			} else {
 				return x;
 			}
 		} else {
-			logprintf(LOG_ERR, "%s: platform doesn't support I2CSetup", platform->name);
+			wiringXLog(LOG_ERR, "%s: platform doesn't support I2CSetup", platform->name);
 			wiringXGC();
 		}
 	}
@@ -348,19 +332,15 @@ int wiringXI2CSetup(int devId) {
 }
 
 char *wiringXPlatform(void) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
-
 	return platform->name;
 }
 
 int wiringXValidGPIO(int gpio) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
-
-	if(platform) {
+	if(platform != NULL) {
 		if(platform->validGPIO) {
 			return platform->validGPIO(gpio);
 		} else {
-			logprintf(LOG_ERR, "%s: platform doesn't support gpio number validation", platform->name);
+			wiringXLog(LOG_ERR, "%s: platform doesn't support gpio number validation", platform->name);
 			wiringXGC();
 		}
 	}
@@ -368,9 +348,10 @@ int wiringXValidGPIO(int gpio) {
 }
 
 int wiringXSetup(void) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
-
-#ifndef __FreeBSD__
+	if(wiringXLog == NULL) {
+		wiringXLog = _fprintf;
+	}
+#ifndef __FREEBSD__
 	if(setup == -2) {
 		hummingboardInit();
 		raspberrypiInit();
@@ -388,11 +369,11 @@ int wiringXSetup(void) {
 		}
 
 		if(match == 0) {
-			logprintf(LOG_ERR, "hardware not supported");
+			wiringXLog(LOG_ERR, "hardware not supported");
 			wiringXGC();
 			return -1;
 		} else {
-			logprintf(LOG_DEBUG, "running on a %s", platform->name);
+			wiringXLog(LOG_DEBUG, "running on a %s", platform->name);
 		}
 		setup = platform->setup();
 		return setup;

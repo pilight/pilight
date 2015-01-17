@@ -141,7 +141,7 @@ static int ninjablocksWeatherCheckValues(struct JsonNode *jvalues) {
 		}
 
 		if(!match) {
-			if(!(snode = malloc(sizeof(struct ninjablocks_weather_settings_t)))) {
+			if(!(snode = MALLOC(sizeof(struct ninjablocks_weather_settings_t)))) {
 				logprintf(LOG_ERR, "out of memory");
 				exit(EXIT_FAILURE);
 			}
@@ -163,9 +163,9 @@ static void ninjablocksWeatherGC(void) {
 	while(ninjablocks_weather_settings) {
 		tmp = ninjablocks_weather_settings;
 		ninjablocks_weather_settings = ninjablocks_weather_settings->next;
-		sfree((void *)&tmp);
+		FREE(tmp);
 	}
-	sfree((void *)&ninjablocks_weather_settings);
+	FREE(ninjablocks_weather_settings);
 }
 
 #ifndef MODULE
@@ -208,9 +208,9 @@ void ninjablocksWeatherInit(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name = "ninjablocks_weather";
-	module->version = "0.10";
+	module->version = "0.11";
 	module->reqversion = "5.0";
-	module->reqcommit = "84";
+	module->reqcommit = "187";
 }
 
 void init(void) {

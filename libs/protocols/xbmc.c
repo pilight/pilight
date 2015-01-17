@@ -84,7 +84,7 @@ static void *xbmcParse(void *param) {
 	struct JsonNode *jchild = NULL;
 	struct JsonNode *jchild1 = NULL;
 	struct sockaddr_in serv_addr;
-	struct xbmc_data_t *xnode = malloc(sizeof(struct xbmc_data_t));
+	struct xbmc_data_t *xnode = MALLOC(sizeof(struct xbmc_data_t));
 
 	char recvBuff[BUFFER_SIZE], action[10], media[15];
 	char *m = NULL, *t = NULL;
@@ -118,7 +118,7 @@ static void *xbmcParse(void *param) {
 
 			while(jchild1) {
 				if(strcmp(jchild1->key, "server") == 0) {
-					if(!(xnode->server = malloc(strlen(jchild1->string_)+1))) {
+					if(!(xnode->server = MALLOC(strlen(jchild1->string_)+1))) {
 						logprintf(LOG_ERR, "out of memory");
 						exit(EXIT_FAILURE);
 					}
@@ -137,9 +137,9 @@ static void *xbmcParse(void *param) {
 				xbmc_data = xnode;
 			} else {
 				if(has_server == 1) {
-					sfree((void *)&xnode->server);
+					FREE(xnode->server);
 				}
-				sfree((void *)&xnode);
+				FREE(xnode);
 				xnode = NULL;
 			}
 			jchild = jchild->next;
@@ -277,7 +277,7 @@ struct threadqueue_t *xbmcInitDev(JsonNode *jdevice) {
 	xbmc_loop = 1;
 	char *output = json_stringify(jdevice, NULL);
 	JsonNode *json = json_decode(output);
-	sfree((void *)&output);
+	FREE(output);
 
 	struct protocol_threads_t *node = protocol_thread_init(xbmc, json);
 	return threads_register("xbmc", &xbmcParse, (void *)node, 0);
@@ -293,9 +293,9 @@ static void xbmcThreadGC(void) {
 			close(xtmp->sockfd);
 			xtmp->sockfd = -1;
 		}
-		sfree((void *)&xtmp->server);
+		FREE(xtmp->server);
 		xbmc_data = xbmc_data->next;
-		sfree((void *)&xtmp);
+		FREE(xtmp);
 	}
 
 	protocol_thread_stop(xbmc);
@@ -371,9 +371,9 @@ void xbmcInit(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name = "xbmc";
-	module->version = "1.2";
+	module->version = "1.3";
 	module->reqversion = "5.0";
-	module->reqcommit = "84";
+	module->reqcommit = "187";
 }
 
 void init(void) {

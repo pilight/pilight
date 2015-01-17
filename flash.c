@@ -29,25 +29,32 @@
 #include <string.h>
 
 #include "pilight.h"
+#include "gc.h"
 #include "common.h"
+#include "action.h"
+#include "operator.h"
 #include "log.h"
 #include "options.h"
 #include "firmware.h"
+#include "wiringX.h"
 
 int main(int argc, char **argv) {
+	memtrack();
 
 	log_shell_enable();
 	log_file_disable();
 	log_level_set(LOG_DEBUG);
 
+	wiringXLog = logprintf;
+
 	struct options_t *options = NULL;
-	char *configtmp = malloc(strlen(CONFIG_FILE)+1);
+	char *configtmp = MALLOC(strlen(CONFIG_FILE)+1);
 	char *args = NULL;
 	char fwfile[4096] = {'\0'};
 
 	strcpy(configtmp, CONFIG_FILE);
 
-	progname = malloc(15);
+	progname = MALLOC(15);
 	if(!progname) {
 		logprintf(LOG_ERR, "out of memory");
 		exit(EXIT_FAILURE);
@@ -80,7 +87,7 @@ int main(int argc, char **argv) {
 				goto close;
 			break;
 			case 'C':
-				configtmp = realloc(configtmp, strlen(args)+1);
+				configtmp = REALLOC(configtmp, strlen(args)+1);
 				strcpy(configtmp, args);
 			break;
 			case 'f':
@@ -107,10 +114,10 @@ int main(int argc, char **argv) {
 	protocol_init();
 	config_init();
 	if(config_read() != EXIT_SUCCESS) {
-		sfree((void *)&configtmp);
+		FREE(configtmp);
 		goto close;
 	}
-	sfree((void *)&configtmp);
+	FREE(configtmp);
 
 	if(strlen(fwfile) == 0) {
 		printf("Usage: %s -f pilight_firmware_tX5_vX.hex\n", progname);
@@ -131,8 +138,17 @@ int main(int argc, char **argv) {
 
 close:
 	log_shell_disable();
+	log_level_set(LOG_ERR);	
+	config_gc();
+	protocol_gc();
+	event_operator_gc();
+	event_action_gc();
 	options_gc();
+	threads_gc();
+	wiringXGC();
 	log_gc();
-	sfree((void *)&progname);
+	gc_clear();
+	FREE(progname);
+	xfree();
 	return (EXIT_SUCCESS);
 }

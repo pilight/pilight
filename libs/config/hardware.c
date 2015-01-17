@@ -19,6 +19,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <signal.h>
 #include <fcntl.h>
 #include <errno.h>
 #include <unistd.h>
@@ -39,6 +40,7 @@
 #include "settings.h"
 #include "dso.h"
 #include "hardware.h"
+#include "threads.h"
 
 static char *hwfile = NULL;
 
@@ -59,9 +61,9 @@ static void hardware_remove(char *name) {
 			}
 
 			logprintf(LOG_DEBUG, "removed config hardware module %s", currP->id);
-			sfree((void *)&currP->id);
+			FREE(currP->id);
 			options_delete(currP->options);
-			sfree((void *)&currP);
+			FREE(currP);
 
 			break;
 		}
@@ -69,25 +71,32 @@ static void hardware_remove(char *name) {
 }
 
 void hardware_register(struct hardware_t **hw) {
-	*hw = malloc(sizeof(struct hardware_t));
+	*hw = MALLOC(sizeof(struct hardware_t));
 	if(!*hw) {
 		logprintf(LOG_ERR, "out of memory");
 		exit(EXIT_FAILURE);
 	}
 	(*hw)->options = NULL;
+	(*hw)->wait = 0;
+	(*hw)->stop = 0;
 
 	(*hw)->init = NULL;
 	(*hw)->deinit = NULL;
 	(*hw)->receive = NULL;
 	(*hw)->send = NULL;
 	(*hw)->settings = NULL;
+	
+	pthread_mutexattr_init(&(*hw)->attr);
+	pthread_mutexattr_settype(&(*hw)->attr, PTHREAD_MUTEX_RECURSIVE);
+	pthread_mutex_init(&(*hw)->lock, &(*hw)->attr);
+	pthread_cond_init(&(*hw)->signal, NULL);	
 
 	(*hw)->next = hardware;
 	hardware = (*hw);
 }
 
 void hardware_set_id(hardware_t *hw, const char *id) {
-	hw->id = malloc(strlen(id)+1);
+	hw->id = MALLOC(strlen(id)+1);
 	if(!hw->id) {
 		logprintf(LOG_ERR, "out of memory");
 		exit(EXIT_FAILURE);
@@ -96,26 +105,36 @@ void hardware_set_id(hardware_t *hw, const char *id) {
 }
 
 static int hardware_gc(void) {
-	struct hardware_t *htmp;
+	struct hardware_t *htmp = hardware;
 	struct conf_hardware_t *ctmp = NULL;
 
 	while(hardware) {
 		htmp = hardware;
-		sfree((void *)&htmp->id);
+		htmp->stop = 1;
+		pthread_mutex_unlock(&htmp->lock);
+		pthread_cond_signal(&htmp->signal);
+		while(htmp->running == 1) {
+			usleep(10);
+		}
+		thread_stop(htmp->id);
+		if(htmp->deinit != NULL) {
+			htmp->deinit();
+		}
+		FREE(htmp->id);
 		options_delete(htmp->options);
 		hardware = hardware->next;
-		sfree((void *)&htmp);
+		FREE(htmp);
 	}
-	sfree((void *)&hardware);
+	FREE(hardware);
 
 	while(conf_hardware) {
 		ctmp = conf_hardware;
 		conf_hardware = conf_hardware->next;
-		sfree((void *)&ctmp);
+		FREE(ctmp);
 	}
 
 	if(hwfile) {
-		sfree((void *)&hwfile);
+		FREE(hwfile);
 	}
 
 	logprintf(LOG_DEBUG, "garbage collected config hardware library");
@@ -152,12 +171,6 @@ static int hardware_parse(JsonNode *root) {
 
 	JsonNode *jvalues = NULL;
 	JsonNode *jchilds = json_first_child(root);
-
-#ifndef __FreeBSD__
-	regex_t regex;
-	int reti;
-	char *stmp = NULL;
-#endif
 
 	int i = 0, have_error = 0, match = 0;
 
@@ -225,15 +238,19 @@ static int hardware_parse(JsonNode *root) {
 				} else {
 					/* Check if setting contains a valid value */
 #ifndef __FreeBSD__
+					regex_t regex;
+					int reti;
+					char *stmp = NULL;
+
 					if(jvalues->tag == JSON_NUMBER) {
-						stmp = realloc(stmp, sizeof(jvalues->number_));
+						stmp = REALLOC(stmp, sizeof(jvalues->number_));
 						if(!stmp) {
 							logprintf(LOG_ERR, "out of memory");
 							exit(EXIT_FAILURE);
 						}
 						sprintf(stmp, "%d", (int)jvalues->number_);
 					} else if(jvalues->tag == JSON_STRING) {
-						stmp = realloc(stmp, strlen(jvalues->string_)+1);
+						stmp = REALLOC(stmp, strlen(jvalues->string_)+1);
 						if(!stmp) {
 							logprintf(LOG_ERR, "out of memory");
 							exit(EXIT_FAILURE);
@@ -252,8 +269,8 @@ static int hardware_parse(JsonNode *root) {
 						regfree(&regex);
 						goto clear;
 					}
+					FREE(stmp);
 					regfree(&regex);
-					sfree((void *)&stmp);
 #endif
 				}
 				hw_options = hw_options->next;
@@ -299,7 +316,7 @@ static int hardware_parse(JsonNode *root) {
 				}
 			}
 
-			hnode = malloc(sizeof(struct conf_hardware_t));
+			hnode = MALLOC(sizeof(struct conf_hardware_t));
 			if(!hnode) {
 				logprintf(LOG_ERR, "out of memory");
 				exit(EXIT_FAILURE);
@@ -308,11 +325,11 @@ static int hardware_parse(JsonNode *root) {
 			hnode->next = conf_hardware;
 			conf_hardware = hnode;
 
-			jchilds = jchilds->next;
 		}
+		jchilds = jchilds->next;		
 	}
 
-	sfree((void *)&tmp_confhw);
+	FREE(tmp_confhw);
 clear:
 	return have_error;
 }
@@ -346,7 +363,7 @@ void hardware_init(void) {
 
 	if(settings_find_string("hardware-root", &hardware_root) != 0) {
 		/* If no hardware root was set, use the default hardware root */
-		if(!(hardware_root = malloc(strlen(HARDWARE_ROOT)+2))) {
+		if(!(hardware_root = MALLOC(strlen(HARDWARE_ROOT)+2))) {
 			logprintf(LOG_ERR, "out of memory");
 			exit(EXIT_FAILURE);
 		}
@@ -415,6 +432,6 @@ void hardware_init(void) {
 		closedir(d);
 	}
 	if(hardware_root_free) {
-		sfree((void *)&hardware_root);
+		FREE(hardware_root);
 	}
 }

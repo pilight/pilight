@@ -73,7 +73,7 @@ int socket_gc(void) {
 	}
 
 	if(waitMessage) {
-		sfree((void *)&waitMessage);
+		FREE(waitMessage);
 	}
 
 	logprintf(LOG_DEBUG, "garbage collected socket library");
@@ -246,7 +246,7 @@ int socket_write(int sockfd, const char *msg, ...) {
 		n = (int)vsnprintf(NULL, 0, msg, ap) + (int)(len); // + delimiter
 		va_end(ap);
 
-		if(!(sendBuff = malloc((size_t)n))) {
+		if(!(sendBuff = MALLOC((size_t)n))) {
 			logprintf(LOG_ERR, "out of memory");
 			exit(EXIT_FAILURE);
 		}
@@ -269,7 +269,7 @@ int socket_write(int sockfd, const char *msg, ...) {
 				sendBuff[n-(len-1)] = '\0';
 				sendBuff[n-(len)] = '\n';
 				logprintf(LOG_DEBUG, "socket write failed: %s", sendBuff);
-				sfree((void *)&sendBuff);
+				FREE(sendBuff);
 				return -1;
 			}
 			ptr += bytes;
@@ -281,7 +281,7 @@ int socket_write(int sockfd, const char *msg, ...) {
 			sendBuff[n-(len)] = '\n';
 			logprintf(LOG_DEBUG, "socket write succeeded: %s", sendBuff);
 		}
-		sfree((void *)&sendBuff);
+		FREE(sendBuff);
 	}
 	return n;
 }
@@ -335,7 +335,7 @@ int socket_read(int sockfd, char **message) {
 					return -1;
 				} else {
 					ptr+=bytes;
-					if((*message = realloc(*message, (size_t)ptr+1)) == NULL) {
+					if((*message = REALLOC(*message, (size_t)ptr+1)) == NULL) {
 						logprintf(LOG_ERR, "out of memory");
 						exit(EXIT_FAILURE);
 					}

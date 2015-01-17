@@ -166,11 +166,11 @@ static int actionPushoverRun(struct JsonNode *arguments) {
 				} else {
 					logprintf(LOG_ERR, "pushover action failed (%d) with message: %s", ret, data);
 				}
-				sfree((void *)&message);
-				sfree((void *)&token);
-				sfree((void *)&user);
-				sfree((void *)&title);
-				sfree((void *)&data);
+				FREE(message);
+				FREE(token);
+				FREE(user);
+				FREE(title);
+				FREE(data);
 			}
 		}
 	}

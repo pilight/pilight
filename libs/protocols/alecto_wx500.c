@@ -196,7 +196,7 @@ static int alectoWX500CheckValues(struct JsonNode *jvalues) {
 		}
 
 		if(!match) {
-			if(!(snode = malloc(sizeof(struct alecto_settings_t)))) {
+			if(!(snode = MALLOC(sizeof(struct alecto_settings_t)))) {
 				logprintf(LOG_ERR, "out of memory");
 				exit(EXIT_FAILURE);
 			}
@@ -217,9 +217,9 @@ static void alectoWX500GC(void) {
 	while(alecto_settings) {
 		tmp = alecto_settings;
 		alecto_settings = alecto_settings->next;
-		sfree((void *)&tmp);
+		FREE(tmp);
 	}
-	sfree((void *)&alecto_settings);
+	FREE(alecto_settings);
 }
 
 #ifndef MODULE
@@ -272,9 +272,9 @@ void alectoWX500Init(void) {
 #ifdef MODULAR
 void compatibility(const char **version, const char **commit) {
 	module->name = "alecto_wx500";
-	module->version = "0.10";
+	module->version = "0.11";
 	module->reqversion = "5.0";
-	module->reqcommit = "84";
+	module->reqcommit = "187";
 }
 
 void init(void) {

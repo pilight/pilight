@@ -55,10 +55,10 @@ int log_gc(void) {
 		}
 	}
 	if(logfile) {
-		sfree((void *)&logfile);
+		FREE(logfile);
 	}
 	if(logpath) {
-		sfree((void *)&logpath);
+		FREE(logpath);
 	}
 	return 1;
 }
@@ -207,7 +207,7 @@ void log_file_set(char *log) {
 	struct stat sb;
 	char *filename = basename(log);
 	size_t i = (strlen(log)-strlen(filename));
-	logpath = realloc(logpath, i+1);
+	logpath = REALLOC(logpath, i+1);
 	memset(logpath, '\0', i+1);
 	strncpy(logpath, log, i);
 
@@ -216,25 +216,25 @@ void log_file_set(char *log) {
 		if(err == -1) {
 			if(ENOENT == errno) {
 				logprintf(LOG_ERR, "the log folder %s does not exist", logpath);
-				sfree((void *)&logpath);
+				FREE(logpath);
 				exit(EXIT_FAILURE);
 			} else {
 				logprintf(LOG_ERR, "failed to run stat on log folder %s", logpath);
-				sfree((void *)&logpath);
+				FREE(logpath);
 				exit(EXIT_FAILURE);
 			}
 		} else {
 			if(S_ISDIR(s.st_mode)) {
-				logfile = realloc(logfile, strlen(log)+1);
+				logfile = REALLOC(logfile, strlen(log)+1);
 				strcpy(logfile, log);
 			} else {
 				logprintf(LOG_ERR, "the log folder %s does not exist", logpath);
-				sfree((void *)&logpath);
+				FREE(logpath);
 				exit(EXIT_FAILURE);
 			}
 		}
 	} else {
-		logfile = realloc(logfile, strlen(log)+1);
+		logfile = REALLOC(logfile, strlen(log)+1);
 		strcpy(logfile, log);
 	}
 
@@ -258,8 +258,8 @@ void log_file_set(char *log) {
 			filelog = 0;
 			shelllog = 1;
 			logprintf(LOG_ERR, "could not open logfile %s", logfile);
-			sfree((void *)&logpath);
-			sfree((void *)&logfile);
+			FREE(logpath);
+			FREE(logfile);
 			exit(EXIT_FAILURE);
 		} else {
 			fclose(lf);
@@ -267,7 +267,7 @@ void log_file_set(char *log) {
 		}
 	}
 
-	sfree((void *)&logpath);
+	FREE(logpath);
 }
 
 void log_level_set(int level) {

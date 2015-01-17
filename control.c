@@ -35,8 +35,13 @@
 #include "ssdp.h"
 #include "dso.h"
 #include "protocol.h"
+#include "gc.h"
+#include "operator.h"
+#include "action.h"
 
 int main(int argc, char **argv) {
+	// memtrack();
+
 	struct options_t *options = NULL;
 	struct ssdp_list_t *ssdp_list = NULL;
 	struct devices_t *dev = NULL;
@@ -44,14 +49,14 @@ int main(int argc, char **argv) {
 	char *recvBuff = NULL, *message = NULL, *output = NULL;
 	char *device = NULL, *state = NULL, *values = NULL;
 	char *server = NULL;
-	int has_values = 0, sockfd = 0;
+	int has_values = 0, sockfd = 0, hasconfarg = 0;
 	unsigned short port = 0;
 
 	log_file_disable();
 	log_shell_enable();
 	log_level_set(LOG_NOTICE);
 
-	if(!(progname = malloc(16))) {
+	if(!(progname = MALLOC(16))) {
 		logprintf(LOG_ERR, "out of memory");
 		exit(EXIT_FAILURE);
 	}
@@ -96,21 +101,21 @@ int main(int argc, char **argv) {
 				goto close;
 			break;
 			case 'd':
-				if((device = realloc(device, strlen(optarg)+1)) == NULL) {
+				if((device = REALLOC(device, strlen(optarg)+1)) == NULL) {
 					logprintf(LOG_ERR, "out of memory");
 					exit(EXIT_FAILURE);
 				}
 				strcpy(device, optarg);
 			break;
 			case 's':
-				if((state = realloc(state, strlen(optarg)+1)) == NULL) {
+				if((state = REALLOC(state, strlen(optarg)+1)) == NULL) {
 					logprintf(LOG_ERR, "out of memory");
 					exit(EXIT_FAILURE);
 				}
 				strcpy(state, optarg);
 			break;
 			case 'v':
-				if((values = realloc(values, strlen(optarg)+1)) == NULL) {
+				if((values = REALLOC(values, strlen(optarg)+1)) == NULL) {
 					logprintf(LOG_ERR, "out of memory");
 					exit(EXIT_FAILURE);
 				}
@@ -120,9 +125,10 @@ int main(int argc, char **argv) {
 				if(config_set_file(optarg) == EXIT_FAILURE) {
 					return EXIT_FAILURE;
 				}
+				hasconfarg = 1;
 			break;
 			case 'S':
-				if(!(server = realloc(server, strlen(optarg)+1))) {
+				if(!(server = REALLOC(server, strlen(optarg)+1))) {
 					logprintf(LOG_ERR, "out of memory");
 					exit(EXIT_FAILURE);
 				}
@@ -165,9 +171,10 @@ int main(int argc, char **argv) {
 
 	protocol_init();
 	config_init();
-
-	if(config_read() != EXIT_SUCCESS) {
-		goto close;
+	if(hasconfarg == 1) {
+		if(config_read() != EXIT_SUCCESS) {
+			goto close;
+		}
 	}
 
 	socket_write(sockfd, "{\"action\":\"identify\"}");
@@ -180,7 +187,7 @@ int main(int argc, char **argv) {
 	json_append_member(json, "action", json_mkstring("request config"));
 	output = json_stringify(json, NULL);
 	socket_write(sockfd, output);
-	sfree((void *)&output);
+	FREE(output);
 	json_delete(json);
 
 	if(socket_read(sockfd, &recvBuff) == 0) {
@@ -190,6 +197,19 @@ int main(int argc, char **argv) {
 				if(strcmp(message, "config") == 0) {
 					struct JsonNode *jconfig = NULL;
 					if((jconfig = json_find_member(json, "config")) != NULL) {
+						int match = 1;
+						while(match) {
+							struct JsonNode *jchilds = json_first_child(jconfig);
+							match = 0;
+							while(jchilds) {
+								if(strcmp(jchilds->key, "devices") != 0) {
+									json_remove_from_parent(jchilds);
+									json_delete(jchilds);
+									match = 1;
+								}
+								jchilds = jchilds->next;
+							}
+						}
 						config_parse(jconfig);
 						if(devices_get(device, &dev) == 0) {
 							JsonNode *joutput = json_mkobject();
@@ -203,7 +223,7 @@ int main(int argc, char **argv) {
 									char *name = strdup(pch);
 									pch = strtok(NULL, ",=");
 									if(pch == NULL) {
-										sfree((void *)&name);
+										FREE(name);
 										break;
 									} else {
 										char *val = strdup(pch);
@@ -222,7 +242,7 @@ int main(int argc, char **argv) {
 												has_values = 1;
 											} else {
 												logprintf(LOG_ERR, "\"%s\" is an invalid value for device \"%s\"", name, device);
-												sfree((void *)&name);
+												FREE(name);
 												json_delete(json);
 												goto close;
 											}
@@ -233,11 +253,11 @@ int main(int argc, char **argv) {
 										}
 										pch = strtok(NULL, ",=");
 										if(pch == NULL) {
-											sfree((void *)&name);
+											FREE(name);
 											break;
 										}
 									}
-									sfree((void *)&name);
+									FREE(name);
 								}
 							}
 
@@ -258,7 +278,7 @@ int main(int argc, char **argv) {
 							json_append_member(joutput, "code", jcode);
 							output = json_stringify(joutput, NULL);
 							socket_write(sockfd, output);
-							sfree((void *)&output);
+							FREE(output);
 							json_delete(joutput);
 							if(socket_read(sockfd, &recvBuff) != 0
 							   || strcmp(recvBuff, "{\"status\":\"success\"}") != 0) {
@@ -276,29 +296,37 @@ int main(int argc, char **argv) {
 		}
 	}
 close:
+	if(recvBuff) {
+		FREE(recvBuff);
+	}
 	if(sockfd > 0) {
 		socket_close(sockfd);
 	}
 	if(server) {
-		sfree((void *)&server);
+		FREE(server);
 	}
 	if(device) {
-		sfree((void *)&device);
+		FREE(device);
 	}
 	if(state) {
-		sfree((void *)&state);
+		FREE(state);
 	}
 	if(values) {
-		sfree((void *)&values);
+		FREE(values);
 	}
 	log_shell_disable();
-	protocol_gc();
 	socket_gc();
-	options_gc();
+	protocol_gc();	
 	config_gc();
+	options_gc();	
+	event_operator_gc();	
+	event_action_gc();	
 	dso_gc();
 	log_gc();
-	sfree((void *)&progname);
+	gc_clear();
+	threads_gc();
+	FREE(progname);
+	xfree();
 
 	return EXIT_SUCCESS;
 }

@@ -58,7 +58,7 @@ static void *lm76Parse(void *param) {
 	struct JsonNode *json = (struct JsonNode *)node->param;
 	struct JsonNode *jid = NULL;
 	struct JsonNode *jchild = NULL;
-	struct lm76data_t *lm76data = malloc(sizeof(struct lm76data_t));
+	struct lm76data_t *lm76data = MALLOC(sizeof(struct lm76data_t));
 	int y = 0, interval = 10, nrloops = 0;
 	char *stmp = NULL;
 	double itmp = -1, temp_offset = 0;
@@ -78,12 +78,12 @@ static void *lm76Parse(void *param) {
 		jchild = json_first_child(jid);
 		while(jchild) {
 			if(json_find_string(jchild, "id", &stmp) == 0) {
-				lm76data->id = realloc(lm76data->id, (sizeof(char *)*(size_t)(lm76data->nrid+1)));
+				lm76data->id = REALLOC(lm76data->id, (sizeof(char *)*(size_t)(lm76data->nrid+1)));
 				if(!lm76data->id) {
 					logprintf(LOG_ERR, "out of memory");
 					exit(EXIT_FAILURE);
 				}
-				lm76data->id[lm76data->nrid] = malloc(strlen(stmp)+1);
+				lm76data->id[lm76data->nrid] = MALLOC(strlen(stmp)+1);
 				if(!lm76data->id[lm76data->nrid]) {
 					logprintf(LOG_ERR, "out of memory");
 					exit(EXIT_FAILURE);
@@ -100,7 +100,7 @@ static void *lm76Parse(void *param) {
 	json_find_number(json, "temperature-offset", &temp_offset);
 
 #ifndef __FreeBSD__
-	lm76data->fd = realloc(lm76data->fd, (sizeof(int)*(size_t)(lm76data->nrid+1)));
+	lm76data->fd = REALLOC(lm76data->fd, (sizeof(int)*(size_t)(lm76data->nrid+1)));
 	if(!lm76data->fd) {
 		logprintf(LOG_ERR, "out of memory");
 		exit(EXIT_FAILURE);
@@ -146,9 +146,9 @@ static void *lm76Parse(void *param) {
 
 	if(lm76data->id) {
 		for(y=0;y<lm76data->nrid;y++) {
-			sfree((void *)&lm76data->id[y]);
+			FREE(lm76data->id[y]);
 		}
-		sfree((void *)&lm76data->id);
+		FREE(lm76data->id);
 	}
 	if(lm76data->fd) {
 		for(y=0;y<lm76data->nrid;y++) {
@@ -156,9 +156,9 @@ static void *lm76Parse(void *param) {
 				close(lm76data->fd[y]);
 			}
 		}
-		sfree((void *)&lm76data->fd);
+		FREE(lm76data->fd);
 	}
-	sfree((void *)&lm76data);
+	FREE(lm76data);
 	lm76_threads--;
 
 	return (void *)NULL;
@@ -169,7 +169,7 @@ struct threadqueue_t *lm76InitDev(JsonNode *jdevice) {
 	wiringXSetup();
 	char *output = json_stringify(jdevice, NULL);
 	JsonNode *json = json_decode(output);
-	sfree((void *)&output);
+	FREE(output);
 
 	struct protocol_threads_t *node = protocol_thread_init(lm76, json);
 	return threads_register("lm76", &lm76Parse, (void *)node, 0);
@@ -212,9 +212,9 @@ void lm76Init(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name = "lm76";
-	module->version = "1.2";
+	module->version = "1.3";
 	module->reqversion = "5.0";
-	module->reqcommit = "84";
+	module->reqcommit = "187";
 }
 
 void init(void) {

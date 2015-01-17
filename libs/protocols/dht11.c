@@ -74,7 +74,7 @@ static void *dht11Parse(void *param) {
 		jchild = json_first_child(jid);
 		while(jchild) {
 			if(json_find_number(jchild, "gpio", &itmp) == 0) {
-				id = realloc(id, (sizeof(int)*(size_t)(nrid+1)));
+				id = REALLOC(id, (sizeof(int)*(size_t)(nrid+1)));
 				id[nrid] = (int)round(itmp);
 				nrid++;
 			}
@@ -173,7 +173,7 @@ static void *dht11Parse(void *param) {
 	}
 	pthread_mutex_unlock(&dht11lock);
 
-	sfree((void *)&id);
+	FREE(id);
 	dht11_threads--;
 	return (void *)NULL;
 }
@@ -183,7 +183,7 @@ struct threadqueue_t *dht11InitDev(JsonNode *jdevice) {
 	wiringXSetup();
 	char *output = json_stringify(jdevice, NULL);
 	JsonNode *json = json_decode(output);
-	sfree((void *)&output);
+	FREE(output);
 
 	struct protocol_threads_t *node = protocol_thread_init(dht11, json);
 	return threads_register("dht11", &dht11Parse, (void *)node, 0);
@@ -231,9 +231,9 @@ void dht11Init(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name = "dht11";
-	module->version = "1.5";
+	module->version = "1.6";
 	module->reqversion = "5.0";
-	module->reqcommit = "84";
+	module->reqcommit = "187";
 }
 
 void init(void) {

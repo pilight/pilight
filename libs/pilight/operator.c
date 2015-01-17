@@ -54,8 +54,8 @@ void event_operator_remove(char *name) {
 			}
 
 			logprintf(LOG_DEBUG, "removed operator %s", currP->name);
-			sfree((void *)&currP->name);
-			sfree((void *)&currP);
+			FREE(currP->name);
+			FREE(currP);
 
 			break;
 		}
@@ -85,7 +85,7 @@ void event_operator_init(void) {
 
 	if(settings_find_string("operator-root", &operator_root) != 0) {
 		/* If no operator root was set, use the default operator root */
-		if(!(operator_root = malloc(strlen(OPERATOR_ROOT)+1))) {
+		if(!(operator_root = MALLOC(strlen(OPERATOR_ROOT)+1))) {
 			logprintf(LOG_ERR, "out of memory");
 			exit(EXIT_FAILURE);
 		}
@@ -153,18 +153,18 @@ void event_operator_init(void) {
 		closedir(d);
 	}
 	if(operator_root_free) {
-		sfree((void *)&operator_root);
+		FREE(operator_root);
 	}
 }
 
 void event_operator_register(struct event_operators_t **op, const char *name) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
-	if(!(*op = malloc(sizeof(struct event_operators_t)))) {
+	if(!(*op = MALLOC(sizeof(struct event_operators_t)))) {
 		logprintf(LOG_ERR, "out of memory");
 		exit(EXIT_FAILURE);
 	}
-	if(!((*op)->name = malloc(strlen(name)+1))) {
+	if(!((*op)->name = MALLOC(strlen(name)+1))) {
 		logprintf(LOG_ERR, "out of memory");
 		exit(EXIT_FAILURE);
 	}
@@ -183,11 +183,11 @@ int event_operator_gc(void) {
 	struct event_operators_t *tmp_operator = NULL;
 	while(event_operators) {
 		tmp_operator = event_operators;
-		sfree((void *)&tmp_operator->name);
+		FREE(tmp_operator->name);
 		event_operators = event_operators->next;
-		sfree((void *)&tmp_operator);
+		FREE(tmp_operator);
 	}
-	sfree((void *)&event_operators);
+	FREE(event_operators);
 	logprintf(LOG_DEBUG, "garbage collected event operator library");
 	return 0;
 }

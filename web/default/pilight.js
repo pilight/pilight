@@ -74,7 +74,7 @@ function toggleTabs() {
 		oWebsocket.send(json);
 	} else {
 		bSending = true;
-		$.get('http://'+location.host+'/send?'+encodeURIComponent(json));
+		$.get('http://'+location.host+'/send?'+encodeURIComponent(json)+'&'+$.now());
 		window.setTimeout(function() { bSending = false; }, 1000);
 	}
 	document.location = document.location;
@@ -147,7 +147,7 @@ function createSwitchElement(sTabId, sDevId, aValues) {
 				oWebsocket.send(json);
 			} else {
 				bSending = true;
-				$.get('http://'+location.host+'/send?'+encodeURIComponent(json));
+				$.get('http://'+location.host+'/send?'+encodeURIComponent(json)+'&'+$.now());
 				window.setTimeout(function() { bSending = false; }, 1000);
 			}
 		});
@@ -185,7 +185,7 @@ function createPendingSwitchElement(sTabId, sDevId, aValues) {
 				oWebsocket.send(json);
 			} else {
 				bSending = true;
-				$.get('http://'+location.host+'/send?'+encodeURIComponent(json));
+				$.get('http://'+location.host+'/send?'+encodeURIComponent(json)+'&'+$.now());
 				window.setTimeout(function() { bSending = false; }, 1000);
 			}
 		});
@@ -201,7 +201,7 @@ function createPendingSwitchElement(sTabId, sDevId, aValues) {
 					oWebsocket.send(json);
 				} else {
 					bSending = true;
-					$.get('http://'+location.host+'/send?'+encodeURIComponent(json));
+					$.get('http://'+location.host+'/send?'+encodeURIComponent(json)+'&'+$.now());
 					window.setTimeout(function() { bSending = false; }, 1000);
 				}
 			}
@@ -253,7 +253,7 @@ function createScreenElement(sTabId, sDevId, aValues) {
 				oWebsocket.send(json);
 			} else {
 				bSending = true;
-				$.get('http://'+location.host+'/send?'+encodeURIComponent(json));
+				$.get('http://'+location.host+'/send?'+encodeURIComponent(json)+'&'+$.now());
 				window.setTimeout(function() { bSending = false; }, 1000);
 			}
 		});
@@ -280,7 +280,7 @@ function createScreenElement(sTabId, sDevId, aValues) {
 				oWebsocket.send(json);
 			} else {
 				bSending = true;
-				$.get('http://'+location.host+'/send?'+encodeURIComponent(json));
+				$.get('http://'+location.host+'/send?'+encodeURIComponent(json)+'&'+$.now());
 				window.setTimeout(function() { bSending = false; }, 1000);
 			}
 		});
@@ -319,7 +319,7 @@ function createDimmerElement(sTabId, sDevId, aValues) {
 				oWebsocket.send(json);
 			} else {
 				bSending = true;
-				$.get('http://'+location.host+'/send?'+encodeURIComponent(json));
+				$.get('http://'+location.host+'/send?'+encodeURIComponent(json)+'&'+$.now());
 				window.setTimeout(function() { bSending = false; }, 1000);
 			}
 		});
@@ -335,7 +335,7 @@ function createDimmerElement(sTabId, sDevId, aValues) {
 						oWebsocket.send(json);
 					} else {
 						bSending = true;
-						$.get('http://'+location.host+'/send?'+encodeURIComponent(json));
+						$.get('http://'+location.host+'/send?'+encodeURIComponent(json)+'&'+$.now());
 						window.setTimeout(function() { bSending = false; }, 1000);
 					}
 				}
@@ -387,7 +387,7 @@ function createWeatherElement(sTabId, sDevId, aValues) {
 						oWebsocket.send(json);
 					} else {
 						bSending = true;
-						$.get('http://'+location.host+'/send?'+encodeURIComponent(json));
+						$.get('http://'+location.host+'/send?'+encodeURIComponent(json)+'&'+$.now());
 						window.setTimeout(function() { bSending = false; }, 1000);
 					}
 				}
@@ -734,6 +734,14 @@ function parseValues(data) {
 					if(vindex == 'dimlevel') {
 						$('#'+dvalues+'_dimmer').val(vvalues);
 						$('#'+dvalues+'_dimmer').slider('refresh');
+					}
+				} else if(iType == 5) {
+					if(vindex == 'state' && $('#'+dvalues+'_screen').length > 0) {
+						if(vvalues == 'up') {
+							$('#'+dvalues+'_screen_up').parent().find("label").addClass("ui-btn-active");
+						} else {
+							$('#'+dvalues+'_screen_down').parent().find("label").addClass("ui-btn-active");
+						}
 					}
 				} else if(iType == 8) {
 					if(dvalues in aDateTime && $('#'+dvalues+'_text').length > 0) {

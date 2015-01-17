@@ -107,7 +107,7 @@ static int teknihallCheckValues(struct JsonNode *jvalues) {
 		}
 
 		if(!match) {
-			if(!(snode = malloc(sizeof(struct teknihall_settings_t)))) {
+			if(!(snode = MALLOC(sizeof(struct teknihall_settings_t)))) {
 				logprintf(LOG_ERR, "out of memory");
 				exit(EXIT_FAILURE);
 			}
@@ -128,9 +128,9 @@ static void teknihallGC(void) {
 	while(teknihall_settings) {
 		tmp = teknihall_settings;
 		teknihall_settings = teknihall_settings->next;
-		sfree((void *)&tmp);
+		FREE(tmp);
 	}
-	sfree((void *)&teknihall_settings);
+	FREE(teknihall_settings);
 }
 
 #ifndef MODULE
@@ -168,9 +168,9 @@ void teknihallInit(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name = "teknihall";
-	module->version = "1.2";
+	module->version = "1.3";
 	module->reqversion = "5.0";
-	module->reqcommit = "84";
+	module->reqcommit = "187";
 }
 
 void init(void) {

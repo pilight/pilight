@@ -48,18 +48,18 @@ static struct settings_t *settings = NULL;
 
 /* Add a string value to the settings struct */
 static void settings_add_string(const char *name, char *value) {
-	struct settings_t *snode = malloc(sizeof(struct settings_t));
+	struct settings_t *snode = MALLOC(sizeof(struct settings_t));
 	struct settings_t *tmp = NULL;
 	if(!snode) {
 		logprintf(LOG_ERR, "out of memory");
 		exit(EXIT_FAILURE);
 	}
-	if(!(snode->name = malloc(strlen(name)+1))) {
+	if(!(snode->name = MALLOC(strlen(name)+1))) {
 		logprintf(LOG_ERR, "out of memory");
 		exit(EXIT_FAILURE);
 	}
 	strcpy(snode->name, name);
-	if(!(snode->string_ = malloc(strlen(value)+1))) {
+	if(!(snode->string_ = MALLOC(strlen(value)+1))) {
 		logprintf(LOG_ERR, "out of memory");
 		exit(EXIT_FAILURE);
 	}
@@ -82,12 +82,12 @@ static void settings_add_string(const char *name, char *value) {
 /* Add an int value to the settings struct */
 static void settings_add_number(const char *name, int value) {
 	struct settings_t *tmp = NULL;
-	struct settings_t *snode = malloc(sizeof(struct settings_t));
+	struct settings_t *snode = MALLOC(sizeof(struct settings_t));
 	if(!snode) {
 		logprintf(LOG_ERR, "out of memory");
 		exit(EXIT_FAILURE);
 	}
-	if(!(snode->name = malloc(strlen(name)+1))) {
+	if(!(snode->name = MALLOC(strlen(name)+1))) {
 		logprintf(LOG_ERR, "out of memory");
 		exit(EXIT_FAILURE);
 	}
@@ -119,7 +119,7 @@ int settings_find_number(const char *name, int *out) {
 		}
 		tmp_settings = tmp_settings->next;
 	}
-	sfree((void *)&tmp_settings);
+	FREE(tmp_settings);
 	return EXIT_FAILURE;
 }
 
@@ -134,7 +134,7 @@ int settings_find_string(const char *name, char **out) {
 		}
 		tmp_settings = tmp_settings->next;
 	}
-	sfree((void *)&tmp_settings);
+	FREE(tmp_settings);
 	return EXIT_FAILURE;
 }
 
@@ -145,13 +145,13 @@ static int settings_parse(JsonNode *root) {
 	int web_port = WEBSERVER_PORT;
 	int own_port = -1;
 
-	char *webgui_tpl = malloc(strlen(WEBGUI_TEMPLATE)+1);
+	char *webgui_tpl = MALLOC(strlen(WEBGUI_TEMPLATE)+1);
 	if(!webgui_tpl) {
 		logprintf(LOG_ERR, "out of memory");
 		exit(EXIT_FAILURE);
 	}
 	strcpy(webgui_tpl, WEBGUI_TEMPLATE);
-	char *webgui_root = malloc(strlen(WEBSERVER_ROOT)+1);
+	char *webgui_root = MALLOC(strlen(WEBSERVER_ROOT)+1);
 	if(!webgui_root) {
 		logprintf(LOG_ERR, "out of memory");
 		exit(EXIT_FAILURE);
@@ -206,7 +206,8 @@ static int settings_parse(JsonNode *root) {
 				settings_add_number(jsettings->key, (int)jsettings->number_);
 			}
 #endif
-		} else if(strcmp(jsettings->key, "standalone") == 0) {
+		} else if(strcmp(jsettings->key, "standalone") == 0 ||
+							strcmp(jsettings->key, "watchdog-enable") == 0) {
 			if(jsettings->tag != JSON_NUMBER) {
 				logprintf(LOG_ERR, "config setting \"%s\" must be either 0 or 1", jsettings->key);
 				have_error = 1;
@@ -319,7 +320,7 @@ static int settings_parse(JsonNode *root) {
 				have_error = 1;
 				goto clear;
 			} else {
-				webgui_root = realloc(webgui_root, strlen(jsettings->string_)+1);
+				webgui_root = REALLOC(webgui_root, strlen(jsettings->string_)+1);
 				if(!webgui_root) {
 					logprintf(LOG_ERR, "out of memory");
 					exit(EXIT_FAILURE);
@@ -402,7 +403,7 @@ static int settings_parse(JsonNode *root) {
 				have_error = 1;
 				goto clear;
 			} else {
-				webgui_tpl = realloc(webgui_tpl, strlen(jsettings->string_)+1);
+				webgui_tpl = REALLOC(webgui_tpl, strlen(jsettings->string_)+1);
 				if(!webgui_tpl) {
 					logprintf(LOG_ERR, "out of memory");
 					exit(EXIT_FAILURE);
@@ -436,7 +437,7 @@ static int settings_parse(JsonNode *root) {
 
 #ifdef WEBSERVER
 	if(webgui_tpl) {
-		char *tmp = malloc(strlen(webgui_root)+strlen(webgui_tpl)+13);
+		char *tmp = MALLOC(strlen(webgui_root)+strlen(webgui_tpl)+13);
 		if(!tmp) {
 			logprintf(LOG_ERR, "out of memory");
 			exit(EXIT_FAILURE);
@@ -445,10 +446,10 @@ static int settings_parse(JsonNode *root) {
 		if(path_exists(tmp) != EXIT_SUCCESS) {
 			logprintf(LOG_ERR, "config setting \"webgui-template\", template does not exists");
 			have_error = 1;
-			sfree((void *)&tmp);
+			FREE(tmp);
 			goto clear;
 		}
-		sfree((void *)&tmp);
+		FREE(tmp);
 	}
 
 	if(web_port == own_port) {
@@ -460,10 +461,10 @@ static int settings_parse(JsonNode *root) {
 clear:
 #ifdef WEBSERVER
 	if(webgui_tpl) {
-		sfree((void *)&webgui_tpl);
+		FREE(webgui_tpl);
 	}
 	if(webgui_root) {
-		sfree((void *)&webgui_root);
+		FREE(webgui_root);
 	}
 #endif
 	return have_error;
@@ -499,14 +500,14 @@ static int settings_gc(void) {
 
 	while(settings) {
 		tmp = settings;
-		sfree((void *)&tmp->name);
+		FREE(tmp->name);
 		if(tmp->type == JSON_STRING) {
-			sfree((void *)&tmp->string_);
+			FREE(tmp->string_);
 		}
 		settings = settings->next;
-		sfree((void *)&tmp);
+		FREE(tmp);
 	}
-	sfree((void *)&settings);
+	FREE(settings);
 
 	logprintf(LOG_DEBUG, "garbage collected config settings library");
 	return 1;

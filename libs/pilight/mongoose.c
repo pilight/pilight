@@ -18,6 +18,8 @@
 #ifdef NOEMBED_NET_SKELETON
 #include "net_skeleton.h"
 #else
+
+#include "mem.h"
 // net_skeleton start
 // Copyright (c) 2014 Cesanta Software Limited
 // All rights reserved
@@ -292,19 +294,19 @@ int ns_resolve(const char *domain_name, char *ip_addr_buf, size_t buf_len);
 
 
 #ifndef NS_MALLOC
-#define NS_MALLOC malloc
+#define NS_MALLOC MALLOC
 #endif
 
 #ifndef NS_REALLOC
-#define NS_REALLOC realloc
+#define NS_REALLOC REALLOC
 #endif
 
 #ifndef NS_FREE
-#define NS_FREE free
+#define NS_FREE FREE
 #endif
 
 #ifndef NS_CALLOC
-#define NS_CALLOC calloc
+#define NS_CALLOC CALLOC
 #endif
 
 #define NS_CTL_MSG_MESSAGE_SIZE     (8 * 1024)
@@ -4604,7 +4606,7 @@ static void try_parse(struct connection *conn) {
   if (conn->request_len == 0 &&
       (conn->request_len = get_request_len(io->buf, io->len)) > 0) {
     // If request is buffered in, remove it from the iobuf. This is because
-    // iobuf could be reallocated, and pointers in parsed request could
+    // iobuf could be REALLOCated, and pointers in parsed request could
     // become invalid.
     conn->request = (char *) NS_MALLOC(conn->request_len);
     memcpy(conn->request, io->buf, conn->request_len);

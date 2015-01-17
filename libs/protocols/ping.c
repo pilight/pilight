@@ -54,7 +54,7 @@ static void *pingParse(void *param) {
 	struct JsonNode *jchild = NULL;
 	char *ip = NULL;
 	double itmp = 0.0;
-	int state = 0, nrloops = 0, interval = 10;
+	int state = 0, nrloops = 0, interval = 1;
 
 	ping_threads++;
 
@@ -79,7 +79,7 @@ static void *pingParse(void *param) {
 					state = CONNECTED;
 					pping->message = json_mkobject();
 					JsonNode *code = json_mkobject();
-					json_append_member(code, "id", json_mkstring(ip));
+					json_append_member(code, "ip", json_mkstring(ip));
 					json_append_member(code, "state", json_mkstring("connected"));
 
 					json_append_member(pping->message, "message", code);
@@ -95,7 +95,7 @@ static void *pingParse(void *param) {
 
 				pping->message = json_mkobject();
 				JsonNode *code = json_mkobject();
-				json_append_member(code, "id", json_mkstring(ip));
+				json_append_member(code, "ip", json_mkstring(ip));
 				json_append_member(code, "state", json_mkstring("disconnected"));
 
 				json_append_member(pping->message, "message", code);
@@ -119,7 +119,7 @@ static struct threadqueue_t *pingInitDev(JsonNode *jdevice) {
 	ping_loop = 1;
 	char *output = json_stringify(jdevice, NULL);
 	JsonNode *json = json_decode(output);
-	sfree((void *)&output);
+	FREE(output);
 
 	struct protocol_threads_t *node = protocol_thread_init(pping, json);
 	return threads_register("ping", &pingParse, (void *)node, 0);
@@ -162,9 +162,9 @@ void pingInit(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name = "ping";
-	module->version = "1.0";
+	module->version = "1.2";
 	module->reqversion = "5.0";
-	module->reqcommit = "84";
+	module->reqcommit = "187";
 }
 
 void init(void) {

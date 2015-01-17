@@ -91,19 +91,27 @@ int webserver_gc(void) {
 
 	int i = 0;
 
+	while(webqueue_number > 0) {
+		struct webqueue_t *tmp = webqueue;
+		FREE(webqueue->message);
+		webqueue = webqueue->next;
+		FREE(tmp);
+		webqueue_number--;
+	}
+	
 	webserver_loop = 0;
 
 	pthread_mutex_unlock(&webqueue_lock);
 	pthread_cond_signal(&webqueue_signal);
-
+	
 	if(webserver_root_free) {
-		sfree((void *)&webserver_root);
+		FREE(webserver_root);
 	}
 	if(webgui_tpl_free) {
-		sfree((void *)&webgui_tpl);
+		FREE(webgui_tpl);
 	}
 	if(webserver_user_free) {
-		sfree((void *)&webserver_user);
+		FREE(webserver_user);
 	}
 
 	for(i=0;i<WEBSERVER_WORKERS;i++) {
@@ -169,7 +177,7 @@ static void webserver_create_404(const char *in, unsigned char **p) {
 char *webserver_mimetype(const char *str) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
-	char *mimetype = malloc(strlen(str)+1);
+	char *mimetype = MALLOC(strlen(str)+1);
 	if(!mimetype) {
 		logprintf(LOG_ERR, "out of memory");
 		exit(EXIT_FAILURE);
@@ -240,7 +248,7 @@ static char *webserver_shell(const char *format_str, struct mg_connection *conn,
 				while(!feof(fp)) {
 					chunk = fread(buff, sizeof(char), 1024, fp);
 					total += chunk;
-					output = realloc(output, total+1);
+					output = REALLOC(output, total+1);
 					if(!output) {
 						logprintf(LOG_ERR, "out of memory");
 						exit(EXIT_FAILURE);
@@ -322,9 +330,9 @@ static int webserver_request_handler(struct mg_connection *conn) {
 					filehandler->fp = NULL;
 				}
 				if(filehandler->free) {
-					sfree((void *)&filehandler->bytes);
+					FREE(filehandler->bytes);
 				}
-				sfree((void *)&filehandler);
+				FREE(filehandler);
 				conn->connection_param = NULL;
 				return MG_TRUE;
 			} else {
@@ -333,10 +341,16 @@ static int webserver_request_handler(struct mg_connection *conn) {
 		} else if(conn->uri != NULL) {
 			if(strcmp(conn->uri, "/send") == 0) {
 				if(conn->query_string != NULL) {
-					char out[strlen(conn->query_string)+1];
-					urldecode(conn->query_string, out);
-					if(json_validate(out) == true) {
-						socket_write(sockfd, out);
+					char decoded[strlen(conn->query_string)+1];
+					char output[strlen(conn->query_string)+1];
+					strcpy(output, conn->query_string);
+					char *z = strstr(output, "&");
+					if(z != NULL) {
+						output[z-output] = '\0';
+					}
+					urldecode(output, decoded);
+					if(json_validate(decoded) == true) {
+						socket_write(sockfd, decoded);
 						mg_printf_data(conn, "{\"message\":\"success\"}");
 						return MG_TRUE;
 					}
@@ -357,7 +371,7 @@ static int webserver_request_handler(struct mg_connection *conn) {
 				char *output = json_stringify(jsend, NULL);
 				mg_printf_data(conn, output);
 				json_delete(jsend);
-				sfree((void *)&output);
+				FREE(output);
 				jsend = NULL;
 				return MG_TRUE;
 			} else if(strcmp(conn->uri, "/values") == 0) {
@@ -370,7 +384,7 @@ static int webserver_request_handler(struct mg_connection *conn) {
 				char *output = json_stringify(jsend, NULL);
 				mg_printf_data(conn, output);
 				json_delete(jsend);
-				sfree((void *)&output);
+				FREE(output);
 				jsend = NULL;
 				return MG_TRUE;
 			} else if(strcmp(&conn->uri[(rstrstr(conn->uri, "/")-conn->uri)], "/") == 0) {
@@ -380,7 +394,7 @@ static int webserver_request_handler(struct mg_connection *conn) {
 				/* Check if the webserver_root is terminated by a slash. If not, than add it */
 				while(pch) {
 					size_t l = strlen(webserver_root)+strlen(webgui_tpl)+strlen(conn->uri)+strlen(pch)+4;
-					request = realloc(request, l);
+					request = REALLOC(request, l);
 					if(!request) {
 						logprintf(LOG_ERR, "out of memory");
 						exit(EXIT_FAILURE);
@@ -402,7 +416,7 @@ static int webserver_request_handler(struct mg_connection *conn) {
 				}
 			} else if(webserver_root != NULL && webgui_tpl != NULL && conn->uri != NULL) {
 				size_t wlen = strlen(webserver_root)+strlen(webgui_tpl)+strlen(conn->uri)+2;
-				request = malloc(wlen);
+				request = MALLOC(wlen);
 				if(!request) {
 					logprintf(LOG_ERR, "out of memory");
 					exit(EXIT_FAILURE);
@@ -431,7 +445,7 @@ static int webserver_request_handler(struct mg_connection *conn) {
 			if(!dot || dot == request) {
 				mimetype = webserver_mimetype("text/plain");
 			} else {
-				ext = realloc(ext, strlen(dot)+1);
+				ext = REALLOC(ext, strlen(dot)+1);
 				if(!ext) {
 					logprintf(LOG_ERR, "out of memory");
 					exit(EXIT_FAILURE);
@@ -461,7 +475,7 @@ static int webserver_request_handler(struct mg_connection *conn) {
 					mimetype = webserver_mimetype("text/plain");
 				}
 			}
-			sfree((void *)&ext);
+			FREE(ext);
 
 			memset(buffer, '\0', 4096);
 			p = buffer;
@@ -471,11 +485,11 @@ static int webserver_request_handler(struct mg_connection *conn) {
 				if(webserver_cache && st.st_size <= MAX_CACHE_FILESIZE &&
 				  strcmp(mimetype, "application/x-httpd-php") != 0 &&
 				  fcache_get_size(request, &size) != 0 && fcache_add(request) != 0) {
-					sfree((void *)&mimetype);
+					FREE(mimetype);
 					goto filenotfound;
 				}
 			} else {
-				sfree((void *)&mimetype);
+				FREE(mimetype);
 				goto filenotfound;
 			}
 
@@ -483,14 +497,14 @@ static int webserver_request_handler(struct mg_connection *conn) {
 			if((cl = mg_get_header(conn, "Content-Length"))) {
 				if(atoi(cl) > MAX_UPLOAD_FILESIZE) {
 					char line[1024] = {'\0'};
-					sfree((void *)&mimetype);
+					FREE(mimetype);
 					mimetype = webserver_mimetype("text/plain");
 					sprintf(line, "Webserver Warning: POST Content-Length of %d bytes exceeds the limit of %d bytes in Unknown on line 0", MAX_UPLOAD_FILESIZE, atoi(cl));
 					webserver_create_header(&p, "200 OK", mimetype, (unsigned int)strlen(line));
 					mg_write(conn, buffer, (int)(p-buffer));
 					mg_write(conn, line, (int)strlen(line));
-					sfree((void *)&mimetype);
-					sfree((void *)&request);
+					FREE(mimetype);
+					FREE(request);
 					return MG_TRUE;
 				}
 			}
@@ -518,14 +532,14 @@ static int webserver_request_handler(struct mg_connection *conn) {
 				}
 
 				if(raw != NULL) {
-					char *output = malloc(strlen(raw)+1);
+					char *output = MALLOC(strlen(raw)+1);
 					if(!output) {
 						logprintf(LOG_ERR, "out of memory");
 						exit(EXIT_FAILURE);
 					}
 					memset(output, '\0', strlen(raw)+1);
 					size_t olen = (size_t)base64decode((unsigned char *)output, (unsigned char *)raw, (int)strlen(raw));
-					sfree((void *)&raw);
+					FREE(raw);
 
 					char *ptr = strstr(output, "\n\r");
 					char *xptr = strstr(output, "X-Powered-By:");
@@ -540,7 +554,7 @@ static int webserver_request_handler(struct mg_connection *conn) {
 					if(ptr != NULL && nptr != NULL) {
 						size_t pos = (size_t)(ptr-output);
 						size_t xpos = (size_t)(nptr-output);
-						char *header = malloc((pos-xpos)+(size_t)1);
+						char *header = MALLOC((pos-xpos)+(size_t)1);
 						if(!header) {
 							logprintf(LOG_ERR, "out of memory");
 							exit(EXIT_FAILURE);
@@ -585,11 +599,11 @@ static int webserver_request_handler(struct mg_connection *conn) {
 						if(strlen(type) > 0 && strstr(type, "text") != NULL) {
 							mg_write(conn, buffer, (int)strlen((char *)buffer));
 							mg_write(conn, output, (int)olen);
-							sfree((void *)&output);
+							FREE(output);
 						} else {
 							if(filehandler == NULL) {
-								filehandler = malloc(sizeof(struct filehandler_t));
-								filehandler->bytes = malloc(olen);
+								filehandler = MALLOC(sizeof(struct filehandler_t));
+								filehandler->bytes = MALLOC(olen);
 								memcpy(filehandler->bytes, output, olen);
 								filehandler->length = (unsigned int)olen;
 								filehandler->ptr = 0;
@@ -597,7 +611,7 @@ static int webserver_request_handler(struct mg_connection *conn) {
 								filehandler->fp = NULL;
 								conn->connection_param = filehandler;
 							}
-							sfree((void *)&output);
+							FREE(output);
 							chunk = WEBSERVER_CHUNK_SIZE;
 							if(filehandler != NULL) {
 								if((filehandler->length-filehandler->ptr) < chunk) {
@@ -606,12 +620,12 @@ static int webserver_request_handler(struct mg_connection *conn) {
 								mg_send_data(conn, &filehandler->bytes[filehandler->ptr], (int)chunk);
 								filehandler->ptr += chunk;
 
-								sfree((void *)&mimetype);
-								sfree((void *)&request);
-								sfree((void *)&header);
+								FREE(mimetype);
+								FREE(request);
+								FREE(header);
 								if(filehandler->ptr == filehandler->length || conn->wsbits != 0) {
-									sfree((void *)&filehandler->bytes);
-									sfree((void *)&filehandler);
+									FREE(filehandler->bytes);
+									FREE(filehandler);
 									conn->connection_param = NULL;
 									return MG_TRUE;
 								} else {
@@ -619,17 +633,17 @@ static int webserver_request_handler(struct mg_connection *conn) {
 								}
 							}
 						}
-						sfree((void *)&header);
+						FREE(header);
 					}
 
-					sfree((void *)&mimetype);
-					sfree((void *)&request);
+					FREE(mimetype);
+					FREE(request);
 					return MG_TRUE;
 				} else {
 					logprintf(LOG_NOTICE, "(webserver) invalid php-cgi output from %s", request);
 					webserver_create_404(conn->uri, &p);
-					sfree((void *)&mimetype);
-					sfree((void *)&request);
+					FREE(mimetype);
+					FREE(request);
 
 					return MG_TRUE;
 				}
@@ -654,7 +668,7 @@ static int webserver_request_handler(struct mg_connection *conn) {
 						fclose(fp);
 					} else {
 						if(filehandler == NULL) {
-							filehandler = malloc(sizeof(filehandler_t));
+							filehandler = MALLOC(sizeof(filehandler_t));
 							filehandler->bytes = NULL;
 							filehandler->length = (unsigned int)size;
 							filehandler->ptr = 0;
@@ -671,14 +685,14 @@ static int webserver_request_handler(struct mg_connection *conn) {
 							mg_send_data(conn, buff, (int)chunk);
 							filehandler->ptr += chunk;
 
-							sfree((void *)&mimetype);
-							sfree((void *)&request);
+							FREE(mimetype);
+							FREE(request);
 							if(filehandler->ptr == filehandler->length || conn->wsbits != 0) {
 								if(filehandler->fp != NULL) {
 									fclose(filehandler->fp);
 									filehandler->fp = NULL;
 								}
-								sfree((void *)&filehandler);
+								FREE(filehandler);
 								conn->connection_param = NULL;
 								return MG_TRUE;
 							} else {
@@ -687,8 +701,8 @@ static int webserver_request_handler(struct mg_connection *conn) {
 						}
 					}
 
-					sfree((void *)&mimetype);
-					sfree((void *)&request);
+					FREE(mimetype);
+					FREE(request);
 					return MG_TRUE;
 				} else {
 					if(fcache_get_size(request, &size) == 0) {
@@ -696,12 +710,12 @@ static int webserver_request_handler(struct mg_connection *conn) {
 							webserver_create_header(&p, "200 OK", mimetype, (unsigned int)size);
 							mg_write(conn, buffer, (int)(p-buffer));
 							mg_write(conn, fcache_get_bytes(request), size);
-							sfree((void *)&mimetype);
-							sfree((void *)&request);
+							FREE(mimetype);
+							FREE(request);
 							return MG_TRUE;
 						} else {
 							if(filehandler == NULL) {
-								filehandler = malloc(sizeof(filehandler_t));
+								filehandler = MALLOC(sizeof(filehandler_t));
 								filehandler->bytes = fcache_get_bytes(request);
 								filehandler->length = (unsigned int)size;
 								filehandler->ptr = 0;
@@ -717,10 +731,10 @@ static int webserver_request_handler(struct mg_connection *conn) {
 								mg_send_data(conn, &filehandler->bytes[filehandler->ptr], (int)chunk);
 								filehandler->ptr += chunk;
 
-								sfree((void *)&mimetype);
-								sfree((void *)&request);
+								FREE(mimetype);
+								FREE(request);
 								if(filehandler->ptr == filehandler->length || conn->wsbits != 0) {
-									sfree((void *)&filehandler);
+									FREE(filehandler);
 									conn->connection_param = NULL;
 									return MG_TRUE;
 								} else {
@@ -730,8 +744,8 @@ static int webserver_request_handler(struct mg_connection *conn) {
 						}
 					}
 				}
-				sfree((void *)&mimetype);
-				sfree((void *)&request);
+				FREE(mimetype);
+				FREE(request);
 			}
 		}
 	} else if(webgui_websockets == 1) {
@@ -748,14 +762,14 @@ static int webserver_request_handler(struct mg_connection *conn) {
 					char *output = json_stringify(jsend, NULL);
 					size_t output_len = strlen(output);
 					mg_websocket_write(conn, 1, output, output_len);
-					sfree((void *)&output);
+					FREE(output);
 					json_delete(jsend);
 				} else if(strcmp(action, "request values") == 0) {
 					JsonNode *jsend = devices_values("web");
 					char *output = json_stringify(jsend, NULL);
 					size_t output_len = strlen(output);
 					mg_websocket_write(conn, 1, output, output_len);
-					sfree((void *)&output);
+					FREE(output);
 					json_delete(jsend);
 				} else if(strcmp(action, "control") == 0 || strcmp(action, "registry") == 0) {
 					/* Write all codes coming from the webserver to the daemon */
@@ -772,8 +786,8 @@ filenotfound:
 	logprintf(LOG_NOTICE, "(webserver) could not read %s", request);
 	webserver_create_404(conn->uri, &p);
 	mg_write(conn, buffer, (int)(p-buffer));
-	sfree((void *)&mimetype);
-	sfree((void *)&request);
+	FREE(mimetype);
+	FREE(request);
 	return MG_TRUE;
 }
 
@@ -807,12 +821,12 @@ static void webserver_queue(char *message) {
 
 	pthread_mutex_lock(&webqueue_lock);
 	if(webqueue_number <= 1024) {
-		struct webqueue_t *wnode = malloc(sizeof(struct webqueue_t));
+		struct webqueue_t *wnode = MALLOC(sizeof(struct webqueue_t));
 		if(!wnode) {
 			logprintf(LOG_ERR, "out of memory");
 			exit(EXIT_FAILURE);
 		}
-		wnode->message = malloc(strlen(message)+1);
+		wnode->message = MALLOC(strlen(message)+1);
 		if(!wnode->message) {
 			logprintf(LOG_ERR, "out of memory");
 			exit(EXIT_FAILURE);
@@ -857,9 +871,9 @@ void *webserver_broadcast(void *param) {
 			}
 
 			struct webqueue_t *tmp = webqueue;
-			sfree((void *)&webqueue->message);
+			FREE(webqueue->message);
 			webqueue = webqueue->next;
-			sfree((void *)&tmp);
+			FREE(tmp);
 			webqueue_number--;
 			pthread_mutex_unlock(&webqueue_lock);
 		} else {
@@ -905,7 +919,7 @@ void *webserver_clientize(void *param) {
 		json_append_member(jclient, "media", json_mkstring("web"));
 		char *out = json_stringify(jclient, NULL);
 		socket_write(sockfd, out);
-		sfree((void *)&out);
+		FREE(out);
 		json_delete(jclient);
 
 		if(socket_read(sockfd, &recvBuff) != 0
@@ -924,7 +938,7 @@ void *webserver_clientize(void *param) {
 	}
 
 	if(recvBuff) {
-		sfree((void *)&recvBuff);
+		FREE(recvBuff);
 		recvBuff = NULL;
 	}
 	socket_close(sockfd);
@@ -974,7 +988,7 @@ int webserver_start(void) {
 	settings_find_number("webserver-port", &webserver_port);
 	if(settings_find_string("webserver-root", &webserver_root) != 0) {
 		/* If no webserver port was set, use the default webserver port */
-		webserver_root = malloc(strlen(WEBSERVER_ROOT)+1);
+		webserver_root = MALLOC(strlen(WEBSERVER_ROOT)+1);
 		if(!webserver_root) {
 			logprintf(LOG_ERR, "out of memory");
 			exit(EXIT_FAILURE);
@@ -984,7 +998,7 @@ int webserver_start(void) {
 	}
 	if(settings_find_string("webgui-template", &webgui_tpl) != 0) {
 		/* If no webserver port was set, use the default webserver port */
-		webgui_tpl = malloc(strlen(WEBGUI_TEMPLATE)+1);
+		webgui_tpl = MALLOC(strlen(WEBGUI_TEMPLATE)+1);
 		if(!webgui_tpl) {
 			logprintf(LOG_ERR, "out of memory");
 			exit(EXIT_FAILURE);
@@ -1001,7 +1015,7 @@ int webserver_start(void) {
 	settings_find_string("webserver-authentication-username", &webserver_authentication_username);
 	if(settings_find_string("webserver-user", &webserver_user) != 0) {
 		/* If no webserver port was set, use the default webserver port */
-		webserver_user = malloc(strlen(WEBSERVER_USER)+1);
+		webserver_user = MALLOC(strlen(WEBSERVER_USER)+1);
 		if(!webserver_user) {
 			logprintf(LOG_ERR, "out of memory");
 			exit(EXIT_FAILURE);

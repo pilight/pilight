@@ -29,6 +29,7 @@ typedef enum {
 	API
 } hwtype_t;
 
+#include <pthread.h>
 #include "options.h"
 #include "json.h"
 #include "config.h"
@@ -37,6 +38,12 @@ struct config_t *config_hardware;
 
 typedef struct hardware_t {
 	char *id;
+	unsigned short wait;
+	unsigned short stop;
+	pthread_mutex_t lock;
+	pthread_cond_t signal;
+	pthread_mutexattr_t attr;
+	unsigned short running;
 	hwtype_t type;
 	struct options_t *options;
 

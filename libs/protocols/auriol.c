@@ -103,7 +103,7 @@ static int auriolCheckValues(struct JsonNode *jvalues) {
 		}
 
 		if(!match) {
-			if(!(snode = malloc(sizeof(struct auriol_settings_t)))) {
+			if(!(snode = MALLOC(sizeof(struct auriol_settings_t)))) {
 				logprintf(LOG_ERR, "out of memory");
 				exit(EXIT_FAILURE);
 			}
@@ -123,9 +123,9 @@ static void auriolGC(void) {
 	while(auriol_settings) {
 		tmp = auriol_settings;
 		auriol_settings = auriol_settings->next;
-		sfree((void *)&tmp);
+		FREE(tmp);
 	}
-	sfree((void *)&auriol_settings);
+	FREE(auriol_settings);
 }
 
 #ifndef MODULE
@@ -160,9 +160,9 @@ void auriolInit(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name = "auriol";
-	module->version = "1.1";
+	module->version = "1.2";
 	module->reqversion = "5.0";
-	module->reqcommit = "84";
+	module->reqcommit = "187";
 }
 
 void init(void) {

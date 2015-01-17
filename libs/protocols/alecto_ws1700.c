@@ -112,7 +112,7 @@ static int alectoWS1700CheckValues(struct JsonNode *jvalues) {
 		}
 
 		if(!match) {
-			if(!(snode = malloc(sizeof(struct alecto_ws1700_settings_t)))) {
+			if(!(snode = MALLOC(sizeof(struct alecto_ws1700_settings_t)))) {
 				logprintf(LOG_ERR, "out of memory");
 				exit(EXIT_FAILURE);
 			}
@@ -133,9 +133,9 @@ static void alectoWS1700GC(void) {
 	while(alecto_ws1700_settings) {
 		tmp = alecto_ws1700_settings;
 		alecto_ws1700_settings = alecto_ws1700_settings->next;
-		sfree((void *)&tmp);
+		FREE(tmp);
 	}
-	sfree((void *)&alecto_ws1700_settings);
+	FREE(alecto_ws1700_settings);
 }
 
 #ifndef MODULE
@@ -173,9 +173,9 @@ void alectoWS1700Init(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name = "alecto_ws1700";
-	module->version = "1.3";
+	module->version = "1.4";
 	module->reqversion = "5.0";
-	module->reqcommit = "84";
+	module->reqcommit = "187";
 }
 
 void init(void) {
