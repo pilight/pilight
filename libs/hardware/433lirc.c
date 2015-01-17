@@ -51,8 +51,6 @@ static int lirc_433_setfreq = 0;
 static int lirc_433_fd = 0;
 static char *lirc_433_socket = NULL;
 
-typedef unsigned long __u32;
-
 static unsigned short lirc433HwInit(void) {
 	unsigned int freq = 0;
 	int fd = 0, i = 0, count = 0;
@@ -72,7 +70,7 @@ static unsigned short lirc433HwInit(void) {
 			if(lirc_433_setfreq == 0) {
 				freq = FREQ433;
 				/* Set the lirc_rpi frequency to 433.92Mhz */
-				if(ioctl(lirc_433_fd, _IOW('i', 0x00000013, __u32), &freq) == -1) {
+				if(ioctl(lirc_433_fd, _IOW('i', 0x00000013, unsigned long), &freq) == -1) {
 					logprintf(LOG_ERR, "could not set lirc_rpi send frequency");
 					exit(EXIT_FAILURE);
 				}
@@ -100,7 +98,7 @@ static unsigned short lirc433HwDeinit(void) {
 
 		if(lirc_433_fd > 0) {
 			/* Restore the lirc_rpi frequency to its default value */
-			if(ioctl(lirc_433_fd, _IOW('i', 0x00000013, __u32), &freq) == -1) {
+			if(ioctl(lirc_433_fd, _IOW('i', 0x00000013, unsigned long), &freq) == -1) {
 				logprintf(LOG_ERR, "could not restore default freq of the lirc_rpi lirc");
 				exit(EXIT_FAILURE);
 			} else {
