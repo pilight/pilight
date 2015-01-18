@@ -89,10 +89,10 @@ var language_fr = {
 if(userLang.indexOf('nl') != -1) {
 	language = language_nl;
 }
-else if(userLang.indexof('de') != -1){
+else if(userLang.indexOf('de') != -1){
 	language = language_de;
 }
-else if(userLang.indexof('fr') != -1){
+else if(userLang.indexOf('fr') != -1){
 	language = language_fr;
 }
 else {
