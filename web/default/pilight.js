@@ -69,12 +69,31 @@ var language_nl = {
 	unexpected_error: "An unexpected error occured"
 }
 
+var language_fr = {
+	off: "Eteint",
+	on: "Allumé",
+	stopped: "Arrêté",
+	started: "Démarré",
+	toggling: "En cours",
+	up: "Haut",
+	down: "Bas",
+	update: "Mise à jour",
+	loading: "Chargement en cours",
+	available: "Disponible",
+	connecting: "Connexion en cours",
+	connection_lost: "Connexion perdue, appuyez pour recharger",
+	connection_failed: "Connexion impossible, appuyez pour réessayer",
+	unexpected_error: "Une erreur inattendue s'est produite"
+}
 
 if(userLang.indexOf('nl') != -1) {
 	language = language_nl;
 }
 else if(userLang.indexof('de') != -1){
 	language = language_de;
+}
+else if(userLang.indexof('fr') != -1){
+	language = language_fr;
 }
 else {
 	language = language_en;
