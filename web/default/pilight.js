@@ -17,6 +17,7 @@ var sDateTimeFormat = "HH:mm:ss YYYY-MM-DD";
 var aDateTimeFormats = new Array();
 var aWebcamUrl = new Array();
 var userLang = navigator.language || navigator.userLanguage;
+var language;
 
 var language_en = {
 	off: "Off",
@@ -35,6 +36,23 @@ var language_en = {
 	unexpected_error: "An unexpected error occured"
 }
 
+var language_de = {
+	off: "Ein",
+	on: "Aus",
+	stopped: "Gestoppt",
+	started: "Gestartet",
+	toggling: "Schalten",
+	up: "Auf",
+	down: "Ab",
+	update: "Aktualisieren",
+	loading: "Laden",
+	available: "Verfügbar",
+	connecting: "Verbinde",
+	connection_lost: "Verbindung verloren, berühre zum neu Laden",
+	connection_failed: "Verbindung fehlgeschlagen, berühre zum neu Laden",
+	unexpected_error: "Es ist ein unbekannter Fehler aufgetreten"
+}
+
 var language_nl = {
 	off: "Uit",
 	on: "Aan",
@@ -51,10 +69,15 @@ var language_nl = {
 	unexpected_error: "An unexpected error occured"
 }
 
-var language = language_en;
 
 if(userLang.indexOf('nl') != -1) {
 	language = language_nl;
+}
+else if(userLang.indexof('de') != -1){
+	language = language_de;
+}
+else {
+	language = language_en;
 }
 
 function alphaNum(string) {
