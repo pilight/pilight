@@ -929,10 +929,14 @@ void *webserver_clientize(void *param) {
 		}
 		failures = 0;
 		while(webserver_loop) {
-			if(socket_read(sockfd, &recvBuff) != 0) {
-				break;
+			if(webgui_websockets == 1) {
+				if(socket_read(sockfd, &recvBuff) != 0) {
+					break;
+				} else {
+					webserver_queue(recvBuff);
+				}
 			} else {
-				webserver_queue(recvBuff);
+				sleep(1);
 			}
 		}
 	}
