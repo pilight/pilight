@@ -378,19 +378,19 @@ int main(int argc, char **argv) {
 		}
 	}
 close:
-	if(sockfd) {
+	if(sockfd > 0) {
 		socket_close(sockfd);
 	}
-	if(recvBuff) {
+	if(recvBuff != NULL) {
 		FREE(recvBuff);
 	}
-	if(server) {
+	if(server != NULL) {
 		FREE(server);
 	}
-	if(protobuffer) {
+	if(protobuffer != NULL) {
 		FREE(protobuffer);
 	}
-	if(uuid) {
+	if(uuid != NULL) {
 		FREE(uuid);
 	}
 	log_shell_disable();

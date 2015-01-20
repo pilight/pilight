@@ -52,14 +52,6 @@ int main_gc(void) {
 
 	log_shell_disable();
 
-	struct conf_hardware_t *tmp_confhw = conf_hardware;
-	while(tmp_confhw) {
-		if(tmp_confhw->hardware->deinit) {
-			tmp_confhw->hardware->deinit();
-		}
-		tmp_confhw = tmp_confhw->next;
-	}
-
 	datetime_gc();
 	ssdp_gc();
 	protocol_gc();
@@ -211,10 +203,10 @@ int main(int argc, char **argv) {
 	}
 
 close:
-	if(args) {
+	if(args != NULL) {
 		FREE(args);
 	}
-	if(main_loop) {
+	if(main_loop == 1) {
 		main_gc();
 	}
 	return (EXIT_FAILURE);

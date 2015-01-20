@@ -1602,7 +1602,13 @@ void *clientize(void *param) {
 		}
 	}
 
+	if(recvBuff) {
+		FREE(recvBuff);
+	}
 close:
+	if(recvBuff) {
+		FREE(recvBuff);
+	}
 	socket_close(sockfd);
 
 	return NULL;
@@ -1760,6 +1766,7 @@ void *firmware_loop(void *param) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
 	unsigned int interval = 1;
+	int x = 0;
 	char fwfile[4096] = {'\0'};
 	int fwupdate = 0;
 
@@ -1768,25 +1775,29 @@ void *firmware_loop(void *param) {
 	while(main_loop) {
 		/* Check if firmware needs to be updated */
 		if(fwupdate == 1 && firmware.version > 0) {
-			char *fwtmp = fwfile;
-			if(firmware_check(&fwtmp) == 0) {
-				firmware.version = 0;
-				size_t fwl = strlen(FIRMWARE_PATH)+strlen(fwfile)+2;
-				char fwpath[fwl];
-				memset(fwpath, '\0', fwl);
-				sprintf(fwpath, "%s%s", FIRMWARE_PATH, fwfile);
-				logprintf(LOG_INFO, "**** START UPD. FW ****");
-				if(firmware_update(fwpath) != 0) {
-					logprintf(LOG_INFO, "**** FAILED UPD. FW ****");
-				} else {
-					logprintf(LOG_INFO, "**** DONE UPD. FW ****");
+			if(x == interval) {
+				char *fwtmp = fwfile;
+				if(firmware_check(&fwtmp) == 0) {
+					firmware.version = 0;
+					size_t fwl = strlen(FIRMWARE_PATH)+strlen(fwfile)+2;
+					char fwpath[fwl];
+					memset(fwpath, '\0', fwl);
+					sprintf(fwpath, "%s%s", FIRMWARE_PATH, fwfile);
+					logprintf(LOG_INFO, "**** START UPD. FW ****");
+					if(firmware_update(fwpath) != 0) {
+						logprintf(LOG_INFO, "**** FAILED UPD. FW ****");
+					} else {
+						logprintf(LOG_INFO, "**** DONE UPD. FW ****");
+					}
+					fwupdate = 0;
 				}
-				fwupdate = 0;
 			}
-		interval = 60;
+			interval = 60;
 		}
-
-		sleep(interval);
+		if(x == interval) {
+			x = 0;
+		}
+		sleep(1);
 	}
 	return NULL;
 }
@@ -2125,14 +2136,14 @@ int main(int argc, char **argv) {
 	settings_find_number("port", &port);
 	settings_find_number("standalone", &standalone);
 
-	if(standalone == 0 || (master_server && master_port > 0)) {
-		if(master_server && master_port > 0) {
+	if(standalone == 0 || (master_server != NULL && master_port > 0)) {
+		if(master_server != NULL && master_port > 0) {
 			if((sockfd = socket_connect(master_server, master_port)) == -1) {
-				logprintf(LOG_NOTICE, "no pilight daemon found, daemonizing");
+				logprintf(LOG_NOTICE, "pilight daemon not found @%s, waiting for it to come online", master_server);
 			} else {
 				logprintf(LOG_NOTICE, "a pilight daemon was found, clientizing");
-				pilight.runmode = ADHOC;
 			}
+			pilight.runmode = ADHOC;
 		} else if(ssdp_seek(&ssdp_list) == -1) {
 			logprintf(LOG_NOTICE, "no pilight daemon found, daemonizing");
 		} else {
@@ -2231,8 +2242,8 @@ int main(int argc, char **argv) {
 	if(webserver_enable == 1 && pilight.runmode == STANDALONE) {
 		webserver_start();
 		/* Register a seperate thread in which the webserver communicates the main daemon */
+		threads_register("webserver client", &webserver_clientize, (void *)NULL, 0);
 		if(webgui_websockets == 1) {
-			threads_register("webserver client", &webserver_clientize, (void *)NULL, 0);
 			threads_register("webserver broadcast", &webserver_broadcast, (void *)NULL, 0);
 		}
 	} else {
@@ -2349,12 +2360,19 @@ int main(int argc, char **argv) {
 		}
 		sleep(1);
 	}
-	FREE(configtmp);
+	if(configtmp != NULL) {
+		FREE(configtmp);
+		configtmp = NULL;
+	}
 
 	return EXIT_SUCCESS;
 
 clear:
-	FREE(configtmp);
+	if(configtmp != NULL) {
+		FREE(configtmp);
+		configtmp = NULL;
+	}
+
 	if(nodaemon == 0) {
 		log_level_set(LOG_NOTICE);
 		log_shell_disable();

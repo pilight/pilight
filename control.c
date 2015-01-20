@@ -302,16 +302,16 @@ close:
 	if(sockfd > 0) {
 		socket_close(sockfd);
 	}
-	if(server) {
+	if(server != NULL) {
 		FREE(server);
 	}
-	if(device) {
+	if(device != NULL) {
 		FREE(device);
 	}
-	if(state) {
+	if(state != NULL) {
 		FREE(state);
 	}
-	if(values) {
+	if(values != NULL) {
 		FREE(values);
 	}
 	log_shell_disable();

@@ -368,10 +368,12 @@ static int webserver_request_handler(struct mg_connection *conn) {
 					}
 				}
 				JsonNode *jsend = config_print(internal, media);
-				char *output = json_stringify(jsend, NULL);
-				mg_printf_data(conn, output);
-				json_delete(jsend);
-				FREE(output);
+				if(jsend != NULL) {
+					char *output = json_stringify(jsend, NULL);
+					mg_printf_data(conn, output);
+					json_delete(jsend);
+					FREE(output);
+				}
 				jsend = NULL;
 				return MG_TRUE;
 			} else if(strcmp(conn->uri, "/values") == 0) {
@@ -381,10 +383,12 @@ static int webserver_request_handler(struct mg_connection *conn) {
 					sscanf(conn->query_string, "media=%14s%*[ \n\r]", media);
 				}
 				JsonNode *jsend = devices_values(media);
-				char *output = json_stringify(jsend, NULL);
-				mg_printf_data(conn, output);
-				json_delete(jsend);
-				FREE(output);
+				if(jsend != NULL) {
+					char *output = json_stringify(jsend, NULL);
+					mg_printf_data(conn, output);
+					json_delete(jsend);
+					FREE(output);
+				}
 				jsend = NULL;
 				return MG_TRUE;
 			} else if(strcmp(&conn->uri[(rstrstr(conn->uri, "/")-conn->uri)], "/") == 0) {
@@ -929,35 +933,45 @@ void *webserver_clientize(void *param) {
 		}
 		failures = 0;
 		while(webserver_loop) {
-			if(socket_read(sockfd, &recvBuff) != 0) {
-				break;
+			if(webgui_websockets == 1) {
+				if(socket_read(sockfd, &recvBuff) != 0) {
+					break;
+				} else {
+					webserver_queue(recvBuff);
+				}
 			} else {
-				webserver_queue(recvBuff);
+				sleep(1);
 			}
 		}
 	}
 
-	if(recvBuff) {
+	if(recvBuff != NULL) {
 		FREE(recvBuff);
 		recvBuff = NULL;
 	}
-	socket_close(sockfd);
+	if(sockfd > 0) {
+		socket_close(sockfd);
+	}
 	return 0;
 }
 
 static int webserver_handler(struct mg_connection *conn, enum mg_event ev) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
-	if(ev == MG_REQUEST || (ev == MG_POLL && !conn->is_websocket)) {
-		if(ev == MG_POLL ||
-		  (!conn->is_websocket && webserver_connect_handler(conn) == MG_TRUE) ||
-		  conn->is_websocket) {
-			return webserver_request_handler(conn);
+	if(webserver_loop == 1) {
+		if(ev == MG_REQUEST || (ev == MG_POLL && !conn->is_websocket)) {
+			if(ev == MG_POLL ||
+				(!conn->is_websocket && webserver_connect_handler(conn) == MG_TRUE) ||
+				conn->is_websocket) {
+				return webserver_request_handler(conn);
+			} else {
+				return MG_FALSE;
+			}
+		} else if(ev == MG_AUTH) {
+			return webserver_auth_handler(conn);
 		} else {
 			return MG_FALSE;
 		}
-	} else if(ev == MG_AUTH) {
-		return webserver_auth_handler(conn);
 	} else {
 		return MG_FALSE;
 	}
@@ -988,8 +1002,7 @@ int webserver_start(void) {
 	settings_find_number("webserver-port", &webserver_port);
 	if(settings_find_string("webserver-root", &webserver_root) != 0) {
 		/* If no webserver port was set, use the default webserver port */
-		webserver_root = MALLOC(strlen(WEBSERVER_ROOT)+1);
-		if(!webserver_root) {
+		if((webserver_root = MALLOC(strlen(WEBSERVER_ROOT)+1)) == NULL) {
 			logprintf(LOG_ERR, "out of memory");
 			exit(EXIT_FAILURE);
 		}
@@ -998,8 +1011,7 @@ int webserver_start(void) {
 	}
 	if(settings_find_string("webgui-template", &webgui_tpl) != 0) {
 		/* If no webserver port was set, use the default webserver port */
-		webgui_tpl = MALLOC(strlen(WEBGUI_TEMPLATE)+1);
-		if(!webgui_tpl) {
+		if((webgui_tpl = MALLOC(strlen(WEBGUI_TEMPLATE)+1)) == NULL) {
 			logprintf(LOG_ERR, "out of memory");
 			exit(EXIT_FAILURE);
 		}
