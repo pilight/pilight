@@ -135,7 +135,9 @@ static void alectoWS1700GC(void) {
 		alecto_ws1700_settings = alecto_ws1700_settings->next;
 		FREE(tmp);
 	}
-	FREE(alecto_ws1700_settings);
+	if(alecto_ws1700_settings != NULL) {
+		FREE(alecto_ws1700_settings);
+	}
 }
 
 #ifndef MODULE

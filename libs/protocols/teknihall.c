@@ -130,7 +130,9 @@ static void teknihallGC(void) {
 		teknihall_settings = teknihall_settings->next;
 		FREE(tmp);
 	}
-	FREE(teknihall_settings);
+	if(teknihall_settings != NULL) {
+		FREE(teknihall_settings);
+	}
 }
 
 #ifndef MODULE

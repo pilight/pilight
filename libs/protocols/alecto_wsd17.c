@@ -120,7 +120,9 @@ static void alectoWSD17GC(void) {
 		alecto_wsd17_settings = alecto_wsd17_settings->next;
 		FREE(tmp);
 	}
-	FREE(alecto_wsd17_settings);
+	if(alecto_wsd17_settings != NULL) {
+		FREE(alecto_wsd17_settings);
+	}
 }
 
 #ifndef MODULE

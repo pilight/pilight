@@ -40,7 +40,9 @@ int fcache_gc(void) {
 		fcache = fcache->next;
 		FREE(tmp);
 	}
-	FREE(fcache);
+	if(fcache != NULL) {
+		FREE(fcache);
+	}
 
 	logprintf(LOG_DEBUG, "garbage collected fcache library");
 	return 1;

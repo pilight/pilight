@@ -282,7 +282,9 @@ static void *openweathermapParse(void *param) {
 		openweathermap_data = openweathermap_data->next;
 		FREE(wtmp);
 	}
-	FREE(openweathermap_data);
+	if(openweathermap_data != NULL) {
+		FREE(openweathermap_data);
+	}
 	openweathermap_threads--;
 	return (void *)NULL;
 }

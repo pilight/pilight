@@ -37,7 +37,9 @@ int options_gc(void) {
 
 	FREE(longarg);
 	FREE(shortarg);
-	FREE(gctmp);
+	if(gctmp != NULL) {
+		FREE(gctmp);
+	}
 
 	logprintf(LOG_DEBUG, "garbage collected options library");
 	return EXIT_SUCCESS;
@@ -588,7 +590,9 @@ void options_delete(struct options_t *options) {
 		options = options->next;
 		FREE(tmp);
 	}
-	FREE(options);
+	if(options != NULL) {
+		FREE(options);
+	}
 
 	logprintf(LOG_DEBUG, "freed options struct");
 }

@@ -143,7 +143,9 @@ int gc_run(void) {
 		gc = gc->next;
 		FREE(tmp);
 	}
-	FREE(gc);
+	if(gc != NULL) {
+		FREE(gc);
+	}
 
 	if(s == 1) {
 		return EXIT_FAILURE;

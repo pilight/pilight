@@ -1633,7 +1633,9 @@ int devices_gc(void) {
 				stmp->values = stmp->values->next;
 				FREE(vtmp);
 			}
-			FREE(stmp->values);
+			if(stmp->values != NULL) {
+				FREE(stmp->values);
+			}
 			if(stmp->name) {
 				FREE(stmp->name);
 			}
@@ -1657,14 +1659,24 @@ int devices_gc(void) {
 				thread_stop(dtmp->threads[i]->id);
 			}
 		}
-		FREE(dtmp->protocols);
-		FREE(dtmp->settings);
-		FREE(dtmp->id);
-		FREE(dtmp->threads);
+		if(dtmp->protocols != NULL) {
+			FREE(dtmp->protocols);
+		}
+		if(dtmp->settings != NULL) {
+			FREE(dtmp->settings);
+		}
+		if(dtmp->id != NULL) {
+			FREE(dtmp->id);
+		}
+		if(dtmp->threads != NULL) {
+			FREE(dtmp->threads);
+		}
 		devices = devices->next;
 		FREE(dtmp);
 	}
-	FREE(devices);
+	if(devices != NULL) {
+		FREE(devices);
+	}
 
 	logprintf(LOG_DEBUG, "garbage collected config devices library");
 

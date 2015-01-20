@@ -125,7 +125,9 @@ static int hardware_gc(void) {
 		hardware = hardware->next;
 		FREE(htmp);
 	}
-	FREE(hardware);
+	if(hardware != NULL) {
+		FREE(hardware);
+	}
 
 	while(conf_hardware) {
 		ctmp = conf_hardware;

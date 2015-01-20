@@ -177,8 +177,12 @@ end:
 			prev = ptr;
 			ptr = next;
 		}
-		FREE(ptr);
-		FREE(next);
+		if(ptr != NULL) {
+			FREE(ptr);
+		}
+		if(next != NULL) {
+			FREE(next);
+		}
 		*ssdp_list = prev;
 
 		return 0;
@@ -196,7 +200,9 @@ void ssdp_free(struct ssdp_list_t *ssdp_list) {
 		ssdp_list = ssdp_list->next;
 		FREE(tmp);
 	}
-	FREE(ssdp_list);
+	if(ssdp_list != NULL) {
+		FREE(ssdp_list);
+	}
 }
 
 void *ssdp_wait(void *param) {

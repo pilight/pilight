@@ -165,7 +165,9 @@ static void ninjablocksWeatherGC(void) {
 		ninjablocks_weather_settings = ninjablocks_weather_settings->next;
 		FREE(tmp);
 	}
-	FREE(ninjablocks_weather_settings);
+	if(ninjablocks_weather_settings != NULL) {
+		FREE(ninjablocks_weather_settings);
+	}
 }
 
 #ifndef MODULE

@@ -190,12 +190,18 @@ int rules_gc(void) {
 		if(tmp_rules->arguments) {
 			json_delete(tmp_rules->arguments);
 		}
-		FREE(tmp_rules->values);
-		FREE(tmp_rules->devices);
+		if(tmp_rules->values != NULL) {
+			FREE(tmp_rules->values);
+		}
+		if(tmp_rules->devices != NULL) {
+			FREE(tmp_rules->devices);
+		}
 		rules = rules->next;
 		FREE(tmp_rules);
 	}
-	FREE(rules);
+	if(rules != NULL) {
+		FREE(rules);
+	}
 	rules = NULL;
 	logprintf(LOG_DEBUG, "garbage collected config rules library");
 	return 1;

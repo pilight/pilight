@@ -1602,11 +1602,11 @@ void *clientize(void *param) {
 		}
 	}
 
-	if(recvBuff) {
+	if(recvBuff != NULL) {
 		FREE(recvBuff);
 	}
 close:
-	if(recvBuff) {
+	if(recvBuff != NULL) {
 		FREE(recvBuff);
 	}
 	socket_close(sockfd);
@@ -1695,7 +1695,9 @@ int main_gc(void) {
 		clients = clients->next;
 		FREE(tmp_clients);
 	}
-	FREE(clients);
+	if(clients != NULL) {
+		FREE(clients);
+	}
 
 	if(running == 0) {
 		/* Remove the stale pid file */
@@ -1815,7 +1817,6 @@ void registerVersion(void) {
 
 
 int main(int argc, char **argv) {
-
 	procProtocolInit();
 
 	struct ifaddrs *ifaddr, *ifa;
@@ -2362,7 +2363,6 @@ int main(int argc, char **argv) {
 	}
 	if(configtmp != NULL) {
 		FREE(configtmp);
-		configtmp = NULL;
 	}
 
 	return EXIT_SUCCESS;
@@ -2370,7 +2370,6 @@ int main(int argc, char **argv) {
 clear:
 	if(configtmp != NULL) {
 		FREE(configtmp);
-		configtmp = NULL;
 	}
 
 	if(nodaemon == 0) {

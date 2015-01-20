@@ -263,7 +263,9 @@ int threads_gc(void) {
 		threadqueue = threadqueue->next;
 		FREE(ttmp);
 	}
-	FREE(threadqueue);
+	if(threadqueue != NULL) {
+		FREE(threadqueue);
+	}
 
 	if(pthcpy != NULL) {
 		pthread_join(*pthcpy, NULL);

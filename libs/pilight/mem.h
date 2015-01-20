@@ -24,11 +24,11 @@ void memtrack(void);
 void *_malloc(unsigned long a, const char *file, int line);
 void *_realloc(void *a, unsigned long i, const char *file, int line);
 void *_calloc(unsigned long a, unsigned long b, const char *file, int line);
-void _free(void *a);
+void _free(void *a, const char *file, int line);
 
 #define MALLOC(a) _malloc(a, __FILE__, __LINE__)
 #define REALLOC(a, b) _realloc(a, b, __FILE__, __LINE__)
 #define CALLOC(a, b) _calloc(a, b, __FILE__, __LINE__)
-#define FREE(a) _free(a)
+#define FREE(a) _free((void *)(a), __FILE__, __LINE__),(a)=NULL
 
 #endif

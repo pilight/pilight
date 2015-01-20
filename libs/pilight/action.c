@@ -195,7 +195,9 @@ int event_action_gc(void) {
 		event_actions = event_actions->next;
 		FREE(tmp_action);
 	}
-	FREE(event_actions);
+	if(event_actions != NULL) {
+		FREE(event_actions);
+	}
 	logprintf(LOG_DEBUG, "garbage collected event action library");
 	return 0;
 }

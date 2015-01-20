@@ -82,19 +82,25 @@ int gui_gc(void) {
 				stmp->values = stmp->values->next;
 				FREE(vtmp);
 			}
-			FREE(stmp->values);
+			if(stmp->values != NULL) {
+				FREE(stmp->values);
+			}
 			if(stmp->name) {
 				FREE(stmp->name);
 			}
 			dtmp->settings = dtmp->settings->next;
 			FREE(stmp);
 		}
-		FREE(dtmp->settings);
+		if(dtmp->settings != NULL) {
+			FREE(dtmp->settings);
+		}
 		FREE(dtmp->id);
 		gui_elements = gui_elements->next;
 		FREE(dtmp);
 	}
-	FREE(gui_elements);
+	if(gui_elements != NULL) {
+		FREE(gui_elements);
+	}
 
 	logprintf(LOG_DEBUG, "garbage collected config gui library");
 

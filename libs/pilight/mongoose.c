@@ -4877,7 +4877,9 @@ void mg_destroy_server(struct mg_server **server) {
 
     ns_mgr_free(&s->ns_mgr);
     for (i = 0; i < (int) ARRAY_SIZE(s->config_options); i++) {
-      NS_FREE(s->config_options[i]);  // It is OK to free(NULL)
+			if(s->config_options[i] != NULL) {
+				NS_FREE(s->config_options[i]);  // It is OK to free(NULL)
+			}
     }
     NS_FREE(s);
     *server = NULL;

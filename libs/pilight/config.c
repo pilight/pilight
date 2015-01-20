@@ -96,7 +96,9 @@ int config_gc(void) {
 		config = config->next;
 		FREE(listeners);
 	}
-	FREE(config);
+	if(config != NULL) {
+		FREE(config);
+	}
 	FREE(configfile);
 	logprintf(LOG_DEBUG, "garbage collected config library");
 	return 1;
@@ -254,14 +256,13 @@ int config_set_file(char *settfile) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
 	if(access(settfile, R_OK | W_OK) != -1) {
-		configfile = REALLOC(configfile, strlen(settfile)+1);
-		if(!configfile) {
+		if((configfile = REALLOC(configfile, strlen(settfile)+1)) == NULL) {
 			logprintf(LOG_ERR, "out of memory");
 			exit(EXIT_FAILURE);
 		}
 		strcpy(configfile, settfile);
 	} else {
-		logprintf(LOG_ERR, "%s: the config file %s does not exists", progname, settfile);
+		logprintf(LOG_ERR, "the config file %s does not exists", settfile);
 		return EXIT_FAILURE;
 	}
 

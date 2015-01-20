@@ -117,7 +117,9 @@ int wiringXGC(void) {
 		platforms = platforms->next;
 		FREE(tmp);
 	}
-	FREE(platforms);
+	if(platforms != NULL) {
+		FREE(platforms);
+	}
 
 	wiringXLog(LOG_DEBUG, "garbage collected wiringX library");
 	return i;
