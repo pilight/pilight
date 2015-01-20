@@ -62,14 +62,6 @@ int main_gc(void) {
 	main_loop = 0;
 	inner_loop = 0;
 
-	struct conf_hardware_t *tmp_confhw = conf_hardware;
-	while(tmp_confhw) {
-		if(tmp_confhw->hardware->deinit) {
-			tmp_confhw->hardware->deinit();
-		}
-		tmp_confhw = tmp_confhw->next;
-	}
-
 	datetime_gc();
 	ssdp_gc();
 	protocol_gc();

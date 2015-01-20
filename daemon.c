@@ -2360,12 +2360,19 @@ int main(int argc, char **argv) {
 		}
 		sleep(1);
 	}
-	FREE(configtmp);
+	if(configtmp != NULL) {
+		FREE(configtmp);
+		configtmp = NULL;
+	}
 
 	return EXIT_SUCCESS;
 
 clear:
-	FREE(configtmp);
+	if(configtmp != NULL) {
+		FREE(configtmp);
+		configtmp = NULL;
+	}
+
 	if(nodaemon == 0) {
 		log_level_set(LOG_NOTICE);
 		log_shell_disable();

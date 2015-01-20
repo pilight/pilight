@@ -145,10 +145,11 @@ int gc_run(void) {
 	}
 	FREE(gc);
 
-	if(s)
+	if(s == 1) {
 		return EXIT_FAILURE;
-	else
+	} else {
 		return EXIT_SUCCESS;
+	}
 }
 
 /* Initialize the catch all gc */
