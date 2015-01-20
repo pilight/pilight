@@ -1,0 +1,12 @@
+	#include "../protocols/pilight_firmware_v2.h"
+	#include "../protocols/lirc.h"
+	#include "../protocols/quigg_switch.h"
+	#include "../protocols/raw.h"
+	#include "../protocols/quigg_gt1000.h"
+	#include "../protocols/relay.h"
+	#include "../protocols/generic_switch.h"
+	#include "../protocols/datetime.h"
+	#include "../protocols/arctech_switch_old.h"
+	#include "../protocols/pilight_firmware_v3.h"
+	#include "../protocols/xbmc.h"
+

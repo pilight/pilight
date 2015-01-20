@@ -1,0 +1,13 @@
+/pilight/CMakeFiles/pilight.dir
+/pilight/CMakeFiles/pilight-control.dir
+/pilight/CMakeFiles/pilight-daemon.dir
+/pilight/CMakeFiles/pilight-debug.dir
+/pilight/CMakeFiles/pilight-flash.dir
+/pilight/CMakeFiles/pilight-learn.dir
+/pilight/CMakeFiles/pilight-raw.dir
+/pilight/CMakeFiles/pilight-receive.dir
+/pilight/CMakeFiles/pilight-send.dir
+/pilight/CMakeFiles/pilight-uuid.dir
+/pilight/CMakeFiles/pilight_shared.dir
+/pilight/CMakeFiles/pilight_static.dir
+/pilight/CMakeFiles/uninstall.dir
