@@ -166,6 +166,7 @@ void *threads_start(void *param) {
 
 void thread_stop(char *id) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+	pthread_mutex_lock(&threadqueue_lock);
 
 	struct threadqueue_t *currP, *prevP;
 
@@ -200,6 +201,7 @@ void thread_stop(char *id) {
 			break;
 		}
 	}
+	pthread_mutex_unlock(&threadqueue_lock);
 }
 
 void threads_cpu_usage(int print) {

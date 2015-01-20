@@ -368,10 +368,12 @@ static int webserver_request_handler(struct mg_connection *conn) {
 					}
 				}
 				JsonNode *jsend = config_print(internal, media);
-				char *output = json_stringify(jsend, NULL);
-				mg_printf_data(conn, output);
-				json_delete(jsend);
-				FREE(output);
+				if(jsend != NULL) {
+					char *output = json_stringify(jsend, NULL);
+					mg_printf_data(conn, output);
+					json_delete(jsend);
+					FREE(output);
+				}
 				jsend = NULL;
 				return MG_TRUE;
 			} else if(strcmp(conn->uri, "/values") == 0) {
@@ -381,10 +383,12 @@ static int webserver_request_handler(struct mg_connection *conn) {
 					sscanf(conn->query_string, "media=%14s%*[ \n\r]", media);
 				}
 				JsonNode *jsend = devices_values(media);
-				char *output = json_stringify(jsend, NULL);
-				mg_printf_data(conn, output);
-				json_delete(jsend);
-				FREE(output);
+				if(jsend != NULL) {
+					char *output = json_stringify(jsend, NULL);
+					mg_printf_data(conn, output);
+					json_delete(jsend);
+					FREE(output);
+				}
 				jsend = NULL;
 				return MG_TRUE;
 			} else if(strcmp(&conn->uri[(rstrstr(conn->uri, "/")-conn->uri)], "/") == 0) {
@@ -945,23 +949,29 @@ void *webserver_clientize(void *param) {
 		FREE(recvBuff);
 		recvBuff = NULL;
 	}
-	socket_close(sockfd);
+	if(sockfd > 0) {
+		socket_close(sockfd);
+	}
 	return 0;
 }
 
 static int webserver_handler(struct mg_connection *conn, enum mg_event ev) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
-	if(ev == MG_REQUEST || (ev == MG_POLL && !conn->is_websocket)) {
-		if(ev == MG_POLL ||
-		  (!conn->is_websocket && webserver_connect_handler(conn) == MG_TRUE) ||
-		  conn->is_websocket) {
-			return webserver_request_handler(conn);
+	if(webserver_loop == 1) {
+		if(ev == MG_REQUEST || (ev == MG_POLL && !conn->is_websocket)) {
+			if(ev == MG_POLL ||
+				(!conn->is_websocket && webserver_connect_handler(conn) == MG_TRUE) ||
+				conn->is_websocket) {
+				return webserver_request_handler(conn);
+			} else {
+				return MG_FALSE;
+			}
+		} else if(ev == MG_AUTH) {
+			return webserver_auth_handler(conn);
 		} else {
 			return MG_FALSE;
 		}
-	} else if(ev == MG_AUTH) {
-		return webserver_auth_handler(conn);
 	} else {
 		return MG_FALSE;
 	}

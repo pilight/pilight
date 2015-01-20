@@ -184,28 +184,33 @@ int socket_connect(char *address, unsigned short port) {
 	serv_addr.sin_port = htons(port);
 	inet_pton(AF_INET, address, &serv_addr.sin_addr);
 
-	fcntl(sockfd, F_SETFL, O_NONBLOCK);
-
-	FD_ZERO(&fdset);
-	FD_SET((long unsigned int)sockfd, &fdset);
-	tv.tv_sec = 3;
-	tv.tv_usec = 0;
-
 	/* Connect to the server */
-	connect(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr));
+	if(connect(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) != -1) {
+		fcntl(sockfd, F_SETFL, O_NONBLOCK);
 
-	if(select(sockfd+1, NULL, &fdset, NULL, &tv) == 1) {
-		int error = -1;
-		socklen_t len = sizeof(error);
+		FD_ZERO(&fdset);
+		FD_SET((long unsigned int)sockfd, &fdset);
+		tv.tv_sec = 3;
+		tv.tv_usec = 0;
 
-		getsockopt(sockfd, SOL_SOCKET, SO_ERROR, &error, &len);
+		if(select(sockfd+1, NULL, &fdset, NULL, &tv) == 1) {
+			int error = -1;
+			socklen_t len = sizeof(error);
 
-		if(error == 0) {
-			return sockfd;
+			getsockopt(sockfd, SOL_SOCKET, SO_ERROR, &error, &len);
+
+			if(error == 0) {
+				return sockfd;
+			} else {
+				close(sockfd);
+				return -1;
+			}
 		} else {
+			close(sockfd);
 			return -1;
-        }
-    } else {
+		}
+	} else {
+		close(sockfd);
 		return -1;
 	}
 }
