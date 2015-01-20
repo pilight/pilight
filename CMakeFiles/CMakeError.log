@@ -1,0 +1,58 @@
+Determining if the pthread_create exist failed with the following output:
+Change Dir: /pilight/CMakeFiles/CMakeTmp
+
+Run Build Command:/usr/bin/make "cmTryCompileExec4055005518/fast"
+/usr/bin/make -f CMakeFiles/cmTryCompileExec4055005518.dir/build.make CMakeFiles/cmTryCompileExec4055005518.dir/build
+make[1]: Entering directory '/pilight/CMakeFiles/CMakeTmp'
+/usr/bin/cmake -E cmake_progress_report /pilight/CMakeFiles/CMakeTmp/CMakeFiles 1
+Building C object CMakeFiles/cmTryCompileExec4055005518.dir/CheckSymbolExists.c.o
+/usr/bin/gcc   -lz -Ofast -mfloat-abi=hard -mfpu=vfp -march=armv6 -ffast-math -Wfloat-equal -Wshadow -Wpointer-arith -Wcast-align -Wstrict-overflow=5 -Wwrite-strings -Waggregate-return -Wcast-qual -Wswitch-default -Wswitch-enum -Wformat=2 -g -Wall -Wconversion -Wunreachable-code -Wstrict-prototypes     -o CMakeFiles/cmTryCompileExec4055005518.dir/CheckSymbolExists.c.o   -c /pilight/CMakeFiles/CMakeTmp/CheckSymbolExists.c
+Linking C executable cmTryCompileExec4055005518
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTryCompileExec4055005518.dir/link.txt --verbose=1
+/usr/bin/gcc   -lz -Ofast -mfloat-abi=hard -mfpu=vfp -march=armv6 -ffast-math -Wfloat-equal -Wshadow -Wpointer-arith -Wcast-align -Wstrict-overflow=5 -Wwrite-strings -Waggregate-return -Wcast-qual -Wswitch-default -Wswitch-enum -Wformat=2 -g -Wall -Wconversion -Wunreachable-code -Wstrict-prototypes      CMakeFiles/cmTryCompileExec4055005518.dir/CheckSymbolExists.c.o  -o cmTryCompileExec4055005518 -rdynamic 
+CMakeFiles/cmTryCompileExec4055005518.dir/CheckSymbolExists.c.o: In function `main':
+/pilight/CMakeFiles/CMakeTmp/CheckSymbolExists.c:13: undefined reference to `pthread_create'
+collect2: ld returned 1 exit status
+CMakeFiles/cmTryCompileExec4055005518.dir/build.make:88: recipe for target 'cmTryCompileExec4055005518' failed
+make[1]: Leaving directory '/pilight/CMakeFiles/CMakeTmp'
+Makefile:114: recipe for target 'cmTryCompileExec4055005518/fast' failed
+make[1]: *** [cmTryCompileExec4055005518] Error 1
+make: *** [cmTryCompileExec4055005518/fast] Error 2
+
+File /pilight/CMakeFiles/CMakeTmp/CheckSymbolExists.c:
+/* */
+#include <pthread.h>
+
+int main(int argc, char** argv)
+{
+  (void)argv;
+#ifndef pthread_create
+  return ((int*)(&pthread_create))[argc];
+#else
+  (void)argc;
+  return 0;
+#endif
+}
+
+Determining if the function pthread_create exists in the pthreads failed with the following output:
+Change Dir: /pilight/CMakeFiles/CMakeTmp
+
+Run Build Command:/usr/bin/make "cmTryCompileExec3837356778/fast"
+/usr/bin/make -f CMakeFiles/cmTryCompileExec3837356778.dir/build.make CMakeFiles/cmTryCompileExec3837356778.dir/build
+make[1]: Entering directory '/pilight/CMakeFiles/CMakeTmp'
+/usr/bin/cmake -E cmake_progress_report /pilight/CMakeFiles/CMakeTmp/CMakeFiles 1
+Building C object CMakeFiles/cmTryCompileExec3837356778.dir/CheckFunctionExists.c.o
+/usr/bin/gcc   -lz -Ofast -mfloat-abi=hard -mfpu=vfp -march=armv6 -ffast-math -Wfloat-equal -Wshadow -Wpointer-arith -Wcast-align -Wstrict-overflow=5 -Wwrite-strings -Waggregate-return -Wcast-qual -Wswitch-default -Wswitch-enum -Wformat=2 -g -Wall -Wconversion -Wunreachable-code -Wstrict-prototypes  -DCHECK_FUNCTION_EXISTS=pthread_create   -o CMakeFiles/cmTryCompileExec3837356778.dir/CheckFunctionExists.c.o   -c /usr/share/cmake-2.8/Modules/CheckFunctionExists.c
+/usr/share/cmake-2.8/Modules/CheckFunctionExists.c:3:1: warning: function declaration isn’t a prototype [-Wstrict-prototypes]
+Linking C executable cmTryCompileExec3837356778
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTryCompileExec3837356778.dir/link.txt --verbose=1
+/usr/bin/gcc   -lz -Ofast -mfloat-abi=hard -mfpu=vfp -march=armv6 -ffast-math -Wfloat-equal -Wshadow -Wpointer-arith -Wcast-align -Wstrict-overflow=5 -Wwrite-strings -Waggregate-return -Wcast-qual -Wswitch-default -Wswitch-enum -Wformat=2 -g -Wall -Wconversion -Wunreachable-code -Wstrict-prototypes  -DCHECK_FUNCTION_EXISTS=pthread_create    CMakeFiles/cmTryCompileExec3837356778.dir/CheckFunctionExists.c.o  -o cmTryCompileExec3837356778 -rdynamic -lpthreads 
+/usr/bin/ld: cannot find -lpthreads
+collect2: ld returned 1 exit status
+CMakeFiles/cmTryCompileExec3837356778.dir/build.make:88: recipe for target 'cmTryCompileExec3837356778' failed
+make[1]: Leaving directory '/pilight/CMakeFiles/CMakeTmp'
+make[1]: *** [cmTryCompileExec3837356778] Error 1
+Makefile:114: recipe for target 'cmTryCompileExec3837356778/fast' failed
+make: *** [cmTryCompileExec3837356778/fast] Error 2
+
+
