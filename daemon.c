@@ -157,8 +157,6 @@ static unsigned short main_loop = 1;
 static struct timeval tv;
 /* Are we running standalone */
 static int standalone = 0;
-/* Force client */
-static int force_client = 0;
 /* What is the minimum rawlenth to consider a pulse stream valid */
 static int minrawlen = 1000;
 /* What is the maximum rawlenth to consider a pulse stream valid */
@@ -2138,9 +2136,8 @@ int main(int argc, char **argv) {
 	settings_find_number("port", &port);
 	settings_find_number("standalone", &standalone);
 
-	if(standalone == 0 || (master_server && master_port > 0)) {
+	if(standalone == 0 || (master_server != NULL && master_port > 0)) {
 		if(master_server != NULL && master_port > 0) {
-			force_client = 1;
 			if((sockfd = socket_connect(master_server, master_port)) == -1) {
 				logprintf(LOG_NOTICE, "pilight daemon not found @%s, waiting for it to come online", master_server);
 			} else {
@@ -2363,12 +2360,19 @@ int main(int argc, char **argv) {
 		}
 		sleep(1);
 	}
-	FREE(configtmp);
+	if(configtmp != NULL) {
+		FREE(configtmp);
+		configtmp = NULL;
+	}
 
 	return EXIT_SUCCESS;
 
 clear:
-	FREE(configtmp);
+	if(configtmp != NULL) {
+		FREE(configtmp);
+		configtmp = NULL;
+	}
+
 	if(nodaemon == 0) {
 		log_level_set(LOG_NOTICE);
 		log_shell_disable();

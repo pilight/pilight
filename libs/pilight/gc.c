@@ -94,7 +94,6 @@ void gc_handler(int sig) {
 			}
 		}
 		gc_enable = 0;
-		config_gc();
 		gc_run();
 	}
 }
@@ -146,10 +145,11 @@ int gc_run(void) {
 	}
 	FREE(gc);
 
-	if(s)
+	if(s == 1) {
 		return EXIT_FAILURE;
-	else
+	} else {
 		return EXIT_SUCCESS;
+	}
 }
 
 /* Initialize the catch all gc */

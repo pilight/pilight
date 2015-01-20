@@ -40,8 +40,9 @@ int main_gc(void) {
 	main_loop = 0;
 	sleep(1);
 
-	if(recvBuff) {
+	if(recvBuff != NULL) {
 		FREE(recvBuff);
+		recvBuff = NULL;
 	}
 	if(sockfd > 0) {
 		socket_write(sockfd, "HEART");
@@ -193,8 +194,9 @@ close:
 	if(sockfd > 0) {
 		socket_close(sockfd);
 	}
-	if(recvBuff) {
+	if(recvBuff != NULL) {
 		FREE(recvBuff);
+		recvBuff = NULL;
 	}
 	options_gc();
 	log_shell_disable();
