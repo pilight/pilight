@@ -945,7 +945,7 @@ void *webserver_clientize(void *param) {
 		}
 	}
 
-	if(recvBuff) {
+	if(recvBuff != NULL) {
 		FREE(recvBuff);
 		recvBuff = NULL;
 	}
@@ -1002,8 +1002,7 @@ int webserver_start(void) {
 	settings_find_number("webserver-port", &webserver_port);
 	if(settings_find_string("webserver-root", &webserver_root) != 0) {
 		/* If no webserver port was set, use the default webserver port */
-		webserver_root = MALLOC(strlen(WEBSERVER_ROOT)+1);
-		if(!webserver_root) {
+		if((webserver_root = MALLOC(strlen(WEBSERVER_ROOT)+1)) == NULL) {
 			logprintf(LOG_ERR, "out of memory");
 			exit(EXIT_FAILURE);
 		}
@@ -1012,8 +1011,7 @@ int webserver_start(void) {
 	}
 	if(settings_find_string("webgui-template", &webgui_tpl) != 0) {
 		/* If no webserver port was set, use the default webserver port */
-		webgui_tpl = MALLOC(strlen(WEBGUI_TEMPLATE)+1);
-		if(!webgui_tpl) {
+		if((webgui_tpl = MALLOC(strlen(WEBGUI_TEMPLATE)+1)) == NULL) {
 			logprintf(LOG_ERR, "out of memory");
 			exit(EXIT_FAILURE);
 		}

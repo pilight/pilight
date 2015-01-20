@@ -94,7 +94,6 @@ void gc_handler(int sig) {
 			}
 		}
 		gc_enable = 0;
-		config_gc();
 		gc_run();
 	}
 }

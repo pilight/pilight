@@ -238,7 +238,7 @@ char *http_process_request(char *url, int method, char **type, int *code, int *s
 		memset(recvBuff, '\0', sizeof(recvBuff));
 	}
 
-	if(content) {
+	if(content != NULL) {
 		/* Remove the header */
 		if((nl = strstr(content, "\r\n\r\n"))) {
 			pos = (nl-content)+4;
