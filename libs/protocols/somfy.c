@@ -32,7 +32,7 @@ Change Log:
 	  Hooks for handling of new generation data frame
 0.91	- modified Rollingkey and Footer handling
 0.91a	- more debug info
-0.92	- 150121 adaption to nightlies 
+0.92a	- 150121 adaption to nightlies 
 */
 #include <stdio.h>
 #include <stdlib.h>
@@ -640,7 +640,7 @@ void somfyScreenInit(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name =  "somfy";
-	module->version =  "0.92";
+	module->version =  "0.92a";
 	module->reqversion =  "6.0";
 	module->reqcommit =  NULL;
 }

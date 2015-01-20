@@ -14,6 +14,7 @@
 
 	You should have received a copy of the GNU General Public License
 	along with pilight. If not, see	<http://www.gnu.org/licenses/>
+
 */
 
 #ifndef _PROTOCOL_SOMFY_H_
