@@ -1894,7 +1894,7 @@ int main(int argc, char **argv) {
 	log_level_set(LOG_INFO);
 	log_file_enable();
 	log_shell_disable();
-	
+
 	struct socket_callback_t socket_callback;
 	struct options_t *options = NULL;
 	struct ssdp_list_t *ssdp_list = NULL;

@@ -81,7 +81,7 @@ int log_gc(void) {
 }
 
 void logprintf(int prio, const char *format_str, ...) {
-	if(stop == 0) {	
+	if(stop == 0) {
 		struct timeval tv;
 		struct tm *tm = NULL;
 		va_list ap, apcpy;
@@ -93,7 +93,7 @@ void logprintf(int prio, const char *format_str, ...) {
 			fprintf(stderr, "out of memory");
 			exit(EXIT_FAILURE);
 		}
-		
+
 		pthread_mutex_lock(&logqueue_lock);
 		save_errno = errno;
 
@@ -132,7 +132,7 @@ void logprintf(int prio, const char *format_str, ...) {
 			va_start(apcpy, format_str);
 			bytes = vsnprintf(&nul, 1, format_str, apcpy);
 			va_end(apcpy);
-			
+
 			if((line = REALLOC(line, bytes+strlen(line)+3)) == NULL) {
 				fprintf(stderr, "out of memory");
 				exit(EXIT_FAILURE);
@@ -219,7 +219,7 @@ void *logloop(void *param) {
 					fclose(lf);
 					lf = NULL;
 				}
-			}				
+			}
 			struct logqueue_t *tmp = logqueue;
 			logqueue = logqueue->next;
 			FREE(tmp->line);
@@ -231,7 +231,7 @@ void *logloop(void *param) {
 		}
 	}
 	pthread_join(pthread_self(), NULL);
-	return (void *)NULL;	
+	return (void *)NULL;
 }
 
 void logperror(int prio, const char *s) {

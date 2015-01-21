@@ -317,11 +317,11 @@ close:
 	}
 	log_shell_disable();
 	socket_gc();
-	protocol_gc();	
+	protocol_gc();
 	config_gc();
-	options_gc();	
-	event_operator_gc();	
-	event_action_gc();	
+	options_gc();
+	event_operator_gc();
+	event_action_gc();
 	dso_gc();
 	log_gc();
 	gc_clear();
