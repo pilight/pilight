@@ -183,7 +183,7 @@ static void *datetimeParse(void *param) {
 	} else {
 		logprintf(LOG_DEBUG, "%.6f:%.6f seems to be in timezone: %s", longitude, latitude, tz);
 	}
-	printf("a\n");
+
 	while(datetime_loop) {
 		pthread_mutex_lock(&datetimelock);
 		t = time(NULL);

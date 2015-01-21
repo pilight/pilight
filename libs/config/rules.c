@@ -203,6 +203,7 @@ int rules_gc(void) {
 		FREE(rules);
 	}
 	rules = NULL;
+
 	logprintf(LOG_DEBUG, "garbage collected config rules library");
 	return 1;
 }

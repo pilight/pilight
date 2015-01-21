@@ -151,6 +151,7 @@ static int receive_repeat = RECEIVE_REPEATS;
 static int sockfd = 0;
 /* Thread pointers */
 static pthread_t pth;
+static pthread_t logpth;
 /* While loop conditions */
 static unsigned short main_loop = 1;
 /* Reset repeats after a certain amount of time */
@@ -1889,11 +1890,11 @@ int main(int argc, char **argv) {
 	firmware.lpf = 0;
 	firmware.hpf = 0;
 
+	threads_create(&logpth, NULL, &logloop, (void *)NULL);
 	log_level_set(LOG_INFO);
-
 	log_file_enable();
 	log_shell_disable();
-
+	
 	struct socket_callback_t socket_callback;
 	struct options_t *options = NULL;
 	struct ssdp_list_t *ssdp_list = NULL;

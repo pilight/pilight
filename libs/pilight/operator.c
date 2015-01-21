@@ -190,6 +190,7 @@ int event_operator_gc(void) {
 	if(event_operators != NULL) {
 		FREE(event_operators);
 	}
+
 	logprintf(LOG_DEBUG, "garbage collected event operator library");
 	return 0;
 }

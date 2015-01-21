@@ -374,6 +374,7 @@ int protocol_device_exists(protocol_t *proto, const char *id) {
 	if(temp != NULL) {
 		FREE(temp);
 	}
+
 	return 1;
 }
 

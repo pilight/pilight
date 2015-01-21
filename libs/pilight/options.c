@@ -336,8 +336,7 @@ int options_parse(struct options_t **opt, int argc, char **argv, int error_check
 			/* If the short argument and the long argument are not equal,
 			    then we probably encountered a long argument. */
 			if(longarg[0] == '-' && longarg[1] == '-') {
-				gctmp = REALLOC(gctmp, strlen(&longarg[2])+1);
-				if(!gctmp) {
+				if((gctmp = REALLOC(gctmp, strlen(&longarg[2])+1)) == NULL) {
 					logprintf(LOG_ERR, "out of memory");
 					exit(EXIT_FAILURE);
 				}

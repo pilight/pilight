@@ -1167,7 +1167,7 @@ static void events_queue(char *message) {
 	pthread_mutex_lock(&events_lock);
 	if(eventsqueue_number < 1024) {
 		struct eventsqueue_t *enode = MALLOC(sizeof(eventsqueue_t));
-		if(!enode) {
+		if(enode == NULL) {
 			logprintf(LOG_ERR, "out of memory");
 			exit(EXIT_FAILURE);
 		}

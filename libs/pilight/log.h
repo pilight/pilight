@@ -25,6 +25,7 @@
 
 void logprintf(int prio, const char *format_str, ...);
 void logperror(int prio, const char *s);
+void *logloop(void *param);
 void log_file_enable(void);
 void log_file_disable(void);
 void log_shell_enable(void);

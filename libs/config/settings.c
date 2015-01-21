@@ -122,6 +122,7 @@ int settings_find_number(const char *name, int *out) {
 	if(tmp_settings != NULL) {
 		FREE(tmp_settings);
 	}
+
 	return EXIT_FAILURE;
 }
 
@@ -139,6 +140,7 @@ int settings_find_string(const char *name, char **out) {
 	if(tmp_settings != NULL) {
 		FREE(tmp_settings);
 	}
+
 	return EXIT_FAILURE;
 }
 
@@ -514,6 +516,7 @@ static int settings_gc(void) {
 	if(settings != NULL) {
 		FREE(settings);
 	}
+
 
 	logprintf(LOG_DEBUG, "garbage collected config settings library");
 	return 1;

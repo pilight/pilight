@@ -27,150 +27,211 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include <libgen.h>
+#include <pthread.h>
 
 #include "../../pilight.h"
 #include "common.h"
 #include "gc.h"
 #include "log.h"
 
-static FILE *lf=NULL;
+struct logqueue_t {
+	char *line;
+	struct logqueue_t *next;
+} logqueue_t;
+
+static pthread_mutex_t logqueue_lock;
+static pthread_cond_t logqueue_signal;
+static pthread_mutexattr_t logqueue_attr;
+
+static struct logqueue_t *logqueue;
+static struct logqueue_t *logqueue_head;
+static unsigned int logqueue_number = 0;
+static unsigned int loop = 1;
+static unsigned int stop = 0;
+static unsigned int pthinitialized = 0;
 
 static char *logfile = NULL;
 static char *logpath = NULL;
 static int filelog = 1;
 static int shelllog = 0;
 static int loglevel = LOG_DEBUG;
-static char debug_log[128];
 
 int log_gc(void) {
 	if(shelllog == 1) {
 		fprintf(stderr, "DEBUG: garbage collected log library\n");
 	}
-	if(lf) {
-		if(fclose(lf) != 0) {
-			return 0;
-		}
-		else {
-			lf = NULL;
-		}
+
+	loop = 0;
+	stop = 1;
+
+	pthread_mutex_unlock(&logqueue_lock);
+	pthread_cond_signal(&logqueue_signal);
+
+	while(logqueue_number > 0) {
+		usleep(10);
 	}
-	if(logfile) {
+
+	if(logfile != NULL) {
 		FREE(logfile);
 	}
-	if(logpath) {
+	if(logpath != NULL) {
 		FREE(logpath);
 	}
 	return 1;
 }
 
 void logprintf(int prio, const char *format_str, ...) {
-	int save_errno = errno;
-	char line[1024];
-	va_list ap;
-	struct stat sb;
-	char fmt[64], buf[64];
-	struct timeval tv;
-	struct tm *tm;
-	int restore_shell = 0;
-	int restore_file = 0;
+	if(stop == 0) {	
+		struct timeval tv;
+		struct tm *tm = NULL;
+		va_list ap, apcpy;
+		char fmt[64], buf[64], *line = MALLOC(128), nul;
+		int save_errno = -1;
+		size_t bytes = 0;
 
-	if(logfile == NULL) {
-		if(shelllog == 0) {
-			restore_shell = 1;
+		if(line == NULL) {
+			fprintf(stderr, "out of memory");
+			exit(EXIT_FAILURE);
 		}
-		shelllog = 1;
-		if(filelog == 1) {
-			restore_file = 1;
-		}
-		filelog = 0;
-	}
+		
+		pthread_mutex_lock(&logqueue_lock);
+		save_errno = errno;
 
-	if(loglevel >= prio) {
-		gettimeofday(&tv, NULL);
-		if((tm = localtime(&tv.tv_sec)) != NULL) {
-			strftime(fmt, sizeof(fmt), "%b %d %H:%M:%S", tm);
-			snprintf(buf, sizeof(buf), "%s:%03u", fmt, (unsigned int)tv.tv_usec);
-		}
+		memset(line, '\0', 128);
+		if(loglevel >= prio) {
+			gettimeofday(&tv, NULL);
+			if((tm = localtime(&tv.tv_sec)) != NULL) {
+				strftime(fmt, sizeof(fmt), "%b %d %H:%M:%S", tm);
+				snprintf(buf, sizeof(buf), "%s:%03u", fmt, (unsigned int)tv.tv_usec);
+			}
+			sprintf(line, "[%22.22s] %s: ", buf, progname);
 
-		sprintf(debug_log, "[%22.22s] %s: ", buf, progname);
-
-		if(filelog == 1 && prio < LOG_DEBUG) {
-			memset(line, '\0', 1024);
-			strcat(line, debug_log);
+			switch(prio) {
+				case LOG_WARNING:
+					strcat(line, "WARNING: ");
+					break;
+				case LOG_ERR:
+					strcat(line, "ERROR: ");
+					break;
+				case LOG_INFO:
+					strcat(line, "INFO: ");
+					break;
+				case LOG_NOTICE:
+					strcat(line, "NOTICE: ");
+					break;
+				case LOG_DEBUG:
+					strcat(line, "DEBUG: ");
+					break;
+				case LOG_STACK:
+					strcat(line, "STACK: ");
+					break;
+				default:
+				break;
+			}
+			va_copy(apcpy, ap);
+			va_start(apcpy, format_str);
+			bytes = vsnprintf(&nul, 1, format_str, apcpy);
+			va_end(apcpy);
+			
+			if((line = REALLOC(line, bytes+strlen(line)+3)) == NULL) {
+				fprintf(stderr, "out of memory");
+				exit(EXIT_FAILURE);
+			}
 			va_start(ap, format_str);
-			if(prio==LOG_WARNING)
-				strcat(line, "WARNING: ");
-			if(prio==LOG_ERR)
-				strcat(line, "ERROR: ");
-			if(prio==LOG_INFO)
-				strcat(line, "INFO: ");
-			if(prio==LOG_NOTICE)
-				strcat(line, "NOTICE: ");
-			if(prio==LOG_DEBUG)
-				strcat(line, "DEBUG: ");
-			if(prio==LOG_STACK)
-				strcat(line, "STACK: ");
 			vsprintf(&line[strlen(line)], format_str, ap);
+			va_end(ap);
+
 			strcat(line, "\n");
-
-			if((stat(logfile, &sb)) >= 0) {
-				if(!(lf = fopen(logfile, "a"))) {
-					filelog = 0;
-				}
-			} else {
-				if(sb.st_nlink == 0) {
-					if(!(lf = fopen(logfile, "a"))) {
-						filelog = 0;
-					}
-				}
-				if(sb.st_size > LOG_MAX_SIZE) {
-					fclose(lf);
-					char tmp[strlen(logfile)+5];
-					strcpy(tmp, logfile);
-					strcat(tmp, ".old");
-					rename(logfile, tmp);
-					if(!(lf = fopen(logfile, "a"))) {
-						filelog = 0;
-					}
-				}
-			}
-			if(lf) {
-				fwrite(line, sizeof(char), strlen(line), lf);
-				fflush(lf);
-				fclose(lf);
-				lf = NULL;
-			}
-			va_end(ap);
 		}
-
 		if(shelllog == 1) {
-			fputs(debug_log, stderr);
-			va_start(ap, format_str);
-			if(prio==LOG_WARNING)
-				fprintf(stderr, "WARNING: ");
-			if(prio==LOG_ERR)
-				fprintf(stderr, "ERROR: ");
-			if(prio==LOG_INFO)
-				fprintf(stderr, "INFO: ");
-			if(prio==LOG_NOTICE)
-				fprintf(stderr, "NOTICE: ");
-			if(prio==LOG_DEBUG)
-				fprintf(stderr, "DEBUG: ");
-			if(prio==LOG_STACK)
-				fprintf(stderr, "STACK: ");
-			vfprintf(stderr, format_str, ap);
-			fputc('\n', stderr);
-			fflush(stderr);
-			va_end(ap);
+			fprintf(stderr, line);
+		}
+
+		if(logqueue_number < 1024) {
+			if(prio < LOG_DEBUG) {
+				struct logqueue_t *node = MALLOC(sizeof(logqueue_t));
+				if(node == NULL) {
+					fprintf(stderr, "out of memory");
+					exit(EXIT_FAILURE);
+				}
+				if((node->line = MALLOC(strlen(line)+1)) == NULL) {
+					fprintf(stderr, "out of memory");
+					exit(EXIT_FAILURE);
+				}
+				memset(node->line, '\0', strlen(line)+1);
+				strcpy(node->line, line);
+
+				if(logqueue_number == 0) {
+					logqueue = node;
+					logqueue_head = node;
+				} else {
+					logqueue_head->next = node;
+					logqueue_head = node;
+				}
+
+				logqueue_number++;
+			}
+		} else {
+			logprintf(LOG_ERR, "log queue full");
+		}
+		FREE(line);
+		errno = save_errno;
+		pthread_mutex_unlock(&logqueue_lock);
+		pthread_cond_signal(&logqueue_signal);
+	}
+}
+
+void *logloop(void *param) {
+	struct stat sb;
+	FILE *lf = NULL;
+
+	pthread_mutex_lock(&logqueue_lock);
+	while(loop) {
+		if(logqueue_number > 0) {
+			pthread_mutex_lock(&logqueue_lock);
+			if(logfile != NULL) {
+				if((stat(logfile, &sb)) >= 0) {
+					if((lf = fopen(logfile, "a")) == NULL) {
+						filelog = 0;
+					}
+				} else {
+					if(sb.st_nlink == 0) {
+						if((lf = fopen(logfile, "a")) == NULL) {
+							filelog = 0;
+						}
+					}
+					if(sb.st_size > LOG_MAX_SIZE) {
+						if(lf != NULL) {
+							fclose(lf);
+						}
+						char tmp[strlen(logfile)+5];
+						strcpy(tmp, logfile);
+						strcat(tmp, ".old");
+						rename(logfile, tmp);
+						if((lf = fopen(logfile, "a")) == NULL) {
+							filelog = 0;
+						}
+					}
+				}
+				if(lf != NULL) {
+					fwrite(logqueue->line, sizeof(char), strlen(logqueue->line), lf);
+					fflush(lf);
+					fclose(lf);
+					lf = NULL;
+				}
+			}				
+			struct logqueue_t *tmp = logqueue;
+			logqueue = logqueue->next;
+			FREE(tmp->line);
+			FREE(tmp);
+			logqueue_number--;
+			pthread_mutex_unlock(&logqueue_lock);
+		} else {
+			pthread_cond_wait(&logqueue_signal, &logqueue_lock);
 		}
 	}
-	errno = save_errno;
-	if(restore_shell) {
-		shelllog = 0;
-	}
-	if(restore_file) {
-		filelog = 1;
-	}
+	pthread_join(pthread_self(), NULL);
+	return (void *)NULL;	
 }
 
 void logperror(int prio, const char *s) {
@@ -188,6 +249,12 @@ void logperror(int prio, const char *s) {
 
 void log_file_enable(void) {
 	filelog = 1;
+	if(pthinitialized == 0) {
+		pthread_mutexattr_init(&logqueue_attr);
+		pthread_mutexattr_settype(&logqueue_attr, PTHREAD_MUTEX_RECURSIVE);
+		pthread_mutex_init(&logqueue_lock, &logqueue_attr);
+		pthinitialized = 1;
+	}
 }
 
 void log_file_disable(void) {
@@ -205,6 +272,7 @@ void log_shell_disable(void) {
 void log_file_set(char *log) {
 	struct stat s;
 	struct stat sb;
+	FILE *lf = NULL;
 	char *filename = basename(log);
 	size_t i = (strlen(log)-strlen(filename));
 	logpath = REALLOC(logpath, i+1);
@@ -302,7 +370,7 @@ void logerror(const char *format_str, ...) {
 	strcat(line, "\n");
 
 	if((stat("/var/log/pilight.err", &sb)) >= 0) {
-		if(!(f = fopen("/var/log/pilight.err", "a"))) {
+		if((f = fopen("/var/log/pilight.err", "a")) == NULL) {
 			return;
 		}
 	} else {
@@ -312,17 +380,19 @@ void logerror(const char *format_str, ...) {
 			}
 		}
 		if(sb.st_size > LOG_MAX_SIZE) {
-			fclose(f);
+			if(f != NULL) {
+				fclose(f);
+			}
 			char tmp[strlen("/var/log/pilight.err")+5];
 			strcpy(tmp, "/var/log/pilight.err");
 			strcat(tmp, ".old");
 			rename("/var/log/pilight.err", tmp);
-			if(!(f = fopen("/var/log/pilight.err", "a"))) {
+			if((f = fopen("/var/log/pilight.err", "a")) == NULL) {
 				return;
 			}
 		}
 	}
-	if(f) {
+	if(f != NULL) {
 		fwrite(line, sizeof(char), strlen(line), f);
 		fflush(f);
 		fclose(f);

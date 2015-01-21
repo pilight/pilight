@@ -233,7 +233,7 @@ void *receive_code(void *param) {
 }
 
 int main(int argc, char **argv) {
-	memtrack();
+	// memtrack();
 
 	gc_attach(main_gc);
 

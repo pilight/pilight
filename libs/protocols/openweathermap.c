@@ -285,6 +285,7 @@ static void *openweathermapParse(void *param) {
 	if(openweathermap_data != NULL) {
 		FREE(openweathermap_data);
 	}
+
 	openweathermap_threads--;
 	return (void *)NULL;
 }

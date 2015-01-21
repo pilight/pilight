@@ -169,8 +169,8 @@ end:
 	if(sock > 0) {
 		close(sock);
 	}
-    struct ssdp_list_t *ptr = *ssdp_list, *next = NULL, *prev = NULL;
-   	if(match) {
+	struct ssdp_list_t *ptr = *ssdp_list, *next = NULL, *prev = NULL;
+	if(match) {
 		while(ptr) {
 			next = ptr->next;
 			ptr->next = prev;

@@ -4819,7 +4819,9 @@ static void close_local_endpoint(struct connection *conn) {
   // Gobble possible POST data sent to the URI handler
   iobuf_free(&conn->ns_conn->recv_iobuf);
   NS_FREE(conn->request);
-  NS_FREE(conn->path_info);
+	if(conn->path_info != NULL) {
+		NS_FREE(conn->path_info);
+	}
   conn->endpoint.nc = NULL;
   conn->request = conn->path_info = NULL;
 

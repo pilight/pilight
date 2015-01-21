@@ -39,7 +39,7 @@
 #include "wiringX.h"
 
 int main(int argc, char **argv) {
-	memtrack();
+	// memtrack();
 
 	log_shell_enable();
 	log_file_disable();
