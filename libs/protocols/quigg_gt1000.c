@@ -3,17 +3,17 @@
 
 	This file is part of pilight.
 
-    pilight is free software: you can redistribute it and/or modify it under the
+	pilight is free software: you can redistribute it and/or modify it under the
 	terms of the GNU General Public License as published by the Free Software
 	Foundation, either version 3 of the License, or (at your option) any later
 	version.
 
-    pilight is distributed in the hope that it will be useful, but WITHOUT ANY
+	pilight is distributed in the hope that it will be useful, but WITHOUT ANY
 	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-    You should have received a copy of the GNU General Public License
-    along with pilight. If not, see	<http://www.gnu.org/licenses/>
+	You should have received a copy of the GNU General Public License
+	along with pilight. If not, see	<http://www.gnu.org/licenses/>
 */
 /* Protocol quigg_gt1000 is an implementation of a protocol for the Quigg GT-FSI-08 switches
    with GT-1000 remote. It is believed that they are compatible with the Lidl and Brennenstuhl outlets
@@ -70,8 +70,7 @@
 #define SHORT_SPACE 440
 #define FOOTER_MARK 200
 
-#define BIN_LENGTH 24	/* binary command string contains 24 bit */
-#define RAW_LENGTH 151	/* raw prot consist of 151 mark-space values incl footer */
+#define BIN_LENGTH 24
 
 int codetab[16][40] = {
 	/* the next table contains the random codes (bits 4..19) of the 4 code sequences for
@@ -173,142 +172,119 @@ int supercodes[2*NRSUPERCODES] = {
 	/* ON codes */
 	0x0F005,0x1F008,0x4F015,0x5F018,0x8F025,0x9F028,0xCF02C,0xDF03C };
 
-/* declare my own binary code string */
-char bincode[BIN_LENGTH+1];	/* +1 because we convert this to a string later on, so we need place for the last 0x00 */
+char bincode[BIN_LENGTH+1];
+	
+void quiggGT1000CreateMessage(int id, int unit, int state, int seq) {
+	int i = 0;
+	
+	for(i=0;i<quigg_gt1000->binlen;i++) {
+		bincode[i] = bincode[i] | 0x30; /* convert bin 0,1 into char 0,1 */
+	}
 
-int quigg_gt1000FillLow(int idx)
-{	/* fill in the mark-space code for a logic Low = short pulse*/	
+	bincode[quigg_gt1000->binlen] = '\0'; /* end of string */
+
+	quigg_gt1000->message = json_mkobject();
+	json_append_member(quigg_gt1000->message, "id", json_mknumber(id, 0));
+	json_append_member(quigg_gt1000->message, "unit", json_mknumber(unit, 0));
+	json_append_member(quigg_gt1000->message, "seq", json_mknumber(seq, 0));
+	if(state == 1) {
+		json_append_member(quigg_gt1000->message, "state", json_mkstring("on"));
+	} else {
+		json_append_member(quigg_gt1000->message, "state", json_mkstring("off"));
+	}
+	json_append_member(quigg_gt1000->message, "code", json_mkstring(bincode));
+}
+
+int quiggGT1000FillLow(int idx) {
+	/* fill in the mark-space code for a logic Low = short pulse*/	
 	quigg_gt1000->raw[idx++] = SHORT_MARK;
 	quigg_gt1000->raw[idx++] = LONG_SPACE;
 	return idx;
 }
 
-int quigg_gt1000FillHigh(int idx)
-{	/* fill in the mark-space code for a logic High = long pulse*/	
+int quiggGT1000FillHigh(int idx) {
+	/* fill in the mark-space code for a logic High = long pulse*/	
 	quigg_gt1000->raw[idx++] = LONG_MARK;
 	quigg_gt1000->raw[idx++] = SHORT_SPACE;
 	return idx;
 }
 
-void quigg_gt1000NumtoBin(int idx, int num, int len)
-{	/* fill in bits idx to idx+len-1 for number, msb first */
-	for( len--; len>=0; len--)
-	{	
-		bincode[idx+len] = (num&1); /* value is lsb num */
+void quiggGT1000NumtoBin(int idx, int num, int len) {
+	/* fill in bits idx to idx+len-1 for number, msb first */
+	for(len--;len>=0;len--) {	
+		bincode[idx+len] = (num & 1); /* value is lsb num */
 		num = num>>1; /* shift number 1 place to right, so 2th bit becomes lsb */
 	}
 }
 
-int quigg_gt1000FillRawCode(void )
-{	/* convert binary code in bincode[] to raw Mark-Space combis for this protocol */
+int quiggGT1000FillRawCode(void) {
+	/* convert binary code in bincode[] to raw Mark-Space combis for this protocol */
 	/* the complete RawCode consist of <startpulse><bincode><startpulse><bincode><progpulse><bincode><footer> */
 
 	int idx = 0; /* the index into the raw matrix, starting with 0 */
-	int cnt;
+	int cnt = 0;
 	
 	quigg_gt1000->raw[idx++] = START_MARK; /* always start with start pulse */
 	quigg_gt1000->raw[idx++] = START_SPACE;
-	for( cnt=0; cnt<BIN_LENGTH; cnt++)
-		idx = (bincode[cnt]==1)?quigg_gt1000FillHigh(idx):quigg_gt1000FillLow(idx);
+	for(cnt=0;cnt<quigg_gt1000->binlen; cnt++) {
+		idx = (bincode[cnt]==1) ? quiggGT1000FillHigh(idx) : quiggGT1000FillLow(idx);
+	}
+
 	quigg_gt1000->raw[idx++] = START_MARK; /* start second sequence*/
 	quigg_gt1000->raw[idx++] = START_SPACE;
-	for( cnt=0; cnt<BIN_LENGTH; cnt++)
-		idx = (bincode[cnt]==1)?quigg_gt1000FillHigh(idx):quigg_gt1000FillLow(idx);
+
+	for(cnt=0;cnt<quigg_gt1000->binlen; cnt++) {
+		idx = (bincode[cnt]==1) ? quiggGT1000FillHigh(idx) : quiggGT1000FillLow(idx);
+	}
 	quigg_gt1000->raw[idx++] = PROG_MARK; /* program sequence */
 	quigg_gt1000->raw[idx++] = PROG_SPACE;
-	for( cnt=0; cnt<BIN_LENGTH; cnt++)
-		idx = (bincode[cnt]==1)?quigg_gt1000FillHigh(idx):quigg_gt1000FillLow(idx);
+
+	for(cnt=0;cnt<quigg_gt1000->binlen;cnt++) {
+		idx = (bincode[cnt]==1)?quiggGT1000FillHigh(idx):quiggGT1000FillLow(idx);
+	}
 	quigg_gt1000->raw[idx++] = FOOTER_MARK;
 	return idx;
 }
 
-int quigg_gt1000FillBinCode(int id,int unit,int state, int codeseq)
-{
-	int genindex, rcodeindex;
+int quiggGT1000FillBinCode(int id, int unit, int state, int codeseq) {
+	int genindex = 0, rcodeindex = 0;
 	
 	/* encode id */	
-	quigg_gt1000NumtoBin(0, id, 4); /* first 4 bits [0..3] is id-code */
+	quiggGT1000NumtoBin(0, id, 4); /* first 4 bits [0..3] is id-code */
 	
 	/* encode the right random code, depends on id, state and unit, state=0,1 */
 	rcodeindex= 8*unit + 4*state; /*calculate second index into codetab*/
-	if( codetab[id][rcodeindex + codeseq] == 0 )	/* no random code available? */
-	{	/* then try first index */
-		if(  codetab[id][rcodeindex] == 0 ) /* and no first code available? */
-		{	logprintf(LOG_ERR, "\nquigg_gt1000: no random code available for this switch action");
+	if(codetab[id][rcodeindex + codeseq] == 0) {	/* no random code available? */
+		/* then try first index */
+		if(codetab[id][rcodeindex] == 0) { /* and no first code available? */
+			logprintf(LOG_ERR, "quiggGT1000: no random code available for this switch action");
 			return EXIT_FAILURE;
-		}
-		else {
-			logprintf(LOG_WARNING, "\nquigg_gt1000: seq#%d not available for this switch action, using #0 instead", codeseq);
+		} else {
+			logprintf(LOG_WARNING, "quiggGT1000: seq#%d not available for this switch action, using #0 instead", codeseq);
 			codeseq = 0;
 		}
 	}
 	/* now we have an index for a valid random code, so put it in our codetab  starting at position 4 */
-    quigg_gt1000NumtoBin(4, codetab[id][rcodeindex + codeseq], 16);
+	quiggGT1000NumtoBin(4, codetab[id][rcodeindex + codeseq], 16);
     
 	/* encode the unit part of the command */
 	/* key1..4 represents unit0..3, encoding depends on generation */
 	/* master key results in unit=4, encoding depends on generation */
 	genindex = gentab[id];	/* get 0 or 1 depending on generation of group-id */
-	quigg_gt1000NumtoBin(20,unittab[genindex][unit], 4); /* get unit-id from tab and encode starting at pos 20 */
+	quiggGT1000NumtoBin(20, unittab[genindex][unit], 4); /* get unit-id from tab and encode starting at pos 20 */
 	return EXIT_SUCCESS;
 }
 
-void quigg_gt1000FillSuperBinCode(int state, int codeseq)
-{	
+void quiggGT1000FillSuperBinCode(int state, int codeseq) {
 	/* encode the right random supercode, depends on state=0,1 and codeseq*/
-   quigg_gt1000NumtoBin(0, supercodes[NRSUPERCODES*state + codeseq], 20);
+	quiggGT1000NumtoBin(0, supercodes[NRSUPERCODES * state + codeseq], 20);
     
 	/* encode the unit part of the command, is always 1000 or 8 */
-	quigg_gt1000NumtoBin(20, 8, 4); 
+	quiggGT1000NumtoBin(20, 8, 4); 
 }
 
-void quigg_gt1000Init(void) {
-	// initialize datastruct for this protocol
 
-    protocol_register(&quigg_gt1000);
-    protocol_set_id(quigg_gt1000, "Quigg_gt1000");
-    protocol_device_add(quigg_gt1000, "quigg_gt1000", "Quigg GT-1000 protocol");
-    
-    quigg_gt1000->hwtype = RF433;
-    quigg_gt1000->devtype = SWITCH;
-    
-    quigg_gt1000->printHelp = &quigg_gt1000PrintHelp;
-    quigg_gt1000->createCode = &quigg_gt1000CreateCode;
-    
-    quigg_gt1000->rawlen = RAW_LENGTH;	
-    quigg_gt1000->binlen = BIN_LENGTH;	
-    quigg_gt1000->txrpt = 1;		/* repeat xmit code 1 times */
-    
-    options_add(&quigg_gt1000->options, 't', "on", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
-	options_add(&quigg_gt1000->options, 'f', "off", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
-	options_add(&quigg_gt1000->options, 'u', "unit", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^([0-5])$");
-	options_add(&quigg_gt1000->options, 'i', "id", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^(1[0-6]|[0-9])$");
-	options_add(&quigg_gt1000->options, 'a', "all", OPTION_NO_VALUE, DEVICES_SETTING, JSON_NUMBER, NULL, NULL);
-	options_add(&quigg_gt1000->options, 's', "super", OPTION_NO_VALUE, DEVICES_SETTING, JSON_NUMBER, NULL, NULL);
-	options_add(&quigg_gt1000->options, 0, "gui-readonly", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
-	options_add(&quigg_gt1000->options, 'n', "num", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, NULL, "^([0-3])$");
-}
-
-void quigg_gt1000PrintHelp(void) // print help for this protocol (send -p <name> -H)
-{
-	printf("\t This is help for the Quigg GT-1000 with GT-FSI-08 switches\n");
-	printf("\t -t --on\tsend an on signal\n");
-	printf("\t -f --off\tsend an off signal\n");
-	printf("\t -u --unit=unit\tcontrol a device with this unit code\n");
-	printf("\t -i --id=id\tcontrol a device with this id\n");
-	printf("\t -a --all\tcontrol all devices with this id\n");
-	printf("\t -s --super\tcontrol all devices regardless of id\n");
-	printf("\t -n --num\toptional use random (super)code sequence num 0..3(%d)\n", NRSUPERCODES-1);
-	printf("Valid calls to pilight-send are: \n");
-	printf("pilight-send -p quigg_gt1000 -i [0..15] -u [0..3] [-f|-t] {-n [0..3]}\n");
-	printf("pilight-send -p quigg_gt1000 -i [0..15] -a [-f|-t] {-n [0..3]}\n");
-	printf("pilight-send -p quigg_gt1000 -s [-f|-t] {-n [0..7]}\n");
-	printf("where everything between { and } is optional.\n");
-	
-}
-
-int quigg_gt1000CreateCode(JsonNode *code) // function to create the raw code
-{
+int quiggGT1000CreateCode(JsonNode *code) { // function to create the raw code
 	int id = -1;
 	int unit = -1;
 	int all = 0;
@@ -332,63 +308,94 @@ int quigg_gt1000CreateCode(JsonNode *code) // function to create the raw code
 	else if(json_find_number(code, "on", &itmp) == 0)
 		state=1;
 
-	if(seq == -1) /* no seqnr was given, a random seqnr will be used */
-	{	srand ((unsigned int)time (0));	/* seed the random generator with current time */
+	if(seq == -1) {/* no seqnr was given, a random seqnr will be used */
+		srand((unsigned int)time (0));	/* seed the random generator with current time */
 		seq = rand() & ((super == 1)? NRSUPERMASK:0x03); /* use last bits of random number */
 	}
 
 	if((id == -1 && super==0) || (unit == -1 && all==0 && super==0) || state == -1) {
-		logprintf(LOG_ERR, "\nquigg_gt1000: insufficient number of arguments");
+		logprintf(LOG_ERR, "quigg_gt1000: insufficient number of arguments");
 		return EXIT_FAILURE;
 	} else if((id >15 || id < 0) && super == 0) {
-		logprintf(LOG_ERR, "\nquigg_gt1000: invalid id range");
+		logprintf(LOG_ERR, "quigg_gt1000: invalid id range");
 		return EXIT_FAILURE;
 	} else if((unit > 3 || unit < 0) && all == 0 && super == 0){
-		logprintf(LOG_ERR, "\nquigg_gt1000: invalid unit range");
+		logprintf(LOG_ERR, "quigg_gt1000: invalid unit range");
 		return EXIT_FAILURE;
-	} else if(((seq > 3 || seq < 0) && super == 0) || ((seq >= NRSUPERCODES || seq < 0) && super != 0)){
-		logprintf(LOG_ERR, "\nquigg_gt1000: invalid optional seq number");
+	} else if(((seq > 3 || seq < 0) && super == 0) || ((seq >= NRSUPERCODES || seq < 0) && super != 0)) {
+		logprintf(LOG_ERR, "quigg_gt1000: invalid optional seq number");
 		return EXIT_FAILURE;
-	} else
-	{
-		if(all == 1) /* all overrides unit selection */
+	} else {
+		if(all == 1) { /* all overrides unit selection */
 		    unit = 4;
+		}
 		 /* first create binary command string */
-		if(super == 1)	/* do we want supercodes?  */
-		{	/* for supercodes we use a non-existend id and unit */
+		if(super == 1) { /* do we want supercodes?  */
+			/* for supercodes we use a non-existend id and unit */
 			id = 16; /* this does only influence the CreateMessage and not the bin code generation */
 			unit = 5; 
-			quigg_gt1000FillSuperBinCode( state, seq); /*create binary supercode string */
-		}
-		else if( quigg_gt1000FillBinCode( id, unit, state, seq) != EXIT_SUCCESS)
+			quiggGT1000FillSuperBinCode(state, seq); /*create binary supercode string */
+		} else if( quiggGT1000FillBinCode(id, unit, state, seq) != EXIT_SUCCESS) {
 			return EXIT_FAILURE; /* failure because no codeseq was available */
+		}
 			
 		/* and now convert binary to Mark-Space combis */
-		if( quigg_gt1000FillRawCode() != quigg_gt1000->rawlen) 
-		{
+		if(quiggGT1000FillRawCode() != quigg_gt1000->rawlen) {
 			/* this Error should never occur. It indicates a wrong raw protocol length or misaligned fill */
-			logprintf(LOG_ERR, "\nquigg_gt1000: raw index not correct");
+			logprintf(LOG_ERR, "quigg_gt1000: raw index not correct");
 			return EXIT_FAILURE;
 		}	
-		quigg_gt1000CreateMessage(id, unit, state, seq);
+		quiggGT1000CreateMessage(id, unit, state, seq);
 	}
 	return EXIT_SUCCESS;
 }
 
-void quigg_gt1000CreateMessage( int id, int unit, int state, int seq) 
-{
-	int i;
+void quiggGT1000PrintHelp(void) { // print help for this protocol (send -p <name> -H)
+	printf("\t -t --on\tsend an on signal\n");
+	printf("\t -f --off\tsend an off signal\n");
+	printf("\t -u --unit=unit\tcontrol a device with this unit code [0..3]\n");
+	printf("\t -i --id=id\tcontrol a device with this id [0..15] \n");
+	printf("\t -a --all\tcontrol all devices with this id\n");
+	printf("\t -s --super\tcontrol all devices regardless of id\n");
+	printf("\t -n --num\toptional use random (super)code sequence num 0..3 (%d)\n", NRSUPERCODES-1);
 	
-	for( i=0; i< BIN_LENGTH; i++)
-		bincode[i] = bincode[i] | 0x30; /* convert bin 0,1 into char 0,1 */
-	bincode[BIN_LENGTH] = '\0'; /* end of string */
-	quigg_gt1000->message = json_mkobject();
-	json_append_member(quigg_gt1000->message, "id", json_mknumber(id, 0));
-	json_append_member(quigg_gt1000->message, "unit", json_mknumber(unit, 0));
-	json_append_member(quigg_gt1000->message, "seq", json_mknumber(seq, 0));
-	if(state == 1)
-		json_append_member(quigg_gt1000->message, "state", json_mkstring("on"));
-	else
-		json_append_member(quigg_gt1000->message, "state", json_mkstring("off"));
-	json_append_member(quigg_gt1000->message, "code", json_mkstring(bincode));
 }
+
+#ifndef MODULE
+__attribute__((weak))
+#endif
+void quiggGT1000Init(void) {
+	protocol_register(&quigg_gt1000);
+	protocol_set_id(quigg_gt1000, "quigg_gt1000");
+	protocol_device_add(quigg_gt1000, "quigg_gt1000", "Quigg GT-1000 protocol");
+	quigg_gt1000->hwtype = RF433;
+	quigg_gt1000->devtype = SWITCH;
+	quigg_gt1000->rawlen = 151;	
+	quigg_gt1000->binlen = BIN_LENGTH;	
+    
+	options_add(&quigg_gt1000->options, 't', "on", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
+	options_add(&quigg_gt1000->options, 'f', "off", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
+	options_add(&quigg_gt1000->options, 'u', "unit", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^([0-5])$");
+	options_add(&quigg_gt1000->options, 'i', "id", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^(1[0-6]|[0-9])$");
+	options_add(&quigg_gt1000->options, 'a', "all", OPTION_NO_VALUE, DEVICES_SETTING, JSON_NUMBER, NULL, NULL);
+	options_add(&quigg_gt1000->options, 's', "super", OPTION_NO_VALUE, DEVICES_SETTING, JSON_NUMBER, NULL, NULL);
+	options_add(&quigg_gt1000->options, 'n', "num", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, NULL, "^([0-3])$");
+
+	options_add(&quigg_gt1000->options, 0, "readonly", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
+
+	quigg_gt1000->printHelp = &quiggGT1000PrintHelp;
+	quigg_gt1000->createCode = &quiggGT1000CreateCode;	
+}
+
+#ifdef MODULE
+void compatibility(struct module_t *module) {
+	module->name = "quigg_gt1000";
+	module->version = "0.1";
+	module->reqversion = "5.0";
+	module->reqcommit = "187";
+}
+
+void init(void) {
+	quiggGT1000Init();
+}
+#endif

@@ -23,11 +23,7 @@
 #ifndef _PROTOCOL_QUIGG_GT1000_H_
 #define _PROTOCOL_QUIGG_GT1000_H_
 
-/* function and data declarations */
 struct protocol_t *quigg_gt1000;
-void quigg_gt1000Init(void);
-void quigg_gt1000PrintHelp(void);
-int quigg_gt1000CreateCode(JsonNode *code);
-void quigg_gt1000CreateMessage(int, int, int, int);
+void quiggQT1000Init(void);
 
 #endif
