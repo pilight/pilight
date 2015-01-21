@@ -3,17 +3,17 @@
 
 	This file is part of pilight.
 
-    pilight is free software: you can redistribute it and/or modify it under the
+	pilight is free software: you can redistribute it and/or modify it under the
 	terms of the GNU General Public License as published by the Free Software
 	Foundation, either version 3 of the License, or (at your option) any later
 	version.
 
-    pilight is distributed in the hope that it will be useful, but WITHOUT ANY
+	pilight is distributed in the hope that it will be useful, but WITHOUT ANY
 	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-    You should have received a copy of the GNU General Public License
-    along with pilight. If not, see	<http://www.gnu.org/licenses/>
+	You should have received a copy of the GNU General Public License
+	along with pilight. If not, see	<http://www.gnu.org/licenses/>
 */
 
 #include <stdio.h>
@@ -55,10 +55,10 @@ int log_gc(void) {
 		}
 	}
 	if(logfile) {
-		sfree((void *)&logfile);
+		FREE(logfile);
 	}
 	if(logpath) {
-		sfree((void *)&logpath);
+		FREE(logpath);
 	}
 	return 1;
 }
@@ -73,7 +73,7 @@ void logprintf(int prio, const char *format_str, ...) {
 	struct tm *tm;
 	int restore_shell = 0;
 	int restore_file = 0;
-	
+
 	if(logfile == NULL) {
 		if(shelllog == 0) {
 			restore_shell = 1;
@@ -108,6 +108,8 @@ void logprintf(int prio, const char *format_str, ...) {
 				strcat(line, "NOTICE: ");
 			if(prio==LOG_DEBUG)
 				strcat(line, "DEBUG: ");
+			if(prio==LOG_STACK)
+				strcat(line, "STACK: ");
 			vsprintf(&line[strlen(line)], format_str, ap);
 			strcat(line, "\n");
 
@@ -154,6 +156,8 @@ void logprintf(int prio, const char *format_str, ...) {
 				fprintf(stderr, "NOTICE: ");
 			if(prio==LOG_DEBUG)
 				fprintf(stderr, "DEBUG: ");
+			if(prio==LOG_STACK)
+				fprintf(stderr, "STACK: ");
 			vfprintf(stderr, format_str, ap);
 			fputc('\n', stderr);
 			fflush(stderr);
@@ -203,7 +207,7 @@ void log_file_set(char *log) {
 	struct stat sb;
 	char *filename = basename(log);
 	size_t i = (strlen(log)-strlen(filename));
-	logpath = realloc(logpath, i+1);
+	logpath = REALLOC(logpath, i+1);
 	memset(logpath, '\0', i+1);
 	strncpy(logpath, log, i);
 
@@ -212,25 +216,25 @@ void log_file_set(char *log) {
 		if(err == -1) {
 			if(ENOENT == errno) {
 				logprintf(LOG_ERR, "the log folder %s does not exist", logpath);
-				sfree((void *)&logpath);
+				FREE(logpath);
 				exit(EXIT_FAILURE);
 			} else {
 				logprintf(LOG_ERR, "failed to run stat on log folder %s", logpath);
-				sfree((void *)&logpath);
+				FREE(logpath);
 				exit(EXIT_FAILURE);
 			}
 		} else {
 			if(S_ISDIR(s.st_mode)) {
-				logfile = realloc(logfile, strlen(log)+1);
+				logfile = REALLOC(logfile, strlen(log)+1);
 				strcpy(logfile, log);
 			} else {
 				logprintf(LOG_ERR, "the log folder %s does not exist", logpath);
-				sfree((void *)&logpath);
+				FREE(logpath);
 				exit(EXIT_FAILURE);
 			}
 		}
 	} else {
-		logfile = realloc(logfile, strlen(log)+1);
+		logfile = REALLOC(logfile, strlen(log)+1);
 		strcpy(logfile, log);
 	}
 
@@ -254,8 +258,8 @@ void log_file_set(char *log) {
 			filelog = 0;
 			shelllog = 1;
 			logprintf(LOG_ERR, "could not open logfile %s", logfile);
-			sfree((void *)&logpath);
-			sfree((void *)&logfile);
+			FREE(logpath);
+			FREE(logfile);
 			exit(EXIT_FAILURE);
 		} else {
 			fclose(lf);
@@ -263,7 +267,7 @@ void log_file_set(char *log) {
 		}
 	}
 
-	sfree((void *)&logpath);
+	FREE(logpath);
 }
 
 void log_level_set(int level) {
@@ -272,4 +276,57 @@ void log_level_set(int level) {
 
 int log_level_get(void) {
 	return loglevel;
+}
+
+void logerror(const char *format_str, ...) {
+	char line[1024];
+	va_list ap;
+	struct stat sb;
+	FILE *f = NULL;
+	char fmt[64], buf[64];
+	struct timeval tv;
+	struct tm *tm;
+	char date[128];
+
+	memset(line, '\0', 1024);
+	gettimeofday(&tv, NULL);
+	if((tm = localtime(&tv.tv_sec)) != NULL) {
+		strftime(fmt, sizeof(fmt), "%b %d %H:%M:%S", tm);
+		snprintf(buf, sizeof(buf), "%s:%03u", fmt, (unsigned int)tv.tv_usec);
+	}
+
+	sprintf(date, "[%22.22s] %s: ", buf, progname);
+	strcat(line, date);
+	va_start(ap, format_str);
+	vsprintf(&line[strlen(line)], format_str, ap);
+	strcat(line, "\n");
+
+	if((stat("/var/log/pilight.err", &sb)) >= 0) {
+		if(!(f = fopen("/var/log/pilight.err", "a"))) {
+			return;
+		}
+	} else {
+		if(sb.st_nlink == 0) {
+			if(!(f = fopen("/var/log/pilight.err", "a"))) {
+				return;
+			}
+		}
+		if(sb.st_size > LOG_MAX_SIZE) {
+			fclose(f);
+			char tmp[strlen("/var/log/pilight.err")+5];
+			strcpy(tmp, "/var/log/pilight.err");
+			strcat(tmp, ".old");
+			rename("/var/log/pilight.err", tmp);
+			if(!(f = fopen("/var/log/pilight.err", "a"))) {
+				return;
+			}
+		}
+	}
+	if(f) {
+		fwrite(line, sizeof(char), strlen(line), f);
+		fflush(f);
+		fclose(f);
+		f = NULL;
+	}
+	va_end(ap);
 }

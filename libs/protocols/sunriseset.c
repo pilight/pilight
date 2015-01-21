@@ -3,17 +3,17 @@
 
 	This file is part of pilight.
 
-    pilight is free software: you can redistribute it and/or modify it under the
+	pilight is free software: you can redistribute it and/or modify it under the
 	terms of the GNU General Public License as published by the Free Software
 	Foundation, either version 3 of the License, or (at your option) any later
 	version.
 
-    pilight is distributed in the hope that it will be useful, but WITHOUT ANY
+	pilight is distributed in the hope that it will be useful, but WITHOUT ANY
 	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-    You should have received a copy of the GNU General Public License
-    along with pilight. If not, see	<http://www.gnu.org/licenses/>
+	You should have received a copy of the GNU General Public License
+	along with pilight. If not, see	<http://www.gnu.org/licenses/>
 */
 
 #include <stdio.h>
@@ -109,7 +109,7 @@ static void *sunRiseSetParse(void *param) {
 	struct JsonNode *jid = NULL;
 	struct JsonNode *jchild = NULL;
 	struct JsonNode *jchild1 = NULL;
-	char *slongitude = NULL, *slatitude = NULL, *tz = NULL;
+	char *tz = NULL;
 	double longitude = 0, latitude = 0;
 	char UTC[] = "Europe/London";
 
@@ -117,6 +117,7 @@ static void *sunRiseSetParse(void *param) {
 	struct tm *current = NULL;
 	int month = 0, mday = 0, year = 0, offset = 0, nrloops = 0;
 	int hour = 0, min = 0, sec = 0, risetime = 0, settime = 0;
+	int firstrun = 0;
 
 	sunriseset_threads++;
 
@@ -126,20 +127,10 @@ static void *sunRiseSetParse(void *param) {
 			jchild1 = json_first_child(jchild);
 			while(jchild1) {
 				if(strcmp(jchild1->key, "longitude") == 0) {
-					if(!(slongitude = malloc(strlen(jchild1->string_)+1))) {
-						logprintf(LOG_ERR, "out of memory");
-						exit(EXIT_FAILURE);
-					}
-					strcpy(slongitude, jchild1->string_);
-					longitude = atof(jchild1->string_);
+					longitude = jchild1->number_;
 				}
 				if(strcmp(jchild1->key, "latitude") == 0) {
-					if(!(slatitude = malloc(strlen(jchild1->string_)+1))) {
-						logprintf(LOG_ERR, "out of memory");
-						exit(EXIT_FAILURE);
-					}
-					strcpy(slatitude, jchild1->string_);
-					latitude = atof(jchild1->string_);
+					latitude = jchild1->number_;
 				}
 				jchild1 = jchild1->next;
 			}
@@ -151,7 +142,7 @@ static void *sunRiseSetParse(void *param) {
 		logprintf(LOG_DEBUG, "could not determine timezone");
 		tz = UTC;
 	} else {
-		logprintf(LOG_DEBUG, "%s:%s seems to be in timezone: %s", slongitude, slatitude, tz);
+		logprintf(LOG_DEBUG, "%.6f:%.6f seems to be in timezone: %s", longitude, latitude, tz);
 	}
 
 	while(sunriseset_loop) {
@@ -172,6 +163,10 @@ static void *sunRiseSetParse(void *param) {
 
 		if(((hournow == 0 || hournow == risetime || hournow == settime) && sec == 0)
 		   || (settime == 0 && risetime == 0)) {
+
+			if(settime == 0 && risetime == 0) {
+				firstrun = 1;
+			}
 			sunriseset->message = json_mkobject();
 			JsonNode *code = json_mkobject();
 			risetime = (int)sunRiseSetCalculate(year, month, mday, longitude, latitude, 1, offset);
@@ -184,20 +179,21 @@ static void *sunRiseSetParse(void *param) {
 				if(settime > 2400) settime -= 2400;
 			}
 
-			json_append_member(code, "longitude", json_mkstring(slongitude));
-			json_append_member(code, "latitude", json_mkstring(slatitude));
+			json_append_member(code, "longitude", json_mknumber(longitude, 6));
+			json_append_member(code, "latitude", json_mknumber(latitude, 6));
 
 			/* Only communicate the sun state change when they actually occur,
 			   and only communicate the new times when the day changes */
-			if(hournow != 0) {
+			if(hournow != 0 || firstrun == 1) {
 				if(hournow >= risetime && hournow < settime) {
 					json_append_member(code, "sun", json_mkstring("rise"));
 				} else {
 					json_append_member(code, "sun", json_mkstring("set"));
 				}
-			} else {
-				json_append_member(code, "sunrise", json_mknumber(risetime));
-				json_append_member(code, "sunset", json_mknumber(settime));
+			}
+			if(hournow == 0 || firstrun == 1) {
+				json_append_member(code, "sunrise", json_mknumber(((double)risetime/100), 2));
+				json_append_member(code, "sunset", json_mknumber(((double)settime/100), 2));
 			}
 
 			json_append_member(sunriseset->message, "message", code);
@@ -207,11 +203,9 @@ static void *sunRiseSetParse(void *param) {
 			pilight.broadcast(sunriseset->id, sunriseset->message);
 			json_delete(sunriseset->message);
 			sunriseset->message = NULL;
+			firstrun = 0;
 		}
 	}
-
-	sfree((void *)&slatitude);
-	sfree((void *)&slongitude);
 
 	sunriseset_threads--;
 	return (void *)NULL;
@@ -221,7 +215,7 @@ struct threadqueue_t *sunRiseSetInitDev(JsonNode *jdevice) {
 	sunriseset_loop = 1;
 	char *output = json_stringify(jdevice, NULL);
 	JsonNode *json = json_decode(output);
-	sfree((void *)&output);
+	FREE(output);
 
 	struct protocol_threads_t *node = protocol_thread_init(sunriseset, json);
 	return threads_register("sunriseset", &sunRiseSetParse, (void *)node, 0);
@@ -259,15 +253,15 @@ void sunRiseSetInit(void) {
 	sunriseset->hwtype = API;
 	sunriseset->multipleId = 0;
 
-	options_add(&sunriseset->options, 'o', "longitude", OPTION_HAS_VALUE, CONFIG_ID, JSON_STRING, NULL, NULL);
-	options_add(&sunriseset->options, 'a', "latitude", OPTION_HAS_VALUE, CONFIG_ID, JSON_STRING, NULL, NULL);
-	options_add(&sunriseset->options, 'u', "sunrise", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, NULL, "^[0-9]{3,4}$");
-	options_add(&sunriseset->options, 'd', "sunset", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, NULL, "^[0-9]{3,4}$");
-	options_add(&sunriseset->options, 's', "sun", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_STRING, NULL, NULL);
+	options_add(&sunriseset->options, 'o', "longitude", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, NULL);
+	options_add(&sunriseset->options, 'a', "latitude", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, NULL);
+	options_add(&sunriseset->options, 'u', "sunrise", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9]{3,4}$");
+	options_add(&sunriseset->options, 'd', "sunset", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9]{3,4}$");
+	options_add(&sunriseset->options, 's', "sun", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_STRING, NULL, NULL);
 
-	options_add(&sunriseset->options, 0, "device-decimals", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)2, "[0-9]");
-	options_add(&sunriseset->options, 0, "gui-decimals", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)2, "[0-9]");
-	options_add(&sunriseset->options, 0, "gui-show-sunriseset", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
+	// options_add(&sunriseset->options, 0, "decimals", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *)2, "[0-9]");
+	options_add(&sunriseset->options, 0, "decimals", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)2, "[0-9]");
+	options_add(&sunriseset->options, 0, "show-sunriseset", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
 
 	sunriseset->initDev=&sunRiseSetInitDev;
 	sunriseset->threadGC=&sunRiseSetThreadGC;
@@ -277,9 +271,9 @@ void sunRiseSetInit(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name = "sunriseset";
-	module->version = "1.0";
+	module->version = "1.2";
 	module->reqversion = "5.0";
-	module->reqcommit = NULL;
+	module->reqcommit = "187";
 }
 
 void init(void) {

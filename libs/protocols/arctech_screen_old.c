@@ -3,17 +3,17 @@
 
 	This file is part of pilight.
 
-    pilight is free software: you can redistribute it and/or modify it under the
+	pilight is free software: you can redistribute it and/or modify it under the
 	terms of the GNU General Public License as published by the Free Software
 	Foundation, either version 3 of the License, or (at your option) any later
 	version.
 
-    pilight is distributed in the hope that it will be useful, but WITHOUT ANY
+	pilight is distributed in the hope that it will be useful, but WITHOUT ANY
 	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-    You should have received a copy of the GNU General Public License
-    along with pilight. If not, see	<http://www.gnu.org/licenses/>
+	You should have received a copy of the GNU General Public License
+	along with pilight. If not, see	<http://www.gnu.org/licenses/>
 */
 
 #include <stdio.h>
@@ -33,8 +33,8 @@
 
 static void arctechSrOldCreateMessage(int id, int unit, int state) {
 	arctech_screen_old->message = json_mkobject();
-	json_append_member(arctech_screen_old->message, "id", json_mknumber(id));
-	json_append_member(arctech_screen_old->message, "unit", json_mknumber(unit));
+	json_append_member(arctech_screen_old->message, "id", json_mknumber(id, 0));
+	json_append_member(arctech_screen_old->message, "unit", json_mknumber(unit, 0));
 	if(state == 1)
 		json_append_member(arctech_screen_old->message, "state", json_mkstring("up"));
 	else
@@ -162,7 +162,7 @@ __attribute__((weak))
 void arctechSrOldInit(void) {
 
 	protocol_register(&arctech_screen_old);
-	protocol_set_id(arctech_screen_old, "arctech_screens_old");
+	protocol_set_id(arctech_screen_old, "arctech_screen_old");
 	protocol_device_add(arctech_screen_old, "kaku_screen_old", "Old KlikAanKlikUit Screens");
 	protocol_plslen_add(arctech_screen_old, 336);
 	arctech_screen_old->devtype = SCREEN;
@@ -172,12 +172,12 @@ void arctechSrOldInit(void) {
 	arctech_screen_old->binlen = 12;
 	arctech_screen_old->lsb = 2;
 
-	options_add(&arctech_screen_old->options, 't', "up", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
-	options_add(&arctech_screen_old->options, 'f', "down", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
-	options_add(&arctech_screen_old->options, 'u', "unit", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, NULL, "^([0-9]{1}|[1][0-5])$");
-	options_add(&arctech_screen_old->options, 'i', "id", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, NULL, "^(3[012]?|[012][0-9]|[0-9]{1})$");
+	options_add(&arctech_screen_old->options, 't', "up", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
+	options_add(&arctech_screen_old->options, 'f', "down", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
+	options_add(&arctech_screen_old->options, 'u', "unit", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^([0-9]{1}|[1][0-5])$");
+	options_add(&arctech_screen_old->options, 'i', "id", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^(3[012]?|[012][0-9]|[0-9]{1})$");
 
-	options_add(&arctech_screen_old->options, 0, "gui-readonly", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
+	options_add(&arctech_screen_old->options, 0, "readonly", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 
 	arctech_screen_old->parseBinary=&arctechSrOldParseBinary;
 	arctech_screen_old->createCode=&arctechSrOldCreateCode;
@@ -187,9 +187,9 @@ void arctechSrOldInit(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name = "arctech_screen_old";
-	module->version = "1.0";
+	module->version = "1.1";
 	module->reqversion = "5.0";
-	module->reqcommit = NULL;
+	module->reqcommit = "84";
 }
 
 void init(void) {

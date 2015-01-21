@@ -3,17 +3,17 @@
 
 	This file is part of pilight.
 
-    pilight is free software: you can redistribute it and/or modify it under the
+	pilight is free software: you can redistribute it and/or modify it under the
 	terms of the GNU General Public License as published by the Free Software
 	Foundation, either version 3 of the License, or (at your option) any later
 	version.
 
-    pilight is distributed in the hope that it will be useful, but WITHOUT ANY
+	pilight is distributed in the hope that it will be useful, but WITHOUT ANY
 	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-    You should have received a copy of the GNU General Public License
-    along with pilight. If not, see	<http://www.gnu.org/licenses/>
+	You should have received a copy of the GNU General Public License
+	along with pilight. If not, see	<http://www.gnu.org/licenses/>
 */
 
 #include <stdio.h>
@@ -33,8 +33,8 @@
 
 static void arctechSwOldCreateMessage(int id, int unit, int state) {
 	arctech_switch_old->message = json_mkobject();
-	json_append_member(arctech_switch_old->message, "id", json_mknumber(id));
-	json_append_member(arctech_switch_old->message, "unit", json_mknumber(unit));
+	json_append_member(arctech_switch_old->message, "id", json_mknumber(id, 0));
+	json_append_member(arctech_switch_old->message, "unit", json_mknumber(unit, 0));
 	if(state == 1)
 		json_append_member(arctech_switch_old->message, "state", json_mkstring("on"));
 	else
@@ -162,13 +162,18 @@ __attribute__((weak))
 void arctechSwOldInit(void) {
 
 	protocol_register(&arctech_switch_old);
-	protocol_set_id(arctech_switch_old, "arctech_switches_old");
+	protocol_set_id(arctech_switch_old, "arctech_switch_old");
 	protocol_device_add(arctech_switch_old, "kaku_switch_old", "Old KlikAanKlikUit Switches");
 	protocol_device_add(arctech_switch_old, "cogex", "Cogex Switches");
 	protocol_device_add(arctech_switch_old, "intertechno_old", "Old Intertechno Switches");
 	protocol_device_add(arctech_switch_old, "byebyestandbye", "Bye Bye Standbye Switches");
+	protocol_device_add(arctech_switch_old, "duwi", "Düwi Terminal Switches");
+	protocol_device_add(arctech_switch_old, "promax", "PRO max Switches");
+	protocol_device_add(arctech_switch_old, "eurodomest", "Eurodomest Switches");
 	protocol_plslen_add(arctech_switch_old, 336);
 	protocol_plslen_add(arctech_switch_old, 326);
+	protocol_plslen_add(arctech_switch_old, 390);
+	protocol_plslen_add(arctech_switch_old, 400);
 	protocol_plslen_add(arctech_switch_old, 330);
 
 	arctech_switch_old->devtype = SWITCH;
@@ -178,12 +183,12 @@ void arctechSwOldInit(void) {
 	arctech_switch_old->binlen = 12;
 	arctech_switch_old->lsb = 2;
 
-	options_add(&arctech_switch_old->options, 't', "on", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
-	options_add(&arctech_switch_old->options, 'f', "off", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
-	options_add(&arctech_switch_old->options, 'u', "unit", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, NULL, "^([0-9]{1}|[1][0-5])$");
-	options_add(&arctech_switch_old->options, 'i', "id", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, NULL, "^(3[012]?|[012][0-9]|[0-9]{1})$");
+	options_add(&arctech_switch_old->options, 't', "on", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
+	options_add(&arctech_switch_old->options, 'f', "off", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
+	options_add(&arctech_switch_old->options, 'u', "unit", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^([0-9]{1}|[1][0-5])$");
+	options_add(&arctech_switch_old->options, 'i', "id", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^(3[012]?|[012][0-9]|[0-9]{1})$");
 
-	options_add(&arctech_switch_old->options, 0, "gui-readonly", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
+	options_add(&arctech_switch_old->options, 0, "readonly", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 
 	arctech_switch_old->parseBinary=&arctechSwOldParseBinary;
 	arctech_switch_old->createCode=&arctechSwOldCreateCode;
@@ -193,9 +198,9 @@ void arctechSwOldInit(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name = "arctech_switch_old";
-	module->version = "1.0";
+	module->version = "1.3";
 	module->reqversion = "5.0";
-	module->reqcommit = NULL;
+	module->reqcommit = "84";
 }
 
 void init(void) {

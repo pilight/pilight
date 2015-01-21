@@ -5,19 +5,19 @@ ifneq (, $(findstring x86_64, $(SYS)))
 endif
 ifneq (, $(findstring arm, $(SYS)))
 	ifneq (, $(findstring gnueabihf, $(SYS)))
-		OSFLAGS = -Ofast -mfloat-abi=hard -mfpu=vfp -march=armv6 -Wconversion -Wunreachable-code -Wstrict-prototypes 
+		OSFLAGS = -fno-omit-frame-pointer -Ofast -mfloat-abi=hard -mfpu=vfp -march=armv6 -Wconversion -Wunreachable-code -Wstrict-prototypes 
 	endif
 	ifneq (, $(findstring gnueabi, $(SYS)))
-		OSFLAGS = -Ofast -mfloat-abi=hard -mfpu=vfp -march=armv6 -Wconversion -Wunreachable-code -Wstrict-prototypes 
+		OSFLAGS = -fno-omit-frame-pointer -Ofast -mfloat-abi=hard -mfpu=vfp -march=armv6 -Wconversion -Wunreachable-code -Wstrict-prototypes 
 	endif	
 	ifneq (, $(findstring gnueabisf, $(SYS)))
-		OSFLAGS = -Ofast -mfloat-abi=soft -mfpu=vfp -march=armv6 -Wconversion -Wunreachable-code -Wstrict-prototypes 
+		OSFLAGS = -fno-omit-frame-pointer -Ofast -mfloat-abi=soft -mfpu=vfp -march=armv6 -Wconversion -Wunreachable-code -Wstrict-prototypes 
 	endif
 endif
 ifneq (, $(findstring amd64, $(SYS)))
 	OSFLAGS = -O3 -fPIC -march=native -mtune=native -mfpmath=sse -Wno-conversion
 endif
-CFLAGS = $(OSFLAGS) -Wno-conversion -g -isystem. -isystem.. -isystem. -I../pilight/
+CFLAGS = -rdynamic -funwind-tables $(OSFLAGS) -Wno-conversion -g -isystem. -isystem.. -isystem. -I../pilight/
 SRC = $(wildcard *.c)
 OBJS = $(SRC:.c=.o)
 
@@ -27,7 +27,7 @@ all: $(OBJS) avrdude.o
 	$(GCC) $(CFLAGS) -c $(patsubst %.o,%.c,$@)
 
 avrdude.o: $(OBJS)
-	$(CROSS_COMPILE)ld -L/usr/local/lib -r $(OBJS) -o avrdude.o
+	$(CROSS_COMPILE)ld -L/usr/local/lib -g -r $(OBJS) -o avrdude.o
 
 dist-clean: clean
 	

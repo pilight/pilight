@@ -39,7 +39,7 @@
 #include "gc.h"
 #include "json.h"
 #include "dht11.h"
-#include "../pilight/wiringPi.h"
+#include "../pilight/wiringX.h"
 
 #define MAXTIMINGS 100
 
@@ -50,10 +50,10 @@ static pthread_mutex_t dht11lock;
 static pthread_mutexattr_t dht11attr;
 
 static uint8_t sizecvt(const int read_value) {
-	/* digitalRead() and friends from wiringpi are defined as returning a value
+	/* digitalRead() and friends from wiringx are defined as returning a value
 	   < 256. However, they are returned as int() types. This is a safety function */
 	if(read_value > 255 || read_value < 0) {
-		logprintf(LOG_NOTICE, "invalid data from wiringPi library");
+		logprintf(LOG_NOTICE, "invalid data from wiringX library");
 	}
 
 	return (uint8_t)read_value;
@@ -66,8 +66,7 @@ static void *dht11Parse(void *param) {
 	struct JsonNode *jchild = NULL;
 	int *id = 0;
 	int nrid = 0, y = 0, interval = 10, nrloops = 0;
-	int temp_offset = 0, humi_offset = 0;
-	double itmp = 0;
+	double temp_offset = 0.0, humi_offset = 0.0, itmp = 0.0;
 
 	dht11_threads++;
 
@@ -75,7 +74,7 @@ static void *dht11Parse(void *param) {
 		jchild = json_first_child(jid);
 		while(jchild) {
 			if(json_find_number(jchild, "gpio", &itmp) == 0) {
-				id = realloc(id, (sizeof(int)*(size_t)(nrid+1)));
+				id = REALLOC(id, (sizeof(int)*(size_t)(nrid+1)));
 				id[nrid] = (int)round(itmp);
 				nrid++;
 			}
@@ -85,10 +84,8 @@ static void *dht11Parse(void *param) {
 
 	if(json_find_number(json, "poll-interval", &itmp) == 0)
 		interval = (int)round(itmp);
-	if(json_find_number(json, "device-temperature-offset", &itmp) == 0)
-		temp_offset = (int)round(itmp);
-	if(json_find_number(json, "device-humidity-offset", &itmp) == 0)
-		humi_offset = (int)round(itmp);
+	json_find_number(json, "temperature-offset", &temp_offset);
+	json_find_number(json, "humidity-offset", &humi_offset);
 
 	while(dht11_loop) {
 		if(protocol_thread_wait(node, interval, &nrloops) == ETIMEDOUT) {
@@ -146,19 +143,16 @@ static void *dht11Parse(void *param) {
 					if((j >= 40) && (dht11_dat[4] == ((dht11_dat[0] + dht11_dat[1] + dht11_dat[2] + dht11_dat[3]) & 0xFF))) {
 						got_correct_date = 1;
 
-						int h = dht11_dat[0] + dht11_dat[1];
-						int t = (dht11_dat[2] & 0x7F) + dht11_dat[3];
+						double h = dht11_dat[0];
+						double t = dht11_dat[2];
 						t += temp_offset;
 						h += humi_offset;
 
-						if((dht11_dat[2] & 0x80) != 0)
-							t *= -1;
-
 						dht11->message = json_mkobject();
 						JsonNode *code = json_mkobject();
-						json_append_member(code, "gpio", json_mknumber(id[y]));
-						json_append_member(code, "temperature", json_mknumber(t));
-						json_append_member(code, "humidity", json_mknumber(h));
+						json_append_member(code, "gpio", json_mknumber(id[y], 0));
+						json_append_member(code, "temperature", json_mknumber(t, 1));
+						json_append_member(code, "humidity", json_mknumber(h, 1));
 
 						json_append_member(dht11->message, "message", code);
 						json_append_member(dht11->message, "origin", json_mkstring("receiver"));
@@ -177,18 +171,19 @@ static void *dht11Parse(void *param) {
 			pthread_mutex_unlock(&dht11lock);
 		}
 	}
+	pthread_mutex_unlock(&dht11lock);
 
-	sfree((void *)&id);
+	FREE(id);
 	dht11_threads--;
 	return (void *)NULL;
 }
 
 struct threadqueue_t *dht11InitDev(JsonNode *jdevice) {
 	dht11_loop = 1;
-	wiringPiSetup();
+	wiringXSetup();
 	char *output = json_stringify(jdevice, NULL);
 	JsonNode *json = json_decode(output);
-	sfree((void *)&output);
+	FREE(output);
 
 	struct protocol_threads_t *node = protocol_thread_init(dht11, json);
 	return threads_register("dht11", &dht11Parse, (void *)node, 0);
@@ -217,17 +212,17 @@ void dht11Init(void) {
 	dht11->devtype = WEATHER;
 	dht11->hwtype = SENSOR;
 
-	options_add(&dht11->options, 't', "temperature", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, NULL, "^[0-9]{1,3}$");
-	options_add(&dht11->options, 'h', "humidity", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, NULL, "^[0-9]{1,3}$");
-	options_add(&dht11->options, 'g', "gpio", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, NULL, "^([0-9]{1}|1[0-9]|20)$");
+	options_add(&dht11->options, 't', "temperature", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9]{1,3}$");
+	options_add(&dht11->options, 'h', "humidity", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9]{1,3}$");
+	options_add(&dht11->options, 'g', "gpio", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^([0-9]{1}|1[0-9]|20)$");
 
-	options_add(&dht11->options, 0, "device-decimals", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)1, "[0-9]");
-	options_add(&dht11->options, 0, "device-temperature-offset", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)0, "[0-9]");
-	options_add(&dht11->options, 0, "device-humidity-offset", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)0, "[0-9]");
-	options_add(&dht11->options, 0, "gui-decimals", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)1, "[0-9]");
-	options_add(&dht11->options, 0, "gui-show-temperature", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
-	options_add(&dht11->options, 0, "gui-show-humidity", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
-	options_add(&dht11->options, 0, "poll-interval", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)10, "[0-9]");
+	// options_add(&dht11->options, 0, "decimals", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *)1, "[0-9]");
+	options_add(&dht11->options, 0, "temperature-offset", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *)0, "[0-9]");
+	options_add(&dht11->options, 0, "humidity-offset", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *)0, "[0-9]");
+	options_add(&dht11->options, 0, "decimals", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)1, "[0-9]");
+	options_add(&dht11->options, 0, "show-temperature", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
+	options_add(&dht11->options, 0, "show-humidity", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
+	options_add(&dht11->options, 0, "poll-interval", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *)10, "[0-9]");
 
 	dht11->initDev=&dht11InitDev;
 	dht11->threadGC=&dht11ThreadGC;
@@ -236,9 +231,9 @@ void dht11Init(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name = "dht11";
-	module->version = "1.0";
+	module->version = "1.6";
 	module->reqversion = "5.0";
-	module->reqcommit = NULL;
+	module->reqcommit = "187";
 }
 
 void init(void) {

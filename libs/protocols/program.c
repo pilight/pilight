@@ -3,17 +3,17 @@
 
 	This file is part of pilight.
 
-    pilight is free software: you can redistribute it and/or modify it under the
+	pilight is free software: you can redistribute it and/or modify it under the
 	terms of the GNU General Public License as published by the Free Software
 	Foundation, either version 3 of the License, or (at your option) any later
 	version.
 
-    pilight is distributed in the hope that it will be useful, but WITHOUT ANY
+	pilight is distributed in the hope that it will be useful, but WITHOUT ANY
 	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-    You should have received a copy of the GNU General Public License
-    along with pilight. If not, see	<http://www.gnu.org/licenses/>
+	You should have received a copy of the GNU General Public License
+	along with pilight. If not, see	<http://www.gnu.org/licenses/>
 */
 
 #include <stdio.h>
@@ -82,12 +82,12 @@ static void *programParse(void *param) {
 	json_find_string(json, "stop-command", &stopcmd);
 	json_find_string(json, "start-command", &startcmd);
 
-	struct programs_t *lnode = malloc(sizeof(struct programs_t));
+	struct programs_t *lnode = MALLOC(sizeof(struct programs_t));
 	lnode->wait = 0;
 	lnode->pth = 0;
 
 	if(args && strlen(args) > 0) {
-		if(!(lnode->arguments = malloc(strlen(args)+1))) {
+		if(!(lnode->arguments = MALLOC(strlen(args)+1))) {
 			logprintf(LOG_ERR, "out of memory");
 			exit(EXIT_FAILURE);
 		}
@@ -97,7 +97,7 @@ static void *programParse(void *param) {
 	}
 
 	if(prog) {
-		if(!(lnode->program = malloc(strlen(prog)+1))) {
+		if(!(lnode->program = MALLOC(strlen(prog)+1))) {
 			logprintf(LOG_ERR, "out of memory");
 			exit(EXIT_FAILURE);
 		}
@@ -107,7 +107,7 @@ static void *programParse(void *param) {
 	}
 
 	if(stopcmd) {
-		if(!(lnode->stop = malloc(strlen(stopcmd)+1))) {
+		if(!(lnode->stop = MALLOC(strlen(stopcmd)+1))) {
 			logprintf(LOG_ERR, "out of memory");
 			exit(EXIT_FAILURE);
 		}
@@ -117,7 +117,7 @@ static void *programParse(void *param) {
 	}
 
 	if(startcmd) {
-		if(!(lnode->start = malloc(strlen(startcmd)+1))) {
+		if(!(lnode->start = MALLOC(strlen(startcmd)+1))) {
 			logprintf(LOG_ERR, "out of memory");
 			exit(EXIT_FAILURE);
 		}
@@ -126,13 +126,14 @@ static void *programParse(void *param) {
 		lnode->start = NULL;
 	}
 
+	lnode->name = NULL;
 	if((jid = json_find_member(json, "id"))) {
 		jchild = json_first_child(jid);
 		while(jchild) {
 			jchild1 = json_first_child(jchild);
 			while(jchild1) {
 				if(strcmp(jchild1->key, "name") == 0) {
-					if(!(lnode->name = malloc(strlen(jchild1->string_)+1))) {
+					if(!(lnode->name = MALLOC(strlen(jchild1->string_)+1))) {
 						logprintf(LOG_ERR, "out of memory");
 						exit(EXIT_FAILURE);
 					}
@@ -147,16 +148,8 @@ static void *programParse(void *param) {
 	lnode->thread = pnode;
 	lnode->laststate = -1;
 
-	struct programs_t *tmp = programs;
-	if(tmp) {
-		while(tmp->next != NULL) {
-			tmp = tmp->next;
-		}
-		tmp->next = lnode;
-	} else {
-		lnode->next = tmp;
-		programs = lnode;
-	}
+	lnode->next = programs;
+	programs = lnode;
 
 	if(json_find_number(json, "poll-interval", &itmp) == 0)
 		interval = (int)round(itmp);
@@ -173,11 +166,11 @@ static void *programParse(void *param) {
 				if((pid = (int)findproc(lnode->program, lnode->arguments, 0)) > 0) {
 					lnode->currentstate = 1;
 					json_append_member(code, "state", json_mkstring("running"));
-					json_append_member(code, "pid", json_mknumber((int)pid));
+					json_append_member(code, "pid", json_mknumber((int)pid, 0));
 				} else {
 					lnode->currentstate = 0;
 					json_append_member(code, "state", json_mkstring("stopped"));
-					json_append_member(code, "pid", json_mknumber(0));
+					json_append_member(code, "pid", json_mknumber(0, 0));
 				}
 				json_append_member(program->message, "message", code);
 				json_append_member(program->message, "origin", json_mkstring("receiver"));
@@ -193,6 +186,7 @@ static void *programParse(void *param) {
 			pthread_mutex_unlock(&programlock);
 		}
 	}
+	pthread_mutex_unlock(&programlock);
 
 	program_threads--;
 	return (void *)NULL;
@@ -202,7 +196,7 @@ struct threadqueue_t *programInitDev(JsonNode *jdevice) {
 	program_loop = 1;
 	char *output = json_stringify(jdevice, NULL);
 	JsonNode *json = json_decode(output);
-	sfree((void *)&output);
+	FREE(output);
 
 	struct protocol_threads_t *node = protocol_thread_init(program, json);
 	return threads_register("program", &programParse, (void *)node, 0);
@@ -331,16 +325,16 @@ static void programThreadGC(void) {
 	struct programs_t *tmp;
 	while(programs) {
 		tmp = programs;
-		if(tmp->stop) sfree((void *)&tmp->stop);
-		if(tmp->start) sfree((void *)&tmp->start);
-		if(tmp->name) sfree((void *)&tmp->name);
-		if(tmp->arguments) sfree((void *)&tmp->arguments);
-		if(tmp->program) sfree((void *)&tmp->program);
+		if(tmp->stop) FREE(tmp->stop);
+		if(tmp->start) FREE(tmp->start);
+		if(tmp->name) FREE(tmp->name);
+		if(tmp->arguments) FREE(tmp->arguments);
+		if(tmp->program) FREE(tmp->program);
 		if(tmp->pth > 0) pthread_cancel(tmp->pth);
 		programs = programs->next;
-		sfree((void *)&tmp);
+		FREE(tmp);
 	}
-	sfree((void *)&programs);
+	FREE(programs);
 }
 
 static void programPrintHelp(void) {
@@ -364,18 +358,18 @@ void programInit(void) {
 	program->hwtype = API;
 	program->multipleId = 0;
 
-	options_add(&program->options, 'n', "name", OPTION_HAS_VALUE, CONFIG_ID, JSON_STRING, NULL, NULL);
-	options_add(&program->options, 'x', "start-command", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_STRING, NULL, NULL);
-	options_add(&program->options, 'y', "stop-command", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_STRING, NULL, NULL);
-	options_add(&program->options, 'p', "program", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_STRING, NULL, NULL);
-	options_add(&program->options, 'i', "pid", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, NULL, NULL);
-	options_add(&program->options, 'a', "arguments", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_STRING, NULL, NULL);
-	options_add(&program->options, 't', "running", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
-	options_add(&program->options, 'd', "pending", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
-	options_add(&program->options, 'f', "stopped", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
+	options_add(&program->options, 'n', "name", OPTION_HAS_VALUE, DEVICES_ID, JSON_STRING, NULL, NULL);
+	options_add(&program->options, 'x', "start-command", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_STRING, NULL, NULL);
+	options_add(&program->options, 'y', "stop-command", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_STRING, NULL, NULL);
+	options_add(&program->options, 'p', "program", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_STRING, NULL, NULL);
+	options_add(&program->options, 'i', "pid", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, NULL);
+	options_add(&program->options, 'a', "arguments", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_STRING, NULL, NULL);
+	options_add(&program->options, 't', "running", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
+	options_add(&program->options, 'd', "pending", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
+	options_add(&program->options, 'f', "stopped", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
 
-	options_add(&program->options, 0, "gui-readonly", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
-	options_add(&program->options, 0, "poll-interval", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)1, "[0-9]");
+	options_add(&program->options, 0, "readonly", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
+	options_add(&program->options, 0, "poll-interval", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *)1, "[0-9]");
 
 	program->createCode=&programCreateCode;
 	program->printHelp=&programPrintHelp;
@@ -386,9 +380,9 @@ void programInit(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name = "program";
-	module->version = "1.0";
+	module->version = "1.3";
 	module->reqversion = "5.0";
-	module->reqcommit = NULL;
+	module->reqcommit = "187";
 }
 
 void init(void) {

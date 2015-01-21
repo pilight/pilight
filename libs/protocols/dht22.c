@@ -39,7 +39,7 @@
 #include "gc.h"
 #include "json.h"
 #include "dht22.h"
-#include "../pilight/wiringPi.h"
+#include "../pilight/wiringX.h"
 
 #define MAXTIMINGS 100
 
@@ -50,10 +50,10 @@ static pthread_mutex_t dht22lock;
 static pthread_mutexattr_t dht22attr;
 
 static uint8_t sizecvt(const int read_value) {
-	/* digitalRead() and friends from wiringpi are defined as returning a value
+	/* digitalRead() and friends from wiringx are defined as returning a value
 	   < 256. However, they are returned as int() types. This is a safety function */
 	if(read_value > 255 || read_value < 0) {
-		logprintf(LOG_NOTICE, "invalid data from wiringPi library");
+		logprintf(LOG_NOTICE, "invalid data from wiringX library");
 	}
 
 	return (uint8_t)read_value;
@@ -66,8 +66,7 @@ static void *dht22Parse(void *param) {
 	struct JsonNode *jchild = NULL;
 	int *id = 0;
 	int nrid = 0, y = 0, interval = 10, nrloops = 0;
-	int temp_offset = 0, humi_offset = 0;
-	double itmp = 0;
+	double temp_offset = 0.0, humi_offset = 0.0, itmp = 0.0;
 
 	dht22_threads++;
 
@@ -75,7 +74,7 @@ static void *dht22Parse(void *param) {
 		jchild = json_first_child(jid);
 		while(jchild) {
 			if(json_find_number(jchild, "gpio", &itmp) == 0) {
-				id = realloc(id, (sizeof(int)*(size_t)(nrid+1)));
+				id = REALLOC(id, (sizeof(int)*(size_t)(nrid+1)));
 				id[nrid] = (int)round(itmp);
 				nrid++;
 			}
@@ -85,10 +84,8 @@ static void *dht22Parse(void *param) {
 
 	if(json_find_number(json, "poll-interval", &itmp) == 0)
 		interval = (int)round(itmp);
-	if(json_find_number(json, "device-temperature-offset", &itmp) == 0)
-		temp_offset = (int)round(itmp);
-	if(json_find_number(json, "device-humidity-offset", &itmp) == 0)
-		humi_offset = (int)round(itmp);
+	json_find_number(json, "temperature-offset", &temp_offset);
+	json_find_number(json, "humidity-offset", &humi_offset);
 
 	while(dht22_loop) {
 		if(protocol_thread_wait(node, interval, &nrloops) == ETIMEDOUT) {
@@ -146,8 +143,8 @@ static void *dht22Parse(void *param) {
 					if((j >= 40) && (dht22_dat[4] == ((dht22_dat[0] + dht22_dat[1] + dht22_dat[2] + dht22_dat[3]) & 0xFF))) {
 						got_correct_date = 1;
 
-						int h = dht22_dat[0] * 256 + dht22_dat[1];
-						int t = (dht22_dat[2] & 0x7F)* 256 + dht22_dat[3];
+						double h = dht22_dat[0] * 256 + dht22_dat[1];
+						double t = (dht22_dat[2] & 0x7F)* 256 + dht22_dat[3];
 						t += temp_offset;
 						h += humi_offset;
 
@@ -156,9 +153,9 @@ static void *dht22Parse(void *param) {
 
 						dht22->message = json_mkobject();
 						JsonNode *code = json_mkobject();
-						json_append_member(code, "gpio", json_mknumber(id[y]));
-						json_append_member(code, "temperature", json_mknumber(t));
-						json_append_member(code, "humidity", json_mknumber(h));
+						json_append_member(code, "gpio", json_mknumber(id[y], 0));
+						json_append_member(code, "temperature", json_mknumber(t/10, 1));
+						json_append_member(code, "humidity", json_mknumber(h/10, 1));
 
 						json_append_member(dht22->message, "message", code);
 						json_append_member(dht22->message, "origin", json_mkstring("receiver"));
@@ -177,18 +174,19 @@ static void *dht22Parse(void *param) {
 			pthread_mutex_unlock(&dht22lock);
 		}
 	}
+	pthread_mutex_unlock(&dht22lock);
 
-	sfree((void *)&id);
+	FREE(id);
 	dht22_threads--;
 	return (void *)NULL;
 }
 
 static struct threadqueue_t *dht22InitDev(JsonNode *jdevice) {
 	dht22_loop = 1;
-	wiringPiSetup();
+	wiringXSetup();
 	char *output = json_stringify(jdevice, NULL);
 	JsonNode *json = json_decode(output);
-	sfree((void *)&output);
+	FREE(output);
 
 	struct protocol_threads_t *node = protocol_thread_init(dht22, json);
 	return threads_register("dht22", &dht22Parse, (void *)node, 0);
@@ -218,17 +216,17 @@ void dht22Init(void) {
 	dht22->devtype = WEATHER;
 	dht22->hwtype = SENSOR;
 
-	options_add(&dht22->options, 't', "temperature", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, NULL, "^[0-9]{1,3}$");
-	options_add(&dht22->options, 'h', "humidity", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, NULL, "^[0-9]{1,3}$");
-	options_add(&dht22->options, 'g', "gpio", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, NULL, "^([0-9]{1}|1[0-9]|20)$");
+	options_add(&dht22->options, 't', "temperature", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9]{1,3}$");
+	options_add(&dht22->options, 'h', "humidity", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9]{1,3}$");
+	options_add(&dht22->options, 'g', "gpio", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^([0-9]{1}|1[0-9]|20)$");
 
-	options_add(&dht22->options, 0, "device-decimals", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)1, "[0-9]");
-	options_add(&dht22->options, 0, "device-temperature-offset", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)0, "[0-9]");
-	options_add(&dht22->options, 0, "device-humidity-offset", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)0, "[0-9]");
-	options_add(&dht22->options, 0, "gui-decimals", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)1, "[0-9]");
-	options_add(&dht22->options, 0, "gui-show-temperature", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
-	options_add(&dht22->options, 0, "gui-show-humidity", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
-	options_add(&dht22->options, 0, "poll-interval", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)10, "[0-9]");
+	// options_add(&dht22->options, 0, "decimals", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *)1, "[0-9]");
+	options_add(&dht22->options, 0, "temperature-offset", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *)0, "[0-9]");
+	options_add(&dht22->options, 0, "humidity-offset", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *)0, "[0-9]");
+	options_add(&dht22->options, 0, "decimals", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)1, "[0-9]");
+	options_add(&dht22->options, 0, "show-temperature", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
+	options_add(&dht22->options, 0, "show-humidity", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
+	options_add(&dht22->options, 0, "poll-interval", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *)10, "[0-9]");
 
 	dht22->initDev=&dht22InitDev;
 	dht22->threadGC=&dht22ThreadGC;
@@ -237,9 +235,9 @@ void dht22Init(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name = "dht22";
-	module->version = "1.0";
+	module->version = "1.6";
 	module->reqversion = "5.0";
-	module->reqcommit = NULL;
+	module->reqcommit = "187";
 }
 
 void init(void) {

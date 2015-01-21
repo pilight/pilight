@@ -3,17 +3,17 @@
 
 	This file is part of pilight.
 
-    pilight is free software: you can redistribute it and/or modify it under the
+	pilight is free software: you can redistribute it and/or modify it under the
 	terms of the GNU General Public License as published by the Free Software
 	Foundation, either version 3 of the License, or (at your option) any later
 	version.
 
-    pilight is distributed in the hope that it will be useful, but WITHOUT ANY
+	pilight is distributed in the hope that it will be useful, but WITHOUT ANY
 	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-    You should have received a copy of the GNU General Public License
-    along with pilight. If not, see	<http://www.gnu.org/licenses/>
+	You should have received a copy of the GNU General Public License
+	along with pilight. If not, see	<http://www.gnu.org/licenses/>
 */
 
 #ifndef _PROTOCOL_H_
@@ -21,13 +21,14 @@
 
 #include <pthread.h>
 
+#include "../../pilight.h"
 #include "options.h"
 #include "threads.h"
 #include "hardware.h"
 #include "json.h"
 
 typedef enum {
-	INTERNAL = -2,
+	FIRMWARE = -2,
 	PROC = -1,
 	RAW = 0,
 	SWITCH,
@@ -40,7 +41,10 @@ typedef enum {
 	DATETIME,
 	XBMC,
 	LIRC,
-	WEBCAM
+	WEBCAM,
+	MOTION,
+	DUSK,
+	PING
 } devtype_t;
 
 typedef struct protocol_devices_t {
@@ -86,10 +90,10 @@ typedef struct protocol_t {
 
 	int bit;
 	int recording;
-	int raw[255];
-	int code[255];
-	int pCode[255];
-	int binary[128]; // Max. the half the raw length
+	int raw[MAXPULSESTREAMLENGTH];
+	int code[MAXPULSESTREAMLENGTH];
+	int pCode[MAXPULSESTREAMLENGTH];
+	int binary[MAXPULSESTREAMLENGTH/2]; // Max. the half the raw length
 
 	hwtype_t hwtype;
 	devtype_t devtype;

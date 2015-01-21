@@ -3,17 +3,17 @@
 
 	This file is part of pilight.
 
-    pilight is free software: you can redistribute it and/or modify it under the
+	pilight is free software: you can redistribute it and/or modify it under the
 	terms of the GNU General Public License as published by the Free Software
 	Foundation, either version 3 of the License, or (at your option) any later
 	version.
 
-    pilight is distributed in the hope that it will be useful, but WITHOUT ANY
+	pilight is distributed in the hope that it will be useful, but WITHOUT ANY
 	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-    You should have received a copy of the GNU General Public License
-    along with pilight. If not, see	<http://www.gnu.org/licenses/>
+	You should have received a copy of the GNU General Public License
+	along with pilight. If not, see	<http://www.gnu.org/licenses/>
 */
 
 #include <stdio.h>
@@ -28,7 +28,7 @@
 
 #include "pilight.h"
 #include "common.h"
-#include "settings.h"
+#include "config.h"
 #include "log.h"
 #include "options.h"
 #include "socket.h"
@@ -36,13 +36,6 @@
 #include "protocol.h"
 #include "ssdp.h"
 #include "dso.h"
-
-typedef enum {
-	WELCOME,
-	IDENTIFY,
-	REJECT,
-	SEND
-} steps_t;
 
 typedef struct pname_t {
 	char *name;
@@ -89,12 +82,13 @@ static void sort_list(void) {
 }
 
 int main(int argc, char **argv) {
+	// memtrack();
 
 	log_file_disable();
 	log_shell_enable();
 	log_level_set(LOG_NOTICE);
 
-	if(!(progname = malloc(13))) {
+	if(!(progname = MALLOC(13))) {
 		logprintf(LOG_ERR, "out of memory");
 		exit(EXIT_FAILURE);
 	}
@@ -104,10 +98,7 @@ int main(int argc, char **argv) {
 	struct ssdp_list_t *ssdp_list = NULL;
 
 	int sockfd = 0;
-    char *recvBuff = NULL;
-    char *message = NULL;
-	char *args = NULL;
-	steps_t steps = WELCOME;
+	char *args = NULL, *recvBuff = NULL;
 
 	/* Hold the name of the protocol */
 	char *protobuffer = NULL;
@@ -121,6 +112,7 @@ int main(int argc, char **argv) {
 	/* Do we need to print the protocol help */
 	int protohelp = 0;
 
+	char *uuid = NULL;
 	char *server = NULL;
 	unsigned short port = 0;
 
@@ -128,22 +120,18 @@ int main(int argc, char **argv) {
 	protocol_t *protocol = NULL;
 	JsonNode *code = NULL;
 
-	char settingstmp[] = SETTINGS_FILE;
-	settings_set_file(settingstmp);
-
 	/* Define all CLI arguments of this program */
 	options_add(&options, 'H', "help", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
 	options_add(&options, 'V', "version", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
 	options_add(&options, 'p', "protocol", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, NULL);
 	options_add(&options, 'S', "server", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, "^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]).){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$");
 	options_add(&options, 'P', "port", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, "[0-9]{1,4}");
-	options_add(&options, 'F', "settings", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, NULL);
+	options_add(&options, 'U', "uuid", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, "[a-zA-Z0-9]{4}-[a-zA-Z0-9]{2}-[a-zA-Z0-9]{2}-[a-zA-Z0-9]{2}-[a-zA-Z0-9]{6}");
 
 	/* Get the protocol to be used */
 	while(1) {
 		int c;
 		c = options_parse(&options, argc, argv, 0, &args);
-
 		if(c == -1)
 			break;
 		if(c == -2)
@@ -154,7 +142,7 @@ int main(int argc, char **argv) {
 					logprintf(LOG_ERR, "options '-p' and '--protocol' require an argument");
 					exit(EXIT_FAILURE);
 				} else {
-					if(!(protobuffer = realloc(protobuffer, strlen(args)+1))) {
+					if(!(protobuffer = REALLOC(protobuffer, strlen(args)+1))) {
 						logprintf(LOG_ERR, "out of memory");
 						exit(EXIT_FAILURE);
 					}
@@ -167,13 +155,8 @@ int main(int argc, char **argv) {
 			case 'H':
 				help = 1;
 			break;
-			case 'F':
-				if(settings_set_file(args) == EXIT_FAILURE) {
-					return EXIT_FAILURE;
-				}
-			break;
 			case 'S':
-				if(!(server = realloc(server, strlen(args)+1))) {
+				if(!(server = REALLOC(server, strlen(args)+1))) {
 					logprintf(LOG_ERR, "out of memory");
 					exit(EXIT_FAILURE);
 				}
@@ -182,12 +165,15 @@ int main(int argc, char **argv) {
 			case 'P':
 				port = (unsigned short)atoi(args);
 			break;
+			case 'U':
+				if(!(uuid = REALLOC(uuid, strlen(args)+1))) {
+					logprintf(LOG_ERR, "out of memory");
+					exit(EXIT_FAILURE);
+				}
+				strcpy(uuid, args);
+			break;
 			default:;
 		}
-	}
-
-	if(settings_read() != 0) {
-		return EXIT_FAILURE;
 	}
 
 	/* Initialize protocols */
@@ -258,7 +244,8 @@ int main(int argc, char **argv) {
 			printf("\t -p --protocol=protocol\t\tthe protocol that you want to control\n");
 			printf("\t -S --server=x.x.x.x\t\tconnect to server address\n");
 			printf("\t -P --port=xxxx\t\t\tconnect to server port\n");
-			printf("\t -F --settings\t\t\tsettings file\n");
+			printf("\t -C --config\t\t\tconfig file\n");
+			printf("\t -U --uuid=xxx-xx-xx-xx-xxxxxx\tUUID\n");
 		}
 		if(protohelp == 1 && match == 1 && protocol->printHelp) {
 			printf("\n\t[%s]\n", protobuffer);
@@ -272,17 +259,17 @@ int main(int argc, char **argv) {
 				if(protocol->createCode) {
 					struct protocol_devices_t *tmpdev = protocol->devices;
 					while(tmpdev) {
-						struct pname_t *node = malloc(sizeof(struct pname_t));
+						struct pname_t *node = MALLOC(sizeof(struct pname_t));
 						if(!node) {
 							logprintf(LOG_ERR, "out of memory");
 							exit(EXIT_FAILURE);
 						}
-						if(!(node->name = malloc(strlen(tmpdev->id)+1))) {
+						if(!(node->name = MALLOC(strlen(tmpdev->id)+1))) {
 							logprintf(LOG_ERR, "out of memory");
 							exit(EXIT_FAILURE);
 						}
 						strcpy(node->name, tmpdev->id);
-						if(!(node->desc = malloc(strlen(tmpdev->desc)+1))) {
+						if(!(node->desc = MALLOC(strlen(tmpdev->desc)+1))) {
 							logprintf(LOG_ERR, "out of memory");
 							exit(EXIT_FAILURE);
 						}
@@ -304,12 +291,12 @@ int main(int argc, char **argv) {
 				if(strlen(ptmp->name) < 15)
 					printf("\t");
 				printf("%s\n", ptmp->desc);
-				sfree((void *)&ptmp->name);
-				sfree((void *)&ptmp->desc);
+				FREE(ptmp->name);
+				FREE(ptmp->desc);
 				pname = pname->next;
-				sfree((void *)&ptmp);
+				FREE(ptmp);
 			}
-			sfree((void *)&pname);
+			FREE(pname);
 		}
 		goto close;
 	}
@@ -323,16 +310,22 @@ int main(int argc, char **argv) {
 			/* Only send the CLI arguments that belong to this protocol, the protocol name
 			and those that are called by the user */
 			if((options_get_id(&protocol->options, tmp->name, &itmp) == 0)
-			   && strlen(tmp->value) > 0) {
-				if(isNumeric(tmp->value) == 0) {
-					json_append_member(code, tmp->name, json_mknumber(atof(tmp->value)));
+			    && tmp->vartype == JSON_STRING && tmp->string_ != NULL
+				&& (strlen(tmp->string_) > 0)) {
+				if(isNumeric(tmp->string_) == 0) {
+					char *ptr = strstr(tmp->string_, ".");
+					int decimals = 0;
+					if(ptr != NULL) {
+						decimals = (int)(strlen(tmp->string_)-((size_t)(ptr-tmp->string_)+1));
+					}
+					json_append_member(code, tmp->name, json_mknumber(atof(tmp->string_), decimals));
 				} else {
-					json_append_member(code, tmp->name, json_mkstring(tmp->value));
+					json_append_member(code, tmp->name, json_mkstring(tmp->string_));
 				}
 			}
-			if(strcmp(tmp->name, "protocol") == 0 && strlen(tmp->value) > 0) {
+			if(strcmp(tmp->name, "protocol") == 0 && strlen(tmp->string_) > 0) {
 				JsonNode *jprotocol = json_mkarray();
-				json_append_element(jprotocol, json_mkstring(tmp->value));
+				json_append_element(jprotocol, json_mkstring(tmp->string_));
 				json_append_member(code, "protocol", jprotocol);
 			}
 		}
@@ -361,73 +354,55 @@ int main(int argc, char **argv) {
 			ssdp_free(ssdp_list);
 		}
 
-		while(1) {
-			if(steps > WELCOME) {
-				/* Clear the receive buffer again and read the welcome message */
-				if((recvBuff = socket_read(sockfd))) {
-					JsonNode *jrecv = json_decode(recvBuff);
-					json_find_string(jrecv, "message", &message);
-					sfree((void *)&recvBuff);
-					json_delete(jrecv);
-				} else {
-					goto close;
-				}
-			}
-			switch(steps) {
-				case WELCOME:
-					socket_write(sockfd, "{\"message\":\"client sender\"}");
-					steps=IDENTIFY;
-				break;
-				case IDENTIFY:
-					if(message && strlen(message) > 0) {
-						if(strcmp(message, "accept client") == 0) {
-							steps=SEND;
-						}
-						if(strcmp(message, "reject client") == 0) {
-							steps=REJECT;
-						}
-					} else {
-						goto close;
-					}
-				case SEND: {
-					JsonNode *json = json_mkobject();
-					json_append_member(json, "message", json_mkstring("send"));
-					json_append_member(json, "code", code);
-					char *output = json_stringify(json, NULL);
-					socket_write(sockfd, output);
-					sfree((void *)&output);
-					json_delete(json);
-					code = NULL;
-					goto close;
-				} break;
-				case REJECT:
-				default:
-					goto close;
-				break;
-			}
+		socket_write(sockfd, "{\"action\":\"identify\"}");
+		if(socket_read(sockfd, &recvBuff) != 0
+		   || strcmp(recvBuff, "{\"status\":\"success\"}") != 0) {
+			goto close;
+		}
+
+		JsonNode *json = json_mkobject();
+		json_append_member(json, "action", json_mkstring("send"));
+		if(uuid != NULL) {
+			json_append_member(code, "uuid", json_mkstring(uuid));
+		}
+		json_append_member(json, "code", code);
+		char *output = json_stringify(json, NULL);
+		socket_write(sockfd, output);
+		FREE(output);
+		json_delete(json);
+
+		if(socket_read(sockfd, &recvBuff) != 0
+		   || strcmp(recvBuff, "{\"status\":\"success\"}") != 0) {
+			logprintf(LOG_ERR, "failed to send codes");
+			goto close;
 		}
 	}
 close:
-	if(code) {
-		json_delete(code);
-	}
-	if(sockfd) {
+	if(sockfd > 0) {
 		socket_close(sockfd);
 	}
-	if(server) {
-		sfree((void *)&server);
+	if(recvBuff != NULL) {
+		FREE(recvBuff);
 	}
-	if(protobuffer) {
-		sfree((void *)&protobuffer);
+	if(server != NULL) {
+		FREE(server);
+	}
+	if(protobuffer != NULL) {
+		FREE(protobuffer);
+	}
+	if(uuid != NULL) {
+		FREE(uuid);
 	}
 	log_shell_disable();
 	protocol_gc();
 	options_delete(options);
 	options_gc();
-	settings_gc();
+	config_gc();
+	threads_gc();
 	dso_gc();
 	log_gc();
-	sfree((void *)&progname);
+	FREE(progname);
+	xfree();
 
 	return EXIT_SUCCESS;
 }
