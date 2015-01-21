@@ -150,7 +150,7 @@ static int receive_repeat = RECEIVE_REPEATS;
 /* Socket identifier to the server if we are running as client */
 static int sockfd = 0;
 /* Thread pointers */
-static pthread_t pth;
+static pthread_t logpth;
 /* While loop conditions */
 static unsigned short main_loop = 1;
 /* Reset repeats after a certain amount of time */
@@ -1602,11 +1602,11 @@ void *clientize(void *param) {
 		}
 	}
 
-	if(recvBuff) {
+	if(recvBuff != NULL) {
 		FREE(recvBuff);
 	}
 close:
-	if(recvBuff) {
+	if(recvBuff != NULL) {
 		FREE(recvBuff);
 	}
 	socket_close(sockfd);
@@ -1695,7 +1695,9 @@ int main_gc(void) {
 		clients = clients->next;
 		FREE(tmp_clients);
 	}
-	FREE(clients);
+	if(clients != NULL) {
+		FREE(clients);
+	}
 
 	if(running == 0) {
 		/* Remove the stale pid file */
@@ -1815,7 +1817,6 @@ void registerVersion(void) {
 
 
 int main(int argc, char **argv) {
-
 	procProtocolInit();
 
 	struct ifaddrs *ifaddr, *ifa;
@@ -1888,8 +1889,8 @@ int main(int argc, char **argv) {
 	firmware.lpf = 0;
 	firmware.hpf = 0;
 
+	threads_create(&logpth, NULL, &logloop, (void *)NULL);
 	log_level_set(LOG_INFO);
-
 	log_file_enable();
 	log_shell_disable();
 
@@ -1983,7 +1984,10 @@ int main(int argc, char **argv) {
 		printf("Usage: %s [options]\n", progname);
 		goto clear;
 	}
-
+	if(nodaemon == 1) {
+		log_level_set(verbosity);
+		log_shell_enable();
+	}
 	char *pilight_raw = strdup("pilight-raw");
 	if(!pilight_raw) {
 		logprintf(LOG_ERR, "out of memory");
@@ -2012,16 +2016,12 @@ int main(int argc, char **argv) {
 		return EXIT_FAILURE;
 	}
 
-	if(nodaemon == 1) {
-		log_level_set(verbosity);
-	}
-
 	protocol_init();
 	config_init();
 	if(config_read() != EXIT_SUCCESS) {
 		goto clear;
 	}
-
+	
 	registerVersion();
 
 #ifdef WEBSERVER
@@ -2194,7 +2194,7 @@ int main(int argc, char **argv) {
 	socket_callback.client_data_callback = &socket_parse_data;
 
 	/* Start threads library that keeps track of all threads used */
-	threads_create(&pth, NULL, &threads_start, (void *)NULL);
+	threads_start();
 
 	/* The daemon running in client mode, register a seperate thread that
 	   communicates with the server */
@@ -2362,7 +2362,6 @@ int main(int argc, char **argv) {
 	}
 	if(configtmp != NULL) {
 		FREE(configtmp);
-		configtmp = NULL;
 	}
 
 	return EXIT_SUCCESS;
@@ -2370,7 +2369,6 @@ int main(int argc, char **argv) {
 clear:
 	if(configtmp != NULL) {
 		FREE(configtmp);
-		configtmp = NULL;
 	}
 
 	if(nodaemon == 0) {

@@ -56,11 +56,11 @@ void xfree(void) {
 			tmp = mallocs;
 			totalsize += mallocs->size;
 			free(mallocs->p);
-			fprintf(stderr, "unfreed pointer in %s at line #%d\n", tmp->file, tmp->line);
+			fprintf(stderr, "WARNING: unfreed pointer in %s at line #%d\n", tmp->file, tmp->line);
 			mallocs = mallocs->next;
 			free(tmp);
 		}
-		printf("DEBUG: leaked %lu bytes from pilight libraries and programs.\n", totalsize);
+		fprintf(stderr, "ERROR: leaked %lu bytes from pilight libraries and programs.\n", totalsize);
 		free(mallocs);
 	}
 }
@@ -137,24 +137,28 @@ void *_calloc(unsigned long a, unsigned long b, const char *file, int line) {
 	}
 }
 
-void _free(void *a) {
-	if(memdbg == 1 && a != NULL) {
-		struct mallocs_t *currP, *prevP;
+void _free(void *a, const char *file, int line) {
+	if(memdbg == 1) {
+		if(a == NULL) {
+			fprintf(stderr, "WARNING: calling free on already freed pointer in %s at line #%d\n", file, line);
+		} else {
+			struct mallocs_t *currP, *prevP;
 
-		prevP = NULL;
+			prevP = NULL;
 
-		for(currP = mallocs; currP != NULL; prevP = currP, currP = currP->next) {
-			if(currP->p == a) {
-				if(prevP == NULL) {
-					mallocs = currP->next;
-				} else {
-					prevP->next = currP->next;
+			for(currP = mallocs; currP != NULL; prevP = currP, currP = currP->next) {
+				if(currP->p == a) {
+					if(prevP == NULL) {
+						mallocs = currP->next;
+					} else {
+						prevP->next = currP->next;
+					}
+
+					free(currP->p);
+					free(currP);
+
+					break;
 				}
-
-				free(currP->p);
-				free(currP);
-
-				break;
 			}
 		}
 	} else {

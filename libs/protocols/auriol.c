@@ -125,7 +125,9 @@ static void auriolGC(void) {
 		auriol_settings = auriol_settings->next;
 		FREE(tmp);
 	}
-	FREE(auriol_settings);
+	if(auriol_settings != NULL) {
+		FREE(auriol_settings);
+	}
 }
 
 #ifndef MODULE

@@ -45,7 +45,6 @@
 #include "gc.h"
 
 static unsigned short main_loop = 1;
-static pthread_t pth;
 
 int main_gc(void) {
 	main_loop = 0;
@@ -186,7 +185,7 @@ int main(int argc, char **argv) {
 	FREE(configtmp);
 
 	/* Start threads library that keeps track of all threads used */
-	threads_create(&pth, NULL, &threads_start, (void *)NULL);
+	threads_start();
 
 	struct conf_hardware_t *tmp_confhw = conf_hardware;
 	while(tmp_confhw) {

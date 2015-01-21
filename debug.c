@@ -48,7 +48,6 @@
 static int pulselen = 0;
 static unsigned short main_loop = 1;
 static unsigned short inner_loop = 1;
-static pthread_t pth;
 
 static int normalize(int i) {
 	double x;
@@ -233,7 +232,7 @@ void *receive_code(void *param) {
 }
 
 int main(int argc, char **argv) {
-	memtrack();
+	// memtrack();
 
 	gc_attach(main_gc);
 
@@ -328,7 +327,7 @@ int main(int argc, char **argv) {
 	}
 
 	/* Start threads library that keeps track of all threads used */
-	threads_create(&pth, NULL, &threads_start, (void *)NULL);
+	threads_start();
 
 	struct conf_hardware_t *tmp_confhw = conf_hardware;
 	while(tmp_confhw) {

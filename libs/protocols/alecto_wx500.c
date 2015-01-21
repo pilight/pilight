@@ -219,7 +219,9 @@ static void alectoWX500GC(void) {
 		alecto_settings = alecto_settings->next;
 		FREE(tmp);
 	}
-	FREE(alecto_settings);
+	if(alecto_settings != NULL) {
+		FREE(alecto_settings);
+	}
 }
 
 #ifndef MODULE

@@ -39,7 +39,7 @@
 #include "wiringX.h"
 
 int main(int argc, char **argv) {
-	memtrack();
+	// memtrack();
 
 	log_shell_enable();
 	log_file_disable();
@@ -138,7 +138,7 @@ int main(int argc, char **argv) {
 
 close:
 	log_shell_disable();
-	log_level_set(LOG_ERR);	
+	log_level_set(LOG_ERR);
 	config_gc();
 	protocol_gc();
 	event_operator_gc();

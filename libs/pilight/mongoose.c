@@ -4819,7 +4819,9 @@ static void close_local_endpoint(struct connection *conn) {
   // Gobble possible POST data sent to the URI handler
   iobuf_free(&conn->ns_conn->recv_iobuf);
   NS_FREE(conn->request);
-  NS_FREE(conn->path_info);
+	if(conn->path_info != NULL) {
+		NS_FREE(conn->path_info);
+	}
   conn->endpoint.nc = NULL;
   conn->request = conn->path_info = NULL;
 
@@ -4877,7 +4879,9 @@ void mg_destroy_server(struct mg_server **server) {
 
     ns_mgr_free(&s->ns_mgr);
     for (i = 0; i < (int) ARRAY_SIZE(s->config_options); i++) {
-      NS_FREE(s->config_options[i]);  // It is OK to free(NULL)
+			if(s->config_options[i] != NULL) {
+				NS_FREE(s->config_options[i]);  // It is OK to free(NULL)
+			}
     }
     NS_FREE(s);
     *server = NULL;

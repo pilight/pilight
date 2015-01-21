@@ -334,7 +334,9 @@ static void programThreadGC(void) {
 		programs = programs->next;
 		FREE(tmp);
 	}
-	FREE(programs);
+	if(programs != NULL) {
+		FREE(programs);
+	}
 }
 
 static void programPrintHelp(void) {

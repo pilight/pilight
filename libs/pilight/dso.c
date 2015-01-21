@@ -82,7 +82,9 @@ int dso_gc(void) {
 		dso = dso->next;
 		FREE(tmp);
 	}
-	FREE(dso);
+	if(dso != NULL) {
+		FREE(dso);
+	}
 
 	logprintf(LOG_DEBUG, "garbage collected dso library");
 	return 0;

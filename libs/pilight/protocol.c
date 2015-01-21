@@ -309,7 +309,9 @@ void protocol_thread_free(protocol_t *proto) {
 			proto->threads = proto->threads->next;
 			FREE(tmp);
 		}
-		FREE(proto->threads);
+		if(proto->threads != NULL) {
+			FREE(proto->threads);
+		}
 	}
 }
 
@@ -369,7 +371,10 @@ int protocol_device_exists(protocol_t *proto, const char *id) {
 		}
 		temp = temp->next;
 	}
-	FREE(temp);
+	if(temp != NULL) {
+		FREE(temp);
+	}
+
 	return 1;
 }
 
@@ -398,25 +403,35 @@ int protocol_gc(void) {
 			while(ptmp->listener->plslen) {
 				ttmp = ptmp->listener->plslen;
 				ptmp->listener->plslen = ptmp->listener->plslen->next;
-				FREE(ttmp);
+				if(ttmp != NULL) {
+					FREE(ttmp);
+				}
 			}
 		}
-		FREE(ptmp->listener->plslen);
+		if(ptmp->listener->plslen != NULL) {
+			FREE(ptmp->listener->plslen);
+		}
 		if(ptmp->listener->devices) {
 			while(ptmp->listener->devices) {
 				dtmp = ptmp->listener->devices;
 				FREE(dtmp->id);
 				FREE(dtmp->desc);
 				ptmp->listener->devices = ptmp->listener->devices->next;
-				FREE(dtmp);
+				if(dtmp != NULL) {
+					FREE(dtmp);
+				}
 			}
 		}
-		FREE(ptmp->listener->devices);
+		if(ptmp->listener->devices != NULL) {
+			FREE(ptmp->listener->devices);
+		}
 		FREE(ptmp->listener);
 		protocols = protocols->next;
 		FREE(ptmp);
 	}
-	FREE(protocols);
+	if(protocols != NULL) {
+		FREE(protocols);
+	}
 
 	logprintf(LOG_DEBUG, "garbage collected protocol library");
 	return EXIT_SUCCESS;

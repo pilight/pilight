@@ -37,20 +37,20 @@ var language_en = {
 }
 
 var language_de = {
-	off: "Ein",
-	on: "Aus",
-	stopped: "Gestoppt",
-	started: "Gestartet",
-	toggling: "Schalten",
-	up: "Auf",
-	down: "Ab",
-	update: "Aktualisieren",
-	loading: "Laden",
-	available: "Verfügbar",
-	connecting: "Verbinde",
-	connection_lost: "Verbindung verloren, berühre zum neu Laden",
-	connection_failed: "Verbindung fehlgeschlagen, berühre zum neu Laden",
-	unexpected_error: "Es ist ein unbekannter Fehler aufgetreten"
+    off: "Aus",
+    on: "Ein",
+    stopped: "Gestoppt",
+    started: "Gestartet",
+    toggling: "schaltend",
+    up: "+",
+    down: "-",
+    update: "Aktualisieren",
+    loading: "ladend",
+    available: "verfügbar",
+    connecting: "Verbindung wird aufgebaut",
+    connection_lost: "Verbindung verloren! Hier berühren, um die Seite neu zu laden.",
+    connection_failed: "Verbindung fehlgeschlagen! Hier berühren, um die Seite neu zu laden.",
+    unexpected_error: "Es ist ein unerwarteter Fehler aufgetreten."
 }
 
 var language_nl = {

@@ -1,5 +1,5 @@
 /*
-	Copyright (C) 2013 CurlyMo
+	Copyright (C) 2015 CurlyMo & Niek
 
 	This file is part of pilight.
 
@@ -16,24 +16,13 @@
 	along with pilight. If not, see	<http://www.gnu.org/licenses/>
 */
 
-#ifndef _LOG_H_
-#define _LOG_H_
+#ifndef _EVENT_OPERATOR_MODULUS_H_
+#define _EVENT_OPERATOR_MODULUS_H_
 
-#include <syslog.h>
+#include "operator.h"
 
-#define LOG_STACK		255
+struct event_operators_t *operator_modulus;
 
-void logprintf(int prio, const char *format_str, ...);
-void logperror(int prio, const char *s);
-void *logloop(void *param);
-void log_file_enable(void);
-void log_file_disable(void);
-void log_shell_enable(void);
-void log_shell_disable(void);
-void log_file_set(char *file);
-void log_level_set(int level);
-int log_level_get(void);
-int log_gc(void);
-void logerror(const char *format_str, ...);
+void operatorModulusInit(void);
 
 #endif

@@ -98,12 +98,12 @@ int webserver_gc(void) {
 		FREE(tmp);
 		webqueue_number--;
 	}
-	
+
 	webserver_loop = 0;
 
 	pthread_mutex_unlock(&webqueue_lock);
 	pthread_cond_signal(&webqueue_signal);
-	
+
 	if(webserver_root_free) {
 		FREE(webserver_root);
 	}

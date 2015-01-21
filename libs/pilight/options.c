@@ -37,7 +37,9 @@ int options_gc(void) {
 
 	FREE(longarg);
 	FREE(shortarg);
-	FREE(gctmp);
+	if(gctmp != NULL) {
+		FREE(gctmp);
+	}
 
 	logprintf(LOG_DEBUG, "garbage collected options library");
 	return EXIT_SUCCESS;
@@ -334,8 +336,7 @@ int options_parse(struct options_t **opt, int argc, char **argv, int error_check
 			/* If the short argument and the long argument are not equal,
 			    then we probably encountered a long argument. */
 			if(longarg[0] == '-' && longarg[1] == '-') {
-				gctmp = REALLOC(gctmp, strlen(&longarg[2])+1);
-				if(!gctmp) {
+				if((gctmp = REALLOC(gctmp, strlen(&longarg[2])+1)) == NULL) {
 					logprintf(LOG_ERR, "out of memory");
 					exit(EXIT_FAILURE);
 				}
@@ -588,7 +589,9 @@ void options_delete(struct options_t *options) {
 		options = options->next;
 		FREE(tmp);
 	}
-	FREE(options);
+	if(options != NULL) {
+		FREE(options);
+	}
 
 	logprintf(LOG_DEBUG, "freed options struct");
 }

@@ -85,11 +85,11 @@ void hardware_register(struct hardware_t **hw) {
 	(*hw)->receive = NULL;
 	(*hw)->send = NULL;
 	(*hw)->settings = NULL;
-	
+
 	pthread_mutexattr_init(&(*hw)->attr);
 	pthread_mutexattr_settype(&(*hw)->attr, PTHREAD_MUTEX_RECURSIVE);
 	pthread_mutex_init(&(*hw)->lock, &(*hw)->attr);
-	pthread_cond_init(&(*hw)->signal, NULL);	
+	pthread_cond_init(&(*hw)->signal, NULL);
 
 	(*hw)->next = hardware;
 	hardware = (*hw);
@@ -125,7 +125,9 @@ static int hardware_gc(void) {
 		hardware = hardware->next;
 		FREE(htmp);
 	}
-	FREE(hardware);
+	if(hardware != NULL) {
+		FREE(hardware);
+	}
 
 	while(conf_hardware) {
 		ctmp = conf_hardware;
@@ -326,7 +328,7 @@ static int hardware_parse(JsonNode *root) {
 			conf_hardware = hnode;
 
 		}
-		jchilds = jchilds->next;		
+		jchilds = jchilds->next;
 	}
 
 	FREE(tmp_confhw);

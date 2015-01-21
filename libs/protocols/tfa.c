@@ -153,7 +153,9 @@ static void tfaGC(void) {
 		tfa_settings = tfa_settings->next;
 		FREE(tmp);
 	}
-	FREE(tfa_settings);
+	if(tfa_settings != NULL) {
+		FREE(tfa_settings);
+	}
 }
 
 #ifndef MODULE

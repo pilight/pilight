@@ -157,7 +157,7 @@ static void *bmp180Parse(void *param) {
 		logprintf(LOG_ERR, "out of memory");
 		exit(EXIT_FAILURE);
 	}
-	
+
 	for (y = 0; y < bmp180data->nrid; y++) {
 		// setup i2c
 		bmp180data->fd[y] = wiringXI2CSetup((int) strtol(bmp180data->id[y], NULL, 16));

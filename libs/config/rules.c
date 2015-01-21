@@ -118,8 +118,8 @@ static int rules_parse(JsonNode *root) {
 			jrules = jrules->next;
 		}
 	} else {
-			logprintf(LOG_ERR, "config rules should be placed in an object");
-			have_error = 1;
+		logprintf(LOG_ERR, "config rules should be placed in an object");
+		have_error = 1;
 	}
 
 	return have_error;
@@ -190,13 +190,20 @@ int rules_gc(void) {
 		if(tmp_rules->arguments) {
 			json_delete(tmp_rules->arguments);
 		}
-		FREE(tmp_rules->values);
-		FREE(tmp_rules->devices);
+		if(tmp_rules->values != NULL) {
+			FREE(tmp_rules->values);
+		}
+		if(tmp_rules->devices != NULL) {
+			FREE(tmp_rules->devices);
+		}
 		rules = rules->next;
 		FREE(tmp_rules);
 	}
-	FREE(rules);
+	if(rules != NULL) {
+		FREE(rules);
+	}
 	rules = NULL;
+
 	logprintf(LOG_DEBUG, "garbage collected config rules library");
 	return 1;
 }
