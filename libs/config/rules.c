@@ -118,8 +118,8 @@ static int rules_parse(JsonNode *root) {
 			jrules = jrules->next;
 		}
 	} else {
-			logprintf(LOG_ERR, "config rules should be placed in an object");
-			have_error = 1;
+		logprintf(LOG_ERR, "config rules should be placed in an object");
+		have_error = 1;
 	}
 
 	return have_error;

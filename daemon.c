@@ -150,7 +150,6 @@ static int receive_repeat = RECEIVE_REPEATS;
 /* Socket identifier to the server if we are running as client */
 static int sockfd = 0;
 /* Thread pointers */
-static pthread_t pth;
 static pthread_t logpth;
 /* While loop conditions */
 static unsigned short main_loop = 1;
@@ -1985,7 +1984,10 @@ int main(int argc, char **argv) {
 		printf("Usage: %s [options]\n", progname);
 		goto clear;
 	}
-
+	if(nodaemon == 1) {
+		log_level_set(verbosity);
+		log_shell_enable();
+	}
 	char *pilight_raw = strdup("pilight-raw");
 	if(!pilight_raw) {
 		logprintf(LOG_ERR, "out of memory");
@@ -2014,16 +2016,12 @@ int main(int argc, char **argv) {
 		return EXIT_FAILURE;
 	}
 
-	if(nodaemon == 1) {
-		log_level_set(verbosity);
-	}
-
 	protocol_init();
 	config_init();
 	if(config_read() != EXIT_SUCCESS) {
 		goto clear;
 	}
-
+	
 	registerVersion();
 
 #ifdef WEBSERVER
@@ -2196,7 +2194,7 @@ int main(int argc, char **argv) {
 	socket_callback.client_data_callback = &socket_parse_data;
 
 	/* Start threads library that keeps track of all threads used */
-	threads_create(&pth, NULL, &threads_start, (void *)NULL);
+	threads_start();
 
 	/* The daemon running in client mode, register a seperate thread that
 	   communicates with the server */

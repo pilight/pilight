@@ -124,7 +124,7 @@ int config_parse(JsonNode *root) {
 		listeners = listeners->next;
 	}
 
-	if(error) {
+	if(error == 1) {
 		config_gc();
 		return EXIT_FAILURE;
 	} else {
