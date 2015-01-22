@@ -335,7 +335,7 @@ int quiggGT1000CreateCode(JsonNode *code) { // function to create the raw code
 			id = 16; /* this does only influence the CreateMessage and not the bin code generation */
 			unit = 5; 
 			quiggGT1000FillSuperBinCode(state, seq); /*create binary supercode string */
-		} else if( quiggGT1000FillBinCode(id, unit, state, seq) != EXIT_SUCCESS) {
+		} else if(quiggGT1000FillBinCode(id, unit, state, seq) != EXIT_SUCCESS) {
 			return EXIT_FAILURE; /* failure because no codeseq was available */
 		}
 			

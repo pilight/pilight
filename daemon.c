@@ -2278,17 +2278,17 @@ int main(int argc, char **argv) {
 			}
 			if(checkcpu == 0) {
 				if(cpu > 90) {
-					logprintf(LOG_ERR, "cpu usage way too high %f%", cpu);
+					logprintf(LOG_ERR, "cpu usage way too high %f%%", cpu);
 				} else {
-					logprintf(LOG_ERR, "cpu usage too high %f%", cpu);
+					logprintf(LOG_ERR, "cpu usage too high %f%%", cpu);
 				}
 				logprintf(LOG_ERR, "checking again in 10 seconds");
 				sleep(10);
 			} else {
 				if(cpu > 90) {
-					logprintf(LOG_ERR, "cpu usage still way too high %f%, exiting", cpu);
+					logprintf(LOG_ERR, "cpu usage still way too high %f%%, exiting", cpu);
 				} else {
-					logprintf(LOG_ERR, "cpu usage still too high %f%, stopping", cpu);
+					logprintf(LOG_ERR, "cpu usage still too high %f%%, stopping", cpu);
 				}
 			}
 			if(checkcpu == 1) {
@@ -2302,18 +2302,18 @@ int main(int argc, char **argv) {
 		} else if(watchdog == 1 && (i > -1) && (ram > 60)) {
 			if(checkram == 0) {
 				if(ram > 90) {
-					logprintf(LOG_ERR, "ram usage way too high %f%", ram);
+					logprintf(LOG_ERR, "ram usage way too high %f%%", ram);
 					exit(EXIT_FAILURE);
 				} else {
-					logprintf(LOG_ERR, "ram usage too high %f%", ram);
+					logprintf(LOG_ERR, "ram usage too high %f%%", ram);
 				}
 				logprintf(LOG_ERR, "checking again in 10 seconds");
 				sleep(10);
 			} else {
 				if(ram > 90) {
-					logprintf(LOG_ERR, "ram usage still way too high %f%, exiting", ram);
+					logprintf(LOG_ERR, "ram usage still way too high %f%%, exiting", ram);
 				} else {
-					logprintf(LOG_ERR, "ram usage still too high %f%, stopping", ram);
+					logprintf(LOG_ERR, "ram usage still too high %f%%, stopping", ram);
 				}
 			}
 			if(checkram == 1) {
@@ -2334,20 +2334,20 @@ int main(int argc, char **argv) {
 				if(ram > 0) {
 					json_append_member(code, "ram", json_mknumber(ram, 16));
 				}
-				logprintf(LOG_DEBUG, "cpu: %f%, ram: %f%", cpu, ram);
+				logprintf(LOG_DEBUG, "cpu: %f%%, ram: %f%%", cpu, ram);
 				json_append_member(procProtocol->message, "values", code);
 				json_append_member(procProtocol->message, "origin", json_mkstring("core"));
 				json_append_member(procProtocol->message, "type", json_mknumber(PROC, 0));
 				struct clients_t *tmp_clients = clients;
 				while(tmp_clients) {
 					if(tmp_clients->cpu > 0 && tmp_clients->ram > 0) {
-						logprintf(LOG_DEBUG, "- client: %s cpu: %f%, ram: %f%",
+						logprintf(LOG_DEBUG, "- client: %s cpu: %f%%, ram: %f%%",
 								  tmp_clients->uuid, tmp_clients->cpu, tmp_clients->ram);
 					}
 					tmp_clients = tmp_clients->next;
 				}
 				if(nodaemon == 3) {
-					logprintf(LOG_DEBUG, "cpu: %.16f%, ram: %.16f%", cpu, ram);
+					logprintf(LOG_DEBUG, "cpu: %.16f%%, ram: %.16f%%", cpu, ram);
 				}
 				pilight.broadcast(procProtocol->id, procProtocol->message);
 				json_delete(procProtocol->message);
