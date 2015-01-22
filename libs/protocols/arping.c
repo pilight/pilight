@@ -121,7 +121,7 @@ static void *arpingParse(void *param) {
 				}
 				if(strcmp(dstip, ip) != 0) {
 					memset(dstip, '\0', 17);
-					logprintf(LOG_NOTICE, "ip address changed from %s to %s\n", dstip, ip);
+					logprintf(LOG_NOTICE, "ip address changed from %s to %s", dstip, ip);
 					strcpy(dstip, ip);
 				}
 				if(state == DISCONNECTED) {

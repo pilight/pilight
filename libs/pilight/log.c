@@ -85,8 +85,7 @@ void logprintf(int prio, const char *format_str, ...) {
 	struct tm *tm = NULL;
 	va_list ap, apcpy;
 	char fmt[64], buf[64], *line = MALLOC(128), nul;
-	int save_errno = -1;
-	size_t bytes = 0;
+	int save_errno = -1, pos = 0, bytes = 0;
 
 	if(line == NULL) {
 		fprintf(stderr, "out of memory");
@@ -105,50 +104,54 @@ void logprintf(int prio, const char *format_str, ...) {
 			strftime(fmt, sizeof(fmt), "%b %d %H:%M:%S", tm);
 			snprintf(buf, sizeof(buf), "%s:%03u", fmt, (unsigned int)tv.tv_usec);
 		}
-		sprintf(line, "[%22.22s] %s: ", buf, progname);
+		pos += sprintf(line, "[%22.22s] %s: ", buf, progname);
 
 		switch(prio) {
 			case LOG_WARNING:
-				strcat(line, "WARNING: ");
-				break;
+				pos += sprintf(&line[pos], "WARNING: ");
+			break;
 			case LOG_ERR:
-				strcat(line, "ERROR: ");
-				break;
+				pos += sprintf(&line[pos], "ERROR: ");
+			break;
 			case LOG_INFO:
-				strcat(line, "INFO: ");
-				break;
+				pos += sprintf(&line[pos], "INFO: ");
+			break;
 			case LOG_NOTICE:
-				strcat(line, "NOTICE: ");
-				break;
+				pos += sprintf(&line[pos], "NOTICE: ");
+			break;
 			case LOG_DEBUG:
-				strcat(line, "DEBUG: ");
-				break;
+				pos += sprintf(&line[pos], "DEBUG: ");
+			break;
 			case LOG_STACK:
-				strcat(line, "STACK: ");
-				break;
+				pos += sprintf(&line[pos], "STACK: ");
+			break;
 			default:
 			break;
 		}
+
 		va_copy(apcpy, ap);
 		va_start(apcpy, format_str);
 		bytes = vsnprintf(&nul, 1, format_str, apcpy);
-		va_end(apcpy);
-
-		if((line = REALLOC(line, bytes+strlen(line)+3)) == NULL) {
-			fprintf(stderr, "out of memory");
-			exit(EXIT_FAILURE);
+		if(bytes == -1) {
+			fprintf(stderr, "ERROR: unproperly formatted logprintf message %s\n", format_str);
+		} else {
+			va_end(apcpy);
+			if((line = REALLOC(line, bytes+pos+3)) == NULL) {
+				fprintf(stderr, "out of memory");
+				exit(EXIT_FAILURE);
+			}
+			va_start(ap, format_str);
+			pos += vsprintf(&line[pos], format_str, ap);
+			va_end(ap);
 		}
-		va_start(ap, format_str);
-		vsprintf(&line[strlen(line)], format_str, ap);
-		va_end(ap);
-
-		strcat(line, "\n");
+		line[pos++]='\n';
+		line[pos++]='\0';
 	}
 
 	if(shelllog == 1) {
 		fprintf(stderr, line);
 	}
-	if(stop == 0) {
+	if(stop == 0 && pos > 0) {
 		if(logqueue_number < 1024) {
 			if(prio < LOG_DEBUG) {
 				struct logqueue_t *node = MALLOC(sizeof(logqueue_t));
@@ -156,11 +159,11 @@ void logprintf(int prio, const char *format_str, ...) {
 					fprintf(stderr, "out of memory");
 					exit(EXIT_FAILURE);
 				}
-				if((node->line = MALLOC(strlen(line)+1)) == NULL) {
+				if((node->line = MALLOC(pos+1)) == NULL) {
 					fprintf(stderr, "out of memory");
 					exit(EXIT_FAILURE);
 				}
-				memset(node->line, '\0', strlen(line)+1);
+				memset(node->line, '\0', pos+1);
 				strcpy(node->line, line);
 
 				if(logqueue_number == 0) {
