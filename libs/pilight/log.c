@@ -177,7 +177,7 @@ void logprintf(int prio, const char *format_str, ...) {
 				logqueue_number++;
 			}
 		} else {
-			logprintf(LOG_ERR, "log queue full");
+			fprintf(stderr, "log queue full\n");
 		}
 	}
 	FREE(line);

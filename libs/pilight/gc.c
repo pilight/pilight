@@ -121,7 +121,9 @@ void gc_clear(void) {
 		gc = gc->next;
 		FREE(tmp);
 	}
-	FREE(gc);
+	if(gc != NULL) {
+		FREE(gc);
+	}
 }
 
 /* Run the GC manually */

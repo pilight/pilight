@@ -147,7 +147,8 @@ void alectoWS1700Init(void) {
 
 	protocol_register(&alecto_ws1700);
 	protocol_set_id(alecto_ws1700, "alecto_ws1700");
-	protocol_device_add(alecto_ws1700, "alecto_ws1700", "Alecto WS1700 Stations");
+	protocol_device_add(alecto_ws1700, "alecto_ws1700", "Alecto WS1700 Weather Stations");
+	protocol_device_add(alecto_ws1700, "iboutique", "iBoutique Weather Stations");
 	protocol_plslen_add(alecto_ws1700, 266);
 	alecto_ws1700->devtype = WEATHER;
 	alecto_ws1700->hwtype = RF433;
@@ -175,7 +176,7 @@ void alectoWS1700Init(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name = "alecto_ws1700";
-	module->version = "1.4";
+	module->version = "1.5";
 	module->reqversion = "5.0";
 	module->reqcommit = "187";
 }

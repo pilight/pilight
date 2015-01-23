@@ -105,7 +105,7 @@ void *_realloc(void *a, unsigned long b, const char *file, int line) {
 				}
 				tmp = tmp->next;
 			}
-			if(tmp != NULL) {
+			if(tmp->p != NULL) {
 				return tmp->p;
 			} else {
 				return _malloc(b, file, line);

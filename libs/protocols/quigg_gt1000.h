@@ -24,6 +24,6 @@
 #define _PROTOCOL_QUIGG_GT1000_H_
 
 struct protocol_t *quigg_gt1000;
-void quiggQT1000Init(void);
+void quiggGT1000Init(void);
 
 #endif

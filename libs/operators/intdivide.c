@@ -29,7 +29,7 @@
 
 static void operatorIntDivideCallback(double a, double b, char **ret) {
 	sprintf(*ret, "%f", (a < 0 ? -floor(-a / b) : floor(a / b)));
-  	}
+}
 
 #ifndef MODULE
 __attribute__((weak))
