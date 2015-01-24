@@ -86,7 +86,7 @@ void *receive_code(void *param) {
 }
 
 int main(int argc, char **argv) {
-	memtrack();
+	// memtrack();
 
 	struct options_t *options = NULL;
 	char *args = NULL;
@@ -147,11 +147,12 @@ int main(int argc, char **argv) {
 	}
 	options_delete(options);
 
-	char *pilight_daemon = strdup("pilight-daemon");
+	char *pilight_daemon = MALLOC(strlen("pilight-daemon")+1);
 	if(!pilight_daemon) {
 		logprintf(LOG_ERR, "out of memory");
 		exit(EXIT_FAILURE);
 	}
+	strcpy(pilight_daemon, "pilight-daemon");
 	if((pid = findproc(pilight_daemon, NULL, 1)) > 0) {
 		logprintf(LOG_ERR, "pilight-daemon instance found (%d)", (int)pid);
 		FREE(pilight_daemon);
@@ -159,11 +160,12 @@ int main(int argc, char **argv) {
 	}
 	FREE(pilight_daemon);
 
-	char *pilight_debug = strdup("pilight-debug");
+	char *pilight_debug = MALLOC(strlen("pilight-debug")+1);
 	if(!pilight_debug) {
 		logprintf(LOG_ERR, "out of memory");
 		exit(EXIT_FAILURE);
 	}
+	strcpy(pilight_debug, "pilight-debug");
 	if((pid = findproc(pilight_debug, NULL, 1)) > 0) {
 		logprintf(LOG_ERR, "pilight-debug instance found (%d)", (int)pid);
 		FREE(pilight_debug);

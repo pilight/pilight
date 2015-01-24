@@ -183,7 +183,7 @@ struct threadqueue_t *dht11InitDev(JsonNode *jdevice) {
 	wiringXSetup();
 	char *output = json_stringify(jdevice, NULL);
 	JsonNode *json = json_decode(output);
-	FREE(output);
+	json_free(output);
 
 	struct protocol_threads_t *node = protocol_thread_init(dht11, json);
 	return threads_register("dht11", &dht11Parse, (void *)node, 0);

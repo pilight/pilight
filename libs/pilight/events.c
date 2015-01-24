@@ -210,7 +210,7 @@ static int event_lookup_variable(char *var, struct rules_t *obj, unsigned int nr
 							logprintf(LOG_ERR, "out of memory");
 							exit(EXIT_FAILURE);
 						}
-						if(!(obj->devices[obj->nrdevices] = MALLOC(strlen(device)+1))) {
+						if((obj->devices[obj->nrdevices] = MALLOC(strlen(device)+1)) == NULL) {
 							logprintf(LOG_ERR, "out of memory");
 							exit(EXIT_FAILURE);
 						}
@@ -1112,7 +1112,11 @@ void *events_loop(void *param) {
 			while(tmp_rules) {
 				if(tmp_rules->active == 1) {
 					match = 0;
-					str = strdup(tmp_rules->rule);
+					if((str = MALLOC(strlen(tmp_rules->rule)+1)) == NULL) {
+						logprintf(LOG_ERR, "out of memory");
+						exit(EXIT_FAILURE);
+					}
+					strcpy(str, tmp_rules->rule);
 					/* Only run those events that affect the updates devices */
 					if(jdevices != NULL) {
 						jchilds = json_first_child(jdevices);
@@ -1224,7 +1228,7 @@ void *events_clientize(void *param) {
 		json_append_member(jclient, "media", json_mkstring("all"));
 		char *out = json_stringify(jclient, NULL);
 		socket_write(sockfd, out);
-		FREE(out);
+		json_free(out);
 		json_delete(jclient);
 
 		if(socket_read(sockfd, &recvBuff) != 0

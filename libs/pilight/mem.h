@@ -21,6 +21,10 @@
 
 void xfree(void);
 void memtrack(void);
+
+/*
+  We only use these functions for extensive memory debugging
+
 void *_malloc(unsigned long a, const char *file, int line);
 void *_realloc(void *a, unsigned long i, const char *file, int line);
 void *_calloc(unsigned long a, unsigned long b, const char *file, int line);
@@ -30,5 +34,11 @@ void _free(void *a, const char *file, int line);
 #define REALLOC(a, b) _realloc(a, b, __FILE__, __LINE__)
 #define CALLOC(a, b) _calloc(a, b, __FILE__, __LINE__)
 #define FREE(a) _free((void *)(a), __FILE__, __LINE__),(a)=NULL
+*/
+
+#define MALLOC(a) malloc(a)
+#define REALLOC(a, b) realloc(a, b)
+#define CALLOC(a, b) calloc(a, b)
+#define FREE(a) free((void *)(a)),(a)=NULL
 
 #endif

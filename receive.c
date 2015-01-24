@@ -162,7 +162,7 @@ int main(int argc, char **argv) {
 	json_append_member(jclient, "options", joptions);
 	char *out = json_stringify(jclient, NULL);
 	socket_write(sockfd, out);
-	FREE(out);
+	json_free(out);
 	json_delete(jclient);
 
 	if(socket_read(sockfd, &recvBuff) != 0 ||
@@ -185,7 +185,7 @@ int main(int argc, char **argv) {
 			char *content = json_stringify(jcontent, "\t");
 			printf("%s\n", content);
 			json_delete(jcontent);
-			FREE(content);
+			json_free(content);
 			pch = strtok(NULL, "\n");
 		}
 	}

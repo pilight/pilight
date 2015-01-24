@@ -286,11 +286,11 @@ int protocol_thread_wait(struct protocol_threads_t *node, int interval, int *nrl
 void protocol_thread_stop(protocol_t *proto) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
-	if(proto->threads) {
+	if(proto != NULL && proto->threads != NULL ) {
 		struct protocol_threads_t *tmp = proto->threads;
 		while(tmp) {
 			pthread_mutex_unlock(&tmp->mutex);
-			pthread_cond_broadcast(&tmp->cond);
+			pthread_cond_signal(&tmp->cond);
 			tmp = tmp->next;
 		}
 	}

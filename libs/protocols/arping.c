@@ -170,7 +170,7 @@ static struct threadqueue_t *arpingInitDev(JsonNode *jdevice) {
 	arping_loop = 1;
 	char *output = json_stringify(jdevice, NULL);
 	JsonNode *json = json_decode(output);
-	FREE(output);
+	json_free(output);
 
 	struct protocol_threads_t *node = protocol_thread_init(arping, json);
 	return threads_register("arping", &arpingParse, (void *)node, 0);

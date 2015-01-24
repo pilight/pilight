@@ -99,7 +99,7 @@ static struct threadqueue_t *gpioSwitchInitDev(JsonNode *jdevice) {
 	wiringXSetup();
 	char *output = json_stringify(jdevice, NULL);
 	JsonNode *json = json_decode(output);
-	FREE(output);
+	json_free(output);
 
 	struct protocol_threads_t *node = protocol_thread_init(gpio_switch, json);
 	return threads_register("gpio_switch", &gpioSwitchParse, (void *)node, 0);

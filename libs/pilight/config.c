@@ -99,7 +99,9 @@ int config_gc(void) {
 	if(config != NULL) {
 		FREE(config);
 	}
-	FREE(configfile);
+	if(configfile != NULL) {
+		FREE(configfile);
+	}
 	logprintf(LOG_DEBUG, "garbage collected config library");
 	return 1;
 }
@@ -179,7 +181,7 @@ int config_write(int level, const char *media) {
 	char *content = json_stringify(root, "\t");
  	fwrite(content, sizeof(char), strlen(content), fp);
 	fclose(fp);
-	FREE(content);
+	json_free(content);
 	json_delete(root);
 	return EXIT_SUCCESS;
 }
@@ -202,7 +204,7 @@ int config_read(void) {
 	fstat(fileno(fp), &st);
 	bytes = (size_t)st.st_size;
 
-	if(!(content = calloc(bytes+1, sizeof(char)))) {
+	if(!(content = CALLOC(bytes+1, sizeof(char)))) {
 		logprintf(LOG_ERR, "out of memory");
 		fclose(fp);
 		return EXIT_FAILURE;

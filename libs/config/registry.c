@@ -224,7 +224,7 @@ static int registry_parse(JsonNode *root) {
 	if(root->tag == JSON_OBJECT) {
 		char *content = json_stringify(root, NULL);
 		registry = json_decode(content);
-		FREE(content);
+		json_free(content);
 	} else {
 		logprintf(LOG_ERR, "config registry should be of an object type");
 		return -1;
@@ -236,7 +236,7 @@ static JsonNode *registry_sync(int level, const char *display) {
 	if(registry != NULL) {
 		char *content = json_stringify(registry, NULL);
 		struct JsonNode *jret = json_decode(content);
-		FREE(content);
+		json_free(content);
 		return jret;
 	} else {
 		return NULL;

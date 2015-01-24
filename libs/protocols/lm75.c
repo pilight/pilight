@@ -169,7 +169,7 @@ static struct threadqueue_t *lm75InitDev(JsonNode *jdevice) {
 	wiringXSetup();
 	char *output = json_stringify(jdevice, NULL);
 	JsonNode *json = json_decode(output);
-	FREE(output);
+	json_free(output);
 
 	struct protocol_threads_t *node = protocol_thread_init(lm75, json);
 	return threads_register("lm75", &lm75Parse, (void *)node, 0);

@@ -215,7 +215,7 @@ struct threadqueue_t *sunRiseSetInitDev(JsonNode *jdevice) {
 	sunriseset_loop = 1;
 	char *output = json_stringify(jdevice, NULL);
 	JsonNode *json = json_decode(output);
-	FREE(output);
+	json_free(output);
 
 	struct protocol_threads_t *node = protocol_thread_init(sunriseset, json);
 	return threads_register("sunriseset", &sunRiseSetParse, (void *)node, 0);

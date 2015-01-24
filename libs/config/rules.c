@@ -72,7 +72,7 @@ static int rules_parse(JsonNode *root) {
 						break;
 					}
 					struct rules_t *node = MALLOC(sizeof(struct rules_t));
-					if(!node) {
+					if(node == NULL) {
 						logprintf(LOG_ERR, "out of memory");
 						exit(EXIT_FAILURE);
 					}
@@ -84,19 +84,25 @@ static int rules_parse(JsonNode *root) {
 					node->action = NULL;
 					node->arguments = NULL;
 					if(event_parse_rule(rule, node, 0, 1, 1) == -1) {
+						for(i=0;i<node->nrdevices;i++) {
+							FREE(node->devices[i]);
+						}
+						if(node->devices != NULL) {
+							FREE(node->devices);
+						}
 						FREE(node);
 						have_error = 1;
 						break;
 					}
 					node->status = 0;
 					node->rule = MALLOC(strlen(rule)+1);
-					if(!node->rule) {
+					if(node->rule == NULL) {
 						logprintf(LOG_ERR, "out of memory");
 						exit(EXIT_FAILURE);
 					}
 					strcpy(node->rule, rule);
 					node->name = MALLOC(strlen(jrules->key)+1);
-					if(!node->name) {
+					if(node->name == NULL) {
 						logprintf(LOG_ERR, "out of memory");
 						exit(EXIT_FAILURE);
 					}

@@ -3410,7 +3410,11 @@ static int scan_directory(struct connection *conn, const char *dir,
 
     if (arr_ind < arr_size) {
       (*arr)[arr_ind].conn = conn;
-      (*arr)[arr_ind].file_name = strdup(dp->d_name);
+      if(((*arr)[arr_ind].file_name = MALLOC(strlen(dp->d_name)+1)) == NULL) {
+				fprintf(stderr, "out of memory\n");
+				exit(EXIT_FAILURE);
+			}
+			strcpy((*arr)[arr_ind].file_name, dp->d_name);
       stat(path, &(*arr)[arr_ind].st);
       arr_ind++;
     }
@@ -4818,7 +4822,9 @@ static void close_local_endpoint(struct connection *conn) {
 
   // Gobble possible POST data sent to the URI handler
   iobuf_free(&conn->ns_conn->recv_iobuf);
-  NS_FREE(conn->request);
+	if(conn->request != NULL) {
+		NS_FREE(conn->request);
+	}
 	if(conn->path_info != NULL) {
 		NS_FREE(conn->path_info);
 	}

@@ -175,6 +175,7 @@ int ping(char *addr) {
 
 	ip->ip_dst.s_addr = inet_addr(addr);
 	dst.sin_addr.s_addr = inet_addr(addr);
+	dst.sin_port = htons(0);
 	icmp->icmp_cksum = 0;
 	icmp->icmp_cksum = in_cksum((u_short *)icmp, icmplen);
 	if(sendto(sockfd, buf, ip->ip_len, 0, (struct sockaddr *)&dst, sizeof(dst)) < 0) {

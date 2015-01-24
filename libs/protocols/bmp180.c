@@ -114,7 +114,7 @@ static void *bmp180Parse(void *param) {
 					logprintf(LOG_ERR, "out of memory");
 					exit(EXIT_FAILURE);
 				}
-				bmp180data->id[bmp180data->nrid] = malloc(strlen(stmp) + 1);
+				bmp180data->id[bmp180data->nrid] = MALLOC(strlen(stmp) + 1);
 				if (!bmp180data->id[bmp180data->nrid]) {
 					logprintf(LOG_ERR, "out of memory");
 					exit(EXIT_FAILURE);
@@ -364,7 +364,7 @@ struct threadqueue_t *bmp180InitDev(JsonNode *jdevice) {
 	wiringXSetup();
 	char *output = json_stringify(jdevice, NULL);
 	JsonNode *json = json_decode(output);
-	FREE(output);
+	json_free(output);
 
 	struct protocol_threads_t *node = protocol_thread_init(bmp180, json);
 	return threads_register("bmp180", &bmp180Parse, (void *) node, 0);

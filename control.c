@@ -188,7 +188,7 @@ int main(int argc, char **argv) {
 	json_append_member(json, "action", json_mkstring("request config"));
 	output = json_stringify(json, NULL);
 	socket_write(sockfd, output);
-	FREE(output);
+	json_free(output);
 	json_delete(json);
 
 	if(socket_read(sockfd, &recvBuff) == 0) {
@@ -221,13 +221,23 @@ int main(int argc, char **argv) {
 							if(values != NULL) {
 								char *pch = strtok(values, ",=");
 								while(pch != NULL) {
-									char *name = strdup(pch);
+									char *name = MALLOC(strlen(pch)+1);
+									if(name == NULL) {
+										logprintf(LOG_ERR, "out of memory\n");
+										exit(EXIT_FAILURE);
+									}
+									strcpy(name, pch);
 									pch = strtok(NULL, ",=");
 									if(pch == NULL) {
 										FREE(name);
 										break;
 									} else {
-										char *val = strdup(pch);
+										char *val = MALLOC(strlen(pch)+1);
+										if(name == NULL) {
+											logprintf(LOG_ERR, "out of memory\n");
+											exit(EXIT_FAILURE);
+										}
+										strcpy(val, pch);
 										if(pch != NULL) {
 											if(devices_valid_value(device, name, val) == 0) {
 												if(isNumeric(val) == EXIT_SUCCESS) {
@@ -279,7 +289,7 @@ int main(int argc, char **argv) {
 							json_append_member(joutput, "code", jcode);
 							output = json_stringify(joutput, NULL);
 							socket_write(sockfd, output);
-							FREE(output);
+							json_free(output);
 							json_delete(joutput);
 							if(socket_read(sockfd, &recvBuff) != 0
 							   || strcmp(recvBuff, "{\"status\":\"success\"}") != 0) {

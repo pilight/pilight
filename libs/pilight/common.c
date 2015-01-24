@@ -535,7 +535,7 @@ struct sockaddr *sockaddr_dup(struct sockaddr *sa) {
 #else
 	socklen = sizeof(struct sockaddr_storage);
 #endif
-	if(!(ret = calloc(1, socklen))) {
+	if(!(ret = CALLOC(1, socklen))) {
 		logprintf(LOG_ERR, "out of memory");
 		exit(EXIT_FAILURE);
 	}
@@ -593,7 +593,7 @@ int rep_getifaddrs(struct ifaddrs **ifap) {
 		if(match == 1) {
 			continue;
 		}
-		curif = calloc(1, sizeof(struct ifaddrs));
+		curif = CALLOC(1, sizeof(struct ifaddrs));
 		if(curif == NULL) {
 			freeifaddrs(*ifap);
 			close(fd);

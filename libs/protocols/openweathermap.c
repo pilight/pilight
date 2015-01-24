@@ -294,7 +294,7 @@ static struct threadqueue_t *openweathermapInitDev(JsonNode *jdevice) {
 	openweathermap_loop = 1;
 	char *output = json_stringify(jdevice, NULL);
 	JsonNode *json = json_decode(output);
-	FREE(output);
+	json_free(output);
 
 	struct protocol_threads_t *node = protocol_thread_init(openweathermap, json);
 	return threads_register("openweathermap", &openweathermapParse, (void *)node, 0);

@@ -168,15 +168,23 @@ AVRUPD * dup_AVRUPD(AVRUPD * upd)
   AVRUPD * u;
 
   u = (AVRUPD *)MALLOC(sizeof(AVRUPD));
-  if (u == NULL) {
-	logprintf(LOG_ERR, "out of memory");
-    exit(1);
+  if(u == NULL) {
+		logprintf(LOG_ERR, "out of memory");
+    exit(EXIT_FAILURE);
   }
 
   memcpy(u, upd, sizeof(AVRUPD));
 
-  u->memtype = strdup(upd->memtype);
-  u->filename = strdup(upd->filename);
+  if((u->memtype = MALLOC(strlen(upd->memtype)+1)) == NULL) {
+		logprintf(LOG_ERR, "out of memory");
+    exit(EXIT_FAILURE);
+  }
+	strcpy(u->memtype, upd->memtype);
+  if((u->filename = MALLOC(strlen(upd->filename)+1)) == NULL) {
+		logprintf(LOG_ERR, "out of memory");
+    exit(EXIT_FAILURE);
+	}
+	strcpy(u->filename, upd->filename);
 
   return u;
 }
@@ -187,12 +195,14 @@ AVRUPD * new_AVRUPD(int op, char * memtype, int filefmt, char * filename)
 
   u = (AVRUPD *)MALLOC(sizeof(AVRUPD));
   if (u == NULL) {
-	logprintf(LOG_ERR, "out of memory");
-    exit(1);
-  }
+		logprintf(LOG_ERR, "out of memory");
+    exit(EXIT_FAILURE);
+	}
 
-  u->memtype = strdup(memtype);
-  u->filename = strdup(filename);
+  u->memtype = MALLOC(strlen(memtype)+1);
+	strcpy(u->memtype, memtype);
+  u->filename = MALLOC(strlen(filename)+1);
+	strcpy(u->filename, filename);
   u->op = op;
   u->format = filefmt;
 

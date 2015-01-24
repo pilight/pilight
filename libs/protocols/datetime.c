@@ -248,7 +248,7 @@ static struct threadqueue_t *datetimeInitDev(JsonNode *jdevice) {
 	datetime_loop = 1;
 	char *output = json_stringify(jdevice, NULL);
 	JsonNode *json = json_decode(output);
-	FREE(output);
+	json_free(output);
 
 	struct protocol_threads_t *node = protocol_thread_init(datetime, json);
 	return threads_register("datetime", &datetimeParse, (void *)node, 0);
