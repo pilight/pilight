@@ -1,0 +1,39 @@
+Set TCP session
+I do use netcat:
+
+$nc 127.0.0.1 51222
+
+and then send:
+{"message":"client controller"}
+(response){"message":"accept client"}
+
+{"message":{"id":4,"temperature":1500},"origin":"receiver","protocol":"alecto_wsd17","uuid":"0000-00-00-46-99cc08"}
+{"message":{"id":"B1","unit":34,"state":"on"},"protocol":"clarus_switch","origin":"receiver"}
+
+
+
+Would generate on console:
+socket:{"message":{"id":4,"temperature":1500},"origin":"receiver","protocol":"alecto_wsd17","uuid":"0000-00-00-46-99cc08"}
+console:
+[Jan 25 18:08:07:995150] pilight-daemon: DEBUG: socket recv: {"message":{"id":4,"temperature":1500},"origin":"receiver","protocol":"alecto_wsd17","uuid":"0000-00-00-46-99cc08"}
+[Jan 25 18:08:07:995854] pilight-daemon: DEBUG: socket_parse_data valid json: {"message":{"id":4,"temperature":1500},"origin":"receiver","protocol":"alecto_wsd17","uuid":"0000-00-00-46-99cc08"}
+[Jan 25 18:08:07:996119] pilight-daemon: DEBUG: socket_parse_data ELOR: {"message":{"id":4,"temperature":1500},"origin":"receiver","protocol":"alecto_wsd17","uuid":"0000-00-00-46-99cc08"}
+[Jan 25 18:08:07:996475] pilight-daemon: DEBUG: controll_reciver2 {"message":{"id":4,"temperature":1500},"origin":"receiver","protocol":"alecto_wsd17","uuid":"0000-00-00-46-99cc08"}
+[   Jan 25 18:08:08:509] pilight-daemon: DEBUG: socket write succeeded: {"origin":"config","type":3,"devices":{"living":[ "weather2" ]},"values":{"timestamp":1422205687,"temperature":1500}}
+
+[  Jan 25 18:08:08:7357] pilight-daemon: DEBUG: broadcasted: {"origin":"config","type":3,"devices":{"living":[ "weather2" ]},"values":{"timestamp":1422205687,"temperature":1500}}
+[ Jan 25 18:08:08:10663] pilight-daemon: DEBUG: broadcasted: {"code":{"id":4,"temperature":1500},"origin":"receiver","protocol":"alecto_wsd17","uuid":"0000-00-00-46-99cc08"}
+
+
+
+We could change system state of a device (in this example = switch), without sendig a code (not sure how usefull is that, but as an example - we can ovveride settings "for the future" without affecting current device state => new state should saved on pilight daemon stop)
+
+socket:
+{"message":{"id":"B1","unit":34,"state":"on"},"protocol":"clarus_switch","origin":"receiver"}
+console:
+[Jan 25 18:09:28:193752] pilight-daemon: DEBUG: socket recv: {"message":{"id":"B1","unit":34,"state":"on"},"protocol":"clarus_switch","origin":"receiver"}
+[Jan 25 18:09:28:194357] pilight-daemon: DEBUG: socket_parse_data valid json: {"message":{"id":"B1","unit":34,"state":"on"},"protocol":"clarus_switch","origin":"receiver"}
+[Jan 25 18:09:28:194623] pilight-daemon: DEBUG: socket_parse_data ELOR: {"message":{"id":"B1","unit":34,"state":"on"},"protocol":"clarus_switch","origin":"receiver"}
+[Jan 25 18:09:28:194959] pilight-daemon: DEBUG: controll_reciver2 {"message":{"id":"B1","unit":34,"state":"on"},"protocol":"clarus_switch","origin":"receiver"}
+[Jan 25 18:09:28:196682] pilight-daemon: DEBUG: broadcasted: {"code":{"id":"B1","unit":34,"state":"on"},"protocol":"clarus_switch","origin":"receiver","uuid":"0000-00-00-46-99cc08"}
+
