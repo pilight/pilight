@@ -1077,7 +1077,7 @@ static void client_controller_parse_code(int i, JsonNode *json) {
             }
 
             char * pname;
-            json_find_string(json, "protocol", &pname)
+            json_find_string(json, "protocol", &pname);
 		    pilight.broadcast(pname, json);
         }
     }
@@ -1201,6 +1201,8 @@ static void socket_parse_data(int i, char *buffer) {
 		if(json_validate(buffer) == true) {
 #endif
 			json = json_decode(buffer);
+            char *output = json_stringify(json, NULL);
+            logprintf(LOG_DEBUG, "socket_parse_data valid json: %s", output);
 
 			/* The incognito mode is used by the daemon to emulate certain clients.
 			   Temporary change the client type from the node mode to the emulated
