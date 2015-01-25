@@ -47,24 +47,25 @@
 static unsigned short main_loop = 1;
 
 int main_gc(void) {
-	main_loop = 0;
-
 	log_shell_disable();
+	main_loop = 0;
 
 	datetime_gc();
 	ssdp_gc();
-	protocol_gc();
+	event_operator_gc();
+	event_action_gc();
 	options_gc();
 	socket_gc();
 	dso_gc();
 
 	config_gc();
+	protocol_gc();
 	whitelist_free();
 	threads_gc();
 
 	wiringXGC();
-	log_gc();
 	gc_clear();
+	log_gc();
 
 	FREE(progname);
 	xfree();

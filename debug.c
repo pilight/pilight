@@ -63,7 +63,6 @@ int main_gc(void) {
 
 	datetime_gc();
 	ssdp_gc();
-	protocol_gc();
 	event_operator_gc();
 	event_action_gc();
 	options_gc();
@@ -71,12 +70,13 @@ int main_gc(void) {
 	dso_gc();
 
 	config_gc();
+	protocol_gc();
 	whitelist_free();
 	threads_gc();
 
 	wiringXGC();
-	log_gc();
 	gc_clear();
+	log_gc();
 
 	FREE(progname);
 	xfree();
@@ -352,7 +352,7 @@ int main(int argc, char **argv) {
 	}
 
 clear:
-	if(main_loop) {
+	if(main_loop == 1) {
 		main_gc();
 	}
 	return (EXIT_FAILURE);

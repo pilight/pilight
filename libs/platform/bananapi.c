@@ -353,6 +353,8 @@ static int piBoardRev(void) {
 	char line[120];
 	char *d;
 
+	memset(line, '\0', 120);
+	
 	if((cpuFd = fopen("/proc/cpuinfo", "r")) == NULL) {
 		wiringXLog(LOG_ERR, "bananapi->identify: Unable open /proc/cpuinfo");
 		return -1;
@@ -365,6 +367,10 @@ static int piBoardRev(void) {
 	}
 
 	fclose(cpuFd);
+
+	if(strlen(line) == 0) {
+		return -1;
+	}
 
 	if(strncmp(line, "Hardware", 8) != 0) {
 		wiringXLog(LOG_ERR, "bananapi->identify: /proc/cpuinfo has no hardware line");

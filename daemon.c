@@ -1478,10 +1478,11 @@ void *clientize(void *param) {
 	struct JsonNode *json = NULL;
 	struct JsonNode *joptions = NULL;
 	struct JsonNode *jchilds = NULL;
+	struct JsonNode *tmp = NULL;
   char *recvBuff = NULL, *output = NULL;
 	char *message = NULL, *action = NULL;
 	char *origin = NULL, *protocol = NULL;
-	int client_loop = 0;
+	int client_loop = 0, config_synced = 0;
 
 	while(main_loop) {
 
@@ -1492,6 +1493,7 @@ void *clientize(void *param) {
 		}
 
 		client_loop = 1;
+		config_synced = 0;
 
 		ssdp_list = NULL;
 		if(master_server != NULL && master_port > 0) {
@@ -1556,16 +1558,23 @@ void *clientize(void *param) {
 								jchilds = json_first_child(jconfig);
 								match = 0;
 								while(jchilds) {
-									if(strcmp(jchilds->key, "devices") != 0) {
-										json_remove_from_parent(jchilds);
-										json_delete(jchilds);
+									tmp = jchilds;
+									if(strcmp(tmp->key, "devices") != 0) {
+										json_remove_from_parent(tmp);
 										match = 1;
 									}
 									jchilds = jchilds->next;
+									if(match == 1) {
+										json_delete(tmp);
+									}
 								}
 							}
-							logprintf(LOG_DEBUG, "loaded master config devices");
-							config_parse(jconfig);
+							if(config_parse(jconfig) == EXIT_SUCCESS) {
+								logprintf(LOG_DEBUG, "loaded master configuration");
+								config_synced = 1;
+							} else {
+								logprintf(LOG_ERR, "failed to load master configuration");
+							}
 						}
 					}
 				}
@@ -1573,7 +1582,7 @@ void *clientize(void *param) {
 			}
 		}
 
-		while(client_loop) {
+		while(client_loop && config_synced) {
 			if(main_loop == 0) {
 				client_loop = 0;
 				break;
@@ -1735,17 +1744,16 @@ int main_gc(void) {
 
 	datetime_gc();
 	ssdp_gc();
-	protocol_gc();
 	options_gc();
 	socket_gc();
 	dso_gc();
 
 	config_gc();
+	protocol_gc();	
 	whitelist_free();
 	threads_gc();
 	wiringXGC();
 	log_gc();
-	gc_clear();
 
 	if(configtmp != NULL) {
 		FREE(configtmp);
@@ -2231,7 +2239,7 @@ int main(int argc, char **argv) {
 	while(tmp_confhw) {
 		if(tmp_confhw->hardware->init) {
 			if(tmp_confhw->hardware->init() == EXIT_FAILURE) {
-				logprintf(LOG_ERR, "could not initialize %s hardware mode", tmp_confhw->hardware->id);
+				logprintf(LOG_ERR, "could not initialize %s hardware module", tmp_confhw->hardware->id);
 				goto clear;
 			}
 			tmp_confhw->hardware->wait = 0;

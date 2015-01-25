@@ -49,6 +49,7 @@ static unsigned int logqueue_number = 0;
 static unsigned int loop = 1;
 static unsigned int stop = 0;
 static unsigned int pthinitialized = 0;
+static pthread_t *pthcpy = NULL;
 
 static char *logfile = NULL;
 static char *logpath = NULL;
@@ -61,16 +62,36 @@ int log_gc(void) {
 		fprintf(stderr, "DEBUG: garbage collected log library\n");
 	}
 
-	loop = 0;
 	stop = 1;
+	loop = 0;
 
 	pthread_mutex_unlock(&logqueue_lock);
 	pthread_cond_signal(&logqueue_signal);
 
+	if(pthcpy == NULL) {
+		struct logqueue_t *tmp;
+		while(logqueue) {
+			tmp = logqueue;
+			if(tmp->line != NULL) {
+				FREE(tmp->line);
+			}
+			logqueue = logqueue->next;
+			FREE(tmp);
+			logqueue_number--;
+		}
+		if(logqueue != NULL) {
+			FREE(logqueue);
+		}
+	}
 	while(logqueue_number > 0) {
 		usleep(10);
 	}
 
+	if(pthcpy != NULL) {
+		pthread_join(*pthcpy, NULL);
+		pthcpy = NULL;
+	}
+	
 	if(logfile != NULL) {
 		FREE(logfile);
 	}
@@ -136,7 +157,7 @@ void logprintf(int prio, const char *format_str, ...) {
 			fprintf(stderr, "ERROR: unproperly formatted logprintf message %s\n", format_str);
 		} else {
 			va_end(apcpy);
-			if((line = REALLOC(line, bytes+pos+3)) == NULL) {
+			if((line = REALLOC(line, (size_t)bytes+(size_t)pos+3)) == NULL) {
 				fprintf(stderr, "out of memory");
 				exit(EXIT_FAILURE);
 			}
@@ -151,7 +172,7 @@ void logprintf(int prio, const char *format_str, ...) {
 	if(shelllog == 1) {
 		fprintf(stderr, line);
 	}
-	if(stop == 0 && pos > 0) {
+	if(stop == 0 && pos > 0 && pthcpy != NULL) {
 		if(logqueue_number < 1024) {
 			if(prio < LOG_DEBUG) {
 				struct logqueue_t *node = MALLOC(sizeof(logqueue_t));
@@ -159,12 +180,13 @@ void logprintf(int prio, const char *format_str, ...) {
 					fprintf(stderr, "out of memory");
 					exit(EXIT_FAILURE);
 				}
-				if((node->line = MALLOC(pos+1)) == NULL) {
+				if((node->line = MALLOC((size_t)pos+1)) == NULL) {
 					fprintf(stderr, "out of memory");
 					exit(EXIT_FAILURE);
 				}
-				memset(node->line, '\0', pos+1);
+				memset(node->line, '\0', (size_t)pos+1);
 				strcpy(node->line, line);
+				node->next = NULL;
 
 				if(logqueue_number == 0) {
 					logqueue = node;
@@ -191,6 +213,9 @@ void logprintf(int prio, const char *format_str, ...) {
 void *logloop(void *param) {
 	struct stat sb;
 	FILE *lf = NULL;
+
+	pthread_t p = pthread_self();
+	pthcpy = &p;
 
 	pthread_mutex_lock(&logqueue_lock);
 	while(loop) {
@@ -237,7 +262,7 @@ void *logloop(void *param) {
 			pthread_cond_wait(&logqueue_signal, &logqueue_lock);
 		}
 	}
-	pthread_join(pthread_self(), NULL);
+
 	return (void *)NULL;
 }
 

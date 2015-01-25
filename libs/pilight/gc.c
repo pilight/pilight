@@ -96,6 +96,7 @@ void gc_handler(int sig) {
 		}
 		gc_enable = 0;
 		gc_run();
+		gc_clear();
 	}
 }
 
@@ -131,7 +132,8 @@ void gc_clear(void) {
 int gc_run(void) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
-	unsigned int s = 0;
+	unsigned int s = 1;
+	s = 0;
 	struct collectors_t *tmp = gc;
 
 	while(tmp) {

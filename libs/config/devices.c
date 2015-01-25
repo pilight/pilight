@@ -1551,18 +1551,18 @@ static int devices_parse(JsonNode *root) {
 						have_error = 1;
 					} else {
 						struct protocols_t *pnode = MALLOC(sizeof(struct protocols_t));
-						if(!pnode) {
+						if(pnode == NULL) {
 							logprintf(LOG_ERR, "out of memory");
 							exit(EXIT_FAILURE);
 						}
 						pnode->listener = MALLOC(sizeof(struct protocol_t));
-						if(!pnode->listener) {
+						if(pnode->listener == NULL) {
 							logprintf(LOG_ERR, "out of memory");
 							exit(EXIT_FAILURE);
 						}
 						memcpy(pnode->listener, protocol, sizeof(struct protocol_t));
 						pnode->name = MALLOC(strlen(jprotocol->string_)+1);
-						if(!pnode->name) {
+						if(pnode->name == NULL) {
 							logprintf(LOG_ERR, "out of memory");
 							exit(EXIT_FAILURE);
 						}
@@ -1644,10 +1644,10 @@ int devices_gc(void) {
 		}
 		while(dtmp->protocols) {
 			ptmp = dtmp->protocols;
-			if(ptmp->listener->threadGC) {
+			if(ptmp->listener != NULL && ptmp->listener->threadGC != NULL) {
 				ptmp->listener->threadGC();
 			}
-			if(ptmp->name) {
+			if(ptmp->name != NULL) {
 				FREE(ptmp->name);
 			}
 			FREE(ptmp->listener);

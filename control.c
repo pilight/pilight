@@ -47,11 +47,12 @@ int main(int argc, char **argv) {
 	struct ssdp_list_t *ssdp_list = NULL;
 	struct devices_t *dev = NULL;
 	struct JsonNode *json = NULL;
+	struct JsonNode *tmp = NULL;
 	char *recvBuff = NULL, *message = NULL, *output = NULL;
 	char *device = NULL, *state = NULL, *values = NULL;
 	char *server = NULL;
 	int has_values = 0, sockfd = 0, hasconfarg = 0;
-	unsigned short port = 0;
+	unsigned short port = 0, showhelp = 0, showversion = 0;
 
 	log_file_disable();
 	log_shell_enable();
@@ -86,20 +87,10 @@ int main(int argc, char **argv) {
 			c = 'H';
 		switch(c) {
 			case 'H':
-				printf("\t -H --help\t\t\tdisplay this message\n");
-				printf("\t -V --version\t\t\tdisplay version\n");
-				printf("\t -S --server=x.x.x.x\t\tconnect to server address\n");
-				printf("\t -C --config\t\t\tconfig file\n");
-				printf("\t -P --port=xxxx\t\t\tconnect to server port\n");
-				printf("\t -d --device=device\t\tthe device that you want to control\n");
-				printf("\t -s --state=state\t\tthe new state of the device\n");
-				printf("\t -v --values=values\t\tspecific comma separated values, e.g.:\n");
-				printf("\t\t\t\t\t-v dimlevel=10\n");
-				goto close;
+				showhelp = 1;
 			break;
 			case 'V':
-				printf("%s %s\n", progname, VERSION);
-				goto close;
+				showversion = 1;
 			break;
 			case 'd':
 				if((device = REALLOC(device, strlen(optarg)+1)) == NULL) {
@@ -145,7 +136,22 @@ int main(int argc, char **argv) {
 		}
 	}
 	options_delete(options);
-
+	if(showversion == 1) {
+		printf("%s %s\n", progname, VERSION);
+		goto close;
+	}
+	if(showhelp == 1) {
+		printf("\t -H --help\t\t\tdisplay this message\n");
+		printf("\t -V --version\t\t\tdisplay version\n");
+		printf("\t -S --server=x.x.x.x\t\tconnect to server address\n");
+		printf("\t -C --config\t\t\tconfig file\n");
+		printf("\t -P --port=xxxx\t\t\tconnect to server port\n");
+		printf("\t -d --device=device\t\tthe device that you want to control\n");
+		printf("\t -s --state=state\t\tthe new state of the device\n");
+		printf("\t -v --values=values\t\tspecific comma separated values, e.g.:\n");
+		printf("\t\t\t\t\t-v dimlevel=10\n");
+		goto close;
+	}
 	if(device == NULL || state == NULL ||
 	   strlen(device) == 0 || strlen(state) == 0) {
 		printf("Usage: %s -d device -s state\n", progname);
@@ -205,10 +211,14 @@ int main(int argc, char **argv) {
 							while(jchilds) {
 								if(strcmp(jchilds->key, "devices") != 0) {
 									json_remove_from_parent(jchilds);
-									json_delete(jchilds);
+									tmp = jchilds;
 									match = 1;
 								}
 								jchilds = jchilds->next;
+								if(tmp != NULL) {
+									json_delete(tmp);
+								}
+								tmp = NULL;
 							}
 						}
 						config_parse(jconfig);
@@ -327,8 +337,8 @@ close:
 	}
 	log_shell_disable();
 	socket_gc();
-	protocol_gc();
 	config_gc();
+	protocol_gc();
 	options_gc();
 	event_operator_gc();
 	event_action_gc();
