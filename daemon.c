@@ -1068,7 +1068,24 @@ static void client_controller_parse_code(int i, JsonNode *json) {
 				}
 			}
 		}
-	}
+        else if(strcmp(message, "receiver") == 0) {
+			char *output = json_stringify(json, NULL);
+			logprintf(LOG_DEBUG, "controll_reciver %s", output);
+            JsonNode *jsettings = NULL;
+            if((jsettings = json_find_member(json, "message")) != NULL ) {
+                json_remove_from_parent(jsettings);
+            }
+
+            char * pname;
+            json_find_string(json, "protocol", &pname)
+		    pilight.broadcast(pname, json);
+        }
+    }
+    else if(json_find_string(json, "protocol", &message) == 0) {
+		char *output = json_stringify(json, NULL);
+		logprintf(LOG_DEBUG, "controll_reciver2 %s", output);
+	    pilight.broadcast(message, json);
+    }
 }
 
 #ifdef WEBSERVER
@@ -1268,7 +1285,19 @@ static void socket_parse_data(int i, char *buffer) {
 					incognito_mode = 0;
 				}
 			}
-
+            else if(json_find_string(json, "origin", &message) == 0) {
+				logprintf(LOG_DEBUG, "socket_parse_data ELOR: %s", output);
+                if(strcmp(message, "receiver") == 0) {
+					client_controller_parse_code(-1, json);
+                }
+                else{
+				    logprintf(LOG_DEBUG, "socket_parse_data ELOR: not %s", message);
+                }
+            } 
+			else {
+				logprintf(LOG_DEBUG, "socket_parse_data ELSE: %s", output);
+			}
+            
 			if(handshakes[i] == -1 && socket_get_clients(i) > 0) {
 				socket_write(sd, "{\"message\":\"reject client\"}");
 				socket_close(sd);

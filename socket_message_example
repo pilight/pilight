@@ -1,0 +1,6 @@
+{"message":"client controller"}
+{"message":"accept client"}
+
+{"message":{"id":4,"temperature":1500},"origin":"receiver","protocol":"alecto_wsd17","uuid":"0000-00-00-46-99cc08"}
+{"message":{"id":"B1","unit":34,"state":"on"},"protocol":"clarus_switch","origin":"receiver"}
+
