@@ -20,19 +20,14 @@
 #include <stdlib.h>
 #include <string.h>
 #include <fcntl.h>
-#include <errno.h>
 #include <unistd.h>
-#include <regex.h>
-#include <sys/stat.h>
-#include <sys/ioctl.h>
-#include <time.h>
-#include <libgen.h>
-#include <dirent.h>
-#include <dlfcn.h>
+#include <pthread.h>
 
 #include "mem.h"
 
 static unsigned short memdbg = 0;
+static unsigned long openallocs = 0;
+static unsigned long totalnrallocs = 0;
 
 struct mallocs_t {
 	void *p;
@@ -60,7 +55,9 @@ void xfree(void) {
 			mallocs = mallocs->next;
 			free(tmp);
 		}
-		fprintf(stderr, "ERROR: leaked %lu bytes from pilight libraries and programs.\n", totalsize);
+		fprintf(stderr, "%s: leaked %lu bytes from pilight libraries and programs.\n", 
+										(totalsize > 0) ? "ERROR" : "NOTICE", totalsize);
+		fprintf(stderr, "NOTICE: memory allocations total: %lu, still open: %lu\n", totalnrallocs, openallocs);
 		free(mallocs);
 	}
 }
@@ -74,6 +71,8 @@ void *_malloc(unsigned long a, const char *file, int line) {
 			xfree();
 			exit(EXIT_FAILURE);
 		}
+		openallocs++;
+		totalnrallocs++;
 		node->size = a;
 		node->line = line;
 		strcpy(node->file, file);
@@ -96,17 +95,21 @@ void *_realloc(void *a, unsigned long b, const char *file, int line) {
 					tmp->line = line;
 					strcpy(tmp->file, file);
 					tmp->size = b;
-					if((tmp->p = realloc(tmp->p, b)) == NULL) {
+					if((a = realloc(a, b)) == NULL) {
 						fprintf(stderr, "out of memory\n");
 						xfree();
 						exit(EXIT_FAILURE);
 					}
+					tmp->p = a;
 					break;
 				}
 				tmp = tmp->next;
 			}
-			if(tmp != NULL) {
-				return tmp->p;
+			if(tmp == NULL) {
+				fprintf(stderr, "ERROR: calling realloc on an unknown pointer in %s at line #%d\n", file, line);
+				return _malloc(b, file, line);
+			} else if(tmp != NULL && tmp->p != NULL) {
+				return a;
 			} else {
 				return _malloc(b, file, line);
 			}
@@ -125,6 +128,8 @@ void *_calloc(unsigned long a, unsigned long b, const char *file, int line) {
 			xfree();
 			exit(EXIT_FAILURE);
 		}
+		openallocs++;
+		totalnrallocs++;
 		memset(node->p, '\0', a*b);
 		node->size = a*b;
 		node->line = line;
@@ -143,22 +148,28 @@ void _free(void *a, const char *file, int line) {
 			fprintf(stderr, "WARNING: calling free on already freed pointer in %s at line #%d\n", file, line);
 		} else {
 			struct mallocs_t *currP, *prevP;
+			int match = 0;
 
 			prevP = NULL;
 
 			for(currP = mallocs; currP != NULL; prevP = currP, currP = currP->next) {
 				if(currP->p == a) {
+					match = 1;
 					if(prevP == NULL) {
 						mallocs = currP->next;
 					} else {
 						prevP->next = currP->next;
 					}
-
 					free(currP->p);
 					free(currP);
 
 					break;
 				}
+			}
+			openallocs--;
+			if(match == 0) {
+				fprintf(stderr, "ERROR: trying to free an unknown pointer in %s at line #%d\n", file, line);
+				free(a);
 			}
 		}
 	} else {

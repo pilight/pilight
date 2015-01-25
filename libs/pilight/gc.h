@@ -24,8 +24,6 @@ typedef struct collectors_t {
 	struct collectors_t *next;
 } collectors_t;
 
-struct collectors_t *gc;
-
 void gc_handler(int signal);
 void gc_attach(int (*fp)(void));
 void gc_catch(void);

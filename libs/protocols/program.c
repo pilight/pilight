@@ -196,7 +196,7 @@ struct threadqueue_t *programInitDev(JsonNode *jdevice) {
 	program_loop = 1;
 	char *output = json_stringify(jdevice, NULL);
 	JsonNode *json = json_decode(output);
-	FREE(output);
+	json_free(output);
 
 	struct protocol_threads_t *node = protocol_thread_init(program, json);
 	return threads_register("program", &programParse, (void *)node, 0);

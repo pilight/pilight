@@ -350,7 +350,7 @@ static struct threadqueue_t *wundergroundInitDev(JsonNode *jdevice) {
 	wunderground_loop = 1;
 	char *output = json_stringify(jdevice, NULL);
 	JsonNode *json = json_decode(output);
-	FREE(output);
+	json_free(output);
 
 	struct protocol_threads_t *node = protocol_thread_init(wunderground, json);
 	return threads_register("wunderground", &wundergroundParse, (void *)node, 0);

@@ -186,7 +186,7 @@ static struct threadqueue_t *dht22InitDev(JsonNode *jdevice) {
 	wiringXSetup();
 	char *output = json_stringify(jdevice, NULL);
 	JsonNode *json = json_decode(output);
-	FREE(output);
+	json_free(output);
 
 	struct protocol_threads_t *node = protocol_thread_init(dht22, json);
 	return threads_register("dht22", &dht22Parse, (void *)node, 0);

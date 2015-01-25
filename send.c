@@ -368,7 +368,7 @@ int main(int argc, char **argv) {
 		json_append_member(json, "code", code);
 		char *output = json_stringify(json, NULL);
 		socket_write(sockfd, output);
-		FREE(output);
+		json_free(output);
 		json_delete(json);
 
 		if(socket_read(sockfd, &recvBuff) != 0

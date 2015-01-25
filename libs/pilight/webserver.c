@@ -372,7 +372,7 @@ static int webserver_request_handler(struct mg_connection *conn) {
 					char *output = json_stringify(jsend, NULL);
 					mg_printf_data(conn, output);
 					json_delete(jsend);
-					FREE(output);
+					json_free(output);
 				}
 				jsend = NULL;
 				return MG_TRUE;
@@ -387,7 +387,7 @@ static int webserver_request_handler(struct mg_connection *conn) {
 					char *output = json_stringify(jsend, NULL);
 					mg_printf_data(conn, output);
 					json_delete(jsend);
-					FREE(output);
+					json_free(output);
 				}
 				jsend = NULL;
 				return MG_TRUE;
@@ -766,14 +766,14 @@ static int webserver_request_handler(struct mg_connection *conn) {
 					char *output = json_stringify(jsend, NULL);
 					size_t output_len = strlen(output);
 					mg_websocket_write(conn, 1, output, output_len);
-					FREE(output);
+					json_free(output);
 					json_delete(jsend);
 				} else if(strcmp(action, "request values") == 0) {
 					JsonNode *jsend = devices_values("web");
 					char *output = json_stringify(jsend, NULL);
 					size_t output_len = strlen(output);
 					mg_websocket_write(conn, 1, output, output_len);
-					FREE(output);
+					json_free(output);
 					json_delete(jsend);
 				} else if(strcmp(action, "control") == 0 || strcmp(action, "registry") == 0) {
 					/* Write all codes coming from the webserver to the daemon */
@@ -923,7 +923,7 @@ void *webserver_clientize(void *param) {
 		json_append_member(jclient, "media", json_mkstring("web"));
 		char *out = json_stringify(jclient, NULL);
 		socket_write(sockfd, out);
-		FREE(out);
+		json_free(out);
 		json_delete(jclient);
 
 		if(socket_read(sockfd, &recvBuff) != 0

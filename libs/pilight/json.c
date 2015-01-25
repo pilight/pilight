@@ -1432,3 +1432,7 @@ int json_find_string(JsonNode *object, const char *name, char **out) {
 	}
 	return 1;
 }
+
+void json_free(void *a) {
+	free(a);
+}

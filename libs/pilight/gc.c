@@ -36,6 +36,7 @@
 #include "config.h"
 
 static unsigned short gc_enable = 1;
+static struct collectors_t *gc = NULL;
 
 void gc_handler(int sig) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
@@ -103,7 +104,7 @@ void gc_attach(int (*fp)(void)) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
 	struct collectors_t *gnode = MALLOC(sizeof(struct collectors_t));
-	if(!gnode) {
+	if(gnode == NULL) {
 		fprintf(stderr, "out of memory\n");
 		exit(EXIT_FAILURE);
 	}
@@ -115,13 +116,15 @@ void gc_attach(int (*fp)(void)) {
 void gc_clear(void) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
-	struct collectors_t *tmp = gc;
+	struct collectors_t *tmp;
 	while(gc) {
 		tmp = gc;
 		gc = gc->next;
 		FREE(tmp);
 	}
-	FREE(gc);
+	if(gc != NULL) {
+		FREE(gc);
+	}
 }
 
 /* Run the GC manually */
@@ -137,15 +140,7 @@ int gc_run(void) {
 		}
 		tmp = tmp->next;
 	}
-
-	while(gc) {
-		tmp = gc;
-		gc = gc->next;
-		FREE(tmp);
-	}
-	if(gc != NULL) {
-		FREE(gc);
-	}
+	tmp = NULL;
 
 	if(s == 1) {
 		return EXIT_FAILURE;

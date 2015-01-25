@@ -79,6 +79,7 @@ void hardware_register(struct hardware_t **hw) {
 	(*hw)->options = NULL;
 	(*hw)->wait = 0;
 	(*hw)->stop = 0;
+	(*hw)->running = 0;
 
 	(*hw)->init = NULL;
 	(*hw)->deinit = NULL;
@@ -331,7 +332,9 @@ static int hardware_parse(JsonNode *root) {
 		jchilds = jchilds->next;
 	}
 
-	FREE(tmp_confhw);
+	if(tmp_confhw != NULL) {
+		FREE(tmp_confhw);
+	}
 clear:
 	return have_error;
 }

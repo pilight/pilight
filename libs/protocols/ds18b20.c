@@ -196,7 +196,7 @@ static struct threadqueue_t *ds18b20InitDev(JsonNode *jdevice) {
 	ds18b20_loop = 1;
 	char *output = json_stringify(jdevice, NULL);
 	JsonNode *json = json_decode(output);
-	FREE(output);
+	json_free(output);
 
 	struct protocol_threads_t *node = protocol_thread_init(ds18b20, json);
 	return threads_register("ds18b20", &ds18b20Parse, (void *)node, 0);

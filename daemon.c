@@ -165,6 +165,8 @@ static int maxrawlen = 0;
 static char *master_server = NULL;
 static unsigned short master_port = 0;
 
+static char *configtmp = NULL;
+
 #ifdef WEBSERVER
 /* Do we enable the webserver */
 static int webserver_enable = WEBSERVER_ENABLE;
@@ -217,7 +219,7 @@ static void broadcast_queue(char *protoname, JsonNode *json) {
 			if(json_find_member(bnode->jmessage, "uuid") == NULL && strlen(pilight_uuid) > 0) {
 				json_append_member(bnode->jmessage, "uuid", json_mkstring(pilight_uuid));
 			}
-			FREE(jstr);
+			json_free(jstr);
 
 			bnode->protoname = MALLOC(strlen(protoname)+1);
 			if(!bnode->protoname) {
@@ -281,12 +283,12 @@ void *broadcast(void *param) {
 						socket_write(sockfd, ret);
 						broadcasted = 1;
 						json_delete(jupdate);
-						FREE(ret);
+						json_free(ret);
 					}
 					if(broadcasted == 1) {
 						logprintf(LOG_DEBUG, "broadcasted: %s", conf);
 					}
-					FREE(conf);
+					json_free(conf);
 				} else {
 					/* Update the config */
 					if(devices_update(bcqueue->protoname, bcqueue->jmessage, &jret) == 0) {
@@ -336,14 +338,14 @@ void *broadcast(void *param) {
 									char *conf = json_stringify(jtmp, NULL);
 									socket_write(tmp_clients->id, conf);
 									logprintf(LOG_DEBUG, "broadcasted: %s", conf);
-									FREE(conf);
+									json_free(conf);
 								}
 								json_delete(jtmp);
 							}
 							tmp_clients = tmp_clients->next;
 						}
 
-						FREE(tmp);
+						json_free(tmp);
 						json_delete(jret);
 					}
 
@@ -410,13 +412,13 @@ void *broadcast(void *param) {
 						socket_write(sockfd, ret);
 						broadcasted = 1;
 						json_delete(jupdate);
-						FREE(ret);
+						json_free(ret);
 					}
 					if((broadcasted == 1 || nodaemon > 0) && (strcmp(jbroadcast, "{}") != 0 && nrchilds > 1)) {
 						logprintf(LOG_DEBUG, "broadcasted: %s", jbroadcast);
 					}
-					FREE(jinternal);
-					FREE(jbroadcast);
+					json_free(jinternal);
+					json_free(jbroadcast);
 				}
 			}
 			struct bcqueue_t *tmp = bcqueue;
@@ -491,13 +493,13 @@ static void receiver_create_message(protocol_t *protocol) {
 			char *output = json_stringify(jmessage, NULL);
 			JsonNode *json = json_decode(output);
 			broadcast_queue(protocol->id, json);
-			FREE(output);
+			json_free(output);
 			json_delete(json);
 			json = NULL;
 			json_delete(jmessage);
 		}
 		protocol->message = NULL;
-		FREE(valid);
+		json_free(valid);
 	}
 }
 
@@ -831,7 +833,7 @@ static int send_queue(JsonNode *json) {
 								}
 								strcpy(mnode->message, jsonstr);
 							}
-							FREE(jsonstr);
+							json_free(jsonstr);
 							protocol->message = NULL;
 						}
 						for(x=0;x<protocol->rawlen;x++) {
@@ -864,7 +866,7 @@ static int send_queue(JsonNode *json) {
 						char *strsett = json_stringify(jsettings, NULL);
 						mnode->settings = MALLOC(strlen(strsett)+1);
 						strcpy(mnode->settings, strsett);
-						FREE(strsett);
+						json_free(strsett);
 						json_delete(jsettings);
 
 						if(uuid) {
@@ -1154,6 +1156,7 @@ static void socket_parse_data(int i, char *buffer) {
 						client->config = 0;
 						client->receiver = 0;
 						client->forward = 0;
+						client->stats = 0;
 						client->cpu = 0;
 						client->ram = 0;
 						strcpy(client->media, "all");
@@ -1326,7 +1329,7 @@ static void socket_parse_data(int i, char *buffer) {
 									json_append_member(jsend, "key", json_mkstring(key));
 									char *output = json_stringify(jsend, NULL);
 									socket_write(sd, output);
-									FREE(output);
+									json_free(output);
 									json_delete(jsend);
 								} else if(registry_get_string(key, &sval) == 0) {
 									struct JsonNode *jsend = json_mkobject();
@@ -1335,7 +1338,7 @@ static void socket_parse_data(int i, char *buffer) {
 									json_append_member(jsend, "key", json_mkstring(key));
 									char *output = json_stringify(jsend, NULL);
 									socket_write(sd, output);
-									FREE(output);
+									json_free(output);
 									json_delete(jsend);
 								} else {
 									logprintf(LOG_ERR, "registry key '%s' doesn't exists", key);
@@ -1351,7 +1354,7 @@ static void socket_parse_data(int i, char *buffer) {
 					json_append_member(jsend, "config", jconfig);
 					char *output = json_stringify(jsend, NULL);
 					socket_write(sd, output);
-					FREE(output);
+					json_free(output);
 					json_delete(jsend);
 				} else if(strcmp(action, "request values") == 0) {
 					struct JsonNode *jsend = json_mkobject();
@@ -1360,7 +1363,7 @@ static void socket_parse_data(int i, char *buffer) {
 					json_append_member(jsend, "values", jvalues);
 					char *output = json_stringify(jsend, NULL);
 					socket_write(sd, output);
-					FREE(output);
+					json_free(output);
 					json_delete(jsend);
 				/*
 				 * Parse received codes from nodes
@@ -1519,7 +1522,7 @@ void *clientize(void *param) {
 		json_append_member(json, "options", joptions);
 		output = json_stringify(json, NULL);
 		socket_write(sockfd, output);
-		FREE(output);
+		json_free(output);
 		json_delete(json);
 
 		if(socket_read(sockfd, &recvBuff) != 0
@@ -1532,7 +1535,7 @@ void *clientize(void *param) {
 		json_append_member(json, "action", json_mkstring("request config"));
 		output = json_stringify(json, NULL);
 		socket_write(sockfd, output);
-		FREE(output);
+		json_free(output);
 		json_delete(json);
 
 		if(socket_read(sockfd, &recvBuff) == 0) {
@@ -1742,6 +1745,11 @@ int main_gc(void) {
 	threads_gc();
 	wiringXGC();
 	log_gc();
+	gc_clear();
+
+	if(configtmp != NULL) {
+		FREE(configtmp);
+	}
 
 	FREE(progname);
 	xfree();
@@ -1817,13 +1825,21 @@ void registerVersion(void) {
 
 
 int main(int argc, char **argv) {
-	procProtocolInit();
+	// int u = 0;
+	// for(u=0;u<argc;u++) {
+		// if(strcmp(argv[u], "-D") == 0 || strcmp(argv[u], "--nodaemon") == 0) {
+			// memtrack();
+			// break;
+		// }
+	// }
 
+	procProtocolInit();
+	
 	struct ifaddrs *ifaddr, *ifa;
 	int family = 0;
 	int verbosity = LOG_DEBUG;
 	char *p = NULL;
-	char *configtmp = MALLOC(strlen(CONFIG_FILE)+1);
+	configtmp = MALLOC(strlen(CONFIG_FILE)+1);
 	strcpy(configtmp, CONFIG_FILE);
 
 	progname = MALLOC(16);
@@ -1988,11 +2004,12 @@ int main(int argc, char **argv) {
 		log_level_set(verbosity);
 		log_shell_enable();
 	}
-	char *pilight_raw = strdup("pilight-raw");
+	char *pilight_raw = MALLOC(strlen("pilight-raw")+1);
 	if(!pilight_raw) {
 		logprintf(LOG_ERR, "out of memory");
 		exit(EXIT_FAILURE);
 	}
+	strcpy(pilight_raw, "pilight-raw");
 	if((pid = findproc(pilight_raw, NULL, 1)) > 0) {
 		logprintf(LOG_ERR, "pilight-raw instance found (%d)", (int)pid);
 		FREE(pilight_raw);
@@ -2000,11 +2017,12 @@ int main(int argc, char **argv) {
 	}
 	FREE(pilight_raw);
 
-	char *pilight_debug = strdup("pilight-debug");
+	char *pilight_debug = MALLOC(strlen("pilight-debug")+1);
 	if(!pilight_debug) {
 		logprintf(LOG_ERR, "out of memory");
 		exit(EXIT_FAILURE);
 	}
+	strcpy(pilight_debug, "pilight-debug");
 	if((pid = findproc(pilight_debug, NULL, 1)) > 0) {
 		logprintf(LOG_ERR, "pilight-debug instance found (%d)", (int)pid);
 		FREE(pilight_debug);
@@ -2096,7 +2114,6 @@ int main(int argc, char **argv) {
 
 		if(nodaemon == 1) {
 			log_level_set(verbosity);
-			memtrack();
 		} else {
 			log_level_set(LOG_ERR);
 		}
@@ -2360,24 +2377,15 @@ int main(int argc, char **argv) {
 		}
 		sleep(1);
 	}
-	if(configtmp != NULL) {
-		FREE(configtmp);
-	}
-
 	return EXIT_SUCCESS;
 
 clear:
-	if(configtmp != NULL) {
-		FREE(configtmp);
-	}
-
 	if(nodaemon == 0) {
 		log_level_set(LOG_NOTICE);
 		log_shell_disable();
 	}
 	if(main_loop == 1) {
 		main_gc();
-		gc_clear();
 	}
 	return EXIT_FAILURE;
 }
