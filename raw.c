@@ -31,6 +31,8 @@
 
 #include "pilight.h"
 #include "protocol.h"
+#include "operator.h"
+#include "action.h"
 #include "common.h"
 #include "config.h"
 #include "hardware.h"
@@ -148,31 +150,15 @@ int main(int argc, char **argv) {
 	}
 	options_delete(options);
 
-	char *pilight_daemon = MALLOC(strlen("pilight-daemon")+1);
-	if(!pilight_daemon) {
-		logprintf(LOG_ERR, "out of memory");
-		exit(EXIT_FAILURE);
-	}
-	strcpy(pilight_daemon, "pilight-daemon");
-	if((pid = findproc(pilight_daemon, NULL, 1)) > 0) {
+	if((pid = isrunning("pilight-daemon")) != -1) {
 		logprintf(LOG_ERR, "pilight-daemon instance found (%d)", (int)pid);
-		FREE(pilight_daemon);
-		goto close;
+		goto clear;
 	}
-	FREE(pilight_daemon);
 
-	char *pilight_debug = MALLOC(strlen("pilight-debug")+1);
-	if(!pilight_debug) {
-		logprintf(LOG_ERR, "out of memory");
-		exit(EXIT_FAILURE);
-	}
-	strcpy(pilight_debug, "pilight-debug");
-	if((pid = findproc(pilight_debug, NULL, 1)) > 0) {
+	if((pid = isrunning("pilight-debug")) != -1) {
 		logprintf(LOG_ERR, "pilight-debug instance found (%d)", (int)pid);
-		FREE(pilight_debug);
-		goto close;
+		goto clear;
 	}
-	FREE(pilight_debug);
 
 	if(config_set_file(configtmp) == EXIT_FAILURE) {
 		FREE(configtmp);

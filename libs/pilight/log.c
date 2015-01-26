@@ -49,7 +49,8 @@ static unsigned int logqueue_number = 0;
 static unsigned int loop = 1;
 static unsigned int stop = 0;
 static unsigned int pthinitialized = 0;
-static pthread_t *pthcpy = NULL;
+static unsigned int pthactive = 0;
+static pthread_t pth;
 
 static char *logfile = NULL;
 static char *logpath = NULL;
@@ -68,7 +69,7 @@ int log_gc(void) {
 	pthread_mutex_unlock(&logqueue_lock);
 	pthread_cond_signal(&logqueue_signal);
 
-	if(pthcpy == NULL) {
+	if(pthactive == 1) {
 		struct logqueue_t *tmp;
 		while(logqueue) {
 			tmp = logqueue;
@@ -86,10 +87,11 @@ int log_gc(void) {
 	while(logqueue_number > 0) {
 		usleep(10);
 	}
-
-	if(pthcpy != NULL) {
-		pthread_join(*pthcpy, NULL);
-		pthcpy = NULL;
+	if(pthactive == 1) {
+		while(pthactive > 0) {
+			usleep(10);
+		}
+		pthread_join(pth, NULL);
 	}
 	
 	if(logfile != NULL) {
@@ -172,7 +174,7 @@ void logprintf(int prio, const char *format_str, ...) {
 	if(shelllog == 1) {
 		fprintf(stderr, line);
 	}
-	if(stop == 0 && pos > 0 && pthcpy != NULL) {
+	if(stop == 0 && pos > 0 && pthactive == 1) {
 		if(logqueue_number < 1024) {
 			if(prio < LOG_DEBUG) {
 				struct logqueue_t *node = MALLOC(sizeof(logqueue_t));
@@ -214,9 +216,10 @@ void *logloop(void *param) {
 	struct stat sb;
 	FILE *lf = NULL;
 
-	pthread_t p = pthread_self();
-	pthcpy = &p;
+	pth = pthread_self();
 
+	pthactive = 1;
+	
 	pthread_mutex_lock(&logqueue_lock);
 	while(loop) {
 		if(logqueue_number > 0) {
@@ -263,6 +266,8 @@ void *logloop(void *param) {
 		}
 	}
 
+	pthactive = 0;	
+	pthread_exit(NULL);
 	return (void *)NULL;
 }
 

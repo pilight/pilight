@@ -710,14 +710,15 @@ void *send_code(void *param) {
 					printf("\n");
 				}
 				logprintf(LOG_DEBUG, "**** RAW CODE ****");
+
 				if(hw->send(sendqueue->code, protocol->rawlen, send_repeat*protocol->txrpt) == 0) {
 					logprintf(LOG_DEBUG, "successfully send %s code", protocol->id);
-					if(strcmp(protocol->id, "raw") == 0) {
-						int plslen = protocol->raw[protocol->rawlen-1]/PULSE_DIV;
-						receive_queue(protocol->raw, protocol->rawlen, plslen, -1);
-					}
 				} else {
 					logprintf(LOG_ERR, "failed to send code");
+				}
+				if(strcmp(protocol->id, "raw") == 0) {
+					int plslen = protocol->raw[protocol->rawlen-1]/PULSE_DIV;
+					receive_queue(protocol->raw, protocol->rawlen, plslen, -1);
 				}
 				if(hw->receive) {
 					hw->wait = 0;
@@ -2012,31 +2013,16 @@ int main(int argc, char **argv) {
 		log_level_set(verbosity);
 		log_shell_enable();
 	}
-	char *pilight_raw = MALLOC(strlen("pilight-raw")+1);
-	if(!pilight_raw) {
-		logprintf(LOG_ERR, "out of memory");
-		exit(EXIT_FAILURE);
-	}
-	strcpy(pilight_raw, "pilight-raw");
-	if((pid = findproc(pilight_raw, NULL, 1)) > 0) {
-		logprintf(LOG_ERR, "pilight-raw instance found (%d)", (int)pid);
-		FREE(pilight_raw);
-		goto clear;
-	}
-	FREE(pilight_raw);
 
-	char *pilight_debug = MALLOC(strlen("pilight-debug")+1);
-	if(!pilight_debug) {
-		logprintf(LOG_ERR, "out of memory");
-		exit(EXIT_FAILURE);
-	}
-	strcpy(pilight_debug, "pilight-debug");
-	if((pid = findproc(pilight_debug, NULL, 1)) > 0) {
-		logprintf(LOG_ERR, "pilight-debug instance found (%d)", (int)pid);
-		FREE(pilight_debug);
+	if((pid = isrunning("pilight-raw")) != -1) {
+		logprintf(LOG_ERR, "pilight-raw instance found (%d)", (int)pid);
 		goto clear;
 	}
-	FREE(pilight_debug);
+
+	if((pid = isrunning("pilight-debug")) != -1) {
+		logprintf(LOG_ERR, "pilight-debug instance found (%d)", (int)pid);
+		goto clear;
+	}
 
 	if(config_set_file(configtmp) == EXIT_FAILURE) {
 		return EXIT_FAILURE;

@@ -259,6 +259,7 @@ static int piBoardRev(void) {
 
 	fclose(cpuFd);
 	if(strlen(hardware) == 0 || strlen(revision) == 0) {
+		wiringXLog(LOG_ERR, "raspberrypi->identify: /proc/cpuinfo has no hardware and revision line");
 		return -1;
 	}
 	sscanf(hardware, "Hardware%*[ \t]:%*[ ]%[a-zA-Z0-9 ./()]%*[\n]", name);

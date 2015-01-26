@@ -296,31 +296,15 @@ int main(int argc, char **argv) {
 	}
 	options_delete(options);
 
-	char *pilight_daemon = MALLOC(strlen("pilight-daemon")+1);
-	if(!pilight_daemon) {
-		logprintf(LOG_ERR, "out of memory");
-		exit(EXIT_FAILURE);
-	}
-	strcpy(pilight_daemon, "pilight-daemon");
-	if((pid = findproc(pilight_daemon, NULL, 1)) > 0) {
+	if((pid = isrunning("pilight-daemon")) != -1) {
 		logprintf(LOG_ERR, "pilight-daemon instance found (%d)", (int)pid);
-		FREE(pilight_daemon);
 		goto clear;
 	}
-	FREE(pilight_daemon);
 
-	char *pilight_raw = MALLOC(strlen("pilight-raw")+1);
-	if(!pilight_raw) {
-		logprintf(LOG_ERR, "out of memory");
-		exit(EXIT_FAILURE);
-	}
-	strcpy(pilight_raw, "pilight-raw");
-	if((pid = findproc(pilight_raw, NULL, 1)) > 0) {
+	if((pid = isrunning("pilight-raw")) != -1) {
 		logprintf(LOG_ERR, "pilight-raw instance found (%d)", (int)pid);
-		FREE(pilight_raw);
 		goto clear;
 	}
-	FREE(pilight_raw);
 
 	protocol_init();
 	config_init();
