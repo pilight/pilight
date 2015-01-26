@@ -152,12 +152,12 @@ int main(int argc, char **argv) {
 
 	if((pid = isrunning("pilight-daemon")) != -1) {
 		logprintf(LOG_ERR, "pilight-daemon instance found (%d)", (int)pid);
-		goto clear;
+		goto close;
 	}
 
 	if((pid = isrunning("pilight-debug")) != -1) {
 		logprintf(LOG_ERR, "pilight-debug instance found (%d)", (int)pid);
-		goto clear;
+		goto close;
 	}
 
 	if(config_set_file(configtmp) == EXIT_FAILURE) {
