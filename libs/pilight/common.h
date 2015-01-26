@@ -44,6 +44,7 @@ int whitelist_check(char *ip);
 void whitelist_free(void);
 int file_exists(char *fil);
 int path_exists(char *fil);
+int isrunning(const char *program);
 
 #ifdef __FreeBSD__
 struct sockaddr *sockaddr_dup(struct sockaddr *sa);
