@@ -225,17 +225,8 @@ void *logloop(void *param) {
 		if(logqueue_number > 0) {
 			pthread_mutex_lock(&logqueue_lock);
 			if(logfile != NULL) {
-				if((stat(logfile, &sb)) >= 0) {
-					if((lf = fopen(logfile, "a")) == NULL) {
-						filelog = 0;
-					}
-				} else {
-					if(sb.st_nlink == 0) {
-						if((lf = fopen(logfile, "a")) == NULL) {
-							filelog = 0;
-						}
-					}
-					if(sb.st_size > LOG_MAX_SIZE) {
+				if((stat(logfile, &sb)) == 0) {
+					if(sb.st_nlink != 0 && sb.st_size > LOG_MAX_SIZE) {
 						if(lf != NULL) {
 							fclose(lf);
 						}
@@ -243,12 +234,11 @@ void *logloop(void *param) {
 						strcpy(tmp, logfile);
 						strcat(tmp, ".old");
 						rename(logfile, tmp);
-						if((lf = fopen(logfile, "a")) == NULL) {
-							filelog = 0;
-						}
 					}
 				}
-				if(lf != NULL) {
+				if((lf = fopen(logfile, "a")) == NULL) {
+					filelog = 0;
+				} else {
 					fwrite(logqueue->line, sizeof(char), strlen(logqueue->line), lf);
 					fflush(lf);
 					fclose(lf);
