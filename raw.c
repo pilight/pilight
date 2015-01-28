@@ -31,6 +31,8 @@
 
 #include "pilight.h"
 #include "protocol.h"
+#include "operator.h"
+#include "action.h"
 #include "common.h"
 #include "config.h"
 #include "hardware.h"
@@ -47,24 +49,25 @@
 static unsigned short main_loop = 1;
 
 int main_gc(void) {
-	main_loop = 0;
-
 	log_shell_disable();
+	main_loop = 0;
 
 	datetime_gc();
 	ssdp_gc();
-	protocol_gc();
+	event_operator_gc();
+	event_action_gc();
 	options_gc();
 	socket_gc();
 	dso_gc();
 
 	config_gc();
+	protocol_gc();
 	whitelist_free();
 	threads_gc();
 
 	wiringXGC();
-	log_gc();
 	gc_clear();
+	log_gc();
 
 	FREE(progname);
 	xfree();
@@ -147,31 +150,15 @@ int main(int argc, char **argv) {
 	}
 	options_delete(options);
 
-	char *pilight_daemon = MALLOC(strlen("pilight-daemon")+1);
-	if(!pilight_daemon) {
-		logprintf(LOG_ERR, "out of memory");
-		exit(EXIT_FAILURE);
-	}
-	strcpy(pilight_daemon, "pilight-daemon");
-	if((pid = findproc(pilight_daemon, NULL, 1)) > 0) {
+	if((pid = isrunning("pilight-daemon")) != -1) {
 		logprintf(LOG_ERR, "pilight-daemon instance found (%d)", (int)pid);
-		FREE(pilight_daemon);
 		goto close;
 	}
-	FREE(pilight_daemon);
 
-	char *pilight_debug = MALLOC(strlen("pilight-debug")+1);
-	if(!pilight_debug) {
-		logprintf(LOG_ERR, "out of memory");
-		exit(EXIT_FAILURE);
-	}
-	strcpy(pilight_debug, "pilight-debug");
-	if((pid = findproc(pilight_debug, NULL, 1)) > 0) {
+	if((pid = isrunning("pilight-debug")) != -1) {
 		logprintf(LOG_ERR, "pilight-debug instance found (%d)", (int)pid);
-		FREE(pilight_debug);
 		goto close;
 	}
-	FREE(pilight_debug);
 
 	if(config_set_file(configtmp) == EXIT_FAILURE) {
 		FREE(configtmp);

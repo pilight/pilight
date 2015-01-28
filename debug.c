@@ -63,7 +63,6 @@ int main_gc(void) {
 
 	datetime_gc();
 	ssdp_gc();
-	protocol_gc();
 	event_operator_gc();
 	event_action_gc();
 	options_gc();
@@ -71,12 +70,13 @@ int main_gc(void) {
 	dso_gc();
 
 	config_gc();
+	protocol_gc();
 	whitelist_free();
 	threads_gc();
 
 	wiringXGC();
-	log_gc();
 	gc_clear();
+	log_gc();
 
 	FREE(progname);
 	xfree();
@@ -296,31 +296,15 @@ int main(int argc, char **argv) {
 	}
 	options_delete(options);
 
-	char *pilight_daemon = MALLOC(strlen("pilight-daemon")+1);
-	if(!pilight_daemon) {
-		logprintf(LOG_ERR, "out of memory");
-		exit(EXIT_FAILURE);
-	}
-	strcpy(pilight_daemon, "pilight-daemon");
-	if((pid = findproc(pilight_daemon, NULL, 1)) > 0) {
+	if((pid = isrunning("pilight-daemon")) != -1) {
 		logprintf(LOG_ERR, "pilight-daemon instance found (%d)", (int)pid);
-		FREE(pilight_daemon);
 		goto clear;
 	}
-	FREE(pilight_daemon);
 
-	char *pilight_raw = MALLOC(strlen("pilight-raw")+1);
-	if(!pilight_raw) {
-		logprintf(LOG_ERR, "out of memory");
-		exit(EXIT_FAILURE);
-	}
-	strcpy(pilight_raw, "pilight-raw");
-	if((pid = findproc(pilight_raw, NULL, 1)) > 0) {
+	if((pid = isrunning("pilight-raw")) != -1) {
 		logprintf(LOG_ERR, "pilight-raw instance found (%d)", (int)pid);
-		FREE(pilight_raw);
 		goto clear;
 	}
-	FREE(pilight_raw);
 
 	protocol_init();
 	config_init();
@@ -352,7 +336,7 @@ int main(int argc, char **argv) {
 	}
 
 clear:
-	if(main_loop) {
+	if(main_loop == 1) {
 		main_gc();
 	}
 	return (EXIT_FAILURE);

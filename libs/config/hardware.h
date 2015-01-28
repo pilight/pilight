@@ -51,6 +51,7 @@ typedef struct hardware_t {
 	unsigned short (*deinit)(void);
 	int (*receive)(void);
 	int (*send)(int *code, int rawlen, int repeats);
+	int (*gc)(void);
 	unsigned short (*settings)(JsonNode *json);
 	struct hardware_t *next;
 } hardware_t;

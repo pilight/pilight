@@ -127,8 +127,12 @@ static int identify(void) {
 	FILE *cpuFd;
 	char line[120], revision[120], hardware[120], name[120];
 
+	memset(revision, '\0', 120);
+	memset(hardware, '\0', 120);
+	
 	if((cpuFd = fopen("/proc/cpuinfo", "r")) == NULL) {
 		wiringXLog(LOG_ERR, "hummingboard->identify: Unable open /proc/cpuinfo");
+		return -1;
 	}
 
 	while(fgets(line, 120, cpuFd) != NULL) {
@@ -141,6 +145,11 @@ static int identify(void) {
 	}
 
 	fclose(cpuFd);
+
+	if(strlen(hardware) == 0 || strlen(revision) == 0) {
+		wiringXLog(LOG_ERR, "hummingboard->identify: /proc/cpuinfo has no hardware and revision line");
+		return -1;
+	}
 
 	sscanf(hardware, "Hardware%*[ \t]:%*[ ]%[a-zA-Z0-9 ./()]%*[\n]", name);
 	if(strstr(name, "Freescale i.MX6") != NULL

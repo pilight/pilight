@@ -81,6 +81,22 @@ char *host2ip(char *host) {
 	return ip;
 }
 
+int isrunning(const char *program) {
+	int pid = -1;
+	char *tmp = MALLOC(strlen(program)+1);
+	if(!tmp) {
+		logprintf(LOG_ERR, "out of memory");
+		exit(EXIT_FAILURE);
+	}
+	strcpy(tmp, program);
+	if((pid = findproc(tmp, NULL, 1)) > 0) {
+		FREE(tmp);
+		return pid;
+	}
+	FREE(tmp);
+	return -1;
+}
+
 #ifdef __FreeBSD__
 int findproc(char *cmd, char *args, int loosely) {
 #else

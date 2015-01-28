@@ -353,7 +353,7 @@ int wiringXSetup(void) {
 	if(wiringXLog == NULL) {
 		wiringXLog = _fprintf;
 	}
-#ifndef __FREEBSD__
+#ifdef __arm__
 	if(setup == -2) {
 		hummingboardInit();
 		raspberrypiInit();
@@ -383,5 +383,5 @@ int wiringXSetup(void) {
 		return setup;
 	}
 #endif
-	return 0;
+	return -1;
 }

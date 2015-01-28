@@ -85,6 +85,7 @@ void hardware_register(struct hardware_t **hw) {
 	(*hw)->deinit = NULL;
 	(*hw)->receive = NULL;
 	(*hw)->send = NULL;
+	(*hw)->gc = NULL;
 	(*hw)->settings = NULL;
 
 	pthread_mutexattr_init(&(*hw)->attr);
@@ -121,6 +122,9 @@ static int hardware_gc(void) {
 		if(htmp->deinit != NULL) {
 			htmp->deinit();
 		}
+		if(htmp->gc != NULL) {
+			htmp->gc();
+		}
 		FREE(htmp->id);
 		options_delete(htmp->options);
 		hardware = hardware->next;
@@ -136,7 +140,7 @@ static int hardware_gc(void) {
 		FREE(ctmp);
 	}
 
-	if(hwfile) {
+	if(hwfile != NULL) {
 		FREE(hwfile);
 	}
 

@@ -155,7 +155,6 @@ static void *threads_loop(void *param) {
 			pthread_cond_wait(&threadqueue_signal, &threadqueue_lock);
 		}
 	}
-	pthread_join(pthread_self(), NULL);
 	return (void *)NULL;
 }
 
@@ -271,6 +270,10 @@ int threads_gc(void) {
 	}
 	if(threadqueue != NULL) {
 		FREE(threadqueue);
+	}
+	
+	if(pth) {
+		pthread_join(pth, NULL);
 	}
 
 	logprintf(LOG_DEBUG, "garbage collected threads library");

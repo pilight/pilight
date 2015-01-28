@@ -168,8 +168,7 @@ static int lirc433Receive(void) {
 static unsigned short lirc433Settings(JsonNode *json) {
 	if(strcmp(json->key, "socket") == 0) {
 		if(json->tag == JSON_STRING) {
-			lirc_433_socket = MALLOC(strlen(json->string_)+1);
-			if(!lirc_433_socket) {
+			if((lirc_433_socket = MALLOC(strlen(json->string_)+1)) == NULL) {
 				logprintf(LOG_ERR, "out of memory");
 				exit(EXIT_FAILURE);
 			}
@@ -183,7 +182,7 @@ static unsigned short lirc433Settings(JsonNode *json) {
 
 
 static int lirc433gc(void) {
-	if(lirc_433_socket) {
+	if(lirc_433_socket != NULL) {
 		FREE(lirc_433_socket);
 	}
 
@@ -194,8 +193,6 @@ static int lirc433gc(void) {
 __attribute__((weak))
 #endif
 void lirc433Init(void) {
-
-	gc_attach(lirc433gc);
 
 	hardware_register(&lirc433);
 	hardware_set_id(lirc433, "433lirc");
@@ -208,14 +205,15 @@ void lirc433Init(void) {
 	lirc433->send=&lirc433Send;
 	lirc433->receive=&lirc433Receive;
 	lirc433->settings=&lirc433Settings;
+	lirc433->gc=&lirc433gc;
 }
 
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name = "433lirc";
-	module->version = "1.2";
+	module->version = "1.3";
 	module->reqversion = "5.0";
-	module->reqcommit = "86";
+	module->reqcommit = "238";
 }
 
 void init(void) {

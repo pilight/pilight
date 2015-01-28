@@ -72,9 +72,12 @@ static int gpio433Send(int *code, int rawlen, int repeats) {
 				digitalWrite(gpio_433_out, 1);
 				usleep((__useconds_t)code[x]);
 				digitalWrite(gpio_433_out, 0);
-				usleep((__useconds_t)code[x+1]);
+				if(x+1 < rawlen) {
+					usleep((__useconds_t)code[x+1]);
+				}
 			}
 		}
+		digitalWrite(gpio_433_out, 0);
 	} else {
 		sleep(1);
 	}
@@ -129,7 +132,7 @@ void gpio433Init(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name = "433gpio";
-	module->version = "1.1";
+	module->version = "1.2";
 	module->reqversion = "5.0";
 	module->reqcommit = "86";
 }

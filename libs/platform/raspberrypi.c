@@ -245,6 +245,9 @@ static int piBoardRev(void) {
 		return -1;
 	}
 
+	memset(hardware, '\0', 120);
+	memset(revision, '\0', 120);
+	
 	while(fgets(line, 120, cpuFd) != NULL) {
 		if(strncmp(line, "Revision", 8) == 0) {
 			strcpy(revision, line);
@@ -255,7 +258,10 @@ static int piBoardRev(void) {
 	}
 
 	fclose(cpuFd);
-
+	if(strlen(hardware) == 0 || strlen(revision) == 0) {
+		wiringXLog(LOG_ERR, "raspberrypi->identify: /proc/cpuinfo has no hardware and revision line");
+		return -1;
+	}
 	sscanf(hardware, "Hardware%*[ \t]:%*[ ]%[a-zA-Z0-9 ./()]%*[\n]", name);
 
 	if(strstr(name, "BCM2708") != NULL) {

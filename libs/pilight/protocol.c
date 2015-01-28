@@ -65,7 +65,6 @@ void protocol_remove(char *name) {
 				logprintf(LOG_DEBUG, "ran garbage collector");
 			}
 			FREE(currP->listener->id);
-			FREE(currP->name);
 			options_delete(currP->listener->options);
 			if(currP->listener->plslen) {
 				while(currP->listener->plslen) {
@@ -237,10 +236,6 @@ void protocol_register(protocol_t **proto) {
 		exit(EXIT_FAILURE);
 	}
 	pnode->listener = *proto;
-	if(!(pnode->name = MALLOC(4))) {
-		logprintf(LOG_ERR, "out of memory");
-		exit(EXIT_FAILURE);
-	}
 	pnode->next = protocols;
 	protocols = pnode;
 }
@@ -249,6 +244,11 @@ struct protocol_threads_t *protocol_thread_init(protocol_t *proto, struct JsonNo
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
 	struct protocol_threads_t *node = MALLOC(sizeof(struct protocol_threads_t));
+	if(node == NULL) {
+		logprintf(LOG_ERR, "out of memory");
+		exit(EXIT_FAILURE);
+	}
+
 	node->param = param;
 	pthread_mutexattr_init(&node->attr);
 	pthread_mutexattr_settype(&node->attr, PTHREAD_MUTEX_RECURSIVE);
@@ -256,6 +256,7 @@ struct protocol_threads_t *protocol_thread_init(protocol_t *proto, struct JsonNo
 	pthread_cond_init(&node->cond, NULL);
 	node->next = proto->threads;
 	proto->threads = node;
+
 	return node;
 }
 
@@ -299,11 +300,11 @@ void protocol_thread_stop(protocol_t *proto) {
 void protocol_thread_free(protocol_t *proto) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
-	if(proto->threads) {
-		struct protocol_threads_t *tmp = NULL;
+	if(proto != NULL && proto->threads != NULL) {
+		struct protocol_threads_t *tmp;
 		while(proto->threads) {
 			tmp = proto->threads;
-			if(proto->threads->param) {
+			if(proto->threads->param != NULL) {
 				json_delete(proto->threads->param);
 			}
 			proto->threads = proto->threads->next;
@@ -388,7 +389,7 @@ int protocol_gc(void) {
 	while(protocols) {
 		ptmp = protocols;
 		logprintf(LOG_DEBUG, "protocol %s", ptmp->listener->id);
-		if(ptmp->listener->threadGC) {
+		if(ptmp->listener->threadGC != NULL) {
 			ptmp->listener->threadGC();
 			logprintf(LOG_DEBUG, "stopped protocol threads");
 		}
@@ -397,7 +398,6 @@ int protocol_gc(void) {
 			logprintf(LOG_DEBUG, "ran garbage collector");
 		}
 		FREE(ptmp->listener->id);
-		FREE(ptmp->name);
 		options_delete(ptmp->listener->options);
 		if(ptmp->listener->plslen) {
 			while(ptmp->listener->plslen) {

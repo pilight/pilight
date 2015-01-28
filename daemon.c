@@ -139,6 +139,10 @@ static unsigned short pid_file_free = 0;
 static pid_t pid;
 /* Daemonize or not */
 static int nodaemon = 0;
+/* Run tracktracer */
+static int stacktracer = 0;
+/* Run thread profiler */
+static int threadprofiler = 0;
 /* Are we already running */
 static int running = 1;
 /* Are we currently sending code */
@@ -414,7 +418,7 @@ void *broadcast(void *param) {
 						json_delete(jupdate);
 						json_free(ret);
 					}
-					if((broadcasted == 1 || nodaemon > 0) && (strcmp(jbroadcast, "{}") != 0 && nrchilds > 1)) {
+					if((broadcasted == 1 || nodaemon == 1) && (strcmp(jbroadcast, "{}") != 0 && nrchilds > 1)) {
 						logprintf(LOG_DEBUG, "broadcasted: %s", jbroadcast);
 					}
 					json_free(jinternal);
@@ -710,14 +714,15 @@ void *send_code(void *param) {
 					printf("\n");
 				}
 				logprintf(LOG_DEBUG, "**** RAW CODE ****");
+
 				if(hw->send(sendqueue->code, protocol->rawlen, send_repeat*protocol->txrpt) == 0) {
 					logprintf(LOG_DEBUG, "successfully send %s code", protocol->id);
-					if(strcmp(protocol->id, "raw") == 0) {
-						int plslen = protocol->raw[protocol->rawlen-1]/PULSE_DIV;
-						receive_queue(protocol->raw, protocol->rawlen, plslen, -1);
-					}
 				} else {
 					logprintf(LOG_ERR, "failed to send code");
+				}
+				if(strcmp(protocol->id, "raw") == 0) {
+					int plslen = protocol->raw[protocol->rawlen-1]/PULSE_DIV;
+					receive_queue(protocol->raw, protocol->rawlen, plslen, -1);
 				}
 				if(hw->receive) {
 					hw->wait = 0;
@@ -1478,10 +1483,11 @@ void *clientize(void *param) {
 	struct JsonNode *json = NULL;
 	struct JsonNode *joptions = NULL;
 	struct JsonNode *jchilds = NULL;
+	struct JsonNode *tmp = NULL;
   char *recvBuff = NULL, *output = NULL;
 	char *message = NULL, *action = NULL;
 	char *origin = NULL, *protocol = NULL;
-	int client_loop = 0;
+	int client_loop = 0, config_synced = 0;
 
 	while(main_loop) {
 
@@ -1492,6 +1498,7 @@ void *clientize(void *param) {
 		}
 
 		client_loop = 1;
+		config_synced = 0;
 
 		ssdp_list = NULL;
 		if(master_server != NULL && master_port > 0) {
@@ -1556,16 +1563,23 @@ void *clientize(void *param) {
 								jchilds = json_first_child(jconfig);
 								match = 0;
 								while(jchilds) {
-									if(strcmp(jchilds->key, "devices") != 0) {
-										json_remove_from_parent(jchilds);
-										json_delete(jchilds);
+									tmp = jchilds;
+									if(strcmp(tmp->key, "devices") != 0) {
+										json_remove_from_parent(tmp);
 										match = 1;
 									}
 									jchilds = jchilds->next;
+									if(match == 1) {
+										json_delete(tmp);
+									}
 								}
 							}
-							logprintf(LOG_DEBUG, "loaded master config devices");
-							config_parse(jconfig);
+							if(config_parse(jconfig) == EXIT_SUCCESS) {
+								logprintf(LOG_DEBUG, "loaded master configuration");
+								config_synced = 1;
+							} else {
+								logprintf(LOG_ERR, "failed to load master configuration");
+							}
 						}
 					}
 				}
@@ -1573,7 +1587,7 @@ void *clientize(void *param) {
 			}
 		}
 
-		while(client_loop) {
+		while(client_loop && config_synced) {
 			if(main_loop == 0) {
 				client_loop = 0;
 				break;
@@ -1735,17 +1749,16 @@ int main_gc(void) {
 
 	datetime_gc();
 	ssdp_gc();
-	protocol_gc();
 	options_gc();
 	socket_gc();
 	dso_gc();
 
 	config_gc();
+	protocol_gc();	
 	whitelist_free();
 	threads_gc();
 	wiringXGC();
 	log_gc();
-	gc_clear();
 
 	if(configtmp != NULL) {
 		FREE(configtmp);
@@ -1925,18 +1938,18 @@ int main(int argc, char **argv) {
 	options_add(&options, 'H', "help", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
 	options_add(&options, 'V', "version", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
 	options_add(&options, 'D', "nodaemon", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
-	options_add(&options, 'X', "verbose-stack", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
-	options_add(&options, 'Z', "threadstats", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
-	options_add(&options, 'Y', "stats", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
 	options_add(&options, 'C', "config", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, NULL);
 	options_add(&options, 'S', "server", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, "^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]).){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$");
 	options_add(&options, 'P', "port", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, "[0-9]{1,4}");
+	options_add(&options, 256, "stacktracer", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
+	options_add(&options, 257, "threadprofiler", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
+	// options_add(&options, 258, "memory-tracer", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
 
 	while(1) {
-		int c;
-		c = options_parse(&options, argc, argv, 1, &args);
-		if(c == -1)
+		int c = options_parse(&options, argc, argv, 1, &args);
+		if(c == -1) {
 			break;
+		}
 		if(c == -2) {
 			show_help = 1;
 			break;
@@ -1947,9 +1960,6 @@ int main(int argc, char **argv) {
 			break;
 			case 'V':
 				show_version = 1;
-			break;
-			case 'X':
-				verbosity = LOG_STACK;
 			break;
 			case 'C':
 				configtmp = REALLOC(configtmp, strlen(args)+1);
@@ -1966,14 +1976,19 @@ int main(int argc, char **argv) {
 				master_port = (unsigned short)atoi(args);
 			break;
 			case 'D':
-				nodaemon=1;
+				nodaemon = 1;
+				verbosity = LOG_DEBUG;
 			break;
-			case 'Z':
-				nodaemon=2;
-			break;
-			case 'Y':
-				nodaemon=3;
-			break;
+			case 257:
+				threadprofiler = 1;
+				verbosity = LOG_ERR;
+				nodaemon = 1;
+			break;	
+			case 256:
+				verbosity = LOG_STACK;
+				stacktracer = 1;
+				nodaemon = 1;
+			break;	
 			default:
 				show_default = 1;
 			break;
@@ -1986,10 +2001,12 @@ int main(int argc, char **argv) {
 		printf("\t -H --help\t\t\tdisplay usage summary\n");
 		printf("\t -V --version\t\t\tdisplay version\n");
 		printf("\t -C --config\t\t\tconfig file\n");
-		printf("\t -D --nodaemon\t\t\tdo not daemonize and\n");
 		printf("\t -S --server=x.x.x.x\t\tconnect to server address\n");
 		printf("\t -P --port=xxxx\t\t\tconnect to server port\n");
+		printf("\t -D --nodaemon\t\t\tdo not daemonize and\n");
 		printf("\t\t\t\t\tshow debug information\n");
+		printf("\t    --stacktracer\t\tshow internal function calls\n");
+		printf("\t    --threadprofiler\t\tshow per thread cpu usage\n");
 		goto clear;
 	}
 	if(show_version) {
@@ -2004,31 +2021,16 @@ int main(int argc, char **argv) {
 		log_level_set(verbosity);
 		log_shell_enable();
 	}
-	char *pilight_raw = MALLOC(strlen("pilight-raw")+1);
-	if(!pilight_raw) {
-		logprintf(LOG_ERR, "out of memory");
-		exit(EXIT_FAILURE);
-	}
-	strcpy(pilight_raw, "pilight-raw");
-	if((pid = findproc(pilight_raw, NULL, 1)) > 0) {
-		logprintf(LOG_ERR, "pilight-raw instance found (%d)", (int)pid);
-		FREE(pilight_raw);
-		goto clear;
-	}
-	FREE(pilight_raw);
 
-	char *pilight_debug = MALLOC(strlen("pilight-debug")+1);
-	if(!pilight_debug) {
-		logprintf(LOG_ERR, "out of memory");
-		exit(EXIT_FAILURE);
-	}
-	strcpy(pilight_debug, "pilight-debug");
-	if((pid = findproc(pilight_debug, NULL, 1)) > 0) {
-		logprintf(LOG_ERR, "pilight-debug instance found (%d)", (int)pid);
-		FREE(pilight_debug);
+	if((pid = isrunning("pilight-raw")) != -1) {
+		logprintf(LOG_ERR, "pilight-raw instance found (%d)", (int)pid);
 		goto clear;
 	}
-	FREE(pilight_debug);
+
+	if((pid = isrunning("pilight-debug")) != -1) {
+		logprintf(LOG_ERR, "pilight-debug instance found (%d)", (int)pid);
+		goto clear;
+	}
 
 	if(config_set_file(configtmp) == EXIT_FAILURE) {
 		return EXIT_FAILURE;
@@ -2108,7 +2110,7 @@ int main(int argc, char **argv) {
 
 	logprintf(LOG_INFO, "version %s, commit %s", VERSION, HASH);
 
-	if(nodaemon > 0 || running == 1) {
+	if(nodaemon == 1 || running == 1) {
 		log_file_disable();
 		log_shell_enable();
 
@@ -2231,7 +2233,7 @@ int main(int argc, char **argv) {
 	while(tmp_confhw) {
 		if(tmp_confhw->hardware->init) {
 			if(tmp_confhw->hardware->init() == EXIT_FAILURE) {
-				logprintf(LOG_ERR, "could not initialize %s hardware mode", tmp_confhw->hardware->id);
+				logprintf(LOG_ERR, "could not initialize %s hardware module", tmp_confhw->hardware->id);
 				goto clear;
 			}
 			tmp_confhw->hardware->wait = 0;
@@ -2284,12 +2286,12 @@ int main(int argc, char **argv) {
 		cpu = getCPUUsage();
 		ram = getRAMUsage();
 
-		if(nodaemon == 2) {
+		if(threadprofiler == 1) {
 			threads_cpu_usage(1);
 		}
 
 		if(watchdog == 1 && (i > -1) && (cpu > 60)) {
-			if(nodaemon <= 1) {
+			if(nodaemon == 1 && threadprofiler == 0) {
 				threads_cpu_usage(x);
 				x ^= 1;
 			}
@@ -2344,7 +2346,7 @@ int main(int argc, char **argv) {
 		} else {
 			checkcpu = 0;
 			checkram = 0;
-			if((i > 0 && i%3 == 0) || (i == -1) || (nodaemon == 3)) {
+			if((i > 0 && i%3 == 0) || (i == -1)) {
 				procProtocol->message = json_mkobject();
 				JsonNode *code = json_mkobject();
 				json_append_member(code, "cpu", json_mknumber(cpu, 16));
@@ -2362,9 +2364,6 @@ int main(int argc, char **argv) {
 								  tmp_clients->uuid, tmp_clients->cpu, tmp_clients->ram);
 					}
 					tmp_clients = tmp_clients->next;
-				}
-				if(nodaemon == 3) {
-					logprintf(LOG_DEBUG, "cpu: %.16f%%, ram: %.16f%%", cpu, ram);
 				}
 				pilight.broadcast(procProtocol->id, procProtocol->message);
 				json_delete(procProtocol->message);

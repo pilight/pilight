@@ -48,7 +48,6 @@ int main_gc(void) {
 		socket_write(sockfd, "HEART");
 		socket_close(sockfd);
 	}
-	gc_clear();
 	FREE(progname);
 	xfree();
 
