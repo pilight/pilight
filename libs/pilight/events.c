@@ -1137,7 +1137,7 @@ void *events_loop(void *param) {
 					if(match == 1 && tmp_rules->status == 0) {
 						if(event_parse_rule(str, tmp_rules, 0, 1, 0) == 0) {
 							if(tmp_rules->status) {
-								logprintf(LOG_DEBUG, "executed rule: %s", tmp_rules->name);
+								logprintf(LOG_INFO, "executed rule: %s", tmp_rules->name);
 							}
 						}
 						tmp_rules->status = 0;

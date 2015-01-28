@@ -139,6 +139,10 @@ static unsigned short pid_file_free = 0;
 static pid_t pid;
 /* Daemonize or not */
 static int nodaemon = 0;
+/* Run tracktracer */
+static int stacktracer = 0;
+/* Run thread profiler */
+static int threadprofiler = 0;
 /* Are we already running */
 static int running = 1;
 /* Are we currently sending code */
@@ -414,7 +418,7 @@ void *broadcast(void *param) {
 						json_delete(jupdate);
 						json_free(ret);
 					}
-					if((broadcasted == 1 || nodaemon > 0) && (strcmp(jbroadcast, "{}") != 0 && nrchilds > 1)) {
+					if((broadcasted == 1 || nodaemon == 1) && (strcmp(jbroadcast, "{}") != 0 && nrchilds > 1)) {
 						logprintf(LOG_DEBUG, "broadcasted: %s", jbroadcast);
 					}
 					json_free(jinternal);
@@ -1934,18 +1938,18 @@ int main(int argc, char **argv) {
 	options_add(&options, 'H', "help", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
 	options_add(&options, 'V', "version", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
 	options_add(&options, 'D', "nodaemon", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
-	options_add(&options, 'X', "verbose-stack", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
-	options_add(&options, 'Z', "threadstats", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
-	options_add(&options, 'Y', "stats", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
 	options_add(&options, 'C', "config", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, NULL);
 	options_add(&options, 'S', "server", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, "^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]).){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$");
 	options_add(&options, 'P', "port", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, "[0-9]{1,4}");
+	options_add(&options, 256, "stacktracer", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
+	options_add(&options, 257, "threadprofiler", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
+	// options_add(&options, 258, "memory-tracer", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
 
 	while(1) {
-		int c;
-		c = options_parse(&options, argc, argv, 1, &args);
-		if(c == -1)
+		int c = options_parse(&options, argc, argv, 1, &args);
+		if(c == -1) {
 			break;
+		}
 		if(c == -2) {
 			show_help = 1;
 			break;
@@ -1956,9 +1960,6 @@ int main(int argc, char **argv) {
 			break;
 			case 'V':
 				show_version = 1;
-			break;
-			case 'X':
-				verbosity = LOG_STACK;
 			break;
 			case 'C':
 				configtmp = REALLOC(configtmp, strlen(args)+1);
@@ -1975,14 +1976,19 @@ int main(int argc, char **argv) {
 				master_port = (unsigned short)atoi(args);
 			break;
 			case 'D':
-				nodaemon=1;
+				nodaemon = 1;
+				verbosity = LOG_DEBUG;
 			break;
-			case 'Z':
-				nodaemon=2;
-			break;
-			case 'Y':
-				nodaemon=3;
-			break;
+			case 257:
+				threadprofiler = 1;
+				verbosity = LOG_ERR;
+				nodaemon = 1;
+			break;	
+			case 256:
+				verbosity = LOG_STACK;
+				stacktracer = 1;
+				nodaemon = 1;
+			break;	
 			default:
 				show_default = 1;
 			break;
@@ -1995,10 +2001,12 @@ int main(int argc, char **argv) {
 		printf("\t -H --help\t\t\tdisplay usage summary\n");
 		printf("\t -V --version\t\t\tdisplay version\n");
 		printf("\t -C --config\t\t\tconfig file\n");
-		printf("\t -D --nodaemon\t\t\tdo not daemonize and\n");
 		printf("\t -S --server=x.x.x.x\t\tconnect to server address\n");
 		printf("\t -P --port=xxxx\t\t\tconnect to server port\n");
+		printf("\t -D --nodaemon\t\t\tdo not daemonize and\n");
 		printf("\t\t\t\t\tshow debug information\n");
+		printf("\t    --stacktracer\t\tshow internal function calls\n");
+		printf("\t    --threadprofiler\t\tshow per thread cpu usage\n");
 		goto clear;
 	}
 	if(show_version) {
@@ -2102,7 +2110,7 @@ int main(int argc, char **argv) {
 
 	logprintf(LOG_INFO, "version %s, commit %s", VERSION, HASH);
 
-	if(nodaemon > 0 || running == 1) {
+	if(nodaemon == 1 || running == 1) {
 		log_file_disable();
 		log_shell_enable();
 
@@ -2278,12 +2286,12 @@ int main(int argc, char **argv) {
 		cpu = getCPUUsage();
 		ram = getRAMUsage();
 
-		if(nodaemon == 2) {
+		if(threadprofiler == 1) {
 			threads_cpu_usage(1);
 		}
 
 		if(watchdog == 1 && (i > -1) && (cpu > 60)) {
-			if(nodaemon <= 1) {
+			if(nodaemon == 1 && threadprofiler == 0) {
 				threads_cpu_usage(x);
 				x ^= 1;
 			}
@@ -2338,7 +2346,7 @@ int main(int argc, char **argv) {
 		} else {
 			checkcpu = 0;
 			checkram = 0;
-			if((i > 0 && i%3 == 0) || (i == -1) || (nodaemon == 3)) {
+			if((i > 0 && i%3 == 0) || (i == -1)) {
 				procProtocol->message = json_mkobject();
 				JsonNode *code = json_mkobject();
 				json_append_member(code, "cpu", json_mknumber(cpu, 16));
@@ -2356,9 +2364,6 @@ int main(int argc, char **argv) {
 								  tmp_clients->uuid, tmp_clients->cpu, tmp_clients->ram);
 					}
 					tmp_clients = tmp_clients->next;
-				}
-				if(nodaemon == 3) {
-					logprintf(LOG_DEBUG, "cpu: %.16f%%, ram: %.16f%%", cpu, ram);
 				}
 				pilight.broadcast(procProtocol->id, procProtocol->message);
 				json_delete(procProtocol->message);
