@@ -246,8 +246,8 @@ void *logloop(void *param) {
 				}
 			}
 			struct logqueue_t *tmp = logqueue;
-			logqueue = logqueue->next;
 			FREE(tmp->line);
+			logqueue = logqueue->next;
 			FREE(tmp);
 			logqueue_number--;
 			pthread_mutex_unlock(&logqueue_lock);
@@ -280,6 +280,7 @@ void log_file_enable(void) {
 		pthread_mutexattr_init(&logqueue_attr);
 		pthread_mutexattr_settype(&logqueue_attr, PTHREAD_MUTEX_RECURSIVE);
 		pthread_mutex_init(&logqueue_lock, &logqueue_attr);
+		pthread_cond_init(&logqueue_signal, NULL);
 		pthinitialized = 1;
 	}
 }
