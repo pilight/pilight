@@ -58,6 +58,32 @@ static int filelog = 1;
 static int shelllog = 0;
 static int loglevel = LOG_DEBUG;
 
+void *logwrite(char *line) {
+	struct stat sb;
+	FILE *lf = NULL;
+	if(logfile != NULL) {
+		if((stat(logfile, &sb)) == 0) {
+			if(sb.st_nlink != 0 && sb.st_size > LOG_MAX_SIZE) {
+				if(lf != NULL) {
+					fclose(lf);
+				}
+				char tmp[strlen(logfile)+5];
+				strcpy(tmp, logfile);
+				strcat(tmp, ".old");
+				rename(logfile, tmp);
+			}
+		}
+		if((lf = fopen(logfile, "a")) == NULL) {
+			filelog = 0;
+		} else {
+			fwrite(line, sizeof(char), strlen(line), lf);
+			fflush(lf);
+			fclose(lf);
+			lf = NULL;
+		}
+	}
+}
+
 int log_gc(void) {
 	if(shelllog == 1) {
 		fprintf(stderr, "DEBUG: garbage collected log library\n");
@@ -69,11 +95,24 @@ int log_gc(void) {
 	pthread_mutex_unlock(&logqueue_lock);
 	pthread_cond_signal(&logqueue_signal);
 
-	if(pthactive == 1) {
+	/* Flush log queue to pilight.err file */
+	if(pthactive == 0) {
 		struct logqueue_t *tmp;
 		while(logqueue) {
 			tmp = logqueue;
 			if(tmp->line != NULL) {
+				if(filelog == 1 && logfile != NULL) {
+					logwrite(tmp->line);
+				} else {
+					/* [ Datetime ] Progname: */
+					/*  24 + 14 + 2 */
+					int pos = 24+strlen(progname)+3;
+					int len = strlen(tmp->line);
+					memmove(&tmp->line[0], &tmp->line[pos], len-pos);
+					/* Remove newline */
+					tmp->line[(len-pos)-1] = '\0';
+					logerror(tmp->line);
+				}
 				FREE(tmp->line);
 			}
 			logqueue = logqueue->next;
@@ -83,17 +122,16 @@ int log_gc(void) {
 		if(logqueue != NULL) {
 			FREE(logqueue);
 		}
-	}
-	while(logqueue_number > 0) {
-		usleep(10);
-	}
-	if(pthactive == 1) {
+	} else {
+		/* Flush log queue by log thread */
+		while(logqueue_number > 0) {
+			usleep(10);
+		}
 		while(pthactive > 0) {
 			usleep(10);
 		}
 		pthread_join(pth, NULL);
 	}
-	
 	if(logfile != NULL) {
 		FREE(logfile);
 	}
@@ -113,9 +151,6 @@ void logprintf(int prio, const char *format_str, ...) {
 	if(line == NULL) {
 		fprintf(stderr, "out of memory");
 		exit(EXIT_FAILURE);
-	}
-	if(stop == 0) {
-		pthread_mutex_lock(&logqueue_lock);
 	}
 	save_errno = errno;
 
@@ -170,13 +205,13 @@ void logprintf(int prio, const char *format_str, ...) {
 		line[pos++]='\n';
 		line[pos++]='\0';
 	}
-
 	if(shelllog == 1) {
-		fprintf(stderr, line);
+		fprintf(stderr, "%s", line);
 	}
-	if(stop == 0 && pos > 0 && pthactive == 1) {
-		if(logqueue_number < 1024) {
-			if(prio < LOG_DEBUG) {
+	if(stop == 0 && pos > 0) {
+		pthread_mutex_lock(&logqueue_lock);	
+		if(prio < LOG_DEBUG) {
+			if(logqueue_number < 1024) {		
 				struct logqueue_t *node = MALLOC(sizeof(logqueue_t));
 				if(node == NULL) {
 					fprintf(stderr, "out of memory");
@@ -199,23 +234,18 @@ void logprintf(int prio, const char *format_str, ...) {
 				}
 
 				logqueue_number++;
+			} else {
+				fprintf(stderr, "log queue full\n");
 			}
-		} else {
-			fprintf(stderr, "log queue full\n");
+			pthread_mutex_unlock(&logqueue_lock);
+			pthread_cond_signal(&logqueue_signal);
 		}
 	}
 	FREE(line);
 	errno = save_errno;
-	if(stop == 0) {
-		pthread_mutex_unlock(&logqueue_lock);
-		pthread_cond_signal(&logqueue_signal);
-	}
 }
 
 void *logloop(void *param) {
-	struct stat sb;
-	FILE *lf = NULL;
-
 	pth = pthread_self();
 
 	pthactive = 1;
@@ -224,27 +254,9 @@ void *logloop(void *param) {
 	while(loop) {
 		if(logqueue_number > 0) {
 			pthread_mutex_lock(&logqueue_lock);
-			if(logfile != NULL) {
-				if((stat(logfile, &sb)) == 0) {
-					if(sb.st_nlink != 0 && sb.st_size > LOG_MAX_SIZE) {
-						if(lf != NULL) {
-							fclose(lf);
-						}
-						char tmp[strlen(logfile)+5];
-						strcpy(tmp, logfile);
-						strcat(tmp, ".old");
-						rename(logfile, tmp);
-					}
-				}
-				if((lf = fopen(logfile, "a")) == NULL) {
-					filelog = 0;
-				} else {
-					fwrite(logqueue->line, sizeof(char), strlen(logqueue->line), lf);
-					fflush(lf);
-					fclose(lf);
-					lf = NULL;
-				}
-			}
+
+			logwrite(logqueue->line);
+
 			struct logqueue_t *tmp = logqueue;
 			FREE(tmp->line);
 			logqueue = logqueue->next;

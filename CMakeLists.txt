@@ -465,9 +465,9 @@ if(${PROTOCOL_POLLIN_SWITCH} MATCHES "OFF")
 	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/pollin.c")
 endif()
 
-if(${PROTOCOL_QUIGG_SWITCH} MATCHES "OFF")
-    list(REMOVE_ITEM protocol_headers "${PROJECT_SOURCE_DIR}/libs/protocols/quigg_switch.h")
-    list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/quigg_switch.c")
+if(${PROTOCOL_QUIGG_GT7000} MATCHES "OFF")
+    list(REMOVE_ITEM protocol_headers "${PROJECT_SOURCE_DIR}/libs/protocols/quigg_gt7000.h")
+    list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/quigg_gt7000.c")
 endif()
 
 if(${PROTOCOL_MUMBI_SWITCH} MATCHES "OFF")

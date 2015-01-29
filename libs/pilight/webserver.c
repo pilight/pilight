@@ -826,12 +826,11 @@ static void webserver_queue(char *message) {
 	pthread_mutex_lock(&webqueue_lock);
 	if(webqueue_number <= 1024) {
 		struct webqueue_t *wnode = MALLOC(sizeof(struct webqueue_t));
-		if(!wnode) {
+		if(wnode == NULL) {
 			logprintf(LOG_ERR, "out of memory");
 			exit(EXIT_FAILURE);
 		}
-		wnode->message = MALLOC(strlen(message)+1);
-		if(!wnode->message) {
+		if((wnode->message = MALLOC(strlen(message)+1)) == NULL) {
 			logprintf(LOG_ERR, "out of memory");
 			exit(EXIT_FAILURE);
 		}
