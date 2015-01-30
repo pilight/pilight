@@ -58,7 +58,7 @@ static int filelog = 1;
 static int shelllog = 0;
 static int loglevel = LOG_DEBUG;
 
-void *logwrite(char *line) {
+void logwrite(char *line) {
 	struct stat sb;
 	FILE *lf = NULL;
 	if(logfile != NULL) {
@@ -106,8 +106,8 @@ int log_gc(void) {
 				} else {
 					/* [ Datetime ] Progname: */
 					/*  24 + 14 + 2 */
-					int pos = 24+strlen(progname)+3;
-					int len = strlen(tmp->line);
+					size_t pos = 24+strlen(progname)+3;
+					size_t len = strlen(tmp->line);
 					memmove(&tmp->line[0], &tmp->line[pos], len-pos);
 					/* Remove newline */
 					tmp->line[(len-pos)-1] = '\0';
@@ -209,8 +209,8 @@ void logprintf(int prio, const char *format_str, ...) {
 		fprintf(stderr, "%s", line);
 	}
 	if(stop == 0 && pos > 0) {
-		pthread_mutex_lock(&logqueue_lock);	
 		if(prio < LOG_DEBUG) {
+			pthread_mutex_lock(&logqueue_lock);	
 			if(logqueue_number < 1024) {		
 				struct logqueue_t *node = MALLOC(sizeof(logqueue_t));
 				if(node == NULL) {
