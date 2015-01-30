@@ -1918,7 +1918,6 @@ int main(int argc, char **argv) {
 	firmware.lpf = 0;
 	firmware.hpf = 0;
 
-	threads_create(&logpth, NULL, &logloop, (void *)NULL);
 	log_level_set(LOG_INFO);
 	log_file_enable();
 	log_shell_disable();
@@ -2185,6 +2184,12 @@ int main(int argc, char **argv) {
 	} else {
 		save_pid(getpid());
 	}
+
+	/* Threads are unable to survive forks properly.
+	 * Therefor, we queue all messages until we're
+	 * able to fork properly.
+	 */
+	threads_create(&logpth, NULL, &logloop, (void *)NULL);
 
 	pthread_mutexattr_init(&sendqueue_attr);
 	pthread_mutexattr_settype(&sendqueue_attr, PTHREAD_MUTEX_RECURSIVE);

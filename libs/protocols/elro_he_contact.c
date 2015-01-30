@@ -59,7 +59,7 @@ void elroHEContactInit(void) {
 	protocol_device_add(elro_he_contact, "elro_he_contact", "Elro Home Easy Contact");
 	protocol_plslen_add(elro_he_contact, 288);
 	protocol_plslen_add(elro_he_contact, 300);
-	elro_he_contact->devtype = SWITCH;
+	elro_he_contact->devtype = CONTACT;
 	elro_he_contact->hwtype = RF433;
 	elro_he_contact->pulse = 3;
 	elro_he_contact->rawlen = 50;
@@ -79,7 +79,7 @@ void elroHEContactInit(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name = "elro_he_contact";
-	module->version = "1.4";
+	module->version = "1.5";
 	module->reqversion = "5.0";
 	module->reqcommit = "84";
 }

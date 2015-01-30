@@ -16,10 +16,10 @@
 	along with pilight. If not, see	<http://www.gnu.org/licenses/>
 */
 
-#ifndef _PROTOCOL_QUIGG_SWITCH_H_
-#define _PROTOCOL_QUIGG_SWITCH_H_
+#ifndef _PROTOCOL_QUIGG_GT7000_H_
+#define _PROTOCOL_QUIGG_GT7000_H_
 
-struct protocol_t *quigg_switch;
-void quiggSwInit(void);
+struct protocol_t *quigg_gt7000;
+void quiggGT7000Init(void);
 
 #endif
