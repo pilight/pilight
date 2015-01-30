@@ -3,17 +3,17 @@
 
 	This file is part of pilight.
 
-    pilight is free software: you can redistribute it and/or modify it under the
+	pilight is free software: you can redistribute it and/or modify it under the
 	terms of the GNU General Public License as published by the Free Software
 	Foundation, either version 3 of the License, or (at your option) any later
 	version.
 
-    pilight is distributed in the hope that it will be useful, but WITHOUT ANY
+	pilight is distributed in the hope that it will be useful, but WITHOUT ANY
 	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-    You should have received a copy of the GNU General Public License
-    along with pilight. If not, see	<http://www.gnu.org/licenses/>
+	You should have received a copy of the GNU General Public License
+	along with pilight. If not, see	<http://www.gnu.org/licenses/>
 */
 
 #include <stdio.h>
@@ -33,8 +33,8 @@
 
 static void elroHCCreateMessage(int systemcode, int unitcode, int state) {
 	elro_hc->message = json_mkobject();
-	json_append_member(elro_hc->message, "systemcode", json_mknumber(systemcode));
-	json_append_member(elro_hc->message, "unitcode", json_mknumber(unitcode));
+	json_append_member(elro_hc->message, "systemcode", json_mknumber(systemcode, 0));
+	json_append_member(elro_hc->message, "unitcode", json_mknumber(unitcode, 0));
 	if(state == 1) {
 		json_append_member(elro_hc->message, "state", json_mkstring("on"));
 	} else {
@@ -170,7 +170,6 @@ void elroHCInit(void) {
 	protocol_register(&elro_hc);
 	protocol_set_id(elro_hc, "elro_hc");
 	protocol_device_add(elro_hc, "elro_hc", "Elro Home Control Switches");
-	protocol_device_add(elro_hc, "brennenstuhl", "Brennenstuhl Comfort");
 	protocol_plslen_add(elro_hc, 296);
 	elro_hc->devtype = SWITCH;
 	elro_hc->hwtype = RF433;
@@ -179,12 +178,12 @@ void elroHCInit(void) {
 	elro_hc->binlen = 12;
 	elro_hc->lsb = 3;
 
-	options_add(&elro_hc->options, 's', "systemcode", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, NULL, "^(3[012]?|[012][0-9]|[0-9]{1})$");
-	options_add(&elro_hc->options, 'u', "unitcode", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, NULL, "^(3[012]?|[012][0-9]|[0-9]{1})$");
-	options_add(&elro_hc->options, 't', "on", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
-	options_add(&elro_hc->options, 'f', "off", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
+	options_add(&elro_hc->options, 's', "systemcode", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^(3[012]?|[012][0-9]|[0-9]{1})$");
+	options_add(&elro_hc->options, 'u', "unitcode", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^(3[012]?|[012][0-9]|[0-9]{1})$");
+	options_add(&elro_hc->options, 't', "on", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
+	options_add(&elro_hc->options, 'f', "off", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
 
-	options_add(&elro_hc->options, 0, "gui-readonly", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
+	options_add(&elro_hc->options, 0, "readonly", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 
 	elro_hc->parseBinary=&elroHCParseBinary;
 	elro_hc->createCode=&elroHCCreateCode;
@@ -194,9 +193,9 @@ void elroHCInit(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name = "elro_hc";
-	module->version = "1.0";
+	module->version = "1.2";
 	module->reqversion = "5.0";
-	module->reqcommit = NULL;
+	module->reqcommit = "84";
 }
 
 void init(void) {

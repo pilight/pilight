@@ -60,7 +60,7 @@ if len(responses) > 0:
 	s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 	socket.setdefaulttimeout(0)
 	s.connect((location, int(port)))
-	s.send('{"message":"client receiver"}\n')
+	s.send('{"action":"identify","options":{"receiver":1}}\n')
 	text = "";
 	while True:
 		line = s.recv(1024)
@@ -68,7 +68,8 @@ if len(responses) > 0:
 		if "\n\n" in line[-2:]:
 			text = text[:-2];
 			break;
-	if text == '{"message":"accept client"}':
+	if text == '{"status":"success"}':
+		text = "";	
 		while True:
 			line = s.recv(1024)
 			text += line;

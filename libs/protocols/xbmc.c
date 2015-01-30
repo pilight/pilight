@@ -3,17 +3,17 @@
 
 	This file is part of pilight.
 
-    pilight is free software: you can redistribute it and/or modify it under the
+	pilight is free software: you can redistribute it and/or modify it under the
 	terms of the GNU General Public License as published by the Free Software
 	Foundation, either version 3 of the License, or (at your option) any later
 	version.
 
-    pilight is distributed in the hope that it will be useful, but WITHOUT ANY
+	pilight is distributed in the hope that it will be useful, but WITHOUT ANY
 	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-    You should have received a copy of the GNU General Public License
-    along with pilight. If not, see	<http://www.gnu.org/licenses/>
+	You should have received a copy of the GNU General Public License
+	along with pilight. If not, see	<http://www.gnu.org/licenses/>
 */
 
 #include <stdio.h>
@@ -66,7 +66,7 @@ static void xbmcCreateMessage(char *server, int port, char *action, char *media)
 	json_append_member(code, "action", json_mkstring(action));
 	json_append_member(code, "media", json_mkstring(media));
 	json_append_member(code, "server", json_mkstring(server));
-	json_append_member(code, "port", json_mknumber(port));
+	json_append_member(code, "port", json_mknumber(port, 0));
 
 	json_append_member(xbmc->message, "message", code);
 	json_append_member(xbmc->message, "origin", json_mkstring("receiver"));
@@ -84,7 +84,7 @@ static void *xbmcParse(void *param) {
 	struct JsonNode *jchild = NULL;
 	struct JsonNode *jchild1 = NULL;
 	struct sockaddr_in serv_addr;
-	struct xbmc_data_t *xnode = malloc(sizeof(struct xbmc_data_t));
+	struct xbmc_data_t *xnode = MALLOC(sizeof(struct xbmc_data_t));
 
 	char recvBuff[BUFFER_SIZE], action[10], media[15];
 	char *m = NULL, *t = NULL;
@@ -118,7 +118,7 @@ static void *xbmcParse(void *param) {
 
 			while(jchild1) {
 				if(strcmp(jchild1->key, "server") == 0) {
-					if(!(xnode->server = malloc(strlen(jchild1->string_)+1))) {
+					if(!(xnode->server = MALLOC(strlen(jchild1->string_)+1))) {
 						logprintf(LOG_ERR, "out of memory");
 						exit(EXIT_FAILURE);
 					}
@@ -137,9 +137,9 @@ static void *xbmcParse(void *param) {
 				xbmc_data = xnode;
 			} else {
 				if(has_server == 1) {
-					sfree((void *)&xnode->server);
+					FREE(xnode->server);
 				}
-				sfree((void *)&xnode);
+				FREE(xnode);
 				xnode = NULL;
 			}
 			jchild = jchild->next;
@@ -267,6 +267,7 @@ static void *xbmcParse(void *param) {
 			pthread_mutex_unlock(&xbmclock);
 		}
 	}
+	pthread_mutex_unlock(&xbmclock);
 
 	xbmc_threads--;
 	return (void *)NULL;
@@ -276,7 +277,7 @@ struct threadqueue_t *xbmcInitDev(JsonNode *jdevice) {
 	xbmc_loop = 1;
 	char *output = json_stringify(jdevice, NULL);
 	JsonNode *json = json_decode(output);
-	sfree((void *)&output);
+	json_free(output);
 
 	struct protocol_threads_t *node = protocol_thread_init(xbmc, json);
 	return threads_register("xbmc", &xbmcParse, (void *)node, 0);
@@ -292,9 +293,9 @@ static void xbmcThreadGC(void) {
 			close(xtmp->sockfd);
 			xtmp->sockfd = -1;
 		}
-		sfree((void *)&xtmp->server);
+		FREE(xtmp->server);
 		xbmc_data = xbmc_data->next;
-		sfree((void *)&xtmp);
+		FREE(xtmp);
 	}
 
 	protocol_thread_stop(xbmc);
@@ -354,13 +355,13 @@ void xbmcInit(void) {
 	xbmc->hwtype = API;
 	xbmc->multipleId = 0;
 
-	options_add(&xbmc->options, 'a', "action", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_STRING, NULL, NULL);
-	options_add(&xbmc->options, 'm', "media", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_STRING, NULL, NULL);
-	options_add(&xbmc->options, 's', "server", OPTION_HAS_VALUE, CONFIG_ID, JSON_STRING, NULL, NULL);
-	options_add(&xbmc->options, 'p', "port", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, NULL, NULL);
+	options_add(&xbmc->options, 'a', "action", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_STRING, NULL, NULL);
+	options_add(&xbmc->options, 'm', "media", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_STRING, NULL, NULL);
+	options_add(&xbmc->options, 's', "server", OPTION_HAS_VALUE, DEVICES_ID, JSON_STRING, NULL, NULL);
+	options_add(&xbmc->options, 'p', "port", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, NULL);
 
-	options_add(&xbmc->options, 0, "gui-show-media", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
-	options_add(&xbmc->options, 0, "gui-show-action", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
+	options_add(&xbmc->options, 0, "show-media", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
+	options_add(&xbmc->options, 0, "show-action", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
 
 	xbmc->initDev=&xbmcInitDev;
 	xbmc->threadGC=&xbmcThreadGC;
@@ -370,9 +371,9 @@ void xbmcInit(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name = "xbmc";
-	module->version = "1.0";
+	module->version = "1.3";
 	module->reqversion = "5.0";
-	module->reqcommit = NULL;
+	module->reqcommit = "187";
 }
 
 void init(void) {

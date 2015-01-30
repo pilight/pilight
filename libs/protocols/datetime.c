@@ -3,17 +3,17 @@
 
 	This file is part of pilight.
 
-    pilight is free software: you can redistribute it and/or modify it under the
+	pilight is free software: you can redistribute it and/or modify it under the
 	terms of the GNU General Public License as published by the Free Software
 	Foundation, either version 3 of the License, or (at your option) any later
 	version.
 
-    pilight is distributed in the hope that it will be useful, but WITHOUT ANY
+	pilight is distributed in the hope that it will be useful, but WITHOUT ANY
 	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-    You should have received a copy of the GNU General Public License
-    along with pilight. If not, see	<http://www.gnu.org/licenses/>
+	You should have received a copy of the GNU General Public License
+	along with pilight. If not, see	<http://www.gnu.org/licenses/>
 */
 
 #include <stdio.h>
@@ -77,12 +77,10 @@ static char *datetime_format = NULL;
 static pthread_mutex_t datetimelock;
 static pthread_mutexattr_t datetimeattr;
 
-static time_t getntptime(const char *ntpserver) {
+static time_t getntptime(char *ntpserver) {
 	struct sockaddr_in servaddr;
-	struct hostent *hptr = NULL;
 	struct pkt msg;
-	char **pptr = NULL;
-	char str[50];
+	char *ip = NULL;
 	int sockfd = 0;
 	struct timeval tv;
 
@@ -91,17 +89,8 @@ static time_t getntptime(const char *ntpserver) {
 
 	memset(&msg, '\0', sizeof(struct pkt));
 	memset(&servaddr, '\0', sizeof(struct sockaddr_in));
-	memset(&str, '\0', 50);
 
-	if(!(hptr = gethostbyname(ntpserver))) {
-		logprintf(LOG_DEBUG, "gethostbyname error for host: %s: %s", ntpserver, hstrerror(h_errno));
-		goto close;
-	}
-
-	if(hptr->h_addrtype == AF_INET && (pptr = hptr->h_addr_list) != NULL) {
-		inet_ntop(hptr->h_addrtype, *pptr, str, sizeof(str));
-	} else {
-		logprintf(LOG_DEBUG, "error call inet_ntop");
+	if((ip = host2ip(ntpserver)) == NULL) {
 		goto close;
 	}
 
@@ -116,7 +105,7 @@ static time_t getntptime(const char *ntpserver) {
 	servaddr.sin_family = AF_INET;
 	servaddr.sin_port = htons(123);
 
-	inet_pton(AF_INET, str, &servaddr.sin_addr);
+	inet_pton(AF_INET, ip, &servaddr.sin_addr);
 	if(connect(sockfd, (struct sockaddr *)&servaddr, sizeof(servaddr)) == -1) {
 		logprintf(LOG_DEBUG, "error in connect");
 		goto close;
@@ -145,6 +134,9 @@ static time_t getntptime(const char *ntpserver) {
 	}
 
 close:
+	if(ip) {
+		FREE(ip);
+	}
 	if(sockfd > 0) {
 		close(sockfd);
 	}
@@ -158,7 +150,7 @@ static void *datetimeParse(void *param) {
 	struct JsonNode *jid = NULL;
 	struct JsonNode *jchild = NULL;
 	struct JsonNode *jchild1 = NULL;
-	char *slongitude = NULL, *slatitude = NULL, *tz = NULL, *ntpserver = NULL;
+	char *tz = NULL, *ntpserver = NULL;
 	double longitude = 0, latitude = 0;
 	int interval = 86400;
 
@@ -174,33 +166,12 @@ static void *datetimeParse(void *param) {
 			jchild1 = json_first_child(jchild);
 			while(jchild1) {
 				if(strcmp(jchild1->key, "longitude") == 0) {
-					if(!(slongitude = malloc(strlen(jchild1->string_)+1))) {
-						logprintf(LOG_ERR, "out of memory");
-						exit(EXIT_FAILURE);
-					}
-					strcpy(slongitude, jchild1->string_);
-					longitude = atof(jchild1->string_);
+					longitude = jchild1->number_;
 				}
 				if(strcmp(jchild1->key, "latitude") == 0) {
-					if(!(slatitude = malloc(strlen(jchild1->string_)+1))) {
-						logprintf(LOG_ERR, "out of memory");
-						exit(EXIT_FAILURE);
-					}
-					strcpy(slatitude, jchild1->string_);
-					latitude = atof(jchild1->string_);
-				}
-				if(strcmp(jchild1->key, "ntpserver") == 0) {
-					if(!(ntpserver = malloc(strlen(jchild1->string_)+1))) {
-						logprintf(LOG_ERR, "out of memory");
-						exit(EXIT_FAILURE);
-					}
-					strcpy(ntpserver, jchild1->string_);
+					latitude = jchild1->number_;
 				}
 				jchild1 = jchild1->next;
-			}
-			if(slongitude == NULL && slatitude == NULL) {
-				logprintf(LOG_DEBUG, "no longitude and latitude set");
-				goto close;
 			}
 			jchild = jchild->next;
 		}
@@ -210,7 +181,7 @@ static void *datetimeParse(void *param) {
 		logprintf(LOG_DEBUG, "could not determine timezone");
 		tz = UTC;
 	} else {
-		logprintf(LOG_DEBUG, "%s:%s seems to be in timezone: %s", slongitude, slatitude, tz);
+		logprintf(LOG_DEBUG, "%.6f:%.6f seems to be in timezone: %s", longitude, latitude, tz);
 	}
 
 	while(datetime_loop) {
@@ -237,15 +208,17 @@ static void *datetimeParse(void *param) {
 		int hour = tm->tm_hour;
 		int minute = tm->tm_min;
 		int second = tm->tm_sec;
+		int weekday = tm->tm_wday+1;
 
-		json_append_member(code, "longitude", json_mkstring(slongitude));
-		json_append_member(code, "latitude", json_mkstring(slatitude));
-		json_append_member(code, "year", json_mknumber(year));
-		json_append_member(code, "month", json_mknumber(month));
-		json_append_member(code, "day", json_mknumber(day));
-		json_append_member(code, "hour", json_mknumber(hour));
-		json_append_member(code, "minute", json_mknumber(minute));
-		json_append_member(code, "second", json_mknumber(second));
+		json_append_member(code, "longitude", json_mknumber(longitude, 6));
+		json_append_member(code, "latitude", json_mknumber(latitude, 6));
+		json_append_member(code, "year", json_mknumber(year, 0));
+		json_append_member(code, "month", json_mknumber(month, 0));
+		json_append_member(code, "day", json_mknumber(day, 0));
+		json_append_member(code, "weekday", json_mknumber(weekday, 0));
+		json_append_member(code, "hour", json_mknumber(hour, 0));
+		json_append_member(code, "minute", json_mknumber(minute, 0));
+		json_append_member(code, "second", json_mknumber(second, 0));
 
 		json_append_member(datetime->message, "message", code);
 		json_append_member(datetime->message, "origin", json_mkstring("receiver"));
@@ -261,16 +234,10 @@ static void *datetimeParse(void *param) {
 		pthread_mutex_unlock(&datetimelock);
 		sleep(1);
 	}
+	pthread_mutex_unlock(&datetimelock);
 
-close:
-	if(slatitude) {
-		sfree((void *)&slatitude);
-	}
-	if(slongitude) {
-		sfree((void *)&slongitude);
-	}
 	if(ntpserver) {
-		sfree((void *)&ntpserver);
+		FREE(ntpserver);
 	}
 
 	datetime_threads--;
@@ -281,7 +248,7 @@ static struct threadqueue_t *datetimeInitDev(JsonNode *jdevice) {
 	datetime_loop = 1;
 	char *output = json_stringify(jdevice, NULL);
 	JsonNode *json = json_decode(output);
-	sfree((void *)&output);
+	json_free(output);
 
 	struct protocol_threads_t *node = protocol_thread_init(datetime, json);
 	return threads_register("datetime", &datetimeParse, (void *)node, 0);
@@ -297,7 +264,7 @@ static void datetimeThreadGC(void) {
 }
 
 static void datetimeGC(void) {
-	sfree((void *)&datetime_format);
+	FREE(datetime_format);
 }
 
 #ifndef MODULE
@@ -308,7 +275,7 @@ void datetimeInit(void) {
 	pthread_mutexattr_settype(&datetimeattr, PTHREAD_MUTEX_RECURSIVE);
 	pthread_mutex_init(&datetimelock, &datetimeattr);
 
-	datetime_format = malloc(20);
+	datetime_format = MALLOC(20);
 	strcpy(datetime_format, "HH:mm:ss YYYY-MM-DD");
 
 	protocol_register(&datetime);
@@ -318,18 +285,19 @@ void datetimeInit(void) {
 	datetime->hwtype = API;
 	datetime->multipleId = 0;
 
-	options_add(&datetime->options, 'o', "longitude", OPTION_HAS_VALUE, CONFIG_ID, JSON_STRING, NULL, NULL);
-	options_add(&datetime->options, 'a', "latitude", OPTION_HAS_VALUE, CONFIG_ID, JSON_STRING, NULL, NULL);
-	options_add(&datetime->options, 'n', "ntpserver", OPTION_HAS_VALUE, CONFIG_ID, JSON_STRING, NULL, NULL);
-	options_add(&datetime->options, 'y', "year", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, NULL, "^[0-9]{3,4}$");
-	options_add(&datetime->options, 'm', "month", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, NULL, "^[0-9]{3,4}$");
-	options_add(&datetime->options, 'd', "day", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, NULL, NULL);
-	options_add(&datetime->options, 'h', "hour", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, NULL, NULL);
-	options_add(&datetime->options, 'i', "minute", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, NULL, NULL);
-	options_add(&datetime->options, 's', "second", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, NULL, NULL);
+	options_add(&datetime->options, 'o', "longitude", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, NULL);
+	options_add(&datetime->options, 'a', "latitude", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, NULL);
+	options_add(&datetime->options, 'n', "ntpserver", OPTION_HAS_VALUE, DEVICES_ID, JSON_STRING, NULL, NULL);
+	options_add(&datetime->options, 'y', "year", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9]{3,4}$");
+	options_add(&datetime->options, 'm', "month", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9]{3,4}$");
+	options_add(&datetime->options, 'd', "day", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, NULL);
+	options_add(&datetime->options, 'w', "weekday", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, NULL);
+	options_add(&datetime->options, 'h', "hour", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, NULL);
+	options_add(&datetime->options, 'i', "minute", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, NULL);
+	options_add(&datetime->options, 's', "second", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, NULL);
 
-	options_add(&datetime->options, 0, "gui-show-datetime", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
-	options_add(&datetime->options, 0, "gui-datetime-format", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_STRING, (void *)datetime_format, NULL);
+	options_add(&datetime->options, 0, "show-datetime", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
+	options_add(&datetime->options, 0, "format", OPTION_HAS_VALUE, GUI_SETTING, JSON_STRING, (void *)datetime_format, NULL);
 
 	datetime->initDev=&datetimeInitDev;
 	datetime->threadGC=&datetimeThreadGC;
@@ -339,9 +307,9 @@ void datetimeInit(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name = "datetime";
-	module->version = "1.0";
+	module->version = "1.6";
 	module->reqversion = "5.0";
-	module->reqcommit = NULL;
+	module->reqcommit = "187";
 }
 
 void init(void) {

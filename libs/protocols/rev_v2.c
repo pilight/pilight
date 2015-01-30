@@ -1,19 +1,19 @@
 /*
-	Copyright (C) 2013 CurlyMo, neevedr
+	Copyright (C) 2014 CurlyMo & neevedr
 
 	This file is part of pilight.
 
-    pilight is free software: you can redistribute it and/or modify it under the
+	pilight is free software: you can redistribute it and/or modify it under the
 	terms of the GNU General Public License as published by the Free Software
 	Foundation, either version 3 of the License, or (at your option) any later
 	version.
 
-    pilight is distributed in the hope that it will be useful, but WITHOUT ANY
+	pilight is distributed in the hope that it will be useful, but WITHOUT ANY
 	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-    You should have received a copy of the GNU General Public License
-    along with pilight. If not, see	<http://www.gnu.org/licenses/>
+	You should have received a copy of the GNU General Public License
+	along with pilight. If not, see	<http://www.gnu.org/licenses/>
 */
 
 #include <stdio.h>
@@ -34,7 +34,7 @@
 static void rev2CreateMessage(char *id, int unit, int state) {
 	rev2_switch->message = json_mkobject();
 	json_append_member(rev2_switch->message, "id", json_mkstring(id));
-	json_append_member(rev2_switch->message, "unit", json_mknumber(unit));
+	json_append_member(rev2_switch->message, "unit", json_mknumber(unit, 0));
 	if(state == 2)
 		json_append_member(rev2_switch->message, "state", json_mkstring("on"));
 	else
@@ -44,7 +44,7 @@ static void rev2CreateMessage(char *id, int unit, int state) {
 static void rev2ParseCode(void) {
 	int x = 0;
 	int z = 65;
-	char id[3] = {'\0'};
+	char id[3];
 
 	/* Convert the one's and zero's into binary */
 	for(x=0; x<rev2_switch->rawlen; x+=4) {
@@ -224,12 +224,12 @@ void rev2Init(void) {
 	rev2_switch->rawlen = 50;
 	rev2_switch->binlen = 12;
 
-	options_add(&rev2_switch->options, 't', "on", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
-	options_add(&rev2_switch->options, 'f', "off", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
-	options_add(&rev2_switch->options, 'u', "unit", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, NULL, "^([0-9]|[1-5][0-9]|6[0-3])$");
-	options_add(&rev2_switch->options, 'i', "id", OPTION_HAS_VALUE, CONFIG_ID, JSON_STRING, NULL, "^[ABCDEF](3[012]?|[012][0-9]|[0-9]{1})$");
+	options_add(&rev2_switch->options, 't', "on", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
+	options_add(&rev2_switch->options, 'f', "off", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
+	options_add(&rev2_switch->options, 'u', "unit", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^([0-9]|[1-5][0-9]|6[0-3])$");
+	options_add(&rev2_switch->options, 'i', "id", OPTION_HAS_VALUE, DEVICES_ID, JSON_STRING, NULL, "^[ABCDEF](3[012]?|[012][0-9]|[0-9]{1})$");
 
-	options_add(&rev2_switch->options, 0, "gui-readonly", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
+	options_add(&rev2_switch->options, 0, "readonly", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 
 	rev2_switch->parseCode=&rev2ParseCode;
 	rev2_switch->createCode=&rev2CreateCode;
@@ -239,9 +239,9 @@ void rev2Init(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name = "rev2_switch";
-	module->version = "0.8";
+	module->version = "0.9";
 	module->reqversion = "5.0";
-	module->reqcommit = NULL;
+	module->reqcommit = "84";
 }
 
 void init(void) {

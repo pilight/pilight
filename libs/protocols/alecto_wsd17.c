@@ -1,19 +1,19 @@
 /*
-	Copyright (C) 2013 CurlyMo
+	Copyright (C) 2014 CurlyMo
 
 	This file is part of pilight.
 
-    pilight is free software: you can redistribute it and/or modify it under the
+	pilight is free software: you can redistribute it and/or modify it under the
 	terms of the GNU General Public License as published by the Free Software
 	Foundation, either version 3 of the License, or (at your option) any later
 	version.
 
-    pilight is distributed in the hope that it will be useful, but WITHOUT ANY
+	pilight is distributed in the hope that it will be useful, but WITHOUT ANY
 	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-    You should have received a copy of the GNU General Public License
-    along with pilight. If not, see	<http://www.gnu.org/licenses/>
+	You should have received a copy of the GNU General Public License
+	along with pilight. If not, see	<http://www.gnu.org/licenses/>
 */
 
 #include <stdio.h>
@@ -40,9 +40,8 @@ typedef struct alecto_wsd17_settings_t {
 static struct alecto_wsd17_settings_t *alecto_wsd17_settings = NULL;
 
 static void alectoWSD17ParseCode(void) {
-	int i = 0, x = 0;
-	int temperature = 0, id = 0;
-	int temp_offset = 0;
+	int i = 0, x = 0, id = 0;
+	double temp_offset = 0.0, temperature = 0.0;
 
 	for(i=1;i<alecto_wsd17->rawlen-1;i+=2) {
 		alecto_wsd17->binary[x++] = alecto_wsd17->code[i];
@@ -54,7 +53,7 @@ static void alectoWSD17ParseCode(void) {
 	struct alecto_wsd17_settings_t *tmp = alecto_wsd17_settings;
 	while(tmp) {
 		if(fabs(tmp->id-id) < EPSILON) {
-			temp_offset = (int)tmp->temp;
+			temp_offset = tmp->temp;
 			break;
 		}
 		tmp = tmp->next;
@@ -63,8 +62,8 @@ static void alectoWSD17ParseCode(void) {
 	temperature += temp_offset;
 
 	alecto_wsd17->message = json_mkobject();
-	json_append_member(alecto_wsd17->message, "id", json_mknumber(id));
-	json_append_member(alecto_wsd17->message, "temperature", json_mknumber(temperature));
+	json_append_member(alecto_wsd17->message, "id", json_mknumber(id, 0));
+	json_append_member(alecto_wsd17->message, "temperature", json_mknumber(temperature/10, 1));
 }
 
 static int alectoWSD17CheckValues(struct JsonNode *jvalues) {
@@ -99,13 +98,13 @@ static int alectoWSD17CheckValues(struct JsonNode *jvalues) {
 		}
 
 		if(!match) {
-			if(!(snode = malloc(sizeof(struct alecto_wsd17_settings_t)))) {
+			if(!(snode = MALLOC(sizeof(struct alecto_wsd17_settings_t)))) {
 				logprintf(LOG_ERR, "out of memory");
 				exit(EXIT_FAILURE);
 			}
 			snode->id = id;
 
-			json_find_number(jvalues, "device-temperature-offset", &snode->temp);
+			json_find_number(jvalues, "temperature-offset", &snode->temp);
 
 			snode->next = alecto_wsd17_settings;
 			alecto_wsd17_settings = snode;
@@ -119,9 +118,11 @@ static void alectoWSD17GC(void) {
 	while(alecto_wsd17_settings) {
 		tmp = alecto_wsd17_settings;
 		alecto_wsd17_settings = alecto_wsd17_settings->next;
-		sfree((void *)&tmp);
+		FREE(tmp);
 	}
-	sfree((void *)&alecto_wsd17_settings);
+	if(alecto_wsd17_settings != NULL) {
+		FREE(alecto_wsd17_settings);
+	}
 }
 
 #ifndef MODULE
@@ -138,15 +139,13 @@ void alectoWSD17Init(void) {
 	alecto_wsd17->rawlen = 74;
 	alecto_wsd17->lsb = 3;
 
-	options_add(&alecto_wsd17->options, 't', "temperature", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, NULL, "^[0-9]{1,3}$");
-	options_add(&alecto_wsd17->options, 'i', "id", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, NULL, "[0-9]");
+	options_add(&alecto_wsd17->options, 't', "temperature", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9]{1,3}$");
+	options_add(&alecto_wsd17->options, 'i', "id", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "[0-9]");
 
-	options_add(&alecto_wsd17->options, 0, "device-decimals", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)1, "[0-9]");
-	options_add(&alecto_wsd17->options, 0, "gui-decimals", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)1, "[0-9]");
-	options_add(&alecto_wsd17->options, 0, "device-humidity-offset", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)0, "[0-9]");
-	options_add(&alecto_wsd17->options, 0, "gui-show-humidity", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
-	options_add(&alecto_wsd17->options, 0, "gui-show-temperature", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
-	options_add(&alecto_wsd17->options, 0, "gui-show-battery", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
+	// options_add(&alecto_wsd17->options, 0, "decimals", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *)1, "[0-9]");
+	options_add(&alecto_wsd17->options, 0, "decimals", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)1, "[0-9]");
+	options_add(&alecto_wsd17->options, 0, "temperature-offset", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *)0, "[0-9]");
+	options_add(&alecto_wsd17->options, 0, "show-temperature", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
 
 	alecto_wsd17->parseCode=&alectoWSD17ParseCode;
 	alecto_wsd17->checkValues=&alectoWSD17CheckValues;
@@ -156,9 +155,9 @@ void alectoWSD17Init(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name = "alecto_wsd17";
-	module->version = "0.7";
+	module->version = "0.10";
 	module->reqversion = "5.0";
-	module->reqcommit = NULL;
+	module->reqcommit = "187";
 }
 
 void init(void) {

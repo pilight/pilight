@@ -3,17 +3,17 @@
 
 	This file is part of pilight.
 
-    pilight is free software: you can redistribute it and/or modify it under the
+	pilight is free software: you can redistribute it and/or modify it under the
 	terms of the GNU General Public License as published by the Free Software
 	Foundation, either version 3 of the License, or (at your option) any later
 	version.
 
-    pilight is distributed in the hope that it will be useful, but WITHOUT ANY
+	pilight is distributed in the hope that it will be useful, but WITHOUT ANY
 	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-    You should have received a copy of the GNU General Public License
-    along with pilight. If not, see	<http://www.gnu.org/licenses/>
+	You should have received a copy of the GNU General Public License
+	along with pilight. If not, see	<http://www.gnu.org/licenses/>
 */
 
 #include <stdio.h>
@@ -42,8 +42,9 @@ static struct teknihall_settings_t *teknihall_settings = NULL;
 
 static void teknihallParseCode(void) {
 	int i = 0, x = 0;
-	int temperature = 0, id = 0, humidity = 0, battery = 0;
-	int humi_offset = 0, temp_offset = 0;
+	int id = 0, battery = 0;
+	double temperature = 0.0, humidity = 0.0;
+	double humi_offset = 0.0, temp_offset = 0.0;
 
 	for(i=1;i<teknihall->rawlen-1;i+=2) {
 		teknihall->binary[x++] = teknihall->code[i];
@@ -57,8 +58,8 @@ static void teknihallParseCode(void) {
 	struct teknihall_settings_t *tmp = teknihall_settings;
 	while(tmp) {
 		if(fabs(tmp->id-id) < EPSILON) {
-			humi_offset = (int)tmp->humi;
-			temp_offset = (int)tmp->temp;
+			humi_offset = tmp->humi;
+			temp_offset = tmp->temp;
 			break;
 		}
 		tmp = tmp->next;
@@ -68,10 +69,10 @@ static void teknihallParseCode(void) {
 	humidity += humi_offset;
 
 	teknihall->message = json_mkobject();
-	json_append_member(teknihall->message, "id", json_mknumber(id));
-	json_append_member(teknihall->message, "temperature", json_mknumber(temperature));
-	json_append_member(teknihall->message, "humidity", json_mknumber(humidity*10));
-	json_append_member(teknihall->message, "battery", json_mknumber(battery));
+	json_append_member(teknihall->message, "id", json_mknumber(id, 1));
+	json_append_member(teknihall->message, "temperature", json_mknumber(temperature/10, 1));
+	json_append_member(teknihall->message, "humidity", json_mknumber(humidity, 1));
+	json_append_member(teknihall->message, "battery", json_mknumber(battery, 1));
 }
 
 static int teknihallCheckValues(struct JsonNode *jvalues) {
@@ -106,14 +107,14 @@ static int teknihallCheckValues(struct JsonNode *jvalues) {
 		}
 
 		if(!match) {
-			if(!(snode = malloc(sizeof(struct teknihall_settings_t)))) {
+			if(!(snode = MALLOC(sizeof(struct teknihall_settings_t)))) {
 				logprintf(LOG_ERR, "out of memory");
 				exit(EXIT_FAILURE);
 			}
 			snode->id = id;
 
-			json_find_number(jvalues, "device-temperature-offset", &snode->temp);
-			json_find_number(jvalues, "device-humidity-offset", &snode->humi);
+			json_find_number(jvalues, "temperature-offset", &snode->temp);
+			json_find_number(jvalues, "humidity-offset", &snode->humi);
 
 			snode->next = teknihall_settings;
 			teknihall_settings = snode;
@@ -127,9 +128,11 @@ static void teknihallGC(void) {
 	while(teknihall_settings) {
 		tmp = teknihall_settings;
 		teknihall_settings = teknihall_settings->next;
-		sfree((void *)&tmp);
+		FREE(tmp);
 	}
-	sfree((void *)&teknihall_settings);
+	if(teknihall_settings != NULL) {
+		FREE(teknihall_settings);
+	}
 }
 
 #ifndef MODULE
@@ -146,18 +149,18 @@ void teknihallInit(void) {
 	teknihall->pulse = 15;
 	teknihall->rawlen = 76;
 
-	options_add(&teknihall->options, 't', "temperature", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, NULL, "^[0-9]{1,3}$");
-	options_add(&teknihall->options, 'i', "id", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, NULL, "[0-9]");
-	options_add(&teknihall->options, 'h', "humidity", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, NULL, "[0-9]");
-	options_add(&teknihall->options, 'b', "battery", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, NULL, "^[01]$");
+	options_add(&teknihall->options, 't', "temperature", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9]{1,3}$");
+	options_add(&teknihall->options, 'i', "id", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "[0-9]");
+	options_add(&teknihall->options, 'h', "humidity", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "[0-9]");
+	options_add(&teknihall->options, 'b', "battery", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[01]$");
 
-	options_add(&teknihall->options, 0, "device-decimals", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)1, "[0-9]");
-	options_add(&teknihall->options, 0, "device-temperature-offset", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)0, "[0-9]");
-	options_add(&teknihall->options, 0, "device-humidity-offset", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)0, "[0-9]");
-	options_add(&teknihall->options, 0, "gui-decimals", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)1, "[0-9]");
-	options_add(&teknihall->options, 0, "gui-show-humidity", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
-	options_add(&teknihall->options, 0, "gui-show-temperature", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
-	options_add(&teknihall->options, 0, "gui-show-battery", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
+	// options_add(&teknihall->options, 0, "decimals", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *)1, "[0-9]");
+	options_add(&teknihall->options, 0, "temperature-offset", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *)0, "[0-9]");
+	options_add(&teknihall->options, 0, "humidity-offset", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *)0, "[0-9]");
+	options_add(&teknihall->options, 0, "decimals", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)1, "[0-9]");
+	options_add(&teknihall->options, 0, "show-humidity", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
+	options_add(&teknihall->options, 0, "show-temperature", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
+	options_add(&teknihall->options, 0, "show-battery", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
 
 	teknihall->parseCode=&teknihallParseCode;
 	teknihall->checkValues=&teknihallCheckValues;
@@ -167,9 +170,9 @@ void teknihallInit(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name = "teknihall";
-	module->version = "1.0";
+	module->version = "1.3";
 	module->reqversion = "5.0";
-	module->reqcommit = NULL;
+	module->reqcommit = "187";
 }
 
 void init(void) {

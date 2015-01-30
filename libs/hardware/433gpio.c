@@ -3,17 +3,17 @@
 
 	This file is part of pilight.
 
-    pilight is free software: you can redistribute it and/or modify it under the
+	pilight is free software: you can redistribute it and/or modify it under the
 	terms of the GNU General Public License as published by the Free Software
 	Foundation, either version 3 of the License, or (at your option) any later
 	version.
 
-    pilight is distributed in the hope that it will be useful, but WITHOUT ANY
+	pilight is distributed in the hope that it will be useful, but WITHOUT ANY
 	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-    You should have received a copy of the GNU General Public License
-    along with pilight. If not, see	<http://www.gnu.org/licenses/>
+	You should have received a copy of the GNU General Public License
+	along with pilight. If not, see	<http://www.gnu.org/licenses/>
 */
 
 #include <stdio.h>
@@ -26,7 +26,7 @@
 #include "dso.h"
 #include "log.h"
 #include "hardware.h"
-#include "wiringPi.h"
+#include "wiringX.h"
 #include "json.h"
 #include "irq.h"
 #include "433gpio.h"
@@ -36,16 +36,24 @@ static int gpio_433_out = 0;
 static int gpio_433_initialized = 0;
 
 static unsigned short gpio433HwInit(void) {
-	if(wiringPiSetup() == -1) {
+	if(wiringXSetup() == -1) {
 		return EXIT_FAILURE;
 	}
 	gpio_433_initialized = 1;
 	if(gpio_433_out >= 0) {
+		if(wiringXValidGPIO(gpio_433_out) != 0) {
+			logprintf(LOG_ERR, "invalid sender pin: %d", gpio_433_out);
+			return EXIT_FAILURE;
+		}
 		pinMode(gpio_433_out, OUTPUT);
 	}
 	if(gpio_433_in >= 0) {
-		if(wiringPiISR(gpio_433_in, INT_EDGE_BOTH) < 0) {
-			logprintf(LOG_ERR, "unable to register interrupt for pin %d", gpio_433_in) ;
+		if(wiringXValidGPIO(gpio_433_in) != 0) {
+			logprintf(LOG_ERR, "invalid receiver pin: %d", gpio_433_in);
+			return EXIT_FAILURE;
+		}
+		if(wiringXISR(gpio_433_in, INT_EDGE_BOTH) < 0) {
+			logprintf(LOG_ERR, "unable to register interrupt for pin %d", gpio_433_in);
 			return EXIT_SUCCESS;
 		}
 	}
@@ -53,29 +61,23 @@ static unsigned short gpio433HwInit(void) {
 }
 
 static unsigned short gpio433HwDeinit(void) {
-	FILE *fd;
-	if(gpio_433_initialized) {
-		if(gpio_433_out >= 0 && (fd = fopen ("/sys/class/gpio/unexport", "w"))) {
-			fprintf(fd, "%d", wpiPinToGpio(gpio_433_out));
-			fclose(fd);
-		}
-		if(gpio_433_in >= 0 && (fd = fopen ("/sys/class/gpio/unexport", "w"))) {
-			fprintf(fd, "%d", wpiPinToGpio(gpio_433_in));
-			fclose(fd);
-		}
-	}
 	return EXIT_SUCCESS;
 }
 
-static int gpio433Send(int *code) {
-	unsigned short i = 0;
+static int gpio433Send(int *code, int rawlen, int repeats) {
+	int r = 0, x = 0;
 	if(gpio_433_out >= 0) {
-		while(code[i]) {
-			digitalWrite(gpio_433_out, 1);
-			usleep((__useconds_t)code[i++]);
-			digitalWrite(gpio_433_out, 0);
-			usleep((__useconds_t)code[i++]);
+		for(r=0;r<repeats;r++) {
+			for(x=0;x<rawlen;x+=2) {
+				digitalWrite(gpio_433_out, 1);
+				usleep((__useconds_t)code[x]);
+				digitalWrite(gpio_433_out, 0);
+				if(x+1 < rawlen) {
+					usleep((__useconds_t)code[x+1]);
+				}
+			}
 		}
+		digitalWrite(gpio_433_out, 0);
 	} else {
 		sleep(1);
 	}
@@ -116,8 +118,8 @@ void gpio433Init(void) {
 	hardware_register(&gpio433);
 	hardware_set_id(gpio433, "433gpio");
 
-	options_add(&gpio433->options, 'r', "receiver", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, NULL, "^[0-9-]+$");
-	options_add(&gpio433->options, 's', "sender", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, NULL, "^[0-9-]+$");
+	options_add(&gpio433->options, 'r', "receiver", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9-]+$");
+	options_add(&gpio433->options, 's', "sender", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9-]+$");
 
 	gpio433->type=RF433;
 	gpio433->init=&gpio433HwInit;
@@ -130,9 +132,9 @@ void gpio433Init(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name = "433gpio";
-	module->version = "1.0";
+	module->version = "1.2";
 	module->reqversion = "5.0";
-	module->reqcommit = NULL;
+	module->reqcommit = "86";
 }
 
 void init(void) {
