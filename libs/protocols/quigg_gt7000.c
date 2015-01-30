@@ -118,13 +118,13 @@ static void quiggGT7000ClearCode(void) {
 }
 
 static void quiggGT7000CreateId(int id) {
-	int binary[255];
+	int binary[255] = {0};
 	int length = 0;
 	int i = 0, x = 0;
 
 	x = 1;
 	length = decToBin(id, binary);
-	for(i=0;i>=length;i++) {
+	for(i=0;i<(unsigned int)length;i++) {
 		if(binary[i] == 1) {
 			quiggGT7000CreateOne(x, x+1);
 		}
