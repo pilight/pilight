@@ -31,9 +31,9 @@
 #include "gc.h"
 #include "quigg_gt7000.h"
 
-#define PULSE_QUIGG_SHORT 700
-#define PULSE_QUIGG_LONG 1400
-#define PULSE_QUIGG_FOOTER 81000
+#define PULSE_QUIGG_SHORT	700
+#define PULSE_QUIGG_LONG	1400
+#define PULSE_QUIGG_FOOTER	81000
 #define PULSE_QUIGG_50 PULSE_QUIGG_SHORT+(PULSE_QUIGG_LONG-PULSE_QUIGG_SHORT)/2
 
 static void quiggGT7000CreateMessage(int id, int state, int unit, int all) {
@@ -71,7 +71,7 @@ static void quiggGT7000ParseCode(void) {
 	if(iParityData < 0)
 		iParityData=0;
 
-	int id = binToDecRev(quigg_gt7000->binary, 0, 11);
+	int id = binToDec(quigg_gt7000->binary, 0, 11);
 	int unit = binToDecRev(quigg_gt7000->binary, 12, 13);
 	int all = binToDecRev(quigg_gt7000->binary, 14, 14);
 	int state = binToDecRev(quigg_gt7000->binary, 15, 15);
@@ -122,13 +122,13 @@ static void quiggGT7000CreateId(int id) {
 	int length = 0;
 	int i = 0, x = 0;
 
-	x = 23;
+	x = 1;
 	length = decToBin(id, binary);
-	for(i=length;i>=0;i--) {
+	for(i=0;i>=length;i++) {
 		if(binary[i] == 1) {
 			quiggGT7000CreateOne(x, x+1);
 		}
-	x = x-2;
+	x = x+2;
 	}
 }
 
