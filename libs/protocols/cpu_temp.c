@@ -121,7 +121,7 @@ static void *cpuTempParse(void *param) {
 						cpuTemp->message = NULL;
 					}
 				} else {
-					logprintf(LOG_ERR, "CPU RPI device %s does not exists", cpu_temp);
+					logprintf(LOG_ERR, "CPU sysfs \"%s\" does not exists", cpu_temp);
 				}
 			}
 			pthread_mutex_unlock(&cpu_templock);
@@ -163,7 +163,7 @@ void cpuTempInit(void) {
 
 	protocol_register(&cpuTemp);
 	protocol_set_id(cpuTemp, "cpu_temp");
-	protocol_device_add(cpuTemp, "cpu_temp", "RPi CPU/GPU temperature sensor");
+	protocol_device_add(cpuTemp, "cpu_temp", "CPU temperature sensor");
 	cpuTemp->devtype = WEATHER;
 	cpuTemp->hwtype = SENSOR;
 
@@ -183,7 +183,7 @@ void cpuTempInit(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name = "cpu_temp";
-	module->version = "1.3";
+	module->version = "1.4";
 	module->reqversion = "5.0";
 	module->reqcommit = "187";
 }
