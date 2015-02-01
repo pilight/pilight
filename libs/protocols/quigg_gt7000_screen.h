@@ -16,10 +16,11 @@
 	along with pilight. If not, see	<http://www.gnu.org/licenses/>
 */
 
-#ifndef _PROTOCOL_QUIGG_GT7000_H_
-#define _PROTOCOL_QUIGG_GT7000_H_
+#ifndef _PROTOCOL_QUIGG_GT7000_SCREEN_H_
+#define _PROTOCOL_QUIGG_GT7000_SCREEN_H_
 
-struct protocol_t *quigg_gt7000;
-void quiggGT7000Init(void);
+struct protocol_t *quigg_gt7000_screen;
+void quiggGT7000SrInit(void);
 
 #endif
+
