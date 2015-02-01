@@ -46,6 +46,7 @@
 
 #include "../../pilight.h"
 #include "common.h"
+#include "settings.h"
 #include "log.h"
 #include "avr.h"
 #include "avrgpio.h"
@@ -59,6 +60,8 @@
 static int mptype = FW_MP_UNKNOWN;
 
 static void firmware_attiny25(struct avrpart **p) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	char pgm_bits[] = "1 0 1 0 1 1 0 0 0 1 0 1 0 0 1 1 x x x x x x x x x x x x x x x x";
 	char read_bits[] = "0 0 1 1 0 0 0 0 0 0 0 x x x x x x x x x x x a1 a0 o o o o o o o o";
 	char erase_bits[] = "1 0 1 0 1 1 0 0 1 0 0 x x x x x x x x x x x x x x x x x x x x x";
@@ -89,7 +92,7 @@ static void firmware_attiny25(struct avrpart **p) {
 	(*p)->sigmem = avr_new_memtype();
 	strcpy((*p)->sigmem->desc, "signature");
 	(*p)->sigmem->size = 3;
-	(*p)->sigmem->buf = malloc((size_t)(*p)->sigmem->size+(size_t)1);
+	(*p)->sigmem->buf = MALLOC((size_t)(*p)->sigmem->size+(size_t)1);
 	(*p)->sigmem->op[AVR_OP_READ] = avr_new_opcode();
 	parse_cmdbits((*p)->sigmem->op[AVR_OP_READ], read_bits);
 
@@ -124,7 +127,7 @@ static void firmware_attiny25(struct avrpart **p) {
 	strcpy((*p)->lfusemem->desc, "lfuse");
 
 	(*p)->lfusemem->size = 1;
-	(*p)->lfusemem->buf = malloc((size_t)(*p)->lfusemem->size+(size_t)1);
+	(*p)->lfusemem->buf = MALLOC((size_t)(*p)->lfusemem->size+(size_t)1);
 
 	(*p)->lfusemem->min_write_delay = 9000;
 	(*p)->lfusemem->max_write_delay = 9000;
@@ -139,7 +142,7 @@ static void firmware_attiny25(struct avrpart **p) {
 	strcpy((*p)->hfusemem->desc, "hfuse");
 
 	(*p)->hfusemem->size = 1;
-	(*p)->hfusemem->buf = malloc((size_t)(*p)->hfusemem->size+(size_t)1);
+	(*p)->hfusemem->buf = MALLOC((size_t)(*p)->hfusemem->size+(size_t)1);
 
 	(*p)->hfusemem->min_write_delay = 9000;
 	(*p)->hfusemem->max_write_delay = 9000;
@@ -152,6 +155,8 @@ static void firmware_attiny25(struct avrpart **p) {
 }
 
 static void firmware_attiny45(struct avrpart **p) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	char pgm_bits[] = "1 0 1 0 1 1 0 0 0 1 0 1 0 0 1 1 x x x x x x x x x x x x x x x x";
 	char read_bits[] = "0 0 1 1 0 0 0 0 0 0 0 x x x x x x x x x x x a1 a0 o o o o o o o o";
 	char erase_bits[] = "1 0 1 0 1 1 0 0 1 0 0 x x x x x x x x x x x x x x x x x x x x x";
@@ -182,7 +187,7 @@ static void firmware_attiny45(struct avrpart **p) {
 	(*p)->sigmem = avr_new_memtype();
 	strcpy((*p)->sigmem->desc, "signature");
 	(*p)->sigmem->size = 3;
-	(*p)->sigmem->buf = malloc((size_t)(*p)->sigmem->size+(size_t)1);
+	(*p)->sigmem->buf = MALLOC((size_t)(*p)->sigmem->size+(size_t)1);
 	(*p)->sigmem->op[AVR_OP_READ] = avr_new_opcode();
 	parse_cmdbits((*p)->sigmem->op[AVR_OP_READ], read_bits);
 
@@ -217,7 +222,7 @@ static void firmware_attiny45(struct avrpart **p) {
 	strcpy((*p)->lfusemem->desc, "lfuse");
 
 	(*p)->lfusemem->size = 1;
-	(*p)->lfusemem->buf = malloc((size_t)(*p)->lfusemem->size+(size_t)1);
+	(*p)->lfusemem->buf = MALLOC((size_t)(*p)->lfusemem->size+(size_t)1);
 
 	(*p)->lfusemem->min_write_delay = 9000;
 	(*p)->lfusemem->max_write_delay = 9000;
@@ -232,7 +237,7 @@ static void firmware_attiny45(struct avrpart **p) {
 	strcpy((*p)->hfusemem->desc, "hfuse");
 
 	(*p)->hfusemem->size = 1;
-	(*p)->hfusemem->buf = malloc((size_t)(*p)->hfusemem->size+(size_t)1);
+	(*p)->hfusemem->buf = MALLOC((size_t)(*p)->hfusemem->size+(size_t)1);
 
 	(*p)->hfusemem->min_write_delay = 9000;
 	(*p)->hfusemem->max_write_delay = 9000;
@@ -245,6 +250,8 @@ static void firmware_attiny45(struct avrpart **p) {
 }
 
 static void firmware_attiny85(struct avrpart **p) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	char pgm_bits[] = "1 0 1 0 1 1 0 0 0 1 0 1 0 0 1 1 x x x x x x x x x x x x x x x x";
 	char read_bits[] = "0 0 1 1 0 0 0 0 0 0 0 x x x x x x x x x x x a1 a0 o o o o o o o o";
 	char erase_bits[] = "1 0 1 0 1 1 0 0 1 0 0 x x x x x x x x x x x x x x x x x x x x x";
@@ -275,7 +282,7 @@ static void firmware_attiny85(struct avrpart **p) {
 	(*p)->sigmem = avr_new_memtype();
 	strcpy((*p)->sigmem->desc, "signature");
 	(*p)->sigmem->size = 3;
-	(*p)->sigmem->buf = malloc((size_t)(*p)->sigmem->size+(size_t)1);
+	(*p)->sigmem->buf = MALLOC((size_t)(*p)->sigmem->size+(size_t)1);
 	(*p)->sigmem->op[AVR_OP_READ] = avr_new_opcode();
 	parse_cmdbits((*p)->sigmem->op[AVR_OP_READ], read_bits);
 
@@ -310,7 +317,7 @@ static void firmware_attiny85(struct avrpart **p) {
 	strcpy((*p)->lfusemem->desc, "lfuse");
 
 	(*p)->lfusemem->size = 1;
-	(*p)->lfusemem->buf = malloc((size_t)(*p)->lfusemem->size+(size_t)1);
+	(*p)->lfusemem->buf = MALLOC((size_t)(*p)->lfusemem->size+(size_t)1);
 
 	(*p)->lfusemem->min_write_delay = 9000;
 	(*p)->lfusemem->max_write_delay = 9000;
@@ -325,7 +332,7 @@ static void firmware_attiny85(struct avrpart **p) {
 	strcpy((*p)->hfusemem->desc, "hfuse");
 
 	(*p)->hfusemem->size = 1;
-	(*p)->hfusemem->buf = malloc((size_t)(*p)->hfusemem->size+(size_t)1);
+	(*p)->hfusemem->buf = MALLOC((size_t)(*p)->hfusemem->size+(size_t)1);
 
 	(*p)->hfusemem->min_write_delay = 9000;
 	(*p)->hfusemem->max_write_delay = 9000;
@@ -338,12 +345,21 @@ static void firmware_attiny85(struct avrpart **p) {
 }
 
 static void firmware_init_pgm(PROGRAMMER **pgm) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	*pgm = pgm_new();
 	gpio_initpgm(*pgm);
-	(*pgm)->pinno[3] = 8;
-	(*pgm)->pinno[4] = 11;
-	(*pgm)->pinno[5] = 10;
-	(*pgm)->pinno[6] = 9;
+
+	(*pgm)->pinno[3] = FIRMWARE_GPIO_RESET;
+	(*pgm)->pinno[4] = FIRMWARE_GPIO_SCK;
+	(*pgm)->pinno[5] = FIRMWARE_GPIO_MOSI;
+	(*pgm)->pinno[6] = FIRMWARE_GPIO_MISO;
+	// (*pgm)->ispdelay = 50;
+
+	settings_find_number("firmware-gpio-reset", (int *)&(*pgm)->pinno[3]);
+	settings_find_number("firmware-gpio-sck", (int *)&(*pgm)->pinno[4]);
+	settings_find_number("firmware-gpio-mosi", (int *)&(*pgm)->pinno[5]);
+	settings_find_number("firmware-gpio-miso", (int *)&(*pgm)->pinno[6]);
 
 	if((*pgm)->setup) {
 		(*pgm)->setup(*pgm);
@@ -351,10 +367,14 @@ static void firmware_init_pgm(PROGRAMMER **pgm) {
 }
 
 static void firmware_process(int percent, double etime, char *hdr) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
   //printf("%d\n", percent);
 }
 
 static int firmware_identifymp(struct avrpart **p) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	int exitrc = 0, i = 0;
 	int init_ok = 0;
 	PROGRAMMER *pgm = NULL;
@@ -439,42 +459,44 @@ static int firmware_identifymp(struct avrpart **p) {
 main_exit:
 	pgm->close(pgm);
 
-	sfree((void *)&pgm);
+	FREE(pgm);
 
 	for(i=0;i<AVR_OP_MAX;i++) {
-		sfree((void *)&(*p)->op[i]);
+		FREE((*p)->op[i]);
 	}
 
 	for(i=0;i<AVR_OP_MAX;i++) {
-		sfree((void *)&(*p)->sigmem->op[i]);
+		FREE((*p)->sigmem->op[i]);
 	}
-	sfree((void *)&(*p)->sigmem->buf);
-	sfree((void *)&(*p)->sigmem);
+	FREE((*p)->sigmem->buf);
+	FREE((*p)->sigmem);
 
 	for(i=0;i<AVR_OP_MAX;i++) {
-		sfree((void *)&(*p)->flashmem->op[i]);
+		FREE((*p)->flashmem->op[i]);
 	}
-	sfree((void *)&(*p)->flashmem->buf);
-	sfree((void *)&(*p)->flashmem);
+	FREE((*p)->flashmem->buf);
+	FREE((*p)->flashmem);
 
 	for(i=0;i<AVR_OP_MAX;i++) {
-		sfree((void *)&(*p)->hfusemem->op[i]);
+		FREE((*p)->hfusemem->op[i]);
 	}
-	sfree((void *)&(*p)->hfusemem->buf);
-	sfree((void *)&(*p)->hfusemem);
+	FREE((*p)->hfusemem->buf);
+	FREE((*p)->hfusemem);
 
 	for(i=0;i<AVR_OP_MAX;i++) {
-		sfree((void *)&(*p)->lfusemem->op[i]);
+		FREE((*p)->lfusemem->op[i]);
 	}
-	sfree((void *)&(*p)->lfusemem->buf);
-	sfree((void *)&(*p)->lfusemem);
+	FREE((*p)->lfusemem->buf);
+	FREE((*p)->lfusemem);
 
-	sfree((void *)&*p);
+	FREE(*p);
 
 	return exitrc;
 }
 
 static int firmware_write(char *filename, struct avrpart **p) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	int exitrc = 0, i = 0, erase = 1, nowrite = 0, verify = 1;
 	int safemode = 1, init_ok = 0;
 	unsigned char safemode_lfuse = 0xff, safemode_hfuse = 0xff;
@@ -757,77 +779,77 @@ static int firmware_write(char *filename, struct avrpart **p) {
 main_exit:
 	pgm->close(pgm);
 
-	sfree((void *)&pgm);
+	FREE(pgm);
 
-	sfree((void *)&wfile->memtype);
-	sfree((void *)&wfile->filename);
-	sfree((void *)&wfile);
+	FREE(wfile->memtype);
+	FREE(wfile->filename);
+	FREE(wfile);
 
 	if(vfile) {
-		sfree((void *)&vfile->memtype);
-		sfree((void *)&vfile->filename);
-		sfree((void *)&vfile);
+		FREE(vfile->memtype);
+		FREE(vfile->filename);
+		FREE(vfile);
 	}
 
-	sfree((void *)&whfuse->memtype);
-	sfree((void *)&whfuse->filename);
-	sfree((void *)&whfuse);
+	FREE(whfuse->memtype);
+	FREE(whfuse->filename);
+	FREE(whfuse);
 
 	if(vhfuse) {
-		sfree((void *)&vhfuse->memtype);
-		sfree((void *)&vhfuse->filename);
-		sfree((void *)&vhfuse);
+		FREE(vhfuse->memtype);
+		FREE(vhfuse->filename);
+		FREE(vhfuse);
 	}
 
-	sfree((void *)&wlfuse->memtype);
-	sfree((void *)&wlfuse->filename);
-	sfree((void *)&wlfuse);
+	FREE(wlfuse->memtype);
+	FREE(wlfuse->filename);
+	FREE(wlfuse);
 
 	if(vlfuse) {
-		sfree((void *)&vlfuse->memtype);
-		sfree((void *)&vlfuse->filename);
-		sfree((void *)&vlfuse);
+		FREE(vlfuse->memtype);
+		FREE(vlfuse->filename);
+		FREE(vlfuse);
 	}
 
 	for(i=0;i<AVR_OP_MAX;i++) {
-		sfree((void *)&(*p)->op[i]);
+		FREE((*p)->op[i]);
 	}
 
 	for(i=0;i<AVR_OP_MAX;i++) {
-		sfree((void *)&(*p)->sigmem->op[i]);
+		FREE((*p)->sigmem->op[i]);
 	}
-	sfree((void *)&(*p)->sigmem->buf);
-	sfree((void *)&(*p)->sigmem);
+	FREE((*p)->sigmem->buf);
+	FREE((*p)->sigmem);
 
 	for(i=0;i<AVR_OP_MAX;i++) {
-		sfree((void *)&(*p)->flashmem->op[i]);
+		FREE((*p)->flashmem->op[i]);
 	}
-	sfree((void *)&(*p)->flashmem->buf);
-	sfree((void *)&(*p)->flashmem);
+	FREE((*p)->flashmem->buf);
+	FREE((*p)->flashmem);
 
 	for(i=0;i<AVR_OP_MAX;i++) {
-		sfree((void *)&(*p)->hfusemem->op[i]);
+		FREE((*p)->hfusemem->op[i]);
 	}
-	sfree((void *)&(*p)->hfusemem->buf);
-	sfree((void *)&(*p)->hfusemem);
+	FREE((*p)->hfusemem->buf);
+	FREE((*p)->hfusemem);
 
 	for(i=0;i<AVR_OP_MAX;i++) {
-		sfree((void *)&(*p)->lfusemem->op[i]);
+		FREE((*p)->lfusemem->op[i]);
 	}
-	sfree((void *)&(*p)->lfusemem->buf);
-	sfree((void *)&(*p)->lfusemem);
+	FREE((*p)->lfusemem->buf);
+	FREE((*p)->lfusemem);
 
-	sfree((void *)&v->flashmem->buf);
-	sfree((void *)&v->flashmem);
-	sfree((void *)&v->sigmem->buf);
-	sfree((void *)&v->sigmem);
-	sfree((void *)&v->lfusemem->buf);
-	sfree((void *)&v->lfusemem);
-	sfree((void *)&v->hfusemem->buf);
-	sfree((void *)&v->hfusemem);
+	FREE(v->flashmem->buf);
+	FREE(v->flashmem);
+	FREE(v->sigmem->buf);
+	FREE(v->sigmem);
+	FREE(v->lfusemem->buf);
+	FREE(v->lfusemem);
+	FREE(v->hfusemem->buf);
+	FREE(v->hfusemem);
 
-	sfree((void *)&*p);
-	sfree((void *)&v);
+	FREE(*p);
+	FREE(v);
 
 	logprintf(LOG_INFO, "Finished updating firmware");
 
@@ -835,6 +857,8 @@ main_exit:
 }
 
 int firmware_getmp(void) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	struct avrpart *p = NULL;
 	unsigned int match = 0;
 	firmware_attiny25(&p);
@@ -863,8 +887,10 @@ int firmware_getmp(void) {
 }
 
 int firmware_check(char **output) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	int version = 0;
-#ifdef FIRMWARE
+#ifdef FIRMWARE_UPDATER
 	struct dirent *file = NULL;
 	DIR *d = NULL;
 	int tmp = 0;
@@ -916,6 +942,8 @@ int firmware_check(char **output) {
 }
 
 int firmware_update(char *fwfile) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	struct avrpart *p = NULL;
 	if(fmt_autodetect(fwfile) != FMT_IHEX) {
 		logprintf(LOG_ERR, "Trying to write an invalid firmware file");

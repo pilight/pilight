@@ -1,5 +1,6 @@
 /*
-  Copyright (C) 2011 Joseph A. Adams (joeyadams3.14159@gmail.com)
+  Copyright (C) 2013 - 2014 CurlyMo (curlymoo1@gmail.com)
+								2011 Joseph A. Adams (joeyadams3.14159@gmail.com)
   All rights reserved.
 
   Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -64,6 +65,7 @@ struct JsonNode
 			JsonNode *head, *tail;
 		} children;
 	};
+	int decimals_;
 };
 
 /*** Encoding, decoding, and validation ***/
@@ -93,7 +95,7 @@ JsonNode   *json_first_child    (const JsonNode *node);
 JsonNode *json_mknull(void);
 JsonNode *json_mkbool(bool b);
 JsonNode *json_mkstring(const char *s);
-JsonNode *json_mknumber(double n);
+JsonNode *json_mknumber(double n, int decimals);
 JsonNode *json_mkarray(void);
 JsonNode *json_mkobject(void);
 
@@ -103,6 +105,8 @@ void json_append_member(JsonNode *object, const char *key, JsonNode *value);
 void json_prepend_member(JsonNode *object, const char *key, JsonNode *value);
 
 void json_remove_from_parent(JsonNode *node);
+
+void json_free(void *a);
 
 /*** Debugging ***/
 

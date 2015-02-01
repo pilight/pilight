@@ -3,17 +3,17 @@
 
 	This file is part of pilight.
 
-    pilight is free software: you can redistribute it and/or modify it under the
+	pilight is free software: you can redistribute it and/or modify it under the
 	terms of the GNU General Public License as published by the Free Software
 	Foundation, either version 3 of the License, or (at your option) any later
 	version.
 
-    pilight is distributed in the hope that it will be useful, but WITHOUT ANY
+	pilight is distributed in the hope that it will be useful, but WITHOUT ANY
 	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-    You should have received a copy of the GNU General Public License
-    along with pilight. If not, see	<http://www.gnu.org/licenses/>
+	You should have received a copy of the GNU General Public License
+	along with pilight. If not, see	<http://www.gnu.org/licenses/>
 */
 
 #include <stdio.h>
@@ -23,12 +23,11 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <errno.h>
-#include <syslog.h>
 
 #include "pilight.h"
 #include "common.h"
-#include "settings.h"
 #include "config.h"
+#include "devices.h"
 #include "log.h"
 #include "options.h"
 #include "socket.h"
@@ -36,70 +35,44 @@
 #include "ssdp.h"
 #include "dso.h"
 #include "protocol.h"
+#include "gc.h"
+#include "operator.h"
+#include "action.h"
 
-typedef enum {
-	WELCOME,
-	IDENTIFY,
-	REJECT,
-	REQUEST,
-	CONFIG
-} steps_t;
 
 int main(int argc, char **argv) {
+	// memtrack();
+
+	struct options_t *options = NULL;
+	struct ssdp_list_t *ssdp_list = NULL;
+	struct devices_t *dev = NULL;
+	struct JsonNode *json = NULL;
+	struct JsonNode *tmp = NULL;
+	char *recvBuff = NULL, *message = NULL, *output = NULL;
+	char *device = NULL, *state = NULL, *values = NULL;
+	char *server = NULL;
+	int has_values = 0, sockfd = 0, hasconfarg = 0;
+	unsigned short port = 0, showhelp = 0, showversion = 0;
 
 	log_file_disable();
 	log_shell_enable();
 	log_level_set(LOG_NOTICE);
 
-	if(!(progname = malloc(16))) {
+	if(!(progname = MALLOC(16))) {
 		logprintf(LOG_ERR, "out of memory");
 		exit(EXIT_FAILURE);
 	}
 	strcpy(progname, "pilight-control");
 
-	struct options_t *options = NULL;
-	struct ssdp_list_t *ssdp_list = NULL;
-	int sockfd = 0;
-
-    char *recvBuff = NULL;
-	char *message = NULL;
-	char *pch = NULL;
-	steps_t steps = WELCOME;
-
-	char device[50];
-	char location[50];
-	char state[10];
-	char values[255];
-	struct conf_locations_t *slocation = NULL;
-	struct conf_devices_t *sdevice = NULL;
-	int has_values = 0;
-
-	memset(device, '\0', 50);
-	memset(location, '\0', 50);
-	memset(state, '\0', 10);
-	memset(values, '\0', 255);
-
-	char *server = NULL;
-	unsigned short port = 0;
-
-	JsonNode *json = NULL;
-	JsonNode *jconfig = NULL;
-	JsonNode *jcode = NULL;
-	JsonNode *jvalues = NULL;
-
-	char settingstmp[] = SETTINGS_FILE;
-	settings_set_file(settingstmp);
-
 	/* Define all CLI arguments of this program */
 	options_add(&options, 'H', "help", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
 	options_add(&options, 'V', "version", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
-	options_add(&options, 'l', "location", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, NULL);
 	options_add(&options, 'd', "device", OPTION_HAS_VALUE, 0,  JSON_NULL, NULL, NULL);
 	options_add(&options, 's', "state", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, NULL);
 	options_add(&options, 'v', "values", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, NULL);
 	options_add(&options, 'S', "server", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, "^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]).){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$");
 	options_add(&options, 'P', "port", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, "[0-9]{1,4}");
-	options_add(&options, 'F', "settings", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, NULL);
+	options_add(&options, 'C', "config", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, NULL);
 
 	/* Store all CLI arguments for later usage
 	   and also check if the CLI arguments where
@@ -114,41 +87,40 @@ int main(int argc, char **argv) {
 			c = 'H';
 		switch(c) {
 			case 'H':
-				printf("\t -H --help\t\t\tdisplay this message\n");
-				printf("\t -V --version\t\t\tdisplay version\n");
-				printf("\t -S --server=x.x.x.x\t\tconnect to server address\n");
-				printf("\t -F --settings\t\tsettings file\n");
-				printf("\t -P --port=xxxx\t\t\tconnect to server port\n");
-				printf("\t -l --location=location\t\tthe location in which the device resides\n");
-				printf("\t -d --device=device\t\tthe device that you want to control\n");
-				printf("\t -s --state=state\t\tthe new state of the device\n");
-				printf("\t -v --values=values\t\tspecific comma separated values, e.g.:\n");
-				printf("\t\t\t\t\t-v dimlevel=10\n");
-				goto close;
+				showhelp = 1;
 			break;
 			case 'V':
-				printf("%s %s\n", progname, VERSION);
-				goto close;
-			break;
-			case 'l':
-				strcpy(location, optarg);
+				showversion = 1;
 			break;
 			case 'd':
+				if((device = REALLOC(device, strlen(optarg)+1)) == NULL) {
+					logprintf(LOG_ERR, "out of memory");
+					exit(EXIT_FAILURE);
+				}
 				strcpy(device, optarg);
 			break;
 			case 's':
+				if((state = REALLOC(state, strlen(optarg)+1)) == NULL) {
+					logprintf(LOG_ERR, "out of memory");
+					exit(EXIT_FAILURE);
+				}
 				strcpy(state, optarg);
 			break;
 			case 'v':
+				if((values = REALLOC(values, strlen(optarg)+1)) == NULL) {
+					logprintf(LOG_ERR, "out of memory");
+					exit(EXIT_FAILURE);
+				}
 				strcpy(values, optarg);
 			break;
-			case 'F':
-				if(settings_set_file(optarg) == EXIT_FAILURE) {
+			case 'C':
+				if(config_set_file(optarg) == EXIT_FAILURE) {
 					return EXIT_FAILURE;
 				}
+				hasconfarg = 1;
 			break;
 			case 'S':
-				if(!(server = realloc(server, strlen(optarg)+1))) {
+				if(!(server = REALLOC(server, strlen(optarg)+1))) {
 					logprintf(LOG_ERR, "out of memory");
 					exit(EXIT_FAILURE);
 				}
@@ -164,9 +136,25 @@ int main(int argc, char **argv) {
 		}
 	}
 	options_delete(options);
-
-	if(strlen(location) == 0 || strlen(device) == 0 || strlen(state) == 0) {
-		printf("Usage: %s -l location -d device -s state\n", progname);
+	if(showversion == 1) {
+		printf("%s %s\n", progname, VERSION);
+		goto close;
+	}
+	if(showhelp == 1) {
+		printf("\t -H --help\t\t\tdisplay this message\n");
+		printf("\t -V --version\t\t\tdisplay version\n");
+		printf("\t -S --server=x.x.x.x\t\tconnect to server address\n");
+		printf("\t -C --config\t\t\tconfig file\n");
+		printf("\t -P --port=xxxx\t\t\tconnect to server port\n");
+		printf("\t -d --device=device\t\tthe device that you want to control\n");
+		printf("\t -s --state=state\t\tthe new state of the device\n");
+		printf("\t -v --values=values\t\tspecific comma separated values, e.g.:\n");
+		printf("\t\t\t\t\t-v dimlevel=10\n");
+		goto close;
+	}
+	if(device == NULL || state == NULL ||
+	   strlen(device) == 0 || strlen(state) == 0) {
+		printf("Usage: %s -d device -s state\n", progname);
 		goto close;
 	}
 
@@ -188,95 +176,113 @@ int main(int argc, char **argv) {
 		ssdp_free(ssdp_list);
 	}
 
-	if(settings_read() != 0) {
-		return EXIT_FAILURE;
+	protocol_init();
+	config_init();
+	if(hasconfarg == 1) {
+		if(config_read() != EXIT_SUCCESS) {
+			goto close;
+		}
 	}
 
-	protocol_init();
+	socket_write(sockfd, "{\"action\":\"identify\"}");
+	if(socket_read(sockfd, &recvBuff) != 0
+	   || strcmp(recvBuff, "{\"status\":\"success\"}") != 0) {
+		goto close;
+	}
 
-	while(1) {
-		if(steps > WELCOME) {
-			/* Clear the receive buffer again and read the welcome message */
-			if((recvBuff = socket_read(sockfd))) {
-				json = json_decode(recvBuff);
-				json_find_string(json, "message", &message);
-				sfree((void *)&recvBuff);
-			} else {
-				goto close;
-			}
-		}
+	json = json_mkobject();
+	json_append_member(json, "action", json_mkstring("request config"));
+	output = json_stringify(json, NULL);
+	socket_write(sockfd, output);
+	json_free(output);
+	json_delete(json);
 
-		switch(steps) {
-			case WELCOME:
-				socket_write(sockfd, "{\"message\":\"client controller\"}");
-				steps=IDENTIFY;
-			break;
-			case IDENTIFY:
-				if(message && strlen(message) > 0) {
-					if(strcmp(message, "accept client") == 0) {
-						steps=REQUEST;
-					}
-					if(strcmp(message, "reject client") == 0) {
-						steps=REJECT;
-					}
-				} else {
-					goto close;
-				}
-			case REQUEST:
-				socket_write(sockfd, "{\"message\":\"request config\"}");
-				steps=CONFIG;
-				json_delete(json);
-			break;
-			case CONFIG:
-				if((jconfig = json_find_member(json, "config")) != NULL) {
-					config_parse(jconfig);
-					if(config_get_location(location, &slocation) == 0) {
-						if(config_get_device(location, device, &sdevice) == 0) {
+	if(socket_read(sockfd, &recvBuff) == 0) {
+		if(json_validate(recvBuff) == true) {
+			json = json_decode(recvBuff);
+			if(json_find_string(json, "message", &message) == 0) {
+				if(strcmp(message, "config") == 0) {
+					struct JsonNode *jconfig = NULL;
+					if((jconfig = json_find_member(json, "config")) != NULL) {
+						int match = 1;
+						while(match) {
+							struct JsonNode *jchilds = json_first_child(jconfig);
+							match = 0;
+							while(jchilds) {
+								if(strcmp(jchilds->key, "devices") != 0) {
+									json_remove_from_parent(jchilds);
+									tmp = jchilds;
+									match = 1;
+								}
+								jchilds = jchilds->next;
+								if(tmp != NULL) {
+									json_delete(tmp);
+								}
+								tmp = NULL;
+							}
+						}
+						config_parse(jconfig);
+						if(devices_get(device, &dev) == 0) {
 							JsonNode *joutput = json_mkobject();
-							jcode = json_mkobject();
-							jvalues = json_mkobject();
-
-							json_append_member(jcode, "location", json_mkstring(location));
+							JsonNode *jcode = json_mkobject();
+							JsonNode *jvalues = json_mkobject();
 							json_append_member(jcode, "device", json_mkstring(device));
 
-							pch = strtok(values, ",=");
-							while(pch != NULL) {
-								char *name = strdup(pch);
-								pch = strtok(NULL, ",=");
-								if(pch == NULL) {
-									sfree((void *)&name);
-									break;
-								} else {
-									char *val = strdup(pch);
-									if(pch != NULL) {
-										if(config_valid_value(location, device, name, val) == 0) {
-											if(isNumeric(val) == EXIT_SUCCESS) {
-												json_append_member(jvalues, name, json_mknumber(atof(val)));
+							if(values != NULL) {
+								char *pch = strtok(values, ",=");
+								while(pch != NULL) {
+									char *name = MALLOC(strlen(pch)+1);
+									if(name == NULL) {
+										logprintf(LOG_ERR, "out of memory\n");
+										exit(EXIT_FAILURE);
+									}
+									strcpy(name, pch);
+									pch = strtok(NULL, ",=");
+									if(pch == NULL) {
+										FREE(name);
+										break;
+									} else {
+										char *val = MALLOC(strlen(pch)+1);
+										if(name == NULL) {
+											logprintf(LOG_ERR, "out of memory\n");
+											exit(EXIT_FAILURE);
+										}
+										strcpy(val, pch);
+										if(pch != NULL) {
+											if(devices_valid_value(device, name, val) == 0) {
+												if(isNumeric(val) == EXIT_SUCCESS) {
+													char *ptr = strstr(pch, ".");
+													int decimals = 0;
+													if(ptr != NULL) {
+														decimals = (int)(strlen(pch)-((size_t)(ptr-pch)+1));
+													}
+													json_append_member(jvalues, name, json_mknumber(atof(val), decimals));
+												} else {
+													json_append_member(jvalues, name, json_mkstring(val));
+												}
+												has_values = 1;
 											} else {
-												json_append_member(jvalues, name, json_mkstring(val));
+												logprintf(LOG_ERR, "\"%s\" is an invalid value for device \"%s\"", name, device);
+												FREE(name);
+												json_delete(json);
+												goto close;
 											}
-											has_values = 1;
 										} else {
 											logprintf(LOG_ERR, "\"%s\" is an invalid value for device \"%s\"", name, device);
-											sfree((void *)&name);
 											json_delete(json);
 											goto close;
 										}
-									} else {
-										logprintf(LOG_ERR, "\"%s\" is an invalid value for device \"%s\"", name, device);
-										json_delete(json);
-										goto close;
+										pch = strtok(NULL, ",=");
+										if(pch == NULL) {
+											FREE(name);
+											break;
+										}
 									}
-									pch = strtok(NULL, ",=");
-									if(pch == NULL) {
-										sfree((void *)&name);
-										break;
-									}
+									FREE(name);
 								}
-								sfree((void *)&name);
 							}
 
-							if(config_valid_state(location, device, state) == 0) {
+							if(devices_valid_state(device, state) == 0) {
 								json_append_member(jcode, "state", json_mkstring(state));
 							} else {
 								logprintf(LOG_ERR, "\"%s\" is an invalid state for device \"%s\"", state, device);
@@ -289,50 +295,59 @@ int main(int argc, char **argv) {
 							} else {
 								json_delete(jvalues);
 							}
-
-							json_append_member(joutput, "message", json_mkstring("send"));
+							json_append_member(joutput, "action", json_mkstring("control"));
 							json_append_member(joutput, "code", jcode);
-							char *output = json_stringify(joutput, NULL);
+							output = json_stringify(joutput, NULL);
 							socket_write(sockfd, output);
-							sfree((void *)&output);
+							json_free(output);
 							json_delete(joutput);
+							if(socket_read(sockfd, &recvBuff) != 0
+							   || strcmp(recvBuff, "{\"status\":\"success\"}") != 0) {
+								logprintf(LOG_ERR, "failed to control %s", device);
+							}
 						} else {
 							logprintf(LOG_ERR, "the device \"%s\" does not exist", device);
 							json_delete(json);
 							goto close;
 						}
-					} else {
-						logprintf(LOG_ERR, "the location \"%s\" does not exist", location);
-						json_delete(json);
-						goto close;
 					}
 				}
-				json_delete(json);
-				goto close;
-			break;
-			case REJECT:
-			default:
-				json_delete(json);
-				goto close;
-			break;
+			}
+			json_delete(json);
 		}
 	}
 close:
+	if(recvBuff) {
+		FREE(recvBuff);
+	}
 	if(sockfd > 0) {
 		socket_close(sockfd);
 	}
-	if(server) {
-		sfree((void *)&server);
+	if(server != NULL) {
+		FREE(server);
+	}
+	if(device != NULL) {
+		FREE(device);
+	}
+	if(state != NULL) {
+		FREE(state);
+	}
+	if(values != NULL) {
+		FREE(values);
 	}
 	log_shell_disable();
+	socket_gc();
 	config_gc();
 	protocol_gc();
-	socket_gc();
 	options_gc();
-	settings_gc();
+	event_operator_gc();
+	event_action_gc();
 	dso_gc();
 	log_gc();
-	sfree((void *)&progname);
+	gc_clear();
+	threads_gc();
+	FREE(progname);
+	xfree();
 
 	return EXIT_SUCCESS;
 }

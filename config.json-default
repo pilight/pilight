@@ -1,0 +1,24 @@
+{
+	"devices": { },
+	"gui": { },
+	"settings": {
+		"log-level": 4,
+		"pid-file": "/var/run/pilight.pid",
+		"log-file": "/var/log/pilight.log",
+		"send-repeats": 10,
+		"receive-repeats": 1,
+		"webserver-enable": 1,
+		"webserver-root": "/usr/local/share/pilight/",
+		"webserver-port": 5001,
+		"webserver-cache": 1,
+		"whitelist": "",
+		"firmware-update": 0
+	},
+	"hardware": {
+		"433gpio": {
+			"sender": 0,
+			"receiver": 1
+		}
+	},
+	"registry": { }
+}

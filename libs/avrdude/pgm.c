@@ -27,6 +27,7 @@
 #include "log.h"
 #include "avrdude.h"
 #include "pgm.h"
+#include "mem.h"
 
 static int  pgm_default_2 (struct programmer_t *, AVRPART *);
 static int  pgm_default_3 (struct programmer_t * pgm, AVRPART * p, AVRMEM * mem,
@@ -63,7 +64,7 @@ PROGRAMMER * pgm_new(void)
   int i;
   PROGRAMMER * pgm;
 
-  pgm = (PROGRAMMER *)malloc(sizeof(*pgm));
+  pgm = (PROGRAMMER *)MALLOC(sizeof(*pgm));
   if (pgm == NULL) {
     logprintf(LOG_ERR, "out of memory");
     exit(1);

@@ -32,6 +32,7 @@
 #include "avrconfig.h"
 #include "fileio.h"
 #include "avrupd.h"
+#include "mem.h"
 
 AVRUPD * parse_op(char * s)
 {
@@ -41,7 +42,7 @@ AVRUPD * parse_op(char * s)
   int i;
   size_t fnlen;
 
-  upd = (AVRUPD *)malloc(sizeof(AVRUPD));
+  upd = (AVRUPD *)MALLOC(sizeof(AVRUPD));
   if (upd == NULL) {
 	logprintf(LOG_ERR, "out of memory");
     exit(1);
@@ -54,7 +55,7 @@ AVRUPD * parse_op(char * s)
   buf[i] = 0;
 
   if (*p != ':') {
-    upd->memtype = (char *)malloc(strlen("flash")+1);
+    upd->memtype = (char *)MALLOC(strlen("flash")+1);
     if (upd->memtype == NULL) {
       outofmem:
 	  logprintf(LOG_ERR, "out of memory");
@@ -62,7 +63,7 @@ AVRUPD * parse_op(char * s)
     }
     strcpy(upd->memtype, "flash");
     upd->op = DEVICE_WRITE;
-    upd->filename = (char *)malloc(strlen(buf) + 1);
+    upd->filename = (char *)MALLOC(strlen(buf) + 1);
     if (upd->filename == NULL)
       goto outofmem;
     strcpy(upd->filename, buf);
@@ -70,7 +71,7 @@ AVRUPD * parse_op(char * s)
     return upd;
   }
 
-  upd->memtype = (char *)malloc(strlen(buf)+1);
+  upd->memtype = (char *)MALLOC(strlen(buf)+1);
   if (upd->memtype == NULL) {
 	logprintf(LOG_ERR, "out of memory");
     exit(1);
@@ -94,8 +95,8 @@ AVRUPD * parse_op(char * s)
             "    r = read device\n"
             "    w = write device\n"
             "    v = verify device");
-    sfree((void *)&upd->memtype);
-    sfree((void *)&upd);
+    FREE(upd->memtype);
+    FREE(upd);
     return NULL;
   }
 
@@ -103,8 +104,8 @@ AVRUPD * parse_op(char * s)
 
   if (*p != ':') {
     logprintf(LOG_ERR, "invalid update specification");
-    sfree((void *)&upd->memtype);
-    sfree((void *)&upd);
+    FREE(upd->memtype);
+    FREE(upd);
     return NULL;
   }
 
@@ -124,10 +125,10 @@ AVRUPD * parse_op(char * s)
   if (p == NULL) {
     upd->format = FMT_AUTO;
     fnlen = strlen(cp);
-    upd->filename = (char *)malloc(fnlen + 1);
+    upd->filename = (char *)MALLOC(fnlen + 1);
   } else {
     fnlen = p - cp;
-    upd->filename = (char *)malloc(fnlen +1);
+    upd->filename = (char *)MALLOC(fnlen +1);
     c = *++p;
     if (c && p[1])
       /* More than one char - force failure below. */
@@ -144,16 +145,16 @@ AVRUPD * parse_op(char * s)
       case 'o': upd->format = FMT_OCT; break;
       default:
         logprintf(LOG_ERR, "invalid file format '%s' in update specifier", p);
-        sfree((void *)&upd->memtype);
-        sfree((void *)&upd);
+        FREE(upd->memtype);
+        FREE(upd);
         return NULL;
     }
   }
 
   if (upd->filename == NULL) {
 	logprintf(LOG_ERR, "out of memory");
-    sfree((void *)&upd->memtype);
-    sfree((void *)&upd);
+    FREE(upd->memtype);
+    FREE(upd);
     return NULL;
   }
   memcpy(upd->filename, cp, fnlen);
@@ -166,16 +167,24 @@ AVRUPD * dup_AVRUPD(AVRUPD * upd)
 {
   AVRUPD * u;
 
-  u = (AVRUPD *)malloc(sizeof(AVRUPD));
-  if (u == NULL) {
-	logprintf(LOG_ERR, "out of memory");
-    exit(1);
+  u = (AVRUPD *)MALLOC(sizeof(AVRUPD));
+  if(u == NULL) {
+		logprintf(LOG_ERR, "out of memory");
+    exit(EXIT_FAILURE);
   }
 
   memcpy(u, upd, sizeof(AVRUPD));
 
-  u->memtype = strdup(upd->memtype);
-  u->filename = strdup(upd->filename);
+  if((u->memtype = MALLOC(strlen(upd->memtype)+1)) == NULL) {
+		logprintf(LOG_ERR, "out of memory");
+    exit(EXIT_FAILURE);
+  }
+	strcpy(u->memtype, upd->memtype);
+  if((u->filename = MALLOC(strlen(upd->filename)+1)) == NULL) {
+		logprintf(LOG_ERR, "out of memory");
+    exit(EXIT_FAILURE);
+	}
+	strcpy(u->filename, upd->filename);
 
   return u;
 }
@@ -184,14 +193,16 @@ AVRUPD * new_AVRUPD(int op, char * memtype, int filefmt, char * filename)
 {
   AVRUPD * u;
 
-  u = (AVRUPD *)malloc(sizeof(AVRUPD));
+  u = (AVRUPD *)MALLOC(sizeof(AVRUPD));
   if (u == NULL) {
-	logprintf(LOG_ERR, "out of memory");
-    exit(1);
-  }
+		logprintf(LOG_ERR, "out of memory");
+    exit(EXIT_FAILURE);
+	}
 
-  u->memtype = strdup(memtype);
-  u->filename = strdup(filename);
+  u->memtype = MALLOC(strlen(memtype)+1);
+	strcpy(u->memtype, memtype);
+  u->filename = MALLOC(strlen(filename)+1);
+	strcpy(u->filename, filename);
   u->op = op;
   u->format = filefmt;
 
@@ -326,15 +337,15 @@ int do_op(PROGRAMMER * pgm, struct avrpart * p, AVRUPD * upd, int nowrite,
 
       logprintf(LOG_INFO, "%d bytes of %s verified", rc, mem->desc);
 
-	sfree((void *)&v->sigmem->buf);
-	sfree((void *)&v->sigmem);
-	sfree((void *)&v->flashmem->buf);
-	sfree((void *)&v->flashmem);
-	sfree((void *)&v->hfusemem->buf);
-	sfree((void *)&v->hfusemem);
-	sfree((void *)&v->lfusemem->buf);
-	sfree((void *)&v->lfusemem);
-	sfree((void *)&v);
+	FREE(v->sigmem->buf);
+	FREE(v->sigmem);
+	FREE(v->flashmem->buf);
+	FREE(v->flashmem);
+	FREE(v->hfusemem->buf);
+	FREE(v->hfusemem);
+	FREE(v->lfusemem->buf);
+	FREE(v->lfusemem);
+	FREE(v);
   }
   else {
     logprintf(LOG_ERR, "invalid update operation (%d) requested", upd->op);
