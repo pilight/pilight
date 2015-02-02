@@ -225,6 +225,7 @@ static void *datetimeParse(void *param) {
 		json_append_member(datetime->message, "protocol", json_mkstring(datetime->id));
 
 		pilight.broadcast(datetime->id, datetime->message);
+
 		json_delete(datetime->message);
 		datetime->message = NULL;
 		if(x == 0) {

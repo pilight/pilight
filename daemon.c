@@ -1751,13 +1751,13 @@ int main_gc(void) {
 	ssdp_gc();
 	options_gc();
 	socket_gc();
-	dso_gc();
 
 	config_gc();
-	protocol_gc();	
+	protocol_gc();
 	whitelist_free();
 	threads_gc();
-	wiringXGC();
+	wiringXGC();	
+	dso_gc();
 	log_gc();
 
 	if(configtmp != NULL) {
