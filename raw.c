@@ -58,7 +58,6 @@ int main_gc(void) {
 	event_action_gc();
 	options_gc();
 	socket_gc();
-	dso_gc();
 
 	config_gc();
 	protocol_gc();
@@ -66,6 +65,7 @@ int main_gc(void) {
 	threads_gc();
 
 	wiringXGC();
+	dso_gc();	
 	gc_clear();
 	log_gc();
 
