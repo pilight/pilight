@@ -76,16 +76,13 @@ void arctechMotionInit(void) {
 	options_add(&arctech_motion->options, 't', "on", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
 	options_add(&arctech_motion->options, 'f', "off", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
 
-	options_add(&arctech_motion->options, 'a', "all", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
-	options_add(&arctech_motion->options, 0, "readonly", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
-
 	arctech_motion->parseBinary=&arctechMotionParseBinary;
 }
 
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name = "arctech_motion";
-	module->version = "1.0";
+	module->version = "1.1";
 	module->reqversion = "5.0";
 	module->reqcommit = "99";
 }

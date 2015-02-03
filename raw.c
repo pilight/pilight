@@ -46,6 +46,7 @@
 #include "dso.h"
 #include "gc.h"
 
+struct pilight_t pilight;
 static unsigned short main_loop = 1;
 
 int main_gc(void) {

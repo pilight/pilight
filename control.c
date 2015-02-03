@@ -39,6 +39,7 @@
 #include "operator.h"
 #include "action.h"
 
+struct pilight_t pilight;
 
 int main(int argc, char **argv) {
 	// memtrack();

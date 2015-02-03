@@ -44,6 +44,7 @@ typedef struct pname_t {
 } pname_t;
 
 static struct pname_t *pname = NULL;
+struct pilight_t pilight;
 
 static void sort_list(void) {
 	struct pname_t *a = NULL;

@@ -32,6 +32,7 @@
 #include "ssdp.h"
 #include "gc.h"
 
+struct pilight_t pilight;
 static int main_loop = 1;
 static int sockfd = 0;
 static char *recvBuff = NULL;

@@ -45,6 +45,7 @@
 #include "gc.h"
 #include "dso.h"
 
+struct pilight_t pilight;
 static int pulselen = 0;
 static unsigned short main_loop = 1;
 static unsigned short inner_loop = 1;

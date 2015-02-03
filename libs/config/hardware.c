@@ -387,51 +387,52 @@ void hardware_init(void) {
 
 	if((d = opendir(hardware_root))) {
 		while((file = readdir(d)) != NULL) {
-			stat(file->d_name, &s);
-			/* Check if file */
-			if(S_ISREG(s.st_mode) == 1) {
-				if(strstr(file->d_name, ".so") != NULL) {
-					valid = 1;
-					memset(path, '\0', PATH_MAX);
-					sprintf(path, "%s%s", hardware_root, file->d_name);
+			memset(path, '\0', PATH_MAX);
+			sprintf(path, "%s%s", hardware_root, file->d_name);		
+			if(stat(path, &s) == 0) {
+				/* Check if file */
+				if(S_ISREG(s.st_mode)) {
+					if(strstr(file->d_name, ".so") != NULL) {
+						valid = 1;
 
-					if((handle = dso_load(path)) != NULL) {
-						init = dso_function(handle, "init");
-						compatibility = dso_function(handle, "compatibility");
-						if(init != NULL && compatibility != NULL ) {
-							compatibility(&module);
-							if(module.name != NULL && module.version != NULL && module.reqversion != NULL) {
-								char ver[strlen(module.reqversion)+1];
-								strcpy(ver, module.reqversion);
+						if((handle = dso_load(path)) != NULL) {
+							init = dso_function(handle, "init");
+							compatibility = dso_function(handle, "compatibility");
+							if(init != NULL && compatibility != NULL ) {
+								compatibility(&module);
+								if(module.name != NULL && module.version != NULL && module.reqversion != NULL) {
+									char ver[strlen(module.reqversion)+1];
+									strcpy(ver, module.reqversion);
 
-								if((check1 = vercmp(ver, pilight_version)) > 0) {
-									valid = 0;
-								}
-								if(check1 == 0 && module.reqcommit != NULL) {
-									char com[strlen(module.reqcommit)+1];
-									strcpy(com, module.reqcommit);
-									sscanf(HASH, "v%*[0-9].%*[0-9]-%[0-9]-%*[0-9a-zA-Z\n\r]", pilight_commit);
-
-									if(strlen(pilight_commit) > 0 && (check2 = vercmp(com, pilight_commit)) > 0) {
+									if((check1 = vercmp(ver, pilight_version)) > 0) {
 										valid = 0;
 									}
-								}
+									if(check1 == 0 && module.reqcommit != NULL) {
+										char com[strlen(module.reqcommit)+1];
+										strcpy(com, module.reqcommit);
+										sscanf(HASH, "v%*[0-9].%*[0-9]-%[0-9]-%*[0-9a-zA-Z\n\r]", pilight_commit);
 
-								if(valid == 1) {
-									char tmp[strlen(module.name)+1];
-									strcpy(tmp, module.name);
-									hardware_remove(tmp);
-									init();
-									logprintf(LOG_DEBUG, "loaded config hardware module %s v%s", file->d_name, module.version);
-								} else {
-									if(module.reqcommit != NULL) {
-										logprintf(LOG_ERR, "config hardware module %s requires at least pilight v%s (commit %s)", file->d_name, module.reqversion, module.reqcommit);
-									} else {
-										logprintf(LOG_ERR, "config hardware module %s requires at least pilight v%s", file->d_name, module.reqversion);
+										if(strlen(pilight_commit) > 0 && (check2 = vercmp(com, pilight_commit)) > 0) {
+											valid = 0;
+										}
 									}
+
+									if(valid == 1) {
+										char tmp[strlen(module.name)+1];
+										strcpy(tmp, module.name);
+										hardware_remove(tmp);
+										init();
+										logprintf(LOG_DEBUG, "loaded config hardware module %s v%s", file->d_name, module.version);
+									} else {
+										if(module.reqcommit != NULL) {
+											logprintf(LOG_ERR, "config hardware module %s requires at least pilight v%s (commit %s)", file->d_name, module.reqversion, module.reqcommit);
+										} else {
+											logprintf(LOG_ERR, "config hardware module %s requires at least pilight v%s", file->d_name, module.reqversion);
+										}
+									}
+								} else {
+									logprintf(LOG_ERR, "invalid module %s", file->d_name);
 								}
-							} else {
-								logprintf(LOG_ERR, "invalid module %s", file->d_name);
 							}
 						}
 					}

@@ -76,16 +76,13 @@ void arctechDuskInit(void) {
 	options_add(&arctech_dusk->options, 't', "dusk", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
 	options_add(&arctech_dusk->options, 'f', "dawn", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
 
-	options_add(&arctech_dusk->options, 'a', "all", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
-	options_add(&arctech_dusk->options, 0, "readonly", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
-
 	arctech_dusk->parseBinary=&arctechDuskParseBinary;
 }
 
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name = "arctech_dusk";
-	module->version = "1.1";
+	module->version = "1.2";
 	module->reqversion = "5.0";
 	module->reqcommit = "84";
 }
