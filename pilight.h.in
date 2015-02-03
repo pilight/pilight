@@ -90,7 +90,7 @@ typedef struct pilight_t {
     runmode_t runmode;
 } pilight_t;
 
-struct pilight_t pilight;
+extern struct pilight_t pilight;
 char pilight_uuid[UUID_LENGTH];
 
 #endif
