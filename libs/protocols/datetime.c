@@ -171,6 +171,13 @@ static void *datetimeParse(void *param) {
 				if(strcmp(jchild1->key, "latitude") == 0) {
 					latitude = jchild1->number_;
 				}
+				if(strcmp(jchild1->key, "ntpserver") == 0) {
+					if((ntpserver = malloc(strlen(jchild1->string_)+1)) == NULL) {
+						logprintf(LOG_ERR, "out of memory");
+						exit(EXIT_FAILURE);
+					}
+					strcpy(ntpserver, jchild1->string_);
+				}				
 				jchild1 = jchild1->next;
 			}
 			jchild = jchild->next;
@@ -187,7 +194,7 @@ static void *datetimeParse(void *param) {
 	while(datetime_loop) {
 		pthread_mutex_lock(&datetimelock);
 		t = time(NULL);
-		if(x == interval || (ntp == -1 && ntpserver != NULL && strlen(ntpserver) > 0)) {
+		if((x == interval || ntp == -1) && (ntpserver != NULL && strlen(ntpserver) > 0)) {
 			ntp = getntptime(ntpserver);
 			if(ntp > -1) {
 				diff = (int)(t - ntp);
@@ -237,7 +244,7 @@ static void *datetimeParse(void *param) {
 	}
 	pthread_mutex_unlock(&datetimelock);
 
-	if(ntpserver) {
+	if(ntpserver != NULL) {
 		FREE(ntpserver);
 	}
 
@@ -308,7 +315,7 @@ void datetimeInit(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name = "datetime";
-	module->version = "1.6";
+	module->version = "1.7";
 	module->reqversion = "5.0";
 	module->reqcommit = "187";
 }
