@@ -56,6 +56,8 @@
 #define	PI_MODEL_B		2
 #define	PI_MODEL_BP		3
 #define	PI_MODEL_CM		4
+#define	PI_MODEL_AP		5
+#define	PI_MODEL_2		6
 
 #define	PI_VERSION_UNKNOWN	0
 #define	PI_VERSION_1		1
@@ -67,8 +69,9 @@
 #define	PI_MAKER_EGOMAN		1
 #define	PI_MAKER_SONY		2
 #define	PI_MAKER_QISDA		3
+#define	PI_MAKER_MBEST		4
 
-#define BCM2708_PERI_BASE			   0x20000000
+static volatile unsigned int	 BCM2708_PERI_BASE = 0x20000000;
 #define GPIO_PADS		(BCM2708_PERI_BASE + 0x00100000)
 #define CLOCK_BASE		(BCM2708_PERI_BASE + 0x00101000)
 #define GPIO_BASE		(BCM2708_PERI_BASE + 0x00200000)
@@ -77,6 +80,8 @@
 #define	BLOCK_SIZE		(4*1024)
 
 static int wiringPiMode = WPI_MODE_UNINITIALISED;
+
+static int piModel2 = 0;
 
 static volatile uint32_t *gpio;
 
@@ -247,7 +252,7 @@ static int piBoardRev(void) {
 
 	memset(hardware, '\0', 120);
 	memset(revision, '\0', 120);
-	
+
 	while(fgets(line, 120, cpuFd) != NULL) {
 		if(strncmp(line, "Revision", 8) == 0) {
 			strcpy(revision, line);
@@ -258,10 +263,12 @@ static int piBoardRev(void) {
 	}
 
 	fclose(cpuFd);
+
 	if(strlen(hardware) == 0 || strlen(revision) == 0) {
 		wiringXLog(LOG_ERR, "raspberrypi->identify: /proc/cpuinfo has no hardware and revision line");
 		return -1;
 	}
+
 	sscanf(hardware, "Hardware%*[ \t]:%*[ ]%[a-zA-Z0-9 ./()]%*[\n]", name);
 
 	if(strstr(name, "BCM2708") != NULL) {
@@ -314,6 +321,10 @@ static int piBoardRev(void) {
 		} else {
 			boardRev = 2;
 		}
+		return boardRev;
+	} else if(strstr(name, "BCM2709") != NULL) {
+		piModel2 = 1;
+		boardRev = 2;
 		return boardRev;
 	} else {
 		return -1;
@@ -371,7 +382,19 @@ static int piBoardId(int *model, int *rev, int *mem, int *maker, int *overVolted
 
 	// Fill out the replys as appropriate
 
-	if(strcmp(c, "0002") == 0) {
+	if(piModel2 == 1) {
+		if(strcmp (c, "0010") == 0) {
+			*model = PI_MODEL_2;
+			*rev = PI_VERSION_1_1;
+			*mem = 1024;
+			*maker = PI_MAKER_SONY;
+		} else {
+			*model = 0;
+			*rev = 0;
+			*mem = 0;
+			*maker = 0;
+		}
+	} else if(strcmp(c, "0002") == 0) {
 		*model = PI_MODEL_B;
 		*rev = PI_VERSION_1;
 		*mem = 256;
@@ -436,6 +459,16 @@ static int piBoardId(int *model, int *rev, int *mem, int *maker, int *overVolted
 		*rev = PI_VERSION_1_2;
 		*mem = 512;
 		*maker = PI_MAKER_SONY;
+  } else if(strcmp(c, "0012") == 0) { 
+		*model = PI_MODEL_AP;
+		*rev = PI_VERSION_1_2;
+		*mem = 256;
+		*maker = PI_MAKER_SONY;
+	}	else if(strcmp(c, "0013") == 0) {
+		*model = PI_MODEL_BP;
+		*rev = PI_VERSION_1_2;
+		*mem = 512;
+		*maker = PI_MAKER_MBEST;
 	} else {
 		*model = 0;
 		*rev = 0;
@@ -457,6 +490,9 @@ static int setup(void) {
 		pinToGpio =  pinToGpioR1;
 		physToGpio = physToGpioR1;
 	} else {
+		if(piModel2 == 1) {
+			BCM2708_PERI_BASE = 0x3F000000;
+		}
 		pinToGpio =  pinToGpioR2;
 		physToGpio = physToGpioR2;
 	}
@@ -770,7 +806,7 @@ static int raspberrypiI2CSetup(int devId) {
 	int rev = 0, fd = 0;
 	const char *device = NULL;
 
-	if((rev = piBoardRev ()) < 0) {
+	if((rev = piBoardRev()) < 0) {
 		wiringXLog(LOG_ERR, "raspberrypi->I2CSetup: Unable to determine Pi board revision");
 		return -1;
 	}

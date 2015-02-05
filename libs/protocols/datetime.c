@@ -95,7 +95,7 @@ static time_t getntptime(char *ntpserver) {
 	}
 
 	if((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) == -1) {
-		logprintf(LOG_DEBUG, "error in socket");
+		logprintf(LOG_ERR, "error in socket");
 		goto close;
 	}
 
@@ -107,18 +107,18 @@ static time_t getntptime(char *ntpserver) {
 
 	inet_pton(AF_INET, ip, &servaddr.sin_addr);
 	if(connect(sockfd, (struct sockaddr *)&servaddr, sizeof(servaddr)) == -1) {
-		logprintf(LOG_DEBUG, "error in connect");
+		logprintf(LOG_ERR, "error in connect");
 		goto close;
 	}
 
 	msg.li_vn_mode=227;
 
 	if(sendto(sockfd, (char *)&msg, 48, 0, (struct sockaddr *)&servaddr, sizeof(servaddr)) < -1) {
-		logprintf(LOG_DEBUG, "error in sending");
+		logprintf(LOG_ERR, "error in sending");
 		goto close;
 	}
 	if(recvfrom(sockfd, (void *)&msg, 48, 0, NULL, NULL) < -1) {
-		logprintf(LOG_DEBUG, "error in receiving");
+		logprintf(LOG_ERR, "error in receiving");
 		goto close;
 	}
 
@@ -129,7 +129,7 @@ static time_t getntptime(char *ntpserver) {
 		unsigned int adj = 2208988800u;
 		return (time_t)(msg.rec.Ul_i.Xl_ui - adj);
 	} else {
-		logprintf(LOG_DEBUG, "invalid ntp host");
+		logprintf(LOG_INFO, "invalid ntp host");
 		goto close;
 	}
 
