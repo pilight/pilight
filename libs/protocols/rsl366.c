@@ -157,6 +157,7 @@ void rsl366Init(void) {
 	protocol_register(&rsl366);
 	protocol_set_id(rsl366, "rsl366");
 	protocol_device_add(rsl366, "rsl366", "RSL366 Switches");
+	protocol_device_add(rsl366, "promax", "Pro MAX Switches");
 	protocol_plslen_add(rsl366, 390);
 	rsl366->devtype = SWITCH;
 	rsl366->hwtype = RF433;
@@ -179,7 +180,7 @@ void rsl366Init(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name = "rsl366";
-	module->version = "1.0";
+	module->version = "1.1";
 	module->reqversion = "5.0";
 	module->reqcommit = "84";
 }

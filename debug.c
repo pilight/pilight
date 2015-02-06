@@ -45,6 +45,7 @@
 #include "gc.h"
 #include "dso.h"
 
+struct pilight_t pilight;
 static int pulselen = 0;
 static unsigned short main_loop = 1;
 static unsigned short inner_loop = 1;
@@ -67,7 +68,6 @@ int main_gc(void) {
 	event_action_gc();
 	options_gc();
 	socket_gc();
-	dso_gc();
 
 	config_gc();
 	protocol_gc();
@@ -75,6 +75,7 @@ int main_gc(void) {
 	threads_gc();
 
 	wiringXGC();
+	dso_gc();
 	gc_clear();
 	log_gc();
 
@@ -317,11 +318,13 @@ int main(int argc, char **argv) {
 
 	struct conf_hardware_t *tmp_confhw = conf_hardware;
 	while(tmp_confhw) {
-		if(tmp_confhw->hardware->init() == EXIT_FAILURE) {
-			logprintf(LOG_ERR, "could not initialize %s hardware mode", tmp_confhw->hardware->id);
-			goto clear;
+		if(tmp_confhw->hardware->init) {		
+			if(tmp_confhw->hardware->init() == EXIT_FAILURE) {
+				logprintf(LOG_ERR, "could not initialize %s hardware mode", tmp_confhw->hardware->id);
+				goto clear;
+			}
+			threads_register(tmp_confhw->hardware->id, &receive_code, (void *)tmp_confhw->hardware, 0);
 		}
-		threads_register(tmp_confhw->hardware->id, &receive_code, (void *)tmp_confhw->hardware, 0);
 		tmp_confhw = tmp_confhw->next;
 	}
 

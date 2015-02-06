@@ -39,6 +39,8 @@
 #include "ssdp.h"
 #include "gc.h"
 
+struct pilight_t pilight;
+
 int main_gc(void) {
 	log_shell_disable();
 

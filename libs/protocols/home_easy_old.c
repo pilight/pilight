@@ -157,7 +157,7 @@ static int homeEasyOldCreateCode(JsonNode *code) {
 		logprintf(LOG_ERR, "home_easy_old: invalid systemcode range");
 		return EXIT_FAILURE;
 	} else if((unitcode > 15 || unitcode < 0) && all == 0) {
-		logprintf(LOG_ERR, "arctech_switch: invalid unit range");
+		logprintf(LOG_ERR, "home_easy_old: invalid unit range");
 		return EXIT_FAILURE;
 	} else {
 		if(unitcode == -1 && all == 1) {
@@ -215,7 +215,7 @@ void homeEasyOldInit(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name = "home_easy_old";
-	module->version = "1.1";
+	module->version = "1.2";
 	module->reqversion = "5.0";
 	module->reqcommit = "84";
 }

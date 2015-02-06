@@ -95,7 +95,7 @@ static time_t getntptime(char *ntpserver) {
 	}
 
 	if((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) == -1) {
-		logprintf(LOG_DEBUG, "error in socket");
+		logprintf(LOG_ERR, "error in socket");
 		goto close;
 	}
 
@@ -107,18 +107,18 @@ static time_t getntptime(char *ntpserver) {
 
 	inet_pton(AF_INET, ip, &servaddr.sin_addr);
 	if(connect(sockfd, (struct sockaddr *)&servaddr, sizeof(servaddr)) == -1) {
-		logprintf(LOG_DEBUG, "error in connect");
+		logprintf(LOG_ERR, "error in connect");
 		goto close;
 	}
 
 	msg.li_vn_mode=227;
 
 	if(sendto(sockfd, (char *)&msg, 48, 0, (struct sockaddr *)&servaddr, sizeof(servaddr)) < -1) {
-		logprintf(LOG_DEBUG, "error in sending");
+		logprintf(LOG_ERR, "error in sending");
 		goto close;
 	}
 	if(recvfrom(sockfd, (void *)&msg, 48, 0, NULL, NULL) < -1) {
-		logprintf(LOG_DEBUG, "error in receiving");
+		logprintf(LOG_ERR, "error in receiving");
 		goto close;
 	}
 
@@ -129,7 +129,7 @@ static time_t getntptime(char *ntpserver) {
 		unsigned int adj = 2208988800u;
 		return (time_t)(msg.rec.Ul_i.Xl_ui - adj);
 	} else {
-		logprintf(LOG_DEBUG, "invalid ntp host");
+		logprintf(LOG_INFO, "invalid ntp host");
 		goto close;
 	}
 
@@ -171,6 +171,13 @@ static void *datetimeParse(void *param) {
 				if(strcmp(jchild1->key, "latitude") == 0) {
 					latitude = jchild1->number_;
 				}
+				if(strcmp(jchild1->key, "ntpserver") == 0) {
+					if((ntpserver = malloc(strlen(jchild1->string_)+1)) == NULL) {
+						logprintf(LOG_ERR, "out of memory");
+						exit(EXIT_FAILURE);
+					}
+					strcpy(ntpserver, jchild1->string_);
+				}				
 				jchild1 = jchild1->next;
 			}
 			jchild = jchild->next;
@@ -187,7 +194,7 @@ static void *datetimeParse(void *param) {
 	while(datetime_loop) {
 		pthread_mutex_lock(&datetimelock);
 		t = time(NULL);
-		if(x == interval || (ntp == -1 && ntpserver != NULL && strlen(ntpserver) > 0)) {
+		if((x == interval || ntp == -1) && (ntpserver != NULL && strlen(ntpserver) > 0)) {
 			ntp = getntptime(ntpserver);
 			if(ntp > -1) {
 				diff = (int)(t - ntp);
@@ -225,6 +232,7 @@ static void *datetimeParse(void *param) {
 		json_append_member(datetime->message, "protocol", json_mkstring(datetime->id));
 
 		pilight.broadcast(datetime->id, datetime->message);
+
 		json_delete(datetime->message);
 		datetime->message = NULL;
 		if(x == 0) {
@@ -236,7 +244,7 @@ static void *datetimeParse(void *param) {
 	}
 	pthread_mutex_unlock(&datetimelock);
 
-	if(ntpserver) {
+	if(ntpserver != NULL) {
 		FREE(ntpserver);
 	}
 
@@ -307,7 +315,7 @@ void datetimeInit(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name = "datetime";
-	module->version = "1.6";
+	module->version = "1.7";
 	module->reqversion = "5.0";
 	module->reqcommit = "187";
 }

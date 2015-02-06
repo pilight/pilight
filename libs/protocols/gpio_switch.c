@@ -107,8 +107,12 @@ static struct threadqueue_t *gpioSwitchInitDev(JsonNode *jdevice) {
 
 static int gpioSwitchCheckValues(struct JsonNode *jvalues) {
 	struct JsonNode *jid = NULL;
+	double readonly = 0.0;
 
-	if((jid = json_find_member(jvalues, "id"))) {
+	if(wiringXSetup() < 0) {
+		logprintf(LOG_ERR, "unable to setup wiringX") ;
+		return -1;
+	} else if((jid = json_find_member(jvalues, "id"))) {
 		struct JsonNode *jchild = NULL;
 		struct JsonNode *jchild1 = NULL;
 
@@ -124,6 +128,11 @@ static int gpioSwitchCheckValues(struct JsonNode *jvalues) {
 				jchild1 = jchild1->next;
 			}
 			jchild = jchild->next;
+		}
+	}
+	if(json_find_number(jvalues, "readonly", &readonly) == 0) {
+		if((int)readonly != 1) {
+			return -1;
 		}
 	}
 	return 0;
@@ -153,7 +162,7 @@ void gpioSwitchInit(void) {
 	options_add(&gpio_switch->options, 'f', "off", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
 	options_add(&gpio_switch->options, 'g', "gpio", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^([0-9]{1}|1[0-9]|20)$");
 
-	options_add(&gpio_switch->options, 0, "readonly", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
+	options_add(&gpio_switch->options, 0, "readonly", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
 
 	gpio_switch->initDev=&gpioSwitchInitDev;
 	gpio_switch->threadGC=&gpioSwitchThreadGC;
@@ -163,7 +172,7 @@ void gpioSwitchInit(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name = "gpio_switch";
-	module->version = "1.3";
+	module->version = "1.4";
 	module->reqversion = "5.0";
 	module->reqcommit = "187";
 }

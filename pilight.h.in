@@ -82,15 +82,14 @@ typedef enum runmode_t {
 	ADHOC
 } runmode_t;
 
-typedef struct pilight_t {
+extern struct pilight_t {
     void (*broadcast)(char *name, JsonNode *message);
     int (*send)(JsonNode *json);
     int (*control)(struct devices_t *dev, char *state, JsonNode *values);
     void (*receive)(int *rawcode, int rawlen, int plslen, int hwtype);
     runmode_t runmode;
-} pilight_t;
+} pilight;
 
-struct pilight_t pilight;
 char pilight_uuid[UUID_LENGTH];
 
 #endif

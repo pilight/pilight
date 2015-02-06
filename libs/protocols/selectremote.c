@@ -163,7 +163,7 @@ void selectremoteInit(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name = "selectremote";
-	module->version = "0.9";
+	module->version = "1.0";
 	module->reqversion = "5.0";
 	module->reqcommit = "84";
 }
