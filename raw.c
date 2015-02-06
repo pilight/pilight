@@ -179,11 +179,13 @@ int main(int argc, char **argv) {
 
 	struct conf_hardware_t *tmp_confhw = conf_hardware;
 	while(tmp_confhw) {
-		if(tmp_confhw->hardware->init() == EXIT_FAILURE) {
-			logprintf(LOG_ERR, "could not initialize %s hardware mode", tmp_confhw->hardware->id);
-			goto close;
+		if(tmp_confhw->hardware->init) {
+			if(tmp_confhw->hardware->init() == EXIT_FAILURE) {
+				logprintf(LOG_ERR, "could not initialize %s hardware mode", tmp_confhw->hardware->id);
+				goto close;
+			}
+			threads_register(tmp_confhw->hardware->id, &receive_code, (void *)tmp_confhw->hardware, 0);
 		}
-		threads_register(tmp_confhw->hardware->id, &receive_code, (void *)tmp_confhw->hardware, 0);
 		tmp_confhw = tmp_confhw->next;
 	}
 
