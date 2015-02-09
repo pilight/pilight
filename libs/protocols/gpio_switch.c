@@ -108,7 +108,11 @@ static struct threadqueue_t *gpioSwitchInitDev(JsonNode *jdevice) {
 static int gpioSwitchCheckValues(struct JsonNode *jvalues) {
 	struct JsonNode *jid = NULL;
 	double readonly = 0.0;
-	if((jid = json_find_member(jvalues, "id"))) {
+
+	if(wiringXSetup() < 0) {
+		logprintf(LOG_ERR, "unable to setup wiringX") ;
+		return -1;
+	} else if((jid = json_find_member(jvalues, "id"))) {
 		struct JsonNode *jchild = NULL;
 		struct JsonNode *jchild1 = NULL;
 

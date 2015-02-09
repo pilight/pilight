@@ -169,6 +169,7 @@ static int maxrawlen = 0;
 static char *master_server = NULL;
 static unsigned short master_port = 0;
 
+struct pilight_t pilight;
 static char *configtmp = NULL;
 
 #ifdef WEBSERVER

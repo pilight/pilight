@@ -83,7 +83,7 @@ static int rules_parse(JsonNode *root) {
 					node->devices = NULL;
 					node->action = NULL;
 					node->arguments = NULL;
-					if(event_parse_rule(rule, node, 0, 1, 1) == -1) {
+					if(event_parse_rule(rule, node, 0, i, 1) == -1) {
 						for(i=0;i<node->nrdevices;i++) {
 							FREE(node->devices[i]);
 						}

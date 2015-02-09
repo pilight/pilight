@@ -198,7 +198,8 @@ static int settings_parse(JsonNode *root) {
 			|| strcmp(jsettings->key, "firmware-gpio-mosi") == 0
 			|| strcmp(jsettings->key, "firmware-gpio-miso") == 0) {
 			if(wiringXSetup() != 0) {
-				exit(0);
+				have_error = 1;				
+				goto clear;
 			}
 			if(jsettings->tag != JSON_NUMBER) {
 				logprintf(LOG_ERR, "config setting \"%s\" must contain a number larger than 0", jsettings->key);

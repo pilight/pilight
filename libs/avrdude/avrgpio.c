@@ -55,6 +55,10 @@ static int gpio_setpin(PROGRAMMER * pgm, int pin, int value) {
 	if(gpio_fds[pin] != OUTPUT) {
 		return -1;
 	}
+
+	/* Small delay for too fast computers */
+	delayMicroseconds(1);
+
   if(value == 1) {
 		digitalWrite(pin, HIGH);
   } else {
