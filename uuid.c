@@ -3,17 +3,17 @@
 
 	This file is part of pilight.
 
-    pilight is free software: you can redistribute it and/or modify it under the
+	pilight is free software: you can redistribute it and/or modify it under the
 	terms of the GNU General Public License as published by the Free Software
 	Foundation, either version 3 of the License, or (at your option) any later
 	version.
 
-    pilight is distributed in the hope that it will be useful, but WITHOUT ANY
+	pilight is distributed in the hope that it will be useful, but WITHOUT ANY
 	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-    You should have received a copy of the GNU General Public License
-    along with pilight. If not, see	<http://www.gnu.org/licenses/>
+	You should have received a copy of the GNU General Public License
+	along with pilight. If not, see	<http://www.gnu.org/licenses/>
 */
 
 #include <stdio.h>
@@ -39,6 +39,8 @@
 #include "ssdp.h"
 #include "gc.h"
 
+struct pilight_t pilight;
+
 int main_gc(void) {
 	log_shell_disable();
 
@@ -46,12 +48,14 @@ int main_gc(void) {
 	log_gc();
 	gc_clear();
 
-	sfree((void *)&progname);
+	FREE(progname);
+	xfree();
 
 	return EXIT_SUCCESS;
 }
 
 int main(int argc, char **argv) {
+	// memtrack();
 
 	gc_attach(main_gc);
 
@@ -68,7 +72,7 @@ int main(int argc, char **argv) {
 	char *p = NULL;
 	char *args = NULL;
 
-	progname = malloc(13);
+	progname = MALLOC(13);
 	if(!progname) {
 		logprintf(LOG_ERR, "out of memory");
 		exit(EXIT_FAILURE);
@@ -131,7 +135,7 @@ int main(int argc, char **argv) {
 				goto clear;
 			} else {
 				printf("%s\n", p);
-				sfree((void *)&p);
+				FREE(p);
 				break;
 			}
 		}

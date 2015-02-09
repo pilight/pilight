@@ -3,17 +3,17 @@
 
 	This file is part of pilight.
 
-    pilight is free software: you can redistribute it and/or modify it under the
+	pilight is free software: you can redistribute it and/or modify it under the
 	terms of the GNU General Public License as published by the Free Software
 	Foundation, either version 3 of the License, or (at your option) any later
 	version.
 
-    pilight is distributed in the hope that it will be useful, but WITHOUT ANY
+	pilight is distributed in the hope that it will be useful, but WITHOUT ANY
 	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-    You should have received a copy of the GNU General Public License
-    along with pilight. If not, see	<http://www.gnu.org/licenses/>
+	You should have received a copy of the GNU General Public License
+	along with pilight. If not, see	<http://www.gnu.org/licenses/>
 */
 
 #include <regex.h>
@@ -23,10 +23,13 @@
 #include <dlfcn.h>
 
 #include "common.h"
+#include "mem.h"
 #include "log.h"
 #include "dso.h"
 
 void *dso_load(char *object) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	void *handle = NULL;
 	int match = 0;
 	struct dso_t *tmp = dso;
@@ -51,13 +54,13 @@ void *dso_load(char *object) {
 		logprintf(LOG_ERR, dlerror());
 		return NULL;
 	} else {
-		struct dso_t *node = malloc(sizeof(struct dso_t));
+		struct dso_t *node = MALLOC(sizeof(struct dso_t));
 		if(!node) {
 			logprintf(LOG_ERR, "out of memory");
 			exit(EXIT_FAILURE);
 		}
 		node->handle = handle;
-		if(!(node->name = malloc(strlen(object)+1))) {
+		if(!(node->name = MALLOC(strlen(object)+1))) {
 			logprintf(LOG_ERR, "out of memory");
 			exit(EXIT_FAILURE);
 		}
@@ -69,19 +72,27 @@ void *dso_load(char *object) {
 }
 
 int dso_gc(void) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	struct dso_t *tmp = NULL;
 	while(dso) {
 		tmp = dso;
 		dlclose(tmp->handle);
-		sfree((void *)&tmp->name);
+		FREE(tmp->name);
 		dso = dso->next;
-		sfree((void *)&tmp);
+		FREE(tmp);
 	}
-	sfree((void *)&dso);
+	if(dso != NULL) {
+		FREE(dso);
+	}
+
+	logprintf(LOG_DEBUG, "garbage collected dso library");
 	return 0;
 }
 
 void *dso_function(void *handle, const char *name) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	void *init = (void *)dlsym(handle, name);
 	char *error = NULL;
 	if((error = dlerror()) != NULL)  {

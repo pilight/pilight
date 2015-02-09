@@ -27,12 +27,13 @@
 
 #include "log.h"
 #include "avrconfig.h"
+#include "mem.h"
 
 TOKEN * new_token(int primary)
 {
   TOKEN * tkn;
 
-  tkn = (TOKEN *)malloc(sizeof(TOKEN));
+  tkn = (TOKEN *)MALLOC(sizeof(TOKEN));
   if (tkn == NULL) {
     logprintf(LOG_ERR, "out of memory");
     exit(1);
@@ -52,12 +53,12 @@ void free_token(TOKEN * tkn)
       case TKN_STRING:
       case TKN_ID:
         if (tkn->value.string)
-          sfree((void *)&tkn->value.string);
+          FREE(tkn->value.string);
         tkn->value.string = NULL;
         break;
     }
 
-    sfree((void *)&tkn);
+    FREE(tkn);
   }
 }
 
@@ -98,7 +99,7 @@ TOKEN * string(char * text)
   len = strlen(text);
 
   tkn->value.type   = V_STR;
-  tkn->value.string = (char *) malloc(len+1);
+  tkn->value.string = (char *) MALLOC(len+1);
   if (tkn->value.string == NULL) {
     logprintf(LOG_ERR, "out of memory");
 	return NULL;

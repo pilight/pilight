@@ -3,17 +3,17 @@
 
 	This file is part of pilight.
 
-    pilight is free software: you can redistribute it and/or modify it under the
+	pilight is free software: you can redistribute it and/or modify it under the
 	terms of the GNU General Public License as published by the Free Software
 	Foundation, either version 3 of the License, or (at your option) any later
 	version.
 
-    pilight is distributed in the hope that it will be useful, but WITHOUT ANY
+	pilight is distributed in the hope that it will be useful, but WITHOUT ANY
 	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-    You should have received a copy of the GNU General Public License
-    along with pilight. If not, see	<http://www.gnu.org/licenses/>
+	You should have received a copy of the GNU General Public License
+	along with pilight. If not, see	<http://www.gnu.org/licenses/>
 */
 
 #include <stdio.h>
@@ -30,42 +30,48 @@
 #include <string.h>
 
 #include "pilight.h"
+#include "protocol.h"
+#include "operator.h"
+#include "action.h"
 #include "common.h"
-#include "settings.h"
+#include "config.h"
 #include "hardware.h"
 #include "log.h"
-#include "wiringPi.h"
+#include "datetime.h"
+#include "ssdp.h"
+#include "socket.h"
+#include "wiringX.h"
 #include "threads.h"
 #include "irq.h"
 #include "dso.h"
 #include "gc.h"
 
+struct pilight_t pilight;
 static unsigned short main_loop = 1;
-static pthread_t pth;
 
 int main_gc(void) {
+	log_shell_disable();
 	main_loop = 0;
 
-	log_shell_disable();
-
-	struct conf_hardware_t *tmp_confhw = conf_hardware;
-	while(tmp_confhw) {
-		if(tmp_confhw->hardware->deinit) {
-			tmp_confhw->hardware->deinit();
-		}
-		tmp_confhw = tmp_confhw->next;
-	}
-
-	threads_gc();
-	pthread_join(pth, NULL);
-
+	datetime_gc();
+	ssdp_gc();
+	event_operator_gc();
+	event_action_gc();
 	options_gc();
-	settings_gc();
-	hardware_gc();
-	dso_gc();
+	socket_gc();
+
+	config_gc();
+	protocol_gc();
+	whitelist_free();
+	threads_gc();
+
+	wiringXGC();
+	dso_gc();	
+	gc_clear();
 	log_gc();
 
-	sfree((void *)&progname);
+	FREE(progname);
+	xfree();
 
 	return EXIT_SUCCESS;
 }
@@ -84,6 +90,14 @@ void *receive_code(void *param) {
 }
 
 int main(int argc, char **argv) {
+	// memtrack();
+
+	struct options_t *options = NULL;
+	char *args = NULL;
+	char *configtmp = MALLOC(strlen(CONFIG_FILE)+1);
+	pid_t pid = 0;
+
+	strcpy(configtmp, CONFIG_FILE);
 
 	gc_attach(main_gc);
 
@@ -94,16 +108,9 @@ int main(int argc, char **argv) {
 	log_file_disable();
 	log_level_set(LOG_NOTICE);
 
-	struct options_t *options = NULL;
+	wiringXLog = logprintf;
 
-	char *args = NULL;
-	char *hwfile = NULL;
-	pid_t pid = 0;
-
-	char settingstmp[] = SETTINGS_FILE;
-	settings_set_file(settingstmp);
-
-	if(!(progname = malloc(12))) {
+	if(!(progname = MALLOC(12))) {
 		logprintf(LOG_ERR, "out of memory");
 		exit(EXIT_FAILURE);
 	}
@@ -111,7 +118,7 @@ int main(int argc, char **argv) {
 
 	options_add(&options, 'H', "help", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
 	options_add(&options, 'V', "version", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
-	options_add(&options, 'F', "settings", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, NULL);
+	options_add(&options, 'C', "config", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, NULL);
 
 	while (1) {
 		int c;
@@ -125,17 +132,16 @@ int main(int argc, char **argv) {
 				printf("Usage: %s [options]\n", progname);
 				printf("\t -H --help\t\tdisplay usage summary\n");
 				printf("\t -V --version\t\tdisplay version\n");
-				printf("\t -F --settings\t\tsettings file\n");
+				printf("\t -C --config\t\tconfig file\n");
 				goto close;
 			break;
 			case 'V':
 				printf("%s %s\n", progname, VERSION);
 				goto close;
 			break;
-			case 'F':
-				if(settings_set_file(args) == EXIT_FAILURE) {
-					goto close;
-				}
+			case 'C':
+				configtmp = REALLOC(configtmp, strlen(args)+1);
+				strcpy(configtmp, args);
 			break;
 			default:
 				printf("Usage: %s [options]\n", progname);
@@ -145,47 +151,41 @@ int main(int argc, char **argv) {
 	}
 	options_delete(options);
 
-	char pilight_daemon[] = "pilight-daemon";
-	char pilight_learn[] = "pilight-learn";
-	char pilight_debug[] = "pilight-debug";
-	if((pid = findproc(pilight_daemon, NULL, 1)) > 0) {
+	if((pid = isrunning("pilight-daemon")) != -1) {
 		logprintf(LOG_ERR, "pilight-daemon instance found (%d)", (int)pid);
 		goto close;
 	}
 
-	if((pid = findproc(pilight_learn, NULL, 1)) > 0) {
-		logprintf(LOG_ERR, "pilight-learn instance found (%d)", (int)pid);
-		goto close;
-	}
-
-	if((pid = findproc(pilight_debug, NULL, 1)) > 0) {
+	if((pid = isrunning("pilight-debug")) != -1) {
 		logprintf(LOG_ERR, "pilight-debug instance found (%d)", (int)pid);
 		goto close;
 	}
 
-	if(settings_read() != 0) {
+	if(config_set_file(configtmp) == EXIT_FAILURE) {
+		FREE(configtmp);
+		return EXIT_FAILURE;
+	}
+
+	protocol_init();
+	config_init();
+	if(config_read() != EXIT_SUCCESS) {
+		FREE(configtmp);
 		goto close;
 	}
-
-	hardware_init();
-
-	if(settings_find_string("hardware-file", &hwfile) == 0) {
-		hardware_set_file(hwfile);
-		if(hardware_read() == EXIT_FAILURE) {
-			goto close;
-		}
-	}
+	FREE(configtmp);
 
 	/* Start threads library that keeps track of all threads used */
-	threads_create(&pth, NULL, &threads_start, (void *)NULL);
+	threads_start();
 
 	struct conf_hardware_t *tmp_confhw = conf_hardware;
 	while(tmp_confhw) {
-		if(tmp_confhw->hardware->init() == EXIT_FAILURE) {
-			logprintf(LOG_ERR, "could not initialize %s hardware mode", tmp_confhw->hardware->id);
-			goto close;
+		if(tmp_confhw->hardware->init) {
+			if(tmp_confhw->hardware->init() == EXIT_FAILURE) {
+				logprintf(LOG_ERR, "could not initialize %s hardware mode", tmp_confhw->hardware->id);
+				goto close;
+			}
+			threads_register(tmp_confhw->hardware->id, &receive_code, (void *)tmp_confhw->hardware, 0);
 		}
-		threads_register(tmp_confhw->hardware->id, &receive_code, (void *)tmp_confhw->hardware, 0);
 		tmp_confhw = tmp_confhw->next;
 	}
 
@@ -194,6 +194,11 @@ int main(int argc, char **argv) {
 	}
 
 close:
-	main_gc();
+	if(args != NULL) {
+		FREE(args);
+	}
+	if(main_loop == 1) {
+		main_gc();
+	}
 	return (EXIT_FAILURE);
 }

@@ -3,17 +3,17 @@
 
 	This file is part of pilight.
 
-    pilight is free software: you can redistribute it and/or modify it under the
+	pilight is free software: you can redistribute it and/or modify it under the
 	terms of the GNU General Public License as published by the Free Software
 	Foundation, either version 3 of the License, or (at your option) any later
 	version.
 
-    pilight is distributed in the hope that it will be useful, but WITHOUT ANY
+	pilight is distributed in the hope that it will be useful, but WITHOUT ANY
 	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-    You should have received a copy of the GNU General Public License
-    along with pilight. If not, see	<http://www.gnu.org/licenses/>
+	You should have received a copy of the GNU General Public License
+	along with pilight. If not, see	<http://www.gnu.org/licenses/>
 */
 
 #include <stdio.h>
@@ -33,10 +33,10 @@
 
 static void genDimCreateMessage(int id, int state, int dimlevel) {
 	generic_dimmer->message = json_mkobject();
-	json_append_member(generic_dimmer->message, "id", json_mknumber(id));
+	json_append_member(generic_dimmer->message, "id", json_mknumber(id, 0));
 	if(dimlevel >= 0) {
 		state = 1;
-		json_append_member(generic_dimmer->message, "dimlevel", json_mknumber(dimlevel));
+		json_append_member(generic_dimmer->message, "dimlevel", json_mknumber(dimlevel, 0));
 	}
 	if(state == 1) {
 		json_append_member(generic_dimmer->message, "state", json_mkstring("on"));
@@ -130,14 +130,14 @@ void genDimInit(void) {
 	protocol_device_add(generic_dimmer, "generic_dimmer", "Generic Dimmers");
 	generic_dimmer->devtype = DIMMER;
 
-	options_add(&generic_dimmer->options, 'd', "dimlevel", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, NULL, "^([0-9]{1,})$");
-	options_add(&generic_dimmer->options, 't', "on", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
-	options_add(&generic_dimmer->options, 'f', "off", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
-	options_add(&generic_dimmer->options, 'i', "id", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, NULL, "^([0-9]{1,})$");
+	options_add(&generic_dimmer->options, 'd', "dimlevel", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^([0-9]{1,})$");
+	options_add(&generic_dimmer->options, 't', "on", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
+	options_add(&generic_dimmer->options, 'f', "off", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
+	options_add(&generic_dimmer->options, 'i', "id", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^([0-9]{1,})$");
 
-	options_add(&generic_dimmer->options, 0, "dimlevel-minimum", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)0, "^([0-9]{1}|[1][0-5])$");
-	options_add(&generic_dimmer->options, 0, "dimlevel-maximum", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)15, "^([0-9]{1}|[1][0-5])$");
-	options_add(&generic_dimmer->options, 0, "gui-readonly", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
+	options_add(&generic_dimmer->options, 0, "dimlevel-minimum", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *)0, "^([0-9]{1}|[1][0-5])$");
+	options_add(&generic_dimmer->options, 0, "dimlevel-maximum", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *)15, "^([0-9]{1}|[1][0-5])$");
+	options_add(&generic_dimmer->options, 0, "readonly", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 
 	generic_dimmer->printHelp=&genDimPrintHelp;
 	generic_dimmer->createCode=&genDimCreateCode;
@@ -147,9 +147,9 @@ void genDimInit(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name = "generic_dimmer";
-	module->version = "1.0";
+	module->version = "1.1";
 	module->reqversion = "5.0";
-	module->reqcommit = NULL;
+	module->reqcommit = "84";
 }
 
 void init(void) {

@@ -3,17 +3,17 @@
 
 	This file is part of pilight.
 
-    pilight is free software: you can redistribute it and/or modify it under the
+	pilight is free software: you can redistribute it and/or modify it under the
 	terms of the GNU General Public License as published by the Free Software
 	Foundation, either version 3 of the License, or (at your option) any later
 	version.
 
-    pilight is distributed in the hope that it will be useful, but WITHOUT ANY
+	pilight is distributed in the hope that it will be useful, but WITHOUT ANY
 	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-    You should have received a copy of the GNU General Public License
-    along with pilight. If not, see	<http://www.gnu.org/licenses/>
+	You should have received a copy of the GNU General Public License
+	along with pilight. If not, see	<http://www.gnu.org/licenses/>
 */
 
 #include <stdio.h>
@@ -52,9 +52,7 @@ static int lirc_sockfd = -1;
 
 static unsigned short lirc_loop = 1;
 static unsigned short lirc_threads = 0;
-
-static pthread_mutex_t lirclock;
-static pthread_mutexattr_t lircattr;
+static unsigned short lirc_init = 0;
 
 static void *lircParse(void *param) {
 	struct protocol_threads_t *node = (struct protocol_threads_t *)param;
@@ -68,7 +66,7 @@ static void *lircParse(void *param) {
 	timeout.tv_usec = 0;
 
 	/* Clear the server address */
-    memset(&addr, '\0', sizeof(addr));
+	memset(&addr, '\0', sizeof(addr));
 	memset(&recvBuff, '\0', BUFFER_SIZE);
 
 	lirc_threads++;
@@ -96,7 +94,6 @@ static void *lircParse(void *param) {
 			}
 
 			while(lirc_loop) {
-				pthread_mutex_lock(&lirclock);
 				FD_ZERO(&fdsread);
 				FD_SET((unsigned long)lirc_sockfd, &fdsread);
 
@@ -105,17 +102,14 @@ static void *lircParse(void *param) {
 				} while(n == -1 && errno == EINTR && lirc_loop);
 
 				if(lirc_loop == 0) {
-					pthread_mutex_unlock(&lirclock);
 					break;
 				}
 
 				if(path_exists(lirc_socket) == EXIT_FAILURE) {
-					pthread_mutex_unlock(&lirclock);
 					break;
 				}
 
 				if(n == -1) {
-					pthread_mutex_unlock(&lirclock);
 					break;
 				} else if(n == 0) {
 					usleep(100000);
@@ -123,7 +117,6 @@ static void *lircParse(void *param) {
 					if(FD_ISSET((unsigned long)lirc_sockfd, &fdsread)) {
 						bytes = (int)recv(lirc_sockfd, recvBuff, BUFFER_SIZE, 0);
 						if(bytes <= 0) {
-							pthread_mutex_unlock(&lirclock);
 							break;
 						} else {
 							int x = 0, nrspace = 0;
@@ -133,33 +126,20 @@ static void *lircParse(void *param) {
 								}
 							}
 							if(nrspace >= 3) {
-								char *id = strtok(recvBuff, " ");
+								char *code1 = strtok(recvBuff, " ");
 								char *rep = strtok(NULL, " ");
 								char *btn = strtok(NULL, " ");
 								char *remote = strtok(NULL, " ");
-								if(strstr(remote, "\n") != NULL) {
-									remote[strlen(remote)-1] = '\0';
+								char *y = NULL;
+								if((y = strstr(remote, "\n")) != NULL) {
+									size_t pos = (size_t)(y-remote);
+									remote[pos] = '\0';
 								}
-
+								int r = strtol(rep, NULL, 16);
 								lirc->message = json_mkobject();
 								JsonNode *code = json_mkobject();
-								json_append_member(code, "id", json_mkstring(id));
-								json_append_member(code, "repeat", json_mkstring(rep));
-								json_append_member(code, "button", json_mkstring(btn));
-								json_append_member(code, "remote", json_mkstring(remote));
-
-								json_append_member(lirc->message, "values", code);
-								json_append_member(lirc->message, "origin", json_mkstring("config"));
-								json_append_member(lirc->message, "type", json_mknumber(LIRC));
-
-								pilight.broadcast(lirc->id, lirc->message);
-								json_delete(lirc->message);
-								lirc->message = NULL;
-
-								lirc->message = json_mkobject();
-								code = json_mkobject();
-								json_append_member(code, "id", json_mkstring(id));
-								json_append_member(code, "repeat", json_mkstring(rep));
+								json_append_member(code, "code", json_mkstring(code1));
+								json_append_member(code, "repeat", json_mknumber(r, 0));
 								json_append_member(code, "button", json_mkstring(btn));
 								json_append_member(code, "remote", json_mkstring(remote));
 
@@ -175,8 +155,9 @@ static void *lircParse(void *param) {
 						}
 					}
 				}
-				pthread_mutex_unlock(&lirclock);
 			}
+		} else {
+			sleep(1);
 		}
 	}
 
@@ -191,9 +172,13 @@ static void *lircParse(void *param) {
 
 struct threadqueue_t *lircInitDev(JsonNode *jdevice) {
 	lirc_loop = 1;
-
-	struct protocol_threads_t *node = protocol_thread_init(lirc, NULL);
-	return threads_register("lirc", &lircParse, (void *)node, 0);
+	if(lirc_init == 0) {
+		lirc_init = 1;
+		struct protocol_threads_t *node = protocol_thread_init(lirc, NULL);
+		return threads_register("lirc", &lircParse, (void *)node, 0);
+	} else {
+		return NULL;
+	}
 }
 
 static void lircThreadGC(void) {
@@ -203,28 +188,23 @@ static void lircThreadGC(void) {
 		usleep(10);
 	}
 	protocol_thread_free(lirc);
+	lirc_init = 0;
 }
 
 #ifndef MODULE
 __attribute__((weak))
 #endif
 void lircInit(void) {
-	pthread_mutexattr_init(&lircattr);
-	pthread_mutexattr_settype(&lircattr, PTHREAD_MUTEX_RECURSIVE);
-	pthread_mutex_init(&lirclock, &lircattr);
-
 	protocol_register(&lirc);
 	protocol_set_id(lirc, "lirc");
 	protocol_device_add(lirc, "lirc", "Lirc API");
 	lirc->devtype = LIRC;
 	lirc->hwtype = API;
-	lirc->config = 0;
-	lirc->multipleId = 0;
 
-	options_add(&lirc->options, 'i', "id", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_STRING, NULL, NULL);
-	options_add(&lirc->options, 'a', "repeat", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_STRING, NULL, NULL);
-	options_add(&lirc->options, 'b', "button", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_STRING, NULL, NULL);
-	options_add(&lirc->options, 'r', "remote", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_STRING, NULL, NULL);
+	options_add(&lirc->options, 'c', "code", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_STRING, NULL, NULL);
+	options_add(&lirc->options, 'a', "repeat", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "[0-9]");
+	options_add(&lirc->options, 'b', "button", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_STRING, NULL, NULL);
+	options_add(&lirc->options, 'r', "remote", OPTION_HAS_VALUE, DEVICES_ID, JSON_STRING, NULL, NULL);
 
 	lirc->initDev=&lircInitDev;
 	lirc->threadGC=&lircThreadGC;
@@ -237,9 +217,9 @@ void lircInit(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name = "lirc";
-	module->version = "1.0";
+	module->version = "1.2";
 	module->reqversion = "5.0";
-	module->reqcommit = NULL;
+	module->reqcommit = "84";
 }
 
 void init(void) {

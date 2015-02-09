@@ -3,17 +3,17 @@
 
 	This file is part of pilight.
 
-    pilight is free software: you can redistribute it and/or modify it under the
+	pilight is free software: you can redistribute it and/or modify it under the
 	terms of the GNU General Public License as published by the Free Software
 	Foundation, either version 3 of the License, or (at your option) any later
 	version.
 
-    pilight is distributed in the hope that it will be useful, but WITHOUT ANY
+	pilight is distributed in the hope that it will be useful, but WITHOUT ANY
 	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-    You should have received a copy of the GNU General Public License
-    along with pilight. If not, see	<http://www.gnu.org/licenses/>
+	You should have received a copy of the GNU General Public License
+	along with pilight. If not, see	<http://www.gnu.org/licenses/>
 */
 
 #include <stdio.h>
@@ -33,7 +33,7 @@
 
 static void selectremoteCreateMessage(int id, int state) {
 	selectremote->message = json_mkobject();
-	json_append_member(selectremote->message, "id", json_mknumber(id));
+	json_append_member(selectremote->message, "id", json_mknumber(id, 0));
 	if(state == 1) {
 		json_append_member(selectremote->message, "state", json_mkstring("on"));
 	} else {
@@ -149,11 +149,11 @@ void selectremoteInit(void) {
 	selectremote->rawlen = 50;
 	selectremote->binlen = 12;
 
-	options_add(&selectremote->options, 'i', "id", OPTION_HAS_VALUE, CONFIG_ID, JSON_NUMBER, NULL, "^[0-7]$");
-	options_add(&selectremote->options, 't', "on", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
-	options_add(&selectremote->options, 'f', "off", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
+	options_add(&selectremote->options, 'i', "id", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^[0-7]$");
+	options_add(&selectremote->options, 't', "on", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
+	options_add(&selectremote->options, 'f', "off", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
 
-	options_add(&selectremote->options, 0, "gui-readonly", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
+	options_add(&selectremote->options, 0, "readonly", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 
 	selectremote->parseBinary=&selectremoteParseBinary;
 	selectremote->createCode=&selectremoteCreateCode;
@@ -163,9 +163,9 @@ void selectremoteInit(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name = "selectremote";
-	module->version = "0.8";
+	module->version = "1.0";
 	module->reqversion = "5.0";
-	module->reqcommit = NULL;
+	module->reqcommit = "84";
 }
 
 void init(void) {

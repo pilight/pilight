@@ -48,7 +48,7 @@ $socket = new IO::Socket::INET (
     Proto => 'tcp',
 ) or die "no pilight ssdp connections found\n";
 
-$socket->send('{"message":"client receiver"}');
+$socket->send('{"action":"identify","options":{"receiver":1}}');
 $socket->recv($recv_data, 1024);
 my $text = '';
 while(1) {

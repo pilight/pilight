@@ -112,7 +112,7 @@ public class process {
 				if(printStream == null) {
 					printStream = new PrintStream(socket.getOutputStream(), false);
 				}
-				printStream.print("{\"message\":\"client receiver\"}\n");
+				printStream.print("{\"action\":\"identify\",\"options\":{\"receiver\":1}}\n");
 				printStream.flush();
 			} catch(IOException e) {
 				System.out.println("failed to write messages to server");

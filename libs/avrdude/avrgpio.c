@@ -31,6 +31,7 @@
 #include "pindefs.h"
 #include "pgm.h"
 #include "avrbitbang.h"
+#include "wiringX.h"
 
 /*
  * GPIO user space helpers
@@ -43,236 +44,108 @@
 
 #define GPIO_DIR_IN	0
 #define GPIO_DIR_OUT	1
-
-static int gpio_export(unsigned gpio)
-{
-	int fd, len;
-	char buf[11];
-
-	fd = open("/sys/class/gpio/export", O_WRONLY);
-	if (fd < 0) {
-		perror("gpio/export");
-		return fd;
-	}
-
-	len = snprintf(buf, sizeof(buf), "%d", gpio);
-	write(fd, buf, len);
-	close(fd);
-
-	return 0;
-}
-
-static int gpio_unexport(unsigned gpio)
-{
-	int fd, len;
-	char buf[11];
-
-	fd = open("/sys/class/gpio/unexport", O_WRONLY);
-	if (fd < 0) {
-		perror("gpio/export");
-		return fd;
-	}
-
-	len = snprintf(buf, sizeof(buf), "%d", gpio);
-	write(fd, buf, len);
-	close(fd);
-	return 0;
-}
-
-static int gpio_dir(unsigned gpio, unsigned dir)
-{
-	int fd, len;
-	char buf[60];
-
-	len = snprintf(buf, sizeof(buf), "/sys/class/gpio/gpio%d/direction", gpio);
-
-	fd = open(buf, O_WRONLY);
-	if (fd < 0) {
-		perror("gpio/direction");
-		return fd;
-	}
-
-	if (dir == GPIO_DIR_OUT)
-		write(fd, "out", 4);
-	else
-		write(fd, "in", 3);
-
-	close(fd);
-	return 0;
-}
-
-static int gpio_dir_out(unsigned gpio)
-{
-	return gpio_dir(gpio, GPIO_DIR_OUT);
-}
-
-static int gpio_dir_in(unsigned gpio)
-{
-	return gpio_dir(gpio, GPIO_DIR_IN);
-}
-
-/*
- * End of GPIO user space helpers
- */
-
 #define N_GPIO 256
 
 /*
 * an array which holds open FDs to /sys/class/gpio/gpioXX/value for all needed pins
 */
-static int gpio_fds[N_GPIO] ;
+static int gpio_fds[N_GPIO];
 
+static int gpio_setpin(PROGRAMMER * pgm, int pin, int value) {
+	if(gpio_fds[pin] != OUTPUT) {
+		return -1;
+	}
 
-static int gpio_setpin(PROGRAMMER * pgm, int pin, int value)
-{
-  int r;
+	/* Small delay for too fast computers */
+	delayMicroseconds(1);
 
-  if (pin & PIN_INVERSE)
-  {
-    value  = !value;
-    pin   &= PIN_MASK;
-  }
+  if(value == 1) {
+		digitalWrite(pin, HIGH);
+  } else {
+		digitalWrite(pin, LOW);
+	}
 
-    if ( gpio_fds[pin] < 0 )
-      return -1;
-
-  if (value)
-    r=write(gpio_fds[pin], "1", 1);
-  else
-    r=write(gpio_fds[pin], "0", 1);
-
-  if (r!=1) return -1;
-
-  if (pgm->ispdelay > 1)
+  if(pgm->ispdelay > 1) {
     bitbang_delay(pgm->ispdelay);
+	}
 
   return 0;
 }
 
-static int gpio_getpin(PROGRAMMER * pgm, int pin)
-{
-  unsigned char invert=0;
-  char c;
-
-  if (pin & PIN_INVERSE)
-  {
-    invert = 1;
-    pin   &= PIN_MASK;
-  }
-
-  if ( gpio_fds[pin] < 0 )
-    return -1;
-
-  if (lseek(gpio_fds[pin], 0, SEEK_SET)<0)
-    return -1;
-
-  if (read(gpio_fds[pin], &c, 1)!=1)
-    return -1;
-
-  if (c=='0')
-    return 0+invert;
-  else if (c=='1')
-    return 1-invert;
-  else
-    return -1;
-
+static int gpio_getpin(PROGRAMMER * pgm, int pin) {
+	if(gpio_fds[pin] == INPUT) {
+		return digitalRead(pin);
+	} else {
+		return -1;
+	}
 }
 
-static int gpio_highpulsepin(PROGRAMMER * pgm, int pin)
-{
+static int gpio_highpulsepin(PROGRAMMER * pgm, int pin) {
 
-  if ( gpio_fds[pin & PIN_MASK] < 0 )
-    return -1;
-
-  gpio_setpin(pgm, pin, 1);
-  gpio_setpin(pgm, pin, 0);
-
-  return 0;
+	if(gpio_fds[pin] == OUTPUT) {
+		digitalWrite(pin, HIGH);
+		digitalWrite(pin, LOW);
+		return 0;
+	} else {
+		return -1;
+	}
 }
 
-
-
-static void gpio_display(PROGRAMMER *pgm, const char *p)
-{
+static void gpio_display(PROGRAMMER *pgm, const char *p) {
   /* MAYBE */
 }
 
-static void gpio_enable(PROGRAMMER *pgm)
-{
+static void gpio_enable(PROGRAMMER *pgm) {
   /* nothing */
 }
 
-static void gpio_disable(PROGRAMMER *pgm)
-{
+static void gpio_disable(PROGRAMMER *pgm) {
   /* nothing */
 }
 
-static void gpio_powerup(PROGRAMMER *pgm)
-{
+static void gpio_powerup(PROGRAMMER *pgm) {
   /* nothing */
 }
 
-static void gpio_powerdown(PROGRAMMER *pgm)
-{
+static void gpio_powerdown(PROGRAMMER *pgm) {
   /* nothing */
 }
 
-static int gpio_open(PROGRAMMER *pgm, char *port)
-{
-  int r,i;
-  char filepath[60];
+static int gpio_open(PROGRAMMER *pgm, char *port) {
+	int i = 0;
 
+	bitbang_check_prerequisites(pgm);
 
-  bitbang_check_prerequisites(pgm);
-
-
-  for (i=0; i<N_GPIO; i++)
-	gpio_fds[i]=-1;
-
-  for (i=0; i<N_PINS; i++) {
-    if (pgm->pinno[i] != 0) {
-        if ((r=gpio_export(pgm->pinno[i])) < 0)
-	    return r;
-
-
-	if (i == PIN_AVR_MISO)
-	    r=gpio_dir_in(pgm->pinno[i]);
-	else
-	    r=gpio_dir_out(pgm->pinno[i]);
-
-	if (r < 0)
-	    return r;
-
-	if ((r=snprintf(filepath, sizeof(filepath), "/sys/class/gpio/gpio%d/value", pgm->pinno[i]))<0)
-	    return r;
-
-        if ((gpio_fds[pgm->pinno[i]]=open(filepath, O_RDWR))<0)
-	    return gpio_fds[pgm->pinno[i]];
-
-    }
-  }
+	for(i=0;i<N_PINS;i++) {
+		if(pgm->pinno[i] != 0) {
+			if(i == PIN_AVR_MISO) {
+				gpio_fds[pgm->pinno[i]] = INPUT;
+				pinMode(pgm->pinno[i], INPUT);
+			} else {
+				gpio_fds[pgm->pinno[i]] = OUTPUT;;
+				pinMode(pgm->pinno[i], OUTPUT);
+			}
+		}
+	}
 
  return(0);
 }
 
-static void gpio_close(PROGRAMMER *pgm)
-{
-  int i;
+static void gpio_close(PROGRAMMER *pgm) {
+	if(gpio_fds[pgm->pinno[PIN_AVR_RESET]] == OUTPUT) {
+		digitalWrite(pgm->pinno[PIN_AVR_RESET], HIGH);
+		// digitalWrite(pgm->pinno[PIN_AVR_RESET], LOW);
+	}
 
-  pgm->setpin(pgm, pgm->pinno[PIN_AVR_RESET], 1);
-
-  for (i=0; i<N_GPIO; i++)
-    if (gpio_fds[i]>=0) {
-       close(gpio_fds[i]);
-       gpio_unexport(i);
-    }
   return;
 }
 
 void gpio_initpgm(PROGRAMMER *pgm)
 {
   strcpy(pgm->type, "GPIO");
-
+	if(wiringXSetup() != 0) {
+		exit(0);
+	}
   pgm->rdy_led        = bitbang_rdy_led;
   pgm->err_led        = bitbang_err_led;
   pgm->pgm_led        = bitbang_pgm_led;

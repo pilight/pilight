@@ -3,17 +3,17 @@
 
 	This file is part of pilight.
 
-    pilight is free software: you can redistribute it and/or modify it under the
+	pilight is free software: you can redistribute it and/or modify it under the
 	terms of the GNU General Public License as published by the Free Software
 	Foundation, either version 3 of the License, or (at your option) any later
 	version.
 
-    pilight is distributed in the hope that it will be useful, but WITHOUT ANY
+	pilight is distributed in the hope that it will be useful, but WITHOUT ANY
 	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-    You should have received a copy of the GNU General Public License
-    along with pilight. If not, see	<http://www.gnu.org/licenses/>
+	You should have received a copy of the GNU General Public License
+	along with pilight. If not, see	<http://www.gnu.org/licenses/>
 */
 
 #include <stdio.h>
@@ -159,9 +159,9 @@ static int x10CreateCode(JsonNode *code) {
 	if(json_find_string(code, "id", &stmp) == 0)
 		strcpy(id, stmp);
 	if(json_find_number(code, "off", &itmp) == 0)
-		state=0;
-	else if(json_find_number(code, "on", &itmp) == 0)
 		state=1;
+	else if(json_find_number(code, "on", &itmp) == 0)
+		state=0;
 
 	if(strcmp(id, "-1") == 0 || state == -1) {
 		logprintf(LOG_ERR, "x10: insufficient number of arguments");
@@ -202,11 +202,11 @@ void x10Init(void) {
 	x10->pulse = 12;
 	x10->rawlen = 68;
 
-	options_add(&x10->options, 't', "on", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
-	options_add(&x10->options, 'f', "off", OPTION_NO_VALUE, CONFIG_STATE, JSON_STRING, NULL, NULL);
-	options_add(&x10->options, 'i', "id", OPTION_HAS_VALUE, CONFIG_ID, JSON_STRING, NULL, "^[ABCDEFGHIJKLMNOP]([1][0-6]{1}|[1-9]{1})$");
+	options_add(&x10->options, 't', "on", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
+	options_add(&x10->options, 'f', "off", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
+	options_add(&x10->options, 'i', "id", OPTION_HAS_VALUE, DEVICES_ID, JSON_STRING, NULL, "^[ABCDEFGHIJKLMNOP]([1][0-6]{1}|[1-9]{1})$");
 
-	options_add(&x10->options, 0, "gui-readonly", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
+	options_add(&x10->options, 0, "readonly", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 
 	x10->parseCode=&x10ParseCode;
 	x10->createCode=&x10CreateCode;
@@ -216,9 +216,9 @@ void x10Init(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name = "x10";
-	module->version = "1.0";
+	module->version = "1.2";
 	module->reqversion = "5.0";
-	module->reqcommit = NULL;
+	module->reqcommit = "84";
 }
 
 void init(void) {

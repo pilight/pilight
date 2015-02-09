@@ -3,17 +3,17 @@
 
 	This file is part of pilight.
 
-    pilight is free software: you can redistribute it and/or modify it under the
+	pilight is free software: you can redistribute it and/or modify it under the
 	terms of the GNU General Public License as published by the Free Software
 	Foundation, either version 3 of the License, or (at your option) any later
 	version.
 
-    pilight is distributed in the hope that it will be useful, but WITHOUT ANY
+	pilight is distributed in the hope that it will be useful, but WITHOUT ANY
 	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
-    You should have received a copy of the GNU General Public License
-    along with pilight. If not, see	<http://www.gnu.org/licenses/>
+	You should have received a copy of the GNU General Public License
+	along with pilight. If not, see	<http://www.gnu.org/licenses/>
 */
 
 #include <stdio.h>
@@ -60,9 +60,9 @@ static void *ds18s20Parse(void *param) {
 	char *stmp = NULL;
 	char **id = NULL;
 	char *content = NULL;
-	int w1valid = 0, w1temp = 0, interval = 10, x = 0;
-	int temp_offset = 0, nrid = 0, y = 0, nrloops = 0;
-	double itmp = 0;
+	int w1valid = 0, interval = 10, x = 0;
+	int nrid = 0, y = 0, nrloops = 0;
+	double temp_offset = 0.0, w1temp = 0.0, itmp = 0.0;
 	size_t bytes = 0;
 
 	ds18s20_threads++;
@@ -71,12 +71,12 @@ static void *ds18s20Parse(void *param) {
 		jchild = json_first_child(jid);
 		while(jchild) {
 			if(json_find_string(jchild, "id", &stmp) == 0) {
-				id = realloc(id, (sizeof(char *)*(size_t)(nrid+1)));
+				id = REALLOC(id, (sizeof(char *)*(size_t)(nrid+1)));
 				if(!id) {
 					logprintf(LOG_ERR, "out of memory");
 					exit(EXIT_FAILURE);
 				}
-				id[nrid] = malloc(strlen(stmp)+1);
+				id[nrid] = MALLOC(strlen(stmp)+1);
 				if(!id[nrid]) {
 					logprintf(LOG_ERR, "out of memory");
 					exit(EXIT_FAILURE);
@@ -90,14 +90,13 @@ static void *ds18s20Parse(void *param) {
 
 	if(json_find_number(json, "poll-interval", &itmp) == 0)
 		interval = (int)round(itmp);
-	if(json_find_number(json, "device-temperature-offset", &itmp) == 0)
-		temp_offset = (int)round(itmp);
+	json_find_number(json, "temperature-offset", &temp_offset);
 
 	while(ds18s20_loop) {
 		if(protocol_thread_wait(node, interval, &nrloops) == ETIMEDOUT) {
 			pthread_mutex_lock(&ds18s20lock);
 			for(y=0;y<nrid;y++) {
-				ds18s20_sensor = realloc(ds18s20_sensor, strlen(ds18s20_path)+strlen(id[y])+5);
+				ds18s20_sensor = REALLOC(ds18s20_sensor, strlen(ds18s20_path)+strlen(id[y])+5);
 				if(!ds18s20_sensor) {
 					logprintf(LOG_ERR, "out of memory");
 					exit(EXIT_FAILURE);
@@ -121,7 +120,7 @@ static void *ds18s20Parse(void *param) {
 								fstat(fileno(fp), &st);
 								bytes = (size_t)st.st_size;
 
-								if(!(content = realloc(content, bytes+1))) {
+								if(!(content = REALLOC(content, bytes+1))) {
 									logprintf(LOG_ERR, "out of memory");
 									fclose(fp);
 									break;
@@ -143,7 +142,7 @@ static void *ds18s20Parse(void *param) {
 											w1valid = 1;
 										}
 										if(x == 2) {
-											w1temp = atoi(pch)+temp_offset;
+											w1temp = (atof(pch)/100)+temp_offset;
 										}
 										x++;
 									}
@@ -156,7 +155,7 @@ static void *ds18s20Parse(void *param) {
 									JsonNode *code = json_mkobject();
 
 									json_append_member(code, "id", json_mkstring(id[y]));
-									json_append_member(code, "temperature", json_mknumber(w1temp));
+									json_append_member(code, "temperature", json_mknumber(w1temp, 1));
 
 									json_append_member(ds18s20->message, "message", code);
 									json_append_member(ds18s20->message, "origin", json_mkstring("receiver"));
@@ -177,16 +176,18 @@ static void *ds18s20Parse(void *param) {
 			pthread_mutex_unlock(&ds18s20lock);
 		}
 	}
+	pthread_mutex_unlock(&ds18s20lock);
+
 	if(ds18s20_sensor) {
-		sfree((void *)&ds18s20_sensor);
+		FREE(ds18s20_sensor);
 	}
 	if(content) {
-		sfree((void *)&content);
+		FREE(content);
 	}
 	for(y=0;y<nrid;y++) {
-		sfree((void *)&id[y]);
+		FREE(id[y]);
 	}
-	sfree((void *)&id);
+	FREE(id);
 	ds18s20_threads--;
 	return (void *)NULL;
 }
@@ -195,7 +196,7 @@ static struct threadqueue_t *ds18s20InitDev(JsonNode *jdevice) {
 	ds18s20_loop = 1;
 	char *output = json_stringify(jdevice, NULL);
 	JsonNode *json = json_decode(output);
-	sfree((void *)&output);
+	json_free(output);
 
 	struct protocol_threads_t *node = protocol_thread_init(ds18s20, json);
 	return threads_register("ds18s20", &ds18s20Parse, (void *)node, 0);
@@ -224,14 +225,14 @@ void ds18s20Init(void) {
 	ds18s20->devtype = WEATHER;
 	ds18s20->hwtype = SENSOR;
 
-	options_add(&ds18s20->options, 't', "temperature", OPTION_HAS_VALUE, CONFIG_VALUE, JSON_NUMBER, NULL, "^[0-9]{1,5}$");
-	options_add(&ds18s20->options, 'i', "id", OPTION_HAS_VALUE, CONFIG_ID, JSON_STRING, NULL, "^[a-z0-9]{12}$");
+	options_add(&ds18s20->options, 't', "temperature", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9]{1,5}$");
+	options_add(&ds18s20->options, 'i', "id", OPTION_HAS_VALUE, DEVICES_ID, JSON_STRING, NULL, "^[a-z0-9]{12}$");
 
-	options_add(&ds18s20->options, 0, "device-decimals", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)3, "[0-9]");
-	options_add(&ds18s20->options, 0, "device-temperature-offset", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)0, "[0-9]");
-	options_add(&ds18s20->options, 0, "gui-decimals", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)3, "[0-9]");
-	options_add(&ds18s20->options, 0, "gui-show-temperature", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
-	options_add(&ds18s20->options, 0, "poll-interval", OPTION_HAS_VALUE, CONFIG_SETTING, JSON_NUMBER, (void *)10, "[0-9]");
+	// options_add(&ds18s20->options, 0, "decimals", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *)3, "[0-9]");
+	options_add(&ds18s20->options, 0, "temperature-offset", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *)0, "[0-9]");
+	options_add(&ds18s20->options, 0, "decimals", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)3, "[0-9]");
+	options_add(&ds18s20->options, 0, "show-temperature", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
+	options_add(&ds18s20->options, 0, "poll-interval", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *)10, "[0-9]");
 
 	memset(ds18s20_path, '\0', 21);
 	strcpy(ds18s20_path, "/sys/bus/w1/devices/");
@@ -243,9 +244,9 @@ void ds18s20Init(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name = "ds18s20";
-	module->version = "1.0";
+	module->version = "1.3";
 	module->reqversion = "5.0";
-	module->reqcommit = NULL;
+	module->reqcommit = "187";
 }
 
 void init(void) {
