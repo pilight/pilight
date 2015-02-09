@@ -86,7 +86,9 @@ static void *pingParse(void *param) {
 					json_append_member(pping->message, "origin", json_mkstring("receiver"));
 					json_append_member(pping->message, "protocol", json_mkstring(pping->id));
 
-					pilight.broadcast(pping->id, pping->message);
+					if(pilight.broadcast != NULL) {
+						pilight.broadcast(pping->id, pping->message);
+					}
 					json_delete(pping->message);
 					pping->message = NULL;
 				}
@@ -102,7 +104,9 @@ static void *pingParse(void *param) {
 				json_append_member(pping->message, "origin", json_mkstring("receiver"));
 				json_append_member(pping->message, "protocol", json_mkstring(pping->id));
 
-				pilight.broadcast(pping->id, pping->message);
+				if(pilight.broadcast != NULL) {
+					pilight.broadcast(pping->id, pping->message);
+				}
 				json_delete(pping->message);
 				pping->message = NULL;
 			}

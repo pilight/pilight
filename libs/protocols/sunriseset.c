@@ -200,7 +200,9 @@ static void *sunRiseSetParse(void *param) {
 			json_append_member(sunriseset->message, "origin", json_mkstring("receiver"));
 			json_append_member(sunriseset->message, "protocol", json_mkstring(sunriseset->id));
 
-			pilight.broadcast(sunriseset->id, sunriseset->message);
+			if(pilight.broadcast != NULL) {
+				pilight.broadcast(sunriseset->id, sunriseset->message);
+			}
 			json_delete(sunriseset->message);
 			sunriseset->message = NULL;
 			firstrun = 0;

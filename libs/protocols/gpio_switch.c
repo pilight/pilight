@@ -51,7 +51,9 @@ static void gpioSwitchCreateMessage(int gpio, int state) {
 	json_append_member(gpio_switch->message, "origin", json_mkstring("receiver"));
 	json_append_member(gpio_switch->message, "protocol", json_mkstring(gpio_switch->id));
 
-	pilight.broadcast(gpio_switch->id, gpio_switch->message);
+	if(pilight.broadcast != NULL) {
+		pilight.broadcast(gpio_switch->id, gpio_switch->message);
+	}
 	json_delete(gpio_switch->message);
 	gpio_switch->message = NULL;
 }

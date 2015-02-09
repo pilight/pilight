@@ -147,7 +147,9 @@ static void *lircParse(void *param) {
 								json_append_member(lirc->message, "origin", json_mkstring("receiver"));
 								json_append_member(lirc->message, "protocol", json_mkstring(lirc->id));
 
-								pilight.broadcast(lirc->id, lirc->message);
+								if(pilight.broadcast != NULL) {
+									pilight.broadcast(lirc->id, lirc->message);
+								}
 								json_delete(lirc->message);
 								lirc->message = NULL;
 							}
