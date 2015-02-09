@@ -76,7 +76,7 @@
 #include <string.h>
 #include <signal.h>
 #include <arpa/inet.h>
-
+#include <log.h>
 #include "mem.h"
 
 /*
@@ -131,7 +131,7 @@ static int initpacket(char *buf) {
 
 	icmp->icmp_seq = 1;
 	icmp->icmp_cksum = 0;
-	icmp->icmp_type = ICMP_TSTAMP;
+	icmp->icmp_type = ICMP_ECHO;
 	icmp->icmp_code = 0;
 
 	gettimeofday((struct timeval *)(icmp+8), NULL);
@@ -151,12 +151,12 @@ int ping(char *addr) {
 	long int fromlen = 0;
 
 	if((sockfd = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP)) < 0) {
-		perror("socket");
+		logperror(LOG_DEBUG, "socket");
 		return -1;
 	}
 
 	if(setsockopt(sockfd, IPPROTO_IP, IP_HDRINCL, &on, sizeof(on)) < 0) {
-		perror("IP_HDRINCL");
+		logperror(LOG_DEBUG, "IP_HDRINCL");
 		close(sockfd);
 		return -1;
 	}
@@ -164,7 +164,7 @@ int ping(char *addr) {
 	tv.tv_sec = 1;
 	tv.tv_usec = 0;
 	if(setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, (char *)&tv, sizeof(struct timeval)) < 0) {
-		perror("SO_RCVTIMEO");
+		logperror(LOG_DEBUG, "SO_RCVTIMEO");
 		close(sockfd);
 		return -1;
 	}
@@ -179,18 +179,21 @@ int ping(char *addr) {
 	icmp->icmp_cksum = 0;
 	icmp->icmp_cksum = in_cksum((u_short *)icmp, icmplen);
 	if(sendto(sockfd, buf, ip->ip_len, 0, (struct sockaddr *)&dst, sizeof(dst)) < 0) {
+		logperror(LOG_DEBUG, "sendto");
 		close(sockfd);
 		return -1;
 	}
 
 	memset(buf, '\0', sizeof(buf));
 	if((recvfrom(sockfd, buf, sizeof(buf), 0, NULL, (unsigned int *)&fromlen)) < 0) {
+		logperror(LOG_DEBUG, "recvfrom");
 		close(sockfd);
 		return -1;
 	}
 
 	icmp = (struct icmp *)(buf + (ip->ip_hl << 2));
-	if(!(icmp->icmp_type == ICMP_TSTAMPREPLY && strcmp(inet_ntoa(ip->ip_src), addr) == 0)) {
+	if(!((icmp->icmp_type == ICMP_ECHOREPLY || icmp->icmp_type == ICMP_ECHO) && strcmp(inet_ntoa(ip->ip_src), addr) == 0)) {
+		logprintf(LOG_DEBUG, "unexpected status reply %d from addr: %s", icmp->icmp_type, inet_ntoa(ip->ip_src));
 		close(sockfd);
 		return -1;
 	}
