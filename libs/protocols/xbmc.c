@@ -321,6 +321,7 @@ static int xbmcCheckValues(JsonNode *code) {
 			}
 		} else if(strcmp(media, "episode") == 0
 		   || strcmp(media, "movie") == 0
+			 || strcmp(media, "movies") == 0
 		   || strcmp(media, "song") == 0) {
 			if(!(strcmp(action, "play") == 0 || strcmp(action, "pause") == 0)) {
 				return 1;
@@ -374,7 +375,7 @@ void xbmcInit(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name = "xbmc";
-	module->version = "1.3";
+	module->version = "1.4";
 	module->reqversion = "5.0";
 	module->reqcommit = "187";
 }
