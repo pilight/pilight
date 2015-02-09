@@ -116,7 +116,9 @@ static void *cpuTempParse(void *param) {
 						json_append_member(cpuTemp->message, "origin", json_mkstring("receiver"));
 						json_append_member(cpuTemp->message, "protocol", json_mkstring(cpuTemp->id));
 
-						pilight.broadcast(cpuTemp->id, cpuTemp->message);
+						if(pilight.broadcast != NULL) {
+							pilight.broadcast(cpuTemp->id, cpuTemp->message);
+						}
 						json_delete(cpuTemp->message);
 						cpuTemp->message = NULL;
 					}

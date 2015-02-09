@@ -161,7 +161,9 @@ static void *dht22Parse(void *param) {
 						json_append_member(dht22->message, "origin", json_mkstring("receiver"));
 						json_append_member(dht22->message, "protocol", json_mkstring(dht22->id));
 
-						pilight.broadcast(dht22->id, dht22->message);
+						if(pilight.broadcast != NULL) {
+							pilight.broadcast(dht22->id, dht22->message);
+						}
 						json_delete(dht22->message);
 						dht22->message = NULL;
 					} else {

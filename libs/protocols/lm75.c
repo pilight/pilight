@@ -128,7 +128,9 @@ static void *lm75Parse(void *param) {
 					json_append_member(lm75->message, "origin", json_mkstring("receiver"));
 					json_append_member(lm75->message, "protocol", json_mkstring(lm75->id));
 
-					pilight.broadcast(lm75->id, lm75->message);
+					if(pilight.broadcast != NULL) {
+						pilight.broadcast(lm75->id, lm75->message);
+					}
 					json_delete(lm75->message);
 					lm75->message = NULL;
 				} else {

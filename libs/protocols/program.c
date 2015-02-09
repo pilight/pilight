@@ -178,7 +178,9 @@ static void *programParse(void *param) {
 
 				if(lnode->currentstate != lnode->laststate) {
 					lnode->laststate = lnode->currentstate;
-					pilight.broadcast(program->id, program->message);
+					if(pilight.broadcast != NULL) {
+						pilight.broadcast(program->id, program->message);
+					}
 				}
 				json_delete(program->message);
 				program->message = NULL;
@@ -273,7 +275,9 @@ static int programCreateCode(JsonNode *code) {
 									json_append_member(program->message, "origin", json_mkstring("receiver"));
 									json_append_member(program->message, "protocol", json_mkstring(program->id));
 
-									pilight.broadcast(program->id, program->message);
+									if(pilight.broadcast != NULL) {
+										pilight.broadcast(program->id, program->message);
+									}
 									json_delete(program->message);
 									program->message = NULL;
 								}

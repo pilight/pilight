@@ -291,7 +291,9 @@ static void *bmp180Parse(void *param) {
 					json_append_member(bmp180->message, "origin", json_mkstring("receiver"));
 					json_append_member(bmp180->message, "protocol", json_mkstring(bmp180->id));
 
-					pilight.broadcast(bmp180->id, bmp180->message);
+					if(pilight.broadcast != NULL) {
+						pilight.broadcast(bmp180->id, bmp180->message);
+					}
 					json_delete(bmp180->message);
 					bmp180->message = NULL;
 				} else {

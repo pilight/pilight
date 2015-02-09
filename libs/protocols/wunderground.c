@@ -248,7 +248,9 @@ static void *wundergroundParse(void *param) {
 																	json_append_member(wunderground->message, "origin", json_mkstring("receiver"));
 																	json_append_member(wunderground->message, "protocol", json_mkstring(wunderground->id));
 
-																	pilight.broadcast(wunderground->id, wunderground->message);
+																	if(pilight.broadcast != NULL) {
+																		pilight.broadcast(wunderground->id, wunderground->message);
+																	}
 																	json_delete(wunderground->message);
 																	wunderground->message = NULL;
 																	/* Send message when sun rises */
@@ -323,7 +325,9 @@ static void *wundergroundParse(void *param) {
 			json_append_member(wunderground->message, "message", code);
 			json_append_member(wunderground->message, "origin", json_mkstring("receiver"));
 			json_append_member(wunderground->message, "protocol", json_mkstring(wunderground->id));
-			pilight.broadcast(wunderground->id, wunderground->message);
+			if(pilight.broadcast != NULL) {
+				pilight.broadcast(wunderground->id, wunderground->message);
+			}
 			json_delete(wunderground->message);
 			wunderground->message = NULL;
 		}

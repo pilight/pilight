@@ -136,7 +136,9 @@ static void *arpingParse(void *param) {
 					json_append_member(arping->message, "origin", json_mkstring("receiver"));
 					json_append_member(arping->message, "protocol", json_mkstring(arping->id));
 
-					pilight.broadcast(arping->id, arping->message);
+					if(pilight.broadcast != NULL) {
+						pilight.broadcast(arping->id, arping->message);
+					}
 					json_delete(arping->message);
 					arping->message = NULL;
 				}
@@ -153,7 +155,9 @@ static void *arpingParse(void *param) {
 				json_append_member(arping->message, "origin", json_mkstring("receiver"));
 				json_append_member(arping->message, "protocol", json_mkstring(arping->id));
 
-				pilight.broadcast(arping->id, arping->message);
+				if(pilight.broadcast != NULL) {
+					pilight.broadcast(arping->id, arping->message);
+				}
 				json_delete(arping->message);
 				arping->message = NULL;
 			}

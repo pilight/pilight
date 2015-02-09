@@ -212,7 +212,9 @@ static void *openweathermapParse(void *param) {
 										json_append_member(openweathermap->message, "origin", json_mkstring("receiver"));
 										json_append_member(openweathermap->message, "protocol", json_mkstring(openweathermap->id));
 
-										pilight.broadcast(openweathermap->id, openweathermap->message);
+										if(pilight.broadcast != NULL) {
+											pilight.broadcast(openweathermap->id, openweathermap->message);
+										}
 										json_delete(openweathermap->message);
 										openweathermap->message = NULL;
 
@@ -264,7 +266,9 @@ static void *openweathermapParse(void *param) {
 			json_append_member(openweathermap->message, "message", code);
 			json_append_member(openweathermap->message, "origin", json_mkstring("receiver"));
 			json_append_member(openweathermap->message, "protocol", json_mkstring(openweathermap->id));
-			pilight.broadcast(openweathermap->id, openweathermap->message);
+			if(pilight.broadcast != NULL) {
+				pilight.broadcast(openweathermap->id, openweathermap->message);
+			}
 			json_delete(openweathermap->message);
 			openweathermap->message = NULL;
 		}

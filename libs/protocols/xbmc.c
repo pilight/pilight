@@ -72,7 +72,9 @@ static void xbmcCreateMessage(char *server, int port, char *action, char *media)
 	json_append_member(xbmc->message, "origin", json_mkstring("receiver"));
 	json_append_member(xbmc->message, "protocol", json_mkstring(xbmc->id));
 
-	pilight.broadcast(xbmc->id, xbmc->message);
+	if(pilight.broadcast != NULL) {
+		pilight.broadcast(xbmc->id, xbmc->message);
+	}
 	json_delete(xbmc->message);
 	xbmc->message = NULL;
 }
@@ -351,6 +353,7 @@ void xbmcInit(void) {
 	protocol_register(&xbmc);
 	protocol_set_id(xbmc, "xbmc");
 	protocol_device_add(xbmc, "xbmc", "XBMC API");
+	protocol_device_add(xbmc, "kodi", "Kodi API");
 	xbmc->devtype = XBMC;
 	xbmc->hwtype = API;
 	xbmc->multipleId = 0;
