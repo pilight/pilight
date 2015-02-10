@@ -988,7 +988,7 @@ function parseData(data) {
 			}
 			if('firmware' in data['registry']['pilight']) {
 				if('version' in data['registry']['pilight']['firmware']) {
-					iFWVersion = data['registry']['pilight']['firmware'];
+					iFWVersion = data['registry']['pilight']['firmware']['version'];
 				}
 			}
 			updateVersions();
