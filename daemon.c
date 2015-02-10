@@ -366,27 +366,31 @@ void *broadcast(void *param) {
 					}
 
 					char *jbroadcast = json_stringify(bcqueue->jmessage, NULL);
-
 					if(strcmp(bcqueue->protoname, "pilight_firmware") == 0) {
-						JsonNode *code = NULL;
-						if((code = json_find_member(bcqueue->jmessage, "code")) != NULL) {
+						struct JsonNode *code = NULL;
+						if((code = json_find_member(bcqueue->jmessage, "message")) != NULL) {
 							json_find_number(code, "version", &firmware.version);
 							json_find_number(code, "lpf", &firmware.lpf);
 							json_find_number(code, "hpf", &firmware.hpf);
-
-							struct JsonNode *jmessage = json_mkobject();
-							struct JsonNode *jcode = json_mkobject();
-							json_append_member(jcode, "version", json_mknumber(firmware.version, 0));
-							json_append_member(jcode, "lpf", json_mknumber(firmware.lpf, 0));
-							json_append_member(jcode, "hpf", json_mknumber(firmware.hpf, 0));
-							json_append_member(jmessage, "values", jcode);
-							json_append_member(jmessage, "origin", json_mkstring("receiver"));
-							json_append_member(jmessage, "type", json_mknumber(FIRMWARE, 0));
-							char pname[17];
-							strcpy(pname, "pilight-firmware");
-							pilight.broadcast(pname, jmessage);
-							json_delete(jmessage);
-							jmessage = NULL;
+							if(firmware.version > 0 && firmware.lpf > 0 && firmware.hpf > 0) {
+								registry_set_number("pilight.firmware.version", firmware.version, 0);							
+								registry_set_number("pilight.firmware.lpf", firmware.lpf, 0);							
+								registry_set_number("pilight.firmware.hpf", firmware.hpf, 0);							
+								
+								struct JsonNode *jmessage = json_mkobject();
+								struct JsonNode *jcode = json_mkobject();
+								json_append_member(jcode, "version", json_mknumber(firmware.version, 0));
+								json_append_member(jcode, "lpf", json_mknumber(firmware.lpf, 0));
+								json_append_member(jcode, "hpf", json_mknumber(firmware.hpf, 0));
+								json_append_member(jmessage, "values", jcode);
+								json_append_member(jmessage, "origin", json_mkstring("core"));
+								json_append_member(jmessage, "type", json_mknumber(FIRMWARE, 0));
+								char pname[17];
+								strcpy(pname, "pilight-firmware");
+								pilight.broadcast(pname, jmessage);
+								json_delete(jmessage);
+								jmessage = NULL;
+							}
 						}
 					}
 					broadcasted = 0;
