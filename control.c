@@ -186,7 +186,7 @@ int main(int argc, char **argv) {
 	}
 
 	socket_write(sockfd, "{\"action\":\"identify\"}");
-	if(socket_read(sockfd, &recvBuff) != 0
+	if(socket_read(sockfd, &recvBuff, 0) != 0
 	   || strcmp(recvBuff, "{\"status\":\"success\"}") != 0) {
 		goto close;
 	}
@@ -198,7 +198,7 @@ int main(int argc, char **argv) {
 	json_free(output);
 	json_delete(json);
 
-	if(socket_read(sockfd, &recvBuff) == 0) {
+	if(socket_read(sockfd, &recvBuff, 0) == 0) {
 		if(json_validate(recvBuff) == true) {
 			json = json_decode(recvBuff);
 			if(json_find_string(json, "message", &message) == 0) {
@@ -302,7 +302,7 @@ int main(int argc, char **argv) {
 							socket_write(sockfd, output);
 							json_free(output);
 							json_delete(joutput);
-							if(socket_read(sockfd, &recvBuff) != 0
+							if(socket_read(sockfd, &recvBuff, 0) != 0
 							   || strcmp(recvBuff, "{\"status\":\"success\"}") != 0) {
 								logprintf(LOG_ERR, "failed to control %s", device);
 							}

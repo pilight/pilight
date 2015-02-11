@@ -1231,14 +1231,14 @@ void *events_clientize(void *param) {
 		json_free(out);
 		json_delete(jclient);
 
-		if(socket_read(sockfd, &recvBuff) != 0
+		if(socket_read(sockfd, &recvBuff, 0) != 0
 			 || strcmp(recvBuff, "{\"status\":\"success\"}") != 0) {
 				failures++;
 			continue;
 		}
 		failures = 0;
 		while(loop) {
-			if(socket_read(sockfd, &recvBuff) != 0) {
+			if(socket_read(sockfd, &recvBuff, 0) != 0) {
 				break;
 			} else {
 				events_queue(recvBuff);

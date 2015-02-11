@@ -309,23 +309,35 @@ void socket_rm_client(int i, struct socket_callback_t *socket_callback) {
 	socket_clients[i] = 0;
 }
 
-int socket_read(int sockfd, char **message) {
+int socket_read(int sockfd, char **message, time_t timeout) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
+	struct timeval tv;
 	int bytes = 0;
 	size_t msglen = 0;
 	int ptr = 0, n = 0, len = (int)strlen(EOSS);
 	fd_set fdsread;
 	fcntl(sockfd, F_SETFL, O_NONBLOCK);
 
-	while(socket_loop) {
+	if(timeout > 0) {
+		tv.tv_sec = timeout;
+    tv.tv_usec = 0;
+	}
+	
+	while(socket_loop && sockfd > 0) {
 		FD_ZERO(&fdsread);
 		FD_SET((unsigned long)sockfd, &fdsread);
 
 		do {
-			n = select(sockfd+1, &fdsread, NULL, NULL, 0);
+			if(timeout > 0) {
+				n = select(sockfd+1, &fdsread, NULL, NULL, &tv);
+			} else {
+				n = select(sockfd+1, &fdsread, NULL, NULL, 0);
+			}
 		} while(n == -1 && errno == EINTR && socket_loop);
-
+		if(timeout > 0 && n == 0) {
+			return 1;
+		}
 		/* Immediatly stop loop if the select was waken up by the garbage collector */
 		if(socket_loop == 0) {
 			break;
@@ -473,7 +485,7 @@ void *socket_wait(void *param) {
 			sd = socket_clients[i];
 			if(FD_ISSET((unsigned long)socket_clients[i], &readfds)) {
 				FD_CLR((unsigned long)socket_clients[i], &readfds);
-				if(socket_read(sd, &waitMessage) == 0) {
+				if(socket_read(sd, &waitMessage, 0) == 0) {
 					if(socket_callback->client_data_callback) {
 						size_t l = strlen(waitMessage);
 						if(l > 0) {

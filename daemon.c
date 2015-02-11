@@ -276,7 +276,7 @@ void *broadcast(void *param) {
 						if(((int)tmp < 0 && tmp_clients->core == 1) ||
 						   ((int)tmp >= 0 && tmp_clients->config == 1) ||
 							 ((int)tmp == PROC && tmp_clients->stats == 1)) {
-								socket_write(tmp_clients->id, conf);
+							socket_write(tmp_clients->id, conf);
 							broadcasted = 1;
 						}
 						tmp_clients = tmp_clients->next;
@@ -799,7 +799,7 @@ static int send_queue(JsonNode *json) {
 	} else {
 		json_find_string(jcode, "uuid", &uuid);
 		/* If we matched a protocol and are not already sending, continue */
-		if((!uuid || (uuid && strcmp(uuid, pilight_uuid) == 0)) && send_repeat > 0) {
+		if((uuid == NULL || (uuid != NULL && strcmp(uuid, pilight_uuid) == 0)) && send_repeat > 0) {
 			jprotocol = json_first_child(jprotocols);
 			while(jprotocol && match == 0) {
 				match = 0;
@@ -1084,7 +1084,7 @@ static int control_device(struct devices_t *dev, char *state, JsonNode *values) 
 
 	/* Construct the right json object */
 	json_append_member(code, "protocol", jprotocols);
-	if(dev->dev_uuid && (dev->protocols->listener->hwtype == SENSOR
+	if(dev->dev_uuid != NULL && (dev->protocols->listener->hwtype == SENSOR
 	   || dev->protocols->listener->hwtype == HWRELAY)) {
 		json_append_member(code, "uuid", json_mkstring(dev->dev_uuid));
 	}
@@ -1111,7 +1111,7 @@ static void socket_parse_data(int i, char *buffer) {
 	struct clients_t *client = NULL;
 	int sd = -1;
 	int addrlen = sizeof(address);
-	char *action = NULL, *media = NULL;
+	char *action = NULL, *media = NULL, *status = NULL;
 	int error = 0, exists = 0;
 
 	if(pilight.runmode == ADHOC) {
@@ -1182,8 +1182,10 @@ static void socket_parse_data(int i, char *buffer) {
 					} else {
 						strcpy(client->media, "all");
 					}
-					char *t = clients->uuid;
-					json_find_string(json, "uuid", &t);
+					char *t = NULL;
+					if(json_find_string(json, "uuid", &t) == 0) {
+						strcpy(client->uuid, t);
+					}
 					if((options = json_find_member(json, "options")) != NULL) {
 						struct JsonNode *childs = json_first_child(options);
 						while(childs) {
@@ -1359,7 +1361,12 @@ static void socket_parse_data(int i, char *buffer) {
 					}
 				} else if(strcmp(action, "request config") == 0) {
 					struct JsonNode *jsend = json_mkobject();
-					struct JsonNode *jconfig = config_print(0, client->media);
+					struct JsonNode *jconfig = NULL;
+					if(client->forward == 1) {
+						jconfig = config_print(CONFIG_FORWARD, client->media);
+					} else {
+						jconfig = config_print(CONFIG_INTERNAL, client->media);
+					}
 					json_append_member(jsend, "message", json_mkstring("config"));
 					json_append_member(jsend, "config", jconfig);
 					char *output = json_stringify(jsend, NULL);
@@ -1402,6 +1409,21 @@ static void socket_parse_data(int i, char *buffer) {
 					}
 				} else {
 					error = 1;
+				}
+			} else if((json_find_string(json, "status", &status)) == 0) {
+				tmp_clients = clients;
+				while(tmp_clients) {
+					if(tmp_clients->id == sd) {
+						exists = 1;
+						client = tmp_clients;
+						break;
+					}
+					tmp_clients = tmp_clients->next;
+				}
+				if(strcmp(status, "success") == 0) {
+					logprintf(LOG_DEBUG, "client \"%s\" successfully executed our latest request", client->uuid);
+				} else if(strcmp(status, "failed") == 0) {
+					logprintf(LOG_DEBUG, "client \"%s\" failed executing our latest request", client->uuid);
 				}
 			} else {
 				error = 1;
@@ -1508,15 +1530,15 @@ void *clientize(void *param) {
 		ssdp_list = NULL;
 		if(master_server != NULL && master_port > 0) {
 			if((sockfd = socket_connect(master_server, master_port)) == -1) {
-				logprintf(LOG_ERR, "could not connect to pilight-daemon");
+				logprintf(LOG_NOTICE, "could not connect to pilight-daemon");
 				continue;
 			}
 		} else if(ssdp_seek(&ssdp_list) == -1) {
-			logprintf(LOG_ERR, "no pilight ssdp connections found");
+			logprintf(LOG_NOTICE, "no pilight ssdp connections found");
 			continue;
 		} else {
 			if((sockfd = socket_connect(ssdp_list->ip, ssdp_list->port)) == -1) {
-				logprintf(LOG_ERR, "could not connect to pilight-daemon");
+				logprintf(LOG_NOTICE, "could not connect to pilight-daemon");
 				continue;
 			}
 		}
@@ -1533,24 +1555,30 @@ void *clientize(void *param) {
 		json_append_member(json, "uuid", json_mkstring(pilight_uuid));
 		json_append_member(json, "options", joptions);
 		output = json_stringify(json, NULL);
-		socket_write(sockfd, output);
-		json_free(output);
-		json_delete(json);
+		if(socket_write(sockfd, output) != (strlen(output)+strlen(EOSS))) {
+			json_free(output);
+			json_delete(json);
+			continue;
+		}
 
-		if(socket_read(sockfd, &recvBuff) != 0
+		if(socket_read(sockfd, &recvBuff, 1) != 0
 		   || strcmp(recvBuff, "{\"status\":\"success\"}") != 0) {
-			goto close;
+			continue;
 		}
 		logprintf(LOG_DEBUG, "socket recv: %s", recvBuff);
 
 		json = json_mkobject();
 		json_append_member(json, "action", json_mkstring("request config"));
 		output = json_stringify(json, NULL);
-		socket_write(sockfd, output);
+		if(socket_write(sockfd, output) != (strlen(output)+strlen(EOSS))) {
+			json_free(output);
+			json_delete(json);
+			continue;
+		}
 		json_free(output);
 		json_delete(json);
 
-		if(socket_read(sockfd, &recvBuff) == 0) {
+		if(socket_read(sockfd, &recvBuff, 0) == 0) {
 			logprintf(LOG_DEBUG, "socket recv: %s", recvBuff);
 			if(json_validate(recvBuff) == true) {
 				json = json_decode(recvBuff);
@@ -1583,7 +1611,7 @@ void *clientize(void *param) {
 								logprintf(LOG_DEBUG, "loaded master configuration");
 								config_synced = 1;
 							} else {
-								logprintf(LOG_ERR, "failed to load master configuration");
+								logprintf(LOG_NOTICE, "failed to load master configuration");
 							}
 						}
 					}
@@ -1593,13 +1621,22 @@ void *clientize(void *param) {
 		}
 
 		while(client_loop && config_synced) {
+			if(sockfd <= 0) {
+				break;
+			}
 			if(main_loop == 0) {
 				client_loop = 0;
 				break;
 			}
-			if(socket_read(sockfd, &recvBuff) != 0) {
+
+			int n = socket_read(sockfd, &recvBuff, 1);
+			if(n == -1) {
+				sockfd = 0;
 				break;
+			} else if(n == 1) {
+				continue;
 			}
+
 			logprintf(LOG_DEBUG, "socket recv: %s", recvBuff);
 			char *pch = strtok(recvBuff, "\n");
 			while(pch) {
@@ -1627,11 +1664,6 @@ void *clientize(void *param) {
 	if(recvBuff != NULL) {
 		FREE(recvBuff);
 	}
-close:
-	if(recvBuff != NULL) {
-		FREE(recvBuff);
-	}
-	socket_close(sockfd);
 
 	return NULL;
 }
@@ -1679,12 +1711,7 @@ static void daemonize(void) {
 int main_gc(void) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
-	pilight.runmode = STANDALONE;
 	main_loop = 0;
-
-	while(sending) {
-		usleep(1000);
-	}
 
 	/* If we are running in node mode, the clientize
 	   thread is waiting for a response from the main
@@ -1695,6 +1722,12 @@ int main_gc(void) {
 	   stop the clientize thread. */
 	if(pilight.runmode == ADHOC) {
 		socket_write(sockfd, "HEART");
+	}
+
+	pilight.runmode = STANDALONE;
+
+	while(sending) {
+		usleep(1000);
 	}
 
 #ifdef EVENTS

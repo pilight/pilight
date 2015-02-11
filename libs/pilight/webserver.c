@@ -359,12 +359,12 @@ static int webserver_request_handler(struct mg_connection *conn) {
 				return MG_TRUE;
 			} else if(strcmp(conn->uri, "/config") == 0) {
 				char media[15];
-				int internal = 1;
+				int internal = CONFIG_USER;
 				strcpy(media, "web");
 				if(conn->query_string != NULL) {
 					sscanf(conn->query_string, "media=%14s%*[ \n\r]", media);
 					if(strstr(conn->query_string, "internal") != NULL) {
-						internal = 0;
+						internal = CONFIG_INTERNAL;
 					}
 				}
 				JsonNode *jsend = config_print(internal, media);
@@ -762,7 +762,7 @@ static int webserver_request_handler(struct mg_connection *conn) {
 			char *action = NULL;
 			if(json_find_string(json, "action", &action) == 0) {
 				if(strcmp(action, "request config") == 0) {
-					JsonNode *jsend = config_print(0, "web");
+					JsonNode *jsend = config_print(CONFIG_INTERNAL, "web");
 					char *output = json_stringify(jsend, NULL);
 					size_t output_len = strlen(output);
 					mg_websocket_write(conn, 1, output, output_len);
@@ -925,7 +925,7 @@ void *webserver_clientize(void *param) {
 		json_free(out);
 		json_delete(jclient);
 
-		if(socket_read(sockfd, &recvBuff) != 0
+		if(socket_read(sockfd, &recvBuff, 0) != 0
 			 || strcmp(recvBuff, "{\"status\":\"success\"}") != 0) {
 				failures++;
 			continue;
@@ -933,7 +933,7 @@ void *webserver_clientize(void *param) {
 		failures = 0;
 		while(webserver_loop) {
 			if(webgui_websockets == 1) {
-				if(socket_read(sockfd, &recvBuff) != 0) {
+				if(socket_read(sockfd, &recvBuff, 0) != 0) {
 					break;
 				} else {
 					webserver_queue(recvBuff);

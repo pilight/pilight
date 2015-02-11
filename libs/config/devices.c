@@ -117,15 +117,28 @@ int devices_update(char *protoname, JsonNode *json, JsonNode **out) {
 		/* Loop through all devices */
 
 		while(dptr) {
-			if(((uuid && dptr->dev_uuid && dptr->ori_uuid && strlen(pilight_uuid) > 0) &&
-				(((strcmp(dptr->dev_uuid, uuid) == 0) && dptr->cst_uuid == 1) ||
-				 (strcmp(dptr->dev_uuid, pilight_uuid) == 0
-				  && strcmp(dptr->dev_uuid, uuid) == 0
-				  && dptr->cst_uuid == 1) ||
-				 (strcmp(dptr->dev_uuid, dptr->ori_uuid) == 0
-				  && strcmp(pilight_uuid, dptr->ori_uuid) == 0
-				  && strcmp(pilight_uuid, uuid) == 0)))
-			   || (!uuid) || strlen(pilight_uuid) == 0) {
+			/*
+			 * uuid 				= The UUID of the pilight instance that received the specific information.
+			 * pilight_uuid	= The UUID of the currently running pilight instance this function was called on.
+			 * dev_uuid 		= The UUID of the device set by the user or the UUID of pilight instance that read the config.
+			 * ori_uuid			= The UUID of the pilight instance that parsed the config (mostly the master).
+			 * cst_uuid			= The UUID manually set the UUID of these devices
+			 *
+			 */
+			int uuidmatch = 0;
+			if(uuid != NULL && dptr->dev_uuid != NULL && dptr->ori_uuid != NULL && strlen(pilight_uuid) > 0) {
+				if(dptr->cst_uuid == 1) {
+					/* If the user forced the device UUID and it matches the UUID of the recieved code */
+					if(strcmp(dptr->dev_uuid, uuid) == 0) {
+						uuidmatch = 1;
+					}
+				} else {
+					uuidmatch = 1;
+				}
+			} else if(uuid == NULL || strlen(pilight_uuid) == 0) {
+				uuidmatch = 1;
+			}
+			if(uuidmatch == 1) {
 				struct protocols_t *tmp_protocols = dptr->protocols;
 				match = 0;
 				while(tmp_protocols) {
@@ -625,13 +638,13 @@ struct JsonNode *devices_sync(int level, const char *media) {
 			struct protocols_t *tmp_protocols = tmp_devices->protocols;
 			struct JsonNode *jprotocols = json_mkarray();
 
-			if(level == 0 || (strlen(pilight_uuid) > 0 &&
+			if(level == CONFIG_INTERNAL || (strlen(pilight_uuid) > 0 &&
 				(strcmp(tmp_devices->ori_uuid, pilight_uuid) == 0) &&
 				(strcmp(tmp_devices->dev_uuid, pilight_uuid) != 0))
 				|| tmp_devices->cst_uuid == 1) {
 				json_append_member(jdevice, "uuid", json_mkstring(tmp_devices->dev_uuid));
 			}
-			if(level == 0) {
+			if(level == CONFIG_INTERNAL || level == CONFIG_INTERNAL) {
 				json_append_member(jdevice, "origin", json_mkstring(tmp_devices->ori_uuid));
 				json_append_member(jdevice, "timestamp", json_mknumber((double)tmp_devices->timestamp, 0));
 			}
@@ -684,7 +697,7 @@ struct JsonNode *devices_sync(int level, const char *media) {
 				tmp_options = tmp_protocols->listener->options;
 				if(tmp_options) {
 					while(tmp_options) {
-						if(level == 0 && (tmp_options->conftype == DEVICES_SETTING)
+						if((level == CONFIG_INTERNAL || level == CONFIG_INTERNAL) && (tmp_options->conftype == DEVICES_SETTING)
 						&& json_find_member(jdevice, tmp_options->name) == NULL) {
 							if(tmp_options->vartype == JSON_NUMBER) {
 								json_append_member(jdevice, tmp_options->name, json_mknumber((int)(intptr_t)tmp_options->def, 0));

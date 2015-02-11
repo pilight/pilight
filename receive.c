@@ -165,13 +165,13 @@ int main(int argc, char **argv) {
 	json_free(out);
 	json_delete(jclient);
 
-	if(socket_read(sockfd, &recvBuff) != 0 ||
+	if(socket_read(sockfd, &recvBuff, 0) != 0 ||
      strcmp(recvBuff, "{\"status\":\"success\"}") != 0) {
 		goto close;
 	}
 
 	while(main_loop) {
-		if(socket_read(sockfd, &recvBuff) != 0) {
+		if(socket_read(sockfd, &recvBuff, 0) != 0) {
 			goto close;
 		}
 		char *pch = strtok(recvBuff, "\n");

@@ -34,6 +34,7 @@
 #include "socket.h"
 #include "json.h"
 #include "protocol.h"
+#include "wiringX.h"
 #include "ssdp.h"
 #include "dso.h"
 
@@ -45,6 +46,9 @@ typedef struct pname_t {
 
 static struct pname_t *pname = NULL;
 struct pilight_t pilight;
+
+void _lognone(int prio, const char *format_str, ...) {
+}
 
 static void sort_list(void) {
 	struct pname_t *a = NULL;
@@ -84,6 +88,8 @@ static void sort_list(void) {
 
 int main(int argc, char **argv) {
 	// memtrack();
+
+	wiringXLog = _lognone;
 
 	log_file_disable();
 	log_shell_enable();
@@ -356,7 +362,7 @@ int main(int argc, char **argv) {
 		}
 
 		socket_write(sockfd, "{\"action\":\"identify\"}");
-		if(socket_read(sockfd, &recvBuff) != 0
+		if(socket_read(sockfd, &recvBuff, 0) != 0
 		   || strcmp(recvBuff, "{\"status\":\"success\"}") != 0) {
 			goto close;
 		}
@@ -372,7 +378,7 @@ int main(int argc, char **argv) {
 		json_free(output);
 		json_delete(json);
 
-		if(socket_read(sockfd, &recvBuff) != 0
+		if(socket_read(sockfd, &recvBuff, 0) != 0
 		   || strcmp(recvBuff, "{\"status\":\"success\"}") != 0) {
 			logprintf(LOG_ERR, "failed to send codes");
 			goto close;
