@@ -16,10 +16,10 @@
 	along with pilight. If not, see	<http://www.gnu.org/licenses/>
 */
 
-#ifndef _PROTOCOL_ELRO_HE_CONTACT_H_
-#define _PROTOCOL_ELRO_HE_CONTACT_H_
+#ifndef _PROTOCOL_ELRO_400_H_
+#define _PROTOCOL_ELRO_400_H_
 
-struct protocol_t *elro_he_contact;
-void elroHEContactInit(void);
+struct protocol_t *elro_400;
+void elro400Init(void);
 
 #endif
