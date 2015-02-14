@@ -68,10 +68,8 @@ typedef struct protocol_threads_t {
 
 typedef struct protocol_t {
 	char *id;
-	int header;
 	int pulse;
 	struct protocol_plslen_t *plslen;
-	int footer;
 	int rawlen;
 	int minrawlen;
 	int maxrawlen;
@@ -88,8 +86,6 @@ typedef struct protocol_t {
 	unsigned long first;
 	unsigned long second;
 
-	int bit;
-	int recording;
 	int raw[MAXPULSESTREAMLENGTH];
 	int code[MAXPULSESTREAMLENGTH];
 	int pCode[MAXPULSESTREAMLENGTH];

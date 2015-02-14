@@ -484,10 +484,10 @@ static void receive_queue(int *raw, int rawlen, int plslen, int hwtype) {
 static void receiver_create_message(protocol_t *protocol) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
-	if(protocol->message) {
+	if(protocol->message != NULL) {
 		char *valid = json_stringify(protocol->message, NULL);
 		json_delete(protocol->message);
-		if(valid && json_validate(valid) == true) {
+		if(valid != NULL && json_validate(valid) == true) {
 			JsonNode *jmessage = json_mkobject();
 
 			json_append_member(jmessage, "message", json_decode(valid));
@@ -506,10 +506,10 @@ static void receiver_create_message(protocol_t *protocol) {
 			json_delete(json);
 			json = NULL;
 			json_delete(jmessage);
-		}
-		protocol->message = NULL;
+		}	
 		json_free(valid);
 	}
+	protocol->message = NULL;
 }
 
 void *receive_parse_code(void *param) {
@@ -673,7 +673,7 @@ void *send_code(void *param) {
 
 			JsonNode *message = NULL;
 
-			if(sendqueue->message && strcmp(sendqueue->message, "{}") != 0) {
+			if(sendqueue->message != NULL && strcmp(sendqueue->message, "{}") != 0) {
 				if(json_validate(sendqueue->message) == true) {
 					if(!message) {
 						message = json_mkobject();
@@ -819,7 +819,7 @@ static int send_queue(JsonNode *json) {
 				jprotocol = jprotocol->next;
 			}
 
-			if(match == 1 && protocol->createCode) {
+			if(match == 1 && protocol->createCode != NULL) {
 				/* Let the protocol create his code */
 				if(protocol->createCode(jcode) == 0 && main_loop == 1) {
 					pthread_mutex_lock(&sendqueue_lock);
@@ -832,12 +832,11 @@ static int send_queue(JsonNode *json) {
 						gettimeofday(&tcurrent, NULL);
 						mnode->id = 1000000 * (unsigned int)tcurrent.tv_sec + (unsigned int)tcurrent.tv_usec;
 						mnode->message = NULL;
-						if(protocol->message) {
+						if(protocol->message != NULL) {
 							char *jsonstr = json_stringify(protocol->message, NULL);
 							json_delete(protocol->message);
 							if(json_validate(jsonstr) == true) {
-								mnode->message = MALLOC(strlen(jsonstr)+1);
-								if(!mnode->message) {
+								if((mnode->message = MALLOC(strlen(jsonstr)+1)) == NULL) {
 									logprintf(LOG_ERR, "out of memory");
 									exit(EXIT_FAILURE);
 								}

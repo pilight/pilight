@@ -174,8 +174,30 @@ static int event_lookup_variable(char *var, struct rules_t *obj, unsigned int nr
 	}
 
 	if(nrdots == 1) {
-		char *device = strtok(var, ".");
-		char *name = strtok(NULL, ".");
+
+		char *p = strstr(var, ".");
+		if(p == NULL) {
+			logprintf(LOG_ERR, "rule #%d: an unexpected error occured", nr, var);
+			varcont->string_ = NULL;
+			varcont->number_ = 0;
+			return -1;
+		}
+
+		unsigned int z = (unsigned int)(p-var);
+
+		if(z <= 0) {
+			logprintf(LOG_ERR, "rule #%d: an unexpected error occured", nr, var);
+			varcont->string_ = NULL;
+			varcont->number_ = 0;
+			return -1;
+		}
+
+		char device[z+1];
+		strncpy(device, var, z);
+		device[z] = '\0';
+
+		char name[strlen(var)-z];
+		strcpy(name, &var[z+1]);
 
 		/* Check if the values are not already cached */
 		struct rules_values_t *tmp_values = obj->values;
@@ -198,8 +220,9 @@ static int event_lookup_variable(char *var, struct rules_t *obj, unsigned int nr
 			if(devices_get(device, &dev) == 0) {
 				if(validate == 1) {
 					int exists = 0;
-					for(i=0;i<obj->nrdevices;i++) {
-						if(strcmp(obj->devices[i], device) == 0) {
+					int o = 0;
+					for(o=0;o<obj->nrdevices;o++) {
+						if(strcmp(obj->devices[o], device) == 0) {
 							exists = 1;
 							break;
 						}
