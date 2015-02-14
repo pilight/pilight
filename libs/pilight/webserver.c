@@ -394,7 +394,8 @@ static int webserver_request_handler(struct mg_connection *conn) {
 			} else if(strcmp(&conn->uri[(rstrstr(conn->uri, "/")-conn->uri)], "/") == 0) {
 				char indexes[255];
 				strcpy(indexes, mg_get_option(mgserver[0], "index_files"));
-				char *pch = strtok((char *)indexes, ",");
+				char *ptr = NULL;
+				char *pch = strtok_r((char *)indexes, ",", &ptr);
 				/* Check if the webserver_root is terminated by a slash. If not, than add it */
 				while(pch) {
 					size_t l = strlen(webserver_root)+strlen(webgui_tpl)+strlen(conn->uri)+strlen(pch)+4;
@@ -416,7 +417,7 @@ static int webserver_request_handler(struct mg_connection *conn) {
 					if(access(request, F_OK) == 0) {
 						break;
 					}
-					pch = strtok(NULL, ",");
+					pch = strtok_r(NULL, ",", &ptr);
 				}
 			} else if(webserver_root != NULL && webgui_tpl != NULL && conn->uri != NULL) {
 				size_t wlen = strlen(webserver_root)+strlen(webgui_tpl)+strlen(conn->uri)+2;
@@ -575,7 +576,8 @@ static int webserver_request_handler(struct mg_connection *conn) {
 						/* Retrieve the PHP content type */
 						char ite[pos-xpos];
 						strcpy(ite, header);
-						char *pch = strtok(ite, "\n\r");
+						char *q = NULL;
+						char *pch = strtok_r(ite, "\n\r", &q);
 						char type[255];
 						while(pch) {
 							if(sscanf(pch, "Content-type:%*[ ]%s%*[ \n\r]", type)) {
@@ -584,7 +586,7 @@ static int webserver_request_handler(struct mg_connection *conn) {
 							if(sscanf(pch, "Content-Type:%*[ ]%s%*[ \n\r]", type)) {
 								break;
 							}
-							pch = strtok(NULL, "\n\r");
+							pch = strtok_r(NULL, "\n\r", &q);
 						}
 
 						if(strstr(header, "Status: 302 Moved Temporarily") != NULL) {

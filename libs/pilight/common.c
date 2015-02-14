@@ -137,7 +137,8 @@ pid_t findproc(char *cmd, char *args, int loosely) {
 					cmdline[ptr] = '\0';
 					match = 0;
 					/* Check if program matches */
-					if((pch = strtok(cmdline, "\n")) == NULL) {
+					char *q = NULL;
+					if((pch = strtok_r(cmdline, "\n", &q)) == NULL) {
 						close(fd);
 						continue;
 					}
@@ -147,7 +148,7 @@ pid_t findproc(char *cmd, char *args, int loosely) {
 					}
 
 					if(args != NULL && match == 1) {
-						if((pch = strtok(NULL, "\n")) == NULL) {
+						if((pch = strtok_r(NULL, "\n", &q)) == NULL) {
 							close(fd);
 							continue;
 						}
@@ -220,7 +221,8 @@ int which(const char *program) {
 
 	char path[1024];
 	strcpy(path, getenv("PATH"));
-	char *pch = strtok(path, ":");
+	char *ptr = NULL;
+	char *pch = strtok_r(path, ":", &ptr);
 	while(pch) {
 		char exec[strlen(pch)+8];
 		strcpy(exec, pch);
@@ -230,7 +232,7 @@ int which(const char *program) {
 		if(access(exec, X_OK) != -1) {
 			return 0;
 		}
-		pch = strtok(NULL, ":");
+		pch = strtok_r(NULL, ":", &ptr);
 	}
 	return -1;
 }
@@ -386,7 +388,8 @@ char *hostname(void) {
 	char *host = NULL;
 	gethostname(name, 254);
 	if(strlen(name) > 0) {
-		char *pch = strtok(name, ".");
+		char *ptr = NULL;
+		char *pch = strtok_r(name, ".", &ptr);
 		if(pch != NULL) {
 			if(!(host = MALLOC(strlen(pch)+1))) {
 				logprintf(LOG_ERR, "out of memory");
@@ -693,7 +696,7 @@ int whitelist_check(char *ip) {
 	char *whitelist = NULL;
 	unsigned int client[4] = {0};
 	int x = 0, i = 0, error = 1;
-	char *pch = NULL;
+	char *pch = NULL, *ptr = NULL;
 	char wip[16] = {'\0'};
 
 	/* Check if there are any whitelisted ip address */
@@ -706,12 +709,12 @@ int whitelist_check(char *ip) {
 	}
 
 	/* Explode ip address to a 4 elements int array */
-	pch = strtok(ip, ".");
+	pch = strtok_r(ip, ".", &ptr);
 	x = 0;
 	while(pch) {
 		client[x] = (unsigned int)atoi(pch);
 		x++;
-		pch = strtok(NULL, ".");
+		pch = strtok_r(NULL, ".", &ptr);
 	}
 	FREE(pch);
 
@@ -757,7 +760,7 @@ int whitelist_check(char *ip) {
 				   a wildcard, then this lower boundary number will be 0 and the
 				   upper boundary number 255. */
 				i = 0;
-				pch = strtok(wip, ".");
+				pch = strtok_r(wip, ".", &ptr);
 				while(pch) {
 					if(strcmp(pch, "*") == 0) {
 						whitelist_cache[whitelist_number][0][i] = 0;
@@ -766,7 +769,7 @@ int whitelist_check(char *ip) {
 						whitelist_cache[whitelist_number][0][i] = (unsigned int)atoi(pch);
 						whitelist_cache[whitelist_number][1][i] = (unsigned int)atoi(pch);
 					}
-					pch = strtok(NULL, ".");
+					pch = strtok_r(NULL, ".", &ptr);
 					i++;
 				}
 				FREE(pch);

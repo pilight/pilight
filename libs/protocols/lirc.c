@@ -126,10 +126,11 @@ static void *lircParse(void *param) {
 								}
 							}
 							if(nrspace >= 3) {
-								char *code1 = strtok(recvBuff, " ");
-								char *rep = strtok(NULL, " ");
-								char *btn = strtok(NULL, " ");
-								char *remote = strtok(NULL, " ");
+								char *ptr = NULL;
+								char *code1 = strtok_r(recvBuff, " ", &ptr);
+								char *rep = strtok_r(NULL, " ", &ptr);
+								char *btn = strtok_r(NULL, " ", &ptr);
+								char *remote = strtok_r(NULL, " ", &ptr);
 								char *y = NULL;
 								if((y = strstr(remote, "\n")) != NULL) {
 									size_t pos = (size_t)(y-remote);
@@ -219,7 +220,7 @@ void lircInit(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name = "lirc";
-	module->version = "1.2";
+	module->version = "1.3";
 	module->reqversion = "5.0";
 	module->reqcommit = "84";
 }

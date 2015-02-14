@@ -295,14 +295,14 @@ static int fileio_imm(struct fioparms * fio,
                char * filename, FILE * f, unsigned char * buf, int size)
 {
   int rc = 0;
-  char * e, * p;
+  char *e = NULL, *p = NULL, *ptr = NULL;
   unsigned long b;
   int loc;
 
   switch (fio->op) {
     case FIO_READ:
       loc = 0;
-      p = strtok(filename, " ,");
+      p = strtok_r(filename, " ,", &ptr);
       while (p != NULL && loc < size) {
         b = strtoul(p, &e, 0);
 	/* check for binary formated (0b10101001) strings */
@@ -314,7 +314,7 @@ static int fileio_imm(struct fioparms * fio,
           return -1;
         }
         buf[loc++] = b;
-        p = strtok(NULL, " ,");
+        p = strtok_r(NULL, " ,", &ptr);
         rc = loc;
       }
       break;

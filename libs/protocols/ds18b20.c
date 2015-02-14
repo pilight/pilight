@@ -134,7 +134,8 @@ static void *ds18b20Parse(void *param) {
 								}
 								fclose(fp);
 								w1valid = 0;
-								char *pch = strtok(content, "\n=: ");
+								char *ptr = NULL;
+								char *pch = strtok_r(content, "\n=: ", &ptr);
 								x = 0;
 								while(pch) {
 									if(strlen(pch) > 2) {
@@ -146,7 +147,7 @@ static void *ds18b20Parse(void *param) {
 										}
 										x++;
 									}
-									pch = strtok(NULL, "\n=: ");
+									pch = strtok_r(NULL, "\n=: ", &ptr);
 								}
 
 								if(w1valid) {
@@ -246,7 +247,7 @@ void ds18b20Init(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name = "ds18b20";
-	module->version = "1.3";
+	module->version = "1.4";
 	module->reqversion = "5.0";
 	module->reqcommit = "187";
 }

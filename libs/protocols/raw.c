@@ -33,7 +33,7 @@
 static int rawCreateCode(JsonNode *code) {
 	char *rcode = NULL;
 	char *ncode = NULL;
-	char *pch = NULL;
+	char *pch = NULL, *ptr = NULL;
 	int i=0;
 
 	if(json_find_string(code, "code", &rcode) != 0) {
@@ -47,10 +47,10 @@ static int rawCreateCode(JsonNode *code) {
 		exit(EXIT_FAILURE);
 	}
 	strcpy(ncode, rcode);
-	pch = strtok(ncode, " ");
+	pch = strtok_r(ncode, " ", &ptr);
 	while(pch != NULL) {
 		raw->raw[i]=atoi(pch);
-		pch = strtok(NULL, " ");
+		pch = strtok_r(NULL, " ", &ptr);
 		i++;
 	}
 	FREE(ncode);

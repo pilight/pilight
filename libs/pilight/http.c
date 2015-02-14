@@ -223,7 +223,8 @@ char *http_process_request(char *url, int method, char **type, int *code, int *s
 		strncpy(&content[*size], recvBuff, (size_t)(bytes));
 		*size += bytes;
 
-		char *pch = strtok(recvBuff, "\n\r");
+		char *ptr = NULL;
+		char *pch = strtok_r(recvBuff, "\n\r", &ptr);
 		int z = 0;
 		char tmp[255], *p = tmp;
 		while(pch && (has_type == 0 || has_code == 0)) {
@@ -233,7 +234,7 @@ char *http_process_request(char *url, int method, char **type, int *code, int *s
 			if(sscanf(pch, "Content-%[tT]ype:%*[ ]%s%*[ \n\r]", p, tp)) {
 				has_type = 1;
 			}
-			pch = strtok(NULL, "\n\r");
+			pch = strtok_r(NULL, "\n\r", &ptr);
 		}
 		memset(recvBuff, '\0', sizeof(recvBuff));
 	}

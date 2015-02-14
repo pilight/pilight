@@ -141,13 +141,14 @@ int ssdp_seek(struct ssdp_list_t **ssdp_list) {
 		}
 
 		if(strstr(message, "pilight") > 0) {
-			char *pch = strtok(message, "\r\n");
+			char *ptr = NULL;
+			char *pch = strtok_r(message, "\r\n", &ptr);
 			while(pch) {
 				if(sscanf(pch, "Location:%hu.%hu.%hu.%hu:%hu\r\n", &nip[0], &nip[1], &nip[2], &nip[3], &port) > 0) {
 					match = 1;
 					break;
 				}
-				pch = strtok(NULL, "\r\n");
+				pch = strtok_r(NULL, "\r\n", &ptr);
 			}
 			if(match) {
 				struct ssdp_list_t *node = MALLOC(sizeof(struct ssdp_list_t));

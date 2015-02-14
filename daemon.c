@@ -1637,7 +1637,8 @@ void *clientize(void *param) {
 			}
 
 			logprintf(LOG_DEBUG, "socket recv: %s", recvBuff);
-			char *pch = strtok(recvBuff, "\n");
+			char *ptr = NULL;
+			char *pch = strtok_r(recvBuff, "\n", &ptr);
 			while(pch) {
 				if(json_validate(pch) == true) {
 					json = json_decode(pch);
@@ -1655,7 +1656,7 @@ void *clientize(void *param) {
 					}
 					json_delete(json);
 				}
-				pch = strtok(NULL, "\n");
+				pch = strtok_r(NULL, "\n", &ptr);
 			}
 		}
 	}
