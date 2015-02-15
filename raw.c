@@ -67,8 +67,8 @@ int main_gc(void) {
 
 	wiringXGC();
 	dso_gc();	
-	gc_clear();
 	log_gc();
+	gc_clear();
 
 	FREE(progname);
 	xfree();

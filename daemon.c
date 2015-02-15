@@ -1805,6 +1805,7 @@ int main_gc(void) {
 		FREE(configtmp);
 	}
 
+	gc_clear();
 	FREE(progname);
 	xfree();
 	return 0;
@@ -1888,7 +1889,7 @@ int main(int argc, char **argv) {
 	// }
 
 	procProtocolInit();
-	
+
 	struct ifaddrs *ifaddr, *ifa;
 	int family = 0;
 	int verbosity = LOG_DEBUG;

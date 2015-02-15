@@ -84,8 +84,10 @@ int main(int argc, char **argv) {
 		c = options_parse(&options, argc, argv, 1, &optarg);
 		if(c == -1)
 			break;
-		if(c == -2)
-			c = 'H';
+		if(c == -2) {
+			showhelp = 1;
+			break;
+		}
 		switch(c) {
 			case 'H':
 				showhelp = 1;
@@ -137,6 +139,7 @@ int main(int argc, char **argv) {
 		}
 	}
 	options_delete(options);
+
 	if(showversion == 1) {
 		printf("%s %s\n", progname, VERSION);
 		goto close;
@@ -350,8 +353,8 @@ close:
 	event_action_gc();
 	dso_gc();
 	log_gc();
-	gc_clear();
 	threads_gc();
+	gc_clear();
 	FREE(progname);
 	xfree();
 
