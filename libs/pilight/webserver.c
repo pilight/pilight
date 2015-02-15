@@ -394,30 +394,33 @@ static int webserver_request_handler(struct mg_connection *conn) {
 			} else if(strcmp(&conn->uri[(rstrstr(conn->uri, "/")-conn->uri)], "/") == 0) {
 				char indexes[255];
 				strcpy(indexes, mg_get_option(mgserver[0], "index_files"));
-				char *ptr = NULL;
-				char *pch = strtok_r((char *)indexes, ",", &ptr);
+
+				char **array = NULL;
+				unsigned int n = explode((char *)indexes, ",", &array), q = 0;
 				/* Check if the webserver_root is terminated by a slash. If not, than add it */
-				while(pch) {
-					size_t l = strlen(webserver_root)+strlen(webgui_tpl)+strlen(conn->uri)+strlen(pch)+4;
-					request = REALLOC(request, l);
-					if(!request) {
+				for(q=0;q<n;q++) {
+					size_t l = strlen(webserver_root)+strlen(webgui_tpl)+strlen(conn->uri)+strlen(array[q])+4;
+					if((request = REALLOC(request, l)) == NULL) {
 						logprintf(LOG_ERR, "out of memory");
 						exit(EXIT_FAILURE);
 					}
 					memset(request, '\0', l);
 					if(webserver_root[strlen(webserver_root)-1] == '/') {
 #ifdef __FreeBSD__
-						sprintf(request, "%s%s/%s%s", webserver_root, webgui_tpl, conn->uri, pch);
+						sprintf(request, "%s%s/%s%s", webserver_root, webgui_tpl, conn->uri, array[q]);
 #else
-						sprintf(request, "%s%s%s%s", webserver_root, webgui_tpl, conn->uri, pch);
+						sprintf(request, "%s%s%s%s", webserver_root, webgui_tpl, conn->uri, array[q]);
 #endif
 					} else {
-						sprintf(request, "%s/%s/%s%s", webserver_root, webgui_tpl, conn->uri, pch);
+						sprintf(request, "%s/%s/%s%s", webserver_root, webgui_tpl, conn->uri, array[q]);
 					}
 					if(access(request, F_OK) == 0) {
 						break;
 					}
-					pch = strtok_r(NULL, ",", &ptr);
+					FREE(array[q]);
+				}
+				if(n > 0) {
+					FREE(array);
 				}
 			} else if(webserver_root != NULL && webgui_tpl != NULL && conn->uri != NULL) {
 				size_t wlen = strlen(webserver_root)+strlen(webgui_tpl)+strlen(conn->uri)+2;
@@ -576,17 +579,16 @@ static int webserver_request_handler(struct mg_connection *conn) {
 						/* Retrieve the PHP content type */
 						char ite[pos-xpos];
 						strcpy(ite, header);
-						char *q = NULL;
-						char *pch = strtok_r(ite, "\n\r", &q);
+						char **array = NULL;
+						unsigned int n = explode(ite, "\n\r", &array), q = 0;
 						char type[255];
-						while(pch) {
-							if(sscanf(pch, "Content-type:%*[ ]%s%*[ \n\r]", type)) {
-								break;
-							}
-							if(sscanf(pch, "Content-Type:%*[ ]%s%*[ \n\r]", type)) {
-								break;
-							}
-							pch = strtok_r(NULL, "\n\r", &q);
+						for(q=0;q<n;q++) {
+							sscanf(array[q], "Content-type:%*[ ]%s%*[ \n\r]", type);
+							sscanf(array[q], "Content-Type:%*[ ]%s%*[ \n\r]", type);
+							FREE(array[q]);
+						}
+						if(n > 0) {
+							FREE(array);
 						}
 
 						if(strstr(header, "Status: 302 Moved Temporarily") != NULL) {

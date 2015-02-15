@@ -490,11 +490,14 @@ void *socket_wait(void *param) {
 						size_t l = strlen(waitMessage);
 						if(l > 0) {
 							if(strstr(waitMessage, "\n") != NULL) {
-								char *ptr = NULL;
-								char *pch = strtok_r(waitMessage, "\n", &ptr);
-								while(pch != NULL) {
-									socket_callback->client_data_callback(i, pch);
-									pch = strtok_r(NULL, "\n", &ptr);
+								char **array = NULL;
+								unsigned int n = explode(waitMessage, "\n", &array), q = 0;
+								for(q=0;q<n;q++) {
+									socket_callback->client_data_callback(i, array[q]);
+									FREE(array[q]);
+								}
+								if(n > 0) {
+									FREE(array);
 								}
 							} else {
 								socket_callback->client_data_callback(i, waitMessage);

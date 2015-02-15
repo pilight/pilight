@@ -174,9 +174,10 @@ int main(int argc, char **argv) {
 		if(socket_read(sockfd, &recvBuff, 0) != 0) {
 			goto close;
 		}
-		char *pch = strtok(recvBuff, "\n");
-		while(pch) {
-			struct JsonNode *jcontent = json_decode(pch);
+		char **array = NULL;
+		unsigned int n = explode(recvBuff, "\n", &array), i = 0;
+		for(i=0;i<n;i++) {
+			struct JsonNode *jcontent = json_decode(array[i]);
 			struct JsonNode *jtype = json_find_member(jcontent, "type");
 			if(jtype != NULL) {
 				json_remove_from_parent(jtype);
@@ -186,7 +187,10 @@ int main(int argc, char **argv) {
 			printf("%s\n", content);
 			json_delete(jcontent);
 			json_free(content);
-			pch = strtok(NULL, "\n");
+			FREE(array[i]);
+		}
+		if(n > 0) {
+			FREE(array);
 		}
 	}
 

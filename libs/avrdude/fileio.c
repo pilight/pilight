@@ -30,6 +30,7 @@
 #include "avrdude.h"
 #include "avr.h"
 #include "fileio.h"
+#include "common.h"
 
 #define IHEX_MAXDATA 256
 #define MAX_LINE_LEN 256  /* max line length for ASCII format input files */
@@ -295,28 +296,39 @@ static int fileio_imm(struct fioparms * fio,
                char * filename, FILE * f, unsigned char * buf, int size)
 {
   int rc = 0;
-  char *e = NULL, *p = NULL, *ptr = NULL;
-  unsigned long b;
-  int loc;
+  char *e = NULL, *ptr = NULL, **array = NULL;
+  unsigned long b = 0;
+  int loc = 0;
+  unsigned int n = 0, i = 0;
 
   switch (fio->op) {
     case FIO_READ:
       loc = 0;
-      p = strtok_r(filename, " ,", &ptr);
-      while (p != NULL && loc < size) {
-        b = strtoul(p, &e, 0);
-	/* check for binary formated (0b10101001) strings */
-	b = (strncmp (p, "0b", 2))?
-	    strtoul (p, &e, 0):
-	    strtoul (p + 2, &e, 2);
-        if (*e != 0) {
-          logprintf(LOG_ERR, "invalid byte value (%s) specified for immediate mode", p);
-          return -1;
-        }
-        buf[loc++] = b;
-        p = strtok_r(NULL, " ,", &ptr);
-        rc = loc;
+      n = explode(filename, " ,", &array);
+      for(i=0;i<n;i++) {
+				if(loc < size) {
+					b = strtoul(array[i], &e, 0);
+		/* check for binary formated (0b10101001) strings */
+					b = (strncmp (array[i], "0b", 2))?
+							strtoul (array[i], &e, 0):
+							strtoul (array[i] + 2, &e, 2);
+					if (*e != 0) {
+						logprintf(LOG_ERR, "invalid byte value (%s) specified for immediate mode", array[i]);
+						unsigned int z = 0;
+						for(z=i;z<n;z++) {
+							FREE(array[z]);
+						}
+						FREE(array);
+						return -1;
+					}
+					buf[loc++] = b;
+					rc = loc;
+				}
+				FREE(array[i]);
       }
+			if(n > 0) {
+				FREE(array);
+			}
       break;
     default:
       logprintf(LOG_ERR, "fileio: invalid operation=%d", fio->op);

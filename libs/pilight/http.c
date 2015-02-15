@@ -223,18 +223,21 @@ char *http_process_request(char *url, int method, char **type, int *code, int *s
 		strncpy(&content[*size], recvBuff, (size_t)(bytes));
 		*size += bytes;
 
-		char *ptr = NULL;
-		char *pch = strtok_r(recvBuff, "\n\r", &ptr);
+		char **array = NULL;
+		unsigned int n = explode(recvBuff, "\n\r", &array), q = 0;
 		int z = 0;
 		char tmp[255], *p = tmp;
-		while(pch && (has_type == 0 || has_code == 0)) {
-			if(sscanf(pch, "HTTP/1.%d%*[ ]%d%*s%*[ \n\r]", &z, code)) {
+		for(q=0;q<n;q++) {
+			if(has_code == 0 && sscanf(array[q], "HTTP/1.%d%*[ ]%d%*s%*[ \n\r]", &z, code)) {
 				has_code = 1;
 			}
-			if(sscanf(pch, "Content-%[tT]ype:%*[ ]%s%*[ \n\r]", p, tp)) {
+			if(has_type == 0 && sscanf(array[q], "Content-%[tT]ype:%*[ ]%s%*[ \n\r]", p, tp)) {
 				has_type = 1;
 			}
-			pch = strtok_r(NULL, "\n\r", &ptr);
+			FREE(array[q]);
+		}
+		if(n > 0) {
+			FREE(array);
 		}
 		memset(recvBuff, '\0', sizeof(recvBuff));
 	}

@@ -54,6 +54,41 @@ static unsigned int ***whitelist_cache = NULL;
 static unsigned int whitelist_number;
 static unsigned char validchar[64] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
+unsigned int explode(char *str, const char *delimiter, char ***output) {
+	if(str == NULL || output == NULL) {
+		return 0;
+	}
+	unsigned int i = 0, x = 0, n = 0, y = 0;	
+	size_t l = 0, p = 0;
+	if(delimiter != NULL) {	
+		l = strlen(str);
+		p = strlen(delimiter);
+	}
+	while(i < l) {
+		for(x=0;x<p;x++) {
+			if(str[i] == delimiter[x]) {
+				if((i-y) > 0) {
+					*output = REALLOC(*output, sizeof(char *)*(n+1));
+					(*output)[n] = MALLOC((i-y)+1);
+					strncpy((*output)[n], &str[y], i-y);
+					(*output)[n][(i-y)] = '\0';
+					n++;
+				}
+				y=i+1;
+			}
+		}
+		i++;
+	}
+	if(strlen(&str[y]) > 0) {
+		*output = REALLOC(*output, sizeof(char *)*(n+1));
+		(*output)[n] = MALLOC((i-y)+1);
+		strncpy((*output)[n], &str[y], i-y);
+		(*output)[n][(i-y)] = '\0';
+		n++;
+	}
+	return n;
+}
+
 char *host2ip(char *host) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
@@ -106,8 +141,8 @@ pid_t findproc(char *cmd, char *args, int loosely) {
 
 	DIR* dir;
 	struct dirent* ent;
-	char *pch = NULL, fname[512], cmdline[1024];
-	int fd = 0, ptr = 0, match = 0, i = 0, y = '\n';
+	char fname[512], cmdline[1024];
+	int fd = 0, ptr = 0, match = 0, i = 0, y = '\n', x = 0;
 
 	if(!(dir = opendir("/proc"))) {
 #ifdef __FreeBSD__
@@ -137,22 +172,30 @@ pid_t findproc(char *cmd, char *args, int loosely) {
 					cmdline[ptr] = '\0';
 					match = 0;
 					/* Check if program matches */
-					char *q = NULL;
-					if((pch = strtok_r(cmdline, "\n", &q)) == NULL) {
+					char **array = NULL;
+					unsigned int n = explode(cmdline, "\n", &array);
+
+					if(n == 0) {
 						close(fd);
 						continue;
 					}
-					if((strcmp(pch, cmd) == 0 && loosely == 0)
-					   || (strstr(pch, cmd) != NULL && loosely == 1)) {
+					if((strcmp(array[0], cmd) == 0 && loosely == 0)
+					   || (strstr(array[0], cmd) != NULL && loosely == 1)) {
 						match++;
 					}
 
 					if(args != NULL && match == 1) {
-						if((pch = strtok_r(NULL, "\n", &q)) == NULL) {
+						if(n <= 1) {
 							close(fd);
+							for(x=0;x<n;x++) {
+								FREE(array[x]);
+							}
+							if(n > 0) {
+								FREE(array);
+							}
 							continue;
 						}
-						if(strcmp(pch, args) == 0) {
+						if(strcmp(array[1], args) == 0) {
 							match++;
 						}
 
@@ -160,13 +203,31 @@ pid_t findproc(char *cmd, char *args, int loosely) {
 							pid_t pid = (pid_t)atol(ent->d_name);
 							close(fd);
 							closedir(dir);
+							for(x=0;x<n;x++) {
+								FREE(array[x]);
+							}
+							if(n > 0) {
+								FREE(array);
+							}
 							return pid;
 						}
-					} else if(match) {
+					} else if(match > 0) {
 						pid_t pid = (pid_t)atol(ent->d_name);
 						close(fd);
 						closedir(dir);
+						for(x=0;x<n;x++) {
+							FREE(array[x]);
+						}
+						if(n > 0) {
+							FREE(array);
+						}
 						return pid;
+					}
+					for(x=0;x<n;x++) {
+						FREE(array[x]);
+					}
+					if(n > 0) {
+						FREE(array);
 					}
 				}
 				close(fd);
@@ -221,18 +282,23 @@ int which(const char *program) {
 
 	char path[1024];
 	strcpy(path, getenv("PATH"));
-	char *ptr = NULL;
-	char *pch = strtok_r(path, ":", &ptr);
-	while(pch) {
-		char exec[strlen(pch)+8];
-		strcpy(exec, pch);
+	char **array = NULL;
+	unsigned int n = 0, i = 0;
+
+	n = explode(path, ":", &array);
+	for(i=0;i<n;i++) {
+		char exec[strlen(array[i])+8];
+		strcpy(exec, array[i]);
 		strcat(exec, "/");
 		strcat(exec, program);
 
+		FREE(array[i]);
 		if(access(exec, X_OK) != -1) {
 			return 0;
 		}
-		pch = strtok_r(NULL, ":", &ptr);
+	}
+	if(n > 0) {
+		FREE(array);
 	}
 	return -1;
 }
@@ -385,18 +451,25 @@ char *hostname(void) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
 	char name[255] = {'\0'};
-	char *host = NULL;
+	char *host = NULL, **array = NULL;
+	unsigned int n = 0, i = 0;
+
 	gethostname(name, 254);
 	if(strlen(name) > 0) {
-		char *ptr = NULL;
-		char *pch = strtok_r(name, ".", &ptr);
-		if(pch != NULL) {
-			if(!(host = MALLOC(strlen(pch)+1))) {
+		n = explode(name, ".", &array);
+		if(n > 0) {
+			if(!(host = MALLOC(strlen(array[0])+1))) {
 				logprintf(LOG_ERR, "out of memory");
 				exit(EXIT_FAILURE);
 			}
-			strcpy(host, pch);
+			strcpy(host, array[0]);
 		}
+	}
+	for(i=0;i<n;i++) {
+		FREE(array[i]);
+	}
+	if(n > 0) {
+		FREE(array);
 	}
 	return host;
 }
@@ -696,7 +769,8 @@ int whitelist_check(char *ip) {
 	char *whitelist = NULL;
 	unsigned int client[4] = {0};
 	int x = 0, i = 0, error = 1;
-	char *pch = NULL, *ptr = NULL;
+	unsigned int n = 0;
+	char **array = NULL;
 	char wip[16] = {'\0'};
 
 	/* Check if there are any whitelisted ip address */
@@ -709,16 +783,18 @@ int whitelist_check(char *ip) {
 	}
 
 	/* Explode ip address to a 4 elements int array */
-	pch = strtok_r(ip, ".", &ptr);
+	n = explode(ip, ".", &array);
 	x = 0;
-	while(pch) {
-		client[x] = (unsigned int)atoi(pch);
-		x++;
-		pch = strtok_r(NULL, ".", &ptr);
+	for(x=0;x<n;x++) {
+		client[x] = (unsigned int)atoi(array[x]);
+		FREE(array[x]);
 	}
-	FREE(pch);
+	if(n > 0) {
+		FREE(array);
+	}
+	
 
-	if(!whitelist_cache) {
+	if(whitelist_cache == NULL) {
 		char *tmp = whitelist;
 		x = 0;
 		/* Loop through all whitelised ip addresses */
@@ -760,19 +836,20 @@ int whitelist_check(char *ip) {
 				   a wildcard, then this lower boundary number will be 0 and the
 				   upper boundary number 255. */
 				i = 0;
-				pch = strtok_r(wip, ".", &ptr);
-				while(pch) {
-					if(strcmp(pch, "*") == 0) {
+				n = explode(wip, ".", &array);
+				for(i=0;i<n;i++) {
+					if(strcmp(array[i], "*") == 0) {
 						whitelist_cache[whitelist_number][0][i] = 0;
 						whitelist_cache[whitelist_number][1][i] = 255;
 					} else {
-						whitelist_cache[whitelist_number][0][i] = (unsigned int)atoi(pch);
-						whitelist_cache[whitelist_number][1][i] = (unsigned int)atoi(pch);
+						whitelist_cache[whitelist_number][0][i] = (unsigned int)atoi(array[i]);
+						whitelist_cache[whitelist_number][1][i] = (unsigned int)atoi(array[i]);
 					}
-					pch = strtok_r(NULL, ".", &ptr);
-					i++;
+					FREE(array[i]);
 				}
-				FREE(pch);
+				if(n > 0) {
+					FREE(array);
+				}
 				memset(wip, '\0', 16);
 				whitelist_number++;
 			}

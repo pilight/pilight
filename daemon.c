@@ -1637,26 +1637,29 @@ void *clientize(void *param) {
 			}
 
 			logprintf(LOG_DEBUG, "socket recv: %s", recvBuff);
-			char *ptr = NULL;
-			char *pch = strtok_r(recvBuff, "\n", &ptr);
-			while(pch) {
-				if(json_validate(pch) == true) {
-					json = json_decode(pch);
+			char **array = NULL;
+			unsigned int z = explode(recvBuff, "\n", &array), q = 0;
+			for(q=0;q<z;q++) {
+				if(json_validate(array[q]) == true) {
+					json = json_decode(array[q]);
 					if(json_find_string(json, "action", &action) == 0) {
 						if(strcmp(action, "send") == 0 ||
 						   strcmp(action, "control") == 0) {
-							socket_parse_data(sockfd, pch);
+							socket_parse_data(sockfd, array[q]);
 						}
 					} else if(json_find_string(json, "origin", &origin) == 0 &&
-							  json_find_string(json, "protocol", &protocol) == 0) {
-								if(strcmp(origin, "receiver") == 0 ||
-								   strcmp(origin, "sender") == 0) {
+							json_find_string(json, "protocol", &protocol) == 0) {
+							if(strcmp(origin, "receiver") == 0 ||
+								 strcmp(origin, "sender") == 0) {
 								broadcast_queue(protocol, json);
 						}
 					}
 					json_delete(json);
 				}
-				pch = strtok_r(NULL, "\n", &ptr);
+				FREE(array[q]);
+			}
+			if(z > 0) {
+				FREE(array);
 			}
 		}
 	}

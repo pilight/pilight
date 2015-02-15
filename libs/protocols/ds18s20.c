@@ -60,7 +60,8 @@ static void *ds18s20Parse(void *param) {
 	char *stmp = NULL;
 	char **id = NULL;
 	char *content = NULL;
-	int w1valid = 0, interval = 10, x = 0;
+	char crcVar[5];
+	int w1valid = 0, interval = 10;
 	int nrid = 0, y = 0, nrloops = 0;
 	double temp_offset = 0.0, w1temp = 0.0, itmp = 0.0;
 	size_t bytes = 0;
@@ -134,21 +135,21 @@ static void *ds18s20Parse(void *param) {
 								}
 								fclose(fp);
 								w1valid = 0;
-								char *ptr = NULL;
-								char *pch = strtok_r(content, "\n=: ", &ptr);
-								x = 0;
-								while(pch) {
-									if(strlen(pch) > 2) {
-										if(x == 1 && strstr(pch, "YES")) {
-											w1valid = 1;
-										}
-										if(x == 2) {
-											w1temp = (atof(pch)/100)+temp_offset;
-										}
-										x++;
+
+								char **array = NULL;
+								unsigned int n = explode(content, "\n", &array), q = 0;
+								if(n > 0) {
+									sscanf(array[0], "%*x %*x %*x %*x %*x %*x %*x %*x %*x : crc=%*x %s", crcVar);
+									if(strncmp(crcVar, "YES", 3) == 0 && n > 1) {
+										w1valid = 1;
+										sscanf(array[1], "%*x %*x %*x %*x %*x %*x %*x %*x %*x t=%lf", &w1temp);
+										w1temp = (w1temp/100)+temp_offset;
 									}
-									pch = strtok_r(NULL, "\n=: ", &ptr);
 								}
+								for(q=0;q<n;q++) {
+									FREE(array[q]);
+								}
+								FREE(array);
 
 								if(w1valid) {
 									ds18s20->message = json_mkobject();
@@ -247,9 +248,9 @@ void ds18s20Init(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name = "ds18s20";
-	module->version = "1.4";
+	module->version = "1.5";
 	module->reqversion = "5.0";
-	module->reqcommit = "187";
+	module->reqcommit = "266";
 }
 
 void init(void) {

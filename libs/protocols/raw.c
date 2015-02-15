@@ -32,29 +32,23 @@
 
 static int rawCreateCode(JsonNode *code) {
 	char *rcode = NULL;
-	char *ncode = NULL;
-	char *pch = NULL, *ptr = NULL;
-	int i=0;
+	char **array = NULL;
+	unsigned int i = 0, n = 0;
 
 	if(json_find_string(code, "code", &rcode) != 0) {
 		logprintf(LOG_ERR, "raw: insufficient number of arguments");
 		return EXIT_FAILURE;
 	}
 
-	ncode = MALLOC(strlen(rcode)+1);
-	if(!ncode) {
-		logprintf(LOG_ERR, "out of memory");
-		exit(EXIT_FAILURE);
+	n = explode(rcode, " ", &array);
+	for(i=0;i<n;i++) {
+		raw->raw[i]=atoi(array[i]);
+		FREE(array[i]);
 	}
-	strcpy(ncode, rcode);
-	pch = strtok_r(ncode, " ", &ptr);
-	while(pch != NULL) {
-		raw->raw[i]=atoi(pch);
-		pch = strtok_r(NULL, " ", &ptr);
-		i++;
+	if(n > 0) {
+		FREE(array);
 	}
-	FREE(ncode);
-	raw->rawlen=i;
+	raw->rawlen=(int)i;
 	return EXIT_SUCCESS;
 }
 
@@ -82,9 +76,9 @@ void rawInit(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name = "raw";
-	module->version = "1.2";
+	module->version = "1.3";
 	module->reqversion = "5.0";
-	module->reqcommit = "187";
+	module->reqcommit = "266";
 }
 
 void init(void) {

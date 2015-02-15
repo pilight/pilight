@@ -33,6 +33,7 @@
 #include "pindefs.h"
 #include "safemode.h"
 #include "update.h"
+#include "common.h"
 
 FP_UpdateProgress avr_update_progress;
 
@@ -42,18 +43,19 @@ void avr_set_update_progress(FP_UpdateProgress callback) {
 
 int parse_cmdbits(OPCODE * op, char *t) {
 	int bitno;
+	unsigned int n = 0, i = 0;
 	char ch;
-	char * e;
-	char * q;
+	char *e = NULL;
+	char *q = NULL;
 	int len;
-	char * s, *brkt = NULL;
+	char *s = NULL, *brkt = NULL, **array = NULL;
 
 	bitno = 32;
-	s = strtok_r(t, " ", &brkt);
-	while (s != NULL) {
+	n = explode(t, " ", &array);
+	for(i=0;i<n;i++) {
 		bitno--;
-		len = strlen(s);
-		ch = s[0];
+		len = strlen(array[i]);
+		ch = array[i][0];
 
 		if(len == 1) {
 			switch(ch) {
@@ -92,14 +94,16 @@ int parse_cmdbits(OPCODE * op, char *t) {
 			}
 		} else {
 			if(ch == 'a') {
-				q = &s[1];
+				q = &array[i][1];
 				op->bit[bitno].bitno = strtol(q, &e, 0);
 				op->bit[bitno].type = AVR_CMDBIT_ADDRESS;
 				op->bit[bitno].value = 0;
 			}
 		}
-
-		s = strtok_r(NULL, " ", &brkt);
+		FREE(array[i]);
+	}
+	if(n > 0) {
+		FREE(array);
 	}
 	return 0;
 }

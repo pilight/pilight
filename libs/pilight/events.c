@@ -174,30 +174,29 @@ static int event_lookup_variable(char *var, struct rules_t *obj, unsigned int nr
 	}
 
 	if(nrdots == 1) {
-
-		char *p = strstr(var, ".");
-		if(p == NULL) {
+		char **array = NULL;
+		unsigned int n = explode(var, ".", &array), q = 0;
+		if(n < 2) {
 			logprintf(LOG_ERR, "rule #%d: an unexpected error occured", nr, var);
 			varcont->string_ = NULL;
 			varcont->number_ = 0;
+			for(q=0;q<n;q++) {
+				FREE(array[q]);
+			}
+			FREE(array);
 			return -1;
 		}
 
-		unsigned int z = (unsigned int)(p-var);
+		char device[strlen(array[0])+1];
+		strcpy(device, array[0]);
 
-		if(z <= 0) {
-			logprintf(LOG_ERR, "rule #%d: an unexpected error occured", nr, var);
-			varcont->string_ = NULL;
-			varcont->number_ = 0;
-			return -1;
+		char name[strlen(array[1])+1];
+		strcpy(name, array[1]);
+
+		for(q=0;q<n;q++) {
+			FREE(array[q]);
 		}
-
-		char device[z+1];
-		strncpy(device, var, z);
-		device[z] = '\0';
-
-		char name[strlen(var)-z];
-		strcpy(name, &var[z+1]);
+		FREE(array);
 
 		/* Check if the values are not already cached */
 		struct rules_values_t *tmp_values = obj->values;

@@ -230,56 +230,61 @@ int main(int argc, char **argv) {
 							json_append_member(jcode, "device", json_mkstring(device));
 
 							if(values != NULL) {
-								char *pch = strtok(values, ",=");
-								while(pch != NULL) {
-									char *name = MALLOC(strlen(pch)+1);
+								char **array = NULL;
+								unsigned int n = explode(values, ",=", &array), q = 0;
+								for(q=0;q<n;q+=2) {
+									char *name = MALLOC(strlen(array[q])+1);
 									if(name == NULL) {
 										logprintf(LOG_ERR, "out of memory\n");
 										exit(EXIT_FAILURE);
 									}
-									strcpy(name, pch);
-									pch = strtok(NULL, ",=");
-									if(pch == NULL) {
+									strcpy(name, array[q]);
+									if(q+1 == n) {
+										for(q=0;q<n;q++) {
+											FREE(array[q]);
+										}
+										FREE(array);
+										logprintf(LOG_ERR, "\"%s\" is missing a value for device \"%s\"", name, device);
 										FREE(name);
 										break;
 									} else {
-										char *val = MALLOC(strlen(pch)+1);
-										if(name == NULL) {
+										char *val = MALLOC(strlen(array[q+1])+1);
+										if(val == NULL) {
 											logprintf(LOG_ERR, "out of memory\n");
 											exit(EXIT_FAILURE);
 										}
-										strcpy(val, pch);
-										if(pch != NULL) {
-											if(devices_valid_value(device, name, val) == 0) {
-												if(isNumeric(val) == EXIT_SUCCESS) {
-													char *ptr = strstr(pch, ".");
-													int decimals = 0;
-													if(ptr != NULL) {
-														decimals = (int)(strlen(pch)-((size_t)(ptr-pch)+1));
-													}
-													json_append_member(jvalues, name, json_mknumber(atof(val), decimals));
-												} else {
-													json_append_member(jvalues, name, json_mkstring(val));
+										strcpy(val, array[q+1]);
+										if(devices_valid_value(device, name, val) == 0) {
+											if(isNumeric(val) == EXIT_SUCCESS) {
+												char *ptr = strstr(array[q+1], ".");
+												int decimals = 0;
+												if(ptr != NULL) {
+													decimals = (int)(strlen(array[q+1])-((size_t)(ptr-array[q+1])+1));
 												}
-												has_values = 1;
+												json_append_member(jvalues, name, json_mknumber(atof(val), decimals));
 											} else {
-												logprintf(LOG_ERR, "\"%s\" is an invalid value for device \"%s\"", name, device);
-												FREE(name);
-												json_delete(json);
-												goto close;
+												json_append_member(jvalues, name, json_mkstring(val));
 											}
+											has_values = 1;
 										} else {
 											logprintf(LOG_ERR, "\"%s\" is an invalid value for device \"%s\"", name, device);
+											for(q=0;q<n;q++) {
+												FREE(array[q]);
+											}
+											FREE(array);
+											FREE(name);
 											json_delete(json);
 											goto close;
 										}
-										pch = strtok(NULL, ",=");
-										if(pch == NULL) {
-											FREE(name);
-											break;
-										}
 									}
 									FREE(name);
+								}
+								unsigned int z = 0;
+								for(z=q;z<n;z++) {
+									FREE(array[z]);
+								}
+								if(n > 0) {
+									FREE(array);
 								}
 							}
 

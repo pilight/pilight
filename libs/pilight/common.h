@@ -25,6 +25,7 @@
 
 char *progname;
 
+unsigned int explode(char *str, const char *delimiter, char ***output);
 char *host2ip(char *host);
 int isNumeric(char *str);
 int nrDecimals(char *str);
