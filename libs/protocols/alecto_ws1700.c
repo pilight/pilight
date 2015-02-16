@@ -77,7 +77,7 @@ static void alectoWS1700ParseCode(void) {
 	json_append_member(alecto_ws1700->message, "id", json_mknumber(id, 0));
 	json_append_member(alecto_ws1700->message, "temperature", json_mknumber(temperature, 1));
 	json_append_member(alecto_ws1700->message, "humidity", json_mknumber(humidity, 1));
-	json_append_member(alecto_ws1700->message, "battery", json_mknumber(battery/10, 0));
+	json_append_member(alecto_ws1700->message, "battery", json_mknumber(battery, 0));
 }
 
 static int alectoWS1700CheckValues(struct JsonNode *jvalues) {
@@ -176,7 +176,7 @@ void alectoWS1700Init(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name = "alecto_ws1700";
-	module->version = "1.5";
+	module->version = "1.6";
 	module->reqversion = "5.0";
 	module->reqcommit = "187";
 }
