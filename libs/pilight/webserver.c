@@ -417,6 +417,8 @@ static int webserver_request_handler(struct mg_connection *conn) {
 					if(access(request, F_OK) == 0) {
 						break;
 					}
+				}
+				for(q=0;q<n;q++) {
 					FREE(array[q]);
 				}
 				if(n > 0) {

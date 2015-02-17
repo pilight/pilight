@@ -52,6 +52,7 @@ struct threadqueue_t *threads_register(const char *id, void *(*function)(void *p
 	}
 
 	struct timeval tcurrent;
+	memset(&tcurrent, '\0', sizeof(struct timeval));
 	gettimeofday(&tcurrent, NULL);
 
 	tnode->ts = 1000000 * (unsigned int)tcurrent.tv_sec + (unsigned int)tcurrent.tv_usec;
@@ -65,6 +66,7 @@ struct threadqueue_t *threads_register(const char *id, void *(*function)(void *p
 	}
 	strcpy(tnode->id, id);
 	tnode->param = param;
+	memset(&tnode->pth, '\0', sizeof(pthread_t));
 	tnode->next = NULL;
 
 	memset(&tnode->cpu_usage, '\0', sizeof(struct cpu_usage_t));

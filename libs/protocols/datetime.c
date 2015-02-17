@@ -68,6 +68,8 @@ typedef struct pkt {
 	struct l_fp ref;
 	struct l_fp org;
 	struct l_fp rec;
+	/* Make sure the pkg is 48 bits */
+	double tmp;
 } pkt;
 
 static unsigned short datetime_loop = 1;
@@ -113,11 +115,11 @@ static time_t getntptime(char *ntpserver) {
 
 	msg.li_vn_mode=227;
 
-	if(sendto(sockfd, (char *)&msg, sizeof(msg), 0, (struct sockaddr *)&servaddr, sizeof(servaddr)) < -1) {
+	if(sendto(sockfd, (char *)&msg, 48, 0, (struct sockaddr *)&servaddr, sizeof(servaddr)) < -1) {
 		logprintf(LOG_ERR, "error in sending");
 		goto close;
 	}
-	if(recvfrom(sockfd, (void *)&msg, sizeof(msg), 0, NULL, NULL) < -1) {
+	if(recvfrom(sockfd, (void *)&msg, 48, 0, NULL, NULL) < -1) {
 		logprintf(LOG_ERR, "error in receiving");
 		goto close;
 	}
@@ -200,6 +202,7 @@ static void *datetimeParse(void *param) {
 			ntp = getntptime(ntpserver);
 			if(ntp > -1) {
 				diff = (int)(t - ntp);
+				logprintf(LOG_INFO, "datetime %.6f:%.6f adjusted by %d seconds", longitude, latitude, diff);
 			}
 			x = 0;
 		}
@@ -319,7 +322,7 @@ void datetimeInit(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name = "datetime";
-	module->version = "1.8";
+	module->version = "1.9";
 	module->reqversion = "5.0";
 	module->reqcommit = "187";
 }

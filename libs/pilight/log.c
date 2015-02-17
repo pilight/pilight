@@ -397,10 +397,15 @@ void logerror(const char *format_str, ...) {
 	FILE *f = NULL;
 	char fmt[64], buf[64];
 	struct timeval tv;
-	struct tm *tm;
+	struct tm *tm = NULL;
 	char date[128];
 
 	memset(line, '\0', 1024);
+	memset(&ap, '\0', sizeof(va_list));
+	memset(&sb, '\0', sizeof(struct stat));
+	memset(&tv, '\0', sizeof(struct timeval));
+	memset(date, '\0', 128);
+
 	gettimeofday(&tv, NULL);
 	if((tm = localtime(&tv.tv_sec)) != NULL) {
 		strftime(fmt, sizeof(fmt), "%b %d %H:%M:%S", tm);

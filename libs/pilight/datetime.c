@@ -50,6 +50,13 @@ static pthread_mutex_t tzlock;
 static pthread_mutexattr_t tzattr;
 static int tz_lock_initialized = 0;
 
+/*
+	Extra checks for gracefull (early)
+  stopping of pilight 
+*/
+static int fillingtzdata = 0;
+static int searchingtz = 0;
+
 static int fillTZData(void) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
@@ -61,7 +68,13 @@ static int fillTZData(void) {
 	}
 
 	pthread_mutex_lock(&tzlock);
+/*
+	Extra checks for gracefull (early)
+  stopping of pilight 
+*/	
+	fillingtzdata = 1;
 	if(tzdatafilled == 1) {
+		fillingtzdata = 0;
 		pthread_mutex_unlock(&tzlock);
 		return EXIT_SUCCESS;
 	}
@@ -84,6 +97,7 @@ static int fillTZData(void) {
 	if(!(content = calloc(bytes+1, sizeof(char)))) {
 		logprintf(LOG_ERR, "out of memory");
 		fclose(fp);
+		fillingtzdata = 0;
 		return EXIT_FAILURE;
 	}
 
@@ -96,6 +110,7 @@ static int fillTZData(void) {
 	if(json_validate(content) == false) {
 		logprintf(LOG_ERR, "tzdata is not in a valid json format");
 		free(content);
+		fillingtzdata = 0;
 		return EXIT_FAILURE;
 	}
 
@@ -141,14 +156,24 @@ static int fillTZData(void) {
 	json_delete(root);
 	free(content);
 	tzdatafilled = 1;
+	fillingtzdata = 0;
 	pthread_mutex_unlock(&tzlock);
 	return EXIT_SUCCESS;
 }
 
 int datetime_gc(void) {
-	pthread_mutex_unlock(&tzlock);
 	int i = 0, a = 0;
-	if(tzdatafilled) {
+/*
+	Extra checks for gracefull (early)
+  stopping of pilight 
+*/	
+	while(fillingtzdata) {
+		usleep(10);
+	}
+	while(searchingtz) {
+		usleep(10);
+	}	
+	if(tzdatafilled == 1) {
 		for(i=0;i<NRCOUNTRIES;i++) {
 			unsigned int n = tznrpolys[i];
 			for(a=0;a<n;a++) {
@@ -169,6 +194,12 @@ char *coord2tz(double longitude, double latitude) {
 		return NULL;
 	}
 
+/*
+	Extra checks for gracefull (early)
+  stopping of pilight 
+*/
+	pthread_mutex_lock(&tzlock);
+	searchingtz = 1;
 	int i = 0, a = 0, margin = 1, inside = 0;
 	char *tz = NULL;
 
@@ -223,6 +254,8 @@ char *coord2tz(double longitude, double latitude) {
 		margin++;
 		margin *= (int)pow(10, PRECISION);
 	}
+	searchingtz = 0;	
+	pthread_mutex_unlock(&tzlock);
 	return tz;
 }
 

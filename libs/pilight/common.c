@@ -283,7 +283,7 @@ int which(const char *program) {
 	char path[1024];
 	strcpy(path, getenv("PATH"));
 	char **array = NULL;
-	unsigned int n = 0, i = 0;
+	unsigned int n = 0, i = 0, found = -1;
 
 	n = explode(path, ":", &array);
 	for(i=0;i<n;i++) {
@@ -292,15 +292,18 @@ int which(const char *program) {
 		strcat(exec, "/");
 		strcat(exec, program);
 
-		FREE(array[i]);
 		if(access(exec, X_OK) != -1) {
-			return 0;
+			found = 0;
+			break;
 		}
+	}
+	for(i=0;i<n;i++) {
+		FREE(array[i]);
 	}
 	if(n > 0) {
 		FREE(array);
 	}
-	return -1;
+	return found;
 }
 
 int ishex(int x) {
