@@ -113,11 +113,11 @@ static time_t getntptime(char *ntpserver) {
 
 	msg.li_vn_mode=227;
 
-	if(sendto(sockfd, (char *)&msg, 48, 0, (struct sockaddr *)&servaddr, sizeof(servaddr)) < -1) {
+	if(sendto(sockfd, (char *)&msg, sizeof(msg), 0, (struct sockaddr *)&servaddr, sizeof(servaddr)) < -1) {
 		logprintf(LOG_ERR, "error in sending");
 		goto close;
 	}
-	if(recvfrom(sockfd, (void *)&msg, 48, 0, NULL, NULL) < -1) {
+	if(recvfrom(sockfd, (void *)&msg, sizeof(msg), 0, NULL, NULL) < -1) {
 		logprintf(LOG_ERR, "error in receiving");
 		goto close;
 	}
@@ -127,6 +127,8 @@ static time_t getntptime(char *ntpserver) {
 		(msg.rec).Ul_f.Xl_f = (int)ntohl((unsigned int)(msg.rec).Ul_f.Xl_f);
 
 		unsigned int adj = 2208988800u;
+		FREE(ip);
+		close(sockfd);
 		return (time_t)(msg.rec.Ul_i.Xl_ui - adj);
 	} else {
 		logprintf(LOG_INFO, "invalid ntp host");
@@ -134,7 +136,7 @@ static time_t getntptime(char *ntpserver) {
 	}
 
 close:
-	if(ip) {
+	if(ip != NULL) {
 		FREE(ip);
 	}
 	if(sockfd > 0) {
@@ -317,7 +319,7 @@ void datetimeInit(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name = "datetime";
-	module->version = "1.7";
+	module->version = "1.8";
 	module->reqversion = "5.0";
 	module->reqcommit = "187";
 }

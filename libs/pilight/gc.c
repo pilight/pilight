@@ -36,7 +36,7 @@
 #include "config.h"
 
 static unsigned short gc_enable = 1;
-static struct collectors_t *gc = NULL;
+static int (*gc)(void) = NULL;
 
 void gc_handler(int sig) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
@@ -102,49 +102,26 @@ void gc_handler(int sig) {
 /* Add function to gc */
 void gc_attach(int (*fp)(void)) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
-
-	struct collectors_t *gnode = MALLOC(sizeof(struct collectors_t));
-	if(gnode == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(EXIT_FAILURE);
+	if(gc != NULL) {
+		logprintf(LOG_ERR, "multiple calls to gc_attach", __FUNCTION__);
 	}
-	gnode->listener = fp;
-	gnode->next = gc;
-	gc = gnode;
+	gc = fp;
 }
 
 void gc_clear(void) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
-
-	struct collectors_t *tmp;
-	while(gc) {
-		tmp = gc;
-		gc = gc->next;
-		FREE(tmp);
-	}
-	if(gc != NULL) {
-		FREE(gc);
-	}
 }
 
 /* Run the GC manually */
 int gc_run(void) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
-	unsigned int s = 1;
-	s = 0;
-	struct collectors_t *tmp = gc;
-
-	while(tmp) {
-		if(tmp->listener() != 0) {
-			s=1;
+	if(gc != NULL) {
+		if(gc() == 0) {
+			return EXIT_SUCCESS;
+		} else {
+			return EXIT_FAILURE;
 		}
-		tmp = tmp->next;
-	}
-	tmp = NULL;
-
-	if(s == 1) {
-		return EXIT_FAILURE;
 	} else {
 		return EXIT_SUCCESS;
 	}

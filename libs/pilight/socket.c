@@ -84,8 +84,6 @@ int socket_gc(void) {
 int socket_start(unsigned short port) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
-	//gc_attach(socket_gc);
-
 	struct sockaddr_in address;
 	unsigned int addrlen = sizeof(address);
 	int opt = 1;

@@ -1559,6 +1559,8 @@ void *clientize(void *param) {
 			json_delete(json);
 			continue;
 		}
+		json_free(output);
+		json_delete(json);
 
 		if(socket_read(sockfd, &recvBuff, 1) != 0
 		   || strcmp(recvBuff, "{\"status\":\"success\"}") != 0) {

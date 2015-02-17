@@ -50,6 +50,7 @@ static unsigned int loop = 1;
 static unsigned int stop = 0;
 static unsigned int pthinitialized = 0;
 static unsigned int pthactive = 0;
+static unsigned int pthfree = 0;
 static pthread_t pth;
 
 static char *logfile = NULL;
@@ -121,6 +122,9 @@ int log_gc(void) {
 		}
 		if(logqueue != NULL) {
 			FREE(logqueue);
+		}
+		if(pthfree == 1) {
+			pthread_join(pth, NULL);
 		}
 	} else {
 		/* Flush log queue by log thread */
@@ -249,6 +253,7 @@ void *logloop(void *param) {
 	pth = pthread_self();
 
 	pthactive = 1;
+	pthfree = 1;
 	
 	pthread_mutex_lock(&logqueue_lock);
 	while(loop) {
@@ -269,7 +274,6 @@ void *logloop(void *param) {
 	}
 
 	pthactive = 0;	
-	pthread_exit(NULL);
 	return (void *)NULL;
 }
 
