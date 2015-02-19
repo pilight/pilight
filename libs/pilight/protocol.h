@@ -21,7 +21,8 @@
 
 #include <pthread.h>
 
-#include "../../pilight.h"
+#include "../../defines.h"
+#include "devices.h"
 #include "options.h"
 #include "threads.h"
 #include "hardware.h"

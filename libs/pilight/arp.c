@@ -347,7 +347,7 @@ static void callback(u_char *args, const struct pcap_pkthdr *header, const u_cha
 	struct host_entry *temp_cursor = NULL;
 
 	if(n < ETHER_HDR_SIZE + ARP_PKT_SIZE) {
-		printf("%d byte packet too short to decode\n", n);
+		printf("%d byte packet too short to decode\n", (int)n);
 		return;
    }
 

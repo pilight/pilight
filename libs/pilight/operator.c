@@ -27,6 +27,7 @@
 #include <time.h>
 #include <libgen.h>
 #include <dirent.h>
+#include <limits.h>
 
 #include "../../pilight.h"
 #include "common.h"

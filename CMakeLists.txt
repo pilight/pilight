@@ -180,6 +180,7 @@ if(${MODULESPACK} MATCHES "ON")
 	add_definitions(-DMODULE="1")
 endif()
 
+include_directories("/usr/local/include/")
 include_directories("${PROJECT_SOURCE_DIR}/libs/pilight/")
 include_directories("${PROJECT_SOURCE_DIR}/libs/config/")
 
@@ -750,7 +751,7 @@ if(${MODULESPACK} MATCHES "OFF")
 		configure_file(libs/pilight/action_init.h.in libs/pilight/action_init.h)
 	endif()
 
-	configure_file(pilight.h.in pilight.h)
+	configure_file(defines.h.in defines.h)
 endif()
 
 if(${MODULESPACK} MATCHES "ON")

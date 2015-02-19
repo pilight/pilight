@@ -27,7 +27,7 @@
 #include <ctype.h>
 #include <math.h>
 
-#include "../../pilight.h"
+#include "../../defines.h"
 #include "devices.h"
 #include "threads.h"
 #include "common.h"
