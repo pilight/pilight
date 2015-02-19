@@ -283,7 +283,8 @@ int which(const char *program) {
 	char path[1024];
 	strcpy(path, getenv("PATH"));
 	char **array = NULL;
-	unsigned int n = 0, i = 0, found = -1;
+	unsigned int n = 0, i = 0;
+	int found = -1;
 
 	n = explode(path, ":", &array);
 	for(i=0;i<n;i++) {
