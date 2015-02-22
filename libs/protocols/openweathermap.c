@@ -137,7 +137,7 @@ static void *openweathermapParse(void *param) {
 		}
 	}
 
-	if(!wnode) {
+	if(wnode == NULL) {
 		return 0;
 	}
 
@@ -383,7 +383,7 @@ void openweathermapInit(void) {
 
 	options_add(&openweathermap->options, 't', "temperature", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9]{1,5}$");
 	options_add(&openweathermap->options, 'h', "humidity", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9]{1,5}$");
-	options_add(&openweathermap->options, 'l', "location", OPTION_HAS_VALUE, DEVICES_ID, JSON_STRING, NULL, "^[a-zA-Z- ]+$");
+	options_add(&openweathermap->options, 'l', "location", OPTION_HAS_VALUE, DEVICES_ID, JSON_STRING, NULL, "^([a-zA-Z-]|[[:space:]])+$");
 	options_add(&openweathermap->options, 'c', "country", OPTION_HAS_VALUE, DEVICES_ID, JSON_STRING, NULL, "^[a-zA-Z]+$");
 	options_add(&openweathermap->options, 'x', "sunrise", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9]{3,4}$");
 	options_add(&openweathermap->options, 'y', "sunset", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9]{3,4}$");
@@ -408,7 +408,7 @@ void openweathermapInit(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name = "openweathermap";
-	module->version = "1.5";
+	module->version = "1.6";
 	module->reqversion = "5.0";
 	module->reqcommit = "187";
 }
