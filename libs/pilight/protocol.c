@@ -101,11 +101,11 @@ void protocol_init(void) {
 	void (*compatibility)(struct module_t *module);
 	char path[PATH_MAX];
 	struct module_t module;
-	char pilight_version[strlen(VERSION)+1];
+	char pilight_version[strlen(PILIGHT_VERSION)+1];
 	char pilight_commit[3];
 	char *protocol_root = NULL;
 	int check1 = 0, check2 = 0, valid = 1, protocol_root_free = 0;
-	strcpy(pilight_version, VERSION);
+	strcpy(pilight_version, PILIGHT_VERSION);
 
 	struct dirent *file = NULL;
 	DIR *d = NULL;

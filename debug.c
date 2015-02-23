@@ -281,7 +281,7 @@ int main(int argc, char **argv) {
 				goto clear;
 			break;
 			case 'V':
-				printf("%s %s\n", progname, VERSION);
+				printf("%s %s\n", progname, PILIGHT_VERSION);
 				goto clear;
 			break;
 			case 'C':

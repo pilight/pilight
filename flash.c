@@ -52,7 +52,7 @@ int main(int argc, char **argv) {
 	struct options_t *options = NULL;
 	char *configtmp = MALLOC(strlen(CONFIG_FILE)+1);
 	char *args = NULL;
-	char fwfile[4096] = {'\0'};
+	char *fwfile = NULL;
 
 	strcpy(configtmp, CONFIG_FILE);
 
@@ -85,7 +85,7 @@ int main(int argc, char **argv) {
 				goto close;
 			break;
 			case 'V':
-				printf("%s %s\n", progname, VERSION);
+				printf("%s %s\n", progname, PILIGHT_VERSION);
 				goto close;
 			break;
 			case 'C':
@@ -94,6 +94,7 @@ int main(int argc, char **argv) {
 			break;
 			case 'f':
 				if(access(args, F_OK) != -1) {
+					fwfile = REALLOC(fwfile, strlen(args)+1);
 					strcpy(fwfile, args);
 				} else {
 					fprintf(stderr, "%s: the firmware file %s does not exists\n", progname, args);
@@ -106,11 +107,10 @@ int main(int argc, char **argv) {
 			break;
 		}
 	}
-	options_delete(options);
 
 #ifdef FIRMWARE_UPDATER
 	if(config_set_file(configtmp) == EXIT_FAILURE) {
-		return EXIT_FAILURE;
+		goto close;
 	}
 
 	protocol_init();
@@ -119,9 +119,8 @@ int main(int argc, char **argv) {
 		FREE(configtmp);
 		goto close;
 	}
-	FREE(configtmp);
 
-	if(strlen(fwfile) == 0) {
+	if(fwfile == NULL || strlen(fwfile) == 0) {
 		printf("Usage: %s -f pilight_firmware_tX5_vX.hex\n", progname);
 		goto close;
 	}
@@ -139,16 +138,23 @@ int main(int argc, char **argv) {
 #endif
 
 close:
+	options_delete(options);
+	if(fwfile != NULL) {
+		FREE(fwfile);
+	}
+	if(configtmp != NULL) {
+		FREE(configtmp);
+	}
 	log_shell_disable();
 	log_level_set(LOG_ERR);
 	config_gc();
 	protocol_gc();
+	options_gc();
 	event_operator_gc();
 	event_action_gc();
-	options_gc();
-	threads_gc();
 	wiringXGC();
 	log_gc();
+	threads_gc();	
 	gc_clear();
 	FREE(progname);
 	xfree();

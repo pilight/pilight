@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 2.8.8)
 
 project(pilight C)
 
-set(PROJECT_VERSION 5.0)
+set(PROJECT_VERSION 6.0)
 set(PROJECT_NAME pilight)
 
 include(${PROJECT_SOURCE_DIR}/CMakeConfig.txt)
