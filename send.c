@@ -238,7 +238,7 @@ int main(int argc, char **argv) {
 
 	/* Display help or version information */
 	if(version == 1) {
-		printf("%s %s\n", progname, VERSION);
+		printf("%s %s\n", progname, PILIGHT_VERSION);
 		goto close;
 	} else if(help == 1 || protohelp == 1 || match == 0) {
 		if(protohelp == 1 && match == 1 && protocol->printHelp)

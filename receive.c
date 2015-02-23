@@ -110,7 +110,7 @@ int main(int argc, char **argv) {
 				exit(EXIT_SUCCESS);
 			break;
 			case 'V':
-				printf("%s %s\n", progname, VERSION);
+				printf("%s %s\n", progname, PILIGHT_VERSION);
 				exit(EXIT_SUCCESS);
 			break;
 			case 'S':

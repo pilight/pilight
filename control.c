@@ -141,7 +141,7 @@ int main(int argc, char **argv) {
 	options_delete(options);
 
 	if(showversion == 1) {
-		printf("%s %s\n", progname, VERSION);
+		printf("%s %s\n", progname, PILIGHT_VERSION);
 		goto close;
 	}
 	if(showhelp == 1) {

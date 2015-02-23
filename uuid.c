@@ -97,7 +97,7 @@ int main(int argc, char **argv) {
 				return (EXIT_SUCCESS);
 			break;
 			case 'V':
-				printf("%s %s\n", progname, VERSION);
+				printf("%s %s\n", progname, PILIGHT_VERSION);
 				return (EXIT_SUCCESS);
 			break;
 			default:

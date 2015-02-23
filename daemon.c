@@ -1876,7 +1876,7 @@ void registerVersion(void) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
 	registry_remove_value("pilight.version");
-	registry_set_string("pilight.version.current", (char *)VERSION);
+	registry_set_string("pilight.version.current", (char *)PILIGHT_VERSION);
 }
 #pragma GCC diagnostic pop   // require GCC 4.6
 
@@ -2053,7 +2053,7 @@ int main(int argc, char **argv) {
 		goto clear;
 	}
 	if(show_version) {
-		printf("%s version %s, commit %s\n", progname, VERSION, HASH);
+		printf("%s version %s, commit %s\n", progname, PILIGHT_VERSION, HASH);
 		goto clear;
 	}
 	if(show_default) {
@@ -2151,7 +2151,7 @@ int main(int argc, char **argv) {
 		log_file_set(stmp);
 	}
 
-	logprintf(LOG_INFO, "version %s, commit %s", VERSION, HASH);
+	logprintf(LOG_INFO, "version %s, commit %s", PILIGHT_VERSION, HASH);
 
 	if(nodaemon == 1 || running == 1) {
 		log_file_disable();

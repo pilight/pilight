@@ -136,7 +136,7 @@ int main(int argc, char **argv) {
 				goto close;
 			break;
 			case 'V':
-				printf("%s %s\n", progname, VERSION);
+				printf("%s %s\n", progname, PILIGHT_VERSION);
 				goto close;
 			break;
 			case 'C':

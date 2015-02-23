@@ -282,7 +282,7 @@ void *ssdp_wait(void *param) {
 					"NT:urn:schemas-upnp-org:service:pilight:1\r\n"
 					"USN:uuid:%s::urn:schemas-upnp-org:service:pilight:1\r\n"
 					"NTS:ssdp:alive\r\n"
-					"SERVER: %s UPnP/1.1 pilight (%s)/%s\r\n\r\n", host, socket_get_port(), id, distro, hname, VERSION);
+					"SERVER: %s UPnP/1.1 pilight (%s)/%s\r\n\r\n", host, socket_get_port(), id, distro, hname, PILIGHT_VERSION);
 				nrheader++;
 			}
 		}

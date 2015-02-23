@@ -23,7 +23,7 @@
 #cmakedefine EVENTS
 #cmakedefine FIRMWARE_UPDATER
 
-#define VERSION									"5.0"
+#define PILIGHT_VERSION					"6.0"
 #define PULSE_DIV								34
 #define MAXPULSESTREAMLENGTH		512
 #define EPSILON									0.00001
