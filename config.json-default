@@ -5,7 +5,7 @@
 		"log-level": 4,
 		"pid-file": "/var/run/pilight.pid",
 		"log-file": "/var/log/pilight.log",
-		"send-repeats": 10,
+		"send-repeats": 4,
 		"receive-repeats": 1,
 		"webserver-enable": 1,
 		"webserver-root": "/usr/local/share/pilight/",
