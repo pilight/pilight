@@ -582,6 +582,11 @@ if(${PROTOCOL_QUIGG_GT1000} MATCHES "OFF")
     list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/quigg_gt1000.c")
 endif()
 
+if(${PROTOCOL_EV1527} MATCHES "OFF")
+	list(REMOVE_ITEM protocol_headers "${PROJECT_SOURCE_DIR}/libs/protocols/ev1527.h")
+	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/ev1527.c")
+endif()
+
 if(${HARDWARE_433_GPIO} MATCHES "OFF")
 	list(REMOVE_ITEM hardware_headers "${PROJECT_SOURCE_DIR}/libs/hardware/433gpio.h")
 	list(REMOVE_ITEM hardware "${PROJECT_SOURCE_DIR}/libs/hardware/433gpio.c")
