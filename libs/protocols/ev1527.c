@@ -1,5 +1,5 @@
 /*
-	Copyright (C) 2014 CurlyMo
+	Copyright (C) 2015 CurlyMo and Meloen
 
 	This file is part of pilight.
 
@@ -87,7 +87,7 @@ void ev1527Init(void) {
 void compatibility(struct module_t *module) {
 	module->name = "ev1527";
 	module->version = "1.0";
-	module->reqversion = "5.0";
+	module->reqversion = "6.0";
 	module->reqcommit = "99";
 }
 
