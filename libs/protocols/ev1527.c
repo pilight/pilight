@@ -88,7 +88,7 @@ void compatibility(struct module_t *module) {
 	module->name = "ev1527";
 	module->version = "0.3";
 	module->reqversion = "6.0";
-	module->reqcommit = "0";
+	module->reqcommit = NULL;
 }
 
 void init(void) {
