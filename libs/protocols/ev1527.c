@@ -86,9 +86,9 @@ void ev1527Init(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name = "ev1527";
-	module->version = "1.0";
+	module->version = "0.3";
 	module->reqversion = "6.0";
-	module->reqcommit = "99";
+	module->reqcommit = "0";
 }
 
 void init(void) {
