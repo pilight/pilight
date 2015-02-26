@@ -68,6 +68,8 @@ void elro_fa20rfInit(void) {
 	protocol_set_id(elro_fa20rf, "elro_fa20rf");
 	protocol_device_add(elro_fa20rf, "elro_fa20rf", "elro_fa20rf contact sensor");
 	protocol_plslen_add(elro_fa20rf, 392);
+	protocol_plslen_add(elro_fa20rf, 238);
+	protocol_plslen_add(elro_fa20rf, 328);
 	elro_fa20rf->devtype = CONTACT;
 	elro_fa20rf->hwtype = RF433;
 	elro_fa20rf->pulse = 7;
