@@ -78,7 +78,6 @@ static void timerCreateMessage(int id, int state){
 	} else {
 		json_append_member(code, "state", json_mkstring("off"));
 	}
-//	json_append_member(code, "second", json_mknumber(timer_data->time[i], 0));
 
 	json_append_member(timer->message, "message", code);
 	json_append_member(timer->message, "origin", json_mkstring("receiver"));
@@ -103,34 +102,11 @@ static void *timerParse(void *param) {
 		pthread_mutex_lock(&timerlock);
 		for (i=0;i<timer_data->nrid;i++)
 		{
-// 			if(timer_data->start[i]){
-// 				timer_data->time[i]=timer_data->start[i];
-// 				timer_data->start[i]=0;
-// 			}
-// 			else if( timer_data->time[i] == 0 )
  			if( timer_data->time[i] == 0 )
 			{
 				timerCreateMessage(timer_data->id[i],  0);
-// 				timer->message = json_mkobject();
-// 		
-// 				JsonNode *code = json_mkobject();
-// 		
-// 	
-// 				json_append_member(code, "id", json_mknumber(timer_data->id[i], 0));
-// 				json_append_member(code, "second", json_mknumber(timer_data->time[i], 0));
-// 		
-// 				json_append_member(timer->message, "message", code);
-// 				json_append_member(timer->message, "origin", json_mkstring("receiver"));
-// 				json_append_member(timer->message, "protocol", json_mkstring(timer->id));
-// 		
-// 				if(pilight.broadcast != NULL) {
-// 					pilight.broadcast(timer->id, timer->message);
-// 				}
-// 		
-// 				json_delete(timer->message);
-// 				timer->message = NULL;
 			}
-			printf("timer:%d -> %d\n",timer_data->id[i],timer_data->time[i]);
+			//printf("timer:%d -> %d\n",timer_data->id[i],timer_data->time[i]);
 			if( timer_data->time[i] > -1 )
 				timer_data->time[i]--;
 		}
@@ -146,7 +122,10 @@ static void *timerParse(void *param) {
 }
 
 static void timerPrintHelp(void) {
-    printf("\t -i --id=\tcontrol timer with id\n-t\n-f");
+	printf("\t -i --id=\t\tcontrol timer with id\n");
+	printf("\t -t --on\t\t\tstart the timer\n");
+	printf("\t -f --off\t\t\tstop the timer\n");
+
 }
 
 static int timerCreateCode(JsonNode *code) {
