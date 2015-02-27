@@ -24,10 +24,28 @@
 #include <string.h>
 #include <ctype.h>
 #include <libgen.h>
-#include <dlfcn.h>
+#ifdef _WIN32
+	#if _WIN32_WINNT < 0x0501
+		#undef _WIN32_WINNT
+		#define _WIN32_WINNT 0x0501
+	#endif
+	#include <winsock2.h>
+	#include <ws2tcpip.h>
+	#include <iphlpapi.h>
+#else
+	#include <sys/socket.h>
+	#include <sys/time.h>
+	#include <netinet/in.h>
+	#include <netinet/tcp.h>
+	#include <netdb.h>
+	#include <arpa/inet.h>
+	#include <sys/wait.h>
+	#include <net/if.h>
+	#include <ifaddrs.h>
+	#include <pwd.h>
+#endif
 #include <dirent.h>
 #include <sys/types.h>
-#include <pwd.h>
 #include <sys/stat.h>
 #include <unistd.h>
 #include <fcntl.h>
@@ -37,30 +55,42 @@
 #endif
 #include <sys/time.h>
 #include <time.h>
-#include <sys/ioctl.h>
-#include <net/if.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <netinet/tcp.h>
-#include <netdb.h>
-#include <arpa/inet.h>
 
 #include "settings.h"
 #include "mem.h"
 #include "common.h"
 #include "log.h"
 
+char *progname;
+
 static unsigned int ***whitelist_cache = NULL;
 static unsigned int whitelist_number;
 static unsigned char validchar[64] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
+static pthread_mutex_t atomic_lock;
+static pthread_mutexattr_t atomic_attr;
+
+void atomicinit(void) {
+	pthread_mutexattr_init(&atomic_attr);
+	pthread_mutexattr_settype(&atomic_attr, PTHREAD_MUTEX_RECURSIVE);
+	pthread_mutex_init(&atomic_lock, &atomic_attr);
+}
+
+void atomiclock(void) {
+	pthread_mutex_lock(&atomic_lock);
+}
+
+void atomicunlock(void) {
+	pthread_mutex_unlock(&atomic_lock);
+}
 
 unsigned int explode(char *str, const char *delimiter, char ***output) {
 	if(str == NULL || output == NULL) {
 		return 0;
 	}
-	unsigned int i = 0, x = 0, n = 0, y = 0;	
+	unsigned int i = 0, x = 0, n = 0, y = 0;
 	size_t l = 0, p = 0;
-	if(delimiter != NULL) {	
+	if(delimiter != NULL) {
 		l = strlen(str);
 		p = strlen(delimiter);
 	}
@@ -89,14 +119,12 @@ unsigned int explode(char *str, const char *delimiter, char ***output) {
 	return n;
 }
 
-char *host2ip(char *host) {
+int host2ip(char *host, char *ip) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
 	int rv = 0;
 	struct addrinfo hints, *servinfo, *p;
 	struct sockaddr_in *h = NULL;
-	char *ip = MALLOC(17);
-	memset(ip, '\0', 17);
 
 	memset(&hints, 0, sizeof hints);
 	hints.ai_family = AF_INET;
@@ -104,16 +132,20 @@ char *host2ip(char *host) {
 
 	if((rv = getaddrinfo(host, NULL , NULL, &servinfo)) != 0) {
 		logprintf(LOG_NOTICE, "getaddrinfo: %s, %s", host, gai_strerror(rv));
-		return NULL;
+		return -1;
 	}
 
 	for(p = servinfo; p != NULL; p = p->ai_next) {
 		memcpy(&h, &p->ai_addr, sizeof(struct sockaddr_in *));
-		strcpy(ip, inet_ntoa(h->sin_addr));
+		memset(ip, '\0', 17);
+		inet_ntop(AF_INET, (void *)&(h->sin_addr), ip, 17);
+		if(strlen(ip) > 0) {
+			return 0;
+		}
 	}
 
 	freeaddrinfo(servinfo);
-	return ip;
+	return -1;
 }
 
 int isrunning(const char *program) {
@@ -132,6 +164,71 @@ int isrunning(const char *program) {
 	return -1;
 }
 
+#ifdef _WIN32
+const char *inet_ntop(int af, const void *src, char *dst, int cnt) {
+	struct sockaddr_in srcaddr;
+
+	memset(&srcaddr, 0, sizeof(struct sockaddr_in));
+	memcpy(&(srcaddr.sin_addr), src, sizeof(srcaddr.sin_addr));
+
+	srcaddr.sin_family = af;
+	if(WSAAddressToString((struct sockaddr *)&srcaddr, sizeof(struct sockaddr_in), 0, dst, (LPDWORD)&cnt) != 0) {
+		DWORD rv = WSAGetLastError();
+		printf("WSAAddressToString() : %d\n", (int)rv);
+		return NULL;
+	}
+	return dst;
+}
+
+int setenv(const char *name, const char *value, int overwrite) {
+	atomiclock();
+	if(overwrite == 0) {
+		value = getenv(name);
+	}
+	char c[strlen(name)+strlen(value)+1];
+	strcat(c, name);
+	strcat(c, "=");
+	strcat(c, value);
+	atomicunlock();
+	return putenv(c);
+}
+
+int unsetenv(const char *name) {
+	atomiclock();
+	char c[strlen(name)+1];
+	strcat(c, name);
+	strcat(c, "=");
+	atomicunlock();
+	return putenv(c);
+}
+
+int inet_pton(int af, const char *src, void *dst) {
+	struct sockaddr_storage ss;
+	int size = sizeof(ss);
+	char src_copy[INET6_ADDRSTRLEN+1];
+
+	ZeroMemory(&ss, sizeof(ss));
+	/* stupid non-const API */
+	strncpy(src_copy, src, INET6_ADDRSTRLEN+1);
+	src_copy[INET6_ADDRSTRLEN] = 0;
+
+	if(WSAStringToAddress(src_copy, af, NULL, (struct sockaddr *)&ss, &size) == 0) {
+		switch(af) {
+			case AF_INET:
+				*(struct in_addr *)dst = ((struct sockaddr_in *)&ss)->sin_addr;
+				return 1;
+			case AF_INET6:
+				*(struct in6_addr *)dst = ((struct sockaddr_in6 *)&ss)->sin6_addr;
+				return 1;
+			default:
+				return 0;
+		}
+	}
+	return 0;
+}
+#endif
+
+
 #ifdef __FreeBSD__
 int findproc(char *cmd, char *args, int loosely) {
 #else
@@ -139,20 +236,21 @@ pid_t findproc(char *cmd, char *args, int loosely) {
 #endif
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
+#ifndef _WIN32
 	DIR* dir;
 	struct dirent* ent;
 	char fname[512], cmdline[1024];
 	int fd = 0, ptr = 0, match = 0, i = 0, y = '\n', x = 0;
 
 	if(!(dir = opendir("/proc"))) {
-#ifdef __FreeBSD__
+	#ifdef __FreeBSD__
 		system("mount -t procfs proc /proc");
 		if(!(dir = opendir("/proc"))) {
 			return -1;
 		}
-#else
+	#else
        	return -1;
-#endif
+	#endif
 	}
 
     while((ent = readdir(dir)) != NULL) {
@@ -235,6 +333,7 @@ pid_t findproc(char *cmd, char *args, int loosely) {
 		}
 	}
 	closedir(dir);
+#endif
 	return -1;
 }
 
@@ -267,12 +366,14 @@ int nrDecimals(char *s) {
 int name2uid(char const *name) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
-	if(name) {
+#ifndef _WIN32
+	if(name != NULL) {
 		struct passwd *pwd = getpwnam(name); /* don't free, see getpwnam() for details */
 		if(pwd) {
 			return (int)pwd->pw_uid;
 		}
 	}
+#endif
 	return -1;
 }
 
@@ -486,7 +587,9 @@ char *distroname(void) {
 	memset(dist, '\0', 32);
 	char *distro = NULL;
 
-#ifdef __FreeBSD__
+#ifdef _WIN32
+	strcpy(dist, "Windows");
+#elif defined(__FreeBSD__)
 	strcpy(dist, "FreeBSD/0.0");
 #else
 	int rc = 1;
@@ -524,9 +627,11 @@ char *genuuid(char *ifname) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
 	char *mac = NULL, *upnp_id = NULL;
-	char a[1024], serial[UUID_LENGTH+1];
+	char serial[UUID_LENGTH+1];
 
 	memset(serial, '\0', UUID_LENGTH+1);
+#ifndef _WIN32
+	char a[1024];
 	FILE *fp = fopen("/proc/cpuinfo", "r");
 	if(fp != NULL) {
 		while(!feof(fp)) {
@@ -553,8 +658,35 @@ char *genuuid(char *ifname) {
 		}
 		fclose(fp);
 	}
+#endif
 
-#if defined(SIOCGIFHWADDR)
+#ifdef _WIN32
+	int i = 0;
+	if(!(mac = MALLOC(13))) {
+		logprintf(LOG_ERR, "out of memory");
+		exit(EXIT_FAILURE);
+	}
+	memset(mac, '\0', 13);
+
+	IP_ADAPTER_INFO AdapterInfo[16];
+	DWORD dwBufLen = sizeof(AdapterInfo);
+	DWORD dwStatus = GetAdaptersInfo(AdapterInfo, &dwBufLen);
+
+	if(dwStatus != ERROR_SUCCESS) {
+		return NULL;
+	}
+
+	PIP_ADAPTER_INFO pAdapterInfo = AdapterInfo;
+	do {
+		if(strcmp(pAdapterInfo->IpAddressList.IpAddress.String, "0.0.0.0") != 0) {
+			for(i = 0; i < 12; i+=2) {
+				sprintf(&mac[i], "%02x", (unsigned char)pAdapterInfo->Address[i/2]);
+			}
+			break;
+		}
+		pAdapterInfo = pAdapterInfo->Next;
+	} while(pAdapterInfo);
+#elif defined(SIOCGIFHWADDR)
 	int i = 0;
 	int fd = socket(PF_INET, SOCK_DGRAM, IPPROTO_IP);
 	if(!(mac = MALLOC(13))) {
@@ -698,7 +830,7 @@ int rep_getifaddrs(struct ifaddrs **ifap) {
 
 		curif->ifa_name = MALLOC(sizeof(IFNAMSIZ)+1);
 		if(curif->ifa_name == NULL) {
-			free(curif);
+			FREE(curif);
 			freeifaddrs(*ifap);
 			close(fd);
 			return -1;
@@ -715,8 +847,8 @@ int rep_getifaddrs(struct ifaddrs **ifap) {
 		if (ioctl(fd, SIOCGIFADDR, &ifr) != -1) {
 			curif->ifa_addr = sockaddr_dup(&ifr.ifr_addr);
 			if (curif->ifa_addr == NULL) {
-				free(curif->ifa_name);
-				free(curif);
+				FREE(curif->ifa_name);
+				FREE(curif);
 				freeifaddrs(*ifap);
 				close(fd);
 				return -1;
@@ -728,10 +860,10 @@ int rep_getifaddrs(struct ifaddrs **ifap) {
 			curif->ifa_netmask = sockaddr_dup(&ifr.ifr_addr);
 			if (curif->ifa_netmask == NULL) {
 				if (curif->ifa_addr != NULL) {
-					free(curif->ifa_addr);
+					FREE(curif->ifa_addr);
 				}
-				free(curif->ifa_name);
-				free(curif);
+				FREE(curif->ifa_name);
+				FREE(curif);
 				freeifaddrs(*ifap);
 				close(fd);
 				return -1;
@@ -796,7 +928,7 @@ int whitelist_check(char *ip) {
 	if(n > 0) {
 		FREE(array);
 	}
-	
+
 
 	if(whitelist_cache == NULL) {
 		char *tmp = whitelist;
@@ -906,13 +1038,27 @@ int path_exists(char *fil) {
 	struct stat s;
 	char tmp[strlen(fil)+1];
 	strcpy(tmp, fil);
+
+	atomiclock();
+	/* basename isn't thread safe */
 	char *filename = basename(tmp);
+	atomicunlock();
+
 	char path[(strlen(tmp)-strlen(filename))+1];
 	size_t i = (strlen(tmp)-strlen(filename));
 
 	memset(path, '\0', sizeof(path));
 	memcpy(path, tmp, i);
 	snprintf(path, i, "%s", tmp);
+
+/*
+ * dir stat doens't work on windows if path has a trailing slash
+ */
+#ifdef _WIN32
+	if(path[i-1] == '\\' || path[i-1] == '/') {
+		path[i-1] = '\0';
+	}
+#endif
 
 	if(strcmp(filename, tmp) != 0) {
 		int err = stat(path, &s);

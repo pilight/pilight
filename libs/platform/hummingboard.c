@@ -129,7 +129,7 @@ static int identify(void) {
 
 	memset(revision, '\0', 120);
 	memset(hardware, '\0', 120);
-	
+
 	if((cpuFd = fopen("/proc/cpuinfo", "r")) == NULL) {
 		wiringXLog(LOG_ERR, "hummingboard->identify: Unable open /proc/cpuinfo");
 		return -1;

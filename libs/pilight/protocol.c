@@ -19,14 +19,18 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <regex.h>
 #include <dirent.h>
-#include <dlfcn.h>
-#include <pthread.h>
 #include <sys/time.h>
 #include <sys/stat.h>
+#include <sys/stat.h>
+#ifdef _WIN32
+	#include "pthread.h"
+#else
+	#include <dlfcn.h>
+	#include <pthread.h>
+#endif
 
-#include "../../pilight.h"
+#include "pilight.h"
 #include "common.h"
 #include "dso.h"
 #include "dso.h"
@@ -37,6 +41,9 @@
 
 #include "protocol_header.h"
 
+struct protocols_t *protocols;
+
+#ifndef _WIN32
 void protocol_remove(char *name) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
@@ -91,11 +98,14 @@ void protocol_remove(char *name) {
 		}
 	}
 }
+#endif
 
 void protocol_init(void) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
 	#include "protocol_init.h"
+
+#ifndef _WIN32
 	void *handle = NULL;
 	void (*init)(void);
 	void (*compatibility)(struct module_t *module);
@@ -130,7 +140,7 @@ void protocol_init(void) {
 	if((d = opendir(protocol_root))) {
 		while((file = readdir(d)) != NULL) {
 			memset(path, '\0', PATH_MAX);
-			sprintf(path, "%s%s", protocol_root, file->d_name);		
+			sprintf(path, "%s%s", protocol_root, file->d_name);
 			if(stat(path, &s) == 0) {
 				/* Check if file */
 				if(S_ISREG(s.st_mode)) {
@@ -188,12 +198,13 @@ void protocol_init(void) {
 	if(protocol_root_free) {
 		FREE(protocol_root);
 	}
+#endif
 }
 
 void protocol_register(protocol_t **proto) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
-	if(!(*proto = MALLOC(sizeof(struct protocol_t)))) {
+	if((*proto = MALLOC(sizeof(struct protocol_t))) == NULL) {
 		logprintf(LOG_ERR, "out of memory");
 		exit(EXIT_FAILURE);
 	}
@@ -234,7 +245,7 @@ void protocol_register(protocol_t **proto) {
 	memset(&(*proto)->binary[0], 0, sizeof((*proto)->binary));
 
 	struct protocols_t *pnode = MALLOC(sizeof(struct protocols_t));
-	if(!pnode) {
+	if(pnode == NULL) {
 		logprintf(LOG_ERR, "out of memory");
 		exit(EXIT_FAILURE);
 	}

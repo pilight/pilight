@@ -84,49 +84,53 @@ int fcache_rm(char *filename) {
 int fcache_add(char *filename) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
-	unsigned long filesize = 0, i = 0;
-	struct stat sb;
-	ssize_t rc = 0;
-	int fd = 0;
+	size_t filesize = 0;
+	FILE *fp = NULL;
 
 	logprintf(LOG_NOTICE, "caching %s", filename);
 
-	if((rc = stat(filename, &sb)) != 0) {
-		logprintf(LOG_NOTICE, "failed to stat %s", filename);
+/*
+ * dir stat doens't work on Windows if path has a trailing slash
+ */
+#ifdef _WIN32
+	size_t i = strlen(filename);
+	if(filename[i-1] == '\\' || filename[i-1] == '/') {
+		filename[i-1] = '\0';
+	}
+#endif
+
+	if((fp = fopen(filename, "rb")) == NULL) {
+		logprintf(LOG_NOTICE, "failed to open %s", filename);
 		return -1;
 	} else {
 		struct fcache_t *node = MALLOC(sizeof(struct fcache_t));
-		if(!node) {
+		if(node == NULL) {
 			logprintf(LOG_ERR, "out of memory");
 			exit(EXIT_FAILURE);
 		}
-		filesize = (unsigned long)sb.st_size;
-		if(!(node->bytes = MALLOC(filesize + 100))) {
+		fseek(fp, 0, SEEK_END);
+		filesize = (size_t)ftell(fp);
+		fseek(fp, 0, SEEK_SET);
+		if((node->bytes = MALLOC(filesize + 1)) == NULL) {
 			logprintf(LOG_ERR, "out of memory");
 			exit(EXIT_FAILURE);
 		}
-		memset(node->bytes, '\0', filesize + 100);
-		if((fd = open(filename, O_RDONLY, 0)) > -1) {
-			i = 0;
-			while (i < filesize) {
-				rc = read(fd, node->bytes+i, filesize-i);
-				i += (unsigned long)rc;
-			}
-			close(fd);
-
-			node->size = (int)filesize;
-			node->name = MALLOC(strlen(filename)+1);
-			if(!node->name) {
-				logprintf(LOG_ERR, "out of memory");
-				exit(EXIT_FAILURE);
-			}
-			strcpy(node->name, filename);
-			node->next = fcache;
-			fcache = node;
-			return 0;
-		} else {
+		memset(node->bytes, '\0', filesize + 1);
+		if(fread(node->bytes, 1, filesize, fp) != filesize) {
+			logprintf(LOG_NOTICE, "error reading %s", filename);
+			FREE(node->bytes);
+			FREE(node);
 			return -1;
 		}
+		node->size = (int)filesize;
+		if((node->name = MALLOC(strlen(filename)+1)) == NULL) {
+			logprintf(LOG_ERR, "out of memory");
+			exit(EXIT_FAILURE);
+		}
+		strcpy(node->name, filename);
+		node->next = fcache;
+		fcache = node;
+		return 0;
 	}
 	return -1;
 }

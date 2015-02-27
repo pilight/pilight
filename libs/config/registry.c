@@ -26,7 +26,7 @@
 #include <time.h>
 #include <libgen.h>
 
-#include "../../pilight.h"
+#include "pilight.h"
 #include "common.h"
 #include "json.h"
 #include "registry.h"

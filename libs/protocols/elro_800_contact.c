@@ -21,7 +21,7 @@
 #include <string.h>
 #include <math.h>
 
-#include "../../pilight.h"
+#include "pilight.h"
 #include "common.h"
 #include "dso.h"
 #include "log.h"
@@ -49,7 +49,7 @@ static void elro800ContactParseBinary(void) {
 	elro800ContactCreateMessage(systemcode, unitcode, state);
 }
 
-#ifndef MODULE
+#if !defined(MODULE) && !defined(_WIN32)
 __attribute__((weak))
 #endif
 void elro800ContactInit(void) {
@@ -76,7 +76,7 @@ void elro800ContactInit(void) {
 	elro_800_contact->parseBinary=&elro800ContactParseBinary;
 }
 
-#ifdef MODULE
+#if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "elro_800_contact";
 	module->version = "1.6";

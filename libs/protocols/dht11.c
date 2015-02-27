@@ -28,7 +28,7 @@
 #include <math.h>
 #include <sys/stat.h>
 
-#include "../../pilight.h"
+#include "pilight.h"
 #include "common.h"
 #include "dso.h"
 #include "log.h"
@@ -43,6 +43,7 @@
 
 #define MAXTIMINGS 100
 
+#if !defined(__FreeBSD__) && !defined(_WIN32)
 static unsigned short dht11_loop = 1;
 static unsigned short dht11_threads = 0;
 
@@ -199,14 +200,17 @@ static void dht11ThreadGC(void) {
 	}
 	protocol_thread_free(dht11);
 }
+#endif
 
-#ifndef MODULE
+#if !defined(MODULE) && !defined(_WIN32)
 __attribute__((weak))
 #endif
 void dht11Init(void) {
+#if !defined(__FreeBSD__) && !defined(_WIN32)
 	pthread_mutexattr_init(&dht11attr);
 	pthread_mutexattr_settype(&dht11attr, PTHREAD_MUTEX_RECURSIVE);
 	pthread_mutex_init(&dht11lock, &dht11attr);
+#endif
 
 	protocol_register(&dht11);
 	protocol_set_id(dht11, "dht11");
@@ -226,11 +230,13 @@ void dht11Init(void) {
 	options_add(&dht11->options, 0, "show-humidity", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
 	options_add(&dht11->options, 0, "poll-interval", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *)10, "[0-9]");
 
+#if !defined(__FreeBSD__) && !defined(_WIN32)
 	dht11->initDev=&dht11InitDev;
 	dht11->threadGC=&dht11ThreadGC;
+#endif
 }
 
-#ifdef MODULE
+#if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "dht11";
 	module->version = "1.6";

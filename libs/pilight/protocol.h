@@ -30,7 +30,7 @@
 
 typedef enum {
 	FIRMWARE = -2,
-	PROC = -1,
+	PROCESS = -1,
 	RAW = 0,
 	SWITCH,
 	DIMMER,
@@ -112,9 +112,9 @@ typedef struct protocols_t {
 	struct protocol_t *listener;
 	char *name;
 	struct protocols_t *next;
-} protocols_t;
+} protocols_;
 
-struct protocols_t *protocols;
+extern struct protocols_t *protocols;
 
 void protocol_init(void);
 struct protocol_threads_t *protocol_thread_init(protocol_t *proto, struct JsonNode *param);

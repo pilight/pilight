@@ -26,16 +26,23 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <signal.h>
-#include <arpa/inet.h>
-#include <netinet/in.h>
-#include <sys/socket.h>
-#include <sys/wait.h>
-#include <sys/un.h>
-#include <netdb.h>
+#ifdef _WIN32
+	#include <winsock2.h>
+	#include <ws2tcpip.h>
+	#define MSG_NOSIGNAL 0
+#else
+	#include <sys/socket.h>
+	#include <sys/time.h>
+	#include <sys/un.h>
+	#include <netinet/in.h>
+	#include <netinet/tcp.h>
+	#include <netdb.h>
+	#include <arpa/inet.h>
+#endif
 #include <stdint.h>
 #include <math.h>
 
-#include "../../pilight.h"
+#include "pilight.h"
 #include "common.h"
 #include "dso.h"
 #include "log.h"
@@ -47,12 +54,22 @@
 #include "gc.h"
 #include "lirc.h"
 
+#ifndef _WIN32
 static char lirc_socket[BUFFER_SIZE];
 static int lirc_sockfd = -1;
 
 static unsigned short lirc_loop = 1;
 static unsigned short lirc_threads = 0;
 static unsigned short lirc_init = 0;
+
+
+// Windows
+// #define UNIX_PATH_MAX 108
+
+// struct sockaddr_un {
+	// uint16_t sun_family;
+	// char sun_path[UNIX_PATH_MAX];
+// };
 
 static void *lircParse(void *param) {
 	struct protocol_threads_t *node = (struct protocol_threads_t *)param;
@@ -202,8 +219,9 @@ static void lircThreadGC(void) {
 	protocol_thread_free(lirc);
 	lirc_init = 0;
 }
+#endif
 
-#ifndef MODULE
+#if !defined(MODULE) && !defined(_WIN32)
 __attribute__((weak))
 #endif
 void lircInit(void) {
@@ -218,15 +236,17 @@ void lircInit(void) {
 	options_add(&lirc->options, 'b', "button", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_STRING, NULL, NULL);
 	options_add(&lirc->options, 'r', "remote", OPTION_HAS_VALUE, DEVICES_ID, JSON_STRING, NULL, NULL);
 
+#ifndef _WIN32
 	lirc->initDev=&lircInitDev;
 	lirc->threadGC=&lircThreadGC;
 	lirc->initDev(NULL);
 
 	memset(lirc_socket, '\0', BUFFER_SIZE);
 	strcpy(lirc_socket, "/dev/lircd");
+#endif
 }
 
-#ifdef MODULE
+#if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "lirc";
 	module->version = "1.4";

@@ -22,14 +22,19 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <unistd.h>
-#include <regex.h>
+
+#ifndef _WIN32
+	#include <regex.h>
+#endif
 #include <sys/stat.h>
 #include <time.h>
 #include <libgen.h>
 
-#include "../../pilight.h"
+#include "pilight.h"
 #include "common.h"
-#include "wiringX.h"
+#ifndef _WIN32
+	#include "wiringX.h"
+#endif
 #include "json.h"
 #include "settings.h"
 #include "log.h"
@@ -44,22 +49,24 @@ typedef struct settings_t {
 	struct settings_t *next;
 } settings_t;
 
+struct config_t *config_settings;
+
 static struct settings_t *settings = NULL;
 
 /* Add a string value to the settings struct */
 static void settings_add_string(const char *name, char *value) {
 	struct settings_t *snode = MALLOC(sizeof(struct settings_t));
 	struct settings_t *tmp = NULL;
-	if(!snode) {
+	if(snode == NULL) {
 		logprintf(LOG_ERR, "out of memory");
 		exit(EXIT_FAILURE);
 	}
-	if(!(snode->name = MALLOC(strlen(name)+1))) {
+	if((snode->name = MALLOC(strlen(name)+1)) == NULL) {
 		logprintf(LOG_ERR, "out of memory");
 		exit(EXIT_FAILURE);
 	}
 	strcpy(snode->name, name);
-	if(!(snode->string_ = MALLOC(strlen(value)+1))) {
+	if((snode->string_ = MALLOC(strlen(value)+1)) == NULL) {
 		logprintf(LOG_ERR, "out of memory");
 		exit(EXIT_FAILURE);
 	}
@@ -83,11 +90,11 @@ static void settings_add_string(const char *name, char *value) {
 static void settings_add_number(const char *name, int value) {
 	struct settings_t *tmp = NULL;
 	struct settings_t *snode = MALLOC(sizeof(struct settings_t));
-	if(!snode) {
+	if(snode == NULL) {
 		logprintf(LOG_ERR, "out of memory");
 		exit(EXIT_FAILURE);
 	}
-	if(!(snode->name = MALLOC(strlen(name)+1))) {
+	if((snode->name = MALLOC(strlen(name)+1)) == NULL) {
 		logprintf(LOG_ERR, "out of memory");
 		exit(EXIT_FAILURE);
 	}
@@ -152,20 +159,20 @@ static int settings_parse(JsonNode *root) {
 	int own_port = -1;
 
 	char *webgui_tpl = MALLOC(strlen(WEBGUI_TEMPLATE)+1);
-	if(!webgui_tpl) {
+	if(webgui_tpl == NULL) {
 		logprintf(LOG_ERR, "out of memory");
 		exit(EXIT_FAILURE);
 	}
 	strcpy(webgui_tpl, WEBGUI_TEMPLATE);
 	char *webgui_root = MALLOC(strlen(WEBSERVER_ROOT)+1);
-	if(!webgui_root) {
+	if(webgui_root == NULL) {
 		logprintf(LOG_ERR, "out of memory");
 		exit(EXIT_FAILURE);
 	}
 	strcpy(webgui_root, WEBSERVER_ROOT);
 #endif
 
-#ifndef __FreeBSD__
+#if !defined(__FreeBSD__) && !defined(_WIN32)
 	regex_t regex;
 	int reti;
 #endif
@@ -197,18 +204,22 @@ static int settings_parse(JsonNode *root) {
 			|| strcmp(jsettings->key, "firmware-gpio-sck") == 0
 			|| strcmp(jsettings->key, "firmware-gpio-mosi") == 0
 			|| strcmp(jsettings->key, "firmware-gpio-miso") == 0) {
+#if !defined(__FreeBSD__) && !defined(_WIN32)
 			if(wiringXSetup() != 0) {
-				have_error = 1;				
+				have_error = 1;
 				goto clear;
 			}
+#endif
 			if(jsettings->tag != JSON_NUMBER) {
 				logprintf(LOG_ERR, "config setting \"%s\" must contain a number larger than 0", jsettings->key);
 				have_error = 1;
 				goto clear;
+#if !defined(__FreeBSD__) && !defined(_WIN32)
 			} else if(wiringXValidGPIO((int)jsettings->number_) != 0) {
 				logprintf(LOG_ERR, "config setting \"%s\" must contain a valid GPIO number", jsettings->key);
 				have_error = 1;
 				goto clear;
+#endif
 			} else {
 				settings_add_number(jsettings->key, (int)jsettings->number_);
 			}
@@ -250,7 +261,11 @@ static int settings_parse(JsonNode *root) {
 			} else {
 				settings_add_number(jsettings->key, (int)jsettings->number_);
 			}
+#ifndef _WIN32
 		} else if(strcmp(jsettings->key, "pid-file") == 0 || strcmp(jsettings->key, "log-file") == 0) {
+#else
+		} else if(strcmp(jsettings->key, "log-file") == 0) {
+#endif
 			if(jsettings->tag != JSON_STRING) {
 				logprintf(LOG_ERR, "config setting \"%s\" must contain an existing path", jsettings->key);
 				have_error = 1;
@@ -278,7 +293,7 @@ static int settings_parse(JsonNode *root) {
 				have_error = 1;
 				goto clear;
 			} else if(strlen(jsettings->string_) > 0) {
-#ifndef __FreeBSD__
+#if !defined(__FreeBSD__) && !defined(_WIN32)
 				char validate[] = "^((\\*|[0-9]|[1-9][0-9]|1[0-9][0-9]|2([0-4][0-9]|5[0-5]))\\.(\\*|[0-9]|[1-9][0-9]|1[0-9][0-9]|2([0-4][0-9]|5[0-5]))\\.(\\*|[0-9]|[1-9][0-9]|1[0-9][0-9]|2([0-4][0-9]|5[0-5]))\\.(\\*|[0-9]|[1-9][0-9]|1[0-9][0-9]|2([0-4][0-9]|5[0-5]))(,[\\ ]|,|$))+$";
 				reti = regcomp(&regex, validate, REG_EXTENDED);
 				if(reti) {
@@ -327,8 +342,7 @@ static int settings_parse(JsonNode *root) {
 				have_error = 1;
 				goto clear;
 			} else {
-				webgui_root = REALLOC(webgui_root, strlen(jsettings->string_)+1);
-				if(!webgui_root) {
+				if((webgui_root = REALLOC(webgui_root, strlen(jsettings->string_)+1)) == NULL) {
 					logprintf(LOG_ERR, "out of memory");
 					exit(EXIT_FAILURE);
 				}
@@ -360,6 +374,7 @@ static int settings_parse(JsonNode *root) {
 			} else {
 				settings_add_number(jsettings->key, (int)jsettings->number_);
 			}
+#ifndef _WIN32
 		} else if(strcmp(jsettings->key, "webserver-user") == 0) {
 			if(jsettings->tag != JSON_STRING) {
 				logprintf(LOG_ERR, "config setting \"%s\" must contain a valid system user", jsettings->key);
@@ -374,6 +389,7 @@ static int settings_parse(JsonNode *root) {
 					settings_add_string(jsettings->key, jsettings->string_);
 				}
 			}
+#endif
 		} else if(strcmp(jsettings->key, "webserver-authentication") == 0 && jsettings->tag == JSON_ARRAY) {
 				JsonNode *jtmp = json_first_child(jsettings);
 				unsigned short i = 0;
@@ -410,15 +426,14 @@ static int settings_parse(JsonNode *root) {
 				have_error = 1;
 				goto clear;
 			} else {
-				webgui_tpl = REALLOC(webgui_tpl, strlen(jsettings->string_)+1);
-				if(!webgui_tpl) {
+				if((webgui_tpl = REALLOC(webgui_tpl, strlen(jsettings->string_)+1)) == NULL) {
 					logprintf(LOG_ERR, "out of memory");
 					exit(EXIT_FAILURE);
 				}
 				strcpy(webgui_tpl, jsettings->string_);
 				settings_add_string(jsettings->key, jsettings->string_);
 			}
-#endif
+#endif // WEBSERVER
 		} else if(strcmp(jsettings->key, "protocol-root") == 0 ||
 							strcmp(jsettings->key, "hardware-root") == 0 ||
 							strcmp(jsettings->key, "action-root") == 0 ||
@@ -443,13 +458,14 @@ static int settings_parse(JsonNode *root) {
 	}
 
 #ifdef WEBSERVER
-	if(webgui_tpl) {
+	if(webgui_tpl != NULL) {
 		char *tmp = MALLOC(strlen(webgui_root)+strlen(webgui_tpl)+13);
-		if(!tmp) {
+		if(tmp == NULL) {
 			logprintf(LOG_ERR, "out of memory");
 			exit(EXIT_FAILURE);
 		}
-		sprintf(tmp, "%s/%s/index.html", webgui_root, webgui_tpl);
+		sprintf(tmp, "%s/%s/", webgui_root, webgui_tpl);
+
 		if(path_exists(tmp) != EXIT_SUCCESS) {
 			logprintf(LOG_ERR, "config setting \"webgui-template\", template does not exists");
 			have_error = 1;
@@ -467,10 +483,10 @@ static int settings_parse(JsonNode *root) {
 #endif
 clear:
 #ifdef WEBSERVER
-	if(webgui_tpl) {
+	if(webgui_tpl != NULL) {
 		FREE(webgui_tpl);
 	}
-	if(webgui_root) {
+	if(webgui_root != NULL) {
 		FREE(webgui_root);
 	}
 #endif

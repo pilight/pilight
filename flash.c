@@ -21,7 +21,6 @@
 #include <stdarg.h>
 #include <unistd.h>
 #include <fcntl.h>
-#include <sys/ioctl.h>
 #include <limits.h>
 #include <errno.h>
 #include <time.h>
@@ -38,11 +37,10 @@
 #include "firmware.h"
 #include "wiringX.h"
 
-struct pilight_t pilight;
-
 int main(int argc, char **argv) {
 	// memtrack();
 
+	atomicinit();
 	log_shell_enable();
 	log_file_disable();
 	log_level_set(LOG_DEBUG);
@@ -85,7 +83,7 @@ int main(int argc, char **argv) {
 				goto close;
 			break;
 			case 'V':
-				printf("%s %s\n", progname, PILIGHT_VERSION);
+				printf("%s v%s\n", progname, PILIGHT_VERSION);
 				goto close;
 			break;
 			case 'C':
@@ -108,7 +106,7 @@ int main(int argc, char **argv) {
 		}
 	}
 
-#ifdef FIRMWARE_UPDATER
+#if defined(FIRMWARE_UPDATER) && !defined(_WIN32)
 	if(config_set_file(configtmp) == EXIT_FAILURE) {
 		goto close;
 	}
@@ -134,10 +132,15 @@ int main(int argc, char **argv) {
 		logprintf(LOG_INFO, "**** DONE UPD. FW ****");
 	}
 #else
-	logprintf(LOG_ERR, "pilight was compiled without firmware flashing support");
+	#ifdef _WIN32
+		logprintf(LOG_ERR, "firmware flashing is not supported on Windows");
+	#else
+		logprintf(LOG_ERR, "pilight was compiled without firmware flashing support");
+	#endif
 #endif
 
 close:
+	log_shell_disable();
 	options_delete(options);
 	if(fwfile != NULL) {
 		FREE(fwfile);
@@ -152,9 +155,11 @@ close:
 	options_gc();
 	event_operator_gc();
 	event_action_gc();
+#ifndef _WIN32
 	wiringXGC();
+#endif
 	log_gc();
-	threads_gc();	
+	threads_gc();
 	gc_clear();
 	FREE(progname);
 	xfree();

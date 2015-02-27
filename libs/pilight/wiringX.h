@@ -19,7 +19,9 @@
 #define _WIRING_X_H_
 
 #include <errno.h>
-#include <syslog.h>
+#ifndef _WIN32
+	#include <syslog.h>
+#endif
 
 #ifndef	TRUE
 #define	TRUE	(1==1)

@@ -31,7 +31,7 @@ static void operatorModulusCallback(double a, double b, char **ret) {
 	sprintf(*ret, "%f",  a - b * floor(a / b));
 }
 
-#ifndef MODULE
+#if !defined(MODULE) && !defined(_WIN32)
 __attribute__((weak))
 #endif
 void operatorModulusInit(void) {
@@ -39,7 +39,7 @@ void operatorModulusInit(void) {
 	operator_modulus->callback_number = &operatorModulusCallback;
 }
 
-#ifdef MODULE
+#if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "%";
 	module->version = "1.0";

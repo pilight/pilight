@@ -23,22 +23,22 @@
    |-|0-----------4|5---------20|21------24|
    |S| group-id[4] | random[16] |unit-id[4]|
    |-|-------------|------------|----------|
-   where: 
+   where:
    S=Start, a short high pulse of 350 us followed by a low of 2350 us
    group-id[4]= 4 logic bits for the group-id code, range 0..15
    unit-id[4]= 4 bits for the unit code for switches 1..4. Two different coding schemes are used
-   random[16]= a 16 bit sequence where no bits seems to have a specific function. Each action 
+   random[16]= a 16 bit sequence where no bits seems to have a specific function. Each action
    for each switch uses 4 codes (40 in total for one group-id) that are transmitted in a rolling sequence by the RC
-   Although codes are reused within a single group, for the sake of code simplicity and readability 
+   Although codes are reused within a single group, for the sake of code simplicity and readability
    this implementation will not use this fact. So we will implement a table with 16*40 = 640 "random" codes
-  
+
    A logic bit is encoded by the position of the high to low transition in the 1540 us bit window.
    A logic 1 therefore is encoded by a mark(high) of 1100 us followed by a space(low) of 440 us.
    A logic 0 is encoded by a mark of 330 us followed by a space of 1210 us
-  
-   The total message consists of 24 bit + start pulse, and has therefore a duration 39660 us 
+
+   The total message consists of 24 bit + start pulse, and has therefore a duration 39660 us
    There is no space between the repetition of a message, so the next message immediately follows the previous message
-   
+
    To program a switch the RC uses a second type of start pulse with a mark(high) of 3000us and a space(low) of 7300us
    In order to be able to program switches from pilight, this implementation mimics this behavior by
    transmitting two normal code sequences followed by a program sequence with this long start pulse.
@@ -50,7 +50,7 @@
 #include <string.h>
 #include <math.h>
 
-#include "../../pilight.h"
+#include "pilight.h"
 #include "common.h"
 #include "dso.h"
 #include "log.h"
@@ -75,7 +75,7 @@
 
 int codetab[16][40] = {
 	/* the next table contains the random codes (bits 4..19) of the 4 code sequences for
-	 * each off-on action for each switch 0..3 in each group-id 0..15. 
+	 * each off-on action for each switch 0..3 in each group-id 0..15.
 	 * For each group-id a separate array is created where de codes are stored in the next order:
 	 * off-codes 0..3 for switch 0, on-codes 0..3 for switch 0,
 	 * off-codes 0..3 for switch 1, on-codes 0..3 for switch 1,
@@ -87,26 +87,26 @@ int codetab[16][40] = {
 	/* code 0 */
 	{ 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0 },
 	/* code 1 */
-	{ 0x616A,0xCF71,0x7AE2,0xB639, 0xF59B,0xE923,0x14C4,0x32A7, 
+	{ 0x616A,0xCF71,0x7AE2,0xB639, 0xF59B,0xE923,0x14C4,0x32A7,
 	  0x616A,0xB639,0xCF71,0x7AE2, 0x14C4,0x32A7,0xF59B,0xE923,
-	  0xCF71,0x616A,0x7AE2,0xB639, 0xE923,0xF59B,0x14C4,0x32A7, 
-	  0x14C4,0xE923,0xF59B,0x32A7, 0x7AE2,0x616A,0xCF71,0xB639, 
+	  0xCF71,0x616A,0x7AE2,0xB639, 0xE923,0xF59B,0x14C4,0x32A7,
+	  0x14C4,0xE923,0xF59B,0x32A7, 0x7AE2,0x616A,0xCF71,0xB639,
 	  0x14C4,0xE923,0xF59B,0x32A7, 0x7AE2,0x616A,0xB639,0xCF71 },
 	/* code 2 */
 	{ 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0 },
 	/* code 3 */
-	{ 0x32D7,0x7D4B,0x9482,0xC818, 0x067A,0x2901,0xB1B6,0xEA35, 
-	  0x5B5C,0x6364,0x85F9,0xFEED, 0x1FA0,0x4CCF,0xA793,0xD02E, 
-	  0x067A,0x2901,0xB1B6,0xEA35, 0x32D7,0x7D4B,0x9482,0xC818, 
-	  0x1FA0,0x4CCF,0xA793,0xD02E, 0x5B5C,0x6364,0x85F9,0xFEED, 
+	{ 0x32D7,0x7D4B,0x9482,0xC818, 0x067A,0x2901,0xB1B6,0xEA35,
+	  0x5B5C,0x6364,0x85F9,0xFEED, 0x1FA0,0x4CCF,0xA793,0xD02E,
+	  0x067A,0x2901,0xB1B6,0xEA35, 0x32D7,0x7D4B,0x9482,0xC818,
+	  0x1FA0,0x4CCF,0xA793,0xD02E, 0x5B5C,0x6364,0x85F9,0xFEED,
 	  0x067A,0x2901,0xB1B6,0xEA35, 0x32D7,0x7D4B,0x9482,0xC818 },
 	/* code 4 */
 	{ 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0 },
 	/* code 5 */
-	{ 0x23C2,0x71A1,0x88DA,0xDC19, 0x1FBB,0x39E4,0xA743,0xFE77, 
-      0x23C2,0x71A1,0x88DA,0xDC19, 0x1FBB,0x39E4,0xA743,0xFE77, 
-	  0x23C2,0x71A1,0x88DA,0xDC19, 0x1FBB,0x39E4,0xA743,0xFE77, 
-	  0x1FBB,0x39E4,0xA743,0xFE77, 0x23C2,0x71A1,0x88DA,0xDC19, 
+	{ 0x23C2,0x71A1,0x88DA,0xDC19, 0x1FBB,0x39E4,0xA743,0xFE77,
+      0x23C2,0x71A1,0x88DA,0xDC19, 0x1FBB,0x39E4,0xA743,0xFE77,
+	  0x23C2,0x71A1,0x88DA,0xDC19, 0x1FBB,0x39E4,0xA743,0xFE77,
+	  0x1FBB,0x39E4,0xA743,0xFE77, 0x23C2,0x71A1,0x88DA,0xDC19,
 	  0x1FBB,0x39E4,0xA743,0xFE77, 0x23C2,0x71A1,0x88DA,0xDC19 },
 	/* code 6 */
 	{ 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0 },
@@ -115,16 +115,16 @@ int codetab[16][40] = {
 	/* code 8 */
 	{ 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0 },
 	/* code 9 */
-	{ 0x1B1A,0x27D9,0x75C1,0xC0A2, 0x02FB,0x3D03,0x6EE7,0xB974, 
-	  0x1B1A,0x27D9,0x75C1,0xC0A2, 0x02FB,0x3D03,0x6EE7,0xB974, 
-	  0x1B1A,0x27D9,0x75C1,0xC0A2, 0x02FB,0x3D03,0x6EE7,0xB974, 
-	  0x02FB,0x3D03,0x6EE7,0xB974, 0x1B1A,0x27D9,0x75C1,0xC0A2, 
+	{ 0x1B1A,0x27D9,0x75C1,0xC0A2, 0x02FB,0x3D03,0x6EE7,0xB974,
+	  0x1B1A,0x27D9,0x75C1,0xC0A2, 0x02FB,0x3D03,0x6EE7,0xB974,
+	  0x1B1A,0x27D9,0x75C1,0xC0A2, 0x02FB,0x3D03,0x6EE7,0xB974,
+	  0x02FB,0x3D03,0x6EE7,0xB974, 0x1B1A,0x27D9,0x75C1,0xC0A2,
 	  0x02FB,0x3D03,0x6EE7,0xB974, 0x1B1A,0x27D9,0x75C1,0xC0A2 },
 	/* code 10 */
-	{ 0x9E98,0xC2AB,0xE057,0xF4F2, 0x460A,0x6971,0x77E6,0xBB25, 
-	  0x0CBD,0x1589,0x51C4,0x8FDC, 0x2313,0x386F,0xAD3E,0xDA40, 
-	  0x460A,0x6971,0x77E6,0xBB25, 0x9E98,0xC2AB,0xE057,0xF4F2, 
-	  0x2313,0x386F,0xAD3E,0xDA40, 0x0CBD,0x1589,0x51C4,0x8FDC, 
+	{ 0x9E98,0xC2AB,0xE057,0xF4F2, 0x460A,0x6971,0x77E6,0xBB25,
+	  0x0CBD,0x1589,0x51C4,0x8FDC, 0x2313,0x386F,0xAD3E,0xDA40,
+	  0x460A,0x6971,0x77E6,0xBB25, 0x9E98,0xC2AB,0xE057,0xF4F2,
+	  0x2313,0x386F,0xAD3E,0xDA40, 0x0CBD,0x1589,0x51C4,0x8FDC,
 	  0x460A,0x6971,0x77E6,0xBB25, 0x9E98,0xC2AB,0xE057,0xF4F2 },
 	/* code 11 */
 	{ 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0 },
@@ -133,16 +133,16 @@ int codetab[16][40] = {
 	/* code 13 */
 	{ 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0 },
 	/* code 14 */
-	{ 0xE692,0x98F8,0x577B,0xABB7, 0x0AD6,0xBDA1,0xC465,0x6F4A, 
-	  0xF234,0x89EC,0x2519,0x715D, 0x1383,0xDC2F,0x40CE,0x3E00, 
-	  0x0AD6,0xBDA1,0xC465,0x6F4A, 0xE692,0x98F8,0x577B,0xABB7, 
-	  0x1383,0xDC2F,0x40CE,0x3E00, 0xF234,0x89EC,0x2519,0x715D, 
+	{ 0xE692,0x98F8,0x577B,0xABB7, 0x0AD6,0xBDA1,0xC465,0x6F4A,
+	  0xF234,0x89EC,0x2519,0x715D, 0x1383,0xDC2F,0x40CE,0x3E00,
+	  0x0AD6,0xBDA1,0xC465,0x6F4A, 0xE692,0x98F8,0x577B,0xABB7,
+	  0x1383,0xDC2F,0x40CE,0x3E00, 0xF234,0x89EC,0x2519,0x715D,
 	  0x0AD6,0xBDA1,0xC465,0x6F4A, 0xE692,0x98F8,0x577B,0xABB7 },
 	/* code 15 */
-	{ 0x1067,0x3D02,0x9B1B,0, 0x2636,0x6C81,0xE5B5,0xF1FA, 
-	  0x432D,0x54CC,0x8A79,0xC7D4, 0x7290,0xA85F,0xDFEE,0, 
-	  0x2636,0x6C81,0xE5B5,0xF1FA, 0x1067,0x3D02,0x9B1B,0, 
-	  0x7290,0xA85F,0xDFEE,0, 0x432D,0x54CC,0x8A79,0xC7D4, 
+	{ 0x1067,0x3D02,0x9B1B,0, 0x2636,0x6C81,0xE5B5,0xF1FA,
+	  0x432D,0x54CC,0x8A79,0xC7D4, 0x7290,0xA85F,0xDFEE,0,
+	  0x2636,0x6C81,0xE5B5,0xF1FA, 0x1067,0x3D02,0x9B1B,0,
+	  0x7290,0xA85F,0xDFEE,0, 0x432D,0x54CC,0x8A79,0xC7D4,
 	  0x2636,0x6C81,0xE5B5,0xF1FA, 0x1067,0x3D02,0x9B1B,0 }
 };
 
@@ -156,14 +156,14 @@ int unittab[2][5] = {
 	{ 0xC, 0x5, 0xE, 0x7, 0x2 }	/* 2nd gen switch-codes */
 };
 
-int gentab[16] = 
-	/* This table defines the switch generation for each group-id 
+int gentab[16] =
+	/* This table defines the switch generation for each group-id
 	 * A 0 at location x means group-id x belongs to first generation, and a 1 means second generation
 	 */
 	 /* for now only group-id 1,5,9 and 12 are first generation */
 	{1,0,1,1,1,0,1,1,1,0,1,1,0,1,1,1};
 
-#define NRSUPERMASK 0x07 
+#define NRSUPERMASK 0x07
 #define NRSUPERCODES (NRSUPERMASK+1)	/* we will use 8 on and 8 off supercodes */
 /* make sure the number of Supercodes is always a power of 2, i.e. 2,4,8,16 ... */
 int supercodes[2*NRSUPERCODES] = {
@@ -174,10 +174,10 @@ int supercodes[2*NRSUPERCODES] = {
 	0x0F005,0x1F008,0x4F015,0x5F018,0x8F025,0x9F028,0xCF02C,0xDF03C };
 
 char bincode[BIN_LENGTH+1];
-	
+
 void quiggGT1000CreateMessage(int id, int unit, int state, int seq) {
 	int i = 0;
-	
+
 	for(i=0;i<quigg_gt1000->binlen;i++) {
 		bincode[i] = bincode[i] | 0x30; /* convert bin 0,1 into char 0,1 */
 	}
@@ -197,14 +197,14 @@ void quiggGT1000CreateMessage(int id, int unit, int state, int seq) {
 }
 
 int quiggGT1000FillLow(int idx) {
-	/* fill in the mark-space code for a logic Low = short pulse*/	
+	/* fill in the mark-space code for a logic Low = short pulse*/
 	quigg_gt1000->raw[idx++] = SHORT_MARK;
 	quigg_gt1000->raw[idx++] = LONG_SPACE;
 	return idx;
 }
 
 int quiggGT1000FillHigh(int idx) {
-	/* fill in the mark-space code for a logic High = long pulse*/	
+	/* fill in the mark-space code for a logic High = long pulse*/
 	quigg_gt1000->raw[idx++] = LONG_MARK;
 	quigg_gt1000->raw[idx++] = SHORT_SPACE;
 	return idx;
@@ -212,7 +212,7 @@ int quiggGT1000FillHigh(int idx) {
 
 void quiggGT1000NumtoBin(int idx, int num, int len) {
 	/* fill in bits idx to idx+len-1 for number, msb first */
-	for(len--;len>=0;len--) {	
+	for(len--;len>=0;len--) {
 		bincode[idx+len] = (num & 1); /* value is lsb num */
 		num = num>>1; /* shift number 1 place to right, so 2th bit becomes lsb */
 	}
@@ -224,7 +224,7 @@ int quiggGT1000FillRawCode(void) {
 
 	int idx = 0; /* the index into the raw matrix, starting with 0 */
 	int cnt = 0;
-	
+
 	quigg_gt1000->raw[idx++] = START_MARK; /* always start with start pulse */
 	quigg_gt1000->raw[idx++] = START_SPACE;
 	for(cnt=0;cnt<quigg_gt1000->binlen; cnt++) {
@@ -249,10 +249,10 @@ int quiggGT1000FillRawCode(void) {
 
 int quiggGT1000FillBinCode(int id, int unit, int state, int codeseq) {
 	int genindex = 0, rcodeindex = 0;
-	
-	/* encode id */	
+
+	/* encode id */
 	quiggGT1000NumtoBin(0, id, 4); /* first 4 bits [0..3] is id-code */
-	
+
 	/* encode the right random code, depends on id, state and unit, state=0,1 */
 	rcodeindex= 8*unit + 4*state; /*calculate second index into codetab*/
 	if(codetab[id][rcodeindex + codeseq] == 0) {	/* no random code available? */
@@ -267,7 +267,7 @@ int quiggGT1000FillBinCode(int id, int unit, int state, int codeseq) {
 	}
 	/* now we have an index for a valid random code, so put it in our codetab  starting at position 4 */
 	quiggGT1000NumtoBin(4, codetab[id][rcodeindex + codeseq], 16);
-    
+
 	/* encode the unit part of the command */
 	/* key1..4 represents unit0..3, encoding depends on generation */
 	/* master key results in unit=4, encoding depends on generation */
@@ -279,9 +279,9 @@ int quiggGT1000FillBinCode(int id, int unit, int state, int codeseq) {
 void quiggGT1000FillSuperBinCode(int state, int codeseq) {
 	/* encode the right random supercode, depends on state=0,1 and codeseq*/
 	quiggGT1000NumtoBin(0, supercodes[NRSUPERCODES * state + codeseq], 20);
-    
+
 	/* encode the unit part of the command, is always 1000 or 8 */
-	quiggGT1000NumtoBin(20, 8, 4); 
+	quiggGT1000NumtoBin(20, 8, 4);
 }
 
 
@@ -334,18 +334,18 @@ int quiggGT1000CreateCode(JsonNode *code) { // function to create the raw code
 		if(super == 1) { /* do we want supercodes?  */
 			/* for supercodes we use a non-existend id and unit */
 			id = 16; /* this does only influence the CreateMessage and not the bin code generation */
-			unit = 5; 
+			unit = 5;
 			quiggGT1000FillSuperBinCode(state, seq); /*create binary supercode string */
 		} else if(quiggGT1000FillBinCode(id, unit, state, seq) != EXIT_SUCCESS) {
 			return EXIT_FAILURE; /* failure because no codeseq was available */
 		}
-			
+
 		/* and now convert binary to Mark-Space combis */
 		if(quiggGT1000FillRawCode() != quigg_gt1000->rawlen) {
 			/* this Error should never occur. It indicates a wrong raw protocol length or misaligned fill */
 			logprintf(LOG_ERR, "quigg_gt1000: raw index not correct");
 			return EXIT_FAILURE;
-		}	
+		}
 		quiggGT1000CreateMessage(id, unit, state, seq);
 	}
 	return EXIT_SUCCESS;
@@ -359,10 +359,10 @@ void quiggGT1000PrintHelp(void) { // print help for this protocol (send -p <name
 	printf("\t -a --all\tcontrol all devices with this id\n");
 	printf("\t -s --super\tcontrol all devices regardless of id\n");
 	printf("\t -n --num\toptional use random (super)code sequence num 0..3 (%d)\n", NRSUPERCODES-1);
-	
+
 }
 
-#ifndef MODULE
+#if !defined(MODULE) && !defined(_WIN32)
 __attribute__((weak))
 #endif
 void quiggGT1000Init(void) {
@@ -371,9 +371,9 @@ void quiggGT1000Init(void) {
 	protocol_device_add(quigg_gt1000, "quigg_gt1000", "Quigg GT-1000 protocol");
 	quigg_gt1000->hwtype = RF433;
 	quigg_gt1000->devtype = SWITCH;
-	quigg_gt1000->rawlen = 151;	
-	quigg_gt1000->binlen = BIN_LENGTH;	
-    
+	quigg_gt1000->rawlen = 151;
+	quigg_gt1000->binlen = BIN_LENGTH;
+
 	options_add(&quigg_gt1000->options, 't', "on", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
 	options_add(&quigg_gt1000->options, 'f', "off", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
 	options_add(&quigg_gt1000->options, 'u', "unit", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^([0-5])$");
@@ -385,10 +385,10 @@ void quiggGT1000Init(void) {
 	options_add(&quigg_gt1000->options, 0, "readonly", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 
 	quigg_gt1000->printHelp = &quiggGT1000PrintHelp;
-	quigg_gt1000->createCode = &quiggGT1000CreateCode;	
+	quigg_gt1000->createCode = &quiggGT1000CreateCode;
 }
 
-#ifdef MODULE
+#if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "quigg_gt1000";
 	module->version = "0.1";

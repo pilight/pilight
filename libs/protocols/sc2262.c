@@ -21,7 +21,7 @@
 #include <string.h>
 #include <math.h>
 
-#include "../../pilight.h"
+#include "pilight.h"
 #include "common.h"
 #include "dso.h"
 #include "log.h"
@@ -49,7 +49,7 @@ static void sc2262ParseBinary(void) {
 	sc2262CreateMessage(systemcode, unitcode, state);
 }
 
-#ifndef MODULE
+#if !defined(MODULE) && !defined(_WIN32)
 __attribute__((weak))
 #endif
 void sc2262Init(void) {
@@ -75,7 +75,7 @@ void sc2262Init(void) {
 	sc2262->parseBinary=&sc2262ParseBinary;
 }
 
-#ifdef MODULE
+#if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "sc2262";
 	module->version = "1.0";
