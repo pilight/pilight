@@ -21,7 +21,7 @@
 #include <string.h>
 #include <math.h>
 
-#include "../../pilight.h"
+#include "pilight.h"
 #include "common.h"
 #include "dso.h"
 #include "log.h"
@@ -244,7 +244,7 @@ static void quiggScreenPrintHelp(void) {
 	printf("\t -t --down\t\t\tsend an brighten UP command to the selected device\n");
 }
 
-#ifndef MODULE
+#if !defined(MODULE) && !defined(_WIN32)
 __attribute__((weak))
 #endif
 void quiggScreenInit(void) {
@@ -276,7 +276,7 @@ void quiggScreenInit(void) {
 	quigg_screen->printHelp=&quiggScreenPrintHelp;
 }
 
-#ifdef MODULE
+#if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "quigg_screen";
 	module->version = "1.2";

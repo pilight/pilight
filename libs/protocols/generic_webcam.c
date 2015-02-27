@@ -21,7 +21,7 @@
 #include <math.h>
 #include <string.h>
 
-#include "../../pilight.h"
+#include "pilight.h"
 #include "common.h"
 #include "dso.h"
 #include "log.h"
@@ -45,7 +45,7 @@ static int genWebcamCheckValues(JsonNode *code) {
 	return 0;
 }
 
-#ifndef MODULE
+#if !defined(MODULE) && !defined(_WIN32)
 __attribute__((weak))
 #endif
 void genWebcamInit(void) {
@@ -67,7 +67,7 @@ void genWebcamInit(void) {
 	generic_webcam->checkValues=genWebcamCheckValues;
 }
 
-#ifdef MODULE
+#if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "generic_webcam";
 	module->version = "1.2";

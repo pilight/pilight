@@ -35,59 +35,67 @@ endif()
 #Final compilation all platforms
 #Removing debugging for final compilation
 set(CMAKE_SKIP_RPATH TRUE)
-set(CMAKE_EXE_LINKER_FLAGS " -Wl,-rpath=/usr/local/lib/,-rpath=/usr/lib/,-rpath=/lib/")
-set(CMAKE_SHARED_LINKER_FLAGS " -Wl,-rpath=/usr/local/lib/,-rpath=/usr/lib/,-rpath=/lib/")
-set(CMAKE_MODULE_LINKER_FLAGS " -Wl,-rpath=/usr/local/lib/,-rpath=/usr/lib/,-rpath=/lib/")
-
-if(${PROTOCOL_ARPING} MATCHES "ON")
-	set(CMAKE_PCAP_LIBS_INIT)
-
-	find_library(CMAKE_PCAP_LIBS_INIT
-				NAME pcap
-							PATHS
-											${CROSS_COMPILE_LIBS}
-											/usr/lib
-											/usr/lib32
-											/usr/lib64
-											/usr/lib/i386-linux-gnu		
-											/usr/lib/x86_64-linux-gnu
-											/usr/local/lib
-											/usr/local/lib32
-											/usr/local/lib64
-											/usr/lib/arm-linux-gnueabi
-											/usr/lib/arm-linux-gnueabihf
-				NO_DEFAULT_PATH)	
-
-	if(${CMAKE_PCAP_LIBS_INIT} MATCHES "CMAKE_PCAP_LIBS_INIT-NOTFOUND")
-		message(FATAL_ERROR "Looking for libpcap - not found")
-	else()
-		message(STATUS "Looking for libpcap - found (${CMAKE_PCAP_LIBS_INIT})")
-	endif()
+if(WIN32)
+	set(CMAKE_EXE_LINKER_FLAGS "-static-libgcc")
+	set(CMAKE_SHARED_LINKER_FLAGS "-static-libgcc")
+	set(CMAKE_MODULE_LINKER_FLAGS "-static-libgcc")
+else()
+	set(CMAKE_EXE_LINKER_FLAGS " -Wl,-rpath=/usr/local/lib/,-rpath=/usr/lib/,-rpath=/lib/")
+	set(CMAKE_SHARED_LINKER_FLAGS " -Wl,-rpath=/usr/local/lib/,-rpath=/usr/lib/,-rpath=/lib/")
+	set(CMAKE_MODULE_LINKER_FLAGS " -Wl,-rpath=/usr/local/lib/,-rpath=/usr/lib/,-rpath=/lib/")
 endif()
 
-set(CMAKE_UNWIND_LIBS_INIT)
+if(NOT WIN32)
+	if(${PROTOCOL_ARPING} MATCHES "ON")
+		set(CMAKE_PCAP_LIBS_INIT)
 
-find_library(CMAKE_UNWIND_LIBS_INIT
-			NAME unwind
-            PATHS
-										${CROSS_COMPILE_LIBS}
-										/usr/lib
-                    /usr/lib32
-                    /usr/lib64
-                    /usr/lib/i386-linux-gnu		
-                    /usr/lib/x86_64-linux-gnu
-                    /usr/local/lib
-                    /usr/local/lib32
-                    /usr/local/lib64
-                    /usr/lib/arm-linux-gnueabi
-                    /usr/lib/arm-linux-gnueabihf
+		find_library(CMAKE_PCAP_LIBS_INIT
+			NAME pcap
+			PATHS
+				${CROSS_COMPILE_LIBS}
+				/usr/lib
+				/usr/lib32
+				/usr/lib64
+				/usr/lib/i386-linux-gnu		
+				/usr/lib/x86_64-linux-gnu
+				/usr/local/lib
+				/usr/local/lib32
+				/usr/local/lib64
+				/usr/lib/arm-linux-gnueabi
+				/usr/lib/arm-linux-gnueabihf
 			NO_DEFAULT_PATH)	
 
-if(${CMAKE_UNWIND_LIBS_INIT} MATCHES "CMAKE_UNWIND_LIBS_INIT-NOTFOUND")
-	message(FATAL_ERROR "Looking for libunwind - not found")
-else()
-	message(STATUS "Looking for libunwind - found (${CMAKE_UNWIND_LIBS_INIT})")
-endif()
+		if(${CMAKE_PCAP_LIBS_INIT} MATCHES "CMAKE_PCAP_LIBS_INIT-NOTFOUND")
+			message(FATAL_ERROR "Looking for libpcap - not found")
+		else()
+			message(STATUS "Looking for libpcap - found (${CMAKE_PCAP_LIBS_INIT})")
+		endif()
+	endif()
+
+	set(CMAKE_UNWIND_LIBS_INIT)
+
+	find_library(CMAKE_UNWIND_LIBS_INIT
+	NAME unwind
+	PATHS
+		${CROSS_COMPILE_LIBS}
+		/usr/lib
+		/usr/lib32
+		/usr/lib64
+		/usr/lib/i386-linux-gnu		
+		/usr/lib/x86_64-linux-gnu
+		/usr/local/lib
+		/usr/local/lib32
+		/usr/local/lib64
+		/usr/lib/arm-linux-gnueabi
+		/usr/lib/arm-linux-gnueabihf
+	NO_DEFAULT_PATH)
+
+	if(${CMAKE_UNWIND_LIBS_INIT} MATCHES "CMAKE_UNWIND_LIBS_INIT-NOTFOUND")
+		message(FATAL_ERROR "Looking for libunwind - not found")
+	else()
+		message(STATUS "Looking for libunwind - found (${CMAKE_UNWIND_LIBS_INIT})")
+	endif()
+endif()	
 
 if(${CMAKE_SYSTEM_PROCESSOR} MATCHES "armv6" OR CPACK_DEBIAN_PACKAGE_ARCHITECTURE MATCHES "armhf")
 	if(${USE_SOFT_FLOAT} MATCHES "OFF")
@@ -105,10 +113,14 @@ elseif(${CMAKE_SYSTEM_PROCESSOR} MATCHES "armv7l")
 	endif()
 elseif(${CMAKE_SYSTEM_PROCESSOR} MATCHES "64")
 	set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE amd64)
-	set(CMAKE_C_FLAGS "-Ofast -fPIC -march=native -mtune=native -ffast-math -Wconversion -Wunreachable-code -Wstrict-prototypes -Wfloat-equal -Wshadow -Wpointer-arith -Wcast-align -Wstrict-overflow=5 -Wwrite-strings -Waggregate-return -Wcast-qual -Wswitch-default -Wswitch-enum -Wformat=2 -g3 -Wall")
+	set(CMAKE_C_FLAGS "-Ofast -fPIC -march=native -mtune=native -ffast-math -Wconversion -Wunreachable-code -Wstrict-prototypes -Wfloat-equal -Wshadow -Wpointer-arith -Wcast-align -Wstrict-overflow=5 -Wwrite-strings -Waggregate-return -Wcast-qual -Wswitch-default -Wswitch-enum -Wformat=2 -g -Wall")
+elseif(${CMAKE_SYSTEM_PROCESSOR} MATCHES "i686")
+	# Including debug symbols creates a +100MB dll file.
+	set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE i686)
+	set(CMAKE_C_FLAGS "-Os -g -gdwarf-2 -gstrict-dwarf -march=native -mtune=native -ffast-math -Wformat=2 -Wformat-nonliteral -lws2_32 -liphlpapi")
 elseif()
 	set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE i386)
-	set(CMAKE_C_FLAGS "-O2 -fPIC -march=native -mtune=native -ffast-math -Wformat=2 -g3 -Wformat-nonliteral")
+	set(CMAKE_C_FLAGS "-O2 -fPIC -march=native -mtune=native -ffast-math -Wformat=2 -g -Wformat-nonliteral")
 endif()
 
 # Compile final sources for Ubuntu 64bit
@@ -122,6 +134,7 @@ if(CPACK_DEBIAN_PACKAGE_ARCHITECTURE MATCHES "i386")
 	set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE i386)
 endif()
 
+if(NOT WIN32)
 # Start uninstaller generator
 function(WRITE_UNINSTALL_TARGET_SCRIPT)
     # Create uninstall target template file, if it doesn't exist...
@@ -162,10 +175,11 @@ execute_process(COMMAND rm /usr/local/lib/libpilight.so 2>/dev/null)
 endfunction()
 # End of the uninstaller generator
 
-if(NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/cmake_postinstall.cmake)
-	set(__uninstall_filename ${CMAKE_CURRENT_BINARY_DIR}/cmake_postinstall.cmake)
-	# BEGIN actual write to file...
-	file(WRITE ${__uninstall_filename} "execute_process(COMMAND update-rc.d pilight defaults)")
+	if(NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/cmake_postinstall.cmake)
+		set(__uninstall_filename ${CMAKE_CURRENT_BINARY_DIR}/cmake_postinstall.cmake)
+		# BEGIN actual write to file...
+		file(WRITE ${__uninstall_filename} "execute_process(COMMAND update-rc.d pilight defaults)")
+	endif()
 endif()
 
 execute_process(COMMAND git describe --always
@@ -189,9 +203,14 @@ if(${EVENTS} MATCHES "ON")
 	include_directories("${PROJECT_SOURCE_DIR}/libs/actions/")
 endif()
 
-include_directories("${PROJECT_SOURCE_DIR}/libs/avrdude/")
 include_directories("${PROJECT_SOURCE_DIR}/libs/polarssl/")
-include_directories("${PROJECT_SOURCE_DIR}/libs/platform/")
+
+if(WIN32)
+	include_directories("${PROJECT_SOURCE_DIR}/libs/pthreadw32/")
+else()
+	include_directories("${PROJECT_SOURCE_DIR}/libs/avrdude/")
+	include_directories("${PROJECT_SOURCE_DIR}/libs/platform/")
+endif()
 
 file(GLOB protocol_headers
 	"${PROJECT_SOURCE_DIR}/libs/protocols/*.h"
@@ -205,9 +224,11 @@ file(GLOB platform_headers
 	"${PROJECT_SOURCE_DIR}/libs/platform/*.h"
 )
 
-file(GLOB platform
-	"${PROJECT_SOURCE_DIR}/libs/platform/*.c"
-)
+if(NOT WIN32)
+	file(GLOB platform
+		"${PROJECT_SOURCE_DIR}/libs/platform/*.c"
+	)
+endif()
 
 file(GLOB config
 	"${PROJECT_SOURCE_DIR}/libs/config/*.c"
@@ -238,6 +259,34 @@ file(GLOB pilight
 file(GLOB avrdude_sources "${PROJECT_SOURCE_DIR}/libs/avrdude/*.c")
 file(GLOB polarssl_sources "${PROJECT_SOURCE_DIR}/libs/polarssl/*.c")
 
+if(WIN32)
+	add_custom_command(OUTPUT manifest.obj COMMAND ${CMAKE_WINDRES_COMPILER} -o manifest.obj manifest.rc)
+	add_library(manifest STATIC manifest.obj)	
+	set_source_files_properties(manifest.obj PROPERTIES EXTERNAL_OBJECT true GENERATED true)
+	set_target_properties(manifest PROPERTIES LINKER_LANGUAGE C)	
+
+	set(pthreadw32 
+		"${PROJECT_SOURCE_DIR}/libs/pthreadw32/attr.c"
+		"${PROJECT_SOURCE_DIR}/libs/pthreadw32/barrier.c"
+		"${PROJECT_SOURCE_DIR}/libs/pthreadw32/cancel.c"
+		"${PROJECT_SOURCE_DIR}/libs/pthreadw32/cleanup.c"
+		"${PROJECT_SOURCE_DIR}/libs/pthreadw32/condvar.c"
+		"${PROJECT_SOURCE_DIR}/libs/pthreadw32/create.c"
+		"${PROJECT_SOURCE_DIR}/libs/pthreadw32/dll.c"
+		"${PROJECT_SOURCE_DIR}/libs/pthreadw32/errno.c"
+		"${PROJECT_SOURCE_DIR}/libs/pthreadw32/exit.c"
+		"${PROJECT_SOURCE_DIR}/libs/pthreadw32/fork.c"
+		"${PROJECT_SOURCE_DIR}/libs/pthreadw32/global.c"
+		"${PROJECT_SOURCE_DIR}/libs/pthreadw32/misc.c"
+		"${PROJECT_SOURCE_DIR}/libs/pthreadw32/mutex.c"
+		"${PROJECT_SOURCE_DIR}/libs/pthreadw32/nonportable.c"
+		"${PROJECT_SOURCE_DIR}/libs/pthreadw32/private.c"
+		"${PROJECT_SOURCE_DIR}/libs/pthreadw32/sched.c"
+		"${PROJECT_SOURCE_DIR}/libs/pthreadw32/semaphore.c"
+		"${PROJECT_SOURCE_DIR}/libs/pthreadw32/sync.c"
+		"${PROJECT_SOURCE_DIR}/libs/pthreadw32/tsd.c"
+	)
+endif()
 
 if(${EVENTS} MATCHES "ON")
 	file(GLOB operators
@@ -255,6 +304,19 @@ if(${EVENTS} MATCHES "ON")
 	file(GLOB actions_headers
 		"${PROJECT_SOURCE_DIR}/libs/actions/*.h"
 	)
+endif()
+
+if(WIN32)
+	list(REMOVE_ITEM protocol_headers "${PROJECT_SOURCE_DIR}/libs/protocols/arping.h")
+	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/arping.c")
+	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/pilight/arp.h")
+	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/pilight/arp.c")
+	list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/pilight/wiringX.h")	
+	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/pilight/wiringX.c")
+	list(REMOVE_ITEM hardware_headers "${PROJECT_SOURCE_DIR}/libs/hardware/433gpio.h")	
+	list(REMOVE_ITEM hardware "${PROJECT_SOURCE_DIR}/libs/hardware/433gpio.c")	
+	list(REMOVE_ITEM hardware_headers "${PROJECT_SOURCE_DIR}/libs/hardware/433lirc.h")	
+	list(REMOVE_ITEM hardware "${PROJECT_SOURCE_DIR}/libs/hardware/433lirc.c")	
 endif()
 
 if(${PROTOCOL_ALECTO_WSD17} MATCHES "OFF")
@@ -620,14 +682,16 @@ if(${EVENTS} MATCHES "OFF")
 	list(REMOVE_ITEM config "${PROJECT_SOURCE_DIR}/libs/config/rules.c")
 endif()
 
-if(${FIRMWARE_UPDATER} MATCHES "OFF")
+if(${FIRMWARE_UPDATER} MATCHES "OFF" OR WIN32)
 	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/pilight/firmware.c")
 	list(REMOVE_ITEM pilight ${avrdude_sources})
 	file(GLOB avrdude_headers "${PROJECT_SOURCE_DIR}/libs/avrdude/*.h")
 	list(REMOVE_ITEM pilight ${avrdude_headers})
 endif()
 
-find_package(Threads REQUIRED)
+if(NOT WIN32)
+	find_package(Threads REQUIRED)
+endif()
 
 if(${MODULESPACK} MATCHES "OFF")
 	if(${UPDATE} MATCHES "ON")
@@ -749,7 +813,7 @@ if(${MODULESPACK} MATCHES "OFF")
 	configure_file(defines.h.in defines.h)
 endif()
 
-if(${MODULESPACK} MATCHES "ON")
+if(${MODULESPACK} MATCHES "ON" AND NOT WIN32)
 	foreach(file ${protocol})
 		get_filename_component(name ${file} NAME_WE)
 		add_library(${name}_module MODULE ${file})
@@ -809,24 +873,45 @@ if(${MODULESPACK} MATCHES "ON")
 	endif()
 endif()
 
-if(${MODULESPACK} MATCHES "OFF")
+if(${MODULESPACK} MATCHES "OFF" OR WIN32)
 	if(${EVENTS} MATCHES "ON")
-		add_library(pilight OBJECT ${pilight} ${protocol} ${hardware} ${platform} ${config} ${operators} ${actions})
+		if(WIN32)
+			add_library(pilight OBJECT ${pilight} ${protocol} ${hardware} ${platform} ${config} ${operators} ${actions} ${pthreadw32})
+		else()
+			add_library(pilight OBJECT ${pilight} ${protocol} ${hardware} ${platform} ${config} ${operators} ${actions})
+		endif()
 	else()
-		add_library(pilight OBJECT ${pilight} ${protocol} ${hardware} ${platform} ${config})
+		if(WIN32)
+			add_library(pilight OBJECT ${pilight} ${protocol} ${hardware} ${platform} ${config} ${pthreadw32})
+		else()
+			add_library(pilight OBJECT ${pilight} ${protocol} ${hardware} ${platform} ${config})
+		endif()
 	endif()
 
 	add_library(pilight_static STATIC $<TARGET_OBJECTS:pilight>)
 	add_library(pilight_shared SHARED $<TARGET_OBJECTS:pilight>)
 
-	target_link_libraries(pilight_shared ${CMAKE_THREAD_LIBS_INIT})
+	if(NOT WIN32)
+		target_link_libraries(pilight_shared ${CMAKE_THREAD_LIBS_INIT})
+	else()
+		target_link_libraries(pilight_shared ws2_32)
+		target_link_libraries(pilight_shared wsock32)
+		target_link_libraries(pilight_shared iphlpapi)
+	endif()
+
 	target_link_libraries(pilight_shared m)
 	if(${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
 		target_link_libraries(pilight_shared execinfo)
 	endif()
-	target_link_libraries(pilight_shared rt)
+	if(NOT WIN32)
+		target_link_libraries(pilight_shared rt)
+	endif()
 	target_link_libraries(pilight_shared ${CMAKE_DL_LIBS})
-	target_link_libraries(pilight_static ${CMAKE_THREAD_LIBS_INIT})
+
+	if(NOT WIN32)
+		target_link_libraries(pilight_static ${CMAKE_THREAD_LIBS_INIT})
+	endif()
+
 	target_link_libraries(pilight_static m)
 	if(${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
 		target_link_libraries(pilight_static execinfo)
@@ -838,58 +923,78 @@ if(${MODULESPACK} MATCHES "OFF")
 		target_link_libraries(pilight_shared ${CMAKE_PCAP_LIBS_INIT})
 		target_link_libraries(pilight_static ${CMAKE_PCAP_LIBS_INIT})
 	endif()
-	target_link_libraries(pilight_shared ${CMAKE_UNWIND_LIBS_INIT})
-	target_link_libraries(pilight_static ${CMAKE_UNWIND_LIBS_INIT})
+	if(NOT WIN32)
+		target_link_libraries(pilight_shared ${CMAKE_UNWIND_LIBS_INIT})
+		target_link_libraries(pilight_static ${CMAKE_UNWIND_LIBS_INIT})
+	endif()
 
 	set_target_properties(pilight_shared pilight_static PROPERTIES OUTPUT_NAME pilight)
 
-	set_source_files_properties(${PROJECT_SOURCE_DIR}/libs/platform/hummingboard.c PROPERTIES COMPILE_FLAGS " -w ")
-	set_source_files_properties(${PROJECT_SOURCE_DIR}/libs/platform/raspberrypi.c PROPERTIES COMPILE_FLAGS " -w ")
-	set_source_files_properties(${PROJECT_SOURCE_DIR}/libs/platform/bananapi.c PROPERTIES COMPILE_FLAGS " -w ")
+	if(NOT WIN32)
+		set_source_files_properties(${PROJECT_SOURCE_DIR}/libs/platform/hummingboard.c PROPERTIES COMPILE_FLAGS " -w ")
+		set_source_files_properties(${PROJECT_SOURCE_DIR}/libs/platform/raspberrypi.c PROPERTIES COMPILE_FLAGS " -w ")
+		set_source_files_properties(${PROJECT_SOURCE_DIR}/libs/platform/bananapi.c PROPERTIES COMPILE_FLAGS " -w ")
+	endif()
 	set_source_files_properties(${PROJECT_SOURCE_DIR}/libs/pilight/json.c PROPERTIES COMPILE_FLAGS " -w ")
 	set_source_files_properties(${PROJECT_SOURCE_DIR}/libs/pilight/mongoose.c PROPERTIES COMPILE_FLAGS " -w ")
 	set_source_files_properties(${PROJECT_SOURCE_DIR}/libs/pilight/ping.c PROPERTIES COMPILE_FLAGS " -w ")
 	set_source_files_properties(${avrdude_sources} PROPERTIES COMPILE_FLAGS " -w ")
 	set_source_files_properties(${polarssl_sources} PROPERTIES COMPILE_FLAGS " -w ")
 
-	install(CODE "execute_process(COMMAND rm /usr/local/lib/libpilight.so)")
-	install(FILES libpilight.so DESTINATION lib/pilight/ RENAME libpilight.so.${PROJECT_VERSION} COMPONENT pilight)
-	install(FILES libpilight.a DESTINATION lib/pilight/ RENAME libpilight.a COMPONENT pilight)
-
-	install(CODE "execute_process(COMMAND ln -s \"/usr/local/lib/pilight/libpilight.so.${PROJECT_VERSION}\" \"/usr/local/lib/libpilight.so\")")	
-	if(EXISTS "/usr/local/lib/pilight/protocols")
-		install(CODE "execute_process(COMMAND find /usr/local/lib/pilight/protocols/ -type f -exec rm {} \\;)")
-	endif()
-	if(EXISTS "/usr/local/lib/pilight/hardware")
-		install(CODE "execute_process(COMMAND find /usr/local/lib/pilight/hardware/ -type f -exec rm {} \\;)")
-	endif()
-	if(EXISTS "/usr/local/lib/pilight/actions")
-		install(CODE "execute_process(COMMAND find /usr/local/lib/pilight/actions/ -type f -exec rm {} \\;)")
-	endif()
-	if(EXISTS "/usr/local/lib/pilight/operators")
-		install(CODE "execute_process(COMMAND find /usr/local/lib/pilight/operators/ -type f -exec rm {} \\;)")
-	endif()
+	if(NOT WIN32)
+		install(CODE "execute_process(COMMAND rm /usr/local/lib/libpilight.so)")
+		install(FILES libpilight.so DESTINATION lib/pilight/ RENAME libpilight.so.${PROJECT_VERSION} COMPONENT pilight)
+		install(FILES libpilight.a DESTINATION lib/pilight/ RENAME libpilight.a COMPONENT pilight)
+		install(CODE "execute_process(COMMAND ln -s \"/usr/local/lib/pilight/libpilight.so.${PROJECT_VERSION}\" \"/usr/local/lib/libpilight.so\")")	
 	
-	if(EXISTS "/etc/pilight/config.json")
-		install(CODE "execute_process(COMMAND mv /etc/pilight/config.json /etc/pilight/config.json.bak)")
+		if(EXISTS "/usr/local/lib/pilight/protocols")
+			install(CODE "execute_process(COMMAND find /usr/local/lib/pilight/protocols/ -type f -exec rm {} \\;)")
+		endif()
+		if(EXISTS "/usr/local/lib/pilight/hardware")
+			install(CODE "execute_process(COMMAND find /usr/local/lib/pilight/hardware/ -type f -exec rm {} \\;)")
+		endif()
+		if(EXISTS "/usr/local/lib/pilight/actions")
+			install(CODE "execute_process(COMMAND find /usr/local/lib/pilight/actions/ -type f -exec rm {} \\;)")
+		endif()
+		if(EXISTS "/usr/local/lib/pilight/operators")
+			install(CODE "execute_process(COMMAND find /usr/local/lib/pilight/operators/ -type f -exec rm {} \\;)")
+		endif()
+
+		if(EXISTS "/etc/pilight/config.json")
+			install(CODE "execute_process(COMMAND mv /etc/pilight/config.json /etc/pilight/config.json.bak)")
+		endif()
+
+		install(PROGRAMS init/pilight.initd DESTINATION /etc/init.d/ RENAME pilight)
+		install(FILES config.json-default DESTINATION /etc/pilight/ RENAME config.json COMPONENT pilight)
+		install(FILES tzdata.json DESTINATION /etc/pilight/ COMPONENT pilight)
+	else()
+		install(FILES libpilight.dll DESTINATION . RENAME libpilight.dll COMPONENT pilight)
+		install(FILES config.json-default-w32 DESTINATION . RENAME config.json COMPONENT pilight)
+		install(FILES tzdata.json DESTINATION . COMPONENT pilight)
 	endif()
 
 	if(${WEBSERVER} MATCHES "ON")
-		install(DIRECTORY web/ DESTINATION /usr/local/share/pilight COMPONENT webgui)
+		if(WIN32)
+			install(DIRECTORY web/ DESTINATION web/ COMPONENT webgui)
+		else()
+			install(DIRECTORY web/ DESTINATION /usr/local/share/pilight COMPONENT webgui)
+		endif()
+	endif()	
+
+	if(WIN32)
+		add_executable(pilight-daemon daemon.c manifest.obj)
+	else()
+		add_executable(pilight-daemon daemon.c)
 	endif()
-
-	install(PROGRAMS init/pilight.initd DESTINATION /etc/init.d/ RENAME pilight)
-	install(FILES config.json-default DESTINATION /etc/pilight/ RENAME config.json COMPONENT pilight)
-	install(FILES tzdata.json DESTINATION /etc/pilight/ COMPONENT pilight)
-
-	add_executable(pilight-daemon daemon.c)
 	target_link_libraries(pilight-daemon pilight_shared)
 	target_link_libraries(pilight-daemon ${CMAKE_DL_LIBS})
 	target_link_libraries(pilight-daemon m)
 	if(${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
 		target_link_libraries(pilight-daemon execinfo)
 	endif()
-	target_link_libraries(pilight-daemon ${CMAKE_THREAD_LIBS_INIT})
+	if(NOT WIN32)
+		target_link_libraries(pilight-daemon ${CMAKE_THREAD_LIBS_INIT})
+	endif()
 
 	add_executable(pilight-raw raw.c)
 	target_link_libraries(pilight-raw pilight_shared)
@@ -898,7 +1003,9 @@ if(${MODULESPACK} MATCHES "OFF")
 	if(${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
 		target_link_libraries(pilight-raw execinfo)
 	endif()
-	target_link_libraries(pilight-raw ${CMAKE_THREAD_LIBS_INIT})
+	if(NOT WIN32)
+		target_link_libraries(pilight-raw ${CMAKE_THREAD_LIBS_INIT})
+	endif()
 
 	add_executable(pilight-send send.c)
 	target_link_libraries(pilight-send pilight_shared)
@@ -907,7 +1014,9 @@ if(${MODULESPACK} MATCHES "OFF")
 	if(${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
 		target_link_libraries(pilight-send execinfo)
 	endif()
-	target_link_libraries(pilight-send ${CMAKE_THREAD_LIBS_INIT})
+	if(NOT WIN32)
+		target_link_libraries(pilight-send ${CMAKE_THREAD_LIBS_INIT})
+	endif()
 
 	add_executable(pilight-control control.c)
 	target_link_libraries(pilight-control pilight_shared)
@@ -916,7 +1025,9 @@ if(${MODULESPACK} MATCHES "OFF")
 	if(${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
 		target_link_libraries(pilight-control execinfo)
 	endif()
-	target_link_libraries(pilight-control ${CMAKE_THREAD_LIBS_INIT})
+	if(NOT WIN32)
+		target_link_libraries(pilight-control ${CMAKE_THREAD_LIBS_INIT})
+	endif()
 
 	add_executable(pilight-receive receive.c)
 	target_link_libraries(pilight-receive pilight_shared)
@@ -925,7 +1036,9 @@ if(${MODULESPACK} MATCHES "OFF")
 	if(${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
 		target_link_libraries(pilight-receive execinfo)
 	endif()
-	target_link_libraries(pilight-receive ${CMAKE_THREAD_LIBS_INIT})
+	if(NOT WIN32)
+		target_link_libraries(pilight-receive ${CMAKE_THREAD_LIBS_INIT})
+	endif()
 
 	add_executable(pilight-debug debug.c)
 	target_link_libraries(pilight-debug pilight_shared)
@@ -934,7 +1047,9 @@ if(${MODULESPACK} MATCHES "OFF")
 	if(${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
 		target_link_libraries(pilight-debug execinfo)
 	endif()
-	target_link_libraries(pilight-debug ${CMAKE_THREAD_LIBS_INIT})
+	if(NOT WIN32)
+		target_link_libraries(pilight-debug ${CMAKE_THREAD_LIBS_INIT})
+	endif()
 
 	add_executable(pilight-uuid uuid.c)
 	target_link_libraries(pilight-uuid pilight_shared)
@@ -943,7 +1058,9 @@ if(${MODULESPACK} MATCHES "OFF")
 	if(${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
 		target_link_libraries(pilight-uuid execinfo)
 	endif()
-	target_link_libraries(pilight-uuid ${CMAKE_THREAD_LIBS_INIT})
+	if(NOT WIN32)
+		target_link_libraries(pilight-uuid ${CMAKE_THREAD_LIBS_INIT})
+	endif()
 
 	add_executable(pilight-flash flash.c)
 	target_link_libraries(pilight-flash pilight_shared)
@@ -952,62 +1069,112 @@ if(${MODULESPACK} MATCHES "OFF")
 	if(${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
 		target_link_libraries(pilight-flash execinfo)
 	endif()
-	target_link_libraries(pilight-flash ${CMAKE_THREAD_LIBS_INIT})
-
-	if(EXISTS "/usr/local/sbin/pilight-send")
-		install(CODE "execute_process(COMMAND rm /usr/local/sbin/pilight-send)")
+	if(NOT WIN32)
+		target_link_libraries(pilight-flash ${CMAKE_THREAD_LIBS_INIT})
 	endif()
 
-	if(EXISTS "/usr/local/sbin/pilight-receive")
-		install(CODE "execute_process(COMMAND rm /usr/local/sbin/pilight-receive)")
-	endif()
+	if(NOT WIN32)
+		if(EXISTS "/usr/local/sbin/pilight-send")
+			install(CODE "execute_process(COMMAND rm /usr/local/sbin/pilight-send)")
+		endif()
 
-	if(EXISTS "/usr/local/sbin/pilight-control")
-		install(CODE "execute_process(COMMAND rm /usr/local/sbin/pilight-control)")
-	endif()
+		if(EXISTS "/usr/local/sbin/pilight-receive")
+			install(CODE "execute_process(COMMAND rm /usr/local/sbin/pilight-receive)")
+		endif()
 
-	if(EXISTS "/usr/local/sbin/pilight-uuid")
-		install(CODE "execute_process(COMMAND rm /usr/local/sbin/pilight-uuid)")
-	endif()
+		if(EXISTS "/usr/local/sbin/pilight-control")
+			install(CODE "execute_process(COMMAND rm /usr/local/sbin/pilight-control)")
+		endif()
 
-	install(PROGRAMS pilight-daemon DESTINATION sbin COMPONENT pilight)
-	install(PROGRAMS pilight-raw DESTINATION sbin COMPONENT pilight)
-	install(PROGRAMS pilight-send DESTINATION bin COMPONENT pilight)
-	install(PROGRAMS pilight-control DESTINATION bin COMPONENT pilight)
-	install(PROGRAMS pilight-receive DESTINATION bin COMPONENT pilight)
-	install(PROGRAMS pilight-debug DESTINATION sbin COMPONENT pilight)
-	install(PROGRAMS pilight-flash DESTINATION sbin COMPONENT pilight)
-	install(PROGRAMS pilight-uuid DESTINATION bin COMPONENT pilight)
-	install(CODE "execute_process(COMMAND update-rc.d pilight defaults)")
-	install(CODE "execute_process(COMMAND ldconfig)")
+		if(EXISTS "/usr/local/sbin/pilight-uuid")
+			install(CODE "execute_process(COMMAND rm /usr/local/sbin/pilight-uuid)")
+		endif()
+	endif()
+	
+	if(WIN32)
+		install(FILES "${PROJECT_SOURCE_DIR}/LICENSE.txt" DESTINATION . COMPONENT pilight)
+		install(PROGRAMS pilight-daemon.exe DESTINATION . COMPONENT pilight)
+		install(PROGRAMS pilight-raw.exe DESTINATION . COMPONENT pilight)
+		install(PROGRAMS pilight-send.exe DESTINATION . COMPONENT pilight)
+		install(PROGRAMS pilight-control.exe DESTINATION . COMPONENT pilight)
+		install(PROGRAMS pilight-receive.exe DESTINATION . COMPONENT pilight)
+		install(PROGRAMS pilight-debug.exe DESTINATION . COMPONENT pilight)
+		install(PROGRAMS pilight-flash.exe DESTINATION . COMPONENT pilight)
+		install(PROGRAMS pilight-uuid.exe DESTINATION . COMPONENT pilight)
+	else()
+		install(PROGRAMS pilight-daemon DESTINATION sbin COMPONENT pilight)
+		install(PROGRAMS pilight-raw DESTINATION sbin COMPONENT pilight)
+		install(PROGRAMS pilight-send DESTINATION bin COMPONENT pilight)
+		install(PROGRAMS pilight-control DESTINATION bin COMPONENT pilight)
+		install(PROGRAMS pilight-receive DESTINATION bin COMPONENT pilight)
+		install(PROGRAMS pilight-debug DESTINATION sbin COMPONENT pilight)
+		install(PROGRAMS pilight-flash DESTINATION sbin COMPONENT pilight)
+		install(PROGRAMS pilight-uuid DESTINATION bin COMPONENT pilight)
+		install(CODE "execute_process(COMMAND update-rc.d pilight defaults)")
+		install(CODE "execute_process(COMMAND ldconfig)")
+	endif()
 endif()
 
-WRITE_UNINSTALL_TARGET_SCRIPT()
-configure_file("${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake.in"
-	"${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake"
-    IMMEDIATE @ONLY)
-add_custom_target(uninstall COMMAND ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake)
+if(WIN32)
+	set(CPACK_NSIS_INSTALL_ROOT "c:\\\\ProgramData")
+	set(CPACK_PACKAGE_INSTALL_DIRECTORY "pilight")
+	set(CPACK_NSIS_DISPLAY_NAME "pilight")
+	set(CPACK_NSIS_PACKAGE_NAME "pilight v${PROJECT_VERSION}")
+	set(CPACK_NSIS_URL_INFO_ABOUT "http://www.pilight.org")
+	set(CPACK_NSIS_CONTACT "info@pilight.org")
+	set(CPACK_NSIS_EXECUTABLES_DIRECTORY ".")
+	set(CPACK_NSIS_MENU_LINKS
+		"pilight-control" "pilight-control"
+		"pilight-daemon" "pilight-daemon"
+		"pilight-debug" "pilight-debug"
+		"pilight-flash" "pilight-flash"
+		"pilight-raw" "pilight-raw"
+		"pilight-receive" "pilight-receive"
+		"pilight-send" "pilight-send"
+		"pilight-uuid" "pilight-uuid"
+	)
 
-set(CPACK_GENERATOR "DEB")
-set(CPACK_PACKAGING_INSTALL_PREFIX "/usr/local/")
-set(CPACK_SOURCE_STRIP_FILES TRUE)
-set(CPACK_STRIP_FILES TRUE)
-set(CPACK_PACKAGE_CONTACT "CurlyMo <info@pilight.org>")
-set(CPACK_PACKAGE_VERSION ${PROJECT_VERSION})
-set(CPACK_PACKAGE_NAME "pilight")
-set(CPACK_DEBIAN_PACKAGE_DEPENDS "zlib1g-dev")
-set(CPACK_DEBIAN_PACKAGE_PRIORITY "optional")
-set(CPACK_PACKAGE_DESCRIPTION "Control RF devices with the Raspberry Pi")
-set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Control RF devices with the Raspberry Pi")
+	set(CPACK_RESOURCE_FILE_LICENSE "${PROJECT_SOURCE_DIR}/LICENSE.txt")
+	set(CPACK_COMPONENTS_ALL pilight webgui)
+	set(CPACK_GENERATOR "NSIS")
+	set(CPACK_PACKAGING_INSTALL_DIRECTORY "pilight")
+	set(CPACK_SOURCE_STRIP_FILES TRUE)
+	set(CPACK_STRIP_FILES TRUE)
+	set(CPACK_PACKAGE_CONTACT "CurlyMo <info@pilight.org>")
+	set(CPACK_PACKAGE_VERSION ${PROJECT_VERSION})
+	set(CPACK_PACKAGE_NAME "pilight")
+	set(CPACK_PACKAGE_VENDOR "pilight")
+	set(CPACK_PACKAGE_DESCRIPTION "Control RF devices with the Raspberry Pi")
+	set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Control RF devices with the Raspberry Pi")
+	include(CPack)
+elseif()
+	WRITE_UNINSTALL_TARGET_SCRIPT()
+	configure_file("${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake.in"
+		"${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake"
+			IMMEDIATE @ONLY)
+	add_custom_target(uninstall COMMAND ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake)
 
-include(CPack)
+	set(CPACK_GENERATOR "DEB")
+	set(CPACK_PACKAGING_INSTALL_PREFIX "/usr/local/")
+	set(CPACK_SOURCE_STRIP_FILES TRUE)
+	set(CPACK_STRIP_FILES TRUE)
+	set(CPACK_PACKAGE_CONTACT "CurlyMo <info@pilight.org>")
+	set(CPACK_PACKAGE_VERSION ${PROJECT_VERSION})
+	set(CPACK_PACKAGE_NAME "pilight")
+	set(CPACK_DEBIAN_PACKAGE_DEPENDS "zlib1g-dev")
+	set(CPACK_DEBIAN_PACKAGE_PRIORITY "optional")
+	set(CPACK_PACKAGE_DESCRIPTION "Control RF devices with the Raspberry Pi")
+	set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Control RF devices with the Raspberry Pi")
 
-message("")
-message("${Red}-- WARNING --${ColorReset}")
-message("${Yellow}Manually compiling and installing pilight will also clear all module folders:
+	include(CPack)
+
+	message("")
+	message("${Red}-- WARNING --${ColorReset}")
+	message("${Yellow}Manually compiling and installing pilight will also clear all module folders:
 /usr/local/lib/pilight/protocols/
 /usr/local/lib/pilight/hardware/
 /usr/local/lib/pilight/actions/
 /usr/local/lib/pilight/operators/${ColorReset}")
-message("${Red}-- WARNING --${ColorReset}")
-message("")
+	message("${Red}-- WARNING --${ColorReset}")
+	message("")
+endif()

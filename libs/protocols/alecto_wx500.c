@@ -21,7 +21,7 @@
 #include <string.h>
 #include <math.h>
 
-#include "../../pilight.h"
+#include "pilight.h"
 #include "common.h"
 #include "dso.h"
 #include "log.h"
@@ -224,7 +224,7 @@ static void alectoWX500GC(void) {
 	}
 }
 
-#ifndef MODULE
+#if !defined(MODULE) && !defined(_WIN32)
 __attribute__((weak))
 #endif
 void alectoWX500Init(void) {

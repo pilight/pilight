@@ -354,7 +354,7 @@ static int piBoardRev(void) {
 	char *d;
 
 	memset(line, '\0', 120);
-	
+
 	if((cpuFd = fopen("/proc/cpuinfo", "r")) == NULL) {
 		wiringXLog(LOG_ERR, "bananapi->identify: Unable open /proc/cpuinfo");
 		return -1;

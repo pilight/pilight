@@ -19,12 +19,20 @@
 #ifndef _THREADS_H_
 #define _THREADS_H_
 
-#include <pthread.h>
+#ifdef _WIN32
+	#include "pthread.h"
+	#include "windows.h"
+#else
+	#include <pthread.h>
+#endif
 #include "proc.h"
 
 typedef struct threadqueue_t {
 	unsigned int ts;
 	pthread_t pth;
+#ifdef _WIN32
+	HANDLE handle;
+#endif
 	int force;
 	char *id;
 	void *param;

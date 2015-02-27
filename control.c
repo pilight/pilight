@@ -39,11 +39,10 @@
 #include "operator.h"
 #include "action.h"
 
-struct pilight_t pilight;
-
 int main(int argc, char **argv) {
 	// memtrack();
 
+	atomicinit();
 	struct options_t *options = NULL;
 	struct ssdp_list_t *ssdp_list = NULL;
 	struct devices_t *dev = NULL;
@@ -141,7 +140,7 @@ int main(int argc, char **argv) {
 	options_delete(options);
 
 	if(showversion == 1) {
-		printf("%s %s\n", progname, PILIGHT_VERSION);
+		printf("%s v%s\n", progname, PILIGHT_VERSION);
 		goto close;
 	}
 	if(showhelp == 1) {
@@ -357,6 +356,10 @@ close:
 	gc_clear();
 	FREE(progname);
 	xfree();
+
+#ifdef _WIN32
+	WSACleanup();
+#endif
 
 	return EXIT_SUCCESS;
 }

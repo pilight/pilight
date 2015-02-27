@@ -20,7 +20,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "../../pilight.h"
+#include "pilight.h"
 #include "common.h"
 #include "dso.h"
 #include "log.h"
@@ -56,7 +56,7 @@ static void rawPrintHelp(void) {
 	printf("\t -c --code=\"raw\"\t\traw code devided by spaces\n\t\t\t\t\t(just like the output of debug)\n");
 }
 
-#ifndef MODULE
+#if !defined(MODULE) && !defined(_WIN32)
 __attribute__((weak))
 #endif
 void rawInit(void) {
@@ -73,7 +73,7 @@ void rawInit(void) {
 	raw->printHelp=&rawPrintHelp;
 }
 
-#ifdef MODULE
+#if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "raw";
 	module->version = "1.3";

@@ -21,7 +21,7 @@
 #include <string.h>
 #include <math.h>
 
-#include "../../pilight.h"
+#include "pilight.h"
 #include "common.h"
 #include "dso.h"
 #include "log.h"
@@ -120,7 +120,7 @@ static void genDimPrintHelp(void) {
 	printf("\t -d --dimlevel=dimlevel\t\tsend a specific dimlevel\n");
 }
 
-#ifndef MODULE
+#if !defined(MODULE) && !defined(_WIN32)
 __attribute__((weak))
 #endif
 void genDimInit(void) {
@@ -144,7 +144,7 @@ void genDimInit(void) {
 	generic_dimmer->checkValues=&genDimcheckValues;
 }
 
-#ifdef MODULE
+#if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "generic_dimmer";
 	module->version = "1.1";

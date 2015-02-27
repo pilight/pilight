@@ -49,7 +49,7 @@
 #define _MBCS                   // Use multibyte encoding on Windows
 #define _INTEGRAL_MAX_BITS 64   // Enable _stati64() on Windows
 #define _CRT_SECURE_NO_WARNINGS // Disable deprecation warning in VS2005+
-#undef WIN32_LEAN_AND_MEAN      // Let windows.h always include winsock2.h
+#define WIN32_LEAN_AND_MEAN      // Let windows.h always include winsock2.h
 #define _XOPEN_SOURCE 600       // For flockfile() on Linux
 #define __STDC_FORMAT_MACROS    // <inttypes.h> wants this for C++
 #define __STDC_LIMIT_MACROS     // C++ wants that for INT64_MAX
@@ -78,10 +78,15 @@
 #include <signal.h>
 
 #ifdef _WIN32
+#define localtime_r(a,b) localtime_s(b,a)
+#define gmtime_r(a,b) gmtime_s(b,a)
+
 #ifdef _MSC_VER
 #pragma comment(lib, "ws2_32.lib")    // Linking with winsock library
 #endif
-#include <windows.h>
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#define MSG_NOSIGNAL 0
 #include <process.h>
 #ifndef EINPROGRESS
 #define EINPROGRESS WSAEINPROGRESS
@@ -598,7 +603,7 @@ static int ns_resolve2(const char *host, struct in_addr *ina) {
 	int rv = 0;
 	struct addrinfo hints, *servinfo, *p;
 	struct sockaddr_in *h = NULL;
-	char *ip = malloc(17);
+	char *ip = MALLOC(17);
 	memset(ip, '\0', 17);
 
 	memset(&hints, 0, sizeof hints);
@@ -606,7 +611,7 @@ static int ns_resolve2(const char *host, struct in_addr *ina) {
 	hints.ai_socktype = SOCK_STREAM;
 
 	if((rv = getaddrinfo(host, NULL , NULL, &servinfo)) != 0) {
-		
+
 		return 0;
 	}
 
@@ -623,7 +628,13 @@ static int ns_resolve2(const char *host, struct in_addr *ina) {
 // Return > 0 (IP address length) on success.
 int ns_resolve(const char *host, char *buf, size_t n) {
   struct in_addr ad;
-  return ns_resolve2(host, &ad) ? snprintf(buf, n, "%s", inet_ntoa(ad)) : 0;
+	if(ns_resolve2(host, &ad) == 1) {
+		memset(&buf, '\0', sizeof(buf));
+		inet_ntop(AF_INET, (void *)&ad, buf, sizeof(buf));
+		return strlen(buf);
+	} else {
+		return 0;
+	}
 }
 
 // Address format: [PROTO://][IP_ADDRESS:]PORT[:CERT][:CA_CERT]
@@ -838,16 +849,16 @@ void ns_sock_to_str(sock_t sock, char *buf, size_t len, int flags) {
       getsockname(sock, &sa.sa, &slen);
     }
     if (flags & 1) {
-#if defined(NS_ENABLE_IPV6)
-      inet_ntop(sa.sa.sa_family, sa.sa.sa_family == AF_INET ?
-                (void *) &sa.sin.sin_addr :
-                (void *) &sa.sin6.sin6_addr, buf, len);
-#elif defined(_WIN32)
-      // Only Windoze Vista (and newer) have inet_ntop()
-      strncpy(buf, inet_ntoa(sa.sin.sin_addr), len);
-#else
+// #if defined(NS_ENABLE_IPV6)
+      // inet_ntop(sa.sa.sa_family, sa.sa.sa_family == AF_INET ?
+                // (void *) &sa.sin.sin_addr :
+                // (void *) &sa.sin6.sin6_addr, buf, len);
+// #elif defined(_WIN32)
+      // // Only Windoze Vista (and newer) have inet_ntop()
+      // strncpy(buf, inet_ntoa(sa.sin.sin_addr), len);
+// #else
       inet_ntop(sa.sa.sa_family, (void *) &sa.sin.sin_addr, buf,(socklen_t)len);
-#endif
+// #endif
     }
     if (flags & 2) {
       snprintf(buf + strlen(buf), len - (strlen(buf) + 1), "%s%d",
@@ -3222,7 +3233,10 @@ static int parse_range_header(const char *header, int64_t *a, int64_t *b) {
 }
 
 static void gmt_time_string(char *buf, size_t buf_len, time_t *t) {
-  strftime(buf, buf_len, "%a, %d %b %Y %H:%M:%S GMT", gmtime(t));
+	struct tm tm;
+	memset(&tm, '\0', sizeof(struct tm));
+	gmtime_r(t, &tm);
+  strftime(buf, buf_len, "%a, %d %b %Y %H:%M:%S GMT", &tm);
 }
 
 static void open_file_endpoint(struct connection *conn, const char *path,
@@ -3465,9 +3479,10 @@ int mg_url_encode(const char *src, size_t s_len, char *dst, size_t dst_len) {
 static void print_dir_entry(const struct dir_entry *de) {
   char size[64], mod[64], href[MAX_PATH_SIZE * 3];
   int64_t fsize = de->st.st_size;
+	struct tm tm;
   int is_dir = S_ISDIR(de->st.st_mode);
   const char *slash = is_dir ? "/" : "";
-
+	memset(&tm, '\0', sizeof(struct tm));
   if (is_dir) {
     mg_snprintf(size, sizeof(size), "%s", "[DIRECTORY]");
   } else {
@@ -3483,7 +3498,8 @@ static void print_dir_entry(const struct dir_entry *de) {
       mg_snprintf(size, sizeof(size), "%.1fG", (double) fsize / 1073741824);
     }
   }
-  strftime(mod, sizeof(mod), "%d-%b-%Y %H:%M", localtime(&de->st.st_mtime));
+	localtime_r(&de->st.st_mtime, &tm);
+  strftime(mod, sizeof(mod), "%d-%b-%Y %H:%M", &tm);
   mg_url_encode(de->file_name, strlen(de->file_name), href, sizeof(href));
   mg_printf_data(&de->conn->mg_conn,
                   "<tr><td><a href=\"%s%s\">%s%s</a></td>"
@@ -4779,10 +4795,13 @@ static void log_access(const struct connection *conn, const char *path) {
   FILE *fp = (path == NULL) ?  NULL : fopen(path, "a+");
   char date[64], user[100];
   time_t now;
+	struct tm tm;
+	memset(&tm, '\0', sizeof(struct tm));
 
   if (fp == NULL) return;
   now = time(NULL);
-  strftime(date, sizeof(date), "%d/%b/%Y:%H:%M:%S %z", localtime(&now));
+	localtime_r(&now, &tm);
+  strftime(date, sizeof(date), "%d/%b/%Y:%H:%M:%S %z", &tm);
 
   flockfile(fp);
   mg_parse_header(mg_get_header(&conn->mg_conn, "Authorization"), "username",

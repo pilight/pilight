@@ -26,17 +26,22 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <signal.h>
-#include <arpa/inet.h>
-#include <netinet/in.h>
-#include <sys/time.h>
-#include <time.h>
-#include <sys/socket.h>
-#include <sys/wait.h>
-#include <netdb.h>
+#ifdef _WIN32
+	#include <winsock2.h>
+	#include <ws2tcpip.h>
+	#define MSG_NOSIGNAL 0
+#else
+	#include <sys/socket.h>
+	#include <sys/time.h>
+	#include <netinet/in.h>
+	#include <netinet/tcp.h>
+	#include <netdb.h>
+	#include <arpa/inet.h>
+#endif
 #include <stdint.h>
 #include <time.h>
 
-#include "../../pilight.h"
+#include "pilight.h"
 #include "common.h"
 #include "dso.h"
 #include "log.h"
@@ -82,28 +87,46 @@ static pthread_mutexattr_t datetimeattr;
 static time_t getntptime(char *ntpserver) {
 	struct sockaddr_in servaddr;
 	struct pkt msg;
-	char *ip = NULL;
+	char ip[17];
 	int sockfd = 0;
+
+#ifndef _WIN32
 	struct timeval tv;
 
 	tv.tv_sec = 1;
 	tv.tv_usec = 0;
+#endif
 
 	memset(&msg, '\0', sizeof(struct pkt));
 	memset(&servaddr, '\0', sizeof(struct sockaddr_in));
 
-	if((ip = host2ip(ntpserver)) == NULL) {
+	char *p = ip;
+	if(host2ip(ntpserver, p) == -1) {
 		goto close;
 	}
+
+#ifdef _WIN32
+	WSADATA wsa;
+
+	if(WSAStartup(MAKEWORD(2, 2), &wsa) != 0) {
+		logprintf(LOG_ERR, "could not initialize new socket");
+		goto close;
+	}
+#endif
 
 	if((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) == -1) {
 		logprintf(LOG_ERR, "error in socket");
 		goto close;
 	}
 
+#ifdef _WIN32
+	int timeout = 1000;
+	setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, (const char *)&timeout, sizeof(struct timeval));
+#else
 	setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, (char *)&tv, sizeof(struct timeval));
+#endif
 
-	bzero(&servaddr, sizeof(servaddr));
+	memset(&servaddr, '\0', sizeof(servaddr));
 	servaddr.sin_family = AF_INET;
 	servaddr.sin_port = htons(123);
 
@@ -129,7 +152,6 @@ static time_t getntptime(char *ntpserver) {
 		(msg.rec).Ul_f.Xl_f = (int)ntohl((unsigned int)(msg.rec).Ul_f.Xl_f);
 
 		unsigned int adj = 2208988800u;
-		FREE(ip);
 		close(sockfd);
 		return (time_t)(msg.rec.Ul_i.Xl_ui - adj);
 	} else {
@@ -138,9 +160,6 @@ static time_t getntptime(char *ntpserver) {
 	}
 
 close:
-	if(ip != NULL) {
-		FREE(ip);
-	}
 	if(sockfd > 0) {
 		close(sockfd);
 	}
@@ -148,7 +167,7 @@ close:
 }
 
 static void *datetimeParse(void *param) {
-	char UTC[] = "Europe/London";
+	char UTC[] = "UTC";
 	struct protocol_threads_t *thread = (struct protocol_threads_t *)param;
 	struct JsonNode *json = (struct JsonNode *)thread->param;
 	struct JsonNode *jid = NULL;
@@ -176,12 +195,12 @@ static void *datetimeParse(void *param) {
 					latitude = jchild1->number_;
 				}
 				if(strcmp(jchild1->key, "ntpserver") == 0) {
-					if((ntpserver = malloc(strlen(jchild1->string_)+1)) == NULL) {
+					if((ntpserver = MALLOC(strlen(jchild1->string_)+1)) == NULL) {
 						logprintf(LOG_ERR, "out of memory");
 						exit(EXIT_FAILURE);
 					}
 					strcpy(ntpserver, jchild1->string_);
-				}				
+				}
 				jchild1 = jchild1->next;
 			}
 			jchild = jchild->next;
@@ -207,45 +226,44 @@ static void *datetimeParse(void *param) {
 			x = 0;
 		}
 
-		datetime->message = json_mkobject();
+		t -= diff;
+		if((tm = localtztime(tz, t)) != NULL) {
+			int year = tm->tm_year+1900;
+			int month = tm->tm_mon+1;
+			int day = tm->tm_mday;
+			int hour = tm->tm_hour;
+			int minute = tm->tm_min;
+			int second = tm->tm_sec;
+			int weekday = tm->tm_wday+1;
 
-		JsonNode *code = json_mkobject();
+			datetime->message = json_mkobject();
 
-		t += diff;
-		tm = localtztime(tz, t);
+			JsonNode *code = json_mkobject();
+			json_append_member(code, "longitude", json_mknumber(longitude, 6));
+			json_append_member(code, "latitude", json_mknumber(latitude, 6));
+			json_append_member(code, "year", json_mknumber(year, 0));
+			json_append_member(code, "month", json_mknumber(month, 0));
+			json_append_member(code, "day", json_mknumber(day, 0));
+			json_append_member(code, "weekday", json_mknumber(weekday, 0));
+			json_append_member(code, "hour", json_mknumber(hour, 0));
+			json_append_member(code, "minute", json_mknumber(minute, 0));
+			json_append_member(code, "second", json_mknumber(second, 0));
 
-		int year = tm->tm_year+1900;
-		int month = tm->tm_mon+1;
-		int day = tm->tm_mday;
-		int hour = tm->tm_hour;
-		int minute = tm->tm_min;
-		int second = tm->tm_sec;
-		int weekday = tm->tm_wday+1;
+			json_append_member(datetime->message, "message", code);
+			json_append_member(datetime->message, "origin", json_mkstring("receiver"));
+			json_append_member(datetime->message, "protocol", json_mkstring(datetime->id));
 
-		json_append_member(code, "longitude", json_mknumber(longitude, 6));
-		json_append_member(code, "latitude", json_mknumber(latitude, 6));
-		json_append_member(code, "year", json_mknumber(year, 0));
-		json_append_member(code, "month", json_mknumber(month, 0));
-		json_append_member(code, "day", json_mknumber(day, 0));
-		json_append_member(code, "weekday", json_mknumber(weekday, 0));
-		json_append_member(code, "hour", json_mknumber(hour, 0));
-		json_append_member(code, "minute", json_mknumber(minute, 0));
-		json_append_member(code, "second", json_mknumber(second, 0));
+			if(pilight.broadcast != NULL) {
+				pilight.broadcast(datetime->id, datetime->message);
+			}
 
-		json_append_member(datetime->message, "message", code);
-		json_append_member(datetime->message, "origin", json_mkstring("receiver"));
-		json_append_member(datetime->message, "protocol", json_mkstring(datetime->id));
-
-		if(pilight.broadcast != NULL) {
-			pilight.broadcast(datetime->id, datetime->message);
+			json_delete(datetime->message);
+			datetime->message = NULL;
+			if(x == 0) {
+				interval = (int)((23-hour)*10000)+((59-minute)*100)+(60-second);
+			}
+			x++;
 		}
-
-		json_delete(datetime->message);
-		datetime->message = NULL;
-		if(x == 0) {
-			interval = (int)((23-hour)*10000)+((59-minute)*100)+(60-second);
-		}
-		x++;
 		pthread_mutex_unlock(&datetimelock);
 		sleep(1);
 	}
@@ -282,7 +300,7 @@ static void datetimeGC(void) {
 	FREE(datetime_format);
 }
 
-#ifndef MODULE
+#if !defined(MODULE) && !defined(_WIN32)
 __attribute__((weak))
 #endif
 void datetimeInit(void) {
@@ -319,10 +337,10 @@ void datetimeInit(void) {
 	datetime->gc=&datetimeGC;
 }
 
-#ifdef MODULE
+#if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "datetime";
-	module->version = "1.9";
+	module->version = "1.10";
 	module->reqversion = "5.0";
 	module->reqcommit = "187";
 }

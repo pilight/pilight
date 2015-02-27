@@ -21,7 +21,7 @@
 #include <string.h>
 #include <math.h>
 
-#include "../../pilight.h"
+#include "pilight.h"
 #include "common.h"
 #include "dso.h"
 #include "log.h"
@@ -177,7 +177,7 @@ static void cleverwattsPrintHelp(void) {
 	printf("\t -a --all\t\t\tsend command to all devices with this id\n");
 }
 
-#ifndef MODULE
+#if !defined(MODULE) && !defined(_WIN32)
 __attribute__((weak))
 #endif
 void cleverwattsInit(void) {
@@ -205,7 +205,7 @@ void cleverwattsInit(void) {
 	cleverwatts->printHelp=&cleverwattsPrintHelp;
 }
 
-#ifdef MODULE
+#if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "cleverwatts";
 	module->version = "0.9";

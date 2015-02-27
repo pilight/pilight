@@ -33,6 +33,8 @@
 #include "log.h"
 #include "gui.h"
 
+struct config_t *config_gui;
+
 static struct gui_elements_t *gui_elements = NULL;
 
 struct gui_values_t *gui_media(char *name) {

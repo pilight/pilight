@@ -21,7 +21,6 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <errno.h>
-#include <syslog.h>
 
 #include "pilight.h"
 #include "common.h"
@@ -32,7 +31,6 @@
 #include "ssdp.h"
 #include "gc.h"
 
-struct pilight_t pilight;
 static int main_loop = 1;
 static int sockfd = 0;
 static char *recvBuff = NULL;
@@ -52,12 +50,17 @@ int main_gc(void) {
 	FREE(progname);
 	xfree();
 
+#ifdef _WIN32
+	WSACleanup();
+#endif
+
 	return 0;
 }
 
 int main(int argc, char **argv) {
 	// memtrack();
 
+	atomicinit();
 	gc_attach(main_gc);
 
 	/* Catch all exit signals for gc */
@@ -110,7 +113,7 @@ int main(int argc, char **argv) {
 				exit(EXIT_SUCCESS);
 			break;
 			case 'V':
-				printf("%s %s\n", progname, PILIGHT_VERSION);
+				printf("%s v%s\n", progname, PILIGHT_VERSION);
 				exit(EXIT_SUCCESS);
 			break;
 			case 'S':

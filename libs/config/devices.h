@@ -19,7 +19,11 @@
 #ifndef _DEVICES_H_
 #define _DEVICES_H_
 
-#include <pthread.h>
+#ifdef _WIN32
+	#include "pthread.h"
+#else
+	#include <pthread.h>
+#endif
 #include "threads.h"
 #include "config.h"
 #include "protocol.h"
@@ -82,7 +86,7 @@ struct devices_t {
 	struct devices_t *next;
 };
 
-struct config_t *config_devices;
+extern struct config_t *config_devices;
 
 int devices_update(char *protoname, JsonNode *message, JsonNode **out);
 int devices_get(char *sid, struct devices_t **dev);

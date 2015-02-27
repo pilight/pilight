@@ -21,7 +21,7 @@
 #include <string.h>
 #include <math.h>
 
-#include "../../pilight.h"
+#include "pilight.h"
 #include "common.h"
 #include "dso.h"
 #include "log.h"
@@ -159,7 +159,7 @@ static void mumbiPrintHelp(void) {
 	printf("\t -f --off\t\t\tsend an off signal\n");
 }
 
-#ifndef MODULE
+#if !defined(MODULE) && !defined(_WIN32)
 __attribute__((weak))
 #endif
 void mumbiInit(void) {
@@ -187,7 +187,7 @@ void mumbiInit(void) {
 	mumbi->printHelp=&mumbiPrintHelp;
 }
 
-#ifdef MODULE
+#if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "mumbi";
 	module->version = "1.1";
