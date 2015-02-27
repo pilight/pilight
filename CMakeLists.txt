@@ -587,6 +587,11 @@ if(${PROTOCOL_EV1527} MATCHES "OFF")
 	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/ev1527.c")
 endif()
 
+if(${PROTOCOL_ELRO_FA20RF} MATCHES "OFF")
+	list(REMOVE_ITEM protocol_headers "${PROJECT_SOURCE_DIR}/libs/protocols/elro_fa20rf.h")
+	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/elro_fa20rf.c")
+endif()
+
 if(${HARDWARE_433_GPIO} MATCHES "OFF")
 	list(REMOVE_ITEM hardware_headers "${PROJECT_SOURCE_DIR}/libs/hardware/433gpio.h")
 	list(REMOVE_ITEM hardware "${PROJECT_SOURCE_DIR}/libs/hardware/433gpio.c")
