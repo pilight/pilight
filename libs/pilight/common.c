@@ -43,6 +43,7 @@
 	#include <net/if.h>
 	#include <ifaddrs.h>
 	#include <pwd.h>
+	#include <sys/ioctl.h>
 #endif
 #include <dirent.h>
 #include <sys/types.h>
@@ -640,7 +641,7 @@ char *genuuid(char *ifname) {
 			}
 			if(strstr(a, "Serial") != NULL) {
 				sscanf(a, "Serial          : %16s%*[ \n\r]", (char *)&serial);
-				if(atoi(serial) != 0) {
+				if(strlen(serial) > 0) {
 					memmove(&serial[5], &serial[4], 16);
 					serial[4] = '-';
 					memmove(&serial[8], &serial[7], 13);
@@ -657,7 +658,8 @@ char *genuuid(char *ifname) {
 			}
 		}
 		fclose(fp);
-	}
+	} 
+
 #endif
 
 #ifdef _WIN32
@@ -723,7 +725,8 @@ char *genuuid(char *ifname) {
 	}
 	close(fd);
 #elif defined(HAVE_GETIFADDRS)
-	ifaddrs* iflist;
+
+	ifaddrs *iflist;
 	if(getifaddrs(&iflist) == 0) {
 		for(ifaddrs* cur = iflist; cur; cur = cur->ifa_next) {
 			if((cur->ifa_addr->sa_family == AF_LINK) && (strcmp(cur->ifa_name, if_name) == 0) && cur->ifa_addr) {
