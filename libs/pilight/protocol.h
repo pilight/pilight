@@ -21,7 +21,8 @@
 
 #include <pthread.h>
 
-#include "../../pilight.h"
+#include "../../defines.h"
+#include "devices.h"
 #include "options.h"
 #include "threads.h"
 #include "hardware.h"
@@ -29,7 +30,7 @@
 
 typedef enum {
 	FIRMWARE = -2,
-	PROC = -1,
+	PROCESS = -1,
 	RAW = 0,
 	SWITCH,
 	DIMMER,
@@ -68,10 +69,8 @@ typedef struct protocol_threads_t {
 
 typedef struct protocol_t {
 	char *id;
-	int header;
 	int pulse;
 	struct protocol_plslen_t *plslen;
-	int footer;
 	int rawlen;
 	int minrawlen;
 	int maxrawlen;
@@ -88,8 +87,6 @@ typedef struct protocol_t {
 	unsigned long first;
 	unsigned long second;
 
-	int bit;
-	int recording;
 	int raw[MAXPULSESTREAMLENGTH];
 	int code[MAXPULSESTREAMLENGTH];
 	int pCode[MAXPULSESTREAMLENGTH];
@@ -115,9 +112,9 @@ typedef struct protocols_t {
 	struct protocol_t *listener;
 	char *name;
 	struct protocols_t *next;
-} protocols_t;
+} protocols_;
 
-struct protocols_t *protocols;
+extern struct protocols_t *protocols;
 
 void protocol_init(void);
 struct protocol_threads_t *protocol_thread_init(protocol_t *proto, struct JsonNode *param);

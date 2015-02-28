@@ -27,7 +27,7 @@
 #include "log.h"
 #include "devices.h"
 #include "dso.h"
-#include "../../pilight.h"
+#include "pilight.h"
 
 static int actionToggleArguments(struct JsonNode *arguments) {
 	struct JsonNode *jdevice = NULL;
@@ -167,7 +167,7 @@ static int actionToggleRun(struct JsonNode *arguments) {
 	return 0;
 }
 
-#ifndef MODULE
+#if !defined(MODULE) && !defined(_WIN32)
 __attribute__((weak))
 #endif
 void actionToggleInit(void) {
@@ -180,7 +180,7 @@ void actionToggleInit(void) {
 	action_toggle->checkArguments = &actionToggleArguments;
 }
 
-#ifdef MODULE
+#if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "toggle";
 	module->version = "1.0";

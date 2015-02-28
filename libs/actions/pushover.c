@@ -29,7 +29,7 @@
 #include "dso.h"
 #include "http.h"
 #include "common.h"
-#include "../../pilight.h"
+#include "pilight.h"
 
 static int actionPushoverArguments(struct JsonNode *arguments) {
 	struct JsonNode *jtitle = NULL;
@@ -177,7 +177,7 @@ static int actionPushoverRun(struct JsonNode *arguments) {
 	return 0;
 }
 
-#ifndef MODULE
+#if !defined(MODULE) && !defined(_WIN32)
 __attribute__((weak))
 #endif
 void actionPushoverInit(void) {
@@ -192,7 +192,7 @@ void actionPushoverInit(void) {
 	action_pushover->checkArguments = &actionPushoverArguments;
 }
 
-#ifdef MODULE
+#if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "pushover";
 	module->version = "1.0";

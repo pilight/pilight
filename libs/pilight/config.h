@@ -21,6 +21,10 @@
 
 #include "json.h"
 
+#define CONFIG_INTERNAL	0
+#define CONFIG_FORWARD	1
+#define CONFIG_USER			2
+
 typedef struct config_t {
 	char *name;
 	int (*parse)(JsonNode *);

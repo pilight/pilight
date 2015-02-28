@@ -20,7 +20,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "../../pilight.h"
+#include "pilight.h"
 #include "common.h"
 #include "dso.h"
 #include "log.h"
@@ -32,29 +32,23 @@
 
 static int rawCreateCode(JsonNode *code) {
 	char *rcode = NULL;
-	char *ncode = NULL;
-	char *pch = NULL;
-	int i=0;
+	char **array = NULL;
+	unsigned int i = 0, n = 0;
 
 	if(json_find_string(code, "code", &rcode) != 0) {
 		logprintf(LOG_ERR, "raw: insufficient number of arguments");
 		return EXIT_FAILURE;
 	}
 
-	ncode = MALLOC(strlen(rcode)+1);
-	if(!ncode) {
-		logprintf(LOG_ERR, "out of memory");
-		exit(EXIT_FAILURE);
+	n = explode(rcode, " ", &array);
+	for(i=0;i<n;i++) {
+		raw->raw[i]=atoi(array[i]);
+		FREE(array[i]);
 	}
-	strcpy(ncode, rcode);
-	pch = strtok(ncode, " ");
-	while(pch != NULL) {
-		raw->raw[i]=atoi(pch);
-		pch = strtok(NULL, " ");
-		i++;
+	if(n > 0) {
+		FREE(array);
 	}
-	FREE(ncode);
-	raw->rawlen=i;
+	raw->rawlen=(int)i;
 	return EXIT_SUCCESS;
 }
 
@@ -62,7 +56,7 @@ static void rawPrintHelp(void) {
 	printf("\t -c --code=\"raw\"\t\traw code devided by spaces\n\t\t\t\t\t(just like the output of debug)\n");
 }
 
-#ifndef MODULE
+#if !defined(MODULE) && !defined(_WIN32)
 __attribute__((weak))
 #endif
 void rawInit(void) {
@@ -79,12 +73,12 @@ void rawInit(void) {
 	raw->printHelp=&rawPrintHelp;
 }
 
-#ifdef MODULE
+#if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "raw";
-	module->version = "1.2";
+	module->version = "1.3";
 	module->reqversion = "5.0";
-	module->reqcommit = "187";
+	module->reqcommit = "266";
 }
 
 void init(void) {

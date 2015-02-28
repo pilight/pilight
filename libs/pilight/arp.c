@@ -39,25 +39,33 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/types.h>
-#include <sys/sysctl.h>
-#include <sys/socket.h>
-#include <ifaddrs.h>
-#include <net/if.h>
-#ifdef __FREEBSD__
-	#include <net/if_dl.h>
-	#include <net/if_types.h>
-#endif
-#ifdef linux
-	#include <sys/ioctl.h>
+#ifdef _WIN32
+	#define WIN32_LEAN_AND_MEAN
+	#include <winsock2.h>
+	#include <ws2tcpip.h>
+	#define MSG_NOSIGNAL 0
+#else
+	#include <sys/socket.h>
+	#include <sys/time.h>
+	#include <netinet/in.h>
+	#include <netinet/if_ether.h>
+	#include <netinet/tcp.h>
+	#include <net/route.h>
+	#include <netdb.h>
+	#include <arpa/inet.h>
+	#include <ifaddrs.h>
+	#include <net/if.h>
+	#ifdef __FREEBSD__
+		#include <net/if_dl.h>
+		#include <net/if_types.h>
+	#else
+		#include <sys/ioctl.h>
+	#endif
 #endif
 
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <netinet/if_ether.h>
 #include <ctype.h>
 #include <string.h>
 #include <errno.h>
-#include <net/route.h>
 #include <pcap.h>
 #include <regex.h>
 #include <netdb.h>
@@ -347,7 +355,7 @@ static void callback(u_char *args, const struct pcap_pkthdr *header, const u_cha
 	struct host_entry *temp_cursor = NULL;
 
 	if(n < ETHER_HDR_SIZE + ARP_PKT_SIZE) {
-		printf("%d byte packet too short to decode\n", n);
+		printf("%d byte packet too short to decode\n", (int)n);
 		return;
    }
 
@@ -560,6 +568,8 @@ int arp_resolv(char *if_name, char *mac, char **ip) {
 													helist[i]->mac[2], helist[i]->mac[3],
 													helist[i]->mac[4], helist[i]->mac[5]);
 			if(strcmp(fmac, mac) == 0) {
+				memset(ip, '\0', sizeof(ip));
+				inet_ntop(AF_INET, (void *)&(helist[i]->addr), *ip, sizeof(*ip));
 				strcpy(*ip, inet_ntoa(helist[i]->addr));
 				found = 1;
 				break;

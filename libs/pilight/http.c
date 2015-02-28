@@ -21,23 +21,28 @@
 #include <stdarg.h>
 #include <unistd.h>
 #include <fcntl.h>
-#include <sys/ioctl.h>
 #include <limits.h>
 #include <errno.h>
-#include <syslog.h>
 #include <time.h>
 #include <math.h>
 #include <string.h>
 #include <sys/types.h>
-#include <sys/socket.h>
-#include <sys/time.h>
-#include <netinet/in.h>
-#include <netinet/tcp.h>
-#include <netdb.h>
-#include <arpa/inet.h>
-#include <dlfcn.h>
+#ifdef _WIN32
+	#define WIN32_LEAN_AND_MEAN
+	#include <winsock2.h>
+	#include <ws2tcpip.h>
+	#define MSG_NOSIGNAL 0
+#else
+	#include <sys/socket.h>
+	#include <sys/time.h>
+	#include <netinet/in.h>
+	#include <netinet/tcp.h>
+	#include <netdb.h>
+	#include <arpa/inet.h>
+#endif
 
-#include "../../pilight.h"
+
+#include "pilight.h"
 #include "log.h"
 #include "common.h"
 #include "../polarssl/ssl.h"
@@ -53,7 +58,7 @@ char *http_process_request(char *url, int method, char **type, int *code, int *s
 	int sockfd = 0, bytes = 0;
 	int has_code = 0, has_type = 0;
 	int pos = 0;
-	char *ip = NULL, *content = NULL, *host = NULL;
+	char ip[17], *content = NULL, *host = NULL;
 	char *page = NULL, *tok = NULL;
 	char recvBuff[BUFFER_SIZE+1], header[1024];
 	unsigned short port = 0;
@@ -100,6 +105,16 @@ char *http_process_request(char *url, int method, char **type, int *code, int *s
 		strcpy(page, "/");
 	}
 
+#ifdef _WIN32
+	WSADATA wsa;
+
+	if(WSAStartup(0x202, &wsa) != 0) {
+		logprintf(LOG_ERR, "could not initialize new socket");
+		*code = -1;
+		goto exit;
+	}
+#endif
+
 	if((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0){
 		logprintf(LOG_ERR, "could not http create socket");
 		*code = -1;
@@ -107,7 +122,8 @@ char *http_process_request(char *url, int method, char **type, int *code, int *s
 	}
   setsockopt(sockfd, SOL_SOCKET, SO_KEEPALIVE, 0, 0);
 
-	if((ip = host2ip(host)) == NULL) {
+	char *w = ip;
+	if(host2ip(host, w) == -1) {
 		*code = -1;
 		goto exit;
 	}
@@ -214,7 +230,7 @@ char *http_process_request(char *url, int method, char **type, int *code, int *s
 			break;
 		}
 
-		if(!(content = REALLOC(content, (size_t)(*size+bytes+1)))) {
+		if((content = REALLOC(content, (size_t)(*size+bytes+1))) == NULL) {
 			logprintf(LOG_ERR, "out of memory");
 			exit(0);
 		}
@@ -223,17 +239,21 @@ char *http_process_request(char *url, int method, char **type, int *code, int *s
 		strncpy(&content[*size], recvBuff, (size_t)(bytes));
 		*size += bytes;
 
-		char *pch = strtok(recvBuff, "\n\r");
+		char **array = NULL;
+		unsigned int n = explode(recvBuff, "\n\r", &array), q = 0;
 		int z = 0;
 		char tmp[255], *p = tmp;
-		while(pch && (has_type == 0 || has_code == 0)) {
-			if(sscanf(pch, "HTTP/1.%d%*[ ]%d%*s%*[ \n\r]", &z, code)) {
+		for(q=0;q<n;q++) {
+			if(has_code == 0 && sscanf(array[q], "HTTP/1.%d%*[ ]%d%*s%*[ \n\r]", &z, code)) {
 				has_code = 1;
 			}
-			if(sscanf(pch, "Content-%[tT]ype:%*[ ]%s%*[ \n\r]", p, tp)) {
+			if(has_type == 0 && sscanf(array[q], "Content-%[tT]ype:%*[ ]%s%*[ \n\r]", p, tp)) {
 				has_type = 1;
 			}
-			pch = strtok(NULL, "\n\r");
+			FREE(array[q]);
+		}
+		if(n > 0) {
+			FREE(array);
 		}
 		memset(recvBuff, '\0', sizeof(recvBuff));
 	}
@@ -259,7 +279,6 @@ exit:
 		memset(&ssl, '\0', sizeof(ssl));
 	}
 
-	if(ip) FREE(ip);
 	if(page) FREE(page);
 	if(host) FREE(host);
 	if(sockfd > 0) {

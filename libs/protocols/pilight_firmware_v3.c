@@ -20,7 +20,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "../../pilight.h"
+#include "pilight.h"
 #include "common.h"
 #include "dso.h"
 #include "log.h"
@@ -35,6 +35,15 @@ static void pilightFirmwareV3CreateMessage(int version, int high, int low) {
 	json_append_member(pilight_firmware_v3->message, "version", json_mknumber(version, 2));
 	json_append_member(pilight_firmware_v3->message, "lpf", json_mknumber(high*10, 0));
 	json_append_member(pilight_firmware_v3->message, "hpf", json_mknumber(low*10, 0));
+}
+
+static void pilightFirmwareV3ParseRaw(void) {
+	int i = 0;
+	for(i=0;i<pilight_firmware_v3->rawlen;i++) {
+		if(pilight_firmware_v3->raw[i] < 100) {
+			pilight_firmware_v3->raw[i]*=10;
+		}
+	}
 }
 
 static void pilightFirmwareV3ParseBinary(void) {
@@ -61,7 +70,7 @@ static void pilightFirmwareV3ParseBinary(void) {
 	}
 }
 
-#ifndef MODULE
+#if !defined(MODULE) && !defined(_WIN32)
 __attribute__((weak))
 #endif
 void pilightFirmwareV3Init(void) {
@@ -69,8 +78,10 @@ void pilightFirmwareV3Init(void) {
   protocol_register(&pilight_firmware_v3);
   protocol_set_id(pilight_firmware_v3, "pilight_firmware");
   protocol_device_add(pilight_firmware_v3, "pilight_firmware", "pilight filter firmware");
+  protocol_plslen_add(pilight_firmware_v3, 240);
   protocol_plslen_add(pilight_firmware_v3, 230);
   protocol_plslen_add(pilight_firmware_v3, 220);
+  protocol_plslen_add(pilight_firmware_v3, 210);
 
   pilight_firmware_v3->devtype = FIRMWARE;
   pilight_firmware_v3->hwtype = HWINTERNAL;
@@ -83,12 +94,13 @@ void pilightFirmwareV3Init(void) {
   options_add(&pilight_firmware_v3->options, 'h', "hpf", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^[0-9]+$");
 
   pilight_firmware_v3->parseBinary=&pilightFirmwareV3ParseBinary;
+  pilight_firmware_v3->parseRaw=&pilightFirmwareV3ParseRaw;
 }
 
-#ifdef MODULE
+#if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "pilight_firmware";
-	module->version = "1.1";
+	module->version = "1.2";
 	module->reqversion = "5.0";
 	module->reqcommit = "84";
 }

@@ -19,6 +19,8 @@
 #ifndef _SOCKETS_H_
 #define _SOCKETS_H_
 
+#include <time.h>
+
 typedef struct socket_callback_t {
     void (*client_connected_callback)(int);
     void (*client_disconnected_callback)(int);
@@ -30,7 +32,7 @@ int socket_start(unsigned short port);
 int socket_connect(char *address, unsigned short port);
 void socket_close(int i);
 int socket_write(int sockfd, const char *msg, ...);
-int socket_read(int sockfd, char **out);
+int socket_read(int sockfd, char **out, time_t timeout);
 void *socket_wait(void *param);
 int socket_gc(void);
 unsigned int socket_get_port(void);

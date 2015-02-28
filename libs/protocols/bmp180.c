@@ -28,7 +28,7 @@
 #include <sys/stat.h>
 #include <sys/time.h>
 
-#include "../../pilight.h"
+#include "pilight.h"
 #include "common.h"
 #include "dso.h"
 #include "log.h"
@@ -41,6 +41,7 @@
 #include "bmp180.h"
 #include "../pilight/wiringX.h"
 
+#if !defined(__FreeBSD__) && !defined(_WIN32)
 typedef struct bmp180data_t {
 	char **id;
 	int nrid;
@@ -134,7 +135,6 @@ static void *bmp180Parse(void *param) {
 		oversampling = (unsigned char) itmp;
 	}
 
-#ifndef __FreeBSD__
 	// resize the memory blocks pointed to by the different pointers
 	size_t sz = (size_t) (bmp180data->nrid + 1);
 	unsigned long int sizeShort = sizeof(short) * sz;
@@ -206,11 +206,9 @@ static void *bmp180Parse(void *param) {
 			}
 		}
 	}
-#endif
 
 	while (bmp180_loop) {
 		if (protocol_thread_wait(node, interval, &nrloops) == ETIMEDOUT) {
-#ifndef __FreeBSD__
 			pthread_mutex_lock(&bmp180lock);
 			for (y = 0; y < bmp180data->nrid; y++) {
 				if (bmp180data->fd[y] > 0) {
@@ -304,7 +302,6 @@ static void *bmp180Parse(void *param) {
 				}
 			}
 			pthread_mutex_unlock(&bmp180lock);
-#endif
 		}
 	}
 
@@ -380,14 +377,17 @@ static void bmp180ThreadGC(void) {
 	}
 	protocol_thread_free(bmp180);
 }
+#endif
 
-#ifndef MODULE
+#if !defined(MODULE) && !defined(_WIN32)
 __attribute__((weak))
 #endif
 void bmp180Init(void) {
+#if !defined(__FreeBSD__) && !defined(_WIN32)
 	pthread_mutexattr_init(&bmp180attr);
 	pthread_mutexattr_settype(&bmp180attr, PTHREAD_MUTEX_RECURSIVE);
 	pthread_mutex_init(&bmp180lock, &bmp180attr);
+#endif
 
 	protocol_register(&bmp180);
 	protocol_set_id(bmp180, "bmp180");
@@ -416,11 +416,13 @@ void bmp180Init(void) {
 	options_add(&bmp180->options, 0, "show-temperature", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *) 1,
 			"^[10]{1}$");
 
+#if !defined(__FreeBSD__) && !defined(_WIN32)
 	bmp180->initDev = &bmp180InitDev;
 	bmp180->threadGC = &bmp180ThreadGC;
+#endif
 }
 
-#ifdef MODULE
+#if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "bmp180";
 	module->version = "1.0";

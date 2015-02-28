@@ -21,7 +21,7 @@
 #include <string.h>
 #include <math.h>
 
-#include "../../pilight.h"
+#include "pilight.h"
 #include "common.h"
 #include "dso.h"
 #include "log.h"
@@ -149,7 +149,7 @@ static void rsl366PrintHelp(void) {
 	printf("\t -f --off\t\t\tsend an off signal\n");
 }
 
-#ifndef MODULE
+#if !defined(MODULE) && !defined(_WIN32)
 __attribute__((weak))
 #endif
 void rsl366Init(void) {
@@ -177,7 +177,7 @@ void rsl366Init(void) {
 	rsl366->printHelp=&rsl366PrintHelp;
 }
 
-#ifdef MODULE
+#if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "rsl366";
 	module->version = "1.1";

@@ -39,11 +39,10 @@
 #include "operator.h"
 #include "action.h"
 
-struct pilight_t pilight;
-
 int main(int argc, char **argv) {
 	// memtrack();
 
+	atomicinit();
 	struct options_t *options = NULL;
 	struct ssdp_list_t *ssdp_list = NULL;
 	struct devices_t *dev = NULL;
@@ -84,8 +83,10 @@ int main(int argc, char **argv) {
 		c = options_parse(&options, argc, argv, 1, &optarg);
 		if(c == -1)
 			break;
-		if(c == -2)
-			c = 'H';
+		if(c == -2) {
+			showhelp = 1;
+			break;
+		}
 		switch(c) {
 			case 'H':
 				showhelp = 1;
@@ -137,8 +138,9 @@ int main(int argc, char **argv) {
 		}
 	}
 	options_delete(options);
+
 	if(showversion == 1) {
-		printf("%s %s\n", progname, VERSION);
+		printf("%s v%s\n", progname, PILIGHT_VERSION);
 		goto close;
 	}
 	if(showhelp == 1) {
@@ -186,7 +188,7 @@ int main(int argc, char **argv) {
 	}
 
 	socket_write(sockfd, "{\"action\":\"identify\"}");
-	if(socket_read(sockfd, &recvBuff) != 0
+	if(socket_read(sockfd, &recvBuff, 0) != 0
 	   || strcmp(recvBuff, "{\"status\":\"success\"}") != 0) {
 		goto close;
 	}
@@ -198,7 +200,7 @@ int main(int argc, char **argv) {
 	json_free(output);
 	json_delete(json);
 
-	if(socket_read(sockfd, &recvBuff) == 0) {
+	if(socket_read(sockfd, &recvBuff, 0) == 0) {
 		if(json_validate(recvBuff) == true) {
 			json = json_decode(recvBuff);
 			if(json_find_string(json, "message", &message) == 0) {
@@ -230,56 +232,61 @@ int main(int argc, char **argv) {
 							json_append_member(jcode, "device", json_mkstring(device));
 
 							if(values != NULL) {
-								char *pch = strtok(values, ",=");
-								while(pch != NULL) {
-									char *name = MALLOC(strlen(pch)+1);
+								char **array = NULL;
+								unsigned int n = explode(values, ",=", &array), q = 0;
+								for(q=0;q<n;q+=2) {
+									char *name = MALLOC(strlen(array[q])+1);
 									if(name == NULL) {
 										logprintf(LOG_ERR, "out of memory\n");
 										exit(EXIT_FAILURE);
 									}
-									strcpy(name, pch);
-									pch = strtok(NULL, ",=");
-									if(pch == NULL) {
+									strcpy(name, array[q]);
+									if(q+1 == n) {
+										for(q=0;q<n;q++) {
+											FREE(array[q]);
+										}
+										FREE(array);
+										logprintf(LOG_ERR, "\"%s\" is missing a value for device \"%s\"", name, device);
 										FREE(name);
 										break;
 									} else {
-										char *val = MALLOC(strlen(pch)+1);
-										if(name == NULL) {
+										char *val = MALLOC(strlen(array[q+1])+1);
+										if(val == NULL) {
 											logprintf(LOG_ERR, "out of memory\n");
 											exit(EXIT_FAILURE);
 										}
-										strcpy(val, pch);
-										if(pch != NULL) {
-											if(devices_valid_value(device, name, val) == 0) {
-												if(isNumeric(val) == EXIT_SUCCESS) {
-													char *ptr = strstr(pch, ".");
-													int decimals = 0;
-													if(ptr != NULL) {
-														decimals = (int)(strlen(pch)-((size_t)(ptr-pch)+1));
-													}
-													json_append_member(jvalues, name, json_mknumber(atof(val), decimals));
-												} else {
-													json_append_member(jvalues, name, json_mkstring(val));
+										strcpy(val, array[q+1]);
+										if(devices_valid_value(device, name, val) == 0) {
+											if(isNumeric(val) == EXIT_SUCCESS) {
+												char *ptr = strstr(array[q+1], ".");
+												int decimals = 0;
+												if(ptr != NULL) {
+													decimals = (int)(strlen(array[q+1])-((size_t)(ptr-array[q+1])+1));
 												}
-												has_values = 1;
+												json_append_member(jvalues, name, json_mknumber(atof(val), decimals));
 											} else {
-												logprintf(LOG_ERR, "\"%s\" is an invalid value for device \"%s\"", name, device);
-												FREE(name);
-												json_delete(json);
-												goto close;
+												json_append_member(jvalues, name, json_mkstring(val));
 											}
+											has_values = 1;
 										} else {
 											logprintf(LOG_ERR, "\"%s\" is an invalid value for device \"%s\"", name, device);
+											for(q=0;q<n;q++) {
+												FREE(array[q]);
+											}
+											FREE(array);
+											FREE(name);
 											json_delete(json);
 											goto close;
 										}
-										pch = strtok(NULL, ",=");
-										if(pch == NULL) {
-											FREE(name);
-											break;
-										}
 									}
 									FREE(name);
+								}
+								unsigned int z = 0;
+								for(z=q;z<n;z++) {
+									FREE(array[z]);
+								}
+								if(n > 0) {
+									FREE(array);
 								}
 							}
 
@@ -302,7 +309,7 @@ int main(int argc, char **argv) {
 							socket_write(sockfd, output);
 							json_free(output);
 							json_delete(joutput);
-							if(socket_read(sockfd, &recvBuff) != 0
+							if(socket_read(sockfd, &recvBuff, 0) != 0
 							   || strcmp(recvBuff, "{\"status\":\"success\"}") != 0) {
 								logprintf(LOG_ERR, "failed to control %s", device);
 							}
@@ -345,10 +352,14 @@ close:
 	event_action_gc();
 	dso_gc();
 	log_gc();
-	gc_clear();
 	threads_gc();
+	gc_clear();
 	FREE(progname);
 	xfree();
+
+#ifdef _WIN32
+	WSACleanup();
+#endif
 
 	return EXIT_SUCCESS;
 }

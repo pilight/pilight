@@ -16,7 +16,9 @@
 	along with pilight. If not, see	<http://www.gnu.org/licenses/>
 */
 
-#include <regex.h>
+#ifndef _WIN32
+	#include <regex.h>
+#endif
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -233,7 +235,7 @@ int options_parse(struct options_t **opt, int argc, char **argv, int error_check
 
 	int c = 0;
 	int itmp = 0;
-#ifndef __FreeBSD__
+#if !defined(__FreeBSD__) && !defined(_WIN32)
 	char *mask;
 	regex_t regex;
 	int reti;
@@ -410,7 +412,7 @@ int options_parse(struct options_t **opt, int argc, char **argv, int error_check
 			if(strlen(*optarg) == 0) {
 				options_set_string(opt, c, "1");
 			} else {
-#ifndef __FreeBSD__
+#if !defined(__FreeBSD__) && !defined(_WIN32)
 				if(error_check != 2) {
 					/* If the argument has a regex mask, check if it passes */
 					if(options_get_mask(opt, c, &mask) == 0) {

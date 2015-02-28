@@ -21,7 +21,7 @@
 #include <string.h>
 #include <math.h>
 
-#include "../../pilight.h"
+#include "pilight.h"
 #include "common.h"
 #include "dso.h"
 #include "log.h"
@@ -254,7 +254,7 @@ static void arctechDimPrintHelp(void) {
 	printf("\t -d --dimlevel=dimlevel\t\tsend a specific dimlevel\n");
 }
 
-#ifndef MODULE
+#if !defined(MODULE) && !defined(_WIN32)
 __attribute__((weak))
 #endif
 void arctechDimInit(void) {
@@ -263,6 +263,7 @@ void arctechDimInit(void) {
 	protocol_set_id(arctech_dimmer, "arctech_dimmer");
 	protocol_device_add(arctech_dimmer, "kaku_dimmer", "KlikAanKlikUit Dimmers");
 	protocol_plslen_add(arctech_dimmer, 300);
+	protocol_plslen_add(arctech_dimmer, 270);
 	arctech_dimmer->devtype = DIMMER;
 	arctech_dimmer->hwtype = RF433;
 	arctech_dimmer->pulse = 5;
@@ -286,10 +287,10 @@ void arctechDimInit(void) {
 	arctech_dimmer->checkValues=&arctechDimCheckValues;
 }
 
-#ifdef MODULE
+#if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "arctech_dimmer";
-	module->version = "1.2";
+	module->version = "1.3";
 	module->reqversion = "5.0";
 	module->reqcommit = "84";
 }

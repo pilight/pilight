@@ -27,7 +27,7 @@
 #include <math.h>
 #include <sys/stat.h>
 
-#include "../../pilight.h"
+#include "pilight.h"
 #include "common.h"
 #include "dso.h"
 #include "log.h"
@@ -51,19 +51,22 @@ static void *ds18s20Parse(void *param) {
 	struct JsonNode *json = (struct JsonNode *)node->param;
 	struct JsonNode *jid = NULL;
 	struct JsonNode *jchild = NULL;
+
+#ifndef _WIN32
 	struct dirent *file = NULL;
 	struct stat st;
 
 	DIR *d = NULL;
 	FILE *fp = NULL;
-	char *ds18s20_sensor = NULL;
-	char *stmp = NULL;
-	char **id = NULL;
-	char *content = NULL;
-	int w1valid = 0, interval = 10, x = 0;
-	int nrid = 0, y = 0, nrloops = 0;
-	double temp_offset = 0.0, w1temp = 0.0, itmp = 0.0;
+	char crcVar[5];
+	int w1valid = 0;
+	double w1temp = 0.0;
 	size_t bytes = 0;
+#endif
+	char **id = NULL, *stmp = NULL, *content = NULL;
+	char *ds18s20_sensor = NULL;
+	int nrid = 0, interval = 10, nrloops = 0, y = 0;
+	double temp_offset = 0.0, itmp = 0.0;
 
 	ds18s20_threads++;
 
@@ -94,6 +97,7 @@ static void *ds18s20Parse(void *param) {
 
 	while(ds18s20_loop) {
 		if(protocol_thread_wait(node, interval, &nrloops) == ETIMEDOUT) {
+#ifndef _WIN32
 			pthread_mutex_lock(&ds18s20lock);
 			for(y=0;y<nrid;y++) {
 				ds18s20_sensor = REALLOC(ds18s20_sensor, strlen(ds18s20_path)+strlen(id[y])+5);
@@ -134,20 +138,21 @@ static void *ds18s20Parse(void *param) {
 								}
 								fclose(fp);
 								w1valid = 0;
-								char *pch = strtok(content, "\n=: ");
-								x = 0;
-								while(pch) {
-									if(strlen(pch) > 2) {
-										if(x == 1 && strstr(pch, "YES")) {
-											w1valid = 1;
-										}
-										if(x == 2) {
-											w1temp = (atof(pch)/100)+temp_offset;
-										}
-										x++;
+
+								char **array = NULL;
+								unsigned int n = explode(content, "\n", &array), q = 0;
+								if(n > 0) {
+									sscanf(array[0], "%*x %*x %*x %*x %*x %*x %*x %*x %*x : crc=%*x %s", crcVar);
+									if(strncmp(crcVar, "YES", 3) == 0 && n > 1) {
+										w1valid = 1;
+										sscanf(array[1], "%*x %*x %*x %*x %*x %*x %*x %*x %*x t=%lf", &w1temp);
+										w1temp = (w1temp/1000)+temp_offset;
 									}
-									pch = strtok(NULL, "\n=: ");
 								}
+								for(q=0;q<n;q++) {
+									FREE(array[q]);
+								}
+								FREE(array);
 
 								if(w1valid) {
 									ds18s20->message = json_mkobject();
@@ -175,6 +180,7 @@ static void *ds18s20Parse(void *param) {
 					logprintf(LOG_ERR, "1-wire device %s does not exists", ds18s20_sensor);
 				}
 			}
+#endif
 			pthread_mutex_unlock(&ds18s20lock);
 		}
 	}
@@ -213,7 +219,7 @@ static void ds18s20ThreadGC(void) {
 	protocol_thread_free(ds18s20);
 }
 
-#ifndef MODULE
+#if !defined(MODULE) && !defined(_WIN32)
 __attribute__((weak))
 #endif
 void ds18s20Init(void) {
@@ -243,12 +249,12 @@ void ds18s20Init(void) {
 	ds18s20->threadGC=&ds18s20ThreadGC;
 }
 
-#ifdef MODULE
+#if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "ds18s20";
-	module->version = "1.3";
+	module->version = "1.6";
 	module->reqversion = "5.0";
-	module->reqcommit = "187";
+	module->reqcommit = "266";
 }
 
 void init(void) {

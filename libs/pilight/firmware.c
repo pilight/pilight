@@ -44,7 +44,7 @@
 #include <sys/time.h>
 #include <dirent.h>
 
-#include "../../pilight.h"
+#include "pilight.h"
 #include "common.h"
 #include "settings.h"
 #include "log.h"
@@ -462,31 +462,49 @@ main_exit:
 	FREE(pgm);
 
 	for(i=0;i<AVR_OP_MAX;i++) {
-		FREE((*p)->op[i]);
+		if((*p)->op[i] != NULL) {
+			FREE((*p)->op[i]);
+		}
 	}
 
 	for(i=0;i<AVR_OP_MAX;i++) {
-		FREE((*p)->sigmem->op[i]);
+		if((*p)->sigmem->op[i] != NULL) {
+			FREE((*p)->sigmem->op[i]);
+		}
 	}
-	FREE((*p)->sigmem->buf);
+	if((*p)->sigmem->buf != NULL) {
+		FREE((*p)->sigmem->buf);
+	}
 	FREE((*p)->sigmem);
 
 	for(i=0;i<AVR_OP_MAX;i++) {
-		FREE((*p)->flashmem->op[i]);
+		if((*p)->flashmem->op[i] != NULL) {
+			FREE((*p)->flashmem->op[i]);
+		}
 	}
-	FREE((*p)->flashmem->buf);
+	if((*p)->flashmem->buf != NULL) {
+		FREE((*p)->flashmem->buf);
+	}
 	FREE((*p)->flashmem);
 
 	for(i=0;i<AVR_OP_MAX;i++) {
-		FREE((*p)->hfusemem->op[i]);
+		if((*p)->hfusemem->op[i] != NULL) {
+			FREE((*p)->hfusemem->op[i]);
+		}
 	}
-	FREE((*p)->hfusemem->buf);
+	if((*p)->hfusemem->buf != NULL) {
+		FREE((*p)->hfusemem->buf);
+	}
 	FREE((*p)->hfusemem);
 
 	for(i=0;i<AVR_OP_MAX;i++) {
-		FREE((*p)->lfusemem->op[i]);
+		if((*p)->lfusemem->op[i] != NULL) {
+			FREE((*p)->lfusemem->op[i]);
+		}
 	}
-	FREE((*p)->lfusemem->buf);
+	if((*p)->lfusemem->buf != NULL) {
+		FREE((*p)->lfusemem->buf);
+	}
 	FREE((*p)->lfusemem);
 
 	FREE(*p);
@@ -785,7 +803,7 @@ main_exit:
 	FREE(wfile->filename);
 	FREE(wfile);
 
-	if(vfile) {
+	if(vfile != NULL) {
 		FREE(vfile->memtype);
 		FREE(vfile->filename);
 		FREE(vfile);
@@ -795,7 +813,7 @@ main_exit:
 	FREE(whfuse->filename);
 	FREE(whfuse);
 
-	if(vhfuse) {
+	if(vhfuse != NULL) {
 		FREE(vhfuse->memtype);
 		FREE(vhfuse->filename);
 		FREE(vhfuse);
@@ -805,38 +823,56 @@ main_exit:
 	FREE(wlfuse->filename);
 	FREE(wlfuse);
 
-	if(vlfuse) {
+	if(vlfuse != NULL) {
 		FREE(vlfuse->memtype);
 		FREE(vlfuse->filename);
 		FREE(vlfuse);
 	}
 
 	for(i=0;i<AVR_OP_MAX;i++) {
-		FREE((*p)->op[i]);
+		if((*p)->op[i] != NULL) {
+			FREE((*p)->op[i]);
+		}
 	}
 
 	for(i=0;i<AVR_OP_MAX;i++) {
-		FREE((*p)->sigmem->op[i]);
+		if((*p)->sigmem->op[i] != NULL) {
+			FREE((*p)->sigmem->op[i]);
+		}
 	}
-	FREE((*p)->sigmem->buf);
+	if((*p)->sigmem->buf != NULL) {
+		FREE((*p)->sigmem->buf);
+	}
 	FREE((*p)->sigmem);
 
 	for(i=0;i<AVR_OP_MAX;i++) {
-		FREE((*p)->flashmem->op[i]);
+		if((*p)->flashmem->op[i] != NULL) {
+			FREE((*p)->flashmem->op[i]);
+		}
 	}
-	FREE((*p)->flashmem->buf);
+	if((*p)->flashmem->buf != NULL) {
+		FREE((*p)->flashmem->buf);
+	}
 	FREE((*p)->flashmem);
 
 	for(i=0;i<AVR_OP_MAX;i++) {
-		FREE((*p)->hfusemem->op[i]);
+		if((*p)->hfusemem->op[i] != NULL) {
+			FREE((*p)->hfusemem->op[i]);
+		}
 	}
-	FREE((*p)->hfusemem->buf);
+	if((*p)->hfusemem->buf != NULL) {
+		FREE((*p)->hfusemem->buf);
+	}
 	FREE((*p)->hfusemem);
 
 	for(i=0;i<AVR_OP_MAX;i++) {
-		FREE((*p)->lfusemem->op[i]);
+		if((*p)->lfusemem->op[i] != NULL) {
+			FREE((*p)->lfusemem->op[i]);
+		}
 	}
-	FREE((*p)->lfusemem->buf);
+	if((*p)->lfusemem->buf != NULL) {
+		FREE((*p)->lfusemem->buf);
+	}
 	FREE((*p)->lfusemem);
 
 	FREE(v->flashmem->buf);

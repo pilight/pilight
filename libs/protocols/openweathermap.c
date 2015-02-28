@@ -28,7 +28,7 @@
 #include <pthread.h>
 #include <sys/stat.h>
 
-#include "../../pilight.h"
+#include "pilight.h"
 #include "common.h"
 #include "dso.h"
 #include "../pilight/datetime.h" // Full path because we also have a datetime protocol
@@ -82,7 +82,7 @@ static void *openweathermapParse(void *param) {
 	int ret = 0, size = 0;
 
 	time_t timenow = 0;
-	struct tm *tm;
+	struct tm tm;
 
 	openweathermap_threads++;
 
@@ -137,7 +137,7 @@ static void *openweathermapParse(void *param) {
 		}
 	}
 
-	if(!wnode) {
+	if(wnode == NULL) {
 		return 0;
 	}
 
@@ -180,10 +180,13 @@ static void *openweathermapParse(void *param) {
 										temp = node->number_-273.15;
 
 										timenow = time(NULL);
-										struct tm *current = localtime(&timenow);
-										int month = current->tm_mon+1;
-										int mday = current->tm_mday;
-										int year = current->tm_year+1900;
+										struct tm current;
+										memset(&current, '\0', sizeof(struct tm));
+										localtime_r(&timenow, &current);
+
+										int month = current.tm_mon+1;
+										int mday = current.tm_mday;
+										int year = current.tm_year+1900;
 
 										time_t midnight = (datetime2ts(year, month, mday, 23, 59, 59, 0)+1);
 
@@ -197,11 +200,13 @@ static void *openweathermapParse(void *param) {
 										json_append_member(code, "humidity", json_mknumber(humi, 2));
 										json_append_member(code, "update", json_mknumber(0, 0));
 										time_t a = (time_t)sunrise;
-										tm = localtime(&a);
-										json_append_member(code, "sunrise", json_mknumber((double)((tm->tm_hour*100)+tm->tm_min)/100, 2));
+										memset(&tm, '\0', sizeof(struct tm));
+										localtime_r(&a, &tm);
+										json_append_member(code, "sunrise", json_mknumber((double)((tm.tm_hour*100)+tm.tm_min)/100, 2));
 										time_t b = (time_t)sunset;
-										tm = localtime(&b);
-										json_append_member(code, "sunset", json_mknumber((double)((tm->tm_hour*100)+tm->tm_min)/100, 2));
+										memset(&tm, '\0', sizeof(struct tm));
+										localtime_r(&b, &tm);
+										json_append_member(code, "sunset", json_mknumber((double)((tm.tm_hour*100)+tm.tm_min)/100, 2));
 										if(timenow > (int)round(sunrise) && timenow < (int)round(sunset)) {
 											json_append_member(code, "sun", json_mkstring("rise"));
 										} else {
@@ -366,7 +371,7 @@ static void openweathermapPrintHelp(void) {
 	printf("\t -u --update\t\t\tupdate the defined weather entry\n");
 }
 
-#ifndef MODULE
+#if !defined(MODULE) && !defined(_WIN32)
 __attribute__((weak))
 #endif
 void openweathermapInit(void) {
@@ -383,7 +388,7 @@ void openweathermapInit(void) {
 
 	options_add(&openweathermap->options, 't', "temperature", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9]{1,5}$");
 	options_add(&openweathermap->options, 'h', "humidity", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9]{1,5}$");
-	options_add(&openweathermap->options, 'l', "location", OPTION_HAS_VALUE, DEVICES_ID, JSON_STRING, NULL, "^[a-zA-Z-]+$");
+	options_add(&openweathermap->options, 'l', "location", OPTION_HAS_VALUE, DEVICES_ID, JSON_STRING, NULL, "^([a-zA-Z-]|[[:space:]])+$");
 	options_add(&openweathermap->options, 'c', "country", OPTION_HAS_VALUE, DEVICES_ID, JSON_STRING, NULL, "^[a-zA-Z]+$");
 	options_add(&openweathermap->options, 'x', "sunrise", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9]{3,4}$");
 	options_add(&openweathermap->options, 'y', "sunset", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9]{3,4}$");
@@ -405,10 +410,10 @@ void openweathermapInit(void) {
 	openweathermap->printHelp=&openweathermapPrintHelp;
 }
 
-#ifdef MODULE
+#if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "openweathermap";
-	module->version = "1.4";
+	module->version = "1.6";
 	module->reqversion = "5.0";
 	module->reqcommit = "187";
 }

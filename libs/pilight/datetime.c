@@ -29,7 +29,11 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include <ctype.h>
-#include <pthread.h>
+#ifdef _WIN32
+	#include "pthread.h"
+#else
+	#include <pthread.h>
+#endif
 
 #include "json.h"
 #include "common.h"
@@ -39,8 +43,12 @@
 #define NRCOUNTRIES 	408
 #define PRECISION 		1
 
-#define min(a,b) (((a)<(b))?(a):(b))
-#define max(a,b) (((a)>(b))?(a):(b))
+#ifndef min
+	#define min(a,b) (((a)<(b))?(a):(b))
+#endif
+#ifndef max
+	#define max(a,b) (((a)>(b))?(a):(b))
+#endif
 
 static int ***tzcoords;
 static unsigned int tznrpolys[NRCOUNTRIES];
@@ -49,6 +57,13 @@ static int tzdatafilled = 0;
 static pthread_mutex_t tzlock;
 static pthread_mutexattr_t tzattr;
 static int tz_lock_initialized = 0;
+
+/*
+	Extra checks for gracefull (early)
+  stopping of pilight
+*/
+static int fillingtzdata = 0;
+static int searchingtz = 0;
 
 static int fillTZData(void) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
@@ -60,9 +75,19 @@ static int fillTZData(void) {
 		tz_lock_initialized = 1;
 	}
 
-	pthread_mutex_lock(&tzlock);
+	if(tz_lock_initialized == 1) {
+		pthread_mutex_lock(&tzlock);
+	}
+/*
+	Extra checks for gracefull (early)
+  stopping of pilight
+*/
+	fillingtzdata = 1;
 	if(tzdatafilled == 1) {
-		pthread_mutex_unlock(&tzlock);
+		fillingtzdata = 0;
+		if(tz_lock_initialized == 1) {
+			pthread_mutex_unlock(&tzlock);
+		}
 		return EXIT_SUCCESS;
 	}
 	char *content = NULL;
@@ -73,7 +98,7 @@ static int fillTZData(void) {
 
 	char tzdatafile[] = TZDATA_FILE;
 	/* Read JSON tzdata file */
-	if(!(fp = fopen(tzdatafile, "rb"))) {
+	if((fp = fopen(tzdatafile, "rb")) == NULL) {
 		logprintf(LOG_ERR, "cannot read tzdata file: %s", tzdatafile);
 		return EXIT_FAILURE;
 	}
@@ -84,6 +109,7 @@ static int fillTZData(void) {
 	if(!(content = calloc(bytes+1, sizeof(char)))) {
 		logprintf(LOG_ERR, "out of memory");
 		fclose(fp);
+		fillingtzdata = 0;
 		return EXIT_FAILURE;
 	}
 
@@ -96,6 +122,7 @@ static int fillTZData(void) {
 	if(json_validate(content) == false) {
 		logprintf(LOG_ERR, "tzdata is not in a valid json format");
 		free(content);
+		fillingtzdata = 0;
 		return EXIT_FAILURE;
 	}
 
@@ -141,14 +168,26 @@ static int fillTZData(void) {
 	json_delete(root);
 	free(content);
 	tzdatafilled = 1;
-	pthread_mutex_unlock(&tzlock);
+	fillingtzdata = 0;
+	if(tz_lock_initialized == 1) {
+		pthread_mutex_unlock(&tzlock);
+	}
 	return EXIT_SUCCESS;
 }
 
 int datetime_gc(void) {
-	pthread_mutex_unlock(&tzlock);
 	int i = 0, a = 0;
-	if(tzdatafilled) {
+/*
+	Extra checks for gracefull (early)
+  stopping of pilight
+*/
+	while(fillingtzdata) {
+		usleep(10);
+	}
+	while(searchingtz) {
+		usleep(10);
+	}
+	if(tzdatafilled == 1) {
 		for(i=0;i<NRCOUNTRIES;i++) {
 			unsigned int n = tznrpolys[i];
 			for(a=0;a<n;a++) {
@@ -169,6 +208,14 @@ char *coord2tz(double longitude, double latitude) {
 		return NULL;
 	}
 
+/*
+	Extra checks for gracefull (early)
+  stopping of pilight
+*/
+	if(tz_lock_initialized == 1) {
+		pthread_mutex_lock(&tzlock);
+	}
+	searchingtz = 1;
 	int i = 0, a = 0, margin = 1, inside = 0;
 	char *tz = NULL;
 
@@ -223,6 +270,10 @@ char *coord2tz(double longitude, double latitude) {
 		margin++;
 		margin *= (int)pow(10, PRECISION);
 	}
+	searchingtz = 0;
+	if(tz_lock_initialized == 1) {
+		pthread_mutex_unlock(&tzlock);
+	}
 	return tz;
 }
 
@@ -251,25 +302,30 @@ time_t datetime2ts(int year, int month, int day, int hour, int minutes, int seco
 struct tm *localtztime(char *tz, time_t t) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
-	struct tm *tm = NULL;
+	struct tm tm, *ret = NULL;
+	memset(&tm, '\0', sizeof(struct tm));
 	setenv("TZ", tz, 1);
-	tm = localtime(&t);
+	localtime_r(&t, &tm);
 	unsetenv("TZ");
-	return tm;
+
+	ret = &tm;
+	return ret;
 }
 
 int tzoffset(char *tz1, char *tz2) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
 	time_t utc, tzsearch, now;
-	struct tm *tm = NULL;
+	struct tm tm;
+	memset(&tm, '\0', sizeof(struct tm));
+
 	now = time(NULL);
-	tm = localtime(&now);
+	localtime_r(&now, &tm);
 
 	setenv("TZ", tz1, 1);
-	utc = mktime(tm);
+	utc = mktime(&tm);
 	setenv("TZ", tz2, 1);
-	tzsearch = mktime(tm);
+	tzsearch = mktime(&tm);
 	unsetenv("TZ");
 	return (int)((utc-tzsearch)/3600);
 }
@@ -278,27 +334,34 @@ int ctzoffset(void) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
 	time_t tm1, tm2;
-	struct tm *t2;
+	struct tm t2, tmp;
+	memset(&tmp, '\0', sizeof(struct tm));
+
 	tm1 = time(NULL);
-	t2 = gmtime(&tm1);
-	tm2 = mktime(t2);
-	localtime(&tm1);
+
+	memset(&t2, '\0', sizeof(struct tm));
+	gmtime_r(&tm1, &t2);
+
+	tm2 = mktime(&t2);
+	localtime_r(&tm1, &tmp);
 	return (int)((tm1 - tm2)/3600);
 }
 
 int isdst(char *tz) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
-	char UTC[] = "Europe/London";
+	char UTC[] = "UTC";
 	time_t now = 0;
-	struct tm *tm = NULL;
+	struct tm tm;
 	now = time(NULL);
-	tm = gmtime(&now);
-	tm->tm_hour += tzoffset(UTC, tz);
+
+	memset(&tm, '\0', sizeof(struct tm));
+	gmtime_r(&now, &tm);
+	tm.tm_hour += tzoffset(UTC, tz);
 
 	setenv("TZ", tz, 1);
-	mktime(tm);
+	mktime(&tm);
 	unsetenv("TZ");
 
-	return tm->tm_isdst;
+	return tm.tm_isdst;
 }

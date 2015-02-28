@@ -23,10 +23,20 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <unistd.h>
-#include <arpa/inet.h>
-#include <netinet/in.h>
-#include <sys/ioctl.h>
-#include <sys/socket.h>
+#ifdef _WIN32
+	#include <winsock2.h>
+	#include <ws2tcpip.h>
+	#include "pthread.h"
+	#define MSG_NOSIGNAL 0
+#else
+	#include <sys/socket.h>
+	#include <sys/time.h>
+	#include <netinet/in.h>
+	#include <netinet/tcp.h>
+	#include <netdb.h>
+	#include <arpa/inet.h>
+	#include <pthread.h>
+#endif
 #include <sys/stat.h>
 #include <sys/time.h>
 #include <pthread.h>
@@ -38,8 +48,6 @@
 #include "options.h"
 #include "ssdp.h"
 #include "gc.h"
-
-struct pilight_t pilight;
 
 int main_gc(void) {
 	log_shell_disable();
@@ -56,7 +64,7 @@ int main_gc(void) {
 
 int main(int argc, char **argv) {
 	// memtrack();
-
+	atomicinit();
 	gc_attach(main_gc);
 
 	/* Catch all exit signals for gc */
@@ -67,8 +75,6 @@ int main(int argc, char **argv) {
 	log_level_set(LOG_NOTICE);
 
 	struct options_t *options = NULL;
-	struct ifaddrs *ifaddr, *ifa;
-	int family = 0;
 	char *p = NULL;
 	char *args = NULL;
 
@@ -97,7 +103,7 @@ int main(int argc, char **argv) {
 				return (EXIT_SUCCESS);
 			break;
 			case 'V':
-				printf("%s %s\n", progname, VERSION);
+				printf("%s v%s\n", progname, PILIGHT_VERSION);
 				return (EXIT_SUCCESS);
 			break;
 			default:
@@ -108,17 +114,28 @@ int main(int argc, char **argv) {
 	}
 	options_delete(options);
 
-#ifdef __FreeBSD__
-	if(rep_getifaddrs(&ifaddr) == -1) {
-		logprintf(LOG_ERR, "could not get network adapter information");
+#ifdef _WIN32
+	if((p = genuuid(NULL)) == NULL) {
+		logprintf(LOG_ERR, "could not generate the device uuid");
 		goto clear;
+	} else {
+		strcpy(pilight_uuid, p);
+		FREE(p);
 	}
 #else
-	if(getifaddrs(&ifaddr) == -1) {
-		perror("getifaddrs");
-		goto clear;
-	}
-#endif
+	struct ifaddrs *ifaddr, *ifa;
+	int family = 0;
+	#ifdef __FreeBSD__
+		if(rep_getifaddrs(&ifaddr) == -1) {
+			logprintf(LOG_ERR, "could not get network adapter information");
+			goto clear;
+		}
+	#else
+		if(getifaddrs(&ifaddr) == -1) {
+			perror("getifaddrs");
+			goto clear;
+		}
+	#endif
 
 	for(ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next) {
 		if(ifa->ifa_addr == NULL) {
@@ -134,14 +151,15 @@ int main(int argc, char **argv) {
 				freeifaddrs(ifaddr);
 				goto clear;
 			} else {
-				printf("%s\n", p);
+				strcpy(pilight_uuid, p);
 				FREE(p);
 				break;
 			}
 		}
 	}
-
 	freeifaddrs(ifaddr);
+#endif
+printf("%s\n", pilight_uuid);
 
 clear:
 	main_gc();

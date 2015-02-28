@@ -23,7 +23,7 @@
 #include <unistd.h>
 #include <math.h>
 
-#include "../../pilight.h"
+#include "pilight.h"
 #include "common.h"
 #include "dso.h"
 #include "log.h"
@@ -54,8 +54,7 @@ static int relayCreateCode(JsonNode *code) {
 
 	relay->rawlen = 0;
 	if(json_find_string(code, "default-state", &def) != 0) {
-		def = MALLOC(4);
-		if(!def) {
+		if((def = MALLOC(4)) == NULL) {
 			logprintf(LOG_ERR, "out of memory");
 			exit(EXIT_FAILURE);
 		}
@@ -74,10 +73,13 @@ static int relayCreateCode(JsonNode *code) {
 		logprintf(LOG_ERR, "relay: insufficient number of arguments");
 		have_error = 1;
 		goto clear;
+#ifndef _WIN32
 	} else if(wiringXSetup() < 0) {
 		logprintf(LOG_ERR, "unable to setup wiringX") ;
 		return EXIT_FAILURE;
+#endif
 	} else {
+#ifndef _WIN32
 		if(wiringXValidGPIO(gpio) != 0) {
 			logprintf(LOG_ERR, "relay: invalid gpio range");
 			have_error = 1;
@@ -101,9 +103,12 @@ static int relayCreateCode(JsonNode *code) {
 			} else {
 				wiringXGC();
 			}
+#endif
 			relayCreateMessage(gpio, state);
 			goto clear;
+#ifndef _WIN32
 		}
+#endif
 	}
 
 clear:
@@ -146,7 +151,7 @@ static void relayGC(void) {
 	FREE(relay_state);
 }
 
-#ifndef MODULE
+#if !defined(MODULE) && !defined(_WIN32)
 __attribute__((weak))
 #endif
 void relayInit(void) {
@@ -172,7 +177,7 @@ void relayInit(void) {
 	relay->gc=&relayGC;
 }
 
-#ifdef MODULE
+#if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "relay";
 	module->version = "1.4";

@@ -459,7 +459,7 @@ static int piBoardId(int *model, int *rev, int *mem, int *maker, int *overVolted
 		*rev = PI_VERSION_1_2;
 		*mem = 512;
 		*maker = PI_MAKER_SONY;
-  } else if(strcmp(c, "0012") == 0) { 
+  } else if(strcmp(c, "0012") == 0) {
 		*model = PI_MODEL_AP;
 		*rev = PI_VERSION_1_2;
 		*mem = 256;

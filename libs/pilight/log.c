@@ -20,16 +20,20 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include <errno.h>
-#include <syslog.h>
 #include <sys/time.h>
 #include <time.h>
 #include <string.h>
 #include <unistd.h>
-#include <sys/stat.h>
 #include <libgen.h>
-#include <pthread.h>
+#include <sys/stat.h>
+#ifdef _WIN32
+	#include "pthread.h"
+	#include "implement.h"
+#else
+	#include <pthread.h>
+#endif
 
-#include "../../pilight.h"
+#include "pilight.h"
 #include "common.h"
 #include "gc.h"
 #include "log.h"
@@ -50,6 +54,7 @@ static unsigned int loop = 1;
 static unsigned int stop = 0;
 static unsigned int pthinitialized = 0;
 static unsigned int pthactive = 0;
+static unsigned int pthfree = 0;
 static pthread_t pth;
 
 static char *logfile = NULL;
@@ -92,8 +97,10 @@ int log_gc(void) {
 	stop = 1;
 	loop = 0;
 
-	pthread_mutex_unlock(&logqueue_lock);
-	pthread_cond_signal(&logqueue_signal);
+	if(pthinitialized == 1) {
+		pthread_mutex_unlock(&logqueue_lock);
+		pthread_cond_signal(&logqueue_signal);
+	}
 
 	/* Flush log queue to pilight.err file */
 	if(pthactive == 0) {
@@ -122,6 +129,9 @@ int log_gc(void) {
 		if(logqueue != NULL) {
 			FREE(logqueue);
 		}
+		if(pthfree == 1) {
+			pthread_join(pth, NULL);
+		}
 	} else {
 		/* Flush log queue by log thread */
 		while(logqueue_number > 0) {
@@ -143,10 +153,12 @@ int log_gc(void) {
 
 void logprintf(int prio, const char *format_str, ...) {
 	struct timeval tv;
-	struct tm *tm = NULL;
+	struct tm tm;
 	va_list ap, apcpy;
 	char fmt[64], buf[64], *line = MALLOC(128), nul;
 	int save_errno = -1, pos = 0, bytes = 0;
+
+	memset(&tm, '\0', sizeof(struct tm));
 
 	if(line == NULL) {
 		fprintf(stderr, "out of memory");
@@ -155,11 +167,12 @@ void logprintf(int prio, const char *format_str, ...) {
 	save_errno = errno;
 
 	memset(line, '\0', 128);
+	memset(buf, '\0',  64);
 
 	if(loglevel >= prio) {
 		gettimeofday(&tv, NULL);
-		if((tm = localtime(&tv.tv_sec)) != NULL) {
-			strftime(fmt, sizeof(fmt), "%b %d %H:%M:%S", tm);
+		if((localtime_r(&tv.tv_sec, &tm)) != 0) {
+			strftime(fmt, sizeof(fmt), "%b %d %H:%M:%S", &tm);
 			snprintf(buf, sizeof(buf), "%s:%03u", fmt, (unsigned int)tv.tv_usec);
 		}
 		pos += sprintf(line, "[%22.22s] %s: ", buf, progname);
@@ -189,7 +202,11 @@ void logprintf(int prio, const char *format_str, ...) {
 
 		va_copy(apcpy, ap);
 		va_start(apcpy, format_str);
+#ifdef _WIN32
+		bytes = _vscprintf(format_str, apcpy);
+#else
 		bytes = vsnprintf(&nul, 1, format_str, apcpy);
+#endif
 		if(bytes == -1) {
 			fprintf(stderr, "ERROR: unproperly formatted logprintf message %s\n", format_str);
 		} else {
@@ -210,8 +227,10 @@ void logprintf(int prio, const char *format_str, ...) {
 	}
 	if(stop == 0 && pos > 0) {
 		if(prio < LOG_DEBUG) {
-			pthread_mutex_lock(&logqueue_lock);	
-			if(logqueue_number < 1024) {		
+			if(pthinitialized == 1) {
+				pthread_mutex_lock(&logqueue_lock);
+			}
+			if(logqueue_number < 1024) {
 				struct logqueue_t *node = MALLOC(sizeof(logqueue_t));
 				if(node == NULL) {
 					fprintf(stderr, "out of memory");
@@ -237,8 +256,10 @@ void logprintf(int prio, const char *format_str, ...) {
 			} else {
 				fprintf(stderr, "log queue full\n");
 			}
-			pthread_mutex_unlock(&logqueue_lock);
-			pthread_cond_signal(&logqueue_signal);
+			if(pthinitialized == 1) {
+				pthread_mutex_unlock(&logqueue_lock);
+				pthread_cond_signal(&logqueue_signal);
+			}
 		}
 	}
 	FREE(line);
@@ -249,7 +270,8 @@ void *logloop(void *param) {
 	pth = pthread_self();
 
 	pthactive = 1;
-	
+	pthfree = 1;
+
 	pthread_mutex_lock(&logqueue_lock);
 	while(loop) {
 		if(logqueue_number > 0) {
@@ -268,8 +290,7 @@ void *logloop(void *param) {
 		}
 	}
 
-	pthactive = 0;	
-	pthread_exit(NULL);
+	pthactive = 0;
 	return (void *)NULL;
 }
 
@@ -309,15 +330,29 @@ void log_shell_disable(void) {
 	shelllog = 0;
 }
 
-void log_file_set(char *log) {
+int log_file_set(char *log) {
 	struct stat s;
 	struct stat sb;
 	FILE *lf = NULL;
+
+	atomiclock();
+	/* basename isn't thread safe */
 	char *filename = basename(log);
+	atomicunlock();
+
 	size_t i = (strlen(log)-strlen(filename));
 	logpath = REALLOC(logpath, i+1);
 	memset(logpath, '\0', i+1);
 	strncpy(logpath, log, i);
+
+/*
+ * dir stat doens't work on windows if path has a trailing slash
+ */
+#ifdef _WIN32
+	if(logpath[i-1] == '\\' || logpath[i-1] == '/') {
+		logpath[i-1] = '\0';
+	}
+#endif
 
 	if(strcmp(filename, log) != 0) {
 		int err = stat(logpath, &s);
@@ -325,11 +360,11 @@ void log_file_set(char *log) {
 			if(ENOENT == errno) {
 				logprintf(LOG_ERR, "the log folder %s does not exist", logpath);
 				FREE(logpath);
-				exit(EXIT_FAILURE);
+				return EXIT_FAILURE;
 			} else {
 				logprintf(LOG_ERR, "failed to run stat on log folder %s", logpath);
 				FREE(logpath);
-				exit(EXIT_FAILURE);
+				return EXIT_FAILURE;
 			}
 		} else {
 			if(S_ISDIR(s.st_mode)) {
@@ -338,7 +373,7 @@ void log_file_set(char *log) {
 			} else {
 				logprintf(LOG_ERR, "the log folder %s does not exist", logpath);
 				FREE(logpath);
-				exit(EXIT_FAILURE);
+				return EXIT_FAILURE;
 			}
 		}
 	} else {
@@ -376,6 +411,7 @@ void log_file_set(char *log) {
 	}
 
 	FREE(logpath);
+	return EXIT_SUCCESS;
 }
 
 void log_level_set(int level) {
@@ -393,13 +429,23 @@ void logerror(const char *format_str, ...) {
 	FILE *f = NULL;
 	char fmt[64], buf[64];
 	struct timeval tv;
-	struct tm *tm;
+	struct tm tm;
 	char date[128];
-
+#ifdef _WIN32
+	const char *errpath = "c:/ProgramData/pilight/pilight.err";
+#else
+	const char *errpath = "/var/log/pilight.err";
+#endif
 	memset(line, '\0', 1024);
+	memset(&ap, '\0', sizeof(va_list));
+	memset(&sb, '\0', sizeof(struct stat));
+	memset(&tv, '\0', sizeof(struct timeval));
+	memset(date, '\0', 128);
+	memset(&tm, '\0', sizeof(struct tm));
+
 	gettimeofday(&tv, NULL);
-	if((tm = localtime(&tv.tv_sec)) != NULL) {
-		strftime(fmt, sizeof(fmt), "%b %d %H:%M:%S", tm);
+	if((localtime_r(&tv.tv_sec, &tm)) == 0) {
+		strftime(fmt, sizeof(fmt), "%b %d %H:%M:%S", &tm);
 		snprintf(buf, sizeof(buf), "%s:%03u", fmt, (unsigned int)tv.tv_usec);
 	}
 
@@ -409,13 +455,13 @@ void logerror(const char *format_str, ...) {
 	vsprintf(&line[strlen(line)], format_str, ap);
 	strcat(line, "\n");
 
-	if((stat("/var/log/pilight.err", &sb)) >= 0) {
-		if((f = fopen("/var/log/pilight.err", "a")) == NULL) {
+	if((stat(errpath, &sb)) >= 0) {
+		if((f = fopen(errpath, "a")) == NULL) {
 			return;
 		}
 	} else {
 		if(sb.st_nlink == 0) {
-			if(!(f = fopen("/var/log/pilight.err", "a"))) {
+			if(!(f = fopen(errpath, "a"))) {
 				return;
 			}
 		}
@@ -423,11 +469,11 @@ void logerror(const char *format_str, ...) {
 			if(f != NULL) {
 				fclose(f);
 			}
-			char tmp[strlen("/var/log/pilight.err")+5];
-			strcpy(tmp, "/var/log/pilight.err");
+			char tmp[strlen(errpath)+5];
+			strcpy(tmp, errpath);
 			strcat(tmp, ".old");
-			rename("/var/log/pilight.err", tmp);
-			if((f = fopen("/var/log/pilight.err", "a")) == NULL) {
+			rename(errpath, tmp);
+			if((f = fopen(errpath, "a")) == NULL) {
 				return;
 			}
 		}

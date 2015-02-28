@@ -25,14 +25,16 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <assert.h>
-#include <syslog.h>
 #include <signal.h>
 #include <stdarg.h>
-#include <pthread.h>
-#include <sys/socket.h>
-#include <pwd.h>
+#ifdef _WIN32
+	#include "pthread.h"
+#else
+	#include <pthread.h>
+	#include <pwd.h>
+#endif
 
-#include "../../pilight.h"
+#include "pilight.h"
 #include "common.h"
 #include "mongoose.h"
 #include "devices.h"
@@ -83,6 +85,7 @@ static struct webqueue_t *webqueue_head;
 static pthread_mutex_t webqueue_lock;
 static pthread_cond_t webqueue_signal;
 static pthread_mutexattr_t webqueue_attr;
+static unsigned short webqueue_init = 0;
 
 static int webqueue_number = 0;
 
@@ -101,8 +104,10 @@ int webserver_gc(void) {
 
 	webserver_loop = 0;
 
-	pthread_mutex_unlock(&webqueue_lock);
-	pthread_cond_signal(&webqueue_signal);
+	if(webqueue_init == 1) {
+		pthread_mutex_unlock(&webqueue_lock);
+		pthread_cond_signal(&webqueue_signal);
+	}
 
 	if(webserver_root_free) {
 		FREE(webserver_root);
@@ -194,7 +199,9 @@ static char *webserver_shell(const char *format_str, struct mg_connection *conn,
 	char *output = NULL;
 	const char *type = NULL;
 	const char *cookie = NULL;
+#ifndef _WIN32
 	int uid = 0;
+#endif
 	va_list ap;
 
 	va_start(ap, request);
@@ -239,8 +246,10 @@ static char *webserver_shell(const char *format_str, struct mg_connection *conn,
 		setenv("REQUEST_METHOD", "GET", 1);
 	}
 	FILE *fp = NULL;
-	if((uid = name2uid(webserver_user)) != -1) {
-		if(setuid((uid_t)uid) > -1) {
+#ifndef _WIN32
+ 	if((uid = name2uid(webserver_user)) != -1) {
+ 		if(setuid((uid_t)uid) > -1) {
+#endif
 			if((fp = popen((char *)command, "r")) != NULL) {
 				size_t total = 0;
 				size_t chunk = 0;
@@ -273,6 +282,7 @@ static char *webserver_shell(const char *format_str, struct mg_connection *conn,
 				pclose(fp);
 				return output;
 			}
+#ifndef _WIN32
 		} else {
 			logprintf(LOG_DEBUG, "failed to change webserver uid");
 		}
@@ -283,7 +293,7 @@ static char *webserver_shell(const char *format_str, struct mg_connection *conn,
 	if(setuid(0) == -1) {
 		logprintf(LOG_DEBUG, "failed to restore webserver uid");
 	}
-
+#endif
 	return NULL;
 }
 
@@ -359,12 +369,12 @@ static int webserver_request_handler(struct mg_connection *conn) {
 				return MG_TRUE;
 			} else if(strcmp(conn->uri, "/config") == 0) {
 				char media[15];
-				int internal = 1;
+				int internal = CONFIG_USER;
 				strcpy(media, "web");
 				if(conn->query_string != NULL) {
 					sscanf(conn->query_string, "media=%14s%*[ \n\r]", media);
 					if(strstr(conn->query_string, "internal") != NULL) {
-						internal = 0;
+						internal = CONFIG_INTERNAL;
 					}
 				}
 				JsonNode *jsend = config_print(internal, media);
@@ -394,29 +404,35 @@ static int webserver_request_handler(struct mg_connection *conn) {
 			} else if(strcmp(&conn->uri[(rstrstr(conn->uri, "/")-conn->uri)], "/") == 0) {
 				char indexes[255];
 				strcpy(indexes, mg_get_option(mgserver[0], "index_files"));
-				char *pch = strtok((char *)indexes, ",");
+
+				char **array = NULL;
+				unsigned int n = explode((char *)indexes, ",", &array), q = 0;
 				/* Check if the webserver_root is terminated by a slash. If not, than add it */
-				while(pch) {
-					size_t l = strlen(webserver_root)+strlen(webgui_tpl)+strlen(conn->uri)+strlen(pch)+4;
-					request = REALLOC(request, l);
-					if(!request) {
+				for(q=0;q<n;q++) {
+					size_t l = strlen(webserver_root)+strlen(webgui_tpl)+strlen(conn->uri)+strlen(array[q])+4;
+					if((request = REALLOC(request, l)) == NULL) {
 						logprintf(LOG_ERR, "out of memory");
 						exit(EXIT_FAILURE);
 					}
 					memset(request, '\0', l);
 					if(webserver_root[strlen(webserver_root)-1] == '/') {
 #ifdef __FreeBSD__
-						sprintf(request, "%s%s/%s%s", webserver_root, webgui_tpl, conn->uri, pch);
+						sprintf(request, "%s%s/%s%s", webserver_root, webgui_tpl, conn->uri, array[q]);
 #else
-						sprintf(request, "%s%s%s%s", webserver_root, webgui_tpl, conn->uri, pch);
+						sprintf(request, "%s%s%s%s", webserver_root, webgui_tpl, conn->uri, array[q]);
 #endif
 					} else {
-						sprintf(request, "%s/%s/%s%s", webserver_root, webgui_tpl, conn->uri, pch);
+						sprintf(request, "%s/%s/%s%s", webserver_root, webgui_tpl, conn->uri, array[q]);
 					}
 					if(access(request, F_OK) == 0) {
 						break;
 					}
-					pch = strtok(NULL, ",");
+				}
+				for(q=0;q<n;q++) {
+					FREE(array[q]);
+				}
+				if(n > 0) {
+					FREE(array);
 				}
 			} else if(webserver_root != NULL && webgui_tpl != NULL && conn->uri != NULL) {
 				size_t wlen = strlen(webserver_root)+strlen(webgui_tpl)+strlen(conn->uri)+2;
@@ -486,7 +502,7 @@ static int webserver_request_handler(struct mg_connection *conn) {
 
 			if(access(request, F_OK) == 0) {
 				stat(request, &st);
-				if(webserver_cache && st.st_size <= MAX_CACHE_FILESIZE &&
+				if(webserver_cache == 1 && st.st_size <= MAX_CACHE_FILESIZE &&
 				  strcmp(mimetype, "application/x-httpd-php") != 0 &&
 				  fcache_get_size(request, &size) != 0 && fcache_add(request) != 0) {
 					FREE(mimetype);
@@ -575,16 +591,16 @@ static int webserver_request_handler(struct mg_connection *conn) {
 						/* Retrieve the PHP content type */
 						char ite[pos-xpos];
 						strcpy(ite, header);
-						char *pch = strtok(ite, "\n\r");
+						char **array = NULL;
+						unsigned int n = explode(ite, "\n\r", &array), q = 0;
 						char type[255];
-						while(pch) {
-							if(sscanf(pch, "Content-type:%*[ ]%s%*[ \n\r]", type)) {
-								break;
-							}
-							if(sscanf(pch, "Content-Type:%*[ ]%s%*[ \n\r]", type)) {
-								break;
-							}
-							pch = strtok(NULL, "\n\r");
+						for(q=0;q<n;q++) {
+							sscanf(array[q], "Content-type:%*[ ]%s%*[ \n\r]", type);
+							sscanf(array[q], "Content-Type:%*[ ]%s%*[ \n\r]", type);
+							FREE(array[q]);
+						}
+						if(n > 0) {
+							FREE(array);
 						}
 
 						if(strstr(header, "Status: 302 Moved Temporarily") != NULL) {
@@ -762,7 +778,7 @@ static int webserver_request_handler(struct mg_connection *conn) {
 			char *action = NULL;
 			if(json_find_string(json, "action", &action) == 0) {
 				if(strcmp(action, "request config") == 0) {
-					JsonNode *jsend = config_print(0, "web");
+					JsonNode *jsend = config_print(CONFIG_INTERNAL, "web");
 					char *output = json_stringify(jsend, NULL);
 					size_t output_len = strlen(output);
 					mg_websocket_write(conn, 1, output, output_len);
@@ -909,7 +925,7 @@ void *webserver_clientize(void *param) {
 				continue;
 			}
 		}
-		if(ssdp_list) {
+		if(ssdp_list != NULL) {
 			ssdp_free(ssdp_list);
 		}
 
@@ -925,7 +941,7 @@ void *webserver_clientize(void *param) {
 		json_free(out);
 		json_delete(jclient);
 
-		if(socket_read(sockfd, &recvBuff) != 0
+		if(socket_read(sockfd, &recvBuff, 0) != 0
 			 || strcmp(recvBuff, "{\"status\":\"success\"}") != 0) {
 				failures++;
 			continue;
@@ -933,7 +949,7 @@ void *webserver_clientize(void *param) {
 		failures = 0;
 		while(webserver_loop) {
 			if(webgui_websockets == 1) {
-				if(socket_read(sockfd, &recvBuff) != 0) {
+				if(socket_read(sockfd, &recvBuff, 0) != 0) {
 					break;
 				} else {
 					webserver_queue(recvBuff);
@@ -960,8 +976,8 @@ static int webserver_handler(struct mg_connection *conn, enum mg_event ev) {
 	if(webserver_loop == 1) {
 		if(ev == MG_REQUEST || (ev == MG_POLL && !conn->is_websocket)) {
 			if(ev == MG_POLL ||
-				(!conn->is_websocket && webserver_connect_handler(conn) == MG_TRUE) ||
-				conn->is_websocket) {
+				(conn->is_websocket == 0 && webserver_connect_handler(conn) == MG_TRUE) ||
+				conn->is_websocket == 1) {
 				return webserver_request_handler(conn);
 			} else {
 				return MG_FALSE;
@@ -992,10 +1008,13 @@ int webserver_start(void) {
 		logprintf(LOG_NOTICE, "php support disabled due to missing base64 executable");
 	}
 
-	pthread_mutexattr_init(&webqueue_attr);
-	pthread_mutexattr_settype(&webqueue_attr, PTHREAD_MUTEX_RECURSIVE);
-	pthread_mutex_init(&webqueue_lock, &webqueue_attr);
-	pthread_cond_init(&webqueue_signal, NULL);
+	if(webqueue_init == 0) {
+		pthread_mutexattr_init(&webqueue_attr);
+		pthread_mutexattr_settype(&webqueue_attr, PTHREAD_MUTEX_RECURSIVE);
+		pthread_mutex_init(&webqueue_lock, &webqueue_attr);
+		pthread_cond_init(&webqueue_signal, NULL);
+		webqueue_init = 1;
+	}
 
 	/* Check on what port the webserver needs to run */
 	settings_find_number("webserver-port", &webserver_port);

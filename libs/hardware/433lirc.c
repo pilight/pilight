@@ -34,7 +34,7 @@
 #include <sys/wait.h>
 #include <sys/ioctl.h>
 
-#include "../../pilight.h"
+#include "pilight.h"
 #include "common.h"
 #include "dso.h"
 #include "log.h"
@@ -189,7 +189,7 @@ static int lirc433gc(void) {
 	return 1;
 }
 
-#ifndef MODULE
+#if !defined(MODULE) && !defined(_WIN32)
 __attribute__((weak))
 #endif
 void lirc433Init(void) {
@@ -208,7 +208,7 @@ void lirc433Init(void) {
 	lirc433->gc=&lirc433gc;
 }
 
-#ifdef MODULE
+#if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "433lirc";
 	module->version = "1.3";

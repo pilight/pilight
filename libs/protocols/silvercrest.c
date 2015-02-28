@@ -21,7 +21,7 @@
 #include <string.h>
 #include <math.h>
 
-#include "../../pilight.h"
+#include "pilight.h"
 #include "common.h"
 #include "dso.h"
 #include "log.h"
@@ -160,7 +160,7 @@ static void silvercrestPrintHelp(void) {
 	printf("\t -f --off\t\t\tsend an off signal\n");
 }
 
-#ifndef MODULE
+#if !defined(MODULE) && !defined(_WIN32)
 __attribute__((weak))
 #endif
 void silvercrestInit(void) {
@@ -188,7 +188,7 @@ void silvercrestInit(void) {
 	silvercrest->printHelp=&silvercrestPrintHelp;
 }
 
-#ifdef MODULE
+#if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "silvercrest";
 	module->version = "1.2";

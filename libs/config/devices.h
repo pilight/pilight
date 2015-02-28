@@ -19,14 +19,17 @@
 #ifndef _DEVICES_H_
 #define _DEVICES_H_
 
-#include <pthread.h>
+#ifdef _WIN32
+	#include "pthread.h"
+#else
+	#include <pthread.h>
+#endif
 #include "threads.h"
 #include "config.h"
+#include "protocol.h"
 
 typedef struct devices_settings_t devices_settings_t;
 typedef struct devices_values_t devices_values_t;
-/* Defined in protocol.h included below */
-typedef struct protocols_t protocols_t;
 
 /*
 |------------------|
@@ -83,9 +86,7 @@ struct devices_t {
 	struct devices_t *next;
 };
 
-#include "protocol.h"
-
-struct config_t *config_devices;
+extern struct config_t *config_devices;
 
 int devices_update(char *protoname, JsonNode *message, JsonNode **out);
 int devices_get(char *sid, struct devices_t **dev);

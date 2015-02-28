@@ -23,15 +23,17 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <unistd.h>
-#include <regex.h>
+#ifndef _WIN32
+	#include <regex.h>
+	#include <sys/ioctl.h>
+	#include <dlfcn.h>
+#endif
 #include <sys/stat.h>
-#include <sys/ioctl.h>
 #include <time.h>
 #include <libgen.h>
 #include <dirent.h>
-#include <dlfcn.h>
 
-#include "../../pilight.h"
+#include "pilight.h"
 #include "common.h"
 #include "irq.h"
 #include "wiringX.h"
@@ -46,6 +48,7 @@ static char *hwfile = NULL;
 
 #include "hardware_header.h"
 
+#ifndef _WIN32
 static void hardware_remove(char *name) {
 	struct hardware_t *currP, *prevP;
 
@@ -69,6 +72,7 @@ static void hardware_remove(char *name) {
 		}
 	}
 }
+#endif
 
 void hardware_register(struct hardware_t **hw) {
 	*hw = MALLOC(sizeof(struct hardware_t));
@@ -244,7 +248,7 @@ static int hardware_parse(JsonNode *root) {
 					goto clear;
 				} else {
 					/* Check if setting contains a valid value */
-#ifndef __FreeBSD__
+#if !defined(__FreeBSD__) && !defined(_WIN32)
 					regex_t regex;
 					int reti;
 					char *stmp = NULL;
@@ -353,16 +357,18 @@ void hardware_init(void) {
 	config_hardware->gc=&hardware_gc;
 
 	#include "hardware_init.h"
+
+#ifndef _WIN32
 	void *handle = NULL;
 	void (*init)(void);
 	void (*compatibility)(struct module_t *module);
 	char path[PATH_MAX];
 	struct module_t module;
-	char pilight_version[strlen(VERSION)+1];
+	char pilight_version[strlen(PILIGHT_VERSION)+1];
 	char pilight_commit[3];
 	char *hardware_root = NULL;
 	int check1 = 0, check2 = 0, valid = 1, hardware_root_free = 0;
-	strcpy(pilight_version, VERSION);
+	strcpy(pilight_version, PILIGHT_VERSION);
 
 	struct dirent *file = NULL;
 	DIR *d = NULL;
@@ -388,7 +394,7 @@ void hardware_init(void) {
 	if((d = opendir(hardware_root))) {
 		while((file = readdir(d)) != NULL) {
 			memset(path, '\0', PATH_MAX);
-			sprintf(path, "%s%s", hardware_root, file->d_name);		
+			sprintf(path, "%s%s", hardware_root, file->d_name);
 			if(stat(path, &s) == 0) {
 				/* Check if file */
 				if(S_ISREG(s.st_mode)) {
@@ -444,4 +450,5 @@ void hardware_init(void) {
 	if(hardware_root_free) {
 		FREE(hardware_root);
 	}
+#endif
 }

@@ -23,14 +23,23 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <unistd.h>
-#include <arpa/inet.h>
-#include <netinet/in.h>
-#include <sys/ioctl.h>
-#include <sys/socket.h>
+#ifdef _WIN32
+	#include <winsock2.h>
+	#include <ws2tcpip.h>
+	#include "pthread.h"
+	#define MSG_NOSIGNAL 0
+#else
+	#include <sys/socket.h>
+	#include <sys/time.h>
+	#include <netinet/in.h>
+	#include <netinet/tcp.h>
+	#include <netdb.h>
+	#include <arpa/inet.h>
+	#include <pthread.h>
+#endif
 #include <sys/stat.h>
 #include <sys/time.h>
 #include <time.h>
-#include <pthread.h>
 #include <ctype.h>
 #include <dirent.h>
 
@@ -108,6 +117,7 @@ static struct recvqueue_t *recvqueue_head;
 static pthread_mutex_t sendqueue_lock;
 static pthread_cond_t sendqueue_signal;
 static pthread_mutexattr_t sendqueue_attr;
+static unsigned short sendqueue_init = 0;
 
 static int sendqueue_number = 0;
 static int recvqueue_number = 0;
@@ -115,6 +125,7 @@ static int recvqueue_number = 0;
 static pthread_mutex_t recvqueue_lock;
 static pthread_cond_t recvqueue_signal;
 static pthread_mutexattr_t recvqueue_attr;
+static unsigned short recvqueue_init = 0;
 
 typedef struct bcqueue_t {
 	JsonNode *jmessage;
@@ -128,6 +139,7 @@ static struct bcqueue_t *bcqueue_head;
 static pthread_mutex_t bcqueue_lock;
 static pthread_cond_t bcqueue_signal;
 static pthread_mutexattr_t bcqueue_attr;
+static unsigned short bcqueue_init = 0;
 
 static int bcqueue_number = 0;
 
@@ -169,7 +181,6 @@ static int maxrawlen = 0;
 static char *master_server = NULL;
 static unsigned short master_port = 0;
 
-struct pilight_t pilight;
 static char *configtmp = NULL;
 
 #ifdef WEBSERVER
@@ -275,8 +286,8 @@ void *broadcast(void *param) {
 					while(tmp_clients) {
 						if(((int)tmp < 0 && tmp_clients->core == 1) ||
 						   ((int)tmp >= 0 && tmp_clients->config == 1) ||
-							 ((int)tmp == PROC && tmp_clients->stats == 1)) {
-								socket_write(tmp_clients->id, conf);
+							 ((int)tmp == PROCESS && tmp_clients->stats == 1)) {
+							socket_write(tmp_clients->id, conf);
 							broadcasted = 1;
 						}
 						tmp_clients = tmp_clients->next;
@@ -366,27 +377,31 @@ void *broadcast(void *param) {
 					}
 
 					char *jbroadcast = json_stringify(bcqueue->jmessage, NULL);
-
 					if(strcmp(bcqueue->protoname, "pilight_firmware") == 0) {
-						JsonNode *code = NULL;
-						if((code = json_find_member(bcqueue->jmessage, "code")) != NULL) {
+						struct JsonNode *code = NULL;
+						if((code = json_find_member(bcqueue->jmessage, "message")) != NULL) {
 							json_find_number(code, "version", &firmware.version);
 							json_find_number(code, "lpf", &firmware.lpf);
 							json_find_number(code, "hpf", &firmware.hpf);
+							if(firmware.version > 0 && firmware.lpf > 0 && firmware.hpf > 0) {
+								registry_set_number("pilight.firmware.version", firmware.version, 0);
+								registry_set_number("pilight.firmware.lpf", firmware.lpf, 0);
+								registry_set_number("pilight.firmware.hpf", firmware.hpf, 0);
 
-							struct JsonNode *jmessage = json_mkobject();
-							struct JsonNode *jcode = json_mkobject();
-							json_append_member(jcode, "version", json_mknumber(firmware.version, 0));
-							json_append_member(jcode, "lpf", json_mknumber(firmware.lpf, 0));
-							json_append_member(jcode, "hpf", json_mknumber(firmware.hpf, 0));
-							json_append_member(jmessage, "values", jcode);
-							json_append_member(jmessage, "origin", json_mkstring("receiver"));
-							json_append_member(jmessage, "type", json_mknumber(FIRMWARE, 0));
-							char pname[17];
-							strcpy(pname, "pilight-firmware");
-							pilight.broadcast(pname, jmessage);
-							json_delete(jmessage);
-							jmessage = NULL;
+								struct JsonNode *jmessage = json_mkobject();
+								struct JsonNode *jcode = json_mkobject();
+								json_append_member(jcode, "version", json_mknumber(firmware.version, 0));
+								json_append_member(jcode, "lpf", json_mknumber(firmware.lpf, 0));
+								json_append_member(jcode, "hpf", json_mknumber(firmware.hpf, 0));
+								json_append_member(jmessage, "values", jcode);
+								json_append_member(jmessage, "origin", json_mkstring("core"));
+								json_append_member(jmessage, "type", json_mknumber(FIRMWARE, 0));
+								char pname[17];
+								strcpy(pname, "pilight-firmware");
+								pilight.broadcast(pname, jmessage);
+								json_delete(jmessage);
+								jmessage = NULL;
+							}
 						}
 					}
 					broadcasted = 0;
@@ -480,10 +495,10 @@ static void receive_queue(int *raw, int rawlen, int plslen, int hwtype) {
 static void receiver_create_message(protocol_t *protocol) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
-	if(protocol->message) {
+	if(protocol->message != NULL) {
 		char *valid = json_stringify(protocol->message, NULL);
 		json_delete(protocol->message);
-		if(valid && json_validate(valid) == true) {
+		if(valid != NULL && json_validate(valid) == true) {
 			JsonNode *jmessage = json_mkobject();
 
 			json_append_member(jmessage, "message", json_decode(valid));
@@ -503,9 +518,9 @@ static void receiver_create_message(protocol_t *protocol) {
 			json = NULL;
 			json_delete(jmessage);
 		}
-		protocol->message = NULL;
 		json_free(valid);
 	}
+	protocol->message = NULL;
 }
 
 void *receive_parse_code(void *param) {
@@ -646,13 +661,17 @@ void *send_code(void *param) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
 	int i = 0;
-	struct sched_param sched;
 
 	/* Make sure the pilight sender gets
 	   the highest priority available */
+#ifdef _WIN32
+	SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_HIGHEST);
+#else
+	struct sched_param sched;
 	memset(&sched, 0, sizeof(sched));
 	sched.sched_priority = 80;
 	pthread_setschedparam(pthread_self(), SCHED_FIFO, &sched);
+#endif
 
 	pthread_mutex_lock(&sendqueue_lock);
 
@@ -669,7 +688,7 @@ void *send_code(void *param) {
 
 			JsonNode *message = NULL;
 
-			if(sendqueue->message && strcmp(sendqueue->message, "{}") != 0) {
+			if(sendqueue->message != NULL && strcmp(sendqueue->message, "{}") != 0) {
 				if(json_validate(sendqueue->message) == true) {
 					if(!message) {
 						message = json_mkobject();
@@ -772,13 +791,17 @@ static int send_queue(JsonNode *json) {
 	char *uuid = NULL;
 	/* Hold the final protocol struct */
 	struct protocol_t *protocol = NULL;
-	struct sched_param sched;
 
+#ifdef _WIN32
+	SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_HIGHEST);
+#else
 	/* Make sure the pilight sender gets
 	   the highest priority available */
+	struct sched_param sched;
 	memset(&sched, 0, sizeof(sched));
 	sched.sched_priority = 80;
 	pthread_setschedparam(pthread_self(), SCHED_FIFO, &sched);
+#endif
 
 	JsonNode *jcode = NULL;
 	JsonNode *jprotocols = NULL;
@@ -795,7 +818,7 @@ static int send_queue(JsonNode *json) {
 	} else {
 		json_find_string(jcode, "uuid", &uuid);
 		/* If we matched a protocol and are not already sending, continue */
-		if((!uuid || (uuid && strcmp(uuid, pilight_uuid) == 0)) && send_repeat > 0) {
+		if((uuid == NULL || (uuid != NULL && strcmp(uuid, pilight_uuid) == 0)) && send_repeat > 0) {
 			jprotocol = json_first_child(jprotocols);
 			while(jprotocol && match == 0) {
 				match = 0;
@@ -815,7 +838,7 @@ static int send_queue(JsonNode *json) {
 				jprotocol = jprotocol->next;
 			}
 
-			if(match == 1 && protocol->createCode) {
+			if(match == 1 && protocol->createCode != NULL) {
 				/* Let the protocol create his code */
 				if(protocol->createCode(jcode) == 0 && main_loop == 1) {
 					pthread_mutex_lock(&sendqueue_lock);
@@ -828,12 +851,11 @@ static int send_queue(JsonNode *json) {
 						gettimeofday(&tcurrent, NULL);
 						mnode->id = 1000000 * (unsigned int)tcurrent.tv_sec + (unsigned int)tcurrent.tv_usec;
 						mnode->message = NULL;
-						if(protocol->message) {
+						if(protocol->message != NULL) {
 							char *jsonstr = json_stringify(protocol->message, NULL);
 							json_delete(protocol->message);
 							if(json_validate(jsonstr) == true) {
-								mnode->message = MALLOC(strlen(jsonstr)+1);
-								if(!mnode->message) {
+								if((mnode->message = MALLOC(strlen(jsonstr)+1)) == NULL) {
 									logprintf(LOG_ERR, "out of memory");
 									exit(EXIT_FAILURE);
 								}
@@ -916,7 +938,7 @@ static void client_webserver_parse_code(int i, char buffer[BUFFER_SIZE]) {
 	unsigned char *p = NULL;
 	unsigned char buff[BUFFER_SIZE];
 	char *cache = NULL;
-	char *path = NULL;
+	char *path = NULL, buf[100];
 	char *mimetype = NULL;
 	struct stat sb;
 	struct sockaddr_in sockin;
@@ -939,7 +961,7 @@ static void client_webserver_parse_code(int i, char buffer[BUFFER_SIZE]) {
 				fstat(fileno(f), &sb);
 				mimetype = webserver_mimetype("image/png");
 				webserver_create_header(&p, "200 OK", mimetype, (unsigned int)sb.st_size);
-				send(sd, buff, (size_t)(p-buff), MSG_NOSIGNAL);
+				send(sd, (const char *)buff, (size_t)(p-buff), MSG_NOSIGNAL);
 				x = 0;
 				if(!(cache = MALLOC(BUFFER_SIZE))) {
 					logprintf(LOG_ERR, "out of memory");
@@ -948,7 +970,7 @@ static void client_webserver_parse_code(int i, char buffer[BUFFER_SIZE]) {
 				memset(cache, '\0', BUFFER_SIZE);
 				while(!feof(f)) {
 					x = (int)fread(cache, 1, BUFFER_SIZE, f);
-					send(sd, cache, (size_t)x, MSG_NOSIGNAL);
+					send(sd, (const char *)cache, (size_t)x, MSG_NOSIGNAL);
 				}
 				fclose(f);
 				FREE(cache);
@@ -961,13 +983,15 @@ static void client_webserver_parse_code(int i, char buffer[BUFFER_SIZE]) {
 		    /* Catch all webserver page to inform users on which port the webserver runs */
 			mimetype = webserver_mimetype("text/html");
 			webserver_create_header(&p, "200 OK", mimetype, (unsigned int)BUFFER_SIZE);
-			send(sd, buff, (size_t)(p-buff), MSG_NOSIGNAL);
+			send(sd, (const char *)buff, (size_t)(p-buff), MSG_NOSIGNAL);
 			if(webserver_enable == 1) {
-				if(!(cache = MALLOC(BUFFER_SIZE))) {
+				if((cache = MALLOC(BUFFER_SIZE)) == NULL) {
 					logprintf(LOG_ERR, "out of memory");
 					exit(EXIT_FAILURE);
 				}
 				memset(cache, '\0', BUFFER_SIZE);
+				memset(&buf, '\0', sizeof(buf));
+				inet_ntop(AF_INET, (void *)&(sockin.sin_addr), buf, sizeof(buf));
 				sprintf(cache, "<html><head><title>pilight</title></head>"
 							   "<body><center><img src=\"logo.png\"><br />"
 							   "<p style=\"color: #0099ff; font-weight: 800px;"
@@ -977,11 +1001,8 @@ static void client_webserver_parse_code(int i, char buffer[BUFFER_SIZE]) {
 							   "font-weight: 800px; font-family: Verdana; font-size:"
 							   "20px;\" href=\"http://%s:%d\">http://%s:%d</a></p>"
 							   "</center></body></html>",
-							   inet_ntoa(sockin.sin_addr),
-							   webserver_port,
-							   inet_ntoa(sockin.sin_addr),
-							   webserver_port);
-				send(sd, cache, strlen(cache), MSG_NOSIGNAL);
+							   buf, webserver_port, buf, webserver_port);
+				send(sd, (const char *)cache, strlen(cache), MSG_NOSIGNAL);
 				FREE(cache);
 			} else {
 				send(sd, "<body><center><img src=\"logo.png\"></center></body></html>", 57, MSG_NOSIGNAL);
@@ -1080,7 +1101,7 @@ static int control_device(struct devices_t *dev, char *state, JsonNode *values) 
 
 	/* Construct the right json object */
 	json_append_member(code, "protocol", jprotocols);
-	if(dev->dev_uuid && (dev->protocols->listener->hwtype == SENSOR
+	if(dev->dev_uuid != NULL && (dev->protocols->listener->hwtype == SENSOR
 	   || dev->protocols->listener->hwtype == HWRELAY)) {
 		json_append_member(code, "uuid", json_mkstring(dev->dev_uuid));
 	}
@@ -1107,7 +1128,7 @@ static void socket_parse_data(int i, char *buffer) {
 	struct clients_t *client = NULL;
 	int sd = -1;
 	int addrlen = sizeof(address);
-	char *action = NULL, *media = NULL;
+	char *action = NULL, *media = NULL, *status = NULL;
 	int error = 0, exists = 0;
 
 	if(pilight.runmode == ADHOC) {
@@ -1178,8 +1199,10 @@ static void socket_parse_data(int i, char *buffer) {
 					} else {
 						strcpy(client->media, "all");
 					}
-					char *t = clients->uuid;
-					json_find_string(json, "uuid", &t);
+					char *t = NULL;
+					if(json_find_string(json, "uuid", &t) == 0) {
+						strcpy(client->uuid, t);
+					}
 					if((options = json_find_member(json, "options")) != NULL) {
 						struct JsonNode *childs = json_first_child(options);
 						while(childs) {
@@ -1355,7 +1378,12 @@ static void socket_parse_data(int i, char *buffer) {
 					}
 				} else if(strcmp(action, "request config") == 0) {
 					struct JsonNode *jsend = json_mkobject();
-					struct JsonNode *jconfig = config_print(0, client->media);
+					struct JsonNode *jconfig = NULL;
+					if(client->forward == 1) {
+						jconfig = config_print(CONFIG_FORWARD, client->media);
+					} else {
+						jconfig = config_print(CONFIG_INTERNAL, client->media);
+					}
 					json_append_member(jsend, "message", json_mkstring("config"));
 					json_append_member(jsend, "config", jconfig);
 					char *output = json_stringify(jsend, NULL);
@@ -1399,6 +1427,21 @@ static void socket_parse_data(int i, char *buffer) {
 				} else {
 					error = 1;
 				}
+			} else if((json_find_string(json, "status", &status)) == 0) {
+				tmp_clients = clients;
+				while(tmp_clients) {
+					if(tmp_clients->id == sd) {
+						exists = 1;
+						client = tmp_clients;
+						break;
+					}
+					tmp_clients = tmp_clients->next;
+				}
+				if(strcmp(status, "success") == 0) {
+					logprintf(LOG_DEBUG, "client \"%s\" successfully executed our latest request", client->uuid);
+				} else if(strcmp(status, "failed") == 0) {
+					logprintf(LOG_DEBUG, "client \"%s\" failed executing our latest request", client->uuid);
+				}
 			} else {
 				error = 1;
 			}
@@ -1420,18 +1463,22 @@ static void socket_client_disconnected(int i) {
 void *receive_code(void *param) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
-	struct sched_param sched;
 	int plslen = 0, rawlen = 0;
 	int rawcode[MAXPULSESTREAMLENGTH] = {0};
 	int duration = 0;
 	struct timeval tp;
 	struct timespec ts;
 
+#ifdef _WIN32
+	SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_HIGHEST);
+#else
 	/* Make sure the pilight receiving gets
 	   the highest priority available */
+	struct sched_param sched;
 	memset(&sched, 0, sizeof(sched));
 	sched.sched_priority = 70;
 	pthread_setschedparam(pthread_self(), SCHED_FIFO, &sched);
+#endif
 
 	struct hardware_t *hw = (hardware_t *)param;
 	pthread_mutex_lock(&hw->lock);
@@ -1504,15 +1551,15 @@ void *clientize(void *param) {
 		ssdp_list = NULL;
 		if(master_server != NULL && master_port > 0) {
 			if((sockfd = socket_connect(master_server, master_port)) == -1) {
-				logprintf(LOG_ERR, "could not connect to pilight-daemon");
+				logprintf(LOG_NOTICE, "could not connect to pilight-daemon");
 				continue;
 			}
 		} else if(ssdp_seek(&ssdp_list) == -1) {
-			logprintf(LOG_ERR, "no pilight ssdp connections found");
+			logprintf(LOG_NOTICE, "no pilight ssdp connections found");
 			continue;
 		} else {
 			if((sockfd = socket_connect(ssdp_list->ip, ssdp_list->port)) == -1) {
-				logprintf(LOG_ERR, "could not connect to pilight-daemon");
+				logprintf(LOG_NOTICE, "could not connect to pilight-daemon");
 				continue;
 			}
 		}
@@ -1529,24 +1576,32 @@ void *clientize(void *param) {
 		json_append_member(json, "uuid", json_mkstring(pilight_uuid));
 		json_append_member(json, "options", joptions);
 		output = json_stringify(json, NULL);
-		socket_write(sockfd, output);
+		if(socket_write(sockfd, output) != (strlen(output)+strlen(EOSS))) {
+			json_free(output);
+			json_delete(json);
+			continue;
+		}
 		json_free(output);
 		json_delete(json);
 
-		if(socket_read(sockfd, &recvBuff) != 0
+		if(socket_read(sockfd, &recvBuff, 1) != 0
 		   || strcmp(recvBuff, "{\"status\":\"success\"}") != 0) {
-			goto close;
+			continue;
 		}
 		logprintf(LOG_DEBUG, "socket recv: %s", recvBuff);
 
 		json = json_mkobject();
 		json_append_member(json, "action", json_mkstring("request config"));
 		output = json_stringify(json, NULL);
-		socket_write(sockfd, output);
+		if(socket_write(sockfd, output) != (strlen(output)+strlen(EOSS))) {
+			json_free(output);
+			json_delete(json);
+			continue;
+		}
 		json_free(output);
 		json_delete(json);
 
-		if(socket_read(sockfd, &recvBuff) == 0) {
+		if(socket_read(sockfd, &recvBuff, 0) == 0) {
 			logprintf(LOG_DEBUG, "socket recv: %s", recvBuff);
 			if(json_validate(recvBuff) == true) {
 				json = json_decode(recvBuff);
@@ -1579,7 +1634,7 @@ void *clientize(void *param) {
 								logprintf(LOG_DEBUG, "loaded master configuration");
 								config_synced = 1;
 							} else {
-								logprintf(LOG_ERR, "failed to load master configuration");
+								logprintf(LOG_NOTICE, "failed to load master configuration");
 							}
 						}
 					}
@@ -1589,33 +1644,46 @@ void *clientize(void *param) {
 		}
 
 		while(client_loop && config_synced) {
+			if(sockfd <= 0) {
+				break;
+			}
 			if(main_loop == 0) {
 				client_loop = 0;
 				break;
 			}
-			if(socket_read(sockfd, &recvBuff) != 0) {
+
+			int n = socket_read(sockfd, &recvBuff, 1);
+			if(n == -1) {
+				sockfd = 0;
 				break;
+			} else if(n == 1) {
+				continue;
 			}
+
 			logprintf(LOG_DEBUG, "socket recv: %s", recvBuff);
-			char *pch = strtok(recvBuff, "\n");
-			while(pch) {
-				if(json_validate(pch) == true) {
-					json = json_decode(pch);
+			char **array = NULL;
+			unsigned int z = explode(recvBuff, "\n", &array), q = 0;
+			for(q=0;q<z;q++) {
+				if(json_validate(array[q]) == true) {
+					json = json_decode(array[q]);
 					if(json_find_string(json, "action", &action) == 0) {
 						if(strcmp(action, "send") == 0 ||
 						   strcmp(action, "control") == 0) {
-							socket_parse_data(sockfd, pch);
+							socket_parse_data(sockfd, array[q]);
 						}
 					} else if(json_find_string(json, "origin", &origin) == 0 &&
-							  json_find_string(json, "protocol", &protocol) == 0) {
-								if(strcmp(origin, "receiver") == 0 ||
-								   strcmp(origin, "sender") == 0) {
+							json_find_string(json, "protocol", &protocol) == 0) {
+							if(strcmp(origin, "receiver") == 0 ||
+								 strcmp(origin, "sender") == 0) {
 								broadcast_queue(protocol, json);
 						}
 					}
 					json_delete(json);
 				}
-				pch = strtok(NULL, "\n");
+				FREE(array[q]);
+			}
+			if(z > 0) {
+				FREE(array);
 			}
 		}
 	}
@@ -1623,11 +1691,6 @@ void *clientize(void *param) {
 	if(recvBuff != NULL) {
 		FREE(recvBuff);
 	}
-close:
-	if(recvBuff != NULL) {
-		FREE(recvBuff);
-	}
-	socket_close(sockfd);
 
 	return NULL;
 }
@@ -1655,6 +1718,7 @@ static void daemonize(void) {
 	log_file_enable();
 	log_shell_disable();
 	/* Get the pid of the fork */
+#ifndef _WIN32
 	pid_t npid = fork();
 	switch(npid) {
 		case 0:
@@ -1669,18 +1733,14 @@ static void daemonize(void) {
 			exit(0);
 		break;
 	}
+#endif
 }
 
 /* Garbage collector of main program */
 int main_gc(void) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
-	pilight.runmode = STANDALONE;
 	main_loop = 0;
-
-	while(sending) {
-		usleep(1000);
-	}
 
 	/* If we are running in node mode, the clientize
 	   thread is waiting for a response from the main
@@ -1693,19 +1753,31 @@ int main_gc(void) {
 		socket_write(sockfd, "HEART");
 	}
 
+	pilight.runmode = STANDALONE;
+
+	while(sending) {
+		usleep(1000);
+	}
+
 #ifdef EVENTS
 	events_gc();
 #endif
 
-	pthread_mutex_unlock(&recvqueue_lock);
-	pthread_cond_signal(&recvqueue_signal);
-	usleep(1000);
+	if(recvqueue_init == 1) {
+		pthread_mutex_unlock(&recvqueue_lock);
+		pthread_cond_signal(&recvqueue_signal);
+		usleep(1000);
+	}
 
-	pthread_mutex_unlock(&sendqueue_lock);
-	pthread_cond_signal(&sendqueue_signal);
+	if(sendqueue_init == 1) {
+		pthread_mutex_unlock(&sendqueue_lock);
+		pthread_cond_signal(&sendqueue_signal);
+	}
 
-	pthread_mutex_unlock(&bcqueue_lock);
-	pthread_cond_signal(&bcqueue_signal);
+	if(bcqueue_init == 1) {
+		pthread_mutex_unlock(&bcqueue_lock);
+		pthread_cond_signal(&bcqueue_signal);
+	}
 
 	struct clients_t *tmp_clients;
 	while(clients) {
@@ -1717,6 +1789,7 @@ int main_gc(void) {
 		FREE(clients);
 	}
 
+#ifndef _WIN32
 	if(running == 0) {
 		/* Remove the stale pid file */
 		if(access(pid_file, F_OK) != -1) {
@@ -1731,7 +1804,7 @@ int main_gc(void) {
 	if(pid_file_free) {
 		FREE(pid_file);
 	}
-
+#endif
 #ifdef WEBSERVER
 	if(webserver_enable == 1) {
 		webserver_gc();
@@ -1757,7 +1830,9 @@ int main_gc(void) {
 	protocol_gc();
 	whitelist_free();
 	threads_gc();
-	wiringXGC();	
+#ifndef _WIN32
+	wiringXGC();
+#endif
 	dso_gc();
 	log_gc();
 
@@ -1765,8 +1840,14 @@ int main_gc(void) {
 		FREE(configtmp);
 	}
 
+	gc_clear();
 	FREE(progname);
 	xfree();
+
+#ifdef _WIN32
+	WSACleanup();
+#endif
+
 	return 0;
 }
 
@@ -1776,7 +1857,7 @@ static void procProtocolInit(void) {
 	protocol_register(&procProtocol);
 	protocol_set_id(procProtocol, "process");
 	protocol_device_add(procProtocol, "process", "pilight proc. API");
-	procProtocol->devtype = PROC;
+	procProtocol->devtype = PROCESS;
 	procProtocol->hwtype = API;
 	procProtocol->multipleId = 0;
 	procProtocol->config = 0;
@@ -1785,7 +1866,7 @@ static void procProtocolInit(void) {
 	options_add(&procProtocol->options, 'r', "ram", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, NULL);
 }
 
-#ifdef FIRMWARE_UPDATER
+#if defined(FIRMWARE_UPDATER) && !defined(_WIN32)
 void *firmware_loop(void *param) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
@@ -1833,10 +1914,54 @@ void registerVersion(void) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
 	registry_remove_value("pilight.version");
-	registry_set_string("pilight.version.current", (char *)VERSION);
+	registry_set_string("pilight.version.current", (char *)PILIGHT_VERSION);
 }
 #pragma GCC diagnostic pop   // require GCC 4.6
 
+// #ifdef _WIN32
+// int IsUserAdmin(void) {
+	// HANDLE hAccessToken;
+	// UCHAR InfoBuffer[4096];
+	// PTOKEN_GROUPS ptgGroups = (PTOKEN_GROUPS)InfoBuffer;
+	// DWORD dwInfoBufferSize;
+	// PSID psidAdministrators;
+	// SID_IDENTIFIER_AUTHORITY siaNtAuthority = {SECURITY_NT_AUTHORITY};
+	// UINT x;
+	// int bSuccess;
+
+	// if(!OpenProcessToken(GetCurrentProcess(),TOKEN_READ,&hAccessToken)) {
+		// return 0;
+	// }
+
+	// bSuccess = GetTokenInformation(hAccessToken,TokenGroups,InfoBuffer, sizeof(InfoBuffer), &dwInfoBufferSize);
+
+	// CloseHandle(hAccessToken);
+
+	// if(!bSuccess) {
+		// return 0;
+	// }
+
+	// if(!AllocateAndInitializeSid(&siaNtAuthority, 2,
+			// SECURITY_BUILTIN_DOMAIN_RID,
+			// DOMAIN_ALIAS_RID_ADMINS,
+			// 0, 0, 0, 0, 0, 0,
+			// &psidAdministrators)) {
+			// return 0;
+	// }
+
+	// bSuccess = -1;
+
+	// for(x=0;x<ptgGroups->GroupCount;x++) {
+		// if(EqualSid(psidAdministrators, ptgGroups->Groups[x].Sid)) {
+			// bSuccess = 1;
+			// break;
+		// }
+	// }
+
+	// FreeSid(psidAdministrators);
+	// return ((bSuccess) ? 0 : -1);
+// }
+// #endif
 
 int main(int argc, char **argv) {
 	// int u = 0;
@@ -1847,10 +1972,9 @@ int main(int argc, char **argv) {
 		// }
 	// }
 
+	atomicinit();
 	procProtocolInit();
-	
-	struct ifaddrs *ifaddr, *ifa;
-	int family = 0;
+
 	int verbosity = LOG_DEBUG;
 	char *p = NULL;
 	configtmp = MALLOC(strlen(CONFIG_FILE)+1);
@@ -1863,12 +1987,16 @@ int main(int argc, char **argv) {
 	}
 	strcpy(progname, "pilight-daemon");
 
+#ifndef _WIN32
+	// if(IsUserAdmin() == -1) {
+// #else
 	if(geteuid() != 0) {
+// #endif
 		printf("%s requires root priveliges in order to run\n", progname);
 		FREE(progname);
 		exit(EXIT_FAILURE);
 	}
-
+#endif
 	/* Run main garbage collector when quiting the daemon */
 	gc_attach(main_gc);
 
@@ -1877,17 +2005,27 @@ int main(int argc, char **argv) {
 
 	wiringXLog = logprintf;
 
-#ifdef __FreeBSD__
+#ifdef _WIN32
+	if((p = genuuid(NULL)) == NULL) {
+		logprintf(LOG_ERR, "could not generate the device uuid");
+	} else {
+		strcpy(pilight_uuid, p);
+		FREE(p);
+	}
+#else
+	struct ifaddrs *ifaddr, *ifa;
+	int family = 0;
+	#ifdef __FreeBSD__
 	if(rep_getifaddrs(&ifaddr) == -1) {
 		logprintf(LOG_ERR, "could not get network adapter information");
 		goto clear;
 	}
-#else
+	#else
 	if(getifaddrs(&ifaddr) == -1) {
 		perror("getifaddrs");
 		goto clear;
 	}
-#endif
+	#endif
 
 	for(ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next) {
 		if(ifa->ifa_addr == NULL) {
@@ -1909,10 +2047,11 @@ int main(int argc, char **argv) {
 			}
 		}
 	}
-#ifdef __FreeBSD__
-	rep_freeifaddrs(ifaddr);
-#else
-	freeifaddrs(ifaddr);
+	#ifdef __FreeBSD__
+		rep_freeifaddrs(ifaddr);
+	#else
+		freeifaddrs(ifaddr);
+	#endif
 #endif
 
 	firmware.version = 0;
@@ -1983,12 +2122,12 @@ int main(int argc, char **argv) {
 				threadprofiler = 1;
 				verbosity = LOG_ERR;
 				nodaemon = 1;
-			break;	
+			break;
 			case 256:
 				verbosity = LOG_STACK;
 				stacktracer = 1;
 				nodaemon = 1;
-			break;	
+			break;
 			default:
 				show_default = 1;
 			break;
@@ -2010,7 +2149,7 @@ int main(int argc, char **argv) {
 		goto clear;
 	}
 	if(show_version) {
-		printf("%s version %s, commit %s\n", progname, VERSION, HASH);
+		printf("%s version %s, commit %s\n", progname, PILIGHT_VERSION, HASH);
 		goto clear;
 	}
 	if(show_default) {
@@ -2038,18 +2177,18 @@ int main(int argc, char **argv) {
 
 	protocol_init();
 	config_init();
+
 	if(config_read() != EXIT_SUCCESS) {
 		goto clear;
 	}
-	
+
 	registerVersion();
 
 #ifdef WEBSERVER
 	settings_find_number("webserver-enable", &webserver_enable);
 	settings_find_number("webserver-port", &webserver_port);
 	if(settings_find_string("webserver-root", &webserver_root) != 0) {
-		webserver_root = REALLOC(webserver_root, strlen(WEBSERVER_ROOT)+1);
-		if(!webserver_root) {
+		if((webserver_root = REALLOC(webserver_root, strlen(WEBSERVER_ROOT)+1)) == NULL) {
 			logprintf(LOG_ERR, "out of memory");
 			exit(EXIT_FAILURE);
 		}
@@ -2068,6 +2207,7 @@ int main(int argc, char **argv) {
 	}
 #endif
 
+#ifndef _WIN32
 	if(settings_find_string("pid-file", &pid_file) != 0) {
 		pid_file = REALLOC(pid_file, strlen(PID_FILE)+1);
 		if(!pid_file) {
@@ -2098,6 +2238,9 @@ int main(int argc, char **argv) {
 		goto clear;
 	}
 	close(f);
+#else
+	running = 0;
+#endif
 
 	if(settings_find_number("log-level", &itmp) == 0) {
 		itmp += 2;
@@ -2105,10 +2248,12 @@ int main(int argc, char **argv) {
 	}
 
 	if(settings_find_string("log-file", &stmp) == 0) {
-		log_file_set(stmp);
+		if(log_file_set(stmp) == EXIT_FAILURE) {
+			goto clear;
+		}
 	}
 
-	logprintf(LOG_INFO, "version %s, commit %s", VERSION, HASH);
+	logprintf(LOG_INFO, "version %s, commit %s", PILIGHT_VERSION, HASH);
 
 	if(nodaemon == 1 || running == 1) {
 		log_file_disable();
@@ -2183,7 +2328,9 @@ int main(int argc, char **argv) {
 	if(nodaemon == 0) {
 		daemonize();
 	} else {
+#ifndef _WIN32
 		save_pid(getpid());
+#endif
 	}
 
 	/* Threads are unable to survive forks properly.
@@ -2196,16 +2343,19 @@ int main(int argc, char **argv) {
 	pthread_mutexattr_settype(&sendqueue_attr, PTHREAD_MUTEX_RECURSIVE);
 	pthread_mutex_init(&sendqueue_lock, &sendqueue_attr);
 	pthread_cond_init(&sendqueue_signal, NULL);
+	sendqueue_init = 1;
 
 	pthread_mutexattr_init(&recvqueue_attr);
 	pthread_mutexattr_settype(&recvqueue_attr, PTHREAD_MUTEX_RECURSIVE);
 	pthread_mutex_init(&recvqueue_lock, &recvqueue_attr);
 	pthread_cond_init(&recvqueue_signal, NULL);
+	recvqueue_init = 1;
 
 	pthread_mutexattr_init(&bcqueue_attr);
 	pthread_mutexattr_settype(&bcqueue_attr, PTHREAD_MUTEX_RECURSIVE);
 	pthread_mutex_init(&bcqueue_lock, &bcqueue_attr);
 	pthread_cond_init(&bcqueue_signal, NULL);
+	bcqueue_init = 1;
 
 	/* Export certain daemon function to global usage */
 	pilight.broadcast = &broadcast_queue;
@@ -2276,7 +2426,7 @@ int main(int argc, char **argv) {
 	}
 #endif
 
-#ifdef FIRMWARE_UPDATER
+#if defined(FIRMWARE_UPDATER) && !defined(_WIN32)
 	threads_register("firmware upgrader", &firmware_loop, (void *)NULL, 0);
 #endif
 
@@ -2362,7 +2512,7 @@ int main(int argc, char **argv) {
 				logprintf(LOG_DEBUG, "cpu: %f%%, ram: %f%%", cpu, ram);
 				json_append_member(procProtocol->message, "values", code);
 				json_append_member(procProtocol->message, "origin", json_mkstring("core"));
-				json_append_member(procProtocol->message, "type", json_mknumber(PROC, 0));
+				json_append_member(procProtocol->message, "type", json_mknumber(PROCESS, 0));
 				struct clients_t *tmp_clients = clients;
 				while(tmp_clients) {
 					if(tmp_clients->cpu > 0 && tmp_clients->ram > 0) {

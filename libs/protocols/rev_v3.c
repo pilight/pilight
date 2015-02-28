@@ -21,7 +21,7 @@
 #include <string.h>
 #include <math.h>
 
-#include "../../pilight.h"
+#include "pilight.h"
 #include "common.h"
 #include "dso.h"
 #include "log.h"
@@ -174,7 +174,7 @@ static void rev3PrintHelp(void) {
     printf("\t -i --id=id\t\t\tcontrol a device with this id\n");
 }
 
-#ifndef MODULE
+#if !defined(MODULE) && !defined(_WIN32)
 __attribute__((weak))
 #endif
 void rev3Init(void) {
@@ -202,7 +202,7 @@ void rev3Init(void) {
     rev3_switch->printHelp=&rev3PrintHelp;
 }
 
-#ifdef MODULE
+#if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "rev3_switch";
 	module->version = "0.9";

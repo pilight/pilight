@@ -21,7 +21,6 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <errno.h>
-#include <syslog.h>
 
 #include "pilight.h"
 #include "common.h"
@@ -32,7 +31,6 @@
 #include "ssdp.h"
 #include "gc.h"
 
-struct pilight_t pilight;
 static int main_loop = 1;
 static int sockfd = 0;
 static char *recvBuff = NULL;
@@ -52,12 +50,17 @@ int main_gc(void) {
 	FREE(progname);
 	xfree();
 
+#ifdef _WIN32
+	WSACleanup();
+#endif
+
 	return 0;
 }
 
 int main(int argc, char **argv) {
 	// memtrack();
 
+	atomicinit();
 	gc_attach(main_gc);
 
 	/* Catch all exit signals for gc */
@@ -110,7 +113,7 @@ int main(int argc, char **argv) {
 				exit(EXIT_SUCCESS);
 			break;
 			case 'V':
-				printf("%s %s\n", progname, VERSION);
+				printf("%s v%s\n", progname, PILIGHT_VERSION);
 				exit(EXIT_SUCCESS);
 			break;
 			case 'S':
@@ -165,18 +168,19 @@ int main(int argc, char **argv) {
 	json_free(out);
 	json_delete(jclient);
 
-	if(socket_read(sockfd, &recvBuff) != 0 ||
+	if(socket_read(sockfd, &recvBuff, 0) != 0 ||
      strcmp(recvBuff, "{\"status\":\"success\"}") != 0) {
 		goto close;
 	}
 
 	while(main_loop) {
-		if(socket_read(sockfd, &recvBuff) != 0) {
+		if(socket_read(sockfd, &recvBuff, 0) != 0) {
 			goto close;
 		}
-		char *pch = strtok(recvBuff, "\n");
-		while(pch) {
-			struct JsonNode *jcontent = json_decode(pch);
+		char **array = NULL;
+		unsigned int n = explode(recvBuff, "\n", &array), i = 0;
+		for(i=0;i<n;i++) {
+			struct JsonNode *jcontent = json_decode(array[i]);
 			struct JsonNode *jtype = json_find_member(jcontent, "type");
 			if(jtype != NULL) {
 				json_remove_from_parent(jtype);
@@ -186,7 +190,10 @@ int main(int argc, char **argv) {
 			printf("%s\n", content);
 			json_delete(jcontent);
 			json_free(content);
-			pch = strtok(NULL, "\n");
+			FREE(array[i]);
+		}
+		if(n > 0) {
+			FREE(array);
 		}
 	}
 

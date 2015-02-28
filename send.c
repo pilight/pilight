@@ -24,7 +24,6 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <errno.h>
-#include <syslog.h>
 
 #include "pilight.h"
 #include "common.h"
@@ -34,6 +33,7 @@
 #include "socket.h"
 #include "json.h"
 #include "protocol.h"
+#include "wiringX.h"
 #include "ssdp.h"
 #include "dso.h"
 
@@ -44,7 +44,9 @@ typedef struct pname_t {
 } pname_t;
 
 static struct pname_t *pname = NULL;
-struct pilight_t pilight;
+
+void _lognone(int prio, const char *format_str, ...) {
+}
 
 static void sort_list(void) {
 	struct pname_t *a = NULL;
@@ -85,11 +87,14 @@ static void sort_list(void) {
 int main(int argc, char **argv) {
 	// memtrack();
 
+	atomicinit();
+	wiringXLog = _lognone;
+
 	log_file_disable();
 	log_shell_enable();
 	log_level_set(LOG_NOTICE);
 
-	if(!(progname = MALLOC(13))) {
+	if((progname = MALLOC(13)) == NULL) {
 		logprintf(LOG_ERR, "out of memory");
 		exit(EXIT_FAILURE);
 	}
@@ -118,7 +123,7 @@ int main(int argc, char **argv) {
 	unsigned short port = 0;
 
 	/* Hold the final protocol struct */
-	protocol_t *protocol = NULL;
+	struct protocol_t *protocol = NULL;
 	JsonNode *code = NULL;
 
 	/* Define all CLI arguments of this program */
@@ -181,7 +186,7 @@ int main(int argc, char **argv) {
 	protocol_init();
 
 	/* Check if a protocol was given */
-	if(protobuffer && strlen(protobuffer) > 0 && strcmp(protobuffer, "-V") != 0) {
+	if(protobuffer != NULL && strlen(protobuffer) > 0 && strcmp(protobuffer, "-V") != 0) {
 		if(strlen(protobuffer) > 0 && version) {
 			printf("-p and -V cannot be combined\n");
 		} else {
@@ -204,8 +209,9 @@ int main(int argc, char **argv) {
 				pnode = pnode->next;
 			}
 			/* If no protocols matches the requested protocol */
-			if(!match) {
+			if(match == 0) {
 				logprintf(LOG_ERR, "this protocol is not supported or doesn't support sending");
+				goto close;
 			}
 		}
 	}
@@ -232,7 +238,7 @@ int main(int argc, char **argv) {
 
 	/* Display help or version information */
 	if(version == 1) {
-		printf("%s %s\n", progname, VERSION);
+		printf("%s v%s\n", progname, PILIGHT_VERSION);
 		goto close;
 	} else if(help == 1 || protohelp == 1 || match == 0) {
 		if(protohelp == 1 && match == 1 && protocol->printHelp)
@@ -356,7 +362,7 @@ int main(int argc, char **argv) {
 		}
 
 		socket_write(sockfd, "{\"action\":\"identify\"}");
-		if(socket_read(sockfd, &recvBuff) != 0
+		if(socket_read(sockfd, &recvBuff, 0) != 0
 		   || strcmp(recvBuff, "{\"status\":\"success\"}") != 0) {
 			goto close;
 		}
@@ -372,13 +378,15 @@ int main(int argc, char **argv) {
 		json_free(output);
 		json_delete(json);
 
-		if(socket_read(sockfd, &recvBuff) != 0
+		if(socket_read(sockfd, &recvBuff, 0) != 0
 		   || strcmp(recvBuff, "{\"status\":\"success\"}") != 0) {
 			logprintf(LOG_ERR, "failed to send codes");
 			goto close;
 		}
 	}
+
 close:
+	log_shell_disable();
 	if(sockfd > 0) {
 		socket_close(sockfd);
 	}
@@ -394,7 +402,6 @@ close:
 	if(uuid != NULL) {
 		FREE(uuid);
 	}
-	log_shell_disable();
 	protocol_gc();
 	options_delete(options);
 	options_gc();
@@ -404,6 +411,10 @@ close:
 	log_gc();
 	FREE(progname);
 	xfree();
+
+#ifdef _WIN32
+	WSACleanup();
+#endif
 
 	return EXIT_SUCCESS;
 }

@@ -35,6 +35,14 @@
 #include "pindefs.h"
 #include "pgm.h"
 
+#ifdef _WIN32
+struct itimerval {
+	struct timeval it_value, it_interval;
+};
+#define SIGALRM 14
+#define ITIMER_REAL 0
+#endif
+
 static int delay_decrement;
 static volatile int done;
 
@@ -71,11 +79,15 @@ static void bitbang_calibrate_delay(void)
   itv.it_value.tv_sec = 0;
   itv.it_value.tv_usec = 100000;
   itv.it_interval.tv_sec = itv.it_interval.tv_usec = 0;
+#ifndef _WIN32
   setitimer(ITIMER_REAL, &itv, 0);
+#endif
   while (!done)
     i--;
   itv.it_value.tv_sec = itv.it_value.tv_usec = 0;
+#ifndef _WIN32
   setitimer(ITIMER_REAL, &itv, 0);
+#endif
   /*
    * Calculate back from 100 ms to 1 us.
    */

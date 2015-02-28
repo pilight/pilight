@@ -37,7 +37,9 @@
 #include "mem.h"
 
 static struct platform_t *platform = NULL;
-static int setup = -2;
+#ifndef __FreeBSD__
+	static int setup = -2;
+#endif
 
 void _fprintf(int prio, const char *format_str, ...) {
 	char line[1024];

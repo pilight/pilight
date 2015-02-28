@@ -26,23 +26,35 @@ fi
 function clean {
 	rm -r CMakeFiles 2>/dev/null 1>/dev/null >/dev/null || true;
 	rm -r _CPack_Packages 2>/dev/null 1>/dev/null >/dev/null || true;
+	mv win32-toolchain.cmake win32-toolchain.bak
 	rm *.cmake 2>/dev/null 1>/dev/null >/dev/null || true;
+	mv win32-toolchain.bak win32-toolchain.cmake
 	rm CMakeCache.txt 2>/dev/null 1>/dev/null >/dev/null || true;
 	make clean 2>/dev/null 1>/dev/null >/dev/null || true;
 	rm Makefile 2>/dev/null 1>/dev/null >/dev/null || true;
 	rm install_manifest.txt 2>/dev/null 1>/dev/null >/dev/null || true;
 	rm config.h 2>/dev/null 1>/dev/null >/dev/null || true;
 	rm pilight-control 2>/dev/null 1>/dev/null >/dev/null || true;
+	rm pilight-control.exe 2>/dev/null 1>/dev/null >/dev/null || true;
 	rm pilight-daemon 2>/dev/null 1>/dev/null >/dev/null || true;
+	rm pilight-daemon.exe 2>/dev/null 1>/dev/null >/dev/null || true;
 	rm pilight-raw 2>/dev/null 1>/dev/null >/dev/null || true;
+	rm pilight-raw.exe 2>/dev/null 1>/dev/null >/dev/null || true;
 	rm pilight-send 2>/dev/null 1>/dev/null >/dev/null || true;
+	rm pilight-send.exe 2>/dev/null 1>/dev/null >/dev/null || true;
 	rm pilight-flash 2>/dev/null 1>/dev/null >/dev/null || true;
+	rm pilight-flash.exe 2>/dev/null 1>/dev/null >/dev/null || true;
 	rm pilight-learn 2>/dev/null 1>/dev/null >/dev/null || true;
+	rm pilight-learn.exe 2>/dev/null 1>/dev/null >/dev/null || true;
 	rm pilight-debug 2>/dev/null 1>/dev/null >/dev/null || true;
+	rm pilight-debug.exe 2>/dev/null 1>/dev/null >/dev/null || true;
 	rm pilight-receive 2>/dev/null 1>/dev/null >/dev/null || true;
+	rm pilight-receive.exe 2>/dev/null 1>/dev/null >/dev/null || true;
 	rm pilight-uuid 2>/dev/null 1>/dev/null >/dev/null || true;
+	rm pilight-uuid.exe 2>/dev/null 1>/dev/null >/dev/null || true;
 	rm *.a* 2>/dev/null 1>/dev/null >/dev/null || true;
 	rm *.so* 2>/dev/null 1>/dev/null >/dev/null || true;
+	rm *.dll* 2>/dev/null 1>/dev/null >/dev/null || true;
 }
 
 if [ $# -eq 1 ]; then

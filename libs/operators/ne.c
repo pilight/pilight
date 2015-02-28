@@ -22,7 +22,7 @@
 #include <unistd.h>
 #include <math.h>
 
-#include "../../pilight.h"
+#include "pilight.h"
 #include "operator.h"
 #include "ne.h"
 #include "dso.h"
@@ -35,7 +35,7 @@ static void operatorNeCallback(double a, double b, char **ret) {
 	}
 }
 
-#ifndef MODULE
+#if !defined(MODULE) && !defined(_WIN32)
 __attribute__((weak))
 #endif
 void operatorNeInit(void) {
@@ -43,7 +43,7 @@ void operatorNeInit(void) {
 	operator_ne->callback_number = &operatorNeCallback;
 }
 
-#ifdef MODULE
+#if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "!=";
 	module->version = "1.0";
