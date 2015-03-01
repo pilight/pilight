@@ -568,9 +568,8 @@ int arp_resolv(char *if_name, char *mac, char **ip) {
 													helist[i]->mac[2], helist[i]->mac[3],
 													helist[i]->mac[4], helist[i]->mac[5]);
 			if(strcmp(fmac, mac) == 0) {
-				memset(ip, '\0', sizeof(ip));
-				inet_ntop(AF_INET, (void *)&(helist[i]->addr), *ip, sizeof(*ip));
-				strcpy(*ip, inet_ntoa(helist[i]->addr));
+				memset(*ip, '\0', 17);
+				inet_ntop(AF_INET, (void *)&(helist[i]->addr), *ip, 17);
 				found = 1;
 				break;
 			}
