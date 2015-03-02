@@ -172,8 +172,9 @@ double getRAMUsage(void) {
 	if((fp = fopen(statusfile, "r")) != NULL) {
 		while((read = getline(&line, &len, fp)) != -1) {
 			if(strstr(line, "VmRSS:") != NULL) {
-				ret = sscanf(line, "%31s %lu %s\n", title, &value, units);
-				VmRSS = value * 1024;
+				if(sscanf(line, "%31s %lu %s\n", title, &value, units) > 0) {
+					VmRSS = value * 1024;
+				}
 				break;
 			}
 		}
@@ -204,8 +205,9 @@ double getRAMUsage(void) {
 	if((fp = fopen(memfile, "r")) != NULL) {
 		while((read = getline(&line, &len, fp)) != -1) {
 			if(strstr(line, "MemTotal:") != NULL) {
-				ret = sscanf(line, "%31s %lu %s\n", title, &value, units);
-				total = value * 1024;
+				if(sscanf(line, "%31s %lu %s\n", title, &value, units) > 0) {
+					total = value * 1024;
+				}
 				break;
 			}
 		}
