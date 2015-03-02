@@ -92,9 +92,7 @@ int devices_update(char *protoname, JsonNode *json, JsonNode **out) {
 	memset(vstring_, '\0', sizeof(vstring_));
 
 	/* Check if the found settings matches the send code */
-	int match = 0;
-	int match1 = 0;
-	int match2 = 0;
+	unsigned int match = 0, match1 = 0, match2 = 0;
 
 	/* Is is a valid new state / value */
 	int is_valid = 1;

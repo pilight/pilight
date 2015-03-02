@@ -26,9 +26,11 @@
 #include <errno.h>
 #include <string.h>
 #include <time.h>
+#define __USE_GNU
 #include <fcntl.h>
 #include <pthread.h>
 #include <sys/time.h>
+#include <sys/types.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <sys/wait.h>

@@ -25,8 +25,11 @@
 #include <sys/stat.h>
 #ifdef _WIN32
 	#include "pthread.h"
+	#include "implement.h"
 #else
-	#include <dlfcn.h>
+	#ifdef __mips__
+		#define __USE_UNIX98
+	#endif
 	#include <pthread.h>
 #endif
 

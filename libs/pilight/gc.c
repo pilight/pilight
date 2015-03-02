@@ -45,8 +45,8 @@ static int (*gc)(void) = NULL;
 
 void gc_handler(int sig) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+#if !defined(_WIN32) && !defined(__mips__)
 	char name[256];
-#ifndef _WIN32
 	unw_cursor_t cursor; unw_context_t uc;
 	unw_word_t ip, sp, offp;
 #endif
@@ -59,7 +59,7 @@ void gc_handler(int sig) {
 		case SIGILL:
 		case SIGABRT:
 		case SIGFPE: {
-#ifndef _WIN32
+#if !defined(_WIN32) && !defined(__mips__)
 			log_shell_disable();
 			void *stack[50];
 			int n = backtrace(stack, 50);

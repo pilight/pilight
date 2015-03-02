@@ -164,7 +164,6 @@ double getRAMUsage(void) {
 	size_t len = 0;
 	ssize_t read = 0;
 	char units[32], title[32], *line;
-	int ret = 0;
 	FILE *fp = NULL;
 
 	memset(title, '\0', 32);

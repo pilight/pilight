@@ -38,6 +38,9 @@
 	#include <netinet/tcp.h>
 	#include <netdb.h>
 	#include <arpa/inet.h>
+	#ifdef __mips__
+		#define __USE_UNIX98
+	#endif
 	#include <pthread.h>
 #endif
 #include <sys/stat.h>

@@ -72,28 +72,30 @@ if(NOT WIN32)
 		endif()
 	endif()
 
-	set(CMAKE_UNWIND_LIBS_INIT)
+	if(NOT ${CMAKE_SYSTEM_PROCESSOR} MATCHES "^mips")
+		set(CMAKE_UNWIND_LIBS_INIT)
 
-	find_library(CMAKE_UNWIND_LIBS_INIT
-	NAME unwind
-	PATHS
-		${CROSS_COMPILE_LIBS}
-		/usr/lib
-		/usr/lib32
-		/usr/lib64
-		/usr/lib/i386-linux-gnu		
-		/usr/lib/x86_64-linux-gnu
-		/usr/local/lib
-		/usr/local/lib32
-		/usr/local/lib64
-		/usr/lib/arm-linux-gnueabi
-		/usr/lib/arm-linux-gnueabihf
-	NO_DEFAULT_PATH)
+		find_library(CMAKE_UNWIND_LIBS_INIT
+		NAME unwind
+		PATHS
+			${CROSS_COMPILE_LIBS}
+			/usr/lib
+			/usr/lib32
+			/usr/lib64
+			/usr/lib/i386-linux-gnu		
+			/usr/lib/x86_64-linux-gnu
+			/usr/local/lib
+			/usr/local/lib32
+			/usr/local/lib64
+			/usr/lib/arm-linux-gnueabi
+			/usr/lib/arm-linux-gnueabihf
+		NO_DEFAULT_PATH)
 
-	if(${CMAKE_UNWIND_LIBS_INIT} MATCHES "CMAKE_UNWIND_LIBS_INIT-NOTFOUND")
-		message(FATAL_ERROR "Looking for libunwind - not found")
-	else()
-		message(STATUS "Looking for libunwind - found (${CMAKE_UNWIND_LIBS_INIT})")
+		if(${CMAKE_UNWIND_LIBS_INIT} MATCHES "CMAKE_UNWIND_LIBS_INIT-NOTFOUND")
+			message(FATAL_ERROR "Looking for libunwind - not found")
+		else()
+			message(STATUS "Looking for libunwind - found (${CMAKE_UNWIND_LIBS_INIT})")
+		endif()
 	endif()
 endif()	
 
@@ -111,6 +113,9 @@ elseif(${CMAKE_SYSTEM_PROCESSOR} MATCHES "armv7l")
 	else()
 		message(FATAL_ERROR "Architecture not supported")
 	endif()
+elseif(${CMAKE_SYSTEM_PROCESSOR} MATCHES "^mips")
+	set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE mipsel)
+	set(CMAKE_C_FLAGS "-Ofast -fPIC -Wcast-align -Wstrict-overflow=5 -Wwrite-strings -Waggregate-return -Wswitch-default -Wswitch-enum -Wformat=2 -g -Wall -Wno-sign-conversion -Wunreachable-code -Wstrict-prototypes")
 elseif(${CMAKE_SYSTEM_PROCESSOR} MATCHES "64")
 	set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE amd64)
 	set(CMAKE_C_FLAGS "-Ofast -fPIC -march=native -mtune=native -ffast-math -Wconversion -Wunreachable-code -Wstrict-prototypes -Wfloat-equal -Wshadow -Wpointer-arith -Wcast-align -Wstrict-overflow=5 -Wwrite-strings -Waggregate-return -Wcast-qual -Wswitch-default -Wswitch-enum -Wformat=2 -g -Wall")
@@ -918,7 +923,7 @@ if(${MODULESPACK} MATCHES "OFF" OR WIN32)
 		target_link_libraries(pilight_shared ${CMAKE_PCAP_LIBS_INIT})
 		target_link_libraries(pilight_static ${CMAKE_PCAP_LIBS_INIT})
 	endif()
-	if(NOT WIN32)
+	if(NOT WIN32 AND NOT ${CMAKE_SYSTEM_PROCESSOR} MATCHES "^mips")
 		target_link_libraries(pilight_shared ${CMAKE_UNWIND_LIBS_INIT})
 		target_link_libraries(pilight_static ${CMAKE_UNWIND_LIBS_INIT})
 	endif()
