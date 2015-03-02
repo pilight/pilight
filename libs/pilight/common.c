@@ -30,6 +30,9 @@
 		#define _WIN32_WINNT 0x0501
 	#endif
 	#include <winsock2.h>
+	#include <windows.h>
+	#include <psapi.h>
+	#include <tlhelp32.h>
 	#include <ws2tcpip.h>
 	#include <iphlpapi.h>
 #else
@@ -43,6 +46,7 @@
 	#include <net/if.h>
 	#include <ifaddrs.h>
 	#include <pwd.h>
+	#include <sys/ioctl.h>
 #endif
 #include <dirent.h>
 #include <sys/types.h>
@@ -148,23 +152,22 @@ int host2ip(char *host, char *ip) {
 	return -1;
 }
 
-int isrunning(const char *program) {
-	int pid = -1;
-	char *tmp = MALLOC(strlen(program)+1);
-	if(!tmp) {
-		logprintf(LOG_ERR, "out of memory");
-		exit(EXIT_FAILURE);
+#ifdef _WIN32
+int check_instances(const wchar_t *prog) {
+	HANDLE m_hStartEvent = CreateEventW(NULL, FALSE, FALSE, prog);
+	if(m_hStartEvent == NULL) {
+		CloseHandle(m_hStartEvent);
+		return 0;
 	}
-	strcpy(tmp, program);
-	if((pid = findproc(tmp, NULL, 1)) > 0) {
-		FREE(tmp);
-		return pid;
+
+	if(GetLastError() == ERROR_ALREADY_EXISTS) {
+		CloseHandle(m_hStartEvent); 
+		m_hStartEvent = NULL;
+		return 0;
 	}
-	FREE(tmp);
 	return -1;
 }
 
-#ifdef _WIN32
 const char *inet_ntop(int af, const void *src, char *dst, int cnt) {
 	struct sockaddr_in srcaddr;
 
@@ -225,6 +228,60 @@ int inet_pton(int af, const char *src, void *dst) {
 		}
 	}
 	return 0;
+}
+
+int isrunning(const char *program) {
+	DWORD aiPID[1000], iCb = 1000, iV2000 = 0;
+	DWORD iCbneeded = 0;
+	int iNumProc = 0, i = 0;
+	char szName[MAX_PATH];
+	int iLen = 0, iLenP = 0;
+	HANDLE hProc;
+	HMODULE hMod;
+
+	iLenP = strlen(program);
+	if(iLenP < 1 || iLenP > MAX_PATH) 
+		return -1;
+
+	if(EnumProcesses(aiPID, iCb, &iCbneeded) <= 0) {
+		return -1;
+	}
+
+	iNumProc = iCbneeded / sizeof(DWORD);
+
+	for(i=0;i<iNumProc;i++) {
+		strcpy(szName, "Unknown");
+		hProc = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, aiPID[i]);
+
+		if(hProc) {
+			if(EnumProcessModules(hProc, &hMod, sizeof(hMod), &iCbneeded)) {
+				iLen = GetModuleBaseName(hProc, hMod, szName, MAX_PATH);
+			}
+		}
+		CloseHandle(hProc);
+
+		if(strstr(szName, program) != NULL) {
+			return aiPID[i];
+		}
+	}
+
+	return -1;
+}
+#else
+int isrunning(const char *program) {
+	int pid = -1;
+	char *tmp = MALLOC(strlen(program)+1);
+	if(tmp == NULL) {
+		logprintf(LOG_ERR, "out of memory");
+		exit(EXIT_FAILURE);
+	}
+	strcpy(tmp, program);
+	if((pid = findproc(tmp, NULL, 1)) > 0) {
+		FREE(tmp);
+		return pid;
+	}
+	FREE(tmp);
+	return -1;
 }
 #endif
 
@@ -640,7 +697,7 @@ char *genuuid(char *ifname) {
 			}
 			if(strstr(a, "Serial") != NULL) {
 				sscanf(a, "Serial          : %16s%*[ \n\r]", (char *)&serial);
-				if(atoi(serial) != 0) {
+				if(strlen(serial) > 0) {
 					memmove(&serial[5], &serial[4], 16);
 					serial[4] = '-';
 					memmove(&serial[8], &serial[7], 13);
@@ -657,7 +714,8 @@ char *genuuid(char *ifname) {
 			}
 		}
 		fclose(fp);
-	}
+	} 
+
 #endif
 
 #ifdef _WIN32
@@ -723,7 +781,8 @@ char *genuuid(char *ifname) {
 	}
 	close(fd);
 #elif defined(HAVE_GETIFADDRS)
-	ifaddrs* iflist;
+
+	ifaddrs *iflist;
 	if(getifaddrs(&iflist) == 0) {
 		for(ifaddrs* cur = iflist; cur; cur = cur->ifa_next) {
 			if((cur->ifa_addr->sa_family == AF_LINK) && (strcmp(cur->ifa_name, if_name) == 0) && cur->ifa_addr) {

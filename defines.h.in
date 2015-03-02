@@ -31,7 +31,7 @@
 #ifdef WEBSERVER
 	#define WEBSERVER_PORT				5001
 	#ifdef _WIN32
-		#define WEBSERVER_ROOT				"c:/ProgramData/pilight/web/default/"
+		#define WEBSERVER_ROOT				"c:/pilight/web/default/"
 	#else
 		#define WEBSERVER_ROOT				"/usr/local/share/pilight/"
 	#endif
@@ -52,14 +52,14 @@
 #define EOSS										"\n\n" // End Of Socket Stream
 
 #ifdef _WIN32
-	#define PROTOCOL_ROOT						"c:/ProgramData/pilight/protocols/"
-	#define HARDWARE_ROOT						"c:/ProgramData/pilight/hardware/"
-	#define OPERATOR_ROOT						"c:/ProgramData/pilight/operators/"
-	#define ACTION_ROOT							"c:/ProgramData/pilight/actions/"	
+	#define PROTOCOL_ROOT						"c:/pilight/protocols/"
+	#define HARDWARE_ROOT						"c:/pilight/hardware/"
+	#define OPERATOR_ROOT						"c:/pilight/operators/"
+	#define ACTION_ROOT							"c:/pilight/actions/"	
 
-	#define CONFIG_FILE							"c:/ProgramData/pilight/config.json"
-	#define LOG_FILE								"c:/ProgramData/pilight/pilight.log"
-	#define TZDATA_FILE							"c:/ProgramData/pilight/tzdata.json"
+	#define CONFIG_FILE							"c:/pilight/config.json"
+	#define LOG_FILE								"c:/pilight/pilight.log"
+	#define TZDATA_FILE							"c:/pilight/tzdata.json"
 #else
 	#define PROTOCOL_ROOT						"/usr/local/lib/pilight/protocols/"
 	#define HARDWARE_ROOT						"/usr/local/lib/pilight/hardware/"

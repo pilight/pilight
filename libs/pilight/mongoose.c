@@ -629,8 +629,8 @@ static int ns_resolve2(const char *host, struct in_addr *ina) {
 int ns_resolve(const char *host, char *buf, size_t n) {
   struct in_addr ad;
 	if(ns_resolve2(host, &ad) == 1) {
-		memset(&buf, '\0', sizeof(buf));
-		inet_ntop(AF_INET, (void *)&ad, buf, sizeof(buf));
+		memset(&buf, '\0', 17);
+		inet_ntop(AF_INET, (void *)&ad, buf, 17);
 		return strlen(buf);
 	} else {
 		return 0;

@@ -72,28 +72,30 @@ if(NOT WIN32)
 		endif()
 	endif()
 
-	set(CMAKE_UNWIND_LIBS_INIT)
+	if(NOT ${CMAKE_SYSTEM_PROCESSOR} MATCHES "^mips")
+		set(CMAKE_UNWIND_LIBS_INIT)
 
-	find_library(CMAKE_UNWIND_LIBS_INIT
-	NAME unwind
-	PATHS
-		${CROSS_COMPILE_LIBS}
-		/usr/lib
-		/usr/lib32
-		/usr/lib64
-		/usr/lib/i386-linux-gnu		
-		/usr/lib/x86_64-linux-gnu
-		/usr/local/lib
-		/usr/local/lib32
-		/usr/local/lib64
-		/usr/lib/arm-linux-gnueabi
-		/usr/lib/arm-linux-gnueabihf
-	NO_DEFAULT_PATH)
+		find_library(CMAKE_UNWIND_LIBS_INIT
+		NAME unwind
+		PATHS
+			${CROSS_COMPILE_LIBS}
+			/usr/lib
+			/usr/lib32
+			/usr/lib64
+			/usr/lib/i386-linux-gnu		
+			/usr/lib/x86_64-linux-gnu
+			/usr/local/lib
+			/usr/local/lib32
+			/usr/local/lib64
+			/usr/lib/arm-linux-gnueabi
+			/usr/lib/arm-linux-gnueabihf
+		NO_DEFAULT_PATH)
 
-	if(${CMAKE_UNWIND_LIBS_INIT} MATCHES "CMAKE_UNWIND_LIBS_INIT-NOTFOUND")
-		message(FATAL_ERROR "Looking for libunwind - not found")
-	else()
-		message(STATUS "Looking for libunwind - found (${CMAKE_UNWIND_LIBS_INIT})")
+		if(${CMAKE_UNWIND_LIBS_INIT} MATCHES "CMAKE_UNWIND_LIBS_INIT-NOTFOUND")
+			message(FATAL_ERROR "Looking for libunwind - not found")
+		else()
+			message(STATUS "Looking for libunwind - found (${CMAKE_UNWIND_LIBS_INIT})")
+		endif()
 	endif()
 endif()	
 
@@ -111,13 +113,16 @@ elseif(${CMAKE_SYSTEM_PROCESSOR} MATCHES "armv7l")
 	else()
 		message(FATAL_ERROR "Architecture not supported")
 	endif()
+elseif(${CMAKE_SYSTEM_PROCESSOR} MATCHES "^mips")
+	set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE mipsel)
+	set(CMAKE_C_FLAGS "-Ofast -fPIC -Wcast-align -Wstrict-overflow=5 -Wwrite-strings -Waggregate-return -Wswitch-default -Wswitch-enum -Wformat=2 -g -Wall -Wno-sign-conversion -Wunreachable-code -Wstrict-prototypes")
 elseif(${CMAKE_SYSTEM_PROCESSOR} MATCHES "64")
 	set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE amd64)
 	set(CMAKE_C_FLAGS "-Ofast -fPIC -march=native -mtune=native -ffast-math -Wconversion -Wunreachable-code -Wstrict-prototypes -Wfloat-equal -Wshadow -Wpointer-arith -Wcast-align -Wstrict-overflow=5 -Wwrite-strings -Waggregate-return -Wcast-qual -Wswitch-default -Wswitch-enum -Wformat=2 -g -Wall")
 elseif(${CMAKE_SYSTEM_PROCESSOR} MATCHES "i686")
 	# Including debug symbols creates a +100MB dll file.
 	set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE i686)
-	set(CMAKE_C_FLAGS "-Os -g -gdwarf-2 -gstrict-dwarf -march=native -mtune=native -ffast-math -Wformat=2 -Wformat-nonliteral -lws2_32 -liphlpapi")
+	set(CMAKE_C_FLAGS "-Os -g -gdwarf-2 -gstrict-dwarf -march=native -mtune=native -ffast-math -Wformat=2 -Wformat-nonliteral -lws2_32 -liphlpapi -lpsapi")
 elseif()
 	set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE i386)
 	set(CMAKE_C_FLAGS "-O2 -fPIC -march=native -mtune=native -ffast-math -Wformat=2 -g -Wformat-nonliteral")
@@ -260,10 +265,14 @@ file(GLOB avrdude_sources "${PROJECT_SOURCE_DIR}/libs/avrdude/*.c")
 file(GLOB polarssl_sources "${PROJECT_SOURCE_DIR}/libs/polarssl/*.c")
 
 if(WIN32)
-	add_custom_command(OUTPUT manifest.obj COMMAND ${CMAKE_WINDRES_COMPILER} -o manifest.obj manifest.rc)
-	add_library(manifest STATIC manifest.obj)	
-	set_source_files_properties(manifest.obj PROPERTIES EXTERNAL_OBJECT true GENERATED true)
-	set_target_properties(manifest PROPERTIES LINKER_LANGUAGE C)	
+	add_custom_command(OUTPUT admin.obj COMMAND ${CMAKE_WINDRES_COMPILER} -o admin.obj admin.rc)
+	add_custom_command(OUTPUT icon.obj COMMAND ${CMAKE_WINDRES_COMPILER} -o icon.obj icon.rc)
+	add_library(admin STATIC admin.obj)	
+	add_library(icon STATIC icon.obj)	
+	set_source_files_properties(admin.obj PROPERTIES EXTERNAL_OBJECT true GENERATED true)
+	set_source_files_properties(icon.obj PROPERTIES EXTERNAL_OBJECT true GENERATED true)
+	set_target_properties(admin PROPERTIES LINKER_LANGUAGE C)	
+	set_target_properties(icon PROPERTIES LINKER_LANGUAGE C)	
 
 	set(pthreadw32 
 		"${PROJECT_SOURCE_DIR}/libs/pthreadw32/attr.c"
@@ -887,6 +896,7 @@ if(${MODULESPACK} MATCHES "OFF" OR WIN32)
 		target_link_libraries(pilight_shared ws2_32)
 		target_link_libraries(pilight_shared wsock32)
 		target_link_libraries(pilight_shared iphlpapi)
+		target_link_libraries(pilight_shared psapi)
 	endif()
 
 	target_link_libraries(pilight_shared m)
@@ -913,7 +923,7 @@ if(${MODULESPACK} MATCHES "OFF" OR WIN32)
 		target_link_libraries(pilight_shared ${CMAKE_PCAP_LIBS_INIT})
 		target_link_libraries(pilight_static ${CMAKE_PCAP_LIBS_INIT})
 	endif()
-	if(NOT WIN32)
+	if(NOT WIN32 AND NOT ${CMAKE_SYSTEM_PROCESSOR} MATCHES "^mips")
 		target_link_libraries(pilight_shared ${CMAKE_UNWIND_LIBS_INIT})
 		target_link_libraries(pilight_static ${CMAKE_UNWIND_LIBS_INIT})
 	endif()
@@ -959,7 +969,7 @@ if(${MODULESPACK} MATCHES "OFF" OR WIN32)
 		install(FILES tzdata.json DESTINATION /etc/pilight/ COMPONENT pilight)
 	else()
 		install(FILES libpilight.dll DESTINATION . RENAME libpilight.dll COMPONENT pilight)
-		install(FILES config.json-default-w32 DESTINATION . RENAME config.json COMPONENT pilight)
+		install(FILES config.json-default-w32 DESTINATION . RENAME config.json-default COMPONENT pilight)
 		install(FILES tzdata.json DESTINATION . COMPONENT pilight)
 	endif()
 
@@ -972,7 +982,8 @@ if(${MODULESPACK} MATCHES "OFF" OR WIN32)
 	endif()	
 
 	if(WIN32)
-		add_executable(pilight-daemon daemon.c manifest.obj)
+		add_executable(pilight-daemon daemon.c admin.obj icon.obj)
+		target_link_libraries(pilight-daemon "-Wl,--subsystem,windows")
 	else()
 		add_executable(pilight-daemon daemon.c)
 	endif()
@@ -986,7 +997,11 @@ if(${MODULESPACK} MATCHES "OFF" OR WIN32)
 		target_link_libraries(pilight-daemon ${CMAKE_THREAD_LIBS_INIT})
 	endif()
 
-	add_executable(pilight-raw raw.c)
+	if(WIN32)
+		add_executable(pilight-raw raw.c admin.obj icon.obj)
+	else()
+		add_executable(pilight-raw raw.c)
+	endif()
 	target_link_libraries(pilight-raw pilight_shared)
 	target_link_libraries(pilight-raw ${CMAKE_DL_LIBS})
 	target_link_libraries(pilight-raw m)
@@ -997,7 +1012,11 @@ if(${MODULESPACK} MATCHES "OFF" OR WIN32)
 		target_link_libraries(pilight-raw ${CMAKE_THREAD_LIBS_INIT})
 	endif()
 
-	add_executable(pilight-send send.c)
+	if(WIN32)
+		add_executable(pilight-send send.c icon.obj)
+	else()
+		add_executable(pilight-send send.c)
+	endif()
 	target_link_libraries(pilight-send pilight_shared)
 	target_link_libraries(pilight-send ${CMAKE_DL_LIBS})
 	target_link_libraries(pilight-send m)
@@ -1008,7 +1027,11 @@ if(${MODULESPACK} MATCHES "OFF" OR WIN32)
 		target_link_libraries(pilight-send ${CMAKE_THREAD_LIBS_INIT})
 	endif()
 
-	add_executable(pilight-control control.c)
+	if(WIN32)
+		add_executable(pilight-control control.c icon.obj)
+	else()
+		add_executable(pilight-control control.c)
+	endif()
 	target_link_libraries(pilight-control pilight_shared)
 	target_link_libraries(pilight-control ${CMAKE_DL_LIBS})
 	target_link_libraries(pilight-control m)
@@ -1019,7 +1042,11 @@ if(${MODULESPACK} MATCHES "OFF" OR WIN32)
 		target_link_libraries(pilight-control ${CMAKE_THREAD_LIBS_INIT})
 	endif()
 
-	add_executable(pilight-receive receive.c)
+	if(WIN32)
+		add_executable(pilight-receive receive.c icon.obj)
+	else()
+		add_executable(pilight-receive receive.c)
+	endif()
 	target_link_libraries(pilight-receive pilight_shared)
 	target_link_libraries(pilight-receive ${CMAKE_DL_LIBS})
 	target_link_libraries(pilight-receive m)
@@ -1030,7 +1057,11 @@ if(${MODULESPACK} MATCHES "OFF" OR WIN32)
 		target_link_libraries(pilight-receive ${CMAKE_THREAD_LIBS_INIT})
 	endif()
 
-	add_executable(pilight-debug debug.c)
+	if(WIN32)
+		add_executable(pilight-debug debug.c admin.obj icon.obj)
+	else()
+		add_executable(pilight-debug debug.c)
+	endif()
 	target_link_libraries(pilight-debug pilight_shared)
 	target_link_libraries(pilight-debug ${CMAKE_DL_LIBS})
 	target_link_libraries(pilight-debug m)
@@ -1041,7 +1072,11 @@ if(${MODULESPACK} MATCHES "OFF" OR WIN32)
 		target_link_libraries(pilight-debug ${CMAKE_THREAD_LIBS_INIT})
 	endif()
 
-	add_executable(pilight-uuid uuid.c)
+	if(WIN32)
+		add_executable(pilight-uuid uuid.c icon.obj)
+	else()
+		add_executable(pilight-uuid uuid.c)
+	endif()
 	target_link_libraries(pilight-uuid pilight_shared)
 	target_link_libraries(pilight-uuid ${CMAKE_DL_LIBS})
 	target_link_libraries(pilight-uuid m)
@@ -1052,7 +1087,11 @@ if(${MODULESPACK} MATCHES "OFF" OR WIN32)
 		target_link_libraries(pilight-uuid ${CMAKE_THREAD_LIBS_INIT})
 	endif()
 
-	add_executable(pilight-flash flash.c)
+	if(WIN32)
+		add_executable(pilight-flash flash.c admin.obj icon.obj)
+	else()
+		add_executable(pilight-flash flash.c)
+	endif()
 	target_link_libraries(pilight-flash pilight_shared)
 	target_link_libraries(pilight-flash ${CMAKE_DL_LIBS})
 	target_link_libraries(pilight-flash m)
@@ -1106,7 +1145,8 @@ if(${MODULESPACK} MATCHES "OFF" OR WIN32)
 endif()
 
 if(WIN32)
-	set(CPACK_NSIS_INSTALL_ROOT "c:\\\\ProgramData")
+	set(CPACK_MONOLITHIC_INSTALL True)
+	set(CPACK_NSIS_INSTALL_ROOT "c:")
 	set(CPACK_PACKAGE_INSTALL_DIRECTORY "pilight")
 	set(CPACK_NSIS_DISPLAY_NAME "pilight")
 	set(CPACK_NSIS_PACKAGE_NAME "pilight v${PROJECT_VERSION}")
@@ -1114,18 +1154,11 @@ if(WIN32)
 	set(CPACK_NSIS_CONTACT "info@pilight.org")
 	set(CPACK_NSIS_EXECUTABLES_DIRECTORY ".")
 	set(CPACK_NSIS_MENU_LINKS
-		"pilight-control" "pilight-control"
 		"pilight-daemon" "pilight-daemon"
-		"pilight-debug" "pilight-debug"
-		"pilight-flash" "pilight-flash"
-		"pilight-raw" "pilight-raw"
-		"pilight-receive" "pilight-receive"
-		"pilight-send" "pilight-send"
-		"pilight-uuid" "pilight-uuid"
 	)
 
 	set(CPACK_RESOURCE_FILE_LICENSE "${PROJECT_SOURCE_DIR}/LICENSE.txt")
-	set(CPACK_COMPONENTS_ALL pilight webgui)
+	# set(CPACK_COMPONENTS_ALL pilight webgui)
 	set(CPACK_GENERATOR "NSIS")
 	set(CPACK_PACKAGING_INSTALL_DIRECTORY "pilight")
 	set(CPACK_SOURCE_STRIP_FILES TRUE)
@@ -1137,7 +1170,7 @@ if(WIN32)
 	set(CPACK_PACKAGE_DESCRIPTION "Control RF devices with the Raspberry Pi")
 	set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Control RF devices with the Raspberry Pi")
 	include(CPack)
-elseif()
+else()
 	WRITE_UNINSTALL_TARGET_SCRIPT()
 	configure_file("${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake.in"
 		"${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake"

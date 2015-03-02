@@ -34,6 +34,7 @@
 #include "hummingboard.h"
 #include "raspberrypi.h"
 #include "bananapi.h"
+#include "ci20.h"
 #include "mem.h"
 
 static struct platform_t *platform = NULL;
@@ -355,11 +356,12 @@ int wiringXSetup(void) {
 	if(wiringXLog == NULL) {
 		wiringXLog = _fprintf;
 	}
-#ifdef __arm__
+#if defined(__arm__) || defined(__mips__)
 	if(setup == -2) {
 		hummingboardInit();
 		raspberrypiInit();
 		bananapiInit();
+		ci20Init();
 
 		int match = 0;
 		struct platform_t *tmp = platforms;

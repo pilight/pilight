@@ -25,6 +25,9 @@
 	#include "pthread.h"
 	#include "implement.h"
 #else
+	#ifdef __mips__
+		#define __USE_UNIX98
+	#endif
 	#include <pthread.h>
 #endif
 #include <sys/time.h>

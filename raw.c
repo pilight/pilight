@@ -155,6 +155,13 @@ int main(int argc, char **argv) {
 	}
 	options_delete(options);
 
+#ifdef _WIN32
+	if((pid = check_instances(L"pilight-raw")) != -1) {
+		logprintf(LOG_ERR, "pilight-raw is already running");
+		goto close;
+	}
+#endif
+
 	if((pid = isrunning("pilight-daemon")) != -1) {
 		logprintf(LOG_ERR, "pilight-daemon instance found (%d)", (int)pid);
 		goto close;

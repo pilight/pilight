@@ -249,7 +249,7 @@ static int initpacket(char *buf) {
 }
 
 int ping(char *addr) {
-	char buf[1500], buf1[100];
+	char buf[1500], buf1[17];
 	struct ip *ip = (struct ip *)buf;
 	struct icmp *icmp = (struct icmp *)(ip + 1);
 	struct sockaddr_in dst;
@@ -315,8 +315,8 @@ int ping(char *addr) {
 	}
 
 	icmp = (struct icmp *)(buf + (ip->ip_hl << 2));
-	memset(&buf1, '\0', sizeof(buf1));
-	inet_ntop(AF_INET, (void *)&(ip->ip_src), buf1, sizeof(buf1));
+	memset(&buf1, '\0', 17);
+	inet_ntop(AF_INET, (void *)&(ip->ip_src), buf1, 17);
 	if(!((icmp->icmp_type == ICMP_ECHOREPLY || icmp->icmp_type == ICMP_ECHO) && strcmp(buf1, addr) == 0)) {
 		logprintf(LOG_DEBUG, "unexpected status reply %d from addr: %s", icmp->icmp_type, buf1);
 		close(sockfd);
