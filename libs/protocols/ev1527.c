@@ -59,7 +59,7 @@ static void ev1527ParseBinary(void) {
 	ev1527CreateMessage(unitcode, state);
 }
 
-#ifndef MODULE
+#if !defined(MODULE) && !defined(_WIN32)
 __attribute__((weak))
 #endif
 void ev1527Init(void) {
@@ -83,7 +83,7 @@ void ev1527Init(void) {
 	ev1527->parseBinary=&ev1527ParseBinary;
 }
 
-#ifdef MODULE
+#if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "ev1527";
 	module->version = "0.3";
