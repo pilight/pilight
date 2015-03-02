@@ -27,8 +27,17 @@
 #include <math.h>
 #include <sys/stat.h>
 #include <sys/time.h>
+#ifdef _WIN32
+	#include "pthread.h"
+	#include "implement.h"
+#else
+	#ifdef __mips__
+		#define __USE_UNIX98
+	#endif
+	#include <pthread.h>
+#endif
 
-#include "../../pilight.h"
+#include "pilight.h"
 #include "common.h"
 #include "dso.h"
 #include "log.h"
@@ -39,8 +48,11 @@
 #include "gc.h"
 #include "json.h"
 #include "lm75.h"
-#include "../pilight/wiringX.h"
+#ifndef _WIN32
+	#include "../pilight/wiringX.h"
+#endif
 
+#if !defined(__FreeBSD__) && !defined(_WIN32)
 typedef struct lm75data_t {
 	char **id;
 	int nrid;
@@ -99,7 +111,6 @@ static void *lm75Parse(void *param) {
 		interval = (int)round(itmp);
 	json_find_number(json, "temperature-offset", &temp_offset);
 
-#ifndef __FreeBSD__
 	lm75data->fd = REALLOC(lm75data->fd, (sizeof(int)*(size_t)(lm75data->nrid+1)));
 	if(!lm75data->fd) {
 		logprintf(LOG_ERR, "out of memory");
@@ -108,11 +119,9 @@ static void *lm75Parse(void *param) {
 	for(y=0;y<lm75data->nrid;y++) {
 		lm75data->fd[y] = wiringXI2CSetup((int)strtol(lm75data->id[y], NULL, 16));
 	}
-#endif
 
 	while(lm75_loop) {
 		if(protocol_thread_wait(node, interval, &nrloops) == ETIMEDOUT) {
-#ifndef __FreeBSD__
 			pthread_mutex_lock(&lm75lock);
 			for(y=0;y<lm75data->nrid;y++) {
 				if(lm75data->fd[y] > 0) {
@@ -141,7 +150,6 @@ static void *lm75Parse(void *param) {
 				}
 			}
 			pthread_mutex_unlock(&lm75lock);
-#endif
 		}
 	}
 	pthread_mutex_unlock(&lm75lock);
@@ -185,14 +193,17 @@ static void lm75ThreadGC(void) {
 	}
 	protocol_thread_free(lm75);
 }
+#endif
 
-#ifndef MODULE
+#if !defined(MODULE) && !defined(_WIN32)
 __attribute__((weak))
 #endif
 void lm75Init(void) {
+#if !defined(__FreeBSD__) && !defined(_WIN32)
 	pthread_mutexattr_init(&lm75attr);
 	pthread_mutexattr_settype(&lm75attr, PTHREAD_MUTEX_RECURSIVE);
 	pthread_mutex_init(&lm75lock, &lm75attr);
+#endif
 
 	protocol_register(&lm75);
 	protocol_set_id(lm75, "lm75");
@@ -207,11 +218,13 @@ void lm75Init(void) {
 	options_add(&lm75->options, 0, "decimals", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)1, "[0-9]");
 	options_add(&lm75->options, 0, "show-temperature", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
 
+#if !defined(__FreeBSD__) && !defined(_WIN32)
 	lm75->initDev=&lm75InitDev;
 	lm75->threadGC=&lm75ThreadGC;
+#endif
 }
 
-#ifdef MODULE
+#if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "lm75";
 	module->version = "1.3";

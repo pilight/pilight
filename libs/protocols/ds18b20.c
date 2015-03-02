@@ -26,8 +26,17 @@
 #include <fcntl.h>
 #include <math.h>
 #include <sys/stat.h>
+#ifdef _WIN32
+	#include "pthread.h"
+	#include "implement.h"
+#else
+	#ifdef __mips__
+		#define __USE_UNIX98
+	#endif
+	#include <pthread.h>
+#endif
 
-#include "../../pilight.h"
+#include "pilight.h"
 #include "common.h"
 #include "dso.h"
 #include "log.h"
@@ -51,20 +60,22 @@ static void *ds18b20Parse(void *param) {
 	struct JsonNode *json = (struct JsonNode *)node->param;
 	struct JsonNode *jid = NULL;
 	struct JsonNode *jchild = NULL;
+
+#ifndef _WIN32
 	struct dirent *file = NULL;
 	struct stat st;
 
 	DIR *d = NULL;
 	FILE *fp = NULL;
-	char *ds18b20_sensor = NULL;
-	char *stmp = NULL;
-	char **id = NULL;
-	char *content = NULL;
 	char crcVar[5];
-	int w1valid = 0, interval = 10;
-	int nrid = 0, y = 0, nrloops = 0;
-	double temp_offset = 0.0, w1temp = 0.0, itmp = 0.0;
+	int w1valid = 0;
+	double w1temp = 0.0;
 	size_t bytes = 0;
+#endif
+	char **id = NULL, *stmp = NULL, *content = NULL;
+	char *ds18b20_sensor = NULL;
+	int nrid = 0, interval = 10, nrloops = 0, y = 0;
+	double temp_offset = 0.0, itmp = 0.0;
 
 	ds18b20_threads++;
 
@@ -95,6 +106,7 @@ static void *ds18b20Parse(void *param) {
 
 	while(ds18b20_loop) {
 		if(protocol_thread_wait(node, interval, &nrloops) == ETIMEDOUT) {
+#ifndef _WIN32
 			pthread_mutex_lock(&ds18b20lock);
 			for(y=0;y<nrid;y++) {
 				ds18b20_sensor = REALLOC(ds18b20_sensor, strlen(ds18b20_path)+strlen(id[y])+5);
@@ -177,6 +189,7 @@ static void *ds18b20Parse(void *param) {
 					logprintf(LOG_ERR, "1-wire device %s does not exists", ds18b20_sensor);
 				}
 			}
+#endif
 			pthread_mutex_unlock(&ds18b20lock);
 		}
 	}
@@ -215,7 +228,7 @@ static void ds18b20ThreadGC(void) {
 	protocol_thread_free(ds18b20);
 }
 
-#ifndef MODULE
+#if !defined(MODULE) && !defined(_WIN32)
 __attribute__((weak))
 #endif
 void ds18b20Init(void) {
@@ -245,7 +258,7 @@ void ds18b20Init(void) {
 	ds18b20->threadGC=&ds18b20ThreadGC;
 }
 
-#ifdef MODULE
+#if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "ds18b20";
 	module->version = "1.5";

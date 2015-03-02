@@ -21,10 +21,8 @@
 #include <stdarg.h>
 #include <unistd.h>
 #include <fcntl.h>
-#include <sys/ioctl.h>
 #include <limits.h>
 #include <errno.h>
-#include <syslog.h>
 #include <time.h>
 #include <math.h>
 #include <string.h>
@@ -46,7 +44,6 @@
 #include "dso.h"
 #include "gc.h"
 
-struct pilight_t pilight;
 static unsigned short main_loop = 1;
 
 int main_gc(void) {
@@ -65,13 +62,19 @@ int main_gc(void) {
 	whitelist_free();
 	threads_gc();
 
+#ifndef _WIN32
 	wiringXGC();
-	dso_gc();	
+#endif
+	dso_gc();
 	log_gc();
 	gc_clear();
 
 	FREE(progname);
 	xfree();
+
+#ifdef _WIN32
+	WSACleanup();
+#endif
 
 	return EXIT_SUCCESS;
 }
@@ -92,6 +95,7 @@ void *receive_code(void *param) {
 int main(int argc, char **argv) {
 	// memtrack();
 
+	atomicinit();
 	struct options_t *options = NULL;
 	char *args = NULL;
 	char *configtmp = MALLOC(strlen(CONFIG_FILE)+1);
@@ -136,7 +140,7 @@ int main(int argc, char **argv) {
 				goto close;
 			break;
 			case 'V':
-				printf("%s %s\n", progname, PILIGHT_VERSION);
+				printf("%s v%s\n", progname, PILIGHT_VERSION);
 				goto close;
 			break;
 			case 'C':
@@ -150,6 +154,13 @@ int main(int argc, char **argv) {
 		}
 	}
 	options_delete(options);
+
+#ifdef _WIN32
+	if((pid = check_instances(L"pilight-raw")) != -1) {
+		logprintf(LOG_ERR, "pilight-raw is already running");
+		goto close;
+	}
+#endif
 
 	if((pid = isrunning("pilight-daemon")) != -1) {
 		logprintf(LOG_ERR, "pilight-daemon instance found (%d)", (int)pid);

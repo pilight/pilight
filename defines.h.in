@@ -30,7 +30,11 @@
 
 #ifdef WEBSERVER
 	#define WEBSERVER_PORT				5001
-	#define WEBSERVER_ROOT				"/usr/local/share/pilight/"
+	#ifdef _WIN32
+		#define WEBSERVER_ROOT				"c:/pilight/web/default/"
+	#else
+		#define WEBSERVER_ROOT				"/usr/local/share/pilight/"
+	#endif
 	#define WEBSERVER_ENABLE			1
 	#define WEBSERVER_CACHE				1
 	#define WEBGUI_TEMPLATE				"default"
@@ -47,15 +51,26 @@
 #define MEMBUFFER								128
 #define EOSS										"\n\n" // End Of Socket Stream
 
-#define PROTOCOL_ROOT						"/usr/local/lib/pilight/protocols/"
-#define HARDWARE_ROOT						"/usr/local/lib/pilight/hardware/"
-#define OPERATOR_ROOT						"/usr/local/lib/pilight/operators/"
-#define ACTION_ROOT							"/usr/local/lib/pilight/actions/"
+#ifdef _WIN32
+	#define PROTOCOL_ROOT						"c:/pilight/protocols/"
+	#define HARDWARE_ROOT						"c:/pilight/hardware/"
+	#define OPERATOR_ROOT						"c:/pilight/operators/"
+	#define ACTION_ROOT							"c:/pilight/actions/"	
 
-#define PID_FILE								"/var/run/pilight.pid"
-#define CONFIG_FILE							"/etc/pilight/config.json"
-#define LOG_FILE								"/var/log/pilight.log"
-#define TZDATA_FILE							"/etc/pilight/tzdata.json"
+	#define CONFIG_FILE							"c:/pilight/config.json"
+	#define LOG_FILE								"c:/pilight/pilight.log"
+	#define TZDATA_FILE							"c:/pilight/tzdata.json"
+#else
+	#define PROTOCOL_ROOT						"/usr/local/lib/pilight/protocols/"
+	#define HARDWARE_ROOT						"/usr/local/lib/pilight/hardware/"
+	#define OPERATOR_ROOT						"/usr/local/lib/pilight/operators/"
+	#define ACTION_ROOT							"/usr/local/lib/pilight/actions/"	
+
+	#define PID_FILE								"/var/run/pilight.pid"
+	#define CONFIG_FILE							"/etc/pilight/config.json"
+	#define LOG_FILE								"/var/log/pilight.log"
+	#define TZDATA_FILE							"/etc/pilight/tzdata.json"
+#endif	
 #define LOG_MAX_SIZE 						1048576 // 1024*1024
 
 #define SEND_REPEATS						10
@@ -63,7 +78,7 @@
 #define UUID_LENGTH							21
 
 #ifdef FIRMWARE_UPDATER
-	#define FIRMWARE_PATH				"/etc/pilight/"
+	#define FIRMWARE_PATH				"c:/Program Data/pilight/"
 	#define FIRMWARE_GPIO_RESET	10
 	#define FIRMWARE_GPIO_SCK		14
 	#define FIRMWARE_GPIO_MOSI	12

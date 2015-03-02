@@ -21,7 +21,7 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "../../pilight.h"
+#include "pilight.h"
 #include "common.h"
 #include "dso.h"
 #include "log.h"
@@ -111,7 +111,7 @@ static unsigned short gpio433Settings(JsonNode *json) {
 	return EXIT_SUCCESS;
 }
 
-#ifndef MODULE
+#if !defined(MODULE) && !defined(_WIN32)
 __attribute__((weak))
 #endif
 void gpio433Init(void) {
@@ -129,7 +129,7 @@ void gpio433Init(void) {
 	gpio433->settings=&gpio433Settings;
 }
 
-#ifdef MODULE
+#if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "433gpio";
 	module->version = "1.2";

@@ -26,7 +26,12 @@
 #include <sys/stat.h>
 #include <sys/time.h>
 #include <time.h>
-#include <pthread.h>
+#ifdef _WIN32
+	#include "pthread.h"
+	#include <windows.h>
+#else
+	#include <pthread.h>
+#endif
 #include <ctype.h>
 #include <dirent.h>
 
@@ -35,7 +40,9 @@
 #include "mem.h"
 
 /* RAM usage */
-static unsigned long totalram = 0;
+#ifndef _WIN32
+	static unsigned long totalram = 0;
+#endif
 static unsigned short initialized = 0;
 
 /* Mounting proc subsystem */
@@ -59,7 +66,23 @@ double getCPUUsage(void) {
 		cpu_usage.starts = 0;
 		initialized = 1;
 	}
-
+#ifdef _WIN32
+	FILETIME createTime;
+	FILETIME exitTime;
+	FILETIME kernelTime;
+	FILETIME userTime;
+	if(GetProcessTimes(GetCurrentProcess(), &createTime, &exitTime, &kernelTime, &userTime) != -1) {
+		SYSTEMTIME userSystemTime;
+		if(FileTimeToSystemTime(&userTime, &userSystemTime) != -1) {
+			cpu_usage.cpu_new = ((double)userSystemTime.wHour * 3600.0 + (double)userSystemTime.wMinute * 60.0 +
+													 (double)userSystemTime.wSecond + (double)userSystemTime.wMilliseconds / 1000.0);
+			double a = (cpu_usage.cpu_new - cpu_usage.cpu_old);
+			cpu_usage.cpu_old = cpu_usage.cpu_new;
+			return a;
+		}
+	}
+	return 0.0;
+#else
 	clock_gettime(CLOCK_REALTIME, &cpu_usage.ts);
 	cpu_usage.sec_stop = cpu_usage.ts.tv_sec + cpu_usage.ts.tv_nsec / 1e9;
 
@@ -74,11 +97,29 @@ double getCPUUsage(void) {
 	cpu_usage.sec_start = cpu_usage.ts.tv_sec + cpu_usage.ts.tv_nsec / 1e9;
 
 	return a;
+#endif
 }
 
 void getThreadCPUUsage(pthread_t pth, struct cpu_usage_t *cpu_usage) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
-
+#ifdef _WIN32
+	FILETIME createTime;
+	FILETIME exitTime;
+	FILETIME kernelTime;
+	FILETIME userTime;
+	if(GetThreadTimes(pthread_getw32threadhandle_np(pth), &createTime, &exitTime, &kernelTime, &userTime) != -1) {
+		SYSTEMTIME userSystemTime;
+		if(FileTimeToSystemTime(&userTime, &userSystemTime) != -1) {
+			cpu_usage->cpu_new = ((double)userSystemTime.wHour * 3600.0 + (double)userSystemTime.wMinute * 60.0 +
+													 (double)userSystemTime.wSecond + (double)userSystemTime.wMilliseconds / 1000.0);
+			if(cpu_usage->cpu_per > 100) {
+				cpu_usage->cpu_per = (cpu_usage->cpu_new - cpu_usage->cpu_old);
+			}
+			cpu_usage->cpu_old = cpu_usage->cpu_new;
+		}
+	}
+	cpu_usage->cpu_per = 0;
+#else
 	clockid_t cid;
 	memset(&cid, '\0', sizeof(cid));
 
@@ -99,78 +140,85 @@ void getThreadCPUUsage(pthread_t pth, struct cpu_usage_t *cpu_usage) {
 
 	clock_gettime(CLOCK_REALTIME, &cpu_usage->ts);
 	cpu_usage->sec_start = cpu_usage->ts.tv_sec + cpu_usage->ts.tv_nsec / 1e9;
+#endif
 }
 
 double getRAMUsage(void) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
-#if defined(_SC_PHYS_PAGES) && defined(_SC_PAGESIZE)
+#ifndef _WIN32
+	#if defined(_SC_PHYS_PAGES) && defined(_SC_PAGESIZE)
 	if(totalram == 0) {
 		totalram = (size_t)sysconf(_SC_PHYS_PAGES)*(size_t)sysconf(_SC_PAGESIZE);
 	}
-#endif
+	#endif
 
-#ifdef __FreeBSD__
+	#ifdef __FreeBSD__
 	static char statusfile[] = "/compat/proc/self/status";
-    static char memfile[] = "/compat/proc/meminfo";
-#else
+	static char memfile[] = "/compat/proc/meminfo";
+	#else
 	static char statusfile[] = "/proc/self/status";
-    static char memfile[] = "/proc/meminfo";
-#endif
-    unsigned long VmRSS = 0, value = 0, total = 0;
-    char title[32] = "";
-    char units[32] = "";
-    int ret = 0;
-    FILE *fp = NULL;
+	static char memfile[] = "/proc/meminfo";
+	#endif
+	unsigned long VmRSS = 0, value = 0, total = 0;
+	size_t len = 0;
+	ssize_t read = 0;
+	char units[32], title[32], *line;
+	FILE *fp = NULL;
 
-    fp = fopen(statusfile, "r");
-    if(fp) {
-        while(ret != EOF) {
-            ret = fscanf(fp, "%31s %lu %s\n", title, &value, units);
-            if(strcmp(title, "VmRSS:") == 0) {
-                VmRSS = value * 1024;
+	memset(title, '\0', 32);
+	memset(units, '\0', 32);
+
+	if((fp = fopen(statusfile, "r")) != NULL) {
+		while((read = getline(&line, &len, fp)) != -1) {
+			if(strstr(line, "VmRSS:") != NULL) {
+				if(sscanf(line, "%31s %lu %s\n", title, &value, units) > 0) {
+					VmRSS = value * 1024;
+				}
 				break;
-            }
-        }
-        fclose(fp);
-#ifdef __FreeBSD__
-		if(mountproc) {
-			DIR* dir;
-			if(!(dir = opendir("/compat"))) {
-				mkdir("/compat", 0755);
-			} else {
-				closedir(dir);
-			}
-			if(!(dir = opendir("/compat/proc"))) {
-				mkdir("/compat/proc", 0755);
-			} else {
-				closedir(dir);
-			}
-			if(!(dir = opendir("/compat/proc/self"))) {
-				system("mount -t linprocfs none /compat/proc 2>/dev/null 1>/dev/null");
-				mountproc = 0;
-			} else {
-				closedir(dir);
 			}
 		}
-#endif
-    }
+		fclose(fp);
+	}
+	#ifdef __FreeBSD__
+	if(mountproc == 1) {
+		DIR* dir;
+		if(!(dir = opendir("/compat"))) {
+			mkdir("/compat", 0755);
+		} else {
+			closedir(dir);
+		}
+		if(!(dir = opendir("/compat/proc"))) {
+			mkdir("/compat/proc", 0755);
+		} else {
+			closedir(dir);
+		}
+		if(!(dir = opendir("/compat/proc/self"))) {
+			system("mount -t linprocfs none /compat/proc 2>/dev/null 1>/dev/null");
+			mountproc = 0;
+		} else {
+			closedir(dir);
+		}
+	}
+	#endif
 
-
-    fp = fopen(memfile, "r");
-    if(fp) {
-        while(ret != EOF) {
-            ret = fscanf(fp, "%31s %lu %s\n", title, &value, units);
-            if(strcmp(title, "MemTotal:") == 0) {
-                total = value * 1024;
-                break;
-            }
-        }
-        fclose(fp);
-    }
+	if((fp = fopen(memfile, "r")) != NULL) {
+		while((read = getline(&line, &len, fp)) != -1) {
+			if(strstr(line, "MemTotal:") != NULL) {
+				if(sscanf(line, "%31s %lu %s\n", title, &value, units) > 0) {
+					total = value * 1024;
+				}
+				break;
+			}
+		}
+		fclose(fp);
+	}
 	if(VmRSS > 0 && total > 0) {
 		return ((double)VmRSS*100)/(double)total;
 	} else {
 		return 0.0;
 	}
+#else
+	return 0.0;
+#endif
 }

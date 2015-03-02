@@ -21,7 +21,7 @@
 #include <string.h>
 #include <math.h>
 
-#include "../../pilight.h"
+#include "pilight.h"
 #include "common.h"
 #include "dso.h"
 #include "log.h"
@@ -162,7 +162,7 @@ static void elro400PrintHelp(void) {
 	printf("\t -f --off\t\t\tsend an off signal\n");
 }
 
-#ifndef MODULE
+#if !defined(MODULE) && !defined(_WIN32)
 __attribute__((weak))
 #endif
 void elro400Init(void) {
@@ -190,7 +190,7 @@ void elro400Init(void) {
 	elro_400->printHelp=&elro400PrintHelp;
 }
 
-#ifdef MODULE
+#if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "elro_400";
 	module->version = "1.3";

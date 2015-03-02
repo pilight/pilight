@@ -44,7 +44,7 @@
 #include <sys/time.h>
 #include <dirent.h>
 
-#include "../../pilight.h"
+#include "pilight.h"
 #include "common.h"
 #include "settings.h"
 #include "log.h"

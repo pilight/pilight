@@ -21,7 +21,15 @@
 #include <string.h>
 #include <signal.h>
 #include <unistd.h>
-#include <pthread.h>
+#ifdef _WIN32
+	#include "pthread.h"
+	#include "implement.h"
+#else
+	#ifdef __mips__
+		#define __USE_UNIX98
+	#endif
+	#include <pthread.h>
+#endif
 #include <sys/time.h>
 
 #include "threads.h"
@@ -31,6 +39,7 @@
 
 static unsigned short thread_loop = 1;
 static unsigned short thread_running = 0;
+static unsigned int threads_initialized = 0;
 
 static pthread_mutex_t threadqueue_lock;
 static pthread_cond_t threadqueue_signal;
@@ -38,12 +47,15 @@ static pthread_mutexattr_t threadqueue_attr;
 
 static int threadqueue_number = 0;
 static struct threadqueue_t *threadqueue;
+static int threads_loop_running = 0;
 static pthread_t pth;
 
 struct threadqueue_t *threads_register(const char *id, void *(*function)(void *param), void *param, int force) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
-	pthread_mutex_lock(&threadqueue_lock);
+	if(threads_initialized == 1) {
+		pthread_mutex_lock(&threadqueue_lock);
+	}
 
 	struct threadqueue_t *tnode = MALLOC(sizeof(struct threadqueue_t));
 	if(!tnode) {
@@ -91,8 +103,10 @@ struct threadqueue_t *threads_register(const char *id, void *(*function)(void *p
 	}
 	threadqueue_number++;
 
-	pthread_mutex_unlock(&threadqueue_lock);
-	pthread_cond_signal(&threadqueue_signal);
+	if(threads_initialized == 1) {
+		pthread_mutex_unlock(&threadqueue_lock);
+		pthread_cond_signal(&threadqueue_signal);
+	}
 
 	return tnode;
 }
@@ -100,14 +114,18 @@ struct threadqueue_t *threads_register(const char *id, void *(*function)(void *p
 void threads_create(pthread_t *thread, const pthread_attr_t *attr,  void *(*start_routine) (void *), void *arg) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
+#ifndef _WIN32
 	sigset_t new, old;
 	sigemptyset(&new);
 	sigaddset(&new, SIGINT);
 	sigaddset(&new, SIGQUIT);
 	sigaddset(&new, SIGTERM);
 	pthread_sigmask(SIG_BLOCK, &new, &old);
+#endif
 	pthread_create(thread, attr, start_routine, arg);
+#ifndef _WIN32
 	pthread_sigmask(SIG_SETMASK, &old, NULL);
+#endif
 }
 
 void thread_signal(char *id, int s) {
@@ -129,6 +147,7 @@ static void *threads_loop(void *param) {
 	struct threadqueue_t *tmp_threads = NULL;
 
 	pthread_mutex_lock(&threadqueue_lock);
+	threads_loop_running = 1;
 	while(thread_loop) {
 		if(threadqueue_number > 0) {
 			pthread_mutex_lock(&threadqueue_lock);
@@ -151,29 +170,38 @@ static void *threads_loop(void *param) {
 				logprintf(LOG_DEBUG, "new thread %s, %d threads running", tmp_threads->id, thread_running);
 			}
 
+#ifdef _WIN32
+			tmp_threads->handle = pthread_getw32threadhandle_np(tmp_threads->pth);
+#endif
 			threadqueue_number--;
 			pthread_mutex_unlock(&threadqueue_lock);
 		} else {
 			pthread_cond_wait(&threadqueue_signal, &threadqueue_lock);
 		}
 	}
+	threads_loop_running = 0;
 	return (void *)NULL;
 }
 
 void threads_start() {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
-	pthread_mutexattr_init(&threadqueue_attr);
-	pthread_mutexattr_settype(&threadqueue_attr, PTHREAD_MUTEX_RECURSIVE);
-	pthread_mutex_init(&threadqueue_lock, &threadqueue_attr);
-	pthread_cond_init(&threadqueue_signal, NULL);
+	if(threads_initialized == 0) {
+		pthread_mutexattr_init(&threadqueue_attr);
+		pthread_mutexattr_settype(&threadqueue_attr, PTHREAD_MUTEX_RECURSIVE);
+		pthread_mutex_init(&threadqueue_lock, &threadqueue_attr);
+		pthread_cond_init(&threadqueue_signal, NULL);
+		threads_initialized = 1;
+	}
 
 	threads_create(&pth, NULL, &threads_loop, (void *)NULL);
 }
 
 void thread_stop(char *id) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
-	pthread_mutex_lock(&threadqueue_lock);
+	if(threads_initialized == 1) {
+		pthread_mutex_lock(&threadqueue_lock);
+	}
 
 	struct threadqueue_t *currP, *prevP;
 
@@ -208,13 +236,15 @@ void thread_stop(char *id) {
 			break;
 		}
 	}
-	pthread_mutex_unlock(&threadqueue_lock);
+	if(threads_initialized == 1) {
+		pthread_mutex_unlock(&threadqueue_lock);
+	}
 }
 
 void threads_cpu_usage(int print) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
-	if(print) {
+	if(print == 1) {
 		logprintf(LOG_ERR, "----- Thread Profiling -----");
 	}
 	struct threadqueue_t *tmp_threads = threadqueue;
@@ -229,7 +259,7 @@ void threads_cpu_usage(int print) {
 		}
 		tmp_threads = tmp_threads->next;
 	}
-	if(print) {
+	if(print == 1) {
 		logprintf(LOG_ERR, "----- Thread Profiling -----");
 	}
 }
@@ -239,8 +269,10 @@ int threads_gc(void) {
 
 	thread_loop = 0;
 
-	pthread_mutex_unlock(&threadqueue_lock);
-	pthread_cond_signal(&threadqueue_signal);
+	if(threads_initialized == 1) {
+		pthread_mutex_unlock(&threadqueue_lock);
+		pthread_cond_signal(&threadqueue_signal);
+	}
 
 	struct threadqueue_t *tmp_threads = threadqueue;
 	while(tmp_threads) {
@@ -273,10 +305,11 @@ int threads_gc(void) {
 	if(threadqueue != NULL) {
 		FREE(threadqueue);
 	}
-	
-	if(pth) {
-		pthread_join(pth, NULL);
+
+	while(threads_loop_running > 0) {
+		usleep(10);
 	}
+	pthread_join(pth, NULL);
 
 	logprintf(LOG_DEBUG, "garbage collected threads library");
 	return EXIT_SUCCESS;

@@ -22,7 +22,9 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <unistd.h>
-#include <regex.h>
+#ifndef _WIN32
+	#include <regex.h>
+#endif
 #include <sys/stat.h>
 #include <ctype.h>
 #include <math.h>
@@ -39,6 +41,8 @@
 #include "ssdp.h"
 #include "firmware.h"
 #include "datetime.h"
+
+struct config_t *config_devices;
 
 /* Struct to store the locations */
 static struct devices_t *devices = NULL;
@@ -88,9 +92,7 @@ int devices_update(char *protoname, JsonNode *json, JsonNode **out) {
 	memset(vstring_, '\0', sizeof(vstring_));
 
 	/* Check if the found settings matches the send code */
-	int match = 0;
-	int match1 = 0;
-	int match2 = 0;
+	unsigned int match = 0, match1 = 0, match2 = 0;
 
 	/* Is is a valid new state / value */
 	int is_valid = 1;
@@ -106,9 +108,11 @@ int devices_update(char *protoname, JsonNode *json, JsonNode **out) {
 	}
 
 	time_t timenow = time(NULL);
-	struct tm *gmt = gmtime(&timenow);
-	char utc[] = "Europe/London";
-	time_t utct = datetime2ts(gmt->tm_year+1900, gmt->tm_mon+1, gmt->tm_mday, gmt->tm_hour, gmt->tm_min, gmt->tm_sec, utc);
+	struct tm gmt;
+	memset(&gmt, '\0', sizeof(struct tm));
+	gmtime_r(&timenow, &gmt);
+	char utc[] = "UTC";
+	time_t utct = datetime2ts(gmt.tm_year+1900, gmt.tm_mon+1, gmt.tm_mday, gmt.tm_hour, gmt.tm_min, gmt.tm_sec, utc);
 	json_append_member(rval, "timestamp", json_mknumber((double)utct, 0));
 
 	json_find_string(json, "uuid", &uuid);
@@ -467,7 +471,7 @@ int devices_valid_value(char *sid, char *name, char *value) {
 	struct devices_t *dptr = NULL;
 	struct options_t *opt = NULL;
 	struct protocols_t *tmp_protocol = NULL;
-#ifndef __FreeBSD__
+#if !defined(__FreeBSD__) && !defined(_WIN32)
 	regex_t regex;
 	int reti = 0;
 	memset(&regex, '\0', sizeof(regex));
@@ -479,7 +483,7 @@ int devices_valid_value(char *sid, char *name, char *value) {
 			opt = tmp_protocol->listener->options;
 			while(opt) {
 				if(opt->conftype == DEVICES_VALUE && strcmp(name, opt->name) == 0) {
-#ifndef __FreeBSD__
+#if !defined(__FreeBSD__) && !defined(_WIN32)
 					if(opt->mask != NULL) {
 						reti = regcomp(&regex, opt->mask, REG_EXTENDED);
 						if(reti) {
@@ -1013,7 +1017,7 @@ static int devices_check_id(int i, JsonNode *jsetting, struct devices_t *device)
 									}
 
 									if(tmp_options->mask != NULL && strlen(tmp_options->mask) > 0) {
-#ifndef __FreeBSD__
+#if !defined(__FreeBSD__) && !defined(_WIN32)
 										regex_t regex;
 										memset(&regex, '\0', sizeof(regex));
 										int reti = regcomp(&regex, tmp_options->mask, REG_EXTENDED);
@@ -1163,7 +1167,7 @@ static int devices_check_state(int i, JsonNode *jsetting, struct devices_t *devi
 	char ctmp[256];
 	char *stmp = NULL;
 
-#ifndef __FreeBSD__
+#if !defined(__FreeBSD__) && !defined(_WIN32)
 	/* Regex variables */
 	regex_t regex;
 	int reti = 0;
@@ -1192,7 +1196,7 @@ static int devices_check_state(int i, JsonNode *jsetting, struct devices_t *devi
 					   type. This is done by checking the regex mask */
 					if(tmp_options->argtype == OPTION_HAS_VALUE) {
 						if(tmp_options->mask != NULL && strlen(tmp_options->mask) > 0) {
-#ifndef __FreeBSD__
+#if !defined(__FreeBSD__) && !defined(_WIN32)
 							reti = regcomp(&regex, tmp_options->mask, REG_EXTENDED);
 							if(reti) {
 								logprintf(LOG_ERR, "%s: could not compile %s regex", tmp_protocols->listener->id, tmp_options->name);
@@ -1538,7 +1542,7 @@ static int devices_parse(JsonNode *root) {
 					match = 0;
 					struct protocols_t *tmp_protocols = protocols;
 					/* Pointer to the match protocol */
-					protocol_t *protocol = NULL;
+					struct protocol_t *protocol = NULL;
 					while(tmp_protocols) {
 						protocol = tmp_protocols->listener;
 						if(protocol_device_exists(protocol, jprotocol->string_) == 0 && match == 0

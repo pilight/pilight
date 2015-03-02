@@ -29,7 +29,7 @@ static void operatorMinusCallback(double a, double b, char **ret) {
 	sprintf(*ret, "%f", (a - b));
 }
 
-#ifndef MODULE
+#if !defined(MODULE) && !defined(_WIN32)
 __attribute__((weak))
 #endif
 void operatorMinusInit(void) {
@@ -37,7 +37,7 @@ void operatorMinusInit(void) {
 	operator_minus->callback_number = &operatorMinusCallback;
 }
 
-#ifdef MODULE
+#if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "-";
 	module->version = "1.0";

@@ -32,7 +32,7 @@
 #include <time.h>
 #include <math.h>
 
-#include "../../pilight.h"
+#include "pilight.h"
 #include "common.h"
 #include "dso.h"
 #include "../pilight/datetime.h" // Full path because we also have a datetime protocol
@@ -111,7 +111,7 @@ static void *sunRiseSetParse(void *param) {
 	struct JsonNode *jchild1 = NULL;
 	char *tz = NULL;
 	double longitude = 0, latitude = 0;
-	char UTC[] = "Europe/London";
+	char UTC[] = "UTC";
 
 	time_t timenow = 0;
 	struct tm *current = NULL;
@@ -243,7 +243,7 @@ static int sunRiseSetCheckValues(JsonNode *code) {
 	return 0;
 }
 
-#ifndef MODULE
+#if !defined(MODULE) && !defined(_WIN32)
 __attribute__((weak))
 #endif
 void sunRiseSetInit(void) {
@@ -270,10 +270,10 @@ void sunRiseSetInit(void) {
 	sunriseset->checkValues=&sunRiseSetCheckValues;
 }
 
-#ifdef MODULE
+#if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "sunriseset";
-	module->version = "1.2";
+	module->version = "1.3";
 	module->reqversion = "5.0";
 	module->reqcommit = "187";
 }

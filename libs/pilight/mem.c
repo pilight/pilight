@@ -55,7 +55,7 @@ void xfree(void) {
 			mallocs = mallocs->next;
 			free(tmp);
 		}
-		fprintf(stderr, "%s: leaked %lu bytes from pilight libraries and programs.\n", 
+		fprintf(stderr, "%s: leaked %lu bytes from pilight libraries and programs.\n",
 										(totalsize > 0) ? "ERROR" : "NOTICE", totalsize);
 		fprintf(stderr, "NOTICE: memory allocations total: %lu, still open: %lu\n", totalnrallocs, openallocs);
 		free(mallocs);

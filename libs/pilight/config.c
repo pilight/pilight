@@ -22,12 +22,11 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <unistd.h>
-#include <regex.h>
 #include <sys/stat.h>
 #include <time.h>
 #include <libgen.h>
 
-#include "../../pilight.h"
+#include "pilight.h"
 #include "common.h"
 #include "json.h"
 #include "config.h"
@@ -196,7 +195,7 @@ int config_read(void) {
 	struct stat st;
 
 	/* Read JSON config file */
-	if(!(fp = fopen(configfile, "rb"))) {
+	if((fp = fopen(configfile, "rb")) == NULL) {
 		logprintf(LOG_ERR, "cannot read config file: %s", configfile);
 		return EXIT_FAILURE;
 	}
@@ -204,7 +203,7 @@ int config_read(void) {
 	fstat(fileno(fp), &st);
 	bytes = (size_t)st.st_size;
 
-	if(!(content = CALLOC(bytes+1, sizeof(char)))) {
+	if((content = CALLOC(bytes+1, sizeof(char))) == NULL) {
 		logprintf(LOG_ERR, "out of memory");
 		fclose(fp);
 		return EXIT_FAILURE;

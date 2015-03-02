@@ -21,7 +21,7 @@
 #include <string.h>
 #include <math.h>
 
-#include "../../pilight.h"
+#include "pilight.h"
 #include "common.h"
 #include "dso.h"
 #include "log.h"
@@ -134,7 +134,7 @@ static void selectremotePrintHelp(void) {
 	printf("\t -f --off\t\t\tsend an off signal\n");
 }
 
-#ifndef MODULE
+#if !defined(MODULE) && !defined(_WIN32)
 __attribute__((weak))
 #endif
 void selectremoteInit(void) {
@@ -160,7 +160,7 @@ void selectremoteInit(void) {
 	selectremote->printHelp=&selectremotePrintHelp;
 }
 
-#ifdef MODULE
+#if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "selectremote";
 	module->version = "1.0";

@@ -30,7 +30,7 @@ CFLAGS = -ffast-math -rdynamic -funwind-tables $(OSFLAGS) -Wfloat-equal -Wshadow
 SRC = $(wildcard *.c)
 OBJS = $(filter-out wiringX.o mongoose.o http.o json.o firmware.o ping.o, $(SRC:.c=.o))
 
-all: json.o wiringX.o http.o mongoose.o firmware.o ping.o $(OBJS) pilight.o
+all: json.o wiringX.o http.o mongoose.o firmware.o ping.o $(OBJS) lpilight.o
 
 json.o: json.c json.h
 	$(GCC) -ffast-math $(OSFLAGS) -Wno-conversion -g -isystem. -isystem.. -c $(patsubst %.o,%.c,$@)
@@ -50,8 +50,8 @@ ping.o: ping.c ping.h
 %.o: %.c %.h 
 	$(GCC) $(CFLAGS) -pthread -c $(patsubst %.o,%.c,$@)
 
-pilight.o: $(OBJS) json.o http.o wiringX.o mongoose.o firmware.o ping.o
-	$(CROSS_COMPILE)ld -L/usr/local/lib -r $(OBJS) -g json.o http.o wiringX.o mongoose.o firmware.o ping.o -o pilight.o
+lpilight.o: $(OBJS) json.o http.o wiringX.o mongoose.o firmware.o ping.o
+	$(CROSS_COMPILE)ld -L/usr/local/lib -r $(OBJS) -g json.o http.o wiringX.o mongoose.o firmware.o ping.o -o lpilight.o
 
 dist-clean: clean
 

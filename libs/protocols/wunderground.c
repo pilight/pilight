@@ -26,8 +26,17 @@
 #include <fcntl.h>
 #include <math.h>
 #include <sys/stat.h>
+#ifdef _WIN32
+	#include "pthread.h"
+	#include "implement.h"
+#else
+	#ifdef __mips__
+		#define __USE_UNIX98
+	#endif
+	#include <pthread.h>
+#endif
 
-#include "../../pilight.h"
+#include "pilight.h"
 #include "common.h"
 #include "dso.h"
 #include "../pilight/datetime.h" // Full path because we also have a datetime protocol
@@ -215,10 +224,12 @@ static void *wundergroundParse(void *param) {
 																	sscanf(stmp, "%d%%", &humi);
 
 																	timenow = time(NULL);
-																	struct tm *current = localtime(&timenow);
-																	int month = current->tm_mon+1;
-																	int mday = current->tm_mday;
-																	int year = current->tm_year+1900;
+																	struct tm current;
+																	memset(&current, '\0', sizeof(struct tm));
+																	localtime_r(&timenow, &current);
+																	int month = current.tm_mon+1;
+																	int mday = current.tm_mday;
+																	int year = current.tm_year+1900;
 
 																	time_t midnight = (datetime2ts(year, month, mday, 23, 59, 59, 0)+1);
 																	time_t sunset = 0;
@@ -426,7 +437,7 @@ static void wundergroundPrintHelp(void) {
 	printf("\t -u --update\t\t\tupdate the defined weather entry\n");
 }
 
-#ifndef MODULE
+#if !defined(MODULE) && !defined(_WIN32)
 __attribute__((weak))
 #endif
 void wundergroundInit(void) {
@@ -466,7 +477,7 @@ void wundergroundInit(void) {
 	wunderground->printHelp=&wundergroundPrintHelp;
 }
 
-#ifdef MODULE
+#if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "wunderground";
 	module->version = "1.7";

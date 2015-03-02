@@ -33,7 +33,7 @@ static void operatorLeCallback(double a, double b, char **ret) {
 	}
 }
 
-#ifndef MODULE
+#if !defined(MODULE) && !defined(_WIN32)
 __attribute__((weak))
 #endif
 void operatorLeInit(void) {
@@ -41,7 +41,7 @@ void operatorLeInit(void) {
 	operator_le->callback_number = &operatorLeCallback;
 }
 
-#ifdef MODULE
+#if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "<=";
 	module->version = "1.0";

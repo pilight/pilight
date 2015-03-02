@@ -19,14 +19,19 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include <signal.h>
 #include <setjmp.h>
-#include <execinfo.h>
 #include <unistd.h>
 #include <errno.h>
-#define UNW_LOCAL_ONLY
-#include <libunwind.h>
+#ifdef _WIN32
+	#include <windows.h>
+#else
+	#include <execinfo.h>
+	#define UNW_LOCAL_ONLY
+	#include <libunwind.h>
+#endif
+#include <signal.h>
 
+#include "pilight.h"
 #include "gc.h"
 #include "json.h"
 #include "log.h"
@@ -40,16 +45,21 @@ static int (*gc)(void) = NULL;
 
 void gc_handler(int sig) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+#if !defined(_WIN32) && !defined(__mips__)
 	char name[256];
 	unw_cursor_t cursor; unw_context_t uc;
 	unw_word_t ip, sp, offp;
+#endif
 
 	switch(sig) {
 		case SIGSEGV:
+#ifndef _WIN32
 		case SIGBUS:
+#endif
 		case SIGILL:
 		case SIGABRT:
 		case SIGFPE: {
+#if !defined(_WIN32) && !defined(__mips__)
 			log_shell_disable();
 			void *stack[50];
 			int n = backtrace(stack, 50);
@@ -68,6 +78,7 @@ void gc_handler(int sig) {
 				printf("%-30s ip = %10p, sp = %10p\n", name, (void *)ip, (void *)sp);
 				logerror("%-30s ip = %10p, sp = %10p", name, (void *)ip, (void *)sp);
 			}
+#endif
 		}
 		break;
 		default:;
@@ -75,12 +86,19 @@ void gc_handler(int sig) {
 	if(sig == SIGSEGV) {
 		fprintf(stderr, "segmentation fault\n");
 		exit(EXIT_FAILURE);
+#ifndef _WIN32
 	} else if(sig == SIGBUS) {
 		fprintf(stderr, "buserror\n");
 		exit(EXIT_FAILURE);
+#endif
 	}
+#ifdef _WIN32
+	if(((sig == SIGINT || sig == SIGTERM) && gc_enable == 1) ||
+		(!(sig == SIGINT || sig == SIGTERM) && gc_enable == 0)) {
+#else
 	if(((sig == SIGINT || sig == SIGTERM || sig == SIGTSTP) && gc_enable == 1) ||
 		(!(sig == SIGINT || sig == SIGTERM || sig == SIGTSTP) && gc_enable == 0)) {
+#endif
 		if(sig == SIGINT) {
 			logprintf(LOG_DEBUG, "received interrupt signal, stopping pilight...");
 		} else if(sig == SIGTERM) {
@@ -110,6 +128,7 @@ void gc_attach(int (*fp)(void)) {
 
 void gc_clear(void) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+	gc = NULL;
 }
 
 /* Run the GC manually */
@@ -131,6 +150,14 @@ int gc_run(void) {
 void gc_catch(void) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
+#ifdef _WIN32
+	signal(SIGABRT, gc_handler);
+	signal(SIGFPE, gc_handler);
+	signal(SIGILL, gc_handler);
+	signal(SIGINT, gc_handler);
+	signal(SIGSEGV, gc_handler);
+	signal(SIGTERM, gc_handler);
+#else
 	struct sigaction act;
 	memset(&act, 0, sizeof(act));
 	act.sa_handler = gc_handler;
@@ -146,4 +173,5 @@ void gc_catch(void) {
 	sigaction(SIGILL,  &act, NULL);
 	sigaction(SIGSEGV, &act, NULL);
 	sigaction(SIGFPE,  &act, NULL);
+#endif
 }

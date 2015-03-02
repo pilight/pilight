@@ -26,10 +26,19 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <signal.h>
-#include <sys/wait.h>
 #include <math.h>
+#include <wait.h>
+#ifdef _WIN32
+	#include "pthread.h"
+	#include "implement.h"
+#else
+	#ifdef __mips__
+		#define __USE_UNIX98
+	#endif
+	#include <pthread.h>
+#endif
 
-#include "../../pilight.h"
+#include "pilight.h"
 #include "common.h"
 #include "dso.h"
 #include "log.h"
@@ -41,6 +50,7 @@
 #include "gc.h"
 #include "program.h"
 
+#ifndef _WIN32
 static unsigned short program_loop = 1;
 static unsigned short program_threads = 0;
 
@@ -57,6 +67,7 @@ typedef struct programs_t {
 	int currentstate;
 	int laststate;
 	pthread_t pth;
+	int hasthread;
 	protocol_threads_t *thread;
 	struct programs_t *next;
 } programs_t;
@@ -84,10 +95,11 @@ static void *programParse(void *param) {
 
 	struct programs_t *lnode = MALLOC(sizeof(struct programs_t));
 	lnode->wait = 0;
-	lnode->pth = 0;
+	lnode->hasthread = 0;
+	memset(&lnode->pth, '\0', sizeof(pthread_t));
 
-	if(args && strlen(args) > 0) {
-		if(!(lnode->arguments = MALLOC(strlen(args)+1))) {
+	if(args != NULL && strlen(args) > 0) {
+		if((lnode->arguments = MALLOC(strlen(args)+1)) == NULL) {
 			logprintf(LOG_ERR, "out of memory");
 			exit(EXIT_FAILURE);
 		}
@@ -96,8 +108,8 @@ static void *programParse(void *param) {
 		lnode->arguments = NULL;
 	}
 
-	if(prog) {
-		if(!(lnode->program = MALLOC(strlen(prog)+1))) {
+	if(prog != NULL) {
+		if((lnode->program = MALLOC(strlen(prog)+1)) == NULL) {
 			logprintf(LOG_ERR, "out of memory");
 			exit(EXIT_FAILURE);
 		}
@@ -106,8 +118,8 @@ static void *programParse(void *param) {
 		lnode->program = NULL;
 	}
 
-	if(stopcmd) {
-		if(!(lnode->stop = MALLOC(strlen(stopcmd)+1))) {
+	if(stopcmd != NULL) {
+		if((lnode->stop = MALLOC(strlen(stopcmd)+1)) == NULL) {
 			logprintf(LOG_ERR, "out of memory");
 			exit(EXIT_FAILURE);
 		}
@@ -116,8 +128,8 @@ static void *programParse(void *param) {
 		lnode->stop = NULL;
 	}
 
-	if(startcmd) {
-		if(!(lnode->start = MALLOC(strlen(startcmd)+1))) {
+	if(startcmd != NULL) {
+		if((lnode->start = MALLOC(strlen(startcmd)+1)) == NULL) {
 			logprintf(LOG_ERR, "out of memory");
 			exit(EXIT_FAILURE);
 		}
@@ -226,7 +238,8 @@ static void *programThread(void *param) {
 	}
 
 	p->wait = 0;
-	p->pth = 0;
+	memset(&p->pth, '\0', sizeof(pthread_t));
+	p->hasthread = 0;
 	p->laststate = -1;
 
 	pthread_mutex_unlock(&p->thread->mutex);
@@ -246,7 +259,7 @@ static int programCreateCode(JsonNode *code) {
 			struct programs_t *tmp = programs;
 			while(tmp) {
 				if(strcmp(tmp->name, name) == 0) {
-					if(tmp->wait == 0 && tmp->pth == 0) {
+					if(tmp->wait == 0) {
 						if(tmp->name != NULL && tmp->stop != NULL && tmp->start != NULL) {
 
 							if(json_find_number(code, "running", &itmp) == 0)
@@ -284,6 +297,7 @@ static int programCreateCode(JsonNode *code) {
 
 								tmp->wait = 1;
 								threads_create(&tmp->pth, NULL, programThread, (void *)tmp);
+								tmp->hasthread = 1;
 								pthread_detach(tmp->pth);
 
 								program->message = json_mkobject();
@@ -334,7 +348,7 @@ static void programThreadGC(void) {
 		if(tmp->name) FREE(tmp->name);
 		if(tmp->arguments) FREE(tmp->arguments);
 		if(tmp->program) FREE(tmp->program);
-		if(tmp->pth > 0) pthread_cancel(tmp->pth);
+		if(tmp->hasthread > 0) pthread_cancel(tmp->pth);
 		programs = programs->next;
 		FREE(tmp);
 	}
@@ -348,14 +362,17 @@ static void programPrintHelp(void) {
 	printf("\t -f --stopped\t\t\tstop the program\n");
 	printf("\t -n --name=name\t\t\tname of the program\n");
 }
+#endif
 
-#ifndef MODULE
+#if !defined(MODULE) && !defined(_WIN32)
 __attribute__((weak))
 #endif
 void programInit(void) {
+#ifndef _WIN32
 	pthread_mutexattr_init(&programattr);
 	pthread_mutexattr_settype(&programattr, PTHREAD_MUTEX_RECURSIVE);
 	pthread_mutex_init(&programlock, &programattr);
+#endif
 
 	protocol_register(&program);
 	protocol_set_id(program, "program");
@@ -377,13 +394,15 @@ void programInit(void) {
 	options_add(&program->options, 0, "readonly", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 	options_add(&program->options, 0, "poll-interval", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *)1, "[0-9]");
 
+#ifndef _WIN32
 	program->createCode=&programCreateCode;
 	program->printHelp=&programPrintHelp;
 	program->initDev=&programInitDev;
 	program->threadGC=&programThreadGC;
+#endif
 }
 
-#ifdef MODULE
+#if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "program";
 	module->version = "1.3";

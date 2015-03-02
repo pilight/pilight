@@ -19,8 +19,6 @@
 #ifndef _WEBSERVER_H_
 #define _WEBSERVER_H_
 
-#include <pwd.h>
-
 int webserver_gc(void);
 int webserver_start(void);
 void *webserver_clientize(void *param);

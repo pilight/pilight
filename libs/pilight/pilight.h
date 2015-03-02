@@ -19,7 +19,7 @@
 #ifndef _PILIGHT_H_
 #define _PILIGHT_H_
 
-#include "defines.h"
+#include "../../defines.h"
 #include "json.h"
 #include "mem.h"
 #include "devices.h"
@@ -29,14 +29,16 @@ typedef enum runmode_t {
 	ADHOC
 } runmode_t;
 
-extern struct pilight_t {
-    void (*broadcast)(char *name, JsonNode *message);
-    int (*send)(JsonNode *json);
-    int (*control)(struct devices_t *dev, char *state, JsonNode *values);
-    void (*receive)(int *rawcode, int rawlen, int plslen, int hwtype);
-    runmode_t runmode;
-} pilight;
+struct pilight_t {
+	void (*broadcast)(char *name, JsonNode *message);
+	int (*send)(JsonNode *json);
+	int (*control)(struct devices_t *dev, char *state, JsonNode *values);
+	void (*receive)(int *rawcode, int rawlen, int plslen, int hwtype);
+	runmode_t runmode;
+} pilight_t;
 
-char pilight_uuid[UUID_LENGTH];
+extern struct pilight_t pilight;
+
+extern char pilight_uuid[UUID_LENGTH];
 
 #endif

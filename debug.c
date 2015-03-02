@@ -21,7 +21,6 @@
 #include <stdarg.h>
 #include <unistd.h>
 #include <fcntl.h>
-#include <sys/ioctl.h>
 #include <limits.h>
 #include <errno.h>
 #include <time.h>
@@ -45,7 +44,6 @@
 #include "gc.h"
 #include "dso.h"
 
-struct pilight_t pilight;
 static int pulselen = 0;
 static unsigned short main_loop = 1;
 static unsigned short inner_loop = 1;
@@ -74,7 +72,9 @@ int main_gc(void) {
 	whitelist_free();
 	threads_gc();
 
+#ifndef _WIN32
 	wiringXGC();
+#endif
 	dso_gc();
 	log_gc();
 	gc_clear();
@@ -101,6 +101,7 @@ void *receive_code(void *param) {
 	int rawLength = 0;
 	int binaryLength = 0;
 
+	struct tm tm;
 	time_t now = 0, later = 0;
 
 	struct hardware_t *hw = (hardware_t *)param;
@@ -112,6 +113,7 @@ void *receive_code(void *param) {
 		memset(&pRaw, '\0', MAXPULSESTREAMLENGTH);
 		memset(&code, '\0', MAXPULSESTREAMLENGTH);
 		memset(&binary, '\0', MAXPULSESTREAMLENGTH/2);
+		memset(&tm, '\0', sizeof(struct tm));
 		recording = 1;
 		bit = 0;
 		footer = 0;
@@ -207,7 +209,15 @@ void *receive_code(void *param) {
 			/* Print everything */
 			printf("--[RESULTS]--\n");
 			printf("\n");
-			printf("time:\t\t%s", asctime(localtime(&now)));
+			localtime_r(&now, &tm);
+			char buf[128];
+			char *p = buf;
+#ifdef _WIN32
+			asctime_s(p, strlen(p), &tm);
+#else
+			asctime_r(&tm, p);
+#endif
+			printf("time:\t\t%s", buf);
 			printf("hardware:\t%s\n", hw->id);
 			printf("pulse:\t\t%d\n", normalize(pulse));
 			printf("rawlen:\t\t%d\n", rawLength);
@@ -234,6 +244,8 @@ void *receive_code(void *param) {
 
 int main(int argc, char **argv) {
 	// memtrack();
+
+	atomicinit();
 
 	gc_attach(main_gc);
 
@@ -281,7 +293,7 @@ int main(int argc, char **argv) {
 				goto clear;
 			break;
 			case 'V':
-				printf("%s %s\n", progname, PILIGHT_VERSION);
+				printf("%s v%s\n", progname, PILIGHT_VERSION);
 				goto clear;
 			break;
 			case 'C':
@@ -297,6 +309,13 @@ int main(int argc, char **argv) {
 	}
 	options_delete(options);
 
+#ifdef _WIN32
+	if((pid = check_instances(L"pilight-debug")) != -1) {
+		logprintf(LOG_ERR, "pilight-debug is already running");
+		goto clear;
+	}
+#endif
+
 	if((pid = isrunning("pilight-daemon")) != -1) {
 		logprintf(LOG_ERR, "pilight-daemon instance found (%d)", (int)pid);
 		goto clear;
@@ -309,6 +328,7 @@ int main(int argc, char **argv) {
 
 	protocol_init();
 	config_init();
+
 	if(config_read() != EXIT_SUCCESS) {
 		goto clear;
 	}
@@ -318,7 +338,7 @@ int main(int argc, char **argv) {
 
 	struct conf_hardware_t *tmp_confhw = conf_hardware;
 	while(tmp_confhw) {
-		if(tmp_confhw->hardware->init) {		
+		if(tmp_confhw->hardware->init) {
 			if(tmp_confhw->hardware->init() == EXIT_FAILURE) {
 				logprintf(LOG_ERR, "could not initialize %s hardware mode", tmp_confhw->hardware->id);
 				goto clear;

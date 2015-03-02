@@ -33,7 +33,7 @@ static void operatorLtCallback(double a, double b, char **ret) {
 	}
 }
 
-#ifndef MODULE
+#if !defined(MODULE) && !defined(_WIN32)
 __attribute__((weak))
 #endif
 void operatorLtInit(void) {
@@ -42,7 +42,7 @@ void operatorLtInit(void) {
 }
 
 
-#ifdef MODULE
+#if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "<";
 	module->version = "1.0";

@@ -29,7 +29,7 @@ static void operatorDivideCallback(double a, double b, char **ret) {
 	sprintf(*ret, "%f", (a / b));
 }
 
-#ifndef MODULE
+#if !defined(MODULE) && !defined(_WIN32)
 __attribute__((weak))
 #endif
 void operatorDivideInit(void) {
@@ -37,7 +37,7 @@ void operatorDivideInit(void) {
 	operator_divide->callback_number = &operatorDivideCallback;
 }
 
-#ifdef MODULE
+#if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "/";
 	module->version = "1.0";

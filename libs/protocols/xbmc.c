@@ -26,15 +26,28 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <signal.h>
-#include <arpa/inet.h>
-#include <netinet/in.h>
-#include <sys/socket.h>
-#include <sys/wait.h>
-#include <netdb.h>
+#ifdef _WIN32
+	#include "pthread.h"
+	#include "implement.h"
+	#include <winsock2.h>
+	#include <ws2tcpip.h>
+	#define MSG_NOSIGNAL 0
+#else
+	#ifdef __mips__
+		#define __USE_UNIX98
+	#endif
+	#include <pthread.h>
+	#include <sys/socket.h>
+	#include <sys/time.h>
+	#include <netinet/in.h>
+	#include <netinet/tcp.h>
+	#include <netdb.h>
+	#include <arpa/inet.h>
+#endif
 #include <stdint.h>
 #include <math.h>
 
-#include "../../pilight.h"
+#include "pilight.h"
 #include "common.h"
 #include "dso.h"
 #include "log.h"
@@ -106,7 +119,7 @@ static void *xbmcParse(void *param) {
 	}
 
 	/* Clear the server address */
-    memset(&serv_addr, '\0', sizeof(serv_addr));
+	memset(&serv_addr, '\0', sizeof(serv_addr));
 	memset(&recvBuff, '\0', BUFFER_SIZE);
 	memset(&action, '\0', 10);
 	memset(&media, '\0', 15);
@@ -148,9 +161,18 @@ static void *xbmcParse(void *param) {
 		}
 	}
 
-	if(!xnode) {
-		return 0;
+	if(xnode == NULL) {
+		return (void *)NULL;;
 	}
+
+#ifdef _WIN32
+		WSADATA wsa;
+
+		if(WSAStartup(0x202, &wsa) != 0) {
+			logprintf(LOG_ERR, "could not initialize new socket");
+			return (void *)NULL;
+		}
+#endif
 
 	while(xbmc_loop) {
 
@@ -166,16 +188,18 @@ static void *xbmcParse(void *param) {
 
 		/* Try to open a new socket */
 		if((xnode->sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
-			logprintf(LOG_DEBUG, "could not create XBMC socket");
+			logprintf(LOG_NOTICE, "could not create XBMC/Kodi socket");
 			break;
 		}
 
 		serv_addr.sin_family = AF_INET;
 		serv_addr.sin_port = htons((unsigned short)xnode->port);
+
 		inet_pton(AF_INET, xnode->server, &serv_addr.sin_addr);
 
 		/* Connect to the server */
 		if(connect(xnode->sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
+			logprintf(LOG_NOTICE, "could not connect to XBMC/Kodi server @%s", xnode->server);
 			protocol_thread_wait(node, 3, &nrloops);
 			continue;
 		} else {
@@ -343,7 +367,7 @@ static int xbmcCheckValues(JsonNode *code) {
 	return 0;
 }
 
-#ifndef MODULE
+#if !defined(MODULE) && !defined(_WIN32)
 __attribute__((weak))
 #endif
 void xbmcInit(void) {
@@ -372,7 +396,7 @@ void xbmcInit(void) {
 	xbmc->checkValues=&xbmcCheckValues;
 }
 
-#ifdef MODULE
+#if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "xbmc";
 	module->version = "1.4";

@@ -26,8 +26,17 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <math.h>
+#ifdef _WIN32
+	#include "pthread.h"
+	#include "implement.h"
+#else
+	#ifdef __mips__
+		#define __USE_UNIX98
+	#endif
+	#include <pthread.h>
+#endif
 
-#include "../../pilight.h"
+#include "pilight.h"
 #include "../pilight/ping.h"
 #include "common.h"
 #include "dso.h"
@@ -138,7 +147,7 @@ static void pingThreadGC(void) {
 	protocol_thread_free(pping);
 }
 
-#ifndef MODULE
+#if !defined(MODULE) && !defined(_WIN32)
 __attribute__((weak))
 #endif
 void pingInit(void) {
@@ -163,7 +172,7 @@ void pingInit(void) {
 	pping->threadGC=&pingThreadGC;
 }
 
-#ifdef MODULE
+#if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "ping";
 	module->version = "1.2";

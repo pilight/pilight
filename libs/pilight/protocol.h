@@ -19,7 +19,17 @@
 #ifndef _PROTOCOL_H_
 #define _PROTOCOL_H_
 
-#include <pthread.h>
+#ifdef _WIN32
+	#include "pthread.h"
+	#include "implement.h"
+#else
+	#ifdef __mips__
+		#ifndef __USE_UNIX98
+			#define __USE_UNIX98
+		#endif
+	#endif
+	#include <pthread.h>
+#endif
 
 #include "../../defines.h"
 #include "devices.h"
@@ -30,7 +40,7 @@
 
 typedef enum {
 	FIRMWARE = -2,
-	PROC = -1,
+	PROCESS = -1,
 	RAW = 0,
 	SWITCH,
 	DIMMER,
@@ -112,9 +122,9 @@ typedef struct protocols_t {
 	struct protocol_t *listener;
 	char *name;
 	struct protocols_t *next;
-} protocols_t;
+} protocols_;
 
-struct protocols_t *protocols;
+extern struct protocols_t *protocols;
 
 void protocol_init(void);
 struct protocol_threads_t *protocol_thread_init(protocol_t *proto, struct JsonNode *param);

@@ -21,7 +21,7 @@
 #include <string.h>
 #include <math.h>
 
-#include "../../pilight.h"
+#include "pilight.h"
 #include "common.h"
 #include "dso.h"
 #include "log.h"
@@ -140,7 +140,7 @@ static void alectoWS1700GC(void) {
 	}
 }
 
-#ifndef MODULE
+#if !defined(MODULE) && !defined(_WIN32)
 __attribute__((weak))
 #endif
 void alectoWS1700Init(void) {
@@ -173,7 +173,7 @@ void alectoWS1700Init(void) {
 	alecto_ws1700->gc=&alectoWS1700GC;
 }
 
-#ifdef MODULE
+#if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "alecto_ws1700";
 	module->version = "1.6";

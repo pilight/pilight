@@ -23,6 +23,7 @@
 #include <unistd.h>
 #include <errno.h>
 #include <string.h>
+#define __USE_GNU
 #include <fcntl.h>
 #include <sys/mman.h>
 #include <sys/ioctl.h>
@@ -129,7 +130,7 @@ static int identify(void) {
 
 	memset(revision, '\0', 120);
 	memset(hardware, '\0', 120);
-	
+
 	if((cpuFd = fopen("/proc/cpuinfo", "r")) == NULL) {
 		wiringXLog(LOG_ERR, "hummingboard->identify: Unable open /proc/cpuinfo");
 		return -1;

@@ -1,6 +1,7 @@
 {
 	"devices": { },
 	"gui": { },
+	"rules": { },
 	"settings": {
 		"log-level": 4,
 		"pid-file": "/var/run/pilight.pid",
