@@ -62,6 +62,7 @@ static void *pingParse(void *param) {
 	struct JsonNode *jid = NULL;
 	struct JsonNode *jchild = NULL;
 	char *ip = NULL;
+	char *pstate = NULL;
 	double itmp = 0.0;
 	int state = 0, nrloops = 0, interval = 1;
 
@@ -79,6 +80,11 @@ static void *pingParse(void *param) {
 
 	if(json_find_number(json, "poll-interval", &itmp) == 0)
 		interval = (int)round(itmp);
+
+   if(json_find_string(json, "state", &pstate) == 0) {
+      if(strcmp(pstate,"connected") == 0) state = CONNECTED;
+      if(strcmp(pstate,"disconnected") == 0) state = DISCONNECTED;
+      }
 
 	while(ping_loop) {
 		if(protocol_thread_wait(node, interval, &nrloops) == ETIMEDOUT) {
