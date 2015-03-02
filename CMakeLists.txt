@@ -1170,7 +1170,7 @@ if(WIN32)
 	set(CPACK_PACKAGE_DESCRIPTION "Control RF devices with the Raspberry Pi")
 	set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Control RF devices with the Raspberry Pi")
 	include(CPack)
-elseif()
+else()
 	WRITE_UNINSTALL_TARGET_SCRIPT()
 	configure_file("${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake.in"
 		"${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake"
