@@ -309,6 +309,13 @@ int main(int argc, char **argv) {
 	}
 	options_delete(options);
 
+#ifdef _WIN32
+	if((pid = check_instances(L"pilight-debug")) != -1) {
+		logprintf(LOG_ERR, "pilight-debug is already running");
+		goto clear;
+	}
+#endif
+
 	if((pid = isrunning("pilight-daemon")) != -1) {
 		logprintf(LOG_ERR, "pilight-daemon instance found (%d)", (int)pid);
 		goto clear;

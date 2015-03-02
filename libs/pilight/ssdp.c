@@ -191,7 +191,7 @@ int ssdp_seek(struct ssdp_list_t **ssdp_list) {
 			}
 			if(match == 1) {
 				struct ssdp_list_t *node = MALLOC(sizeof(struct ssdp_list_t));
-				if(!node) {
+				if(node == NULL) {
 					logprintf(LOG_ERR, "out of memory");
 					exit(EXIT_FAILURE);
 				}
@@ -200,12 +200,6 @@ int ssdp_seek(struct ssdp_list_t **ssdp_list) {
 				node->port = port;
 				node->next = *ssdp_list;
 				*ssdp_list = node;
-#ifdef _WIN32
-/*
- * FIXME
- */
-				break;
-#endif
 			}
 		}
 	}

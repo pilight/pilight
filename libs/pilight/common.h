@@ -36,12 +36,15 @@ extern char *progname;
 #define localtime_r(a,b) (localtime_s(b,a) == 0)
 #define gmtime_r(a,b) gmtime_s(b,a)
 
+int check_instances(const wchar_t *prog);
 const char *inet_ntop(int af, const void* src, char* dst, int cnt);
 int setenv(const char *name, const char *value, int overwrite);
 int unsetenv(const char *name);
 int inet_pton(int af, const char *src, void *dst);
+int isrunning(const char *program);
 #endif
 
+int isrunning(const char *program);
 void atomicinit(void);
 void atomiclock(void);
 void atomicunlock(void);
@@ -65,7 +68,6 @@ int whitelist_check(char *ip);
 void whitelist_free(void);
 int file_exists(char *fil);
 int path_exists(char *fil);
-int isrunning(const char *program);
 
 #ifdef __FreeBSD__
 struct sockaddr *sockaddr_dup(struct sockaddr *sa);

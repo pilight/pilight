@@ -193,6 +193,15 @@ int socket_connect(char *address, unsigned short port) {
 	fd_set fdset;
 	struct timeval tv;
 
+#ifdef _WIN32
+	WSADATA wsa;
+
+	if(WSAStartup(0x202, &wsa) != 0) {
+		logprintf(LOG_ERR, "could not initialize new socket");
+		exit(EXIT_FAILURE);
+	}
+#endif	
+
 	/* Try to open a new socket */
 	if((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
 		logprintf(LOG_ERR, "could not create socket");

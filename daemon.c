@@ -25,7 +25,10 @@
 #include <unistd.h>
 #ifdef _WIN32
 	#include <winsock2.h>
+	#include <windows.h>
 	#include <ws2tcpip.h>
+	#include <winsvc.h>
+	#include <shellapi.h>
 	#include "pthread.h"
 	#define MSG_NOSIGNAL 0
 #else
@@ -182,6 +185,12 @@ static char *master_server = NULL;
 static unsigned short master_port = 0;
 
 static char *configtmp = NULL;
+static int verbosity = LOG_DEBUG;
+
+#ifdef _WIN32
+	static int console = 0;
+#endif
+
 
 #ifdef WEBSERVER
 /* Do we enable the webserver */
@@ -1712,13 +1721,14 @@ static void save_pid(pid_t npid) {
 	close(f);
 }
 
+#ifndef _WIN32
 static void daemonize(void) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
 	log_file_enable();
 	log_shell_disable();
 	/* Get the pid of the fork */
-#ifndef _WIN32
+
 	pid_t npid = fork();
 	switch(npid) {
 		case 0:
@@ -1733,8 +1743,8 @@ static void daemonize(void) {
 			exit(0);
 		break;
 	}
-#endif
 }
+#endif
 
 /* Garbage collector of main program */
 int main_gc(void) {
@@ -1846,6 +1856,9 @@ int main_gc(void) {
 
 #ifdef _WIN32
 	WSACleanup();
+	if(console == 1) {
+		FreeConsole();
+	}
 #endif
 
 	return 0;
@@ -1918,85 +1931,150 @@ void registerVersion(void) {
 }
 #pragma GCC diagnostic pop   // require GCC 4.6
 
-// #ifdef _WIN32
-// int IsUserAdmin(void) {
-	// HANDLE hAccessToken;
-	// UCHAR InfoBuffer[4096];
-	// PTOKEN_GROUPS ptgGroups = (PTOKEN_GROUPS)InfoBuffer;
-	// DWORD dwInfoBufferSize;
-	// PSID psidAdministrators;
-	// SID_IDENTIFIER_AUTHORITY siaNtAuthority = {SECURITY_NT_AUTHORITY};
-	// UINT x;
-	// int bSuccess;
+#ifdef _WIN32
+void openconsole(void) {
+	AllocConsole();
+	freopen("CONOUT$", "w", stdout);
+	freopen("CONOUT$", "w", stderr);
+	HWND hwnd = GetConsoleWindow();
+	if(hwnd != NULL) {
+		HMENU hMenu = GetSystemMenu(hwnd, FALSE);
+		if(hMenu != NULL) {
+			RemoveMenu(hMenu, SC_CLOSE, MF_GRAYED);
+			RemoveMenu(hMenu, SC_MINIMIZE, MF_GRAYED);
+			RemoveMenu(hMenu, SC_MAXIMIZE, MF_GRAYED);
+		}
+	}
+}
+#endif
 
-	// if(!OpenProcessToken(GetCurrentProcess(),TOKEN_READ,&hAccessToken)) {
-		// return 0;
-	// }
+int start_pilight(int argc, char **argv) {
+	struct socket_callback_t socket_callback;
+	struct options_t *options = NULL;
+	struct ssdp_list_t *ssdp_list = NULL;
 
-	// bSuccess = GetTokenInformation(hAccessToken,TokenGroups,InfoBuffer, sizeof(InfoBuffer), &dwInfoBufferSize);
+	char buffer[BUFFER_SIZE];
+	int f = 0, itmp = 0, show_help = 0, show_version = 0, show_default = 0;
+	char *stmp = NULL, *args = NULL, *p = NULL;
+	int port = 0;
 
-	// CloseHandle(hAccessToken);
-
-	// if(!bSuccess) {
-		// return 0;
-	// }
-
-	// if(!AllocateAndInitializeSid(&siaNtAuthority, 2,
-			// SECURITY_BUILTIN_DOMAIN_RID,
-			// DOMAIN_ALIAS_RID_ADMINS,
-			// 0, 0, 0, 0, 0, 0,
-			// &psidAdministrators)) {
-			// return 0;
-	// }
-
-	// bSuccess = -1;
-
-	// for(x=0;x<ptgGroups->GroupCount;x++) {
-		// if(EqualSid(psidAdministrators, ptgGroups->Groups[x].Sid)) {
-			// bSuccess = 1;
-			// break;
-		// }
-	// }
-
-	// FreeSid(psidAdministrators);
-	// return ((bSuccess) ? 0 : -1);
-// }
-// #endif
-
-int main(int argc, char **argv) {
-	// int u = 0;
-	// for(u=0;u<argc;u++) {
-		// if(strcmp(argv[u], "-D") == 0 || strcmp(argv[u], "--nodaemon") == 0) {
-			// memtrack();
-			// break;
-		// }
-	// }
-
-	atomicinit();
-	procProtocolInit();
-
-	int verbosity = LOG_DEBUG;
-	char *p = NULL;
-	configtmp = MALLOC(strlen(CONFIG_FILE)+1);
-	strcpy(configtmp, CONFIG_FILE);
-
-	progname = MALLOC(16);
-	if(!progname) {
+	if((progname = MALLOC(16)) == NULL) {
 		logprintf(LOG_ERR, "out of memory");
 		exit(EXIT_FAILURE);
 	}
 	strcpy(progname, "pilight-daemon");
 
+	configtmp = MALLOC(strlen(CONFIG_FILE)+1);
+	strcpy(configtmp, CONFIG_FILE);	
+
 #ifndef _WIN32
-	// if(IsUserAdmin() == -1) {
-// #else
+	options_add(&options, 'H', "help", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
+	options_add(&options, 'V', "version", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
+#endif
+	options_add(&options, 'D', "nodaemon", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
+	options_add(&options, 'C', "config", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, NULL);
+	options_add(&options, 'S', "server", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, "^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]).){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$");
+	options_add(&options, 'P', "port", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, "[0-9]{1,4}");
+	options_add(&options, 256, "stacktracer", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
+	options_add(&options, 257, "threadprofiler", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
+	// options_add(&options, 258, "memory-tracer", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
+
+	while(1) {
+		int c = options_parse(&options, argc, argv, 1, &args);
+		if(c == -1) {
+			break;
+		}
+		if(c == -2) {
+			show_help = 1;
+			break;
+		}
+		switch(c) {
+#ifndef _WIN32			
+			case 'H':
+				show_help = 1;
+			break;
+			case 'V':
+				show_version = 1;
+			break;
+#endif
+			case 'C':
+				configtmp = REALLOC(configtmp, strlen(args)+1);
+				strcpy(configtmp, args);
+			break;
+			case 'S':
+				if(!(master_server = MALLOC(strlen(args)+1))) {
+					logprintf(LOG_ERR, "out of memory");
+					exit(EXIT_FAILURE);
+				}
+				strcpy(master_server, args);
+			break;
+			case 'P':
+				master_port = (unsigned short)atoi(args);
+			break;
+			case 'D':
+				nodaemon = 1;
+				verbosity = LOG_DEBUG;
+			break;
+			case 257:
+				threadprofiler = 1;
+				verbosity = LOG_ERR;
+				nodaemon = 1;
+			break;
+			case 256:
+				verbosity = LOG_STACK;
+				stacktracer = 1;
+				nodaemon = 1;
+			break;
+			default:
+				show_default = 1;
+			break;
+		}
+	}
+	options_delete(options);
+#ifndef _WIN32
+	if(show_help == 1) {
+		printf("Usage: %s [options]\n", progname);
+		printf("\t -H --help\t\t\tdisplay usage summary\n");
+		printf("\t -V --version\t\t\tdisplay version\n");
+		printf("\t -C --config\t\t\tconfig file\n");
+		printf("\t -S --server=x.x.x.x\t\tconnect to server address\n");
+		printf("\t -P --port=xxxx\t\t\tconnect to server port\n");
+		printf("\t -D --nodaemon\t\t\tdo not daemonize and\n");
+		printf("\t\t\t\t\tshow debug information\n");
+		printf("\t    --stacktracer\t\tshow internal function calls\n");
+		printf("\t    --threadprofiler\t\tshow per thread cpu usage\n");
+		goto clear;
+	}
+	if(show_version == 1) {
+		printf("%s version %s, commit %s\n", progname, PILIGHT_VERSION, HASH);
+		goto clear;
+	}
+#endif
+	if(show_default == 1) {
+#ifndef _WIN32
+		printf("Usage: %s [options]\n", progname);
+#endif		
+		goto clear;
+	}
+	
+#ifdef _WIN32
+	if(nodaemon == 1) {
+		openconsole();
+		console = 1;
+	}
+#endif
+
+	atomicinit();
+	procProtocolInit();
+
+#ifndef _WIN32
 	if(geteuid() != 0) {
-// #endif
 		printf("%s requires root priveliges in order to run\n", progname);
 		FREE(progname);
 		exit(EXIT_FAILURE);
 	}
 #endif
+
 	/* Run main garbage collector when quiting the daemon */
 	gc_attach(main_gc);
 
@@ -2062,104 +2140,19 @@ int main(int argc, char **argv) {
 	log_file_enable();
 	log_shell_disable();
 
-	struct socket_callback_t socket_callback;
-	struct options_t *options = NULL;
-	struct ssdp_list_t *ssdp_list = NULL;
-
-	char buffer[BUFFER_SIZE];
-	int f = 0, itmp = 0, show_help = 0, show_version = 0, show_default = 0;
-	char *stmp = NULL;
-	char *args = NULL;
-	int port = 0, watchdog = 1;
-
 	memset(buffer, '\0', BUFFER_SIZE);
 
-	options_add(&options, 'H', "help", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
-	options_add(&options, 'V', "version", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
-	options_add(&options, 'D', "nodaemon", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
-	options_add(&options, 'C', "config", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, NULL);
-	options_add(&options, 'S', "server", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, "^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]).){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$");
-	options_add(&options, 'P', "port", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, "[0-9]{1,4}");
-	options_add(&options, 256, "stacktracer", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
-	options_add(&options, 257, "threadprofiler", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
-	// options_add(&options, 258, "memory-tracer", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
-
-	while(1) {
-		int c = options_parse(&options, argc, argv, 1, &args);
-		if(c == -1) {
-			break;
-		}
-		if(c == -2) {
-			show_help = 1;
-			break;
-		}
-		switch(c) {
-			case 'H':
-				show_help = 1;
-			break;
-			case 'V':
-				show_version = 1;
-			break;
-			case 'C':
-				configtmp = REALLOC(configtmp, strlen(args)+1);
-				strcpy(configtmp, args);
-			break;
-			case 'S':
-				if(!(master_server = MALLOC(strlen(args)+1))) {
-					logprintf(LOG_ERR, "out of memory");
-					exit(EXIT_FAILURE);
-				}
-				strcpy(master_server, args);
-			break;
-			case 'P':
-				master_port = (unsigned short)atoi(args);
-			break;
-			case 'D':
-				nodaemon = 1;
-				verbosity = LOG_DEBUG;
-			break;
-			case 257:
-				threadprofiler = 1;
-				verbosity = LOG_ERR;
-				nodaemon = 1;
-			break;
-			case 256:
-				verbosity = LOG_STACK;
-				stacktracer = 1;
-				nodaemon = 1;
-			break;
-			default:
-				show_default = 1;
-			break;
-		}
-	}
-	options_delete(options);
-
-	if(show_help) {
-		printf("Usage: %s [options]\n", progname);
-		printf("\t -H --help\t\t\tdisplay usage summary\n");
-		printf("\t -V --version\t\t\tdisplay version\n");
-		printf("\t -C --config\t\t\tconfig file\n");
-		printf("\t -S --server=x.x.x.x\t\tconnect to server address\n");
-		printf("\t -P --port=xxxx\t\t\tconnect to server port\n");
-		printf("\t -D --nodaemon\t\t\tdo not daemonize and\n");
-		printf("\t\t\t\t\tshow debug information\n");
-		printf("\t    --stacktracer\t\tshow internal function calls\n");
-		printf("\t    --threadprofiler\t\tshow per thread cpu usage\n");
-		goto clear;
-	}
-	if(show_version) {
-		printf("%s version %s, commit %s\n", progname, PILIGHT_VERSION, HASH);
-		goto clear;
-	}
-	if(show_default) {
-		printf("Usage: %s [options]\n", progname);
-		goto clear;
-	}
 	if(nodaemon == 1) {
 		log_level_set(verbosity);
 		log_shell_enable();
+	}	
+
+#ifdef _WIN32
+	if((pid = check_instances(L"pilight-daemon")) != -1) {
+		logprintf(LOG_ERR, "pilight is already running");
+		goto clear;
 	}
+#endif
 
 	if((pid = isrunning("pilight-raw")) != -1) {
 		logprintf(LOG_ERR, "pilight-raw instance found (%d)", (int)pid);
@@ -2238,8 +2231,6 @@ int main(int argc, char **argv) {
 		goto clear;
 	}
 	close(f);
-#else
-	running = 0;
 #endif
 
 	if(settings_find_number("log-level", &itmp) == 0) {
@@ -2272,6 +2263,7 @@ int main(int argc, char **argv) {
 
 	settings_find_number("receive-repeats", &receive_repeat);
 
+#ifndef _WIN32
 	if(running == 1) {
 		nodaemon = 1;
 		logprintf(LOG_NOTICE, "already active (pid %d)", atoi(buffer));
@@ -2279,6 +2271,7 @@ int main(int argc, char **argv) {
 		log_shell_disable();
 		goto clear;
 	}
+#endif
 
 	struct protocols_t *tmp = protocols;
 	while(tmp) {
@@ -2300,6 +2293,7 @@ int main(int argc, char **argv) {
 	settings_find_number("port", &port);
 	settings_find_number("standalone", &standalone);
 
+	pilight.runmode = STANDALONE;
 	if(standalone == 0 || (master_server != NULL && master_port > 0)) {
 		if(master_server != NULL && master_port > 0) {
 			if((sockfd = socket_connect(master_server, master_port)) == -1) {
@@ -2325,13 +2319,14 @@ int main(int argc, char **argv) {
 			ssdp_start();
 		}
 	}
+
+#ifndef _WIN32
 	if(nodaemon == 0) {
 		daemonize();
 	} else {
-#ifndef _WIN32
 		save_pid(getpid());
-#endif
 	}
+#endif
 
 	/* Threads are unable to survive forks properly.
 	 * Therefor, we queue all messages until we're
@@ -2429,7 +2424,21 @@ int main(int argc, char **argv) {
 #if defined(FIRMWARE_UPDATER) && !defined(_WIN32)
 	threads_register("firmware upgrader", &firmware_loop, (void *)NULL, 0);
 #endif
+	return EXIT_SUCCESS;
 
+clear:
+	if(nodaemon == 0) {
+		log_level_set(LOG_NOTICE);
+		log_shell_disable();
+	}
+	if(main_loop == 1) {
+		main_gc();
+	}
+	return EXIT_FAILURE;
+}
+
+void *pilight_stats(void *param) {
+	int watchdog = 0;
 	settings_find_number("watchdog-enable", &watchdog);
 
 	int checkram = 0, checkcpu = 0;
@@ -2470,7 +2479,8 @@ int main(int argc, char **argv) {
 				if(cpu > 90) {
 					exit(EXIT_FAILURE);
 				} else {
-					goto clear;
+					main_gc();
+					break;
 				}
 			}
 			checkcpu = 1;
@@ -2495,7 +2505,8 @@ int main(int argc, char **argv) {
 				if(ram > 90) {
 					exit(EXIT_FAILURE);
 				} else {
-					goto clear;
+					main_gc();
+					break;
 				}
 			}
 			checkram = 1;
@@ -2532,15 +2543,175 @@ int main(int argc, char **argv) {
 		}
 		sleep(1);
 	}
-	return EXIT_SUCCESS;
-
-clear:
-	if(nodaemon == 0) {
-		log_level_set(LOG_NOTICE);
-		log_shell_disable();
-	}
-	if(main_loop == 1) {
-		main_gc();
-	}
-	return EXIT_FAILURE;
+	return (void *)NULL;
 }
+
+#ifdef _WIN32
+#define ID_TRAYICON 100
+#define ID_QUIT 101
+#define ID_SEPARATOR 102
+#define ID_INSTALL_SERVICE 103
+#define ID_REMOVE_SERVICE 104
+#define ID_START 105
+#define ID_STOP 106
+#define ID_WEBGUI 107
+#define ID_CONSOLE 108
+#define ID_ICON 200
+static NOTIFYICONDATA TrayIcon;
+static int oldverbosity = LOG_NOTICE;
+static char server_name[40];
+
+static LRESULT CALLBACK WindowProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
+  char buf[200], *service_argv[] = {__argv[0], NULL}; 
+  POINT pt;
+  HMENU hMenu;
+
+  switch(msg) {
+    case WM_CREATE:
+			if(start_pilight(__argc, __argv) == EXIT_FAILURE) {
+				if(main_loop == 1) {
+					main_gc();
+				}
+				exit(EXIT_FAILURE);
+			}
+			running = 1;
+		break;
+    case WM_COMMAND:
+      switch(LOWORD(wParam)) {
+        case ID_QUIT:
+					if(main_loop == 1) {
+						main_gc();
+					}
+          Shell_NotifyIcon(NIM_DELETE, &TrayIcon);
+          PostQuitMessage(0);
+				break;
+				case ID_STOP:
+					if(running == 1) {
+						if(main_loop == 1) {
+							main_gc();
+						}
+						running = 0;
+						MessageBox(NULL, "pilight stopped", "pilight :: notice", MB_OK);
+					}
+				break;
+				case ID_CONSOLE:
+					if(console == 0) {
+						console = 1;
+						openconsole();
+						oldverbosity = verbosity;
+						verbosity = LOG_DEBUG;
+						log_level_set(verbosity);
+						log_shell_enable();
+					} else {
+						log_shell_disable();
+						verbosity = oldverbosity;
+						FreeConsole();
+						console = 0;
+					}
+				break;
+				case ID_START:
+					if(running == 0) {
+						main_loop = 1;
+						if(start_pilight(1, service_argv) == EXIT_FAILURE) {
+							if(main_loop == 1) {
+								main_gc();
+								MessageBox(NULL, "pilight failed to start", "pilight :: error", MB_OK);
+							}
+						}
+						running = 1;
+						MessageBox(NULL, "pilight started", "pilight :: notice", MB_OK);
+					}
+				break;
+				case ID_WEBGUI:
+					if(webserver_port == 80) {
+						snprintf(buf, sizeof(buf), "http://localhost");
+					} else {
+						snprintf(buf, sizeof(buf), "http://localhost:%d", webserver_port);
+					}
+					ShellExecute(NULL, "open", buf, NULL, NULL, SW_SHOWNORMAL);
+				break;
+      }
+		break;
+    case WM_USER:
+      switch(lParam) {
+        case WM_RBUTTONUP:
+        case WM_LBUTTONUP:
+        case WM_LBUTTONDBLCLK:
+          hMenu = CreatePopupMenu();
+
+          AppendMenu(hMenu, MF_STRING | MF_GRAYED, ID_SEPARATOR, server_name);
+					AppendMenu(hMenu, MF_SEPARATOR, ID_SEPARATOR, "");
+          AppendMenu(hMenu, MF_STRING | MF_GRAYED, ID_SEPARATOR, ((pilight.runmode == ADHOC) ? "Ad-Hoc mode" : "Standalone mode"));
+					AppendMenu(hMenu, MF_SEPARATOR, ID_SEPARATOR, "");
+					if(pilight.runmode == STANDALONE) {
+						AppendMenu(hMenu, MF_STRING | (running ? 0 : MF_GRAYED), ID_WEBGUI, "Open webGUI");
+					}
+					if(console == 0) {
+						AppendMenu(hMenu, MF_STRING, ID_CONSOLE, "Open console");
+					} else {
+						AppendMenu(hMenu, MF_STRING, ID_CONSOLE, "Close console");
+					}
+          AppendMenu(hMenu, MF_SEPARATOR, ID_SEPARATOR, "");
+
+					// snprintf(buf, sizeof(buf), "pilight is %s", running ? "running" : "stopped");
+
+					// AppendMenu(hMenu, MF_STRING | MF_GRAYED, ID_SEPARATOR, buf);
+          // AppendMenu(hMenu, MF_SEPARATOR, ID_SEPARATOR, "");
+
+					// AppendMenu(hMenu, MF_STRING | (running ? 0 : MF_GRAYED), ID_STOP, "Stop pilight");
+					// AppendMenu(hMenu, MF_STRING | (running ? MF_GRAYED : 0), ID_START, "Start pilight");
+
+          AppendMenu(hMenu, MF_STRING, ID_QUIT, "Exit");
+
+          GetCursorPos(&pt);
+          SetForegroundWindow(hWnd);
+          TrackPopupMenu(hMenu, 0, pt.x, pt.y, 0, hWnd, NULL);
+          PostMessage(hWnd, WM_NULL, 0, 0);
+          DestroyMenu(hMenu);
+				break;
+      }
+		break;
+  }
+
+  return DefWindowProc(hWnd, msg, wParam, lParam);
+}
+
+int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR cmdline, int show) {
+	HWND hWnd;	
+  WNDCLASS cls;
+  MSG msg;
+
+	snprintf(server_name, sizeof(server_name), "pilight daemon v%s", PILIGHT_VERSION);
+  memset(&cls, 0, sizeof(cls));
+  cls.lpfnWndProc = (WNDPROC)WindowProc;
+  cls.hIcon = LoadIcon(NULL, IDI_APPLICATION);
+  cls.lpszClassName = server_name;
+
+  RegisterClass(&cls);
+  hWnd = CreateWindow(cls.lpszClassName, server_name, 0, 0, 0, 0, 0, NULL, NULL, NULL, NULL);
+  ShowWindow(hWnd, SW_HIDE);
+
+  TrayIcon.cbSize = sizeof(TrayIcon);
+  TrayIcon.uID = ID_TRAYICON;
+  TrayIcon.uFlags = NIF_ICON | NIF_MESSAGE | NIF_TIP;
+  TrayIcon.hIcon = LoadImage(GetModuleHandle(NULL), MAKEINTRESOURCE(ID_ICON), IMAGE_ICON, 16, 16, 0);
+  TrayIcon.hWnd = hWnd;
+  snprintf(TrayIcon.szTip, sizeof(TrayIcon.szTip), "%s", server_name);
+
+  TrayIcon.uCallbackMessage = WM_USER;
+  Shell_NotifyIcon(NIM_ADD, &TrayIcon);
+
+  while(GetMessage(&msg, hWnd, 0, 0)) {
+    TranslateMessage(&msg);
+    DispatchMessage(&msg);
+  }
+}
+#else
+int main(int argc, char **argv) {
+	int ret = start_pilight(argc, argv);
+	if(ret == EXIT_SUCCESS) {
+		pilight_stats((void *)NULL);
+	}
+	return ret;
+}
+#endif

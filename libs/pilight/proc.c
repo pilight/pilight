@@ -161,48 +161,51 @@ double getRAMUsage(void) {
 	static char memfile[] = "/proc/meminfo";
 	#endif
 	unsigned long VmRSS = 0, value = 0, total = 0;
-	char title[32] = "";
-	char units[32] = "";
+	size_t len = 0;
+	ssize_t read = 0;
+	char units[32], title[32], *line;
 	int ret = 0;
 	FILE *fp = NULL;
 
-	fp = fopen(statusfile, "r");
-	if(fp) {
-			while(ret != EOF) {
-					ret = fscanf(fp, "%31s %lu %s\n", title, &value, units);
-					if(strcmp(title, "VmRSS:") == 0) {
-							VmRSS = value * 1024;
-			break;
-					}
-			}
-			fclose(fp);
-	#ifdef __FreeBSD__
-		if(mountproc) {
-			DIR* dir;
-			if(!(dir = opendir("/compat"))) {
-				mkdir("/compat", 0755);
-			} else {
-				closedir(dir);
-			}
-			if(!(dir = opendir("/compat/proc"))) {
-				mkdir("/compat/proc", 0755);
-			} else {
-				closedir(dir);
-			}
-			if(!(dir = opendir("/compat/proc/self"))) {
-				system("mount -t linprocfs none /compat/proc 2>/dev/null 1>/dev/null");
-				mountproc = 0;
-			} else {
-				closedir(dir);
+	memset(title, '\0', 32);
+	memset(units, '\0', 32);
+
+	if((fp = fopen(statusfile, "r")) != NULL) {
+		while((read = getline(&line, &len, fp)) != -1) {
+			if(strstr(line, "VmRSS:") != NULL) {
+				ret = sscanf(line, "%31s %lu %s\n", title, &value, units);
+				VmRSS = value * 1024;
+				break;
 			}
 		}
-	#endif
+		fclose(fp);
 	}
+	#ifdef __FreeBSD__
+	if(mountproc == 1) {
+		DIR* dir;
+		if(!(dir = opendir("/compat"))) {
+			mkdir("/compat", 0755);
+		} else {
+			closedir(dir);
+		}
+		if(!(dir = opendir("/compat/proc"))) {
+			mkdir("/compat/proc", 0755);
+		} else {
+			closedir(dir);
+		}
+		if(!(dir = opendir("/compat/proc/self"))) {
+			system("mount -t linprocfs none /compat/proc 2>/dev/null 1>/dev/null");
+			mountproc = 0;
+		} else {
+			closedir(dir);
+		}
+	}
+	#endif
 
 	if((fp = fopen(memfile, "r")) != NULL) {
-		while(ret != EOF) {
-			ret = fscanf(fp, "%31s %lu %s\n", title, &value, units);
-			if(strcmp(title, "MemTotal:") == 0) {
+		while((read = getline(&line, &len, fp)) != -1) {
+			if(strstr(line, "MemTotal:") != NULL) {
+				ret = sscanf(line, "%31s %lu %s\n", title, &value, units);
 				total = value * 1024;
 				break;
 			}

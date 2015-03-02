@@ -128,6 +128,7 @@ void gc_attach(int (*fp)(void)) {
 
 void gc_clear(void) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+	gc = NULL;
 }
 
 /* Run the GC manually */
