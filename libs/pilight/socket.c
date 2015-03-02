@@ -269,12 +269,12 @@ void socket_close(int sockfd) {
 	int i = 0;
 	struct sockaddr_in address;
 	int addrlen = sizeof(address);
-	char buf[100];
+	char buf[17];
 
 	if(sockfd > 0) {
 		if(getpeername(sockfd, (struct sockaddr*)&address, (socklen_t*)&addrlen) == 0) {
-			memset(&buf, '\0', sizeof(buf));
-			inet_ntop(AF_INET, (void *)&(address.sin_addr), buf, sizeof(buf));
+			memset(&buf, '\0', 17);
+			inet_ntop(AF_INET, (void *)&(address.sin_addr), buf, 17);
 			logprintf(LOG_DEBUG, "client disconnected, ip %s, port %d", buf, ntohs(address.sin_port));
 		}
 
@@ -348,12 +348,12 @@ void socket_rm_client(int i, struct socket_callback_t *socket_callback) {
 	struct sockaddr_in address;
 	int addrlen = sizeof(address);
 	int sd = socket_clients[i];
-	char buf[100];
+	char buf[17];
 
 	//Somebody disconnected, get his details and print
 	getpeername(sd, (struct sockaddr*)&address, (socklen_t*)&addrlen);
-	memset(&buf, '\0', sizeof(buf));
-	inet_ntop(AF_INET, (void *)&(address.sin_addr), buf, sizeof(buf));
+	memset(&buf, '\0', 17);
+	inet_ntop(AF_INET, (void *)&(address.sin_addr), buf, 17);
 	logprintf(LOG_DEBUG, "client disconnected, ip %s, port %d", buf, ntohs(address.sin_port));
 	if(socket_callback->client_disconnected_callback)
 		socket_callback->client_disconnected_callback(i);
@@ -462,12 +462,12 @@ void *socket_wait(void *param) {
 
 	struct socket_callback_t *socket_callback = (struct socket_callback_t *)param;
 
-	char buf[100];
+	char buf[17];
 	int activity;
 	int i, sd;
 	int max_sd;
 	struct sockaddr_in address;
-	int socket_client;
+	int socket_client = 0;
 	int addrlen = sizeof(address);
 	fd_set readfds;
 #ifdef _WIN32
@@ -509,8 +509,8 @@ void *socket_wait(void *param) {
 				logprintf(LOG_ERR, "failed to accept client");
 				exit(EXIT_FAILURE);
 			}
-			memset(&buf, '\0', sizeof(buf));
-			inet_ntop(AF_INET, (void *)&(address.sin_addr), buf, sizeof(buf));
+			memset(&buf, '\0', 17);
+			inet_ntop(AF_INET, (void *)&(address.sin_addr), buf, 17);
 			if(whitelist_check(buf) != 0) {
 				logprintf(LOG_INFO, "rejected client, ip: %s, port: %d", buf, ntohs(address.sin_port));
 				shutdown(socket_client, 2);
@@ -583,6 +583,7 @@ void *socket_wait(void *param) {
 			}
 		}
 	}
+
 #ifdef _WIN32
 	return 0;
 #else

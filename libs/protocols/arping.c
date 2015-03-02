@@ -71,7 +71,7 @@ static void *arpingParse(void *param) {
 	struct JsonNode *jchild = NULL;
 	struct in_addr if_network;
 	struct in_addr if_netmask;
-	char *srcmac = NULL, tmpip[17], dstip[17], buf[100];
+	char *srcmac = NULL, tmpip[17], dstip[17], buf[17];
 	char ip[17], *p = ip, *if_name = NULL;
 	double itmp = 0.0;
 	int state = 0, nrloops = 0, interval = INTERVAL, i = 0, srcip[4];
@@ -109,8 +109,8 @@ static void *arpingParse(void *param) {
 	}
 
 
-	memset(&buf, '\0', sizeof(buf));
-	inet_ntop(AF_INET, (void *)&if_network, buf, sizeof(buf));
+	memset(&buf, '\0', 17);
+	inet_ntop(AF_INET, (void *)&if_network, buf, 17);
 	if(sscanf(buf, "%d.%d.%d.%d", &srcip[0], &srcip[1], &srcip[2], &srcip[3]) != 4) {
 		logprintf(LOG_ERR, "could not extract ip address");
 	}

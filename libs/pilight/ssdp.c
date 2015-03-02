@@ -269,7 +269,7 @@ void *ssdp_wait(void *param) {
 	}
 
 #ifdef _WIN32
-	char buf[100];
+	char buf[17];
 	int i;
 
 	PMIB_IPADDRTABLE pIPAddrTable;
@@ -297,8 +297,8 @@ void *ssdp_wait(void *param) {
 
 	for(i=0;i<(int)pIPAddrTable->dwNumEntries;i++) {
 		IPAddr.S_un.S_addr = (u_long)pIPAddrTable->table[i].dwAddr;
-		memset(&buf, '\0', sizeof(buf));
-		inet_ntop(AF_INET, (void *)&IPAddr, buf, sizeof(buf));
+		memset(&buf, '\0', 17);
+		inet_ntop(AF_INET, (void *)&IPAddr, buf, 17);
 		if(strcmp(buf, "127.0.0.1") != 0) {
 			if(!(header = realloc(header, sizeof(char *)*((size_t)nrheader+1)))) {
 				logprintf(LOG_ERR, "out of memory");
@@ -308,8 +308,8 @@ void *ssdp_wait(void *param) {
 				logprintf(LOG_ERR, "out of memory");
 				exit(EXIT_FAILURE);
 			}
-			memset(&buf, '\0', sizeof(buf));
-			inet_ntop(AF_INET, (void *)&IPAddr, buf, sizeof(buf));
+			memset(&buf, '\0', 17);
+			inet_ntop(AF_INET, (void *)&IPAddr, buf, 17);
 			memset(header[nrheader], '\0', BUFFER_SIZE);
 			sprintf(header[nrheader], "NOTIFY * HTTP/1.1\r\n"
 				"Host:239.255.255.250:1900\r\n"

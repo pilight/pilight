@@ -189,6 +189,7 @@ static unsigned short master_port = 0;
 
 static char *configtmp = NULL;
 static int verbosity = LOG_DEBUG;
+struct socket_callback_t socket_callback;
 
 #ifdef _WIN32
 	static int console = 0;
@@ -950,7 +951,7 @@ static void client_webserver_parse_code(int i, char buffer[BUFFER_SIZE]) {
 	unsigned char *p = NULL;
 	unsigned char buff[BUFFER_SIZE];
 	char *cache = NULL;
-	char *path = NULL, buf[100];
+	char *path = NULL, buf[17];
 	char *mimetype = NULL;
 	struct stat sb;
 	struct sockaddr_in sockin;
@@ -1002,8 +1003,8 @@ static void client_webserver_parse_code(int i, char buffer[BUFFER_SIZE]) {
 					exit(EXIT_FAILURE);
 				}
 				memset(cache, '\0', BUFFER_SIZE);
-				memset(&buf, '\0', sizeof(buf));
-				inet_ntop(AF_INET, (void *)&(sockin.sin_addr), buf, sizeof(buf));
+				memset(&buf, '\0', 17);
+				inet_ntop(AF_INET, (void *)&(sockin.sin_addr), buf, 17);
 				sprintf(cache, "<html><head><title>pilight</title></head>"
 							   "<body><center><img src=\"logo.png\"><br />"
 							   "<p style=\"color: #0099ff; font-weight: 800px;"
@@ -1952,7 +1953,6 @@ void openconsole(void) {
 #endif
 
 int start_pilight(int argc, char **argv) {
-	struct socket_callback_t socket_callback;
 	struct options_t *options = NULL;
 	struct ssdp_list_t *ssdp_list = NULL;
 
