@@ -29,7 +29,7 @@
 #include <dirent.h>
 #include <limits.h>
 
-#include "../../pilight.h"
+#include "pilight.h"
 #include "common.h"
 #include "settings.h"
 #include "dso.h"
@@ -38,6 +38,7 @@
 #include "operator.h"
 #include "operator_header.h"
 
+#ifndef _WIN32
 void event_operator_remove(char *name) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
@@ -62,11 +63,14 @@ void event_operator_remove(char *name) {
 		}
 	}
 }
+#endif
 
 void event_operator_init(void) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
 	#include "operator_init.h"
+
+#ifndef _WIN32
 	void *handle = NULL;
 	void (*init)(void);
 	void (*compatibility)(struct module_t *module);
@@ -101,7 +105,7 @@ void event_operator_init(void) {
 	if((d = opendir(operator_root))) {
 		while((file = readdir(d)) != NULL) {
 			memset(path, '\0', PATH_MAX);
-			sprintf(path, "%s%s", operator_root, file->d_name);		
+			sprintf(path, "%s%s", operator_root, file->d_name);
 			if(stat(path, &s) == 0) {
 				/* Check if file */
 				if(S_ISREG(s.st_mode)) {
@@ -157,6 +161,7 @@ void event_operator_init(void) {
 	if(operator_root_free) {
 		FREE(operator_root);
 	}
+#endif
 }
 
 void event_operator_register(struct event_operators_t **op, const char *name) {

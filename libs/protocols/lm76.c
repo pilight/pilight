@@ -27,8 +27,17 @@
 #include <math.h>
 #include <sys/stat.h>
 #include <sys/time.h>
+#ifdef _WIN32
+	#include "pthread.h"
+	#include "implement.h"
+#else
+	#ifdef __mips__
+		#define __USE_UNIX98
+	#endif
+	#include <pthread.h>
+#endif
 
-#include "../../pilight.h"
+#include "pilight.h"
 #include "common.h"
 #include "dso.h"
 #include "log.h"
@@ -41,6 +50,7 @@
 #include "lm76.h"
 #include "../pilight/wiringX.h"
 
+#if !defined(__FreeBSD__) && !defined(_WIN32)
 typedef struct lm76data_t {
 	char **id;
 	int nrid;
@@ -99,7 +109,6 @@ static void *lm76Parse(void *param) {
 		interval = (int)round(itmp);
 	json_find_number(json, "temperature-offset", &temp_offset);
 
-#ifndef __FreeBSD__
 	lm76data->fd = REALLOC(lm76data->fd, (sizeof(int)*(size_t)(lm76data->nrid+1)));
 	if(!lm76data->fd) {
 		logprintf(LOG_ERR, "out of memory");
@@ -108,11 +117,9 @@ static void *lm76Parse(void *param) {
 	for(y=0;y<lm76data->nrid;y++) {
 		lm76data->fd[y] = wiringXI2CSetup((int)strtol(lm76data->id[y], NULL, 16));
 	}
-#endif
 
 	while(lm76_loop) {
 		if(protocol_thread_wait(node, interval, &nrloops) == ETIMEDOUT) {
-#ifndef __FreeBSD__
 			pthread_mutex_lock(&lm76lock);
 			for(y=0;y<lm76data->nrid;y++) {
 				if(lm76data->fd[y] > 0) {
@@ -141,7 +148,6 @@ static void *lm76Parse(void *param) {
 				}
 			}
 			pthread_mutex_unlock(&lm76lock);
-#endif
 		}
 	}
 	pthread_mutex_unlock(&lm76lock);
@@ -169,6 +175,7 @@ static void *lm76Parse(void *param) {
 struct threadqueue_t *lm76InitDev(JsonNode *jdevice) {
 	lm76_loop = 1;
 	wiringXSetup();
+
 	char *output = json_stringify(jdevice, NULL);
 	JsonNode *json = json_decode(output);
 	json_free(output);
@@ -185,14 +192,17 @@ static void lm76ThreadGC(void) {
 	}
 	protocol_thread_free(lm76);
 }
+#endif
 
-#ifndef MODULE
+#if !defined(MODULE) && !defined(_WIN32)
 __attribute__((weak))
 #endif
 void lm76Init(void) {
+#if !defined(__FreeBSD__) && !defined(_WIN32)
 	pthread_mutexattr_init(&lm76attr);
 	pthread_mutexattr_settype(&lm76attr, PTHREAD_MUTEX_RECURSIVE);
 	pthread_mutex_init(&lm76lock, &lm76attr);
+#endif
 
 	protocol_register(&lm76);
 	protocol_set_id(lm76, "lm76");
@@ -207,11 +217,13 @@ void lm76Init(void) {
 	options_add(&lm76->options, 0, "decimals", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)3, "[0-9]");
 	options_add(&lm76->options, 0, "show-temperature", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
 
+#if !defined(__FreeBSD__) && !defined(_WIN32)
 	lm76->initDev=&lm76InitDev;
 	lm76->threadGC=&lm76ThreadGC;
+#endif
 }
 
-#ifdef MODULE
+#if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "lm76";
 	module->version = "1.3";

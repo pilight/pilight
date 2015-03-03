@@ -21,7 +21,7 @@
 #include <string.h>
 #include <math.h>
 
-#include "../../pilight.h"
+#include "pilight.h"
 #include "common.h"
 #include "dso.h"
 #include "log.h"
@@ -185,7 +185,7 @@ static void beamishSwPrintHelp(void) {
 	printf("\t -a --all\t\t\tsend command to all devices with this id\n");
 }
 
-#ifndef MODULE
+#if !defined(MODULE) && !defined(_WIN32)
 __attribute__((weak))
 #endif
 void beamishSwInit(void) {
@@ -213,7 +213,7 @@ void beamishSwInit(void) {
 	beamish_switch->printHelp=&beamishSwPrintHelp;
 }
 
-#ifdef MODULE
+#if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "beamish_switch";
 	module->version = "0.10";

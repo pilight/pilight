@@ -20,7 +20,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "../../pilight.h"
+#include "pilight.h"
 #include "common.h"
 #include "dso.h"
 #include "log.h"
@@ -70,7 +70,7 @@ static void pilightFirmwareV3ParseBinary(void) {
 	}
 }
 
-#ifndef MODULE
+#if !defined(MODULE) && !defined(_WIN32)
 __attribute__((weak))
 #endif
 void pilightFirmwareV3Init(void) {
@@ -97,7 +97,7 @@ void pilightFirmwareV3Init(void) {
   pilight_firmware_v3->parseRaw=&pilightFirmwareV3ParseRaw;
 }
 
-#ifdef MODULE
+#if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "pilight_firmware";
 	module->version = "1.2";

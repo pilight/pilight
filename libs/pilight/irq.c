@@ -26,13 +26,14 @@
 #include <sys/stat.h>
 #include <sys/time.h>
 #include <unistd.h>
-#include <poll.h>
 
 #include "irq.h"
 #include "gc.h"
 #include "log.h"
 #include "mem.h"
-#include "wiringX.h"
+#ifndef _WIN32
+	#include "wiringX.h"
+#endif
 
 typedef struct timestamp_t {
 	unsigned long first;
@@ -45,6 +46,7 @@ timestamp_t timestamp;
    Whenever an rising, falling or changing interrupt occurs
    the function given as the last argument will be called */
 int irq_read(int gpio) {
+#ifndef _WIN32
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
 	int x = waitForInterrupt(gpio, 1000);
@@ -56,4 +58,7 @@ int irq_read(int gpio) {
 		return (int)timestamp.second-(int)timestamp.first;
 	}
 	return x;
+#else
+	return -1;
+#endif
 }

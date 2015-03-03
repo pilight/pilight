@@ -22,12 +22,11 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <unistd.h>
-#include <regex.h>
 #include <sys/stat.h>
 #include <time.h>
 #include <libgen.h>
 
-#include "../../pilight.h"
+#include "pilight.h"
 #include "common.h"
 #include "json.h"
 #include "config.h"
@@ -173,16 +172,18 @@ int config_write(int level, const char *media) {
 	}
 
 	/* Overwrite config file with proper format */
-	if(!(fp = fopen(configfile, "w+"))) {
+	if((fp = fopen(configfile, "w+")) == NULL) {
 		logprintf(LOG_ERR, "cannot write config file: %s", configfile);
 		return EXIT_FAILURE;
 	}
 	fseek(fp, 0L, SEEK_SET);
-	char *content = json_stringify(root, "\t");
- 	fwrite(content, sizeof(char), strlen(content), fp);
+	char *content = NULL;
+	if((content = json_stringify(root, "\t")) != NULL) {
+		fwrite(content, sizeof(char), strlen(content), fp);
+		json_free(content);
+		json_delete(root);
+	}
 	fclose(fp);
-	json_free(content);
-	json_delete(root);
 	return EXIT_SUCCESS;
 }
 
@@ -196,7 +197,7 @@ int config_read(void) {
 	struct stat st;
 
 	/* Read JSON config file */
-	if(!(fp = fopen(configfile, "rb"))) {
+	if((fp = fopen(configfile, "rb")) == NULL) {
 		logprintf(LOG_ERR, "cannot read config file: %s", configfile);
 		return EXIT_FAILURE;
 	}
@@ -204,7 +205,7 @@ int config_read(void) {
 	fstat(fileno(fp), &st);
 	bytes = (size_t)st.st_size;
 
-	if(!(content = CALLOC(bytes+1, sizeof(char)))) {
+	if((content = CALLOC(bytes+1, sizeof(char))) == NULL) {
 		logprintf(LOG_ERR, "out of memory");
 		fclose(fp);
 		return EXIT_FAILURE;

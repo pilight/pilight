@@ -26,9 +26,11 @@
 #include <errno.h>
 #include <string.h>
 #include <time.h>
+#define __USE_GNU
 #include <fcntl.h>
 #include <pthread.h>
 #include <sys/time.h>
+#include <sys/types.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
@@ -354,7 +356,7 @@ static int piBoardRev(void) {
 	char *d;
 
 	memset(line, '\0', 120);
-	
+
 	if((cpuFd = fopen("/proc/cpuinfo", "r")) == NULL) {
 		wiringXLog(LOG_ERR, "bananapi->identify: Unable open /proc/cpuinfo");
 		return -1;

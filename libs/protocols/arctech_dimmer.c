@@ -21,7 +21,7 @@
 #include <string.h>
 #include <math.h>
 
-#include "../../pilight.h"
+#include "pilight.h"
 #include "common.h"
 #include "dso.h"
 #include "log.h"
@@ -254,7 +254,7 @@ static void arctechDimPrintHelp(void) {
 	printf("\t -d --dimlevel=dimlevel\t\tsend a specific dimlevel\n");
 }
 
-#ifndef MODULE
+#if !defined(MODULE) && !defined(_WIN32)
 __attribute__((weak))
 #endif
 void arctechDimInit(void) {
@@ -287,7 +287,7 @@ void arctechDimInit(void) {
 	arctech_dimmer->checkValues=&arctechDimCheckValues;
 }
 
-#ifdef MODULE
+#if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "arctech_dimmer";
 	module->version = "1.3";

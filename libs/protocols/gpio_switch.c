@@ -23,7 +23,7 @@
 #include <unistd.h>
 #include <math.h>
 
-#include "../../pilight.h"
+#include "pilight.h"
 #include "common.h"
 #include "dso.h"
 #include "log.h"
@@ -37,6 +37,7 @@
 static unsigned short gpio_switch_loop = 1;
 static int gpio_switch_threads = 0;
 
+#if !defined(__FreeBSD__) && !defined(_WIN32)
 static void gpioSwitchCreateMessage(int gpio, int state) {
 	gpio_switch->message = json_mkobject();
 	JsonNode *code = json_mkobject();
@@ -148,8 +149,9 @@ static void gpioSwitchThreadGC(void) {
 	}
 	protocol_thread_free(gpio_switch);
 }
+#endif
 
-#ifndef MODULE
+#if !defined(MODULE) && !defined(_WIN32)
 __attribute__((weak))
 #endif
 void gpioSwitchInit(void) {
@@ -166,12 +168,14 @@ void gpioSwitchInit(void) {
 
 	options_add(&gpio_switch->options, 0, "readonly", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
 
+#if !defined(__FreeBSD__) && !defined(_WIN32)
 	gpio_switch->initDev=&gpioSwitchInitDev;
 	gpio_switch->threadGC=&gpioSwitchThreadGC;
 	gpio_switch->checkValues=&gpioSwitchCheckValues;
+#endif
 }
 
-#ifdef MODULE
+#if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "gpio_switch";
 	module->version = "1.4";

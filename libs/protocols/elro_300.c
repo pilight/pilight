@@ -21,7 +21,7 @@
 #include <string.h>
 #include <math.h>
 
-#include "../../pilight.h"
+#include "pilight.h"
 #include "common.h"
 #include "dso.h"
 #include "log.h"
@@ -295,7 +295,7 @@ static void elro300PrintHelp(void) {
 /**
  * Main Init method called to init the protocol and register its functions with pilight
  */
-#ifndef MODULE
+#if !defined(MODULE) && !defined(_WIN32)
 __attribute__((weak))
 #endif
 void elro300Init(void) {
@@ -323,7 +323,7 @@ void elro300Init(void) {
 	elro_300->printHelp=&elro300PrintHelp;
 }
 
-#ifdef MODULE
+#if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "elro_300";
 	module->version = "1.2";

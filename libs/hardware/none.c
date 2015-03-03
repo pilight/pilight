@@ -36,7 +36,7 @@ static int noneReceive(void) {
 	return EXIT_SUCCESS;
 }
 
-#ifndef MODULE
+#if !defined(MODULE) && !defined(_WIN32)
 __attribute__((weak))
 #endif
 void noneInit(void) {
@@ -47,7 +47,7 @@ void noneInit(void) {
 	none->send=&noneSend;
 }
 
-#ifdef MODULE
+#if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "none";
 	module->version = "1.0";

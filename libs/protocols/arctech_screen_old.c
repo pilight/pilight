@@ -21,7 +21,7 @@
 #include <string.h>
 #include <math.h>
 
-#include "../../pilight.h"
+#include "pilight.h"
 #include "common.h"
 #include "dso.h"
 #include "log.h"
@@ -156,7 +156,7 @@ static void arctechSrOldPrintHelp(void) {
 	printf("\t -i --id=id\t\t\tcontrol a device with this id\n");
 }
 
-#ifndef MODULE
+#if !defined(MODULE) && !defined(_WIN32)
 __attribute__((weak))
 #endif
 void arctechSrOldInit(void) {
@@ -184,7 +184,7 @@ void arctechSrOldInit(void) {
 	arctech_screen_old->printHelp=&arctechSrOldPrintHelp;
 }
 
-#ifdef MODULE
+#if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "arctech_screen_old";
 	module->version = "1.1";

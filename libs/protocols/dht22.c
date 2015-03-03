@@ -27,8 +27,17 @@
 #include <fcntl.h>
 #include <math.h>
 #include <sys/stat.h>
+#ifdef _WIN32
+	#include "pthread.h"
+	#include "implement.h"
+#else
+	#ifdef __mips__
+		#define __USE_UNIX98
+	#endif
+	#include <pthread.h>
+#endif
 
-#include "../../pilight.h"
+#include "pilight.h"
 #include "common.h"
 #include "dso.h"
 #include "log.h"
@@ -43,6 +52,7 @@
 
 #define MAXTIMINGS 100
 
+#if !defined(__FreeBSD__) && !defined(_WIN32)
 static unsigned short dht22_loop = 1;
 static unsigned short dht22_threads = 0;
 
@@ -202,14 +212,17 @@ static void dht22ThreadGC(void) {
 	}
 	protocol_thread_free(dht22);
 }
+#endif
 
-#ifndef MODULE
+#if !defined(MODULE) && !defined(_WIN32)
 __attribute__((weak))
 #endif
 void dht22Init(void) {
+#if !defined(__FreeBSD__) && !defined(_WIN32)
 	pthread_mutexattr_init(&dht22attr);
 	pthread_mutexattr_settype(&dht22attr, PTHREAD_MUTEX_RECURSIVE);
 	pthread_mutex_init(&dht22lock, &dht22attr);
+#endif
 
 	protocol_register(&dht22);
 	protocol_set_id(dht22, "dht22");
@@ -230,11 +243,13 @@ void dht22Init(void) {
 	options_add(&dht22->options, 0, "show-humidity", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
 	options_add(&dht22->options, 0, "poll-interval", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *)10, "[0-9]");
 
+#if !defined(__FreeBSD__) && !defined(_WIN32)
 	dht22->initDev=&dht22InitDev;
 	dht22->threadGC=&dht22ThreadGC;
+#endif
 }
 
-#ifdef MODULE
+#if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "dht22";
 	module->version = "1.6";

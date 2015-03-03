@@ -21,7 +21,7 @@
 #include <string.h>
 #include <math.h>
 
-#include "../../pilight.h"
+#include "pilight.h"
 #include "common.h"
 #include "dso.h"
 #include "log.h"
@@ -167,7 +167,7 @@ static void techlicoSwPrintHelp(void) {
 	printf("\t -i --id=id\t\t\tcontrol devices with this id\n");
 }
 
-#ifndef MODULE
+#if !defined(MODULE) && !defined(_WIN32)
 __attribute__((weak))
 #endif
 void techlicoSwInit(void) {
@@ -194,7 +194,7 @@ void techlicoSwInit(void) {
 	techlico_switch->printHelp=&techlicoSwPrintHelp;
 }
 
-#ifdef MODULE
+#if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "techlico_switch";
 	module->version = "0.10";

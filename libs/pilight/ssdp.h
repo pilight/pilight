@@ -19,7 +19,9 @@
 #ifndef _SSDP_H_
 #define _SSDP_H_
 
-#include <ifaddrs.h>
+#ifndef _WIN32
+	#include <ifaddrs.h>
+#endif
 
 typedef struct ssdp_list_t {
 	char ip[17];

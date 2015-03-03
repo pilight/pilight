@@ -23,14 +23,29 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <unistd.h>
-#include <arpa/inet.h>
-#include <netinet/in.h>
-#include <sys/ioctl.h>
-#include <sys/socket.h>
+#ifdef _WIN32
+	#include <winsock2.h>
+	#include <windows.h>
+	#include <ws2tcpip.h>
+	#include <winsvc.h>
+	#include <shellapi.h>
+	#include "pthread.h"
+	#define MSG_NOSIGNAL 0
+#else
+	#include <sys/socket.h>
+	#include <sys/time.h>
+	#include <netinet/in.h>
+	#include <netinet/tcp.h>
+	#include <netdb.h>
+	#include <arpa/inet.h>
+	#ifdef __mips__
+		#define __USE_UNIX98
+	#endif
+	#include <pthread.h>
+#endif
 #include <sys/stat.h>
 #include <sys/time.h>
 #include <time.h>
-#include <pthread.h>
 #include <ctype.h>
 #include <dirent.h>
 
@@ -108,6 +123,7 @@ static struct recvqueue_t *recvqueue_head;
 static pthread_mutex_t sendqueue_lock;
 static pthread_cond_t sendqueue_signal;
 static pthread_mutexattr_t sendqueue_attr;
+static unsigned short sendqueue_init = 0;
 
 static int sendqueue_number = 0;
 static int recvqueue_number = 0;
@@ -115,6 +131,7 @@ static int recvqueue_number = 0;
 static pthread_mutex_t recvqueue_lock;
 static pthread_cond_t recvqueue_signal;
 static pthread_mutexattr_t recvqueue_attr;
+static unsigned short recvqueue_init = 0;
 
 typedef struct bcqueue_t {
 	JsonNode *jmessage;
@@ -128,6 +145,7 @@ static struct bcqueue_t *bcqueue_head;
 static pthread_mutex_t bcqueue_lock;
 static pthread_cond_t bcqueue_signal;
 static pthread_mutexattr_t bcqueue_attr;
+static unsigned short bcqueue_init = 0;
 
 static int bcqueue_number = 0;
 
@@ -169,8 +187,14 @@ static int maxrawlen = 0;
 static char *master_server = NULL;
 static unsigned short master_port = 0;
 
-struct pilight_t pilight;
 static char *configtmp = NULL;
+static int verbosity = LOG_DEBUG;
+struct socket_callback_t socket_callback;
+
+#ifdef _WIN32
+	static int console = 0;
+#endif
+
 
 #ifdef WEBSERVER
 /* Do we enable the webserver */
@@ -275,7 +299,7 @@ void *broadcast(void *param) {
 					while(tmp_clients) {
 						if(((int)tmp < 0 && tmp_clients->core == 1) ||
 						   ((int)tmp >= 0 && tmp_clients->config == 1) ||
-							 ((int)tmp == PROC && tmp_clients->stats == 1)) {
+							 ((int)tmp == PROCESS && tmp_clients->stats == 1)) {
 							socket_write(tmp_clients->id, conf);
 							broadcasted = 1;
 						}
@@ -373,10 +397,10 @@ void *broadcast(void *param) {
 							json_find_number(code, "lpf", &firmware.lpf);
 							json_find_number(code, "hpf", &firmware.hpf);
 							if(firmware.version > 0 && firmware.lpf > 0 && firmware.hpf > 0) {
-								registry_set_number("pilight.firmware.version", firmware.version, 0);							
-								registry_set_number("pilight.firmware.lpf", firmware.lpf, 0);							
-								registry_set_number("pilight.firmware.hpf", firmware.hpf, 0);							
-								
+								registry_set_number("pilight.firmware.version", firmware.version, 0);
+								registry_set_number("pilight.firmware.lpf", firmware.lpf, 0);
+								registry_set_number("pilight.firmware.hpf", firmware.hpf, 0);
+
 								struct JsonNode *jmessage = json_mkobject();
 								struct JsonNode *jcode = json_mkobject();
 								json_append_member(jcode, "version", json_mknumber(firmware.version, 0));
@@ -506,7 +530,7 @@ static void receiver_create_message(protocol_t *protocol) {
 			json_delete(json);
 			json = NULL;
 			json_delete(jmessage);
-		}	
+		}
 		json_free(valid);
 	}
 	protocol->message = NULL;
@@ -650,13 +674,17 @@ void *send_code(void *param) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
 	int i = 0;
-	struct sched_param sched;
 
 	/* Make sure the pilight sender gets
 	   the highest priority available */
+#ifdef _WIN32
+	SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_HIGHEST);
+#else
+	struct sched_param sched;
 	memset(&sched, 0, sizeof(sched));
 	sched.sched_priority = 80;
 	pthread_setschedparam(pthread_self(), SCHED_FIFO, &sched);
+#endif
 
 	pthread_mutex_lock(&sendqueue_lock);
 
@@ -776,13 +804,17 @@ static int send_queue(JsonNode *json) {
 	char *uuid = NULL;
 	/* Hold the final protocol struct */
 	struct protocol_t *protocol = NULL;
-	struct sched_param sched;
 
+#ifdef _WIN32
+	SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_HIGHEST);
+#else
 	/* Make sure the pilight sender gets
 	   the highest priority available */
+	struct sched_param sched;
 	memset(&sched, 0, sizeof(sched));
 	sched.sched_priority = 80;
 	pthread_setschedparam(pthread_self(), SCHED_FIFO, &sched);
+#endif
 
 	JsonNode *jcode = NULL;
 	JsonNode *jprotocols = NULL;
@@ -919,7 +951,7 @@ static void client_webserver_parse_code(int i, char buffer[BUFFER_SIZE]) {
 	unsigned char *p = NULL;
 	unsigned char buff[BUFFER_SIZE];
 	char *cache = NULL;
-	char *path = NULL;
+	char *path = NULL, buf[INET_ADDRSTRLEN+1];
 	char *mimetype = NULL;
 	struct stat sb;
 	struct sockaddr_in sockin;
@@ -942,7 +974,7 @@ static void client_webserver_parse_code(int i, char buffer[BUFFER_SIZE]) {
 				fstat(fileno(f), &sb);
 				mimetype = webserver_mimetype("image/png");
 				webserver_create_header(&p, "200 OK", mimetype, (unsigned int)sb.st_size);
-				send(sd, buff, (size_t)(p-buff), MSG_NOSIGNAL);
+				send(sd, (const char *)buff, (size_t)(p-buff), MSG_NOSIGNAL);
 				x = 0;
 				if(!(cache = MALLOC(BUFFER_SIZE))) {
 					logprintf(LOG_ERR, "out of memory");
@@ -951,7 +983,7 @@ static void client_webserver_parse_code(int i, char buffer[BUFFER_SIZE]) {
 				memset(cache, '\0', BUFFER_SIZE);
 				while(!feof(f)) {
 					x = (int)fread(cache, 1, BUFFER_SIZE, f);
-					send(sd, cache, (size_t)x, MSG_NOSIGNAL);
+					send(sd, (const char *)cache, (size_t)x, MSG_NOSIGNAL);
 				}
 				fclose(f);
 				FREE(cache);
@@ -964,13 +996,15 @@ static void client_webserver_parse_code(int i, char buffer[BUFFER_SIZE]) {
 		    /* Catch all webserver page to inform users on which port the webserver runs */
 			mimetype = webserver_mimetype("text/html");
 			webserver_create_header(&p, "200 OK", mimetype, (unsigned int)BUFFER_SIZE);
-			send(sd, buff, (size_t)(p-buff), MSG_NOSIGNAL);
+			send(sd, (const char *)buff, (size_t)(p-buff), MSG_NOSIGNAL);
 			if(webserver_enable == 1) {
-				if(!(cache = MALLOC(BUFFER_SIZE))) {
+				if((cache = MALLOC(BUFFER_SIZE)) == NULL) {
 					logprintf(LOG_ERR, "out of memory");
 					exit(EXIT_FAILURE);
 				}
 				memset(cache, '\0', BUFFER_SIZE);
+				memset(&buf, '\0', INET_ADDRSTRLEN+1);
+				inet_ntop(AF_INET, (void *)&(sockin.sin_addr), buf, INET_ADDRSTRLEN+1);
 				sprintf(cache, "<html><head><title>pilight</title></head>"
 							   "<body><center><img src=\"logo.png\"><br />"
 							   "<p style=\"color: #0099ff; font-weight: 800px;"
@@ -980,11 +1014,8 @@ static void client_webserver_parse_code(int i, char buffer[BUFFER_SIZE]) {
 							   "font-weight: 800px; font-family: Verdana; font-size:"
 							   "20px;\" href=\"http://%s:%d\">http://%s:%d</a></p>"
 							   "</center></body></html>",
-							   inet_ntoa(sockin.sin_addr),
-							   webserver_port,
-							   inet_ntoa(sockin.sin_addr),
-							   webserver_port);
-				send(sd, cache, strlen(cache), MSG_NOSIGNAL);
+							   buf, webserver_port, buf, webserver_port);
+				send(sd, (const char *)cache, strlen(cache), MSG_NOSIGNAL);
 				FREE(cache);
 			} else {
 				send(sd, "<body><center><img src=\"logo.png\"></center></body></html>", 57, MSG_NOSIGNAL);
@@ -1445,18 +1476,22 @@ static void socket_client_disconnected(int i) {
 void *receive_code(void *param) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
-	struct sched_param sched;
 	int plslen = 0, rawlen = 0;
 	int rawcode[MAXPULSESTREAMLENGTH] = {0};
 	int duration = 0;
 	struct timeval tp;
 	struct timespec ts;
 
+#ifdef _WIN32
+	SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_HIGHEST);
+#else
 	/* Make sure the pilight receiving gets
 	   the highest priority available */
+	struct sched_param sched;
 	memset(&sched, 0, sizeof(sched));
 	sched.sched_priority = 70;
 	pthread_setschedparam(pthread_self(), SCHED_FIFO, &sched);
+#endif
 
 	struct hardware_t *hw = (hardware_t *)param;
 	pthread_mutex_lock(&hw->lock);
@@ -1690,12 +1725,14 @@ static void save_pid(pid_t npid) {
 	close(f);
 }
 
+#ifndef _WIN32
 static void daemonize(void) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
 	log_file_enable();
 	log_shell_disable();
 	/* Get the pid of the fork */
+
 	pid_t npid = fork();
 	switch(npid) {
 		case 0:
@@ -1711,6 +1748,7 @@ static void daemonize(void) {
 		break;
 	}
 }
+#endif
 
 /* Garbage collector of main program */
 int main_gc(void) {
@@ -1739,15 +1777,21 @@ int main_gc(void) {
 	events_gc();
 #endif
 
-	pthread_mutex_unlock(&recvqueue_lock);
-	pthread_cond_signal(&recvqueue_signal);
-	usleep(1000);
+	if(recvqueue_init == 1) {
+		pthread_mutex_unlock(&recvqueue_lock);
+		pthread_cond_signal(&recvqueue_signal);
+		usleep(1000);
+	}
 
-	pthread_mutex_unlock(&sendqueue_lock);
-	pthread_cond_signal(&sendqueue_signal);
+	if(sendqueue_init == 1) {
+		pthread_mutex_unlock(&sendqueue_lock);
+		pthread_cond_signal(&sendqueue_signal);
+	}
 
-	pthread_mutex_unlock(&bcqueue_lock);
-	pthread_cond_signal(&bcqueue_signal);
+	if(bcqueue_init == 1) {
+		pthread_mutex_unlock(&bcqueue_lock);
+		pthread_cond_signal(&bcqueue_signal);
+	}
 
 	struct clients_t *tmp_clients;
 	while(clients) {
@@ -1759,6 +1803,7 @@ int main_gc(void) {
 		FREE(clients);
 	}
 
+#ifndef _WIN32
 	if(running == 0) {
 		/* Remove the stale pid file */
 		if(access(pid_file, F_OK) != -1) {
@@ -1773,7 +1818,7 @@ int main_gc(void) {
 	if(pid_file_free) {
 		FREE(pid_file);
 	}
-
+#endif
 #ifdef WEBSERVER
 	if(webserver_enable == 1) {
 		webserver_gc();
@@ -1799,7 +1844,9 @@ int main_gc(void) {
 	protocol_gc();
 	whitelist_free();
 	threads_gc();
-	wiringXGC();	
+#ifndef _WIN32
+	wiringXGC();
+#endif
 	dso_gc();
 	log_gc();
 
@@ -1810,6 +1857,14 @@ int main_gc(void) {
 	gc_clear();
 	FREE(progname);
 	xfree();
+
+#ifdef _WIN32
+	WSACleanup();
+	if(console == 1) {
+		FreeConsole();
+	}
+#endif
+
 	return 0;
 }
 
@@ -1819,7 +1874,7 @@ static void procProtocolInit(void) {
 	protocol_register(&procProtocol);
 	protocol_set_id(procProtocol, "process");
 	protocol_device_add(procProtocol, "process", "pilight proc. API");
-	procProtocol->devtype = PROC;
+	procProtocol->devtype = PROCESS;
 	procProtocol->hwtype = API;
 	procProtocol->multipleId = 0;
 	procProtocol->config = 0;
@@ -1828,7 +1883,7 @@ static void procProtocolInit(void) {
 	options_add(&procProtocol->options, 'r', "ram", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, NULL);
 }
 
-#ifdef FIRMWARE_UPDATER
+#if defined(FIRMWARE_UPDATER) && !defined(_WIN32)
 void *firmware_loop(void *param) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
@@ -1880,106 +1935,45 @@ void registerVersion(void) {
 }
 #pragma GCC diagnostic pop   // require GCC 4.6
 
-
-int main(int argc, char **argv) {
-	// int u = 0;
-	// for(u=0;u<argc;u++) {
-		// if(strcmp(argv[u], "-D") == 0 || strcmp(argv[u], "--nodaemon") == 0) {
-			// memtrack();
-			// break;
-		// }
-	// }
-
-	procProtocolInit();
-
-	struct ifaddrs *ifaddr, *ifa;
-	int family = 0;
-	int verbosity = LOG_DEBUG;
-	char *p = NULL;
-	configtmp = MALLOC(strlen(CONFIG_FILE)+1);
-	strcpy(configtmp, CONFIG_FILE);
-
-	progname = MALLOC(16);
-	if(!progname) {
-		logprintf(LOG_ERR, "out of memory");
-		exit(EXIT_FAILURE);
-	}
-	strcpy(progname, "pilight-daemon");
-
-	if(geteuid() != 0) {
-		printf("%s requires root priveliges in order to run\n", progname);
-		FREE(progname);
-		exit(EXIT_FAILURE);
-	}
-
-	/* Run main garbage collector when quiting the daemon */
-	gc_attach(main_gc);
-
-	/* Catch all exit signals for gc */
-	gc_catch();
-
-	wiringXLog = logprintf;
-
-#ifdef __FreeBSD__
-	if(rep_getifaddrs(&ifaddr) == -1) {
-		logprintf(LOG_ERR, "could not get network adapter information");
-		goto clear;
-	}
-#else
-	if(getifaddrs(&ifaddr) == -1) {
-		perror("getifaddrs");
-		goto clear;
-	}
-#endif
-
-	for(ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next) {
-		if(ifa->ifa_addr == NULL) {
-			continue;
-		}
-
-		family = ifa->ifa_addr->sa_family;
-
-		if((strstr(ifa->ifa_name, "lo") == NULL && strstr(ifa->ifa_name, "vbox") == NULL
-		    && strstr(ifa->ifa_name, "dummy") == NULL) && (family == AF_INET || family == AF_INET6)) {
-			if((p = genuuid(ifa->ifa_name)) == NULL) {
-				logprintf(LOG_ERR, "could not generate the device uuid");
-				freeifaddrs(ifaddr);
-				// goto clear;
-			} else {
-				strcpy(pilight_uuid, p);
-				FREE(p);
-				break;
-			}
+#ifdef _WIN32
+void openconsole(void) {
+	AllocConsole();
+	freopen("CONOUT$", "w", stdout);
+	freopen("CONOUT$", "w", stderr);
+	HWND hwnd = GetConsoleWindow();
+	if(hwnd != NULL) {
+		HMENU hMenu = GetSystemMenu(hwnd, FALSE);
+		if(hMenu != NULL) {
+			RemoveMenu(hMenu, SC_CLOSE, MF_GRAYED);
+			RemoveMenu(hMenu, SC_MINIMIZE, MF_GRAYED);
+			RemoveMenu(hMenu, SC_MAXIMIZE, MF_GRAYED);
 		}
 	}
-#ifdef __FreeBSD__
-	rep_freeifaddrs(ifaddr);
-#else
-	freeifaddrs(ifaddr);
+}
 #endif
 
-	firmware.version = 0;
-	firmware.lpf = 0;
-	firmware.hpf = 0;
-
-	log_level_set(LOG_INFO);
-	log_file_enable();
-	log_shell_disable();
-
-	struct socket_callback_t socket_callback;
+int start_pilight(int argc, char **argv) {
 	struct options_t *options = NULL;
 	struct ssdp_list_t *ssdp_list = NULL;
 
 	char buffer[BUFFER_SIZE];
 	int f = 0, itmp = 0, show_help = 0, show_version = 0, show_default = 0;
-	char *stmp = NULL;
-	char *args = NULL;
-	int port = 0, watchdog = 1;
+	char *stmp = NULL, *args = NULL, *p = NULL;
+	int port = 0;
 
-	memset(buffer, '\0', BUFFER_SIZE);
+	if((progname = MALLOC(16)) == NULL) {
+		logprintf(LOG_ERR, "out of memory");
+		exit(EXIT_FAILURE);
+	}
+	strcpy(progname, "pilight-daemon");
 
+	configtmp = MALLOC(strlen(CONFIG_FILE)+1);
+	strcpy(configtmp, CONFIG_FILE);	
+
+#ifndef _WIN32
 	options_add(&options, 'H', "help", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
 	options_add(&options, 'V', "version", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
+#endif
 	options_add(&options, 'D', "nodaemon", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
 	options_add(&options, 'C', "config", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, NULL);
 	options_add(&options, 'S', "server", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, "^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]).){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$");
@@ -1998,12 +1992,14 @@ int main(int argc, char **argv) {
 			break;
 		}
 		switch(c) {
+#ifndef _WIN32			
 			case 'H':
 				show_help = 1;
 			break;
 			case 'V':
 				show_version = 1;
 			break;
+#endif
 			case 'C':
 				configtmp = REALLOC(configtmp, strlen(args)+1);
 				strcpy(configtmp, args);
@@ -2026,20 +2022,20 @@ int main(int argc, char **argv) {
 				threadprofiler = 1;
 				verbosity = LOG_ERR;
 				nodaemon = 1;
-			break;	
+			break;
 			case 256:
 				verbosity = LOG_STACK;
 				stacktracer = 1;
 				nodaemon = 1;
-			break;	
+			break;
 			default:
 				show_default = 1;
 			break;
 		}
 	}
 	options_delete(options);
-
-	if(show_help) {
+#ifndef _WIN32
+	if(show_help == 1) {
 		printf("Usage: %s [options]\n", progname);
 		printf("\t -H --help\t\t\tdisplay usage summary\n");
 		printf("\t -V --version\t\t\tdisplay version\n");
@@ -2052,18 +2048,114 @@ int main(int argc, char **argv) {
 		printf("\t    --threadprofiler\t\tshow per thread cpu usage\n");
 		goto clear;
 	}
-	if(show_version) {
+	if(show_version == 1) {
 		printf("%s version %s, commit %s\n", progname, PILIGHT_VERSION, HASH);
 		goto clear;
 	}
-	if(show_default) {
+#endif
+	if(show_default == 1) {
+#ifndef _WIN32
 		printf("Usage: %s [options]\n", progname);
+#endif		
 		goto clear;
 	}
+	
+#ifdef _WIN32
+	if(nodaemon == 1) {
+		openconsole();
+		console = 1;
+	}
+#endif
+
+	atomicinit();
+	procProtocolInit();
+
+#ifndef _WIN32
+	if(geteuid() != 0) {
+		printf("%s requires root priveliges in order to run\n", progname);
+		FREE(progname);
+		exit(EXIT_FAILURE);
+	}
+#endif
+
+	/* Run main garbage collector when quiting the daemon */
+	gc_attach(main_gc);
+
+	/* Catch all exit signals for gc */
+	gc_catch();
+
+	wiringXLog = logprintf;
+
+#ifdef _WIN32
+	if((p = genuuid(NULL)) == NULL) {
+		logprintf(LOG_ERR, "could not generate the device uuid");
+	} else {
+		strcpy(pilight_uuid, p);
+		FREE(p);
+	}
+#else
+	struct ifaddrs *ifaddr, *ifa;
+	int family = 0;
+	#ifdef __FreeBSD__
+	if(rep_getifaddrs(&ifaddr) == -1) {
+		logprintf(LOG_ERR, "could not get network adapter information");
+		goto clear;
+	}
+	#else
+	if(getifaddrs(&ifaddr) == -1) {
+		perror("getifaddrs");
+		goto clear;
+	}
+	#endif
+
+	for(ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next) {
+		if(ifa->ifa_addr == NULL) {
+			continue;
+		}
+
+		family = ifa->ifa_addr->sa_family;
+
+		if((strstr(ifa->ifa_name, "lo") == NULL && strstr(ifa->ifa_name, "vbox") == NULL
+		    && strstr(ifa->ifa_name, "dummy") == NULL) && (family == AF_INET || family == AF_INET6)) {
+			if((p = genuuid(ifa->ifa_name)) == NULL) {
+				logprintf(LOG_ERR, "could not generate the device uuid");
+				freeifaddrs(ifaddr);
+				// goto clear;
+			} else {
+				strcpy(pilight_uuid, p);
+				FREE(p);
+				break;
+			}
+		}
+	}
+	#ifdef __FreeBSD__
+		rep_freeifaddrs(ifaddr);
+	#else
+		freeifaddrs(ifaddr);
+	#endif
+#endif
+
+	firmware.version = 0;
+	firmware.lpf = 0;
+	firmware.hpf = 0;
+
+	log_level_set(LOG_INFO);
+	log_file_enable();
+	log_shell_disable();
+
+	memset(buffer, '\0', BUFFER_SIZE);
+
 	if(nodaemon == 1) {
 		log_level_set(verbosity);
 		log_shell_enable();
+	}	
+
+#ifdef _WIN32
+	if((pid = check_instances(L"pilight-daemon")) != -1) {
+		logprintf(LOG_ERR, "pilight is already running");
+		goto clear;
 	}
+#endif
 
 	if((pid = isrunning("pilight-raw")) != -1) {
 		logprintf(LOG_ERR, "pilight-raw instance found (%d)", (int)pid);
@@ -2081,18 +2173,18 @@ int main(int argc, char **argv) {
 
 	protocol_init();
 	config_init();
+
 	if(config_read() != EXIT_SUCCESS) {
 		goto clear;
 	}
-	
+
 	registerVersion();
 
 #ifdef WEBSERVER
 	settings_find_number("webserver-enable", &webserver_enable);
 	settings_find_number("webserver-port", &webserver_port);
 	if(settings_find_string("webserver-root", &webserver_root) != 0) {
-		webserver_root = REALLOC(webserver_root, strlen(WEBSERVER_ROOT)+1);
-		if(!webserver_root) {
+		if((webserver_root = REALLOC(webserver_root, strlen(WEBSERVER_ROOT)+1)) == NULL) {
 			logprintf(LOG_ERR, "out of memory");
 			exit(EXIT_FAILURE);
 		}
@@ -2111,6 +2203,7 @@ int main(int argc, char **argv) {
 	}
 #endif
 
+#ifndef _WIN32
 	if(settings_find_string("pid-file", &pid_file) != 0) {
 		pid_file = REALLOC(pid_file, strlen(PID_FILE)+1);
 		if(!pid_file) {
@@ -2141,6 +2234,7 @@ int main(int argc, char **argv) {
 		goto clear;
 	}
 	close(f);
+#endif
 
 	if(settings_find_number("log-level", &itmp) == 0) {
 		itmp += 2;
@@ -2148,7 +2242,9 @@ int main(int argc, char **argv) {
 	}
 
 	if(settings_find_string("log-file", &stmp) == 0) {
-		log_file_set(stmp);
+		if(log_file_set(stmp) == EXIT_FAILURE) {
+			goto clear;
+		}
 	}
 
 	logprintf(LOG_INFO, "version %s, commit %s", PILIGHT_VERSION, HASH);
@@ -2170,6 +2266,7 @@ int main(int argc, char **argv) {
 
 	settings_find_number("receive-repeats", &receive_repeat);
 
+#ifndef _WIN32
 	if(running == 1) {
 		nodaemon = 1;
 		logprintf(LOG_NOTICE, "already active (pid %d)", atoi(buffer));
@@ -2177,6 +2274,7 @@ int main(int argc, char **argv) {
 		log_shell_disable();
 		goto clear;
 	}
+#endif
 
 	struct protocols_t *tmp = protocols;
 	while(tmp) {
@@ -2198,6 +2296,7 @@ int main(int argc, char **argv) {
 	settings_find_number("port", &port);
 	settings_find_number("standalone", &standalone);
 
+	pilight.runmode = STANDALONE;
 	if(standalone == 0 || (master_server != NULL && master_port > 0)) {
 		if(master_server != NULL && master_port > 0) {
 			if((sockfd = socket_connect(master_server, master_port)) == -1) {
@@ -2223,11 +2322,14 @@ int main(int argc, char **argv) {
 			ssdp_start();
 		}
 	}
+
+#ifndef _WIN32
 	if(nodaemon == 0) {
 		daemonize();
 	} else {
 		save_pid(getpid());
 	}
+#endif
 
 	/* Threads are unable to survive forks properly.
 	 * Therefor, we queue all messages until we're
@@ -2239,16 +2341,19 @@ int main(int argc, char **argv) {
 	pthread_mutexattr_settype(&sendqueue_attr, PTHREAD_MUTEX_RECURSIVE);
 	pthread_mutex_init(&sendqueue_lock, &sendqueue_attr);
 	pthread_cond_init(&sendqueue_signal, NULL);
+	sendqueue_init = 1;
 
 	pthread_mutexattr_init(&recvqueue_attr);
 	pthread_mutexattr_settype(&recvqueue_attr, PTHREAD_MUTEX_RECURSIVE);
 	pthread_mutex_init(&recvqueue_lock, &recvqueue_attr);
 	pthread_cond_init(&recvqueue_signal, NULL);
+	recvqueue_init = 1;
 
 	pthread_mutexattr_init(&bcqueue_attr);
 	pthread_mutexattr_settype(&bcqueue_attr, PTHREAD_MUTEX_RECURSIVE);
 	pthread_mutex_init(&bcqueue_lock, &bcqueue_attr);
 	pthread_cond_init(&bcqueue_signal, NULL);
+	bcqueue_init = 1;
 
 	/* Export certain daemon function to global usage */
 	pilight.broadcast = &broadcast_queue;
@@ -2319,10 +2424,24 @@ int main(int argc, char **argv) {
 	}
 #endif
 
-#ifdef FIRMWARE_UPDATER
+#if defined(FIRMWARE_UPDATER) && !defined(_WIN32)
 	threads_register("firmware upgrader", &firmware_loop, (void *)NULL, 0);
 #endif
+	return EXIT_SUCCESS;
 
+clear:
+	if(nodaemon == 0) {
+		log_level_set(LOG_NOTICE);
+		log_shell_disable();
+	}
+	if(main_loop == 1) {
+		main_gc();
+	}
+	return EXIT_FAILURE;
+}
+
+void *pilight_stats(void *param) {
+	int watchdog = 0;
 	settings_find_number("watchdog-enable", &watchdog);
 
 	int checkram = 0, checkcpu = 0;
@@ -2363,7 +2482,8 @@ int main(int argc, char **argv) {
 				if(cpu > 90) {
 					exit(EXIT_FAILURE);
 				} else {
-					goto clear;
+					main_gc();
+					break;
 				}
 			}
 			checkcpu = 1;
@@ -2388,7 +2508,8 @@ int main(int argc, char **argv) {
 				if(ram > 90) {
 					exit(EXIT_FAILURE);
 				} else {
-					goto clear;
+					main_gc();
+					break;
 				}
 			}
 			checkram = 1;
@@ -2405,7 +2526,7 @@ int main(int argc, char **argv) {
 				logprintf(LOG_DEBUG, "cpu: %f%%, ram: %f%%", cpu, ram);
 				json_append_member(procProtocol->message, "values", code);
 				json_append_member(procProtocol->message, "origin", json_mkstring("core"));
-				json_append_member(procProtocol->message, "type", json_mknumber(PROC, 0));
+				json_append_member(procProtocol->message, "type", json_mknumber(PROCESS, 0));
 				struct clients_t *tmp_clients = clients;
 				while(tmp_clients) {
 					if(tmp_clients->cpu > 0 && tmp_clients->ram > 0) {
@@ -2425,15 +2546,175 @@ int main(int argc, char **argv) {
 		}
 		sleep(1);
 	}
-	return EXIT_SUCCESS;
-
-clear:
-	if(nodaemon == 0) {
-		log_level_set(LOG_NOTICE);
-		log_shell_disable();
-	}
-	if(main_loop == 1) {
-		main_gc();
-	}
-	return EXIT_FAILURE;
+	return (void *)NULL;
 }
+
+#ifdef _WIN32
+#define ID_TRAYICON 100
+#define ID_QUIT 101
+#define ID_SEPARATOR 102
+#define ID_INSTALL_SERVICE 103
+#define ID_REMOVE_SERVICE 104
+#define ID_START 105
+#define ID_STOP 106
+#define ID_WEBGUI 107
+#define ID_CONSOLE 108
+#define ID_ICON 200
+static NOTIFYICONDATA TrayIcon;
+static int oldverbosity = LOG_NOTICE;
+static char server_name[40];
+
+static LRESULT CALLBACK WindowProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
+  char buf[200], *service_argv[] = {__argv[0], NULL}; 
+  POINT pt;
+  HMENU hMenu;
+
+  switch(msg) {
+    case WM_CREATE:
+			if(start_pilight(__argc, __argv) == EXIT_FAILURE) {
+				if(main_loop == 1) {
+					main_gc();
+				}
+				exit(EXIT_FAILURE);
+			}
+			running = 1;
+		break;
+    case WM_COMMAND:
+      switch(LOWORD(wParam)) {
+        case ID_QUIT:
+					if(main_loop == 1) {
+						main_gc();
+					}
+          Shell_NotifyIcon(NIM_DELETE, &TrayIcon);
+          PostQuitMessage(0);
+				break;
+				case ID_STOP:
+					if(running == 1) {
+						if(main_loop == 1) {
+							main_gc();
+						}
+						running = 0;
+						MessageBox(NULL, "pilight stopped", "pilight :: notice", MB_OK);
+					}
+				break;
+				case ID_CONSOLE:
+					if(console == 0) {
+						console = 1;
+						openconsole();
+						oldverbosity = verbosity;
+						verbosity = LOG_DEBUG;
+						log_level_set(verbosity);
+						log_shell_enable();
+					} else {
+						log_shell_disable();
+						verbosity = oldverbosity;
+						FreeConsole();
+						console = 0;
+					}
+				break;
+				case ID_START:
+					if(running == 0) {
+						main_loop = 1;
+						if(start_pilight(1, service_argv) == EXIT_FAILURE) {
+							if(main_loop == 1) {
+								main_gc();
+								MessageBox(NULL, "pilight failed to start", "pilight :: error", MB_OK);
+							}
+						}
+						running = 1;
+						MessageBox(NULL, "pilight started", "pilight :: notice", MB_OK);
+					}
+				break;
+				case ID_WEBGUI:
+					if(webserver_port == 80) {
+						snprintf(buf, sizeof(buf), "http://localhost");
+					} else {
+						snprintf(buf, sizeof(buf), "http://localhost:%d", webserver_port);
+					}
+					ShellExecute(NULL, "open", buf, NULL, NULL, SW_SHOWNORMAL);
+				break;
+      }
+		break;
+    case WM_USER:
+      switch(lParam) {
+        case WM_RBUTTONUP:
+        case WM_LBUTTONUP:
+        case WM_LBUTTONDBLCLK:
+          hMenu = CreatePopupMenu();
+
+          AppendMenu(hMenu, MF_STRING | MF_GRAYED, ID_SEPARATOR, server_name);
+					AppendMenu(hMenu, MF_SEPARATOR, ID_SEPARATOR, "");
+          AppendMenu(hMenu, MF_STRING | MF_GRAYED, ID_SEPARATOR, ((pilight.runmode == ADHOC) ? "Ad-Hoc mode" : "Standalone mode"));
+					AppendMenu(hMenu, MF_SEPARATOR, ID_SEPARATOR, "");
+					if(pilight.runmode == STANDALONE) {
+						AppendMenu(hMenu, MF_STRING | (running ? 0 : MF_GRAYED), ID_WEBGUI, "Open webGUI");
+					}
+					if(console == 0) {
+						AppendMenu(hMenu, MF_STRING, ID_CONSOLE, "Open console");
+					} else {
+						AppendMenu(hMenu, MF_STRING, ID_CONSOLE, "Close console");
+					}
+          AppendMenu(hMenu, MF_SEPARATOR, ID_SEPARATOR, "");
+
+					// snprintf(buf, sizeof(buf), "pilight is %s", running ? "running" : "stopped");
+
+					// AppendMenu(hMenu, MF_STRING | MF_GRAYED, ID_SEPARATOR, buf);
+          // AppendMenu(hMenu, MF_SEPARATOR, ID_SEPARATOR, "");
+
+					// AppendMenu(hMenu, MF_STRING | (running ? 0 : MF_GRAYED), ID_STOP, "Stop pilight");
+					// AppendMenu(hMenu, MF_STRING | (running ? MF_GRAYED : 0), ID_START, "Start pilight");
+
+          AppendMenu(hMenu, MF_STRING, ID_QUIT, "Exit");
+
+          GetCursorPos(&pt);
+          SetForegroundWindow(hWnd);
+          TrackPopupMenu(hMenu, 0, pt.x, pt.y, 0, hWnd, NULL);
+          PostMessage(hWnd, WM_NULL, 0, 0);
+          DestroyMenu(hMenu);
+				break;
+      }
+		break;
+  }
+
+  return DefWindowProc(hWnd, msg, wParam, lParam);
+}
+
+int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR cmdline, int show) {
+	HWND hWnd;	
+  WNDCLASS cls;
+  MSG msg;
+
+	snprintf(server_name, sizeof(server_name), "pilight daemon v%s", PILIGHT_VERSION);
+  memset(&cls, 0, sizeof(cls));
+  cls.lpfnWndProc = (WNDPROC)WindowProc;
+  cls.hIcon = LoadIcon(NULL, IDI_APPLICATION);
+  cls.lpszClassName = server_name;
+
+  RegisterClass(&cls);
+  hWnd = CreateWindow(cls.lpszClassName, server_name, 0, 0, 0, 0, 0, NULL, NULL, NULL, NULL);
+  ShowWindow(hWnd, SW_HIDE);
+
+  TrayIcon.cbSize = sizeof(TrayIcon);
+  TrayIcon.uID = ID_TRAYICON;
+  TrayIcon.uFlags = NIF_ICON | NIF_MESSAGE | NIF_TIP;
+  TrayIcon.hIcon = LoadImage(GetModuleHandle(NULL), MAKEINTRESOURCE(ID_ICON), IMAGE_ICON, 16, 16, 0);
+  TrayIcon.hWnd = hWnd;
+  snprintf(TrayIcon.szTip, sizeof(TrayIcon.szTip), "%s", server_name);
+
+  TrayIcon.uCallbackMessage = WM_USER;
+  Shell_NotifyIcon(NIM_ADD, &TrayIcon);
+
+  while(GetMessage(&msg, hWnd, 0, 0)) {
+    TranslateMessage(&msg);
+    DispatchMessage(&msg);
+  }
+}
+#else
+int main(int argc, char **argv) {
+	int ret = start_pilight(argc, argv);
+	if(ret == EXIT_SUCCESS) {
+		pilight_stats((void *)NULL);
+	}
+	return ret;
+}
+#endif

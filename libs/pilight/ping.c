@@ -66,18 +66,126 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <sys/types.h>
-#include <sys/socket.h>
-#include <netdb.h>
-#include <netinet/in.h>
-#include <netinet/in_systm.h>
-#include <netinet/ip.h>
-#include <netinet/ip_icmp.h>
+#ifdef _WIN32
+	#define WIN32_LEAN_AND_MEAN
+	#include <winsock2.h>
+	#include <ws2tcpip.h>
+	#include <windows.h>
+	#define MSG_NOSIGNAL 0
+#else
+	#include <sys/cdefs.h>
+	#include <sys/socket.h>
+	#include <sys/time.h>
+	#include <netinet/in.h>
+	#include <netinet/if_ether.h>
+	#include <netinet/tcp.h>
+	#include <net/route.h>
+	#include <netdb.h>
+	#include <arpa/inet.h>
+	#include <netinet/in_systm.h>
+	#include <netinet/ip.h>
+	#include <netinet/ip_icmp.h>
+#endif
 #include <errno.h>
 #include <string.h>
 #include <signal.h>
-#include <arpa/inet.h>
 #include <log.h>
 #include "mem.h"
+
+#ifdef _WIN32
+	typedef unsigned char u_int8_t;
+	typedef unsigned short u_int16_t;
+	typedef unsigned int u_int32_t;
+
+	#define ICMP_ECHO		8
+	#define ICMP_ECHOREPLY		0
+
+	struct icmp_ra_addr	{
+		u_int32_t ira_addr;
+		u_int32_t ira_preference;
+	};
+
+	struct ip {
+		u_char	ip_hl:4,		/* header length */
+			ip_v:4;			/* version */
+		u_char	ip_tos;			/* type of service */
+		short	ip_len;			/* total length */
+		u_short	ip_id;			/* identification */
+		short	ip_off;			/* fragment offset field */
+	#define	IP_DF 0x4000			/* dont fragment flag */
+	#define	IP_MF 0x2000			/* more fragments flag */
+		u_char	ip_ttl;			/* time to live */
+		u_char	ip_p;			/* protocol */
+		u_short	ip_sum;			/* checksum */
+		struct	in_addr ip_src,ip_dst;	/* source and dest address */
+	};
+
+	struct icmp
+	{
+		u_int8_t  icmp_type;	/* type of message, see below */
+		u_int8_t  icmp_code;	/* type sub code */
+		u_int16_t icmp_cksum;	/* ones complement checksum of struct */
+		union
+		{
+			u_char ih_pptr;		/* ICMP_PARAMPROB */
+			struct in_addr ih_gwaddr;	/* gateway address */
+			struct ih_idseq		/* echo datagram */
+			{
+				u_int16_t icd_id;
+				u_int16_t icd_seq;
+			} ih_idseq;
+			u_int32_t ih_void;
+
+			/* ICMP_UNREACH_NEEDFRAG -- Path MTU Discovery (RFC1191) */
+			struct ih_pmtu
+			{
+				u_int16_t ipm_void;
+				u_int16_t ipm_nextmtu;
+			} ih_pmtu;
+
+			struct ih_rtradv
+			{
+				u_int8_t irt_num_addrs;
+				u_int8_t irt_wpa;
+				u_int16_t irt_lifetime;
+			} ih_rtradv;
+		} icmp_hun;
+	#define	icmp_pptr	icmp_hun.ih_pptr
+	#define	icmp_gwaddr	icmp_hun.ih_gwaddr
+	#define	icmp_id		icmp_hun.ih_idseq.icd_id
+	#define	icmp_seq	icmp_hun.ih_idseq.icd_seq
+	#define	icmp_void	icmp_hun.ih_void
+	#define	icmp_pmvoid	icmp_hun.ih_pmtu.ipm_void
+	#define	icmp_nextmtu	icmp_hun.ih_pmtu.ipm_nextmtu
+	#define	icmp_num_addrs	icmp_hun.ih_rtradv.irt_num_addrs
+	#define	icmp_wpa	icmp_hun.ih_rtradv.irt_wpa
+	#define	icmp_lifetime	icmp_hun.ih_rtradv.irt_lifetime
+		union
+		{
+			struct
+			{
+				u_int32_t its_otime;
+				u_int32_t its_rtime;
+				u_int32_t its_ttime;
+			} id_ts;
+			struct
+			{
+				struct ip idi_ip;
+				/* options and then 64 bits of data */
+			} id_ip;
+			struct icmp_ra_addr id_radv;
+			u_int32_t   id_mask;
+			u_int8_t    id_data[1];
+		} icmp_dun;
+	#define	icmp_otime	icmp_dun.id_ts.its_otime
+	#define	icmp_rtime	icmp_dun.id_ts.its_rtime
+	#define	icmp_ttime	icmp_dun.id_ts.its_ttime
+	#define	icmp_ip		icmp_dun.id_ip.idi_ip
+	#define	icmp_radv	icmp_dun.id_radv
+	#define	icmp_mask	icmp_dun.id_mask
+	#define	icmp_data	icmp_dun.id_data
+	};
+#endif
 
 /*
  * in_cksum --
@@ -141,14 +249,22 @@ static int initpacket(char *buf) {
 }
 
 int ping(char *addr) {
-	char buf[1500];
+	char buf[1500], buf1[INET_ADDRSTRLEN+1];
 	struct ip *ip = (struct ip *)buf;
 	struct icmp *icmp = (struct icmp *)(ip + 1);
 	struct sockaddr_in dst;
-	struct timeval tv;
 	int icmplen = 0;
 	int sockfd = 0, on = 1;
 	long int fromlen = 0;
+
+#ifdef _WIN32
+	WSADATA wsa;
+
+	if(WSAStartup(0x202, &wsa) != 0) {
+		logprintf(LOG_ERR, "could not initialize new socket");
+		exit(EXIT_FAILURE);
+	}
+#endif
 
 	if((sockfd = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP)) < 0) {
 		logperror(LOG_DEBUG, "socket");
@@ -161,9 +277,16 @@ int ping(char *addr) {
 		return -1;
 	}
 
+#ifndef _WIN32
+	struct timeval tv;
 	tv.tv_sec = 1;
 	tv.tv_usec = 0;
+
 	if(setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, (char *)&tv, sizeof(struct timeval)) < 0) {
+#else
+	int timeout = 1000;
+	if(setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, (const char *)&timeout, sizeof(struct timeval)) < 0) {
+#endif
 		logperror(LOG_DEBUG, "SO_RCVTIMEO");
 		close(sockfd);
 		return -1;
@@ -192,8 +315,10 @@ int ping(char *addr) {
 	}
 
 	icmp = (struct icmp *)(buf + (ip->ip_hl << 2));
-	if(!((icmp->icmp_type == ICMP_ECHOREPLY || icmp->icmp_type == ICMP_ECHO) && strcmp(inet_ntoa(ip->ip_src), addr) == 0)) {
-		logprintf(LOG_DEBUG, "unexpected status reply %d from addr: %s", icmp->icmp_type, inet_ntoa(ip->ip_src));
+	memset(&buf1, '\0', INET_ADDRSTRLEN+1);
+	inet_ntop(AF_INET, (void *)&(ip->ip_src), buf1, INET_ADDRSTRLEN+1);
+	if(!((icmp->icmp_type == ICMP_ECHOREPLY || icmp->icmp_type == ICMP_ECHO) && strcmp(buf1, addr) == 0)) {
+		logprintf(LOG_DEBUG, "unexpected status reply %d from addr: %s", icmp->icmp_type, buf1);
 		close(sockfd);
 		return -1;
 	}

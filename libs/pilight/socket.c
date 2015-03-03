@@ -21,22 +21,32 @@
 #include <stdarg.h>
 #include <unistd.h>
 #include <fcntl.h>
-#include <sys/ioctl.h>
 #include <limits.h>
 #include <errno.h>
-#include <syslog.h>
 #include <time.h>
 #include <math.h>
 #include <string.h>
 #include <sys/types.h>
-#include <sys/socket.h>
 #include <sys/time.h>
-#include <netinet/in.h>
-#include <netinet/tcp.h>
-#include <netdb.h>
-#include <arpa/inet.h>
+#ifdef _WIN32
+	#if _WIN32_WINNT < 0x0501
+		#undef _WIN32_WINNT
+		#define _WIN32_WINNT 0x0501
+	#endif
+	#define WIN32_LEAN_AND_MEAN
+	#include <winsock2.h>
+	#include <ws2tcpip.h>
+	#define MSG_NOSIGNAL 0
+#else
+	#include <sys/socket.h>
+	#include <sys/time.h>
+	#include <netinet/in.h>
+	#include <netinet/tcp.h>
+	#include <netdb.h>
+	#include <arpa/inet.h>
+#endif
 
-#include "../../pilight.h"
+#include "pilight.h"
 #include "common.h"
 #include "log.h"
 #include "gc.h"
@@ -58,8 +68,8 @@ int socket_gc(void) {
 
 	socket_loop = 0;
 	/* Wakeup all our select statement so the socket_wait and
-       socket_read functions can actually close and the
-	   all threads using sockets can end gracefully */
+		 socket_read functions can actually close and the
+		 all threads using sockets can end gracefully */
 
 	for(x=1;x<MAX_CLIENTS;x++) {
 		if(socket_clients[x] > 0) {
@@ -72,7 +82,7 @@ int socket_gc(void) {
 		socket_close(socket_loopback);
 	}
 
-	if(waitMessage) {
+	if(waitMessage != NULL) {
 		FREE(waitMessage);
 	}
 
@@ -88,11 +98,20 @@ int socket_start(unsigned short port) {
 	unsigned int addrlen = sizeof(address);
 	int opt = 1;
 
+#ifdef _WIN32
+	WSADATA wsa;
+
+	if(WSAStartup(0x202, &wsa) != 0) {
+		logprintf(LOG_ERR, "could not initialize new socket");
+		exit(EXIT_FAILURE);
+	}
+#endif
+
 	memset(&address, '\0', sizeof(struct sockaddr_in));
 	memset(socket_clients, 0, sizeof(socket_clients));
 
 	//create a master socket
-	if((socket_server = socket(AF_INET , SOCK_STREAM , 0)) == 0)  {
+	if((socket_server = socket(AF_INET, SOCK_STREAM, 0)) == 0)  {
 		logprintf(LOG_ERR, "could not create new socket");
 		exit(EXIT_FAILURE);
 	}
@@ -113,19 +132,24 @@ int socket_start(unsigned short port) {
 	}
 
 	//bind the socket to localhost
-	if (bind(socket_server, (struct sockaddr *)&address, sizeof(address)) < 0) {
+	if(bind(socket_server, (struct sockaddr *)&address, sizeof(address)) < 0) {
 		logprintf(LOG_ERR, "cannot bind to socket port %d, address already in use?", address);
 		exit(EXIT_FAILURE);
 	}
 
+	int x = 0;
 	//try to specify maximum of 3 pending connections for the master socket
-	if(listen(socket_server, 3) < 0) {
+	if((x = listen(socket_server, 3)) < 0) {
 		logprintf(LOG_ERR, "failed to listen to socket");
 		exit(EXIT_FAILURE);
 	}
 
 	static struct linger linger = { 0, 0 };
-	socklen_t lsize = sizeof(struct linger);
+#ifdef _WIN32
+	unsigned int lsize = sizeof(struct linger);
+#else
+ 	socklen_t lsize = sizeof(struct linger);
+#endif
 	setsockopt(socket_server, SOL_SOCKET, SO_LINGER, (void *)&linger, lsize);
 
 	if(getsockname(socket_server, (struct sockaddr *)&address, &addrlen) == -1)
@@ -169,6 +193,15 @@ int socket_connect(char *address, unsigned short port) {
 	fd_set fdset;
 	struct timeval tv;
 
+#ifdef _WIN32
+	WSADATA wsa;
+
+	if(WSAStartup(0x202, &wsa) != 0) {
+		logprintf(LOG_ERR, "could not initialize new socket");
+		exit(EXIT_FAILURE);
+	}
+#endif	
+
 	/* Try to open a new socket */
 	if((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
 		logprintf(LOG_ERR, "could not create socket");
@@ -184,7 +217,12 @@ int socket_connect(char *address, unsigned short port) {
 
 	/* Connect to the server */
 	if(connect(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) != -1) {
+#ifdef _WIN32
+		unsigned long on = 1;
+		ioctlsocket(sockfd, FIONBIO, &on);
+#else
 		fcntl(sockfd, F_SETFL, O_NONBLOCK);
+#endif
 
 		FD_ZERO(&fdset);
 		FD_SET((long unsigned int)sockfd, &fdset);
@@ -195,6 +233,17 @@ int socket_connect(char *address, unsigned short port) {
 			int error = -1;
 			socklen_t len = sizeof(error);
 
+#ifdef _WIN32
+			if(getsockopt(sockfd, SOL_SOCKET, SO_ERROR, (char *)&error, &len) != SOCKET_ERROR) {
+				if(error == 0) {
+					return sockfd;
+				} else {
+					return -1;
+				}
+			} else {
+				return -1;
+			}
+#else
 			getsockopt(sockfd, SOL_SOCKET, SO_ERROR, &error, &len);
 
 			if(error == 0) {
@@ -203,6 +252,7 @@ int socket_connect(char *address, unsigned short port) {
 				close(sockfd);
 				return -1;
 			}
+#endif
 		} else {
 			close(sockfd);
 			return -1;
@@ -219,10 +269,13 @@ void socket_close(int sockfd) {
 	int i = 0;
 	struct sockaddr_in address;
 	int addrlen = sizeof(address);
+	char buf[INET_ADDRSTRLEN+1];
 
 	if(sockfd > 0) {
 		if(getpeername(sockfd, (struct sockaddr*)&address, (socklen_t*)&addrlen) == 0) {
-			logprintf(LOG_DEBUG, "client disconnected, ip %s, port %d", inet_ntoa(address.sin_addr), ntohs(address.sin_port));
+			memset(&buf, '\0', INET_ADDRSTRLEN+1);
+			inet_ntop(AF_INET, (void *)&(address.sin_addr), buf, INET_ADDRSTRLEN+1);
+			logprintf(LOG_DEBUG, "client disconnected, ip %s, port %d", buf, ntohs(address.sin_port));
 		}
 
 		for(i=0;i<MAX_CLIENTS;i++) {
@@ -295,10 +348,13 @@ void socket_rm_client(int i, struct socket_callback_t *socket_callback) {
 	struct sockaddr_in address;
 	int addrlen = sizeof(address);
 	int sd = socket_clients[i];
+	char buf[INET_ADDRSTRLEN+1];
 
 	//Somebody disconnected, get his details and print
 	getpeername(sd, (struct sockaddr*)&address, (socklen_t*)&addrlen);
-	logprintf(LOG_DEBUG, "client disconnected, ip %s, port %d", inet_ntoa(address.sin_addr), ntohs(address.sin_port));
+	memset(&buf, '\0', INET_ADDRSTRLEN+1);
+	inet_ntop(AF_INET, (void *)&(address.sin_addr), buf, INET_ADDRSTRLEN+1);
+	logprintf(LOG_DEBUG, "client disconnected, ip %s, port %d", buf, ntohs(address.sin_port));
 	if(socket_callback->client_disconnected_callback)
 		socket_callback->client_disconnected_callback(i);
 	//Close the socket and mark as 0 in list for reuse
@@ -315,13 +371,18 @@ int socket_read(int sockfd, char **message, time_t timeout) {
 	size_t msglen = 0;
 	int ptr = 0, n = 0, len = (int)strlen(EOSS);
 	fd_set fdsread;
-	fcntl(sockfd, F_SETFL, O_NONBLOCK);
+#ifdef _WIN32
+	unsigned long on = 1;
+	ioctlsocket(sockfd, FIONBIO, &on);
+#else
+ 	fcntl(sockfd, F_SETFL, O_NONBLOCK);
+#endif
 
 	if(timeout > 0) {
 		tv.tv_sec = timeout;
     tv.tv_usec = 0;
 	}
-	
+
 	while(socket_loop && sockfd > 0) {
 		FD_ZERO(&fdsread);
 		FD_SET((unsigned long)sockfd, &fdsread);
@@ -401,13 +462,17 @@ void *socket_wait(void *param) {
 
 	struct socket_callback_t *socket_callback = (struct socket_callback_t *)param;
 
+	char buf[INET_ADDRSTRLEN+1];
 	int activity;
 	int i, sd;
 	int max_sd;
 	struct sockaddr_in address;
-	int socket_client;
+	int socket_client = 0;
 	int addrlen = sizeof(address);
 	fd_set readfds;
+#ifdef _WIN32
+	unsigned long on = 1;
+#endif
 
 	while(socket_loop) {
 		do {
@@ -438,20 +503,21 @@ void *socket_wait(void *param) {
 		if(socket_loop == 0) {
 			break;
 		}
-
-			//If something happened on the master socket, then its an incoming connection
-			if(FD_ISSET((unsigned long)socket_get_fd(), &readfds)) {
-				if((socket_client = accept(socket_get_fd(), (struct sockaddr *)&address, (socklen_t*)&addrlen))<0) {
-					logprintf(LOG_ERR, "failed to accept client");
-					exit(EXIT_FAILURE);
-				}
-			if(whitelist_check(inet_ntoa(address.sin_addr)) != 0) {
-				logprintf(LOG_INFO, "rejected client, ip: %s, port: %d", inet_ntoa(address.sin_addr), ntohs(address.sin_port));
+		//If something happened on the master socket, then its an incoming connection
+		if(FD_ISSET((unsigned long)socket_get_fd(), &readfds)) {
+			if((socket_client = accept(socket_get_fd(), (struct sockaddr *)&address, (socklen_t *)&addrlen)) < 0) {
+				logprintf(LOG_ERR, "failed to accept client");
+				exit(EXIT_FAILURE);
+			}
+			memset(&buf, '\0', INET_ADDRSTRLEN+1);
+			inet_ntop(AF_INET, (void *)&(address.sin_addr), buf, INET_ADDRSTRLEN+1);
+			if(whitelist_check(buf) != 0) {
+				logprintf(LOG_INFO, "rejected client, ip: %s, port: %d", buf, ntohs(address.sin_port));
 				shutdown(socket_client, 2);
 				close(socket_client);
 			} else {
 				//inform user of socket number - used in send and receive commands
-				logprintf(LOG_INFO, "new client, ip: %s, port: %d", inet_ntoa(address.sin_addr), ntohs(address.sin_port));
+				logprintf(LOG_INFO, "new client, ip: %s, port: %d", buf, ntohs(address.sin_port));
 				logprintf(LOG_DEBUG, "client fd: %d", socket_client);
 				//send new connection accept message
 				//socket_write(socket_client, "{\"message\":\"accept connection\"}");
@@ -459,9 +525,17 @@ void *socket_wait(void *param) {
 				static struct linger linger = { 0, 0 };
 				socklen_t lsize = sizeof(struct linger);
 				setsockopt(socket_client, SOL_SOCKET, SO_LINGER, (void *)&linger, lsize);
-				int flags = fcntl(socket_client, F_GETFL, 0);
-				if(flags != -1) {
-					fcntl(socket_client, F_SETFL, flags | O_NONBLOCK);
+#ifdef _WIN32
+				int flags = ioctlsocket(socket_client, FIONBIO, &on);
+#else
+ 				int flags = fcntl(socket_client, F_GETFL, 0);
+#endif
+ 				if(flags != -1) {
+#ifdef _WIN32
+					ioctlsocket(socket_client, FIONBIO, &on);
+#else
+ 					fcntl(socket_client, F_SETFL, flags | O_NONBLOCK);
+#endif
 				}
 
 				//add new socket to array of sockets
@@ -476,7 +550,7 @@ void *socket_wait(void *param) {
 					}
 				}
 			}
-        }
+		}
 
 		//else its some IO operation on some other socket :)
 		for(i=1;i<MAX_CLIENTS;i++) {
@@ -509,5 +583,10 @@ void *socket_wait(void *param) {
 			}
 		}
 	}
-	return NULL;
+
+#ifdef _WIN32
+	return 0;
+#else
+ 	return NULL;
+#endif
 }

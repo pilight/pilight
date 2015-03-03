@@ -20,7 +20,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "../../pilight.h"
+#include "pilight.h"
 #include "common.h"
 #include "dso.h"
 #include "log.h"
@@ -55,7 +55,7 @@ static void arctechDuskParseBinary(void) {
 	arctechDuskCreateMessage(id, unit, state, all);
 }
 
-#ifndef MODULE
+#if !defined(MODULE) && !defined(_WIN32)
 __attribute__((weak))
 #endif
 void arctechDuskInit(void) {
@@ -79,7 +79,7 @@ void arctechDuskInit(void) {
 	arctech_dusk->parseBinary=&arctechDuskParseBinary;
 }
 
-#ifdef MODULE
+#if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "arctech_dusk";
 	module->version = "1.2";

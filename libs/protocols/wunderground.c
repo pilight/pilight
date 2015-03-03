@@ -26,8 +26,17 @@
 #include <fcntl.h>
 #include <math.h>
 #include <sys/stat.h>
+#ifdef _WIN32
+	#include "pthread.h"
+	#include "implement.h"
+#else
+	#ifdef __mips__
+		#define __USE_UNIX98
+	#endif
+	#include <pthread.h>
+#endif
 
-#include "../../pilight.h"
+#include "pilight.h"
 #include "common.h"
 #include "dso.h"
 #include "../pilight/datetime.h" // Full path because we also have a datetime protocol
@@ -215,10 +224,12 @@ static void *wundergroundParse(void *param) {
 																	sscanf(stmp, "%d%%", &humi);
 
 																	timenow = time(NULL);
-																	struct tm *current = localtime(&timenow);
-																	int month = current->tm_mon+1;
-																	int mday = current->tm_mday;
-																	int year = current->tm_year+1900;
+																	struct tm current;
+																	memset(&current, '\0', sizeof(struct tm));
+																	localtime_r(&timenow, &current);
+																	int month = current.tm_mon+1;
+																	int mday = current.tm_mday;
+																	int year = current.tm_year+1900;
 
 																	time_t midnight = (datetime2ts(year, month, mday, 23, 59, 59, 0)+1);
 																	time_t sunset = 0;
@@ -336,16 +347,6 @@ static void *wundergroundParse(void *param) {
 	}
 	pthread_mutex_unlock(&wundergroundlock);
 
-	struct wunderground_data_t *wtmp = NULL;
-	while(wunderground_data) {
-		wtmp = wunderground_data;
-		FREE(wunderground_data->api);
-		FREE(wunderground_data->country);
-		FREE(wunderground_data->location);
-		wunderground_data = wunderground_data->next;
-		FREE(wtmp);
-	}
-	FREE(wunderground_data);
 	wunderground_threads--;
 	return (void *)NULL;
 }
@@ -417,6 +418,17 @@ static void wundergroundThreadGC(void) {
 		usleep(10);
 	}
 	protocol_thread_free(wunderground);
+
+	struct wunderground_data_t *wtmp = NULL;
+	while(wunderground_data) {
+		wtmp = wunderground_data;
+		FREE(wunderground_data->api);
+		FREE(wunderground_data->country);
+		FREE(wunderground_data->location);
+		wunderground_data = wunderground_data->next;
+		FREE(wtmp);
+	}
+	FREE(wunderground_data);	
 }
 
 static void wundergroundPrintHelp(void) {
@@ -426,7 +438,7 @@ static void wundergroundPrintHelp(void) {
 	printf("\t -u --update\t\t\tupdate the defined weather entry\n");
 }
 
-#ifndef MODULE
+#if !defined(MODULE) && !defined(_WIN32)
 __attribute__((weak))
 #endif
 void wundergroundInit(void) {
@@ -466,10 +478,10 @@ void wundergroundInit(void) {
 	wunderground->printHelp=&wundergroundPrintHelp;
 }
 
-#ifdef MODULE
+#if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "wunderground";
-	module->version = "1.7";
+	module->version = "1.8";
 	module->reqversion = "5.0";
 	module->reqcommit = "187";
 }

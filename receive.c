@@ -21,7 +21,6 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <errno.h>
-#include <syslog.h>
 
 #include "pilight.h"
 #include "common.h"
@@ -32,7 +31,6 @@
 #include "ssdp.h"
 #include "gc.h"
 
-struct pilight_t pilight;
 static int main_loop = 1;
 static int sockfd = 0;
 static char *recvBuff = NULL;
@@ -52,12 +50,17 @@ int main_gc(void) {
 	FREE(progname);
 	xfree();
 
+#ifdef _WIN32
+	WSACleanup();
+#endif
+
 	return 0;
 }
 
 int main(int argc, char **argv) {
 	// memtrack();
 
+	atomicinit();
 	gc_attach(main_gc);
 
 	/* Catch all exit signals for gc */
@@ -87,7 +90,7 @@ int main(int argc, char **argv) {
 	options_add(&options, 'V', "version", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
 	options_add(&options, 'S', "server", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, "^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]).){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$");
 	options_add(&options, 'P', "port", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, "[0-9]{1,4}");
-	options_add(&options, 's', "statistics", OPTION_NO_VALUE, 0, JSON_NULL, NULL, "[0-9]{1,4}");
+	options_add(&options, 's', "stats", OPTION_NO_VALUE, 0, JSON_NULL, NULL, "[0-9]{1,4}");
 
 	/* Store all CLI arguments for later usage
 	   and also check if the CLI arguments where
@@ -110,7 +113,7 @@ int main(int argc, char **argv) {
 				exit(EXIT_SUCCESS);
 			break;
 			case 'V':
-				printf("%s %s\n", progname, PILIGHT_VERSION);
+				printf("%s v%s\n", progname, PILIGHT_VERSION);
 				exit(EXIT_SUCCESS);
 			break;
 			case 'S':
@@ -134,7 +137,7 @@ int main(int argc, char **argv) {
 	}
 	options_delete(options);
 
-	if(server && port > 0) {
+	if(server != NULL && port > 0) {
 		if((sockfd = socket_connect(server, port)) == -1) {
 			logprintf(LOG_ERR, "could not connect to pilight-daemon");
 			return EXIT_FAILURE;
@@ -148,10 +151,10 @@ int main(int argc, char **argv) {
 			goto close;
 		}
 	}
-	if(ssdp_list) {
+	if(ssdp_list != NULL) {
 		ssdp_free(ssdp_list);
 	}
-	if(server) {
+	if(server != NULL) {
 		FREE(server);
 	}
 	struct JsonNode *jclient = json_mkobject();

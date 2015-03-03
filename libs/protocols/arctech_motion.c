@@ -20,7 +20,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "../../pilight.h"
+#include "pilight.h"
 #include "common.h"
 #include "dso.h"
 #include "log.h"
@@ -55,7 +55,7 @@ static void arctechMotionParseBinary(void) {
 	arctechMotionCreateMessage(id, unit, state, all);
 }
 
-#ifndef MODULE
+#if !defined(MODULE) && !defined(_WIN32)
 __attribute__((weak))
 #endif
 void arctechMotionInit(void) {
@@ -79,7 +79,7 @@ void arctechMotionInit(void) {
 	arctech_motion->parseBinary=&arctechMotionParseBinary;
 }
 
-#ifdef MODULE
+#if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "arctech_motion";
 	module->version = "1.1";

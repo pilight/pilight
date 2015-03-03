@@ -29,7 +29,7 @@ static void operatorPlusCallback(double a, double b, char **ret) {
 	sprintf(*ret, "%f", (a + b));
 }
 
-#ifndef MODULE
+#if !defined(MODULE) && !defined(_WIN32)
 __attribute__((weak))
 #endif
 void operatorPlusInit(void) {
@@ -37,7 +37,7 @@ void operatorPlusInit(void) {
 	operator_plus->callback_number = &operatorPlusCallback;
 }
 
-#ifdef MODULE
+#if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "+";
 	module->version = "1.0";

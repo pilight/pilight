@@ -26,8 +26,17 @@
 #include <time.h>
 #include <math.h>
 #include <string.h>
+#ifdef _WIN32
+	#include "pthread.h"
+	#include "implement.h"
+#else
+	#ifdef __mips__
+		#define __USE_UNIX98
+	#endif
+	#include <pthread.h>
+#endif
 
-#include "../../pilight.h"
+#include "pilight.h"
 #include "common.h"
 #include "settings.h"
 #include "devices.h"
@@ -58,6 +67,7 @@ typedef union varcont_t {
 static pthread_mutex_t events_lock;
 static pthread_cond_t events_signal;
 static pthread_mutexattr_t events_attr;
+static unsigned short eventslock_init = 0;
 
 typedef struct eventsqueue_t {
 	struct JsonNode *jconfig;
@@ -75,8 +85,11 @@ int events_gc(void) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
 	loop = 0;
-	pthread_mutex_unlock(&events_lock);
-	pthread_cond_signal(&events_signal);
+
+	if(eventslock_init == 1) {
+		pthread_mutex_unlock(&events_lock);
+		pthread_cond_signal(&events_signal);
+	}
 
 	while(running == 1) {
 		usleep(10);
@@ -1109,10 +1122,13 @@ close:
 void *events_loop(void *param) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
-	pthread_mutexattr_init(&events_attr);
-	pthread_mutexattr_settype(&events_attr, PTHREAD_MUTEX_RECURSIVE);
-	pthread_mutex_init(&events_lock, &events_attr);
-	pthread_cond_init(&events_signal, NULL);
+	if(eventslock_init == 0) {
+		pthread_mutexattr_init(&events_attr);
+		pthread_mutexattr_settype(&events_attr, PTHREAD_MUTEX_RECURSIVE);
+		pthread_mutex_init(&events_lock, &events_attr);
+		pthread_cond_init(&events_signal, NULL);
+		eventslock_init = 1;
+	}
 
 	struct JsonNode *jdevices = NULL, *jchilds = NULL;
 	struct rules_t *tmp_rules = NULL;
@@ -1173,9 +1189,9 @@ void *events_loop(void *param) {
 			eventsqueue = eventsqueue->next;
 			FREE(tmp);
 			eventsqueue_number--;
-			running = 0;
 			pthread_mutex_unlock(&events_lock);
 		} else {
+			running = 0;
 			pthread_cond_wait(&events_signal, &events_lock);
 		}
 	}
@@ -1190,7 +1206,9 @@ int events_running(void) {
 static void events_queue(char *message) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
-	pthread_mutex_lock(&events_lock);
+	if(eventslock_init == 1) {
+		pthread_mutex_lock(&events_lock);
+	}
 	if(eventsqueue_number < 1024) {
 		struct eventsqueue_t *enode = MALLOC(sizeof(eventsqueue_t));
 		if(enode == NULL) {
@@ -1211,8 +1229,10 @@ static void events_queue(char *message) {
 	} else {
 		logprintf(LOG_ERR, "event queue full");
 	}
-	pthread_mutex_unlock(&events_lock);
-	pthread_cond_signal(&events_signal);
+	if(eventslock_init == 1) {
+		pthread_mutex_unlock(&events_lock);
+		pthread_cond_signal(&events_signal);
+	}
 }
 
 void *events_clientize(void *param) {
@@ -1238,7 +1258,7 @@ void *events_clientize(void *param) {
 				continue;
 			}
 		}
-		if(ssdp_list) {
+		if(ssdp_list != NULL) {
 			ssdp_free(ssdp_list);
 		}
 
@@ -1268,10 +1288,12 @@ void *events_clientize(void *param) {
 		}
 	}
 
-	if(recvBuff) {
+	if(recvBuff != NULL) {
 		FREE(recvBuff);
 		recvBuff = NULL;
 	}
-	socket_close(sockfd);
-	return 0;
+	if(sockfd > 0) {
+		socket_close(sockfd);
+	}
+	return (void *)NULL;
 }
