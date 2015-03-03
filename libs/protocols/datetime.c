@@ -198,8 +198,9 @@ static void *datetimeParse(void *param) {
 	struct datetime_data_t *dnode = MALLOC(sizeof(struct datetime_data_t));
 	char *tz = NULL;
 	int has_longitude = 0, has_latitude = 0, has_server = 0;
+	int target_offset = 0, dst = 0;
 
-	struct tm *tm;
+	struct tm tm;
 
 	datetime_threads++;
 
@@ -267,18 +268,45 @@ static void *datetimeParse(void *param) {
 		logprintf(LOG_INFO, "datetime #%d %.6f:%.6f seems to be in timezone: %s", datetime_threads, dnode->longitude, dnode->latitude, tz);
 	}
 
+	/* Check how many hours we differ from UTC? */
+	target_offset = tzoffset(UTC, tz);
+	/* Are we in daylight savings time? */
+	dst = isdst(tz);
+
 	while(datetime_loop) {
 		pthread_mutex_lock(&datetimelock);
 		dnode->time = time(NULL);
 		dnode->time -= dnode->diff;
-		if((tm = localtztime(tz, dnode->time)) != NULL) {
-			int year = tm->tm_year+1900;
-			int month = tm->tm_mon+1;
-			int day = tm->tm_mday;
-			int hour = tm->tm_hour;
-			int minute = tm->tm_min;
-			int second = tm->tm_sec;
-			int weekday = tm->tm_wday+1;
+
+		/* Get UTC time */
+		if(gmtime_r(&dnode->time, &tm) != NULL) {
+			int year = tm.tm_year+1900;
+			int month = tm.tm_mon+1;
+			int day = tm.tm_mday;
+			/* Add our hour difference to the UTC time */
+			tm.tm_hour += target_offset;
+			/* Add possible daylist savings time hour */
+			tm.tm_hour += dst;
+			int hour = tm.tm_hour;
+			int minute = tm.tm_min;
+			int second = tm.tm_sec;
+			int weekday = tm.tm_wday+1;
+			if(hour >= 24) {
+				/* If hour becomes 24 or more we need to normalize it */
+				time_t t = mktime(&tm);
+				localtime_r(&t, &tm);
+				year = tm.tm_year+1900;
+				month = tm.tm_mon+1;
+				day = tm.tm_mday;
+				hour = tm.tm_hour;
+				minute = tm.tm_min;
+				second = tm.tm_sec;
+				weekday = tm.tm_wday+1;
+			}
+			if(hour == 0 && second == 0 && minute == 0) {
+				/* Check for dst each night */
+				dst = isdst(tz);
+			}
 
 			datetime->message = json_mkobject();
 
@@ -360,6 +388,7 @@ static void datetimeGC(void) {
 __attribute__((weak))
 #endif
 void datetimeInit(void) {
+	
 	pthread_mutexattr_init(&datetimeattr);
 	pthread_mutexattr_settype(&datetimeattr, PTHREAD_MUTEX_RECURSIVE);
 	pthread_mutex_init(&datetimelock, &datetimeattr);

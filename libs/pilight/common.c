@@ -185,7 +185,6 @@ const char *inet_ntop(int af, const void *src, char *dst, int cnt) {
 }
 
 int setenv(const char *name, const char *value, int overwrite) {
-	atomiclock();
 	if(overwrite == 0) {
 		value = getenv(name);
 	}
@@ -193,16 +192,13 @@ int setenv(const char *name, const char *value, int overwrite) {
 	strcat(c, name);
 	strcat(c, "=");
 	strcat(c, value);
-	atomicunlock();
 	return putenv(c);
 }
 
 int unsetenv(const char *name) {
-	atomiclock();
 	char c[strlen(name)+1];
 	strcat(c, name);
 	strcat(c, "=");
-	atomicunlock();
 	return putenv(c);
 }
 
