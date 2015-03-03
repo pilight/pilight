@@ -951,7 +951,7 @@ static void client_webserver_parse_code(int i, char buffer[BUFFER_SIZE]) {
 	unsigned char *p = NULL;
 	unsigned char buff[BUFFER_SIZE];
 	char *cache = NULL;
-	char *path = NULL, buf[17];
+	char *path = NULL, buf[INET_ADDRSTRLEN+1];
 	char *mimetype = NULL;
 	struct stat sb;
 	struct sockaddr_in sockin;
@@ -1003,8 +1003,8 @@ static void client_webserver_parse_code(int i, char buffer[BUFFER_SIZE]) {
 					exit(EXIT_FAILURE);
 				}
 				memset(cache, '\0', BUFFER_SIZE);
-				memset(&buf, '\0', 17);
-				inet_ntop(AF_INET, (void *)&(sockin.sin_addr), buf, 17);
+				memset(&buf, '\0', INET_ADDRSTRLEN+1);
+				inet_ntop(AF_INET, (void *)&(sockin.sin_addr), buf, INET_ADDRSTRLEN+1);
 				sprintf(cache, "<html><head><title>pilight</title></head>"
 							   "<body><center><img src=\"logo.png\"><br />"
 							   "<p style=\"color: #0099ff; font-weight: 800px;"

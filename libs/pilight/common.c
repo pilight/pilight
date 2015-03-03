@@ -141,9 +141,10 @@ int host2ip(char *host, char *ip) {
 
 	for(p = servinfo; p != NULL; p = p->ai_next) {
 		memcpy(&h, &p->ai_addr, sizeof(struct sockaddr_in *));
-		memset(ip, '\0', 17);
-		inet_ntop(AF_INET, (void *)&(h->sin_addr), ip, 17);
+		memset(ip, '\0', INET_ADDRSTRLEN+1);
+		inet_ntop(AF_INET, (void *)&(h->sin_addr), ip, INET_ADDRSTRLEN+1);
 		if(strlen(ip) > 0) {
+			freeaddrinfo(servinfo);
 			return 0;
 		}
 	}
@@ -697,7 +698,9 @@ char *genuuid(char *ifname) {
 			}
 			if(strstr(a, "Serial") != NULL) {
 				sscanf(a, "Serial          : %16s%*[ \n\r]", (char *)&serial);
-				if(strlen(serial) > 0) {
+				if(strlen(serial) > 0 && 
+					 ((isNumeric(serial) == EXIT_SUCCESS && atoi(serial) > 0) ||
+					  (isNumeric(serial) == EXIT_FAILURE))) {
 					memmove(&serial[5], &serial[4], 16);
 					serial[4] = '-';
 					memmove(&serial[8], &serial[7], 13);
@@ -781,7 +784,6 @@ char *genuuid(char *ifname) {
 	}
 	close(fd);
 #elif defined(HAVE_GETIFADDRS)
-
 	ifaddrs *iflist;
 	if(getifaddrs(&iflist) == 0) {
 		for(ifaddrs* cur = iflist; cur; cur = cur->ifa_next) {
