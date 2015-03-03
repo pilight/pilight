@@ -269,12 +269,12 @@ void socket_close(int sockfd) {
 	int i = 0;
 	struct sockaddr_in address;
 	int addrlen = sizeof(address);
-	char buf[17];
+	char buf[INET_ADDRSTRLEN+1];
 
 	if(sockfd > 0) {
 		if(getpeername(sockfd, (struct sockaddr*)&address, (socklen_t*)&addrlen) == 0) {
-			memset(&buf, '\0', 17);
-			inet_ntop(AF_INET, (void *)&(address.sin_addr), buf, 17);
+			memset(&buf, '\0', INET_ADDRSTRLEN+1);
+			inet_ntop(AF_INET, (void *)&(address.sin_addr), buf, INET_ADDRSTRLEN+1);
 			logprintf(LOG_DEBUG, "client disconnected, ip %s, port %d", buf, ntohs(address.sin_port));
 		}
 
@@ -348,12 +348,12 @@ void socket_rm_client(int i, struct socket_callback_t *socket_callback) {
 	struct sockaddr_in address;
 	int addrlen = sizeof(address);
 	int sd = socket_clients[i];
-	char buf[17];
+	char buf[INET_ADDRSTRLEN+1];
 
 	//Somebody disconnected, get his details and print
 	getpeername(sd, (struct sockaddr*)&address, (socklen_t*)&addrlen);
-	memset(&buf, '\0', 17);
-	inet_ntop(AF_INET, (void *)&(address.sin_addr), buf, 17);
+	memset(&buf, '\0', INET_ADDRSTRLEN+1);
+	inet_ntop(AF_INET, (void *)&(address.sin_addr), buf, INET_ADDRSTRLEN+1);
 	logprintf(LOG_DEBUG, "client disconnected, ip %s, port %d", buf, ntohs(address.sin_port));
 	if(socket_callback->client_disconnected_callback)
 		socket_callback->client_disconnected_callback(i);
@@ -462,7 +462,7 @@ void *socket_wait(void *param) {
 
 	struct socket_callback_t *socket_callback = (struct socket_callback_t *)param;
 
-	char buf[17];
+	char buf[INET_ADDRSTRLEN+1];
 	int activity;
 	int i, sd;
 	int max_sd;
@@ -509,8 +509,8 @@ void *socket_wait(void *param) {
 				logprintf(LOG_ERR, "failed to accept client");
 				exit(EXIT_FAILURE);
 			}
-			memset(&buf, '\0', 17);
-			inet_ntop(AF_INET, (void *)&(address.sin_addr), buf, 17);
+			memset(&buf, '\0', INET_ADDRSTRLEN+1);
+			inet_ntop(AF_INET, (void *)&(address.sin_addr), buf, INET_ADDRSTRLEN+1);
 			if(whitelist_check(buf) != 0) {
 				logprintf(LOG_INFO, "rejected client, ip: %s, port: %d", buf, ntohs(address.sin_port));
 				shutdown(socket_client, 2);

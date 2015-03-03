@@ -603,8 +603,8 @@ static int ns_resolve2(const char *host, struct in_addr *ina) {
 	int rv = 0;
 	struct addrinfo hints, *servinfo, *p;
 	struct sockaddr_in *h = NULL;
-	char *ip = MALLOC(17);
-	memset(ip, '\0', 17);
+	char *ip = MALLOC(INET_ADDRSTRLEN+1);
+	memset(ip, '\0', INET_ADDRSTRLEN+1);
 
 	memset(&hints, 0, sizeof hints);
 	hints.ai_family = AF_INET;
@@ -629,8 +629,8 @@ static int ns_resolve2(const char *host, struct in_addr *ina) {
 int ns_resolve(const char *host, char *buf, size_t n) {
   struct in_addr ad;
 	if(ns_resolve2(host, &ad) == 1) {
-		memset(&buf, '\0', 17);
-		inet_ntop(AF_INET, (void *)&ad, buf, 17);
+		memset(&buf, '\0', INET_ADDRSTRLEN+1);
+		inet_ntop(AF_INET, (void *)&ad, buf, INET_ADDRSTRLEN+1);
 		return strlen(buf);
 	} else {
 		return 0;
@@ -869,7 +869,7 @@ void ns_sock_to_str(sock_t sock, char *buf, size_t len, int flags) {
 
 int ns_hexdump(const void *buf, int len, char *dst, int dst_len) {
   const unsigned char *p = (const unsigned char *) buf;
-  char ascii[17] = "";
+  char ascii[INET_ADDRSTRLEN+1] = "";
   int i, idx, n = 0;
 
   for (i = 0; i < len; i++) {

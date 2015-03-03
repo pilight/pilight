@@ -347,16 +347,6 @@ static void *wundergroundParse(void *param) {
 	}
 	pthread_mutex_unlock(&wundergroundlock);
 
-	struct wunderground_data_t *wtmp = NULL;
-	while(wunderground_data) {
-		wtmp = wunderground_data;
-		FREE(wunderground_data->api);
-		FREE(wunderground_data->country);
-		FREE(wunderground_data->location);
-		wunderground_data = wunderground_data->next;
-		FREE(wtmp);
-	}
-	FREE(wunderground_data);
 	wunderground_threads--;
 	return (void *)NULL;
 }
@@ -428,6 +418,17 @@ static void wundergroundThreadGC(void) {
 		usleep(10);
 	}
 	protocol_thread_free(wunderground);
+
+	struct wunderground_data_t *wtmp = NULL;
+	while(wunderground_data) {
+		wtmp = wunderground_data;
+		FREE(wunderground_data->api);
+		FREE(wunderground_data->country);
+		FREE(wunderground_data->location);
+		wunderground_data = wunderground_data->next;
+		FREE(wtmp);
+	}
+	FREE(wunderground_data);	
 }
 
 static void wundergroundPrintHelp(void) {
@@ -480,7 +481,7 @@ void wundergroundInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "wunderground";
-	module->version = "1.7";
+	module->version = "1.8";
 	module->reqversion = "5.0";
 	module->reqcommit = "187";
 }

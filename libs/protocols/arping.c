@@ -71,8 +71,8 @@ static void *arpingParse(void *param) {
 	struct JsonNode *jchild = NULL;
 	struct in_addr if_network;
 	struct in_addr if_netmask;
-	char *srcmac = NULL, tmpip[17], dstip[17], buf[17];
-	char ip[17], *p = ip, *if_name = NULL;
+	char *srcmac = NULL, tmpip[INET_ADDRSTRLEN+1], dstip[INET_ADDRSTRLEN+1], buf[INET_ADDRSTRLEN+1];
+	char ip[INET_ADDRSTRLEN+1], *p = ip, *if_name = NULL;
 	double itmp = 0.0;
 	int state = 0, nrloops = 0, interval = INTERVAL, i = 0, srcip[4];
 
@@ -91,8 +91,8 @@ static void *arpingParse(void *param) {
 	if(json_find_number(json, "poll-interval", &itmp) == 0)
 		interval = (int)round(itmp);
 
-	memset(dstip, '\0', 17);
-	memset(tmpip, '\0', 17);
+	memset(dstip, '\0', INET_ADDRSTRLEN+1);
+	memset(tmpip, '\0', INET_ADDRSTRLEN+1);
 
 	for(i=0;i<strlen(srcmac);i++) {
 		srcmac[i] = (char)tolower(srcmac[i]);
@@ -109,8 +109,8 @@ static void *arpingParse(void *param) {
 	}
 
 
-	memset(&buf, '\0', 17);
-	inet_ntop(AF_INET, (void *)&if_network, buf, 17);
+	memset(&buf, '\0', INET_ADDRSTRLEN+1);
+	inet_ntop(AF_INET, (void *)&if_network, buf, INET_ADDRSTRLEN+1);
 	if(sscanf(buf, "%d.%d.%d.%d", &srcip[0], &srcip[1], &srcip[2], &srcip[3]) != 4) {
 		logprintf(LOG_ERR, "could not extract ip address");
 	}
@@ -120,7 +120,7 @@ static void *arpingParse(void *param) {
 			pthread_mutex_lock(&arpinglock);
 			if(strlen(dstip) == 0) {
 				for(i=0;i<255;i++) {
-					memset(ip, '\0', 17);
+					memset(ip, '\0', INET_ADDRSTRLEN+1);
 					snprintf(ip, sizeof(ip), "%d.%d.%d.%d", srcip[0], srcip[1], srcip[2], i);
 					arp_add_host(ip);
 				}
@@ -132,7 +132,7 @@ static void *arpingParse(void *param) {
 					strcpy(dstip, ip);
 				}
 				if(strcmp(dstip, ip) != 0) {
-					memset(dstip, '\0', 17);
+					memset(dstip, '\0', INET_ADDRSTRLEN+1);
 					logprintf(LOG_NOTICE, "ip address changed from %s to %s", dstip, ip);
 					strcpy(dstip, ip);
 				}

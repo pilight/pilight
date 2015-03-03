@@ -141,9 +141,10 @@ int host2ip(char *host, char *ip) {
 
 	for(p = servinfo; p != NULL; p = p->ai_next) {
 		memcpy(&h, &p->ai_addr, sizeof(struct sockaddr_in *));
-		memset(ip, '\0', 17);
-		inet_ntop(AF_INET, (void *)&(h->sin_addr), ip, 17);
+		memset(ip, '\0', INET_ADDRSTRLEN+1);
+		inet_ntop(AF_INET, (void *)&(h->sin_addr), ip, INET_ADDRSTRLEN+1);
 		if(strlen(ip) > 0) {
+			freeaddrinfo(servinfo);
 			return 0;
 		}
 	}
@@ -184,7 +185,6 @@ const char *inet_ntop(int af, const void *src, char *dst, int cnt) {
 }
 
 int setenv(const char *name, const char *value, int overwrite) {
-	atomiclock();
 	if(overwrite == 0) {
 		value = getenv(name);
 	}
@@ -192,16 +192,13 @@ int setenv(const char *name, const char *value, int overwrite) {
 	strcat(c, name);
 	strcat(c, "=");
 	strcat(c, value);
-	atomicunlock();
 	return putenv(c);
 }
 
 int unsetenv(const char *name) {
-	atomiclock();
 	char c[strlen(name)+1];
 	strcat(c, name);
 	strcat(c, "=");
-	atomicunlock();
 	return putenv(c);
 }
 
@@ -697,7 +694,9 @@ char *genuuid(char *ifname) {
 			}
 			if(strstr(a, "Serial") != NULL) {
 				sscanf(a, "Serial          : %16s%*[ \n\r]", (char *)&serial);
-				if(strlen(serial) > 0) {
+				if(strlen(serial) > 0 && 
+					 ((isNumeric(serial) == EXIT_SUCCESS && atoi(serial) > 0) ||
+					  (isNumeric(serial) == EXIT_FAILURE))) {
 					memmove(&serial[5], &serial[4], 16);
 					serial[4] = '-';
 					memmove(&serial[8], &serial[7], 13);
@@ -781,7 +780,6 @@ char *genuuid(char *ifname) {
 	}
 	close(fd);
 #elif defined(HAVE_GETIFADDRS)
-
 	ifaddrs *iflist;
 	if(getifaddrs(&iflist) == 0) {
 		for(ifaddrs* cur = iflist; cur; cur = cur->ifa_next) {
