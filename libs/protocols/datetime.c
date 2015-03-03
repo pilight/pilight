@@ -303,8 +303,8 @@ static void *datetimeParse(void *param) {
 				second = tm.tm_sec;
 				weekday = tm.tm_wday+1;
 			}
-			if(hour == 0 && second == 0 && minute == 0) {
-				/* Check for dst each night */
+			if(second == 0 && minute == 0) {
+				/* Check for dst each hour */
 				dst = isdst(tz);
 			}
 
