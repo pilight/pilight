@@ -53,14 +53,14 @@
 #define HTTP_POST			1
 #define HTTP_GET			0
 
-char *http_process_request(char *url, int method, char **type, int *code, int *size, char *post) {
+char *http_process_request(char *url, int method, char **type, int *code, int *size, const char *contype, char *post) {
 	struct sockaddr_in serv_addr;
 	int sockfd = 0, bytes = 0;
 	int has_code = 0, has_type = 0;
-	int pos = 0;
-	char ip[17], *content = NULL, *host = NULL;
+	int pos = 0, bufsize = BUFFER_SIZE;
+	char ip[17], *content = NULL, *host = NULL, *auth = NULL, *auth64 = NULL;
 	char *page = NULL, *tok = NULL;
-	char recvBuff[BUFFER_SIZE+1], header[1024];
+	char recvBuff[BUFFER_SIZE+1], *header = MALLOC(bufsize);
 	unsigned short port = 0;
 	size_t len = 0, tlen = 0, plen = 0;
 
@@ -70,7 +70,7 @@ char *http_process_request(char *url, int method, char **type, int *code, int *s
 
 	*size = 0;
 
-	memset(header, '\0', 1024);
+	memset(header, '\0', bufsize);
 	memset(recvBuff, '\0', BUFFER_SIZE+1);
 	memset(&serv_addr, '\0', sizeof(struct sockaddr_in));
 
@@ -103,6 +103,16 @@ char *http_process_request(char *url, int method, char **type, int *code, int *s
 		host[tlen] = '\0';
 		page = MALLOC(2);
 		strcpy(page, "/");
+	}
+	if((tok = strstr(host, "@"))) {
+		int len = strlen(host);
+		tlen = (size_t)(tok-host);
+		auth = MALLOC(tlen+1);
+		strncpy(auth, &host[0], tlen);
+		auth[tlen] = '\0';
+		strncpy(host, &host[tlen+1], len);
+		host[len+1] = '\0';
+		auth64 = base64encode(auth, strlen(auth));
 	}
 
 #ifdef _WIN32
@@ -143,20 +153,107 @@ char *http_process_request(char *url, int method, char **type, int *code, int *s
 	}
 
 	if(method == HTTP_POST) {
-		len = (size_t)sprintf(header, "POST %s HTTP/1.0\r\n"
-										 "Host: %s\r\n"
-										 "User-Agent: %s\r\n"
-										 "Content-Type: application/x-www-form-urlencoded\r\n"
-										 "Content-Length: %d\r\n\r\n"
-										 "%s",
-										 page, host, USERAGENT, (int)strlen(post), post);
+		len = (size_t)snprintf(&header[0], bufsize, "POST %s HTTP/1.0\r\n", page);
+		if(len >= bufsize) {
+			bufsize += BUFFER_SIZE;
+			if((header = REALLOC(header, bufsize)) == NULL) {
+				logprintf(LOG_ERR, "out of memory");
+				exit(EXIT_FAILURE);
+			}
+		}
+		len += (size_t)snprintf(&header[len], bufsize - len, "Host: %s\r\n", host);
+		if(len >= bufsize) {
+			bufsize += BUFFER_SIZE;
+			if((header = REALLOC(header, bufsize)) == NULL) {
+				logprintf(LOG_ERR, "out of memory");
+				exit(EXIT_FAILURE);
+			}
+		}
+		if(auth64 != NULL) {
+			len += (size_t)snprintf(&header[len], bufsize - len, "Authorization: Basic %s\r\n", auth64);
+			if(len >= bufsize) {
+				bufsize += BUFFER_SIZE;
+				if((header = REALLOC(header, bufsize)) == NULL) {
+					logprintf(LOG_ERR, "out of memory");
+					exit(EXIT_FAILURE);
+				}
+			}
+		}
+		len += (size_t)snprintf(&header[len], bufsize - len, "User-Agent: %s\r\n", USERAGENT);
+		if(len >= bufsize) {
+			bufsize += BUFFER_SIZE;
+			if((header = REALLOC(header, bufsize)) == NULL) {
+				logprintf(LOG_ERR, "out of memory");
+				exit(EXIT_FAILURE);
+			}
+		}
+		len += (size_t)snprintf(&header[len], bufsize - len, "Content-Type: %s\r\n", contype);
+		if(len >= bufsize) {
+			bufsize += BUFFER_SIZE;
+			if((header = REALLOC(header, bufsize)) == NULL) {
+				logprintf(LOG_ERR, "out of memory");
+				exit(EXIT_FAILURE);
+			}
+		}
+		len += (size_t)snprintf(&header[len], bufsize - len, "Content-Length: %d\r\n\r\n", (int)strlen(post));
+		if(len >= bufsize) {
+			bufsize += BUFFER_SIZE;
+			if((header = REALLOC(header, bufsize)) == NULL) {
+				logprintf(LOG_ERR, "out of memory");
+				exit(EXIT_FAILURE);
+			}
+		}
+		len += (size_t)snprintf(&header[len], bufsize - len, "%s", post);
+		if(len >= bufsize) {
+			bufsize += BUFFER_SIZE;
+			if((header = REALLOC(header, bufsize)) == NULL) {
+				logprintf(LOG_ERR, "out of memory");
+				exit(EXIT_FAILURE);
+			}
+		}
 	} else if(method == HTTP_GET) {
-		len = (size_t)sprintf(header,
-						"GET %s HTTP/1.0\r\n"
-						"Host: %s\r\n"
-						"User-Agent: pilight\r\n"
-						"Connection: close\r\n\r\n",
-						page, host);
+		len = (size_t)snprintf(&header[0], bufsize, "GET %s HTTP/1.0\r\n", page);
+		if(len >= bufsize) {
+			bufsize += BUFFER_SIZE;
+			if((header = REALLOC(header, bufsize)) == NULL) {
+				logprintf(LOG_ERR, "out of memory");
+				exit(EXIT_FAILURE);
+			}
+		}
+		len += (size_t)snprintf(&header[len], bufsize - len, "Host: %s\r\n", host);
+		if(len >= bufsize) {
+			bufsize += BUFFER_SIZE;
+			if((header = REALLOC(header, bufsize)) == NULL) {
+				logprintf(LOG_ERR, "out of memory");
+				exit(EXIT_FAILURE);
+			}
+		}
+		if(auth64 != NULL) {
+			len += (size_t)snprintf(&header[len], bufsize - len, "Authorization: Basic %s\r\n", auth64);
+			if(len >= bufsize) {
+				bufsize += BUFFER_SIZE;
+				if((header = REALLOC(header, bufsize)) == NULL) {
+					logprintf(LOG_ERR, "out of memory");
+					exit(EXIT_FAILURE);
+				}
+			}
+		}
+		len += (size_t)snprintf(&header[len], bufsize - len, "User-Agent: %s\r\n", USERAGENT);
+		if(len >= bufsize) {
+			bufsize += BUFFER_SIZE;
+			if((header = REALLOC(header, bufsize)) == NULL) {
+				logprintf(LOG_ERR, "out of memory");
+				exit(EXIT_FAILURE);
+			}
+		}
+		len += (size_t)snprintf(&header[len], bufsize - len, "Connection: close\r\n\r\n");
+		if(len >= bufsize) {
+			bufsize += BUFFER_SIZE;
+			if((header = REALLOC(header, bufsize)) == NULL) {
+				logprintf(LOG_ERR, "out of memory");
+				exit(EXIT_FAILURE);
+			}
+		}
 	}
 
 	if(port == 443) {
@@ -278,7 +375,9 @@ exit:
 
 		memset(&ssl, '\0', sizeof(ssl));
 	}
-
+	if(header) FREE(header);
+	if(auth) FREE(auth);
+	if(auth64) FREE(auth64);
 	if(page) FREE(page);
 	if(host) FREE(host);
 	if(sockfd > 0) {
@@ -295,9 +394,9 @@ exit:
 }
 
 char *http_get_content(char *url, char **type, int *code, int *size) {
-	return http_process_request(url, HTTP_GET, type, code, size, NULL);
+	return http_process_request(url, HTTP_GET, type, code, size, NULL, NULL);
 }
 
-char *http_post_content(char *url, char **type, int *code, int *size, char *post) {
-	return http_process_request(url, HTTP_POST, type, code, size, post);
+char *http_post_content(char *url, char **type, int *code, int *size, const char *contype, char *post) {
+	return http_process_request(url, HTTP_POST, type, code, size, contype, post);
 }

@@ -1,5 +1,5 @@
 /*
-	Copyright (C) 2013 - 2014 CurlyMo
+	Copyright (C) 2013 - 2015 CurlyMo
 
 	This file is part of pilight.
 
@@ -23,7 +23,7 @@
 
 #include "action.h"
 #include "options.h"
-#include "pushover.h"
+#include "pushbullet.h"
 #include "log.h"
 #include "devices.h"
 #include "dso.h"
@@ -31,34 +31,34 @@
 #include "common.h"
 #include "pilight.h"
 
-static int actionPushoverArguments(struct JsonNode *arguments) {
+static int actionPushbulletArguments(struct JsonNode *arguments) {
 	struct JsonNode *jtitle = NULL;
-	struct JsonNode *jmessage = NULL;
-	struct JsonNode *juser = NULL;
+	struct JsonNode *jbody = NULL;
+	struct JsonNode *jtype = NULL;
 	struct JsonNode *jtoken = NULL;
 	struct JsonNode *jvalues = NULL;
 	struct JsonNode *jchild = NULL;
 	int nrvalues = 0;
 
 	jtitle = json_find_member(arguments, "TITLE");
-	jmessage = json_find_member(arguments, "MESSAGE");
+	jbody = json_find_member(arguments, "BODY");
 	jtoken = json_find_member(arguments, "TOKEN");
-	juser = json_find_member(arguments, "USER");
+	jtype = json_find_member(arguments, "TYPE");
 
 	if(jtitle == NULL) {
-		logprintf(LOG_ERR, "pushover action is missing a \"TITLE\"");
+		logprintf(LOG_ERR, "pushbullet action is missing a \"TITLE\"");
 		return -1;
 	}
-	if(jmessage == NULL) {
-		logprintf(LOG_ERR, "pushover action is missing a \"MESSAGE\"");
+	if(jbody == NULL) {
+		logprintf(LOG_ERR, "pushbullet action is missing a \"BODY\"");
 		return -1;
 	}
-	if(juser == NULL) {
-		logprintf(LOG_ERR, "pushover action is missing a \"USER\"");
+	if(jtype == NULL) {
+		logprintf(LOG_ERR, "pushbullet action is missing a \"TYPE\"");
 		return -1;
 	}
 	if(jtoken == NULL) {
-		logprintf(LOG_ERR, "pushover action is missing a \"TOKEN\"");
+		logprintf(LOG_ERR, "pushbullet action is missing a \"TOKEN\"");
 		return -1;
 	}
 	nrvalues = 0;
@@ -70,11 +70,11 @@ static int actionPushoverArguments(struct JsonNode *arguments) {
 		}
 	}
 	if(nrvalues != 1) {
-		logprintf(LOG_ERR, "pushover action \"TITLE\" only takes one argument");
+		logprintf(LOG_ERR, "pushbullet action \"TITLE\" only takes one argument");
 		return -1;
 	}
 	nrvalues = 0;
-	if((jvalues = json_find_member(jmessage, "value")) != NULL) {
+	if((jvalues = json_find_member(jbody, "value")) != NULL) {
 		jchild = json_first_child(jvalues);
 		while(jchild) {
 			nrvalues++;
@@ -82,7 +82,7 @@ static int actionPushoverArguments(struct JsonNode *arguments) {
 		}
 	}
 	if(nrvalues != 1) {
-		logprintf(LOG_ERR, "pushover action \"MESSAGE\" only takes one argument");
+		logprintf(LOG_ERR, "pushbullet action \"BODY\" only takes one argument");
 		return -1;
 	}
 	nrvalues = 0;
@@ -94,11 +94,11 @@ static int actionPushoverArguments(struct JsonNode *arguments) {
 		}
 	}
 	if(nrvalues != 1) {
-		logprintf(LOG_ERR, "pushover action \"TOKEN\" only takes one argument");
+		logprintf(LOG_ERR, "pushbullet action \"TOKEN\" only takes one argument");
 		return -1;
 	}
 	nrvalues = 0;
-	if((jvalues = json_find_member(juser, "value")) != NULL) {
+	if((jvalues = json_find_member(jtype, "value")) != NULL) {
 		jchild = json_first_child(jvalues);
 		while(jchild) {
 			nrvalues++;
@@ -106,16 +106,16 @@ static int actionPushoverArguments(struct JsonNode *arguments) {
 		}
 	}
 	if(nrvalues != 1) {
-		logprintf(LOG_ERR, "pushover action \"USER\" only takes one argument");
+		logprintf(LOG_ERR, "pushbullet action \"TYPE\" only takes one argument");
 		return -1;
 	}
 	return 0;
 }
 
-static int actionPushoverRun(struct JsonNode *arguments) {
+static int actionPushbulletRun(struct JsonNode *arguments) {
 	struct JsonNode *jtitle = NULL;
-	struct JsonNode *jmessage = NULL;
-	struct JsonNode *juser = NULL;
+	struct JsonNode *jbody = NULL;
+	struct JsonNode *jtype = NULL;
 	struct JsonNode *jtoken = NULL;
 	struct JsonNode *jvalues1 = NULL;
 	struct JsonNode *jvalues2 = NULL;
@@ -131,15 +131,15 @@ static int actionPushoverRun(struct JsonNode *arguments) {
 	int ret = 0, size = 0;
 
 	jtitle = json_find_member(arguments, "TITLE");
-	jmessage = json_find_member(arguments, "MESSAGE");
+	jbody = json_find_member(arguments, "BODY");
 	jtoken = json_find_member(arguments, "TOKEN");
-	juser = json_find_member(arguments, "USER");
+	jtype = json_find_member(arguments, "TYPE");
 
-	if(jtitle != NULL && jmessage != NULL && jtoken != NULL && juser != NULL) {
+	if(jtitle != NULL && jbody != NULL && jtoken != NULL && jtype != NULL) {
 		jvalues1 = json_find_member(jtitle, "value");
-		jvalues2 = json_find_member(jmessage, "value");
+		jvalues2 = json_find_member(jbody, "value");
 		jvalues3 = json_find_member(jtoken, "value");
-		jvalues4 = json_find_member(juser, "value");
+		jvalues4 = json_find_member(jtype, "value");
 		if(jvalues1 != NULL && jvalues2 != NULL && jvalues3 != NULL && jvalues4 != NULL) {
 			jval1 = json_find_element(jvalues1, 0);
 			jval2 = json_find_element(jvalues2, 0);
@@ -149,26 +149,28 @@ static int actionPushoverRun(struct JsonNode *arguments) {
 			 jval1->tag == JSON_STRING && jval2->tag == JSON_STRING &&
 			 jval3->tag == JSON_STRING && jval4->tag == JSON_STRING) {
 				data = NULL;
-				strcpy(url, "https://api.pushover.net/1/messages.json");
-				char *message = urlencode(jval2->string_);
-				char *token = urlencode(jval3->string_);
-				char *user = urlencode(jval4->string_);
+				snprintf(url, 1024, "https://%s@api.pushbullet.com/v2/pushes", jval3->string_);
+				char *body = urlencode(jval2->string_);
+				char *type = urlencode(jval4->string_);
 				char *title = urlencode(jval1->string_);
-				size_t l = strlen(message)+strlen(token);
-				l += strlen(user)+strlen(title);
-				l += strlen("token=")+strlen("&user=");
-				l += strlen("&message=")+strlen("&title=");
-				char content[l+2];
-				sprintf(content, "token=%s&user=%s&title=%s&message=%s", token, user, title, message);
-				data = http_post_content(url, &tp, &ret, &size, "application/x-www-form-urlencoded", content);
+
+				struct JsonNode *code = json_mkobject();
+				json_append_member(code, "type", json_mkstring(type));
+				json_append_member(code, "title", json_mkstring(title));
+				json_append_member(code, "body", json_mkstring(body));
+				
+				char *content = json_stringify(code, "\t");
+				json_delete(code);
+
+				data = http_post_content(url, &tp, &ret, &size, "application/json", content);
+				json_free(content);				
 				if(ret == 200) {
-					logprintf(LOG_DEBUG, "pushover action succeeded with message: %s", data);
+					logprintf(LOG_DEBUG, "pushbullet action succeeded with message: %s", data);
 				} else {
-					logprintf(LOG_ERR, "pushover action failed (%d) with message: %s", ret, data);
+					logprintf(LOG_ERR, "pushbullet action failed (%d) with message: %s", ret, data);
 				}
-				FREE(message);
-				FREE(token);
-				FREE(user);
+				FREE(body);
+				FREE(type);
 				FREE(title);
 				FREE(data);
 			}
@@ -180,27 +182,27 @@ static int actionPushoverRun(struct JsonNode *arguments) {
 #if !defined(MODULE) && !defined(_WIN32)
 __attribute__((weak))
 #endif
-void actionPushoverInit(void) {
-	event_action_register(&action_pushover, "pushover");
+void actionPushbulletInit(void) {
+	event_action_register(&action_pushbullet, "pushbullet");
 
-	options_add(&action_pushover->options, 'a', "TITLE", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_STRING, NULL, NULL);
-	options_add(&action_pushover->options, 'b', "MESSAGE", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_STRING, NULL, NULL);
-	options_add(&action_pushover->options, 'c', "TOKEN", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_STRING, NULL, NULL);
-	options_add(&action_pushover->options, 'd', "USER", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_STRING, NULL, NULL);
+	options_add(&action_pushbullet->options, 'a', "TITLE", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_STRING, NULL, NULL);
+	options_add(&action_pushbullet->options, 'b', "BODY", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_STRING, NULL, NULL);
+	options_add(&action_pushbullet->options, 'c', "TOKEN", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_STRING, NULL, NULL);
+	options_add(&action_pushbullet->options, 'd', "TYPE", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_STRING, NULL, NULL);
 
-	action_pushover->run = &actionPushoverRun;
-	action_pushover->checkArguments = &actionPushoverArguments;
+	action_pushbullet->run = &actionPushbulletRun;
+	action_pushbullet->checkArguments = &actionPushbulletArguments;
 }
 
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
-	module->name = "pushover";
-	module->version = "1.1";
+	module->name = "pushbullet";
+	module->version = "1.0";
 	module->reqversion = "5.0";
 	module->reqcommit = "87";
 }
 
 void init(void) {
-	actionPushoverInit();
+	actionPushbulletInit();
 }
 #endif
