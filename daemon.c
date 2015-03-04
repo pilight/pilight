@@ -14,7 +14,7 @@
 
 	You should have received a copy of the GNU General Public License
 	along with pilight. If not, see	<http://www.gnu.org/licenses/>
-*/
+*/ 
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -381,15 +381,20 @@ void *broadcast(void *param) {
 					/* The settings objects inside the broadcast queue is only of interest for the
 					   internal pilight functions. For the outside world we only communicate the
 					   message part of the queue so we remove the settings */
-					char *jinternal = json_stringify(bcqueue->jmessage, NULL);
+					char *internal = json_stringify(bcqueue->jmessage, NULL);
 
 					JsonNode *jsettings = NULL;
 					if((jsettings = json_find_member(bcqueue->jmessage, "settings"))) {
 						json_remove_from_parent(jsettings);
 						json_delete(jsettings);
 					}
-
-					char *jbroadcast = json_stringify(bcqueue->jmessage, NULL);
+					JsonNode *tmp = json_find_member(bcqueue->jmessage, "action");
+					if(tmp != NULL && tmp->tag == JSON_STRING && strcmp(tmp->string_, "update") == 0) {
+						json_remove_from_parent(tmp);
+						json_delete(tmp);
+					}
+		
+					char *broadcast = json_stringify(bcqueue->jmessage, NULL);
 					if(strcmp(bcqueue->protoname, "pilight_firmware") == 0) {
 						struct JsonNode *code = NULL;
 						if((code = json_find_member(bcqueue->jmessage, "message")) != NULL) {
@@ -418,7 +423,7 @@ void *broadcast(void *param) {
 						}
 					}
 					broadcasted = 0;
-
+					
 					struct JsonNode *childs = json_first_child(bcqueue->jmessage);
 					int nrchilds = 0;
 					while(childs) {
@@ -429,17 +434,17 @@ void *broadcast(void *param) {
 					/* Write the message to all receivers */
 					struct clients_t *tmp_clients = clients;
 					while(tmp_clients) {
-						if(tmp_clients->receiver == 1) {
-							if(strcmp(jbroadcast, "{}") != 0 && nrchilds > 1) {
-								socket_write(tmp_clients->id, jbroadcast);
-								broadcasted = 1;
-							}
+						if(tmp_clients->receiver == 1 && tmp_clients->forward == 0) {
+								if(strcmp(broadcast, "{}") != 0 && nrchilds > 1) {
+									socket_write(tmp_clients->id, broadcast);
+									broadcasted = 1;
+								}
 						}
 						tmp_clients = tmp_clients->next;
 					}
 
 					if(pilight.runmode == ADHOC && sockfd > 0) {
-						struct JsonNode *jupdate = json_decode(jinternal);
+						struct JsonNode *jupdate = json_decode(internal);
 						json_append_member(jupdate, "action", json_mkstring("update"));
 						char *ret = json_stringify(jupdate, NULL);
 						socket_write(sockfd, ret);
@@ -447,11 +452,11 @@ void *broadcast(void *param) {
 						json_delete(jupdate);
 						json_free(ret);
 					}
-					if((broadcasted == 1 || nodaemon == 1) && (strcmp(jbroadcast, "{}") != 0 && nrchilds > 1)) {
-						logprintf(LOG_DEBUG, "broadcasted: %s", jbroadcast);
+					if((broadcasted == 1 || nodaemon == 1) && (strcmp(broadcast, "{}") != 0 && nrchilds > 1)) {
+						logprintf(LOG_DEBUG, "broadcasted: %s", broadcast);
 					}
-					json_free(jinternal);
-					json_free(jbroadcast);
+					json_free(internal);
+					json_free(broadcast);
 				}
 			}
 			struct bcqueue_t *tmp = bcqueue;

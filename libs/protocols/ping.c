@@ -161,6 +161,9 @@ void pingInit(void) {
 	pping->devtype = PING;
 	pping->hwtype = API;
 	pping->multipleId = 0;
+#ifdef PILIGHT_V6
+	pping->masterOnly = 1;
+#endif
 
 	options_add(&pping->options, 'c', "connected", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
 	options_add(&pping->options, 'd', "disconnected", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
@@ -175,7 +178,7 @@ void pingInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "ping";
-	module->version = "1.2";
+	module->version = "1.3";
 	module->reqversion = "5.0";
 	module->reqcommit = "187";
 }

@@ -228,6 +228,9 @@ void arpingInit(void) {
 	arping->devtype = PING;
 	arping->hwtype = API;
 	arping->multipleId = 0;
+#ifdef PILIGHT_V6
+	arping->masterOnly = 1;
+#endif
 
 	options_add(&arping->options, 'c', "connected", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
 	options_add(&arping->options, 'd', "disconnected", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
@@ -244,7 +247,7 @@ void arpingInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "arping";
-	module->version = "1.2";
+	module->version = "1.3";
 	module->reqversion = "5.0";
 	module->reqcommit = "187";
 }

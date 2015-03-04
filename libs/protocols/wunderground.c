@@ -452,6 +452,9 @@ void wundergroundInit(void) {
 	wunderground->devtype = WEATHER;
 	wunderground->hwtype = API;
 	wunderground->multipleId = 0;
+#ifdef PILIGHT_V6
+	wunderground->masterOnly = 1;
+#endif
 
 	options_add(&wunderground->options, 't', "temperature", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9]{1,5}$");
 	options_add(&wunderground->options, 'h', "humidity", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9]{1,5}$");
@@ -481,7 +484,7 @@ void wundergroundInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "wunderground";
-	module->version = "1.8";
+	module->version = "1.9";
 	module->reqversion = "5.0";
 	module->reqcommit = "187";
 }

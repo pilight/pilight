@@ -393,6 +393,9 @@ void openweathermapInit(void) {
 	openweathermap->devtype = WEATHER;
 	openweathermap->hwtype = API;
 	openweathermap->multipleId = 0;
+#ifdef PILIGHT_V6
+	openweathermap->masterOnly = 1;
+#endif
 
 	options_add(&openweathermap->options, 't', "temperature", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9]{1,5}$");
 	options_add(&openweathermap->options, 'h', "humidity", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9]{1,5}$");
@@ -421,7 +424,7 @@ void openweathermapInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "openweathermap";
-	module->version = "1.7";
+	module->version = "1.8";
 	module->reqversion = "5.0";
 	module->reqcommit = "187";
 }

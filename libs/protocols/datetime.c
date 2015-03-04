@@ -402,6 +402,9 @@ void datetimeInit(void) {
 	datetime->devtype = DATETIME;
 	datetime->hwtype = API;
 	datetime->multipleId = 0;
+#ifdef PILIGHT_V6
+	datetime->masterOnly = 1;
+#endif
 
 	options_add(&datetime->options, 'o', "longitude", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, NULL);
 	options_add(&datetime->options, 'a', "latitude", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, NULL);
@@ -425,7 +428,7 @@ void datetimeInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "datetime";
-	module->version = "2.0";
+	module->version = "2.1";
 	module->reqversion = "5.0";
 	module->reqcommit = "187";
 }

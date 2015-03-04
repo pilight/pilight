@@ -254,6 +254,9 @@ void sunRiseSetInit(void) {
 	sunriseset->devtype = WEATHER;
 	sunriseset->hwtype = API;
 	sunriseset->multipleId = 0;
+#ifdef PILIGHT_V6
+	sunriseset->masterOnly = 1;
+#endif
 
 	options_add(&sunriseset->options, 'o', "longitude", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, NULL);
 	options_add(&sunriseset->options, 'a', "latitude", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, NULL);
@@ -273,7 +276,7 @@ void sunRiseSetInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "sunriseset";
-	module->version = "1.3";
+	module->version = "1.4";
 	module->reqversion = "5.0";
 	module->reqcommit = "187";
 }

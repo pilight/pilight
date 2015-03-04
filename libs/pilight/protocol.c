@@ -226,6 +226,7 @@ void protocol_register(protocol_t **proto) {
 	(*proto)->rxrpt = 1;
 	(*proto)->multipleId = 1;
 	(*proto)->config = 1;
+	(*proto)->masterOnly = 0;
 	(*proto)->parseRaw = NULL;
 	(*proto)->parseBinary = NULL;
 	(*proto)->parseCode = NULL;

@@ -89,6 +89,7 @@ typedef struct protocol_t {
 	short rxrpt;
 	short multipleId;
 	short config;
+	short masterOnly;
 	unsigned short lsb;
 	struct options_t *options;
 	JsonNode *message;
