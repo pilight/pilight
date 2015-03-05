@@ -110,6 +110,7 @@ static void *timerParse(void *param) {
                 pthread_mutex_lock(&timerlock);
                 for (i=0; i<timer_data->nrid; i++) {
                         if( timer_data->time[i] == 0 ) {
+                                timer_data->delay_ready[i]=0;
                                 timerCreateMessage(timer_data->id[i],  0);
                         } else if( timer_data->delay[i] && (timer_data->start[i] - timer_data->delay[i] == timer_data->time[i] )) {
                                 timerCreateMessage(timer_data->id[i],  1);
@@ -173,6 +174,7 @@ static int timerCreateCode(JsonNode *code) {
                                 }
                         } else {
                                 timer_data->time[i]=-1;
+                                timer_data->delay_ready[i]=0;
                                 timerCreateMessage(id,  state);
                                 break;
                         }
