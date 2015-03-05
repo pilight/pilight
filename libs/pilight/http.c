@@ -59,7 +59,7 @@ char *http_process_request(char *url, int method, char **type, int *code, int *s
 	int has_code = 0, has_type = 0;
 	int pos = 0;
 	size_t bufsize = BUFFER_SIZE;
-	char ip[17], *content = NULL, *host = NULL, *auth = NULL, *auth64 = NULL;
+	char ip[INET_ADDRSTRLEN+1], *content = NULL, *host = NULL, *auth = NULL, *auth64 = NULL;
 	char *page = NULL, *tok = NULL;
 	char recvBuff[BUFFER_SIZE+1], *header = MALLOC(bufsize);
 	unsigned short port = 0, sslfree = 0, entropyfree = 0;
