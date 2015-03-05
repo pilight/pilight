@@ -170,7 +170,9 @@ static int actionPushoverRun(struct JsonNode *arguments) {
 				FREE(token);
 				FREE(user);
 				FREE(title);
-				FREE(data);
+				if(data != NULL) {
+					FREE(data);
+				}
 			}
 		}
 	}

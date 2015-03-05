@@ -150,14 +150,11 @@ static int actionPushbulletRun(struct JsonNode *arguments) {
 			 jval3->tag == JSON_STRING && jval4->tag == JSON_STRING) {
 				data = NULL;
 				snprintf(url, 1024, "https://%s@api.pushbullet.com/v2/pushes", jval3->string_);
-				char *body = urlencode(jval2->string_);
-				char *type = urlencode(jval4->string_);
-				char *title = urlencode(jval1->string_);
 
 				struct JsonNode *code = json_mkobject();
-				json_append_member(code, "type", json_mkstring(type));
-				json_append_member(code, "title", json_mkstring(title));
-				json_append_member(code, "body", json_mkstring(body));
+				json_append_member(code, "type", json_mkstring(jval4->string_));
+				json_append_member(code, "title", json_mkstring(jval1->string_));
+				json_append_member(code, "body", json_mkstring(jval2->string_));
 				
 				char *content = json_stringify(code, "\t");
 				json_delete(code);
@@ -169,10 +166,9 @@ static int actionPushbulletRun(struct JsonNode *arguments) {
 				} else {
 					logprintf(LOG_ERR, "pushbullet action failed (%d) with message: %s", ret, data);
 				}
-				FREE(body);
-				FREE(type);
-				FREE(title);
-				FREE(data);
+				if(data != NULL) {
+					FREE(data);
+				}
 			}
 		}
 	}

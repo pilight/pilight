@@ -577,15 +577,15 @@ char *base64decode(char *src, size_t len, size_t *decsize) {
       for(i = 0; i < 4; ++i) {
         for(l = 0; l < 64; ++l) {
           if(tmp[i] == base64table[l]) {
-            tmp[i] = l;
+            tmp[i] = (char)l;
             break;
           }
         }
       }
 
-      buf[0] = (tmp[0] << 2) + ((tmp[1] & 0x30) >> 4);
-      buf[1] = ((tmp[1] & 0xf) << 4) + ((tmp[2] & 0x3c) >> 2);
-      buf[2] = ((tmp[2] & 0x3) << 6) + tmp[3];
+      buf[0] = (char)((tmp[0] << 2) + ((tmp[1] & 0x30) >> 4));
+      buf[1] = (char)(((tmp[1] & 0xf) << 4) + ((tmp[2] & 0x3c) >> 2));
+      buf[2] = (char)(((tmp[2] & 0x3) << 6) + tmp[3]);
 
       dec = REALLOC(dec, size + 3);
       for(i = 0; i < 3; ++i) {
@@ -604,17 +604,17 @@ char *base64decode(char *src, size_t len, size_t *decsize) {
     for(j = 0; j < 4; ++j) {
 			for(l = 0; l < 64; ++l) {
 				if(tmp[j] == base64table[l]) {
-					tmp[j] = l;
+					tmp[j] = (char)l;
 					break;
 				}
 			}
     }
 
-    buf[0] = (tmp[0] << 2) + ((tmp[1] & 0x30) >> 4);
-    buf[1] = ((tmp[1] & 0xf) << 4) + ((tmp[2] & 0x3c) >> 2);
-    buf[2] = ((tmp[2] & 0x3) << 6) + tmp[3];
+    buf[0] = (char)((tmp[0] << 2) + ((tmp[1] & 0x30) >> 4));
+    buf[1] = (char)(((tmp[1] & 0xf) << 4) + ((tmp[2] & 0x3c) >> 2));
+    buf[2] = (char)(((tmp[2] & 0x3) << 6) + tmp[3]);
 
-    dec = REALLOC(dec, size + (i - 1));
+    dec = REALLOC(dec, (size_t)(size + (size_t)(i - 1)));
     for(j = 0; (j < i - 1); ++j) {
       dec[size++] = buf[j];
     }
@@ -647,14 +647,14 @@ char *base64encode(char *src, size_t len) {
     tmp[i++] = *(src++);
 
     if(i == 3) {
-      buf[0] = (tmp[0] & 0xfc) >> 2;
-      buf[1] = ((tmp[0] & 0x03) << 4) + ((tmp[1] & 0xf0) >> 4);
-      buf[2] = ((tmp[1] & 0x0f) << 2) + ((tmp[2] & 0xc0) >> 6);
-      buf[3] = tmp[2] & 0x3f;
+      buf[0] = (char)((tmp[0] & 0xfc) >> 2);
+      buf[1] = (char)(((tmp[0] & 0x03) << 4) + ((tmp[1] & 0xf0) >> 4));
+      buf[2] = (char)(((tmp[1] & 0x0f) << 2) + ((tmp[2] & 0xc0) >> 6));
+      buf[3] = (char)(tmp[2] & 0x3f);
 
       enc = REALLOC(enc, size + 4);
       for(i = 0; i < 4; ++i) {
-        enc[size++] = base64table[buf[i]];
+        enc[size++] = base64table[(int)buf[i]];
       }
 
       i = 0;
@@ -666,23 +666,23 @@ char *base64encode(char *src, size_t len) {
       tmp[j] = '\0';
     }
 
-    buf[0] = (tmp[0] & 0xfc) >> 2;
-    buf[1] = ((tmp[0] & 0x03) << 4) + ((tmp[1] & 0xf0) >> 4);
-    buf[2] = ((tmp[1] & 0x0f) << 2) + ((tmp[2] & 0xc0) >> 6);
-    buf[3] = tmp[2] & 0x3f;
+		buf[0] = (char)((tmp[0] & 0xfc) >> 2);
+		buf[1] = (char)(((tmp[0] & 0x03) << 4) + ((tmp[1] & 0xf0) >> 4));
+		buf[2] = (char)(((tmp[1] & 0x0f) << 2) + ((tmp[2] & 0xc0) >> 6));
+		buf[3] = (char)(tmp[2] & 0x3f);
 
     for(j = 0; (j < i + 1); ++j) {
-      enc = REALLOC(enc, size);
-      enc[size++] = base64table[buf[j]];
+      enc = REALLOC(enc, size+1);
+      enc[size++] = base64table[(int)buf[j]];
     }
 
     while((i++ < 3)) {
-      enc = REALLOC(enc, size);
+      enc = REALLOC(enc, size+1);
       enc[size++] = '=';
     }
   }
 
-  enc = REALLOC(enc, size + 1);
+  enc = REALLOC(enc, size+1);
   enc[size] = '\0';
 
   return enc;
