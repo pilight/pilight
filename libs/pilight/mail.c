@@ -95,13 +95,14 @@ static size_t sd_write(char *content) {
 
 int sendmail(char *host, char *login, char *pass, unsigned short port, struct mail_t *mail) {
 	struct sockaddr_in serv_addr;
-	char recvBuff[BUFFER_SIZE], *out = NULL, ip[INET_ADDRSTRLEN+1];
-	int authtype = UNSUPPORTED, entropyfree = 0, sslfree = 0, error = 0;
+	char recvBuff[BUFFER_SIZE], *out = NULL, ip[INET_ADDRSTRLEN+1], testme[256], ch = 0;
+	int authtype = UNSUPPORTED, entropyfree = 0, sslfree = 0, error = 0, val = 0;
 	size_t len = 0;
 	entropy_context entropy;
 	ctr_drbg_context ctr_drbg;
 
 	memset(&recvBuff, '\0', BUFFER_SIZE);
+	memset(&testme, '\0', 256);
 	memset(&ip, '\0', INET_ADDRSTRLEN+1);
 	memset(&serv_addr, '\0', sizeof(serv_addr));
 	memset(&ssl, '\0', sizeof(ssl_context));
@@ -202,22 +203,28 @@ int sendmail(char *host, char *login, char *pass, unsigned short port, struct ma
 	memset(recvBuff, '\0', sizeof(recvBuff));	
 	while(sd_read(recvBuff) > 0) {
 		logprintf(LOG_DEBUG, "SMTP: %s", recvBuff);
-		if(strncmp(recvBuff, "250-AUTH PLAIN LOGIN", 20) == 0) {
-			authtype = AUTHPLAIN;
+		if(sscanf(recvBuff, "%d%c%[^\r\n]", &val, &ch, testme) == 0) {
+			error = -1;
+			goto close;
 		}
-		if(strncmp(recvBuff, "250-AUTH LOGIN PLAIN", 20) == 0) {
-			authtype = AUTHPLAIN;
-		}		
-		if(strncmp(recvBuff, "250 AUTH-PLAIN=LOGIN", 20) == 0) {
-			authtype = AUTHPLAIN;
+		if(val != 250) {
+			logprintf(LOG_ERR, "SMTP: expected 250 got %d", val);
+			error = -1;
+			goto close;
+		}
+		if(strncmp(testme, "AUTH", 4) == 0) {
+			if(strstr(testme, "PLAIN") != NULL || strstr(testme, "plain") != NULL) {
+				authtype = AUTHPLAIN;
+			}
 		}
 
-		if(strncmp(recvBuff, "250 DSN", 7) == 0) {
+		/* The 250 list often contains several lines.
+		 * Each line starts with "250-..." except the last.
+		 * The last line is "250 ..." without the minus sign.
+		 */
+		if(ch != '-') {
 			break;
 		}
-		if(strncmp(recvBuff, "250 SMTPUTF8", 12) == 0) {
-			break;
-		}		
 		memset(recvBuff, '\0', sizeof(recvBuff));	
 	}
 	
