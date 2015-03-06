@@ -53,15 +53,16 @@
 #define HTTP_POST			1
 #define HTTP_GET			0
 
-char *http_process_request(char *url, int method, char **type, int *code, int *size, char *post) {
+char *http_process_request(char *url, int method, char **type, int *code, int *size, const char *contype, char *post) {
 	struct sockaddr_in serv_addr;
 	int sockfd = 0, bytes = 0;
 	int has_code = 0, has_type = 0;
 	int pos = 0;
-	char ip[17], *content = NULL, *host = NULL;
+	size_t bufsize = BUFFER_SIZE;
+	char ip[INET_ADDRSTRLEN+1], *content = NULL, *host = NULL, *auth = NULL, *auth64 = NULL;
 	char *page = NULL, *tok = NULL;
-	char recvBuff[BUFFER_SIZE+1], header[1024];
-	unsigned short port = 0;
+	char recvBuff[BUFFER_SIZE+1], *header = MALLOC(bufsize);
+	unsigned short port = 0, sslfree = 0, entropyfree = 0;
 	size_t len = 0, tlen = 0, plen = 0;
 
 	entropy_context entropy;
@@ -70,7 +71,7 @@ char *http_process_request(char *url, int method, char **type, int *code, int *s
 
 	*size = 0;
 
-	memset(header, '\0', 1024);
+	memset(header, '\0', bufsize);
 	memset(recvBuff, '\0', BUFFER_SIZE+1);
 	memset(&serv_addr, '\0', sizeof(struct sockaddr_in));
 
@@ -103,6 +104,19 @@ char *http_process_request(char *url, int method, char **type, int *code, int *s
 		host[tlen] = '\0';
 		page = MALLOC(2);
 		strcpy(page, "/");
+	}
+	if((tok = strstr(host, "@"))) {
+		size_t pglen = strlen(page);
+		if(strcmp(page, "/") == 0) {
+			pglen -= 1;
+		}
+		tlen = (size_t)(tok-host);
+		auth = MALLOC(tlen+1);
+		strncpy(auth, &host[0], tlen);
+		auth[tlen] = '\0';
+		strncpy(&host[0], &url[plen+tlen], len-(plen+tlen+pglen));
+		host[len-(plen+tlen+pglen)] = '\0';
+		auth64 = base64encode(auth, strlen(auth));
 	}
 
 #ifdef _WIN32
@@ -143,25 +157,113 @@ char *http_process_request(char *url, int method, char **type, int *code, int *s
 	}
 
 	if(method == HTTP_POST) {
-		len = (size_t)sprintf(header, "POST %s HTTP/1.0\r\n"
-										 "Host: %s\r\n"
-										 "User-Agent: %s\r\n"
-										 "Content-Type: application/x-www-form-urlencoded\r\n"
-										 "Content-Length: %d\r\n\r\n"
-										 "%s",
-										 page, host, USERAGENT, (int)strlen(post), post);
+		len = (size_t)snprintf(&header[0], bufsize, "POST %s HTTP/1.0\r\n", page);
+		if(len >= bufsize) {
+			bufsize += BUFFER_SIZE;
+			if((header = REALLOC(header, bufsize)) == NULL) {
+				logprintf(LOG_ERR, "out of memory");
+				exit(EXIT_FAILURE);
+			}
+		}
+		len += (size_t)snprintf(&header[len], bufsize - len, "Host: %s\r\n", host);
+		if(len >= bufsize) {
+			bufsize += BUFFER_SIZE;
+			if((header = REALLOC(header, bufsize)) == NULL) {
+				logprintf(LOG_ERR, "out of memory");
+				exit(EXIT_FAILURE);
+			}
+		}
+		if(auth64 != NULL) {
+			len += (size_t)snprintf(&header[len], bufsize - len, "Authorization: Basic %s\r\n", auth64);
+			if(len >= bufsize) {
+				bufsize += BUFFER_SIZE;
+				if((header = REALLOC(header, bufsize)) == NULL) {
+					logprintf(LOG_ERR, "out of memory");
+					exit(EXIT_FAILURE);
+				}
+			}
+		}
+		len += (size_t)snprintf(&header[len], bufsize - len, "User-Agent: %s\r\n", USERAGENT);
+		if(len >= bufsize) {
+			bufsize += BUFFER_SIZE;
+			if((header = REALLOC(header, bufsize)) == NULL) {
+				logprintf(LOG_ERR, "out of memory");
+				exit(EXIT_FAILURE);
+			}
+		}
+		len += (size_t)snprintf(&header[len], bufsize - len, "Content-Type: %s\r\n", contype);
+		if(len >= bufsize) {
+			bufsize += BUFFER_SIZE;
+			if((header = REALLOC(header, bufsize)) == NULL) {
+				logprintf(LOG_ERR, "out of memory");
+				exit(EXIT_FAILURE);
+			}
+		}
+		len += (size_t)snprintf(&header[len], bufsize - len, "Content-Length: %d\r\n\r\n", (int)strlen(post));
+		if(len >= bufsize) {
+			bufsize += BUFFER_SIZE;
+			if((header = REALLOC(header, bufsize)) == NULL) {
+				logprintf(LOG_ERR, "out of memory");
+				exit(EXIT_FAILURE);
+			}
+		}
+		len += (size_t)snprintf(&header[len], bufsize - len, "%s", post);
+		if(len >= bufsize) {
+			bufsize += BUFFER_SIZE;
+			if((header = REALLOC(header, bufsize)) == NULL) {
+				logprintf(LOG_ERR, "out of memory");
+				exit(EXIT_FAILURE);
+			}
+		}
 	} else if(method == HTTP_GET) {
-		len = (size_t)sprintf(header,
-						"GET %s HTTP/1.0\r\n"
-						"Host: %s\r\n"
-						"User-Agent: pilight\r\n"
-						"Connection: close\r\n\r\n",
-						page, host);
+		len = (size_t)snprintf(&header[0], bufsize, "GET %s HTTP/1.0\r\n", page);
+		if(len >= bufsize) {
+			bufsize += BUFFER_SIZE;
+			if((header = REALLOC(header, bufsize)) == NULL) {
+				logprintf(LOG_ERR, "out of memory");
+				exit(EXIT_FAILURE);
+			}
+		}
+		len += (size_t)snprintf(&header[len], bufsize - len, "Host: %s\r\n", host);
+		if(len >= bufsize) {
+			bufsize += BUFFER_SIZE;
+			if((header = REALLOC(header, bufsize)) == NULL) {
+				logprintf(LOG_ERR, "out of memory");
+				exit(EXIT_FAILURE);
+			}
+		}
+		if(auth64 != NULL) {
+			len += (size_t)snprintf(&header[len], bufsize - len, "Authorization: Basic %s\r\n", auth64);
+			if(len >= bufsize) {
+				bufsize += BUFFER_SIZE;
+				if((header = REALLOC(header, bufsize)) == NULL) {
+					logprintf(LOG_ERR, "out of memory");
+					exit(EXIT_FAILURE);
+				}
+			}
+		}
+		len += (size_t)snprintf(&header[len], bufsize - len, "User-Agent: %s\r\n", USERAGENT);
+		if(len >= bufsize) {
+			bufsize += BUFFER_SIZE;
+			if((header = REALLOC(header, bufsize)) == NULL) {
+				logprintf(LOG_ERR, "out of memory");
+				exit(EXIT_FAILURE);
+			}
+		}
+		len += (size_t)snprintf(&header[len], bufsize - len, "Connection: close\r\n\r\n");
+		if(len >= bufsize) {
+			bufsize += BUFFER_SIZE;
+			if((header = REALLOC(header, bufsize)) == NULL) {
+				logprintf(LOG_ERR, "out of memory");
+				exit(EXIT_FAILURE);
+			}
+		}
 	}
 
 	if(port == 443) {
 		memset(&ssl, '\0', sizeof(ssl_context));
 		entropy_init(&entropy);
+		entropyfree = 1;
 		if((ctr_drbg_init(&ctr_drbg, entropy_func, &entropy, (const unsigned char *)USERAGENT, 6)) != 0) {
 			logprintf(LOG_ERR, "ctr_drbg_init failed");
 			*code = -1;
@@ -173,6 +275,7 @@ char *http_process_request(char *url, int method, char **type, int *code, int *s
 			*code = -1;
 			goto exit;
 		}
+		sslfree = 1;
 
 		ssl_set_endpoint(&ssl, SSL_IS_CLIENT);
 		ssl_set_rng(&ssl, ctr_drbg_random, &ctr_drbg);
@@ -182,7 +285,7 @@ char *http_process_request(char *url, int method, char **type, int *code, int *s
 		while((ret = ssl_handshake(&ssl)) != 0) {
 			if(ret != POLARSSL_ERR_NET_WANT_READ && ret != POLARSSL_ERR_NET_WANT_WRITE) {
 				logprintf(LOG_ERR, "ssl_handshake failed");
-					*code = -1;
+				*code = -1;
 				goto exit;
 			}
 		}
@@ -207,6 +310,7 @@ char *http_process_request(char *url, int method, char **type, int *code, int *s
 	}
 
 	char *nl = NULL;
+	memset(type, '\0', sizeof(*type));
 	char *tp = *type;
 	memset(recvBuff, '\0', sizeof(recvBuff));
 
@@ -257,7 +361,6 @@ char *http_process_request(char *url, int method, char **type, int *code, int *s
 		}
 		memset(recvBuff, '\0', sizeof(recvBuff));
 	}
-
 	if(content != NULL) {
 		/* Remove the header */
 		if((nl = strstr(content, "\r\n\r\n"))) {
@@ -273,12 +376,16 @@ char *http_process_request(char *url, int method, char **type, int *code, int *s
 
 exit:
 	if(port == 443) {
-		ssl_free(&ssl);
-		entropy_free(&entropy);
-
-		memset(&ssl, '\0', sizeof(ssl));
+		if(sslfree == 1) {
+			ssl_free(&ssl);
+		}
+		if(entropyfree == 1) {
+			entropy_free(&entropy);
+		}
 	}
-
+	if(header) FREE(header);
+	if(auth) FREE(auth);
+	if(auth64) FREE(auth64);
 	if(page) FREE(page);
 	if(host) FREE(host);
 	if(sockfd > 0) {
@@ -295,9 +402,9 @@ exit:
 }
 
 char *http_get_content(char *url, char **type, int *code, int *size) {
-	return http_process_request(url, HTTP_GET, type, code, size, NULL);
+	return http_process_request(url, HTTP_GET, type, code, size, NULL, NULL);
 }
 
-char *http_post_content(char *url, char **type, int *code, int *size, char *post) {
-	return http_process_request(url, HTTP_POST, type, code, size, post);
+char *http_post_content(char *url, char **type, int *code, int *size, const char *contype, char *post) {
+	return http_process_request(url, HTTP_POST, type, code, size, contype, post);
 }

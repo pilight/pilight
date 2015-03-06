@@ -1,5 +1,5 @@
 /*
-	Copyright (C) 2013 - 2014 CurlyMo
+	Copyright (C) 2014 CurlyMo
 
 	This file is part of pilight.
 
@@ -16,10 +16,10 @@
 	along with pilight. If not, see	<http://www.gnu.org/licenses/>
 */
 
-#ifndef _HTTP_H_
-#define _HTTP_H_
+#ifndef _PROTOCOL_EV1527_H_
+#define _PROTOCOL_EV1527_H_
 
-char *http_get_content(char *url, char **type, int *code, int *size);
-char *http_post_content(char *url, char **type, int *code, int *size, const char *contype, char *post);
+struct protocol_t *ev1527;
+void ev1527Init(void);
 
 #endif

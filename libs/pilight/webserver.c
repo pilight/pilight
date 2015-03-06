@@ -555,13 +555,8 @@ static int webserver_request_handler(struct mg_connection *conn) {
 				}
 
 				if(raw != NULL) {
-					char *output = MALLOC(strlen(raw)+1);
-					if(!output) {
-						logprintf(LOG_ERR, "out of memory");
-						exit(EXIT_FAILURE);
-					}
-					memset(output, '\0', strlen(raw)+1);
-					size_t olen = (size_t)base64decode((unsigned char *)output, (unsigned char *)raw, (int)strlen(raw));
+					size_t olen = 0;
+					char *output = base64decode(raw, strlen(raw), &olen);
 					FREE(raw);
 
 					char *ptr = strstr(output, "\n\r");

@@ -69,8 +69,16 @@ char *progname;
 
 static unsigned int ***whitelist_cache = NULL;
 static unsigned int whitelist_number;
-static unsigned char validchar[64] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-
+static const char base64table[] = {
+	'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H',
+	'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P',
+	'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X',
+	'Y', 'Z', 'a', 'b', 'c', 'd', 'e', 'f',
+	'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n',
+	'o', 'p', 'q', 'r', 's', 't', 'u', 'v',
+	'w', 'x', 'y', 'z', '0', '1', '2', '3',
+	'4', '5', '6', '7', '8', '9', '+', '/'
+};
 static pthread_mutex_t atomic_lock;
 static pthread_mutexattr_t atomic_attr;
 
@@ -141,9 +149,10 @@ int host2ip(char *host, char *ip) {
 
 	for(p = servinfo; p != NULL; p = p->ai_next) {
 		memcpy(&h, &p->ai_addr, sizeof(struct sockaddr_in *));
-		memset(ip, '\0', 17);
-		inet_ntop(AF_INET, (void *)&(h->sin_addr), ip, 17);
+		memset(ip, '\0', INET_ADDRSTRLEN+1);
+		inet_ntop(AF_INET, (void *)&(h->sin_addr), ip, INET_ADDRSTRLEN+1);
 		if(strlen(ip) > 0) {
+			freeaddrinfo(servinfo);
 			return 0;
 		}
 	}
@@ -184,7 +193,6 @@ const char *inet_ntop(int af, const void *src, char *dst, int cnt) {
 }
 
 int setenv(const char *name, const char *value, int overwrite) {
-	atomiclock();
 	if(overwrite == 0) {
 		value = getenv(name);
 	}
@@ -192,16 +200,13 @@ int setenv(const char *name, const char *value, int overwrite) {
 	strcat(c, name);
 	strcat(c, "=");
 	strcat(c, value);
-	atomicunlock();
 	return putenv(c);
 }
 
 int unsetenv(const char *name) {
-	atomiclock();
 	char c[strlen(name)+1];
 	strcat(c, name);
 	strcat(c, "=");
-	atomicunlock();
 	return putenv(c);
 }
 
@@ -544,60 +549,143 @@ char *urlencode(char *str) {
 	return buf;
 }
 
-int base64decode(unsigned char *dest, unsigned char *src, int l) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+char *base64decode(char *src, size_t len, size_t *decsize) {
+  int i = 0;
+  int j = 0;
+  int l = 0;
+  size_t size = 0;
+  char *dec = NULL;
+  char buf[3];
+  char tmp[4];
 
-	static char inalphabet[256], decoder[256];
-	int i, bits, c, char_count;
-	int rpos;
-	int wpos = 0;
-
-	for(i=(sizeof validchar)-1;i>=0;i--) {
-		inalphabet[validchar[i]] = 1;
-		decoder[validchar[i]] = (char)i;
+  dec = MALLOC(0);
+  if(dec == NULL) { 
+		return NULL; 
 	}
 
-	char_count = 0;
-	bits = 0;
-	for(rpos=0;rpos<l;rpos++) {
-		c = src[rpos];
-
-		if(c == '=') {
+  while(len--) {
+    if('=' == src[j]) { 
+			break;
+		}
+    if(!(isalnum(src[j]) || src[j] == '+' || src[j] == '/')) {
 			break;
 		}
 
-		if(c > 255 || !inalphabet[c]) {
-			continue;
-		}
+    tmp[i++] = src[j++];
 
-		bits += decoder[c];
-		char_count++;
-		if(char_count < 4) {
-			bits <<= 6;
-		} else {
-			dest[wpos++] = (unsigned char)(bits >> 16);
-			dest[wpos++] = (unsigned char)((bits >> 8) & 0xff);
-			dest[wpos++] = (unsigned char)(bits & 0xff);
-			bits = 0;
-			char_count = 0;
-		}
+    if(i == 4) {
+      for(i = 0; i < 4; ++i) {
+        for(l = 0; l < 64; ++l) {
+          if(tmp[i] == base64table[l]) {
+            tmp[i] = (char)l;
+            break;
+          }
+        }
+      }
+
+      buf[0] = (char)((tmp[0] << 2) + ((tmp[1] & 0x30) >> 4));
+      buf[1] = (char)(((tmp[1] & 0xf) << 4) + ((tmp[2] & 0x3c) >> 2));
+      buf[2] = (char)(((tmp[2] & 0x3) << 6) + tmp[3]);
+
+      dec = REALLOC(dec, size + 3);
+      for(i = 0; i < 3; ++i) {
+        dec[size++] = buf[i];
+      }
+
+      i = 0;
+    }
+  }
+
+  if(i > 0) {
+    for(j = i; j < 4; ++j) {
+      tmp[j] = '\0';
+    }
+
+    for(j = 0; j < 4; ++j) {
+			for(l = 0; l < 64; ++l) {
+				if(tmp[j] == base64table[l]) {
+					tmp[j] = (char)l;
+					break;
+				}
+			}
+    }
+
+    buf[0] = (char)((tmp[0] << 2) + ((tmp[1] & 0x30) >> 4));
+    buf[1] = (char)(((tmp[1] & 0xf) << 4) + ((tmp[2] & 0x3c) >> 2));
+    buf[2] = (char)(((tmp[2] & 0x3) << 6) + tmp[3]);
+
+    dec = REALLOC(dec, (size_t)(size + (size_t)(i - 1)));
+    for(j = 0; (j < i - 1); ++j) {
+      dec[size++] = buf[j];
+    }
+  }
+
+  dec = REALLOC(dec, size + 1);
+  dec[size] = '\0';
+  
+  if(decsize != NULL) {
+		*decsize = size;
+	}
+  
+  return dec;
+}
+
+char *base64encode(char *src, size_t len) {
+  int i = 0;
+  int j = 0;
+  char *enc = NULL;
+  size_t size = 0;
+  char buf[4];
+  char tmp[3];
+
+  enc = MALLOC(0);
+  if(enc == NULL) {
+		return NULL;
 	}
 
-	switch(char_count) {
-		case 1:
-		return -1;
-		case 2:
-			dest[wpos++] = (unsigned char)(bits >> 10);
-		break;
-		case 3:
-			dest[wpos++] = (unsigned char)(bits >> 16);
-			dest[wpos++] = (unsigned char)((bits >> 8) & 0xff);
-		break;
-		default:
-		break;
-	}
+  while(len--) {
+    tmp[i++] = *(src++);
 
-	return wpos;
+    if(i == 3) {
+      buf[0] = (char)((tmp[0] & 0xfc) >> 2);
+      buf[1] = (char)(((tmp[0] & 0x03) << 4) + ((tmp[1] & 0xf0) >> 4));
+      buf[2] = (char)(((tmp[1] & 0x0f) << 2) + ((tmp[2] & 0xc0) >> 6));
+      buf[3] = (char)(tmp[2] & 0x3f);
+
+      enc = REALLOC(enc, size + 4);
+      for(i = 0; i < 4; ++i) {
+        enc[size++] = base64table[(int)buf[i]];
+      }
+
+      i = 0;
+    }
+  }
+
+  if(i > 0) {
+    for(j = i; j < 3; ++j) {
+      tmp[j] = '\0';
+    }
+
+		buf[0] = (char)((tmp[0] & 0xfc) >> 2);
+		buf[1] = (char)(((tmp[0] & 0x03) << 4) + ((tmp[1] & 0xf0) >> 4));
+		buf[2] = (char)(((tmp[1] & 0x0f) << 2) + ((tmp[2] & 0xc0) >> 6));
+		buf[3] = (char)(tmp[2] & 0x3f);
+
+    for(j = 0; (j < i + 1); ++j) {
+      enc = REALLOC(enc, size+1);
+      enc[size++] = base64table[(int)buf[j]];
+    }
+
+    while((i++ < 3)) {
+      enc = REALLOC(enc, size+1);
+      enc[size++] = '=';
+    }
+  }
+
+  enc = REALLOC(enc, size+1);
+  enc[size] = '\0';
+
+  return enc;
 }
 
 void rmsubstr(char *s, const char *r) {
@@ -697,7 +785,9 @@ char *genuuid(char *ifname) {
 			}
 			if(strstr(a, "Serial") != NULL) {
 				sscanf(a, "Serial          : %16s%*[ \n\r]", (char *)&serial);
-				if(strlen(serial) > 0) {
+				if(strlen(serial) > 0 && 
+					 ((isNumeric(serial) == EXIT_SUCCESS && atoi(serial) > 0) ||
+					  (isNumeric(serial) == EXIT_FAILURE))) {
 					memmove(&serial[5], &serial[4], 16);
 					serial[4] = '-';
 					memmove(&serial[8], &serial[7], 13);
@@ -781,7 +871,6 @@ char *genuuid(char *ifname) {
 	}
 	close(fd);
 #elif defined(HAVE_GETIFADDRS)
-
 	ifaddrs *iflist;
 	if(getifaddrs(&iflist) == 0) {
 		for(ifaddrs* cur = iflist; cur; cur = cur->ifa_next) {

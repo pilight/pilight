@@ -16,6 +16,9 @@
 	along with pilight. If not, see	<http://www.gnu.org/licenses/>
 */
 
+#ifdef __FreeBSD__
+	#define	_WITH_GETLINE
+#endif
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -163,7 +166,7 @@ double getRAMUsage(void) {
 	unsigned long VmRSS = 0, value = 0, total = 0;
 	size_t len = 0;
 	ssize_t read = 0;
-	char units[32], title[32], *line;
+	char units[32], title[32], *line = NULL;
 	FILE *fp = NULL;
 
 	memset(title, '\0', 32);
@@ -175,8 +178,16 @@ double getRAMUsage(void) {
 				if(sscanf(line, "%31s %lu %s\n", title, &value, units) > 0) {
 					VmRSS = value * 1024;
 				}
+				if(line != NULL) {
+					free(line);
+					line = NULL;
+				}
 				break;
 			}
+		}
+		if(line != NULL) {
+			free(line);
+			line = NULL;
 		}
 		fclose(fp);
 	}
@@ -208,8 +219,16 @@ double getRAMUsage(void) {
 				if(sscanf(line, "%31s %lu %s\n", title, &value, units) > 0) {
 					total = value * 1024;
 				}
+				if(line != NULL) {
+					free(line);
+					line = NULL;
+				}
 				break;
 			}
+		}
+		if(line != NULL) {
+			free(line);
+			line = NULL;
 		}
 		fclose(fp);
 	}

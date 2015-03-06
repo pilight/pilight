@@ -1,5 +1,5 @@
 /*
-	Copyright (C) 2013 - 2014 CurlyMo
+	Copyright (C) 2013 CurlyMo
 
 	This file is part of pilight.
 
@@ -16,10 +16,16 @@
 	along with pilight. If not, see	<http://www.gnu.org/licenses/>
 */
 
-#ifndef _HTTP_H_
-#define _HTTP_H_
+#ifndef _MAIL_H_
+#define _MAIL_H_
 
-char *http_get_content(char *url, char **type, int *code, int *size);
-char *http_post_content(char *url, char **type, int *code, int *size, const char *contype, char *post);
+typedef struct mail_t {
+	char *from;
+	char *to;
+	char *subject;
+	char *message;
+} mail_t;
+
+int sendmail(char *host, char *login, char *pass, unsigned short port, struct mail_t *mail);
 
 #endif

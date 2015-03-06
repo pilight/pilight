@@ -27,7 +27,7 @@
 #include <sys/stat.h>
 #include <signal.h>
 #include <math.h>
-#include <wait.h>
+#include <sys/wait.h>
 #ifdef _WIN32
 	#include "pthread.h"
 	#include "implement.h"

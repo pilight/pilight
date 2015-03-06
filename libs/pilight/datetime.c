@@ -284,6 +284,7 @@ char *coord2tz(double longitude, double latitude) {
 time_t datetime2ts(int year, int month, int day, int hour, int minutes, int seconds, char *tz) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
+	atomiclock();
  	time_t t;
  	struct tm tm = {0};
 	tm.tm_sec = seconds;
@@ -293,34 +294,43 @@ time_t datetime2ts(int year, int month, int day, int hour, int minutes, int seco
 	tm.tm_mon = month-1;
 	tm.tm_year = year-1900;
 
-	if(tz) {
+	if(tz != NULL) {
 		setenv("TZ", tz, 1);
 	}
 	t = mktime(&tm);
-	if(tz) {
+	if(tz != NULL) {
 		unsetenv("TZ");
 	}
+	atomicunlock();
 	return t;
 }
 
 struct tm *localtztime(char *tz, time_t t) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
-
+	atomiclock();
 	struct tm tm, *ret = NULL;
+	char *oritz = getenv("TZ");
 	memset(&tm, '\0', sizeof(struct tm));
 	setenv("TZ", tz, 1);
 	localtime_r(&t, &tm);
-	unsetenv("TZ");
+	if(oritz != NULL) {
+		setenv("TZ", oritz, 1);
+	} else {
+		unsetenv("TZ");
+	}
 
 	ret = &tm;
+	atomicunlock();
 	return ret;
 }
 
 int tzoffset(char *tz1, char *tz2) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
+	atomiclock();
 	time_t utc, tzsearch, now;
 	struct tm tm;
+	char *oritz = getenv("TZ");
 	memset(&tm, '\0', sizeof(struct tm));
 
 	now = time(NULL);
@@ -330,7 +340,13 @@ int tzoffset(char *tz1, char *tz2) {
 	utc = mktime(&tm);
 	setenv("TZ", tz2, 1);
 	tzsearch = mktime(&tm);
-	unsetenv("TZ");
+	if(oritz != NULL) {
+		setenv("TZ", oritz, 1);
+	} else {
+		unsetenv("TZ");
+	}
+	atomicunlock();
+
 	return (int)((utc-tzsearch)/3600);
 }
 
@@ -354,6 +370,7 @@ int ctzoffset(void) {
 int isdst(char *tz) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
+	atomiclock();
 	char UTC[] = "UTC";
 	time_t now = 0;
 	struct tm tm;
@@ -366,6 +383,7 @@ int isdst(char *tz) {
 	setenv("TZ", tz, 1);
 	mktime(&tm);
 	unsetenv("TZ");
+	atomicunlock();
 
 	return tm.tm_isdst;
 }

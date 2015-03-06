@@ -172,16 +172,18 @@ int config_write(int level, const char *media) {
 	}
 
 	/* Overwrite config file with proper format */
-	if(!(fp = fopen(configfile, "w+"))) {
+	if((fp = fopen(configfile, "w+")) == NULL) {
 		logprintf(LOG_ERR, "cannot write config file: %s", configfile);
 		return EXIT_FAILURE;
 	}
 	fseek(fp, 0L, SEEK_SET);
-	char *content = json_stringify(root, "\t");
- 	fwrite(content, sizeof(char), strlen(content), fp);
+	char *content = NULL;
+	if((content = json_stringify(root, "\t")) != NULL) {
+		fwrite(content, sizeof(char), strlen(content), fp);
+		json_free(content);
+		json_delete(root);
+	}
 	fclose(fp);
-	json_free(content);
-	json_delete(root);
 	return EXIT_SUCCESS;
 }
 

@@ -291,18 +291,6 @@ static void *openweathermapParse(void *param) {
 	}
 	pthread_mutex_unlock(&openweathermaplock);
 
-	struct openweathermap_data_t *wtmp = NULL;
-	while(openweathermap_data) {
-		wtmp = openweathermap_data;
-		FREE(openweathermap_data->country);
-		FREE(openweathermap_data->location);
-		openweathermap_data = openweathermap_data->next;
-		FREE(wtmp);
-	}
-	if(openweathermap_data != NULL) {
-		FREE(openweathermap_data);
-	}
-
 	openweathermap_threads--;
 	return (void *)NULL;
 }
@@ -371,6 +359,18 @@ static void openweathermapThreadGC(void) {
 		usleep(10);
 	}
 	protocol_thread_free(openweathermap);
+
+	struct openweathermap_data_t *wtmp = NULL;
+	while(openweathermap_data) {
+		wtmp = openweathermap_data;
+		FREE(openweathermap_data->country);
+		FREE(openweathermap_data->location);
+		openweathermap_data = openweathermap_data->next;
+		FREE(wtmp);
+	}
+	if(openweathermap_data != NULL) {
+		FREE(openweathermap_data);
+	}
 }
 
 static void openweathermapPrintHelp(void) {
@@ -393,6 +393,9 @@ void openweathermapInit(void) {
 	openweathermap->devtype = WEATHER;
 	openweathermap->hwtype = API;
 	openweathermap->multipleId = 0;
+#ifdef PILIGHT_V6
+	openweathermap->masterOnly = 1;
+#endif
 
 	options_add(&openweathermap->options, 't', "temperature", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9]{1,5}$");
 	options_add(&openweathermap->options, 'h', "humidity", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9]{1,5}$");
@@ -421,7 +424,7 @@ void openweathermapInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "openweathermap";
-	module->version = "1.6";
+	module->version = "1.8";
 	module->reqversion = "5.0";
 	module->reqcommit = "187";
 }
