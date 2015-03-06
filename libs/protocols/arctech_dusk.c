@@ -67,7 +67,7 @@ void arctechDuskInit(void) {
 
 	arctech_dusk->devtype = DUSK;
 	arctech_dusk->hwtype = RF433;
-	arctech_dusk->pulse = 4;
+	arctech_dusk->pulse = 5;
 	arctech_dusk->rawlen = 132;
 	arctech_dusk->lsb = 3;
 
@@ -82,7 +82,7 @@ void arctechDuskInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "arctech_dusk";
-	module->version = "1.2";
+	module->version = "1.3";
 	module->reqversion = "5.0";
 	module->reqcommit = "84";
 }

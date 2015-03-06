@@ -310,7 +310,6 @@ char *http_process_request(char *url, int method, char **type, int *code, int *s
 	}
 
 	char *nl = NULL;
-	memset(type, '\0', sizeof(*type));
 	char *tp = *type;
 	memset(recvBuff, '\0', sizeof(recvBuff));
 
@@ -346,12 +345,11 @@ char *http_process_request(char *url, int method, char **type, int *code, int *s
 		char **array = NULL;
 		unsigned int n = explode(recvBuff, "\n\r", &array), q = 0;
 		int z = 0;
-		char tmp[255], *p = tmp;
 		for(q=0;q<n;q++) {
 			if(has_code == 0 && sscanf(array[q], "HTTP/1.%d%*[ ]%d%*s%*[ \n\r]", &z, code)) {
 				has_code = 1;
 			}
-			if(has_type == 0 && sscanf(array[q], "Content-%[tT]ype:%*[ ]%s%*[ \n\r]", p, tp)) {
+			if(has_type == 0 && sscanf(array[q], "Content-%*[tT]ype:%*[ ]%[A-Za-z\\/+-]", tp)) {
 				has_type = 1;
 			}
 			FREE(array[q]);

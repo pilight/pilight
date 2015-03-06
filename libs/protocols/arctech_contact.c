@@ -65,13 +65,13 @@ void arctechContactInit(void) {
 	protocol_set_id(arctech_contact, "arctech_contact");
 	protocol_device_add(arctech_contact, "kaku_contact", "KlikAanKlikUit Contact Sensor");
 	protocol_device_add(arctech_contact, "dio_contact", "D-IO Contact Sensor");
+	protocol_plslen_add(arctech_contact, 315);
 	protocol_plslen_add(arctech_contact, 294);
 	protocol_plslen_add(arctech_contact, 305);
-	protocol_plslen_add(arctech_contact, 294);
 
 	arctech_contact->devtype = CONTACT;
 	arctech_contact->hwtype = RF433;
-	arctech_contact->pulse = 4;
+	arctech_contact->pulse = 5;
 	arctech_contact->rawlen = 140;
 	arctech_contact->minrawlen = 132;
 	arctech_contact->maxrawlen = 148;

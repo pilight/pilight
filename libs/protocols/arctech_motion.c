@@ -67,7 +67,7 @@ void arctechMotionInit(void) {
 
 	arctech_motion->devtype = MOTION;
 	arctech_motion->hwtype = RF433;
-	arctech_motion->pulse = 4;
+	arctech_motion->pulse = 5;
 	arctech_motion->rawlen = 132;
 	arctech_motion->lsb = 3;
 
@@ -82,7 +82,7 @@ void arctechMotionInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "arctech_motion";
-	module->version = "1.1";
+	module->version = "1.2";
 	module->reqversion = "5.0";
 	module->reqcommit = "99";
 }
