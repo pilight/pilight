@@ -2,10 +2,52 @@ Rules for contributing to pilight
 =================================
 First of all, thanks for making this project better. Without your help, pilight wouldn't have come to what it is now!
 
-**BUT**, be aware that contributing to a big project shouldn't be considered a playground. It also isn't meant for you to learn `git`.
-So if you don't know what you are doing than don't do it. Instead open an [forum topic](http://forum.pilight.org), point to your code, and ask for help.
+**BUT**, be aware that contributing to a big project shouldn't be considered a playground. It also isn't meant for you to learn `git`. So if you don't know what you are doing than don't do it. Instead open an [forum topic](http://forum.pilight.org), point to your code, and ask for help.
 
-Checklist
+Checklist for opening an Issue
+--------
+When you think you found a bug make sure to first check these checklists. However, in every step, consider:
+
+**If you are unsure, first open a topic on the forum!!!**
+
+**Step 1: Version**
+
+1. First check if you run the latest pilight version.
+2. Check if the issue is solved in the latest nightly.
+3. If it is solved, don't open an issue! If the bug is still there, continue with the next checklists.
+
+**Step 2.1: Programming issues**
+
+1. Your bug is a core programming issue like a `segfault` or similar.
+2. The bug is not causes by any outdated or custom compiled modules.
+3. Your bug is not caused by any alteration or third party patch.
+4. Open an issue according to the Issue requirements.
+
+**Step 2.2: Other issues**
+
+1. Checking the pilight logs didn't give you any answer.
+2. You RTFM (read the fucking manual), that means pilight website pages and wiki, and it didn't gave a solution.
+2. You searched the forum for similar issues and their possible solution but didn't find one.
+3. You are running on a platform (revision!) that is supported by pilight.
+4. You are using official pilight distributers (don't use obscure repositories).
+4. Open an issue according to the Issue requirements.
+
+**Step 3: Issue Requirements**
+
+1. Post your full configuration.
+2. Post the running version of pilight `pilight-daemon -V`.
+3. Post the content of pilight.err and pilight.log.
+4. Post the content of pilight-daemon in not deamonized mode `--nodaemon` of when issue appeared.
+5. Post what OS you are using pilight on (`uname -a`) and what version of the OS.
+6. Post what revision of the platform you are using (e.g. Raspberry Pi A, B, B+ or 2 B). 
+6. Clearly describe how the issue can be reproduced.
+7. Format your issue with [Github markdown](https://help.github.com/articles/github-flavored-markdown/)
+8. You are willing to follow-up on our comments.
+9. You are willing to test our fixes.
+
+If you are unsure about any of the above steps then **don't open an issue**.
+
+Checklist for doing a Pull Request
 ---------
 When you contribute to pilight make sure to follow this checklist:
 
