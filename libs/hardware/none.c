@@ -31,7 +31,7 @@ static int noneSend(int *code, int rawlen, int repeats) {
 	return EXIT_SUCCESS;
 }
 
-static int noneReceive(void) {
+static void *noneReceive(void *param) {
 	sleep(1);
 	return EXIT_SUCCESS;
 }
@@ -42,7 +42,8 @@ __attribute__((weak))
 void noneInit(void) {
 	hardware_register(&none);
 	hardware_set_id(none, "none");
-	none->type=NONE;
+	none->hwtype=NONE;
+	none->comtype=COMNONE;
 	none->receive=&noneReceive;
 	none->send=&noneSend;
 }

@@ -279,7 +279,11 @@ static void *datetimeParse(void *param) {
 		dnode->time -= dnode->diff;
 
 		/* Get UTC time */
+#ifdef _WIN32
+		if(gmtime_r(&dnode->time, &tm) == 0) {
+#else
 		if(gmtime_r(&dnode->time, &tm) != NULL) {
+#endif
 			int year = tm.tm_year+1900;
 			int month = tm.tm_mon+1;
 			int day = tm.tm_mday;

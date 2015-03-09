@@ -146,7 +146,7 @@ static int lirc433Send(int *code, int rawlen, int repeats) {
 	}
 }
 
-static int lirc433Receive(void) {
+static void *lirc433Receive(void *param) {
 	struct pollfd polls;
 	int data = 0;
 	int x = 0;
@@ -159,9 +159,9 @@ static int lirc433Receive(void) {
 	if(x > 0) {
 		(void)read(lirc_433_fd, &data, sizeof(data));
 		lseek(lirc_433_fd, 0, SEEK_SET);
-		return (data & 0x00FFFFFF);
+		return (void *)(data & 0x00FFFFFF);
 	} else {
-		return -1;
+		return (void *)-1;
 	}
 }
 
@@ -199,7 +199,8 @@ void lirc433Init(void) {
 
 	options_add(&lirc433->options, 's', "socket", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_STRING, NULL, "^/dev/([a-z]+)[0-9]+$");
 
-	lirc433->type=RF433;
+	lirc433->hwtype=RF433;
+	lirc433->comtype=COMOOK;
 	lirc433->init=&lirc433HwInit;
 	lirc433->deinit=&lirc433HwDeinit;
 	lirc433->send=&lirc433Send;

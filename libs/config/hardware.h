@@ -29,9 +29,16 @@ typedef enum {
 	API
 } hwtype_t;
 
+typedef enum {
+	COMNONE = 0,
+	COMOOK,
+	COMPLSTRAIN,
+} communication_t;
+
 #include <pthread.h>
 #include "options.h"
 #include "json.h"
+#include "../../defines.h"
 #include "config.h"
 
 struct config_t *config_hardware;
@@ -44,12 +51,13 @@ typedef struct hardware_t {
 	pthread_cond_t signal;
 	pthread_mutexattr_t attr;
 	unsigned short running;
-	hwtype_t type;
+	hwtype_t hwtype;
+	communication_t comtype;
 	struct options_t *options;
 
 	unsigned short (*init)(void);
 	unsigned short (*deinit)(void);
-	int (*receive)(void);
+	void *(*receive)(void *param);
 	int (*send)(int *code, int rawlen, int repeats);
 	int (*gc)(void);
 	unsigned short (*settings)(JsonNode *json);
@@ -61,8 +69,13 @@ typedef struct conf_hardware_t {
 	struct conf_hardware_t *next;
 } conf_hardware_t;
 
-struct hardware_t *hardware;
-struct conf_hardware_t *conf_hardware;
+typedef struct rawcode_t {
+	int pulses[MAXPULSESTREAMLENGTH];
+	int length;
+} rawcode_t;
+
+extern struct hardware_t *hardware;
+extern struct conf_hardware_t *conf_hardware;
 
 void hardware_init(void);
 void hardware_register(struct hardware_t **hw);

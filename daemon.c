@@ -731,15 +731,15 @@ void *send_code(void *param) {
 
 			struct conf_hardware_t *tmp_confhw = conf_hardware;
 			while(tmp_confhw) {
-				if(protocol->hwtype == tmp_confhw->hardware->type) {
+				if(protocol->hwtype == tmp_confhw->hardware->hwtype) {
 					hw = tmp_confhw->hardware;
 					break;
 				}
 				tmp_confhw = tmp_confhw->next;
 			}
 
-			if(hw && hw->send) {
-				if(hw->receive) {
+			if(hw != NULL && hw->send != NULL) {
+				if(hw->receive != NULL) {
 					hw->wait = 1;
 					pthread_mutex_unlock(&hw->lock);
 					pthread_cond_signal(&hw->signal);
@@ -762,7 +762,7 @@ void *send_code(void *param) {
 					int plslen = protocol->raw[protocol->rawlen-1]/PULSE_DIV;
 					receive_queue(protocol->raw, protocol->rawlen, plslen, -1);
 				}
-				if(hw->receive) {
+				if(hw->receive != NULL) {
 					hw->wait = 0;
 					pthread_mutex_unlock(&hw->lock);
 					pthread_cond_signal(&hw->signal);
@@ -1478,12 +1478,51 @@ static void socket_client_disconnected(int i) {
 	client_remove(socket_get_clients(i));
 }
 
-void *receive_code(void *param) {
+void *receivePulseTrain(void *param) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
-	int plslen = 0, rawlen = 0;
-	int rawcode[MAXPULSESTREAMLENGTH] = {0};
-	int duration = 0;
+	struct rawcode_t r;
+	int plslen = 0;
+#ifdef _WIN32
+	SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_HIGHEST);
+#else
+	/* Make sure the pilight receiving gets
+	   the highest priority available */
+	struct sched_param sched;
+	memset(&sched, 0, sizeof(sched));
+	sched.sched_priority = 70;
+	pthread_setschedparam(pthread_self(), SCHED_FIFO, &sched);
+#endif
+
+	struct hardware_t *hw = (hardware_t *)param;
+	pthread_mutex_lock(&hw->lock);
+	hw->running = 1;
+
+	while(main_loop == 1 && hw->receive != NULL && hw->stop == 0) {
+		if(hw->wait == 0) {
+			pthread_mutex_lock(&hw->lock);
+			logprintf(LOG_STACK, "%s::unlocked", __FUNCTION__);
+
+			hw->receive((void *)&r);
+			plslen = r.pulses[r.length-1]/PULSE_DIV;
+			if(r.length > 0) {
+				receive_queue(r.pulses, r.length, plslen, hw->hwtype);
+			}
+
+			pthread_mutex_unlock(&hw->lock);
+		} else {
+			pthread_cond_wait(&hw->signal, &hw->lock);
+		}
+	}
+	hw->running = 0;
+	return (void *)NULL;
+}
+
+void *receiveOOK(void *param) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
+	struct rawcode_t r;
+	int plslen = 0, duration = 0;
 	struct timeval tp;
 	struct timespec ts;
 
@@ -1505,23 +1544,22 @@ void *receive_code(void *param) {
 		if(hw->wait == 0) {
 			pthread_mutex_lock(&hw->lock);
 			logprintf(LOG_STACK, "%s::unlocked", __FUNCTION__);
-			duration = hw->receive();
+			duration = (int)hw->receive(NULL);
 
 			if(duration > 0) {
-				rawcode[rawlen] = duration;
-				rawlen++;
-				if(rawlen > MAXPULSESTREAMLENGTH-1) {
-					rawlen = 0;
+				r.pulses[r.length++] = duration;
+				if(r.length > MAXPULSESTREAMLENGTH-1) {
+					r.length = 0;
 				}
 				if(duration > 5100) {
 					if((duration/PULSE_DIV) < 3000) { // Maximum footer pulse of 100000
 						plslen = duration/PULSE_DIV;
 					}
 					/* Let's do a little filtering here as well */
-					if(rawlen >= minrawlen && rawlen <= maxrawlen) {
-						receive_queue(rawcode, rawlen, plslen, hw->type);
+					if(r.length >= minrawlen && r.length <= maxrawlen) {
+						receive_queue(r.pulses, r.length, plslen, hw->hwtype);
 					}
-					rawlen = 0;
+					r.length = 0;
 				}
 			/* Hardware failure */
 			} else if(duration == -1) {
@@ -2397,7 +2435,11 @@ int start_pilight(int argc, char **argv) {
 			}
 			tmp_confhw->hardware->wait = 0;
 			tmp_confhw->hardware->stop = 0;
-			threads_register(tmp_confhw->hardware->id, &receive_code, (void *)tmp_confhw->hardware, 0);
+			if(tmp_confhw->hardware->comtype == COMOOK) {
+				threads_register(tmp_confhw->hardware->id, &receiveOOK, (void *)tmp_confhw->hardware, 0);
+			} else if(tmp_confhw->hardware->comtype == COMPLSTRAIN) {
+				threads_register(tmp_confhw->hardware->id, &receivePulseTrain, (void *)tmp_confhw->hardware, 0);
+			}
 		}
 		tmp_confhw = tmp_confhw->next;
 	}

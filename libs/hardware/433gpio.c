@@ -33,13 +33,11 @@
 
 static int gpio_433_in = 0;
 static int gpio_433_out = 0;
-static int gpio_433_initialized = 0;
 
 static unsigned short gpio433HwInit(void) {
 	if(wiringXSetup() == -1) {
 		return EXIT_FAILURE;
 	}
-	gpio_433_initialized = 1;
 	if(gpio_433_out >= 0) {
 		if(wiringXValidGPIO(gpio_433_out) != 0) {
 			logprintf(LOG_ERR, "invalid sender pin: %d", gpio_433_out);
@@ -84,7 +82,7 @@ static int gpio433Send(int *code, int rawlen, int repeats) {
 	return EXIT_SUCCESS;
 }
 
-static int gpio433Receive(void) {
+static void *gpio433Receive(void *param) {
 	if(gpio_433_in >= 0) {
 		return irq_read(gpio_433_in);
 	} else {
@@ -121,7 +119,8 @@ void gpio433Init(void) {
 	options_add(&gpio433->options, 'r', "receiver", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9-]+$");
 	options_add(&gpio433->options, 's', "sender", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9-]+$");
 
-	gpio433->type=RF433;
+	gpio433->hwtype=RF433;
+	gpio433->comtype=COMOOK;
 	gpio433->init=&gpio433HwInit;
 	gpio433->deinit=&gpio433HwDeinit;
 	gpio433->send=&gpio433Send;

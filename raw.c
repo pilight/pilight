@@ -79,14 +79,30 @@ int main_gc(void) {
 	return EXIT_SUCCESS;
 }
 
-void *receive_code(void *param) {
+void *receiveOOK(void *param) {
 	int duration = 0;
 
 	struct hardware_t *hw = (hardware_t *)param;
 	while(main_loop && hw->receive) {
-		duration = hw->receive();
+		duration = (int)hw->receive(NULL);
 		if(duration > 0) {
 			printf("%s: %d\n", hw->id, duration);
+		}
+	};
+	return NULL;
+}
+
+void *receivePulseTrain(void *param) {
+	struct rawcode_t r;
+	int i = 0;
+
+	struct hardware_t *hw = (hardware_t *)param;
+	while(main_loop && hw->receive) {
+		hw->receive((void *)&r);
+		if(r.length > 0) {
+			for(i=0;i<r.length;i++) {
+				printf("%s: %d\n", hw->id, r.pulses[i]);
+			}
 		}
 	};
 	return NULL;
@@ -195,7 +211,11 @@ int main(int argc, char **argv) {
 				logprintf(LOG_ERR, "could not initialize %s hardware mode", tmp_confhw->hardware->id);
 				goto close;
 			}
-			threads_register(tmp_confhw->hardware->id, &receive_code, (void *)tmp_confhw->hardware, 0);
+			if(tmp_confhw->hardware->comtype == COMOOK) {
+				threads_register(tmp_confhw->hardware->id, &receiveOOK, (void *)tmp_confhw->hardware, 0);
+			} else if(tmp_confhw->hardware->comtype == COMPLSTRAIN) {
+				threads_register(tmp_confhw->hardware->id, &receivePulseTrain, (void *)tmp_confhw->hardware, 0);
+			}
 		}
 		tmp_confhw = tmp_confhw->next;
 	}

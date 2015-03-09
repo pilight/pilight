@@ -49,6 +49,8 @@
 #include "threads.h"
 
 static char *hwfile = NULL;
+struct hardware_t *hardware;
+struct conf_hardware_t *conf_hardware;
 
 #include "hardware_header.h"
 
@@ -224,7 +226,7 @@ static int hardware_parse(JsonNode *root) {
 					goto clear;
 				}
 				/* And only allow one module covering the same frequency */
-				if(tmp_confhw->hardware->type == hw->type) {
+				if(tmp_confhw->hardware->hwtype == hw->hwtype) {
 					logprintf(LOG_ERR, "config hardware module #%d \"%s\", duplicate freq.", i, jchilds->key);
 					have_error = 1;
 					goto clear;
@@ -246,7 +248,7 @@ static int hardware_parse(JsonNode *root) {
 					}
 					jvalues = jvalues->next;
 				}
-				if(!match) {
+				if(match == 0) {
 					logprintf(LOG_ERR, "config hardware module #%d \"%s\", setting \"%s\" missing", i, jchilds->key, hw_options->name);
 					have_error = 1;
 					goto clear;
@@ -272,20 +274,22 @@ static int hardware_parse(JsonNode *root) {
 						}
 						strcpy(stmp, jvalues->string_);
 					}
-					reti = regcomp(&regex, hw_options->mask, REG_EXTENDED);
-					if(reti) {
-						logprintf(LOG_ERR, "could not compile regex");
-						exit(EXIT_FAILURE);
-					}
-					reti = regexec(&regex, stmp, 0, NULL, 0);
-					if(reti == REG_NOMATCH || reti != 0) {
-						logprintf(LOG_ERR, "config hardware module #%d \"%s\", setting \"%s\" invalid", i, jchilds->key, hw_options->name);
-						have_error = 1;
+					if(hw_options->mask != NULL) {
+						reti = regcomp(&regex, hw_options->mask, REG_EXTENDED);
+						if(reti) {
+							logprintf(LOG_ERR, "could not compile regex");
+							exit(EXIT_FAILURE);
+						}
+						reti = regexec(&regex, stmp, 0, NULL, 0);
+						if(reti == REG_NOMATCH || reti != 0) {
+							logprintf(LOG_ERR, "config hardware module #%d \"%s\", setting \"%s\" invalid", i, jchilds->key, hw_options->name);
+							have_error = 1;
+							regfree(&regex);
+							goto clear;
+						}
+						FREE(stmp);
 						regfree(&regex);
-						goto clear;
 					}
-					FREE(stmp);
-					regfree(&regex);
 #endif
 				}
 				hw_options = hw_options->next;
@@ -309,7 +313,7 @@ static int hardware_parse(JsonNode *root) {
 						}
 						hw_options = hw_options->next;
 					}
-					if(!match) {
+					if(match == 0) {
 						logprintf(LOG_ERR, "config hardware module #%d \"%s\", setting \"%s\" invalid", i, jchilds->key, jvalues->key);
 						have_error = 1;
 						goto clear;
@@ -318,7 +322,7 @@ static int hardware_parse(JsonNode *root) {
 				jvalues = jvalues->next;
 			}
 
-			if(hw->settings) {
+			if(hw->settings != NULL) {
 				/* Sync all settings with the hardware module */
 				jvalues = json_first_child(jchilds);
 				while(jvalues) {
@@ -332,14 +336,13 @@ static int hardware_parse(JsonNode *root) {
 			}
 
 			hnode = MALLOC(sizeof(struct conf_hardware_t));
-			if(!hnode) {
+			if(hnode == NULL) {
 				logprintf(LOG_ERR, "out of memory");
 				exit(EXIT_FAILURE);
 			}
 			hnode->hardware = hw;
 			hnode->next = conf_hardware;
 			conf_hardware = hnode;
-
 		}
 		jchilds = jchilds->next;
 	}

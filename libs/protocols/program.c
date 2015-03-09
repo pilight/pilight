@@ -27,7 +27,6 @@
 #include <sys/stat.h>
 #include <signal.h>
 #include <math.h>
-#include <sys/wait.h>
 #ifdef _WIN32
 	#include "pthread.h"
 	#include "implement.h"
@@ -35,6 +34,7 @@
 	#ifdef __mips__
 		#define __USE_UNIX98
 	#endif
+	#include <sys/wait.h>
 	#include <pthread.h>
 #endif
 

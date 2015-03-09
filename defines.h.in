@@ -31,7 +31,7 @@
 #ifdef WEBSERVER
 	#define WEBSERVER_PORT				5001
 	#ifdef _WIN32
-		#define WEBSERVER_ROOT				"c:/pilight/web/default/"
+		#define WEBSERVER_ROOT				"c:/pilight/web/"
 	#else
 		#define WEBSERVER_ROOT				"/usr/local/share/pilight/"
 	#endif

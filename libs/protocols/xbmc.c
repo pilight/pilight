@@ -27,9 +27,9 @@
 #include <sys/stat.h>
 #include <signal.h>
 #ifdef _WIN32
+	#include <winsock2.h>
 	#include "pthread.h"
 	#include "implement.h"
-	#include <winsock2.h>
 	#include <ws2tcpip.h>
 	#define MSG_NOSIGNAL 0
 #else
