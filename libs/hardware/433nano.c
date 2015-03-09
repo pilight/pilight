@@ -253,13 +253,13 @@ static void *nano433Receive(void *param) {
 	running = 1;
 
 	while(loop) {
+#ifdef _WIN32
 		if(WriteFile(serial_433_fd, "ping", 0, &n, NULL) == 0) {
 			logprintf(LOG_INFO, "lost connection to %s", com);
 			CloseHandle(serial_433_fd);
 			r->length = -1;
 			break;
-		}
-#ifdef _WIN32		
+		}		
 		ReadFile(serial_433_fd, c, 1, &n, NULL);
 #else
 		n = read(serial_433_fd, c, 1);
