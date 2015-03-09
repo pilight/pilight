@@ -193,6 +193,7 @@ struct socket_callback_t socket_callback;
 
 #ifdef _WIN32
 	static int console = 0;
+	static int oldverbosity = LOG_NOTICE;
 #endif
 
 
@@ -1507,6 +1508,9 @@ void *receivePulseTrain(void *param) {
 			plslen = r.pulses[r.length-1]/PULSE_DIV;
 			if(r.length > 0) {
 				receive_queue(r.pulses, r.length, plslen, hw->hwtype);
+			} else if(r.length == -1) {
+				hw->init();
+				sleep(1);
 			}
 
 			pthread_mutex_unlock(&hw->lock);
@@ -1979,18 +1983,39 @@ void registerVersion(void) {
 #pragma GCC diagnostic pop   // require GCC 4.6
 
 #ifdef _WIN32
+void closeconsole(void) {
+	log_shell_disable();
+	verbosity = oldverbosity;
+	FreeConsole();
+	console = 0;
+}
+
+BOOL CtrlHandler(DWORD fdwCtrlType) {
+	closeconsole();
+	return TRUE;
+}
+
 void openconsole(void) {
+	DWORD lpMode;
 	AllocConsole();
 	freopen("CONOUT$", "w", stdout);
 	freopen("CONOUT$", "w", stderr);
 	HWND hwnd = GetConsoleWindow();
 	if(hwnd != NULL) {
+		GetConsoleMode(hwnd, &lpMode);
+		SetConsoleMode(hwnd, lpMode & ~ENABLE_PROCESSED_INPUT);
+		SetConsoleCtrlHandler((PHANDLER_ROUTINE)CtrlHandler, TRUE);		
 		HMENU hMenu = GetSystemMenu(hwnd, FALSE);
 		if(hMenu != NULL) {
 			RemoveMenu(hMenu, SC_CLOSE, MF_GRAYED);
 			RemoveMenu(hMenu, SC_MINIMIZE, MF_GRAYED);
 			RemoveMenu(hMenu, SC_MAXIMIZE, MF_GRAYED);
 		}
+		console = 1;
+		oldverbosity = verbosity;
+		verbosity = LOG_DEBUG;
+		log_level_set(verbosity);
+		log_shell_enable();
 	}
 }
 #endif
@@ -2608,7 +2633,6 @@ void *pilight_stats(void *param) {
 #define ID_CONSOLE 108
 #define ID_ICON 200
 static NOTIFYICONDATA TrayIcon;
-static int oldverbosity = LOG_NOTICE;
 static char server_name[40];
 
 static LRESULT CALLBACK WindowProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
@@ -2646,17 +2670,9 @@ static LRESULT CALLBACK WindowProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lP
 				break;
 				case ID_CONSOLE:
 					if(console == 0) {
-						console = 1;
 						openconsole();
-						oldverbosity = verbosity;
-						verbosity = LOG_DEBUG;
-						log_level_set(verbosity);
-						log_shell_enable();
 					} else {
-						log_shell_disable();
-						verbosity = oldverbosity;
-						FreeConsole();
-						console = 0;
+						closeconsole();
 					}
 				break;
 				case ID_START:
@@ -2725,7 +2741,7 @@ static LRESULT CALLBACK WindowProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lP
 
   return DefWindowProc(hWnd, msg, wParam, lParam);
 }
-
+	
 int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR cmdline, int show) {
 	HWND hWnd;	
   WNDCLASS cls;

@@ -99,7 +99,10 @@ void *receivePulseTrain(void *param) {
 	struct hardware_t *hw = (hardware_t *)param;
 	while(main_loop && hw->receive) {
 		hw->receive((void *)&r);
-		if(r.length > 0) {
+		if(r.length == -1) {
+			main_gc();
+			break;
+		} else if(r.length > 0) {
 			for(i=0;i<r.length;i++) {
 				printf("%s: %d\n", hw->id, r.pulses[i]);
 			}

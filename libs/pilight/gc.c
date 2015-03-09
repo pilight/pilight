@@ -151,12 +151,12 @@ void gc_catch(void) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
 #ifdef _WIN32
-	signal(SIGABRT, gc_handler);
-	signal(SIGFPE, gc_handler);
-	signal(SIGILL, gc_handler);
-	signal(SIGINT, gc_handler);
-	signal(SIGSEGV, gc_handler);
-	signal(SIGTERM, gc_handler);
+	// signal(SIGABRT, gc_handler);
+	// signal(SIGFPE, gc_handler);
+	// signal(SIGILL, gc_handler);
+	// signal(SIGINT, gc_handler);
+	// signal(SIGSEGV, gc_handler);
+	// signal(SIGTERM, gc_handler);
 #else
 	struct sigaction act;
 	memset(&act, 0, sizeof(act));

@@ -112,7 +112,10 @@ void *receivePulseTrain(void *param) {
 		time(&now);
 
 		hw->receive((void *)&r);
-		if(r.length > 0) {
+		if(r.length == -1) {
+			main_gc();
+			break;
+		} else if(r.length > 0) {
 			pulselen = r.pulses[r.length-1]/PULSE_DIV;
 
 			if(pulselen > 25) {

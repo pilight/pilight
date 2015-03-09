@@ -110,9 +110,10 @@ static unsigned short int nano433HwInit(void) {
 	snprintf(tmp, 255, "\\\\.\\%s", com);
 
 	if((int)(serial_433_fd = CreateFile(tmp, GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_EXISTING, 0, NULL)) < 0) {
-		logprintf(LOG_ERR, "cannot open port %s", com);
+		logprintf(LOG_INFO, "cannot open port %s", com);
 		return EXIT_FAILURE;
 	}
+	logprintf(LOG_INFO, "connected to port %s", com);
 
 	memset(&port, '\0', sizeof(port));
 
@@ -132,11 +133,12 @@ static unsigned short int nano433HwInit(void) {
 		return EXIT_FAILURE;
 	}
 
-	timeouts.ReadIntervalTimeout = 1;
-	timeouts.ReadTotalTimeoutMultiplier = 1;
-	timeouts.ReadTotalTimeoutConstant = 1;
-	timeouts.WriteTotalTimeoutMultiplier = 1;
-	timeouts.WriteTotalTimeoutConstant = 1;
+	timeouts.ReadIntervalTimeout = 1000;
+	timeouts.ReadTotalTimeoutMultiplier = 1000;
+	timeouts.ReadTotalTimeoutConstant = 1000;
+	timeouts.WriteTotalTimeoutMultiplier = 1000;
+	timeouts.WriteTotalTimeoutConstant = 1000;
+
 	if(SetCommTimeouts(serial_433_fd, &timeouts) == FALSE) {
 		logprintf(LOG_ERR, "error setting port %s time-outs.", com);
 	}
@@ -145,7 +147,7 @@ static unsigned short int nano433HwInit(void) {
 		serial_interface_attribs(serial_433_fd, B57600, 0);
 		nano_433_initialized = 1;
 	} else {
-		logprintf(LOG_ERR, "could not open port %s", com);
+		logprintf(LOG_NOTICE, "could not open port %s", com);
 		return EXIT_FAILURE;
 	}
 #endif
@@ -233,10 +235,11 @@ static int nano433Send(int *code, int rawlen, int repeats) {
 
 static void *nano433Receive(void *param) {
 	struct rawcode_t *r = (struct rawcode_t *)param;
+	struct timeval tv;
+	char buffer[1024], c[1];
 	int start = 0, bytes = 0;
 	int s = 0, nrpulses = 0, y = 0;
-	int startp = 0, pulses[10];
-	char buffer[1024], c[1];
+	int startp = 0, pulses[10], diff = 0;
 	size_t x = 0;
 #ifdef _WIN32
 	DWORD n;
@@ -250,49 +253,54 @@ static void *nano433Receive(void *param) {
 	running = 1;
 
 	while(loop) {
+		if(WriteFile(serial_433_fd, "ping", 0, &n, NULL) == 0) {
+			logprintf(LOG_INFO, "lost connection to %s", com);
+			CloseHandle(serial_433_fd);
+			r->length = -1;
+			break;
+		}
 #ifdef _WIN32		
 		ReadFile(serial_433_fd, c, 1, &n, NULL);
 #else
 		n = read(serial_433_fd, c, 1);
 #endif
-		if(n > 0) {
+		if(n > 0) {	
 			if(c[0] == '\n') {
 				break;
-			}
-			if(c[0] == 'c') {
-				start = 1;
-				bytes = 0;
-			}
-			if(c[0] == 'p') {
-				startp = bytes+2;
-				buffer[bytes-1] = '\0';
-			}
-			if(c[0] == '@') {
-				buffer[bytes] = '\0';
-				x = strlen(&buffer[startp]);
-				s = startp;
-				nrpulses = 0;
-				for(y = startp; y < startp + (int)x; y++) {
-					if(buffer[y] == ',') {
-						buffer[y] = '\0';
-						pulses[nrpulses++] = atoi(&buffer[s]);
-						s = y+1;
+			} else {
+				if(c[0] == 'c') {
+					start = 1;
+					bytes = 0;
+				}
+				if(c[0] == 'p') {
+					startp = bytes+2;
+					buffer[bytes-1] = '\0';
+				}
+				if(c[0] == '@') {
+					buffer[bytes] = '\0';
+					x = strlen(&buffer[startp]);
+					s = startp;
+					nrpulses = 0;
+					for(y = startp; y < startp + (int)x; y++) {
+						if(buffer[y] == ',') {
+							buffer[y] = '\0';
+							pulses[nrpulses++] = atoi(&buffer[s]);
+							s = y+1;
+						}
 					}
+					pulses[nrpulses++] = atoi(&buffer[s]);
+					x = strlen(&buffer[2]);
+					for(y = 2; y < 2 + x; y++) {
+						r->pulses[r->length++] = pulses[0];
+						r->pulses[r->length++] = pulses[buffer[y] - '0'];
+					}
+					bytes = 0;
+					break;
 				}
-				pulses[nrpulses++] = atoi(&buffer[s]);
-				x = strlen(&buffer[2]);
-				for(y = 2; y < 2 + x; y++) {
-					r->pulses[r->length++] = pulses[0];
-					r->pulses[r->length++] = pulses[buffer[y] - '0'];
+				if(start == 1) {
+					buffer[bytes++] = c[0];
 				}
-				bytes = 0;
-				break;
 			}
-			if(start == 1) {
-				buffer[bytes++] = c[0];
-			}
-		} else {
-			break;
 		}
 	}
 
@@ -337,7 +345,7 @@ void nano433Init(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "433nano";
-	module->version = "0.9";
+	module->version = "0.10";
 	module->reqversion = "6.0";
 	module->reqcommit = "40";
 }
