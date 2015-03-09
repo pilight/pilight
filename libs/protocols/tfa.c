@@ -135,6 +135,8 @@ static int tfaCheckValues(struct JsonNode *jvalues) {
 			}
 			snode->id = id;
 			snode->channel = channel;
+			snode->temp = 0;
+			snode->humi = 0;
 
 			json_find_number(jvalues, "temperature-offset", &snode->temp);
 			json_find_number(jvalues, "humidity-offset", &snode->humi);
@@ -197,7 +199,7 @@ void tfaInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "tfa";
-	module->version = "0.10";
+	module->version = "0.11";
 	module->reqversion = "5.0";
 	module->reqcommit = "187";
 }
