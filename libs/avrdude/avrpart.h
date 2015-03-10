@@ -97,6 +97,8 @@ typedef struct opcode {
 #define FLASH_INSTR_SIZE 3
 #define EEPROM_INSTR_SIZE 20
 
+#define TAG_ALLOCATED          1    /* memory byte is allocated */
+
 #define AVR_MEMDESCLEN 64
 typedef struct avrmem {
   char desc[AVR_MEMDESCLEN];  /* memory description ("flash", "eeprom", etc) */
@@ -120,6 +122,7 @@ typedef struct avrmem {
   int pollindex;              /* stk500 v2 xml file parameter */
 
   unsigned char * buf;        /* pointer to memory buffer */
+  unsigned char tags[1024*1024];       /* allocation tags */	
   OPCODE * op[AVR_OP_MAX];    /* opcodes */
 } AVRMEM;
 
@@ -185,6 +188,7 @@ typedef struct avrpart {
   AVRMEM		*lfusemem;
   AVRMEM		*hfusemem;
   AVRMEM		*fusesmem;
+	AVRMEM		*lockmem;
   char          config_file[4096]; /* config file where defined */
   int           lineno;                /* config file line number */
 } AVRPART;

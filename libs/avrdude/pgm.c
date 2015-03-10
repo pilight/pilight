@@ -165,10 +165,10 @@ static void pgm_default_6 (struct programmer_t * pgm, const char * p)
 }
 
 
-void programmer_display(PROGRAMMER * pgm, const char * p)
-{
-  logprintf(LOG_INFO, "%sProgrammer Type : %s", p, pgm->type);
-  logprintf(LOG_INFO, "%sDescription     : %s", p, pgm->desc);
+// void programmer_display(PROGRAMMER * pgm, const char * p)
+// {
+  // logprintf(LOG_INFO, "%sProgrammer Type : %s", p, pgm->type);
+  // logprintf(LOG_INFO, "%sDescription     : %s", p, pgm->desc);
 
-  pgm->display(pgm, p);
-}
+  // pgm->display(pgm, p);
+// }

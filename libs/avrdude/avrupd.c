@@ -219,11 +219,11 @@ int do_op(PROGRAMMER * pgm, struct avrpart * p, AVRUPD * upd, int nowrite,
 
   /* NEW */
   if(strcmp(upd->memtype, "flash") == 0) {
-	mem = p->flashmem;
+		mem = p->flashmem;
   } else if(strcmp(upd->memtype, "lfuse") == 0) {
-	mem = p->lfusemem;
+		mem = p->lfusemem;
   } else if(strcmp(upd->memtype, "hfuse") == 0) {
-	mem = p->hfusemem;
+		mem = p->hfusemem;
   }
 
   if (mem == NULL) {

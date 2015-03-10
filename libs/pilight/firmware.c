@@ -43,12 +43,20 @@
 #include <sys/stat.h>
 #include <sys/time.h>
 #include <dirent.h>
+#ifdef _WIN32
+	#define STRICT
+	#define WIN32_LEAN_AND_MEAN
+	#include <windows.h>
+#else
+	#include <termios.h>
+#endif
 
 #include "pilight.h"
 #include "common.h"
 #include "settings.h"
 #include "log.h"
 #include "avr.h"
+#include "arduino.h"
 #include "avrgpio.h"
 #include "fileio.h"
 #include "avrpart.h"
@@ -58,6 +66,102 @@
 #include "firmware.h"
 
 static int mptype = FW_MP_UNKNOWN;
+static char comport[255];
+
+static void firmware_atmega328p(struct avrpart **p) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
+	char pgm_bits[] = "1 0 1 0 1 1 0 0 0 1 0 1 0 0 1 1 x x x x x x x x x x x x x x x x";
+	char read_bits[] = "0 0 1 1 0 0 0 0 0 0 0 x x x x x x x x x x x a1 a0 o o o o o o o o";
+	char erase_bits[] = "1 0 1 0 1 1 0 0 1 0 0 x x x x x x x x x x x x x x x x x x x x x";
+	char writepage_bits[] = "0 1 0 0 1 1 0 0 0 0 a13 a12 a11 a10 a9 a8 a7 a6 x x x x x x x x x x x x x x";
+	char readlo_bits[] = "0 0 1 0 0 0 0 0 0 0 a13 a12 a11 a10 a9 a8 a7 a6 a5 a4 a3 a2 a1 a0 o o o o o o o o";
+	char readhigh_bits[] = "0 0 1 0 1 0 0 0 0 0 a13 a12 a11 a10 a9 a8 a7 a6 a5 a4 a3 a2 a1 a0 o o o o o o o o";
+	char loadpagelo_bits[] = "0 1 0 0 0 0 0 0 0 0 0 x x x x x x x a5 a4 a3 a2 a1 a0 i i i i i i i i";
+	char loadpagehigh_bits[] = "0 1 0 0 1 0 0 0 0 0 0 x x x x x x x a5 a4 a3 a2 a1 a0 i i i i i i i i";
+	char lfuseread_bits[] = "0 1 0 1 0 0 0 0 0 0 0 0 0 0 0 0 x x x x x x x x o o o o o o o o";
+	char lfusewrite_bits[] = "1 0 1 0 1 1 0 0 1 0 1 0 0 0 0 0 x x x x x x x x i i i i i i i i";
+	char hfuseread_bits[] = "0 1 0 1 1 0 0 0 0 0 0 0 1 0 0 0 x x x x x x x x o o o o o o o o";
+	char hfusewrite_bits[] = "1 0 1 0 1 1 0 0 1 0 1 0 1 0 0 0 x x x x x x x x i i i i i i i i";
+
+	*p = avr_new_part();
+	strcpy((*p)->id, "m328p");
+	strcpy((*p)->desc, "ATmega328P");
+
+	(*p)->signature[0] = 0x1e;
+	(*p)->signature[1] = 0x95;
+	(*p)->signature[2] = 0x0f;
+
+	(*p)->op[AVR_OP_PGM_ENABLE] = avr_new_opcode();
+	parse_cmdbits((*p)->op[AVR_OP_PGM_ENABLE], pgm_bits);
+
+	(*p)->op[AVR_OP_CHIP_ERASE] = avr_new_opcode();
+	parse_cmdbits((*p)->op[AVR_OP_CHIP_ERASE], erase_bits);
+
+	(*p)->sigmem = avr_new_memtype();
+	strcpy((*p)->sigmem->desc, "signature");
+	(*p)->sigmem->size = 3;
+	(*p)->sigmem->buf = MALLOC((size_t)(*p)->sigmem->size+(size_t)1);
+	(*p)->sigmem->op[AVR_OP_READ] = avr_new_opcode();
+	parse_cmdbits((*p)->sigmem->op[AVR_OP_READ], read_bits);
+
+	(*p)->flashmem = avr_new_memtype();
+	strcpy((*p)->flashmem->desc, "flash");
+
+	(*p)->flashmem->paged = 1;
+	(*p)->flashmem->size = 32768;
+	(*p)->flashmem->page_size = 128;
+	(*p)->flashmem->num_pages = 256;
+	(*p)->flashmem->min_write_delay = 4500;
+	(*p)->flashmem->max_write_delay = 4500;
+	(*p)->flashmem->readback[0] = 0xff;
+	(*p)->flashmem->readback[1] = 0xff;
+
+	(*p)->flashmem->op[AVR_OP_WRITEPAGE] = avr_new_opcode();
+	parse_cmdbits((*p)->flashmem->op[AVR_OP_WRITEPAGE], writepage_bits);
+
+	(*p)->flashmem->op[AVR_OP_READ_LO] = avr_new_opcode();
+	parse_cmdbits((*p)->flashmem->op[AVR_OP_READ_LO], readlo_bits);
+
+	(*p)->flashmem->op[AVR_OP_READ_HI] = avr_new_opcode();
+	parse_cmdbits((*p)->flashmem->op[AVR_OP_READ_HI], readhigh_bits);
+
+	(*p)->flashmem->op[AVR_OP_LOADPAGE_LO] = avr_new_opcode();
+	parse_cmdbits((*p)->flashmem->op[AVR_OP_LOADPAGE_LO], loadpagelo_bits);
+
+	(*p)->flashmem->op[AVR_OP_LOADPAGE_HI] = avr_new_opcode();
+	parse_cmdbits((*p)->flashmem->op[AVR_OP_LOADPAGE_HI], loadpagehigh_bits);
+
+	(*p)->lfusemem = avr_new_memtype();
+	strcpy((*p)->lfusemem->desc, "lfuse");
+
+	(*p)->lfusemem->size = 1;
+	(*p)->lfusemem->buf = MALLOC((size_t)(*p)->lfusemem->size+(size_t)1);
+
+	(*p)->lfusemem->min_write_delay = 4500;
+	(*p)->lfusemem->max_write_delay = 4500;
+
+	(*p)->lfusemem->op[AVR_OP_READ] = avr_new_opcode();
+	parse_cmdbits((*p)->lfusemem->op[AVR_OP_READ], lfuseread_bits);
+
+	(*p)->lfusemem->op[AVR_OP_WRITE] = avr_new_opcode();
+	parse_cmdbits((*p)->lfusemem->op[AVR_OP_WRITE], lfusewrite_bits);
+
+	(*p)->hfusemem = avr_new_memtype();
+	strcpy((*p)->hfusemem->desc, "hfuse");
+
+	(*p)->hfusemem->size = 1;
+	(*p)->hfusemem->buf = MALLOC((size_t)(*p)->hfusemem->size+(size_t)1);
+
+	(*p)->hfusemem->min_write_delay = 4500;
+	(*p)->hfusemem->max_write_delay = 4500;
+
+	(*p)->hfusemem->op[AVR_OP_READ] = avr_new_opcode();
+	parse_cmdbits((*p)->hfusemem->op[AVR_OP_READ], hfuseread_bits);
+
+	(*p)->hfusemem->op[AVR_OP_WRITE] = avr_new_opcode();
+	parse_cmdbits((*p)->hfusemem->op[AVR_OP_WRITE], hfusewrite_bits);	
+}
 
 static void firmware_attiny25(struct avrpart **p) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
@@ -348,28 +452,55 @@ static void firmware_init_pgm(PROGRAMMER **pgm) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
 	*pgm = pgm_new();
-	gpio_initpgm(*pgm);
+#ifndef _WIN32
+	if(strlen(comport) == 0) {
+		gpio_initpgm(*pgm);
+		(*pgm)->pinno[3] = FIRMWARE_GPIO_RESET;
+		(*pgm)->pinno[4] = FIRMWARE_GPIO_SCK;
+		(*pgm)->pinno[5] = FIRMWARE_GPIO_MOSI;
+		(*pgm)->pinno[6] = FIRMWARE_GPIO_MISO;
+		// (*pgm)->ispdelay = 50;
 
-	(*pgm)->pinno[3] = FIRMWARE_GPIO_RESET;
-	(*pgm)->pinno[4] = FIRMWARE_GPIO_SCK;
-	(*pgm)->pinno[5] = FIRMWARE_GPIO_MOSI;
-	(*pgm)->pinno[6] = FIRMWARE_GPIO_MISO;
-	// (*pgm)->ispdelay = 50;
-
-	settings_find_number("firmware-gpio-reset", (int *)&(*pgm)->pinno[3]);
-	settings_find_number("firmware-gpio-sck", (int *)&(*pgm)->pinno[4]);
-	settings_find_number("firmware-gpio-mosi", (int *)&(*pgm)->pinno[5]);
-	settings_find_number("firmware-gpio-miso", (int *)&(*pgm)->pinno[6]);
-
+		settings_find_number("firmware-gpio-reset", (int *)&(*pgm)->pinno[3]);
+		settings_find_number("firmware-gpio-sck", (int *)&(*pgm)->pinno[4]);
+		settings_find_number("firmware-gpio-mosi", (int *)&(*pgm)->pinno[5]);
+		settings_find_number("firmware-gpio-miso", (int *)&(*pgm)->pinno[6]);
+	} else {
+#endif
+		arduino_initpgm(*pgm);
+#ifdef _WIN32
+		(*pgm)->baudrate = 57600;
+#else
+		(*pgm)->baudrate = B57600;
+	}
+#endif	
 	if((*pgm)->setup) {
 		(*pgm)->setup(*pgm);
 	}
 }
 
 static void firmware_process(int percent, double etime, char *hdr) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
-
-  //printf("%d\n", percent);
+	static char hashes[51];
+	static char *header;
+	static int last = 0;
+	int i = 0;
+	hashes[50] = 0;
+	memset (hashes, ' ', 50);
+	for(i=0; i<percent; i+=2) {
+		hashes[i/2] = '#';
+	}
+	if(hdr != NULL) {
+		// fprintf(stderr, "");
+		last = 0;
+		header = hdr;
+	}
+	if(last == 0) {
+		fprintf(stderr, "\r%s | %s | %d%% %0.2fs", header, hashes, percent, etime);
+	}
+	if(percent == 100) {
+		last = 1;
+		fprintf(stderr, "\n");
+	}
 }
 
 static int firmware_identifymp(struct avrpart **p) {
@@ -390,7 +521,7 @@ static int firmware_identifymp(struct avrpart **p) {
 	 * because they need separate flash and eeprom buffer space
 	 */
 
-	if(pgm->open(pgm, NULL) < 0) {
+	if(pgm->open(pgm, comport) < 0) {
 		exitrc = FW_PROG_OP_FAIL;
 		pgm->ppidata = 0; /* clear all bits at exit */
 		goto main_exit;
@@ -446,7 +577,7 @@ static int firmware_identifymp(struct avrpart **p) {
 		}
 	}
 
-	logprintf(LOG_INFO, "AVR device signature = 0x%02x 0x%02x 0x%02x", (*p)->signature[0], (*p)->signature[1], (*p)->signature[2]);
+	logprintf(LOG_INFO, "AVR device signature = 0x%02x 0x%02x 0x%02x", sig->buf[0], sig->buf[1], sig->buf[2]);
 
 	if(sig->size != 3 ||
 		sig->buf[0] != (*p)->signature[0] ||
@@ -485,6 +616,7 @@ main_exit:
 	if((*p)->flashmem->buf != NULL) {
 		FREE((*p)->flashmem->buf);
 	}
+
 	FREE((*p)->flashmem);
 
 	for(i=0;i<AVR_OP_MAX;i++) {
@@ -540,16 +672,18 @@ static int firmware_write(char *filename, struct avrpart **p) {
 		vfile->op = DEVICE_VERIFY;
 	}
 
-	wlfuse = parse_op(lfuse);
-	if(verify && wlfuse->op == DEVICE_WRITE) {
-		vlfuse = dup_AVRUPD(wlfuse);
-		vlfuse->op = DEVICE_VERIFY;
-	}
+	if(mptype != FW_MP_ATMEL328P && mptype != FW_MP_UNKNOWN) {
+		wlfuse = parse_op(lfuse);
+		if(verify && wlfuse->op == DEVICE_WRITE) {
+			vlfuse = dup_AVRUPD(wlfuse);
+			vlfuse->op = DEVICE_VERIFY;
+		}
 
-	whfuse = parse_op(hfuse);
-	if(verify && whfuse->op == DEVICE_WRITE) {
-		vhfuse = dup_AVRUPD(whfuse);
-		vhfuse->op = DEVICE_VERIFY;
+		whfuse = parse_op(hfuse);
+		if(verify && whfuse->op == DEVICE_WRITE) {
+			vhfuse = dup_AVRUPD(whfuse);
+			vhfuse->op = DEVICE_VERIFY;
+		}
 	}
 
 	firmware_init_pgm(&pgm);
@@ -561,7 +695,7 @@ static int firmware_write(char *filename, struct avrpart **p) {
 	 */
 	v = avr_dup_part(*p);
 
-	if(pgm->open(pgm, NULL) < 0) {
+	if(pgm->open(pgm, comport) < 0) {
 		exitrc = FW_INIT_FAIL;
 		pgm->ppidata = 0; /* clear all bits at exit */
 		goto main_exit;
@@ -617,15 +751,7 @@ static int firmware_write(char *filename, struct avrpart **p) {
 		}
 	}
 
-	logprintf(LOG_INFO, "AVR device signature = 0x%02x 0x%02x 0x%02x", (*p)->signature[0], (*p)->signature[1], (*p)->signature[2]);
-
-	if(sig->size != 3 ||
-		sig->buf[0] != (*p)->signature[0] ||
-		sig->buf[1] != (*p)->signature[1] ||
-		sig->buf[2] != (*p)->signature[2]) {
-		exitrc = FW_MATCH_SIG_FAIL;
-		goto main_exit;
-	}
+	logprintf(LOG_INFO, "AVR device signature = 0x%02x 0x%02x 0x%02x", sig->buf[0], sig->buf[1], sig->buf[2]);
 
 	if(sig->size != 3 ||
 		sig->buf[0] != (*p)->signature[0] ||
@@ -668,23 +794,24 @@ static int firmware_write(char *filename, struct avrpart **p) {
 
 	/* Write high and low fuses to microprocessor
 	   First low and then high */
+	if(mptype != FW_MP_ATMEL328P && mptype != FW_MP_UNKNOWN) {
+		if(do_op(pgm, v, wlfuse, nowrite, verify)) {
+			exitrc = FW_WRITE_FAIL;
+			goto main_exit;
+		}
+		if(do_op(pgm, v, vlfuse, nowrite, verify)) {
+			exitrc = FW_VERIFY_FAIL;
+			goto main_exit;
+		}
 
-	if(do_op(pgm, v, wlfuse, nowrite, verify)) {
-		exitrc = FW_WRITE_FAIL;
-		goto main_exit;
-	}
-	if(do_op(pgm, v, vlfuse, nowrite, verify)) {
-		exitrc = FW_VERIFY_FAIL;
-		goto main_exit;
-	}
-
-	if(do_op(pgm, v, whfuse, nowrite, verify)) {
-		exitrc = FW_WRITE_FAIL;
-		goto main_exit;
-	}
-	if(do_op(pgm, v, vhfuse, nowrite, verify)) {
-		exitrc = FW_VERIFY_FAIL;
-		goto main_exit;
+		if(do_op(pgm, v, whfuse, nowrite, verify)) {
+			exitrc = FW_WRITE_FAIL;
+			goto main_exit;
+		}
+		if(do_op(pgm, v, vhfuse, nowrite, verify)) {
+			exitrc = FW_VERIFY_FAIL;
+			goto main_exit;
+		}
 	}
 
 	/* Write hex file to microprocessor */
@@ -809,24 +936,26 @@ main_exit:
 		FREE(vfile);
 	}
 
-	FREE(whfuse->memtype);
-	FREE(whfuse->filename);
-	FREE(whfuse);
+	if(mptype != FW_MP_ATMEL328P && mptype != FW_MP_UNKNOWN) {
+		FREE(whfuse->memtype);
+		FREE(whfuse->filename);
+		FREE(whfuse);
 
-	if(vhfuse != NULL) {
-		FREE(vhfuse->memtype);
-		FREE(vhfuse->filename);
-		FREE(vhfuse);
-	}
+		if(vhfuse != NULL) {
+			FREE(vhfuse->memtype);
+			FREE(vhfuse->filename);
+			FREE(vhfuse);
+		}
 
-	FREE(wlfuse->memtype);
-	FREE(wlfuse->filename);
-	FREE(wlfuse);
+		FREE(wlfuse->memtype);
+		FREE(wlfuse->filename);
+		FREE(wlfuse);
 
-	if(vlfuse != NULL) {
-		FREE(vlfuse->memtype);
-		FREE(vlfuse->filename);
-		FREE(vlfuse);
+		if(vlfuse != NULL) {
+			FREE(vlfuse->memtype);
+			FREE(vlfuse->filename);
+			FREE(vlfuse);
+		}
 	}
 
 	for(i=0;i<AVR_OP_MAX;i++) {
@@ -892,13 +1021,32 @@ main_exit:
 	return exitrc;
 }
 
-int firmware_getmp(void) {
+int firmware_getmp(char *port) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
+	if(port != NULL) {
+		strncpy(comport, port, 255);
+	} else {
+		memset(comport, '\0', 255);
+	}
+	
 	struct avrpart *p = NULL;
 	unsigned int match = 0;
+
+	logprintf(LOG_INFO, "Indentifying microprocessor");
+	mptype = FW_MP_ATMEL328P;
+	firmware_atmega328p(&p);
+	if(!match && firmware_identifymp(&p) != 0) {
+		logprintf(LOG_INFO, "Not an ATMega328P");
+		mptype = FW_MP_ATTINY25;
+		match = 0;
+		firmware_attiny25(&p);
+	} else {
+		return mptype;
+	}
 	firmware_attiny25(&p);
 	if(!match && firmware_identifymp(&p) != 0) {
+		logprintf(LOG_INFO, "Not an ATTiny45");
 		mptype = FW_MP_ATTINY45;
 		match = 0;
 		firmware_attiny45(&p);
@@ -906,6 +1054,7 @@ int firmware_getmp(void) {
 		return mptype;
 	}
 	if(!match && firmware_identifymp(&p) != 0) {
+		logprintf(LOG_INFO, "Not an ATTiny85");
 		mptype = FW_MP_ATTINY85;
 		match = 0;
 		firmware_attiny85(&p);
@@ -922,63 +1071,14 @@ int firmware_getmp(void) {
 	return -1;
 }
 
-int firmware_check(char **output) {
+int firmware_update(char *fwfile, char *port) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
-	int version = 0;
-#ifdef FIRMWARE_UPDATER
-	struct dirent *file = NULL;
-	DIR *d = NULL;
-	int tmp = 0;
-	int num = 0;
-
-	if(mptype == FW_MP_UNKNOWN) {
-		logprintf(LOG_INFO, "Discovering AVR the firmware is running on");
-		firmware_getmp();
-	}
-
-	if(mptype != FW_MP_UNKNOWN) {
-		if((d = opendir(FIRMWARE_PATH))) {
-			while((file = readdir(d)) != NULL) {
-				if(file->d_type == DT_REG) {
-					switch(mptype) {
-						case FW_MP_ATTINY25:
-							num = 2;
-						break;
-						case FW_MP_ATTINY45:
-							num = 4;
-						break;
-						case FW_MP_ATTINY85:
-							num = 8;
-						break;
-						default:
-						break;
-					}
-					char name[strlen(file->d_name)+2];
-					memset(name, '\0', strlen(file->d_name)+2);
-					sprintf(name, "pilight_firmware_t%d5", num);
-					if(strncmp(file->d_name, name, 19) == 0) {
-						sscanf(file->d_name, "pilight_firmware_t%*[0-9]_v%d.hex", &tmp);
-						if(tmp > version) {
-							version = tmp;
-							strcpy(*output, file->d_name);
-						}
-					}
-				}
-			}
-			closedir(d);
-		}
-	}
-#endif
-	if(firmware.version >= version) {
-		return -1;
+	if(port != NULL) {
+		strncpy(comport, port, 255);
 	} else {
-		return 0;
+		memset(comport, '\0', 255);
 	}
-}
-
-int firmware_update(char *fwfile) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
 	struct avrpart *p = NULL;
 	if(fmt_autodetect(fwfile) != FMT_IHEX) {
@@ -986,6 +1086,10 @@ int firmware_update(char *fwfile) {
 		return -1;
 	} else {
 		switch(mptype) {
+			case FW_MP_ATMEL328P:
+				logprintf(LOG_INFO, "Firmware running on an ATmega328P");
+				firmware_atmega328p(&p);
+			break;
 			case FW_MP_ATTINY25:
 				logprintf(LOG_INFO, "Firmware running on an ATTiny25");
 				firmware_attiny25(&p);

@@ -199,6 +199,8 @@ AVRMEM * avr_dup_mem(AVRMEM * m)
   }
   memset(n->buf, 0, n->size);
 
+  memcpy(n->tags, m->tags, n->size);
+
   return n;
 }
 

@@ -156,6 +156,13 @@ char *http_process_request(char *url, int method, char **type, int *code, int *s
 		goto exit;
 	}
 
+#ifdef _WIN32
+		unsigned long on = 1;
+		ioctlsocket(sockfd, FIONBIO, &on);
+#else
+		fcntl(sockfd, F_SETFL, O_NONBLOCK);
+#endif		
+
 	if(method == HTTP_POST) {
 		len = (size_t)snprintf(&header[0], bufsize, "POST %s HTTP/1.0\r\n", page);
 		if(len >= bufsize) {

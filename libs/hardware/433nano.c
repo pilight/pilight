@@ -235,11 +235,10 @@ static int nano433Send(int *code, int rawlen, int repeats) {
 
 static void *nano433Receive(void *param) {
 	struct rawcode_t *r = (struct rawcode_t *)param;
-	struct timeval tv;
 	char buffer[1024], c[1];
 	int start = 0, bytes = 0;
 	int s = 0, nrpulses = 0, y = 0;
-	int startp = 0, pulses[10], diff = 0;
+	int startp = 0, pulses[10];
 	size_t x = 0;
 #ifdef _WIN32
 	DWORD n;

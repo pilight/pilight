@@ -43,11 +43,11 @@ typedef enum {
 	FW_MP_UNKNOWN,
 	FW_MP_ATTINY25,
 	FW_MP_ATTINY45,
-	FW_MP_ATTINY85
+	FW_MP_ATTINY85,
+	FW_MP_ATMEL328P
 } mptype_t;
 
-int firmware_update(char *fwfile);
-int firmware_check(char **output);
-int firmware_getmp(void);
+int firmware_update(char *fwfile, char *comport);
+int firmware_getmp(char *comport);
 
 #endif

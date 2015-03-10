@@ -1930,48 +1930,6 @@ static void procProtocolInit(void) {
 	options_add(&procProtocol->options, 'r', "ram", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, NULL);
 }
 
-#if defined(FIRMWARE_UPDATER) && !defined(_WIN32)
-void *firmware_loop(void *param) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
-
-	unsigned int interval = 1;
-	int x = 0;
-	char fwfile[4096] = {'\0'};
-	int fwupdate = 0;
-
-	settings_find_number("firmware-update", &fwupdate);
-
-	while(main_loop) {
-		/* Check if firmware needs to be updated */
-		if(fwupdate == 1 && firmware.version > 0) {
-			if(x == interval) {
-				char *fwtmp = fwfile;
-				if(firmware_check(&fwtmp) == 0) {
-					firmware.version = 0;
-					size_t fwl = strlen(FIRMWARE_PATH)+strlen(fwfile)+2;
-					char fwpath[fwl];
-					memset(fwpath, '\0', fwl);
-					sprintf(fwpath, "%s%s", FIRMWARE_PATH, fwfile);
-					logprintf(LOG_INFO, "**** START UPD. FW ****");
-					if(firmware_update(fwpath) != 0) {
-						logprintf(LOG_INFO, "**** FAILED UPD. FW ****");
-					} else {
-						logprintf(LOG_INFO, "**** DONE UPD. FW ****");
-					}
-					fwupdate = 0;
-				}
-			}
-			interval = 60;
-		}
-		if(x == interval) {
-			x = 0;
-		}
-		sleep(1);
-	}
-	return NULL;
-}
-#endif
-
 #pragma GCC diagnostic push  // require GCC 4.6
 #pragma GCC diagnostic ignored "-Wcast-qual"
 void registerVersion(void) {
@@ -2496,9 +2454,6 @@ int start_pilight(int argc, char **argv) {
 	}
 #endif
 
-#if defined(FIRMWARE_UPDATER) && !defined(_WIN32)
-	threads_register("firmware upgrader", &firmware_loop, (void *)NULL, 0);
-#endif
 	return EXIT_SUCCESS;
 
 clear:

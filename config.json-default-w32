@@ -11,8 +11,7 @@
 		"webserver-root": "c:/pilight/web/",
 		"webserver-port": 5001,
 		"webserver-cache": 1,
-		"whitelist": "",
-		"firmware-update": 0
+		"whitelist": ""
 	},
 	"hardware": {
 		"none": { }

@@ -294,7 +294,7 @@ int sendmail(char *host, char *login, char *pass, unsigned short port, struct ma
 
 	len = strlen("RCPT TO: <>\r\n")+strlen(mail->to)+1;
 	out = REALLOC(out, len+1);
-	snprintf(out, len, "RCPT TO: <%s>\r\n", mail->from);
+	snprintf(out, len, "RCPT TO: <%s>\r\n", mail->to);
 	logprintf(LOG_DEBUG, "SMTP: %s", out);
 	if(sd_write(out) != 0) {
 		logprintf(LOG_ERR, "SMTP: failed to send RCPT");

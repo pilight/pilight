@@ -202,26 +202,32 @@ int avr_mem_hiaddr(AVRMEM * mem)
  */
 int avr_read(PROGRAMMER * pgm, AVRPART * p, char * memtype, int size)
 {
+  int              wsize;
   unsigned char    rbyte;
   unsigned long    i;
   unsigned char  * buf;
-  AVRMEM * mem = NULL;
+  AVRMEM * mem = NULL, * vmem = NULL;
   int rc;
 
   /* NEW */
   if(strcmp(memtype, "signature") == 0) {
-	mem = p->sigmem;
+		mem = p->sigmem;
   }	else if(strcmp(memtype, "flash") == 0) {
-	mem = p->flashmem;
+		mem = p->flashmem;
   } else if(strcmp(memtype, "lfuse") == 0) {
-	mem = p->lfusemem;
+		mem = p->lfusemem;
   } else if(strcmp(memtype, "hfuse") == 0) {
-	mem = p->hfusemem;
+		mem = p->hfusemem;
   }
   // mem = avr_locate_mem(p, memtype);
   if (mem == NULL) {
     logprintf(LOG_ERR, "No \"%s\" memory for part %s", memtype, p->desc);
     return -1;
+  }
+
+	wsize = mem->size;
+  if (size < wsize) {
+    wsize = size;
   }
 
   buf  = mem->buf;
@@ -235,17 +241,56 @@ int avr_read(PROGRAMMER * pgm, AVRPART * p, char * memtype, int size)
   memset(buf, 0xff, size);
 
   if (pgm->paged_load != NULL && mem->page_size != 0) {
-    /*
-     * the programmer supports a paged mode read, perhaps more
-     * efficiently than we can read it directly, so use its routine
-     * instead
+     /*
+     * the programmer supports a paged mode read
      */
-    rc = pgm->paged_load(pgm, p, mem, mem->page_size, size);
-    if (rc >= 0) {
-      if (strcasecmp(mem->desc, "flash") == 0)
+    int need_read, failure;
+    unsigned int pageaddr;
+    unsigned int npages, nread;
+
+    /* quickly scan number of pages to be written to first */
+    for (pageaddr = 0, npages = 0;
+         pageaddr < wsize;
+         pageaddr += mem->page_size) {
+      /* check whether this page must be read */
+      for (i = pageaddr;
+           i < pageaddr + mem->page_size;
+           i++)
+        if (i < mem->size) {
+          npages++;
+          break;
+        }
+    }
+
+    for (pageaddr = 0, failure = 0, nread = 0;
+         !failure && pageaddr < wsize;
+         pageaddr += mem->page_size) {
+      /* check whether this page must be read */
+      for (i = pageaddr, need_read = 0;
+           i < pageaddr + mem->page_size;
+           i++)
+        if (i < mem->size) {
+          need_read = 1;
+          break;
+        }
+      if (need_read) {
+        rc = pgm->paged_load(pgm, p, mem, mem->page_size,
+                            pageaddr, mem->page_size);
+        if (rc < 0)
+          /* paged load failed, fall back to byte-at-a-time read below */
+          failure = 1;
+      }
+      nread++;
+      report_progress(nread, npages, NULL);
+    }
+    if (!failure) {
+      if (strcasecmp(mem->desc, "flash") == 0 ||
+          strcasecmp(mem->desc, "application") == 0 ||
+          strcasecmp(mem->desc, "apptable") == 0 ||
+          strcasecmp(mem->desc, "boot") == 0)
         return avr_mem_hiaddr(mem);
       else
-        return rc;
+        return mem->size;
     }
   }
 
@@ -563,11 +608,11 @@ int avr_write(PROGRAMMER * pgm, AVRPART * p, char * memtype, int size)
 
   /* NEW */
   if(strcmp(memtype, "flash") == 0) {
-	m = p->flashmem;
+		m = p->flashmem;
   } else if(strcmp(memtype, "lfuse") == 0) {
-	m = p->lfusemem;
+		m = p->lfusemem;
   } else if(strcmp(memtype, "hfuse") == 0) {
-	m = p->hfusemem;
+		m = p->hfusemem;
   }
 
   if (m == NULL) {
@@ -586,14 +631,53 @@ int avr_write(PROGRAMMER * pgm, AVRPART * p, char * memtype, int size)
 	logprintf(LOG_ERR, "Only %d bytes will actually be written", wsize);
   }
 
-  if (pgm->paged_write != NULL && m->page_size != 0) {
+ if (pgm->paged_write != NULL && m->page_size != 0) {
     /*
-     * the programmer supports a paged mode write, perhaps more
-     * efficiently than we can read it directly, so use its routine
-     * instead
+     * the programmer supports a paged mode write
      */
-    if ((i = pgm->paged_write(pgm, p, m, m->page_size, size)) >= 0)
-      return i;
+    int need_write, failure;
+    unsigned int pageaddr;
+    unsigned int npages, nwritten;
+
+    /* quickly scan number of pages to be written to first */
+    for (pageaddr = 0, npages = 0;
+         pageaddr < wsize;
+         pageaddr += m->page_size) {
+      /* check whether this page must be written to */
+      for (i = pageaddr;
+           i < pageaddr + m->page_size;
+           i++)
+        if (i < m->size) {
+          npages++;
+          break;
+        }
+    }
+
+    for (pageaddr = 0, failure = 0, nwritten = 0;
+         !failure && pageaddr < wsize;
+         pageaddr += m->page_size) {
+      /* check whether this page must be written to */
+      for (i = pageaddr, need_write = 0;
+           i < pageaddr + m->page_size;
+           i++)
+        if (i < m->size) {
+          need_write = 1;
+          break;
+        }
+      if (need_write) {
+        rc = 0;
+        if (rc >= 0)
+          rc = pgm->paged_write(pgm, p, m, m->page_size, pageaddr, m->page_size);
+        if (rc < 0)
+          /* paged write failed, fall back to byte-at-a-time write below */
+          failure = 1;
+      }
+      nwritten++;
+      report_progress(nwritten, npages, NULL);
+    }
+    if (!failure)
+      return wsize;
+    /* else: fall back to byte-at-a-time write, for historical reasons */
   }
 
   if (pgm->write_setup) {
@@ -825,7 +909,7 @@ void report_progress (int completed, int total, char *hdr)
   if (hdr) {
     last = 0;
     start_time = t;
-    // avr_update_progress (percent, t - start_time, hdr);
+    avr_update_progress (percent, t - start_time, hdr);
   }
 
   if (percent > 100)
@@ -833,7 +917,7 @@ void report_progress (int completed, int total, char *hdr)
 
   if (percent > last) {
     last = percent;
-    // avr_update_progress (percent, t - start_time, hdr);
+    avr_update_progress (percent, t - start_time, hdr);
   }
 
   if (percent == 100)

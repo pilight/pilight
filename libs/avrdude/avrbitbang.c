@@ -158,25 +158,25 @@ static unsigned char bitbang_txrx(PROGRAMMER * pgm, unsigned char byte)
 
 int bitbang_rdy_led(PROGRAMMER * pgm, int value)
 {
-  pgm->setpin(pgm, pgm->pinno[PIN_LED_RDY], !value);
+  // pgm->setpin(pgm, pgm->pinno[PIN_LED_RDY], !value);
   return 0;
 }
 
 int bitbang_err_led(PROGRAMMER * pgm, int value)
 {
-  pgm->setpin(pgm, pgm->pinno[PIN_LED_ERR], !value);
+  // pgm->setpin(pgm, pgm->pinno[PIN_LED_ERR], !value);
   return 0;
 }
 
 int bitbang_pgm_led(PROGRAMMER * pgm, int value)
 {
-  pgm->setpin(pgm, pgm->pinno[PIN_LED_PGM], !value);
+  // pgm->setpin(pgm, pgm->pinno[PIN_LED_PGM], !value);
   return 0;
 }
 
 int bitbang_vfy_led(PROGRAMMER * pgm, int value)
 {
-  pgm->setpin(pgm, pgm->pinno[PIN_LED_VFY], !value);
+  // pgm->setpin(pgm, pgm->pinno[PIN_LED_VFY], !value);
   return 0;
 }
 

@@ -550,9 +550,9 @@ char *urlencode(char *str) {
 }
 
 char *base64decode(char *src, size_t len, size_t *decsize) {
-  int i = 0;
-  int j = 0;
-  int l = 0;
+  unsigned int i = 0;
+  unsigned int j = 0;
+  unsigned int l = 0;
   size_t size = 0;
   char *dec = NULL;
   char buf[3];
@@ -631,8 +631,8 @@ char *base64decode(char *src, size_t len, size_t *decsize) {
 }
 
 char *base64encode(char *src, size_t len) {
-  int i = 0;
-  int j = 0;
+  unsigned int i = 0;
+  unsigned int j = 0;
   char *enc = NULL;
   size_t size = 0;
   char buf[4];

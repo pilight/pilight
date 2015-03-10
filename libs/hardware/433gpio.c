@@ -84,7 +84,7 @@ static int gpio433Send(int *code, int rawlen, int repeats) {
 
 static void *gpio433Receive(void *param) {
 	if(gpio_433_in >= 0) {
-		return irq_read(gpio_433_in);
+		return (void *)irq_read(gpio_433_in);
 	} else {
 		sleep(1);
 		return 0;

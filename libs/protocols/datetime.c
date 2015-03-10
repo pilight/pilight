@@ -150,6 +150,12 @@ static void *getntptime(void *param) {
 				if(connect(sockfd, (struct sockaddr *)&servaddr, sizeof(servaddr)) == -1) {
 					logprintf(LOG_ERR, "error in connect");
 				} else {
+#ifdef _WIN32
+					unsigned long on = 1;
+					ioctlsocket(sockfd, FIONBIO, &on);
+#else
+					fcntl(sockfd, F_SETFL, O_NONBLOCK);
+#endif					
 					msg.li_vn_mode=227;
 
 					if(sendto(sockfd, (char *)&msg, 48, 0, (struct sockaddr *)&servaddr, sizeof(servaddr)) < -1) {
@@ -168,7 +174,7 @@ static void *getntptime(void *param) {
 								logprintf(LOG_INFO, "datetime #%d %.6f:%.6f adjusted by %d seconds", data->instance, data->longitude, data->latitude, data->diff);
 								data->counter = 0;
 							} else {
-								logprintf(LOG_INFO, "could not sync with ntp server: %s", data->ntpserver);
+								logprintf(LOG_INFO, "could not sync with ntp server: %d %s", datetime_loop, data->ntpserver);
 							}
 						}
 					}
@@ -361,6 +367,7 @@ static struct threadqueue_t *datetimeInitDev(JsonNode *jdevice) {
 
 static void datetimeThreadGC(void) {
 	datetime_loop = 0;
+
 	protocol_thread_stop(datetime);
 	while(datetime_threads > 0) {
 		usleep(10);
