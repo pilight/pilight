@@ -147,6 +147,8 @@ static int ninjablocksWeatherCheckValues(struct JsonNode *jvalues) {
 			}
 			snode->id = id;
 			snode->unit = unit;
+			snode->temp = 0;
+			snode->humi = 0;
 
 			json_find_number(jvalues, "temperature-offset", &snode->temp);
 			json_find_number(jvalues, "humidity-offset", &snode->humi);

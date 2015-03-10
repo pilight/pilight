@@ -201,6 +201,8 @@ static int alectoWX500CheckValues(struct JsonNode *jvalues) {
 				exit(EXIT_FAILURE);
 			}
 			snode->id = id;
+			snode->temp = 0;
+			snode->humi = 0;
 
 			json_find_number(jvalues, "temperature-offset", &snode->temp);
 			json_find_number(jvalues, "humidity-offset", &snode->humi);
