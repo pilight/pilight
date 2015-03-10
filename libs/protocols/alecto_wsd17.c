@@ -103,6 +103,7 @@ static int alectoWSD17CheckValues(struct JsonNode *jvalues) {
 				exit(EXIT_FAILURE);
 			}
 			snode->id = id;
+			snode->temp = 0;
 
 			json_find_number(jvalues, "temperature-offset", &snode->temp);
 
