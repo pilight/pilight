@@ -318,10 +318,11 @@ int ping(char *addr) {
 	memset(&buf1, '\0', INET_ADDRSTRLEN+1);
 	inet_ntop(AF_INET, (void *)&(ip->ip_src), buf1, INET_ADDRSTRLEN+1);
 	if(!((icmp->icmp_type == ICMP_ECHOREPLY || icmp->icmp_type == ICMP_ECHO) && strcmp(buf1, addr) == 0)) {
-		logprintf(LOG_DEBUG, "unexpected status reply %d from addr: %s", icmp->icmp_type, buf1);
+		logprintf(LOG_DEBUG, "unexpected status reply: %d code: %d at: %s from: %s",icmp->icmp_type, icmp->icmp_code, buf1, addr);
 		close(sockfd);
 		return -1;
 	}
+
 	close(sockfd);
 	return 0;
 }

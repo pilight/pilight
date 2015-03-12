@@ -94,7 +94,9 @@ static void *openweathermapParse(void *param) {
 
 	openweathermap_threads++;
 
-	if(!wnode) {
+	memset(&typebuf, '\0', 255);
+
+	if(wnode == NULL) {
 		logprintf(LOG_ERR, "out of memory");
 		exit(EXIT_FAILURE);
 	}
@@ -168,7 +170,7 @@ static void *openweathermapParse(void *param) {
 			sprintf(url, "http://api.openweathermap.org/data/2.5/weather?q=%s,%s&APPID=8db24c4ac56251371c7ea87fd3115493", wnode->location, wnode->country);
 			data = http_get_content(url, &tp, &ret, &size);
 			if(ret == 200) {
-				if(strcmp(typebuf, "application/json;") == 0) {
+				if(strstr(typebuf, "application/json") != NULL) {
 					if(json_validate(data) == true) {
 						if((jdata = json_decode(data)) != NULL) {
 							if((jmain = json_find_member(jdata, "main")) != NULL
@@ -393,6 +395,9 @@ void openweathermapInit(void) {
 	openweathermap->devtype = WEATHER;
 	openweathermap->hwtype = API;
 	openweathermap->multipleId = 0;
+#ifdef PILIGHT_V6
+	openweathermap->masterOnly = 1;
+#endif
 
 	options_add(&openweathermap->options, 't', "temperature", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9]{1,5}$");
 	options_add(&openweathermap->options, 'h', "humidity", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9]{1,5}$");
@@ -421,9 +426,9 @@ void openweathermapInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "openweathermap";
-	module->version = "1.7";
-	module->reqversion = "5.0";
-	module->reqcommit = "187";
+	module->version = "1.9";
+	module->reqversion = "6.0";
+	module->reqcommit = "23";
 }
 
 void init(void) {

@@ -1452,7 +1452,7 @@ static int devices_parse_elements(JsonNode *jdevices, struct devices_t *device) 
 	if(strlen(pilight_uuid) > 0 && strcmp(device->dev_uuid, pilight_uuid) == 0) {
 		tmp_protocols = device->protocols;
 		while(tmp_protocols) {
-			if(tmp_protocols->listener->initDev) {
+			if(tmp_protocols->listener->initDev && (tmp_protocols->listener->masterOnly == 0 || pilight.runmode == STANDALONE)) {
 				struct threadqueue_t *tmp = tmp_protocols->listener->initDev(jdevices);
 				if(tmp != NULL) {
 					device->threads = REALLOC(device->threads, (sizeof(struct threadqueue_t *)*(size_t)(device->nrthreads+1)));
