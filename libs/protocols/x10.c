@@ -135,7 +135,8 @@ static void x10CreateNumber(int n) {
 }
 
 static void x10CreateState(int state) {
-	if(state == 0) {
+// CMA17 protocol: Off: state=1 and Byte 1-Bit 5 logical High. Also set complement bit.
+	if(state == 1) {
 		x10CreateHigh(36, 36);
 		x10CreateLow(52, 52);
 	}
@@ -216,7 +217,7 @@ void x10Init(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "x10";
-	module->version = "1.2";
+	module->version = "1.21";
 	module->reqversion = "5.0";
 	module->reqcommit = "84";
 }
