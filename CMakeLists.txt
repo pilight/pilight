@@ -1,11 +1,11 @@
 cmake_minimum_required(VERSION 2.8.8)
 
+include(CMakeConfig.txt)
+
 project(pilight C)
 
 set(PROJECT_VERSION 6.0)
 set(PROJECT_NAME pilight)
-
-include(${PROJECT_SOURCE_DIR}/CMakeConfig.txt)
 
 set(MODULESPACK OFF)
 
@@ -40,7 +40,7 @@ if(WIN32)
 	set(CMAKE_SHARED_LINKER_FLAGS "-static-libgcc")
 	set(CMAKE_MODULE_LINKER_FLAGS "-static-libgcc")
 else()
-	set(CMAKE_EXE_LINKER_FLAGS " -Wl,-rpath=/usr/local/lib/,-rpath=/usr/lib/,-rpath=/lib/")
+	set(CMAKE_EXE_LINKER_FLAGS "  -Wl,-rpath=/usr/local/lib/,-rpath=/usr/lib/,-rpath=/lib/")
 	set(CMAKE_SHARED_LINKER_FLAGS " -Wl,-rpath=/usr/local/lib/,-rpath=/usr/lib/,-rpath=/lib/")
 	set(CMAKE_MODULE_LINKER_FLAGS " -Wl,-rpath=/usr/local/lib/,-rpath=/usr/lib/,-rpath=/lib/")
 endif()
@@ -97,45 +97,62 @@ if(NOT WIN32)
 			message(STATUS "Looking for libunwind - found (${CMAKE_UNWIND_LIBS_INIT})")
 		endif()
 	endif()
-endif()	
+endif()
 
-if(${CMAKE_SYSTEM_PROCESSOR} MATCHES "armv6" OR CPACK_DEBIAN_PACKAGE_ARCHITECTURE MATCHES "armhf")
-	if(${USE_SOFT_FLOAT} MATCHES "OFF")
-		set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE armhf)
-		set(CMAKE_C_FLAGS "-rdynamic -funwind-tables -lunwind -Ofast -mfloat-abi=hard -mfpu=vfp -march=armv6 -ffast-math -Wfloat-equal -Wshadow -Wpointer-arith -Wcast-align -Wstrict-overflow=5 -Wwrite-strings -Waggregate-return -Wcast-qual -Wswitch-default -Wswitch-enum -Wformat=2 -g -Wall -Wconversion -Wunreachable-code -Wstrict-prototypes")
-	else()
-		set(CMAKE_C_FLAGS "-rdynamic -funwind-tables -lunwind -Ofast -mfloat-abi=soft -msoft-float -mfpu=vfp -march=armv6 -ffast-math -Wfloat-equal -Wshadow -Wpointer-arith -Wcast-align -Wstrict-overflow=5 -Wwrite-strings -Waggregate-return -Wcast-qual -Wswitch-default -Wswitch-enum -Wformat=2 -g -Wall -Wconversion -Wunreachable-code -Wstrict-prototypes")
-	endif()
-elseif(${CMAKE_SYSTEM_PROCESSOR} MATCHES "armv7l")
+if(${CMAKE_SYSTEM_PROCESSOR} MATCHES "armv7l")
 	if(${USE_SOFT_FLOAT} MATCHES "OFF")
 		set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE armhf)
 		set(CMAKE_C_FLAGS "-rdynamic -funwind-tables -lunwind -Ofast -fPIC -mfloat-abi=hard -mfpu=vfp -march=armv7-a -ffast-math -Wfloat-equal -Wshadow -Wpointer-arith -Wcast-align -Wstrict-overflow=5 -Wwrite-strings -Waggregate-return -Wcast-qual -Wswitch-default -Wswitch-enum -Wformat=2 -g -Wall -Wconversion -Wunreachable-code -Wstrict-prototypes")
+		set(CMAKE_CXX_FLAGS "-rdynamic -g -funwind-tables -Ofast -fPIC -mfloat-abi=hard -mfpu=vfp -march=armv7-a -Wno-psabi")
 	else()
 		message(FATAL_ERROR "Architecture not supported")
+	endif()
+elseif(${CMAKE_SYSTEM_PROCESSOR} MATCHES "armv8")
+	if(${USE_SOFT_FLOAT} MATCHES "OFF")
+		set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE armhf)
+		set(CMAKE_C_FLAGS "-rdynamic -funwind-tables -lunwind -O2 -fPIC -mfpu=vfp -mtune=cortex-a8 -ffast-math -Wfloat-equal -Wshadow -Wpointer-arith -Wcast-align -Wstrict-overflow=5 -Wwrite-strings -Waggregate-return -Wcast-qual -Wswitch-default -Wswitch-enum -Wformat=2 -g -Wall -Wconversion -Wunreachable-code -Wstrict-prototypes")
+		set(CMAKE_CXX_FLAGS "-rdynamic -g -funwind-tables -O2 -fPIC -mfpu=vfp -mtune=cortex-a8 -Wno-psabi")
+	else()
+		message(FATAL_ERROR "Architecture not supported")
+	endif()
+elseif(${CMAKE_SYSTEM_PROCESSOR} MATCHES "armv6" OR CPACK_DEBIAN_PACKAGE_ARCHITECTURE MATCHES "armhf")
+	if(${USE_SOFT_FLOAT} MATCHES "OFF")
+		set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE armhf)
+		set(CMAKE_C_FLAGS "-rdynamic -funwind-tables -lunwind -Ofast -mfpu=vfp -march=armv6 -ffast-math -Wfloat-equal -Wshadow -Wpointer-arith -Wcast-align -Wstrict-overflow=5 -Wwrite-strings -Waggregate-return -Wcast-qual -Wswitch-default -Wswitch-enum -Wformat=2 -g -Wall -Wconversion -Wunreachable-code -Wstrict-prototypes")
+		set(CMAKE_CXX_FLAGS "-rdynamic -g -funwind-tables -Ofast -mfpu=vfp -march=armv6 -Wno-psabi")
+	else()
+		set(CMAKE_C_FLAGS "-rdynamic -funwind-tables -lunwind -Ofast -mfloat-abi=soft -msoft-float -mfpu=vfp -march=armv6 -ffast-math -Wfloat-equal -Wshadow -Wpointer-arith -Wcast-align -Wstrict-overflow=5 -Wwrite-strings -Waggregate-return -Wcast-qual -Wswitch-default -Wswitch-enum -Wformat=2 -g -Wall -Wconversion -Wunreachable-code -Wstrict-prototypes")
+		set(CMAKE_CXX_FLAGS "-rdynamic -g -funwind-tables -mfloat-abi=soft -msoft-float -mfpu=vfp -march=armv6 -Wno-psabi")		
 	endif()
 elseif(${CMAKE_SYSTEM_PROCESSOR} MATCHES "^mips")
 	set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE mipsel)
 	set(CMAKE_C_FLAGS "-Ofast -fPIC -Wcast-align -Wstrict-overflow=5 -Wwrite-strings -Waggregate-return -Wswitch-default -Wswitch-enum -Wformat=2 -g -Wall -Wno-sign-conversion -Wunreachable-code -Wstrict-prototypes")
+	set(CMAKE_CXX_FLAGS "-Ofast -fPIC -g -Wno-psabi")
 elseif(${CMAKE_SYSTEM_PROCESSOR} MATCHES "64")
 	set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE amd64)
 	set(CMAKE_C_FLAGS "-Ofast -fPIC -march=native -mtune=native -ffast-math -Wconversion -Wunreachable-code -Wstrict-prototypes -Wfloat-equal -Wshadow -Wpointer-arith -Wcast-align -Wstrict-overflow=5 -Wwrite-strings -Waggregate-return -Wcast-qual -Wswitch-default -Wswitch-enum -Wformat=2 -g -Wall")
+	set(CMAKE_CXX_FLAGS "-Ofast -fPIC -g -Wno-psabi")
 elseif(${CMAKE_SYSTEM_PROCESSOR} MATCHES "i686")
 	# Including debug symbols creates a +100MB dll file.
 	set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE i686)
 	set(CMAKE_C_FLAGS "-Os -g -gdwarf-2 -gstrict-dwarf -march=native -mtune=native -ffast-math -Wformat=2 -Wformat-nonliteral -lws2_32 -liphlpapi -lpsapi")
+	set(CMAKE_CXX_FLAGS "-Os -fPIC -g -Wno-psabi")
 elseif()
 	set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE i386)
 	set(CMAKE_C_FLAGS "-O2 -fPIC -march=native -mtune=native -ffast-math -Wformat=2 -g -Wformat-nonliteral")
+	set(CMAKE_CXX_FLAGS "-O2 -fPIC -g -Wno-psabi")
 endif()
 
 # Compile final sources for Ubuntu 64bit
 if(CPACK_DEBIAN_PACKAGE_ARCHITECTURE MATCHES "amd64")
-	set(CMAKE_C_FLAGS "-m64 -fPIC")
+	set(CMAKE_C_FLAGS "-m64 -fPIC -g")
+	set(CMAKE_CXX_FLAGS "-m64 -fPIC -g -Wno-psabi")
 	set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE amd64)
 endif()
 # Compile final sources for Ubuntu 32bit
 if(CPACK_DEBIAN_PACKAGE_ARCHITECTURE MATCHES "i386")
-	set(CMAKE_C_FLAGS "-m32")
+	set(CMAKE_C_FLAGS "-m32 -g")
+	set(CMAKE_CXX_FLAGS "-m32 -g -Wno-psabi")
 	set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE i386)
 endif()
 
@@ -199,9 +216,10 @@ if(${MODULESPACK} MATCHES "ON")
 	add_definitions(-DMODULE="1")
 endif()
 
-include_directories("/usr/local/include/")
+include_directories(/usr/local/include/)
 include_directories("${PROJECT_SOURCE_DIR}/libs/pilight/")
 include_directories("${PROJECT_SOURCE_DIR}/libs/config/")
+
 
 if(${EVENTS} MATCHES "ON")
 	include_directories("${PROJECT_SOURCE_DIR}/libs/operators/")
@@ -255,12 +273,14 @@ file(GLOB hardware
 file(GLOB pilight_headers
 	"${PROJECT_SOURCE_DIR}/libs/pilight/*.h"
 	"${PROJECT_SOURCE_DIR}/libs/avrdude/*.h"
-	"${PROJECT_SOURCE_DIR}/libs/polarssl/*.h")
+	"${PROJECT_SOURCE_DIR}/libs/polarssl/*.h"
+)
 
 file(GLOB pilight
 	"${PROJECT_SOURCE_DIR}/libs/pilight/*.c"
 	"${PROJECT_SOURCE_DIR}/libs/avrdude/*.c"
-	"${PROJECT_SOURCE_DIR}/libs/polarssl/*.c")
+	"${PROJECT_SOURCE_DIR}/libs/polarssl/*.c"
+)
 
 file(GLOB avrdude_sources "${PROJECT_SOURCE_DIR}/libs/avrdude/*.c")
 file(GLOB polarssl_sources "${PROJECT_SOURCE_DIR}/libs/polarssl/*.c")
@@ -326,7 +346,7 @@ if(WIN32)
 	list(REMOVE_ITEM hardware_headers "${PROJECT_SOURCE_DIR}/libs/hardware/433gpio.h")	
 	list(REMOVE_ITEM hardware "${PROJECT_SOURCE_DIR}/libs/hardware/433gpio.c")	
 	list(REMOVE_ITEM hardware_headers "${PROJECT_SOURCE_DIR}/libs/hardware/433lirc.h")	
-	list(REMOVE_ITEM hardware "${PROJECT_SOURCE_DIR}/libs/hardware/433lirc.c")	
+	list(REMOVE_ITEM hardware "${PROJECT_SOURCE_DIR}/libs/hardware/433lirc.c")
 endif()
 
 if(${PROTOCOL_ALECTO_WSD17} MATCHES "OFF")
@@ -502,10 +522,20 @@ if(${PROTOCOL_CPU_TEMP} MATCHES "OFF")
 	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/cpu_temp.c")
 endif()
 
+if(${PROTOCOL_CONRAD_RSL_SWITCH} MATCHES "OFF")
+	list(REMOVE_ITEM protocol_headers "${PROJECT_SOURCE_DIR}/libs/protocols/conrad_rsl_switch.h")
+	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/conrad_rsl_switch.c")
+endif()
+
 if(${PROTOCOL_CONRAD_WEATHER} MATCHES "OFF"
    AND ${PROTOCOL_TFA} MATCHES "OFF")
 	list(REMOVE_ITEM protocol_headers "${PROJECT_SOURCE_DIR}/libs/protocols/tfa.h")
 	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/tfa.c")
+endif()
+
+if(${PROTOCOL_CONRAD_RSL_CONTACT} MATCHES "OFF")
+	list(REMOVE_ITEM protocol_headers "${PROJECT_SOURCE_DIR}/libs/protocols/conrad_rsl_contact.h")
+	list(REMOVE_ITEM protocol "${PROJECT_SOURCE_DIR}/libs/protocols/conrad_rsl_contact.c")
 endif()
 
 if(${PROTOCOL_DHT11} MATCHES "OFF")
@@ -693,6 +723,7 @@ if(${FIRMWARE_UPDATER} MATCHES "OFF")
 	file(GLOB avrdude_headers "${PROJECT_SOURCE_DIR}/libs/avrdude/*.h")
 	list(REMOVE_ITEM pilight ${avrdude_headers})
 endif()
+
 if(WIN32)
 	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/avrdude/ser_posix.c")
 	list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/avrdude/avrgpio.c")
@@ -901,7 +932,7 @@ if(${MODULESPACK} MATCHES "OFF" OR WIN32)
 
 	add_library(pilight_static STATIC $<TARGET_OBJECTS:pilight>)
 	add_library(pilight_shared SHARED $<TARGET_OBJECTS:pilight>)
-
+	
 	if(NOT WIN32)
 		target_link_libraries(pilight_shared ${CMAKE_THREAD_LIBS_INIT})
 	else()
