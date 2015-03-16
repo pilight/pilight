@@ -143,7 +143,7 @@ static void alectoWX500ParseCode(void) {
 			battery = !alectoWX500->binary[8];
 
 			json_append_member(alectoWX500->message, "id", json_mknumber(id, 0));
-			json_append_member(alectoWX500->message, "winddir", json_mknumber((double)winddir/10, 1));
+			json_append_member(alectoWX500->message, "winddir", json_mknumber((double)winddir, 0));
 			json_append_member(alectoWX500->message, "windgust", json_mknumber((double)windgust/10, 1));
 			json_append_member(alectoWX500->message, "battery", json_mknumber(battery, 0));
 		break;
@@ -276,7 +276,7 @@ void alectoWX500Init(void) {
 #ifdef MODULAR
 void compatibility(const char **version, const char **commit) {
 	module->name = "alecto_wx500";
-	module->version = "0.11";
+	module->version = "0.12";
 	module->reqversion = "5.0";
 	module->reqcommit = "187";
 }
