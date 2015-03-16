@@ -217,6 +217,7 @@ static void *lircParse(void *param) {
 
 struct threadqueue_t *lircInitDev(JsonNode *jdevice) {
 	lirc_loop = 1;
+	
 	if(lirc_init == 0) {
 		lirc_init = 1;
 		struct protocol_threads_t *node = protocol_thread_init(lirc, NULL);
@@ -255,7 +256,6 @@ void lircInit(void) {
 #ifndef _WIN32
 	lirc->initDev=&lircInitDev;
 	lirc->threadGC=&lircThreadGC;
-	lirc->initDev(NULL);
 
 	memset(lirc_socket, '\0', BUFFER_SIZE);
 	strcpy(lirc_socket, "/dev/lircd");
@@ -265,7 +265,7 @@ void lircInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "lirc";
-	module->version = "1.5";
+	module->version = "1.6";
 	module->reqversion = "5.0";
 	module->reqcommit = "266";
 }
