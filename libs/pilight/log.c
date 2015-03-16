@@ -174,7 +174,11 @@ void logprintf(int prio, const char *format_str, ...) {
 
 	if(loglevel >= prio) {
 		gettimeofday(&tv, NULL);
+#ifdef _WIN32
+		if((localtime(&tv.tv_sec)) != 0) {
+#else
 		if((localtime_r(&tv.tv_sec, &tm)) != 0) {
+#endif
 			strftime(fmt, sizeof(fmt), "%b %d %H:%M:%S", &tm);
 			snprintf(buf, sizeof(buf), "%s:%03u", fmt, (unsigned int)tv.tv_usec);
 		}
@@ -452,7 +456,11 @@ void logerror(const char *format_str, ...) {
 	memset(&tm, '\0', sizeof(struct tm));
 
 	gettimeofday(&tv, NULL);
-	if((localtime_r(&tv.tv_sec, &tm)) == 0) {
+#ifdef _WIN32
+		if((localtime(&tv.tv_sec)) != 0) {
+#else
+		if((localtime_r(&tv.tv_sec, &tm)) != 0) {
+#endif
 		strftime(fmt, sizeof(fmt), "%b %d %H:%M:%S", &tm);
 		snprintf(buf, sizeof(buf), "%s:%03u", fmt, (unsigned int)tv.tv_usec);
 	}

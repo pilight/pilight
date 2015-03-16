@@ -43,6 +43,11 @@ typedef enum {
 
 struct config_t *config_hardware;
 
+typedef struct rawcode_t {
+	int pulses[MAXPULSESTREAMLENGTH];
+	int length;
+} rawcode_t;
+
 typedef struct hardware_t {
 	char *id;
 	unsigned short wait;
@@ -57,7 +62,10 @@ typedef struct hardware_t {
 
 	unsigned short (*init)(void);
 	unsigned short (*deinit)(void);
-	void *(*receive)(void *param);
+	union {
+		int (*receiveOOK)(void);
+		int (*receivePulseTrain)(struct rawcode_t *r);
+	};
 	int (*send)(int *code, int rawlen, int repeats);
 	int (*gc)(void);
 	unsigned short (*settings)(JsonNode *json);
@@ -68,11 +76,6 @@ typedef struct conf_hardware_t {
 	hardware_t *hardware;
 	struct conf_hardware_t *next;
 } conf_hardware_t;
-
-typedef struct rawcode_t {
-	int pulses[MAXPULSESTREAMLENGTH];
-	int length;
-} rawcode_t;
 
 extern struct hardware_t *hardware;
 extern struct conf_hardware_t *conf_hardware;

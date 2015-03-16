@@ -110,7 +110,11 @@ int devices_update(char *protoname, JsonNode *json, JsonNode **out) {
 	time_t timenow = time(NULL);
 	struct tm gmt;
 	memset(&gmt, '\0', sizeof(struct tm));
+#ifdef _WIN32
+	gmtime(&timenow);
+#else
 	gmtime_r(&timenow, &gmt);
+#endif
 	char utc[] = "UTC";
 	time_t utct = datetime2ts(gmt.tm_year+1900, gmt.tm_mon+1, gmt.tm_mday, gmt.tm_hour, gmt.tm_min, gmt.tm_sec, utc);
 	json_append_member(rval, "timestamp", json_mknumber((double)utct, 0));

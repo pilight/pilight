@@ -78,9 +78,6 @@
 #include <signal.h>
 
 #ifdef _WIN32
-#define localtime_r(a,b) localtime_s(b,a)
-#define gmtime_r(a,b) gmtime_s(b,a)
-
 #ifdef _MSC_VER
 #pragma comment(lib, "ws2_32.lib")    // Linking with winsock library
 #endif
@@ -3235,7 +3232,11 @@ static int parse_range_header(const char *header, int64_t *a, int64_t *b) {
 static void gmt_time_string(char *buf, size_t buf_len, time_t *t) {
 	struct tm tm;
 	memset(&tm, '\0', sizeof(struct tm));
+#ifdef _WIN32	
+	gmtime(&tm);
+#else
 	gmtime_r(t, &tm);
+#endif
   strftime(buf, buf_len, "%a, %d %b %Y %H:%M:%S GMT", &tm);
 }
 
@@ -3498,7 +3499,11 @@ static void print_dir_entry(const struct dir_entry *de) {
       mg_snprintf(size, sizeof(size), "%.1fG", (double) fsize / 1073741824);
     }
   }
-	localtime_r(&de->st.st_mtime, &tm);
+#ifdef _WIN32
+	localtime(&tm);
+#else
+	localtime_r(&de->st.st_mtime, &tm);	
+#endif
   strftime(mod, sizeof(mod), "%d-%b-%Y %H:%M", &tm);
   mg_url_encode(de->file_name, strlen(de->file_name), href, sizeof(href));
   mg_printf_data(&de->conn->mg_conn,
@@ -4800,7 +4805,11 @@ static void log_access(const struct connection *conn, const char *path) {
 
   if (fp == NULL) return;
   now = time(NULL);
+#ifdef _WIN32	
+	localtime(&tm);
+#else
 	localtime_r(&now, &tm);
+#endif
   strftime(date, sizeof(date), "%d/%b/%Y:%H:%M:%S %z", &tm);
 
   flockfile(fp);

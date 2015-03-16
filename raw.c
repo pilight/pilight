@@ -83,8 +83,8 @@ void *receiveOOK(void *param) {
 	int duration = 0;
 
 	struct hardware_t *hw = (hardware_t *)param;
-	while(main_loop && hw->receive) {
-		duration = (int)hw->receive(NULL);
+	while(main_loop && hw->receiveOOK) {
+		duration = hw->receiveOOK();
 		if(duration > 0) {
 			printf("%s: %d\n", hw->id, duration);
 		}
@@ -97,8 +97,8 @@ void *receivePulseTrain(void *param) {
 	int i = 0;
 
 	struct hardware_t *hw = (hardware_t *)param;
-	while(main_loop && hw->receive) {
-		hw->receive((void *)&r);
+	while(main_loop && hw->receivePulseTrain) {
+		hw->receivePulseTrain(&r);
 		if(r.length == -1) {
 			main_gc();
 			break;

@@ -192,7 +192,11 @@ static void *openweathermapParse(void *param) {
 										timenow = time(NULL);
 										struct tm current;
 										memset(&current, '\0', sizeof(struct tm));
+#ifdef _WIN32
+										localtime(&timenow);
+#else
 										localtime_r(&timenow, &current);
+#endif
 
 										int month = current.tm_mon+1;
 										int mday = current.tm_mday;
@@ -211,11 +215,19 @@ static void *openweathermapParse(void *param) {
 										json_append_member(code, "update", json_mknumber(0, 0));
 										time_t a = (time_t)sunrise;
 										memset(&tm, '\0', sizeof(struct tm));
+#ifdef _WIN32
+										localtime(&a);
+#else
 										localtime_r(&a, &tm);
+#endif
 										json_append_member(code, "sunrise", json_mknumber((double)((tm.tm_hour*100)+tm.tm_min)/100, 2));
 										time_t b = (time_t)sunset;
 										memset(&tm, '\0', sizeof(struct tm));
-										localtime_r(&b, &tm);
+#ifdef _WIN32
+										localtime(&a);
+#else
+										localtime_r(&a, &tm);
+#endif
 										json_append_member(code, "sunset", json_mknumber((double)((tm.tm_hour*100)+tm.tm_min)/100, 2));
 										if(timenow > (int)round(sunrise) && timenow < (int)round(sunset)) {
 											json_append_member(code, "sun", json_mkstring("rise"));

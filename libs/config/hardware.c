@@ -93,7 +93,8 @@ void hardware_register(struct hardware_t **hw) {
 
 	(*hw)->init = NULL;
 	(*hw)->deinit = NULL;
-	(*hw)->receive = NULL;
+	(*hw)->receiveOOK = NULL;
+	(*hw)->receivePulseTrain = NULL;
 	(*hw)->send = NULL;
 	(*hw)->gc = NULL;
 	(*hw)->settings = NULL;

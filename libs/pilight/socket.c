@@ -167,6 +167,52 @@ int socket_start(unsigned short port) {
 	return 0;
 }
 
+int socket_timeout_connect(int sockfd, struct sockaddr *serv_addr, int sec) {
+	struct timeval tv;
+	fd_set fdset;
+	int valopt;
+	socklen_t lon = 0;
+
+#ifdef _WIN32
+	unsigned long on = 1;
+	unsigned long off = 0;
+	ioctlsocket(sockfd, FIONBIO, &on);
+#else
+	long arg = fcntl(sockfd, F_GETFL, NULL);
+	fcntl(sockfd, F_SETFL, arg | O_NONBLOCK);
+#endif		
+	
+	if(connect(sockfd, serv_addr, sizeof(struct sockaddr)) < 0) {
+		if(errno == EINPROGRESS) {
+			tv.tv_sec = sec;
+			tv.tv_usec = 0;
+			FD_ZERO(&fdset); 
+			FD_SET(sockfd, &fdset); 
+			if(select(sockfd+1, NULL, &fdset, NULL, &tv) > 0) {
+				 lon = sizeof(int); 
+				 getsockopt(sockfd, SOL_SOCKET, SO_ERROR, (void*)(&valopt), &lon); 
+				 printf("%d\n", valopt);
+				 if(valopt > 0) {
+					return -3;
+				 }
+			} else {
+				return -2;
+			}
+		} else {
+			return -1;
+		}
+	}
+
+#ifdef _WIN32
+	ioctlsocket(sockfd, FIONBIO, &off);
+#else
+	arg = fcntl(sockfd, F_GETFL, NULL);
+	fcntl(sockfd, F_SETFL, arg & ~O_NONBLOCK);
+#endif
+
+	return 0;
+}
+
 unsigned int socket_get_port(void) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 

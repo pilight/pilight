@@ -233,8 +233,7 @@ static int nano433Send(int *code, int rawlen, int repeats) {
 	}
 }
 
-static void *nano433Receive(void *param) {
-	struct rawcode_t *r = (struct rawcode_t *)param;
+static int nano433Receive(struct rawcode_t *r) {
 	char buffer[1024], c[1];
 	int start = 0, bytes = 0;
 	int s = 0, nrpulses = 0, y = 0;
@@ -257,7 +256,7 @@ static void *nano433Receive(void *param) {
 			logprintf(LOG_INFO, "lost connection to %s", com);
 			CloseHandle(serial_433_fd);
 			r->length = -1;
-			break;
+			return -1;
 		}		
 		ReadFile(serial_433_fd, c, 1, &n, NULL);
 #else
@@ -294,7 +293,7 @@ static void *nano433Receive(void *param) {
 						r->pulses[r->length++] = pulses[buffer[y] - '0'];
 					}
 					bytes = 0;
-					break;
+					return 0;
 				}
 				if(start == 1) {
 					buffer[bytes++] = c[0];
@@ -305,7 +304,7 @@ static void *nano433Receive(void *param) {
 
 	running = 0;
 
-  return 0;
+  return -1;
 }
 
 static unsigned short nano433Settings(JsonNode *json) {
@@ -337,7 +336,7 @@ void nano433Init(void) {
 	nano433->init=&nano433HwInit;
 	nano433->deinit=&nano433HwDeinit;
 	nano433->send=&nano433Send;
-	nano433->receive=&nano433Receive;
+	nano433->receivePulseTrain=&nano433Receive;
 	nano433->settings=&nano433Settings;
 }
 

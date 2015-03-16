@@ -87,8 +87,8 @@ int main(int argc, char **argv) {
 				printf("Usage: %s [options]\n", progname);
 				printf("\t -H --help\t\tdisplay usage summary\n");
 				printf("\t -V --version\t\tdisplay version\n");
-				printf("\t -C --config\t\t\tconfig file\n");
-				printf("\t -p --comport\t\t\tserial COM port\n");
+				printf("\t -C --config\t\tconfig file\n");
+				printf("\t -p --comport\t\tserial COM port\n");
 				printf("\t -f --file=firmware\tfirmware file\n");
 				goto close;
 			break;
@@ -119,7 +119,6 @@ int main(int argc, char **argv) {
 		}
 	}
 
-#if defined(FIRMWARE_UPDATER)
 	if(config_set_file(configtmp) == EXIT_FAILURE) {
 		goto close;
 	}
@@ -152,9 +151,6 @@ int main(int argc, char **argv) {
 	} else {
 		logprintf(LOG_INFO, "**** DONE UPD. FW ****");
 	}
-#else
-	logprintf(LOG_ERR, "pilight was compiled without firmware flashing support");
-#endif
 
 close:
 	log_shell_disable();

@@ -312,7 +312,11 @@ struct tm *localtztime(char *tz, time_t t) {
 	char *oritz = getenv("TZ");
 	memset(&tm, '\0', sizeof(struct tm));
 	setenv("TZ", tz, 1);
+#ifdef _WIN32
+	localtime(&t);
+#else
 	localtime_r(&t, &tm);
+#endif
 	if(oritz != NULL) {
 		setenv("TZ", oritz, 1);
 	} else {
@@ -334,7 +338,11 @@ int tzoffset(char *tz1, char *tz2) {
 	memset(&tm, '\0', sizeof(struct tm));
 
 	now = time(NULL);
+#ifdef _WIN32
+	localtime(&now);
+#else
 	localtime_r(&now, &tm);
+#endif
 
 	setenv("TZ", tz1, 1);
 	utc = mktime(&tm);
@@ -360,10 +368,18 @@ int ctzoffset(void) {
 	tm1 = time(NULL);
 
 	memset(&t2, '\0', sizeof(struct tm));
+#ifdef _WIN32
+	gmtime(&tm1);
+#else
 	gmtime_r(&tm1, &t2);
+#endif
 
 	tm2 = mktime(&t2);
+#ifdef _WIN32
+	localtime(&tm1);
+#else
 	localtime_r(&tm1, &tmp);
+#endif
 	return (int)((tm1 - tm2)/3600);
 }
 
@@ -377,7 +393,11 @@ int isdst(char *tz) {
 	now = time(NULL);
 
 	memset(&tm, '\0', sizeof(struct tm));
+#ifdef _WIN32	
+	gmtime(&now);
+#else
 	gmtime_r(&now, &tm);
+#endif
 	tm.tm_hour += tzoffset(UTC, tz);
 
 	setenv("TZ", tz, 1);

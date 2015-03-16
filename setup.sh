@@ -26,9 +26,7 @@ fi
 function clean {
 	rm -r CMakeFiles 2>/dev/null 1>/dev/null >/dev/null || true;
 	rm -r _CPack_Packages 2>/dev/null 1>/dev/null >/dev/null || true;
-	mv win32-toolchain.cmake win32-toolchain.bak
 	rm *.cmake 2>/dev/null 1>/dev/null >/dev/null || true;
-	mv win32-toolchain.bak win32-toolchain.cmake
 	rm CMakeCache.txt 2>/dev/null 1>/dev/null >/dev/null || true;
 	make clean 2>/dev/null 1>/dev/null >/dev/null || true;
 	rm Makefile 2>/dev/null 1>/dev/null >/dev/null || true;

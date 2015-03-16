@@ -395,7 +395,7 @@ void *broadcast(void *param) {
 						json_delete(tmp);
 					}
 		
-					char *broadcast = json_stringify(bcqueue->jmessage, NULL);
+					char *out = json_stringify(bcqueue->jmessage, NULL);
 					if(strcmp(bcqueue->protoname, "pilight_firmware") == 0) {
 						struct JsonNode *code = NULL;
 						if((code = json_find_member(bcqueue->jmessage, "message")) != NULL) {
@@ -436,8 +436,8 @@ void *broadcast(void *param) {
 					struct clients_t *tmp_clients = clients;
 					while(tmp_clients) {
 						if(tmp_clients->receiver == 1 && tmp_clients->forward == 0) {
-								if(strcmp(broadcast, "{}") != 0 && nrchilds > 1) {
-									socket_write(tmp_clients->id, broadcast);
+								if(strcmp(out, "{}") != 0 && nrchilds > 1) {
+									socket_write(tmp_clients->id, out);
 									broadcasted = 1;
 								}
 						}
@@ -453,11 +453,11 @@ void *broadcast(void *param) {
 						json_delete(jupdate);
 						json_free(ret);
 					}
-					if((broadcasted == 1 || nodaemon == 1) && (strcmp(broadcast, "{}") != 0 && nrchilds > 1)) {
-						logprintf(LOG_DEBUG, "broadcasted: %s", broadcast);
+					if((broadcasted == 1 || nodaemon == 1) && (strcmp(out, "{}") != 0 && nrchilds > 1)) {
+						logprintf(LOG_DEBUG, "broadcasted: %s", out);
 					}
 					json_free(internal);
-					json_free(broadcast);
+					json_free(out);
 				}
 			}
 			struct bcqueue_t *tmp = bcqueue;
@@ -740,7 +740,7 @@ void *send_code(void *param) {
 			}
 
 			if(hw != NULL && hw->send != NULL) {
-				if(hw->receive != NULL) {
+				if(hw->receiveOOK != NULL || hw->receivePulseTrain != NULL) {
 					hw->wait = 1;
 					pthread_mutex_unlock(&hw->lock);
 					pthread_cond_signal(&hw->signal);
@@ -763,7 +763,7 @@ void *send_code(void *param) {
 					int plslen = protocol->raw[protocol->rawlen-1]/PULSE_DIV;
 					receive_queue(protocol->raw, protocol->rawlen, plslen, -1);
 				}
-				if(hw->receive != NULL) {
+				if(hw->receiveOOK != NULL || hw->receivePulseTrain != NULL) {
 					hw->wait = 0;
 					pthread_mutex_unlock(&hw->lock);
 					pthread_cond_signal(&hw->signal);
@@ -1499,12 +1499,12 @@ void *receivePulseTrain(void *param) {
 	pthread_mutex_lock(&hw->lock);
 	hw->running = 1;
 
-	while(main_loop == 1 && hw->receive != NULL && hw->stop == 0) {
+	while(main_loop == 1 && hw->receivePulseTrain != NULL && hw->stop == 0) {
 		if(hw->wait == 0) {
 			pthread_mutex_lock(&hw->lock);
 			logprintf(LOG_STACK, "%s::unlocked", __FUNCTION__);
 
-			hw->receive((void *)&r);
+			hw->receivePulseTrain(&r);
 			plslen = r.pulses[r.length-1]/PULSE_DIV;
 			if(r.length > 0) {
 				receive_queue(r.pulses, r.length, plslen, hw->hwtype);
@@ -1544,11 +1544,11 @@ void *receiveOOK(void *param) {
 	struct hardware_t *hw = (hardware_t *)param;
 	pthread_mutex_lock(&hw->lock);
 	hw->running = 1;
-	while(main_loop == 1 && hw->receive != NULL && hw->stop == 0) {
+	while(main_loop == 1 && hw->receiveOOK != NULL && hw->stop == 0) {
 		if(hw->wait == 0) {
 			pthread_mutex_lock(&hw->lock);
 			logprintf(LOG_STACK, "%s::unlocked", __FUNCTION__);
-			duration = (int)hw->receive(NULL);
+			duration = hw->receiveOOK();
 
 			if(duration > 0) {
 				r.pulses[r.length++] = duration;
@@ -1930,15 +1930,19 @@ static void procProtocolInit(void) {
 	options_add(&procProtocol->options, 'r', "ram", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, NULL);
 }
 
+#ifndef _WIN32
 #pragma GCC diagnostic push  // require GCC 4.6
 #pragma GCC diagnostic ignored "-Wcast-qual"
+#endif
 void registerVersion(void) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
 	registry_remove_value("pilight.version");
 	registry_set_string("pilight.version.current", (char *)PILIGHT_VERSION);
 }
+#ifndef _WIN32
 #pragma GCC diagnostic pop   // require GCC 4.6
+#endif
 
 #ifdef _WIN32
 void closeconsole(void) {

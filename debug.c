@@ -111,7 +111,7 @@ void *receivePulseTrain(void *param) {
 		i = 0;
 		time(&now);
 
-		hw->receive((void *)&r);
+		hw->receivePulseTrain(&r);
 		if(r.length == -1) {
 			main_gc();
 			break;
@@ -147,7 +147,11 @@ void *receivePulseTrain(void *param) {
 					/* Print everything */
 					printf("--[RESULTS]--\n");
 					printf("\n");
-					localtime_r(&now, &tm);
+#ifdef _WIN32
+					localtime(&now);
+#else
+					localtime_r(&now, &tm);	
+#endif
 					char buf[128];
 					char *p = buf;
 					memset(&buf, '\0', sizeof(buf));
@@ -223,8 +227,8 @@ void *receiveOOK(void *param) {
 		y = 0;
 		time(&now);
 
-		while(inner_loop && hw->receive) {
-			duration = (int)hw->receive(NULL);
+		while(inner_loop && hw->receiveOOK) {
+			duration = hw->receiveOOK();
 			time(&later);
 			if(difftime(later, now) > 1) {
 				inner_loop = 0;
@@ -305,7 +309,11 @@ void *receiveOOK(void *param) {
 			/* Print everything */
 			printf("--[RESULTS]--\n");
 			printf("\n");
-			localtime_r(&now, &tm);
+#ifdef _WIN32
+			localtime(&now);
+#else
+			localtime_r(&now, &tm);	
+#endif
 			char buf[128];
 			char *p = buf;
 #ifdef _WIN32

@@ -30,6 +30,7 @@ typedef struct socket_callback_t {
 /* Start the socket server */
 int socket_start(unsigned short port);
 int socket_connect(char *address, unsigned short port);
+int socket_timeout_connect(int sockfd, struct sockaddr *serv_addr, int usec);
 void socket_close(int i);
 int socket_write(int sockfd, const char *msg, ...);
 int socket_read(int sockfd, char **out, time_t timeout);

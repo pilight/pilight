@@ -77,13 +77,11 @@
 #define RECEIVE_REPEATS					1
 #define UUID_LENGTH							21
 
-#ifdef FIRMWARE_UPDATER
-	#define FIRMWARE_PATH				"c:/Program Data/pilight/"
-	#define FIRMWARE_GPIO_RESET	10
-	#define FIRMWARE_GPIO_SCK		14
-	#define FIRMWARE_GPIO_MOSI	12
-	#define FIRMWARE_GPIO_MISO	13
-#endif
+#define FIRMWARE_PATH				"c:/Program Data/pilight/"
+#define FIRMWARE_GPIO_RESET	10
+#define FIRMWARE_GPIO_SCK		14
+#define FIRMWARE_GPIO_MOSI	12
+#define FIRMWARE_GPIO_MISO	13
 
 #define PILIGHT_V6
 

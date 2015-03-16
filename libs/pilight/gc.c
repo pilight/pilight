@@ -27,7 +27,9 @@
 #else
 	#include <execinfo.h>
 	#define UNW_LOCAL_ONLY
-	#include <libunwind.h>
+	#ifndef __mips__
+		#include <libunwind.h>
+	#endif
 #endif
 #include <signal.h>
 

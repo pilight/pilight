@@ -52,6 +52,7 @@
 #include "dso.h"
 #include "log.h"
 #include "threads.h"
+#include "socket.h"
 #include "protocol.h"
 #include "hardware.h"
 #include "binary.h"
@@ -198,13 +199,26 @@ static void *xbmcParse(void *param) {
 		inet_pton(AF_INET, xnode->server, &serv_addr.sin_addr);
 
 		/* Connect to the server */
-		if(connect(xnode->sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
-			logprintf(LOG_NOTICE, "could not connect to XBMC/Kodi server @%s", xnode->server);
-			protocol_thread_wait(node, 3, &nrloops);
-			continue;
-		} else {
-			xbmcCreateMessage(xnode->server, xnode->port, home, none);
-			reset = 1;
+		switch(socket_timeout_connect(xnode->sockfd, (struct sockaddr *)&serv_addr, 3)) {
+			case -1:
+				logprintf(LOG_ERR, "could not connect to XBMC/Kodi server @%s", xnode->server);
+				protocol_thread_wait(node, 3, &nrloops);
+				continue;
+			break;
+			case -2:
+				logprintf(LOG_ERR, "XBMC/Kodi connection timeout @%s", xnode->server);
+				protocol_thread_wait(node, 3, &nrloops);
+				continue;
+			break;
+			case -3:
+				logprintf(LOG_ERR, "Error in XBMC/Kodi socket connection @%s", xnode->server);
+				protocol_thread_wait(node, 3, &nrloops);
+				continue;
+			break;
+			default:
+				xbmcCreateMessage(xnode->server, xnode->port, home, none);
+				reset = 1;
+			break;
 		}
 
 		struct xbmc_data_t *xtmp = xbmc_data;
@@ -399,7 +413,7 @@ void xbmcInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "xbmc";
-	module->version = "1.4";
+	module->version = "1.5";
 	module->reqversion = "5.0";
 	module->reqcommit = "187";
 }

@@ -199,7 +199,6 @@ static int settings_parse(JsonNode *root) {
 #endif
 				settings_add_number(jsettings->key, (int)jsettings->number_);
 			}
-#ifdef FIRMWARE_UPDATER
 		} else if(strcmp(jsettings->key, "firmware-gpio-reset") == 0
 			|| strcmp(jsettings->key, "firmware-gpio-sck") == 0
 			|| strcmp(jsettings->key, "firmware-gpio-mosi") == 0
@@ -223,7 +222,6 @@ static int settings_parse(JsonNode *root) {
 			} else {
 				settings_add_number(jsettings->key, (int)jsettings->number_);
 			}
-#endif
 		} else if(strcmp(jsettings->key, "standalone") == 0 ||
 							strcmp(jsettings->key, "watchdog-enable") == 0) {
 			if(jsettings->tag != JSON_NUMBER) {

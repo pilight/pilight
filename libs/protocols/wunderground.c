@@ -228,7 +228,11 @@ static void *wundergroundParse(void *param) {
 																	timenow = time(NULL);
 																	struct tm current;
 																	memset(&current, '\0', sizeof(struct tm));
+#ifdef _WIN32
+																	localtime(&timenow);
+#else
 																	localtime_r(&timenow, &current);
+#endif
 																	int month = current.tm_mon+1;
 																	int mday = current.tm_mday;
 																	int year = current.tm_year+1900;

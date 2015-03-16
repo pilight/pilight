@@ -32,10 +32,6 @@
 extern char *progname;
 
 #ifdef _WIN32
-#define sleep(a) Sleep(a*1000)
-#define localtime_r(a,b) (localtime_s(b,a) == 0)
-#define gmtime_r(a,b) gmtime_s(b,a)
-
 int check_instances(const wchar_t *prog);
 const char *inet_ntop(int af, const void* src, char* dst, int cnt);
 int setenv(const char *name, const char *value, int overwrite);

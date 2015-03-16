@@ -43,6 +43,7 @@
 
 
 #include "pilight.h"
+#include "socket.h"
 #include "log.h"
 #include "common.h"
 #include "../polarssl/ssl.h"
@@ -150,18 +151,23 @@ char *http_process_request(char *url, int method, char **type, int *code, int *s
 	}
 	serv_addr.sin_port = htons(port);
 
-	if(connect(sockfd, (struct sockaddr *)&serv_addr, sizeof(struct sockaddr)) < 0){
-		logprintf(LOG_ERR, "could not connect to http socket");
-		*code = -1;
-		goto exit;
+	/* Proper socket timeout testing */
+	switch(socket_timeout_connect(sockfd, (struct sockaddr *)&serv_addr, 3)) {
+		case -1:
+			logprintf(LOG_ERR, "could not connect to http socket (%s)", url);
+			*code = -1;
+			goto exit;
+		case -2:
+			logprintf(LOG_ERR, "http socket connection timeout (%s)", url);
+			*code = -1;
+			goto exit;		
+		case -3:
+			logprintf(LOG_ERR, "error in http socket connection", url);
+			*code = -1;
+			goto exit;
+		default:
+		break;
 	}
-
-#ifdef _WIN32
-		unsigned long on = 1;
-		ioctlsocket(sockfd, FIONBIO, &on);
-#else
-		fcntl(sockfd, F_SETFL, O_NONBLOCK);
-#endif		
 
 	if(method == HTTP_POST) {
 		len = (size_t)snprintf(&header[0], bufsize, "POST %s HTTP/1.0\r\n", page);
@@ -335,7 +341,7 @@ char *http_process_request(char *url, int method, char **type, int *code, int *s
 
 		if(bytes <= 0) {
 			if(*size == 0) {
-				logprintf(LOG_ERR, "http(s) read failed");
+				logprintf(LOG_ERR, "http(s) read failed (%s)", url);
 			}
 			break;
 		}

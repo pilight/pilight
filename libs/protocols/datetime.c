@@ -48,6 +48,7 @@
 #include <time.h>
 
 #include "pilight.h"
+#include "socket.h"
 #include "common.h"
 #include "dso.h"
 #include "log.h"
@@ -140,48 +141,56 @@ static void *getntptime(void *param) {
 			 && (data->ntpserver != NULL && strlen(data->ntpserver) > 0)) {
 			firstrun = 0;
 			if((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) == -1) {
-				logprintf(LOG_ERR, "error in socket");
+				logprintf(LOG_ERR, "Error in ntp server socket connection @%s", data->ntpserver);
 			} else {
 				memset(&servaddr, '\0', sizeof(servaddr));
 				servaddr.sin_family = AF_INET;
 				servaddr.sin_port = htons(123);
 
 				inet_pton(AF_INET, ip, &servaddr.sin_addr);
-				if(connect(sockfd, (struct sockaddr *)&servaddr, sizeof(servaddr)) == -1) {
-					logprintf(LOG_ERR, "error in connect");
+
+				switch(socket_timeout_connect(sockfd, (struct sockaddr *)&servaddr, 3)) {
+					case -1:
+						logprintf(LOG_ERR, "could not connect to ntp server @%s", data->ntpserver);
+						continue;
+					break;
+					case -2:
+						logprintf(LOG_ERR, "ntp server connection timeout @%s", data->ntpserver);
+						continue;
+					break;
+					case -3:
+						logprintf(LOG_ERR, "Error in ntp server socket connection @%s", data->ntpserver);
+						continue;
+					break;
+					default:
+					break;
+				}				
+
+				msg.li_vn_mode=227;
+
+				if(sendto(sockfd, (char *)&msg, 48, 0, (struct sockaddr *)&servaddr, sizeof(servaddr)) < -1) {
+					logprintf(LOG_ERR, "error in sending");
 				} else {
-#ifdef _WIN32
-					unsigned long on = 1;
-					ioctlsocket(sockfd, FIONBIO, &on);
-#else
-					fcntl(sockfd, F_SETFL, O_NONBLOCK);
-#endif					
-					msg.li_vn_mode=227;
-
-					if(sendto(sockfd, (char *)&msg, 48, 0, (struct sockaddr *)&servaddr, sizeof(servaddr)) < -1) {
-						logprintf(LOG_ERR, "error in sending");
+					if(recvfrom(sockfd, (void *)&msg, 48, 0, NULL, NULL) < -1) {
+						logprintf(LOG_ERR, "error in receiving");
 					} else {
-						if(recvfrom(sockfd, (void *)&msg, 48, 0, NULL, NULL) < -1) {
-							logprintf(LOG_ERR, "error in receiving");
-						} else {
-							if(msg.refid > 0) {
-								(msg.rec).Ul_i.Xl_ui = ntohl((msg.rec).Ul_i.Xl_ui);
-								(msg.rec).Ul_f.Xl_f = (int)ntohl((unsigned int)(msg.rec).Ul_f.Xl_f);
+						if(msg.refid > 0) {
+							(msg.rec).Ul_i.Xl_ui = ntohl((msg.rec).Ul_i.Xl_ui);
+							(msg.rec).Ul_f.Xl_f = (int)ntohl((unsigned int)(msg.rec).Ul_f.Xl_f);
 
-								unsigned int adj = 2208988800u;
-								data->ntptime = (time_t)(msg.rec.Ul_i.Xl_ui - adj);
-								data->diff = (int)(data->time - data->ntptime);
-								logprintf(LOG_INFO, "datetime #%d %.6f:%.6f adjusted by %d seconds", data->instance, data->longitude, data->latitude, data->diff);
-								data->counter = 0;
-							} else {
-								logprintf(LOG_INFO, "could not sync with ntp server: %d %s", datetime_loop, data->ntpserver);
-							}
+							unsigned int adj = 2208988800u;
+							data->ntptime = (time_t)(msg.rec.Ul_i.Xl_ui - adj);
+							data->diff = (int)(data->time - data->ntptime);
+							logprintf(LOG_INFO, "datetime #%d %.6f:%.6f adjusted by %d seconds", data->instance, data->longitude, data->latitude, data->diff);
+							data->counter = 0;
+						} else {
+							logprintf(LOG_INFO, "could not sync with ntp server: %s", data->ntpserver);
 						}
 					}
 				}
-				if(sockfd > 0) {
-					close(sockfd);
-				}
+			}
+			if(sockfd > 0) {
+				close(sockfd);
 			}
 		}
 		pthread_mutex_unlock(&data->lock);
@@ -286,7 +295,7 @@ static void *datetimeParse(void *param) {
 
 		/* Get UTC time */
 #ifdef _WIN32
-		if(gmtime_r(&dnode->time, &tm) == 0) {
+		if(gmtime(&dnode->time) == 0) {
 #else
 		if(gmtime_r(&dnode->time, &tm) != NULL) {
 #endif
@@ -304,7 +313,12 @@ static void *datetimeParse(void *param) {
 			if(hour >= 24) {
 				/* If hour becomes 24 or more we need to normalize it */
 				time_t t = mktime(&tm);
+#ifdef _WIN32
+				localtime(&t);
+#else
 				localtime_r(&t, &tm);
+#endif
+
 				year = tm.tm_year+1900;
 				month = tm.tm_mon+1;
 				day = tm.tm_mday;

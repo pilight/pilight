@@ -82,9 +82,9 @@ static int gpio433Send(int *code, int rawlen, int repeats) {
 	return EXIT_SUCCESS;
 }
 
-static void *gpio433Receive(void *param) {
+static int gpio433Receive(void) {
 	if(gpio_433_in >= 0) {
-		return (void *)irq_read(gpio_433_in);
+		return irq_read(gpio_433_in);
 	} else {
 		sleep(1);
 		return 0;
@@ -124,7 +124,7 @@ void gpio433Init(void) {
 	gpio433->init=&gpio433HwInit;
 	gpio433->deinit=&gpio433HwDeinit;
 	gpio433->send=&gpio433Send;
-	gpio433->receive=&gpio433Receive;
+	gpio433->receiveOOK=&gpio433Receive;
 	gpio433->settings=&gpio433Settings;
 }
 

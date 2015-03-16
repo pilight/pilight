@@ -46,6 +46,7 @@
 	#include <arpa/inet.h>
 #endif
 
+#include "socket.h"
 #include "../polarssl/ssl.h"
 #include "../polarssl/entropy.h"
 #include "../polarssl/ctr_drbg.h"
@@ -141,11 +142,22 @@ int sendmail(char *host, char *login, char *pass, unsigned short port, struct ma
 	}
 
 	inet_pton(AF_INET, ip, &serv_addr.sin_addr);	
-	if(connect(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
-		logprintf(LOG_ERR, "SMTP: couldn't connect to socket");
-		error = -1;
-		goto close;
-	}
+	switch(socket_timeout_connect(sockfd, (struct sockaddr *)&serv_addr, 3)) {
+		case -1:
+			logprintf(LOG_ERR, "could not connect to mail server @%s:%p", host, port);
+			error = -1;
+			goto close;
+		case -2:
+			logprintf(LOG_ERR, "mail server connection timeout @%s:%p", host, port);
+			error = -1;
+			goto close;
+		case -3:
+			logprintf(LOG_ERR, "Error in mail server socket connection @%s:%p", host, port);
+			error = -1;
+			goto close;
+		default:
+		break;
+	}		
 
 	if(have_ssl == 1) {
 		entropy_init(&entropy);

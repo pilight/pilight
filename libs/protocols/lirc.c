@@ -44,6 +44,7 @@
 
 #include "pilight.h"
 #include "common.h"
+#include "socket.h"
 #include "dso.h"
 #include "log.h"
 #include "threads.h"
@@ -105,9 +106,24 @@ static void *lircParse(void *param) {
 			strcpy(addr.sun_path, lirc_socket);
 
 			/* Connect to the server */
-			if(connect(lirc_sockfd, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
-				protocol_thread_wait(node, 3, &nrloops);
-				continue;
+			switch(socket_timeout_connect(lirc_sockfd, (struct sockaddr *)&addr, 3)) {
+				case -1:
+					logprintf(LOG_ERR, "could not connect to Lirc socket @%s", lirc_socket);
+					protocol_thread_wait(node, 3, &nrloops);
+					continue;
+				break;
+				case -2:
+					logprintf(LOG_ERR, "Lirc socket timeout @%s", lirc_socket);
+					protocol_thread_wait(node, 3, &nrloops);
+					continue;
+				break;
+				case -3:
+					logprintf(LOG_ERR, "Error in Lirc socket connection @%s", lirc_socket);
+					protocol_thread_wait(node, 3, &nrloops);
+					continue;
+				break;
+				default:
+				break;
 			}
 
 			while(lirc_loop) {
@@ -249,7 +265,7 @@ void lircInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "lirc";
-	module->version = "1.4";
+	module->version = "1.5";
 	module->reqversion = "5.0";
 	module->reqcommit = "266";
 }
