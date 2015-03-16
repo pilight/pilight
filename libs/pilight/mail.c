@@ -59,6 +59,7 @@
 
 #define UNSUPPORTED		0
 #define AUTHPLAIN			1
+#define STARTTLS			2
 
 static int have_ssl = 0;
 static int sockfd = 0;
@@ -128,6 +129,7 @@ int sendmail(char *host, char *login, char *pass, unsigned short port, struct ma
 			have_ssl = 1;
 		break;
 		case 25:
+		case 587:
 		default:
 			have_ssl = 0;
 		break;
@@ -159,6 +161,7 @@ int sendmail(char *host, char *login, char *pass, unsigned short port, struct ma
 		break;
 	}		
 
+starttls:
 	if(have_ssl == 1) {
 		entropy_init(&entropy);
 		entropyfree = 1;
@@ -189,17 +192,19 @@ int sendmail(char *host, char *login, char *pass, unsigned short port, struct ma
 		}
 	}
 
-	memset(recvBuff, '\0', sizeof(recvBuff));	
-	if(sd_read(recvBuff) <= 0) {
-		logprintf(LOG_ERR, "SMTP: didn't see identification");
-		error = -1;
-		goto close;
-	}
-	logprintf(LOG_DEBUG, "SMTP: %s", recvBuff);
-	if(strncmp(recvBuff, "220", 3) != 0) {
-		logprintf(LOG_ERR, "SMTP: didn't see identification");
-		error = -1;
-		goto close;
+	if(authtype != STARTTLS) {
+		memset(recvBuff, '\0', sizeof(recvBuff));	
+		if(sd_read(recvBuff) <= 0) {
+			logprintf(LOG_ERR, "SMTP: didn't see identification");
+			error = -1;
+			goto close;
+		}
+		logprintf(LOG_DEBUG, "SMTP: %s", recvBuff);
+		if(strncmp(recvBuff, "220", 3) != 0) {
+			logprintf(LOG_ERR, "SMTP: didn't see identification");
+			error = -1;
+			goto close;
+		}
 	}
 
 	len = strlen("EHLO ")+strlen(USERAGENT)+3;
@@ -229,6 +234,12 @@ int sendmail(char *host, char *login, char *pass, unsigned short port, struct ma
 				authtype = AUTHPLAIN;
 			}
 		}
+		/* 
+		 * The server wants to continue our conversation in encrypted mode
+		 */
+		if(strncmp(testme, "STARTTLS", 8) == 0) {
+			authtype = STARTTLS;
+		}
 
 		/* The 250 list often contains several lines.
 		 * Each line starts with "250-..." except the last.
@@ -239,7 +250,35 @@ int sendmail(char *host, char *login, char *pass, unsigned short port, struct ma
 		}
 		memset(recvBuff, '\0', sizeof(recvBuff));	
 	}
-	
+
+	/*
+	 * Tell the server we accept the inventation to communicate encrypted
+	 */
+	if(authtype == STARTTLS) {
+		len = strlen("STARTTLS\r\n")+1;
+		out = REALLOC(out, len+1);
+		strcpy(out, "STARTTLS\r\n");
+		logprintf(LOG_DEBUG, "SMTP: %s", out);
+		if(sd_write(out) != 0) {
+			logprintf(LOG_ERR, "SMTP: failed to send STARTTLS");
+			error = -1;
+			goto close;		
+		}
+
+		while(sd_read(recvBuff) > 0) {
+			logprintf(LOG_DEBUG, "SMTP: %s", recvBuff);
+			if(strncmp(recvBuff, "220", 3) == 0) {
+				/*
+				 * We restart our communcation encrypted by resending our EHLO
+				 */
+				logprintf(LOG_DEBUG, "SMTP: restart communication encrypted");
+				have_ssl = 1;
+				goto starttls;
+			}
+			memset(recvBuff, '\0', sizeof(recvBuff));
+		}
+	}
+
 	if(authtype == UNSUPPORTED) {
 		logprintf(LOG_ERR, "SMTP: no supported authentication method");
 		error = -1;
@@ -260,7 +299,9 @@ int sendmail(char *host, char *login, char *pass, unsigned short port, struct ma
 	memset(out, '\0', len);
 	snprintf(out, len, "AUTH PLAIN %s\r\n", hash);
 	FREE(hash);
-	logprintf(LOG_DEBUG, "SMTP: %s", out);
+
+	/* Don't put the password in the log */
+	logprintf(LOG_DEBUG, "SMTP: AUTH PLAIN xxxxxx\r\n");
 	if(sd_write(out) != 0) {
 		logprintf(LOG_ERR, "SMTP: failed to send AUTH PLAIN");
 		goto close;		
