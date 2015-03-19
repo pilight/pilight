@@ -216,10 +216,10 @@ if(${MODULESPACK} MATCHES "ON")
 	add_definitions(-DMODULE="1")
 endif()
 
+include_directories(${CROSS_COMPILE_INCLUDE})
 include_directories(/usr/local/include/)
 include_directories("${PROJECT_SOURCE_DIR}/libs/pilight/")
 include_directories("${PROJECT_SOURCE_DIR}/libs/config/")
-
 
 if(${EVENTS} MATCHES "ON")
 	include_directories("${PROJECT_SOURCE_DIR}/libs/operators/")
@@ -689,6 +689,11 @@ if(${PROTOCOL_QUIGG_GT1000} MATCHES "OFF")
     list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/quigg_gt1000.c")
 endif()
 
+if(${PROTOCOL_LOGILINK_SWITCH} MATCHES "OFF")
+    list(REMOVE_ITEM pilight_headers "${PROJECT_SOURCE_DIR}/libs/protocols/logilink_switch.h")
+    list(REMOVE_ITEM pilight "${PROJECT_SOURCE_DIR}/libs/protocols/logilink_switch.c")
+endif()
+
 if(${HARDWARE_433_GPIO} MATCHES "OFF")
 	list(REMOVE_ITEM hardware_headers "${PROJECT_SOURCE_DIR}/libs/hardware/433gpio.h")
 	list(REMOVE_ITEM hardware "${PROJECT_SOURCE_DIR}/libs/hardware/433gpio.c")
@@ -1080,6 +1085,7 @@ if(${MODULESPACK} MATCHES "OFF" OR WIN32)
 	endif()
 	target_link_libraries(pilight-control pilight_shared)
 	target_link_libraries(pilight-control ${CMAKE_DL_LIBS})
+
 	target_link_libraries(pilight-control m)
 	if(${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
 		target_link_libraries(pilight-control execinfo)
