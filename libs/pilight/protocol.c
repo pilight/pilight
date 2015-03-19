@@ -361,7 +361,7 @@ void protocol_device_add(protocol_t *proto, const char *id, const char *desc) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
 	struct protocol_devices_t *dnode = MALLOC(sizeof(struct protocol_devices_t));
-	if(!dnode) {
+	if(dnode == NULL) {
 		logprintf(LOG_ERR, "out of memory");
 		exit(EXIT_FAILURE);
 	}

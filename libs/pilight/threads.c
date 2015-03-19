@@ -111,7 +111,7 @@ struct threadqueue_t *threads_register(const char *id, void *(*function)(void *p
 	return tnode;
 }
 
-void threads_create(pthread_t *thread, const pthread_attr_t *attr,  void *(*start_routine) (void *), void *arg) {
+void threads_create(pthread_t *thread, const pthread_attr_t *attr,  void *(*start_routine)(void *), void *arg) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
 #ifndef _WIN32

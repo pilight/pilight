@@ -52,6 +52,10 @@
 #include "ssdp.h"
 #include "socket.h"
 
+#define NONE 0
+#define AND	2
+#define OR 1
+
 static unsigned short loop = 1;
 static char true_[2];
 static char false_[2];
@@ -116,18 +120,18 @@ static int event_store_val_ptr(struct rules_t *obj, char *device, char *name, st
 	}
 
 	if(match == 0) {
-		if(!(tmp_values = MALLOC(sizeof(rules_values_t)))) {
+		if((tmp_values = MALLOC(sizeof(rules_values_t))) == NULL) {
 			logprintf(LOG_ERR, "out of memory");
 			exit(EXIT_FAILURE);
 		}
 		tmp_values->next = NULL;
-		if(!(tmp_values->name = MALLOC(strlen(name)+1))) {
+		if((tmp_values->name = MALLOC(strlen(name)+1)) == NULL) {
 			logprintf(LOG_ERR, "out of memory");
 			FREE(tmp_values);
 			exit(EXIT_FAILURE);
 		}
 		strcpy(tmp_values->name, name);
-		if(!(tmp_values->device = MALLOC(strlen(device)+1))) {
+		if((tmp_values->device = MALLOC(strlen(device)+1)) == NULL) {
 			logprintf(LOG_ERR, "out of memory");
 			FREE(tmp_values->name);
 			FREE(tmp_values);
@@ -241,7 +245,7 @@ static int event_lookup_variable(char *var, struct rules_t *obj, unsigned int nr
 					}
 					if(exists == 0) {
 						/* Store all devices that are present in this rule */
-						if(!(obj->devices = REALLOC(obj->devices, sizeof(char *)*(unsigned int)(obj->nrdevices+1)))) {
+						if((obj->devices = REALLOC(obj->devices, sizeof(char *)*(unsigned int)(obj->nrdevices+1))) == NULL) {
 							logprintf(LOG_ERR, "out of memory");
 							exit(EXIT_FAILURE);
 						}
@@ -278,14 +282,14 @@ static int event_lookup_variable(char *var, struct rules_t *obj, unsigned int nr
 						}
 						tmp = tmp->next;
 					}
-					if(!match1) {
+					if(match1 == 0) {
 						logprintf(LOG_ERR, "rule #%d invalid: device \"%s\" has no variable \"%s\"", nr, device, name);
-					} else if(!match2) {
+					} else if(match2 == 0) {
 						logprintf(LOG_ERR, "rule #%d invalid: variable \"%s\" of device \"%s\" cannot be used in event rules", nr, device, name);
-					} else if(!match3) {
+					} else if(match3 == 0) {
 						logprintf(LOG_ERR, "rule #%d invalid: trying to compare a integer variable \"%s.%s\" to a string", nr, device, name);
 					}
-					if(!match1 || !match2 || !match3) {
+					if(match1 == 0 || match2 == 0 || match3 == 0) {
 						varcont->string_ = NULL;
 						varcont->number_ = 0;
 						return -1;
@@ -355,7 +359,7 @@ static int event_parse_hooks(char **rule, struct rules_t *obj, int depth, unsign
 	char *subrule = MALLOC(buflen);
 	char *tmp = *rule;
 
-	if(!subrule) {
+	if(subrule == NULL) {
 		logprintf(LOG_ERR, "out of memory");
 		exit(EXIT_FAILURE);
 	}
@@ -470,9 +474,9 @@ static int event_parse_formula(char **rule, struct rules_t *obj, int depth, unsi
 			}
 		}
 
-		if(func && strlen(func) > 0 &&
-		   var1 && strlen(var1) > 0 &&
-		   var2 && strlen(var2) > 0) {
+		if(func != NULL && strlen(func) > 0 &&
+		   var1 != NULL  && strlen(var1) > 0 &&
+		   var2 != NULL  && strlen(var2) > 0) {
 			i = 0;
 			/* Check if the operator exists */
 			match = 0;
@@ -502,95 +506,7 @@ static int event_parse_formula(char **rule, struct rules_t *obj, int depth, unsi
 							error = 0;
 							goto close;
 						}
-					} else if(tmp_operator->callback_number) {
-						/* Replace the (more complex) subpart of the formula with the solutions:
-						   e.g.: 0 AND location.device.state IS on
-								 0 AND location.device.state IS on AND location.device.state IS off
-						   to:
-								 0 AND 1
-								 0 AND 1 AND 0
-						   This function will solve all AND's from left to right.
-
-						   The more simple AND and OR operators will be handled by the rest of this function.
-						*/
-						if((strcmp(func, "AND") == 0 || strcmp(func, "OR") == 0) && (strcmp(var2, "1") != 0 && strcmp(var2, "0") != 0)) {
-							int flen = (int)strlen(func)+3, rlen = (int)strlen(tmp), nrspaces = 0;
-							char *subrule = NULL;
-							unsigned long buflen = MEMBUFFER, part2len = 0, sublen = 0;
-							if(!(subrule = MALLOC(buflen))) {
-								logprintf(LOG_ERR, "out of memory");
-								exit(EXIT_FAILURE);
-							}
-							while(flen <= rlen) {
-								if(tmp[flen] == ' ') {
-									nrspaces++;
-								}
-								if(nrspaces == 3) {
-									break;
-								}
-								if(nrspaces >= 1) {
-									part2len++;
-								}
-								subrule[sublen++] = tmp[flen];
-								if(buflen <= sublen) {
-									buflen *= 2;
-									subrule = REALLOC(subrule, buflen);
-									memset(&subrule[sublen], '\0', buflen-sublen);
-								}
-								flen++;
-							}
-
-							if(subrule != NULL) {
-								subrule[sublen] = '\0';
-								search = REALLOC(search, strlen(subrule)+1);
-								strcpy(search, subrule);
-								if(event_parse_formula(&subrule, obj, depth, nr, validate) == 0) {
-									char *res1 = MALLOC(255);
-									memset(res, '\0', 255);
-									if(tmp_operator->callback_number) {
-										tmp_operator->callback_number(atof(var1), atof(subrule), &res1);
-									} else {
-										char r[strlen(res)+1];
-										strcpy(r, res);
-										tmp_operator->callback_string(var1, r, &res1);
-									}
-									unsigned long r = 0;
-									char *t = MALLOC(strlen(res1)+1);
-									strcpy(t, res1);
-									// printf("Replace \"%s\" with \"%s\" in \"%s\"\n", search, t, tmp);
-									if((r = (unsigned long)str_replace(search, t, &tmp)) == -1) {
-										logprintf(LOG_ERR, "rule #%d: an unexpected error occured while parsing", nr);
-										error = -1;
-										FREE(res1);
-										FREE(t);
-										FREE(subrule);
-										goto close;
-									} else {
-										len = r;
-									}
-									var2 = REALLOC(var2, strlen(res1)+1);
-									strcpy(var2, res1);
-									FREE(res1);
-									FREE(t);
-								} else {
-									logprintf(LOG_ERR, "rule #%d: an unexpected error occured while parsing", nr);
-									error = -1;
-									FREE(subrule);
-									goto close;
-								}
-								FREE(subrule);
-								subrule = NULL;
-							} else {
-								logprintf(LOG_ERR, "rule #%d: an unexpected error occured while parsing", nr);
-								error = -1;
-								goto close;
-							}
-							/* Adapt the search string to be replaced */
-							unsigned long l = strlen(var1)+strlen(func)+strlen(var2)+2;
-							search = REALLOC(search, l+1);
-							sprintf(search, "%s %s %s", var1, func, var2);
-						}
-
+					} else if(tmp_operator->callback_number != NULL) {
 						/* Continue with regular numeric operator parsing */
 						ret1 = event_lookup_variable(var1, obj, nr, type, &v1, validate);
 						ret2 = event_lookup_variable(var2, obj, nr, type, &v2, validate);
@@ -605,7 +521,7 @@ static int event_parse_formula(char **rule, struct rules_t *obj, int depth, unsi
 							tmp_operator->callback_number(v1.number_, v2.number_, &res);
 						}
 					}
-					if(res) {
+					if(res != 0) {
 						/* Replace the subpart of the formula with the solutions in case of simple AND's
 						   e.g.: 0 AND 1 AND 1 AND 0
 								     0 AND 1 AND 0
@@ -630,35 +546,40 @@ static int event_parse_formula(char **rule, struct rules_t *obj, int depth, unsi
 				tmp_operator = tmp_operator->next;
 			}
 			if(match == 0) {
-				logprintf(LOG_ERR, "rule #%d invalid: operator %s does not exist", nr, func);
+				logprintf(LOG_ERR, "rule #%d invalid: operator \"%s\" does not exist", nr, func);
 				error = -1;
 				goto close;
 			}
-			if(var1) {
+			if(var1 != NULL ) {
 				memset(var1, '\0', strlen(var1));
-			} if(func) {
+			} if(func != NULL ) {
 				memset(func, '\0', strlen(func));
-			} if(var2) {
+			} if(var2 != NULL ) {
 				memset(var2, '\0', strlen(var2));
-			} if(search) {
+			} if(search != NULL ) {
 				memset(search, '\0', strlen(search));
 			}
 		}
 		pos++;
 	}
+	if(element == 2) {
+		logprintf(LOG_ERR, "rule #%d invalid: could not parse \"%s\"", nr, *rule);
+		error = -1;
+		goto close;
+	}
 
 close:
 	FREE(res);
-	if(var1) {
+	if(var1 != NULL ) {
 		FREE(var1);
 		var1 = NULL;
-	} if(func) {
+	} if(func != NULL ) {
 		FREE(func);
 		func = NULL;
-	} if(var2) {
+	} if(var2 != NULL ) {
 		FREE(var2);
 		var2 = NULL;
-	} if(search) {
+	} if(search != NULL ) {
 		FREE(search);
 		search = NULL;
 	}
@@ -718,7 +639,7 @@ static int event_parse_action(char *action, struct rules_t *obj, int validate) {
 					element = 0;
 				}
 			}
-			if(hasaction == 0 && var1 && strlen(var1) > 0) {
+			if(hasaction == 0 && var1 != NULL && strlen(var1) > 0) {
 				match = 0;
 				obj->action = event_actions;
 				while(obj->action) {
@@ -736,9 +657,9 @@ static int event_parse_action(char *action, struct rules_t *obj, int validate) {
 					error = 1;
 					break;
 				}
-			} else if(func && strlen(func) > 0 &&
-				 var1 && strlen(var1) > 0 &&
-				 var2 && strlen(var2) > 0) {
+			} else if(func != NULL && strlen(func) > 0 &&
+				 var1 != NULL && strlen(var1) > 0 &&
+				 var2 != NULL && strlen(var2) > 0) {
 				 int hasand = 0;
 				if(strcmp(var2, "AND") == 0) {
 					hasand = 1;
@@ -871,15 +792,15 @@ static int event_parse_action(char *action, struct rules_t *obj, int validate) {
 					pos -= strlen(var2)+1;
 					word -= strlen(var2)+1;
 				}
-				if(var1) {
+				if(var1 != NULL ) {
 					memset(var1, '\0', strlen(var1));
-				} if(func) {
+				} if(func != NULL ) {
 					memset(func, '\0', strlen(func));
-				} if(var2) {
+				} if(var2 != NULL ) {
 					memset(var2, '\0', strlen(var2));
-				} if(var3) {
+				} if(var3 != NULL ) {
 					memset(var3, '\0', strlen(var3));
-				} if(var4) {
+				} if(var4 != NULL ) {
 					memset(var4, '\0', strlen(var4));
 				}
 				hasand = 0;
@@ -887,8 +808,8 @@ static int event_parse_action(char *action, struct rules_t *obj, int validate) {
 			pos++;
 		}
 		if(error == 0) {
-			if(var1 && strlen(var1) > 0 &&
-				 func && strlen(func) > 0) {
+			if(var1 != NULL  && strlen(var1) > 0 &&
+				 func != NULL && strlen(func) > 0) {
 				match1 = 0;
 				struct options_t *opt = obj->action->options;
 				while(opt) {
@@ -928,7 +849,7 @@ static int event_parse_action(char *action, struct rules_t *obj, int validate) {
 			struct JsonNode *jchild = NULL;
 			while(opt) {
 				if((joption = json_find_member(obj->arguments, opt->name)) == NULL) {
-					if(opt->conftype == DEVICES_VALUE) {
+					if(opt->conftype == DEVICES_VALUE && opt->argtype == OPTION_HAS_VALUE) {
 						logprintf(LOG_ERR, "action \"%s\" is missing option \"%s\"", obj->action->name, opt->name);
 						error = 1;
 						break;
@@ -980,30 +901,95 @@ static int event_parse_action(char *action, struct rules_t *obj, int validate) {
 
 	if(error == 0) {
 		if(validate == 1) {
-			if(obj->action->checkArguments) {
-				error = obj->action->checkArguments(obj->arguments);
+			if(obj->action != NULL) {
+				if(obj->action->checkArguments != NULL) {
+					error = obj->action->checkArguments(obj->arguments);
+				}
 			}
 		} else {
-			if(obj->action->run) {
-				error = obj->action->run(obj->arguments);
+			if(obj->action != NULL) {
+				if(obj->action->run != NULL) {
+					error = obj->action->run(obj->arguments);
+				}
 			}
 		}
 	}
-	if(var1) {
+	if(var1 != NULL ) {
 		FREE(var1);
 		var1 = NULL;
-	} if(func) {
+	} if(func != NULL ) {
 		FREE(func);
 		func = NULL;
-	} if(var2) {
+	} if(var2 != NULL ) {
 		FREE(var2);
 		var2 = NULL;
-	}	if(var3) {
+	}	if(var3 != NULL ) {
 		FREE(var3);
 		var3 = NULL;
-	} if(var4) {
+	} if(var4 != NULL ) {
 		FREE(var4);
 		var4 = NULL;
+	}
+	return error;
+}
+
+int event_parse_condition(char **rule, struct rules_t *obj, int depth, unsigned int nr, unsigned short validate) {
+	char *tmp = *rule;
+	char *and = strstr(tmp, "AND");
+	char *or = strstr(tmp, "OR");
+	char *subrule = NULL;
+	size_t pos = 0;
+	int	type = 0, error = 0, i = 0, nrspaces = 0;
+
+	if(or == NULL) {
+		type = AND;
+	} else if(and == NULL) {
+		type = OR;
+	} else if((and-tmp) < (or-tmp)) {
+		type = AND;
+	} else {
+		type = OR;
+	}
+	if(type == AND) {
+		pos = (size_t)(and-tmp);
+	} else {
+		pos = (size_t)(or-tmp);
+	}
+	subrule = MALLOC(pos+1);
+
+	if(subrule == NULL) {
+		logprintf(LOG_ERR, "out of memory");
+		exit(EXIT_FAILURE);
+	}
+
+	strncpy(subrule, tmp, pos);
+	subrule[pos-1] = '\0';
+	for(i=0;i<pos;i++) {
+		if(subrule[i] == ' ') {
+			nrspaces++;
+		}
+	}
+	/* 
+	 * Only "1", "0", "True", "False" or
+	 * "1 == 1", "datetime.hour < 18.00" is valid here.
+	 */
+	if(nrspaces != 2 && nrspaces != 0) {
+		logprintf(LOG_ERR, "rule #%d invalid: could not parse \"%s\"", nr, subrule);
+		error = -1;
+	} else {
+		if(event_parse_formula(&subrule, obj, depth, nr, validate) == -1) {
+			error = -1;
+		} else {
+			size_t len = strlen(tmp);
+			if(type == AND) {
+				pos += 4;
+			} else {
+				pos += 3;
+			}
+			memmove(tmp, &tmp[pos], len-pos);
+			tmp[len-pos] = '\0';
+			error = atoi(subrule);
+		}
 	}
 	return error;
 }
@@ -1013,17 +999,19 @@ int event_parse_rule(char *rule, struct rules_t *obj, int depth, unsigned int nr
 
 	char *tloc = 0, *condition = NULL, *action = NULL;
 	unsigned int tpos = 0, rlen = strlen(rule), tlen = 0;
-	int x = 0, nrhooks = 0, has_hooks = 0, error = 0;
-	/* Check if rule has more than one spaces in a row */
+	int x = 0, nrhooks = 0, error = 0, i = 0;
+	int type_or = 0, type_and = 0;
+
+	/* Replace all dual+ spaces with a single space */
+	rule = uniq_space(rule);
 	while(x < rlen) {
-		if(strncmp(&rule[x], "  ", 2) == 0) {
-			logprintf(LOG_ERR, "rule #%d invalid: multiple spaces in a row", nr);
-			error = -1;
-			goto close;
-		}
+		// if(strncmp(&rule[x], "  ", 2) == 0) {
+			// logprintf(LOG_ERR, "rule #%d invalid: multiple spaces in a row", nr);
+			// error = -1;
+			// goto close;
+		// }
 		if(rule[x] == '(') {
 			nrhooks++;
-			has_hooks = 1;
 		}
 		if(rule[x] == ')') {
 			nrhooks--;
@@ -1046,7 +1034,7 @@ int event_parse_rule(char *rule, struct rules_t *obj, int depth, unsigned int nr
 
 		tpos = (size_t)(tloc-rule);
 
-		if(!(action = MALLOC((rlen-tpos)+6+1))) {
+		if((action = MALLOC((rlen-tpos)+6+1)) == NULL) {
 			logprintf(LOG_ERR, "out of memory");
 			exit(EXIT_FAILURE);
 		}
@@ -1063,7 +1051,7 @@ int event_parse_rule(char *rule, struct rules_t *obj, int depth, unsigned int nr
 
 		/* Extract the command part between the IF and THEN
 		   ("IF " length = 3) */
-		if(!(condition = MALLOC(rlen-tlen+3+1))) {
+		if((condition = MALLOC(rlen-tlen+3+1)) == NULL) {
 			logprintf(LOG_ERR, "out of memory");
 			exit(EXIT_FAILURE);
 		}
@@ -1085,20 +1073,65 @@ int event_parse_rule(char *rule, struct rules_t *obj, int depth, unsigned int nr
 	if(depth > 0) {
 		condition = rule;
 	}
-	if(has_hooks == 1) {
-		int res = 0;
-		if((res = event_parse_hooks(&condition, obj, depth+1, nr, event_parse_rule, validate)) == -1) {
+
+	int pass = 0, ltype = NONE, skip = 0;
+	while(condition[i] != '\0') {
+		if(condition[i] == '(') {
+			pass = event_parse_hooks(&condition, obj, depth+1, nr, event_parse_rule, validate);
+			error = pass;
+		}
+		if((type_and = strncmp(&condition[i], " AND ", 5)) == 0 || (type_or = strncmp(&condition[i], " OR ", 4)) == 0) {
+			i--;
+			ltype = (type_and == 0) ? AND : OR;
+			if(skip == 0) {
+				// printf("EVALUATE: %s, %s\n", (type_and == 0) ? "AND" : "OR", condition);
+				pass = event_parse_condition(&condition, obj, depth, nr, validate);
+				error = pass;
+				i = -1;
+			} else {
+				// printf("SKIP: %s, %s\n", (type_and == 0) ? "AND" : "OR", condition);
+				size_t y = (type_and == 0) ? 6 : 5;
+				size_t z = strlen(condition)-((size_t)i + (size_t)y);
+				memmove(condition, &condition[(size_t)i + (size_t)y], (size_t)z);
+				condition[z] = '\0';
+				i = -1;
+			}
+			if(pass == 1 && type_or == 0) {
+				condition[0] = '1';
+				condition[1] = '\0';
+				break;
+			} else if(pass == 0 && type_and == 0) {
+				skip = 1;
+			} else {
+				skip = 0;
+			}
+		}
+		if(error == -1) {
+			goto close;
+		}
+		i++;
+	}
+	if(error > 0) {
+		error = 0;
+	}
+
+	if(ltype == AND && pass == 0) {
+		// printf("SKIP: %s, %s\n", (ltype == AND) ? "AND" : "OR", condition);
+		condition[0] = '0';
+		condition[1] = '\0';
+	/* Skip this part when the condition only contains "1" or "0" */
+	} else if(strlen(condition) > 1) {
+		// printf("EVALUATE: %s, %s\n", (ltype == AND) ? "AND" : "OR", condition);
+		if(event_parse_formula(&condition, obj, depth, nr, validate) == -1) {
 			error = -1;
 			goto close;
 		}
-	}
-
-	if(event_parse_formula(&condition, obj, depth, nr, validate) == -1) {
-		error = -1;
-		goto close;
+	} else {
+		// printf("SKIP: %s, %s\n", (ltype == AND) ? "AND" : "OR", condition);
 	}
 
 	obj->status = atoi(condition);
+
 	if(obj->status > 0 && depth == 0) {
 		if(validate == 0 && event_parse_action(action, obj, validate) != 0) {
 			error = -1;
@@ -1110,9 +1143,11 @@ int event_parse_rule(char *rule, struct rules_t *obj, int depth, unsigned int nr
 
 close:
 	if(depth == 0) {
-		if(condition) FREE(condition);
+		if(condition != NULL) {
+			FREE(condition);
+		}
 	}
-	if(action) {
+	if(action != NULL) {
 		FREE(action);
 	}
 

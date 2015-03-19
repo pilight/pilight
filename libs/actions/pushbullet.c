@@ -112,7 +112,9 @@ static int actionPushbulletArguments(struct JsonNode *arguments) {
 	return 0;
 }
 
-static int actionPushbulletRun(struct JsonNode *arguments) {
+static void *actionPushbulletThread(void *param) {
+	struct event_action_thread_t *thread = (struct event_action_thread_t *)param;
+	struct JsonNode *arguments = thread->param;
 	struct JsonNode *jtitle = NULL;
 	struct JsonNode *jbody = NULL;
 	struct JsonNode *jtype = NULL;
@@ -130,6 +132,10 @@ static int actionPushbulletRun(struct JsonNode *arguments) {
 	char *data = NULL, *tp = typebuf;
 	int ret = 0, size = 0;
 
+#if PILIGHT_V >= 6
+	action_pushbullet->nrthreads++;
+#endif
+	
 	jtitle = json_find_member(arguments, "TITLE");
 	jbody = json_find_member(arguments, "BODY");
 	jtoken = json_find_member(arguments, "TOKEN");
@@ -172,6 +178,17 @@ static int actionPushbulletRun(struct JsonNode *arguments) {
 			}
 		}
 	}
+
+#if PILIGHT_V >= 6
+	action_pushbullet->nrthreads--;
+#endif
+	return (void *)NULL;
+}
+
+static int actionPushbulletRun(struct JsonNode *arguments) {
+	pthread_t pth;
+	threads_create(&pth, NULL, actionPushbulletThread, (void *)arguments);
+	pthread_detach(pth);	
 	return 0;
 }
 
@@ -193,7 +210,7 @@ void actionPushbulletInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "pushbullet";
-	module->version = "1.0";
+	module->version = "2.0";
 	module->reqversion = "5.0";
 	module->reqcommit = "87";
 }

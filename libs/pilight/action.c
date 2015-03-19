@@ -24,6 +24,7 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include <time.h>
+#include <sys/time.h>
 #include <libgen.h>
 #include <dirent.h>
 #ifndef _WIN32
@@ -95,7 +96,7 @@ void event_action_init(void) {
 
 	if(settings_find_string("action-root", &action_root) != 0) {
 		/* If no action root was set, use the default action root */
-		if(!(action_root = MALLOC(strlen(ACTION_ROOT)+1))) {
+		if((action_root = MALLOC(strlen(ACTION_ROOT)+1)) == NULL) {
 			logprintf(LOG_ERR, "out of memory");
 			exit(EXIT_FAILURE);
 		}
@@ -172,11 +173,11 @@ void event_action_init(void) {
 void event_action_register(struct event_actions_t **act, const char *name) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
-	if(!(*act = MALLOC(sizeof(struct event_actions_t)))) {
+	if((*act = MALLOC(sizeof(struct event_actions_t))) == NULL) {
 		logprintf(LOG_ERR, "out of memory");
 		exit(EXIT_FAILURE);
 	}
-	if(!((*act)->name = MALLOC(strlen(name)+1))) {
+	if(((*act)->name = MALLOC(strlen(name)+1)) == NULL) {
 		logprintf(LOG_ERR, "out of memory");
 		exit(EXIT_FAILURE);
 	}
@@ -184,6 +185,7 @@ void event_action_register(struct event_actions_t **act, const char *name) {
 
 	(*act)->options = NULL;
 	(*act)->run = NULL;
+	(*act)->nrthreads = 0;
 	(*act)->checkArguments = NULL;
 
 	(*act)->next = event_actions;
@@ -196,6 +198,9 @@ int event_action_gc(void) {
 	struct event_actions_t *tmp_action = NULL;
 	while(event_actions) {
 		tmp_action = event_actions;
+		if(tmp_action->nrthreads > 0) {
+			logprintf(LOG_DEBUG, "waiting for \"%s\" threads to finish", tmp_action->name);
+		}
 		FREE(tmp_action->name);
 		options_delete(tmp_action->options);
 		event_actions = event_actions->next;
@@ -207,4 +212,137 @@ int event_action_gc(void) {
 
 	logprintf(LOG_DEBUG, "garbage collected event action library");
 	return 0;
+}
+
+void event_action_thread_init(struct devices_t *dev) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
+	pthread_mutexattr_init(&dev->action_thread.attr);
+	pthread_mutexattr_settype(&dev->action_thread.attr, PTHREAD_MUTEX_RECURSIVE);
+	pthread_mutex_init(&dev->action_thread.mutex, &dev->action_thread.attr);
+	pthread_cond_init(&dev->action_thread.cond, NULL);
+	dev->action_thread.running = 0;
+	dev->action_thread.param = NULL;
+	dev->action_thread.action = NULL;
+}
+
+void event_action_thread_start(struct devices_t *dev, char *name, void *(*func)(void *), struct JsonNode *param) {
+	struct event_action_thread_t *thread = &dev->action_thread;
+	int join = 0;
+
+	if(thread->running == 1) {
+		logprintf(LOG_DEBUG, "aborting previous \"%s\" action for device \"%s\"\n", thread->action, dev->id);
+		join = 1;
+	}
+
+	pthread_mutex_unlock(&thread->mutex);
+	pthread_cond_signal(&thread->cond);
+
+	while(thread->running > 0) {
+		usleep(10);
+	}
+
+	if(join == 1) {
+		pthread_join(thread->pth, NULL);
+	}
+
+	if(thread->param != NULL) {
+		json_delete(thread->param);
+		thread->param = NULL;
+	}
+
+	if(param != NULL) {
+		char *json = json_stringify(param, NULL);
+		thread->param = json_decode(json);
+		json_free(json);
+	}
+
+	thread->device = dev;
+	thread->action = REALLOC(thread->action, strlen(name)+1);
+	strcpy(thread->action, name);
+
+	threads_create(&thread->pth, NULL, func, (void *)thread);
+}
+
+int event_action_thread_wait(struct devices_t *dev, int interval) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
+	struct timeval tp;
+	struct timespec ts;
+
+	pthread_mutex_unlock(&dev->action_thread.mutex);
+
+	gettimeofday(&tp, NULL);
+	ts.tv_sec = tp.tv_sec;
+	ts.tv_nsec = tp.tv_usec * 1000;
+	ts.tv_sec += interval;
+
+	pthread_mutex_lock(&dev->action_thread.mutex);
+
+	return pthread_cond_timedwait(&dev->action_thread.cond, &dev->action_thread.mutex, &ts);
+}
+
+void event_action_thread_stop(struct devices_t *dev) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
+	struct event_action_thread_t *thread = NULL;	
+
+	if(dev != NULL) {
+		thread = &dev->action_thread;
+		if(thread->running == 1) {
+			pthread_mutex_unlock(&thread->mutex);
+			pthread_cond_signal(&thread->cond);
+
+			while(thread->running > 0) {
+				usleep(10);
+			}
+
+			pthread_join(thread->pth, NULL);
+		}
+	}
+}
+
+void event_action_thread_free(struct devices_t *dev) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
+	struct event_action_thread_t *thread = &dev->action_thread;
+	int join = 0;
+
+	if(dev != NULL) {
+		thread = &dev->action_thread;
+		if(thread->running == 1) {
+			logprintf(LOG_DEBUG, "aborting running \"%s\" action for device \"%s\"\n", thread->action, dev->id);
+
+			pthread_mutex_unlock(&thread->mutex);
+			pthread_cond_signal(&thread->cond);
+			while(thread->running > 0) {
+				usleep(10);
+			}
+			join = 1;
+		}
+		if(thread->action != NULL) {
+			FREE(thread->action);
+		}
+		if(thread->param != NULL) {
+			json_delete(thread->param);
+			thread->param = NULL;
+		}
+		if(join == 1) {
+			pthread_join(thread->pth, NULL);
+		}
+	}
+}
+
+void event_action_started(struct event_action_thread_t *thread) {
+	logprintf(LOG_INFO, "started \"%s\" action for device \"%s\"\n", thread->action, thread->device->id);	
+	pthread_mutex_lock(&thread->mutex);
+	thread->running = 1;
+	pthread_mutex_unlock(&thread->mutex);
+}
+
+void event_action_stopped(struct event_action_thread_t *thread) {
+	logprintf(LOG_INFO, "stopped \"%s\" action for device \"%s\"\n", thread->action, thread->device->id);		
+	pthread_mutex_lock(&thread->mutex);
+	thread->running = 0;
+	pthread_mutex_unlock(&thread->mutex);
 }

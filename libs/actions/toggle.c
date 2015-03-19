@@ -116,15 +116,58 @@ static int actionToggleArguments(struct JsonNode *arguments) {
 	return 0;
 }
 
-static int actionToggleRun(struct JsonNode *arguments) {
-	struct JsonNode *jdevice = NULL;
+static void *actionToggleThread(void *param) {
+	struct event_action_thread_t *thread = (struct event_action_thread_t *)param;
+	struct devices_settings_t *tmp_settings = thread->device->settings;
 	struct JsonNode *jbetween = NULL;
 	struct JsonNode *jsvalues = NULL;
-	struct JsonNode *jdvalues = NULL;
-	struct JsonNode *jdchild = NULL;
 	struct JsonNode *jstate1 = NULL;
 	struct JsonNode *jstate2 = NULL;
 	char *cstate = NULL, *state1 = NULL, *state2 = NULL;
+
+	event_action_started(thread);
+
+	while(tmp_settings) {
+		if(strcmp(tmp_settings->name, "state") == 0) {
+			if(tmp_settings->values->type == JSON_STRING) {
+				cstate = tmp_settings->values->string_;
+				break;
+			}
+		}
+		tmp_settings = tmp_settings->next;
+	}
+
+	if((jbetween = json_find_member(thread->param, "BETWEEN")) != NULL) {
+			if((jsvalues = json_find_member(jbetween, "value")) != NULL) {
+			jstate1 = json_find_element(jsvalues, 0);
+			jstate2 = json_find_element(jsvalues, 1);
+			if(jstate1 != NULL && jstate2 != NULL &&
+				jstate1->tag == JSON_STRING && jstate2->tag == JSON_STRING) {
+				state1 = jstate1->string_;
+				state2 = jstate2->string_;
+
+				if(pilight.control != NULL) {
+					if(strcmp(state1, cstate) == 0) {
+						pilight.control(thread->device, state2, NULL);
+					} else if(strcmp(state2, cstate) == 0) {
+						pilight.control(thread->device, state1, NULL);
+					}
+				}
+			}
+		}
+	}
+
+	event_action_stopped(thread);
+
+	return (void *)NULL;
+}
+
+static int actionToggleRun(struct JsonNode *arguments) {
+	struct JsonNode *jdevice = NULL;
+	struct JsonNode *jbetween = NULL;
+	struct JsonNode *jdvalues = NULL;
+	struct JsonNode *jdchild = NULL;
+
 	if((jdevice = json_find_member(arguments, "DEVICE")) != NULL &&
 		 (jbetween = json_find_member(arguments, "BETWEEN")) != NULL) {
 		if((jdvalues = json_find_member(jdevice, "value")) != NULL) {
@@ -133,31 +176,7 @@ static int actionToggleRun(struct JsonNode *arguments) {
 				if(jdchild->tag == JSON_STRING) {
 					struct devices_t *dev = NULL;
 					if(devices_get(jdchild->string_, &dev) == 0) {
-						struct devices_settings_t *tmp_settings = dev->settings;
-						while(tmp_settings) {
-							if(strcmp(tmp_settings->name, "state") == 0) {
-								if(tmp_settings->values->type == JSON_STRING) {
-										cstate = tmp_settings->values->string_;
-										break;
-								}
-							}
-							tmp_settings = tmp_settings->next;
-						}
-						if((jsvalues = json_find_member(jbetween, "value")) != NULL) {
-							jstate1 = json_find_element(jsvalues, 0);
-							jstate2 = json_find_element(jsvalues, 1);
-							if(jstate1 != NULL && jstate2 != NULL &&
-								 jstate1->tag == JSON_STRING && jstate2->tag == JSON_STRING) {
-								 state1 = jstate1->string_;
-								 state2 = jstate2->string_;
-
-								if(strcmp(state1, cstate) == 0) {
-									pilight.control(dev, state2, NULL);
-								} else if(strcmp(state2, cstate) == 0) {
-									pilight.control(dev, state1, NULL);
-								}
-							}
-						}
+						event_action_thread_start(dev, action_toggle->name, actionToggleThread, arguments);
 					}
 				}
 				jdchild = jdchild->next;
@@ -183,9 +202,9 @@ void actionToggleInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "toggle";
-	module->version = "1.0";
-	module->reqversion = "5.0";
-	module->reqcommit = "87";
+	module->version = "2.0";
+	module->reqversion = "6.0";
+	module->reqcommit = "54";
 }
 
 void init(void) {

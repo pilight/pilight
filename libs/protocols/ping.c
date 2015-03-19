@@ -167,7 +167,7 @@ void pingInit(void) {
 	pping->devtype = PING;
 	pping->hwtype = API;
 	pping->multipleId = 0;
-#ifdef PILIGHT_V6
+#if PILIGHT_V >= 6
 	pping->masterOnly = 1;
 #endif
 

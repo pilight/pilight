@@ -140,6 +140,8 @@ int sendmail(char *host, char *login, char *pass, unsigned short port, struct ma
 
 	char *p = ip;
 	if(host2ip(host, p) == -1) {
+		logprintf(LOG_ERR, "SMTP: couldn't resolve smpt host name \"%s\"", host);
+		error = -1;
 		goto close;
 	}
 
@@ -323,6 +325,11 @@ starttls:
 			error = -1;
 			goto close;
 		}
+		if(strncmp(recvBuff, "535", 3) == 0) {
+			logprintf(LOG_ERR, "SMTP: authentication failed: wrong user/password");
+			error = -1;
+			goto close;
+		}		
 		memset(recvBuff, '\0', sizeof(recvBuff));
 	}
 

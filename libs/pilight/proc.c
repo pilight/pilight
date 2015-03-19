@@ -165,7 +165,7 @@ double getRAMUsage(void) {
 	#endif
 	unsigned long VmRSS = 0, value = 0, total = 0;
 	size_t len = 0;
-	ssize_t read = 0;
+	ssize_t rd = 0;
 	char units[32], title[32], *line = NULL;
 	FILE *fp = NULL;
 
@@ -173,7 +173,7 @@ double getRAMUsage(void) {
 	memset(units, '\0', 32);
 
 	if((fp = fopen(statusfile, "r")) != NULL) {
-		while((read = getline(&line, &len, fp)) != -1) {
+		while((rd = getline(&line, &len, fp)) != -1) {
 			if(strstr(line, "VmRSS:") != NULL) {
 				if(sscanf(line, "%31s %lu %s\n", title, &value, units) > 0) {
 					VmRSS = value * 1024;
@@ -214,7 +214,7 @@ double getRAMUsage(void) {
 	#endif
 
 	if((fp = fopen(memfile, "r")) != NULL) {
-		while((read = getline(&line, &len, fp)) != -1) {
+		while((rd = getline(&line, &len, fp)) != -1) {
 			if(strstr(line, "MemTotal:") != NULL) {
 				if(sscanf(line, "%31s %lu %s\n", title, &value, units) > 0) {
 					total = value * 1024;

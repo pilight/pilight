@@ -427,7 +427,7 @@ void datetimeInit(void) {
 	datetime->devtype = DATETIME;
 	datetime->hwtype = API;
 	datetime->multipleId = 0;
-#ifdef PILIGHT_V6
+#if PILIGHT_V >= 6
 	datetime->masterOnly = 1;
 #endif
 

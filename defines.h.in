@@ -83,7 +83,7 @@
 #define FIRMWARE_GPIO_MOSI	12
 #define FIRMWARE_GPIO_MISO	13
 
-#define PILIGHT_V6
+#define PILIGHT_V						6
 
 #if !defined(PATH_MAX)
 	#if defined(_POSIX_PATH_MAX)

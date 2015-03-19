@@ -254,7 +254,7 @@ void sunRiseSetInit(void) {
 	sunriseset->devtype = WEATHER;
 	sunriseset->hwtype = API;
 	sunriseset->multipleId = 0;
-#ifdef PILIGHT_V6
+#if PILIGHT_V >= 6
 	sunriseset->masterOnly = 1;
 #endif
 

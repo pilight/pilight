@@ -1304,6 +1304,24 @@ int vercmp(char *val, char *ref) {
 	}
 }
 
+char *uniq_space(char *str){
+	char *from = NULL, *to = NULL;
+	int spc=0;
+	to = from = str;
+	while(1){
+		if(spc == 1 && *from == ' ' && to[-1] == ' ') {
+			++from;
+		} else {
+			spc = (*from == ' ') ? 1 : 0;
+			*to++ = *from++;
+			if(!to[-1]) {
+				break;
+			}
+		}
+	}
+	return str;
+}
+
 int str_replace(char *search, char *replace, char **str) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
@@ -1325,8 +1343,9 @@ int str_replace(char *search, char *replace, char **str) {
 			}
 			nlen = len - (slen - rlen);
 			if(len < nlen) {
-				if(!(target = REALLOC(target, (size_t)nlen+1))) {
-					printf("out of memory\n");
+				if((target = REALLOC(target, (size_t)nlen+1)) == NULL) {
+					logprintf(LOG_ERR, "out of memory");
+					exit(EXIT_FAILURE);
 				}
 				memset(&target[len], '\0', (size_t)(nlen-len));
 			}
@@ -1339,7 +1358,7 @@ int str_replace(char *search, char *replace, char **str) {
 		}
 		x++;
 	}
-	if(match) {
+	if(match == 1) {
 		return (int)len;
 	} else {
 		return -1;

@@ -221,7 +221,6 @@ static void *openweathermapParse(void *param) {
 										localtime_r(&a, &tm);
 #endif
 										json_append_member(code, "sunrise", json_mknumber((double)((tm.tm_hour*100)+tm.tm_min)/100, 2));
-										time_t b = (time_t)sunset;
 										memset(&tm, '\0', sizeof(struct tm));
 #ifdef _WIN32
 										localtime(&a);
@@ -407,7 +406,7 @@ void openweathermapInit(void) {
 	openweathermap->devtype = WEATHER;
 	openweathermap->hwtype = API;
 	openweathermap->multipleId = 0;
-#ifdef PILIGHT_V6
+#if PILIGHT_V >= 6
 	openweathermap->masterOnly = 1;
 #endif
 

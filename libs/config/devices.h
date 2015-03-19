@@ -28,6 +28,10 @@
 #include "config.h"
 #include "protocol.h"
 
+#if PILIGHT_V >= 6
+	#include "action.h"
+#endif
+
 typedef struct devices_settings_t devices_settings_t;
 typedef struct devices_values_t devices_values_t;
 
@@ -80,9 +84,12 @@ struct devices_t {
 	int cst_uuid;
 	int nrthreads;
 	time_t timestamp;
+#if PILIGHT_V >= 6
+	struct event_action_thread_t action_thread;
+#endif
 	struct protocols_t *protocols;
 	struct devices_settings_t *settings;
-	struct threadqueue_t **threads;
+	struct threadqueue_t **protocol_threads;
 	struct devices_t *next;
 };
 

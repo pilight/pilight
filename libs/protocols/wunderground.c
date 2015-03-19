@@ -434,7 +434,9 @@ static void wundergroundThreadGC(void) {
 		wunderground_data = wunderground_data->next;
 		FREE(wtmp);
 	}
-	FREE(wunderground_data);	
+	if(wunderground_data != NULL) {
+		FREE(wunderground_data);	
+	}
 }
 
 static void wundergroundPrintHelp(void) {
@@ -458,7 +460,7 @@ void wundergroundInit(void) {
 	wunderground->devtype = WEATHER;
 	wunderground->hwtype = API;
 	wunderground->multipleId = 0;
-#ifdef PILIGHT_V6
+#if PILIGHT_V >= 6
 	wunderground->masterOnly = 1;
 #endif
 

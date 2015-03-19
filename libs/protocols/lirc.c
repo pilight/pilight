@@ -152,49 +152,59 @@ static void *lircParse(void *param) {
 						if(bytes <= 0) {
 							break;
 						} else {
-							int x = 0, nrspace = 0;
-							for(x=0;x<bytes;x++) {
-								if(recvBuff[x] == ' ') {
-									nrspace++;
+							char **nlarray = NULL;
+							unsigned int e = explode(recvBuff, "\n", &nlarray), t = 0;
+							for(t=0;t<e;t++) {
+								int x = 0, nrspace = 0;
+								for(x=0;x<strlen(nlarray[t]);x++) {
+									if(nlarray[t][x] == ' ') {
+										nrspace++;
+									}
+								}
+								if(nrspace >= 3) {
+									char **array = NULL;
+									unsigned int q = explode(nlarray[t], " ", &array), h = 0;
+									if(q == 4) {
+										char *code1 = array[0];
+										char *rep = array[1];
+										char *btn = array[2];
+										char *remote = array[3];
+										char *y = NULL;
+										if((y = strstr(remote, "\n")) != NULL) {
+											size_t pos = (size_t)(y-remote);
+											remote[pos] = '\0';
+										}
+										int r = strtol(rep, NULL, 16);
+										lirc->message = json_mkobject();
+										JsonNode *code = json_mkobject();
+										json_append_member(code, "code", json_mkstring(code1));
+										json_append_member(code, "repeat", json_mknumber(r, 0));
+										json_append_member(code, "button", json_mkstring(btn));
+										json_append_member(code, "remote", json_mkstring(remote));
+
+										json_append_member(lirc->message, "message", code);
+										json_append_member(lirc->message, "origin", json_mkstring("receiver"));
+										json_append_member(lirc->message, "protocol", json_mkstring(lirc->id));
+
+										if(pilight.broadcast != NULL) {
+											pilight.broadcast(lirc->id, lirc->message);
+										}
+										json_delete(lirc->message);
+										lirc->message = NULL;
+									}
+									if(q > 0) {
+										for(h=0;h<q;h++) {
+											FREE(array[h]);
+										}
+										FREE(array);
+									}
 								}
 							}
-							if(nrspace >= 3) {
-								char **array = NULL;
-								unsigned int q = explode(recvBuff, " ", &array), h = 0;
-								if(q == 4) {
-									char *code1 = array[0];
-									char *rep = array[1];
-									char *btn = array[2];
-									char *remote = array[3];
-									char *y = NULL;
-									if((y = strstr(remote, "\n")) != NULL) {
-										size_t pos = (size_t)(y-remote);
-										remote[pos] = '\0';
-									}
-									int r = strtol(rep, NULL, 16);
-									lirc->message = json_mkobject();
-									JsonNode *code = json_mkobject();
-									json_append_member(code, "code", json_mkstring(code1));
-									json_append_member(code, "repeat", json_mknumber(r, 0));
-									json_append_member(code, "button", json_mkstring(btn));
-									json_append_member(code, "remote", json_mkstring(remote));
-
-									json_append_member(lirc->message, "message", code);
-									json_append_member(lirc->message, "origin", json_mkstring("receiver"));
-									json_append_member(lirc->message, "protocol", json_mkstring(lirc->id));
-
-									if(pilight.broadcast != NULL) {
-										pilight.broadcast(lirc->id, lirc->message);
-									}
-									json_delete(lirc->message);
-									lirc->message = NULL;
+							if(t > 0) {
+								for(t=0;t<e;t++) {
+									FREE(nlarray[t]);
 								}
-								if(q > 0) {
-									for(h=0;h<q;h++) {
-										FREE(array[h]);
-									}
-									FREE(array);
-								}
+								FREE(nlarray);
 							}
 							memset(recvBuff, '\0', BUFFER_SIZE);
 						}
@@ -265,7 +275,7 @@ void lircInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "lirc";
-	module->version = "1.6";
+	module->version = "1.7";
 	module->reqversion = "5.0";
 	module->reqcommit = "266";
 }

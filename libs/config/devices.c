@@ -356,7 +356,7 @@ int devices_update(char *protoname, JsonNode *json, JsonNode **out) {
 									sptr->values->type == JSON_STRING &&
 									strcmp(sptr->values->string_, sstring_) != 0)) {
 									sptr->values->string_ = REALLOC(sptr->values->string_, strlen(sstring_)+1);
-									if(!sptr->values->string_) {
+									if(sptr->values->string_ == NULL) {
 										logprintf(LOG_ERR, "out of memory");
 										exit(EXIT_FAILURE);
 									}
@@ -1459,8 +1459,8 @@ static int devices_parse_elements(JsonNode *jdevices, struct devices_t *device) 
 			if(tmp_protocols->listener->initDev && (tmp_protocols->listener->masterOnly == 0 || pilight.runmode == STANDALONE)) {
 				struct threadqueue_t *tmp = tmp_protocols->listener->initDev(jdevices);
 				if(tmp != NULL) {
-					device->threads = REALLOC(device->threads, (sizeof(struct threadqueue_t *)*(size_t)(device->nrthreads+1)));
-					device->threads[device->nrthreads] = tmp;
+					device->protocol_threads = REALLOC(device->protocol_threads, (sizeof(struct threadqueue_t *)*(size_t)(device->nrthreads+1)));
+					device->protocol_threads[device->nrthreads] = tmp;
 					device->nrthreads++;
 				}
 			}
@@ -1534,11 +1534,15 @@ static int devices_parse(JsonNode *root) {
 				strcpy(dnode->id, jdevices->key);
 				dnode->nrthreads = 0;
 				dnode->timestamp = 0;
-				dnode->threads = NULL;
+				dnode->protocol_threads = NULL;
 				dnode->settings = NULL;
 				dnode->next = NULL;
 				dnode->protocols = NULL;
 
+#if PILIGHT_V >= 6
+				event_action_thread_init(dnode);
+#endif
+				
 				int ptype = -1;
 				/* Save both the protocol pointer and the protocol name */
 				jprotocol = json_first_child(jprotocols);
@@ -1603,7 +1607,7 @@ static int devices_parse(JsonNode *root) {
 					jprotocol = jprotocol->next;
 				}
 
-				if(!have_error && devices_parse_elements(jdevices, dnode) != 0) {
+				if(have_error == 0 && devices_parse_elements(jdevices, dnode) != 0) {
 					have_error = 1;
 				}
 
@@ -1641,6 +1645,9 @@ int devices_gc(void) {
 	/* Free devices structure */
 	while(devices) {
 		dtmp = devices;
+#if PILIGHT_V >= 6
+		event_action_thread_free(dtmp);
+#endif
 		while(dtmp->settings) {
 			stmp = dtmp->settings;
 			while(stmp->values) {
@@ -1677,7 +1684,7 @@ int devices_gc(void) {
 		}
 		if(dtmp->nrthreads > 0) {
 			for(i=0;i<dtmp->nrthreads;i++) {
-				thread_stop(dtmp->threads[i]->id);
+				thread_stop(dtmp->protocol_threads[i]->id);
 			}
 		}
 		if(dtmp->protocols != NULL) {
@@ -1689,8 +1696,8 @@ int devices_gc(void) {
 		if(dtmp->id != NULL) {
 			FREE(dtmp->id);
 		}
-		if(dtmp->threads != NULL) {
-			FREE(dtmp->threads);
+		if(dtmp->protocol_threads != NULL) {
+			FREE(dtmp->protocol_threads);
 		}
 		devices = devices->next;
 		FREE(dtmp);
