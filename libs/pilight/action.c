@@ -224,6 +224,7 @@ void event_action_thread_init(struct devices_t *dev) {
 	dev->action_thread.running = 0;
 	dev->action_thread.param = NULL;
 	dev->action_thread.action = NULL;
+	dev->action_thread.loop = 0;
 }
 
 void event_action_thread_start(struct devices_t *dev, char *name, void *(*func)(void *), struct JsonNode *param) {
@@ -234,6 +235,8 @@ void event_action_thread_start(struct devices_t *dev, char *name, void *(*func)(
 		logprintf(LOG_DEBUG, "aborting previous \"%s\" action for device \"%s\"\n", thread->action, dev->id);
 		join = 1;
 	}
+
+	thread->loop = 0;
 
 	pthread_mutex_unlock(&thread->mutex);
 	pthread_cond_signal(&thread->cond);
@@ -258,6 +261,7 @@ void event_action_thread_start(struct devices_t *dev, char *name, void *(*func)(
 	}
 
 	thread->device = dev;
+	thread->loop = 1;
 	thread->action = REALLOC(thread->action, strlen(name)+1);
 	strcpy(thread->action, name);
 
@@ -290,6 +294,7 @@ void event_action_thread_stop(struct devices_t *dev) {
 	if(dev != NULL) {
 		thread = &dev->action_thread;
 		if(thread->running == 1) {
+			thread->loop = 0;
 			pthread_mutex_unlock(&thread->mutex);
 			pthread_cond_signal(&thread->cond);
 
@@ -313,6 +318,7 @@ void event_action_thread_free(struct devices_t *dev) {
 		if(thread->running == 1) {
 			logprintf(LOG_DEBUG, "aborting running \"%s\" action for device \"%s\"\n", thread->action, dev->id);
 
+			thread->loop = 0;
 			pthread_mutex_unlock(&thread->mutex);
 			pthread_cond_signal(&thread->cond);
 			while(thread->running > 0) {

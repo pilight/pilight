@@ -1896,7 +1896,6 @@ int main_gc(void) {
 #endif
 	dso_gc();
 	log_gc();
-
 	if(configtmp != NULL) {
 		FREE(configtmp);
 	}
@@ -1990,6 +1989,8 @@ int start_pilight(int argc, char **argv) {
 	int f = 0, itmp = 0, show_help = 0, show_version = 0, show_default = 0;
 	char *stmp = NULL, *args = NULL, *p = NULL;
 	int port = 0;
+
+	wiringXLog = logprintf;
 
 	if((progname = MALLOC(16)) == NULL) {
 		logprintf(LOG_ERR, "out of memory");
@@ -2113,8 +2114,6 @@ int start_pilight(int argc, char **argv) {
 
 	/* Catch all exit signals for gc */
 	gc_catch();
-
-	wiringXLog = logprintf;
 
 #ifdef _WIN32
 	if((p = genuuid(NULL)) == NULL) {

@@ -33,6 +33,7 @@ typedef struct event_actions_t {
 
 typedef struct event_action_thread_t {
 	int running;
+	int loop;
 	char *action;
 	pthread_t pth;
 	pthread_mutex_t mutex;

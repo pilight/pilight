@@ -253,6 +253,7 @@ static int actionDimArguments(struct JsonNode *arguments) {
 						jachild = jachild->next;
 						}
 					} else {
+						logprintf(LOG_ERR, "internal error 1 in dim action", jbchild->string_);
 						return -1;
 					}
 
@@ -312,18 +313,19 @@ static int actionDimArguments(struct JsonNode *arguments) {
 							}
 						jechild = jechild->next;
 						}
-					} else {
-						return -1;
 					}
 				} else {
+					logprintf(LOG_ERR, "internal error 2 in dim action", jbchild->string_);
 					return -1;
 				}
 			} else {
+				logprintf(LOG_ERR, "internal error 3 in dim action", jbchild->string_);
 				return -1;
 			}
 			jbchild = jbchild->next;
 		}
 	} else {
+		logprintf(LOG_ERR, "internal error 4 in dim action", jbchild->string_);
 		return -1;
 	}
 	return 0;
@@ -349,7 +351,7 @@ static void *actionDimThread(void *param) {
 	char *old_state = NULL;
 	double dimlevel = 0.0, old_dimlevel = 0.0, new_dimlevel = 0.0, cur_dimlevel = 0.0;
 	int seconds_after = 0, seconds_for = 0, seconds_in = 0, has_in = 0, dimdiff = 0;
-	int direction = 0, interval = 0, i = 0, stop = 0;
+	int direction = 0, interval = 0, i = 0, timer = 0;
 	char state[3];
 
 	event_action_started(thread);
@@ -458,106 +460,117 @@ static void *actionDimThread(void *param) {
 	
 	if(has_in == 0) {
 		if(old_state == NULL || ((strcmp(old_state, "on") != 0 || (int)cur_dimlevel != (int)new_dimlevel))) {
-			if(event_action_thread_wait(thread->device, seconds_after) == ETIMEDOUT) {
-				pthread_mutex_lock(&thread->mutex);
-				jvalues = json_mkobject();
-				json_append_member(jvalues, "dimlevel", json_mknumber(dimlevel, 0));
-				if(pilight.control != NULL) {
-					pilight.control(thread->device, state, json_first_child(jvalues));
-				}
-				json_delete(jvalues);
-				pthread_mutex_unlock(&thread->mutex);
-
-				/*
-				 * We only need to restore the state if it was actually changed
-				 */ 
-				if(seconds_for > 0 && old_state != NULL && (strcmp(old_state, "on") != 0 || (int)cur_dimlevel != (int)new_dimlevel)) {
-					if(event_action_thread_wait(thread->device, seconds_for) == ETIMEDOUT) {
-						pthread_mutex_lock(&thread->mutex);
-						if(pilight.control != NULL) {
-								jvalues = json_mkobject();
-								json_append_member(jvalues, "dimlevel", json_mknumber(cur_dimlevel, 0));
-								if(pilight.control != NULL) {
-									if(strcmp(old_state, "off") == 0) {
-										pilight.control(thread->device, state, json_first_child(jvalues));
-										pilight.control(thread->device, old_state, NULL);
-									} else {
-										pilight.control(thread->device, old_state, json_first_child(jvalues));
-									}
-								}
-								json_delete(jvalues);
-						}
-						pthread_mutex_unlock(&thread->mutex);
+			timer = 0;
+			while(thread->loop == 1) {
+				if(timer == seconds_after) {
+					jvalues = json_mkobject();
+					json_append_member(jvalues, "dimlevel", json_mknumber(dimlevel, 0));
+					if(pilight.control != NULL) {
+						pilight.control(thread->device, state, json_first_child(jvalues));
 					}
+					json_delete(jvalues);
+					break;
+				}
+				timer++;
+				sleep(1);
+			}
+
+			/*
+			 * We only need to restore the state if it was actually changed
+			 */ 
+			if(seconds_for > 0 && old_state != NULL && (strcmp(old_state, "on") != 0 || (int)cur_dimlevel != (int)new_dimlevel)) {
+				timer = 0;
+				while(thread->loop == 1) {
+					if(seconds_for == timer) {
+						jvalues = json_mkobject();
+						json_append_member(jvalues, "dimlevel", json_mknumber(cur_dimlevel, 0));
+						if(pilight.control != NULL) {
+							if(strcmp(old_state, "off") == 0) {
+								pilight.control(thread->device, state, json_first_child(jvalues));
+								pilight.control(thread->device, old_state, NULL);
+							} else {
+								pilight.control(thread->device, old_state, json_first_child(jvalues));
+							}
+						}
+						json_delete(jvalues);
+						break;
+					}
+					timer++;
+					sleep(1);
 				}
 			}
 		}
 	/* We'll gently start increasing / decreasing the dimlevel after X seconds in X seconds. */
 	} else {
-		if(event_action_thread_wait(thread->device, seconds_after) == ETIMEDOUT) {
-			if(direction == INCREASING) {
-				for(i=(int)old_dimlevel;i<=(int)new_dimlevel;i++) {
-					if(event_action_thread_wait(thread->device, interval) == ETIMEDOUT) {
-						pthread_mutex_lock(&thread->mutex);
-						if(pilight.control != NULL) {
-							jvalues = json_mkobject();
-							json_append_member(jvalues, "dimlevel", json_mknumber(i, 0));
-							if(pilight.control != NULL) {
-								pilight.control(thread->device, state, json_first_child(jvalues));
-							}
-							json_delete(jvalues);
-						}
-						pthread_mutex_unlock(&thread->mutex);
-					} else {
-						stop = 1;
-						break;
-					}
-				}
-			} else {
-				for(i=(int)old_dimlevel;i>=(int)new_dimlevel;i--) {
-					if(event_action_thread_wait(thread->device, interval) == ETIMEDOUT) {
-						pthread_mutex_lock(&thread->mutex);
-						if(pilight.control != NULL) {
-							jvalues = json_mkobject();
-							json_append_member(jvalues, "dimlevel", json_mknumber(i, 0));		
-							if(pilight.control != NULL) {
-								pilight.control(thread->device, state, json_first_child(jvalues));
-							}
-							json_delete(jvalues);
-						}
-						pthread_mutex_unlock(&thread->mutex);
-					} else {
-						stop = 1;
-						break;
-					}
-				}				
+		timer = 0;
+		while(thread->loop == 1) {
+			if(timer == seconds_after) {
+				break;
 			}
-			/*
-			 * We only need to restore the state if it was actually changed
-			 */ 
-			if(stop == 0 && seconds_for > 0 && old_state != NULL && 
-			   (strcmp(old_state, "on") != 0 || (int)cur_dimlevel != (int)new_dimlevel)) {
-				if(event_action_thread_wait(thread->device, seconds_for) == ETIMEDOUT) {
-					pthread_mutex_lock(&thread->mutex);
-					if(pilight.control != NULL) {
-							jvalues = json_mkobject();
-							json_append_member(jvalues, "dimlevel", json_mknumber(cur_dimlevel, 0));
-							if(pilight.control != NULL) {
-								if(strcmp(old_state, "off") == 0) {
-									pilight.control(thread->device, state, json_first_child(jvalues));
-									pilight.control(thread->device, old_state, NULL);
-								} else {
-									pilight.control(thread->device, old_state, json_first_child(jvalues));
-								}
-							}
-							json_delete(jvalues);
+			timer++;
+			sleep(1);
+		}
+		if(direction == INCREASING) {
+			for(i=(int)old_dimlevel;i<=(int)new_dimlevel;i++) {
+				timer = 0;
+				while(thread->loop == 1) {
+					if(interval == timer) {
+						jvalues = json_mkobject();
+						json_append_member(jvalues, "dimlevel", json_mknumber(i, 0));
+						if(pilight.control != NULL) {
+							pilight.control(thread->device, state, json_first_child(jvalues));
+						}
+						json_delete(jvalues);
+						break;
 					}
-					pthread_mutex_unlock(&thread->mutex);
+					timer++;
+					sleep(1);
 				}
-			}			
+			}
+		} else {
+			for(i=(int)old_dimlevel;i>=(int)new_dimlevel;i--) {
+				timer = 0;
+				while(thread->loop == 1) {
+					if(interval == timer) {
+						jvalues = json_mkobject();
+						json_append_member(jvalues, "dimlevel", json_mknumber(i, 0));
+						if(pilight.control != NULL) {
+							pilight.control(thread->device, state, json_first_child(jvalues));
+						}
+						json_delete(jvalues);
+						break;
+					}
+					timer++;
+					sleep(1);
+				}
+			}		
+		}
+		/*
+		 * We only need to restore the state if it was actually changed
+		 */ 
+		if(seconds_for > 0 && old_state != NULL && 
+			 (strcmp(old_state, "on") != 0 || (int)cur_dimlevel != (int)new_dimlevel)) {
+			timer = 0;
+			while(thread->loop == 1) {
+				if(timer == seconds_for) {
+					jvalues = json_mkobject();
+					json_append_member(jvalues, "dimlevel", json_mknumber(cur_dimlevel, 0));
+					if(pilight.control != NULL) {
+						if(strcmp(old_state, "off") == 0) {
+							pilight.control(thread->device, state, json_first_child(jvalues));
+							pilight.control(thread->device, old_state, NULL);
+						} else {
+							pilight.control(thread->device, old_state, json_first_child(jvalues));
+						}
+					}
+					json_delete(jvalues);
+					break;
+				}
+				timer++;
+				sleep(1);
+			}
 		}
 	}
-	pthread_mutex_unlock(&thread->mutex);		
 
 	if(old_state != NULL) {
 		FREE(old_state);
@@ -614,7 +627,7 @@ void compatibility(struct module_t *module) {
 	module->name = "dim";
 	module->version = "2.0";
 	module->reqversion = "6.0";
-	module->reqcommit = "54";
+	module->reqcommit = "55";
 }
 
 void init(void) {

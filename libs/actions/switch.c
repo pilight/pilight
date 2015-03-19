@@ -189,7 +189,7 @@ static void *actionSwitchThread(void *param) {
 	struct JsonNode *jstate = NULL;
 	struct JsonNode *jaseconds = NULL;
 	char *new_state = NULL, *old_state = NULL, *state = NULL;
-	int seconds_after = 0, seconds_for = 0;
+	int seconds_after = 0, seconds_for = 0, timer = 0;
 
 	event_action_started(thread);
 
@@ -236,45 +236,50 @@ static void *actionSwitchThread(void *param) {
 		logprintf(LOG_ERR, "could not store old state of \"%s\"\n", thread->device->id);
 	}
 
-	if(event_action_thread_wait(thread->device, seconds_after) == ETIMEDOUT) {
-		pthread_mutex_lock(&thread->mutex);
-		if((jto = json_find_member(thread->param, "TO")) != NULL) {
-			if((javalues = json_find_member(jto, "value")) != NULL) {
-				jstate = json_find_element(javalues, 0);
-				if(jstate != NULL && jstate->tag == JSON_STRING) {
-					state = jstate->string_;
-					new_state = MALLOC(strlen(state)+1);
-					strcpy(new_state, state);
-					/*
-					 * We're not switching when current state is the same as
-					 * the old state.
-					 */
-					if(old_state == NULL || strcmp(old_state, new_state) != 0) {
-						if(pilight.control != NULL) {
-							pilight.control(thread->device, new_state, NULL);
+	timer = 0;
+	while(thread->loop == 1) {
+		if(timer == seconds_after) {
+			if((jto = json_find_member(thread->param, "TO")) != NULL) {
+				if((javalues = json_find_member(jto, "value")) != NULL) {
+					jstate = json_find_element(javalues, 0);
+					if(jstate != NULL && jstate->tag == JSON_STRING) {
+						state = jstate->string_;
+						new_state = MALLOC(strlen(state)+1);
+						strcpy(new_state, state);
+						/*
+						 * We're not switching when current state is the same as
+						 * the old state.
+						 */
+						if(old_state == NULL || strcmp(old_state, new_state) != 0) {
+							if(pilight.control != NULL) {
+								pilight.control(thread->device, new_state, NULL);
+							}
 						}
 					}
 				}
 			}
+			break;
 		}
-		pthread_mutex_unlock(&thread->mutex);
+		timer++;
+		sleep(1);
+	}
 
-		/*
-		 * We only need to restore the state if it was actually changed
-		 */ 
-		if(seconds_for > 0 && old_state != NULL && new_state != NULL && strcmp(old_state, new_state) != 0) {
-			if(event_action_thread_wait(thread->device, seconds_for) == ETIMEDOUT) {		
-				pthread_mutex_lock(&thread->mutex);
+	/*
+	 * We only need to restore the state if it was actually changed
+	 */
+	if(seconds_for > 0 && old_state != NULL && new_state != NULL && strcmp(old_state, new_state) != 0) {
+		timer = 0;
+		while(thread->loop == 1) {
+			if(seconds_for == timer) {
 				if(pilight.control != NULL) {
 					pilight.control(thread->device, old_state, NULL);
 				}
-				pthread_mutex_unlock(&thread->mutex);
+				break;
 			}
+			timer++;
+			sleep(1);
 		}
 	}
-	pthread_mutex_unlock(&thread->mutex);
-
-
 
 	if(old_state != NULL) {
 		FREE(old_state);
@@ -333,7 +338,7 @@ void compatibility(struct module_t *module) {
 	module->name = "switch";
 	module->version = "2.0";
 	module->reqversion = "6.0";
-	module->reqcommit = "54";
+	module->reqcommit = "55";
 }
 
 void init(void) {
