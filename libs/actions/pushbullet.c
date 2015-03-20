@@ -113,8 +113,7 @@ static int actionPushbulletArguments(struct JsonNode *arguments) {
 }
 
 static void *actionPushbulletThread(void *param) {
-	struct event_action_thread_t *thread = (struct event_action_thread_t *)param;
-	struct JsonNode *arguments = thread->param;
+	struct JsonNode *arguments = (struct JsonNode *)param;
 	struct JsonNode *jtitle = NULL;
 	struct JsonNode *jbody = NULL;
 	struct JsonNode *jtype = NULL;
@@ -132,9 +131,7 @@ static void *actionPushbulletThread(void *param) {
 	char *data = NULL, *tp = typebuf;
 	int ret = 0, size = 0;
 
-#if PILIGHT_V >= 6
 	action_pushbullet->nrthreads++;
-#endif
 	
 	jtitle = json_find_member(arguments, "TITLE");
 	jbody = json_find_member(arguments, "BODY");
@@ -210,7 +207,7 @@ void actionPushbulletInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "pushbullet";
-	module->version = "2.0";
+	module->version = "2.1";
 	module->reqversion = "5.0";
 	module->reqcommit = "87";
 }

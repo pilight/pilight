@@ -113,8 +113,7 @@ static int actionPushoverArguments(struct JsonNode *arguments) {
 }
 
 static void *actionPushoverThread(void *param) {
-	struct event_action_thread_t *thread = (struct event_action_thread_t *)param;
-	struct JsonNode *arguments = thread->param;
+	struct JsonNode *arguments = (struct JsonNode *)param;
 	struct JsonNode *jtitle = NULL;
 	struct JsonNode *jmessage = NULL;
 	struct JsonNode *juser = NULL;
@@ -128,9 +127,7 @@ static void *actionPushoverThread(void *param) {
 	struct JsonNode *jval3 = NULL;
 	struct JsonNode *jval4 = NULL;
 
-#if PILIGHT_V >= 6
 	action_pushover->nrthreads++;
-#endif
 
 	char url[1024], typebuf[70];
 	char *data = NULL, *tp = typebuf;
@@ -183,9 +180,7 @@ static void *actionPushoverThread(void *param) {
 		}
 	}
 
-#if PILIGHT_V >= 6
 	action_pushover->nrthreads--;
-#endif
 
 	return (void *)NULL;
 }
@@ -215,7 +210,7 @@ void actionPushoverInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "pushover";
-	module->version = "2.0";
+	module->version = "2.1";
 	module->reqversion = "5.0";
 	module->reqcommit = "87";
 }
