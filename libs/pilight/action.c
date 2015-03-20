@@ -232,7 +232,7 @@ void event_action_thread_start(struct devices_t *dev, char *name, void *(*func)(
 	int join = 0;
 
 	if(thread->running == 1) {
-		logprintf(LOG_DEBUG, "aborting previous \"%s\" action for device \"%s\"\n", thread->action, dev->id);
+		logprintf(LOG_DEBUG, "aborting previous \"%s\" action for device \"%s\"", thread->action, dev->id);
 		join = 1;
 	}
 
@@ -294,6 +294,8 @@ void event_action_thread_stop(struct devices_t *dev) {
 	if(dev != NULL) {
 		thread = &dev->action_thread;
 		if(thread->running == 1) {
+			logprintf(LOG_DEBUG, "aborting running \"%s\" action for device \"%s\"", thread->action, dev->id);
+
 			thread->loop = 0;
 			pthread_mutex_unlock(&thread->mutex);
 			pthread_cond_signal(&thread->cond);
@@ -316,7 +318,7 @@ void event_action_thread_free(struct devices_t *dev) {
 	if(dev != NULL) {
 		thread = &dev->action_thread;
 		if(thread->running == 1) {
-			logprintf(LOG_DEBUG, "aborting running \"%s\" action for device \"%s\"\n", thread->action, dev->id);
+			logprintf(LOG_DEBUG, "aborting running \"%s\" action for device \"%s\"", thread->action, dev->id);
 
 			thread->loop = 0;
 			pthread_mutex_unlock(&thread->mutex);
@@ -340,14 +342,14 @@ void event_action_thread_free(struct devices_t *dev) {
 }
 
 void event_action_started(struct event_action_thread_t *thread) {
-	logprintf(LOG_INFO, "started \"%s\" action for device \"%s\"\n", thread->action, thread->device->id);	
+	logprintf(LOG_INFO, "started \"%s\" action for device \"%s\"", thread->action, thread->device->id);	
 	pthread_mutex_lock(&thread->mutex);
 	thread->running = 1;
 	pthread_mutex_unlock(&thread->mutex);
 }
 
 void event_action_stopped(struct event_action_thread_t *thread) {
-	logprintf(LOG_INFO, "stopped \"%s\" action for device \"%s\"\n", thread->action, thread->device->id);		
+	logprintf(LOG_INFO, "stopped \"%s\" action for device \"%s\"", thread->action, thread->device->id);		
 	pthread_mutex_lock(&thread->mutex);
 	thread->running = 0;
 	pthread_mutex_unlock(&thread->mutex);

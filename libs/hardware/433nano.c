@@ -171,8 +171,8 @@ static unsigned short nano433HwDeinit(void) {
 }
 
 static int nano433Send(int *code, int rawlen, int repeats) {
-	unsigned int i = 0, x = 0, z = 2, y = 0, len = 0;
-	int pulses[10], match = 0, nrpulses = 0;
+	unsigned int i = 0, x = 0, z = 2, y = 0, len = 0, nrpulses = 0;
+	int pulses[10], match = 0;
 	char c[16], send[MAXPULSESTREAMLENGTH+1];
 #ifdef _WIN32
 	DWORD n;
@@ -194,7 +194,7 @@ static int nano433Send(int *code, int rawlen, int repeats) {
 		}
 		if(match == -1) {
 			pulses[nrpulses] = code[i];
-			match = nrpulses;
+			match = (int)nrpulses;
 			nrpulses++;
 		}
 		if(i%2 == 1) {

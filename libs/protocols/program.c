@@ -191,7 +191,7 @@ static void *programParse(void *param) {
 				if(lnode->currentstate != lnode->laststate) {
 					lnode->laststate = lnode->currentstate;
 					if(pilight.broadcast != NULL) {
-						pilight.broadcast(program->id, program->message);
+						pilight.broadcast(program->id, program->message, PROTOCOL);
 					}
 				}
 				json_delete(program->message);
@@ -289,7 +289,7 @@ static int programCreateCode(JsonNode *code) {
 									json_append_member(program->message, "protocol", json_mkstring(program->id));
 
 									if(pilight.broadcast != NULL) {
-										pilight.broadcast(program->id, program->message);
+										pilight.broadcast(program->id, program->message, PROTOCOL);
 									}
 									json_delete(program->message);
 									program->message = NULL;
@@ -405,9 +405,9 @@ void programInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "program";
-	module->version = "1.3";
-	module->reqversion = "5.0";
-	module->reqcommit = "187";
+	module->version = "1.4";
+	module->reqversion = "6.0";
+	module->reqcommit = "58";
 }
 
 void init(void) {

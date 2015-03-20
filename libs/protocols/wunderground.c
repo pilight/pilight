@@ -266,7 +266,7 @@ static void *wundergroundParse(void *param) {
 																	json_append_member(wunderground->message, "protocol", json_mkstring(wunderground->id));
 
 																	if(pilight.broadcast != NULL) {
-																		pilight.broadcast(wunderground->id, wunderground->message);
+																		pilight.broadcast(wunderground->id, wunderground->message, PROTOCOL);
 																	}
 																	json_delete(wunderground->message);
 																	wunderground->message = NULL;
@@ -343,7 +343,7 @@ static void *wundergroundParse(void *param) {
 			json_append_member(wunderground->message, "origin", json_mkstring("receiver"));
 			json_append_member(wunderground->message, "protocol", json_mkstring(wunderground->id));
 			if(pilight.broadcast != NULL) {
-				pilight.broadcast(wunderground->id, wunderground->message);
+				pilight.broadcast(wunderground->id, wunderground->message, PROTOCOL);
 			}
 			json_delete(wunderground->message);
 			wunderground->message = NULL;
@@ -460,9 +460,7 @@ void wundergroundInit(void) {
 	wunderground->devtype = WEATHER;
 	wunderground->hwtype = API;
 	wunderground->multipleId = 0;
-#if PILIGHT_V >= 6
 	wunderground->masterOnly = 1;
-#endif
 
 	options_add(&wunderground->options, 't', "temperature", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9]{1,5}$");
 	options_add(&wunderground->options, 'h', "humidity", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9]{1,5}$");
@@ -492,9 +490,9 @@ void wundergroundInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "wunderground";
-	module->version = "1.10";
+	module->version = "1.11";
 	module->reqversion = "6.0";
-	module->reqcommit = "23";
+	module->reqcommit = "58";
 }
 
 void init(void) {

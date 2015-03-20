@@ -149,7 +149,7 @@ static void *arpingParse(void *param) {
 					json_append_member(arping->message, "protocol", json_mkstring(arping->id));
 
 					if(pilight.broadcast != NULL) {
-						pilight.broadcast(arping->id, arping->message);
+						pilight.broadcast(arping->id, arping->message, PROTOCOL);
 					}
 					json_delete(arping->message);
 					arping->message = NULL;
@@ -168,7 +168,7 @@ static void *arpingParse(void *param) {
 				json_append_member(arping->message, "protocol", json_mkstring(arping->id));
 
 				if(pilight.broadcast != NULL) {
-					pilight.broadcast(arping->id, arping->message);
+					pilight.broadcast(arping->id, arping->message, PROTOCOL);
 				}
 				json_delete(arping->message);
 				arping->message = NULL;
@@ -228,9 +228,7 @@ void arpingInit(void) {
 	arping->devtype = PING;
 	arping->hwtype = API;
 	arping->multipleId = 0;
-#if PILIGHT_V >= 6
 	arping->masterOnly = 1;
-#endif
 
 	options_add(&arping->options, 'c', "connected", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
 	options_add(&arping->options, 'd', "disconnected", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
@@ -247,9 +245,9 @@ void arpingInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "arping";
-	module->version = "1.3";
-	module->reqversion = "5.0";
-	module->reqcommit = "187";
+	module->version = "1.4";
+	module->reqversion = "6.0";
+	module->reqcommit = "58";
 }
 
 void init(void) {

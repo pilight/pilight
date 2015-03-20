@@ -87,7 +87,7 @@ static void xbmcCreateMessage(char *server, int port, char *action, char *media)
 	json_append_member(xbmc->message, "protocol", json_mkstring(xbmc->id));
 
 	if(pilight.broadcast != NULL) {
-		pilight.broadcast(xbmc->id, xbmc->message);
+		pilight.broadcast(xbmc->id, xbmc->message, PROTOCOL);
 	}
 	json_delete(xbmc->message);
 	xbmc->message = NULL;
@@ -413,9 +413,9 @@ void xbmcInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "xbmc";
-	module->version = "1.5";
-	module->reqversion = "5.0";
-	module->reqcommit = "187";
+	module->version = "1.6";
+	module->reqversion = "6.0";
+	module->reqcommit = "58";
 }
 
 void init(void) {

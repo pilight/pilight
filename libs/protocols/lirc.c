@@ -187,7 +187,7 @@ static void *lircParse(void *param) {
 										json_append_member(lirc->message, "protocol", json_mkstring(lirc->id));
 
 										if(pilight.broadcast != NULL) {
-											pilight.broadcast(lirc->id, lirc->message);
+											pilight.broadcast(lirc->id, lirc->message, PROTOCOL);
 										}
 										json_delete(lirc->message);
 										lirc->message = NULL;
@@ -275,9 +275,9 @@ void lircInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "lirc";
-	module->version = "1.7";
-	module->reqversion = "5.0";
-	module->reqcommit = "266";
+	module->version = "1.8";
+	module->reqversion = "6.0";
+	module->reqcommit = "58";
 }
 
 void init(void) {

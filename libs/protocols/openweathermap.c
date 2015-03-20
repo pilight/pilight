@@ -239,7 +239,7 @@ static void *openweathermapParse(void *param) {
 										json_append_member(openweathermap->message, "protocol", json_mkstring(openweathermap->id));
 
 										if(pilight.broadcast != NULL) {
-											pilight.broadcast(openweathermap->id, openweathermap->message);
+											pilight.broadcast(openweathermap->id, openweathermap->message, PROTOCOL);
 										}
 										json_delete(openweathermap->message);
 										openweathermap->message = NULL;
@@ -293,7 +293,7 @@ static void *openweathermapParse(void *param) {
 			json_append_member(openweathermap->message, "origin", json_mkstring("receiver"));
 			json_append_member(openweathermap->message, "protocol", json_mkstring(openweathermap->id));
 			if(pilight.broadcast != NULL) {
-				pilight.broadcast(openweathermap->id, openweathermap->message);
+				pilight.broadcast(openweathermap->id, openweathermap->message, PROTOCOL);
 			}
 			json_delete(openweathermap->message);
 			openweathermap->message = NULL;
@@ -406,9 +406,7 @@ void openweathermapInit(void) {
 	openweathermap->devtype = WEATHER;
 	openweathermap->hwtype = API;
 	openweathermap->multipleId = 0;
-#if PILIGHT_V >= 6
 	openweathermap->masterOnly = 1;
-#endif
 
 	options_add(&openweathermap->options, 't', "temperature", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9]{1,5}$");
 	options_add(&openweathermap->options, 'h', "humidity", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9]{1,5}$");
@@ -437,9 +435,9 @@ void openweathermapInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "openweathermap";
-	module->version = "1.9";
+	module->version = "1.10";
 	module->reqversion = "6.0";
-	module->reqcommit = "23";
+	module->reqcommit = "58";
 }
 
 void init(void) {

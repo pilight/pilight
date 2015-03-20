@@ -136,7 +136,7 @@ static void *lm76Parse(void *param) {
 					json_append_member(lm76->message, "protocol", json_mkstring(lm76->id));
 
 					if(pilight.broadcast != NULL) {
-						pilight.broadcast(lm76->id, lm76->message);
+						pilight.broadcast(lm76->id, lm76->message, PROTOCOL);
 					}
 					json_delete(lm76->message);
 					lm76->message = NULL;
@@ -226,9 +226,9 @@ void lm76Init(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "lm76";
-	module->version = "1.3";
-	module->reqversion = "5.0";
-	module->reqcommit = "187";
+	module->version = "1.4";
+	module->reqversion = "6.0";
+	module->reqcommit = "58";
 }
 
 void init(void) {

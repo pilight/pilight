@@ -172,7 +172,7 @@ static void *dht22Parse(void *param) {
 						json_append_member(dht22->message, "protocol", json_mkstring(dht22->id));
 
 						if(pilight.broadcast != NULL) {
-							pilight.broadcast(dht22->id, dht22->message);
+							pilight.broadcast(dht22->id, dht22->message, PROTOCOL);
 						}
 						json_delete(dht22->message);
 						dht22->message = NULL;
@@ -252,9 +252,9 @@ void dht22Init(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "dht22";
-	module->version = "1.6";
-	module->reqversion = "5.0";
-	module->reqcommit = "187";
+	module->version = "1.7";
+	module->reqversion = "6.0";
+	module->reqcommit = "58";
 }
 
 void init(void) {

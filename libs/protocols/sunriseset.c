@@ -201,7 +201,7 @@ static void *sunRiseSetParse(void *param) {
 			json_append_member(sunriseset->message, "protocol", json_mkstring(sunriseset->id));
 
 			if(pilight.broadcast != NULL) {
-				pilight.broadcast(sunriseset->id, sunriseset->message);
+				pilight.broadcast(sunriseset->id, sunriseset->message, PROTOCOL);
 			}
 			json_delete(sunriseset->message);
 			sunriseset->message = NULL;
@@ -276,9 +276,9 @@ void sunRiseSetInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "sunriseset";
-	module->version = "1.4";
-	module->reqversion = "5.0";
-	module->reqcommit = "187";
+	module->version = "1.5";
+	module->reqversion = "6.0";
+	module->reqcommit = "58";
 }
 
 void init(void) {

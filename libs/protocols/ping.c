@@ -102,7 +102,7 @@ static void *pingParse(void *param) {
 					json_append_member(pping->message, "protocol", json_mkstring(pping->id));
 
 					if(pilight.broadcast != NULL) {
-						pilight.broadcast(pping->id, pping->message);
+						pilight.broadcast(pping->id, pping->message, PROTOCOL);
 					}
 					json_delete(pping->message);
 					pping->message = NULL;
@@ -120,7 +120,7 @@ static void *pingParse(void *param) {
 				json_append_member(pping->message, "protocol", json_mkstring(pping->id));
 
 				if(pilight.broadcast != NULL) {
-					pilight.broadcast(pping->id, pping->message);
+					pilight.broadcast(pping->id, pping->message, PROTOCOL);
 				}
 				json_delete(pping->message);
 				pping->message = NULL;
@@ -184,9 +184,9 @@ void pingInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "ping";
-	module->version = "1.3";
-	module->reqversion = "5.0";
-	module->reqcommit = "187";
+	module->version = "1.4";
+	module->reqversion = "6.0";
+	module->reqcommit = "58";
 }
 
 void init(void) {

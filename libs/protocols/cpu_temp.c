@@ -127,7 +127,7 @@ static void *cpuTempParse(void *param) {
 						json_append_member(cpuTemp->message, "protocol", json_mkstring(cpuTemp->id));
 
 						if(pilight.broadcast != NULL) {
-							pilight.broadcast(cpuTemp->id, cpuTemp->message);
+							pilight.broadcast(cpuTemp->id, cpuTemp->message, PROTOCOL);
 						}
 						json_delete(cpuTemp->message);
 						cpuTemp->message = NULL;
@@ -200,9 +200,9 @@ void cpuTempInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "cpu_temp";
-	module->version = "1.4";
-	module->reqversion = "5.0";
-	module->reqcommit = "187";
+	module->version = "1.5";
+	module->reqversion = "6.0";
+	module->reqcommit = "58";
 }
 
 void init(void) {

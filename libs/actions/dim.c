@@ -466,7 +466,7 @@ static void *actionDimThread(void *param) {
 					jvalues = json_mkobject();
 					json_append_member(jvalues, "dimlevel", json_mknumber(dimlevel, 0));
 					if(pilight.control != NULL) {
-						pilight.control(thread->device, state, json_first_child(jvalues));
+						pilight.control(thread->device, state, json_first_child(jvalues), ACTION);
 					}
 					json_delete(jvalues);
 					break;
@@ -486,10 +486,10 @@ static void *actionDimThread(void *param) {
 						json_append_member(jvalues, "dimlevel", json_mknumber(cur_dimlevel, 0));
 						if(pilight.control != NULL) {
 							if(strcmp(old_state, "off") == 0) {
-								pilight.control(thread->device, state, json_first_child(jvalues));
-								pilight.control(thread->device, old_state, NULL);
+								pilight.control(thread->device, state, json_first_child(jvalues), ACTION);
+								pilight.control(thread->device, old_state, NULL, ACTION);
 							} else {
-								pilight.control(thread->device, old_state, json_first_child(jvalues));
+								pilight.control(thread->device, old_state, json_first_child(jvalues), ACTION);
 							}
 						}
 						json_delete(jvalues);
@@ -518,7 +518,7 @@ static void *actionDimThread(void *param) {
 						jvalues = json_mkobject();
 						json_append_member(jvalues, "dimlevel", json_mknumber(i, 0));
 						if(pilight.control != NULL) {
-							pilight.control(thread->device, state, json_first_child(jvalues));
+							pilight.control(thread->device, state, json_first_child(jvalues), ACTION);
 						}
 						json_delete(jvalues);
 						break;
@@ -535,7 +535,7 @@ static void *actionDimThread(void *param) {
 						jvalues = json_mkobject();
 						json_append_member(jvalues, "dimlevel", json_mknumber(i, 0));
 						if(pilight.control != NULL) {
-							pilight.control(thread->device, state, json_first_child(jvalues));
+							pilight.control(thread->device, state, json_first_child(jvalues), ACTION);
 						}
 						json_delete(jvalues);
 						break;
@@ -557,10 +557,10 @@ static void *actionDimThread(void *param) {
 					json_append_member(jvalues, "dimlevel", json_mknumber(cur_dimlevel, 0));
 					if(pilight.control != NULL) {
 						if(strcmp(old_state, "off") == 0) {
-							pilight.control(thread->device, state, json_first_child(jvalues));
-							pilight.control(thread->device, old_state, NULL);
+							pilight.control(thread->device, state, json_first_child(jvalues), ACTION);
+							pilight.control(thread->device, old_state, NULL, ACTION);
 						} else {
-							pilight.control(thread->device, old_state, json_first_child(jvalues));
+							pilight.control(thread->device, old_state, json_first_child(jvalues), ACTION);
 						}
 					}
 					json_delete(jvalues);
@@ -625,9 +625,9 @@ void actionDimInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "dim";
-	module->version = "2.0";
+	module->version = "2.1";
 	module->reqversion = "6.0";
-	module->reqcommit = "55";
+	module->reqcommit = "58";
 }
 
 void init(void) {

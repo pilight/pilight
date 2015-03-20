@@ -148,9 +148,9 @@ static void *actionToggleThread(void *param) {
 
 				if(pilight.control != NULL) {
 					if(strcmp(state1, cstate) == 0) {
-						pilight.control(thread->device, state2, NULL);
+						pilight.control(thread->device, state2, NULL, ACTION);
 					} else if(strcmp(state2, cstate) == 0) {
-						pilight.control(thread->device, state1, NULL);
+						pilight.control(thread->device, state1, NULL, ACTION);
 					}
 				}
 			}
@@ -202,9 +202,9 @@ void actionToggleInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "toggle";
-	module->version = "2.0";
+	module->version = "2.1";
 	module->reqversion = "6.0";
-	module->reqcommit = "54";
+	module->reqcommit = "58";
 }
 
 void init(void) {

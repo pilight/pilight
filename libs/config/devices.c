@@ -47,9 +47,9 @@ struct config_t *config_devices;
 /* Struct to store the locations */
 static struct devices_t *devices = NULL;
 
-int devices_update(char *protoname, JsonNode *json, JsonNode **out) {
+int devices_update(char *protoname, JsonNode *json, enum origin_t origin, JsonNode **out) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
-
+	
 	/* The pointer to the devices devices */
 	struct devices_t *dptr = devices;
 	/* The pointer to the device settings */
@@ -157,7 +157,7 @@ int devices_update(char *protoname, JsonNode *json, JsonNode **out) {
 					tmp_protocols = tmp_protocols->next;
 				}
 
-				if(match) {
+				if(match == 1) {
 					sptr = dptr->settings;
 					/* Loop through all settings */
 					while(sptr) {
@@ -391,6 +391,14 @@ int devices_update(char *protoname, JsonNode *json, JsonNode **out) {
 									jchild = jchild->next;
 								}
 								if(match == 0) {
+/* 
+ * If the action itself it not triggering a device update, something
+ * else is. We therefor need to abort the running action to let
+ * the new state persist.
+ */
+									if(dptr->action_thread.running == 1 && origin != ACTION) {
+										event_action_thread_stop(dptr);
+									}
 									json_append_element(rdev, json_mkstring(dptr->id));
 								}
 							}
@@ -1539,9 +1547,7 @@ static int devices_parse(JsonNode *root) {
 				dnode->next = NULL;
 				dnode->protocols = NULL;
 
-#if PILIGHT_V >= 6
 				event_action_thread_init(dnode);
-#endif
 				
 				int ptype = -1;
 				/* Save both the protocol pointer and the protocol name */
@@ -1645,9 +1651,9 @@ int devices_gc(void) {
 	/* Free devices structure */
 	while(devices) {
 		dtmp = devices;
-#if PILIGHT_V >= 6
+
 		event_action_thread_free(dtmp);
-#endif
+
 		while(dtmp->settings) {
 			stmp = dtmp->settings;
 			while(stmp->values) {

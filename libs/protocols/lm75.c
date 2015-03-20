@@ -138,7 +138,7 @@ static void *lm75Parse(void *param) {
 					json_append_member(lm75->message, "protocol", json_mkstring(lm75->id));
 
 					if(pilight.broadcast != NULL) {
-						pilight.broadcast(lm75->id, lm75->message);
+						pilight.broadcast(lm75->id, lm75->message, PROTOCOL);
 					}
 					json_delete(lm75->message);
 					lm75->message = NULL;
@@ -227,9 +227,9 @@ void lm75Init(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "lm75";
-	module->version = "1.3";
-	module->reqversion = "5.0";
-	module->reqcommit = "187";
+	module->version = "1.4";
+	module->reqversion = "6.0";
+	module->reqcommit = "58";
 }
 
 void init(void) {

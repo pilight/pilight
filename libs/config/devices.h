@@ -27,10 +27,7 @@
 #include "threads.h"
 #include "config.h"
 #include "protocol.h"
-
-#if PILIGHT_V >= 6
-	#include "action.h"
-#endif
+#include "action.h"
 
 typedef struct devices_settings_t devices_settings_t;
 typedef struct devices_values_t devices_values_t;
@@ -84,9 +81,7 @@ struct devices_t {
 	int cst_uuid;
 	int nrthreads;
 	time_t timestamp;
-#if PILIGHT_V >= 6
 	struct event_action_thread_t action_thread;
-#endif
 	struct protocols_t *protocols;
 	struct devices_settings_t *settings;
 	struct threadqueue_t **protocol_threads;
@@ -95,7 +90,9 @@ struct devices_t {
 
 extern struct config_t *config_devices;
 
-int devices_update(char *protoname, JsonNode *message, JsonNode **out);
+#include "pilight.h"
+
+int devices_update(char *protoname, JsonNode *message, enum origin_t origin, JsonNode **out);
 int devices_get(char *sid, struct devices_t **dev);
 int devices_valid_state(char *sid, char *state);
 int devices_valid_value(char *sid, char *name, char *value);

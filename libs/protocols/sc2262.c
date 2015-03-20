@@ -58,6 +58,7 @@ void sc2262Init(void) {
 	protocol_set_id(sc2262, "sc2262");
 	protocol_device_add(sc2262, "sc2262", "sc2262 contact sensor");
 	protocol_plslen_add(sc2262, 432);
+	protocol_plslen_add(sc2262, 439);
 	sc2262->devtype = CONTACT;
 	sc2262->hwtype = RF433;
 	sc2262->pulse = 3;

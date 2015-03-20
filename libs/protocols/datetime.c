@@ -350,7 +350,7 @@ static void *datetimeParse(void *param) {
 			json_append_member(datetime->message, "protocol", json_mkstring(datetime->id));
 
 			if(pilight.broadcast != NULL) {
-				pilight.broadcast(datetime->id, datetime->message);
+				pilight.broadcast(datetime->id, datetime->message, PROTOCOL);
 			}
 
 			json_delete(datetime->message);
@@ -453,9 +453,9 @@ void datetimeInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "datetime";
-	module->version = "2.1";
-	module->reqversion = "5.0";
-	module->reqcommit = "187";
+	module->version = "2.2";
+	module->reqversion = "6.0";
+	module->reqcommit = "58";
 }
 
 void init(void) {

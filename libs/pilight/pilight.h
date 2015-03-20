@@ -22,17 +22,29 @@
 #include "../../defines.h"
 #include "json.h"
 #include "mem.h"
-#include "devices.h"
 
 typedef enum runmode_t {
 	STANDALONE,
 	ADHOC
 } runmode_t;
 
+typedef enum origin_t {
+	RECEIVER = 0,
+	SENDER,
+	MASTER,
+	NODE,
+	FW,
+	STATS,
+	ACTION,
+	PROTOCOL
+} origin_t;
+
+#include "devices.h"
+
 struct pilight_t {
-	void (*broadcast)(char *name, JsonNode *message);
-	int (*send)(JsonNode *json);
-	int (*control)(struct devices_t *dev, char *state, JsonNode *values);
+	void (*broadcast)(char *name, JsonNode *message, enum origin_t origin);
+	int (*send)(JsonNode *json, enum origin_t origin);
+	int (*control)(struct devices_t *dev, char *state, JsonNode *values, enum origin_t origin);
 	void (*receive)(int *rawcode, int rawlen, int plslen, int hwtype);
 	runmode_t runmode;
 } pilight_t;

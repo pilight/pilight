@@ -97,9 +97,10 @@ static struct clients_t *clients = NULL;
 
 typedef struct sendqueue_t {
 	unsigned int id;
-	char *message;
 	char *protoname;
 	char *settings;
+	char *message;
+	enum origin_t origin;
 	struct protocol_t *protopt;
 	int code[MAXPULSESTREAMLENGTH];
 	char uuid[UUID_LENGTH];
@@ -136,6 +137,7 @@ static unsigned short recvqueue_init = 0;
 typedef struct bcqueue_t {
 	JsonNode *jmessage;
 	char *protoname;
+	enum origin_t origin;
 	struct bcqueue_t *next;
 } bcqueue_t;
 
@@ -232,14 +234,14 @@ static void client_remove(int id) {
 	}
 }
 
-static void broadcast_queue(char *protoname, JsonNode *json) {
+static void broadcast_queue(char *protoname, JsonNode *json, enum origin_t origin) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
 	if(main_loop == 1) {
 		pthread_mutex_lock(&bcqueue_lock);
 		if(bcqueue_number <= 1024) {
 			struct bcqueue_t *bnode = MALLOC(sizeof(struct bcqueue_t));
-			if(!bnode) {
+			if(bnode == NULL) {
 				logprintf(LOG_ERR, "out of memory");
 				exit(EXIT_FAILURE);
 			}
@@ -252,11 +254,13 @@ static void broadcast_queue(char *protoname, JsonNode *json) {
 			json_free(jstr);
 
 			bnode->protoname = MALLOC(strlen(protoname)+1);
-			if(!bnode->protoname) {
+			if(bnode->protoname == NULL) {
 				logprintf(LOG_ERR, "out of memory");
 				exit(EXIT_FAILURE);
 			}
 			strcpy(bnode->protoname, protoname);
+
+			bnode->origin = origin;
 
 			if(bcqueue_number == 0) {
 				bcqueue = bnode;
@@ -321,7 +325,7 @@ void *broadcast(void *param) {
 					json_free(conf);
 				} else {
 					/* Update the config */
-					if(devices_update(bcqueue->protoname, bcqueue->jmessage, &jret) == 0) {
+					if(devices_update(bcqueue->protoname, bcqueue->jmessage, bcqueue->origin, &jret) == 0) {
 						char *tmp = json_stringify(jret, NULL);
 						struct clients_t *tmp_clients = clients;
 						unsigned short match1 = 0, match2 = 0;
@@ -417,7 +421,7 @@ void *broadcast(void *param) {
 								json_append_member(jmessage, "type", json_mknumber(FIRMWARE, 0));
 								char pname[17];
 								strcpy(pname, "pilight-firmware");
-								pilight.broadcast(pname, jmessage);
+								pilight.broadcast(pname, jmessage, FW);
 								json_delete(jmessage);
 								jmessage = NULL;
 							}
@@ -531,7 +535,7 @@ static void receiver_create_message(protocol_t *protocol) {
 			}
 			char *output = json_stringify(jmessage, NULL);
 			JsonNode *json = json_decode(output);
-			broadcast_queue(protocol->id, json);
+			broadcast_queue(protocol->id, json, RECEIVER);
 			json_free(output);
 			json_delete(json);
 			json = NULL;
@@ -723,7 +727,7 @@ void *send_code(void *param) {
 			}
 			if(sendqueue->settings && strcmp(sendqueue->settings, "{}") != 0) {
 				if(json_validate(sendqueue->settings) == true) {
-					if(!message) {
+					if(message == NULL) {
 						message = json_mkobject();
 					}
 					json_append_member(message, "settings", json_decode(sendqueue->settings));
@@ -775,17 +779,17 @@ void *send_code(void *param) {
 				}
 			}
 
-			if(message) {
-				broadcast_queue(sendqueue->protoname, message);
+			if(message != NULL) {
+				broadcast_queue(sendqueue->protoname, message, sendqueue->origin);
 				json_delete(message);
 				message = NULL;
 			}
 
 			struct sendqueue_t *tmp = sendqueue;
-			if(tmp->message) {
+			if(tmp->message != NULL) {
 				FREE(tmp->message);
 			}
-			if(tmp->settings) {
+			if(tmp->settings != NULL) {
 				FREE(tmp->settings);
 			}
 			FREE(tmp->protoname);
@@ -802,7 +806,7 @@ void *send_code(void *param) {
 }
 
 /* Send a specific code */
-static int send_queue(JsonNode *json) {
+static int send_queue(JsonNode *json, enum origin_t origin) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
 	int match = 0, x = 0;
@@ -826,11 +830,11 @@ static int send_queue(JsonNode *json) {
 	JsonNode *jprotocols = NULL;
 	JsonNode *jprotocol = NULL;
 
-	if(!(jcode = json_find_member(json, "code"))) {
+	if((jcode = json_find_member(json, "code")) == NULL) {
 		logprintf(LOG_ERR, "sender did not send any codes");
 		json_delete(jcode);
 		return -1;
-	} else if(!(jprotocols = json_find_member(jcode, "protocol"))) {
+	} else if((jprotocols = json_find_member(jcode, "protocol")) == NULL) {
 		logprintf(LOG_ERR, "sender did not provide a protocol name");
 		json_delete(jcode);
 		return -1;
@@ -863,11 +867,12 @@ static int send_queue(JsonNode *json) {
 					pthread_mutex_lock(&sendqueue_lock);
 					if(sendqueue_number <= 1024) {
 						struct sendqueue_t *mnode = MALLOC(sizeof(struct sendqueue_t));
-						if(!mnode) {
+						if(mnode == NULL) {
 							logprintf(LOG_ERR, "out of memory");
 							exit(EXIT_FAILURE);
 						}
 						gettimeofday(&tcurrent, NULL);
+						mnode->origin = origin;
 						mnode->id = 1000000 * (unsigned int)tcurrent.tv_sec + (unsigned int)tcurrent.tv_usec;
 						mnode->message = NULL;
 						if(protocol->message != NULL) {
@@ -886,8 +891,7 @@ static int send_queue(JsonNode *json) {
 						for(x=0;x<protocol->rawlen;x++) {
 							mnode->code[x]=protocol->raw[x];
 						}
-						mnode->protoname = MALLOC(strlen(protocol->id)+1);
-						if(!mnode->protoname) {
+						if((mnode->protoname = MALLOC(strlen(protocol->id)+1)) == NULL) {
 							logprintf(LOG_ERR, "out of memory");
 							exit(EXIT_FAILURE);
 						}
@@ -1032,7 +1036,7 @@ static void client_webserver_parse_code(int i, char buffer[BUFFER_SIZE]) {
 }
 #endif
 
-static int control_device(struct devices_t *dev, char *state, JsonNode *values) {
+static int control_device(struct devices_t *dev, char *state, JsonNode *values, enum origin_t origin) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
 	struct devices_settings_t *sett = NULL;
@@ -1127,7 +1131,7 @@ static int control_device(struct devices_t *dev, char *state, JsonNode *values) 
 	json_append_member(json, "code", code);
 	json_append_member(json, "message", json_mkstring("send"));
 
-	if(send_queue(json) == 0) {
+	if(send_queue(json, origin) == 0) {
 		json_delete(json);
 		return 0;
 	}
@@ -1285,7 +1289,7 @@ static void socket_parse_data(int i, char *buffer) {
 					}
 					socket_write(sd, "{\"status\":\"success\"}");
 				} else if(strcmp(action, "send") == 0) {
-					if(send_queue(json) == 0) {
+					if(send_queue(json, SENDER) == 0) {
 						socket_write(sd, "{\"status\":\"success\"}");
 					} else {
 						socket_write(sd, "{\"status\":\"failed\"}");
@@ -1310,7 +1314,7 @@ static void socket_parse_data(int i, char *buffer) {
 								values = json_first_child(values);
 							}
 
-							if(control_device(dev, state, values) == 0) {
+							if(control_device(dev, state, values, SENDER) == 0) {
 								socket_write(sd, "{\"status\":\"success\"}");
 							} else {
 								socket_write(sd, "{\"status\":\"failed\"}");
@@ -1441,7 +1445,7 @@ static void socket_parse_data(int i, char *buffer) {
 						}
 					}
 					if(json_find_string(json, "protocol", &pname) == 0) {
-						broadcast_queue(pname, json);
+						broadcast_queue(pname, json, MASTER);
 					}
 				} else {
 					error = 1;
@@ -1735,7 +1739,7 @@ void *clientize(void *param) {
 							json_find_string(json, "protocol", &protocol) == 0) {
 							if(strcmp(origin, "receiver") == 0 ||
 								 strcmp(origin, "sender") == 0) {
-								broadcast_queue(protocol, json);
+								broadcast_queue(protocol, json, NODE);
 						}
 					}
 					json_delete(json);
@@ -2471,12 +2475,9 @@ clear:
 }
 
 void *pilight_stats(void *param) {
-	int watchdog = 0;
+	int checkram = 0, checkcpu = 0, i = -1, x = 0, watchdog = 0;
 	settings_find_number("watchdog-enable", &watchdog);
 
-	int checkram = 0, checkcpu = 0;
-	int i = -1;
-	int x = 0;
 	while(main_loop) {
 		registerVersion();
 
@@ -2565,7 +2566,7 @@ void *pilight_stats(void *param) {
 					}
 					tmp_clients = tmp_clients->next;
 				}
-				pilight.broadcast(procProtocol->id, procProtocol->message);
+				pilight.broadcast(procProtocol->id, procProtocol->message, STATS);
 				json_delete(procProtocol->message);
 				procProtocol->message = NULL;
 

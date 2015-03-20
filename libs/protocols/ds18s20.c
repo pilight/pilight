@@ -176,7 +176,7 @@ static void *ds18s20Parse(void *param) {
 									json_append_member(ds18s20->message, "protocol", json_mkstring(ds18s20->id));
 
 									if(pilight.broadcast != NULL) {
-										pilight.broadcast(ds18s20->id, ds18s20->message);
+										pilight.broadcast(ds18s20->id, ds18s20->message, PROTOCOL);
 									}
 									json_delete(ds18s20->message);
 									ds18s20->message = NULL;
@@ -261,9 +261,9 @@ void ds18s20Init(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "ds18s20";
-	module->version = "1.6";
-	module->reqversion = "5.0";
-	module->reqcommit = "266";
+	module->version = "1.7";
+	module->reqversion = "6.0";
+	module->reqcommit = "58";
 }
 
 void init(void) {

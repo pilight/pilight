@@ -299,7 +299,7 @@ static void *bmp180Parse(void *param) {
 					json_append_member(bmp180->message, "protocol", json_mkstring(bmp180->id));
 
 					if(pilight.broadcast != NULL) {
-						pilight.broadcast(bmp180->id, bmp180->message);
+						pilight.broadcast(bmp180->id, bmp180->message, PROTOCOL);
 					}
 					json_delete(bmp180->message);
 					bmp180->message = NULL;
@@ -434,9 +434,9 @@ void bmp180Init(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "bmp180";
-	module->version = "1.0";
-	module->reqversion = "5.0";
-	module->reqcommit = "187";
+	module->version = "1.1";
+	module->reqversion = "6.0";
+	module->reqcommit = "58";
 }
 
 void init(void) {

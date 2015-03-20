@@ -169,7 +169,7 @@ static void *dht11Parse(void *param) {
 						json_append_member(dht11->message, "protocol", json_mkstring(dht11->id));
 
 						if(pilight.broadcast != NULL) {
-							pilight.broadcast(dht11->id, dht11->message);
+							pilight.broadcast(dht11->id, dht11->message, PROTOCOL);
 						}
 						json_delete(dht11->message);
 						dht11->message = NULL;
@@ -248,9 +248,9 @@ void dht11Init(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "dht11";
-	module->version = "1.6";
-	module->reqversion = "5.0";
-	module->reqcommit = "187";
+	module->version = "1.7";
+	module->reqversion = "6.0";
+	module->reqcommit = "58";
 }
 
 void init(void) {

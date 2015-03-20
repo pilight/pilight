@@ -252,7 +252,7 @@ static void *actionSwitchThread(void *param) {
 						 */
 						if(old_state == NULL || strcmp(old_state, new_state) != 0) {
 							if(pilight.control != NULL) {
-								pilight.control(thread->device, new_state, NULL);
+								pilight.control(thread->device, new_state, NULL, ACTION);
 							}
 						}
 					}
@@ -272,7 +272,7 @@ static void *actionSwitchThread(void *param) {
 		while(thread->loop == 1) {
 			if(seconds_for == timer) {
 				if(pilight.control != NULL) {
-					pilight.control(thread->device, old_state, NULL);
+					pilight.control(thread->device, old_state, NULL, ACTION);
 				}
 				break;
 			}
@@ -336,7 +336,7 @@ void actionSwitchInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "switch";
-	module->version = "2.0";
+	module->version = "2.1";
 	module->reqversion = "6.0";
 	module->reqcommit = "55";
 }
