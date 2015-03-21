@@ -1508,7 +1508,7 @@ static int devices_parse(JsonNode *root) {
 				goto clear;
 			 } else {
 				for(x=0;x<strlen(jdevices->key);x++) {
-					if(!isalnum(jdevices->key[x])) {
+					if(!isalnum(jdevices->key[x]) && jdevices->key[x] != '-' && jdevices->key[x] != '_') {
 						logprintf(LOG_ERR, "config device #%d \"%s\", not alphanumeric", i, jdevices->key);
 						have_error = 1;
 						goto clear;
