@@ -713,7 +713,7 @@ void *send_code(void *param) {
 
 			if(sendqueue->message != NULL && strcmp(sendqueue->message, "{}") != 0) {
 				if(json_validate(sendqueue->message) == true) {
-					if(!message) {
+					if(message == NULL) {
 						message = json_mkobject();
 					}
 					json_append_member(message, "origin", json_mkstring("sender"));
@@ -725,7 +725,7 @@ void *send_code(void *param) {
 					json_append_member(message, "repeat", json_mknumber(1, 0));
 				}
 			}
-			if(sendqueue->settings && strcmp(sendqueue->settings, "{}") != 0) {
+			if(sendqueue->settings != NULL && strcmp(sendqueue->settings, "{}") != 0) {
 				if(json_validate(sendqueue->settings) == true) {
 					if(message == NULL) {
 						message = json_mkobject();
@@ -742,7 +742,6 @@ void *send_code(void *param) {
 				}
 				tmp_confhw = tmp_confhw->next;
 			}
-
 			if(hw != NULL && hw->send != NULL) {
 				if(hw->receiveOOK != NULL || hw->receivePulseTrain != NULL) {
 					hw->wait = 1;
@@ -778,7 +777,6 @@ void *send_code(void *param) {
 					receive_queue(protocol->raw, protocol->rawlen, plslen, -1);
 				}
 			}
-
 			if(message != NULL) {
 				broadcast_queue(sendqueue->protoname, message, sendqueue->origin);
 				json_delete(message);
@@ -807,6 +805,7 @@ void *send_code(void *param) {
 
 /* Send a specific code */
 static int send_queue(JsonNode *json, enum origin_t origin) {
+	pthread_mutex_lock(&sendqueue_lock);
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
 	int match = 0, x = 0;
@@ -833,10 +832,12 @@ static int send_queue(JsonNode *json, enum origin_t origin) {
 	if((jcode = json_find_member(json, "code")) == NULL) {
 		logprintf(LOG_ERR, "sender did not send any codes");
 		json_delete(jcode);
+		pthread_mutex_unlock(&sendqueue_lock);
 		return -1;
 	} else if((jprotocols = json_find_member(jcode, "protocol")) == NULL) {
 		logprintf(LOG_ERR, "sender did not provide a protocol name");
 		json_delete(jcode);
+		pthread_mutex_unlock(&sendqueue_lock);
 		return -1;
 	} else {
 		json_find_string(jcode, "uuid", &uuid);
@@ -864,7 +865,6 @@ static int send_queue(JsonNode *json, enum origin_t origin) {
 			if(match == 1 && protocol->createCode != NULL) {
 				/* Let the protocol create his code */
 				if(protocol->createCode(jcode) == 0 && main_loop == 1) {
-					pthread_mutex_lock(&sendqueue_lock);
 					if(sendqueue_number <= 1024) {
 						struct sendqueue_t *mnode = MALLOC(sizeof(struct sendqueue_t));
 						if(mnode == NULL) {
@@ -935,19 +935,23 @@ static int send_queue(JsonNode *json, enum origin_t origin) {
 						sendqueue_number++;
 					} else {
 						logprintf(LOG_ERR, "send queue full");
+						pthread_mutex_unlock(&sendqueue_lock);
 						return -1;
 					}
 					pthread_mutex_unlock(&sendqueue_lock);
 					pthread_cond_signal(&sendqueue_signal);
 					return 0;
 				} else {
+					pthread_mutex_unlock(&sendqueue_lock);
 					return -1;
 				}
 			}
 		} else {
+			pthread_mutex_unlock(&sendqueue_lock);
 			return 0;
 		}
 	}
+	pthread_mutex_unlock(&sendqueue_lock);
 	return -1;
 }
 

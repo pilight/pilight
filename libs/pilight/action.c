@@ -225,15 +225,15 @@ void event_action_thread_init(struct devices_t *dev) {
 	dev->action_thread.param = NULL;
 	dev->action_thread.action = NULL;
 	dev->action_thread.loop = 0;
+	dev->action_thread.initialized = 0;
+	memset(&dev->action_thread.pth, '\0', sizeof(pthread_t));
 }
 
 void event_action_thread_start(struct devices_t *dev, char *name, void *(*func)(void *), struct JsonNode *param) {
 	struct event_action_thread_t *thread = &dev->action_thread;
-	int join = 0;
 
 	if(thread->running == 1) {
 		logprintf(LOG_DEBUG, "aborting previous \"%s\" action for device \"%s\"", thread->action, dev->id);
-		join = 1;
 	}
 
 	thread->loop = 0;
@@ -245,8 +245,9 @@ void event_action_thread_start(struct devices_t *dev, char *name, void *(*func)(
 		usleep(10);
 	}
 
-	if(join == 1) {
+	if(thread->initialized == 1) {
 		pthread_join(thread->pth, NULL);
+		thread->initialized = 0;
 	}
 
 	if(thread->param != NULL) {
@@ -265,6 +266,7 @@ void event_action_thread_start(struct devices_t *dev, char *name, void *(*func)(
 	thread->action = REALLOC(thread->action, strlen(name)+1);
 	strcpy(thread->action, name);
 
+	thread->initialized = 1;
 	threads_create(&thread->pth, NULL, func, (void *)thread);
 }
 
@@ -303,8 +305,10 @@ void event_action_thread_stop(struct devices_t *dev) {
 			while(thread->running > 0) {
 				usleep(10);
 			}
-
+		}
+		if(thread->initialized == 1) {
 			pthread_join(thread->pth, NULL);
+			thread->initialized = 0;
 		}
 	}
 }
@@ -313,7 +317,6 @@ void event_action_thread_free(struct devices_t *dev) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
 	struct event_action_thread_t *thread = &dev->action_thread;
-	int join = 0;
 
 	if(dev != NULL) {
 		thread = &dev->action_thread;
@@ -326,7 +329,6 @@ void event_action_thread_free(struct devices_t *dev) {
 			while(thread->running > 0) {
 				usleep(10);
 			}
-			join = 1;
 		}
 		if(thread->action != NULL) {
 			FREE(thread->action);
@@ -335,8 +337,9 @@ void event_action_thread_free(struct devices_t *dev) {
 			json_delete(thread->param);
 			thread->param = NULL;
 		}
-		if(join == 1) {
+		if(thread->initialized == 1) {
 			pthread_join(thread->pth, NULL);
+			thread->initialized = 0;
 		}
 	}
 }
