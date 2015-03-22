@@ -82,7 +82,7 @@ static double sunRiseSetCalculate(int year, int month, int day, double lon, doub
 	double MQ = (RA + (((floor(L / 90)) * 90) - ((floor(RA / 90)) * 90))) / 15;
 	double A;
 	double B;
-	if(!rising) {
+	if(rising == 0) {
 		A = 0.06571;
 		B = 6.595;
 	} else {
@@ -114,10 +114,9 @@ static void *sunRiseSetParse(void *param) {
 	char UTC[] = "UTC";
 
 	time_t timenow = 0;
-	struct tm *current = NULL;
-	int month = 0, mday = 0, year = 0, offset = 0, nrloops = 0;
-	int hour = 0, min = 0, sec = 0, risetime = 0, settime = 0;
-	int firstrun = 0;
+	struct tm tm;
+	int nrloops = 0, risetime = 0, settime = 0, hournow = 0;
+	int firstrun = 0, target_offset = 0, dst = 0;
 
 	sunriseset_threads++;
 
@@ -145,67 +144,102 @@ static void *sunRiseSetParse(void *param) {
 		logprintf(LOG_DEBUG, "%.6f:%.6f seems to be in timezone: %s", longitude, latitude, tz);
 	}
 
+	/* Check how many hours we differ from UTC? */
+	target_offset = tzoffset(UTC, tz);
+	/* Are we in daylight savings time? */
+	dst = isdst(tz);
+
 	while(sunriseset_loop) {
 		protocol_thread_wait(thread, 1, &nrloops);
 		timenow = time(NULL);
-		current = localtztime(tz, timenow);
 
-		sec = current->tm_sec;
-		min = current->tm_min;
-		hour = current->tm_hour;
-		month = current->tm_mon+1;
-		mday = current->tm_mday;
-		year = current->tm_year+1900;
+			/* Get UTC time */
+#ifdef _WIN32
+		if(gmtime(&timenow) == 0) {
+#else
+		if(gmtime_r(&timenow, &tm) != NULL) {
+#endif
+			int year = tm.tm_year+1900;
+			int month = tm.tm_mon+1;
+			int day = tm.tm_mday;
+			/* Add our hour difference to the UTC time */
+			tm.tm_hour += target_offset;
+			/* Add possible daylist savings time hour */
+			tm.tm_hour += dst;
+			int hour = tm.tm_hour;
+			int minute = tm.tm_min;
+			int second = tm.tm_sec;
+			if(hour >= 24) {
+				/* If hour becomes 24 or more we need to normalize it */
+				time_t t = mktime(&tm);
+#ifdef _WIN32
+				localtime(&t);
+#else
+				localtime_r(&t, &tm);
+#endif
 
-		offset = tzoffset(UTC, tz);
-
-		int hournow = (hour*100)+min;
-
-		if(((hournow == 0 || hournow == risetime || hournow == settime) && sec == 0)
-		   || (settime == 0 && risetime == 0)) {
-
-			if(settime == 0 && risetime == 0) {
-				firstrun = 1;
+				year = tm.tm_year+1900;
+				month = tm.tm_mon+1;
+				day = tm.tm_mday;
+				hour = tm.tm_hour;
+				minute = tm.tm_min;
+				second = tm.tm_sec;
 			}
-			sunriseset->message = json_mkobject();
-			JsonNode *code = json_mkobject();
-			risetime = (int)sunRiseSetCalculate(year, month, mday, longitude, latitude, 1, offset);
-			settime = (int)sunRiseSetCalculate(year, month, mday, longitude, latitude, 0, offset);
 
-			if(isdst(tz)) {
-				risetime += 100;
-				settime += 100;
-				if(risetime > 2400) risetime -= 2400;
-				if(settime > 2400) settime -= 2400;
+			if(second == 0 && minute == 0) {
+				/* Check for dst each hour */
+				dst = isdst(tz);
 			}
+			
+			hournow = (hour*100)+minute;
 
-			json_append_member(code, "longitude", json_mknumber(longitude, 6));
-			json_append_member(code, "latitude", json_mknumber(latitude, 6));
+			if(((hournow == 0 || hournow == risetime || hournow == settime) && second == 0)
+				 || (settime == 0 && risetime == 0)) {
 
-			/* Only communicate the sun state change when they actually occur,
-			   and only communicate the new times when the day changes */
-			if(hournow != 0 || firstrun == 1) {
-				if(hournow >= risetime && hournow < settime) {
-					json_append_member(code, "sun", json_mkstring("rise"));
-				} else {
-					json_append_member(code, "sun", json_mkstring("set"));
+				if(settime == 0 && risetime == 0) {
+					firstrun = 1;
 				}
-			}
-			if(hournow == 0 || firstrun == 1) {
-				json_append_member(code, "sunrise", json_mknumber(((double)risetime/100), 2));
-				json_append_member(code, "sunset", json_mknumber(((double)settime/100), 2));
-			}
 
-			json_append_member(sunriseset->message, "message", code);
-			json_append_member(sunriseset->message, "origin", json_mkstring("receiver"));
-			json_append_member(sunriseset->message, "protocol", json_mkstring(sunriseset->id));
+				sunriseset->message = json_mkobject();
+				JsonNode *code = json_mkobject();
+				risetime = (int)sunRiseSetCalculate(year, month, day, longitude, latitude, 1, target_offset);
+				settime = (int)sunRiseSetCalculate(year, month, day, longitude, latitude, 0, target_offset);
 
-			if(pilight.broadcast != NULL) {
-				pilight.broadcast(sunriseset->id, sunriseset->message, PROTOCOL);
+				if(isdst(tz)) {
+					risetime += 100;
+					settime += 100;
+					if(risetime > 2400) risetime -= 2400;
+					if(settime > 2400) settime -= 2400;
+				}
+
+				json_append_member(code, "longitude", json_mknumber(longitude, 6));
+				json_append_member(code, "latitude", json_mknumber(latitude, 6));
+
+				/* Only communicate the sun state change when they actually occur,
+					 and only communicate the new times when the day changes */
+				if(hournow != 0 || firstrun == 1) {
+					if(hournow >= risetime && hournow < settime) {
+						json_append_member(code, "sun", json_mkstring("rise"));
+					} else {
+						json_append_member(code, "sun", json_mkstring("set"));
+					}
+				}
+				if(hournow == 0 || firstrun == 1) {
+					json_append_member(code, "sunrise", json_mknumber(((double)risetime/100), 2));
+					json_append_member(code, "sunset", json_mknumber(((double)settime/100), 2));
+				}
+
+				json_append_member(sunriseset->message, "message", code);
+				json_append_member(sunriseset->message, "origin", json_mkstring("receiver"));
+				json_append_member(sunriseset->message, "protocol", json_mkstring(sunriseset->id));
+
+				if(pilight.broadcast != NULL) {
+					pilight.broadcast(sunriseset->id, sunriseset->message, PROTOCOL);
+				}
+				json_delete(sunriseset->message);
+				sunriseset->message = NULL;
+				firstrun = 0;
 			}
-			json_delete(sunriseset->message);
-			sunriseset->message = NULL;
-			firstrun = 0;
 		}
 	}
 
@@ -276,7 +310,7 @@ void sunRiseSetInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "sunriseset";
-	module->version = "1.5";
+	module->version = "2.0";
 	module->reqversion = "6.0";
 	module->reqcommit = "58";
 }
