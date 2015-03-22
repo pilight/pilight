@@ -248,6 +248,9 @@ void ssdp_free(struct ssdp_list_t *ssdp_list) {
 void *ssdp_wait(void *param) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
+	int nrdevs = 0;
+	char **devs = NULL;
+
 	struct sockaddr_in addr;
 	char message[BUFFER_SIZE];
 	char **header = NULL;
@@ -255,11 +258,7 @@ void *ssdp_wait(void *param) {
 	ssize_t len = 0;
 	socklen_t addrlen = sizeof(addr);
 	int nrheader = 0, x = 0;
-#ifndef _WIN32
-	int family = 0, s = 0;
-	char host[NI_MAXHOST];
-	struct ifaddrs *ifaddr, *ifa;
-#endif
+	char host[INET_ADDRSTRLEN+1], *p = host;
 	char *distro = distroname();
 	char *hname = hostname();
 
@@ -268,108 +267,18 @@ void *ssdp_wait(void *param) {
 		exit(EXIT_FAILURE);
 	}
 
-#ifdef _WIN32
-	char buf[INET_ADDRSTRLEN+1];
-	int i;
-
-	PMIB_IPADDRTABLE pIPAddrTable;
-	DWORD dwSize = 0;
-	DWORD dwRetVal = 0;
-	IN_ADDR IPAddr;
-	pIPAddrTable = MALLOC(sizeof(MIB_IPADDRTABLE));
-
-	if(pIPAddrTable) {
-		if(GetIpAddrTable(pIPAddrTable, &dwSize, 0) == ERROR_INSUFFICIENT_BUFFER) {
-			FREE(pIPAddrTable);
-			pIPAddrTable = MALLOC(dwSize);
-
-		}
-		if(pIPAddrTable == NULL) {
-			printf("Memory allocation failed for GetIpAddrTable\n");
-			exit(EXIT_FAILURE);
-		}
-	}
-
-	if((dwRetVal = GetIpAddrTable(pIPAddrTable, &dwSize, 0)) != NO_ERROR) {
-		logprintf(LOG_ERR, "GetIpAddrTable failed with");
-		exit(EXIT_FAILURE);
-	}
-
-	for(i=0;i<(int)pIPAddrTable->dwNumEntries;i++) {
-		IPAddr.S_un.S_addr = (u_long)pIPAddrTable->table[i].dwAddr;
-		memset(&buf, '\0', INET_ADDRSTRLEN+1);
-		inet_ntop(AF_INET, (void *)&IPAddr, buf, INET_ADDRSTRLEN+1);
-		if(strcmp(buf, "127.0.0.1") != 0) {
-			if(!(header = realloc(header, sizeof(char *)*((size_t)nrheader+1)))) {
-				logprintf(LOG_ERR, "out of memory");
-				exit(EXIT_FAILURE);
-			}
-			if((header[nrheader] = MALLOC(BUFFER_SIZE)) == NULL) {
-				logprintf(LOG_ERR, "out of memory");
-				exit(EXIT_FAILURE);
-			}
-			memset(&buf, '\0', INET_ADDRSTRLEN+1);
-			inet_ntop(AF_INET, (void *)&IPAddr, buf, INET_ADDRSTRLEN+1);
-			memset(header[nrheader], '\0', BUFFER_SIZE);
-			sprintf(header[nrheader], "NOTIFY * HTTP/1.1\r\n"
-				"Host:239.255.255.250:1900\r\n"
-				"Cache-Control:max-age=900\r\n"
-				"Location:%s:%d\r\n"
-				"NT:urn:schemas-upnp-org:service:pilight:1\r\n"
-				"USN:uuid:%s::urn:schemas-upnp-org:service:pilight:1\r\n"
-				"NTS:ssdp:alive\r\n"
-				"SERVER: %s UPnP/1.1 pilight (%s)/%s\r\n\r\n", buf, socket_get_port(), id, distro, hname, PILIGHT_VERSION);
-			nrheader++;
-		}
-	}
-
-	if(pIPAddrTable != NULL) {
-		FREE(pIPAddrTable);
-		pIPAddrTable = NULL;
-	}
-#else
-
-#ifdef __FreeBSD__
-	if(rep_getifaddrs(&ifaddr) == -1) {
-		logprintf(LOG_ERR, "could not get network adapter information");
-		exit(EXIT_FAILURE);
-	}
-#else
-	if(getifaddrs(&ifaddr) == -1) {
-		perror("getifaddrs");
-		exit(EXIT_FAILURE);
-	}
-#endif
-
-	for(ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next) {
-		if(ifa->ifa_addr == NULL) {
-			continue;
-		}
-
-		family = ifa->ifa_addr->sa_family;
-
-		if((strstr(ifa->ifa_name, "lo") == NULL && strstr(ifa->ifa_name, "vbox") == NULL
-		    && strstr(ifa->ifa_name, "dummy") == NULL) && (family == AF_INET || family == AF_INET6)) {
-			if((id = genuuid(ifa->ifa_name)) == NULL) {
-				logprintf(LOG_ERR, "could not generate the device uuid");
-				exit(EXIT_FAILURE);
-			}
-			memset(host, '\0', NI_MAXHOST);
-
-			s = getnameinfo(ifa->ifa_addr,
-                           (family == AF_INET) ? sizeof(struct sockaddr_in) :
-                                                 sizeof(struct sockaddr_in6),
-                           host, NI_MAXHOST, NULL, 0, NI_NUMERICHOST);
-			if(s != 0) {
-				logprintf(LOG_ERR, "getnameinfo() failed: %s", gai_strerror(s));
-				exit(EXIT_FAILURE);
-			}
-			if(strlen(host) > 0) {
-				if(!(header = REALLOC(header, sizeof(char *)*((size_t)nrheader+1)))) {
+	if((nrdevs = inetdevs(&devs)) > 0) {
+		for(x=0;x<nrdevs;x++) {
+			if(dev2ip(devs[x], &p, AF_INET) == 0) {
+				if((id = genuuid(devs[x])) == NULL) {
+					logprintf(LOG_ERR, "could not generate the device uuid");
+					continue;
+				}
+				if((header = REALLOC(header, sizeof(char *)*((size_t)nrheader+1))) == NULL) {
 					logprintf(LOG_ERR, "out of memory");
 					exit(EXIT_FAILURE);
 				}
-				if(!(header[nrheader] = MALLOC(BUFFER_SIZE))) {
+				if((header[nrheader] = MALLOC(BUFFER_SIZE)) == NULL) {
 					logprintf(LOG_ERR, "out of memory");
 					exit(EXIT_FAILURE);
 				}
@@ -382,13 +291,16 @@ void *ssdp_wait(void *param) {
 					"USN:uuid:%s::urn:schemas-upnp-org:service:pilight:1\r\n"
 					"NTS:ssdp:alive\r\n"
 					"SERVER: %s UPnP/1.1 pilight (%s)/%s\r\n\r\n", host, socket_get_port(), id, distro, hname, PILIGHT_VERSION);
+				printf("%s\n", header[nrheader]);
 				nrheader++;
 			}
+			FREE(devs[x]);
 		}
+		FREE(devs);
+	} else {
+		logprintf(LOG_ERR, "could not determine default network interface");
+		exit(EXIT_FAILURE);
 	}
-
-	freeifaddrs(ifaddr);
-#endif
 
 	if(id != NULL) {
 		FREE(id);

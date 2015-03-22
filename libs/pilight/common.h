@@ -44,6 +44,8 @@ int isrunning(const char *program);
 void atomicinit(void);
 void atomiclock(void);
 void atomicunlock(void);
+int inetdevs(char ***array);
+int dev2ip(char *dev, char **ip, sa_family_t type);
 unsigned int explode(char *str, const char *delimiter, char ***output);
 int host2ip(char *host, char *ip);
 int isNumeric(char *str);

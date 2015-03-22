@@ -1318,7 +1318,15 @@ void *events_clientize(void *param) {
 			if(socket_read(sockfd, &recvBuff, 0) != 0) {
 				break;
 			} else {
-				events_queue(recvBuff);
+				char **array = NULL;
+				unsigned int n = explode(recvBuff, "\n", &array), i = 0;
+				for(i=0;i<n;i++) {
+					events_queue(array[i]);
+					FREE(array[i]);
+				}
+				if(n > 0) {
+					FREE(array);
+				}
 			}
 		}
 	}

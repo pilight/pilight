@@ -391,6 +391,7 @@ int devices_update(char *protoname, JsonNode *json, enum origin_t origin, JsonNo
 									jchild = jchild->next;
 								}
 								if(match == 0) {
+#ifdef EVENTS
 /* 
  * If the action itself it not triggering a device update, something
  * else is. We therefor need to abort the running action to let
@@ -399,6 +400,7 @@ int devices_update(char *protoname, JsonNode *json, enum origin_t origin, JsonNo
 									if(dptr->action_thread.running == 1 && origin != ACTION) {
 										event_action_thread_stop(dptr);
 									}
+#endif
 									json_append_element(rdev, json_mkstring(dptr->id));
 								}
 							}
@@ -1547,7 +1549,9 @@ static int devices_parse(JsonNode *root) {
 				dnode->next = NULL;
 				dnode->protocols = NULL;
 
+#ifdef EVENTS
 				event_action_thread_init(dnode);
+#endif
 				
 				int ptype = -1;
 				/* Save both the protocol pointer and the protocol name */
@@ -1652,7 +1656,9 @@ int devices_gc(void) {
 	while(devices) {
 		dtmp = devices;
 
+#ifdef EVENTS
 		event_action_thread_free(dtmp);
+#endif
 
 		while(dtmp->settings) {
 			stmp = dtmp->settings;

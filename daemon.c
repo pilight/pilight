@@ -2123,54 +2123,23 @@ int start_pilight(int argc, char **argv) {
 	/* Catch all exit signals for gc */
 	gc_catch();
 
-#ifdef _WIN32
-	if((p = genuuid(NULL)) == NULL) {
-		logprintf(LOG_ERR, "could not generate the device uuid");
-	} else {
-		strcpy(pilight_uuid, p);
-		FREE(p);
-	}
-#else
-	struct ifaddrs *ifaddr, *ifa;
-	int family = 0;
-	#ifdef __FreeBSD__
-	if(rep_getifaddrs(&ifaddr) == -1) {
-		logprintf(LOG_ERR, "could not get network adapter information");
-		goto clear;
-	}
-	#else
-	if(getifaddrs(&ifaddr) == -1) {
-		perror("getifaddrs");
-		goto clear;
-	}
-	#endif
-
-	for(ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next) {
-		if(ifa->ifa_addr == NULL) {
-			continue;
-		}
-
-		family = ifa->ifa_addr->sa_family;
-
-		if((strstr(ifa->ifa_name, "lo") == NULL && strstr(ifa->ifa_name, "vbox") == NULL
-		    && strstr(ifa->ifa_name, "dummy") == NULL) && (family == AF_INET || family == AF_INET6)) {
-			if((p = genuuid(ifa->ifa_name)) == NULL) {
+	int nrdevs = 0, x = 0;
+	char **devs = NULL;
+	if((nrdevs = inetdevs(&devs)) > 0) {
+		for(x=0;x<nrdevs;x++) {
+			if((p = genuuid(devs[x])) == NULL) {
 				logprintf(LOG_ERR, "could not generate the device uuid");
-				freeifaddrs(ifaddr);
-				// goto clear;
 			} else {
 				strcpy(pilight_uuid, p);
 				FREE(p);
 				break;
 			}
 		}
+	}	
+	for(x=0;x<nrdevs;x++) {
+		FREE(devs[x]);
 	}
-	#ifdef __FreeBSD__
-		rep_freeifaddrs(ifaddr);
-	#else
-		freeifaddrs(ifaddr);
-	#endif
-#endif
+	FREE(devs);
 
 	firmware.version = 0;
 	firmware.lpf = 0;

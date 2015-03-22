@@ -96,6 +96,185 @@ void atomicunlock(void) {
 	pthread_mutex_unlock(&atomic_lock);
 }
 
+int inetdevs(char ***array) {
+	unsigned int nrdevs = 0, i = 0, match = 0;
+
+#ifdef _WIN32
+	IP_ADAPTER_INFO *pAdapter = NULL;
+	ULONG buflen = sizeof(IP_ADAPTER_INFO);
+	IP_ADAPTER_INFO *pAdapterInfo = (IP_ADAPTER_INFO *)MALLOC(buflen);
+
+	if(GetAdaptersInfo(pAdapterInfo, &buflen) == ERROR_BUFFER_OVERFLOW) {
+		FREE(pAdapterInfo);
+		pAdapterInfo = MALLOC(buflen);
+	}
+
+	if(GetAdaptersInfo(pAdapterInfo, &buflen) == NO_ERROR) {
+		for(pAdapter = pAdapterInfo; pAdapter; pAdapter = pAdapter->Next) {
+			match = 0;
+
+			for(i=0;i<nrdevs;i++) {
+				if(strcmp((*array)[i], pAdapter->AdapterName) == 0) {
+					match = 1;
+					break;
+				}
+			}
+			if(match == 0 && strcmp(pAdapter->IpAddressList.IpAddress.String, "0.0.0.0") != 0) {
+				if((*array = REALLOC(*array, sizeof(char *)*(nrdevs+1))) == NULL) {
+					logprintf(LOG_ERR, "out of memory");
+					exit(EXIT_FAILURE);
+				}
+				if(((*array)[nrdevs] = MALLOC(strlen(pAdapter->AdapterName)+1)) == NULL) {
+					logprintf(LOG_ERR, "out of memory");
+					exit(EXIT_FAILURE);
+				}
+				strcpy((*array)[nrdevs], pAdapter->AdapterName);
+				nrdevs++;
+			}			
+		}
+	}	
+	if(pAdapterInfo != NULL) {
+		FREE(pAdapterInfo);
+	}
+#else
+	int family = 0, s = 0;
+	char host[NI_MAXHOST];
+	struct ifaddrs *ifaddr, *ifa;
+
+#ifdef __FreeBSD__
+	if(rep_getifaddrs(&ifaddr) == -1) {
+		logprintf(LOG_ERR, "could not get network adapter information");
+		exit(EXIT_FAILURE);
+	}
+#else
+	if(getifaddrs(&ifaddr) == -1) {
+		perror("getifaddrs");
+		exit(EXIT_FAILURE);
+	}
+#endif
+
+	for(ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next) {
+		if(ifa->ifa_addr == NULL) {
+			continue;
+		}
+
+		family = ifa->ifa_addr->sa_family;
+
+		if((strstr(ifa->ifa_name, "lo") == NULL && strstr(ifa->ifa_name, "vbox") == NULL
+		    && strstr(ifa->ifa_name, "dummy") == NULL) && (family == AF_INET || family == AF_INET6)) {
+			memset(host, '\0', NI_MAXHOST);
+
+			s = getnameinfo(ifa->ifa_addr,
+                           (family == AF_INET) ? sizeof(struct sockaddr_in) :
+                                                 sizeof(struct sockaddr_in6),
+                           host, NI_MAXHOST, NULL, 0, NI_NUMERICHOST);
+			if(s != 0) {
+				logprintf(LOG_ERR, "getnameinfo() failed: %s", gai_strerror(s));
+				exit(EXIT_FAILURE);
+			}
+			if(strlen(host) > 0) {
+				match = 0;
+				for(i=0;i<nrdevs;i++) {
+					if(strcmp((*array)[i], ifa->ifa_name) == 0) {
+						match = 1;
+						break;
+					}
+				}
+				if(match == 0) {
+					if((*array = REALLOC(*array, sizeof(char *)*(nrdevs+1))) == NULL) {
+						logprintf(LOG_ERR, "out of memory");
+						exit(EXIT_FAILURE);
+					}
+					if(((*array)[nrdevs] = MALLOC(strlen(ifa->ifa_name)+1)) == NULL) {
+						logprintf(LOG_ERR, "out of memory");
+						exit(EXIT_FAILURE);
+					}
+					strcpy((*array)[nrdevs], ifa->ifa_name);
+					nrdevs++;
+				}
+			}
+		}
+	}
+
+#ifdef __FreeBSD__
+	rep_freeifaddrs(ifaddr);
+#else
+	freeifaddrs(ifaddr);
+#endif
+
+#endif // _WIN32
+	return (int)nrdevs;
+}
+
+int dev2ip(char *dev, char **ip, sa_family_t type) {
+#ifdef _WIN32
+	IP_ADAPTER_INFO *pAdapter = NULL;
+	ULONG buflen = sizeof(IP_ADAPTER_INFO);
+	IP_ADAPTER_INFO *pAdapterInfo = MALLOC(buflen);
+
+	if(GetAdaptersInfo(pAdapterInfo, &buflen) == ERROR_BUFFER_OVERFLOW) {
+		FREE(pAdapterInfo);
+		pAdapterInfo = MALLOC(buflen);
+	}
+
+	if(GetAdaptersInfo(pAdapterInfo, &buflen) == NO_ERROR) {
+		for(pAdapter = pAdapterInfo; pAdapter; pAdapter = pAdapter->Next) {
+			match = 0;
+
+			for(i=0;i<nrdevs;i++) {
+				if(strcmp((*array)[i], pAdapter->AdapterName) == 0) {
+					match = 1;
+					break;
+				}
+			}
+			if(match == 0 && strcmp(pAdapter->IpAddressList.IpAddress.String, "0.0.0.0") != 0) {
+				if((*array = REALLOC(*array, sizeof(char *)*(nrdevs+1))) == NULL) {
+					logprintf(LOG_ERR, "out of memory");
+					exit(EXIT_FAILURE);
+				}
+				if(((*array)[nrdevs] = MALLOC(strlen(pAdapter->AdapterName)+1)) == NULL) {
+					logprintf(LOG_ERR, "out of memory");
+					exit(EXIT_FAILURE);
+				}
+				strcpy((*array)[nrdevs], pAdapter->AdapterName);
+				nrdevs++;
+			}			
+		}
+	}	
+	if(pAdapterInfo != NULL) {
+		FREE(pAdapterInfo);
+	}
+#else
+	int fd = 0;
+	struct ifreq ifr;
+
+	if((fd = socket(AF_INET, SOCK_DGRAM, 0)) == 0) {
+		logprintf(LOG_ERR, "could not create socket");
+		return -1;
+	}
+
+	/* I want to get an IPv4 IP address */
+	ifr.ifr_addr.sa_family = type;
+
+	/* I want IP address attached to "eth0" */
+	strncpy(ifr.ifr_name, dev, IFNAMSIZ-1);
+
+	if(ioctl(fd, SIOCGIFADDR, &ifr) == -1) {
+		close(fd);
+		logprintf(LOG_ERR, "ioctl SIOCGIFADDR failed");
+		return -1;
+		
+	}
+
+	close(fd);
+
+	struct sockaddr_in *ipaddr = (struct sockaddr_in *)(void *)&ifr.ifr_addr;
+	inet_ntop(AF_INET, (void *)&(ipaddr->sin_addr), *ip, INET_ADDRSTRLEN+1);
+#endif
+
+	return 0;
+}
+
 unsigned int explode(char *str, const char *delimiter, char ***output) {
 	if(str == NULL || output == NULL) {
 		return 0;
@@ -809,31 +988,33 @@ char *genuuid(char *ifname) {
 #endif
 
 #ifdef _WIN32
-	int i = 0;
-	if(!(mac = MALLOC(13))) {
+	IP_ADAPTER_INFO *pAdapter = NULL;
+	ULONG buflen = sizeof(IP_ADAPTER_INFO);
+	IP_ADAPTER_INFO *pAdapterInfo = MALLOC(buflen);
+
+	char *mac = NULL;
+	if((mac = MALLOC(13)) == NULL) {
 		logprintf(LOG_ERR, "out of memory");
 		exit(EXIT_FAILURE);
 	}
 	memset(mac, '\0', 13);
 
-	IP_ADAPTER_INFO AdapterInfo[16];
-	DWORD dwBufLen = sizeof(AdapterInfo);
-	DWORD dwStatus = GetAdaptersInfo(AdapterInfo, &dwBufLen);
-
-	if(dwStatus != ERROR_SUCCESS) {
-		return NULL;
+	if(GetAdaptersInfo(pAdapterInfo, &buflen) == ERROR_BUFFER_OVERFLOW) {
+		FREE(pAdapterInfo);
+		pAdapterInfo = MALLOC(buflen);
 	}
 
-	PIP_ADAPTER_INFO pAdapterInfo = AdapterInfo;
-	do {
-		if(strcmp(pAdapterInfo->IpAddressList.IpAddress.String, "0.0.0.0") != 0) {
-			for(i = 0; i < 12; i+=2) {
-				sprintf(&mac[i], "%02x", (unsigned char)pAdapterInfo->Address[i/2]);
+	if(GetAdaptersInfo(pAdapterInfo, &buflen) == NO_ERROR) {
+		for(pAdapter = pAdapterInfo; pAdapter; pAdapter = pAdapter->Next) {
+			if(strcmp(ifname, pAdapter->AdapterName) == 0) {
+				for(i = 0; i < pAdapter->AddressLength; i++) {
+					sprintf(&mac[i*2], "%02x ", (unsigned char)pAdapter->Address[i]);
+				}
+				break;
 			}
-			break;
 		}
-		pAdapterInfo = pAdapterInfo->Next;
-	} while(pAdapterInfo);
+	}
+
 #elif defined(SIOCGIFHWADDR)
 	int i = 0;
 	int fd = socket(PF_INET, SOCK_DGRAM, IPPROTO_IP);

@@ -166,8 +166,10 @@ close:
 	config_gc();
 	protocol_gc();
 	options_gc();
+#ifdef EVENTS
 	event_operator_gc();
 	event_action_gc();
+#endif
 #ifndef _WIN32
 	wiringXGC();
 #endif

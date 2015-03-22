@@ -455,16 +455,16 @@ int arp_resolv(char *if_name, char *mac, char **ip) {
 	struct ifreq ifr;
 
 	if((sockfd = socket(PF_PACKET, SOCK_RAW, 0)) < 0) {
-		logprintf(LOG_ERR, "ERROR: Cannot open raw packet socket");
+		logprintf(LOG_ERR, "Cannot open raw packet socket");
 		return -1;
 	}
 	strncpy(ifr.ifr_name, if_name, sizeof(ifr.ifr_name));
 	if((ioctl(sockfd, SIOCGIFINDEX, &(ifr))) != 0) {
-		logprintf(LOG_ERR, "ioctl");
+		logprintf(LOG_ERR, "ioctl SIOCGIFINDEX");
 		return -1;
 	}
 	if((ioctl(sockfd, SIOCGIFHWADDR, &(ifr))) != 0) {
-		logprintf(LOG_ERR, "ioctl");
+		logprintf(LOG_ERR, "ioctl SIOCGIFHWADDR");
 		return -1;
 	}
 
@@ -484,7 +484,7 @@ int arp_resolv(char *if_name, char *mac, char **ip) {
 	if((pcap_handle = pcap_open_live(if_name, 64, 0, 3, NULL)) == NULL) {
 		logprintf(LOG_ERR, "pcap_open_live");
 	}
-	if((pcap_fd=pcap_get_selectable_fd(pcap_handle)) < 0) {
+	if((pcap_fd = pcap_get_selectable_fd(pcap_handle)) < 0) {
 		logprintf(LOG_ERR, "pcap_fileno: %s", pcap_geterr(pcap_handle));
 	}
 	if((pcap_setnonblock(pcap_handle, 1, NULL)) < 0) {

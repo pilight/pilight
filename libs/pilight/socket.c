@@ -191,7 +191,6 @@ int socket_timeout_connect(int sockfd, struct sockaddr *serv_addr, int sec) {
 			if(select(sockfd+1, NULL, &fdset, NULL, &tv) > 0) {
 				 lon = sizeof(int); 
 				 getsockopt(sockfd, SOL_SOCKET, SO_ERROR, (void*)(&valopt), &lon); 
-				 printf("%d\n", valopt);
 				 if(valopt > 0) {
 					return -3;
 				 }

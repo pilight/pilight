@@ -21,7 +21,6 @@
 
 #cmakedefine WEBSERVER
 #cmakedefine EVENTS
-#cmakedefine FIRMWARE_UPDATER
 
 #define PILIGHT_VERSION					"6.0"
 #define PULSE_DIV								34

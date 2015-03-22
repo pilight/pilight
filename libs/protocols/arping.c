@@ -72,9 +72,9 @@ static void *arpingParse(void *param) {
 	struct in_addr if_network;
 	struct in_addr if_netmask;
 	char *srcmac = NULL, tmpip[INET_ADDRSTRLEN+1], dstip[INET_ADDRSTRLEN+1], buf[INET_ADDRSTRLEN+1];
-	char ip[INET_ADDRSTRLEN+1], *p = ip, *if_name = NULL;
+	char ip[INET_ADDRSTRLEN+1], *p = ip, **devs = NULL;
 	double itmp = 0.0;
-	int state = 0, nrloops = 0, interval = INTERVAL, i = 0, srcip[4];
+	int state = 0, nrloops = 0, interval = INTERVAL, i = 0, srcip[4], nrdevs = 0, x = 0;
 
 	arping_threads++;
 
@@ -98,21 +98,33 @@ static void *arpingParse(void *param) {
 		srcmac[i] = (char)tolower(srcmac[i]);
 	}
 
-	if((if_name = pcap_lookupdev(NULL)) == NULL) {
+	if((nrdevs = inetdevs(&devs)) == 0) {
 		logprintf(LOG_ERR, "could not determine default network interface");
+		for(x=0;x<nrdevs;x++) {
+			FREE(devs[x]);
+		}
+		FREE(devs);
 		return NULL;
 	}
 
-	if(pcap_lookupnet(if_name, &if_network.s_addr, &if_netmask.s_addr, NULL) < 0) {
+	if(pcap_lookupnet(devs[0], &if_network.s_addr, &if_netmask.s_addr, NULL) < 0) {
 		logprintf(LOG_ERR, "could not determine host ip address");
+		for(x=0;x<nrdevs;x++) {
+			FREE(devs[x]);
+		}
+		FREE(devs);
 		return NULL;
 	}
-
 
 	memset(&buf, '\0', INET_ADDRSTRLEN+1);
 	inet_ntop(AF_INET, (void *)&if_network, buf, INET_ADDRSTRLEN+1);
 	if(sscanf(buf, "%d.%d.%d.%d", &srcip[0], &srcip[1], &srcip[2], &srcip[3]) != 4) {
 		logprintf(LOG_ERR, "could not extract ip address");
+		for(x=0;x<nrdevs;x++) {
+			FREE(devs[x]);
+		}
+		FREE(devs);
+		return NULL;
 	}
 
 	while(arping_loop) {
@@ -127,7 +139,7 @@ static void *arpingParse(void *param) {
 			} else {
 				arp_add_host(dstip);
 			}
-			if(arp_resolv(if_name, srcmac, &p) == 0) {
+			if(arp_resolv(devs[0], srcmac, &p) == 0) {
 				if(strlen(dstip) == 0) {
 					strcpy(dstip, ip);
 				}
@@ -178,7 +190,13 @@ static void *arpingParse(void *param) {
 	}
 	pthread_mutex_unlock(&arpinglock);
 
+	for(x=0;x<nrdevs;x++) {
+		FREE(devs[x]);
+	}
+	FREE(devs);
+
 	arping_threads--;
+
 	return (void *)NULL;
 }
 
@@ -245,9 +263,9 @@ void arpingInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "arping";
-	module->version = "1.4";
+	module->version = "1.5";
 	module->reqversion = "6.0";
-	module->reqcommit = "58";
+	module->reqcommit = "64";
 }
 
 void init(void) {
