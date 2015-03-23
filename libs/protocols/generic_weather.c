@@ -31,7 +31,7 @@
 #include "gc.h"
 #include "generic_weather.h"
 
-static void genWeatherCreateMessage(int id, float temperature, float humidity, int battery) {
+static void genWeatherCreateMessage(int id, double temperature, double humidity, int battery) {
 	generic_weather->message = json_mkobject();
 	json_append_member(generic_weather->message, "id", json_mknumber(id, 0));
 	if(temperature > -998.0) {
@@ -48,16 +48,16 @@ static void genWeatherCreateMessage(int id, float temperature, float humidity, i
 static int genWeatherCreateCode(JsonNode *code) {
 	double itmp = 0;
 	int id = -999;
-	float temp = -999.0;
-	float humi = -1.0;
+	double temp = -999.0;
+	double humi = -1.0;
 	int batt = -1;
 
 	if(json_find_number(code, "id", &itmp) == 0)
 		id = (int)round(itmp);
 	if(json_find_number(code, "temperature", &itmp) == 0)
-		temp = (float)round(itmp);
+		temp = itmp;
 	if(json_find_number(code, "humidity", &itmp) == 0)
-		humi = (float)round(itmp);
+		humi = itmp;
 	if(json_find_number(code, "battery", &itmp) == 0)
 		batt = (int)round(itmp);
 
@@ -93,7 +93,7 @@ void genWeatherInit(void) {
 	options_add(&generic_weather->options, 'i', "id", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "[0-9]");
 
 	// options_add(&generic_weather->options, 0, "decimals", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *)2, "[0-9]");
-	options_add(&generic_weather->options, 0, "decimals", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "[0-9]");
+	options_add(&generic_weather->options, 0, "decimals", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)2, "[0-9]");
 	options_add(&generic_weather->options, 0, "show-humidity", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
 	options_add(&generic_weather->options, 0, "show-temperature", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
 	options_add(&generic_weather->options, 0, "show-battery", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
