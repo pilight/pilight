@@ -35,26 +35,27 @@ static void ev1527CreateMessage(int unitcode, int state) {
 	ev1527->message = json_mkobject();
 	json_append_member(ev1527->message, "unitcode", json_mknumber(unitcode, 0));
 	if(state == 0) {
-		json_append_member(ev1527->message, "state", json_mkstring("opened"));
-	} else {
 		json_append_member(ev1527->message, "state", json_mkstring("closed"));
+	} else {
+		json_append_member(ev1527->message, "state", json_mkstring("opened"));
 	}
 }
 
 static void ev1527ParseBinary(void) {
 
-	int x = 0;
+	int x = 0, i = 0;
 
 	/* Convert the one's and zero's into binary */
-	for(x=0; x<ev1527->rawlen; x+=2) {
-		if(ev1527->code[x+1] == 1) {
+	for(i=0; i<ev1527->rawlen; i+=2) {
+	/*	if(ev1527->code[x+1] == 1) {
 			ev1527->binary[x/2]=1;
 		} else {
 			ev1527->binary[x/2]=0;
-		}
+		}*/
+		ev1527->binary[x++] = ev1527->code[i];
 	}
 
-	int unitcode = binToDec(ev1527->binary, 0, 19);
+	int unitcode = binToDecRev(ev1527->binary, 0, 19);
 	int state = ev1527->binary[20];
 	ev1527CreateMessage(unitcode, state);
 }
@@ -75,7 +76,7 @@ void ev1527Init(void) {
 	ev1527->rawlen = 50;
 	ev1527->binlen = 12;
 	
-	options_add(&ev1527->options, 'u', "unitcode", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^(3[012]?|[012][0-9]|[0-9]{1})$");
+	options_add(&ev1527->options, 'u', "unitcode", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, NULL);
 	options_add(&ev1527->options, 't', "opened", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
 	options_add(&ev1527->options, 'f', "closed", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
 	options_add(&ev1527->options, 0, "readonly", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
@@ -86,9 +87,9 @@ void ev1527Init(void) {
 #if !defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "ev1527";
-	module->version = "0.3";
+	module->version = "0.5";
 	module->reqversion = "6.0";
-	module->reqcommit = NULL;
+	module->reqcommit = "187";
 }
 
 void init(void) {
