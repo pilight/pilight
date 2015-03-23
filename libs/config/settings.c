@@ -223,7 +223,8 @@ static int settings_parse(JsonNode *root) {
 				settings_add_number(jsettings->key, (int)jsettings->number_);
 			}
 		} else if(strcmp(jsettings->key, "standalone") == 0 ||
-							strcmp(jsettings->key, "watchdog-enable") == 0) {
+							strcmp(jsettings->key, "watchdog-enable") == 0 ||
+							strcmp(jsettings->key, "ntp-sync") == 0) {
 			if(jsettings->tag != JSON_NUMBER) {
 				logprintf(LOG_ERR, "config setting \"%s\" must be either 0 or 1", jsettings->key);
 				have_error = 1;
@@ -377,32 +378,32 @@ static int settings_parse(JsonNode *root) {
 			}
 #endif
 		} else if(strcmp(jsettings->key, "webserver-authentication") == 0 && jsettings->tag == JSON_ARRAY) {
-				JsonNode *jtmp = json_first_child(jsettings);
-				unsigned short i = 0;
-				while(jtmp) {
-					i++;
-					if(jtmp->tag == JSON_STRING) {
-						if(i == 1) {
-							settings_add_string("webserver-authentication-username", jtmp->string_);
-						} else if(i == 2) {
-							settings_add_string("webserver-authentication-password", jtmp->string_);
-						}
-					} else {
-						have_error = 1;
-						break;
+			JsonNode *jtmp = json_first_child(jsettings);
+			unsigned short i = 0;
+			while(jtmp) {
+				i++;
+				if(jtmp->tag == JSON_STRING) {
+					if(i == 1) {
+						settings_add_string("webserver-authentication-username", jtmp->string_);
+					} else if(i == 2) {
+						settings_add_string("webserver-authentication-password", jtmp->string_);
 					}
-					if(i > 2) {
-						have_error = 1;
-						break;
-					}
-					jtmp = jtmp->next;
-				}
-				if(i != 2 || have_error == 1) {
-					logprintf(LOG_ERR, "config setting \"%s\" must be in the format of [ \"username\", \"password\" ]", jsettings->key);
+				} else {
 					have_error = 1;
-					goto clear;
+					break;
 				}
-		}  else if(strcmp(jsettings->key, "webgui-template") == 0) {
+				if(i > 2) {
+					have_error = 1;
+					break;
+				}
+				jtmp = jtmp->next;
+			}
+			if(i != 2 || have_error == 1) {
+				logprintf(LOG_ERR, "config setting \"%s\" must be in the format of [ \"username\", \"password\" ]", jsettings->key);
+				have_error = 1;
+				goto clear;
+			}
+		} else if(strcmp(jsettings->key, "webgui-template") == 0) {
 			if(jsettings->tag != JSON_STRING) {
 				logprintf(LOG_ERR, "config setting \"%s\" must be a valid template", jsettings->key);
 				have_error = 1;
@@ -420,6 +421,26 @@ static int settings_parse(JsonNode *root) {
 				settings_add_string(jsettings->key, jsettings->string_);
 			}
 #endif // WEBSERVER
+		} else if(strcmp(jsettings->key, "ntp-servers") == 0 && jsettings->tag == JSON_ARRAY) {
+			JsonNode *jtmp = json_first_child(jsettings);
+			unsigned short i = 0;
+			char name[25];
+			while(jtmp) {
+				if(jtmp->tag == JSON_STRING) {
+					sprintf(name, "ntpserver%d", i);
+					settings_add_string(name, jtmp->string_);
+				} else {
+					have_error = 1;
+					break;
+				}
+				jtmp = jtmp->next;
+				i++;
+			}
+			if(have_error == 1) {
+				logprintf(LOG_ERR, "config setting \"%s\" must be in the format of [ \"0.eu.pool.ntp.org\", ... ]", jsettings->key);
+				have_error = 1;
+				goto clear;
+			}
 		} else if(strcmp(jsettings->key, "protocol-root") == 0 ||
 							strcmp(jsettings->key, "hardware-root") == 0 ||
 							strcmp(jsettings->key, "action-root") == 0 ||
@@ -481,17 +502,29 @@ clear:
 
 static JsonNode *settings_sync(int level, const char *display) {
 	struct JsonNode *root = json_mkobject();
+	struct JsonNode *ntpservers = NULL;
 	struct settings_t *tmp = settings;
 	char *username = NULL, *password = NULL;
+
 	while(tmp) {
-		if(strcmp(tmp->name, "webserver-authentication-username") == 0 && tmp->type == JSON_STRING) {
-			username = tmp->string_;
-		} else if(strcmp(tmp->name, "webserver-authentication-password") == 0 && tmp->type == JSON_STRING) {
-			password = tmp->string_;
-		} else if(tmp->type == JSON_NUMBER) {
-			json_append_member(root, tmp->name, json_mknumber((double)tmp->number_, 0));
-		} else if(tmp->type == JSON_STRING) {
-			json_append_member(root, tmp->name, json_mkstring(tmp->string_));
+		if(strncmp(tmp->name, "ntpserver", 9) == 0 && tmp->type == JSON_STRING) {
+			if(ntpservers == NULL) {
+				ntpservers = json_mkarray();
+			}
+			json_append_element(ntpservers, json_mkstring(tmp->string_));
+		} else {
+			if(json_find_member(root, "ntp-servers") == NULL && ntpservers != NULL) {
+				json_append_member(root, "ntp-servers", ntpservers);
+			}
+			if(strcmp(tmp->name, "webserver-authentication-username") == 0 && tmp->type == JSON_STRING) {
+				username = tmp->string_;
+			} else if(strcmp(tmp->name, "webserver-authentication-password") == 0 && tmp->type == JSON_STRING) {
+				password = tmp->string_;
+			} else if(tmp->type == JSON_NUMBER) {
+				json_append_member(root, tmp->name, json_mknumber((double)tmp->number_, 0));
+			} else if(tmp->type == JSON_STRING) {
+				json_append_member(root, tmp->name, json_mkstring(tmp->string_));
+			}
 		}
 		if(username != NULL && password != NULL && json_find_member(root, "webserver-authentication") == NULL) {
 			struct JsonNode *jarray = json_mkarray();
@@ -501,6 +534,10 @@ static JsonNode *settings_sync(int level, const char *display) {
 		}
 		tmp = tmp->next;
 	}
+	if(json_find_member(root, "ntp-servers") == NULL && ntpservers != NULL) {
+		json_append_member(root, "ntp-servers", ntpservers);
+	}
+
 	return root;
 }
 

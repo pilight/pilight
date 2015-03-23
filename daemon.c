@@ -69,6 +69,7 @@
 #include "dso.h"
 #include "firmware.h"
 #include "proc.h"
+#include "ntp.h"
 #include "registry.h"
 
 #ifdef EVENTS
@@ -1897,6 +1898,7 @@ int main_gc(void) {
 
 	config_gc();
 	protocol_gc();
+	ntp_gc();
 	whitelist_free();
 	threads_gc();
 #ifndef _WIN32
@@ -2433,6 +2435,13 @@ int start_pilight(int argc, char **argv) {
 		webserver_enable = 0;
 	}
 #endif
+
+	int ntpsync = 0;
+	settings_find_number("ntp-sync", &ntpsync);
+
+	if(ntpsync == 1) {
+		threads_register("ntp sync", &ntpthread, NULL, 0);
+	}
 
 	return EXIT_SUCCESS;
 

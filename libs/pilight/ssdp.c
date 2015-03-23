@@ -291,7 +291,6 @@ void *ssdp_wait(void *param) {
 					"USN:uuid:%s::urn:schemas-upnp-org:service:pilight:1\r\n"
 					"NTS:ssdp:alive\r\n"
 					"SERVER: %s UPnP/1.1 pilight (%s)/%s\r\n\r\n", host, socket_get_port(), id, distro, hname, PILIGHT_VERSION);
-				printf("%s\n", header[nrheader]);
 				nrheader++;
 			}
 			FREE(devs[x]);

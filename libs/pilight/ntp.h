@@ -1,5 +1,5 @@
 /*
-	Copyright (C) 2013 CurlyMo
+	Copyright (C) 2014 CurlyMo
 
 	This file is part of pilight.
 
@@ -16,16 +16,11 @@
 	along with pilight. If not, see	<http://www.gnu.org/licenses/>
 */
 
-#ifndef _DATETIME_H_
-#define _DATETIME_H_
+#ifndef _NTP_H_
+#define _NTP_H_
 
-#include <sys/time.h>
-
-int datetime_gc(void);
-char *coord2tz(double longitude, double latitude);
-time_t datetime2ts(int year, int month, int day, int hour, int minutes, int seconds, char *tz);
-struct tm *localtztime(char *tz, time_t t);
-int tzoffset(char *tz1, char *tz2);
-int ctzoffset(char *tz);
+void *ntpthread(void *param);
+int getntpdiff(void);
+int ntp_gc(void);
 
 #endif

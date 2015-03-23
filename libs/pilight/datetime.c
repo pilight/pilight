@@ -382,28 +382,3 @@ int ctzoffset(void) {
 #endif
 	return (int)((tm1 - tm2)/3600);
 }
-
-int isdst(char *tz) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
-
-	atomiclock();
-	char UTC[] = "UTC";
-	time_t now = 0;
-	struct tm tm;
-	now = time(NULL);
-
-	memset(&tm, '\0', sizeof(struct tm));
-#ifdef _WIN32	
-	gmtime(&now);
-#else
-	gmtime_r(&now, &tm);
-#endif
-	tm.tm_hour += tzoffset(UTC, tz);
-
-	setenv("TZ", tz, 1);
-	mktime(&tm);
-	unsetenv("TZ");
-	atomicunlock();
-
-	return tm.tm_isdst;
-}

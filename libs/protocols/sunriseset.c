@@ -34,6 +34,7 @@
 
 #include "pilight.h"
 #include "common.h"
+#include "ntp.h"
 #include "dso.h"
 #include "../pilight/datetime.h" // Full path because we also have a datetime protocol
 #include "log.h"
@@ -116,7 +117,7 @@ static void *sunRiseSetParse(void *param) {
 	time_t timenow = 0;
 	struct tm tm;
 	int nrloops = 0, risetime = 0, settime = 0, hournow = 0;
-	int firstrun = 0, target_offset = 0, dst = 0;
+	int firstrun = 0, target_offset = 0;
 
 	sunriseset_threads++;
 
@@ -146,12 +147,11 @@ static void *sunRiseSetParse(void *param) {
 
 	/* Check how many hours we differ from UTC? */
 	target_offset = tzoffset(UTC, tz);
-	/* Are we in daylight savings time? */
-	dst = isdst(tz);
 
 	while(sunriseset_loop) {
 		protocol_thread_wait(thread, 1, &nrloops);
 		timenow = time(NULL);
+		timenow -= getntpdiff();
 
 			/* Get UTC time */
 #ifdef _WIN32
@@ -165,7 +165,7 @@ static void *sunRiseSetParse(void *param) {
 			/* Add our hour difference to the UTC time */
 			tm.tm_hour += target_offset;
 			/* Add possible daylist savings time hour */
-			tm.tm_hour += dst;
+			tm.tm_hour += tm.tm_isdst;
 			int hour = tm.tm_hour;
 			int minute = tm.tm_min;
 			int second = tm.tm_sec;
@@ -185,11 +185,6 @@ static void *sunRiseSetParse(void *param) {
 				minute = tm.tm_min;
 				second = tm.tm_sec;
 			}
-
-			if(second == 0 && minute == 0) {
-				/* Check for dst each hour */
-				dst = isdst(tz);
-			}
 			
 			hournow = (hour*100)+minute;
 
@@ -205,7 +200,7 @@ static void *sunRiseSetParse(void *param) {
 				risetime = (int)sunRiseSetCalculate(year, month, day, longitude, latitude, 1, target_offset);
 				settime = (int)sunRiseSetCalculate(year, month, day, longitude, latitude, 0, target_offset);
 
-				if(isdst(tz)) {
+				if(tm.tm_isdst == 1) {
 					risetime += 100;
 					settime += 100;
 					if(risetime > 2400) risetime -= 2400;
@@ -310,9 +305,9 @@ void sunRiseSetInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "sunriseset";
-	module->version = "2.0";
+	module->version = "2.1";
 	module->reqversion = "6.0";
-	module->reqcommit = "58";
+	module->reqcommit = "66";
 }
 
 void init(void) {
