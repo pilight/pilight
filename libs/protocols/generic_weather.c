@@ -31,13 +31,13 @@
 #include "gc.h"
 #include "generic_weather.h"
 
-static void genWeatherCreateMessage(int id, int temperature, int humidity, int battery) {
+static void genWeatherCreateMessage(int id, float temperature, float humidity, int battery) {
 	generic_weather->message = json_mkobject();
 	json_append_member(generic_weather->message, "id", json_mknumber(id, 0));
-	if(temperature > -999) {
+	if(temperature > -998.0) {
 		json_append_member(generic_weather->message, "temperature", json_mknumber(temperature, 2));
 	}
-	if(humidity > -999) {
+	if(humidity > -1.0) {
 		json_append_member(generic_weather->message, "humidity", json_mknumber(humidity, 2));
 	}
 	if(battery > -1) {
@@ -48,20 +48,20 @@ static void genWeatherCreateMessage(int id, int temperature, int humidity, int b
 static int genWeatherCreateCode(JsonNode *code) {
 	double itmp = 0;
 	int id = -999;
-	int temp = -999;
-	int humi = -999;
+	float temp = -999.0;
+	float humi = -1.0;
 	int batt = -1;
 
 	if(json_find_number(code, "id", &itmp) == 0)
 		id = (int)round(itmp);
 	if(json_find_number(code, "temperature", &itmp) == 0)
-		temp = (int)round(itmp);
+		temp = (float)round(itmp);
 	if(json_find_number(code, "humidity", &itmp) == 0)
-		humi = (int)round(itmp);
+		humi = (float)round(itmp);
 	if(json_find_number(code, "battery", &itmp) == 0)
 		batt = (int)round(itmp);
 
-	if(id == -999 && temp == -999 && humi == -999 && batt == -1) {
+	if(id == -999 && temp < -998.0 && humi < 0.0 && batt == -1) {
 		logprintf(LOG_ERR, "generic_weather: insufficient number of arguments");
 		return EXIT_FAILURE;
 	} else {
@@ -105,7 +105,7 @@ void genWeatherInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "generic_weather";
-	module->version = "1.2";
+	module->version = "1.21";
 	module->reqversion = "5.0";
 	module->reqcommit = "84";
 }
