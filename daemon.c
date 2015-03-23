@@ -2182,6 +2182,12 @@ int start_pilight(int argc, char **argv) {
 	protocol_init();
 	config_init();
 
+	/* Export certain daemon function to global usage */
+	pilight.broadcast = &broadcast_queue;
+	pilight.send = &send_queue;
+	pilight.receive = &receive_queue;
+	pilight.control = &control_device;	
+	
 	if(config_read() != EXIT_SUCCESS) {
 		goto clear;
 	}
@@ -2362,12 +2368,6 @@ int start_pilight(int argc, char **argv) {
 	pthread_mutex_init(&bcqueue_lock, &bcqueue_attr);
 	pthread_cond_init(&bcqueue_signal, NULL);
 	bcqueue_init = 1;
-
-	/* Export certain daemon function to global usage */
-	pilight.broadcast = &broadcast_queue;
-	pilight.send = &send_queue;
-	pilight.receive = &receive_queue;
-	pilight.control = &control_device;
 
 	/* Run certain daemon functions from the socket library */
 	socket_callback.client_disconnected_callback = &socket_client_disconnected;

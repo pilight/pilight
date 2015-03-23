@@ -408,7 +408,7 @@ static int settings_parse(JsonNode *root) {
 				logprintf(LOG_ERR, "config setting \"%s\" must be a valid template", jsettings->key);
 				have_error = 1;
 				goto clear;
-			} else if(!jsettings->string_) {
+			} else if(jsettings->string_ == NULL) {
 				logprintf(LOG_ERR, "config setting \"%s\" must be a valid template", jsettings->key);
 				have_error = 1;
 				goto clear;
