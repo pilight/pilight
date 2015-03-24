@@ -27,22 +27,29 @@
 #include <math.h>
 #include <string.h>
 
-#include "pilight.h"
-#include "protocol.h"
-#include "operator.h"
-#include "action.h"
-#include "common.h"
-#include "config.h"
-#include "hardware.h"
-#include "log.h"
-#include "datetime.h"
-#include "ssdp.h"
-#include "socket.h"
-#include "wiringX.h"
-#include "threads.h"
-#include "irq.h"
-#include "dso.h"
-#include "gc.h"
+#include "libs/pilight/core/threads.h"
+#include "libs/pilight/core/pilight.h"
+#include "libs/pilight/core/common.h"
+#include "libs/pilight/core/config.h"
+#include "libs/pilight/core/log.h"
+#include "libs/pilight/core/datetime.h"
+#include "libs/pilight/core/ssdp.h"
+#include "libs/pilight/core/socket.h"
+#include "libs/pilight/core/threads.h"
+#include "libs/pilight/core/irq.h"
+#include "libs/pilight/core/dso.h"
+#include "libs/pilight/core/gc.h"
+
+#include "libs/pilight/protocols/protocol.h"
+
+#include "libs/pilight/events/action.h"
+#include "libs/pilight/events/operator.h"
+
+#include "libs/pilight/config/hardware.h"
+
+#ifndef _WIN32
+	#include "libs/wiringx/wiringX.h"
+#endif
 
 static unsigned short main_loop = 1;
 
@@ -133,7 +140,9 @@ int main(int argc, char **argv) {
 	log_file_disable();
 	log_level_set(LOG_NOTICE);
 
+#ifndef _WIN32
 	wiringXLog = logprintf;
+#endif
 
 	if(!(progname = MALLOC(12))) {
 		logprintf(LOG_ERR, "out of memory");

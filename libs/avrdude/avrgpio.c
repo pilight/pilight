@@ -31,7 +31,7 @@
 #include "pindefs.h"
 #include "pgm.h"
 #include "avrbitbang.h"
-#include "wiringX.h"
+#include "../wiringx/wiringX.h"
 
 /*
  * GPIO user space helpers

@@ -22,14 +22,14 @@
 #include <unistd.h>
 #include <errno.h>
 
-#include "pilight.h"
-#include "common.h"
-#include "settings.h"
-#include "log.h"
-#include "options.h"
-#include "socket.h"
-#include "ssdp.h"
-#include "gc.h"
+#include "libs/pilight/core/pilight.h"
+#include "libs/pilight/core/common.h"
+#include "libs/pilight/config/settings.h"
+#include "libs/pilight/core/log.h"
+#include "libs/pilight/core/options.h"
+#include "libs/pilight/core/socket.h"
+#include "libs/pilight/core/ssdp.h"
+#include "libs/pilight/core/gc.h"
 
 static int main_loop = 1;
 static int sockfd = 0;

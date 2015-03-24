@@ -27,17 +27,19 @@
 #include <math.h>
 #include <string.h>
 
-#include "pilight.h"
-#include "gc.h"
-#include "common.h"
-#include "action.h"
-#include "operator.h"
-#include "log.h"
-#include "options.h"
-#include "firmware.h"
+#include "libs/pilight/core/threads.h"
+#include "libs/pilight/core/pilight.h"
+#include "libs/pilight/core/gc.h"
+#include "libs/pilight/core/common.h"
+#include "libs/pilight/core/log.h"
+#include "libs/pilight/core/options.h"
+#include "libs/pilight/core/firmware.h"
+
+#include "libs/pilight/events/action.h"
+#include "libs/pilight/events/operator.h"
 
 #ifndef _WIN32
-	#include "wiringX.h"
+	#include "libs/wiringx/wiringX.h"
 #endif
 
 int main(int argc, char **argv) {

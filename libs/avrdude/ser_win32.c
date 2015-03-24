@@ -29,9 +29,9 @@
 #include <stdio.h>
 #include <ctype.h>
 
-#include "log.h"
+#include "../pilight/core/log.h"
+#include "../pilight/core/mem.h"
 #include "serial.h"
-#include "mem.h"
 
 long serial_recv_timeout = 5000; /* ms */
 
@@ -169,9 +169,7 @@ static int ser_set_dtr_rts(union filedescriptor *fd, int is_on) {
 
 static int ser_send(union filedescriptor *fd, unsigned char *buf, size_t buflen) {
 	size_t len = buflen;
-	unsigned char c='\0';
 	DWORD written;
-	unsigned char * b = buf;
 
 	HANDLE hComPort = (HANDLE)fd->pfd;
 
@@ -201,8 +199,6 @@ static int ser_send(union filedescriptor *fd, unsigned char *buf, size_t buflen)
 
 
 static int ser_recv(union filedescriptor *fd, unsigned char *buf, size_t buflen) {
-	unsigned char c;
-	unsigned char *p = buf;
 	DWORD read;
 
 	HANDLE hComPort = (HANDLE)fd->pfd;
@@ -235,8 +231,6 @@ static int ser_recv(union filedescriptor *fd, unsigned char *buf, size_t buflen)
 	if(read == 0) {
 		return -1;
 	}
-
-	p = buf;
 
 	return 0;
 }

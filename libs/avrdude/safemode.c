@@ -22,7 +22,7 @@
 
 #include <stdio.h>
 
-#include "log.h"
+#include "../pilight/core/log.h"
 #include "avrdude.h"
 #include "avr.h"
 #include "pgm.h"

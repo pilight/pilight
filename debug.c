@@ -27,22 +27,28 @@
 #include <math.h>
 #include <string.h>
 
-#include "pilight.h"
-#include "common.h"
-#include "operator.h"
-#include "action.h"
-#include "config.h"
-#include "hardware.h"
-#include "log.h"
-#include "options.h"
-#include "threads.h"
-#include "wiringX.h"
-#include "datetime.h"
-#include "ssdp.h"
-#include "socket.h"
-#include "irq.h"
-#include "gc.h"
-#include "dso.h"
+#include "libs/pilight/core/threads.h"
+#include "libs/pilight/core/pilight.h"
+#include "libs/pilight/core/common.h"
+#include "libs/pilight/core/config.h"
+#include "libs/pilight/core/log.h"
+#include "libs/pilight/core/options.h"
+#include "libs/pilight/core/threads.h"
+#include "libs/pilight/core/datetime.h"
+#include "libs/pilight/core/ssdp.h"
+#include "libs/pilight/core/socket.h"
+#include "libs/pilight/core/irq.h"
+#include "libs/pilight/core/gc.h"
+#include "libs/pilight/core/dso.h"
+
+#include "libs/pilight/events/operator.h"
+#include "libs/pilight/events/action.h"
+
+#include "libs/pilight/config/hardware.h"
+
+#ifndef _WIN32
+	#include "libs/wiringx/wiringX.h"
+#endif
 
 static unsigned short main_loop = 1;
 static unsigned short inner_loop = 1;
@@ -154,13 +160,13 @@ void *receivePulseTrain(void *param) {
 #else
 					localtime_r(&now, &tm);	
 #endif
+
+#ifdef _WIN32
+					printf("time:\t\t%s\n", asctime(&tm));
+#else
 					char buf[128];
 					char *p = buf;
 					memset(&buf, '\0', sizeof(buf));
-#ifdef _WIN32
-					asctime_s(p, strlen(p), &tm);
-					printf("time:\t\t%s\n", buf);
-#else
 					asctime_r(&tm, p);
 					printf("time:\t\t%s", buf);
 #endif
@@ -316,12 +322,13 @@ void *receiveOOK(void *param) {
 #else
 			localtime_r(&now, &tm);	
 #endif
+
+#ifdef _WIN32
+			printf("time:\t\t%s\n", asctime(&tm));
+#else
 			char buf[128];
 			char *p = buf;
-#ifdef _WIN32
-			asctime_s(p, strlen(p), &tm);
-			printf("time:\t\t%s\n", buf);
-#else
+			memset(&buf, '\0', sizeof(buf));
 			asctime_r(&tm, p);
 			printf("time:\t\t%s", buf);
 #endif
@@ -363,7 +370,9 @@ int main(int argc, char **argv) {
 	log_file_disable();
 	log_level_set(LOG_NOTICE);
 
+#ifndef _WIN32
 	wiringXLog = logprintf;
+#endif
 
 	struct options_t *options = NULL;
 

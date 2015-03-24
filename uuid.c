@@ -42,12 +42,12 @@
 #include <pthread.h>
 #include <ctype.h>
 
-#include "pilight.h"
-#include "common.h"
-#include "log.h"
-#include "options.h"
-#include "ssdp.h"
-#include "gc.h"
+#include "libs/pilight/core/pilight.h"
+#include "libs/pilight/core/common.h"
+#include "libs/pilight/core/log.h"
+#include "libs/pilight/core/options.h"
+#include "libs/pilight/core/ssdp.h"
+#include "libs/pilight/core/gc.h"
 
 int main_gc(void) {
 	log_shell_disable();
@@ -78,8 +78,7 @@ int main(int argc, char **argv) {
 	char *p = NULL;
 	char *args = NULL;
 
-	progname = MALLOC(13);
-	if(!progname) {
+	if((progname = MALLOC(13)) == NULL) {
 		logprintf(LOG_ERR, "out of memory");
 		exit(EXIT_FAILURE);
 	}
@@ -114,54 +113,26 @@ int main(int argc, char **argv) {
 	}
 	options_delete(options);
 
-#ifdef _WIN32
-	if((p = genuuid(NULL)) == NULL) {
-		logprintf(LOG_ERR, "could not generate the device uuid");
-		goto clear;
-	} else {
-		strcpy(pilight_uuid, p);
-		FREE(p);
-	}
-#else
-	struct ifaddrs *ifaddr, *ifa;
-	int family = 0;
-	#ifdef __FreeBSD__
-		if(rep_getifaddrs(&ifaddr) == -1) {
-			logprintf(LOG_ERR, "could not get network adapter information");
-			goto clear;
-		}
-	#else
-		if(getifaddrs(&ifaddr) == -1) {
-			perror("getifaddrs");
-			goto clear;
-		}
-	#endif
-
-	for(ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next) {
-		if(ifa->ifa_addr == NULL) {
-			continue;
-		}
-
-		family = ifa->ifa_addr->sa_family;
-
-		if((strstr(ifa->ifa_name, "lo") == NULL && strstr(ifa->ifa_name, "vbox") == NULL
-		    && strstr(ifa->ifa_name, "dummy") == NULL) && (family == AF_INET || family == AF_INET6)) {
-			if((p = genuuid(ifa->ifa_name)) == NULL) {
+	int nrdevs = 0, x = 0;
+	char **devs = NULL;
+	if((nrdevs = inetdevs(&devs)) > 0) {
+		for(x=0;x<nrdevs;x++) {
+			if((p = genuuid(devs[x])) == NULL) {
 				logprintf(LOG_ERR, "could not generate the device uuid");
-				freeifaddrs(ifaddr);
-				goto clear;
 			} else {
 				strcpy(pilight_uuid, p);
 				FREE(p);
 				break;
 			}
 		}
+	}	
+	for(x=0;x<nrdevs;x++) {
+		FREE(devs[x]);
 	}
-	freeifaddrs(ifaddr);
-#endif
-printf("%s\n", pilight_uuid);
+	FREE(devs);
 
-clear:
+	printf("%s\n", pilight_uuid);
+
 	main_gc();
 	return (EXIT_FAILURE);
 }

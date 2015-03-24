@@ -26,13 +26,13 @@
 #include <string.h>
 #include <time.h>
 
-#include "log.h"
+#include "../pilight/core/log.h"
+#include "../pilight/core/mem.h"
 #include "avrdude.h"
 #include "avr.h"
 #include "avrconfig.h"
 #include "fileio.h"
 #include "avrupd.h"
-#include "mem.h"
 
 AVRUPD * parse_op(char * s)
 {

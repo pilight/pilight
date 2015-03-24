@@ -28,12 +28,11 @@
 
 #include "avrdude.h"
 
-#include "log.h"
+#include "../pilight/core/log.h"
+#include "../pilight/core/common.h"
 #include "avr.h"
 #include "pindefs.h"
 #include "safemode.h"
-#include "update.h"
-#include "common.h"
 
 FP_UpdateProgress avr_update_progress;
 
@@ -48,7 +47,7 @@ int parse_cmdbits(OPCODE * op, char *t) {
 	char *e = NULL;
 	char *q = NULL;
 	int len;
-	char *s = NULL, *brkt = NULL, **array = NULL;
+	char **array = NULL;
 
 	bitno = 32;
 	n = explode(t, " ", &array);
@@ -206,7 +205,7 @@ int avr_read(PROGRAMMER * pgm, AVRPART * p, char * memtype, int size)
   unsigned char    rbyte;
   unsigned long    i;
   unsigned char  * buf;
-  AVRMEM * mem = NULL, * vmem = NULL;
+  AVRMEM * mem = NULL;
   int rc;
 
   /* NEW */
@@ -603,7 +602,6 @@ int avr_write(PROGRAMMER * pgm, AVRPART * p, char * memtype, int size)
   int              wsize;
   long             i;
   unsigned char    data;
-  int              werror;
   AVRMEM         * m = NULL;
 
   /* NEW */
@@ -619,8 +617,6 @@ int avr_write(PROGRAMMER * pgm, AVRPART * p, char * memtype, int size)
     logprintf(LOG_ERR, "No \"%s\" memory for part %s", memtype, p->desc);
     return -1;
   }
-
-  werror  = 0;
 
   wsize = m->size;
   if (size < wsize) {
@@ -691,7 +687,6 @@ int avr_write(PROGRAMMER * pgm, AVRPART * p, char * memtype, int size)
     rc = avr_write_byte(pgm, p, m, i, data);
     if (rc) {
       logprintf(LOG_ERR, "***failed");
-      werror = 1;
     }
 
     if (m->paged) {
@@ -706,7 +701,6 @@ int avr_write(PROGRAMMER * pgm, AVRPART * p, char * memtype, int size)
           logprintf(LOG_ERR, " *** page %ld (addresses 0x%04lx - 0x%04lx) failed to write",
 					i % m->page_size,
 					i - m->page_size + 1, i);
-          werror = 1;
         }
       }
     }
@@ -865,7 +859,6 @@ int avr_put_cycle_count(PROGRAMMER * pgm, AVRPART * p, int cycles)
 
 int avr_chip_erase(PROGRAMMER * pgm, AVRPART * p)
 {
-  int cycles;
   int rc;
 
   rc = pgm->chip_erase(pgm, p);

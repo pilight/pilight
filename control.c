@@ -24,20 +24,24 @@
 #include <fcntl.h>
 #include <errno.h>
 
-#include "pilight.h"
-#include "common.h"
-#include "config.h"
-#include "devices.h"
-#include "log.h"
-#include "options.h"
-#include "socket.h"
-#include "json.h"
-#include "ssdp.h"
-#include "dso.h"
-#include "protocol.h"
-#include "gc.h"
-#include "operator.h"
-#include "action.h"
+#include "libs/pilight/core/threads.h"
+#include "libs/pilight/core/pilight.h"
+#include "libs/pilight/core/common.h"
+#include "libs/pilight/core/config.h"
+#include "libs/pilight/core/log.h"
+#include "libs/pilight/core/options.h"
+#include "libs/pilight/core/socket.h"
+#include "libs/pilight/core/json.h"
+#include "libs/pilight/core/ssdp.h"
+#include "libs/pilight/core/dso.h"
+#include "libs/pilight/core/gc.h"
+
+#include "libs/pilight/config/devices.h"
+
+#include "libs/pilight/protocols/protocol.h"
+
+#include "libs/pilight/events/operator.h"
+#include "libs/pilight/events/action.h"
 
 int main(int argc, char **argv) {
 	// memtrack();

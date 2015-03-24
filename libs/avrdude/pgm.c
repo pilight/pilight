@@ -24,10 +24,10 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "log.h"
+#include "../pilight/core/log.h"
+#include "../pilight/core/mem.h"
 #include "avrdude.h"
 #include "pgm.h"
-#include "mem.h"
 
 static int  pgm_default_2 (struct programmer_t *, AVRPART *);
 static int  pgm_default_3 (struct programmer_t * pgm, AVRPART * p, AVRMEM * mem,
@@ -38,8 +38,8 @@ static int  pgm_default_5 (struct programmer_t * pgm, AVRPART * p, AVRMEM * mem,
 static void pgm_default_6 (struct programmer_t *, const char *);
 
 
-static int pgm_default_open (struct programmer_t *pgm, char * name)
-{
+static int pgm_default_open (struct programmer_t *pgm, char * name) {
+	return 0;
 }
 
 static int  pgm_default_led (struct programmer_t * pgm, int value)

@@ -25,11 +25,11 @@
 #include <string.h>
 #include <stdio.h>
 
-#include "log.h"
+#include "../pilight/core/log.h"
+#include "../pilight/core/mem.h"
 #include "avrdude.h"
 #include "avrpart.h"
 #include "pindefs.h"
-#include "mem.h"
 
 /***
  *** Elementary functions dealing with OPCODE structures

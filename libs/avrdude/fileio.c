@@ -26,11 +26,12 @@
 #include <errno.h>
 #include <ctype.h>
 
-#include "log.h"
+#include "../pilight/core/log.h"
+#include "../pilight/core/mem.h"
+#include "../pilight/core/common.h"
 #include "avrdude.h"
 #include "avr.h"
 #include "fileio.h"
-#include "common.h"
 
 #define IHEX_MAXDATA 256
 #define MAX_LINE_LEN 256  /* max line length for ASCII format input files */
@@ -296,7 +297,7 @@ static int fileio_imm(struct fioparms * fio,
                char * filename, FILE * f, unsigned char * buf, int size)
 {
   int rc = 0;
-  char *e = NULL, *ptr = NULL, **array = NULL;
+  char *e = NULL, **array = NULL;
   unsigned long b = 0;
   int loc = 0;
   unsigned int n = 0, i = 0;

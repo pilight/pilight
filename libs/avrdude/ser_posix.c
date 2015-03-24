@@ -41,8 +41,8 @@
 #include <termios.h>
 #include <unistd.h>
 
-#include "mem.h"
-#include "log.h"
+#include "../pilight/core/log.h"
+#include "../pilight/core/mem.h"
 #include "avrdude.h"
 #include "serial.h"
 

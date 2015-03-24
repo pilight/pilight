@@ -29,7 +29,8 @@
 #include <signal.h>
 #include <sys/time.h>
 
-#include "log.h"
+#include "../pilight/core/log.h"
+#include "../pilight/core/mem.h"
 #include "avrdude.h"
 #include "avr.h"
 #include "pindefs.h"

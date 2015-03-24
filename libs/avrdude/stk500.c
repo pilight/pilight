@@ -34,13 +34,13 @@
 #include <errno.h>
 #include <unistd.h>
 
+#include "../pilight/core/log.h"
 #include "avrdude.h"
 #include "avr.h"
 #include "pgm.h"
 #include "stk500.h"
 #include "stk500_private.h"
 #include "serial.h"
-#include "log.h"
 
 #define STK500_XTAL 7372800U
 #define MAX_SYNC_ATTEMPTS 10
@@ -50,10 +50,6 @@ struct pdata {
 };
 
 #define PDATA(pgm) ((struct pdata *)(pgm->cookie))
-
-static int stk500_getparm(PROGRAMMER *pgm, unsigned parm, unsigned *value);
-static int stk500_setparm(PROGRAMMER *pgm, unsigned parm, unsigned value);
-static void stk500_print_parms1(PROGRAMMER *pgm, const char *p);
 
 static int stk500_send(PROGRAMMER *pgm, unsigned char *buf, size_t len) {
 	return serial_send(&pgm->fd, buf, len);
@@ -248,8 +244,7 @@ static int stk500_program_enable(PROGRAMMER *pgm, AVRPART *p) {
 static int stk500_initialize(PROGRAMMER *pgm, AVRPART *p) {
 	unsigned char buf[32];
 	AVRMEM *m = NULL;
-	int tries = 0, rc = 0;
-	unsigned maj = 0, min = 0;
+	int tries = 0;
 
 	tries = 0;
 

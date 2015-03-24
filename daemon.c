@@ -49,35 +49,39 @@
 #include <ctype.h>
 #include <dirent.h>
 
-#include "pilight.h"
-#include "datetime.h"
-#include "common.h"
-#include "settings.h"
-#include "config.h"
-#include "devices.h"
-#include "gui.h"
-#include "gc.h"
-#include "log.h"
-#include "options.h"
-#include "threads.h"
-#include "socket.h"
-#include "json.h"
-#include "wiringX.h"
-#include "irq.h"
-#include "hardware.h"
-#include "ssdp.h"
-#include "dso.h"
-#include "firmware.h"
-#include "proc.h"
-#include "ntp.h"
-#include "registry.h"
+#include "libs/pilight/core/threads.h"
+#include "libs/pilight/core/pilight.h"
+#include "libs/pilight/core/datetime.h"
+#include "libs/pilight/core/common.h"
+#include "libs/pilight/core/gc.h"
+#include "libs/pilight/core/log.h"
+#include "libs/pilight/core/options.h"
+#include "libs/pilight/core/socket.h"
+#include "libs/pilight/core/json.h"
+#include "libs/pilight/core/irq.h"
+#include "libs/pilight/core/ssdp.h"
+#include "libs/pilight/core/dso.h"
+#include "libs/pilight/core/firmware.h"
+#include "libs/pilight/core/proc.h"
+#include "libs/pilight/core/ntp.h"
+#include "libs/pilight/core/config.h"
 
 #ifdef EVENTS
-	#include "events.h"
+	#include "libs/pilight/core/events.h"
 #endif
 
 #ifdef WEBSERVER
-	#include "webserver.h"
+	#include "libs/pilight/core/webserver.h"
+#endif
+
+#include "libs/pilight/config/hardware.h"
+#include "libs/pilight/config/registry.h"
+#include "libs/pilight/config/devices.h"
+#include "libs/pilight/config/settings.h"
+#include "libs/pilight/config/gui.h"
+
+#ifndef _WIN32
+	#include "libs/wiringx/wiringX.h"
 #endif
 
 typedef struct clients_t {
@@ -155,8 +159,10 @@ static int bcqueue_number = 0;
 static struct protocol_t *procProtocol;
 
 /* The pid_file and pid of this daemon */
+#ifndef _WIN32
 static char *pid_file;
 static unsigned short pid_file_free = 0;
+#endif
 static pid_t pid;
 /* Daemonize or not */
 static int nodaemon = 0;
@@ -921,7 +927,7 @@ static int send_queue(JsonNode *json, enum origin_t origin) {
 						json_free(strsett);
 						json_delete(jsettings);
 
-						if(uuid) {
+						if(uuid != NULL) {
 							strcpy(mnode->uuid, uuid);
 						} else {
 							memset(mnode->uuid, '\0', UUID_LENGTH);
@@ -1764,6 +1770,7 @@ void *clientize(void *param) {
 	return NULL;
 }
 
+#ifndef _WIN32
 static void save_pid(pid_t npid) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
@@ -1781,7 +1788,6 @@ static void save_pid(pid_t npid) {
 	close(f);
 }
 
-#ifndef _WIN32
 static void daemonize(void) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
@@ -1996,11 +2002,16 @@ int start_pilight(int argc, char **argv) {
 	struct ssdp_list_t *ssdp_list = NULL;
 
 	char buffer[BUFFER_SIZE];
-	int f = 0, itmp = 0, show_help = 0, show_version = 0, show_default = 0;
+	int itmp = 0, show_default = 0;
+#ifndef _WIN32
+	int show_version = 0, show_help = 0, f = 0;
+#endif
 	char *stmp = NULL, *args = NULL, *p = NULL;
 	int port = 0;
 
+#ifndef _WIN32
 	wiringXLog = logprintf;
+#endif
 
 	if((progname = MALLOC(16)) == NULL) {
 		logprintf(LOG_ERR, "out of memory");
@@ -2029,7 +2040,9 @@ int start_pilight(int argc, char **argv) {
 			break;
 		}
 		if(c == -2) {
+#ifndef _WIN32
 			show_help = 1;
+#endif
 			break;
 		}
 		switch(c) {
@@ -2712,6 +2725,7 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR cmdline, int show) {
     TranslateMessage(&msg);
     DispatchMessage(&msg);
   }
+	return 0;
 }
 #else
 int main(int argc, char **argv) {

@@ -1049,6 +1049,8 @@ PTW32_DLLPORT int PTW32_CDECL pthread_mutex_consistent (pthread_mutex_t * mutex)
 /*
  * Spinlock Functions
  */
+PTW32_DLLPORT int ptw32_spinlock_check_need_init (pthread_spinlock_t * lock);
+ 
 PTW32_DLLPORT int PTW32_CDECL pthread_spin_init (pthread_spinlock_t * lock, int pshared);
 
 PTW32_DLLPORT int PTW32_CDECL pthread_spin_destroy (pthread_spinlock_t * lock);

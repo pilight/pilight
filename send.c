@@ -25,17 +25,18 @@
 #include <fcntl.h>
 #include <errno.h>
 
-#include "pilight.h"
-#include "common.h"
-#include "config.h"
-#include "log.h"
-#include "options.h"
-#include "socket.h"
-#include "json.h"
-#include "protocol.h"
-#include "wiringX.h"
-#include "ssdp.h"
-#include "dso.h"
+#include "libs/pilight/core/threads.h"
+#include "libs/pilight/core/pilight.h"
+#include "libs/pilight/core/common.h"
+#include "libs/pilight/core/config.h"
+#include "libs/pilight/core/log.h"
+#include "libs/pilight/core/options.h"
+#include "libs/pilight/core/socket.h"
+#include "libs/pilight/core/json.h"
+#include "libs/pilight/core/ssdp.h"
+#include "libs/pilight/core/dso.h"
+
+#include "libs/pilight/protocols/protocol.h"
 
 typedef struct pname_t {
 	char *name;
@@ -44,9 +45,6 @@ typedef struct pname_t {
 } pname_t;
 
 static struct pname_t *pname = NULL;
-
-void _lognone(int prio, const char *format_str, ...) {
-}
 
 static void sort_list(void) {
 	struct pname_t *a = NULL;
@@ -88,7 +86,6 @@ int main(int argc, char **argv) {
 	// memtrack();
 
 	atomicinit();
-	wiringXLog = _lognone;
 
 	log_file_disable();
 	log_shell_enable();

@@ -25,9 +25,9 @@
 #include <stdarg.h>
 #include <string.h>
 
-#include "log.h"
+#include "../pilight/core/log.h"
+#include "../pilight/core/mem.h"
 #include "avrconfig.h"
-#include "mem.h"
 
 TOKEN * new_token(int primary)
 {
