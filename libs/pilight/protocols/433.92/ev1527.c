@@ -73,7 +73,7 @@ void ev1527Init(void) {
 	ev1527->pulse = 3;
 	ev1527->rawlen = 50;
 	ev1527->binlen = 12;
-	
+
 	options_add(&ev1527->options, 'u', "unitcode", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^(3[012]?|[012][0-9]|[0-9]{1})$");
 	options_add(&ev1527->options, 't', "opened", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
 	options_add(&ev1527->options, 'f', "closed", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);

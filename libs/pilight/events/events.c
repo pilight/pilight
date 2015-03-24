@@ -971,7 +971,7 @@ int event_parse_condition(char **rule, struct rules_t *obj, int depth, unsigned 
 			nrspaces++;
 		}
 	}
-	/* 
+	/*
 	 * Only "1", "0", "True", "False" or
 	 * "1 == 1", "datetime.hour < 18.00" is valid here.
 	 */

@@ -174,7 +174,7 @@ static int actionDimArguments(struct JsonNode *arguments) {
 			return -1;
 		}
 	}
-	
+
 	nrvalues = 0;
 	if(jin != NULL) {
 		if((jfvalues = json_find_member(jin, "value")) != NULL) {
@@ -188,7 +188,7 @@ static int actionDimArguments(struct JsonNode *arguments) {
 			logprintf(LOG_ERR, "dim action \"IN\" only takes one argument");
 			return -1;
 		}
-	}	
+	}
 
 	if((jbvalues = json_find_member(jdevice, "value")) != NULL) {
 		jbchild = json_first_child(jbvalues);
@@ -453,11 +453,11 @@ static void *actionDimThread(void *param) {
 		interval = (int)(seconds_in / dimdiff);
 	}
 
-	/* 
+	/*
 	 * We'll switch from first dimlevel to second dimlevel after X seconds
 	 * and switch back after X seconds.
 	 */
-	
+
 	if(has_in == 0) {
 		if(old_state == NULL || ((strcmp(old_state, "on") != 0 || (int)cur_dimlevel != (int)new_dimlevel))) {
 			timer = 0;
@@ -477,7 +477,7 @@ static void *actionDimThread(void *param) {
 
 			/*
 			 * We only need to restore the state if it was actually changed
-			 */ 
+			 */
 			if(seconds_for > 0 && old_state != NULL && (strcmp(old_state, "on") != 0 || (int)cur_dimlevel != (int)new_dimlevel)) {
 				timer = 0;
 				while(thread->loop == 1) {
@@ -543,12 +543,12 @@ static void *actionDimThread(void *param) {
 					timer++;
 					sleep(1);
 				}
-			}		
+			}
 		}
 		/*
 		 * We only need to restore the state if it was actually changed
-		 */ 
-		if(seconds_for > 0 && old_state != NULL && 
+		 */
+		if(seconds_for > 0 && old_state != NULL &&
 			 (strcmp(old_state, "on") != 0 || (int)cur_dimlevel != (int)new_dimlevel)) {
 			timer = 0;
 			while(thread->loop == 1) {
@@ -575,7 +575,7 @@ static void *actionDimThread(void *param) {
 	if(old_state != NULL) {
 		FREE(old_state);
 	}
-	
+
 	event_action_stopped(thread);
 
 	return (void *)NULL;

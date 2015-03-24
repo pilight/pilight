@@ -434,7 +434,7 @@ static void wundergroundThreadGC(void) {
 		FREE(wtmp);
 	}
 	if(wunderground_data != NULL) {
-		FREE(wunderground_data);	
+		FREE(wunderground_data);
 	}
 }
 

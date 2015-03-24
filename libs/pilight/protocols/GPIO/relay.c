@@ -47,7 +47,7 @@ static void relayCreateMessage(int gpio, int state) {
 }
 
 static int relayCreateCode(JsonNode *code) {
-	int free_def = 0;	
+	int free_def = 0;
 	int gpio = -1;
 	int state = -1;
 	double itmp = -1;
@@ -161,7 +161,7 @@ static int relayCheckValues(JsonNode *code) {
 				int state = -1;
 				if(wiringXSetup() < 0) {
 					logprintf(LOG_ERR, "unable to setup wiringX") ;
-					return -1;				
+					return -1;
 				} else if(wiringXValidGPIO(gpio) != 0) {
 					logprintf(LOG_ERR, "relay: invalid gpio range");
 					return -1;

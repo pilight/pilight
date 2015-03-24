@@ -51,7 +51,7 @@ static struct devices_t *devices = NULL;
 
 int devices_update(char *protoname, JsonNode *json, enum origin_t origin, JsonNode **out) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
-	
+
 	/* The pointer to the devices devices */
 	struct devices_t *dptr = devices;
 	/* The pointer to the device settings */
@@ -394,7 +394,7 @@ int devices_update(char *protoname, JsonNode *json, enum origin_t origin, JsonNo
 								}
 								if(match == 0) {
 #ifdef EVENTS
-/* 
+/*
  * If the action itself it not triggering a device update, something
  * else is. We therefor need to abort the running action to let
  * the new state persist.
@@ -1554,7 +1554,7 @@ static int devices_parse(JsonNode *root) {
 #ifdef EVENTS
 				event_action_thread_init(dnode);
 #endif
-				
+
 				int ptype = -1;
 				/* Save both the protocol pointer and the protocol name */
 				jprotocol = json_first_child(jprotocols);

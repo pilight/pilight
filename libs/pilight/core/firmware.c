@@ -162,7 +162,7 @@ static void firmware_atmega328p(struct avrpart **p) {
 	parse_cmdbits((*p)->hfusemem->op[AVR_OP_READ], hfuseread_bits);
 
 	(*p)->hfusemem->op[AVR_OP_WRITE] = avr_new_opcode();
-	parse_cmdbits((*p)->hfusemem->op[AVR_OP_WRITE], hfusewrite_bits);	
+	parse_cmdbits((*p)->hfusemem->op[AVR_OP_WRITE], hfusewrite_bits);
 }
 
 static void firmware_attiny25(struct avrpart **p) {
@@ -475,7 +475,7 @@ static void firmware_init_pgm(PROGRAMMER **pgm) {
 #else
 		(*pgm)->baudrate = B57600;
 	}
-#endif	
+#endif
 	if((*pgm)->setup) {
 		(*pgm)->setup(*pgm);
 	}
@@ -1031,7 +1031,7 @@ int firmware_getmp(char *port) {
 	} else {
 		memset(comport, '\0', 255);
 	}
-	
+
 	struct avrpart *p = NULL;
 	unsigned int match = 0;
 

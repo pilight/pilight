@@ -133,7 +133,7 @@ void *receivePulseTrain(void *param) {
 						break;
 					}
 				}
-				
+
 				/* Convert the raw code into binary code */
 				for(i=0;i<r.length;i++) {
 					if((unsigned int)r.pulses[i] > (pulse-pulselen)) {
@@ -158,7 +158,7 @@ void *receivePulseTrain(void *param) {
 #ifdef _WIN32
 					localtime(&now);
 #else
-					localtime_r(&now, &tm);	
+					localtime_r(&now, &tm);
 #endif
 
 #ifdef _WIN32
@@ -320,7 +320,7 @@ void *receiveOOK(void *param) {
 #ifdef _WIN32
 			localtime(&now);
 #else
-			localtime_r(&now, &tm);	
+			localtime_r(&now, &tm);
 #endif
 
 #ifdef _WIN32

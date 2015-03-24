@@ -3231,7 +3231,7 @@ static int parse_range_header(const char *header, int64_t *a, int64_t *b) {
 }
 
 static void gmt_time_string(char *buf, size_t buf_len, time_t *t) {
-#ifdef _WIN32	
+#ifdef _WIN32
 	struct tm *tm = NULL;
 	tm = gmtime(t);
   strftime(buf, buf_len, "%a, %d %b %Y %H:%M:%S GMT", tm);
@@ -3507,7 +3507,7 @@ static void print_dir_entry(const struct dir_entry *de) {
 #else
 	struct tm tm;
 	memset(&tm, '\0', sizeof(struct tm));
-	localtime_r(&de->st.st_mtime, &tm);	
+	localtime_r(&de->st.st_mtime, &tm);
   strftime(mod, sizeof(mod), "%d-%b-%Y %H:%M", &tm);
 #endif
   mg_url_encode(de->file_name, strlen(de->file_name), href, sizeof(href));
@@ -4806,7 +4806,7 @@ static void log_access(const struct connection *conn, const char *path) {
   char date[64], user[100];
 
   if (fp == NULL) return;
-#ifdef _WIN32	
+#ifdef _WIN32
 	struct tm *tm;
 	tm = localtime(NULL);
   strftime(date, sizeof(date), "%d/%b/%Y:%H:%M:%S %z", tm);

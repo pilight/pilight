@@ -226,7 +226,7 @@ static void *lircParse(void *param) {
 
 struct threadqueue_t *lircInitDev(JsonNode *jdevice) {
 	lirc_loop = 1;
-	
+
 	if(lirc_init == 0) {
 		lirc_init = 1;
 		struct protocol_threads_t *node = protocol_thread_init(lirc, NULL);

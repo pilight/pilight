@@ -78,7 +78,7 @@ int stk500_getsync(PROGRAMMER * pgm) {
 	buf[1] = Sync_CRC_EOP;
 
 	/*
-	* First send and drain a few times to get rid of line noise 
+	* First send and drain a few times to get rid of line noise
 	*/
 	stk500_send(pgm, buf, 2);
 	stk500_drain(pgm, 0);
@@ -194,7 +194,7 @@ static int stk500_program_enable(PROGRAMMER *pgm, AVRPART *p) {
 	int tries=0;
 
 	retry:
-	
+
 		tries++;
 
 		buf[0] = Cmnd_STK_ENTER_PROGMODE;
@@ -457,7 +457,7 @@ static int stk500_paged_write(PROGRAMMER *pgm, AVRPART *p, AVRMEM *m,
 			logprintf(LOG_ERR, "stk500_paged_write(): (a) protocol error, expect=0x%02x, resp=0x%02x", Resp_STK_INSYNC, buf[0]);
 			return -4;
 		}
-		
+
 		if(stk500_recv(pgm, buf, 1) < 0) {
 			return -1;
 		}

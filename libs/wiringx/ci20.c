@@ -77,7 +77,7 @@ static int pinToGpio[NUM_PINS] = {
 		142, // wiringX # 12 - Physical pin  21 - SSI0_DR
 		143, // wiringX # 13 - Physical pin  23 - SSI0_CLK
 		163, // wiringX # 14 - Physical pin  8 - UART0_TXD
-		160, // wiringX # 15 - Physical pin  10 - UART0_RXD		
+		160, // wiringX # 15 - Physical pin  10 - UART0_RXD
 };
 
 static int sysFds[64] = {
@@ -190,7 +190,7 @@ static int ci20DigitalRead(int pin) {
 
 	r = gpioReadl((PIN + (p)*0x100));
 
-	if(((r) & (1 << (o))) == 0) {	
+	if(((r) & (1 << (o))) == 0) {
 		return LOW;
 	} else {
 		return HIGH;
@@ -206,13 +206,13 @@ static int ci20DigitalWrite(int pin, int value) {
 	n = pinToGpio[pin];
 	p = (n) / 32;
 	o = (n) % 32;
-	
+
 	if(value==0) {
-		gpioWritel((PAT0C + (p)*0x100), (1 << (o)));	
+		gpioWritel((PAT0C + (p)*0x100), (1 << (o)));
 	} else {
 		gpioWritel((PAT0S + (p)*0x100), (1 << (o)));
 	}
-		
+
 	return 0;
 }
 
@@ -238,7 +238,7 @@ static int ci20PinMode(int pin, int mode) {
 		gpioWritel((PAT0C + (p)*0x100), (1 << (o)));
 	}
 	pinModes[pin] = mode;
-	
+
 	return 0;
 }
 
@@ -251,7 +251,7 @@ static int ci20ISR(int pin, int mode) {
 	if(ci20ValidGPIO(pin) != 0) {
 		wiringXLog(LOG_ERR, "ci20->isr: Invalid pin number %d", pin);
 		return -1;
-	}	
+	}
 
 	pinModes[pin] = SYS;
 
@@ -324,7 +324,7 @@ static int ci20ISR(int pin, int mode) {
 
 	if(match == 0) {
 		wiringXLog(LOG_ERR, "ci20->isr: Failed to set interrupt edge to %s", sMode);
-		return -1;	
+		return -1;
 	}
 
 	sprintf(path, "/sys/class/gpio/gpio%d/value", pinToGpio[pin]);
@@ -375,7 +375,7 @@ static int ci20WaitForInterrupt(int pin, int ms) {
 	if(x == -1 && errno == EINTR) {
 		x = 0;
 	}
-	
+
 	(void)read(sysFds[pin], &c, 1);
 	lseek(sysFds[pin], 0, SEEK_SET);
 

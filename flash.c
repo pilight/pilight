@@ -59,7 +59,7 @@ int main(int argc, char **argv) {
 	char *args = NULL;
 	char *fwfile = NULL;
 	char comport[255];
-	
+
 	memset(&comport, '\0', 255);
 
 	strcpy(configtmp, CONFIG_FILE);
@@ -104,7 +104,7 @@ int main(int argc, char **argv) {
 			break;
 			case 'p':
 				strcpy(comport, args);
-			break;			
+			break;
 			case 'f':
 				if(access(args, F_OK) != -1) {
 					fwfile = REALLOC(fwfile, strlen(args)+1);

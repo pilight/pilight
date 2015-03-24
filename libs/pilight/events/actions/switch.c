@@ -288,7 +288,7 @@ static void *actionSwitchThread(void *param) {
 	if(new_state != NULL) {
 		FREE(new_state);
 	}
-	
+
 	event_action_stopped(thread);
 
 	return (void *)NULL;

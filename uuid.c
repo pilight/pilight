@@ -125,7 +125,7 @@ int main(int argc, char **argv) {
 				break;
 			}
 		}
-	}	
+	}
 	for(x=0;x<nrdevs;x++) {
 		FREE(devs[x]);
 	}

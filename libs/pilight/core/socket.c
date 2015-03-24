@@ -183,17 +183,17 @@ int socket_timeout_connect(int sockfd, struct sockaddr *serv_addr, int sec) {
 #else
 	long arg = fcntl(sockfd, F_GETFL, NULL);
 	fcntl(sockfd, F_SETFL, arg | O_NONBLOCK);
-#endif		
-	
+#endif
+
 	if(connect(sockfd, serv_addr, sizeof(struct sockaddr)) < 0) {
 		if(errno == EINPROGRESS) {
 			tv.tv_sec = sec;
 			tv.tv_usec = 0;
-			FD_ZERO(&fdset); 
-			FD_SET(sockfd, &fdset); 
+			FD_ZERO(&fdset);
+			FD_SET(sockfd, &fdset);
 			if(select(sockfd+1, NULL, &fdset, NULL, &tv) > 0) {
-				 lon = sizeof(int); 
-				 getsockopt(sockfd, SOL_SOCKET, SO_ERROR, (void*)(&valopt), &lon); 
+				 lon = sizeof(int);
+				 getsockopt(sockfd, SOL_SOCKET, SO_ERROR, (void*)(&valopt), &lon);
 				 if(valopt > 0) {
 					return -3;
 				 }
@@ -248,7 +248,7 @@ int socket_connect(char *address, unsigned short port) {
 		logprintf(LOG_ERR, "could not initialize new socket");
 		exit(EXIT_FAILURE);
 	}
-#endif	
+#endif
 
 	/* Try to open a new socket */
 	if((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {

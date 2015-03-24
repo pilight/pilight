@@ -153,7 +153,7 @@ static unsigned short int nano433HwInit(void) {
 	return EXIT_SUCCESS;
 }
 
-static unsigned short nano433HwDeinit(void) {	
+static unsigned short nano433HwDeinit(void) {
 	loop = 0;
 	while(running > 0) {
 		usleep(10);
@@ -256,12 +256,12 @@ static int nano433Receive(struct rawcode_t *r) {
 			CloseHandle(serial_433_fd);
 			r->length = -1;
 			return -1;
-		}		
+		}
 		ReadFile(serial_433_fd, c, 1, &n, NULL);
 #else
 		n = read(serial_433_fd, c, 1);
 #endif
-		if(n > 0) {	
+		if(n > 0) {
 			if(c[0] == '\n') {
 				break;
 			} else {

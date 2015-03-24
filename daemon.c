@@ -14,7 +14,7 @@
 
 	You should have received a copy of the GNU General Public License
 	along with pilight. If not, see	<http://www.gnu.org/licenses/>
-*/ 
+*/
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -405,7 +405,7 @@ void *broadcast(void *param) {
 						json_remove_from_parent(tmp);
 						json_delete(tmp);
 					}
-		
+
 					char *out = json_stringify(bcqueue->jmessage, NULL);
 					if(strcmp(bcqueue->protoname, "pilight_firmware") == 0) {
 						struct JsonNode *code = NULL;
@@ -435,7 +435,7 @@ void *broadcast(void *param) {
 						}
 					}
 					broadcasted = 0;
-					
+
 					struct JsonNode *childs = json_first_child(bcqueue->jmessage);
 					int nrchilds = 0;
 					while(childs) {
@@ -1981,7 +1981,7 @@ void openconsole(void) {
 	if(hwnd != NULL) {
 		GetConsoleMode(hwnd, &lpMode);
 		SetConsoleMode(hwnd, lpMode & ~ENABLE_PROCESSED_INPUT);
-		SetConsoleCtrlHandler((PHANDLER_ROUTINE)CtrlHandler, TRUE);		
+		SetConsoleCtrlHandler((PHANDLER_ROUTINE)CtrlHandler, TRUE);
 		HMENU hMenu = GetSystemMenu(hwnd, FALSE);
 		if(hMenu != NULL) {
 			RemoveMenu(hMenu, SC_CLOSE, MF_GRAYED);
@@ -2020,7 +2020,7 @@ int start_pilight(int argc, char **argv) {
 	strcpy(progname, "pilight-daemon");
 
 	configtmp = MALLOC(strlen(CONFIG_FILE)+1);
-	strcpy(configtmp, CONFIG_FILE);	
+	strcpy(configtmp, CONFIG_FILE);
 
 #ifndef _WIN32
 	options_add(&options, 'H', "help", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
@@ -2046,7 +2046,7 @@ int start_pilight(int argc, char **argv) {
 			break;
 		}
 		switch(c) {
-#ifndef _WIN32			
+#ifndef _WIN32
 			case 'H':
 				show_help = 1;
 			break;
@@ -2110,10 +2110,10 @@ int start_pilight(int argc, char **argv) {
 	if(show_default == 1) {
 #ifndef _WIN32
 		printf("Usage: %s [options]\n", progname);
-#endif		
+#endif
 		goto clear;
 	}
-	
+
 #ifdef _WIN32
 	if(nodaemon == 1) {
 		openconsole();
@@ -2150,7 +2150,7 @@ int start_pilight(int argc, char **argv) {
 				break;
 			}
 		}
-	}	
+	}
 	for(x=0;x<nrdevs;x++) {
 		FREE(devs[x]);
 	}
@@ -2169,7 +2169,7 @@ int start_pilight(int argc, char **argv) {
 	if(nodaemon == 1) {
 		log_level_set(verbosity);
 		log_shell_enable();
-	}	
+	}
 
 #ifdef _WIN32
 	if((pid = check_instances(L"pilight-daemon")) != -1) {
@@ -2199,8 +2199,8 @@ int start_pilight(int argc, char **argv) {
 	pilight.broadcast = &broadcast_queue;
 	pilight.send = &send_queue;
 	pilight.receive = &receive_queue;
-	pilight.control = &control_device;	
-	
+	pilight.control = &control_device;
+
 	if(config_read() != EXIT_SUCCESS) {
 		goto clear;
 	}
@@ -2590,7 +2590,7 @@ static NOTIFYICONDATA TrayIcon;
 static char server_name[40];
 
 static LRESULT CALLBACK WindowProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
-  char buf[200], *service_argv[] = {__argv[0], NULL}; 
+  char buf[200], *service_argv[] = {__argv[0], NULL};
   POINT pt;
   HMENU hMenu;
 
@@ -2695,9 +2695,9 @@ static LRESULT CALLBACK WindowProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lP
 
   return DefWindowProc(hWnd, msg, wParam, lParam);
 }
-	
+
 int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR cmdline, int show) {
-	HWND hWnd;	
+	HWND hWnd;
   WNDCLASS cls;
   MSG msg;
 

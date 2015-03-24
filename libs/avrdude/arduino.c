@@ -45,7 +45,7 @@ static int arduino_open(PROGRAMMER * pgm, char * port) {
 		return -1;
 	}
 
-	/* Clear DTR and RTS to unload the RESET capacitor 
+	/* Clear DTR and RTS to unload the RESET capacitor
 	* (for example in Arduino) */
 	serial_set_dtr_rts(&pgm->fd, 0);
 	usleep(250*1000);
@@ -75,7 +75,7 @@ const char arduino_desc[] = "Arduino programmer";
 
 void arduino_initpgm(PROGRAMMER * pgm) {
 	/* This is mostly a STK500; just the signature is read
-		differently than on real STK500v1 
+		differently than on real STK500v1
 		and the DTR signal is set when opening the serial port
 		for the Auto-Reset feature */
 	stk500_initpgm(pgm);

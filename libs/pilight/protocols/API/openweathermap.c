@@ -212,6 +212,7 @@ static void *openweathermapParse(void *param) {
 										json_append_member(code, "temperature", json_mknumber(temp, 2));
 										json_append_member(code, "humidity", json_mknumber(humi, 2));
 										json_append_member(code, "update", json_mknumber(0, 0));
+
 										time_t a = (time_t)sunrise;
 										memset(&tm, '\0', sizeof(struct tm));
 #ifdef _WIN32
@@ -220,6 +221,8 @@ static void *openweathermapParse(void *param) {
 										localtime_r(&a, &tm);
 #endif
 										json_append_member(code, "sunrise", json_mknumber((double)((tm.tm_hour*100)+tm.tm_min)/100, 2));
+
+										a = (time_t)sunset;
 										memset(&tm, '\0', sizeof(struct tm));
 #ifdef _WIN32
 										localtime(&a);
@@ -434,7 +437,7 @@ void openweathermapInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "openweathermap";
-	module->version = "1.10";
+	module->version = "1.11";
 	module->reqversion = "6.0";
 	module->reqcommit = "58";
 }

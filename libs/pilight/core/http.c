@@ -160,7 +160,7 @@ char *http_process_request(char *url, int method, char **type, int *code, int *s
 		case -2:
 			logprintf(LOG_ERR, "http socket connection timeout (%s)", url);
 			*code = -1;
-			goto exit;		
+			goto exit;
 		case -3:
 			logprintf(LOG_ERR, "error in http socket connection", url);
 			*code = -1;

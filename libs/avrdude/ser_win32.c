@@ -91,9 +91,9 @@ static int ser_open(char * port, union pinfo pinfo, union filedescriptor *fdp) {
 	hComPort = CreateFile(port, GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 
 	if(hComPort == INVALID_HANDLE_VALUE) {
-			FormatMessage( 
-				FORMAT_MESSAGE_ALLOCATE_BUFFER | 
-				FORMAT_MESSAGE_FROM_SYSTEM | 
+			FormatMessage(
+				FORMAT_MESSAGE_ALLOCATE_BUFFER |
+				FORMAT_MESSAGE_FROM_SYSTEM |
 				FORMAT_MESSAGE_IGNORE_INSERTS,
 				NULL,
 				GetLastError(),
@@ -174,7 +174,7 @@ static int ser_send(union filedescriptor *fd, unsigned char *buf, size_t buflen)
 	HANDLE hComPort = (HANDLE)fd->pfd;
 
 	if(hComPort == INVALID_HANDLE_VALUE) {
-		logprintf(LOG_ERR, "ser_send(): port not open"); 
+		logprintf(LOG_ERR, "ser_send(): port not open");
 		return -1;
 	}
 
@@ -190,7 +190,7 @@ static int ser_send(union filedescriptor *fd, unsigned char *buf, size_t buflen)
 	}
 
 	if(written != buflen) {
-		logprintf(LOG_ERR, "ser_send(): size/send mismatch"); 
+		logprintf(LOG_ERR, "ser_send(): size/send mismatch");
 		return -1;
 	}
 
@@ -202,19 +202,19 @@ static int ser_recv(union filedescriptor *fd, unsigned char *buf, size_t buflen)
 	DWORD read;
 
 	HANDLE hComPort = (HANDLE)fd->pfd;
-	
+
 	if(hComPort == INVALID_HANDLE_VALUE) {
-		logprintf(LOG_ERR, "ser_read(): port not open"); 
+		logprintf(LOG_ERR, "ser_read(): port not open");
 		return -1;
 	}
-	
+
 	serial_w32SetTimeOut(hComPort, serial_recv_timeout);
-	
+
 	if(!ReadFile(hComPort, buf, buflen, &read, NULL)) {
 		LPVOID lpMsgBuf;
-		FormatMessage( 
-			FORMAT_MESSAGE_ALLOCATE_BUFFER | 
-			FORMAT_MESSAGE_FROM_SYSTEM | 
+		FormatMessage(
+			FORMAT_MESSAGE_ALLOCATE_BUFFER |
+			FORMAT_MESSAGE_FROM_SYSTEM |
 			FORMAT_MESSAGE_IGNORE_INSERTS,
 			NULL,
 			GetLastError(),
@@ -244,19 +244,19 @@ static int ser_drain(union filedescriptor *fd, int display) {
 	HANDLE hComPort=(HANDLE)fd->pfd;
 
 	if(hComPort == INVALID_HANDLE_VALUE) {
-		logprintf(LOG_ERR, "%s: ser_drain(): port not open"); 
+		logprintf(LOG_ERR, "%s: ser_drain(): port not open");
 		return -1;
 	}
 
 	serial_w32SetTimeOut(hComPort,250);
-	
+
 	while(1) {
 		readres=ReadFile(hComPort, buf, 1, &read, NULL);
 		if(!readres) {
 			LPVOID lpMsgBuf;
-			FormatMessage( 
-				FORMAT_MESSAGE_ALLOCATE_BUFFER | 
-				FORMAT_MESSAGE_FROM_SYSTEM | 
+			FormatMessage(
+				FORMAT_MESSAGE_ALLOCATE_BUFFER |
+				FORMAT_MESSAGE_FROM_SYSTEM |
 				FORMAT_MESSAGE_IGNORE_INSERTS,
 				NULL,
 				GetLastError(),

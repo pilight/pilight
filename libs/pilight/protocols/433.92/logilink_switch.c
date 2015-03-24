@@ -87,7 +87,7 @@ static void logilinkSwitchCreateSystemCode(int systemcode) {
 		if(binary[i] == 1) {
 			logilinkSwitchCreateHigh(x, x+1);
 		}
-		
+
 		x -= 2;
 	}
 }
@@ -99,7 +99,7 @@ static void logilinkSwitchCreateUnitCode(int unitcode) {
 		break;
 		case 3:
 			logilinkSwitchCreateLow(42, 43); // Button 2
-			logilinkSwitchCreateHigh(44, 47);	
+			logilinkSwitchCreateHigh(44, 47);
 		break;
 		case 5:
 			logilinkSwitchCreateHigh(42, 43); // Button 3
@@ -187,7 +187,7 @@ void logilinkSwitchInit(void) {
 	logilink_switch->pulse = 3;
 	logilink_switch->rawlen = 50;
 	logilink_switch->binlen = 12;
-	
+
 	options_add(&logilink_switch->options, 's', "systemcode", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, NULL);
 	options_add(&logilink_switch->options, 'u', "unitcode", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^[0-7]$");
 	options_add(&logilink_switch->options, 't', "on", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);

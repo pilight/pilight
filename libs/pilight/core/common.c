@@ -130,9 +130,9 @@ int inetdevs(char ***array) {
 				}
 				strcpy((*array)[nrdevs], pAdapter->AdapterName);
 				nrdevs++;
-			}			
+			}
 		}
-	}	
+	}
 	if(pAdapterInfo != NULL) {
 		FREE(pAdapterInfo);
 	}
@@ -252,7 +252,7 @@ int dev2ip(char *dev, char **ip, sa_family_t type) {
 		close(fd);
 		logprintf(LOG_ERR, "ioctl SIOCGIFADDR failed");
 		return -1;
-		
+
 	}
 
 	close(fd);
@@ -338,7 +338,7 @@ int check_instances(const wchar_t *prog) {
 	}
 
 	if(GetLastError() == ERROR_ALREADY_EXISTS) {
-		CloseHandle(m_hStartEvent); 
+		CloseHandle(m_hStartEvent);
 		m_hStartEvent = NULL;
 		return 0;
 	}
@@ -413,7 +413,7 @@ int isrunning(const char *program) {
 	HMODULE hMod;
 
 	iLenP = strlen(program);
-	if(iLenP < 1 || iLenP > MAX_PATH) 
+	if(iLenP < 1 || iLenP > MAX_PATH)
 		return -1;
 
 	if(EnumProcesses(aiPID, iCb, &iCbneeded) <= 0) {
@@ -727,12 +727,12 @@ char *base64decode(char *src, size_t len, size_t *decsize) {
   char tmp[4];
 
   dec = MALLOC(0);
-  if(dec == NULL) { 
-		return NULL; 
+  if(dec == NULL) {
+		return NULL;
 	}
 
   while(len--) {
-    if('=' == src[j]) { 
+    if('=' == src[j]) {
 			break;
 		}
     if(!(isalnum(src[j]) || src[j] == '+' || src[j] == '/')) {
@@ -790,11 +790,11 @@ char *base64decode(char *src, size_t len, size_t *decsize) {
 
   dec = REALLOC(dec, size + 1);
   dec[size] = '\0';
-  
+
   if(decsize != NULL) {
 		*decsize = size;
 	}
-  
+
   return dec;
 }
 
@@ -953,7 +953,7 @@ char *genuuid(char *ifname) {
 			}
 			if(strstr(a, "Serial") != NULL) {
 				sscanf(a, "Serial          : %16s%*[ \n\r]", (char *)&serial);
-				if(strlen(serial) > 0 && 
+				if(strlen(serial) > 0 &&
 					 ((isNumeric(serial) == EXIT_SUCCESS && atoi(serial) > 0) ||
 					  (isNumeric(serial) == EXIT_FAILURE))) {
 					memmove(&serial[5], &serial[4], 16);
@@ -972,7 +972,7 @@ char *genuuid(char *ifname) {
 			}
 		}
 		fclose(fp);
-	} 
+	}
 
 #endif
 
@@ -982,7 +982,7 @@ char *genuuid(char *ifname) {
 	if(ifname == NULL) {
 		return NULL;
 	}
-	
+
 	IP_ADAPTER_INFO *pAdapter = NULL;
 	ULONG buflen = sizeof(IP_ADAPTER_INFO);
 	IP_ADAPTER_INFO *pAdapterInfo = MALLOC(buflen);

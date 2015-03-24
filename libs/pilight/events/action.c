@@ -219,7 +219,7 @@ void event_action_thread_init(struct devices_t *dev) {
 		logprintf(LOG_ERR, "out of memory");
 		exit(EXIT_FAILURE);
 	}
-	
+
 	pthread_mutexattr_init(&dev->action_thread->attr);
 	pthread_mutexattr_settype(&dev->action_thread->attr, PTHREAD_MUTEX_RECURSIVE);
 	pthread_mutex_init(&dev->action_thread->mutex, &dev->action_thread->attr);
@@ -294,7 +294,7 @@ int event_action_thread_wait(struct devices_t *dev, int interval) {
 void event_action_thread_stop(struct devices_t *dev) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
-	struct event_action_thread_t *thread = NULL;	
+	struct event_action_thread_t *thread = NULL;
 
 	if(dev != NULL) {
 		thread = dev->action_thread;
@@ -349,14 +349,14 @@ void event_action_thread_free(struct devices_t *dev) {
 }
 
 void event_action_started(struct event_action_thread_t *thread) {
-	logprintf(LOG_INFO, "started \"%s\" action for device \"%s\"", thread->action, thread->device->id);	
+	logprintf(LOG_INFO, "started \"%s\" action for device \"%s\"", thread->action, thread->device->id);
 	pthread_mutex_lock(&thread->mutex);
 	thread->running = 1;
 	pthread_mutex_unlock(&thread->mutex);
 }
 
 void event_action_stopped(struct event_action_thread_t *thread) {
-	logprintf(LOG_INFO, "stopped \"%s\" action for device \"%s\"", thread->action, thread->device->id);		
+	logprintf(LOG_INFO, "stopped \"%s\" action for device \"%s\"", thread->action, thread->device->id);
 	pthread_mutex_lock(&thread->mutex);
 	thread->running = 0;
 	pthread_mutex_unlock(&thread->mutex);

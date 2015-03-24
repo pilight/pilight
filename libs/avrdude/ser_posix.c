@@ -55,11 +55,11 @@ static int ser_setspeed(union filedescriptor *fd, long baud) {
   int rc = 0;
   struct termios termios;
   speed_t speed = baud;
-  
+
   if(!isatty(fd->ifd)) {
     return -ENOTTY;
 	}
-  
+
   /*
    * initialize terminal modes
    */

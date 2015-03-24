@@ -122,7 +122,7 @@ typedef struct avrmem {
   int pollindex;              /* stk500 v2 xml file parameter */
 
   unsigned char * buf;        /* pointer to memory buffer */
-  unsigned char tags[1024*1024];       /* allocation tags */	
+  unsigned char tags[1024*1024];       /* allocation tags */
   OPCODE * op[AVR_OP_MAX];    /* opcodes */
 } AVRMEM;
 

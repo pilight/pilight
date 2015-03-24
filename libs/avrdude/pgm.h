@@ -60,7 +60,7 @@ typedef struct programmer_t {
   int baudrate;
   double bitclock;    /* JTAG ICE clock period in microseconds */
   int ispdelay;    /* ISP clock delay */
-  union filedescriptor fd;	
+  union filedescriptor fd;
   int  page_size;  /* page size if the programmer supports paged write/load */
   int  (*rdy_led)        (struct programmer_t * pgm, int value);
   int  (*err_led)        (struct programmer_t * pgm, int value);
@@ -80,7 +80,7 @@ typedef struct programmer_t {
                           unsigned char res[], int count);
   int  (*open)           (struct programmer_t * pgm, char * port);
   void (*close)          (struct programmer_t * pgm);
-  int  (*paged_write)    (struct programmer_t * pgm, AVRPART * p, AVRMEM * m, 
+  int  (*paged_write)    (struct programmer_t * pgm, AVRPART * p, AVRMEM * m,
                           unsigned int page_size, unsigned int baseaddr,
                           unsigned int n_bytes);
   int  (*paged_load)     (struct programmer_t * pgm, AVRPART * p, AVRMEM * m,

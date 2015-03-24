@@ -214,7 +214,7 @@ static void datetimeGC(void) {
 __attribute__((weak))
 #endif
 void datetimeInit(void) {
-	
+
 	datetime_format = MALLOC(20);
 	strcpy(datetime_format, "HH:mm:ss YYYY-MM-DD");
 

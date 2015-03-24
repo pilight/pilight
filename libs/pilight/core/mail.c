@@ -108,7 +108,7 @@ int sendmail(char *host, char *login, char *pass, unsigned short port, struct ma
 	memset(&ip, '\0', INET_ADDRSTRLEN+1);
 	memset(&serv_addr, '\0', sizeof(serv_addr));
 	memset(&ssl, '\0', sizeof(ssl_context));
-	
+
 #ifdef _WIN32
 	WSADATA wsa;
 
@@ -145,7 +145,7 @@ int sendmail(char *host, char *login, char *pass, unsigned short port, struct ma
 		goto close;
 	}
 
-	inet_pton(AF_INET, ip, &serv_addr.sin_addr);	
+	inet_pton(AF_INET, ip, &serv_addr.sin_addr);
 	switch(socket_timeout_connect(sockfd, (struct sockaddr *)&serv_addr, 3)) {
 		case -1:
 			logprintf(LOG_ERR, "could not connect to mail server @%s:%p", host, port);
@@ -161,7 +161,7 @@ int sendmail(char *host, char *login, char *pass, unsigned short port, struct ma
 			goto close;
 		default:
 		break;
-	}		
+	}
 
 starttls:
 	if(have_ssl == 1) {
@@ -190,12 +190,12 @@ starttls:
 				logprintf(LOG_ERR, "SMTP: ssl_handshake failed");
 				error = -1;
 				goto close;
-			}	
+			}
 		}
 	}
 
 	if(authtype != STARTTLS) {
-		memset(recvBuff, '\0', sizeof(recvBuff));	
+		memset(recvBuff, '\0', sizeof(recvBuff));
 		if(sd_read(recvBuff) <= 0) {
 			logprintf(LOG_ERR, "SMTP: didn't see identification");
 			error = -1;
@@ -216,10 +216,10 @@ starttls:
 	if(sd_write(out) != 0) {
 		logprintf(LOG_ERR, "SMTP: failed to send EHLO");
 		error = -1;
-		goto close;		
+		goto close;
 	}
 
-	memset(recvBuff, '\0', sizeof(recvBuff));	
+	memset(recvBuff, '\0', sizeof(recvBuff));
 	while(sd_read(recvBuff) > 0) {
 		logprintf(LOG_DEBUG, "SMTP: %s", recvBuff);
 		if(sscanf(recvBuff, "%d%c%[^\r\n]", &val, &ch, testme) == 0) {
@@ -236,7 +236,7 @@ starttls:
 				authtype = AUTHPLAIN;
 			}
 		}
-		/* 
+		/*
 		 * The server wants to continue our conversation in encrypted mode
 		 */
 		if(strncmp(testme, "STARTTLS", 8) == 0) {
@@ -250,7 +250,7 @@ starttls:
 		if(ch != '-') {
 			break;
 		}
-		memset(recvBuff, '\0', sizeof(recvBuff));	
+		memset(recvBuff, '\0', sizeof(recvBuff));
 	}
 
 	/*
@@ -264,7 +264,7 @@ starttls:
 		if(sd_write(out) != 0) {
 			logprintf(LOG_ERR, "SMTP: failed to send STARTTLS");
 			error = -1;
-			goto close;		
+			goto close;
 		}
 
 		while(sd_read(recvBuff) > 0) {
@@ -286,7 +286,7 @@ starttls:
 		error = -1;
 		goto close;
 	}
-	
+
 	len = strlen(login)+strlen(pass)+2;
 
 	char *authstr = MALLOC(len), *hash = NULL;
@@ -306,10 +306,10 @@ starttls:
 	logprintf(LOG_DEBUG, "SMTP: AUTH PLAIN xxxxxx\r\n");
 	if(sd_write(out) != 0) {
 		logprintf(LOG_ERR, "SMTP: failed to send AUTH PLAIN");
-		goto close;		
+		goto close;
 	}
 
-	memset(recvBuff, '\0', sizeof(recvBuff));	
+	memset(recvBuff, '\0', sizeof(recvBuff));
 	while(sd_read(recvBuff) > 0) {
 		logprintf(LOG_DEBUG, "SMTP: %s", recvBuff);
 		if(strncmp(recvBuff, "235", 3) == 0) {
@@ -329,7 +329,7 @@ starttls:
 			logprintf(LOG_ERR, "SMTP: authentication failed: wrong user/password");
 			error = -1;
 			goto close;
-		}		
+		}
 		memset(recvBuff, '\0', sizeof(recvBuff));
 	}
 
@@ -343,13 +343,13 @@ starttls:
 		goto close;
 	}
 
-	memset(recvBuff, '\0', sizeof(recvBuff));	
+	memset(recvBuff, '\0', sizeof(recvBuff));
 	while(sd_read(recvBuff) > 0) {
 		logprintf(LOG_DEBUG, "SMTP: %s", recvBuff);
 		if(strncmp(recvBuff, "250", 3) == 0) {
 			break;
 		}
-		memset(recvBuff, '\0', sizeof(recvBuff));	
+		memset(recvBuff, '\0', sizeof(recvBuff));
 	}
 
 	len = strlen("RCPT TO: <>\r\n")+strlen(mail->to)+1;
@@ -362,13 +362,13 @@ starttls:
 		goto close;
 	}
 
-	memset(recvBuff, '\0', sizeof(recvBuff));	
+	memset(recvBuff, '\0', sizeof(recvBuff));
 	while(sd_read(recvBuff) > 0) {
 		logprintf(LOG_DEBUG, "SMTP: %s", recvBuff);
 		if(strncmp(recvBuff, "250", 3) == 0) {
 			break;
 		}
-		memset(recvBuff, '\0', sizeof(recvBuff));	
+		memset(recvBuff, '\0', sizeof(recvBuff));
 	}
 
 	len = strlen("DATA\r\n")+1;
@@ -378,16 +378,16 @@ starttls:
 	if(sd_write(out) != 0) {
 		logprintf(LOG_ERR, "SMTP: failed to send DATA");
 		error = -1;
-		goto close;		
+		goto close;
 	}
 
-	memset(recvBuff, '\0', sizeof(recvBuff));	
+	memset(recvBuff, '\0', sizeof(recvBuff));
 	while(sd_read(recvBuff) > 0) {
 		logprintf(LOG_DEBUG, "SMTP: %s", recvBuff);
 		if(strncmp(recvBuff, "354", 3) == 0) {
 			break;
 		}
-		memset(recvBuff, '\0', sizeof(recvBuff));	
+		memset(recvBuff, '\0', sizeof(recvBuff));
 	}
 
 	len = 255+strlen(mail->to)+strlen(mail->from)+strlen(mail->subject)+strlen(mail->message);
@@ -406,17 +406,17 @@ starttls:
 	if(sd_write(out) != 0) {
 		logprintf(LOG_ERR, "SMTP: failed to send MESSAGE");
 		error = -1;
-		goto close;		
+		goto close;
 	}
 
-	memset(recvBuff, '\0', sizeof(recvBuff));	
+	memset(recvBuff, '\0', sizeof(recvBuff));
 	while(sd_read(recvBuff) > 0) {
 		logprintf(LOG_DEBUG, "SMTP: %s", recvBuff);
 		if(strncmp(recvBuff, "250", 3) == 0) {
 			break;
 		}
 		sleep(1);
-		memset(recvBuff, '\0', sizeof(recvBuff));	
+		memset(recvBuff, '\0', sizeof(recvBuff));
 	}
 
 	len = strlen("RSET\r\n");
@@ -426,7 +426,7 @@ starttls:
 	if(sd_write(out) != 0) {
 		logprintf(LOG_ERR, "SMTP: failed to send RSET");
 		error = -1;
-		goto close;		
+		goto close;
 	}
 
 	memset(recvBuff, '\0', sizeof(recvBuff));
@@ -435,7 +435,7 @@ starttls:
 		if(strncmp(recvBuff, "250", 3) == 0) {
 			break;
 		}
-		memset(recvBuff, '\0', sizeof(recvBuff));	
+		memset(recvBuff, '\0', sizeof(recvBuff));
 	}
 
 	len = strlen("QUIT\r\n");
@@ -445,9 +445,9 @@ starttls:
 	if(sd_write(out) != 0) {
 		logprintf(LOG_ERR, "failed to send QUIT");
 		error = -1;
-		goto close;		
+		goto close;
 	}
-	
+
 close:
 	if(have_ssl == 1) {
 		if(sslfree == 1) {

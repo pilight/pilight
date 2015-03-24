@@ -132,7 +132,7 @@ static void *actionPushbulletThread(void *param) {
 	int ret = 0, size = 0;
 
 	action_pushbullet->nrthreads++;
-	
+
 	jtitle = json_find_member(arguments, "TITLE");
 	jbody = json_find_member(arguments, "BODY");
 	jtoken = json_find_member(arguments, "TOKEN");
@@ -158,12 +158,12 @@ static void *actionPushbulletThread(void *param) {
 				json_append_member(code, "type", json_mkstring(jval4->string_));
 				json_append_member(code, "title", json_mkstring(jval1->string_));
 				json_append_member(code, "body", json_mkstring(jval2->string_));
-				
+
 				char *content = json_stringify(code, "\t");
 				json_delete(code);
 
 				data = http_post_content(url, &tp, &ret, &size, "application/json", content);
-				json_free(content);				
+				json_free(content);
 				if(ret == 200) {
 					logprintf(LOG_DEBUG, "pushbullet action succeeded with message: %s", data);
 				} else {
@@ -185,7 +185,7 @@ static void *actionPushbulletThread(void *param) {
 static int actionPushbulletRun(struct JsonNode *arguments) {
 	pthread_t pth;
 	threads_create(&pth, NULL, actionPushbulletThread, (void *)arguments);
-	pthread_detach(pth);	
+	pthread_detach(pth);
 	return 0;
 }
 

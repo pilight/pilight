@@ -114,7 +114,7 @@ void *ntpthread(void *param) {
 			break;
 		}
 	}
-	
+
 	if(nrservers == 0) {
 		FREE(ntpservers);
 		logprintf(LOG_NOTICE, "no ntp-servers defined in the config settings");
@@ -166,7 +166,7 @@ void *ntpthread(void *param) {
 						break;
 						default:
 						break;
-					}				
+					}
 
 					msg.li_vn_mode=227;
 
@@ -204,7 +204,7 @@ void *ntpthread(void *param) {
 		FREE(ntpservers);
 	}
 	running = 0;
-	
+
 	return (void *)NULL;
 }
 

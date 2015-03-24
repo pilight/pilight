@@ -184,7 +184,7 @@ static void *sunRiseSetParse(void *param) {
 				minute = tm.tm_min;
 				second = tm.tm_sec;
 			}
-			
+
 			hournow = (hour*100)+minute;
 
 			if(((hournow == 0 || hournow == risetime || hournow == settime) && second == 0)
