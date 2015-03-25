@@ -5,7 +5,6 @@
 	"settings": {
 		"log-level": 4,
 		"log-file": "c:/pilight/pilight.log",
-		"send-repeats": 10,
 		"receive-repeats": 1,
 		"webserver-enable": 1,
 		"webserver-root": "c:/pilight/web/",

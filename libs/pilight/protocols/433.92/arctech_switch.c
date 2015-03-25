@@ -30,9 +30,14 @@
 #include "../../core/gc.h"
 #include "arctech_switch.h"
 
-static void arctechSwCreateMessage(int id, int unit, int state, int all) {
+#define LEARN_REPEATS		40
+#define NORMAL_REPEATS	10
+
+static void arctechSwCreateMessage(int id, int unit, int state, int all, int learn) {
 	arctech_switch->message = json_mkobject();
+
 	json_append_member(arctech_switch->message, "id", json_mknumber(id, 0));
+
 	if(all == 1) {
 		json_append_member(arctech_switch->message, "all", json_mknumber(all, 0));
 	} else {
@@ -44,6 +49,12 @@ static void arctechSwCreateMessage(int id, int unit, int state, int all) {
 	} else {
 		json_append_member(arctech_switch->message, "state", json_mkstring("off"));
 	}
+
+	if(learn == 1) {
+		arctech_switch->txrpt = LEARN_REPEATS;
+	} else {
+		arctech_switch->txrpt = NORMAL_REPEATS;
+	}	
 }
 
 static void arctechSwParseBinary(void) {
@@ -52,7 +63,7 @@ static void arctechSwParseBinary(void) {
 	int all = arctech_switch->binary[26];
 	int id = binToDecRev(arctech_switch->binary, 0, 25);
 
-	arctechSwCreateMessage(id, unit, state, all);
+	arctechSwCreateMessage(id, unit, state, all, 0);
 }
 
 static void arctechSwCreateLow(int s, int e) {
@@ -135,6 +146,7 @@ static int arctechSwCreateCode(JsonNode *code) {
 	int unit = -1;
 	int state = -1;
 	int all = 0;
+	int learn = -1;
 	double itmp = -1;
 
 	if(json_find_number(code, "id", &itmp) == 0)
@@ -147,8 +159,13 @@ static int arctechSwCreateCode(JsonNode *code) {
 		state=0;
 	else if(json_find_number(code, "on", &itmp) == 0)
 		state=1;
+	if(json_find_number(code, "learn", &itmp) == 0)
+		learn = 1;
 
-	if(id == -1 || (unit == -1 && all == 0) || state == -1) {
+	if(all > 0 && learn > -1) {
+		logprintf(LOG_ERR, "arctech_switch: all and learn cannot be combined");
+		return EXIT_FAILURE;		
+	} else if(id == -1 || (unit == -1 && all == 0) || state == -1) {
 		logprintf(LOG_ERR, "arctech_switch: insufficient number of arguments");
 		return EXIT_FAILURE;
 	} else if(id > 67108863 || id < 1) {
@@ -161,7 +178,7 @@ static int arctechSwCreateCode(JsonNode *code) {
 		if(unit == -1 && all == 1) {
 			unit = 0;
 		}
-		arctechSwCreateMessage(id, unit, state, all);
+		arctechSwCreateMessage(id, unit, state, all, learn);
 		arctechSwCreateStart();
 		arctechSwClearCode();
 		arctechSwCreateId(id);
@@ -179,6 +196,7 @@ static void arctechSwPrintHelp(void) {
 	printf("\t -u --unit=unit\t\t\tcontrol a device with this unit code\n");
 	printf("\t -i --id=id\t\t\tcontrol a device with this id\n");
 	printf("\t -a --all\t\t\tsend command to all devices with this id\n");
+	printf("\t -l --learn\t\t\tsend multiple streams so switch can learn\n");
 }
 
 #if !defined(MODULE) && !defined(_WIN32)
@@ -199,6 +217,7 @@ void arctechSwInit(void) {
 	arctech_switch->devtype = SWITCH;
 	arctech_switch->hwtype = RF433;
 	arctech_switch->pulse = 5;
+	arctech_switch->txrpt = NORMAL_REPEATS;
 	arctech_switch->rawlen = 132;
 	arctech_switch->lsb = 3;
 
@@ -207,6 +226,7 @@ void arctechSwInit(void) {
 	options_add(&arctech_switch->options, 'u', "unit", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^([0-9]{1}|[1][0-5])$");
 	options_add(&arctech_switch->options, 'i', "id", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^([0-9]{1,7}|[1-5][0-9]{7}|6([0-6][0-9]{6}|7(0[0-9]{5}|10([0-7][0-9]{3}|8([0-7][0-9]{2}|8([0-5][0-9]|6[0-3]))))))$");
 	options_add(&arctech_switch->options, 'a', "all", OPTION_OPT_VALUE, DEVICES_OPTIONAL, JSON_NUMBER, NULL, NULL);
+	options_add(&arctech_switch->options, 'l', "learn", OPTION_NO_VALUE, DEVICES_OPTIONAL, JSON_NUMBER, NULL, NULL);
 
 	options_add(&arctech_switch->options, 0, "readonly", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 
@@ -218,7 +238,7 @@ void arctechSwInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "arctech_switch";
-	module->version = "1.1";
+	module->version = "2.0";
 	module->reqversion = "5.0";
 	module->reqcommit = "84";
 }

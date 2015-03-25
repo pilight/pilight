@@ -30,7 +30,10 @@
 #include "../../core/gc.h"
 #include "arctech_screen.h"
 
-static void arctechSrCreateMessage(int id, int unit, int state, int all) {
+#define LEARN_REPEATS		40
+#define NORMAL_REPEATS	10
+
+static void arctechSrCreateMessage(int id, int unit, int state, int all, int learn) {
 	arctech_screen->message = json_mkobject();
 	json_append_member(arctech_screen->message, "id", json_mknumber(id, 0));
 	if(all == 1) {
@@ -44,6 +47,12 @@ static void arctechSrCreateMessage(int id, int unit, int state, int all) {
 	} else {
 		json_append_member(arctech_screen->message, "state", json_mkstring("down"));
 	}
+
+	if(learn == 1) {
+		arctech_screen->txrpt = LEARN_REPEATS;
+	} else {
+		arctech_screen->txrpt = NORMAL_REPEATS;
+	}
 }
 
 static void arctechSrParseBinary(void) {
@@ -52,7 +61,7 @@ static void arctechSrParseBinary(void) {
 	int all = arctech_screen->binary[26];
 	int id = binToDecRev(arctech_screen->binary, 0, 25);
 
-	arctechSrCreateMessage(id, unit, state, all);
+	arctechSrCreateMessage(id, unit, state, all, 0);
 }
 
 static void arctechSrCreateLow(int s, int e) {
@@ -135,6 +144,7 @@ static int arctechSrCreateCode(JsonNode *code) {
 	int unit = -1;
 	int state = -1;
 	int all = 0;
+	int learn = -1;
 	double itmp = -1;
 
 	if(json_find_number(code, "id", &itmp) == 0)
@@ -147,8 +157,13 @@ static int arctechSrCreateCode(JsonNode *code) {
 		state=0;
 	else if(json_find_number(code, "up", &itmp) == 0)
 		state=1;
+	if(json_find_number(code, "learn", &itmp) == 0)
+		learn = 1;
 
-	if(id == -1 || (unit == -1 && all == 0) || state == -1) {
+	if(all > 0 && learn > -1) {
+		logprintf(LOG_ERR, "arctech_screen: all and learn cannot be combined");
+		return EXIT_FAILURE;		
+	} else if(id == -1 || (unit == -1 && all == 0) || state == -1) {
 		logprintf(LOG_ERR, "arctech_screen: insufficient number of arguments");
 		return EXIT_FAILURE;
 	} else if(id > 67108863 || id < 1) {
@@ -161,7 +176,7 @@ static int arctechSrCreateCode(JsonNode *code) {
 		if(unit == -1 && all == 1) {
 			unit = 0;
 		}
-		arctechSrCreateMessage(id, unit, state, all);
+		arctechSrCreateMessage(id, unit, state, all, learn);
 		arctechSrCreateStart();
 		arctechSrClearCode();
 		arctechSrCreateId(id);
@@ -179,6 +194,7 @@ static void arctechSrPrintHelp(void) {
 	printf("\t -u --unit=unit\t\t\tcontrol a device with this unit code\n");
 	printf("\t -i --id=id\t\t\tcontrol a device with this id\n");
 	printf("\t -a --all\t\t\tsend command to all devices with this id\n");
+	printf("\t -l --learn\t\t\tsend multiple streams so screen can learn\n");
 }
 
 #if !defined(MODULE) && !defined(_WIN32)
@@ -197,6 +213,7 @@ void arctechSrInit(void) {
 	arctech_screen->devtype = SCREEN;
 	arctech_screen->hwtype = RF433;
 	arctech_screen->pulse = 5;
+	arctech_screen->txrpt = NORMAL_REPEATS;
 	arctech_screen->rawlen = 132;
 	arctech_screen->lsb = 3;
 
@@ -205,6 +222,7 @@ void arctechSrInit(void) {
 	options_add(&arctech_screen->options, 'u', "unit", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^([0-9]{1}|[1][0-5])$");
 	options_add(&arctech_screen->options, 'i', "id", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^([0-9]{1,7}|[1-5][0-9]{7}|6([0-6][0-9]{6}|7(0[0-9]{5}|10([0-7][0-9]{3}|8([0-7][0-9]{2}|8([0-5][0-9]|6[0-3]))))))$");
 	options_add(&arctech_screen->options, 'a', "all", OPTION_OPT_VALUE, DEVICES_OPTIONAL, JSON_NUMBER, NULL, NULL);
+	options_add(&arctech_screen->options, 'l', "learn", OPTION_NO_VALUE, DEVICES_OPTIONAL, JSON_NUMBER, NULL, NULL);
 
 	options_add(&arctech_screen->options, 0, "readonly", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 
@@ -216,7 +234,7 @@ void arctechSrInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "arctech_screen";
-	module->version = "1.2";
+	module->version = "2.0";
 	module->reqversion = "5.0";
 	module->reqcommit = "84";
 }

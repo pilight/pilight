@@ -174,8 +174,6 @@ static int threadprofiler = 0;
 static int running = 1;
 /* Are we currently sending code */
 static int sending = 0;
-/* How many times does the code need to be resend */
-static int send_repeat = 0;
 /* How many times does a code need to received*/
 static int receive_repeat = RECEIVE_REPEATS;
 /* Socket identifier to the server if we are running as client */
@@ -764,7 +762,7 @@ void *send_code(void *param) {
 				}
 				logprintf(LOG_DEBUG, "**** RAW CODE ****");
 
-				if(hw->send(sendqueue->code, protocol->rawlen, send_repeat*protocol->txrpt) == 0) {
+				if(hw->send(sendqueue->code, protocol->rawlen, protocol->txrpt) == 0) {
 					logprintf(LOG_DEBUG, "successfully send %s code", protocol->id);
 				} else {
 					logprintf(LOG_ERR, "failed to send code");
@@ -849,7 +847,7 @@ static int send_queue(JsonNode *json, enum origin_t origin) {
 	} else {
 		json_find_string(jcode, "uuid", &uuid);
 		/* If we matched a protocol and are not already sending, continue */
-		if((uuid == NULL || (uuid != NULL && strcmp(uuid, pilight_uuid) == 0)) && send_repeat > 0) {
+		if(uuid == NULL || (uuid != NULL && strcmp(uuid, pilight_uuid) == 0)) {
 			jprotocol = json_first_child(jprotocols);
 			while(jprotocol && match == 0) {
 				match = 0;
@@ -2285,10 +2283,6 @@ int start_pilight(int argc, char **argv) {
 		} else {
 			log_level_set(LOG_ERR);
 		}
-	}
-
-	if(settings_find_number("send-repeats", &send_repeat) != 0) {
-		send_repeat = SEND_REPEATS;
 	}
 
 	settings_find_number("receive-repeats", &receive_repeat);

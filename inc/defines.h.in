@@ -72,7 +72,6 @@
 #endif	
 #define LOG_MAX_SIZE 						1048576 // 1024*1024
 
-#define SEND_REPEATS						10
 #define RECEIVE_REPEATS					1
 #define UUID_LENGTH							21
 

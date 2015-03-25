@@ -229,9 +229,9 @@ void protocol_register(protocol_t **proto) {
 	(*proto)->maxrawlen = 0;
 	(*proto)->binlen = 0;
 	(*proto)->lsb = 0;
-	(*proto)->txrpt = 1;
-	(*proto)->hwtype = 1;
+	(*proto)->txrpt = 10;
 	(*proto)->rxrpt = 1;
+	(*proto)->hwtype = NONE;
 	(*proto)->multipleId = 1;
 	(*proto)->config = 1;
 	(*proto)->masterOnly = 0;
