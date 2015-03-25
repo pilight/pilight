@@ -126,17 +126,19 @@ int ssdp_seek(struct ssdp_list_t **ssdp_list) {
 	char message[BUFFER_SIZE] = {'\0'};
 	char header[BUFFER_SIZE] = {'\0'};
 	int sock, match = 0;
-	int timeout = 10;
+	int timeout = 3;
 	ssize_t len = 0;
 	socklen_t addrlen = sizeof(addr);
 	unsigned short int nip[4], port = 0;
 
 #ifndef _WIN32
 	struct timeval tv;
-	tv.tv_sec = 0;
-	tv.tv_usec = timeout*10000;
+	tv.tv_sec = timeout;
+	tv.tv_usec = 0;
 #else
 	WSADATA wsa;
+
+	timeout *= 1000;
 
 	if(WSAStartup(0x202, &wsa) != 0) {
 		logprintf(LOG_ERR, "could not initialize new socket");

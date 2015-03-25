@@ -97,7 +97,7 @@ void *ntpthread(void *param) {
 	char ip[INET_ADDRSTRLEN+1], **ntpservers = NULL, name[25];
 	unsigned int nrservers = 0;
 	int sockfd = 0, firstrun = 1, interval = 86400;
-	int counter = 0, ntptime = -1,  x = 0;
+	int counter = 0, ntptime = -1,  x = 0, timeout = 3;
 
 	memset(&msg, '\0', sizeof(struct pkt));
 	memset(&servaddr, '\0', sizeof(struct sockaddr_in));
@@ -121,12 +121,18 @@ void *ntpthread(void *param) {
 		return 0;
 	}
 
-#ifdef _WIN32
+#ifndef _WIN32
+	struct timeval tv;
+	tv.tv_sec = timeout;
+	tv.tv_usec = 0;
+#else
 	WSADATA wsa;
 
-	if(WSAStartup(MAKEWORD(2, 2), &wsa) != 0) {
+	timeout *= 1000;
+
+	if(WSAStartup(0x202, &wsa) != 0) {
 		logprintf(LOG_ERR, "could not initialize new socket");
-		return (void *)NULL;
+		return -1;
 	}
 #endif
 
@@ -136,6 +142,9 @@ void *ntpthread(void *param) {
 		if((counter == interval || (ntptime == -1 && ((counter % 10) == 0)) || (firstrun == 1))) {
 			firstrun = 0;
 			for(x=0;x<nrservers;x++) {
+				if(ntploop == 0) {
+					break;
+				}
 
 				char *p = ip;
 				if(host2ip(ntpservers[x], p) == -1) {
@@ -151,7 +160,7 @@ void *ntpthread(void *param) {
 
 					inet_pton(AF_INET, ip, &servaddr.sin_addr);
 
-					switch(socket_timeout_connect(sockfd, (struct sockaddr *)&servaddr, 3)) {
+					switch(socket_timeout_connect(sockfd, (struct sockaddr *)&servaddr, timeout)) {
 						case -1:
 							logprintf(LOG_ERR, "could not connect to ntp server @%s", ntpservers[x]);
 							continue;
@@ -168,8 +177,12 @@ void *ntpthread(void *param) {
 						break;
 					}
 
+#ifdef _WIN32
+					setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, (const char *)&timeout, sizeof(struct timeval));
+#else
+					setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, (char *)&tv, sizeof(struct timeval));
+#endif
 					msg.li_vn_mode=227;
-
 					if(sendto(sockfd, (char *)&msg, 48, 0, (struct sockaddr *)&servaddr, sizeof(servaddr)) < -1) {
 						logprintf(LOG_ERR, "error in sending");
 					} else {
@@ -198,6 +211,7 @@ void *ntpthread(void *param) {
 			}
 		}
 		sleep(1);
+		counter++;
 	}
 
 	if(ntpservers != NULL) {

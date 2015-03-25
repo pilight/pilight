@@ -23,6 +23,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <string.h>
+#include <sys/time.h>
 
 #ifdef _WIN32
 	#define STRICT
@@ -38,6 +39,13 @@
 #include "../core/dso.h"
 #include "../config/hardware.h"
 #include "433nano.h"
+
+typedef struct timestamp_t {
+	unsigned long first;
+	unsigned long second;
+} timestamp_t;
+
+timestamp_t timestamp;
 
 #ifdef _WIN32
 static HANDLE serial_433_fd;
@@ -170,7 +178,7 @@ static unsigned short nano433HwDeinit(void) {
 }
 
 static int nano433Send(int *code, int rawlen, int repeats) {
-	unsigned int i = 0, x = 0, z = 2, y = 0, len = 0, nrpulses = 0;
+	unsigned int i = 0, x = 0, y = 0, len = 0, nrpulses = 0;
 	int pulses[10], match = 0;
 	char c[16], send[MAXPULSESTREAMLENGTH+1];
 #ifdef _WIN32
@@ -180,7 +188,7 @@ static int nano433Send(int *code, int rawlen, int repeats) {
 #endif
 
 	memset(send, 0, MAXPULSESTREAMLENGTH);
-	strncpy(send, "c:", 2);
+	strncpy(&send[0], "c:", 2);
 	len += 2;
 
 	for(i=0;i<rawlen;i++) {
@@ -197,9 +205,15 @@ static int nano433Send(int *code, int rawlen, int repeats) {
 			nrpulses++;
 		}
 		if(i%2 == 1) {
-			len += (unsigned int)snprintf(&send[z++], 1, "%d", match);
+			if(match < 10) {
+				send[len++] = (char)(((int)'0')+match);
+			} else {
+				logprintf(LOG_ERR, "too many distinct pulses for pilight usb nano to send");
+				return EXIT_FAILURE;
+			}
 		}
 	}
+
 	strncpy(&send[len], ";p:", 3);
 	len += 3;
 	for(i=0;i<nrpulses;i++) {
@@ -223,12 +237,19 @@ static int nano433Send(int *code, int rawlen, int repeats) {
 #else
 	n = write(serial_433_fd, send, len);
 #endif
-	sleep(1);
+
+	struct timeval tv;
+	gettimeofday(&tv, NULL);
+	timestamp.first = timestamp.second;
+	timestamp.second = 1000000 * (unsigned int)tv.tv_sec + (unsigned int)tv.tv_usec;
+	if(((int)timestamp.second-(int)timestamp.first) < 1000000) {
+		sleep(1);
+	}
 
 	if(n == len) {
 		return EXIT_SUCCESS;
 	} else {
-		return EXIT_SUCCESS;
+		return EXIT_FAILURE;
 	}
 }
 
@@ -342,7 +363,7 @@ void nano433Init(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "433nano";
-	module->version = "0.10";
+	module->version = "0.11";
 	module->reqversion = "6.0";
 	module->reqcommit = "40";
 }
