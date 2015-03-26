@@ -16,6 +16,7 @@ var aTimers = new Array();
 var sDateTimeFormat = "HH:mm:ss YYYY-MM-DD";
 var aDateTimeFormats = new Array();
 var aWebcamUrl = new Array();
+var aDecimalTypes = ["temperature", "humidity", "wind", "pressure", "sunriseset"];
 var userLang = navigator.language || navigator.userLanguage;
 var language;
 
@@ -402,11 +403,16 @@ function createDimmerElement(sTabId, sDevId, aValues) {
 
 function createWeatherElement(sTabId, sDevId, aValues) {
 	aPollInterval[sDevId] = new Array();
-	if('decimals' in aValues) {
-		aDecimals[sDevId] = aValues['decimals'];
-	} else {
-		aDecimals[sDevId] = 0;
-	}
+	$.each(aDecimalTypes, function(index, value) {
+		if(!(sDevId in aDecimals)) {
+			aDecimals[sDevId] = new Array();
+		}
+		if(value+'-decimals' in aValues) {
+			aDecimals[sDevId][value] = aValues[value+'-decimals'];
+		} else {
+			aDecimals[sDevId][value] = 0;
+		}
+	});
 	if('poll-interval' in aValues) {
 		aPollInterval[sDevId] = aValues['poll-interval'];
 	}
@@ -839,37 +845,37 @@ function parseValues(data) {
 				} else if(iType == 3) {
 					if(vindex == 'temperature' && $('#'+dvalues+'_temp').length > 0) {
 						if(dvalues in aDecimals) {
-							$('#'+dvalues+'_temp').text(vvalues.toFixed(aDecimals[dvalues]));
+							$('#'+dvalues+'_temp').text(vvalues.toFixed(aDecimals[dvalues]['temperature']));
 						}
 					} else if(vindex == 'humidity' && $('#'+dvalues+'_humi').length > 0) {
 						if(dvalues in aDecimals) {
-							$('#'+dvalues+'_humi').text(vvalues.toFixed(aDecimals[dvalues]));
+							$('#'+dvalues+'_humi').text(vvalues.toFixed(aDecimals[dvalues]['humidity']));
 						}
 					} else if(vindex == 'pressure' && $('#'+dvalues+'_pres').length > 0) {
 						if(dvalues in aDecimals) {
-							$('#'+dvalues+'_pres').text(vvalues.toFixed(aDecimals[dvalues]));
+							$('#'+dvalues+'_pres').text(vvalues.toFixed(aDecimals[dvalues]['pressure']));
 						}
 					} else if(vindex == 'rain' && $('#'+dvalues+'_rain').length > 0) {
 						if(dvalues in aDecimals) {
-							$('#'+dvalues+'_rain').text(vvalues.toFixed(aDecimals[dvalues]));
+							$('#'+dvalues+'_rain').text(vvalues.toFixed(aDecimals[dvalues]['rain']));
 						}
 					} else if(vindex == 'windgust' && $('#'+dvalues+'_windgust').length > 0) {
 						if(dvalues in aDecimals) {
-							$('#'+dvalues+'_windgust').text(vvalues.toFixed(aDecimals[dvalues]));
+							$('#'+dvalues+'_windgust').text(vvalues.toFixed(aDecimals[dvalues]['wind']));
 						}
 					} else if(vindex == 'winddir' && $('#'+dvalues+'_winddir').length > 0) {
 						$('#'+dvalues+'_weather .winddir_icon').css({transform: 'rotate(' + vvalues + 'deg)'});
 					} else if(vindex == 'windavg' && $('#'+dvalues+'_windavg').length > 0) {
 						if(dvalues in aDecimals) {
-							$('#'+dvalues+'_windavg').text(vvalues.toFixed(aDecimals[dvalues]));
+							$('#'+dvalues+'_windavg').text(vvalues.toFixed(aDecimals[dvalues]['wind']));
 						}
 					} else if(vindex == 'sunrise' && $('#'+dvalues+'_sunrise').length > 0) {
 						if(dvalues in aDecimals) {
-							$('#'+dvalues+'_sunrise').text(vvalues.toFixed(aDecimals[dvalues]));
+							$('#'+dvalues+'_sunrise').text(vvalues.toFixed(aDecimals[dvalues]['sunriseset']));
 						}
 					} else if(vindex == 'sunset' && $('#'+dvalues+'_sunset').length > 0) {
 						if(dvalues in aDecimals) {
-							$('#'+dvalues+'_sunset').text(vvalues.toFixed(aDecimals[dvalues]));
+							$('#'+dvalues+'_sunset').text(vvalues.toFixed(aDecimals[dvalues]['sunriseset']));
 						}
 					} else if(vindex == 'battery' && $('#'+dvalues+'_batt').length > 0) {
 						if(vvalues == 1) {
