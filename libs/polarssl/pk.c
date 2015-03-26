@@ -1,12 +1,9 @@
 /*
  *  Public Key abstraction layer
  *
- *  Copyright (C) 2006-2013, Brainspark B.V.
+ *  Copyright (C) 2006-2014, ARM Limited, All Rights Reserved
  *
- *  This file is part of PolarSSL (http://www.polarssl.org)
- *  Lead Maintainer: Paul Bakker <polarssl_maintainer at polarssl.org>
- *
- *  All rights reserved.
+ *  This file is part of mbed TLS (https://polarssl.org)
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -23,16 +20,31 @@
  *  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#include "polarssl.h"
+#if !defined(POLARSSL_CONFIG_FILE)
+#include "polarssl/config.h"
+#else
+#include POLARSSL_CONFIG_FILE
+#endif
 
 #if defined(POLARSSL_PK_C)
 
-#include "pk.h"
-#include "pk_wrap.h"
+#include "polarssl/pk.h"
+#include "polarssl/pk_wrap.h"
 
 #if defined(POLARSSL_RSA_C)
-#include "rsa.h"
+#include "polarssl/rsa.h"
 #endif
+#if defined(POLARSSL_ECP_C)
+#include "polarssl/ecp.h"
+#endif
+#if defined(POLARSSL_ECDSA_C)
+#include "polarssl/ecdsa.h"
+#endif
+
+/* Implementation that should never be optimized out by the compiler */
+static void polarssl_zeroize( void *v, size_t n ) {
+    volatile unsigned char *p = v; while( n-- ) *p++ = 0;
+}
 
 /*
  * Initialise a pk_context
@@ -51,13 +63,12 @@ void pk_init( pk_context *ctx )
  */
 void pk_free( pk_context *ctx )
 {
-    if( ctx == NULL || ctx->pk_info == NULL)
+    if( ctx == NULL || ctx->pk_info == NULL )
         return;
 
     ctx->pk_info->ctx_free_func( ctx->pk_ctx );
-    ctx->pk_ctx = NULL;
 
-    ctx->pk_info = NULL;
+    polarssl_zeroize( ctx, sizeof( pk_context ) );
 }
 
 /*
@@ -68,11 +79,21 @@ const pk_info_t * pk_info_from_type( pk_type_t pk_type )
     switch( pk_type ) {
 #if defined(POLARSSL_RSA_C)
         case POLARSSL_PK_RSA:
-            return &rsa_info;
+            return( &rsa_info );
+#endif
+#if defined(POLARSSL_ECP_C)
+        case POLARSSL_PK_ECKEY:
+            return( &eckey_info );
+        case POLARSSL_PK_ECKEY_DH:
+            return( &eckeydh_info );
+#endif
+#if defined(POLARSSL_ECDSA_C)
+        case POLARSSL_PK_ECDSA:
+            return( &ecdsa_info );
 #endif
         /* POLARSSL_PK_RSA_ALT omitted on purpose */
         default:
-            return NULL;
+            return( NULL );
     }
 }
 
@@ -169,6 +190,59 @@ int pk_verify( pk_context *ctx, md_type_t md_alg,
 }
 
 /*
+ * Verify a signature with options
+ */
+int pk_verify_ext( pk_type_t type, const void *options,
+                   pk_context *ctx, md_type_t md_alg,
+                   const unsigned char *hash, size_t hash_len,
+                   const unsigned char *sig, size_t sig_len )
+{
+    if( ctx == NULL || ctx->pk_info == NULL )
+        return( POLARSSL_ERR_PK_BAD_INPUT_DATA );
+
+    if( ! pk_can_do( ctx, type ) )
+        return( POLARSSL_ERR_PK_TYPE_MISMATCH );
+
+    if( type == POLARSSL_PK_RSASSA_PSS )
+    {
+#if defined(POLARSSL_RSA_C) && defined(POLARSSL_PKCS1_V21)
+        int ret;
+        const pk_rsassa_pss_options *pss_opts;
+
+        if( options == NULL )
+            return( POLARSSL_ERR_PK_BAD_INPUT_DATA );
+
+        pss_opts = (const pk_rsassa_pss_options *) options;
+
+        if( sig_len < pk_get_len( ctx ) )
+            return( POLARSSL_ERR_RSA_VERIFY_FAILED );
+
+        ret = rsa_rsassa_pss_verify_ext( pk_rsa( *ctx ),
+                NULL, NULL, RSA_PUBLIC,
+                md_alg, (unsigned int) hash_len, hash,
+                pss_opts->mgf1_hash_id,
+                pss_opts->expected_salt_len,
+                sig );
+        if( ret != 0 )
+            return( ret );
+
+        if( sig_len > pk_get_len( ctx ) )
+            return( POLARSSL_ERR_PK_SIG_LEN_MISMATCH );
+
+        return( 0 );
+#else
+        return( POLARSSL_ERR_PK_FEATURE_UNAVAILABLE );
+#endif
+    }
+
+    /* General case: no options */
+    if( options != NULL )
+        return( POLARSSL_ERR_PK_BAD_INPUT_DATA );
+
+    return( pk_verify( ctx, md_alg, hash, hash_len, sig, sig_len ) );
+}
+
+/*
  * Make a signature
  */
 int pk_sign( pk_context *ctx, md_type_t md_alg,
@@ -221,6 +295,32 @@ int pk_encrypt( pk_context *ctx,
 
     return( ctx->pk_info->encrypt_func( ctx->pk_ctx, input, ilen,
                 output, olen, osize, f_rng, p_rng ) );
+}
+
+/*
+ * Check public-private key pair
+ */
+int pk_check_pair( const pk_context *pub, const pk_context *prv )
+{
+    if( pub == NULL || pub->pk_info == NULL ||
+        prv == NULL || prv->pk_info == NULL ||
+        prv->pk_info->check_pair_func == NULL )
+    {
+        return( POLARSSL_ERR_PK_BAD_INPUT_DATA );
+    }
+
+    if( prv->pk_info->type == POLARSSL_PK_RSA_ALT )
+    {
+        if( pub->pk_info->type != POLARSSL_PK_RSA )
+            return( POLARSSL_ERR_PK_TYPE_MISMATCH );
+    }
+    else
+    {
+        if( pub->pk_info != prv->pk_info )
+            return( POLARSSL_ERR_PK_TYPE_MISMATCH );
+    }
+
+    return( prv->pk_info->check_pair_func( pub->pk_ctx, prv->pk_ctx ) );
 }
 
 /*

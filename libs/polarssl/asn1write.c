@@ -1,12 +1,9 @@
 /*
  * ASN.1 buffer writing functionality
  *
- *  Copyright (C) 2006-2014, Brainspark B.V.
+ *  Copyright (C) 2006-2014, ARM Limited, All Rights Reserved
  *
- *  This file is part of PolarSSL (http://www.polarssl.org)
- *  Lead Maintainer: Paul Bakker <polarssl_maintainer at polarssl.org>
- *
- *  All rights reserved.
+ *  This file is part of mbed TLS (https://polarssl.org)
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -23,15 +20,23 @@
  *  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#include "polarssl.h"
+#if !defined(POLARSSL_CONFIG_FILE)
+#include "polarssl/config.h"
+#else
+#include POLARSSL_CONFIG_FILE
+#endif
 
 #if defined(POLARSSL_ASN1_WRITE_C)
 
-#include "asn1write.h"
+#include "polarssl/asn1write.h"
 
+#if defined(POLARSSL_PLATFORM_C)
+#include "polarssl/platform.h"
+#else
 #include <stdlib.h>
 #define polarssl_malloc     malloc
 #define polarssl_free       free
+#endif
 
 int asn1_write_len( unsigned char **p, unsigned char *start, size_t len )
 {
@@ -105,12 +110,12 @@ int asn1_write_mpi( unsigned char **p, unsigned char *start, mpi *X )
         return( POLARSSL_ERR_ASN1_BUF_TOO_SMALL );
 
     (*p) -= len;
-    mpi_write_binary( X, *p, len );
+    MPI_CHK( mpi_write_binary( X, *p, len ) );
 
     // DER format assumes 2s complement for numbers, so the leftmost bit
     // should be 0 for positive numbers and 1 for negative numbers.
     //
-    if ( X->s ==1 && **p & 0x80 )
+    if( X->s ==1 && **p & 0x80 )
     {
         if( *p - start < 1 )
             return( POLARSSL_ERR_ASN1_BUF_TOO_SMALL );
@@ -122,7 +127,10 @@ int asn1_write_mpi( unsigned char **p, unsigned char *start, mpi *X )
     ASN1_CHK_ADD( len, asn1_write_len( p, start, len ) );
     ASN1_CHK_ADD( len, asn1_write_tag( p, start, ASN1_INTEGER ) );
 
-    return( (int) len );
+    ret = (int) len;
+
+cleanup:
+    return( ret );
 }
 #endif /* POLARSSL_BIGNUM_C */
 
@@ -206,7 +214,7 @@ int asn1_write_int( unsigned char **p, unsigned char *start, int val )
     len += 1;
     *--(*p) = val;
 
-    if ( val > 0 && **p & 0x80 )
+    if( val > 0 && **p & 0x80 )
     {
         if( *p - start < 1 )
             return( POLARSSL_ERR_ASN1_BUF_TOO_SMALL );
@@ -316,6 +324,8 @@ asn1_named_data *asn1_store_named_data( asn1_named_data **head,
             return( NULL );
         }
 
+        memcpy( cur->oid.p, oid, oid_len );
+
         cur->val.len = val_len;
         cur->val.p = polarssl_malloc( val_len );
         if( cur->val.p == NULL )
@@ -324,8 +334,6 @@ asn1_named_data *asn1_store_named_data( asn1_named_data **head,
             polarssl_free( cur );
             return( NULL );
         }
-
-        memcpy( cur->oid.p, oid, oid_len );
 
         cur->next = *head;
         *head = cur;
@@ -352,4 +360,4 @@ asn1_named_data *asn1_store_named_data( asn1_named_data **head,
 
     return( cur );
 }
-#endif
+#endif /* POLARSSL_ASN1_WRITE_C */

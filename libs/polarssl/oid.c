@@ -3,12 +3,9 @@
  *
  * \brief Object Identifier (OID) database
  *
- *  Copyright (C) 2006-2013, Brainspark B.V.
+ *  Copyright (C) 2006-2014, ARM Limited, All Rights Reserved
  *
- *  This file is part of PolarSSL (http://www.polarssl.org)
- *  Lead Maintainer: Paul Bakker <polarssl_maintainer at polarssl.org>
- *
- *  All rights reserved.
+ *  This file is part of mbed TLS (https://polarssl.org)
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -25,15 +22,19 @@
  *  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#include "polarssl.h"
+#if !defined(POLARSSL_CONFIG_FILE)
+#include "polarssl/config.h"
+#else
+#include POLARSSL_CONFIG_FILE
+#endif
 
 #if defined(POLARSSL_OID_C)
 
-#include "oid.h"
-#include "rsa.h"
+#include "polarssl/oid.h"
+#include "polarssl/rsa.h"
 
 #if defined(POLARSSL_X509_USE_C) || defined(POLARSSL_X509_CREATE_C)
-#include "x509.h"
+#include "polarssl/x509.h"
 #endif
 
 #include <stdio.h>
@@ -72,7 +73,7 @@ static const TYPE_T * oid_ ## NAME ## _from_asn1( const asn1_buf *oid )     \
 int FN_NAME( const asn1_buf *oid, ATTR1_TYPE * ATTR1 )                  \
 {                                                                       \
     const TYPE_T *data = oid_ ## TYPE_NAME ## _from_asn1( oid );        \
-    if( data == NULL ) return ( POLARSSL_ERR_OID_NOT_FOUND );           \
+    if( data == NULL ) return( POLARSSL_ERR_OID_NOT_FOUND );            \
     *ATTR1 = data->descriptor.ATTR1;                                    \
     return( 0 );                                                        \
 }
@@ -85,7 +86,7 @@ int FN_NAME( const asn1_buf *oid, ATTR1_TYPE * ATTR1 )                  \
 int FN_NAME( const asn1_buf *oid, ATTR1_TYPE * ATTR1 )                  \
 {                                                                       \
     const TYPE_T *data = oid_ ## TYPE_NAME ## _from_asn1( oid );        \
-    if( data == NULL ) return ( POLARSSL_ERR_OID_NOT_FOUND );           \
+    if( data == NULL ) return( POLARSSL_ERR_OID_NOT_FOUND );            \
     *ATTR1 = data->ATTR1;                                               \
     return( 0 );                                                        \
 }
@@ -99,7 +100,7 @@ int FN_NAME( const asn1_buf *oid, ATTR1_TYPE * ATTR1 )                  \
 int FN_NAME( const asn1_buf *oid, ATTR1_TYPE * ATTR1, ATTR2_TYPE * ATTR2 )  \
 {                                                                           \
     const TYPE_T *data = oid_ ## TYPE_NAME ## _from_asn1( oid );            \
-    if( data == NULL ) return ( POLARSSL_ERR_OID_NOT_FOUND );               \
+    if( data == NULL ) return( POLARSSL_ERR_OID_NOT_FOUND );                \
     *ATTR1 = data->ATTR1;                                                   \
     *ATTR2 = data->ATTR2;                                                   \
     return( 0 );                                                            \
@@ -194,6 +195,38 @@ static const oid_x520_attr_t oid_x520_attr_type[] =
     {
         { ADD_LEN( OID_AT_POSTAL_CODE ), "id-at-postalCode",               "Postal code" },
         "postalCode",
+    },
+    {
+        { ADD_LEN( OID_AT_SUR_NAME ),    "id-at-surName",                  "Surname" },
+        "SN",
+    },
+    {
+        { ADD_LEN( OID_AT_GIVEN_NAME ),  "id-at-givenName",                "Given name" },
+        "GN",
+    },
+    {
+        { ADD_LEN( OID_AT_INITIALS ),    "id-at-initials",                 "Initials" },
+        "initials",
+    },
+    {
+        { ADD_LEN( OID_AT_GENERATION_QUALIFIER ), "id-at-generationQualifier", "Generation qualifier" },
+        "generationQualifier",
+    },
+    {
+        { ADD_LEN( OID_AT_TITLE ),       "id-at-title",                    "Title" },
+        "title",
+    },
+    {
+        { ADD_LEN( OID_AT_DN_QUALIFIER ),"id-at-dnQualifier",              "Distinguished Name qualifier" },
+        "dnQualifier",
+    },
+    {
+        { ADD_LEN( OID_AT_PSEUDONYM ),   "id-at-pseudonym",                "Pseudonym" },
+        "pseudonym",
+    },
+    {
+        { ADD_LEN( OID_DOMAIN_COMPONENT ), "id-domainComponent",           "Domain component" },
+        "DC",
     },
     {
         { NULL, 0, NULL, NULL },
@@ -326,6 +359,10 @@ static const oid_sig_alg_t oid_sig_alg[] =
     {
         { ADD_LEN( OID_ECDSA_SHA512 ),     "ecdsa-with-SHA512",    "ECDSA with SHA512" },
         POLARSSL_MD_SHA512,   POLARSSL_PK_ECDSA,
+    },
+    {
+        { ADD_LEN( OID_RSASSA_PSS ),        "RSASSA-PSS",           "RSASSA-PSS" },
+        POLARSSL_MD_NONE,     POLARSSL_PK_RSASSA_PSS,
     },
     {
         { NULL, 0, NULL, NULL },
@@ -494,10 +531,6 @@ static const oid_md_alg_t oid_md_alg[] =
         POLARSSL_MD_SHA1,
     },
     {
-        { ADD_LEN( OID_DIGEST_ALG_SHA1 ),      "id-sha1",      "SHA-1" },
-        POLARSSL_MD_SHA1,
-    },
-    {
         { ADD_LEN( OID_DIGEST_ALG_SHA224 ),    "id-sha224",    "SHA-224" },
         POLARSSL_MD_SHA224,
     },
@@ -524,6 +557,36 @@ FN_OID_GET_ATTR1(oid_get_md_alg, oid_md_alg_t, md_alg, md_type_t, md_alg);
 FN_OID_GET_OID_BY_ATTR1(oid_get_oid_by_md, oid_md_alg_t, oid_md_alg, md_type_t, md_alg);
 #endif /* POLARSSL_MD_C */
 
+#if defined(POLARSSL_PKCS12_C)
+/*
+ * For PKCS#12 PBEs
+ */
+typedef struct {
+    oid_descriptor_t    descriptor;
+    md_type_t           md_alg;
+    cipher_type_t       cipher_alg;
+} oid_pkcs12_pbe_alg_t;
+
+static const oid_pkcs12_pbe_alg_t oid_pkcs12_pbe_alg[] =
+{
+    {
+        { ADD_LEN( OID_PKCS12_PBE_SHA1_DES3_EDE_CBC ), "pbeWithSHAAnd3-KeyTripleDES-CBC", "PBE with SHA1 and 3-Key 3DES" },
+        POLARSSL_MD_SHA1,      POLARSSL_CIPHER_DES_EDE3_CBC,
+    },
+    {
+        { ADD_LEN( OID_PKCS12_PBE_SHA1_DES2_EDE_CBC ), "pbeWithSHAAnd2-KeyTripleDES-CBC", "PBE with SHA1 and 2-Key 3DES" },
+        POLARSSL_MD_SHA1,      POLARSSL_CIPHER_DES_EDE_CBC,
+    },
+    {
+        { NULL, 0, NULL, NULL },
+        0, 0,
+    },
+};
+
+FN_OID_TYPED_FROM_ASN1(oid_pkcs12_pbe_alg_t, pkcs12_pbe_alg, oid_pkcs12_pbe_alg);
+FN_OID_GET_ATTR2(oid_get_pkcs12_pbe_alg, oid_pkcs12_pbe_alg_t, pkcs12_pbe_alg, md_type_t, md_alg, cipher_type_t, cipher_alg);
+#endif /* POLARSSL_PKCS12_C */
+
 #if defined(_MSC_VER) && !defined snprintf && !defined(EFIX64) && \
     !defined(EFI32)
 #include <stdarg.h>
@@ -539,7 +602,7 @@ FN_OID_GET_OID_BY_ATTR1(oid_get_oid_by_md, oid_md_alg_t, oid_md_alg, md_type_t, 
  * This fuction tries to 'fix' this by at least suggesting enlarging the
  * size by 20.
  */
-static int compat_snprintf(char *str, size_t size, const char *format, ...)
+static int compat_snprintf( char *str, size_t size, const char *format, ... )
 {
     va_list ap;
     int res = -1;
@@ -551,27 +614,27 @@ static int compat_snprintf(char *str, size_t size, const char *format, ...)
     va_end( ap );
 
     // No quick fix possible
-    if ( res < 0 )
+    if( res < 0 )
         return( (int) size + 20 );
 
-    return res;
+    return( res );
 }
 
 #define snprintf compat_snprintf
-#endif
+#endif /* _MSC_VER && !snprintf && !EFIX64 && !EFI32 */
 
-#define SAFE_SNPRINTF()                         \
-{                                               \
-    if( ret == -1 )                             \
-        return POLARSSL_ERR_OID_BUF_TOO_SMALL;  \
-                                                \
-    if ( (unsigned int) ret >= n ) {            \
-        p[n - 1] = '\0';                        \
-        return POLARSSL_ERR_OID_BUF_TOO_SMALL;  \
-    }                                           \
-                                                \
-    n -= (unsigned int) ret;                    \
-    p += (unsigned int) ret;                    \
+#define SAFE_SNPRINTF()                             \
+{                                                   \
+    if( ret == -1 )                                 \
+        return( POLARSSL_ERR_OID_BUF_TOO_SMALL );   \
+                                                    \
+    if( (unsigned int) ret >= n ) {                 \
+        p[n - 1] = '\0';                            \
+        return( POLARSSL_ERR_OID_BUF_TOO_SMALL );   \
+    }                                               \
+                                                    \
+    n -= (unsigned int) ret;                        \
+    p += (unsigned int) ret;                        \
 }
 
 /* Return the x.y.z.... style numeric string for the given OID */
@@ -597,7 +660,7 @@ int oid_get_numeric_string( char *buf, size_t size,
     for( i = 1; i < oid->len; i++ )
     {
         /* Prevent overflow in value. */
-        if ( ( ( value << 7 ) >> 7 ) != value )
+        if( ( ( value << 7 ) >> 7 ) != value )
             return( POLARSSL_ERR_OID_BUF_TOO_SMALL );
 
         value <<= 7;

@@ -47,9 +47,9 @@
 #endif
 
 #include "socket.h"
-#include "../../polarssl/ssl.h"
-#include "../../polarssl/entropy.h"
-#include "../../polarssl/ctr_drbg.h"
+#include "../../polarssl/polarssl/ssl.h"
+#include "../../polarssl/polarssl/entropy.h"
+#include "../../polarssl/polarssl/ctr_drbg.h"
 
 #include "common.h"
 #include "log.h"
@@ -148,15 +148,15 @@ int sendmail(char *host, char *login, char *pass, unsigned short port, struct ma
 	inet_pton(AF_INET, ip, &serv_addr.sin_addr);
 	switch(socket_timeout_connect(sockfd, (struct sockaddr *)&serv_addr, 3)) {
 		case -1:
-			logprintf(LOG_ERR, "could not connect to mail server @%s:%p", host, port);
+			logprintf(LOG_ERR, "could not connect to mail server @%s:%d", host, port);
 			error = -1;
 			goto close;
 		case -2:
-			logprintf(LOG_ERR, "mail server connection timeout @%s:%p", host, port);
+			logprintf(LOG_ERR, "mail server connection timeout @%s:%d", host, port);
 			error = -1;
 			goto close;
 		case -3:
-			logprintf(LOG_ERR, "Error in mail server socket connection @%s:%p", host, port);
+			logprintf(LOG_ERR, "Error in mail server socket connection @%s:%d", host, port);
 			error = -1;
 			goto close;
 		default:
@@ -186,6 +186,7 @@ starttls:
 
 		int ret = 0;
 		while((ret = ssl_handshake(&ssl)) != 0) {
+			printf("%d\n", ret);
 			if(ret != POLARSSL_ERR_NET_WANT_READ && ret != POLARSSL_ERR_NET_WANT_WRITE) {
 				logprintf(LOG_ERR, "SMTP: ssl_handshake failed");
 				error = -1;

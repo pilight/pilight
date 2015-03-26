@@ -1,12 +1,9 @@
 /*
  *  TCP networking functions
  *
- *  Copyright (C) 2006-2013, Brainspark B.V.
+ *  Copyright (C) 2006-2014, ARM Limited, All Rights Reserved
  *
- *  This file is part of PolarSSL (http://www.polarssl.org)
- *  Lead Maintainer: Paul Bakker <polarssl_maintainer at polarssl.org>
- *
- *  All rights reserved.
+ *  This file is part of mbed TLS (https://polarssl.org)
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -23,11 +20,15 @@
  *  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#include "polarssl.h"
+#if !defined(POLARSSL_CONFIG_FILE)
+#include "polarssl/config.h"
+#else
+#include POLARSSL_CONFIG_FILE
+#endif
 
 #if defined(POLARSSL_NET_C)
 
-#include "net.h"
+#include "polarssl/net.h"
 
 #if (defined(_WIN32) || defined(_WIN32_WCE)) && !defined(EFIX64) && \
     !defined(EFI32)
@@ -58,12 +59,15 @@
 
 static int wsa_init_done = 0;
 
-#else
+#else /* ( _WIN32 || _WIN32_WCE ) && !EFIX64 && !EFI32 */
 
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#if defined(POLARSSL_HAVE_TIME)
+#include <sys/time.h>
+#endif
 #include <unistd.h>
 #include <signal.h>
 #include <fcntl.h>
@@ -71,7 +75,7 @@ static int wsa_init_done = 0;
 #include <errno.h>
 
 #if defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__) ||  \
-    defined(__DragonflyBSD__)
+    defined(__DragonFly__)
 #include <sys/endian.h>
 #elif defined(__APPLE__) || defined(HAVE_MACHINE_ENDIAN_H) ||   \
       defined(EFIX64) || defined(EFI32)
@@ -84,7 +88,7 @@ static int wsa_init_done = 0;
 #include <endian.h>
 #endif
 
-#endif
+#endif /* ( _WIN32 || _WIN32_WCE ) && !EFIX64 && !EFI32 */
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -92,6 +96,10 @@ static int wsa_init_done = 0;
 #if defined(_MSC_VER) && !defined  snprintf && !defined(EFIX64) && \
     !defined(EFI32)
 #define  snprintf  _snprintf
+#endif
+
+#if defined(POLARSSL_HAVE_TIME)
+#include <time.h>
 #endif
 
 #if defined(_MSC_VER) && !defined(EFIX64) && !defined(EFI32)
@@ -103,10 +111,11 @@ typedef UINT32 uint32_t;
 
 /*
  * htons() is not always available.
- * By default go for LITTLE_ENDIAN variant. Otherwise hope for _BYTE_ORDER and __BIG_ENDIAN
- * to help determine endianness.
+ * By default go for LITTLE_ENDIAN variant. Otherwise hope for _BYTE_ORDER and
+ * __BIG_ENDIAN to help determine endianness.
  */
-#if defined(__BYTE_ORDER) && defined(__BIG_ENDIAN) && __BYTE_ORDER == __BIG_ENDIAN
+#if defined(__BYTE_ORDER) && defined(__BIG_ENDIAN) &&                   \
+    __BYTE_ORDER == __BIG_ENDIAN
 #define POLARSSL_HTONS(n) (n)
 #define POLARSSL_HTONL(n) (n)
 #else
@@ -118,8 +127,8 @@ typedef UINT32 uint32_t;
                            (((unsigned long )(n) & 0xFF000000) >> 24))
 #endif
 
-unsigned short net_htons(unsigned short n);
-unsigned long  net_htonl(unsigned long  n);
+unsigned short net_htons( unsigned short n );
+unsigned long  net_htonl( unsigned long  n );
 #define net_htons(n) POLARSSL_HTONS(n)
 #define net_htonl(n) POLARSSL_HTONL(n)
 
@@ -134,7 +143,7 @@ static int net_prepare( void )
 
     if( wsa_init_done == 0 )
     {
-        if( WSAStartup( MAKEWORD(2,0), &wsaData ) == SOCKET_ERROR )
+        if( WSAStartup( MAKEWORD(2,0), &wsaData ) != 0 )
             return( POLARSSL_ERR_NET_SOCKET_FAILED );
 
         wsa_init_done = 1;
@@ -274,8 +283,13 @@ int net_bind( int *fd, const char *bind_ip, int port )
         }
 
         n = 1;
-        setsockopt( *fd, SOL_SOCKET, SO_REUSEADDR,
-                    (const char *) &n, sizeof( n ) );
+        if( setsockopt( *fd, SOL_SOCKET, SO_REUSEADDR,
+                        (const char *) &n, sizeof( n ) ) != 0 )
+        {
+            close( *fd );
+            ret = POLARSSL_ERR_NET_SOCKET_FAILED;
+            continue;
+        }
 
         if( bind( *fd, cur->ai_addr, cur->ai_addrlen ) != 0 )
         {
@@ -392,7 +406,7 @@ static int net_would_block( int fd )
     }
     return( 0 );
 }
-#endif
+#endif /* ( _WIN32 || _WIN32_WCE ) && !EFIX64 && !EFI32 */
 
 /*
  * Accept a connection from a remote client
@@ -417,7 +431,7 @@ int net_accept( int bind_fd, int *client_fd, void *client_ip )
 
     if( *client_fd < 0 )
     {
-        if( net_would_block( *client_fd ) != 0 )
+        if( net_would_block( bind_fd ) != 0 )
             return( POLARSSL_ERR_NET_WANT_READ );
 
         return( POLARSSL_ERR_NET_ACCEPT_FAILED );
@@ -472,13 +486,31 @@ int net_set_nonblock( int fd )
 #endif
 }
 
+#if defined(POLARSSL_HAVE_TIME)
+/*
+ * Portable usleep helper
+ */
+void net_usleep( unsigned long usec )
+{
+    struct timeval tv;
+    tv.tv_sec  = usec / 1000000;
+#if !defined(_WIN32) && ( defined(__unix__) || defined(__unix) || \
+    ( defined(__APPLE__) && defined(__MACH__) ) )
+    tv.tv_usec = (suseconds_t) usec % 1000000;
+#else
+    tv.tv_usec = usec % 1000000;
+#endif
+    select( 0, NULL, NULL, NULL, &tv );
+}
+#endif /* POLARSSL_HAVE_TIME */
+
 /*
  * Read at most 'len' characters
  */
 int net_recv( void *ctx, unsigned char *buf, size_t len )
 {
     int fd = *((int *) ctx);
-    int ret = read( fd, buf, len );
+    int ret = (int) read( fd, buf, len );
 
     if( ret < 0 )
     {
@@ -509,7 +541,7 @@ int net_recv( void *ctx, unsigned char *buf, size_t len )
 int net_send( void *ctx, const unsigned char *buf, size_t len )
 {
     int fd = *((int *) ctx);
-    int ret = write( fd, buf, len );
+    int ret = (int) write( fd, buf, len );
 
     if( ret < 0 )
     {
@@ -543,4 +575,4 @@ void net_close( int fd )
     close( fd );
 }
 
-#endif
+#endif /* POLARSSL_NET_C */

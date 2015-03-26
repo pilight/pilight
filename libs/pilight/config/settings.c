@@ -183,7 +183,8 @@ static int settings_parse(JsonNode *root) {
 
 	while(jsettings) {
 		if(strcmp(jsettings->key, "port") == 0
-		   || strcmp(jsettings->key, "receive-repeats") == 0) {
+		   || strcmp(jsettings->key, "receive-repeats") == 0
+			 || strcmp(jsettings->key, "stats-enable") == 0) {
 			if(jsettings->tag != JSON_NUMBER) {
 				logprintf(LOG_ERR, "config setting \"%s\" must contain a number larger than 0", jsettings->key);
 				have_error = 1;

@@ -2464,105 +2464,108 @@ clear:
 }
 
 void *pilight_stats(void *param) {
-	int checkram = 0, checkcpu = 0, i = -1, x = 0, watchdog = 0;
+	int checkram = 0, checkcpu = 0, i = -1, x = 0, watchdog = 0, stats = 1;
 	settings_find_number("watchdog-enable", &watchdog);
+	settings_find_number("stats-enable", &stats);
 
 	while(main_loop) {
 		registerVersion();
 
-		double cpu = 0.0, ram = 0.0;
-		cpu = getCPUUsage();
-		ram = getRAMUsage();
+		if(stats == 1) {
+			double cpu = 0.0, ram = 0.0;
+			cpu = getCPUUsage();
+			ram = getRAMUsage();
 
-		if(threadprofiler == 1) {
-			threads_cpu_usage(1);
-		}
+			if(threadprofiler == 1) {
+				threads_cpu_usage(1);
+			}
 
-		if(watchdog == 1 && (i > -1) && (cpu > 60)) {
-			if(nodaemon == 1 && threadprofiler == 0) {
-				threads_cpu_usage(x);
-				x ^= 1;
-			}
-			if(checkcpu == 0) {
-				if(cpu > 90) {
-					logprintf(LOG_ERR, "cpu usage way too high %f%%", cpu);
-				} else {
-					logprintf(LOG_ERR, "cpu usage too high %f%%", cpu);
+			if(watchdog == 1 && (i > -1) && (cpu > 60)) {
+				if(nodaemon == 1 && threadprofiler == 0) {
+					threads_cpu_usage(x);
+					x ^= 1;
 				}
-				logprintf(LOG_ERR, "checking again in 10 seconds");
-				sleep(10);
-			} else {
-				if(cpu > 90) {
-					logprintf(LOG_ERR, "cpu usage still way too high %f%%, exiting", cpu);
-				} else {
-					logprintf(LOG_ERR, "cpu usage still too high %f%%, stopping", cpu);
-				}
-			}
-			if(checkcpu == 1) {
-				if(cpu > 90) {
-					exit(EXIT_FAILURE);
-				} else {
-					main_gc();
-					break;
-				}
-			}
-			checkcpu = 1;
-		} else if(watchdog == 1 && (i > -1) && (ram > 60)) {
-			if(checkram == 0) {
-				if(ram > 90) {
-					logprintf(LOG_ERR, "ram usage way too high %f%%", ram);
-					exit(EXIT_FAILURE);
-				} else {
-					logprintf(LOG_ERR, "ram usage too high %f%%", ram);
-				}
-				logprintf(LOG_ERR, "checking again in 10 seconds");
-				sleep(10);
-			} else {
-				if(ram > 90) {
-					logprintf(LOG_ERR, "ram usage still way too high %f%%, exiting", ram);
-				} else {
-					logprintf(LOG_ERR, "ram usage still too high %f%%, stopping", ram);
-				}
-			}
-			if(checkram == 1) {
-				if(ram > 90) {
-					exit(EXIT_FAILURE);
-				} else {
-					main_gc();
-					break;
-				}
-			}
-			checkram = 1;
-		} else {
-			checkcpu = 0;
-			checkram = 0;
-			if((i > 0 && i%3 == 0) || (i == -1)) {
-				procProtocol->message = json_mkobject();
-				JsonNode *code = json_mkobject();
-				json_append_member(code, "cpu", json_mknumber(cpu, 16));
-				if(ram > 0) {
-					json_append_member(code, "ram", json_mknumber(ram, 16));
-				}
-				logprintf(LOG_DEBUG, "cpu: %f%%, ram: %f%%", cpu, ram);
-				json_append_member(procProtocol->message, "values", code);
-				json_append_member(procProtocol->message, "origin", json_mkstring("core"));
-				json_append_member(procProtocol->message, "type", json_mknumber(PROCESS, 0));
-				struct clients_t *tmp_clients = clients;
-				while(tmp_clients) {
-					if(tmp_clients->cpu > 0 && tmp_clients->ram > 0) {
-						logprintf(LOG_DEBUG, "- client: %s cpu: %f%%, ram: %f%%",
-								  tmp_clients->uuid, tmp_clients->cpu, tmp_clients->ram);
+				if(checkcpu == 0) {
+					if(cpu > 90) {
+						logprintf(LOG_ERR, "cpu usage way too high %f%%", cpu);
+					} else {
+						logprintf(LOG_ERR, "cpu usage too high %f%%", cpu);
 					}
-					tmp_clients = tmp_clients->next;
+					logprintf(LOG_ERR, "checking again in 10 seconds");
+					sleep(10);
+				} else {
+					if(cpu > 90) {
+						logprintf(LOG_ERR, "cpu usage still way too high %f%%, exiting", cpu);
+					} else {
+						logprintf(LOG_ERR, "cpu usage still too high %f%%, stopping", cpu);
+					}
 				}
-				pilight.broadcast(procProtocol->id, procProtocol->message, STATS);
-				json_delete(procProtocol->message);
-				procProtocol->message = NULL;
+				if(checkcpu == 1) {
+					if(cpu > 90) {
+						exit(EXIT_FAILURE);
+					} else {
+						main_gc();
+						break;
+					}
+				}
+				checkcpu = 1;
+			} else if(watchdog == 1 && (i > -1) && (ram > 60)) {
+				if(checkram == 0) {
+					if(ram > 90) {
+						logprintf(LOG_ERR, "ram usage way too high %f%%", ram);
+						exit(EXIT_FAILURE);
+					} else {
+						logprintf(LOG_ERR, "ram usage too high %f%%", ram);
+					}
+					logprintf(LOG_ERR, "checking again in 10 seconds");
+					sleep(10);
+				} else {
+					if(ram > 90) {
+						logprintf(LOG_ERR, "ram usage still way too high %f%%, exiting", ram);
+					} else {
+						logprintf(LOG_ERR, "ram usage still too high %f%%, stopping", ram);
+					}
+				}
+				if(checkram == 1) {
+					if(ram > 90) {
+						exit(EXIT_FAILURE);
+					} else {
+						main_gc();
+						break;
+					}
+				}
+				checkram = 1;
+			} else {
+				checkcpu = 0;
+				checkram = 0;
+				if((i > 0 && i%3 == 0) || (i == -1)) {
+					procProtocol->message = json_mkobject();
+					JsonNode *code = json_mkobject();
+					json_append_member(code, "cpu", json_mknumber(cpu, 16));
+					if(ram > 0) {
+						json_append_member(code, "ram", json_mknumber(ram, 16));
+					}
+					logprintf(LOG_DEBUG, "cpu: %f%%, ram: %f%%", cpu, ram);
+					json_append_member(procProtocol->message, "values", code);
+					json_append_member(procProtocol->message, "origin", json_mkstring("core"));
+					json_append_member(procProtocol->message, "type", json_mknumber(PROCESS, 0));
+					struct clients_t *tmp_clients = clients;
+					while(tmp_clients) {
+						if(tmp_clients->cpu > 0 && tmp_clients->ram > 0) {
+							logprintf(LOG_DEBUG, "- client: %s cpu: %f%%, ram: %f%%",
+										tmp_clients->uuid, tmp_clients->cpu, tmp_clients->ram);
+						}
+						tmp_clients = tmp_clients->next;
+					}
+					pilight.broadcast(procProtocol->id, procProtocol->message, STATS);
+					json_delete(procProtocol->message);
+					procProtocol->message = NULL;
 
-				i = 0;
-				x = 0;
+					i = 0;
+					x = 0;
+				}
+				i++;
 			}
-			i++;
 		}
 		sleep(1);
 	}

@@ -1,12 +1,9 @@
 /*
- *  X.509 certificate and private key decoding
+ *  X.509 certificate parsing and verification
  *
- *  Copyright (C) 2006-2014, Brainspark B.V.
+ *  Copyright (C) 2006-2014, ARM Limited, All Rights Reserved
  *
- *  This file is part of PolarSSL (http://www.polarssl.org)
- *  Lead Maintainer: Paul Bakker <polarssl_maintainer at polarssl.org>
- *
- *  All rights reserved.
+ *  This file is part of mbed TLS (https://polarssl.org)
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -25,27 +22,37 @@
 /*
  *  The ITU-T X.509 standard defines a certificate format for PKI.
  *
- *  http://www.ietf.org/rfc/rfc3279.txt
- *  http://www.ietf.org/rfc/rfc3280.txt
- *
- *  ftp://ftp.rsasecurity.com/pub/pkcs/ascii/pkcs-1v2.asc
+ *  http://www.ietf.org/rfc/rfc5280.txt (Certificates and CRLs)
+ *  http://www.ietf.org/rfc/rfc3279.txt (Alg IDs for CRLs)
+ *  http://www.ietf.org/rfc/rfc2986.txt (CSRs, aka PKCS#10)
  *
  *  http://www.itu.int/ITU-T/studygroups/com17/languages/X.680-0207.pdf
  *  http://www.itu.int/ITU-T/studygroups/com17/languages/X.690-0207.pdf
  */
 
-#include "polarssl.h"
+#if !defined(POLARSSL_CONFIG_FILE)
+#include "polarssl/config.h"
+#else
+#include POLARSSL_CONFIG_FILE
+#endif
 
 #if defined(POLARSSL_X509_CRT_PARSE_C)
 
-#include "x509_crt.h"
-#include "oid.h"
+#include "polarssl/x509_crt.h"
+#include "polarssl/oid.h"
+#if defined(POLARSSL_PEM_PARSE_C)
+#include "polarssl/pem.h"
+#endif
 
+#if defined(POLARSSL_PLATFORM_C)
+#include "polarssl/platform.h"
+#else
 #define polarssl_malloc     malloc
 #define polarssl_free       free
+#endif
 
 #if defined(POLARSSL_THREADING_C)
-#include "threading.h"
+#include "polarssl/threading.h"
 #endif
 
 #include <string.h>
@@ -56,9 +63,20 @@
 #include <time.h>
 #endif
 
-#if defined(EFIX64) || defined(EFI32)
 #include <stdio.h>
+
+#if defined(POLARSSL_FS_IO)
+#if !defined(_WIN32) || defined(EFIX64) || defined(EFI32)
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <dirent.h>
 #endif
+#endif
+
+/* Implementation that should never be optimized out by the compiler */
+static void polarssl_zeroize( void *v, size_t n ) {
+    volatile unsigned char *p = v; while( n-- ) *p++ = 0;
+}
 
 /*
  *  Version  ::=  INTEGER  {  v1(0), v2(1), v3(2)  }
@@ -176,7 +194,7 @@ static int x509_get_basic_constraints( unsigned char **p,
         return( POLARSSL_ERR_X509_INVALID_EXTENSIONS + ret );
 
     if( *p == end )
-        return 0;
+        return( 0 );
 
     if( ( ret = asn1_get_bool( p, end, ca_istrue ) ) != 0 )
     {
@@ -191,7 +209,7 @@ static int x509_get_basic_constraints( unsigned char **p,
     }
 
     if( *p == end )
-        return 0;
+        return( 0 );
 
     if( ( ret = asn1_get_int( p, end, max_pathlen ) ) != 0 )
         return( POLARSSL_ERR_X509_INVALID_EXTENSIONS + ret );
@@ -202,7 +220,7 @@ static int x509_get_basic_constraints( unsigned char **p,
 
     (*max_pathlen)++;
 
-    return 0;
+    return( 0 );
 }
 
 static int x509_get_ns_cert_type( unsigned char **p,
@@ -221,7 +239,7 @@ static int x509_get_ns_cert_type( unsigned char **p,
 
     /* Get actual bitstring */
     *ns_cert_type = *bs.p;
-    return 0;
+    return( 0 );
 }
 
 static int x509_get_key_usage( unsigned char **p,
@@ -240,7 +258,7 @@ static int x509_get_key_usage( unsigned char **p,
 
     /* Get actual bitstring */
     *key_usage = *bs.p;
-    return 0;
+    return( 0 );
 }
 
 /*
@@ -262,7 +280,7 @@ static int x509_get_ext_key_usage( unsigned char **p,
         return( POLARSSL_ERR_X509_INVALID_EXTENSIONS +
                 POLARSSL_ERR_ASN1_INVALID_LENGTH );
 
-    return 0;
+    return( 0 );
 }
 
 /*
@@ -289,7 +307,7 @@ static int x509_get_ext_key_usage( unsigned char **p,
  *      nameAssigner            [0]     DirectoryString OPTIONAL,
  *      partyName               [1]     DirectoryString }
  *
- * NOTE: PolarSSL only parses and uses dNSName at this point.
+ * NOTE: we only parse and use dNSName at this point.
  */
 static int x509_get_subject_alt_name( unsigned char **p,
                                       const unsigned char *end,
@@ -335,6 +353,9 @@ static int x509_get_subject_alt_name( unsigned char **p,
         /* Allocate and assign next pointer */
         if( cur->buf.p != NULL )
         {
+            if( cur->next != NULL )
+                return( POLARSSL_ERR_X509_INVALID_EXTENSIONS );
+
             cur->next = (asn1_sequence *) polarssl_malloc(
                  sizeof( asn1_sequence ) );
 
@@ -447,12 +468,16 @@ static int x509_get_crt_ext( unsigned char **p,
             if( is_critical )
             {
                 /* Data is marked as critical: fail */
-                return ( POLARSSL_ERR_X509_INVALID_EXTENSIONS +
+                return( POLARSSL_ERR_X509_INVALID_EXTENSIONS +
                         POLARSSL_ERR_ASN1_UNEXPECTED_TAG );
             }
 #endif
             continue;
         }
+
+        /* Forbid repeated extensions */
+        if( ( crt->ext_types & ext_type ) != 0 )
+            return( POLARSSL_ERR_X509_INVALID_EXTENSIONS );
 
         crt->ext_types |= ext_type;
 
@@ -462,35 +487,35 @@ static int x509_get_crt_ext( unsigned char **p,
             /* Parse basic constraints */
             if( ( ret = x509_get_basic_constraints( p, end_ext_octet,
                     &crt->ca_istrue, &crt->max_pathlen ) ) != 0 )
-                return ( ret );
+                return( ret );
             break;
 
         case EXT_KEY_USAGE:
             /* Parse key usage */
             if( ( ret = x509_get_key_usage( p, end_ext_octet,
                     &crt->key_usage ) ) != 0 )
-                return ( ret );
+                return( ret );
             break;
 
         case EXT_EXTENDED_KEY_USAGE:
             /* Parse extended key usage */
             if( ( ret = x509_get_ext_key_usage( p, end_ext_octet,
                     &crt->ext_key_usage ) ) != 0 )
-                return ( ret );
+                return( ret );
             break;
 
         case EXT_SUBJECT_ALT_NAME:
             /* Parse subject alt name */
             if( ( ret = x509_get_subject_alt_name( p, end_ext_octet,
                     &crt->subject_alt_names ) ) != 0 )
-                return ( ret );
+                return( ret );
             break;
 
         case EXT_NS_CERT_TYPE:
             /* Parse netscape certificate type */
             if( ( ret = x509_get_ns_cert_type( p, end_ext_octet,
                     &crt->ns_cert_type ) ) != 0 )
-                return ( ret );
+                return( ret );
             break;
 
         default:
@@ -514,6 +539,10 @@ static int x509_crt_parse_der_core( x509_crt *crt, const unsigned char *buf,
     int ret;
     size_t len;
     unsigned char *p, *end, *crt_end;
+    x509_buf sig_params1, sig_params2;
+
+    memset( &sig_params1, 0, sizeof( x509_buf ) );
+    memset( &sig_params2, 0, sizeof( x509_buf ) );
 
     /*
      * Check for valid input
@@ -577,7 +606,8 @@ static int x509_crt_parse_der_core( x509_crt *crt, const unsigned char *buf,
      */
     if( ( ret = x509_get_version(  &p, end, &crt->version  ) ) != 0 ||
         ( ret = x509_get_serial(   &p, end, &crt->serial   ) ) != 0 ||
-        ( ret = x509_get_alg_null( &p, end, &crt->sig_oid1 ) ) != 0 )
+        ( ret = x509_get_alg(      &p, end, &crt->sig_oid1,
+                                            &sig_params1 ) ) != 0 )
     {
         x509_crt_free( crt );
         return( ret );
@@ -591,8 +621,9 @@ static int x509_crt_parse_der_core( x509_crt *crt, const unsigned char *buf,
         return( POLARSSL_ERR_X509_UNKNOWN_VERSION );
     }
 
-    if( ( ret = x509_get_sig_alg( &crt->sig_oid1, &crt->sig_md,
-                                  &crt->sig_pk ) ) != 0 )
+    if( ( ret = x509_get_sig_alg( &crt->sig_oid1, &sig_params1,
+                                  &crt->sig_md, &crt->sig_pk,
+                                  &crt->sig_opts ) ) != 0 )
     {
         x509_crt_free( crt );
         return( ret );
@@ -692,7 +723,7 @@ static int x509_crt_parse_der_core( x509_crt *crt, const unsigned char *buf,
     if( crt->version == 3 )
     {
 #endif
-        ret = x509_get_crt_ext( &p, end, crt);
+        ret = x509_get_crt_ext( &p, end, crt );
         if( ret != 0 )
         {
             x509_crt_free( crt );
@@ -718,14 +749,16 @@ static int x509_crt_parse_der_core( x509_crt *crt, const unsigned char *buf,
      *  signatureAlgorithm   AlgorithmIdentifier,
      *  signatureValue       BIT STRING
      */
-    if( ( ret = x509_get_alg_null( &p, end, &crt->sig_oid2 ) ) != 0 )
+    if( ( ret = x509_get_alg( &p, end, &crt->sig_oid2, &sig_params2 ) ) != 0 )
     {
         x509_crt_free( crt );
         return( ret );
     }
 
     if( crt->sig_oid1.len != crt->sig_oid2.len ||
-        memcmp( crt->sig_oid1.p, crt->sig_oid2.p, crt->sig_oid1.len ) != 0 )
+        memcmp( crt->sig_oid1.p, crt->sig_oid2.p, crt->sig_oid1.len ) != 0 ||
+        sig_params1.len != sig_params2.len ||
+        memcmp( sig_params1.p, sig_params2.p, sig_params1.len ) != 0 )
     {
         x509_crt_free( crt );
         return( POLARSSL_ERR_X509_SIG_MISMATCH );
@@ -772,7 +805,7 @@ int x509_crt_parse_der( x509_crt *chain, const unsigned char *buf,
     /*
      * Add new certificate on the end of the chain if needed.
      */
-    if ( crt->version != 0 && crt->next == NULL)
+    if( crt->version != 0 && crt->next == NULL )
     {
         crt->next = (x509_crt *) polarssl_malloc( sizeof( x509_crt ) );
 
@@ -780,8 +813,8 @@ int x509_crt_parse_der( x509_crt *chain, const unsigned char *buf,
             return( POLARSSL_ERR_X509_MALLOC_FAILED );
 
         prev = crt;
+        x509_crt_init( crt->next );
         crt = crt->next;
-        x509_crt_init( crt );
     }
 
     if( ( ret = x509_crt_parse_der_core( crt, buf, buflen ) ) != 0 )
@@ -799,7 +832,8 @@ int x509_crt_parse_der( x509_crt *chain, const unsigned char *buf,
 }
 
 /*
- * Parse one or more PEM certificates from a buffer and add them to the chained list
+ * Parse one or more PEM certificates from a buffer and add them to the chained
+ * list
  */
 int x509_crt_parse( x509_crt *chain, const unsigned char *buf, size_t buflen )
 {
@@ -816,9 +850,84 @@ int x509_crt_parse( x509_crt *chain, const unsigned char *buf, size_t buflen )
      * Determine buffer content. Buffer contains either one DER certificate or
      * one or more PEM certificates.
      */
+#if defined(POLARSSL_PEM_PARSE_C)
+    if( strstr( (const char *) buf, "-----BEGIN CERTIFICATE-----" ) != NULL )
+        buf_format = X509_FORMAT_PEM;
+#endif
 
     if( buf_format == X509_FORMAT_DER )
         return x509_crt_parse_der( chain, buf, buflen );
+
+#if defined(POLARSSL_PEM_PARSE_C)
+    if( buf_format == X509_FORMAT_PEM )
+    {
+        int ret;
+        pem_context pem;
+
+        while( buflen > 0 )
+        {
+            size_t use_len;
+            pem_init( &pem );
+
+            ret = pem_read_buffer( &pem,
+                           "-----BEGIN CERTIFICATE-----",
+                           "-----END CERTIFICATE-----",
+                           buf, NULL, 0, &use_len );
+
+            if( ret == 0 )
+            {
+                /*
+                 * Was PEM encoded
+                 */
+                buflen -= use_len;
+                buf += use_len;
+            }
+            else if( ret == POLARSSL_ERR_PEM_BAD_INPUT_DATA )
+            {
+                return( ret );
+            }
+            else if( ret != POLARSSL_ERR_PEM_NO_HEADER_FOOTER_PRESENT )
+            {
+                pem_free( &pem );
+
+                /*
+                 * PEM header and footer were found
+                 */
+                buflen -= use_len;
+                buf += use_len;
+
+                if( first_error == 0 )
+                    first_error = ret;
+
+                total_failed++;
+                continue;
+            }
+            else
+                break;
+
+            ret = x509_crt_parse_der( chain, pem.buf, pem.buflen );
+
+            pem_free( &pem );
+
+            if( ret != 0 )
+            {
+                /*
+                 * Quit parsing on a memory error
+                 */
+                if( ret == POLARSSL_ERR_X509_MALLOC_FAILED )
+                    return( ret );
+
+                if( first_error == 0 )
+                    first_error = ret;
+
+                total_failed++;
+                continue;
+            }
+
+            success = 1;
+        }
+    }
+#endif /* POLARSSL_PEM_PARSE_C */
 
     if( success )
         return( total_failed );
@@ -827,6 +936,141 @@ int x509_crt_parse( x509_crt *chain, const unsigned char *buf, size_t buflen )
     else
         return( POLARSSL_ERR_X509_CERT_UNKNOWN_FORMAT );
 }
+
+#if defined(POLARSSL_FS_IO)
+/*
+ * Load one or more certificates and add them to the chained list
+ */
+int x509_crt_parse_file( x509_crt *chain, const char *path )
+{
+    int ret;
+    size_t n;
+    unsigned char *buf;
+
+    if( ( ret = pk_load_file( path, &buf, &n ) ) != 0 )
+        return( ret );
+
+    ret = x509_crt_parse( chain, buf, n );
+
+    polarssl_zeroize( buf, n + 1 );
+    polarssl_free( buf );
+
+    return( ret );
+}
+
+#if defined(POLARSSL_THREADING_PTHREAD)
+static threading_mutex_t readdir_mutex = PTHREAD_MUTEX_INITIALIZER;
+#endif
+
+int x509_crt_parse_path( x509_crt *chain, const char *path )
+{
+    int ret = 0;
+#if defined(_WIN32) && !defined(EFIX64) && !defined(EFI32)
+    int w_ret;
+    WCHAR szDir[MAX_PATH];
+    char filename[MAX_PATH];
+    char *p;
+    int len = (int) strlen( path );
+
+    WIN32_FIND_DATAW file_data;
+    HANDLE hFind;
+
+    if( len > MAX_PATH - 3 )
+        return( POLARSSL_ERR_X509_BAD_INPUT_DATA );
+
+    memset( szDir, 0, sizeof(szDir) );
+    memset( filename, 0, MAX_PATH );
+    memcpy( filename, path, len );
+    filename[len++] = '\\';
+    p = filename + len;
+    filename[len++] = '*';
+
+    w_ret = MultiByteToWideChar( CP_ACP, 0, filename, len, szDir,
+                                 MAX_PATH - 3 );
+    if( w_ret == 0 )
+        return( POLARSSL_ERR_X509_BAD_INPUT_DATA );
+
+    hFind = FindFirstFileW( szDir, &file_data );
+    if( hFind == INVALID_HANDLE_VALUE )
+        return( POLARSSL_ERR_X509_FILE_IO_ERROR );
+
+    len = MAX_PATH - len;
+    do
+    {
+        memset( p, 0, len );
+
+        if( file_data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY )
+            continue;
+
+        w_ret = WideCharToMultiByte( CP_ACP, 0, file_data.cFileName,
+                                     lstrlenW( file_data.cFileName ),
+                                     p, len - 1,
+                                     NULL, NULL );
+        if( w_ret == 0 )
+            return( POLARSSL_ERR_X509_FILE_IO_ERROR );
+
+        w_ret = x509_crt_parse_file( chain, filename );
+        if( w_ret < 0 )
+            ret++;
+        else
+            ret += w_ret;
+    }
+    while( FindNextFileW( hFind, &file_data ) != 0 );
+
+    if( GetLastError() != ERROR_NO_MORE_FILES )
+        ret = POLARSSL_ERR_X509_FILE_IO_ERROR;
+
+    FindClose( hFind );
+#else /* _WIN32 */
+    int t_ret;
+    struct stat sb;
+    struct dirent *entry;
+    char entry_name[255];
+    DIR *dir = opendir( path );
+
+    if( dir == NULL )
+        return( POLARSSL_ERR_X509_FILE_IO_ERROR );
+
+#if defined(POLARSSL_THREADING_PTHREAD)
+    if( ( ret = polarssl_mutex_lock( &readdir_mutex ) ) != 0 )
+        return( ret );
+#endif
+
+    while( ( entry = readdir( dir ) ) != NULL )
+    {
+        snprintf( entry_name, sizeof entry_name, "%s/%s", path, entry->d_name );
+
+        if( stat( entry_name, &sb ) == -1 )
+        {
+            closedir( dir );
+            ret = POLARSSL_ERR_X509_FILE_IO_ERROR;
+            goto cleanup;
+        }
+
+        if( !S_ISREG( sb.st_mode ) )
+            continue;
+
+        // Ignore parse errors
+        //
+        t_ret = x509_crt_parse_file( chain, entry_name );
+        if( t_ret < 0 )
+            ret++;
+        else
+            ret += t_ret;
+    }
+    closedir( dir );
+
+cleanup:
+#if defined(POLARSSL_THREADING_PTHREAD)
+    if( polarssl_mutex_unlock( &readdir_mutex ) != 0 )
+        ret = POLARSSL_ERR_THREADING_MUTEX_ERROR;
+#endif
+
+#endif /* _WIN32 */
+
+    return( ret );
+}
+#endif /* POLARSSL_FS_IO */
 
 #if defined(_MSC_VER) && !defined snprintf && !defined(EFIX64) && \
     !defined(EFI32)
@@ -843,7 +1087,7 @@ int x509_crt_parse( x509_crt *chain, const unsigned char *buf, size_t buflen )
  * This fuction tries to 'fix' this by at least suggesting enlarging the
  * size by 20.
  */
-static int compat_snprintf(char *str, size_t size, const char *format, ...)
+static int compat_snprintf( char *str, size_t size, const char *format, ... )
 {
     va_list ap;
     int res = -1;
@@ -855,29 +1099,29 @@ static int compat_snprintf(char *str, size_t size, const char *format, ...)
     va_end( ap );
 
     // No quick fix possible
-    if ( res < 0 )
+    if( res < 0 )
         return( (int) size + 20 );
 
-    return res;
+    return( res );
 }
 
 #define snprintf compat_snprintf
-#endif
+#endif /* _MSC_VER  && !snprintf && !EFIX64 && !EFI32 */
 
 #define POLARSSL_ERR_DEBUG_BUF_TOO_SMALL    -2
 
-#define SAFE_SNPRINTF()                         \
-{                                               \
-    if( ret == -1 )                             \
-        return( -1 );                           \
-                                                \
-    if ( (unsigned int) ret > n ) {             \
-        p[n - 1] = '\0';                        \
-        return POLARSSL_ERR_DEBUG_BUF_TOO_SMALL;\
-    }                                           \
-                                                \
-    n -= (unsigned int) ret;                    \
-    p += (unsigned int) ret;                    \
+#define SAFE_SNPRINTF()                             \
+{                                                   \
+    if( ret == -1 )                                 \
+        return( -1 );                               \
+                                                    \
+    if( (unsigned int) ret > n ) {                  \
+        p[n - 1] = '\0';                            \
+        return( POLARSSL_ERR_DEBUG_BUF_TOO_SMALL ); \
+    }                                               \
+                                                    \
+    n -= (unsigned int) ret;                        \
+    p += (unsigned int) ret;                        \
 }
 
 static int x509_info_subject_alt_name( char **buf, size_t *size,
@@ -1018,7 +1262,6 @@ int x509_crt_info( char *buf, size_t size, const char *prefix,
     int ret;
     size_t n;
     char *p;
-    const char *desc = NULL;
     char key_size_str[BEFORE_COLON];
 
     p = buf;
@@ -1031,7 +1274,7 @@ int x509_crt_info( char *buf, size_t size, const char *prefix,
                                prefix );
     SAFE_SNPRINTF();
 
-    ret = x509_serial_gets( p, n, &crt->serial);
+    ret = x509_serial_gets( p, n, &crt->serial );
     SAFE_SNPRINTF();
 
     ret = snprintf( p, n, "\n%sissuer name       : ", prefix );
@@ -1061,11 +1304,8 @@ int x509_crt_info( char *buf, size_t size, const char *prefix,
     ret = snprintf( p, n, "\n%ssigned using      : ", prefix );
     SAFE_SNPRINTF();
 
-    ret = oid_get_sig_alg_desc( &crt->sig_oid1, &desc );
-    if( ret != 0 )
-        ret = snprintf( p, n, "???"  );
-    else
-        ret = snprintf( p, n, "%s", desc );
+    ret = x509_sig_alg_gets( p, n, &crt->sig_oid1, crt->sig_pk,
+                             crt->sig_md, crt->sig_opts );
     SAFE_SNPRINTF();
 
     /* Key size */
@@ -1181,7 +1421,7 @@ int x509_crt_check_extended_key_usage( const x509_crt *crt,
 
     return( POLARSSL_ERR_X509_BAD_INPUT_DATA );
 }
-#endif
+#endif /* POLARSSL_X509_CHECK_EXTENDED_KEY_USAGE */
 
 #if defined(POLARSSL_X509_CRL_PARSE_C)
 /*
@@ -1262,9 +1502,9 @@ static int x509_crt_verifycrl( x509_crt *crt, x509_crt *ca,
 
         md( md_info, crl_list->tbs.p, crl_list->tbs.len, hash );
 
-        if( pk_can_do( &ca->pk, crl_list->sig_pk ) == 0 ||
-            pk_verify( &ca->pk, crl_list->sig_md, hash, md_info->size,
-                       crl_list->sig.p, crl_list->sig.len ) != 0 )
+        if( pk_verify_ext( crl_list->sig_pk, crl_list->sig_opts, &ca->pk,
+                           crl_list->sig_md, hash, md_info->size,
+                           crl_list->sig.p, crl_list->sig.len ) != 0 )
         {
             flags |= BADCRL_NOT_TRUSTED;
             break;
@@ -1282,7 +1522,7 @@ static int x509_crt_verifycrl( x509_crt *crt, x509_crt *ca,
         /*
          * Check if certificate is revoked
          */
-        if( x509_crt_revoked(crt, crl_list) )
+        if( x509_crt_revoked( crt, crl_list ) )
         {
             flags |= BADCERT_REVOKED;
             break;
@@ -1290,12 +1530,14 @@ static int x509_crt_verifycrl( x509_crt *crt, x509_crt *ca,
 
         crl_list = crl_list->next;
     }
-    return flags;
+    return( flags );
 }
 #endif /* POLARSSL_X509_CRL_PARSE_C */
 
-// Equal == 0, inequal == 1
-static int x509_name_cmp( const void *s1, const void *s2, size_t len )
+/*
+ * Like memcmp, but case-insensitive and always returns -1 if different
+ */
+static int x509_memcasecmp( const void *s1, const void *s2, size_t len )
 {
     size_t i;
     unsigned char diff;
@@ -1315,21 +1557,25 @@ static int x509_name_cmp( const void *s1, const void *s2, size_t len )
             continue;
         }
 
-        return( 1 );
+        return( -1 );
     }
 
     return( 0 );
 }
 
+/*
+ * Return 1 if match, 0 if not
+ * TODO: inverted return value!
+ */
 static int x509_wildcard_verify( const char *cn, x509_buf *name )
 {
     size_t i;
-    size_t cn_idx = 0;
+    size_t cn_idx = 0, cn_len = strlen( cn );
 
     if( name->len < 3 || name->p[0] != '*' || name->p[1] != '.' )
         return( 0 );
 
-    for( i = 0; i < strlen( cn ); ++i )
+    for( i = 0; i < cn_len; ++i )
     {
         if( cn[i] == '.' )
         {
@@ -1341,8 +1587,8 @@ static int x509_wildcard_verify( const char *cn, x509_buf *name )
     if( cn_idx == 0 )
         return( 0 );
 
-    if( strlen( cn ) - cn_idx == name->len - 1 &&
-        x509_name_cmp( name->p + 1, cn + cn_idx, name->len - 1 ) == 0 )
+    if( cn_len - cn_idx == name->len - 1 &&
+        x509_memcasecmp( name->p + 1, cn + cn_idx, name->len - 1 ) == 0 )
     {
         return( 1 );
     }
@@ -1351,24 +1597,114 @@ static int x509_wildcard_verify( const char *cn, x509_buf *name )
 }
 
 /*
+ * Compare two X.509 strings, case-insensitive, and allowing for some encoding
+ * variations (but not all).
+ *
+ * Return 0 if equal, -1 otherwise.
+ */
+static int x509_string_cmp( const x509_buf *a, const x509_buf *b )
+{
+    if( a->tag == b->tag &&
+        a->len == b->len &&
+        memcmp( a->p, b->p, b->len ) == 0 )
+    {
+        return( 0 );
+    }
+
+    if( ( a->tag == ASN1_UTF8_STRING || a->tag == ASN1_PRINTABLE_STRING ) &&
+        ( b->tag == ASN1_UTF8_STRING || b->tag == ASN1_PRINTABLE_STRING ) &&
+        a->len == b->len &&
+        x509_memcasecmp( a->p, b->p, b->len ) == 0 )
+    {
+        return( 0 );
+    }
+
+    return( -1 );
+}
+
+/*
+ * Compare two X.509 Names (aka rdnSequence).
+ *
+ * See RFC 5280 section 7.1, though we don't implement the whole algorithm:
+ * we sometimes return unequal when the full algorithm would return equal,
+ * but never the other way. (In particular, we don't do Unicode normalisation
+ * or space folding.)
+ *
+ * Return 0 if equal, -1 otherwise.
+ */
+static int x509_name_cmp( const x509_name *a, const x509_name *b )
+{
+    /* Avoid recursion, it might not be optimised by the compiler */
+    while( a != NULL || b != NULL )
+    {
+        if( a == NULL || b == NULL )
+            return( -1 );
+
+        /* type */
+        if( a->oid.tag != b->oid.tag ||
+            a->oid.len != b->oid.len ||
+            memcmp( a->oid.p, b->oid.p, b->oid.len ) != 0 )
+        {
+            return( -1 );
+        }
+
+        /* value */
+        if( x509_string_cmp( &a->val, &b->val ) != 0 )
+            return( -1 );
+
+        /* structure of the list of sets */
+        if( a->next_merged != b->next_merged )
+            return( -1 );
+
+        a = a->next;
+        b = b->next;
+    }
+
+    /* a == NULL == b */
+    return( 0 );
+}
+
+/*
  * Check if 'parent' is a suitable parent (signing CA) for 'child'.
  * Return 0 if yes, -1 if not.
+ *
+ * top means parent is a locally-trusted certificate
+ * bottom means child is the end entity cert
  */
 static int x509_crt_check_parent( const x509_crt *child,
-                                  const x509_crt *parent )
+                                  const x509_crt *parent,
+                                  int top, int bottom )
 {
-    if( parent->version == 0 ||
-        parent->ca_istrue == 0 ||
-        child->issuer_raw.len != parent->subject_raw.len ||
-        memcmp( child->issuer_raw.p, parent->subject_raw.p,
-                child->issuer_raw.len ) != 0 )
+    int need_ca_bit;
+
+    /* Parent must be the issuer */
+    if( x509_name_cmp( &child->issuer, &parent->subject ) != 0 )
+        return( -1 );
+
+    /* Parent must have the basicConstraints CA bit set as a general rule */
+    need_ca_bit = 1;
+
+    /* Exception: v1/v2 certificates that are locally trusted. */
+    if( top && parent->version < 3 )
+        need_ca_bit = 0;
+
+    /* Exception: self-signed end-entity certs that are locally trusted. */
+    if( top && bottom &&
+        child->raw.len == parent->raw.len &&
+        memcmp( child->raw.p, parent->raw.p, child->raw.len ) == 0 )
+    {
+        need_ca_bit = 0;
+    }
+
+    if( need_ca_bit && ! parent->ca_istrue )
+        return( -1 );
+
+#if defined(POLARSSL_X509_CHECK_KEY_USAGE)
+    if( need_ca_bit &&
+        x509_crt_check_key_usage( parent, KU_KEY_CERT_SIGN ) != 0 )
     {
         return( -1 );
     }
-
-#if defined(POLARSSL_X509_CHECK_KEY_USAGE)
-    if( x509_crt_check_key_usage( parent, KU_KEY_CERT_SIGN ) != 0 )
-        return( -1 );
 #endif
 
     return( 0 );
@@ -1409,7 +1745,7 @@ static int x509_crt_verify_top(
 
     for( /* trust_ca */ ; trust_ca != NULL; trust_ca = trust_ca->next )
     {
-        if( x509_crt_check_parent( child, trust_ca ) != 0 )
+        if( x509_crt_check_parent( child, trust_ca, 1, path_cnt == 0 ) != 0 )
             continue;
 
         /*
@@ -1429,9 +1765,9 @@ static int x509_crt_verify_top(
             continue;
         }
 
-        if( pk_can_do( &trust_ca->pk, child->sig_pk ) == 0 ||
-            pk_verify( &trust_ca->pk, child->sig_md, hash, md_info->size,
-                       child->sig.p, child->sig.len ) != 0 )
+        if( pk_verify_ext( child->sig_pk, child->sig_opts, &trust_ca->pk,
+                           child->sig_md, hash, md_info->size,
+                           child->sig.p, child->sig.len ) != 0 )
         {
             continue;
         }
@@ -1468,15 +1804,18 @@ static int x509_crt_verify_top(
 
         if( NULL != f_vrfy )
         {
-            if( ( ret = f_vrfy( p_vrfy, trust_ca, path_cnt + 1, &ca_flags ) ) != 0 )
+            if( ( ret = f_vrfy( p_vrfy, trust_ca, path_cnt + 1,
+                                &ca_flags ) ) != 0 )
+            {
                 return( ret );
+            }
         }
     }
 
     /* Call callback on top cert */
     if( NULL != f_vrfy )
     {
-        if( ( ret = f_vrfy(p_vrfy, child, path_cnt, flags ) ) != 0 )
+        if( ( ret = f_vrfy( p_vrfy, child, path_cnt, flags ) ) != 0 )
             return( ret );
     }
 
@@ -1497,6 +1836,13 @@ static int x509_crt_verify_child(
     x509_crt *grandparent;
     const md_info_t *md_info;
 
+    /* path_cnt is 0 for the first intermediate CA */
+    if( 1 + path_cnt > POLARSSL_X509_MAX_INTERMEDIATE_CA )
+    {
+        *flags |= BADCERT_NOT_TRUSTED;
+        return( POLARSSL_ERR_X509_CERT_VERIFY_FAILED );
+    }
+
     if( x509_time_expired( &child->valid_to ) )
         *flags |= BADCERT_EXPIRED;
 
@@ -1515,9 +1861,9 @@ static int x509_crt_verify_child(
     {
         md( md_info, child->tbs.p, child->tbs.len, hash );
 
-        if( pk_can_do( &parent->pk, child->sig_pk ) == 0 ||
-            pk_verify( &parent->pk, child->sig_md, hash, md_info->size,
-                       child->sig.p, child->sig.len ) != 0 )
+        if( pk_verify_ext( child->sig_pk, child->sig_opts, &parent->pk,
+                           child->sig_md, hash, md_info->size,
+                           child->sig.p, child->sig.len ) != 0 )
         {
             *flags |= BADCERT_NOT_TRUSTED;
         }
@@ -1533,7 +1879,8 @@ static int x509_crt_verify_child(
          grandparent != NULL;
          grandparent = grandparent->next )
     {
-        if( x509_crt_check_parent( parent, grandparent ) == 0 )
+        if( x509_crt_check_parent( parent, grandparent,
+                                   0, path_cnt == 0 ) == 0 )
             break;
     }
 
@@ -1594,7 +1941,7 @@ int x509_crt_verify( x509_crt *crt,
             while( cur != NULL )
             {
                 if( cur->buf.len == cn_len &&
-                    x509_name_cmp( cn, cur->buf.p, cn_len ) == 0 )
+                    x509_memcasecmp( cn, cur->buf.p, cn_len ) == 0 )
                     break;
 
                 if( cur->buf.len > 2 &&
@@ -1615,7 +1962,7 @@ int x509_crt_verify( x509_crt *crt,
                 if( OID_CMP( OID_AT_CN, &name->oid ) )
                 {
                     if( name->val.len == cn_len &&
-                        x509_name_cmp( name->val.p, cn, cn_len ) == 0 )
+                        x509_memcasecmp( name->val.p, cn, cn_len ) == 0 )
                         break;
 
                     if( name->val.len > 2 &&
@@ -1635,7 +1982,7 @@ int x509_crt_verify( x509_crt *crt,
     /* Look for a parent upwards the chain */
     for( parent = crt->next; parent != NULL; parent = parent->next )
     {
-        if( x509_crt_check_parent( crt, parent ) == 0 )
+        if( x509_crt_check_parent( crt, parent, 0, pathlen == 0 ) == 0 )
             break;
     }
 
@@ -1688,12 +2035,16 @@ void x509_crt_free( x509_crt *crt )
     {
         pk_free( &cert_cur->pk );
 
+#if defined(POLARSSL_X509_RSASSA_PSS_SUPPORT)
+        polarssl_free( cert_cur->sig_opts );
+#endif
+
         name_cur = cert_cur->issuer.next;
         while( name_cur != NULL )
         {
             name_prv = name_cur;
             name_cur = name_cur->next;
-            memset( name_prv, 0, sizeof( x509_name ) );
+            polarssl_zeroize( name_prv, sizeof( x509_name ) );
             polarssl_free( name_prv );
         }
 
@@ -1702,7 +2053,7 @@ void x509_crt_free( x509_crt *crt )
         {
             name_prv = name_cur;
             name_cur = name_cur->next;
-            memset( name_prv, 0, sizeof( x509_name ) );
+            polarssl_zeroize( name_prv, sizeof( x509_name ) );
             polarssl_free( name_prv );
         }
 
@@ -1711,7 +2062,7 @@ void x509_crt_free( x509_crt *crt )
         {
             seq_prv = seq_cur;
             seq_cur = seq_cur->next;
-            memset( seq_prv, 0, sizeof( x509_sequence ) );
+            polarssl_zeroize( seq_prv, sizeof( x509_sequence ) );
             polarssl_free( seq_prv );
         }
 
@@ -1720,13 +2071,13 @@ void x509_crt_free( x509_crt *crt )
         {
             seq_prv = seq_cur;
             seq_cur = seq_cur->next;
-            memset( seq_prv, 0, sizeof( x509_sequence ) );
+            polarssl_zeroize( seq_prv, sizeof( x509_sequence ) );
             polarssl_free( seq_prv );
         }
 
         if( cert_cur->raw.p != NULL )
         {
-            memset( cert_cur->raw.p, 0, cert_cur->raw.len );
+            polarssl_zeroize( cert_cur->raw.p, cert_cur->raw.len );
             polarssl_free( cert_cur->raw.p );
         }
 
@@ -1740,11 +2091,11 @@ void x509_crt_free( x509_crt *crt )
         cert_prv = cert_cur;
         cert_cur = cert_cur->next;
 
-        memset( cert_prv, 0, sizeof( x509_crt ) );
+        polarssl_zeroize( cert_prv, sizeof( x509_crt ) );
         if( cert_prv != crt )
             polarssl_free( cert_prv );
     }
     while( cert_cur != NULL );
 }
 
-#endif
+#endif /* POLARSSL_X509_CRT_PARSE_C */

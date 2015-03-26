@@ -1,12 +1,9 @@
 /*
  *  Platform-specific and custom entropy polling functions
  *
- *  Copyright (C) 2006-2011, Brainspark B.V.
+ *  Copyright (C) 2006-2014, ARM Limited, All Rights Reserved
  *
- *  This file is part of PolarSSL (http://www.polarssl.org)
- *  Lead Maintainer: Paul Bakker <polarssl_maintainer at polarssl.org>
- *
- *  All rights reserved.
+ *  This file is part of mbed TLS (https://polarssl.org)
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -23,12 +20,23 @@
  *  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#include "polarssl.h"
+#if !defined(POLARSSL_CONFIG_FILE)
+#include "polarssl/config.h"
+#else
+#include POLARSSL_CONFIG_FILE
+#endif
 
 #if defined(POLARSSL_ENTROPY_C)
 
-#include "entropy.h"
-#include "entropy_poll.h"
+#include "polarssl/entropy.h"
+#include "polarssl/entropy_poll.h"
+
+#if defined(POLARSSL_TIMING_C)
+#include "polarssl/timing.h"
+#endif
+#if defined(POLARSSL_HAVEGE_C)
+#include "polarssl/havege.h"
+#endif
 
 #if !defined(POLARSSL_NO_PLATFORM_ENTROPY)
 #if defined(_WIN32) && !defined(EFIX64) && !defined(EFI32)
@@ -49,18 +57,55 @@ int platform_entropy_poll( void *data, unsigned char *output, size_t len,
     if( CryptAcquireContext( &provider, NULL, NULL,
                               PROV_RSA_FULL, CRYPT_VERIFYCONTEXT ) == FALSE )
     {
-        return POLARSSL_ERR_ENTROPY_SOURCE_FAILED;
+        return( POLARSSL_ERR_ENTROPY_SOURCE_FAILED );
     }
 
     if( CryptGenRandom( provider, (DWORD) len, output ) == FALSE )
-        return POLARSSL_ERR_ENTROPY_SOURCE_FAILED;
+        return( POLARSSL_ERR_ENTROPY_SOURCE_FAILED );
 
     CryptReleaseContext( provider, 0 );
     *olen = len;
 
     return( 0 );
 }
-#else
+#else /* _WIN32 && !EFIX64 && !EFI32 */
+
+/*
+ * Test for Linux getrandom() support.
+ * Since there is no wrapper in the libc yet, use the generic syscall wrapper
+ * available in GNU libc and compatible libc's (eg uClibc).
+ */
+#if defined(__linux__) && defined(__GLIBC__)
+#include <linux/version.h>
+#include <unistd.h>
+#include <sys/syscall.h>
+#if defined(SYS_getrandom)
+#define HAVE_GETRANDOM
+static int getrandom_wrapper( void *buf, size_t buflen, unsigned int flags )
+{
+    return( syscall( SYS_getrandom, buf, buflen, flags ) );
+}
+#endif /* SYS_getrandom */
+#endif /* __linux__ */
+
+#if defined(HAVE_GETRANDOM)
+
+#include <errno.h>
+
+int platform_entropy_poll( void *data,
+                           unsigned char *output, size_t len, size_t *olen )
+{
+    int ret;
+    ((void) data);
+
+    if( ( ret = getrandom_wrapper( output, len, 0 ) ) < 0 )
+        return( POLARSSL_ERR_ENTROPY_SOURCE_FAILED );
+
+    *olen = ret;
+    return( 0 );
+}
+
+#else /* HAVE_GETRANDOM */
 
 #include <stdio.h>
 
@@ -75,13 +120,13 @@ int platform_entropy_poll( void *data,
 
     file = fopen( "/dev/urandom", "rb" );
     if( file == NULL )
-        return POLARSSL_ERR_ENTROPY_SOURCE_FAILED;
+        return( POLARSSL_ERR_ENTROPY_SOURCE_FAILED );
 
     ret = fread( output, 1, len, file );
     if( ret != len )
     {
         fclose( file );
-        return POLARSSL_ERR_ENTROPY_SOURCE_FAILED;
+        return( POLARSSL_ERR_ENTROPY_SOURCE_FAILED );
     }
 
     fclose( file );
@@ -89,8 +134,9 @@ int platform_entropy_poll( void *data,
 
     return( 0 );
 }
-#endif
-#endif
+#endif /* HAVE_GETRANDOM */
+#endif /* _WIN32 && !EFIX64 && !EFI32 */
+#endif /* !POLARSSL_NO_PLATFORM_ENTROPY */
 
 #if defined(POLARSSL_TIMING_C)
 int hardclock_poll( void *data,
@@ -108,6 +154,22 @@ int hardclock_poll( void *data,
 
     return( 0 );
 }
-#endif
+#endif /* POLARSSL_TIMING_C */
+
+#if defined(POLARSSL_HAVEGE_C)
+int havege_poll( void *data,
+                 unsigned char *output, size_t len, size_t *olen )
+{
+    havege_state *hs = (havege_state *) data;
+    *olen = 0;
+
+    if( havege_random( hs, output, len ) != 0 )
+        return( POLARSSL_ERR_ENTROPY_SOURCE_FAILED );
+
+    *olen = len;
+
+    return( 0 );
+}
+#endif /* POLARSSL_HAVEGE_C */
 
 #endif /* POLARSSL_ENTROPY_C */

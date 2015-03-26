@@ -1,12 +1,9 @@
 /*
  *  Elliptic curve Diffie-Hellman
  *
- *  Copyright (C) 2006-2013, Brainspark B.V.
+ *  Copyright (C) 2006-2014, ARM Limited, All Rights Reserved
  *
- *  This file is part of PolarSSL (http://www.polarssl.org)
- *  Lead Maintainer: Paul Bakker <polarssl_maintainer at polarssl.org>
- *
- *  All rights reserved.
+ *  This file is part of mbed TLS (https://polarssl.org)
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -30,11 +27,15 @@
  * RFC 4492
  */
 
-#include "polarssl.h"
+#if !defined(POLARSSL_CONFIG_FILE)
+#include "polarssl/config.h"
+#else
+#include POLARSSL_CONFIG_FILE
+#endif
 
 #if defined(POLARSSL_ECDH_C)
 
-#include "ecdh.h"
+#include "polarssl/ecdh.h"
 
 /*
  * Generate public key: simple wrapper around ecp_gen_keypair
@@ -97,13 +98,13 @@ void ecdh_free( ecdh_context *ctx )
         return;
 
     ecp_group_free( &ctx->grp );
-    mpi_free      ( &ctx->d   );
     ecp_point_free( &ctx->Q   );
     ecp_point_free( &ctx->Qp  );
-    mpi_free      ( &ctx->z   );
     ecp_point_free( &ctx->Vi  );
     ecp_point_free( &ctx->Vf  );
-    mpi_free      ( &ctx->_d  );
+    mpi_free( &ctx->d  );
+    mpi_free( &ctx->z  );
+    mpi_free( &ctx->_d );
 }
 
 /*
@@ -140,7 +141,7 @@ int ecdh_make_params( ecdh_context *ctx, size_t *olen,
         return( ret );
 
     *olen = grp_len + pt_len;
-    return 0;
+    return( 0 );
 }
 
 /*
@@ -162,7 +163,7 @@ int ecdh_read_params( ecdh_context *ctx,
                 != 0 )
         return( ret );
 
-    return 0;
+    return( 0 );
 }
 
 /*
@@ -259,4 +260,18 @@ int ecdh_calc_secret( ecdh_context *ctx, size_t *olen,
     return mpi_write_binary( &ctx->z, buf, *olen );
 }
 
-#endif /* defined(POLARSSL_ECDH_C) */
+
+#if defined(POLARSSL_SELF_TEST)
+
+/*
+ * Checkup routine
+ */
+int ecdh_self_test( int verbose )
+{
+    ((void) verbose );
+    return( 0 );
+}
+
+#endif /* POLARSSL_SELF_TEST */
+
+#endif /* POLARSSL_ECDH_C */

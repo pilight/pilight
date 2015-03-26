@@ -1,12 +1,9 @@
 /*
  *  Elliptic curves over GF(p): curve-specific data and functions
  *
- *  Copyright (C) 2006-2013, Brainspark B.V.
+ *  Copyright (C) 2006-2014, ARM Limited, All Rights Reserved
  *
- *  This file is part of PolarSSL (http://www.polarssl.org)
- *  Lead Maintainer: Paul Bakker <polarssl_maintainer at polarssl.org>
- *
- *  All rights reserved.
+ *  This file is part of mbed TLS (https://polarssl.org)
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -23,11 +20,15 @@
  *  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#include "polarssl.h"
+#if !defined(POLARSSL_CONFIG_FILE)
+#include "polarssl/config.h"
+#else
+#include POLARSSL_CONFIG_FILE
+#endif
 
 #if defined(POLARSSL_ECP_C)
 
-#include "ecp.h"
+#include "polarssl/ecp.h"
 
 #if defined(_MSC_VER) && !defined(inline)
 #define inline _inline
@@ -1233,7 +1234,7 @@ static int ecp_mod_p255( mpi *N )
     M.n++; /* Make room for multiplication by 19 */
 
     /* N = A0 */
-    mpi_set_bit( N, 255, 0 );
+    MPI_CHK( mpi_set_bit( N, 255, 0 ) );
     for( i = P255_WIDTH; i < N->n; i++ )
         N->p[i] = 0;
 
@@ -1284,12 +1285,12 @@ static inline int ecp_mod_koblitz( mpi *N, t_uint *Rp, size_t p_limbs,
         M.n = p_limbs + adjust;
     memset( Mp, 0, sizeof Mp );
     memcpy( Mp, N->p + p_limbs - adjust, M.n * sizeof( t_uint ) );
-    if (shift != 0 )
+    if( shift != 0 )
         MPI_CHK( mpi_shift_r( &M, shift ) );
     M.n += R.n - adjust; /* Make room for multiplication by R */
 
     /* N = A0 */
-    if (mask != 0 )
+    if( mask != 0 )
         N->p[p_limbs - 1] &= mask;
     for( i = p_limbs; i < N->n; i++ )
         N->p[i] = 0;
@@ -1306,12 +1307,12 @@ static inline int ecp_mod_koblitz( mpi *N, t_uint *Rp, size_t p_limbs,
         M.n = p_limbs + adjust;
     memset( Mp, 0, sizeof Mp );
     memcpy( Mp, N->p + p_limbs - adjust, M.n * sizeof( t_uint ) );
-    if (shift != 0 )
+    if( shift != 0 )
         MPI_CHK( mpi_shift_r( &M, shift ) );
     M.n += R.n - adjust; /* Make room for multiplication by R */
 
     /* N = A0 */
-    if (mask != 0 )
+    if( mask != 0 )
         N->p[p_limbs - 1] &= mask;
     for( i = p_limbs; i < N->n; i++ )
         N->p[i] = 0;
@@ -1373,4 +1374,4 @@ static int ecp_mod_p256k1( mpi *N )
 }
 #endif /* POLARSSL_ECP_DP_SECP256K1_ENABLED */
 
-#endif
+#endif /* POLARSSL_ECP_C */

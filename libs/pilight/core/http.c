@@ -46,9 +46,9 @@
 #include "socket.h"
 #include "log.h"
 #include "common.h"
-#include "../../polarssl/ssl.h"
-#include "../../polarssl/entropy.h"
-#include "../../polarssl/ctr_drbg.h"
+#include "../../polarssl/polarssl/ssl.h"
+#include "../../polarssl/polarssl/entropy.h"
+#include "../../polarssl/polarssl/ctr_drbg.h"
 
 #define USERAGENT			"pilight"
 #define HTTP_POST			1

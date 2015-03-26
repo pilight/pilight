@@ -1,12 +1,9 @@
 /*
  *  Public Key layer for parsing key files and structures
  *
- *  Copyright (C) 2006-2013, Brainspark B.V.
+ *  Copyright (C) 2006-2014, ARM Limited, All Rights Reserved
  *
- *  This file is part of PolarSSL (http://www.polarssl.org)
- *  Lead Maintainer: Paul Bakker <polarssl_maintainer at polarssl.org>
- *
- *  All rights reserved.
+ *  This file is part of mbed TLS (https://polarssl.org)
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -23,21 +20,138 @@
  *  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#include "polarssl.h"
+#if !defined(POLARSSL_CONFIG_FILE)
+#include "polarssl/config.h"
+#else
+#include POLARSSL_CONFIG_FILE
+#endif
 
 #if defined(POLARSSL_PK_PARSE_C)
 
-#include "pk.h"
-#include "asn1.h"
-#include "oid.h"
+#include "polarssl/pk.h"
+#include "polarssl/asn1.h"
+#include "polarssl/oid.h"
 
 #if defined(POLARSSL_RSA_C)
-#include "rsa.h"
+#include "polarssl/rsa.h"
+#endif
+#if defined(POLARSSL_ECP_C)
+#include "polarssl/ecp.h"
+#endif
+#if defined(POLARSSL_ECDSA_C)
+#include "polarssl/ecdsa.h"
+#endif
+#if defined(POLARSSL_PEM_PARSE_C)
+#include "polarssl/pem.h"
+#endif
+#if defined(POLARSSL_PKCS5_C)
+#include "polarssl/pkcs5.h"
+#endif
+#if defined(POLARSSL_PKCS12_C)
+#include "polarssl/pkcs12.h"
 #endif
 
+#if defined(POLARSSL_PLATFORM_C)
+#include "polarssl/platform.h"
+#else
 #include <stdlib.h>
 #define polarssl_malloc     malloc
 #define polarssl_free       free
+#endif
+
+#if defined(POLARSSL_FS_IO)
+/* Implementation that should never be optimized out by the compiler */
+static void polarssl_zeroize( void *v, size_t n ) {
+    volatile unsigned char *p = v; while( n-- ) *p++ = 0;
+}
+
+/*
+ * Load all data from a file into a given buffer.
+ */
+int pk_load_file( const char *path, unsigned char **buf, size_t *n )
+{
+    FILE *f;
+    long size;
+
+    if( ( f = fopen( path, "rb" ) ) == NULL )
+        return( POLARSSL_ERR_PK_FILE_IO_ERROR );
+
+    fseek( f, 0, SEEK_END );
+    if( ( size = ftell( f ) ) == -1 )
+    {
+        fclose( f );
+        return( POLARSSL_ERR_PK_FILE_IO_ERROR );
+    }
+    fseek( f, 0, SEEK_SET );
+
+    *n = (size_t) size;
+
+    if( *n + 1 == 0 ||
+        ( *buf = (unsigned char *) polarssl_malloc( *n + 1 ) ) == NULL )
+    {
+        fclose( f );
+        return( POLARSSL_ERR_PK_MALLOC_FAILED );
+    }
+
+    if( fread( *buf, 1, *n, f ) != *n )
+    {
+        fclose( f );
+        polarssl_free( *buf );
+        return( POLARSSL_ERR_PK_FILE_IO_ERROR );
+    }
+
+    fclose( f );
+
+    (*buf)[*n] = '\0';
+
+    return( 0 );
+}
+
+/*
+ * Load and parse a private key
+ */
+int pk_parse_keyfile( pk_context *ctx,
+                      const char *path, const char *pwd )
+{
+    int ret;
+    size_t n;
+    unsigned char *buf;
+
+    if( ( ret = pk_load_file( path, &buf, &n ) ) != 0 )
+        return( ret );
+
+    if( pwd == NULL )
+        ret = pk_parse_key( ctx, buf, n, NULL, 0 );
+    else
+        ret = pk_parse_key( ctx, buf, n,
+                (const unsigned char *) pwd, strlen( pwd ) );
+
+    polarssl_zeroize( buf, n + 1 );
+    polarssl_free( buf );
+
+    return( ret );
+}
+
+/*
+ * Load and parse a public key
+ */
+int pk_parse_public_keyfile( pk_context *ctx, const char *path )
+{
+    int ret;
+    size_t n;
+    unsigned char *buf;
+
+    if( ( ret = pk_load_file( path, &buf, &n ) ) != 0 )
+        return( ret );
+
+    ret = pk_parse_public_key( ctx, buf, n );
+
+    polarssl_zeroize( buf, n + 1 );
+    polarssl_free( buf );
+
+    return( ret );
+}
+#endif /* POLARSSL_FS_IO */
 
 #if defined(POLARSSL_ECP_C)
 /* Minimally parse an ECParameters buffer to and asn1_buf
@@ -693,7 +807,7 @@ static int pk_parse_key_sec1_der( ecp_keypair *eck,
                 return( POLARSSL_ERR_PK_KEY_INVALID_FORMAT );
         }
     }
-    else if ( ret != POLARSSL_ERR_ASN1_UNEXPECTED_TAG )
+    else if( ret != POLARSSL_ERR_ASN1_UNEXPECTED_TAG )
     {
         ecp_keypair_free( eck );
         return( POLARSSL_ERR_PK_KEY_INVALID_FORMAT + ret );
@@ -713,7 +827,7 @@ static int pk_parse_key_sec1_der( ecp_keypair *eck,
         return( ret );
     }
 
-    return 0;
+    return( 0 );
 }
 #endif /* POLARSSL_ECP_C */
 
@@ -802,7 +916,7 @@ static int pk_parse_key_pkcs8_unencrypted_der(
 #endif /* POLARSSL_ECP_C */
         return( POLARSSL_ERR_PK_UNKNOWN_PK_ALG );
 
-    return 0;
+    return( 0 );
 }
 
 /*
@@ -813,15 +927,15 @@ static int pk_parse_key_pkcs8_encrypted_der(
                                     const unsigned char *key, size_t keylen,
                                     const unsigned char *pwd, size_t pwdlen )
 {
-    int ret;
+    int ret, decrypted = 0;
     size_t len;
     unsigned char buf[2048];
     unsigned char *p, *end;
     asn1_buf pbe_alg_oid, pbe_params;
-// #if defined(POLARSSL_PKCS12_C)
-    // cipher_type_t cipher_alg;
-    // md_type_t md_alg;
-// #endif
+#if defined(POLARSSL_PKCS12_C)
+    cipher_type_t cipher_alg;
+    md_type_t md_alg;
+#endif
 
     memset( buf, 0, sizeof( buf ) );
 
@@ -862,10 +976,66 @@ static int pk_parse_key_pkcs8_encrypted_der(
     if( len > sizeof( buf ) )
         return( POLARSSL_ERR_PK_BAD_INPUT_DATA );
 
+    /*
+     * Decrypt EncryptedData with appropriate PDE
+     */
+#if defined(POLARSSL_PKCS12_C)
+    if( oid_get_pkcs12_pbe_alg( &pbe_alg_oid, &md_alg, &cipher_alg ) == 0 )
+    {
+        if( ( ret = pkcs12_pbe( &pbe_params, PKCS12_PBE_DECRYPT,
+                                cipher_alg, md_alg,
+                                pwd, pwdlen, p, len, buf ) ) != 0 )
+        {
+            if( ret == POLARSSL_ERR_PKCS12_PASSWORD_MISMATCH )
+                return( POLARSSL_ERR_PK_PASSWORD_MISMATCH );
+
+            return( ret );
+        }
+
+        decrypted = 1;
+    }
+    else if( OID_CMP( OID_PKCS12_PBE_SHA1_RC4_128, &pbe_alg_oid ) )
+    {
+        if( ( ret = pkcs12_pbe_sha1_rc4_128( &pbe_params,
+                                             PKCS12_PBE_DECRYPT,
+                                             pwd, pwdlen,
+                                             p, len, buf ) ) != 0 )
+        {
+            return( ret );
+        }
+
+        // Best guess for password mismatch when using RC4. If first tag is
+        // not ASN1_CONSTRUCTED | ASN1_SEQUENCE
+        //
+        if( *buf != ( ASN1_CONSTRUCTED | ASN1_SEQUENCE ) )
+            return( POLARSSL_ERR_PK_PASSWORD_MISMATCH );
+
+        decrypted = 1;
+    }
+    else
+#endif /* POLARSSL_PKCS12_C */
+#if defined(POLARSSL_PKCS5_C)
+    if( OID_CMP( OID_PKCS5_PBES2, &pbe_alg_oid ) )
+    {
+        if( ( ret = pkcs5_pbes2( &pbe_params, PKCS5_DECRYPT, pwd, pwdlen,
+                                  p, len, buf ) ) != 0 )
+        {
+            if( ret == POLARSSL_ERR_PKCS5_PASSWORD_MISMATCH )
+                return( POLARSSL_ERR_PK_PASSWORD_MISMATCH );
+
+            return( ret );
+        }
+
+        decrypted = 1;
+    }
+    else
+#endif /* POLARSSL_PKCS5_C */
     {
         ((void) pwd);
-        return( POLARSSL_ERR_PK_FEATURE_UNAVAILABLE );
     }
+
+    if( decrypted == 0 )
+        return( POLARSSL_ERR_PK_FEATURE_UNAVAILABLE );
 
     return( pk_parse_key_pkcs8_unencrypted_der( pk, buf, len ) );
 }
@@ -879,6 +1049,109 @@ int pk_parse_key( pk_context *pk,
 {
     int ret;
     const pk_info_t *pk_info;
+
+#if defined(POLARSSL_PEM_PARSE_C)
+    size_t len;
+    pem_context pem;
+
+    pem_init( &pem );
+
+#if defined(POLARSSL_RSA_C)
+    ret = pem_read_buffer( &pem,
+                           "-----BEGIN RSA PRIVATE KEY-----",
+                           "-----END RSA PRIVATE KEY-----",
+                           key, pwd, pwdlen, &len );
+    if( ret == 0 )
+    {
+        if( ( pk_info = pk_info_from_type( POLARSSL_PK_RSA ) ) == NULL )
+            return( POLARSSL_ERR_PK_UNKNOWN_PK_ALG );
+
+        if( ( ret = pk_init_ctx( pk, pk_info                    ) ) != 0 ||
+            ( ret = pk_parse_key_pkcs1_der( pk_rsa( *pk ),
+                                            pem.buf, pem.buflen ) ) != 0 )
+        {
+            pk_free( pk );
+        }
+
+        pem_free( &pem );
+        return( ret );
+    }
+    else if( ret == POLARSSL_ERR_PEM_PASSWORD_MISMATCH )
+        return( POLARSSL_ERR_PK_PASSWORD_MISMATCH );
+    else if( ret == POLARSSL_ERR_PEM_PASSWORD_REQUIRED )
+        return( POLARSSL_ERR_PK_PASSWORD_REQUIRED );
+    else if( ret != POLARSSL_ERR_PEM_NO_HEADER_FOOTER_PRESENT )
+        return( ret );
+#endif /* POLARSSL_RSA_C */
+
+#if defined(POLARSSL_ECP_C)
+    ret = pem_read_buffer( &pem,
+                           "-----BEGIN EC PRIVATE KEY-----",
+                           "-----END EC PRIVATE KEY-----",
+                           key, pwd, pwdlen, &len );
+    if( ret == 0 )
+    {
+        if( ( pk_info = pk_info_from_type( POLARSSL_PK_ECKEY ) ) == NULL )
+            return( POLARSSL_ERR_PK_UNKNOWN_PK_ALG );
+
+        if( ( ret = pk_init_ctx( pk, pk_info                   ) ) != 0 ||
+            ( ret = pk_parse_key_sec1_der( pk_ec( *pk ),
+                                           pem.buf, pem.buflen ) ) != 0 )
+        {
+            pk_free( pk );
+        }
+
+        pem_free( &pem );
+        return( ret );
+    }
+    else if( ret == POLARSSL_ERR_PEM_PASSWORD_MISMATCH )
+        return( POLARSSL_ERR_PK_PASSWORD_MISMATCH );
+    else if( ret == POLARSSL_ERR_PEM_PASSWORD_REQUIRED )
+        return( POLARSSL_ERR_PK_PASSWORD_REQUIRED );
+    else if( ret != POLARSSL_ERR_PEM_NO_HEADER_FOOTER_PRESENT )
+        return( ret );
+#endif /* POLARSSL_ECP_C */
+
+    ret = pem_read_buffer( &pem,
+                           "-----BEGIN PRIVATE KEY-----",
+                           "-----END PRIVATE KEY-----",
+                           key, NULL, 0, &len );
+    if( ret == 0 )
+    {
+        if( ( ret = pk_parse_key_pkcs8_unencrypted_der( pk,
+                                                pem.buf, pem.buflen ) ) != 0 )
+        {
+            pk_free( pk );
+        }
+
+        pem_free( &pem );
+        return( ret );
+    }
+    else if( ret != POLARSSL_ERR_PEM_NO_HEADER_FOOTER_PRESENT )
+        return( ret );
+
+    ret = pem_read_buffer( &pem,
+                           "-----BEGIN ENCRYPTED PRIVATE KEY-----",
+                           "-----END ENCRYPTED PRIVATE KEY-----",
+                           key, NULL, 0, &len );
+    if( ret == 0 )
+    {
+        if( ( ret = pk_parse_key_pkcs8_encrypted_der( pk,
+                                                      pem.buf, pem.buflen,
+                                                      pwd, pwdlen ) ) != 0 )
+        {
+            pk_free( pk );
+        }
+
+        pem_free( &pem );
+        return( ret );
+    }
+    else if( ret != POLARSSL_ERR_PEM_NO_HEADER_FOOTER_PRESENT )
+        return( ret );
+#else
+    ((void) pwd);
+    ((void) pwdlen);
+#endif /* POLARSSL_PEM_PARSE_C */
 
     /*
     * At this point we only know it's not a PEM formatted key. Could be any
@@ -918,6 +1191,19 @@ int pk_parse_key( pk_context *pk,
     pk_free( pk );
 #endif /* POLARSSL_RSA_C */
 
+#if defined(POLARSSL_ECP_C)
+    if( ( pk_info = pk_info_from_type( POLARSSL_PK_ECKEY ) ) == NULL )
+        return( POLARSSL_ERR_PK_UNKNOWN_PK_ALG );
+
+    if( ( ret = pk_init_ctx( pk, pk_info                         ) ) != 0 ||
+        ( ret = pk_parse_key_sec1_der( pk_ec( *pk ), key, keylen ) ) == 0 )
+    {
+        return( 0 );
+    }
+
+    pk_free( pk );
+#endif /* POLARSSL_ECP_C */
+
     return( POLARSSL_ERR_PK_KEY_INVALID_FORMAT );
 }
 
@@ -929,9 +1215,37 @@ int pk_parse_public_key( pk_context *ctx,
 {
     int ret;
     unsigned char *p;
+#if defined(POLARSSL_PEM_PARSE_C)
+    size_t len;
+    pem_context pem;
+
+    pem_init( &pem );
+    ret = pem_read_buffer( &pem,
+            "-----BEGIN PUBLIC KEY-----",
+            "-----END PUBLIC KEY-----",
+            key, NULL, 0, &len );
+
+    if( ret == 0 )
+    {
+        /*
+         * Was PEM encoded
+         */
+        key = pem.buf;
+        keylen = pem.buflen;
+    }
+    else if( ret != POLARSSL_ERR_PEM_NO_HEADER_FOOTER_PRESENT )
+    {
+        pem_free( &pem );
+        return( ret );
+    }
+#endif /* POLARSSL_PEM_PARSE_C */
     p = (unsigned char *) key;
 
     ret = pk_parse_subpubkey( &p, p + keylen, ctx );
+
+#if defined(POLARSSL_PEM_PARSE_C)
+    pem_free( &pem );
+#endif
 
     return( ret );
 }
