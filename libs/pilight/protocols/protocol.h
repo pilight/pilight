@@ -56,7 +56,8 @@ typedef enum {
 	WEBCAM,
 	MOTION,
 	DUSK,
-	PING
+	PING,
+	LABEL
 } devtype_t;
 
 typedef struct protocol_devices_t {

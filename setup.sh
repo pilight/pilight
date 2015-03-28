@@ -110,7 +110,6 @@ else
 		mkdir build
 		cd build
 		cmake ..
-		make
-		# make install
+		make install
 	fi
 fi

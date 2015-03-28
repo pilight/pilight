@@ -6,6 +6,7 @@ var aDecimals = new Array();
 var aDateTime = new Array();
 var aDimLevel = new Array();
 var aPollInterval = new Array();
+var aMarqueueInterval = new Array();
 var aReadOnly = new Array();
 var aStates = new Array();
 var bShowTabs = true;
@@ -167,6 +168,36 @@ $(document).keydown(function(e) {
 		toggleTabs();
 	}
 });
+
+function createLabelElement(sTabId, sDevId, aValues) {
+	if($('#'+sDevId).length == 0) {
+		if(bShowTabs) {
+			oTab = $('#'+sTabId).find('ul');
+		} else {
+			oTab = $('#all');
+		}
+		if('name' in aValues) {
+			oTab.append($('<li id="'+sDevId+'" class="label" data-icon="false"><div class="name">'+aValues['name']+'</div><div class="marquee"><div class="text">'+aValues['label']+'</div></div></li>'));
+			$('#'+sDevId+' div.marquee .text').css('color', aValues['color']);
+			// var mar = $('#'+sDevId+' div.marquee .text');
+			// var left = -(mar.width()+3);
+			// var ori = left;
+			// var cWidth = $('#'+sDevId+' div.marquee').width()+50;
+			// if(-cWidth > left) {
+				// mar.marquee = function() {
+					// mar.css('right', left);
+					// left++;
+					// if(left > cWidth) {
+						// left = ori;
+					// }
+				// };
+				// aMarqueueInterval[sDevId]=setInterval(mar.marquee, 10);
+			// }
+		}
+		oTab.listview();
+		oTab.listview("refresh");
+	}
+}
 
 function createSwitchElement(sTabId, sDevId, aValues) {
 	if($('#'+sDevId+'_switch').length == 0) {
@@ -724,6 +755,8 @@ function createGUI(data) {
 			createXBMCElement(alphaNum(lindex), dindex, aValues);
 		} else if(aValues['type'] == 11) {
 			createWebcamElement(alphaNum(lindex), dindex, aValues);
+		} else if(aValues['type'] == 15) {
+			createLabelElement(alphaNum(lindex), dindex, aValues);
 		}
 		if(bShowTabs) {
 			$(document).delegate('[data-role="navbar"] a', 'click', function(e) {
@@ -974,6 +1007,12 @@ function parseValues(data) {
 				} else if(iType == 11) {
 					if(vindex == 'url') {
 						$('#'+dvalues+'_img').attr("src", vvalues);
+					}
+				} else if(iType == 15) {
+					if(vindex == 'label') {
+						$('#'+dvalues+' div.marquee .text').text(vvalues);
+					} else if(vindex == 'color') {
+						$('#'+dvalues+' div.marquee .text').css('color', vvalues);
 					}
 				}
 			});
