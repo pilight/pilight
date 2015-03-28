@@ -206,7 +206,7 @@ static void *wundergroundParse(void *param) {
 										sprintf(url, "http://api.wunderground.com/api/%s/astronomy/q/%s/%s.json", wnode->api, wnode->country, wnode->location);
 										data = http_get_content(url, &tp, &ret, &size);
 										if(ret == 200) {
-											if(strcmp(typebuf, "application/json;") == 0) {
+											if(strcmp(typebuf, "application/json") == 0) {
 												if(json_validate(data) == true) {
 													if((jdata1 = json_decode(data)) != NULL) {
 														if((jsun = json_find_member(jdata1, "sun_phase")) != NULL) {
@@ -491,7 +491,7 @@ void wundergroundInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "wunderground";
-	module->version = "1.11";
+	module->version = "1.12";
 	module->reqversion = "6.0";
 	module->reqcommit = "58";
 }
