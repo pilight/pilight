@@ -94,7 +94,7 @@ typedef struct protocol_t {
 	short masterOnly;
 	unsigned short lsb;
 	struct options_t *options;
-	JsonNode *message;
+	struct JsonNode *message;
 
 	int repeats;
 	unsigned long first;

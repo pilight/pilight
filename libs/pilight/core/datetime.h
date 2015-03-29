@@ -27,5 +27,6 @@ time_t datetime2ts(int year, int month, int day, int hour, int minutes, int seco
 struct tm *localtztime(char *tz, time_t t);
 int tzoffset(char *tz1, char *tz2);
 int ctzoffset(char *tz);
+int isdst(time_t t, char *tz);
 
 #endif

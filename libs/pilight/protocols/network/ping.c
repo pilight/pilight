@@ -167,9 +167,7 @@ void pingInit(void) {
 	pping->devtype = PING;
 	pping->hwtype = API;
 	pping->multipleId = 0;
-#if PILIGHT_V >= 6
 	pping->masterOnly = 1;
-#endif
 
 	options_add(&pping->options, 'c', "connected", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
 	options_add(&pping->options, 'd', "disconnected", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);

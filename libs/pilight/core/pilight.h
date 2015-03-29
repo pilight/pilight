@@ -48,7 +48,6 @@ struct pilight_t {
 	void (*broadcast)(char *name, JsonNode *message, enum origin_t origin);
 	int (*send)(JsonNode *json, enum origin_t origin);
 	int (*control)(struct devices_t *dev, char *state, JsonNode *values, enum origin_t origin);
-	void (*receive)(int *rawcode, int rawlen, int plslen, int hwtype);
 	runmode_t runmode;
 } pilight_t;
 

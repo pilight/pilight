@@ -287,6 +287,13 @@ time_t datetime2ts(int year, int month, int day, int hour, int minutes, int seco
 	atomiclock();
  	time_t t;
  	struct tm tm = {0};
+	char oritz[64];
+	memset(oritz, '\0', 64);
+
+	if(getenv("TZ") != NULL) {
+		strcpy(oritz, getenv("TZ"));
+	}
+
 	tm.tm_sec = seconds;
 	tm.tm_min = minutes;
 	tm.tm_hour = hour;
@@ -297,45 +304,36 @@ time_t datetime2ts(int year, int month, int day, int hour, int minutes, int seco
 	if(tz != NULL) {
 		setenv("TZ", tz, 1);
 	}
-	t = mktime(&tm);
-	if(tz != NULL) {
-		unsetenv("TZ");
-	}
-	atomicunlock();
-	return t;
-}
+	tzset();
 
-struct tm *localtztime(char *tz, time_t t) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
-	atomiclock();
-	struct tm tm, *ret = NULL;
-	char *oritz = getenv("TZ");
-	memset(&tm, '\0', sizeof(struct tm));
-	setenv("TZ", tz, 1);
-#ifdef _WIN32
-	localtime(&t);
-#else
-	localtime_r(&t, &tm);
-#endif
-	if(oritz != NULL) {
+	t = mktime(&tm);
+
+	if(strlen(oritz) > 0) {
 		setenv("TZ", oritz, 1);
 	} else {
 		unsetenv("TZ");
 	}
+	tzset();
 
-	ret = &tm;
 	atomicunlock();
-	return ret;
+	return t;
 }
 
 int tzoffset(char *tz1, char *tz2) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
 	atomiclock();
+
 	time_t utc, tzsearch, now;
 	struct tm tm;
-	char *oritz = getenv("TZ");
+	char oritz[64];
+
 	memset(&tm, '\0', sizeof(struct tm));
+	memset(oritz, '\0', 64);
+
+	if(getenv("TZ") != NULL) {
+		strcpy(oritz, getenv("TZ"));
+	}
 
 	now = time(NULL);
 #ifdef _WIN32
@@ -345,14 +343,20 @@ int tzoffset(char *tz1, char *tz2) {
 #endif
 
 	setenv("TZ", tz1, 1);
+	tzset();
 	utc = mktime(&tm);
+
 	setenv("TZ", tz2, 1);
+	tzset();
 	tzsearch = mktime(&tm);
-	if(oritz != NULL) {
+
+	if(strlen(oritz) > 0) {
 		setenv("TZ", oritz, 1);
 	} else {
 		unsetenv("TZ");
 	}
+	tzset();
+
 	atomicunlock();
 
 	return (int)((utc-tzsearch)/3600);
@@ -381,4 +385,41 @@ int ctzoffset(void) {
 	localtime_r(&tm1, &tmp);
 #endif
 	return (int)((tm1 - tm2)/3600);
+}
+
+int isdst(time_t t, char *tz) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
+	struct tm tm;
+	char oritz[64];
+	int dst = 0;
+
+	memset(oritz, '\0', 64);
+	if(getenv("TZ") != NULL) {
+		strcpy(oritz, getenv("TZ"));
+	}
+
+	atomiclock();
+
+	setenv("TZ", tz, 1);
+	tzset();
+
+#ifdef _WIN32
+	if((tm = localtime(&t)) != NULL) {
+#else
+	if(localtime_r(&t, &tm) != NULL) {
+#endif
+		dst = tm.tm_isdst;
+	}
+
+	if(strlen(oritz) > 0) {
+		setenv("TZ", oritz, 1);
+	} else {
+		unsetenv("TZ");
+	}
+	tzset();
+
+	atomicunlock();
+
+	return dst;
 }

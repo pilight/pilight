@@ -2196,7 +2196,6 @@ int start_pilight(int argc, char **argv) {
 	/* Export certain daemon function to global usage */
 	pilight.broadcast = &broadcast_queue;
 	pilight.send = &send_queue;
-	pilight.receive = &receive_queue;
 	pilight.control = &control_device;
 
 	if(config_read() != EXIT_SUCCESS) {
@@ -2218,8 +2217,7 @@ int start_pilight(int argc, char **argv) {
 	}
 	if(settings_find_string("webgui-template", &webgui_tpl) != 0) {
 		/* If no webserver port was set, use the default webserver port */
-		webgui_tpl = MALLOC(strlen(WEBGUI_TEMPLATE)+1);
-		if(!webgui_tpl) {
+		if((webgui_tpl = MALLOC(strlen(WEBGUI_TEMPLATE)+1)) == NULL) {
 			logprintf(LOG_ERR, "out of memory");
 			exit(EXIT_FAILURE);
 		}

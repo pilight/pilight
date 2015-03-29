@@ -109,14 +109,13 @@ static void *sunRiseSetParse(void *param) {
 	struct JsonNode *jid = NULL;
 	struct JsonNode *jchild = NULL;
 	struct JsonNode *jchild1 = NULL;
-	char *tz = NULL;
 	double longitude = 0, latitude = 0;
-	char UTC[] = "UTC";
+	char UTC[] = "UTC", *tz = NULL;
 
 	time_t timenow = 0;
 	struct tm tm;
 	int nrloops = 0, risetime = 0, settime = 0, hournow = 0;
-	int firstrun = 0, target_offset = 0;
+	int firstrun = 0, target_offset = 0, x = 0, dst = 0;
 
 	sunriseset_threads++;
 
@@ -144,6 +143,13 @@ static void *sunRiseSetParse(void *param) {
 		logprintf(LOG_DEBUG, "%.6f:%.6f seems to be in timezone: %s", longitude, latitude, tz);
 	}
 
+	timenow = time(NULL);
+	timenow -= getntpdiff();
+	dst = isdst(timenow, tz);
+	if(isntpsynced() == 0) {
+		x = 1;
+	}
+
 	/* Check how many hours we differ from UTC? */
 	target_offset = tzoffset(UTC, tz);
 
@@ -154,7 +160,7 @@ static void *sunRiseSetParse(void *param) {
 
 			/* Get UTC time */
 #ifdef _WIN32
-		if(gmtime(&timenow) == 0) {
+		if((tm = gmtime(&timenow)) != NULL) {
 #else
 		if(gmtime_r(&timenow, &tm) != NULL) {
 #endif
@@ -164,29 +170,36 @@ static void *sunRiseSetParse(void *param) {
 			/* Add our hour difference to the UTC time */
 			tm.tm_hour += target_offset;
 			/* Add possible daylist savings time hour */
-			tm.tm_hour += tm.tm_isdst;
+			tm.tm_hour += dst;
 			int hour = tm.tm_hour;
 			int minute = tm.tm_min;
 			int second = tm.tm_sec;
+
+
 			if(hour >= 24) {
 				/* If hour becomes 24 or more we need to normalize it */
-				time_t t = mktime(&tm);
+				time_t t1 = mktime(&tm);
 #ifdef _WIN32
-				localtime(&t);
+				if((tm = gmtime(&t1)) != NULL) {
 #else
-				localtime_r(&t, &tm);
+				if(gmtime_r(&t1, &tm) != NULL) {
 #endif
 
-				year = tm.tm_year+1900;
-				month = tm.tm_mon+1;
-				day = tm.tm_mday;
-				hour = tm.tm_hour;
-				minute = tm.tm_min;
-				second = tm.tm_sec;
+					year = tm.tm_year+1900;
+					month = tm.tm_mon+1;
+					day = tm.tm_mday;
+					hour = tm.tm_hour;
+					minute = tm.tm_min;
+					second = tm.tm_sec;
+				}
+			}
+
+			if((minute == 0 && second == 0) || (isntpsynced() == 0 && x == 0)) {
+				x = 1;
+				dst = isdst(timenow, tz);
 			}
 
 			hournow = (hour*100)+minute;
-
 			if(((hournow == 0 || hournow == risetime || hournow == settime) && second == 0)
 				 || (settime == 0 && risetime == 0)) {
 
@@ -304,9 +317,9 @@ void sunRiseSetInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "sunriseset";
-	module->version = "2.1";
+	module->version = "2.2";
 	module->reqversion = "6.0";
-	module->reqcommit = "66";
+	module->reqcommit = "81";
 }
 
 void init(void) {

@@ -74,12 +74,11 @@ static void *datetimeParse(void *param) {
 	struct JsonNode *jid = NULL;
 	struct JsonNode *jchild = NULL;
 	struct JsonNode *jchild1 = NULL;
-	char *tz = NULL;
-	int target_offset = 0, counter = 0;
-	time_t t;
-	double longitude = 0.0, latitude = 0.0;
-
 	struct tm tm;
+	char *tz = NULL;
+	time_t t;
+	int target_offset = 0, counter = 0, dst = 0, x = 0;
+	double longitude = 0.0, latitude = 0.0;
 
 	datetime_threads++;
 
@@ -100,8 +99,6 @@ static void *datetimeParse(void *param) {
 		}
 	}
 
-	t = time(NULL);
-
 	if((tz = coord2tz(longitude, latitude)) == NULL) {
 		logprintf(LOG_INFO, "datetime #%d, could not determine timezone", datetime_threads);
 		tz = UTC;
@@ -109,6 +106,13 @@ static void *datetimeParse(void *param) {
 		logprintf(LOG_INFO, "datetime #%d %.6f:%.6f seems to be in timezone: %s", datetime_threads, longitude, latitude, tz);
 	}
 
+	t = time(NULL);
+	t -= getntpdiff();	
+	dst = isdst(t, tz);
+	if(isntpsynced() == 0) {
+		x = 1;
+	}
+	
 	/* Check how many hours we differ from UTC? */
 	target_offset = tzoffset(UTC, tz);
 
@@ -119,7 +123,7 @@ static void *datetimeParse(void *param) {
 
 		/* Get UTC time */
 #ifdef _WIN32
-		if(gmtime(&t) == 0) {
+		if((tm = gmtime(&t)) != NULL) {
 #else
 		if(gmtime_r(&t, &tm) != NULL) {
 #endif
@@ -129,27 +133,34 @@ static void *datetimeParse(void *param) {
 			/* Add our hour difference to the UTC time */
 			tm.tm_hour += target_offset;
 			/* Add possible daylist savings time hour */
-			tm.tm_hour += tm.tm_isdst;
+			tm.tm_hour += dst;
 			int hour = tm.tm_hour;
 			int minute = tm.tm_min;
 			int second = tm.tm_sec;
 			int weekday = tm.tm_wday+1;
+
 			if(hour >= 24) {
 				/* If hour becomes 24 or more we need to normalize it */
 				time_t t1 = mktime(&tm);
 #ifdef _WIN32
-				localtime(&t1);
+				if((tm = gmtime(&t1)) != NULL) {
 #else
-				localtime_r(&t1, &tm);
+				if(gmtime_r(&t1, &tm) != NULL) {
 #endif
 
-				year = tm.tm_year+1900;
-				month = tm.tm_mon+1;
-				day = tm.tm_mday;
-				hour = tm.tm_hour;
-				minute = tm.tm_min;
-				second = tm.tm_sec;
-				weekday = tm.tm_wday+1;
+					year = tm.tm_year+1900;
+					month = tm.tm_mon+1;
+					day = tm.tm_mday;
+					hour = tm.tm_hour;
+					minute = tm.tm_min;
+					second = tm.tm_sec;
+					weekday = tm.tm_wday+1;
+				}
+			}
+
+			if((minute == 0 && second == 0) || (isntpsynced() == 0 && x == 0)) {
+				x = 1;
+				dst = isdst(t, tz);
 			}
 
 			datetime->message = json_mkobject();
@@ -224,9 +235,7 @@ void datetimeInit(void) {
 	datetime->devtype = DATETIME;
 	datetime->hwtype = API;
 	datetime->multipleId = 0;
-#if PILIGHT_V >= 6
 	datetime->masterOnly = 1;
-#endif
 
 	options_add(&datetime->options, 'o', "longitude", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, NULL);
 	options_add(&datetime->options, 'a', "latitude", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, NULL);
@@ -249,9 +258,9 @@ void datetimeInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "datetime";
-	module->version = "2.3";
+	module->version = "2.4";
 	module->reqversion = "6.0";
-	module->reqcommit = "66";
+	module->reqcommit = "81";
 }
 
 void init(void) {
