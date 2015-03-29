@@ -458,6 +458,90 @@ static int settings_parse(JsonNode *root) {
 			} else {
 				settings_add_string(jsettings->key, jsettings->string_);
 			}
+#ifdef EVENTS
+		} else if(strcmp(jsettings->key, "smtp-sender") == 0 ||
+					strcmp(jsettings->key, "smtp-user") == 0) {
+			if(jsettings->tag != JSON_STRING) {
+				logprintf(LOG_ERR, "config setting \"%s\" must contain an e-mail address", jsettings->key);
+				have_error = 1;
+				goto clear;
+			} else if(jsettings->string_ == NULL) {
+				logprintf(LOG_ERR, "config setting \"%s\" must contain an e-mail address", jsettings->key);
+				have_error = 1;
+				goto clear;
+			} else if(strlen(jsettings->string_) > 0) {
+#if !defined(__FreeBSD__) && !defined(_WIN32)
+				char validate[] = "^[a-zA-Z0-9_.]+@([a-zA-Z0-9]+\\.)+[a-zA-Z0-9]{2,3}$";
+				reti = regcomp(&regex, validate, REG_EXTENDED);
+				if(reti) {
+					logprintf(LOG_ERR, "could not compile regex for %s", jsettings->key);
+					have_error = 1;
+					goto clear;
+				}
+				reti = regexec(&regex, jsettings->string_, 0, NULL, 0);
+				if(reti == REG_NOMATCH || reti != 0) {
+					logprintf(LOG_ERR, "config setting \"%s\" must contain an e-mail address", jsettings->key);
+					have_error = 1;
+					regfree(&regex);
+					goto clear;
+				}
+#endif
+			settings_add_string(jsettings->key, jsettings->string_);
+			}
+		} else if(strcmp(jsettings->key, "smtp-password") == 0) {
+			if(jsettings->tag != JSON_STRING) {
+				logprintf(LOG_ERR, "config setting \"%s\" must contain a password string", jsettings->key);
+				have_error = 1;
+				goto clear;
+			} else if(jsettings->string_ == NULL) {
+				logprintf(LOG_ERR, "config setting \"%s\" must contain a password string", jsettings->key);
+				have_error = 1;
+				goto clear;
+			} else {
+				settings_add_string(jsettings->key, jsettings->string_);
+			}
+		} else if(strcmp(jsettings->key, "smtp-host") == 0) {
+			if(jsettings->tag != JSON_STRING) {
+				logprintf(LOG_ERR, "config setting \"%s\" must contain an smtp host address in the format of \"smtp.gmail.com\"", jsettings->key);
+				have_error = 1;
+				goto clear;
+			} else if(jsettings->string_ == NULL) {
+				logprintf(LOG_ERR, "config setting \"%s\" must contain an smtp host address in the format of \"smtp.gmail.com\"", jsettings->key);
+				have_error = 1;
+				goto clear;
+			} else if(strlen(jsettings->string_) > 0) {
+#if !defined(__FreeBSD__) && !defined(_WIN32)
+				char validate[] = "^(smtp)\\.[a-zA-Z0-9_]+\\.[a-zA-Z]{2,3}$";
+				reti = regcomp(&regex, validate, REG_EXTENDED);
+				if(reti) {
+					logprintf(LOG_ERR, "could not compile regex for %s", jsettings->key);
+					have_error = 1;
+					goto clear;
+				}
+				reti = regexec(&regex, jsettings->string_, 0, NULL, 0);
+				if(reti == REG_NOMATCH) {logprintf(LOG_ERR, "No Match: %s", jsettings->string_);}
+				if(reti == REG_NOMATCH || reti != 0) {
+					logprintf(LOG_ERR, "config setting \"%s\" must contain an smtp host address in the format of \"smtp.gmail.com\"", jsettings->key);
+					have_error = 1;
+					regfree(&regex);
+					goto clear;
+				}
+#endif
+				settings_add_string(jsettings->key, jsettings->string_);
+			}
+		} else if(strcmp(jsettings->key, "smtp-port") == 0) {
+			if(jsettings->tag != JSON_NUMBER) {
+				logprintf(LOG_ERR, "config setting \"%s\" must be 25, 465 or 587", jsettings->key);
+				have_error = 1;
+				goto clear;
+			} else if((int)jsettings->number_ != 25 && (int)jsettings->number_ != 465 && (int)jsettings->number_ != 587) {
+				logprintf(LOG_ERR, "config setting \"%s\" must be 25, 465 or 587", jsettings->key);
+				have_error = 1;
+				goto clear;
+			} else {
+				settings_add_number(jsettings->key, (int)jsettings->number_);
+			}
+#endif //EVENTS
 		} else {
 			logprintf(LOG_ERR, "config setting \"%s\" is invalid", jsettings->key);
 			have_error = 1;
