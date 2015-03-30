@@ -212,9 +212,9 @@ static void *sunRiseSetParse(void *param) {
 				risetime = (int)sunRiseSetCalculate(year, month, day, longitude, latitude, 1, target_offset);
 				settime = (int)sunRiseSetCalculate(year, month, day, longitude, latitude, 0, target_offset);
 
-				if(tm.tm_isdst == 1) {
-					risetime += 100;
-					settime += 100;
+				if(dst >= 1) {
+					risetime += dst*100;
+					settime += dst*100;
 					if(risetime > 2400) risetime -= 2400;
 					if(settime > 2400) settime -= 2400;
 				}
@@ -317,7 +317,7 @@ void sunRiseSetInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "sunriseset";
-	module->version = "2.2";
+	module->version = "2.3";
 	module->reqversion = "6.0";
 	module->reqcommit = "81";
 }
