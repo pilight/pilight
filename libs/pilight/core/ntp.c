@@ -80,6 +80,7 @@ typedef struct pkt {
 static int diff = 0;
 static int ntploop = 1;
 static int running = 0;
+static int synced = -1;
 
 int ntp_gc(void) {
 	ntploop = 0;
@@ -198,6 +199,7 @@ void *ntpthread(void *param) {
 								diff = (int)(time(NULL) - ntptime);
 								logprintf(LOG_INFO, "time offset found of %d seconds", diff);
 								counter = 0;
+								synced = 0;
 								break;
 							} else {
 								logprintf(LOG_INFO, "could not sync with ntp server: %s", ntpservers[x]);
@@ -224,4 +226,8 @@ void *ntpthread(void *param) {
 
 int getntpdiff(void) {
 	return diff;
+}
+
+int isntpsynced(void) {
+	return synced;
 }
