@@ -66,11 +66,6 @@ typedef struct protocol_devices_t {
 	struct protocol_devices_t *next;
 } protocol_devices_t;
 
-typedef struct protocol_plslen_t {
-	int length;
-	struct protocol_plslen_t *next;
-} protocol_plslen_t;
-
 typedef struct protocol_threads_t {
 	pthread_mutex_t mutex;
 	pthread_cond_t cond;
@@ -81,18 +76,16 @@ typedef struct protocol_threads_t {
 
 typedef struct protocol_t {
 	char *id;
-	int pulse;
-	struct protocol_plslen_t *plslen;
 	int rawlen;
 	int minrawlen;
 	int maxrawlen;
-	int binlen;
+	int mingaplen;
+	int maxgaplen;
 	short txrpt;
 	short rxrpt;
 	short multipleId;
 	short config;
 	short masterOnly;
-	unsigned short lsb;
 	struct options_t *options;
 	struct JsonNode *message;
 
@@ -100,19 +93,15 @@ typedef struct protocol_t {
 	unsigned long first;
 	unsigned long second;
 
-	int raw[MAXPULSESTREAMLENGTH];
-	int code[MAXPULSESTREAMLENGTH];
-	int pCode[MAXPULSESTREAMLENGTH];
-	int binary[MAXPULSESTREAMLENGTH/2]; // Max. the half the raw length
+	int *raw;
 
 	hwtype_t hwtype;
 	devtype_t devtype;
 	struct protocol_devices_t *devices;
 	struct protocol_threads_t *threads;
 
-	void (*parseRaw)(void);
 	void (*parseCode)(void);
-	void (*parseBinary)(void);
+	int (*validate)(void);
 	int (*createCode)(JsonNode *code);
 	int (*checkValues)(JsonNode *code);
 	struct threadqueue_t *(*initDev)(JsonNode *device);

@@ -30,7 +30,24 @@
 #include "../../core/gc.h"
 #include "rev_v2.h"
 
-static void rev2CreateMessage(char *id, int unit, int state) {
+#define PULSE_MULTIPLIER	3
+#define MIN_PULSE_LENGTH	167
+#define MAX_PULSE_LENGTH	263
+#define AVG_PULSE_LENGTH	258
+#define RAW_LENGTH				50
+
+static int validate(void) {
+	if(rev2_switch->rawlen == RAW_LENGTH) {			
+		if(rev2_switch->raw[rev2_switch->rawlen-1] >= (MIN_PULSE_LENGTH*PULSE_DIV) &&
+		   rev2_switch->raw[rev2_switch->rawlen-1] <= (MAX_PULSE_LENGTH*PULSE_DIV)) {
+			return 0;
+		}
+	}
+
+	return -1;
+}
+
+static void createMessage(char *id, int unit, int state) {
 	rev2_switch->message = json_mkobject();
 	json_append_member(rev2_switch->message, "id", json_mkstring(id));
 	json_append_member(rev2_switch->message, "unit", json_mknumber(unit, 0));
@@ -40,76 +57,75 @@ static void rev2CreateMessage(char *id, int unit, int state) {
 		json_append_member(rev2_switch->message, "state", json_mkstring("off"));
 }
 
-static void rev2ParseCode(void) {
-	int x = 0;
-	int z = 65;
+static void parseCode(void) {
+	int x = 0, z = 65, binary[RAW_LENGTH/4];
 	char id[3];
 
 	/* Convert the one's and zero's into binary */
 	for(x=0; x<rev2_switch->rawlen; x+=4) {
-		if(rev2_switch->code[x+3] == 1) {
-			rev2_switch->binary[x/4]=1;
-		} else if(rev2_switch->code[x+0] == 1) {
-			rev2_switch->binary[x/4]=2;
+		if(rev2_switch->raw[x+3] > AVG_PULSE_LENGTH*(PULSE_MULTIPLIER/2)) {
+			binary[x/4]=1;
+		} else if(rev2_switch->raw[x+0] > AVG_PULSE_LENGTH*(PULSE_MULTIPLIER/2)) {
+			binary[x/4]=2;
 		} else {
-			rev2_switch->binary[x/4]=0;
+			binary[x/4]=0;
 		}
 	}
 
 	for(x=9;x>=5;--x) {
-		if(rev2_switch->binary[x] == 2) {
+		if(binary[x] == 2) {
 			break;
 		}
 		z++;
 	}
 
-	int unit = binToDecRev(rev2_switch->binary, 0, 5);
-	int state = rev2_switch->binary[11];
-	int y = binToDecRev(rev2_switch->binary, 6, 9);
+	int unit = binToDecRev(binary, 0, 5);
+	int state = binary[11];
+	int y = binToDecRev(binary, 6, 9);
 	sprintf(&id[0], "%c%d", z, y);
 
-	rev2CreateMessage(id, unit, state);
+	createMessage(id, unit, state);
 }
 
-static void rev2CreateLow(int s, int e) {
+static void createLow(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=4) {
-		rev2_switch->raw[i]=(rev2_switch->plslen->length);
-		rev2_switch->raw[i+1]=(rev2_switch->pulse*rev2_switch->plslen->length);
-		rev2_switch->raw[i+2]=(rev2_switch->pulse*rev2_switch->plslen->length);
-		rev2_switch->raw[i+3]=(rev2_switch->plslen->length);
+		rev2_switch->raw[i]=(AVG_PULSE_LENGTH);
+		rev2_switch->raw[i+1]=(PULSE_MULTIPLIER*AVG_PULSE_LENGTH);
+		rev2_switch->raw[i+2]=(PULSE_MULTIPLIER*AVG_PULSE_LENGTH);
+		rev2_switch->raw[i+3]=(AVG_PULSE_LENGTH);
 	}
 }
 
-static void rev2CreateMed(int s, int e) {
+static void createMed(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=4) {
-		rev2_switch->raw[i]=(rev2_switch->pulse*rev2_switch->plslen->length);
-		rev2_switch->raw[i+1]=(rev2_switch->plslen->length);
-		rev2_switch->raw[i+2]=(rev2_switch->pulse*rev2_switch->plslen->length);
-		rev2_switch->raw[i+3]=(rev2_switch->plslen->length);
+		rev2_switch->raw[i]=(PULSE_MULTIPLIER*AVG_PULSE_LENGTH);
+		rev2_switch->raw[i+1]=(AVG_PULSE_LENGTH);
+		rev2_switch->raw[i+2]=(PULSE_MULTIPLIER*AVG_PULSE_LENGTH);
+		rev2_switch->raw[i+3]=(AVG_PULSE_LENGTH);
 	}
 }
 
-static void rev2CreateHigh(int s, int e) {
+static void createHigh(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=4) {
-		rev2_switch->raw[i]=(rev2_switch->plslen->length);
-		rev2_switch->raw[i+1]=(rev2_switch->pulse*rev2_switch->plslen->length);
-		rev2_switch->raw[i+2]=(rev2_switch->plslen->length);
-		rev2_switch->raw[i+3]=(rev2_switch->pulse*rev2_switch->plslen->length);
+		rev2_switch->raw[i]=(AVG_PULSE_LENGTH);
+		rev2_switch->raw[i+1]=(PULSE_MULTIPLIER*AVG_PULSE_LENGTH);
+		rev2_switch->raw[i+2]=(AVG_PULSE_LENGTH);
+		rev2_switch->raw[i+3]=(PULSE_MULTIPLIER*AVG_PULSE_LENGTH);
 	}
 }
 
-static void rev2ClearCode(void) {
-	rev2CreateMed(0,4);
-	rev2CreateLow(4,47);
+static void clearCode(void) {
+	createMed(0,4);
+	createLow(4,47);
 }
 
-static void rev2CreateUnit(int unit) {
+static void createUnit(int unit) {
 	int binary[255];
 	int length = 0;
 	int i=0, x=0;
@@ -118,12 +134,12 @@ static void rev2CreateUnit(int unit) {
 	for(i=0;i<=length;i++) {
 		if(binary[i]==1) {
 			x=i*4;
-			rev2CreateHigh(23-(x+3), 23-x);
+			createHigh(23-(x+3), 23-x);
 		}
 	}
 }
 
-static void rev2CreateId(char *id) {
+static void createId(char *id) {
 	int l = ((int)(id[0]))-65;
 	int y = atoi(&id[1]);
 	int binary[255];
@@ -134,29 +150,29 @@ static void rev2CreateId(char *id) {
 	for(i=0;i<=length;i++) {
 		x=i*4;
 		if(binary[i]==1) {
-			rev2CreateHigh(39-(x+3), 39-x);
+			createHigh(39-(x+3), 39-x);
 		}
 	}
 	x=(l*4);
-	rev2CreateMed(39-(x+3), 39-x);
+	createMed(39-(x+3), 39-x);
 }
 
-static void rev2CreateState(int state) {
+static void createState(int state) {
 	if(state == 0) {
-		rev2CreateMed(40,43);
-		rev2CreateHigh(44,47);
+		createMed(40,43);
+		createHigh(44,47);
 	} else {
-		rev2CreateHigh(40,43);
-		rev2CreateMed(44,47);
+		createHigh(40,43);
+		createMed(44,47);
 	}
 }
 
-static void rev2CreateFooter(void) {
-	rev2_switch->raw[48]=(rev2_switch->plslen->length);
-	rev2_switch->raw[49]=(PULSE_DIV*rev2_switch->plslen->length);
+static void createFooter(void) {
+	rev2_switch->raw[48]=(AVG_PULSE_LENGTH);
+	rev2_switch->raw[49]=(PULSE_DIV*AVG_PULSE_LENGTH);
 }
 
-static int rev2CreateCode(JsonNode *code) {
+static int createCode(struct JsonNode *code) {
 	char id[3] = {'\0'};
 	int unit = -1;
 	int state = -1;
@@ -189,17 +205,18 @@ static int rev2CreateCode(JsonNode *code) {
 		logprintf(LOG_ERR, "rev2_switch: invalid unit range");
 		return EXIT_FAILURE;
 	} else {
-		rev2CreateMessage(id, unit, ((state == 2 || state == 1) ? 2 : 0));
-		rev2ClearCode();
-		rev2CreateUnit(unit);
-		rev2CreateId(id);
-		rev2CreateState(state);
-		rev2CreateFooter();
+		createMessage(id, unit, ((state == 2 || state == 1) ? 2 : 0));
+		clearCode();
+		createUnit(unit);
+		createId(id);
+		createState(state);
+		createFooter();
+		rev2_switch->rawlen = RAW_LENGTH;
 	}
 	return EXIT_SUCCESS;
 }
 
-static void rev2PrintHelp(void) {
+static void printHelp(void) {
 	printf("\t -t --on\t\t\tsend an on signal\n");
 	printf("\t -f --off\t\t\tsend an off signal\n");
 	printf("\t -u --unit=unit\t\t\tcontrol a device with this unit code\n");
@@ -214,14 +231,12 @@ void rev2Init(void) {
 	protocol_register(&rev2_switch);
 	protocol_set_id(rev2_switch, "rev2_switch");
 	protocol_device_add(rev2_switch, "rev2_switch", "Rev Switches v2");
-	protocol_plslen_add(rev2_switch, 258);
-	protocol_plslen_add(rev2_switch, 186);
-	protocol_plslen_add(rev2_switch, 172);
 	rev2_switch->devtype = SWITCH;
 	rev2_switch->hwtype = RF433;
-	rev2_switch->pulse = 3;
-	rev2_switch->rawlen = 50;
-	rev2_switch->binlen = 12;
+	rev2_switch->minrawlen = RAW_LENGTH;
+	rev2_switch->maxrawlen = RAW_LENGTH;
+	rev2_switch->maxgaplen = MAX_PULSE_LENGTH*PULSE_DIV;
+	rev2_switch->mingaplen = MIN_PULSE_LENGTH*PULSE_DIV;
 
 	options_add(&rev2_switch->options, 't', "on", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
 	options_add(&rev2_switch->options, 'f', "off", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
@@ -230,16 +245,17 @@ void rev2Init(void) {
 
 	options_add(&rev2_switch->options, 0, "readonly", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 
-	rev2_switch->parseCode=&rev2ParseCode;
-	rev2_switch->createCode=&rev2CreateCode;
-	rev2_switch->printHelp=&rev2PrintHelp;
+	rev2_switch->parseCode=&parseCode;
+	rev2_switch->createCode=&createCode;
+	rev2_switch->printHelp=&printHelp;
+	rev2_switch->validate=&validate;
 }
 
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "rev2_switch";
-	module->version = "0.9";
-	module->reqversion = "5.0";
+	module->version = "0.10";
+	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }
 

@@ -390,9 +390,9 @@ void quiggGT1000Init(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "quigg_gt1000";
-	module->version = "0.1";
-	module->reqversion = "5.0";
-	module->reqcommit = "187";
+	module->version = "0.2";
+	module->reqversion = "6.0";
+	module->reqcommit = "84";
 }
 
 void init(void) {

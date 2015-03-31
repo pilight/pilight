@@ -48,10 +48,10 @@
 #define PIX 57.29578049044297 // 180 / PI
 #define ZENITH 90.83333333333333
 
-static unsigned short sunriseset_loop = 1;
-static unsigned short sunriseset_threads = 0;
+static unsigned short loop = 1;
+static unsigned short threads = 0;
 
-static double sunRiseSetCalculate(int year, int month, int day, double lon, double lat, int rising, int tz) {
+static double calculate(int year, int month, int day, double lon, double lat, int rising, int tz) {
 	int N = (int)((floor(275 * month / 9)) - ((floor((month + 9) / 12)) *
 			((1 + floor((year - 4 * floor(year / 4) + 2) / 3)))) + (int)day - 30);
 
@@ -103,7 +103,7 @@ static double sunRiseSetCalculate(int year, int month, int day, double lon, doub
 	return ((round(hour)+min)+tz)*100;
 }
 
-static void *sunRiseSetParse(void *param) {
+static void *thread(void *param) {
 	struct protocol_threads_t *thread = (struct protocol_threads_t *)param;
 	struct JsonNode *json = (struct JsonNode *)thread->param;
 	struct JsonNode *jid = NULL;
@@ -117,7 +117,7 @@ static void *sunRiseSetParse(void *param) {
 	int nrloops = 0, risetime = 0, settime = 0, hournow = 0;
 	int firstrun = 0, target_offset = 0, x = 0, dst = 0;
 
-	sunriseset_threads++;
+	threads++;
 
 	if((jid = json_find_member(json, "id"))) {
 		jchild = json_first_child(jid);
@@ -153,7 +153,7 @@ static void *sunRiseSetParse(void *param) {
 	/* Check how many hours we differ from UTC? */
 	target_offset = tzoffset(UTC, tz);
 
-	while(sunriseset_loop) {
+	while(loop) {
 		protocol_thread_wait(thread, 1, &nrloops);
 		timenow = time(NULL);
 		timenow -= getntpdiff();
@@ -209,8 +209,8 @@ static void *sunRiseSetParse(void *param) {
 
 				sunriseset->message = json_mkobject();
 				JsonNode *code = json_mkobject();
-				risetime = (int)sunRiseSetCalculate(year, month, day, longitude, latitude, 1, target_offset);
-				settime = (int)sunRiseSetCalculate(year, month, day, longitude, latitude, 0, target_offset);
+				risetime = (int)calculate(year, month, day, longitude, latitude, 1, target_offset);
+				settime = (int)calculate(year, month, day, longitude, latitude, 0, target_offset);
 
 				if(dst >= 1) {
 					risetime += dst*100;
@@ -250,30 +250,30 @@ static void *sunRiseSetParse(void *param) {
 		}
 	}
 
-	sunriseset_threads--;
+	threads--;
 	return (void *)NULL;
 }
 
-struct threadqueue_t *sunRiseSetInitDev(JsonNode *jdevice) {
-	sunriseset_loop = 1;
+static struct threadqueue_t *initDev(JsonNode *jdevice) {
+	loop = 1;
 	char *output = json_stringify(jdevice, NULL);
 	JsonNode *json = json_decode(output);
 	json_free(output);
 
 	struct protocol_threads_t *node = protocol_thread_init(sunriseset, json);
-	return threads_register("sunriseset", &sunRiseSetParse, (void *)node, 0);
+	return threads_register("sunriseset", &thread, (void *)node, 0);
 }
 
-static void sunRiseSetThreadGC(void) {
-	sunriseset_loop = 0;
+static void threadGC(void) {
+	loop = 0;
 	protocol_thread_stop(sunriseset);
-	while(sunriseset_threads > 0) {
+	while(threads > 0) {
 		usleep(10);
 	}
 	protocol_thread_free(sunriseset);
 }
 
-static int sunRiseSetCheckValues(JsonNode *code) {
+static int checkValues(JsonNode *code) {
 	char *sun = NULL;
 
 	if(json_find_string(code, "sun", &sun) == 0) {
@@ -309,17 +309,17 @@ void sunRiseSetInit(void) {
 	options_add(&sunriseset->options, 0, "sunriseset-decimals", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)2, "[0-9]");
 	options_add(&sunriseset->options, 0, "show-sunriseset", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
 
-	sunriseset->initDev=&sunRiseSetInitDev;
-	sunriseset->threadGC=&sunRiseSetThreadGC;
-	sunriseset->checkValues=&sunRiseSetCheckValues;
+	sunriseset->initDev=&initDev;
+	sunriseset->threadGC=&threadGC;
+	sunriseset->checkValues=&checkValues;
 }
 
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "sunriseset";
-	module->version = "2.3";
+	module->version = "2.4";
 	module->reqversion = "6.0";
-	module->reqcommit = "81";
+	module->reqcommit = "84";
 }
 
 void init(void) {

@@ -29,7 +29,25 @@
 #include "../../core/gc.h"
 #include "arctech_motion.h"
 
-static void arctechMotionCreateMessage(int id, int unit, int state, int all) {
+#define PULSE_MULTIPLIER	3
+#define MIN_PULSE_LENGTH	274
+#define MAX_PULSE_LENGTH	284
+#define AVG_PULSE_LENGTH	279
+#define RAW_LENGTH				132
+
+static int validate(void) {
+	if(arctech_motion->rawlen == RAW_LENGTH) {			
+		if(arctech_motion->raw[arctech_motion->rawlen-1] >= (MIN_PULSE_LENGTH*PULSE_DIV) &&
+		   arctech_motion->raw[arctech_motion->rawlen-1] <= (MAX_PULSE_LENGTH*PULSE_DIV) &&
+			 arctech_motion->raw[1] >= AVG_PULSE_LENGTH*(PULSE_MULTIPLIER*3)) {
+			return 0;
+		}
+	}
+
+	return -1;
+}
+
+static void createMessage(int id, int unit, int state, int all) {
 	arctech_motion->message = json_mkobject();
 	json_append_member(arctech_motion->message, "id", json_mknumber(id, 0));
 	if(all == 1) {
@@ -45,13 +63,23 @@ static void arctechMotionCreateMessage(int id, int unit, int state, int all) {
 	}
 }
 
-static void arctechMotionParseBinary(void) {
-	int unit = binToDecRev(arctech_motion->binary, 28, 31);
-	int state = arctech_motion->binary[27];
-	int all = arctech_motion->binary[26];
-	int id = binToDecRev(arctech_motion->binary, 0, 25);
+static void parseCode(void) {
+	int binary[RAW_LENGTH/4], x = 0, i = 0;
 
-	arctechMotionCreateMessage(id, unit, state, all);
+	for(x=0;x<arctech_motion->rawlen;x+=4) {
+		if(arctech_motion->raw[x+3] > AVG_PULSE_LENGTH*PULSE_MULTIPLIER) {
+			binary[i++] = 1;
+		} else {
+			binary[i++] = 0;
+		}
+	}
+
+	int unit = binToDecRev(binary, 28, 31);
+	int state = binary[27];
+	int all = binary[26];
+	int id = binToDecRev(binary, 0, 25);
+
+	createMessage(id, unit, state, all);
 }
 
 #if !defined(MODULE) && !defined(_WIN32)
@@ -62,28 +90,28 @@ void arctechMotionInit(void) {
 	protocol_register(&arctech_motion);
 	protocol_set_id(arctech_motion, "arctech_motion");
 	protocol_device_add(arctech_motion, "kaku_motion", "KlikAanKlikUit Motion Sensor");
-	protocol_plslen_add(arctech_motion, 279);
-
 	arctech_motion->devtype = MOTION;
 	arctech_motion->hwtype = RF433;
-	arctech_motion->pulse = 5;
-	arctech_motion->rawlen = 132;
-	arctech_motion->lsb = 3;
+	arctech_motion->minrawlen = RAW_LENGTH;
+	arctech_motion->maxrawlen = RAW_LENGTH;
+	arctech_motion->maxgaplen = MAX_PULSE_LENGTH*PULSE_DIV;
+	arctech_motion->mingaplen = MIN_PULSE_LENGTH*PULSE_DIV;
 
 	options_add(&arctech_motion->options, 'u', "unit", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^([0-9]{1}|[1][0-5])$");
 	options_add(&arctech_motion->options, 'i', "id", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^([0-9]{1,7}|[1-5][0-9]{7}|6([0-6][0-9]{6}|7(0[0-9]{5}|10([0-7][0-9]{3}|8([0-7][0-9]{2}|8([0-5][0-9]|6[0-3]))))))$");
 	options_add(&arctech_motion->options, 't', "on", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
 	options_add(&arctech_motion->options, 'f', "off", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
 
-	arctech_motion->parseBinary=&arctechMotionParseBinary;
+	arctech_motion->parseCode=&parseCode;
+	arctech_motion->validate=&validate;
 }
 
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "arctech_motion";
-	module->version = "1.2";
-	module->reqversion = "5.0";
-	module->reqcommit = "99";
+	module->version = "2.0";
+	module->reqversion = "6.0";
+	module->reqcommit = "84";
 }
 
 void init(void) {

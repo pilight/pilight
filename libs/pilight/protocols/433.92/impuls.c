@@ -30,7 +30,24 @@
 #include "../../core/gc.h"
 #include "impuls.h"
 
-static void impulsCreateMessage(int systemcode, int programcode, int state) {
+#define PULSE_MULTIPLIER	3
+#define MIN_PULSE_LENGTH	130
+#define MAX_PULSE_LENGTH	170
+#define AVG_PULSE_LENGTH	150
+#define RAW_LENGTH				50
+
+static int validate(void) {
+	if(impuls->rawlen == RAW_LENGTH) {			
+		if(impuls->raw[impuls->rawlen-1] >= (MIN_PULSE_LENGTH*PULSE_DIV) &&
+		   impuls->raw[impuls->rawlen-1] <= (MAX_PULSE_LENGTH*PULSE_DIV)) {
+			return 0;
+		}
+	}
+
+	return -1;
+}
+
+static void createMessage(int systemcode, int programcode, int state) {
 	impuls->message = json_mkobject();
 	json_append_member(impuls->message, "systemcode", json_mknumber(systemcode, 0));
 	json_append_member(impuls->message, "programcode", json_mknumber(programcode, 0));
@@ -41,66 +58,70 @@ static void impulsCreateMessage(int systemcode, int programcode, int state) {
 	}
 }
 
-static void impulsParseCode(void) {
-	int x = 0;
+static void parseCode(void) {
+	int x = 0, binary[RAW_LENGTH/4];
 
 	/* Convert the one's and zero's into binary */
 	for(x=0; x<impuls->rawlen; x+=4) {
-		if(impuls->code[x+3] == 1 || impuls->code[x+0] == 1) {
-			impuls->binary[x/4]=1;
+		if(impuls->raw[x+3] > AVG_PULSE_LENGTH*(PULSE_MULTIPLIER/2) || 
+		   impuls->raw[x+0] > AVG_PULSE_LENGTH*(PULSE_MULTIPLIER/2)) {
+			printf("1");
+			binary[x/4]=1;
 		} else {
-			impuls->binary[x/4]=0;
+			printf("0");
+			binary[x/4]=0;
 		}
 	}
+	printf("\n");
 
-	int systemcode = binToDec(impuls->binary, 0, 4);
-	int programcode = binToDec(impuls->binary, 5, 9);
-	int check = impuls->binary[10];
-	int state = impuls->binary[11];
+	int systemcode = binToDec(binary, 0, 4);
+	int programcode = binToDec(binary, 5, 9);
+	int check = binary[10];
+	int state = binary[11];
 
 	if(check != state) {
-		impulsCreateMessage(systemcode, programcode, state);
+		createMessage(systemcode, programcode, state);
 	}
 }
 
-static void impulsCreateLow(int s, int e) {
+static void createLow(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=4) {
-		impuls->raw[i]=impuls->plslen->length;
-		impuls->raw[i+1]=(impuls->pulse*impuls->plslen->length);
-		impuls->raw[i+2]=(impuls->pulse*impuls->plslen->length);
-		impuls->raw[i+3]=impuls->plslen->length;
+		impuls->raw[i]=AVG_PULSE_LENGTH;
+		impuls->raw[i+1]=(PULSE_MULTIPLIER*AVG_PULSE_LENGTH);
+		impuls->raw[i+2]=(PULSE_MULTIPLIER*AVG_PULSE_LENGTH);
+		impuls->raw[i+3]=AVG_PULSE_LENGTH;
 	}
 }
 
-static void impulsCreateMed(int s, int e) {
+static void createMed(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=4) {
-		impuls->raw[i]=(impuls->pulse*impuls->plslen->length);
-		impuls->raw[i+1]=impuls->plslen->length;
-		impuls->raw[i+2]=(impuls->pulse*impuls->plslen->length);
-		impuls->raw[i+3]=impuls->plslen->length;
+		impuls->raw[i]=(PULSE_MULTIPLIER*AVG_PULSE_LENGTH);
+		impuls->raw[i+1]=AVG_PULSE_LENGTH;
+		impuls->raw[i+2]=(PULSE_MULTIPLIER*AVG_PULSE_LENGTH);
+		impuls->raw[i+3]=AVG_PULSE_LENGTH;
 	}
 }
 
-static void impulsCreateHigh(int s, int e) {
+static void createHigh(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=4) {
-		impuls->raw[i]=impuls->plslen->length;
-		impuls->raw[i+1]=(impuls->pulse*impuls->plslen->length);
-		impuls->raw[i+2]=impuls->plslen->length;
-		impuls->raw[i+3]=(impuls->pulse*impuls->plslen->length);
+		impuls->raw[i]=AVG_PULSE_LENGTH;
+		impuls->raw[i+1]=(PULSE_MULTIPLIER*AVG_PULSE_LENGTH);
+		impuls->raw[i+2]=AVG_PULSE_LENGTH;
+		impuls->raw[i+3]=(PULSE_MULTIPLIER*AVG_PULSE_LENGTH);
 	}
 }
 
-static void impulsClearCode(void) {
-	impulsCreateLow(0,47);
+static void clearCode(void) {
+	createLow(0,47);
 }
 
-static void impulsCreateSystemCode(int systemcode) {
+static void createSystemCode(int systemcode) {
 	int binary[255];
 	int length = 0;
 	int i=0, x=0;
@@ -109,12 +130,12 @@ static void impulsCreateSystemCode(int systemcode) {
 	for(i=0;i<=length;i++) {
 		if(binary[i]==1) {
 			x=i*4;
-			impulsCreateMed(x, x+3);
+			createMed(x, x+3);
 		}
 	}
 }
 
-static void impulsCreateProgramCode(int programcode) {
+static void createProgramCode(int programcode) {
 	int binary[255];
 	int length = 0;
 	int i=0, x=0;
@@ -123,25 +144,25 @@ static void impulsCreateProgramCode(int programcode) {
 	for(i=0;i<=length;i++) {
 		if(binary[i]==1) {
 			x=i*4;
-			impulsCreateHigh(20+x, 20+x+3);
+			createHigh(20+x, 20+x+3);
 		}
 	}
 }
 
-static void impulsCreateState(int state) {
+static void createState(int state) {
 	if(state == 0) {
-		impulsCreateHigh(40, 43);
+		createHigh(40, 43);
 	} else {
-		impulsCreateHigh(44, 47);
+		createHigh(44, 47);
 	}
 }
 
-static void impulsCreateFooter(void) {
-	impuls->raw[48]=(impuls->plslen->length);
-	impuls->raw[49]=(PULSE_DIV*impuls->plslen->length);
+static void createFooter(void) {
+	impuls->raw[48]=(AVG_PULSE_LENGTH);
+	impuls->raw[49]=(PULSE_DIV*AVG_PULSE_LENGTH);
 }
 
-static int impulsCreateCode(JsonNode *code) {
+static int createCode(struct JsonNode *code) {
 	int systemcode = -1;
 	int programcode = -1;
 	int state = -1;
@@ -166,17 +187,18 @@ static int impulsCreateCode(JsonNode *code) {
 		logprintf(LOG_ERR, "impuls: invalid programcode range");
 		return EXIT_FAILURE;
 	} else {
-		impulsCreateMessage(systemcode, programcode, state);
-		impulsClearCode();
-		impulsCreateSystemCode(systemcode);
-		impulsCreateProgramCode(programcode);
-		impulsCreateState(state);
-		impulsCreateFooter();
+		createMessage(systemcode, programcode, state);
+		clearCode();
+		createSystemCode(systemcode);
+		createProgramCode(programcode);
+		createState(state);
+		createFooter();
+		impuls->rawlen = RAW_LENGTH;
 	}
 	return EXIT_SUCCESS;
 }
 
-static void impulsPrintHelp(void) {
+static void printHelp(void) {
 	printf("\t -s --systemcode=systemcode\tcontrol a device with this systemcode\n");
 	printf("\t -u --programcode=programcode\tcontrol a device with this programcode\n");
 	printf("\t -t --on\t\t\tsend an on signal\n");
@@ -191,14 +213,12 @@ void impulsInit(void) {
 	protocol_register(&impuls);
 	protocol_set_id(impuls, "impuls");
 	protocol_device_add(impuls, "impuls", "Impuls Switches");
-	protocol_plslen_add(impuls, 170);
-	protocol_plslen_add(impuls, 140);
-	protocol_plslen_add(impuls, 130);
 	impuls->devtype = SWITCH;
 	impuls->hwtype = RF433;
-	impuls->pulse = 3;
-	impuls->rawlen = 50;
-	impuls->binlen = 12;
+	impuls->minrawlen = RAW_LENGTH;
+	impuls->maxrawlen = RAW_LENGTH;
+	impuls->maxgaplen = MAX_PULSE_LENGTH*PULSE_DIV;
+	impuls->mingaplen = MIN_PULSE_LENGTH*PULSE_DIV;
 
 	options_add(&impuls->options, 's', "systemcode", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^(3[012]?|[012][0-9]|[0-9]{1})$");
 	options_add(&impuls->options, 'u', "programcode", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^(3[012]?|[012][0-9]|[0-9]{1})$");
@@ -207,16 +227,17 @@ void impulsInit(void) {
 
 	options_add(&impuls->options, 0, "readonly", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 
-	impuls->parseCode=&impulsParseCode;
-	impuls->createCode=&impulsCreateCode;
-	impuls->printHelp=&impulsPrintHelp;
+	impuls->parseCode=&parseCode;
+	impuls->createCode=&createCode;
+	impuls->printHelp=&printHelp;
+	impuls->validate=&validate;
 }
 
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "impuls";
-	module->version = "1.1";
-	module->reqversion = "5.0";
+	module->version = "2.0";
+	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }
 

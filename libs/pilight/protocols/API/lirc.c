@@ -55,12 +55,12 @@
 #include "lirc.h"
 
 #ifndef _WIN32
-static char lirc_socket[BUFFER_SIZE];
-static int lirc_sockfd = -1;
+static char socket_path[BUFFER_SIZE];
+static int sockfd = -1;
 
-static unsigned short lirc_loop = 1;
-static unsigned short lirc_threads = 0;
-static unsigned short lirc_init = 0;
+static unsigned short loop = 1;
+static unsigned short threads = 0;
+static unsigned short initialized = 0;
 
 
 // Windows
@@ -71,7 +71,7 @@ static unsigned short lirc_init = 0;
 	// char sun_path[UNIX_PATH_MAX];
 // };
 
-static void *lircParse(void *param) {
+static void *thread(void *param) {
 	struct protocol_threads_t *node = (struct protocol_threads_t *)param;
 	struct sockaddr_un addr;
 	struct timeval timeout;
@@ -86,38 +86,38 @@ static void *lircParse(void *param) {
 	memset(&addr, '\0', sizeof(addr));
 	memset(&recvBuff, '\0', BUFFER_SIZE);
 
-	lirc_threads++;
+	threads++;
 
-	while(lirc_loop) {
-		if(lirc_sockfd > -1) {
-			close(lirc_sockfd);
-			lirc_sockfd = -1;
+	while(loop) {
+		if(sockfd > -1) {
+			close(sockfd);
+			sockfd = -1;
 		}
 
-		if(path_exists(lirc_socket) == EXIT_SUCCESS) {
+		if(path_exists(socket_path) == EXIT_SUCCESS) {
 			/* Try to open a new socket */
-			if((lirc_sockfd = socket(AF_UNIX, SOCK_STREAM, 0)) < 0) {
+			if((sockfd = socket(AF_UNIX, SOCK_STREAM, 0)) < 0) {
 				logprintf(LOG_DEBUG, "could not create Lirc socket");
 				break;
 			}
 
 			addr.sun_family=AF_UNIX;
-			strcpy(addr.sun_path, lirc_socket);
+			strcpy(addr.sun_path, socket_path);
 
 			/* Connect to the server */
-			switch(socket_timeout_connect(lirc_sockfd, (struct sockaddr *)&addr, 3)) {
+			switch(socket_timeout_connect(sockfd, (struct sockaddr *)&addr, 3)) {
 				case -1:
-					logprintf(LOG_ERR, "could not connect to Lirc socket @%s", lirc_socket);
+					logprintf(LOG_ERR, "could not connect to Lirc socket @%s", socket_path);
 					protocol_thread_wait(node, 3, &nrloops);
 					continue;
 				break;
 				case -2:
-					logprintf(LOG_ERR, "Lirc socket timeout @%s", lirc_socket);
+					logprintf(LOG_ERR, "Lirc socket timeout @%s", socket_path);
 					protocol_thread_wait(node, 3, &nrloops);
 					continue;
 				break;
 				case -3:
-					logprintf(LOG_ERR, "Error in Lirc socket connection @%s", lirc_socket);
+					logprintf(LOG_ERR, "Error in Lirc socket connection @%s", socket_path);
 					protocol_thread_wait(node, 3, &nrloops);
 					continue;
 				break;
@@ -125,19 +125,19 @@ static void *lircParse(void *param) {
 				break;
 			}
 
-			while(lirc_loop) {
+			while(loop) {
 				FD_ZERO(&fdsread);
-				FD_SET((unsigned long)lirc_sockfd, &fdsread);
+				FD_SET((unsigned long)sockfd, &fdsread);
 
 				do {
-					n = select(lirc_sockfd+1, &fdsread, NULL, NULL, &timeout);
-				} while(n == -1 && errno == EINTR && lirc_loop);
+					n = select(sockfd+1, &fdsread, NULL, NULL, &timeout);
+				} while(n == -1 && errno == EINTR && loop);
 
-				if(lirc_loop == 0) {
+				if(loop == 0) {
 					break;
 				}
 
-				if(path_exists(lirc_socket) == EXIT_FAILURE) {
+				if(path_exists(socket_path) == EXIT_FAILURE) {
 					break;
 				}
 
@@ -146,8 +146,8 @@ static void *lircParse(void *param) {
 				} else if(n == 0) {
 					usleep(100000);
 				} else if(n > 0) {
-					if(FD_ISSET((unsigned long)lirc_sockfd, &fdsread)) {
-						bytes = (int)recv(lirc_sockfd, recvBuff, BUFFER_SIZE, 0);
+					if(FD_ISSET((unsigned long)sockfd, &fdsread)) {
+						bytes = (int)recv(sockfd, recvBuff, BUFFER_SIZE, 0);
 						if(bytes <= 0) {
 							break;
 						} else {
@@ -215,35 +215,35 @@ static void *lircParse(void *param) {
 		}
 	}
 
-	if(lirc_sockfd > -1) {
-		close(lirc_sockfd);
-		lirc_sockfd = -1;
+	if(sockfd > -1) {
+		close(sockfd);
+		sockfd = -1;
 	}
 
-	lirc_threads--;
+	threads--;
 	return (void *)NULL;
 }
 
-struct threadqueue_t *lircInitDev(JsonNode *jdevice) {
-	lirc_loop = 1;
+struct threadqueue_t *initDev(JsonNode *jdevice) {
+	loop = 1;
 
-	if(lirc_init == 0) {
-		lirc_init = 1;
+	if(initialized == 0) {
+		initialized = 1;
 		struct protocol_threads_t *node = protocol_thread_init(lirc, NULL);
-		return threads_register("lirc", &lircParse, (void *)node, 0);
+		return threads_register("lirc", &thread, (void *)node, 0);
 	} else {
 		return NULL;
 	}
 }
 
-static void lircThreadGC(void) {
-	lirc_loop = 0;
+static void threadGC(void) {
+	loop = 0;
 	protocol_thread_stop(lirc);
-	while(lirc_threads > 0) {
+	while(threads > 0) {
 		usleep(10);
 	}
 	protocol_thread_free(lirc);
-	lirc_init = 0;
+	initialized = 0;
 }
 #endif
 
@@ -263,20 +263,20 @@ void lircInit(void) {
 	options_add(&lirc->options, 'r', "remote", OPTION_HAS_VALUE, DEVICES_ID, JSON_STRING, NULL, NULL);
 
 #ifndef _WIN32
-	lirc->initDev=&lircInitDev;
-	lirc->threadGC=&lircThreadGC;
+	lirc->initDev=&initDev;
+	lirc->threadGC=&threadGC;
 
-	memset(lirc_socket, '\0', BUFFER_SIZE);
-	strcpy(lirc_socket, "/dev/lircd");
+	memset(socket_path, '\0', BUFFER_SIZE);
+	strcpy(socket_path, "/dev/lircd");
 #endif
 }
 
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "lirc";
-	module->version = "1.8";
+	module->version = "1.9";
 	module->reqversion = "6.0";
-	module->reqcommit = "58";
+	module->reqcommit = "84";
 }
 
 void init(void) {

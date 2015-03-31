@@ -30,7 +30,24 @@
 #include "../../core/gc.h"
 #include "ev1527.h"
 
-static void ev1527CreateMessage(int unitcode, int state) {
+#define PULSE_MULTIPLIER	5
+#define MIN_PULSE_LENGTH	251
+#define MAX_PULSE_LENGTH	311
+#define AVG_PULSE_LENGTH	256
+#define RAW_LENGTH				50
+
+static int validate(void) {
+	if(ev1527->rawlen == RAW_LENGTH) {			
+		if(ev1527->raw[ev1527->rawlen-1] >= (MIN_PULSE_LENGTH*PULSE_DIV) &&
+		   ev1527->raw[ev1527->rawlen-1] <= (MAX_PULSE_LENGTH*PULSE_DIV)) {
+			return 0;
+		}
+	}
+
+	return -1;
+}
+
+static void createMessage(int unitcode, int state) {
 	ev1527->message = json_mkobject();
 	json_append_member(ev1527->message, "unitcode", json_mknumber(unitcode, 0));
 	if(state == 0) {
@@ -40,22 +57,20 @@ static void ev1527CreateMessage(int unitcode, int state) {
 	}
 }
 
-static void ev1527ParseBinary(void) {
+static void parseCode(void) {
+	int binary[RAW_LENGTH/2], x = 0, i = 0;
 
-	int x = 0;
-
-	/* Convert the one's and zero's into binary */
-	for(x=0; x<ev1527->rawlen; x+=2) {
-		if(ev1527->code[x+1] == 1) {
-			ev1527->binary[x/2]=1;
+	for(x=0;x<ev1527->rawlen;x+=2) {
+		if(ev1527->raw[x+3] > AVG_PULSE_LENGTH*(PULSE_MULTIPLIER/2)) {
+			binary[i++] = 1;
 		} else {
-			ev1527->binary[x/2]=0;
+			binary[i++] = 0;
 		}
 	}
 
-	int unitcode = binToDec(ev1527->binary, 0, 19);
-	int state = ev1527->binary[20];
-	ev1527CreateMessage(unitcode, state);
+	int unitcode = binToDec(binary, 0, 19);
+	int state = binary[20];
+	createMessage(unitcode, state);
 }
 
 #if !defined(MODULE) && !defined(_WIN32)
@@ -66,28 +81,28 @@ void ev1527Init(void) {
 	protocol_register(&ev1527);
 	protocol_set_id(ev1527, "ev1527");
 	protocol_device_add(ev1527, "ev1527", "ev1527 contact sensor");
-	protocol_plslen_add(ev1527, 256);
-	protocol_plslen_add(ev1527, 306);
 	ev1527->devtype = CONTACT;
 	ev1527->hwtype = RF433;
-	ev1527->pulse = 3;
-	ev1527->rawlen = 50;
-	ev1527->binlen = 12;
+	ev1527->minrawlen = RAW_LENGTH;
+	ev1527->maxrawlen = RAW_LENGTH;
+	ev1527->maxgaplen = MAX_PULSE_LENGTH*PULSE_DIV;
+	ev1527->mingaplen = MIN_PULSE_LENGTH*PULSE_DIV;
 
 	options_add(&ev1527->options, 'u', "unitcode", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^(3[012]?|[012][0-9]|[0-9]{1})$");
 	options_add(&ev1527->options, 't', "opened", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
 	options_add(&ev1527->options, 'f', "closed", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
 	options_add(&ev1527->options, 0, "readonly", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 
-	ev1527->parseBinary=&ev1527ParseBinary;
+	ev1527->parseCode=&parseCode;
+	ev1527->validate=&validate;
 }
 
 #if !defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "ev1527";
-	module->version = "0.3";
+	module->version = "0.4";
 	module->reqversion = "6.0";
-	module->reqcommit = NULL;
+	module->reqcommit = "84";
 }
 
 void init(void) {

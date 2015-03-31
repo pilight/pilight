@@ -53,11 +53,11 @@
 #if !defined(__FreeBSD__) && !defined(_WIN32)
 #include "../../../wiringx/wiringX.h"
 
-static unsigned short dht22_loop = 1;
-static unsigned short dht22_threads = 0;
+static unsigned short loop = 1;
+static unsigned short threads = 0;
 
-static pthread_mutex_t dht22lock;
-static pthread_mutexattr_t dht22attr;
+static pthread_mutex_t lock;
+static pthread_mutexattr_t attr;
 
 static uint8_t sizecvt(const int read_value) {
 	/* digitalRead() and friends from wiringx are defined as returning a value
@@ -69,7 +69,7 @@ static uint8_t sizecvt(const int read_value) {
 	return (uint8_t)read_value;
 }
 
-static void *dht22Parse(void *param) {
+static void *thread(void *param) {
 	struct protocol_threads_t *node = (struct protocol_threads_t *)param;
 	struct JsonNode *json = (struct JsonNode *)node->param;
 	struct JsonNode *jid = NULL;
@@ -78,7 +78,7 @@ static void *dht22Parse(void *param) {
 	int nrid = 0, y = 0, interval = 10, nrloops = 0;
 	double temp_offset = 0.0, humi_offset = 0.0, itmp = 0.0;
 
-	dht22_threads++;
+	threads++;
 
 	if((jid = json_find_member(json, "id"))) {
 		jchild = json_first_child(jid);
@@ -97,13 +97,13 @@ static void *dht22Parse(void *param) {
 	json_find_number(json, "temperature-offset", &temp_offset);
 	json_find_number(json, "humidity-offset", &humi_offset);
 
-	while(dht22_loop) {
+	while(loop) {
 		if(protocol_thread_wait(node, interval, &nrloops) == ETIMEDOUT) {
-			pthread_mutex_lock(&dht22lock);
+			pthread_mutex_lock(&lock);
 			for(y=0;y<nrid;y++) {
 				int tries = 5;
 				unsigned short got_correct_date = 0;
-				while(tries && !got_correct_date && dht22_loop) {
+				while(tries && !got_correct_date && loop) {
 
 					uint8_t laststate = HIGH;
 					uint8_t counter = 0;
@@ -122,10 +122,10 @@ static void *dht22Parse(void *param) {
 					pinMode(id[y], INPUT);
 
 					// detect change and read data
-					for(i=0; (i<MAXTIMINGS && dht22_loop); i++) {
+					for(i=0; (i<MAXTIMINGS && loop); i++) {
 						counter = 0;
 						delayMicroseconds(10);
-						while(sizecvt(digitalRead(id[y])) == laststate && dht22_loop) {
+						while(sizecvt(digitalRead(id[y])) == laststate && loop) {
 							counter++;
 							delayMicroseconds(1);
 							if(counter == 255) {
@@ -183,31 +183,31 @@ static void *dht22Parse(void *param) {
 					}
 				}
 			}
-			pthread_mutex_unlock(&dht22lock);
+			pthread_mutex_unlock(&lock);
 		}
 	}
-	pthread_mutex_unlock(&dht22lock);
+	pthread_mutex_unlock(&lock);
 
 	FREE(id);
-	dht22_threads--;
+	threads--;
 	return (void *)NULL;
 }
 
-static struct threadqueue_t *dht22InitDev(JsonNode *jdevice) {
-	dht22_loop = 1;
+static struct threadqueue_t *initDev(JsonNode *jdevice) {
+	loop = 1;
 	wiringXSetup();
 	char *output = json_stringify(jdevice, NULL);
 	JsonNode *json = json_decode(output);
 	json_free(output);
 
 	struct protocol_threads_t *node = protocol_thread_init(dht22, json);
-	return threads_register("dht22", &dht22Parse, (void *)node, 0);
+	return threads_register("dht22", &thread, (void *)node, 0);
 }
 
-static void dht22ThreadGC(void) {
-	dht22_loop = 0;
+static void threadGC(void) {
+	loop = 0;
 	protocol_thread_stop(dht22);
-	while(dht22_threads > 0) {
+	while(threads > 0) {
 		usleep(10);
 	}
 	protocol_thread_free(dht22);
@@ -219,9 +219,9 @@ __attribute__((weak))
 #endif
 void dht22Init(void) {
 #if !defined(__FreeBSD__) && !defined(_WIN32)
-	pthread_mutexattr_init(&dht22attr);
-	pthread_mutexattr_settype(&dht22attr, PTHREAD_MUTEX_RECURSIVE);
-	pthread_mutex_init(&dht22lock, &dht22attr);
+	pthread_mutexattr_init(&attr);
+	pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);
+	pthread_mutex_init(&lock, &attr);
 #endif
 
 	protocol_register(&dht22);
@@ -245,17 +245,17 @@ void dht22Init(void) {
 	options_add(&dht22->options, 0, "poll-interval", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *)10, "[0-9]");
 
 #if !defined(__FreeBSD__) && !defined(_WIN32)
-	dht22->initDev=&dht22InitDev;
-	dht22->threadGC=&dht22ThreadGC;
+	dht22->initDev=&initDev;
+	dht22->threadGC=&threadGC;
 #endif
 }
 
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "dht22";
-	module->version = "1.7";
+	module->version = "2.0";
 	module->reqversion = "6.0";
-	module->reqcommit = "58";
+	module->reqcommit = "84";
 }
 
 void init(void) {

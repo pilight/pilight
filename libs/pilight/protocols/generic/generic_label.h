@@ -16,12 +16,12 @@
 	along with pilight. If not, see	<http://www.gnu.org/licenses/>
 */
 
-#ifndef _PROTOCOL_GENLABEL_H_
-#define _PROTOCOL_GENLABEL_H_
+#ifndef _PROTOCOL_GENERIC_LABEL_H_
+#define _PROTOCOL_GENERIC_LABEL_H_
 
 #include "../protocol.h"
 
 struct protocol_t *generic_label;
-void genLabelInit(void);
+void genericLabelInit(void);
 
 #endif

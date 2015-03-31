@@ -1,5 +1,5 @@
 /*
-	Copyright (C) 2013 CurlyMo
+	Copyright (C) 2014 CurlyMo
 
 	This file is part of pilight.
 
@@ -16,12 +16,10 @@
 	along with pilight. If not, see	<http://www.gnu.org/licenses/>
 */
 
-#ifndef _PROTOCOL_ELRO_400_H_
-#define _PROTOCOL_ELRO_400_H_
+#ifndef _PROTOCOL_PILIGHT_FIRMWARE_V2_H_
+#define _PROTOCOL_PILIGHT_FIRMWARE_V2_H_
 
-#include "../protocol.h"
-
-struct protocol_t *elro_400;
-void elro400Init(void);
+struct protocol_t *pilight_firmware_v2;
+void pilightFirmwareV2Init(void);
 
 #endif

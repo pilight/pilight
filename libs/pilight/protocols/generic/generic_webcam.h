@@ -22,6 +22,6 @@
 #include "../protocol.h"
 
 struct protocol_t *generic_webcam;
-void genWebcamInit(void);
+void genericWebcamInit(void);
 
 #endif

@@ -30,7 +30,24 @@
 #include "../../core/gc.h"
 #include "sc2262.h"
 
-static void sc2262CreateMessage(int systemcode, int unitcode, int state) {
+#define PULSE_MULTIPLIER	3
+#define MIN_PULSE_LENGTH	427
+#define MAX_PULSE_LENGTH	444
+#define AVG_PULSE_LENGTH	432
+#define RAW_LENGTH				50
+
+static int validate(void) {
+	if(sc2262->rawlen == RAW_LENGTH) {			
+		if(sc2262->raw[sc2262->rawlen-1] >= (MIN_PULSE_LENGTH*PULSE_DIV) &&
+		   sc2262->raw[sc2262->rawlen-1] <= (MAX_PULSE_LENGTH*PULSE_DIV)) {
+			return 0;
+		}
+	}
+
+	return -1;
+}
+
+static void createMessage(int systemcode, int unitcode, int state) {
 	sc2262->message = json_mkobject();
 	json_append_member(sc2262->message, "systemcode", json_mknumber(systemcode, 0));
 	json_append_member(sc2262->message, "unitcode", json_mknumber(unitcode, 0));
@@ -41,11 +58,21 @@ static void sc2262CreateMessage(int systemcode, int unitcode, int state) {
 	}
 }
 
-static void sc2262ParseBinary(void) {
-	int systemcode = binToDec(sc2262->binary, 0, 4);
-	int unitcode = binToDec(sc2262->binary, 5, 9);
-	int state = sc2262->binary[11];
-	sc2262CreateMessage(systemcode, unitcode, state);
+static void parseCode(void) {
+	int binary[RAW_LENGTH/4], x = 0, i = 0;
+
+	for(x=0;x<sc2262->rawlen;x+=4) {
+		if(sc2262->raw[x+3] > AVG_PULSE_LENGTH*(PULSE_MULTIPLIER/2)) {
+			binary[i++] = 1;
+		} else {
+			binary[i++] = 0;
+		}
+	}
+
+	int systemcode = binToDec(binary, 0, 4);
+	int unitcode = binToDec(binary, 5, 9);
+	int state = binary[11];
+	createMessage(systemcode, unitcode, state);
 }
 
 #if !defined(MODULE) && !defined(_WIN32)
@@ -56,14 +83,12 @@ void sc2262Init(void) {
 	protocol_register(&sc2262);
 	protocol_set_id(sc2262, "sc2262");
 	protocol_device_add(sc2262, "sc2262", "sc2262 contact sensor");
-	protocol_plslen_add(sc2262, 432);
-	protocol_plslen_add(sc2262, 439);
 	sc2262->devtype = CONTACT;
 	sc2262->hwtype = RF433;
-	sc2262->pulse = 3;
-	sc2262->rawlen = 50;
-	sc2262->binlen = 12;
-	sc2262->lsb = 3;
+	sc2262->minrawlen = RAW_LENGTH;
+	sc2262->maxrawlen = RAW_LENGTH;
+	sc2262->maxgaplen = MAX_PULSE_LENGTH*PULSE_DIV;
+	sc2262->mingaplen = MIN_PULSE_LENGTH*PULSE_DIV;
 
 	options_add(&sc2262->options, 's', "systemcode", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^(3[012]?|[012][0-9]|[0-9]{1})$");
 	options_add(&sc2262->options, 'u', "unitcode", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^(3[012]?|[012][0-9]|[0-9]{1})$");
@@ -72,15 +97,16 @@ void sc2262Init(void) {
 
 	options_add(&sc2262->options, 0, "readonly", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 
-	sc2262->parseBinary=&sc2262ParseBinary;
+	sc2262->parseCode=&parseCode;
+	sc2262->validate=&validate;
 }
 
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "sc2262";
-	module->version = "1.0";
-	module->reqversion = "5.0";
-	module->reqcommit = "99";
+	module->version = "2.0";
+	module->reqversion = "6.0";
+	module->reqcommit = "84";
 }
 
 void init(void) {

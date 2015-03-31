@@ -30,17 +30,35 @@
 #include "../../core/gc.h"
 #include "tfa.h"
 
-typedef struct tfa_settings_t {
+#define PULSE_MULTIPLIER	13
+#define MIN_PULSE_LENGTH	220
+#define MAX_PULSE_LENGTH	250
+#define AVG_PULSE_LENGTH	235
+#define RAW_LENGTH				86
+
+typedef struct settings_t {
 	double id;
 	double channel;
 	double temp;
 	double humi;
-	struct tfa_settings_t *next;
-} tfa_settings_t;
+	struct settings_t *next;
+} settings_t;
 
-static struct tfa_settings_t *tfa_settings = NULL;
+static struct settings_t *settings = NULL;
 
-static void tfaParseCode(void) {
+static int validate(void) {
+	if(tfa->rawlen == RAW_LENGTH) {			
+		if(tfa->raw[tfa->rawlen-1] >= (MIN_PULSE_LENGTH*PULSE_DIV) &&
+		   tfa->raw[tfa->rawlen-1] <= (MAX_PULSE_LENGTH*PULSE_DIV)) {
+			return 0;
+		}
+	}
+
+	return -1;
+}
+
+static void parseCode(void) {
+	int binary[RAW_LENGTH/2];
 	int temp1 = 0, temp2 = 0, temp3 = 0;
 	int humi1 = 0, humi2 = 0;
 	int id = 0, battery = 0;
@@ -49,30 +67,34 @@ static void tfaParseCode(void) {
 	double humi_offset = 0.0, temp_offset = 0.0;
 	double temperature = 0.0, humidity = 0.0;
 
-	for(i=1;i<tfa->rawlen-2;i+=2) {
-		tfa->binary[x++] = tfa->code[i];
-	}
+	for(x=1;x<tfa->rawlen-2;x+=2) {
+		if(tfa->raw[x] > AVG_PULSE_LENGTH*PULSE_MULTIPLIER) {
+			binary[i++] = 1;
+		} else {
+			binary[i++] = 0;
+		}
+	}	
 
-	id = binToDecRev(tfa->binary, 2, 9);
-	channel = binToDecRev(tfa->binary, 12, 13) + 1;
+	id = binToDecRev(binary, 2, 9);
+	channel = binToDecRev(binary, 12, 13) + 1;
 
-	temp1 = binToDecRev(tfa->binary, 14, 17);
-	temp2 = binToDecRev(tfa->binary, 18, 21);
-	temp3 = binToDecRev(tfa->binary, 22, 25);
+	temp1 = binToDecRev(binary, 14, 17);
+	temp2 = binToDecRev(binary, 18, 21);
+	temp3 = binToDecRev(binary, 22, 25);
 	                                                     /* Convert F to C */
 	temperature = (int)((float)(((((temp3*256) + (temp2*16) + (temp1))*10) - 9000) - 3200) * ((float)5/(float)9));
 
-	humi1 = binToDecRev(tfa->binary, 26, 29);
-	humi2 = binToDecRev(tfa->binary, 30, 33);
+	humi1 = binToDecRev(binary, 26, 29);
+	humi2 = binToDecRev(binary, 30, 33);
 	humidity = ((humi1)+(humi2*16));
 
-	if(binToDecRev(tfa->code, 34, 35) > 1) {
+	if(binToDecRev(binary, 34, 35) > 1) {
 		battery = 0;
 	} else {
 		battery = 1;
 	}
 
-	struct tfa_settings_t *tmp = tfa_settings;
+	struct settings_t *tmp = settings;
 	while(tmp) {
 		if(fabs(tmp->id-id) < EPSILON && fabs(tmp->channel-channel) < EPSILON) {
 			humi_offset = tmp->humi;
@@ -93,11 +115,11 @@ static void tfaParseCode(void) {
 	json_append_member(tfa->message, "channel", json_mknumber(channel, 0));
 }
 
-static int tfaCheckValues(struct JsonNode *jvalues) {
+static int checkValues(struct JsonNode *jvalues) {
 	struct JsonNode *jid = NULL;
 
 	if((jid = json_find_member(jvalues, "id"))) {
-		struct tfa_settings_t *snode = NULL;
+		struct settings_t *snode = NULL;
 		struct JsonNode *jchild = NULL;
 		struct JsonNode *jchild1 = NULL;
 		double channel = -1, id = -1;
@@ -118,7 +140,7 @@ static int tfaCheckValues(struct JsonNode *jvalues) {
 			jchild = jchild->next;
 		}
 
-		struct tfa_settings_t *tmp = tfa_settings;
+		struct settings_t *tmp = settings;
 		while(tmp) {
 			if(fabs(tmp->id-id) < EPSILON && fabs(tmp->channel-channel) < EPSILON) {
 				match = 1;
@@ -127,8 +149,8 @@ static int tfaCheckValues(struct JsonNode *jvalues) {
 			tmp = tmp->next;
 		}
 
-		if(!match) {
-			if(!(snode = MALLOC(sizeof(struct tfa_settings_t)))) {
+		if(match == 0) {
+			if((snode = MALLOC(sizeof(struct settings_t))) == NULL) {
 				logprintf(LOG_ERR, "out of memory");
 				exit(EXIT_FAILURE);
 			}
@@ -140,22 +162,22 @@ static int tfaCheckValues(struct JsonNode *jvalues) {
 			json_find_number(jvalues, "temperature-offset", &snode->temp);
 			json_find_number(jvalues, "humidity-offset", &snode->humi);
 
-			snode->next = tfa_settings;
-			tfa_settings = snode;
+			snode->next = settings;
+			settings = snode;
 		}
 	}
 	return 0;
 }
 
-static void tfaGC(void) {
-	struct tfa_settings_t *tmp = NULL;
-	while(tfa_settings) {
-		tmp = tfa_settings;
-		tfa_settings = tfa_settings->next;
+static void gc(void) {
+	struct settings_t *tmp = NULL;
+	while(settings) {
+		tmp = settings;
+		settings = settings->next;
 		FREE(tmp);
 	}
-	if(tfa_settings != NULL) {
-		FREE(tfa_settings);
+	if(settings != NULL) {
+		FREE(settings);
 	}
 }
 
@@ -167,14 +189,12 @@ void tfaInit(void) {
 	protocol_set_id(tfa, "tfa");
 	protocol_device_add(tfa, "tfa", "TFA weather stations");
 	protocol_device_add(tfa, "conrad_weather", "Conrad Weather Stations");
-	protocol_plslen_add(tfa, 220);
-	protocol_plslen_add(tfa, 230);
-	protocol_plslen_add(tfa, 240);
-	protocol_plslen_add(tfa, 250);
 	tfa->devtype = WEATHER;
 	tfa->hwtype = RF433;
-	tfa->pulse = 20;
-	tfa->rawlen = 86;
+	tfa->maxgaplen = MAX_PULSE_LENGTH*PULSE_DIV;
+	tfa->mingaplen = MIN_PULSE_LENGTH*PULSE_DIV;
+	tfa->minrawlen = 86;
+	tfa->maxrawlen = 86;
 
 	options_add(&tfa->options, 't', "temperature", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9]{1,3}$");
 	options_add(&tfa->options, 'i', "id", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "[0-9]");
@@ -191,17 +211,18 @@ void tfaInit(void) {
 	options_add(&tfa->options, 0, "show-temperature", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
 	options_add(&tfa->options, 0, "show-battery", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
 
-	tfa->parseCode=&tfaParseCode;
-	tfa->checkValues=&tfaCheckValues;
-	tfa->gc=&tfaGC;
+	tfa->parseCode=&parseCode;
+	tfa->checkValues=&checkValues;
+	tfa->validate=&validate;
+	tfa->gc=&gc;
 }
 
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "tfa";
-	module->version = "0.11";
-	module->reqversion = "5.0";
-	module->reqcommit = "187";
+	module->version = "0.12";
+	module->reqversion = "6.0";
+	module->reqcommit = "84";
 }
 
 void init(void) {

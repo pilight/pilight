@@ -30,7 +30,24 @@
 #include "../../core/gc.h"
 #include "silvercrest.h"
 
-static void silvercrestCreateMessage(int systemcode, int unitcode, int state) {
+#define PULSE_MULTIPLIER	3
+#define MIN_PULSE_LENGTH	307
+#define MAX_PULSE_LENGTH	317
+#define AVG_PULSE_LENGTH	312
+#define RAW_LENGTH				50
+
+static int validate(void) {
+	if(silvercrest->rawlen == RAW_LENGTH) {			
+		if(silvercrest->raw[silvercrest->rawlen-1] >= (MIN_PULSE_LENGTH*PULSE_DIV) &&
+		   silvercrest->raw[silvercrest->rawlen-1] <= (MAX_PULSE_LENGTH*PULSE_DIV)) {
+			return 0;
+		}
+	}
+
+	return -1;
+}
+
+static void createMessage(int systemcode, int unitcode, int state) {
 	silvercrest->message = json_mkobject();
 	json_append_member(silvercrest->message, "systemcode", json_mknumber(systemcode, 0));
 	json_append_member(silvercrest->message, "unitcode", json_mknumber(unitcode, 0));
@@ -41,42 +58,52 @@ static void silvercrestCreateMessage(int systemcode, int unitcode, int state) {
 	}
 }
 
-static void silvercrestParseBinary(void) {
-	int systemcode = binToDec(silvercrest->binary, 0, 4);
-	int unitcode = binToDec(silvercrest->binary, 5, 9);
-	int check = silvercrest->binary[10];
-	int state = silvercrest->binary[11];
+static void parseCode(void) {
+	int binary[RAW_LENGTH/4], x = 0, i = 0;
+
+	for(x=0;x<silvercrest->rawlen;x+=4) {
+		if(silvercrest->raw[x+3] > AVG_PULSE_LENGTH*(PULSE_MULTIPLIER/2)) {
+			binary[i++] = 1;
+		} else {
+			binary[i++] = 0;
+		}
+	}
+	
+	int systemcode = binToDec(binary, 0, 4);
+	int unitcode = binToDec(binary, 5, 9);
+	int check = binary[10];
+	int state = binary[11];
 	if(check != state) {
-		silvercrestCreateMessage(systemcode, unitcode, state);
+		createMessage(systemcode, unitcode, state);
 	}
 }
 
-static void silvercrestCreateLow(int s, int e) {
+static void createLow(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=4) {
-		silvercrest->raw[i]=(silvercrest->plslen->length);
-		silvercrest->raw[i+1]=(silvercrest->pulse*silvercrest->plslen->length);
-		silvercrest->raw[i+2]=(silvercrest->pulse*silvercrest->plslen->length);
-		silvercrest->raw[i+3]=(silvercrest->plslen->length);
+		silvercrest->raw[i]=(AVG_PULSE_LENGTH);
+		silvercrest->raw[i+1]=(PULSE_MULTIPLIER*AVG_PULSE_LENGTH);
+		silvercrest->raw[i+2]=(PULSE_MULTIPLIER*AVG_PULSE_LENGTH);
+		silvercrest->raw[i+3]=(AVG_PULSE_LENGTH);
 	}
 }
 
-static void silvercrestCreateHigh(int s, int e) {
+static void createHigh(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=4) {
-		silvercrest->raw[i]=(silvercrest->plslen->length);
-		silvercrest->raw[i+1]=(silvercrest->pulse*silvercrest->plslen->length);
-		silvercrest->raw[i+2]=(silvercrest->plslen->length);
-		silvercrest->raw[i+3]=(silvercrest->pulse*silvercrest->plslen->length);
+		silvercrest->raw[i]=(AVG_PULSE_LENGTH);
+		silvercrest->raw[i+1]=(PULSE_MULTIPLIER*AVG_PULSE_LENGTH);
+		silvercrest->raw[i+2]=(AVG_PULSE_LENGTH);
+		silvercrest->raw[i+3]=(PULSE_MULTIPLIER*AVG_PULSE_LENGTH);
 	}
 }
-static void silvercrestClearCode(void) {
-	silvercrestCreateLow(0,47);
+static void clearCode(void) {
+	createLow(0,47);
 }
 
-static void silvercrestCreateSystemCode(int systemcode) {
+static void createSystemCode(int systemcode) {
 	int binary[255];
 	int length = 0;
 	int i=0, x=0;
@@ -85,12 +112,12 @@ static void silvercrestCreateSystemCode(int systemcode) {
 	for(i=0;i<=length;i++) {
 		if(binary[i]==1) {
 			x=i*4;
-			silvercrestCreateHigh(x, x+3);
+			createHigh(x, x+3);
 		}
 	}
 }
 
-static void silvercrestCreateUnitCode(int unitcode) {
+static void createUnitCode(int unitcode) {
 	int binary[255];
 	int length = 0;
 	int i=0, x=0;
@@ -99,25 +126,25 @@ static void silvercrestCreateUnitCode(int unitcode) {
 	for(i=0;i<=length;i++) {
 		if(binary[i]==1) {
 			x=i*4;
-			silvercrestCreateHigh(20+x, 20+x+3);
+			createHigh(20+x, 20+x+3);
 		}
 	}
 }
 
-static void silvercrestCreateState(int state) {
+static void createState(int state) {
 	if(state == 1) {
-		silvercrestCreateHigh(44, 47);
+		createHigh(44, 47);
 	} else {
-		silvercrestCreateHigh(40, 43);
+		createHigh(40, 43);
 	}
 }
 
-static void silvercrestCreateFooter(void) {
-	silvercrest->raw[48]=(silvercrest->plslen->length);
-	silvercrest->raw[49]=(PULSE_DIV*silvercrest->plslen->length);
+static void createFooter(void) {
+	silvercrest->raw[48]=(AVG_PULSE_LENGTH);
+	silvercrest->raw[49]=(PULSE_DIV*AVG_PULSE_LENGTH);
 }
 
-static int silvercrestCreateCode(JsonNode *code) {
+static int createCode(struct JsonNode *code) {
 	int systemcode = -1;
 	int unitcode = -1;
 	int state = -1;
@@ -142,17 +169,18 @@ static int silvercrestCreateCode(JsonNode *code) {
 		logprintf(LOG_ERR, "silvercrest: invalid unitcode range");
 		return EXIT_FAILURE;
 	} else {
-		silvercrestCreateMessage(systemcode, unitcode, state);
-		silvercrestClearCode();
-		silvercrestCreateSystemCode(systemcode);
-		silvercrestCreateUnitCode(unitcode);
-		silvercrestCreateState(state);
-		silvercrestCreateFooter();
+		createMessage(systemcode, unitcode, state);
+		clearCode();
+		createSystemCode(systemcode);
+		createUnitCode(unitcode);
+		createState(state);
+		createFooter();
+		silvercrest->rawlen = RAW_LENGTH;
 	}
 	return EXIT_SUCCESS;
 }
 
-static void silvercrestPrintHelp(void) {
+static void printHelp(void) {
 	printf("\t -s --systemcode=systemcode\tcontrol a device with this systemcode\n");
 	printf("\t -u --unitcode=unitcode\t\tcontrol a device with this unitcode\n");
 	printf("\t -t --on\t\t\tsend an on signal\n");
@@ -167,13 +195,12 @@ void silvercrestInit(void) {
 	protocol_register(&silvercrest);
 	protocol_set_id(silvercrest, "silvercrest");
 	protocol_device_add(silvercrest, "silvercrest", "Silvercrest Switches");
-	protocol_plslen_add(silvercrest, 312);
 	silvercrest->devtype = SWITCH;
 	silvercrest->hwtype = RF433;
-	silvercrest->pulse = 3;
-	silvercrest->rawlen = 50;
-	silvercrest->binlen = 12;
-	silvercrest->lsb = 3;
+	silvercrest->minrawlen = RAW_LENGTH;
+	silvercrest->maxrawlen = RAW_LENGTH;
+	silvercrest->maxgaplen = MAX_PULSE_LENGTH*PULSE_DIV;
+	silvercrest->mingaplen = MIN_PULSE_LENGTH*PULSE_DIV;
 
 	options_add(&silvercrest->options, 's', "systemcode", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^(3[012]?|[012][0-9]|[0-9]{1})$");
 	options_add(&silvercrest->options, 'u', "unitcode", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^(3[012]?|[012][0-9]|[0-9]{1})$");
@@ -182,16 +209,17 @@ void silvercrestInit(void) {
 
 	options_add(&silvercrest->options, 0, "readonly", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 
-	silvercrest->parseBinary=&silvercrestParseBinary;
-	silvercrest->createCode=&silvercrestCreateCode;
-	silvercrest->printHelp=&silvercrestPrintHelp;
+	silvercrest->parseCode=&parseCode;
+	silvercrest->createCode=&createCode;
+	silvercrest->printHelp=&printHelp;
+	silvercrest->validate=&validate;
 }
 
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "silvercrest";
-	module->version = "1.2";
-	module->reqversion = "5.0";
+	module->version = "2.0";
+	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }
 

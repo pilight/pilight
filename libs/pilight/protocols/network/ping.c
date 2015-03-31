@@ -47,16 +47,16 @@
 #include "../../core/gc.h"
 #include "ping.h"
 
-static unsigned short ping_loop = 1;
-static unsigned short ping_threads = 0;
+static unsigned short loop = 1;
+static unsigned short threads = 0;
 
-static pthread_mutex_t pinglock;
-static pthread_mutexattr_t pingattr;
+static pthread_mutex_t lock;
+static pthread_mutexattr_t attr;
 
 #define CONNECTED				1
 #define DISCONNECTED 		0
 
-static void *pingParse(void *param) {
+static void *thread(void *param) {
 	struct protocol_threads_t *node = (struct protocol_threads_t *)param;
 	struct JsonNode *json = (struct JsonNode *)node->param;
 	struct JsonNode *jid = NULL;
@@ -66,7 +66,7 @@ static void *pingParse(void *param) {
 	double itmp = 0.0;
 	int state = 0, nrloops = 0, interval = 1;
 
-	ping_threads++;
+	threads++;
 
 	if((jid = json_find_member(json, "id"))) {
 		jchild = json_first_child(jid);
@@ -86,9 +86,9 @@ static void *pingParse(void *param) {
       if(strcmp(pstate,"disconnected") == 0) state = DISCONNECTED;
       }
 
-	while(ping_loop) {
+	while(loop) {
 		if(protocol_thread_wait(node, interval, &nrloops) == ETIMEDOUT) {
-			pthread_mutex_lock(&pinglock);
+			pthread_mutex_lock(&lock);
 			if(ping(ip) == 0) {
 				if(state == DISCONNECTED) {
 					state = CONNECTED;
@@ -125,29 +125,29 @@ static void *pingParse(void *param) {
 				json_delete(pping->message);
 				pping->message = NULL;
 			}
-			pthread_mutex_unlock(&pinglock);
+			pthread_mutex_unlock(&lock);
 		}
 	}
-	pthread_mutex_unlock(&pinglock);
+	pthread_mutex_unlock(&lock);
 
-	ping_threads--;
+	threads--;
 	return (void *)NULL;
 }
 
-static struct threadqueue_t *pingInitDev(JsonNode *jdevice) {
-	ping_loop = 1;
+static struct threadqueue_t *initDev(JsonNode *jdevice) {
+	loop = 1;
 	char *output = json_stringify(jdevice, NULL);
 	JsonNode *json = json_decode(output);
 	json_free(output);
 
 	struct protocol_threads_t *node = protocol_thread_init(pping, json);
-	return threads_register("ping", &pingParse, (void *)node, 0);
+	return threads_register("ping", &thread, (void *)node, 0);
 }
 
-static void pingThreadGC(void) {
-	ping_loop = 0;
+static void threadGC(void) {
+	loop = 0;
 	protocol_thread_stop(pping);
-	while(ping_threads > 0) {
+	while(threads > 0) {
 		usleep(10);
 	}
 	protocol_thread_free(pping);
@@ -157,9 +157,9 @@ static void pingThreadGC(void) {
 __attribute__((weak))
 #endif
 void pingInit(void) {
-	pthread_mutexattr_init(&pingattr);
-	pthread_mutexattr_settype(&pingattr, PTHREAD_MUTEX_RECURSIVE);
-	pthread_mutex_init(&pinglock, &pingattr);
+	pthread_mutexattr_init(&attr);
+	pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);
+	pthread_mutex_init(&lock, &attr);
 
 	protocol_register(&pping);
 	protocol_set_id(pping, "ping");
@@ -175,16 +175,16 @@ void pingInit(void) {
 
 	options_add(&pping->options, 0, "poll-interval", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *)10, "[0-9]");
 
-	pping->initDev=&pingInitDev;
-	pping->threadGC=&pingThreadGC;
+	pping->initDev=&initDev;
+	pping->threadGC=&threadGC;
 }
 
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "ping";
-	module->version = "1.4";
+	module->version = "2.0";
 	module->reqversion = "6.0";
-	module->reqcommit = "58";
+	module->reqcommit = "84";
 }
 
 void init(void) {

@@ -30,10 +30,27 @@
 #include "../../core/gc.h"
 #include "techlico_switch.h"
 
-#define SWMAP 5
-static int techlicoSwMap[SWMAP]={0, 3, 192, 15, 12};
+#define PULSE_MULTIPLIER	3
+#define MIN_PULSE_LENGTH	203
+#define MAX_PULSE_LENGTH	213
+#define AVG_PULSE_LENGTH	208
+#define RAW_LENGTH				50
+#define NRMAP 						5
 
-static void techlicoSwCreateMessage(int id, int unit, int state) {
+static int map[NRMAP]={0, 3, 192, 15, 12};
+
+static int validate(void) {
+	if(techlico_switch->rawlen == RAW_LENGTH) {			
+		if(techlico_switch->raw[techlico_switch->rawlen-1] >= (MIN_PULSE_LENGTH*PULSE_DIV) &&
+		   techlico_switch->raw[techlico_switch->rawlen-1] <= (MAX_PULSE_LENGTH*PULSE_DIV)) {
+			return 0;
+		}
+	}
+
+	return -1;
+}
+
+static void createMessage(int id, int unit, int state) {
 	techlico_switch->message = json_mkobject();
 	json_append_member(techlico_switch->message, "id", json_mknumber(id, 0));
 	json_append_member(techlico_switch->message, "unit", json_mknumber(unit, 0));
@@ -45,52 +62,56 @@ static void techlicoSwCreateMessage(int id, int unit, int state) {
 	}
 }
 
-static void techlicoSwParseCode(void) {
-	int i = 0, x = 0, y = 0;
+static void parseCode(void) {
+	int i = 0, x = 0, y = 0, binary[RAW_LENGTH/2];
 	int id = -1, state = -1, unit = -1, code = 0;
 
 	for(i=0;i<techlico_switch->rawlen;i+=2) {
-		techlico_switch->binary[x++] = techlico_switch->code[i];
+		if(techlico_switch->raw[x] > AVG_PULSE_LENGTH*(PULSE_MULTIPLIER/2)) {
+			binary[i++] = 1;
+		} else {
+			binary[i++] = 0;
+		}
 	}
-	id = binToDecRev(techlico_switch->binary, 0, 15);
 
-	code = binToDecRev(techlico_switch->binary, 16, 23);
+	id = binToDecRev(binary, 0, 15);
+	code = binToDecRev(binary, 16, 23);
 
-	for(y=0;y<SWMAP;y++) {
-		if(techlicoSwMap[y] == code) {
+	for(y=0;y<NRMAP;y++) {
+		if(map[y] == code) {
 			unit = y;
 			break;
 		}
 	}
 
 	if(unit > -1) {
-		techlicoSwCreateMessage(id, unit, state);
+		createMessage(id, unit, state);
 	}
 }
 
-static void techlicoSwCreateHigh(int s, int e) {
+static void createHigh(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=2) {
-		techlico_switch->raw[i]=(techlico_switch->plslen->length);
-		techlico_switch->raw[i+1]=(techlico_switch->pulse*techlico_switch->plslen->length);
+		techlico_switch->raw[i]=(AVG_PULSE_LENGTH);
+		techlico_switch->raw[i+1]=(PULSE_MULTIPLIER*AVG_PULSE_LENGTH);
 	}
 }
 
-static void techlicoSwCreateLow(int s, int e) {
+static void createLow(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=2) {
-		techlico_switch->raw[i]=(techlico_switch->pulse*techlico_switch->plslen->length);
-		techlico_switch->raw[i+1]=(techlico_switch->plslen->length);
+		techlico_switch->raw[i]=(PULSE_MULTIPLIER*AVG_PULSE_LENGTH);
+		techlico_switch->raw[i+1]=(AVG_PULSE_LENGTH);
 	}
 }
 
-static void techlicoSwClearCode(void) {
-	techlicoSwCreateHigh(0,47);
+static void clearCode(void) {
+	createHigh(0,47);
 }
 
-static void techlicoSwCreateId(int id) {
+static void createId(int id) {
 	int binary[255];
 	int length = 0;
 	int i=0, x=0;
@@ -99,12 +120,12 @@ static void techlicoSwCreateId(int id) {
 	for(i=0;i<=length;i++) {
 		if(binary[i]==1) {
 			x=i*2;
-			techlicoSwCreateLow(31-(x+1), 31-x);
+			createLow(31-(x+1), 31-x);
 		}
 	}
 }
 
-static void techlicoSwCreateUnit(int unit) {
+static void createUnit(int unit) {
 	int binary[255];
 	int length = 0;
 	int i=0, x=0;
@@ -113,17 +134,17 @@ static void techlicoSwCreateUnit(int unit) {
 	for(i=0;i<=length;i++) {
 		if(binary[i]==1) {
 			x=i*2;
-			techlicoSwCreateLow(47-(x+1), 47-x);
+			createLow(47-(x+1), 47-x);
 		}
 	}
 }
 
-static void techlicoSwCreateFooter(void) {
-	techlico_switch->raw[48]=(techlico_switch->plslen->length);
-	techlico_switch->raw[49]=(PULSE_DIV*techlico_switch->plslen->length);
+static void createFooter(void) {
+	techlico_switch->raw[48]=(AVG_PULSE_LENGTH);
+	techlico_switch->raw[49]=(PULSE_DIV*AVG_PULSE_LENGTH);
 }
 
-static int techlicoSwCreateCode(JsonNode *code) {
+static int createCode(struct JsonNode *code) {
 	int id = -1;
 	int unit = -1;
 	int state = -1;
@@ -149,17 +170,18 @@ static int techlicoSwCreateCode(JsonNode *code) {
 		return EXIT_FAILURE;
 	} else {
 
-		techlicoSwCreateMessage(id, unit, state);
-		techlicoSwClearCode();
-		techlicoSwCreateId(id);
-		unit = techlicoSwMap[unit];
-		techlicoSwCreateUnit(unit);
-		techlicoSwCreateFooter();
+		createMessage(id, unit, state);
+		clearCode();
+		createId(id);
+		unit = map[unit];
+		createUnit(unit);
+		createFooter();
+		techlico_switch->rawlen = RAW_LENGTH;
 	}
 	return EXIT_SUCCESS;
 }
 
-static void techlicoSwPrintHelp(void) {
+static void printHelp(void) {
 	printf("\t -t --on\t\t\tsend an on signal\n");
 	printf("\t -f --off\t\t\tsend an off signal\n");
 	printf("\t -u --unit=unit\t\t\tcontrol a device with this unit code\n");
@@ -169,17 +191,17 @@ static void techlicoSwPrintHelp(void) {
 #if !defined(MODULE) && !defined(_WIN32)
 __attribute__((weak))
 #endif
-void techlicoSwInit(void) {
+void techlicoSwitchInit(void) {
 
 	protocol_register(&techlico_switch);
 	protocol_set_id(techlico_switch, "techlico_switch");
 	protocol_device_add(techlico_switch, "techlico_switch", "TechLiCo Lamp");
-	protocol_plslen_add(techlico_switch, 208);
 	techlico_switch->devtype = SWITCH;
 	techlico_switch->hwtype = RF433;
-	techlico_switch->pulse = 3;
-	techlico_switch->rawlen = 50;
-	techlico_switch->binlen = 12;
+	techlico_switch->minrawlen = RAW_LENGTH;
+	techlico_switch->maxrawlen = RAW_LENGTH;
+	techlico_switch->maxgaplen = MAX_PULSE_LENGTH*PULSE_DIV;
+	techlico_switch->mingaplen = MIN_PULSE_LENGTH*PULSE_DIV;
 
 	options_add(&techlico_switch->options, 't', "on", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
 	options_add(&techlico_switch->options, 'f', "off", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
@@ -188,20 +210,21 @@ void techlicoSwInit(void) {
 
 	options_add(&techlico_switch->options, 0, "readonly", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 
-	techlico_switch->parseCode=&techlicoSwParseCode;
-	techlico_switch->createCode=&techlicoSwCreateCode;
-	techlico_switch->printHelp=&techlicoSwPrintHelp;
+	techlico_switch->parseCode=&parseCode;
+	techlico_switch->createCode=&createCode;
+	techlico_switch->printHelp=&printHelp;
+	techlico_switch->validate=&validate;
 }
 
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "techlico_switch";
-	module->version = "0.10";
-	module->reqversion = "5.0";
+	module->version = "0.11";
+	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }
 
 void init(void) {
-	techlicoSwInit();
+	techlicoSwitchInit();
 }
 #endif

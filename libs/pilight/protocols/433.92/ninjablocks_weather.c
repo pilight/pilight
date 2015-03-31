@@ -30,23 +30,42 @@
 #include "../../core/gc.h"
 #include "ninjablocks_weather.h"
 
-#define	PULSE_NINJA_WEATHER_SHORT	1000
-#define PULSE_NINJA_WEATHER_LONG	2000
-#define PULSE_NINJA_WEATHER_FOOTER	2120	// 72080/PULSE_DIV
-#define PULSE_NINJA_WEATHER_LOWER	750		// SHORT*0,75
-#define PULSE_NINJA_WEATHER_UPPER	1250	// SHORT * 1,25
+#define PULSE_MULTIPLIER	2
+#define MIN_PULSE_LENGTH	2115
+#define MAX_PULSE_LENGTH	2125
+#define AVG_PULSE_LENGTH	2120
+#define MIN_RAW_LENGTH		41
+#define MAX_RAW_LENGTH		70
+#define RAW_LENGTH				50
 
-typedef struct ninjablocks_weather_settings_t {
+#define	PULSE_NINJA_WEATHER_SHORT		1000
+#define PULSE_NINJA_WEATHER_LONG		2000
+#define PULSE_NINJA_WEATHER_FOOTER	AVG_PULSE_LENGTH	// 72080/PULSE_DIV
+#define PULSE_NINJA_WEATHER_LOWER		750		// SHORT*0,75
+#define PULSE_NINJA_WEATHER_UPPER		1250	// SHORT * 1,25
+
+typedef struct settings_t {
 	double id;
 	double unit;
 	double temp;
 	double humi;
-	struct ninjablocks_weather_settings_t *next;
-} ninjablocks_weather_settings_t;
+	struct settings_t *next;
+} settings_t;
 
-static struct ninjablocks_weather_settings_t *ninjablocks_weather_settings = NULL;
+static struct settings_t *settings = NULL;
 
-static void ninjablocksWeatherCreateMessage(int id, int unit, double temperature, double humidity) {
+static int validate(void) {
+	if(ninjablocks_weather->rawlen >= MIN_RAW_LENGTH && ninjablocks_weather->rawlen <= MAX_RAW_LENGTH) {			
+		if(ninjablocks_weather->raw[ninjablocks_weather->rawlen-1] >= (MIN_PULSE_LENGTH*PULSE_DIV) &&
+		   ninjablocks_weather->raw[ninjablocks_weather->rawlen-1] <= (MAX_PULSE_LENGTH*PULSE_DIV)) {
+			return 0;
+		}
+	}
+
+	return -1;
+}
+
+static void createMessage(int id, int unit, double temperature, double humidity) {
 	ninjablocks_weather->message = json_mkobject();
 	json_append_member(ninjablocks_weather->message, "id", json_mknumber(id, 0));
 	json_append_member(ninjablocks_weather->message, "unit", json_mknumber(unit, 0));
@@ -54,8 +73,8 @@ static void ninjablocksWeatherCreateMessage(int id, int unit, double temperature
 	json_append_member(ninjablocks_weather->message, "humidity", json_mknumber(humidity, 0));
 }
 
-static void ninjablocksWeatherParseCode(void) {
-	int x = 0, pRaw = 0;
+static void parseCode(void) {
+	int x = 0, pRaw = 0, binary[RAW_LENGTH/2];
 	int iParity = 1, iParityData = -1;	// init for even parity
 	int iHeaderSync = 12;				// 1100
 	int iDataSync = 6;					// 110
@@ -63,31 +82,33 @@ static void ninjablocksWeatherParseCode(void) {
 	double humi_offset = 0.0;
 
 	// Decode Biphase Mark Coded Differential Manchester (BMCDM) pulse stream into binary
-	for(x=0; x<=ninjablocks_weather->binlen; x++) {
-		if(ninjablocks_weather->raw[pRaw] > PULSE_NINJA_WEATHER_LOWER && ninjablocks_weather->raw[pRaw] < PULSE_NINJA_WEATHER_UPPER) {
-			ninjablocks_weather->binary[x] = 1;
-			iParityData=iParity;
-			iParity=-iParity;
+	for(x=0; x<=(RAW_LENGTH/2); x++) {
+		if(ninjablocks_weather->raw[pRaw] > PULSE_NINJA_WEATHER_LOWER && 
+		  ninjablocks_weather->raw[pRaw] < PULSE_NINJA_WEATHER_UPPER) {
+			binary[x] = 1;
+			iParityData = iParity;
+			iParity = -iParity;
 			pRaw++;
 		} else {
-			ninjablocks_weather->binary[x] = 0;
+			binary[x] = 0;
 		}
 		pRaw++;
 	}
-	if(iParityData<0)
-		iParityData=0;
+	if(iParityData < 0) {
+		iParityData = 0;
+	}
 
 	// Binary record: 0-3 sync0, 4-7 unit, 8-9 id, 10-12 sync1, 13-19 humidity, 20-34 temperature, 35 even par, 36 footer
-	int headerSync = binToDecRev(ninjablocks_weather->binary, 0,3);
-	int unit = binToDecRev(ninjablocks_weather->binary, 4,7);
-	int id = binToDecRev(ninjablocks_weather->binary, 8,9);
-	int dataSync = binToDecRev(ninjablocks_weather->binary, 10,12);
-	double humidity = binToDecRev(ninjablocks_weather->binary, 13,19);	// %
-	double temperature = binToDecRev(ninjablocks_weather->binary, 20,34);
+	int headerSync = binToDecRev(binary, 0,3);
+	int unit = binToDecRev(binary, 4,7);
+	int id = binToDecRev(binary, 8,9);
+	int dataSync = binToDecRev(binary, 10,12);
+	double humidity = binToDecRev(binary, 13,19);	// %
+	double temperature = binToDecRev(binary, 20,34);
 	// ((temp * (100 / 128)) - 5000) * 10 °C, 2 digits
 	temperature = ((int)((double)(temperature * 0.78125)) - 5000);
 
-	struct ninjablocks_weather_settings_t *tmp = ninjablocks_weather_settings;
+	struct settings_t *tmp = settings;
 	while(tmp) {
 		if(fabs(tmp->id-id) < EPSILON && fabs(tmp->unit-unit) < EPSILON) {
 			humi_offset = tmp->humi;
@@ -101,15 +122,15 @@ static void ninjablocksWeatherParseCode(void) {
 	humidity += humi_offset;
 
 	if(iParityData == 0 && (iHeaderSync == headerSync || dataSync == iDataSync)) {
-		ninjablocksWeatherCreateMessage(id, unit, temperature, humidity);
+		createMessage(id, unit, temperature, humidity);
 	}
 }
 
-static int ninjablocksWeatherCheckValues(struct JsonNode *jvalues) {
+static int checkValues(struct JsonNode *jvalues) {
 	struct JsonNode *jid = NULL;
 
 	if((jid = json_find_member(jvalues, "id"))) {
-		struct ninjablocks_weather_settings_t *snode = NULL;
+		struct settings_t *snode = NULL;
 		struct JsonNode *jchild = NULL;
 		struct JsonNode *jchild1 = NULL;
 		double unit = -1, id = -1;
@@ -130,7 +151,7 @@ static int ninjablocksWeatherCheckValues(struct JsonNode *jvalues) {
 			jchild = jchild->next;
 		}
 
-		struct ninjablocks_weather_settings_t *tmp = ninjablocks_weather_settings;
+		struct settings_t *tmp = settings;
 		while(tmp) {
 			if(fabs(tmp->id-id) < EPSILON && fabs(tmp->unit-unit) < EPSILON) {
 				match = 1;
@@ -139,8 +160,8 @@ static int ninjablocksWeatherCheckValues(struct JsonNode *jvalues) {
 			tmp = tmp->next;
 		}
 
-		if(!match) {
-			if(!(snode = MALLOC(sizeof(struct ninjablocks_weather_settings_t)))) {
+		if(match == 0) {
+			if((snode = MALLOC(sizeof(struct settings_t))) == NULL) {
 				logprintf(LOG_ERR, "out of memory");
 				exit(EXIT_FAILURE);
 			}
@@ -152,22 +173,22 @@ static int ninjablocksWeatherCheckValues(struct JsonNode *jvalues) {
 			json_find_number(jvalues, "temperature-offset", &snode->temp);
 			json_find_number(jvalues, "humidity-offset", &snode->humi);
 
-			snode->next = ninjablocks_weather_settings;
-			ninjablocks_weather_settings = snode;
+			snode->next = settings;
+			settings = snode;
 		}
 	}
 	return 0;
 }
 
-static void ninjablocksWeatherGC(void) {
-	struct ninjablocks_weather_settings_t *tmp = NULL;
-	while(ninjablocks_weather_settings) {
-		tmp = ninjablocks_weather_settings;
-		ninjablocks_weather_settings = ninjablocks_weather_settings->next;
+static void gc(void) {
+	struct settings_t *tmp = NULL;
+	while(settings) {
+		tmp = settings;
+		settings = settings->next;
 		FREE(tmp);
 	}
-	if(ninjablocks_weather_settings != NULL) {
-		FREE(ninjablocks_weather_settings);
+	if(settings != NULL) {
+		FREE(settings);
 	}
 }
 
@@ -179,19 +200,14 @@ void ninjablocksWeatherInit(void) {
 	protocol_register(&ninjablocks_weather);
 	protocol_set_id(ninjablocks_weather, "ninjablocks_weather");
 	protocol_device_add(ninjablocks_weather, "ninjablocks_weather", "Ninjablocks Weather Sensors");
-	// Footer length ratio: (72080/PULSE_DIV)/2120=2,120
-	protocol_plslen_add(ninjablocks_weather, PULSE_NINJA_WEATHER_FOOTER);
 	ninjablocks_weather->devtype = WEATHER;
 	ninjablocks_weather->hwtype = RF433;
-	// LONG=ninjablocks_PULSE_HIGH*SHORT
-	ninjablocks_weather->pulse = 2;
-	// dynamically between 41..70 footer is depending on raw pulse code
-	ninjablocks_weather->rawlen = 70;
-	ninjablocks_weather->minrawlen = 41;
-	ninjablocks_weather->maxrawlen = 70;
-	// sync-id[4]; Homecode[4], Channel Code[2], Sync[3], Humidity[7], Temperature[15], Footer [1]
-	ninjablocks_weather->binlen = 35;
+	ninjablocks_weather->minrawlen = MIN_RAW_LENGTH;
+	ninjablocks_weather->maxrawlen = MAX_RAW_LENGTH;
+	ninjablocks_weather->mingaplen = MIN_PULSE_LENGTH*PULSE_DIV;
+	ninjablocks_weather->maxgaplen = MAX_PULSE_LENGTH*PULSE_DIV;
 
+	// sync-id[4]; Homecode[4], Channel Code[2], Sync[3], Humidity[7], Temperature[15], Footer [1]
 	options_add(&ninjablocks_weather->options, 'u', "unit", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^([0-9]|1[0-5])$");
 	options_add(&ninjablocks_weather->options, 'i', "id", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^([0-3])$");
 	options_add(&ninjablocks_weather->options, 't', "temperature", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9]{1,5}$");
@@ -204,17 +220,18 @@ void ninjablocksWeatherInit(void) {
 	options_add(&ninjablocks_weather->options, 0, "show-humidity", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
 	options_add(&ninjablocks_weather->options, 0, "show-temperature", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
 
-	ninjablocks_weather->parseCode=&ninjablocksWeatherParseCode;
-	ninjablocks_weather->checkValues=&ninjablocksWeatherCheckValues;
-	ninjablocks_weather->gc=&ninjablocksWeatherGC;
+	ninjablocks_weather->parseCode=&parseCode;
+	ninjablocks_weather->checkValues=&checkValues;
+	ninjablocks_weather->validate=&validate;
+	ninjablocks_weather->gc=&gc;
 }
 
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "ninjablocks_weather";
-	module->version = "0.11";
-	module->reqversion = "5.0";
-	module->reqcommit = "187";
+	module->version = "0.12";
+	module->reqversion = "6.0";
+	module->reqcommit = "84";
 }
 
 void init(void) {

@@ -30,10 +30,27 @@
 #include "../../core/gc.h"
 #include "arctech_switch.h"
 
-#define LEARN_REPEATS		40
-#define NORMAL_REPEATS	10
+#define LEARN_REPEATS			40
+#define NORMAL_REPEATS		10
+#define PULSE_MULTIPLIER	5
+#define MIN_PULSE_LENGTH	274
+#define MAX_PULSE_LENGTH	320
+#define AVG_PULSE_LENGTH	300
+#define RAW_LENGTH				132
 
-static void arctechSwCreateMessage(int id, int unit, int state, int all, int learn) {
+static int validate(void) {
+	if(arctech_switch->rawlen == RAW_LENGTH) {			
+		if(arctech_switch->raw[arctech_switch->rawlen-1] >= (MIN_PULSE_LENGTH*PULSE_DIV) &&
+		   arctech_switch->raw[arctech_switch->rawlen-1] <= (MAX_PULSE_LENGTH*PULSE_DIV) &&
+			 arctech_switch->raw[1] >= AVG_PULSE_LENGTH*(PULSE_MULTIPLIER*1.5)) {
+			return 0;
+		}
+	}
+
+	return -1;
+}
+
+static void createMessage(int id, int unit, int state, int all, int learn) {
 	arctech_switch->message = json_mkobject();
 
 	json_append_member(arctech_switch->message, "id", json_mknumber(id, 0));
@@ -57,47 +74,57 @@ static void arctechSwCreateMessage(int id, int unit, int state, int all, int lea
 	}	
 }
 
-static void arctechSwParseBinary(void) {
-	int unit = binToDecRev(arctech_switch->binary, 28, 31);
-	int state = arctech_switch->binary[27];
-	int all = arctech_switch->binary[26];
-	int id = binToDecRev(arctech_switch->binary, 0, 25);
+static void parseCode(void) {
+	int binary[RAW_LENGTH/4], x = 0, i = 0;
 
-	arctechSwCreateMessage(id, unit, state, all, 0);
+	for(x=0;x<arctech_switch->rawlen;x+=4) {
+		if(arctech_switch->raw[x+3] > AVG_PULSE_LENGTH*(PULSE_MULTIPLIER/2)) {
+			binary[i++] = 1;
+		} else {
+			binary[i++] = 0;
+		}
+	}
+
+	int unit = binToDecRev(binary, 28, 31);
+	int state = binary[27];
+	int all = binary[26];
+	int id = binToDecRev(binary, 0, 25);
+
+	createMessage(id, unit, state, all, 0);
 }
 
-static void arctechSwCreateLow(int s, int e) {
+static void createLow(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=4) {
-		arctech_switch->raw[i]=(arctech_switch->plslen->length);
-		arctech_switch->raw[i+1]=(arctech_switch->plslen->length);
-		arctech_switch->raw[i+2]=(arctech_switch->plslen->length);
-		arctech_switch->raw[i+3]=(arctech_switch->pulse*arctech_switch->plslen->length);
+		arctech_switch->raw[i]=(AVG_PULSE_LENGTH);
+		arctech_switch->raw[i+1]=(AVG_PULSE_LENGTH);
+		arctech_switch->raw[i+2]=(AVG_PULSE_LENGTH);
+		arctech_switch->raw[i+3]=(AVG_PULSE_LENGTH*PULSE_MULTIPLIER);
 	}
 }
 
-static void arctechSwCreateHigh(int s, int e) {
+static void createHigh(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=4) {
-		arctech_switch->raw[i]=(arctech_switch->plslen->length);
-		arctech_switch->raw[i+1]=(arctech_switch->pulse*arctech_switch->plslen->length);
-		arctech_switch->raw[i+2]=(arctech_switch->plslen->length);
-		arctech_switch->raw[i+3]=(arctech_switch->plslen->length);
+		arctech_switch->raw[i]=(AVG_PULSE_LENGTH);
+		arctech_switch->raw[i+1]=(AVG_PULSE_LENGTH*PULSE_MULTIPLIER);
+		arctech_switch->raw[i+2]=(AVG_PULSE_LENGTH);
+		arctech_switch->raw[i+3]=(AVG_PULSE_LENGTH);
 	}
 }
 
-static void arctechSwClearCode(void) {
-	arctechSwCreateLow(2, 132);
+static void clearCode(void) {
+	createLow(2, 131);
 }
 
-static void arctechSwCreateStart(void) {
-	arctech_switch->raw[0]=(arctech_switch->plslen->length);
-	arctech_switch->raw[1]=(9*arctech_switch->plslen->length);
+static void createStart(void) {
+	arctech_switch->raw[0]=(AVG_PULSE_LENGTH);
+	arctech_switch->raw[1]=(9*AVG_PULSE_LENGTH);
 }
 
-static void arctechSwCreateId(int id) {
+static void createId(int id) {
 	int binary[255];
 	int length = 0;
 	int i=0, x=0;
@@ -106,24 +133,24 @@ static void arctechSwCreateId(int id) {
 	for(i=0;i<=length;i++) {
 		if(binary[i]==1) {
 			x=((length-i)+1)*4;
-			arctechSwCreateHigh(106-x, 106-(x-3));
+			createHigh(106-x, 106-(x-3));
 		}
 	}
 }
 
-static void arctechSwCreateAll(int all) {
+static void createAll(int all) {
 	if(all == 1) {
-		arctechSwCreateHigh(106, 109);
+		createHigh(106, 109);
 	}
 }
 
-static void arctechSwCreateState(int state) {
+static void createState(int state) {
 	if(state == 1) {
-		arctechSwCreateHigh(110, 113);
+		createHigh(110, 113);
 	}
 }
 
-static void arctechSwCreateUnit(int unit) {
+static void createUnit(int unit) {
 	int binary[255];
 	int length = 0;
 	int i=0, x=0;
@@ -132,16 +159,16 @@ static void arctechSwCreateUnit(int unit) {
 	for(i=0;i<=length;i++) {
 		if(binary[i]==1) {
 			x=((length-i)+1)*4;
-			arctechSwCreateHigh(130-x, 130-(x-3));
+			createHigh(130-x, 130-(x-3));
 		}
 	}
 }
 
-static void arctechSwCreateFooter(void) {
-	arctech_switch->raw[131]=(PULSE_DIV*arctech_switch->plslen->length);
+static void createFooter(void) {
+	arctech_switch->raw[131]=(PULSE_DIV*AVG_PULSE_LENGTH);
 }
 
-static int arctechSwCreateCode(JsonNode *code) {
+static int createCode(struct JsonNode *code) {
 	int id = -1;
 	int unit = -1;
 	int state = -1;
@@ -178,19 +205,20 @@ static int arctechSwCreateCode(JsonNode *code) {
 		if(unit == -1 && all == 1) {
 			unit = 0;
 		}
-		arctechSwCreateMessage(id, unit, state, all, learn);
-		arctechSwCreateStart();
-		arctechSwClearCode();
-		arctechSwCreateId(id);
-		arctechSwCreateAll(all);
-		arctechSwCreateState(state);
-		arctechSwCreateUnit(unit);
-		arctechSwCreateFooter();
+		createMessage(id, unit, state, all, learn);
+		createStart();
+		clearCode();
+		createId(id);
+		createAll(all);
+		createState(state);
+		createUnit(unit);
+		createFooter();
+		arctech_switch->rawlen = RAW_LENGTH;
 	}
 	return EXIT_SUCCESS;
 }
 
-static void arctechSwPrintHelp(void) {
+static void printHelp(void) {
 	printf("\t -t --on\t\t\tsend an on signal\n");
 	printf("\t -f --off\t\t\tsend an off signal\n");
 	printf("\t -u --unit=unit\t\t\tcontrol a device with this unit code\n");
@@ -202,7 +230,7 @@ static void arctechSwPrintHelp(void) {
 #if !defined(MODULE) && !defined(_WIN32)
 __attribute__((weak))
 #endif
-void arctechSwInit(void) {
+void arctechSwitchInit(void) {
 	protocol_register(&arctech_switch);
 	protocol_set_id(arctech_switch, "arctech_switch");
 	protocol_device_add(arctech_switch, "kaku_switch", "KlikAanKlikUit Switches");
@@ -210,16 +238,13 @@ void arctechSwInit(void) {
 	protocol_device_add(arctech_switch, "nexa_switch", "Nexa Switches");
 	protocol_device_add(arctech_switch, "coco_switch", "CoCo Technologies Switches");
 	protocol_device_add(arctech_switch, "intertechno_switch", "Intertechno Switches");
-	protocol_plslen_add(arctech_switch, 315);
-	protocol_plslen_add(arctech_switch, 303);
-	protocol_plslen_add(arctech_switch, 251);
-	protocol_plslen_add(arctech_switch, 279);
 	arctech_switch->devtype = SWITCH;
 	arctech_switch->hwtype = RF433;
-	arctech_switch->pulse = 5;
 	arctech_switch->txrpt = NORMAL_REPEATS;
-	arctech_switch->rawlen = 132;
-	arctech_switch->lsb = 3;
+	arctech_switch->minrawlen = RAW_LENGTH;
+	arctech_switch->maxrawlen = RAW_LENGTH;
+	arctech_switch->maxgaplen = MAX_PULSE_LENGTH*PULSE_DIV;
+	arctech_switch->mingaplen = MIN_PULSE_LENGTH*PULSE_DIV;
 
 	options_add(&arctech_switch->options, 't', "on", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
 	options_add(&arctech_switch->options, 'f', "off", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
@@ -230,20 +255,21 @@ void arctechSwInit(void) {
 
 	options_add(&arctech_switch->options, 0, "readonly", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 
-	arctech_switch->parseBinary=&arctechSwParseBinary;
-	arctech_switch->createCode=&arctechSwCreateCode;
-	arctech_switch->printHelp=&arctechSwPrintHelp;
+	arctech_switch->parseCode=&parseCode;
+	arctech_switch->createCode=&createCode;
+	arctech_switch->printHelp=&printHelp;
+	arctech_switch->validate=&validate;
 }
 
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "arctech_switch";
-	module->version = "2.0";
-	module->reqversion = "5.0";
+	module->version = "3.0";
+	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }
 
 void init(void) {
-	arctechSwInit();
+	arctechSwitchInit();
 }
 #endif

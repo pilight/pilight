@@ -22,7 +22,7 @@
 #include "../protocol.h"
 
 struct protocol_t *techlico_switch;
-void techlicoSwInit(void);
+void techlicoSwitchInit(void);
 
 #endif
 

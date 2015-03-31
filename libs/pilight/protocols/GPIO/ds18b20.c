@@ -47,12 +47,12 @@
 #include "../../core/gc.h"
 #include "ds18b20.h"
 
-static unsigned short ds18b20_loop = 1;
-static unsigned short ds18b20_threads = 0;
-static char ds18b20_path[21];
+static unsigned short loop = 1;
+static unsigned short threads = 0;
+static char source_path[21];
 
-static pthread_mutex_t ds18b20lock;
-static pthread_mutexattr_t ds18b20attr;
+static pthread_mutex_t lock;
+static pthread_mutexattr_t attr;
 
 static void *ds18b20Parse(void *param) {
 	struct protocol_threads_t *node = (struct protocol_threads_t *)param;
@@ -76,7 +76,7 @@ static void *ds18b20Parse(void *param) {
 	int nrid = 0, interval = 10, nrloops = 0, y = 0;
 	double temp_offset = 0.0, itmp = 0.0;
 
-	ds18b20_threads++;
+	threads++;
 
 	if((jid = json_find_member(json, "id"))) {
 		jchild = json_first_child(jid);
@@ -103,17 +103,17 @@ static void *ds18b20Parse(void *param) {
 		interval = (int)round(itmp);
 	json_find_number(json, "temperature-offset", &temp_offset);
 
-	while(ds18b20_loop) {
+	while(loop) {
 		if(protocol_thread_wait(node, interval, &nrloops) == ETIMEDOUT) {
 #ifndef _WIN32
-			pthread_mutex_lock(&ds18b20lock);
+			pthread_mutex_lock(&lock);
 			for(y=0;y<nrid;y++) {
-				ds18b20_sensor = REALLOC(ds18b20_sensor, strlen(ds18b20_path)+strlen(id[y])+5);
+				ds18b20_sensor = REALLOC(ds18b20_sensor, strlen(source_path)+strlen(id[y])+5);
 				if(!ds18b20_sensor) {
 					logprintf(LOG_ERR, "out of memory");
 					exit(EXIT_FAILURE);
 				}
-				sprintf(ds18b20_sensor, "%s28-%s/", ds18b20_path, id[y]);
+				sprintf(ds18b20_sensor, "%s28-%s/", source_path, id[y]);
 				if((d = opendir(ds18b20_sensor))) {
 					while((file = readdir(d)) != NULL) {
 						if(file->d_type == DT_REG) {
@@ -189,10 +189,10 @@ static void *ds18b20Parse(void *param) {
 				}
 			}
 #endif
-			pthread_mutex_unlock(&ds18b20lock);
+			pthread_mutex_unlock(&lock);
 		}
 	}
-	pthread_mutex_unlock(&ds18b20lock);
+	pthread_mutex_unlock(&lock);
 
 	if(ds18b20_sensor) {
 		FREE(ds18b20_sensor);
@@ -204,12 +204,12 @@ static void *ds18b20Parse(void *param) {
 		FREE(id[y]);
 	}
 	FREE(id);
-	ds18b20_threads--;
+	threads--;
 	return (void *)NULL;
 }
 
-static struct threadqueue_t *ds18b20InitDev(JsonNode *jdevice) {
-	ds18b20_loop = 1;
+static struct threadqueue_t *initDev(JsonNode *jdevice) {
+	loop = 1;
 	char *output = json_stringify(jdevice, NULL);
 	JsonNode *json = json_decode(output);
 	json_free(output);
@@ -218,10 +218,10 @@ static struct threadqueue_t *ds18b20InitDev(JsonNode *jdevice) {
 	return threads_register("ds18b20", &ds18b20Parse, (void *)node, 0);
 }
 
-static void ds18b20ThreadGC(void) {
-	ds18b20_loop = 0;
+static void threadGC(void) {
+	loop = 0;
 	protocol_thread_stop(ds18b20);
-	while(ds18b20_threads > 0) {
+	while(threads > 0) {
 		usleep(10);
 	}
 	protocol_thread_free(ds18b20);
@@ -231,9 +231,9 @@ static void ds18b20ThreadGC(void) {
 __attribute__((weak))
 #endif
 void ds18b20Init(void) {
-	pthread_mutexattr_init(&ds18b20attr);
-	pthread_mutexattr_settype(&ds18b20attr, PTHREAD_MUTEX_RECURSIVE);
-	pthread_mutex_init(&ds18b20lock, &ds18b20attr);
+	pthread_mutexattr_init(&attr);
+	pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);
+	pthread_mutex_init(&lock, &attr);
 
 	protocol_register(&ds18b20);
 	protocol_set_id(ds18b20, "ds18b20");
@@ -250,19 +250,19 @@ void ds18b20Init(void) {
 	options_add(&ds18b20->options, 0, "show-temperature", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
 	options_add(&ds18b20->options, 0, "poll-interval", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *)10, "[0-9]");
 
-	memset(ds18b20_path, '\0', 21);
-	strcpy(ds18b20_path, "/sys/bus/w1/devices/");
+	memset(source_path, '\0', 21);
+	strcpy(source_path, "/sys/bus/w1/devices/");
 
-	ds18b20->initDev=&ds18b20InitDev;
-	ds18b20->threadGC=&ds18b20ThreadGC;
+	ds18b20->initDev=&initDev;
+	ds18b20->threadGC=&threadGC;
 }
 
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "ds18b20";
-	module->version = "1.6";
+	module->version = "2.0";
 	module->reqversion = "6.0";
-	module->reqcommit = "58";
+	module->reqcommit = "84";
 }
 
 void init(void) {

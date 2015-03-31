@@ -22,5 +22,6 @@
 void *ntpthread(void *param);
 int getntpdiff(void);
 int ntp_gc(void);
+int isntpsynced(void);
 
 #endif

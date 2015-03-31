@@ -30,14 +30,14 @@
 #include "../../core/gc.h"
 #include "generic_label.h"
 
-static void genLabelCreateMessage(int id, char *label, char *color) {
+static void createMessage(int id, char *label, char *color) {
 	generic_label->message = json_mkobject();
 	json_append_member(generic_label->message, "id", json_mknumber(id, 0));
 	json_append_member(generic_label->message, "label", json_mkstring(label));
 	json_append_member(generic_label->message, "color", json_mkstring(color));
 }
 
-static int genLabelCreateCode(JsonNode *code) {
+static int createCode(JsonNode *code) {
 	int id = -1;
 	char *label = NULL;
 	char *color = "black";
@@ -52,23 +52,23 @@ static int genLabelCreateCode(JsonNode *code) {
 		logprintf(LOG_ERR, "generic_label: insufficient number of arguments");
 		return EXIT_FAILURE;
 	} else {
-		genLabelCreateMessage(id, label, color);
+		createMessage(id, label, color);
 	}
 
 	return EXIT_SUCCESS;
 
 }
 
-static void genLabelPrintHelp(void) {
+static void printHelp(void) {
 	printf("\t -i --id=id\t\t\tcontrol a device with this id\n");
 	printf("\t -l --label=label\t\tset this label\n");
-	printf("\t -l --color=color\t\tset label color\n");
+	printf("\t -c --color=color\t\tset label color\n");
 }
 
 #if !defined(MODULE) && !defined(_WIN32)
 __attribute__((weak))
 #endif
-void genLabelInit(void) {
+void genericLabelInit(void) {
 
 	protocol_register(&generic_label);
 	protocol_set_id(generic_label, "generic_label");
@@ -79,19 +79,19 @@ void genLabelInit(void) {
 	options_add(&generic_label->options, 'l', "label", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_STRING, NULL, NULL);
 	options_add(&generic_label->options, 'c', "color", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_STRING, NULL, NULL);
 
-	generic_label->printHelp=&genLabelPrintHelp;
-	generic_label->createCode=&genLabelCreateCode;
+	generic_label->printHelp=&printHelp;
+	generic_label->createCode=&createCode;
 }
 
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "generic_label";
-	module->version = "1.0";
+	module->version = "1.1";
 	module->reqversion = "6.0";
-	module->reqcommit = "78";
+	module->reqcommit = "84";
 }
 
 void init(void) {
-	genLabelInit();
+	genericLabelInit();
 }
 #endif

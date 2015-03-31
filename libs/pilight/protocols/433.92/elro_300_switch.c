@@ -28,7 +28,24 @@
 #include "../protocol.h"
 #include "../../core/binary.h"
 #include "../../core/gc.h"
-#include "elro_300.h"
+#include "elro_300_switch.h"
+
+#define PULSE_MULTIPLIER	4
+#define MIN_PULSE_LENGTH	297
+#define MAX_PULSE_LENGTH	307
+#define AVG_PULSE_LENGTH	302
+#define RAW_LENGTH				116
+
+static int validate(void) {
+	if(elro_300_switch->rawlen == RAW_LENGTH) {			
+		if(elro_300_switch->raw[elro_300_switch->rawlen-1] >= (MIN_PULSE_LENGTH*PULSE_DIV) &&
+		   elro_300_switch->raw[elro_300_switch->rawlen-1] <= (MAX_PULSE_LENGTH*PULSE_DIV)) {
+			return 0;
+		}
+	}
+
+	return -1;
+}
 
 /**
  * Creates as System message informing the daemon about a received or created message
@@ -38,22 +55,22 @@
  * state : either 2 (off) or 1 (on)
  * group : if 1 this affects a whole group of devices
  */
-static void elro300CreateMessage(unsigned long long systemcode, int unitcode, int state, int group) {
-	elro_300->message = json_mkobject();
+static void createMessage(unsigned long long systemcode, int unitcode, int state, int group) {
+	elro_300_switch->message = json_mkobject();
 	//aka address
-	json_append_member(elro_300->message, "systemcode", json_mknumber((double)systemcode, 0));
+	json_append_member(elro_300_switch->message, "systemcode", json_mknumber((double)systemcode, 0));
 	//toggle all or just one unit
 	if(group == 1) {
-	    json_append_member(elro_300->message, "all", json_mknumber(group, 0));
+	    json_append_member(elro_300_switch->message, "all", json_mknumber(group, 0));
 	} else {
-	    json_append_member(elro_300->message, "unitcode", json_mknumber(unitcode, 0));
+	    json_append_member(elro_300_switch->message, "unitcode", json_mknumber(unitcode, 0));
 	}
 	//aka command
 	if(state == 1) {
-		json_append_member(elro_300->message, "state", json_mkstring("on"));
+		json_append_member(elro_300_switch->message, "state", json_mkstring("on"));
 	}
 	else if(state == 2) {
-		json_append_member(elro_300->message, "state", json_mkstring("off"));
+		json_append_member(elro_300_switch->message, "state", json_mkstring("off"));
 	}
 }
 
@@ -62,39 +79,39 @@ static void elro300CreateMessage(unsigned long long systemcode, int unitcode, in
  * Decodes the received stream
  *
  */
-static void elro300ParseCode(void) {
-	int i = 0;
+static void parseCode(void) {
+	int i = 0, x = 0, binary[RAW_LENGTH/2];
 	//utilize the "code" field
 	//at this point the code field holds translated "0" and "1" codes from the received pulses
 	//this means that we have to combine these ourselves into meaningful values in groups of 2
 
-	for(i = 0; i < elro_300->rawlen/2; i +=1) {
-		if(elro_300->code[i*2] != 0) {
-			//these are always zero - this is not a valid code
-			return;
+	for(i=0; i < elro_300_switch->rawlen; i++) {
+		if(elro_300_switch->raw[i] > AVG_PULSE_LENGTH*(PULSE_MULTIPLIER/2)) {
+			binary[x++] = 1;
+		} else {
+			binary[x++] = 0;
 		}
-		elro_300->binary[i] = elro_300->code[(i*2)+1];
 	}
 
 	//chunked code now contains "groups of 2" codes for us to handle.
-	unsigned long long systemcode = binToDecRevUl(elro_300->binary, 11, 42);
-	int groupcode = binToDec(elro_300->binary, 43, 46);
-	int groupcode2 = binToDec(elro_300->binary, 49, 50);
-	int unitcode = binToDec(elro_300->binary, 51, 56);
-	int state = binToDec(elro_300->binary, 47, 48);
+	unsigned long long systemcode = binToDecRevUl(binary, 11, 42);
+	int groupcode = binToDec(binary, 43, 46);
+	int groupcode2 = binToDec(binary, 49, 50);
+	int unitcode = binToDec(binary, 51, 56);
+	int state = binToDec(binary, 47, 48);
 	int groupRes = 0;
 
 	if(groupcode == 13 && groupcode2 == 2) {
-	    groupRes = 0;
+		groupRes = 0;
 	} else if(groupcode == 3 && groupcode2 == 3) {
-	    groupRes = 1;
+		groupRes = 1;
 	} else {
-	    return;
+		return;
 	}
 	if(state < 1 || state > 2) {
 		return;
 	} else {
-		elro300CreateMessage(systemcode, unitcode, state, groupRes);
+		createMessage(systemcode, unitcode, state, groupRes);
 	}
 }
 
@@ -104,12 +121,12 @@ static void elro300ParseCode(void) {
  * s : start position in the raw code (inclusive)
  * e : end position in the raw code (inclusive)
  */
-static void elro300CreateLow(int s, int e) {
+static void createLow(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=2) {
-		elro_300->raw[i]=(elro_300->plslen->length);
-		elro_300->raw[i+1]=(elro_300->plslen->length);
+		elro_300_switch->raw[i]=(AVG_PULSE_LENGTH);
+		elro_300_switch->raw[i+1]=(AVG_PULSE_LENGTH);
 	}
 }
 
@@ -119,12 +136,12 @@ static void elro300CreateLow(int s, int e) {
  * s : start position in the raw code (inclusive)
  * e : end position in the raw code (inclusive)
  */
-static void elro300CreateHigh(int s, int e) {
+static void createHigh(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=2) {
-		elro_300->raw[i]=(elro_300->plslen->length);
-		elro_300->raw[i+1]=(elro_300->pulse*elro_300->plslen->length);
+		elro_300_switch->raw[i]=(AVG_PULSE_LENGTH);
+		elro_300_switch->raw[i+1]=(PULSE_MULTIPLIER*AVG_PULSE_LENGTH);
 	}
 }
 
@@ -132,7 +149,7 @@ static void elro300CreateHigh(int s, int e) {
  * This simply clears the full length of the code to be all "zeroes" (LOW entries)
  */
 static void elro300ClearCode(void) {
-	elro300CreateLow(0,116);
+	createLow(0,116);
 }
 
 /**
@@ -141,7 +158,7 @@ static void elro300ClearCode(void) {
  *
  * systemcode : unsigned integer number, the 32 bit system code
  */
-static void elro300CreateSystemCode(unsigned long long systemcode) {
+static void createSystemCode(unsigned long long systemcode) {
 	int binary[255];
 	int length = 0;
 	int i=0, x=0;
@@ -149,7 +166,7 @@ static void elro300CreateSystemCode(unsigned long long systemcode) {
 	for(i=0;i<=length;i++) {
 		if(binary[(length)-i]==1) {
 			x=i*2;
-			elro300CreateHigh(22+x, 22+x+1);
+			createHigh(22+x, 22+x+1);
 		}
 	}
 }
@@ -159,7 +176,7 @@ static void elro300CreateSystemCode(unsigned long long systemcode) {
  *
  * unitcode : integer number, id of the unit to control
  */
-static void elro300CreateUnitCode(int unitcode) {
+static void createUnitCode(int unitcode) {
 	int binary[255];
 	int length = 0;
 	int i=0, x=0;
@@ -168,7 +185,7 @@ static void elro300CreateUnitCode(int unitcode) {
 	for(i=0;i<=length;i++) {
 		if(binary[i]==1) {
 			x=i*2;
-			elro300CreateHigh(102+x, 102+x+1);
+			createHigh(102+x, 102+x+1);
 		}
 	}
 }
@@ -178,14 +195,14 @@ static void elro300CreateUnitCode(int unitcode) {
  *
  * state : integer number, state value to set. can be either 1 (on) or 2 (off)
  */
-static void elro300CreateState(int state) {
+static void createState(int state) {
 	if(state == 1) {
-		elro300CreateHigh(94, 95);
-		elro300CreateLow(96, 97);
+		createHigh(94, 95);
+		createLow(96, 97);
 	}
 	else {
-    	elro300CreateLow(94, 95);
-		elro300CreateHigh(96, 97);
+    	createLow(94, 95);
+		createHigh(96, 97);
 	}
 }
 
@@ -195,17 +212,17 @@ static void elro300CreateState(int state) {
  *
  * group : integer value, 1 means grouped enabled, 0 means disabled
  */
-static void elro300CreateGroupCode(int group) {
+static void createGroupCode(int group) {
     if(group == 1) {
-		elro300CreateHigh(86, 89);
-		elro300CreateLow(90, 93);
-		elro300CreateHigh(98, 101);
+		createHigh(86, 89);
+		createLow(90, 93);
+		createHigh(98, 101);
     } else {
-		elro300CreateHigh(86, 87);
-		elro300CreateLow(88, 89);
-		elro300CreateHigh(90, 93);
-		elro300CreateLow(98, 99);
-		elro300CreateHigh(100, 101);
+		createHigh(86, 87);
+		createLow(88, 89);
+		createHigh(90, 93);
+		createLow(98, 99);
+		createHigh(100, 101);
     }
 }
 
@@ -213,29 +230,29 @@ static void elro300CreateGroupCode(int group) {
  * Inserts the (as far as is known) fixed message preamble
  * First eleven words are the preamble
  */
-static void elro300CreatePreamble(void) {
-	elro300CreateHigh(0,3);
-	elro300CreateLow(4,9);
-	elro300CreateHigh(10,17);
-	elro300CreateLow(18,21);
+static void createPreamble(void) {
+	createHigh(0,3);
+	createLow(4,9);
+	createHigh(10,17);
+	createLow(18,21);
 }
 
 /**
  * Inserts the message trailer (one HIGH) into the raw message
  */
-static void elro300CreateFooter(void) {
-	elro_300->raw[114]=(elro_300->plslen->length);
-	elro_300->raw[115]=(PULSE_DIV*elro_300->plslen->length);
+static void createFooter(void) {
+	elro_300_switch->raw[114]=(AVG_PULSE_LENGTH);
+	elro_300_switch->raw[115]=(PULSE_DIV*AVG_PULSE_LENGTH);
 }
 
 
 /**
- * Main method for creating a message based on daemon-passed values in the elro_300 protocol.
+ * Main method for creating a message based on daemon-passed values in the elro_300_switch protocol.
  * code : JSON Message containing the received parameters to use for message creation
  *
  * returns : EXIT_SUCCESS or EXIT_FAILURE on obvious occasions
  */
-static int elro300CreateCode(JsonNode *code) {
+static int createCode(struct JsonNode *code) {
 	unsigned long long systemcode = 0;
 	int unitcode = -1;
 	int group = 0;
@@ -263,19 +280,20 @@ static int elro300CreateCode(JsonNode *code) {
 	}
 
 	if(systemcode == 0 || unitcode == -1 || state == -1) {
-		logprintf(LOG_ERR, "elro_300: insufficient number of arguments");
+		logprintf(LOG_ERR, "elro_300_switch: insufficient number of arguments");
 		return EXIT_FAILURE;
 	} else if(systemcode > 4294967295u || unitcode > 99 || unitcode < 0) {
-		logprintf(LOG_ERR, "elro_300: values out of valid range");
+		logprintf(LOG_ERR, "elro_300_switch: values out of valid range");
 	} else {
-		elro300CreateMessage(systemcode, unitcode, state, group);
+		createMessage(systemcode, unitcode, state, group);
 		elro300ClearCode();
-		elro300CreatePreamble();
-		elro300CreateSystemCode(systemcode);
-		elro300CreateGroupCode(group);
-		elro300CreateState(state);
-		elro300CreateUnitCode(unitcode);
-		elro300CreateFooter();
+		createPreamble();
+		createSystemCode(systemcode);
+		createGroupCode(group);
+		createState(state);
+		createUnitCode(unitcode);
+		createFooter();
+		elro_300_switch->rawlen = RAW_LENGTH;
 	}
 	return EXIT_SUCCESS;
 }
@@ -283,7 +301,7 @@ static int elro300CreateCode(JsonNode *code) {
 /**
  * Outputs help messages directly to the current output target (probably the console)
  */
-static void elro300PrintHelp(void) {
+static void printHelp(void) {
 	printf("\t -s --systemcode=systemcode\tcontrol a device with this systemcode\n");
 	printf("\t -a --all\t\t\ttoggle switching all devices on or off\n");
 	printf("\t -u --unitcode=unitcode\t\tcontrol a device with this unitcode\n");
@@ -297,40 +315,42 @@ static void elro300PrintHelp(void) {
 #if !defined(MODULE) && !defined(_WIN32)
 __attribute__((weak))
 #endif
-void elro300Init(void) {
+void elro300SwitchInit(void) {
 
-	protocol_register(&elro_300);
-	protocol_set_id(elro_300, "elro_300");
-	protocol_device_add(elro_300, "elro_300", "Elro 300 Series Switches");
-	protocol_plslen_add(elro_300, 302);
-	elro_300->devtype = SWITCH;
-	elro_300->hwtype = RF433;
-	elro_300->pulse = 4;
-	elro_300->rawlen = 116;
+	protocol_register(&elro_300_switch);
+	protocol_set_id(elro_300_switch, "elro_300_switch");
+	protocol_device_add(elro_300_switch, "elro_300_switch", "Elro 300 Series Switches");
+	elro_300_switch->devtype = SWITCH;
+	elro_300_switch->hwtype = RF433;
+	elro_300_switch->minrawlen = RAW_LENGTH;
+	elro_300_switch->maxrawlen = RAW_LENGTH;
+	elro_300_switch->maxgaplen = MAX_PULSE_LENGTH*PULSE_DIV;
+	elro_300_switch->mingaplen = MIN_PULSE_LENGTH*PULSE_DIV;
 
-	options_add(&elro_300->options, 's', "systemcode", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^([0-9]{1,9}|[1-3][0-9]{9}|4([01][0-9]{8}|2([0-8][0-9]{7}|9([0-3][0-9]{6}|4([0-8][0-9]{5}|9([0-5][0-9]{4}|6([0-6][0-9]{3}|7([01][0-9]{2}|2([0-8][0-9]|9[0-4])))))))))$");
-	options_add(&elro_300->options, 'u', "unitcode", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^[0-9]{1,2}$");
-	options_add(&elro_300->options, 't', "on", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
-	options_add(&elro_300->options, 'f', "off", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
-	options_add(&elro_300->options, 'a', "all", OPTION_OPT_VALUE, DEVICES_OPTIONAL, JSON_NUMBER, NULL, NULL);
+	options_add(&elro_300_switch->options, 's', "systemcode", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^([0-9]{1,9}|[1-3][0-9]{9}|4([01][0-9]{8}|2([0-8][0-9]{7}|9([0-3][0-9]{6}|4([0-8][0-9]{5}|9([0-5][0-9]{4}|6([0-6][0-9]{3}|7([01][0-9]{2}|2([0-8][0-9]|9[0-4])))))))))$");
+	options_add(&elro_300_switch->options, 'u', "unitcode", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^[0-9]{1,2}$");
+	options_add(&elro_300_switch->options, 't', "on", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
+	options_add(&elro_300_switch->options, 'f', "off", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
+	options_add(&elro_300_switch->options, 'a', "all", OPTION_OPT_VALUE, DEVICES_OPTIONAL, JSON_NUMBER, NULL, NULL);
 
-	options_add(&elro_300->options, 0, "readonly", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
+	options_add(&elro_300_switch->options, 0, "readonly", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 
 
-	elro_300->parseCode=&elro300ParseCode;
-	elro_300->createCode=&elro300CreateCode;
-	elro_300->printHelp=&elro300PrintHelp;
+	elro_300_switch->parseCode=&parseCode;
+	elro_300_switch->createCode=&createCode;
+	elro_300_switch->printHelp=&printHelp;
+	elro_300_switch->validate=&validate;
 }
 
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
-	module->name = "elro_300";
-	module->version = "1.2";
-	module->reqversion = "5.0";
+	module->name = "elro_300_switch";
+	module->version = "2.0";
+	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }
 
 void init(void) {
-	elro300Init();
+	elro300SwitchInit();
 }
 #endif

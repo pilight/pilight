@@ -30,7 +30,7 @@
 #include "../../core/gc.h"
 #include "generic_dimmer.h"
 
-static void genDimCreateMessage(int id, int state, int dimlevel) {
+static void createMessage(int id, int state, int dimlevel) {
 	generic_dimmer->message = json_mkobject();
 	json_append_member(generic_dimmer->message, "id", json_mknumber(id, 0));
 	if(dimlevel >= 0) {
@@ -44,7 +44,7 @@ static void genDimCreateMessage(int id, int state, int dimlevel) {
 	}
 }
 
-static int genDimcheckValues(JsonNode *code) {
+static int checkValues(JsonNode *code) {
 	int dimlevel = -1;
 	int max = 15;
 	int min = 0;
@@ -71,7 +71,7 @@ static int genDimcheckValues(JsonNode *code) {
 	return 0;
 }
 
-static int genDimCreateCode(JsonNode *code) {
+static int createCode(JsonNode *code) {
 	int id = -1;
 	int state = -1;
 	int dimlevel = -1;
@@ -106,13 +106,13 @@ static int genDimCreateCode(JsonNode *code) {
 		if(dimlevel >= 0) {
 			state = -1;
 		}
-		genDimCreateMessage(id, state, dimlevel);
+		createMessage(id, state, dimlevel);
 	}
 	return EXIT_SUCCESS;
 
 }
 
-static void genDimPrintHelp(void) {
+static void printHelp(void) {
 	printf("\t -t --on\t\t\tsend an on signal\n");
 	printf("\t -f --off\t\t\tsend an off signal\n");
 	printf("\t -i --id=id\t\t\tcontrol a device with this id\n");
@@ -122,7 +122,7 @@ static void genDimPrintHelp(void) {
 #if !defined(MODULE) && !defined(_WIN32)
 __attribute__((weak))
 #endif
-void genDimInit(void) {
+void genericDimmerInit(void) {
 
 	protocol_register(&generic_dimmer);
 	protocol_set_id(generic_dimmer, "generic_dimmer");
@@ -138,20 +138,20 @@ void genDimInit(void) {
 	options_add(&generic_dimmer->options, 0, "dimlevel-maximum", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *)15, "^([0-9]{1}|[1][0-5])$");
 	options_add(&generic_dimmer->options, 0, "readonly", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 
-	generic_dimmer->printHelp=&genDimPrintHelp;
-	generic_dimmer->createCode=&genDimCreateCode;
-	generic_dimmer->checkValues=&genDimcheckValues;
+	generic_dimmer->printHelp=&printHelp;
+	generic_dimmer->createCode=&createCode;
+	generic_dimmer->checkValues=&checkValues;
 }
 
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "generic_dimmer";
-	module->version = "1.2";
-	module->reqversion = "5.0";
+	module->version = "1.3";
+	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }
 
 void init(void) {
-	genDimInit();
+	genericDimmerInit();
 }
 #endif

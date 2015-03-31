@@ -50,13 +50,13 @@
 #include "program.h"
 
 #ifndef _WIN32
-static unsigned short program_loop = 1;
-static unsigned short program_threads = 0;
+static unsigned short loop = 1;
+static unsigned short threads = 0;
 
-static pthread_mutex_t programlock;
-static pthread_mutexattr_t programattr;
+static pthread_mutex_t lock;
+static pthread_mutexattr_t attr;
 
-typedef struct programs_t {
+typedef struct settings_t {
 	char *name;
 	char *arguments;
 	char *program;
@@ -68,12 +68,12 @@ typedef struct programs_t {
 	pthread_t pth;
 	int hasthread;
 	protocol_threads_t *thread;
-	struct programs_t *next;
-} programs_t;
+	struct settings_t *next;
+} settings_t;
 
-static struct programs_t *programs = NULL;
+static struct settings_t *settings = NULL;
 
-static void *programParse(void *param) {
+static void *thread(void *param) {
 	struct protocol_threads_t *pnode = (struct protocol_threads_t *)param;
 	struct JsonNode *json = (struct JsonNode *)pnode->param;
 	struct JsonNode *jid = NULL;
@@ -85,14 +85,14 @@ static void *programParse(void *param) {
 	int pid = 0;
 	double itmp = 0;
 
-	program_threads++;
+	threads++;
 
 	json_find_string(json, "program", &prog);
 	json_find_string(json, "arguments", &args);
 	json_find_string(json, "stop-command", &stopcmd);
 	json_find_string(json, "start-command", &startcmd);
 
-	struct programs_t *lnode = MALLOC(sizeof(struct programs_t));
+	struct settings_t *lnode = MALLOC(sizeof(struct settings_t));
 	lnode->wait = 0;
 	lnode->hasthread = 0;
 	memset(&lnode->pth, '\0', sizeof(pthread_t));
@@ -159,15 +159,15 @@ static void *programParse(void *param) {
 	lnode->thread = pnode;
 	lnode->laststate = -1;
 
-	lnode->next = programs;
-	programs = lnode;
+	lnode->next = settings;
+	settings = lnode;
 
 	if(json_find_number(json, "poll-interval", &itmp) == 0)
 		interval = (int)round(itmp);
 
-	while(program_loop) {
+	while(loop) {
 		if(protocol_thread_wait(pnode, interval, &nrloops) == ETIMEDOUT) {
-			pthread_mutex_lock(&programlock);
+			pthread_mutex_lock(&lock);
 			if(lnode->wait == 0) {
 				program->message = json_mkobject();
 
@@ -196,27 +196,27 @@ static void *programParse(void *param) {
 				json_delete(program->message);
 				program->message = NULL;
 			}
-			pthread_mutex_unlock(&programlock);
+			pthread_mutex_unlock(&lock);
 		}
 	}
-	pthread_mutex_unlock(&programlock);
+	pthread_mutex_unlock(&lock);
 
-	program_threads--;
+	threads--;
 	return (void *)NULL;
 }
 
-struct threadqueue_t *programInitDev(JsonNode *jdevice) {
-	program_loop = 1;
+static struct threadqueue_t *initDev(JsonNode *jdevice) {
+	loop = 1;
 	char *output = json_stringify(jdevice, NULL);
 	JsonNode *json = json_decode(output);
 	json_free(output);
 
 	struct protocol_threads_t *node = protocol_thread_init(program, json);
-	return threads_register("program", &programParse, (void *)node, 0);
+	return threads_register("program", &thread, (void *)node, 0);
 }
 
-static void *programThread(void *param) {
-	struct programs_t *p = (struct programs_t *)param;
+static void *execute(void *param) {
+	struct settings_t *p = (struct settings_t *)param;
 	int pid = 0;
 	int result = 0;
 
@@ -247,7 +247,7 @@ static void *programThread(void *param) {
 	return NULL;
 }
 
-static int programCreateCode(JsonNode *code) {
+static int createCode(JsonNode *code) {
 	char *name = NULL;
 	double itmp = -1;
 	int state = -1;
@@ -255,7 +255,7 @@ static int programCreateCode(JsonNode *code) {
 
 	if(json_find_string(code, "name", &name) == 0) {
 		if(strstr(progname, "daemon") != NULL) {
-			struct programs_t *tmp = programs;
+			struct settings_t *tmp = settings;
 			while(tmp) {
 				if(strcmp(tmp->name, name) == 0) {
 					if(tmp->wait == 0) {
@@ -295,7 +295,7 @@ static int programCreateCode(JsonNode *code) {
 								}
 
 								tmp->wait = 1;
-								threads_create(&tmp->pth, NULL, programThread, (void *)tmp);
+								threads_create(&tmp->pth, NULL, execute, (void *)tmp);
 								tmp->hasthread = 1;
 								pthread_detach(tmp->pth);
 
@@ -331,32 +331,32 @@ static int programCreateCode(JsonNode *code) {
 	return EXIT_SUCCESS;
 }
 
-static void programThreadGC(void) {
-	program_loop = 0;
+static void threadGC(void) {
+	loop = 0;
 	protocol_thread_stop(program);
-	while(program_threads > 0) {
+	while(threads > 0) {
 		usleep(10);
 	}
 	protocol_thread_free(program);
 
-	struct programs_t *tmp;
-	while(programs) {
-		tmp = programs;
+	struct settings_t *tmp;
+	while(settings) {
+		tmp = settings;
 		if(tmp->stop) FREE(tmp->stop);
 		if(tmp->start) FREE(tmp->start);
 		if(tmp->name) FREE(tmp->name);
 		if(tmp->arguments) FREE(tmp->arguments);
 		if(tmp->program) FREE(tmp->program);
 		if(tmp->hasthread > 0) pthread_cancel(tmp->pth);
-		programs = programs->next;
+		settings = settings->next;
 		FREE(tmp);
 	}
-	if(programs != NULL) {
-		FREE(programs);
+	if(settings != NULL) {
+		FREE(settings);
 	}
 }
 
-static void programPrintHelp(void) {
+static void printHelp(void) {
 	printf("\t -t --running\t\t\tstart the program\n");
 	printf("\t -f --stopped\t\t\tstop the program\n");
 	printf("\t -n --name=name\t\t\tname of the program\n");
@@ -368,9 +368,9 @@ __attribute__((weak))
 #endif
 void programInit(void) {
 #ifndef _WIN32
-	pthread_mutexattr_init(&programattr);
-	pthread_mutexattr_settype(&programattr, PTHREAD_MUTEX_RECURSIVE);
-	pthread_mutex_init(&programlock, &programattr);
+	pthread_mutexattr_init(&attr);
+	pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);
+	pthread_mutex_init(&lock, &attr);
 #endif
 
 	protocol_register(&program);
@@ -394,19 +394,19 @@ void programInit(void) {
 	options_add(&program->options, 0, "poll-interval", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *)1, "[0-9]");
 
 #ifndef _WIN32
-	program->createCode=&programCreateCode;
-	program->printHelp=&programPrintHelp;
-	program->initDev=&programInitDev;
-	program->threadGC=&programThreadGC;
+	program->createCode=&createCode;
+	program->printHelp=&printHelp;
+	program->initDev=&initDev;
+	program->threadGC=&threadGC;
 #endif
 }
 
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "program";
-	module->version = "1.4";
+	module->version = "1.5";
 	module->reqversion = "6.0";
-	module->reqcommit = "58";
+	module->reqcommit = "84";
 }
 
 void init(void) {

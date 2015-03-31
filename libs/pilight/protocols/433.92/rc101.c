@@ -30,7 +30,24 @@
 #include "../../core/gc.h"
 #include "rc101.h"
 
-static void rc101CreateMessage(int id, int state, int unit, int all) {
+#define PULSE_MULTIPLIER	3
+#define MIN_PULSE_LENGTH	236
+#define MAX_PULSE_LENGTH	246
+#define AVG_PULSE_LENGTH	241
+#define RAW_LENGTH				66
+
+static int validate(void) {
+	if(rc101->rawlen == RAW_LENGTH) {			
+		if(rc101->raw[rc101->rawlen-1] >= (MIN_PULSE_LENGTH*PULSE_DIV) &&
+		   rc101->raw[rc101->rawlen-1] <= (MAX_PULSE_LENGTH*PULSE_DIV)) {
+			return 0;
+		}
+	}
+
+	return -1;
+}
+
+static void createMessage(int id, int state, int unit, int all) {
 	rc101->message = json_mkobject();
 	json_append_member(rc101->message, "id", json_mknumber(id, 0));
 	if(all == 1) {
@@ -45,15 +62,20 @@ static void rc101CreateMessage(int id, int state, int unit, int all) {
 	}
 }
 
-static void rc101ParseCode(void) {
-	int i = 0, x = 0;
+static void parseCode(void) {
+	int i = 0, x = 0, binary[RAW_LENGTH/2];
+
 	for(i=0;i<rc101->rawlen; i+=2) {
-		rc101->binary[x++] = rc101->code[i];
+		if(rc101->raw[i] > AVG_PULSE_LENGTH*(PULSE_MULTIPLIER/2)) {
+			binary[x++] = 1;
+		} else {
+			binary[x++] = 0;
+		}
 	}
 
-	int id = binToDec(rc101->binary, 0, 19);
-	int state = rc101->binary[20];
-	int unit = 7-binToDec(rc101->binary, 21, 23);
+	int id = binToDec(binary, 0, 19);
+	int state = binary[20];
+	int unit = 7-binToDec(binary, 21, 23);
 	int all = 0;
 	if(unit == 7 && state == 1) {
 		all = 1;
@@ -63,32 +85,32 @@ static void rc101ParseCode(void) {
 		all = 1;
 		state = 1;
 	}
-	rc101CreateMessage(id, state, unit, all);
+	createMessage(id, state, unit, all);
 }
 
-static void rc101CreateLow(int s, int e) {
+static void createLow(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=2) {
-		rc101->raw[i]=rc101->plslen->length;
-		rc101->raw[i+1]=(rc101->pulse*rc101->plslen->length);
+		rc101->raw[i]=AVG_PULSE_LENGTH;
+		rc101->raw[i+1]=(PULSE_MULTIPLIER*AVG_PULSE_LENGTH);
 	}
 }
 
-static void rc101CreateHigh(int s, int e) {
+static void createHigh(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=2) {
-		rc101->raw[i]=(rc101->pulse*rc101->plslen->length);
-		rc101->raw[i+1]=rc101->plslen->length;
+		rc101->raw[i]=(PULSE_MULTIPLIER*AVG_PULSE_LENGTH);
+		rc101->raw[i+1]=AVG_PULSE_LENGTH;
 	}
 }
 
-static void rc101ClearCode(void) {
-	rc101CreateLow(0, 63);
+static void clearCode(void) {
+	createLow(0, 63);
 }
 
-static void rc101CreateId(int id) {
+static void createId(int id) {
 	int binary[255];
 	int length = 0;
 	int i=0, x=0;
@@ -97,12 +119,12 @@ static void rc101CreateId(int id) {
 	for(i=0;i<=length;i++) {
 		if(binary[i]==1) {
 			x=i*2;
-			rc101CreateHigh(x, x+1);
+			createHigh(x, x+1);
 		}
 	}
 }
 
-static void rc101CreateUnit(int unit) {
+static void createUnit(int unit) {
 	int binary[255];
 	int length = 0;
 	int i=0, x=0;
@@ -111,23 +133,23 @@ static void rc101CreateUnit(int unit) {
 	for(i=0;i<=length;i++) {
 		if(binary[i]==1) {
 			x=i*2;
-			rc101CreateHigh(42+x, 42+x+1);
+			createHigh(42+x, 42+x+1);
 		}
 	}
 }
 
-static void rc101CreateState(int state) {
+static void createState(int state) {
 	if(state == 1) {
-		rc101CreateHigh(40, 41);
+		createHigh(40, 41);
 	}
 }
 
-static void rc101CreateFooter(void) {
-	rc101->raw[64]=(rc101->plslen->length);
-	rc101->raw[65]=(PULSE_DIV*rc101->plslen->length);
+static void createFooter(void) {
+	rc101->raw[64]=(AVG_PULSE_LENGTH);
+	rc101->raw[65]=(PULSE_DIV*AVG_PULSE_LENGTH);
 }
 
-static int rc101CreateCode(JsonNode *code) {
+static int createCode(struct JsonNode *code) {
 	int id = -1;
 	int state = -1;
 	int unit = -1;
@@ -161,19 +183,20 @@ static int rc101CreateCode(JsonNode *code) {
 		logprintf(LOG_ERR, "rc101: invalid id range");
 		return EXIT_FAILURE;
 	} else if(unit > 4 || unit < 0) {
-		rc101CreateMessage(id, state, unit, all);
-		rc101ClearCode();
-		rc101CreateId(id);
-		rc101CreateState(state);
+		createMessage(id, state, unit, all);
+		clearCode();
+		createId(id);
+		createState(state);
 		if(unit > -1) {
-			rc101CreateUnit(unit);
+			createUnit(unit);
 		}
-		rc101CreateFooter();
+		createFooter();
+		rc101->rawlen = RAW_LENGTH;
 	}
 	return EXIT_SUCCESS;
 }
 
-static void rc101PrintHelp(void) {
+static void printHelp(void) {
 	printf("\t -i --id=id\t\t\tcontrol a device with this id\n");
 	printf("\t -u --unit=unit\t\t\tcontrol a device with this unit\n");
 	printf("\t -t --on\t\t\tsend an on signal\n");
@@ -190,12 +213,12 @@ void rc101Init(void) {
 	protocol_set_id(rc101, "rc101");
 	protocol_device_add(rc101, "rc101", "rc101 Switches");
 	protocol_device_add(rc101, "rc102", "rc102 Switches");
-	protocol_plslen_add(rc101, 241);
 	rc101->devtype = SWITCH;
 	rc101->hwtype = RF433;
-	rc101->pulse = 3;
-	rc101->rawlen = 66;
-	rc101->binlen = 16;
+	rc101->minrawlen = RAW_LENGTH;
+	rc101->maxrawlen = RAW_LENGTH;
+	rc101->maxgaplen = MAX_PULSE_LENGTH*PULSE_DIV;
+	rc101->mingaplen = MIN_PULSE_LENGTH*PULSE_DIV;
 
 	options_add(&rc101->options, 'i', "id", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^([0-4])$");
 	options_add(&rc101->options, 'u', "unit", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^([0-4])$");
@@ -205,16 +228,17 @@ void rc101Init(void) {
 
 	options_add(&rc101->options, 0, "readonly", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 
-	rc101->parseCode=&rc101ParseCode;
-	rc101->createCode=&rc101CreateCode;
-	rc101->printHelp=&rc101PrintHelp;
+	rc101->parseCode=&parseCode;
+	rc101->createCode=&createCode;
+	rc101->printHelp=&printHelp;
+	rc101->validate=&validate;
 }
 
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "rc101";
-	module->version = "0.1";
-	module->reqversion = "5.0";
+	module->version = "0.2";
+	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }
 

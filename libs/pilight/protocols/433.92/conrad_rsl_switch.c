@@ -30,9 +30,26 @@
 #include "../../core/gc.h"
 #include "conrad_rsl_switch.h"
 
-static int conradRSLCodes[5][4][2];
+#define PULSE_MULTIPLIER	6
+#define MIN_PULSE_LENGTH	190
+#define MAX_PULSE_LENGTH	210
+#define AVG_PULSE_LENGTH	200
+#define RAW_LENGTH				66
 
-static void conradRSLSwCreateMessage(int id, int unit, int state) {
+static int codes[5][4][2];
+
+static int validate(void) {
+	if(conrad_rsl_switch->rawlen == RAW_LENGTH) {			
+		if(conrad_rsl_switch->raw[conrad_rsl_switch->rawlen-1] >= (MIN_PULSE_LENGTH*PULSE_DIV) &&
+		   conrad_rsl_switch->raw[conrad_rsl_switch->rawlen-1] <= (MAX_PULSE_LENGTH*PULSE_DIV)) {
+			return 0;
+		}
+	}
+
+	return -1;
+}
+
+static void createMessage(int id, int unit, int state) {
 	conrad_rsl_switch->message = json_mkobject();
 
 	if(id == 4) {
@@ -48,28 +65,28 @@ static void conradRSLSwCreateMessage(int id, int unit, int state) {
 	}
 }
 
-static void conradRSLSwParseCode(void) {
-	int x = 0;
+static void parseCode(void) {
+	int x = 0, binary[RAW_LENGTH/2];
 	int id = 0, unit = 0, state = 0;
 
 	/* Convert the one's and zero's into binary */
 	for(x=0;x<conrad_rsl_switch->rawlen;x+=2) {
-		if(conrad_rsl_switch->code[x+1] == 1) {
-			conrad_rsl_switch->binary[x/2]=0;
+		if(conrad_rsl_switch->raw[x+1] > AVG_PULSE_LENGTH*(PULSE_MULTIPLIER/2)) {
+			binary[x/2]=0;
 		} else {
-			conrad_rsl_switch->binary[x/2]=1;
+			binary[x/2]=1;
 		}
 	}
 
-	int check = binToDecRev(conrad_rsl_switch->binary, 0, 7);
+	int check = binToDecRev(binary, 0, 7);
 	int match = 0;
 	for(id=0;id<5;id++) {
 		for(unit=0;unit<4;unit++) {
-			if(conradRSLCodes[id][unit][0] == check) {
+			if(codes[id][unit][0] == check) {
 				state = 0;
 				match = 1;
 			}
-			if(conradRSLCodes[id][unit][1] == check) {
+			if(codes[id][unit][1] == check) {
 				state = 1;
 				match = 1;
 			}
@@ -81,33 +98,33 @@ static void conradRSLSwParseCode(void) {
 			break;
 		}
 	}
-	conradRSLSwCreateMessage(id, unit, state);
+	createMessage(id, unit, state);
 }
 
-static void conradRSLSwCreateLow(int s, int e) {
+static void createLow(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=2) {
-		conrad_rsl_switch->raw[i]=((conrad_rsl_switch->pulse+1)*conrad_rsl_switch->plslen->length);
-		conrad_rsl_switch->raw[i+1]=conrad_rsl_switch->plslen->length*3;
+		conrad_rsl_switch->raw[i]=((PULSE_MULTIPLIER+1)*AVG_PULSE_LENGTH);
+		conrad_rsl_switch->raw[i+1]=AVG_PULSE_LENGTH*3;
 	}
 }
 
-static void conradRSLSwCreateHigh(int s, int e) {
+static void createHigh(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=2) {
-		conrad_rsl_switch->raw[i]=conrad_rsl_switch->plslen->length*3;
-		conrad_rsl_switch->raw[i+1]=((conrad_rsl_switch->pulse+1)*conrad_rsl_switch->plslen->length);
+		conrad_rsl_switch->raw[i]=AVG_PULSE_LENGTH*3;
+		conrad_rsl_switch->raw[i+1]=((PULSE_MULTIPLIER+1)*AVG_PULSE_LENGTH);
 	}
 }
 
-static void conradRSLSwClearCode(void) {
+static void clearCode(void) {
 	int i = 0, x = 0;
-	conradRSLSwCreateHigh(0,65);
+	createHigh(0,65);
 	// for(i=0;i<65;i+=2) {
 		// x=i*2;
-		// conradRSLSwCreateHigh(x,x+1);
+		// createHigh(x,x+1);
 	// }
 
 	int binary[255];
@@ -117,37 +134,37 @@ static void conradRSLSwClearCode(void) {
 	for(i=0;i<=length;i++) {
 		x=i*2;
 		if(binary[i]==1) {
-			conradRSLSwCreateLow(x+16, x+16+1);
+			createLow(x+16, x+16+1);
 		} else {
-			conradRSLSwCreateHigh(x+16, x+16+1);
+			createHigh(x+16, x+16+1);
 		}
 	}
 }
 
-static void conradRSLSwCreateId(int id, int unit, int state) {
+static void createId(int id, int unit, int state) {
 	int binary[255];
 	int length = 0;
 	int i=0, x=0;
 
-	int code = conradRSLCodes[id][unit][state];
+	int code = codes[id][unit][state];
 
 	length = decToBin(code, binary);
 	for(i=0;i<=length;i++) {
 		x=i*2;
 		if(binary[i]==1) {
-			conradRSLSwCreateLow(x, x+1);
+			createLow(x, x+1);
 		} else {
-			conradRSLSwCreateHigh(x, x+1);
+			createHigh(x, x+1);
 		}
 	}
 }
 
-static void conradRSLSwCreateFooter(void) {
-	conrad_rsl_switch->raw[64]=(conrad_rsl_switch->plslen->length*3);
-	conrad_rsl_switch->raw[65]=(PULSE_DIV*conrad_rsl_switch->plslen->length);
+static void createFooter(void) {
+	conrad_rsl_switch->raw[64]=(AVG_PULSE_LENGTH*3);
+	conrad_rsl_switch->raw[65]=(PULSE_DIV*AVG_PULSE_LENGTH);
 }
 
-static int conradRSLSwCreateCode(JsonNode *code) {
+static int createCode(struct JsonNode *code) {
 	int id = -1;
 	int state = -1;
 	int unit = -1;
@@ -180,15 +197,16 @@ static int conradRSLSwCreateCode(JsonNode *code) {
 		}
 		id -= 1;
 		unit -= 1;
-		conradRSLSwCreateMessage(id, unit, state);
-		conradRSLSwClearCode();
-		conradRSLSwCreateId(id, unit, state);
-		conradRSLSwCreateFooter();
+		createMessage(id, unit, state);
+		clearCode();
+		createId(id, unit, state);
+		createFooter();
+		conrad_rsl_switch->rawlen = RAW_LENGTH;
 	}
 	return EXIT_SUCCESS;
 }
 
-static void conradRSLSwPrintHelp(void) {
+static void printHelp(void) {
 	printf("\t -i --id=id\tcontrol a device with this id\n");
 	printf("\t -i --unit=unit\tcontrol a device with this unit\n");
 	printf("\t -t --on\t\t\tsend an on signal\n");
@@ -199,58 +217,57 @@ static void conradRSLSwPrintHelp(void) {
 #if !defined(MODULE) && !defined(_WIN32)
 __attribute__((weak))
 #endif
-void conradRSLSwInit(void) {
+void conradRSLSwitchInit(void) {
 
-	memset(conradRSLCodes, 0, 33);
-	conradRSLCodes[0][0][0] = 190;
-	conradRSLCodes[0][0][1] = 182;
-	conradRSLCodes[0][1][0] = 129;
-	conradRSLCodes[0][1][1] = 142;
-	conradRSLCodes[0][2][0] = 174;
-	conradRSLCodes[0][2][1] = 166;
-	conradRSLCodes[0][3][0] = 158;
-	conradRSLCodes[0][3][1] = 150;
+	memset(codes, 0, 33);
+	codes[0][0][0] = 190;
+	codes[0][0][1] = 182;
+	codes[0][1][0] = 129;
+	codes[0][1][1] = 142;
+	codes[0][2][0] = 174;
+	codes[0][2][1] = 166;
+	codes[0][3][0] = 158;
+	codes[0][3][1] = 150;
 
-	conradRSLCodes[1][0][0] = 181;
-	conradRSLCodes[1][0][1] = 185;
-	conradRSLCodes[1][1][0] = 141;
-	conradRSLCodes[1][1][1] = 133;
-	conradRSLCodes[1][2][0] = 165;
-	conradRSLCodes[1][2][1] = 169;
-	conradRSLCodes[1][3][0] = 149;
-	conradRSLCodes[1][3][1] = 153;
+	codes[1][0][0] = 181;
+	codes[1][0][1] = 185;
+	codes[1][1][0] = 141;
+	codes[1][1][1] = 133;
+	codes[1][2][0] = 165;
+	codes[1][2][1] = 169;
+	codes[1][3][0] = 149;
+	codes[1][3][1] = 153;
 
-	conradRSLCodes[2][0][0] = 184;
-	conradRSLCodes[2][0][1] = 176;
-	conradRSLCodes[2][1][0] = 132;
-	conradRSLCodes[2][1][1] = 136;
-	conradRSLCodes[2][2][0] = 168;
-	conradRSLCodes[2][2][1] = 160;
-	conradRSLCodes[2][3][0] = 152;
-	conradRSLCodes[2][3][1] = 144;
+	codes[2][0][0] = 184;
+	codes[2][0][1] = 176;
+	codes[2][1][0] = 132;
+	codes[2][1][1] = 136;
+	codes[2][2][0] = 168;
+	codes[2][2][1] = 160;
+	codes[2][3][0] = 152;
+	codes[2][3][1] = 144;
 
-	conradRSLCodes[3][0][0] = 178;
-	conradRSLCodes[3][0][1] = 188;
-	conradRSLCodes[3][1][0] = 138;
-	conradRSLCodes[3][1][1] = 130;
-	conradRSLCodes[3][2][0] = 162;
-	conradRSLCodes[3][2][1] = 172;
-	conradRSLCodes[3][3][0] = 146;
-	conradRSLCodes[3][3][1] = 156;
+	codes[3][0][0] = 178;
+	codes[3][0][1] = 188;
+	codes[3][1][0] = 138;
+	codes[3][1][1] = 130;
+	codes[3][2][0] = 162;
+	codes[3][2][1] = 172;
+	codes[3][3][0] = 146;
+	codes[3][3][1] = 156;
 
-	conradRSLCodes[4][0][0] = 163;
-	conradRSLCodes[4][0][1] = 147;
+	codes[4][0][0] = 163;
+	codes[4][0][1] = 147;
 
 	protocol_register(&conrad_rsl_switch);
 	protocol_set_id(conrad_rsl_switch, "conrad_rsl_switch");
 	protocol_device_add(conrad_rsl_switch, "conrad_rsl_switch", "Conrad RSL Switches");
-	protocol_plslen_add(conrad_rsl_switch, 204);
-	protocol_plslen_add(conrad_rsl_switch, 194);
 	conrad_rsl_switch->devtype = SWITCH;
 	conrad_rsl_switch->hwtype = RF433;
-	conrad_rsl_switch->pulse = 6;
-	conrad_rsl_switch->rawlen = 66;
-	conrad_rsl_switch->binlen = 33;
+	conrad_rsl_switch->minrawlen = RAW_LENGTH;
+	conrad_rsl_switch->maxrawlen = RAW_LENGTH;
+	conrad_rsl_switch->maxgaplen = MAX_PULSE_LENGTH*PULSE_DIV;
+	conrad_rsl_switch->mingaplen = MIN_PULSE_LENGTH*PULSE_DIV;
 
 	options_add(&conrad_rsl_switch->options, 'i', "id", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^[1-4]$");
 	options_add(&conrad_rsl_switch->options, 'u', "unit", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^[1-4]$");
@@ -260,20 +277,21 @@ void conradRSLSwInit(void) {
 
 	options_add(&conrad_rsl_switch->options, 0, "readonly", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 
-	conrad_rsl_switch->parseCode=&conradRSLSwParseCode;
-	conrad_rsl_switch->createCode=&conradRSLSwCreateCode;
-	conrad_rsl_switch->printHelp=&conradRSLSwPrintHelp;
+	conrad_rsl_switch->parseCode=&parseCode;
+	conrad_rsl_switch->createCode=&createCode;
+	conrad_rsl_switch->printHelp=&printHelp;
+	conrad_rsl_switch->validate=&validate;
 }
 
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "conrad_rsl_switch";
-	module->version = "1.0";
-	module->reqversion = "5.0";
+	module->version = "2.0";
+	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }
 
 void init(void) {
-	conradRSLSwInit();
+	conradRSLSwitchInit();
 }
 #endif

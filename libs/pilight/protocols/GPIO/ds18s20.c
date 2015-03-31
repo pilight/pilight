@@ -47,14 +47,14 @@
 #include "../../core/gc.h"
 #include "ds18s20.h"
 
-static unsigned short ds18s20_loop = 1;
-static unsigned short ds18s20_threads = 0;
-static char ds18s20_path[21];
+static unsigned short loop = 1;
+static unsigned short threads = 0;
+static char source_path[21];
 
-static pthread_mutex_t ds18s20lock;
-static pthread_mutexattr_t ds18s20attr;
+static pthread_mutex_t lock;
+static pthread_mutexattr_t attr;
 
-static void *ds18s20Parse(void *param) {
+static void *thread(void *param) {
 	struct protocol_threads_t *node = (struct protocol_threads_t *)param;
 	struct JsonNode *json = (struct JsonNode *)node->param;
 	struct JsonNode *jid = NULL;
@@ -76,7 +76,7 @@ static void *ds18s20Parse(void *param) {
 	int nrid = 0, interval = 10, nrloops = 0, y = 0;
 	double temp_offset = 0.0, itmp = 0.0;
 
-	ds18s20_threads++;
+	threads++;
 
 	if((jid = json_find_member(json, "id"))) {
 		jchild = json_first_child(jid);
@@ -103,17 +103,17 @@ static void *ds18s20Parse(void *param) {
 		interval = (int)round(itmp);
 	json_find_number(json, "temperature-offset", &temp_offset);
 
-	while(ds18s20_loop) {
+	while(loop) {
 		if(protocol_thread_wait(node, interval, &nrloops) == ETIMEDOUT) {
 #ifndef _WIN32
-			pthread_mutex_lock(&ds18s20lock);
+			pthread_mutex_lock(&lock);
 			for(y=0;y<nrid;y++) {
-				ds18s20_sensor = REALLOC(ds18s20_sensor, strlen(ds18s20_path)+strlen(id[y])+5);
+				ds18s20_sensor = REALLOC(ds18s20_sensor, strlen(source_path)+strlen(id[y])+5);
 				if(!ds18s20_sensor) {
 					logprintf(LOG_ERR, "out of memory");
 					exit(EXIT_FAILURE);
 				}
-				sprintf(ds18s20_sensor, "%s10-%s/", ds18s20_path, id[y]);
+				sprintf(ds18s20_sensor, "%s10-%s/", source_path, id[y]);
 				if((d = opendir(ds18s20_sensor))) {
 					while((file = readdir(d)) != NULL) {
 						if(file->d_type == DT_REG) {
@@ -189,10 +189,10 @@ static void *ds18s20Parse(void *param) {
 				}
 			}
 #endif
-			pthread_mutex_unlock(&ds18s20lock);
+			pthread_mutex_unlock(&lock);
 		}
 	}
-	pthread_mutex_unlock(&ds18s20lock);
+	pthread_mutex_unlock(&lock);
 
 	if(ds18s20_sensor) {
 		FREE(ds18s20_sensor);
@@ -204,24 +204,24 @@ static void *ds18s20Parse(void *param) {
 		FREE(id[y]);
 	}
 	FREE(id);
-	ds18s20_threads--;
+	threads--;
 	return (void *)NULL;
 }
 
-static struct threadqueue_t *ds18s20InitDev(JsonNode *jdevice) {
-	ds18s20_loop = 1;
+static struct threadqueue_t *initDev(JsonNode *jdevice) {
+	loop = 1;
 	char *output = json_stringify(jdevice, NULL);
 	JsonNode *json = json_decode(output);
 	json_free(output);
 
 	struct protocol_threads_t *node = protocol_thread_init(ds18s20, json);
-	return threads_register("ds18s20", &ds18s20Parse, (void *)node, 0);
+	return threads_register("ds18s20", &thread, (void *)node, 0);
 }
 
-static void ds18s20ThreadGC(void) {
-	ds18s20_loop = 0;
+static void theadGC(void) {
+	loop = 0;
 	protocol_thread_stop(ds18s20);
-	while(ds18s20_threads > 0) {
+	while(threads > 0) {
 		usleep(10);
 	}
 	protocol_thread_free(ds18s20);
@@ -231,9 +231,9 @@ static void ds18s20ThreadGC(void) {
 __attribute__((weak))
 #endif
 void ds18s20Init(void) {
-	pthread_mutexattr_init(&ds18s20attr);
-	pthread_mutexattr_settype(&ds18s20attr, PTHREAD_MUTEX_RECURSIVE);
-	pthread_mutex_init(&ds18s20lock, &ds18s20attr);
+	pthread_mutexattr_init(&attr);
+	pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);
+	pthread_mutex_init(&lock, &attr);
 
 	protocol_register(&ds18s20);
 	protocol_set_id(ds18s20, "ds18s20");
@@ -250,19 +250,19 @@ void ds18s20Init(void) {
 	options_add(&ds18s20->options, 0, "show-temperature", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
 	options_add(&ds18s20->options, 0, "poll-interval", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *)10, "[0-9]");
 
-	memset(ds18s20_path, '\0', 21);
-	strcpy(ds18s20_path, "/sys/bus/w1/devices/");
+	memset(source_path, '\0', 21);
+	strcpy(source_path, "/sys/bus/w1/devices/");
 
-	ds18s20->initDev=&ds18s20InitDev;
-	ds18s20->threadGC=&ds18s20ThreadGC;
+	ds18s20->initDev=&initDev;
+	ds18s20->threadGC=&theadGC;
 }
 
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "ds18s20";
-	module->version = "1.7";
+	module->version = "2.0";
 	module->reqversion = "6.0";
-	module->reqcommit = "58";
+	module->reqcommit = "84";
 }
 
 void init(void) {

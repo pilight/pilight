@@ -278,8 +278,8 @@ void quiggScreenInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "quigg_screen";
-	module->version = "1.2";
-	module->reqversion = "5.0";
+	module->version = "2.0";
+	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }
 

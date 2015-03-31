@@ -22,6 +22,6 @@
 #include "../protocol.h"
 
 struct protocol_t *arctech_screen;
-void arctechSrInit(void);
+void arctechScreenInit(void);
 
 #endif

@@ -30,36 +30,57 @@
 #include "../../core/gc.h"
 #include "alecto_ws1700.h"
 
-typedef struct alecto_ws1700_settings_t {
+#define PULSE_MULTIPLIER	15
+#define MIN_PULSE_LENGTH	261
+#define AVG_PULSE_LENGTH	266
+#define MAX_PULSE_LENGTH	271
+#define RAW_LENGTH				74
+
+typedef struct settings_t {
 	double id;
 	double temp;
 	double humi;
-	struct alecto_ws1700_settings_t *next;
-} alecto_ws1700_settings_t;
+	struct settings_t *next;
+} settings_t;
 
-static struct alecto_ws1700_settings_t *alecto_ws1700_settings = NULL;
+static struct settings_t *settings = NULL;
 
-static void alectoWS1700ParseCode(void) {
-	int i = 0, x = 0;
+static int validate(void) {
+	if(alecto_ws1700->rawlen == RAW_LENGTH) {			
+		if(alecto_ws1700->raw[alecto_ws1700->rawlen-1] >= (MIN_PULSE_LENGTH*PULSE_DIV) &&
+		   alecto_ws1700->raw[alecto_ws1700->rawlen-1] <= (MAX_PULSE_LENGTH*PULSE_DIV)) {
+			return 0;
+		}
+	}
+
+	return -1;
+}
+
+static void parseCode(void) {
+	int i = 0, x = 0, binary[RAW_LENGTH/2];
 	int id = 0, battery = 0;
 	double humi_offset = 0.0, temp_offset = 0.0;
 	double temperature = 0.0, humidity = 0.0;
 
-	for(i=1;i<alecto_ws1700->rawlen-1;i+=2) {
-		alecto_ws1700->binary[x++] = alecto_ws1700->code[i];
+	for(x=1;x<alecto_ws1700->rawlen-2;x+=2) {
+		if(alecto_ws1700->raw[x] > AVG_PULSE_LENGTH*(PULSE_MULTIPLIER/2)) {
+			binary[i++] = 1;
+		} else {
+			binary[i++] = 0;
+		}
 	}
 
-	id = binToDecRev(alecto_ws1700->binary, 0, 11);
-	battery = alecto_ws1700->binary[12];
-	temperature = ((double)binToDecRev(alecto_ws1700->binary, 18, 27));
-	humidity = (double)binToDecRev(alecto_ws1700->binary, 28, 35);
+	id = binToDecRev(binary, 0, 11);
+	battery = binary[12];
+	temperature = ((double)binToDecRev(binary, 18, 27));
+	humidity = (double)binToDecRev(binary, 28, 35);
 
 	if(temperature > 511) {
 		temperature -= 1023;
 	}
 	temperature /= 10;
 
-	struct alecto_ws1700_settings_t *tmp = alecto_ws1700_settings;
+	struct settings_t *tmp = settings;
 	while(tmp) {
 		if(fabs(tmp->id-id) < EPSILON) {
 			humi_offset = tmp->humi;
@@ -79,11 +100,11 @@ static void alectoWS1700ParseCode(void) {
 	json_append_member(alecto_ws1700->message, "battery", json_mknumber(battery, 0));
 }
 
-static int alectoWS1700CheckValues(struct JsonNode *jvalues) {
+static int checkValues(struct JsonNode *jvalues) {
 	struct JsonNode *jid = NULL;
 
 	if((jid = json_find_member(jvalues, "id"))) {
-		struct alecto_ws1700_settings_t *snode = NULL;
+		struct settings_t *snode = NULL;
 		struct JsonNode *jchild = NULL;
 		struct JsonNode *jchild1 = NULL;
 		double id = -1;
@@ -101,7 +122,7 @@ static int alectoWS1700CheckValues(struct JsonNode *jvalues) {
 			jchild = jchild->next;
 		}
 
-		struct alecto_ws1700_settings_t *tmp = alecto_ws1700_settings;
+		struct settings_t *tmp = settings;
 		while(tmp) {
 			if(fabs(tmp->id-id) < EPSILON) {
 				match = 1;
@@ -110,8 +131,8 @@ static int alectoWS1700CheckValues(struct JsonNode *jvalues) {
 			tmp = tmp->next;
 		}
 
-		if(!match) {
-			if(!(snode = MALLOC(sizeof(struct alecto_ws1700_settings_t)))) {
+		if(match == 0) {
+			if((snode = MALLOC(sizeof(struct settings_t))) == NULL) {
 				logprintf(LOG_ERR, "out of memory");
 				exit(EXIT_FAILURE);
 			}
@@ -122,22 +143,22 @@ static int alectoWS1700CheckValues(struct JsonNode *jvalues) {
 			json_find_number(jvalues, "temperature-offset", &snode->temp);
 			json_find_number(jvalues, "humidity-offset", &snode->humi);
 
-			snode->next = alecto_ws1700_settings;
-			alecto_ws1700_settings = snode;
+			snode->next = settings;
+			settings = snode;
 		}
 	}
 	return 0;
 }
 
-static void alectoWS1700GC(void) {
-	struct alecto_ws1700_settings_t *tmp = NULL;
-	while(alecto_ws1700_settings) {
-		tmp = alecto_ws1700_settings;
-		alecto_ws1700_settings = alecto_ws1700_settings->next;
+static void gc(void) {
+	struct settings_t *tmp = NULL;
+	while(settings) {
+		tmp = settings;
+		settings = settings->next;
 		FREE(tmp);
 	}
-	if(alecto_ws1700_settings != NULL) {
-		FREE(alecto_ws1700_settings);
+	if(settings != NULL) {
+		FREE(settings);
 	}
 }
 
@@ -150,11 +171,12 @@ void alectoWS1700Init(void) {
 	protocol_set_id(alecto_ws1700, "alecto_ws1700");
 	protocol_device_add(alecto_ws1700, "alecto_ws1700", "Alecto WS1700 Weather Stations");
 	protocol_device_add(alecto_ws1700, "iboutique", "iBoutique Weather Stations");
-	protocol_plslen_add(alecto_ws1700, 266);
 	alecto_ws1700->devtype = WEATHER;
 	alecto_ws1700->hwtype = RF433;
-	alecto_ws1700->pulse = 15;
-	alecto_ws1700->rawlen = 74;
+	alecto_ws1700->minrawlen = RAW_LENGTH;
+	alecto_ws1700->maxrawlen = RAW_LENGTH;
+	alecto_ws1700->maxgaplen = MAX_PULSE_LENGTH*PULSE_DIV;
+	alecto_ws1700->mingaplen = MIN_PULSE_LENGTH*PULSE_DIV;
 
 	options_add(&alecto_ws1700->options, 't', "temperature", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9]{1,3}$");
 	options_add(&alecto_ws1700->options, 'i', "id", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "[0-9]");
@@ -170,17 +192,18 @@ void alectoWS1700Init(void) {
 	options_add(&alecto_ws1700->options, 0, "show-temperature", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
 	options_add(&alecto_ws1700->options, 0, "show-battery", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
 
-	alecto_ws1700->parseCode=&alectoWS1700ParseCode;
-	alecto_ws1700->checkValues=&alectoWS1700CheckValues;
-	alecto_ws1700->gc=&alectoWS1700GC;
+	alecto_ws1700->parseCode=&parseCode;
+	alecto_ws1700->checkValues=&checkValues;
+	alecto_ws1700->validate=&validate;
+	alecto_ws1700->gc=&gc;
 }
 
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "alecto_ws1700";
-	module->version = "1.6";
-	module->reqversion = "5.0";
-	module->reqcommit = "187";
+	module->version = "1.7";
+	module->reqversion = "6.0";
+	module->reqcommit = "84";
 }
 
 void init(void) {

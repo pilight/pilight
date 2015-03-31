@@ -30,7 +30,24 @@
 #include "../../core/gc.h"
 #include "ehome.h"
 
-static void ehomeCreateMessage(int id, int state) {
+#define PULSE_MULTIPLIER	3
+#define MIN_PULSE_LENGTH	277
+#define MAX_PULSE_LENGTH	287
+#define AVG_PULSE_LENGTH	282
+#define RAW_LENGTH				50
+
+static int validate(void) {
+	if(ehome->rawlen == RAW_LENGTH) {			
+		if(ehome->raw[ehome->rawlen-1] >= (MIN_PULSE_LENGTH*PULSE_DIV) &&
+		   ehome->raw[ehome->rawlen-1] <= (MAX_PULSE_LENGTH*PULSE_DIV)) {
+			return 0;
+		}
+	}
+
+	return -1;
+}
+
+static void createMessage(int id, int state) {
 	ehome->message = json_mkobject();
 	json_append_member(ehome->message, "id", json_mknumber(id, 0));
 	if(state == 1) {
@@ -40,60 +57,61 @@ static void ehomeCreateMessage(int id, int state) {
 	}
 }
 
-static void ehomeParseCode(void) {
-	int i = 0;
+static void parseCode(void) {
+	int i = 0, binary[RAW_LENGTH/4];
+
 	for(i=0; i<ehome->rawlen; i+=4) {
-		if(ehome->code[i+3] == 1) {
-			ehome->binary[i/4]=1;
+		if(ehome->raw[i+3] > AVG_PULSE_LENGTH*(PULSE_MULTIPLIER/2)) {
+			binary[i/4]=1;
 		} else {
-			ehome->binary[i/4]=0;
+			binary[i/4]=0;
 		}
 	}
 
-	int id = binToDec(ehome->binary, 1, 3);
-	int state = ehome->binary[0];
+	int id = binToDec(binary, 1, 3);
+	int state = binary[0];
 
-	ehomeCreateMessage(id, state);
+	createMessage(id, state);
 }
 
-static void ehomeCreateLow(int s, int e) {
+static void createLow(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=4) {
-		ehome->raw[i]=ehome->plslen->length;
-		ehome->raw[i+1]=(ehome->pulse*ehome->plslen->length);
-		ehome->raw[i+2]=(ehome->pulse*ehome->plslen->length);
-		ehome->raw[i+3]=ehome->plslen->length;
+		ehome->raw[i]=AVG_PULSE_LENGTH;
+		ehome->raw[i+1]=(PULSE_MULTIPLIER*AVG_PULSE_LENGTH);
+		ehome->raw[i+2]=(PULSE_MULTIPLIER*AVG_PULSE_LENGTH);
+		ehome->raw[i+3]=AVG_PULSE_LENGTH;
 	}
 }
 
-static void ehomeCreateMed(int s, int e) {
+static void createMed(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=4) {
-		ehome->raw[i]=(ehome->pulse*ehome->plslen->length);
-		ehome->raw[i+1]=ehome->plslen->length;
-		ehome->raw[i+2]=(ehome->pulse*ehome->plslen->length);
-		ehome->raw[i+3]=ehome->plslen->length;
+		ehome->raw[i]=(PULSE_MULTIPLIER*AVG_PULSE_LENGTH);
+		ehome->raw[i+1]=AVG_PULSE_LENGTH;
+		ehome->raw[i+2]=(PULSE_MULTIPLIER*AVG_PULSE_LENGTH);
+		ehome->raw[i+3]=AVG_PULSE_LENGTH;
 	}
 }
 
-static void ehomeCreateHigh(int s, int e) {
+static void createHigh(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=4) {
-		ehome->raw[i]=ehome->plslen->length;
-		ehome->raw[i+1]=(ehome->pulse*ehome->plslen->length);
-		ehome->raw[i+2]=ehome->plslen->length;
-		ehome->raw[i+3]=(ehome->pulse*ehome->plslen->length);
+		ehome->raw[i]=AVG_PULSE_LENGTH;
+		ehome->raw[i+1]=(PULSE_MULTIPLIER*AVG_PULSE_LENGTH);
+		ehome->raw[i+2]=AVG_PULSE_LENGTH;
+		ehome->raw[i+3]=(PULSE_MULTIPLIER*AVG_PULSE_LENGTH);
 	}
 }
 
-static void ehomeClearCode(void) {
-	ehomeCreateLow(0,47);
+static void clearCode(void) {
+	createLow(0,47);
 }
 
-static void ehomeCreateId(int id) {
+static void createId(int id) {
 	int binary[255];
 	int length = 0;
 	int i=0, x=0;
@@ -102,25 +120,25 @@ static void ehomeCreateId(int id) {
 	for(i=0;i<=length;i++) {
 		if(binary[i]==1) {
 			x=i*4;
-			ehomeCreateHigh(4+x, 4+(x+3));
+			createHigh(4+x, 4+(x+3));
 		}
 	}
 }
 
-static void ehomeCreateState(int state) {
+static void createState(int state) {
 	if(state == 0) {
-		ehomeCreateMed(0, 3);
+		createMed(0, 3);
 	} else {
-		ehomeCreateHigh(0, 3);
+		createHigh(0, 3);
 	}
 }
 
-static void ehomeCreateFooter(void) {
-	ehome->raw[48]=(ehome->plslen->length);
-	ehome->raw[49]=(PULSE_DIV*ehome->plslen->length);
+static void createFooter(void) {
+	ehome->raw[48]=(AVG_PULSE_LENGTH);
+	ehome->raw[49]=(PULSE_DIV*AVG_PULSE_LENGTH);
 }
 
-static int ehomeCreateCode(JsonNode *code) {
+static int createCode(struct JsonNode *code) {
 	int id = -1;
 	int state = -1;
 	double itmp = 0;
@@ -139,16 +157,17 @@ static int ehomeCreateCode(JsonNode *code) {
 		logprintf(LOG_ERR, "ehome: invalid id range");
 		return EXIT_FAILURE;
 	} else {
-		ehomeCreateMessage(id, state);
-		ehomeClearCode();
-		ehomeCreateId(id);
-		ehomeCreateState(state);
-		ehomeCreateFooter();
+		createMessage(id, state);
+		clearCode();
+		createId(id);
+		createState(state);
+		createFooter();
+		ehome->rawlen = RAW_LENGTH;
 	}
 	return EXIT_SUCCESS;
 }
 
-static void ehomePrintHelp(void) {
+static void printHelp(void) {
 	printf("\t -i --id=id\t\t\tcontrol a device with this id\n");
 	printf("\t -t --on\t\t\tsend an on signal\n");
 	printf("\t -f --off\t\t\tsend an off signal\n");
@@ -162,12 +181,12 @@ void ehomeInit(void) {
 	protocol_register(&ehome);
 	protocol_set_id(ehome, "ehome");
 	protocol_device_add(ehome, "ehome", "eHome Switches");
-	protocol_plslen_add(ehome, 282);
 	ehome->devtype = SWITCH;
 	ehome->hwtype = RF433;
-	ehome->pulse = 3;
-	ehome->rawlen = 50;
-	ehome->binlen = 12;
+	ehome->minrawlen = RAW_LENGTH;
+	ehome->maxrawlen = RAW_LENGTH;
+	ehome->maxgaplen = MAX_PULSE_LENGTH*PULSE_DIV;
+	ehome->mingaplen = MIN_PULSE_LENGTH*PULSE_DIV;
 
 	options_add(&ehome->options, 'i', "id", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^([0-4])$");
 	options_add(&ehome->options, 't', "on", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
@@ -175,16 +194,17 @@ void ehomeInit(void) {
 
 	options_add(&ehome->options, 0, "readonly", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 
-	ehome->parseCode=&ehomeParseCode;
-	ehome->createCode=&ehomeCreateCode;
-	ehome->printHelp=&ehomePrintHelp;
+	ehome->parseCode=&parseCode;
+	ehome->createCode=&createCode;
+	ehome->printHelp=&printHelp;
+	ehome->validate=&validate;
 }
 
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "ehome";
-	module->version = "0.4";
-	module->reqversion = "5.0";
+	module->version = "0.5";
+	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }
 

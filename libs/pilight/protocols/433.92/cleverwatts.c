@@ -30,7 +30,24 @@
 #include "../../core/gc.h"
 #include "cleverwatts.h"
 
-static void cleverwattsCreateMessage(int id, int unit, int state, int all) {
+#define PULSE_MULTIPLIER	4
+#define MIN_PULSE_LENGTH	265
+#define MAX_PULSE_LENGTH	274
+#define AVG_PULSE_LENGTH	269
+#define RAW_LENGTH				50
+
+static int validate(void) {
+	if(cleverwatts->rawlen == RAW_LENGTH) {			
+		if(cleverwatts->raw[cleverwatts->rawlen-1] >= (MIN_PULSE_LENGTH*PULSE_DIV) &&
+		   cleverwatts->raw[cleverwatts->rawlen-1] <= (MAX_PULSE_LENGTH*PULSE_DIV)) {
+			return 0;
+		}
+	}
+
+	return -1;
+}
+
+static void createMessage(int id, int unit, int state, int all) {
 	cleverwatts->message = json_mkobject();
 	json_append_member(cleverwatts->message, "id", json_mknumber(id, 0));
 	if(all == 0) {
@@ -44,44 +61,49 @@ static void cleverwattsCreateMessage(int id, int unit, int state, int all) {
 		json_append_member(cleverwatts->message, "state", json_mkstring("off"));
 }
 
-static void cleverwattsParseCode(void) {
-	int i = 0, x = 0;
+static void parseCode(void) {
+	int i = 0, x = 0, binary[RAW_LENGTH/2];
 	int id = 0, state = 0, unit = 0, all = 0;
 
-	for(i=1;i<cleverwatts->rawlen-1;i+=2) {
-		cleverwatts->binary[x++] = cleverwatts->code[i];
+	for(x=1;x<cleverwatts->rawlen-1;x+=2) {
+		if(cleverwatts->raw[x] > AVG_PULSE_LENGTH*(PULSE_MULTIPLIER/2)) {
+			binary[i++] = 1;
+		} else {
+			binary[i++] = 0;
+		}
 	}
-	id = binToDecRev(cleverwatts->binary, 0, 19);
-	state = cleverwatts->binary[20];
-	unit = binToDecRev(cleverwatts->binary, 21, 22);
-	all = cleverwatts->binary[23];
 
-	cleverwattsCreateMessage(id, unit, state, all);
+	id = binToDecRev(binary, 0, 19);
+	state = binary[20];
+	unit = binToDecRev(binary, 21, 22);
+	all = binary[23];
+
+	createMessage(id, unit, state, all);
 }
 
-static void cleverwattsCreateLow(int s, int e) {
+static void createLow(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=2) {
-		cleverwatts->raw[i]=(cleverwatts->plslen->length);
-		cleverwatts->raw[i+1]=(cleverwatts->pulse*cleverwatts->plslen->length);
+		cleverwatts->raw[i]=(AVG_PULSE_LENGTH);
+		cleverwatts->raw[i+1]=(PULSE_MULTIPLIER*AVG_PULSE_LENGTH);
 	}
 }
 
-static void cleverwattsCreateHigh(int s, int e) {
+static void createHigh(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=2) {
-		cleverwatts->raw[i]=(cleverwatts->pulse*cleverwatts->plslen->length);
-		cleverwatts->raw[i+1]=(cleverwatts->plslen->length);
+		cleverwatts->raw[i]=(PULSE_MULTIPLIER*AVG_PULSE_LENGTH);
+		cleverwatts->raw[i+1]=(AVG_PULSE_LENGTH);
 	}
 }
 
-static void cleverwattsClearCode(void) {
-	cleverwattsCreateHigh(0,47);
+static void clearCode(void) {
+	createHigh(0,47);
 }
 
-static void cleverwattsCreateId(int id) {
+static void createId(int id) {
 	int binary[255];
 	int length = 0;
 	int i=0, x=0;
@@ -90,24 +112,24 @@ static void cleverwattsCreateId(int id) {
 	for(i=0;i<=length;i++) {
 		if(binary[i]==1) {
 			x=i*2;
-			cleverwattsCreateLow(39-(x+1), 39-x);
+			createLow(39-(x+1), 39-x);
 		}
 	}
 }
 
-static void cleverwattsCreateAll(int all) {
+static void createAll(int all) {
 	if(all == 0) {
-		cleverwattsCreateLow(46, 47);
+		createLow(46, 47);
 	}
 }
 
-static void cleverwattsCreateState(int state) {
+static void createState(int state) {
 	if(state == 1) {
-		cleverwattsCreateLow(40, 41);
+		createLow(40, 41);
 	}
 }
 
-static void cleverwattsCreateUnit(int unit) {
+static void createUnit(int unit) {
 	int binary[255];
 	int length = 0;
 	int i=0, x=0;
@@ -116,17 +138,17 @@ static void cleverwattsCreateUnit(int unit) {
 	for(i=0;i<=length;i++) {
 		if(binary[i]==1) {
 			x=i*2;
-			cleverwattsCreateLow(45-(x+1), 45-x);
+			createLow(45-(x+1), 45-x);
 		}
 	}
 }
 
-static void cleverwattsCreateFooter(void) {
-	cleverwatts->raw[48]=(cleverwatts->plslen->length);
-	cleverwatts->raw[49]=(PULSE_DIV*cleverwatts->plslen->length);
+static void createFooter(void) {
+	cleverwatts->raw[48]=(AVG_PULSE_LENGTH);
+	cleverwatts->raw[49]=(PULSE_DIV*AVG_PULSE_LENGTH);
 }
 
-static int cleverwattsCreateCode(JsonNode *code) {
+static int createCode(struct JsonNode *code) {
 	int id = -1;
 	int unit = -1;
 	int state = -1;
@@ -157,18 +179,19 @@ static int cleverwattsCreateCode(JsonNode *code) {
 		if(unit == -1 && all == 1) {
 			unit = 3;
 		}
-		cleverwattsCreateMessage(id, unit, state, all ^ 1);
-		cleverwattsClearCode();
-		cleverwattsCreateId(id);
-		cleverwattsCreateState(state);
-		cleverwattsCreateUnit(unit);
-		cleverwattsCreateAll(all);
-		cleverwattsCreateFooter();
+		createMessage(id, unit, state, all ^ 1);
+		clearCode();
+		createId(id);
+		createState(state);
+		createUnit(unit);
+		createAll(all);
+		createFooter();
+		cleverwatts->rawlen = RAW_LENGTH;
 	}
 	return EXIT_SUCCESS;
 }
 
-static void cleverwattsPrintHelp(void) {
+static void printHelp(void) {
 	printf("\t -t --on\t\t\tsend an on signal\n");
 	printf("\t -f --off\t\t\tsend an off signal\n");
 	printf("\t -u --unit=unit\t\t\tcontrol a device with this unit code\n");
@@ -184,12 +207,12 @@ void cleverwattsInit(void) {
 	protocol_register(&cleverwatts);
 	protocol_set_id(cleverwatts, "cleverwatts");
 	protocol_device_add(cleverwatts, "cleverwatts", "Cleverwatts Switches");
-	protocol_plslen_add(cleverwatts, 269);
 	cleverwatts->devtype = SWITCH;
 	cleverwatts->hwtype = RF433;
-	cleverwatts->pulse = 4;
-	cleverwatts->rawlen = 50;
-	cleverwatts->binlen = 12;
+	cleverwatts->minrawlen = RAW_LENGTH;
+	cleverwatts->maxrawlen = RAW_LENGTH;
+	cleverwatts->maxgaplen = MAX_PULSE_LENGTH*PULSE_DIV;
+	cleverwatts->mingaplen = MIN_PULSE_LENGTH*PULSE_DIV;
 
 	options_add(&cleverwatts->options, 't', "on", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
 	options_add(&cleverwatts->options, 'f', "off", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
@@ -199,16 +222,17 @@ void cleverwattsInit(void) {
 
 	options_add(&cleverwatts->options, 0, "readonly", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 
-	cleverwatts->parseCode=&cleverwattsParseCode;
-	cleverwatts->createCode=&cleverwattsCreateCode;
-	cleverwatts->printHelp=&cleverwattsPrintHelp;
+	cleverwatts->parseCode=&parseCode;
+	cleverwatts->createCode=&createCode;
+	cleverwatts->printHelp=&printHelp;
+	cleverwatts->validate=&validate;
 }
 
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "cleverwatts";
-	module->version = "0.9";
-	module->reqversion = "5.0";
+	module->version = "0.10";
+	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }
 

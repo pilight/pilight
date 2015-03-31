@@ -16,12 +16,12 @@
 	along with pilight. If not, see	<http://www.gnu.org/licenses/>
 */
 
-#ifndef _PROTOCOL_GENDIMMER_H_
-#define _PROTOCOL_GENDIMMER_H_
+#ifndef _PROTOCOL_GENERIC_DIMMER_H_
+#define _PROTOCOL_GENERIC_DIMMER_H_
 
 #include "../protocol.h"
 
 struct protocol_t *generic_dimmer;
-void genDimInit(void);
+void genericDimmerInit(void);
 
 #endif

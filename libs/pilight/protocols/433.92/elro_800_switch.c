@@ -30,7 +30,24 @@
 #include "../../core/gc.h"
 #include "elro_800_switch.h"
 
-static void elro800SwitchCreateMessage(int systemcode, int unitcode, int state) {
+#define PULSE_MULTIPLIER	3
+#define MIN_PULSE_LENGTH	274
+#define MAX_PULSE_LENGTH	320
+#define AVG_PULSE_LENGTH	300
+#define RAW_LENGTH				50
+
+static int validate(void) {
+	if(elro_800_switch->rawlen == RAW_LENGTH) {			
+		if(elro_800_switch->raw[elro_800_switch->rawlen-1] >= (MIN_PULSE_LENGTH*PULSE_DIV) &&
+		   elro_800_switch->raw[elro_800_switch->rawlen-1] <= (MAX_PULSE_LENGTH*PULSE_DIV)) {
+			return 0;
+		}
+	}
+
+	return -1;
+}
+
+static void createMessage(int systemcode, int unitcode, int state) {
 	elro_800_switch->message = json_mkobject();
 	json_append_member(elro_800_switch->message, "systemcode", json_mknumber(systemcode, 0));
 	json_append_member(elro_800_switch->message, "unitcode", json_mknumber(unitcode, 0));
@@ -41,39 +58,49 @@ static void elro800SwitchCreateMessage(int systemcode, int unitcode, int state) 
 	}
 }
 
-static void elro800SwitchParseBinary(void) {
-	int systemcode = binToDec(elro_800_switch->binary, 0, 4);
-	int unitcode = binToDec(elro_800_switch->binary, 5, 9);
-	int state = elro_800_switch->binary[11];
-	elro800SwitchCreateMessage(systemcode, unitcode, state);
+static void parseCode(void) {
+	int binary[RAW_LENGTH/4], x = 0, i = 0;
+
+	for(x=0;x<elro_800_switch->rawlen;x+=4) {
+		if(elro_800_switch->raw[x+3] > AVG_PULSE_LENGTH*(PULSE_MULTIPLIER/2)) {
+			binary[i++] = 1;
+		} else {
+			binary[i++] = 0;
+		}
+	}
+
+	int systemcode = binToDec(binary, 0, 4);
+	int unitcode = binToDec(binary, 5, 9);
+	int state = binary[11];
+	createMessage(systemcode, unitcode, state);
 }
 
-static void elro800SwitchCreateLow(int s, int e) {
+static void createLow(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=4) {
-		elro_800_switch->raw[i]=(elro_800_switch->plslen->length);
-		elro_800_switch->raw[i+1]=(elro_800_switch->pulse*elro_800_switch->plslen->length);
-		elro_800_switch->raw[i+2]=(elro_800_switch->pulse*elro_800_switch->plslen->length);
-		elro_800_switch->raw[i+3]=(elro_800_switch->plslen->length);
+		elro_800_switch->raw[i]=(AVG_PULSE_LENGTH);
+		elro_800_switch->raw[i+1]=(PULSE_MULTIPLIER*AVG_PULSE_LENGTH);
+		elro_800_switch->raw[i+2]=(PULSE_MULTIPLIER*AVG_PULSE_LENGTH);
+		elro_800_switch->raw[i+3]=(AVG_PULSE_LENGTH);
 	}
 }
 
-static void elro800SwitchCreateHigh(int s, int e) {
+static void createHigh(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=4) {
-		elro_800_switch->raw[i]=(elro_800_switch->plslen->length);
-		elro_800_switch->raw[i+1]=(elro_800_switch->pulse*elro_800_switch->plslen->length);
-		elro_800_switch->raw[i+2]=(elro_800_switch->plslen->length);
-		elro_800_switch->raw[i+3]=(elro_800_switch->pulse*elro_800_switch->plslen->length);
+		elro_800_switch->raw[i]=(AVG_PULSE_LENGTH);
+		elro_800_switch->raw[i+1]=(PULSE_MULTIPLIER*AVG_PULSE_LENGTH);
+		elro_800_switch->raw[i+2]=(AVG_PULSE_LENGTH);
+		elro_800_switch->raw[i+3]=(PULSE_MULTIPLIER*AVG_PULSE_LENGTH);
 	}
 }
-static void elro800SwitchClearCode(void) {
-	elro800SwitchCreateLow(0,47);
+static void clearCode(void) {
+	createLow(0,47);
 }
 
-static void elro800SwitchCreateSystemCode(int systemcode) {
+static void createSystemCode(int systemcode) {
 	int binary[255];
 	int length = 0;
 	int i=0, x=0;
@@ -82,12 +109,12 @@ static void elro800SwitchCreateSystemCode(int systemcode) {
 	for(i=0;i<=length;i++) {
 		if(binary[i]==1) {
 			x=i*4;
-			elro800SwitchCreateHigh(x, x+3);
+			createHigh(x, x+3);
 		}
 	}
 }
 
-static void elro800SwitchCreateUnitCode(int unitcode) {
+static void createUnitCode(int unitcode) {
 	int binary[255];
 	int length = 0;
 	int i=0, x=0;
@@ -96,25 +123,25 @@ static void elro800SwitchCreateUnitCode(int unitcode) {
 	for(i=0;i<=length;i++) {
 		if(binary[i]==1) {
 			x=i*4;
-			elro800SwitchCreateHigh(20+x, 20+x+3);
+			createHigh(20+x, 20+x+3);
 		}
 	}
 }
 
-static void elro800SwitchCreateState(int state) {
+static void createState(int state) {
 	if(state == 1) {
-		elro800SwitchCreateHigh(44, 47);
+		createHigh(44, 47);
 	} else {
-		elro800SwitchCreateHigh(40, 43);
+		createHigh(40, 43);
 	}
 }
 
-static void elro800SwitchCreateFooter(void) {
-	elro_800_switch->raw[48]=(elro_800_switch->plslen->length);
-	elro_800_switch->raw[49]=(PULSE_DIV*elro_800_switch->plslen->length);
+static void createFooter(void) {
+	elro_800_switch->raw[48]=(AVG_PULSE_LENGTH);
+	elro_800_switch->raw[49]=(PULSE_DIV*AVG_PULSE_LENGTH);
 }
 
-static int elro800SwitchCreateCode(JsonNode *code) {
+static int createCode(struct JsonNode *code) {
 	int systemcode = -1;
 	int unitcode = -1;
 	int state = -1;
@@ -139,17 +166,18 @@ static int elro800SwitchCreateCode(JsonNode *code) {
 		logprintf(LOG_ERR, "elro_800_switch: invalid unitcode range");
 		return EXIT_FAILURE;
 	} else {
-		elro800SwitchCreateMessage(systemcode, unitcode, state);
-		elro800SwitchClearCode();
-		elro800SwitchCreateSystemCode(systemcode);
-		elro800SwitchCreateUnitCode(unitcode);
-		elro800SwitchCreateState(state);
-		elro800SwitchCreateFooter();
+		createMessage(systemcode, unitcode, state);
+		clearCode();
+		createSystemCode(systemcode);
+		createUnitCode(unitcode);
+		createState(state);
+		createFooter();
+		elro_800_switch->rawlen = RAW_LENGTH;
 	}
 	return EXIT_SUCCESS;
 }
 
-static void elro800SwitchPrintHelp(void) {
+static void printHelp(void) {
 	printf("\t -s --systemcode=systemcode\tcontrol a device with this systemcode\n");
 	printf("\t -u --unitcode=unitcode\t\tcontrol a device with this unitcode\n");
 	printf("\t -t --on\t\t\tsend an on signal\n");
@@ -165,14 +193,12 @@ void elro800SwitchInit(void) {
 	protocol_set_id(elro_800_switch, "elro_800_switch");
 	protocol_device_add(elro_800_switch, "elro_800_switch", "Elro 800 series Switches");
 	protocol_device_add(elro_800_switch, "brennenstuhl", "Brennenstuhl Comfort");
-	protocol_plslen_add(elro_800_switch, 288);
-	protocol_plslen_add(elro_800_switch, 300);
 	elro_800_switch->devtype = SWITCH;
 	elro_800_switch->hwtype = RF433;
-	elro_800_switch->pulse = 3;
-	elro_800_switch->rawlen = 50;
-	elro_800_switch->binlen = 12;
-	elro_800_switch->lsb = 3;
+	elro_800_switch->minrawlen = RAW_LENGTH;
+	elro_800_switch->maxrawlen = RAW_LENGTH;
+	elro_800_switch->maxgaplen = MAX_PULSE_LENGTH*PULSE_DIV;
+	elro_800_switch->mingaplen = MIN_PULSE_LENGTH*PULSE_DIV;
 
 	options_add(&elro_800_switch->options, 's', "systemcode", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^(3[012]?|[012][0-9]|[0-9]{1})$");
 	options_add(&elro_800_switch->options, 'u', "unitcode", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^(3[012]?|[012][0-9]|[0-9]{1})$");
@@ -181,16 +207,17 @@ void elro800SwitchInit(void) {
 
 	options_add(&elro_800_switch->options, 0, "readonly", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 
-	elro_800_switch->parseBinary=&elro800SwitchParseBinary;
-	elro_800_switch->createCode=&elro800SwitchCreateCode;
-	elro_800_switch->printHelp=&elro800SwitchPrintHelp;
+	elro_800_switch->parseCode=&parseCode;
+	elro_800_switch->createCode=&createCode;
+	elro_800_switch->printHelp=&printHelp;
+	elro_800_switch->validate=&validate;
 }
 
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "elro_800_switch";
-	module->version = "1.4";
-	module->reqversion = "5.0";
+	module->version = "2.0";
+	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }
 

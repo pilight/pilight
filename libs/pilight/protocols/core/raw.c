@@ -29,7 +29,7 @@
 #include "../../core/gc.h"
 #include "raw.h"
 
-static int rawCreateCode(JsonNode *code) {
+static int createCode(JsonNode *code) {
 	char *rcode = NULL;
 	char **array = NULL;
 	unsigned int i = 0, n = 0;
@@ -51,7 +51,7 @@ static int rawCreateCode(JsonNode *code) {
 	return EXIT_SUCCESS;
 }
 
-static void rawPrintHelp(void) {
+static void printHelp(void) {
 	printf("\t -c --code=\"raw\"\t\traw code devided by spaces\n\t\t\t\t\t(just like the output of debug)\n");
 }
 
@@ -68,16 +68,16 @@ void rawInit(void) {
 
 	options_add(&raw->options, 'c', "code", OPTION_HAS_VALUE, 0, JSON_STRING, NULL, NULL);
 
-	raw->createCode=&rawCreateCode;
-	raw->printHelp=&rawPrintHelp;
+	raw->createCode=&createCode;
+	raw->printHelp=&printHelp;
 }
 
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "raw";
-	module->version = "1.3";
-	module->reqversion = "5.0";
-	module->reqcommit = "266";
+	module->version = "1.4";
+	module->reqversion = "6.0";
+	module->reqcommit = "84";
 }
 
 void init(void) {

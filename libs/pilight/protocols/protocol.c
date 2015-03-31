@@ -47,6 +47,7 @@
 #include "generic/protocol_header.h"
 #include "GPIO/protocol_header.h"
 #include "network/protocol_header.h"
+#include "core/protocol_header.h"
 
 struct protocols_t *protocols;
 
@@ -68,7 +69,6 @@ void protocol_remove(char *name) {
 			}
 
 			struct protocol_devices_t *dtmp;
-			struct protocol_plslen_t *ttmp;
 			logprintf(LOG_DEBUG, "removed protocol %s", currP->listener->id);
 			if(currP->listener->threadGC) {
 				currP->listener->threadGC();
@@ -80,14 +80,6 @@ void protocol_remove(char *name) {
 			}
 			FREE(currP->listener->id);
 			options_delete(currP->listener->options);
-			if(currP->listener->plslen) {
-				while(currP->listener->plslen) {
-					ttmp = currP->listener->plslen;
-					currP->listener->plslen = currP->listener->plslen->next;
-					FREE(ttmp);
-				}
-			}
-			FREE(currP->listener->plslen);
 			if(currP->listener->devices) {
 				while(currP->listener->devices) {
 					dtmp = currP->listener->devices;
@@ -115,6 +107,7 @@ void protocol_init(void) {
 	#include "generic/protocol_init.h"
 	#include "GPIO/protocol_init.h"
 	#include "network/protocol_init.h"
+	#include "core/protocol_init.h"
 
 #ifndef _WIN32
 	void *handle = NULL;
@@ -221,22 +214,16 @@ void protocol_register(protocol_t **proto) {
 	}
 	(*proto)->options = NULL;
 	(*proto)->devices = NULL;
-	(*proto)->plslen = NULL;
 
-	(*proto)->pulse = 0;
 	(*proto)->rawlen = 0;
 	(*proto)->minrawlen = 0;
 	(*proto)->maxrawlen = 0;
-	(*proto)->binlen = 0;
-	(*proto)->lsb = 0;
 	(*proto)->txrpt = 10;
 	(*proto)->rxrpt = 1;
 	(*proto)->hwtype = NONE;
 	(*proto)->multipleId = 1;
 	(*proto)->config = 1;
 	(*proto)->masterOnly = 0;
-	(*proto)->parseRaw = NULL;
-	(*proto)->parseBinary = NULL;
 	(*proto)->parseCode = NULL;
 	(*proto)->createCode = NULL;
 	(*proto)->checkValues = NULL;
@@ -251,10 +238,7 @@ void protocol_register(protocol_t **proto) {
 	(*proto)->first = 0;
 	(*proto)->second = 0;
 
-	memset(&(*proto)->raw[0], 0, sizeof((*proto)->raw));
-	memset(&(*proto)->code[0], 0, sizeof((*proto)->code));
-	memset(&(*proto)->pCode[0], 0, sizeof((*proto)->pCode));
-	memset(&(*proto)->binary[0], 0, sizeof((*proto)->binary));
+	(*proto)->raw = NULL;
 
 	struct protocols_t *pnode = MALLOC(sizeof(struct protocols_t));
 	if(pnode == NULL) {
@@ -352,19 +336,6 @@ void protocol_set_id(protocol_t *proto, const char *id) {
 	strcpy(proto->id, id);
 }
 
-void protocol_plslen_add(protocol_t *proto, int plslen) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
-
-	struct protocol_plslen_t *pnode = MALLOC(sizeof(struct protocol_plslen_t));
-	if(!pnode) {
-		logprintf(LOG_ERR, "out of memory");
-		exit(EXIT_FAILURE);
-	}
-	pnode->length = plslen;
-	pnode->next	= proto->plslen;
-	proto->plslen = pnode;
-}
-
 void protocol_device_add(protocol_t *proto, const char *id, const char *desc) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
@@ -410,7 +381,6 @@ int protocol_gc(void) {
 
 	struct protocols_t *ptmp;
 	struct protocol_devices_t *dtmp;
-	struct protocol_plslen_t *ttmp;
 
 	while(protocols) {
 		ptmp = protocols;
@@ -425,18 +395,6 @@ int protocol_gc(void) {
 		}
 		FREE(ptmp->listener->id);
 		options_delete(ptmp->listener->options);
-		if(ptmp->listener->plslen) {
-			while(ptmp->listener->plslen) {
-				ttmp = ptmp->listener->plslen;
-				ptmp->listener->plslen = ptmp->listener->plslen->next;
-				if(ttmp != NULL) {
-					FREE(ttmp);
-				}
-			}
-		}
-		if(ptmp->listener->plslen != NULL) {
-			FREE(ptmp->listener->plslen);
-		}
 		if(ptmp->listener->devices) {
 			while(ptmp->listener->devices) {
 				dtmp = ptmp->listener->devices;

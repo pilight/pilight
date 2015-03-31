@@ -29,7 +29,24 @@
 #include "../../core/gc.h"
 #include "conrad_rsl_contact.h"
 
-static void conradRSLCnCreateMessage(int id, int state) {
+#define PULSE_MULTIPLIER	5
+#define MIN_PULSE_LENGTH	185
+#define MAX_PULSE_LENGTH	195
+#define AVG_PULSE_LENGTH	190
+#define RAW_LENGTH				66
+
+static int validate(void) {
+	if(conrad_rsl_contact->rawlen == RAW_LENGTH) {			
+		if(conrad_rsl_contact->raw[conrad_rsl_contact->rawlen-1] >= (MIN_PULSE_LENGTH*PULSE_DIV) &&
+		   conrad_rsl_contact->raw[conrad_rsl_contact->rawlen-1] <= (MAX_PULSE_LENGTH*PULSE_DIV)) {
+			return 0;
+		}
+	}
+
+	return -1;
+}
+
+static void createMessage(int id, int state) {
 	conrad_rsl_contact->message = json_mkobject();
 	json_append_member(conrad_rsl_contact->message, "id", json_mknumber(id, 0));
 	if(state == 1) {
@@ -39,42 +56,42 @@ static void conradRSLCnCreateMessage(int id, int state) {
 	}
 }
 
-static void conradRSLCnParseCode(void) {
-	int x = 0;
+static void parseCode(void) {
+	int x = 0, binary[RAW_LENGTH/2];
 
 	/* Convert the one's and zero's into binary */
 	for(x=0; x<conrad_rsl_contact->rawlen; x+=2) {
-		if(conrad_rsl_contact->code[x+1] == 1) {
-			conrad_rsl_contact->binary[x/2]=1;
+		if(conrad_rsl_contact->raw[x+1] > AVG_PULSE_LENGTH*(PULSE_MULTIPLIER/2)) {
+			binary[x/2]=1;
 		} else {
-			conrad_rsl_contact->binary[x/2]=0;
+			binary[x/2]=0;
 		}
 	}
 
-	int id = binToDecRev(conrad_rsl_contact->binary, 6, 31);
-	int check = binToDecRev(conrad_rsl_contact->binary, 0, 3);
-	int check1 = conrad_rsl_contact->binary[32];
-	int state = conrad_rsl_contact->binary[4];
+	int id = binToDecRev(binary, 6, 31);
+	int check = binToDecRev(binary, 0, 3);
+	int check1 = binary[32];
+	int state = binary[4];
 
 	if(check == 5 && check1 == 1) {
-		conradRSLCnCreateMessage(id, state);
+		createMessage(id, state);
 	}
 }
 
 #if !defined(MODULE) && !defined(_WIN32)
 __attribute__((weak))
 #endif
-void conradRSLCnInit(void) {
+void conradRSLContactInit(void) {
 
 	protocol_register(&conrad_rsl_contact);
 	protocol_set_id(conrad_rsl_contact, "conrad_rsl_contact");
 	protocol_device_add(conrad_rsl_contact, "conrad_rsl_contact", "Conrad RSL Contact Sensor");
-	protocol_plslen_add(conrad_rsl_contact, 190);
 	conrad_rsl_contact->devtype = CONTACT;
 	conrad_rsl_contact->hwtype = RF433;
-	conrad_rsl_contact->pulse = 5;
-	conrad_rsl_contact->rawlen = 66;
-	conrad_rsl_contact->binlen = 33;
+	conrad_rsl_contact->minrawlen = RAW_LENGTH;
+	conrad_rsl_contact->maxrawlen = RAW_LENGTH;
+	conrad_rsl_contact->maxgaplen = MAX_PULSE_LENGTH*PULSE_DIV;
+	conrad_rsl_contact->mingaplen = MIN_PULSE_LENGTH*PULSE_DIV;
 
 	options_add(&conrad_rsl_contact->options, 'i', "id", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^(([0-9]|([1-9][0-9])|([1-9][0-9]{2})|([1-9][0-9]{3})|([1-9][0-9]{4})|([1-9][0-9]{5})|([1-9][0-9]{6})|((6710886[0-3])|(671088[0-5][0-9])|(67108[0-7][0-9]{2})|(6710[0-7][0-9]{3})|(671[0--1][0-9]{4})|(670[0-9]{5})|(6[0-6][0-9]{6})|(0[0-5][0-9]{7}))))$");
 	options_add(&conrad_rsl_contact->options, 't', "opened", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
@@ -82,18 +99,19 @@ void conradRSLCnInit(void) {
 
 	options_add(&conrad_rsl_contact->options, 0, "readonly", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 
-	conrad_rsl_contact->parseCode=&conradRSLCnParseCode;
+	conrad_rsl_contact->parseCode=&parseCode;
+	conrad_rsl_contact->validate=&validate;
 }
 
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "conrad_rsl_contact";
-	module->version = "1.0";
-	module->reqversion = "5.0";
-	module->reqcommit = "99";
+	module->version = "2.0";
+	module->reqversion = "6.0";
+	module->reqcommit = "84";
 }
 
 void init(void) {
-	conradRSLCnInit();
+	conradRSLContactInit();
 }
 #endif

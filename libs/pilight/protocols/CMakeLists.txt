@@ -5,6 +5,7 @@ add_subdirectory(API)
 add_subdirectory(GPIO)
 add_subdirectory(generic)
 add_subdirectory(network)
+add_subdirectory(core)
 
 if(${MODULESPACK} MATCHES "OFF" OR WIN32)
 	file(GLOB ${PROJECT_NAME}_sources "${PROJECT_SOURCE_DIR}/*.c")
@@ -16,6 +17,7 @@ if(${MODULESPACK} MATCHES "OFF" OR WIN32)
 		${pilight_protocols_generic_files}
 		${pilight_protocols_network_files}
 		${pilight_protocols_gpio_files}
+		${pilight_protocols_core_files}
 		${${PROJECT_NAME}_sources}
 		${${PROJECT_NAME}_headers}
 	CACHE INTERNAL "")
@@ -26,6 +28,7 @@ else()
 		${pilight_protocols_generic_files}
 		${pilight_protocols_network_files}
 		${pilight_protocols_gpio_files}
+		${pilight_protocols_core_files}
 	)
 
 	foreach(file ${${PROJECT_NAME}_files})

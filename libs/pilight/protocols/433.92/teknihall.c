@@ -30,31 +30,52 @@
 #include "../../core/gc.h"
 #include "teknihall.h"
 
-typedef struct teknihall_settings_t {
+#define PULSE_MULTIPLIER	15
+#define MIN_PULSE_LENGTH	261
+#define MAX_PULSE_LENGTH	271
+#define AVG_PULSE_LENGTH	266
+#define RAW_LENGTH				76
+
+typedef struct settings_t {
 	double id;
 	double temp;
 	double humi;
-	struct teknihall_settings_t *next;
-} teknihall_settings_t;
+	struct settings_t *next;
+} settings_t;
 
-static struct teknihall_settings_t *teknihall_settings = NULL;
+static struct settings_t *settings = NULL;
 
-static void teknihallParseCode(void) {
-	int i = 0, x = 0;
+static int validate(void) {
+	if(teknihall->rawlen == RAW_LENGTH) {			
+		if(teknihall->raw[teknihall->rawlen-1] >= (MIN_PULSE_LENGTH*PULSE_DIV) &&
+		   teknihall->raw[teknihall->rawlen-1] <= (MAX_PULSE_LENGTH*PULSE_DIV)) {
+			return 0;
+		}
+	}
+
+	return -1;
+}
+
+static void parseCode(void) {
+	int i = 0, x = 0, binary[RAW_LENGTH/2];
 	int id = 0, battery = 0;
 	double temperature = 0.0, humidity = 0.0;
 	double humi_offset = 0.0, temp_offset = 0.0;
 
 	for(i=1;i<teknihall->rawlen-1;i+=2) {
-		teknihall->binary[x++] = teknihall->code[i];
+		if(teknihall->raw[x] > AVG_PULSE_LENGTH*(PULSE_MULTIPLIER/2)) {
+			binary[i++] = 1;
+		} else {
+			binary[i++] = 0;
+		}
 	}
 
-	id = binToDecRev(teknihall->binary, 0, 7);
-	battery = teknihall->binary[8];
-	temperature = binToDecRev(teknihall->binary, 14, 23);
-	humidity = binToDecRev(teknihall->binary, 24, 30);
+	id = binToDecRev(binary, 0, 7);
+	battery = binary[8];
+	temperature = binToDecRev(binary, 14, 23);
+	humidity = binToDecRev(binary, 24, 30);
 
-	struct teknihall_settings_t *tmp = teknihall_settings;
+	struct settings_t *tmp = settings;
 	while(tmp) {
 		if(fabs(tmp->id-id) < EPSILON) {
 			humi_offset = tmp->humi;
@@ -74,11 +95,11 @@ static void teknihallParseCode(void) {
 	json_append_member(teknihall->message, "battery", json_mknumber(battery, 1));
 }
 
-static int teknihallCheckValues(struct JsonNode *jvalues) {
+static int checkValues(struct JsonNode *jvalues) {
 	struct JsonNode *jid = NULL;
 
 	if((jid = json_find_member(jvalues, "id"))) {
-		struct teknihall_settings_t *snode = NULL;
+		struct settings_t *snode = NULL;
 		struct JsonNode *jchild = NULL;
 		struct JsonNode *jchild1 = NULL;
 		double id = -1;
@@ -96,7 +117,7 @@ static int teknihallCheckValues(struct JsonNode *jvalues) {
 			jchild = jchild->next;
 		}
 
-		struct teknihall_settings_t *tmp = teknihall_settings;
+		struct settings_t *tmp = settings;
 		while(tmp) {
 			if(fabs(tmp->id-id) < EPSILON) {
 				match = 1;
@@ -105,8 +126,8 @@ static int teknihallCheckValues(struct JsonNode *jvalues) {
 			tmp = tmp->next;
 		}
 
-		if(!match) {
-			if(!(snode = MALLOC(sizeof(struct teknihall_settings_t)))) {
+		if(match == 0) {
+			if((snode = MALLOC(sizeof(struct settings_t))) == NULL) {
 				logprintf(LOG_ERR, "out of memory");
 				exit(EXIT_FAILURE);
 			}
@@ -117,22 +138,22 @@ static int teknihallCheckValues(struct JsonNode *jvalues) {
 			json_find_number(jvalues, "temperature-offset", &snode->temp);
 			json_find_number(jvalues, "humidity-offset", &snode->humi);
 
-			snode->next = teknihall_settings;
-			teknihall_settings = snode;
+			snode->next = settings;
+			settings = snode;
 		}
 	}
 	return 0;
 }
 
-static void teknihallGC(void) {
-	struct teknihall_settings_t *tmp = NULL;
-	while(teknihall_settings) {
-		tmp = teknihall_settings;
-		teknihall_settings = teknihall_settings->next;
+static void gc(void) {
+	struct settings_t *tmp = NULL;
+	while(settings) {
+		tmp = settings;
+		settings = settings->next;
 		FREE(tmp);
 	}
-	if(teknihall_settings != NULL) {
-		FREE(teknihall_settings);
+	if(settings != NULL) {
+		FREE(settings);
 	}
 }
 
@@ -144,11 +165,12 @@ void teknihallInit(void) {
 	protocol_register(&teknihall);
 	protocol_set_id(teknihall, "teknihall");
 	protocol_device_add(teknihall, "teknihall", "Teknihall Weather Stations");
-	protocol_plslen_add(teknihall, 266);
 	teknihall->devtype = WEATHER;
 	teknihall->hwtype = RF433;
-	teknihall->pulse = 15;
-	teknihall->rawlen = 76;
+	teknihall->minrawlen = RAW_LENGTH;
+	teknihall->maxrawlen = RAW_LENGTH;
+	teknihall->maxgaplen = MAX_PULSE_LENGTH*PULSE_DIV;
+	teknihall->mingaplen = MIN_PULSE_LENGTH*PULSE_DIV;
 
 	options_add(&teknihall->options, 't', "temperature", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9]{1,3}$");
 	options_add(&teknihall->options, 'i', "id", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "[0-9]");
@@ -164,17 +186,18 @@ void teknihallInit(void) {
 	options_add(&teknihall->options, 0, "show-temperature", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
 	options_add(&teknihall->options, 0, "show-battery", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
 
-	teknihall->parseCode=&teknihallParseCode;
-	teknihall->checkValues=&teknihallCheckValues;
-	teknihall->gc=&teknihallGC;
+	teknihall->parseCode=&parseCode;
+	teknihall->checkValues=&checkValues;
+	teknihall->validate=&validate;
+	teknihall->gc=&gc;
 }
 
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "teknihall";
-	module->version = "1.3";
-	module->reqversion = "5.0";
-	module->reqcommit = "187";
+	module->version = "2.0";
+	module->reqversion = "6.0";
+	module->reqcommit = "84";
 }
 
 void init(void) {

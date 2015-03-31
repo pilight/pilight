@@ -30,7 +30,7 @@
 #include "../../core/gc.h"
 #include "generic_screen.h"
 
-static void genScreenCreateMessage(int id, int state) {
+static void createMessage(int id, int state) {
 	generic_screen->message = json_mkobject();
 	json_append_member(generic_screen->message, "id", json_mknumber(id, 1));
 	if(state == 1) {
@@ -40,7 +40,7 @@ static void genScreenCreateMessage(int id, int state) {
 	}
 }
 
-static int genScreenCreateCode(JsonNode *code) {
+static int createCode(JsonNode *code) {
 	int id = -1;
 	int state = -1;
 	double itmp = 0;
@@ -56,13 +56,13 @@ static int genScreenCreateCode(JsonNode *code) {
 		logprintf(LOG_ERR, "generic_screen: insufficient number of arguments");
 		return EXIT_FAILURE;
 	} else {
-		genScreenCreateMessage(id, state);
+		createMessage(id, state);
 	}
 
 	return EXIT_SUCCESS;
 }
 
-static void genScreenPrintHelp(void) {
+static void printHelp(void) {
 	printf("\t -t --up\t\t\tsend an up signal\n");
 	printf("\t -f --down\t\t\tsend an down signal\n");
 	printf("\t -i --id=id\t\t\tcontrol a device with this id\n");
@@ -71,7 +71,7 @@ static void genScreenPrintHelp(void) {
 #if !defined(MODULE) && !defined(_WIN32)
 __attribute__((weak))
 #endif
-void genScreenInit(void) {
+void genericScreenInit(void) {
 
 	protocol_register(&generic_screen);
 	protocol_set_id(generic_screen, "generic_screen");
@@ -84,19 +84,19 @@ void genScreenInit(void) {
 
 	options_add(&generic_screen->options, 0, "readonly", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 
-	generic_screen->printHelp=&genScreenPrintHelp;
-	generic_screen->createCode=&genScreenCreateCode;
+	generic_screen->printHelp=&printHelp;
+	generic_screen->createCode=&createCode;
 }
 
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "generic_screen";
-	module->version = "1.1";
-	module->reqversion = "5.0";
+	module->version = "1.2";
+	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }
 
 void init(void) {
-	genScreenInit();
+	genericScreenInit();
 }
 #endif

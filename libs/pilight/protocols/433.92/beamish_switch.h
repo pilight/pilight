@@ -22,7 +22,7 @@
 #include "../protocol.h"
 
 struct protocol_t *beamish_switch;
-void beamishSwInit(void);
+void beamishSwitchInit(void);
 
 #endif
 

@@ -59,21 +59,21 @@
 #include "../../core/gc.h"
 #include "xbmc.h"
 
-typedef struct xbmc_data_t {
+typedef struct data_t {
 	char *server;
 	int port;
 	int sockfd;
-	struct xbmc_data_t *next;
-} xbmc_data_t;
+	struct data_t *next;
+} data_t;
 
 static pthread_mutex_t xbmclock;
 static pthread_mutexattr_t xbmcattr;
 
-static struct xbmc_data_t *xbmc_data;
-static unsigned short xbmc_loop = 1;
-static unsigned short xbmc_threads = 0;
+static struct data_t *data;
+static unsigned short loop = 1;
+static unsigned short threads = 0;
 
-static void xbmcCreateMessage(char *server, int port, char *action, char *media) {
+static void createMessage(char *server, int port, char *action, char *media) {
 	xbmc->message = json_mkobject();
 	JsonNode *code = json_mkobject();
 	json_append_member(code, "action", json_mkstring(action));
@@ -92,14 +92,14 @@ static void xbmcCreateMessage(char *server, int port, char *action, char *media)
 	xbmc->message = NULL;
 }
 
-static void *xbmcParse(void *param) {
+static void *thread(void *param) {
 	struct protocol_threads_t *node = (struct protocol_threads_t *)param;
 	struct JsonNode *json = (struct JsonNode *)node->param;
 	struct JsonNode *jid = NULL;
 	struct JsonNode *jchild = NULL;
 	struct JsonNode *jchild1 = NULL;
 	struct sockaddr_in serv_addr;
-	struct xbmc_data_t *xnode = MALLOC(sizeof(struct xbmc_data_t));
+	struct data_t *xnode = MALLOC(sizeof(struct data_t));
 
 	char recvBuff[BUFFER_SIZE], action[10], media[15];
 	char *m = NULL, *t = NULL;
@@ -124,7 +124,7 @@ static void *xbmcParse(void *param) {
 	memset(&action, '\0', 10);
 	memset(&media, '\0', 15);
 
-	xbmc_threads++;
+	threads++;
 
 	if((jid = json_find_member(json, "id"))) {
 		jchild = json_first_child(jid);
@@ -148,8 +148,8 @@ static void *xbmcParse(void *param) {
 			}
 			if(has_server == 1 && has_port == 1) {
 				xnode->sockfd = -1;
-				xnode->next = xbmc_data;
-				xbmc_data = xnode;
+				xnode->next = data;
+				data = xnode;
 			} else {
 				if(has_server == 1) {
 					FREE(xnode->server);
@@ -174,10 +174,10 @@ static void *xbmcParse(void *param) {
 		}
 #endif
 
-	while(xbmc_loop) {
+	while(loop) {
 
 		if(reset == 1) {
-			xbmcCreateMessage(xnode->server, xnode->port, shut, none);
+			createMessage(xnode->server, xnode->port, shut, none);
 			reset = 0;
 		}
 
@@ -215,12 +215,12 @@ static void *xbmcParse(void *param) {
 				continue;
 			break;
 			default:
-				xbmcCreateMessage(xnode->server, xnode->port, home, none);
+				createMessage(xnode->server, xnode->port, home, none);
 				reset = 1;
 			break;
 		}
 
-		struct xbmc_data_t *xtmp = xbmc_data;
+		struct data_t *xtmp = data;
 		while(xtmp) {
 			if(xtmp->sockfd > -1) {
 				if(maxfd < xtmp->sockfd) {
@@ -230,16 +230,16 @@ static void *xbmcParse(void *param) {
 			xtmp = xtmp->next;
 		}
 
-		while(xbmc_loop) {
+		while(loop) {
 			pthread_mutex_lock(&xbmclock);
 			FD_ZERO(&fdsread);
 			FD_SET((unsigned long)xnode->sockfd, &fdsread);
 
 			do {
 				n = select(maxfd+1, &fdsread, NULL, NULL, &timeout);
-			} while(n == -1 && errno == EINTR && xbmc_loop);
+			} while(n == -1 && errno == EINTR && loop);
 
-			if(xbmc_loop == 0) {
+			if(loop == 0) {
 				pthread_mutex_unlock(&xbmclock);
 				break;
 			}
@@ -291,7 +291,7 @@ static void *xbmcParse(void *param) {
 									}
 								}
 								if(strlen(media) > 0 && strlen(action) > 0) {
-									xbmcCreateMessage(xnode->server, xnode->port, action, media);
+									createMessage(xnode->server, xnode->port, action, media);
 									reset = 1;
 								}
 							}
@@ -308,43 +308,43 @@ static void *xbmcParse(void *param) {
 	}
 	pthread_mutex_unlock(&xbmclock);
 
-	xbmc_threads--;
+	threads--;
 	return (void *)NULL;
 }
 
-struct threadqueue_t *xbmcInitDev(JsonNode *jdevice) {
-	xbmc_loop = 1;
+static struct threadqueue_t *initDev(JsonNode *jdevice) {
+	loop = 1;
 	char *output = json_stringify(jdevice, NULL);
 	JsonNode *json = json_decode(output);
 	json_free(output);
 
 	struct protocol_threads_t *node = protocol_thread_init(xbmc, json);
-	return threads_register("xbmc", &xbmcParse, (void *)node, 0);
+	return threads_register("xbmc", &thread, (void *)node, 0);
 }
 
-static void xbmcThreadGC(void) {
-	xbmc_loop = 0;
-	struct xbmc_data_t *xtmp = NULL;
+static void threadGC(void) {
+	loop = 0;
+	struct data_t *xtmp = NULL;
 
-	while(xbmc_data) {
-		xtmp = xbmc_data;
+	while(data) {
+		xtmp = data;
 		if(xtmp->sockfd > -1) {
 			close(xtmp->sockfd);
 			xtmp->sockfd = -1;
 		}
 		FREE(xtmp->server);
-		xbmc_data = xbmc_data->next;
+		data = data->next;
 		FREE(xtmp);
 	}
 
 	protocol_thread_stop(xbmc);
-	while(xbmc_threads > 0) {
+	while(threads > 0) {
 		usleep(10);
 	}
 	protocol_thread_free(xbmc);
 }
 
-static int xbmcCheckValues(JsonNode *code) {
+static int checkValues(JsonNode *code) {
 	char *action = NULL;
 	char *media = NULL;
 
@@ -404,17 +404,17 @@ void xbmcInit(void) {
 	options_add(&xbmc->options, 0, "show-media", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
 	options_add(&xbmc->options, 0, "show-action", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
 
-	xbmc->initDev=&xbmcInitDev;
-	xbmc->threadGC=&xbmcThreadGC;
-	xbmc->checkValues=&xbmcCheckValues;
+	xbmc->initDev=&initDev;
+	xbmc->threadGC=&threadGC;
+	xbmc->checkValues=&checkValues;
 }
 
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "xbmc";
-	module->version = "1.6";
+	module->version = "1.7";
 	module->reqversion = "6.0";
-	module->reqcommit = "58";
+	module->reqcommit = "84";
 }
 
 void init(void) {
