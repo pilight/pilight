@@ -114,8 +114,9 @@ static void *thread(void *param) {
 
 	time_t timenow = 0;
 	struct tm tm;
-	int nrloops = 0, risetime = 0, settime = 0, hournow = 0;
-	int firstrun = 0, target_offset = 0, x = 0, dst = 0;
+	int nrloops = 0, risetime = 0, settime = 0, hournow = 0, newdst = 0;
+	int firstrun = 0, target_offset = 0, x = 0, dst = 0, dstchange = 0;
+	int year = 0, month = 0, day = 0, hour = 0, minute = 0, second = 0;
 
 	threads++;
 
@@ -164,17 +165,16 @@ static void *thread(void *param) {
 #else
 		if(gmtime_r(&timenow, &tm) != NULL) {
 #endif
-			int year = tm.tm_year+1900;
-			int month = tm.tm_mon+1;
-			int day = tm.tm_mday;
+			year = tm.tm_year+1900;
+			month = tm.tm_mon+1;
+			day = tm.tm_mday;
 			/* Add our hour difference to the UTC time */
 			tm.tm_hour += target_offset;
 			/* Add possible daylist savings time hour */
 			tm.tm_hour += dst;
-			int hour = tm.tm_hour;
-			int minute = tm.tm_min;
-			int second = tm.tm_sec;
-
+			hour = tm.tm_hour;
+			minute = tm.tm_min;
+			second = tm.tm_sec;
 
 			if(hour >= 24) {
 				/* If hour becomes 24 or more we need to normalize it */
@@ -194,14 +194,19 @@ static void *thread(void *param) {
 				}
 			}
 
-			if((minute == 0 && second == 0) || (isntpsynced() == 0 && x == 0)) {
+			if((minute == 0 && second == 1) || (isntpsynced() == 0 && x == 0)) {
 				x = 1;
-				dst = isdst(timenow, tz);
+				if((newdst = isdst(timenow, tz)) != dst) {
+					dstchange = 1;
+				} else {
+					dstchange = 0;
+				}
+				dst = newdst;
 			}
 
 			hournow = (hour*100)+minute;
 			if(((hournow == 0 || hournow == risetime || hournow == settime) && second == 0)
-				 || (settime == 0 && risetime == 0)) {
+				 || (settime == 0 && risetime == 0) || dstchange == 1) {
 
 				if(settime == 0 && risetime == 0) {
 					firstrun = 1;
@@ -212,11 +217,15 @@ static void *thread(void *param) {
 				risetime = (int)calculate(year, month, day, longitude, latitude, 1, target_offset);
 				settime = (int)calculate(year, month, day, longitude, latitude, 0, target_offset);
 
-				if(dst >= 1) {
-					risetime += dst*100;
-					settime += dst*100;
-					if(risetime > 2400) risetime -= 2400;
-					if(settime > 2400) settime -= 2400;
+				if(dst == 1) {
+					risetime += 100;
+					settime += 100;
+					if(risetime > 2400) {
+						risetime -= 2400;
+					}
+					if(settime > 2400) {
+						settime -= 2400;
+					}
 				}
 
 				json_append_member(code, "longitude", json_mknumber(longitude, 6));
@@ -317,7 +326,7 @@ void sunRiseSetInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "sunriseset";
-	module->version = "2.4";
+	module->version = "2.5";
 	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }
