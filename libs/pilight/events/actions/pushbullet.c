@@ -31,7 +31,7 @@
 #include "../../core/http.h"
 #include "pushbullet.h"
 
-static int actionPushbulletArguments(struct JsonNode *arguments) {
+static int checkArguments(struct JsonNode *arguments) {
 	struct JsonNode *jtitle = NULL;
 	struct JsonNode *jbody = NULL;
 	struct JsonNode *jtype = NULL;
@@ -112,7 +112,7 @@ static int actionPushbulletArguments(struct JsonNode *arguments) {
 	return 0;
 }
 
-static void *actionPushbulletThread(void *param) {
+static void *thread(void *param) {
 	struct JsonNode *arguments = (struct JsonNode *)param;
 	struct JsonNode *jtitle = NULL;
 	struct JsonNode *jbody = NULL;
@@ -176,15 +176,15 @@ static void *actionPushbulletThread(void *param) {
 		}
 	}
 
-#if PILIGHT_V >= 6
+
 	action_pushbullet->nrthreads--;
-#endif
+
 	return (void *)NULL;
 }
 
-static int actionPushbulletRun(struct JsonNode *arguments) {
+static int run(struct JsonNode *arguments) {
 	pthread_t pth;
-	threads_create(&pth, NULL, actionPushbulletThread, (void *)arguments);
+	threads_create(&pth, NULL, thread, (void *)arguments);
 	pthread_detach(pth);
 	return 0;
 }
@@ -200,8 +200,8 @@ void actionPushbulletInit(void) {
 	options_add(&action_pushbullet->options, 'c', "TOKEN", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_STRING, NULL, NULL);
 	options_add(&action_pushbullet->options, 'd', "TYPE", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_STRING, NULL, NULL);
 
-	action_pushbullet->run = &actionPushbulletRun;
-	action_pushbullet->checkArguments = &actionPushbulletArguments;
+	action_pushbullet->run = &run;
+	action_pushbullet->checkArguments = &checkArguments;
 }
 
 #if defined(MODULE) && !defined(_WIN32)
