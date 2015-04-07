@@ -39,7 +39,7 @@
 #endif
 
 //check arguments and settings
-static int actionSendmailArguments(struct JsonNode *arguments) {
+static int checkArguments(struct rules_t *obj) {
 	struct JsonNode *jsubject = NULL;
 	struct JsonNode *jmessage = NULL;
 	struct JsonNode *jto = NULL;
@@ -52,9 +52,9 @@ static int actionSendmailArguments(struct JsonNode *arguments) {
 	regex_t regex;
 	int reti;
 #endif
-	jsubject = json_find_member(arguments, "SUBJECT");
-	jmessage = json_find_member(arguments, "MESSAGE");
-	jto = json_find_member(arguments, "TO");
+	jsubject = json_find_member(obj->arguments, "SUBJECT");
+	jmessage = json_find_member(obj->arguments, "MESSAGE");
+	jto = json_find_member(obj->arguments, "TO");
 	
 	if(jsubject == NULL) {
 		logprintf(LOG_ERR, "sendmail action is missing a \"SUBJECT\"");
@@ -148,8 +148,10 @@ static int actionSendmailArguments(struct JsonNode *arguments) {
 	return 0;
 }
 
-static void *actionSendmailThread(void *param) {
-	struct JsonNode *arguments = (struct JsonNode *)param;
+static void *thread(void *param) {
+	struct event_action_thread_t *pth = (struct event_action_thread_t *)param;
+	// struct rules_t *obj = pth->obj;
+	struct JsonNode *arguments = pth->obj->arguments;
 	struct JsonNode *jsubject = NULL;
 	struct JsonNode *jmessage = NULL;
 	struct JsonNode *jto = NULL;
@@ -200,12 +202,13 @@ static void *actionSendmailThread(void *param) {
 	}
 
 	action_sendmail->nrthreads--;
+
 	return (void *)NULL;
 }
 
-static int actionSendmailRun(struct JsonNode *arguments) {
+static int run(struct rules_t *obj) {
 	pthread_t pth;
-	threads_create(&pth, NULL, actionSendmailThread, (void *)arguments);
+	threads_create(&pth, NULL, thread, (void *)obj);
 	pthread_detach(pth);
 	return 0;
 }
@@ -220,8 +223,8 @@ void actionSendmailInit(void) {
 	options_add(&action_sendmail->options, 'b', "MESSAGE", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_STRING, NULL, NULL);
 	options_add(&action_sendmail->options, 'c', "TO", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_STRING, NULL, NULL);
 
-	action_sendmail->run = &actionSendmailRun;
-	action_sendmail->checkArguments = &actionSendmailArguments;
+	action_sendmail->run = &run;
+	action_sendmail->checkArguments = &checkArguments;
 }
 
 #if defined(MODULE) && !defined(_WIN32)

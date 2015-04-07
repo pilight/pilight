@@ -51,6 +51,8 @@
 #include "../config/settings.h"
 #include "../config/devices.h"
 
+#include "events.h"
+
 #include "operator.h"
 #include "action.h"
 
@@ -64,11 +66,6 @@ static char false_[2];
 
 static char *recvBuff = NULL;
 static int sockfd = 0;
-
-typedef union varcont_t {
-	char *string_;
-	double number_;
-} varcont_t;
 
 static pthread_mutex_t events_lock;
 static pthread_cond_t events_signal;
@@ -84,8 +81,6 @@ static struct eventsqueue_t *eventsqueue;
 static struct eventsqueue_t *eventsqueue_head;
 static int eventsqueue_number = 0;
 static int running = 0;
-
-int event_parse_rule(char *rule, struct rules_t *obj, int depth, unsigned int nr, unsigned short validate);
 
 int events_gc(void) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
@@ -150,7 +145,7 @@ static int event_store_val_ptr(struct rules_t *obj, char *device, char *name, st
 /* This functions checks if the defined event variable
    is part of one of devices in the config. If it is,
    replace the variable with the actual value */
-static int event_lookup_variable(char *var, struct rules_t *obj, unsigned int nr, int type, union varcont_t *varcont, unsigned short validate) {
+int event_lookup_variable(char *var, struct rules_t *obj, int type, union varcont_t *varcont, unsigned short validate, enum origin_t origin) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
 	int cached = 0;
@@ -196,7 +191,7 @@ static int event_lookup_variable(char *var, struct rules_t *obj, unsigned int nr
 		char **array = NULL;
 		unsigned int n = explode(var, ".", &array), q = 0;
 		if(n < 2) {
-			logprintf(LOG_ERR, "rule #%d: an unexpected error occured", nr, var);
+			logprintf(LOG_ERR, "rule #%d: an unexpected error occured", obj->nr, var);
 			varcont->string_ = NULL;
 			varcont->number_ = 0;
 			for(q=0;q<n;q++) {
@@ -218,19 +213,30 @@ static int event_lookup_variable(char *var, struct rules_t *obj, unsigned int nr
 		FREE(array);
 
 		/* Check if the values are not already cached */
-		struct rules_values_t *tmp_values = obj->values;
-		while(tmp_values) {
-			if(strcmp(tmp_values->device, device) == 0 &&
-				 strcmp(tmp_values->name, name) == 0) {
-					if(tmp_values->settings->values->type == JSON_STRING) {
-						varcont->string_ = tmp_values->settings->values->string_;
-					} else if(tmp_values->settings->values->type == JSON_NUMBER) {
-						varcont->number_ = tmp_values->settings->values->number_;
-					}
-					cached = 1;
-					return 0;
+		if(obj != NULL) {
+			struct rules_values_t *tmp_values = obj->values;
+			while(tmp_values) {
+				if(strcmp(tmp_values->device, device) == 0 &&
+					 strcmp(tmp_values->name, name) == 0) {
+						if(tmp_values->settings->values->type != type && (type != (JSON_NUMBER | JSON_STRING))) {
+							if(type == JSON_STRING) {
+								logprintf(LOG_ERR, "rule #%d invalid: trying to compare a integer variable \"%s.%s\" to a string", obj->nr, device, name);
+								return -1;
+							} else if(type == JSON_NUMBER) {
+								logprintf(LOG_ERR, "rule #%d invalid: trying to compare a string variable \"%s.%s\" to an integer", obj->nr, device, name);
+								return -1;
+							}
+						}
+						if(tmp_values->settings->values->type == JSON_STRING) {
+							varcont->string_ = tmp_values->settings->values->string_;
+						} else if(tmp_values->settings->values->type == JSON_NUMBER) {
+							varcont->number_ = tmp_values->settings->values->number_;
+						}
+						cached = 1;
+						return 0;
+				}
+				tmp_values = tmp_values->next;
 			}
-			tmp_values = tmp_values->next;
 		}
 
 		struct devices_t *dev = NULL;
@@ -239,24 +245,28 @@ static int event_lookup_variable(char *var, struct rules_t *obj, unsigned int nr
 				if(validate == 1) {
 					int exists = 0;
 					int o = 0;
-					for(o=0;o<obj->nrdevices;o++) {
-						if(strcmp(obj->devices[o], device) == 0) {
-							exists = 1;
-							break;
+					if(obj != NULL) {
+						if(origin == RULE) {
+							for(o=0;o<obj->nrdevices;o++) {
+								if(strcmp(obj->devices[o], device) == 0) {
+									exists = 1;
+									break;
+								}
+							}
+							if(exists == 0) {
+								/* Store all devices that are present in this rule */
+								if((obj->devices = REALLOC(obj->devices, sizeof(char *)*(unsigned int)(obj->nrdevices+1))) == NULL) {
+									logprintf(LOG_ERR, "out of memory");
+									exit(EXIT_FAILURE);
+								}
+								if((obj->devices[obj->nrdevices] = MALLOC(strlen(device)+1)) == NULL) {
+									logprintf(LOG_ERR, "out of memory");
+									exit(EXIT_FAILURE);
+								}
+								strcpy(obj->devices[obj->nrdevices], device);
+								obj->nrdevices++;
+							}
 						}
-					}
-					if(exists == 0) {
-						/* Store all devices that are present in this rule */
-						if((obj->devices = REALLOC(obj->devices, sizeof(char *)*(unsigned int)(obj->nrdevices+1))) == NULL) {
-							logprintf(LOG_ERR, "out of memory");
-							exit(EXIT_FAILURE);
-						}
-						if((obj->devices[obj->nrdevices] = MALLOC(strlen(device)+1)) == NULL) {
-							logprintf(LOG_ERR, "out of memory");
-							exit(EXIT_FAILURE);
-						}
-						strcpy(obj->devices[obj->nrdevices], device);
-						obj->nrdevices++;
 					}
 					struct protocols_t *tmp = dev->protocols;
 					unsigned int match1 = 0, match2 = 0, match3 = 0;
@@ -285,11 +295,11 @@ static int event_lookup_variable(char *var, struct rules_t *obj, unsigned int nr
 						tmp = tmp->next;
 					}
 					if(match1 == 0) {
-						logprintf(LOG_ERR, "rule #%d invalid: device \"%s\" has no variable \"%s\"", nr, device, name);
+						logprintf(LOG_ERR, "rule #%d invalid: device \"%s\" has no variable \"%s\"", obj->nr, device, name);
 					} else if(match2 == 0) {
-						logprintf(LOG_ERR, "rule #%d invalid: variable \"%s\" of device \"%s\" cannot be used in event rules", nr, device, name);
+						logprintf(LOG_ERR, "rule #%d invalid: variable \"%s\" of device \"%s\" cannot be used in event rules", obj->nr, device, name);
 					} else if(match3 == 0) {
-						logprintf(LOG_ERR, "rule #%d invalid: trying to compare a integer variable \"%s.%s\" to a string", nr, device, name);
+						logprintf(LOG_ERR, "rule #%d invalid: trying to compare a integer variable \"%s.%s\" to a string", obj->nr, device, name);
 					}
 					if(match1 == 0 || match2 == 0 || match3 == 0) {
 						varcont->string_ = NULL;
@@ -303,22 +313,26 @@ static int event_lookup_variable(char *var, struct rules_t *obj, unsigned int nr
 						if(tmp_settings->values->type == JSON_STRING) {
 							if(type == JSON_STRING) {
 								/* Cache values for faster future lookup */
-								event_store_val_ptr(obj, device, name, tmp_settings);
+								if(obj != NULL) {
+									event_store_val_ptr(obj, device, name, tmp_settings);
+								}
 								varcont->string_ = tmp_settings->values->string_;
 								return 0;
 							} else {
-								logprintf(LOG_ERR, "rule #%d invalid: trying to compare integer variable \"%s.%s\" to a string", nr, device, name);
+								logprintf(LOG_ERR, "rule #%d invalid: trying to compare integer variable \"%s.%s\" to a string", obj->nr, device, name);
 								varcont->string_ = NULL;
 								return -1;
 							}
 						} else if(tmp_settings->values->type == JSON_NUMBER) {
 							if(type == JSON_NUMBER) {
 								/* Cache values for faster future lookup */
-								event_store_val_ptr(obj, device, name, tmp_settings);
+								if(obj != NULL) {
+									event_store_val_ptr(obj, device, name, tmp_settings);
+								}
 								varcont->number_ = tmp_settings->values->number_;
 								return 0;
 							} else {
-								logprintf(LOG_ERR, "rule #%d invalid: trying to compare string variable \"%s.%s\" to an integer", nr, device, name);
+								logprintf(LOG_ERR, "rule #%d invalid: trying to compare string variable \"%s.%s\" to an integer", obj->nr, device, name);
 								varcont->number_ = 0;
 								return -1;
 							}
@@ -326,12 +340,12 @@ static int event_lookup_variable(char *var, struct rules_t *obj, unsigned int nr
 					}
 					tmp_settings = tmp_settings->next;
 				}
-				logprintf(LOG_ERR, "rule #%d invalid: device \"%s\" has no variable \"%s\"", nr, device, name);
+				logprintf(LOG_ERR, "rule #%d invalid: device \"%s\" has no variable \"%s\"", obj->nr, device, name);
 				varcont->string_ = NULL;
 				varcont->number_ = 0;
 				return -1;
 			} else {
-				logprintf(LOG_ERR, "rule #%d invalid: device \"%s\" does not exist in the config", nr, device);
+				logprintf(LOG_ERR, "rule #%d invalid: device \"%s\" does not exist in the config", obj->nr, device);
 				varcont->string_ = NULL;
 				varcont->number_ = 0;
 				return -1;
@@ -339,7 +353,7 @@ static int event_lookup_variable(char *var, struct rules_t *obj, unsigned int nr
 		}
 		return 1;
 	} else if(nrdots > 2) {
-		logprintf(LOG_ERR, "rule #%d invalid: variable \"%s\" is invalid", nr, var);
+		logprintf(LOG_ERR, "rule #%d invalid: variable \"%s\" is invalid", obj->nr, var);
 		varcont->string_ = NULL;
 		varcont->number_ = 0;
 		return -1;
@@ -353,7 +367,7 @@ static int event_lookup_variable(char *var, struct rules_t *obj, unsigned int nr
 	}
 }
 
-static int event_parse_hooks(char **rule, struct rules_t *obj, int depth, unsigned int nr, int (func)(char *rule, struct rules_t *obj, int depth, unsigned int nr, unsigned short validate), unsigned short validate) {
+static int event_parse_hooks(char **rule, struct rules_t *obj, int depth, int (func)(char *rule, struct rules_t *obj, int depth, unsigned short validate), unsigned short validate) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
 	int hooks = 0, res = 0;
@@ -392,7 +406,7 @@ static int event_parse_hooks(char **rule, struct rules_t *obj, int depth, unsign
 				replace[len+2] = '\0';
 				/* If successful, the variable subrule will be
 				   replaced with the outcome of the formula */
-				if((res = func(subrule, obj, depth, nr, validate)) > -1) {
+				if((res = func(subrule, obj, depth, validate)) > -1) {
 					z = strlen(subrule);
 					/* Remove the hooks and the content within.
 						 Replace this content with the result of the sum.
@@ -420,7 +434,7 @@ static int event_parse_hooks(char **rule, struct rules_t *obj, int depth, unsign
 	return 0;
 }
 
-static int event_parse_formula(char **rule, struct rules_t *obj, int depth, unsigned int nr, unsigned short validate) {
+static int event_parse_formula(char **rule, struct rules_t *obj, int depth, unsigned short validate) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
 	union varcont_t v1;
@@ -495,8 +509,8 @@ static int event_parse_formula(char **rule, struct rules_t *obj, int depth, unsi
 					match = 1;
 					int ret1 = 0, ret2 = 0;
 					if(tmp_operator->callback_string) {
-						ret1 = event_lookup_variable(var1, obj, nr, type, &v1, validate);
-						ret2 = event_lookup_variable(var2, obj, nr, type, &v2, validate);
+						ret1 = event_lookup_variable(var1, obj, type, &v1, validate, RULE);
+						ret2 = event_lookup_variable(var2, obj, type, &v2, validate, RULE);
 
 						if(ret1 == -1 || ret2 == -1) {
 							error = -1;
@@ -510,8 +524,8 @@ static int event_parse_formula(char **rule, struct rules_t *obj, int depth, unsi
 						}
 					} else if(tmp_operator->callback_number != NULL) {
 						/* Continue with regular numeric operator parsing */
-						ret1 = event_lookup_variable(var1, obj, nr, type, &v1, validate);
-						ret2 = event_lookup_variable(var2, obj, nr, type, &v2, validate);
+						ret1 = event_lookup_variable(var1, obj, type, &v1, validate, RULE);
+						ret2 = event_lookup_variable(var2, obj, type, &v2, validate, RULE);
 						if(ret1 == -1 || ret2 == -1) {
 							error = -1;
 							goto close;
@@ -533,7 +547,7 @@ static int event_parse_formula(char **rule, struct rules_t *obj, int depth, unsi
 						unsigned long r = 0;
 						// printf("Replace \"%s\" with \"%s\" in \"%s\"\n", search, p, tmp);
 						if((r = (unsigned long)str_replace(search, p, &tmp)) == -1) {
-							logprintf(LOG_ERR, "rule #%d: an unexpected error occured while parsing", nr);
+							logprintf(LOG_ERR, "rule #%d: an unexpected error occured while parsing", obj->nr);
 							FREE(p);
 							error = -1;
 							goto close;
@@ -548,7 +562,7 @@ static int event_parse_formula(char **rule, struct rules_t *obj, int depth, unsi
 				tmp_operator = tmp_operator->next;
 			}
 			if(match == 0) {
-				logprintf(LOG_ERR, "rule #%d invalid: operator \"%s\" does not exist", nr, func);
+				logprintf(LOG_ERR, "rule #%d invalid: operator \"%s\" does not exist", obj->nr, func);
 				error = -1;
 				goto close;
 			}
@@ -565,7 +579,7 @@ static int event_parse_formula(char **rule, struct rules_t *obj, int depth, unsi
 		pos++;
 	}
 	if(element == 2) {
-		logprintf(LOG_ERR, "rule #%d invalid: could not parse \"%s\"", nr, *rule);
+		logprintf(LOG_ERR, "rule #%d invalid: could not parse \"%s\"", obj->nr, *rule);
 		error = -1;
 		goto close;
 	}
@@ -861,15 +875,17 @@ static int event_parse_action(char *action, struct rules_t *obj, int validate) {
 						if(jvalue->tag == JSON_ARRAY) {
 							jchild = json_first_child(jvalue);
 							while(jchild) {
-								if(jchild->tag != JSON_NUMBER && opt->vartype == JSON_NUMBER) {
-									logprintf(LOG_ERR, "action \"%s\" option \"%s\" only accepts numbers", obj->action->name, opt->name);
-									error = 1;
-									break;
-								}
-								if(jchild->tag != JSON_STRING && opt->vartype == JSON_STRING) {
-									logprintf(LOG_ERR, "action \"%s\" option \"%s\" only accepts strings", obj->action->name, opt->name);
-									error = 1;
-									break;
+								if(opt->vartype != (JSON_NUMBER | JSON_STRING)) {
+									if(jchild->tag != JSON_NUMBER && opt->vartype == JSON_NUMBER) {
+										logprintf(LOG_ERR, "action \"%s\" option \"%s\" only accepts numbers", obj->action->name, opt->name);
+										error = 1;
+										break;
+									}
+									if(jchild->tag != JSON_STRING && opt->vartype == JSON_STRING) {
+										logprintf(LOG_ERR, "action \"%s\" option \"%s\" only accepts strings", obj->action->name, opt->name);
+										error = 1;
+										break;
+									}
 								}
 								jchild = jchild->next;
 							}
@@ -905,13 +921,13 @@ static int event_parse_action(char *action, struct rules_t *obj, int validate) {
 		if(validate == 1) {
 			if(obj->action != NULL) {
 				if(obj->action->checkArguments != NULL) {
-					error = obj->action->checkArguments(obj->arguments);
+					error = obj->action->checkArguments(obj);
 				}
 			}
 		} else {
 			if(obj->action != NULL) {
 				if(obj->action->run != NULL) {
-					error = obj->action->run(obj->arguments);
+					error = obj->action->run(obj);
 				}
 			}
 		}
@@ -935,7 +951,7 @@ static int event_parse_action(char *action, struct rules_t *obj, int validate) {
 	return error;
 }
 
-int event_parse_condition(char **rule, struct rules_t *obj, int depth, unsigned int nr, unsigned short validate) {
+int event_parse_condition(char **rule, struct rules_t *obj, int depth, unsigned short validate) {
 	char *tmp = *rule;
 	char *and = strstr(tmp, "AND");
 	char *or = strstr(tmp, "OR");
@@ -976,10 +992,10 @@ int event_parse_condition(char **rule, struct rules_t *obj, int depth, unsigned 
 	 * "1 == 1", "datetime.hour < 18.00" is valid here.
 	 */
 	if(nrspaces != 2 && nrspaces != 0) {
-		logprintf(LOG_ERR, "rule #%d invalid: could not parse \"%s\"", nr, subrule);
+		logprintf(LOG_ERR, "rule #%d invalid: could not parse \"%s\"", obj->nr, subrule);
 		error = -1;
 	} else {
-		if(event_parse_formula(&subrule, obj, depth, nr, validate) == -1) {
+		if(event_parse_formula(&subrule, obj, depth, validate) == -1) {
 			error = -1;
 		} else {
 			size_t len = strlen(tmp);
@@ -996,7 +1012,7 @@ int event_parse_condition(char **rule, struct rules_t *obj, int depth, unsigned 
 	return error;
 }
 
-int event_parse_rule(char *rule, struct rules_t *obj, int depth, unsigned int nr, unsigned short validate) {
+int event_parse_rule(char *rule, struct rules_t *obj, int depth, unsigned short validate) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
 	char *tloc = 0, *condition = NULL, *action = NULL;
@@ -1023,13 +1039,13 @@ int event_parse_rule(char *rule, struct rules_t *obj, int depth, unsigned int nr
 
 	if(depth == 0) {
 		if(strncmp(&rule[0], "IF ", 3) != 0) {
-			logprintf(LOG_ERR, "rule #%d invalid: missing IF", nr);
+			logprintf(LOG_ERR, "rule #%d invalid: missing IF", obj->nr);
 			error = -1;
 			goto close;
 		}
 
 		if((tloc = strstr(rule, " THEN ")) == NULL) {
-			logprintf(LOG_ERR, "rule #%d invalid: missing THEN", nr);
+			logprintf(LOG_ERR, "rule #%d invalid: missing THEN", obj->nr);
 			error = -1;
 			goto close;
 		}
@@ -1045,12 +1061,6 @@ int event_parse_rule(char *rule, struct rules_t *obj, int depth, unsigned int nr
 		action[rlen-tpos+6] = '\0';
 		tlen = rlen-tpos+6;
 
-		if(validate == 1 && event_parse_action(action, obj, validate) != 0) {
-			logprintf(LOG_ERR, "rule #%d invalid: invalid action", nr);
-			error = -1;
-			goto close;
-		}
-
 		/* Extract the command part between the IF and THEN
 		   ("IF " length = 3) */
 		if((condition = MALLOC(rlen-tlen+3+1)) == NULL) {
@@ -1063,11 +1073,11 @@ int event_parse_rule(char *rule, struct rules_t *obj, int depth, unsigned int nr
 	}
 
 	if(nrhooks > 0) {
-		logprintf(LOG_ERR, "rule #%d invalid: missing one or more )", nr);
+		logprintf(LOG_ERR, "rule #%d invalid: missing one or more )", obj->nr);
 		error = -1;
 		goto close;
 	} else if(nrhooks < 0) {
-		logprintf(LOG_ERR, "rule #%d invalid: missing one or more (", nr);
+		logprintf(LOG_ERR, "rule #%d invalid: missing one or more (", obj->nr);
 		error = -1;
 		goto close;
 	}
@@ -1079,7 +1089,7 @@ int event_parse_rule(char *rule, struct rules_t *obj, int depth, unsigned int nr
 	int pass = 0, ltype = NONE, skip = 0;
 	while(condition[i] != '\0') {
 		if(condition[i] == '(') {
-			pass = event_parse_hooks(&condition, obj, depth+1, nr, event_parse_rule, validate);
+			pass = event_parse_hooks(&condition, obj, depth+1, event_parse_rule, validate);
 			error = pass;
 		}
 		if((type_and = strncmp(&condition[i], " AND ", 5)) == 0 || (type_or = strncmp(&condition[i], " OR ", 4)) == 0) {
@@ -1087,7 +1097,7 @@ int event_parse_rule(char *rule, struct rules_t *obj, int depth, unsigned int nr
 			ltype = (type_and == 0) ? AND : OR;
 			if(skip == 0) {
 				// printf("EVALUATE: %s, %s\n", (type_and == 0) ? "AND" : "OR", condition);
-				pass = event_parse_condition(&condition, obj, depth, nr, validate);
+				pass = event_parse_condition(&condition, obj, depth, validate);
 				error = pass;
 				i = -1;
 			} else {
@@ -1124,23 +1134,27 @@ int event_parse_rule(char *rule, struct rules_t *obj, int depth, unsigned int nr
 	/* Skip this part when the condition only contains "1" or "0" */
 	} else if(strlen(condition) > 1) {
 		// printf("EVALUATE: %s, %s\n", (ltype == AND) ? "AND" : "OR", condition);
-		if(event_parse_formula(&condition, obj, depth, nr, validate) == -1) {
+		if(event_parse_formula(&condition, obj, depth, validate) == -1) {
 			error = -1;
 			goto close;
 		}
 	} else {
 		// printf("SKIP: %s, %s\n", (ltype == AND) ? "AND" : "OR", condition);
 	}
-
 	obj->status = atoi(condition);
 
-	if(obj->status > 0 && depth == 0) {
-		if(validate == 0 && event_parse_action(action, obj, validate) != 0) {
-			error = -1;
-			goto close;
+	if(validate == 1 && depth == 0 && event_parse_action(action, obj, validate) != 0) {
+		logprintf(LOG_ERR, "rule #%d invalid: invalid action", obj->nr);
+		error = -1;
+		goto close;
+	} else {
+		if(obj->status > 0 && depth == 0) {
+			if(validate == 0 && event_parse_action(action, obj, validate) != 0) {
+				error = -1;
+				goto close;
+			}
+			obj->status = 1;
 		}
-
-		obj->status = 1;
 	}
 
 close:
@@ -1210,7 +1224,7 @@ void *events_loop(void *param) {
 						}
 					}
 					if(match == 1 && tmp_rules->status == 0) {
-						if(event_parse_rule(str, tmp_rules, 0, 1, 0) == 0) {
+						if(event_parse_rule(str, tmp_rules, 0, 0) == 0) {
 							if(tmp_rules->status) {
 								logprintf(LOG_INFO, "executed rule: %s", tmp_rules->name);
 							}

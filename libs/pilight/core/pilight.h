@@ -39,6 +39,7 @@ enum origin_t {
 	FW,
 	STATS,
 	ACTION,
+	RULE,
 	PROTOCOL
 };
 

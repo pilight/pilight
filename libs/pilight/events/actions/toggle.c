@@ -29,7 +29,7 @@
 #include "../../core/pilight.h"
 #include "toggle.h"
 
-static int checkArguments(struct JsonNode *arguments) {
+static int checkArguments(struct rules_t *obj) {
 	struct JsonNode *jdevice = NULL;
 	struct JsonNode *jbetween = NULL;
 	struct JsonNode *jsvalues = NULL;
@@ -38,8 +38,8 @@ static int checkArguments(struct JsonNode *arguments) {
 	struct JsonNode *jdchild = NULL;
 	double nr1 = 0.0, nr2 = 0.0;
 	int nrvalues = 0;
-	jdevice = json_find_member(arguments, "DEVICE");
-	jbetween = json_find_member(arguments, "BETWEEN");
+	jdevice = json_find_member(obj->arguments, "DEVICE");
+	jbetween = json_find_member(obj->arguments, "BETWEEN");
 
 	if(jdevice == NULL) {
 		logprintf(LOG_ERR, "toggle action is missing a \"DEVICE\"");
@@ -118,6 +118,8 @@ static int checkArguments(struct JsonNode *arguments) {
 
 static void *thread(void *param) {
 	struct event_action_thread_t *pth = (struct event_action_thread_t *)param;
+	// struct rules_t *obj = pth->obj;
+	struct JsonNode *json = pth->obj->arguments;
 	struct devices_settings_t *tmp_settings = pth->device->settings;
 	struct JsonNode *jbetween = NULL;
 	struct JsonNode *jsvalues = NULL;
@@ -137,7 +139,7 @@ static void *thread(void *param) {
 		tmp_settings = tmp_settings->next;
 	}
 
-	if((jbetween = json_find_member(pth->param, "BETWEEN")) != NULL) {
+	if((jbetween = json_find_member(json, "BETWEEN")) != NULL) {
 			if((jsvalues = json_find_member(jbetween, "value")) != NULL) {
 			jstate1 = json_find_element(jsvalues, 0);
 			jstate2 = json_find_element(jsvalues, 1);
@@ -162,21 +164,21 @@ static void *thread(void *param) {
 	return (void *)NULL;
 }
 
-static int run(struct JsonNode *arguments) {
+static int run(struct rules_t *obj) {
 	struct JsonNode *jdevice = NULL;
 	struct JsonNode *jbetween = NULL;
 	struct JsonNode *jdvalues = NULL;
 	struct JsonNode *jdchild = NULL;
 
-	if((jdevice = json_find_member(arguments, "DEVICE")) != NULL &&
-		 (jbetween = json_find_member(arguments, "BETWEEN")) != NULL) {
+	if((jdevice = json_find_member(obj->arguments, "DEVICE")) != NULL &&
+		 (jbetween = json_find_member(obj->arguments, "BETWEEN")) != NULL) {
 		if((jdvalues = json_find_member(jdevice, "value")) != NULL) {
 			jdchild = json_first_child(jdvalues);
 			while(jdchild) {
 				if(jdchild->tag == JSON_STRING) {
 					struct devices_t *dev = NULL;
 					if(devices_get(jdchild->string_, &dev) == 0) {
-						event_action_thread_start(dev, action_toggle->name, thread, arguments);
+						event_action_thread_start(dev, action_toggle->name, thread, obj);
 					}
 				}
 				jdchild = jdchild->next;

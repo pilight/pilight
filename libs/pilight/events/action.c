@@ -225,14 +225,14 @@ void event_action_thread_init(struct devices_t *dev) {
 	pthread_mutex_init(&dev->action_thread->mutex, &dev->action_thread->attr);
 	pthread_cond_init(&dev->action_thread->cond, NULL);
 	dev->action_thread->running = 0;
-	dev->action_thread->param = NULL;
+	dev->action_thread->obj = NULL;
 	dev->action_thread->action = NULL;
 	dev->action_thread->loop = 0;
 	dev->action_thread->initialized = 0;
 	memset(&dev->action_thread->pth, '\0', sizeof(pthread_t));
 }
 
-void event_action_thread_start(struct devices_t *dev, char *name, void *(*func)(void *), struct JsonNode *param) {
+void event_action_thread_start(struct devices_t *dev, char *name, void *(*func)(void *), struct rules_t *obj) {
 	struct event_action_thread_t *thread = dev->action_thread;
 
 	if(thread->running == 1) {
@@ -253,17 +253,18 @@ void event_action_thread_start(struct devices_t *dev, char *name, void *(*func)(
 		thread->initialized = 0;
 	}
 
-	if(thread->param != NULL) {
-		json_delete(thread->param);
-		thread->param = NULL;
-	}
+	// if(thread->param != NULL) {
+		// json_delete(thread->param);
+		// thread->param = NULL;
+	// }
 
-	if(param != NULL) {
-		char *json = json_stringify(param, NULL);
-		thread->param = json_decode(json);
-		json_free(json);
-	}
+	// if(param != NULL) {
+		// char *json = json_stringify(param, NULL);
+		// thread->param = json_decode(json);
+		// json_free(json);
+	// }
 
+	thread->obj = obj;
 	thread->device = dev;
 	thread->loop = 1;
 	thread->action = REALLOC(thread->action, strlen(name)+1);
@@ -336,10 +337,10 @@ void event_action_thread_free(struct devices_t *dev) {
 		if(thread->action != NULL) {
 			FREE(thread->action);
 		}
-		if(thread->param != NULL) {
-			json_delete(thread->param);
-			thread->param = NULL;
-		}
+		// if(thread->param != NULL) {
+			// json_delete(thread->param);
+			// thread->param = NULL;
+		// }
 		if(thread->initialized == 1) {
 			pthread_join(thread->pth, NULL);
 			thread->initialized = 0;

@@ -30,7 +30,7 @@
 #include "../core/common.h"
 #include "../core/json.h"
 #include "../core/log.h"
-#include "../core/events.h"
+#include "../events/events.h"
 #include "../events/operator.h"
 #include "../events/action.h"
 #include "rules.h"
@@ -84,7 +84,8 @@ static int rules_parse(JsonNode *root) {
 					node->devices = NULL;
 					node->action = NULL;
 					node->arguments = NULL;
-					if(event_parse_rule(rule, node, 0, i, 1) == -1) {
+					node->nr = i;
+					if(event_parse_rule(rule, node, 0, 1) == -1) {
 						for(i=0;i<node->nrdevices;i++) {
 							FREE(node->devices[i]);
 						}

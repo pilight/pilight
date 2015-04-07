@@ -28,14 +28,14 @@
 #include <stdbool.h>
 #include <stddef.h>
 
-typedef enum {
-	JSON_NULL,
-	JSON_BOOL,
-	JSON_STRING,
-	JSON_NUMBER,
-	JSON_ARRAY,
-	JSON_OBJECT,
-} JsonTag;
+#define JSON_NULL		0x1
+#define JSON_BOOL		0x2
+#define JSON_STRING	0x4
+#define JSON_NUMBER 0x8
+#define JSON_ARRAY	0x16
+#define JSON_OBJECT	0x23
+
+#define JsonTag			int
 
 typedef struct JsonNode JsonNode;
 

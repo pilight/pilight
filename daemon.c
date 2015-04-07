@@ -67,7 +67,7 @@
 #include "libs/pilight/core/config.h"
 
 #ifdef EVENTS
-	#include "libs/pilight/core/events.h"
+	#include "libs/pilight/events/events.h"
 #endif
 
 #ifdef WEBSERVER

@@ -35,6 +35,7 @@ typedef struct rules_t {
 	char *name;
 	char **devices;
 	int nrdevices;
+	int nr;
 	int status;
 	unsigned short active;
 	/* Arguments to be send to the action */

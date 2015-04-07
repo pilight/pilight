@@ -32,7 +32,7 @@
 #include "../../core/common.h"
 #include "pushover.h"
 
-static int checkArguments(struct JsonNode *arguments) {
+static int checkArguments(struct rules_t *obj) {
 	struct JsonNode *jtitle = NULL;
 	struct JsonNode *jmessage = NULL;
 	struct JsonNode *juser = NULL;
@@ -41,10 +41,10 @@ static int checkArguments(struct JsonNode *arguments) {
 	struct JsonNode *jchild = NULL;
 	int nrvalues = 0;
 
-	jtitle = json_find_member(arguments, "TITLE");
-	jmessage = json_find_member(arguments, "MESSAGE");
-	jtoken = json_find_member(arguments, "TOKEN");
-	juser = json_find_member(arguments, "USER");
+	jtitle = json_find_member(obj->arguments, "TITLE");
+	jmessage = json_find_member(obj->arguments, "MESSAGE");
+	jtoken = json_find_member(obj->arguments, "TOKEN");
+	juser = json_find_member(obj->arguments, "USER");
 
 	if(jtitle == NULL) {
 		logprintf(LOG_ERR, "pushover action is missing a \"TITLE\"");
@@ -114,7 +114,9 @@ static int checkArguments(struct JsonNode *arguments) {
 }
 
 static void *thread(void *param) {
-	struct JsonNode *arguments = (struct JsonNode *)param;
+	struct event_action_thread_t *pth = (struct event_action_thread_t *)param;
+	// struct rules_t *obj = pth->obj;
+	struct JsonNode *arguments = pth->obj->arguments;
 	struct JsonNode *jtitle = NULL;
 	struct JsonNode *jmessage = NULL;
 	struct JsonNode *juser = NULL;
@@ -186,9 +188,9 @@ static void *thread(void *param) {
 	return (void *)NULL;
 }
 
-static int run(struct JsonNode *arguments) {
+static int run(struct rules_t *obj) {
 	pthread_t pth;
-	threads_create(&pth, NULL, thread, (void *)arguments);
+	threads_create(&pth, NULL, thread, (void *)obj);
 	pthread_detach(pth);
 	return 0;
 }

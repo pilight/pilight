@@ -21,7 +21,13 @@
 
 #include "../config/rules.h"
 
-int event_parse_rule(char *rule, struct rules_t *obj, int depth, unsigned int nr, int validate);
+typedef union varcont_t {
+	char *string_;
+	double number_;
+} varcont_t;
+
+int event_lookup_variable(char *var, struct rules_t *obj, int type, union varcont_t *varcont, unsigned short validate, enum origin_t origin);
+int event_parse_rule(char *rule, struct rules_t *obj, int depth, unsigned short validate);
 void *events_clientize(void *param);
 int events_gc(void);
 void *events_loop(void *param);

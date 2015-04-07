@@ -28,12 +28,13 @@
 #include "../../core/dso.h"
 #include "../../core/pilight.h"
 #include "../action.h"
+#include "../events.h"
 #include "dim.h"
 
 #define DECREASING 0
 #define INCREASING 1
 
-static int checkArguments(struct JsonNode *arguments) {
+static int checkArguments(struct rules_t *obj) {
 	struct JsonNode *jdevice = NULL;
 	struct JsonNode *jto = NULL;
 	struct JsonNode *jfor = NULL;
@@ -52,21 +53,23 @@ static int checkArguments(struct JsonNode *arguments) {
 	struct JsonNode *jdchild = NULL;
 	struct JsonNode *jechild = NULL;
 	struct JsonNode *jfchild = NULL;
-
+	union varcont_t v;
 	double nr1 = 0.0, nr2 = 0.0, nr3 = 0.0, nr4 = 0.0, nr5 = 0.0, nr6 = 0.0;
-	int nrvalues = 0;
+	double dimfrom = 0.0, dimto = 0.0;
+	int nrvalues = 0, match = 0;
 
-	jdevice = json_find_member(arguments, "DEVICE");
-	jto = json_find_member(arguments, "TO");
-	jfor = json_find_member(arguments, "FOR");
-	jin = json_find_member(arguments, "IN");
-	jafter = json_find_member(arguments, "AFTER");
-	jfrom = json_find_member(arguments, "FROM");
+	jdevice = json_find_member(obj->arguments, "DEVICE");
+	jto = json_find_member(obj->arguments, "TO");
+	jfor = json_find_member(obj->arguments, "FOR");
+	jin = json_find_member(obj->arguments, "IN");
+	jafter = json_find_member(obj->arguments, "AFTER");
+	jfrom = json_find_member(obj->arguments, "FROM");
 
 	if(jdevice == NULL) {
-		logprintf(LOG_ERR, "dim action is missing a \"DEVICE\"");
+		logprintf(LOG_ERR, "dim action is missing a \"DEVICE ...\" statement");
 		return -1;
 	}
+
 	if(jto == NULL) {
 		logprintf(LOG_ERR, "dim action is missing a \"TO ...\" statement");
 		return -1;
@@ -122,6 +125,11 @@ static int checkArguments(struct JsonNode *arguments) {
 		jachild = json_first_child(javalues);
 		while(jachild) {
 			nrvalues++;
+			if(jachild->tag == JSON_STRING) {
+				if(event_lookup_variable(jachild->string_, obj, JSON_NUMBER, &v, 1, ACTION) == -1) {
+					return -1;
+				}
+			}
 			jachild = jachild->next;
 		}
 	}
@@ -136,6 +144,11 @@ static int checkArguments(struct JsonNode *arguments) {
 			jcchild = json_first_child(jcvalues);
 			while(jcchild) {
 				nrvalues++;
+				if(jcchild->tag == JSON_STRING) {
+					if(event_lookup_variable(jcchild->string_, obj, JSON_NUMBER, &v, 1, ACTION) == -1) {
+						return -1;
+					}
+				}				
 				jcchild = jcchild->next;
 			}
 		}
@@ -151,6 +164,11 @@ static int checkArguments(struct JsonNode *arguments) {
 			jdchild = json_first_child(jdvalues);
 			while(jdchild) {
 				nrvalues++;
+				if(jdchild->tag == JSON_STRING) {
+					if(event_lookup_variable(jdchild->string_, obj, JSON_NUMBER, &v, 1, ACTION) == -1) {
+						return -1;
+					}
+				}				
 				jdchild = jdchild->next;
 			}
 		}
@@ -166,6 +184,11 @@ static int checkArguments(struct JsonNode *arguments) {
 			jechild = json_first_child(jevalues);
 			while(jechild) {
 				nrvalues++;
+				if(jechild->tag == JSON_STRING) {
+					if(event_lookup_variable(jechild->string_, obj, JSON_NUMBER, &v, 1, ACTION) == -1) {
+						return -1;
+					}
+				}
 				jechild = jechild->next;
 			}
 		}
@@ -181,6 +204,11 @@ static int checkArguments(struct JsonNode *arguments) {
 			jfchild = json_first_child(jfvalues);
 			while(jfchild) {
 				nrvalues++;
+				if(jfchild->tag == JSON_STRING) {
+					if(event_lookup_variable(jfchild->string_, obj, JSON_NUMBER, &v, 1, ACTION) == -1) {
+						return -1;
+					}
+				}
 				jfchild = jfchild->next;
 			}
 		}
@@ -199,7 +227,17 @@ static int checkArguments(struct JsonNode *arguments) {
 					if((javalues = json_find_member(jto, "value")) != NULL) {
 						jachild = json_first_child(javalues);
 						while(jachild) {
+							match = 0;
 							if(jachild->tag == JSON_NUMBER) {
+								dimto = jachild->number_;
+								match = 1;
+							} else if(jachild->tag == JSON_STRING) {
+								if(event_lookup_variable(jachild->string_, obj, JSON_NUMBER, &v, 1, ACTION) != -1) {
+									dimto = v.number_;
+									match = 1;
+								}
+							}
+							if(match == 1) {
 								struct protocols_t *tmp_protocols = dev->protocols;
 								if(tmp_protocols->listener->devtype == DIMMER) {
 									struct devices_settings_t *tmp_settings = dev->settings;
@@ -207,16 +245,16 @@ static int checkArguments(struct JsonNode *arguments) {
 									while(tmp_settings) {
 										if(strcmp(tmp_settings->name, "dimlevel-maximum") == 0) {
 											if(tmp_settings->values->type == JSON_NUMBER &&
-												(int)tmp_settings->values->number_ < (int)jachild->number_) {
-												logprintf(LOG_ERR, "device \"%s\" can't be set to dimlevel \"%d\"", jbchild->string_, (int)jachild->number_);
+												(int)tmp_settings->values->number_ < (int)dimto) {
+												logprintf(LOG_ERR, "device \"%s\" can't be set to dimlevel \"%d\"", jbchild->string_, (int)dimto);
 												return -1;
 											}
 											match1 = 1;
 										}
 										if(strcmp(tmp_settings->name, "dimlevel-minimum") == 0) {
 											if(tmp_settings->values->type == JSON_NUMBER &&
-												(int)tmp_settings->values->number_ > (int)jachild->number_) {
-												logprintf(LOG_ERR, "device \"%s\" can't be set to dimlevel \"%d\"", jbchild->string_, (int)jachild->number_);
+												(int)tmp_settings->values->number_ > (int)dimto) {
+												logprintf(LOG_ERR, "device \"%s\" can't be set to dimlevel \"%d\"", jbchild->string_, (int)dimto);
 												return -1;
 											}
 											match2 = 1;
@@ -228,13 +266,13 @@ static int checkArguments(struct JsonNode *arguments) {
 											struct options_t *opt = tmp_protocols->listener->options;
 											while(opt) {
 												if(match1 == 0 && strcmp(opt->name, "dimlevel-maximum") == 0 &&
-													opt->vartype == JSON_NUMBER && (int)(intptr_t)opt->def < (int)jachild->number_) {
-													logprintf(LOG_ERR, "device \"%s\" can't be set to dimlevel \"%d\"", jbchild->string_, (int)jachild->number_);
+													opt->vartype == JSON_NUMBER && (int)(intptr_t)opt->def < (int)dimto) {
+													logprintf(LOG_ERR, "device \"%s\" can't be set to dimlevel \"%d\"", jbchild->string_, (int)dimto);
 													return -1;
 												}
 												if(match2 == 0 && strcmp(opt->name, "dimlevel-minimum") == 0 &&
-													opt->vartype == JSON_NUMBER && (int)(intptr_t)opt->def > (int)jachild->number_) {
-													logprintf(LOG_ERR, "device \"%s\" can't be set to dimlevel \"%d\"", jbchild->string_, (int)jachild->number_);
+													opt->vartype == JSON_NUMBER && (int)(intptr_t)opt->def > (int)dimto) {
+													logprintf(LOG_ERR, "device \"%s\" can't be set to dimlevel \"%d\"", jbchild->string_, (int)dimto);
 													return -1;
 												}
 												opt = opt->next;
@@ -260,7 +298,17 @@ static int checkArguments(struct JsonNode *arguments) {
 					if((jevalues = json_find_member(jfrom, "value")) != NULL) {
 						jechild = json_first_child(jevalues);
 						while(jechild) {
+							match = 0;
 							if(jechild->tag == JSON_NUMBER) {
+								dimfrom = jechild->number_;
+								match = 1;
+							} else if(jechild->tag == JSON_STRING) {
+								if(event_lookup_variable(jechild->string_, obj, JSON_NUMBER, &v, 1, ACTION) != -1) {
+									dimfrom = v.number_;
+									match = 1;
+								}
+							}
+							if(match == 1) {
 								struct protocols_t *tmp_protocols = dev->protocols;
 								if(tmp_protocols->listener->devtype == DIMMER) {
 									struct devices_settings_t *tmp_settings = dev->settings;
@@ -268,16 +316,16 @@ static int checkArguments(struct JsonNode *arguments) {
 									while(tmp_settings) {
 										if(strcmp(tmp_settings->name, "dimlevel-maximum") == 0) {
 											if(tmp_settings->values->type == JSON_NUMBER &&
-												(int)tmp_settings->values->number_ < (int)jechild->number_) {
-												logprintf(LOG_ERR, "device \"%s\" dimlevel can't be set to \"%d\"", jbchild->string_, (int)jechild->number_);
+												(int)tmp_settings->values->number_ < (int)dimfrom) {
+												logprintf(LOG_ERR, "device \"%s\" dimlevel can't be set to \"%d\"", jbchild->string_, (int)dimfrom);
 												return -1;
 											}
 											match1 = 1;
 										}
 										if(strcmp(tmp_settings->name, "dimlevel-minimum") == 0) {
 											if(tmp_settings->values->type == JSON_NUMBER &&
-												(int)tmp_settings->values->number_ > (int)jechild->number_) {
-												logprintf(LOG_ERR, "device \"%s\" dimlevel can't be set to \"%d\"", jbchild->string_, (int)jechild->number_);
+												(int)tmp_settings->values->number_ > (int)dimfrom) {
+												logprintf(LOG_ERR, "device \"%s\" dimlevel can't be set to \"%d\"", jbchild->string_, (int)dimfrom);
 												return -1;
 											}
 											match2 = 1;
@@ -289,13 +337,13 @@ static int checkArguments(struct JsonNode *arguments) {
 											struct options_t *opt = tmp_protocols->listener->options;
 											while(opt) {
 												if(match1 == 0 && strcmp(opt->name, "dimlevel-maximum") == 0 &&
-													opt->vartype == JSON_NUMBER && (int)(intptr_t)opt->def < (int)jechild->number_) {
-													logprintf(LOG_ERR, "device \"%s\" dimlevel can't be set to \"%d\"", jbchild->string_, (int)jechild->number_);
+													opt->vartype == JSON_NUMBER && (int)(intptr_t)opt->def < (int)dimfrom) {
+													logprintf(LOG_ERR, "device \"%s\" dimlevel can't be set to \"%d\"", jbchild->string_, (int)dimfrom);
 													return -1;
 												}
 												if(match2 == 0 && strcmp(opt->name, "dimlevel-minimum") == 0 &&
-													opt->vartype == JSON_NUMBER && (int)(intptr_t)opt->def > (int)jechild->number_) {
-													logprintf(LOG_ERR, "device \"%s\" dimlevel can't be set to \"%d\"", jbchild->string_, (int)jechild->number_);
+													opt->vartype == JSON_NUMBER && (int)(intptr_t)opt->def > (int)dimfrom) {
+													logprintf(LOG_ERR, "device \"%s\" dimlevel can't be set to \"%d\"", jbchild->string_, (int)dimfrom);
 													return -1;
 												}
 												opt = opt->next;
@@ -333,6 +381,8 @@ static int checkArguments(struct JsonNode *arguments) {
 
 static void *thread(void *param) {
 	struct event_action_thread_t *pth = (struct event_action_thread_t *)param;
+	struct rules_t *obj = pth->obj;
+	struct JsonNode *json = pth->obj->arguments;
 	struct JsonNode *jedimlevel = NULL;
 	struct JsonNode *jsdimlevel = NULL;
 	struct JsonNode *jto = NULL;
@@ -349,6 +399,7 @@ static void *thread(void *param) {
 	struct JsonNode *jiseconds = NULL;
 	struct JsonNode *jvalues = NULL;
 	char *old_state = NULL;
+	union varcont_t v;
 	double dimlevel = 0.0, old_dimlevel = 0.0, new_dimlevel = 0.0, cur_dimlevel = 0.0;
 	int seconds_after = 0, seconds_for = 0, seconds_in = 0, has_in = 0, dimdiff = 0;
 	int direction = 0, interval = 0, i = 0, timer = 0;
@@ -356,30 +407,49 @@ static void *thread(void *param) {
 
 	event_action_started(pth);
 
-	if((jfor = json_find_member(pth->param, "FOR")) != NULL) {
+	if((jfor = json_find_member(json, "FOR")) != NULL) {
 		if((jcvalues = json_find_member(jfor, "value")) != NULL) {
 			jaseconds = json_find_element(jcvalues, 0);
-			if(jaseconds != NULL && jaseconds->tag == JSON_NUMBER) {
-				seconds_for = (int)jaseconds->number_;
+			if(jaseconds != NULL) {
+				if(jaseconds->tag == JSON_NUMBER) {
+					seconds_for = (int)jaseconds->number_;
+				} else if(jaseconds->tag == JSON_STRING) {
+					if(event_lookup_variable(jaseconds->string_, obj, JSON_NUMBER, &v, 0, ACTION) != -1) {
+						seconds_for = (int)v.number_;
+					}
+				}
 			}
 		}
 	}
 
-	if((jafter = json_find_member(pth->param, "AFTER")) != NULL) {
+	if((jafter = json_find_member(json, "AFTER")) != NULL) {
 		if((jdvalues = json_find_member(jafter, "value")) != NULL) {
 			jaseconds = json_find_element(jdvalues, 0);
-			if(jaseconds != NULL && jaseconds->tag == JSON_NUMBER) {
-				seconds_after = (int)jaseconds->number_;
+			if(jaseconds != NULL) {
+				if(jaseconds->tag == JSON_NUMBER) {
+					seconds_after = (int)jaseconds->number_;
+				} else if(jaseconds->tag == JSON_STRING) {
+					if(event_lookup_variable(jaseconds->string_, obj, JSON_NUMBER, &v, 0, ACTION) != -1) {
+						seconds_after = (int)v.number_;
+					}
+				}
 			}
 		}
 	}
 
-	if((jin = json_find_member(pth->param, "IN")) != NULL) {
+	if((jin = json_find_member(json, "IN")) != NULL) {
 		if((jfvalues = json_find_member(jin, "value")) != NULL) {
 			jiseconds = json_find_element(jfvalues, 0);
-			if(jiseconds != NULL && jiseconds->tag == JSON_NUMBER) {
-				has_in = 1;
-				seconds_in = (int)jiseconds->number_;
+			if(jiseconds != NULL) {
+				if(jiseconds->tag == JSON_NUMBER) {
+					seconds_in = (int)jiseconds->number_;
+					has_in = 1;
+				} else if(jiseconds->tag == JSON_STRING) {
+					if(event_lookup_variable(jiseconds->string_, obj, JSON_NUMBER, &v, 0, ACTION) != -1) {
+						seconds_in = (int)v.number_;
+						has_in = 1;
+					}
+				}
 			}
 		}
 	}
@@ -420,22 +490,36 @@ static void *thread(void *param) {
 		logprintf(LOG_ERR, "could not store old dimlevel of \"%s\"", pth->device->id);
 	}
 
-	if((jfrom = json_find_member(pth->param, "FROM")) != NULL) {
+	if((jfrom = json_find_member(json, "FROM")) != NULL) {
 		if((jevalues = json_find_member(jfrom, "value")) != NULL) {
 			jsdimlevel = json_find_element(jevalues, 0);
-			if(jsdimlevel != NULL && jsdimlevel->tag == JSON_NUMBER) {
-				old_dimlevel = (int)jsdimlevel->number_;
+			if(jsdimlevel != NULL) {
+				if(jsdimlevel->tag == JSON_NUMBER) {
+					old_dimlevel = (int)jsdimlevel->number_;
+				} else if(jsdimlevel->tag == JSON_STRING) {
+					if(event_lookup_variable(jsdimlevel->string_, obj, JSON_NUMBER, &v, 0, ACTION) != -1) {
+						old_dimlevel = (int)v.number_;
+					}
+				}
 			}
 		}
 	}
 
-	if((jto = json_find_member(pth->param, "TO")) != NULL) {
+	if((jto = json_find_member(json, "TO")) != NULL) {
 		if((javalues = json_find_member(jto, "value")) != NULL) {
 			jedimlevel = json_find_element(javalues, 0);
-			if(jedimlevel != NULL && jedimlevel->tag == JSON_NUMBER) {
-				dimlevel = (int)jedimlevel->number_;
-				new_dimlevel = (int)jedimlevel->number_;
-				strcpy(state, "on");
+			if(jedimlevel != NULL) {
+				if(jedimlevel->tag == JSON_NUMBER) {
+					new_dimlevel = (int)jedimlevel->number_;
+					dimlevel = (int)jedimlevel->number_;
+					strcpy(state,  "on");
+				} else if(jedimlevel->tag == JSON_STRING) {
+					if(event_lookup_variable(jedimlevel->string_, obj, JSON_NUMBER, &v, 0, ACTION) != -1) {
+						new_dimlevel = (int)v.number_;
+						dimlevel = (int)v.number_;
+						strcpy(state,  "on");
+					}
+				}
 			}
 		}
 	}
@@ -581,21 +665,21 @@ static void *thread(void *param) {
 	return (void *)NULL;
 }
 
-static int run(struct JsonNode *arguments) {
+static int run(struct rules_t *obj) {
 	struct JsonNode *jdevice = NULL;
 	struct JsonNode *jto = NULL;
 	struct JsonNode *jbvalues = NULL;
 	struct JsonNode *jbchild = NULL;
 
-	if((jdevice = json_find_member(arguments, "DEVICE")) != NULL &&
-		 (jto = json_find_member(arguments, "TO")) != NULL) {
+	if((jdevice = json_find_member(obj->arguments, "DEVICE")) != NULL &&
+		 (jto = json_find_member(obj->arguments, "TO")) != NULL) {
 		if((jbvalues = json_find_member(jdevice, "value")) != NULL) {
 			jbchild = json_first_child(jbvalues);
 			while(jbchild) {
 				if(jbchild->tag == JSON_STRING) {
 					struct devices_t *dev = NULL;
 					if(devices_get(jbchild->string_, &dev) == 0) {
-						event_action_thread_start(dev, action_dim->name, thread, arguments);
+						event_action_thread_start(dev, action_dim->name, thread, obj);
 					}
 				}
 				jbchild = jbchild->next;
@@ -612,11 +696,11 @@ void actionDimInit(void) {
 	event_action_register(&action_dim, "dim");
 
 	options_add(&action_dim->options, 'a', "DEVICE", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_STRING, NULL, NULL);
-	options_add(&action_dim->options, 'b', "TO", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, NULL);
-	options_add(&action_dim->options, 'c', "FROM", OPTION_OPT_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, NULL);
-	options_add(&action_dim->options, 'd', "FOR", OPTION_OPT_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, NULL);
-	options_add(&action_dim->options, 'e', "AFTER", OPTION_OPT_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, NULL);
-	options_add(&action_dim->options, 'f', "IN", OPTION_OPT_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, NULL);
+	options_add(&action_dim->options, 'b', "TO", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_STRING | JSON_NUMBER, NULL, NULL);
+	options_add(&action_dim->options, 'c', "FROM", OPTION_OPT_VALUE, DEVICES_VALUE, JSON_STRING | JSON_NUMBER, NULL, NULL);
+	options_add(&action_dim->options, 'd', "FOR", OPTION_OPT_VALUE, DEVICES_VALUE, JSON_STRING | JSON_NUMBER, NULL, NULL);
+	options_add(&action_dim->options, 'e', "AFTER", OPTION_OPT_VALUE, DEVICES_VALUE, JSON_STRING | JSON_NUMBER, NULL, NULL);
+	options_add(&action_dim->options, 'f', "IN", OPTION_OPT_VALUE, DEVICES_VALUE, JSON_STRING | JSON_NUMBER, NULL, NULL);
 
 	action_dim->run = &run;
 	action_dim->checkArguments = &checkArguments;

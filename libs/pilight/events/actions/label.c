@@ -23,6 +23,7 @@
 #include <errno.h>
 
 #include "../action.h"
+#include "../events.h"
 #include "../../core/options.h"
 #include "../../config/devices.h"
 #include "../../core/log.h"
@@ -30,7 +31,7 @@
 #include "../../core/pilight.h"
 #include "label.h"
 
-static int checkArguments(struct JsonNode *arguments) {
+static int checkArguments(struct rules_t *obj) {
 	struct JsonNode *jdevice = NULL;
 	struct JsonNode *jto = NULL;
 	struct JsonNode *jfor = NULL;
@@ -46,14 +47,15 @@ static int checkArguments(struct JsonNode *arguments) {
 	struct JsonNode *jcchild = NULL;
 	struct JsonNode *jdchild = NULL;
 	struct JsonNode *jechild = NULL;
+	union varcont_t v;
 	double nr1 = 0.0, nr2 = 0.0, nr3 = 0.0, nr4 = 0.0, nr5 = 0.0;
 	int nrvalues = 0;
 
-	jdevice = json_find_member(arguments, "DEVICE");
-	jto = json_find_member(arguments, "TO");
-	jfor = json_find_member(arguments, "FOR");
-	jafter = json_find_member(arguments, "AFTER");
-	jcolor = json_find_member(arguments, "COLOR");
+	jdevice = json_find_member(obj->arguments, "DEVICE");
+	jto = json_find_member(obj->arguments, "TO");
+	jfor = json_find_member(obj->arguments, "FOR");
+	jafter = json_find_member(obj->arguments, "AFTER");
+	jcolor = json_find_member(obj->arguments, "COLOR");
 
 	if(jdevice == NULL) {
 		logprintf(LOG_ERR, "label action is missing a \"DEVICE\"");
@@ -108,6 +110,11 @@ static int checkArguments(struct JsonNode *arguments) {
 		jachild = json_first_child(javalues);
 		while(jachild) {
 			nrvalues++;
+			if(jachild->tag == JSON_STRING) {
+				if(event_lookup_variable(jachild->string_, obj, JSON_STRING | JSON_NUMBER, &v, 1, ACTION) == -1) {
+					return -1;
+				}
+			}
 			jachild = jachild->next;
 		}
 	}
@@ -122,6 +129,11 @@ static int checkArguments(struct JsonNode *arguments) {
 			jcchild = json_first_child(jcvalues);
 			while(jcchild) {
 				nrvalues++;
+				if(jcchild->tag == JSON_STRING) {
+					if(event_lookup_variable(jcchild->string_, obj, JSON_NUMBER, &v, 1, ACTION) == -1) {
+						return -1;
+					}
+				}
 				jcchild = jcchild->next;
 			}
 		}
@@ -137,6 +149,11 @@ static int checkArguments(struct JsonNode *arguments) {
 			jdchild = json_first_child(jdvalues);
 			while(jdchild) {
 				nrvalues++;
+				if(jdchild->tag == JSON_STRING) {
+					if(event_lookup_variable(jdchild->string_, obj, JSON_NUMBER, &v, 1, ACTION) == -1) {
+						return -1;
+					}
+				}
 				jdchild = jdchild->next;
 			}
 		}
@@ -195,6 +212,8 @@ static int checkArguments(struct JsonNode *arguments) {
 
 static void *thread(void *param) {
 	struct event_action_thread_t *pth = (struct event_action_thread_t *)param;
+	struct rules_t *obj = pth->obj;
+	struct JsonNode *json = obj->arguments;
 	struct JsonNode *jto = NULL;
 	struct JsonNode *jafter = NULL;
 	struct JsonNode *jfor = NULL;
@@ -206,13 +225,14 @@ static void *thread(void *param) {
 	struct JsonNode *jlabel = NULL;
 	struct JsonNode *jaseconds = NULL;
 	struct JsonNode *jvalues = NULL;
+	union varcont_t v;	
 	char *new_label = NULL, *old_label = NULL, *label = NULL;
 	char *new_color = NULL, *old_color = NULL, *color = NULL;
-	int seconds_after = 0, seconds_for = 0, timer = 0;
+	int seconds_after = 0, seconds_for = 0, timer = 0, free_label = 0;
 
 	event_action_started(pth);
 
-	if((jcolor = json_find_member(pth->param, "COLOR")) != NULL) {	
+	if((jcolor = json_find_member(json, "COLOR")) != NULL) {	
 		if((jevalues = json_find_member(jcolor, "value")) != NULL) {
 			jcolor = json_find_element(jevalues, 0);
 			if(jcolor != NULL && jcolor->tag == JSON_STRING) {
@@ -223,20 +243,30 @@ static void *thread(void *param) {
 		}
 	}
 
-	if((jfor = json_find_member(pth->param, "FOR")) != NULL) {
+	if((jfor = json_find_member(json, "FOR")) != NULL) {
 		if((jcvalues = json_find_member(jfor, "value")) != NULL) {
 			jaseconds = json_find_element(jcvalues, 0);
-			if(jaseconds != NULL && jaseconds->tag == JSON_NUMBER) {
-				seconds_for = (int)jaseconds->number_;
+			if(jaseconds != NULL) {
+				if(jaseconds->tag == JSON_NUMBER) {
+					seconds_for = (int)jaseconds->number_;
+				} else if(jaseconds->tag == JSON_STRING) {
+					if(event_lookup_variable(jaseconds->string_, obj, JSON_NUMBER, &v, 0, ACTION) != -1) {
+						seconds_for = (int)v.number_;
+					}
+				}
 			}
 		}
 	}
 
-	if((jafter = json_find_member(pth->param, "AFTER")) != NULL) {
+	if((jafter = json_find_member(json, "AFTER")) != NULL) {
 		if((jdvalues = json_find_member(jafter, "value")) != NULL) {
 			jaseconds = json_find_element(jdvalues, 0);
-			if(jaseconds != NULL && jaseconds->tag == JSON_NUMBER) {
+			if(jaseconds->tag == JSON_NUMBER) {
 				seconds_after = (int)jaseconds->number_;
+			} else if(jaseconds->tag == JSON_STRING) {
+				if(event_lookup_variable(jaseconds->string_, obj, JSON_NUMBER, &v, 0, ACTION) != -1) {
+					seconds_after = (int)v.number_;
+				}
 			}
 		}
 	}
@@ -274,16 +304,29 @@ static void *thread(void *param) {
 	if(match2 == 0) {
 		logprintf(LOG_ERR, "could not store old color of \"%s\"", pth->device->id);
 	}
-
 	timer = 0;
 	while(pth->loop == 1) {
 		if(timer == seconds_after) {
-			if((jto = json_find_member(pth->param, "TO")) != NULL) {
+			if((jto = json_find_member(json, "TO")) != NULL) {
 				if((javalues = json_find_member(jto, "value")) != NULL) {
 					jlabel = json_find_element(javalues, 0);
 					if(jlabel != NULL && jlabel->tag == JSON_STRING) {
-
 						label = jlabel->string_;
+						if(event_lookup_variable(label, obj, JSON_STRING, &v, 0, ACTION) != -1) {
+							if(v.string_ != NULL) {
+								label = v.string_;
+							}
+						}
+						if(event_lookup_variable(label, obj, JSON_NUMBER, &v, 0, ACTION) != -1) {
+							if((label = MALLOC(255)) == NULL) {
+								logprintf(LOG_ERR, "out of memory");
+								exit(EXIT_FAILURE);								
+							}
+							memset(label, '\0', 255);
+							free_label = 1;
+							int l = snprintf(label, 255, "%d", (int)v.number_);
+							label[l] = '\0';
+						}
 						new_label = MALLOC(strlen(label)+1);
 						strcpy(new_label, label);
 						/*
@@ -337,6 +380,10 @@ static void *thread(void *param) {
 		}
 	}
 
+	if(free_label == 1) {
+		FREE(label);
+	}
+
 	if(old_label != NULL) {
 		FREE(old_label);
 	}
@@ -358,21 +405,21 @@ static void *thread(void *param) {
 	return (void *)NULL;
 }
 
-static int run(struct JsonNode *arguments) {
+static int run(struct rules_t *obj) {
 	struct JsonNode *jdevice = NULL;
 	struct JsonNode *jto = NULL;
 	struct JsonNode *jbvalues = NULL;
 	struct JsonNode *jbchild = NULL;
 
-	if((jdevice = json_find_member(arguments, "DEVICE")) != NULL &&
-		 (jto = json_find_member(arguments, "TO")) != NULL) {
+	if((jdevice = json_find_member(obj->arguments, "DEVICE")) != NULL &&
+		 (jto = json_find_member(obj->arguments, "TO")) != NULL) {
 		if((jbvalues = json_find_member(jdevice, "value")) != NULL) {
 			jbchild = json_first_child(jbvalues);
 			while(jbchild) {
 				if(jbchild->tag == JSON_STRING) {
 					struct devices_t *dev = NULL;
 					if(devices_get(jbchild->string_, &dev) == 0) {
-						event_action_thread_start(dev, action_label->name, thread, arguments);
+						event_action_thread_start(dev, action_label->name, thread, obj);
 					}
 				}
 				jbchild = jbchild->next;
@@ -390,8 +437,8 @@ void actionLabelInit(void) {
 
 	options_add(&action_label->options, 'a', "DEVICE", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_STRING, NULL, NULL);
 	options_add(&action_label->options, 'b', "TO", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_STRING, NULL, NULL);
-	options_add(&action_label->options, 'c', "AFTER", OPTION_OPT_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, NULL);
-	options_add(&action_label->options, 'd', "FOR", OPTION_OPT_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, NULL);
+	options_add(&action_label->options, 'c', "AFTER", OPTION_OPT_VALUE, DEVICES_VALUE, JSON_STRING | JSON_NUMBER, NULL, NULL);
+	options_add(&action_label->options, 'd', "FOR", OPTION_OPT_VALUE, DEVICES_VALUE, JSON_STRING | JSON_NUMBER, NULL, NULL);
 	options_add(&action_label->options, 'e', "COLOR", OPTION_OPT_VALUE, DEVICES_VALUE, JSON_STRING, NULL, NULL);
 
 	action_label->run = &run;
