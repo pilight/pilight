@@ -30,7 +30,7 @@
 #include "../../core/gc.h"
 #include "generic_weather.h"
 
-static void genWeatherCreateMessage(int id, double temperature, double humidity, int battery) {
+static void createMessage(int id, double temperature, double humidity, int battery) {
 	generic_weather->message = json_mkobject();
 	json_append_member(generic_weather->message, "id", json_mknumber(id, 0));
 	if(temperature > -998.0) {
@@ -44,7 +44,7 @@ static void genWeatherCreateMessage(int id, double temperature, double humidity,
 	}
 }
 
-static int genWeatherCreateCode(JsonNode *code) {
+static int createCode(JsonNode *code) {
 	double itmp = 0;
 	int id = -999;
 	double temp = -999.0;
@@ -64,12 +64,12 @@ static int genWeatherCreateCode(JsonNode *code) {
 		logprintf(LOG_ERR, "generic_weather: insufficient number of arguments");
 		return EXIT_FAILURE;
 	} else {
-		genWeatherCreateMessage(id, temp, humi, batt);
+		createMessage(id, temp, humi, batt);
 	}
 	return EXIT_SUCCESS;
 }
 
-static void genWeatherPrintHelp(void) {
+static void printHelp(void) {
 	printf("\t -t --temperature=temperature\tset the temperature\n");
 	printf("\t -h --humidity=humidity\t\tset the humidity\n");
 	printf("\t -b --battery=battery\t\tset the battery level\n");
@@ -79,7 +79,7 @@ static void genWeatherPrintHelp(void) {
 #if !defined(MODULE) && !defined(_WIN32)
 __attribute__((weak))
 #endif
-void genWeatherInit(void) {
+void genericWeatherInit(void) {
 
 	protocol_register(&generic_weather);
 	protocol_set_id(generic_weather, "generic_weather");
@@ -98,19 +98,19 @@ void genWeatherInit(void) {
 	options_add(&generic_weather->options, 0, "show-temperature", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
 	options_add(&generic_weather->options, 0, "show-battery", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
 
-	generic_weather->printHelp=&genWeatherPrintHelp;
-	generic_weather->createCode=&genWeatherCreateCode;
+	generic_weather->printHelp=&printHelp;
+	generic_weather->createCode=&createCode;
 }
 
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "generic_weather";
-	module->version = "1.21";
-	module->reqversion = "5.0";
+	module->version = "1.22";
+	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }
 
 void init(void) {
-	genWeatherInit();
+	genericWeatherInit();
 }
 #endif

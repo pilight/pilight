@@ -30,7 +30,24 @@
 #include "../../core/gc.h"
 #include "arctech_screen_old.h"
 
-static void arctechSrOldCreateMessage(int id, int unit, int state) {
+#define PULSE_MULTIPLIER	5
+#define MIN_PULSE_LENGTH	320
+#define MAX_PULSE_LENGTH	350
+#define AVG_PULSE_LENGTH	335
+#define RAW_LENGTH				50
+
+static int validate(void) {
+	if(arctech_screen_old->rawlen == RAW_LENGTH) {			
+		if(arctech_screen_old->raw[arctech_screen_old->rawlen-1] >= (MIN_PULSE_LENGTH*PULSE_DIV) &&
+		   arctech_screen_old->raw[arctech_screen_old->rawlen-1] <= (MAX_PULSE_LENGTH*PULSE_DIV)) {
+			return 0;
+		}
+	}
+
+	return -1;
+}
+
+static void createMessage(int id, int unit, int state) {
 	arctech_screen_old->message = json_mkobject();
 	json_append_member(arctech_screen_old->message, "id", json_mknumber(id, 0));
 	json_append_member(arctech_screen_old->message, "unit", json_mknumber(unit, 0));
@@ -40,41 +57,51 @@ static void arctechSrOldCreateMessage(int id, int unit, int state) {
 		json_append_member(arctech_screen_old->message, "state", json_mkstring("down"));
 }
 
-static void arctechSrOldParseBinary(void) {
-	int unit = binToDec(arctech_screen_old->binary, 0, 3);
-	int state = arctech_screen_old->binary[11];
-	int id = binToDec(arctech_screen_old->binary, 4, 8);
-	arctechSrOldCreateMessage(id, unit, state);
+static void parseCode(void) {
+	int binary[RAW_LENGTH/4], x = 0, i = 0;
+
+	for(x=0;x<arctech_screen_old->rawlen;x+=4) {
+		if(arctech_screen_old->raw[x+2] > AVG_PULSE_LENGTH*(PULSE_MULTIPLIER/2)) {
+			binary[i++] = 1;
+		} else {
+			binary[i++] = 0;
+		}
+	}
+	
+	int unit = binToDec(binary, 0, 3);
+	int state = binary[11];
+	int id = binToDec(binary, 4, 8);
+	createMessage(id, unit, state);
 }
 
-static void arctechSrOldCreateLow(int s, int e) {
+static void createLow(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=4) {
-		arctech_screen_old->raw[i]=(arctech_screen_old->plslen->length);
-		arctech_screen_old->raw[i+1]=(arctech_screen_old->pulse*arctech_screen_old->plslen->length);
-		arctech_screen_old->raw[i+2]=(arctech_screen_old->pulse*arctech_screen_old->plslen->length);
-		arctech_screen_old->raw[i+3]=(arctech_screen_old->plslen->length);
+		arctech_screen_old->raw[i]=(AVG_PULSE_LENGTH);
+		arctech_screen_old->raw[i+1]=(PULSE_MULTIPLIER*AVG_PULSE_LENGTH);
+		arctech_screen_old->raw[i+2]=(PULSE_MULTIPLIER*AVG_PULSE_LENGTH);
+		arctech_screen_old->raw[i+3]=(AVG_PULSE_LENGTH);
 	}
 }
 
-static void arctechSrOldCreateHigh(int s, int e) {
+static void createHigh(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=4) {
-		arctech_screen_old->raw[i]=(arctech_screen_old->plslen->length);
-		arctech_screen_old->raw[i+1]=(arctech_screen_old->pulse*arctech_screen_old->plslen->length);
-		arctech_screen_old->raw[i+2]=(arctech_screen_old->plslen->length);
-		arctech_screen_old->raw[i+3]=(arctech_screen_old->pulse*arctech_screen_old->plslen->length);
+		arctech_screen_old->raw[i]=(AVG_PULSE_LENGTH);
+		arctech_screen_old->raw[i+1]=(PULSE_MULTIPLIER*AVG_PULSE_LENGTH);
+		arctech_screen_old->raw[i+2]=(AVG_PULSE_LENGTH);
+		arctech_screen_old->raw[i+3]=(PULSE_MULTIPLIER*AVG_PULSE_LENGTH);
 	}
 }
 
-static void arctechSrOldClearCode(void) {
-	arctechSrOldCreateHigh(0,35);
-	arctechSrOldCreateLow(36,47);
+static void clearCode(void) {
+	createHigh(0,35);
+	createLow(36,47);
 }
 
-static void arctechSrOldCreateUnit(int unit) {
+static void createUnit(int unit) {
 	int binary[255];
 	int length = 0;
 	int i=0, x=0;
@@ -83,12 +110,12 @@ static void arctechSrOldCreateUnit(int unit) {
 	for(i=0;i<=length;i++) {
 		if(binary[i]==1) {
 			x=i*4;
-			arctechSrOldCreateLow(x, x+3);
+			createLow(x, x+3);
 		}
 	}
 }
 
-static void arctechSrOldCreateId(int id) {
+static void createId(int id) {
 	int binary[255];
 	int length = 0;
 	int i=0, x=0;
@@ -97,23 +124,23 @@ static void arctechSrOldCreateId(int id) {
 	for(i=0;i<=length;i++) {
 		if(binary[i]==1) {
 			x=i*4;
-			arctechSrOldCreateLow(16+x, 16+x+3);
+			createLow(16+x, 16+x+3);
 		}
 	}
 }
 
-static void arctechSrOldCreateState(int state) {
+static void createState(int state) {
 	if(state == 0) {
-		arctechSrOldCreateHigh(44,47);
+		createHigh(44,47);
 	}
 }
 
-static void arctechSrOldCreateFooter(void) {
-	arctech_screen_old->raw[48]=(arctech_screen_old->plslen->length);
-	arctech_screen_old->raw[49]=(PULSE_DIV*arctech_screen_old->plslen->length);
+static void createFooter(void) {
+	arctech_screen_old->raw[48]=(AVG_PULSE_LENGTH);
+	arctech_screen_old->raw[49]=(PULSE_DIV*AVG_PULSE_LENGTH);
 }
 
-static int arctechSrOldCreateCode(JsonNode *code) {
+static int createCode(struct JsonNode *code) {
 	int id = -1;
 	int unit = -1;
 	int state = -1;
@@ -138,17 +165,18 @@ static int arctechSrOldCreateCode(JsonNode *code) {
 		logprintf(LOG_ERR, "arctech_screen_old: invalid unit range");
 		return EXIT_FAILURE;
 	} else {
-		arctechSrOldCreateMessage(id, unit, state);
-		arctechSrOldClearCode();
-		arctechSrOldCreateUnit(unit);
-		arctechSrOldCreateId(id);
-		arctechSrOldCreateState(state);
-		arctechSrOldCreateFooter();
+		createMessage(id, unit, state);
+		clearCode();
+		createUnit(unit);
+		createId(id);
+		createState(state);
+		createFooter();
+		arctech_screen_old->rawlen = RAW_LENGTH;
 	}
 	return EXIT_SUCCESS;
 }
 
-static void arctechSrOldPrintHelp(void) {
+static void printHelp(void) {
 	printf("\t -t --up\t\t\tsend an up signal\n");
 	printf("\t -f --down\t\t\tsend an down signal\n");
 	printf("\t -u --unit=unit\t\t\tcontrol a device with this unit code\n");
@@ -158,18 +186,17 @@ static void arctechSrOldPrintHelp(void) {
 #if !defined(MODULE) && !defined(_WIN32)
 __attribute__((weak))
 #endif
-void arctechSrOldInit(void) {
+void arctechScreenOldInit(void) {
 
 	protocol_register(&arctech_screen_old);
 	protocol_set_id(arctech_screen_old, "arctech_screen_old");
 	protocol_device_add(arctech_screen_old, "kaku_screen_old", "Old KlikAanKlikUit Screens");
-	protocol_plslen_add(arctech_screen_old, 336);
 	arctech_screen_old->devtype = SCREEN;
 	arctech_screen_old->hwtype = RF433;
-	arctech_screen_old->pulse = 3;
-	arctech_screen_old->rawlen = 50;
-	arctech_screen_old->binlen = 12;
-	arctech_screen_old->lsb = 2;
+	arctech_screen_old->minrawlen = RAW_LENGTH;
+	arctech_screen_old->maxrawlen = RAW_LENGTH;
+	arctech_screen_old->maxgaplen = MAX_PULSE_LENGTH*PULSE_DIV;
+	arctech_screen_old->mingaplen = MIN_PULSE_LENGTH*PULSE_DIV;
 
 	options_add(&arctech_screen_old->options, 't', "up", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
 	options_add(&arctech_screen_old->options, 'f', "down", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
@@ -178,20 +205,21 @@ void arctechSrOldInit(void) {
 
 	options_add(&arctech_screen_old->options, 0, "readonly", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 
-	arctech_screen_old->parseBinary=&arctechSrOldParseBinary;
-	arctech_screen_old->createCode=&arctechSrOldCreateCode;
-	arctech_screen_old->printHelp=&arctechSrOldPrintHelp;
+	arctech_screen_old->parseCode=&parseCode;
+	arctech_screen_old->createCode=&createCode;
+	arctech_screen_old->printHelp=&printHelp;
+	arctech_screen_old->validate=&validate;
 }
 
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "arctech_screen_old";
-	module->version = "1.1";
-	module->reqversion = "5.0";
+	module->version = "2.0";
+	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }
 
 void init(void) {
-	arctechSrOldInit();
+	arctechScreenOldInit();
 }
 #endif

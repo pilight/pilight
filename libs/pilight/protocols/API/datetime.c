@@ -61,13 +61,13 @@
 #include "../../core/datetime.h"
 #include "datetime.h"
 
-static unsigned short datetime_loop = 1;
-static unsigned short datetime_threads = 0;
-static char *datetime_format = NULL;
+static unsigned short loop = 1;
+static unsigned short threads = 0;
+static char *format = NULL;
 
-static pthread_mutex_t datetimelock;
+static pthread_mutex_t lock;
 
-static void *datetimeParse(void *param) {
+static void *thread(void *param) {
 	char UTC[] = "UTC";
 	struct protocol_threads_t *thread = (struct protocol_threads_t *)param;
 	struct JsonNode *json = (struct JsonNode *)thread->param;
@@ -80,7 +80,7 @@ static void *datetimeParse(void *param) {
 	int target_offset = 0, counter = 0, dst = 0, x = 0;
 	double longitude = 0.0, latitude = 0.0;
 
-	datetime_threads++;
+	threads++;
 
 	if((jid = json_find_member(json, "id"))) {
 		jchild = json_first_child(jid);
@@ -100,10 +100,10 @@ static void *datetimeParse(void *param) {
 	}
 
 	if((tz = coord2tz(longitude, latitude)) == NULL) {
-		logprintf(LOG_INFO, "datetime #%d, could not determine timezone", datetime_threads);
+		logprintf(LOG_INFO, "datetime #%d, could not determine timezone", threads);
 		tz = UTC;
 	} else {
-		logprintf(LOG_INFO, "datetime #%d %.6f:%.6f seems to be in timezone: %s", datetime_threads, longitude, latitude, tz);
+		logprintf(LOG_INFO, "datetime #%d %.6f:%.6f seems to be in timezone: %s", threads, longitude, latitude, tz);
 	}
 
 	t = time(NULL);
@@ -116,8 +116,8 @@ static void *datetimeParse(void *param) {
 	/* Check how many hours we differ from UTC? */
 	target_offset = tzoffset(UTC, tz);
 
-	while(datetime_loop) {
-		pthread_mutex_lock(&datetimelock);
+	while(loop) {
+		pthread_mutex_lock(&lock);
 		t = time(NULL);
 		t -= getntpdiff();
 
@@ -188,37 +188,37 @@ static void *datetimeParse(void *param) {
 			datetime->message = NULL;
 			counter++;
 		}
-		pthread_mutex_unlock(&datetimelock);
+		pthread_mutex_unlock(&lock);
 		sleep(1);
 	}
-	pthread_mutex_unlock(&datetimelock);
+	pthread_mutex_unlock(&lock);
 
-	datetime_threads--;
+	threads--;
 	return (void *)NULL;
 }
 
-static struct threadqueue_t *datetimeInitDev(JsonNode *jdevice) {
-	datetime_loop = 1;
+static struct threadqueue_t *initDev(JsonNode *jdevice) {
+	loop = 1;
 	char *output = json_stringify(jdevice, NULL);
 	JsonNode *json = json_decode(output);
 	json_free(output);
 
 	struct protocol_threads_t *node = protocol_thread_init(datetime, json);
-	return threads_register("datetime", &datetimeParse, (void *)node, 0);
+	return threads_register("datetime", &thread, (void *)node, 0);
 }
 
-static void datetimeThreadGC(void) {
-	datetime_loop = 0;
+static void threadGC(void) {
+	loop = 0;
 
 	protocol_thread_stop(datetime);
-	while(datetime_threads > 0) {
+	while(threads > 0) {
 		usleep(10);
 	}
 	protocol_thread_free(datetime);
 }
 
-static void datetimeGC(void) {
-	FREE(datetime_format);
+static void gc(void) {
+	FREE(format);
 }
 
 #if !defined(MODULE) && !defined(_WIN32)
@@ -226,8 +226,8 @@ __attribute__((weak))
 #endif
 void datetimeInit(void) {
 
-	datetime_format = MALLOC(20);
-	strcpy(datetime_format, "HH:mm:ss YYYY-MM-DD");
+	format = MALLOC(20);
+	strcpy(format, "HH:mm:ss YYYY-MM-DD");
 
 	protocol_register(&datetime);
 	protocol_set_id(datetime, "datetime");
@@ -248,19 +248,19 @@ void datetimeInit(void) {
 	options_add(&datetime->options, 's', "second", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, NULL);
 
 	options_add(&datetime->options, 0, "show-datetime", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
-	options_add(&datetime->options, 0, "format", OPTION_HAS_VALUE, GUI_SETTING, JSON_STRING, (void *)datetime_format, NULL);
+	options_add(&datetime->options, 0, "format", OPTION_HAS_VALUE, GUI_SETTING, JSON_STRING, (void *)format, NULL);
 
-	datetime->initDev=&datetimeInitDev;
-	datetime->threadGC=&datetimeThreadGC;
-	datetime->gc=&datetimeGC;
+	datetime->initDev=&initDev;
+	datetime->threadGC=&threadGC;
+	datetime->gc=&gc;
 }
 
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "datetime";
-	module->version = "2.4";
+	module->version = "2.5";
 	module->reqversion = "6.0";
-	module->reqcommit = "81";
+	module->reqcommit = "84";
 }
 
 void init(void) {

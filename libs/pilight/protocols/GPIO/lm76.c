@@ -52,24 +52,24 @@
 #include "lm76.h"
 
 #if !defined(__FreeBSD__) && !defined(_WIN32)
-typedef struct lm76data_t {
+typedef struct settings_t {
 	char **id;
 	int nrid;
 	int *fd;
-} lm76data_t;
+} settings_t;
 
-static unsigned short lm76_loop = 1;
-static int lm76_threads = 0;
+static unsigned short loop = 1;
+static int threads = 0;
 
-static pthread_mutex_t lm76lock;
-static pthread_mutexattr_t lm76attr;
+static pthread_mutex_t lock;
+static pthread_mutexattr_t attr;
 
-static void *lm76Parse(void *param) {
+static void *thread(void *param) {
 	struct protocol_threads_t *node = (struct protocol_threads_t *)param;
 	struct JsonNode *json = (struct JsonNode *)node->param;
 	struct JsonNode *jid = NULL;
 	struct JsonNode *jchild = NULL;
-	struct lm76data_t *lm76data = MALLOC(sizeof(struct lm76data_t));
+	struct settings_t *lm76data = MALLOC(sizeof(struct settings_t));
 	int y = 0, interval = 10, nrloops = 0;
 	char *stmp = NULL;
 	double itmp = -1, temp_offset = 0;
@@ -83,7 +83,7 @@ static void *lm76Parse(void *param) {
 	lm76data->id = NULL;
 	lm76data->fd = 0;
 
-	lm76_threads++;
+	threads++;
 
 	if((jid = json_find_member(json, "id"))) {
 		jchild = json_first_child(jid);
@@ -119,9 +119,9 @@ static void *lm76Parse(void *param) {
 		lm76data->fd[y] = wiringXI2CSetup((int)strtol(lm76data->id[y], NULL, 16));
 	}
 
-	while(lm76_loop) {
+	while(loop) {
 		if(protocol_thread_wait(node, interval, &nrloops) == ETIMEDOUT) {
-			pthread_mutex_lock(&lm76lock);
+			pthread_mutex_lock(&lock);
 			for(y=0;y<lm76data->nrid;y++) {
 				if(lm76data->fd[y] > 0) {
 					int raw = wiringXI2CReadReg16(lm76data->fd[y], 0x00);
@@ -148,10 +148,10 @@ static void *lm76Parse(void *param) {
 					protocol_thread_wait(node, 1, &nrloops);
 				}
 			}
-			pthread_mutex_unlock(&lm76lock);
+			pthread_mutex_unlock(&lock);
 		}
 	}
-	pthread_mutex_unlock(&lm76lock);
+	pthread_mutex_unlock(&lock);
 
 	if(lm76data->id) {
 		for(y=0;y<lm76data->nrid;y++) {
@@ -168,13 +168,13 @@ static void *lm76Parse(void *param) {
 		FREE(lm76data->fd);
 	}
 	FREE(lm76data);
-	lm76_threads--;
+	threads--;
 
 	return (void *)NULL;
 }
 
-struct threadqueue_t *lm76InitDev(JsonNode *jdevice) {
-	lm76_loop = 1;
+static struct threadqueue_t *initDev(JsonNode *jdevice) {
+	loop = 1;
 	wiringXSetup();
 
 	char *output = json_stringify(jdevice, NULL);
@@ -182,13 +182,13 @@ struct threadqueue_t *lm76InitDev(JsonNode *jdevice) {
 	json_free(output);
 
 	struct protocol_threads_t *node = protocol_thread_init(lm76, json);
-	return threads_register("lm76", &lm76Parse, (void *)node, 0);
+	return threads_register("lm76", &thread, (void *)node, 0);
 }
 
-static void lm76ThreadGC(void) {
-	lm76_loop = 0;
+static void threadGC(void) {
+	loop = 0;
 	protocol_thread_stop(lm76);
-	while(lm76_threads > 0) {
+	while(threads > 0) {
 		usleep(10);
 	}
 	protocol_thread_free(lm76);
@@ -200,9 +200,9 @@ __attribute__((weak))
 #endif
 void lm76Init(void) {
 #if !defined(__FreeBSD__) && !defined(_WIN32)
-	pthread_mutexattr_init(&lm76attr);
-	pthread_mutexattr_settype(&lm76attr, PTHREAD_MUTEX_RECURSIVE);
-	pthread_mutex_init(&lm76lock, &lm76attr);
+	pthread_mutexattr_init(&attr);
+	pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);
+	pthread_mutex_init(&lock, &attr);
 #endif
 
 	protocol_register(&lm76);
@@ -219,17 +219,17 @@ void lm76Init(void) {
 	options_add(&lm76->options, 0, "show-temperature", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
 
 #if !defined(__FreeBSD__) && !defined(_WIN32)
-	lm76->initDev=&lm76InitDev;
-	lm76->threadGC=&lm76ThreadGC;
+	lm76->initDev=&initDev;
+	lm76->threadGC=&threadGC;
 #endif
 }
 
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "lm76";
-	module->version = "1.4";
+	module->version = "2.0";
 	module->reqversion = "6.0";
-	module->reqcommit = "58";
+	module->reqcommit = "84";
 }
 
 void init(void) {

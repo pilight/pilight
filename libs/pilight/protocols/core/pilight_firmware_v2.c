@@ -29,27 +29,49 @@
 #include "../../core/gc.h"
 #include "pilight_firmware_v2.h"
 
-static void pilightFirmwareV2CreateMessage(int version, int high, int low) {
+#define PULSE_MULTIPLIER	4
+#define MIN_PULSE_LENGTH	175
+#define MAX_PULSE_LENGTH	225
+#define AVG_PULSE_LENGTH	183
+#define RAW_LENGTH				196
+
+static int validate(void) {
+	if(pilight_firmware_v2->rawlen == RAW_LENGTH) {			
+		if(pilight_firmware_v2->raw[pilight_firmware_v2->rawlen-1] >= (MIN_PULSE_LENGTH*PULSE_DIV) &&
+		   pilight_firmware_v2->raw[pilight_firmware_v2->rawlen-1] <= (MAX_PULSE_LENGTH*PULSE_DIV) &&
+			 pilight_firmware_v2->raw[1] > AVG_PULSE_LENGTH*PULSE_MULTIPLIER) {
+			return 0;
+		}
+	}
+
+	return -1;
+}
+
+static void createMessage(int version, int high, int low) {
 	pilight_firmware_v2->message = json_mkobject();
 	json_append_member(pilight_firmware_v2->message, "version", json_mknumber(version, 2));
 	json_append_member(pilight_firmware_v2->message, "lpf", json_mknumber(high*10, 0));
 	json_append_member(pilight_firmware_v2->message, "hpf", json_mknumber(low*10, 0));
 }
 
-static void pilightFirmwareV2ParseRaw(void) {
-	int i = 0;
-	for(i=0;i<pilight_firmware_v2->rawlen;i++) {
-		if(pilight_firmware_v2->raw[i] < 100) {
-			pilight_firmware_v2->raw[i]*=10;
-		}
-	}
-}
+static void parseCode(void) {
+	int i = 0, x = 0, binary[RAW_LENGTH/4];
 
-static void pilightFirmwareV2ParseBinary(void) {
-	int version = binToDec(pilight_firmware_v2->binary, 0, 15);
-	int high = binToDec(pilight_firmware_v2->binary, 16, 31);
-	int low = binToDec(pilight_firmware_v2->binary, 32, 47);
-	pilightFirmwareV2CreateMessage(version, high, low);
+	for(i=0;i<pilight_firmware_v2->rawlen;i+=4) {
+		if(pilight_firmware_v2->raw[i+3] < 100) {
+			pilight_firmware_v2->raw[i+3]*=10;
+		}		
+		if(pilight_firmware_v2->raw[i+3] > AVG_PULSE_LENGTH*(PULSE_MULTIPLIER/2)) {
+			binary[x++] = 1;
+		} else {
+			binary[x++] = 0;
+		}		
+	}
+	
+	int version = binToDec(binary, 0, 15);
+	int high = binToDec(binary, 16, 31);
+	int low = binToDec(binary, 32, 47);
+	createMessage(version, high, low);
 }
 
 #if !defined(MODULE) && !defined(_WIN32)
@@ -60,28 +82,26 @@ void pilightFirmwareV2Init(void) {
   protocol_register(&pilight_firmware_v2);
   protocol_set_id(pilight_firmware_v2, "pilight_firmware");
   protocol_device_add(pilight_firmware_v2, "pilight_firmware", "pilight filter firmware");
-  protocol_plslen_add(pilight_firmware_v2, 230);
-  protocol_plslen_add(pilight_firmware_v2, 220);
-
   pilight_firmware_v2->devtype = FIRMWARE;
   pilight_firmware_v2->hwtype = HWINTERNAL;
-  pilight_firmware_v2->pulse = 3;
-  pilight_firmware_v2->rawlen = 196;
-  pilight_firmware_v2->lsb = 3;
+	pilight_firmware_v2->minrawlen = RAW_LENGTH;
+	pilight_firmware_v2->maxrawlen = RAW_LENGTH;
+	pilight_firmware_v2->maxgaplen = MAX_PULSE_LENGTH*PULSE_DIV;
+	pilight_firmware_v2->mingaplen = MIN_PULSE_LENGTH*PULSE_DIV;
 
   options_add(&pilight_firmware_v2->options, 'v', "version", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^[0-9]+$");
   options_add(&pilight_firmware_v2->options, 'l', "lpf", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^[0-9]+$");
   options_add(&pilight_firmware_v2->options, 'h', "hpf", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^[0-9]+$");
 
-  pilight_firmware_v2->parseBinary=&pilightFirmwareV2ParseBinary;
-  pilight_firmware_v2->parseRaw=&pilightFirmwareV2ParseRaw;
+  pilight_firmware_v2->parseCode=&parseCode;
+  pilight_firmware_v2->validate=&validate;
 }
 
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "pilight_firmware";
-	module->version = "1.1";
-	module->reqversion = "5.0";
+	module->version = "2.0";
+	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }
 

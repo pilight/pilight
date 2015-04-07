@@ -52,24 +52,24 @@
 #include "lm75.h"
 
 #if !defined(__FreeBSD__) && !defined(_WIN32)
-typedef struct lm75data_t {
+typedef struct settings_t {
 	char **id;
 	int nrid;
 	int *fd;
-} lm75data_t;
+} settings_t;
 
-static unsigned short lm75_loop = 1;
-static int lm75_threads = 0;
+static unsigned short loop = 1;
+static int threads = 0;
 
-static pthread_mutex_t lm75lock;
-static pthread_mutexattr_t lm75attr;
+static pthread_mutex_t lock;
+static pthread_mutexattr_t attr;
 
-static void *lm75Parse(void *param) {
+static void *thread(void *param) {
 	struct protocol_threads_t *node = (struct protocol_threads_t *)param;
 	struct JsonNode *json = (struct JsonNode *)node->param;
 	struct JsonNode *jid = NULL;
 	struct JsonNode *jchild = NULL;
-	struct lm75data_t *lm75data = MALLOC(sizeof(struct lm75data_t));
+	struct settings_t *lm75data = MALLOC(sizeof(struct settings_t));
 	int y = 0, interval = 10, nrloops = 0;
 	char *stmp = NULL;
 	double itmp = -1, temp_offset = 0.0;
@@ -83,7 +83,7 @@ static void *lm75Parse(void *param) {
 	lm75data->id = NULL;
 	lm75data->fd = 0;
 
-	lm75_threads++;
+	threads++;
 
 	if((jid = json_find_member(json, "id"))) {
 		jchild = json_first_child(jid);
@@ -119,9 +119,9 @@ static void *lm75Parse(void *param) {
 		lm75data->fd[y] = wiringXI2CSetup((int)strtol(lm75data->id[y], NULL, 16));
 	}
 
-	while(lm75_loop) {
+	while(loop) {
 		if(protocol_thread_wait(node, interval, &nrloops) == ETIMEDOUT) {
-			pthread_mutex_lock(&lm75lock);
+			pthread_mutex_lock(&lock);
 			for(y=0;y<lm75data->nrid;y++) {
 				if(lm75data->fd[y] > 0) {
 					int raw = wiringXI2CReadReg16(lm75data->fd[y], 0x00);
@@ -148,10 +148,10 @@ static void *lm75Parse(void *param) {
 					protocol_thread_wait(node, 1, &nrloops);
 				}
 			}
-			pthread_mutex_unlock(&lm75lock);
+			pthread_mutex_unlock(&lock);
 		}
 	}
-	pthread_mutex_unlock(&lm75lock);
+	pthread_mutex_unlock(&lock);
 
 	if(lm75data->id) {
 		for(y=0;y<lm75data->nrid;y++) {
@@ -168,26 +168,26 @@ static void *lm75Parse(void *param) {
 		FREE(lm75data->fd);
 	}
 	FREE(lm75data);
-	lm75_threads--;
+	threads--;
 
 	return (void *)NULL;
 }
 
-static struct threadqueue_t *lm75InitDev(JsonNode *jdevice) {
-	lm75_loop = 1;
+static struct threadqueue_t *initDev(JsonNode *jdevice) {
+	loop = 1;
 	wiringXSetup();
 	char *output = json_stringify(jdevice, NULL);
 	JsonNode *json = json_decode(output);
 	json_free(output);
 
 	struct protocol_threads_t *node = protocol_thread_init(lm75, json);
-	return threads_register("lm75", &lm75Parse, (void *)node, 0);
+	return threads_register("lm75", &thread, (void *)node, 0);
 }
 
-static void lm75ThreadGC(void) {
-	lm75_loop = 0;
+static void threadGC(void) {
+	loop = 0;
 	protocol_thread_stop(lm75);
-	while(lm75_threads > 0) {
+	while(threads > 0) {
 		usleep(10);
 	}
 	protocol_thread_free(lm75);
@@ -199,9 +199,9 @@ __attribute__((weak))
 #endif
 void lm75Init(void) {
 #if !defined(__FreeBSD__) && !defined(_WIN32)
-	pthread_mutexattr_init(&lm75attr);
-	pthread_mutexattr_settype(&lm75attr, PTHREAD_MUTEX_RECURSIVE);
-	pthread_mutex_init(&lm75lock, &lm75attr);
+	pthread_mutexattr_init(&attr);
+	pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);
+	pthread_mutex_init(&lock, &attr);
 #endif
 
 	protocol_register(&lm75);
@@ -218,17 +218,17 @@ void lm75Init(void) {
 	options_add(&lm75->options, 0, "show-temperature", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
 
 #if !defined(__FreeBSD__) && !defined(_WIN32)
-	lm75->initDev=&lm75InitDev;
-	lm75->threadGC=&lm75ThreadGC;
+	lm75->initDev=&initDev;
+	lm75->threadGC=&threadGC;
 #endif
 }
 
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "lm75";
-	module->version = "1.4";
+	module->version = "2.0";
 	module->reqversion = "6.0";
-	module->reqcommit = "58";
+	module->reqcommit = "84";
 }
 
 void init(void) {

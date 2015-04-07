@@ -101,6 +101,7 @@ int main(int argc, char **argv) {
 	struct ssdp_list_t *ssdp_list = NULL;
 
 	int sockfd = 0;
+	int raw[MAXPULSESTREAMLENGTH-1];
 	char *args = NULL, *recvBuff = NULL;
 
 	/* Hold the name of the protocol */
@@ -336,6 +337,8 @@ int main(int argc, char **argv) {
 		tmp = tmp->next;
 	}
 
+	memset(raw, 0, MAXPULSESTREAMLENGTH-1);
+	protocol->raw = raw;
 	if(protocol->createCode(code) == 0) {
 		if(protocol->message) {
 			json_delete(protocol->message);

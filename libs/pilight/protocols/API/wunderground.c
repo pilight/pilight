@@ -51,30 +51,30 @@
 
 #define INTERVAL	900
 
-typedef struct wunderground_data_t {
+typedef struct settings_t {
 	char *api;
 	char *country;
 	char *location;
 	time_t update;
 	protocol_threads_t *thread;
-	struct wunderground_data_t *next;
-} wunderground_data_t;
+	struct settings_t *next;
+} settings_t;
 
-static pthread_mutex_t wundergroundlock;
-static pthread_mutexattr_t wundergroundattr;
+static pthread_mutex_t lock;
+static pthread_mutexattr_t attr;
 
-static struct wunderground_data_t *wunderground_data;
-static unsigned short wunderground_loop = 1;
-static unsigned short wunderground_threads = 0;
+static struct settings_t *settings;
+static unsigned short loop = 1;
+static unsigned short threads = 0;
 
-static void *wundergroundParse(void *param) {
+static void *thread(void *param) {
 	struct protocol_threads_t *thread = (struct protocol_threads_t *)param;
 	struct JsonNode *json = (struct JsonNode *)thread->param;
 	struct JsonNode *jid = NULL;
 	struct JsonNode *jchild = NULL;
 	struct JsonNode *jchild1 = NULL;
 	struct JsonNode *node = NULL;
-	struct wunderground_data_t *wnode = MALLOC(sizeof(struct wunderground_data_t));
+	struct settings_t *wnode = MALLOC(sizeof(struct settings_t));
 
 	int interval = 86400, ointerval = 86400, event = 0;
 	int firstrun = 1, nrloops = 0, timeout = 0;
@@ -104,7 +104,7 @@ static void *wundergroundParse(void *param) {
 
 	time_t timenow = 0;
 
-	wunderground_threads++;
+	threads++;
 
 	int has_country = 0, has_api = 0, has_location = 0;
 	if((jid = json_find_member(json, "id"))) {
@@ -145,8 +145,8 @@ static void *wundergroundParse(void *param) {
 			}
 			if(has_country == 1 && has_api == 1 && has_location == 1) {
 				wnode->thread = thread;
-				wnode->next = wunderground_data;
-				wunderground_data = wnode;
+				wnode->next = settings;
+				settings = wnode;
 			} else {
 				if(has_country == 1) {
 					FREE(wnode->country);
@@ -172,10 +172,10 @@ static void *wundergroundParse(void *param) {
 		interval = (int)round(itmp);
 	ointerval = interval;
 
-	while(wunderground_loop) {
+	while(loop) {
 		event = protocol_thread_wait(thread, INTERVAL, &nrloops);
-		pthread_mutex_lock(&wundergroundlock);
-		if(wunderground_loop == 0) {
+		pthread_mutex_lock(&lock);
+		if(loop == 0) {
 			break;
 		}
 		timeout += INTERVAL;
@@ -348,25 +348,25 @@ static void *wundergroundParse(void *param) {
 			wunderground->message = NULL;
 		}
 		firstrun = 0;
-		pthread_mutex_unlock(&wundergroundlock);
+		pthread_mutex_unlock(&lock);
 	}
-	pthread_mutex_unlock(&wundergroundlock);
+	pthread_mutex_unlock(&lock);
 
-	wunderground_threads--;
+	threads--;
 	return (void *)NULL;
 }
 
-static struct threadqueue_t *wundergroundInitDev(JsonNode *jdevice) {
-	wunderground_loop = 1;
+static struct threadqueue_t *initDev(JsonNode *jdevice) {
+	loop = 1;
 	char *output = json_stringify(jdevice, NULL);
 	JsonNode *json = json_decode(output);
 	json_free(output);
 
 	struct protocol_threads_t *node = protocol_thread_init(wunderground, json);
-	return threads_register("wunderground", &wundergroundParse, (void *)node, 0);
+	return threads_register("wunderground", &thread, (void *)node, 0);
 }
 
-static int wundergroundCheckValues(JsonNode *code) {
+static int checkValues(JsonNode *code) {
 	double interval = INTERVAL;
 
 	json_find_number(code, "poll-interval", &interval);
@@ -379,8 +379,8 @@ static int wundergroundCheckValues(JsonNode *code) {
 	return 0;
 }
 
-static int wundergroundCreateCode(JsonNode *code) {
-	struct wunderground_data_t *wtmp = wunderground_data;
+static int createCode(JsonNode *code) {
+	struct settings_t *wtmp = settings;
 	char *country = NULL;
 	char *location = NULL;
 	char *api = NULL;
@@ -416,29 +416,29 @@ static int wundergroundCreateCode(JsonNode *code) {
 	return EXIT_SUCCESS;
 }
 
-static void wundergroundThreadGC(void) {
-	wunderground_loop = 0;
+static void threadGC(void) {
+	loop = 0;
 	protocol_thread_stop(wunderground);
-	while(wunderground_threads > 0) {
+	while(threads > 0) {
 		usleep(10);
 	}
 	protocol_thread_free(wunderground);
 
-	struct wunderground_data_t *wtmp = NULL;
-	while(wunderground_data) {
-		wtmp = wunderground_data;
-		FREE(wunderground_data->api);
-		FREE(wunderground_data->country);
-		FREE(wunderground_data->location);
-		wunderground_data = wunderground_data->next;
+	struct settings_t *wtmp = NULL;
+	while(settings) {
+		wtmp = settings;
+		FREE(settings->api);
+		FREE(settings->country);
+		FREE(settings->location);
+		settings = settings->next;
 		FREE(wtmp);
 	}
-	if(wunderground_data != NULL) {
-		FREE(wunderground_data);
+	if(settings != NULL) {
+		FREE(settings);
 	}
 }
 
-static void wundergroundPrintHelp(void) {
+static void printHelp(void) {
 	printf("\t -c --country=country\t\tupdate an entry with this country\n");
 	printf("\t -l --location=location\t\tupdate an entry with this location\n");
 	printf("\t -a --api=api\t\t\tupdate an entry with this api code\n");
@@ -449,9 +449,9 @@ static void wundergroundPrintHelp(void) {
 __attribute__((weak))
 #endif
 void wundergroundInit(void) {
-	pthread_mutexattr_init(&wundergroundattr);
-	pthread_mutexattr_settype(&wundergroundattr, PTHREAD_MUTEX_RECURSIVE);
-	pthread_mutex_init(&wundergroundlock, &wundergroundattr);
+	pthread_mutexattr_init(&attr);
+	pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);
+	pthread_mutex_init(&lock, &attr);
 
 	protocol_register(&wunderground);
 	protocol_set_id(wunderground, "wunderground");
@@ -481,19 +481,19 @@ void wundergroundInit(void) {
 	options_add(&wunderground->options, 0, "show-update", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
 	options_add(&wunderground->options, 0, "poll-interval", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *)86400, "[0-9]");
 
-	wunderground->createCode=&wundergroundCreateCode;
-	wunderground->initDev=&wundergroundInitDev;
-	wunderground->checkValues=&wundergroundCheckValues;
-	wunderground->threadGC=&wundergroundThreadGC;
-	wunderground->printHelp=&wundergroundPrintHelp;
+	wunderground->createCode=&createCode;
+	wunderground->initDev=&initDev;
+	wunderground->checkValues=&checkValues;
+	wunderground->threadGC=&threadGC;
+	wunderground->printHelp=&printHelp;
 }
 
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "wunderground";
-	module->version = "1.12";
+	module->version = "1.13";
 	module->reqversion = "6.0";
-	module->reqcommit = "58";
+	module->reqcommit = "84";
 }
 
 void init(void) {

@@ -32,7 +32,7 @@
 #include "../../core/common.h"
 #include "pushover.h"
 
-static int actionPushoverArguments(struct JsonNode *arguments) {
+static int checkArguments(struct JsonNode *arguments) {
 	struct JsonNode *jtitle = NULL;
 	struct JsonNode *jmessage = NULL;
 	struct JsonNode *juser = NULL;
@@ -113,7 +113,7 @@ static int actionPushoverArguments(struct JsonNode *arguments) {
 	return 0;
 }
 
-static void *actionPushoverThread(void *param) {
+static void *thread(void *param) {
 	struct JsonNode *arguments = (struct JsonNode *)param;
 	struct JsonNode *jtitle = NULL;
 	struct JsonNode *jmessage = NULL;
@@ -186,9 +186,9 @@ static void *actionPushoverThread(void *param) {
 	return (void *)NULL;
 }
 
-static int actionPushoverRun(struct JsonNode *arguments) {
+static int run(struct JsonNode *arguments) {
 	pthread_t pth;
-	threads_create(&pth, NULL, actionPushoverThread, (void *)arguments);
+	threads_create(&pth, NULL, thread, (void *)arguments);
 	pthread_detach(pth);
 	return 0;
 }
@@ -204,8 +204,8 @@ void actionPushoverInit(void) {
 	options_add(&action_pushover->options, 'c', "TOKEN", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_STRING, NULL, NULL);
 	options_add(&action_pushover->options, 'd', "USER", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_STRING, NULL, NULL);
 
-	action_pushover->run = &actionPushoverRun;
-	action_pushover->checkArguments = &actionPushoverArguments;
+	action_pushover->run = &run;
+	action_pushover->checkArguments = &checkArguments;
 }
 
 #if defined(MODULE) && !defined(_WIN32)

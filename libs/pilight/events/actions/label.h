@@ -1,5 +1,5 @@
 /*
-	Copyright (C) 2013 CurlyMo
+	Copyright (C) 2013 - 2014 CurlyMo
 
 	This file is part of pilight.
 
@@ -16,12 +16,13 @@
 	along with pilight. If not, see	<http://www.gnu.org/licenses/>
 */
 
-#ifndef _PROTOCOL_ELRO_300_H_
-#define _PROTOCOL_ELRO_300_H_
+#ifndef _EVENT_ACTION_LABEL_H_
+#define _EVENT_ACTION_LABEL_H_
 
-#include "../protocol.h"
+#include "../action.h"
 
-struct protocol_t *elro_300;
-void elro300Init(void);
+struct event_actions_t *action_label;
+
+void actionLabelInit(void);
 
 #endif

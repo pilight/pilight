@@ -108,6 +108,7 @@ typedef struct sendqueue_t {
 	enum origin_t origin;
 	struct protocol_t *protopt;
 	int code[MAXPULSESTREAMLENGTH];
+	int length;
 	char uuid[UUID_LENGTH];
 	struct sendqueue_t *next;
 } sendqueue_t;
@@ -190,6 +191,10 @@ static int standalone = 0;
 static int minrawlen = 1000;
 /* What is the maximum rawlenth to consider a pulse stream valid */
 static int maxrawlen = 0;
+/* What is the minimum rawlenth to consider a pulse stream valid */
+static int maxgaplen = 5100;
+/* What is the maximum rawlenth to consider a pulse stream valid */
+static int mingaplen = 10000;
 /* Do we need to connect to a master server:port? */
 static char *master_server = NULL;
 static unsigned short master_port = 0;
@@ -492,7 +497,7 @@ static void receive_queue(int *raw, int rawlen, int plslen, int hwtype) {
 		pthread_mutex_lock(&recvqueue_lock);
 		if(recvqueue_number <= 1024) {
 			struct recvqueue_t *rnode = MALLOC(sizeof(struct recvqueue_t));
-			if(!rnode) {
+			if(rnode == NULL) {
 				logprintf(LOG_ERR, "out of memory");
 				exit(EXIT_FAILURE);
 			}
@@ -563,60 +568,20 @@ void *receive_parse_code(void *param) {
 
 			struct protocol_t *protocol = NULL;
 			struct protocols_t *pnode = protocols;
-			struct protocol_plslen_t *plslengths = NULL;
-			int x = 0, match = 0;
 
-			while(pnode && main_loop) {
+			while(pnode != NULL && main_loop) {
 				protocol = pnode->listener;
-				match = 0;
 
 				if((protocol->hwtype == recvqueue->hwtype || protocol->hwtype == -1 || recvqueue->hwtype == -1) &&
-				   ((((protocol->parseRaw || protocol->parseCode) &&
-					  (protocol->rawlen > 0 || (protocol->minrawlen > 0 && protocol->maxrawlen > 0)))
-					   || protocol->parseBinary) && protocol->pulse > 0 && protocol->plslen)) {
-					plslengths = protocol->plslen;
-					while(plslengths && main_loop) {
-						if((recvqueue->plslen >= ((double)plslengths->length-5) &&
-						    recvqueue->plslen <= ((double)plslengths->length+5))) {
-							match = 1;
-							break;
-						}
-						plslengths = plslengths->next;
+				   (protocol->parseCode != NULL && protocol->validate != NULL)) {
+
+					if(recvqueue->rawlen < MAXPULSESTREAMLENGTH) {
+						protocol->raw = recvqueue->raw;
 					}
-					if((recvqueue->rawlen == protocol->rawlen || (
-					   (protocol->minrawlen > 0 && protocol->maxrawlen > 0 &&
-					    (recvqueue->rawlen >= protocol->minrawlen && recvqueue->rawlen <= protocol->maxrawlen))))
-					    && match == 1) {
-						for(x=0;x<(int)recvqueue->rawlen;x++) {
-							if(x < MAXPULSESTREAMLENGTH) {
-								memcpy(&protocol->raw[x], &recvqueue->raw[x], sizeof(int));
-							}
-						}
-						if(protocol->parseRaw) {
-							logprintf(LOG_DEBUG, "recevied pulse length of %d", recvqueue->plslen);
-							logprintf(LOG_DEBUG, "called %s parseRaw()", protocol->id);
-							protocol->parseRaw();
-							protocol->repeats = -1;
-							receiver_create_message(protocol);
-						}
+					protocol->rawlen = recvqueue->rawlen;
 
-						/* Convert the raw codes to one's and zero's */
-						for(x=0;x<recvqueue->rawlen;x++) {
-							protocol->pCode[x] = protocol->code[x];
-
-							if(protocol->raw[x] >= (plslengths->length * (1+protocol->pulse)/2)) {
-								protocol->code[x] = 1;
-							} else {
-								protocol->code[x] = 0;
-							}
-							/* Check if the current code matches the previous one */
-							// if(protocol->pCode[x] != protocol->code[x]) {
-								// protocol->repeats = 0;
-								// protocol->first = 0;
-								// protocol->second = 0;
-							// }
-						}
-
+					if(protocol->validate() == 0) {
+						logprintf(LOG_DEBUG, "possible %s protocol", protocol->id);
 						gettimeofday(&tv, NULL);
 						if(protocol->first > 0) {
 							protocol->first = protocol->second;
@@ -633,40 +598,14 @@ void *receive_parse_code(void *param) {
 
 						protocol->repeats++;
 						/* Continue if we have recognized enough repeated codes */
-						if(protocol->repeats >= (receive_repeat*protocol->rxrpt) ||
-						   strcmp(protocol->id, "pilight_firmware") == 0) {
-							if(protocol->parseCode) {
-								logprintf(LOG_DEBUG, "caught minimum # of repeats %d of %s", protocol->repeats, protocol->id);
-								logprintf(LOG_DEBUG, "called %s parseCode()", protocol->id);
-								protocol->parseCode();
-								receiver_create_message(protocol);
-							}
-
-							if(protocol->parseBinary) {
-								/* Convert the one's and zero's into binary */
-								for(x=0; x<(int)recvqueue->rawlen; x+=4) {
-									if(protocol->code[x+protocol->lsb] == 1) {
-										protocol->binary[x/4] = 1;
-									} else {
-										protocol->binary[x/4] = 0;
-									}
-								}
-
-								if((double)protocol->raw[1]/((plslengths->length * (1+protocol->pulse)/2)) < 2.1) {
-									x -= 4;
-								}
-
-								/* Check if the binary matches the binary length */
-								if(((protocol->binlen > 0) && ((x/4) == protocol->binlen)) ||
-								   ((protocol->binlen == 0) && ((x == protocol->rawlen) ||
-																(x == protocol->minrawlen) ||
-																(x == protocol->maxrawlen)))) {
-									logprintf(LOG_DEBUG, "called %s parseBinary()", protocol->id);
-
-									protocol->parseBinary();
-									receiver_create_message(protocol);
-								}
-							}
+						if((protocol->repeats >= (receive_repeat*protocol->rxrpt) ||
+						   strcmp(protocol->id, "pilight_firmware") == 0) &&
+							 protocol->parseCode != NULL) {
+							logprintf(LOG_DEBUG, "recevied pulse length of %d", recvqueue->plslen);
+							logprintf(LOG_DEBUG, "caught minimum # of repeats %d of %s", protocol->repeats, protocol->id);
+							logprintf(LOG_DEBUG, "called %s parseRaw()", protocol->id);
+							protocol->parseCode();
+							receiver_create_message(protocol);
 						}
 					}
 				}
@@ -755,21 +694,21 @@ void *send_code(void *param) {
 				}
 				logprintf(LOG_DEBUG, "**** RAW CODE ****");
 				if(log_level_get() >= LOG_DEBUG) {
-					for(i=0;i<protocol->rawlen;i++) {
-						printf("%d ", protocol->raw[i]);
+					for(i=0;i<sendqueue->length;i++) {
+						printf("%d ", sendqueue->code[i]);
 					}
 					printf("\n");
 				}
 				logprintf(LOG_DEBUG, "**** RAW CODE ****");
 
-				if(hw->send(sendqueue->code, protocol->rawlen, protocol->txrpt) == 0) {
+				if(hw->send(sendqueue->code, sendqueue->length, protocol->txrpt) == 0) {
 					logprintf(LOG_DEBUG, "successfully send %s code", protocol->id);
 				} else {
 					logprintf(LOG_ERR, "failed to send code");
 				}
 				if(strcmp(protocol->id, "raw") == 0) {
-					int plslen = protocol->raw[protocol->rawlen-1]/PULSE_DIV;
-					receive_queue(protocol->raw, protocol->rawlen, plslen, -1);
+					int plslen = sendqueue->code[sendqueue->length-1]/PULSE_DIV;
+					receive_queue(sendqueue->code, sendqueue->length, plslen, -1);
 				}
 				if(hw->receiveOOK != NULL || hw->receivePulseTrain != NULL) {
 					hw->wait = 0;
@@ -778,8 +717,8 @@ void *send_code(void *param) {
 				}
 			} else {
 				if(strcmp(protocol->id, "raw") == 0) {
-					int plslen = protocol->raw[protocol->rawlen-1]/PULSE_DIV;
-					receive_queue(protocol->raw, protocol->rawlen, plslen, -1);
+					int plslen = sendqueue->code[sendqueue->length-1]/PULSE_DIV;
+					receive_queue(sendqueue->code, sendqueue->length, plslen, -1);
 				}
 			}
 			if(message != NULL) {
@@ -813,7 +752,7 @@ static int send_queue(JsonNode *json, enum origin_t origin) {
 	pthread_mutex_lock(&sendqueue_lock);
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
-	int match = 0, x = 0;
+	int match = 0, raw[MAXPULSESTREAMLENGTH-1];
 	struct timeval tcurrent;
 	char *uuid = NULL;
 	/* Hold the final protocol struct */
@@ -866,7 +805,8 @@ static int send_queue(JsonNode *json, enum origin_t origin) {
 				}
 				jprotocol = jprotocol->next;
 			}
-
+			memset(raw, 0, MAXPULSESTREAMLENGTH-1);
+			protocol->raw = raw;
 			if(match == 1 && protocol->createCode != NULL) {
 				/* Let the protocol create his code */
 				if(protocol->createCode(jcode) == 0 && main_loop == 1) {
@@ -893,9 +833,10 @@ static int send_queue(JsonNode *json, enum origin_t origin) {
 							json_free(jsonstr);
 							protocol->message = NULL;
 						}
-						for(x=0;x<protocol->rawlen;x++) {
-							mnode->code[x]=protocol->raw[x];
-						}
+
+						mnode->length = protocol->rawlen;
+						memcpy(mnode->code, protocol->raw, sizeof(int)*protocol->rawlen);
+
 						if((mnode->protoname = MALLOC(strlen(protocol->id)+1)) == NULL) {
 							logprintf(LOG_ERR, "out of memory");
 							exit(EXIT_FAILURE);
@@ -1568,8 +1509,8 @@ void *receiveOOK(void *param) {
 				if(r.length > MAXPULSESTREAMLENGTH-1) {
 					r.length = 0;
 				}
-				if(duration > 5100) {
-					if((duration/PULSE_DIV) < 3000) { // Maximum footer pulse of 100000
+				if(duration > mingaplen) {
+					if(duration < maxgaplen) { // Maximum footer pulse of 100000
 						plslen = duration/PULSE_DIV;
 					}
 					/* Let's do a little filtering here as well */
@@ -2297,17 +2238,21 @@ int start_pilight(int argc, char **argv) {
 
 	struct protocols_t *tmp = protocols;
 	while(tmp) {
-		if(tmp->listener->rawlen < minrawlen && tmp->listener->rawlen > 0) {
-			minrawlen = tmp->listener->rawlen;
-		}
-		if(tmp->listener->minrawlen < minrawlen && tmp->listener->minrawlen > 0) {
-			minrawlen = tmp->listener->minrawlen;
-		}
-		if(tmp->listener->rawlen > maxrawlen) {
-			maxrawlen = tmp->listener->rawlen;
-		}
 		if(tmp->listener->maxrawlen > maxrawlen) {
 			maxrawlen = tmp->listener->maxrawlen;
+		}
+		if(tmp->listener->minrawlen > 0 && tmp->listener->minrawlen < minrawlen) {
+			minrawlen = tmp->listener->minrawlen;
+		}
+		if(tmp->listener->maxgaplen > maxgaplen) {
+			maxgaplen = tmp->listener->maxgaplen;
+		}
+		if(tmp->listener->mingaplen > 0 && tmp->listener->mingaplen < mingaplen) {
+			mingaplen = tmp->listener->mingaplen;
+		}
+		if(tmp->listener->rawlen > 0) {
+			logprintf(LOG_ERR, "%s: setting \"rawlen\" length is not allowed, use the \"minrawlen\" and \"maxrawlen\" instead", tmp->listener->id);
+			goto clear;
 		}
 		tmp = tmp->next;
 	}

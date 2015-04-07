@@ -1,5 +1,5 @@
 /*
-	Copyright (C) 2014 CurlyMo & wo-rasp
+	Copyright (C) 2013 CurlyMo
 
 	This file is part of pilight.
 
@@ -16,13 +16,12 @@
 	along with pilight. If not, see	<http://www.gnu.org/licenses/>
 */
 
-#ifndef _PROTOCOL_TECHLICO_SWITCH_H_
-#define _PROTOCOL_TECHLICO_SWITCH_H_
+#ifndef _PROTOCOL_ELRO_400_SWITCH_H_
+#define _PROTOCOL_ELRO_400_SWITCH_H_
 
 #include "../protocol.h"
 
-struct protocol_t *techlico_switch;
-void techlicoSwitchInit(void);
+struct protocol_t *elro_400_switch;
+void elro400SwitchInit(void);
 
 #endif
-

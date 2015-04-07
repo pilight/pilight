@@ -30,7 +30,24 @@
 #include "../../core/gc.h"
 #include "logilink_switch.h"
 
-static void logilinkSwitchCreateMessage(int systemcode, int unitcode, int state) {
+#define PULSE_MULTIPLIER	3
+#define MIN_PULSE_LENGTH	279
+#define MAX_PULSE_LENGTH	289
+#define AVG_PULSE_LENGTH	284
+#define RAW_LENGTH				50
+
+static int validate(void) {
+	if(logilink_switch->rawlen == RAW_LENGTH) {			
+		if(logilink_switch->raw[logilink_switch->rawlen-1] >= (MIN_PULSE_LENGTH*PULSE_DIV) &&
+		   logilink_switch->raw[logilink_switch->rawlen-1] <= (MAX_PULSE_LENGTH*PULSE_DIV)) {
+			return 0;
+		}
+	}
+
+	return -1;
+}
+
+static void createMessage(int systemcode, int unitcode, int state) {
 	logilink_switch->message = json_mkobject();
 	json_append_member(logilink_switch->message, "systemcode", json_mknumber(systemcode, 0));
 	json_append_member(logilink_switch->message, "unitcode", json_mknumber(unitcode, 0));
@@ -41,43 +58,47 @@ static void logilinkSwitchCreateMessage(int systemcode, int unitcode, int state)
 	}
 }
 
-static void logilinkSwitchParseCode(void) {
-	int i = 0, x = 0;
+static void parseCode(void) {
+	int i = 0, x = 0, binary[RAW_LENGTH/2];
 	int systemcode = 0, state = 0, unitcode = 0;
 
-	for(i=0;i<logilink_switch->rawlen-1;i+=2) {
-		logilink_switch->binary[x++] = logilink_switch->code[i];
+	for(x=0;x<logilink_switch->rawlen-1;x+=2) {
+		if(logilink_switch->raw[x] > AVG_PULSE_LENGTH*(PULSE_MULTIPLIER/2)) {
+			binary[i++] = 1;
+		} else {
+			binary[i++] = 0;
+		}
 	}
-	systemcode = binToDecRev(logilink_switch->binary, 0, 19);
-	state = logilink_switch->binary[20];
-	unitcode = binToDecRev(logilink_switch->binary, 21, 23);
+	systemcode = binToDecRev(binary, 0, 19);
+	state = binary[20];
+	unitcode = binToDecRev(binary, 21, 23);
 
-	logilinkSwitchCreateMessage(systemcode, unitcode, state);
+	createMessage(systemcode, unitcode, state);
 }
 
-static void logilinkSwitchCreateLow(int s, int e) {
+static void createLow(int s, int e) {
 	int i = 0;
 
 	for(i=s;i<=e;i+=2) {
-		logilink_switch->raw[i]=(logilink_switch->plslen->length);
-		logilink_switch->raw[i+1]=(logilink_switch->pulse*logilink_switch->plslen->length);
+		logilink_switch->raw[i]=(AVG_PULSE_LENGTH);
+		logilink_switch->raw[i+1]=(PULSE_MULTIPLIER*AVG_PULSE_LENGTH);
 	}
 }
 
-static void logilinkSwitchCreateHigh(int s, int e) {
+static void createHigh(int s, int e) {
 	int i = 0;
 
 	for(i=s;i<=e;i+=2) {
-		logilink_switch->raw[i]=(logilink_switch->pulse*logilink_switch->plslen->length);
-		logilink_switch->raw[i+1]=(logilink_switch->plslen->length);
+		logilink_switch->raw[i]=(PULSE_MULTIPLIER*AVG_PULSE_LENGTH);
+		logilink_switch->raw[i+1]=(AVG_PULSE_LENGTH);
 	}
 }
 
-static void logilinkSwitchClearCode(void) {
-	logilinkSwitchCreateLow(0, logilink_switch->rawlen-2);
+static void clearCode(void) {
+	createLow(0, logilink_switch->rawlen-2);
 }
 
-static void logilinkSwitchCreateSystemCode(int systemcode) {
+static void createSystemCode(int systemcode) {
 	int binary[255];
 	int length=0;
 	int i = 0, x = 38;
@@ -85,53 +106,53 @@ static void logilinkSwitchCreateSystemCode(int systemcode) {
 	length = decToBin(systemcode, binary);
 	for(i=length;i>=0;i--) {
 		if(binary[i] == 1) {
-			logilinkSwitchCreateHigh(x, x+1);
+			createHigh(x, x+1);
 		}
 
 		x -= 2;
 	}
 }
 
-static void logilinkSwitchCreateUnitCode(int unitcode) {
+static void createUnitCode(int unitcode) {
 	switch(unitcode) {
 		case 7:
-			logilinkSwitchCreateHigh(42, 47);	// Button 1
+			createHigh(42, 47);	// Button 1
 		break;
 		case 3:
-			logilinkSwitchCreateLow(42, 43); // Button 2
-			logilinkSwitchCreateHigh(44, 47);
+			createLow(42, 43); // Button 2
+			createHigh(44, 47);
 		break;
 		case 5:
-			logilinkSwitchCreateHigh(42, 43); // Button 3
-			logilinkSwitchCreateLow(44, 45);
-			logilinkSwitchCreateHigh(46, 47);
+			createHigh(42, 43); // Button 3
+			createLow(44, 45);
+			createHigh(46, 47);
 		break;
 		case 6:
-			logilinkSwitchCreateHigh(42, 45); // Button 4
-			logilinkSwitchCreateLow(46, 47);
+			createHigh(42, 45); // Button 4
+			createLow(46, 47);
 		break;
 		case 0:
-			logilinkSwitchCreateLow(42, 47);	// Button ALL OFF
+			createLow(42, 47);	// Button ALL OFF
 		break;
 		default:
 		break;
 	}
 }
 
-static void logilinkSwitchCreateState(int state) {
+static void createState(int state) {
 	if(state == 1) {
-		logilinkSwitchCreateLow(40, 41);
+		createLow(40, 41);
 	} else {
-		logilinkSwitchCreateHigh(40, 41);
+		createHigh(40, 41);
 	}
 }
 
-static void logilinkSwitchCreateFooter(void) {
-	logilink_switch->raw[48]=(logilink_switch->plslen->length);
-	logilink_switch->raw[49]=(PULSE_DIV*logilink_switch->plslen->length);
+static void createFooter(void) {
+	logilink_switch->raw[48]=(AVG_PULSE_LENGTH);
+	logilink_switch->raw[49]=(PULSE_DIV*AVG_PULSE_LENGTH);
 }
 
-static int logilinkSwitchCreateCode(JsonNode *code) {
+static int createCode(struct JsonNode *code) {
 	int systemcode = -1;
 	int unitcode = -1;
 	int state = -1;
@@ -156,17 +177,18 @@ static int logilinkSwitchCreateCode(JsonNode *code) {
 		logprintf(LOG_ERR, "logilink_switch: invalid unitcode range");
 		return EXIT_FAILURE;
 	} else {
-		logilinkSwitchCreateMessage(systemcode, unitcode, state);
-		logilinkSwitchClearCode();
-		logilinkSwitchCreateSystemCode(systemcode);
-		logilinkSwitchCreateUnitCode(unitcode);
-		logilinkSwitchCreateState(state);
-		logilinkSwitchCreateFooter();
+		createMessage(systemcode, unitcode, state);
+		clearCode();
+		createSystemCode(systemcode);
+		createUnitCode(unitcode);
+		createState(state);
+		createFooter();
+		logilink_switch->rawlen = RAW_LENGTH;
 	}
 	return EXIT_SUCCESS;
 }
 
-static void logilinkSwitchPrintHelp(void) {
+static void printHelp(void) {
 	printf("\t -s --systemcode=systemcode\tcontrol a device with this systemcode\n");
 	printf("\t -u --unitcode=unitcode\t\tcontrol a device with this unitcode\n");
 	printf("\t -t --on\t\t\tsend an on signal\n");
@@ -181,12 +203,12 @@ void logilinkSwitchInit(void) {
 	protocol_register(&logilink_switch);
 	protocol_set_id(logilink_switch, "logilink_switch");
 	protocol_device_add(logilink_switch, "logilink_switch", "Logilink Switches");
-	protocol_plslen_add(logilink_switch, 284);
 	logilink_switch->devtype = SWITCH;
 	logilink_switch->hwtype = RF433;
-	logilink_switch->pulse = 3;
-	logilink_switch->rawlen = 50;
-	logilink_switch->binlen = 12;
+	logilink_switch->minrawlen = RAW_LENGTH;
+	logilink_switch->maxrawlen = RAW_LENGTH;
+	logilink_switch->maxgaplen = MAX_PULSE_LENGTH*PULSE_DIV;
+	logilink_switch->mingaplen = MIN_PULSE_LENGTH*PULSE_DIV;
 
 	options_add(&logilink_switch->options, 's', "systemcode", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, NULL);
 	options_add(&logilink_switch->options, 'u', "unitcode", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^[0-7]$");
@@ -195,17 +217,18 @@ void logilinkSwitchInit(void) {
 
 	options_add(&logilink_switch->options, 0, "readonly", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 
-	logilink_switch->parseCode=&logilinkSwitchParseCode;
-	logilink_switch->createCode=&logilinkSwitchCreateCode;
-	logilink_switch->printHelp=&logilinkSwitchPrintHelp;
+	logilink_switch->parseCode=&parseCode;
+	logilink_switch->createCode=&createCode;
+	logilink_switch->printHelp=&printHelp;
+	logilink_switch->validate=&validate;
 }
 
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "logilink_sitch";
-	module->version = "0.3";
+	module->version = "0.4";
 	module->reqversion = "6.0";
-	module->reqcommit = "187";
+	module->reqcommit = "84";
 }
 
 void init(void) {

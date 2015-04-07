@@ -29,7 +29,7 @@
 #include "../../core/pilight.h"
 #include "toggle.h"
 
-static int actionToggleArguments(struct JsonNode *arguments) {
+static int checkArguments(struct JsonNode *arguments) {
 	struct JsonNode *jdevice = NULL;
 	struct JsonNode *jbetween = NULL;
 	struct JsonNode *jsvalues = NULL;
@@ -116,16 +116,16 @@ static int actionToggleArguments(struct JsonNode *arguments) {
 	return 0;
 }
 
-static void *actionToggleThread(void *param) {
-	struct event_action_thread_t *thread = (struct event_action_thread_t *)param;
-	struct devices_settings_t *tmp_settings = thread->device->settings;
+static void *thread(void *param) {
+	struct event_action_thread_t *pth = (struct event_action_thread_t *)param;
+	struct devices_settings_t *tmp_settings = pth->device->settings;
 	struct JsonNode *jbetween = NULL;
 	struct JsonNode *jsvalues = NULL;
 	struct JsonNode *jstate1 = NULL;
 	struct JsonNode *jstate2 = NULL;
 	char *cstate = NULL, *state1 = NULL, *state2 = NULL;
 
-	event_action_started(thread);
+	event_action_started(pth);
 
 	while(tmp_settings) {
 		if(strcmp(tmp_settings->name, "state") == 0) {
@@ -137,7 +137,7 @@ static void *actionToggleThread(void *param) {
 		tmp_settings = tmp_settings->next;
 	}
 
-	if((jbetween = json_find_member(thread->param, "BETWEEN")) != NULL) {
+	if((jbetween = json_find_member(pth->param, "BETWEEN")) != NULL) {
 			if((jsvalues = json_find_member(jbetween, "value")) != NULL) {
 			jstate1 = json_find_element(jsvalues, 0);
 			jstate2 = json_find_element(jsvalues, 1);
@@ -148,21 +148,21 @@ static void *actionToggleThread(void *param) {
 
 				if(pilight.control != NULL) {
 					if(strcmp(state1, cstate) == 0) {
-						pilight.control(thread->device, state2, NULL, ACTION);
+						pilight.control(pth->device, state2, NULL, ACTION);
 					} else if(strcmp(state2, cstate) == 0) {
-						pilight.control(thread->device, state1, NULL, ACTION);
+						pilight.control(pth->device, state1, NULL, ACTION);
 					}
 				}
 			}
 		}
 	}
 
-	event_action_stopped(thread);
+	event_action_stopped(pth);
 
 	return (void *)NULL;
 }
 
-static int actionToggleRun(struct JsonNode *arguments) {
+static int run(struct JsonNode *arguments) {
 	struct JsonNode *jdevice = NULL;
 	struct JsonNode *jbetween = NULL;
 	struct JsonNode *jdvalues = NULL;
@@ -176,7 +176,7 @@ static int actionToggleRun(struct JsonNode *arguments) {
 				if(jdchild->tag == JSON_STRING) {
 					struct devices_t *dev = NULL;
 					if(devices_get(jdchild->string_, &dev) == 0) {
-						event_action_thread_start(dev, action_toggle->name, actionToggleThread, arguments);
+						event_action_thread_start(dev, action_toggle->name, thread, arguments);
 					}
 				}
 				jdchild = jdchild->next;
@@ -195,8 +195,8 @@ void actionToggleInit(void) {
 	options_add(&action_toggle->options, 'a', "DEVICE", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_STRING, NULL, NULL);
 	options_add(&action_toggle->options, 'b', "BETWEEN", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_STRING, NULL, NULL);
 
-	action_toggle->run = &actionToggleRun;
-	action_toggle->checkArguments = &actionToggleArguments;
+	action_toggle->run = &run;
+	action_toggle->checkArguments = &checkArguments;
 }
 
 #if defined(MODULE) && !defined(_WIN32)

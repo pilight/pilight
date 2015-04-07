@@ -30,7 +30,24 @@
 #include "../../core/gc.h"
 #include "elro_800_contact.h"
 
-static void elro800ContactCreateMessage(int systemcode, int unitcode, int state) {
+#define PULSE_MULTIPLIER	3
+#define MIN_PULSE_LENGTH	283
+#define MAX_PULSE_LENGTH	305
+#define AVG_PULSE_LENGTH	300
+#define RAW_LENGTH				50
+
+static int validate(void) {
+	if(elro_800_contact->rawlen == RAW_LENGTH) {			
+		if(elro_800_contact->raw[elro_800_contact->rawlen-1] >= (MIN_PULSE_LENGTH*PULSE_DIV) &&
+		   elro_800_contact->raw[elro_800_contact->rawlen-1] <= (MAX_PULSE_LENGTH*PULSE_DIV)) {
+			return 0;
+		}
+	}
+
+	return -1;
+}
+
+static void createMessage(int systemcode, int unitcode, int state) {
 	elro_800_contact->message = json_mkobject();
 	json_append_member(elro_800_contact->message, "systemcode", json_mknumber(systemcode, 0));
 	json_append_member(elro_800_contact->message, "unitcode", json_mknumber(unitcode, 0));
@@ -41,11 +58,21 @@ static void elro800ContactCreateMessage(int systemcode, int unitcode, int state)
 	}
 }
 
-static void elro800ContactParseBinary(void) {
-	int systemcode = binToDec(elro_800_contact->binary, 0, 4);
-	int unitcode = binToDec(elro_800_contact->binary, 5, 9);
-	int state = elro_800_contact->binary[11];
-	elro800ContactCreateMessage(systemcode, unitcode, state);
+static void parseCode(void) {
+	int binary[RAW_LENGTH/4], x = 0, i = 0;
+
+	for(x=0;x<elro_800_contact->rawlen;x+=4) {
+		if(elro_800_contact->raw[x+3] > AVG_PULSE_LENGTH*(PULSE_MULTIPLIER/2)) {
+			binary[i++] = 1;
+		} else {
+			binary[i++] = 0;
+		}
+	}
+	
+	int systemcode = binToDec(binary, 0, 4);
+	int unitcode = binToDec(binary, 5, 9);
+	int state = binary[11];
+	createMessage(systemcode, unitcode, state);
 }
 
 #if !defined(MODULE) && !defined(_WIN32)
@@ -56,14 +83,12 @@ void elro800ContactInit(void) {
 	protocol_register(&elro_800_contact);
 	protocol_set_id(elro_800_contact, "elro_800_contact");
 	protocol_device_add(elro_800_contact, "elro_800_contact", "Elro Series 800 Contact");
-	protocol_plslen_add(elro_800_contact, 288);
-	protocol_plslen_add(elro_800_contact, 300);
 	elro_800_contact->devtype = CONTACT;
 	elro_800_contact->hwtype = RF433;
-	elro_800_contact->pulse = 3;
-	elro_800_contact->rawlen = 50;
-	elro_800_contact->binlen = 12;
-	elro_800_contact->lsb = 3;
+	elro_800_contact->minrawlen = RAW_LENGTH;
+	elro_800_contact->maxrawlen = RAW_LENGTH;
+	elro_800_contact->maxgaplen = MAX_PULSE_LENGTH*PULSE_DIV;
+	elro_800_contact->mingaplen = MIN_PULSE_LENGTH*PULSE_DIV;
 
 	options_add(&elro_800_contact->options, 's', "systemcode", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^(3[012]?|[012][0-9]|[0-9]{1})$");
 	options_add(&elro_800_contact->options, 'u', "unitcode", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^(3[012]?|[012][0-9]|[0-9]{1})$");
@@ -72,14 +97,15 @@ void elro800ContactInit(void) {
 
 	options_add(&elro_800_contact->options, 0, "readonly", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 
-	elro_800_contact->parseBinary=&elro800ContactParseBinary;
+	elro_800_contact->parseCode=&parseCode;
+	elro_800_contact->validate=&validate;
 }
 
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "elro_800_contact";
-	module->version = "1.6";
-	module->reqversion = "5.0";
+	module->version = "2.0";
+	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }
 

@@ -33,7 +33,7 @@
 #define DECREASING 0
 #define INCREASING 1
 
-static int actionDimArguments(struct JsonNode *arguments) {
+static int checkArguments(struct JsonNode *arguments) {
 	struct JsonNode *jdevice = NULL;
 	struct JsonNode *jto = NULL;
 	struct JsonNode *jfor = NULL;
@@ -331,8 +331,8 @@ static int actionDimArguments(struct JsonNode *arguments) {
 	return 0;
 }
 
-static void *actionDimThread(void *param) {
-	struct event_action_thread_t *thread = (struct event_action_thread_t *)param;
+static void *thread(void *param) {
+	struct event_action_thread_t *pth = (struct event_action_thread_t *)param;
 	struct JsonNode *jedimlevel = NULL;
 	struct JsonNode *jsdimlevel = NULL;
 	struct JsonNode *jto = NULL;
@@ -354,9 +354,9 @@ static void *actionDimThread(void *param) {
 	int direction = 0, interval = 0, i = 0, timer = 0;
 	char state[3];
 
-	event_action_started(thread);
+	event_action_started(pth);
 
-	if((jfor = json_find_member(thread->param, "FOR")) != NULL) {
+	if((jfor = json_find_member(pth->param, "FOR")) != NULL) {
 		if((jcvalues = json_find_member(jfor, "value")) != NULL) {
 			jaseconds = json_find_element(jcvalues, 0);
 			if(jaseconds != NULL && jaseconds->tag == JSON_NUMBER) {
@@ -365,7 +365,7 @@ static void *actionDimThread(void *param) {
 		}
 	}
 
-	if((jafter = json_find_member(thread->param, "AFTER")) != NULL) {
+	if((jafter = json_find_member(pth->param, "AFTER")) != NULL) {
 		if((jdvalues = json_find_member(jafter, "value")) != NULL) {
 			jaseconds = json_find_element(jdvalues, 0);
 			if(jaseconds != NULL && jaseconds->tag == JSON_NUMBER) {
@@ -374,7 +374,7 @@ static void *actionDimThread(void *param) {
 		}
 	}
 
-	if((jin = json_find_member(thread->param, "IN")) != NULL) {
+	if((jin = json_find_member(pth->param, "IN")) != NULL) {
 		if((jfvalues = json_find_member(jin, "value")) != NULL) {
 			jiseconds = json_find_element(jfvalues, 0);
 			if(jiseconds != NULL && jiseconds->tag == JSON_NUMBER) {
@@ -385,7 +385,7 @@ static void *actionDimThread(void *param) {
 	}
 
 	/* Store current state and dimlevel */
-	struct devices_t *tmp = thread->device;
+	struct devices_t *tmp = pth->device;
 	int match1 = 0, match2 = 0;
 	while(tmp) {
 		struct devices_settings_t *opt = tmp->settings;
@@ -414,13 +414,13 @@ static void *actionDimThread(void *param) {
 		tmp = tmp->next;
 	}
 	if(match1 == 0) {
-		logprintf(LOG_ERR, "could not store old state of \"%s\"\n", thread->device->id);
+		logprintf(LOG_ERR, "could not store old state of \"%s\"", pth->device->id);
 	}
 	if(match2 == 0) {
-		logprintf(LOG_ERR, "could not store old dimlevel of \"%s\"\n", thread->device->id);
+		logprintf(LOG_ERR, "could not store old dimlevel of \"%s\"", pth->device->id);
 	}
 
-	if((jfrom = json_find_member(thread->param, "FROM")) != NULL) {
+	if((jfrom = json_find_member(pth->param, "FROM")) != NULL) {
 		if((jevalues = json_find_member(jfrom, "value")) != NULL) {
 			jsdimlevel = json_find_element(jevalues, 0);
 			if(jsdimlevel != NULL && jsdimlevel->tag == JSON_NUMBER) {
@@ -429,7 +429,7 @@ static void *actionDimThread(void *param) {
 		}
 	}
 
-	if((jto = json_find_member(thread->param, "TO")) != NULL) {
+	if((jto = json_find_member(pth->param, "TO")) != NULL) {
 		if((javalues = json_find_member(jto, "value")) != NULL) {
 			jedimlevel = json_find_element(javalues, 0);
 			if(jedimlevel != NULL && jedimlevel->tag == JSON_NUMBER) {
@@ -461,12 +461,12 @@ static void *actionDimThread(void *param) {
 	if(has_in == 0) {
 		if(old_state == NULL || ((strcmp(old_state, "on") != 0 || (int)cur_dimlevel != (int)new_dimlevel))) {
 			timer = 0;
-			while(thread->loop == 1) {
+			while(pth->loop == 1) {
 				if(timer == seconds_after) {
 					jvalues = json_mkobject();
 					json_append_member(jvalues, "dimlevel", json_mknumber(dimlevel, 0));
 					if(pilight.control != NULL) {
-						pilight.control(thread->device, state, json_first_child(jvalues), ACTION);
+						pilight.control(pth->device, state, json_first_child(jvalues), ACTION);
 					}
 					json_delete(jvalues);
 					break;
@@ -480,16 +480,16 @@ static void *actionDimThread(void *param) {
 			 */
 			if(seconds_for > 0 && old_state != NULL && (strcmp(old_state, "on") != 0 || (int)cur_dimlevel != (int)new_dimlevel)) {
 				timer = 0;
-				while(thread->loop == 1) {
+				while(pth->loop == 1) {
 					if(seconds_for == timer) {
 						jvalues = json_mkobject();
 						json_append_member(jvalues, "dimlevel", json_mknumber(cur_dimlevel, 0));
 						if(pilight.control != NULL) {
 							if(strcmp(old_state, "off") == 0) {
-								pilight.control(thread->device, state, json_first_child(jvalues), ACTION);
-								pilight.control(thread->device, old_state, NULL, ACTION);
+								pilight.control(pth->device, state, json_first_child(jvalues), ACTION);
+								pilight.control(pth->device, old_state, NULL, ACTION);
 							} else {
-								pilight.control(thread->device, old_state, json_first_child(jvalues), ACTION);
+								pilight.control(pth->device, old_state, json_first_child(jvalues), ACTION);
 							}
 						}
 						json_delete(jvalues);
@@ -503,7 +503,7 @@ static void *actionDimThread(void *param) {
 	/* We'll gently start increasing / decreasing the dimlevel after X seconds in X seconds. */
 	} else {
 		timer = 0;
-		while(thread->loop == 1) {
+		while(pth->loop == 1) {
 			if(timer == seconds_after) {
 				break;
 			}
@@ -513,12 +513,12 @@ static void *actionDimThread(void *param) {
 		if(direction == INCREASING) {
 			for(i=(int)old_dimlevel;i<=(int)new_dimlevel;i++) {
 				timer = 0;
-				while(thread->loop == 1) {
+				while(pth->loop == 1) {
 					if(interval == timer) {
 						jvalues = json_mkobject();
 						json_append_member(jvalues, "dimlevel", json_mknumber(i, 0));
 						if(pilight.control != NULL) {
-							pilight.control(thread->device, state, json_first_child(jvalues), ACTION);
+							pilight.control(pth->device, state, json_first_child(jvalues), ACTION);
 						}
 						json_delete(jvalues);
 						break;
@@ -530,12 +530,12 @@ static void *actionDimThread(void *param) {
 		} else {
 			for(i=(int)old_dimlevel;i>=(int)new_dimlevel;i--) {
 				timer = 0;
-				while(thread->loop == 1) {
+				while(pth->loop == 1) {
 					if(interval == timer) {
 						jvalues = json_mkobject();
 						json_append_member(jvalues, "dimlevel", json_mknumber(i, 0));
 						if(pilight.control != NULL) {
-							pilight.control(thread->device, state, json_first_child(jvalues), ACTION);
+							pilight.control(pth->device, state, json_first_child(jvalues), ACTION);
 						}
 						json_delete(jvalues);
 						break;
@@ -551,16 +551,16 @@ static void *actionDimThread(void *param) {
 		if(seconds_for > 0 && old_state != NULL &&
 			 (strcmp(old_state, "on") != 0 || (int)cur_dimlevel != (int)new_dimlevel)) {
 			timer = 0;
-			while(thread->loop == 1) {
+			while(pth->loop == 1) {
 				if(timer == seconds_for) {
 					jvalues = json_mkobject();
 					json_append_member(jvalues, "dimlevel", json_mknumber(cur_dimlevel, 0));
 					if(pilight.control != NULL) {
 						if(strcmp(old_state, "off") == 0) {
-							pilight.control(thread->device, state, json_first_child(jvalues), ACTION);
-							pilight.control(thread->device, old_state, NULL, ACTION);
+							pilight.control(pth->device, state, json_first_child(jvalues), ACTION);
+							pilight.control(pth->device, old_state, NULL, ACTION);
 						} else {
-							pilight.control(thread->device, old_state, json_first_child(jvalues), ACTION);
+							pilight.control(pth->device, old_state, json_first_child(jvalues), ACTION);
 						}
 					}
 					json_delete(jvalues);
@@ -576,12 +576,12 @@ static void *actionDimThread(void *param) {
 		FREE(old_state);
 	}
 
-	event_action_stopped(thread);
+	event_action_stopped(pth);
 
 	return (void *)NULL;
 }
 
-static int actionDimRun(struct JsonNode *arguments) {
+static int run(struct JsonNode *arguments) {
 	struct JsonNode *jdevice = NULL;
 	struct JsonNode *jto = NULL;
 	struct JsonNode *jbvalues = NULL;
@@ -595,7 +595,7 @@ static int actionDimRun(struct JsonNode *arguments) {
 				if(jbchild->tag == JSON_STRING) {
 					struct devices_t *dev = NULL;
 					if(devices_get(jbchild->string_, &dev) == 0) {
-						event_action_thread_start(dev, action_dim->name, actionDimThread, arguments);
+						event_action_thread_start(dev, action_dim->name, thread, arguments);
 					}
 				}
 				jbchild = jbchild->next;
@@ -618,8 +618,8 @@ void actionDimInit(void) {
 	options_add(&action_dim->options, 'e', "AFTER", OPTION_OPT_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, NULL);
 	options_add(&action_dim->options, 'f', "IN", OPTION_OPT_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, NULL);
 
-	action_dim->run = &actionDimRun;
-	action_dim->checkArguments = &actionDimArguments;
+	action_dim->run = &run;
+	action_dim->checkArguments = &checkArguments;
 }
 
 #if defined(MODULE) && !defined(_WIN32)

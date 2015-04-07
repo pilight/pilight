@@ -35,9 +35,28 @@
 #define	PULSE_QUIGG_SCREEN_FOOTER	81000
 #define	PULSE_QUIGG_SCREEN_50		PULSE_QUIGG_SCREEN_SHORT+(PULSE_QUIGG_SCREEN_LONG-PULSE_QUIGG_SCREEN_SHORT)/2
 
-static void quiggScreenCreateMessage(int id, int state, int unit, int all) {
-	// logprintf(LOG_DEBUG, "CreateMessage id:%d state:%d unit:%d all:%d",id, state, unit, all);
+#define LEARN_REPEATS 		4
+#define NORMAL_REPEATS		4
+#define PULSE_MULTIPLIER	2
+#define AVG_PULSE_LENGTH	PULSE_QUIGG_SCREEN_SHORT
+#define MIN_PULSE_LENGTH	AVG_PULSE_LENGTH-80
+#define MAX_PULSE_LENGTH	AVG_PULSE_LENGTH+260
+#define RAW_LENGTH				42
 
+static int validate(void) {
+	if(quigg_screen->rawlen == RAW_LENGTH) {
+		if(quigg_screen->raw[quigg_screen->rawlen-1] >= (int)(PULSE_QUIGG_SCREEN_FOOTER*0.9) &&
+			 quigg_screen->raw[quigg_screen->rawlen-1] <= (int)(PULSE_QUIGG_SCREEN_FOOTER*1.1) &&
+			 quigg_screen->raw[0] >= MIN_PULSE_LENGTH &&
+			 quigg_screen->raw[0] <= MAX_PULSE_LENGTH) {
+		return 0;
+		}
+	}
+	return -1;
+}
+
+
+static void createMessage(int id, int state, int unit, int all, int learn) {
 	quigg_screen->message = json_mkobject();
 	json_append_member(quigg_screen->message, "id", json_mknumber(id, 0));
 	if(all==1) {
@@ -50,10 +69,16 @@ static void quiggScreenCreateMessage(int id, int state, int unit, int all) {
 	} else {
 		json_append_member(quigg_screen->message, "state", json_mkstring("down"));
 	}
+
+	if(learn == 1) {
+		quigg_screen->txrpt = LEARN_REPEATS;
+	} else {
+		quigg_screen->txrpt = NORMAL_REPEATS;
+	}
 }
 
-static void quiggScreenParseCode(void) {
-	int x = 0, dec_unit[4] = {0, 3, 1, 2};
+static void parseCode(void) {
+	int binary[RAW_LENGTH/2], x = 0, dec_unit[4] = {0, 3, 1, 2};
 	int iParity = 1, iParityData = -1;	// init for even parity
 	int iSwitch = 0;
 
@@ -61,34 +86,35 @@ static void quiggScreenParseCode(void) {
 	// Byte 1,2 in raw buffer is the first logical byte, rawlen-3,-2 is the parity bit, rawlen-1 is the footer
 	for(x=0; x<quigg_screen->rawlen-1; x+=2) {
 		if(quigg_screen->raw[x+1] > PULSE_QUIGG_SCREEN_50) {
-			quigg_screen->binary[x/2] = 1;
-			if((x/2) > 11 && (x/2) < 19) {
-				iParityData=iParity;
-				iParity=-iParity;
+			binary[x/2] = 1;
+			if((x / 2) > 11 && (x / 2) < 19) {
+				iParityData = iParity;
+				iParity = -iParity;
 			}
 		} else {
-			quigg_screen->binary[x/2] = 0;
+			binary[x/2] = 0;
 		}
 	}
 	if(iParityData < 0)
 		iParityData=0;
 
-	int id = binToDecRev(quigg_screen->binary, 0, 11);
-	int unit = binToDecRev(quigg_screen->binary, 12, 13);
-	int all = binToDecRev(quigg_screen->binary, 14, 14);
-	int state = binToDecRev(quigg_screen->binary, 15, 15);
-	int screen = binToDecRev(quigg_screen->binary, 16, 16);
-	int parity = binToDecRev(quigg_screen->binary, 19, 19);
+	int id = binToDecRev(binary, 0, 11);
+	int unit = binToDecRev(binary, 12, 13);
+	int all = binToDecRev(binary, 14, 14);
+	int state = binToDecRev(binary, 15, 15);
+	int screen = binToDecRev(binary, 16, 16);
+	int parity = binToDecRev(binary, 19, 19);
+	int learn = 0;
 
 	unit = dec_unit[unit];
 
-	// Prepare dim up/down mode for appropriate handling with ScreenCreateMessage
+	// Prepare dim up/down mode for appropriate handling with createMessage
 	iSwitch = (screen * 2) + state;	// 00-turn off 01-turn on 10-dim up 11-dim down
 
 	switch(iSwitch) {
 		case 0:
 		case 1:
-			screen=-1;	// mode handled by quigg_switch protocol driver
+			screen=-1;	// mode handled by quigg_GT7000 protocol driver
 		break;
 		case 2:
 		case 3:
@@ -96,11 +122,11 @@ static void quiggScreenParseCode(void) {
 		break;
 	}
 	if((iParityData == parity) && (screen != -1)) {
-		quiggScreenCreateMessage(id, state, unit, all);
+		createMessage(id, state, unit, all, learn);
 	}
 }
 
-static void quiggScreenCreateZero(int s, int e) {
+static void createZero(int s, int e) {
 	int i;
 	for(i=s;i<=e;i+=2) {
 		quigg_screen->raw[i] = PULSE_QUIGG_SCREEN_SHORT;
@@ -108,7 +134,7 @@ static void quiggScreenCreateZero(int s, int e) {
 	}
 }
 
-static void quiggScreenCreateOne(int s, int e) {
+static void createOne(int s, int e) {
 	int i;
 	for(i=s;i<=e;i+=2) {
 		quigg_screen->raw[i] = PULSE_QUIGG_SCREEN_LONG;
@@ -116,70 +142,68 @@ static void quiggScreenCreateOne(int s, int e) {
 	}
 }
 
-static void quiggScreenCreateHeader(void) {
+static void createHeader(void) {
 	quigg_screen->raw[0] = PULSE_QUIGG_SCREEN_SHORT;
 }
 
-static void quiggScreenCreateFooter(void) {
+static void createFooter(void) {
 	quigg_screen->raw[quigg_screen->rawlen-1] = PULSE_QUIGG_SCREEN_FOOTER;
 }
 
-static void quiggScreenClearCode(void) {
-	quiggScreenCreateHeader();
-	quiggScreenCreateZero(1,quigg_screen->rawlen-3);
+static void clearCode(void) {
+	createHeader();
+	createZero(1,quigg_screen->rawlen-3);
 }
 
-static void quiggScreenCreateId(int id) {
-	int binary[255];
-	int length = 0;
-	int i = 0, x = 0;
+static void createId(int id) {
+	int binary[16], length = 0, i = 0, x = 23;
 
-	x = 23;
 	length = decToBin(id, binary);
 	for(i=length;i>=0;i--) {
 		if(binary[i] == 1) {
-			quiggScreenCreateOne(x, x+1);
+			createOne(x, x+1);
 		}
 		x = x-2;
 	}
 }
 
-static void quiggScreenCreateUnit(int unit) {
+static void createUnit(int unit) {
 	switch (unit) {
 		case 0:
-			quiggScreenCreateZero(25, 30);	// Unit 0 screen
-			quiggScreenCreateOne(33, 34);
-			quiggScreenCreateOne(37, 38);
+			createZero(25, 30);	// Unit 0 screen
+			createOne(33, 34);
+			createOne(37, 38);
 		break;
 		case 1:
-			quiggScreenCreateOne(25, 26);	// Unit 1 screen
-			quiggScreenCreateOne(33, 34);
+			createOne(25, 26);	// Unit 1 screen
+			createOne(33, 34);
 		break;
 		case 2:
-			quiggScreenCreateOne(25, 28);	// Unit 2 screen
-			quiggScreenCreateOne(33, 34);
+			createOne(25, 28);	// Unit 2 screen
+			createOne(33, 34);
 		break;
 		case 3:
-			quiggScreenCreateOne(27, 28);	// Unit 3 screen
-			quiggScreenCreateOne(33, 34);
-			quiggScreenCreateOne(37, 38);
+			createOne(27, 28);	// Unit 3 screen
+			createOne(33, 34);
+			createOne(37, 38);
 		break;
 		case 4:
-			quiggScreenCreateOne(25, 30);	// MASTER (all) screen
-			quiggScreenCreateOne(33, 34);
-			quiggScreenCreateOne(37, 38);
+			createOne(25, 30);	// MASTER (all) screen
+			createOne(33, 34);
+			createOne(37, 38);
 		break;
 		default:
 		break;
 	}
 }
 
-static void quiggScreenCreateState(int state) {
-	if(state==1)
-		quiggScreenCreateOne(31, 32);	// dim down
+static void createState(int state) {
+	if(state==1) {
+		createOne(31, 32);	// dim down
+	}
 }
 
-static void quiggScreenCreateParity(void) {
+static void createParity(void) {
 	int i, p = 1;	// init even parity, without system ID
 	for(i=25;i<=37;i+=2) {
 		if(quigg_screen->raw[i] == PULSE_QUIGG_SCREEN_LONG) {
@@ -187,16 +211,13 @@ static void quiggScreenCreateParity(void) {
 		}
 	}
 	if(p == -1) {
-		quiggScreenCreateOne(39,40);
+		createOne(39,40);
 	}
 }
 
-static int quiggScreenCreateCode(JsonNode *code) {
-	int unit = -1;
-	int id = -1;
-	int state = -1;
-	int all = 0;
+static int createCode(JsonNode *code) {
 	double itmp = -1;
+	int unit = -1, id = -1, learn = -1, state = -1, all = 0;
 
 	if(json_find_number(code, "id", &itmp) == 0)
 		id = (int)round(itmp);
@@ -204,7 +225,8 @@ static int quiggScreenCreateCode(JsonNode *code) {
 		unit = (int)round(itmp);
 	if(json_find_number(code, "all", &itmp) == 0)
 		all = (int)round(itmp);
-
+	if(json_find_number(code, "learn", &itmp) == 0)
+		learn = (int)round(itmp);
 	if(json_find_number(code, "up", &itmp) == 0)
 		state=0;
 	if(json_find_number(code, "down", &itmp) == 0)
@@ -223,23 +245,24 @@ static int quiggScreenCreateCode(JsonNode *code) {
 		if(unit == -1 && all == 1) {
 			unit = 4;
 		}
-
-		quiggScreenCreateMessage(id, state, unit, all);
-		quiggScreenClearCode();
-		quiggScreenCreateId(id);
-		quiggScreenCreateUnit(unit);
-		quiggScreenCreateState(state);
-		quiggScreenCreateParity();
-		quiggScreenCreateFooter();
+		quigg_screen->rawlen = RAW_LENGTH;
+		createMessage(id, state, unit, all, learn);
+		clearCode();
+		createId(id);
+		createUnit(unit);
+		createState(state);
+		createParity();
+		createFooter();
 	}
 	return EXIT_SUCCESS;
 }
 
-static void quiggScreenPrintHelp(void) {
+static void printHelp(void) {
 	printf("\t -i --id=id\t\t\tselect the device units with this system id\n");
 	printf("\t -a --id=all\t\t\tcontrol all devices selected with the system id\n");
 	printf("\t -u --unit=unit\t\t\tcontrol the individual device unit selected with the system id\n");
 	printf("\t -f --up\t\t\tsend an darken DOWN command to the selected device\n");
+	printf("\t -l --learn\t\t\temulate learning mode of remote control\n");
 	printf("\t -t --down\t\t\tsend an brighten UP command to the selected device\n");
 }
 
@@ -251,35 +274,34 @@ void quiggScreenInit(void) {
 	protocol_register(&quigg_screen);
 	protocol_set_id(quigg_screen, "quigg_screen");
 	protocol_device_add(quigg_screen, "quigg_screen", "Quigg Switch Screen");
-	protocol_plslen_add(quigg_screen, (int)PULSE_QUIGG_SCREEN_FOOTER/PULSE_DIV);	// SHORT: GT-FSI-04a range: 620... 960
-
 	quigg_screen->devtype = SCREEN;
 	quigg_screen->hwtype = RF433;
-	quigg_screen->pulse = 2;	// LONG=QUIGG_PULSE_HIGH*SHORT
-	quigg_screen->lsb = 0;
-	quigg_screen->rawlen = 42;	// 42 SHORT (>600)[0]; 20 times 0-(SHORT-LONG) or 1-(LONG-SHORT) [1-2 .. 39-40];
-								// footer PULSE_DIV*SHORT (>6000) [41]
-	quigg_screen->binlen = 20;	// 20 sys-id[0 .. 11]; unit[12,13], unit_all[14], on/off[15], screen[16],
-								// null[17], var[18]; Parity[19]
+	quigg_screen->txrpt = NORMAL_REPEATS;                    // SHORT: GT-FSI-04a range: 620... 960
+	quigg_screen->minrawlen = RAW_LENGTH;
+	quigg_screen->maxrawlen = RAW_LENGTH;
+	quigg_screen->maxgaplen = (int)(PULSE_QUIGG_SCREEN_FOOTER*0.9);
+	quigg_screen->mingaplen = (int)(PULSE_QUIGG_SCREEN_FOOTER*1.1);
 
-	options_add(&quigg_screen->options, 'a', "all", OPTION_NO_VALUE, DEVICES_SETTING, JSON_NUMBER, NULL, NULL);
 	options_add(&quigg_screen->options, 't', "up", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
 	options_add(&quigg_screen->options, 'f', "down", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
 	options_add(&quigg_screen->options, 'u', "unit", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^([0-3])$");
 	options_add(&quigg_screen->options, 'i', "id", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^([1-9]|[1-9][0-9]|[1-9][0-9][0-9]|[1-3][0-9][0-9][0-9]|40[0-8][0-9]|409[0-5])$");
+	options_add(&quigg_screen->options, 'a', "all", OPTION_NO_VALUE, DEVICES_OPTIONAL, JSON_NUMBER, NULL, NULL);
+	options_add(&quigg_screen->options, 'l', "learn", OPTION_HAS_VALUE, DEVICES_OPTIONAL, JSON_NUMBER, NULL, NULL);
 
 	options_add(&quigg_screen->options, 0, "readonly", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 
-	quigg_screen->parseCode=&quiggScreenParseCode;
-	quigg_screen->createCode=&quiggScreenCreateCode;
-	quigg_screen->printHelp=&quiggScreenPrintHelp;
+	quigg_screen->parseCode=&parseCode;
+	quigg_screen->createCode=&createCode;
+	quigg_screen->printHelp=&printHelp;
+	quigg_screen->validate=&validate;
 }
 
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "quigg_screen";
-	module->version = "1.2";
-	module->reqversion = "5.0";
+	module->version = "2.0";
+	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }
 
@@ -287,4 +309,3 @@ void init(void) {
 	quiggScreenInit();
 }
 #endif
-

@@ -30,7 +30,24 @@
 #include "../../core/gc.h"
 #include "selectremote.h"
 
-static void selectremoteCreateMessage(int id, int state) {
+#define PULSE_MULTIPLIER	3
+#define MIN_PULSE_LENGTH	391
+#define MAX_PULSE_LENGTH	401
+#define AVG_PULSE_LENGTH	396
+#define RAW_LENGTH				50
+
+static int validate(void) {
+	if(selectremote->rawlen == RAW_LENGTH) {			
+		if(selectremote->raw[selectremote->rawlen-1] >= (MIN_PULSE_LENGTH*PULSE_DIV) &&
+		   selectremote->raw[selectremote->rawlen-1] <= (MAX_PULSE_LENGTH*PULSE_DIV)) {
+			return 0;
+		}
+	}
+
+	return -1;
+}
+
+static void createMessage(int id, int state) {
 	selectremote->message = json_mkobject();
 	json_append_member(selectremote->message, "id", json_mknumber(id, 0));
 	if(state == 1) {
@@ -40,40 +57,50 @@ static void selectremoteCreateMessage(int id, int state) {
 	}
 }
 
-static void selectremoteParseBinary(void) {
-	int id = 7-binToDec(selectremote->binary, 1, 3);
-	int state = selectremote->binary[8];
+static void parseCode(void) {
+	int binary[RAW_LENGTH/4], x = 0, i = 0;
 
-	selectremoteCreateMessage(id, state);
+	for(x=0;x<selectremote->rawlen;x+=4) {
+		if(selectremote->raw[x] > AVG_PULSE_LENGTH*(PULSE_MULTIPLIER/2)) {
+			binary[i++] = 1;
+		} else {
+			binary[i++] = 0;
+		}
+	}
+
+	int id = 7-binToDec(binary, 1, 3);
+	int state = binary[8];
+
+	createMessage(id, state);
 }
 
-static void selectremoteCreateLow(int s, int e) {
+static void createLow(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=4) {
-		selectremote->raw[i]=(selectremote->pulse*selectremote->plslen->length);
-		selectremote->raw[i+1]=selectremote->plslen->length;
-		selectremote->raw[i+2]=(selectremote->pulse*selectremote->plslen->length);
-		selectremote->raw[i+3]=selectremote->plslen->length;
+		selectremote->raw[i]=(PULSE_MULTIPLIER*AVG_PULSE_LENGTH);
+		selectremote->raw[i+1]=AVG_PULSE_LENGTH;
+		selectremote->raw[i+2]=(PULSE_MULTIPLIER*AVG_PULSE_LENGTH);
+		selectremote->raw[i+3]=AVG_PULSE_LENGTH;
 	}
 }
 
-static void selectremoteCreateHigh(int s, int e) {
+static void createHigh(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=4) {
-		selectremote->raw[i]=selectremote->plslen->length;
-		selectremote->raw[i+1]=(selectremote->pulse*selectremote->plslen->length);
-		selectremote->raw[i+2]=selectremote->plslen->length;
-		selectremote->raw[i+3]=(selectremote->pulse*selectremote->plslen->length);
+		selectremote->raw[i]=AVG_PULSE_LENGTH;
+		selectremote->raw[i+1]=(PULSE_MULTIPLIER*AVG_PULSE_LENGTH);
+		selectremote->raw[i+2]=AVG_PULSE_LENGTH;
+		selectremote->raw[i+3]=(PULSE_MULTIPLIER*AVG_PULSE_LENGTH);
 	}
 }
 
-static void selectremoteClearCode(void) {
-	selectremoteCreateHigh(0,47);
+static void clearCode(void) {
+	createHigh(0,47);
 }
 
-static void selectremoteCreateId(int id) {
+static void createId(int id) {
 	int binary[255];
 	int length = 0;
 	int i=0, x=0;
@@ -83,23 +110,23 @@ static void selectremoteCreateId(int id) {
 	for(i=0;i<=length;i++) {
 		if(binary[i]==1) {
 			x=i*4;
-			selectremoteCreateLow(4+x, 4+x+3);
+			createLow(4+x, 4+x+3);
 		}
 	}
 }
 
-static void selectremoteCreateState(int state) {
+static void createState(int state) {
 	if(state == 1) {
-		selectremoteCreateLow(32, 35);
+		createLow(32, 35);
 	}
 }
 
-static void selectremoteCreateFooter(void) {
-	selectremote->raw[48]=(selectremote->plslen->length);
-	selectremote->raw[49]=(PULSE_DIV*selectremote->plslen->length);
+static void createFooter(void) {
+	selectremote->raw[48]=(AVG_PULSE_LENGTH);
+	selectremote->raw[49]=(PULSE_DIV*AVG_PULSE_LENGTH);
 }
 
-static int selectremoteCreateCode(JsonNode *code) {
+static int createCode(struct JsonNode *code) {
 	int id = -1;
 	int state = -1;
 	double itmp = 0;
@@ -118,16 +145,17 @@ static int selectremoteCreateCode(JsonNode *code) {
 		logprintf(LOG_ERR, "selectremote: invalid id range");
 		return EXIT_FAILURE;
 	} else {
-		selectremoteCreateMessage(id, state);
-		selectremoteClearCode();
-		selectremoteCreateId(id);
-		selectremoteCreateState(state);
-		selectremoteCreateFooter();
+		createMessage(id, state);
+		clearCode();
+		createId(id);
+		createState(state);
+		createFooter();
+		selectremote->rawlen = RAW_LENGTH;
 	}
 	return EXIT_SUCCESS;
 }
 
-static void selectremotePrintHelp(void) {
+static void printHelp(void) {
 	printf("\t -i --id=systemcode\tcontrol a device with this id\n");
 	printf("\t -t --on\t\t\tsend an on signal\n");
 	printf("\t -f --off\t\t\tsend an off signal\n");
@@ -141,12 +169,12 @@ void selectremoteInit(void) {
 	protocol_register(&selectremote);
 	protocol_set_id(selectremote, "selectremote");
 	protocol_device_add(selectremote, "selectremote", "SelectRemote Switches");
-	protocol_plslen_add(selectremote, 396);
 	selectremote->devtype = SWITCH;
 	selectremote->hwtype = RF433;
-	selectremote->pulse = 3;
-	selectremote->rawlen = 50;
-	selectremote->binlen = 12;
+	selectremote->minrawlen = RAW_LENGTH;
+	selectremote->maxrawlen = RAW_LENGTH;
+	selectremote->maxgaplen = MAX_PULSE_LENGTH*PULSE_DIV;
+	selectremote->mingaplen = MIN_PULSE_LENGTH*PULSE_DIV;
 
 	options_add(&selectremote->options, 'i', "id", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^[0-7]$");
 	options_add(&selectremote->options, 't', "on", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
@@ -154,16 +182,17 @@ void selectremoteInit(void) {
 
 	options_add(&selectremote->options, 0, "readonly", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 
-	selectremote->parseBinary=&selectremoteParseBinary;
-	selectremote->createCode=&selectremoteCreateCode;
-	selectremote->printHelp=&selectremotePrintHelp;
+	selectremote->parseCode=&parseCode;
+	selectremote->createCode=&createCode;
+	selectremote->printHelp=&printHelp;
+	selectremote->validate=&validate;
 }
 
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "selectremote";
-	module->version = "1.0";
-	module->reqversion = "5.0";
+	module->version = "2.0";
+	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }
 

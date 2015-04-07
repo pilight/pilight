@@ -54,17 +54,17 @@
 #include "../../core/gc.h"
 #include "arping.h"
 
-static unsigned short arping_loop = 1;
-static unsigned short arping_threads = 0;
+static unsigned short loop = 1;
+static unsigned short threads = 0;
 
-static pthread_mutex_t arpinglock;
-static pthread_mutexattr_t arpingattr;
+static pthread_mutex_t lock;
+static pthread_mutexattr_t attr;
 
 #define CONNECTED				1
 #define DISCONNECTED 		0
 #define INTERVAL				5
 
-static void *arpingParse(void *param) {
+static void *thread(void *param) {
 	struct protocol_threads_t *node = (struct protocol_threads_t *)param;
 	struct JsonNode *json = (struct JsonNode *)node->param;
 	struct JsonNode *jid = NULL;
@@ -76,7 +76,7 @@ static void *arpingParse(void *param) {
 	double itmp = 0.0;
 	int state = 0, nrloops = 0, interval = INTERVAL, i = 0, srcip[4], nrdevs = 0, x = 0;
 
-	arping_threads++;
+	threads++;
 
 	if((jid = json_find_member(json, "id"))) {
 		jchild = json_first_child(jid);
@@ -127,9 +127,9 @@ static void *arpingParse(void *param) {
 		return NULL;
 	}
 
-	while(arping_loop) {
+	while(loop) {
 		if(protocol_thread_wait(node, interval, &nrloops) == ETIMEDOUT) {
-			pthread_mutex_lock(&arpinglock);
+			pthread_mutex_lock(&lock);
 			if(strlen(dstip) == 0) {
 				for(i=0;i<255;i++) {
 					memset(ip, '\0', INET_ADDRSTRLEN+1);
@@ -185,41 +185,41 @@ static void *arpingParse(void *param) {
 				json_delete(arping->message);
 				arping->message = NULL;
 			}
-			pthread_mutex_unlock(&arpinglock);
+			pthread_mutex_unlock(&lock);
 		}
 	}
-	pthread_mutex_unlock(&arpinglock);
+	pthread_mutex_unlock(&lock);
 
 	for(x=0;x<nrdevs;x++) {
 		FREE(devs[x]);
 	}
 	FREE(devs);
 
-	arping_threads--;
+	threads--;
 
 	return (void *)NULL;
 }
 
-static struct threadqueue_t *arpingInitDev(JsonNode *jdevice) {
-	arping_loop = 1;
+static struct threadqueue_t *initDev(JsonNode *jdevice) {
+	loop = 1;
 	char *output = json_stringify(jdevice, NULL);
 	JsonNode *json = json_decode(output);
 	json_free(output);
 
 	struct protocol_threads_t *node = protocol_thread_init(arping, json);
-	return threads_register("arping", &arpingParse, (void *)node, 0);
+	return threads_register("arping", &thread, (void *)node, 0);
 }
 
-static void arpingThreadGC(void) {
-	arping_loop = 0;
+static void threadGC(void) {
+	loop = 0;
 	protocol_thread_stop(arping);
-	while(arping_threads > 0) {
+	while(threads > 0) {
 		usleep(10);
 	}
 	protocol_thread_free(arping);
 }
 
-static int arpingCheckValues(JsonNode *code) {
+static int checkValues(JsonNode *code) {
 	double interval = INTERVAL;
 
 	json_find_number(code, "poll-interval", &interval);
@@ -236,9 +236,9 @@ static int arpingCheckValues(JsonNode *code) {
 __attribute__((weak))
 #endif
 void arpingInit(void) {
-	pthread_mutexattr_init(&arpingattr);
-	pthread_mutexattr_settype(&arpingattr, PTHREAD_MUTEX_RECURSIVE);
-	pthread_mutex_init(&arpinglock, &arpingattr);
+	pthread_mutexattr_init(&attr);
+	pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);
+	pthread_mutex_init(&lock, &attr);
 
 	protocol_register(&arping);
 	protocol_set_id(arping, "arping");
@@ -255,17 +255,17 @@ void arpingInit(void) {
 
 	options_add(&arping->options, 0, "poll-interval", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *)10, "[0-9]");
 
-	arping->initDev=&arpingInitDev;
-	arping->threadGC=&arpingThreadGC;
-	arping->checkValues=&arpingCheckValues;
+	arping->initDev=&initDev;
+	arping->threadGC=&threadGC;
+	arping->checkValues=&checkValues;
 }
 
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "arping";
-	module->version = "1.5";
+	module->version = "2.0";
 	module->reqversion = "6.0";
-	module->reqcommit = "64";
+	module->reqcommit = "84";
 }
 
 void init(void) {

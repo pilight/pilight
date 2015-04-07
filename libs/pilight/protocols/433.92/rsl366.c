@@ -30,7 +30,24 @@
 #include "../../core/gc.h"
 #include "rsl366.h"
 
-static void rsl366CreateMessage(int systemcode, int programcode, int state) {
+#define PULSE_MULTIPLIER	3
+#define MIN_PULSE_LENGTH	385
+#define MAX_PULSE_LENGTH	395
+#define AVG_PULSE_LENGTH	390
+#define RAW_LENGTH				50
+
+static int validate(void) {
+	if(rsl366->rawlen == RAW_LENGTH) {			
+		if(rsl366->raw[rsl366->rawlen-1] >= (MIN_PULSE_LENGTH*PULSE_DIV) &&
+		   rsl366->raw[rsl366->rawlen-1] <= (MAX_PULSE_LENGTH*PULSE_DIV)) {
+			return 0;
+		}
+	}
+
+	return -1;
+}
+
+static void createMessage(int systemcode, int programcode, int state) {
 	rsl366->message = json_mkobject();
 	json_append_member(rsl366->message, "systemcode", json_mknumber(systemcode, 0));
 	json_append_member(rsl366->message, "programcode", json_mknumber(programcode, 0));
@@ -41,72 +58,73 @@ static void rsl366CreateMessage(int systemcode, int programcode, int state) {
 	}
 }
 
-static void rsl366ParseCode(void) {
-	int x = 0;
+static void parseCode(void) {
+	int x = 0, i = 0, binary[RAW_LENGTH/4];
 
 	/* Convert the one's and zero's into binary */
 	for(x=0; x<rsl366->rawlen; x+=4) {
-		if(rsl366->code[x+3] == 1 || rsl366->code[x+0] == 1) {
-			rsl366->binary[x/4]=1;
+		if(rsl366->raw[x+3] > AVG_PULSE_LENGTH*(PULSE_MULTIPLIER/2) || 
+		  rsl366->raw[x+0] > AVG_PULSE_LENGTH*(PULSE_MULTIPLIER/2)) {
+			binary[i++]=1;
 		} else {
-			rsl366->binary[x/4]=0;
+			binary[i++]=0;
 		}
 	}
 
-	int systemcode = binToDec(rsl366->binary, 0, 4);
-	int programcode = binToDec(rsl366->binary, 5, 9);
+	int systemcode = binToDec(binary, 0, 4);
+	int programcode = binToDec(binary, 5, 9);
 	// There seems to be no check and binary[10] is always a low
-	int state = rsl366->binary[11];
+	int state = binary[11];
 
-	rsl366CreateMessage(systemcode, programcode, state);
+	createMessage(systemcode, programcode, state);
 }
 
-static void rsl366CreateLow(int s, int e) {
+static void createLow(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=4) {
-		rsl366->raw[i]=rsl366->plslen->length;
-		rsl366->raw[i+1]=(rsl366->pulse*rsl366->plslen->length);
-		rsl366->raw[i+2]=(rsl366->pulse*rsl366->plslen->length);
-		rsl366->raw[i+3]=rsl366->plslen->length;
+		rsl366->raw[i]=AVG_PULSE_LENGTH;
+		rsl366->raw[i+1]=(PULSE_MULTIPLIER*AVG_PULSE_LENGTH);
+		rsl366->raw[i+2]=(PULSE_MULTIPLIER*AVG_PULSE_LENGTH);
+		rsl366->raw[i+3]=AVG_PULSE_LENGTH;
 	}
 }
 
-static void rsl366CreateHigh(int s, int e) {
+static void createHigh(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=4) {
-		rsl366->raw[i]=rsl366->plslen->length;
-		rsl366->raw[i+1]=(rsl366->pulse*rsl366->plslen->length);
-		rsl366->raw[i+2]=rsl366->plslen->length;
-		rsl366->raw[i+3]=(rsl366->pulse*rsl366->plslen->length);
+		rsl366->raw[i]=AVG_PULSE_LENGTH;
+		rsl366->raw[i+1]=(PULSE_MULTIPLIER*AVG_PULSE_LENGTH);
+		rsl366->raw[i+2]=AVG_PULSE_LENGTH;
+		rsl366->raw[i+3]=(PULSE_MULTIPLIER*AVG_PULSE_LENGTH);
 	}
 }
 
-static void rsl366ClearCode(void) {
-	rsl366CreateLow(0,47);
+static void clearCode(void) {
+	createLow(0,47);
 }
 
-static void rsl366CreateSystemCode(int systemcode) {
-	rsl366CreateHigh((systemcode-1)*4, (systemcode-1)*4+3);
+static void createSystemCode(int systemcode) {
+	createHigh((systemcode-1)*4, (systemcode-1)*4+3);
 }
 
-static void rsl366CreateProgramCode(int programcode) {
-	rsl366CreateHigh(16+(programcode-1)*4, 16+(programcode-1)*4+3);
+static void createProgramCode(int programcode) {
+	createHigh(16+(programcode-1)*4, 16+(programcode-1)*4+3);
 }
 
-static void rsl366CreateState(int state) {
+static void createState(int state) {
 	if(state == 0) {
-		rsl366CreateHigh(44, 47);
+		createHigh(44, 47);
 	}
 }
 
-static void rsl366CreateFooter(void) {
-	rsl366->raw[48]=(rsl366->plslen->length);
-	rsl366->raw[49]=(PULSE_DIV*rsl366->plslen->length);
+static void createFooter(void) {
+	rsl366->raw[48]=(AVG_PULSE_LENGTH);
+	rsl366->raw[49]=(PULSE_DIV*AVG_PULSE_LENGTH);
 }
 
-static int rsl366CreateCode(JsonNode *code) {
+static int createCode(struct JsonNode *code) {
 	int systemcode = -1;
 	int programcode = -1;
 	int state = -1;
@@ -131,17 +149,18 @@ static int rsl366CreateCode(JsonNode *code) {
 		logprintf(LOG_ERR, "rsl366: invalid programcode range");
 		return EXIT_FAILURE;
 	} else {
-		rsl366CreateMessage(systemcode, programcode, state);
-		rsl366ClearCode();
-		rsl366CreateSystemCode(systemcode);
-		rsl366CreateProgramCode(programcode);
-		rsl366CreateState(state);
-		rsl366CreateFooter();
+		createMessage(systemcode, programcode, state);
+		clearCode();
+		createSystemCode(systemcode);
+		createProgramCode(programcode);
+		createState(state);
+		createFooter();
+		rsl366->rawlen = RAW_LENGTH;
 	}
 	return EXIT_SUCCESS;
 }
 
-static void rsl366PrintHelp(void) {
+static void printHelp(void) {
 	printf("\t -s --systemcode=systemcode\tcontrol a device with this systemcode\n");
 	printf("\t -u --programcode=programcode\tcontrol a device with this programcode\n");
 	printf("\t -t --on\t\t\tsend an on signal\n");
@@ -157,12 +176,12 @@ void rsl366Init(void) {
 	protocol_set_id(rsl366, "rsl366");
 	protocol_device_add(rsl366, "rsl366", "RSL366 Switches");
 	protocol_device_add(rsl366, "promax", "Pro MAX Switches");
-	protocol_plslen_add(rsl366, 390);
 	rsl366->devtype = SWITCH;
 	rsl366->hwtype = RF433;
-	rsl366->pulse = 3;
-	rsl366->rawlen = 50;
-	rsl366->binlen = 12;
+	rsl366->minrawlen = RAW_LENGTH;
+	rsl366->maxrawlen = RAW_LENGTH;
+	rsl366->maxgaplen = MAX_PULSE_LENGTH*PULSE_DIV;
+	rsl366->mingaplen = MIN_PULSE_LENGTH*PULSE_DIV;
 
 	options_add(&rsl366->options, 's', "systemcode", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^([1234]{1})$");
 	options_add(&rsl366->options, 'u', "programcode", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^([1234]{1})$");
@@ -171,16 +190,17 @@ void rsl366Init(void) {
 
 	options_add(&rsl366->options, 0, "readonly", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 
-	rsl366->parseCode=&rsl366ParseCode;
-	rsl366->createCode=&rsl366CreateCode;
-	rsl366->printHelp=&rsl366PrintHelp;
+	rsl366->parseCode=&parseCode;
+	rsl366->createCode=&createCode;
+	rsl366->printHelp=&printHelp;
+	rsl366->validate=&validate;
 }
 
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "rsl366";
-	module->version = "1.1";
-	module->reqversion = "5.0";
+	module->version = "2.0";
+	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }
 

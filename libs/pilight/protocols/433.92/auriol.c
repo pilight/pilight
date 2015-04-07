@@ -30,28 +30,50 @@
 #include "../../core/gc.h"
 #include "auriol.h"
 
-typedef struct auriol_settings_t {
+#define PULSE_MULTIPLIER	13
+#define MIN_PULSE_LENGTH	274
+#define MAX_PULSE_LENGTH	265
+#define AVG_PULSE_LENGTH	269
+#define RAW_LENGTH				66
+
+typedef struct settings_t {
 	double id;
 	double temp;
-	struct auriol_settings_t *next;
-} auriol_settings_t;
+	struct settings_t *next;
+} settings_t;
 
-static struct auriol_settings_t *auriol_settings = NULL;
+static struct settings_t *settings = NULL;
 
-static void auriolParseCode(void) {
-	int i = 0, x = 0;
-	int channel = 0, id = 0, battery = 0;
-	double temp_offset = 0.0, temperature = 0.0;
-	for(i=1;i<auriol->rawlen-1;i+=2) {
-		auriol->binary[x++] = auriol->code[i];
+static int validate(void) {
+	if(auriol->rawlen == RAW_LENGTH) {			
+		if(auriol->raw[auriol->rawlen-1] >= (MIN_PULSE_LENGTH*PULSE_DIV) &&
+		   auriol->raw[auriol->rawlen-1] <= (MAX_PULSE_LENGTH*PULSE_DIV)) {
+			return 0;
+		}
 	}
 
-	// id = binToDecRev(auriol->binary, 0, 7); using channel instead of battery id as id
-	battery = auriol->binary[8];
-	channel = 1 + binToDecRev(auriol->binary, 10, 11); // channel as id
-	temperature = (double)binToDecRev(auriol->binary, 12, 23)/10;
-	// checksum = (double)binToDecRev(auriol->binary, 24, 31); been unable to deciper it
-	struct auriol_settings_t *tmp = auriol_settings;
+	return -1;
+}
+
+static void parseCode(void) {
+	int i = 0, x = 0, binary[RAW_LENGTH/2];
+	int channel = 0, id = 0, battery = 0;
+	double temp_offset = 0.0, temperature = 0.0;
+
+	for(x=1;x<auriol->rawlen-2;x+=2) {
+		if(auriol->raw[x] > AVG_PULSE_LENGTH*PULSE_MULTIPLIER) {
+			binary[i++] = 1;
+		} else {
+			binary[i++] = 0;
+		}
+	}
+
+	// id = binToDecRev(binary, 0, 7); using channel instead of battery id as id
+	battery = binary[8];
+	channel = 1 + binToDecRev(binary, 10, 11); // channel as id
+	temperature = (double)binToDecRev(binary, 12, 23)/10;
+	// checksum = (double)binToDecRev(binary, 24, 31); been unable to deciper it
+	struct settings_t *tmp = settings;
 	while(tmp) {
 		if(fabs(tmp->id-id) < EPSILON) {
 			temp_offset = tmp->temp;
@@ -62,7 +84,7 @@ static void auriolParseCode(void) {
 
 	temperature += temp_offset;
 
-	if (channel != 4) {
+	if(channel != 4) {
 		auriol->message = json_mkobject();
 		json_append_member(auriol->message, "id", json_mknumber(channel, 0));
 		json_append_member(auriol->message, "temperature", json_mknumber(temperature, 1));
@@ -70,11 +92,11 @@ static void auriolParseCode(void) {
 	}
 }
 
-static int auriolCheckValues(struct JsonNode *jvalues) {
+static int checkValues(struct JsonNode *jvalues) {
 	struct JsonNode *jid = NULL;
 
 	if((jid = json_find_member(jvalues, "id"))) {
-		struct auriol_settings_t *snode = NULL;
+		struct settings_t *snode = NULL;
 		struct JsonNode *jchild = NULL;
 		struct JsonNode *jchild1 = NULL;
 		double id = -1;
@@ -92,7 +114,7 @@ static int auriolCheckValues(struct JsonNode *jvalues) {
 			jchild = jchild->next;
 		}
 
-		struct auriol_settings_t *tmp = auriol_settings;
+		struct settings_t *tmp = settings;
 		while(tmp) {
 			if(fabs(tmp->id-id) < EPSILON) {
 				match = 1;
@@ -101,8 +123,8 @@ static int auriolCheckValues(struct JsonNode *jvalues) {
 			tmp = tmp->next;
 		}
 
-		if(!match) {
-			if(!(snode = MALLOC(sizeof(struct auriol_settings_t)))) {
+		if(match == 0) {
+			if((snode = MALLOC(sizeof(struct settings_t))) == NULL) {
 				logprintf(LOG_ERR, "out of memory");
 				exit(EXIT_FAILURE);
 			}
@@ -111,22 +133,22 @@ static int auriolCheckValues(struct JsonNode *jvalues) {
 
 			json_find_number(jvalues, "temperature-offset", &snode->temp);
 
-			snode->next = auriol_settings;
-			auriol_settings = snode;
+			snode->next = settings;
+			settings = snode;
 		}
 	}
 	return 0;
 }
 
-static void auriolGC(void) {
-	struct auriol_settings_t *tmp = NULL;
-	while(auriol_settings) {
-		tmp = auriol_settings;
-		auriol_settings = auriol_settings->next;
+static void gc(void) {
+	struct settings_t *tmp = NULL;
+	while(settings) {
+		tmp = settings;
+		settings = settings->next;
 		FREE(tmp);
 	}
-	if(auriol_settings != NULL) {
-		FREE(auriol_settings);
+	if(settings != NULL) {
+		FREE(settings);
 	}
 }
 
@@ -138,11 +160,12 @@ void auriolInit(void) {
 	protocol_register(&auriol);
 	protocol_set_id(auriol, "auriol");
 	protocol_device_add(auriol, "auriol", "Auriol Weather Stations");
-	protocol_plslen_add(auriol, 269);
 	auriol->devtype = WEATHER;
 	auriol->hwtype = RF433;
-	auriol->pulse = 15;
-	auriol->rawlen = 66;
+	auriol->minrawlen = RAW_LENGTH;
+	auriol->maxrawlen = RAW_LENGTH;
+	auriol->maxgaplen = MAX_PULSE_LENGTH*PULSE_DIV;
+	auriol->mingaplen = MIN_PULSE_LENGTH*PULSE_DIV;
 
 	options_add(&auriol->options, 'i', "id", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "[1-3]");
 	options_add(&auriol->options, 't', "temperature", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9]{1,3}$");
@@ -154,17 +177,18 @@ void auriolInit(void) {
 	options_add(&auriol->options, 0, "show-temperature", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
 	options_add(&auriol->options, 0, "show-battery", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
 
-	auriol->parseCode=&auriolParseCode;
-	auriol->checkValues=&auriolCheckValues;
-	auriol->gc=&auriolGC;
+	auriol->parseCode=&parseCode;
+	auriol->checkValues=&checkValues;
+	auriol->validate=&validate;
+	auriol->gc=&gc;
 }
 
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "auriol";
-	module->version = "1.2";
-	module->reqversion = "5.0";
-	module->reqcommit = "187";
+	module->version = "2.0";
+	module->reqversion = "6.0";
+	module->reqcommit = "84";
 }
 
 void init(void) {

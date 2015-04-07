@@ -30,7 +30,27 @@
 #include "../../core/gc.h"
 #include "arctech_contact.h"
 
-static void arctechContactCreateMessage(int id, int unit, int state, int all) {
+#define PULSE_MULTIPLIER	3
+#define MIN_PULSE_LENGTH	290
+#define MAX_PULSE_LENGTH	320
+#define AVG_PULSE_LENGTH	300
+#define MIN_RAW_LENGTH		148
+#define MAX_RAW_LENGTH		132
+#define RAW_LENGTH				132
+
+static int validate(void) {
+	if(arctech_contact->rawlen == RAW_LENGTH) {			
+		if(arctech_contact->raw[arctech_contact->rawlen-1] >= (MIN_PULSE_LENGTH*PULSE_DIV) &&
+		   arctech_contact->raw[arctech_contact->rawlen-1] <= (MAX_PULSE_LENGTH*PULSE_DIV) &&
+			 arctech_contact->raw[1] >= AVG_PULSE_LENGTH*(PULSE_MULTIPLIER*3)) {
+			return 0;
+		}
+	}
+
+	return -1;
+}
+
+static void createMessage(int id, int unit, int state, int all) {
 	arctech_contact->message = json_mkobject();
 	json_append_member(arctech_contact->message, "id", json_mknumber(id, 0));
 	if(all == 1) {
@@ -46,13 +66,23 @@ static void arctechContactCreateMessage(int id, int unit, int state, int all) {
 	}
 }
 
-static void arctechContactParseBinary(void) {
-	int unit = binToDecRev(arctech_contact->binary, 28, 31);
-	int state = arctech_contact->binary[27];
-	int all = arctech_contact->binary[26];
-	int id = binToDecRev(arctech_contact->binary, 0, 25);
+static void parseCode(void) {
+	int binary[RAW_LENGTH/4], x = 0, i = 0;
 
-	arctechContactCreateMessage(id, unit, state, all);
+	for(x=0;x<arctech_contact->rawlen;x+=4) {
+		if(arctech_contact->raw[x+3] > AVG_PULSE_LENGTH*PULSE_MULTIPLIER) {
+			binary[i++] = 1;
+		} else {
+			binary[i++] = 0;
+		}
+	}
+
+	int unit = binToDecRev(binary, 28, 31);
+	int state = binary[27];
+	int all = binary[26];
+	int id = binToDecRev(binary, 0, 25);
+
+	createMessage(id, unit, state, all);
 }
 
 #if !defined(MODULE) && !defined(_WIN32)
@@ -64,17 +94,13 @@ void arctechContactInit(void) {
 	protocol_set_id(arctech_contact, "arctech_contact");
 	protocol_device_add(arctech_contact, "kaku_contact", "KlikAanKlikUit Contact Sensor");
 	protocol_device_add(arctech_contact, "dio_contact", "D-IO Contact Sensor");
-	protocol_plslen_add(arctech_contact, 315);
-	protocol_plslen_add(arctech_contact, 294);
-	protocol_plslen_add(arctech_contact, 305);
 
 	arctech_contact->devtype = CONTACT;
 	arctech_contact->hwtype = RF433;
-	arctech_contact->pulse = 5;
-	arctech_contact->rawlen = 140;
-	arctech_contact->minrawlen = 132;
-	arctech_contact->maxrawlen = 148;
-	arctech_contact->lsb = 3;
+	arctech_contact->minrawlen = MAX_RAW_LENGTH;
+	arctech_contact->maxrawlen = MIN_RAW_LENGTH;
+	arctech_contact->maxgaplen = MAX_PULSE_LENGTH*PULSE_DIV;
+	arctech_contact->mingaplen = MIN_PULSE_LENGTH*PULSE_DIV;
 
 	options_add(&arctech_contact->options, 'u', "unit", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^([0-9]{1}|[1][0-5])$");
 	options_add(&arctech_contact->options, 'i', "id", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^([0-9]{1,7}|[1-5][0-9]{7}|6([0-6][0-9]{6}|7(0[0-9]{5}|10([0-7][0-9]{3}|8([0-7][0-9]{2}|8([0-5][0-9]|6[0-3]))))))$");
@@ -84,14 +110,15 @@ void arctechContactInit(void) {
 	options_add(&arctech_contact->options, 'a', "all", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 	options_add(&arctech_contact->options, 0, "readonly", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 
-	arctech_contact->parseBinary=&arctechContactParseBinary;
+	arctech_contact->parseCode=&parseCode;
+	arctech_contact->validate=&validate;
 }
 
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "arctech_contact";
-	module->version = "1.3";
-	module->reqversion = "5.0";
+	module->version = "2.0";
+	module->reqversion = "6.0";
 	module->reqcommit = "38";
 }
 

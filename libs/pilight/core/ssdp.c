@@ -126,7 +126,7 @@ int ssdp_seek(struct ssdp_list_t **ssdp_list) {
 	char message[BUFFER_SIZE] = {'\0'};
 	char header[BUFFER_SIZE] = {'\0'};
 	int sock, match = 0;
-	int timeout = 3;
+	int timeout = 1;
 	ssize_t len = 0;
 	socklen_t addrlen = sizeof(addr);
 	unsigned short int nip[4], port = 0;

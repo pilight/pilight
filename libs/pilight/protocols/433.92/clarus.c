@@ -30,7 +30,24 @@
 #include "../../core/gc.h"
 #include "clarus.h"
 
-static void clarusSwCreateMessage(char *id, int unit, int state) {
+#define PULSE_MULTIPLIER	3
+#define MIN_PULSE_LENGTH	160
+#define MAX_PULSE_LENGTH	200
+#define AVG_PULSE_LENGTH	180
+#define RAW_LENGTH				50
+
+static int validate(void) {
+	if(clarus_switch->rawlen == RAW_LENGTH) {			
+		if(clarus_switch->raw[clarus_switch->rawlen-1] >= (MIN_PULSE_LENGTH*PULSE_DIV) &&
+		   clarus_switch->raw[clarus_switch->rawlen-1] <= (MAX_PULSE_LENGTH*PULSE_DIV)) {
+			return 0;
+		}
+	}
+
+	return -1;
+}
+
+static void createMessage(char *id, int unit, int state) {
 	clarus_switch->message = json_mkobject();
 	json_append_member(clarus_switch->message, "id", json_mkstring(id));
 	json_append_member(clarus_switch->message, "unit", json_mknumber(unit, 0));
@@ -40,75 +57,74 @@ static void clarusSwCreateMessage(char *id, int unit, int state) {
 		json_append_member(clarus_switch->message, "state", json_mkstring("off"));
 }
 
-static void clarusSwParseCode(void) {
-	int x = 0;
-	int z = 65;
+static void parseCode(void) {
+	int x = 0, z = 65, binary[RAW_LENGTH/4];
 	char id[3];
 
 	/* Convert the one's and zero's into binary */
 	for(x=0; x<clarus_switch->rawlen; x+=4) {
-		if(clarus_switch->code[x+3] == 1) {
-			clarus_switch->binary[x/4]=1;
-		} else if(clarus_switch->code[x+0] == 1) {
-			clarus_switch->binary[x/4]=2;
+		if(clarus_switch->raw[x+3] > AVG_PULSE_LENGTH*(PULSE_MULTIPLIER/2)) {
+			binary[x/4]=1;
+		} else if(clarus_switch->raw[x+0] > AVG_PULSE_LENGTH*(PULSE_MULTIPLIER/2)) {
+			binary[x/4]=2;
 		} else {
-			clarus_switch->binary[x/4]=0;
+			binary[x/4]=0;
 		}
 	}
 
 	for(x=9;x>=5;--x) {
-		if(clarus_switch->binary[x] == 2) {
+		if(binary[x] == 2) {
 			break;
 		}
 		z++;
 	}
 
-	int unit = binToDecRev(clarus_switch->binary, 0, 5);
-	int state = clarus_switch->binary[11];
-	int y = binToDecRev(clarus_switch->binary, 6, 9);
+	int unit = binToDecRev(binary, 0, 5);
+	int state = binary[11];
+	int y = binToDecRev(binary, 6, 9);
 	sprintf(&id[0], "%c%d", z, y);
 
-	clarusSwCreateMessage(id, unit, state);
+	createMessage(id, unit, state);
 }
 
-static void clarusSwCreateLow(int s, int e) {
+static void createLow(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=4) {
-		clarus_switch->raw[i]=(clarus_switch->plslen->length);
-		clarus_switch->raw[i+1]=(clarus_switch->pulse*clarus_switch->plslen->length);
-		clarus_switch->raw[i+2]=(clarus_switch->pulse*clarus_switch->plslen->length);
-		clarus_switch->raw[i+3]=(clarus_switch->plslen->length);
+		clarus_switch->raw[i]=(AVG_PULSE_LENGTH);
+		clarus_switch->raw[i+1]=(PULSE_MULTIPLIER*AVG_PULSE_LENGTH);
+		clarus_switch->raw[i+2]=(PULSE_MULTIPLIER*AVG_PULSE_LENGTH);
+		clarus_switch->raw[i+3]=(AVG_PULSE_LENGTH);
 	}
 }
 
-static void clarusSwCreateMed(int s, int e) {
+static void createMed(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=4) {
-		clarus_switch->raw[i]=(clarus_switch->pulse*clarus_switch->plslen->length);
-		clarus_switch->raw[i+1]=(clarus_switch->plslen->length);
-		clarus_switch->raw[i+2]=(clarus_switch->pulse*clarus_switch->plslen->length);
-		clarus_switch->raw[i+3]=(clarus_switch->plslen->length);
+		clarus_switch->raw[i]=(PULSE_MULTIPLIER*AVG_PULSE_LENGTH);
+		clarus_switch->raw[i+1]=(AVG_PULSE_LENGTH);
+		clarus_switch->raw[i+2]=(PULSE_MULTIPLIER*AVG_PULSE_LENGTH);
+		clarus_switch->raw[i+3]=(AVG_PULSE_LENGTH);
 	}
 }
 
-static void clarusSwCreateHigh(int s, int e) {
+static void createHigh(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=4) {
-		clarus_switch->raw[i]=(clarus_switch->plslen->length);
-		clarus_switch->raw[i+1]=(clarus_switch->pulse*clarus_switch->plslen->length);
-		clarus_switch->raw[i+2]=(clarus_switch->plslen->length);
-		clarus_switch->raw[i+3]=(clarus_switch->pulse*clarus_switch->plslen->length);
+		clarus_switch->raw[i]=(AVG_PULSE_LENGTH);
+		clarus_switch->raw[i+1]=(PULSE_MULTIPLIER*AVG_PULSE_LENGTH);
+		clarus_switch->raw[i+2]=(AVG_PULSE_LENGTH);
+		clarus_switch->raw[i+3]=(PULSE_MULTIPLIER*AVG_PULSE_LENGTH);
 	}
 }
 
-static void clarusSwClearCode(void) {
-	clarusSwCreateLow(0,47);
+static void clearCode(void) {
+	createLow(0,47);
 }
 
-static void clarusSwCreateUnit(int unit) {
+static void createUnit(int unit) {
 	int binary[255];
 	int length = 0;
 	int i=0, x=0;
@@ -117,12 +133,12 @@ static void clarusSwCreateUnit(int unit) {
 	for(i=0;i<=length;i++) {
 		if(binary[i]==1) {
 			x=i*4;
-			clarusSwCreateHigh(23-(x+3), 23-x);
+			createHigh(23-(x+3), 23-x);
 		}
 	}
 }
 
-static void clarusSwCreateId(char *id) {
+static void createId(char *id) {
 	int l = ((int)(id[0]))-65;
 	int y = atoi(&id[1]);
 	int binary[255];
@@ -133,29 +149,29 @@ static void clarusSwCreateId(char *id) {
 	for(i=0;i<=length;i++) {
 		x=i*4;
 		if(binary[i]==1) {
-			clarusSwCreateHigh(39-(x+3), 39-x);
+			createHigh(39-(x+3), 39-x);
 		}
 	}
 	x=(l*4);
-	clarusSwCreateMed(39-(x+3), 39-x);
+	createMed(39-(x+3), 39-x);
 }
 
-static void clarusSwCreateState(int state) {
+static void createState(int state) {
 	if(state == 0) {
-		clarusSwCreateMed(40,43);
-		clarusSwCreateHigh(44,47);
+		createMed(40,43);
+		createHigh(44,47);
 	} else {
-		clarusSwCreateHigh(40,43);
-		clarusSwCreateMed(44,47);
+		createHigh(40,43);
+		createMed(44,47);
 	}
 }
 
-static void clarusSwCreateFooter(void) {
-	clarus_switch->raw[48]=(clarus_switch->plslen->length);
-	clarus_switch->raw[49]=(PULSE_DIV*clarus_switch->plslen->length);
+static void createFooter(void) {
+	clarus_switch->raw[48]=(AVG_PULSE_LENGTH);
+	clarus_switch->raw[49]=(PULSE_DIV*AVG_PULSE_LENGTH);
 }
 
-static int clarusSwCreateCode(JsonNode *code) {
+static int createCode(struct JsonNode *code) {
 	char id[3] = {'\0'};
 	int unit = -1;
 	int state = -1;
@@ -186,17 +202,18 @@ static int clarusSwCreateCode(JsonNode *code) {
 		logprintf(LOG_ERR, "clarus_switch: invalid unit range");
 		return EXIT_FAILURE;
 	} else {
-		clarusSwCreateMessage(id, unit, ((state == 2 || state == 1) ? 2 : 0));
-		clarusSwClearCode();
-		clarusSwCreateUnit(unit);
-		clarusSwCreateId(id);
-		clarusSwCreateState(state);
-		clarusSwCreateFooter();;
+		createMessage(id, unit, ((state == 2 || state == 1) ? 2 : 0));
+		clearCode();
+		createUnit(unit);
+		createId(id);
+		createState(state);
+		createFooter();
+		clarus_switch->rawlen = RAW_LENGTH;
 	}
 	return EXIT_SUCCESS;
 }
 
-static void clarusSwPrintHelp(void) {
+static void printHelp(void) {
 	printf("\t -t --on\t\t\tsend an on signal\n");
 	printf("\t -f --off\t\t\tsend an off signal\n");
 	printf("\t -u --unit=unit\t\t\tcontrol a device with this unit code\n");
@@ -206,19 +223,17 @@ static void clarusSwPrintHelp(void) {
 #if !defined(MODULE) && !defined(_WIN32)
 __attribute__((weak))
 #endif
-void clarusSwInit(void) {
+void clarusSwitchInit(void) {
 
 	protocol_register(&clarus_switch);
 	protocol_set_id(clarus_switch, "clarus_switch");
 	protocol_device_add(clarus_switch, "clarus_switch", "Clarus Switches");
-	protocol_plslen_add(clarus_switch, 190);
-	protocol_plslen_add(clarus_switch, 180);
-	protocol_plslen_add(clarus_switch, 165);
 	clarus_switch->devtype = SWITCH;
 	clarus_switch->hwtype = RF433;
-	clarus_switch->pulse = 3;
-	clarus_switch->rawlen = 50;
-	clarus_switch->binlen = 12;
+	clarus_switch->minrawlen = RAW_LENGTH;
+	clarus_switch->maxrawlen = RAW_LENGTH;
+	clarus_switch->maxgaplen = MAX_PULSE_LENGTH*PULSE_DIV;
+	clarus_switch->mingaplen = MIN_PULSE_LENGTH*PULSE_DIV;
 
 	options_add(&clarus_switch->options, 't', "on", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
 	options_add(&clarus_switch->options, 'f', "off", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
@@ -227,20 +242,21 @@ void clarusSwInit(void) {
 
 	options_add(&clarus_switch->options, 0, "readonly", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 
-	clarus_switch->parseCode=&clarusSwParseCode;
-	clarus_switch->createCode=&clarusSwCreateCode;
-	clarus_switch->printHelp=&clarusSwPrintHelp;
+	clarus_switch->parseCode=&parseCode;
+	clarus_switch->createCode=&createCode;
+	clarus_switch->printHelp=&printHelp;
+	clarus_switch->validate=&validate;
 }
 
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "clarus_switch";
-	module->version = "1.0";
-	module->reqversion = "5.0";
+	module->version = "2.0";
+	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }
 
 void init(void) {
-	clarusSwInit();
+	clarusSwitchInit();
 }
 #endif

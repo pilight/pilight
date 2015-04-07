@@ -30,7 +30,24 @@
 #include "../../core/gc.h"
 #include "arctech_switch_old.h"
 
-static void arctechSwOldCreateMessage(int id, int unit, int state) {
+#define PULSE_MULTIPLIER	3
+#define MIN_PULSE_LENGTH	320
+#define MAX_PULSE_LENGTH	405
+#define AVG_PULSE_LENGTH	335
+#define RAW_LENGTH				50
+
+static int validate(void) {
+	if(arctech_switch_old->rawlen == RAW_LENGTH) {			
+		if(arctech_switch_old->raw[arctech_switch_old->rawlen-1] >= (MIN_PULSE_LENGTH*PULSE_DIV) &&
+		   arctech_switch_old->raw[arctech_switch_old->rawlen-1] <= (MAX_PULSE_LENGTH*PULSE_DIV)) {
+			return 0;
+		}
+	}
+
+	return -1;
+}
+
+static void createMessage(int id, int unit, int state) {
 	arctech_switch_old->message = json_mkobject();
 	json_append_member(arctech_switch_old->message, "id", json_mknumber(id, 0));
 	json_append_member(arctech_switch_old->message, "unit", json_mknumber(unit, 0));
@@ -40,41 +57,51 @@ static void arctechSwOldCreateMessage(int id, int unit, int state) {
 		json_append_member(arctech_switch_old->message, "state", json_mkstring("off"));
 }
 
-static void arctechSwOldParseBinary(void) {
-	int unit = binToDec(arctech_switch_old->binary, 0, 3);
-	int state = arctech_switch_old->binary[11];
-	int id = binToDec(arctech_switch_old->binary, 4, 8);
-	arctechSwOldCreateMessage(id, unit, state);
+static void parseCode(void) {
+	int binary[RAW_LENGTH/4], x = 0, i = 0;
+
+	for(x=0;x<arctech_switch_old->rawlen;x+=4) {
+		if(arctech_switch_old->raw[x+2] > AVG_PULSE_LENGTH*(PULSE_MULTIPLIER/2)) {
+			binary[i++] = 1;
+		} else {
+			binary[i++] = 0;
+		}
+	}
+
+	int unit = binToDec(binary, 0, 3);
+	int state = binary[11];
+	int id = binToDec(binary, 4, 8);
+	createMessage(id, unit, state);
 }
 
-static void arctechSwOldCreateLow(int s, int e) {
+static void createLow(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=4) {
-		arctech_switch_old->raw[i]=(arctech_switch_old->plslen->length);
-		arctech_switch_old->raw[i+1]=(arctech_switch_old->pulse*arctech_switch_old->plslen->length);
-		arctech_switch_old->raw[i+2]=(arctech_switch_old->pulse*arctech_switch_old->plslen->length);
-		arctech_switch_old->raw[i+3]=(arctech_switch_old->plslen->length);
+		arctech_switch_old->raw[i]=(AVG_PULSE_LENGTH);
+		arctech_switch_old->raw[i+1]=(PULSE_MULTIPLIER*AVG_PULSE_LENGTH);
+		arctech_switch_old->raw[i+2]=(PULSE_MULTIPLIER*AVG_PULSE_LENGTH);
+		arctech_switch_old->raw[i+3]=(AVG_PULSE_LENGTH);
 	}
 }
 
-static void arctechSwOldCreateHigh(int s, int e) {
+static void createHigh(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=4) {
-		arctech_switch_old->raw[i]=(arctech_switch_old->plslen->length);
-		arctech_switch_old->raw[i+1]=(arctech_switch_old->pulse*arctech_switch_old->plslen->length);
-		arctech_switch_old->raw[i+2]=(arctech_switch_old->plslen->length);
-		arctech_switch_old->raw[i+3]=(arctech_switch_old->pulse*arctech_switch_old->plslen->length);
+		arctech_switch_old->raw[i]=(AVG_PULSE_LENGTH);
+		arctech_switch_old->raw[i+1]=(PULSE_MULTIPLIER*AVG_PULSE_LENGTH);
+		arctech_switch_old->raw[i+2]=(AVG_PULSE_LENGTH);
+		arctech_switch_old->raw[i+3]=(PULSE_MULTIPLIER*AVG_PULSE_LENGTH);
 	}
 }
 
-static void arctechSwOldClearCode(void) {
-	arctechSwOldCreateHigh(0,35);
-	arctechSwOldCreateLow(36,47);
+static void clearCode(void) {
+	createHigh(0,35);
+	createLow(36,47);
 }
 
-static void arctechSwOldCreateUnit(int unit) {
+static void createUnit(int unit) {
 	int binary[255];
 	int length = 0;
 	int i=0, x=0;
@@ -83,12 +110,12 @@ static void arctechSwOldCreateUnit(int unit) {
 	for(i=0;i<=length;i++) {
 		if(binary[i]==1) {
 			x=i*4;
-			arctechSwOldCreateLow(x, x+3);
+			createLow(x, x+3);
 		}
 	}
 }
 
-static void arctechSwOldCreateId(int id) {
+static void createId(int id) {
 	int binary[255];
 	int length = 0;
 	int i=0, x=0;
@@ -97,23 +124,23 @@ static void arctechSwOldCreateId(int id) {
 	for(i=0;i<=length;i++) {
 		if(binary[i]==1) {
 			x=i*4;
-			arctechSwOldCreateLow(16+x, 16+x+3);
+			createLow(16+x, 16+x+3);
 		}
 	}
 }
 
-static void arctechSwOldCreateState(int state) {
+static void createState(int state) {
 	if(state == 0) {
-		arctechSwOldCreateHigh(44,47);
+		createHigh(44,47);
 	}
 }
 
-static void arctechSwOldCreateFooter(void) {
-	arctech_switch_old->raw[48]=(arctech_switch_old->plslen->length);
-	arctech_switch_old->raw[49]=(PULSE_DIV*arctech_switch_old->plslen->length);
+static void createFooter(void) {
+	arctech_switch_old->raw[48]=(AVG_PULSE_LENGTH);
+	arctech_switch_old->raw[49]=(PULSE_DIV*AVG_PULSE_LENGTH);
 }
 
-static int arctechSwOldCreateCode(JsonNode *code) {
+static int createCode(struct JsonNode *code) {
 	int id = -1;
 	int unit = -1;
 	int state = -1;
@@ -138,17 +165,18 @@ static int arctechSwOldCreateCode(JsonNode *code) {
 		logprintf(LOG_ERR, "arctech_switch_old: invalid unit range");
 		return EXIT_FAILURE;
 	} else {
-		arctechSwOldCreateMessage(id, unit, state);
-		arctechSwOldClearCode();
-		arctechSwOldCreateUnit(unit);
-		arctechSwOldCreateId(id);
-		arctechSwOldCreateState(state);
-		arctechSwOldCreateFooter();
+		createMessage(id, unit, state);
+		clearCode();
+		createUnit(unit);
+		createId(id);
+		createState(state);
+		createFooter();
+		arctech_switch_old->rawlen = RAW_LENGTH;
 	}
 	return EXIT_SUCCESS;
 }
 
-static void arctechSwOldPrintHelp(void) {
+static void printHelp(void) {
 	printf("\t -t --on\t\t\tsend an on signal\n");
 	printf("\t -f --off\t\t\tsend an off signal\n");
 	printf("\t -u --unit=unit\t\t\tcontrol a device with this unit code\n");
@@ -158,7 +186,7 @@ static void arctechSwOldPrintHelp(void) {
 #if !defined(MODULE) && !defined(_WIN32)
 __attribute__((weak))
 #endif
-void arctechSwOldInit(void) {
+void arctechSwitchOldInit(void) {
 
 	protocol_register(&arctech_switch_old);
 	protocol_set_id(arctech_switch_old, "arctech_switch_old");
@@ -168,18 +196,12 @@ void arctechSwOldInit(void) {
 	protocol_device_add(arctech_switch_old, "byebyestandbye", "Bye Bye Standbye Switches");
 	protocol_device_add(arctech_switch_old, "duwi", "Düwi Terminal Switches");
 	protocol_device_add(arctech_switch_old, "eurodomest", "Eurodomest Switches");
-	protocol_plslen_add(arctech_switch_old, 336);
-	protocol_plslen_add(arctech_switch_old, 326);
-	protocol_plslen_add(arctech_switch_old, 390);
-	protocol_plslen_add(arctech_switch_old, 400);
-	protocol_plslen_add(arctech_switch_old, 330);
-
 	arctech_switch_old->devtype = SWITCH;
 	arctech_switch_old->hwtype = RF433;
-	arctech_switch_old->pulse = 3;
-	arctech_switch_old->rawlen = 50;
-	arctech_switch_old->binlen = 12;
-	arctech_switch_old->lsb = 2;
+	arctech_switch_old->minrawlen = RAW_LENGTH;
+	arctech_switch_old->maxrawlen = RAW_LENGTH;
+	arctech_switch_old->maxgaplen = MAX_PULSE_LENGTH*PULSE_DIV;
+	arctech_switch_old->mingaplen = MIN_PULSE_LENGTH*PULSE_DIV;
 
 	options_add(&arctech_switch_old->options, 't', "on", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
 	options_add(&arctech_switch_old->options, 'f', "off", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
@@ -188,20 +210,21 @@ void arctechSwOldInit(void) {
 
 	options_add(&arctech_switch_old->options, 0, "readonly", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 
-	arctech_switch_old->parseBinary=&arctechSwOldParseBinary;
-	arctech_switch_old->createCode=&arctechSwOldCreateCode;
-	arctech_switch_old->printHelp=&arctechSwOldPrintHelp;
+	arctech_switch_old->parseCode=&parseCode;
+	arctech_switch_old->createCode=&createCode;
+	arctech_switch_old->printHelp=&printHelp;
+	arctech_switch_old->validate=&validate;
 }
 
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "arctech_switch_old";
-	module->version = "1.4";
-	module->reqversion = "5.0";
+	module->version = "2.0";
+	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }
 
 void init(void) {
-	arctechSwOldInit();
+	arctechSwitchOldInit();
 }
 #endif

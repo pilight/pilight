@@ -51,7 +51,7 @@
 #if !defined(__FreeBSD__) && !defined(_WIN32)
 #include "../../../wiringx/wiringX.h"
 
-typedef struct bmp180data_t {
+typedef struct settings_t {
 	char **id;
 	int nrid;
 	int *fd;
@@ -67,13 +67,13 @@ typedef struct bmp180data_t {
 	short *mb;
 	short *mc;
 	short *md;
-} bmp180data_t;
+} settings_t;
 
-static unsigned short bmp180_loop = 1;
-static int bmp180_threads = 0;
+static unsigned short loop = 1;
+static int threads = 0;
 
-static pthread_mutex_t bmp180lock;
-static pthread_mutexattr_t bmp180attr;
+static pthread_mutex_t lock;
+static pthread_mutexattr_t attr;
 
 // helper function with built-in result conversion
 static int readReg16(int fd, int reg) {
@@ -82,12 +82,12 @@ static int readReg16(int fd, int reg) {
 	return ((res << 8) & 0xFF00) | ((res >> 8) & 0xFF);
 }
 
-static void *bmp180Parse(void *param) {
+static void *thread(void *param) {
 	struct protocol_threads_t *node = (struct protocol_threads_t *) param;
 	struct JsonNode *json = (struct JsonNode *) node->param;
 	struct JsonNode *jid = NULL;
 	struct JsonNode *jchild = NULL;
-	struct bmp180data_t *bmp180data = MALLOC(sizeof(struct bmp180data_t));
+	struct settings_t *bmp180data = MALLOC(sizeof(struct settings_t));
 	int y = 0, interval = 10, nrloops = 0;
 	char *stmp = NULL;
 	double itmp = -1, temp_offset = 0, pressure_offset = 0;
@@ -113,7 +113,7 @@ static void *bmp180Parse(void *param) {
 	bmp180data->mc = 0;
 	bmp180data->md = 0;
 
-	bmp180_threads++;
+	threads++;
 
 	if ((jid = json_find_member(json, "id"))) {
 		jchild = json_first_child(jid);
@@ -216,9 +216,9 @@ static void *bmp180Parse(void *param) {
 		}
 	}
 
-	while (bmp180_loop) {
+	while (loop) {
 		if (protocol_thread_wait(node, interval, &nrloops) == ETIMEDOUT) {
-			pthread_mutex_lock(&bmp180lock);
+			pthread_mutex_lock(&lock);
 			for (y = 0; y < bmp180data->nrid; y++) {
 				if (bmp180data->fd[y] > 0) {
 					// uncompensated temperature value
@@ -310,7 +310,7 @@ static void *bmp180Parse(void *param) {
 					protocol_thread_wait(node, 1, &nrloops);
 				}
 			}
-			pthread_mutex_unlock(&bmp180lock);
+			pthread_mutex_unlock(&lock);
 		}
 	}
 
@@ -362,26 +362,26 @@ static void *bmp180Parse(void *param) {
 		FREE(bmp180data->fd);
 	}
 	FREE(bmp180data);
-	bmp180_threads--;
+	threads--;
 
 	return (void *) NULL;
 }
 
-struct threadqueue_t *bmp180InitDev(JsonNode *jdevice) {
-	bmp180_loop = 1;
+static struct threadqueue_t *initDev(JsonNode *jdevice) {
+	loop = 1;
 	wiringXSetup();
 	char *output = json_stringify(jdevice, NULL);
 	JsonNode *json = json_decode(output);
 	json_free(output);
 
 	struct protocol_threads_t *node = protocol_thread_init(bmp180, json);
-	return threads_register("bmp180", &bmp180Parse, (void *) node, 0);
+	return threads_register("bmp180", &thread, (void *) node, 0);
 }
 
-static void bmp180ThreadGC(void) {
-	bmp180_loop = 0;
+static void threadGC(void) {
+	loop = 0;
 	protocol_thread_stop(bmp180);
-	while (bmp180_threads > 0) {
+	while (threads > 0) {
 		usleep(10);
 	}
 	protocol_thread_free(bmp180);
@@ -393,9 +393,9 @@ __attribute__((weak))
 #endif
 void bmp180Init(void) {
 #if !defined(__FreeBSD__) && !defined(_WIN32)
-	pthread_mutexattr_init(&bmp180attr);
-	pthread_mutexattr_settype(&bmp180attr, PTHREAD_MUTEX_RECURSIVE);
-	pthread_mutex_init(&bmp180lock, &bmp180attr);
+	pthread_mutexattr_init(&attr);
+	pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);
+	pthread_mutex_init(&lock, &attr);
 #endif
 
 	protocol_register(&bmp180);
@@ -420,17 +420,17 @@ void bmp180Init(void) {
 	options_add(&bmp180->options, 0, "show-temperature", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *) 1, "^[10]{1}$");
 
 #if !defined(__FreeBSD__) && !defined(_WIN32)
-	bmp180->initDev = &bmp180InitDev;
-	bmp180->threadGC = &bmp180ThreadGC;
+	bmp180->initDev = &initDev;
+	bmp180->threadGC = &threadGC;
 #endif
 }
 
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "bmp180";
-	module->version = "1.1";
+	module->version = "2.0";
 	module->reqversion = "6.0";
-	module->reqcommit = "58";
+	module->reqcommit = "84";
 }
 
 void init(void) {

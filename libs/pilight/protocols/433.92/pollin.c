@@ -30,7 +30,24 @@
 #include "../../core/gc.h"
 #include "pollin.h"
 
-static void pollinCreateMessage(int systemcode, int unitcode, int state) {
+#define PULSE_MULTIPLIER	3
+#define MIN_PULSE_LENGTH	296
+#define MAX_PULSE_LENGTH	306
+#define AVG_PULSE_LENGTH	301
+#define RAW_LENGTH				50
+
+static int validate(void) {
+	if(pollin->rawlen == RAW_LENGTH) {			
+		if(pollin->raw[pollin->rawlen-1] >= (MIN_PULSE_LENGTH*PULSE_DIV) &&
+		   pollin->raw[pollin->rawlen-1] <= (MAX_PULSE_LENGTH*PULSE_DIV)) {
+			return 0;
+		}
+	}
+
+	return -1;
+}
+
+static void createMessage(int systemcode, int unitcode, int state) {
 	pollin->message = json_mkobject();
 	json_append_member(pollin->message, "systemcode", json_mknumber(systemcode, 0));
 	json_append_member(pollin->message, "unitcode", json_mknumber(unitcode, 0));
@@ -41,39 +58,49 @@ static void pollinCreateMessage(int systemcode, int unitcode, int state) {
 	}
 }
 
-static void pollinParseBinary(void) {
-	int systemcode = binToDec(pollin->binary, 0, 4);
-	int unitcode = binToDec(pollin->binary, 5, 9);
-	int state = pollin->binary[11];
-	pollinCreateMessage(systemcode, unitcode, state);
+static void parseCode(void) {
+	int binary[RAW_LENGTH/4], x = 0, i = 0;
+
+	for(x=0;x<pollin->rawlen;x+=4) {
+		if(pollin->raw[x+3] > AVG_PULSE_LENGTH*(PULSE_MULTIPLIER/2)) {
+			binary[i++] = 1;
+		} else {
+			binary[i++] = 0;
+		}
+	}
+	
+	int systemcode = binToDec(binary, 0, 4);
+	int unitcode = binToDec(binary, 5, 9);
+	int state = binary[11];
+	createMessage(systemcode, unitcode, state);
 }
 
-static void pollinCreateLow(int s, int e) {
+static void createLow(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=4) {
-		pollin->raw[i]=(pollin->plslen->length);
-		pollin->raw[i+1]=(pollin->pulse*pollin->plslen->length);
-		pollin->raw[i+2]=(pollin->pulse*pollin->plslen->length);
-		pollin->raw[i+3]=(pollin->plslen->length);
+		pollin->raw[i]=(AVG_PULSE_LENGTH);
+		pollin->raw[i+1]=(PULSE_MULTIPLIER*AVG_PULSE_LENGTH);
+		pollin->raw[i+2]=(PULSE_MULTIPLIER*AVG_PULSE_LENGTH);
+		pollin->raw[i+3]=(AVG_PULSE_LENGTH);
 	}
 }
 
-static void pollinCreateHigh(int s, int e) {
+static void createHigh(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=4) {
-		pollin->raw[i]=(pollin->plslen->length);
-		pollin->raw[i+1]=(pollin->pulse*pollin->plslen->length);
-		pollin->raw[i+2]=(pollin->plslen->length);
-		pollin->raw[i+3]=(pollin->pulse*pollin->plslen->length);
+		pollin->raw[i]=(AVG_PULSE_LENGTH);
+		pollin->raw[i+1]=(PULSE_MULTIPLIER*AVG_PULSE_LENGTH);
+		pollin->raw[i+2]=(AVG_PULSE_LENGTH);
+		pollin->raw[i+3]=(PULSE_MULTIPLIER*AVG_PULSE_LENGTH);
 	}
 }
-static void pollinClearCode(void) {
-	pollinCreateLow(0,47);
+static void clearCode(void) {
+	createLow(0,47);
 }
 
-static void pollinCreateSystemCode(int systemcode) {
+static void createSystemCode(int systemcode) {
 	int binary[255];
 	int length = 0;
 	int i=0, x=0;
@@ -82,12 +109,12 @@ static void pollinCreateSystemCode(int systemcode) {
 	for(i=0;i<=length;i++) {
 		if(binary[i]==1) {
 			x=i*4;
-			pollinCreateHigh(x, x+3);
+			createHigh(x, x+3);
 		}
 	}
 }
 
-static void pollinCreateUnitCode(int unitcode) {
+static void createUnitCode(int unitcode) {
 	int binary[255];
 	int length = 0;
 	int i=0, x=0;
@@ -96,23 +123,23 @@ static void pollinCreateUnitCode(int unitcode) {
 	for(i=0;i<=length;i++) {
 		if(binary[i]==1) {
 			x=i*4;
-			pollinCreateHigh(20+x, 20+x+3);
+			createHigh(20+x, 20+x+3);
 		}
 	}
 }
 
-static void pollinCreateState(int state) {
+static void createState(int state) {
 	if(state == 1) {
-		pollinCreateHigh(44, 47);
+		createHigh(44, 47);
 	}
 }
 
-static void pollinCreateFooter(void) {
-	pollin->raw[48]=(pollin->plslen->length);
-	pollin->raw[49]=(PULSE_DIV*pollin->plslen->length);
+static void createFooter(void) {
+	pollin->raw[48]=(AVG_PULSE_LENGTH);
+	pollin->raw[49]=(PULSE_DIV*AVG_PULSE_LENGTH);
 }
 
-static int pollinCreateCode(JsonNode *code) {
+static int createCode(struct JsonNode *code) {
 	int systemcode = -1;
 	int unitcode = -1;
 	int state = -1;
@@ -137,17 +164,18 @@ static int pollinCreateCode(JsonNode *code) {
 		logprintf(LOG_ERR, "pollin: invalid unitcode range");
 		return EXIT_FAILURE;
 	} else {
-		pollinCreateMessage(systemcode, unitcode, state);
-		pollinClearCode();
-		pollinCreateSystemCode(systemcode);
-		pollinCreateUnitCode(unitcode);
-		pollinCreateState(state);
-		pollinCreateFooter();
+		createMessage(systemcode, unitcode, state);
+		clearCode();
+		createSystemCode(systemcode);
+		createUnitCode(unitcode);
+		createState(state);
+		createFooter();
+		pollin->rawlen = RAW_LENGTH;
 	}
 	return EXIT_SUCCESS;
 }
 
-static void pollinPrintHelp(void) {
+static void printHelp(void) {
 	printf("\t -s --systemcode=systemcode\tcontrol a device with this systemcode\n");
 	printf("\t -u --unitcode=unitcode\t\tcontrol a device with this unitcode\n");
 	printf("\t -t --on\t\t\tsend an on signal\n");
@@ -162,13 +190,12 @@ void pollinInit(void) {
 	protocol_register(&pollin);
 	protocol_set_id(pollin, "pollin");
 	protocol_device_add(pollin, "pollin", "Pollin Switches");
-	protocol_plslen_add(pollin, 301);
 	pollin->devtype = SWITCH;
 	pollin->hwtype = RF433;
-	pollin->pulse = 3;
-	pollin->rawlen = 50;
-	pollin->binlen = 12;
-	pollin->lsb = 3;
+	pollin->minrawlen = RAW_LENGTH;
+	pollin->maxrawlen = RAW_LENGTH;
+	pollin->maxgaplen = MAX_PULSE_LENGTH*PULSE_DIV;
+	pollin->mingaplen = MIN_PULSE_LENGTH*PULSE_DIV;
 
 	options_add(&pollin->options, 's', "systemcode", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^(3[012]?|[012][0-9]|[0-9]{1})$");
 	options_add(&pollin->options, 'u', "unitcode", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^(3[012]?|[012][0-9]|[0-9]{1})$");
@@ -177,16 +204,17 @@ void pollinInit(void) {
 
 	options_add(&pollin->options, 0, "readonly", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 
-	pollin->parseBinary=&pollinParseBinary;
-	pollin->createCode=&pollinCreateCode;
-	pollin->printHelp=&pollinPrintHelp;
+	pollin->parseCode=&parseCode;
+	pollin->createCode=&createCode;
+	pollin->printHelp=&printHelp;
+	pollin->validate=&validate;
 }
 
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "pollin";
-	module->version = "1.1";
-	module->reqversion = "5.0";
+	module->version = "2.0";
+	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }
 

@@ -16,12 +16,12 @@
 	along with pilight. If not, see	<http://www.gnu.org/licenses/>
 */
 
-#ifndef _PROTOCOL_GENWEATHER_H_
-#define _PROTOCOL_GENWEATHER_H_
+#ifndef _PROTOCOL_GENERIC_WEATHER_H_
+#define _PROTOCOL_GENERIC_WEATHER_H_
 
 #include "../protocol.h"
 
 struct protocol_t *generic_weather;
-void genWeatherInit(void);
+void genericWeatherInit(void);
 
 #endif

@@ -51,20 +51,20 @@
 
 #define INTERVAL 	600
 
-typedef struct openweathermap_data_t {
+typedef struct settings_t {
 	char *country;
 	char *location;
 	protocol_threads_t *thread;
 	time_t update;
-	struct openweathermap_data_t *next;
-} openweathermap_data_t;
+	struct settings_t *next;
+} settings_t;
 
-static pthread_mutex_t openweathermaplock;
-static pthread_mutexattr_t openweathermapattr;
+static pthread_mutex_t lock;
+static pthread_mutexattr_t attr;
 
-static struct openweathermap_data_t *openweathermap_data;
-static unsigned short openweathermap_loop = 1;
-static unsigned short openweathermap_threads = 0;
+static struct settings_t *settings;
+static unsigned short loop = 1;
+static unsigned short threads = 0;
 
 static void *openweathermapParse(void *param) {
 	struct protocol_threads_t *thread = (struct protocol_threads_t *)param;
@@ -76,7 +76,7 @@ static void *openweathermapParse(void *param) {
 	struct JsonNode *jdata = NULL;
 	struct JsonNode *jmain = NULL;
 	struct JsonNode *jsys = NULL;
-	struct openweathermap_data_t *wnode = MALLOC(sizeof(struct openweathermap_data_t));
+	struct settings_t *wnode = MALLOC(sizeof(struct settings_t));
 
 	int interval = 86400, ointerval = 86400, event = 0;
 	int firstrun = 1, nrloops = 0, timeout = 0;
@@ -91,7 +91,7 @@ static void *openweathermapParse(void *param) {
 	time_t timenow = 0;
 	struct tm tm;
 
-	openweathermap_threads++;
+	threads++;
 
 	memset(&typebuf, '\0', 255);
 
@@ -130,8 +130,8 @@ static void *openweathermapParse(void *param) {
 			}
 			if(has_country == 1 && has_location == 1) {
 				wnode->thread = thread;
-				wnode->next = openweathermap_data;
-				openweathermap_data = wnode;
+				wnode->next = settings;
+				settings = wnode;
 			} else {
 				if(has_country == 1) {
 					FREE(wnode->country);
@@ -154,10 +154,10 @@ static void *openweathermapParse(void *param) {
 		interval = (int)round(itmp);
 	ointerval = interval;
 
-	while(openweathermap_loop) {
+	while(loop) {
 		event = protocol_thread_wait(thread, INTERVAL, &nrloops);
-		pthread_mutex_lock(&openweathermaplock);
-		if(openweathermap_loop == 0) {
+		pthread_mutex_lock(&lock);
+		if(loop == 0) {
 			break;
 		}
 		timeout += INTERVAL;
@@ -302,16 +302,16 @@ static void *openweathermapParse(void *param) {
 		}
 		firstrun = 0;
 
-		pthread_mutex_unlock(&openweathermaplock);
+		pthread_mutex_unlock(&lock);
 	}
-	pthread_mutex_unlock(&openweathermaplock);
+	pthread_mutex_unlock(&lock);
 
-	openweathermap_threads--;
+	threads--;
 	return (void *)NULL;
 }
 
-static struct threadqueue_t *openweathermapInitDev(JsonNode *jdevice) {
-	openweathermap_loop = 1;
+static struct threadqueue_t *initDev(JsonNode *jdevice) {
+	loop = 1;
 	char *output = json_stringify(jdevice, NULL);
 	JsonNode *json = json_decode(output);
 	json_free(output);
@@ -320,7 +320,7 @@ static struct threadqueue_t *openweathermapInitDev(JsonNode *jdevice) {
 	return threads_register("openweathermap", &openweathermapParse, (void *)node, 0);
 }
 
-static int openweathermapCheckValues(JsonNode *code) {
+static int checkValues(JsonNode *code) {
 	double interval = INTERVAL;
 
 	json_find_number(code, "poll-interval", &interval);
@@ -333,8 +333,8 @@ static int openweathermapCheckValues(JsonNode *code) {
 	return 0;
 }
 
-static int openweathermapCreateCode(JsonNode *code) {
-	struct openweathermap_data_t *wtmp = openweathermap_data;
+static int createCode(JsonNode *code) {
+	struct settings_t *wtmp = settings;
 	char *country = NULL;
 	char *location = NULL;
 	double itmp = 0;
@@ -367,28 +367,28 @@ static int openweathermapCreateCode(JsonNode *code) {
 	return EXIT_SUCCESS;
 }
 
-static void openweathermapThreadGC(void) {
-	openweathermap_loop = 0;
+static void threadGC(void) {
+	loop = 0;
 	protocol_thread_stop(openweathermap);
-	while(openweathermap_threads > 0) {
+	while(threads > 0) {
 		usleep(10);
 	}
 	protocol_thread_free(openweathermap);
 
-	struct openweathermap_data_t *wtmp = NULL;
-	while(openweathermap_data) {
-		wtmp = openweathermap_data;
-		FREE(openweathermap_data->country);
-		FREE(openweathermap_data->location);
-		openweathermap_data = openweathermap_data->next;
+	struct settings_t *wtmp = NULL;
+	while(settings) {
+		wtmp = settings;
+		FREE(settings->country);
+		FREE(settings->location);
+		settings = settings->next;
 		FREE(wtmp);
 	}
-	if(openweathermap_data != NULL) {
-		FREE(openweathermap_data);
+	if(settings != NULL) {
+		FREE(settings);
 	}
 }
 
-static void openweathermapPrintHelp(void) {
+static void printHelp(void) {
 	printf("\t -c --country=country\t\tupdate an entry with this country\n");
 	printf("\t -l --location=location\t\tupdate an entry with this location\n");
 	printf("\t -u --update\t\t\tupdate the defined weather entry\n");
@@ -398,9 +398,9 @@ static void openweathermapPrintHelp(void) {
 __attribute__((weak))
 #endif
 void openweathermapInit(void) {
-	pthread_mutexattr_init(&openweathermapattr);
-	pthread_mutexattr_settype(&openweathermapattr, PTHREAD_MUTEX_RECURSIVE);
-	pthread_mutex_init(&openweathermaplock, &openweathermapattr);
+	pthread_mutexattr_init(&attr);
+	pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);
+	pthread_mutex_init(&lock, &attr);
 
 	protocol_register(&openweathermap);
 	protocol_set_id(openweathermap, "openweathermap");
@@ -429,19 +429,19 @@ void openweathermapInit(void) {
 	options_add(&openweathermap->options, 0, "show-update", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
 	options_add(&openweathermap->options, 0, "poll-interval", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *)86400, "[0-9]");
 
-	openweathermap->createCode=&openweathermapCreateCode;
-	openweathermap->initDev=&openweathermapInitDev;
-	openweathermap->checkValues=&openweathermapCheckValues;
-	openweathermap->threadGC=&openweathermapThreadGC;
-	openweathermap->printHelp=&openweathermapPrintHelp;
+	openweathermap->createCode=&createCode;
+	openweathermap->initDev=&initDev;
+	openweathermap->checkValues=&checkValues;
+	openweathermap->threadGC=&threadGC;
+	openweathermap->printHelp=&printHelp;
 }
 
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "openweathermap";
-	module->version = "1.11";
+	module->version = "1.12";
 	module->reqversion = "6.0";
-	module->reqcommit = "58";
+	module->reqcommit = "84";
 }
 
 void init(void) {
