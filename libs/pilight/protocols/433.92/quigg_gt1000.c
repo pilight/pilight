@@ -70,14 +70,14 @@
 #define SHORT_SPACE	440
 #define FOOTER_MARK	200
 
-#define LEARN_REPEATS	40
-#define NORMAL_REPEATS	10
+#define LEARN_REPEATS			40
+#define NORMAL_REPEATS		10
 #define PULSE_MULTIPLIER	2
 #define MIN_PULSE_LENGTH	320
 #define MAX_PULSE_LENGTH	340
 #define AVG_PULSE_LENGTH	330
-#define RAW_LENGTH	151
-#define BIN_LENGTH	24
+#define RAW_LENGTH				151
+#define BIN_LENGTH				24
 /*
 // Support Rx
 static int validate(void) {
@@ -180,7 +180,7 @@ int gentab[16] =
 	 * A 0 at location x means group-id x belongs to first generation, and a 1 means second generation
 	 */
 	 /* for now only group-id 1,5,9 and 12 are first generation */
-	{1,0,1,1,1,0,1,1,1,0,1,1,0,1,1,1};
+	{1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 0, 1, 1, 1};
 
 #define NRSUPERMASK 0x07
 #define NRSUPERCODES (NRSUPERMASK+1)	/* we will use 8 on and 8 off supercodes */
@@ -391,11 +391,11 @@ void quiggGT1000Init(void) {
 	protocol_device_add(quigg_gt1000, "quigg_gt1000", "Quigg GT-1000 protocol");
 	quigg_gt1000->devtype = SWITCH;
 	quigg_gt1000->hwtype = RF433;
-        quigg_gt1000->txrpt = NORMAL_REPEATS;
-        quigg_gt1000->minrawlen = RAW_LENGTH;
-        quigg_gt1000->maxrawlen = RAW_LENGTH;
-        quigg_gt1000->maxgaplen = (int)PROG_SPACE*1.1;
-        quigg_gt1000->mingaplen = (int)PROG_SPACE*0.9;
+	quigg_gt1000->txrpt = NORMAL_REPEATS;
+	quigg_gt1000->minrawlen = RAW_LENGTH;
+	quigg_gt1000->maxrawlen = RAW_LENGTH;
+	quigg_gt1000->maxgaplen = (int)PROG_SPACE*1.1;
+	quigg_gt1000->mingaplen = (int)PROG_SPACE*0.9;
 
 	options_add(&quigg_gt1000->options, 't', "on", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
 	options_add(&quigg_gt1000->options, 'f', "off", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);

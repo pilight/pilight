@@ -35,20 +35,20 @@
 #define	PULSE_QUIGG_SCREEN_FOOTER	81000
 #define	PULSE_QUIGG_SCREEN_50		PULSE_QUIGG_SCREEN_SHORT+(PULSE_QUIGG_SCREEN_LONG-PULSE_QUIGG_SCREEN_SHORT)/2
 
-#define LEARN_REPEATS 	4
-#define NORMAL_REPEATS	4
+#define LEARN_REPEATS 		4
+#define NORMAL_REPEATS		4
 #define PULSE_MULTIPLIER	2
 #define AVG_PULSE_LENGTH	PULSE_QUIGG_SCREEN_SHORT
 #define MIN_PULSE_LENGTH	AVG_PULSE_LENGTH-80
 #define MAX_PULSE_LENGTH	AVG_PULSE_LENGTH+260
-#define RAW_LENGTH	42
+#define RAW_LENGTH				42
 
 static int validate(void) {
 	if(quigg_screen->rawlen == RAW_LENGTH) {
 		if(quigg_screen->raw[quigg_screen->rawlen-1] >= (int)(PULSE_QUIGG_SCREEN_FOOTER*0.9) &&
-		quigg_screen->raw[quigg_screen->rawlen-1] <= (int)(PULSE_QUIGG_SCREEN_FOOTER*1.1) &&
-		quigg_screen->raw[0] >= MIN_PULSE_LENGTH &&
-		quigg_screen->raw[0] <= MAX_PULSE_LENGTH) {
+			 quigg_screen->raw[quigg_screen->rawlen-1] <= (int)(PULSE_QUIGG_SCREEN_FOOTER*1.1) &&
+			 quigg_screen->raw[0] >= MIN_PULSE_LENGTH &&
+			 quigg_screen->raw[0] <= MAX_PULSE_LENGTH) {
 		return 0;
 		}
 	}
@@ -198,8 +198,9 @@ static void createUnit(int unit) {
 }
 
 static void createState(int state) {
-	if(state==1)
+	if(state==1) {
 		createOne(31, 32);	// dim down
+	}
 }
 
 static void createParity(void) {
@@ -275,7 +276,6 @@ void quiggScreenInit(void) {
 	protocol_device_add(quigg_screen, "quigg_screen", "Quigg Switch Screen");
 	quigg_screen->devtype = SCREEN;
 	quigg_screen->hwtype = RF433;
-
 	quigg_screen->txrpt = NORMAL_REPEATS;                    // SHORT: GT-FSI-04a range: 620... 960
 	quigg_screen->minrawlen = RAW_LENGTH;
 	quigg_screen->maxrawlen = RAW_LENGTH;

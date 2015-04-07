@@ -35,20 +35,20 @@
 #define PULSE_QUIGG_FOOTER	81000
 #define PULSE_QUIGG_50	PULSE_QUIGG_SHORT+(PULSE_QUIGG_LONG-PULSE_QUIGG_SHORT)/2
 
-#define LEARN_REPEATS	4
-#define NORMAL_REPEATS	4
+#define LEARN_REPEATS			4
+#define NORMAL_REPEATS		4
 #define PULSE_MULTIPLIER	2
 #define AVG_PULSE_LENGTH	PULSE_QUIGG_SHORT
 #define MIN_PULSE_LENGTH	AVG_PULSE_LENGTH-80
 #define MAX_PULSE_LENGTH	AVG_PULSE_LENGTH+260
-#define RAW_LENGTH	42
+#define RAW_LENGTH				42
 
 static int validate(void) {
 	if(quigg_gt7000->rawlen == RAW_LENGTH) {
 		if(quigg_gt7000->raw[quigg_gt7000->rawlen-1] >= (int)(PULSE_QUIGG_FOOTER*0.9) &&
-		quigg_gt7000->raw[quigg_gt7000->rawlen-1] <= (int)(PULSE_QUIGG_FOOTER*1.1) &&
-		quigg_gt7000->raw[0] >= MIN_PULSE_LENGTH &&
-		quigg_gt7000->raw[0] <= MAX_PULSE_LENGTH) {
+			 quigg_gt7000->raw[quigg_gt7000->rawlen-1] <= (int)(PULSE_QUIGG_FOOTER*1.1) &&
+			 quigg_gt7000->raw[0] >= MIN_PULSE_LENGTH &&
+			 quigg_gt7000->raw[0] <= MAX_PULSE_LENGTH) {
 		return 0;
 		}
 	}
@@ -106,8 +106,9 @@ static void parseCode(void) {
 
 	unit = dec_unit[unit];
 
-	if((dimm == 1) && (state == 1))
+	if((dimm == 1) && (state == 1)) {
 		dimm = 2;
+	}
 
 	if (iParityData == parity && dimm < 1) {
 		createMessage(id, state, unit, all, learn);
@@ -151,7 +152,7 @@ static void createId(int id) {
 		if(binary[i] == 1) {
 			createOne(x, x+1);
 		}
-	x = x-2;
+		x = x-2;
 	}
 }
 
@@ -180,8 +181,9 @@ static void createUnit(int unit) {
 }
 
 static void createState(int state) {
-	if(state == 1)
+	if(state == 1) {
 		createOne(31, 32); //on
+	}
 }
 
 static void createParity(void) {
@@ -191,7 +193,7 @@ static void createParity(void) {
 			p = -p;
 		}
 	}
-	if(p==-1) {
+	if(p == -1) {
 		createOne(39, 40);
 	}
 }
@@ -226,7 +228,6 @@ static int createCode(JsonNode *code) {
 		if(unit == -1 && all == 1) {
 			unit = 4;
 		}
-//		quigg_gt7000->rawlen = RAW_LENGTH;
 		quigg_gt7000->rawlen = RAW_LENGTH;
 		createMessage(id, state, unit, all, learn);
 		clearCode();
