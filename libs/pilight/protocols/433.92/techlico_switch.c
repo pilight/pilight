@@ -66,7 +66,7 @@ static void parseCode(void) {
 	int i = 0, x = 0, y = 0, binary[RAW_LENGTH/2];
 	int id = -1, state = -1, unit = -1, code = 0;
 
-	for(i=0;i<techlico_switch->rawlen;i+=2) {
+	for(x=0;x<techlico_switch->rawlen;x+=2) {
 		if(techlico_switch->raw[x] > AVG_PULSE_LENGTH*(PULSE_MULTIPLIER/2)) {
 			binary[i++] = 1;
 		} else {

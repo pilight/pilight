@@ -62,7 +62,7 @@ static void parseCode(void) {
 	double temperature = 0.0, humidity = 0.0;
 	double humi_offset = 0.0, temp_offset = 0.0;
 
-	for(i=1;i<teknihall->rawlen-1;i+=2) {
+	for(x=1;x<teknihall->rawlen-1;x+=2) {
 		if(teknihall->raw[x] > AVG_PULSE_LENGTH*(PULSE_MULTIPLIER/2)) {
 			binary[i++] = 1;
 		} else {

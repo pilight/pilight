@@ -65,14 +65,11 @@ static void parseCode(void) {
 	for(x=0; x<impuls->rawlen; x+=4) {
 		if(impuls->raw[x+3] > AVG_PULSE_LENGTH*(PULSE_MULTIPLIER/2) || 
 		   impuls->raw[x+0] > AVG_PULSE_LENGTH*(PULSE_MULTIPLIER/2)) {
-			printf("1");
 			binary[x/4]=1;
 		} else {
-			printf("0");
 			binary[x/4]=0;
 		}
 	}
-	printf("\n");
 
 	int systemcode = binToDec(binary, 0, 4);
 	int programcode = binToDec(binary, 5, 9);
