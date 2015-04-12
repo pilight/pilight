@@ -487,7 +487,7 @@ function createWeatherElement(sTabId, sDevId, aValues) {
 		}
 		if('show-wind' in aValues && aValues['show-wind']) {
 			oTab.find('#'+sDevId+'_weather').append($('<div class="windavg_icon"></div><div class="windavg" id="'+sDevId+'_windavg"></div>'));
-			oTab.find('#'+sDevId+'_weather').append($('<div class="windgust_icon"></div><div class="winddir_icon"></div><div class="windgust" id="'+sDevId+'_windgust"></div>'));
+			oTab.find('#'+sDevId+'_weather').append($('<div class="windgust_icon"></div><div class="winddir_icon" id="'+sDevId+'_winddir"></div><div class="windgust" id="'+sDevId+'_windgust"></div>'));
 			$('#'+sDevId+'_weather .winddir_icon').css({transform: 'rotate(' + aValues['winddir'] + 'deg)'});
 		}
 		if('show-humidity' in aValues && aValues['show-humidity']) {
