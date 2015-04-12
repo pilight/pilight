@@ -1377,7 +1377,8 @@ static int devices_parse_elements(JsonNode *jdevices, struct devices_t *device) 
 						       || tmp_options->conftype == DEVICES_VALUE
 							   || tmp_options->conftype == DEVICES_SETTING
 							   || tmp_options->conftype == DEVICES_OPTIONAL)
-						   && (tmp_options->vartype == jsettings->tag)) {
+						   && (tmp_options->vartype == jsettings->tag
+							     || tmp_options->vartype == (JSON_STRING | JSON_NUMBER))) {
 							valid_setting = 1;
 							break;
 						}
@@ -1528,8 +1529,7 @@ static int devices_parse(JsonNode *root) {
 					tmp_devices = tmp_devices->next;
 				}
 
-				dnode = MALLOC(sizeof(struct devices_t));
-				if(!dnode) {
+				if((dnode = MALLOC(sizeof(struct devices_t))) == NULL) {
 					logprintf(LOG_ERR, "out of memory");
 					exit(EXIT_FAILURE);
 				}
@@ -1538,8 +1538,7 @@ static int devices_parse(JsonNode *root) {
 					strcpy(dnode->ori_uuid, pilight_uuid);
 				}
 				dnode->cst_uuid = 0;
-				dnode->id = MALLOC(strlen(jdevices->key)+1);
-				if(!dnode->id) {
+				if((dnode->id = MALLOC(strlen(jdevices->key)+1)) == NULL) {
 					logprintf(LOG_ERR, "out of memory");
 					exit(EXIT_FAILURE);
 				}

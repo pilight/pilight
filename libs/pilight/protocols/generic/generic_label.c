@@ -38,14 +38,23 @@ static void createMessage(int id, char *label, char *color) {
 }
 
 static int createCode(JsonNode *code) {
-	int id = -1;
+	int id = -1, free_label = 0;
 	char *label = NULL;
 	char *color = "black";
 	double itmp = 0;
 
 	if(json_find_number(code, "id", &itmp) == 0)
 		id = (int)round(itmp);
+
 	json_find_string(code, "label", &label);
+	if(json_find_number(code, "label", &itmp) == 0) {
+		if((label = MALLOC(BUFFER_SIZE)) == NULL) {
+			logprintf(LOG_ERR, "out of memory");
+			exit(EXIT_FAILURE);
+		}
+		free_label = 1;
+		snprintf(label, BUFFER_SIZE, "%d", (int)itmp);
+	}
 	json_find_string(code, "color", &color);
 
 	if(id == -1 || label == NULL) {
@@ -53,6 +62,9 @@ static int createCode(JsonNode *code) {
 		return EXIT_FAILURE;
 	} else {
 		createMessage(id, label, color);
+	}
+	if(free_label) {
+		FREE(label);
 	}
 
 	return EXIT_SUCCESS;
@@ -76,7 +88,7 @@ void genericLabelInit(void) {
 	generic_label->devtype = LABEL;
 
 	options_add(&generic_label->options, 'i', "id", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^([0-9]{1,})$");
-	options_add(&generic_label->options, 'l', "label", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_STRING, NULL, NULL);
+	options_add(&generic_label->options, 'l', "label", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_STRING | JSON_NUMBER, NULL, NULL);
 	options_add(&generic_label->options, 'c', "color", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_STRING, NULL, NULL);
 
 	generic_label->printHelp=&printHelp;
@@ -86,7 +98,7 @@ void genericLabelInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "generic_label";
-	module->version = "1.1";
+	module->version = "1.2";
 	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }
