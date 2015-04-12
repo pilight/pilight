@@ -133,6 +133,7 @@ typedef struct stat ns_stat_t;
 #endif
 
 #include "common.h"
+#include "defines.h"
 
 #ifdef NS_ENABLE_DEBUG
 #define DBG(x) do { printf("%-20s ", __func__); printf x; putchar('\n'); \
@@ -143,6 +144,10 @@ typedef struct stat ns_stat_t;
 
 #ifndef ARRAY_SIZE
 #define ARRAY_SIZE(array) (sizeof(array) / sizeof(array[0]))
+#endif
+
+#ifdef WEBSERVER_SSL
+	#define NS_ENABLE_SSL
 #endif
 
 #ifdef NS_ENABLE_SSL

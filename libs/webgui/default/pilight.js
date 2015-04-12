@@ -2,6 +2,8 @@ var oWebsocket = false;
 var bConnected = false;
 var bInitialized = false;
 var bSending = false;
+var sHTTPProtocol = "http";
+var sWSProtocol = "ws";
 var aDecimals = new Array();
 var aDateTime = new Array();
 var aDimLevel = new Array();
@@ -20,6 +22,11 @@ var aWebcamUrl = new Array();
 var aDecimalTypes = ["temperature", "humidity", "wind", "pressure", "sunriseset"];
 var userLang = navigator.language || navigator.userLanguage;
 var language;
+
+if(document.location.protocol == "https:") {
+	sHTTPProtocol = "https";
+	sWSProtocol = "wss";
+}
 
 var language_en = {
 	off: "Off",
@@ -118,7 +125,7 @@ function toggleTabs() {
 		oWebsocket.send(json);
 	} else {
 		bSending = true;
-		$.get('http://'+location.host+'/send?'+encodeURIComponent(json)+'&'+$.now());
+		$.get(sHTTPProtocol+'://'+location.host+'/send?'+encodeURIComponent(json)+'&'+$.now());
 		window.setTimeout(function() { bSending = false; }, 1000);
 	}
 	document.location = document.location;
@@ -221,7 +228,7 @@ function createSwitchElement(sTabId, sDevId, aValues) {
 				oWebsocket.send(json);
 			} else {
 				bSending = true;
-				$.get('http://'+location.host+'/send?'+encodeURIComponent(json)+'&'+$.now());
+				$.get(sHTTPProtocol+'://'+location.host+'/send?'+encodeURIComponent(json)+'&'+$.now());
 				window.setTimeout(function() { bSending = false; }, 1000);
 			}
 		});
@@ -259,7 +266,7 @@ function createPendingSwitchElement(sTabId, sDevId, aValues) {
 				oWebsocket.send(json);
 			} else {
 				bSending = true;
-				$.get('http://'+location.host+'/send?'+encodeURIComponent(json)+'&'+$.now());
+				$.get(sHTTPProtocol+'://'+location.host+'/send?'+encodeURIComponent(json)+'&'+$.now());
 				window.setTimeout(function() { bSending = false; }, 1000);
 			}
 		});
@@ -275,7 +282,7 @@ function createPendingSwitchElement(sTabId, sDevId, aValues) {
 					oWebsocket.send(json);
 				} else {
 					bSending = true;
-					$.get('http://'+location.host+'/send?'+encodeURIComponent(json)+'&'+$.now());
+					$.get(sHTTPProtocol+'://'+location.host+'/send?'+encodeURIComponent(json)+'&'+$.now());
 					window.setTimeout(function() { bSending = false; }, 1000);
 				}
 			}
@@ -327,7 +334,7 @@ function createScreenElement(sTabId, sDevId, aValues) {
 				oWebsocket.send(json);
 			} else {
 				bSending = true;
-				$.get('http://'+location.host+'/send?'+encodeURIComponent(json)+'&'+$.now());
+				$.get(sHTTPProtocol+'://'+location.host+'/send?'+encodeURIComponent(json)+'&'+$.now());
 				window.setTimeout(function() { bSending = false; }, 1000);
 			}
 		});
@@ -354,7 +361,7 @@ function createScreenElement(sTabId, sDevId, aValues) {
 				oWebsocket.send(json);
 			} else {
 				bSending = true;
-				$.get('http://'+location.host+'/send?'+encodeURIComponent(json)+'&'+$.now());
+				$.get(sHTTPProtocol+'://'+location.host+'/send?'+encodeURIComponent(json)+'&'+$.now());
 				window.setTimeout(function() { bSending = false; }, 1000);
 			}
 		});
@@ -393,7 +400,7 @@ function createDimmerElement(sTabId, sDevId, aValues) {
 				oWebsocket.send(json);
 			} else {
 				bSending = true;
-				$.get('http://'+location.host+'/send?'+encodeURIComponent(json)+'&'+$.now());
+				$.get(sHTTPProtocol+'://'+location.host+'/send?'+encodeURIComponent(json)+'&'+$.now());
 				window.setTimeout(function() { bSending = false; }, 1000);
 			}
 		});
@@ -409,7 +416,7 @@ function createDimmerElement(sTabId, sDevId, aValues) {
 						oWebsocket.send(json);
 					} else {
 						bSending = true;
-						$.get('http://'+location.host+'/send?'+encodeURIComponent(json)+'&'+$.now());
+						$.get(sHTTPProtocol+'://'+location.host+'/send?'+encodeURIComponent(json)+'&'+$.now());
 						window.setTimeout(function() { bSending = false; }, 1000);
 					}
 				}
@@ -466,7 +473,7 @@ function createWeatherElement(sTabId, sDevId, aValues) {
 						oWebsocket.send(json);
 					} else {
 						bSending = true;
-						$.get('http://'+location.host+'/send?'+encodeURIComponent(json)+'&'+$.now());
+						$.get(sHTTPProtocol+'://'+location.host+'/send?'+encodeURIComponent(json)+'&'+$.now());
 						window.setTimeout(function() { bSending = false; }, 1000);
 					}
 				}
@@ -1067,7 +1074,7 @@ window.onbeforeunload = function() {
 }
 
 function startAjax() {
-	$.get('http://'+location.host+'/config?internal&'+$.now(), function(txt) {
+	$.get(sHTTPProtocol+'://'+location.host+'/config?internal&'+$.now(), function(txt) {
 		bConnected = true;
 		if(!bSending) {
 			var data = $.parseJSON(txt);
@@ -1092,7 +1099,7 @@ function startAjax() {
 		}
 	});
 	var load = window.setInterval(function() {
-		$.get('http://'+location.host+'/values?'+$.now(), function(txt) {
+		$.get(sHTTPProtocol+'://'+location.host+'/values?'+$.now(), function(txt) {
 			bConnected = true;
 			if(!bSending) {
 				var data = $.parseJSON(txt);
@@ -1121,10 +1128,10 @@ function startAjax() {
 
 function startWebsockets() {
 	if(typeof MozWebSocket != "undefined") {
-		oWebsocket = new MozWebSocket("ws://"+location.host);
+		oWebsocket = new MozWebSocket(sWSProtocol+"://"+location.host);
 	} else if(typeof WebSocket != "undefined") {
 		/* The characters after the trailing slash are needed for a wierd IE 10 bug */
-		oWebsocket = new WebSocket("ws://"+location.host+'/websocket');
+		oWebsocket = new WebSocket(sWSProtocol+"://"+location.host+'/websocket');
 	}
 	if(oWebsocket) {
 		oWebsocket.onopen = function(evt) {
@@ -1174,7 +1181,7 @@ $(document).ready(function() {
 
 		/* Use an AJAX request to check if the user want to enforce
 		   an AJAX connection, or if he wants to use websockets */
-		$.get('http://'+location.host+'/config?internal&'+$.now(), function(txt) {
+		$.get(sHTTPProtocol+'://'+location.host+'/config?internal&'+$.now(), function(txt) {
 			var data = $.parseJSON(txt);
 			if('registry' in data && 'webgui' in data['registry'] &&
 				 'tabs' in data['registry']['webgui']) {

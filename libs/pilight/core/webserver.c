@@ -50,6 +50,9 @@
 #include "ssdp.h"
 #include "fcache.h"
 
+#ifdef WEBSERVER_SSL
+static int webserver_ssl_port = 443;
+#endif
 static int webserver_port = WEBSERVER_PORT;
 static int webserver_cache = 1;
 static int webgui_websockets = WEBGUI_WEBSOCKETS;
@@ -60,8 +63,11 @@ static unsigned short webserver_loop = 1;
 static unsigned short webserver_php = 1;
 static char *webserver_root = NULL;
 static char *webgui_tpl = NULL;
+#ifdef WEBSERVER_SSL
+static struct mg_server *mgserver[WEBSERVER_WORKERS+1];
+#else
 static struct mg_server *mgserver[WEBSERVER_WORKERS];
-
+#endif
 static char *recvBuff = NULL;
 static unsigned short webgui_tpl_free = 0;
 static unsigned short webserver_root_free = 0;
@@ -121,7 +127,11 @@ int webserver_gc(void) {
 		FREE(webserver_user);
 	}
 
+#ifdef WEBSERVER_SSL
+	for(i=0;i<WEBSERVER_WORKERS+1;i++) {
+#else
 	for(i=0;i<WEBSERVER_WORKERS;i++) {
+#endif
 		if(mgserver[i] != NULL) {
 			mg_wakeup_server(mgserver[i]);
 		}
@@ -878,7 +888,11 @@ void *webserver_broadcast(void *param) {
 
 			logprintf(LOG_STACK, "%s::unlocked", __FUNCTION__);
 
+#ifdef WEBSERVER_SSL
+			for(i=0;i<WEBSERVER_WORKERS+1;i++) {
+#else
 			for(i=0;i<WEBSERVER_WORKERS;i++) {
+#endif
 				for(c=mg_next(mgserver[i], NULL); c != NULL; c = mg_next(mgserver[i], c)) {
 					if(c->is_websocket && webserver_loop == 1) {
 						mg_websocket_write(c, 1, webqueue->message, strlen(webqueue->message));
@@ -1023,6 +1037,11 @@ int webserver_start(void) {
 
 	/* Check on what port the webserver needs to run */
 	settings_find_number("webserver-port", &webserver_port);
+
+#ifdef WEBSERVER_SSL
+	settings_find_number("webserver-ssl-port", &webserver_ssl_port);
+#endif
+
 	if(settings_find_string("webserver-root", &webserver_root) != 0) {
 		/* If no webserver port was set, use the default webserver port */
 		if((webserver_root = MALLOC(strlen(WEBSERVER_ROOT)+1)) == NULL) {
@@ -1058,10 +1077,29 @@ int webserver_start(void) {
 		strcpy(webserver_user, WEBSERVER_USER);
 		webserver_user_free = 1;
 	}
+
+	int z = 0;
+#ifdef WEBSERVER_SSL
+	char ssl[BUFFER_SIZE];
+	char id[2];
+	memset(ssl, '\0', BUFFER_SIZE);
+
+	sprintf(id, "%d", z);
+	snprintf(ssl, BUFFER_SIZE, "ssl://%d:/etc/pilight/ssl.pem", webserver_ssl_port);
+	mgserver[z] = mg_create_server((void *)id, webserver_handler);
+	mg_set_option(mgserver[z], "listening_port", ssl);
+	mg_set_option(mgserver[z], "auth_domain", "pilight");
+	char msg[25];
+	sprintf(msg, "webserver worker #%d", z);
+	threads_register(msg, &webserver_worker, (void *)(intptr_t)z, 0);
+	z = 1;
+#endif
+
 	char webport[10] = {'\0'};
 	sprintf(webport, "%d", webserver_port);
-	int i = 0;
-	for(i=0;i<WEBSERVER_WORKERS;i++) {
+
+	int i = 0;	
+	for(i=z;i<WEBSERVER_WORKERS+z;i++) {
 		char id[2];
 		sprintf(id, "%d", i);
 		mgserver[i] = mg_create_server((void *)id, webserver_handler);

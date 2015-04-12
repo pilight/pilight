@@ -158,6 +158,9 @@ static int settings_parse(JsonNode *root) {
 
 #ifdef WEBSERVER
 	int web_port = WEBSERVER_PORT;
+#ifdef WEBSERVER_SSL
+	int web_ssl_port = 443;
+#endif
 	int own_port = -1;
 
 	char *webgui_tpl = MALLOC(strlen(WEBGUI_TEMPLATE)+1);
@@ -166,12 +169,13 @@ static int settings_parse(JsonNode *root) {
 		exit(EXIT_FAILURE);
 	}
 	strcpy(webgui_tpl, WEBGUI_TEMPLATE);
+
 	char *webgui_root = MALLOC(strlen(WEBSERVER_ROOT)+1);
 	if(webgui_root == NULL) {
 		logprintf(LOG_ERR, "out of memory");
 		exit(EXIT_FAILURE);
 	}
-	strcpy(webgui_root, WEBSERVER_ROOT);
+	strcpy(webgui_root, WEBSERVER_ROOT);	
 #endif
 
 #if !defined(__FreeBSD__) && !defined(_WIN32)
@@ -308,6 +312,22 @@ static int settings_parse(JsonNode *root) {
 				settings_add_string(jsettings->key, jsettings->string_);
 			}
 #ifdef WEBSERVER
+
+#ifdef WEBSERVER_SSL
+		} else if(strcmp(jsettings->key, "webserver-ssl-port") == 0) {
+			if(jsettings->tag != JSON_NUMBER) {
+				logprintf(LOG_ERR, "config setting \"%s\" must contain a number larget than 0", jsettings->key);
+				have_error = 1;
+				goto clear;
+			} else if(jsettings->number_ < 0) {
+				logprintf(LOG_ERR, "config setting \"%s\" must contain a number larger than 0", jsettings->key);
+				have_error = 1;
+				goto clear;
+			} else {
+				web_ssl_port = (int)jsettings->number_;
+				settings_add_number(jsettings->key, (int)jsettings->number_);
+			}
+#endif
 		} else if(strcmp(jsettings->key, "webserver-port") == 0) {
 			if(jsettings->tag != JSON_NUMBER) {
 				logprintf(LOG_ERR, "config setting \"%s\" must contain a number larget than 0", jsettings->key);
@@ -321,7 +341,7 @@ static int settings_parse(JsonNode *root) {
 				web_port = (int)jsettings->number_;
 				settings_add_number(jsettings->key, (int)jsettings->number_);
 			}
-		} else if(strcmp(jsettings->key, "webserver-root") == 0) {
+		}	else if(strcmp(jsettings->key, "webserver-root") == 0) {
 			if(jsettings->tag != JSON_STRING) {
 				logprintf(LOG_ERR, "config setting \"%s\" must contain a valid path", jsettings->key);
 				have_error = 1;
@@ -572,6 +592,14 @@ static int settings_parse(JsonNode *root) {
 		have_error = 1;
 		goto clear;
 	}
+#ifdef WEBSERVER_SSL
+	if(web_ssl_port == own_port) {
+		logprintf(LOG_ERR, "config setting \"port\" and \"webserver-ssl-port\" cannot be the same");
+		have_error = 1;
+		goto clear;
+	}
+#endif
+	
 #endif
 clear:
 #ifdef WEBSERVER
