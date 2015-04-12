@@ -66,7 +66,7 @@ static void parseCode(void) {
 	int id = 0, state = 0, unit = 0, all = 0;
 
 	for(x=1;x<cleverwatts->rawlen-1;x+=2) {
-		if(cleverwatts->raw[x] > AVG_PULSE_LENGTH*(PULSE_MULTIPLIER/2)) {
+		if(cleverwatts->raw[x] > (int)((double)AVG_PULSE_LENGTH*((double)PULSE_MULTIPLIER/2))) {
 			binary[i++] = 1;
 		} else {
 			binary[i++] = 0;
@@ -231,7 +231,7 @@ void cleverwattsInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "cleverwatts";
-	module->version = "0.10";
+	module->version = "0.11";
 	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }

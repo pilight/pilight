@@ -71,7 +71,7 @@ static void parseCode(void) {
 
 	/* Convert the one's and zero's into binary */
 	for(x=0;x<conrad_rsl_switch->rawlen;x+=2) {
-		if(conrad_rsl_switch->raw[x+1] > AVG_PULSE_LENGTH*(PULSE_MULTIPLIER/2)) {
+		if(conrad_rsl_switch->raw[x+1] > (int)((double)AVG_PULSE_LENGTH*((double)PULSE_MULTIPLIER/2))) {
 			binary[x/2]=0;
 		} else {
 			binary[x/2]=1;
@@ -286,7 +286,7 @@ void conradRSLSwitchInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "conrad_rsl_switch";
-	module->version = "2.0";
+	module->version = "2.1";
 	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }

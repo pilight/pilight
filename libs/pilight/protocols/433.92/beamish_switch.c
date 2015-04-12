@@ -70,7 +70,7 @@ static void parseCode(void) {
 	int id = -1, state = -1, unit = -1, all = 0, code = 0;
 
 	for(x=0;x<beamish_switch->rawlen;x+=2) {
-		if(beamish_switch->raw[x] > AVG_PULSE_LENGTH*(PULSE_MULTIPLIER/2)) {
+		if(beamish_switch->raw[x] > (int)((double)AVG_PULSE_LENGTH*((double)PULSE_MULTIPLIER/2))) {
 			binary[i++] = 1;
 		} else {
 			binary[i++] = 0;
@@ -238,7 +238,7 @@ void beamishSwitchInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "beamish_switch";
-	module->version = "0.11";
+	module->version = "0.12";
 	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }

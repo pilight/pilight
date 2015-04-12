@@ -1437,6 +1437,7 @@ void *receivePulseTrain(void *param) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
 	struct rawcode_t r;
+	r.length = 0;
 	int plslen = 0;
 #ifdef _WIN32
 	SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_HIGHEST);
@@ -1480,6 +1481,7 @@ void *receiveOOK(void *param) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
 	struct rawcode_t r;
+	r.length = 0;
 	int plslen = 0, duration = 0;
 	struct timeval tp;
 	struct timespec ts;

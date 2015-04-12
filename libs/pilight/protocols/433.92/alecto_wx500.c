@@ -67,7 +67,7 @@ static void parseCode(void) {
 	int checksum = 1;
 
 	for(x=1;x<alecto_wx500->rawlen-2;x+=2) {
-		if(alecto_wx500->raw[x] > AVG_PULSE_LENGTH*(PULSE_MULTIPLIER/2)) {
+		if(alecto_wx500->raw[x] > (int)((double)AVG_PULSE_LENGTH*((double)PULSE_MULTIPLIER/2))) {
 			binary[i++] = 1;
 		} else {
 			binary[i++] = 0;
@@ -296,7 +296,7 @@ void alectoWX500Init(void) {
 #ifdef MODULAR
 void compatibility(const char **version, const char **commit) {
 	module->name = "alecto_wx500";
-	module->version = "0.13";
+	module->version = "0.14";
 	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }

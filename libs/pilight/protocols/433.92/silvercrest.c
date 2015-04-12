@@ -62,7 +62,7 @@ static void parseCode(void) {
 	int binary[RAW_LENGTH/4], x = 0, i = 0;
 
 	for(x=0;x<silvercrest->rawlen;x+=4) {
-		if(silvercrest->raw[x+3] > AVG_PULSE_LENGTH*(PULSE_MULTIPLIER/2)) {
+		if(silvercrest->raw[x+3] > (int)((double)AVG_PULSE_LENGTH*((double)PULSE_MULTIPLIER/2))) {
 			binary[i++] = 1;
 		} else {
 			binary[i++] = 0;
@@ -218,7 +218,7 @@ void silvercrestInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "silvercrest";
-	module->version = "2.0";
+	module->version = "2.1";
 	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }

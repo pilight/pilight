@@ -61,7 +61,7 @@ static void parseCode(void) {
 	int i = 0, binary[RAW_LENGTH/4];
 
 	for(i=0; i<ehome->rawlen; i+=4) {
-		if(ehome->raw[i+3] > AVG_PULSE_LENGTH*(PULSE_MULTIPLIER/2)) {
+		if(ehome->raw[i+3] > (int)((double)AVG_PULSE_LENGTH*((double)PULSE_MULTIPLIER/2))) {
 			binary[i/4]=1;
 		} else {
 			binary[i/4]=0;
@@ -203,7 +203,7 @@ void ehomeInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "ehome";
-	module->version = "0.5";
+	module->version = "0.6";
 	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }

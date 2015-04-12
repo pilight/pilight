@@ -63,7 +63,7 @@ static void parseCode(void) {
 	int systemcode = 0, state = 0, unitcode = 0;
 
 	for(x=0;x<logilink_switch->rawlen-1;x+=2) {
-		if(logilink_switch->raw[x] > AVG_PULSE_LENGTH*(PULSE_MULTIPLIER/2)) {
+		if(logilink_switch->raw[x] > (int)((double)AVG_PULSE_LENGTH*((double)PULSE_MULTIPLIER/2))) {
 			binary[i++] = 1;
 		} else {
 			binary[i++] = 0;
@@ -226,7 +226,7 @@ void logilinkSwitchInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "logilink_sitch";
-	module->version = "0.4";
+	module->version = "0.5";
 	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }

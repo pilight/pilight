@@ -63,7 +63,7 @@ static void parseCode(void) {
 	int x = 0, y = 0, binary[RAW_LENGTH/2];
 
 	for(x=1;x<x10->rawlen-1;x+=2) {
-		if(x10->raw[x] > AVG_PULSE_LENGTH*(PULSE_MULTIPLIER/2)) {
+		if(x10->raw[x] > (int)((double)AVG_PULSE_LENGTH*((double)PULSE_MULTIPLIER/2))) {
 			binary[y++] = 1;
 		} else {
 			binary[y++] = 0;
@@ -240,7 +240,7 @@ void x10Init(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "x10";
-	module->version = "2.0";
+	module->version = "2.1";
 	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }

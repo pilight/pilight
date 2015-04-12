@@ -63,7 +63,7 @@ static void parseCode(void) {
 	double temperature = 0.0, humidity = 0.0;
 
 	for(x=1;x<alecto_ws1700->rawlen-2;x+=2) {
-		if(alecto_ws1700->raw[x] > AVG_PULSE_LENGTH*(PULSE_MULTIPLIER/2)) {
+		if(alecto_ws1700->raw[x] > (int)((double)AVG_PULSE_LENGTH*((double)PULSE_MULTIPLIER/2))) {
 			binary[i++] = 1;
 		} else {
 			binary[i++] = 0;
@@ -201,7 +201,7 @@ void alectoWS1700Init(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "alecto_ws1700";
-	module->version = "2.0";
+	module->version = "2.1";
 	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }

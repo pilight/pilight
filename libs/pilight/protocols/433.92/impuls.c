@@ -63,8 +63,8 @@ static void parseCode(void) {
 
 	/* Convert the one's and zero's into binary */
 	for(x=0; x<impuls->rawlen; x+=4) {
-		if(impuls->raw[x+3] > AVG_PULSE_LENGTH*(PULSE_MULTIPLIER/2) || 
-		   impuls->raw[x+0] > AVG_PULSE_LENGTH*(PULSE_MULTIPLIER/2)) {
+		if(impuls->raw[x+3] > (int)((double)AVG_PULSE_LENGTH*((double)PULSE_MULTIPLIER/2)) || 
+		   impuls->raw[x+0] > (int)((double)AVG_PULSE_LENGTH*((double)PULSE_MULTIPLIER/2))) {
 			binary[x/4]=1;
 		} else {
 			binary[x/4]=0;
@@ -233,7 +233,7 @@ void impulsInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "impuls";
-	module->version = "2.0";
+	module->version = "2.1";
 	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }

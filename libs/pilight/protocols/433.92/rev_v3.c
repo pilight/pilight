@@ -63,7 +63,7 @@ static void parseCode(void) {
 
 	/* Convert the one's and zero's into binary */
 	for(x=0;x<rev3_switch->rawlen;x+=4) {
-		if(rev3_switch->raw[x+3] > AVG_PULSE_LENGTH*(PULSE_MULTIPLIER/2)) {
+		if(rev3_switch->raw[x+3] > (int)((double)AVG_PULSE_LENGTH*((double)PULSE_MULTIPLIER/2))) {
 			binary[i++] = 1;
 		} else {
 			binary[i++] = 0;
@@ -222,7 +222,7 @@ void rev3Init(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "rev3_switch";
-	module->version = "0.10";
+	module->version = "0.11";
 	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }

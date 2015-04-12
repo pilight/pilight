@@ -63,8 +63,8 @@ static void parseCode(void) {
 
 	/* Convert the one's and zero's into binary */
 	for(x=0; x<rsl366->rawlen; x+=4) {
-		if(rsl366->raw[x+3] > AVG_PULSE_LENGTH*(PULSE_MULTIPLIER/2) || 
-		  rsl366->raw[x+0] > AVG_PULSE_LENGTH*(PULSE_MULTIPLIER/2)) {
+		if(rsl366->raw[x+3] > (int)((double)AVG_PULSE_LENGTH*((double)PULSE_MULTIPLIER/2)) || 
+		  rsl366->raw[x+0] > (int)((double)AVG_PULSE_LENGTH*((double)PULSE_MULTIPLIER/2))) {
 			binary[i++]=1;
 		} else {
 			binary[i++]=0;
@@ -199,7 +199,7 @@ void rsl366Init(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "rsl366";
-	module->version = "2.0";
+	module->version = "2.1";
 	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }

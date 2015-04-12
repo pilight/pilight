@@ -62,7 +62,7 @@ static void parseCode(void) {
 	int x = 0, i = 0, binary[RAW_LENGTH/4];
 
 	for(x=0;x<elro_400_switch->rawlen;x+=4) {
-		if(elro_400_switch->raw[x+3] > AVG_PULSE_LENGTH*(PULSE_MULTIPLIER/2)) {
+		if(elro_400_switch->raw[x+3] > (int)((double)AVG_PULSE_LENGTH*((double)PULSE_MULTIPLIER/2))) {
 			binary[i++] = 0;
 		} else {
 			binary[i++] = 1;
@@ -216,7 +216,7 @@ void elro400SwitchInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "elro_400_switch";
-	module->version = "2.0";
+	module->version = "2.1";
 	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }

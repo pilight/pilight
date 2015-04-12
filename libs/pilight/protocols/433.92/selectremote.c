@@ -61,7 +61,7 @@ static void parseCode(void) {
 	int binary[RAW_LENGTH/4], x = 0, i = 0;
 
 	for(x=0;x<selectremote->rawlen;x+=4) {
-		if(selectremote->raw[x] > AVG_PULSE_LENGTH*(PULSE_MULTIPLIER/2)) {
+		if(selectremote->raw[x] > (int)((double)AVG_PULSE_LENGTH*((double)PULSE_MULTIPLIER/2))) {
 			binary[i++] = 1;
 		} else {
 			binary[i++] = 0;
@@ -191,7 +191,7 @@ void selectremoteInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "selectremote";
-	module->version = "2.0";
+	module->version = "2.1";
 	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }

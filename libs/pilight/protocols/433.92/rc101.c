@@ -66,7 +66,7 @@ static void parseCode(void) {
 	int i = 0, x = 0, binary[RAW_LENGTH/2];
 
 	for(i=0;i<rc101->rawlen; i+=2) {
-		if(rc101->raw[i] > AVG_PULSE_LENGTH*(PULSE_MULTIPLIER/2)) {
+		if(rc101->raw[i] > (int)((double)AVG_PULSE_LENGTH*((double)PULSE_MULTIPLIER/2))) {
 			binary[x++] = 1;
 		} else {
 			binary[x++] = 0;
@@ -237,7 +237,7 @@ void rc101Init(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "rc101";
-	module->version = "0.2";
+	module->version = "0.3";
 	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }
