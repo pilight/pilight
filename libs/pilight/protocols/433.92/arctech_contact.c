@@ -30,19 +30,19 @@
 #include "../../core/gc.h"
 #include "arctech_contact.h"
 
-#define PULSE_MULTIPLIER	3
+#define PULSE_MULTIPLIER	4
 #define MIN_PULSE_LENGTH	290
 #define MAX_PULSE_LENGTH	320
 #define AVG_PULSE_LENGTH	300
-#define MIN_RAW_LENGTH		148
-#define MAX_RAW_LENGTH		132
-#define RAW_LENGTH				132
+#define MIN_RAW_LENGTH		132
+#define MAX_RAW_LENGTH		148
+#define RAW_LENGTH				148
 
 static int validate(void) {
-	if(arctech_contact->rawlen == RAW_LENGTH) {			
+	if(arctech_contact->rawlen == MIN_RAW_LENGTH || arctech_contact->rawlen == MAX_RAW_LENGTH) {			
 		if(arctech_contact->raw[arctech_contact->rawlen-1] >= (MIN_PULSE_LENGTH*PULSE_DIV) &&
 		   arctech_contact->raw[arctech_contact->rawlen-1] <= (MAX_PULSE_LENGTH*PULSE_DIV) &&
-			 arctech_contact->raw[1] >= AVG_PULSE_LENGTH*(PULSE_MULTIPLIER*3)) {
+			 arctech_contact->raw[1] >= AVG_PULSE_LENGTH*(PULSE_MULTIPLIER*2)) {
 			return 0;
 		}
 	}
@@ -97,8 +97,8 @@ void arctechContactInit(void) {
 
 	arctech_contact->devtype = CONTACT;
 	arctech_contact->hwtype = RF433;
-	arctech_contact->minrawlen = MAX_RAW_LENGTH;
-	arctech_contact->maxrawlen = MIN_RAW_LENGTH;
+	arctech_contact->minrawlen = MIN_RAW_LENGTH;
+	arctech_contact->maxrawlen = MAX_RAW_LENGTH;
 	arctech_contact->maxgaplen = MAX_PULSE_LENGTH*PULSE_DIV;
 	arctech_contact->mingaplen = MIN_PULSE_LENGTH*PULSE_DIV;
 
