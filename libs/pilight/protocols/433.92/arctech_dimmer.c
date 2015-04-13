@@ -32,7 +32,7 @@
 
 #define LEARN_REPEATS			40
 #define NORMAL_REPEATS		10
-#define PULSE_MULTIPLIER	3
+#define PULSE_MULTIPLIER	4
 #define MIN_PULSE_LENGTH	275
 #define MAX_PULSE_LENGTH	320
 #define AVG_PULSE_LENGTH	300
@@ -42,7 +42,7 @@ static int validate(void) {
 	if(arctech_dimmer->rawlen == RAW_LENGTH) {			
 		if(arctech_dimmer->raw[arctech_dimmer->rawlen-1] >= (MIN_PULSE_LENGTH*PULSE_DIV) &&
 		   arctech_dimmer->raw[arctech_dimmer->rawlen-1] <= (MAX_PULSE_LENGTH*PULSE_DIV) &&
-			 arctech_dimmer->raw[1] >= AVG_PULSE_LENGTH*(PULSE_MULTIPLIER*3)) {
+			 arctech_dimmer->raw[1] >= AVG_PULSE_LENGTH*(PULSE_MULTIPLIER*2)) {
 			return 0;
 		}
 	}
