@@ -31,6 +31,7 @@
 
 static int createCode(JsonNode *code) {
 	char *rcode = NULL;
+	double repeats = 10;
 	char **array = NULL;
 	unsigned int i = 0, n = 0;
 
@@ -38,6 +39,8 @@ static int createCode(JsonNode *code) {
 		logprintf(LOG_ERR, "raw: insufficient number of arguments");
 		return EXIT_FAILURE;
 	}
+	
+	json_find_number(code, "repeats", &repeats);
 
 	n = explode(rcode, " ", &array);
 	for(i=0;i<n;i++) {
@@ -64,9 +67,11 @@ void rawInit(void) {
 	protocol_set_id(raw, "raw");
 	protocol_device_add(raw, "raw", "Raw Codes");
 	raw->devtype = RAW;
+	raw->hwtype = RF433;
 	raw->config = 0;
 
 	options_add(&raw->options, 'c', "code", OPTION_HAS_VALUE, 0, JSON_STRING, NULL, NULL);
+	options_add(&raw->options, 'r', "repeats", OPTION_OPT_VALUE, 0, JSON_NUMBER, NULL, NULL);
 
 	raw->createCode=&createCode;
 	raw->printHelp=&printHelp;
