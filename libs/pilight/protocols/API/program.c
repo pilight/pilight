@@ -144,7 +144,7 @@ static void *thread(void *param) {
 			jchild1 = json_first_child(jchild);
 			while(jchild1) {
 				if(strcmp(jchild1->key, "name") == 0) {
-					if(!(lnode->name = MALLOC(strlen(jchild1->string_)+1))) {
+					if((lnode->name = MALLOC(strlen(jchild1->string_)+1)) == NULL) {
 						logprintf(LOG_ERR, "out of memory");
 						exit(EXIT_FAILURE);
 					}
@@ -169,7 +169,7 @@ static void *thread(void *param) {
 		if(protocol_thread_wait(pnode, interval, &nrloops) == ETIMEDOUT) {
 			pthread_mutex_lock(&lock);
 			if(lnode->wait == 0) {
-				program->message = json_mkobject();
+				struct JsonNode *message = json_mkobject();
 
 				JsonNode *code = json_mkobject();
 				json_append_member(code, "name", json_mkstring(lnode->name));
@@ -183,18 +183,18 @@ static void *thread(void *param) {
 					json_append_member(code, "state", json_mkstring("stopped"));
 					json_append_member(code, "pid", json_mknumber(0, 0));
 				}
-				json_append_member(program->message, "message", code);
-				json_append_member(program->message, "origin", json_mkstring("receiver"));
-				json_append_member(program->message, "protocol", json_mkstring(program->id));
+				json_append_member(message, "message", code);
+				json_append_member(message, "origin", json_mkstring("receiver"));
+				json_append_member(message, "protocol", json_mkstring(program->id));
 
 				if(lnode->currentstate != lnode->laststate) {
 					lnode->laststate = lnode->currentstate;
 					if(pilight.broadcast != NULL) {
-						pilight.broadcast(program->id, program->message, PROTOCOL);
+						pilight.broadcast(program->id, message, PROTOCOL);
 					}
 				}
-				json_delete(program->message);
-				program->message = NULL;
+				json_delete(message);
+				message = NULL;
 			}
 			pthread_mutex_unlock(&lock);
 		}
