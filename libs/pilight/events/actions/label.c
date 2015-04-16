@@ -232,6 +232,8 @@ static void *thread(void *param) {
 
 	event_action_started(pth);
 
+	v.string_ = NULL;
+	
 	if((jcolor = json_find_member(json, "COLOR")) != NULL) {	
 		if((jevalues = json_find_member(jcolor, "value")) != NULL) {
 			jcolor = json_find_element(jevalues, 0);
@@ -312,20 +314,19 @@ static void *thread(void *param) {
 					jlabel = json_find_element(javalues, 0);
 					if(jlabel != NULL && jlabel->tag == JSON_STRING) {
 						label = jlabel->string_;
-						if(event_lookup_variable(label, obj, JSON_STRING, &v, 0, ACTION) != -1) {
+						if(event_lookup_variable(label, obj, JSON_STRING | JSON_NUMBER, &v, 0, ACTION) != -1) {
 							if(v.string_ != NULL) {
 								label = v.string_;
+							} else {
+								if((label = MALLOC(255)) == NULL) {
+									logprintf(LOG_ERR, "out of memory");
+									exit(EXIT_FAILURE);								
+								}
+								memset(label, '\0', 255);
+								free_label = 1;
+								int l = snprintf(label, 255, "%d", (int)v.number_);
+								label[l] = '\0';
 							}
-						}
-						if(event_lookup_variable(label, obj, JSON_NUMBER, &v, 0, ACTION) != -1) {
-							if((label = MALLOC(255)) == NULL) {
-								logprintf(LOG_ERR, "out of memory");
-								exit(EXIT_FAILURE);								
-							}
-							memset(label, '\0', 255);
-							free_label = 1;
-							int l = snprintf(label, 255, "%d", (int)v.number_);
-							label[l] = '\0';
 						}
 						new_label = MALLOC(strlen(label)+1);
 						strcpy(new_label, label);
@@ -334,7 +335,7 @@ static void *thread(void *param) {
 						 * the old label or old color.
 						 */
 						if(old_label == NULL || strcmp(old_label, new_label) != 0 ||
-							(old_color != NULL && strcmp(old_color, new_color) != 0)) {
+							(old_color != NULL && new_color != NULL && strcmp(old_color, new_color) != 0)) {
 							if(pilight.control != NULL) {
 								jvalues = json_mkobject();
 								if(color != NULL) {

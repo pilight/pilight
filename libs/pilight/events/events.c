@@ -282,7 +282,9 @@ int event_lookup_variable(char *var, struct rules_t *obj, int type, union varcon
 								match1 = 1;
 								if(opt->conftype == DEVICES_VALUE || opt->conftype == DEVICES_STATE || opt->conftype == DEVICES_SETTING) {
 									match2 = 1;
-									if(opt->vartype == JSON_STRING && type == JSON_STRING) {
+									if(type == (JSON_STRING | JSON_NUMBER)) {
+										match3 = 1;
+									} else if(opt->vartype == JSON_STRING && type == JSON_STRING) {
 										match3 = 1;
 									} else if(opt->vartype == JSON_NUMBER && type == JSON_NUMBER) {
 										match3 = 1;
@@ -311,7 +313,7 @@ int event_lookup_variable(char *var, struct rules_t *obj, int type, union varcon
 				while(tmp_settings) {
 					if(strcmp(tmp_settings->name, name) == 0) {
 						if(tmp_settings->values->type == JSON_STRING) {
-							if(type == JSON_STRING) {
+							if(type == JSON_STRING || type == (JSON_NUMBER | JSON_STRING)) {
 								/* Cache values for faster future lookup */
 								if(obj != NULL) {
 									event_store_val_ptr(obj, device, name, tmp_settings);
@@ -324,7 +326,7 @@ int event_lookup_variable(char *var, struct rules_t *obj, int type, union varcon
 								return -1;
 							}
 						} else if(tmp_settings->values->type == JSON_NUMBER) {
-							if(type == JSON_NUMBER) {
+							if(type == JSON_NUMBER || type == (JSON_NUMBER | JSON_STRING)) {
 								/* Cache values for faster future lookup */
 								if(obj != NULL) {
 									event_store_val_ptr(obj, device, name, tmp_settings);
@@ -367,7 +369,7 @@ int event_lookup_variable(char *var, struct rules_t *obj, int type, union varcon
 	}
 }
 
-static int event_parse_hooks(char **rule, struct rules_t *obj, int depth, int (func)(char *rule, struct rules_t *obj, int depth, unsigned short validate), unsigned short validate) {
+static int event_parse_hooks(char **rule, struct rules_t *obj, int depth, unsigned short validate) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
 	int hooks = 0, res = 0;
@@ -406,7 +408,7 @@ static int event_parse_hooks(char **rule, struct rules_t *obj, int depth, int (f
 				replace[len+2] = '\0';
 				/* If successful, the variable subrule will be
 				   replaced with the outcome of the formula */
-				if((res = func(subrule, obj, depth, validate)) > -1) {
+				if((res = event_parse_rule(subrule, obj, depth, validate)) > -1) {
 					z = strlen(subrule);
 					/* Remove the hooks and the content within.
 						 Replace this content with the result of the sum.
@@ -973,9 +975,8 @@ int event_parse_condition(char **rule, struct rules_t *obj, int depth, unsigned 
 	} else {
 		pos = (size_t)(or-tmp);
 	}
-	subrule = MALLOC(pos+1);
 
-	if(subrule == NULL) {
+	if((subrule = MALLOC(pos+1)) == NULL) {
 		logprintf(LOG_ERR, "out of memory");
 		exit(EXIT_FAILURE);
 	}
@@ -1089,7 +1090,7 @@ int event_parse_rule(char *rule, struct rules_t *obj, int depth, unsigned short 
 	int pass = 0, ltype = NONE, skip = 0;
 	while(condition[i] != '\0') {
 		if(condition[i] == '(') {
-			pass = event_parse_hooks(&condition, obj, depth+1, event_parse_rule, validate);
+			pass = event_parse_hooks(&condition, obj, depth+1, validate);
 			error = pass;
 		}
 		if((type_and = strncmp(&condition[i], " AND ", 5)) == 0 || (type_or = strncmp(&condition[i], " OR ", 4)) == 0) {
@@ -1126,7 +1127,6 @@ int event_parse_rule(char *rule, struct rules_t *obj, int depth, unsigned short 
 	if(error > 0) {
 		error = 0;
 	}
-
 	if(ltype == AND && pass == 0) {
 		// printf("SKIP: %s, %s\n", (ltype == AND) ? "AND" : "OR", condition);
 		condition[0] = '0';
