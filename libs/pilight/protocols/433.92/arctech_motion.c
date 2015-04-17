@@ -36,7 +36,7 @@
 #define RAW_LENGTH				132
 
 static int validate(void) {
-	if(arctech_motion->rawlen == RAW_LENGTH) {			
+	if(arctech_motion->rawlen == RAW_LENGTH) {
 		if(arctech_motion->raw[arctech_motion->rawlen-1] >= (MIN_PULSE_LENGTH*PULSE_DIV) &&
 		   arctech_motion->raw[arctech_motion->rawlen-1] <= (MAX_PULSE_LENGTH*PULSE_DIV) &&
 			 arctech_motion->raw[1] >= AVG_PULSE_LENGTH*(PULSE_MULTIPLIER*3)) {

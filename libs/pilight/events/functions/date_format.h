@@ -1,5 +1,5 @@
 /*
-	Copyright (C) 2013 CurlyMo
+	Copyright (C) 2013 - 2014 CurlyMo
 
 	This file is part of pilight.
 
@@ -16,25 +16,13 @@
 	along with pilight. If not, see	<http://www.gnu.org/licenses/>
 */
 
-#ifndef _EVENTS_H_
-#define _EVENTS_H_
+#ifndef _EVENT_FUNCTION_TOGGLE_H_
+#define _EVENT_FUNCTION_TOGGLE_H_
 
-#include "../config/rules.h"
+#include "../function.h"
 
-typedef struct varcont_t {
-	union {
-		char *string_;
-		double number_;
-	};
-	int decimals_;
-} varcont_t;
+struct event_functions_t *function_date_format;
 
-void event_cache_device(struct rules_t *obj, char *device);
-int event_lookup_variable(char *var, struct rules_t *obj, int type, struct varcont_t *varcont, unsigned short validate, enum origin_t origin);
-int event_parse_rule(char *rule, struct rules_t *obj, int depth, unsigned short validate);
-void *events_clientize(void *param);
-int events_gc(void);
-void *events_loop(void *param);
-int events_running(void);
+void functionDateFormatInit(void);
 
 #endif

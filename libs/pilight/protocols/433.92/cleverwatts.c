@@ -37,7 +37,7 @@
 #define RAW_LENGTH				50
 
 static int validate(void) {
-	if(cleverwatts->rawlen == RAW_LENGTH) {			
+	if(cleverwatts->rawlen == RAW_LENGTH) {
 		if(cleverwatts->raw[cleverwatts->rawlen-1] >= (MIN_PULSE_LENGTH*PULSE_DIV) &&
 		   cleverwatts->raw[cleverwatts->rawlen-1] <= (MAX_PULSE_LENGTH*PULSE_DIV)) {
 			return 0;

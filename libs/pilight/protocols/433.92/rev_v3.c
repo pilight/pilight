@@ -37,7 +37,7 @@
 #define RAW_LENGTH				50
 
 static int validate(void) {
-	if(rev3_switch->rawlen == RAW_LENGTH) {			
+	if(rev3_switch->rawlen == RAW_LENGTH) {
 		if(rev3_switch->raw[rev3_switch->rawlen-1] >= (MIN_PULSE_LENGTH*PULSE_DIV) &&
 		   rev3_switch->raw[rev3_switch->rawlen-1] <= (MAX_PULSE_LENGTH*PULSE_DIV)) {
 			return 0;

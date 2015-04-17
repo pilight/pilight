@@ -55,7 +55,7 @@ static int checkArguments(struct rules_t *obj) {
 	jsubject = json_find_member(obj->arguments, "SUBJECT");
 	jmessage = json_find_member(obj->arguments, "MESSAGE");
 	jto = json_find_member(obj->arguments, "TO");
-	
+
 	if(jsubject == NULL) {
 		logprintf(LOG_ERR, "sendmail action is missing a \"SUBJECT\"");
 		return -1;

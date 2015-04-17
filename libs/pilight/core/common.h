@@ -23,6 +23,7 @@
 	#include "pthread.h"
 	#include "implement.h"
 #else
+	#include <sys/types.h>
 	#include <ifaddrs.h>
 	#include <pthread.h>
 	#include <sys/socket.h>

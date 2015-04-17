@@ -218,6 +218,8 @@ void protocol_register(protocol_t **proto) {
 	(*proto)->rawlen = 0;
 	(*proto)->minrawlen = 0;
 	(*proto)->maxrawlen = 0;
+	(*proto)->mingaplen = 0;
+	(*proto)->maxgaplen = 0;
 	(*proto)->txrpt = 10;
 	(*proto)->rxrpt = 1;
 	(*proto)->hwtype = NONE;

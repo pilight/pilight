@@ -40,7 +40,7 @@
 static int map[NRMAP]={0, 3, 192, 15, 12};
 
 static int validate(void) {
-	if(techlico_switch->rawlen == RAW_LENGTH) {			
+	if(techlico_switch->rawlen == RAW_LENGTH) {
 		if(techlico_switch->raw[techlico_switch->rawlen-1] >= (MIN_PULSE_LENGTH*PULSE_DIV) &&
 		   techlico_switch->raw[techlico_switch->rawlen-1] <= (MAX_PULSE_LENGTH*PULSE_DIV)) {
 			return 0;

@@ -47,7 +47,7 @@ static int checkArguments(struct rules_t *obj) {
 	struct JsonNode *jcchild = NULL;
 	struct JsonNode *jdchild = NULL;
 	struct JsonNode *jechild = NULL;
-	union varcont_t v;
+	struct varcont_t v;
 	double nr1 = 0.0, nr2 = 0.0, nr3 = 0.0, nr4 = 0.0, nr5 = 0.0;
 	int nrvalues = 0;
 
@@ -73,7 +73,7 @@ static int checkArguments(struct rules_t *obj) {
 	if(jcolor != NULL) {
 		json_find_number(jcolor, "order", &nr5);
 	}
-	
+
 	if(jfor != NULL) {
 		json_find_number(jfor, "order", &nr3);
 		if(nr3 < nr2) {
@@ -225,7 +225,7 @@ static void *thread(void *param) {
 	struct JsonNode *jlabel = NULL;
 	struct JsonNode *jaseconds = NULL;
 	struct JsonNode *jvalues = NULL;
-	union varcont_t v;	
+	struct varcont_t v;
 	char *new_label = NULL, *old_label = NULL, *label = NULL;
 	char *new_color = NULL, *old_color = NULL, *color = NULL;
 	int seconds_after = 0, seconds_for = 0, timer = 0, free_label = 0;
@@ -233,8 +233,8 @@ static void *thread(void *param) {
 	event_action_started(pth);
 
 	v.string_ = NULL;
-	
-	if((jcolor = json_find_member(json, "COLOR")) != NULL) {	
+
+	if((jcolor = json_find_member(json, "COLOR")) != NULL) {
 		if((jevalues = json_find_member(jcolor, "value")) != NULL) {
 			jcolor = json_find_element(jevalues, 0);
 			if(jcolor != NULL && jcolor->tag == JSON_STRING) {
@@ -312,21 +312,32 @@ static void *thread(void *param) {
 			if((jto = json_find_member(json, "TO")) != NULL) {
 				if((javalues = json_find_member(jto, "value")) != NULL) {
 					jlabel = json_find_element(javalues, 0);
-					if(jlabel != NULL && jlabel->tag == JSON_STRING) {
-						label = jlabel->string_;
-						if(event_lookup_variable(label, obj, JSON_STRING | JSON_NUMBER, &v, 0, ACTION) != -1) {
-							if(v.string_ != NULL) {
-								label = v.string_;
-							} else {
-								if((label = MALLOC(255)) == NULL) {
-									logprintf(LOG_ERR, "out of memory");
-									exit(EXIT_FAILURE);								
+					if(jlabel != NULL) {
+						if(jlabel->tag == JSON_STRING) {
+							label = jlabel->string_;
+							if(event_lookup_variable(label, obj, JSON_STRING | JSON_NUMBER, &v, 0, ACTION) == 0) {
+								if(v.string_ != NULL) {
+									label = v.string_;
+								} else {
+									if((label = MALLOC(255)) == NULL) {
+										logprintf(LOG_ERR, "out of memory");
+										exit(EXIT_FAILURE);
+									}
+									memset(label, '\0', 255);
+									free_label = 1;
+									int l = snprintf(label, 255, "%.*f", v.decimals_, v.number_);
+									label[l] = '\0';
 								}
-								memset(label, '\0', 255);
-								free_label = 1;
-								int l = snprintf(label, 255, "%d", (int)v.number_);
-								label[l] = '\0';
 							}
+						} else if(jlabel->tag == JSON_NUMBER) {
+							if((label = MALLOC(255)) == NULL) {
+								logprintf(LOG_ERR, "out of memory");
+								exit(EXIT_FAILURE);
+							}
+							memset(label, '\0', 255);
+							free_label = 1;
+							int l = snprintf(label, 255, "%.*f", jlabel->decimals_, jlabel->number_);
+							label[l] = '\0';
 						}
 						new_label = MALLOC(strlen(label)+1);
 						strcpy(new_label, label);
@@ -437,7 +448,7 @@ void actionLabelInit(void) {
 	event_action_register(&action_label, "label");
 
 	options_add(&action_label->options, 'a', "DEVICE", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_STRING, NULL, NULL);
-	options_add(&action_label->options, 'b', "TO", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_STRING, NULL, NULL);
+	options_add(&action_label->options, 'b', "TO", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_STRING | JSON_NUMBER, NULL, NULL);
 	options_add(&action_label->options, 'c', "AFTER", OPTION_OPT_VALUE, DEVICES_VALUE, JSON_STRING | JSON_NUMBER, NULL, NULL);
 	options_add(&action_label->options, 'd', "FOR", OPTION_OPT_VALUE, DEVICES_VALUE, JSON_STRING | JSON_NUMBER, NULL, NULL);
 	options_add(&action_label->options, 'e', "COLOR", OPTION_OPT_VALUE, DEVICES_VALUE, JSON_STRING, NULL, NULL);

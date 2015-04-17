@@ -175,7 +175,7 @@ static int settings_parse(JsonNode *root) {
 		logprintf(LOG_ERR, "out of memory");
 		exit(EXIT_FAILURE);
 	}
-	strcpy(webgui_root, WEBSERVER_ROOT);	
+	strcpy(webgui_root, WEBSERVER_ROOT);
 #endif
 
 #if !defined(__FreeBSD__) && !defined(_WIN32)
@@ -341,7 +341,7 @@ static int settings_parse(JsonNode *root) {
 				web_port = (int)jsettings->number_;
 				settings_add_number(jsettings->key, (int)jsettings->number_);
 			}
-		}	else if(strcmp(jsettings->key, "webserver-root") == 0) {
+		} else if(strcmp(jsettings->key, "webserver-root") == 0) {
 			if(jsettings->tag != JSON_STRING) {
 				logprintf(LOG_ERR, "config setting \"%s\" must contain a valid path", jsettings->key);
 				have_error = 1;
@@ -599,7 +599,7 @@ static int settings_parse(JsonNode *root) {
 		goto clear;
 	}
 #endif
-	
+
 #endif
 clear:
 #ifdef WEBSERVER

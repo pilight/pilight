@@ -33,6 +33,7 @@
 #include "../events/events.h"
 #include "../events/operator.h"
 #include "../events/action.h"
+#include "../events/function.h"
 #include "rules.h"
 #include "gui.h"
 
@@ -219,6 +220,7 @@ int rules_gc(void) {
 void rules_init(void) {
 	event_operator_init();
 	event_action_init();
+	event_function_init();
 
 	/* Request rules json object in main configuration */
 	config_register(&config_rules, "rules");

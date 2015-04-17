@@ -37,7 +37,7 @@
 #define RAW_LENGTH				50
 
 static int validate(void) {
-	if(mumbi->rawlen == RAW_LENGTH) {			
+	if(mumbi->rawlen == RAW_LENGTH) {
 		if(mumbi->raw[mumbi->rawlen-1] >= (MIN_PULSE_LENGTH*PULSE_DIV) &&
 		   mumbi->raw[mumbi->rawlen-1] <= (MAX_PULSE_LENGTH*PULSE_DIV)) {
 			return 0;

@@ -39,7 +39,7 @@
 #define RAW_LENGTH				148
 
 static int validate(void) {
-	if(arctech_contact->rawlen == MIN_RAW_LENGTH || arctech_contact->rawlen == MAX_RAW_LENGTH) {			
+	if(arctech_contact->rawlen == MIN_RAW_LENGTH || arctech_contact->rawlen == MAX_RAW_LENGTH) {
 		if(arctech_contact->raw[arctech_contact->rawlen-1] >= (MIN_PULSE_LENGTH*PULSE_DIV) &&
 		   arctech_contact->raw[arctech_contact->rawlen-1] <= (MAX_PULSE_LENGTH*PULSE_DIV) &&
 			 arctech_contact->raw[1] >= AVG_PULSE_LENGTH*(PULSE_MULTIPLIER*2)) {

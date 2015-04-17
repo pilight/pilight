@@ -46,7 +46,7 @@ typedef struct settings_t {
 static struct settings_t *settings = NULL;
 
 static int validate(void) {
-	if(alecto_wx500->rawlen == RAW_LENGTH) {			
+	if(alecto_wx500->rawlen == RAW_LENGTH) {
 		if(alecto_wx500->raw[alecto_wx500->rawlen-1] >= (MIN_PULSE_LENGTH*PULSE_DIV) &&
 		   alecto_wx500->raw[alecto_wx500->rawlen-1] <= (MAX_PULSE_LENGTH*PULSE_DIV)) {
 			return 0;

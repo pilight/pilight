@@ -37,7 +37,7 @@
 #define RAW_LENGTH				50
 
 static int validate(void) {
-	if(arctech_switch_old->rawlen == RAW_LENGTH) {			
+	if(arctech_switch_old->rawlen == RAW_LENGTH) {
 		if(arctech_switch_old->raw[arctech_switch_old->rawlen-1] >= (MIN_PULSE_LENGTH*PULSE_DIV) &&
 		   arctech_switch_old->raw[arctech_switch_old->rawlen-1] <= (MAX_PULSE_LENGTH*PULSE_DIV)) {
 			return 0;

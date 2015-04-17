@@ -37,7 +37,7 @@
 #define RAW_LENGTH				50
 
 static int validate(void) {
-	if(selectremote->rawlen == RAW_LENGTH) {			
+	if(selectremote->rawlen == RAW_LENGTH) {
 		if(selectremote->raw[selectremote->rawlen-1] >= (MIN_PULSE_LENGTH*PULSE_DIV) &&
 		   selectremote->raw[selectremote->rawlen-1] <= (MAX_PULSE_LENGTH*PULSE_DIV)) {
 			return 0;

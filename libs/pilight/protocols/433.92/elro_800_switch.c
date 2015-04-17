@@ -37,7 +37,7 @@
 #define RAW_LENGTH				50
 
 static int validate(void) {
-	if(elro_800_switch->rawlen == RAW_LENGTH) {			
+	if(elro_800_switch->rawlen == RAW_LENGTH) {
 		if(elro_800_switch->raw[elro_800_switch->rawlen-1] >= (MIN_PULSE_LENGTH*PULSE_DIV) &&
 		   elro_800_switch->raw[elro_800_switch->rawlen-1] <= (MAX_PULSE_LENGTH*PULSE_DIV)) {
 			return 0;

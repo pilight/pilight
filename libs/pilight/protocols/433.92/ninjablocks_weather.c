@@ -55,7 +55,7 @@ typedef struct settings_t {
 static struct settings_t *settings = NULL;
 
 static int validate(void) {
-	if(ninjablocks_weather->rawlen >= MIN_RAW_LENGTH && ninjablocks_weather->rawlen <= MAX_RAW_LENGTH) {			
+	if(ninjablocks_weather->rawlen >= MIN_RAW_LENGTH && ninjablocks_weather->rawlen <= MAX_RAW_LENGTH) {
 		if(ninjablocks_weather->raw[ninjablocks_weather->rawlen-1] >= (MIN_PULSE_LENGTH*PULSE_DIV) &&
 		   ninjablocks_weather->raw[ninjablocks_weather->rawlen-1] <= (MAX_PULSE_LENGTH*PULSE_DIV)) {
 			return 0;
@@ -83,7 +83,7 @@ static void parseCode(void) {
 
 	// Decode Biphase Mark Coded Differential Manchester (BMCDM) pulse stream into binary
 	for(x=0; x<=(RAW_LENGTH/2); x++) {
-		if(ninjablocks_weather->raw[pRaw] > PULSE_NINJA_WEATHER_LOWER && 
+		if(ninjablocks_weather->raw[pRaw] > PULSE_NINJA_WEATHER_LOWER &&
 		  ninjablocks_weather->raw[pRaw] < PULSE_NINJA_WEATHER_UPPER) {
 			binary[x] = 1;
 			iParityData = iParity;

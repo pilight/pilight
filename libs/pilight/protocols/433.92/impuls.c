@@ -37,7 +37,7 @@
 #define RAW_LENGTH				50
 
 static int validate(void) {
-	if(impuls->rawlen == RAW_LENGTH) {			
+	if(impuls->rawlen == RAW_LENGTH) {
 		if(impuls->raw[impuls->rawlen-1] >= (MIN_PULSE_LENGTH*PULSE_DIV) &&
 		   impuls->raw[impuls->rawlen-1] <= (MAX_PULSE_LENGTH*PULSE_DIV)) {
 			return 0;
@@ -63,7 +63,7 @@ static void parseCode(void) {
 
 	/* Convert the one's and zero's into binary */
 	for(x=0; x<impuls->rawlen; x+=4) {
-		if(impuls->raw[x+3] > (int)((double)AVG_PULSE_LENGTH*((double)PULSE_MULTIPLIER/2)) || 
+		if(impuls->raw[x+3] > (int)((double)AVG_PULSE_LENGTH*((double)PULSE_MULTIPLIER/2)) ||
 		   impuls->raw[x+0] > (int)((double)AVG_PULSE_LENGTH*((double)PULSE_MULTIPLIER/2))) {
 			binary[x/4]=1;
 		} else {

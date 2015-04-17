@@ -46,7 +46,7 @@ typedef struct settings_t {
 static struct settings_t *settings = NULL;
 
 static int validate(void) {
-	if(teknihall->rawlen == RAW_LENGTH) {			
+	if(teknihall->rawlen == RAW_LENGTH) {
 		if(teknihall->raw[teknihall->rawlen-1] >= (MIN_PULSE_LENGTH*PULSE_DIV) &&
 		   teknihall->raw[teknihall->rawlen-1] <= (MAX_PULSE_LENGTH*PULSE_DIV)) {
 			return 0;

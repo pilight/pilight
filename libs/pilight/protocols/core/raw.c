@@ -39,7 +39,7 @@ static int createCode(JsonNode *code) {
 		logprintf(LOG_ERR, "raw: insufficient number of arguments");
 		return EXIT_FAILURE;
 	}
-	
+
 	json_find_number(code, "repeats", &repeats);
 
 	n = explode(rcode, " ", &array);

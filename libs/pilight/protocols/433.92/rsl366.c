@@ -37,7 +37,7 @@
 #define RAW_LENGTH				50
 
 static int validate(void) {
-	if(rsl366->rawlen == RAW_LENGTH) {			
+	if(rsl366->rawlen == RAW_LENGTH) {
 		if(rsl366->raw[rsl366->rawlen-1] >= (MIN_PULSE_LENGTH*PULSE_DIV) &&
 		   rsl366->raw[rsl366->rawlen-1] <= (MAX_PULSE_LENGTH*PULSE_DIV)) {
 			return 0;
@@ -63,7 +63,7 @@ static void parseCode(void) {
 
 	/* Convert the one's and zero's into binary */
 	for(x=0; x<rsl366->rawlen; x+=4) {
-		if(rsl366->raw[x+3] > (int)((double)AVG_PULSE_LENGTH*((double)PULSE_MULTIPLIER/2)) || 
+		if(rsl366->raw[x+3] > (int)((double)AVG_PULSE_LENGTH*((double)PULSE_MULTIPLIER/2)) ||
 		  rsl366->raw[x+0] > (int)((double)AVG_PULSE_LENGTH*((double)PULSE_MULTIPLIER/2))) {
 			binary[i++]=1;
 		} else {

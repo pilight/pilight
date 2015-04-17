@@ -37,7 +37,7 @@
 #define RAW_LENGTH				50
 
 static int validate(void) {
-	if(arctech_screen_old->rawlen == RAW_LENGTH) {			
+	if(arctech_screen_old->rawlen == RAW_LENGTH) {
 		if(arctech_screen_old->raw[arctech_screen_old->rawlen-1] >= (MIN_PULSE_LENGTH*PULSE_DIV) &&
 		   arctech_screen_old->raw[arctech_screen_old->rawlen-1] <= (MAX_PULSE_LENGTH*PULSE_DIV)) {
 			return 0;
@@ -67,7 +67,7 @@ static void parseCode(void) {
 			binary[i++] = 0;
 		}
 	}
-	
+
 	int unit = binToDec(binary, 0, 3);
 	int state = binary[11];
 	int id = binToDec(binary, 4, 8);

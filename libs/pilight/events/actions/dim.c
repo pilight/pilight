@@ -53,7 +53,7 @@ static int checkArguments(struct rules_t *obj) {
 	struct JsonNode *jdchild = NULL;
 	struct JsonNode *jechild = NULL;
 	struct JsonNode *jfchild = NULL;
-	union varcont_t v;
+	struct varcont_t v;
 	double nr1 = 0.0, nr2 = 0.0, nr3 = 0.0, nr4 = 0.0, nr5 = 0.0, nr6 = 0.0;
 	double dimfrom = 0.0, dimto = 0.0;
 	int nrvalues = 0, match = 0;
@@ -148,7 +148,7 @@ static int checkArguments(struct rules_t *obj) {
 					if(event_lookup_variable(jcchild->string_, obj, JSON_NUMBER, &v, 1, ACTION) == -1) {
 						return -1;
 					}
-				}				
+				}
 				jcchild = jcchild->next;
 			}
 		}
@@ -168,7 +168,7 @@ static int checkArguments(struct rules_t *obj) {
 					if(event_lookup_variable(jdchild->string_, obj, JSON_NUMBER, &v, 1, ACTION) == -1) {
 						return -1;
 					}
-				}				
+				}
 				jdchild = jdchild->next;
 			}
 		}
@@ -363,7 +363,7 @@ static int checkArguments(struct rules_t *obj) {
 						}
 					}
 				} else {
-					logprintf(LOG_ERR, "internal error 2 in dim action", jbchild->string_);
+					logprintf(LOG_ERR, "device \"%s\" doesn't exists", jbchild->string_);
 					return -1;
 				}
 			} else {
@@ -399,7 +399,7 @@ static void *thread(void *param) {
 	struct JsonNode *jiseconds = NULL;
 	struct JsonNode *jvalues = NULL;
 	char *old_state = NULL;
-	union varcont_t v;
+	struct varcont_t v;
 	double dimlevel = 0.0, old_dimlevel = 0.0, new_dimlevel = 0.0, cur_dimlevel = 0.0;
 	int seconds_after = 0, seconds_for = 0, seconds_in = 0, has_in = 0, dimdiff = 0;
 	int direction = 0, interval = 0, i = 0, timer = 0;

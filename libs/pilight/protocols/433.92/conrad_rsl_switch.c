@@ -39,7 +39,7 @@
 static int codes[5][4][2];
 
 static int validate(void) {
-	if(conrad_rsl_switch->rawlen == RAW_LENGTH) {			
+	if(conrad_rsl_switch->rawlen == RAW_LENGTH) {
 		if(conrad_rsl_switch->raw[conrad_rsl_switch->rawlen-1] >= (MIN_PULSE_LENGTH*PULSE_DIV) &&
 		   conrad_rsl_switch->raw[conrad_rsl_switch->rawlen-1] <= (MAX_PULSE_LENGTH*PULSE_DIV)) {
 			return 0;

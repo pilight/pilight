@@ -36,7 +36,7 @@
 #define RAW_LENGTH				212
 
 static int validate(void) {
-	if(pilight_firmware_v3->rawlen == RAW_LENGTH) {		
+	if(pilight_firmware_v3->rawlen == RAW_LENGTH) {
 		if(pilight_firmware_v3->raw[pilight_firmware_v3->rawlen-1] >= (MIN_PULSE_LENGTH*PULSE_DIV) &&
 		   pilight_firmware_v3->raw[pilight_firmware_v3->rawlen-1] <= (MAX_PULSE_LENGTH*PULSE_DIV) &&
 			 pilight_firmware_v3->raw[1] > AVG_PULSE_LENGTH*PULSE_MULTIPLIER) {
@@ -60,14 +60,14 @@ static void parseCode(void) {
 	for(i=0;i<pilight_firmware_v3->rawlen;i+=4) {
 		if(pilight_firmware_v3->raw[i+3] < 100) {
 			pilight_firmware_v3->raw[i+3]*=10;
-		}		
+		}
 		if(pilight_firmware_v3->raw[i+3] > AVG_PULSE_LENGTH*(PULSE_MULTIPLIER/2)) {
 			binary[x++] = 1;
 		} else {
 			binary[x++] = 0;
-		}		
+		}
 	}
-	
+
 	int version = binToDec(binary, 0, 15);
 	int high = binToDec(binary, 16, 31);
 	int low = binToDec(binary, 32, 47);

@@ -54,6 +54,7 @@
 #include "events.h"
 
 #include "operator.h"
+#include "function.h"
 #include "action.h"
 
 #define NONE 0
@@ -98,8 +99,35 @@ int events_gc(void) {
 
 	event_operator_gc();
 	event_action_gc();
+	event_function_gc();
 	logprintf(LOG_DEBUG, "garbage collected events library");
 	return 1;
+}
+
+void event_cache_device(struct rules_t *obj, char *device) {
+	int exists = 0;
+	int o = 0;
+	if(obj != NULL) {
+		for(o=0;o<obj->nrdevices;o++) {
+			if(strcmp(obj->devices[o], device) == 0) {
+				exists = 1;
+				break;
+			}
+		}
+		if(exists == 0) {
+			/* Store all devices that are present in this rule */
+			if((obj->devices = REALLOC(obj->devices, sizeof(char *)*(unsigned int)(obj->nrdevices+1))) == NULL) {
+				logprintf(LOG_ERR, "out of memory");
+				exit(EXIT_FAILURE);
+			}
+			if((obj->devices[obj->nrdevices] = MALLOC(strlen(device)+1)) == NULL) {
+				logprintf(LOG_ERR, "out of memory");
+				exit(EXIT_FAILURE);
+			}
+			strcpy(obj->devices[obj->nrdevices], device);
+			obj->nrdevices++;
+		}
+	}
 }
 
 static int event_store_val_ptr(struct rules_t *obj, char *device, char *name, struct devices_settings_t *settings) {
@@ -145,7 +173,14 @@ static int event_store_val_ptr(struct rules_t *obj, char *device, char *name, st
 /* This functions checks if the defined event variable
    is part of one of devices in the config. If it is,
    replace the variable with the actual value */
-int event_lookup_variable(char *var, struct rules_t *obj, int type, union varcont_t *varcont, unsigned short validate, enum origin_t origin) {
+
+/*
+	Return codes:
+	-1: An error was found and abort rule parsing
+	0: Found variable and filled varcont
+	1: Did not find variable and did not fill varcont
+*/
+int event_lookup_variable(char *var, struct rules_t *obj, int type, struct varcont_t *varcont, unsigned short validate, enum origin_t origin) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
 	int cached = 0;
@@ -156,7 +191,7 @@ int event_lookup_variable(char *var, struct rules_t *obj, int type, union varcon
 		strcpy(false_, "1");
 	}
 	if(strcmp(var, "1") == 0 || strcmp(var, "0") == 0 ||
-		 isNumeric(var) == 0 || strcmp(var, "true") == 0 ||
+		 strcmp(var, "true") == 0 ||
 		 strcmp(var, "false") == 0) {
 		if(type == JSON_NUMBER) {
 			if(strcmp(var, "true") == 0) {
@@ -166,6 +201,7 @@ int event_lookup_variable(char *var, struct rules_t *obj, int type, union varcon
 			} else {
 				varcont->number_ = atof(var);
 			}
+			varcont->decimals_ = 0;
 		} else if(type == JSON_STRING) {
 			if(strcmp(var, "true") == 0) {
 				varcont->string_ = true_;
@@ -194,6 +230,7 @@ int event_lookup_variable(char *var, struct rules_t *obj, int type, union varcon
 			logprintf(LOG_ERR, "rule #%d: an unexpected error occured", obj->nr, var);
 			varcont->string_ = NULL;
 			varcont->number_ = 0;
+			varcont->decimals_ = 0;
 			for(q=0;q<n;q++) {
 				FREE(array[q]);
 			}
@@ -231,6 +268,7 @@ int event_lookup_variable(char *var, struct rules_t *obj, int type, union varcon
 							varcont->string_ = tmp_values->settings->values->string_;
 						} else if(tmp_values->settings->values->type == JSON_NUMBER) {
 							varcont->number_ = tmp_values->settings->values->number_;
+							varcont->decimals_ = tmp_values->settings->values->decimals;
 						}
 						cached = 1;
 						return 0;
@@ -238,35 +276,12 @@ int event_lookup_variable(char *var, struct rules_t *obj, int type, union varcon
 				tmp_values = tmp_values->next;
 			}
 		}
-
 		struct devices_t *dev = NULL;
 		if(cached == 0) {
 			if(devices_get(device, &dev) == 0) {
 				if(validate == 1) {
-					int exists = 0;
-					int o = 0;
-					if(obj != NULL) {
-						if(origin == RULE) {
-							for(o=0;o<obj->nrdevices;o++) {
-								if(strcmp(obj->devices[o], device) == 0) {
-									exists = 1;
-									break;
-								}
-							}
-							if(exists == 0) {
-								/* Store all devices that are present in this rule */
-								if((obj->devices = REALLOC(obj->devices, sizeof(char *)*(unsigned int)(obj->nrdevices+1))) == NULL) {
-									logprintf(LOG_ERR, "out of memory");
-									exit(EXIT_FAILURE);
-								}
-								if((obj->devices[obj->nrdevices] = MALLOC(strlen(device)+1)) == NULL) {
-									logprintf(LOG_ERR, "out of memory");
-									exit(EXIT_FAILURE);
-								}
-								strcpy(obj->devices[obj->nrdevices], device);
-								obj->nrdevices++;
-							}
-						}
+					if(origin == RULE) {
+						event_cache_device(obj, device);
 					}
 					struct protocols_t *tmp = dev->protocols;
 					unsigned int match1 = 0, match2 = 0, match3 = 0;
@@ -306,6 +321,7 @@ int event_lookup_variable(char *var, struct rules_t *obj, int type, union varcon
 					if(match1 == 0 || match2 == 0 || match3 == 0) {
 						varcont->string_ = NULL;
 						varcont->number_ = 0;
+						varcont->decimals_ = 0;
 						return -1;
 					}
 				}
@@ -332,10 +348,12 @@ int event_lookup_variable(char *var, struct rules_t *obj, int type, union varcon
 									event_store_val_ptr(obj, device, name, tmp_settings);
 								}
 								varcont->number_ = tmp_settings->values->number_;
+								varcont->decimals_ = tmp_settings->values->decimals;
 								return 0;
 							} else {
 								logprintf(LOG_ERR, "rule #%d invalid: trying to compare string variable \"%s.%s\" to an integer", obj->nr, device, name);
 								varcont->number_ = 0;
+								varcont->decimals_ = 0;
 								return -1;
 							}
 						}
@@ -345,28 +363,46 @@ int event_lookup_variable(char *var, struct rules_t *obj, int type, union varcon
 				logprintf(LOG_ERR, "rule #%d invalid: device \"%s\" has no variable \"%s\"", obj->nr, device, name);
 				varcont->string_ = NULL;
 				varcont->number_ = 0;
+				varcont->decimals_ = 0;
 				return -1;
-			} else {
+			} /*else {
 				logprintf(LOG_ERR, "rule #%d invalid: device \"%s\" does not exist in the config", obj->nr, device);
 				varcont->string_ = NULL;
 				varcont->number_ = 0;
+				varcont->decimals_ = 0;
 				return -1;
-			}
+			}*/
 		}
-		return 1;
-	} else if(nrdots > 2) {
+	}/* else if(nrdots > 2) {
 		logprintf(LOG_ERR, "rule #%d invalid: variable \"%s\" is invalid", obj->nr, var);
 		varcont->string_ = NULL;
 		varcont->number_ = 0;
+		varcont->decimals_ = 0;
 		return -1;
-	} else {
-		if(type == JSON_STRING) {
+	} */
+
+	if(type == JSON_STRING) {
+		if(isNumeric(var) != 0) {
+			varcont->string_ = NULL;
+		} else {
+			logprintf(LOG_ERR, "rule #%d invalid: trying to compare integer variable \"%s\" to a string", obj->nr, var);
 			varcont->string_ = var;
-		} else if(type == JSON_NUMBER) {
-			varcont->number_ = atof(var);
+			return -1;
 		}
-		return 0;
+	} else if(type == JSON_NUMBER) {
+		if(isNumeric(var) == 0) {
+			varcont->number_ = atof(var);
+			varcont->decimals_ = nrDecimals(var);
+		} else {
+			logprintf(LOG_ERR, "rule #%d invalid: trying to compare string variable \"%s\" to an integer", obj->nr, var);
+			varcont->number_ = 0;
+			varcont->decimals_ = 0;
+			return -1;
+		}
+	} else if(type == (JSON_STRING | JSON_NUMBER)) {
+		return 1;
 	}
+	return 0;
 }
 
 static int event_parse_hooks(char **rule, struct rules_t *obj, int depth, unsigned short validate) {
@@ -436,16 +472,208 @@ static int event_parse_hooks(char **rule, struct rules_t *obj, int depth, unsign
 	return 0;
 }
 
+int event_parse_function(char **rule, struct rules_t *obj, unsigned short validate) {
+	struct JsonNode *arguments = NULL;
+	struct event_functions_t *tmp_function = event_functions;
+	char *tmp = *rule, *ca = NULL;
+	char *ohook = strstr(tmp, "("), *chook = strstr(tmp, ")");
+	char *subfunction = NULL, *function = NULL, *name = NULL, *output = NULL;
+	size_t pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0, pos5 = 0;
+	unsigned long buflen = MEMBUFFER;
+	int	error = 0, i = 0, fl = 0, nl = 0;
+	int hooks = 0, len = 0, nested = 0;
+
+	if(ohook == NULL && chook == NULL) {
+		return 1;
+	} else if(!(ohook != NULL && chook != NULL)) {
+		return -1;
+	}
+
+	pos1 = pos3 = (size_t)(ohook-tmp);
+	pos2 = (size_t)(chook-tmp);
+	while(pos1 > 0 && tmp[pos1-1] != ' ') {
+		pos1--;
+	}
+
+	/*
+		Check if we have nested function.
+		We validate these function by checking if the
+		opening hook is within the first closing hook.
+		E.g.
+
+		Nested:
+		DATE_FORMAT(DATE_ADD(2014-01-01 23:59:59, INTERVAL 1 SECOND), "%H.%s)
+
+		Not nested:
+		DATE_FORMAT(2014-01-01, %Y-%m-%d, %d-%m-%Y) == DATE_FORMAT(2014-01-01, %Y-%m-%d, %d-%m-%Y)
+	*/
+	if((ca = strstr(&tmp[pos3+1], "(")) != NULL) {
+		pos5 = (ca-&tmp[pos3+1]);
+		if((pos3+1+pos5) < pos2) {
+			nested = 1;
+		}
+	}
+	while(nested == 1) {
+		if((subfunction = MALLOC(buflen)) == NULL) {
+			logprintf(LOG_ERR, "out of memory");
+			exit(EXIT_FAILURE);
+		}
+
+		hooks = 0;
+		i = 0;
+		buflen = BUFFER_SIZE;
+		len = 0;
+
+		while(tmp[i] != '\0') {
+			if(tmp[i] == '(') {
+				hooks++;
+			}
+			if(tmp[i] == ')') {
+				hooks--;
+			}
+			if(hooks > 0) {
+				subfunction[len++] = tmp[i+1];
+				if(buflen <= len) {
+					buflen *= 2;
+					subfunction = REALLOC(subfunction, buflen);
+					memset(&subfunction[len], '\0', buflen-(unsigned long)len);
+				}
+			} else {
+				if(len > 0) {
+					while(tmp[i-1] != ')') {
+						i--;
+						len--;
+					}
+					unsigned long z = 1;
+					char *replace = MALLOC(len+1);
+
+					subfunction[len-1] = '\0';
+					strcpy(replace, subfunction);
+
+					if(event_parse_function(&subfunction, obj, validate) > -1) {
+						z = strlen(subfunction);
+						/* Remove the nested function and the content within.
+							 Replace this function with the result of the function.
+
+							 e.g.: DATE_FORMAT(DATE_ADD(2014-01-01 23:59:59, INTERVAL 1 SECOND), "%H.%s)
+										 DATE_FORMAT(2014-01-02 00:00:00, %H.%s)
+						*/
+
+						// printf("Replace \"%s\" with \"%s\" in \"%s\"\n", replace, subfunction, tmp);
+						str_replace(replace, subfunction, &tmp);
+
+						chook = strstr(tmp, ")");
+						pos2 = (size_t)(chook-tmp);
+
+						FREE(replace);
+					} else {
+						FREE(subfunction);
+						FREE(replace);
+						return -1;
+					}
+					memset(subfunction, '\0', (unsigned long)len);
+					i -= (len-z);
+					len = 0;
+				}
+			}
+			i++;
+		}
+		nested = 0;
+		if((ca = strstr(&tmp[pos3+1], "(")) != NULL) {
+			pos5 = (ca-&tmp[pos3+1]);
+			if((pos3+1+pos5) < pos2) {
+				nested = 1;
+			}
+		}
+		FREE(subfunction);
+	}
+
+	fl = (pos2-pos1)+1;
+	nl = (pos3-pos1);
+
+	if((function = MALLOC(fl+1)) == NULL) {
+		logprintf(LOG_ERR, "out of memory");
+		exit(EXIT_FAILURE);
+	}
+	memset(function, '\0', fl+1);
+	strncpy(function, &tmp[pos1], fl);
+	function[fl] = '\0';
+
+	if((name = MALLOC(nl+1)) == NULL) {
+		logprintf(LOG_ERR, "out of memory");
+		exit(EXIT_FAILURE);
+	}
+	memset(name, '\0', nl+1);
+	strncpy(name, &tmp[pos1], nl);
+	name[nl] = '\0';
+
+	arguments = json_mkarray();
+	pos4 = pos3+1;
+	for(i=pos3+1;i<(pos3+(fl-nl));i++) {
+		if(tmp[i] == ',') {
+			while(tmp[i] == ' ') {
+				i++;
+			}
+			tmp[i] = '\0';
+			json_append_element(arguments, json_mkstring(&tmp[pos4]));
+			tmp[i] = ',';
+			i++;
+			while(tmp[i] == ' ') {
+				i++;
+			}
+			pos4 = i;
+		}
+	}
+	int t = tmp[i-1];
+	tmp[i-1] = '\0';
+	json_append_element(arguments, json_mkstring(&tmp[pos4]));
+	tmp[i-1] = t;
+
+	output = MALLOC(BUFFER_SIZE);
+	memset(output, '\0', BUFFER_SIZE);
+
+	while(tmp_function) {
+		if(error == 0) {
+			if(strcmp(name, tmp_function->name) == 0) {
+				if(tmp_function->run != NULL) {
+					error = tmp_function->run(obj, arguments, &output);
+					break;
+				}
+			}
+		} else {
+			goto close;
+		}
+		tmp_function = tmp_function->next;
+	}
+
+	if(strlen(output) > 0) {
+		// printf("Replace \"%s\" with \"%s\" in \"%s\"\n", function, output, *rule);
+		str_replace(function, output, rule);
+	}
+
+close:
+	json_delete(arguments);
+	FREE(output);
+	FREE(name);
+	FREE(function);
+	return error;
+}
+
 static int event_parse_formula(char **rule, struct rules_t *obj, int depth, unsigned short validate) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
-	union varcont_t v1;
-	union varcont_t v2;
+	struct varcont_t v1;
+	struct varcont_t v2;
 	char *var1 = NULL, *func = NULL, *var2 = NULL, *tmp = *rule, *search = NULL;
-	int element = 0, i = 0, match = 0, error = 0;
+	int element = 0, i = 0, match = 0, error = 0, hasquote = 0, hadquote = 0;
+	char var1quotes[2], var2quotes[2], funcquotes[2];
 	unsigned long len = strlen(tmp), pos = 0, word = 0;
 	char *res = MALLOC(255);
+
 	memset(res, '\0', 255);
+	var1quotes[0] = '\0';
+	var2quotes[0] = '\0';
+	funcquotes[0] = '\0';
 
 	/* If there are no hooks, we are going to solve the whole (sub)formula.
 	   This formula can be as simple as:
@@ -454,37 +682,61 @@ static int event_parse_formula(char **rule, struct rules_t *obj, int depth, unsi
 	   e.g.: 1 AND 1 AND 0 AND 1
 			 1 AND location.device.state IS on
 	*/
+	if(event_parse_function(&tmp, obj, validate) == -1) {
+		return -1;
+	}
 	while(pos <= len) {
 		/* If we encounter a space we have the formula part */
-		if(tmp[pos] == ' ' || pos == len) {
+		if(tmp[pos] == '"') {
+			hasquote ^= 1;
+			if(hasquote == 1) {
+				word++;
+			} else {
+				hadquote = 1;
+			}
+		}
+		if(hasquote == 0 && (tmp[pos] == ' ' || pos == len)) {
 			switch(element) {
 				/* The first value of three is always the first variable.
 				   The second value is always the function.
 				   The third value of the three is always the second variable (or second formula).
 				*/
 				case 0:
+					if(hadquote == 1) {
+						strcpy(var1quotes, "\"");
+					}
 					var1 = REALLOC(var1, ((pos-word)+1));
 					memset(var1, '\0', ((pos-word)+1));
-					strncpy(var1, &tmp[word], (pos-word));
+					strncpy(var1, &tmp[word], (pos-word)-hadquote);
 				break;
 				case 1:
+					if(hadquote == 1) {
+						strcpy(funcquotes, "\"");
+					}
 					func = REALLOC(func, ((pos-word)+1));
 					memset(func, '\0', ((pos-word)+1));
-					strncpy(func, &tmp[word], (pos-word));
+					strncpy(func, &tmp[word], (pos-word)-hadquote);
 				break;
 				case 2:
+					if(hadquote == 1) {
+						strcpy(var2quotes, "\"");
+					}
 					var2 = REALLOC(var2, ((pos-word)+1));
 					memset(var2, '\0', ((pos-word)+1));
-					strncpy(var2, &tmp[word], (pos-word));
+					strncpy(var2, &tmp[word], (pos-word)-hadquote);
 
 					unsigned long l = (strlen(var1)+strlen(var2)+strlen(func))+2;
-					search = REALLOC(search, (l+1));
+					/* search parameter, null-terminator, and potential quotes */
+					search = REALLOC(search, (l+1+6));
 					memset(search, '\0', l+1);
-					l = (unsigned long)sprintf(search, "%s %s %s", var1, func, var2);
-					search[l] = '\0';
+					l = (unsigned long)sprintf(search, "%s%s%s %s%s%s %s%s%s",
+						var1quotes, var1, var1quotes,
+						funcquotes, func, funcquotes,
+						var2quotes, var2, var2quotes);
 				break;
 				default:;
 			}
+			hadquote = 0;
 			word = pos+1;
 			element++;
 			if(element > 2) {
@@ -495,6 +747,10 @@ static int event_parse_formula(char **rule, struct rules_t *obj, int depth, unsi
 		if(func != NULL && strlen(func) > 0 &&
 		   var1 != NULL  && strlen(var1) > 0 &&
 		   var2 != NULL  && strlen(var2) > 0) {
+				var1quotes[0] = '\0';
+				var2quotes[0] = '\0';
+				funcquotes[0] = '\0';
+			// printf("%s / %s / %s\n", var1, func, var2);
 			i = 0;
 			/* Check if the operator exists */
 			match = 0;
@@ -510,10 +766,9 @@ static int event_parse_formula(char **rule, struct rules_t *obj, int depth, unsi
 				if(strcmp(func, tmp_operator->name) == 0) {
 					match = 1;
 					int ret1 = 0, ret2 = 0;
-					if(tmp_operator->callback_string) {
+					if(tmp_operator->callback_string != NULL) {
 						ret1 = event_lookup_variable(var1, obj, type, &v1, validate, RULE);
 						ret2 = event_lookup_variable(var2, obj, type, &v2, validate, RULE);
-
 						if(ret1 == -1 || ret2 == -1) {
 							error = -1;
 							goto close;
@@ -959,7 +1214,7 @@ int event_parse_condition(char **rule, struct rules_t *obj, int depth, unsigned 
 	char *or = strstr(tmp, "OR");
 	char *subrule = NULL;
 	size_t pos = 0;
-	int	type = 0, error = 0, i = 0, nrspaces = 0;
+	int	type = 0, error = 0, i = 0, nrspaces = 0, hasquote = 0;
 
 	if(or == NULL) {
 		type = AND;
@@ -984,7 +1239,10 @@ int event_parse_condition(char **rule, struct rules_t *obj, int depth, unsigned 
 	strncpy(subrule, tmp, pos);
 	subrule[pos-1] = '\0';
 	for(i=0;i<pos;i++) {
-		if(subrule[i] == ' ') {
+		if(subrule[i] == '"') {
+			hasquote ^= 1;
+		}
+		if(hasquote == 0 && (subrule[i] == ' ')) {
 			nrspaces++;
 		}
 	}
@@ -1010,6 +1268,7 @@ int event_parse_condition(char **rule, struct rules_t *obj, int depth, unsigned 
 			error = atoi(subrule);
 		}
 	}
+	FREE(subrule);
 	return error;
 }
 
@@ -1090,8 +1349,13 @@ int event_parse_rule(char *rule, struct rules_t *obj, int depth, unsigned short 
 	int pass = 0, ltype = NONE, skip = 0;
 	while(condition[i] != '\0') {
 		if(condition[i] == '(') {
-			pass = event_parse_hooks(&condition, obj, depth+1, validate);
-			error = pass;
+			/* Subcondition */
+			if(condition[i-1] == '(' || condition[i-1] == ' ') {
+				error = event_parse_hooks(&condition, obj, depth+1, validate);
+			/* Function */
+			} else {
+				error = event_parse_function(&condition, obj, validate);
+			}
 		}
 		if((type_and = strncmp(&condition[i], " AND ", 5)) == 0 || (type_or = strncmp(&condition[i], " OR ", 4)) == 0) {
 			i--;
@@ -1109,14 +1373,16 @@ int event_parse_rule(char *rule, struct rules_t *obj, int depth, unsigned short 
 				condition[z] = '\0';
 				i = -1;
 			}
-			if(pass == 1 && type_or == 0) {
-				condition[0] = '1';
-				condition[1] = '\0';
-				break;
-			} else if(pass == 0 && type_and == 0) {
-				skip = 1;
-			} else {
-				skip = 0;
+			if(validate == 0) {
+				if(pass == 1 && type_or == 0) {
+					condition[0] = '1';
+					condition[1] = '\0';
+					break;
+				} else if(pass == 0 && type_and == 0) {
+					skip = 1;
+				} else {
+					skip = 0;
+				}
 			}
 		}
 		if(error == -1) {
@@ -1127,7 +1393,8 @@ int event_parse_rule(char *rule, struct rules_t *obj, int depth, unsigned short 
 	if(error > 0) {
 		error = 0;
 	}
-	if(ltype == AND && pass == 0) {
+
+	if((ltype == AND && pass == 0) && validate == 0) {
 		// printf("SKIP: %s, %s\n", (ltype == AND) ? "AND" : "OR", condition);
 		condition[0] = '0';
 		condition[1] = '\0';
@@ -1142,7 +1409,6 @@ int event_parse_rule(char *rule, struct rules_t *obj, int depth, unsigned short 
 		// printf("SKIP: %s, %s\n", (ltype == AND) ? "AND" : "OR", condition);
 	}
 	obj->status = atoi(condition);
-
 	if(validate == 1 && depth == 0 && event_parse_action(action, obj, validate) != 0) {
 		logprintf(LOG_ERR, "rule #%d invalid: invalid action", obj->nr);
 		error = -1;
@@ -1158,6 +1424,9 @@ int event_parse_rule(char *rule, struct rules_t *obj, int depth, unsigned short 
 	}
 
 close:
+	if(error != 0) {
+		logprintf(LOG_DEBUG, "rule #%d was parsed until: ... %s THEN %s", obj->nr, condition, action);
+	}
 	if(depth == 0) {
 		if(condition != NULL) {
 			FREE(condition);

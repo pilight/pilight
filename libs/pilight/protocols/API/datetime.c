@@ -107,12 +107,12 @@ static void *thread(void *param) {
 	}
 
 	t = time(NULL);
-	t -= getntpdiff();	
+	t -= getntpdiff();
 	dst = isdst(t, tz);
 	if(isntpsynced() == 0) {
 		x = 1;
 	}
-	
+
 	/* Check how many hours we differ from UTC? */
 	target_offset = tzoffset(UTC, tz);
 

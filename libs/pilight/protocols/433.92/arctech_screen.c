@@ -39,7 +39,7 @@
 #define RAW_LENGTH				132
 
 static int validate(void) {
-	if(arctech_screen->rawlen == RAW_LENGTH) {			
+	if(arctech_screen->rawlen == RAW_LENGTH) {
 		if(arctech_screen->raw[arctech_screen->rawlen-1] >= (MIN_PULSE_LENGTH*PULSE_DIV) &&
 		   arctech_screen->raw[arctech_screen->rawlen-1] <= (MAX_PULSE_LENGTH*PULSE_DIV) &&
 			 arctech_screen->raw[1] >= AVG_PULSE_LENGTH*(PULSE_MULTIPLIER*1.5)) {
@@ -189,7 +189,7 @@ static int createCode(struct JsonNode *code) {
 
 	if(all > 0 && learn > -1) {
 		logprintf(LOG_ERR, "arctech_screen: all and learn cannot be combined");
-		return EXIT_FAILURE;		
+		return EXIT_FAILURE;
 	} else if(id == -1 || (unit == -1 && all == 0) || state == -1) {
 		logprintf(LOG_ERR, "arctech_screen: insufficient number of arguments");
 		return EXIT_FAILURE;

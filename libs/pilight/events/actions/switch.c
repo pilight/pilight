@@ -44,8 +44,8 @@ static int checkArguments(struct rules_t *obj) {
 	struct JsonNode *jbchild = NULL;
 	struct JsonNode *jcchild = NULL;
 	struct JsonNode *jdchild = NULL;
+	struct varcont_t v;
 	char *state = NULL;
-	union varcont_t v;
 	double nr1 = 0.0, nr2 = 0.0, nr3 = 0.0, nr4 = 0.0;
 	int nrvalues = 0;
 
@@ -97,7 +97,7 @@ static int checkArguments(struct rules_t *obj) {
 				if(event_lookup_variable(jachild->string_, obj, JSON_STRING, &v, 1, ACTION) == -1) {
 					return -1;
 				}
-			}			
+			}
 			jachild = jachild->next;
 		}
 	}
@@ -136,7 +136,7 @@ static int checkArguments(struct rules_t *obj) {
 					if(event_lookup_variable(jdchild->string_, obj, JSON_NUMBER, &v, 1, ACTION) == -1) {
 						return -1;
 					}
-				}				
+				}
 				jdchild = jdchild->next;
 			}
 		}
@@ -212,7 +212,7 @@ static void *thread(void *param) {
 	struct JsonNode *jdvalues = NULL;
 	struct JsonNode *jstate = NULL;
 	struct JsonNode *jaseconds = NULL;
-	union varcont_t v;
+	struct varcont_t v;
 	char *new_state = NULL, *old_state = NULL, *state = NULL;
 	int seconds_after = 0, seconds_for = 0, timer = 0;
 
@@ -285,7 +285,7 @@ static void *thread(void *param) {
 							if(v.string_ != NULL) {
 								state = v.string_;
 							}
-						}						
+						}
 						new_state = MALLOC(strlen(state)+1);
 						strcpy(new_state, state);
 						/*

@@ -39,7 +39,7 @@
 #define RAW_LENGTH				148
 
 static int validate(void) {
-	if(arctech_dimmer->rawlen == RAW_LENGTH) {			
+	if(arctech_dimmer->rawlen == RAW_LENGTH) {
 		if(arctech_dimmer->raw[arctech_dimmer->rawlen-1] >= (MIN_PULSE_LENGTH*PULSE_DIV) &&
 		   arctech_dimmer->raw[arctech_dimmer->rawlen-1] <= (MAX_PULSE_LENGTH*PULSE_DIV) &&
 			 arctech_dimmer->raw[1] >= AVG_PULSE_LENGTH*(PULSE_MULTIPLIER*2)) {
@@ -253,7 +253,7 @@ static int createCode(struct JsonNode *code) {
 
 	if(all > 0 && learn > -1) {
 		logprintf(LOG_ERR, "arctech_dimmer: all and learn cannot be combined");
-		return EXIT_FAILURE;		
+		return EXIT_FAILURE;
 	} else if(id == -1 || (unit == -1 && all == 0) || (dimlevel == -1 && state == -1)) {
 		logprintf(LOG_ERR, "arctech_dimmer: insufficient number of arguments");
 		return EXIT_FAILURE;

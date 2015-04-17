@@ -37,7 +37,7 @@
 #define RAW_LENGTH				50
 
 static int validate(void) {
-	if(logilink_switch->rawlen == RAW_LENGTH) {			
+	if(logilink_switch->rawlen == RAW_LENGTH) {
 		if(logilink_switch->raw[logilink_switch->rawlen-1] >= (MIN_PULSE_LENGTH*PULSE_DIV) &&
 		   logilink_switch->raw[logilink_switch->rawlen-1] <= (MAX_PULSE_LENGTH*PULSE_DIV)) {
 			return 0;

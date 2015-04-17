@@ -39,7 +39,7 @@
 static char letters[18] = {"MNOPCDABEFGHKL IJ"};
 
 static int validate(void) {
-	if(x10->rawlen == RAW_LENGTH) {			
+	if(x10->rawlen == RAW_LENGTH) {
 		if(x10->raw[x10->rawlen-1] >= (MIN_PULSE_LENGTH*PULSE_DIV) &&
 		   x10->raw[x10->rawlen-1] <= (MAX_PULSE_LENGTH*PULSE_DIV)) {
 			return 0;

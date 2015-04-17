@@ -47,7 +47,7 @@ typedef struct settings_t {
 static struct settings_t *settings = NULL;
 
 static int validate(void) {
-	if(tfa->rawlen == RAW_LENGTH) {			
+	if(tfa->rawlen == RAW_LENGTH) {
 		if(tfa->raw[tfa->rawlen-1] >= (MIN_PULSE_LENGTH*PULSE_DIV) &&
 		   tfa->raw[tfa->rawlen-1] <= (MAX_PULSE_LENGTH*PULSE_DIV)) {
 			return 0;
@@ -73,7 +73,7 @@ static void parseCode(void) {
 		} else {
 			binary[i++] = 0;
 		}
-	}	
+	}
 
 	id = binToDecRev(binary, 2, 9);
 	channel = binToDecRev(binary, 12, 13) + 1;

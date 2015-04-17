@@ -37,7 +37,7 @@
 #define RAW_LENGTH				50
 
 static int validate(void) {
-	if(pollin->rawlen == RAW_LENGTH) {			
+	if(pollin->rawlen == RAW_LENGTH) {
 		if(pollin->raw[pollin->rawlen-1] >= (MIN_PULSE_LENGTH*PULSE_DIV) &&
 		   pollin->raw[pollin->rawlen-1] <= (MAX_PULSE_LENGTH*PULSE_DIV)) {
 			return 0;
@@ -68,7 +68,7 @@ static void parseCode(void) {
 			binary[i++] = 0;
 		}
 	}
-	
+
 	int systemcode = binToDec(binary, 0, 4);
 	int unitcode = binToDec(binary, 5, 9);
 	int state = binary[11];

@@ -16,25 +16,23 @@
 	along with pilight. If not, see	<http://www.gnu.org/licenses/>
 */
 
-#ifndef _EVENTS_H_
-#define _EVENTS_H_
+#ifndef _FUNCTION_H_
+#define _FUNCTION_H_
 
-#include "../config/rules.h"
+#include "../core/json.h"
+#include "../core/common.h"
 
-typedef struct varcont_t {
-	union {
-		char *string_;
-		double number_;
-	};
-	int decimals_;
-} varcont_t;
+struct event_functions_t {
+	char *name;
+	int (*run)(struct rules_t *obj, struct JsonNode *arguments, char **out);
 
-void event_cache_device(struct rules_t *obj, char *device);
-int event_lookup_variable(char *var, struct rules_t *obj, int type, struct varcont_t *varcont, unsigned short validate, enum origin_t origin);
-int event_parse_rule(char *rule, struct rules_t *obj, int depth, unsigned short validate);
-void *events_clientize(void *param);
-int events_gc(void);
-void *events_loop(void *param);
-int events_running(void);
+	struct event_functions_t *next;
+};
+
+struct event_functions_t *event_functions;
+
+void event_function_init(void);
+void event_function_register(struct event_functions_t **act, const char *name);
+int event_function_gc(void);
 
 #endif

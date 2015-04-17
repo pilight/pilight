@@ -45,7 +45,7 @@ typedef struct settings_t {
 static struct settings_t *settings = NULL;
 
 static int validate(void) {
-	if(alecto_wsd17->rawlen == RAW_LENGTH) {			
+	if(alecto_wsd17->rawlen == RAW_LENGTH) {
 		if(alecto_wsd17->raw[alecto_wsd17->rawlen-1] >= (MIN_PULSE_LENGTH*PULSE_DIV) &&
 		   alecto_wsd17->raw[alecto_wsd17->rawlen-1] <= (MAX_PULSE_LENGTH*PULSE_DIV)) {
 			return 0;
@@ -65,7 +65,7 @@ static void parseCode(void) {
 		} else {
 			binary[i++] = 0;
 		}
-	}	
+	}
 
 	id = binToDecRev(binary, 0, 11);
 	temperature = binToDecRev(binary, 16, 27);

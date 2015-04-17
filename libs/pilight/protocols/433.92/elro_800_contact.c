@@ -37,7 +37,7 @@
 #define RAW_LENGTH				50
 
 static int validate(void) {
-	if(elro_800_contact->rawlen == RAW_LENGTH) {			
+	if(elro_800_contact->rawlen == RAW_LENGTH) {
 		if(elro_800_contact->raw[elro_800_contact->rawlen-1] >= (MIN_PULSE_LENGTH*PULSE_DIV) &&
 		   elro_800_contact->raw[elro_800_contact->rawlen-1] <= (MAX_PULSE_LENGTH*PULSE_DIV)) {
 			return 0;
@@ -68,7 +68,7 @@ static void parseCode(void) {
 			binary[i++] = 0;
 		}
 	}
-	
+
 	int systemcode = binToDec(binary, 0, 4);
 	int unitcode = binToDec(binary, 5, 9);
 	int state = binary[11];

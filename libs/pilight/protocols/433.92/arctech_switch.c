@@ -39,7 +39,7 @@
 #define RAW_LENGTH				132
 
 static int validate(void) {
-	if(arctech_switch->rawlen == RAW_LENGTH) {			
+	if(arctech_switch->rawlen == RAW_LENGTH) {
 		if(arctech_switch->raw[arctech_switch->rawlen-1] >= (MIN_PULSE_LENGTH*PULSE_DIV) &&
 		   arctech_switch->raw[arctech_switch->rawlen-1] <= (MAX_PULSE_LENGTH*PULSE_DIV) &&
 			 arctech_switch->raw[1] >= AVG_PULSE_LENGTH*(PULSE_MULTIPLIER*1.5)) {
@@ -71,7 +71,7 @@ static void createMessage(int id, int unit, int state, int all, int learn) {
 		arctech_switch->txrpt = LEARN_REPEATS;
 	} else {
 		arctech_switch->txrpt = NORMAL_REPEATS;
-	}	
+	}
 }
 
 static void parseCode(void) {
@@ -191,7 +191,7 @@ static int createCode(struct JsonNode *code) {
 
 	if(all > 0 && learn > -1) {
 		logprintf(LOG_ERR, "arctech_switch: all and learn cannot be combined");
-		return EXIT_FAILURE;		
+		return EXIT_FAILURE;
 	} else if(id == -1 || (unit == -1 && all == 0) || state == -1) {
 		logprintf(LOG_ERR, "arctech_switch: insufficient number of arguments");
 		return EXIT_FAILURE;

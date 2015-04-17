@@ -37,7 +37,7 @@
 #define RAW_LENGTH				50
 
 static int validate(void) {
-	if(ev1527->rawlen == RAW_LENGTH) {			
+	if(ev1527->rawlen == RAW_LENGTH) {
 		if(ev1527->raw[ev1527->rawlen-1] >= (MIN_PULSE_LENGTH*PULSE_DIV) &&
 		   ev1527->raw[ev1527->rawlen-1] <= (MAX_PULSE_LENGTH*PULSE_DIV)) {
 			return 0;
