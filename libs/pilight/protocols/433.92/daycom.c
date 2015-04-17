@@ -1,5 +1,5 @@
 /*
-	Copyright (C) 2014 CurlyMo
+	Copyright (C) 2014 CurlyMo, Rafael
 
 	This file is part of pilight.
 
@@ -196,9 +196,9 @@ static int createCode(JsonNode *code) {
 }
 
 static void printHelp(void) {
-	printf("\t -i --id=ident\t the transmitter\n");
-	printf("\t -s --systemcode=systemcode\tcontrol a device with this systemcode\n");
-	printf("\t -u --unitcode=unitcode\t\tcontrol a device with this unitcode\n");
+	printf("\t -i  --id=id\t\t\tcontrol a device with this id\n");
+	printf("\t -s --systemcode=systemcode\t\t\tcontrol a device with this systemcode\n");
+	printf("\t -u --unitcode=unitcode\t\t\tcontrol a device with this unitcode\n");
 	printf("\t -t --on\t\t\tsend an on signal\n");
 	printf("\t -f --off\t\t\tsend an off signal\n");
 }
