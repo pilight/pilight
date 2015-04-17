@@ -14,8 +14,6 @@
 
 	You should have received a copy of the GNU General Public License
 	along with pilight. If not, see	<http://www.gnu.org/licenses/>
-
-	Rafael: original was this beamish_switch.c , i have changed this for Daycom Switches to daycom.c   feb,2015
 */
 
 #include <stdio.h>
@@ -49,7 +47,7 @@ static int validate(void) {
         return -1;
 }
 
-static void daycomCreateMessage(int id, int systemcode, int unit, int state) {
+static void createMessage(int id, int systemcode, int unit, int state) {
 	daycom->message = json_mkobject();
 	json_append_member(daycom->message, "id", json_mknumber(id, 0));
 	json_append_member(daycom->message, "systemcode", json_mknumber(systemcode, 0));
@@ -61,11 +59,9 @@ static void daycomCreateMessage(int id, int systemcode, int unit, int state) {
 	}
 }
 
-static void daycomParseCode(void) {
+static void parseCode(void) {
         int binary[RAW_LENGTH/2], x = 0, i = 0;
-
         int id = -1, state = -1, unit = -1, systemcode = -1;
-
 
         for(x=0;i<daycom->rawlen;x+=2) {
                 if(daycom->raw[x] > AVG_PULSE_LENGTH*(PULSE_MULTIPLIER/2)) {
@@ -74,22 +70,21 @@ static void daycomParseCode(void) {
                         binary[i++] = 0;
                 }
         }
-
         id = binToDecRev(binary, 0, 5);
         systemcode = binToDecRev(binary, 6, 19);
         unit = binToDecRev(binary, 21, 23 );
         state = binary[20];
-        daycomCreateMessage(id, systemcode, unit, state);
+        createMessage(id, systemcode, unit, state);
 }
 
-static void daycomCreateLow(int s, int e) {
+static void createLow(int s, int e) {
         int i;
         for(i=s;i<=e;i+=2) {
                 daycom->raw[i]=(PULSE_MULTIPLIER*AVG_PULSE_LENGTH);
                 daycom->raw[i+1]=(AVG_PULSE_LENGTH);
         }
 }
-static void daycomCreateHigh(int s, int e) {
+static void createHigh(int s, int e) {
         int i;
         for(i=s;i<=e;i+=2) {
                 daycom->raw[i]=(AVG_PULSE_LENGTH);
@@ -97,11 +92,11 @@ static void daycomCreateHigh(int s, int e) {
         }
 }
 
-static void daycomClearCode(void) {
-	daycomCreateHigh(0,47);
+static void clearCode(void) {
+	createHigh(0,47);
 }
 
-static void daycomCreateId(int id) {
+static void createId(int id) {
         int binary[255];
         int length = 0;
         int i=0, x=0;
@@ -110,13 +105,13 @@ static void daycomCreateId(int id) {
         for(i=0;i<=length;i++) {
                 if(binary[i]==1) {
                         x=i*2;
-                        daycomCreateLow(11-(x+1), 11-x);
+                        createLow(11-(x+1), 11-x);
                 }
         }
 }
 
 
-static void daycomCreateSystemCode(int systemcode) {
+static void createSystemCode(int systemcode) {
         int binary[255];
         int length = 0;
         int i=0, x=0;
@@ -125,12 +120,12 @@ static void daycomCreateSystemCode(int systemcode) {
         for(i=0;i<=length;i++) {
                 if(binary[i]==1) {
                         x=i*2;
-                        daycomCreateLow(39-(x+1), 39-x);
+                        createLow(39-(x+1), 39-x);
                 }
         }
 }
 
-static void daycomCreateUnit(int unit) {
+static void createUnit(int unit) {
         int binary[255];
         int length = 0;
         int i=0, x=0;
@@ -139,24 +134,24 @@ static void daycomCreateUnit(int unit) {
         for(i=0;i<=length;i++) {
                 if(binary[i]==1) {
                         x=i*2;
-                        daycomCreateLow(47-(x+1), 47-x);
+                        createLow(47-(x+1), 47-x);
                 }
         }
 }
 
-static void daycomCreateState(int state) {
+static void createState(int state) {
         if(state == 0) {
-                daycomCreateLow(40, 41);
+                createLow(40, 41);
         }
 }
 
 
-static void daycomCreateFooter(void) {
+static void createFooter(void) {
         daycom->raw[48]=(AVG_PULSE_LENGTH);
         daycom->raw[49]=(PULSE_DIV*AVG_PULSE_LENGTH);
 }
 
-static int daycomCreateCode(JsonNode *code) {
+static int createCode(JsonNode *code) {
         int id = -1;
         int systemcode = -1;
         int unit = -1;
@@ -187,21 +182,21 @@ static int daycomCreateCode(JsonNode *code) {
                 logprintf(LOG_ERR, "daycom: invalid unit range");
                 return EXIT_FAILURE;
         } else {
-                daycomCreateMessage(id, systemcode, unit, state);
-                daycomClearCode();
-                daycomCreateId(id);
-                daycomCreateSystemCode(systemcode);
-                daycomCreateState(state);
-                daycomCreateUnit(unit);
-                daycomCreateFooter();
+                createMessage(id, systemcode, unit, state);
+                clearCode();
+                createId(id);
+                createSystemCode(systemcode);
+                createState(state);
+                createUnit(unit);
+                createFooter();
 		daycom->rawlen = RAW_LENGTH;
 		state = 0;
         }
         return EXIT_SUCCESS;
 }
 
-static void daycomPrintHelp(void) {
-	printf("\t -i --id=Ident\t the Transmitter\n");
+static void printHelp(void) {
+	printf("\t -i --id=ident\t the transmitter\n");
 	printf("\t -s --systemcode=systemcode\tcontrol a device with this systemcode\n");
 	printf("\t -u --unitcode=unitcode\t\tcontrol a device with this unitcode\n");
 	printf("\t -t --on\t\t\tsend an on signal\n");
@@ -216,7 +211,7 @@ void daycomInit(void) {
 
 	protocol_register(&daycom);
 	protocol_set_id(daycom, "daycom");
-	protocol_device_add(daycom, "daycom", "Daycom Switches");
+	protocol_device_add(daycom, "daycom", "Daycom switches");
         daycom->devtype = SWITCH;
         daycom->hwtype = RF433;
         daycom->minrawlen = RAW_LENGTH;
@@ -232,17 +227,17 @@ void daycomInit(void) {
 
 	options_add(&daycom->options, 0, "readonly", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 
-        daycom->parseCode=&daycomParseCode;
-        daycom->createCode=&daycomCreateCode;
-        daycom->printHelp=&daycomPrintHelp;
+        daycom->parseCode=&parseCode;
+        daycom->createCode=&createCode;
+        daycom->printHelp=&printHelp;
         daycom->validate=&validate;
 }
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
         module->name = "daycom";
-        module->version = "0.02";
+        module->version = "0.03";
         module->reqversion = "6.0";
-        module->reqcommit = "2";
+        module->reqcommit = "84";
 }
 
 void init(void) {
