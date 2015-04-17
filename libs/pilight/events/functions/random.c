@@ -33,7 +33,7 @@
 static int run(struct rules_t *obj, struct JsonNode *arguments, char **ret) {
 	struct timeval t1;
 	char *p = *ret;
-  int r = 0, min = 1, max = 10;
+	int r = 0, min = 1, max = 10;
 
 	struct JsonNode *childs = json_first_child(arguments);
 	if(childs == NULL) {

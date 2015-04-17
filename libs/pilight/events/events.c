@@ -382,12 +382,12 @@ int event_lookup_variable(char *var, struct rules_t *obj, int type, struct varco
 	} */
 
 	if(type == JSON_STRING) {
-		if(isNumeric(var) != 0) {
+		if(isNumeric(var) == 0) {
 			varcont->string_ = NULL;
-		} else {
 			logprintf(LOG_ERR, "rule #%d invalid: trying to compare integer variable \"%s\" to a string", obj->nr, var);
-			varcont->string_ = var;
 			return -1;
+		} else {
+			varcont->string_ = var;
 		}
 	} else if(type == JSON_NUMBER) {
 		if(isNumeric(var) == 0) {
@@ -1350,7 +1350,7 @@ int event_parse_rule(char *rule, struct rules_t *obj, int depth, unsigned short 
 	while(condition[i] != '\0') {
 		if(condition[i] == '(') {
 			/* Subcondition */
-			if(condition[i-1] == '(' || condition[i-1] == ' ') {
+			if(condition[i-1] == '(' || condition[i-1] == ' ' || i == 0) {
 				error = event_parse_hooks(&condition, obj, depth+1, validate);
 			/* Function */
 			} else {
