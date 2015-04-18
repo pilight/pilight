@@ -116,6 +116,9 @@ static int run(struct rules_t *obj, struct JsonNode *arguments, char **ret) {
 				if(strcmp(opt->name, "weekday") == 0) {
 					tm.tm_wday = opt->values->number_-1;
 				}
+				if(strcmp(opt->name, "dst") == 0) {
+					tm.tm_isdst = opt->values->number_;
+				}
 				opt = opt->next;
 			}
 		} else {
@@ -181,9 +184,9 @@ static int run(struct rules_t *obj, struct JsonNode *arguments, char **ret) {
 	add(&tm, values, type);
 	time_t t1 = mktime(&tm);
 #ifdef _WIN32
-	if((tm = gmtime(&t1)) != NULL) {
+	if((tm = localtime(&t1)) != NULL) {
 #else
-	if(gmtime_r(&t1, &tm) != NULL) {
+	if(localtime_r(&t1, &tm) != NULL) {
 #endif
 		strftime(p, BUFFER_SIZE, "\"%Y-%m-%d %H:%M:%S\"", &tm);
 	}

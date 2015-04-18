@@ -175,6 +175,7 @@ static void *thread(void *param) {
 			json_append_member(code, "hour", json_mknumber(hour, 0));
 			json_append_member(code, "minute", json_mknumber(minute, 0));
 			json_append_member(code, "second", json_mknumber(second, 0));
+			json_append_member(code, "dst", json_mknumber(dst, 0));
 
 			json_append_member(datetime->message, "message", code);
 			json_append_member(datetime->message, "origin", json_mkstring("receiver"));
@@ -246,6 +247,7 @@ void datetimeInit(void) {
 	options_add(&datetime->options, 'h', "hour", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, NULL);
 	options_add(&datetime->options, 'i', "minute", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, NULL);
 	options_add(&datetime->options, 's', "second", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, NULL);
+	options_add(&datetime->options, 'z', "dst", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, NULL);
 
 	options_add(&datetime->options, 0, "show-datetime", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 	options_add(&datetime->options, 0, "format", OPTION_HAS_VALUE, GUI_SETTING, JSON_STRING, (void *)format, NULL);
