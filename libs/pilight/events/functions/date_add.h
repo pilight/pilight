@@ -21,8 +21,8 @@
 
 #include "../function.h"
 
-struct event_functions_t *function_date_format;
+struct event_functions_t *function_date_add;
 
-void functionDateFormatInit(void);
+void functionDateAddInit(void);
 
 #endif

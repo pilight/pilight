@@ -1,5 +1,5 @@
 /*
-	Copyright (C) 2013 - 2014 CurlyMo
+	Copyright (C) 2013 - 2015 CurlyMo
 
 	This file is part of pilight.
 
@@ -96,6 +96,10 @@ static int run(struct rules_t *obj, struct JsonNode *arguments, char **ret) {
 		logprintf(LOG_ERR, "DATE_FORMAT requires at least three parameters when passing a datetime string e.g. DATE_FORMAT(01-01-2015, %%d-%%m-%%Y, %%Y-%%m-%%d)");
 		return -1;
 	}
+	if(childs->next != NULL && dev != NULL) {
+		logprintf(LOG_ERR, "DATE_FORMAT requires at least two parameters e.g. DATE_FORMAT(datetime, %%Y-%%m-%%d)");
+		return -1;
+	}	
 
 	if(dev == NULL) {
 		childs = childs->next;

@@ -456,6 +456,7 @@ static int event_parse_hooks(char **rule, struct rules_t *obj, int depth, unsign
 					str_replace(replace, subrule, &tmp);
 
 					FREE(replace);
+					break;
 				} else {
 					FREE(subrule);
 					FREE(replace);
@@ -632,11 +633,13 @@ int event_parse_function(char **rule, struct rules_t *obj, unsigned short valida
 	output = MALLOC(BUFFER_SIZE);
 	memset(output, '\0', BUFFER_SIZE);
 
+	int match = 0;
 	while(tmp_function) {
 		if(error == 0) {
 			if(strcmp(name, tmp_function->name) == 0) {
 				if(tmp_function->run != NULL) {
 					error = tmp_function->run(obj, arguments, &output);
+					match = 1;
 					break;
 				}
 			}
@@ -644,6 +647,11 @@ int event_parse_function(char **rule, struct rules_t *obj, unsigned short valida
 			goto close;
 		}
 		tmp_function = tmp_function->next;
+	}
+	if(match == 0) {
+		logprintf(LOG_ERR, "rule #%d invalid: function \"%s\" does not exist", obj->nr, name);
+		error = -1;
+		goto close;
 	}
 
 	if(strlen(output) > 0) {
@@ -685,6 +693,7 @@ static int event_parse_formula(char **rule, struct rules_t *obj, int depth, unsi
 	if(event_parse_function(&tmp, obj, validate) == -1) {
 		return -1;
 	}
+
 	while(pos <= len) {
 		/* If we encounter a space we have the formula part */
 		if(tmp[pos] == '"') {
@@ -1424,8 +1433,8 @@ int event_parse_rule(char *rule, struct rules_t *obj, int depth, unsigned short 
 	}
 
 close:
-	if(error != 0) {
-		logprintf(LOG_DEBUG, "rule #%d was parsed until: ... %s THEN %s", obj->nr, condition, action);
+	if(error != 0 && depth == 0) {
+		logprintf(LOG_INFO, "rule #%d was parsed until: ... %s THEN %s", obj->nr, condition, action);
 	}
 	if(depth == 0) {
 		if(condition != NULL) {
