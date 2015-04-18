@@ -175,7 +175,7 @@ static int createCode(JsonNode *code) {
         } else if(id > 63 || id < 0) {
                 logprintf(LOG_ERR, "daycom: invalid id range");
                 return EXIT_FAILURE;
-        } else if(systemcode > 16383 || systemcode < 0) {
+        } else if(systemcode > 16999 || systemcode < 0) {
                 logprintf(LOG_ERR, "daycom: invalid systemcode range");
                 return EXIT_FAILURE;
         } else if(unit > 7 || unit < 0) {
@@ -222,7 +222,7 @@ void daycomInit(void) {
         options_add(&daycom->options, 't', "on", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
         options_add(&daycom->options, 'f', "off", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
         options_add(&daycom->options, 'u', "unit", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^([0-7])$");
-        options_add(&daycom->options, 's', "systemcode", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^([0-9]{1,4}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5])$");
+        options_add(&daycom->options, 's', "systemcode", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^([0-9]{1,4}|1[0-6][0-9]{3})$");
         options_add(&daycom->options, 'i', "id", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^[0-6]?[0-9]$");
 
 	options_add(&daycom->options, 0, "readonly", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
@@ -235,7 +235,7 @@ void daycomInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
         module->name = "daycom";
-        module->version = "0.03";
+        module->version = "0.04";
         module->reqversion = "6.0";
         module->reqcommit = "84";
 }
