@@ -29,11 +29,16 @@
 #include "../../core/binary.h"
 #include "../../core/gc.h"
 #include "alecto_wx500.h"
-
+//
+// Protocol characteristics: SYNC bit: 526/8942, Logical 0: 526/1578, Logical 1: 526/3419
+//
 #define PULSE_MULTIPLIER	16
 #define MIN_PULSE_LENGTH	235
 #define AVG_PULSE_LENGTH	255
 #define MAX_PULSE_LENGTH	275
+#define ZERO_PULSE	2104
+#define ONE_PULSE	3945
+#define AVG_PULSE	(ZERO_PULSE+ONE_PULSE)/2
 #define RAW_LENGTH				74
 
 typedef struct settings_t {
@@ -52,7 +57,6 @@ static int validate(void) {
 			return 0;
 		}
 	}
-
 	return -1;
 }
 
@@ -67,7 +71,7 @@ static void parseCode(void) {
 	int checksum = 1;
 
 	for(x=1;x<alecto_wx500->rawlen-2;x+=2) {
-		if(alecto_wx500->raw[x] > (int)((double)AVG_PULSE_LENGTH*((double)PULSE_MULTIPLIER/2))) {
+		if(alecto_wx500->raw[x] > AVG_PULSE) {
 			binary[i++] = 1;
 		} else {
 			binary[i++] = 0;
@@ -296,7 +300,7 @@ void alectoWX500Init(void) {
 #ifdef MODULAR
 void compatibility(const char **version, const char **commit) {
 	module->name = "alecto_wx500";
-	module->version = "0.14";
+	module->version = "0.15";
 	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }
