@@ -67,7 +67,7 @@ static char *format = NULL;
 
 static pthread_mutex_t lock;
 
-static void *thread(void *param) {
+static void *thread(void *param) {	
 	char UTC[] = "UTC";
 	struct protocol_threads_t *thread = (struct protocol_threads_t *)param;
 	struct JsonNode *json = (struct JsonNode *)thread->param;
@@ -139,25 +139,8 @@ static void *thread(void *param) {
 			int second = tm.tm_sec;
 			int weekday = tm.tm_wday+1;
 
-			if(hour >= 24) {
-				/* If hour becomes 24 or more we need to normalize it */
-				time_t t1 = mktime(&tm);
-#ifdef _WIN32
-				if((tm = gmtime(&t1)) != NULL) {
-#else
-				if(gmtime_r(&t1, &tm) != NULL) {
-#endif
-
-					year = tm.tm_year+1900;
-					month = tm.tm_mon+1;
-					day = tm.tm_mday;
-					hour = tm.tm_hour;
-					minute = tm.tm_min;
-					second = tm.tm_sec;
-					weekday = tm.tm_wday+1;
-				}
-			}
-
+			datefix(&year, &month, &day, &hour, &minute, &second);
+			
 			if((minute == 0 && second == 0) || (isntpsynced() == 0 && x == 0)) {
 				x = 1;
 				dst = isdst(t, tz);
@@ -260,9 +243,9 @@ void datetimeInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "datetime";
-	module->version = "2.5";
+	module->version = "2.6";
 	module->reqversion = "6.0";
-	module->reqcommit = "84";
+	module->reqcommit = "115";
 }
 
 void init(void) {

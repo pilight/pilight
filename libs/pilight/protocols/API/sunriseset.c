@@ -176,23 +176,7 @@ static void *thread(void *param) {
 			minute = tm.tm_min;
 			second = tm.tm_sec;
 
-			if(hour >= 24) {
-				/* If hour becomes 24 or more we need to normalize it */
-				time_t t1 = mktime(&tm);
-#ifdef _WIN32
-				if((tm = gmtime(&t1)) != NULL) {
-#else
-				if(gmtime_r(&t1, &tm) != NULL) {
-#endif
-
-					year = tm.tm_year+1900;
-					month = tm.tm_mon+1;
-					day = tm.tm_mday;
-					hour = tm.tm_hour;
-					minute = tm.tm_min;
-					second = tm.tm_sec;
-				}
-			}
+			datefix(&year, &month, &day, &hour, &minute, &second);
 
 			if((minute == 0 && second == 1) || (isntpsynced() == 0 && x == 0)) {
 				x = 1;
@@ -326,9 +310,9 @@ void sunRiseSetInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "sunriseset";
-	module->version = "2.5";
+	module->version = "2.6";
 	module->reqversion = "6.0";
-	module->reqcommit = "84";
+	module->reqcommit = "115";
 }
 
 void init(void) {

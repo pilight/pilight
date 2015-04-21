@@ -423,3 +423,69 @@ int isdst(time_t t, char *tz) {
 
 	return dst;
 }
+
+void datefix(int *year, int *month, int *day, int *hour, int *minute, int *second) {
+	int months[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+	int i = 0;
+
+	if(((*year % 4) == 0 && (*year % 100) != 0) || (*year % 400) == 0) {
+		months[1] = 29;
+	}
+	while(*second >= 60) {
+		*minute += 1;
+		*second -= 60;
+	}
+	while(*second < 0) {
+		*minute -= 1;
+		*second = 60 + *second;
+	}
+	while(*minute >= 60) {
+		*hour += 1;
+		*minute -= 60;
+	}
+	while(*minute < 0) {
+		*hour -= 1;
+		*minute = 60 + *minute;
+	}
+	while(*hour > 23) {
+		*day += 1;
+		*hour -= 24;
+	}
+	while(*hour < 0) {
+		*day -= 1;
+		*hour = 24 + *hour;
+	}
+	while(*day > months[*month-1] || *day <= 0 || *month > 12 || *month <= 0) {
+		if(*month > 0 && *month < 13) {
+			if(*day > months[*month-1]) {
+				i = months[*month-1];
+				*month += 1;
+				*day -= i;
+			} else if(*day <= 0) {
+				*month -= 1;
+				if(*month <= 0) {
+					*day = months[11 + *month] + *day;
+				} else {
+					*day = months[*month-1] + *day;
+				}
+			}
+		}
+		while(*month > 12 || *month <= 0) {
+			if(*month > 12) {
+				*year += 1;
+				*month -= 12;
+			} else if(*month < 0) {
+				*year -= 1;
+				*month = 12 + *month;
+			} else {
+				*year -= 1;
+				*month = 12;
+			}
+			if(((*year % 4) == 0 && (*year % 100) != 0) || (*year % 400) == 0) {
+				months[1] = 29;
+			} else {
+				months[1] = 28;
+			}
+		}
+	}
+}
