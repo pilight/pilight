@@ -193,7 +193,7 @@ void arctechSwitchOldInit(void) {
 	protocol_device_add(arctech_switch_old, "kaku_switch_old", "Old KlikAanKlikUit Switches");
 	protocol_device_add(arctech_switch_old, "cogex", "Cogex Switches");
 	protocol_device_add(arctech_switch_old, "intertechno_old", "Old Intertechno Switches");
-	protocol_device_add(arctech_switch_old, "byebyestandbye", "Bye Bye Standbye Switches");
+	protocol_device_add(arctech_switch_old, "byebyestandby", "Bye Bye Standby Switches");
 	protocol_device_add(arctech_switch_old, "duwi", "Düwi Terminal Switches");
 	protocol_device_add(arctech_switch_old, "eurodomest", "Eurodomest Switches");
 	arctech_switch_old->devtype = SWITCH;
