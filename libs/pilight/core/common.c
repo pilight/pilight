@@ -275,17 +275,15 @@ unsigned int explode(char *str, const char *delimiter, char ***output) {
 		p = strlen(delimiter);
 	}
 	while(i < l) {
-		for(x=0;x<p;x++) {
-			if(str[i] == delimiter[x]) {
-				if((i-y) > 0) {
-					*output = REALLOC(*output, sizeof(char *)*(n+1));
-					(*output)[n] = MALLOC((i-y)+1);
-					strncpy((*output)[n], &str[y], i-y);
-					(*output)[n][(i-y)] = '\0';
-					n++;
-				}
-				y=i+1;
+		if(strncmp(&str[i], delimiter, p) == 0) {
+			if((i-y) > 0) {
+				*output = REALLOC(*output, sizeof(char *)*(n+1));
+				(*output)[n] = MALLOC((i-y)+1);
+				strncpy((*output)[n], &str[y], i-y);
+				(*output)[n][(i-y)] = '\0';
+				n++;
 			}
+			y=i+p;
 		}
 		i++;
 	}

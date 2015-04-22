@@ -35,16 +35,16 @@
 #include "../../core/pilight.h"
 #include "date_add.h"
 
-struct units_t {
+static struct units_t {
 	char name[255];
 	int id;
 } units[] = {
 	{ "SECOND", 1 },
 	{ "MINUTE", 2 },
-	{ "HOUR", 	4 },
-	{ "DAY", 		8 },
-	{ "MONTH", 	16 },
-	{ "YEAR", 	32 }
+	{ "HOUR", 4 },
+	{ "DAY", 8 },
+	{ "MONTH", 16 },
+	{ "YEAR", 32 }
 };
 
 static void add(struct tm *tm, int *values, int type) {
@@ -81,6 +81,7 @@ static int run(struct rules_t *obj, struct JsonNode *arguments, char **ret) {
 	char *p = *ret, *datetime = NULL, *interval = NULL, **array = NULL;
 	int nrunits = (sizeof(units)/sizeof(units[0])), values[nrunits], error = 0;
 	int l = 0, i = 0, type = -1, match = 0;
+
 	memset(&values, 0, nrunits);
 	
 	if(childs == NULL) {

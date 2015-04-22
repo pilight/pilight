@@ -16,8 +16,8 @@
 	along with pilight. If not, see	<http://www.gnu.org/licenses/>
 */
 
-#ifndef _EVENT_FUNCTION_TOGGLE_H_
-#define _EVENT_FUNCTION_TOGGLE_H_
+#ifndef _EVENT_FUNCTION_DATE_FORMAT_H_
+#define _EVENT_FUNCTION_DATE_FORMAT_H_
 
 #include "../function.h"
 
