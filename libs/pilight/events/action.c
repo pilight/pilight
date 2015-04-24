@@ -232,7 +232,7 @@ void event_action_thread_init(struct devices_t *dev) {
 	memset(&dev->action_thread->pth, '\0', sizeof(pthread_t));
 }
 
-void event_action_thread_start(struct devices_t *dev, char *name, void *(*func)(void *), struct rules_t *obj) {
+void event_action_thread_start(struct devices_t *dev, char *name, void *(*func)(void *), struct rules_actions_t *obj) {
 	struct event_action_thread_t *thread = dev->action_thread;
 
 	if(thread->running == 1) {

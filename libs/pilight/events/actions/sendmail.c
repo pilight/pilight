@@ -39,7 +39,7 @@
 #endif
 
 //check arguments and settings
-static int checkArguments(struct rules_t *obj) {
+static int checkArguments(struct rules_actions_t *obj) {
 	struct JsonNode *jsubject = NULL;
 	struct JsonNode *jmessage = NULL;
 	struct JsonNode *jto = NULL;
@@ -149,7 +149,7 @@ static int checkArguments(struct rules_t *obj) {
 }
 
 static void *thread(void *param) {
-	struct rules_t *pth = (struct rules_t *)param;
+	struct rules_actions_t *pth = (struct rules_actions_t *)param;
 	// struct rules_t *obj = pth->obj;
 	struct JsonNode *arguments = pth->arguments;
 	struct JsonNode *jsubject = NULL;
@@ -206,7 +206,7 @@ static void *thread(void *param) {
 	return (void *)NULL;
 }
 
-static int run(struct rules_t *obj) {
+static int run(struct rules_actions_t *obj) {
 	pthread_t pth;
 	threads_create(&pth, NULL, thread, (void *)obj);
 	pthread_detach(pth);

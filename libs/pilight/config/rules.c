@@ -83,19 +83,10 @@ static int rules_parse(JsonNode *root) {
 					node->nrdevices = 0;
 					node->status = 0;
 					node->devices = NULL;
-					node->action = NULL;
-					node->arguments = NULL;
+					node->actions = NULL;
 					node->nr = i;
 					if(event_parse_rule(rule, node, 0, 1) == -1) {
-						for(i=0;i<node->nrdevices;i++) {
-							FREE(node->devices[i]);
-						}
-						if(node->devices != NULL) {
-							FREE(node->devices);
-						}
-						FREE(node);
 						have_error = 1;
-						break;
 					}
 					node->status = 0;
 					node->rule = MALLOC(strlen(rule)+1);
@@ -121,6 +112,14 @@ static int rules_parse(JsonNode *root) {
 					} else {
 						node->next = rules;
 						rules = node;
+					}
+					/* 
+					 * In case of an error, we do want to
+					 * save a pointer to our faulty rule
+					 * so it can be properly garbage collected.
+					 */
+					if(have_error == 1) {
+						break;
 					}
 				}
 			}
@@ -180,6 +179,7 @@ struct rules_t *rules_get(void) {
 int rules_gc(void) {
 	struct rules_t *tmp_rules = NULL;
 	struct rules_values_t *tmp_values = NULL;
+	struct rules_actions_t *tmp_actions = NULL;
 	int i = 0;
 
 	while(rules) {
@@ -196,11 +196,19 @@ int rules_gc(void) {
 			tmp_rules->values = tmp_rules->values->next;
 			FREE(tmp_values);
 		}
-		if(tmp_rules->arguments) {
-			json_delete(tmp_rules->arguments);
-		}
 		if(tmp_rules->values != NULL) {
 			FREE(tmp_rules->values);
+		}
+		while(tmp_rules->actions) {
+			tmp_actions = tmp_rules->actions;
+			if(tmp_actions->arguments != NULL) {
+				json_delete(tmp_actions->arguments);
+			}
+			tmp_rules->actions = tmp_rules->actions->next;
+			FREE(tmp_actions);
+		}
+		if(tmp_rules->actions != NULL) {
+			FREE(tmp_rules->actions);
 		}
 		if(tmp_rules->devices != NULL) {
 			FREE(tmp_rules->devices);

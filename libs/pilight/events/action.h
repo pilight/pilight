@@ -30,8 +30,8 @@ typedef struct event_actions_t event_actions_t;
 struct event_actions_t {
 	char *name;
 	int nrthreads;
-	int (*run)(struct rules_t *obj);
-	int (*checkArguments)(struct rules_t *obj);
+	int (*run)(struct rules_actions_t *obj);
+	int (*checkArguments)(struct rules_actions_t *obj);
 	struct options_t *options;
 
 	struct event_actions_t *next;
@@ -46,7 +46,7 @@ struct event_action_thread_t {
 	pthread_mutex_t mutex;
 	pthread_cond_t cond;
 	pthread_mutexattr_t attr;
-	struct rules_t *obj;
+	struct rules_actions_t *obj;
 	struct devices_t *device;
 };
 
@@ -57,7 +57,7 @@ void event_action_register(struct event_actions_t **act, const char *name);
 int event_action_gc(void);
 void event_action_thread_init(struct devices_t *dev);
 int event_action_thread_wait(struct devices_t *dev, int interval);
-void event_action_thread_start(struct devices_t *dev, char *name, void *(*func)(void *), struct rules_t *obj);
+void event_action_thread_start(struct devices_t *dev, char *name, void *(*func)(void *), struct rules_actions_t *obj);
 void event_action_thread_stop(struct devices_t *dev);
 void event_action_thread_free(struct devices_t *dev);
 void event_action_stopped(struct event_action_thread_t *thread);

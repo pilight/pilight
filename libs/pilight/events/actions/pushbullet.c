@@ -31,7 +31,7 @@
 #include "../../core/http.h"
 #include "pushbullet.h"
 
-static int checkArguments(struct rules_t *obj) {
+static int checkArguments(struct rules_actions_t *obj) {
 	struct JsonNode *jtitle = NULL;
 	struct JsonNode *jbody = NULL;
 	struct JsonNode *jtype = NULL;
@@ -113,7 +113,7 @@ static int checkArguments(struct rules_t *obj) {
 }
 
 static void *thread(void *param) {
-	struct rules_t *pth = (struct rules_t *)param;
+	struct rules_actions_t *pth = (struct rules_actions_t *)param;
 	// struct rules_t *obj = pth->obj;
 	struct JsonNode *arguments = pth->arguments;
 	struct JsonNode *jtitle = NULL;
@@ -184,7 +184,7 @@ static void *thread(void *param) {
 	return (void *)NULL;
 }
 
-static int run(struct rules_t *obj) {
+static int run(struct rules_actions_t *obj) {
 	pthread_t pth;
 	threads_create(&pth, NULL, thread, (void *)obj);
 	pthread_detach(pth);

@@ -50,7 +50,7 @@ static void array_free(int len, char ***array) {
 	FREE((*array));
 }
 
-static int checkArguments(struct rules_t *obj) {
+static int checkArguments(struct rules_actions_t *obj) {
 	struct JsonNode *jdevice = NULL;
 	struct JsonNode *jto = NULL;
 	struct JsonNode *jfor = NULL;
@@ -132,7 +132,7 @@ static int checkArguments(struct rules_t *obj) {
 		while(jachild) {
 			nrvalues++;
 			if(jachild->tag == JSON_STRING) {
-				if(event_lookup_variable(jachild->string_, obj, JSON_STRING | JSON_NUMBER, &v, 1, ACTION) == -1) {
+				if(event_lookup_variable(jachild->string_, obj->rule, JSON_STRING | JSON_NUMBER, &v, 1, ACTION) == -1) {
 					return -1;
 				}
 			}
@@ -157,7 +157,7 @@ static int checkArguments(struct rules_t *obj) {
 						for(i=0;i<nrunits;i++) {
 							if(strcmp(array[1], units[i].name) == 0) {
 								match = 1;
-								if(event_lookup_variable(array[0], obj, JSON_NUMBER, &v, 1, ACTION) == -1) {
+								if(event_lookup_variable(array[0], obj->rule, JSON_NUMBER, &v, 1, ACTION) == -1) {
 									logprintf(LOG_ERR, "switch action \"FOR\" requires a number and a unit e.g. \"1 MINUTE\"");
 									array_free(l, &array);
 									return -1;
@@ -200,7 +200,7 @@ static int checkArguments(struct rules_t *obj) {
 						for(i=0;i<nrunits;i++) {
 							if(strcmp(array[1], units[i].name) == 0) {
 								match = 1;
-								if(event_lookup_variable(array[0], obj, JSON_NUMBER, &v, 1, ACTION) == -1) {
+								if(event_lookup_variable(array[0], obj->rule, JSON_NUMBER, &v, 1, ACTION) == -1) {
 									logprintf(LOG_ERR, "switch action \"TO\" requires a number and a unit e.g. \"1 MINUTE\"");
 									array_free(l, &array);
 									return -1;
@@ -279,7 +279,7 @@ static int checkArguments(struct rules_t *obj) {
 
 static void *thread(void *param) {
 	struct event_action_thread_t *pth = (struct event_action_thread_t *)param;
-	struct rules_t *obj = pth->obj;
+	struct rules_actions_t *obj = pth->obj;
 	struct JsonNode *json = obj->arguments;
 	struct JsonNode *jto = NULL;
 	struct JsonNode *jafter = NULL;
@@ -323,7 +323,7 @@ static void *thread(void *param) {
 					if(l == 2) {
 						for(i=0;i<nrunits;i++) {
 							if(strcmp(array[1], units[i].name) == 0) {
-								if(event_lookup_variable(array[0], obj, JSON_NUMBER, &v, 1, ACTION) != -1) {
+								if(event_lookup_variable(array[0], obj->rule, JSON_NUMBER, &v, 1, ACTION) != -1) {
 									seconds_for = (int)v.number_;
 									type_for = units[i].id;
 								}
@@ -348,7 +348,7 @@ static void *thread(void *param) {
 					if(l == 2) {
 						for(i=0;i<nrunits;i++) {
 							if(strcmp(array[1], units[i].name) == 0) {
-								if(event_lookup_variable(array[0], obj, JSON_NUMBER, &v, 1, ACTION) != -1) {
+								if(event_lookup_variable(array[0], obj->rule, JSON_NUMBER, &v, 1, ACTION) != -1) {
 									seconds_after = (int)v.number_;
 									type_after = units[i].id;
 								}
@@ -430,7 +430,7 @@ static void *thread(void *param) {
 					if(jlabel != NULL) {
 						if(jlabel->tag == JSON_STRING) {
 							label = jlabel->string_;
-							if(event_lookup_variable(label, obj, JSON_STRING | JSON_NUMBER, &v, 0, ACTION) == 0) {
+							if(event_lookup_variable(label, obj->rule, JSON_STRING | JSON_NUMBER, &v, 0, ACTION) == 0) {
 								if(v.string_ != NULL) {
 									label = v.string_;
 								} else {
@@ -540,7 +540,7 @@ static void *thread(void *param) {
 	return (void *)NULL;
 }
 
-static int run(struct rules_t *obj) {
+static int run(struct rules_actions_t *obj) {
 	struct JsonNode *jdevice = NULL;
 	struct JsonNode *jto = NULL;
 	struct JsonNode *jbvalues = NULL;

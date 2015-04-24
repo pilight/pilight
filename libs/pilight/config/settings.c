@@ -505,6 +505,7 @@ static int settings_parse(JsonNode *root) {
 					regfree(&regex);
 					goto clear;
 				}
+				regfree(&regex);
 #endif
 			settings_add_string(jsettings->key, jsettings->string_);
 			}
@@ -531,7 +532,7 @@ static int settings_parse(JsonNode *root) {
 				goto clear;
 			} else if(strlen(jsettings->string_) > 0) {
 #if !defined(__FreeBSD__) && !defined(_WIN32)
-			char validate[] = "^([a-zA-Z0-9\\_\\-]){2,20}(\\.([a-zA-Z0-9\\_\\-]){2,20}){2,3}$";
+				char validate[] = "^([a-zA-Z0-9\\_\\-]){2,20}(\\.([a-zA-Z0-9\\_\\-]){2,20}){2,3}$";
 				reti = regcomp(&regex, validate, REG_EXTENDED);
 				if(reti) {
 					logprintf(LOG_ERR, "could not compile regex for %s", jsettings->key);
@@ -545,6 +546,7 @@ static int settings_parse(JsonNode *root) {
 					regfree(&regex);
 					goto clear;
 				}
+				regfree(&regex);
 #endif
 				settings_add_string(jsettings->key, jsettings->string_);
 			}

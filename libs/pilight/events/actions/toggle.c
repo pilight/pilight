@@ -29,7 +29,7 @@
 #include "../../core/pilight.h"
 #include "toggle.h"
 
-static int checkArguments(struct rules_t *obj) {
+static int checkArguments(struct rules_actions_t *obj) {
 	struct JsonNode *jdevice = NULL;
 	struct JsonNode *jbetween = NULL;
 	struct JsonNode *jsvalues = NULL;
@@ -164,7 +164,7 @@ static void *thread(void *param) {
 	return (void *)NULL;
 }
 
-static int run(struct rules_t *obj) {
+static int run(struct rules_actions_t *obj) {
 	struct JsonNode *jdevice = NULL;
 	struct JsonNode *jbetween = NULL;
 	struct JsonNode *jdvalues = NULL;
