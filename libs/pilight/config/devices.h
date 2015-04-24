@@ -84,7 +84,10 @@ struct devices_t {
 	int cst_uuid;
 	int nrthreads;
 	time_t timestamp;
+#ifdef EVENTS
+	int lastrule;
 	struct event_action_thread_t *action_thread;
+#endif
 	struct protocols_t *protocols;
 	struct devices_settings_t *settings;
 	struct threadqueue_t **protocol_threads;

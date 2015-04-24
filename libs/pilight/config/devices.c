@@ -394,13 +394,24 @@ int devices_update(char *protoname, JsonNode *json, enum origin_t origin, JsonNo
 								}
 								if(match == 0) {
 #ifdef EVENTS
-/*
- * If the action itself it not triggering a device update, something
- * else is. We therefor need to abort the running action to let
- * the new state persist.
- */
+								/*
+								 * If the action itself it not triggering a device update, something
+								 * else is. We therefor need to abort the running action to let
+								 * the new state persist.
+								 */
 									if(dptr->action_thread->running == 1 && origin != ACTION) {
 										event_action_thread_stop(dptr);
+									}
+
+									/*
+									 * We store the rule number that triggered the device change.
+									 * The eventing library can then check if the same rule is
+									 * triggered again so infinite loops can be prevented.
+									 */
+									if(origin == ACTION) {
+										dptr->lastrule = dptr->action_thread->obj->nr;
+									} else {
+										dptr->lastrule = -1;
 									}
 #endif
 									json_append_element(rdev, json_mkstring(dptr->id));

@@ -1346,6 +1346,7 @@ void *events_loop(void *param) {
 		eventslock_init = 1;
 	}
 
+	struct devices_t *dev = NULL;
 	struct JsonNode *jdevices = NULL, *jchilds = NULL;
 	struct rules_t *tmp_rules = NULL;
 	char *str = NULL;
@@ -1378,7 +1379,19 @@ void *events_loop(void *param) {
 							for(i=0;i<tmp_rules->nrdevices;i++) {
 								if(jchilds->tag == JSON_STRING &&
 								   strcmp(jchilds->string_, tmp_rules->devices[i]) == 0) {
-									match = 1;
+										if(devices_get(jchilds->string_, &dev) == 0) {
+											/*
+											 * The rule has triggered itself.
+											 */
+											if(dev->lastrule == tmp_rules->nr) {
+												logprintf(LOG_ERR, "prevented rule #%d from triggering itself in an infinite loop triggered by device %s", tmp_rules->nr, jchilds->string_);
+												match = 0;
+											} else {
+												match = 1;
+											}
+										} else {
+											match = 1;
+										}
 									break;
 								}
 							}

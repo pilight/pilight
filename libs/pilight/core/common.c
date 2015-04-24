@@ -268,7 +268,7 @@ unsigned int explode(char *str, const char *delimiter, char ***output) {
 	if(str == NULL || output == NULL) {
 		return 0;
 	}
-	unsigned int i = 0, x = 0, n = 0, y = 0;
+	unsigned int i = 0, n = 0, y = 0;
 	size_t l = 0, p = 0;
 	if(delimiter != NULL) {
 		l = strlen(str);
