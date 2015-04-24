@@ -113,9 +113,9 @@ static int checkArguments(struct rules_t *obj) {
 }
 
 static void *thread(void *param) {
-	struct event_action_thread_t *pth = (struct event_action_thread_t *)param;
+	struct rules_t *pth = (struct rules_t *)param;
 	// struct rules_t *obj = pth->obj;
-	struct JsonNode *arguments = pth->obj->arguments;
+	struct JsonNode *arguments = pth->arguments;
 	struct JsonNode *jtitle = NULL;
 	struct JsonNode *jbody = NULL;
 	struct JsonNode *jtype = NULL;
@@ -209,7 +209,7 @@ void actionPushbulletInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "pushbullet";
-	module->version = "2.1";
+	module->version = "2.2";
 	module->reqversion = "5.0";
 	module->reqcommit = "87";
 }

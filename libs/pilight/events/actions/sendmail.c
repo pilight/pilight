@@ -149,9 +149,9 @@ static int checkArguments(struct rules_t *obj) {
 }
 
 static void *thread(void *param) {
-	struct event_action_thread_t *pth = (struct event_action_thread_t *)param;
+	struct rules_t *pth = (struct rules_t *)param;
 	// struct rules_t *obj = pth->obj;
-	struct JsonNode *arguments = pth->obj->arguments;
+	struct JsonNode *arguments = pth->arguments;
 	struct JsonNode *jsubject = NULL;
 	struct JsonNode *jmessage = NULL;
 	struct JsonNode *jto = NULL;
@@ -166,7 +166,7 @@ static void *thread(void *param) {
 
 	struct mail_t mail;
 	char *shost = NULL, *suser = NULL, *spassword = NULL;
-	int sport= 0;
+	int sport = 0;
 
 	jmessage = json_find_member(arguments, "MESSAGE");
 	jsubject = json_find_member(arguments, "SUBJECT");
@@ -230,7 +230,7 @@ void actionSendmailInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "sendmail";
-	module->version = "1.0";
+	module->version = "1.1";
 	module->reqversion = "6.0";
 	module->reqcommit = "51";
 }
