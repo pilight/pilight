@@ -356,12 +356,16 @@ char *http_process_request(char *url, int method, char **type, int *code, int *s
 		*size += bytes;
 
 		char **array = NULL;
+		char *p = recvBuff;
+		/* Let's first normalize the HEADER terminator */
+		str_replace("\r\n", "\n\r", &p);
 		unsigned int n = explode(recvBuff, "\n\r", &array), q = 0;
 		int z = 0;
 		for(q=0;q<n;q++) {
 			if(has_code == 0 && sscanf(array[q], "HTTP/1.%d%*[ ]%d%*s%*[ \n\r]", &z, code)) {
 				has_code = 1;
 			}
+			// ;%*[ A-Za-z0-9\\/=+- \n\r]
 			if(has_type == 0 && sscanf(array[q], "Content-%*[tT]ype:%*[ ]%[A-Za-z\\/+-]", tp)) {
 				has_type = 1;
 			}
