@@ -215,6 +215,7 @@ void arctechSwitchOldInit(void) {
 	options_add(&arctech_switch_old->options, 'i', "id", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^(3[012]?|[012][0-9]|[0-9]{1})$");
 
 	options_add(&arctech_switch_old->options, 0, "readonly", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
+	options_add(&arctech_switch_old->options, 0, "confirm", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 
 	arctech_switch_old->parseCode=&parseCode;
 	arctech_switch_old->createCode=&createCode;
@@ -225,7 +226,7 @@ void arctechSwitchOldInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "arctech_switch_old";
-	module->version = "2.2";
+	module->version = "2.3";
 	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }

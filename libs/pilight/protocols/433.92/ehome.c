@@ -193,6 +193,7 @@ void ehomeInit(void) {
 	options_add(&ehome->options, 'f', "off", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
 
 	options_add(&ehome->options, 0, "readonly", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
+	options_add(&ehome->options, 0, "confirm", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 
 	ehome->parseCode=&parseCode;
 	ehome->createCode=&createCode;
@@ -203,7 +204,7 @@ void ehomeInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "ehome";
-	module->version = "0.6";
+	module->version = "0.7";
 	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }

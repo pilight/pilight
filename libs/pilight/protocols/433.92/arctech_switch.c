@@ -254,6 +254,7 @@ void arctechSwitchInit(void) {
 	options_add(&arctech_switch->options, 'l', "learn", OPTION_NO_VALUE, DEVICES_OPTIONAL, JSON_NUMBER, NULL, NULL);
 
 	options_add(&arctech_switch->options, 0, "readonly", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
+	options_add(&arctech_switch->options, 0, "confirm", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 
 	arctech_switch->parseCode=&parseCode;
 	arctech_switch->createCode=&createCode;
@@ -264,7 +265,7 @@ void arctechSwitchInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "arctech_switch";
-	module->version = "3.1";
+	module->version = "3.2";
 	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }

@@ -228,6 +228,7 @@ void beamishSwitchInit(void) {
 	options_add(&beamish_switch->options, 'a', "all", OPTION_NO_VALUE, 0, JSON_NUMBER, NULL, NULL);
 
 	options_add(&beamish_switch->options, 0, "readonly", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
+	options_add(&beamish_switch->options, 0, "confirm", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 
 	beamish_switch->parseCode=&parseCode;
 	beamish_switch->createCode=&createCode;
@@ -238,7 +239,7 @@ void beamishSwitchInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "beamish_switch";
-	module->version = "0.12";
+	module->version = "0.13";
 	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }

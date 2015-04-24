@@ -108,7 +108,6 @@ void arctechContactInit(void) {
 	options_add(&arctech_contact->options, 'f', "closed", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
 
 	options_add(&arctech_contact->options, 'a', "all", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
-	options_add(&arctech_contact->options, 0, "readonly", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 
 	arctech_contact->parseCode=&parseCode;
 	arctech_contact->validate=&validate;

@@ -406,6 +406,7 @@ void quiggGT1000Init(void) {
 	options_add(&quigg_gt1000->options, 'n', "num", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, NULL, "^([0-3])$");
 
 	options_add(&quigg_gt1000->options, 0, "readonly", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
+	options_add(&quigg_gt1000->options, 0, "confirm", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 
 	quigg_gt1000->printHelp = &printHelp;
 	quigg_gt1000->createCode = &createCode;
@@ -414,7 +415,7 @@ void quiggGT1000Init(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "quigg_gt1000";
-	module->version = "0.3";
+	module->version = "0.4";
 	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }

@@ -97,8 +97,6 @@ void conradRSLContactInit(void) {
 	options_add(&conrad_rsl_contact->options, 't', "opened", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
 	options_add(&conrad_rsl_contact->options, 'f', "closed", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
 
-	options_add(&conrad_rsl_contact->options, 0, "readonly", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
-
 	conrad_rsl_contact->parseCode=&parseCode;
 	conrad_rsl_contact->validate=&validate;
 }
@@ -106,7 +104,7 @@ void conradRSLContactInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "conrad_rsl_contact";
-	module->version = "2.1";
+	module->version = "2.2";
 	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }

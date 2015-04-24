@@ -241,6 +241,7 @@ void clarusSwitchInit(void) {
 	options_add(&clarus_switch->options, 'i', "id", OPTION_HAS_VALUE, DEVICES_ID, JSON_STRING, NULL, "^[ABCDEF](3[012]?|[012][0-9]|[0-9]{1})$");
 
 	options_add(&clarus_switch->options, 0, "readonly", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
+	options_add(&clarus_switch->options, 0, "confirm", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 
 	clarus_switch->parseCode=&parseCode;
 	clarus_switch->createCode=&createCode;
@@ -251,7 +252,7 @@ void clarusSwitchInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "clarus_switch";
-	module->version = "2.1";
+	module->version = "2.2";
 	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }

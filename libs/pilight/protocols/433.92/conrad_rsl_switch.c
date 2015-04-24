@@ -276,6 +276,7 @@ void conradRSLSwitchInit(void) {
 	options_add(&conrad_rsl_switch->options, 'a', "all", OPTION_OPT_VALUE, DEVICES_OPTIONAL, JSON_NUMBER, NULL, NULL);
 
 	options_add(&conrad_rsl_switch->options, 0, "readonly", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
+	options_add(&conrad_rsl_switch->options, 0, "confirm", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 
 	conrad_rsl_switch->parseCode=&parseCode;
 	conrad_rsl_switch->createCode=&createCode;
@@ -286,7 +287,7 @@ void conradRSLSwitchInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "conrad_rsl_switch";
-	module->version = "2.1";
+	module->version = "2.2";
 	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }

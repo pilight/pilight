@@ -91,7 +91,6 @@ void ev1527Init(void) {
 	options_add(&ev1527->options, 'u', "unitcode", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^(3[012]?|[012][0-9]|[0-9]{1})$");
 	options_add(&ev1527->options, 't', "opened", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
 	options_add(&ev1527->options, 'f', "closed", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
-	options_add(&ev1527->options, 0, "readonly", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 
 	ev1527->parseCode=&parseCode;
 	ev1527->validate=&validate;
@@ -100,7 +99,7 @@ void ev1527Init(void) {
 #if !defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "ev1527";
-	module->version = "0.5";
+	module->version = "0.6";
 	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }

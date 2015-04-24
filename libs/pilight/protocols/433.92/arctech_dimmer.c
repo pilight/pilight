@@ -327,6 +327,7 @@ void arctechDimmerInit(void) {
 	options_add(&arctech_dimmer->options, 0, "dimlevel-minimum", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *)0, "^([0-9]{1}|[1][0-5])$");
 	options_add(&arctech_dimmer->options, 0, "dimlevel-maximum", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *)15, "^([0-9]{1}|[1][0-5])$");
 	options_add(&arctech_dimmer->options, 0, "readonly", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
+	options_add(&arctech_dimmer->options, 0, "confirm", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 
 	arctech_dimmer->parseCode=&parseCode;
 	arctech_dimmer->createCode=&createCode;
@@ -338,7 +339,7 @@ void arctechDimmerInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "arctech_dimmer";
-	module->version = "3.1";
+	module->version = "3.2";
 	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }

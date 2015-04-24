@@ -244,6 +244,7 @@ void rev2Init(void) {
 	options_add(&rev2_switch->options, 'i', "id", OPTION_HAS_VALUE, DEVICES_ID, JSON_STRING, NULL, "^[ABCDEF](3[012]?|[012][0-9]|[0-9]{1})$");
 
 	options_add(&rev2_switch->options, 0, "readonly", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
+	options_add(&rev2_switch->options, 0, "confirm", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 
 	rev2_switch->parseCode=&parseCode;
 	rev2_switch->createCode=&createCode;
@@ -254,7 +255,7 @@ void rev2Init(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "rev2_switch";
-	module->version = "0.11";
+	module->version = "0.12";
 	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }

@@ -273,6 +273,7 @@ void quiggGT7000Init(void) {
 	options_add(&quigg_gt7000->options, 'l', "learn", OPTION_HAS_VALUE, DEVICES_OPTIONAL, JSON_NUMBER, NULL, NULL);
 
 	options_add(&quigg_gt7000->options, 0, "readonly", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
+	options_add(&quigg_gt7000->options, 0, "confirm", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 
 	quigg_gt7000->parseCode=&parseCode;
 	quigg_gt7000->createCode=&createCode;
@@ -283,7 +284,7 @@ void quiggGT7000Init(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "quigg_gt7000";
-	module->version = "2.0";
+	module->version = "2.1";
 	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }

@@ -84,6 +84,7 @@ void genericSwitchInit(void) {
 	options_add(&generic_switch->options, 'i', "id", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^([0-9]{1,})$");
 
 	options_add(&generic_switch->options, 0, "readonly", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
+	options_add(&generic_switch->options, 0, "confirm", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 
 	generic_switch->printHelp=&printHelp;
 	generic_switch->createCode=&createCode;
@@ -92,7 +93,7 @@ void genericSwitchInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "generic_switch";
-	module->version = "1.2";
+	module->version = "1.3";
 	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }

@@ -221,6 +221,7 @@ void cleverwattsInit(void) {
 	options_add(&cleverwatts->options, 'a', "all", OPTION_OPT_VALUE, DEVICES_OPTIONAL, JSON_NUMBER, NULL, NULL);
 
 	options_add(&cleverwatts->options, 0, "readonly", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
+	options_add(&cleverwatts->options, 0, "confirm", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 
 	cleverwatts->parseCode=&parseCode;
 	cleverwatts->createCode=&createCode;
@@ -231,7 +232,7 @@ void cleverwattsInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "cleverwatts";
-	module->version = "0.11";
+	module->version = "0.12";
 	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }

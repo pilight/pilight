@@ -67,7 +67,7 @@ static void parseCode(void) {
 		} else if(x+3 < arctech_screen_old->rawlen && 
 		          arctech_screen_old->raw[x+3] < len && 
 							arctech_screen_old->raw[x+2] < len) {
-			/* Not arctech_switch_old */
+			/* Not arctech_screen_old */
 			return;
 		} else {
 			binary[i++] = 0;
@@ -210,6 +210,7 @@ void arctechScreenOldInit(void) {
 	options_add(&arctech_screen_old->options, 'i', "id", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^(3[012]?|[012][0-9]|[0-9]{1})$");
 
 	options_add(&arctech_screen_old->options, 0, "readonly", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
+	options_add(&arctech_screen_old->options, 0, "confirm", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 
 	arctech_screen_old->parseCode=&parseCode;
 	arctech_screen_old->createCode=&createCode;
@@ -220,7 +221,7 @@ void arctechScreenOldInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "arctech_screen_old";
-	module->version = "2.2";
+	module->version = "2.3";
 	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }

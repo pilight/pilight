@@ -216,6 +216,7 @@ void logilinkSwitchInit(void) {
 	options_add(&logilink_switch->options, 'f', "off", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
 
 	options_add(&logilink_switch->options, 0, "readonly", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
+	options_add(&logilink_switch->options, 0, "confirm", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 
 	logilink_switch->parseCode=&parseCode;
 	logilink_switch->createCode=&createCode;
@@ -226,7 +227,7 @@ void logilinkSwitchInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "logilink_sitch";
-	module->version = "0.5";
+	module->version = "0.6";
 	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }

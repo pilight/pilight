@@ -137,6 +137,7 @@ void genericDimmerInit(void) {
 	options_add(&generic_dimmer->options, 0, "dimlevel-minimum", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *)0, "^([0-9]{1}|[1][0-5])$");
 	options_add(&generic_dimmer->options, 0, "dimlevel-maximum", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *)15, "^([0-9]{1}|[1][0-5])$");
 	options_add(&generic_dimmer->options, 0, "readonly", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
+	options_add(&generic_dimmer->options, 0, "confirm", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 
 	generic_dimmer->printHelp=&printHelp;
 	generic_dimmer->createCode=&createCode;
@@ -146,7 +147,7 @@ void genericDimmerInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "generic_dimmer";
-	module->version = "1.3";
+	module->version = "1.4";
 	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }

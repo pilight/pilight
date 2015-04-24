@@ -391,6 +391,7 @@ void programInit(void) {
 	options_add(&program->options, 'f', "stopped", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
 
 	options_add(&program->options, 0, "readonly", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
+	options_add(&program->options, 0, "confirm", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 	options_add(&program->options, 0, "poll-interval", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *)1, "[0-9]");
 
 #ifndef _WIN32
@@ -404,7 +405,7 @@ void programInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "program";
-	module->version = "1.5";
+	module->version = "1.6";
 	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }

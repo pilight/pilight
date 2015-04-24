@@ -39,6 +39,7 @@ var language_en = {
 	update: "Update",
 	loading: "Loading",
 	available: "available",
+	confirm: "Are you sure?",
 	connecting: "Connecting",
 	connection_lost: "Connection lost, touch to reload",
 	connection_failed: "Failed to connect, touch to reload",
@@ -46,20 +47,21 @@ var language_en = {
 }
 
 var language_de = {
-    off: "Aus",
-    on: "Ein",
-    stopped: "Gestoppt",
-    started: "Gestartet",
-    toggling: "schaltend",
-    up: "+",
-    down: "-",
-    update: "Aktualisieren",
-    loading: "ladend",
-    available: "verfügbar",
-    connecting: "Verbindung wird aufgebaut",
-    connection_lost: "Verbindung verloren! Hier berühren, um die Seite neu zu laden.",
-    connection_failed: "Verbindung fehlgeschlagen! Hier berühren, um die Seite neu zu laden.",
-    unexpected_error: "Es ist ein unerwarteter Fehler aufgetreten."
+	off: "Aus",
+	on: "Ein",
+	stopped: "Gestoppt",
+	started: "Gestartet",
+	toggling: "schaltend",
+	up: "+",
+	down: "-",
+	update: "Aktualisieren",
+	loading: "ladend",
+	available: "verfügbar",
+	confirm: "Bist du sicher?",
+	connecting: "Verbindung wird aufgebaut",
+	connection_lost: "Verbindung verloren! Hier berühren, um die Seite neu zu laden.",
+	connection_failed: "Verbindung fehlgeschlagen! Hier berühren, um die Seite neu zu laden.",
+	unexpected_error: "Es ist ein unerwarteter Fehler aufgetreten."
 }
 
 var language_nl = {
@@ -73,6 +75,7 @@ var language_nl = {
 	update: "Bijwerken",
 	loading: "Verbinding maken",
 	available: "beschikbaar",
+	confirm: "Weet u dat zeker?",
 	connection_lost: "Verbinding verloren, klik om te herladen",
 	connection_failed: "Kan niet verbinden, klik om te herhalen",
 	unexpected_error: "An unexpected error occured"
@@ -89,6 +92,7 @@ var language_fr = {
 	update: "Mise à jour",
 	loading: "Chargement en cours",
 	available: "Disponible",
+	confirm: "Êtes-vous sûr",
 	connecting: "Connexion en cours",
 	connection_lost: "Connexion perdue, appuyez pour recharger",
 	connection_failed: "Connexion impossible, appuyez pour réessayer",
@@ -219,6 +223,17 @@ function createSwitchElement(sTabId, sDevId, aValues) {
 		$('#'+sDevId+'_switch').slider();
 		$('#'+sDevId+'_switch').bind("change", function(event, ui) {
 			event.stopPropagation();
+			if('confirm' in aValues && aValues['confirm']) {
+				if(window.confirm("Are you sure?") == false) {
+					if(this.value == "off") {
+						$('#'+sDevId+'_switch')[0].selectedIndex = 1;
+					} else {
+						$('#'+sDevId+'_switch')[0].selectedIndex = 0;
+					}
+					$('#'+sDevId+'_switch').slider('refresh');
+					return false;
+				}
+			}
 			if('all' in aValues && aValues['all'] == 1) {
 				var json = '{"action":"control","code":{"device":"'+sDevId+'","state":"'+this.value+'","values":{"all": 1}}}';
 			} else {
@@ -257,6 +272,11 @@ function createPendingSwitchElement(sTabId, sDevId, aValues) {
 		$('#'+sDevId+'_pendingsw').button();
 		$('#'+sDevId+'_pendingsw').bind("click", function(event, ui) {
 			event.stopPropagation();
+			if('confirm' in aValues && aValues['confirm']) {
+				if(window.confirm("Are you sure?") == false) {
+					return false;
+				}
+			}			
 			$('#'+sDevId+'_pendingsw').parent().removeClass('ui-icon-on').removeClass('ui-icon-off').addClass('ui-icon-loader');
 			$('#'+sDevId+'_pendingsw').button('disable');
 			$('#'+sDevId+'_pendingsw').text(language.toggling);
@@ -273,6 +293,11 @@ function createPendingSwitchElement(sTabId, sDevId, aValues) {
 		$('#'+sDevId).bind("click", function(event, ui) {
 			if(!$('#'+sDevId+'_pendingsw').prop("disabled")) {
 				event.stopPropagation();
+				if('confirm' in aValues && aValues['confirm']) {
+					if(window.confirm("Are you sure?") == false) {
+						return false;
+					}
+				}
 				$('#'+sDevId+'_pendingsw').parent().removeClass('ui-icon-on').removeClass('ui-icon-off').addClass('ui-icon-loader');
 				$('#'+sDevId+'_pendingsw').button('disable');
 				$('#'+sDevId+'_pendingsw').text(language.toggling);
@@ -313,6 +338,11 @@ function createScreenElement(sTabId, sDevId, aValues) {
 		$('#'+sDevId+'_screen_up').checkboxradio();
 		$('#'+sDevId+'_screen_down').bind("change", function(event, ui) {
 			event.stopPropagation();
+			if('confirm' in aValues && aValues['confirm']) {
+				if(window.confirm("Are you sure?") == false) {
+					return false;
+				}
+			}
 			i = 0;
 			oLabel = this.parentNode.getElementsByTagName('label')[0];
 			$(oLabel).removeClass('ui-btn-active');
@@ -340,6 +370,11 @@ function createScreenElement(sTabId, sDevId, aValues) {
 		});
 		$('#'+sDevId+'_screen_up').bind("change", function(event, ui) {
 			event.stopPropagation();
+			if('confirm' in aValues && aValues['confirm']) {
+				if(window.confirm("Are you sure?") == false) {
+					return false;
+				}
+			}
 			i = 0;
 			oLabel = this.parentNode.getElementsByTagName('label')[0];
 			$(oLabel).removeClass('ui-btn-active');
@@ -391,6 +426,17 @@ function createDimmerElement(sTabId, sDevId, aValues) {
 		$('#'+sDevId+'_switch').slider();
 		$('#'+sDevId+'_switch').bind("change", function(event, ui) {
 			event.stopPropagation();
+			if('confirm' in aValues && aValues['confirm']) {
+				if(window.confirm("Are you sure?") == false) {
+					if(this.value == "off") {
+						$('#'+sDevId+'_switch')[0].selectedIndex = 1;
+					} else {
+						$('#'+sDevId+'_switch')[0].selectedIndex = 0;
+					}
+					$('#'+sDevId+'_switch').slider('refresh');
+					return false;
+				}
+			}
 			if('all' in aValues && aValues['all'] == 1) {
 				var json = '{"action":"control","code":{"device":"'+sDevId+'","state":"'+this.value+'","values":{"all": 1}}}';
 			} else {
@@ -407,6 +453,14 @@ function createDimmerElement(sTabId, sDevId, aValues) {
 
 		$('#'+sDevId+'_dimmer').slider({
 			stop: function() {
+				if('confirm' in aValues && aValues['confirm']) {
+					if(window.confirm("Are you sure?") == false) {
+						$('#'+sDevId+'_value').val(aDimLevel[sDevId]);
+						$('#'+sDevId+'_dimmer').val(aDimLevel[sDevId]);
+						$('#'+sDevId+'_dimmer').slider('refresh');
+						return false;
+					}
+				}
 				if(aDimLevel[sDevId] != this.value) {
 					aDimLevel[sDevId] = this.value;
 					$('#'+sDevId+'_switch')[0].selectedIndex = 1;
@@ -821,6 +875,7 @@ function parseValues(data) {
 						$('#'+dvalues+'_switch').slider('refresh');
 					}
 					if(vindex == 'dimlevel') {
+						aDimLevel[dvalues] = vvalues;
 						$('#'+dvalues+'_dimmer').val(vvalues);
 						$('#'+dvalues+'_dimmer').slider('refresh');
 					}

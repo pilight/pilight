@@ -225,6 +225,7 @@ void relayInit(void) {
 	strcpy(state, "off");
 	options_add(&relay->options, 0, "default-state", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_STRING, (void *)state, NULL);
 	options_add(&relay->options, 0, "readonly", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
+	options_add(&relay->options, 0, "confirm", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 
 	relay->checkValues=&checkValues;
 	relay->createCode=&createCode;
@@ -235,7 +236,7 @@ void relayInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "relay";
-	module->version = "3.0";
+	module->version = "3.1";
 	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }

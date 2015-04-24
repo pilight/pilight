@@ -250,6 +250,7 @@ void arctechScreenInit(void) {
 	options_add(&arctech_screen->options, 'l', "learn", OPTION_NO_VALUE, DEVICES_OPTIONAL, JSON_NUMBER, NULL, NULL);
 
 	options_add(&arctech_screen->options, 0, "readonly", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
+	options_add(&arctech_screen->options, 0, "confirm", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 
 	arctech_screen->parseCode=&parseCode;
 	arctech_screen->createCode=&createCode;
@@ -260,7 +261,7 @@ void arctechScreenInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "arctech_screen";
-	module->version = "3.1";
+	module->version = "3.2";
 	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }

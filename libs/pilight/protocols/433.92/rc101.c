@@ -227,6 +227,7 @@ void rc101Init(void) {
 	options_add(&rc101->options, 'a', "all", OPTION_OPT_VALUE, DEVICES_OPTIONAL, JSON_NUMBER, NULL, NULL);
 
 	options_add(&rc101->options, 0, "readonly", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
+	options_add(&rc101->options, 0, "confirm", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 
 	rc101->parseCode=&parseCode;
 	rc101->createCode=&createCode;
@@ -237,7 +238,7 @@ void rc101Init(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "rc101";
-	module->version = "0.3";
+	module->version = "0.4";
 	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }

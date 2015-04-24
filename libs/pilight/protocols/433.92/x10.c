@@ -230,6 +230,7 @@ void x10Init(void) {
 	options_add(&x10->options, 'i', "id", OPTION_HAS_VALUE, DEVICES_ID, JSON_STRING, NULL, "^[ABCDEFGHIJKLMNOP]([1][0-6]{1}|[1-9]{1})$");
 
 	options_add(&x10->options, 0, "readonly", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
+	options_add(&x10->options, 0, "confirm", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 
 	x10->parseCode=&parseCode;
 	x10->createCode=&createCode;
@@ -240,7 +241,7 @@ void x10Init(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "x10";
-	module->version = "2.1";
+	module->version = "2.2";
 	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }
