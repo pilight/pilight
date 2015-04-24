@@ -237,7 +237,7 @@ void logprintf(int prio, const char *format_str, ...) {
 	}
 #ifdef _WIN32
 	if(prio == LOG_ERR && strstr(progname, "daemon") != NULL) {
-		MessageBox(NULL, line, "pilight :: error", MB_OK);
+		//MessageBox(NULL, line, "pilight :: error", MB_OK);
 	}
 #endif
 	if(stop == 0 && pos > 0) {
