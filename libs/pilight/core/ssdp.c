@@ -133,8 +133,8 @@ int ssdp_seek(struct ssdp_list_t **ssdp_list) {
 
 #ifndef _WIN32
 	struct timeval tv;
-	tv.tv_sec = timeout;
-	tv.tv_usec = 0;
+	tv.tv_sec = 0;
+	tv.tv_usec = timeout*100000;
 #else
 	WSADATA wsa;
 

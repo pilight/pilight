@@ -47,7 +47,6 @@ int main_gc(void) {
 		socket_write(sockfd, "HEART");
 		socket_close(sockfd);
 	}
-	FREE(progname);
 	xfree();
 
 #ifdef _WIN32
@@ -71,8 +70,7 @@ int main(int argc, char **argv) {
 
 	log_level_set(LOG_NOTICE);
 
-	progname = MALLOC(16);
-	if(!progname) {
+	if((progname = MALLOC(16)) == NULL) {
 		logprintf(LOG_ERR, "out of memory");
 		exit(EXIT_FAILURE);
 	}
@@ -157,6 +155,7 @@ int main(int argc, char **argv) {
 	if(server != NULL) {
 		FREE(server);
 	}
+
 	struct JsonNode *jclient = json_mkobject();
 	struct JsonNode *joptions = json_mkobject();
 	json_append_member(jclient, "action", json_mkstring("identify"));
@@ -208,5 +207,6 @@ close:
 	options_gc();
 	log_shell_disable();
 	log_gc();
+	FREE(progname);
 	return EXIT_SUCCESS;
 }
