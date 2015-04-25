@@ -204,13 +204,11 @@ static int nano433Send(int *code, int rawlen, int repeats) {
 			match = (int)nrpulses;
 			nrpulses++;
 		}
-		if(i%2 == 1) {
-			if(match < 10) {
-				send[len++] = (char)(((int)'0')+match);
-			} else {
-				logprintf(LOG_ERR, "too many distinct pulses for pilight usb nano to send");
-				return EXIT_FAILURE;
-			}
+		if(match < 10) {
+			send[len++] = (char)(((int)'0')+match);
+		} else {
+			logprintf(LOG_ERR, "too many distinct pulses for pilight usb nano to send");
+			return EXIT_FAILURE;
 		}
 	}
 
@@ -363,7 +361,7 @@ void nano433Init(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "433nano";
-	module->version = "0.11";
+	module->version = "0.12";
 	module->reqversion = "6.0";
 	module->reqcommit = "40";
 }
