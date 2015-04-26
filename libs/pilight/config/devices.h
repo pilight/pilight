@@ -86,6 +86,7 @@ struct devices_t {
 	time_t timestamp;
 #ifdef EVENTS
 	int lastrule;
+	int prevrule;
 	struct event_action_thread_t *action_thread;
 #endif
 	struct protocols_t *protocols;

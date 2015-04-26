@@ -412,6 +412,7 @@ int devices_update(char *protoname, JsonNode *json, enum origin_t origin, JsonNo
 										dptr->lastrule = dptr->action_thread->obj->rule->nr;
 									} else {
 										dptr->lastrule = -1;
+										dptr->prevrule = -1;
 									}
 #endif
 									json_append_element(rdev, json_mkstring(dptr->id));

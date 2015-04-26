@@ -1463,33 +1463,42 @@ void *events_loop(void *param) {
 							for(i=0;i<tmp_rules->nrdevices;i++) {
 								if(jchilds->tag == JSON_STRING &&
 								   strcmp(jchilds->string_, tmp_rules->devices[i]) == 0) {
-										if(devices_get(jchilds->string_, &dev) == 0) {
-											/*
-											 * The rule has triggered itself.
-											 */
-											if(dev->lastrule == tmp_rules->nr) {
-												logprintf(LOG_ERR, "deactivated rule #%d because of an infinite loop triggered by device %s", tmp_rules->nr, jchilds->string_);
-												tmp_rules->active = 0;
-												match = 0;
-											} else {
-												match = 1;
-											}
-										} else {
-											match = 1;
-										}
+									if(devices_get(jchilds->string_, &dev) == 0) {
+										dev->prevrule = dev->lastrule;
+									}
+									match = 1;
 									break;
 								}
-							}
-							if(match == 1) {
-								break;
 							}
 							jchilds = jchilds->next;
 						}
 					}
 					if(match == 1 && tmp_rules->status == 0) {
 						if(event_parse_rule(str, tmp_rules, 0, 0) == 0) {
-							if(tmp_rules->status) {
+							if(tmp_rules->status == 1) {
 								logprintf(LOG_INFO, "executed rule: %s", tmp_rules->name);
+								if(jdevices != NULL) {
+									jchilds = json_first_child(jdevices);
+									while(jchilds) {
+										for(i=0;i<tmp_rules->nrdevices;i++) {
+											if(jchilds->tag == JSON_STRING &&
+												 strcmp(jchilds->string_, tmp_rules->devices[i]) == 0) {								
+												if(devices_get(jchilds->string_, &dev) == 0) {
+													/*
+													 * The rule has triggered itself.
+													 */
+													if(dev->lastrule == tmp_rules->nr && 
+													   tmp_rules->nr == dev->prevrule &&
+														 dev->lastrule == dev->prevrule) {
+														logprintf(LOG_ERR, "deactivated rule #%d because of an infinite loop triggered by device %s", tmp_rules->nr, jchilds->string_);
+														tmp_rules->active = 0;
+													}
+												}
+											}
+										}
+										jchilds = jchilds->next;
+									}
+								}
 							}
 						}
 						tmp_rules->status = 0;
