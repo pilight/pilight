@@ -347,10 +347,15 @@ int socket_write(int sockfd, const char *msg, ...) {
 	if(strlen(msg) > 0 && sockfd > 0) {
 
 		va_start(ap, msg);
-		n = (int)vsnprintf(NULL, 0, msg, ap) + (int)(len); // + delimiter
+		if((n = (int)vsnprintf(NULL, 0, msg, ap)) == -1) {
+			logprintf(LOG_ERR, "improperly formatted string: %s", msg);
+			return -1;
+		}
+		n += (int)len;
 		va_end(ap);
-
-		if(!(sendBuff = MALLOC((size_t)n))) {
+		
+	
+		if((sendBuff = MALLOC((size_t)n)) == NULL) {
 			logprintf(LOG_ERR, "out of memory");
 			exit(EXIT_FAILURE);
 		}

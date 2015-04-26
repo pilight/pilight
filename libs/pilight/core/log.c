@@ -215,7 +215,7 @@ void logprintf(int prio, const char *format_str, ...) {
 #ifdef _WIN32
 		bytes = _vscprintf(format_str, apcpy);
 #else
-		bytes = vsnprintf(&nul, 1, format_str, apcpy);
+		bytes = vsnprintf(NULL, 0, format_str, apcpy);
 #endif
 		if(bytes == -1) {
 			fprintf(stderr, "ERROR: unproperly formatted logprintf message %s\n", format_str);

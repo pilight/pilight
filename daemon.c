@@ -1360,6 +1360,7 @@ static void socket_parse_data(int i, char *buffer) {
 					json_append_member(jsend, "message", json_mkstring("config"));
 					json_append_member(jsend, "config", jconfig);
 					char *output = json_stringify(jsend, NULL);
+					str_replace("%", "%%", &output);
 					socket_write(sd, output);
 					json_free(output);
 					json_delete(jsend);
