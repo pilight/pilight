@@ -373,11 +373,13 @@ static int webserver_request_handler(struct mg_connection *conn) {
 					urldecode(output, decoded);
 					if(json_validate(decoded) == true) {
 						socket_write(sockfd, decoded);
-						mg_printf_data(conn, "{\"message\":\"success\"}");
+						char *a = "{\"message\":\"success\"}";
+						mg_send_data(conn, a, strlen(a));
 						return MG_TRUE;
 					}
 				}
-				mg_printf_data(conn, "{\"message\":\"failed\"}");
+				char *b = "{\"message\":\"failed\"}";
+				mg_send_data(conn, b, strlen(b));
 				return MG_TRUE;
 			} else if(strcmp(conn->uri, "/config") == 0) {
 				char media[15];
@@ -392,7 +394,7 @@ static int webserver_request_handler(struct mg_connection *conn) {
 				JsonNode *jsend = config_print(internal, media);
 				if(jsend != NULL) {
 					char *output = json_stringify(jsend, NULL);
-					mg_printf_data(conn, output);
+					mg_send_data(conn, output, strlen(output));
 					json_delete(jsend);
 					json_free(output);
 				}
@@ -407,7 +409,7 @@ static int webserver_request_handler(struct mg_connection *conn) {
 				JsonNode *jsend = devices_values(media);
 				if(jsend != NULL) {
 					char *output = json_stringify(jsend, NULL);
-					mg_printf_data(conn, output);
+					mg_send_data(conn, output, strlen(output));
 					json_delete(jsend);
 					json_free(output);
 				}
