@@ -89,13 +89,19 @@ int main_gc(void) {
 }
 
 void *receiveOOK(void *param) {
-	int duration = 0;
+	int duration = 0, iLoop = 0;
 
 	struct hardware_t *hw = (hardware_t *)param;
 	while(main_loop && hw->receiveOOK) {
 		duration = hw->receiveOOK();
+		iLoop++;
 		if(duration > 0) {
-			printf("%s: %d\n", hw->id, duration);
+			if (duration > 5100) {
+				printf(" %d -#: %d\n%s: ",duration, iLoop, hw->id);
+				iLoop = 0;
+			} else {
+				printf(" %d", duration);
+			}
 		}
 	};
 	return NULL;
@@ -113,7 +119,9 @@ void *receivePulseTrain(void *param) {
 			break;
 		} else if(r.length > 0) {
 			for(i=0;i<r.length;i++) {
-				printf("%s: %d\n", hw->id, r.pulses[i]);
+//				printf("%s: %d\n", hw->id, r.pulses[i]);
+				printf(" %d", r.pulses[i]);
+				if (r.pulses[i]>5100) printf(" -# %d\n %s:",i,hw->id);
 			}
 		}
 	};
