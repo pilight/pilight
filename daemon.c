@@ -2406,6 +2406,8 @@ int start_pilight(int argc, char **argv) {
 	}
 #endif
 
+	pilight.running = 1;
+
 	/* Threads are unable to survive forks properly.
 	 * Therefor, we queue all messages until we're
 	 * able to fork properly.
@@ -2643,10 +2645,12 @@ static LRESULT CALLBACK WindowProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lP
 }
 
 int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR cmdline, int show) {
+	pilight.running = 0;
+	
 	HWND hWnd;
   WNDCLASS cls;
   MSG msg;
-	snprintf(server_name, sizeof(server_name), "pilight-daemon v%s, commit %s", PILIGHT_VERSION, HASH);
+	snprintf(server_name, sizeof(server_name), "pilight-daemon %s", HASH);
   memset(&cls, 0, sizeof(cls));
   cls.lpfnWndProc = (WNDPROC)WindowProc;
   cls.hIcon = LoadIcon(NULL, IDI_APPLICATION);
@@ -2674,6 +2678,8 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR cmdline, int show) {
 }
 #else
 int main(int argc, char **argv) {
+	pilight.running = 0;
+
 	int ret = start_pilight(argc, argv);
 	if(ret == EXIT_SUCCESS) {
 		pilight_stats((void *)NULL);

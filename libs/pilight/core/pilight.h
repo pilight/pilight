@@ -50,6 +50,8 @@ struct pilight_t {
 	int (*send)(JsonNode *json, enum origin_t origin);
 	int (*control)(struct devices_t *dev, char *state, JsonNode *values, enum origin_t origin);
 	runmode_t runmode;
+	/* pilight actually runs in this stage and the configuration is fully validated */
+	int running;
 } pilight_t;
 
 extern struct pilight_t pilight;

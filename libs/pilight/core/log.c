@@ -156,9 +156,6 @@ void logprintf(int prio, const char *format_str, ...) {
 	struct tm tm;
 	va_list ap, apcpy;
 	char fmt[64], buf[64], *line = MALLOC(128);
-#ifndef _WIN32
-	char nul;
-#endif
 	int save_errno = -1, pos = 0, bytes = 0;
 
 	memset(&tm, '\0', sizeof(struct tm));
@@ -235,7 +232,7 @@ void logprintf(int prio, const char *format_str, ...) {
 		fprintf(stderr, "%s", line);
 	}
 #ifdef _WIN32
-	if(prio == LOG_ERR && strstr(progname, "daemon") != NULL) {
+	if(prio == LOG_ERR && strstr(progname, "daemon") != NULL && pilight.running == 0) {
 		MessageBox(NULL, line, "pilight :: error", MB_OK);
 	}
 #endif
