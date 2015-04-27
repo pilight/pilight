@@ -20,11 +20,9 @@
 #define _THREADS_H_
 
 #ifdef _WIN32
-	#include "pthread.h"
 	#include "windows.h"
-#else
-	#include <pthread.h>
 #endif
+#include <pthread.h>
 #include "proc.h"
 
 struct threadqueue_t {

@@ -161,7 +161,9 @@ static void *thread(void *param) {
 
 			/* Get UTC time */
 #ifdef _WIN32
-		if((tm = gmtime(&timenow)) != NULL) {
+		struct tm *tm1;
+		if((tm1 = gmtime(&timenow)) != NULL) {
+			memcpy(&tm, tm1, sizeof(struct tm));
 #else
 		if(gmtime_r(&timenow, &tm) != NULL) {
 #endif

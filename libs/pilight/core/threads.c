@@ -21,15 +21,12 @@
 #include <string.h>
 #include <signal.h>
 #include <unistd.h>
-#ifdef _WIN32
-	#include "pthread.h"
-	#include "implement.h"
-#else
+#ifndef _WIN32
 	#ifdef __mips__
 		#define __USE_UNIX98
 	#endif
-	#include <pthread.h>
 #endif
+#include <pthread.h>
 #include <sys/time.h>
 
 #include "threads.h"
@@ -169,9 +166,6 @@ static void *threads_loop(void *param) {
 				logprintf(LOG_DEBUG, "new thread %s, %d threads running", tmp_threads->id, thread_running);
 			}
 
-#ifdef _WIN32
-			tmp_threads->handle = pthread_getw32threadhandle_np(tmp_threads->pth);
-#endif
 			threadqueue_number--;
 			pthread_mutex_unlock(&threadqueue_lock);
 		} else {

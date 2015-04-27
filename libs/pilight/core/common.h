@@ -19,15 +19,13 @@
 #ifndef _COMMON_H_
 #define _COMMON_H_
 
-#ifdef _WIN32
-	#include "pthread.h"
-	#include "implement.h"
-#else
+#ifndef _WIN32
 	#include <sys/types.h>
 	#include <ifaddrs.h>
-	#include <pthread.h>
 	#include <sys/socket.h>
 #endif
+#include <pthread.h>
+#include <stdint.h>
 
 #include "pilight.h"
 

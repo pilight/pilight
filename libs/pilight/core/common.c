@@ -59,6 +59,7 @@
 #endif
 #include <sys/time.h>
 #include <time.h>
+#include <pthread.h>
 
 #include "../config/settings.h"
 #include "mem.h"
@@ -79,6 +80,7 @@ static const char base64table[] = {
 	'w', 'x', 'y', 'z', '0', '1', '2', '3',
 	'4', '5', '6', '7', '8', '9', '+', '/'
 };
+
 static pthread_mutex_t atomic_lock;
 static pthread_mutexattr_t atomic_attr;
 

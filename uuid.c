@@ -26,7 +26,6 @@
 #ifdef _WIN32
 	#include <winsock2.h>
 	#include <ws2tcpip.h>
-	#include "pthread.h"
 	#define MSG_NOSIGNAL 0
 #else
 	#include <sys/socket.h>
@@ -35,11 +34,10 @@
 	#include <netinet/tcp.h>
 	#include <netdb.h>
 	#include <arpa/inet.h>
-	#include <pthread.h>
 #endif
+#include <pthread.h>
 #include <sys/stat.h>
 #include <sys/time.h>
-#include <pthread.h>
 #include <ctype.h>
 
 #include "libs/pilight/core/pilight.h"

@@ -29,7 +29,6 @@
 	#include <ws2tcpip.h>
 	#include <winsvc.h>
 	#include <shellapi.h>
-	#include "pthread.h"
 	#define MSG_NOSIGNAL 0
 #else
 	#include <sys/socket.h>
@@ -41,8 +40,8 @@
 	#ifdef __mips__
 		#define __USE_UNIX98
 	#endif
-	#include <pthread.h>
 #endif
+#include <pthread.h>
 #include <sys/stat.h>
 #include <sys/time.h>
 #include <time.h>
@@ -1939,6 +1938,115 @@ void openconsole(void) {
 }
 #endif
 
+void *pilight_stats(void *param) {
+	int checkram = 0, checkcpu = 0, i = -1, x = 0, watchdog = 0, stats = 1;
+	settings_find_number("watchdog-enable", &watchdog);
+	settings_find_number("stats-enable", &stats);
+
+	while(main_loop) {
+		registerVersion();
+
+		if(stats == 1) {
+			double cpu = 0.0, ram = 0.0;
+			cpu = getCPUUsage();
+			ram = getRAMUsage();
+
+			if(threadprofiler == 1) {
+				threads_cpu_usage(1);
+			}
+
+			if(watchdog == 1 && (i > -1) && (cpu > 60)) {
+				if(nodaemon == 1 && threadprofiler == 0) {
+					threads_cpu_usage(x);
+					x ^= 1;
+				}
+				if(checkcpu == 0) {
+					if(cpu > 90) {
+						logprintf(LOG_ERR, "cpu usage way too high %f%%", cpu);
+					} else {
+						logprintf(LOG_ERR, "cpu usage too high %f%%", cpu);
+					}
+					logprintf(LOG_ERR, "checking again in 10 seconds");
+					sleep(10);
+				} else {
+					if(cpu > 90) {
+						logprintf(LOG_ERR, "cpu usage still way too high %f%%, exiting", cpu);
+					} else {
+						logprintf(LOG_ERR, "cpu usage still too high %f%%, stopping", cpu);
+					}
+				}
+				if(checkcpu == 1) {
+					if(cpu > 90) {
+						exit(EXIT_FAILURE);
+					} else {
+						main_gc();
+						break;
+					}
+				}
+				checkcpu = 1;
+			} else if(watchdog == 1 && (i > -1) && (ram > 60)) {
+				if(checkram == 0) {
+					if(ram > 90) {
+						logprintf(LOG_ERR, "ram usage way too high %f%%", ram);
+						exit(EXIT_FAILURE);
+					} else {
+						logprintf(LOG_ERR, "ram usage too high %f%%", ram);
+					}
+					logprintf(LOG_ERR, "checking again in 10 seconds");
+					sleep(10);
+				} else {
+					if(ram > 90) {
+						logprintf(LOG_ERR, "ram usage still way too high %f%%, exiting", ram);
+					} else {
+						logprintf(LOG_ERR, "ram usage still too high %f%%, stopping", ram);
+					}
+				}
+				if(checkram == 1) {
+					if(ram > 90) {
+						exit(EXIT_FAILURE);
+					} else {
+						main_gc();
+						break;
+					}
+				}
+				checkram = 1;
+			} else {
+				checkcpu = 0;
+				checkram = 0;
+				if((i > 0 && i%3 == 0) || (i == -1)) {
+					procProtocol->message = json_mkobject();
+					JsonNode *code = json_mkobject();
+					json_append_member(code, "cpu", json_mknumber(cpu, 16));
+					if(ram > 0) {
+						json_append_member(code, "ram", json_mknumber(ram, 16));
+					}
+					logprintf(LOG_DEBUG, "cpu: %f%%, ram: %f%%", cpu, ram);
+					json_append_member(procProtocol->message, "values", code);
+					json_append_member(procProtocol->message, "origin", json_mkstring("core"));
+					json_append_member(procProtocol->message, "type", json_mknumber(PROCESS, 0));
+					struct clients_t *tmp_clients = clients;
+					while(tmp_clients) {
+						if(tmp_clients->cpu > 0 && tmp_clients->ram > 0) {
+							logprintf(LOG_DEBUG, "- client: %s cpu: %f%%, ram: %f%%",
+										tmp_clients->uuid, tmp_clients->cpu, tmp_clients->ram);
+						}
+						tmp_clients = tmp_clients->next;
+					}
+					pilight.broadcast(procProtocol->id, procProtocol->message, STATS);
+					json_delete(procProtocol->message);
+					procProtocol->message = NULL;
+
+					i = 0;
+					x = 0;
+				}
+				i++;
+			}
+		}
+		sleep(1);
+	}
+	return (void *)NULL;
+}
+
 int start_pilight(int argc, char **argv) {
 	struct options_t *options = NULL;
 	struct ssdp_list_t *ssdp_list = NULL;
@@ -2068,7 +2176,7 @@ int start_pilight(int argc, char **argv) {
 
 #ifndef _WIN32
 	if(geteuid() != 0) {
-		printf("%s requires root priveliges in order to run\n", progname);
+		printf("%s requires root privileges in order to run\n", progname);
 		FREE(progname);
 		exit(EXIT_FAILURE);
 	}
@@ -2396,6 +2504,10 @@ int start_pilight(int argc, char **argv) {
 		threads_register("ntp sync", &ntpthread, NULL, 0);
 	}
 
+#ifdef _WIN32
+	threads_register("stats", &pilight_stats, NULL, 0);
+#endif
+
 	return EXIT_SUCCESS;
 
 clear:
@@ -2407,115 +2519,6 @@ clear:
 		main_gc();
 	}
 	return EXIT_FAILURE;
-}
-
-void *pilight_stats(void *param) {
-	int checkram = 0, checkcpu = 0, i = -1, x = 0, watchdog = 0, stats = 1;
-	settings_find_number("watchdog-enable", &watchdog);
-	settings_find_number("stats-enable", &stats);
-
-	while(main_loop) {
-		registerVersion();
-
-		if(stats == 1) {
-			double cpu = 0.0, ram = 0.0;
-			cpu = getCPUUsage();
-			ram = getRAMUsage();
-
-			if(threadprofiler == 1) {
-				threads_cpu_usage(1);
-			}
-
-			if(watchdog == 1 && (i > -1) && (cpu > 60)) {
-				if(nodaemon == 1 && threadprofiler == 0) {
-					threads_cpu_usage(x);
-					x ^= 1;
-				}
-				if(checkcpu == 0) {
-					if(cpu > 90) {
-						logprintf(LOG_ERR, "cpu usage way too high %f%%", cpu);
-					} else {
-						logprintf(LOG_ERR, "cpu usage too high %f%%", cpu);
-					}
-					logprintf(LOG_ERR, "checking again in 10 seconds");
-					sleep(10);
-				} else {
-					if(cpu > 90) {
-						logprintf(LOG_ERR, "cpu usage still way too high %f%%, exiting", cpu);
-					} else {
-						logprintf(LOG_ERR, "cpu usage still too high %f%%, stopping", cpu);
-					}
-				}
-				if(checkcpu == 1) {
-					if(cpu > 90) {
-						exit(EXIT_FAILURE);
-					} else {
-						main_gc();
-						break;
-					}
-				}
-				checkcpu = 1;
-			} else if(watchdog == 1 && (i > -1) && (ram > 60)) {
-				if(checkram == 0) {
-					if(ram > 90) {
-						logprintf(LOG_ERR, "ram usage way too high %f%%", ram);
-						exit(EXIT_FAILURE);
-					} else {
-						logprintf(LOG_ERR, "ram usage too high %f%%", ram);
-					}
-					logprintf(LOG_ERR, "checking again in 10 seconds");
-					sleep(10);
-				} else {
-					if(ram > 90) {
-						logprintf(LOG_ERR, "ram usage still way too high %f%%, exiting", ram);
-					} else {
-						logprintf(LOG_ERR, "ram usage still too high %f%%, stopping", ram);
-					}
-				}
-				if(checkram == 1) {
-					if(ram > 90) {
-						exit(EXIT_FAILURE);
-					} else {
-						main_gc();
-						break;
-					}
-				}
-				checkram = 1;
-			} else {
-				checkcpu = 0;
-				checkram = 0;
-				if((i > 0 && i%3 == 0) || (i == -1)) {
-					procProtocol->message = json_mkobject();
-					JsonNode *code = json_mkobject();
-					json_append_member(code, "cpu", json_mknumber(cpu, 16));
-					if(ram > 0) {
-						json_append_member(code, "ram", json_mknumber(ram, 16));
-					}
-					logprintf(LOG_DEBUG, "cpu: %f%%, ram: %f%%", cpu, ram);
-					json_append_member(procProtocol->message, "values", code);
-					json_append_member(procProtocol->message, "origin", json_mkstring("core"));
-					json_append_member(procProtocol->message, "type", json_mknumber(PROCESS, 0));
-					struct clients_t *tmp_clients = clients;
-					while(tmp_clients) {
-						if(tmp_clients->cpu > 0 && tmp_clients->ram > 0) {
-							logprintf(LOG_DEBUG, "- client: %s cpu: %f%%, ram: %f%%",
-										tmp_clients->uuid, tmp_clients->cpu, tmp_clients->ram);
-						}
-						tmp_clients = tmp_clients->next;
-					}
-					pilight.broadcast(procProtocol->id, procProtocol->message, STATS);
-					json_delete(procProtocol->message);
-					procProtocol->message = NULL;
-
-					i = 0;
-					x = 0;
-				}
-				i++;
-			}
-		}
-		sleep(1);
-	}
-	return (void *)NULL;
 }
 
 #ifdef _WIN32
@@ -2643,8 +2646,7 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR cmdline, int show) {
 	HWND hWnd;
   WNDCLASS cls;
   MSG msg;
-
-	snprintf(server_name, sizeof(server_name), "pilight daemon v%s", PILIGHT_VERSION);
+	snprintf(server_name, sizeof(server_name), "pilight-daemon v%s, commit %s", PILIGHT_VERSION, HASH);
   memset(&cls, 0, sizeof(cls));
   cls.lpfnWndProc = (WNDPROC)WindowProc;
   cls.hIcon = LoadIcon(NULL, IDI_APPLICATION);

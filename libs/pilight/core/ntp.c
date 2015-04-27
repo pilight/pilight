@@ -29,14 +29,11 @@
 #ifdef _WIN32
 	#include <winsock2.h>
 	#include <ws2tcpip.h>
-	#include "pthread.h"
-	#include "implement.h"
 	#define MSG_NOSIGNAL 0
 #else
 	#ifdef __mips__
 		#define __USE_UNIX98
 	#endif
-	#include <pthread.h>
 	#include <sys/socket.h>
 	#include <sys/time.h>
 	#include <netinet/in.h>
@@ -44,6 +41,7 @@
 	#include <netdb.h>
 	#include <arpa/inet.h>
 #endif
+#include <pthread.h>
 #include <stdint.h>
 #include <time.h>
 
@@ -133,7 +131,7 @@ void *ntpthread(void *param) {
 
 	if(WSAStartup(0x202, &wsa) != 0) {
 		logprintf(LOG_ERR, "could not initialize new socket");
-		return -1;
+		return (void *)NULL;
 	}
 #endif
 

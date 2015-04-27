@@ -29,14 +29,11 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include <ctype.h>
-#ifdef _WIN32
-	#include "pthread.h"
-	#include "implement.h"
-#else
+#include <pthread.h>
+#ifndef _WIN32
 	#ifdef __mips__
 		#define __USE_UNIX98
 	#endif
-	#include <pthread.h>
 #endif
 
 #include "json.h"
@@ -390,7 +387,6 @@ int ctzoffset(void) {
 int isdst(time_t t, char *tz) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
-	struct tm tm;
 	char oritz[64];
 	int dst = 0;
 
@@ -405,11 +401,14 @@ int isdst(time_t t, char *tz) {
 	tzset();
 
 #ifdef _WIN32
-	if((tm = localtime(&t)) != NULL) {
+	struct tm *tm1;
+	if((tm1 = localtime(&t)) != 0) {
+		dst = tm1->tm_isdst;
 #else
-	if(localtime_r(&t, &tm) != NULL) {
-#endif
+	struct tm tm;
+	if(localtime_r(&t, &) != NULL) {
 		dst = tm.tm_isdst;
+#endif
 	}
 
 	if(strlen(oritz) > 0) {

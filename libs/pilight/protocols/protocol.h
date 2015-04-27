@@ -19,17 +19,14 @@
 #ifndef _PROTOCOL_H_
 #define _PROTOCOL_H_
 
-#ifdef _WIN32
-	#include "pthread.h"
-	#include "implement.h"
-#else
+#ifndef _WIN32
 	#ifdef __mips__
 		#ifndef __USE_UNIX98
 			#define __USE_UNIX98
 		#endif
 	#endif
-	#include <pthread.h>
 #endif
+#include <pthread.h>
 
 #include "defines.h"
 #include "../core/options.h"

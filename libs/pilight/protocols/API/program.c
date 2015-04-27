@@ -27,16 +27,13 @@
 #include <sys/stat.h>
 #include <signal.h>
 #include <math.h>
-#ifdef _WIN32
-	#include "pthread.h"
-	#include "implement.h"
-#else
+#ifndef _WIN32
 	#ifdef __mips__
 		#define __USE_UNIX98
 	#endif
 	#include <sys/wait.h>
-	#include <pthread.h>
 #endif
+#include <pthread.h>
 
 #include "../../core/threads.h"
 #include "../../core/pilight.h"

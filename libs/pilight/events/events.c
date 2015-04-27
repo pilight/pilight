@@ -26,14 +26,11 @@
 #include <time.h>
 #include <math.h>
 #include <string.h>
-#ifdef _WIN32
-	#include "pthread.h"
-	#include "implement.h"
-#else
+#include <pthread.h>
+#ifndef _WIN32
 	#ifdef __mips__
 		#define __USE_UNIX98
 	#endif
-	#include <pthread.h>
 #endif
 
 #include "../core/pilight.h"

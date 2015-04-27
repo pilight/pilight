@@ -34,8 +34,8 @@
 #include <ctype.h>
 #include <pcap.h>
 #ifdef _WIN32
-	#include "pthread.h"
-	#include "implement.h"
+	#include "../../libs/pthreadw32/pthread.h"
+	#include "../../libs/pthreadw32/implement.h"
 #else
 	#ifdef __mips__
 		#define __USE_UNIX98

@@ -19,11 +19,7 @@
 #ifndef _DEVICES_H_
 #define _DEVICES_H_
 
-#ifdef _WIN32
-	#include "pthread.h"
-#else
-	#include <pthread.h>
-#endif
+#include <pthread.h>
 
 typedef struct devices_settings_t devices_settings_t;
 typedef struct devices_values_t devices_values_t;

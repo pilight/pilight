@@ -28,15 +28,12 @@
 #include <signal.h>
 #ifdef _WIN32
 	#include <winsock2.h>
-	#include "pthread.h"
-	#include "implement.h"
 	#include <ws2tcpip.h>
 	#define MSG_NOSIGNAL 0
 #else
 	#ifdef __mips__
 		#define __USE_UNIX98
 	#endif
-	#include <pthread.h>
 	#include <sys/socket.h>
 	#include <sys/time.h>
 	#include <netinet/in.h>
@@ -44,6 +41,7 @@
 	#include <netdb.h>
 	#include <arpa/inet.h>
 #endif
+#include <pthread.h>
 #include <stdint.h>
 #include <math.h>
 

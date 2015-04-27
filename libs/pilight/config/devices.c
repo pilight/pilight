@@ -113,7 +113,9 @@ int devices_update(char *protoname, JsonNode *json, enum origin_t origin, JsonNo
 	struct tm gmt;
 	memset(&gmt, '\0', sizeof(struct tm));
 #ifdef _WIN32
-	gmtime(&timenow);
+	struct tm *tm;
+	tm = gmtime(&timenow);
+	memcpy(&gmt, tm, sizeof(struct tm));
 #else
 	gmtime_r(&timenow, &gmt);
 #endif

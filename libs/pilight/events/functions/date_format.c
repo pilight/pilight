@@ -26,6 +26,10 @@
 #endif
 #include <time.h>
 
+#ifdef _WIN32
+#include "../../core/strptime.h"
+#endif
+
 #include "../function.h"
 #include "../events.h"
 #include "../../core/options.h"
@@ -114,11 +118,13 @@ static int run(struct rules_t *obj, struct JsonNode *arguments, char **ret) {
 	} else {
 		time_t t1 = mktime(&tm);
 #ifdef _WIN32
-		if((tm = localtime(&t1)) != NULL) {
+	struct tm *tm1;
+	if((tm1 = localtime(&t1)) != NULL) {
+		strftime(p, BUFFER_SIZE, "\"%Y-%m-%d %H:%M:%S\"", tm1);
 #else
-		if(localtime_r(&t1, &tm) != NULL) {
+	if(localtime_r(&t1, &tm) != NULL) {
+		strftime(p, BUFFER_SIZE, "\"%Y-%m-%d %H:%M:%S\"", &tm);
 #endif
-			strftime(p, BUFFER_SIZE, childs->string_, &tm);
 		}
 	}
 	return 0;

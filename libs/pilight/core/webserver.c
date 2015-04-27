@@ -27,13 +27,12 @@
 #include <assert.h>
 #include <signal.h>
 #include <stdarg.h>
+#include <pthread.h>
 #ifdef _WIN32
-	#include "pthread.h"
 #else
 	#ifdef __mips__
 		#define __USE_UNIX98
 	#endif
-	#include <pthread.h>
 	#include <pwd.h>
 #endif
 

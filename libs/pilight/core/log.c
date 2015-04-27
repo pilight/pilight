@@ -26,15 +26,12 @@
 #include <unistd.h>
 #include <libgen.h>
 #include <sys/stat.h>
-#ifdef _WIN32
-	#include "pthread.h"
-	#include "implement.h"
-#else
+#ifndef _WIN32
 	#ifdef __mips__
 		#define __USE_UNIX98
 	#endif
-	#include <pthread.h>
 #endif
+#include <pthread.h>
 
 #include "pilight.h"
 #include "common.h"
@@ -178,7 +175,9 @@ void logprintf(int prio, const char *format_str, ...) {
 	if(loglevel >= prio) {
 		gettimeofday(&tv, NULL);
 #ifdef _WIN32
-		if((gmtime(&tv.tv_sec)) != 0) {
+		struct tm *tm1;
+		if((tm1 = gmtime(&tv.tv_sec)) != 0) {
+			memcpy(&tm, tm1, sizeof(struct tm));
 #else
 		if((gmtime_r(&tv.tv_sec, &tm)) != 0) {
 #endif
@@ -237,7 +236,7 @@ void logprintf(int prio, const char *format_str, ...) {
 	}
 #ifdef _WIN32
 	if(prio == LOG_ERR && strstr(progname, "daemon") != NULL) {
-		//MessageBox(NULL, line, "pilight :: error", MB_OK);
+		MessageBox(NULL, line, "pilight :: error", MB_OK);
 	}
 #endif
 	if(stop == 0 && pos > 0) {

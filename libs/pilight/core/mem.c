@@ -22,6 +22,11 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <pthread.h>
+#ifndef _WIN32
+	#ifdef __mips__
+		#define __USE_UNIX98
+	#endif
+#endif
 
 #include "mem.h"
 

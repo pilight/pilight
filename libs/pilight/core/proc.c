@@ -30,11 +30,9 @@
 #include <sys/time.h>
 #include <time.h>
 #ifdef _WIN32
-	#include "pthread.h"
 	#include <windows.h>
-#else
-	#include <pthread.h>
 #endif
+#include <pthread.h>
 #include <ctype.h>
 #include <dirent.h>
 
@@ -110,7 +108,7 @@ void getThreadCPUUsage(pthread_t pth, struct cpu_usage_t *cpu_usage) {
 	FILETIME exitTime;
 	FILETIME kernelTime;
 	FILETIME userTime;
-	if(GetThreadTimes(pthread_getw32threadhandle_np(pth), &createTime, &exitTime, &kernelTime, &userTime) != -1) {
+	if(GetThreadTimes(pthread_gethandle(pth), &createTime, &exitTime, &kernelTime, &userTime) != -1) {
 		SYSTEMTIME userSystemTime;
 		if(FileTimeToSystemTime(&userTime, &userSystemTime) != -1) {
 			cpu_usage->cpu_new = ((double)userSystemTime.wHour * 3600.0 + (double)userSystemTime.wMinute * 60.0 +
