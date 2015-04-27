@@ -406,7 +406,7 @@ int isdst(time_t t, char *tz) {
 		dst = tm1->tm_isdst;
 #else
 	struct tm tm;
-	if(localtime_r(&t, &) != NULL) {
+	if(localtime_r(&t, &tm) != NULL) {
 		dst = tm.tm_isdst;
 #endif
 	}
