@@ -1488,7 +1488,7 @@ void *events_loop(void *param) {
 													   tmp_rules->nr == dev->prevrule &&
 														 dev->lastrule == dev->prevrule) {
 														logprintf(LOG_ERR, "deactivated rule #%d because of an infinite loop triggered by device %s", tmp_rules->nr, jchilds->string_);
-														tmp_rules->active = 0;
+														// tmp_rules->active = 0;
 													}
 												}
 											}

@@ -120,10 +120,10 @@ static int run(struct rules_t *obj, struct JsonNode *arguments, char **ret) {
 #ifdef _WIN32
 	struct tm *tm1;
 	if((tm1 = localtime(&t1)) != NULL) {
-		strftime(p, BUFFER_SIZE, "\"%Y-%m-%d %H:%M:%S\"", tm1);
+		strftime(p, BUFFER_SIZE, childs->string_, tm1);
 #else
 	if(localtime_r(&t1, &tm) != NULL) {
-		strftime(p, BUFFER_SIZE, "\"%Y-%m-%d %H:%M:%S\"", &tm);
+		strftime(p, BUFFER_SIZE, childs->string_, &tm);
 #endif
 		}
 	}
