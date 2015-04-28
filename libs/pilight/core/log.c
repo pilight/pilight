@@ -58,7 +58,6 @@ static unsigned int pthfree = 0;
 static pthread_t pth;
 
 static char *logfile = NULL;
-static char *logpath = NULL;
 static int filelog = 1;
 static int shelllog = 0;
 static int loglevel = LOG_DEBUG;
@@ -144,9 +143,6 @@ int log_gc(void) {
 	}
 	if(logfile != NULL) {
 		FREE(logfile);
-	}
-	if(logpath != NULL) {
-		FREE(logpath);
 	}
 	return 1;
 }
@@ -344,6 +340,7 @@ void log_shell_disable(void) {
 int log_file_set(char *log) {
 	struct stat s;
 	struct stat sb;
+	char *logpath = NULL;
 	FILE *lf = NULL;
 
 	atomiclock();

@@ -83,6 +83,10 @@
 	#include "libs/wiringx/wiringX.h"
 #endif
 
+#ifdef _WIN32
+static char server_name[40];
+#endif
+
 typedef struct clients_t {
 	char uuid[UUID_LENGTH];
 	int id;
@@ -1918,17 +1922,18 @@ void openconsole(void) {
 	AllocConsole();
 	freopen("CONOUT$", "w", stdout);
 	freopen("CONOUT$", "w", stderr);
-	HWND hwnd = GetConsoleWindow();
-	if(hwnd != NULL) {
-		GetConsoleMode(hwnd, &lpMode);
-		SetConsoleMode(hwnd, lpMode & ~ENABLE_PROCESSED_INPUT);
+	HWND hWnd = GetConsoleWindow();
+	if(hWnd != NULL) {
+		GetConsoleMode(hWnd, &lpMode);
+		SetConsoleMode(hWnd, lpMode & ~ENABLE_PROCESSED_INPUT);
 		SetConsoleCtrlHandler((PHANDLER_ROUTINE)CtrlHandler, TRUE);
-		HMENU hMenu = GetSystemMenu(hwnd, FALSE);
+		HMENU hMenu = GetSystemMenu(hWnd, FALSE);
 		if(hMenu != NULL) {
 			RemoveMenu(hMenu, SC_CLOSE, MF_GRAYED);
 			RemoveMenu(hMenu, SC_MINIMIZE, MF_GRAYED);
 			RemoveMenu(hMenu, SC_MAXIMIZE, MF_GRAYED);
 		}
+
 		console = 1;
 		oldverbosity = verbosity;
 		verbosity = LOG_DEBUG;
@@ -2153,7 +2158,11 @@ int start_pilight(int argc, char **argv) {
 		goto clear;
 	}
 	if(show_version == 1) {
-		printf("%s version %s, commit %s\n", progname, PILIGHT_VERSION, HASH);
+#ifdef HASH
+			printf("%s version %s\n", progname, HASH);
+#else
+			printf("%s version %s\n", progname, PILIGHT_VERSION);
+#endif
 		goto clear;
 	}
 #endif
@@ -2322,7 +2331,11 @@ int start_pilight(int argc, char **argv) {
 		}
 	}
 
-	logprintf(LOG_INFO, "version %s, commit %s", PILIGHT_VERSION, HASH);
+#ifdef HASH
+	logprintf(LOG_INFO, "version %s", HASH);
+#else
+	logprintf(LOG_INFO, "version %s", PILIGHT_VERSION);
+#endif
 
 	if(nodaemon == 1 || running == 1) {
 		log_file_disable();
@@ -2535,7 +2548,6 @@ clear:
 #define ID_CONSOLE 108
 #define ID_ICON 200
 static NOTIFYICONDATA TrayIcon;
-static char server_name[40];
 
 static LRESULT CALLBACK WindowProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
   char buf[200], *service_argv[] = {__argv[0], NULL};
@@ -2650,7 +2662,11 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR cmdline, int show) {
 	HWND hWnd;
   WNDCLASS cls;
   MSG msg;
+#ifdef HASH
 	snprintf(server_name, sizeof(server_name), "pilight-daemon %s", HASH);
+#else
+	snprintf(server_name, sizeof(server_name), "pilight-daemon %s", PILIGHT_VERSION);
+#endif
   memset(&cls, 0, sizeof(cls));
   cls.lpfnWndProc = (WNDPROC)WindowProc;
   cls.hIcon = LoadIcon(NULL, IDI_APPLICATION);
@@ -2670,7 +2686,7 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR cmdline, int show) {
   TrayIcon.uCallbackMessage = WM_USER;
   Shell_NotifyIcon(NIM_ADD, &TrayIcon);
 
-  while(GetMessage(&msg, hWnd, 0, 0)) {
+  while(GetMessage(&msg, hWnd, 0, 0) && main_loop == 1) {
     TranslateMessage(&msg);
     DispatchMessage(&msg);
   }
