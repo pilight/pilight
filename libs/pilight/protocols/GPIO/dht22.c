@@ -209,6 +209,33 @@ static void threadGC(void) {
 	}
 	protocol_thread_free(dht22);
 }
+
+static int checkValues(JsonNode *code) {
+	struct JsonNode *jid = NULL;
+	struct JsonNode *jchild = NULL;
+	double itmp = -1;
+
+	/* Validate GPIO number */
+	if((jid = json_find_member(code, "id")) != NULL) {
+		if((jchild = json_find_element(jid, 0)) != NULL) {
+			if(json_find_number(jchild, "gpio", &itmp) == 0) {
+#ifndef _WIN32
+				int gpio = (int)itmp;
+				int state = -1;
+				if(wiringXSetup() < 0) {
+					logprintf(LOG_ERR, "unable to setup wiringX") ;
+					return -1;
+				} else if(wiringXValidGPIO(gpio) != 0) {
+					logprintf(LOG_ERR, "relay: invalid gpio range");
+					return -1;
+				}
+#endif
+			}
+		}
+	}
+
+	return 0;
+}
 #endif
 
 #if !defined(MODULE) && !defined(_WIN32)
@@ -230,7 +257,7 @@ void dht22Init(void) {
 
 	options_add(&dht22->options, 't', "temperature", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9]{1,3}$");
 	options_add(&dht22->options, 'h', "humidity", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9]{1,3}$");
-	options_add(&dht22->options, 'g', "gpio", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^([0-9]{1}|1[0-9]|20)$");
+	options_add(&dht22->options, 'g', "gpio", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, NULL);
 
 	// options_add(&dht22->options, 0, "decimals", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *)1, "[0-9]");
 	options_add(&dht22->options, 0, "temperature-offset", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *)0, "[0-9]");
@@ -244,13 +271,14 @@ void dht22Init(void) {
 #if !defined(__FreeBSD__) && !defined(_WIN32)
 	dht22->initDev=&initDev;
 	dht22->threadGC=&threadGC;
+	dht22->checkValues=&checkValues;
 #endif
 }
 
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "dht22";
-	module->version = "2.0";
+	module->version = "2.1";
 	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }
