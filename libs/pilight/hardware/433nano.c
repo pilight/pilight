@@ -23,6 +23,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <string.h>
+#include <pthread.h>
 #include <sys/time.h>
 
 #ifdef _WIN32
@@ -37,6 +38,8 @@
 #include "../core/json.h"
 #include "../core/log.h"
 #include "../core/dso.h"
+#include "../core/firmware.h"
+#include "../config/registry.h"
 #include "../config/hardware.h"
 #include "433nano.h"
 
@@ -46,6 +49,15 @@ typedef struct timestamp_t {
 } timestamp_t;
 
 timestamp_t timestamp;
+
+/* What is the minimum rawlenth to consider a pulse stream valid */
+static int minrawlen = 1000;
+/* What is the maximum rawlenth to consider a pulse stream valid */
+static int maxrawlen = 0;
+/* What is the minimum rawlenth to consider a pulse stream valid */
+static int maxgaplen = 5100;
+/* What is the maximum rawlenth to consider a pulse stream valid */
+static int mingaplen = 10000;
 
 #ifdef _WIN32
 static HANDLE serial_433_fd;
@@ -71,6 +83,62 @@ static int nano_433_initialized = 0;
 static char com[255];
 static unsigned short loop = 1;
 static unsigned short running = 0;
+static unsigned short threads = 0;
+static unsigned short sendSync = 0;
+static pthread_t pth;
+
+void *syncFW(void *param) {
+
+	threads++;
+
+#ifdef _WIN32
+	DWORD n;
+#else
+	int n;
+#endif
+	char send[MAXPULSESTREAMLENGTH+1];
+	int len = 0;
+	
+	memset(&send, '\0', MAXPULSESTREAMLENGTH+1);
+
+	struct protocols_t *tmp = protocols;
+	while(tmp) {
+		if(tmp->listener->maxrawlen > maxrawlen) {
+			maxrawlen = tmp->listener->maxrawlen;
+		}
+		if(tmp->listener->minrawlen > 0 && tmp->listener->minrawlen < minrawlen) {
+			minrawlen = tmp->listener->minrawlen;
+		}
+		if(tmp->listener->maxgaplen > maxgaplen) {
+			maxgaplen = tmp->listener->maxgaplen;
+		}
+		if(tmp->listener->mingaplen > 0 && tmp->listener->mingaplen < mingaplen) {
+			mingaplen = tmp->listener->mingaplen;
+		}
+		tmp = tmp->next;
+	}
+
+	/* Let's wait for Nano to accept instructions */
+	while(sendSync == 0 && loop == 1) {
+		usleep(10);
+	}
+
+	len = sprintf(send, "s:%d,%d,%d,%d@", minrawlen, maxrawlen, mingaplen, maxgaplen);
+
+#ifdef _WIN32
+	WriteFile(serial_433_fd, &send, len, &n, NULL);
+#else
+	n = write(serial_433_fd, send, len);
+#endif
+
+	if(n != len) {
+		logprintf(LOG_ERR, "could not sync FW values");
+	}
+
+	threads--;
+	
+	return NULL;
+}
 
 #ifndef _WIN32
 /* http://stackoverflow.com/a/6947758 */
@@ -107,7 +175,7 @@ static int serial_interface_attribs(int fd, speed_t speed, tcflag_t parity) {
 }
 #endif
 
-static unsigned short int nano433HwInit(void) {
+static unsigned short int nano433HwInit(void) {	
 #ifdef _WIN32
 	COMMTIMEOUTS timeouts;
 	DCB port;
@@ -158,12 +226,16 @@ static unsigned short int nano433HwInit(void) {
 		return EXIT_FAILURE;
 	}
 #endif
+
+	pthread_create(&pth, NULL, &syncFW, (void *)NULL);
+	pthread_detach(pth);
+
 	return EXIT_SUCCESS;
 }
 
 static unsigned short nano433HwDeinit(void) {
 	loop = 0;
-	while(running > 0) {
+	while(running > 0 && threads > 0) {
 		usleep(10);
 	}
 #ifdef _WIN32
@@ -253,7 +325,7 @@ static int nano433Send(int *code, int rawlen, int repeats) {
 
 static int nano433Receive(struct rawcode_t *r) {
 	char buffer[1024], c[1];
-	int start = 0, bytes = 0;
+	int start = 0, bytes = 0, startv = 0;
 	int s = 0, nrpulses = 0, y = 0;
 	int startp = 0, pulses[10];
 	size_t x = 0;
@@ -282,8 +354,14 @@ static int nano433Receive(struct rawcode_t *r) {
 #endif
 		if(n > 0) {
 			if(c[0] == '\n') {
+				sendSync = 1;
 				break;
 			} else {
+				if(c[0] == 'v') {
+					startv = 1;
+					start = 1;
+					bytes = 0;
+				}
 				if(c[0] == 'c') {
 					start = 1;
 					bytes = 0;
@@ -294,24 +372,66 @@ static int nano433Receive(struct rawcode_t *r) {
 				}
 				if(c[0] == '@') {
 					buffer[bytes] = '\0';
-					x = strlen(&buffer[startp]);
-					s = startp;
-					nrpulses = 0;
-					for(y = startp; y < startp + (int)x; y++) {
-						if(buffer[y] == ',') {
-							buffer[y] = '\0';
-							pulses[nrpulses++] = atoi(&buffer[s]);
-							s = y+1;
+					if(startv == 1) {
+						start = 0;
+						startv = 0;
+						char **array = NULL;
+						int c = explode(&buffer[2], ",", &array), i = 0;
+						if(c == 7) {
+							if(!(minrawlen == atoi(array[0]) && maxrawlen == atoi(array[1]) && 
+							     mingaplen == atoi(array[2]) && maxgaplen == atoi(array[3]))) {
+								logprintf(LOG_ERR, "could not sync FW values");
+							}
+							firmware.version = atof(array[4]);
+							firmware.lpf = atof(array[5]);
+							firmware.hpf = atof(array[6]);
+
+							if(firmware.version > 0 && firmware.lpf > 0 && firmware.hpf > 0) {
+								registry_set_number("pilight.firmware.version", firmware.version, 0);
+								registry_set_number("pilight.firmware.lpf", firmware.lpf, 0);
+								registry_set_number("pilight.firmware.hpf", firmware.hpf, 0);
+
+								struct JsonNode *jmessage = json_mkobject();
+								struct JsonNode *jcode = json_mkobject();
+								json_append_member(jcode, "version", json_mknumber(firmware.version, 0));
+								json_append_member(jcode, "lpf", json_mknumber(firmware.lpf, 0));
+								json_append_member(jcode, "hpf", json_mknumber(firmware.hpf, 0));
+								json_append_member(jmessage, "values", jcode);
+								json_append_member(jmessage, "origin", json_mkstring("core"));
+								json_append_member(jmessage, "type", json_mknumber(FIRMWARE, 0));
+								char pname[17];
+								strcpy(pname, "pilight-firmware");
+								pilight.broadcast(pname, jmessage, FW);
+								json_delete(jmessage);
+								jmessage = NULL;
+							}						
 						}
+						if(c > 0) {
+							for(i=0;i<c;i++) {
+								FREE(array[i]);
+							}
+							FREE(array);
+						}
+					} else {
+						x = strlen(&buffer[startp]);
+						s = startp;
+						nrpulses = 0;
+						for(y = startp; y < startp + (int)x; y++) {
+							if(buffer[y] == ',') {
+								buffer[y] = '\0';
+								pulses[nrpulses++] = atoi(&buffer[s]);
+								s = y+1;
+							}
+						}
+						pulses[nrpulses++] = atoi(&buffer[s]);
+						x = strlen(&buffer[2]);
+						for(y = 2; y < 2 + x; y++) {
+							r->pulses[r->length++] = pulses[0];
+							r->pulses[r->length++] = pulses[buffer[y] - '0'];
+						}
+						bytes = 0;
+						return 0;
 					}
-					pulses[nrpulses++] = atoi(&buffer[s]);
-					x = strlen(&buffer[2]);
-					for(y = 2; y < 2 + x; y++) {
-						r->pulses[r->length++] = pulses[0];
-						r->pulses[r->length++] = pulses[buffer[y] - '0'];
-					}
-					bytes = 0;
-					return 0;
 				}
 				if(start == 1) {
 					buffer[bytes++] = c[0];
@@ -361,7 +481,7 @@ void nano433Init(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "433nano";
-	module->version = "0.12";
+	module->version = "0.13";
 	module->reqversion = "6.0";
 	module->reqcommit = "40";
 }

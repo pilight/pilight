@@ -51,7 +51,8 @@
 	#include "libs/wiringx/wiringX.h"
 #endif
 
-static unsigned short main_loop = 1, linefeed = 0;
+static unsigned short main_loop = 1;
+static unsigned short linefeed = 0;
 
 int main_gc(void) {
 	log_shell_disable();
@@ -96,8 +97,8 @@ void *receiveOOK(void *param) {
 		duration = hw->receiveOOK();
 		iLoop++;
 		if(duration > 0) {
-			if (linefeed) {
-				if (duration>5100) {
+			if(linefeed == 1) {
+				if(duration > 5100) {
 					printf(" %d -#: %d\n%s: ",duration, iLoop, hw->id);
 					iLoop = 0;
 				} else {
@@ -123,9 +124,11 @@ void *receivePulseTrain(void *param) {
 			break;
 		} else if(r.length > 0) {
 			for(i=0;i<r.length;i++) {
-				if (linefeed) {
+				if(linefeed == 1) {
 					printf(" %d", r.pulses[i]);
-					if (r.pulses[i]>5100) printf(" -# %d\n %s:",i,hw->id);
+					if(r.pulses[i] > 5100) {
+						printf(" -# %d\n %s:", i, hw->id);
+					}
 				} else {
 					printf("%s: %d\n", hw->id, r.pulses[i]);
 				}
