@@ -60,7 +60,7 @@ static void createMessage(int id, int state) {
 static void parseCode(void) {
 	int i = 0, binary[RAW_LENGTH/4];
 
-	for(i=0; i<ehome->rawlen; i+=4) {
+	for(i=0;i<ehome->rawlen-2;i+=4) {
 		if(ehome->raw[i+3] > (int)((double)AVG_PULSE_LENGTH*((double)PULSE_MULTIPLIER/2))) {
 			binary[i/4]=1;
 		} else {
@@ -204,7 +204,7 @@ void ehomeInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "ehome";
-	module->version = "0.7";
+	module->version = "0.8";
 	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }

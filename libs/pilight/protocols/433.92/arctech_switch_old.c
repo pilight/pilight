@@ -31,7 +31,7 @@
 #include "arctech_switch_old.h"
 
 #define PULSE_MULTIPLIER	3
-#define MIN_PULSE_LENGTH	320
+#define MIN_PULSE_LENGTH	310
 #define MAX_PULSE_LENGTH	405
 #define AVG_PULSE_LENGTH	335
 #define RAW_LENGTH				50
@@ -61,16 +61,11 @@ static void parseCode(void) {
 	int binary[RAW_LENGTH/4], x = 0, i = 0;
 	int len = (int)((double)AVG_PULSE_LENGTH*((double)PULSE_MULTIPLIER/2));
 
-	for(x=0;x<arctech_switch_old->rawlen;x+=4) {
-		if(arctech_switch_old->raw[x+2] > len) {
-			binary[i++] = 1;
-		} else if(x+3 < arctech_switch_old->rawlen && 
-		          arctech_switch_old->raw[x+3] < len && 
-							arctech_switch_old->raw[x+2] < len) {
-			/* Not arctech_switch_old */
-			return;
-		} else {
+	for(x=0;x<arctech_switch_old->rawlen-2;x+=4) {
+		if(arctech_switch_old->raw[x+3] > len) {
 			binary[i++] = 0;
+		} else {
+			binary[i++] = 1;
 		}
 	}
 
@@ -226,7 +221,7 @@ void arctechSwitchOldInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "arctech_switch_old";
-	module->version = "2.3";
+	module->version = "2.4";
 	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }

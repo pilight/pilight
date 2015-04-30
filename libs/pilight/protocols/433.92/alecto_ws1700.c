@@ -30,10 +30,10 @@
 #include "../../core/gc.h"
 #include "alecto_ws1700.h"
 
-#define PULSE_MULTIPLIER	15
+#define PULSE_MULTIPLIER	20
 #define MIN_PULSE_LENGTH	261
 #define AVG_PULSE_LENGTH	266
-#define MAX_PULSE_LENGTH	271
+#define MAX_PULSE_LENGTH	280
 #define RAW_LENGTH				74
 
 typedef struct settings_t {
@@ -62,7 +62,7 @@ static void parseCode(void) {
 	double humi_offset = 0.0, temp_offset = 0.0;
 	double temperature = 0.0, humidity = 0.0;
 
-	for(x=1;x<alecto_ws1700->rawlen-2;x+=2) {
+	for(x=1;x<alecto_ws1700->rawlen-1;x+=2) {
 		if(alecto_ws1700->raw[x] > (int)((double)AVG_PULSE_LENGTH*((double)PULSE_MULTIPLIER/2))) {
 			binary[i++] = 1;
 		} else {
@@ -201,7 +201,7 @@ void alectoWS1700Init(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "alecto_ws1700";
-	module->version = "2.1";
+	module->version = "2.2";
 	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }

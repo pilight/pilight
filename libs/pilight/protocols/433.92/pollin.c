@@ -61,7 +61,7 @@ static void createMessage(int systemcode, int unitcode, int state) {
 static void parseCode(void) {
 	int binary[RAW_LENGTH/4], x = 0, i = 0;
 
-	for(x=0;x<pollin->rawlen;x+=4) {
+	for(x=0;x<pollin->rawlen-2;x+=4) {
 		if(pollin->raw[x+3] > (int)((double)AVG_PULSE_LENGTH*((double)PULSE_MULTIPLIER/2))) {
 			binary[i++] = 1;
 		} else {
@@ -214,7 +214,7 @@ void pollinInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "pollin";
-	module->version = "2.2";
+	module->version = "2.3";
 	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }

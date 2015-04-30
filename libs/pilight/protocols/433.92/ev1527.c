@@ -60,7 +60,7 @@ static void createMessage(int unitcode, int state) {
 static void parseCode(void) {
 	int binary[RAW_LENGTH/2], x = 0, i = 0;
 
-	for(x=0;x<ev1527->rawlen;x+=2) {
+	for(x=0;x<ev1527->rawlen-2;x+=2) {
 		if(ev1527->raw[x+3] > (int)((double)AVG_PULSE_LENGTH*((double)PULSE_MULTIPLIER/2))) {
 			binary[i++] = 1;
 		} else {
@@ -99,7 +99,7 @@ void ev1527Init(void) {
 #if !defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "ev1527";
-	module->version = "0.6";
+	module->version = "0.7";
 	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }

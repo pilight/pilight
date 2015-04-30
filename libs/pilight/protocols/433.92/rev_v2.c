@@ -62,7 +62,7 @@ static void parseCode(void) {
 	char id[3];
 
 	/* Convert the one's and zero's into binary */
-	for(x=0; x<rev2_switch->rawlen; x+=4) {
+	for(x=0;x<rev2_switch->rawlen-2;x+=4) {
 		if(rev2_switch->raw[x+3] > (int)((double)AVG_PULSE_LENGTH*((double)PULSE_MULTIPLIER/2))) {
 			binary[x/4]=1;
 		} else if(rev2_switch->raw[x+0] > (int)((double)AVG_PULSE_LENGTH*((double)PULSE_MULTIPLIER/2))) {
@@ -255,7 +255,7 @@ void rev2Init(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "rev2_switch";
-	module->version = "0.12";
+	module->version = "0.13";
 	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }

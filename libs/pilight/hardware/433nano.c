@@ -99,7 +99,7 @@ void *syncFW(void *param) {
 	char send[MAXPULSESTREAMLENGTH+1];
 	int len = 0;
 	
-	memset(&send, '\0', MAXPULSESTREAMLENGTH+1);
+	memset(&send, '\0', sizeof(send));
 
 	struct protocols_t *tmp = protocols;
 	while(tmp) {
@@ -175,7 +175,7 @@ static int serial_interface_attribs(int fd, speed_t speed, tcflag_t parity) {
 }
 #endif
 
-static unsigned short int nano433HwInit(void) {	
+static unsigned short int nano433HwInit(void) {
 #ifdef _WIN32
 	COMMTIMEOUTS timeouts;
 	DCB port;
@@ -401,7 +401,9 @@ static int nano433Receive(struct rawcode_t *r) {
 								json_append_member(jmessage, "type", json_mknumber(FIRMWARE, 0));
 								char pname[17];
 								strcpy(pname, "pilight-firmware");
-								pilight.broadcast(pname, jmessage, FW);
+								if(pilight.broadcast != NULL) {
+									pilight.broadcast(pname, jmessage, FW);
+								}
 								json_delete(jmessage);
 								jmessage = NULL;
 							}						
