@@ -24,6 +24,7 @@
 #include <limits.h>
 #include <errno.h>
 #include <time.h>
+#include <sys/time.h>
 #include <math.h>
 #include <string.h>
 #include <pthread.h>
@@ -467,6 +468,33 @@ static int event_parse_hooks(char **rule, struct rules_t *obj, int depth, unsign
 		i++;
 	}
 	FREE(subrule);
+	return 0;
+}
+
+
+static int event_remove_hooks(char **rule, struct rules_t *obj, int depth) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
+	int hooks = 0;
+	char *tmp = *rule;
+	unsigned long len = strlen(tmp), i = 0;
+
+	while(tmp[i] != '\0') {
+		if(tmp[i] == '(') {
+			hooks++;
+		}
+		if(tmp[i] == ')') {
+			hooks--;
+		}
+
+		if(hooks == 0) {
+			memmove(&tmp[0], &tmp[i], len-i);
+			tmp[0] = '0';
+			tmp[len-i] = '\0';
+			break;
+		}
+		i++;
+	}
 	return 0;
 }
 
@@ -1328,7 +1356,11 @@ int event_parse_rule(char *rule, struct rules_t *obj, int depth, unsigned short 
 		if(condition[i] == '(') {
 			/* Subcondition */
 			if(condition[i-1] == '(' || condition[i-1] == ' ' || i == 0) {
-				error = event_parse_hooks(&condition, obj, depth+1, validate);
+				if(ltype == AND && skip == 1 && validate == 0) {
+					error = event_remove_hooks(&condition, obj, depth+1);
+				} else {
+					error = event_parse_hooks(&condition, obj, depth+1, validate);
+				}
 			/* Function */
 			} else {
 				error = event_parse_function(&condition, obj, validate);
@@ -1430,6 +1462,7 @@ void *events_loop(void *param) {
 	struct devices_t *dev = NULL;
 	struct JsonNode *jdevices = NULL, *jchilds = NULL;
 	struct rules_t *tmp_rules = NULL;
+	struct timeval tv;
 	char *str = NULL;
 	unsigned short match = 0;
 	unsigned int i = 0;
@@ -1461,9 +1494,16 @@ void *events_loop(void *param) {
 								if(jchilds->tag == JSON_STRING &&
 								   strcmp(jchilds->string_, tmp_rules->devices[i]) == 0) {
 									if(devices_get(jchilds->string_, &dev) == 0) {
-										dev->prevrule = dev->lastrule;
+										if(dev->lastrule == tmp_rules->nr && 
+											 tmp_rules->nr == dev->prevrule &&
+											 dev->lastrule == dev->prevrule) {
+											logprintf(LOG_ERR, "skipped rule #%d because of an infinite loop triggered by device %s", tmp_rules->nr, jchilds->string_);
+										} else {
+											match = 1;
+										}
+									} else {
+										match = 1;
 									}
-									match = 1;
 									break;
 								}
 							}
@@ -1471,33 +1511,17 @@ void *events_loop(void *param) {
 						}
 					}
 					if(match == 1 && tmp_rules->status == 0) {
+						clock_gettime(CLOCK_MONOTONIC, &tmp_rules->timestamp.first);
 						if(event_parse_rule(str, tmp_rules, 0, 0) == 0) {
 							if(tmp_rules->status == 1) {
 								logprintf(LOG_INFO, "executed rule: %s", tmp_rules->name);
-								if(jdevices != NULL) {
-									jchilds = json_first_child(jdevices);
-									while(jchilds) {
-										for(i=0;i<tmp_rules->nrdevices;i++) {
-											if(jchilds->tag == JSON_STRING &&
-												 strcmp(jchilds->string_, tmp_rules->devices[i]) == 0) {								
-												if(devices_get(jchilds->string_, &dev) == 0) {
-													/*
-													 * The rule has triggered itself.
-													 */
-													if(dev->lastrule == tmp_rules->nr && 
-													   tmp_rules->nr == dev->prevrule &&
-														 dev->lastrule == dev->prevrule) {
-														logprintf(LOG_ERR, "deactivated rule #%d because of an infinite loop triggered by device %s", tmp_rules->nr, jchilds->string_);
-														// tmp_rules->active = 0;
-													}
-												}
-											}
-										}
-										jchilds = jchilds->next;
-									}
-								}
 							}
 						}
+						clock_gettime(CLOCK_MONOTONIC, &tmp_rules->timestamp.second);
+						logprintf(LOG_DEBUG, "rule #%d was parsed in %.6f seconds", tmp_rules->nr,
+							((double)tmp_rules->timestamp.second.tv_sec + 1.0e-9*tmp_rules->timestamp.second.tv_nsec) - 
+							((double)tmp_rules->timestamp.first.tv_sec + 1.0e-9*tmp_rules->timestamp.first.tv_nsec));
+												
 						tmp_rules->status = 0;
 					}
 					FREE(str);

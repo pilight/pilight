@@ -218,7 +218,6 @@ static int checkValues(JsonNode *code) {
 			if(json_find_number(jchild, "gpio", &itmp) == 0) {
 #ifndef _WIN32
 				int gpio = (int)itmp;
-				int state = -1;
 				if(wiringXSetup() < 0) {
 					logprintf(LOG_ERR, "unable to setup wiringX") ;
 					return -1;

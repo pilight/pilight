@@ -411,7 +411,10 @@ int devices_update(char *protoname, JsonNode *json, enum origin_t origin, JsonNo
 									 * triggered again so infinite loops can be prevented.
 									 */
 									if(origin == ACTION) {
-										dptr->lastrule = dptr->action_thread->obj->rule->nr;
+										if(dptr->action_thread->obj != NULL) {
+											dptr->prevrule = dptr->lastrule;
+											dptr->lastrule = dptr->action_thread->obj->rule->nr;
+										}
 									} else {
 										dptr->lastrule = -1;
 										dptr->prevrule = -1;

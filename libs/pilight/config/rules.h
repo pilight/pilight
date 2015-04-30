@@ -45,6 +45,10 @@ typedef struct rules_t {
 	int nrdevices;
 	int nr;
 	int status;
+	struct {
+		struct timespec first;
+		struct timespec second;
+	}	timestamp;
 	unsigned short active;
 	/* Arguments to be send to the action */
 	struct rules_actions_t *actions;
