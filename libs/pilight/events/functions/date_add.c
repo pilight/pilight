@@ -32,11 +32,12 @@
 
 #include "../function.h"
 #include "../events.h"
-#include "../../core/options.h"
 #include "../../config/devices.h"
+#include "../../core/options.h"
 #include "../../core/log.h"
 #include "../../core/dso.h"
 #include "../../core/pilight.h"
+#include "../../core/datetime.h"
 #include "date_add.h"
 
 static struct units_t {
@@ -87,7 +88,7 @@ static int run(struct rules_t *obj, struct JsonNode *arguments, char **ret) {
 	int l = 0, i = 0, type = -1, match = 0;
 
 	memset(&values, 0, nrunits);
-	
+
 	if(childs == NULL) {
 		logprintf(LOG_ERR, "DATE_ADD two parameters e.g. DATE_ADD(datetime, 1 DAY)");
 		error = -1;
@@ -187,16 +188,17 @@ static int run(struct rules_t *obj, struct JsonNode *arguments, char **ret) {
 		}
 	}
 	add(&tm, values, type);
-	time_t t1 = mktime(&tm);
-#ifdef _WIN32
-	struct tm *tm1;
-	if((tm1 = localtime(&t1)) != NULL) {
-		strftime(p, BUFFER_SIZE, "\"%Y-%m-%d %H:%M:%S\"", tm1);
-#else
-	if(localtime_r(&t1, &tm) != NULL) {
-		strftime(p, BUFFER_SIZE, "\"%Y-%m-%d %H:%M:%S\"", &tm);
-#endif
-	}
+	
+	int year = tm.tm_year+1900;
+	int month = tm.tm_mon+1;
+	int day = tm.tm_mday;
+	int hour = tm.tm_hour;
+	int minute = tm.tm_min;
+	int second = tm.tm_sec;
+
+	datefix(&year, &month, &day, &hour, &minute, &second);
+		
+	snprintf(p, BUFFER_SIZE, "\"%04d-%02d-%02d %02d:%02d:%02d\"", year, month, day, hour, minute, second);
 
 close:
 	for(i=0;i<l;i++) {
@@ -218,7 +220,7 @@ void functionDateAddInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "DATE_ADD";
-	module->version = "1.0";
+	module->version = "1.1";
 	module->reqversion = "6.0";
 	module->reqcommit = "94";
 }
