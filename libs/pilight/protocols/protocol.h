@@ -98,6 +98,8 @@ typedef struct protocol_t {
 	struct protocol_threads_t *threads;
 
 	void (*parseCode)(void);
+	int *(*preAmbCode)(void);
+	int *(*postAmbCode)(void);
 	int (*validate)(void);
 	int (*createCode)(JsonNode *code);
 	int (*checkValues)(JsonNode *code);

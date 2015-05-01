@@ -695,6 +695,16 @@ void *send_code(void *param) {
 					pthread_mutex_unlock(&hw->lock);
 					pthread_cond_signal(&hw->signal);
 				}
+// preAmb support
+				if (protocol->preAmbCode != NULL) {
+					logprintf(LOG_DEBUG, "send preAmb % sequence", protocol->id);
+					if(hw->send(protocol->preAmbCode(), *protocol->preAmbCode(), 1) == 0) {
+						logprintf(LOG_DEBUG, "successfully send %s preAmb sequence", protocol->id);
+					} else {
+						logprintf(LOG_ERR, "failed to send %s preAmb sequence", protocol->id);
+					}
+				}
+// payload data
 				logprintf(LOG_DEBUG, "**** RAW CODE ****");
 				if(log_level_get() >= LOG_DEBUG) {
 					for(i=0;i<sendqueue->length;i++) {
@@ -708,6 +718,15 @@ void *send_code(void *param) {
 					logprintf(LOG_DEBUG, "successfully send %s code", protocol->id);
 				} else {
 					logprintf(LOG_ERR, "failed to send code");
+				}
+// postAmb support
+				if (protocol->postAmbCode != NULL) {
+					logprintf(LOG_DEBUG, "send postAmb % sequence", protocol->id);
+					if(hw->send(protocol->postAmbCode(), *protocol->postAmbCode(), 1) == 0) {
+						logprintf(LOG_DEBUG, "successfully send %s preAmb sequence", protocol->id);
+					} else {
+						logprintf(LOG_ERR, "failed to send %s preAmb sequence", protocol->id);
+					}
 				}
 				if(strcmp(protocol->id, "raw") == 0) {
 					int plslen = sendqueue->code[sendqueue->length-1]/PULSE_DIV;
