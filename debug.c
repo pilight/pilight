@@ -96,10 +96,7 @@ void *receivePulseTrain(void *param) {
 	int i = 0;
 
 	int pulselen = 0;
-	int code[MAXPULSESTREAMLENGTH] = {0};
-	int binary[MAXPULSESTREAMLENGTH/2] = {0};
 	int pulse = 0;
-	int binaryLength = 0;
 
 	struct rawcode_t r;
 	struct tm tm;
@@ -109,11 +106,8 @@ void *receivePulseTrain(void *param) {
 
 	while(main_loop) {
 		memset(&r.pulses, 0, MAXPULSESTREAMLENGTH);
-		memset(&code, '\0', MAXPULSESTREAMLENGTH);
-		memset(&binary, '\0', MAXPULSESTREAMLENGTH/2);
 		memset(&tm, '\0', sizeof(struct tm));
 		pulse = 0;
-		binaryLength = 0;
 		inner_loop = 1;
 
 		i = 0;
@@ -134,23 +128,6 @@ void *receivePulseTrain(void *param) {
 					}
 				}
 
-				/* Convert the raw code into binary code */
-				for(i=0;i<r.length;i++) {
-					if((unsigned int)r.pulses[i] > (pulse-pulselen)) {
-						code[i]=1;
-					} else {
-						code[i]=0;
-					}
-				}
-				for(i=2;i<r.length; i+=4) {
-					if(code[i+1] == 1) {
-						binary[i/4]=1;
-					} else {
-						binary[i/4]=0;
-					}
-				}
-
-				binaryLength = (int)((float)i/4);
 				if(normalize(pulse, pulselen) > 0 && r.length > 25) {
 					/* Print everything */
 					printf("--[RESULTS]--\n");
@@ -173,17 +150,11 @@ void *receivePulseTrain(void *param) {
 					printf("hardware:\t%s\n", hw->id);
 					printf("pulse:\t\t%d\n", normalize(pulse, pulselen));
 					printf("rawlen:\t\t%d\n", r.length);
-					printf("binlen:\t\t%d\n", binaryLength);
 					printf("pulselen:\t%d\n", pulselen);
 					printf("\n");
 					printf("Raw code:\n");
 					for(i=0;i<r.length;i++) {
 						printf("%d ", r.pulses[i]);
-					}
-					printf("\n");
-					printf("Binary code:\n");
-					for(i=0;i<binaryLength;i++) {
-						printf("%d",binary[i]);
 					}
 					printf("\n");
 				}
@@ -203,12 +174,9 @@ void *receiveOOK(void *param) {
 	int bit = 0;
 	int raw[MAXPULSESTREAMLENGTH] = {0};
 	int pRaw[MAXPULSESTREAMLENGTH] = {0};
-	int code[MAXPULSESTREAMLENGTH] = {0};
-	int binary[MAXPULSESTREAMLENGTH/2] = {0};
 	int footer = 0;
 	int pulse = 0;
 	int rawLength = 0;
-	int binaryLength = 0;
 
 	struct tm tm;
 	time_t now = 0, later = 0;
@@ -218,15 +186,12 @@ void *receiveOOK(void *param) {
 	while(main_loop) {
 		memset(&raw, '\0', MAXPULSESTREAMLENGTH);
 		memset(&pRaw, '\0', MAXPULSESTREAMLENGTH);
-		memset(&code, '\0', MAXPULSESTREAMLENGTH);
-		memset(&binary, '\0', MAXPULSESTREAMLENGTH/2);
 		memset(&tm, '\0', sizeof(struct tm));
 		recording = 1;
 		bit = 0;
 		footer = 0;
 		pulse = 0;
 		rawLength = 0;
-		binaryLength = 0;
 		inner_loop = 1;
 		pulselen = 0;
 
@@ -235,7 +200,7 @@ void *receiveOOK(void *param) {
 		y = 0;
 		time(&now);
 
-		while(inner_loop && hw->receiveOOK) {
+		while(inner_loop == 1 && hw->receiveOOK != NULL) {
 			duration = hw->receiveOOK();
 			time(&later);
 			if(difftime(later, now) > 1) {
@@ -296,23 +261,6 @@ void *receiveOOK(void *param) {
 			fflush(stdout);
 		}
 
-		/* Convert the raw code into binary code */
-		for(i=0;i<rawLength;i++) {
-			if((unsigned int)raw[i] > (pulse-pulselen)) {
-				code[i]=1;
-			} else {
-				code[i]=0;
-			}
-		}
-		for(i=2;i<rawLength; i+=4) {
-			if(code[i+1] == 1) {
-				binary[i/4]=1;
-			} else {
-				binary[i/4]=0;
-			}
-		}
-
-		binaryLength = (int)((float)i/4);
 		if(normalize(pulse, pulselen) > 0 && rawLength > 25) {
 			/* Print everything */
 			printf("--[RESULTS]--\n");
@@ -335,17 +283,11 @@ void *receiveOOK(void *param) {
 			printf("hardware:\t%s\n", hw->id);
 			printf("pulse:\t\t%d\n", normalize(pulse, pulselen));
 			printf("rawlen:\t\t%d\n", rawLength);
-			printf("binlen:\t\t%d\n", binaryLength);
 			printf("pulselen:\t%d\n", pulselen);
 			printf("\n");
 			printf("Raw code:\n");
 			for(i=0;i<rawLength;i++) {
 				printf("%d ",normalize(raw[i], pulselen)*pulselen);
-			}
-			printf("\n");
-			printf("Binary code:\n");
-			for(i=0;i<binaryLength;i++) {
-				printf("%d",binary[i]);
 			}
 			printf("\n");
 		}
