@@ -56,6 +56,8 @@ Change Log:
 #define PULSE_SOMFY_SHORT	640	// Somfy Docu Clock and short pulse duration
 //#define	PULSE_SOMFY_SHORT	807	// Clock and short pulse duration
 #define PULSE_SOMFY_SYNC	PULSE_SOMFY_SHORT*4	// 2 pairs 1st-, 7 pairs Repeated-Pulses
+#define PULSE_SOMFY_SYNC_L	PULSE_SOMFY_SHORT-256
+#define PULSE_SOMFY_SYNC_H	PULSE_SOMFY_SHORT+256
 #define PULSE_SOMFY_SHORT_L	PULSE_SOMFY_SHORT-192
 #define PULSE_SOMFY_SHORT_H	PULSE_SOMFY_SHORT+192
 #define PULSE_SOMFY_LONG	1280	// Somfy Docu long pulse duration
@@ -125,8 +127,8 @@ static int validate(void) {
 		(somfy_rts->rawlen <  MAXRAWLEN_SOMFY_PROT)) {
 		if((somfy_rts->raw[somfy_rts->rawlen-1] > PULSE_SOMFY_FOOTER_L) &&
 			(somfy_rts->raw[somfy_rts->rawlen-1] < PULSE_SOMFY_FOOTER_H)) {
-			if((somfy_rts->raw[2] > PULSE_SOMFY_SHORT_L) &&
-				(somfy_rts->raw[2] < PULSE_SOMFY_SHORT_H)) {
+			if((somfy_rts->raw[2] > PULSE_SOMFY_SYNC_L) &&
+				(somfy_rts->raw[2] < PULSE_SOMFY_SYNC_H)) {
 					return 0;
 			}
 		}
