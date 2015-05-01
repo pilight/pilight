@@ -98,6 +98,16 @@ void atomicunlock(void) {
 	pthread_mutex_unlock(&atomic_lock);
 }
 
+void array_free(char ***array, int len) {
+	int i = 0;
+	if(len > 0) {
+		for(i=0;i<len;i++) {
+			FREE((*array)[i]);
+		}
+		FREE((*array));
+	}
+}
+
 int inetdevs(char ***array) {
 	unsigned int nrdevs = 0, i = 0, match = 0;
 

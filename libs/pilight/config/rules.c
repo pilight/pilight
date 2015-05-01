@@ -85,9 +85,15 @@ static int rules_parse(JsonNode *root) {
 					node->devices = NULL;
 					node->actions = NULL;
 					node->nr = i;
+					clock_gettime(CLOCK_MONOTONIC, &node->timestamp.first);
 					if(event_parse_rule(rule, node, 0, 1) == -1) {
 						have_error = 1;
 					}
+					clock_gettime(CLOCK_MONOTONIC, &node->timestamp.second);
+					logprintf(LOG_INFO, "rule #%d was parsed in %.6f seconds", node->nr,
+						((double)node->timestamp.second.tv_sec + 1.0e-9*node->timestamp.second.tv_nsec) - 
+						((double)node->timestamp.first.tv_sec + 1.0e-9*node->timestamp.first.tv_nsec));
+
 					node->status = 0;
 					node->rule = MALLOC(strlen(rule)+1);
 					if(node->rule == NULL) {

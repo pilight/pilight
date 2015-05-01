@@ -77,7 +77,7 @@ static void add(struct tm *tm, int *values, int type) {
 	}
 }
 
-static int run(struct rules_t *obj, struct JsonNode *arguments, char **ret) {
+static int run(struct rules_t *obj, struct JsonNode *arguments, char **ret, enum origin_t origin) {
 	struct JsonNode *childs = json_first_child(arguments);
 	struct devices_t *dev = NULL;
 	struct devices_settings_t *opt = NULL;
@@ -96,7 +96,9 @@ static int run(struct rules_t *obj, struct JsonNode *arguments, char **ret) {
 	}
 
 	if(devices_get(childs->string_, &dev) == 0) {
-		event_cache_device(obj, childs->string_);
+		if(origin == RULE) {
+			event_cache_device(obj, childs->string_);
+		}
 		protocol = dev->protocols;
 		if(protocol->listener->devtype == DATETIME) {
 			opt = dev->settings;
@@ -201,10 +203,7 @@ static int run(struct rules_t *obj, struct JsonNode *arguments, char **ret) {
 	snprintf(p, BUFFER_SIZE, "\"%04d-%02d-%02d %02d:%02d:%02d\"", year, month, day, hour, minute, second);
 
 close:
-	for(i=0;i<l;i++) {
-		FREE(array[i]);
-	}
-	FREE(array);
+	array_free(&array, l);
 	return error;
 }
 

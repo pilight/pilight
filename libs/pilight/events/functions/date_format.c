@@ -40,7 +40,7 @@
 #include "../../core/datetime.h"
 #include "date_format.h"
 
-static int run(struct rules_t *obj, struct JsonNode *arguments, char **ret) {
+static int run(struct rules_t *obj, struct JsonNode *arguments, char **ret, enum origin_t origin) {
 	struct JsonNode *childs = json_first_child(arguments);
 	struct devices_t *dev = NULL;
 	struct devices_settings_t *opt = NULL;
@@ -54,7 +54,9 @@ static int run(struct rules_t *obj, struct JsonNode *arguments, char **ret) {
 	}
 
 	if(devices_get(childs->string_, &dev) == 0) {
-		event_cache_device(obj, childs->string_);
+		if(origin == RULE) {
+			event_cache_device(obj, childs->string_);
+		}
 		protocol = dev->protocols;
 		if(protocol->listener->devtype == DATETIME) {
 			opt = dev->settings;
@@ -115,27 +117,27 @@ static int run(struct rules_t *obj, struct JsonNode *arguments, char **ret) {
 			logprintf(LOG_ERR, "DATE_FORMAT is unable to parse \"%s\" as \"%s\" ", datetime, format);
 			return -1;
 		}
-		int year = tm.tm_year+1900;
-		int month = tm.tm_mon+1;
-		int day = tm.tm_mday;
-		int hour = tm.tm_hour;
-		int minute = tm.tm_min;
-		int second = tm.tm_sec;
-		int weekday = tm.tm_wday;
-
-		datefix(&year, &month, &day, &hour, &minute, &second);
-		
-		tm.tm_year = year-1900;
-		tm.tm_mon = month-1;
-		tm.tm_mday = day;
-		tm.tm_hour = hour;
-		tm.tm_min = minute;
-		tm.tm_sec = second;
-		tm.tm_wday = weekday;
-
-		strftime(p, BUFFER_SIZE, childs->string_, &tm);
-		
 	}
+	int year = tm.tm_year+1900;
+	int month = tm.tm_mon+1;
+	int day = tm.tm_mday;
+	int hour = tm.tm_hour;
+	int minute = tm.tm_min;
+	int second = tm.tm_sec;
+	int weekday = tm.tm_wday;
+
+	datefix(&year, &month, &day, &hour, &minute, &second);
+	
+	tm.tm_year = year-1900;
+	tm.tm_mon = month-1;
+	tm.tm_mday = day;
+	tm.tm_hour = hour;
+	tm.tm_min = minute;
+	tm.tm_sec = second;
+	tm.tm_wday = weekday;
+
+	strftime(p, BUFFER_SIZE, childs->string_, &tm);
+
 	return 0;
 }
 

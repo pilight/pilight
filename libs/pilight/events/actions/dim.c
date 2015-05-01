@@ -45,14 +45,6 @@ static struct units_t {
 	{ "DAY", 5 }
 };
 
-static void array_free(int len, char ***array) {
-	int i = 0;
-	for(i=0;i<len;i++) {
-		FREE((*array)[i]);
-	}
-	FREE((*array));
-}
-
 static int checkArguments(struct rules_actions_t *obj) {
 	struct JsonNode *jdevice = NULL;
 	struct JsonNode *jto = NULL;
@@ -72,7 +64,6 @@ static int checkArguments(struct rules_actions_t *obj) {
 	struct JsonNode *jdchild = NULL;
 	struct JsonNode *jechild = NULL;
 	struct JsonNode *jfchild = NULL;
-	struct varcont_t v;
 	char **array = NULL;
 	double nr1 = 0.0, nr2 = 0.0, nr3 = 0.0, nr4 = 0.0, nr5 = 0.0, nr6 = 0.0;
 	double dimfrom = 0.0, dimto = 0.0;
@@ -146,11 +137,6 @@ static int checkArguments(struct rules_actions_t *obj) {
 		jachild = json_first_child(javalues);
 		while(jachild) {
 			nrvalues++;
-			if(jachild->tag == JSON_STRING) {
-				if(event_lookup_variable(jachild->string_, obj->rule, JSON_NUMBER, &v, 1, ACTION) == -1) {
-					return -1;
-				}
-			}
 			jachild = jachild->next;
 		}
 	}
@@ -172,23 +158,23 @@ static int checkArguments(struct rules_actions_t *obj) {
 						for(i=0;i<nrunits;i++) {
 							if(strcmp(array[1], units[i].name) == 0) {
 								match = 1;
-								if(event_lookup_variable(array[0], obj->rule, JSON_NUMBER, &v, 1, ACTION) == -1) {
+								if(isNumeric(array[0]) != 0) {
 									logprintf(LOG_ERR, "switch action \"FOR\" requires a number and a unit e.g. \"1 MINUTE\"");
-									array_free(l, &array);
+									array_free(&array, l);
 									return -1;
 								}
 								break;
 							}
 						}
+						array_free(&array, l);
 						if(match == 0) {
 							logprintf(LOG_ERR, "switch action \"%s\" is not a valid unit", array[1]);
-							array_free(l, &array);
 							return -1;
 						}
 					} else {
 						logprintf(LOG_ERR, "switch action \"FOR\" requires a number and a unit e.g. \"1 MINUTE\"");
 						if(l > 0) {
-							array_free(l, &array);
+							array_free(&array, l);
 						}
 						return -1;
 					}
@@ -215,23 +201,23 @@ static int checkArguments(struct rules_actions_t *obj) {
 						for(i=0;i<nrunits;i++) {
 							if(strcmp(array[1], units[i].name) == 0) {
 								match = 1;
-								if(event_lookup_variable(array[0], obj->rule, JSON_NUMBER, &v, 1, ACTION) == -1) {
+								if(isNumeric(array[0]) != 0) {
 									logprintf(LOG_ERR, "switch action \"AFTER\" requires a number and a unit e.g. \"1 MINUTE\"");
-									array_free(l, &array);
+									array_free(&array, l);
 									return -1;
 								}
 								break;
 							}
 						}
+						array_free(&array, l);
 						if(match == 0) {
 							logprintf(LOG_ERR, "switch action \"%s\" is not a valid unit", array[1]);
-							array_free(l, &array);
 							return -1;
 						}
 					} else {
 						logprintf(LOG_ERR, "switch action \"AFTER\" requires a number and a unit e.g. \"1 MINUTE\"");
 						if(l > 0) {
-							array_free(l, &array);
+							array_free(&array, l);
 						}
 						return -1;
 					}
@@ -251,11 +237,6 @@ static int checkArguments(struct rules_actions_t *obj) {
 			jechild = json_first_child(jevalues);
 			while(jechild) {
 				nrvalues++;
-				if(jechild->tag == JSON_STRING) {
-					if(event_lookup_variable(jechild->string_, obj->rule, JSON_NUMBER, &v, 1, ACTION) == -1) {
-						return -1;
-					}
-				}
 				jechild = jechild->next;
 			}
 		}
@@ -278,23 +259,23 @@ static int checkArguments(struct rules_actions_t *obj) {
 						for(i=0;i<nrunits;i++) {
 							if(strcmp(array[1], units[i].name) == 0) {
 								match = 1;
-								if(event_lookup_variable(array[0], obj->rule, JSON_NUMBER, &v, 1, ACTION) == -1) {
+								if(isNumeric(array[0]) != 0) {
 									logprintf(LOG_ERR, "switch action \"IN\" requires a number and a unit e.g. \"1 MINUTE\"");
-									array_free(l, &array);
+									array_free(&array, l);
 									return -1;
 								}
 								break;
 							}
 						}
+						array_free(&array, l);
 						if(match == 0) {
 							logprintf(LOG_ERR, "switch action \"%s\" is not a valid unit", array[1]);
-							array_free(l, &array);
 							return -1;
 						}
 					} else {
 						logprintf(LOG_ERR, "switch action \"IN\" requires a number and a unit e.g. \"1 MINUTE\"");
 						if(l > 0) {
-							array_free(l, &array);
+							array_free(&array, l);
 						}
 						return -1;
 					}
@@ -321,11 +302,6 @@ static int checkArguments(struct rules_actions_t *obj) {
 							if(jachild->tag == JSON_NUMBER) {
 								dimto = jachild->number_;
 								match = 1;
-							} else if(jachild->tag == JSON_STRING) {
-								if(event_lookup_variable(jachild->string_, obj->rule, JSON_NUMBER, &v, 1, ACTION) != -1) {
-									dimto = v.number_;
-									match = 1;
-								}
 							}
 							if(match == 1) {
 								struct protocols_t *tmp_protocols = dev->protocols;
@@ -375,13 +351,13 @@ static int checkArguments(struct rules_actions_t *obj) {
 									return -1;
 								}
 							} else {
-								logprintf(LOG_ERR, "device \"%s\" doesn't exists", jbchild->string_);
+								logprintf(LOG_ERR, "internal error 1 in dim action", jbchild->string_);
 								return -1;
 							}
 						jachild = jachild->next;
 						}
 					} else {
-						logprintf(LOG_ERR, "internal error 1 in dim action", jbchild->string_);
+						logprintf(LOG_ERR, "internal error 2 in dim action", jbchild->string_);
 						return -1;
 					}
 
@@ -392,11 +368,6 @@ static int checkArguments(struct rules_actions_t *obj) {
 							if(jechild->tag == JSON_NUMBER) {
 								dimfrom = jechild->number_;
 								match = 1;
-							} else if(jechild->tag == JSON_STRING) {
-								if(event_lookup_variable(jechild->string_, obj->rule, JSON_NUMBER, &v, 1, ACTION) != -1) {
-									dimfrom = v.number_;
-									match = 1;
-								}
 							}
 							if(match == 1) {
 								struct protocols_t *tmp_protocols = dev->protocols;
@@ -453,17 +424,17 @@ static int checkArguments(struct rules_actions_t *obj) {
 						}
 					}
 				} else {
-					logprintf(LOG_ERR, "device \"%s\" doesn't exists", jbchild->string_);
+					logprintf(LOG_ERR, "internal error 3 in dim action", jbchild->string_);
 					return -1;
 				}
 			} else {
-				logprintf(LOG_ERR, "internal error 3 in dim action", jbchild->string_);
+				logprintf(LOG_ERR, "internal error 4 in dim action", jbchild->string_);
 				return -1;
 			}
 			jbchild = jbchild->next;
 		}
 	} else {
-		logprintf(LOG_ERR, "internal error 4 in dim action", jbchild->string_);
+		logprintf(LOG_ERR, "internal error 5 in dim action", jbchild->string_);
 		return -1;
 	}
 	return 0;
@@ -471,7 +442,6 @@ static int checkArguments(struct rules_actions_t *obj) {
 
 static void *thread(void *param) {
 	struct event_action_thread_t *pth = (struct event_action_thread_t *)param;
-	struct rules_actions_t *obj = pth->obj;
 	struct JsonNode *json = pth->obj->arguments;
 	struct JsonNode *jedimlevel = NULL;
 	struct JsonNode *jsdimlevel = NULL;
@@ -489,7 +459,6 @@ static void *thread(void *param) {
 	struct JsonNode *jiseconds = NULL;
 	struct JsonNode *jvalues = NULL;
 	char *old_state = NULL, **array = NULL;
-	struct varcont_t v;
 	double dimlevel = 0.0, old_dimlevel = 0.0, new_dimlevel = 0.0, cur_dimlevel = 0.0;
 	int seconds_after = 0, seconds_for = 0, seconds_in = 0, has_in = 0, dimdiff = 0;
 	int type_for = 0, type_after = 0, type_in = 0;
@@ -508,17 +477,13 @@ static void *thread(void *param) {
 					if(l == 2) {
 						for(i=0;i<nrunits;i++) {
 							if(strcmp(array[1], units[i].name) == 0) {
-								if(event_lookup_variable(array[0], obj->rule, JSON_NUMBER, &v, 1, ACTION) != -1) {
-									seconds_for = (int)v.number_;
-									type_for = units[i].id;
-								}
+								seconds_for = atoi(array[0]);
+								type_for = units[i].id;
 								break;
 							}
 						}
 					}
-					if(l > 0) {
-						array_free(l, &array);
-					}
+					array_free(&array, l);
 				}
 			}
 		}
@@ -533,17 +498,13 @@ static void *thread(void *param) {
 					if(l == 2) {
 						for(i=0;i<nrunits;i++) {
 							if(strcmp(array[1], units[i].name) == 0) {
-								if(event_lookup_variable(array[0], obj->rule, JSON_NUMBER, &v, 1, ACTION) != -1) {
-									seconds_after = (int)v.number_;
-									type_after = units[i].id;
-								}
+								seconds_after = atoi(array[0]);
+								type_after = units[i].id;
 								break;
 							}
 						}
 					}
-					if(l > 0) {
-						array_free(l, &array);
-					}
+					array_free(&array, l);
 				}
 			}
 		}
@@ -558,17 +519,15 @@ static void *thread(void *param) {
 					if(l == 2) {
 						for(i=0;i<nrunits;i++) {
 							if(strcmp(array[1], units[i].name) == 0) {
-								if(event_lookup_variable(array[0], obj->rule, JSON_NUMBER, &v, 1, ACTION) != -1) {
-									seconds_in = (int)v.number_;
-									type_in = units[i].id;
-									has_in = 1;
-								}
+								seconds_in = atoi(array[1]);
+								type_in = units[i].id;
+								has_in = 1;
 								break;
 							}
 						}
 					}
 					if(l > 0) {
-						array_free(l, &array);
+						array_free(&array, l);
 					}
 				}
 			}
@@ -653,10 +612,6 @@ static void *thread(void *param) {
 			if(jsdimlevel != NULL) {
 				if(jsdimlevel->tag == JSON_NUMBER) {
 					old_dimlevel = (int)jsdimlevel->number_;
-				} else if(jsdimlevel->tag == JSON_STRING) {
-					if(event_lookup_variable(jsdimlevel->string_, obj->rule, JSON_NUMBER, &v, 0, ACTION) != -1) {
-						old_dimlevel = (int)v.number_;
-					}
 				}
 			}
 		}
@@ -670,12 +625,6 @@ static void *thread(void *param) {
 					new_dimlevel = (int)jedimlevel->number_;
 					dimlevel = (int)jedimlevel->number_;
 					strcpy(state,  "on");
-				} else if(jedimlevel->tag == JSON_STRING) {
-					if(event_lookup_variable(jedimlevel->string_, obj->rule, JSON_NUMBER, &v, 0, ACTION) != -1) {
-						new_dimlevel = (int)v.number_;
-						dimlevel = (int)v.number_;
-						strcpy(state,  "on");
-					}
 				}
 			}
 		}
@@ -876,8 +825,8 @@ void actionDimInit(void) {
 	event_action_register(&action_dim, "dim");
 
 	options_add(&action_dim->options, 'a', "DEVICE", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_STRING, NULL, NULL);
-	options_add(&action_dim->options, 'b', "TO", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_STRING | JSON_NUMBER, NULL, NULL);
-	options_add(&action_dim->options, 'c', "FROM", OPTION_OPT_VALUE, DEVICES_VALUE, JSON_STRING | JSON_NUMBER, NULL, NULL);
+	options_add(&action_dim->options, 'b', "TO", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, NULL);
+	options_add(&action_dim->options, 'c', "FROM", OPTION_OPT_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, NULL);
 	options_add(&action_dim->options, 'd', "FOR", OPTION_OPT_VALUE, DEVICES_VALUE, JSON_STRING, NULL, NULL);
 	options_add(&action_dim->options, 'e', "AFTER", OPTION_OPT_VALUE, DEVICES_VALUE, JSON_STRING, NULL, NULL);
 	options_add(&action_dim->options, 'f', "IN", OPTION_OPT_VALUE, DEVICES_VALUE, JSON_STRING, NULL, NULL);
@@ -891,7 +840,7 @@ void compatibility(struct module_t *module) {
 	module->name = "dim";
 	module->version = "3.0";
 	module->reqversion = "6.0";
-	module->reqcommit = "117";
+	module->reqcommit = "148";
 }
 
 void init(void) {

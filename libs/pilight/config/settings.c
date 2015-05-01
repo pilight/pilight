@@ -466,6 +466,7 @@ static int settings_parse(JsonNode *root) {
 		} else if(strcmp(jsettings->key, "protocol-root") == 0 ||
 							strcmp(jsettings->key, "hardware-root") == 0 ||
 							strcmp(jsettings->key, "action-root") == 0 ||
+							strcmp(jsettings->key, "function-root") == 0 ||							
 							strcmp(jsettings->key, "operator-root") == 0) {
 			if(jsettings->tag != JSON_STRING) {
 				logprintf(LOG_ERR, "config setting \"%s\" must contain a valid path", jsettings->key);

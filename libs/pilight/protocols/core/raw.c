@@ -45,11 +45,9 @@ static int createCode(JsonNode *code) {
 	n = explode(rcode, " ", &array);
 	for(i=0;i<n;i++) {
 		raw->raw[i]=atoi(array[i]);
-		FREE(array[i]);
 	}
-	if(n > 0) {
-		FREE(array);
-	}
+	array_free(&array, n);
+
 	raw->rawlen=(int)i;
 	return EXIT_SUCCESS;
 }

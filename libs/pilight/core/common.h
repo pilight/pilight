@@ -42,6 +42,7 @@ int inet_pton(int af, const char *src, void *dst);
 int isrunning(const char *program);
 #endif
 
+void array_free(char ***array, int len);
 int isrunning(const char *program);
 void atomicinit(void);
 void atomiclock(void);

@@ -376,7 +376,7 @@ static int nano433Receive(struct rawcode_t *r) {
 						start = 0;
 						startv = 0;
 						char **array = NULL;
-						int c = explode(&buffer[2], ",", &array), i = 0;
+						int c = explode(&buffer[2], ",", &array);
 						if(c == 7) {
 							if(!(minrawlen == atoi(array[0]) && maxrawlen == atoi(array[1]) && 
 							     mingaplen == atoi(array[2]) && maxgaplen == atoi(array[3]))) {
@@ -408,12 +408,7 @@ static int nano433Receive(struct rawcode_t *r) {
 								jmessage = NULL;
 							}						
 						}
-						if(c > 0) {
-							for(i=0;i<c;i++) {
-								FREE(array[i]);
-							}
-							FREE(array);
-						}
+						array_free(&array, c);
 					} else {
 						x = strlen(&buffer[startp]);
 						s = startp;

@@ -162,7 +162,7 @@ static void *thread(void *param) {
 								}
 								if(nrspace >= 3) {
 									char **array = NULL;
-									unsigned int q = explode(nlarray[t], " ", &array), h = 0;
+									unsigned int q = explode(nlarray[t], " ", &array);
 									if(q == 4) {
 										char *code1 = array[0];
 										char *rep = array[1];
@@ -191,20 +191,10 @@ static void *thread(void *param) {
 										json_delete(lirc->message);
 										lirc->message = NULL;
 									}
-									if(q > 0) {
-										for(h=0;h<q;h++) {
-											FREE(array[h]);
-										}
-										FREE(array);
-									}
+									array_free(&array, q);
 								}
 							}
-							if(t > 0) {
-								for(t=0;t<e;t++) {
-									FREE(nlarray[t]);
-								}
-								FREE(nlarray);
-							}
+							array_free(&nlarray, t);
 							memset(recvBuff, '\0', BUFFER_SIZE);
 						}
 					}

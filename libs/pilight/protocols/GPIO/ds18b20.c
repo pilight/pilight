@@ -145,7 +145,7 @@ static void *ds18b20Parse(void *param) {
 								w1valid = 0;
 
 								char **array = NULL;
-								unsigned int n = explode(content, "\n", &array), q = 0;
+								unsigned int n = explode(content, "\n", &array);
 								if(n > 0) {
 									sscanf(array[0], "%*x %*x %*x %*x %*x %*x %*x %*x %*x : crc=%*x %s", crcVar);
 									if(strncmp(crcVar, "YES", 3) == 0 && n > 1) {
@@ -154,10 +154,7 @@ static void *ds18b20Parse(void *param) {
 										w1temp = (w1temp/1000)+temp_offset;
 									}
 								}
-								for(q=0;q<n;q++) {
-									FREE(array[q]);
-								}
-								FREE(array);
+								array_free(&array, n);
 
 								if(w1valid) {
 									ds18b20->message = json_mkobject();

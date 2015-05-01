@@ -1700,11 +1700,8 @@ void *clientize(void *param) {
 					}
 					json_delete(json);
 				}
-				FREE(array[q]);
 			}
-			if(z > 0) {
-				FREE(array);
-			}
+			array_free(&array, z);
 		}
 	}
 

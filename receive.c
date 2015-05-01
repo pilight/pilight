@@ -189,11 +189,8 @@ int main(int argc, char **argv) {
 			printf("%s\n", content);
 			json_delete(jcontent);
 			json_free(content);
-			FREE(array[i]);
 		}
-		if(n > 0) {
-			FREE(array);
-		}
+		array_free(&array, n);
 	}
 
 close:

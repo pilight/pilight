@@ -122,6 +122,7 @@ static int checkArguments(struct rules_actions_t *obj) {
 			regfree(&regex);
 			return -1;
 		}
+		regfree(&regex);		
 #endif
 	}
 	// Check if mandatory settings are present in config

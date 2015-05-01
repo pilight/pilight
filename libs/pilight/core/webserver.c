@@ -50,7 +50,7 @@
 #include "fcache.h"
 
 #ifdef WEBSERVER_SSL
-static int webserver_ssl_port = 443;
+static int webserver_ssl_port = WEBSERVER_SSL_PORT;
 #endif
 static int webserver_port = WEBSERVER_PORT;
 static int webserver_cache = 1;
@@ -441,12 +441,7 @@ static int webserver_request_handler(struct mg_connection *conn) {
 						break;
 					}
 				}
-				for(q=0;q<n;q++) {
-					FREE(array[q]);
-				}
-				if(n > 0) {
-					FREE(array);
-				}
+				array_free(&array, n);
 			} else if(webserver_root != NULL && webgui_tpl != NULL && conn->uri != NULL) {
 				size_t wlen = strlen(webserver_root)+strlen(webgui_tpl)+strlen(conn->uri)+2;
 				request = MALLOC(wlen);
@@ -605,11 +600,8 @@ static int webserver_request_handler(struct mg_connection *conn) {
 						for(q=0;q<n;q++) {
 							sscanf(array[q], "Content-type:%*[ ]%s%*[ \n\r]", type);
 							sscanf(array[q], "Content-Type:%*[ ]%s%*[ \n\r]", type);
-							FREE(array[q]);
 						}
-						if(n > 0) {
-							FREE(array);
-						}
+						array_free(&array, n);
 
 						if(strstr(header, "Status: 302 Moved Temporarily") != NULL) {
 							webserver_create_minimal_header(&p, "302 Moved Temporarily", (unsigned int)olen);
@@ -968,11 +960,8 @@ void *webserver_clientize(void *param) {
 					unsigned int n = explode(recvBuff, "\n", &array), i = 0;
 					for(i=0;i<n;i++) {
 						webserver_queue(array[i]);
-						FREE(array[i]);
 					}
-					if(n > 0) {
-						FREE(array);
-					}
+					array_free(&array, n);
 				}
 			} else {
 				sleep(1);

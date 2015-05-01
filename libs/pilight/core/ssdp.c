@@ -186,11 +186,8 @@ int ssdp_seek(struct ssdp_list_t **ssdp_list) {
 				if(match == 0 && sscanf(array[q], "Location:%hu.%hu.%hu.%hu:%hu\r\n", &nip[0], &nip[1], &nip[2], &nip[3], &port) > 0) {
 					match = 1;
 				}
-				FREE(array[q]);
 			}
-			if(n > 0) {
-				FREE(array);
-			}
+			array_free(&array, n);
 			if(match == 1) {
 				struct ssdp_list_t *node = MALLOC(sizeof(struct ssdp_list_t));
 				if(node == NULL) {

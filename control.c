@@ -246,10 +246,7 @@ int main(int argc, char **argv) {
 									}
 									strcpy(name, array[q]);
 									if(q+1 == n) {
-										for(q=0;q<n;q++) {
-											FREE(array[q]);
-										}
-										FREE(array);
+										array_free(&array, n);
 										logprintf(LOG_ERR, "\"%s\" is missing a value for device \"%s\"", name, device);
 										FREE(name);
 										break;
@@ -274,10 +271,7 @@ int main(int argc, char **argv) {
 											has_values = 1;
 										} else {
 											logprintf(LOG_ERR, "\"%s\" is an invalid value for device \"%s\"", name, device);
-											for(q=0;q<n;q++) {
-												FREE(array[q]);
-											}
-											FREE(array);
+											array_free(&array, n);
 											FREE(name);
 											json_delete(json);
 											goto close;
@@ -285,13 +279,7 @@ int main(int argc, char **argv) {
 									}
 									FREE(name);
 								}
-								unsigned int z = 0;
-								for(z=q;z<n;z++) {
-									FREE(array[z]);
-								}
-								if(n > 0) {
-									FREE(array);
-								}
+								array_free(&array, n);
 							}
 
 							if(devices_valid_state(device, state) == 0) {
