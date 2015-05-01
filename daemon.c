@@ -631,7 +631,7 @@ void *send_code(void *param) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
 	int i = 0;
-
+	int *pamble = NULL;
 	/* Make sure the pilight sender gets
 	   the highest priority available */
 #ifdef _WIN32
@@ -695,16 +695,15 @@ void *send_code(void *param) {
 					pthread_mutex_unlock(&hw->lock);
 					pthread_cond_signal(&hw->signal);
 				}
-// preAmb support
 				if (protocol->preAmbCode != NULL) {
-					logprintf(LOG_DEBUG, "send preAmb % sequence", protocol->id);
-					if(hw->send(protocol->preAmbCode(), *protocol->preAmbCode(), 1) == 0) {
+					logprintf(LOG_DEBUG, "send preAmb %s sequence", protocol->id);
+					pamble = protocol->preAmbCode();
+					if(hw->send(++pamble, *protocol->preAmbCode(), 1) == 0) {
 						logprintf(LOG_DEBUG, "successfully send %s preAmb sequence", protocol->id);
 					} else {
 						logprintf(LOG_ERR, "failed to send %s preAmb sequence", protocol->id);
 					}
 				}
-// payload data
 				logprintf(LOG_DEBUG, "**** RAW CODE ****");
 				if(log_level_get() >= LOG_DEBUG) {
 					for(i=0;i<sendqueue->length;i++) {
@@ -719,10 +718,10 @@ void *send_code(void *param) {
 				} else {
 					logprintf(LOG_ERR, "failed to send code");
 				}
-// postAmb support
 				if (protocol->postAmbCode != NULL) {
-					logprintf(LOG_DEBUG, "send postAmb % sequence", protocol->id);
-					if(hw->send(protocol->postAmbCode(), *protocol->postAmbCode(), 1) == 0) {
+					logprintf(LOG_DEBUG, "send postAmb %s sequence", protocol->id);
+					pamble = protocol->postAmbCode();
+					if(hw->send(++pamble, *protocol->postAmbCode(), 1) == 0) {
 						logprintf(LOG_DEBUG, "successfully send %s preAmb sequence", protocol->id);
 					} else {
 						logprintf(LOG_ERR, "failed to send %s preAmb sequence", protocol->id);
