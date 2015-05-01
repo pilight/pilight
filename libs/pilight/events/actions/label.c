@@ -143,7 +143,7 @@ static int checkArguments(struct rules_actions_t *obj) {
 						for(i=0;i<nrunits;i++) {
 							if(strcmp(array[1], units[i].name) == 0) {
 								match = 1;
-								if(isNumeric(array[1]) != 0) {
+								if(isNumeric(array[0]) != 0) {
 									logprintf(LOG_ERR, "switch action \"FOR\" requires a number and a unit e.g. \"1 MINUTE\"");
 									array_free(&array, l);
 									return -1;
@@ -186,7 +186,7 @@ static int checkArguments(struct rules_actions_t *obj) {
 						for(i=0;i<nrunits;i++) {
 							if(strcmp(array[1], units[i].name) == 0) {
 								match = 1;
-								if(isNumeric(array[1]) != 0) {
+								if(isNumeric(array[0]) != 0) {
 									logprintf(LOG_ERR, "switch action \"AFTER\" requires a number and a unit e.g. \"1 MINUTE\"");
 									array_free(&array, l);
 									return -1;

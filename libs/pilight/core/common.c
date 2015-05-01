@@ -581,10 +581,11 @@ int isNumeric(char *s) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
 	if(s == NULL || *s == '\0' || *s == ' ')
-		return EXIT_FAILURE;
-	char *p;
+		return -1;
+
+	char *p = NULL;
 	strtod(s, &p);
-	return (*p == '\0') ? EXIT_SUCCESS : EXIT_FAILURE;
+	return (*p == '\0') ? 0 : -1;
 }
 
 int nrDecimals(char *s) {
