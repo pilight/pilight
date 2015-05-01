@@ -35,6 +35,7 @@ Change Log:
 0.92a	- 150121 adaption to nightlies
 0.92c	- 150316 focus on rts protocol
 0.93	- 150430 port to pilight 7.0
+0.94  - Bugfixing
 */
 #include <stdio.h>
 #include <stdlib.h>
@@ -88,8 +89,6 @@ Change Log:
 #define PULSE_SOMFY_WAKEUP	9415	// Wakeup pulse followed by _WAIT
 #define PULSE_SOMFY_WAKEUP_WAIT	89565
 //
-//
-//
 //#define PULSE_MULTIPLIER   16
 //#define MIN_PULSE_LENGTH   221  7513/34
 //#define AVG_PULSE_LENGTH   895  30415/34
@@ -101,6 +100,8 @@ Change Log:
 //#define MIN_PULSE_LENGTH   MINRAWLEN_SOMFY_PROT
 //#define AVG_PULSE_LENGTH   MAXRAWLEN_SOMFY_PROT
 #define BIN_LENGTH BINLEN_SOMFY_PROT
+//#define LEARN_REPEATS 4
+//#define NORMAL_REPEATS 4
 
 int sDataTime = 0;
 int sDataLow = 0;
@@ -117,6 +118,21 @@ typedef struct settings_t {
 } settings_t;
 
 static struct settings_t *settings = NULL;
+
+// Check for expected length, Footer value and SYNC
+static int validate(void) {
+	if((somfy_rts->rawlen >  MINRAWLEN_SOMFY_PROT) &&
+		(somfy_rts->rawlen <  MAXRAWLEN_SOMFY_PROT)) {
+		if((somfy_rts->raw[somfy_rts->rawlen-1] > PULSE_SOMFY_FOOTER_L) &&
+			(somfy_rts->raw[somfy_rts->rawlen-1] < PULSE_SOMFY_FOOTER_H)) {
+			if((somfy_rts->raw[2] > PULSE_SOMFY_SHORT_L) &&
+				(somfy_rts->raw[2] < PULSE_SOMFY_SHORT_H)) {
+					return 0;
+			}
+		}
+	}
+	return -1;
+}
 
 static uint8_t codeChkSum (uint8_t *p_frame) {
 	uint8_t cksum, i;
@@ -136,10 +152,20 @@ static void createMessage(int address, int command, int rollingcode, int rolling
 		json_append_member(somfy_rts->message, "state", json_mkstring("my"));
 	} else if (command==2) {
 		json_append_member(somfy_rts->message, "state", json_mkstring("up"));
+	} else if (command==3) {
+		json_append_member(somfy_rts->message, "state", json_mkstring("my+up"));
 	} else if (command==4) {
 		json_append_member(somfy_rts->message, "state", json_mkstring("down"));
+	} else if (command==5) {
+		json_append_member(somfy_rts->message, "state", json_mkstring("my+down"));
+	} else if (command==6) {
+		json_append_member(somfy_rts->message, "state", json_mkstring("up+down"));
 	} else if (command==8) {
 		json_append_member(somfy_rts->message, "state", json_mkstring("prog"));
+	} else if (command==9) {
+		json_append_member(somfy_rts->message, "state", json_mkstring("sun+flag"));
+	} else if (command==10) {
+		json_append_member(somfy_rts->message, "state", json_mkstring("flag"));
 	} else {
 		sprintf(str, "%d", command);
 		json_append_member(somfy_rts->message, "state", json_mkstring(str));
@@ -304,9 +330,9 @@ static void parseCode(void) {
 		if (protocol_sync > 95) {
 			logprintf(LOG_DEBUG, "**** somfy_rts RAW CODE ****");
 			if(log_level_get() >= LOG_DEBUG) {
-//				Print populated buffer data (production)
+//				Select the next For statement to print populated buffer data (production)
 //				for(x=0;x<pRaw;x++) {
-//				Print the complete buffer (development/debugging)
+//				Select as alternativ this for statement to print the complete buffer (development/debugging)
 				for(x=0;x<=somfy_rts->rawlen;x++) {
 					printf("%d ", somfy_rts->raw[x]);
 				}
@@ -648,16 +674,22 @@ void somfy_rtsInit(void) {
 	options_add(&somfy_rts->options, 'a', "address", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^([0-9]{1,6}|[1-5][0-9]{6}|16[0-6][0-9]{5}|167[0-6][0-9]{4}|1677[0-6][0-9]{3}| 16777[0-1][0-9]{2}|1677720[0-9]|1677721[0-6])$");
 	options_add(&somfy_rts->options, 'c', "rollingcode", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^([0-9]{1,4}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5])$");
 	options_add(&somfy_rts->options, 'k', "rollingkey", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^([0-9]|1[0-5])$");
-	options_add(&somfy_rts->options, 'n', "command_code", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^([0-9]|1[0-5])$");
+	options_add(&somfy_rts->options, 'n', "command_code", OPTION_HAS_VALUE, DEVICES_OPTIONAL, JSON_NUMBER, NULL,  "^([0-9]|1[0-5])$");
 	options_add(&somfy_rts->options, 't', "up", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
 	options_add(&somfy_rts->options, 'f', "down", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
 	options_add(&somfy_rts->options, 'm', "my", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
 	options_add(&somfy_rts->options, 'g', "prog", OPTION_NO_VALUE,DEVICES_STATE, JSON_STRING, NULL, NULL);
+	options_add(&somfy_rts->options, 0, "my+up", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
+	options_add(&somfy_rts->options, 0, "my+down", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
+	options_add(&somfy_rts->options, 0, "up+down", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
+	options_add(&somfy_rts->options, 0, "sun+flag", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
+	options_add(&somfy_rts->options, 0, "flag", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
 
 	options_add(&somfy_rts->options, 0, "readonly", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 
 	somfy_rts->parseCode=&parseCode;
 	somfy_rts->createCode=&createCode;
+	somfy_rts->validate=&validate;
 	somfy_rts->preAmbCode=preAmbCode;
 	somfy_rts->checkValues=&checkValues;
 	somfy_rts->printHelp=&printHelp;
@@ -668,7 +700,7 @@ void somfy_rtsInit(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name =  "somfy_rts";
-	module->version =  "0.93";
+	module->version =  "0.94";
 	module->reqversion =  "6.0";
 	module->reqcommit =  NULL;
 }
