@@ -143,8 +143,8 @@ static int checkArguments(struct rules_actions_t *obj) {
 						for(i=0;i<nrunits;i++) {
 							if(strcmp(array[1], units[i].name) == 0) {
 								match = 1;
-								if(isNumeric(array[0]) != 0) {
-									logprintf(LOG_ERR, "switch action \"FOR\" requires a number and a unit e.g. \"1 MINUTE\"");
+								if(isNumeric(array[0]) != 0 && atoi(array[0]) <= 0) {
+									logprintf(LOG_ERR, "switch action \"FOR\" requires a positive number and a unit e.g. \"1 MINUTE\"");
 									array_free(&array, l);
 									return -1;
 								}
@@ -157,7 +157,7 @@ static int checkArguments(struct rules_actions_t *obj) {
 							return -1;
 						}
 					} else {
-						logprintf(LOG_ERR, "switch action \"FOR\" requires a number and a unit e.g. \"1 MINUTE\"");
+						logprintf(LOG_ERR, "switch action \"FOR\" requires a positive number and a unit e.g. \"1 MINUTE\"");
 						if(l > 0) {
 							array_free(&array, l);
 						}
@@ -187,7 +187,7 @@ static int checkArguments(struct rules_actions_t *obj) {
 							if(strcmp(array[1], units[i].name) == 0) {
 								match = 1;
 								if(isNumeric(array[0]) != 0) {
-									logprintf(LOG_ERR, "switch action \"AFTER\" requires a number and a unit e.g. \"1 MINUTE\"");
+									logprintf(LOG_ERR, "switch action \"AFTER\" requires a positive number and a unit e.g. \"1 MINUTE\"");
 									array_free(&array, l);
 									return -1;
 								}
@@ -200,7 +200,7 @@ static int checkArguments(struct rules_actions_t *obj) {
 							return -1;
 						}
 					} else {
-						logprintf(LOG_ERR, "switch action \"AFTER\" requires a number and a unit e.g. \"1 MINUTE\"");
+						logprintf(LOG_ERR, "switch action \"AFTER\" requires a positive number and a unit e.g. \"1 MINUTE\"");
 						if(l > 0) {
 							array_free(&array, l);
 						}
@@ -544,7 +544,7 @@ void actionLabelInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "label";
-	module->version = "2.0";
+	module->version = "2.1";
 	module->reqversion = "6.0";
 	module->reqcommit = "148";
 }

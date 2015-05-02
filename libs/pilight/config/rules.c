@@ -85,12 +85,17 @@ static int rules_parse(JsonNode *root) {
 					node->devices = NULL;
 					node->actions = NULL;
 					node->nr = i;
+					if((node->name = MALLOC(strlen(jrules->key)+1)) == NULL) {
+						logprintf(LOG_ERR, "out of memory");
+						exit(EXIT_FAILURE);
+					}
+					strcpy(node->name, jrules->key);
 					clock_gettime(CLOCK_MONOTONIC, &node->timestamp.first);
 					if(event_parse_rule(rule, node, 0, 1) == -1) {
 						have_error = 1;
 					}
 					clock_gettime(CLOCK_MONOTONIC, &node->timestamp.second);
-					logprintf(LOG_INFO, "rule #%d was parsed in %.6f seconds", node->nr,
+					logprintf(LOG_INFO, "rule #%d %s was parsed in %.6f seconds", node->nr, node->name,
 						((double)node->timestamp.second.tv_sec + 1.0e-9*node->timestamp.second.tv_nsec) - 
 						((double)node->timestamp.first.tv_sec + 1.0e-9*node->timestamp.first.tv_nsec));
 
@@ -101,12 +106,6 @@ static int rules_parse(JsonNode *root) {
 						exit(EXIT_FAILURE);
 					}
 					strcpy(node->rule, rule);
-					node->name = MALLOC(strlen(jrules->key)+1);
-					if(node->name == NULL) {
-						logprintf(LOG_ERR, "out of memory");
-						exit(EXIT_FAILURE);
-					}
-					strcpy(node->name, jrules->key);
 					node->active = (unsigned short)active;
 
 					tmp = rules;
