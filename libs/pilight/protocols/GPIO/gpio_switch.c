@@ -112,6 +112,7 @@ static int checkValues(struct JsonNode *jvalues) {
 	struct JsonNode *jid = NULL;
 	double readonly = 0.0;
 
+#if defined(__arm__) || defined(__mips__)	
 	if(wiringXSetup() < 0) {
 		logprintf(LOG_ERR, "unable to setup wiringX") ;
 		return -1;
@@ -133,11 +134,14 @@ static int checkValues(struct JsonNode *jvalues) {
 			jchild = jchild->next;
 		}
 	}
+#endif
+
 	if(json_find_number(jvalues, "readonly", &readonly) == 0) {
 		if((int)readonly != 1) {
 			return -1;
 		}
 	}
+
 	return 0;
 }
 
@@ -179,7 +183,7 @@ void gpioSwitchInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "gpio_switch";
-	module->version = "2.1";
+	module->version = "2.2";
 	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }

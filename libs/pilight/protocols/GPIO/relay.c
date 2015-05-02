@@ -156,7 +156,7 @@ static int checkValues(JsonNode *code) {
 	if((jid = json_find_member(code, "id")) != NULL) {
 		if((jchild = json_find_element(jid, 0)) != NULL) {
 			if(json_find_number(jchild, "gpio", &itmp) == 0) {
-#ifndef _WIN32
+#if defined(__arm__) || defined(__mips__)
 				int gpio = (int)itmp;
 				int state = -1;
 				if(wiringXSetup() < 0) {
@@ -236,7 +236,7 @@ void relayInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "relay";
-	module->version = "3.1";
+	module->version = "3.2";
 	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }

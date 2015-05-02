@@ -219,7 +219,7 @@ static int checkValues(JsonNode *code) {
 	if((jid = json_find_member(code, "id")) != NULL) {
 		if((jchild = json_find_element(jid, 0)) != NULL) {
 			if(json_find_number(jchild, "gpio", &itmp) == 0) {
-#ifndef _WIN32
+#if defined(__arm__) || defined(__mips__)
 				int gpio = (int)itmp;
 				if(wiringXSetup() < 0) {
 					logprintf(LOG_ERR, "unable to setup wiringX") ;
@@ -277,7 +277,7 @@ void dht22Init(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "dht22";
-	module->version = "2.1";
+	module->version = "2.2";
 	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }
