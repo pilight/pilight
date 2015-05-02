@@ -63,11 +63,11 @@ static int checkArguments(struct rules_actions_t *obj) {
 	int nrvalues = 0, l = 0, i = 0, match = 0;
 	int	nrunits = (sizeof(units)/sizeof(units[0]));
 
-	jdevice = json_find_member(obj->arguments, "DEVICE");
-	jto = json_find_member(obj->arguments, "TO");
-	jfor = json_find_member(obj->arguments, "FOR");
-	jafter = json_find_member(obj->arguments, "AFTER");
-	jcolor = json_find_member(obj->arguments, "COLOR");
+	jdevice = json_find_member(obj->parsedargs, "DEVICE");
+	jto = json_find_member(obj->parsedargs, "TO");
+	jfor = json_find_member(obj->parsedargs, "FOR");
+	jafter = json_find_member(obj->parsedargs, "AFTER");
+	jcolor = json_find_member(obj->parsedargs, "COLOR");
 
 	if(jdevice == NULL) {
 		logprintf(LOG_ERR, "label action is missing a \"DEVICE\"");
@@ -265,7 +265,7 @@ static int checkArguments(struct rules_actions_t *obj) {
 
 static void *thread(void *param) {
 	struct event_action_thread_t *pth = (struct event_action_thread_t *)param;
-	struct JsonNode *json = pth->obj->arguments;
+	struct JsonNode *json = pth->obj->parsedargs;
 	struct JsonNode *jto = NULL;
 	struct JsonNode *jafter = NULL;
 	struct JsonNode *jfor = NULL;
@@ -349,7 +349,7 @@ static void *thread(void *param) {
 			seconds_for *= (60*60*24);
 		break;
 	}
-	
+
 	switch(type_after) {
 		case 3:
 			seconds_after *= 60;
@@ -360,8 +360,8 @@ static void *thread(void *param) {
 		case 5:
 			seconds_after *= (60*60*24);
 		break;
-	}	
-	
+	}
+
 	/* Store current label */
 	struct devices_t *tmp = pth->device;
 	int match1 = 0, match2 = 0;
@@ -395,6 +395,7 @@ static void *thread(void *param) {
 	if(match2 == 0) {
 		logprintf(LOG_ERR, "could not store old color of \"%s\"", pth->device->id);
 	}
+
 	timer = 0;
 	while(pth->loop == 1) {
 		if(timer == seconds_after) {
@@ -507,8 +508,8 @@ static int run(struct rules_actions_t *obj) {
 	struct JsonNode *jbvalues = NULL;
 	struct JsonNode *jbchild = NULL;
 
-	if((jdevice = json_find_member(obj->arguments, "DEVICE")) != NULL &&
-		 (jto = json_find_member(obj->arguments, "TO")) != NULL) {
+	if((jdevice = json_find_member(obj->parsedargs, "DEVICE")) != NULL &&
+		 (jto = json_find_member(obj->parsedargs, "TO")) != NULL) {
 		if((jbvalues = json_find_member(jdevice, "value")) != NULL) {
 			jbchild = json_first_child(jbvalues);
 			while(jbchild) {
@@ -546,7 +547,7 @@ void compatibility(struct module_t *module) {
 	module->name = "label";
 	module->version = "2.1";
 	module->reqversion = "6.0";
-	module->reqcommit = "148";
+	module->reqcommit = "152";
 }
 
 void init(void) {

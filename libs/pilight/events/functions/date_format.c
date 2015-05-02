@@ -109,7 +109,7 @@ static int run(struct rules_t *obj, struct JsonNode *arguments, char **ret, enum
 	if(childs->next != NULL && dev != NULL) {
 		logprintf(LOG_ERR, "DATE_FORMAT requires at least two parameters e.g. DATE_FORMAT(datetime, %%Y-%%m-%%d)");
 		return -1;
-	}	
+	}
 
 	if(dev == NULL) {
 		childs = childs->next;
@@ -127,7 +127,7 @@ static int run(struct rules_t *obj, struct JsonNode *arguments, char **ret, enum
 	int weekday = tm.tm_wday;
 
 	datefix(&year, &month, &day, &hour, &minute, &second);
-	
+
 	tm.tm_year = year-1900;
 	tm.tm_mon = month-1;
 	tm.tm_mday = day;

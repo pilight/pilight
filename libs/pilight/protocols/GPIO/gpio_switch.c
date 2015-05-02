@@ -112,7 +112,7 @@ static int checkValues(struct JsonNode *jvalues) {
 	struct JsonNode *jid = NULL;
 	double readonly = 0.0;
 
-#if defined(__arm__) || defined(__mips__)	
+#if defined(__arm__) || defined(__mips__)
 	if(wiringXSetup() < 0) {
 		logprintf(LOG_ERR, "unable to setup wiringX") ;
 		return -1;

@@ -62,6 +62,7 @@
 static unsigned short loop = 1;
 static char true_[2];
 static char false_[2];
+static char dot_[2];
 
 static char *recvBuff = NULL;
 static int sockfd = 0;
@@ -186,6 +187,9 @@ int event_lookup_variable(char *var, struct rules_t *obj, int type, struct varco
 	if(strcmp(true_, "1") != 0) {
 		strcpy(true_, "1");
 	}
+	if(strcmp(dot_, ".") != 0) {
+		strcpy(dot_, ".");
+	}
 	if(strcmp(false_, "1") != 0) {
 		strcpy(false_, "1");
 	}
@@ -225,13 +229,11 @@ int event_lookup_variable(char *var, struct rules_t *obj, int type, struct varco
 	if(nrdots == 1) {
 		char **array = NULL;
 		unsigned int n = explode(var, ".", &array);
+
 		if(n < 2) {
-			logprintf(LOG_ERR, "rule #%d: an unexpected error occured", obj->nr, var);
-			varcont->string_ = NULL;
-			varcont->number_ = 0;
-			varcont->decimals_ = 0;
+			varcont->string_ = dot_;
 			array_free(&array, n);
-			return -1;
+			return 0;
 		}
 
 		char device[strlen(array[0])+1];
@@ -939,11 +941,11 @@ static int event_parse_action_arguments(char *arguments, struct rules_t *obj, in
 						}
 					}
 					memmove(&arguments[a+vallen], &arguments[b], nlen-(a+vallen));
-					
+
 					if(v.string_ == NULL) {
-						snprintf(&arguments[a], vallen+1, "%.*f", v.decimals_, v.number_); 
+						snprintf(&arguments[a], vallen+1, "%.*f", v.decimals_, v.number_);
 					} else {
-						snprintf(&arguments[a], vallen+1, "%s", v.string_); 
+						snprintf(&arguments[a], vallen+1, "%s", v.string_);
 					}
 
 					i = a+vallen;
@@ -953,7 +955,7 @@ static int event_parse_action_arguments(char *arguments, struct rules_t *obj, in
 					/*
 					 * snprintf adds an unwanted null terminator
 					 * that we need to remove.
-					 */					 
+					 */
 					arguments[a+vallen] = ' ';
 					arguments[len] = '\0';
 				} else if(ret == -1) {
@@ -967,7 +969,7 @@ static int event_parse_action_arguments(char *arguments, struct rules_t *obj, in
 		}
 		i++;
 	}
-	if(tmp != NULL) {		
+	if(tmp != NULL) {
 		FREE(tmp);
 	}
 	return error;
@@ -981,7 +983,7 @@ static int event_parse_action(char *action, struct rules_t *obj, int validate) {
 	struct options_t *opt = NULL;
 	struct event_actions_t *tmp_actions = NULL;
 	struct rules_actions_t *node = NULL;
-	char *tmp = action, *search = NULL;
+	char *tmp = action, *search = NULL, *output = NULL;
 	char *p = NULL, *name = NULL, *value = NULL, **array = NULL, *func = NULL;
 	unsigned long len = strlen(tmp), pos = 0, pos1 = 0, offset = 0;
 	int error = 0, order = 1, l = 0, i = 0, x = 0, nractions = 1, match = 0;
@@ -1011,7 +1013,7 @@ static int event_parse_action(char *action, struct rules_t *obj, int validate) {
 		}
 		pos++;
 	}
-	
+
 	pos = 0;
 	len = 0;
 	for(x=0;x<nractions;x++) {
@@ -1034,6 +1036,7 @@ static int event_parse_action(char *action, struct rules_t *obj, int validate) {
 			node->nr = x;
 			node->rule = obj;
 			node->arguments = NULL;
+			node->parsedargs = NULL;
 			node->next = obj->actions;
 			obj->actions = node;
 		}
@@ -1119,7 +1122,7 @@ static int event_parse_action(char *action, struct rules_t *obj, int validate) {
 								json_append_member(node->arguments, name, jobj);
 								order++;
 							}
-							memset(value, '\0', strlen(value));							
+							memset(value, '\0', strlen(value));
 
 							name = opt->name;
 						}
@@ -1171,21 +1174,29 @@ static int event_parse_action(char *action, struct rules_t *obj, int validate) {
 			memset(value, '\0', strlen(value));
 			offset = len;
 			if(error == 0) {
-
-				jchild = json_first_child(node->arguments);
+				output = json_stringify(node->arguments, NULL);
+				if(node->parsedargs != NULL) {
+					json_delete(node->parsedargs);
+					node->parsedargs = NULL;
+				}
+				node->parsedargs = json_decode(output);
+				jchild = json_first_child(node->parsedargs);
 				while(jchild) {
 					if((jvalue = json_find_member(jchild, "value")) != NULL) {
 						jchild1 = json_first_child(jvalue);
 						while(jchild1) {
 							if(jchild1->tag == JSON_STRING) {
-								event_parse_action_arguments(jchild1->string_, obj, validate);
-								if(isNumeric(jchild1->string_) == 0) {
-									int dec = nrDecimals(jchild1->string_);
-									int nr = atof(jchild1->string_);
-									json_free(jchild1->string_);
-									jchild1->tag = JSON_NUMBER;
-									jchild1->number_ = nr;
-									jchild1->decimals_ = dec;
+								if((error = event_parse_action_arguments(jchild1->string_, obj, validate)) == 0) {
+									if(isNumeric(jchild1->string_) == 0) {
+										int dec = nrDecimals(jchild1->string_);
+										int nr = atof(jchild1->string_);
+										json_free(jchild1->string_);
+										jchild1->tag = JSON_NUMBER;
+										jchild1->number_ = nr;
+										jchild1->decimals_ = dec;
+									}
+								} else {
+									break;
 								}
 							}
 							jchild1 = jchild1->next;
@@ -1193,74 +1204,76 @@ static int event_parse_action(char *action, struct rules_t *obj, int validate) {
 					}
 					jchild = jchild->next;
 				}
-
-				struct options_t *opt = node->action->options;
-				struct JsonNode *joption = NULL;
-				struct JsonNode *jchild = NULL;
-				while(opt) {
-					if((joption = json_find_member(node->arguments, opt->name)) == NULL) {
-						if(opt->conftype == DEVICES_VALUE && opt->argtype == OPTION_HAS_VALUE) {
-							logprintf(LOG_ERR, "action \"%s\" is missing option \"%s\"", node->action->name, opt->name);
-							error = 1;
-							break;
-						}
-					} else {
-						if((jvalue = json_find_member(joption, "value")) != NULL) {
-							if(jvalue->tag == JSON_ARRAY) {
-								jchild = json_first_child(jvalue);
-								while(jchild) {
-									if(opt->vartype != (JSON_NUMBER | JSON_STRING)) {
-										if(jchild->tag != JSON_NUMBER && opt->vartype == JSON_NUMBER) {
-											logprintf(LOG_ERR, "action \"%s\" option \"%s\" only accepts numbers", node->action->name, opt->name);
-											error = 1;
-											break;
+				if(error == 0) {
+					struct options_t *opt = node->action->options;
+					struct JsonNode *joption = NULL;
+					struct JsonNode *jchild = NULL;
+					while(opt) {
+						if((joption = json_find_member(node->parsedargs, opt->name)) == NULL) {
+							if(opt->conftype == DEVICES_VALUE && opt->argtype == OPTION_HAS_VALUE) {
+								logprintf(LOG_ERR, "action \"%s\" is missing option \"%s\"", node->action->name, opt->name);
+								error = 1;
+								break;
+							}
+						} else {
+							if((jvalue = json_find_member(joption, "value")) != NULL) {
+								if(jvalue->tag == JSON_ARRAY) {
+									jchild = json_first_child(jvalue);
+									while(jchild) {
+										if(opt->vartype != (JSON_NUMBER | JSON_STRING)) {
+											if(jchild->tag != JSON_NUMBER && opt->vartype == JSON_NUMBER) {
+												logprintf(LOG_ERR, "action \"%s\" option \"%s\" only accepts numbers", node->action->name, opt->name);
+												error = 1;
+												break;
+											}
+											if(jchild->tag != JSON_STRING && opt->vartype == JSON_STRING) {
+												logprintf(LOG_ERR, "action \"%s\" option \"%s\" only accepts strings", node->action->name, opt->name);
+												error = 1;
+												break;
+											}
 										}
-										if(jchild->tag != JSON_STRING && opt->vartype == JSON_STRING) {
-											logprintf(LOG_ERR, "action \"%s\" option \"%s\" only accepts strings", node->action->name, opt->name);
-											error = 1;
-											break;
-										}
+										jchild = jchild->next;
 									}
-									jchild = jchild->next;
 								}
 							}
 						}
-					}
-					opt = opt->next;
-				}
-			}
-			if(error == 0) {
-				jchild = json_first_child(node->arguments);
-				while(jchild) {
-					jchild1 = json_first_child(node->arguments);
-					match = 0;
-					while(jchild1) {
-						if(strcmp(jchild->key, jchild1->key) == 0) {
-							match++;
-						}
-						jchild1 = jchild1->next;
-					}
-					if(match > 1) {
-						logprintf(LOG_ERR, "action \"%s\" has duplicate \"%s\" arguments", node->action->name, jchild->key);
-						error = 1;
-						break;
-					}
-					match = 0;
-					opt = node->action->options;
-					while(opt) {
-						if(strcmp(jchild->key, opt->name) == 0) {
-							match = 1;
-							break;
-						}
 						opt = opt->next;
 					}
-					if(match == 0) {
-						logprintf(LOG_ERR, "action \"%s\" doesn't accept option \"%s\"", node->action->name, jchild->key);
-						error = 1;
-						break;
+					if(error == 0) {
+						jchild = json_first_child(node->parsedargs);
+						while(jchild) {
+							jchild1 = json_first_child(node->parsedargs);
+							match = 0;
+							while(jchild1) {
+								if(strcmp(jchild->key, jchild1->key) == 0) {
+									match++;
+								}
+								jchild1 = jchild1->next;
+							}
+							if(match > 1) {
+								logprintf(LOG_ERR, "action \"%s\" has duplicate \"%s\" arguments", node->action->name, jchild->key);
+								error = 1;
+								break;
+							}
+							match = 0;
+							opt = node->action->options;
+							while(opt) {
+								if(strcmp(jchild->key, opt->name) == 0) {
+									match = 1;
+									break;
+								}
+								opt = opt->next;
+							}
+							if(match == 0) {
+								logprintf(LOG_ERR, "action \"%s\" doesn't accept option \"%s\"", node->action->name, jchild->key);
+								error = 1;
+								break;
+							}
+							jchild = jchild->next;
+						}
 					}
-					jchild = jchild->next;
 				}
+				json_free(output);
 			}
 
 			if(error != 0) {
@@ -1269,21 +1282,54 @@ static int event_parse_action(char *action, struct rules_t *obj, int validate) {
 		}
 		if(error != 0) {
 			break;
-		}
-		if(error == 0) {
-			if(validate == 1) {
-				if(node->action != NULL) {
-					if(node->action->checkArguments != NULL) {
-						error = node->action->checkArguments(node);
+		} else {
+			output = json_stringify(node->arguments, NULL);
+			if(node->parsedargs != NULL) {
+				json_delete(node->parsedargs);
+				node->parsedargs = NULL;
+			}
+			node->parsedargs = json_decode(output);
+			jchild = json_first_child(node->parsedargs);
+			while(jchild) {
+				if((jvalue = json_find_member(jchild, "value")) != NULL) {
+					jchild1 = json_first_child(jvalue);
+					while(jchild1) {
+						if(jchild1->tag == JSON_STRING) {
+							if((error = event_parse_action_arguments(jchild1->string_, obj, validate)) == 0) {
+								if(isNumeric(jchild1->string_) == 0) {
+									int dec = nrDecimals(jchild1->string_);
+									int nr = atof(jchild1->string_);
+									json_free(jchild1->string_);
+									jchild1->tag = JSON_NUMBER;
+									jchild1->number_ = nr;
+									jchild1->decimals_ = dec;
+								}
+							} else {
+								break;
+							}
+						}
+						jchild1 = jchild1->next;
 					}
 				}
-			} else {
-				if(node->action != NULL) {
-					if(node->action->run != NULL) {
-						error = node->action->run(node);
+				jchild = jchild->next;
+			}
+
+			if(error == 0) {
+				if(validate == 1) {
+					if(node->action != NULL) {
+						if(node->action->checkArguments != NULL) {
+							error = node->action->checkArguments(node);
+						}
+					}
+				} else {
+					if(node->action != NULL) {
+						if(node->action->run != NULL) {
+							error = node->action->run(node);
+						}
 					}
 				}
 			}
+			json_free(output);
 		}
 		if(error != 0) {
 			break;
@@ -1579,7 +1625,7 @@ void *events_loop(void *param) {
 								if(jchilds->tag == JSON_STRING &&
 								   strcmp(jchilds->string_, tmp_rules->devices[i]) == 0) {
 									if(devices_get(jchilds->string_, &dev) == 0) {
-										if(dev->lastrule == tmp_rules->nr && 
+										if(dev->lastrule == tmp_rules->nr &&
 											 tmp_rules->nr == dev->prevrule &&
 											 dev->lastrule == dev->prevrule) {
 											logprintf(LOG_ERR, "skipped rule #%d because of an infinite loop triggered by device %s", tmp_rules->nr, jchilds->string_);
@@ -1603,8 +1649,8 @@ void *events_loop(void *param) {
 							}
 						}
 						clock_gettime(CLOCK_MONOTONIC, &tmp_rules->timestamp.second);
-						logprintf(LOG_DEBUG, "rule #%d was parsed in %.6f seconds", tmp_rules->nr,
-							((double)tmp_rules->timestamp.second.tv_sec + 1.0e-9*tmp_rules->timestamp.second.tv_nsec) - 
+						logprintf(LOG_DEBUG, "rule #%d %s was parsed in %.6f seconds", tmp_rules->nr, tmp_rules->name,
+							((double)tmp_rules->timestamp.second.tv_sec + 1.0e-9*tmp_rules->timestamp.second.tv_nsec) -
 							((double)tmp_rules->timestamp.first.tv_sec + 1.0e-9*tmp_rules->timestamp.first.tv_nsec));
 
 						tmp_rules->status = 0;
@@ -1715,7 +1761,7 @@ void *events_clientize(void *param) {
 				char **array = NULL;
 				unsigned int n = explode(recvBuff, "\n", &array), i = 0;
 				for(i=0;i<n;i++) {
-					events_queue(array[i]);					
+					events_queue(array[i]);
 				}
 				array_free(&array, n);
 			}

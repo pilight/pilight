@@ -96,7 +96,7 @@ static int rules_parse(JsonNode *root) {
 					}
 					clock_gettime(CLOCK_MONOTONIC, &node->timestamp.second);
 					logprintf(LOG_INFO, "rule #%d %s was parsed in %.6f seconds", node->nr, node->name,
-						((double)node->timestamp.second.tv_sec + 1.0e-9*node->timestamp.second.tv_nsec) - 
+						((double)node->timestamp.second.tv_sec + 1.0e-9*node->timestamp.second.tv_nsec) -
 						((double)node->timestamp.first.tv_sec + 1.0e-9*node->timestamp.first.tv_nsec));
 
 					node->status = 0;
@@ -118,7 +118,7 @@ static int rules_parse(JsonNode *root) {
 						node->next = rules;
 						rules = node;
 					}
-					/* 
+					/*
 					 * In case of an error, we do want to
 					 * save a pointer to our faulty rule
 					 * so it can be properly garbage collected.
@@ -208,6 +208,9 @@ int rules_gc(void) {
 			tmp_actions = tmp_rules->actions;
 			if(tmp_actions->arguments != NULL) {
 				json_delete(tmp_actions->arguments);
+			}
+			if(tmp_actions->parsedargs != NULL) {
+				json_delete(tmp_actions->parsedargs);
 			}
 			tmp_rules->actions = tmp_rules->actions->next;
 			FREE(tmp_actions);

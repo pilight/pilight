@@ -2655,7 +2655,7 @@ static LRESULT CALLBACK WindowProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lP
 
 int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR cmdline, int show) {
 	pilight.running = 0;
-	
+
 	HWND hWnd;
   WNDCLASS cls;
   MSG msg;

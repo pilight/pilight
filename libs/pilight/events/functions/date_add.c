@@ -145,7 +145,7 @@ static int run(struct rules_t *obj, struct JsonNode *arguments, char **ret, enum
 		goto close;
 	}
 	interval = childs->string_;
-	
+
 	if(childs->next != NULL) {
 		if(dev == NULL) {
 			logprintf(LOG_ERR, "DATE_ADD requires two parameters e.g. DATE_ADD(2000-01-01 12:00:00, 1 DAY)");
@@ -190,7 +190,7 @@ static int run(struct rules_t *obj, struct JsonNode *arguments, char **ret, enum
 		}
 	}
 	add(&tm, values, type);
-	
+
 	int year = tm.tm_year+1900;
 	int month = tm.tm_mon+1;
 	int day = tm.tm_mday;
@@ -199,7 +199,7 @@ static int run(struct rules_t *obj, struct JsonNode *arguments, char **ret, enum
 	int second = tm.tm_sec;
 
 	datefix(&year, &month, &day, &hour, &minute, &second);
-		
+
 	snprintf(p, BUFFER_SIZE, "\"%04d-%02d-%02d %02d:%02d:%02d\"", year, month, day, hour, minute, second);
 
 close:
