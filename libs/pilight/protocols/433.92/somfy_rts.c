@@ -56,8 +56,8 @@ Change Log:
 #define PULSE_SOMFY_SHORT	640	// Somfy Docu Clock and short pulse duration
 //#define	PULSE_SOMFY_SHORT	807	// Clock and short pulse duration
 #define PULSE_SOMFY_SYNC	PULSE_SOMFY_SHORT*4	// 2 pairs 1st-, 7 pairs Repeated-Pulses
-#define PULSE_SOMFY_SYNC_L	PULSE_SOMFY_SHORT-256
-#define PULSE_SOMFY_SYNC_H	PULSE_SOMFY_SHORT+256
+#define PULSE_SOMFY_SYNC_L	PULSE_SOMFY_SYNC-256
+#define PULSE_SOMFY_SYNC_H	PULSE_SOMFY_SYNC+256
 #define PULSE_SOMFY_SHORT_L	PULSE_SOMFY_SHORT-192
 #define PULSE_SOMFY_SHORT_H	PULSE_SOMFY_SHORT+192
 #define PULSE_SOMFY_LONG	1280	// Somfy Docu long pulse duration
@@ -123,8 +123,14 @@ static struct settings_t *settings = NULL;
 
 // Check for expected length, Footer value and SYNC
 static int validate(void) {
-	if((somfy_rts->rawlen >  MINRAWLEN_SOMFY_PROT) &&
-		(somfy_rts->rawlen <  MAXRAWLEN_SOMFY_PROT)) {
+int i;
+	logprintf(LOG_DEBUG, "somfy_rts validate: rawlen: %d footer: %d SYNC: %d", somfy_rts->rawlen, somfy_rts->raw[somfy_rts->rawlen-1], somfy_rts->raw[2]);
+for (i=0; i<128; i++) { 
+printf("%d ",somfy_rts->raw[i]); 
+}
+printf("\n");
+	if((somfy_rts->rawlen > MINRAWLEN_SOMFY_PROT) &&
+		(somfy_rts->rawlen < MAXRAWLEN_SOMFY_PROT)) {
 		if((somfy_rts->raw[somfy_rts->rawlen-1] > PULSE_SOMFY_FOOTER_L) &&
 			(somfy_rts->raw[somfy_rts->rawlen-1] < PULSE_SOMFY_FOOTER_H)) {
 			if((somfy_rts->raw[2] > PULSE_SOMFY_SYNC_L) &&
@@ -133,6 +139,7 @@ static int validate(void) {
 			}
 		}
 	}
+	logprintf(LOG_DEBUG, "somfy_rts validate: test failed");
 	return -1;
 }
 
