@@ -45,7 +45,7 @@
 #include "pilight.h"
 #include "socket.h"
 #include "log.h"
-#include "common.h"
+#include "network.h"
 #include "../../polarssl/polarssl/ssl.h"
 #include "../../polarssl/polarssl/entropy.h"
 #include "../../polarssl/polarssl/ctr_drbg.h"

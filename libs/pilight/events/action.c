@@ -92,7 +92,7 @@ void event_action_init(void) {
 
 	memset(pilight_commit, '\0', 3);
 
-	if(settings_find_string("action-root", &action_root) != 0) {
+	if(settings_find_string("actions-root", &action_root) != 0) {
 		/* If no action root was set, use the default action root */
 		if((action_root = MALLOC(strlen(ACTION_ROOT)+1)) == NULL) {
 			logprintf(LOG_ERR, "out of memory");

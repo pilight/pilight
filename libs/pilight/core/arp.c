@@ -39,14 +39,23 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/types.h>
+#include <sys/time.h>
+#include <time.h>
 #ifdef _WIN32
+	#define WPCAP
 	#define WIN32_LEAN_AND_MEAN
 	#include <winsock2.h>
+	#include <windows.h>
+	#include <psapi.h>
+	#include <tlhelp32.h>
 	#include <ws2tcpip.h>
+	#include <iphlpapi.h>
 	#define MSG_NOSIGNAL 0
+	#ifndef ETH_ALEN
+		#define ETH_ALEN	6
+	#endif	
 #else
 	#include <sys/socket.h>
-	#include <sys/time.h>
 	#include <netinet/in.h>
 	#include <netinet/if_ether.h>
 	#include <netinet/tcp.h>
@@ -61,18 +70,18 @@
 	#else
 		#include <sys/ioctl.h>
 	#endif
+	#include <regex.h>
+	#include <netdb.h>
 #endif
+#include <pcap.h>
 
 #include <ctype.h>
 #include <string.h>
 #include <errno.h>
-#include <pcap.h>
-#include <regex.h>
-#include <netdb.h>
 #include <stdarg.h>
-#include <stdio.h>
 #include <unistd.h>
 
+#include "network.h"
 #include "mem.h"
 #include "log.h"
 #include "arp.h"
@@ -268,12 +277,12 @@ void arp_add_host(const char *host_name) {
 	num_hosts++;
 }
 
-static int send_packet(pcap_t *pcap_handle, host_entry *he, struct timeval *last_packet_time, unsigned char source_mac[6]) {
+static int send_packet(pcap_t *pcap_handle, host_entry *he, struct timeval *last_packet_time, char source_mac[ETH_ALEN]) {
 	struct ether_hdr frame_hdr;
 	struct arp_ether_ipv4 arpei;
 	unsigned char buf[MAX_FRAME];
-	unsigned char target_mac[6] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
-	unsigned char arp_tha[6] = {0, 0, 0, 0, 0, 0};
+	unsigned char target_mac[ETH_ALEN] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
+	unsigned char arp_tha[ETH_ALEN] = {0, 0, 0, 0, 0, 0};
 	int buflen = 0;
 	int nsent = 0;
 
@@ -302,7 +311,7 @@ static int send_packet(pcap_t *pcap_handle, host_entry *he, struct timeval *last
 
 	if(he->live == 0) {
 		logprintf(LOG_ERR, "send_packet called on non-live host");
-		return 0;
+		return -1;
 	}
 
 	gettimeofday(last_packet_time, NULL);
@@ -313,6 +322,7 @@ static int send_packet(pcap_t *pcap_handle, host_entry *he, struct timeval *last
 	nsent = pcap_sendpacket(pcap_handle, buf, buflen);
 	if(nsent < 0) {
 		logprintf(LOG_ERR, "ERROR: failed to send packet");
+		return -1;
 	}
 
 	return buflen;
@@ -355,7 +365,7 @@ static void callback(u_char *args, const struct pcap_pkthdr *header, const u_cha
 	struct host_entry *temp_cursor = NULL;
 
 	if(n < ETHER_HDR_SIZE + ARP_PKT_SIZE) {
-		printf("%d byte packet too short to decode\n", (int)n);
+		logprintf(LOG_ERR, "%d byte packet too short to decode\n", (int)n);
 		return;
    }
 
@@ -373,122 +383,102 @@ static void callback(u_char *args, const struct pcap_pkthdr *header, const u_cha
 	}
 }
 
-static void recvfrom_wto(int sock_fd, long unsigned int tmo, pcap_t *pcap_handle) {
+static int recvfrom_wto(long unsigned int tmo, pcap_t *pcap_handle) {
+#ifdef _WIN32
+	WaitForSingleObject(pcap_getevent(pcap_handle), (DWORD)tmo);
+#else
 	fd_set readset;
 	struct timeval to;
-	int n = 0;
-
+	int n = 0, pcap_fd = 0;
+	if((pcap_fd = pcap_get_selectable_fd(pcap_handle)) < 0) {
+		logprintf(LOG_ERR, "pcap_fileno: %s", pcap_geterr(pcap_handle));
+		return -1;
+	}	
 	FD_ZERO(&readset);
-	if(sock_fd >= 0)
-		FD_SET(sock_fd, &readset);
-	to.tv_sec  = (__time_t)(tmo/(long unsigned int)1000000);
-	to.tv_usec = (__suseconds_t)(tmo - (long unsigned int)((time_t)1000000 * to.tv_sec));
-	n = select(sock_fd+1, &readset, NULL, NULL, &to);
+	if(pcap_fd >= 0)
+		FD_SET(pcap_fd, &readset);
+		to.tv_sec  = (__time_t)(tmo/(long unsigned int)1000000);
+		to.tv_usec = (__suseconds_t)(tmo - (long unsigned int)((time_t)1000000 * to.tv_sec));
+		n = select(pcap_fd+1, &readset, NULL, NULL, &to);
 	if(n < 0) {
 		logprintf(LOG_ERR, "select");
-	} else if (n == 0 && sock_fd >= 0) {
-		return;
+		return -1;
+	} else if (n == 0 && pcap_fd >= 0) {
+		return -1;
 	}
+#endif
 	if(pcap_handle != NULL) {
 		if((pcap_dispatch(pcap_handle, -1, callback, NULL)) == -1) {
 			logprintf(LOG_ERR, "pcap_dispatch: %s", pcap_geterr(pcap_handle));
+			return -1;
 		}
+		return 0;
 	}
+	return -1;
 }
 
 int arp_resolv(char *if_name, char *mac, char **ip) {
 	struct timeval now, diff, last_packet_time;
+	pcap_t *pcap_handle = NULL;
 	unsigned long int loop_timediff = 0, host_timediff = 0;
 	unsigned long int req_interval = 0, select_timeout = 0;
 	unsigned long int cum_err = 0, interval = 0;
-	unsigned char interface_mac[ETH_ALEN];
+	char interface_mac[ETH_ALEN], *p = interface_mac;
+	char *if_cpy = MALLOC(strlen(if_name)+1);
 	int found = -1;
 	int reset_cum_err = 0, first_timeout = 1;
-	int i = 0, pcap_fd = 0;
-	pcap_t *pcap_handle = NULL;
+	int i = 0;
 
-#ifdef __FREEBSD__
-	struct if_msghdr *ifm = NULL;
-	struct sockaddr_dl *sdl=NULL;
-	unsigned char *p = NULL;
-	unsigned char *buf = NULL;
-	size_t len = 0;
-	int mib[] = { CTL_NET, PF_ROUTE, 0, AF_LINK, NET_RT_IFLIST, 0 };
+	memset(if_cpy, '\0', strlen(if_name)+1);
+	
+	strcpy(if_cpy, if_name);
 
-	if(sysctl(mib, 6, NULL, &len, NULL, 0) < 0) {
-		logprintf(LOG_ERR, "sysctl");
+#ifdef _WIN32
+	int match = 0;
+	pcap_if_t *alldevs = NULL, *d = NULL;
+
+	if(pcap_findalldevs(&alldevs, NULL) == -1){
+		logprintf(LOG_ERR, "pcap_findalldevs");
+		goto close;
 	}
 
-	buf = MALLOC(len);
-
-	if(sysctl(mib, 6, buf, &len, NULL, 0) < 0) {
-		logprintf(LOG_ERR, "sysctl");
-	}
-
-	for(p = buf; p < buf + len; p += ifm->ifm_msglen) {
-		ifm = (struct if_msghdr *)p;
-		sdl = (struct sockaddr_dl *)(ifm + 1);
-
-		if(ifm->ifm_type != RTM_IFINFO || (ifm->ifm_addrs & RTA_IFP) == 0) {
-			continue;
-		}
-
-		if(sdl->sdl_family != AF_LINK || sdl->sdl_nlen == 0) {
-			continue;
-		}
-
-		if((memcmp(sdl->sdl_data, if_name, sdl->sdl_nlen)) == 0) {
+	d = alldevs;
+	match = 0;
+	for(d=alldevs;d;d=d->next) {
+		if(strstr(d->name, if_cpy) != NULL) {
+			match = 1;
+			if((if_cpy = REALLOC(if_cpy, strlen(d->name)+1)) == NULL) {
+				logprintf(LOG_ERR, "out of memory");
+				exit(EXIT_FAILURE);
+			}
+			strcpy(if_cpy, d->name);
 			break;
 		}
 	}
-
-	if(p >= buf + len) {
-		logprintf(LOG_ERR, "Could not get hardware address for interface %s", if_name);
+	if(alldevs != NULL) {
+		pcap_freealldevs(alldevs);
 	}
-
-	memcpy(interface_mac, sdl->sdl_data + sdl->sdl_nlen, ETH_ALEN);
-	FREE(buf);
+	if(match == 0) {
+		logprintf(LOG_ERR, "could not full interface name for %s", if_name);
+		goto close;
+	}
 #endif
 
-#ifdef linux
-	int sockfd = 0;
-	struct ifreq ifr;
-
-	if((sockfd = socket(PF_PACKET, SOCK_RAW, 0)) < 0) {
-		logprintf(LOG_ERR, "Cannot open raw packet socket");
-		return -1;
-	}
-	strncpy(ifr.ifr_name, if_name, sizeof(ifr.ifr_name));
-	if((ioctl(sockfd, SIOCGIFINDEX, &(ifr))) != 0) {
-		logprintf(LOG_ERR, "ioctl SIOCGIFINDEX");
-		return -1;
-	}
-	if((ioctl(sockfd, SIOCGIFHWADDR, &(ifr))) != 0) {
-		logprintf(LOG_ERR, "ioctl SIOCGIFHWADDR");
-		return -1;
-	}
-
-	if(sockfd >= 0) {
-		close(sockfd);
-	}
-
-	memcpy(interface_mac, ifr.ifr_ifru.ifru_hwaddr.sa_data, ETH_ALEN);
-#endif
-
-	if(interface_mac[0] == 0 && interface_mac[1] == 0 &&
+	if(dev2mac(if_name, &p) != 0 || (interface_mac[0] == 0 && interface_mac[1] == 0 &&
 		interface_mac[2] == 0 && interface_mac[3] == 0 &&
-		interface_mac[4] == 0 && interface_mac[5] == 0) {
-			logprintf(LOG_ERR, "ERROR: Could not obtain MAC address for interface %s", if_name);
+		interface_mac[4] == 0 && interface_mac[5] == 0)) {
+		logprintf(LOG_ERR, "could not obtain MAC address for interface %s", if_name);
+		goto close;
 	}
 
-	if((pcap_handle = pcap_open_live(if_name, 64, 0, 3, NULL)) == NULL) {
+	if((pcap_handle = pcap_open_live(if_cpy, 64, 0, 3, NULL)) == NULL) {
 		logprintf(LOG_ERR, "pcap_open_live");
+		goto close;
 	}
-	if((pcap_fd = pcap_get_selectable_fd(pcap_handle)) < 0) {
-		logprintf(LOG_ERR, "pcap_fileno: %s", pcap_geterr(pcap_handle));
-	}
+
 	if((pcap_setnonblock(pcap_handle, 1, NULL)) < 0) {
 		logprintf(LOG_ERR, "pcap_setnonblock");
+		goto close;
 	}
 
 	live_count = num_hosts;
@@ -542,7 +532,9 @@ int arp_resolv(char *if_name, char *mac, char **ip) {
 					if((*cursor)->num_sent > 0) {
 						(*cursor)->timeout *= 1.5;
 					}
-					send_packet(pcap_handle, *cursor, &last_packet_time, interface_mac);
+					if(send_packet(pcap_handle, *cursor, &last_packet_time, interface_mac) == -1) {
+						goto close;
+					}
 					advance_cursor();
 				}
 			} else {
@@ -552,11 +544,9 @@ int arp_resolv(char *if_name, char *mac, char **ip) {
 		} else {
 			select_timeout = req_interval - loop_timediff;
 		}
-		recvfrom_wto(pcap_fd, select_timeout, pcap_handle);
-	}
-
-	if(pcap_handle != NULL) {
-		pcap_close(pcap_handle);
+		if(recvfrom_wto(select_timeout, pcap_handle) == -1) {
+			goto close;
+		}
 	}
 
 	for(i=0;i<num_hosts;i++) {
@@ -576,6 +566,13 @@ int arp_resolv(char *if_name, char *mac, char **ip) {
 		}
 	}
 
+close:
+	if(pcap_handle != NULL) {
+		pcap_close(pcap_handle);
+	}
+	if(if_cpy != NULL) {
+		FREE(if_cpy);
+	}
   for(i=0;i<num_hosts;i++) {
 		FREE(helist[i]);
 	}

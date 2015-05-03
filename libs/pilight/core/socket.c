@@ -50,7 +50,7 @@
 #endif
 
 #include "pilight.h"
-#include "common.h"
+#include "network.h"
 #include "log.h"
 #include "gc.h"
 #include "socket.h"

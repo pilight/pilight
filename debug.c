@@ -29,7 +29,7 @@
 
 #include "libs/pilight/core/threads.h"
 #include "libs/pilight/core/pilight.h"
-#include "libs/pilight/core/common.h"
+#include "libs/pilight/core/network.h"
 #include "libs/pilight/core/config.h"
 #include "libs/pilight/core/log.h"
 #include "libs/pilight/core/options.h"

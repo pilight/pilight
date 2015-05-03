@@ -47,7 +47,7 @@
 
 #include "../../core/threads.h"
 #include "../../core/pilight.h"
-#include "../../core/common.h"
+#include "../../core/network.h"
 #include "../../core/dso.h"
 #include "../../core/log.h"
 #include "../../core/socket.h"

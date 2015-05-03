@@ -52,6 +52,7 @@
 #include "libs/pilight/core/pilight.h"
 #include "libs/pilight/core/datetime.h"
 #include "libs/pilight/core/common.h"
+#include "libs/pilight/core/network.h"
 #include "libs/pilight/core/gc.h"
 #include "libs/pilight/core/log.h"
 #include "libs/pilight/core/options.h"
@@ -2207,10 +2208,7 @@ int start_pilight(int argc, char **argv) {
 			}
 		}
 	}
-	for(x=0;x<nrdevs;x++) {
-		FREE(devs[x]);
-	}
-	FREE(devs);
+	array_free(&devs, nrdevs);
 
 	firmware.version = 0;
 	firmware.lpf = 0;

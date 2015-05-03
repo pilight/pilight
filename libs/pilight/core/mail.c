@@ -51,7 +51,7 @@
 #include "../../polarssl/polarssl/entropy.h"
 #include "../../polarssl/polarssl/ctr_drbg.h"
 
-#include "common.h"
+#include "network.h"
 #include "log.h"
 #include "mail.h"
 

@@ -38,7 +38,7 @@
 #include <unistd.h>
 
 #include "pilight.h"
-#include "common.h"
+#include "network.h"
 #include "socket.h"
 #include "log.h"
 #include "gc.h"
@@ -292,13 +292,12 @@ void *ssdp_wait(void *param) {
 					"SERVER: %s UPnP/1.1 pilight (%s)/%s\r\n\r\n", host, socket_get_port(), id, distro, hname, PILIGHT_VERSION);
 				nrheader++;
 			}
-			FREE(devs[x]);
 		}
-		FREE(devs);
 	} else {
 		logprintf(LOG_ERR, "could not determine default network interface");
 		exit(EXIT_FAILURE);
 	}
+	array_free(&devs, nrdevs);
 
 	if(id != NULL) {
 		FREE(id);

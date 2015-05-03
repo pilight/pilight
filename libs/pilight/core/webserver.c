@@ -38,7 +38,7 @@
 
 #include "threads.h"
 #include "pilight.h"
-#include "common.h"
+#include "network.h"
 #include "mongoose.h"
 #include "gc.h"
 #include "log.h"

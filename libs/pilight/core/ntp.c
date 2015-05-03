@@ -45,7 +45,7 @@
 #include <stdint.h>
 #include <time.h>
 
-#include "common.h"
+#include "network.h"
 #include "socket.h"
 #include "pilight.h"
 #include "../config/settings.h"

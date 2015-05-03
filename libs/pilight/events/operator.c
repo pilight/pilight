@@ -88,7 +88,7 @@ void event_operator_init(void) {
 
 	memset(pilight_commit, '\0', 3);
 
-	if(settings_find_string("operator-root", &operator_root) != 0) {
+	if(settings_find_string("operators-root", &operator_root) != 0) {
 		/* If no operator root was set, use the default operator root */
 		if(!(operator_root = MALLOC(strlen(OPERATOR_ROOT)+1))) {
 			logprintf(LOG_ERR, "out of memory");

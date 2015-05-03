@@ -32,13 +32,10 @@
 extern char *progname;
 
 #ifdef _WIN32
-#define sa_family_t uint16_t
 #define sleep(a) Sleep(a*1000)
 int check_instances(const wchar_t *prog);
-const char *inet_ntop(int af, const void* src, char* dst, int cnt);
 int setenv(const char *name, const char *value, int overwrite);
 int unsetenv(const char *name);
-int inet_pton(int af, const char *src, void *dst);
 int isrunning(const char *program);
 #endif
 
@@ -47,14 +44,7 @@ int isrunning(const char *program);
 void atomicinit(void);
 void atomiclock(void);
 void atomicunlock(void);
-int inetdevs(char ***array);
-#ifdef __FreeBSD__
-int dev2ip(char *dev, char **ip, __sa_family_t type);
-#else
-int dev2ip(char *dev, char **ip, sa_family_t type);
-#endif
 unsigned int explode(char *str, const char *delimiter, char ***output);
-int host2ip(char *host, char *ip);
 int isNumeric(char *str);
 int nrDecimals(char *str);
 int name2uid(char const *name);
@@ -70,16 +60,11 @@ char *hostname(void);
 char *distroname(void);
 void rmsubstr(char *s, const char *r);
 char *genuuid(char *ifname);
-int whitelist_check(char *ip);
-void whitelist_free(void);
 int file_exists(char *fil);
 int path_exists(char *fil);
 char *uniq_space(char *str);
 
 #ifdef __FreeBSD__
-struct sockaddr *sockaddr_dup(struct sockaddr *sa);
-int rep_getifaddrs(struct ifaddrs **ifap);
-void rep_freeifaddrs(struct ifaddrs *ifap);
 int findproc(char *name, char *args, int loosely);
 #else
 pid_t findproc(char *name, char *args, int loosely);
