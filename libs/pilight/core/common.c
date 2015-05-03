@@ -46,6 +46,7 @@
 	#include <net/if.h>
 	#include <ifaddrs.h>
 	#include <pwd.h>
+	#include <sys/mount.h>
 	#include <sys/ioctl.h>
 #endif
 #include <dirent.h>
@@ -68,6 +69,7 @@
 #include "log.h"
 
 char *progname = NULL;
+static int procmounted = 0;
 
 static const char base64table[] = {
 	'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H',
@@ -229,7 +231,6 @@ int isrunning(const char *program) {
 }
 #endif
 
-
 #ifdef __FreeBSD__
 int findproc(char *cmd, char *args, int loosely) {
 #else
@@ -243,62 +244,95 @@ pid_t findproc(char *cmd, char *args, int loosely) {
 	char fname[512], cmdline[1024];
 	int fd = 0, ptr = 0, match = 0, i = 0, y = '\n', x = 0;
 
-	if(!(dir = opendir("/proc"))) {
-	#ifdef __FreeBSD__
-		system("mount -t procfs proc /proc");
-		if(!(dir = opendir("/proc"))) {
+	if(procmounted == 0) {
+		if((dir = opendir("/proc"))) {
+			i = 0;		
+			while((ent = readdir(dir)) != NULL) {
+				i++;
+			}
+			closedir(dir);
+			if(i == 2) {
+#ifdef __FreeBSD__
+				mount("procfs", "/proc", 0, "");
+#else
+				mount("proc", "/proc", "procfs", 0, "");
+#endif
+				if((dir = opendir("/proc"))) {
+					i = 0;		
+					while((ent = readdir(dir)) != NULL) {
+						i++;
+					}
+					closedir(dir);
+					if(i == 2) {
+						logprintf(LOG_ERR, "/proc filesystem not properly mounted");
+						return -1;
+					}
+				}
+			}
+		} else {
+			logprintf(LOG_ERR, "/proc filesystem not properly mounted");
 			return -1;
 		}
-	#else
-       	return -1;
-	#endif
+		procmounted = 1;
 	}
-
-    while((ent = readdir(dir)) != NULL) {
-		if(isNumeric(ent->d_name) == 0) {
-			snprintf(fname, 512, "/proc/%s/cmdline", ent->d_name);
-			if((fd = open(fname, O_RDONLY, 0)) > -1) {
-				memset(cmdline, '\0', sizeof(cmdline));
-				if((ptr = (int)read(fd, cmdline, sizeof(cmdline)-1)) > -1) {
-					i = 0, match = 0, y = '\n';
-					/* Replace all NULL terminators for newlines */
-					for(i=0;i<ptr;i++) {
-						if(i < ptr && cmdline[i] == '\0') {
-							cmdline[i] = (char)y;
-							y = ' ';
+	if((dir = opendir("/proc"))) {
+		while((ent = readdir(dir)) != NULL) {
+			if(isNumeric(ent->d_name) == 0) {
+				snprintf(fname, 512, "/proc/%s/cmdline", ent->d_name);
+				if((fd = open(fname, O_RDONLY, 0)) > -1) {
+					memset(cmdline, '\0', sizeof(cmdline));
+					if((ptr = (int)read(fd, cmdline, sizeof(cmdline)-1)) > -1) {
+						i = 0, match = 0, y = '\n';
+						/* Replace all NULL terminators for newlines */
+						for(i=0;i<ptr-1;i++) {
+							if(i < ptr && cmdline[i] == '\0') {
+								cmdline[i] = (char)y;
+								y = ' ';
+							}
 						}
-					}
-					cmdline[ptr] = '\0';
-					match = 0;
-					/* Check if program matches */
-					char **array = NULL;
-					unsigned int n = explode(cmdline, "\n", &array);
 
-					if(n == 0) {
-						close(fd);
-						continue;
-					}
-					if((strcmp(array[0], cmd) == 0 && loosely == 0)
-					   || (strstr(array[0], cmd) != NULL && loosely == 1)) {
-						match++;
-					}
+						match = 0;
+						/* Check if program matches */
+						char **array = NULL;
+						unsigned int n = explode(cmdline, "\n", &array);
 
-					if(args != NULL && match == 1) {
-						if(n <= 1) {
+						if(n == 0) {
 							close(fd);
-							for(x=0;x<n;x++) {
-								FREE(array[x]);
-							}
-							if(n > 0) {
-								FREE(array);
-							}
 							continue;
 						}
-						if(strcmp(array[1], args) == 0) {
+						if((strcmp(array[0], cmd) == 0 && loosely == 0)
+							 || (strstr(array[0], cmd) != NULL && loosely == 1)) {
 							match++;
 						}
 
-						if(match == 2) {
+						if(args != NULL && match == 1) {
+							if(n <= 1) {
+								close(fd);
+								for(x=0;x<n;x++) {
+									FREE(array[x]);
+								}
+								if(n > 0) {
+									FREE(array);
+								}
+								continue;
+							}
+							if(strcmp(array[1], args) == 0) {
+								match++;
+							}
+
+							if(match == 2) {
+								pid_t pid = (pid_t)atol(ent->d_name);
+								close(fd);
+								closedir(dir);
+								for(x=0;x<n;x++) {
+									FREE(array[x]);
+								}
+								if(n > 0) {
+									FREE(array);
+								}
+								return pid;
+							}
+						} else if(match > 0) {
 							pid_t pid = (pid_t)atol(ent->d_name);
 							close(fd);
 							closedir(dir);
@@ -310,30 +344,19 @@ pid_t findproc(char *cmd, char *args, int loosely) {
 							}
 							return pid;
 						}
-					} else if(match > 0) {
-						pid_t pid = (pid_t)atol(ent->d_name);
-						close(fd);
-						closedir(dir);
 						for(x=0;x<n;x++) {
 							FREE(array[x]);
 						}
 						if(n > 0) {
 							FREE(array);
 						}
-						return pid;
 					}
-					for(x=0;x<n;x++) {
-						FREE(array[x]);
-					}
-					if(n > 0) {
-						FREE(array);
-					}
+					close(fd);
 				}
-				close(fd);
 			}
 		}
+		closedir(dir);
 	}
-	closedir(dir);
 #endif
 	return -1;
 }
