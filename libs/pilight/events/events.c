@@ -900,7 +900,7 @@ static int event_parse_action_arguments(char *arguments, struct rules_t *obj, in
 	while(arguments[i] != '\0' && i < len) {
 		if(arguments[i] == '(') {
 			if(!(arguments[i-1] == '(' || arguments[i-1] == ' ' || i == 0)) {
-			/* Function */
+				/* Function */
 				error = event_parse_function(&arguments, obj, validate, ACTION);
 				int z = strlen(arguments);
 				len -= (len-z);
@@ -1017,7 +1017,6 @@ static int event_parse_action(char *action, struct rules_t *obj, int validate) {
 	pos = 0;
 	len = 0;
 	for(x=0;x<nractions;x++) {
-
 		match = 0;
 		node = obj->actions;
 		while(node) {
@@ -1279,6 +1278,8 @@ static int event_parse_action(char *action, struct rules_t *obj, int validate) {
 			if(error != 0) {
 				break;
 			}
+		} else {
+			offset += strlen(&tmp[offset])+1;
 		}
 		if(error != 0) {
 			break;
