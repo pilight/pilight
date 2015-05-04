@@ -1352,7 +1352,7 @@ int event_parse_condition(char **rule, struct rules_t *obj, int depth, unsigned 
 	char *or = strstr(tmp, "OR");
 	char *subrule = NULL;
 	size_t pos = 0;
-	int	type = 0, error = 0, i = 0, nrspaces = 0, hasquote = 0;
+	int	type = 0, error = 0/*, i = 0, nrspaces = 0, hasquote = 0*/;
 
 	if(or == NULL) {
 		type = AND;
@@ -1376,22 +1376,22 @@ int event_parse_condition(char **rule, struct rules_t *obj, int depth, unsigned 
 
 	strncpy(subrule, tmp, pos);
 	subrule[pos-1] = '\0';
-	for(i=0;i<pos;i++) {
-		if(subrule[i] == '"') {
-			hasquote ^= 1;
-		}
-		if(hasquote == 0 && (subrule[i] == ' ')) {
-			nrspaces++;
-		}
-	}
+	// for(i=0;i<pos;i++) {
+		// if(subrule[i] == '"') {
+			// hasquote ^= 1;
+		// }
+		// if(hasquote == 0 && (subrule[i] == ' ')) {
+			// nrspaces++;
+		// }
+	// }
 	/*
 	 * Only "1", "0", "True", "False" or
 	 * "1 == 1", "datetime.hour < 18.00" is valid here.
 	 */
-	if(nrspaces != 2 && nrspaces != 0) {
-		logprintf(LOG_ERR, "rule #%d invalid: could not parse \"%s\"", obj->nr, subrule);
-		error = -1;
-	} else {
+	// if(nrspaces != 2 && nrspaces != 0) {
+		// logprintf(LOG_ERR, "rule #%d invalid: could not parse \"%s\"", obj->nr, subrule);
+		// error = -1;
+	// } else {
 		if(event_parse_formula(&subrule, obj, depth, validate) == -1) {
 			error = -1;
 		} else {
@@ -1405,7 +1405,7 @@ int event_parse_condition(char **rule, struct rules_t *obj, int depth, unsigned 
 			tmp[len-pos] = '\0';
 			error = atoi(subrule);
 		}
-	}
+	// }
 	FREE(subrule);
 	return error;
 }
