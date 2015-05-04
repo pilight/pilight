@@ -339,7 +339,10 @@ static void *thread(void *param) {
 		while(opt) {
 			if(strcmp(opt->name, "state") == 0) {
 				if(opt->values->type == JSON_STRING) {
-					old_state = MALLOC(strlen(opt->values->string_)+1);
+					if((old_state = MALLOC(strlen(opt->values->string_)+1)) == NULL) {
+						logprintf(LOG_ERR, "out of memory");
+						exit(EXIT_FAILURE);
+					}
 					strcpy(old_state, opt->values->string_);
 					match = 1;
 				}
@@ -364,7 +367,10 @@ static void *thread(void *param) {
 					jstate = json_find_element(javalues, 0);
 					if(jstate != NULL && jstate->tag == JSON_STRING) {
 						state = jstate->string_;
-						new_state = MALLOC(strlen(state)+1);
+						if((new_state = MALLOC(strlen(state)+1)) == NULL) {
+							logprintf(LOG_ERR, "out of memory");
+							exit(EXIT_FAILURE);
+						}
 						strcpy(new_state, state);
 						/*
 						 * We're not switching when current state is the same as

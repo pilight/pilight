@@ -290,7 +290,10 @@ static void *thread(void *param) {
 			jcolor = json_find_element(jevalues, 0);
 			if(jcolor != NULL && jcolor->tag == JSON_STRING) {
 				color = jcolor->string_;
-				new_color = MALLOC(strlen(color)+1);
+				if((new_color = MALLOC(strlen(color)+1)) == NULL) {
+					logprintf(LOG_ERR, "out of memory");
+					exit(EXIT_FAILURE);					
+				}
 				strcpy(new_color, color);
 			}
 		}
@@ -370,14 +373,20 @@ static void *thread(void *param) {
 		while(opt) {
 			if(strcmp(opt->name, "label") == 0) {
 				if(opt->values->type == JSON_STRING) {
-					old_label = MALLOC(strlen(opt->values->string_)+1);
+					if((old_label = MALLOC(strlen(opt->values->string_)+1)) == NULL) {
+						logprintf(LOG_ERR, "out of memory");
+						exit(EXIT_FAILURE);
+					}
 					strcpy(old_label, opt->values->string_);
 					match1 = 1;
 				}
 			}
 			if(strcmp(opt->name, "color") == 0) {
 				if(opt->values->type == JSON_STRING) {
-					old_color = MALLOC(strlen(opt->values->string_)+1);
+					if((old_color = MALLOC(strlen(opt->values->string_)+1)) == NULL) {
+						logprintf(LOG_ERR, "out of memory");
+						exit(EXIT_FAILURE);						
+					}
 					strcpy(old_color, opt->values->string_);
 					match2 = 1;
 				}
@@ -416,7 +425,10 @@ static void *thread(void *param) {
 							snprintf(label, l, "%.*f", jlabel->decimals_, jlabel->number_);
 							label[l] = '\0';
 						}
-						new_label = MALLOC(strlen(label)+1);
+						if((new_label = MALLOC(strlen(label)+1)) == NULL) {
+							logprintf(LOG_ERR, "out of memory");
+							exit(EXIT_FAILURE);							
+						}
 						strcpy(new_label, label);
 						/*
 						 * We're not switching when current label or is the same as

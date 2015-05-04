@@ -519,7 +519,7 @@ static void *thread(void *param) {
 					if(l == 2) {
 						for(i=0;i<nrunits;i++) {
 							if(strcmp(array[1], units[i].name) == 0) {
-								seconds_in = atoi(array[1]);
+								seconds_in = atoi(array[0]);
 								type_in = units[i].id;
 								has_in = 1;
 								break;
@@ -578,7 +578,10 @@ static void *thread(void *param) {
 		while(opt) {
 			if(strcmp(opt->name, "state") == 0) {
 				if(opt->values->type == JSON_STRING) {
-					old_state = MALLOC(strlen(opt->values->string_)+1);
+					if((old_state = MALLOC(strlen(opt->values->string_)+1)) == NULL) {
+						logprintf(LOG_ERR, "out of memory");
+						exit(EXIT_FAILURE);						
+					}
 					strcpy(old_state, opt->values->string_);
 					match1 = 1;
 				}
@@ -838,7 +841,7 @@ void actionDimInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "dim";
-	module->version = "3.1";
+	module->version = "3.2";
 	module->reqversion = "6.0";
 	module->reqcommit = "152";
 }

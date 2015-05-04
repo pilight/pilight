@@ -732,7 +732,7 @@ char *distroname(void) {
 char *genuuid(char *ifname) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
-	char mac[ETH_ALEN], *upnp_id = NULL, *p = mac;
+	char mac[ETH_ALEN+1], *upnp_id = NULL, *p = mac;
 	char serial[UUID_LENGTH+1];
 
 	memset(serial, '\0', UUID_LENGTH+1);
@@ -757,7 +757,10 @@ char *genuuid(char *ifname) {
 					serial[10] = '-';
 					memmove(&serial[14], &serial[13], 7);
 					serial[13] = '-';
-					upnp_id = MALLOC(UUID_LENGTH+1);
+					if((upnp_id = MALLOC(UUID_LENGTH+1)) == NULL) {
+						logprintf(LOG_ERR, "out of memory");
+						exit(EXIT_FAILURE);
+					}
 					strcpy(upnp_id, serial);
 					fclose(fp);
 					return upnp_id;
@@ -769,9 +772,12 @@ char *genuuid(char *ifname) {
 
 #endif
 	if(dev2mac(ifname, &p) == 0) {
-		upnp_id = MALLOC(UUID_LENGTH+1);
+		if((upnp_id = MALLOC(UUID_LENGTH+1)) == NULL) {
+			logprintf(LOG_ERR, "out of memory");
+			exit(EXIT_FAILURE);
+		}
 		memset(upnp_id, '\0', UUID_LENGTH+1);
-		sprintf(upnp_id,
+		snprintf(upnp_id, UUID_LENGTH,
 				"0000-%02x-%02x-%02x-%02x%02x%02x",
 				(unsigned char)p[0], (unsigned char)p[1], (unsigned char)p[2],
 				(unsigned char)p[3], (unsigned char)p[4], (unsigned char)p[5]);

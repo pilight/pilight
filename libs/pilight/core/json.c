@@ -39,6 +39,7 @@
 static char *json_strdup(const char *str)
 {
 	char *ret = (char*) malloc(strlen(str) + 1);
+	memset(ret, 0, strlen(str) + 1);
 	if (ret == NULL)
 		out_of_memory();
 	strcpy(ret, str);
@@ -57,6 +58,7 @@ typedef struct
 static void sb_init(SB *sb)
 {
 	sb->start = (char*) malloc(17);
+	memset(sb->start, 0, 17);
 	if (sb->start == NULL)
 		out_of_memory();
 	sb->cur = sb->start;
