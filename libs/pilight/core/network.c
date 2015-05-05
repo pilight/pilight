@@ -214,6 +214,7 @@ int dev2mac(char *ifname, char **mac) {
 	struct ifreq s;
 
 	if(fd < 0) {
+		logprintf(LOG_ERR, "could not open new socket");
 		return -1;
 	}
 	
@@ -221,7 +222,10 @@ int dev2mac(char *ifname, char **mac) {
 	strcpy(s.ifr_name, ifname);
 	if(ioctl(fd, SIOCGIFHWADDR, &s) == 0) {
 		memcpy(*mac, s.ifr_addr.sa_data, ETH_ALEN);
+		close(fd);
 		return 0;
+	} else {
+		logprintf(LOG_ERR, "ioctl SIOCGIFHWADDR failed");
 	}
 	close(fd);
 #endif

@@ -732,7 +732,7 @@ char *distroname(void) {
 char *genuuid(char *ifname) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
-	char mac[ETH_ALEN+1], *upnp_id = NULL, *p = mac;
+	char mac[ETH_ALEN], *upnp_id = NULL, *p = mac;
 	char serial[UUID_LENGTH+1];
 
 	memset(serial, '\0', UUID_LENGTH+1);

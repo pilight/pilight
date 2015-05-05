@@ -70,7 +70,8 @@ static void *thread(void *param) {
 	struct JsonNode *json = (struct JsonNode *)node->param;
 	struct JsonNode *jid = NULL;
 	struct JsonNode *jchild = NULL;
-	char *srcmac = NULL, tmpip[INET_ADDRSTRLEN+1], dstip[INET_ADDRSTRLEN+1];
+	char *dstmac = NULL, srcmac[ETH_ALEN], *a = srcmac;
+	char *tmpip[INET_ADDRSTRLEN+1], dstip[INET_ADDRSTRLEN+1];
 	char ip[INET_ADDRSTRLEN+1], *p = ip, **devs = NULL;
 	double itmp = 0.0;
 	int state = 0, nrloops = 0, interval = INTERVAL, i = 0, srcip[4], nrdevs = 0;
@@ -80,7 +81,7 @@ static void *thread(void *param) {
 	if((jid = json_find_member(json, "id"))) {
 		jchild = json_first_child(jid);
 		while(jchild) {
-			if(json_find_string(jchild, "mac", &srcmac) == 0) {
+			if(json_find_string(jchild, "mac", &dstmac) == 0) {
 				break;
 			}
 			jchild = jchild->next;
@@ -93,8 +94,8 @@ static void *thread(void *param) {
 	memset(dstip, '\0', INET_ADDRSTRLEN+1);
 	memset(tmpip, '\0', INET_ADDRSTRLEN+1);
 
-	for(i=0;i<strlen(srcmac);i++) {
-		srcmac[i] = (char)tolower(srcmac[i]);
+	for(i=0;i<strlen(dstmac);i++) {
+		dstmac[i] = (char)tolower(dstmac[i]);
 	}
 
 	if((nrdevs = inetdevs(&devs)) == 0) {
@@ -106,6 +107,15 @@ static void *thread(void *param) {
 	memset(&ip, '\0', INET_ADDRSTRLEN+1);
 	if(dev2ip(devs[0], &p, AF_INET) != 0) {
 		logprintf(LOG_ERR, "could not determine host ip address");
+		array_free(&devs, nrdevs);
+		return NULL;
+	}
+
+	memset(&srcmac, '\0', ETH_ALEN);
+	if(dev2mac(devs[0], &a) != 0 || (srcmac[0] == 0 && srcmac[1] == 0 &&
+		srcmac[2] == 0 && srcmac[3] == 0 &&
+		srcmac[4] == 0 && srcmac[5] == 0)) {
+		logprintf(LOG_ERR, "could not obtain MAC address for interface %s", devs[0]);
 		array_free(&devs, nrdevs);
 		return NULL;
 	}
@@ -129,7 +139,7 @@ static void *thread(void *param) {
 				arp_add_host(dstip);
 			}
 
-			if(arp_resolv(devs[0], srcmac, &p) == 0) {
+			if(arp_resolv(devs[0], srcmac, dstmac, &p) == 0) {
 				if(strlen(dstip) == 0) {
 					strcpy(dstip, ip);
 				}
@@ -142,7 +152,7 @@ static void *thread(void *param) {
 					state = CONNECTED;
 					arping->message = json_mkobject();
 					JsonNode *code = json_mkobject();
-					json_append_member(code, "mac", json_mkstring(srcmac));
+					json_append_member(code, "mac", json_mkstring(dstmac));
 					json_append_member(code, "ip", json_mkstring(ip));
 					json_append_member(code, "state", json_mkstring("connected"));
 
@@ -161,7 +171,7 @@ static void *thread(void *param) {
 
 				arping->message = json_mkobject();
 				JsonNode *code = json_mkobject();
-				json_append_member(code, "mac", json_mkstring(srcmac));
+				json_append_member(code, "mac", json_mkstring(dstmac));
 				json_append_member(code, "ip", json_mkstring("0.0.0.0"));
 				json_append_member(code, "state", json_mkstring("disconnected"));
 
@@ -250,9 +260,9 @@ void arpingInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "arping";
-	module->version = "2.1";
+	module->version = "2.2";
 	module->reqversion = "6.0";
-	module->reqcommit = "154";
+	module->reqcommit = "158";
 }
 
 void init(void) {

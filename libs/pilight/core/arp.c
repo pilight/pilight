@@ -51,9 +51,6 @@
 	#include <ws2tcpip.h>
 	#include <iphlpapi.h>
 	#define MSG_NOSIGNAL 0
-	#ifndef ETH_ALEN
-		#define ETH_ALEN	6
-	#endif	
 #else
 	#include <sys/socket.h>
 	#include <netinet/in.h>
@@ -92,7 +89,6 @@
 #define MINIMUM_FRAME_SIZE 	46
 #define ETHER_HDR_SIZE 			14
 #define ARP_PKT_SIZE 				28
-#define ETH_ALEN 						6
 #define FRAMING_ETHERNET_II	0
 #define FRAMING_LLC_SNAP		1
 
@@ -265,7 +261,10 @@ void arp_add_host(const char *host_name) {
 		exit(EXIT_FAILURE);
 	}
 
-	helist[num_hosts] = MALLOC(sizeof(struct host_entry));
+	if((helist[num_hosts] = MALLOC(sizeof(struct host_entry))) == NULL) {
+		logprintf(LOG_ERR, "out of memory\n");
+		exit(EXIT_FAILURE);
+	}
 	helist[num_hosts]->addr.s_addr = inet_addr(host_name);
 	helist[num_hosts]->live = 1;
 	helist[num_hosts]->timeout = 500 * 1000;	/* Convert from ms to us */
@@ -404,7 +403,7 @@ static int recvfrom_wto(long unsigned int tmo, pcap_t *pcap_handle) {
 		logprintf(LOG_ERR, "select");
 		return -1;
 	} else if (n == 0 && pcap_fd >= 0) {
-		return -1;
+		return 1;
 	}
 #endif
 	if(pcap_handle != NULL) {
@@ -417,28 +416,29 @@ static int recvfrom_wto(long unsigned int tmo, pcap_t *pcap_handle) {
 	return -1;
 }
 
-int arp_resolv(char *if_name, char *mac, char **ip) {
+int arp_resolv(char *if_name, char *srcmac, char *dstmac, char **ip) {
 	struct timeval now, diff, last_packet_time;
 	pcap_t *pcap_handle = NULL;
 	unsigned long int loop_timediff = 0, host_timediff = 0;
 	unsigned long int req_interval = 0, select_timeout = 0;
 	unsigned long int cum_err = 0, interval = 0;
-	char interface_mac[ETH_ALEN], *p = interface_mac;
-	char *if_cpy = MALLOC(strlen(if_name)+1);
+	char *if_cpy = NULL, error[PCAP_ERRBUF_SIZE], *e = error;
 	int found = -1;
 	int reset_cum_err = 0, first_timeout = 1;
 	int i = 0;
 
-	memset(if_cpy, '\0', strlen(if_name)+1);
-	
+	if((if_cpy = MALLOC(strlen(if_name)+1)) == NULL) {
+		logprintf(LOG_ERR, "out of memory");
+		exit(EXIT_FAILURE);
+	}
 	strcpy(if_cpy, if_name);
 
 #ifdef _WIN32
 	int match = 0;
 	pcap_if_t *alldevs = NULL, *d = NULL;
 
-	if(pcap_findalldevs(&alldevs, NULL) == -1){
-		logprintf(LOG_ERR, "pcap_findalldevs");
+	if(pcap_findalldevs(&alldevs, e) == -1){
+		logprintf(LOG_ERR, "pcap_findalldevs: %s", e);
 		goto close;
 	}
 
@@ -464,20 +464,13 @@ int arp_resolv(char *if_name, char *mac, char **ip) {
 	}
 #endif
 
-	if(dev2mac(if_name, &p) != 0 || (interface_mac[0] == 0 && interface_mac[1] == 0 &&
-		interface_mac[2] == 0 && interface_mac[3] == 0 &&
-		interface_mac[4] == 0 && interface_mac[5] == 0)) {
-		logprintf(LOG_ERR, "could not obtain MAC address for interface %s", if_name);
+	if((pcap_handle = pcap_open_live(if_cpy, 64, 0, 3, e)) == NULL) {
+		logprintf(LOG_ERR, "pcap_open_live: %s", e);
 		goto close;
 	}
 
-	if((pcap_handle = pcap_open_live(if_cpy, 64, 0, 3, NULL)) == NULL) {
-		logprintf(LOG_ERR, "pcap_open_live");
-		goto close;
-	}
-
-	if((pcap_setnonblock(pcap_handle, 1, NULL)) < 0) {
-		logprintf(LOG_ERR, "pcap_setnonblock");
+	if((pcap_setnonblock(pcap_handle, 1, e)) < 0) {
+		logprintf(LOG_ERR, "pcap_setnonblock: %s", e);
 		goto close;
 	}
 
@@ -532,7 +525,7 @@ int arp_resolv(char *if_name, char *mac, char **ip) {
 					if((*cursor)->num_sent > 0) {
 						(*cursor)->timeout *= 1.5;
 					}
-					if(send_packet(pcap_handle, *cursor, &last_packet_time, interface_mac) == -1) {
+					if(send_packet(pcap_handle, *cursor, &last_packet_time, srcmac) == -1) {
 						goto close;
 					}
 					advance_cursor();
@@ -557,7 +550,7 @@ int arp_resolv(char *if_name, char *mac, char **ip) {
 													helist[i]->mac[0], helist[i]->mac[1],
 													helist[i]->mac[2], helist[i]->mac[3],
 													helist[i]->mac[4], helist[i]->mac[5]);
-			if(strcmp(fmac, mac) == 0) {
+			if(strcmp(fmac, dstmac) == 0) {
 				memset(*ip, '\0', INET_ADDRSTRLEN+1);
 				inet_ntop(AF_INET, (void *)&(helist[i]->addr), *ip, INET_ADDRSTRLEN+1);
 				found = 1;

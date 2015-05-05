@@ -1517,7 +1517,7 @@ void *receiveOOK(void *param) {
 					r.length = 0;
 				}
 				if(duration > mingaplen) {
-					if(duration < maxgaplen) { // Maximum footer pulse of 100000
+					if(duration < maxgaplen) {
 						plslen = duration/PULSE_DIV;
 					}
 					/* Let's do a little filtering here as well */
