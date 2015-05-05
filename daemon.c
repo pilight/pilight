@@ -1570,7 +1570,7 @@ void *clientize(void *param) {
 	struct JsonNode *joptions = NULL;
 	struct JsonNode *jchilds = NULL;
 	struct JsonNode *tmp = NULL;
-  char *recvBuff = NULL, *output = NULL;
+	char *recvBuff = NULL, *output = NULL;
 	char *message = NULL, *action = NULL;
 	char *origin = NULL, *protocol = NULL;
 	int client_loop = 0, config_synced = 0;
@@ -2381,15 +2381,19 @@ int start_pilight(int argc, char **argv) {
 	struct protocols_t *tmp = protocols;
 	while(tmp) {
 		if(tmp->listener->maxrawlen > maxrawlen) {
+			logprintf(LOG_DEBUG, "%s: has set a new value for maxrawlen: %d", tmp->listener->id, tmp->listener->maxrawlen);
 			maxrawlen = tmp->listener->maxrawlen;
 		}
 		if(tmp->listener->minrawlen > 0 && tmp->listener->minrawlen < minrawlen) {
+			logprintf(LOG_DEBUG, "%s: has set a new value for minrawlen: %d", tmp->listener->id, tmp->listener->minrawlen);
 			minrawlen = tmp->listener->minrawlen;
 		}
 		if(tmp->listener->maxgaplen > maxgaplen) {
+			logprintf(LOG_DEBUG, "%s: has set a new value for maxgaplen: %d", tmp->listener->id, tmp->listener->maxgaplen);
 			maxgaplen = tmp->listener->maxgaplen;
 		}
 		if(tmp->listener->mingaplen > 0 && tmp->listener->mingaplen < mingaplen) {
+			logprintf(LOG_DEBUG, "%s: has set a new value for mingaplen: %d", tmp->listener->id, tmp->listener->mingaplen);
 			mingaplen = tmp->listener->mingaplen;
 		}
 		if(tmp->listener->rawlen > 0) {
@@ -2721,3 +2725,4 @@ int main(int argc, char **argv) {
 	return ret;
 }
 #endif
+

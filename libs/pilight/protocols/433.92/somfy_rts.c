@@ -36,6 +36,7 @@ Change Log:
 0.92c	- 150316 focus on rts protocol
 0.93	- 150430 port to pilight 7.0
 0.94  - Bugfixing
+0.94b - Bugfixing GAP Length
 */
 #include <stdio.h>
 #include <stdlib.h>
@@ -123,12 +124,17 @@ static struct settings_t *settings = NULL;
 
 // Check for expected length, Footer value and SYNC
 static int validate(void) {
-int i;
+	int i;
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
 	logprintf(LOG_DEBUG, "somfy_rts validate: rawlen: %d footer: %d SYNC: %d", somfy_rts->rawlen, somfy_rts->raw[somfy_rts->rawlen-1], somfy_rts->raw[2]);
-for (i=0; i<128; i++) { 
-printf("%d ",somfy_rts->raw[i]); 
-}
-printf("\n");
+	if(log_level_get() >= LOG_DEBUG) {
+		for (i=0; i < somfy_rts->rawlen; i++) {
+			printf("%d ",somfy_rts->raw[i]);
+		}
+		printf("-#: %d\n",somfy_rts->rawlen);
+	}
+
 	if((somfy_rts->rawlen > MINRAWLEN_SOMFY_PROT) &&
 		(somfy_rts->rawlen < MAXRAWLEN_SOMFY_PROT)) {
 		if((somfy_rts->raw[somfy_rts->rawlen-1] > PULSE_SOMFY_FOOTER_L) &&
@@ -139,7 +145,6 @@ printf("\n");
 			}
 		}
 	}
-	logprintf(LOG_DEBUG, "somfy_rts validate: test failed");
 	return -1;
 }
 
@@ -199,11 +204,13 @@ static void parseCode(void) {
 	int cksum = 0;
 	int key_left = 0, command = 0, address = 0;
 
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 	// Decode Manchester pulse stream into binary
 	pRaw = 0;
 	for  (i=0;i<=BINLEN_SOMFY_PROT;i++) {
 		binary[i]=0;
 	}
+
 	while (pRaw<=somfy_rts->rawlen) {
 		switch (protocol_sync) {
 			case 0: // Wait for the first SW Sync pulse
@@ -314,7 +321,7 @@ static void parseCode(void) {
 				protocol_sync = 5;
 				logprintf(LOG_DEBUG, "somfy_rts: prot 5");
 			}
-			break;
+//			break;
 			case 5:
 			// to be implemented: extended protocol
 			case 95:
@@ -339,13 +346,10 @@ static void parseCode(void) {
 		if (protocol_sync > 95) {
 			logprintf(LOG_DEBUG, "**** somfy_rts RAW CODE ****");
 			if(log_level_get() >= LOG_DEBUG) {
-//				Select the next For statement to print populated buffer data (production)
-//				for(x=0;x<pRaw;x++) {
-//				Select as alternativ this for statement to print the complete buffer (development/debugging)
-				for(x=0;x<=somfy_rts->rawlen;x++) {
+				for(x=0;x<pRaw;x++) {
 					printf("%d ", somfy_rts->raw[x]);
 				}
-				printf("\n");
+				printf(" -#: %d\n",pRaw);
 			}
 			break;
 		}
@@ -408,7 +412,7 @@ static void parseCode(void) {
 
 static int *preAmbCode (void) {
 // Wakeup sequence called by daemon.c
-//	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
 	return preAmb_wakeup;
 }
@@ -709,7 +713,7 @@ void somfy_rtsInit(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name =  "somfy_rts";
-	module->version =  "0.94";
+	module->version =  "0.94a";
 	module->reqversion =  "6.0";
 	module->reqcommit =  NULL;
 }
