@@ -1847,7 +1847,7 @@ int main_gc(void) {
 
 	config_gc();
 	protocol_gc();
-	ntp_gc();
+	ntp_gc(); 
 	whitelist_free();
 	threads_gc();
 #ifndef _WIN32

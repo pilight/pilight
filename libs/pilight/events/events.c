@@ -290,6 +290,9 @@ int event_lookup_variable(char *var, struct rules_t *obj, int type, struct varco
 								break;
 							} else if(strcmp(opt->name, name) == 0) {
 								match1 = 1;
+								if(opt->vartype == (JSON_NUMBER | JSON_STRING)) {
+									break;
+								}
 								if(opt->conftype == DEVICES_VALUE || opt->conftype == DEVICES_STATE || opt->conftype == DEVICES_SETTING) {
 									match2 = 1;
 									if(type == (JSON_STRING | JSON_NUMBER)) {

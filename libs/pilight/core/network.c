@@ -276,31 +276,31 @@ int dev2ip(char *dev, char **ip, sa_family_t type) {
 		FREE(pAdapterInfo);
 	}
 #else
-	int fd = 0;
-	struct ifreq ifr;
+	struct ifaddrs *ifaddr, *ifa;
+	char host[NI_MAXHOST];
+	int family, s, n;
 
-	if((fd = socket(AF_INET, SOCK_DGRAM, 0)) == 0) {
-		logprintf(LOG_ERR, "could not create socket");
-		return -1;
+	if(getifaddrs(&ifaddr) == -1) {
+		perror("getifaddrs");
+		exit(EXIT_FAILURE);
 	}
 
-	/* I want to get an IPv4 IP address */
-	ifr.ifr_addr.sa_family = type;
-
-	/* I want IP address attached to "eth0" */
-	strncpy(ifr.ifr_name, dev, IFNAMSIZ-1);
-
-	if(ioctl(fd, SIOCGIFADDR, &ifr) == -1) {
-		close(fd);
-		logprintf(LOG_ERR, "ioctl SIOCGIFADDR failed");
-		return -1;
-
+	/* Walk through linked list, maintaining head pointer so we can free list later */
+	for(ifa = ifaddr, n = 0; ifa != NULL; ifa = ifa->ifa_next, n++) {
+		if(ifa->ifa_addr == NULL)
+			continue;
+		family = ifa->ifa_addr->sa_family;
+		if(strcmp(ifa->ifa_name, dev) == 0 && family == type) {
+			s = getnameinfo(ifa->ifa_addr, (family == AF_INET) ? sizeof(struct sockaddr_in) : sizeof(struct sockaddr_in6), host, NI_MAXHOST, NULL, 0, NI_NUMERICHOST);
+			if(s != 0) {
+				printf("getnameinfo() failed: %s\n", gai_strerror(s));
+				exit(EXIT_FAILURE);
+			}
+			strcpy(*ip, host);
+		}
 	}
 
-	close(fd);
-
-	struct sockaddr_in *ipaddr = (struct sockaddr_in *)(void *)&ifr.ifr_addr;
-	inet_ntop(AF_INET, (void *)&(ipaddr->sin_addr), *ip, INET_ADDRSTRLEN+1);
+	freeifaddrs(ifaddr);
 #endif
 
 	return 0;
@@ -470,7 +470,7 @@ int rep_getifaddrs(struct ifaddrs **ifap) {
 		curif->ifa_next = NULL;
 
 		curif->ifa_addr = NULL;
-		if (ioctl(fd, SIOCGIFADDR, &ifr) != -1) {
+		if(ioctl(fd, SIOCGIFADDR, &ifr) != -1) {
 			curif->ifa_addr = sockaddr_dup(&ifr.ifr_addr);
 			if (curif->ifa_addr == NULL) {
 				FREE(curif->ifa_name);
