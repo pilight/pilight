@@ -1252,7 +1252,7 @@ static void socket_parse_data(int i, char *buffer) {
 					struct JsonNode *code = NULL;
 					struct devices_t *dev = NULL;
 					char *device = NULL;
-					if(!(code = json_find_member(json, "code")) || code->tag != JSON_OBJECT) {
+					if((code = json_find_member(json, "code")) == NULL || code->tag != JSON_OBJECT) {
 						logprintf(LOG_ERR, "client did not send any codes");
 					} else {
 						/* Check if a location and device are given */
@@ -1632,16 +1632,16 @@ void *clientize(void *param) {
 						if((jconfig = json_find_member(json, "config")) != NULL) {
 							gui_gc();
 							devices_gc();
-#ifdef EVENTS
 							rules_gc();
-#endif
+							registry_gc();
+
 							int match = 1;
 							while(match) {
 								jchilds = json_first_child(jconfig);
 								match = 0;
 								while(jchilds) {
 									tmp = jchilds;
-									if(strcmp(tmp->key, "devices") != 0) {
+									if(strcmp(tmp->key, "devices") != 0 && strcmp(tmp->key, "rules") != 0) {
 										json_remove_from_parent(tmp);
 										match = 1;
 									}
@@ -1759,6 +1759,8 @@ static void daemonize(void) {
 int main_gc(void) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
+	running = 0;
+	pilight.running = 0;
 	main_loop = 0;
 
 	/* If we are running in node mode, the clientize
@@ -1813,7 +1815,7 @@ int main_gc(void) {
 		/* Remove the stale pid file */
 		if(access(pid_file, F_OK) != -1) {
 			if(remove(pid_file) != -1) {
-				logprintf(LOG_DEBUG, "removed stale pid_file %s", pid_file);
+				logprintf(LOG_INFO, "removed stale pid_file %s", pid_file);
 			} else {
 				logprintf(LOG_ERR, "could not remove stale pid file %s", pid_file);
 			}
@@ -1947,7 +1949,9 @@ void *pilight_stats(void *param) {
 	settings_find_number("stats-enable", &stats);
 
 	while(main_loop) {
-		registerVersion();
+		if(pilight.runmode == STANDALONE) {
+			registerVersion();
+		}
 
 		if(stats == 1) {
 			double cpu = 0.0, ram = 0.0;
@@ -2483,12 +2487,9 @@ int start_pilight(int argc, char **argv) {
 	threads_register("receive parser", &receive_parse_code, (void *)NULL, 0);
 
 #ifdef EVENTS
-	/* Register a seperate thread for the events parser */
-	if(pilight.runmode == STANDALONE) {
-		/* Register a seperate thread in which the daemon communicates the events library */
-		threads_register("events client", &events_clientize, (void *)NULL, 0);
-		threads_register("events loop", &events_loop, (void *)NULL, 0);
-	}
+	/* Register a seperate thread in which the daemon communicates the events library */
+	threads_register("events client", &events_clientize, (void *)NULL, 0);
+	threads_register("events loop", &events_loop, (void *)NULL, 0);
 #endif
 
 #ifdef WEBSERVER

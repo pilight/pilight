@@ -243,10 +243,11 @@ static JsonNode *registry_sync(int level, const char *display) {
 	}
 }
 
-static int registry_gc(void) {
+int registry_gc(void) {
 	if(registry != NULL) {
 		json_delete(registry);
 	}
+	registry = NULL;
 	logprintf(LOG_DEBUG, "garbage collected config registry library");
 	return 1;
 }

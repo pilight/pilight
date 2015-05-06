@@ -1717,58 +1717,83 @@ static void events_queue(char *message) {
 void *events_clientize(void *param) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
-	unsigned int failures = 0;
-	while(loop && failures <= 5) {
-		struct ssdp_list_t *ssdp_list = NULL;
-		int standalone = 0;
-		settings_find_number("standalone", &standalone);
+	struct JsonNode *jclient = NULL;
+	struct JsonNode *joptions = NULL;
+	struct ssdp_list_t *ssdp_list = NULL;
+	char *out = NULL;
+	int standalone = 0;
+	int client_loop = 0;
+	settings_find_number("standalone", &standalone);
+
+	while(loop) {
+		
+		if(client_loop == 1) {
+			sleep(1);
+		}
+		client_loop = 1;
+		
+		ssdp_list = NULL;
 		if(ssdp_seek(&ssdp_list) == -1 || standalone == 1) {
 			logprintf(LOG_DEBUG, "no pilight ssdp connections found");
 			char server[16] = "127.0.0.1";
 			if((sockfd = socket_connect(server, (unsigned short)socket_get_port())) == -1) {
 				logprintf(LOG_DEBUG, "could not connect to pilight-daemon");
-				failures++;
 				continue;
 			}
 		} else {
 			if((sockfd = socket_connect(ssdp_list->ip, ssdp_list->port)) == -1) {
 				logprintf(LOG_DEBUG, "could not connect to pilight-daemon");
-				failures++;
 				continue;
 			}
 		}
+
 		if(ssdp_list != NULL) {
 			ssdp_free(ssdp_list);
 		}
 
-		struct JsonNode *jclient = json_mkobject();
-		struct JsonNode *joptions = json_mkobject();
+		jclient = json_mkobject();
+		joptions = json_mkobject();
 		json_append_member(jclient, "action", json_mkstring("identify"));
 		json_append_member(joptions, "config", json_mknumber(1, 0));
 		json_append_member(jclient, "options", joptions);
 		json_append_member(jclient, "media", json_mkstring("all"));
-		char *out = json_stringify(jclient, NULL);
-		socket_write(sockfd, out);
+		out = json_stringify(jclient, NULL);
+		if(socket_write(sockfd, out) != (strlen(out)+strlen(EOSS))) {
+			json_free(out);
+			json_delete(jclient);
+			continue;
+		}
 		json_free(out);
 		json_delete(jclient);
 
 		if(socket_read(sockfd, &recvBuff, 0) != 0
 			 || strcmp(recvBuff, "{\"status\":\"success\"}") != 0) {
-				failures++;
 			continue;
 		}
-		failures = 0;
-		while(loop) {
-			if(socket_read(sockfd, &recvBuff, 0) != 0) {
+
+		while(client_loop) {
+			if(sockfd <= 0) {
 				break;
-			} else {
-				char **array = NULL;
-				unsigned int n = explode(recvBuff, "\n", &array), i = 0;
-				for(i=0;i<n;i++) {
-					events_queue(array[i]);
-				}
-				array_free(&array, n);
 			}
+			if(loop == 0) {
+				client_loop = 0;
+				break;
+			}
+
+			int z = socket_read(sockfd, &recvBuff, 1);
+			if(z == -1) {
+				sockfd = 0;
+				break;
+			} else if(z == 1) {
+				continue;
+			}
+
+			char **array = NULL;
+			unsigned int n = explode(recvBuff, "\n", &array), i = 0;
+			for(i=0;i<n;i++) {
+				events_queue(array[i]);
+			}
+			array_free(&array, n);
 		}
 	}
 
