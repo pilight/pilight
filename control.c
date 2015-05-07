@@ -43,6 +43,10 @@
 #include "libs/pilight/events/operator.h"
 #include "libs/pilight/events/action.h"
 
+#ifndef _WIN32
+	#include "libs/wiringx/wiringX.h"
+#endif
+
 int main(int argc, char **argv) {
 	// memtrack();
 
@@ -62,7 +66,11 @@ int main(int argc, char **argv) {
 	log_shell_enable();
 	log_level_set(LOG_NOTICE);
 
-	if(!(progname = MALLOC(16))) {
+#ifndef _WIN32
+	wiringXLog = logprintf;
+#endif	
+	
+	if((progname = MALLOC(16)) == NULL) {
 		logprintf(LOG_ERR, "out of memory");
 		exit(EXIT_FAILURE);
 	}

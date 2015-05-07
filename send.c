@@ -38,6 +38,10 @@
 
 #include "libs/pilight/protocols/protocol.h"
 
+#ifndef _WIN32
+	#include "libs/wiringx/wiringX.h"
+#endif
+
 typedef struct pname_t {
 	char *name;
 	char *desc;
@@ -91,6 +95,10 @@ int main(int argc, char **argv) {
 	log_shell_enable();
 	log_level_set(LOG_NOTICE);
 
+#ifndef _WIN32
+	wiringXLog = logprintf;
+#endif		
+	
 	if((progname = MALLOC(13)) == NULL) {
 		logprintf(LOG_ERR, "out of memory");
 		exit(EXIT_FAILURE);

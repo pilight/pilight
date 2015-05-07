@@ -324,8 +324,7 @@ int main(int argc, char **argv) {
 	char configtmp[] = CONFIG_FILE;
 	config_set_file(configtmp);
 
-	progname = MALLOC(15);
-	if(!progname) {
+	if((progname = MALLOC(15)) == NULL) {
 		logprintf(LOG_ERR, "out of memory");
 		exit(EXIT_FAILURE);
 	}

@@ -145,7 +145,7 @@ static pthread_mutexattr_t recvqueue_attr;
 static unsigned short recvqueue_init = 0;
 
 typedef struct bcqueue_t {
-	JsonNode *jmessage;
+	struct JsonNode *jmessage;
 	char *protoname;
 	enum origin_t origin;
 	struct bcqueue_t *next;
@@ -248,7 +248,7 @@ static void client_remove(int id) {
 	}
 }
 
-static void broadcast_queue(char *protoname, JsonNode *json, enum origin_t origin) {
+static void broadcast_queue(char *protoname, struct JsonNode *json, enum origin_t origin) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
 	if(main_loop == 1) {
@@ -306,7 +306,7 @@ void *broadcast(void *param) {
 			logprintf(LOG_STACK, "%s::unlocked", __FUNCTION__);
 
 			broadcasted = 0;
-			JsonNode *jret = NULL;
+			struct JsonNode *jret = NULL;
 			char *origin = NULL;
 
 			if(json_find_string(bcqueue->jmessage, "origin", &origin) == 0) {
@@ -402,12 +402,12 @@ void *broadcast(void *param) {
 					   message part of the queue so we remove the settings */
 					char *internal = json_stringify(bcqueue->jmessage, NULL);
 
-					JsonNode *jsettings = NULL;
+					struct JsonNode *jsettings = NULL;
 					if((jsettings = json_find_member(bcqueue->jmessage, "settings"))) {
 						json_remove_from_parent(jsettings);
 						json_delete(jsettings);
 					}
-					JsonNode *tmp = json_find_member(bcqueue->jmessage, "action");
+					struct JsonNode *tmp = json_find_member(bcqueue->jmessage, "action");
 					if(tmp != NULL && tmp->tag == JSON_STRING && strcmp(tmp->string_, "update") == 0) {
 						json_remove_from_parent(tmp);
 						json_delete(tmp);
@@ -536,7 +536,7 @@ static void receiver_create_message(protocol_t *protocol) {
 		char *valid = json_stringify(protocol->message, NULL);
 		json_delete(protocol->message);
 		if(valid != NULL && json_validate(valid) == true) {
-			JsonNode *jmessage = json_mkobject();
+			struct JsonNode *jmessage = json_mkobject();
 
 			json_append_member(jmessage, "message", json_decode(valid));
 			json_append_member(jmessage, "origin", json_mkstring("receiver"));
@@ -548,7 +548,7 @@ static void receiver_create_message(protocol_t *protocol) {
 				json_append_member(jmessage, "repeats", json_mknumber(protocol->repeats, 0));
 			}
 			char *output = json_stringify(jmessage, NULL);
-			JsonNode *json = json_decode(output);
+			struct JsonNode *json = json_decode(output);
 			broadcast_queue(protocol->id, json, RECEIVER);
 			json_free(output);
 			json_delete(json);
@@ -657,7 +657,7 @@ void *send_code(void *param) {
 			struct protocol_t *protocol = sendqueue->protopt;
 			struct hardware_t *hw = NULL;
 
-			JsonNode *message = NULL;
+			struct JsonNode *message = NULL;
 
 			if(sendqueue->message != NULL && strcmp(sendqueue->message, "{}") != 0) {
 				if(json_validate(sendqueue->message) == true) {
@@ -752,13 +752,14 @@ void *send_code(void *param) {
 }
 
 /* Send a specific code */
-static int send_queue(JsonNode *json, enum origin_t origin) {
+static int send_queue(struct JsonNode *json, enum origin_t origin) {
 	pthread_mutex_lock(&sendqueue_lock);
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
 	int match = 0, raw[MAXPULSESTREAMLENGTH-1];
 	struct timeval tcurrent;
-	char *uuid = NULL;
+	struct clients_t *tmp_clients = NULL;
+	char *uuid = NULL, *buffer = NULL;
 	/* Hold the final protocol struct */
 	struct protocol_t *protocol = NULL;
 
@@ -773,10 +774,20 @@ static int send_queue(JsonNode *json, enum origin_t origin) {
 	pthread_setschedparam(pthread_self(), SCHED_FIFO, &sched);
 #endif
 
-	JsonNode *jcode = NULL;
-	JsonNode *jprotocols = NULL;
-	JsonNode *jprotocol = NULL;
+	struct JsonNode *jcode = NULL;
+	struct JsonNode *jprotocols = NULL;
+	struct JsonNode *jprotocol = NULL;
 
+	buffer = json_stringify(json, NULL);
+	tmp_clients = clients;
+	while(tmp_clients) {
+		if(tmp_clients->forward == 1) {
+			socket_write(tmp_clients->id, buffer);
+		}
+		tmp_clients = tmp_clients->next;
+	}
+	json_free(buffer);
+	
 	if((jcode = json_find_member(json, "code")) == NULL) {
 		logprintf(LOG_ERR, "sender did not send any codes");
 		json_delete(jcode);
@@ -990,7 +1001,7 @@ static void client_webserver_parse_code(int i, char buffer[BUFFER_SIZE]) {
 }
 #endif
 
-static int control_device(struct devices_t *dev, char *state, JsonNode *values, enum origin_t origin) {
+static int control_device(struct devices_t *dev, char *state, struct JsonNode *values, enum origin_t origin) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
 	struct devices_settings_t *sett = NULL;
@@ -998,9 +1009,9 @@ static int control_device(struct devices_t *dev, char *state, JsonNode *values, 
 	struct options_t *opt = NULL;
 	struct protocols_t *tmp_protocols = NULL;
 
-	JsonNode *code = json_mkobject();
-	JsonNode *json = json_mkobject();
-	JsonNode *jprotocols = json_mkarray();
+	struct JsonNode *code = json_mkobject();
+	struct JsonNode *json = json_mkobject();
+	struct JsonNode *jprotocols = json_mkarray();
 
 	/* Check all protocol options */
 	tmp_protocols = dev->protocols;
@@ -1083,7 +1094,7 @@ static int control_device(struct devices_t *dev, char *state, JsonNode *values, 
 		json_append_member(code, "uuid", json_mkstring(dev->dev_uuid));
 	}
 	json_append_member(json, "code", code);
-	json_append_member(json, "message", json_mkstring("send"));
+	json_append_member(json, "action", json_mkstring("send"));
 
 	if(send_queue(json, origin) == 0) {
 		json_delete(json);
@@ -1133,16 +1144,6 @@ static void socket_parse_data(int i, char *buffer) {
 #endif
 			json = json_decode(buffer);
 			if((json_find_string(json, "action", &action)) == 0) {
-				if(strcmp(action, "send") == 0 ||
-				   strcmp(action, "control") == 0) {
-					tmp_clients = clients;
-					while(tmp_clients) {
-						if(tmp_clients->forward == 1) {
-							socket_write(tmp_clients->id, buffer);
-						}
-						tmp_clients = tmp_clients->next;
-					}
-				}
 				tmp_clients = clients;
 				while(tmp_clients) {
 					if(tmp_clients->id == sd) {
@@ -1632,7 +1633,9 @@ void *clientize(void *param) {
 						if((jconfig = json_find_member(json, "config")) != NULL) {
 							gui_gc();
 							devices_gc();
+#ifdef EVENTS
 							rules_gc();
+#endif
 							registry_gc();
 
 							int match = 1;
@@ -1641,7 +1644,7 @@ void *clientize(void *param) {
 								match = 0;
 								while(jchilds) {
 									tmp = jchilds;
-									if(strcmp(tmp->key, "devices") != 0 && strcmp(tmp->key, "rules") != 0) {
+									if(strcmp(tmp->key, "devices") != 0) {
 										json_remove_from_parent(tmp);
 										match = 1;
 									}
@@ -2022,7 +2025,7 @@ void *pilight_stats(void *param) {
 				checkram = 0;
 				if((i > 0 && i%3 == 0) || (i == -1)) {
 					procProtocol->message = json_mkobject();
-					JsonNode *code = json_mkobject();
+					struct JsonNode *code = json_mkobject();
 					json_append_member(code, "cpu", json_mknumber(cpu, 16));
 					if(ram > 0) {
 						json_append_member(code, "ram", json_mknumber(ram, 16));
@@ -2487,9 +2490,11 @@ int start_pilight(int argc, char **argv) {
 	threads_register("receive parser", &receive_parse_code, (void *)NULL, 0);
 
 #ifdef EVENTS
-	/* Register a seperate thread in which the daemon communicates the events library */
-	threads_register("events client", &events_clientize, (void *)NULL, 0);
-	threads_register("events loop", &events_loop, (void *)NULL, 0);
+	if(pilight.runmode == STANDALONE) {
+		/* Register a seperate thread in which the daemon communicates the events library */
+		threads_register("events client", &events_clientize, (void *)NULL, 0);
+		threads_register("events loop", &events_loop, (void *)NULL, 0);
+	}
 #endif
 
 #ifdef WEBSERVER
