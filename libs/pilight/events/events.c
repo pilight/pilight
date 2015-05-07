@@ -450,7 +450,9 @@ static int event_parse_hooks(char **rule, struct rules_t *obj, int depth, unsign
 					   e.g.: ((1 + 2) + (3 + 4))
 									 (   3    +    7   )
 					*/
-					// printf("Replace \"%s\" with \"%s\" in \"%s\"\n", replace, subrule, tmp);
+					if(pilight.debuglevel == 1) {
+						fprintf(stderr, "replace %s with %s in %s\n", replace, subrule, tmp);
+					}
 					str_replace(replace, subrule, &tmp);
 
 					FREE(replace);
@@ -585,7 +587,9 @@ static int event_parse_function(char **rule, struct rules_t *obj, unsigned short
 										 DATE_FORMAT(2014-01-02 00:00:00, %H.%s)
 						*/
 
-						// printf("Replace \"%s\" with \"%s\" in \"%s\"\n", replace, subfunction, tmp);
+						if(pilight.debuglevel == 1) {						
+							fprintf(stderr, "replace %s with %s in %s\n", replace, subfunction, tmp);
+						}
 						str_replace(replace, subfunction, &tmp);
 
 						chook = strstr(tmp, ")");
@@ -680,7 +684,9 @@ static int event_parse_function(char **rule, struct rules_t *obj, unsigned short
 	}
 
 	if(strlen(output) > 0) {
-		// printf("Replace \"%s\" with \"%s\" in \"%s\"\n", function, output, *rule);
+		if(pilight.debuglevel == 1) {
+			fprintf(stderr, "replace %s with %s in %s\n", function, output, *rule);
+		}
 		str_replace(function, output, rule);
 	}
 
@@ -836,7 +842,7 @@ static int event_parse_formula(char **rule, struct rules_t *obj, int depth, unsi
 						char *p = MALLOC(strlen(res)+1);
 						strcpy(p, res);
 						unsigned long r = 0;
-						// printf("Replace \"%s\" with \"%s\" in \"%s\"\n", search, p, tmp);
+						// printf("replace %s with %s in %s\n", search, p, tmp);
 						if((r = (unsigned long)str_replace(search, p, &tmp)) == -1) {
 							logprintf(LOG_ERR, "rule #%d: an unexpected error occured while parsing", obj->nr);
 							FREE(p);
@@ -1506,12 +1512,16 @@ int event_parse_rule(char *rule, struct rules_t *obj, int depth, unsigned short 
 			i--;
 			ltype = (type_and == 0) ? AND : OR;
 			if(skip == 0) {
-				// printf("EVALUATE: %s, %s\n", (type_and == 0) ? "AND" : "OR", condition);
+				if(pilight.debuglevel == 1) {
+					fprintf(stderr, "evaluate (%s) %s\n", (type_and == 0) ? "AND" : "OR", condition);
+				}
 				pass = event_parse_condition(&condition, obj, depth, validate);
 				error = pass;
 				i = -1;
 			} else {
-				// printf("SKIP: %s, %s\n", (type_and == 0) ? "AND" : "OR", condition);
+				if(pilight.debuglevel == 1) {
+					fprintf(stderr, "skip (%s) %s\n", (type_and == 0) ? "AND" : "OR", condition);
+				}
 				size_t y = (type_and == 0) ? 6 : 5;
 				size_t z = strlen(condition)-((size_t)i + (size_t)y);
 				memmove(condition, &condition[(size_t)i + (size_t)y], (size_t)z);
@@ -1540,18 +1550,24 @@ int event_parse_rule(char *rule, struct rules_t *obj, int depth, unsigned short 
 	}
 
 	if((ltype == AND && pass == 0) && validate == 0) {
-		// printf("SKIP: %s, %s\n", (ltype == AND) ? "AND" : "OR", condition);
+		if(pilight.debuglevel == 1) {
+			fprintf(stderr, "skip (%s) %s\n", (ltype == AND) ? "AND" : "OR", condition);
+		}
 		condition[0] = '0';
 		condition[1] = '\0';
 	/* Skip this part when the condition only contains "1" or "0" */
 	} else if(strlen(condition) > 1) {
-		// printf("EVALUATE: %s, %s\n", (ltype == AND) ? "AND" : "OR", condition);
+		if(pilight.debuglevel == 1) {
+			fprintf(stderr, "evaluate (%s) %s\n", (ltype == AND) ? "AND" : "OR", condition);
+		}
 		if(event_parse_formula(&condition, obj, depth, validate) == -1) {
 			error = -1;
 			goto close;
 		}
 	} else {
-		// printf("SKIP: %s, %s\n", (ltype == AND) ? "AND" : "OR", condition);
+		if(pilight.debuglevel == 1) {
+			fprintf(stderr, "skip (%s) %s\n", (ltype == AND) ? "AND" : "OR", condition);
+		}
 	}
 	obj->status = atoi(condition);
 	if(validate == 1 && depth == 0 && event_parse_action(action, obj, validate) != 0) {

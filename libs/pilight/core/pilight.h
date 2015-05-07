@@ -52,6 +52,7 @@ struct pilight_t {
 	runmode_t runmode;
 	/* pilight actually runs in this stage and the configuration is fully validated */
 	int running;
+	int debuglevel;
 } pilight_t;
 
 extern struct pilight_t pilight;

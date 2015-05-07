@@ -2092,6 +2092,7 @@ int start_pilight(int argc, char **argv) {
 	options_add(&options, 'P', "port", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, "[0-9]{1,4}");
 	options_add(&options, 256, "stacktracer", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
 	options_add(&options, 257, "threadprofiler", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
+	options_add(&options, 258, "debuglevel", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, "[01]{1}");
 	// options_add(&options, 258, "memory-tracer", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
 
 	while(1) {
@@ -2141,6 +2142,11 @@ int start_pilight(int argc, char **argv) {
 				verbosity = LOG_STACK;
 				stacktracer = 1;
 				nodaemon = 1;
+			break;
+			case 258:
+				pilight.debuglevel = atoi(args);
+				nodaemon = 1;
+				verbosity = LOG_DEBUG;
 			break;
 			default:
 				show_default = 1;
@@ -2659,6 +2665,7 @@ static LRESULT CALLBACK WindowProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lP
 
 int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR cmdline, int show) {
 	pilight.running = 0;
+	pilight.debuglevel = 0;
 
 	HWND hWnd;
   WNDCLASS cls;
@@ -2696,6 +2703,7 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR cmdline, int show) {
 #else
 int main(int argc, char **argv) {
 	pilight.running = 0;
+	pilight.debuglevel = 0;
 
 	int ret = start_pilight(argc, argv);
 	if(ret == EXIT_SUCCESS) {

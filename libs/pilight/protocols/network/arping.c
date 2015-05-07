@@ -95,7 +95,9 @@ static void *thread(void *param) {
 	memset(tmpip, '\0', INET_ADDRSTRLEN+1);
 
 	for(i=0;i<strlen(dstmac);i++) {
-		dstmac[i] = (char)tolower(dstmac[i]);
+		if(isNumeric(&dstmac[i]) != 0) {
+			dstmac[i] = (char)tolower(dstmac[i]);
+		}
 	}
 
 	if((nrdevs = inetdevs(&devs)) == 0) {

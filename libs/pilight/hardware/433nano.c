@@ -312,6 +312,7 @@ static int nano433Send(int *code, int rawlen, int repeats) {
 	gettimeofday(&tv, NULL);
 	timestamp.first = timestamp.second;
 	timestamp.second = 1000000 * (unsigned int)tv.tv_sec + (unsigned int)tv.tv_usec;
+
 	if(((int)timestamp.second-(int)timestamp.first) < 1000000) {
 		sleep(1);
 	}
