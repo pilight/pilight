@@ -25,6 +25,7 @@
 #include <sys/stat.h>
 #include <time.h>
 #include <libgen.h>
+#include <ctype.h>
 
 #include "../core/pilight.h"
 #include "../core/common.h"
@@ -40,7 +41,7 @@
 static struct rules_t *rules = NULL;
 
 static int rules_parse(JsonNode *root) {
-	int have_error = 0, match = 0;
+	int have_error = 0, match = 0, x = 0;
 	unsigned int i = 0;
 	struct JsonNode *jrules = NULL;
 	char *rule = NULL;
@@ -52,7 +53,7 @@ static int rules_parse(JsonNode *root) {
 			i++;
 			if(jrules->tag == JSON_OBJECT) {
 				if(json_find_string(jrules, "rule", &rule) != 0) {
-					logprintf(LOG_ERR, "config rules #%d \"%s\", missing \"rule\"", i, jrules->key);
+					logprintf(LOG_ERR, "config rule #%d \"%s\", missing \"rule\"", i, jrules->key);
 					have_error = 1;
 					break;
 				} else {
@@ -69,10 +70,18 @@ static int rules_parse(JsonNode *root) {
 						tmp = tmp->next;
 					}
 					if(match == 1) {
-						logprintf(LOG_ERR, "config rules #%d \"%s\" already exists", i, jrules->key);
+						logprintf(LOG_ERR, "config rule #%d \"%s\" already exists", i, jrules->key);
 						have_error = 1;
 						break;
 					}
+					for(x=0;x<strlen(jrules->key);x++) {
+						if(!isalnum(jrules->key[x]) && jrules->key[x] != '-' && jrules->key[x] != '_') {
+							logprintf(LOG_ERR, "config rule #%d \"%s\", not alphanumeric", i, jrules->key);
+							have_error = 1;
+							break;
+						}
+					}
+					
 					struct rules_t *node = MALLOC(sizeof(struct rules_t));
 					if(node == NULL) {
 						logprintf(LOG_ERR, "out of memory");

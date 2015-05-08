@@ -2166,6 +2166,7 @@ int start_pilight(int argc, char **argv) {
 		printf("\t\t\t\t\tshow debug information\n");
 		printf("\t    --stacktracer\t\tshow internal function calls\n");
 		printf("\t    --threadprofiler\t\tshow per thread cpu usage\n");
+		printf("\t    --debuglevel\t\tshow additional development info\n");
 		goto clear;
 	}
 	if(show_version == 1) {

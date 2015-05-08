@@ -570,6 +570,9 @@ static void *thread(void *param) {
 		break;
 	}
 
+	if(pilight.debuglevel == 1) {
+		fprintf(stderr, "action dim: for %d:%d, after %d:%d, in: %d:%d\n", seconds_for, type_for, seconds_after, type_after, seconds_in, type_in); 
+	}
 	/* Store current state and dimlevel */
 	struct devices_t *tmp = pth->device;
 	int match1 = 0, match2 = 0;
@@ -633,17 +636,23 @@ static void *thread(void *param) {
 		}
 	}
 
+	if(pilight.debuglevel == 1) {
+		fprintf(stderr, "action dim: old %d, new %d, direction %d\n", (int)old_dimlevel, (int)new_dimlevel, direction); 
+	}
+
 	if(has_in == 1) {
 		if(old_dimlevel < new_dimlevel) {
 			direction = INCREASING;
 			dimdiff = (int)(new_dimlevel - old_dimlevel);
+			interval = (int)(seconds_in / dimdiff);
 		} else if(old_dimlevel > new_dimlevel) {
 			direction = DECREASING;
 			dimdiff = (int)(old_dimlevel - new_dimlevel);
+			interval = (int)(seconds_in / dimdiff);
 		} else {
 			dimdiff = 0;
+			interval = 0;
 		}
-		interval = (int)(seconds_in / dimdiff);
 	}
 
 	/*
@@ -701,7 +710,7 @@ static void *thread(void *param) {
 			}
 		}
 	/* We'll gently start increasing / decreasing the dimlevel after X seconds in X seconds. */
-	} else {
+	} else if(interval > 0) {
 		timer = 0;
 		while(pth->loop == 1) {
 			if(timer == seconds_after) {
@@ -841,7 +850,7 @@ void actionDimInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "dim";
-	module->version = "3.2";
+	module->version = "3.3";
 	module->reqversion = "6.0";
 	module->reqcommit = "152";
 }
