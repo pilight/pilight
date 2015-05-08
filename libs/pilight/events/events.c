@@ -180,7 +180,7 @@ static int event_store_val_ptr(struct rules_t *obj, char *device, char *name, st
 	0: Found variable and filled varcont
 	1: Did not find variable and did not fill varcont
 */
-int event_lookup_variable(char *var, struct rules_t *obj, int type, struct varcont_t *varcont, unsigned short validate, enum origin_t origin) {
+int event_lookup_variable(char *var, struct rules_t *obj, int type, struct varcont_t *varcont, int *rtype, unsigned short validate, enum origin_t origin) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
 	int cached = 0;
@@ -205,6 +205,7 @@ int event_lookup_variable(char *var, struct rules_t *obj, int type, struct varco
 				varcont->number_ = atof(var);
 			}
 			varcont->decimals_ = 0;
+			*rtype = JSON_NUMBER;
 		} else if(type == JSON_STRING) {
 			if(strcmp(var, "true") == 0) {
 				varcont->string_ = true_;
@@ -213,6 +214,7 @@ int event_lookup_variable(char *var, struct rules_t *obj, int type, struct varco
 			} else {
 				varcont->string_ = var;
 			}
+			*rtype = JSON_STRING;
 		}
 		return 0;
 	}
@@ -233,6 +235,7 @@ int event_lookup_variable(char *var, struct rules_t *obj, int type, struct varco
 		if(n < 2) {
 			varcont->string_ = dot_;
 			array_free(&array, n);
+			*rtype = JSON_STRING;
 			return 0;
 		}
 
@@ -253,17 +256,21 @@ int event_lookup_variable(char *var, struct rules_t *obj, int type, struct varco
 						if(tmp_values->settings->values->type != type && (type != (JSON_NUMBER | JSON_STRING))) {
 							if(type == JSON_STRING) {
 								logprintf(LOG_ERR, "rule #%d invalid: trying to compare a integer variable \"%s.%s\" to a string", obj->nr, device, name);
+								*rtype = -1;
 								return -1;
 							} else if(type == JSON_NUMBER) {
 								logprintf(LOG_ERR, "rule #%d invalid: trying to compare a string variable \"%s.%s\" to an integer", obj->nr, device, name);
+								*rtype = -1;
 								return -1;
 							}
 						}
 						if(tmp_values->settings->values->type == JSON_STRING) {
 							varcont->string_ = tmp_values->settings->values->string_;
+							*rtype = JSON_STRING;
 						} else if(tmp_values->settings->values->type == JSON_NUMBER) {
 							varcont->number_ = tmp_values->settings->values->number_;
 							varcont->decimals_ = tmp_values->settings->values->decimals;
+							*rtype = JSON_NUMBER;
 						}
 						cached = 1;
 						return 0;
@@ -320,6 +327,7 @@ int event_lookup_variable(char *var, struct rules_t *obj, int type, struct varco
 						varcont->string_ = NULL;
 						varcont->number_ = 0;
 						varcont->decimals_ = 0;
+						*rtype = -1;
 						return -1;
 					}
 				}
@@ -333,10 +341,12 @@ int event_lookup_variable(char *var, struct rules_t *obj, int type, struct varco
 									event_store_val_ptr(obj, device, name, tmp_settings);
 								}
 								varcont->string_ = tmp_settings->values->string_;
+								*rtype = JSON_STRING;
 								return 0;
 							} else {
 								logprintf(LOG_ERR, "rule #%d invalid: trying to compare integer variable \"%s.%s\" to a string", obj->nr, device, name);
 								varcont->string_ = NULL;
+								*rtype = -1;
 								return -1;
 							}
 						} else if(tmp_settings->values->type == JSON_NUMBER) {
@@ -347,11 +357,13 @@ int event_lookup_variable(char *var, struct rules_t *obj, int type, struct varco
 								}
 								varcont->number_ = tmp_settings->values->number_;
 								varcont->decimals_ = tmp_settings->values->decimals;
+								*rtype = JSON_NUMBER;
 								return 0;
 							} else {
 								logprintf(LOG_ERR, "rule #%d invalid: trying to compare string variable \"%s.%s\" to an integer", obj->nr, device, name);
 								varcont->number_ = 0;
 								varcont->decimals_ = 0;
+								*rtype = -1;
 								return -1;
 							}
 						}
@@ -362,6 +374,7 @@ int event_lookup_variable(char *var, struct rules_t *obj, int type, struct varco
 				varcont->string_ = NULL;
 				varcont->number_ = 0;
 				varcont->decimals_ = 0;
+				*rtype = -1;
 				return -1;
 			} /*else {
 				logprintf(LOG_ERR, "rule #%d invalid: device \"%s\" does not exist in the config", obj->nr, device);
@@ -383,21 +396,26 @@ int event_lookup_variable(char *var, struct rules_t *obj, int type, struct varco
 		if(isNumeric(var) == 0) {
 			varcont->string_ = NULL;
 			logprintf(LOG_ERR, "rule #%d invalid: trying to compare integer variable \"%s\" to a string", obj->nr, var);
+			*rtype = -1;
 			return -1;
 		} else {
 			varcont->string_ = var;
+			*rtype = JSON_STRING;
 		}
 	} else if(type == JSON_NUMBER) {
 		if(isNumeric(var) == 0) {
 			varcont->number_ = atof(var);
 			varcont->decimals_ = nrDecimals(var);
+			*rtype = JSON_NUMBER;
 		} else {
 			logprintf(LOG_ERR, "rule #%d invalid: trying to compare string variable \"%s\" to an integer", obj->nr, var);
 			varcont->number_ = 0;
 			varcont->decimals_ = 0;
+			*rtype = -1;
 			return -1;
 		}
 	} else if(type == (JSON_STRING | JSON_NUMBER)) {
+		*rtype = -1;
 		return 1;
 	}
 	return 0;
@@ -704,7 +722,7 @@ static int event_parse_formula(char **rule, struct rules_t *obj, int depth, unsi
 	struct varcont_t v1;
 	struct varcont_t v2;
 	char *var1 = NULL, *func = NULL, *var2 = NULL, *tmp = *rule, *search = NULL;
-	int element = 0, i = 0, match = 0, error = 0, hasquote = 0, hadquote = 0;
+	int element = 0, i = 0, match = 0, error = 0, hasquote = 0, hadquote = 0, rtype = 0;
 	char var1quotes[2], var2quotes[2], funcquotes[2];
 	unsigned long len = strlen(tmp), pos = 0, word = 0;
 	char *res = MALLOC(255);
@@ -807,9 +825,12 @@ static int event_parse_formula(char **rule, struct rules_t *obj, int depth, unsi
 					match = 1;
 					int ret1 = 0, ret2 = 0;
 					if(tmp_operator->callback_string != NULL) {
-						ret1 = event_lookup_variable(var1, obj, type, &v1, validate, RULE);
-						ret2 = event_lookup_variable(var2, obj, type, &v2, validate, RULE);
-						if(ret1 == -1 || ret2 == -1) {
+						ret1 = event_lookup_variable(var1, obj, type, &v1, &rtype, validate, RULE);
+						ret2 = event_lookup_variable(var2, obj, type, &v2, &rtype, validate, RULE);
+						if(rtype != type) {
+							error = -1;
+							goto close;
+						} else if(ret1 == -1 || ret2 == -1) {
 							error = -1;
 							goto close;
 						} else if(v1.string_ != NULL && v2.string_ != NULL) {
@@ -821,9 +842,12 @@ static int event_parse_formula(char **rule, struct rules_t *obj, int depth, unsi
 						}
 					} else if(tmp_operator->callback_number != NULL) {
 						/* Continue with regular numeric operator parsing */
-						ret1 = event_lookup_variable(var1, obj, type, &v1, validate, RULE);
-						ret2 = event_lookup_variable(var2, obj, type, &v2, validate, RULE);
-						if(ret1 == -1 || ret2 == -1) {
+						ret1 = event_lookup_variable(var1, obj, type, &v1, &rtype, validate, RULE);
+						ret2 = event_lookup_variable(var2, obj, type, &v2, &rtype, validate, RULE);
+						if(rtype != type) {
+							error = -1;
+							goto close;
+						} else if(ret1 == -1 || ret2 == -1) {
 							error = -1;
 							goto close;
 						} else if(ret1 == 1 || ret2 == 1) {
@@ -904,7 +928,7 @@ static int event_parse_action_arguments(char *arguments, struct rules_t *obj, in
 	struct varcont_t v;
 	char *tmp = NULL;
 	int i = 0, error = 0, a = 0, b = 0, len = strlen(arguments);
-	int vallen = 0, ret = 0, nlen = 0;
+	int vallen = 0, ret = 0, nlen = 0, type = 0;
 
 	while(arguments[i] != '\0' && i < len) {
 		if(arguments[i] == '(') {
@@ -932,12 +956,17 @@ static int event_parse_action_arguments(char *arguments, struct rules_t *obj, in
 				strncpy(tmp, &arguments[a], (b-a));
 				tmp[(b-a)] = '\0';
 
-				ret = event_lookup_variable(tmp, obj, JSON_STRING | JSON_NUMBER, &v, validate, ACTION);
+				memset(&v, 0, sizeof(v));
+				ret = event_lookup_variable(tmp, obj, JSON_STRING | JSON_NUMBER, &v, &type, validate, ACTION);
+
 				if(ret == 0) {
-					if(v.string_ == NULL) {
+					if(type == JSON_NUMBER) {
 						vallen = snprintf(NULL, 0, "%.*f", v.decimals_, v.number_);
-					} else {
+					} else if(type == JSON_STRING) {
 						vallen = strlen(v.string_);
+					} else {
+						error = -1;
+						break;
 					}
 					/*
 					 * We need to store larger values then we have space for
@@ -951,9 +980,9 @@ static int event_parse_action_arguments(char *arguments, struct rules_t *obj, in
 					}
 					memmove(&arguments[a+vallen], &arguments[b], nlen-(a+vallen));
 
-					if(v.string_ == NULL) {
+					if(type == JSON_NUMBER) {
 						snprintf(&arguments[a], vallen+1, "%.*f", v.decimals_, v.number_);
-					} else {
+					} else if(type == JSON_STRING) {
 						snprintf(&arguments[a], vallen+1, "%s", v.string_);
 					}
 
