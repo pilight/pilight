@@ -35,27 +35,32 @@ static int gpio_433_in = 0;
 static int gpio_433_out = 0;
 
 static unsigned short gpio433HwInit(void) {
-	if(wiringXSetup() == -1) {
+	if(wiringXSupported() == 0) {
+		if(wiringXSetup() == -1) {
+			return EXIT_FAILURE;
+		}
+		if(gpio_433_out >= 0) {
+			if(wiringXValidGPIO(gpio_433_out) != 0) {
+				logprintf(LOG_ERR, "invalid sender pin: %d", gpio_433_out);
+				return EXIT_FAILURE;
+			}
+			pinMode(gpio_433_out, OUTPUT);
+		}
+		if(gpio_433_in >= 0) {
+			if(wiringXValidGPIO(gpio_433_in) != 0) {
+				logprintf(LOG_ERR, "invalid receiver pin: %d", gpio_433_in);
+				return EXIT_FAILURE;
+			}
+			if(wiringXISR(gpio_433_in, INT_EDGE_BOTH) < 0) {
+				logprintf(LOG_ERR, "unable to register interrupt for pin %d", gpio_433_in);
+				return EXIT_SUCCESS;
+			}
+		}
+		return EXIT_SUCCESS;
+	} else {
+		logprintf(LOG_ERR, "the 433gpio module is not supported on this hardware", gpio_433_in);
 		return EXIT_FAILURE;
 	}
-	if(gpio_433_out >= 0) {
-		if(wiringXValidGPIO(gpio_433_out) != 0) {
-			logprintf(LOG_ERR, "invalid sender pin: %d", gpio_433_out);
-			return EXIT_FAILURE;
-		}
-		pinMode(gpio_433_out, OUTPUT);
-	}
-	if(gpio_433_in >= 0) {
-		if(wiringXValidGPIO(gpio_433_in) != 0) {
-			logprintf(LOG_ERR, "invalid receiver pin: %d", gpio_433_in);
-			return EXIT_FAILURE;
-		}
-		if(wiringXISR(gpio_433_in, INT_EDGE_BOTH) < 0) {
-			logprintf(LOG_ERR, "unable to register interrupt for pin %d", gpio_433_in);
-			return EXIT_SUCCESS;
-		}
-	}
-	return EXIT_SUCCESS;
 }
 
 static unsigned short gpio433HwDeinit(void) {

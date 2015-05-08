@@ -208,12 +208,12 @@ static int settings_parse(JsonNode *root) {
 			|| strcmp(jsettings->key, "firmware-gpio-sck") == 0
 			|| strcmp(jsettings->key, "firmware-gpio-mosi") == 0
 			|| strcmp(jsettings->key, "firmware-gpio-miso") == 0) {
-#if !defined(__FreeBSD__) && !defined(_WIN32)
-			if(wiringXSetup() != 0) {
-				have_error = 1;
-				goto clear;
+			if(wiringXSupported() == 0) {
+				if(wiringXSetup() != 0) {
+					have_error = 1;
+					goto clear;
+				}
 			}
-#endif
 			if(jsettings->tag != JSON_NUMBER) {
 				logprintf(LOG_ERR, "config setting \"%s\" must contain a number larger than 0", jsettings->key);
 				have_error = 1;

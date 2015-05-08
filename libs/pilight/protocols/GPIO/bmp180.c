@@ -365,14 +365,17 @@ static void *thread(void *param) {
 }
 
 static struct threadqueue_t *initDev(JsonNode *jdevice) {
-	loop = 1;
-	wiringXSetup();
-	char *output = json_stringify(jdevice, NULL);
-	JsonNode *json = json_decode(output);
-	json_free(output);
+	if(wiringXSupported() == 0 && wiringXSetup() == 0) {
+		loop = 1;
+		char *output = json_stringify(jdevice, NULL);
+		JsonNode *json = json_decode(output);
+		json_free(output);
 
-	struct protocol_threads_t *node = protocol_thread_init(bmp180, json);
-	return threads_register("bmp180", &thread, (void *) node, 0);
+		struct protocol_threads_t *node = protocol_thread_init(bmp180, json);
+		return threads_register("bmp180", &thread, (void *) node, 0);
+	} else {
+		return NULL;
+	}
 }
 
 static void threadGC(void) {
@@ -425,7 +428,7 @@ void bmp180Init(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "bmp180";
-	module->version = "2.0";
+	module->version = "2.1";
 	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }

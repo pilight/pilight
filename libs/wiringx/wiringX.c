@@ -408,6 +408,14 @@ int wiringXValidGPIO(int gpio) {
 	return -1;
 }
 
+int wiringXSupported(void) {
+#if defined(__arm__) || defined(__mips__)
+	return 0;
+#else
+	return -1;
+#endif
+}
+
 int wiringXSetup(void) {
 	if(wiringXLog == NULL) {
 		wiringXLog = _fprintf;

@@ -103,5 +103,6 @@ int wiringXSPIDataRW(int channel, unsigned char *data, int len);
 int wiringXSPISetup(int channel, int speed);
 char *wiringXPlatform(void);
 int wiringXValidGPIO(int gpio);
+int wiringXSupported(void);
 
 #endif
