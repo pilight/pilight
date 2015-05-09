@@ -1,6 +1,9 @@
 /*
-	Copyright (C) 2015 CurlyMo & meloen
+	
+	Copyright (C) 2015 CurlyMo & Meloen
+	
 	This file is part of pilight.
+	
 	pilight is free software: you can redistribute it and/or modify it under the
 	terms of the GNU General Public License as published by the Free Software
 	Foundation, either version 3 of the License, or (at your option) any later
@@ -27,49 +30,84 @@
 #include "../../core/binary.h"
 #include "../../core/gc.h"
 #include "heitech.h"
-static void heitechCreateMessage(int systemcode, int unitcode, int state) {
+
+#define PULSE_MULTIPLIER	3
+#define MIN_PULSE_LENGTH	270
+#define MAX_PULSE_LENGTH	290
+#define AVG_PULSE_LENGTH	280
+#define RAW_LENGTH				50
+
+static int validate(void) {
+	if(heitech->rawlen == RAW_LENGTH) {
+		if(heitech->raw[heitech->rawlen-1] >= (MIN_PULSE_LENGTH*PULSE_DIV) &&
+		   heitech->raw[heitech->rawlen-1] <= (MAX_PULSE_LENGTH*PULSE_DIV)) {
+			return 0;
+		}
+	}
+
+	return -1;
+}
+
+static void createMessage(int systemcode, int unitcode, int state) {
 	heitech->message = json_mkobject();
 	json_append_member(heitech->message, "systemcode", json_mknumber(systemcode, 0));
 	json_append_member(heitech->message, "unitcode", json_mknumber(unitcode, 0));
+	
 	if(state == 0) {
 		json_append_member(heitech->message, "state", json_mkstring("on"));
 	} else {
 		json_append_member(heitech->message, "state", json_mkstring("off"));
 	}
 }
-static void heitechParseBinary(void) {
-	int systemcode = binToDec(heitech->binary, 0, 4);
-	int unitcode = binToDec(heitech->binary, 5, 9);
-	int state = heitech->binary[11];
-	heitechCreateMessage(systemcode, unitcode, state);
-}
 
-static void heitechCreateLow(int s, int e) {
-	int i;
-
-	for(i=s;i<=e;i+=4) {
-		heitech->raw[i]=(heitech->plslen->length);
-		heitech->raw[i+1]=(heitech->pulse*heitech->plslen->length);
-		heitech->raw[i+2]=(heitech->pulse*heitech->plslen->length);
-		heitech->raw[i+3]=(heitech->plslen->length);
+static void parseCode(void) {
+	int x = 0, binary[RAW_LENGTH/4];
+	
+	for(x=0;x<heitech->rawlen-2;x+=4) {
+		if(heitech->raw[x+3] > (int)((double)AVG_PULSE_LENGTH*((double)PULSE_MULTIPLIER/2))) {
+			binary[x/4]=1;
+		} else {
+			binary[x/4]=0;
+		}
+	}
+	
+	int systemcode = binToDec(binary, 0, 4);
+	int unitcode = binToDec(binary, 5, 9);
+	int check = binary[10];
+	int state = binary[11];
+	
+	if(check != state) {
+		createMessage(systemcode, unitcode, state);
 	}
 }
 
-static void heitechCreateHigh(int s, int e) {
+static void createLow(int s, int e) {
 	int i;
 
 	for(i=s;i<=e;i+=4) {
-		heitech->raw[i]=(heitech->plslen->length);
-		heitech->raw[i+1]=(heitech->pulse*heitech->plslen->length);
-		heitech->raw[i+2]=(heitech->plslen->length);
-		heitech->raw[i+3]=(heitech->pulse*heitech->plslen->length);
+		heitech->raw[i]=AVG_PULSE_LENGTH;
+		heitech->raw[i+1]=(PULSE_MULTIPLIER*AVG_PULSE_LENGTH);
+		heitech->raw[i+2]=(PULSE_MULTIPLIER*AVG_PULSE_LENGTH);
+		heitech->raw[i+3]=AVG_PULSE_LENGTH;
 	}
 }
-static void heitechClearCode(void) {
-	heitechCreateLow(0,47);
+
+static void createHigh(int s, int e) {
+	int i;
+
+	for(i=s;i<=e;i+=4) {
+		heitech->raw[i]=AVG_PULSE_LENGTH;
+		heitech->raw[i+1]=(PULSE_MULTIPLIER*AVG_PULSE_LENGTH);
+		heitech->raw[i+2]=AVG_PULSE_LENGTH;
+		heitech->raw[i+3]=(PULSE_MULTIPLIER*AVG_PULSE_LENGTH);
+	}
 }
 
-static void heitechCreateSystemCode(int systemcode) {
+static void clearCode(void) {
+	createLow(0,47);
+}
+
+static void createSystemCode(int systemcode) {
 	int binary[255];
 	int length = 0;
 	int i=0, x=0;
@@ -78,12 +116,12 @@ static void heitechCreateSystemCode(int systemcode) {
 	for(i=0;i<=length;i++) {
 		if(binary[i]==1) {
 			x=i*4;
-			heitechCreateHigh(x, x+3);
+			createHigh(x, x+3);
 		}
 	}
 }
 
-static void heitechCreateUnitCode(int unitcode) {
+static void createUnitCode(int unitcode) {
 	int binary[255];
 	int length = 0;
 	int i=0, x=0;
@@ -92,25 +130,24 @@ static void heitechCreateUnitCode(int unitcode) {
 	for(i=0;i<=length;i++) {
 		if(binary[i]==1) {
 			x=i*4;
-			heitechCreateHigh(20+x, 20+x+3);
+			createHigh(20+x, 20+x+3);
 		}
 	}
 }
 
-static void heitechCreateState(int state) {
+static void createState(int state) {
 	if(state == 1) {
-		heitechCreateHigh(44, 47);
+		createHigh(44, 47);
 	} else {
-		heitechCreateHigh(40, 43);
+		createHigh(40, 43);
 	}
 }
 
-static void heitechCreateFooter(void) {
-	heitech->raw[48]=(heitech->plslen->length);
-	heitech->raw[49]=(PULSE_DIV*heitech->plslen->length);
+static void createFooter(void) {
+	heitech->raw[48]=(AVG_PULSE_LENGTH);
+	heitech->raw[49]=(PULSE_DIV*AVG_PULSE_LENGTH);
 }
-
-static int heitechCreateCode(JsonNode *code) {
+static int createCode(JsonNode *code) {
 	int systemcode = -1;
 	int unitcode = -1;
 	int state = -1;
@@ -135,17 +172,18 @@ static int heitechCreateCode(JsonNode *code) {
 		logprintf(LOG_ERR, "heitech: invalid unitcode range");
 		return EXIT_FAILURE;
 	} else {
-		heitechCreateMessage(systemcode, unitcode, state);
-		heitechClearCode();
-		heitechCreateSystemCode(systemcode);
-		heitechCreateUnitCode(unitcode);
-		heitechCreateState(state);
-		heitechCreateFooter();
+		createMessage(systemcode, unitcode, state);
+		clearCode();
+		createSystemCode(systemcode);
+		createUnitCode(unitcode);
+		createState(state);
+		createFooter();
+		heitech->rawlen = RAW_LENGTH;
 	}
 	return EXIT_SUCCESS;
 }
 
-static void heitechPrintHelp(void) {
+static void printHelp(void) {
 	printf("\t -s --systemcode=systemcode\tcontrol a device with this systemcode\n");
 	printf("\t -u --unitcode=unitcode\t\tcontrol a device with this unitcode\n");
 	printf("\t -t --on\t\t\tsend an on signal\n");
@@ -160,14 +198,12 @@ void heitechInit(void) {
 	protocol_register(&heitech);
 	protocol_set_id(heitech, "heitech");
 	protocol_device_add(heitech, "heitech", "Heitech series Switches");
-	protocol_plslen_add(heitech, 273);
-	protocol_plslen_add(heitech, 280);
 	heitech->devtype = SWITCH;
 	heitech->hwtype = RF433;
-	heitech->pulse = 3;
-	heitech->rawlen = 50;
-	heitech->binlen = 12;
-	heitech->lsb = 3;
+	heitech->minrawlen = RAW_LENGTH;
+	heitech->maxrawlen = RAW_LENGTH;
+	heitech->maxgaplen = MAX_PULSE_LENGTH*PULSE_DIV;
+	heitech->mingaplen = MIN_PULSE_LENGTH*PULSE_DIV;
 
 	options_add(&heitech->options, 's', "systemcode", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^(3[012]?|[012][0-9]|[0-9]{1})$");
 	options_add(&heitech->options, 'u', "unitcode", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^(3[012]?|[012][0-9]|[0-9]{1})$");
@@ -175,10 +211,12 @@ void heitechInit(void) {
 	options_add(&heitech->options, 'f', "off", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
 
 	options_add(&heitech->options, 0, "readonly", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
+	options_add(&heitech->options, 0, "readonly", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 
-	heitech->parseBinary=&heitechParseBinary;
-	heitech->createCode=&heitechCreateCode;
-	heitech->printHelp=&heitechPrintHelp;
+	heitech->parseCode=&parseCode;
+	heitech->createCode=&createCode;
+	heitech->printHelp=&printHelp;
+	heitech->validate=&validate;
 }
 
 #if defined(MODULE) && !defined(_WIN32)
@@ -192,4 +230,5 @@ void compatibility(struct module_t *module) {
 void init(void) {
 	heitechInit();
 }
+
 #endif

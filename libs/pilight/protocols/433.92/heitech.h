@@ -19,6 +19,8 @@
 #ifndef _PROTOCOL_HEITECH_H_
 #define _PROTOCOL_HEITECH_H_
 
+#include "../protocol.h"
+
 struct protocol_t *heitech;
 void heitechInit(void);
 
