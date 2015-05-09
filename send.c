@@ -38,6 +38,10 @@
 
 #include "libs/pilight/protocols/protocol.h"
 
+#ifndef _WIN32
+	#include "libs/wiringx/wiringX.h"
+#endif
+
 typedef struct pname_t {
 	char *name;
 	char *desc;
@@ -91,6 +95,10 @@ int main(int argc, char **argv) {
 	log_shell_enable();
 	log_level_set(LOG_NOTICE);
 
+#ifndef _WIN32
+	wiringXLog = logprintf;
+#endif		
+	
 	if((progname = MALLOC(13)) == NULL) {
 		logprintf(LOG_ERR, "out of memory");
 		exit(EXIT_FAILURE);
@@ -318,12 +326,7 @@ int main(int argc, char **argv) {
 			    && tmp->vartype == JSON_STRING && tmp->string_ != NULL
 				&& (strlen(tmp->string_) > 0)) {
 				if(isNumeric(tmp->string_) == 0) {
-					char *ptr = strstr(tmp->string_, ".");
-					int decimals = 0;
-					if(ptr != NULL) {
-						decimals = (int)(strlen(tmp->string_)-((size_t)(ptr-tmp->string_)+1));
-					}
-					json_append_member(code, tmp->name, json_mknumber(atof(tmp->string_), decimals));
+					json_append_member(code, tmp->name, json_mknumber(atof(tmp->string_), nrDecimals(tmp->string_)));
 				} else {
 					json_append_member(code, tmp->name, json_mkstring(tmp->string_));
 				}

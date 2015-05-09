@@ -41,7 +41,7 @@
 #include <ctype.h>
 
 #include "libs/pilight/core/pilight.h"
-#include "libs/pilight/core/common.h"
+#include "libs/pilight/core/network.h"
 #include "libs/pilight/core/log.h"
 #include "libs/pilight/core/options.h"
 #include "libs/pilight/core/ssdp.h"
@@ -124,10 +124,7 @@ int main(int argc, char **argv) {
 			}
 		}
 	}
-	for(x=0;x<nrdevs;x++) {
-		FREE(devs[x]);
-	}
-	FREE(devs);
+	array_free(&devs, nrdevs);
 
 	printf("%s\n", pilight_uuid);
 

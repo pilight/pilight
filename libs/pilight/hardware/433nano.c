@@ -98,7 +98,7 @@ void *syncFW(void *param) {
 #endif
 	char send[MAXPULSESTREAMLENGTH+1];
 	int len = 0;
-	
+
 	memset(&send, '\0', sizeof(send));
 
 	struct protocols_t *tmp = protocols;
@@ -136,7 +136,7 @@ void *syncFW(void *param) {
 	}
 
 	threads--;
-	
+
 	return NULL;
 }
 
@@ -312,6 +312,7 @@ static int nano433Send(int *code, int rawlen, int repeats) {
 	gettimeofday(&tv, NULL);
 	timestamp.first = timestamp.second;
 	timestamp.second = 1000000 * (unsigned int)tv.tv_sec + (unsigned int)tv.tv_usec;
+
 	if(((int)timestamp.second-(int)timestamp.first) < 1000000) {
 		sleep(1);
 	}
@@ -376,9 +377,9 @@ static int nano433Receive(struct rawcode_t *r) {
 						start = 0;
 						startv = 0;
 						char **array = NULL;
-						int c = explode(&buffer[2], ",", &array), i = 0;
+						int c = explode(&buffer[2], ",", &array);
 						if(c == 7) {
-							if(!(minrawlen == atoi(array[0]) && maxrawlen == atoi(array[1]) && 
+							if(!(minrawlen == atoi(array[0]) && maxrawlen == atoi(array[1]) &&
 							     mingaplen == atoi(array[2]) && maxgaplen == atoi(array[3]))) {
 								logprintf(LOG_ERR, "could not sync FW values");
 							}
@@ -406,14 +407,9 @@ static int nano433Receive(struct rawcode_t *r) {
 								}
 								json_delete(jmessage);
 								jmessage = NULL;
-							}						
-						}
-						if(c > 0) {
-							for(i=0;i<c;i++) {
-								FREE(array[i]);
 							}
-							FREE(array);
 						}
+						array_free(&array, c);
 					} else {
 						x = strlen(&buffer[startp]);
 						s = startp;

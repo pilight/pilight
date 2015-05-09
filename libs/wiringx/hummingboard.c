@@ -95,7 +95,11 @@ static int changeOwner(char *file) {
 static int setup(void) {
 	int fd = 0;
 
+#ifdef O_CLOEXEC
 	if((fd = open("/dev/mem", O_RDWR | O_SYNC | O_CLOEXEC)) < 0) {
+#else
+	if((fd = open("/dev/mem", O_RDWR | O_SYNC)) < 0) {
+#endif
 		wiringXLog(LOG_ERR, "hummingboard->setup: Unable to open /dev/mem: %s", strerror(errno));
 		return -1;
 	}

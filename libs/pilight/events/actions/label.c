@@ -42,14 +42,6 @@ static struct units_t {
 	{ "DAY", 5 }
 };
 
-static void array_free(int len, char ***array) {
-	int i = 0;
-	for(i=0;i<len;i++) {
-		FREE((*array)[i]);
-	}
-	FREE((*array));
-}
-
 static int checkArguments(struct rules_actions_t *obj) {
 	struct JsonNode *jdevice = NULL;
 	struct JsonNode *jto = NULL;
@@ -66,17 +58,16 @@ static int checkArguments(struct rules_actions_t *obj) {
 	struct JsonNode *jcchild = NULL;
 	struct JsonNode *jdchild = NULL;
 	struct JsonNode *jechild = NULL;
-	struct varcont_t v;
 	char **array = NULL;
 	double nr1 = 0.0, nr2 = 0.0, nr3 = 0.0, nr4 = 0.0, nr5 = 0.0;
 	int nrvalues = 0, l = 0, i = 0, match = 0;
 	int	nrunits = (sizeof(units)/sizeof(units[0]));
 
-	jdevice = json_find_member(obj->arguments, "DEVICE");
-	jto = json_find_member(obj->arguments, "TO");
-	jfor = json_find_member(obj->arguments, "FOR");
-	jafter = json_find_member(obj->arguments, "AFTER");
-	jcolor = json_find_member(obj->arguments, "COLOR");
+	jdevice = json_find_member(obj->parsedargs, "DEVICE");
+	jto = json_find_member(obj->parsedargs, "TO");
+	jfor = json_find_member(obj->parsedargs, "FOR");
+	jafter = json_find_member(obj->parsedargs, "AFTER");
+	jcolor = json_find_member(obj->parsedargs, "COLOR");
 
 	if(jdevice == NULL) {
 		logprintf(LOG_ERR, "label action is missing a \"DEVICE\"");
@@ -131,11 +122,6 @@ static int checkArguments(struct rules_actions_t *obj) {
 		jachild = json_first_child(javalues);
 		while(jachild) {
 			nrvalues++;
-			if(jachild->tag == JSON_STRING) {
-				if(event_lookup_variable(jachild->string_, obj->rule, JSON_STRING | JSON_NUMBER, &v, 1, ACTION) == -1) {
-					return -1;
-				}
-			}
 			jachild = jachild->next;
 		}
 	}
@@ -157,23 +143,23 @@ static int checkArguments(struct rules_actions_t *obj) {
 						for(i=0;i<nrunits;i++) {
 							if(strcmp(array[1], units[i].name) == 0) {
 								match = 1;
-								if(event_lookup_variable(array[0], obj->rule, JSON_NUMBER, &v, 1, ACTION) == -1) {
-									logprintf(LOG_ERR, "switch action \"FOR\" requires a number and a unit e.g. \"1 MINUTE\"");
-									array_free(l, &array);
+								if(isNumeric(array[0]) != 0 && atoi(array[0]) <= 0) {
+									logprintf(LOG_ERR, "switch action \"FOR\" requires a positive number and a unit e.g. \"1 MINUTE\"");
+									array_free(&array, l);
 									return -1;
 								}
 								break;
 							}
 						}
+						array_free(&array, l);
 						if(match == 0) {
 							logprintf(LOG_ERR, "switch action \"%s\" is not a valid unit", array[1]);
-							array_free(l, &array);
 							return -1;
 						}
 					} else {
-						logprintf(LOG_ERR, "switch action \"FOR\" requires a number and a unit e.g. \"1 MINUTE\"");
+						logprintf(LOG_ERR, "switch action \"FOR\" requires a positive number and a unit e.g. \"1 MINUTE\"");
 						if(l > 0) {
-							array_free(l, &array);
+							array_free(&array, l);
 						}
 						return -1;
 					}
@@ -200,23 +186,23 @@ static int checkArguments(struct rules_actions_t *obj) {
 						for(i=0;i<nrunits;i++) {
 							if(strcmp(array[1], units[i].name) == 0) {
 								match = 1;
-								if(event_lookup_variable(array[0], obj->rule, JSON_NUMBER, &v, 1, ACTION) == -1) {
-									logprintf(LOG_ERR, "switch action \"TO\" requires a number and a unit e.g. \"1 MINUTE\"");
-									array_free(l, &array);
+								if(isNumeric(array[0]) != 0) {
+									logprintf(LOG_ERR, "switch action \"AFTER\" requires a positive number and a unit e.g. \"1 MINUTE\"");
+									array_free(&array, l);
 									return -1;
 								}
 								break;
 							}
 						}
+						array_free(&array, l);
 						if(match == 0) {
 							logprintf(LOG_ERR, "switch action \"%s\" is not a valid unit", array[1]);
-							array_free(l, &array);
 							return -1;
 						}
 					} else {
-						logprintf(LOG_ERR, "switch action \"AFTER\" requires a number and a unit e.g. \"1 MINUTE\"");
+						logprintf(LOG_ERR, "switch action \"AFTER\" requires a positive number and a unit e.g. \"1 MINUTE\"");
 						if(l > 0) {
-							array_free(l, &array);
+							array_free(&array, l);
 						}
 						return -1;
 					}
@@ -279,8 +265,7 @@ static int checkArguments(struct rules_actions_t *obj) {
 
 static void *thread(void *param) {
 	struct event_action_thread_t *pth = (struct event_action_thread_t *)param;
-	struct rules_actions_t *obj = pth->obj;
-	struct JsonNode *json = obj->arguments;
+	struct JsonNode *json = pth->obj->parsedargs;
 	struct JsonNode *jto = NULL;
 	struct JsonNode *jafter = NULL;
 	struct JsonNode *jfor = NULL;
@@ -292,7 +277,6 @@ static void *thread(void *param) {
 	struct JsonNode *jlabel = NULL;
 	struct JsonNode *jaseconds = NULL;
 	struct JsonNode *jvalues = NULL;
-	struct varcont_t v;
 	char *new_label = NULL, *old_label = NULL, *label = NULL, **array = NULL;
 	char *new_color = NULL, *old_color = NULL, *color = NULL;
 	int seconds_after = 0, type_after = 0, free_label = 0;
@@ -301,14 +285,15 @@ static void *thread(void *param) {
 
 	event_action_started(pth);
 
-	v.string_ = NULL;
-
 	if((jcolor = json_find_member(json, "COLOR")) != NULL) {
 		if((jevalues = json_find_member(jcolor, "value")) != NULL) {
 			jcolor = json_find_element(jevalues, 0);
 			if(jcolor != NULL && jcolor->tag == JSON_STRING) {
 				color = jcolor->string_;
-				new_color = MALLOC(strlen(color)+1);
+				if((new_color = MALLOC(strlen(color)+1)) == NULL) {
+					logprintf(LOG_ERR, "out of memory");
+					exit(EXIT_FAILURE);					
+				}
 				strcpy(new_color, color);
 			}
 		}
@@ -323,17 +308,13 @@ static void *thread(void *param) {
 					if(l == 2) {
 						for(i=0;i<nrunits;i++) {
 							if(strcmp(array[1], units[i].name) == 0) {
-								if(event_lookup_variable(array[0], obj->rule, JSON_NUMBER, &v, 1, ACTION) != -1) {
-									seconds_for = (int)v.number_;
-									type_for = units[i].id;
-								}
+								seconds_for = atoi(array[0]);
+								type_for = units[i].id;
 								break;
 							}
 						}
 					}
-					if(l > 0) {
-						array_free(l, &array);
-					}
+					array_free(&array, l);
 				}
 			}
 		}
@@ -348,17 +329,13 @@ static void *thread(void *param) {
 					if(l == 2) {
 						for(i=0;i<nrunits;i++) {
 							if(strcmp(array[1], units[i].name) == 0) {
-								if(event_lookup_variable(array[0], obj->rule, JSON_NUMBER, &v, 1, ACTION) != -1) {
-									seconds_after = (int)v.number_;
-									type_after = units[i].id;
-								}
+								seconds_after = atoi(array[1]);
+								type_after = units[i].id;
 								break;
 							}
 						}
 					}
-					if(l > 0) {
-						array_free(l, &array);
-					}
+					array_free(&array, l);
 				}
 			}
 		}
@@ -375,7 +352,7 @@ static void *thread(void *param) {
 			seconds_for *= (60*60*24);
 		break;
 	}
-	
+
 	switch(type_after) {
 		case 3:
 			seconds_after *= 60;
@@ -386,8 +363,8 @@ static void *thread(void *param) {
 		case 5:
 			seconds_after *= (60*60*24);
 		break;
-	}	
-	
+	}
+
 	/* Store current label */
 	struct devices_t *tmp = pth->device;
 	int match1 = 0, match2 = 0;
@@ -396,14 +373,20 @@ static void *thread(void *param) {
 		while(opt) {
 			if(strcmp(opt->name, "label") == 0) {
 				if(opt->values->type == JSON_STRING) {
-					old_label = MALLOC(strlen(opt->values->string_)+1);
+					if((old_label = MALLOC(strlen(opt->values->string_)+1)) == NULL) {
+						logprintf(LOG_ERR, "out of memory");
+						exit(EXIT_FAILURE);
+					}
 					strcpy(old_label, opt->values->string_);
 					match1 = 1;
 				}
 			}
 			if(strcmp(opt->name, "color") == 0) {
 				if(opt->values->type == JSON_STRING) {
-					old_color = MALLOC(strlen(opt->values->string_)+1);
+					if((old_color = MALLOC(strlen(opt->values->string_)+1)) == NULL) {
+						logprintf(LOG_ERR, "out of memory");
+						exit(EXIT_FAILURE);						
+					}
 					strcpy(old_color, opt->values->string_);
 					match2 = 1;
 				}
@@ -421,6 +404,7 @@ static void *thread(void *param) {
 	if(match2 == 0) {
 		logprintf(LOG_ERR, "could not store old color of \"%s\"", pth->device->id);
 	}
+
 	timer = 0;
 	while(pth->loop == 1) {
 		if(timer == seconds_after) {
@@ -430,31 +414,21 @@ static void *thread(void *param) {
 					if(jlabel != NULL) {
 						if(jlabel->tag == JSON_STRING) {
 							label = jlabel->string_;
-							if(event_lookup_variable(label, obj->rule, JSON_STRING | JSON_NUMBER, &v, 0, ACTION) == 0) {
-								if(v.string_ != NULL) {
-									label = v.string_;
-								} else {
-									if((label = MALLOC(255)) == NULL) {
-										logprintf(LOG_ERR, "out of memory");
-										exit(EXIT_FAILURE);
-									}
-									memset(label, '\0', 255);
-									free_label = 1;
-									int l = snprintf(label, 255, "%.*f", v.decimals_, v.number_);
-									label[l] = '\0';
-								}
-							}
 						} else if(jlabel->tag == JSON_NUMBER) {
-							if((label = MALLOC(255)) == NULL) {
+							int l = snprintf(NULL, 0, "%.*f", jlabel->decimals_, jlabel->number_);
+							if((label = MALLOC(l+1)) == NULL) {
 								logprintf(LOG_ERR, "out of memory");
 								exit(EXIT_FAILURE);
 							}
-							memset(label, '\0', 255);
+							memset(label, '\0', l);
 							free_label = 1;
-							int l = snprintf(label, 255, "%.*f", jlabel->decimals_, jlabel->number_);
+							snprintf(label, l, "%.*f", jlabel->decimals_, jlabel->number_);
 							label[l] = '\0';
 						}
-						new_label = MALLOC(strlen(label)+1);
+						if((new_label = MALLOC(strlen(label)+1)) == NULL) {
+							logprintf(LOG_ERR, "out of memory");
+							exit(EXIT_FAILURE);							
+						}
 						strcpy(new_label, label);
 						/*
 						 * We're not switching when current label or is the same as
@@ -546,8 +520,8 @@ static int run(struct rules_actions_t *obj) {
 	struct JsonNode *jbvalues = NULL;
 	struct JsonNode *jbchild = NULL;
 
-	if((jdevice = json_find_member(obj->arguments, "DEVICE")) != NULL &&
-		 (jto = json_find_member(obj->arguments, "TO")) != NULL) {
+	if((jdevice = json_find_member(obj->parsedargs, "DEVICE")) != NULL &&
+		 (jto = json_find_member(obj->parsedargs, "TO")) != NULL) {
 		if((jbvalues = json_find_member(jdevice, "value")) != NULL) {
 			jbchild = json_first_child(jbvalues);
 			while(jbchild) {
@@ -583,9 +557,9 @@ void actionLabelInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "label";
-	module->version = "2.0";
+	module->version = "2.1";
 	module->reqversion = "6.0";
-	module->reqcommit = "117";
+	module->reqcommit = "152";
 }
 
 void init(void) {

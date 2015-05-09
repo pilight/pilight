@@ -30,7 +30,7 @@
 #include "../../core/pilight.h"
 #include "random.h"
 
-static int run(struct rules_t *obj, struct JsonNode *arguments, char **ret) {
+static int run(struct rules_t *obj, struct JsonNode *arguments, char **ret, enum origin_t origin) {
 	struct timeval t1;
 	char *p = *ret;
 	int r = 0, min = 1, max = 10;

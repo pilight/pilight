@@ -32,14 +32,15 @@
 
 #include "../function.h"
 #include "../events.h"
-#include "../../core/options.h"
 #include "../../config/devices.h"
+#include "../../core/options.h"
 #include "../../core/log.h"
 #include "../../core/dso.h"
 #include "../../core/pilight.h"
+#include "../../core/datetime.h"
 #include "date_format.h"
 
-static int run(struct rules_t *obj, struct JsonNode *arguments, char **ret) {
+static int run(struct rules_t *obj, struct JsonNode *arguments, char **ret, enum origin_t origin) {
 	struct JsonNode *childs = json_first_child(arguments);
 	struct devices_t *dev = NULL;
 	struct devices_settings_t *opt = NULL;
@@ -53,7 +54,9 @@ static int run(struct rules_t *obj, struct JsonNode *arguments, char **ret) {
 	}
 
 	if(devices_get(childs->string_, &dev) == 0) {
-		event_cache_device(obj, childs->string_);
+		if(origin == RULE) {
+			event_cache_device(obj, childs->string_);
+		}
 		protocol = dev->protocols;
 		if(protocol->listener->devtype == DATETIME) {
 			opt = dev->settings;
@@ -106,7 +109,7 @@ static int run(struct rules_t *obj, struct JsonNode *arguments, char **ret) {
 	if(childs->next != NULL && dev != NULL) {
 		logprintf(LOG_ERR, "DATE_FORMAT requires at least two parameters e.g. DATE_FORMAT(datetime, %%Y-%%m-%%d)");
 		return -1;
-	}	
+	}
 
 	if(dev == NULL) {
 		childs = childs->next;
@@ -114,19 +117,27 @@ static int run(struct rules_t *obj, struct JsonNode *arguments, char **ret) {
 			logprintf(LOG_ERR, "DATE_FORMAT is unable to parse \"%s\" as \"%s\" ", datetime, format);
 			return -1;
 		}
-		strftime(p, BUFFER_SIZE, childs->string_, &tm);
-	} else {
-		time_t t1 = mktime(&tm);
-#ifdef _WIN32
-	struct tm *tm1;
-	if((tm1 = localtime(&t1)) != NULL) {
-		strftime(p, BUFFER_SIZE, childs->string_, tm1);
-#else
-	if(localtime_r(&t1, &tm) != NULL) {
-		strftime(p, BUFFER_SIZE, childs->string_, &tm);
-#endif
-		}
 	}
+	int year = tm.tm_year+1900;
+	int month = tm.tm_mon+1;
+	int day = tm.tm_mday;
+	int hour = tm.tm_hour;
+	int minute = tm.tm_min;
+	int second = tm.tm_sec;
+	int weekday = tm.tm_wday;
+
+	datefix(&year, &month, &day, &hour, &minute, &second);
+
+	tm.tm_year = year-1900;
+	tm.tm_mon = month-1;
+	tm.tm_mday = day;
+	tm.tm_hour = hour;
+	tm.tm_min = minute;
+	tm.tm_sec = second;
+	tm.tm_wday = weekday;
+
+	strftime(p, BUFFER_SIZE, childs->string_, &tm);
+
 	return 0;
 }
 
@@ -142,7 +153,7 @@ void functionDateFormatInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "date_format";
-	module->version = "1.0";
+	module->version = "1.1";
 	module->reqversion = "6.0";
 	module->reqcommit = "94";
 }

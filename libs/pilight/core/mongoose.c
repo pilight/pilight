@@ -132,7 +132,7 @@ typedef int sock_t;
 typedef struct stat ns_stat_t;
 #endif
 
-#include "common.h"
+#include "network.h"
 #include "defines.h"
 
 #ifdef NS_ENABLE_DEBUG

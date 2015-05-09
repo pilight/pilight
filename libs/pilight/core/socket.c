@@ -50,7 +50,7 @@
 #endif
 
 #include "pilight.h"
-#include "common.h"
+#include "network.h"
 #include "log.h"
 #include "gc.h"
 #include "socket.h"
@@ -623,11 +623,8 @@ void *socket_wait(void *param) {
 								unsigned int n = explode(waitMessage, "\n", &array), q = 0;
 								for(q=0;q<n;q++) {
 									socket_callback->client_data_callback(i, array[q]);
-									FREE(array[q]);
 								}
-								if(n > 0) {
-									FREE(array);
-								}
+								array_free(&array, n);
 							} else {
 								socket_callback->client_data_callback(i, waitMessage);
 							}

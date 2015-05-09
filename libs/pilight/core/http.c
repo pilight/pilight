@@ -45,7 +45,7 @@
 #include "pilight.h"
 #include "socket.h"
 #include "log.h"
-#include "common.h"
+#include "network.h"
 #include "../../polarssl/polarssl/ssl.h"
 #include "../../polarssl/polarssl/entropy.h"
 #include "../../polarssl/polarssl/ctr_drbg.h"
@@ -369,11 +369,8 @@ char *http_process_request(char *url, int method, char **type, int *code, int *s
 			if(has_type == 0 && sscanf(array[q], "Content-%*[tT]ype:%*[ ]%[A-Za-z\\/+-]", tp)) {
 				has_type = 1;
 			}
-			FREE(array[q]);
 		}
-		if(n > 0) {
-			FREE(array);
-		}
+		array_free(&array, n);
 		memset(recvBuff, '\0', sizeof(recvBuff));
 	}
 	if(content != NULL) {

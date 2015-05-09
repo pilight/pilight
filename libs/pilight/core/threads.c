@@ -45,6 +45,7 @@ static pthread_mutexattr_t threadqueue_attr;
 static int threadqueue_number = 0;
 static struct threadqueue_t *threadqueue;
 static int threads_loop_running = 0;
+static int thread_started = 0;
 static pthread_t pth;
 
 struct threadqueue_t *threads_register(const char *id, void *(*function)(void *param), void *param, int force) {
@@ -188,6 +189,7 @@ void threads_start() {
 	}
 
 	threads_create(&pth, NULL, &threads_loop, (void *)NULL);
+	thread_started = 1;	
 }
 
 void thread_stop(char *id) {
@@ -304,7 +306,9 @@ int threads_gc(void) {
 	while(threads_loop_running > 0) {
 		usleep(10);
 	}
-	pthread_join(pth, NULL);
+	if(thread_started == 1) {
+		pthread_join(pth, NULL);
+	}
 
 	logprintf(LOG_DEBUG, "garbage collected threads library");
 	return EXIT_SUCCESS;

@@ -42,14 +42,6 @@ static struct units_t {
 	{ "DAY", 5 }
 };
 
-static void array_free(int len, char ***array) {
-	int i = 0;
-	for(i=0;i<len;i++) {
-		FREE((*array)[i]);
-	}
-	FREE((*array));
-}
-
 static int checkArguments(struct rules_actions_t *obj) {
 	struct JsonNode *jdevice = NULL;
 	struct JsonNode *jto = NULL;
@@ -63,16 +55,15 @@ static int checkArguments(struct rules_actions_t *obj) {
 	struct JsonNode *jbchild = NULL;
 	struct JsonNode *jcchild = NULL;
 	struct JsonNode *jdchild = NULL;
-	struct varcont_t v;
 	char *state = NULL, **array = NULL;
 	double nr1 = 0.0, nr2 = 0.0, nr3 = 0.0, nr4 = 0.0;
 	int nrvalues = 0, l = 0, i = 0, match = 0;
 	int	nrunits = (sizeof(units)/sizeof(units[0]));
 
-	jdevice = json_find_member(obj->arguments, "DEVICE");
-	jto = json_find_member(obj->arguments, "TO");
-	jfor = json_find_member(obj->arguments, "FOR");
-	jafter = json_find_member(obj->arguments, "AFTER");
+	jdevice = json_find_member(obj->parsedargs, "DEVICE");
+	jto = json_find_member(obj->parsedargs, "TO");
+	jfor = json_find_member(obj->parsedargs, "FOR");
+	jafter = json_find_member(obj->parsedargs, "AFTER");
 
 	if(jdevice == NULL) {
 		logprintf(LOG_ERR, "switch action is missing a \"DEVICE\" statement");
@@ -113,11 +104,6 @@ static int checkArguments(struct rules_actions_t *obj) {
 		jachild = json_first_child(javalues);
 		while(jachild) {
 			nrvalues++;
-			if(jachild->tag == JSON_STRING) {
-				if(event_lookup_variable(jachild->string_, obj->rule, JSON_STRING, &v, 1, ACTION) == -1) {
-					return -1;
-				}
-			}
 			jachild = jachild->next;
 		}
 	}
@@ -139,24 +125,22 @@ static int checkArguments(struct rules_actions_t *obj) {
 						for(i=0;i<nrunits;i++) {
 							if(strcmp(array[1], units[i].name) == 0) {
 								match = 1;
-								if(event_lookup_variable(array[0], obj->rule, JSON_NUMBER, &v, 1, ACTION) == -1) {
-									logprintf(LOG_ERR, "switch action \"FOR\" requires a number and a unit e.g. \"1 MINUTE\"");
-									array_free(l, &array);
+								if(isNumeric(array[0]) != 0 && atoi(array[0]) <= 0) {
+									logprintf(LOG_ERR, "switch action \"FOR\" requires a positive number and a unit e.g. \"1 MINUTE\"");
+									array_free(&array, l);
 									return -1;
 								}
 								break;
 							}
 						}
+						array_free(&array, l);
 						if(match == 0) {
 							logprintf(LOG_ERR, "switch action \"%s\" is not a valid unit", array[1]);
-							array_free(l, &array);
 							return -1;
 						}
 					} else {
-						logprintf(LOG_ERR, "switch action \"FOR\" requires a number and a unit e.g. \"1 MINUTE\"");
-						if(l > 0) {
-							array_free(l, &array);
-						}
+						logprintf(LOG_ERR, "switch action \"FOR\" requires a positive number and a unit e.g. \"1 MINUTE\"");
+						array_free(&array, l);
 						return -1;
 					}
 				}
@@ -182,23 +166,23 @@ static int checkArguments(struct rules_actions_t *obj) {
 						for(i=0;i<nrunits;i++) {
 							if(strcmp(array[1], units[i].name) == 0) {
 								match = 1;
-								if(event_lookup_variable(array[0], obj->rule, JSON_NUMBER, &v, 1, ACTION) == -1) {
-									logprintf(LOG_ERR, "switch action \"TO\" requires a number and a unit e.g. \"1 MINUTE\"");
-									array_free(l, &array);
+								if(isNumeric(array[0]) != 0 && atoi(array[0]) <= 0) {
+									logprintf(LOG_ERR, "switch action \"AFTER\" requires a positive number and a unit e.g. \"1 MINUTE\"");
+									array_free(&array, l);
 									return -1;
 								}
 								break;
 							}
 						}
+						array_free(&array, l);
 						if(match == 0) {
 							logprintf(LOG_ERR, "switch action \"%s\" is not a valid unit", array[1]);
-							array_free(l, &array);
 							return -1;
 						}
 					} else {
-						logprintf(LOG_ERR, "switch action \"AFTER\" requires a number and a unit e.g. \"1 MINUTE\"");
+						logprintf(LOG_ERR, "switch action \"AFTER\" requires a positive number and a unit e.g. \"1 MINUTE\"");
 						if(l > 0) {
-							array_free(l, &array);
+							array_free(&array, l);
 						}
 						return -1;
 					}
@@ -223,9 +207,6 @@ static int checkArguments(struct rules_actions_t *obj) {
 						while(jachild) {
 							if(jachild->tag == JSON_STRING) {
 								state = jachild->string_;
-								if(event_lookup_variable(jachild->string_, obj->rule, JSON_STRING, &v, 1, ACTION) != -1) {
-									state = v.string_;
-								}
 								struct protocols_t *tmp = dev->protocols;
 								int match1 = 0;
 								while(tmp) {
@@ -268,8 +249,7 @@ static int checkArguments(struct rules_actions_t *obj) {
 
 static void *thread(void *param) {
 	struct event_action_thread_t *pth = (struct event_action_thread_t *)param;
-	struct rules_actions_t *obj = pth->obj;
-	struct JsonNode *json = pth->obj->arguments;
+	struct JsonNode *json = pth->obj->parsedargs;
 	struct JsonNode *jto = NULL;
 	struct JsonNode *jafter = NULL;
 	struct JsonNode *jfor = NULL;
@@ -278,7 +258,6 @@ static void *thread(void *param) {
 	struct JsonNode *jdvalues = NULL;
 	struct JsonNode *jstate = NULL;
 	struct JsonNode *jaseconds = NULL;
-	struct varcont_t v;
 	char *new_state = NULL, *old_state = NULL, *state = NULL, **array = NULL;
 	int seconds_after = 0, type_after = 0;
 	int	l = 0, i = 0, nrunits = (sizeof(units)/sizeof(units[0]));
@@ -295,17 +274,13 @@ static void *thread(void *param) {
 					if(l == 2) {
 						for(i=0;i<nrunits;i++) {
 							if(strcmp(array[1], units[i].name) == 0) {
-								if(event_lookup_variable(array[0], obj->rule, JSON_NUMBER, &v, 1, ACTION) != -1) {
-									seconds_for = (int)v.number_;
-									type_for = units[i].id;
-								}
+								seconds_for = atoi(array[0]);
+								type_for = units[i].id;
 								break;
 							}
 						}
 					}
-					if(l > 0) {
-						array_free(l, &array);
-					}
+					array_free(&array, l);
 				}
 			}
 		}
@@ -320,17 +295,13 @@ static void *thread(void *param) {
 					if(l == 2) {
 						for(i=0;i<nrunits;i++) {
 							if(strcmp(array[1], units[i].name) == 0) {
-								if(event_lookup_variable(array[0], obj->rule, JSON_NUMBER, &v, 1, ACTION) != -1) {
-									seconds_after = (int)v.number_;
-									type_after = units[i].id;
-								}
+								seconds_after = atoi(array[0]);
+								type_after = units[i].id;
 								break;
 							}
 						}
 					}
-					if(l > 0) {
-						array_free(l, &array);
-					}
+					array_free(&array, l);
 				}
 			}
 		}
@@ -347,7 +318,7 @@ static void *thread(void *param) {
 			seconds_for *= (60*60*24);
 		break;
 	}
-	
+
 	switch(type_after) {
 		case 3:
 			seconds_after *= 60;
@@ -368,7 +339,10 @@ static void *thread(void *param) {
 		while(opt) {
 			if(strcmp(opt->name, "state") == 0) {
 				if(opt->values->type == JSON_STRING) {
-					old_state = MALLOC(strlen(opt->values->string_)+1);
+					if((old_state = MALLOC(strlen(opt->values->string_)+1)) == NULL) {
+						logprintf(LOG_ERR, "out of memory");
+						exit(EXIT_FAILURE);
+					}
 					strcpy(old_state, opt->values->string_);
 					match = 1;
 				}
@@ -393,12 +367,10 @@ static void *thread(void *param) {
 					jstate = json_find_element(javalues, 0);
 					if(jstate != NULL && jstate->tag == JSON_STRING) {
 						state = jstate->string_;
-						if(event_lookup_variable(state, obj->rule, JSON_STRING, &v, 0, ACTION) != -1) {
-							if(v.string_ != NULL) {
-								state = v.string_;
-							}
+						if((new_state = MALLOC(strlen(state)+1)) == NULL) {
+							logprintf(LOG_ERR, "out of memory");
+							exit(EXIT_FAILURE);
 						}
-						new_state = MALLOC(strlen(state)+1);
 						strcpy(new_state, state);
 						/*
 						 * We're not switching when current state is the same as
@@ -462,8 +434,8 @@ static int run(struct rules_actions_t *obj) {
 	struct JsonNode *jbvalues = NULL;
 	struct JsonNode *jbchild = NULL;
 
-	if((jdevice = json_find_member(obj->arguments, "DEVICE")) != NULL &&
-		 (jto = json_find_member(obj->arguments, "TO")) != NULL) {
+	if((jdevice = json_find_member(obj->parsedargs, "DEVICE")) != NULL &&
+		 (jto = json_find_member(obj->parsedargs, "TO")) != NULL) {
 		if((jbvalues = json_find_member(jdevice, "value")) != NULL) {
 			jbchild = json_first_child(jbvalues);
 			while(jbchild) {
@@ -498,9 +470,9 @@ void actionSwitchInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "switch";
-	module->version = "3.0";
+	module->version = "3.1";
 	module->reqversion = "6.0";
-	module->reqcommit = "117";
+	module->reqcommit = "152";
 }
 
 void init(void) {

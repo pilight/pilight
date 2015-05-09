@@ -75,42 +75,38 @@ static int createCode(JsonNode *code) {
 		logprintf(LOG_ERR, "relay: insufficient number of arguments");
 		have_error = 1;
 		goto clear;
-#ifndef _WIN32
-	} else if(wiringXSetup() < 0) {
-		logprintf(LOG_ERR, "unable to setup wiringX") ;
-		return EXIT_FAILURE;
-#endif
-	} else {
-#ifndef _WIN32
-		if(wiringXValidGPIO(gpio) != 0) {
-			logprintf(LOG_ERR, "relay: invalid gpio range");
-			have_error = 1;
-			goto clear;
+	} else if(wiringXSupported() == 0) {
+		if(wiringXSetup() < 0) {
+			logprintf(LOG_ERR, "unable to setup wiringX") ;
+			return EXIT_FAILURE;
 		} else {
-			if(strstr(progname, "daemon") != NULL) {
-				pinMode(gpio, OUTPUT);
-				if(strcmp(def, "off") == 0) {
-					if(state == 1) {
-						digitalWrite(gpio, LOW);
-					} else if(state == 0) {
-						digitalWrite(gpio, HIGH);
+			if(wiringXValidGPIO(gpio) != 0) {
+				logprintf(LOG_ERR, "relay: invalid gpio range");
+				have_error = 1;
+				goto clear;
+			} else {
+				if(strstr(progname, "daemon") != NULL) {
+					pinMode(gpio, OUTPUT);
+					if(strcmp(def, "off") == 0) {
+						if(state == 1) {
+							digitalWrite(gpio, LOW);
+						} else if(state == 0) {
+							digitalWrite(gpio, HIGH);
+						}
+					} else {
+						if(state == 0) {
+							digitalWrite(gpio, LOW);
+						} else if(state == 1) {
+							digitalWrite(gpio, HIGH);
+						}
 					}
 				} else {
-					if(state == 0) {
-						digitalWrite(gpio, LOW);
-					} else if(state == 1) {
-						digitalWrite(gpio, HIGH);
-					}
+					wiringXGC();
 				}
-			} else {
-				wiringXGC();
-			}
-#endif
 			createMessage(gpio, state);
 			goto clear;
-#ifndef _WIN32
+			}
 		}
-#endif
 	}
 
 clear:
@@ -156,41 +152,41 @@ static int checkValues(JsonNode *code) {
 	if((jid = json_find_member(code, "id")) != NULL) {
 		if((jchild = json_find_element(jid, 0)) != NULL) {
 			if(json_find_number(jchild, "gpio", &itmp) == 0) {
-#ifndef _WIN32
-				int gpio = (int)itmp;
-				int state = -1;
-				if(wiringXSetup() < 0) {
-					logprintf(LOG_ERR, "unable to setup wiringX") ;
-					return -1;
-				} else if(wiringXValidGPIO(gpio) != 0) {
-					logprintf(LOG_ERR, "relay: invalid gpio range");
-					return -1;
-				} else {
-					pinMode(gpio, INPUT);
-					state = digitalRead(gpio);
-					if(strcmp(def, "on") == 0) {
-						state ^= 1;
-					}
-
-					relay->message = json_mkobject();
-					JsonNode *code = json_mkobject();
-					json_append_member(code, "gpio", json_mknumber(gpio, 0));
-					if(state == 1) {
-						json_append_member(code, "state", json_mkstring("on"));
+				if(wiringXSupported() == 0) {
+					int gpio = (int)itmp;
+					int state = -1;
+					if(wiringXSetup() < 0) {
+						logprintf(LOG_ERR, "unable to setup wiringX") ;
+						return -1;
+					} else if(wiringXValidGPIO(gpio) != 0) {
+						logprintf(LOG_ERR, "relay: invalid gpio range");
+						return -1;
 					} else {
-						json_append_member(code, "state", json_mkstring("off"));
-					}
+						pinMode(gpio, INPUT);
+						state = digitalRead(gpio);
+						if(strcmp(def, "on") == 0) {
+							state ^= 1;
+						}
 
-					json_append_member(relay->message, "message", code);
-					json_append_member(relay->message, "origin", json_mkstring("sender"));
-					json_append_member(relay->message, "protocol", json_mkstring(relay->id));
-					if(pilight.broadcast != NULL) {
-						pilight.broadcast(relay->id, relay->message, PROTOCOL);
+						relay->message = json_mkobject();
+						JsonNode *code = json_mkobject();
+						json_append_member(code, "gpio", json_mknumber(gpio, 0));
+						if(state == 1) {
+							json_append_member(code, "state", json_mkstring("on"));
+						} else {
+							json_append_member(code, "state", json_mkstring("off"));
+						}
+
+						json_append_member(relay->message, "message", code);
+						json_append_member(relay->message, "origin", json_mkstring("sender"));
+						json_append_member(relay->message, "protocol", json_mkstring(relay->id));
+						if(pilight.broadcast != NULL) {
+							pilight.broadcast(relay->id, relay->message, PROTOCOL);
+						}
+						json_delete(relay->message);
+						relay->message = NULL;
 					}
-					json_delete(relay->message);
-					relay->message = NULL;
 				}
-#endif
 			}
 		}
 	}
@@ -236,7 +232,7 @@ void relayInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "relay";
-	module->version = "3.1";
+	module->version = "3.3";
 	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }

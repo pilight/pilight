@@ -65,7 +65,7 @@ static char *format = NULL;
 
 static pthread_mutex_t lock;
 
-static void *thread(void *param) {	
+static void *thread(void *param) {
 	char UTC[] = "UTC";
 	struct protocol_threads_t *thread = (struct protocol_threads_t *)param;
 	struct JsonNode *json = (struct JsonNode *)thread->param;
@@ -140,7 +140,7 @@ static void *thread(void *param) {
 			int weekday = tm.tm_wday+1;
 
 			datefix(&year, &month, &day, &hour, &minute, &second);
-			
+
 			if((minute == 0 && second == 0) || (isntpsynced() == 0 && x == 0)) {
 				x = 1;
 				dst = isdst(t, tz);

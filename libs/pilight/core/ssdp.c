@@ -34,11 +34,13 @@
 	#include <ifaddrs.h>
 #endif
 #include <sys/stat.h>
+#include <fcntl.h>
+#include <errno.h>
 #include <sys/types.h>
 #include <unistd.h>
 
 #include "pilight.h"
-#include "common.h"
+#include "network.h"
 #include "socket.h"
 #include "log.h"
 #include "gc.h"
@@ -84,6 +86,7 @@ int ssdp_start(void) {
 	struct sockaddr_in addr;
 	struct ip_mreq mreq;
 	int opt = 1;
+
 #ifdef _WIN32
 	WSADATA wsa;
 
@@ -93,7 +96,11 @@ int ssdp_start(void) {
 	}
 #endif
 
-	ssdp_socket = socket(AF_INET, SOCK_DGRAM, 0);
+	if((ssdp_socket = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
+		logprintf(LOG_ERR, "could not create ssdp socket");
+		return -1;
+	}
+
 	memset((char *)&addr, '\0', sizeof(addr));
 	addr.sin_family = AF_INET;
 	addr.sin_addr.s_addr = htonl(INADDR_ANY);
@@ -106,6 +113,7 @@ int ssdp_start(void) {
 
 	mreq.imr_multiaddr.s_addr = inet_addr("239.255.255.250");
 	mreq.imr_interface.s_addr = htonl(INADDR_ANY);
+
 	if(setsockopt(ssdp_socket, IPPROTO_IP, IP_ADD_MEMBERSHIP, (char *)&mreq, sizeof(mreq)) < 0) {
 		logprintf(LOG_ERR, "cannot bind to the ssdp multicast network");
 		return 0;
@@ -116,7 +124,7 @@ int ssdp_start(void) {
 		return 0;
 	}
 
-	return 1;
+	return -1;
 }
 
 int ssdp_seek(struct ssdp_list_t **ssdp_list) {
@@ -167,6 +175,7 @@ int ssdp_seek(struct ssdp_list_t **ssdp_list) {
 					"ST:urn:schemas-upnp-org:service:pilight:1\r\n"
 					"Man:\"ssdp:discover\"\r\n"
 					"MX:3\r\n\r\n");
+
 	if((len = sendto(sock, header, BUFFER_SIZE, 0, (struct sockaddr *)&addr, sizeof(addr))) >= 0) {
 		logprintf(LOG_DEBUG, "ssdp sent search");
 	}
@@ -186,11 +195,8 @@ int ssdp_seek(struct ssdp_list_t **ssdp_list) {
 				if(match == 0 && sscanf(array[q], "Location:%hu.%hu.%hu.%hu:%hu\r\n", &nip[0], &nip[1], &nip[2], &nip[3], &port) > 0) {
 					match = 1;
 				}
-				FREE(array[q]);
 			}
-			if(n > 0) {
-				FREE(array);
-			}
+			array_free(&array, n);
 			if(match == 1) {
 				struct ssdp_list_t *node = MALLOC(sizeof(struct ssdp_list_t));
 				if(node == NULL) {
@@ -250,19 +256,14 @@ void ssdp_free(struct ssdp_list_t *ssdp_list) {
 void *ssdp_wait(void *param) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
-	int nrdevs = 0;
-	char **devs = NULL;
-
+	struct timeval tv;
 	struct sockaddr_in addr;
-	char message[BUFFER_SIZE];
-	char **header = NULL;
-	char *id = NULL;
+	char **devs = NULL, message[BUFFER_SIZE], **header = NULL, *id = NULL;
+	char host[INET_ADDRSTRLEN+1], *p = host, *distro = distroname(), *hname = hostname();
+	int nrdevs = 0, nrheader = 0, x = 0, n = 0;
 	ssize_t len = 0;
 	socklen_t addrlen = sizeof(addr);
-	int nrheader = 0, x = 0;
-	char host[INET_ADDRSTRLEN+1], *p = host;
-	char *distro = distroname();
-	char *hname = hostname();
+	fd_set fdsread;
 
 	if(distro == NULL) {
 		logprintf(LOG_ERR, "failed to determine the distribution");
@@ -295,13 +296,12 @@ void *ssdp_wait(void *param) {
 					"SERVER: %s UPnP/1.1 pilight (%s)/%s\r\n\r\n", host, socket_get_port(), id, distro, hname, PILIGHT_VERSION);
 				nrheader++;
 			}
-			FREE(devs[x]);
 		}
-		FREE(devs);
 	} else {
 		logprintf(LOG_ERR, "could not determine default network interface");
 		exit(EXIT_FAILURE);
 	}
+	array_free(&devs, nrdevs);
 
 	if(id != NULL) {
 		FREE(id);
@@ -309,24 +309,55 @@ void *ssdp_wait(void *param) {
 	FREE(distro);
 	FREE(hname);
 
+#ifdef _WIN32
+	unsigned long on = 1;
+	ioctlsocket(ssdp_socket, FIONBIO, &on);
+#else
+	long arg = fcntl(ssdp_socket, F_GETFL, NULL);
+	fcntl(ssdp_socket, F_SETFL, arg | O_NONBLOCK);
+#endif	
+	
 	while(ssdp_loop) {
-		memset(message, '\0', BUFFER_SIZE);
-		if(recvfrom(ssdp_socket, message, sizeof(message), 0, (struct sockaddr *)&addr, &addrlen) < 1) {
-			//perror("read");
+		FD_ZERO(&fdsread);
+		FD_SET((unsigned long)ssdp_socket, &fdsread);
+
+		tv.tv_sec = 1;
+		tv.tv_usec = 0;
+		
+		do {
+			n = select(ssdp_socket+1, &fdsread, NULL, NULL, &tv);
+		} while(n == -1 && errno == EINTR && ssdp_loop);
+
+		if(n == 0) {
+			continue;
+		}
+		if(ssdp_loop == 0) {
 			break;
 		}
+		if(n == -1) {
+			goto clear;
+		} else if(n > 0) {
+			if(FD_ISSET(ssdp_socket, &fdsread)) {		
+				memset(message, '\0', BUFFER_SIZE);
+				if(recvfrom(ssdp_socket, message, sizeof(message), 0, (struct sockaddr *)&addr, &addrlen) < 1) {
+					//perror("read");
+					break;
+				}
 
-		if(strstr(message, "M-SEARCH * HTTP/1.1") > 0 && strstr(message, "urn:schemas-upnp-org:service:pilight:1") > 0) {
-			for(x=0;x<nrheader;x++) {
-				if(strlen(header[x]) > 0) {
-					if((len = sendto(ssdp_socket, header[x], BUFFER_SIZE, 0, (struct sockaddr *)&addr, sizeof(addr))) >= 0) {
-						logprintf(LOG_DEBUG, "ssdp sent notify");
+				if(strstr(message, "M-SEARCH * HTTP/1.1") > 0 && strstr(message, "urn:schemas-upnp-org:service:pilight:1") > 0) {
+					for(x=0;x<nrheader;x++) {
+						if(strlen(header[x]) > 0) {
+							if((len = sendto(ssdp_socket, header[x], BUFFER_SIZE, 0, (struct sockaddr *)&addr, sizeof(addr))) >= 0) {
+								logprintf(LOG_DEBUG, "ssdp sent notify");
+							}
+						}
 					}
 				}
 			}
 		}
 	}
 
+clear:
 	for(x=0;x<nrheader;x++) {
 		FREE(header[x]);
 	}

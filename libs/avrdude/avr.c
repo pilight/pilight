@@ -99,11 +99,8 @@ int parse_cmdbits(OPCODE * op, char *t) {
 				op->bit[bitno].value = 0;
 			}
 		}
-		FREE(array[i]);
 	}
-	if(n > 0) {
-		FREE(array);
-	}
+	array_free(&array, n);
 	return 0;
 }
 

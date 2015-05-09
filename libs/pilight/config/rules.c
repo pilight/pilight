@@ -25,6 +25,7 @@
 #include <sys/stat.h>
 #include <time.h>
 #include <libgen.h>
+#include <ctype.h>
 
 #include "../core/pilight.h"
 #include "../core/common.h"
@@ -40,7 +41,7 @@
 static struct rules_t *rules = NULL;
 
 static int rules_parse(JsonNode *root) {
-	int have_error = 0, match = 0;
+	int have_error = 0, match = 0, x = 0;
 	unsigned int i = 0;
 	struct JsonNode *jrules = NULL;
 	char *rule = NULL;
@@ -52,7 +53,7 @@ static int rules_parse(JsonNode *root) {
 			i++;
 			if(jrules->tag == JSON_OBJECT) {
 				if(json_find_string(jrules, "rule", &rule) != 0) {
-					logprintf(LOG_ERR, "config rules #%d \"%s\", missing \"rule\"", i, jrules->key);
+					logprintf(LOG_ERR, "config rule #%d \"%s\", missing \"rule\"", i, jrules->key);
 					have_error = 1;
 					break;
 				} else {
@@ -69,10 +70,18 @@ static int rules_parse(JsonNode *root) {
 						tmp = tmp->next;
 					}
 					if(match == 1) {
-						logprintf(LOG_ERR, "config rules #%d \"%s\" already exists", i, jrules->key);
+						logprintf(LOG_ERR, "config rule #%d \"%s\" already exists", i, jrules->key);
 						have_error = 1;
 						break;
 					}
+					for(x=0;x<strlen(jrules->key);x++) {
+						if(!isalnum(jrules->key[x]) && jrules->key[x] != '-' && jrules->key[x] != '_') {
+							logprintf(LOG_ERR, "config rule #%d \"%s\", not alphanumeric", i, jrules->key);
+							have_error = 1;
+							break;
+						}
+					}
+					
 					struct rules_t *node = MALLOC(sizeof(struct rules_t));
 					if(node == NULL) {
 						logprintf(LOG_ERR, "out of memory");
@@ -85,9 +94,20 @@ static int rules_parse(JsonNode *root) {
 					node->devices = NULL;
 					node->actions = NULL;
 					node->nr = i;
+					if((node->name = MALLOC(strlen(jrules->key)+1)) == NULL) {
+						logprintf(LOG_ERR, "out of memory");
+						exit(EXIT_FAILURE);
+					}
+					strcpy(node->name, jrules->key);
+					clock_gettime(CLOCK_MONOTONIC, &node->timestamp.first);
 					if(event_parse_rule(rule, node, 0, 1) == -1) {
 						have_error = 1;
 					}
+					clock_gettime(CLOCK_MONOTONIC, &node->timestamp.second);
+					logprintf(LOG_INFO, "rule #%d %s was parsed in %.6f seconds", node->nr, node->name,
+						((double)node->timestamp.second.tv_sec + 1.0e-9*node->timestamp.second.tv_nsec) -
+						((double)node->timestamp.first.tv_sec + 1.0e-9*node->timestamp.first.tv_nsec));
+
 					node->status = 0;
 					node->rule = MALLOC(strlen(rule)+1);
 					if(node->rule == NULL) {
@@ -95,12 +115,6 @@ static int rules_parse(JsonNode *root) {
 						exit(EXIT_FAILURE);
 					}
 					strcpy(node->rule, rule);
-					node->name = MALLOC(strlen(jrules->key)+1);
-					if(node->name == NULL) {
-						logprintf(LOG_ERR, "out of memory");
-						exit(EXIT_FAILURE);
-					}
-					strcpy(node->name, jrules->key);
 					node->active = (unsigned short)active;
 
 					tmp = rules;
@@ -113,7 +127,7 @@ static int rules_parse(JsonNode *root) {
 						node->next = rules;
 						rules = node;
 					}
-					/* 
+					/*
 					 * In case of an error, we do want to
 					 * save a pointer to our faulty rule
 					 * so it can be properly garbage collected.
@@ -203,6 +217,9 @@ int rules_gc(void) {
 			tmp_actions = tmp_rules->actions;
 			if(tmp_actions->arguments != NULL) {
 				json_delete(tmp_actions->arguments);
+			}
+			if(tmp_actions->parsedargs != NULL) {
+				json_delete(tmp_actions->parsedargs);
 			}
 			tmp_rules->actions = tmp_rules->actions->next;
 			FREE(tmp_actions);

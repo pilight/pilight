@@ -52,9 +52,9 @@ static int checkArguments(struct rules_actions_t *obj) {
 	regex_t regex;
 	int reti;
 #endif
-	jsubject = json_find_member(obj->arguments, "SUBJECT");
-	jmessage = json_find_member(obj->arguments, "MESSAGE");
-	jto = json_find_member(obj->arguments, "TO");
+	jsubject = json_find_member(obj->parsedargs, "SUBJECT");
+	jmessage = json_find_member(obj->parsedargs, "MESSAGE");
+	jto = json_find_member(obj->parsedargs, "TO");
 
 	if(jsubject == NULL) {
 		logprintf(LOG_ERR, "sendmail action is missing a \"SUBJECT\"");
@@ -122,6 +122,7 @@ static int checkArguments(struct rules_actions_t *obj) {
 			regfree(&regex);
 			return -1;
 		}
+		regfree(&regex);
 #endif
 	}
 	// Check if mandatory settings are present in config
@@ -150,8 +151,7 @@ static int checkArguments(struct rules_actions_t *obj) {
 
 static void *thread(void *param) {
 	struct rules_actions_t *pth = (struct rules_actions_t *)param;
-	// struct rules_t *obj = pth->obj;
-	struct JsonNode *arguments = pth->arguments;
+	struct JsonNode *arguments = pth->parsedargs;
 	struct JsonNode *jsubject = NULL;
 	struct JsonNode *jmessage = NULL;
 	struct JsonNode *jto = NULL;
@@ -232,7 +232,7 @@ void compatibility(struct module_t *module) {
 	module->name = "sendmail";
 	module->version = "1.1";
 	module->reqversion = "6.0";
-	module->reqcommit = "51";
+	module->reqcommit = "152";
 }
 
 void init(void) {

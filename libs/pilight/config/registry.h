@@ -25,6 +25,7 @@
 struct config_t *config_registry;
 
 void registry_init(void);
+int registry_gc(void);
 int registry_get_string(const char *key, char **value);
 int registry_get_number(const char *key, double *value, int *decimals);
 int registry_set_string(const char *key, char *value);

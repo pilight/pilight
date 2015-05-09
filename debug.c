@@ -29,7 +29,7 @@
 
 #include "libs/pilight/core/threads.h"
 #include "libs/pilight/core/pilight.h"
-#include "libs/pilight/core/common.h"
+#include "libs/pilight/core/network.h"
 #include "libs/pilight/core/config.h"
 #include "libs/pilight/core/log.h"
 #include "libs/pilight/core/options.h"
@@ -324,8 +324,7 @@ int main(int argc, char **argv) {
 	char configtmp[] = CONFIG_FILE;
 	config_set_file(configtmp);
 
-	progname = MALLOC(15);
-	if(!progname) {
+	if((progname = MALLOC(15)) == NULL) {
 		logprintf(LOG_ERR, "out of memory");
 		exit(EXIT_FAILURE);
 	}

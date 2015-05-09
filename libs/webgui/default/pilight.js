@@ -276,7 +276,7 @@ function createPendingSwitchElement(sTabId, sDevId, aValues) {
 				if(window.confirm("Are you sure?") == false) {
 					return false;
 				}
-			}			
+			}
 			$('#'+sDevId+'_pendingsw').parent().removeClass('ui-icon-on').removeClass('ui-icon-off').addClass('ui-icon-loader');
 			$('#'+sDevId+'_pendingsw').button('disable');
 			$('#'+sDevId+'_pendingsw').text(language.toggling);

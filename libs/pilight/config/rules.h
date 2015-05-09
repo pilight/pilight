@@ -34,6 +34,7 @@ typedef struct rules_actions_t {
 	int nr;
 	struct rules_t *rule;
 	struct JsonNode *arguments;
+	struct JsonNode *parsedargs;
 	struct event_actions_t *action;
 	struct rules_actions_t *next;
 } rules_actions_t;

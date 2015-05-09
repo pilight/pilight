@@ -43,6 +43,10 @@
 #include "libs/pilight/events/operator.h"
 #include "libs/pilight/events/action.h"
 
+#ifndef _WIN32
+	#include "libs/wiringx/wiringX.h"
+#endif
+
 int main(int argc, char **argv) {
 	// memtrack();
 
@@ -62,7 +66,11 @@ int main(int argc, char **argv) {
 	log_shell_enable();
 	log_level_set(LOG_NOTICE);
 
-	if(!(progname = MALLOC(16))) {
+#ifndef _WIN32
+	wiringXLog = logprintf;
+#endif	
+	
+	if((progname = MALLOC(16)) == NULL) {
 		logprintf(LOG_ERR, "out of memory");
 		exit(EXIT_FAILURE);
 	}
@@ -246,10 +254,7 @@ int main(int argc, char **argv) {
 									}
 									strcpy(name, array[q]);
 									if(q+1 == n) {
-										for(q=0;q<n;q++) {
-											FREE(array[q]);
-										}
-										FREE(array);
+										array_free(&array, n);
 										logprintf(LOG_ERR, "\"%s\" is missing a value for device \"%s\"", name, device);
 										FREE(name);
 										break;
@@ -262,22 +267,14 @@ int main(int argc, char **argv) {
 										strcpy(val, array[q+1]);
 										if(devices_valid_value(device, name, val) == 0) {
 											if(isNumeric(val) == EXIT_SUCCESS) {
-												char *ptr = strstr(array[q+1], ".");
-												int decimals = 0;
-												if(ptr != NULL) {
-													decimals = (int)(strlen(array[q+1])-((size_t)(ptr-array[q+1])+1));
-												}
-												json_append_member(jvalues, name, json_mknumber(atof(val), decimals));
+												json_append_member(jvalues, name, json_mknumber(atof(val), nrDecimals(val)));
 											} else {
 												json_append_member(jvalues, name, json_mkstring(val));
 											}
 											has_values = 1;
 										} else {
 											logprintf(LOG_ERR, "\"%s\" is an invalid value for device \"%s\"", name, device);
-											for(q=0;q<n;q++) {
-												FREE(array[q]);
-											}
-											FREE(array);
+											array_free(&array, n);
 											FREE(name);
 											json_delete(json);
 											goto close;
@@ -285,13 +282,7 @@ int main(int argc, char **argv) {
 									}
 									FREE(name);
 								}
-								unsigned int z = 0;
-								for(z=q;z<n;z++) {
-									FREE(array[z]);
-								}
-								if(n > 0) {
-									FREE(array);
-								}
+								array_free(&array, n);
 							}
 
 							if(devices_valid_state(device, state) == 0) {
