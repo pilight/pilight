@@ -36,9 +36,9 @@
 #define MIN_PULSE_LENGTH	235
 #define AVG_PULSE_LENGTH	255
 #define MAX_PULSE_LENGTH	275
-#define ZERO_PULSE	2104
-#define ONE_PULSE	3945
-#define AVG_PULSE	(ZERO_PULSE+ONE_PULSE)/2
+#define ZERO_PULSE				2104
+#define ONE_PULSE					3945
+#define AVG_PULSE					(ZERO_PULSE+ONE_PULSE)/2
 #define RAW_LENGTH				74
 
 typedef struct settings_t {
@@ -70,7 +70,7 @@ static void parseCode(void) {
 	int n4 = 0, n5 = 0, n6 = 0, n7 = 0, n8 = 0;
 	int checksum = 1;
 
-	for(x=1;x<alecto_wx500->rawlen-2;x+=2) {
+	for(x=1;x<alecto_wx500->rawlen-1;x+=2) {
 		if(alecto_wx500->raw[x] > AVG_PULSE) {
 			binary[i++] = 1;
 		} else {
@@ -300,7 +300,7 @@ void alectoWX500Init(void) {
 #ifdef MODULAR
 void compatibility(const char **version, const char **commit) {
 	module->name = "alecto_wx500";
-	module->version = "0.15";
+	module->version = "0.16";
 	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }
