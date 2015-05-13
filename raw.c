@@ -42,8 +42,7 @@
 
 #include "libs/pilight/protocols/protocol.h"
 
-#include "libs/pilight/events/action.h"
-#include "libs/pilight/events/operator.h"
+#include "libs/pilight/events/events.h"
 
 #include "libs/pilight/config/hardware.h"
 

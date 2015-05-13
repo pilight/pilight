@@ -15,6 +15,8 @@
 // Alternatively, you can license this library under a commercial
 // license, as set out in <http://cesanta.com/>.
 
+#define NS_ENABLE_IPV6
+
 #ifdef NOEMBED_NET_SKELETON
 #include "net_skeleton.h"
 #else
@@ -852,16 +854,16 @@ void ns_sock_to_str(sock_t sock, char *buf, size_t len, int flags) {
       getsockname(sock, &sa.sa, &slen);
     }
     if (flags & 1) {
-// #if defined(NS_ENABLE_IPV6)
-      // inet_ntop(sa.sa.sa_family, sa.sa.sa_family == AF_INET ?
-                // (void *) &sa.sin.sin_addr :
-                // (void *) &sa.sin6.sin6_addr, buf, len);
-// #elif defined(_WIN32)
-      // // Only Windoze Vista (and newer) have inet_ntop()
-      // strncpy(buf, inet_ntoa(sa.sin.sin_addr), len);
-// #else
+#if defined(NS_ENABLE_IPV6)
+      inet_ntop(sa.sa.sa_family, sa.sa.sa_family == AF_INET ?
+                (void *) &sa.sin.sin_addr :
+                (void *) &sa.sin6.sin6_addr, buf, len);
+#elif defined(_WIN32)
+      // Only Windoze Vista (and newer) have inet_ntop()
+      strncpy(buf, inet_ntoa(sa.sin.sin_addr), len);
+#else
       inet_ntop(sa.sa.sa_family, (void *) &sa.sin.sin_addr, buf,(socklen_t)len);
-// #endif
+#endif
     }
     if (flags & 2) {
       snprintf(buf + strlen(buf), len - (strlen(buf) + 1), "%s%d",
