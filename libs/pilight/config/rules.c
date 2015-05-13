@@ -109,8 +109,7 @@ static int rules_parse(JsonNode *root) {
 						((double)node->timestamp.first.tv_sec + 1.0e-9*node->timestamp.first.tv_nsec));
 
 					node->status = 0;
-					node->rule = MALLOC(strlen(rule)+1);
-					if(node->rule == NULL) {
+					if((node->rule = MALLOC(strlen(rule)+1)) == NULL) {
 						logprintf(LOG_ERR, "out of memory");
 						exit(EXIT_FAILURE);
 					}
@@ -222,7 +221,9 @@ int rules_gc(void) {
 				json_delete(tmp_actions->parsedargs);
 			}
 			tmp_rules->actions = tmp_rules->actions->next;
-			FREE(tmp_actions);
+			if(tmp_actions != NULL) {
+				FREE(tmp_actions);
+			}
 		}
 		if(tmp_rules->actions != NULL) {
 			FREE(tmp_rules->actions);

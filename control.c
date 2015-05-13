@@ -40,8 +40,7 @@
 
 #include "libs/pilight/protocols/protocol.h"
 
-#include "libs/pilight/events/operator.h"
-#include "libs/pilight/events/action.h"
+#include "libs/pilight/events/events.h"
 
 #ifndef _WIN32
 	#include "libs/wiringx/wiringX.h"
@@ -344,8 +343,7 @@ close:
 	protocol_gc();
 	options_gc();
 #ifdef EVENTS
-	event_operator_gc();
-	event_action_gc();
+	events_gc();
 #endif
 	dso_gc();
 	log_gc();

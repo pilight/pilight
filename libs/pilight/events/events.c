@@ -446,7 +446,10 @@ static int event_parse_hooks(char **rule, struct rules_t *obj, int depth, unsign
 			subrule[len++] = tmp[i+1];
 			if(buflen <= len) {
 				buflen *= 2;
-				subrule = REALLOC(subrule, buflen);
+				if((subrule = REALLOC(subrule, buflen)) == NULL) {
+					logprintf(LOG_ERR, "out of memory");
+					exit(EXIT_FAILURE);
+				}				
 				memset(&subrule[len], '\0', buflen-(unsigned long)len);
 			}
 		} else {
@@ -1526,7 +1529,7 @@ int event_parse_rule(char *rule, struct rules_t *obj, int depth, unsigned short 
 	while(condition[i] != '\0') {
 		if(condition[i] == '(') {
 			/* Subcondition */
-			if(condition[i-1] == '(' || condition[i-1] == ' ' || i == 0) {
+			if(i == 0 || condition[i-1] == '(' || condition[i-1] == ' ') {
 				if(ltype == AND && skip == 1 && validate == 0) {
 					error = event_remove_hooks(&condition, obj, depth+1);
 				} else {

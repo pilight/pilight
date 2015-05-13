@@ -41,8 +41,7 @@
 #include "libs/pilight/core/gc.h"
 #include "libs/pilight/core/dso.h"
 
-#include "libs/pilight/events/operator.h"
-#include "libs/pilight/events/action.h"
+#include "libs/pilight/events/events.h"
 
 #include "libs/pilight/config/hardware.h"
 
@@ -68,8 +67,7 @@ int main_gc(void) {
 	datetime_gc();
 	ssdp_gc();
 #ifdef EVENTS
-	event_operator_gc();
-	event_action_gc();
+	events_gc();
 #endif
 	options_gc();
 	socket_gc();

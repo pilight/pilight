@@ -61,8 +61,7 @@ int main_gc(void) {
 	datetime_gc();
 	ssdp_gc();
 #ifdef EVENTS
-	event_operator_gc();
-	event_action_gc();
+	events_gc();
 #endif
 	options_gc();
 	socket_gc();
