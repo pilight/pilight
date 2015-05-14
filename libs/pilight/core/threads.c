@@ -189,7 +189,7 @@ void threads_start() {
 	}
 
 	threads_create(&pth, NULL, &threads_loop, (void *)NULL);
-	thread_started = 1;	
+	thread_started = 1;
 }
 
 void thread_stop(char *id) {

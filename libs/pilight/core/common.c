@@ -246,7 +246,7 @@ pid_t findproc(char *cmd, char *args, int loosely) {
 
 	if(procmounted == 0) {
 		if((dir = opendir("/proc"))) {
-			i = 0;		
+			i = 0;
 			while((ent = readdir(dir)) != NULL) {
 				i++;
 			}
@@ -258,7 +258,7 @@ pid_t findproc(char *cmd, char *args, int loosely) {
 				mount("proc", "/proc", "procfs", 0, "");
 #endif
 				if((dir = opendir("/proc"))) {
-					i = 0;		
+					i = 0;
 					while((ent = readdir(dir)) != NULL) {
 						i++;
 					}

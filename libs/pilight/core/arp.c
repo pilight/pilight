@@ -392,7 +392,7 @@ static int recvfrom_wto(long unsigned int tmo, pcap_t *pcap_handle) {
 	if((pcap_fd = pcap_get_selectable_fd(pcap_handle)) < 0) {
 		logprintf(LOG_ERR, "pcap_fileno: %s", pcap_geterr(pcap_handle));
 		return -1;
-	}	
+	}
 	FD_ZERO(&readset);
 	if(pcap_fd >= 0)
 		FD_SET(pcap_fd, &readset);

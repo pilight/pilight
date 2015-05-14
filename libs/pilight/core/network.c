@@ -217,7 +217,7 @@ int dev2mac(char *ifname, char **mac) {
 		logprintf(LOG_ERR, "could not open new socket");
 		return -1;
 	}
-	
+
 	memset(&s, '\0', sizeof(struct ifreq));
 	strcpy(s.ifr_name, ifname);
 	if(ioctl(fd, SIOCGIFHWADDR, &s) == 0) {

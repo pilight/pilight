@@ -315,15 +315,15 @@ void *ssdp_wait(void *param) {
 #else
 	long arg = fcntl(ssdp_socket, F_GETFL, NULL);
 	fcntl(ssdp_socket, F_SETFL, arg | O_NONBLOCK);
-#endif	
-	
+#endif
+
 	while(ssdp_loop) {
 		FD_ZERO(&fdsread);
 		FD_SET((unsigned long)ssdp_socket, &fdsread);
 
 		tv.tv_sec = 1;
 		tv.tv_usec = 0;
-		
+
 		do {
 			n = select(ssdp_socket+1, &fdsread, NULL, NULL, &tv);
 		} while(n == -1 && errno == EINTR && ssdp_loop);
@@ -337,7 +337,7 @@ void *ssdp_wait(void *param) {
 		if(n == -1) {
 			goto clear;
 		} else if(n > 0) {
-			if(FD_ISSET(ssdp_socket, &fdsread)) {		
+			if(FD_ISSET(ssdp_socket, &fdsread)) {
 				memset(message, '\0', BUFFER_SIZE);
 				if(recvfrom(ssdp_socket, message, sizeof(message), 0, (struct sockaddr *)&addr, &addrlen) < 1) {
 					//perror("read");

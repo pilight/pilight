@@ -787,7 +787,7 @@ static int send_queue(struct JsonNode *json, enum origin_t origin) {
 		tmp_clients = tmp_clients->next;
 	}
 	json_free(buffer);
-	
+
 	if((jcode = json_find_member(json, "code")) == NULL) {
 		logprintf(LOG_ERR, "sender did not send any codes");
 		json_delete(jcode);
@@ -1852,7 +1852,7 @@ int main_gc(void) {
 
 	config_gc();
 	protocol_gc();
-	ntp_gc(); 
+	ntp_gc();
 	whitelist_free();
 	threads_gc();
 #ifndef _WIN32

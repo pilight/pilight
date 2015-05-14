@@ -144,7 +144,7 @@ static void gpio_close(PROGRAMMER *pgm) {
 void gpio_initpgm(PROGRAMMER *pgm)
 {
   strcpy(pgm->type, "GPIO");
-	if(wiringXSupported() == 0) {	
+	if(wiringXSupported() == 0) {
 		if(wiringXSetup() != 0) {
 			exit(EXIT_FAILURE);
 		}

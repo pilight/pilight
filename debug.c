@@ -318,8 +318,8 @@ int main(int argc, char **argv) {
 		FREE(progname);
 		exit(EXIT_FAILURE);
 	}
-#endif	
-	
+#endif
+
 	log_shell_enable();
 	log_file_disable();
 	log_level_set(LOG_NOTICE);

@@ -449,7 +449,7 @@ static int event_parse_hooks(char **rule, struct rules_t *obj, int depth, unsign
 				if((subrule = REALLOC(subrule, buflen)) == NULL) {
 					logprintf(LOG_ERR, "out of memory");
 					exit(EXIT_FAILURE);
-				}				
+				}
 				memset(&subrule[len], '\0', buflen-(unsigned long)len);
 			}
 		} else {
@@ -608,7 +608,7 @@ static int event_parse_function(char **rule, struct rules_t *obj, unsigned short
 										 DATE_FORMAT(2014-01-02 00:00:00, %H.%s)
 						*/
 
-						if(pilight.debuglevel == 1) {						
+						if(pilight.debuglevel == 1) {
 							fprintf(stderr, "replace %s with %s in %s\n", replace, subfunction, tmp);
 						}
 						str_replace(replace, subfunction, &tmp);
@@ -1774,12 +1774,12 @@ void *events_clientize(void *param) {
 	settings_find_number("standalone", &standalone);
 
 	while(loop) {
-		
+
 		if(client_loop == 1) {
 			sleep(1);
 		}
 		client_loop = 1;
-		
+
 		ssdp_list = NULL;
 		if(ssdp_seek(&ssdp_list) == -1 || standalone == 1) {
 			logprintf(LOG_DEBUG, "no pilight ssdp connections found");

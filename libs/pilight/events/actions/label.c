@@ -292,7 +292,7 @@ static void *thread(void *param) {
 				color = jcolor->string_;
 				if((new_color = MALLOC(strlen(color)+1)) == NULL) {
 					logprintf(LOG_ERR, "out of memory");
-					exit(EXIT_FAILURE);					
+					exit(EXIT_FAILURE);
 				}
 				strcpy(new_color, color);
 			}
@@ -385,7 +385,7 @@ static void *thread(void *param) {
 				if(opt->values->type == JSON_STRING) {
 					if((old_color = MALLOC(strlen(opt->values->string_)+1)) == NULL) {
 						logprintf(LOG_ERR, "out of memory");
-						exit(EXIT_FAILURE);						
+						exit(EXIT_FAILURE);
 					}
 					strcpy(old_color, opt->values->string_);
 					match2 = 1;
@@ -427,7 +427,7 @@ static void *thread(void *param) {
 						}
 						if((new_label = MALLOC(strlen(label)+1)) == NULL) {
 							logprintf(LOG_ERR, "out of memory");
-							exit(EXIT_FAILURE);							
+							exit(EXIT_FAILURE);
 						}
 						strcpy(new_label, label);
 						/*

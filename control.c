@@ -67,8 +67,8 @@ int main(int argc, char **argv) {
 
 #ifndef _WIN32
 	wiringXLog = logprintf;
-#endif	
-	
+#endif
+
 	if((progname = MALLOC(16)) == NULL) {
 		logprintf(LOG_ERR, "out of memory");
 		exit(EXIT_FAILURE);

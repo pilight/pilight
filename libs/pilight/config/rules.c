@@ -81,7 +81,7 @@ static int rules_parse(JsonNode *root) {
 							break;
 						}
 					}
-					
+
 					struct rules_t *node = MALLOC(sizeof(struct rules_t));
 					if(node == NULL) {
 						logprintf(LOG_ERR, "out of memory");

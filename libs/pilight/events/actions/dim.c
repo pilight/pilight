@@ -571,7 +571,7 @@ static void *thread(void *param) {
 	}
 
 	if(pilight.debuglevel == 1) {
-		fprintf(stderr, "action dim: for %d:%d, after %d:%d, in: %d:%d\n", seconds_for, type_for, seconds_after, type_after, seconds_in, type_in); 
+		fprintf(stderr, "action dim: for %d:%d, after %d:%d, in: %d:%d\n", seconds_for, type_for, seconds_after, type_after, seconds_in, type_in);
 	}
 	/* Store current state and dimlevel */
 	struct devices_t *tmp = pth->device;
@@ -583,7 +583,7 @@ static void *thread(void *param) {
 				if(opt->values->type == JSON_STRING) {
 					if((old_state = MALLOC(strlen(opt->values->string_)+1)) == NULL) {
 						logprintf(LOG_ERR, "out of memory");
-						exit(EXIT_FAILURE);						
+						exit(EXIT_FAILURE);
 					}
 					strcpy(old_state, opt->values->string_);
 					match1 = 1;
@@ -637,7 +637,7 @@ static void *thread(void *param) {
 	}
 
 	if(pilight.debuglevel == 1) {
-		fprintf(stderr, "action dim: old %d, new %d, direction %d\n", (int)old_dimlevel, (int)new_dimlevel, direction); 
+		fprintf(stderr, "action dim: old %d, new %d, direction %d\n", (int)old_dimlevel, (int)new_dimlevel, direction);
 	}
 
 	if(has_in == 1) {
