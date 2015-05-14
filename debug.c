@@ -306,6 +306,20 @@ int main(int argc, char **argv) {
 	/* Catch all exit signals for gc */
 	gc_catch();
 
+	if((progname = MALLOC(15)) == NULL) {
+		logprintf(LOG_ERR, "out of memory");
+		exit(EXIT_FAILURE);
+	}
+	strcpy(progname, "pilight-debug");
+
+#ifndef _WIN32
+	if(geteuid() != 0) {
+		printf("%s requires root privileges in order to run\n", progname);
+		FREE(progname);
+		exit(EXIT_FAILURE);
+	}
+#endif	
+	
 	log_shell_enable();
 	log_file_disable();
 	log_level_set(LOG_NOTICE);
@@ -321,12 +335,6 @@ int main(int argc, char **argv) {
 
 	char configtmp[] = CONFIG_FILE;
 	config_set_file(configtmp);
-
-	if((progname = MALLOC(15)) == NULL) {
-		logprintf(LOG_ERR, "out of memory");
-		exit(EXIT_FAILURE);
-	}
-	strcpy(progname, "pilight-debug");
 
 	options_add(&options, 'H', "help", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
 	options_add(&options, 'V', "version", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);

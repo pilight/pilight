@@ -120,6 +120,7 @@ int fcache_add(char *filename) {
 			logprintf(LOG_NOTICE, "error reading %s", filename);
 			FREE(node->bytes);
 			FREE(node);
+			fclose(fp);
 			return -1;
 		}
 		node->size = (int)filesize;
@@ -130,8 +131,10 @@ int fcache_add(char *filename) {
 		strcpy(node->name, filename);
 		node->next = fcache;
 		fcache = node;
+		fclose(fp);
 		return 0;
 	}
+	fclose(fp);
 	return -1;
 }
 
