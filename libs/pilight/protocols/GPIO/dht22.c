@@ -124,8 +124,7 @@ static void *thread(void *param) {
 						counter = 0;
 						delayMicroseconds(10);
 
-						x = sizecvt(digitalRead(id[y]));
-						while(x == laststate && x != -1 && loop) {
+						while((x = sizecvt(digitalRead(id[y]))) == laststate && x != -1 && loop) {
 							counter++;
 							delayMicroseconds(1);
 							if(counter == 255) {
@@ -283,7 +282,7 @@ void dht22Init(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "dht22";
-	module->version = "2.3";
+	module->version = "2.4";
 	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }
