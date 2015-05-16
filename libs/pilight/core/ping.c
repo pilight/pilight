@@ -91,6 +91,7 @@
 #include <signal.h>
 
 #include "common.h"
+#include "network.h"
 #include "log.h"
 #include "mem.h"
 

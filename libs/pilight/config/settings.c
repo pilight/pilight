@@ -35,9 +35,7 @@
 #include "../core/json.h"
 #include "../core/log.h"
 
-#ifndef _WIN32
-	#include "../../wiringx/wiringX.h"
-#endif
+#include "../../wiringx/wiringX.h"
 
 #include "settings.h"
 

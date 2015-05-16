@@ -148,7 +148,7 @@ typedef struct stat ns_stat_t;
 #define ARRAY_SIZE(array) (sizeof(array) / sizeof(array[0]))
 #endif
 
-#ifdef WEBSERVER_SSL
+#ifdef WEBSERVER_HTTPS
 	#define NS_ENABLE_SSL
 #endif
 

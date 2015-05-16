@@ -19,26 +19,45 @@
 #include <stdarg.h>
 #include <stdint.h>
 #include <stdlib.h>
-#include <poll.h>
 #include <unistd.h>
 #include <errno.h>
 #include <string.h>
 #include <fcntl.h>
-#include <sys/mman.h>
-#include <sys/ioctl.h>
 #include <sys/time.h>
 #include <time.h>
-#include <sys/wait.h>
 
+#include "../pilight/core/common.h"
+#include "../pilight/core/log.h"
 #include "wiringX.h"
 #include "hummingboard.h"
 #include "raspberrypi.h"
 #include "bananapi.h"
 #include "ci20.h"
 
-static struct platform_t *platform = NULL;
+#ifdef _WIN32
+#define timeradd(a, b, result) \
+    do { \
+        (result)->tv_sec = (a)->tv_sec + (b)->tv_sec; \
+        (result)->tv_usec = (a)->tv_usec + (b)->tv_usec; \
+        if ((result)->tv_usec >= 1000000L) { \
+            ++(result)->tv_sec; \
+            (result)->tv_usec -= 1000000L; \
+        } \
+    } while (0)
 
-#if defined(__arm__) || defined(__mips__)
+#define timersub(a, b, result) \
+    do { \
+        (result)->tv_sec = (a)->tv_sec - (b)->tv_sec; \
+        (result)->tv_usec = (a)->tv_usec - (b)->tv_usec; \
+        if ((result)->tv_usec < 0) { \
+            --(result)->tv_sec; \
+            (result)->tv_usec += 1000000L; \
+        } \
+    } while (0)
+#endif
+
+static struct platform_t *platform = NULL;
+#ifndef _WIN32
 	static int setup = -2;
 #endif
 
@@ -58,25 +77,42 @@ static void delayMicrosecondsHard(unsigned int howLong) {
 	struct timeval tNow, tLong, tEnd ;
 
 	gettimeofday(&tNow, NULL);
+#ifdef _WIN32
+	tLong.tv_sec  = howLong / 1000000;
+	tLong.tv_usec = howLong % 1000000;
+#else
 	tLong.tv_sec  = (__time_t)howLong / 1000000;
 	tLong.tv_usec = (__suseconds_t)howLong % 1000000;
+#endif
+	
 	timeradd(&tNow, &tLong, &tEnd);
 
-	while(timercmp(&tNow, &tEnd, <))
+	while(timercmp(&tNow, &tEnd, <)) {
 		gettimeofday(&tNow, NULL);
+	}
 }
 
 void delayMicroseconds(unsigned int howLong) {
 	struct timespec sleeper;
+#ifdef _WIN32
+	long int uSecs = howLong % 1000000;
+	unsigned int wSecs = howLong / 1000000;
+#else
 	long int uSecs = (__time_t)howLong % 1000000;
 	unsigned int wSecs = howLong / 1000000;
+#endif
+
 
 	if(howLong == 0) {
 		return;
 	} else if(howLong  < 100) {
 		delayMicrosecondsHard(howLong);
 	} else {
-		sleeper.tv_sec = (__time_t)wSecs;
+#ifdef _WIN32
+		sleeper.tv_sec = wSecs;
+#else
+		sleeper.tv_sec = (__time_t)wSecs;	
+#endif
 		sleeper.tv_nsec = (long)(uSecs * 1000L);
 		nanosleep(&sleeper, NULL);
 	}
@@ -417,39 +453,41 @@ int wiringXSupported(void) {
 }
 
 int wiringXSetup(void) {
+#ifndef _WIN32	
 	if(wiringXLog == NULL) {
 		wiringXLog = _fprintf;
 	}
 
-#if defined(__arm__) || defined(__mips__)
-	if(setup == -2) {
-		hummingboardInit();
-		raspberrypiInit();
-		bananapiInit();
-		ci20Init();
+	if(wiringXSupported() == 0) {
+		if(setup == -2) {
+			hummingboardInit();
+			raspberrypiInit();
+			bananapiInit();
+			ci20Init();
 
-		int match = 0;
-		struct platform_t *tmp = platforms;
-		while(tmp) {
-			if(tmp->identify() >= 0) {
-				platform = tmp;
-				match = 1;
-				break;
+			int match = 0;
+			struct platform_t *tmp = platforms;
+			while(tmp) {
+				if(tmp->identify() >= 0) {
+					platform = tmp;
+					match = 1;
+					break;
+				}
+				tmp = tmp->next;
 			}
-			tmp = tmp->next;
-		}
 
-		if(match == 0) {
-			wiringXLog(LOG_ERR, "hardware not supported");
-			wiringXGC();
-			return -1;
+			if(match == 0) {
+				wiringXLog(LOG_ERR, "hardware not supported");
+				wiringXGC();
+				return -1;
+			} else {
+				wiringXLog(LOG_DEBUG, "running on a %s", platform->name);
+			}
+			setup = platform->setup();
+			return setup;
 		} else {
-			wiringXLog(LOG_DEBUG, "running on a %s", platform->name);
+			return setup;
 		}
-		setup = platform->setup();
-		return setup;
-	} else {
-		return setup;
 	}
 #endif
 	return -1;
