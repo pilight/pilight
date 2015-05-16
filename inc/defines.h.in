@@ -29,7 +29,8 @@
 #define SHA256_ITERATIONS				1000
 
 #ifdef WEBSERVER
-	#define WEBSERVER_PORT				5001
+	#define WEBSERVER_HTTP_PORT				5001
+	#define WEBSERVER_HTTPS_PORT			5002
 	#ifdef _WIN32
 		#define WEBSERVER_ROOT				"c:/pilight/web/"
 	#else

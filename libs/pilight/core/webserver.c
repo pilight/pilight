@@ -49,10 +49,10 @@
 #include "ssdp.h"
 #include "fcache.h"
 
-#ifdef WEBSERVER_SSL
-static int webserver_ssl_port = WEBSERVER_SSL_PORT;
+#ifdef WEBSERVER_HTTPS
+static int webserver_https_port = WEBSERVER_HTTPS_PORT;
 #endif
-static int webserver_port = WEBSERVER_PORT;
+static int webserver_http_port = WEBSERVER_HTTP_PORT;
 static int webserver_cache = 1;
 static int webgui_websockets = WEBGUI_WEBSOCKETS;
 static char *webserver_user = NULL;
@@ -62,7 +62,7 @@ static unsigned short webserver_loop = 1;
 static unsigned short webserver_php = 1;
 static char *webserver_root = NULL;
 static char *webgui_tpl = NULL;
-#ifdef WEBSERVER_SSL
+#ifdef WEBSERVER_HTTPS
 static struct mg_server *mgserver[WEBSERVER_WORKERS+1];
 #else
 static struct mg_server *mgserver[WEBSERVER_WORKERS];
@@ -126,7 +126,7 @@ int webserver_gc(void) {
 		FREE(webserver_user);
 	}
 
-#ifdef WEBSERVER_SSL
+#ifdef WEBSERVER_HTTPS
 	for(i=0;i<WEBSERVER_WORKERS+1;i++) {
 #else
 	for(i=0;i<WEBSERVER_WORKERS;i++) {
@@ -881,7 +881,7 @@ void *webserver_broadcast(void *param) {
 
 			logprintf(LOG_STACK, "%s::unlocked", __FUNCTION__);
 
-#ifdef WEBSERVER_SSL
+#ifdef WEBSERVER_HTTPS
 			for(i=0;i<WEBSERVER_WORKERS+1;i++) {
 #else
 			for(i=0;i<WEBSERVER_WORKERS;i++) {
@@ -1026,10 +1026,10 @@ int webserver_start(void) {
 	}
 
 	/* Check on what port the webserver needs to run */
-	settings_find_number("webserver-port", &webserver_port);
+	settings_find_number("webserver-http-port", &webserver_http_port);
 
-#ifdef WEBSERVER_SSL
-	settings_find_number("webserver-ssl-port", &webserver_ssl_port);
+#ifdef WEBSERVER_HTTPS
+	settings_find_number("webserver-https-port", &webserver_https_port);
 #endif
 
 	if(settings_find_string("webserver-root", &webserver_root) != 0) {
@@ -1069,13 +1069,13 @@ int webserver_start(void) {
 	}
 
 	int z = 0;
-#ifdef WEBSERVER_SSL
+#ifdef WEBSERVER_HTTPS
 	char ssl[BUFFER_SIZE];
 	char id[2];
 	memset(ssl, '\0', BUFFER_SIZE);
 
 	sprintf(id, "%d", z);
-	snprintf(ssl, BUFFER_SIZE, "ssl://%d:/etc/pilight/ssl.pem", webserver_ssl_port);
+	snprintf(ssl, BUFFER_SIZE, "ssl://%d:/etc/pilight/ssl.pem", webserver_https_port);
 	mgserver[z] = mg_create_server((void *)id, webserver_handler);
 	mg_set_option(mgserver[z], "listening_port", ssl);
 	mg_set_option(mgserver[z], "auth_domain", "pilight");
@@ -1086,7 +1086,7 @@ int webserver_start(void) {
 #endif
 
 	char webport[10] = {'\0'};
-	sprintf(webport, "%d", webserver_port);
+	sprintf(webport, "%d", webserver_http_port);
 
 	int i = 0;
 	for(i=z;i<WEBSERVER_WORKERS+z;i++) {

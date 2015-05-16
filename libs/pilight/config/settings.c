@@ -154,9 +154,9 @@ static int settings_parse(JsonNode *root) {
 	int have_error = 0;
 
 #ifdef WEBSERVER
-	int web_port = WEBSERVER_PORT;
-#ifdef WEBSERVER_SSL
-	int web_ssl_port = 443;
+	int web_port = WEBSERVER_HTTP_PORT;
+#ifdef WEBSERVER_HTTPS
+	int web_ssl_port = WEBSERVER_HTTPS_PORT;
 #endif
 	int own_port = -1;
 
@@ -310,8 +310,8 @@ static int settings_parse(JsonNode *root) {
 			}
 #ifdef WEBSERVER
 
-#ifdef WEBSERVER_SSL
-		} else if(strcmp(jsettings->key, "webserver-ssl-port") == 0) {
+#ifdef WEBSERVER_HTTPS
+		} else if(strcmp(jsettings->key, "webserver-https-port") == 0) {
 			if(jsettings->tag != JSON_NUMBER) {
 				logprintf(LOG_ERR, "config setting \"%s\" must contain a number larget than 0", jsettings->key);
 				have_error = 1;
@@ -325,7 +325,7 @@ static int settings_parse(JsonNode *root) {
 				settings_add_number(jsettings->key, (int)jsettings->number_);
 			}
 #endif
-		} else if(strcmp(jsettings->key, "webserver-port") == 0) {
+		} else if(strcmp(jsettings->key, "webserver-http-port") == 0) {
 			if(jsettings->tag != JSON_NUMBER) {
 				logprintf(LOG_ERR, "config setting \"%s\" must contain a number larget than 0", jsettings->key);
 				have_error = 1;
@@ -588,13 +588,13 @@ static int settings_parse(JsonNode *root) {
 	}
 
 	if(web_port == own_port) {
-		logprintf(LOG_ERR, "config setting \"port\" and \"webserver-port\" cannot be the same");
+		logprintf(LOG_ERR, "config setting \"port\" and \"webserver-http-port\" cannot be the same");
 		have_error = 1;
 		goto clear;
 	}
-#ifdef WEBSERVER_SSL
+#ifdef WEBSERVER_HTTPS
 	if(web_ssl_port == own_port) {
-		logprintf(LOG_ERR, "config setting \"port\" and \"webserver-ssl-port\" cannot be the same");
+		logprintf(LOG_ERR, "config setting \"port\" and \"webserver-https-port\" cannot be the same");
 		have_error = 1;
 		goto clear;
 	}

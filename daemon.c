@@ -80,9 +80,7 @@
 #include "libs/pilight/config/settings.h"
 #include "libs/pilight/config/gui.h"
 
-#ifndef _WIN32
-	#include "libs/wiringx/wiringX.h"
-#endif
+#include "libs/wiringx/wiringX.h"
 
 #ifdef _WIN32
 static char server_name[40];
@@ -218,9 +216,9 @@ struct socket_callback_t socket_callback;
 static int webserver_enable = WEBSERVER_ENABLE;
 static int webgui_websockets = WEBGUI_WEBSOCKETS;
 /* On what port does the webserver run */
-static int webserver_port = WEBSERVER_PORT;
+static int webserver_http_port = WEBSERVER_HTTP_PORT;
 /* The webroot of pilight */
-static char *webserver_root;
+static char *webserver_root = NULL;
 static char *webgui_tpl = NULL;
 static int webserver_root_free = 0;
 static int webgui_tpl_free = 0;
@@ -989,7 +987,7 @@ static void client_webserver_parse_code(int i, char buffer[BUFFER_SIZE]) {
 							   "font-weight: 800px; font-family: Verdana; font-size:"
 							   "20px;\" href=\"http://%s:%d\">http://%s:%d</a></p>"
 							   "</center></body></html>",
-							   buf, webserver_port, buf, webserver_port);
+							   buf, webserver_http_port, buf, webserver_http_port);
 				send(sd, (const char *)cache, strlen(cache), MSG_NOSIGNAL);
 				FREE(cache);
 			} else {
@@ -2062,16 +2060,14 @@ int start_pilight(int argc, char **argv) {
 	struct ssdp_list_t *ssdp_list = NULL;
 
 	char buffer[BUFFER_SIZE];
-	int itmp = 0, show_default = 0;
+	int itmp = 0, show_default = 0, show_version = 0, show_help = 0;
 #ifndef _WIN32
-	int show_version = 0, show_help = 0, f = 0;
+	int f = 0;
 #endif
 	char *stmp = NULL, *args = NULL, *p = NULL;
 	int port = 0;
 
-#ifndef _WIN32
 	wiringXLog = logprintf;
-#endif
 
 	if((progname = MALLOC(16)) == NULL) {
 		logprintf(LOG_ERR, "out of memory");
@@ -2082,10 +2078,8 @@ int start_pilight(int argc, char **argv) {
 	configtmp = MALLOC(strlen(CONFIG_FILE)+1);
 	strcpy(configtmp, CONFIG_FILE);
 
-#ifndef _WIN32
 	options_add(&options, 'H', "help", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
 	options_add(&options, 'V', "version", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
-#endif
 	options_add(&options, 'D', "nodaemon", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
 	options_add(&options, 'C', "config", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, NULL);
 	options_add(&options, 'S', "server", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, "^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]).){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$");
@@ -2101,26 +2095,22 @@ int start_pilight(int argc, char **argv) {
 			break;
 		}
 		if(c == -2) {
-#ifndef _WIN32
 			show_help = 1;
-#endif
 			break;
 		}
 		switch(c) {
-#ifndef _WIN32
 			case 'H':
 				show_help = 1;
 			break;
 			case 'V':
 				show_version = 1;
 			break;
-#endif
 			case 'C':
 				configtmp = REALLOC(configtmp, strlen(args)+1);
 				strcpy(configtmp, args);
 			break;
 			case 'S':
-				if(!(master_server = MALLOC(strlen(args)+1))) {
+				if((master_server = MALLOC(strlen(args)+1)) == NULL) {
 					logprintf(LOG_ERR, "out of memory");
 					exit(EXIT_FAILURE);
 				}
@@ -2154,32 +2144,59 @@ int start_pilight(int argc, char **argv) {
 		}
 	}
 	options_delete(options);
-#ifndef _WIN32
 	if(show_help == 1) {
-		printf("Usage: %s [options]\n", progname);
-		printf("\t -H --help\t\t\tdisplay usage summary\n");
-		printf("\t -V --version\t\t\tdisplay version\n");
-		printf("\t -C --config\t\t\tconfig file\n");
-		printf("\t -S --server=x.x.x.x\t\tconnect to server address\n");
-		printf("\t -P --port=xxxx\t\t\tconnect to server port\n");
-		printf("\t -D --nodaemon\t\t\tdo not daemonize and\n");
-		printf("\t\t\t\t\tshow debug information\n");
-		printf("\t    --stacktracer\t\tshow internal function calls\n");
-		printf("\t    --threadprofiler\t\tshow per thread cpu usage\n");
-		printf("\t    --debuglevel\t\tshow additional development info\n");
+		char help[1024];
+		char tabs[5];
+#ifdef _WIN32
+		strcpy(tabs, "\t");
+#else
+		strcpy(tabs, "\t\t");
+#endif
+		sprintf(help, "Usage: %s [options]\n"
+									"\t -H --help\t\t\tdisplay usage summary\n"
+									"\t -V --version\t%sdisplay version\n"
+									"\t -C --config\t%sconfig file\n"
+									"\t -S --server=x.x.x.x\t\tconnect to server address\n"
+									"\t -P --port=xxxx\t%sconnect to server port\n"
+									"\t -D --nodaemon\t%sdo not daemonize and\n"
+									"\t\t\t%sshow debug information\n"
+									"\t    --stacktracer\t\tshow internal function calls\n"
+									"\t    --threadprofiler\t\tshow per thread cpu usage\n"
+									"\t    --debuglevel\t\tshow additional development info\n",
+									progname, tabs, tabs, tabs, tabs, tabs);
+#ifdef _WIN32
+		MessageBox(NULL, help, "pilight :: info", MB_OK);
+#else
+		printf(help);
+#endif
 		goto clear;
 	}
 	if(show_version == 1) {
 #ifdef HASH
+	#ifdef _WIN32
+			char version[50];
+			snprintf(version, 50, "%s version %s", progname, HASH);
+			MessageBox(NULL, version, "pilight :: info", MB_OK);
+	#else
 			printf("%s version %s\n", progname, HASH);
+	#endif
 #else
+	#ifdef _WIN32
+			char version[50];
+			snprintf(version, 50, "%s version %s", progname, PILIGHT_VERSION);
+			MessageBox(NULL, version, "pilight :: info", MB_OK);
+	#else
 			printf("%s version %s\n", progname, PILIGHT_VERSION);
+	#endif
 #endif
 		goto clear;
 	}
-#endif
 	if(show_default == 1) {
-#ifndef _WIN32
+#ifdef _WIN32
+		char def[50];
+		snprintf(def, 50, "Usage: %s [options]\n", progname);
+		MessageBox(NULL, def, "pilight :: info", MB_OK);
+#else
 		printf("Usage: %s [options]\n", progname);
 #endif
 		goto clear;
@@ -2276,7 +2293,7 @@ int start_pilight(int argc, char **argv) {
 
 #ifdef WEBSERVER
 	settings_find_number("webserver-enable", &webserver_enable);
-	settings_find_number("webserver-port", &webserver_port);
+	settings_find_number("webserver-http-port", &webserver_http_port);
 	if(settings_find_string("webserver-root", &webserver_root) != 0) {
 		if((webserver_root = REALLOC(webserver_root, strlen(WEBSERVER_ROOT)+1)) == NULL) {
 			logprintf(LOG_ERR, "out of memory");
@@ -2611,10 +2628,10 @@ static LRESULT CALLBACK WindowProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lP
 					}
 				break;
 				case ID_WEBGUI:
-					if(webserver_port == 80) {
+					if(webserver_http_port == 80) {
 						snprintf(buf, sizeof(buf), "http://localhost");
 					} else {
-						snprintf(buf, sizeof(buf), "http://localhost:%d", webserver_port);
+						snprintf(buf, sizeof(buf), "http://localhost:%d", webserver_http_port);
 					}
 					ShellExecute(NULL, "open", buf, NULL, NULL, SW_SHOWNORMAL);
 				break;
