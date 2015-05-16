@@ -77,11 +77,11 @@ int main(int argc, char **argv) {
 	sha256_context ctx;
 	int i = 0, x = 0;
 
-	if((progname = MALLOC(16)) == NULL) {
+	if((progname = MALLOC(15)) == NULL) {
 		logprintf(LOG_ERR, "out of memory");
 		exit(EXIT_FAILURE);
 	}
-	strcpy(progname, "pilight-encrypt");
+	strcpy(progname, "pilight-sha256");
 
 	options_add(&options, 'H', "help", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
 	options_add(&options, 'V', "version", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
