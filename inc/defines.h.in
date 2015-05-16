@@ -38,7 +38,6 @@
 	#endif
 	#define WEBSERVER_ENABLE			1
 	#define WEBSERVER_CACHE				1
-	#define WEBGUI_TEMPLATE				"default"
 	#define MAX_UPLOAD_FILESIZE 	5242880
 	#define MAX_CACHE_FILESIZE 		1048576
 	#define WEBSERVER_WORKERS			1

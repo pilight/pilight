@@ -61,14 +61,12 @@ static char *webserver_authentication_password = NULL;
 static unsigned short webserver_loop = 1;
 static unsigned short webserver_php = 1;
 static char *webserver_root = NULL;
-static char *webgui_tpl = NULL;
 #ifdef WEBSERVER_HTTPS
 static struct mg_server *mgserver[WEBSERVER_WORKERS+1];
 #else
 static struct mg_server *mgserver[WEBSERVER_WORKERS];
 #endif
 static char *recvBuff = NULL;
-static unsigned short webgui_tpl_free = 0;
 static unsigned short webserver_root_free = 0;
 static unsigned short webserver_user_free = 0;
 
@@ -118,9 +116,6 @@ int webserver_gc(void) {
 
 	if(webserver_root_free) {
 		FREE(webserver_root);
-	}
-	if(webgui_tpl_free) {
-		FREE(webgui_tpl);
 	}
 	if(webserver_user_free) {
 		FREE(webserver_user);
@@ -422,7 +417,7 @@ static int webserver_request_handler(struct mg_connection *conn) {
 				unsigned int n = explode((char *)indexes, ",", &array), q = 0;
 				/* Check if the webserver_root is terminated by a slash. If not, than add it */
 				for(q=0;q<n;q++) {
-					size_t l = strlen(webserver_root)+strlen(webgui_tpl)+strlen(conn->uri)+strlen(array[q])+4;
+					size_t l = strlen(webserver_root)+strlen(conn->uri)+strlen(array[q])+4;
 					if((request = REALLOC(request, l)) == NULL) {
 						logprintf(LOG_ERR, "out of memory");
 						exit(EXIT_FAILURE);
@@ -430,20 +425,20 @@ static int webserver_request_handler(struct mg_connection *conn) {
 					memset(request, '\0', l);
 					if(webserver_root[strlen(webserver_root)-1] == '/') {
 #ifdef __FreeBSD__
-						sprintf(request, "%s%s/%s%s", webserver_root, webgui_tpl, conn->uri, array[q]);
+						sprintf(request, "%s/%s%s", webserver_root, conn->uri, array[q]);
 #else
-						sprintf(request, "%s%s%s%s", webserver_root, webgui_tpl, conn->uri, array[q]);
+						sprintf(request, "%s%s%s", webserver_root, conn->uri, array[q]);
 #endif
 					} else {
-						sprintf(request, "%s/%s/%s%s", webserver_root, webgui_tpl, conn->uri, array[q]);
+						sprintf(request, "%s/%s%s", webserver_root, conn->uri, array[q]);
 					}
 					if(access(request, F_OK) == 0) {
 						break;
 					}
 				}
 				array_free(&array, n);
-			} else if(webserver_root != NULL && webgui_tpl != NULL && conn->uri != NULL) {
-				size_t wlen = strlen(webserver_root)+strlen(webgui_tpl)+strlen(conn->uri)+2;
+			} else if(webserver_root != NULL && conn->uri != NULL) {
+				size_t wlen = strlen(webserver_root)+strlen(conn->uri)+2;
 				request = MALLOC(wlen);
 				if(!request) {
 					logprintf(LOG_ERR, "out of memory");
@@ -453,14 +448,14 @@ static int webserver_request_handler(struct mg_connection *conn) {
 				/* If a file was requested add it to the webserver path to create the absolute path */
 				if(webserver_root[strlen(webserver_root)-1] == '/') {
 					if(conn->uri[0] == '/')
-						sprintf(request, "%s%s%s", webserver_root, webgui_tpl, conn->uri);
+						sprintf(request, "%s%s", webserver_root, conn->uri);
 					else
-						sprintf(request, "%s%s/%s", webserver_root, webgui_tpl, conn->uri);
+						sprintf(request, "%s/%s", webserver_root, conn->uri);
 				} else {
 					if(conn->uri[0] == '/')
-						sprintf(request, "%s/%s%s", webserver_root, webgui_tpl, conn->uri);
+						sprintf(request, "%s/%s", webserver_root, conn->uri);
 					else
-						sprintf(request, "%s/%s/%s", webserver_root, webgui_tpl, conn->uri);
+						sprintf(request, "%s/%s", webserver_root, conn->uri);
 				}
 			}
 			if(request == NULL) {
@@ -1040,15 +1035,6 @@ int webserver_start(void) {
 		}
 		strcpy(webserver_root, WEBSERVER_ROOT);
 		webserver_root_free = 1;
-	}
-	if(settings_find_string("webgui-template", &webgui_tpl) != 0) {
-		/* If no webserver port was set, use the default webserver port */
-		if((webgui_tpl = MALLOC(strlen(WEBGUI_TEMPLATE)+1)) == NULL) {
-			logprintf(LOG_ERR, "out of memory");
-			exit(EXIT_FAILURE);
-		}
-		strcpy(webgui_tpl, WEBGUI_TEMPLATE);
-		webgui_tpl_free = 1;
 	}
 	settings_find_number("webgui-websockets", &webgui_websockets);
 

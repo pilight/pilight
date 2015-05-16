@@ -160,13 +160,6 @@ static int settings_parse(JsonNode *root) {
 #endif
 	int own_port = -1;
 
-	char *webgui_tpl = MALLOC(strlen(WEBGUI_TEMPLATE)+1);
-	if(webgui_tpl == NULL) {
-		logprintf(LOG_ERR, "out of memory");
-		exit(EXIT_FAILURE);
-	}
-	strcpy(webgui_tpl, WEBGUI_TEMPLATE);
-
 	char *webgui_root = MALLOC(strlen(WEBSERVER_ROOT)+1);
 	if(webgui_root == NULL) {
 		logprintf(LOG_ERR, "out of memory");
@@ -422,23 +415,6 @@ static int settings_parse(JsonNode *root) {
 				have_error = 1;
 				goto clear;
 			}
-		} else if(strcmp(jsettings->key, "webgui-template") == 0) {
-			if(jsettings->tag != JSON_STRING) {
-				logprintf(LOG_ERR, "config setting \"%s\" must be a valid template", jsettings->key);
-				have_error = 1;
-				goto clear;
-			} else if(jsettings->string_ == NULL) {
-				logprintf(LOG_ERR, "config setting \"%s\" must be a valid template", jsettings->key);
-				have_error = 1;
-				goto clear;
-			} else {
-				if((webgui_tpl = REALLOC(webgui_tpl, strlen(jsettings->string_)+1)) == NULL) {
-					logprintf(LOG_ERR, "out of memory");
-					exit(EXIT_FAILURE);
-				}
-				strcpy(webgui_tpl, jsettings->string_);
-				settings_add_string(jsettings->key, jsettings->string_);
-			}
 #endif // WEBSERVER
 		} else if(strcmp(jsettings->key, "ntp-servers") == 0 && jsettings->tag == JSON_ARRAY) {
 			JsonNode *jtmp = json_first_child(jsettings);
@@ -570,23 +546,6 @@ static int settings_parse(JsonNode *root) {
 	}
 
 #ifdef WEBSERVER
-	if(webgui_tpl != NULL) {
-		char *tmp = MALLOC(strlen(webgui_root)+strlen(webgui_tpl)+13);
-		if(tmp == NULL) {
-			logprintf(LOG_ERR, "out of memory");
-			exit(EXIT_FAILURE);
-		}
-		sprintf(tmp, "%s/%s/", webgui_root, webgui_tpl);
-
-		if(path_exists(tmp) != EXIT_SUCCESS) {
-			logprintf(LOG_ERR, "config setting \"webgui-template\", template does not exists");
-			have_error = 1;
-			FREE(tmp);
-			goto clear;
-		}
-		FREE(tmp);
-	}
-
 	if(web_port == own_port) {
 		logprintf(LOG_ERR, "config setting \"port\" and \"webserver-http-port\" cannot be the same");
 		have_error = 1;
@@ -603,9 +562,6 @@ static int settings_parse(JsonNode *root) {
 #endif
 clear:
 #ifdef WEBSERVER
-	if(webgui_tpl != NULL) {
-		FREE(webgui_tpl);
-	}
 	if(webgui_root != NULL) {
 		FREE(webgui_root);
 	}

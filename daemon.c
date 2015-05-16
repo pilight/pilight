@@ -219,9 +219,7 @@ static int webgui_websockets = WEBGUI_WEBSOCKETS;
 static int webserver_http_port = WEBSERVER_HTTP_PORT;
 /* The webroot of pilight */
 static char *webserver_root = NULL;
-static char *webgui_tpl = NULL;
 static int webserver_root_free = 0;
-static int webgui_tpl_free = 0;
 #endif
 
 static void client_remove(int id) {
@@ -265,8 +263,7 @@ static void broadcast_queue(char *protoname, struct JsonNode *json, enum origin_
 			}
 			json_free(jstr);
 
-			bnode->protoname = MALLOC(strlen(protoname)+1);
-			if(bnode->protoname == NULL) {
+			if((bnode->protoname = MALLOC(strlen(protoname)+1)) == NULL) {
 				logprintf(LOG_ERR, "out of memory");
 				exit(EXIT_FAILURE);
 			}
@@ -874,7 +871,10 @@ static int send_queue(struct JsonNode *json, enum origin_t origin) {
 							tmp_options = tmp_options->next;
 						}
 						char *strsett = json_stringify(jsettings, NULL);
-						mnode->settings = MALLOC(strlen(strsett)+1);
+						if((mnode->settings = MALLOC(strlen(strsett)+1)) == NULL) {
+							logprintf(LOG_ERR, "out of memory");
+							exit(EXIT_FAILURE);
+						}
 						strcpy(mnode->settings, strsett);
 						json_free(strsett);
 						json_delete(jsettings);
@@ -938,18 +938,18 @@ static void client_webserver_parse_code(int i, char buffer[BUFFER_SIZE]) {
 		}
 		p = buff;
 		if(strstr(buffer, "/logo.png") != NULL) {
-			if(!(path = MALLOC(strlen(webserver_root)+strlen(webgui_tpl)+strlen("logo.png")+2))) {
+			if((path = MALLOC(strlen(webserver_root)+strlen("logo.png")+2)) == NULL) {
 				logprintf(LOG_ERR, "out of memory");
 				exit(EXIT_FAILURE);
 			}
-			sprintf(path, "%s/%s/logo.png", webserver_root, webgui_tpl);
+			sprintf(path, "%s/logo.png", webserver_root);
 			if((f = fopen(path, "rb"))) {
 				fstat(fileno(f), &sb);
 				mimetype = webserver_mimetype("image/png");
 				webserver_create_header(&p, "200 OK", mimetype, (unsigned int)sb.st_size);
 				send(sd, (const char *)buff, (size_t)(p-buff), MSG_NOSIGNAL);
 				x = 0;
-				if(!(cache = MALLOC(BUFFER_SIZE))) {
+				if((cache = MALLOC(BUFFER_SIZE)) == NULL) {
 					logprintf(LOG_ERR, "out of memory");
 					exit(EXIT_FAILURE);
 				}
@@ -1154,7 +1154,10 @@ static void socket_parse_data(int i, char *buffer) {
 				if(strcmp(action, "identify") == 0) {
 					/* Check if client doesn't already exist */
 					if(exists == 0) {
-						client = MALLOC(sizeof(struct clients_t));
+						if((client = MALLOC(sizeof(struct clients_t))) == NULL) {
+							logprintf(LOG_ERR, "out of memory");
+							exit(EXIT_FAILURE);
+						}
 						client->core = 0;
 						client->config = 0;
 						client->receiver = 0;
@@ -1834,9 +1837,6 @@ int main_gc(void) {
 	if(webserver_root_free == 1) {
 		FREE(webserver_root);
 	}
-	if(webgui_tpl_free == 1) {
-		FREE(webgui_tpl);
-	}
 #endif
 
 	if(master_server != NULL) {
@@ -1970,11 +1970,11 @@ void *pilight_stats(void *param) {
 				}
 				if(checkcpu == 0) {
 					if(cpu > 90) {
-						logprintf(LOG_ERR, "cpu usage way too high %f%%", cpu);
+						logprintf(LOG_WARNING, "cpu usage way too high %f%%", cpu);
 					} else {
-						logprintf(LOG_ERR, "cpu usage too high %f%%", cpu);
+						logprintf(LOG_WARNING, "cpu usage too high %f%%", cpu);
 					}
-					logprintf(LOG_ERR, "checking again in 10 seconds");
+					logprintf(LOG_WARNING, "checking again in 10 seconds");
 					sleep(10);
 				} else {
 					if(cpu > 90) {
@@ -1995,18 +1995,18 @@ void *pilight_stats(void *param) {
 			} else if(watchdog == 1 && (i > -1) && (ram > 60)) {
 				if(checkram == 0) {
 					if(ram > 90) {
-						logprintf(LOG_ERR, "ram usage way too high %f%%", ram);
+						logprintf(LOG_WARNING, "ram usage way too high %f%%", ram);
 						exit(EXIT_FAILURE);
 					} else {
-						logprintf(LOG_ERR, "ram usage too high %f%%", ram);
+						logprintf(LOG_WARNING, "ram usage too high %f%%", ram);
 					}
-					logprintf(LOG_ERR, "checking again in 10 seconds");
+					logprintf(LOG_WARNING, "checking again in 10 seconds");
 					sleep(10);
 				} else {
 					if(ram > 90) {
-						logprintf(LOG_ERR, "ram usage still way too high %f%%, exiting", ram);
+						logprintf(LOG_WARNING, "ram usage still way too high %f%%, exiting", ram);
 					} else {
-						logprintf(LOG_ERR, "ram usage still too high %f%%, stopping", ram);
+						logprintf(LOG_WARNING, "ram usage still too high %f%%, stopping", ram);
 					}
 				}
 				if(checkram == 1) {
@@ -2075,7 +2075,10 @@ int start_pilight(int argc, char **argv) {
 	}
 	strcpy(progname, "pilight-daemon");
 
-	configtmp = MALLOC(strlen(CONFIG_FILE)+1);
+	if((configtmp = MALLOC(strlen(CONFIG_FILE)+1)) == NULL) {
+		logprintf(LOG_ERR, "out of memory");
+		exit(EXIT_FAILURE);
+	}
 	strcpy(configtmp, CONFIG_FILE);
 
 	options_add(&options, 'H', "help", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
@@ -2301,15 +2304,6 @@ int start_pilight(int argc, char **argv) {
 		}
 		strcpy(webserver_root, WEBSERVER_ROOT);
 		webserver_root_free = 1;
-	}
-	if(settings_find_string("webgui-template", &webgui_tpl) != 0) {
-		/* If no webserver port was set, use the default webserver port */
-		if((webgui_tpl = MALLOC(strlen(WEBGUI_TEMPLATE)+1)) == NULL) {
-			logprintf(LOG_ERR, "out of memory");
-			exit(EXIT_FAILURE);
-		}
-		strcpy(webgui_tpl, WEBGUI_TEMPLATE);
-		webgui_tpl_free = 1;
 	}
 #endif
 
