@@ -65,6 +65,8 @@
 #pragma warning (disable : 4204)  // missing c99 support
 #endif
 
+#include "../../polarssl/polarssl/sha256.h"
+#include "common.h"
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <assert.h>
@@ -3791,393 +3793,72 @@ static void send_options(struct connection *conn) {
 void mg_send_digest_auth_request(struct mg_connection *c) {
   struct connection *conn = MG_CONN_2_CONN(c);
   c->status_code = 401;
-  mg_printf(c,
-            "HTTP/1.1 401 Unauthorized\r\n"
-            "WWW-Authenticate: Digest qop=\"auth\", "
-            "realm=\"%s\", nonce=\"%lu\"\r\n\r\n",
-            conn->server->config_options[AUTH_DOMAIN],
-            (unsigned long) time(NULL));
+  // mg_printf(c,
+            // "HTTP/1.1 401 Unauthorized\r\n"
+            // "WWW-Authenticate: Digest qop=\"auth\", "
+            // "realm=\"%s\", nonce=\"%lu\"\r\n\r\n",
+            // conn->server->config_options[AUTH_DOMAIN],
+            // (unsigned long) time(NULL));
+	mg_printf(c, 
+		"HTTP/1.1 401 Unauthorized\r\n"
+		"WWW-Authenticate: Basic realm=\"%s\"\r\n\r\n",
+		 conn->server->config_options[AUTH_DOMAIN]);
   close_local_endpoint(conn);
 }
 
-// Use the global passwords file, if specified by auth_gpass option,
-// or search for .htpasswd in the requested directory.
-static FILE *open_auth_file(struct connection *conn, const char *path,
-                            int is_directory) {
-  char name[MAX_PATH_SIZE];
-  const char *p, *gpass = conn->server->config_options[GLOBAL_AUTH_FILE];
-  FILE *fp = NULL;
-
-  if (gpass != NULL) {
-    // Use global passwords file
-    fp = fopen(gpass, "r");
-  } else if (is_directory) {
-    mg_snprintf(name, sizeof(name), "%s%c%s", path, '/', PASSWORDS_FILE_NAME);
-    fp = fopen(name, "r");
-  } else {
-    // Try to find .htpasswd in requested directory.
-    if ((p = strrchr(path, '/')) == NULL) p = path;
-    mg_snprintf(name, sizeof(name), "%.*s%c%s",
-                (int) (p - path), path, '/', PASSWORDS_FILE_NAME);
-    fp = fopen(name, "r");
-  }
-
-  return fp;
-}
-
-#if !defined(HAVE_MD5) && !defined(MONGOOSE_NO_AUTH)
-/*
- * This code implements the MD5 message-digest algorithm.
- * The algorithm is due to Ron Rivest.	This code was
- * written by Colin Plumb in 1993, no copyright is claimed.
- * This code is in the public domain; do with it what you wish.
- *
- * Equivalent code is available from RSA Data Security, Inc.
- * This code has been tested against that, and is equivalent,
- * except that you don't need to include two pages of legalese
- * with every copy.
- *
- * To compute the message digest of a chunk of bytes, declare an
- * MD5Context structure, pass it to MD5Init, call MD5Update as
- * needed on buffers full of bytes, and then call MD5Final, which
- * will fill a supplied 16-byte array with the digest.
- */
-
-typedef struct MD5Context {
-  uint32_t buf[4];
-  uint32_t bits[2];
-  unsigned char in[64];
-} MD5_CTX;
-
-static void byteReverse(unsigned char *buf, unsigned longs) {
-  uint32_t t;
-
-  // Forrest: MD5 expect LITTLE_ENDIAN, swap if BIG_ENDIAN
-  if (is_big_endian()) {
-    do {
-      t = (uint32_t) ((unsigned) buf[3] << 8 | buf[2]) << 16 |
-        ((unsigned) buf[1] << 8 | buf[0]);
-      * (uint32_t *) buf = t;
-      buf += 4;
-    } while (--longs);
-  }
-}
-
-#define F1(x, y, z) (z ^ (x & (y ^ z)))
-#define F2(x, y, z) F1(z, x, y)
-#define F3(x, y, z) (x ^ y ^ z)
-#define F4(x, y, z) (y ^ (x | ~z))
-
-#define MD5STEP(f, w, x, y, z, data, s) \
-  ( w += f(x, y, z) + data,  w = w<<s | w>>(32-s),  w += x )
-
-// Start MD5 accumulation.  Set bit count to 0 and buffer to mysterious
-// initialization constants.
-static void MD5Init(MD5_CTX *ctx) {
-  ctx->buf[0] = 0x67452301;
-  ctx->buf[1] = 0xefcdab89;
-  ctx->buf[2] = 0x98badcfe;
-  ctx->buf[3] = 0x10325476;
-
-  ctx->bits[0] = 0;
-  ctx->bits[1] = 0;
-}
-
-static void MD5Transform(uint32_t buf[4], uint32_t const in[16]) {
-  register uint32_t a, b, c, d;
-
-  a = buf[0];
-  b = buf[1];
-  c = buf[2];
-  d = buf[3];
-
-  MD5STEP(F1, a, b, c, d, in[0] + 0xd76aa478, 7);
-  MD5STEP(F1, d, a, b, c, in[1] + 0xe8c7b756, 12);
-  MD5STEP(F1, c, d, a, b, in[2] + 0x242070db, 17);
-  MD5STEP(F1, b, c, d, a, in[3] + 0xc1bdceee, 22);
-  MD5STEP(F1, a, b, c, d, in[4] + 0xf57c0faf, 7);
-  MD5STEP(F1, d, a, b, c, in[5] + 0x4787c62a, 12);
-  MD5STEP(F1, c, d, a, b, in[6] + 0xa8304613, 17);
-  MD5STEP(F1, b, c, d, a, in[7] + 0xfd469501, 22);
-  MD5STEP(F1, a, b, c, d, in[8] + 0x698098d8, 7);
-  MD5STEP(F1, d, a, b, c, in[9] + 0x8b44f7af, 12);
-  MD5STEP(F1, c, d, a, b, in[10] + 0xffff5bb1, 17);
-  MD5STEP(F1, b, c, d, a, in[11] + 0x895cd7be, 22);
-  MD5STEP(F1, a, b, c, d, in[12] + 0x6b901122, 7);
-  MD5STEP(F1, d, a, b, c, in[13] + 0xfd987193, 12);
-  MD5STEP(F1, c, d, a, b, in[14] + 0xa679438e, 17);
-  MD5STEP(F1, b, c, d, a, in[15] + 0x49b40821, 22);
-
-  MD5STEP(F2, a, b, c, d, in[1] + 0xf61e2562, 5);
-  MD5STEP(F2, d, a, b, c, in[6] + 0xc040b340, 9);
-  MD5STEP(F2, c, d, a, b, in[11] + 0x265e5a51, 14);
-  MD5STEP(F2, b, c, d, a, in[0] + 0xe9b6c7aa, 20);
-  MD5STEP(F2, a, b, c, d, in[5] + 0xd62f105d, 5);
-  MD5STEP(F2, d, a, b, c, in[10] + 0x02441453, 9);
-  MD5STEP(F2, c, d, a, b, in[15] + 0xd8a1e681, 14);
-  MD5STEP(F2, b, c, d, a, in[4] + 0xe7d3fbc8, 20);
-  MD5STEP(F2, a, b, c, d, in[9] + 0x21e1cde6, 5);
-  MD5STEP(F2, d, a, b, c, in[14] + 0xc33707d6, 9);
-  MD5STEP(F2, c, d, a, b, in[3] + 0xf4d50d87, 14);
-  MD5STEP(F2, b, c, d, a, in[8] + 0x455a14ed, 20);
-  MD5STEP(F2, a, b, c, d, in[13] + 0xa9e3e905, 5);
-  MD5STEP(F2, d, a, b, c, in[2] + 0xfcefa3f8, 9);
-  MD5STEP(F2, c, d, a, b, in[7] + 0x676f02d9, 14);
-  MD5STEP(F2, b, c, d, a, in[12] + 0x8d2a4c8a, 20);
-
-  MD5STEP(F3, a, b, c, d, in[5] + 0xfffa3942, 4);
-  MD5STEP(F3, d, a, b, c, in[8] + 0x8771f681, 11);
-  MD5STEP(F3, c, d, a, b, in[11] + 0x6d9d6122, 16);
-  MD5STEP(F3, b, c, d, a, in[14] + 0xfde5380c, 23);
-  MD5STEP(F3, a, b, c, d, in[1] + 0xa4beea44, 4);
-  MD5STEP(F3, d, a, b, c, in[4] + 0x4bdecfa9, 11);
-  MD5STEP(F3, c, d, a, b, in[7] + 0xf6bb4b60, 16);
-  MD5STEP(F3, b, c, d, a, in[10] + 0xbebfbc70, 23);
-  MD5STEP(F3, a, b, c, d, in[13] + 0x289b7ec6, 4);
-  MD5STEP(F3, d, a, b, c, in[0] + 0xeaa127fa, 11);
-  MD5STEP(F3, c, d, a, b, in[3] + 0xd4ef3085, 16);
-  MD5STEP(F3, b, c, d, a, in[6] + 0x04881d05, 23);
-  MD5STEP(F3, a, b, c, d, in[9] + 0xd9d4d039, 4);
-  MD5STEP(F3, d, a, b, c, in[12] + 0xe6db99e5, 11);
-  MD5STEP(F3, c, d, a, b, in[15] + 0x1fa27cf8, 16);
-  MD5STEP(F3, b, c, d, a, in[2] + 0xc4ac5665, 23);
-
-  MD5STEP(F4, a, b, c, d, in[0] + 0xf4292244, 6);
-  MD5STEP(F4, d, a, b, c, in[7] + 0x432aff97, 10);
-  MD5STEP(F4, c, d, a, b, in[14] + 0xab9423a7, 15);
-  MD5STEP(F4, b, c, d, a, in[5] + 0xfc93a039, 21);
-  MD5STEP(F4, a, b, c, d, in[12] + 0x655b59c3, 6);
-  MD5STEP(F4, d, a, b, c, in[3] + 0x8f0ccc92, 10);
-  MD5STEP(F4, c, d, a, b, in[10] + 0xffeff47d, 15);
-  MD5STEP(F4, b, c, d, a, in[1] + 0x85845dd1, 21);
-  MD5STEP(F4, a, b, c, d, in[8] + 0x6fa87e4f, 6);
-  MD5STEP(F4, d, a, b, c, in[15] + 0xfe2ce6e0, 10);
-  MD5STEP(F4, c, d, a, b, in[6] + 0xa3014314, 15);
-  MD5STEP(F4, b, c, d, a, in[13] + 0x4e0811a1, 21);
-  MD5STEP(F4, a, b, c, d, in[4] + 0xf7537e82, 6);
-  MD5STEP(F4, d, a, b, c, in[11] + 0xbd3af235, 10);
-  MD5STEP(F4, c, d, a, b, in[2] + 0x2ad7d2bb, 15);
-  MD5STEP(F4, b, c, d, a, in[9] + 0xeb86d391, 21);
-
-  buf[0] += a;
-  buf[1] += b;
-  buf[2] += c;
-  buf[3] += d;
-}
-
-static void MD5Update(MD5_CTX *ctx, unsigned char const *buf, unsigned len) {
-  uint32_t t;
-
-  t = ctx->bits[0];
-  if ((ctx->bits[0] = t + ((uint32_t) len << 3)) < t)
-    ctx->bits[1]++;
-  ctx->bits[1] += len >> 29;
-
-  t = (t >> 3) & 0x3f;
-
-  if (t) {
-    unsigned char *p = (unsigned char *) ctx->in + t;
-
-    t = 64 - t;
-    if (len < t) {
-      memcpy(p, buf, len);
-      return;
-    }
-    memcpy(p, buf, t);
-    byteReverse(ctx->in, 16);
-    MD5Transform(ctx->buf, (uint32_t *) ctx->in);
-    buf += t;
-    len -= t;
-  }
-
-  while (len >= 64) {
-    memcpy(ctx->in, buf, 64);
-    byteReverse(ctx->in, 16);
-    MD5Transform(ctx->buf, (uint32_t *) ctx->in);
-    buf += 64;
-    len -= 64;
-  }
-
-  memcpy(ctx->in, buf, len);
-}
-
-static void MD5Final(unsigned char digest[16], MD5_CTX *ctx) {
-  unsigned count;
-  unsigned char *p;
-  uint32_t *a;
-
-  count = (ctx->bits[0] >> 3) & 0x3F;
-
-  p = ctx->in + count;
-  *p++ = 0x80;
-  count = 64 - 1 - count;
-  if (count < 8) {
-    memset(p, 0, count);
-    byteReverse(ctx->in, 16);
-    MD5Transform(ctx->buf, (uint32_t *) ctx->in);
-    memset(ctx->in, 0, 56);
-  } else {
-    memset(p, 0, count - 8);
-  }
-  byteReverse(ctx->in, 14);
-
-  a = (uint32_t *)ctx->in;
-  a[14] = ctx->bits[0];
-  a[15] = ctx->bits[1];
-
-  MD5Transform(ctx->buf, (uint32_t *) ctx->in);
-  byteReverse((unsigned char *) ctx->buf, 4);
-  memcpy(digest, ctx->buf, 16);
-  memset((char *) ctx, 0, sizeof(*ctx));
-}
-#endif // !HAVE_MD5
-
-
-
-// Stringify binary data. Output buffer must be twice as big as input,
-// because each byte takes 2 bytes in string representation
-static void bin2str(char *to, const unsigned char *p, size_t len) {
-  static const char *hex = "0123456789abcdef";
-
-  for (; len--; p++) {
-    *to++ = hex[p[0] >> 4];
-    *to++ = hex[p[0] & 0x0f];
-  }
-  *to = '\0';
-}
-
-// Return stringified MD5 hash for list of strings. Buffer must be 33 bytes.
-char *mg_md5(char buf[33], ...) {
-  unsigned char hash[16];
-  const char *p;
-  va_list ap;
-  MD5_CTX ctx;
-
-  MD5Init(&ctx);
-
-  va_start(ap, buf);
-  while ((p = va_arg(ap, const char *)) != NULL) {
-    MD5Update(&ctx, (const unsigned char *) p, (unsigned) strlen(p));
-  }
-  va_end(ap);
-
-  MD5Final(hash, &ctx);
-  bin2str(buf, hash, sizeof(hash));
-  return buf;
-}
-
-// Check the user's password, return 1 if OK
-static int check_password(const char *method, const char *ha1, const char *uri,
-                          const char *nonce, const char *nc, const char *cnonce,
-                          const char *qop, const char *response) {
-  char ha2[32 + 1], expected_response[32 + 1];
-
-#if 0
-  // Check for authentication timeout
-  if ((unsigned long) time(NULL) - (unsigned long) to64(nonce) > 3600 * 2) {
-    return 0;
-  }
-#endif
-
-  mg_md5(ha2, method, ":", uri, NULL);
-  mg_md5(expected_response, ha1, ":", nonce, ":", nc,
-      ":", cnonce, ":", qop, ":", ha2, NULL);
-
-  return mg_strcasecmp(response, expected_response) == 0 ? MG_TRUE : MG_FALSE;
-}
-
-
-// Authorize against the opened passwords file. Return 1 if authorized.
-int mg_authorize_digest(struct mg_connection *c, FILE *fp) {
-  struct connection *conn = MG_CONN_2_CONN(c);
-  const char *hdr;
-  char line[256], f_user[256], ha1[256], f_domain[256], user[100], nonce[100],
-       uri[MAX_REQUEST_SIZE], cnonce[100], resp[100], qop[100], nc[100];
-
-  if (c == NULL || fp == NULL) return 0;
-  if ((hdr = mg_get_header(c, "Authorization")) == NULL ||
-      mg_strncasecmp(hdr, "Digest ", 7) != 0) return 0;
-  if (!mg_parse_header(hdr, "username", user, sizeof(user))) return 0;
-  if (!mg_parse_header(hdr, "cnonce", cnonce, sizeof(cnonce))) return 0;
-  if (!mg_parse_header(hdr, "response", resp, sizeof(resp))) return 0;
-  if (!mg_parse_header(hdr, "uri", uri, sizeof(uri))) return 0;
-  if (!mg_parse_header(hdr, "qop", qop, sizeof(qop))) return 0;
-  if (!mg_parse_header(hdr, "nc", nc, sizeof(nc))) return 0;
-  if (!mg_parse_header(hdr, "nonce", nonce, sizeof(nonce))) return 0;
-
-  while (fgets(line, sizeof(line), fp) != NULL) {
-    if (sscanf(line, "%[^:]:%[^:]:%s", f_user, f_domain, ha1) == 3 &&
-        !strcmp(user, f_user) &&
-        // NOTE(lsm): due to a bug in MSIE, we do not compare URIs
-        !strcmp(conn->server->config_options[AUTH_DOMAIN], f_domain))
-      return check_password(c->request_method, ha1, uri,
-                            nonce, nc, cnonce, qop, resp);
-  }
-  return MG_FALSE;
-}
-
 int mg_authorize_input(struct mg_connection *c, char *username, char *password, const char *domain) {
-  struct connection *conn = MG_CONN_2_CONN(c);
-  const char *hdr;
-  char user[100], nonce[100], ha1[100],
-       uri[MAX_REQUEST_SIZE], cnonce[100], resp[100], qop[100], nc[100];
+	unsigned char output[33];
+  const char *hdr = NULL;
+	char *decoded = NULL, **array = NULL, converted[65];
+	int i = 0, n = 0, x = 0;
+	sha256_context ctx;
 
-  if (c == NULL) return 0;
-  if ((hdr = mg_get_header(c, "Authorization")) == NULL ||
-      mg_strncasecmp(hdr, "Digest ", 7) != 0) return 0;
-  if (!mg_parse_header(hdr, "username", user, sizeof(user))) return 0;
-  if (!mg_parse_header(hdr, "cnonce", cnonce, sizeof(cnonce))) return 0;
-  if (!mg_parse_header(hdr, "response", resp, sizeof(resp))) return 0;
-  if (!mg_parse_header(hdr, "uri", uri, sizeof(uri))) return 0;
-  if (!mg_parse_header(hdr, "qop", qop, sizeof(qop))) return 0;
-  if (!mg_parse_header(hdr, "nc", nc, sizeof(nc))) return 0;
-  if (!mg_parse_header(hdr, "nonce", nonce, sizeof(nonce))) return 0;
+  if(c == NULL) {
+		return 0;
+	}
 
-  if(strcmp(user, username) == 0 &&
-        strcmp(conn->server->config_options[AUTH_DOMAIN], domain) == 0) {
-		mg_md5(ha1, username, ":", domain, ":", password, NULL);
+	if((hdr = mg_get_header(c, "Authorization")) == NULL || mg_strncasecmp(hdr, "Basic ", 6) != 0) {
+		return 0;
+	}
 
-      return check_password(c->request_method, ha1, uri,
-                            nonce, nc, cnonce, qop, resp);
-  }
+	char user[strlen(hdr)+1];
+	strcpy(user, &hdr[6]);
+	if((decoded = base64decode(user, strlen(user), NULL)) == NULL) {
+		return 0;
+	}
+
+	if((n = explode(decoded, ":", &array)) == 2) {
+		if(strlen(array[1]) < 64) {
+			if((array[1] = REALLOC(array[1], 65)) == NULL) {
+				fprintf(stderr, "out of memory");
+				exit(EXIT_FAILURE);
+			}
+		}
+		for(i=0;i<SHA256_ITERATIONS;i++) {
+			sha256_init(&ctx);
+			sha256_starts(&ctx, 0);
+			sha256_update(&ctx, (unsigned char *)array[1], strlen((char *)array[1]));
+			sha256_finish(&ctx, output);
+			for(x=0;x<64;x+=2) {
+				sprintf(&array[1][x], "%02x", output[x/2] );
+			}
+			sha256_free(&ctx);
+		}
+
+		for(i=0;i<64;i+=2) {
+			sprintf(&converted[i], "%02x", output[i/2]);
+		}
+
+		if(strcmp(converted, password) == 0 && strcmp(array[0], username) == 0) {
+			array_free(&array, n);
+			FREE(decoded);
+			return MG_TRUE;
+		}
+	}
+	FREE(decoded);
+	array_free(&array, n);
+
   return MG_FALSE;
-}
-
-// Return 1 if request is authorised, 0 otherwise.
-static int is_authorized(struct connection *conn, const char *path,
-                         int is_directory) {
-  FILE *fp;
-  int authorized = MG_TRUE;
-
-  if ((fp = open_auth_file(conn, path, is_directory)) != NULL) {
-    authorized = mg_authorize_digest(&conn->mg_conn, fp);
-    fclose(fp);
-  }
-
-  return authorized;
-}
-
-static int is_authorized_for_dav(struct connection *conn) {
-  const char *auth_file = conn->server->config_options[DAV_AUTH_FILE];
-  const char *method = conn->mg_conn.request_method;
-  FILE *fp;
-  int authorized = MG_FALSE;
-
-  // If dav_auth_file is not set, allow non-authorized PROPFIND
-  if (method != NULL && !strcmp(method, "PROPFIND") && auth_file == NULL) {
-    authorized = MG_TRUE;
-  } else if (auth_file != NULL && (fp = fopen(auth_file, "r")) != NULL) {
-    authorized = mg_authorize_digest(&conn->mg_conn, fp);
-    fclose(fp);
-  }
-
-  return authorized;
-}
-
-static int is_dav_request(const struct connection *conn) {
-  const char *s = conn->mg_conn.request_method;
-  return !strcmp(s, "PUT") || !strcmp(s, "DELETE") ||
-    !strcmp(s, "MKCOL") || !strcmp(s, "PROPFIND");
 }
 #endif // MONGOOSE_NO_AUTH
 
@@ -4608,13 +4289,6 @@ static void open_local_endpoint(struct connection *conn, int skip_user) {
     send_options(conn);
   } else if (conn->server->config_options[DOCUMENT_ROOT] == NULL) {
     send_http_error(conn, 404, NULL);
-#ifndef MONGOOSE_NO_AUTH
-  } else if ((!is_dav_request(conn) && !is_authorized(conn, path,
-               exists && S_ISDIR(st.st_mode))) ||
-             (is_dav_request(conn) && !is_authorized_for_dav(conn))) {
-    mg_send_digest_auth_request(&conn->mg_conn);
-    close_local_endpoint(conn);
-#endif
 #ifndef MONGOOSE_NO_DAV
   } else if (must_hide_file(conn, path)) {
     send_http_error(conn, 404, NULL);

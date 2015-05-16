@@ -34,7 +34,6 @@
 #include "../core/common.h"
 #include "../core/json.h"
 #include "../core/log.h"
-
 #include "../../wiringx/wiringX.h"
 
 #include "settings.h"

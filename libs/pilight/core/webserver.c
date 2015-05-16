@@ -36,6 +36,7 @@
 	#include <pwd.h>
 #endif
 
+#include "../config/settings.h"
 #include "threads.h"
 #include "pilight.h"
 #include "network.h"
@@ -45,7 +46,6 @@
 #include "json.h"
 #include "socket.h"
 #include "webserver.h"
-#include "../config/settings.h"
 #include "ssdp.h"
 #include "fcache.h"
 
