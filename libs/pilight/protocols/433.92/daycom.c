@@ -63,7 +63,7 @@ static void parseCode(void) {
 	int binary[RAW_LENGTH/2], x = 0, i = 0;
 	int id = -1, state = -1, unit = -1, systemcode = -1;
 
-	for(x=0;i<daycom->rawlen;x+=2) {
+	for(x=0;x<daycom->rawlen;x+=2) {
 		if(daycom->raw[x] > AVG_PULSE_LENGTH*(PULSE_MULTIPLIER/2)) {
 			binary[i++] = 1;
 		} else {
@@ -235,7 +235,7 @@ void daycomInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "daycom";
-	module->version = "0.04";
+	module->version = "0.5";
 	module->reqversion = "6.0";
 	module->reqcommit = "187";
 }
