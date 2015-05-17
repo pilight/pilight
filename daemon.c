@@ -2522,10 +2522,8 @@ int start_pilight(int argc, char **argv) {
 	}
 #endif
 
-	int ntpsync = 0;
-	settings_find_number("ntp-sync", &ntpsync);
-
-	if(ntpsync == 1) {
+	char *ntpsync = NULL;
+	if(settings_find_string("ntpserver0", &ntpsync) == 0) {
 		threads_register("ntp sync", &ntpthread, NULL, 0);
 	}
 
