@@ -1,5 +1,5 @@
 /*
-	Copyright (C) 2014 CurlyMo
+	Copyright (C) 2015 CurlyMo
 
 	This file is part of pilight.
 
@@ -40,9 +40,9 @@
 #include <sys/time.h>
 #include <ctype.h>
 
-#include "libs/pilight/core/pilight.h"
-#include "libs/pilight/core/network.h"
+#include "libs/polarssl/polarssl/sha256.h"
 #include "libs/pilight/core/log.h"
+#include "libs/pilight/core/common.h"
 #include "libs/pilight/core/options.h"
 #include "libs/pilight/core/gc.h"
 
@@ -72,17 +72,20 @@ int main(int argc, char **argv) {
 	log_level_set(LOG_NOTICE);
 
 	struct options_t *options = NULL;
-	char *p = NULL;
-	char *args = NULL;
+  unsigned char output[33];
+	char converted[65], *password = NULL, *args = NULL;
+	sha256_context ctx;
+	int i = 0, x = 0;
 
-	if((progname = MALLOC(13)) == NULL) {
+	if((progname = MALLOC(15)) == NULL) {
 		logprintf(LOG_ERR, "out of memory");
 		exit(EXIT_FAILURE);
 	}
-	strcpy(progname, "pilight-uuid");
+	strcpy(progname, "pilight-sha256");
 
 	options_add(&options, 'H', "help", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
 	options_add(&options, 'V', "version", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
+	options_add(&options, 'p', "password", OPTION_HAS_VALUE, 0, JSON_STRING, NULL, NULL);
 
 	while (1) {
 		int c;
@@ -96,37 +99,63 @@ int main(int argc, char **argv) {
 				printf("Usage: %s [options]\n", progname);
 				printf("\t -H --help\t\tdisplay usage summary\n");
 				printf("\t -V --version\t\tdisplay version\n");
-				return (EXIT_SUCCESS);
+				printf("\t -p --password=password\tpassword to encrypt\n");
+				goto close;
 			break;
 			case 'V':
 				printf("%s v%s\n", progname, PILIGHT_VERSION);
-				return (EXIT_SUCCESS);
+				goto close;
+			break;
+			case 'p':
+				if((password = MALLOC(strlen(args)+1)) == NULL) {
+					logprintf(LOG_ERR, "out of memory");
+					exit(EXIT_FAILURE);
+				}
+				strcpy(password, args);
 			break;
 			default:
 				printf("Usage: %s [options]\n", progname);
-				return (EXIT_FAILURE);
+				goto close;
 			break;
 		}
 	}
 	options_delete(options);
 
-	int nrdevs = 0, x = 0;
-	char **devs = NULL;
-	if((nrdevs = inetdevs(&devs)) > 0) {
-		for(x=0;x<nrdevs;x++) {
-			if((p = genuuid(devs[x])) == NULL) {
-				logprintf(LOG_ERR, "could not generate the device uuid");
-			} else {
-				strcpy(pilight_uuid, p);
-				FREE(p);
-				break;
-			}
-		}
+	if(password == NULL) {
+		printf("Usage: %s [options]\n", progname);
+		printf("\t -H --help\t\tdisplay usage summary\n");
+		printf("\t -V --version\t\tdisplay version\n");
+		printf("\t -p --password=password\tpassword to encrypt\n");
+		goto close;
 	}
-	array_free(&devs, nrdevs);
 
-	printf("%s\n", pilight_uuid);
+	if(strlen(password) < 64) {
+		if((password = REALLOC(password, 65)) == NULL) {
+			logprintf(LOG_ERR, "out of memory");
+			exit(EXIT_FAILURE);
+		}		
+	}
 
+	for(i=0;i<SHA256_ITERATIONS;i++) {
+		sha256_init(&ctx);
+		sha256_starts(&ctx, 0);
+		sha256_update(&ctx, (unsigned char *)password, strlen((char *)password));
+		sha256_finish(&ctx, output);
+		for(x=0;x<64;x+=2) {
+			sprintf(&password[x], "%02x", output[x/2] );
+		}
+		sha256_free(&ctx);
+	}
+	for(x=0;x<64;x+=2) {
+		sprintf(&converted[x], "%02x", output[x/2] );
+	}
+	printf("%s\n", converted);
+	sha256_free(&ctx);
+
+close:
+	if(password != NULL) {
+		FREE(password);
+	}
 	main_gc();
 	return (EXIT_FAILURE);
 }

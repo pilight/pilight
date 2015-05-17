@@ -69,7 +69,9 @@
 #include "log.h"
 
 char *progname = NULL;
+#ifndef _WIN32
 static int procmounted = 0;
+#endif
 
 static const char base64table[] = {
 	'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H',

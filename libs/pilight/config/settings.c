@@ -34,10 +34,7 @@
 #include "../core/common.h"
 #include "../core/json.h"
 #include "../core/log.h"
-
-#ifndef _WIN32
-	#include "../../wiringx/wiringX.h"
-#endif
+#include "../../wiringx/wiringX.h"
 
 #include "settings.h"
 
@@ -157,18 +154,11 @@ static int settings_parse(JsonNode *root) {
 	int have_error = 0;
 
 #ifdef WEBSERVER
-	int web_port = WEBSERVER_PORT;
-#ifdef WEBSERVER_SSL
-	int web_ssl_port = 443;
+	int web_port = WEBSERVER_HTTP_PORT;
+#ifdef WEBSERVER_HTTPS
+	int web_ssl_port = WEBSERVER_HTTPS_PORT;
 #endif
 	int own_port = -1;
-
-	char *webgui_tpl = MALLOC(strlen(WEBGUI_TEMPLATE)+1);
-	if(webgui_tpl == NULL) {
-		logprintf(LOG_ERR, "out of memory");
-		exit(EXIT_FAILURE);
-	}
-	strcpy(webgui_tpl, WEBGUI_TEMPLATE);
 
 	char *webgui_root = MALLOC(strlen(WEBSERVER_ROOT)+1);
 	if(webgui_root == NULL) {
@@ -186,8 +176,7 @@ static int settings_parse(JsonNode *root) {
 	JsonNode *jsettings = json_first_child(root);
 
 	while(jsettings) {
-		if(strcmp(jsettings->key, "port") == 0
-		   || strcmp(jsettings->key, "receive-repeats") == 0) {
+		if(strcmp(jsettings->key, "port") == 0) {
 			if(jsettings->tag != JSON_NUMBER) {
 				logprintf(LOG_ERR, "config setting \"%s\" must contain a number larger than 0", jsettings->key);
 				have_error = 1;
@@ -313,8 +302,8 @@ static int settings_parse(JsonNode *root) {
 			}
 #ifdef WEBSERVER
 
-#ifdef WEBSERVER_SSL
-		} else if(strcmp(jsettings->key, "webserver-ssl-port") == 0) {
+#ifdef WEBSERVER_HTTPS
+		} else if(strcmp(jsettings->key, "webserver-https-port") == 0) {
 			if(jsettings->tag != JSON_NUMBER) {
 				logprintf(LOG_ERR, "config setting \"%s\" must contain a number larget than 0", jsettings->key);
 				have_error = 1;
@@ -328,7 +317,7 @@ static int settings_parse(JsonNode *root) {
 				settings_add_number(jsettings->key, (int)jsettings->number_);
 			}
 #endif
-		} else if(strcmp(jsettings->key, "webserver-port") == 0) {
+		} else if(strcmp(jsettings->key, "webserver-http-port") == 0) {
 			if(jsettings->tag != JSON_NUMBER) {
 				logprintf(LOG_ERR, "config setting \"%s\" must contain a number larget than 0", jsettings->key);
 				have_error = 1;
@@ -424,23 +413,6 @@ static int settings_parse(JsonNode *root) {
 				logprintf(LOG_ERR, "config setting \"%s\" must be in the format of [ \"username\", \"password\" ]", jsettings->key);
 				have_error = 1;
 				goto clear;
-			}
-		} else if(strcmp(jsettings->key, "webgui-template") == 0) {
-			if(jsettings->tag != JSON_STRING) {
-				logprintf(LOG_ERR, "config setting \"%s\" must be a valid template", jsettings->key);
-				have_error = 1;
-				goto clear;
-			} else if(jsettings->string_ == NULL) {
-				logprintf(LOG_ERR, "config setting \"%s\" must be a valid template", jsettings->key);
-				have_error = 1;
-				goto clear;
-			} else {
-				if((webgui_tpl = REALLOC(webgui_tpl, strlen(jsettings->string_)+1)) == NULL) {
-					logprintf(LOG_ERR, "out of memory");
-					exit(EXIT_FAILURE);
-				}
-				strcpy(webgui_tpl, jsettings->string_);
-				settings_add_string(jsettings->key, jsettings->string_);
 			}
 #endif // WEBSERVER
 		} else if(strcmp(jsettings->key, "ntp-servers") == 0 && jsettings->tag == JSON_ARRAY) {
@@ -573,31 +545,14 @@ static int settings_parse(JsonNode *root) {
 	}
 
 #ifdef WEBSERVER
-	if(webgui_tpl != NULL) {
-		char *tmp = MALLOC(strlen(webgui_root)+strlen(webgui_tpl)+13);
-		if(tmp == NULL) {
-			logprintf(LOG_ERR, "out of memory");
-			exit(EXIT_FAILURE);
-		}
-		sprintf(tmp, "%s/%s/", webgui_root, webgui_tpl);
-
-		if(path_exists(tmp) != EXIT_SUCCESS) {
-			logprintf(LOG_ERR, "config setting \"webgui-template\", template does not exists");
-			have_error = 1;
-			FREE(tmp);
-			goto clear;
-		}
-		FREE(tmp);
-	}
-
 	if(web_port == own_port) {
-		logprintf(LOG_ERR, "config setting \"port\" and \"webserver-port\" cannot be the same");
+		logprintf(LOG_ERR, "config setting \"port\" and \"webserver-http-port\" cannot be the same");
 		have_error = 1;
 		goto clear;
 	}
-#ifdef WEBSERVER_SSL
+#ifdef WEBSERVER_HTTPS
 	if(web_ssl_port == own_port) {
-		logprintf(LOG_ERR, "config setting \"port\" and \"webserver-ssl-port\" cannot be the same");
+		logprintf(LOG_ERR, "config setting \"port\" and \"webserver-https-port\" cannot be the same");
 		have_error = 1;
 		goto clear;
 	}
@@ -606,9 +561,6 @@ static int settings_parse(JsonNode *root) {
 #endif
 clear:
 #ifdef WEBSERVER
-	if(webgui_tpl != NULL) {
-		FREE(webgui_tpl);
-	}
 	if(webgui_root != NULL) {
 		FREE(webgui_root);
 	}

@@ -31,9 +31,7 @@
 #include "../protocol.h"
 #include "relay.h"
 
-#ifndef _WIN32
-	#include "../../../wiringx/wiringX.h"
-#endif
+#include "../../../wiringx/wiringX.h"
 
 static char *state = NULL;
 

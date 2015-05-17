@@ -36,7 +36,9 @@
 	#include <pwd.h>
 #endif
 
+#include "../config/settings.h"
 #include "threads.h"
+#include "sha256cache.h"
 #include "pilight.h"
 #include "network.h"
 #include "mongoose.h"
@@ -45,14 +47,13 @@
 #include "json.h"
 #include "socket.h"
 #include "webserver.h"
-#include "../config/settings.h"
 #include "ssdp.h"
 #include "fcache.h"
 
-#ifdef WEBSERVER_SSL
-static int webserver_ssl_port = WEBSERVER_SSL_PORT;
+#ifdef WEBSERVER_HTTPS
+static int webserver_https_port = WEBSERVER_HTTPS_PORT;
 #endif
-static int webserver_port = WEBSERVER_PORT;
+static int webserver_http_port = WEBSERVER_HTTP_PORT;
 static int webserver_cache = 1;
 static int webgui_websockets = WEBGUI_WEBSOCKETS;
 static char *webserver_user = NULL;
@@ -61,14 +62,12 @@ static char *webserver_authentication_password = NULL;
 static unsigned short webserver_loop = 1;
 static unsigned short webserver_php = 1;
 static char *webserver_root = NULL;
-static char *webgui_tpl = NULL;
-#ifdef WEBSERVER_SSL
+#ifdef WEBSERVER_HTTPS
 static struct mg_server *mgserver[WEBSERVER_WORKERS+1];
 #else
 static struct mg_server *mgserver[WEBSERVER_WORKERS];
 #endif
 static char *recvBuff = NULL;
-static unsigned short webgui_tpl_free = 0;
 static unsigned short webserver_root_free = 0;
 static unsigned short webserver_user_free = 0;
 
@@ -119,14 +118,11 @@ int webserver_gc(void) {
 	if(webserver_root_free) {
 		FREE(webserver_root);
 	}
-	if(webgui_tpl_free) {
-		FREE(webgui_tpl);
-	}
 	if(webserver_user_free) {
 		FREE(webserver_user);
 	}
 
-#ifdef WEBSERVER_SSL
+#ifdef WEBSERVER_HTTPS
 	for(i=0;i<WEBSERVER_WORKERS+1;i++) {
 #else
 	for(i=0;i<WEBSERVER_WORKERS;i++) {
@@ -134,10 +130,12 @@ int webserver_gc(void) {
 		if(mgserver[i] != NULL) {
 			mg_wakeup_server(mgserver[i]);
 		}
+		usleep(100);
 		mg_destroy_server(&mgserver[i]);
 	}
 
 	fcache_gc();
+	sha256cache_gc();
 	logprintf(LOG_DEBUG, "garbage collected webserver library");
 	return 1;
 }
@@ -422,7 +420,7 @@ static int webserver_request_handler(struct mg_connection *conn) {
 				unsigned int n = explode((char *)indexes, ",", &array), q = 0;
 				/* Check if the webserver_root is terminated by a slash. If not, than add it */
 				for(q=0;q<n;q++) {
-					size_t l = strlen(webserver_root)+strlen(webgui_tpl)+strlen(conn->uri)+strlen(array[q])+4;
+					size_t l = strlen(webserver_root)+strlen(conn->uri)+strlen(array[q])+4;
 					if((request = REALLOC(request, l)) == NULL) {
 						logprintf(LOG_ERR, "out of memory");
 						exit(EXIT_FAILURE);
@@ -430,20 +428,20 @@ static int webserver_request_handler(struct mg_connection *conn) {
 					memset(request, '\0', l);
 					if(webserver_root[strlen(webserver_root)-1] == '/') {
 #ifdef __FreeBSD__
-						sprintf(request, "%s%s/%s%s", webserver_root, webgui_tpl, conn->uri, array[q]);
+						sprintf(request, "%s/%s%s", webserver_root, conn->uri, array[q]);
 #else
-						sprintf(request, "%s%s%s%s", webserver_root, webgui_tpl, conn->uri, array[q]);
+						sprintf(request, "%s%s%s", webserver_root, conn->uri, array[q]);
 #endif
 					} else {
-						sprintf(request, "%s/%s/%s%s", webserver_root, webgui_tpl, conn->uri, array[q]);
+						sprintf(request, "%s/%s%s", webserver_root, conn->uri, array[q]);
 					}
 					if(access(request, F_OK) == 0) {
 						break;
 					}
 				}
 				array_free(&array, n);
-			} else if(webserver_root != NULL && webgui_tpl != NULL && conn->uri != NULL) {
-				size_t wlen = strlen(webserver_root)+strlen(webgui_tpl)+strlen(conn->uri)+2;
+			} else if(webserver_root != NULL && conn->uri != NULL) {
+				size_t wlen = strlen(webserver_root)+strlen(conn->uri)+2;
 				request = MALLOC(wlen);
 				if(!request) {
 					logprintf(LOG_ERR, "out of memory");
@@ -453,14 +451,14 @@ static int webserver_request_handler(struct mg_connection *conn) {
 				/* If a file was requested add it to the webserver path to create the absolute path */
 				if(webserver_root[strlen(webserver_root)-1] == '/') {
 					if(conn->uri[0] == '/')
-						sprintf(request, "%s%s%s", webserver_root, webgui_tpl, conn->uri);
+						sprintf(request, "%s%s", webserver_root, conn->uri);
 					else
-						sprintf(request, "%s%s/%s", webserver_root, webgui_tpl, conn->uri);
+						sprintf(request, "%s/%s", webserver_root, conn->uri);
 				} else {
 					if(conn->uri[0] == '/')
-						sprintf(request, "%s/%s%s", webserver_root, webgui_tpl, conn->uri);
+						sprintf(request, "%s/%s", webserver_root, conn->uri);
 					else
-						sprintf(request, "%s/%s/%s", webserver_root, webgui_tpl, conn->uri);
+						sprintf(request, "%s/%s", webserver_root, conn->uri);
 				}
 			}
 			if(request == NULL) {
@@ -881,7 +879,7 @@ void *webserver_broadcast(void *param) {
 
 			logprintf(LOG_STACK, "%s::unlocked", __FUNCTION__);
 
-#ifdef WEBSERVER_SSL
+#ifdef WEBSERVER_HTTPS
 			for(i=0;i<WEBSERVER_WORKERS+1;i++) {
 #else
 			for(i=0;i<WEBSERVER_WORKERS;i++) {
@@ -1026,10 +1024,10 @@ int webserver_start(void) {
 	}
 
 	/* Check on what port the webserver needs to run */
-	settings_find_number("webserver-port", &webserver_port);
+	settings_find_number("webserver-http-port", &webserver_http_port);
 
-#ifdef WEBSERVER_SSL
-	settings_find_number("webserver-ssl-port", &webserver_ssl_port);
+#ifdef WEBSERVER_HTTPS
+	settings_find_number("webserver-https-port", &webserver_https_port);
 #endif
 
 	if(settings_find_string("webserver-root", &webserver_root) != 0) {
@@ -1040,15 +1038,6 @@ int webserver_start(void) {
 		}
 		strcpy(webserver_root, WEBSERVER_ROOT);
 		webserver_root_free = 1;
-	}
-	if(settings_find_string("webgui-template", &webgui_tpl) != 0) {
-		/* If no webserver port was set, use the default webserver port */
-		if((webgui_tpl = MALLOC(strlen(WEBGUI_TEMPLATE)+1)) == NULL) {
-			logprintf(LOG_ERR, "out of memory");
-			exit(EXIT_FAILURE);
-		}
-		strcpy(webgui_tpl, WEBGUI_TEMPLATE);
-		webgui_tpl_free = 1;
 	}
 	settings_find_number("webgui-websockets", &webgui_websockets);
 
@@ -1069,13 +1058,13 @@ int webserver_start(void) {
 	}
 
 	int z = 0;
-#ifdef WEBSERVER_SSL
+#ifdef WEBSERVER_HTTPS
 	char ssl[BUFFER_SIZE];
 	char id[2];
 	memset(ssl, '\0', BUFFER_SIZE);
 
 	sprintf(id, "%d", z);
-	snprintf(ssl, BUFFER_SIZE, "ssl://%d:/etc/pilight/ssl.pem", webserver_ssl_port);
+	snprintf(ssl, BUFFER_SIZE, "ssl://%d:/etc/pilight/ssl.pem", webserver_https_port);
 	mgserver[z] = mg_create_server((void *)id, webserver_handler);
 	mg_set_option(mgserver[z], "listening_port", ssl);
 	mg_set_option(mgserver[z], "auth_domain", "pilight");
@@ -1086,7 +1075,7 @@ int webserver_start(void) {
 #endif
 
 	char webport[10] = {'\0'};
-	sprintf(webport, "%d", webserver_port);
+	sprintf(webport, "%d", webserver_http_port);
 
 	int i = 0;
 	for(i=z;i<WEBSERVER_WORKERS+z;i++) {
