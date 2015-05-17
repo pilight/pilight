@@ -80,14 +80,12 @@ static void *thread(void *param) {
 		jchild = json_first_child(jid);
 		while(jchild) {
 			if(json_find_string(jchild, "id", &stmp) == 0) {
-				id = REALLOC(id, (sizeof(char *)*(size_t)(nrid+1)));
-				if(!id) {
-					logprintf(LOG_ERR, "out of memory");
+				if((id = REALLOC(id, (sizeof(char *)*(size_t)(nrid+1)))) == NULL) {
+					fprintf(stderr, "out of memory");
 					exit(EXIT_FAILURE);
 				}
-				id[nrid] = MALLOC(strlen(stmp)+1);
-				if(!id[nrid]) {
-					logprintf(LOG_ERR, "out of memory");
+				if((id[nrid] = MALLOC(strlen(stmp)+1)) == NULL) {
+					fprintf(stderr, "out of memory");
 					exit(EXIT_FAILURE);
 				}
 				strcpy(id[nrid], stmp);
@@ -106,9 +104,8 @@ static void *thread(void *param) {
 #ifndef _WIN32
 			pthread_mutex_lock(&lock);
 			for(y=0;y<nrid;y++) {
-				ds18s20_sensor = REALLOC(ds18s20_sensor, strlen(source_path)+strlen(id[y])+5);
-				if(!ds18s20_sensor) {
-					logprintf(LOG_ERR, "out of memory");
+				if((ds18s20_sensor = REALLOC(ds18s20_sensor, strlen(source_path)+strlen(id[y])+5)) == NULL) {
+					fprintf(stderr, "out of memory");
 					exit(EXIT_FAILURE);
 				}
 				sprintf(ds18s20_sensor, "%s10-%s/", source_path, id[y]);
@@ -131,7 +128,7 @@ static void *thread(void *param) {
 								bytes = (size_t)st.st_size;
 
 								if(!(content = REALLOC(content, bytes+1))) {
-									logprintf(LOG_ERR, "out of memory");
+									fprintf(stderr, "out of memory");
 									fclose(fp);
 									break;
 								}

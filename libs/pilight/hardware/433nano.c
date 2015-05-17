@@ -132,7 +132,7 @@ void *syncFW(void *param) {
 #endif
 
 	if(n != len) {
-		logprintf(LOG_ERR, "could not sync FW values");
+		logprintf(LOG_NOTICE, "could not sync FW values");
 	}
 
 	threads--;
@@ -185,7 +185,7 @@ static unsigned short int nano433HwInit(void) {
 	snprintf(tmp, 255, "\\\\.\\%s", com);
 
 	if((int)(serial_433_fd = CreateFile(tmp, GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_EXISTING, 0, NULL)) < 0) {
-		logprintf(LOG_INFO, "cannot open port %s", com);
+		logprintf(LOG_NOTICE, "cannot open port %s", com);
 		return EXIT_FAILURE;
 	}
 	logprintf(LOG_INFO, "connected to port %s", com);
@@ -216,6 +216,7 @@ static unsigned short int nano433HwInit(void) {
 
 	if(SetCommTimeouts(serial_433_fd, &timeouts) == FALSE) {
 		logprintf(LOG_ERR, "error setting port %s time-outs.", com);
+		return EXIT_FAILURE;
 	}
 #else
 	if((serial_433_fd = open(com, O_RDWR | O_SYNC)) >= 0) {
@@ -381,7 +382,7 @@ static int nano433Receive(struct rawcode_t *r) {
 						if(c == 7) {
 							if(!(minrawlen == atoi(array[0]) && maxrawlen == atoi(array[1]) &&
 							     mingaplen == atoi(array[2]) && maxgaplen == atoi(array[3]))) {
-								logprintf(LOG_ERR, "could not sync FW values");
+								logprintf(LOG_WARNING, "could not sync FW values");
 							}
 							firmware.version = atof(array[4]);
 							firmware.lpf = atof(array[5]);

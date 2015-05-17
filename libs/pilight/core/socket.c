@@ -360,7 +360,7 @@ int socket_write(int sockfd, const char *msg, ...) {
 		va_end(ap);
 
 		if((sendBuff = MALLOC((size_t)n)) == NULL) {
-			logprintf(LOG_ERR, "out of memory");
+			fprintf(stderr, "out of memory");
 			exit(EXIT_FAILURE);
 		}
 		memset(sendBuff, '\0', (size_t)n);
@@ -469,7 +469,7 @@ int socket_read(int sockfd, char **message, time_t timeout) {
 				} else {
 					ptr+=bytes;
 					if((*message = REALLOC(*message, (size_t)ptr+1)) == NULL) {
-						logprintf(LOG_ERR, "out of memory");
+						fprintf(stderr, "out of memory");
 						exit(EXIT_FAILURE);
 					}
 					memset(&(*message)[(ptr-bytes)], '\0', (size_t)bytes+1);

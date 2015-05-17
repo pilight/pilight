@@ -84,7 +84,7 @@ int sha256cache_rm(char *name) {
 int sha256cache_add(char *name) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
-	logprintf(LOG_NOTICE, "caching sha256 hash for %s", name);
+	logprintf(LOG_INFO, "caching sha256 hash for %s", name);
 	
 	unsigned char output[33];
 	char *password = NULL;
@@ -98,18 +98,18 @@ int sha256cache_add(char *name) {
 	}
 
 	if((password = MALLOC(len)) == NULL) {
-		logprintf(LOG_ERR, "out of memory");
+		fprintf(stderr, "out of memory");
 		exit(EXIT_FAILURE);
 	}
 	strcpy(password, name);
 	
 	struct sha256cache_t *node = MALLOC(sizeof(struct sha256cache_t));
 	if(node == NULL) {
-		logprintf(LOG_ERR, "out of memory");
+		fprintf(stderr, "out of memory");
 		exit(EXIT_FAILURE);
 	}
 	if((node->name = MALLOC(strlen(name)+1)) == NULL) {
-		logprintf(LOG_ERR, "out of memory");
+		fprintf(stderr, "out of memory");
 		exit(EXIT_FAILURE);
 	}
 	strcpy(node->name, name);

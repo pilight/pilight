@@ -55,7 +55,7 @@ static int createCode(JsonNode *code) {
 	relay->rawlen = 0;
 	if(json_find_string(code, "default-state", &def) != 0) {
 		if((def = MALLOC(4)) == NULL) {
-			logprintf(LOG_ERR, "out of memory");
+			fprintf(stderr, "out of memory");
 			exit(EXIT_FAILURE);
 		}
 		strcpy(def, "off");
@@ -133,7 +133,7 @@ static int checkValues(JsonNode *code) {
 
 	if(json_find_string(code, "default-state", &def) != 0) {
 		if((def = MALLOC(4)) == NULL) {
-			logprintf(LOG_ERR, "out of memory");
+			fprintf(stderr, "out of memory");
 			exit(EXIT_FAILURE);
 		}
 		strcpy(def, "off");

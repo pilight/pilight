@@ -170,7 +170,7 @@ static void *thread(void *param) {
 				if(ret == 200) {
 					logprintf(LOG_DEBUG, "pushover action succeeded with message: %s", data);
 				} else {
-					logprintf(LOG_ERR, "pushover action failed (%d) with message: %s", ret, data);
+					logprintf(LOG_NOTICE, "pushover action failed (%d) with message: %s", ret, data);
 				}
 				FREE(message);
 				FREE(token);

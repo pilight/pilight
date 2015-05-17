@@ -66,8 +66,8 @@ PROGRAMMER * pgm_new(void)
 
   pgm = (PROGRAMMER *)MALLOC(sizeof(*pgm));
   if (pgm == NULL) {
-    logprintf(LOG_ERR, "out of memory");
-    exit(1);
+    fprintf(stderr, "out of memory");
+    exit(EXIT_FAILURE);
   }
 
   memset(pgm, 0, sizeof(*pgm));
@@ -130,7 +130,7 @@ PROGRAMMER * pgm_new(void)
 
 static void pgm_default(void)
 {
-  logprintf(LOG_ERR, "AVR programmer operation not supported");
+  logprintf(LOG_NOTICE, "AVR programmer operation not supported");
 }
 
 

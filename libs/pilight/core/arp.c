@@ -257,12 +257,12 @@ static int unmarshal_arp_pkt(const unsigned char *buffer, size_t buf_len, ether_
 void arp_add_host(const char *host_name) {
 
 	if((helist = REALLOC(helist, ((num_hosts+1) * sizeof(struct host_entry *)))) == NULL) {
-		logprintf(LOG_ERR, "out of memory\n");
+		fprintf(stderr, "out of memory");
 		exit(EXIT_FAILURE);
 	}
 
 	if((helist[num_hosts] = MALLOC(sizeof(struct host_entry))) == NULL) {
-		logprintf(LOG_ERR, "out of memory\n");
+		fprintf(stderr, "out of memory");
 		exit(EXIT_FAILURE);
 	}
 	helist[num_hosts]->addr.s_addr = inet_addr(host_name);
@@ -428,7 +428,7 @@ int arp_resolv(char *if_name, char *srcmac, char *dstmac, char **ip) {
 	int i = 0;
 
 	if((if_cpy = MALLOC(strlen(if_name)+1)) == NULL) {
-		logprintf(LOG_ERR, "out of memory");
+		fprintf(stderr, "out of memory");
 		exit(EXIT_FAILURE);
 	}
 	strcpy(if_cpy, if_name);
@@ -448,7 +448,7 @@ int arp_resolv(char *if_name, char *srcmac, char *dstmac, char **ip) {
 		if(strstr(d->name, if_cpy) != NULL) {
 			match = 1;
 			if((if_cpy = REALLOC(if_cpy, strlen(d->name)+1)) == NULL) {
-				logprintf(LOG_ERR, "out of memory");
+				fprintf(stderr, "out of memory");
 				exit(EXIT_FAILURE);
 			}
 			strcpy(if_cpy, d->name);

@@ -100,7 +100,7 @@ int main(int argc, char **argv) {
 #endif
 
 	if((progname = MALLOC(13)) == NULL) {
-		logprintf(LOG_ERR, "out of memory");
+		fprintf(stderr, "out of memory");
 		exit(EXIT_FAILURE);
 	}
 	strcpy(progname, "pilight-send");
@@ -151,11 +151,11 @@ int main(int argc, char **argv) {
 		switch(c) {
 			case 'p':
 				if(strlen(args) == 0) {
-					logprintf(LOG_ERR, "options '-p' and '--protocol' require an argument");
+					logprintf(LOG_INFO, "options '-p' and '--protocol' require an argument");
 					exit(EXIT_FAILURE);
 				} else {
-					if(!(protobuffer = REALLOC(protobuffer, strlen(args)+1))) {
-						logprintf(LOG_ERR, "out of memory");
+					if((protobuffer = REALLOC(protobuffer, strlen(args)+1)) == NULL) {
+						fprintf(stderr, "out of memory");
 						exit(EXIT_FAILURE);
 					}
 					strcpy(protobuffer, args);
@@ -168,8 +168,8 @@ int main(int argc, char **argv) {
 				help = 1;
 			break;
 			case 'S':
-				if(!(server = REALLOC(server, strlen(args)+1))) {
-					logprintf(LOG_ERR, "out of memory");
+				if((server = REALLOC(server, strlen(args)+1)) == NULL) {
+					fprintf(stderr, "out of memory");
 					exit(EXIT_FAILURE);
 				}
 				strcpy(server, args);
@@ -178,8 +178,8 @@ int main(int argc, char **argv) {
 				port = (unsigned short)atoi(args);
 			break;
 			case 'U':
-				if(!(uuid = REALLOC(uuid, strlen(args)+1))) {
-					logprintf(LOG_ERR, "out of memory");
+				if((uuid = REALLOC(uuid, strlen(args)+1)) == NULL) {
+					fprintf(stderr, "out of memory");
 					exit(EXIT_FAILURE);
 				}
 				strcpy(uuid, args);
@@ -273,17 +273,17 @@ int main(int argc, char **argv) {
 					struct protocol_devices_t *tmpdev = protocol->devices;
 					while(tmpdev) {
 						struct pname_t *node = MALLOC(sizeof(struct pname_t));
-						if(!node) {
-							logprintf(LOG_ERR, "out of memory");
+						if(node == NULL) {
+							fprintf(stderr, "out of memory");
 							exit(EXIT_FAILURE);
 						}
-						if(!(node->name = MALLOC(strlen(tmpdev->id)+1))) {
-							logprintf(LOG_ERR, "out of memory");
+						if((node->name = MALLOC(strlen(tmpdev->id)+1)) == NULL) {
+							fprintf(stderr, "out of memory");
 							exit(EXIT_FAILURE);
 						}
 						strcpy(node->name, tmpdev->id);
-						if(!(node->desc = MALLOC(strlen(tmpdev->desc)+1))) {
-							logprintf(LOG_ERR, "out of memory");
+						if((node->desc = MALLOC(strlen(tmpdev->desc)+1)) == NULL) {
+							fprintf(stderr, "out of memory");
 							exit(EXIT_FAILURE);
 						}
 						strcpy(node->desc, tmpdev->desc);
@@ -352,7 +352,7 @@ int main(int argc, char **argv) {
 				goto close;
 			}
 		} else if(ssdp_seek(&ssdp_list) == -1) {
-			logprintf(LOG_ERR, "no pilight ssdp connections found");
+			logprintf(LOG_NOTICE, "no pilight ssdp connections found");
 			goto close;
 		} else {
 			if((sockfd = socket_connect(ssdp_list->ip, ssdp_list->port)) == -1) {

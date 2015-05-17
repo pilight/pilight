@@ -234,31 +234,27 @@ static void gui_save_setting(int i, JsonNode *jsetting, struct gui_elements_t *e
 		if(strcmp(jsetting->key, "group") == 0 || strcmp(jsetting->key, "media") == 0) {
 			/* Loop through the values of this values array */
 			jtmp = json_first_child(jsetting);
-			snode = MALLOC(sizeof(struct gui_settings_t));
-			if(!snode) {
-				logprintf(LOG_ERR, "out of memory");
+			if((snode = MALLOC(sizeof(struct gui_settings_t))) == NULL) {
+				fprintf(stderr, "out of memory");
 				exit(EXIT_FAILURE);
 			}
-			snode->name = MALLOC(strlen(jsetting->key)+1);
-			if(!snode->name) {
-				logprintf(LOG_ERR, "out of memory");
+			if((snode->name = MALLOC(strlen(jsetting->key)+1)) == NULL) {
+				fprintf(stderr, "out of memory");
 				exit(EXIT_FAILURE);
 			}
 			strcpy(snode->name, jsetting->key);
 			snode->values = NULL;
 			snode->next = NULL;
 			while(jtmp) {
-				vnode = MALLOC(sizeof(struct gui_values_t));
-				if(!vnode) {
-					logprintf(LOG_ERR, "out of memory");
+				if((vnode = MALLOC(sizeof(struct gui_values_t))) == NULL) {
+					fprintf(stderr, "out of memory");
 					exit(EXIT_FAILURE);
 				}
 				vnode->name = NULL;
 				vnode->next = NULL;
 				if(jtmp->tag == JSON_STRING) {
-					vnode->string_ = MALLOC(strlen(jtmp->string_)+1);
-					if(!vnode->string_) {
-						logprintf(LOG_ERR, "out of memory");
+					if((vnode->string_ = MALLOC(strlen(jtmp->string_)+1)) == NULL) {
+						fprintf(stderr, "out of memory");
 						exit(EXIT_FAILURE);
 					}
 					strcpy(vnode->string_, jtmp->string_);
@@ -294,14 +290,12 @@ static void gui_save_setting(int i, JsonNode *jsetting, struct gui_elements_t *e
 			}
 		}
 	} else if(jsetting->tag == JSON_OBJECT) {
-		snode = MALLOC(sizeof(struct gui_settings_t));
-		if(!snode) {
-			logprintf(LOG_ERR, "out of memory");
+		if((snode = MALLOC(sizeof(struct gui_settings_t))) == NULL) {
+			fprintf(stderr, "out of memory");
 			exit(EXIT_FAILURE);
 		}
-		snode->name = MALLOC(strlen(jsetting->key)+1);
-		if(!snode->name) {
-			logprintf(LOG_ERR, "out of memory");
+		if((snode->name = MALLOC(strlen(jsetting->key)+1)) == NULL) {
+			fprintf(stderr, "out of memory");
 			exit(EXIT_FAILURE);
 		}
 		strcpy(snode->name, jsetting->key);
@@ -311,34 +305,29 @@ static void gui_save_setting(int i, JsonNode *jsetting, struct gui_elements_t *e
 		jtmp = json_first_child(jsetting);
 		while(jtmp) {
 			if(jtmp->tag == JSON_STRING) {
-				vnode = MALLOC(sizeof(struct gui_values_t));
-				if(!vnode) {
-					logprintf(LOG_ERR, "out of memory");
+				if((vnode = MALLOC(sizeof(struct gui_values_t))) == NULL) {
+					fprintf(stderr, "out of memory");
 					exit(EXIT_FAILURE);
 				}
-				vnode->name = MALLOC(strlen(jtmp->key)+1);
-				if(!vnode->name) {
-					logprintf(LOG_ERR, "out of memory");
+				if((vnode->name = MALLOC(strlen(jtmp->key)+1)) == NULL) {
+					fprintf(stderr, "out of memory");
 					exit(EXIT_FAILURE);
 				}
 				strcpy(vnode->name, jtmp->key);
-				vnode->string_ = MALLOC(strlen(jtmp->string_)+1);
-				if(!vnode->string_) {
-					logprintf(LOG_ERR, "out of memory");
+				if((vnode->string_ = MALLOC(strlen(jtmp->string_)+1)) == NULL) {
+					fprintf(stderr, "out of memory");
 					exit(EXIT_FAILURE);
 				}
 				strcpy(vnode->string_, jtmp->string_);
 				vnode->type = JSON_STRING;
 				vnode->next = NULL;
 			} else if(jtmp->tag == JSON_NUMBER) {
-				vnode = MALLOC(sizeof(struct gui_values_t));
-				if(!vnode) {
-					logprintf(LOG_ERR, "out of memory");
+				if((vnode = MALLOC(sizeof(struct gui_values_t))) == NULL) {
+					fprintf(stderr, "out of memory");
 					exit(EXIT_FAILURE);
 				}
-				vnode->name = MALLOC(strlen(jtmp->key)+1);
-				if(!vnode->name) {
-					logprintf(LOG_ERR, "out of memory");
+				if((vnode->name = MALLOC(strlen(jtmp->key)+1)) == NULL) {
+					fprintf(stderr, "out of memory");
 					exit(EXIT_FAILURE);
 				}
 				strcpy(vnode->name, jtmp->key);
@@ -375,31 +364,27 @@ static void gui_save_setting(int i, JsonNode *jsetting, struct gui_elements_t *e
 
 	} else {
 		/* New element settings node */
-		snode = MALLOC(sizeof(struct gui_settings_t));
-		if(!snode) {
-			logprintf(LOG_ERR, "out of memory");
+		if((snode = MALLOC(sizeof(struct gui_settings_t))) == NULL) {
+			fprintf(stderr, "out of memory");
 			exit(EXIT_FAILURE);
 		}
-		snode->name = MALLOC(strlen(jsetting->key)+1);
-		if(!snode->name) {
-			logprintf(LOG_ERR, "out of memory");
+		if((snode->name = MALLOC(strlen(jsetting->key)+1)) == NULL) {
+			fprintf(stderr, "out of memory");
 			exit(EXIT_FAILURE);
 		}
 		strcpy(snode->name, jsetting->key);
 		snode->values = NULL;
 		snode->next = NULL;
 
-		vnode = MALLOC(sizeof(struct gui_values_t));
-		if(!vnode) {
-			logprintf(LOG_ERR, "out of memory");
+		if((vnode = MALLOC(sizeof(struct gui_values_t))) == NULL) {
+			fprintf(stderr, "out of memory");
 			exit(EXIT_FAILURE);
 		}
 		int valid = 0;
 		/* Cast and store the new value */
 		if(jsetting->tag == JSON_STRING && json_find_string(jsetting->parent, jsetting->key, &stmp) == 0) {
-			vnode->string_ = MALLOC(strlen(stmp)+1);
-			if(!vnode->string_) {
-				logprintf(LOG_ERR, "out of memory");
+			if((vnode->string_ = MALLOC(strlen(stmp)+1)) == NULL) {
+				fprintf(stderr, "out of memory");
 				exit(EXIT_FAILURE);
 			}
 			vnode->name = NULL;
@@ -590,9 +575,8 @@ int gui_read(struct JsonNode *root) {
 				tmp_gui = tmp_gui->next;
 			}
 
-			dnode = MALLOC(sizeof(struct gui_elements_t));
-			if(!dnode) {
-				logprintf(LOG_ERR, "out of memory");
+			if((dnode = MALLOC(sizeof(struct gui_elements_t))) == NULL) {
+				fprintf(stderr, "out of memory");
 				exit(EXIT_FAILURE);
 			}
 			dnode->settings = NULL;
@@ -605,9 +589,8 @@ int gui_read(struct JsonNode *root) {
 				FREE(dnode);
 				goto clear;
 			}
-			dnode->id = MALLOC(strlen(jelements->key)+1);
-			if(!dnode->id ) {
-				logprintf(LOG_ERR, "out of memory");
+			if((dnode->id = MALLOC(strlen(jelements->key)+1)) == NULL) {
+				fprintf(stderr, "out of memory");
 				exit(EXIT_FAILURE);
 			}
 			strcpy(dnode->id, jelements->key);

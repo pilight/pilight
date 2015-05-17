@@ -54,9 +54,8 @@ void options_set_string(struct options_t **opt, int id, const char *val) {
 	struct options_t *temp = *opt;
 	while(temp) {
 		if(temp->id == id && temp->id > 0) {
-			temp->string_ = REALLOC(temp->string_, strlen(val)+1);
-			if(!temp->string_) {
-				logprintf(LOG_ERR, "out of memory");
+			if((temp->string_ = REALLOC(temp->string_, strlen(val)+1)) == NULL) {
+				fprintf(stderr, "out of memory");
 				exit(EXIT_FAILURE);
 			}
 			temp->vartype = JSON_STRING;
@@ -254,20 +253,16 @@ int options_parse(struct options_t **opt, int argc, char **argv, int error_check
 	} else {
 		getOptPos++;
 		/* Reserve enough memory to store all variables */
-		longarg = REALLOC(longarg, 4);
-		shortarg = REALLOC(shortarg, 2);
-		*optarg = REALLOC(*optarg, 4);
-
-		if(!longarg) {
-			logprintf(LOG_ERR, "out of memory");
+		if((longarg = REALLOC(longarg, 4)) == NULL) {
+			fprintf(stderr, "out of memory");
 			exit(EXIT_FAILURE);
 		}
-		if(!shortarg) {
-			logprintf(LOG_ERR, "out of memory");
+		if((shortarg = REALLOC(shortarg, 2)) == NULL) {
+			fprintf(stderr, "out of memory");
 			exit(EXIT_FAILURE);
 		}
-		if(!*optarg) {
-			logprintf(LOG_ERR, "out of memory");
+		if((*optarg = REALLOC(*optarg, 4)) == NULL) {
+			fprintf(stderr, "out of memory");
 			exit(EXIT_FAILURE);
 		}
 
@@ -281,9 +276,8 @@ int options_parse(struct options_t **opt, int argc, char **argv, int error_check
 		if(strchr(argv[getOptPos],'=')) {
 			/* Copy all characters until the equals to sign.
 			   This will probably be the name of the argument */
-			longarg = REALLOC(longarg, strcspn(argv[getOptPos],"=")+1);
-			if(!longarg) {
-				logprintf(LOG_ERR, "out of memory");
+			if((longarg = REALLOC(longarg, strcspn(argv[getOptPos],"=")+1)) == NULL) {
+				fprintf(stderr, "out of memory");
 				exit(EXIT_FAILURE);
 			}
 			memset(longarg, '\0', strcspn(argv[getOptPos],"=")+1);
@@ -292,9 +286,8 @@ int options_parse(struct options_t **opt, int argc, char **argv, int error_check
 			/* Then copy everything after the equals sign.
 			   This will probably be the value of the argument */
 			size_t i = strlen(&argv[getOptPos][strcspn(argv[getOptPos],"=")+1]);
-			*optarg = REALLOC(*optarg, i+1);
-			if(!*optarg) {
-				logprintf(LOG_ERR, "out of memory");
+			if((*optarg = REALLOC(*optarg, i+1)) == NULL) {
+				fprintf(stderr, "out of memory");
 				exit(EXIT_FAILURE);
 			}
 			memset(*optarg, '\0', i+1);
@@ -302,9 +295,8 @@ int options_parse(struct options_t **opt, int argc, char **argv, int error_check
 		} else {
 			/* If the argument does not contain a equals sign.
 			   Store the argument to check later if it's a long argument */
-			longarg = REALLOC(longarg, strlen(argv[getOptPos])+1);
-			if(!longarg) {
-				logprintf(LOG_ERR, "out of memory");
+			if((longarg = REALLOC(longarg, strlen(argv[getOptPos])+1)) == NULL) {
+				fprintf(stderr, "out of memory");
 				exit(EXIT_FAILURE);
 			}
 			strcpy(longarg, argv[getOptPos]);
@@ -312,9 +304,8 @@ int options_parse(struct options_t **opt, int argc, char **argv, int error_check
 
 		/* A short argument only contains of two characters.
 		   So only store the first two characters */
-		shortarg = REALLOC(shortarg, strlen(argv[getOptPos])+1);
-		if(!shortarg) {
-			logprintf(LOG_ERR, "out of memory");
+		if((shortarg = REALLOC(shortarg, strlen(argv[getOptPos])+1)) == NULL) {
+			fprintf(stderr, "out of memory");
 			exit(EXIT_FAILURE);
 		}
 		memset(shortarg, '\0', 3);
@@ -326,9 +317,8 @@ int options_parse(struct options_t **opt, int argc, char **argv, int error_check
 		   after the current one, store it as the CLI value. However, only
 		   do this if the first character of the argument doesn't contain*/
 		if(strcmp(longarg, shortarg) == 0 && (getOptPos+1)<argc && argv[getOptPos+1][0] != '-') {
-			*optarg = REALLOC(*optarg, strlen(argv[getOptPos+1])+1);
-			if(!*optarg) {
-				logprintf(LOG_ERR, "out of memory");
+			if((*optarg = REALLOC(*optarg, strlen(argv[getOptPos+1])+1)) == NULL) {
+				fprintf(stderr, "out of memory");
 				exit(EXIT_FAILURE);
 			}
 			strcpy(*optarg, argv[getOptPos+1]);
@@ -339,7 +329,7 @@ int options_parse(struct options_t **opt, int argc, char **argv, int error_check
 			    then we probably encountered a long argument. */
 			if(longarg[0] == '-' && longarg[1] == '-') {
 				if((gctmp = REALLOC(gctmp, strlen(&longarg[2])+1)) == NULL) {
-					logprintf(LOG_ERR, "out of memory");
+					fprintf(stderr, "out of memory");
 					exit(EXIT_FAILURE);
 				}
 				strcpy(gctmp, &longarg[2]);
@@ -459,43 +449,42 @@ void options_add(struct options_t **opt, int id, const char *name, int argtype, 
 	char *nname = MALLOC(strlen(name)+1);
 	int sid = 0;
 	if(!nname) {
-		logprintf(LOG_ERR, "out of memory");
+		fprintf(stderr, "out of memory");
 		exit(EXIT_FAILURE);
 	}
 	strcpy(nname, name);
 	int itmp = 0;
 	if(!(argtype >= 0 && argtype <= 3)) {
-		logprintf(LOG_ERR, "tying to add an invalid option type");
+		logprintf(LOG_CRIT, "tying to add an invalid option type");
 		FREE(nname);
 		exit(EXIT_FAILURE);
 	} else if(!(conftype >= 0 && conftype <= NROPTIONTYPES)) {
-		logprintf(LOG_ERR, "trying to add an option of an invalid type");
+		logprintf(LOG_CRIT, "trying to add an option of an invalid type");
 		FREE(nname);
 		exit(EXIT_FAILURE);
 	} else if(!name) {
-		logprintf(LOG_ERR, "trying to add an option without name");
+		logprintf(LOG_CRIT, "trying to add an option without name");
 		FREE(nname);
 		exit(EXIT_FAILURE);
 	} else if(id != 0 && options_get_name(opt, id, &ctmp) == 0) {
-		logprintf(LOG_ERR, "duplicate option id: %c", id);
+		logprintf(LOG_CRIT, "duplicate option id: %c", id);
 		FREE(nname);
 		exit(EXIT_FAILURE);
 	} else if(options_get_id(opt, nname, &sid) == 0 &&
 			((options_get_conftype(opt, sid, &itmp) == 0 && itmp == conftype) ||
 			(options_get_conftype(opt, sid, &itmp) != 0))) {
-		logprintf(LOG_ERR, "duplicate option name: %s", name);
+		logprintf(LOG_CRIT, "duplicate option name: %s", name);
 		FREE(nname);
 		exit(EXIT_FAILURE);
 	} else {
 		struct options_t *optnode = MALLOC(sizeof(struct options_t));
 		if(!optnode) {
-			logprintf(LOG_ERR, "out of memory");
+			fprintf(stderr, "out of memory");
 			exit(EXIT_FAILURE);
 		}
 		optnode->id = id;
-		optnode->name = MALLOC(strlen(name)+1);
-		if(!optnode->name) {
-			logprintf(LOG_ERR, "out of memory");
+		if((optnode->name = MALLOC(strlen(name)+1)) == NULL) {
+			fprintf(stderr, "out of memory");
 			exit(EXIT_FAILURE);
 		}
 		strcpy(optnode->name, name);
@@ -505,9 +494,8 @@ void options_add(struct options_t **opt, int id, const char *name, int argtype, 
 		optnode->def = def;
 		optnode->string_ = NULL;
 		if(mask) {
-			optnode->mask = MALLOC(strlen(mask)+1);
-			if(!optnode->mask) {
-				logprintf(LOG_ERR, "out of memory");
+			if((optnode->mask = MALLOC(strlen(mask)+1)) == NULL) {
+				fprintf(stderr, "out of memory");
 				exit(EXIT_FAILURE);
 			}
 			strcpy(optnode->mask, mask);
@@ -529,14 +517,13 @@ void options_merge(struct options_t **a, struct options_t **b) {
 	while(temp) {
 		struct options_t *optnode = MALLOC(sizeof(struct options_t));
 		if(!optnode) {
-			logprintf(LOG_ERR, "out of memory");
+			fprintf(stderr, "out of memory");
 			exit(EXIT_FAILURE);
 		}
 		optnode->id = temp->id;
 		if(temp->name) {
-			optnode->name = MALLOC(strlen(temp->name)+1);
-			if(!optnode->name) {
-				logprintf(LOG_ERR, "out of memory");
+			if((optnode->name = MALLOC(strlen(temp->name)+1)) == NULL) {
+				fprintf(stderr, "out of memory");
 				exit(EXIT_FAILURE);
 			}
 			memset(optnode->name, '\0', strlen(temp->name)+1);
@@ -545,9 +532,8 @@ void options_merge(struct options_t **a, struct options_t **b) {
 			optnode->name = NULL;
 		}
 		if(temp->string_) {
-			optnode->string_ = MALLOC(strlen(temp->string_)+1);
-			if(!optnode->string_) {
-				logprintf(LOG_ERR, "out of memory");
+			if((optnode->string_ = MALLOC(strlen(temp->string_)+1)) == NULL) {
+				fprintf(stderr, "out of memory");
 				exit(EXIT_FAILURE);
 			}
 			optnode->vartype = JSON_STRING;
@@ -556,9 +542,8 @@ void options_merge(struct options_t **a, struct options_t **b) {
 			optnode->string_ = NULL;
 		}
 		if(temp->mask) {
-			optnode->mask = MALLOC(strlen(temp->mask)+1);
-			if(!optnode->mask) {
-				logprintf(LOG_ERR, "out of memory");
+			if((optnode->mask = MALLOC(strlen(temp->mask)+1)) == NULL) {
+				fprintf(stderr, "out of memory");
 				exit(EXIT_FAILURE);
 			}
 			strcpy(optnode->mask, temp->mask);

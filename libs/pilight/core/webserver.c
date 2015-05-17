@@ -193,7 +193,7 @@ char *webserver_mimetype(const char *str) {
 
 	char *mimetype = MALLOC(strlen(str)+1);
 	if(!mimetype) {
-		logprintf(LOG_ERR, "out of memory");
+		fprintf(stderr, "out of memory");
 		exit(EXIT_FAILURE);
 	}
 	memset(mimetype, '\0', strlen(str)+1);
@@ -266,9 +266,8 @@ static char *webserver_shell(const char *format_str, struct mg_connection *conn,
 				while(!feof(fp)) {
 					chunk = fread(buff, sizeof(char), 1024, fp);
 					total += chunk;
-					output = REALLOC(output, total+1);
-					if(!output) {
-						logprintf(LOG_ERR, "out of memory");
+					if((output = REALLOC(output, total+1)) == NULL) {
+						fprintf(stderr, "out of memory");
 						exit(EXIT_FAILURE);
 					}
 					memcpy(&output[total-chunk], buff, chunk);
@@ -293,7 +292,7 @@ static char *webserver_shell(const char *format_str, struct mg_connection *conn,
 			}
 #ifndef _WIN32
 		} else {
-			logprintf(LOG_DEBUG, "failed to change webserver uid");
+			logprintf(LOG_NOTICE, "failed to change webserver uid");
 		}
 	} else {
 		logprintf(LOG_DEBUG, "webserver user \"%s\" does not exist", webserver_user);
@@ -422,7 +421,7 @@ static int webserver_request_handler(struct mg_connection *conn) {
 				for(q=0;q<n;q++) {
 					size_t l = strlen(webserver_root)+strlen(conn->uri)+strlen(array[q])+4;
 					if((request = REALLOC(request, l)) == NULL) {
-						logprintf(LOG_ERR, "out of memory");
+						fprintf(stderr, "out of memory");
 						exit(EXIT_FAILURE);
 					}
 					memset(request, '\0', l);
@@ -442,9 +441,8 @@ static int webserver_request_handler(struct mg_connection *conn) {
 				array_free(&array, n);
 			} else if(webserver_root != NULL && conn->uri != NULL) {
 				size_t wlen = strlen(webserver_root)+strlen(conn->uri)+2;
-				request = MALLOC(wlen);
-				if(!request) {
-					logprintf(LOG_ERR, "out of memory");
+				if((request = MALLOC(wlen)) == NULL) {
+					fprintf(stderr, "out of memory");
 					exit(EXIT_FAILURE);
 				}
 				memset(request, '\0', wlen);
@@ -471,9 +469,8 @@ static int webserver_request_handler(struct mg_connection *conn) {
 			if(!dot || dot == request) {
 				mimetype = webserver_mimetype("text/plain");
 			} else {
-				ext = REALLOC(ext, strlen(dot)+1);
-				if(!ext) {
-					logprintf(LOG_ERR, "out of memory");
+				if((ext = REALLOC(ext, strlen(dot)+1)) == NULL) {
+					fprintf(stderr, "out of memory");
 					exit(EXIT_FAILURE);
 				}
 				memset(ext, '\0', strlen(dot)+1);
@@ -577,7 +574,7 @@ static int webserver_request_handler(struct mg_connection *conn) {
 						size_t xpos = (size_t)(nptr-output);
 						char *header = MALLOC((pos-xpos)+(size_t)1);
 						if(!header) {
-							logprintf(LOG_ERR, "out of memory");
+							fprintf(stderr, "out of memory");
 							exit(EXIT_FAILURE);
 						}
 
@@ -658,7 +655,7 @@ static int webserver_request_handler(struct mg_connection *conn) {
 					FREE(request);
 					return MG_TRUE;
 				} else {
-					logprintf(LOG_NOTICE, "(webserver) invalid php-cgi output from %s", request);
+					logprintf(LOG_WARNING, "(webserver) invalid php-cgi output from %s", request);
 					webserver_create_404(conn->uri, &p);
 					FREE(mimetype);
 					FREE(request);
@@ -801,7 +798,7 @@ static int webserver_request_handler(struct mg_connection *conn) {
 	return MG_MORE;
 
 filenotfound:
-	logprintf(LOG_NOTICE, "(webserver) could not read %s", request);
+	logprintf(LOG_WARNING, "(webserver) could not read %s", request);
 	webserver_create_404(conn->uri, &p);
 	mg_write(conn, buffer, (int)(p-buffer));
 	FREE(mimetype);
@@ -815,7 +812,7 @@ static int webserver_connect_handler(struct mg_connection *conn) {
 	char ip[17];
 	strcpy(ip, conn->remote_ip);
 	if(whitelist_check(conn->remote_ip) != 0) {
-		logprintf(LOG_INFO, "rejected client, ip: %s, port: %d", ip, conn->remote_port);
+		logprintf(LOG_NOTICE, "rejected client, ip: %s, port: %d", ip, conn->remote_port);
 		return MG_FALSE;
 	} else {
 		logprintf(LOG_INFO, "client connected, ip %s, port %d", ip, conn->remote_port);
@@ -841,11 +838,11 @@ static void webserver_queue(char *message) {
 	if(webqueue_number <= 1024) {
 		struct webqueue_t *wnode = MALLOC(sizeof(struct webqueue_t));
 		if(wnode == NULL) {
-			logprintf(LOG_ERR, "out of memory");
+			fprintf(stderr, "out of memory");
 			exit(EXIT_FAILURE);
 		}
 		if((wnode->message = MALLOC(strlen(message)+1)) == NULL) {
-			logprintf(LOG_ERR, "out of memory");
+			fprintf(stderr, "out of memory");
 			exit(EXIT_FAILURE);
 		}
 		strcpy(wnode->message, message);
@@ -913,16 +910,16 @@ void *webserver_clientize(void *param) {
 		int standalone = 0;
 		settings_find_number("standalone", &standalone);
 		if(ssdp_seek(&ssdp_list) == -1 || standalone == 1) {
-			logprintf(LOG_DEBUG, "no pilight ssdp connections found");
+			logprintf(LOG_NOTICE, "no pilight ssdp connections found");
 			char server[16] = "127.0.0.1";
 			if((sockfd = socket_connect(server, (unsigned short)socket_get_port())) == -1) {
-				logprintf(LOG_DEBUG, "could not connect to pilight-daemon");
+				logprintf(LOG_ERR, "could not connect to pilight-daemon");
 				failures++;
 				continue;
 			}
 		} else {
 			if((sockfd = socket_connect(ssdp_list->ip, ssdp_list->port)) == -1) {
-				logprintf(LOG_DEBUG, "could not connect to pilight-daemon");
+				logprintf(LOG_ERR, "could not connect to pilight-daemon");
 				failures++;
 				continue;
 			}
@@ -1033,7 +1030,7 @@ int webserver_start(void) {
 	if(settings_find_string("webserver-root", &webserver_root) != 0) {
 		/* If no webserver port was set, use the default webserver port */
 		if((webserver_root = MALLOC(strlen(WEBSERVER_ROOT)+1)) == NULL) {
-			logprintf(LOG_ERR, "out of memory");
+			fprintf(stderr, "out of memory");
 			exit(EXIT_FAILURE);
 		}
 		strcpy(webserver_root, WEBSERVER_ROOT);
@@ -1048,9 +1045,8 @@ int webserver_start(void) {
 	settings_find_string("webserver-authentication-username", &webserver_authentication_username);
 	if(settings_find_string("webserver-user", &webserver_user) != 0) {
 		/* If no webserver port was set, use the default webserver port */
-		webserver_user = MALLOC(strlen(WEBSERVER_USER)+1);
-		if(!webserver_user) {
-			logprintf(LOG_ERR, "out of memory");
+		if((webserver_user = MALLOC(strlen(WEBSERVER_USER)+1)) == NULL) {
+			fprintf(stderr, "out of memory");
 			exit(EXIT_FAILURE);
 		}
 		strcpy(webserver_user, WEBSERVER_USER);

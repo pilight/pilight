@@ -117,11 +117,11 @@ void event_cache_device(struct rules_t *obj, char *device) {
 		if(exists == 0) {
 			/* Store all devices that are present in this rule */
 			if((obj->devices = REALLOC(obj->devices, sizeof(char *)*(unsigned int)(obj->nrdevices+1))) == NULL) {
-				logprintf(LOG_ERR, "out of memory");
+				fprintf(stderr, "out of memory");
 				exit(EXIT_FAILURE);
 			}
 			if((obj->devices[obj->nrdevices] = MALLOC(strlen(device)+1)) == NULL) {
-				logprintf(LOG_ERR, "out of memory");
+				fprintf(stderr, "out of memory");
 				exit(EXIT_FAILURE);
 			}
 			strcpy(obj->devices[obj->nrdevices], device);
@@ -146,18 +146,18 @@ static int event_store_val_ptr(struct rules_t *obj, char *device, char *name, st
 
 	if(match == 0) {
 		if((tmp_values = MALLOC(sizeof(rules_values_t))) == NULL) {
-			logprintf(LOG_ERR, "out of memory");
+			fprintf(stderr, "out of memory");
 			exit(EXIT_FAILURE);
 		}
 		tmp_values->next = NULL;
 		if((tmp_values->name = MALLOC(strlen(name)+1)) == NULL) {
-			logprintf(LOG_ERR, "out of memory");
+			fprintf(stderr, "out of memory");
 			FREE(tmp_values);
 			exit(EXIT_FAILURE);
 		}
 		strcpy(tmp_values->name, name);
 		if((tmp_values->device = MALLOC(strlen(device)+1)) == NULL) {
-			logprintf(LOG_ERR, "out of memory");
+			fprintf(stderr, "out of memory");
 			FREE(tmp_values->name);
 			FREE(tmp_values);
 			exit(EXIT_FAILURE);
@@ -430,7 +430,7 @@ static int event_parse_hooks(char **rule, struct rules_t *obj, int depth, unsign
 	char *tmp = *rule;
 
 	if(subrule == NULL) {
-		logprintf(LOG_ERR, "out of memory");
+		fprintf(stderr, "out of memory");
 		exit(EXIT_FAILURE);
 	}
 
@@ -447,7 +447,7 @@ static int event_parse_hooks(char **rule, struct rules_t *obj, int depth, unsign
 			if(buflen <= len) {
 				buflen *= 2;
 				if((subrule = REALLOC(subrule, buflen)) == NULL) {
-					logprintf(LOG_ERR, "out of memory");
+					fprintf(stderr, "out of memory");
 					exit(EXIT_FAILURE);
 				}
 				memset(&subrule[len], '\0', buflen-(unsigned long)len);
@@ -564,7 +564,7 @@ static int event_parse_function(char **rule, struct rules_t *obj, unsigned short
 	}
 	while(nested == 1) {
 		if((subfunction = MALLOC(buflen)) == NULL) {
-			logprintf(LOG_ERR, "out of memory");
+			fprintf(stderr, "out of memory");
 			exit(EXIT_FAILURE);
 		}
 
@@ -643,7 +643,7 @@ static int event_parse_function(char **rule, struct rules_t *obj, unsigned short
 	nl = (pos3-pos1);
 
 	if((function = MALLOC(fl+1)) == NULL) {
-		logprintf(LOG_ERR, "out of memory");
+		fprintf(stderr, "out of memory");
 		exit(EXIT_FAILURE);
 	}
 	memset(function, '\0', fl+1);
@@ -651,7 +651,7 @@ static int event_parse_function(char **rule, struct rules_t *obj, unsigned short
 	function[fl] = '\0';
 
 	if((name = MALLOC(nl+1)) == NULL) {
-		logprintf(LOG_ERR, "out of memory");
+		fprintf(stderr, "out of memory");
 		exit(EXIT_FAILURE);
 	}
 	memset(name, '\0', nl+1);
@@ -953,7 +953,7 @@ static int event_parse_action_arguments(char *arguments, struct rules_t *obj, in
 			}
 			if(a < b) {
 				if((tmp = REALLOC(tmp, (b-a)+1)) == NULL) {
-					logprintf(LOG_ERR, "out of memory");
+					fprintf(stderr, "out of memory");
 					exit(EXIT_FAILURE);
 				}
 				strncpy(tmp, &arguments[a], (b-a));
@@ -977,7 +977,7 @@ static int event_parse_action_arguments(char *arguments, struct rules_t *obj, in
 					nlen = (len-(b-a))+vallen;
 					if(len < nlen) {
 						if((arguments = REALLOC(arguments, nlen)) == NULL) {
-							logprintf(LOG_ERR, "out of memory");
+							fprintf(stderr, "out of memory");
 							exit(EXIT_FAILURE);
 						}
 					}
@@ -1070,7 +1070,7 @@ static int event_parse_action(char *action, struct rules_t *obj, int validate) {
 
 		if(match == 0) {
 			if((node = MALLOC(sizeof(struct rules_actions_t))) == NULL) {
-				logprintf(LOG_ERR, "out of memory");
+				fprintf(stderr, "out of memory");
 				exit(EXIT_FAILURE);
 			}
 			node->nr = x;
@@ -1086,7 +1086,7 @@ static int event_parse_action(char *action, struct rules_t *obj, int validate) {
 		if((p = strstr(&tmp[offset], " ")) != NULL) {
 			pos1 = p-tmp;
 			if((func = REALLOC(func, (pos1-offset)+1)) == NULL) {
-				logprintf(LOG_ERR, "out of memory");
+				fprintf(stderr, "out of memory");
 				exit(EXIT_FAILURE);
 			}
 			strncpy(func, &tmp[offset], (pos1-offset));
@@ -1119,7 +1119,7 @@ static int event_parse_action(char *action, struct rules_t *obj, int validate) {
 				opt = node->action->options;
 				while(opt) {
 					if((search = REALLOC(search, strlen(opt->name)+3)) == NULL) {
-						logprintf(LOG_ERR, "out of memory");
+						fprintf(stderr, "out of memory");
 						exit(EXIT_FAILURE);
 					}
 					memset(search, '\0', strlen(opt->name)+3);
@@ -1129,7 +1129,7 @@ static int event_parse_action(char *action, struct rules_t *obj, int validate) {
 						pos++;
 						if(pos1 < pos) {
 							if((value = REALLOC(value, (pos-pos1)+1)) == NULL) {
-								logprintf(LOG_ERR, "out of memory");
+								fprintf(stderr, "out of memory");
 								exit(EXIT_FAILURE);
 							}
 							strncpy(value, &tmp[pos1], (pos-pos1));
@@ -1179,7 +1179,7 @@ static int event_parse_action(char *action, struct rules_t *obj, int validate) {
 				FREE(search);
 			}
 			if((value = REALLOC(value, (pos-pos1)+1)) == NULL) {
-				logprintf(LOG_ERR, "out of memory");
+				fprintf(stderr, "out of memory");
 				exit(EXIT_FAILURE);
 			}
 
@@ -1411,7 +1411,7 @@ int event_parse_condition(char **rule, struct rules_t *obj, int depth, unsigned 
 	}
 
 	if((subrule = MALLOC(pos+1)) == NULL) {
-		logprintf(LOG_ERR, "out of memory");
+		fprintf(stderr, "out of memory");
 		exit(EXIT_FAILURE);
 	}
 
@@ -1492,7 +1492,7 @@ int event_parse_rule(char *rule, struct rules_t *obj, int depth, unsigned short 
 		tpos = (size_t)(tloc-rule);
 
 		if((action = MALLOC((rlen-tpos)+6+1)) == NULL) {
-			logprintf(LOG_ERR, "out of memory");
+			fprintf(stderr, "out of memory");
 			exit(EXIT_FAILURE);
 		}
 
@@ -1503,7 +1503,7 @@ int event_parse_rule(char *rule, struct rules_t *obj, int depth, unsigned short 
 		/* Extract the command part between the IF and THEN
 		   ("IF " length = 3) */
 		if((condition = MALLOC(rlen-tlen+3+1)) == NULL) {
-			logprintf(LOG_ERR, "out of memory");
+			fprintf(stderr, "out of memory");
 			exit(EXIT_FAILURE);
 		}
 
@@ -1665,7 +1665,7 @@ void *events_loop(void *param) {
 				if(tmp_rules->active == 1) {
 					match = 0;
 					if((str = MALLOC(strlen(tmp_rules->rule)+1)) == NULL) {
-						logprintf(LOG_ERR, "out of memory");
+						fprintf(stderr, "out of memory");
 						exit(EXIT_FAILURE);
 					}
 					strcpy(str, tmp_rules->rule);
@@ -1739,7 +1739,7 @@ static void events_queue(char *message) {
 	if(eventsqueue_number < 1024) {
 		struct eventsqueue_t *enode = MALLOC(sizeof(eventsqueue_t));
 		if(enode == NULL) {
-			logprintf(LOG_ERR, "out of memory");
+			fprintf(stderr, "out of memory");
 			exit(EXIT_FAILURE);
 		}
 		enode->jconfig = json_decode(message);
@@ -1782,15 +1782,15 @@ void *events_clientize(void *param) {
 
 		ssdp_list = NULL;
 		if(ssdp_seek(&ssdp_list) == -1 || standalone == 1) {
-			logprintf(LOG_DEBUG, "no pilight ssdp connections found");
+			logprintf(LOG_NOTICE, "no pilight ssdp connections found");
 			char server[16] = "127.0.0.1";
 			if((sockfd = socket_connect(server, (unsigned short)socket_get_port())) == -1) {
-				logprintf(LOG_DEBUG, "could not connect to pilight-daemon");
+				logprintf(LOG_ERR, "could not connect to pilight-daemon");
 				continue;
 			}
 		} else {
 			if((sockfd = socket_connect(ssdp_list->ip, ssdp_list->port)) == -1) {
-				logprintf(LOG_DEBUG, "could not connect to pilight-daemon");
+				logprintf(LOG_ERR, "could not connect to pilight-daemon");
 				continue;
 			}
 		}

@@ -62,9 +62,8 @@ int main(int argc, char **argv) {
 
 	strcpy(configtmp, CONFIG_FILE);
 
-	progname = MALLOC(15);
-	if(!progname) {
-		logprintf(LOG_ERR, "out of memory");
+	if((progname = MALLOC(15)) == NULL) {
+		fprintf(stderr, "out of memory");
 		exit(EXIT_FAILURE);
 	}
 	strcpy(progname, "pilight-flash");

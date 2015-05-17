@@ -96,7 +96,7 @@ static void *thread(void *param) {
 
 	if(args != NULL && strlen(args) > 0) {
 		if((lnode->arguments = MALLOC(strlen(args)+1)) == NULL) {
-			logprintf(LOG_ERR, "out of memory");
+			fprintf(stderr, "out of memory");
 			exit(EXIT_FAILURE);
 		}
 		strcpy(lnode->arguments, args);
@@ -106,7 +106,7 @@ static void *thread(void *param) {
 
 	if(prog != NULL) {
 		if((lnode->program = MALLOC(strlen(prog)+1)) == NULL) {
-			logprintf(LOG_ERR, "out of memory");
+			fprintf(stderr, "out of memory");
 			exit(EXIT_FAILURE);
 		}
 		strcpy(lnode->program, prog);
@@ -116,7 +116,7 @@ static void *thread(void *param) {
 
 	if(stopcmd != NULL) {
 		if((lnode->stop = MALLOC(strlen(stopcmd)+1)) == NULL) {
-			logprintf(LOG_ERR, "out of memory");
+			fprintf(stderr, "out of memory");
 			exit(EXIT_FAILURE);
 		}
 		strcpy(lnode->stop, stopcmd);
@@ -126,7 +126,7 @@ static void *thread(void *param) {
 
 	if(startcmd != NULL) {
 		if((lnode->start = MALLOC(strlen(startcmd)+1)) == NULL) {
-			logprintf(LOG_ERR, "out of memory");
+			fprintf(stderr, "out of memory");
 			exit(EXIT_FAILURE);
 		}
 		strcpy(lnode->start, startcmd);
@@ -142,7 +142,7 @@ static void *thread(void *param) {
 			while(jchild1) {
 				if(strcmp(jchild1->key, "name") == 0) {
 					if((lnode->name = MALLOC(strlen(jchild1->string_)+1)) == NULL) {
-						logprintf(LOG_ERR, "out of memory");
+						fprintf(stderr, "out of memory");
 						exit(EXIT_FAILURE);
 					}
 					strcpy(lnode->name, jchild1->string_);
@@ -264,9 +264,9 @@ static int createCode(JsonNode *code) {
 								state = 0;
 
 							if((pid = (int)findproc(tmp->program, tmp->arguments, 0)) > 0 && state == 1) {
-								logprintf(LOG_ERR, "program \"%s\" already running", tmp->name);
+								logprintf(LOG_INFO, "program \"%s\" already running", tmp->name);
 							} else if(pid == -1 && state == 0) {
-								logprintf(LOG_ERR, "program \"%s\" already stopped", tmp->name);
+								logprintf(LOG_INFO, "program \"%s\" already stopped", tmp->name);
 								break;
 							} else {
 								if(state > -1) {
@@ -301,10 +301,10 @@ static int createCode(JsonNode *code) {
 								json_append_member(program->message, "state", json_mkstring("pending"));
 							}
 						} else {
-							logprintf(LOG_ERR, "program \"%s\" cannot be controlled", tmp->name);
+							logprintf(LOG_NOTICE, "program \"%s\" cannot be controlled", tmp->name);
 						}
 					} else {
-						logprintf(LOG_ERR, "please wait for program \"%s\" to finish it's state change", tmp->name);
+						logprintf(LOG_NOTICE, "please wait for program \"%s\" to finish it's state change", tmp->name);
 					}
 					break;
 				}

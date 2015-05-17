@@ -104,7 +104,7 @@ void *ntpthread(void *param) {
 	while(1) {
 		sprintf(name, "ntpserver%d", nrservers);
 		if((ntpservers = REALLOC(ntpservers, sizeof(char *)*(nrservers+1))) == NULL) {
-			logprintf(LOG_ERR, "out of memory");
+			fprintf(stderr, "out of memory");
 			exit(EXIT_FAILURE);
 		}
 		if((x = settings_find_string(name, &ntpservers[nrservers])) == 0) {
@@ -151,7 +151,7 @@ void *ntpthread(void *param) {
 				}
 
 				if((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) == -1) {
-					logprintf(LOG_ERR, "Error in ntp server socket connection @%s", ntpservers[x]);
+					logprintf(LOG_ERR, "error in ntp server socket connection @%s", ntpservers[x]);
 				} else {
 					memset(&servaddr, '\0', sizeof(servaddr));
 					servaddr.sin_family = AF_INET;
@@ -161,15 +161,15 @@ void *ntpthread(void *param) {
 
 					switch(socket_timeout_connect(sockfd, (struct sockaddr *)&servaddr, timeout)) {
 						case -1:
-							logprintf(LOG_ERR, "could not connect to ntp server @%s", ntpservers[x]);
+							logprintf(LOG_NOTICE, "could not connect to ntp server @%s", ntpservers[x]);
 							continue;
 						break;
 						case -2:
-							logprintf(LOG_ERR, "ntp server connection timeout @%s", ntpservers[x]);
+							logprintf(LOG_NOTICE, "ntp server connection timeout @%s", ntpservers[x]);
 							continue;
 						break;
 						case -3:
-							logprintf(LOG_ERR, "Error in ntp server socket connection @%s", ntpservers[x]);
+							logprintf(LOG_NOTICE, "error in ntp server socket connection @%s", ntpservers[x]);
 							continue;
 						break;
 						default:
@@ -183,10 +183,10 @@ void *ntpthread(void *param) {
 #endif
 					msg.li_vn_mode=227;
 					if(sendto(sockfd, (char *)&msg, 48, 0, (struct sockaddr *)&servaddr, sizeof(servaddr)) < -1) {
-						logprintf(LOG_ERR, "error in sending");
+						logprintf(LOG_NOTICE, "error in ntp sending");
 					} else {
 						if(recvfrom(sockfd, (void *)&msg, 48, 0, NULL, NULL) < -1) {
-							logprintf(LOG_ERR, "error in receiving");
+							logprintf(LOG_NOTICE, "error in ntp receiving");
 						} else {
 							if(msg.refid > 0) {
 								(msg.rec).Ul_i.Xl_ui = ntohl((msg.rec).Ul_i.Xl_ui);

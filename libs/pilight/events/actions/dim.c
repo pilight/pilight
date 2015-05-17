@@ -582,7 +582,7 @@ static void *thread(void *param) {
 			if(strcmp(opt->name, "state") == 0) {
 				if(opt->values->type == JSON_STRING) {
 					if((old_state = MALLOC(strlen(opt->values->string_)+1)) == NULL) {
-						logprintf(LOG_ERR, "out of memory");
+						fprintf(stderr, "out of memory");
 						exit(EXIT_FAILURE);
 					}
 					strcpy(old_state, opt->values->string_);
@@ -606,10 +606,10 @@ static void *thread(void *param) {
 		tmp = tmp->next;
 	}
 	if(match1 == 0) {
-		logprintf(LOG_ERR, "could not store old state of \"%s\"", pth->device->id);
+		logprintf(LOG_NOTICE, "could not store old state of \"%s\"", pth->device->id);
 	}
 	if(match2 == 0) {
-		logprintf(LOG_ERR, "could not store old dimlevel of \"%s\"", pth->device->id);
+		logprintf(LOG_NOTICE, "could not store old dimlevel of \"%s\"", pth->device->id);
 	}
 
 	if((jfrom = json_find_member(json, "FROM")) != NULL) {

@@ -3,7 +3,7 @@
 	"gui": { },
 	"rules": { },
 	"settings": {
-		"log-level": 4,
+		"log-level": 6,
 		"log-file": "c:/pilight/pilight.log",
 		"receive-repeats": 1,
 		"webserver-enable": 1,

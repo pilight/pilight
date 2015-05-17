@@ -221,7 +221,7 @@ static int checkValues(struct JsonNode *jvalues) {
 
 		if(match == 0) {
 			if((snode = MALLOC(sizeof(struct settings_t))) == NULL) {
-				logprintf(LOG_ERR, "out of memory");
+				fprintf(stderr, "out of memory");
 				exit(EXIT_FAILURE);
 			}
 			snode->id = id;

@@ -69,8 +69,8 @@ static void *thread(void *param) {
 
 	threads++;
 
-	if(!id) {
-		logprintf(LOG_ERR, "out of memory");
+	if(id == NULL) {
+		fprintf(stderr, "out of memory");
 		exit(EXIT_FAILURE);
 	}
 
@@ -98,14 +98,14 @@ static void *thread(void *param) {
 					fstat(fileno(fp), &st);
 					bytes = (size_t)st.st_size;
 
-					if(!(content = REALLOC(content, bytes+1))) {
-						logprintf(LOG_ERR, "out of memory");
+					if((content = REALLOC(content, bytes+1)) == NULL) {
+						fprintf(stderr, "out of memory");
 						exit(EXIT_FAILURE);
 					}
 					memset(content, '\0', bytes+1);
 
 					if(fread(content, sizeof(char), bytes, fp) == -1) {
-						logprintf(LOG_ERR, "cannot read file: %s", cpu_path);
+						logprintf(LOG_NOTICE, "cannot read file: %s", cpu_path);
 						fclose(fp);
 						break;
 					} else {
@@ -129,7 +129,7 @@ static void *thread(void *param) {
 						cpuTemp->message = NULL;
 					}
 				} else {
-					logprintf(LOG_ERR, "CPU sysfs \"%s\" does not exists", cpu_path);
+					logprintf(LOG_NOTICE, "CPU sysfs \"%s\" does not exists", cpu_path);
 				}
 			}
 			pthread_mutex_unlock(&lock);

@@ -35,8 +35,8 @@ TOKEN * new_token(int primary)
 
   tkn = (TOKEN *)MALLOC(sizeof(TOKEN));
   if (tkn == NULL) {
-    logprintf(LOG_ERR, "out of memory");
-    exit(1);
+    fprintf(stderr, "out of memory");
+    exit(EXIT_FAILURE);
   }
 
   memset(tkn, 0, sizeof(TOKEN));
@@ -83,7 +83,7 @@ TOKEN * hexnumber(char * text)
   tkn->value.number = strtoul(text, &e, 16);
   if ((e == text) || (*e != 0)) {
     logprintf(LOG_ERR, "%s:%d: can't scan hex number \"%s\"", infile, lineno, text);
-	return NULL;
+		return NULL;
   }
 
   return tkn;
@@ -101,8 +101,8 @@ TOKEN * string(char * text)
   tkn->value.type   = V_STR;
   tkn->value.string = (char *) MALLOC(len+1);
   if (tkn->value.string == NULL) {
-    logprintf(LOG_ERR, "out of memory");
-	return NULL;
+    fprintf(stderr, "out of memory");
+		return NULL;
   }
   strcpy(tkn->value.string, text);
 

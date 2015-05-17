@@ -111,8 +111,8 @@ static void *thread(void *param) {
 	timeout.tv_sec = 1;
 	timeout.tv_usec = 0;
 
-	if(!xnode) {
-		logprintf(LOG_ERR, "out of memory");
+	if(xnode == NULL) {
+		fprintf(stderr, "out of memory");
 		exit(EXIT_FAILURE);
 	}
 
@@ -131,8 +131,8 @@ static void *thread(void *param) {
 
 			while(jchild1) {
 				if(strcmp(jchild1->key, "server") == 0) {
-					if(!(xnode->server = MALLOC(strlen(jchild1->string_)+1))) {
-						logprintf(LOG_ERR, "out of memory");
+					if((xnode->server = MALLOC(strlen(jchild1->string_)+1)) == NULL) {
+						fprintf(stderr, "out of memory");
 						exit(EXIT_FAILURE);
 					}
 					strcpy(xnode->server, jchild1->string_);
@@ -198,17 +198,17 @@ static void *thread(void *param) {
 		/* Connect to the server */
 		switch(socket_timeout_connect(xnode->sockfd, (struct sockaddr *)&serv_addr, 3)) {
 			case -1:
-				logprintf(LOG_ERR, "could not connect to XBMC/Kodi server @%s", xnode->server);
+				logprintf(LOG_NOTICE, "could not connect to XBMC/Kodi server @%s", xnode->server);
 				protocol_thread_wait(node, 3, &nrloops);
 				continue;
 			break;
 			case -2:
-				logprintf(LOG_ERR, "XBMC/Kodi connection timeout @%s", xnode->server);
+				logprintf(LOG_NOTICE, "XBMC/Kodi connection timeout @%s", xnode->server);
 				protocol_thread_wait(node, 3, &nrloops);
 				continue;
 			break;
 			case -3:
-				logprintf(LOG_ERR, "Error in XBMC/Kodi socket connection @%s", xnode->server);
+				logprintf(LOG_NOTICE, "Error in XBMC/Kodi socket connection @%s", xnode->server);
 				protocol_thread_wait(node, 3, &nrloops);
 				continue;
 			break;

@@ -518,9 +518,9 @@ int avr_write_byte_default(PROGRAMMER * pgm, AVRPART * p, AVRMEM * mem,
        * memory bits but not all.  We only actually power-off the
        * device if the data read back does not match what we wrote.
        */
-      logprintf(LOG_INFO, "this device must be powered off and back on to continue");
+      logprintf(LOG_NOTICE, "this device must be powered off and back on to continue");
       if (pgm->pinno[PPI_AVR_VCC]) {
-        logprintf(LOG_INFO, "attempting to do this now ...");
+        logprintf(LOG_NOTICE, "attempting to do this now ...");
         pgm->powerdown(pgm);
         usleep(250000);
         rc = pgm->initialize(pgm, p);
@@ -530,7 +530,7 @@ int avr_write_byte_default(PROGRAMMER * pgm, AVRPART * p, AVRMEM * mem,
           return -3;
         }
 
-        logprintf(LOG_INFO, "device was successfully re-initialized");
+        logprintf(LOG_NOTICE, "device was successfully re-initialized");
         return 0;
       }
     }
@@ -621,7 +621,7 @@ int avr_write(PROGRAMMER * pgm, AVRPART * p, char * memtype, int size)
   }
   else if (size > wsize) {
     logprintf(LOG_ERR, "%d bytes requested, but memory region is only %d bytes", size, wsize);
-	logprintf(LOG_ERR, "Only %d bytes will actually be written", wsize);
+		logprintf(LOG_ERR, "Only %d bytes will actually be written", wsize);
   }
 
  if (pgm->paged_write != NULL && m->page_size != 0) {
@@ -773,15 +773,15 @@ int avr_verify(AVRPART * p, AVRPART * v, char * memtype, int size)
 
   if (vsize < size) {
     logprintf(LOG_ERR, "requested verification for %d bytes", size);
-	logprintf(LOG_ERR, "%s memory region only contains %d bytes", memtype, vsize);
-	logprintf(LOG_ERR, "Only %d bytes will be verified.", vsize);
+		logprintf(LOG_ERR, "%s memory region only contains %d bytes", memtype, vsize);
+		logprintf(LOG_ERR, "Only %d bytes will be verified.", vsize);
     size = vsize;
   }
 
   for (i=0; i<size; i++) {
     if (buf1[i] != buf2[i]) {
       logprintf(LOG_ERR, "verification error, first mismatch at byte 0x%04x", i);
-	  logprintf(LOG_ERR, "0x%02x != 0x%02x", buf1[i], buf2[i]);
+			logprintf(LOG_ERR, "0x%02x != 0x%02x", buf1[i], buf2[i]);
       return -1;
     }
   }

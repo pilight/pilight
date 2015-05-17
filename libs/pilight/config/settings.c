@@ -57,16 +57,16 @@ static void settings_add_string(const char *name, char *value) {
 	struct settings_t *snode = MALLOC(sizeof(struct settings_t));
 	struct settings_t *tmp = NULL;
 	if(snode == NULL) {
-		logprintf(LOG_ERR, "out of memory");
+		fprintf(stderr, "out of memory");
 		exit(EXIT_FAILURE);
 	}
 	if((snode->name = MALLOC(strlen(name)+1)) == NULL) {
-		logprintf(LOG_ERR, "out of memory");
+		fprintf(stderr, "out of memory");
 		exit(EXIT_FAILURE);
 	}
 	strcpy(snode->name, name);
 	if((snode->string_ = MALLOC(strlen(value)+1)) == NULL) {
-		logprintf(LOG_ERR, "out of memory");
+		fprintf(stderr, "out of memory");
 		exit(EXIT_FAILURE);
 	}
 	strcpy(snode->string_, value);
@@ -90,11 +90,11 @@ static void settings_add_number(const char *name, int value) {
 	struct settings_t *tmp = NULL;
 	struct settings_t *snode = MALLOC(sizeof(struct settings_t));
 	if(snode == NULL) {
-		logprintf(LOG_ERR, "out of memory");
+		fprintf(stderr, "out of memory");
 		exit(EXIT_FAILURE);
 	}
 	if((snode->name = MALLOC(strlen(name)+1)) == NULL) {
-		logprintf(LOG_ERR, "out of memory");
+		fprintf(stderr, "out of memory");
 		exit(EXIT_FAILURE);
 	}
 	strcpy(snode->name, name);
@@ -162,7 +162,7 @@ static int settings_parse(JsonNode *root) {
 
 	char *webgui_root = MALLOC(strlen(WEBSERVER_ROOT)+1);
 	if(webgui_root == NULL) {
-		logprintf(LOG_ERR, "out of memory");
+		fprintf(stderr, "out of memory");
 		exit(EXIT_FAILURE);
 	}
 	strcpy(webgui_root, WEBSERVER_ROOT);
@@ -207,12 +207,10 @@ static int settings_parse(JsonNode *root) {
 				logprintf(LOG_ERR, "config setting \"%s\" must contain a number larger than 0", jsettings->key);
 				have_error = 1;
 				goto clear;
-#if !defined(__FreeBSD__) && !defined(_WIN32)
-			} else if(wiringXValidGPIO((int)jsettings->number_) != 0) {
+			} else if((wiringXSupported() == 0 && wiringXValidGPIO((int)jsettings->number_) != 0) || wiringXSupported() != 0) {
 				logprintf(LOG_ERR, "config setting \"%s\" must contain a valid GPIO number", jsettings->key);
 				have_error = 1;
 				goto clear;
-#endif
 			} else {
 				settings_add_number(jsettings->key, (int)jsettings->number_);
 			}
@@ -341,7 +339,7 @@ static int settings_parse(JsonNode *root) {
 				goto clear;
 			} else {
 				if((webgui_root = REALLOC(webgui_root, strlen(jsettings->string_)+1)) == NULL) {
-					logprintf(LOG_ERR, "out of memory");
+					fprintf(stderr, "out of memory");
 					exit(EXIT_FAILURE);
 				}
 				strcpy(webgui_root, jsettings->string_);

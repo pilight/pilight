@@ -174,7 +174,7 @@ char *http_process_request(char *url, int method, char **type, int *code, int *s
 		if(len >= bufsize) {
 			bufsize += BUFFER_SIZE;
 			if((header = REALLOC(header, bufsize)) == NULL) {
-				logprintf(LOG_ERR, "out of memory");
+				fprintf(stderr, "out of memory");
 				exit(EXIT_FAILURE);
 			}
 		}
@@ -182,7 +182,7 @@ char *http_process_request(char *url, int method, char **type, int *code, int *s
 		if(len >= bufsize) {
 			bufsize += BUFFER_SIZE;
 			if((header = REALLOC(header, bufsize)) == NULL) {
-				logprintf(LOG_ERR, "out of memory");
+				fprintf(stderr, "out of memory");
 				exit(EXIT_FAILURE);
 			}
 		}
@@ -191,7 +191,7 @@ char *http_process_request(char *url, int method, char **type, int *code, int *s
 			if(len >= bufsize) {
 				bufsize += BUFFER_SIZE;
 				if((header = REALLOC(header, bufsize)) == NULL) {
-					logprintf(LOG_ERR, "out of memory");
+					fprintf(stderr, "out of memory");
 					exit(EXIT_FAILURE);
 				}
 			}
@@ -200,7 +200,7 @@ char *http_process_request(char *url, int method, char **type, int *code, int *s
 		if(len >= bufsize) {
 			bufsize += BUFFER_SIZE;
 			if((header = REALLOC(header, bufsize)) == NULL) {
-				logprintf(LOG_ERR, "out of memory");
+				fprintf(stderr, "out of memory");
 				exit(EXIT_FAILURE);
 			}
 		}
@@ -208,7 +208,7 @@ char *http_process_request(char *url, int method, char **type, int *code, int *s
 		if(len >= bufsize) {
 			bufsize += BUFFER_SIZE;
 			if((header = REALLOC(header, bufsize)) == NULL) {
-				logprintf(LOG_ERR, "out of memory");
+				fprintf(stderr, "out of memory");
 				exit(EXIT_FAILURE);
 			}
 		}
@@ -216,7 +216,7 @@ char *http_process_request(char *url, int method, char **type, int *code, int *s
 		if(len >= bufsize) {
 			bufsize += BUFFER_SIZE;
 			if((header = REALLOC(header, bufsize)) == NULL) {
-				logprintf(LOG_ERR, "out of memory");
+				fprintf(stderr, "out of memory");
 				exit(EXIT_FAILURE);
 			}
 		}
@@ -224,7 +224,7 @@ char *http_process_request(char *url, int method, char **type, int *code, int *s
 		if(len >= bufsize) {
 			bufsize += BUFFER_SIZE;
 			if((header = REALLOC(header, bufsize)) == NULL) {
-				logprintf(LOG_ERR, "out of memory");
+				fprintf(stderr, "out of memory");
 				exit(EXIT_FAILURE);
 			}
 		}
@@ -233,7 +233,7 @@ char *http_process_request(char *url, int method, char **type, int *code, int *s
 		if(len >= bufsize) {
 			bufsize += BUFFER_SIZE;
 			if((header = REALLOC(header, bufsize)) == NULL) {
-				logprintf(LOG_ERR, "out of memory");
+				fprintf(stderr, "out of memory");
 				exit(EXIT_FAILURE);
 			}
 		}
@@ -241,7 +241,7 @@ char *http_process_request(char *url, int method, char **type, int *code, int *s
 		if(len >= bufsize) {
 			bufsize += BUFFER_SIZE;
 			if((header = REALLOC(header, bufsize)) == NULL) {
-				logprintf(LOG_ERR, "out of memory");
+				fprintf(stderr, "out of memory");
 				exit(EXIT_FAILURE);
 			}
 		}
@@ -250,7 +250,7 @@ char *http_process_request(char *url, int method, char **type, int *code, int *s
 			if(len >= bufsize) {
 				bufsize += BUFFER_SIZE;
 				if((header = REALLOC(header, bufsize)) == NULL) {
-					logprintf(LOG_ERR, "out of memory");
+					fprintf(stderr, "out of memory");
 					exit(EXIT_FAILURE);
 				}
 			}
@@ -259,7 +259,7 @@ char *http_process_request(char *url, int method, char **type, int *code, int *s
 		if(len >= bufsize) {
 			bufsize += BUFFER_SIZE;
 			if((header = REALLOC(header, bufsize)) == NULL) {
-				logprintf(LOG_ERR, "out of memory");
+				fprintf(stderr, "out of memory");
 				exit(EXIT_FAILURE);
 			}
 		}
@@ -267,7 +267,7 @@ char *http_process_request(char *url, int method, char **type, int *code, int *s
 		if(len >= bufsize) {
 			bufsize += BUFFER_SIZE;
 			if((header = REALLOC(header, bufsize)) == NULL) {
-				logprintf(LOG_ERR, "out of memory");
+				fprintf(stderr, "out of memory");
 				exit(EXIT_FAILURE);
 			}
 		}
@@ -347,8 +347,8 @@ char *http_process_request(char *url, int method, char **type, int *code, int *s
 		}
 
 		if((content = REALLOC(content, (size_t)(*size+bytes+1))) == NULL) {
-			logprintf(LOG_ERR, "out of memory");
-			exit(0);
+			fprintf(stderr, "out of memory");
+			exit(EXIT_FAILURE);
 		}
 
 		memset(&content[*size], '\0', (size_t)(bytes+1));
