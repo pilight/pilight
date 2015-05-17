@@ -38,6 +38,7 @@
 
 #include "../config/settings.h"
 #include "threads.h"
+#include "sha256cache.h"
 #include "pilight.h"
 #include "network.h"
 #include "mongoose.h"
@@ -129,10 +130,12 @@ int webserver_gc(void) {
 		if(mgserver[i] != NULL) {
 			mg_wakeup_server(mgserver[i]);
 		}
+		usleep(100);
 		mg_destroy_server(&mgserver[i]);
 	}
 
 	fcache_gc();
+	sha256cache_gc();
 	logprintf(LOG_DEBUG, "garbage collected webserver library");
 	return 1;
 }

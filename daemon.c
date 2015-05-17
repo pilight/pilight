@@ -177,8 +177,6 @@ static int threadprofiler = 0;
 static int running = 1;
 /* Are we currently sending code */
 static int sending = 0;
-/* How many times does a code need to received*/
-static int receive_repeat = RECEIVE_REPEATS;
 /* Socket identifier to the server if we are running as client */
 static int sockfd = 0;
 /* Thread pointers */
@@ -596,10 +594,7 @@ void *receive_parse_code(void *param) {
 						}
 
 						protocol->repeats++;
-						/* Continue if we have recognized enough repeated codes */
-						if((protocol->repeats >= (receive_repeat*protocol->rxrpt) ||
-						   strcmp(protocol->id, "pilight_firmware") == 0) &&
-							 protocol->parseCode != NULL) {
+						if(protocol->parseCode != NULL) {
 							logprintf(LOG_DEBUG, "recevied pulse length of %d", recvqueue->plslen);
 							logprintf(LOG_DEBUG, "caught minimum # of repeats %d of %s", protocol->repeats, protocol->id);
 							logprintf(LOG_DEBUG, "called %s parseRaw()", protocol->id);
@@ -2367,8 +2362,6 @@ int start_pilight(int argc, char **argv) {
 			log_level_set(LOG_ERR);
 		}
 	}
-
-	settings_find_number("receive-repeats", &receive_repeat);
 
 #ifndef _WIN32
 	if(running == 1) {

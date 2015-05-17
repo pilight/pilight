@@ -135,7 +135,7 @@ int main(int argc, char **argv) {
 			exit(EXIT_FAILURE);
 		}		
 	}
-	// strcpy((char *)output, password);
+
 	for(i=0;i<SHA256_ITERATIONS;i++) {
 		sha256_init(&ctx);
 		sha256_starts(&ctx, 0);

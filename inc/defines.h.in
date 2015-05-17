@@ -26,7 +26,7 @@
 #define PULSE_DIV								34
 #define MAXPULSESTREAMLENGTH		512
 #define EPSILON									0.00001
-#define SHA256_ITERATIONS				1000
+#define SHA256_ITERATIONS				25000
 
 #ifdef WEBSERVER
 	#define WEBSERVER_HTTP_PORT				5001
@@ -80,7 +80,6 @@
 #endif	
 #define LOG_MAX_SIZE 						1048576 // 1024*1024
 
-#define RECEIVE_REPEATS					1
 #define UUID_LENGTH							21
 
 #define FIRMWARE_PATH				"c:/pilight/"

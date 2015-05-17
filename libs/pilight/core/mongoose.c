@@ -65,7 +65,7 @@
 #pragma warning (disable : 4204)  // missing c99 support
 #endif
 
-#include "../../polarssl/polarssl/sha256.h"
+#include "sha256cache.h"
 #include "common.h"
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -3807,11 +3807,9 @@ void mg_send_digest_auth_request(struct mg_connection *c) {
 }
 
 int mg_authorize_input(struct mg_connection *c, char *username, char *password, const char *domain) {
-	unsigned char output[33];
   const char *hdr = NULL;
-	char *decoded = NULL, **array = NULL, converted[65];
-	int i = 0, n = 0, x = 0;
-	sha256_context ctx;
+	char **array = NULL, *decoded = NULL;
+	int n = 0;
 
   if(c == NULL) {
 		return 0;
@@ -3834,22 +3832,12 @@ int mg_authorize_input(struct mg_connection *c, char *username, char *password, 
 				exit(EXIT_FAILURE);
 			}
 		}
-		for(i=0;i<SHA256_ITERATIONS;i++) {
-			sha256_init(&ctx);
-			sha256_starts(&ctx, 0);
-			sha256_update(&ctx, (unsigned char *)array[1], strlen((char *)array[1]));
-			sha256_finish(&ctx, output);
-			for(x=0;x<64;x+=2) {
-				sprintf(&array[1][x], "%02x", output[x/2] );
-			}
-			sha256_free(&ctx);
+
+		if(sha256cache_get_hash(array[1]) == NULL) {
+			sha256cache_add(array[1]);
 		}
 
-		for(i=0;i<64;i+=2) {
-			sprintf(&converted[i], "%02x", output[i/2]);
-		}
-
-		if(strcmp(converted, password) == 0 && strcmp(array[0], username) == 0) {
+		if(strcmp(sha256cache_get_hash(array[1]), password) == 0 && strcmp(array[0], username) == 0) {
 			array_free(&array, n);
 			FREE(decoded);
 			return MG_TRUE;
