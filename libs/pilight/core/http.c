@@ -72,6 +72,11 @@ char *http_process_request(char *url, int method, char **type, int *code, int *s
 
 	*size = 0;
 
+	if(header == NULL) {
+		fprintf(stderr, "out of memory");
+		exit(EXIT_FAILURE);
+	}
+	
 	memset(header, '\0', bufsize);
 	memset(recvBuff, '\0', BUFFER_SIZE+1);
 	memset(&serv_addr, '\0', sizeof(struct sockaddr_in));
@@ -93,17 +98,29 @@ char *http_process_request(char *url, int method, char **type, int *code, int *s
 	len = strlen(url);
 	if((tok = strstr(&url[plen], "/"))) {
 		tlen = (size_t)(tok-url)-plen+1;
-		host = MALLOC(tlen+1);
+		if((host = MALLOC(tlen+1)) == NULL) {
+			fprintf(stderr, "out of memory");
+			exit(EXIT_FAILURE);
+		}
 		strncpy(host, &url[plen-1], tlen);
 		host[tlen] = '\0';
-		page = MALLOC(len-tlen);
+		if((page = MALLOC(len-tlen)) == NULL) {
+			fprintf(stderr, "out of memory");
+			exit(EXIT_FAILURE);
+		}		
 		strcpy(page, &url[tlen+(plen-1)]);
 	} else {
 		tlen = strlen(url)-(plen-1);
-		host = MALLOC(tlen+1);
+		if((host = MALLOC(tlen+1)) == NULL) {
+			fprintf(stderr, "out of memory");
+			exit(EXIT_FAILURE);
+		}
 		strncpy(host, &url[(plen-1)], tlen);
 		host[tlen] = '\0';
-		page = MALLOC(2);
+		if((page = MALLOC(2)) == NULL) {
+			fprintf(stderr, "out of memory");
+			exit(EXIT_FAILURE);
+		}
 		strcpy(page, "/");
 	}
 	if((tok = strstr(host, "@"))) {
@@ -112,7 +129,10 @@ char *http_process_request(char *url, int method, char **type, int *code, int *s
 			pglen -= 1;
 		}
 		tlen = (size_t)(tok-host);
-		auth = MALLOC(tlen+1);
+		if((auth = MALLOC(tlen+1)) == NULL) {
+			fprintf(stderr, "out of memory");
+			exit(EXIT_FAILURE);
+		}
 		strncpy(auth, &host[0], tlen);
 		auth[tlen] = '\0';
 		strncpy(&host[0], &url[plen+tlen], len-(plen+tlen+pglen));
