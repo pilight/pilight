@@ -206,7 +206,7 @@ int config_read(void) {
 	bytes = (size_t)st.st_size;
 
 	if((content = CALLOC(bytes+1, sizeof(char))) == NULL) {
-		fprintf(stderr, "out of memory");
+		fprintf(stderr, "out of memory\n");
 		fclose(fp);
 		exit(EXIT_FAILURE);
 	}
@@ -239,12 +239,12 @@ void config_register(config_t **listener, const char *name) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
 	if((*listener = MALLOC(sizeof(config_t))) == NULL) {
-		fprintf(stderr, "out of memory");
+		fprintf(stderr, "out of memory\n");
 		exit(EXIT_FAILURE);
 	}
 
 	if(((*listener)->name = MALLOC(strlen(name)+1)) == NULL) {
-		fprintf(stderr, "out of memory");
+		fprintf(stderr, "out of memory\n");
 		exit(EXIT_FAILURE);
 	}
 	strcpy((*listener)->name, name);
@@ -260,7 +260,7 @@ int config_set_file(char *settfile) {
 
 	if(access(settfile, R_OK | W_OK) != -1) {
 		if((configfile = REALLOC(configfile, strlen(settfile)+1)) == NULL) {
-			fprintf(stderr, "out of memory");
+			fprintf(stderr, "out of memory\n");
 			exit(EXIT_FAILURE);
 		}
 		strcpy(configfile, settfile);

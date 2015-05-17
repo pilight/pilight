@@ -108,7 +108,7 @@ static int fillTZData(void) {
 	bytes = (size_t)st.st_size;
 
 	if((content = calloc(bytes+1, sizeof(char))) == NULL) {
-		fprintf(stderr, "out of memory");
+		fprintf(stderr, "out of memory\n");
 		fclose(fp);
 		fillingtzdata = 0;
 		exit(EXIT_FAILURE);
@@ -137,7 +137,7 @@ static int fillTZData(void) {
 		while(country) {
 			strcpy(tznames[i], country->key);
 			if((tzcoords = realloc(tzcoords, sizeof(int **)*(i+1))) == NULL) {
-				fprintf(stderr, "out of memory");
+				fprintf(stderr, "out of memory\n");
 				exit(EXIT_FAILURE);
 			}
 			tzcoords[i] = NULL;
@@ -146,12 +146,12 @@ static int fillTZData(void) {
 			while(coords) {
 				y = 0;
 				if((tzcoords[i] = realloc(tzcoords[i], sizeof(int *)*(x+1))) == NULL) {
-					fprintf(stderr, "out of memory");
+					fprintf(stderr, "out of memory\n");
 					exit(EXIT_FAILURE);
 				}
 				tzcoords[i][x] = NULL;
 				if((tzcoords[i][x] = malloc(sizeof(int)*2)) == NULL) {
-					fprintf(stderr, "out of memory");
+					fprintf(stderr, "out of memory\n");
 					exit(EXIT_FAILURE);
 				}
 				JsonNode *lonlat = json_first_child(coords);

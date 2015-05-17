@@ -73,7 +73,7 @@ char *http_process_request(char *url, int method, char **type, int *code, int *s
 	*size = 0;
 
 	if(header == NULL) {
-		fprintf(stderr, "out of memory");
+		fprintf(stderr, "out of memory\n");
 		exit(EXIT_FAILURE);
 	}
 	
@@ -99,26 +99,26 @@ char *http_process_request(char *url, int method, char **type, int *code, int *s
 	if((tok = strstr(&url[plen], "/"))) {
 		tlen = (size_t)(tok-url)-plen+1;
 		if((host = MALLOC(tlen+1)) == NULL) {
-			fprintf(stderr, "out of memory");
+			fprintf(stderr, "out of memory\n");
 			exit(EXIT_FAILURE);
 		}
 		strncpy(host, &url[plen-1], tlen);
 		host[tlen] = '\0';
 		if((page = MALLOC(len-tlen)) == NULL) {
-			fprintf(stderr, "out of memory");
+			fprintf(stderr, "out of memory\n");
 			exit(EXIT_FAILURE);
 		}		
 		strcpy(page, &url[tlen+(plen-1)]);
 	} else {
 		tlen = strlen(url)-(plen-1);
 		if((host = MALLOC(tlen+1)) == NULL) {
-			fprintf(stderr, "out of memory");
+			fprintf(stderr, "out of memory\n");
 			exit(EXIT_FAILURE);
 		}
 		strncpy(host, &url[(plen-1)], tlen);
 		host[tlen] = '\0';
 		if((page = MALLOC(2)) == NULL) {
-			fprintf(stderr, "out of memory");
+			fprintf(stderr, "out of memory\n");
 			exit(EXIT_FAILURE);
 		}
 		strcpy(page, "/");
@@ -130,7 +130,7 @@ char *http_process_request(char *url, int method, char **type, int *code, int *s
 		}
 		tlen = (size_t)(tok-host);
 		if((auth = MALLOC(tlen+1)) == NULL) {
-			fprintf(stderr, "out of memory");
+			fprintf(stderr, "out of memory\n");
 			exit(EXIT_FAILURE);
 		}
 		strncpy(auth, &host[0], tlen);
@@ -194,7 +194,7 @@ char *http_process_request(char *url, int method, char **type, int *code, int *s
 		if(len >= bufsize) {
 			bufsize += BUFFER_SIZE;
 			if((header = REALLOC(header, bufsize)) == NULL) {
-				fprintf(stderr, "out of memory");
+				fprintf(stderr, "out of memory\n");
 				exit(EXIT_FAILURE);
 			}
 		}
@@ -202,7 +202,7 @@ char *http_process_request(char *url, int method, char **type, int *code, int *s
 		if(len >= bufsize) {
 			bufsize += BUFFER_SIZE;
 			if((header = REALLOC(header, bufsize)) == NULL) {
-				fprintf(stderr, "out of memory");
+				fprintf(stderr, "out of memory\n");
 				exit(EXIT_FAILURE);
 			}
 		}
@@ -211,7 +211,7 @@ char *http_process_request(char *url, int method, char **type, int *code, int *s
 			if(len >= bufsize) {
 				bufsize += BUFFER_SIZE;
 				if((header = REALLOC(header, bufsize)) == NULL) {
-					fprintf(stderr, "out of memory");
+					fprintf(stderr, "out of memory\n");
 					exit(EXIT_FAILURE);
 				}
 			}
@@ -220,7 +220,7 @@ char *http_process_request(char *url, int method, char **type, int *code, int *s
 		if(len >= bufsize) {
 			bufsize += BUFFER_SIZE;
 			if((header = REALLOC(header, bufsize)) == NULL) {
-				fprintf(stderr, "out of memory");
+				fprintf(stderr, "out of memory\n");
 				exit(EXIT_FAILURE);
 			}
 		}
@@ -228,7 +228,7 @@ char *http_process_request(char *url, int method, char **type, int *code, int *s
 		if(len >= bufsize) {
 			bufsize += BUFFER_SIZE;
 			if((header = REALLOC(header, bufsize)) == NULL) {
-				fprintf(stderr, "out of memory");
+				fprintf(stderr, "out of memory\n");
 				exit(EXIT_FAILURE);
 			}
 		}
@@ -236,7 +236,7 @@ char *http_process_request(char *url, int method, char **type, int *code, int *s
 		if(len >= bufsize) {
 			bufsize += BUFFER_SIZE;
 			if((header = REALLOC(header, bufsize)) == NULL) {
-				fprintf(stderr, "out of memory");
+				fprintf(stderr, "out of memory\n");
 				exit(EXIT_FAILURE);
 			}
 		}
@@ -244,7 +244,7 @@ char *http_process_request(char *url, int method, char **type, int *code, int *s
 		if(len >= bufsize) {
 			bufsize += BUFFER_SIZE;
 			if((header = REALLOC(header, bufsize)) == NULL) {
-				fprintf(stderr, "out of memory");
+				fprintf(stderr, "out of memory\n");
 				exit(EXIT_FAILURE);
 			}
 		}
@@ -253,7 +253,7 @@ char *http_process_request(char *url, int method, char **type, int *code, int *s
 		if(len >= bufsize) {
 			bufsize += BUFFER_SIZE;
 			if((header = REALLOC(header, bufsize)) == NULL) {
-				fprintf(stderr, "out of memory");
+				fprintf(stderr, "out of memory\n");
 				exit(EXIT_FAILURE);
 			}
 		}
@@ -261,7 +261,7 @@ char *http_process_request(char *url, int method, char **type, int *code, int *s
 		if(len >= bufsize) {
 			bufsize += BUFFER_SIZE;
 			if((header = REALLOC(header, bufsize)) == NULL) {
-				fprintf(stderr, "out of memory");
+				fprintf(stderr, "out of memory\n");
 				exit(EXIT_FAILURE);
 			}
 		}
@@ -270,7 +270,7 @@ char *http_process_request(char *url, int method, char **type, int *code, int *s
 			if(len >= bufsize) {
 				bufsize += BUFFER_SIZE;
 				if((header = REALLOC(header, bufsize)) == NULL) {
-					fprintf(stderr, "out of memory");
+					fprintf(stderr, "out of memory\n");
 					exit(EXIT_FAILURE);
 				}
 			}
@@ -279,7 +279,7 @@ char *http_process_request(char *url, int method, char **type, int *code, int *s
 		if(len >= bufsize) {
 			bufsize += BUFFER_SIZE;
 			if((header = REALLOC(header, bufsize)) == NULL) {
-				fprintf(stderr, "out of memory");
+				fprintf(stderr, "out of memory\n");
 				exit(EXIT_FAILURE);
 			}
 		}
@@ -287,7 +287,7 @@ char *http_process_request(char *url, int method, char **type, int *code, int *s
 		if(len >= bufsize) {
 			bufsize += BUFFER_SIZE;
 			if((header = REALLOC(header, bufsize)) == NULL) {
-				fprintf(stderr, "out of memory");
+				fprintf(stderr, "out of memory\n");
 				exit(EXIT_FAILURE);
 			}
 		}
@@ -367,7 +367,7 @@ char *http_process_request(char *url, int method, char **type, int *code, int *s
 		}
 
 		if((content = REALLOC(content, (size_t)(*size+bytes+1))) == NULL) {
-			fprintf(stderr, "out of memory");
+			fprintf(stderr, "out of memory\n");
 			exit(EXIT_FAILURE);
 		}
 

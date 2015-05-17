@@ -98,18 +98,18 @@ int sha256cache_add(char *name) {
 	}
 
 	if((password = MALLOC(len)) == NULL) {
-		fprintf(stderr, "out of memory");
+		fprintf(stderr, "out of memory\n");
 		exit(EXIT_FAILURE);
 	}
 	strcpy(password, name);
 	
 	struct sha256cache_t *node = MALLOC(sizeof(struct sha256cache_t));
 	if(node == NULL) {
-		fprintf(stderr, "out of memory");
+		fprintf(stderr, "out of memory\n");
 		exit(EXIT_FAILURE);
 	}
 	if((node->name = MALLOC(strlen(name)+1)) == NULL) {
-		fprintf(stderr, "out of memory");
+		fprintf(stderr, "out of memory\n");
 		exit(EXIT_FAILURE);
 	}
 	strcpy(node->name, name);

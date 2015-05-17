@@ -200,7 +200,7 @@ int ssdp_seek(struct ssdp_list_t **ssdp_list) {
 			if(match == 1) {
 				struct ssdp_list_t *node = MALLOC(sizeof(struct ssdp_list_t));
 				if(node == NULL) {
-					fprintf(stderr, "out of memory");
+					fprintf(stderr, "out of memory\n");
 					exit(EXIT_FAILURE);
 				}
 				sprintf(node->ip, "%hu.%hu.%hu.%hu", nip[0], nip[1], nip[2], nip[3]);
@@ -278,11 +278,11 @@ void *ssdp_wait(void *param) {
 					continue;
 				}
 				if((header = REALLOC(header, sizeof(char *)*((size_t)nrheader+1))) == NULL) {
-					fprintf(stderr, "out of memory");
+					fprintf(stderr, "out of memory\n");
 					exit(EXIT_FAILURE);
 				}
 				if((header[nrheader] = MALLOC(BUFFER_SIZE)) == NULL) {
-					fprintf(stderr, "out of memory");
+					fprintf(stderr, "out of memory\n");
 					exit(EXIT_FAILURE);
 				}
 				memset(header[nrheader], '\0', BUFFER_SIZE);

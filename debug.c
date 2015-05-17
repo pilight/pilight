@@ -307,7 +307,7 @@ int main(int argc, char **argv) {
 	gc_catch();
 
 	if((progname = MALLOC(15)) == NULL) {
-		fprintf(stderr, "out of memory");
+		fprintf(stderr, "out of memory\n");
 		exit(EXIT_FAILURE);
 	}
 	strcpy(progname, "pilight-debug");

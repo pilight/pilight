@@ -70,7 +70,7 @@ int main(int argc, char **argv) {
 #endif
 
 	if((progname = MALLOC(16)) == NULL) {
-		fprintf(stderr, "out of memory");
+		fprintf(stderr, "out of memory\n");
 		exit(EXIT_FAILURE);
 	}
 	strcpy(progname, "pilight-control");
@@ -107,21 +107,21 @@ int main(int argc, char **argv) {
 			break;
 			case 'd':
 				if((device = REALLOC(device, strlen(optarg)+1)) == NULL) {
-					fprintf(stderr, "out of memory");
+					fprintf(stderr, "out of memory\n");
 					exit(EXIT_FAILURE);
 				}
 				strcpy(device, optarg);
 			break;
 			case 's':
 				if((state = REALLOC(state, strlen(optarg)+1)) == NULL) {
-					fprintf(stderr, "out of memory");
+					fprintf(stderr, "out of memory\n");
 					exit(EXIT_FAILURE);
 				}
 				strcpy(state, optarg);
 			break;
 			case 'v':
 				if((values = REALLOC(values, strlen(optarg)+1)) == NULL) {
-					fprintf(stderr, "out of memory");
+					fprintf(stderr, "out of memory\n");
 					exit(EXIT_FAILURE);
 				}
 				strcpy(values, optarg);
@@ -134,7 +134,7 @@ int main(int argc, char **argv) {
 			break;
 			case 'S':
 				if(!(server = REALLOC(server, strlen(optarg)+1))) {
-					fprintf(stderr, "out of memory");
+					fprintf(stderr, "out of memory\n");
 					exit(EXIT_FAILURE);
 				}
 				strcpy(server, optarg);

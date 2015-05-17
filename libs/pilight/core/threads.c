@@ -57,7 +57,7 @@ struct threadqueue_t *threads_register(const char *id, void *(*function)(void *p
 
 	struct threadqueue_t *tnode = MALLOC(sizeof(struct threadqueue_t));
 	if(tnode == NULL) {
-		fprintf(stderr, "out of memory");
+		fprintf(stderr, "out of memory\n");
 		exit(EXIT_FAILURE);
 	}
 
@@ -70,7 +70,7 @@ struct threadqueue_t *threads_register(const char *id, void *(*function)(void *p
 	tnode->running = 0;
 	tnode->force = force;
 	if((tnode->id = MALLOC(strlen(id)+1)) == NULL) {
-		fprintf(stderr, "out of memory");
+		fprintf(stderr, "out of memory\n");
 		exit(EXIT_FAILURE);
 	}
 	strcpy(tnode->id, id);

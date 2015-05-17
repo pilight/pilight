@@ -100,7 +100,7 @@ int main(int argc, char **argv) {
 #endif
 
 	if((progname = MALLOC(13)) == NULL) {
-		fprintf(stderr, "out of memory");
+		fprintf(stderr, "out of memory\n");
 		exit(EXIT_FAILURE);
 	}
 	strcpy(progname, "pilight-send");
@@ -155,7 +155,7 @@ int main(int argc, char **argv) {
 					exit(EXIT_FAILURE);
 				} else {
 					if((protobuffer = REALLOC(protobuffer, strlen(args)+1)) == NULL) {
-						fprintf(stderr, "out of memory");
+						fprintf(stderr, "out of memory\n");
 						exit(EXIT_FAILURE);
 					}
 					strcpy(protobuffer, args);
@@ -169,7 +169,7 @@ int main(int argc, char **argv) {
 			break;
 			case 'S':
 				if((server = REALLOC(server, strlen(args)+1)) == NULL) {
-					fprintf(stderr, "out of memory");
+					fprintf(stderr, "out of memory\n");
 					exit(EXIT_FAILURE);
 				}
 				strcpy(server, args);
@@ -179,7 +179,7 @@ int main(int argc, char **argv) {
 			break;
 			case 'U':
 				if((uuid = REALLOC(uuid, strlen(args)+1)) == NULL) {
-					fprintf(stderr, "out of memory");
+					fprintf(stderr, "out of memory\n");
 					exit(EXIT_FAILURE);
 				}
 				strcpy(uuid, args);
@@ -274,16 +274,16 @@ int main(int argc, char **argv) {
 					while(tmpdev) {
 						struct pname_t *node = MALLOC(sizeof(struct pname_t));
 						if(node == NULL) {
-							fprintf(stderr, "out of memory");
+							fprintf(stderr, "out of memory\n");
 							exit(EXIT_FAILURE);
 						}
 						if((node->name = MALLOC(strlen(tmpdev->id)+1)) == NULL) {
-							fprintf(stderr, "out of memory");
+							fprintf(stderr, "out of memory\n");
 							exit(EXIT_FAILURE);
 						}
 						strcpy(node->name, tmpdev->id);
 						if((node->desc = MALLOC(strlen(tmpdev->desc)+1)) == NULL) {
-							fprintf(stderr, "out of memory");
+							fprintf(stderr, "out of memory\n");
 							exit(EXIT_FAILURE);
 						}
 						strcpy(node->desc, tmpdev->desc);

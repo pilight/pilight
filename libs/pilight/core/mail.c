@@ -213,7 +213,7 @@ starttls:
 
 	len = strlen("EHLO ")+strlen(USERAGENT)+3;
 	if((out = REALLOC(out, len+1)) == NULL) {
-		fprintf(stderr, "out of memory");
+		fprintf(stderr, "out of memory\n");
 		exit(EXIT_FAILURE);
 	}
 	len = (size_t)snprintf(out, len, "EHLO %s\r\n", USERAGENT);
@@ -268,7 +268,7 @@ starttls:
 	if(authtype == STARTTLS) {
 		len = strlen("STARTTLS\r\n")+1;
 		if((out = REALLOC(out, len+1)) == NULL) {
-			fprintf(stderr, "out of memory");
+			fprintf(stderr, "out of memory\n");
 			exit(EXIT_FAILURE);
 		}
 		strcpy(out, "STARTTLS\r\n");
@@ -309,7 +309,7 @@ starttls:
 
 	char *authstr = MALLOC(len), *hash = NULL;
 	if(authstr == NULL) {
-		fprintf(stderr, "out of memory");
+		fprintf(stderr, "out of memory\n");
 		exit(EXIT_FAILURE);
 	}
 	memset(authstr, '\0', len);
@@ -320,7 +320,7 @@ starttls:
 
 	len = strlen("AUTH PLAIN ")+strlen(hash)+3;
 	if((out = REALLOC(out, len+4)) == NULL) {
-		fprintf(stderr, "out of memory");
+		fprintf(stderr, "out of memory\n");
 		exit(EXIT_FAILURE);
 	}
 	memset(out, '\0', len);
@@ -364,7 +364,7 @@ starttls:
 
 	len = strlen("MAIL FROM: <>\r\n")+strlen(mail->from)+1;
 	if((out = REALLOC(out, len+1)) == NULL) {
-		fprintf(stderr, "out of memory");
+		fprintf(stderr, "out of memory\n");
 		exit(EXIT_FAILURE);
 	}
 	len = (size_t)snprintf(out, len, "MAIL FROM: <%s>\r\n", mail->from);
@@ -390,7 +390,7 @@ starttls:
 
 	len = strlen("RCPT TO: <>\r\n")+strlen(mail->to)+1;
 	if((out = REALLOC(out, len+1)) == NULL) {
-		fprintf(stderr, "out of memory");
+		fprintf(stderr, "out of memory\n");
 		exit(EXIT_FAILURE);
 	}
 	snprintf(out, len, "RCPT TO: <%s>\r\n", mail->to);
@@ -416,7 +416,7 @@ starttls:
 
 	len = strlen("DATA\r\n")+1;
 	if((out = REALLOC(out, len+1)) == NULL) {
-		fprintf(stderr, "out of memory");
+		fprintf(stderr, "out of memory\n");
 		exit(EXIT_FAILURE);
 	}
 	strcpy(out, "DATA\r\n");
@@ -442,7 +442,7 @@ starttls:
 
 	len = 255+strlen(mail->to)+strlen(mail->from)+strlen(mail->subject)+strlen(mail->message);
 	if((out = REALLOC(out, len+1)) == NULL) {
-		fprintf(stderr, "out of memory");
+		fprintf(stderr, "out of memory\n");
 		exit(EXIT_FAILURE);
 	}
 	len = (size_t)snprintf(out, len, "Subject: %s\r\n"
@@ -477,7 +477,7 @@ starttls:
 
 	len = strlen("RSET\r\n");
 	if((out = REALLOC(out, len+1)) == NULL) {
-		fprintf(stderr, "out of memory");
+		fprintf(stderr, "out of memory\n");
 		exit(EXIT_FAILURE);
 	}
 	strcpy(out, "RSET\r\n");
@@ -503,7 +503,7 @@ starttls:
 
 	len = strlen("QUIT\r\n");
 	if((out = REALLOC(out, len+1)) == NULL) {
-		fprintf(stderr, "out of memory");
+		fprintf(stderr, "out of memory\n");
 		exit(EXIT_FAILURE);
 	}
 	strcpy(out, "QUIT\r\n");

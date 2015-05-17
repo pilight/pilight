@@ -193,7 +193,7 @@ char *webserver_mimetype(const char *str) {
 
 	char *mimetype = MALLOC(strlen(str)+1);
 	if(!mimetype) {
-		fprintf(stderr, "out of memory");
+		fprintf(stderr, "out of memory\n");
 		exit(EXIT_FAILURE);
 	}
 	memset(mimetype, '\0', strlen(str)+1);
@@ -267,7 +267,7 @@ static char *webserver_shell(const char *format_str, struct mg_connection *conn,
 					chunk = fread(buff, sizeof(char), 1024, fp);
 					total += chunk;
 					if((output = REALLOC(output, total+1)) == NULL) {
-						fprintf(stderr, "out of memory");
+						fprintf(stderr, "out of memory\n");
 						exit(EXIT_FAILURE);
 					}
 					memcpy(&output[total-chunk], buff, chunk);
@@ -421,7 +421,7 @@ static int webserver_request_handler(struct mg_connection *conn) {
 				for(q=0;q<n;q++) {
 					size_t l = strlen(webserver_root)+strlen(conn->uri)+strlen(array[q])+4;
 					if((request = REALLOC(request, l)) == NULL) {
-						fprintf(stderr, "out of memory");
+						fprintf(stderr, "out of memory\n");
 						exit(EXIT_FAILURE);
 					}
 					memset(request, '\0', l);
@@ -442,7 +442,7 @@ static int webserver_request_handler(struct mg_connection *conn) {
 			} else if(webserver_root != NULL && conn->uri != NULL) {
 				size_t wlen = strlen(webserver_root)+strlen(conn->uri)+2;
 				if((request = MALLOC(wlen)) == NULL) {
-					fprintf(stderr, "out of memory");
+					fprintf(stderr, "out of memory\n");
 					exit(EXIT_FAILURE);
 				}
 				memset(request, '\0', wlen);
@@ -470,7 +470,7 @@ static int webserver_request_handler(struct mg_connection *conn) {
 				mimetype = webserver_mimetype("text/plain");
 			} else {
 				if((ext = REALLOC(ext, strlen(dot)+1)) == NULL) {
-					fprintf(stderr, "out of memory");
+					fprintf(stderr, "out of memory\n");
 					exit(EXIT_FAILURE);
 				}
 				memset(ext, '\0', strlen(dot)+1);
@@ -574,7 +574,7 @@ static int webserver_request_handler(struct mg_connection *conn) {
 						size_t xpos = (size_t)(nptr-output);
 						char *header = MALLOC((pos-xpos)+(size_t)1);
 						if(!header) {
-							fprintf(stderr, "out of memory");
+							fprintf(stderr, "out of memory\n");
 							exit(EXIT_FAILURE);
 						}
 
@@ -838,11 +838,11 @@ static void webserver_queue(char *message) {
 	if(webqueue_number <= 1024) {
 		struct webqueue_t *wnode = MALLOC(sizeof(struct webqueue_t));
 		if(wnode == NULL) {
-			fprintf(stderr, "out of memory");
+			fprintf(stderr, "out of memory\n");
 			exit(EXIT_FAILURE);
 		}
 		if((wnode->message = MALLOC(strlen(message)+1)) == NULL) {
-			fprintf(stderr, "out of memory");
+			fprintf(stderr, "out of memory\n");
 			exit(EXIT_FAILURE);
 		}
 		strcpy(wnode->message, message);
@@ -1030,7 +1030,7 @@ int webserver_start(void) {
 	if(settings_find_string("webserver-root", &webserver_root) != 0) {
 		/* If no webserver port was set, use the default webserver port */
 		if((webserver_root = MALLOC(strlen(WEBSERVER_ROOT)+1)) == NULL) {
-			fprintf(stderr, "out of memory");
+			fprintf(stderr, "out of memory\n");
 			exit(EXIT_FAILURE);
 		}
 		strcpy(webserver_root, WEBSERVER_ROOT);
@@ -1046,7 +1046,7 @@ int webserver_start(void) {
 	if(settings_find_string("webserver-user", &webserver_user) != 0) {
 		/* If no webserver port was set, use the default webserver port */
 		if((webserver_user = MALLOC(strlen(WEBSERVER_USER)+1)) == NULL) {
-			fprintf(stderr, "out of memory");
+			fprintf(stderr, "out of memory\n");
 			exit(EXIT_FAILURE);
 		}
 		strcpy(webserver_user, WEBSERVER_USER);

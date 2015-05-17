@@ -340,7 +340,7 @@ static void *thread(void *param) {
 			if(strcmp(opt->name, "state") == 0) {
 				if(opt->values->type == JSON_STRING) {
 					if((old_state = MALLOC(strlen(opt->values->string_)+1)) == NULL) {
-						fprintf(stderr, "out of memory");
+						fprintf(stderr, "out of memory\n");
 						exit(EXIT_FAILURE);
 					}
 					strcpy(old_state, opt->values->string_);
@@ -368,7 +368,7 @@ static void *thread(void *param) {
 					if(jstate != NULL && jstate->tag == JSON_STRING) {
 						state = jstate->string_;
 						if((new_state = MALLOC(strlen(state)+1)) == NULL) {
-							fprintf(stderr, "out of memory");
+							fprintf(stderr, "out of memory\n");
 							exit(EXIT_FAILURE);
 						}
 						strcpy(new_state, state);

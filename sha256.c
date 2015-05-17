@@ -78,7 +78,7 @@ int main(int argc, char **argv) {
 	int i = 0, x = 0;
 
 	if((progname = MALLOC(15)) == NULL) {
-		fprintf(stderr, "out of memory");
+		fprintf(stderr, "out of memory\n");
 		exit(EXIT_FAILURE);
 	}
 	strcpy(progname, "pilight-sha256");
@@ -108,7 +108,7 @@ int main(int argc, char **argv) {
 			break;
 			case 'p':
 				if((password = MALLOC(strlen(args)+1)) == NULL) {
-					fprintf(stderr, "out of memory");
+					fprintf(stderr, "out of memory\n");
 					exit(EXIT_FAILURE);
 				}
 				strcpy(password, args);
@@ -131,7 +131,7 @@ int main(int argc, char **argv) {
 
 	if(strlen(password) < 64) {
 		if((password = REALLOC(password, 65)) == NULL) {
-			fprintf(stderr, "out of memory");
+			fprintf(stderr, "out of memory\n");
 			exit(EXIT_FAILURE);
 		}		
 	}

@@ -91,7 +91,7 @@ static void *thread(void *param) {
 	unsigned char oversampling = 1;
 
 	if(bmp180data == NULL) {
-		fprintf(stderr, "out of memory");
+		fprintf(stderr, "out of memory\n");
 		exit(EXIT_FAILURE);
 	}
 
@@ -117,11 +117,11 @@ static void *thread(void *param) {
 		while(jchild) {
 			if(json_find_string(jchild, "id", &stmp) == 0) {
 				if((bmp180data->id = REALLOC(bmp180data->id, (sizeof(char *) * (size_t)(bmp180data->nrid + 1)))) == NULL) {
-					fprintf(stderr, "out of memory");
+					fprintf(stderr, "out of memory\n");
 					exit(EXIT_FAILURE);
 				}
 				if((bmp180data->id[bmp180data->nrid] = MALLOC(strlen(stmp) + 1)) == NULL) {
-					fprintf(stderr, "out of memory");
+					fprintf(stderr, "out of memory\n");
 					exit(EXIT_FAILURE);
 				}
 				strcpy(bmp180data->id[bmp180data->nrid], stmp);
@@ -158,7 +158,7 @@ static void *thread(void *param) {
 	if(bmp180data->ac1 == NULL || bmp180data->ac2 == NULL || bmp180data->ac3 == NULL || bmp180data->ac4 == NULL ||
 		bmp180data->ac5 == NULL || bmp180data->ac6 == NULL || bmp180data->b1 == NULL || bmp180data->b2 == NULL ||
 		bmp180data->mb == NULL || bmp180data->mc == NULL || bmp180data->md == NULL || bmp180data->fd == NULL) {
-		fprintf(stderr, "out of memory");
+		fprintf(stderr, "out of memory\n");
 		exit(EXIT_FAILURE);
 	}
 

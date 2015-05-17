@@ -91,7 +91,7 @@ void event_operator_init(void) {
 	if(settings_find_string("operators-root", &operator_root) != 0) {
 		/* If no operator root was set, use the default operator root */
 		if((operator_root = MALLOC(strlen(OPERATOR_ROOT)+1)) == NULL) {
-			fprintf(stderr, "out of memory");
+			fprintf(stderr, "out of memory\n");
 			exit(EXIT_FAILURE);
 		}
 		strcpy(operator_root, OPERATOR_ROOT);
@@ -168,11 +168,11 @@ void event_operator_register(struct event_operators_t **op, const char *name) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
 	if((*op = MALLOC(sizeof(struct event_operators_t))) == NULL) {
-		fprintf(stderr, "out of memory");
+		fprintf(stderr, "out of memory\n");
 		exit(EXIT_FAILURE);
 	}
 	if(((*op)->name = MALLOC(strlen(name)+1)) == NULL) {
-		fprintf(stderr, "out of memory");
+		fprintf(stderr, "out of memory\n");
 		exit(EXIT_FAILURE);
 	}
 	strcpy((*op)->name, name);

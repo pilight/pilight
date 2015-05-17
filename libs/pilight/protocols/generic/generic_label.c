@@ -49,7 +49,7 @@ static int createCode(JsonNode *code) {
 	json_find_string(code, "label", &label);
 	if(json_find_number(code, "label", &itmp) == 0) {
 		if((label = MALLOC(BUFFER_SIZE)) == NULL) {
-			fprintf(stderr, "out of memory");
+			fprintf(stderr, "out of memory\n");
 			exit(EXIT_FAILURE);
 		}
 		free_label = 1;

@@ -93,7 +93,7 @@ static void *openweathermapParse(void *param) {
 	memset(&typebuf, '\0', 255);
 
 	if(wnode == NULL) {
-		fprintf(stderr, "out of memory");
+		fprintf(stderr, "out of memory\n");
 		exit(EXIT_FAILURE);
 	}
 
@@ -108,7 +108,7 @@ static void *openweathermapParse(void *param) {
 				if(strcmp(jchild1->key, "location") == 0) {
 					has_location = 1;
 					if((wnode->location = MALLOC(strlen(jchild1->string_)+1)) == NULL) {
-						fprintf(stderr, "out of memory");
+						fprintf(stderr, "out of memory\n");
 						exit(EXIT_FAILURE);
 					}
 					strcpy(wnode->location, jchild1->string_);
@@ -116,7 +116,7 @@ static void *openweathermapParse(void *param) {
 				if(strcmp(jchild1->key, "country") == 0) {
 					has_country = 1;
 					if((wnode->country = MALLOC(strlen(jchild1->string_)+1)) == NULL) {
-						fprintf(stderr, "out of memory");
+						fprintf(stderr, "out of memory\n");
 						exit(EXIT_FAILURE);
 					}
 					strcpy(wnode->country, jchild1->string_);

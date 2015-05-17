@@ -112,7 +112,7 @@ static void *thread(void *param) {
 	timeout.tv_usec = 0;
 
 	if(xnode == NULL) {
-		fprintf(stderr, "out of memory");
+		fprintf(stderr, "out of memory\n");
 		exit(EXIT_FAILURE);
 	}
 
@@ -132,7 +132,7 @@ static void *thread(void *param) {
 			while(jchild1) {
 				if(strcmp(jchild1->key, "server") == 0) {
 					if((xnode->server = MALLOC(strlen(jchild1->string_)+1)) == NULL) {
-						fprintf(stderr, "out of memory");
+						fprintf(stderr, "out of memory\n");
 						exit(EXIT_FAILURE);
 					}
 					strcpy(xnode->server, jchild1->string_);

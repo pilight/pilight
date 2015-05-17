@@ -104,7 +104,7 @@ void *ntpthread(void *param) {
 	while(1) {
 		sprintf(name, "ntpserver%d", nrservers);
 		if((ntpservers = REALLOC(ntpservers, sizeof(char *)*(nrservers+1))) == NULL) {
-			fprintf(stderr, "out of memory");
+			fprintf(stderr, "out of memory\n");
 			exit(EXIT_FAILURE);
 		}
 		if((x = settings_find_string(name, &ntpservers[nrservers])) == 0) {

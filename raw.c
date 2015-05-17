@@ -153,7 +153,7 @@ int main(int argc, char **argv) {
 	gc_catch();
 
 	if((progname = MALLOC(12)) == NULL) {
-		fprintf(stderr, "out of memory");
+		fprintf(stderr, "out of memory\n");
 		exit(EXIT_FAILURE);
 	}
 	strcpy(progname, "pilight-raw");

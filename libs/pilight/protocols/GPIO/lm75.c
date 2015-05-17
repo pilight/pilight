@@ -72,7 +72,7 @@ static void *thread(void *param) {
 	double itmp = -1, temp_offset = 0.0;
 
 	if(lm75data == NULL) {
-		fprintf(stderr, "out of memory");
+		fprintf(stderr, "out of memory\n");
 		exit(EXIT_FAILURE);
 	}
 
@@ -87,11 +87,11 @@ static void *thread(void *param) {
 		while(jchild) {
 			if(json_find_string(jchild, "id", &stmp) == 0) {
 				if((lm75data->id = REALLOC(lm75data->id, (sizeof(char *)*(size_t)(lm75data->nrid+1)))) == NULL) {
-					fprintf(stderr, "out of memory");
+					fprintf(stderr, "out of memory\n");
 					exit(EXIT_FAILURE);
 				}
 				if((lm75data->id[lm75data->nrid] = MALLOC(strlen(stmp)+1)) == NULL) {
-					fprintf(stderr, "out of memory");
+					fprintf(stderr, "out of memory\n");
 					exit(EXIT_FAILURE);
 				}
 				strcpy(lm75data->id[lm75data->nrid], stmp);
@@ -106,7 +106,7 @@ static void *thread(void *param) {
 	json_find_number(json, "temperature-offset", &temp_offset);
 
 	if((lm75data->fd = REALLOC(lm75data->fd, (sizeof(int)*(size_t)(lm75data->nrid+1)))) == NULL) {
-		fprintf(stderr, "out of memory");
+		fprintf(stderr, "out of memory\n");
 		exit(EXIT_FAILURE);
 	}
 	for(y=0;y<lm75data->nrid;y++) {

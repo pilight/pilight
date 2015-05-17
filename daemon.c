@@ -250,7 +250,7 @@ static void broadcast_queue(char *protoname, struct JsonNode *json, enum origin_
 		if(bcqueue_number <= 1024) {
 			struct bcqueue_t *bnode = MALLOC(sizeof(struct bcqueue_t));
 			if(bnode == NULL) {
-				fprintf(stderr, "out of memory");
+				fprintf(stderr, "out of memory\n");
 				exit(EXIT_FAILURE);
 			}
 
@@ -262,7 +262,7 @@ static void broadcast_queue(char *protoname, struct JsonNode *json, enum origin_
 			json_free(jstr);
 
 			if((bnode->protoname = MALLOC(strlen(protoname)+1)) == NULL) {
-				fprintf(stderr, "out of memory");
+				fprintf(stderr, "out of memory\n");
 				exit(EXIT_FAILURE);
 			}
 			strcpy(bnode->protoname, protoname);
@@ -495,7 +495,7 @@ static void receive_queue(int *raw, int rawlen, int plslen, int hwtype) {
 		if(recvqueue_number <= 1024) {
 			struct recvqueue_t *rnode = MALLOC(sizeof(struct recvqueue_t));
 			if(rnode == NULL) {
-				fprintf(stderr, "out of memory");
+				fprintf(stderr, "out of memory\n");
 				exit(EXIT_FAILURE);
 			}
 			for(i=0;i<rawlen;i++) {
@@ -818,7 +818,7 @@ static int send_queue(struct JsonNode *json, enum origin_t origin) {
 					if(sendqueue_number <= 1024) {
 						struct sendqueue_t *mnode = MALLOC(sizeof(struct sendqueue_t));
 						if(mnode == NULL) {
-							fprintf(stderr, "out of memory");
+							fprintf(stderr, "out of memory\n");
 							exit(EXIT_FAILURE);
 						}
 						gettimeofday(&tcurrent, NULL);
@@ -830,7 +830,7 @@ static int send_queue(struct JsonNode *json, enum origin_t origin) {
 							json_delete(protocol->message);
 							if(json_validate(jsonstr) == true) {
 								if((mnode->message = MALLOC(strlen(jsonstr)+1)) == NULL) {
-									fprintf(stderr, "out of memory");
+									fprintf(stderr, "out of memory\n");
 									exit(EXIT_FAILURE);
 								}
 								strcpy(mnode->message, jsonstr);
@@ -843,7 +843,7 @@ static int send_queue(struct JsonNode *json, enum origin_t origin) {
 						memcpy(mnode->code, protocol->raw, sizeof(int)*protocol->rawlen);
 
 						if((mnode->protoname = MALLOC(strlen(protocol->id)+1)) == NULL) {
-							fprintf(stderr, "out of memory");
+							fprintf(stderr, "out of memory\n");
 							exit(EXIT_FAILURE);
 						}
 						strcpy(mnode->protoname, protocol->id);
@@ -867,7 +867,7 @@ static int send_queue(struct JsonNode *json, enum origin_t origin) {
 						}
 						char *strsett = json_stringify(jsettings, NULL);
 						if((mnode->settings = MALLOC(strlen(strsett)+1)) == NULL) {
-							fprintf(stderr, "out of memory");
+							fprintf(stderr, "out of memory\n");
 							exit(EXIT_FAILURE);
 						}
 						strcpy(mnode->settings, strsett);
@@ -934,7 +934,7 @@ static void client_webserver_parse_code(int i, char buffer[BUFFER_SIZE]) {
 		p = buff;
 		if(strstr(buffer, "/logo.png") != NULL) {
 			if((path = MALLOC(strlen(webserver_root)+strlen("logo.png")+2)) == NULL) {
-				fprintf(stderr, "out of memory");
+				fprintf(stderr, "out of memory\n");
 				exit(EXIT_FAILURE);
 			}
 			sprintf(path, "%s/logo.png", webserver_root);
@@ -945,7 +945,7 @@ static void client_webserver_parse_code(int i, char buffer[BUFFER_SIZE]) {
 				send(sd, (const char *)buff, (size_t)(p-buff), MSG_NOSIGNAL);
 				x = 0;
 				if((cache = MALLOC(BUFFER_SIZE)) == NULL) {
-					fprintf(stderr, "out of memory");
+					fprintf(stderr, "out of memory\n");
 					exit(EXIT_FAILURE);
 				}
 				memset(cache, '\0', BUFFER_SIZE);
@@ -967,7 +967,7 @@ static void client_webserver_parse_code(int i, char buffer[BUFFER_SIZE]) {
 			send(sd, (const char *)buff, (size_t)(p-buff), MSG_NOSIGNAL);
 			if(webserver_enable == 1) {
 				if((cache = MALLOC(BUFFER_SIZE)) == NULL) {
-					fprintf(stderr, "out of memory");
+					fprintf(stderr, "out of memory\n");
 					exit(EXIT_FAILURE);
 				}
 				memset(cache, '\0', BUFFER_SIZE);
@@ -1150,7 +1150,7 @@ static void socket_parse_data(int i, char *buffer) {
 					/* Check if client doesn't already exist */
 					if(exists == 0) {
 						if((client = MALLOC(sizeof(struct clients_t))) == NULL) {
-							fprintf(stderr, "out of memory");
+							fprintf(stderr, "out of memory\n");
 							exit(EXIT_FAILURE);
 						}
 						client->core = 0;
@@ -2065,13 +2065,13 @@ int start_pilight(int argc, char **argv) {
 	wiringXLog = logprintf;
 
 	if((progname = MALLOC(16)) == NULL) {
-		fprintf(stderr, "out of memory");
+		fprintf(stderr, "out of memory\n");
 		exit(EXIT_FAILURE);
 	}
 	strcpy(progname, "pilight-daemon");
 
 	if((configtmp = MALLOC(strlen(CONFIG_FILE)+1)) == NULL) {
-		fprintf(stderr, "out of memory");
+		fprintf(stderr, "out of memory\n");
 		exit(EXIT_FAILURE);
 	}
 	strcpy(configtmp, CONFIG_FILE);
@@ -2109,7 +2109,7 @@ int start_pilight(int argc, char **argv) {
 			break;
 			case 'S':
 				if((master_server = MALLOC(strlen(args)+1)) == NULL) {
-					fprintf(stderr, "out of memory");
+					fprintf(stderr, "out of memory\n");
 					exit(EXIT_FAILURE);
 				}
 				strcpy(master_server, args);
@@ -2294,7 +2294,7 @@ int start_pilight(int argc, char **argv) {
 	settings_find_number("webserver-http-port", &webserver_http_port);
 	if(settings_find_string("webserver-root", &webserver_root) != 0) {
 		if((webserver_root = REALLOC(webserver_root, strlen(WEBSERVER_ROOT)+1)) == NULL) {
-			fprintf(stderr, "out of memory");
+			fprintf(stderr, "out of memory\n");
 			exit(EXIT_FAILURE);
 		}
 		strcpy(webserver_root, WEBSERVER_ROOT);
@@ -2305,7 +2305,7 @@ int start_pilight(int argc, char **argv) {
 #ifndef _WIN32
 	if(settings_find_string("pid-file", &pid_file) != 0) {
 		if((pid_file = REALLOC(pid_file, strlen(PID_FILE)+1)) == NULL) {
-			fprintf(stderr, "out of memory");
+			fprintf(stderr, "out of memory\n");
 			exit(EXIT_FAILURE);
 		}
 		strcpy(pid_file, PID_FILE);

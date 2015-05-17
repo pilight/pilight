@@ -220,7 +220,7 @@ int isrunning(const char *program) {
 	int pid = -1;
 	char *tmp = MALLOC(strlen(program)+1);
 	if(tmp == NULL) {
-		fprintf(stderr, "out of memory");
+		fprintf(stderr, "out of memory\n");
 		exit(EXIT_FAILURE);
 	}
 	strcpy(tmp, program);
@@ -673,7 +673,7 @@ char *hostname(void) {
 		n = explode(name, ".", &array);
 		if(n > 0) {
 			if((host = MALLOC(strlen(array[0])+1)) == NULL) {
-				fprintf(stderr, "out of memory");
+				fprintf(stderr, "out of memory\n");
 				exit(EXIT_FAILURE);
 			}
 			strcpy(host, array[0]);
@@ -718,7 +718,7 @@ char *distroname(void) {
 #endif
 	if(strlen(dist) > 0) {
 		if((distro = MALLOC(strlen(dist)+1)) == NULL) {
-			fprintf(stderr, "out of memory");
+			fprintf(stderr, "out of memory\n");
 			exit(EXIT_FAILURE);
 		}
 		strcpy(distro, dist);
@@ -760,7 +760,7 @@ char *genuuid(char *ifname) {
 					memmove(&serial[14], &serial[13], 7);
 					serial[13] = '-';
 					if((upnp_id = MALLOC(UUID_LENGTH+1)) == NULL) {
-						fprintf(stderr, "out of memory");
+						fprintf(stderr, "out of memory\n");
 						exit(EXIT_FAILURE);
 					}
 					strcpy(upnp_id, serial);
@@ -775,7 +775,7 @@ char *genuuid(char *ifname) {
 #endif
 	if(dev2mac(ifname, &p) == 0) {
 		if((upnp_id = MALLOC(UUID_LENGTH+1)) == NULL) {
-			fprintf(stderr, "out of memory");
+			fprintf(stderr, "out of memory\n");
 			exit(EXIT_FAILURE);
 		}
 		memset(upnp_id, '\0', UUID_LENGTH+1);
@@ -962,7 +962,7 @@ int str_replace(char *search, char *replace, char **str) {
 			nlen = len - (slen - rlen);
 			if(len < nlen) {
 				if((target = REALLOC(target, (size_t)nlen+1)) == NULL) {
-					fprintf(stderr, "out of memory");
+					fprintf(stderr, "out of memory\n");
 					exit(EXIT_FAILURE);
 				}
 				memset(&target[len], '\0', (size_t)(nlen-len));

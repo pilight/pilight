@@ -137,7 +137,7 @@ void platform_register(struct platform_t **dev, const char *name) {
 	(*dev)->SPIDataRW = NULL;
 
 	if(((*dev)->name = malloc(strlen(name)+1)) == NULL) {
-		fprintf(stderr, "out of memory");
+		fprintf(stderr, "out of memory\n");
 		exit(EXIT_FAILURE);
 	}
 	strcpy((*dev)->name, name);

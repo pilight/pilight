@@ -105,14 +105,14 @@ int fcache_add(char *filename) {
 	} else {
 		struct fcache_t *node = MALLOC(sizeof(struct fcache_t));
 		if(node == NULL) {
-			fprintf(stderr, "out of memory");
+			fprintf(stderr, "out of memory\n");
 			exit(EXIT_FAILURE);
 		}
 		fseek(fp, 0, SEEK_END);
 		filesize = (size_t)ftell(fp);
 		fseek(fp, 0, SEEK_SET);
 		if((node->bytes = MALLOC(filesize + 1)) == NULL) {
-			fprintf(stderr, "out of memory");
+			fprintf(stderr, "out of memory\n");
 			exit(EXIT_FAILURE);
 		}
 		memset(node->bytes, '\0', filesize + 1);
@@ -125,7 +125,7 @@ int fcache_add(char *filename) {
 		}
 		node->size = (int)filesize;
 		if((node->name = MALLOC(strlen(filename)+1)) == NULL) {
-			fprintf(stderr, "out of memory");
+			fprintf(stderr, "out of memory\n");
 			exit(EXIT_FAILURE);
 		}
 		strcpy(node->name, filename);

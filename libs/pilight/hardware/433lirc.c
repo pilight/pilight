@@ -169,7 +169,7 @@ static unsigned short lirc433Settings(JsonNode *json) {
 	if(strcmp(json->key, "socket") == 0) {
 		if(json->tag == JSON_STRING) {
 			if((lirc_433_socket = MALLOC(strlen(json->string_)+1)) == NULL) {
-				fprintf(stderr, "out of memory");
+				fprintf(stderr, "out of memory\n");
 				exit(EXIT_FAILURE);
 			}
 			strcpy(lirc_433_socket, json->string_);

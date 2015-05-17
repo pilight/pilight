@@ -71,7 +71,7 @@ int main(int argc, char **argv) {
 	log_level_set(LOG_NOTICE);
 
 	if((progname = MALLOC(16)) == NULL) {
-		fprintf(stderr, "out of memory");
+		fprintf(stderr, "out of memory\n");
 		exit(EXIT_FAILURE);
 	}
 	strcpy(progname, "pilight-receive");
@@ -116,7 +116,7 @@ int main(int argc, char **argv) {
 			break;
 			case 'S':
 				if((server = MALLOC(strlen(args)+1)) == NULL) {
-					fprintf(stderr, "out of memory");
+					fprintf(stderr, "out of memory\n");
 					exit(EXIT_FAILURE);
 				}
 				strcpy(server, args);

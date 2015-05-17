@@ -70,7 +70,7 @@ static void *thread(void *param) {
 	threads++;
 
 	if(id == NULL) {
-		fprintf(stderr, "out of memory");
+		fprintf(stderr, "out of memory\n");
 		exit(EXIT_FAILURE);
 	}
 
@@ -99,7 +99,7 @@ static void *thread(void *param) {
 					bytes = (size_t)st.st_size;
 
 					if((content = REALLOC(content, bytes+1)) == NULL) {
-						fprintf(stderr, "out of memory");
+						fprintf(stderr, "out of memory\n");
 						exit(EXIT_FAILURE);
 					}
 					memset(content, '\0', bytes+1);

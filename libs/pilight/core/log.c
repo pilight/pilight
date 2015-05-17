@@ -157,7 +157,7 @@ void logprintf(int prio, const char *format_str, ...) {
 	memset(&tm, '\0', sizeof(struct tm));
 
 	if(line == NULL) {
-		fprintf(stderr, "out of memory");
+		fprintf(stderr, "out of memory\n");
 		exit(EXIT_FAILURE);
 	}
 	save_errno = errno;
@@ -214,7 +214,7 @@ void logprintf(int prio, const char *format_str, ...) {
 		} else {
 			va_end(apcpy);
 			if((line = REALLOC(line, (size_t)bytes+(size_t)pos+3)) == NULL) {
-				fprintf(stderr, "out of memory");
+				fprintf(stderr, "out of memory\n");
 				exit(EXIT_FAILURE);
 			}
 			va_start(ap, format_str);
@@ -240,11 +240,11 @@ void logprintf(int prio, const char *format_str, ...) {
 			if(logqueue_number < 1024) {
 				struct logqueue_t *node = MALLOC(sizeof(logqueue_t));
 				if(node == NULL) {
-					fprintf(stderr, "out of memory");
+					fprintf(stderr, "out of memory\n");
 					exit(EXIT_FAILURE);
 				}
 				if((node->line = MALLOC((size_t)pos+1)) == NULL) {
-					fprintf(stderr, "out of memory");
+					fprintf(stderr, "out of memory\n");
 					exit(EXIT_FAILURE);
 				}
 				memset(node->line, '\0', (size_t)pos+1);
