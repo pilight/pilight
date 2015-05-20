@@ -230,11 +230,11 @@ static int settings_parse(JsonNode *root) {
 			}
 		} else if(strcmp(jsettings->key, "log-level") == 0) {
 			if(jsettings->tag != JSON_NUMBER) {
-				logprintf(LOG_ERR, "config setting \"%s\" must contain a number from 0 till 5", jsettings->key);
+				logprintf(LOG_ERR, "config setting \"%s\" must contain a number from 0 till 6", jsettings->key);
 				have_error = 1;
 				goto clear;
-			} else if((int)jsettings->number_ < 0 || (int)jsettings->number_ > 5) {
-				logprintf(LOG_ERR, "config setting \"%s\" must contain a number from 0 till 5", jsettings->key);
+			} else if((int)jsettings->number_ < 0 || (int)jsettings->number_ > 6) {
+				logprintf(LOG_ERR, "config setting \"%s\" must contain a number from 0 till 6", jsettings->key);
 				have_error = 1;
 				goto clear;
 			} else {
