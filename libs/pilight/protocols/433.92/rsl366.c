@@ -74,7 +74,7 @@ static void parseCode(void) {
 	int systemcode = binToDec(binary, 0, 4);
 	int programcode = binToDec(binary, 5, 9);
 	// There seems to be no check and binary[10] is always a low
-	int state = binary[11];
+	int state = binary[11]^1;
 
 	createMessage(systemcode, programcode, state);
 }
@@ -200,7 +200,7 @@ void rsl366Init(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "rsl366";
-	module->version = "2.3";
+	module->version = "2.4";
 	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }
