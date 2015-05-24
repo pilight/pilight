@@ -84,7 +84,7 @@ int sha256cache_rm(char *name) {
 int sha256cache_add(char *name) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
-	logprintf(LOG_INFO, "caching sha256 hash for %s", name);
+	logprintf(LOG_INFO, "chached new sha256 hash");
 	
 	unsigned char output[33];
 	char *password = NULL;
