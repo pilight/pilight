@@ -480,7 +480,7 @@ void nano433Init(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "433nano";
-	module->version = "0.13";
+	module->version = "1.0";
 	module->reqversion = "6.0";
 	module->reqcommit = "40";
 }

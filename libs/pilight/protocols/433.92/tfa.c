@@ -220,7 +220,7 @@ void tfaInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "tfa";
-	module->version = "0.12";
+	module->version = "1.0";
 	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }

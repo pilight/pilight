@@ -239,7 +239,7 @@ void beamishSwitchInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "beamish_switch";
-	module->version = "0.13";
+	module->version = "1.0";
 	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }

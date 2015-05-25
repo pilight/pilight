@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 2.8.8)
 include(CMakeConfig.txt)
 
 project(pilight)
-set(VERSION 6.0)
+set(VERSION 7.0)
 
 set(MODULESPACK OFF)
 set(CMAKE_BUILD_TYPE Debug)

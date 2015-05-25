@@ -177,7 +177,7 @@ void alectoWSD17Init(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "alecto_wsd17";
-	module->version = "0.13";
+	module->version = "1.0";
 	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }

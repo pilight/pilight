@@ -22,7 +22,7 @@
 #cmakedefine WEBSERVER
 #cmakedefine EVENTS
 
-#define PILIGHT_VERSION					"6.0"
+#define PILIGHT_VERSION					"7.0"
 #define PULSE_DIV								34
 #define MAXPULSESTREAMLENGTH		512
 #define EPSILON									0.00001
@@ -88,7 +88,7 @@
 #define FIRMWARE_GPIO_MOSI	12
 #define FIRMWARE_GPIO_MISO	13
 
-#define PILIGHT_V						6
+#define PILIGHT_V						7
 
 #if !defined(PATH_MAX)
 	#if defined(_POSIX_PATH_MAX)

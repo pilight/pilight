@@ -200,7 +200,7 @@ void rsl366Init(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "rsl366";
-	module->version = "2.4";
+	module->version = "2.5";
 	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }
