@@ -30,7 +30,7 @@
 #include "../../core/gc.h"
 #include "teknihall.h"
 
-#define PULSE_MULTIPLIER	15
+#define PULSE_MULTIPLIER	20
 #define MIN_PULSE_LENGTH	261
 #define MAX_PULSE_LENGTH	271
 #define AVG_PULSE_LENGTH	266
@@ -195,7 +195,7 @@ void teknihallInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "teknihall";
-	module->version = "2.1";
+	module->version = "2.2";
 	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }
