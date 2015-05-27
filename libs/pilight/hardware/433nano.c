@@ -103,17 +103,19 @@ void *syncFW(void *param) {
 
 	struct protocols_t *tmp = protocols;
 	while(tmp) {
-		if(tmp->listener->maxrawlen > maxrawlen) {
-			maxrawlen = tmp->listener->maxrawlen;
-		}
-		if(tmp->listener->minrawlen > 0 && tmp->listener->minrawlen < minrawlen) {
-			minrawlen = tmp->listener->minrawlen;
-		}
-		if(tmp->listener->maxgaplen > maxgaplen) {
-			maxgaplen = tmp->listener->maxgaplen;
-		}
-		if(tmp->listener->mingaplen > 0 && tmp->listener->mingaplen < mingaplen) {
-			mingaplen = tmp->listener->mingaplen;
+		if(tmp->listener->hwtype == RF433) {
+			if(tmp->listener->maxrawlen > maxrawlen) {
+				maxrawlen = tmp->listener->maxrawlen;
+			}
+			if(tmp->listener->minrawlen > 0 && tmp->listener->minrawlen < minrawlen) {
+				minrawlen = tmp->listener->minrawlen;
+			}
+			if(tmp->listener->maxgaplen > maxgaplen) {
+				maxgaplen = tmp->listener->maxgaplen;
+			}
+			if(tmp->listener->mingaplen > 0 && tmp->listener->mingaplen < mingaplen) {
+				mingaplen = tmp->listener->mingaplen;
+			}
 		}
 		tmp = tmp->next;
 	}

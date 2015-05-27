@@ -92,6 +92,10 @@ void hardware_register(struct hardware_t **hw) {
 	(*hw)->wait = 0;
 	(*hw)->stop = 0;
 	(*hw)->running = 0;
+	(*hw)->minrawlen = 0;
+	(*hw)->maxrawlen = 0;
+	(*hw)->mingaplen = 0;
+	(*hw)->maxgaplen = 0;
 
 	(*hw)->init = NULL;
 	(*hw)->deinit = NULL;

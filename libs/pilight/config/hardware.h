@@ -24,6 +24,7 @@ typedef enum {
 	NONE = 0,
 	RF433,
 	RF868,
+	RFIR,
 	SENSOR,
 	HWRELAY,
 	API
@@ -59,6 +60,11 @@ typedef struct hardware_t {
 	hwtype_t hwtype;
 	communication_t comtype;
 	struct options_t *options;
+
+	int minrawlen;
+	int maxrawlen;
+	int mingaplen;
+	int maxgaplen;
 
 	unsigned short (*init)(void);
 	unsigned short (*deinit)(void);

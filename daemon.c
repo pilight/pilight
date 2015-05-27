@@ -187,14 +187,6 @@ static unsigned short main_loop = 1;
 static struct timeval tv;
 /* Are we running standalone */
 static int standalone = 0;
-/* What is the minimum rawlenth to consider a pulse stream valid */
-static int minrawlen = 1000;
-/* What is the maximum rawlenth to consider a pulse stream valid */
-static int maxrawlen = 0;
-/* What is the minimum rawlenth to consider a pulse stream valid */
-static int maxgaplen = 5100;
-/* What is the maximum rawlenth to consider a pulse stream valid */
-static int mingaplen = 10000;
 /* Do we need to connect to a master server:port? */
 static char *master_server = NULL;
 static unsigned short master_port = 0;
@@ -1502,23 +1494,23 @@ void *receiveOOK(void *param) {
 	struct hardware_t *hw = (hardware_t *)param;
 	pthread_mutex_lock(&hw->lock);
 	hw->running = 1;
+
 	while(main_loop == 1 && hw->receiveOOK != NULL && hw->stop == 0) {
 		if(hw->wait == 0) {
 			pthread_mutex_lock(&hw->lock);
 			logprintf(LOG_STACK, "%s::unlocked", __FUNCTION__);
 			duration = hw->receiveOOK();
-
 			if(duration > 0) {
 				r.pulses[r.length++] = duration;
 				if(r.length > MAXPULSESTREAMLENGTH-1) {
 					r.length = 0;
 				}
-				if(duration > mingaplen) {
-					if(duration < maxgaplen) {
+				if(duration > hw->mingaplen) {
+					if(duration < hw->maxgaplen) {
 						plslen = duration/PULSE_DIV;
 					}
 					/* Let's do a little filtering here as well */
-					if(r.length >= minrawlen && r.length <= maxrawlen) {
+					if(r.length >= hw->minrawlen && r.length <= hw->maxrawlen) {
 						receive_queue(r.pulses, r.length, plslen, hw->hwtype);
 					}
 					r.length = 0;
@@ -2371,25 +2363,35 @@ int start_pilight(int argc, char **argv) {
 	}
 #endif
 
-	struct protocols_t *tmp = protocols;
-	while(tmp) {
-		if(tmp->listener->maxrawlen > maxrawlen) {
-			maxrawlen = tmp->listener->maxrawlen;
+	struct conf_hardware_t *tmp_confhw = conf_hardware;
+	while(tmp_confhw) {
+		if(tmp_confhw->hardware->init) {
+			if(tmp_confhw->hardware->comtype == COMOOK) {
+				struct protocols_t *tmp = protocols;
+				while(tmp) {
+					if(tmp->listener->hwtype == tmp_confhw->hardware->hwtype) {
+						if(tmp->listener->maxrawlen > tmp_confhw->hardware->maxrawlen) {
+							tmp_confhw->hardware->maxrawlen = tmp->listener->maxrawlen;
+						}
+						if(tmp->listener->minrawlen > 0 && tmp->listener->minrawlen < tmp_confhw->hardware->minrawlen) {
+							tmp_confhw->hardware->minrawlen = tmp->listener->minrawlen;
+						}
+						if(tmp->listener->maxgaplen > tmp_confhw->hardware->maxgaplen) {
+							tmp_confhw->hardware->maxgaplen = tmp->listener->maxgaplen;
+						}
+						if(tmp->listener->mingaplen > 0 && tmp->listener->mingaplen < tmp_confhw->hardware->mingaplen) {
+							tmp_confhw->hardware->mingaplen = tmp->listener->mingaplen;
+						}
+						if(tmp->listener->rawlen > 0) {
+							logprintf(LOG_EMERG, "%s: setting \"rawlen\" length is not allowed, use the \"minrawlen\" and \"maxrawlen\" instead", tmp->listener->id);
+							goto clear;
+						}
+					}
+					tmp = tmp->next;
+				}
+			}
 		}
-		if(tmp->listener->minrawlen > 0 && tmp->listener->minrawlen < minrawlen) {
-			minrawlen = tmp->listener->minrawlen;
-		}
-		if(tmp->listener->maxgaplen > maxgaplen) {
-			maxgaplen = tmp->listener->maxgaplen;
-		}
-		if(tmp->listener->mingaplen > 0 && tmp->listener->mingaplen < mingaplen) {
-			mingaplen = tmp->listener->mingaplen;
-		}
-		if(tmp->listener->rawlen > 0) {
-			logprintf(LOG_EMERG, "%s: setting \"rawlen\" length is not allowed, use the \"minrawlen\" and \"maxrawlen\" instead", tmp->listener->id);
-			goto clear;
-		}
-		tmp = tmp->next;
+		tmp_confhw = tmp_confhw->next;
 	}
 
 	settings_find_number("port", &port);
@@ -2478,7 +2480,7 @@ int start_pilight(int argc, char **argv) {
 	threads_register("sender", &send_code, (void *)NULL, 0);
 	threads_register("broadcaster", &broadcast, (void *)NULL, 0);
 
-	struct conf_hardware_t *tmp_confhw = conf_hardware;
+	tmp_confhw = conf_hardware;
 	while(tmp_confhw) {
 		if(tmp_confhw->hardware->init) {
 			if(tmp_confhw->hardware->init() == EXIT_FAILURE) {

@@ -124,6 +124,11 @@ void gpio433Init(void) {
 	options_add(&gpio433->options, 'r', "receiver", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9-]+$");
 	options_add(&gpio433->options, 's', "sender", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9-]+$");
 
+	gpio433->minrawlen = 1000;
+	gpio433->maxrawlen = 0;
+	gpio433->mingaplen = 5100;
+	gpio433->maxgaplen = 10000;
+	
 	gpio433->hwtype=RF433;
 	gpio433->comtype=COMOOK;
 	gpio433->init=&gpio433HwInit;
