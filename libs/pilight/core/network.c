@@ -60,6 +60,9 @@
 #include <sys/time.h>
 #include <time.h>
 #include <pthread.h>
+#ifdef __FreeBSD__
+	#include <net/if_dl.h>
+#endif
 
 #include "../config/settings.h"
 #include "mem.h"
@@ -232,7 +235,6 @@ int dev2mac(char *ifname, char **mac) {
 
 #ifdef __FreeBSD__
 	struct ifaddrs *ifap = NULL, *ifaptr = NULL;
-	unsigned char *ptr = NULL;
 
 	if(getifaddrs(&ifap) == 0) {
 		for(ifaptr = ifap; ifaptr != NULL; ifaptr = (ifaptr)->ifa_next) {
