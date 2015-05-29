@@ -2283,7 +2283,7 @@ int start_pilight(int argc, char **argv) {
 
 #ifdef WEBSERVER
 	#ifdef WEBSERVER_HTTPS
-		if(file_exists("/etc/pilight/ssl.pem") != 0) {
+		if(file_exists("/etc/pilight/pilight.pem") != 0) {
 			logprintf(LOG_ERR, "missing webserver SSL private key /etc/pilight/ssl.pem");
 			goto clear;
 		}

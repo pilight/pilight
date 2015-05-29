@@ -150,78 +150,6 @@ if(NOT WIN32)
 		endif()
 	endif()
 
-	if(${WEBSERVER_HTTPS} MATCHES "ON")
-		set(CMAKE_SSL_LIBS_INIT)
-
-		find_library(CMAKE_SSL_LIBS_INIT
-			NAME ssl
-			PATHS
-				${CROSS_COMPILE_LIBS}
-				/usr/lib
-				/usr/lib32
-				/usr/lib64
-				/usr/lib/i386-linux-gnu		
-				/usr/lib/x86_64-linux-gnu
-				/usr/local/lib
-				/usr/local/lib32
-				/usr/local/lib64
-				/usr/lib/arm-linux-gnueabi
-				/usr/lib/arm-linux-gnueabihf
-			NO_DEFAULT_PATH)	
-
-		if(${CMAKE_SSL_LIBS_INIT} MATCHES "CMAKE_SSL_LIBS_INIT-NOTFOUND")
-			message(FATAL_ERROR "Looking for libssl - not found")
-		else()
-			message(STATUS "Looking for libssl - found (${CMAKE_SSL_LIBS_INIT})")
-		endif()
-		
-		set(CMAKE_CRYPTO_LIBS_INIT)
-
-		find_library(CMAKE_CRYPTO_LIBS_INIT
-			NAME crypto
-			PATHS
-				${CROSS_COMPILE_LIBS}
-				/usr/lib
-				/usr/lib32
-				/usr/lib64
-				/usr/lib/i386-linux-gnu		
-				/usr/lib/x86_64-linux-gnu
-				/usr/local/lib
-				/usr/local/lib32
-				/usr/local/lib64
-				/usr/lib/arm-linux-gnueabi
-				/usr/lib/arm-linux-gnueabihf
-			NO_DEFAULT_PATH)	
-
-		if(${CMAKE_CRYPTO_LIBS_INIT} MATCHES "CMAKE_CRYPTO_LIBS_INIT-NOTFOUND")
-			message(FATAL_ERROR "Looking for libcrypto - not found")
-		else()
-			message(STATUS "Looking for libcrypto - found (${CMAKE_CRYPTO_LIBS_INIT})")
-		endif()
-
-		find_library(CMAKE_ZLIB_LIBS_INIT
-			NAME z
-			PATHS
-				${CROSS_COMPILE_LIBS}
-				/usr/lib
-				/usr/lib32
-				/usr/lib64
-				/usr/lib/i386-linux-gnu		
-				/usr/lib/x86_64-linux-gnu
-				/usr/local/lib
-				/usr/local/lib32
-				/usr/local/lib64
-				/usr/lib/arm-linux-gnueabi
-				/usr/lib/arm-linux-gnueabihf
-			NO_DEFAULT_PATH)	
-
-		if(${CMAKE_ZLIB_LIBS_INIT} MATCHES "CMAKE_ZLIB_LIBS_INIT-NOTFOUND")
-			message(FATAL_ERROR "Looking for libz - not found")
-		else()
-			message(STATUS "Looking for libz - found (${CMAKE_ZLIB_LIBS_INIT})")
-		endif()	
-	endif()
-
 	set(CMAKE_UNWIND_LIBS_INIT)
 
 	if(NOT ${CMAKE_SYSTEM_PROCESSOR} MATCHES "^mips")
@@ -323,15 +251,6 @@ if(${MODULESPACK} MATCHES "OFF" OR WIN32)
 		target_link_libraries(${PROJECT_NAME}_shared ${CMAKE_PCAP_LIBS_INIT})
 		target_link_libraries(${PROJECT_NAME}_static ${CMAKE_PCAP_LIBS_INIT})
 	endif()
-
-	if(${WEBSERVER_HTTPS} MATCHES "ON")
-		target_link_libraries(${PROJECT_NAME}_shared ${CMAKE_SSL_LIBS_INIT})
-		target_link_libraries(${PROJECT_NAME}_shared ${CMAKE_CRYPTO_LIBS_INIT})
-		target_link_libraries(${PROJECT_NAME}_shared ${CMAKE_ZLIB_LIBS_INIT})
-		target_link_libraries(${PROJECT_NAME}_static ${CMAKE_SSL_LIBS_INIT})
-		target_link_libraries(${PROJECT_NAME}_static ${CMAKE_CRYPTO_LIBS_INIT})
-		target_link_libraries(${PROJECT_NAME}_static ${CMAKE_ZLIB_LIBS_INIT})
-	endif()
 		
 	if(NOT WIN32)
 		target_link_libraries(${PROJECT_NAME}_shared ${CMAKE_UNWIND_LIBS_INIT})
@@ -362,10 +281,15 @@ if(${MODULESPACK} MATCHES "OFF" OR WIN32)
 		if(EXISTS "/etc/${PROJECT_NAME}/config.json")
 			install(CODE "execute_process(COMMAND mv /etc/${PROJECT_NAME}/config.json /etc/${PROJECT_NAME}/config.json.bak)")
 		endif()
+		
+		if(EXISTS "/etc/${PROJECT_NAME}/pilight.pem")
+			install(CODE "execute_process(COMMAND mv /etc/${PROJECT_NAME}/pilight.pem /etc/${PROJECT_NAME}/pilight.pem.bak)")
+		endif()		
 
 		install(PROGRAMS ${PROJECT_SOURCE_DIR}/res/init/${PROJECT_NAME}.initd DESTINATION /etc/init.d/ RENAME ${PROJECT_NAME})
 		install(FILES ${PROJECT_SOURCE_DIR}/res/config/config.json-default DESTINATION /etc/${PROJECT_NAME}/ RENAME config.json COMPONENT ${PROJECT_NAME})
 		install(FILES ${PROJECT_SOURCE_DIR}/res/tzdata.json DESTINATION /etc/${PROJECT_NAME}/ COMPONENT ${PROJECT_NAME})
+		install(FILES ${PROJECT_SOURCE_DIR}/res/pilight.pem DESTINATION /etc/${PROJECT_NAME}/ COMPONENT ${PROJECT_NAME})
 	else()
 		install(FILES ${CMAKE_BINARY_DIR}/lib${PROJECT_NAME}.dll DESTINATION . RENAME lib${PROJECT_NAME}.dll COMPONENT ${PROJECT_NAME})
 		install(FILES ${PROJECT_SOURCE_DIR}/res/config/config.json-default-w32 DESTINATION . RENAME config.json-default COMPONENT ${PROJECT_NAME})

@@ -1,5 +1,5 @@
 set(WEBSERVER ON CACHE BOOL "enable the built-in webserver")
-set(WEBSERVER_HTTPS OFF CACHE BOOL "enable webserver ssl protocol")
+set(WEBSERVER_HTTPS ON CACHE BOOL "enable webserver ssl protocol")
 set(EVENTS ON CACHE BOOL "enable the eventing functionality")
 set(PROTOCOL_ALECTO_WS1700 ON CACHE BOOL "support for the Alecto WS1700 protocol")
 set(PROTOCOL_ALECTO_WSD17 ON CACHE BOOL "support for the Alecto WSD 17 protocol")
