@@ -150,7 +150,7 @@ if(NOT WIN32)
 		endif()
 	endif()
 
-	if(${WEBSERVER_SSL} MATCHES "ON")
+	if(${WEBSERVER_HTTPS} MATCHES "ON")
 		set(CMAKE_SSL_LIBS_INIT)
 
 		find_library(CMAKE_SSL_LIBS_INIT
@@ -324,7 +324,7 @@ if(${MODULESPACK} MATCHES "OFF" OR WIN32)
 		target_link_libraries(${PROJECT_NAME}_static ${CMAKE_PCAP_LIBS_INIT})
 	endif()
 
-	if(${WEBSERVER_SSL} MATCHES "ON")
+	if(${WEBSERVER_HTTPS} MATCHES "ON")
 		target_link_libraries(${PROJECT_NAME}_shared ${CMAKE_SSL_LIBS_INIT})
 		target_link_libraries(${PROJECT_NAME}_shared ${CMAKE_CRYPTO_LIBS_INIT})
 		target_link_libraries(${PROJECT_NAME}_shared ${CMAKE_ZLIB_LIBS_INIT})

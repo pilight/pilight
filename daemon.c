@@ -2282,6 +2282,13 @@ int start_pilight(int argc, char **argv) {
 	registerVersion();
 
 #ifdef WEBSERVER
+	#ifdef WEBSERVER_HTTPS
+		if(file_exists("/etc/pilight/ssl.pem") != 0) {
+			logprintf(LOG_ERR, "missing webserver SSL private key /etc/pilight/ssl.pem");
+			goto clear;
+		}
+	#endif
+
 	settings_find_number("webserver-enable", &webserver_enable);
 	settings_find_number("webserver-http-port", &webserver_http_port);
 	if(settings_find_string("webserver-root", &webserver_root) != 0) {
@@ -2481,21 +2488,37 @@ int start_pilight(int argc, char **argv) {
 	threads_register("broadcaster", &broadcast, (void *)NULL, 0);
 
 	tmp_confhw = conf_hardware;
-	while(tmp_confhw) {
+	while(tmp_confhw && main_loop) {
 		if(tmp_confhw->hardware->init) {
 			if(tmp_confhw->hardware->init() == EXIT_FAILURE) {
-				logprintf(LOG_ERR, "could not initialize %s hardware module", tmp_confhw->hardware->id);
-				goto clear;
+				if(main_loop == 1) {
+					logprintf(LOG_ERR, "could not initialize %s hardware module", tmp_confhw->hardware->id);
+					goto clear;
+				} else {
+					break;
+				}
 			}
-			tmp_confhw->hardware->wait = 0;
-			tmp_confhw->hardware->stop = 0;
-			if(tmp_confhw->hardware->comtype == COMOOK) {
-				threads_register(tmp_confhw->hardware->id, &receiveOOK, (void *)tmp_confhw->hardware, 0);
-			} else if(tmp_confhw->hardware->comtype == COMPLSTRAIN) {
-				threads_register(tmp_confhw->hardware->id, &receivePulseTrain, (void *)tmp_confhw->hardware, 0);
+			if(main_loop == 1) {
+				tmp_confhw->hardware->wait = 0;
+				tmp_confhw->hardware->stop = 0;
+				if(tmp_confhw->hardware->comtype == COMOOK) {
+					threads_register(tmp_confhw->hardware->id, &receiveOOK, (void *)tmp_confhw->hardware, 0);
+				} else if(tmp_confhw->hardware->comtype == COMPLSTRAIN) {
+					threads_register(tmp_confhw->hardware->id, &receivePulseTrain, (void *)tmp_confhw->hardware, 0);
+				} else if(tmp_confhw->hardware->comtype == COMTHREAD) {
+					threads_register(tmp_confhw->hardware->id, tmp_confhw->hardware->receiveThread, (void *)tmp_confhw->hardware, 0);
+				}
+			} else {
+				break;
 			}
 		}
+		if(main_loop == 0) {
+			break;
+		}
 		tmp_confhw = tmp_confhw->next;
+	}
+	if(main_loop == 0) {
+		goto clear;
 	}
 
 	threads_register("receive parser", &receive_parse_code, (void *)NULL, 0);

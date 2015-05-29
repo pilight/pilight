@@ -48,7 +48,7 @@
 		#define WEBSERVER_USER 				"www"
 	#endif
 	#define WEBGUI_WEBSOCKETS			1
-	#cmakedefine WEBSERVER_HTTPS			
+	#cmakedefine WEBSERVER_HTTPS	1	
 #endif
 
 #define MAX_CLIENTS							30
