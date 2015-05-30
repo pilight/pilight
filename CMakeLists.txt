@@ -119,6 +119,9 @@ execute_process(COMMAND git describe --always
 string(REGEX REPLACE "\n" "" git_ver "${git_ver}")
 add_definitions(-DHASH="${git_ver}")
 
+file(MD5 ${PROJECT_SOURCE_DIR}/res/pilight.pem md5sum)
+add_definitions(-DPILIGHT_PEM_MD5="${md5sum}")
+
 if(${MODULESPACK} MATCHES "ON" AND NOT WIN32)
 	add_definitions(-DMODULE="1")
 endif()
@@ -150,6 +153,79 @@ if(NOT WIN32)
 		endif()
 	endif()
 
+
+	if(${WEBSERVER_HTTPS} MATCHES "ON")
+		set(CMAKE_SSL_LIBS_INIT)
+
+		find_library(CMAKE_SSL_LIBS_INIT
+			NAME ssl
+			PATHS
+				${CROSS_COMPILE_LIBS}
+				/usr/lib
+				/usr/lib32
+				/usr/lib64
+				/usr/lib/i386-linux-gnu		
+				/usr/lib/x86_64-linux-gnu
+				/usr/local/lib
+				/usr/local/lib32
+				/usr/local/lib64
+				/usr/lib/arm-linux-gnueabi
+				/usr/lib/arm-linux-gnueabihf
+			NO_DEFAULT_PATH)	
+
+		if(${CMAKE_SSL_LIBS_INIT} MATCHES "CMAKE_SSL_LIBS_INIT-NOTFOUND")
+			message(FATAL_ERROR "Looking for libssl - not found")
+		else()
+			message(STATUS "Looking for libssl - found (${CMAKE_SSL_LIBS_INIT})")
+		endif()
+		
+		set(CMAKE_CRYPTO_LIBS_INIT)
+
+		find_library(CMAKE_CRYPTO_LIBS_INIT
+			NAME crypto
+			PATHS
+				${CROSS_COMPILE_LIBS}
+				/usr/lib
+				/usr/lib32
+				/usr/lib64
+				/usr/lib/i386-linux-gnu		
+				/usr/lib/x86_64-linux-gnu
+				/usr/local/lib
+				/usr/local/lib32
+				/usr/local/lib64
+				/usr/lib/arm-linux-gnueabi
+				/usr/lib/arm-linux-gnueabihf
+			NO_DEFAULT_PATH)	
+
+		if(${CMAKE_CRYPTO_LIBS_INIT} MATCHES "CMAKE_CRYPTO_LIBS_INIT-NOTFOUND")
+			message(FATAL_ERROR "Looking for libcrypto - not found")
+		else()
+			message(STATUS "Looking for libcrypto - found (${CMAKE_CRYPTO_LIBS_INIT})")
+		endif()
+
+		find_library(CMAKE_ZLIB_LIBS_INIT
+			NAME z
+			PATHS
+				${CROSS_COMPILE_LIBS}
+				/usr/lib
+				/usr/lib32
+				/usr/lib64
+				/usr/lib/i386-linux-gnu		
+				/usr/lib/x86_64-linux-gnu
+				/usr/local/lib
+				/usr/local/lib32
+				/usr/local/lib64
+				/usr/lib/arm-linux-gnueabi
+				/usr/lib/arm-linux-gnueabihf
+			NO_DEFAULT_PATH)	
+
+		if(${CMAKE_ZLIB_LIBS_INIT} MATCHES "CMAKE_ZLIB_LIBS_INIT-NOTFOUND")
+			message(FATAL_ERROR "Looking for libz - not found")
+		else()
+			message(STATUS "Looking for libz - found (${CMAKE_ZLIB_LIBS_INIT})")
+		endif()	
+	endif()	
+	
 	set(CMAKE_UNWIND_LIBS_INIT)
 
 	if(NOT ${CMAKE_SYSTEM_PROCESSOR} MATCHES "^mips")
@@ -247,6 +323,15 @@ if(${MODULESPACK} MATCHES "OFF" OR WIN32)
 	endif()
 	target_link_libraries(${PROJECT_NAME}_static ${CMAKE_DL_LIBS})
 
+	if(${WEBSERVER_HTTPS} MATCHES "ON")
+		target_link_libraries(${PROJECT_NAME}_shared ${CMAKE_SSL_LIBS_INIT})
+		target_link_libraries(${PROJECT_NAME}_shared ${CMAKE_CRYPTO_LIBS_INIT})
+		target_link_libraries(${PROJECT_NAME}_shared ${CMAKE_ZLIB_LIBS_INIT})
+		target_link_libraries(${PROJECT_NAME}_static ${CMAKE_SSL_LIBS_INIT})
+		target_link_libraries(${PROJECT_NAME}_static ${CMAKE_CRYPTO_LIBS_INIT})
+		target_link_libraries(${PROJECT_NAME}_static ${CMAKE_ZLIB_LIBS_INIT})
+	endif()	
+	
 	if(${PROTOCOL_ARPING} MATCHES "ON")
 		target_link_libraries(${PROJECT_NAME}_shared ${CMAKE_PCAP_LIBS_INIT})
 		target_link_libraries(${PROJECT_NAME}_static ${CMAKE_PCAP_LIBS_INIT})

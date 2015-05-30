@@ -65,6 +65,7 @@
 
 	#define CONFIG_FILE							"c:/pilight/config.json"
 	#define LOG_FILE								"c:/pilight/pilight.log"
+	#define PEM_FILE								"c:/pilight/pilight.pem"
 	#define TZDATA_FILE							"c:/pilight/tzdata.json"
 #else
 	#define PROTOCOL_ROOT						"/usr/local/lib/pilight/protocols/"
@@ -76,6 +77,7 @@
 	#define PID_FILE								"/var/run/pilight.pid"
 	#define CONFIG_FILE							"/etc/pilight/config.json"
 	#define LOG_FILE								"/var/log/pilight.log"
+	#define PEM_FILE								"/etc/pilight/pilight.pem"
 	#define TZDATA_FILE							"/etc/pilight/tzdata.json"
 #endif	
 #define LOG_MAX_SIZE 						1048576 // 1024*1024

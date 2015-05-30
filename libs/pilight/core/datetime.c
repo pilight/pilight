@@ -93,83 +93,62 @@ static int fillTZData(void) {
 	}
 	char *content = NULL;
 	JsonNode *root = NULL;
-	FILE *fp;
-	size_t bytes;
-	struct stat st;
 
 	char tzdatafile[] = TZDATA_FILE;
 	/* Read JSON tzdata file */
-	if((fp = fopen(tzdatafile, "rb")) == NULL) {
-		logprintf(LOG_ERR, "cannot read tzdata file: %s", tzdatafile);
-		return EXIT_FAILURE;
-	}
-
-	fstat(fileno(fp), &st);
-	bytes = (size_t)st.st_size;
-
-	if((content = calloc(bytes+1, sizeof(char))) == NULL) {
-		fprintf(stderr, "out of memory\n");
-		fclose(fp);
-		fillingtzdata = 0;
-		exit(EXIT_FAILURE);
-	}
-
-	if(fread(content, sizeof(char), bytes, fp) == -1) {
-		logprintf(LOG_ERR, "cannot read tzdata file: %s", tzdatafile);
-	}
-	fclose(fp);
-
-	/* Validate JSON and turn into JSON object */
-	if(json_validate(content) == false) {
-		logprintf(LOG_ERR, "tzdata is not in a valid json format");
-		free(content);
-		fillingtzdata = 0;
-		return EXIT_FAILURE;
-	}
-
-	logprintf(LOG_DEBUG, "loading timezone database...");
-	root = json_decode(content);
-
-	JsonNode *alist = json_first_child(root);
-	unsigned int i = 0, x = 0, y = 0;
-	while(alist) {
-		JsonNode *country = json_first_child(alist);
-		while(country) {
-			strcpy(tznames[i], country->key);
-			if((tzcoords = realloc(tzcoords, sizeof(int **)*(i+1))) == NULL) {
-				fprintf(stderr, "out of memory\n");
-				exit(EXIT_FAILURE);
-			}
-			tzcoords[i] = NULL;
-			JsonNode *coords = json_first_child(country);
-			x = 0;
-			while(coords) {
-				y = 0;
-				if((tzcoords[i] = realloc(tzcoords[i], sizeof(int *)*(x+1))) == NULL) {
-					fprintf(stderr, "out of memory\n");
-					exit(EXIT_FAILURE);
-				}
-				tzcoords[i][x] = NULL;
-				if((tzcoords[i][x] = malloc(sizeof(int)*2)) == NULL) {
-					fprintf(stderr, "out of memory\n");
-					exit(EXIT_FAILURE);
-				}
-				JsonNode *lonlat = json_first_child(coords);
-				while(lonlat) {
-					tzcoords[i][x][y] = (int)lonlat->number_;
-					y++;
-					lonlat = lonlat->next;
-				}
-				x++;
-				coords = coords->next;
-			}
-			tznrpolys[i] = x;
-			i++;
-			country = country->next;
+	if(file_get_contents(tzdatafile, &content) == 0) {
+		/* Validate JSON and turn into JSON object */
+		if(json_validate(content) == false) {
+			logprintf(LOG_ERR, "tzdata is not in a valid json format");
+			free(content);
+			fillingtzdata = 0;
+			return EXIT_FAILURE;
 		}
-		alist = alist->next;
+
+		logprintf(LOG_DEBUG, "loading timezone database...");
+		root = json_decode(content);
+
+		JsonNode *alist = json_first_child(root);
+		unsigned int i = 0, x = 0, y = 0;
+		while(alist) {
+			JsonNode *country = json_first_child(alist);
+			while(country) {
+				strcpy(tznames[i], country->key);
+				if((tzcoords = realloc(tzcoords, sizeof(int **)*(i+1))) == NULL) {
+					fprintf(stderr, "out of memory\n");
+					exit(EXIT_FAILURE);
+				}
+				tzcoords[i] = NULL;
+				JsonNode *coords = json_first_child(country);
+				x = 0;
+				while(coords) {
+					y = 0;
+					if((tzcoords[i] = realloc(tzcoords[i], sizeof(int *)*(x+1))) == NULL) {
+						fprintf(stderr, "out of memory\n");
+						exit(EXIT_FAILURE);
+					}
+					tzcoords[i][x] = NULL;
+					if((tzcoords[i][x] = malloc(sizeof(int)*2)) == NULL) {
+						fprintf(stderr, "out of memory\n");
+						exit(EXIT_FAILURE);
+					}
+					JsonNode *lonlat = json_first_child(coords);
+					while(lonlat) {
+						tzcoords[i][x][y] = (int)lonlat->number_;
+						y++;
+						lonlat = lonlat->next;
+					}
+					x++;
+					coords = coords->next;
+				}
+				tznrpolys[i] = x;
+				i++;
+				country = country->next;
+			}
+			alist = alist->next;
+		}
+		json_delete(root);
 	}
-	json_delete(root);
 	free(content);
 	tzdatafilled = 1;
 	fillingtzdata = 0;

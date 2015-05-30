@@ -71,6 +71,9 @@
 #endif
 
 #ifdef WEBSERVER
+	#ifdef WEBSERVER_HTTPS	
+		#include "libs/polarssl/polarssl/md5.h"
+	#endif
 	#include "libs/pilight/core/webserver.h"
 #endif
 
@@ -1932,7 +1935,7 @@ void openconsole(void) {
 #endif
 
 void *pilight_stats(void *param) {
-	int checkram = 0, checkcpu = 0, i = -1, x = 0, watchdog = 0, stats = 1;
+	int checkram = 0, checkcpu = 0, i = -1, x = 0, watchdog = 1, stats = 1;
 	settings_find_number("watchdog-enable", &watchdog);
 	settings_find_number("stats-enable", &stats);
 
@@ -1949,7 +1952,6 @@ void *pilight_stats(void *param) {
 			if(threadprofiler == 1) {
 				threads_cpu_usage(1);
 			}
-
 			if(watchdog == 1 && (i > -1) && (cpu > 60)) {
 				if(nodaemon == 1 && threadprofiler == 0) {
 					threads_cpu_usage(x);
@@ -2283,10 +2285,46 @@ int start_pilight(int argc, char **argv) {
 
 #ifdef WEBSERVER
 	#ifdef WEBSERVER_HTTPS
-		if(file_exists("/etc/pilight/pilight.pem") != 0) {
-			logprintf(LOG_ERR, "missing webserver SSL private key /etc/pilight/ssl.pem");
-			goto clear;
+	char *pemfile = NULL;
+	int pem_free = 0;
+	if(settings_find_string("pem-file", &pemfile) != 0) {
+		if((pemfile = REALLOC(pemfile, strlen(PEM_FILE)+1)) == NULL) {
+			fprintf(stderr, "out of memory\n");
+			exit(EXIT_FAILURE);
 		}
+		strcpy(pemfile, PEM_FILE);
+		pem_free = 1;
+	}	
+	
+	char *content = NULL;
+	unsigned char md5sum[17];
+	char md5conv[33];
+	int i = 0;
+	p = (char *)md5sum;
+	if(file_exists(pemfile) != 0) {
+		logprintf(LOG_ERR, "missing webserver SSL private key %s", pemfile);
+		if(pem_free == 1) {
+			FREE(pemfile);
+		}
+		goto clear;
+	}
+	if(file_get_contents(pemfile, &content) == 0) {
+		md5((const unsigned char *)content, strlen((char *)content), (unsigned char *)p);
+		for(i = 0; i < 32; i+=2) {
+			sprintf(&md5conv[i], "%02x", md5sum[i/2] );
+		}
+		if(strcmp(md5conv, PILIGHT_PEM_MD5) == 0) {
+			registry_set_number("webserver.ssl.certificate.secure", 0, 0);
+		} else {
+			registry_set_number("webserver.ssl.certificate.secure", 1, 0);
+		}
+		registry_set_string("webserver.ssl.certificate.location", pemfile);
+		free(content);
+	}
+
+	if(pem_free == 1) {
+		FREE(pemfile);
+	}	
 	#endif
 
 	settings_find_number("webserver-enable", &webserver_enable);

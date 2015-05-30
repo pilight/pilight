@@ -158,7 +158,7 @@ typedef struct stat ns_stat_t;
 #ifdef __APPLE__
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 #endif
-#include "polarssl_compat.h"
+#include <openssl/ssl.h>
 #else
 typedef void *SSL;
 typedef void *SSL_CTX;

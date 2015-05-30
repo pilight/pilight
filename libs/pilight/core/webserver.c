@@ -824,9 +824,7 @@ static int webserver_connect_handler(struct mg_connection *conn) {
 static void *webserver_worker(void *param) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 	while(webserver_loop) {
-		if(mg_poll_server(mgserver[(intptr_t)param], 1000) == 0) {
-			sleep(1);
-		}
+		mg_poll_server(mgserver[(intptr_t)param], 1000);
 	}
 	return NULL;
 }
@@ -1055,12 +1053,23 @@ int webserver_start(void) {
 
 	int z = 0;
 #ifdef WEBSERVER_HTTPS
+	char *pemfile = NULL;
+	int pem_free = 0;
+	if(settings_find_string("pem-file", &pemfile) != 0) {
+		if((pemfile = REALLOC(pemfile, strlen(PEM_FILE)+1)) == NULL) {
+			fprintf(stderr, "out of memory\n");
+			exit(EXIT_FAILURE);
+		}
+		strcpy(pemfile, PEM_FILE);
+		pem_free = 1;
+	}
+
 	char ssl[BUFFER_SIZE];
 	char id[2];
 	memset(ssl, '\0', BUFFER_SIZE);
 
 	sprintf(id, "%d", z);
-	snprintf(ssl, BUFFER_SIZE, "ssl://%d:/etc/pilight/ssl.pem", webserver_https_port);
+	snprintf(ssl, BUFFER_SIZE, "ssl://%d:%s", webserver_https_port, pemfile);
 	mgserver[z] = mg_create_server((void *)id, webserver_handler);
 	mg_set_option(mgserver[z], "listening_port", ssl);
 	mg_set_option(mgserver[z], "auth_domain", "pilight");
@@ -1068,6 +1077,9 @@ int webserver_start(void) {
 	sprintf(msg, "webserver worker #%d", z);
 	threads_register(msg, &webserver_worker, (void *)(intptr_t)z, 0);
 	z = 1;
+	if(pem_free == 1) {
+		FREE(pemfile);
+	}
 #endif
 
 	char webport[10] = {'\0'};
@@ -1085,6 +1097,9 @@ int webserver_start(void) {
 		threads_register(msg, &webserver_worker, (void *)(intptr_t)i, 0);
 	}
 
+#ifdef WEBSERVER_HTTPS	
+	logprintf(LOG_DEBUG, "webserver listening to port %d", webserver_https_port);
+#endif
 	logprintf(LOG_DEBUG, "webserver listening to port %s", webport);
 
 	return 0;

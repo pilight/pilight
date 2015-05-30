@@ -19,19 +19,12 @@
 #ifndef _PILIGHT_H_
 #define _PILIGHT_H_
 
-typedef enum origin_t origin_t;
-typedef enum runmode_t runmode_t;
-
-#include "defines.h"
-#include "json.h"
-#include "mem.h"
-
-enum runmode_t {
+typedef enum runmode_t {
 	STANDALONE,
 	ADHOC
-};
+} runmode_t;
 
-enum origin_t {
+typedef enum origin_t {
 	RECEIVER = 0,
 	SENDER,
 	MASTER,
@@ -41,7 +34,11 @@ enum origin_t {
 	ACTION,
 	RULE,
 	PROTOCOL
-};
+} origin_t;
+
+#include "defines.h"
+#include "json.h"
+#include "mem.h"
 
 #include "../config/devices.h"
 

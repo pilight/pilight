@@ -349,7 +349,10 @@ int log_file_set(char *log) {
 	atomicunlock();
 
 	size_t i = (strlen(log)-strlen(filename));
-	logpath = REALLOC(logpath, i+1);
+	if((logpath = REALLOC(logpath, i+1)) == NULL) {
+		fprintf(stderr, "out of memory\n");
+		exit(EXIT_FAILURE);
+	}
 	memset(logpath, '\0', i+1);
 	strncpy(logpath, log, i);
 
@@ -376,7 +379,10 @@ int log_file_set(char *log) {
 			}
 		} else {
 			if(S_ISDIR(s.st_mode)) {
-				logfile = REALLOC(logfile, strlen(log)+1);
+				if((logfile = REALLOC(logfile, strlen(log)+1)) == NULL) {
+					fprintf(stderr, "out of memory\n");
+					exit(EXIT_FAILURE);
+				}
 				strcpy(logfile, log);
 			} else {
 				logprintf(LOG_ERR, "the log folder %s does not exist", logpath);
@@ -385,7 +391,10 @@ int log_file_set(char *log) {
 			}
 		}
 	} else {
-		logfile = REALLOC(logfile, strlen(log)+1);
+		if((logfile = REALLOC(logfile, strlen(log)+1)) == NULL) {
+			fprintf(stderr, "out of memory\n");
+			exit(EXIT_FAILURE);
+		}
 		strcpy(logfile, log);
 	}
 

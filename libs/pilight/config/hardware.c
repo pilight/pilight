@@ -291,9 +291,9 @@ static int hardware_parse(JsonNode *root) {
 							regfree(&regex);
 							goto clear;
 						}
-						FREE(stmp);
 						regfree(&regex);
 					}
+					FREE(stmp);
 #endif
 				}
 				hw_options = hw_options->next;

@@ -992,3 +992,30 @@ int stricmp(char const *a, char const *b) {
 				return d;
 	}
 }
+
+int file_get_contents(char *file, char **content) {
+	FILE *fp = NULL;
+	size_t bytes = 0;
+	struct stat st;
+
+	if((fp = fopen(file, "rb")) == NULL) {
+		logprintf(LOG_ERR, "cannot open file: %s", file);
+		return -1;
+	}
+
+	fstat(fileno(fp), &st);
+	bytes = (size_t)st.st_size;
+
+	if((*content = calloc(bytes+1, sizeof(char))) == NULL) {
+		fprintf(stderr, "out of memory\n");
+		fclose(fp);
+		exit(EXIT_FAILURE);
+	}
+
+	if(fread(*content, sizeof(char), bytes, fp) == -1) {
+		logprintf(LOG_ERR, "cannot read file: %s", file);
+		return -1;
+	}
+	fclose(fp);
+	return 0;
+}
