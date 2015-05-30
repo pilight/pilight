@@ -198,19 +198,19 @@ int config_read(void) {
 		/* Validate JSON and turn into JSON object */
 		if(json_validate(content) == false) {
 			logprintf(LOG_ERR, "config is not in a valid json format");
-			free(content);
+			FREE(content);
 			return EXIT_FAILURE;
 		}
 		root = json_decode(content);
 
 		if(config_parse(root) != EXIT_SUCCESS) {
-			free(content);
+			FREE(content);
 			json_delete(root);
 			return EXIT_FAILURE;
 		}
 		json_delete(root);
 		config_write(1, "all");
-		free(content);
+		FREE(content);
 	}
 	return EXIT_SUCCESS;
 }

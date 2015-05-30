@@ -1006,7 +1006,7 @@ int file_get_contents(char *file, char **content) {
 	fstat(fileno(fp), &st);
 	bytes = (size_t)st.st_size;
 
-	if((*content = calloc(bytes+1, sizeof(char))) == NULL) {
+	if((*content = CALLOC(bytes+1, sizeof(char))) == NULL) {
 		fprintf(stderr, "out of memory\n");
 		fclose(fp);
 		exit(EXIT_FAILURE);

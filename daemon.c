@@ -2319,7 +2319,7 @@ int start_pilight(int argc, char **argv) {
 			registry_set_number("webserver.ssl.certificate.secure", 1, 0);
 		}
 		registry_set_string("webserver.ssl.certificate.location", pemfile);
-		free(content);
+		FREE(content);
 	}
 
 	if(pem_free == 1) {
