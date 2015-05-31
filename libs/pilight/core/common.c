@@ -474,9 +474,9 @@ void alpha_random(char *s, const int len) {
 int urldecode(const char *s, char *dec) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
-	char *o;
+	char *o = NULL;
 	const char *end = s + strlen(s);
-	int c;
+	int c = 0;
 
 	for(o = dec; s <= end; o++) {
 		c = *s++;

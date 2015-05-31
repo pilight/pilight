@@ -315,6 +315,133 @@ static int webserver_auth_handler(struct mg_connection *conn) {
 	}
 }
 
+static int webserver_parse_rest(struct mg_connection *conn) {
+	char **array = NULL, **array1 = NULL;
+	struct JsonNode *jobject = json_mkobject();
+	struct JsonNode *jcode = json_mkobject();
+	struct JsonNode *jvalues = json_mkobject();
+	int a = 0, b = 0, c = 0, has_protocol = 0;
+
+	if(strcmp(conn->request_method, "POST") == 0) {
+		conn->query_string = conn->content;
+	}
+	if(strcmp(conn->request_method, "GET") == 0 && conn->query_string == NULL) {
+		conn->query_string = conn->content;
+	}
+	if(conn->query_string != NULL) {
+		struct devices_t *dev = NULL;
+		char decoded[strlen(conn->query_string)+1];
+
+		if(urldecode(conn->query_string, decoded) == -1) {
+			char *z = "{\"message\":\"failed\",\"error\":\"cannot decode url\"}";
+			mg_send_data(conn, z, strlen(z));
+			return MG_TRUE;
+		}
+		
+		char state[16], *p = NULL;
+		a = explode((char *)decoded, "&", &array), b = 0, c = 0;
+		memset(state, 0, 16);
+
+		if(a > 1) {
+			int type = 0; //0 = SEND, 1 = CONTROL
+			json_append_member(jobject, "code", jcode);
+
+			if(strcmp(conn->uri, "/send") == 0) {
+				type = 0;
+				json_append_member(jobject, "action", json_mkstring("send"));
+			} else if(strcmp(conn->uri, "/control") == 0) {
+				type = 1;
+				json_append_member(jobject, "action", json_mkstring("control"));
+			}
+
+			for(b=0;b<a;b++) {
+				c = explode(array[b], "=", &array1);
+				if(c == 2) {
+					if(strcmp(array1[0], "protocol") == 0) {
+						struct JsonNode *jprotocol = json_mkarray();
+						json_append_element(jprotocol, json_mkstring(array1[1]));
+						json_append_member(jcode, "protocol", jprotocol);
+						has_protocol = 1;
+					} else if(strcmp(array1[0], "state") == 0) {
+						strcpy(state, array1[1]);
+					} else if(strcmp(array1[0], "device") == 0) {
+						if(devices_get(array1[1], &dev) != 0) {
+							char *z = "{\"message\":\"failed\",\"error\":\"device does not exists\"}";
+							mg_send_data(conn, z, strlen(z));
+							goto clear1;
+						}
+					} else if(strncmp(array1[0], "values", 6) == 0) {
+						char name[255], *ptr = name;
+						if(sscanf(array1[0], "values[%254[a-z]]", ptr) != 1) {
+							char *z = "{\"message\":\"failed\",\"error\":\"values should be passed like this \'values[dimlevel]=10\'\"}";
+							mg_send_data(conn, z, strlen(z));
+							goto clear1;
+						} else {
+							if(isNumeric(array1[1]) == 0) {
+								json_append_member(jvalues, name, json_mknumber(atof(array1[1]), nrDecimals(array1[1])));
+							} else {
+								json_append_member(jvalues, name, json_mkstring(array1[1]));
+							}
+						}
+					} else if(isNumeric(array1[1]) == 0) {
+						json_append_member(jcode, array1[0], json_mknumber(atof(array1[1]), nrDecimals(array1[1])));
+					} else {
+						json_append_member(jcode, array1[0], json_mkstring(array1[1]));
+					}
+				}
+				array_free(&array1, c);
+			}
+			if(type == 0) {
+				if(has_protocol == 0) {
+					char *z = "{\"message\":\"failed\",\"error\":\"no protocol was send\"}";
+					mg_send_data(conn, z, strlen(z));
+					goto clear2;
+				}
+				if(pilight.send != NULL) {
+					if(pilight.send(jobject, SENDER) == 0) {
+						char *z = "{\"message\":\"success\"}";
+						mg_send_data(conn, z, strlen(z));
+						goto clear2;
+					}
+				}
+			} else if(type == 1) {
+				if(pilight.control != NULL) {
+					if(dev == NULL) {
+						char *z = "{\"message\":\"failed\",\"error\":\"no device was send\"}";
+						mg_send_data(conn, z, strlen(z));
+						goto clear2;
+					} else {
+						if(strlen(state) > 0) {
+							p = state;
+						}
+						if(pilight.control(dev, p, json_first_child(jvalues), SENDER) == 0) {
+							char *z = "{\"message\":\"success\"}";
+							mg_send_data(conn, z, strlen(z));
+							goto clear2;
+						}
+					}
+				}
+			}
+			json_delete(jvalues);
+			json_delete(jobject);
+		}
+		array_free(&array, a);
+	}
+	char *z = "{\"message\":\"failed\"}";
+	mg_send_data(conn, z, strlen(z));
+	return MG_TRUE;
+	
+clear1:
+	array_free(&array1, c);
+
+clear2:
+	array_free(&array, a);
+	json_delete(jvalues);
+	json_delete(jobject);
+
+	return MG_TRUE;
+}
+
 static int webserver_request_handler(struct mg_connection *conn) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
@@ -357,26 +484,8 @@ static int webserver_request_handler(struct mg_connection *conn) {
 				return MG_MORE;
 			}
 		} else if(conn->uri != NULL) {
-			if(strcmp(conn->uri, "/send") == 0) {
-				if(conn->query_string != NULL) {
-					char decoded[strlen(conn->query_string)+1];
-					char output[strlen(conn->query_string)+1];
-					strcpy(output, conn->query_string);
-					char *z = strstr(output, "&");
-					if(z != NULL) {
-						output[z-output] = '\0';
-					}
-					urldecode(output, decoded);
-					if(json_validate(decoded) == true) {
-						socket_write(sockfd, decoded);
-						char *a = "{\"message\":\"success\"}";
-						mg_send_data(conn, a, strlen(a));
-						return MG_TRUE;
-					}
-				}
-				char *b = "{\"message\":\"failed\"}";
-				mg_send_data(conn, b, strlen(b));
-				return MG_TRUE;
+			if(strcmp(conn->uri, "/send") == 0 || strcmp(conn->uri, "/control") == 0) {
+				return webserver_parse_rest(conn);
 			} else if(strcmp(conn->uri, "/config") == 0) {
 				char media[15];
 				int internal = CONFIG_USER;
