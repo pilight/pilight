@@ -3,13 +3,13 @@
 	"gui": { },
 	"rules": { },
 	"settings": {
-		"log-level": 4,
+		"log-level": 6,
 		"pid-file": "/var/run/pilight.pid",
 		"log-file": "/var/log/pilight.log",
-		"receive-repeats": 1,
 		"webserver-enable": 1,
 		"webserver-root": "/usr/share/pilight/",
-		"webserver-port": 5001,
+		"webserver-http-port": 5001,
+		"webserver-https-port": 5002,
 		"webserver-cache": 1,
 		"whitelist": ""
 	},

@@ -220,7 +220,7 @@ int isrunning(const char *program) {
 	int pid = -1;
 	char *tmp = MALLOC(strlen(program)+1);
 	if(tmp == NULL) {
-		logprintf(LOG_ERR, "out of memory");
+		fprintf(stderr, "out of memory\n");
 		exit(EXIT_FAILURE);
 	}
 	strcpy(tmp, program);
@@ -474,9 +474,9 @@ void alpha_random(char *s, const int len) {
 int urldecode(const char *s, char *dec) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
-	char *o;
+	char *o = NULL;
 	const char *end = s + strlen(s);
-	int c;
+	int c = 0;
 
 	for(o = dec; s <= end; o++) {
 		c = *s++;
@@ -672,8 +672,8 @@ char *hostname(void) {
 	if(strlen(name) > 0) {
 		n = explode(name, ".", &array);
 		if(n > 0) {
-			if(!(host = MALLOC(strlen(array[0])+1))) {
-				logprintf(LOG_ERR, "out of memory");
+			if((host = MALLOC(strlen(array[0])+1)) == NULL) {
+				fprintf(stderr, "out of memory\n");
 				exit(EXIT_FAILURE);
 			}
 			strcpy(host, array[0]);
@@ -718,7 +718,7 @@ char *distroname(void) {
 #endif
 	if(strlen(dist) > 0) {
 		if((distro = MALLOC(strlen(dist)+1)) == NULL) {
-			logprintf(LOG_ERR, "out of memory");
+			fprintf(stderr, "out of memory\n");
 			exit(EXIT_FAILURE);
 		}
 		strcpy(distro, dist);
@@ -760,7 +760,7 @@ char *genuuid(char *ifname) {
 					memmove(&serial[14], &serial[13], 7);
 					serial[13] = '-';
 					if((upnp_id = MALLOC(UUID_LENGTH+1)) == NULL) {
-						logprintf(LOG_ERR, "out of memory");
+						fprintf(stderr, "out of memory\n");
 						exit(EXIT_FAILURE);
 					}
 					strcpy(upnp_id, serial);
@@ -775,7 +775,7 @@ char *genuuid(char *ifname) {
 #endif
 	if(dev2mac(ifname, &p) == 0) {
 		if((upnp_id = MALLOC(UUID_LENGTH+1)) == NULL) {
-			logprintf(LOG_ERR, "out of memory");
+			fprintf(stderr, "out of memory\n");
 			exit(EXIT_FAILURE);
 		}
 		memset(upnp_id, '\0', UUID_LENGTH+1);
@@ -962,7 +962,7 @@ int str_replace(char *search, char *replace, char **str) {
 			nlen = len - (slen - rlen);
 			if(len < nlen) {
 				if((target = REALLOC(target, (size_t)nlen+1)) == NULL) {
-					logprintf(LOG_ERR, "out of memory");
+					fprintf(stderr, "out of memory\n");
 					exit(EXIT_FAILURE);
 				}
 				memset(&target[len], '\0', (size_t)(nlen-len));
@@ -991,4 +991,31 @@ int stricmp(char const *a, char const *b) {
 			if(d != 0 || !*a)
 				return d;
 	}
+}
+
+int file_get_contents(char *file, char **content) {
+	FILE *fp = NULL;
+	size_t bytes = 0;
+	struct stat st;
+
+	if((fp = fopen(file, "rb")) == NULL) {
+		logprintf(LOG_ERR, "cannot open file: %s", file);
+		return -1;
+	}
+
+	fstat(fileno(fp), &st);
+	bytes = (size_t)st.st_size;
+
+	if((*content = CALLOC(bytes+1, sizeof(char))) == NULL) {
+		fprintf(stderr, "out of memory\n");
+		fclose(fp);
+		exit(EXIT_FAILURE);
+	}
+
+	if(fread(*content, sizeof(char), bytes, fp) == -1) {
+		logprintf(LOG_ERR, "cannot read file: %s", file);
+		return -1;
+	}
+	fclose(fp);
+	return 0;
 }

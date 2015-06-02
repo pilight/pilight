@@ -126,8 +126,8 @@ void protocol_init(void) {
 
 	if(settings_find_string("protocol-root", &protocol_root) != 0) {
 		/* If no protocol root was set, use the default protocol root */
-		if(!(protocol_root = MALLOC(strlen(PROTOCOL_ROOT)+1))) {
-			logprintf(LOG_ERR, "out of memory");
+		if((protocol_root = MALLOC(strlen(PROTOCOL_ROOT)+1)) == NULL) {
+			fprintf(stderr, "out of memory\n");
 			exit(EXIT_FAILURE);
 		}
 		strcpy(protocol_root, PROTOCOL_ROOT);
@@ -206,7 +206,7 @@ void protocol_register(protocol_t **proto) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
 	if((*proto = MALLOC(sizeof(struct protocol_t))) == NULL) {
-		logprintf(LOG_ERR, "out of memory");
+		fprintf(stderr, "out of memory\n");
 		exit(EXIT_FAILURE);
 	}
 	(*proto)->options = NULL;
@@ -241,7 +241,7 @@ void protocol_register(protocol_t **proto) {
 
 	struct protocols_t *pnode = MALLOC(sizeof(struct protocols_t));
 	if(pnode == NULL) {
-		logprintf(LOG_ERR, "out of memory");
+		fprintf(stderr, "out of memory\n");
 		exit(EXIT_FAILURE);
 	}
 	pnode->listener = *proto;
@@ -254,7 +254,7 @@ struct protocol_threads_t *protocol_thread_init(protocol_t *proto, struct JsonNo
 
 	struct protocol_threads_t *node = MALLOC(sizeof(struct protocol_threads_t));
 	if(node == NULL) {
-		logprintf(LOG_ERR, "out of memory");
+		fprintf(stderr, "out of memory\n");
 		exit(EXIT_FAILURE);
 	}
 
@@ -328,8 +328,8 @@ void protocol_thread_free(protocol_t *proto) {
 void protocol_set_id(protocol_t *proto, const char *id) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
-	if(!(proto->id = MALLOC(strlen(id)+1))) {
-		logprintf(LOG_ERR, "out of memory");
+	if((proto->id = MALLOC(strlen(id)+1)) == NULL) {
+		fprintf(stderr, "out of memory\n");
 		exit(EXIT_FAILURE);
 	}
 	strcpy(proto->id, id);
@@ -340,16 +340,16 @@ void protocol_device_add(protocol_t *proto, const char *id, const char *desc) {
 
 	struct protocol_devices_t *dnode = MALLOC(sizeof(struct protocol_devices_t));
 	if(dnode == NULL) {
-		logprintf(LOG_ERR, "out of memory");
+		fprintf(stderr, "out of memory\n");
 		exit(EXIT_FAILURE);
 	}
-	if(!(dnode->id = MALLOC(strlen(id)+1))) {
-		logprintf(LOG_ERR, "out of memory");
+	if((dnode->id = MALLOC(strlen(id)+1)) == NULL) {
+		fprintf(stderr, "out of memory\n");
 		exit(EXIT_FAILURE);
 	}
 	strcpy(dnode->id, id);
-	if(!(dnode->desc = MALLOC(strlen(desc)+1))) {
-		logprintf(LOG_ERR, "out of memory");
+	if((dnode->desc = MALLOC(strlen(desc)+1)) == NULL) {
+		fprintf(stderr, "out of memory\n");
 		exit(EXIT_FAILURE);
 	}
 	strcpy(dnode->desc, desc);

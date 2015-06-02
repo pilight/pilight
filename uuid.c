@@ -76,7 +76,7 @@ int main(int argc, char **argv) {
 	char *args = NULL;
 
 	if((progname = MALLOC(13)) == NULL) {
-		logprintf(LOG_ERR, "out of memory");
+		fprintf(stderr, "out of memory\n");
 		exit(EXIT_FAILURE);
 	}
 	strcpy(progname, "pilight-uuid");

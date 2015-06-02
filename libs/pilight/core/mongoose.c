@@ -3828,7 +3828,7 @@ int mg_authorize_input(struct mg_connection *c, char *username, char *password, 
 	if((n = explode(decoded, ":", &array)) == 2) {
 		if(strlen(array[1]) < 64) {
 			if((array[1] = REALLOC(array[1], 65)) == NULL) {
-				fprintf(stderr, "out of memory");
+				fprintf(stderr, "out of memory\n");
 				exit(EXIT_FAILURE);
 			}
 		}

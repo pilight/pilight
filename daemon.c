@@ -71,6 +71,9 @@
 #endif
 
 #ifdef WEBSERVER
+	#ifdef WEBSERVER_HTTPS	
+		#include "libs/polarssl/polarssl/md5.h"
+	#endif
 	#include "libs/pilight/core/webserver.h"
 #endif
 
@@ -187,14 +190,6 @@ static unsigned short main_loop = 1;
 static struct timeval tv;
 /* Are we running standalone */
 static int standalone = 0;
-/* What is the minimum rawlenth to consider a pulse stream valid */
-static int minrawlen = 1000;
-/* What is the maximum rawlenth to consider a pulse stream valid */
-static int maxrawlen = 0;
-/* What is the minimum rawlenth to consider a pulse stream valid */
-static int maxgaplen = 5100;
-/* What is the maximum rawlenth to consider a pulse stream valid */
-static int mingaplen = 10000;
 /* Do we need to connect to a master server:port? */
 static char *master_server = NULL;
 static unsigned short master_port = 0;
@@ -250,7 +245,7 @@ static void broadcast_queue(char *protoname, struct JsonNode *json, enum origin_
 		if(bcqueue_number <= 1024) {
 			struct bcqueue_t *bnode = MALLOC(sizeof(struct bcqueue_t));
 			if(bnode == NULL) {
-				logprintf(LOG_ERR, "out of memory");
+				fprintf(stderr, "out of memory\n");
 				exit(EXIT_FAILURE);
 			}
 
@@ -262,7 +257,7 @@ static void broadcast_queue(char *protoname, struct JsonNode *json, enum origin_
 			json_free(jstr);
 
 			if((bnode->protoname = MALLOC(strlen(protoname)+1)) == NULL) {
-				logprintf(LOG_ERR, "out of memory");
+				fprintf(stderr, "out of memory\n");
 				exit(EXIT_FAILURE);
 			}
 			strcpy(bnode->protoname, protoname);
@@ -495,7 +490,7 @@ static void receive_queue(int *raw, int rawlen, int plslen, int hwtype) {
 		if(recvqueue_number <= 1024) {
 			struct recvqueue_t *rnode = MALLOC(sizeof(struct recvqueue_t));
 			if(rnode == NULL) {
-				logprintf(LOG_ERR, "out of memory");
+				fprintf(stderr, "out of memory\n");
 				exit(EXIT_FAILURE);
 			}
 			for(i=0;i<rawlen;i++) {
@@ -818,7 +813,7 @@ static int send_queue(struct JsonNode *json, enum origin_t origin) {
 					if(sendqueue_number <= 1024) {
 						struct sendqueue_t *mnode = MALLOC(sizeof(struct sendqueue_t));
 						if(mnode == NULL) {
-							logprintf(LOG_ERR, "out of memory");
+							fprintf(stderr, "out of memory\n");
 							exit(EXIT_FAILURE);
 						}
 						gettimeofday(&tcurrent, NULL);
@@ -830,7 +825,7 @@ static int send_queue(struct JsonNode *json, enum origin_t origin) {
 							json_delete(protocol->message);
 							if(json_validate(jsonstr) == true) {
 								if((mnode->message = MALLOC(strlen(jsonstr)+1)) == NULL) {
-									logprintf(LOG_ERR, "out of memory");
+									fprintf(stderr, "out of memory\n");
 									exit(EXIT_FAILURE);
 								}
 								strcpy(mnode->message, jsonstr);
@@ -843,7 +838,7 @@ static int send_queue(struct JsonNode *json, enum origin_t origin) {
 						memcpy(mnode->code, protocol->raw, sizeof(int)*protocol->rawlen);
 
 						if((mnode->protoname = MALLOC(strlen(protocol->id)+1)) == NULL) {
-							logprintf(LOG_ERR, "out of memory");
+							fprintf(stderr, "out of memory\n");
 							exit(EXIT_FAILURE);
 						}
 						strcpy(mnode->protoname, protocol->id);
@@ -867,7 +862,7 @@ static int send_queue(struct JsonNode *json, enum origin_t origin) {
 						}
 						char *strsett = json_stringify(jsettings, NULL);
 						if((mnode->settings = MALLOC(strlen(strsett)+1)) == NULL) {
-							logprintf(LOG_ERR, "out of memory");
+							fprintf(stderr, "out of memory\n");
 							exit(EXIT_FAILURE);
 						}
 						strcpy(mnode->settings, strsett);
@@ -934,7 +929,7 @@ static void client_webserver_parse_code(int i, char buffer[BUFFER_SIZE]) {
 		p = buff;
 		if(strstr(buffer, "/logo.png") != NULL) {
 			if((path = MALLOC(strlen(webserver_root)+strlen("logo.png")+2)) == NULL) {
-				logprintf(LOG_ERR, "out of memory");
+				fprintf(stderr, "out of memory\n");
 				exit(EXIT_FAILURE);
 			}
 			sprintf(path, "%s/logo.png", webserver_root);
@@ -945,7 +940,7 @@ static void client_webserver_parse_code(int i, char buffer[BUFFER_SIZE]) {
 				send(sd, (const char *)buff, (size_t)(p-buff), MSG_NOSIGNAL);
 				x = 0;
 				if((cache = MALLOC(BUFFER_SIZE)) == NULL) {
-					logprintf(LOG_ERR, "out of memory");
+					fprintf(stderr, "out of memory\n");
 					exit(EXIT_FAILURE);
 				}
 				memset(cache, '\0', BUFFER_SIZE);
@@ -957,7 +952,7 @@ static void client_webserver_parse_code(int i, char buffer[BUFFER_SIZE]) {
 				FREE(cache);
 				FREE(mimetype);
 			} else {
-				logprintf(LOG_NOTICE, "pilight logo not found");
+				logprintf(LOG_WARNING, "pilight logo not found");
 			}
 			FREE(path);
 		} else {
@@ -967,7 +962,7 @@ static void client_webserver_parse_code(int i, char buffer[BUFFER_SIZE]) {
 			send(sd, (const char *)buff, (size_t)(p-buff), MSG_NOSIGNAL);
 			if(webserver_enable == 1) {
 				if((cache = MALLOC(BUFFER_SIZE)) == NULL) {
-					logprintf(LOG_ERR, "out of memory");
+					fprintf(stderr, "out of memory\n");
 					exit(EXIT_FAILURE);
 				}
 				memset(cache, '\0', BUFFER_SIZE);
@@ -1150,7 +1145,7 @@ static void socket_parse_data(int i, char *buffer) {
 					/* Check if client doesn't already exist */
 					if(exists == 0) {
 						if((client = MALLOC(sizeof(struct clients_t))) == NULL) {
-							logprintf(LOG_ERR, "out of memory");
+							fprintf(stderr, "out of memory\n");
 							exit(EXIT_FAILURE);
 						}
 						client->core = 0;
@@ -1502,23 +1497,23 @@ void *receiveOOK(void *param) {
 	struct hardware_t *hw = (hardware_t *)param;
 	pthread_mutex_lock(&hw->lock);
 	hw->running = 1;
+
 	while(main_loop == 1 && hw->receiveOOK != NULL && hw->stop == 0) {
 		if(hw->wait == 0) {
 			pthread_mutex_lock(&hw->lock);
 			logprintf(LOG_STACK, "%s::unlocked", __FUNCTION__);
 			duration = hw->receiveOOK();
-
 			if(duration > 0) {
 				r.pulses[r.length++] = duration;
 				if(r.length > MAXPULSESTREAMLENGTH-1) {
 					r.length = 0;
 				}
-				if(duration > mingaplen) {
-					if(duration < maxgaplen) {
+				if(duration > hw->mingaplen) {
+					if(duration < hw->maxgaplen) {
 						plslen = duration/PULSE_DIV;
 					}
 					/* Let's do a little filtering here as well */
-					if(r.length >= minrawlen && r.length <= maxrawlen) {
+					if(r.length >= hw->minrawlen && r.length <= hw->maxrawlen) {
 						receive_queue(r.pulses, r.length, plslen, hw->hwtype);
 					}
 					r.length = 0;
@@ -1569,7 +1564,7 @@ void *clientize(void *param) {
 		ssdp_list = NULL;
 		if(master_server != NULL && master_port > 0) {
 			if((sockfd = socket_connect(master_server, master_port)) == -1) {
-				logprintf(LOG_NOTICE, "could not connect to pilight-daemon");
+				logprintf(LOG_ERR, "could not connect to pilight-daemon");
 				continue;
 			}
 		} else if(ssdp_seek(&ssdp_list) == -1) {
@@ -1577,7 +1572,7 @@ void *clientize(void *param) {
 			continue;
 		} else {
 			if((sockfd = socket_connect(ssdp_list->ip, ssdp_list->port)) == -1) {
-				logprintf(LOG_NOTICE, "could not connect to pilight-daemon");
+				logprintf(LOG_ERR, "could not connect to pilight-daemon");
 				continue;
 			}
 		}
@@ -1654,7 +1649,7 @@ void *clientize(void *param) {
 								logprintf(LOG_DEBUG, "loaded master configuration");
 								config_synced = 1;
 							} else {
-								logprintf(LOG_NOTICE, "failed to load master configuration");
+								logprintf(LOG_WARNING, "failed to load master configuration");
 							}
 						}
 					}
@@ -1724,7 +1719,7 @@ static void save_pid(pid_t npid) {
 		sprintf(buffer, "%d", npid);
 		ssize_t i = write(f, buffer, strlen(buffer));
 		if(i != strlen(buffer)) {
-			logprintf(LOG_ERR, "could not store pid in %s", pid_file);
+			logprintf(LOG_WARNING, "could not store pid in %s", pid_file);
 		}
 	}
 	close(f);
@@ -1940,7 +1935,7 @@ void openconsole(void) {
 #endif
 
 void *pilight_stats(void *param) {
-	int checkram = 0, checkcpu = 0, i = -1, x = 0, watchdog = 0, stats = 1;
+	int checkram = 0, checkcpu = 0, i = -1, x = 0, watchdog = 1, stats = 1;
 	settings_find_number("watchdog-enable", &watchdog);
 	settings_find_number("stats-enable", &stats);
 
@@ -1957,7 +1952,6 @@ void *pilight_stats(void *param) {
 			if(threadprofiler == 1) {
 				threads_cpu_usage(1);
 			}
-
 			if(watchdog == 1 && (i > -1) && (cpu > 60)) {
 				if(nodaemon == 1 && threadprofiler == 0) {
 					threads_cpu_usage(x);
@@ -1965,7 +1959,7 @@ void *pilight_stats(void *param) {
 				}
 				if(checkcpu == 0) {
 					if(cpu > 90) {
-						logprintf(LOG_WARNING, "cpu usage way too high %f%%", cpu);
+						logprintf(LOG_CRIT, "cpu usage way too high %f%%", cpu);
 					} else {
 						logprintf(LOG_WARNING, "cpu usage too high %f%%", cpu);
 					}
@@ -1973,9 +1967,9 @@ void *pilight_stats(void *param) {
 					sleep(10);
 				} else {
 					if(cpu > 90) {
-						logprintf(LOG_ERR, "cpu usage still way too high %f%%, exiting", cpu);
+						logprintf(LOG_ALERT, "cpu usage still way too high %f%%, exiting", cpu);
 					} else {
-						logprintf(LOG_ERR, "cpu usage still too high %f%%, stopping", cpu);
+						logprintf(LOG_CRIT, "cpu usage still too high %f%%, stopping", cpu);
 					}
 				}
 				if(checkcpu == 1) {
@@ -1990,7 +1984,7 @@ void *pilight_stats(void *param) {
 			} else if(watchdog == 1 && (i > -1) && (ram > 60)) {
 				if(checkram == 0) {
 					if(ram > 90) {
-						logprintf(LOG_WARNING, "ram usage way too high %f%%", ram);
+						logprintf(LOG_CRIT, "ram usage way too high %f%%", ram);
 						exit(EXIT_FAILURE);
 					} else {
 						logprintf(LOG_WARNING, "ram usage too high %f%%", ram);
@@ -1999,9 +1993,9 @@ void *pilight_stats(void *param) {
 					sleep(10);
 				} else {
 					if(ram > 90) {
-						logprintf(LOG_WARNING, "ram usage still way too high %f%%, exiting", ram);
+						logprintf(LOG_ALERT, "ram usage still way too high %f%%, exiting", ram);
 					} else {
-						logprintf(LOG_WARNING, "ram usage still too high %f%%, stopping", ram);
+						logprintf(LOG_CRIT, "ram usage still too high %f%%, stopping", ram);
 					}
 				}
 				if(checkram == 1) {
@@ -2065,13 +2059,13 @@ int start_pilight(int argc, char **argv) {
 	wiringXLog = logprintf;
 
 	if((progname = MALLOC(16)) == NULL) {
-		logprintf(LOG_ERR, "out of memory");
+		fprintf(stderr, "out of memory\n");
 		exit(EXIT_FAILURE);
 	}
 	strcpy(progname, "pilight-daemon");
 
 	if((configtmp = MALLOC(strlen(CONFIG_FILE)+1)) == NULL) {
-		logprintf(LOG_ERR, "out of memory");
+		fprintf(stderr, "out of memory\n");
 		exit(EXIT_FAILURE);
 	}
 	strcpy(configtmp, CONFIG_FILE);
@@ -2109,7 +2103,7 @@ int start_pilight(int argc, char **argv) {
 			break;
 			case 'S':
 				if((master_server = MALLOC(strlen(args)+1)) == NULL) {
-					logprintf(LOG_ERR, "out of memory");
+					fprintf(stderr, "out of memory\n");
 					exit(EXIT_FAILURE);
 				}
 				strcpy(master_server, args);
@@ -2256,18 +2250,18 @@ int start_pilight(int argc, char **argv) {
 
 #ifdef _WIN32
 	if((pid = check_instances(L"pilight-daemon")) != -1) {
-		logprintf(LOG_ERR, "pilight is already running");
+		logprintf(LOG_NOTICE, "pilight is already running");
 		goto clear;
 	}
 #endif
 
 	if((pid = isrunning("pilight-raw")) != -1) {
-		logprintf(LOG_ERR, "pilight-raw instance found (%d)", (int)pid);
+		logprintf(LOG_NOTICE, "pilight-raw instance found (%d)", (int)pid);
 		goto clear;
 	}
 
 	if((pid = isrunning("pilight-debug")) != -1) {
-		logprintf(LOG_ERR, "pilight-debug instance found (%d)", (int)pid);
+		logprintf(LOG_NOTICE, "pilight-debug instance found (%d)", (int)pid);
 		goto clear;
 	}
 
@@ -2290,11 +2284,54 @@ int start_pilight(int argc, char **argv) {
 	registerVersion();
 
 #ifdef WEBSERVER
+	#ifdef WEBSERVER_HTTPS
+	char *pemfile = NULL;
+	int pem_free = 0;
+	if(settings_find_string("pem-file", &pemfile) != 0) {
+		if((pemfile = REALLOC(pemfile, strlen(PEM_FILE)+1)) == NULL) {
+			fprintf(stderr, "out of memory\n");
+			exit(EXIT_FAILURE);
+		}
+		strcpy(pemfile, PEM_FILE);
+		pem_free = 1;
+	}	
+	
+	char *content = NULL;
+	unsigned char md5sum[17];
+	char md5conv[33];
+	int i = 0;
+	p = (char *)md5sum;
+	if(file_exists(pemfile) != 0) {
+		logprintf(LOG_ERR, "missing webserver SSL private key %s", pemfile);
+		if(pem_free == 1) {
+			FREE(pemfile);
+		}
+		goto clear;
+	}
+	if(file_get_contents(pemfile, &content) == 0) {
+		md5((const unsigned char *)content, strlen((char *)content), (unsigned char *)p);
+		for(i = 0; i < 32; i+=2) {
+			sprintf(&md5conv[i], "%02x", md5sum[i/2] );
+		}
+		if(strcmp(md5conv, PILIGHT_PEM_MD5) == 0) {
+			registry_set_number("webserver.ssl.certificate.secure", 0, 0);
+		} else {
+			registry_set_number("webserver.ssl.certificate.secure", 1, 0);
+		}
+		registry_set_string("webserver.ssl.certificate.location", pemfile);
+		FREE(content);
+	}
+
+	if(pem_free == 1) {
+		FREE(pemfile);
+	}	
+	#endif
+
 	settings_find_number("webserver-enable", &webserver_enable);
 	settings_find_number("webserver-http-port", &webserver_http_port);
 	if(settings_find_string("webserver-root", &webserver_root) != 0) {
 		if((webserver_root = REALLOC(webserver_root, strlen(WEBSERVER_ROOT)+1)) == NULL) {
-			logprintf(LOG_ERR, "out of memory");
+			fprintf(stderr, "out of memory\n");
 			exit(EXIT_FAILURE);
 		}
 		strcpy(webserver_root, WEBSERVER_ROOT);
@@ -2304,9 +2341,8 @@ int start_pilight(int argc, char **argv) {
 
 #ifndef _WIN32
 	if(settings_find_string("pid-file", &pid_file) != 0) {
-		pid_file = REALLOC(pid_file, strlen(PID_FILE)+1);
-		if(!pid_file) {
-			logprintf(LOG_ERR, "out of memory");
+		if((pid_file = REALLOC(pid_file, strlen(PID_FILE)+1)) == NULL) {
+			fprintf(stderr, "out of memory\n");
 			exit(EXIT_FAILURE);
 		}
 		strcpy(pid_file, PID_FILE);
@@ -2336,7 +2372,6 @@ int start_pilight(int argc, char **argv) {
 #endif
 
 	if(settings_find_number("log-level", &itmp) == 0) {
-		itmp += 2;
 		log_level_set(itmp);
 	}
 
@@ -2373,25 +2408,35 @@ int start_pilight(int argc, char **argv) {
 	}
 #endif
 
-	struct protocols_t *tmp = protocols;
-	while(tmp) {
-		if(tmp->listener->maxrawlen > maxrawlen) {
-			maxrawlen = tmp->listener->maxrawlen;
+	struct conf_hardware_t *tmp_confhw = conf_hardware;
+	while(tmp_confhw) {
+		if(tmp_confhw->hardware->init) {
+			if(tmp_confhw->hardware->comtype == COMOOK) {
+				struct protocols_t *tmp = protocols;
+				while(tmp) {
+					if(tmp->listener->hwtype == tmp_confhw->hardware->hwtype) {
+						if(tmp->listener->maxrawlen > tmp_confhw->hardware->maxrawlen) {
+							tmp_confhw->hardware->maxrawlen = tmp->listener->maxrawlen;
+						}
+						if(tmp->listener->minrawlen > 0 && tmp->listener->minrawlen < tmp_confhw->hardware->minrawlen) {
+							tmp_confhw->hardware->minrawlen = tmp->listener->minrawlen;
+						}
+						if(tmp->listener->maxgaplen > tmp_confhw->hardware->maxgaplen) {
+							tmp_confhw->hardware->maxgaplen = tmp->listener->maxgaplen;
+						}
+						if(tmp->listener->mingaplen > 0 && tmp->listener->mingaplen < tmp_confhw->hardware->mingaplen) {
+							tmp_confhw->hardware->mingaplen = tmp->listener->mingaplen;
+						}
+						if(tmp->listener->rawlen > 0) {
+							logprintf(LOG_EMERG, "%s: setting \"rawlen\" length is not allowed, use the \"minrawlen\" and \"maxrawlen\" instead", tmp->listener->id);
+							goto clear;
+						}
+					}
+					tmp = tmp->next;
+				}
+			}
 		}
-		if(tmp->listener->minrawlen > 0 && tmp->listener->minrawlen < minrawlen) {
-			minrawlen = tmp->listener->minrawlen;
-		}
-		if(tmp->listener->maxgaplen > maxgaplen) {
-			maxgaplen = tmp->listener->maxgaplen;
-		}
-		if(tmp->listener->mingaplen > 0 && tmp->listener->mingaplen < mingaplen) {
-			mingaplen = tmp->listener->mingaplen;
-		}
-		if(tmp->listener->rawlen > 0) {
-			logprintf(LOG_ERR, "%s: setting \"rawlen\" length is not allowed, use the \"minrawlen\" and \"maxrawlen\" instead", tmp->listener->id);
-			goto clear;
-		}
-		tmp = tmp->next;
+		tmp_confhw = tmp_confhw->next;
 	}
 
 	settings_find_number("port", &port);
@@ -2403,11 +2448,11 @@ int start_pilight(int argc, char **argv) {
 			if((sockfd = socket_connect(master_server, master_port)) == -1) {
 				logprintf(LOG_NOTICE, "pilight daemon not found @%s, waiting for it to come online", master_server);
 			} else {
-				logprintf(LOG_NOTICE, "a pilight daemon was found, clientizing");
+				logprintf(LOG_INFO, "a pilight daemon was found, clientizing");
 			}
 			pilight.runmode = ADHOC;
 		} else if(ssdp_seek(&ssdp_list) == -1) {
-			logprintf(LOG_NOTICE, "no pilight daemon found, daemonizing");
+			logprintf(LOG_INFO, "no pilight daemon found, daemonizing");
 		} else {
 			logprintf(LOG_NOTICE, "a pilight daemon was found @%s, clientizing", ssdp_list->ip);
 			pilight.runmode = ADHOC;
@@ -2480,22 +2525,38 @@ int start_pilight(int argc, char **argv) {
 	threads_register("sender", &send_code, (void *)NULL, 0);
 	threads_register("broadcaster", &broadcast, (void *)NULL, 0);
 
-	struct conf_hardware_t *tmp_confhw = conf_hardware;
-	while(tmp_confhw) {
+	tmp_confhw = conf_hardware;
+	while(tmp_confhw && main_loop) {
 		if(tmp_confhw->hardware->init) {
 			if(tmp_confhw->hardware->init() == EXIT_FAILURE) {
-				logprintf(LOG_ERR, "could not initialize %s hardware module", tmp_confhw->hardware->id);
-				goto clear;
+				if(main_loop == 1) {
+					logprintf(LOG_ERR, "could not initialize %s hardware module", tmp_confhw->hardware->id);
+					goto clear;
+				} else {
+					break;
+				}
 			}
-			tmp_confhw->hardware->wait = 0;
-			tmp_confhw->hardware->stop = 0;
-			if(tmp_confhw->hardware->comtype == COMOOK) {
-				threads_register(tmp_confhw->hardware->id, &receiveOOK, (void *)tmp_confhw->hardware, 0);
-			} else if(tmp_confhw->hardware->comtype == COMPLSTRAIN) {
-				threads_register(tmp_confhw->hardware->id, &receivePulseTrain, (void *)tmp_confhw->hardware, 0);
+			if(main_loop == 1) {
+				tmp_confhw->hardware->wait = 0;
+				tmp_confhw->hardware->stop = 0;
+				if(tmp_confhw->hardware->comtype == COMOOK) {
+					threads_register(tmp_confhw->hardware->id, &receiveOOK, (void *)tmp_confhw->hardware, 0);
+				} else if(tmp_confhw->hardware->comtype == COMPLSTRAIN) {
+					threads_register(tmp_confhw->hardware->id, &receivePulseTrain, (void *)tmp_confhw->hardware, 0);
+				} else if(tmp_confhw->hardware->comtype == COMTHREAD) {
+					threads_register(tmp_confhw->hardware->id, tmp_confhw->hardware->receiveThread, (void *)tmp_confhw->hardware, 0);
+				}
+			} else {
+				break;
 			}
 		}
+		if(main_loop == 0) {
+			break;
+		}
 		tmp_confhw = tmp_confhw->next;
+	}
+	if(main_loop == 0) {
+		goto clear;
 	}
 
 	threads_register("receive parser", &receive_parse_code, (void *)NULL, 0);
@@ -2524,10 +2585,8 @@ int start_pilight(int argc, char **argv) {
 	}
 #endif
 
-	int ntpsync = 0;
-	settings_find_number("ntp-sync", &ntpsync);
-
-	if(ntpsync == 1) {
+	char *ntpsync = NULL;
+	if(settings_find_string("ntpserver0", &ntpsync) == 0) {
 		threads_register("ntp sync", &ntpthread, NULL, 0);
 	}
 

@@ -153,7 +153,7 @@ int main(int argc, char **argv) {
 	gc_catch();
 
 	if((progname = MALLOC(12)) == NULL) {
-		logprintf(LOG_ERR, "out of memory");
+		fprintf(stderr, "out of memory\n");
 		exit(EXIT_FAILURE);
 	}
 	strcpy(progname, "pilight-raw");
@@ -216,18 +216,18 @@ int main(int argc, char **argv) {
 
 #ifdef _WIN32
 	if((pid = check_instances(L"pilight-raw")) != -1) {
-		logprintf(LOG_ERR, "pilight-raw is already running");
+		logprintf(LOG_NOTICE, "pilight-raw is already running");
 		goto close;
 	}
 #endif
 
 	if((pid = isrunning("pilight-daemon")) != -1) {
-		logprintf(LOG_ERR, "pilight-daemon instance found (%d)", (int)pid);
+		logprintf(LOG_NOTICE, "pilight-daemon instance found (%d)", (int)pid);
 		goto close;
 	}
 
 	if((pid = isrunning("pilight-debug")) != -1) {
-		logprintf(LOG_ERR, "pilight-debug instance found (%d)", (int)pid);
+		logprintf(LOG_NOTICE, "pilight-debug instance found (%d)", (int)pid);
 		goto close;
 	}
 

@@ -60,6 +60,9 @@
 #include <sys/time.h>
 #include <time.h>
 #include <pthread.h>
+#ifdef __FreeBSD__
+	#include <net/if_dl.h>
+#endif
 
 #include "../config/settings.h"
 #include "mem.h"
@@ -94,11 +97,11 @@ int inetdevs(char ***array) {
 			}
 			if(match == 0 && strcmp(pAdapter->IpAddressList.IpAddress.String, "0.0.0.0") != 0) {
 				if((*array = REALLOC(*array, sizeof(char *)*(nrdevs+1))) == NULL) {
-					logprintf(LOG_ERR, "out of memory");
+					fprintf(stderr, "out of memory\n");
 					exit(EXIT_FAILURE);
 				}
 				if(((*array)[nrdevs] = MALLOC(strlen(pAdapter->AdapterName)+1)) == NULL) {
-					logprintf(LOG_ERR, "out of memory");
+					fprintf(stderr, "out of memory\n");
 					exit(EXIT_FAILURE);
 				}
 				strcpy((*array)[nrdevs], pAdapter->AdapterName);
@@ -155,11 +158,11 @@ int inetdevs(char ***array) {
 				}
 				if(match == 0) {
 					if((*array = REALLOC(*array, sizeof(char *)*(nrdevs+1))) == NULL) {
-						logprintf(LOG_ERR, "out of memory");
+						fprintf(stderr, "out of memory\n");
 						exit(EXIT_FAILURE);
 					}
 					if(((*array)[nrdevs] = MALLOC(strlen(ifa->ifa_name)+1)) == NULL) {
-						logprintf(LOG_ERR, "out of memory");
+						fprintf(stderr, "out of memory\n");
 						exit(EXIT_FAILURE);
 					}
 					strcpy((*array)[nrdevs], ifa->ifa_name);
@@ -232,7 +235,6 @@ int dev2mac(char *ifname, char **mac) {
 
 #ifdef __FreeBSD__
 	struct ifaddrs *ifap = NULL, *ifaptr = NULL;
-	unsigned char *ptr = NULL;
 
 	if(getifaddrs(&ifap) == 0) {
 		for(ifaptr = ifap; ifaptr != NULL; ifaptr = (ifaptr)->ifa_next) {
@@ -389,8 +391,8 @@ struct sockaddr *sockaddr_dup(struct sockaddr *sa) {
 #else
 	socklen = sizeof(struct sockaddr_storage);
 #endif
-	if(!(ret = CALLOC(1, socklen))) {
-		logprintf(LOG_ERR, "out of memory");
+	if((ret = CALLOC(1, socklen)) == NULL) {
+		fprintf(stderr, "out of memory\n");
 		exit(EXIT_FAILURE);
 	}
 	if (ret == NULL)
@@ -574,21 +576,21 @@ int whitelist_check(char *ip) {
 			if(*tmp == '\0' || *tmp == ',') {
 				x = 0;
 				if((whitelist_cache = REALLOC(whitelist_cache, (sizeof(unsigned int ***)*(whitelist_number+1)))) == NULL) {
-					logprintf(LOG_ERR, "out of memory");
+					fprintf(stderr, "out of memory\n");
 					exit(EXIT_FAILURE);
 				}
 				if((whitelist_cache[whitelist_number] = MALLOC(sizeof(unsigned int **)*2)) == NULL) {
-					logprintf(LOG_ERR, "out of memory");
+					fprintf(stderr, "out of memory\n");
 					exit(EXIT_FAILURE);
 				}
 				/* Lower boundary */
 				if((whitelist_cache[whitelist_number][0] = MALLOC(sizeof(unsigned int *)*4)) == NULL) {
-					logprintf(LOG_ERR, "out of memory");
+					fprintf(stderr, "out of memory\n");
 					exit(EXIT_FAILURE);
 				}
 				/* Upper boundary */
 				if((whitelist_cache[whitelist_number][1] = MALLOC(sizeof(unsigned int *)*4)) == NULL) {
-					logprintf(LOG_ERR, "out of memory");
+					fprintf(stderr, "out of memory\n");
 					exit(EXIT_FAILURE);
 				}
 

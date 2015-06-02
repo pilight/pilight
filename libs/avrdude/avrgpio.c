@@ -149,7 +149,7 @@ void gpio_initpgm(PROGRAMMER *pgm)
 			exit(EXIT_FAILURE);
 		}
 	} else {
-		logprintf(LOG_ERR, "gpio firmware flashing is not supported on this hardware");
+		logprintf(LOG_WARNING, "gpio firmware flashing is not supported on this hardware");
 		exit(EXIT_FAILURE);
 	}
   pgm->rdy_led        = bitbang_rdy_led;

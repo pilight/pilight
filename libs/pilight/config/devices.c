@@ -327,8 +327,8 @@ int devices_update(char *protoname, JsonNode *json, enum origin_t origin, JsonNo
 										   strlen(vstring_) > 0 &&
 										   sptr->values->type == JSON_STRING &&
 										   strcmp(sptr->values->string_, vstring_) != 0) {
-											if(!(sptr->values->string_ = REALLOC(sptr->values->string_, strlen(vstring_)+1))) {
-												logprintf(LOG_ERR, "out of memory");
+											if((sptr->values->string_ = REALLOC(sptr->values->string_, strlen(vstring_)+1)) == NULL) {
+												fprintf(stderr, "out of memory\n");
 												exit(EXIT_FAILURE);
 											}
 											strcpy(sptr->values->string_, vstring_);
@@ -359,9 +359,8 @@ int devices_update(char *protoname, JsonNode *json, enum origin_t origin, JsonNo
 								if((stateType == JSON_STRING &&
 									sptr->values->type == JSON_STRING &&
 									strcmp(sptr->values->string_, sstring_) != 0)) {
-									sptr->values->string_ = REALLOC(sptr->values->string_, strlen(sstring_)+1);
-									if(sptr->values->string_ == NULL) {
-										logprintf(LOG_ERR, "out of memory");
+									if((sptr->values->string_ = REALLOC(sptr->values->string_, strlen(sstring_)+1)) == NULL) {
+										fprintf(stderr, "out of memory\n");
 										exit(EXIT_FAILURE);
 									}
 									strcpy(sptr->values->string_, sstring_);
@@ -775,11 +774,11 @@ static void devices_save_setting(int i, struct JsonNode *jsetting, struct device
 			jtmp = json_first_child(jsetting);
 			while(jtmp) {
 				if((snode = MALLOC(sizeof(struct devices_settings_t))) == NULL) {
-					logprintf(LOG_ERR, "out of memory");
+					fprintf(stderr, "out of memory\n");
 					exit(EXIT_FAILURE);
 				}
 				if((snode->name = MALLOC(strlen(jsetting->key)+1)) == NULL) {
-					logprintf(LOG_ERR, "out of memory");
+					fprintf(stderr, "out of memory\n");
 					exit(EXIT_FAILURE);
 				}
 				strcpy(snode->name, jsetting->key);
@@ -789,18 +788,18 @@ static void devices_save_setting(int i, struct JsonNode *jsetting, struct device
 					JsonNode *jtmp1 = json_first_child(jtmp);
 					while(jtmp1) {
 						if((vnode = MALLOC(sizeof(struct devices_values_t))) == NULL) {
-							logprintf(LOG_ERR, "out of memory");
+							fprintf(stderr, "out of memory\n");
 							exit(EXIT_FAILURE);
 						}
 						if((vnode->name = MALLOC(strlen(jtmp1->key)+1)) == NULL) {
-							logprintf(LOG_ERR, "out of memory");
+							fprintf(stderr, "out of memory\n");
 							exit(EXIT_FAILURE);
 						}
 						strcpy(vnode->name, jtmp1->key);
 						vnode->next = NULL;
 						if(jtmp1->tag == JSON_STRING) {
 							if((vnode->string_ = MALLOC(strlen(jtmp1->string_)+1)) == NULL) {
-								logprintf(LOG_ERR, "out of memory");
+								fprintf(stderr, "out of memory\n");
 								exit(EXIT_FAILURE);
 							}
 							strcpy(vnode->string_, jtmp1->string_);
@@ -841,11 +840,11 @@ static void devices_save_setting(int i, struct JsonNode *jsetting, struct device
 		}
 	} else if(jsetting->tag == JSON_OBJECT) {
 		if((snode = MALLOC(sizeof(struct devices_settings_t))) == NULL) {
-			logprintf(LOG_ERR, "out of memory");
+			fprintf(stderr, "out of memory\n");
 			exit(EXIT_FAILURE);
 		}
 		if((snode->name = MALLOC(strlen(jsetting->key)+1)) == NULL) {
-			logprintf(LOG_ERR, "out of memory");
+			fprintf(stderr, "out of memory\n");
 			exit(EXIT_FAILURE);
 		}
 		strcpy(snode->name, jsetting->key);
@@ -856,16 +855,16 @@ static void devices_save_setting(int i, struct JsonNode *jsetting, struct device
 		while(jtmp) {
 			if(jtmp->tag == JSON_STRING) {
 				if((vnode = MALLOC(sizeof(struct devices_values_t))) == NULL) {
-					logprintf(LOG_ERR, "out of memory");
+					fprintf(stderr, "out of memory\n");
 					exit(EXIT_FAILURE);
 				}
 				if((vnode->name = MALLOC(strlen(jtmp->key)+1)) == NULL) {
-					logprintf(LOG_ERR, "out of memory");
+					fprintf(stderr, "out of memory\n");
 					exit(EXIT_FAILURE);
 				}
 				strcpy(vnode->name, jtmp->key);
 				if((vnode->string_ = MALLOC(strlen(jtmp->string_)+1)) == NULL) {
-					logprintf(LOG_ERR, "out of memory");
+					fprintf(stderr, "out of memory\n");
 					exit(EXIT_FAILURE);
 				}
 				strcpy(vnode->string_, jtmp->string_);
@@ -873,11 +872,11 @@ static void devices_save_setting(int i, struct JsonNode *jsetting, struct device
 				vnode->next = NULL;
 			} else if(jtmp->tag == JSON_NUMBER) {
 				if((vnode = MALLOC(sizeof(struct devices_values_t))) == NULL) {
-					logprintf(LOG_ERR, "out of memory");
+					fprintf(stderr, "out of memory\n");
 					exit(EXIT_FAILURE);
 				}
 				if((vnode->name = MALLOC(strlen(jtmp->key)+1)) == NULL) {
-					logprintf(LOG_ERR, "out of memory");
+					fprintf(stderr, "out of memory\n");
 					exit(EXIT_FAILURE);
 				}
 				strcpy(vnode->name, jtmp->key);
@@ -915,11 +914,11 @@ static void devices_save_setting(int i, struct JsonNode *jsetting, struct device
 	} else {
 		/* New device settings node */
 		if((snode = MALLOC(sizeof(struct devices_settings_t))) == NULL) {
-			logprintf(LOG_ERR, "out of memory");
+			fprintf(stderr, "out of memory\n");
 			exit(EXIT_FAILURE);
 		}
 		if((snode->name = MALLOC(strlen(jsetting->key)+1)) == NULL) {
-			logprintf(LOG_ERR, "out of memory");
+			fprintf(stderr, "out of memory\n");
 			exit(EXIT_FAILURE);
 		}
 		strcpy(snode->name, jsetting->key);
@@ -927,14 +926,14 @@ static void devices_save_setting(int i, struct JsonNode *jsetting, struct device
 		snode->next = NULL;
 
 		if((vnode = MALLOC(sizeof(struct devices_values_t))) == NULL) {
-			logprintf(LOG_ERR, "out of memory");
+			fprintf(stderr, "out of memory\n");
 			exit(EXIT_FAILURE);
 		}
 		int valid = 0;
 		/* Cast and store the new value */
 		if(jsetting->tag == JSON_STRING && json_find_string(jsetting->parent, jsetting->key, &stmp) == 0) {
 			if((vnode->string_ = MALLOC(strlen(stmp)+1)) == NULL) {
-				logprintf(LOG_ERR, "out of memory");
+				fprintf(stderr, "out of memory\n");
 				exit(EXIT_FAILURE);
 			}
 			vnode->name = NULL;
@@ -1531,7 +1530,7 @@ static int devices_parse(JsonNode *root) {
 				}
 
 				if((dnode = MALLOC(sizeof(struct devices_t))) == NULL) {
-					logprintf(LOG_ERR, "out of memory");
+					fprintf(stderr, "out of memory\n");
 					exit(EXIT_FAILURE);
 				}
 				if(strlen(pilight_uuid) > 0) {
@@ -1540,7 +1539,7 @@ static int devices_parse(JsonNode *root) {
 				}
 				dnode->cst_uuid = 0;
 				if((dnode->id = MALLOC(strlen(jdevices->key)+1)) == NULL) {
-					logprintf(LOG_ERR, "out of memory");
+					fprintf(stderr, "out of memory\n");
 					exit(EXIT_FAILURE);
 				}
 				strcpy(dnode->id, jdevices->key);
@@ -1589,18 +1588,16 @@ static int devices_parse(JsonNode *root) {
 					} else {
 						struct protocols_t *pnode = MALLOC(sizeof(struct protocols_t));
 						if(pnode == NULL) {
-							logprintf(LOG_ERR, "out of memory");
+							fprintf(stderr, "out of memory\n");
 							exit(EXIT_FAILURE);
 						}
-						pnode->listener = MALLOC(sizeof(struct protocol_t));
-						if(pnode->listener == NULL) {
-							logprintf(LOG_ERR, "out of memory");
+						if((pnode->listener = MALLOC(sizeof(struct protocol_t))) == NULL) {
+							fprintf(stderr, "out of memory\n");
 							exit(EXIT_FAILURE);
 						}
 						memcpy(pnode->listener, protocol, sizeof(struct protocol_t));
-						pnode->name = MALLOC(strlen(jprotocol->string_)+1);
-						if(pnode->name == NULL) {
-							logprintf(LOG_ERR, "out of memory");
+						if((pnode->name = MALLOC(strlen(jprotocol->string_)+1)) == NULL) {
+							fprintf(stderr, "out of memory\n");
 							exit(EXIT_FAILURE);
 						}
 						strcpy(pnode->name, jprotocol->string_);

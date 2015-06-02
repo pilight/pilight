@@ -94,7 +94,7 @@ void event_function_init(void) {
 	if(settings_find_string("functions-root", &functions_root) != 0) {
 		/* If no function root was set, use the default function root */
 		if((functions_root = MALLOC(strlen(FUNCTION_ROOT)+1)) == NULL) {
-			logprintf(LOG_ERR, "out of memory");
+			fprintf(stderr, "out of memory\n");
 			exit(EXIT_FAILURE);
 		}
 		strcpy(functions_root, FUNCTION_ROOT);
@@ -171,11 +171,11 @@ void event_function_register(struct event_functions_t **act, const char *name) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
 	if((*act = MALLOC(sizeof(struct event_functions_t))) == NULL) {
-		logprintf(LOG_ERR, "out of memory");
+		fprintf(stderr, "out of memory\n");
 		exit(EXIT_FAILURE);
 	}
 	if(((*act)->name = MALLOC(strlen(name)+1)) == NULL) {
-		logprintf(LOG_ERR, "out of memory");
+		fprintf(stderr, "out of memory\n");
 		exit(EXIT_FAILURE);
 	}
 	strcpy((*act)->name, name);

@@ -44,8 +44,8 @@ AVRUPD * parse_op(char * s)
 
   upd = (AVRUPD *)MALLOC(sizeof(AVRUPD));
   if (upd == NULL) {
-	logprintf(LOG_ERR, "out of memory");
-    exit(1);
+		fprintf(stderr, "out of memory\n");
+    exit(EXIT_FAILURE);
   }
 
   i = 0;
@@ -58,8 +58,8 @@ AVRUPD * parse_op(char * s)
     upd->memtype = (char *)MALLOC(strlen("flash")+1);
     if (upd->memtype == NULL) {
       outofmem:
-	  logprintf(LOG_ERR, "out of memory");
-      exit(1);
+			fprintf(stderr, "out of memory\n");
+      exit(EXIT_FAILURE);
     }
     strcpy(upd->memtype, "flash");
     upd->op = DEVICE_WRITE;
@@ -73,8 +73,8 @@ AVRUPD * parse_op(char * s)
 
   upd->memtype = (char *)MALLOC(strlen(buf)+1);
   if (upd->memtype == NULL) {
-	logprintf(LOG_ERR, "out of memory");
-    exit(1);
+		fprintf(stderr, "out of memory\n");
+    exit(EXIT_FAILURE);
   }
   strcpy(upd->memtype, buf);
 
@@ -152,7 +152,7 @@ AVRUPD * parse_op(char * s)
   }
 
   if (upd->filename == NULL) {
-	logprintf(LOG_ERR, "out of memory");
+		fprintf(stderr, "out of memory\n");
     FREE(upd->memtype);
     FREE(upd);
     return NULL;
@@ -169,19 +169,19 @@ AVRUPD * dup_AVRUPD(AVRUPD * upd)
 
   u = (AVRUPD *)MALLOC(sizeof(AVRUPD));
   if(u == NULL) {
-		logprintf(LOG_ERR, "out of memory");
+		fprintf(stderr, "out of memory\n");
     exit(EXIT_FAILURE);
   }
 
   memcpy(u, upd, sizeof(AVRUPD));
 
   if((u->memtype = MALLOC(strlen(upd->memtype)+1)) == NULL) {
-		logprintf(LOG_ERR, "out of memory");
+		fprintf(stderr, "out of memory\n");
     exit(EXIT_FAILURE);
   }
 	strcpy(u->memtype, upd->memtype);
   if((u->filename = MALLOC(strlen(upd->filename)+1)) == NULL) {
-		logprintf(LOG_ERR, "out of memory");
+		fprintf(stderr, "out of memory\n");
     exit(EXIT_FAILURE);
 	}
 	strcpy(u->filename, upd->filename);
@@ -195,7 +195,7 @@ AVRUPD * new_AVRUPD(int op, char * memtype, int filefmt, char * filename)
 
   u = (AVRUPD *)MALLOC(sizeof(AVRUPD));
   if (u == NULL) {
-		logprintf(LOG_ERR, "out of memory");
+		fprintf(stderr, "out of memory\n");
     exit(EXIT_FAILURE);
 	}
 

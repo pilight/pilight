@@ -3,12 +3,12 @@
 	"gui": { },
 	"rules": { },
 	"settings": {
-		"log-level": 4,
+		"log-level": 6,
 		"log-file": "c:/pilight/pilight.log",
-		"receive-repeats": 1,
 		"webserver-enable": 1,
 		"webserver-root": "c:/pilight/web/",
-		"webserver-port": 5001,
+		"webserver-http-port": 5001,
+		"webserver-https-port": 5002,
 		"webserver-cache": 1,
 		"whitelist": ""
 	},

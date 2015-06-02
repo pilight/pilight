@@ -95,7 +95,7 @@ void event_action_init(void) {
 	if(settings_find_string("actions-root", &action_root) != 0) {
 		/* If no action root was set, use the default action root */
 		if((action_root = MALLOC(strlen(ACTION_ROOT)+1)) == NULL) {
-			logprintf(LOG_ERR, "out of memory");
+			fprintf(stderr, "out of memory\n");
 			exit(EXIT_FAILURE);
 		}
 		strcpy(action_root, ACTION_ROOT);
@@ -172,11 +172,11 @@ void event_action_register(struct event_actions_t **act, const char *name) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
 	if((*act = MALLOC(sizeof(struct event_actions_t))) == NULL) {
-		logprintf(LOG_ERR, "out of memory");
+		fprintf(stderr, "out of memory\n");
 		exit(EXIT_FAILURE);
 	}
 	if(((*act)->name = MALLOC(strlen(name)+1)) == NULL) {
-		logprintf(LOG_ERR, "out of memory");
+		fprintf(stderr, "out of memory\n");
 		exit(EXIT_FAILURE);
 	}
 	strcpy((*act)->name, name);
@@ -216,7 +216,7 @@ void event_action_thread_init(struct devices_t *dev) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
 	if((dev->action_thread = MALLOC(sizeof(struct event_action_thread_t))) == NULL) {
-		logprintf(LOG_ERR, "out of memory");
+		fprintf(stderr, "out of memory\n");
 		exit(EXIT_FAILURE);
 	}
 

@@ -97,7 +97,7 @@ static void *thread(void *param) {
 		if(path_exists(socket_path) == EXIT_SUCCESS) {
 			/* Try to open a new socket */
 			if((sockfd = socket(AF_UNIX, SOCK_STREAM, 0)) < 0) {
-				logprintf(LOG_DEBUG, "could not create Lirc socket");
+				logprintf(LOG_NOTICE, "could not create Lirc socket");
 				break;
 			}
 
@@ -107,17 +107,17 @@ static void *thread(void *param) {
 			/* Connect to the server */
 			switch(socket_timeout_connect(sockfd, (struct sockaddr *)&addr, 3)) {
 				case -1:
-					logprintf(LOG_ERR, "could not connect to Lirc socket @%s", socket_path);
+					logprintf(LOG_NOTICE, "could not connect to Lirc socket @%s", socket_path);
 					protocol_thread_wait(node, 3, &nrloops);
 					continue;
 				break;
 				case -2:
-					logprintf(LOG_ERR, "Lirc socket timeout @%s", socket_path);
+					logprintf(LOG_NOTICE, "Lirc socket timeout @%s", socket_path);
 					protocol_thread_wait(node, 3, &nrloops);
 					continue;
 				break;
 				case -3:
-					logprintf(LOG_ERR, "Error in Lirc socket connection @%s", socket_path);
+					logprintf(LOG_NOTICE, "Error in Lirc socket connection @%s", socket_path);
 					protocol_thread_wait(node, 3, &nrloops);
 					continue;
 				break;

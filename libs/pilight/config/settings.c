@@ -57,16 +57,16 @@ static void settings_add_string(const char *name, char *value) {
 	struct settings_t *snode = MALLOC(sizeof(struct settings_t));
 	struct settings_t *tmp = NULL;
 	if(snode == NULL) {
-		logprintf(LOG_ERR, "out of memory");
+		fprintf(stderr, "out of memory\n");
 		exit(EXIT_FAILURE);
 	}
 	if((snode->name = MALLOC(strlen(name)+1)) == NULL) {
-		logprintf(LOG_ERR, "out of memory");
+		fprintf(stderr, "out of memory\n");
 		exit(EXIT_FAILURE);
 	}
 	strcpy(snode->name, name);
 	if((snode->string_ = MALLOC(strlen(value)+1)) == NULL) {
-		logprintf(LOG_ERR, "out of memory");
+		fprintf(stderr, "out of memory\n");
 		exit(EXIT_FAILURE);
 	}
 	strcpy(snode->string_, value);
@@ -90,11 +90,11 @@ static void settings_add_number(const char *name, int value) {
 	struct settings_t *tmp = NULL;
 	struct settings_t *snode = MALLOC(sizeof(struct settings_t));
 	if(snode == NULL) {
-		logprintf(LOG_ERR, "out of memory");
+		fprintf(stderr, "out of memory\n");
 		exit(EXIT_FAILURE);
 	}
 	if((snode->name = MALLOC(strlen(name)+1)) == NULL) {
-		logprintf(LOG_ERR, "out of memory");
+		fprintf(stderr, "out of memory\n");
 		exit(EXIT_FAILURE);
 	}
 	strcpy(snode->name, name);
@@ -162,7 +162,7 @@ static int settings_parse(JsonNode *root) {
 
 	char *webgui_root = MALLOC(strlen(WEBSERVER_ROOT)+1);
 	if(webgui_root == NULL) {
-		logprintf(LOG_ERR, "out of memory");
+		fprintf(stderr, "out of memory\n");
 		exit(EXIT_FAILURE);
 	}
 	strcpy(webgui_root, WEBSERVER_ROOT);
@@ -207,18 +207,15 @@ static int settings_parse(JsonNode *root) {
 				logprintf(LOG_ERR, "config setting \"%s\" must contain a number larger than 0", jsettings->key);
 				have_error = 1;
 				goto clear;
-#if !defined(__FreeBSD__) && !defined(_WIN32)
-			} else if(wiringXValidGPIO((int)jsettings->number_) != 0) {
+			} else if((wiringXSupported() == 0 && wiringXValidGPIO((int)jsettings->number_) != 0) || wiringXSupported() != 0) {
 				logprintf(LOG_ERR, "config setting \"%s\" must contain a valid GPIO number", jsettings->key);
 				have_error = 1;
 				goto clear;
-#endif
 			} else {
 				settings_add_number(jsettings->key, (int)jsettings->number_);
 			}
 		} else if(strcmp(jsettings->key, "standalone") == 0 ||
 							strcmp(jsettings->key, "watchdog-enable") == 0 ||
-							strcmp(jsettings->key, "ntp-sync") == 0 ||
 							strcmp(jsettings->key, "stats-enable") == 0) {
 			if(jsettings->tag != JSON_NUMBER) {
 				logprintf(LOG_ERR, "config setting \"%s\" must be either 0 or 1", jsettings->key);
@@ -233,27 +230,27 @@ static int settings_parse(JsonNode *root) {
 			}
 		} else if(strcmp(jsettings->key, "log-level") == 0) {
 			if(jsettings->tag != JSON_NUMBER) {
-				logprintf(LOG_ERR, "config setting \"%s\" must contain a number from 0 till 5", jsettings->key);
+				logprintf(LOG_ERR, "config setting \"%s\" must contain a number from 0 till 6", jsettings->key);
 				have_error = 1;
 				goto clear;
-			} else if((int)jsettings->number_ < 0 || (int)jsettings->number_ > 5) {
-				logprintf(LOG_ERR, "config setting \"%s\" must contain a number from 0 till 5", jsettings->key);
+			} else if((int)jsettings->number_ < 0 || (int)jsettings->number_ > 6) {
+				logprintf(LOG_ERR, "config setting \"%s\" must contain a number from 0 till 6", jsettings->key);
 				have_error = 1;
 				goto clear;
 			} else {
 				settings_add_number(jsettings->key, (int)jsettings->number_);
 			}
-#ifndef _WIN32
-		} else if(strcmp(jsettings->key, "pid-file") == 0 || strcmp(jsettings->key, "log-file") == 0) {
-#else
-		} else if(strcmp(jsettings->key, "log-file") == 0) {
+		} else if(strcmp(jsettings->key, "log-file") == 0
+#ifndef _WIN32		
+			|| strcmp(jsettings->key, "pid-file") == 0
 #endif
+			|| strcmp(jsettings->key, "pem-file") == 0) {
 			if(jsettings->tag != JSON_STRING) {
-				logprintf(LOG_ERR, "config setting \"%s\" must contain an existing path", jsettings->key);
+				logprintf(LOG_ERR, "config setting \"%s\" must contain an existing file", jsettings->key);
 				have_error = 1;
 				goto clear;
-			} else if(!jsettings->string_) {
-				logprintf(LOG_ERR, "config setting \"%s\" must contain an existing file path", jsettings->key);
+			} else if(jsettings->string_ == NULL) {
+				logprintf(LOG_ERR, "config setting \"%s\" must contain an existing file", jsettings->key);
 				have_error = 1;
 				goto clear;
 			} else {
@@ -341,7 +338,7 @@ static int settings_parse(JsonNode *root) {
 				goto clear;
 			} else {
 				if((webgui_root = REALLOC(webgui_root, strlen(jsettings->string_)+1)) == NULL) {
-					logprintf(LOG_ERR, "out of memory");
+					fprintf(stderr, "out of memory\n");
 					exit(EXIT_FAILURE);
 				}
 				strcpy(webgui_root, jsettings->string_);

@@ -193,7 +193,7 @@ char *webserver_mimetype(const char *str) {
 
 	char *mimetype = MALLOC(strlen(str)+1);
 	if(!mimetype) {
-		logprintf(LOG_ERR, "out of memory");
+		fprintf(stderr, "out of memory\n");
 		exit(EXIT_FAILURE);
 	}
 	memset(mimetype, '\0', strlen(str)+1);
@@ -266,9 +266,8 @@ static char *webserver_shell(const char *format_str, struct mg_connection *conn,
 				while(!feof(fp)) {
 					chunk = fread(buff, sizeof(char), 1024, fp);
 					total += chunk;
-					output = REALLOC(output, total+1);
-					if(!output) {
-						logprintf(LOG_ERR, "out of memory");
+					if((output = REALLOC(output, total+1)) == NULL) {
+						fprintf(stderr, "out of memory\n");
 						exit(EXIT_FAILURE);
 					}
 					memcpy(&output[total-chunk], buff, chunk);
@@ -293,7 +292,7 @@ static char *webserver_shell(const char *format_str, struct mg_connection *conn,
 			}
 #ifndef _WIN32
 		} else {
-			logprintf(LOG_DEBUG, "failed to change webserver uid");
+			logprintf(LOG_NOTICE, "failed to change webserver uid");
 		}
 	} else {
 		logprintf(LOG_DEBUG, "webserver user \"%s\" does not exist", webserver_user);
@@ -314,6 +313,133 @@ static int webserver_auth_handler(struct mg_connection *conn) {
 	} else {
 		return MG_TRUE;
 	}
+}
+
+static int webserver_parse_rest(struct mg_connection *conn) {
+	char **array = NULL, **array1 = NULL;
+	struct JsonNode *jobject = json_mkobject();
+	struct JsonNode *jcode = json_mkobject();
+	struct JsonNode *jvalues = json_mkobject();
+	int a = 0, b = 0, c = 0, has_protocol = 0;
+
+	if(strcmp(conn->request_method, "POST") == 0) {
+		conn->query_string = conn->content;
+	}
+	if(strcmp(conn->request_method, "GET") == 0 && conn->query_string == NULL) {
+		conn->query_string = conn->content;
+	}
+	if(conn->query_string != NULL) {
+		struct devices_t *dev = NULL;
+		char decoded[strlen(conn->query_string)+1];
+
+		if(urldecode(conn->query_string, decoded) == -1) {
+			char *z = "{\"message\":\"failed\",\"error\":\"cannot decode url\"}";
+			mg_send_data(conn, z, strlen(z));
+			return MG_TRUE;
+		}
+		
+		char state[16], *p = NULL;
+		a = explode((char *)decoded, "&", &array), b = 0, c = 0;
+		memset(state, 0, 16);
+
+		if(a > 1) {
+			int type = 0; //0 = SEND, 1 = CONTROL
+			json_append_member(jobject, "code", jcode);
+
+			if(strcmp(conn->uri, "/send") == 0) {
+				type = 0;
+				json_append_member(jobject, "action", json_mkstring("send"));
+			} else if(strcmp(conn->uri, "/control") == 0) {
+				type = 1;
+				json_append_member(jobject, "action", json_mkstring("control"));
+			}
+
+			for(b=0;b<a;b++) {
+				c = explode(array[b], "=", &array1);
+				if(c == 2) {
+					if(strcmp(array1[0], "protocol") == 0) {
+						struct JsonNode *jprotocol = json_mkarray();
+						json_append_element(jprotocol, json_mkstring(array1[1]));
+						json_append_member(jcode, "protocol", jprotocol);
+						has_protocol = 1;
+					} else if(strcmp(array1[0], "state") == 0) {
+						strcpy(state, array1[1]);
+					} else if(strcmp(array1[0], "device") == 0) {
+						if(devices_get(array1[1], &dev) != 0) {
+							char *z = "{\"message\":\"failed\",\"error\":\"device does not exists\"}";
+							mg_send_data(conn, z, strlen(z));
+							goto clear1;
+						}
+					} else if(strncmp(array1[0], "values", 6) == 0) {
+						char name[255], *ptr = name;
+						if(sscanf(array1[0], "values[%254[a-z]]", ptr) != 1) {
+							char *z = "{\"message\":\"failed\",\"error\":\"values should be passed like this \'values[dimlevel]=10\'\"}";
+							mg_send_data(conn, z, strlen(z));
+							goto clear1;
+						} else {
+							if(isNumeric(array1[1]) == 0) {
+								json_append_member(jvalues, name, json_mknumber(atof(array1[1]), nrDecimals(array1[1])));
+							} else {
+								json_append_member(jvalues, name, json_mkstring(array1[1]));
+							}
+						}
+					} else if(isNumeric(array1[1]) == 0) {
+						json_append_member(jcode, array1[0], json_mknumber(atof(array1[1]), nrDecimals(array1[1])));
+					} else {
+						json_append_member(jcode, array1[0], json_mkstring(array1[1]));
+					}
+				}
+				array_free(&array1, c);
+			}
+			if(type == 0) {
+				if(has_protocol == 0) {
+					char *z = "{\"message\":\"failed\",\"error\":\"no protocol was send\"}";
+					mg_send_data(conn, z, strlen(z));
+					goto clear2;
+				}
+				if(pilight.send != NULL) {
+					if(pilight.send(jobject, SENDER) == 0) {
+						char *z = "{\"message\":\"success\"}";
+						mg_send_data(conn, z, strlen(z));
+						goto clear2;
+					}
+				}
+			} else if(type == 1) {
+				if(pilight.control != NULL) {
+					if(dev == NULL) {
+						char *z = "{\"message\":\"failed\",\"error\":\"no device was send\"}";
+						mg_send_data(conn, z, strlen(z));
+						goto clear2;
+					} else {
+						if(strlen(state) > 0) {
+							p = state;
+						}
+						if(pilight.control(dev, p, json_first_child(jvalues), SENDER) == 0) {
+							char *z = "{\"message\":\"success\"}";
+							mg_send_data(conn, z, strlen(z));
+							goto clear2;
+						}
+					}
+				}
+			}
+			json_delete(jvalues);
+			json_delete(jobject);
+		}
+		array_free(&array, a);
+	}
+	char *z = "{\"message\":\"failed\"}";
+	mg_send_data(conn, z, strlen(z));
+	return MG_TRUE;
+	
+clear1:
+	array_free(&array1, c);
+
+clear2:
+	array_free(&array, a);
+	json_delete(jvalues);
+	json_delete(jobject);
+
+	return MG_TRUE;
 }
 
 static int webserver_request_handler(struct mg_connection *conn) {
@@ -358,26 +484,8 @@ static int webserver_request_handler(struct mg_connection *conn) {
 				return MG_MORE;
 			}
 		} else if(conn->uri != NULL) {
-			if(strcmp(conn->uri, "/send") == 0) {
-				if(conn->query_string != NULL) {
-					char decoded[strlen(conn->query_string)+1];
-					char output[strlen(conn->query_string)+1];
-					strcpy(output, conn->query_string);
-					char *z = strstr(output, "&");
-					if(z != NULL) {
-						output[z-output] = '\0';
-					}
-					urldecode(output, decoded);
-					if(json_validate(decoded) == true) {
-						socket_write(sockfd, decoded);
-						char *a = "{\"message\":\"success\"}";
-						mg_send_data(conn, a, strlen(a));
-						return MG_TRUE;
-					}
-				}
-				char *b = "{\"message\":\"failed\"}";
-				mg_send_data(conn, b, strlen(b));
-				return MG_TRUE;
+			if(strcmp(conn->uri, "/send") == 0 || strcmp(conn->uri, "/control") == 0) {
+				return webserver_parse_rest(conn);
 			} else if(strcmp(conn->uri, "/config") == 0) {
 				char media[15];
 				int internal = CONFIG_USER;
@@ -422,7 +530,7 @@ static int webserver_request_handler(struct mg_connection *conn) {
 				for(q=0;q<n;q++) {
 					size_t l = strlen(webserver_root)+strlen(conn->uri)+strlen(array[q])+4;
 					if((request = REALLOC(request, l)) == NULL) {
-						logprintf(LOG_ERR, "out of memory");
+						fprintf(stderr, "out of memory\n");
 						exit(EXIT_FAILURE);
 					}
 					memset(request, '\0', l);
@@ -442,9 +550,8 @@ static int webserver_request_handler(struct mg_connection *conn) {
 				array_free(&array, n);
 			} else if(webserver_root != NULL && conn->uri != NULL) {
 				size_t wlen = strlen(webserver_root)+strlen(conn->uri)+2;
-				request = MALLOC(wlen);
-				if(!request) {
-					logprintf(LOG_ERR, "out of memory");
+				if((request = MALLOC(wlen)) == NULL) {
+					fprintf(stderr, "out of memory\n");
 					exit(EXIT_FAILURE);
 				}
 				memset(request, '\0', wlen);
@@ -471,9 +578,8 @@ static int webserver_request_handler(struct mg_connection *conn) {
 			if(!dot || dot == request) {
 				mimetype = webserver_mimetype("text/plain");
 			} else {
-				ext = REALLOC(ext, strlen(dot)+1);
-				if(!ext) {
-					logprintf(LOG_ERR, "out of memory");
+				if((ext = REALLOC(ext, strlen(dot)+1)) == NULL) {
+					fprintf(stderr, "out of memory\n");
 					exit(EXIT_FAILURE);
 				}
 				memset(ext, '\0', strlen(dot)+1);
@@ -577,7 +683,7 @@ static int webserver_request_handler(struct mg_connection *conn) {
 						size_t xpos = (size_t)(nptr-output);
 						char *header = MALLOC((pos-xpos)+(size_t)1);
 						if(!header) {
-							logprintf(LOG_ERR, "out of memory");
+							fprintf(stderr, "out of memory\n");
 							exit(EXIT_FAILURE);
 						}
 
@@ -658,7 +764,7 @@ static int webserver_request_handler(struct mg_connection *conn) {
 					FREE(request);
 					return MG_TRUE;
 				} else {
-					logprintf(LOG_NOTICE, "(webserver) invalid php-cgi output from %s", request);
+					logprintf(LOG_WARNING, "(webserver) invalid php-cgi output from %s", request);
 					webserver_create_404(conn->uri, &p);
 					FREE(mimetype);
 					FREE(request);
@@ -801,7 +907,7 @@ static int webserver_request_handler(struct mg_connection *conn) {
 	return MG_MORE;
 
 filenotfound:
-	logprintf(LOG_NOTICE, "(webserver) could not read %s", request);
+	logprintf(LOG_WARNING, "(webserver) could not read %s", request);
 	webserver_create_404(conn->uri, &p);
 	mg_write(conn, buffer, (int)(p-buffer));
 	FREE(mimetype);
@@ -815,7 +921,7 @@ static int webserver_connect_handler(struct mg_connection *conn) {
 	char ip[17];
 	strcpy(ip, conn->remote_ip);
 	if(whitelist_check(conn->remote_ip) != 0) {
-		logprintf(LOG_INFO, "rejected client, ip: %s, port: %d", ip, conn->remote_port);
+		logprintf(LOG_NOTICE, "rejected client, ip: %s, port: %d", ip, conn->remote_port);
 		return MG_FALSE;
 	} else {
 		logprintf(LOG_INFO, "client connected, ip %s, port %d", ip, conn->remote_port);
@@ -827,9 +933,7 @@ static int webserver_connect_handler(struct mg_connection *conn) {
 static void *webserver_worker(void *param) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 	while(webserver_loop) {
-		if(mg_poll_server(mgserver[(intptr_t)param], 1000) == 0) {
-			sleep(1);
-		}
+		mg_poll_server(mgserver[(intptr_t)param], 1000);
 	}
 	return NULL;
 }
@@ -841,11 +945,11 @@ static void webserver_queue(char *message) {
 	if(webqueue_number <= 1024) {
 		struct webqueue_t *wnode = MALLOC(sizeof(struct webqueue_t));
 		if(wnode == NULL) {
-			logprintf(LOG_ERR, "out of memory");
+			fprintf(stderr, "out of memory\n");
 			exit(EXIT_FAILURE);
 		}
 		if((wnode->message = MALLOC(strlen(message)+1)) == NULL) {
-			logprintf(LOG_ERR, "out of memory");
+			fprintf(stderr, "out of memory\n");
 			exit(EXIT_FAILURE);
 		}
 		strcpy(wnode->message, message);
@@ -913,16 +1017,16 @@ void *webserver_clientize(void *param) {
 		int standalone = 0;
 		settings_find_number("standalone", &standalone);
 		if(ssdp_seek(&ssdp_list) == -1 || standalone == 1) {
-			logprintf(LOG_DEBUG, "no pilight ssdp connections found");
+			logprintf(LOG_NOTICE, "no pilight ssdp connections found");
 			char server[16] = "127.0.0.1";
 			if((sockfd = socket_connect(server, (unsigned short)socket_get_port())) == -1) {
-				logprintf(LOG_DEBUG, "could not connect to pilight-daemon");
+				logprintf(LOG_ERR, "could not connect to pilight-daemon");
 				failures++;
 				continue;
 			}
 		} else {
 			if((sockfd = socket_connect(ssdp_list->ip, ssdp_list->port)) == -1) {
-				logprintf(LOG_DEBUG, "could not connect to pilight-daemon");
+				logprintf(LOG_ERR, "could not connect to pilight-daemon");
 				failures++;
 				continue;
 			}
@@ -1033,7 +1137,7 @@ int webserver_start(void) {
 	if(settings_find_string("webserver-root", &webserver_root) != 0) {
 		/* If no webserver port was set, use the default webserver port */
 		if((webserver_root = MALLOC(strlen(WEBSERVER_ROOT)+1)) == NULL) {
-			logprintf(LOG_ERR, "out of memory");
+			fprintf(stderr, "out of memory\n");
 			exit(EXIT_FAILURE);
 		}
 		strcpy(webserver_root, WEBSERVER_ROOT);
@@ -1048,9 +1152,8 @@ int webserver_start(void) {
 	settings_find_string("webserver-authentication-username", &webserver_authentication_username);
 	if(settings_find_string("webserver-user", &webserver_user) != 0) {
 		/* If no webserver port was set, use the default webserver port */
-		webserver_user = MALLOC(strlen(WEBSERVER_USER)+1);
-		if(!webserver_user) {
-			logprintf(LOG_ERR, "out of memory");
+		if((webserver_user = MALLOC(strlen(WEBSERVER_USER)+1)) == NULL) {
+			fprintf(stderr, "out of memory\n");
 			exit(EXIT_FAILURE);
 		}
 		strcpy(webserver_user, WEBSERVER_USER);
@@ -1059,12 +1162,23 @@ int webserver_start(void) {
 
 	int z = 0;
 #ifdef WEBSERVER_HTTPS
+	char *pemfile = NULL;
+	int pem_free = 0;
+	if(settings_find_string("pem-file", &pemfile) != 0) {
+		if((pemfile = REALLOC(pemfile, strlen(PEM_FILE)+1)) == NULL) {
+			fprintf(stderr, "out of memory\n");
+			exit(EXIT_FAILURE);
+		}
+		strcpy(pemfile, PEM_FILE);
+		pem_free = 1;
+	}
+
 	char ssl[BUFFER_SIZE];
 	char id[2];
 	memset(ssl, '\0', BUFFER_SIZE);
 
 	sprintf(id, "%d", z);
-	snprintf(ssl, BUFFER_SIZE, "ssl://%d:/etc/pilight/ssl.pem", webserver_https_port);
+	snprintf(ssl, BUFFER_SIZE, "ssl://%d:%s", webserver_https_port, pemfile);
 	mgserver[z] = mg_create_server((void *)id, webserver_handler);
 	mg_set_option(mgserver[z], "listening_port", ssl);
 	mg_set_option(mgserver[z], "auth_domain", "pilight");
@@ -1072,6 +1186,9 @@ int webserver_start(void) {
 	sprintf(msg, "webserver worker #%d", z);
 	threads_register(msg, &webserver_worker, (void *)(intptr_t)z, 0);
 	z = 1;
+	if(pem_free == 1) {
+		FREE(pemfile);
+	}
 #endif
 
 	char webport[10] = {'\0'};
@@ -1089,6 +1206,9 @@ int webserver_start(void) {
 		threads_register(msg, &webserver_worker, (void *)(intptr_t)i, 0);
 	}
 
+#ifdef WEBSERVER_HTTPS	
+	logprintf(LOG_DEBUG, "webserver listening to port %d", webserver_https_port);
+#endif
 	logprintf(LOG_DEBUG, "webserver listening to port %s", webport);
 
 	return 0;

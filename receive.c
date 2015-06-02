@@ -71,7 +71,7 @@ int main(int argc, char **argv) {
 	log_level_set(LOG_NOTICE);
 
 	if((progname = MALLOC(16)) == NULL) {
-		logprintf(LOG_ERR, "out of memory");
+		fprintf(stderr, "out of memory\n");
 		exit(EXIT_FAILURE);
 	}
 	strcpy(progname, "pilight-receive");
@@ -115,8 +115,8 @@ int main(int argc, char **argv) {
 				exit(EXIT_SUCCESS);
 			break;
 			case 'S':
-				if(!(server = MALLOC(strlen(args)+1))) {
-					logprintf(LOG_ERR, "out of memory");
+				if((server = MALLOC(strlen(args)+1)) == NULL) {
+					fprintf(stderr, "out of memory\n");
 					exit(EXIT_FAILURE);
 				}
 				strcpy(server, args);
@@ -141,7 +141,7 @@ int main(int argc, char **argv) {
 			return EXIT_FAILURE;
 		}
 	} else if(ssdp_seek(&ssdp_list) == -1) {
-		logprintf(LOG_ERR, "no pilight ssdp connections found");
+		logprintf(LOG_NOTICE, "no pilight ssdp connections found");
 		goto close;
 	} else {
 		if((sockfd = socket_connect(ssdp_list->ip, ssdp_list->port)) == -1) {

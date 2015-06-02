@@ -99,7 +99,7 @@ void ev1527Init(void) {
 #if !defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "ev1527";
-	module->version = "0.7";
+	module->version = "1.0";
 	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }
