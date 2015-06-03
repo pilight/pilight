@@ -40,6 +40,7 @@
 #include "protocol.h"
 #include "433.92/protocol_header.h"
 #include "API/protocol_header.h"
+#include "IR/protocol_header.h"
 #include "generic/protocol_header.h"
 #include "GPIO/protocol_header.h"
 #include "network/protocol_header.h"
@@ -100,6 +101,7 @@ void protocol_init(void) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
 	#include "433.92/protocol_init.h"
+	#include "IR/protocol_init.h"
 	#include "API/protocol_init.h"
 	#include "generic/protocol_init.h"
 	#include "GPIO/protocol_init.h"

@@ -19,6 +19,11 @@ if(${MODULESPACK} MATCHES "OFF" OR WIN32)
 		set(${PROJECT_NAME}_files ${${PROJECT_NAME}_files} ${openzwave_files} CACHE INTERNAL "")
 	endif()
 
+	if(${IR} MATCHES "ON")
+		add_subdirectory(lirc)	
+		set(${PROJECT_NAME}_files ${${PROJECT_NAME}_files} ${lirc_files} CACHE INTERNAL "")
+	endif()
+
 	add_subdirectory(pilight)
 	set(${PROJECT_NAME}_files ${${PROJECT_NAME}_files} ${pilight_files} CACHE INTERNAL "")
 else()
