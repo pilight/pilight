@@ -5,6 +5,7 @@ add_subdirectory(API)
 add_subdirectory(GPIO)
 add_subdirectory(generic)
 add_subdirectory(network)
+add_subdirectory(zwave)
 add_subdirectory(core)
 
 if(${MODULESPACK} MATCHES "OFF" OR WIN32)
@@ -14,6 +15,7 @@ if(${MODULESPACK} MATCHES "OFF" OR WIN32)
 	set(${PROJECT_NAME}_files 
 		${pilight_protocols_433.92_files}
 		${pilight_protocols_api_files}
+		${pilight_protocols_zwave_files}
 		${pilight_protocols_generic_files}
 		${pilight_protocols_network_files}
 		${pilight_protocols_gpio_files}
@@ -21,15 +23,24 @@ if(${MODULESPACK} MATCHES "OFF" OR WIN32)
 		${${PROJECT_NAME}_sources}
 		${${PROJECT_NAME}_headers}
 	CACHE INTERNAL "")
+
+	if(${ZWAVE} MATCHES "OFF")
+		list(REMOVE_ITEM ${PROJECT_NAME}_files ${pilight_protocols_zwave_files})
+	endif()
 else()
 	set(${PROJECT_NAME}_files 
 		${pilight_protocols_433.92_files}
 		${pilight_protocols_api_files}
+		${pilight_protocols_zwave_files}
 		${pilight_protocols_generic_files}
 		${pilight_protocols_network_files}
 		${pilight_protocols_gpio_files}
 		${pilight_protocols_core_files}
 	)
+
+	if(${ZWAVE} MATCHES "OFF")
+		list(REMOVE_ITEM ${PROJECT_NAME}_files ${pilight_protocols_zwave_files})
+	endif()
 
 	foreach(file ${${PROJECT_NAME}_files})
 		get_filename_component(name ${file} NAME_WE)

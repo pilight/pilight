@@ -133,7 +133,7 @@ void gpio433Init(void) {
 	gpio433->comtype=COMOOK;
 	gpio433->init=&gpio433HwInit;
 	gpio433->deinit=&gpio433HwDeinit;
-	gpio433->send=&gpio433Send;
+	gpio433->sendOOK=&gpio433Send;
 	gpio433->receiveOOK=&gpio433Receive;
 	gpio433->settings=&gpio433Settings;
 }
@@ -141,9 +141,9 @@ void gpio433Init(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "433gpio";
-	module->version = "1.2";
-	module->reqversion = "5.0";
-	module->reqcommit = "86";
+	module->version = "1.3";
+	module->reqversion = "7.0";
+	module->reqcommit = "10";
 }
 
 void init(void) {

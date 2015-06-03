@@ -22,11 +22,11 @@
 #include <unistd.h>
 #include <errno.h>
 
+#include "../../core/pilight.h"
 #include "../../core/options.h"
 #include "../../config/devices.h"
 #include "../../core/log.h"
 #include "../../core/dso.h"
-#include "../../core/pilight.h"
 #include "../action.h"
 #include "../events.h"
 #include "dim.h"

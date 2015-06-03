@@ -48,8 +48,8 @@
 #include <ctype.h>
 #include <dirent.h>
 
-#include "libs/pilight/core/threads.h"
 #include "libs/pilight/core/pilight.h"
+#include "libs/pilight/core/threads.h"
 #include "libs/pilight/core/datetime.h"
 #include "libs/pilight/core/common.h"
 #include "libs/pilight/core/network.h"
@@ -548,6 +548,21 @@ static void receiver_create_message(protocol_t *protocol) {
 	protocol->message = NULL;
 }
 
+static void receive_parse_api(struct JsonNode *code, int hwtype) {
+	struct protocol_t *protocol = NULL;
+	struct protocols_t *pnode = protocols;
+
+	while(pnode != NULL) {
+		protocol = pnode->listener;
+
+		if(protocol->hwtype == hwtype && protocol->parseCommand != NULL) {
+			protocol->parseCommand(code);
+			receiver_create_message(protocol);
+		}		
+		pnode = pnode->next;
+	}
+}
+
 void *receive_parse_code(void *param) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
@@ -675,34 +690,44 @@ void *send_code(void *param) {
 				}
 				tmp_confhw = tmp_confhw->next;
 			}
-			if(hw != NULL && hw->send != NULL) {
-				if(hw->receiveOOK != NULL || hw->receivePulseTrain != NULL) {
-					hw->wait = 1;
-					pthread_mutex_unlock(&hw->lock);
-					pthread_cond_signal(&hw->signal);
-				}
-				logprintf(LOG_DEBUG, "**** RAW CODE ****");
-				if(log_level_get() >= LOG_DEBUG) {
-					for(i=0;i<sendqueue->length;i++) {
-						printf("%d ", sendqueue->code[i]);
+			if(hw != NULL) {
+				if((hw->comtype == COMOOK || hw->comtype == COMPLSTRAIN) && hw->sendOOK != NULL) {
+					if(hw->receiveOOK != NULL || hw->receivePulseTrain != NULL) {
+						hw->wait = 1;
+						pthread_mutex_unlock(&hw->lock);
+						pthread_cond_signal(&hw->signal);
 					}
-					printf("\n");
-				}
-				logprintf(LOG_DEBUG, "**** RAW CODE ****");
+					logprintf(LOG_DEBUG, "**** RAW CODE ****");
+					if(log_level_get() >= LOG_DEBUG) {
+						for(i=0;i<sendqueue->length;i++) {
+							printf("%d ", sendqueue->code[i]);
+						}
+						printf("\n");
+					}
+					logprintf(LOG_DEBUG, "**** RAW CODE ****");
 
-				if(hw->send(sendqueue->code, sendqueue->length, protocol->txrpt) == 0) {
-					logprintf(LOG_DEBUG, "successfully send %s code", protocol->id);
-				} else {
-					logprintf(LOG_ERR, "failed to send code");
-				}
-				if(strcmp(protocol->id, "raw") == 0) {
-					int plslen = sendqueue->code[sendqueue->length-1]/PULSE_DIV;
-					receive_queue(sendqueue->code, sendqueue->length, plslen, -1);
-				}
-				if(hw->receiveOOK != NULL || hw->receivePulseTrain != NULL) {
-					hw->wait = 0;
-					pthread_mutex_unlock(&hw->lock);
-					pthread_cond_signal(&hw->signal);
+					if(hw->sendOOK(sendqueue->code, sendqueue->length, protocol->txrpt) == 0) {
+						logprintf(LOG_DEBUG, "successfully send %s code", protocol->id);
+					} else {
+						logprintf(LOG_ERR, "failed to send code");
+					}
+					if(strcmp(protocol->id, "raw") == 0) {
+						int plslen = sendqueue->code[sendqueue->length-1]/PULSE_DIV;
+						receive_queue(sendqueue->code, sendqueue->length, plslen, -1);
+					}
+					if(hw->receiveOOK != NULL || hw->receivePulseTrain != NULL) {
+						hw->wait = 0;
+						pthread_mutex_unlock(&hw->lock);
+						pthread_cond_signal(&hw->signal);
+					}
+				} else if(hw->comtype == COMAPI && hw->sendAPI != NULL) {
+					if(message != NULL) {				
+						if(hw->sendAPI(message) == 0) {
+							logprintf(LOG_DEBUG, "successfully send %s command", protocol->id);
+						} else {
+							logprintf(LOG_ERR, "failed to send command");
+						}
+					}
 				}
 			} else {
 				if(strcmp(protocol->id, "raw") == 0) {
@@ -2276,6 +2301,7 @@ int start_pilight(int argc, char **argv) {
 	pilight.broadcast = &broadcast_queue;
 	pilight.send = &send_queue;
 	pilight.control = &control_device;
+	pilight.receive = &receive_parse_api;
 
 	if(config_read() != EXIT_SUCCESS) {
 		goto clear;
@@ -2543,8 +2569,8 @@ int start_pilight(int argc, char **argv) {
 					threads_register(tmp_confhw->hardware->id, &receiveOOK, (void *)tmp_confhw->hardware, 0);
 				} else if(tmp_confhw->hardware->comtype == COMPLSTRAIN) {
 					threads_register(tmp_confhw->hardware->id, &receivePulseTrain, (void *)tmp_confhw->hardware, 0);
-				} else if(tmp_confhw->hardware->comtype == COMTHREAD) {
-					threads_register(tmp_confhw->hardware->id, tmp_confhw->hardware->receiveThread, (void *)tmp_confhw->hardware, 0);
+				} else if(tmp_confhw->hardware->comtype == COMAPI) {
+					threads_register(tmp_confhw->hardware->id, tmp_confhw->hardware->receiveAPI, (void *)tmp_confhw->hardware, 0);
 				}
 			} else {
 				break;

@@ -35,7 +35,7 @@ typedef enum {
 	COMNONE = 0,
 	COMOOK,
 	COMPLSTRAIN,
-	COMTHREAD
+	COMAPI
 } communication_t;
 
 #include <pthread.h>
@@ -72,10 +72,13 @@ typedef struct hardware_t {
 	unsigned short (*deinit)(void);
 	union {
 		int (*receiveOOK)(void);
-		void *(*receiveThread)(void *param);
+		void *(*receiveAPI)(void *param);
 		int (*receivePulseTrain)(struct rawcode_t *r);
 	};
-	int (*send)(int *code, int rawlen, int repeats);
+	union {
+		int (*sendOOK)(int *code, int rawlen, int repeats);
+		int (*sendAPI)(struct JsonNode *code);
+	};
 	int (*gc)(void);
 	unsigned short (*settings)(JsonNode *json);
 	struct hardware_t *next;

@@ -1,6 +1,6 @@
 project(pilight_hardware)
 
-file(GLOB ${PROJECT_NAME}_sources "${PROJECT_SOURCE_DIR}/*.c")
+file(GLOB ${PROJECT_NAME}_sources "${PROJECT_SOURCE_DIR}/*.c" "${PROJECT_SOURCE_DIR}/*.cpp")
 file(GLOB ${PROJECT_NAME}_headers "${PROJECT_SOURCE_DIR}/*.h")
 
 if(${MODULESPACK} MATCHES "OFF" OR WIN32)
@@ -11,6 +11,11 @@ if(${MODULESPACK} MATCHES "OFF" OR WIN32)
 		list(REMOVE_ITEM ${PROJECT_NAME}_headers "${PROJECT_SOURCE_DIR}/433gpio.h")
 		list(REMOVE_ITEM ${PROJECT_NAME}_sources "${PROJECT_SOURCE_DIR}/433lirc.c")
 		list(REMOVE_ITEM ${PROJECT_NAME}_headers "${PROJECT_SOURCE_DIR}/433lirc.h")
+	endif()
+	
+	if(${ZWAVE} MATCHES "OFF")
+		list(REMOVE_ITEM ${PROJECT_NAME}_sources "${PROJECT_SOURCE_DIR}/zwave.cpp")
+		list(REMOVE_ITEM ${PROJECT_NAME}_headers "${PROJECT_SOURCE_DIR}/zwave.h")
 	endif()
 
 	include(CMakeInclude.txt)

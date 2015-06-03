@@ -45,7 +45,7 @@ void noneInit(void) {
 	none->hwtype=NONE;
 	none->comtype=COMNONE;
 	none->receiveOOK=&noneReceive;
-	none->send=&noneSend;
+	none->sendOOK=&noneSend;
 }
 
 #if defined(MODULE) && !defined(_WIN32)

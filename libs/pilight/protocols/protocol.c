@@ -22,7 +22,6 @@
 #include <dirent.h>
 #include <sys/time.h>
 #include <sys/stat.h>
-#include <sys/stat.h>
 #ifndef _WIN32
 	#ifdef __mips__
 		#define __USE_UNIX98
@@ -45,6 +44,7 @@
 #include "GPIO/protocol_header.h"
 #include "network/protocol_header.h"
 #include "core/protocol_header.h"
+#include "zwave/protocol_header.h"
 
 struct protocols_t *protocols;
 
@@ -105,6 +105,7 @@ void protocol_init(void) {
 	#include "GPIO/protocol_init.h"
 	#include "network/protocol_init.h"
 	#include "core/protocol_init.h"
+	#include "zwave/protocol_init.h"
 
 #ifndef _WIN32
 	void *handle = NULL;
@@ -224,6 +225,7 @@ void protocol_register(protocol_t **proto) {
 	(*proto)->config = 1;
 	(*proto)->masterOnly = 0;
 	(*proto)->parseCode = NULL;
+	(*proto)->parseCommand = NULL;
 	(*proto)->createCode = NULL;
 	(*proto)->checkValues = NULL;
 	(*proto)->initDev = NULL;
