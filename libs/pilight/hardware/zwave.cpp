@@ -28,6 +28,7 @@
 #include <pthread.h>
 #include <sys/time.h>
 #include <math.h>
+#include <libgen.h>
 #include <list>
 
 #ifdef _WIN32

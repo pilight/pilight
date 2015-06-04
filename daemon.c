@@ -2184,7 +2184,7 @@ int start_pilight(int argc, char **argv) {
 #ifdef _WIN32
 		MessageBox(NULL, help, "pilight :: info", MB_OK);
 #else
-		printf(help);
+		printf("%s", help);
 #endif
 		goto clear;
 	}
