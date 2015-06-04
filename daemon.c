@@ -2226,6 +2226,7 @@ int start_pilight(int argc, char **argv) {
 	}
 #endif
 
+	datetime_init();
 	atomicinit();
 	procProtocolInit();
 

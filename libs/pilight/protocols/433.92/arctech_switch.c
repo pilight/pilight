@@ -35,7 +35,7 @@
 #define PULSE_MULTIPLIER	4
 #define MIN_PULSE_LENGTH	274
 #define MAX_PULSE_LENGTH	320
-#define AVG_PULSE_LENGTH	300
+#define AVG_PULSE_LENGTH	315
 #define RAW_LENGTH				132
 
 static int validate(void) {
