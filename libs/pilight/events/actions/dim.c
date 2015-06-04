@@ -727,7 +727,7 @@ static void *thread(void *param) {
 			for(i=(int)old_dimlevel;i<=(int)new_dimlevel;i++) {
 				timer = 0;
 				while(pth->loop == 1) {
-					if(interval == timer) {
+					if(interval == timer || i == (int)old_dimlevel) {
 						jvalues = json_mkobject();
 						json_append_member(jvalues, "dimlevel", json_mknumber(i, 0));
 						if(pilight.control != NULL) {
@@ -748,7 +748,7 @@ static void *thread(void *param) {
 			for(i=(int)old_dimlevel;i>=(int)new_dimlevel;i--) {
 				timer = 0;
 				while(pth->loop == 1) {
-					if(interval == timer) {
+					if(interval == timer || i == (int)old_dimlevel) {
 						jvalues = json_mkobject();
 						json_append_member(jvalues, "dimlevel", json_mknumber(i, 0));
 						if(pilight.control != NULL) {
@@ -850,7 +850,7 @@ void actionDimInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "dim";
-	module->version = "3.3";
+	module->version = "3.4";
 	module->reqversion = "6.0";
 	module->reqcommit = "152";
 }
