@@ -44,7 +44,10 @@
 #include "GPIO/protocol_header.h"
 #include "network/protocol_header.h"
 #include "core/protocol_header.h"
-#include "zwave/protocol_header.h"
+
+#ifdef ZWAVE
+	#include "zwave/protocol_header.h"
+#endif
 
 struct protocols_t *protocols;
 
@@ -105,7 +108,10 @@ void protocol_init(void) {
 	#include "GPIO/protocol_init.h"
 	#include "network/protocol_init.h"
 	#include "core/protocol_init.h"
+	
+#ifdef ZWAVE	
 	#include "zwave/protocol_init.h"
+#endif
 
 #ifndef _WIN32
 	void *handle = NULL;

@@ -21,6 +21,7 @@
 
 #cmakedefine WEBSERVER
 #cmakedefine EVENTS
+#cmakedefine ZWAVE
 
 #define PILIGHT_VERSION					"7.0"
 #define PULSE_DIV								34
