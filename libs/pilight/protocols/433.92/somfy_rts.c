@@ -37,7 +37,8 @@ Change Log:
 0.93	- 150430 port to pilight 7.0
 0.94  - Bugfixing
 0.94b - Bugfixing GAP Length
-0.99a - 9ab0e4f - Step a21a - Add Bufferlength checks (pMaxBin, pMaxRaw)
+0.99a21a - 9ab0e4f - Step a21a - Add Bufferlength checks (pMaxBin, pMaxRaw)
+0.99a21b - 9ab0e4f - Step a21b - Fix the buffer overflow loop bug
 */
 #include <stdio.h>
 #include <stdlib.h>
@@ -199,7 +200,7 @@ static void parseCode(void) {
 	int pBin = 0, pRaw = 0;
 	int protocol_sync = 0;
 	int rDataLow = 0, rDataTime = 0;
-	int rollingcode = 0, rollingkey = 0, binary[BIN_LENGTH];
+	int rollingcode = 0, rollingkey = 0, binary[MAXPULSESTREAMLENGTH];
 	uint8_t dec_frame[BIN_ARRAY_SOMFY_PROT] = { 0 };
 	uint8_t frame[BIN_ARRAY_SOMFY_PROT] = { 0 };
 
@@ -209,7 +210,7 @@ static void parseCode(void) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 	// Decode Manchester pulse stream into binary
 	pRaw = 0;
-	for  (i=0;i<=BINLEN_SOMFY_PROT;i++) {
+	for  (i=0;i<BINLEN_SOMFY_PROT;i++) {
 		binary[i]=0;
 	}
 
