@@ -37,6 +37,7 @@ Change Log:
 0.93	- 150430 port to pilight 7.0
 0.94  - Bugfixing
 0.94b - Bugfixing GAP Length
+0.99a - 9ab0e4f - Step a21a - Add Bufferlength checks (pMaxBin, pMaxRaw)
 */
 #include <stdio.h>
 #include <stdlib.h>
@@ -109,7 +110,8 @@ Change Log:
 int sDataTime = 0;
 int sDataLow = 0;
 int preAmb_wakeup [VALUE_LEN_WAKEUP+1] = {VALUE_LEN_WAKEUP, PULSE_SOMFY_WAKEUP, PULSE_SOMFY_WAKEUP_WAIT};
-
+int pMaxbin = 0;
+int pMaxraw = 0;
 // 01 - MY, 02 - UP, 04 - DOWN, 08 - PROG
 
 typedef struct settings_t {
@@ -240,6 +242,7 @@ static void parseCode(void) {
 				rDataTime = PULSE_SOMFY_SHORT;
 				binary[pBin]=1;
 				pBin=pBin+1;
+				if(pBin>pMaxbin)pMaxbin=pBin;
 			} else {
 			// if it is neither a short nor a long pulse, we try to find another SYNC pulse
 				protocol_sync=0;
@@ -275,6 +278,7 @@ static void parseCode(void) {
 					binary[pBin]=1;
 				}
 				pBin=pBin+1;
+				if(pBin>pMaxbin)pMaxbin=pBin;
 				rDataTime = PULSE_SOMFY_SHORT;
 				if (pBin >= BINLEN_SOMFY_CLASSIC) {
 					protocol_sync = 3;	// We got all bits for classic data frame
@@ -306,6 +310,7 @@ static void parseCode(void) {
 					binary[pBin]=1;
 				}
 				pBin=pBin+1;
+				if(pBin>pMaxbin)pMaxbin=pBin;
 				rDataTime = PULSE_SOMFY_SHORT;
 				if (pBin >= BINLEN_SOMFY_CLASSIC) {
 					protocol_sync = 4;	// We got all bits for classic data frame
@@ -343,6 +348,7 @@ static void parseCode(void) {
 			break;
 		}
 		pRaw++;
+		if (pRaw>pMaxraw)pMaxraw=pRaw; // Monitor maximum value
 		if (protocol_sync > 95) {
 			logprintf(LOG_DEBUG, "**** somfy_rts RAW CODE ****");
 			if(log_level_get() >= LOG_DEBUG) {
@@ -469,6 +475,7 @@ static int checkValues(struct JsonNode *jvalues) {
 
 static void gc(void) {
 	struct settings_t *tmp = NULL;
+	logprintf(LOG_DEBUG, "somfy_rts: pMaxbin: %d pMaxraw: %d",pMaxbin, pMaxraw);
 	while(settings) {
 		tmp = settings;
 		settings = settings->next;
