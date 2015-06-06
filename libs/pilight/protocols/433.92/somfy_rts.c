@@ -39,6 +39,7 @@ Change Log:
 0.94b - Bugfixing GAP Length
 0.99a21a - 9ab0e4f - Step a21a - Add Bufferlength checks (pMaxBin, pMaxRaw)
 0.99a21b - 9ab0e4f - Step a21b - Fix the buffer overflow loop bug
+0.99a21c - 9ab0e4f - Step a21c - modify the wakeup pulses
 */
 #include <stdio.h>
 #include <stdlib.h>
@@ -91,8 +92,10 @@ Change Log:
 #define MAXRAWLEN_SOMFY_PROT	241	// all Data bit equal new genration: 14+1+2*56+2*56+2=241 241-4-4=233
 // to be implemented
 #define VALUE_LEN_WAKEUP	2	// Wakeup sequence length
-#define PULSE_SOMFY_WAKEUP	9415	// Wakeup pulse followed by _WAIT
-#define PULSE_SOMFY_WAKEUP_WAIT	89565
+//#define PULSE_SOMFY_WAKEUP	9415	// Wakeup pulse followed by _WAIT
+//#define PULSE_SOMFY_WAKEUP_WAIT	89565
+#define PULSE_SOMFY_WAKEUP	10750	// Wakeup pulse followed by _WAIT
+#define PULSE_SOMFY_WAKEUP_WAIT	17750
 //
 //#define PULSE_MULTIPLIER   16
 //#define MIN_PULSE_LENGTH   221  7513/34
