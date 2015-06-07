@@ -41,6 +41,7 @@ Change Log:
 0.99a21b - 9ab0e4f - Step a21b - Fix the buffer overflow loop bug
 0.99a21c - 9ab0e4f - Step a21c - modify the wakeup pulses
 0.99a21d - 9ab0e4f - Step a21d - Add 2nd wakeup pulse.  0-10750/17750  1-9450/89565
+0.99a21e - 9ab0e4f - Step a21e - Change # of repetitive pulsestreams from default 10 to 4
 */
 #include <stdio.h>
 #include <stdlib.h>
@@ -99,8 +100,8 @@ Change Log:
 #define PULSE_SOMFY_WAKEUP_WAIT_1	89565
 #define RAW_LENGTH RAWLEN_SOMFY_PROT
 #define BIN_LENGTH BINLEN_SOMFY_PROT
-//#define LEARN_REPEATS 4
-//#define NORMAL_REPEATS 4
+#define LEARN_REPEATS 4
+#define NORMAL_REPEATS 4
 
 int sDataTime = 0;
 int sDataLow = 0;
@@ -189,6 +190,7 @@ static void createMessage(int address, int command, int rollingcode, int rolling
 	if (rollingkey != -1) {
 		json_append_member(somfy_rts->message, "rollingkey", json_mknumber(rollingkey,0));
 	}
+	somfy_rts->txrpt = NORMAL_REPEATS;
 }
 
 static void parseCode(void) {
@@ -589,7 +591,7 @@ static int createCode(JsonNode *code) {
 	if(json_find_number(code, "command_code", &itmp) == 0)	command_code = (int)round(itmp);
 	if(json_find_number(code, "wakeup", &itmp) == 0)	wakeup_type = (int)round(itmp);
 
-if( command != -1 && command_code != -1 ) {
+	if(command != -1 && command_code != -1) {
 		logprintf(LOG_ERR, "too many arguments: either command or command_code");
 		return EXIT_FAILURE;
 	}
