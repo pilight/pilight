@@ -42,6 +42,7 @@ Change Log:
 0.99a21c - 9ab0e4f - Step a21c - modify the wakeup pulses
 0.99a21d - 9ab0e4f - Step a21d - Add 2nd wakeup pulse.  0-10750/17750  1-9450/89565
 0.99a21e - 9ab0e4f - Step a21e - Change # of repetitive pulsestreams from default 10 to 4
+0.99a21e - 9ab0e4f - Step a21f - Add 2nd Footer pulse 32500
 */
 #include <stdio.h>
 #include <stdlib.h>
@@ -78,10 +79,13 @@ Change Log:
 // #define PULSE_SOMFY_FOOTER	1498	// 50932/PULSE_DIV, if last symbol is low plus _SHORT
 // #define PULSE_SOMFY_FOOTER	895	// 30430/PULSE_DIV, if last symbol is low plus _SHORT
 #define PULSE_SOMFY_FOOTER	809	// 27506/PULSE_DIV, if last symbol is low plus _SHORT
+#define PULSE_SOMFY_FOOTER_1	955	// 32500/PULSE_DIV, if last symbol is low plus _SHORT
 // #define PULSE_SOMFY_FOOTER	800	// 27200/PULSE_DIV, if last symbol is low plus _SHORT
 // #define PULSE_SOMFY_FOOTER	221	// 7531/PULSE_DIV, if last symbol is low plus _SHORT
 #define PULSE_SOMFY_FOOTER_L	(PULSE_SOMFY_FOOTER-25)*PULSE_DIV
 #define PULSE_SOMFY_FOOTER_H	(PULSE_SOMFY_FOOTER+25)*PULSE_DIV+PULSE_SOMFY_SHORT_H
+#define PULSE_SOMFY_FOOTER_L_1	(PULSE_SOMFY_FOOTER_1-5)*PULSE_DIV
+#define PULSE_SOMFY_FOOTER_H_1	(PULSE_SOMFY_FOOTER_1+5)*PULSE_DIV+PULSE_SOMFY_SHORT_H
 // Bin / Rawlength definitions
 // binlen Classic protocol: 56 - new_gen protocol: 56+24=80
 // rawlen Classic protocol: 73 .. 129  - new_gen protocol: 97 .. 177
@@ -137,8 +141,10 @@ static int validate(void) {
 
 	if((somfy_rts->rawlen > MINRAWLEN_SOMFY_PROT) &&
 		(somfy_rts->rawlen < MAXRAWLEN_SOMFY_PROT)) {
-		if((somfy_rts->raw[somfy_rts->rawlen-1] > PULSE_SOMFY_FOOTER_L) &&
-			(somfy_rts->raw[somfy_rts->rawlen-1] < PULSE_SOMFY_FOOTER_H)) {
+		if(((somfy_rts->raw[somfy_rts->rawlen-1] > PULSE_SOMFY_FOOTER_L) &&
+				(somfy_rts->raw[somfy_rts->rawlen-1] < PULSE_SOMFY_FOOTER_H)) ||
+			((somfy_rts->raw[somfy_rts->rawlen-1] > PULSE_SOMFY_FOOTER_L_1) &&
+				(somfy_rts->raw[somfy_rts->rawlen-1] < PULSE_SOMFY_FOOTER_H_1))) {
 			if((somfy_rts->raw[2] > PULSE_SOMFY_SYNC_L) &&
 				(somfy_rts->raw[2] < PULSE_SOMFY_SYNC_H)) {
 					return 0;
@@ -317,7 +323,8 @@ static void parseCode(void) {
 			case 4:
 			// We decoded the number of bis for classic data and new generation, check for footer pulse
 			logprintf(LOG_DEBUG, "somfy_rts: End of new generation data. pulse: %d - pRaw: %d - bin: %d", somfy_rts->raw[pRaw], pRaw, pBin);
-			if ((somfy_rts->raw[pRaw] > PULSE_SOMFY_FOOTER_L) && (somfy_rts->raw[pRaw] < PULSE_SOMFY_FOOTER_H)) {
+			if (((somfy_rts->raw[pRaw] > PULSE_SOMFY_FOOTER_L) && (somfy_rts->raw[pRaw] < PULSE_SOMFY_FOOTER_H)) ||
+				 ((somfy_rts->raw[pRaw] > PULSE_SOMFY_FOOTER_L_1) && (somfy_rts->raw[pRaw] < PULSE_SOMFY_FOOTER_H_1)) ){
 				protocol_sync = 98;
 			} else {
 				protocol_sync = 5;
