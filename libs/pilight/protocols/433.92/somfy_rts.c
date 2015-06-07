@@ -43,6 +43,7 @@ Change Log:
 0.99a21d - 9ab0e4f - Step a21d - Add 2nd wakeup pulse.  0-10750/17750  1-9450/89565
 0.99a21e - 9ab0e4f - Step a21e - Change # of repetitive pulsestreams from default 10 to 4
 0.99a21e - 9ab0e4f - Step a21f - Add 2nd Footer pulse 32500
+0.99a - 0.99a21e - logging of add. parameters - MY behaviour
 */
 #include <stdio.h>
 #include <stdlib.h>
@@ -382,9 +383,9 @@ static void parseCode(void) {
 
 		cksum = codeChkSum (dec_frame);
 
-		key_left = dec_frame[0] >> 4;
+		key_left = (dec_frame[0] >> 4) & 0xf;
 		rollingkey = dec_frame[0] & 0xf;
-		command = dec_frame[1] >> 4;
+		command = (dec_frame[1] >> 4) & 0xf;
 
 		rollingcode = dec_frame[2]*256 + dec_frame[3];
 		address = dec_frame[4]+dec_frame[5]*256+dec_frame[6]*65536;
@@ -404,7 +405,7 @@ static void parseCode(void) {
 			for(i=0;i<BIN_ARRAY_SOMFY_PROT;i++) {
 				printf("%d ", dec_frame[i]);
 			}
-			printf(" - addr: %d - rk: %d - rc: %d", address, rollingkey, rollingcode);
+			printf(" -addr: %d -cmd: %d -rk: %d -rc: %d -cksum: %d -kl: %d", address, command, rollingkey, rollingcode, cksum, key_left);
 			printf("\n");
 		}
 
@@ -728,7 +729,7 @@ void somfy_rtsInit(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name =  "somfy_rts";
-	module->version =  "0.99";
+	module->version =  "0.99a";
 	module->reqversion =  "6.0";
 	module->reqcommit =  NULL;
 }
