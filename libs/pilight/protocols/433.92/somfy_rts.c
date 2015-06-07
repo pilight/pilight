@@ -40,6 +40,7 @@ Change Log:
 0.99a21a - 9ab0e4f - Step a21a - Add Bufferlength checks (pMaxBin, pMaxRaw)
 0.99a21b - 9ab0e4f - Step a21b - Fix the buffer overflow loop bug
 0.99a21c - 9ab0e4f - Step a21c - modify the wakeup pulses
+0.99a21d - 9ab0e4f - Step a21d - Add 2nd wakeup pulse.  0-10750/17750  1-9450/89565
 */
 #include <stdio.h>
 #include <stdlib.h>
@@ -90,23 +91,13 @@ Change Log:
 #define RAWLEN_SOMFY_PROT	242
 #define MINRAWLEN_SOMFY_PROT	63	// all Data bit toogle classic: 4+1+56+2
 #define MAXRAWLEN_SOMFY_PROT	241	// all Data bit equal new genration: 14+1+2*56+2*56+2=241 241-4-4=233
-// to be implemented
+//
 #define VALUE_LEN_WAKEUP	2	// Wakeup sequence length
-//#define PULSE_SOMFY_WAKEUP	9415	// Wakeup pulse followed by _WAIT
-//#define PULSE_SOMFY_WAKEUP_WAIT	89565
 #define PULSE_SOMFY_WAKEUP	10750	// Wakeup pulse followed by _WAIT
 #define PULSE_SOMFY_WAKEUP_WAIT	17750
-//
-//#define PULSE_MULTIPLIER   16
-//#define MIN_PULSE_LENGTH   221  7513/34
-//#define AVG_PULSE_LENGTH   895  30415/34
-//#define MAX_PULSE_LENGTH   1498 50900/34
-//#define ZERO_PULSE
-//#define ONE_PULSE
-//#define AVG_PULSE (ZERO_PULSE+ONE_PULSE)/2
+#define PULSE_SOMFY_WAKEUP_1	9415	// Wakeup pulse followed by _WAIT
+#define PULSE_SOMFY_WAKEUP_WAIT_1	89565
 #define RAW_LENGTH RAWLEN_SOMFY_PROT
-//#define MIN_PULSE_LENGTH   MINRAWLEN_SOMFY_PROT
-//#define AVG_PULSE_LENGTH   MAXRAWLEN_SOMFY_PROT
 #define BIN_LENGTH BINLEN_SOMFY_PROT
 //#define LEARN_REPEATS 4
 //#define NORMAL_REPEATS 4
@@ -114,6 +105,8 @@ Change Log:
 int sDataTime = 0;
 int sDataLow = 0;
 int preAmb_wakeup [VALUE_LEN_WAKEUP+1] = {VALUE_LEN_WAKEUP, PULSE_SOMFY_WAKEUP, PULSE_SOMFY_WAKEUP_WAIT};
+int preAmb_wakeup_1 [VALUE_LEN_WAKEUP+1] = {VALUE_LEN_WAKEUP, PULSE_SOMFY_WAKEUP_1, PULSE_SOMFY_WAKEUP_WAIT_1};
+int wakeup_type = 0;
 int pMaxbin = 0;
 int pMaxraw = 0;
 // 01 - MY, 02 - UP, 04 - DOWN, 08 - PROG
@@ -201,14 +194,12 @@ static void createMessage(int address, int command, int rollingcode, int rolling
 static void parseCode(void) {
 	int i, x;
 	int pBin = 0, pRaw = 0;
-	int protocol_sync = 0;
-	int rDataLow = 0, rDataTime = 0;
+	int protocol_sync = 0, rDataLow = 0, rDataTime = 0;
 	int rollingcode = 0, rollingkey = 0, binary[MAXPULSESTREAMLENGTH];
 	uint8_t dec_frame[BIN_ARRAY_SOMFY_PROT] = { 0 };
 	uint8_t frame[BIN_ARRAY_SOMFY_PROT] = { 0 };
 
-	int cksum = 0;
-	int key_left = 0, command = 0, address = 0;
+	int cksum = 0, key_left = 0, command = 0, address = 0;
 
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 	// Decode Manchester pulse stream into binary
@@ -246,7 +237,7 @@ static void parseCode(void) {
 				rDataTime = PULSE_SOMFY_SHORT;
 				binary[pBin]=1;
 				pBin=pBin+1;
-				if(pBin>pMaxbin)pMaxbin=pBin;
+				if(pBin>pMaxbin)pMaxbin = pBin;
 			} else {
 			// if it is neither a short nor a long pulse, we try to find another SYNC pulse
 				protocol_sync=0;
@@ -266,17 +257,17 @@ static void parseCode(void) {
 						logprintf(LOG_DEBUG, "somfy_rts: prot 2b");
 					} else {
 						protocol_sync=96; // We should never end up here as binary bits are missing
-						logprintf(LOG_DEBUG, "somfy_rts: Err 21. Payload incomplete.");
+						logprintf(LOG_DEBUG, "somfy_rts: Err 21. Payload incomplete, bin:%d raw:%d",pBin,pRaw);
 					}
 				}
 				break;
 			}
-			rDataTime= rDataTime+somfy_rts->raw[pRaw];
+			rDataTime=rDataTime+somfy_rts->raw[pRaw];
 			// Pulse changes at the pulse duration are neutral
 			if ((rDataTime > PULSE_SOMFY_LONG_L) && (rDataTime < PULSE_SOMFY_LONG_H)) {
-			rDataTime = 0;
+			rDataTime=0;
 			} else {
-				if (rDataLow == 1) {
+				if (rDataLow==1) {
 					binary[pBin]=0;
 				} else {
 					binary[pBin]=1;
@@ -375,7 +366,7 @@ static void parseCode(void) {
 		frame[5] = (uint8_t) binToDecRev(binary, 40,47);
 		frame[6] = (uint8_t) binToDecRev(binary, 48,55);
 
-		dec_frame[0]=frame[0];
+		dec_frame[0] = frame[0];
 		for (i=1; i < BIN_ARRAY_SOMFY_PROT; i++) {
 			dec_frame[i] = frame[i] ^ frame[i-1];
 		}
@@ -423,6 +414,8 @@ static void parseCode(void) {
 static int *preAmbCode (void) {
 // Wakeup sequence called by daemon.c
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
+	if (wakeup_type == 1) return preAmb_wakeup_1;
 
 	return preAmb_wakeup;
 }
@@ -594,8 +587,9 @@ static int createCode(JsonNode *code) {
 		command=8;
 	}
 	if(json_find_number(code, "command_code", &itmp) == 0)	command_code = (int)round(itmp);
+	if(json_find_number(code, "wakeup", &itmp) == 0)	wakeup_type = (int)round(itmp);
 
-	if( command != -1 && command_code != -1 ) {
+if( command != -1 && command_code != -1 ) {
 		logprintf(LOG_ERR, "too many arguments: either command or command_code");
 		return EXIT_FAILURE;
 	}
@@ -672,6 +666,7 @@ static void printHelp(void) {
 	printf("\t -c --rollingcode=rollingcode\t\t\tset rollingcode\n");
 	printf("\t -k --rollingkey=rollingkey\t\t\tset rollingkey\n");
 	printf("\t -n --command_code=command\t\t\tNumeric Command Code\n");
+	printf("\t -w --wakeup=command\t\t\tType of Wakeup Pulse\n");
 }
 
 #ifndef MODULE
@@ -703,12 +698,12 @@ void somfy_rtsInit(void) {
 	options_add(&somfy_rts->options, 'f', "down", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
 	options_add(&somfy_rts->options, 'm', "my", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
 	options_add(&somfy_rts->options, 'g', "prog", OPTION_NO_VALUE,DEVICES_STATE, JSON_STRING, NULL, NULL);
+	options_add(&somfy_rts->options, 'w', "wakeup", OPTION_HAS_VALUE, DEVICES_OPTIONAL, JSON_NUMBER, (void *)0, "^([01])$");
 	options_add(&somfy_rts->options, 0, "my+up", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
 	options_add(&somfy_rts->options, 0, "my+down", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
 	options_add(&somfy_rts->options, 0, "up+down", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
 	options_add(&somfy_rts->options, 0, "sun+flag", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
 	options_add(&somfy_rts->options, 0, "flag", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
-
 	options_add(&somfy_rts->options, 0, "readonly", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 
 	somfy_rts->parseCode=&parseCode;
@@ -724,7 +719,7 @@ void somfy_rtsInit(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name =  "somfy_rts";
-	module->version =  "0.94a";
+	module->version =  "0.99";
 	module->reqversion =  "6.0";
 	module->reqcommit =  NULL;
 }
