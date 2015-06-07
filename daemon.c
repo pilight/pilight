@@ -696,10 +696,10 @@ void *send_code(void *param) {
 					pthread_cond_signal(&hw->signal);
 				}
 				if (protocol->preAmbCode != NULL) {
-					logprintf(LOG_DEBUG, "send preAmb %s sequence", protocol->id);
+					logprintf(LOG_DEBUG, "sending preAmb %s sequence", protocol->id);
 					pamble = protocol->preAmbCode();
 					if(hw->send(++pamble, *protocol->preAmbCode(), 1) == 0) {
-						logprintf(LOG_DEBUG, "successfully send %s preAmb sequence", protocol->id);
+						logprintf(LOG_DEBUG, "successfully send %s preAmb sequence. #: %d - %d %d", protocol->id,  *protocol->preAmbCode(), *(pamble), *(pamble+1));
 					} else {
 						logprintf(LOG_ERR, "failed to send %s preAmb sequence", protocol->id);
 					}
@@ -709,7 +709,7 @@ void *send_code(void *param) {
 					for(i=0;i<sendqueue->length;i++) {
 						printf("%d ", sendqueue->code[i]);
 					}
-					printf("\n");
+					printf(" -#: %d\n",sendqueue->length);
 				}
 				logprintf(LOG_DEBUG, "**** RAW CODE ****");
 
@@ -719,12 +719,12 @@ void *send_code(void *param) {
 					logprintf(LOG_ERR, "failed to send code");
 				}
 				if (protocol->postAmbCode != NULL) {
-					logprintf(LOG_DEBUG, "send postAmb %s sequence", protocol->id);
+					logprintf(LOG_DEBUG, "sending postAmb %s sequence", protocol->id);
 					pamble = protocol->postAmbCode();
 					if(hw->send(++pamble, *protocol->postAmbCode(), 1) == 0) {
-						logprintf(LOG_DEBUG, "successfully send %s preAmb sequence", protocol->id);
+						logprintf(LOG_DEBUG, "successfully send %s postAmb sequence. #: %d - %d %d", protocol->id,  *protocol->postAmbCode(), *(pamble), *(pamble+1));
 					} else {
-						logprintf(LOG_ERR, "failed to send %s preAmb sequence", protocol->id);
+						logprintf(LOG_ERR, "failed to send %s postAmb sequence", protocol->id);
 					}
 				}
 				if(strcmp(protocol->id, "raw") == 0) {
@@ -1540,8 +1540,10 @@ void *receiveOOK(void *param) {
 					/* Let's do a little filtering here as well */
 					if(r.length >= minrawlen && r.length <= maxrawlen) {
 						receive_queue(r.pulses, r.length, plslen, hw->hwtype);
+						r.length = 0;
 					}
-					r.length = 0;
+					// Avoid that short footer pulses (X10, IMPULS, ...) interfere with long header /sync pulses
+					if(r.length>20)r.length = 0;	// Avoid a buffer reset and preserve potential Header / SYNC / Start pulses
 				}
 			/* Hardware failure */
 			} else if(duration == -1) {
