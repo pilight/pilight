@@ -43,6 +43,13 @@
 #endif
 #include "raspberrypi.h"
 
+#define	WPI_MODE_PINS		 0
+#define	WPI_MODE_GPIO		 1
+#define	WPI_MODE_GPIO_SYS	 2
+#define	WPI_MODE_PHYS		 3
+#define	WPI_MODE_PIFACE		 4
+#define	WPI_MODE_UNINITIALISED	-1
+
 #define	PI_GPIO_MASK	(0xFFFFFFC0)
 
 #define NUM_PINS		32
@@ -72,7 +79,10 @@ static volatile unsigned int	 BCM2708_PERI_BASE = 0x20000000;
 #define CLOCK_BASE		(BCM2708_PERI_BASE + 0x00101000)
 #define GPIO_BASE		(BCM2708_PERI_BASE + 0x00200000)
 
+#define	PAGE_SIZE		(4*1024)
 #define	BLOCK_SIZE		(4*1024)
+
+static int wiringPiMode = WPI_MODE_UNINITIALISED;
 
 static int piModel2 = 0;
 
@@ -556,15 +566,15 @@ static int raspberrypiWaitForInterrupt(int pin, int ms) {
 	polls.fd = sysFds[pin];
 	polls.events = POLLPRI;
 
+	(void)read(sysFds[pin], &c, 1);
+	lseek(sysFds[pin], 0, SEEK_SET);
+
 	x = poll(&polls, 1, ms);
 
 	/* Don't react to signals */
 	if(x == -1 && errno == EINTR) {
 		x = 0;
 	}
-
-	(void)read(sysFds[pin], &c, 1);
-	lseek(sysFds[pin], 0, SEEK_SET);
 
 	return x;
 }
@@ -667,6 +677,12 @@ int raspberrypiSPIDataRW(int channel, unsigned char *data, int len) {
 	spi.delay_usecs = spiDelay;
 	spi.speed_hz = spiSpeeds[channel];
 	spi.bits_per_word = spiBPW;
+#ifdef SPI_IOC_WR_MODE32
+	spi.tx_nbits = 0;
+#endif
+#ifdef SPI_IOC_RD_MODE32
+	spi.rx_nbits = 0;
+#endif
 
 	if(ioctl(spiFds[channel], SPI_IOC_MESSAGE(1), &spi) < 0) {
 		wiringXLog(LOG_ERR, "raspberrypi->SPIDataRW: Unable to read/write from channel %d: %s", channel, strerror(errno));
