@@ -29,7 +29,7 @@
 #include "../protocol.h"
 #include "zwave_ctrl.h"
 
-static void createMessage(int state) {
+static void createCommandMessage(int state) {
 	zwave_ctrl->message = json_mkobject();
 	if(state == 1) {
 		json_append_member(zwave_ctrl->message, "command", json_mkstring("inclusion"));
@@ -42,8 +42,21 @@ static void createMessage(int state) {
 	}
 }
 
+static void createParameterMessage(int nodeid, int parameter, int value) {
+	zwave_ctrl->message = json_mkobject();
+	json_append_member(zwave_ctrl->message, "nodeid", json_mknumber(nodeid, 0));
+	json_append_member(zwave_ctrl->message, "parameter", json_mknumber(parameter, 0));
+	if(value >= 0) {
+		json_append_member(zwave_ctrl->message, "value", json_mknumber(value, 0));
+	}
+}
+
 static int createCode(struct JsonNode *code) {
-	char state = 0;
+	printf("%s\n", json_stringify(code, "\t"));
+	int state = -1;
+	int parameter = -1;
+	int value = -1;
+	int nodeid = -1;
 	double itmp = 0.0;
 
 	if(json_find_number(code, "inclusion", &itmp) == 0)
@@ -53,9 +66,41 @@ static int createCode(struct JsonNode *code) {
 	else if(json_find_number(code, "stop", &itmp) == 0)
 		state=2;
 	else if(json_find_number(code, "soft-reset", &itmp) == 0)
-		state=3;	
+		state=3;
+
+	if(json_find_number(code, "parameter", &itmp) == 0)
+		parameter = (int)itmp;
+	if(json_find_number(code, "nodeid", &itmp) == 0)
+		nodeid = (int)itmp;
+	if(json_find_number(code, "value", &itmp) == 0)
+		value = (int)itmp;
+
+	if(parameter >= 0 && nodeid == -1) {
+		logprintf(LOG_ERR, "zwave_ctrl: parameter needs a nodeid");
+		return EXIT_FAILURE;
+	}
+	if(nodeid >= 0 && parameter == -1) {
+		logprintf(LOG_ERR, "zwave_ctrl: nodeid needs a parameter");
+		return EXIT_FAILURE;
+	}
+	if(value >= 0 && (parameter == -1 || nodeid == -1)) {
+		logprintf(LOG_ERR, "zwave_ctrl: value needs a parameter and nodeid");
+		return EXIT_FAILURE;
+	}
+	if(state > -1 && (parameter > -1 || nodeid > -1)) {
+		logprintf(LOG_ERR, "zwave_ctrl: state and parameter and node cannot be combined");
+		return EXIT_FAILURE;
+	}
 
 	if(strstr(progname, "daemon") != NULL) {	
+		if(parameter >= 0 && nodeid >= 0) {
+			if(value >= 0) {
+				int x = snprintf(NULL, 0, "%d", value);
+				zwaveSetConfigParam(nodeid, parameter, value, x);
+			} else {
+				zwaveGetConfigParam(nodeid, parameter);
+			}
+		} 
 		if(state == 1) {
 			zwaveStartInclusion();
 		} else if(state == 0) {
@@ -66,8 +111,11 @@ static int createCode(struct JsonNode *code) {
 			zwaveSoftReset();
 		}
 	}
-	
-	createMessage(state);		
+	if(parameter >= 0 && nodeid >= 0) {
+		createParameterMessage(nodeid, parameter, value);
+	} else if(state > 0) {
+		createCommandMessage(state);		
+	}
 
 	return EXIT_SUCCESS;
 }
@@ -77,6 +125,9 @@ static void printHelp(void) {
 	printf("\t -e --exclusion\t\t\tsend an exclusion command\n");
 	printf("\t -s --stop\t\t\tstop previous command\n");
 	printf("\t -r --soft-reset\t\tsend a soft-reset command\n");
+	printf("\t -c --parameter\t\tset or retrieve parameter\n");
+	printf("\t -v --value=X\t\tset parameter to this value\n");
+	printf("\t -n --nodeid=X\t\tset parameter to this value\n");
 }
 
 #if !defined(MODULE) && !defined(_WIN32)
@@ -89,11 +140,15 @@ void zwaveCtrlInit(void) {
 	protocol_device_add(zwave_ctrl, "zwave_ctrl", "Z-Wave Controller");
 	zwave_ctrl->devtype = SWITCH;
 	zwave_ctrl->hwtype = ZWAVE;
+	zwave_ctrl->config = 0;
 
-	options_add(&zwave_ctrl->options, 'i', "inclusion", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
-	options_add(&zwave_ctrl->options, 'e', "exclusion", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
-	options_add(&zwave_ctrl->options, 's', "stop", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
-	options_add(&zwave_ctrl->options, 'r', "soft-reset", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
+	options_add(&zwave_ctrl->options, 'i', "inclusion", OPTION_NO_VALUE, DEVICES_VALUE, JSON_STRING, NULL, NULL);
+	options_add(&zwave_ctrl->options, 'e', "exclusion", OPTION_NO_VALUE, DEVICES_VALUE, JSON_STRING, NULL, NULL);
+	options_add(&zwave_ctrl->options, 's', "stop", OPTION_NO_VALUE, DEVICES_VALUE, JSON_STRING, NULL, NULL);
+	options_add(&zwave_ctrl->options, 'r', "soft-reset", OPTION_NO_VALUE, DEVICES_VALUE, JSON_STRING, NULL, NULL);
+	options_add(&zwave_ctrl->options, 'c', "parameter", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, NULL);
+	options_add(&zwave_ctrl->options, 'v', "value", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, NULL);
+	options_add(&zwave_ctrl->options, 'n', "nodeid", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, NULL);
 
 	zwave_ctrl->createCode=&createCode;
 	zwave_ctrl->printHelp=&printHelp;

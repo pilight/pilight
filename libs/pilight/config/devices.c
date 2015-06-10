@@ -394,21 +394,30 @@ int devices_update(char *protoname, JsonNode *json, enum origin_t origin, JsonNo
 									jchild = jchild->next;
 								}
 								if(match == 0) {
+									dptr->prevorigin = dptr->lastorigin;
+									dptr->lastorigin = origin;
 #ifdef EVENTS
-								/*
-								 * If the action itself it not triggering a device update, something
-								 * else is. We therefor need to abort the running action to let
-								 * the new state persist.
-								 */
+									/*
+									* If the action itself it not triggering a device update, something
+									* else is. We therefor need to abort the running action to let
+									* the new state persist.
+									*/
 									if(dptr->action_thread->running == 1 && origin != ACTION) {
-										event_action_thread_stop(dptr);
+										/*
+										 * In case of Z-Wave, the ACTION is always followed by a RECEIVER origin due to
+										 * its feedback feature. We do not want to abort or action in these cases.
+										 */
+										if(!((dptr->protocols->listener->hwtype == ZWAVE) && dptr->lastorigin == RECEIVER && dptr->prevorigin == ACTION) || 
+										   dptr->protocols->listener->hwtype != ZWAVE) {
+											event_action_thread_stop(dptr);
+										}
 									}
 
 									/*
-									 * We store the rule number that triggered the device change.
-									 * The eventing library can then check if the same rule is
-									 * triggered again so infinite loops can be prevented.
-									 */
+									* We store the rule number that triggered the device change.
+									* The eventing library can then check if the same rule is
+									* triggered again so infinite loops can be prevented.
+									*/
 									if(origin == ACTION) {
 										if(dptr->action_thread->obj != NULL) {
 											dptr->prevrule = dptr->lastrule;

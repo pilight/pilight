@@ -109,6 +109,7 @@ void UpdateNodeValue(int nodeId, OpenZWave::ValueID const v) {
 	struct JsonNode *jcode = json_mkobject();
 	struct zwave_values_t *tmp = NULL;
 	int match = 0;
+	std::string label = OpenZWave::Manager::Get()->GetValueLabel(v);
 
 	tmp = zwave_values;
 	while(tmp) {
@@ -129,6 +130,12 @@ void UpdateNodeValue(int nodeId, OpenZWave::ValueID const v) {
 		tmp->valueId = v.GetIndex();
 		tmp->instance = v.GetInstance();
 		tmp->genre = v.GetGenre();
+		tmp->valueType = v.GetType();
+		if((tmp->label = (char *)MALLOC(strlen(label.c_str())+1)) == NULL) {
+			fprintf(stderr, "out of memory\n");
+			exit(EXIT_FAILURE);
+		}
+		strcpy(tmp->label, label.c_str());
 		tmp->next = NULL;
 	}
 
@@ -137,11 +144,13 @@ void UpdateNodeValue(int nodeId, OpenZWave::ValueID const v) {
 	json_append_member(jcode, "homeId", json_mknumber(gHomeId, 0));
 	json_append_member(jcode, "nodeId", json_mknumber(nodeId, 0));
 	json_append_member(jcode, "cmdId", json_mknumber(v.GetCommandClassId(), 0));
+	json_append_member(jcode, "label", json_mkstring(label.c_str()));
 
 	std::string str;
 	OpenZWave::Manager::Get()->GetValueAsString(v, &str);
 	
 	switch(v.GetType()) {
+		case OpenZWave::ValueID::ValueType_Button:
 		case OpenZWave::ValueID::ValueType_Bool:
 			if(strcmp(str.c_str(), "False") == 0) {
 				tmp->number_ = 0;
@@ -150,11 +159,34 @@ void UpdateNodeValue(int nodeId, OpenZWave::ValueID const v) {
 				tmp->number_ = 1;
 				json_append_member(jcode, "value", json_mknumber(1, 0));
 			}
-			tmp->valueType = v.GetType();
 		break;
+		case OpenZWave::ValueID::ValueType_String:
+		case OpenZWave::ValueID::ValueType_Raw:
+			json_append_member(jcode, "value", json_mkstring(str.c_str()));
+		break;
+		case OpenZWave::ValueID::ValueType_Byte:
+		case OpenZWave::ValueID::ValueType_Decimal:
+		case OpenZWave::ValueID::ValueType_Int:
+		case OpenZWave::ValueID::ValueType_Short:
+			json_append_member(jcode, "value", json_mknumber(atoi(str.c_str()), 0));
+		break;
+		case OpenZWave::ValueID::ValueType_List: {
+			struct JsonNode *jvalues = json_mkarray();
+			std::vector<std::string> values;
+			OpenZWave::Manager::Get()->GetValueListSelection(v, &str);
+			OpenZWave::Manager::Get()->GetValueListItems(v, &values);
+			for(std::vector<std::string>::iterator it = values.begin(); it != values.end(); ++it) {
+				std::string t = *it;
+				json_append_element(jvalues, json_mkstring(t.c_str()));
+			}
+			json_append_member(jcode, "value", json_mkstring(str.c_str()));
+			json_append_member(jcode, "values", jvalues);
+		} break;
+		case OpenZWave::ValueID::ValueType_Schedule:
 		default:
 		break;
 	}
+
 	if(pilight.receive != NULL) {
 		pilight.receive(json, ZWAVE);
 	}
@@ -412,7 +444,7 @@ static unsigned short zwaveHwDeinit(void) {
 	if(init == 1) {
 		OpenZWave::Manager::Get()->RemoveWatcher(OnNotification, NULL);
 		sleep(1);	
-		// OpenZWave::Manager::Get()->RemoveDriver(com);
+		OpenZWave::Manager::Get()->RemoveDriver(com);
 		OpenZWave::Manager::Destroy();
 		OpenZWave::Options::Destroy();	
 	}
@@ -420,6 +452,7 @@ static unsigned short zwaveHwDeinit(void) {
 	struct zwave_values_t *tmp = NULL;
 	while(zwave_values) {
 		tmp = zwave_values;
+		FREE(tmp->label);
 		zwave_values = zwave_values->next;
 		FREE(tmp);
 	}
@@ -491,13 +524,15 @@ static OpenZWave::ValueID::ValueType getValueTypeFromEnum(int type) {
 	}
 }
 
-void zwaveSetValue(int nodeId, int cmdId, char *value) {
+void zwaveSetValue(int nodeId, int cmdId, char *label, char *value) {
 	pthread_mutex_lock(&values_lock);
 	struct zwave_values_t *tmp = zwave_values;
 	std::string v = value;
 
 	while(tmp) {
-		if(tmp->nodeId == nodeId && tmp->cmdId == cmdId) {
+		if(tmp->nodeId == nodeId && tmp->cmdId == cmdId &&
+			((label != NULL && tmp->label != NULL && strcmp(tmp->label, label) == 0)
+			|| label == NULL)) {
 			OpenZWave::ValueID vID(gHomeId, tmp->nodeId, getGenreFromEnum(tmp->genre), tmp->cmdId, tmp->instance, tmp->valueId, getValueTypeFromEnum(tmp->valueType));			
 			OpenZWave::Manager::Get()->SetValue(vID, v);
 		}
@@ -580,6 +615,14 @@ void zwaveSoftReset(void) {
 	OpenZWave::Manager::Get()->SoftReset(gHomeId);
 }
 
+void zwaveGetConfigParam(int nodeId, int paramId) {
+	OpenZWave::Manager::Get()->RequestConfigParam(gHomeId, nodeId, paramId);
+}
+
+void zwaveSetConfigParam(int nodeId, int paramId, int valueId, int len) {
+	OpenZWave::Manager::Get()->SetConfigParam(gHomeId, nodeId, paramId, valueId, len);
+}
+
 static void *zwaveReceive(void *param) {
 	threads++;
 	
@@ -597,7 +640,7 @@ static void *zwaveReceive(void *param) {
 		} else if(driver_status == DRIVER_STATUS_NODES_QUERIED_SOME_DEAD) {
 			logprintf(LOG_INFO, "[Z-Wave]: nodes partially queried");
 		}
-
+		
 		while(zwave->stop == 0) {
 			sleep(3);
 		}

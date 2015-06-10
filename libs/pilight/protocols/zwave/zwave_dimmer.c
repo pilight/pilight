@@ -27,25 +27,26 @@
 #include "../../core/log.h"
 #include "../../hardware/zwave.h"
 #include "../protocol.h"
-#include "zwave_switch.h"
+#include "zwave_dimmer.h"
 
-static void createStateMessage(unsigned int homeId, int nodeId, int state) {
-	zwave_switch->message = json_mkobject();
-	json_append_member(zwave_switch->message, "homeId", json_mknumber(homeId, 0));
-	json_append_member(zwave_switch->message, "nodeId", json_mknumber(nodeId, 0));
-	if(state == 1) {
-		json_append_member(zwave_switch->message, "state", json_mkstring("on"));
+static void createDimMessage(unsigned int homeId, int nodeId, int dimlevel) {
+	zwave_dimmer->message = json_mkobject();
+	json_append_member(zwave_dimmer->message, "homeId", json_mknumber(homeId, 0));
+	json_append_member(zwave_dimmer->message, "nodeId", json_mknumber(nodeId, 0));
+	if(dimlevel > 0) {
+		json_append_member(zwave_dimmer->message, "state", json_mkstring("on"));
 	} else {
-		json_append_member(zwave_switch->message, "state", json_mkstring("off"));
+		json_append_member(zwave_dimmer->message, "state", json_mkstring("off"));
 	}
+	json_append_member(zwave_dimmer->message, "dimlevel", json_mknumber(dimlevel, 0));
 }
 
 static void createConfigMessage(unsigned int homeId, int nodeId, char *label, int value) {
-	zwave_switch->message = json_mkobject();
-	json_append_member(zwave_switch->message, "homeId", json_mknumber(homeId, 0));
-	json_append_member(zwave_switch->message, "nodeId", json_mknumber(nodeId, 0));
-	json_append_member(zwave_switch->message, "label", json_mkstring(label));
-	json_append_member(zwave_switch->message, "value", json_mknumber(value, 0));
+	zwave_dimmer->message = json_mkobject();
+	json_append_member(zwave_dimmer->message, "homeId", json_mknumber(homeId, 0));
+	json_append_member(zwave_dimmer->message, "nodeId", json_mknumber(nodeId, 0));
+	json_append_member(zwave_dimmer->message, "label", json_mkstring(label));
+	json_append_member(zwave_dimmer->message, "value", json_mknumber(value, 0));
 }
 
 static void parseCommand(struct JsonNode *code) {
@@ -78,8 +79,9 @@ static void parseCommand(struct JsonNode *code) {
 		}
 		json_find_string(message, "label", &label);
 	}
-	if(cmdId == COMMAND_CLASS_SWITCH_BINARY) {
-		createStateMessage(homeId, nodeId, value);
+
+	if(cmdId == COMMAND_CLASS_SWITCH_MULTILEVEL) {
+		createDimMessage(homeId, nodeId, value);
 	}
 	if(cmdId == COMMAND_CLASS_CONFIGURATION && label != NULL) {
 		createConfigMessage(homeId, nodeId, label, value);
@@ -87,8 +89,10 @@ static void parseCommand(struct JsonNode *code) {
 }
 
 static int createCode(struct JsonNode *code) {
+	char out[255];
 	unsigned int homeId = 0;
 	int nodeId = 0;
+	int dimlevel = -1;
 	char state = 0;
 	double itmp = 0.0;
 
@@ -96,19 +100,30 @@ static int createCode(struct JsonNode *code) {
 		homeId = (unsigned int)round(itmp);
 	if(json_find_number(code, "nodeId", &itmp) == 0)
 		nodeId = (int)round(itmp);
+	if(json_find_number(code, "dimlevel", &itmp) == 0)
+		dimlevel = (int)round(itmp);	
 
 	if(json_find_number(code, "off", &itmp) == 0)
 		state=0;
 	else if(json_find_number(code, "on", &itmp) == 0)
 		state=1;
 
-	if(state == 0) {
-		zwaveSetValue(nodeId, COMMAND_CLASS_SWITCH_BINARY, NULL, "false");
-	} else {
-		zwaveSetValue(nodeId, COMMAND_CLASS_SWITCH_BINARY, NULL, "true");
+	if(dimlevel > -1) {
+		state = 1;
+		if(dimlevel > 100) {
+			dimlevel = 99;
+		}
+	} else if(state == 0) {
+		dimlevel = 0;
+	} else if(state == 1) {
+		dimlevel = 255;
 	}
-	
-	createStateMessage(homeId, nodeId, state);		
+
+	if(dimlevel > -1) {
+		snprintf(out, 255, "%d", dimlevel);
+		zwaveSetValue(nodeId, COMMAND_CLASS_SWITCH_MULTILEVEL, "Level", out);
+		createDimMessage(homeId, nodeId, dimlevel);
+	}
 
 	return EXIT_SUCCESS;
 }
@@ -118,38 +133,43 @@ static void printHelp(void) {
 	printf("\t -f --off\t\t\tsend an off signal\n");
 	printf("\t -h --homeid=id\t\t\tcontrol a device with this home id\n");
 	printf("\t -i --unitid=id\t\t\tcontrol a device with this unit id\n");
+	printf("\t -d --dimlevel=dimlevel\t\tsend a specific dimlevel\n");
 }
 
 #if !defined(MODULE) && !defined(_WIN32)
 __attribute__((weak))
 #endif
-void zwaveSwitchInit(void) {
+void zwaveDimmerInit(void) {
 
-	protocol_register(&zwave_switch);
-	protocol_set_id(zwave_switch, "zwave_switch");
-	protocol_device_add(zwave_switch, "zwave_switch", "Z-Wave Switches");
-	zwave_switch->devtype = SWITCH;
-	zwave_switch->hwtype = ZWAVE;
+	protocol_register(&zwave_dimmer);
+	protocol_set_id(zwave_dimmer, "zwave_dimmer");
+	protocol_device_add(zwave_dimmer, "zwave_dimmer", "Z-Wave Dimmers");
+	zwave_dimmer->devtype = DIMMER;
+	zwave_dimmer->hwtype = ZWAVE;
 
-	options_add(&zwave_switch->options, 'h', "homeId", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, NULL);
-	options_add(&zwave_switch->options, 'i', "nodeId", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, NULL);
-	options_add(&zwave_switch->options, 't', "on", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
-	options_add(&zwave_switch->options, 'f', "off", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
+	options_add(&zwave_dimmer->options, 'h', "homeId", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, NULL);
+	options_add(&zwave_dimmer->options, 'i', "nodeId", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, NULL);
+	options_add(&zwave_dimmer->options, 't', "on", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
+	options_add(&zwave_dimmer->options, 'f', "off", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
+	options_add(&zwave_dimmer->options, 'd', "dimlevel", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, NULL);
 
-	zwave_switch->createCode=&createCode;
-	zwave_switch->parseCommand=&parseCommand;
-	zwave_switch->printHelp=&printHelp;
+	options_add(&zwave_dimmer->options, 0, "dimlevel-minimum", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *)0, NULL);
+	options_add(&zwave_dimmer->options, 0, "dimlevel-maximum", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *)99, NULL);	
+	
+	zwave_dimmer->createCode=&createCode;
+	zwave_dimmer->parseCommand=&parseCommand;
+	zwave_dimmer->printHelp=&printHelp;
 }
 
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
-	module->name = "zwave_switch";
+	module->name = "zwave_dimmer";
 	module->version = "1.0";
 	module->reqversion = "7.0";
 	module->reqcommit = "10";
 }
 
 void init(void) {
-	zwaveSwitchInit();
+	zwaveDimmerInit();
 }
 #endif

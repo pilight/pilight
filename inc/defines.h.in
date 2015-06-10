@@ -21,8 +21,6 @@
 
 #cmakedefine WEBSERVER
 #cmakedefine EVENTS
-// Requires this value or the hardware struct will fail
-#cmakedefine ZWAVE							ZWAVE
 
 #define PILIGHT_VERSION					"7.0"
 #define PULSE_DIV								34
