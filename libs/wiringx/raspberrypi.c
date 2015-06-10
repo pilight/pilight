@@ -82,8 +82,6 @@ static volatile unsigned int	 BCM2708_PERI_BASE = 0x20000000;
 #define	PAGE_SIZE		(4*1024)
 #define	BLOCK_SIZE		(4*1024)
 
-static int wiringPiMode = WPI_MODE_UNINITIALISED;
-
 static int piModel2 = 0;
 
 static volatile uint32_t *gpio;

@@ -247,7 +247,6 @@ static int map_reg(void *reg, void **reg_mapped) {
 #else
 	if((fd = open("/dev/mem", O_RDWR | O_SYNC)) < 0) {
 #endif
-	if(fd < 0) {
 		return -E_MEM_OPEN;
 	}
 
@@ -568,11 +567,11 @@ static int radxaWaitForInterrupt(int pin, int ms) {
 		return -1;
 	}
 
+	(void)read(sysFds[pin], &c, 1);
+	lseek(sysFds[pin], 0, SEEK_SET);	
+	
 	polls.fd = sysFds[pin];
 	polls.events = POLLPRI;
-
-	(void)read(sysFds[pin], &c, 1);
-	lseek(sysFds[pin], 0, SEEK_SET);
 
 	x = poll(&polls, 1, ms);
 
@@ -850,7 +849,7 @@ static int radxaGC(void) {
 	return 0;
 }
 
-#ifdef __FreeBSD__
+#ifndef __FreeBSD__
 static int radxaI2CRead(int fd) {
 	return i2c_smbus_read_byte(fd);
 }
