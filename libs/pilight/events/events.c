@@ -280,13 +280,77 @@ int event_lookup_variable(char *var, struct rules_t *obj, int type, struct varco
 		}
 		struct devices_t *dev = NULL;
 		if(cached == 0) {
-			if(devices_get(device, &dev) == 0) {
+			unsigned int match1 = 0, match2 = 0, match3 = 0, has_state = 0;
+
+			/* We first check if we matched a received protocol */
+			struct protocols_t *tmp_protocols = protocols;
+			while(tmp_protocols) {
+				if(protocol_device_exists(tmp_protocols->listener, device) == 0) {
+					match1 = 1;
+					break;
+				}
+				tmp_protocols = tmp_protocols->next;
+			}
+			if(match1 == 1) {
+				if(validate == 1) {
+					if(origin == RULE) {
+						event_cache_device(obj, device);
+					}
+					struct options_t *options = tmp_protocols->listener->options;
+					while(options) {
+						if(options->conftype == DEVICES_STATE) {
+							has_state = 1;
+						}
+						if(strcmp(options->name, name) == 0) {
+							if(options->vartype != type) {
+								if(options->vartype == JSON_STRING) {
+									logprintf(LOG_ERR, "rule #%d invalid: trying to compare a string variable \"%s.%s\" to an integer", obj->nr, device, name);
+								} else {
+									logprintf(LOG_ERR, "rule #%d invalid: trying to compare an integer variable \"%s.%s\" to a string", obj->nr, device, name);
+								}
+								varcont->string_ = NULL;
+								varcont->number_ = 0;
+								varcont->decimals_ = 0;
+								*rtype = -1;
+								return -1;
+							}
+							match2 = 1;
+						}
+						options = options->next;
+					}
+					if(match2 == 0 && ((!(strcmp(name, "state") == 0 && has_state == 1)) || (strcmp(name, "state") != 0))) {
+						logprintf(LOG_ERR, "rule #%d invalid: protocol \"%s\" has no field \"%s\"", obj->nr, device, name);
+						varcont->string_ = NULL;
+						varcont->number_ = 0;
+						varcont->decimals_ = 0;
+						*rtype = -1;
+						return -1;
+					}
+				}
+
+				struct JsonNode *jmessage = NULL, *jnode = NULL;
+				if(obj->jtrigger != NULL && (jmessage = json_find_member(obj->jtrigger, "message")) != NULL) {
+					if((jnode = json_find_member(jmessage, name)) != NULL) {
+						if(jnode->tag == JSON_STRING) {
+							varcont->string_ = jnode->string_;
+							*rtype = JSON_STRING;
+							return 0;
+						} else if(jnode->tag == JSON_NUMBER) {
+							varcont->number_ = jnode->number_;
+							varcont->decimals_ = jnode->decimals_;
+							*rtype = JSON_NUMBER;
+							return 0;
+						}
+					}
+				}
+				*rtype = -1;
+				return 1;
+			} else if(devices_get(device, &dev) == 0) {
 				if(validate == 1) {
 					if(origin == RULE) {
 						event_cache_device(obj, device);
 					}
 					struct protocols_t *tmp = dev->protocols;
-					unsigned int match1 = 0, match2 = 0, match3 = 0;
 					while(tmp) {
 						struct options_t *opt = tmp->listener->options;
 						while(opt) {
@@ -725,7 +789,7 @@ static int event_parse_formula(char **rule, struct rules_t *obj, int depth, unsi
 	struct varcont_t v1;
 	struct varcont_t v2;
 	char *var1 = NULL, *func = NULL, *var2 = NULL, *tmp = *rule, *search = NULL;
-	int element = 0, i = 0, match = 0, error = 0, hasquote = 0, hadquote = 0, rtype = 0;
+	int element = 0, i = 0, match = 0, error = 0, hasquote = 0, hadquote = 0, rtype1 = 0, rtype2 = 0;
 	char var1quotes[2], var2quotes[2], funcquotes[2];
 	unsigned long len = strlen(tmp), pos = 0, word = 0;
 	char *res = MALLOC(255);
@@ -828,10 +892,14 @@ static int event_parse_formula(char **rule, struct rules_t *obj, int depth, unsi
 					match = 1;
 					int ret1 = 0, ret2 = 0;
 					if(tmp_operator->callback_string != NULL) {
-						ret1 = event_lookup_variable(var1, obj, type, &v1, &rtype, validate, RULE);
-						ret2 = event_lookup_variable(var2, obj, type, &v2, &rtype, validate, RULE);
-						if(rtype != type) {
-							error = -1;
+						ret1 = event_lookup_variable(var1, obj, type, &v1, &rtype1, validate, RULE);
+						ret2 = event_lookup_variable(var2, obj, type, &v2, &rtype2, validate, RULE);
+						if(rtype1 != type || rtype2 != type) {
+							if(ret1 == 1 || ret2 == 1) {
+								error = 0;
+							} else {
+								error = -1;
+							}
 							goto close;
 						} else if(ret1 == -1 || ret2 == -1) {
 							error = -1;
@@ -845,10 +913,14 @@ static int event_parse_formula(char **rule, struct rules_t *obj, int depth, unsi
 						}
 					} else if(tmp_operator->callback_number != NULL) {
 						/* Continue with regular numeric operator parsing */
-						ret1 = event_lookup_variable(var1, obj, type, &v1, &rtype, validate, RULE);
-						ret2 = event_lookup_variable(var2, obj, type, &v2, &rtype, validate, RULE);
-						if(rtype != type) {
-							error = -1;
+						ret1 = event_lookup_variable(var1, obj, type, &v1, &rtype1, validate, RULE);
+						ret2 = event_lookup_variable(var2, obj, type, &v2, &rtype2, validate, RULE);
+						if(rtype1 != type || rtype2 != type) {
+							if(ret1 == 1 || ret2 == 1) {
+								error = 0;
+							} else {
+								error = -1;
+							}
 							goto close;
 						} else if(ret1 == -1 || ret2 == -1) {
 							error = -1;
