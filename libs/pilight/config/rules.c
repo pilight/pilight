@@ -89,6 +89,7 @@ static int rules_parse(JsonNode *root) {
 					}
 					node->next = NULL;
 					node->values = NULL;
+					node->jtrigger = NULL;
 					node->nrdevices = 0;
 					node->status = 0;
 					node->devices = NULL;
@@ -227,6 +228,9 @@ int rules_gc(void) {
 		}
 		if(tmp_rules->actions != NULL) {
 			FREE(tmp_rules->actions);
+		}
+		if(tmp_rules->jtrigger != NULL) {
+			json_delete(tmp_rules->jtrigger);
 		}
 		if(tmp_rules->devices != NULL) {
 			FREE(tmp_rules->devices);

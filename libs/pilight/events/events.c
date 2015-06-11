@@ -1646,7 +1646,7 @@ void *events_loop(void *param) {
 	struct devices_t *dev = NULL;
 	struct JsonNode *jdevices = NULL, *jchilds = NULL;
 	struct rules_t *tmp_rules = NULL;
-	char *str = NULL;
+	char *str = NULL, *origin = NULL, *protocol = NULL;
 	unsigned short match = 0;
 	unsigned int i = 0;
 
@@ -1658,19 +1658,36 @@ void *events_loop(void *param) {
 			logprintf(LOG_STACK, "%s::unlocked", __FUNCTION__);
 
 			running = 1;
-
+			
 			jdevices = json_find_member(eventsqueue->jconfig, "devices");
 			tmp_rules = rules_get();
 			while(tmp_rules) {
 				if(tmp_rules->active == 1) {
+					if(eventsqueue->jconfig != NULL) {
+						char *conf = json_stringify(eventsqueue->jconfig, NULL);
+						tmp_rules->jtrigger = json_decode(conf);
+						json_free(conf);
+					}
+
 					match = 0;
 					if((str = MALLOC(strlen(tmp_rules->rule)+1)) == NULL) {
 						fprintf(stderr, "out of memory\n");
 						exit(EXIT_FAILURE);
 					}
 					strcpy(str, tmp_rules->rule);
+					if(json_find_string(eventsqueue->jconfig, "origin", &origin) == 0 && 
+					   json_find_string(eventsqueue->jconfig, "protocol", &protocol) == 0) {
+						if(strcmp(origin, "sender") == 0 || strcmp(origin, "receiver") == 0) {
+							for(i=0;i<tmp_rules->nrdevices;i++) {
+								if(strcmp(tmp_rules->devices[i], protocol) == 0) {
+									match = 1;
+									break;
+								}
+							}
+						}
+					}
 					/* Only run those events that affect the updates devices */
-					if(jdevices != NULL) {
+					if(jdevices != NULL && match == 0) {
 						jchilds = json_first_child(jdevices);
 						while(jchilds) {
 							for(i=0;i<tmp_rules->nrdevices;i++) {
@@ -1708,6 +1725,10 @@ void *events_loop(void *param) {
 						tmp_rules->status = 0;
 					}
 					FREE(str);
+					if(tmp_rules->jtrigger != NULL) {
+						json_delete(tmp_rules->jtrigger);
+						tmp_rules->jtrigger = NULL;
+					}
 				}
 				tmp_rules = tmp_rules->next;
 			}
@@ -1803,6 +1824,7 @@ void *events_clientize(void *param) {
 		joptions = json_mkobject();
 		json_append_member(jclient, "action", json_mkstring("identify"));
 		json_append_member(joptions, "config", json_mknumber(1, 0));
+		json_append_member(joptions, "receiver", json_mknumber(1, 0));
 		json_append_member(jclient, "options", joptions);
 		json_append_member(jclient, "media", json_mkstring("all"));
 		out = json_stringify(jclient, NULL);

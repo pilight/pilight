@@ -90,7 +90,7 @@ static int run(struct rules_t *obj, struct JsonNode *arguments, char **ret, enum
 	memset(&values, 0, nrunits);
 
 	if(childs == NULL) {
-		logprintf(LOG_ERR, "DATE_ADD two parameters e.g. DATE_ADD(datetime, 1 DAY)");
+		logprintf(LOG_ERR, "DATE_ADD requires two parameters e.g. DATE_ADD(datetime, 1 DAY)");
 		error = -1;
 		goto close;
 	}
