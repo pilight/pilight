@@ -296,29 +296,38 @@ int event_lookup_variable(char *var, struct rules_t *obj, int type, struct varco
 					if(origin == RULE) {
 						event_cache_device(obj, device);
 					}
-					struct options_t *options = tmp_protocols->listener->options;
-					while(options) {
-						if(options->conftype == DEVICES_STATE) {
-							has_state = 1;
-						}
-						if(strcmp(options->name, name) == 0) {
-							if(options->vartype != type) {
-								if(options->vartype == JSON_STRING) {
-									logprintf(LOG_ERR, "rule #%d invalid: trying to compare a string variable \"%s.%s\" to an integer", obj->nr, device, name);
-								} else {
-									logprintf(LOG_ERR, "rule #%d invalid: trying to compare an integer variable \"%s.%s\" to a string", obj->nr, device, name);
-								}
-								varcont->string_ = NULL;
-								varcont->number_ = 0;
-								varcont->decimals_ = 0;
-								*rtype = -1;
-								return -1;
+					if(strcmp(name, "repeats") != 0 && strcmp(name, "uuid") != 0) {
+						struct options_t *options = tmp_protocols->listener->options;
+						while(options) {
+							if(options->conftype == DEVICES_STATE) {
+								has_state = 1;
 							}
-							match2 = 1;
+							if(strcmp(options->name, name) == 0) {
+								if(options->vartype != type) {
+									if(options->vartype == JSON_STRING) {
+										logprintf(LOG_ERR, "rule #%d invalid: trying to compare a string variable \"%s.%s\" to an integer", obj->nr, device, name);
+									} else {
+										logprintf(LOG_ERR, "rule #%d invalid: trying to compare an integer variable \"%s.%s\" to a string", obj->nr, device, name);
+									}
+									varcont->string_ = NULL;
+									varcont->number_ = 0;
+									varcont->decimals_ = 0;
+									*rtype = -1;
+									return -1;
+								}
+								match2 = 1;
+							}
+							options = options->next;
 						}
-						options = options->next;
-					}
-					if(match2 == 0 && ((!(strcmp(name, "state") == 0 && has_state == 1)) || (strcmp(name, "state") != 0))) {
+						if(match2 == 0 && ((!(strcmp(name, "state") == 0 && has_state == 1)) || (strcmp(name, "state") != 0))) {
+							logprintf(LOG_ERR, "rule #%d invalid: protocol \"%s\" has no field \"%s\"", obj->nr, device, name);
+							varcont->string_ = NULL;
+							varcont->number_ = 0;
+							varcont->decimals_ = 0;
+							*rtype = -1;
+							return -1;
+						}
+					} else if(!(strcmp(name, "repeats") == 0 || strcmp(name, "uuid") == 0)) {
 						logprintf(LOG_ERR, "rule #%d invalid: protocol \"%s\" has no field \"%s\"", obj->nr, device, name);
 						varcont->string_ = NULL;
 						varcont->number_ = 0;
@@ -329,8 +338,10 @@ int event_lookup_variable(char *var, struct rules_t *obj, int type, struct varco
 				}
 
 				struct JsonNode *jmessage = NULL, *jnode = NULL;
-				if(obj->jtrigger != NULL && (jmessage = json_find_member(obj->jtrigger, "message")) != NULL) {
-					if((jnode = json_find_member(jmessage, name)) != NULL) {
+				if(obj->jtrigger != NULL) {
+					if(((jnode = json_find_member(obj->jtrigger, name)) != NULL) || 
+					   ((jmessage = json_find_member(obj->jtrigger, "message")) != NULL && 
+						 (jnode = json_find_member(jmessage, name)) != NULL)) {
 						if(jnode->tag == JSON_STRING) {
 							varcont->string_ = jnode->string_;
 							*rtype = JSON_STRING;
