@@ -44,6 +44,7 @@ Change Log:
 0.99a21e - 9ab0e4f - Step a21e - Change # of repetitive pulsestreams from default 10 to 4
 0.99a21e - 9ab0e4f - Step a21f - Add 2nd Footer pulse 32500
 0.99a - 0.99a21e - logging of add. parameters - MY behaviour
+0.99b - 0.99a21e - Initialize arryas before use
 */
 #include <stdio.h>
 #include <stdlib.h>
@@ -204,7 +205,7 @@ static void parseCode(void) {
 	int i, x;
 	int pBin = 0, pRaw = 0;
 	int protocol_sync = 0, rDataLow = 0, rDataTime = 0;
-	int rollingcode = 0, rollingkey = 0, binary[MAXPULSESTREAMLENGTH];
+	int rollingcode = 0, rollingkey = 0, binary[MAXPULSESTREAMLENGTH] = { 0 };
 	uint8_t dec_frame[BIN_ARRAY_SOMFY_PROT] = { 0 };
 	uint8_t frame[BIN_ARRAY_SOMFY_PROT] = { 0 };
 
@@ -581,7 +582,7 @@ static int createCode(JsonNode *code) {
 	int rollingcode = -1;
 	int address = -1;
 	double itmp = -1;
-	uint8_t dec_frame[BIN_ARRAY_SOMFY_PROT], frame[BIN_ARRAY_SOMFY_PROT], i;
+	uint8_t dec_frame[BIN_ARRAY_SOMFY_PROT] = { 0 }, frame[BIN_ARRAY_SOMFY_PROT] = { 0 }, i;
 
 	if(json_find_number(code, "address", &itmp) == 0)	address = (int)round(itmp);
 	if(json_find_number(code, "rollingcode", &itmp) == 0)	rollingcode = (int)round(itmp);
@@ -729,7 +730,7 @@ void somfy_rtsInit(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name =  "somfy_rts";
-	module->version =  "0.99a";
+	module->version =  "0.99b";
 	module->reqversion =  "6.0";
 	module->reqcommit =  NULL;
 }
