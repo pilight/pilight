@@ -449,8 +449,7 @@ static int settings_parse(JsonNode *root) {
 				settings_add_string(jsettings->key, jsettings->string_);
 			}
 #ifdef EVENTS
-		} else if(strcmp(jsettings->key, "smtp-sender") == 0 ||
-					strcmp(jsettings->key, "smtp-user") == 0) {
+		} else if(strcmp(jsettings->key, "smtp-sender") == 0) {
 			if(jsettings->tag != JSON_STRING) {
 				logprintf(LOG_ERR, "config setting \"%s\" must contain an e-mail address", jsettings->key);
 				have_error = 1;
@@ -478,6 +477,18 @@ static int settings_parse(JsonNode *root) {
 				regfree(&regex);
 #endif
 			settings_add_string(jsettings->key, jsettings->string_);
+			}
+		} else if(strcmp(jsettings->key, "smtp-user") == 0) {
+			if(jsettings->tag != JSON_STRING) {
+				logprintf(LOG_ERR, "config setting \"%s\" must contain a user id", jsettings->key);
+				have_error = 1;
+				goto clear;
+			} else if(jsettings->string_ == NULL) {
+				logprintf(LOG_ERR, "config setting \"%s\" must contain a user id", jsettings->key);
+				have_error = 1;
+				goto clear;
+			} else {
+				settings_add_string(jsettings->key, jsettings->string_);
 			}
 		} else if(strcmp(jsettings->key, "smtp-password") == 0) {
 			if(jsettings->tag != JSON_STRING) {

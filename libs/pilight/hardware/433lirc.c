@@ -208,7 +208,7 @@ void lirc433Init(void) {
 	lirc433->comtype=COMOOK;
 	lirc433->init=&lirc433HwInit;
 	lirc433->deinit=&lirc433HwDeinit;
-	lirc433->send=&lirc433Send;
+	lirc433->sendOOK=&lirc433Send;
 	lirc433->receiveOOK=&lirc433Receive;
 	lirc433->settings=&lirc433Settings;
 	lirc433->gc=&lirc433gc;
@@ -217,9 +217,9 @@ void lirc433Init(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "433lirc";
-	module->version = "1.3";
-	module->reqversion = "5.0";
-	module->reqcommit = "238";
+	module->version = "1.4";
+	module->reqversion = "7.0";
+	module->reqcommit = "10";
 }
 
 void init(void) {

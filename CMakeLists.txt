@@ -11,6 +11,10 @@ set(CMAKE_BUILD_TYPE Debug)
 set(CMAKE_SKIP_RULE_DEPENDENCY TRUE)
 set(CPACK_DEB_COMPONENT_INSTALL TRUE)
 
+if(${ZWAVE} MATCHES "ON")
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-psabi")
+endif()
+
 if(CMAKE_BUILD_TOOL MATCHES "(msdev|devenv|nmake)")
   # Use the highest warning level for visual studio.
   if(CMAKE_CXX_FLAGS MATCHES "/W[0-4]")

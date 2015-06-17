@@ -477,7 +477,7 @@ void nano433Init(void) {
 	nano433->comtype=COMPLSTRAIN;
 	nano433->init=&nano433HwInit;
 	nano433->deinit=&nano433HwDeinit;
-	nano433->send=&nano433Send;
+	nano433->sendOOK=&nano433Send;
 	nano433->receivePulseTrain=&nano433Receive;
 	nano433->settings=&nano433Settings;
 }
@@ -486,8 +486,8 @@ void nano433Init(void) {
 void compatibility(struct module_t *module) {
 	module->name = "433nano";
 	module->version = "1.1";
-	module->reqversion = "6.0";
-	module->reqcommit = "40";
+	module->reqversion = "7.0";
+	module->reqcommit = "10";
 }
 
 void init(void) {

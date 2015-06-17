@@ -471,12 +471,25 @@ struct tzdata_t {
   stopping of pilight
 */
 static int searchingtz = 0;
+static pthread_mutex_t mutex_lock;
+static pthread_mutexattr_t mutex_attr;
+static unsigned short mutex_init = 0;
+
+void datetime_init(void) {
+	pthread_mutexattr_init(&mutex_attr);
+	pthread_mutexattr_settype(&mutex_attr, PTHREAD_MUTEX_RECURSIVE);
+	pthread_mutex_init(&mutex_lock, &mutex_attr);
+	mutex_init = 1;
+}
 
 int datetime_gc(void) {
 /*
 	Extra checks for gracefull (early)
   stopping of pilight
 */
+	if(mutex_init == 1) {
+		pthread_mutex_unlock(&mutex_lock);
+	}
 	while(searchingtz > 0) {
 		usleep(10);
 	}
@@ -491,6 +504,9 @@ char *coord2tz(double longitude, double latitude) {
 	Extra checks for gracefull (early)
   stopping of pilight
 */
+	if(mutex_init == 1) {
+		pthread_mutex_lock(&mutex_lock);
+	}
 	searchingtz++;
 	int i = 0, a = 0, margin = 1, inside = 0;
 	int nrtz = sizeof(tzdata)/sizeof(tzdata[0]);
@@ -549,6 +565,9 @@ char *coord2tz(double longitude, double latitude) {
 	}
 
 	searchingtz--;
+	if(mutex_init == 1) {
+		pthread_mutex_unlock(&mutex_lock);
+	}	
 	return tz;
 }
 
