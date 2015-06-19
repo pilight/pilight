@@ -134,7 +134,7 @@ static void createLetter(int l) {
 }
 
 static void createNumber(int n) {
-	if(n >= 8) {
+	if(n > 8) {
 		createHigh(10, 10);
 		createLow(26, 26);
 		n -= 8;
