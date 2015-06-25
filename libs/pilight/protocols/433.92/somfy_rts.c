@@ -45,6 +45,7 @@ Change Log:
 0.99a21e - 9ab0e4f - Step a21f - Add 2nd Footer pulse 32500
 0.99a - 0.99a21e - logging of add. parameters - MY behaviour
 0.99b - 0.99a21e - Initialize arryas before use
+0.99c - 0.99a21e - Various Checks
 */
 #include <stdio.h>
 #include <stdlib.h>
@@ -730,7 +731,7 @@ void somfy_rtsInit(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name =  "somfy_rts";
-	module->version =  "0.99b";
+	module->version =  "0.99c";
 	module->reqversion =  "6.0";
 	module->reqcommit =  NULL;
 }
