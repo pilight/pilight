@@ -1527,6 +1527,16 @@ static int devices_parse(JsonNode *root) {
 						have_error = 1;
 						goto clear;
 					}
+					struct protocols_t *tmp_protocols = protocols;
+					while(tmp_protocols) {
+						struct protocol_t *protocol = tmp_protocols->listener;
+						if(strcmp(protocol->id, jdevices->key) == 0) {
+							logprintf(LOG_ERR, "config device #%d \"%s\", protocol names are reserved words", i, jdevices->key);
+							have_error = 1;
+							goto clear;
+						}
+						tmp_protocols = tmp_protocols->next;
+					}
 				}
 				/* Check for duplicate fields */
 				tmp_devices = devices;
