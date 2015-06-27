@@ -64,17 +64,21 @@ static unsigned short gpio433HwDeinit(void) {
 
 static int gpio433Send(int *code, int rawlen, int repeats) {
 	int r = 0, x = 0;
+printf("\n");
 	if(gpio_433_out >= 0) {
 		for(r=0;r<repeats;r++) {
 			for(x=0;x<rawlen;x+=2) {
 				digitalWrite(gpio_433_out, 1);
+printf("%d ",(__useconds_t)code[x]);
 				usleep((__useconds_t)code[x]);
 				digitalWrite(gpio_433_out, 0);
 				if(x+1 < rawlen) {
+printf("%d ",(__useconds_t)code[x+1]);
 					usleep((__useconds_t)code[x+1]);
 				}
 			}
 		}
+printf("\n");
 		digitalWrite(gpio_433_out, 0);
 	} else {
 		sleep(1);

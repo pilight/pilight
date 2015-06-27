@@ -646,13 +646,13 @@ static int createCode(JsonNode *code) {
 		createMessage(address, command, rollingcode, rollingkey);
 		createHeader();
 
-		dec_frame[0] = (uint8_t) (key_left | (rollingkey & 0xf));
-		dec_frame[1] = (uint8_t) (command << 4);
-		dec_frame[2] = (uint8_t) ((rollingcode >> 8) & 0xff);
-		dec_frame[3] = (uint8_t) (rollingcode & 0xff);
+		dec_frame[0] = (uint8_t) ((key_left & 0xf0) | (rollingkey & 0xf));
+		dec_frame[1] = (uint8_t) ((command & 0xf) << 4);
+		dec_frame[2] = (uint8_t) ((rollingcode & 0xff00) >> 8);
+		dec_frame[3] = (uint8_t) (rollingcode & 0x00ff);
 		dec_frame[4] = (uint8_t) (address & 0xff);
-		dec_frame[5] = (uint8_t) ((address >> 8) & 0xff);
-		dec_frame[6] = (uint8_t) ((address >> 16) & 0xff);
+		dec_frame[5] = (uint8_t) ((address & 0xff00) >> 8);
+		dec_frame[6] = (uint8_t) ((address & 0xff0000) >> 16);
 
 		int cksum = codeChkSum (dec_frame);
 		dec_frame[1] = dec_frame[1] | (uint8_t) cksum;
