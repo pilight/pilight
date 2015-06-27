@@ -31,6 +31,7 @@
 #include "beamish_switch.h"
 
 #define PULSE_MULTIPLIER	4
+#define NORMAL_REPEATS		10
 #define MIN_PULSE_LENGTH	318
 #define MAX_PULSE_LENGTH	328
 #define AVG_PULSE_LENGTH	323
@@ -216,6 +217,7 @@ void beamishSwitchInit(void) {
 	protocol_device_add(beamish_switch, "beamish_switch", "beamish_switch Switches");
 	beamish_switch->devtype = SWITCH;
 	beamish_switch->hwtype = RF433;
+	beamish_switch->txrpt = NORMAL_REPEATS;
 	beamish_switch->minrawlen = RAW_LENGTH;
 	beamish_switch->maxrawlen = RAW_LENGTH;
 	beamish_switch->maxgaplen = MAX_PULSE_LENGTH*PULSE_DIV;
@@ -239,7 +241,7 @@ void beamishSwitchInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "beamish_switch";
-	module->version = "1.0";
+	module->version = "1.1";
 	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }
