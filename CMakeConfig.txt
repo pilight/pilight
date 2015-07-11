@@ -20,6 +20,7 @@ set(PROTOCOL_CONRAD_WEATHER ON CACHE BOOL "support for the Conrad weather statio
 set(PROTOCOL_CPU_TEMP ON CACHE BOOL "support for CPU temperature sensor")
 set(PROTOCOL_DATETIME ON CACHE BOOL "support for the (NTP) date and time protocol")
 set(PROTOCOL_DAYCOM ON CACHE BOOL "support Daycom switch (Pollin)")
+set(PROTOCOL_DOGCOLLAR ON CACHE BOOL "support remote dog training collar protocol")
 set(PROTOCOL_DS18B20 ON CACHE BOOL "support for the 1-Wire ds18b20 temperature sensor")
 set(PROTOCOL_DS18S20 ON CACHE BOOL "support for the 1-Wire ds18s20 temperature sensor")
 set(PROTOCOL_DHT11 ON CACHE BOOL "support for the DHT11 temperature-humidity sensor")
