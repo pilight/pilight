@@ -217,9 +217,9 @@ static char *webserver_shell(const char *format_str, struct mg_connection *conn,
 	n = (size_t)vsnprintf(NULL, 0, format_str, ap) + strlen(format_str) + 1; // EOL + dual NL
 	va_end(ap);
 
-	char *command[n];
+	char command[n];
 	va_start(ap, request);
-	vsprintf((char *)command, format_str, ap);
+	vsprintf(command, format_str, ap);
 	va_end(ap);
 
 	setenv("SCRIPT_FILENAME", request, 1);
@@ -259,7 +259,7 @@ static char *webserver_shell(const char *format_str, struct mg_connection *conn,
  	if((uid = name2uid(webserver_user)) != -1) {
  		if(setuid((uid_t)uid) > -1) {
 #endif
-			if((fp = popen((char *)command, "r")) != NULL) {
+			if((fp = popen(command, "r")) != NULL) {
 				size_t total = 0;
 				size_t chunk = 0;
 				unsigned char buff[1024] = {'\0'};
@@ -660,24 +660,28 @@ static int webserver_request_handler(struct mg_connection *conn) {
 					raw = webserver_shell("cat %s | php-cgi %s 2>&1 | base64", conn, request, file, request);
 					unlink(file);
 				} else {
-					raw = webserver_shell("php-cgi %s  2>&1 | base64", conn, request, request);
+					raw = webserver_shell("php-cgi %s 2>&1 | base64", conn, request, request);
 				}
+				str_replace("\n", "", &raw);
 
 				if(raw != NULL) {
 					size_t olen = 0;
-					char *output = base64decode(raw, strlen(raw), &olen);
+					char *output = base64decode(raw, strlen(raw), &olen);	
 					FREE(raw);
 
 					char *ptr = strstr(output, "\n\r");
 					char *xptr = strstr(output, "X-Powered-By:");
 					char *sptr = strstr(output, "Status:");
+					char *cptr = strstr(output, "Content-type:");
 					char *nptr = NULL;
 					if(sptr) {
 						nptr = sptr;
-					} else {
+					} else if(xptr) {
 						nptr = xptr;
+					} else {
+						nptr = cptr;
 					}
-
+					
 					if(ptr != NULL && nptr != NULL) {
 						size_t pos = (size_t)(ptr-output);
 						size_t xpos = (size_t)(nptr-output);
@@ -718,8 +722,8 @@ static int webserver_request_handler(struct mg_connection *conn) {
 						size_t hlen = (size_t)(hptr-(char *)buffer);
 						pos = strlen(header);
 						memcpy((char *)&buffer[hlen], header, pos);
-						memcpy((char *)&buffer[hlen+pos], "\n\r\n\r", 4);
-
+						memcpy((char *)&buffer[hlen+pos], "\n\r\n\r", 4);					
+						
 						if(strlen(type) > 0 && strstr(type, "text") != NULL) {
 							mg_write(conn, buffer, (int)strlen((char *)buffer));
 							mg_write(conn, output, (int)olen);
