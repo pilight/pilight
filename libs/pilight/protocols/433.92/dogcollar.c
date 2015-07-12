@@ -152,7 +152,7 @@ void dogcollarInit(void) {
 	protocol_register(&dogcollar);
 	protocol_set_id(dogcollar, "dogcollar");
 	protocol_device_add(dogcollar, "dogcollar", "dogcollar Switches");
-	dogcollar->devtype = SWITCH;
+	dogcollar->devtype = SCREEN;
 	dogcollar->hwtype = RF433;
 	dogcollar->minrawlen = RAW_LENGTH;
 	dogcollar->maxrawlen = RAW_LENGTH;
