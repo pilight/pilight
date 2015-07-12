@@ -449,8 +449,8 @@ static int webserver_request_handler(struct mg_connection *conn) {
 	char *ext = NULL;
 	char *mimetype = NULL;
 	int size = 0;
+	unsigned char buffer[4096];
 	unsigned char *p;
-	static unsigned char buffer[4096];
 	struct filehandler_t *filehandler = (struct filehandler_t *)conn->connection_param;
 	unsigned int chunk = WEBSERVER_CHUNK_SIZE;
 	struct stat st;
@@ -657,10 +657,10 @@ static int webserver_request_handler(struct mg_connection *conn) {
 						logprintf(LOG_ERR, "php cache file truncated");
 					}
 					close(f);
-					raw = webserver_shell("cat %s | php-cgi %s 2>&1 | base64", conn, request, file, request);
+					raw = webserver_shell("cat %s | php-cgi %s 2>/dev/null | base64", conn, request, file, request);
 					unlink(file);
 				} else {
-					raw = webserver_shell("php-cgi %s 2>&1 | base64", conn, request, request);
+					raw = webserver_shell("php-cgi %s 2>/dev/null | base64", conn, request, request);
 				}
 				str_replace("\n", "", &raw);
 
@@ -669,77 +669,60 @@ static int webserver_request_handler(struct mg_connection *conn) {
 					char *output = base64decode(raw, strlen(raw), &olen);	
 					FREE(raw);
 
-					char *ptr = strstr(output, "\n\r");
-					char *xptr = strstr(output, "X-Powered-By:");
-					char *sptr = strstr(output, "Status:");
-					char *cptr = strstr(output, "Content-type:");
-					char *nptr = NULL;
-					if(sptr) {
-						nptr = sptr;
-					} else if(xptr) {
-						nptr = xptr;
-					} else {
-						nptr = cptr;
-					}
-					
-					if(ptr != NULL && nptr != NULL) {
-						size_t pos = (size_t)(ptr-output);
-						size_t xpos = (size_t)(nptr-output);
-						char *header = MALLOC((pos-xpos)+(size_t)1);
-						if(!header) {
-							fprintf(stderr, "out of memory\n");
-							exit(EXIT_FAILURE);
-						}
+					char **array = NULL;
+					char *header = NULL;
+					char *content = NULL;
+					int n = explode(output, "\r\n\r\n", &array), len = 0;
 
-						/* Extract header info from PHP output */
-						strncpy(&header[0], &output[xpos], pos-xpos);
-						header[(pos-xpos)] = '\0';
+					if(n >= 1) {
+						header = array[0];
 
-						/* Extract content info from PHP output */
-						memmove(&output[xpos], &output[pos+3], olen-(pos+2));
-						olen-=((pos+2)-xpos);
-
-						/* Retrieve the PHP content type */
-						char ite[pos-xpos];
-						strcpy(ite, header);
-						char **array = NULL;
-						unsigned int n = explode(ite, "\n\r", &array), q = 0;
+						char **array1 = NULL;
+						int b = explode(header, "\n\r", &array1), a = 0;
 						char type[255];
-						for(q=0;q<n;q++) {
-							sscanf(array[q], "Content-type:%*[ ]%s%*[ \n\r]", type);
-							sscanf(array[q], "Content-Type:%*[ ]%s%*[ \n\r]", type);
+						for(a=0;a<b;a++) {
+							sscanf(array1[a], "Content-type:%*[ ]%s%*[ \n\r]", type);
+							sscanf(array1[a], "Content-Type:%*[ ]%s%*[ \n\r]", type);
 						}
-						array_free(&array, n);
+						array_free(&array1, b);
+						if(n == 2) {
+							content = array[1];
+							len = strlen(content);
+						} else {
+							len = -1;
+							strcpy(type, "Content-type: text/html;");
+						}
 
 						if(strstr(header, "Status: 302 Moved Temporarily") != NULL) {
-							webserver_create_minimal_header(&p, "302 Moved Temporarily", (unsigned int)olen);
+							webserver_create_minimal_header(&p, "302 Moved Temporarily", (unsigned int)len+1);
+						} else if(strstr(header, "Status: 500 Internal Server Error") != NULL) {
+							webserver_create_minimal_header(&p, "500 Internal Server Error", (unsigned int)len+1);
 						} else {
-							webserver_create_minimal_header(&p, "200 OK", (unsigned int)olen);
+							webserver_create_minimal_header(&p, "200 OK", (unsigned int)len+1);
 						}
 
 						/* Merge HTML header with PHP header */
-						char *hptr = strstr((char *)buffer, "\n\r");
-						size_t hlen = (size_t)(hptr-(char *)buffer);
-						pos = strlen(header);
-						memcpy((char *)&buffer[hlen], header, pos);
-						memcpy((char *)&buffer[hlen+pos], "\n\r\n\r", 4);					
-						
+						int pos = strlen((char *)buffer);
+						buffer[pos-2] = '\0';
+						strcat((char *)buffer, header);
+						strcat((char *)buffer, "\n\r\n\r");
+
 						if(strlen(type) > 0 && strstr(type, "text") != NULL) {
 							mg_write(conn, buffer, (int)strlen((char *)buffer));
-							mg_write(conn, output, (int)olen);
-							FREE(output);
+							if(n == 2) {
+								mg_write(conn, content, (int)len+1);
+							}
 						} else {
 							if(filehandler == NULL) {
 								filehandler = MALLOC(sizeof(struct filehandler_t));
-								filehandler->bytes = MALLOC(olen);
-								memcpy(filehandler->bytes, output, olen);
-								filehandler->length = (unsigned int)olen;
+								filehandler->bytes = MALLOC(strlen(content)+1);
+								memcpy(filehandler->bytes, content, strlen(content)+1);
+								filehandler->length = (unsigned int)strlen(content)+1;
 								filehandler->ptr = 0;
 								filehandler->free = 1;
 								filehandler->fp = NULL;
 								conn->connection_param = filehandler;
 							}
-							FREE(output);
 							chunk = WEBSERVER_CHUNK_SIZE;
 							if(filehandler != NULL) {
 								if((filehandler->length-filehandler->ptr) < chunk) {
@@ -750,22 +733,23 @@ static int webserver_request_handler(struct mg_connection *conn) {
 
 								FREE(mimetype);
 								FREE(request);
-								FREE(header);
 								if(filehandler->ptr == filehandler->length || conn->wsbits != 0) {
 									FREE(filehandler->bytes);
 									FREE(filehandler);
 									conn->connection_param = NULL;
+									array_free(&array, n);
 									return MG_TRUE;
 								} else {
+									array_free(&array, n);
 									return MG_MORE;
 								}
 							}
 						}
-						FREE(header);
 					}
 
 					FREE(mimetype);
 					FREE(request);
+					array_free(&array, n);
 					return MG_TRUE;
 				} else {
 					logprintf(LOG_WARNING, "(webserver) invalid php-cgi output from %s", request);
