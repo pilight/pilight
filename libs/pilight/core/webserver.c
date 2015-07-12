@@ -49,6 +49,7 @@
 #include "webserver.h"
 #include "ssdp.h"
 #include "fcache.h"
+#include "ph7.h"
 
 #ifdef WEBSERVER_HTTPS
 static int webserver_https_port = WEBSERVER_HTTPS_PORT;
@@ -56,11 +57,9 @@ static int webserver_https_port = WEBSERVER_HTTPS_PORT;
 static int webserver_http_port = WEBSERVER_HTTP_PORT;
 static int webserver_cache = 1;
 static int webgui_websockets = WEBGUI_WEBSOCKETS;
-static char *webserver_user = NULL;
 static char *webserver_authentication_username = NULL;
 static char *webserver_authentication_password = NULL;
 static unsigned short webserver_loop = 1;
-static unsigned short webserver_php = 1;
 static char *webserver_root = NULL;
 #ifdef WEBSERVER_HTTPS
 static struct mg_server *mgserver[WEBSERVER_WORKERS+1];
@@ -69,7 +68,6 @@ static struct mg_server *mgserver[WEBSERVER_WORKERS];
 #endif
 static char *recvBuff = NULL;
 static unsigned short webserver_root_free = 0;
-static unsigned short webserver_user_free = 0;
 
 static int sockfd = 0;
 
@@ -117,9 +115,6 @@ int webserver_gc(void) {
 
 	if(webserver_root_free) {
 		FREE(webserver_root);
-	}
-	if(webserver_user_free) {
-		FREE(webserver_user);
 	}
 
 #ifdef WEBSERVER_HTTPS
@@ -199,110 +194,6 @@ char *webserver_mimetype(const char *str) {
 	memset(mimetype, '\0', strlen(str)+1);
 	strcpy(mimetype, str);
 	return mimetype;
-}
-
-static char *webserver_shell(const char *format_str, struct mg_connection *conn, char *request, ...) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
-
-	size_t n = 0;
-	char *output = NULL;
-	const char *type = NULL;
-	const char *cookie = NULL;
-#ifndef _WIN32
-	int uid = 0;
-#endif
-	va_list ap;
-
-	va_start(ap, request);
-	n = (size_t)vsnprintf(NULL, 0, format_str, ap) + strlen(format_str) + 1; // EOL + dual NL
-	va_end(ap);
-
-	char command[n];
-	va_start(ap, request);
-	vsprintf(command, format_str, ap);
-	va_end(ap);
-
-	setenv("SCRIPT_FILENAME", request, 1);
-	setenv("REDIRECT_STATUS", "200", 1);
-	setenv("SERVER_PROTOCOL", "HTTP/1.1", 1);
-	setenv("REMOTE_HOST", "127.0.0.1", 1);
-	char sn[1024] = {'\0'};
-	if(conn->remote_port != 80) {
-		sprintf(sn, "http://%s:%d", conn->remote_ip, conn->remote_port);
-	} else {
-		sprintf(sn, "http://%s", conn->remote_ip);
-	}
-	setenv("SERVER_NAME", sn, 1);
-	setenv("HTTPS", "off", 1);
-	setenv("HTTP_ACCEPT", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8", 1);
-
-	if(strcmp(conn->request_method, "POST") == 0) {
-		setenv("REQUEST_METHOD", "POST", 1);
-		if((type = mg_get_header(conn, "Content-Type")) != NULL) {
-			setenv("CONTENT_TYPE", type, 1);
-		}
-		char len[10];
-		sprintf(len, "%d", (int)conn->content_len);
-		setenv("CONTENT_LENGTH", len, 1);
-	}
-	if((cookie = mg_get_header(conn, "Cookie")) != NULL) {
-		setenv("HTTP_COOKIE", cookie, 1);
-	}
-	if(conn->query_string != NULL) {
-		setenv("QUERY_STRING", conn->query_string, 1);
-	}
-	if(strcmp(conn->request_method, "GET") == 0) {
-		setenv("REQUEST_METHOD", "GET", 1);
-	}
-	FILE *fp = NULL;
-#ifndef _WIN32
- 	if((uid = name2uid(webserver_user)) != -1) {
- 		if(setuid((uid_t)uid) > -1) {
-#endif
-			if((fp = popen(command, "r")) != NULL) {
-				size_t total = 0;
-				size_t chunk = 0;
-				unsigned char buff[1024] = {'\0'};
-				while(!feof(fp)) {
-					chunk = fread(buff, sizeof(char), 1024, fp);
-					total += chunk;
-					if((output = REALLOC(output, total+1)) == NULL) {
-						fprintf(stderr, "out of memory\n");
-						exit(EXIT_FAILURE);
-					}
-					memcpy(&output[total-chunk], buff, chunk);
-				}
-				output[total] = '\0';
-				unsetenv("SCRIPT_FILENAME");
-				unsetenv("REDIRECT_STATUS");
-				unsetenv("SERVER_PROTOCOL");
-				unsetenv("REMOTE_HOST");
-				unsetenv("SERVER_NAME");
-				unsetenv("HTTPS");
-				unsetenv("HTTP_ACCEPT");
-				unsetenv("HTTP_COOKIE");
-				unsetenv("REQUEST_METHOD");
-				unsetenv("CONTENT_TYPE");
-				unsetenv("CONTENT_LENGTH");
-				unsetenv("QUERY_STRING");
-				unsetenv("REQUEST_METHOD");
-
-				pclose(fp);
-				return output;
-			}
-#ifndef _WIN32
-		} else {
-			logprintf(LOG_NOTICE, "failed to change webserver uid");
-		}
-	} else {
-		logprintf(LOG_DEBUG, "webserver user \"%s\" does not exist", webserver_user);
-	}
-
-	if(setuid(0) == -1) {
-		logprintf(LOG_DEBUG, "failed to restore webserver uid");
-	}
-#endif
-	return NULL;
 }
 
 static int webserver_auth_handler(struct mg_connection *conn) {
@@ -642,123 +533,130 @@ static int webserver_request_handler(struct mg_connection *conn) {
 			}
 
 			/* If webserver caching is enabled, first load all files in the memory */
-			if(strcmp(mimetype, "application/x-httpd-php") == 0 && webserver_php == 1) {
-				char *raw = NULL;
+			if(strcmp(mimetype, "application/x-httpd-php") == 0) {
+				ph7 *pEngine = NULL;
+				ph7_vm *pVm = NULL;
+				char *output = NULL;
+				unsigned int len = 0;
+				int rc = 0, i = 0, size = 0, oldSize = 0;
+				char *headers = NULL;
+
+				oldSize = size;
+				if(conn->query_string != NULL) {
+					size += snprintf(NULL, 0, "%s %s?%s HTTP/1.0\r\n", conn->request_method, request, conn->query_string);
+				} else {
+					size += snprintf(NULL, 0, "%s %s HTTP/1.0\r\n", conn->request_method, request);
+				}
+				if((headers = REALLOC(headers, size+1)) == NULL) {
+					fprintf(stderr, "out of memory\n");
+					exit(EXIT_FAILURE);
+				}
+				if(conn->query_string != NULL) {
+					sprintf(&headers[oldSize], "%s %s?%s HTTP/1.0\r\n", conn->request_method, request, conn->query_string);
+				} else {
+					sprintf(&headers[oldSize], "%s %s HTTP/1.0\r\n", conn->request_method, request);
+				}
+				for(i=0;i<conn->num_headers;i++) {
+					oldSize = size;
+					size += snprintf(NULL, 0, "%s: %s\r\n", conn->http_headers[i].name, conn->http_headers[i].value);
+					if(i == (conn->num_headers-1)) {
+						size += 2;
+					}
+					if((headers = REALLOC(headers, size+1)) == NULL) {
+						fprintf(stderr, "out of memory\n");
+						exit(EXIT_FAILURE);
+					}
+					if(i == (conn->num_headers-1)) {
+						sprintf(&headers[oldSize], "%s: %s\r\n\r\n", conn->http_headers[i].name, conn->http_headers[i].value);
+					} else {
+						sprintf(&headers[oldSize], "%s: %s\r\n", conn->http_headers[i].name, conn->http_headers[i].value);					
+					}
+				}
 				if(strcmp(conn->request_method, "POST") == 0) {
-					/* Store all (binary) post data in a file so we
-					   can feed it directly into php-cgi */
-					char file[20];
-					strcpy(file, "/tmp/php");
-					char name[11];
-					alpha_random(name, 10);
-					strcat(file, name);
-					int f = open(file, O_CREAT | O_TRUNC | O_WRONLY, 0644);
-					if(write(f, conn->content, conn->content_len) != conn->content_len) {
-						logprintf(LOG_ERR, "php cache file truncated");
+					oldSize = size;
+					size += conn->content_len;
+					if((headers = REALLOC(headers, size+1)) == NULL) {
+						fprintf(stderr, "out of memory\n");
+						exit(EXIT_FAILURE);
 					}
-					close(f);
-					raw = webserver_shell("cat %s | php-cgi %s 2>/dev/null | base64", conn, request, file, request);
-					unlink(file);
-				} else {
-					raw = webserver_shell("php-cgi %s 2>/dev/null | base64", conn, request, request);
+					memcpy(&headers[oldSize], conn->content, conn->content_len);
+
+					oldSize = size;
+					size += 2;
+					if((headers = REALLOC(headers, size+1)) == NULL) {
+						fprintf(stderr, "out of memory\n");
+						exit(EXIT_FAILURE);
+					}
+					strcpy(&headers[oldSize], "\r\n");
 				}
-				str_replace("\n", "", &raw);
 
-				if(raw != NULL) {
-					size_t olen = 0;
-					char *output = base64decode(raw, strlen(raw), &olen);	
-					FREE(raw);
+				rc = ph7_init(&pEngine);
+				if(rc != PH7_OK) {
+					char *out = "failed to initialize ph7 PHP library";
+					webserver_create_minimal_header(&p, "200 OK", strlen(out));
+					int pos = strlen((char *)buffer);
+					buffer[pos-2] = '\0';
+					strcat((char *)buffer, "Content-type: text/html;");
+					strcat((char *)buffer, "\n\r\n\r");
 
-					char **array = NULL;
-					char *header = NULL;
-					char *content = NULL;
-					int n = explode(output, "\r\n\r\n", &array), len = 0;
+					mg_write(conn, buffer, strlen((char *)buffer));
+					mg_write(conn, (char *)out, strlen(out));
+					ph7_lib_shutdown();
+					FREE(headers);
+					FREE(request);
+					FREE(mimetype);
+					return MG_FALSE;
+				}
+				
+				rc = ph7_compile_file(pEngine, request, &pVm, 0);
+				if(rc != PH7_OK) {
+					if(rc == PH7_COMPILE_ERR) {
+						char *zErrLog = NULL;
+						int nLen = 0;
+						ph7_config(pEngine, PH7_CONFIG_ERR_LOG, &zErrLog, &nLen);
+						if(nLen > 0) {
+							zErrLog[nLen] = '\0';
+			
+							webserver_create_minimal_header(&p, "200 OK", nLen);
+							int pos = strlen((char *)buffer);
+							buffer[pos-2] = '\0';
+							strcat((char *)buffer, "Content-type: text/html;");
+							strcat((char *)buffer, "\n\r\n\r");
 
-					if(n >= 1) {
-						header = array[0];
-
-						char **array1 = NULL;
-						int b = explode(header, "\n\r", &array1), a = 0;
-						char type[255];
-						for(a=0;a<b;a++) {
-							sscanf(array1[a], "Content-type:%*[ ]%s%*[ \n\r]", type);
-							sscanf(array1[a], "Content-Type:%*[ ]%s%*[ \n\r]", type);
-						}
-						array_free(&array1, b);
-						if(n == 2) {
-							content = array[1];
-							len = strlen(content);
-						} else {
-							len = -1;
-							strcpy(type, "Content-type: text/html;");
-						}
-
-						if(strstr(header, "Status: 302 Moved Temporarily") != NULL) {
-							webserver_create_minimal_header(&p, "302 Moved Temporarily", (unsigned int)len+1);
-						} else if(strstr(header, "Status: 500 Internal Server Error") != NULL) {
-							webserver_create_minimal_header(&p, "500 Internal Server Error", (unsigned int)len+1);
-						} else {
-							webserver_create_minimal_header(&p, "200 OK", (unsigned int)len+1);
-						}
-
-						/* Merge HTML header with PHP header */
-						int pos = strlen((char *)buffer);
-						buffer[pos-2] = '\0';
-						strcat((char *)buffer, header);
-						strcat((char *)buffer, "\n\r\n\r");
-
-						if(strlen(type) > 0 && strstr(type, "text") != NULL) {
-							mg_write(conn, buffer, (int)strlen((char *)buffer));
-							if(n == 2) {
-								mg_write(conn, content, (int)len+1);
-							}
-						} else {
-							if(filehandler == NULL) {
-								filehandler = MALLOC(sizeof(struct filehandler_t));
-								filehandler->bytes = MALLOC(strlen(content)+1);
-								memcpy(filehandler->bytes, content, strlen(content)+1);
-								filehandler->length = (unsigned int)strlen(content)+1;
-								filehandler->ptr = 0;
-								filehandler->free = 1;
-								filehandler->fp = NULL;
-								conn->connection_param = filehandler;
-							}
-							chunk = WEBSERVER_CHUNK_SIZE;
-							if(filehandler != NULL) {
-								if((filehandler->length-filehandler->ptr) < chunk) {
-									chunk = (filehandler->length-filehandler->ptr);
-								}
-								mg_send_data(conn, &filehandler->bytes[filehandler->ptr], (int)chunk);
-								filehandler->ptr += chunk;
-
-								FREE(mimetype);
-								FREE(request);
-								if(filehandler->ptr == filehandler->length || conn->wsbits != 0) {
-									FREE(filehandler->bytes);
-									FREE(filehandler);
-									conn->connection_param = NULL;
-									array_free(&array, n);
-									return MG_TRUE;
-								} else {
-									array_free(&array, n);
-									return MG_MORE;
-								}
-							}
+							mg_write(conn, buffer, strlen((char *)buffer));
+							mg_write(conn, (char *)zErrLog, nLen);
+							ph7_lib_shutdown();
+							FREE(headers);
+							FREE(request);
+							FREE(mimetype);
+							return MG_FALSE;
 						}
 					}
-
-					FREE(mimetype);
-					FREE(request);
-					array_free(&array, n);
-					return MG_TRUE;
-				} else {
-					logprintf(LOG_WARNING, "(webserver) invalid php-cgi output from %s", request);
-					webserver_create_404(conn->uri, &p);
-					FREE(mimetype);
-					FREE(request);
-
-					return MG_TRUE;
 				}
+
+				rc = ph7_vm_config(pVm, PH7_VM_CONFIG_HTTP_REQUEST, headers, strlen(headers));
+				ph7_vm_exec(pVm, 0);
+				rc = ph7_vm_config(pVm, PH7_VM_CONFIG_EXTRACT_OUTPUT, (void *)&output, &len);
+				if(len > 0) {
+					output[len] = '\0';
+			
+					webserver_create_minimal_header(&p, "200 OK", len);
+					int pos = strlen((char *)buffer);
+					buffer[pos-2] = '\0';
+					strcat((char *)buffer, "Content-type: text/html;");
+					strcat((char *)buffer, "\n\r\n\r");
+
+					mg_write(conn, buffer, strlen((char *)buffer));
+					mg_write(conn, (char *)output, len);
+				}
+
+				ph7_vm_release(pVm);
+				ph7_release(pEngine);
+				ph7_lib_shutdown();
+				FREE(headers);
+				FREE(request);
+				FREE(mimetype);
+				return MG_TRUE;
 			} else {
 				stat(request, &st);
 				if(!webserver_cache || st.st_size > MAX_CACHE_FILESIZE) {
@@ -1094,19 +992,6 @@ static int webserver_handler(struct mg_connection *conn, enum mg_event ev) {
 int webserver_start(void) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
-	if(which("php-cgi") != 0) {
-		webserver_php = 0;
-		logprintf(LOG_NOTICE, "php support disabled due to missing php-cgi executable");
-	}
-	if(which("cat") != 0) {
-		webserver_php = 0;
-		logprintf(LOG_NOTICE, "php support disabled due to missing cat executable");
-	}
-	if(which("base64") != 0) {
-		webserver_php = 0;
-		logprintf(LOG_NOTICE, "php support disabled due to missing base64 executable");
-	}
-
 	if(webqueue_init == 0) {
 		pthread_mutexattr_init(&webqueue_attr);
 		pthread_mutexattr_settype(&webqueue_attr, PTHREAD_MUTEX_RECURSIVE);
@@ -1138,15 +1023,6 @@ int webserver_start(void) {
 	settings_find_number("webserver-cache", &webserver_cache);
 	settings_find_string("webserver-authentication-password", &webserver_authentication_password);
 	settings_find_string("webserver-authentication-username", &webserver_authentication_username);
-	if(settings_find_string("webserver-user", &webserver_user) != 0) {
-		/* If no webserver port was set, use the default webserver port */
-		if((webserver_user = MALLOC(strlen(WEBSERVER_USER)+1)) == NULL) {
-			fprintf(stderr, "out of memory\n");
-			exit(EXIT_FAILURE);
-		}
-		strcpy(webserver_user, WEBSERVER_USER);
-		webserver_user_free = 1;
-	}
 
 	int z = 0;
 #ifdef WEBSERVER_HTTPS
