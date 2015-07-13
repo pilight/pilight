@@ -56,11 +56,9 @@ static int webserver_https_port = WEBSERVER_HTTPS_PORT;
 static int webserver_http_port = WEBSERVER_HTTP_PORT;
 static int webserver_cache = 1;
 static int webgui_websockets = WEBGUI_WEBSOCKETS;
-static char *webserver_user = NULL;
 static char *webserver_authentication_username = NULL;
 static char *webserver_authentication_password = NULL;
 static unsigned short webserver_loop = 1;
-static unsigned short webserver_php = 1;
 static char *webserver_root = NULL;
 #ifdef WEBSERVER_HTTPS
 static struct mg_server *mgserver[WEBSERVER_WORKERS+1];
@@ -69,7 +67,6 @@ static struct mg_server *mgserver[WEBSERVER_WORKERS];
 #endif
 static char *recvBuff = NULL;
 static unsigned short webserver_root_free = 0;
-static unsigned short webserver_user_free = 0;
 
 static int sockfd = 0;
 
@@ -118,9 +115,6 @@ int webserver_gc(void) {
 	if(webserver_root_free) {
 		FREE(webserver_root);
 	}
-	if(webserver_user_free) {
-		FREE(webserver_user);
-	}
 
 #ifdef WEBSERVER_HTTPS
 	for(i=0;i<WEBSERVER_WORKERS+1;i++) {
@@ -161,18 +155,6 @@ void webserver_create_header(unsigned char **p, const char *message, char *mimet
 		len);
 }
 
-static void webserver_create_minimal_header(unsigned char **p, const char *message, unsigned int len) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
-
-	*p += sprintf((char *)*p,
-		"HTTP/1.0 %s\r\n"
-		"Server: pilight\r\n",
-		message);
-	*p += sprintf((char *)*p,
-		"Content-Length: %u\r\n\r\n",
-		len);
-}
-
 static void webserver_create_404(const char *in, unsigned char **p) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
@@ -199,112 +181,6 @@ char *webserver_mimetype(const char *str) {
 	memset(mimetype, '\0', strlen(str)+1);
 	strcpy(mimetype, str);
 	return mimetype;
-}
-
-static int webserver_shell(const char *format_str, struct mg_connection *conn, char **output, char *request, ...) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
-
-	size_t n = 0;
-	const char *type = NULL;
-	const char *cookie = NULL;
-#ifndef _WIN32
-	int uid = 0;
-#endif
-	va_list ap;
-
-	va_start(ap, request);
-	n = (size_t)vsnprintf(NULL, 0, format_str, ap) + strlen(format_str) + 1; // EOL + dual NL
-	va_end(ap);
-
-	char command[n];
-	va_start(ap, request);
-	vsprintf(command, format_str, ap);
-	va_end(ap);
-
-	setenv("SCRIPT_FILENAME", request, 1);
-	setenv("REDIRECT_STATUS", "200", 1);
-	setenv("SERVER_PROTOCOL", "HTTP/1.0", 1);
-	setenv("REMOTE_HOST", "127.0.0.1", 1);
-	char sn[1024] = {'\0'};
-	if(conn->remote_port != 80) {
-		sprintf(sn, "http://%s:%d", conn->remote_ip, conn->remote_port);
-	} else {
-		sprintf(sn, "http://%s", conn->remote_ip);
-	}
-	setenv("SERVER_NAME", sn, 1);
-	setenv("HTTPS", "off", 1);
-	setenv("HTTP_ACCEPT", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8", 1);
-
-	if(strcmp(conn->request_method, "POST") == 0) {
-		setenv("REQUEST_METHOD", "POST", 1);
-		if((type = mg_get_header(conn, "Content-Type")) != NULL) {
-			setenv("CONTENT_TYPE", type, 1);
-		}
-		char len[10];
-		sprintf(len, "%d", (int)conn->content_len);
-		setenv("CONTENT_LENGTH", len, 1);
-	}
-	if((cookie = mg_get_header(conn, "Cookie")) != NULL) {
-		setenv("HTTP_COOKIE", cookie, 1);
-	}
-	if(conn->query_string != NULL) {
-		setenv("QUERY_STRING", conn->query_string, 1);
-	}
-	if(strcmp(conn->request_method, "GET") == 0) {
-		setenv("REQUEST_METHOD", "GET", 1);
-	}
-	FILE *fp = NULL;
-#ifndef _WIN32
- 	if((uid = name2uid(webserver_user)) != -1) {
- 		if(setuid((uid_t)uid) > -1) {
-#endif
-			if((fp = popen(command, "r")) != NULL) {
-				size_t total = 0;
-				size_t chunk = 0;
-				unsigned char buff[1024] = {'\0'};
-				while(!feof(fp)) {
-					chunk = fread(buff, sizeof(char), 1024, fp);
-					total += chunk;
-					if((*output = REALLOC(*output, total+1)) == NULL) {
-						fprintf(stderr, "out of memory\n");
-						exit(EXIT_FAILURE);
-					}
-					memcpy(&(*output)[total-chunk], buff, chunk);
-				}
-				(*output)[total] = '\0';
-				unsetenv("SCRIPT_FILENAME");
-				unsetenv("REDIRECT_STATUS");
-				unsetenv("SERVER_PROTOCOL");
-				unsetenv("REMOTE_HOST");
-				unsetenv("SERVER_NAME");
-				unsetenv("HTTPS");
-				unsetenv("HTTP_ACCEPT");
-				unsetenv("HTTP_COOKIE");
-				unsetenv("REQUEST_METHOD");
-				unsetenv("CONTENT_TYPE");
-				unsetenv("CONTENT_LENGTH");
-				unsetenv("QUERY_STRING");
-				unsetenv("REQUEST_METHOD");
-
-				pclose(fp);
-				return total;
-			}
-#ifndef _WIN32
-		} else {
-			logprintf(LOG_NOTICE, "failed to change webserver uid");
-			return -4;
-		}
-	} else {
-		logprintf(LOG_DEBUG, "webserver user \"%s\" does not exist", webserver_user);
-		return -3;
-	}
-
-	if(setuid(0) == -1) {
-		logprintf(LOG_DEBUG, "failed to restore webserver uid");
-		return -2;
-	}
-#endif
-	return -1;
 }
 
 static int webserver_auth_handler(struct mg_connection *conn) {
@@ -603,8 +479,6 @@ static int webserver_request_handler(struct mg_connection *conn) {
 					mimetype = webserver_mimetype("text/css");
 				} else if(strcmp(ext, "js") == 0) {
 					mimetype = webserver_mimetype("text/javascript");
-				} else if(strcmp(ext, "php") == 0) {
-					mimetype = webserver_mimetype("application/x-httpd-php");
 				} else {
 					mimetype = webserver_mimetype("text/plain");
 				}
@@ -617,7 +491,6 @@ static int webserver_request_handler(struct mg_connection *conn) {
 			if(access(request, F_OK) == 0) {
 				stat(request, &st);
 				if(webserver_cache == 1 && st.st_size <= MAX_CACHE_FILESIZE &&
-				  strcmp(mimetype, "application/x-httpd-php") != 0 &&
 				  fcache_get_size(request, &size) != 0 && fcache_add(request) != 0) {
 					FREE(mimetype);
 					goto filenotfound;
@@ -643,185 +516,92 @@ static int webserver_request_handler(struct mg_connection *conn) {
 				}
 			}
 
-			/* If webserver caching is enabled, first load all files in the memory */
-			if(strcmp(mimetype, "application/x-httpd-php") == 0 && webserver_php == 1) {
-				char *raw = NULL;
-				int ret = 0;
-				if(strcmp(conn->request_method, "POST") == 0) {
-					/* Store all (binary) post data in a file so we
-					   can feed it directly into php-cgi */
-					char file[20];
-					strcpy(file, "/tmp/php");
-					char name[11];
-					alpha_random(name, 10);
-					strcat(file, name);
-					int f = open(file, O_CREAT | O_TRUNC | O_WRONLY, 0644);
-					if(write(f, conn->content, conn->content_len) != conn->content_len) {
-						logprintf(LOG_ERR, "php cache file truncated");
+			stat(request, &st);
+			if(webserver_cache == 0 || st.st_size > MAX_CACHE_FILESIZE) {
+				FILE *fp = fopen(request, "rb");
+				fseek(fp, 0, SEEK_END);
+				size = (int)ftell(fp);
+				fseek(fp, 0, SEEK_SET);
+				if(strstr(mimetype, "text") != NULL || st.st_size < WEBSERVER_CHUNK_SIZE) {
+					webserver_create_header(&p, "200 OK", mimetype, (unsigned int)size);
+					mg_write(conn, buffer, (int)(p-buffer));
+					size_t total = 0;
+					chunk = 0;
+					unsigned char buff[1024];
+					while(total < size) {
+						chunk = (unsigned int)fread(buff, sizeof(char), 1024, fp);
+						mg_write(conn, buff, (int)chunk);
+						total += chunk;
 					}
-					close(f);
-					ret = webserver_shell("cat %s | php-cgi %s 2>/dev/null | base64", conn, &raw, request, file, request);
-					unlink(file);
+					fclose(fp);
 				} else {
-					ret = webserver_shell("php-cgi %s 2>/dev/null | base64", conn, &raw, request, request);
-				}
-				str_replace("\n", "", &raw);
-
-				if(ret > 0) {
-					size_t olen = 0;
-					char *output = base64decode(raw, strlen(raw), &olen);	
-					FREE(raw);
-
-					char **array = NULL;
-					char *header = NULL;
-					char *content = NULL;
-					int n = explode(output, "\r\n\r\n", &array), len = 0;
-
-					if(n >= 1) {
-						header = array[0];
-
-						char **array1 = NULL;
-						int b = explode(header, "\n\r", &array1), a = 0;
-						char type[255];
-						memset(&type, 0, 255);
-
-						for(a=0;a<b;a++) {
-							sscanf(array1[a], "Content-type:%*[ ]%s%*[ \n\r]", type);
-							sscanf(array1[a], "Content-Type:%*[ ]%s%*[ \n\r]", type);
+					if(filehandler == NULL) {
+						filehandler = MALLOC(sizeof(struct filehandler_t));
+						filehandler->bytes = NULL;
+						filehandler->length = (unsigned int)size;
+						filehandler->ptr = 0;
+						filehandler->free = 0;
+						filehandler->fp = fp;
+						conn->connection_param = filehandler;
+					}
+					char buff[WEBSERVER_CHUNK_SIZE];
+					if(filehandler != NULL) {
+						if((filehandler->length-filehandler->ptr) < chunk) {
+							chunk = (filehandler->length-filehandler->ptr);
 						}
-						array_free(&array1, b);
-						if(n == 2) {
-							content = array[1];
-							len = strlen(content);
-						} else {
-							len = -1;
-							strcpy(type, "Content-type: text/html;");
-						}
+						chunk = (unsigned int)fread(buff, sizeof(char), WEBSERVER_CHUNK_SIZE, fp);
+						mg_send_data(conn, buff, (int)chunk);
+						filehandler->ptr += chunk;
 
-						if(strstr(header, "Status: 302 Moved Temporarily") != NULL) {
-							webserver_create_minimal_header(&p, "302 Moved Temporarily", 0);
-						} else if(strstr(header, "Status: 500 Internal Server Error") != NULL) {
-							webserver_create_minimal_header(&p, "500 Internal Server Error", (unsigned int)len+1);
-						} else {
-							webserver_create_minimal_header(&p, "200 OK", (unsigned int)len+1);
-						}
-
-						/* Merge HTML header with PHP header */
-						int pos = strlen((char *)buffer);
-						buffer[pos-2] = '\0';
-						strcat((char *)buffer, header);
-						strcat((char *)buffer, "\n\r\n\r");
-
-						if(strlen(type) > 0 && strstr(type, "text") != NULL) {
-							mg_write(conn, buffer, (int)strlen((char *)buffer));
-							if(n == 2) {
-								mg_write(conn, content, (int)len+1);
-							}
-						} else {
-							if(filehandler == NULL) {
-								filehandler = MALLOC(sizeof(struct filehandler_t));
-								filehandler->bytes = MALLOC(strlen(content)+1);
-								memcpy(filehandler->bytes, content, strlen(content)+1);
-								filehandler->length = (unsigned int)strlen(content)+1;
-								filehandler->ptr = 0;
-								filehandler->free = 1;
+						FREE(mimetype);
+						FREE(request);
+						if(filehandler->ptr == filehandler->length || conn->wsbits != 0) {
+							if(filehandler->fp != NULL) {
+								fclose(filehandler->fp);
 								filehandler->fp = NULL;
-								conn->connection_param = filehandler;
 							}
-							chunk = WEBSERVER_CHUNK_SIZE;
-							if(filehandler != NULL) {
-								if((filehandler->length-filehandler->ptr) < chunk) {
-									chunk = (filehandler->length-filehandler->ptr);
-								}
-								mg_send_data(conn, &filehandler->bytes[filehandler->ptr], (int)chunk);
-								filehandler->ptr += chunk;
-
-								FREE(mimetype);
-								FREE(request);
-								if(filehandler->ptr == filehandler->length || conn->wsbits != 0) {
-									FREE(filehandler->bytes);
-									FREE(filehandler);
-									conn->connection_param = NULL;
-									array_free(&array, n);
-									FREE(output);
-									return MG_TRUE;
-								} else {
-									array_free(&array, n);
-									FREE(output);
-									return MG_MORE;
-								}
-							}
+							FREE(filehandler);
+							conn->connection_param = NULL;
+							return MG_TRUE;
+						} else {
+							return MG_MORE;
 						}
 					}
-
-					FREE(output);
-					FREE(mimetype);
-					FREE(request);
-					array_free(&array, n);
-					return MG_TRUE;
-				} else {
-					char a[] = "An unexpected error occured while trying to parse php-cgi output";
-					char b[] = "Webserver user does not exist, please change it using the \"webserver-user\" setting";
-					if(ret == -1) {
-						webserver_create_minimal_header(&p, "200 OK", strlen(a));
-						mg_write(conn, buffer, (int)strlen((char *)buffer));
-						mg_write(conn, a, strlen(a));
-					} else if(ret == -3) {
-						webserver_create_minimal_header(&p, "200 OK", strlen(b));
-						mg_write(conn, buffer, (int)strlen((char *)buffer));
-						mg_write(conn, b, strlen(b));
-					}
-
-					FREE(mimetype);
-					FREE(request);
-
-					return MG_TRUE;
 				}
+
+				FREE(mimetype);
+				FREE(request);
+				return MG_TRUE;
 			} else {
-				stat(request, &st);
-				if(!webserver_cache || st.st_size > MAX_CACHE_FILESIZE) {
-					FILE *fp = fopen(request, "rb");
-					fseek(fp, 0, SEEK_END);
-					size = (int)ftell(fp);
-					fseek(fp, 0, SEEK_SET);
-					if(strstr(mimetype, "text") != NULL || st.st_size < WEBSERVER_CHUNK_SIZE) {
+				if(fcache_get_size(request, &size) == 0) {
+					if(strstr(mimetype, "text") != NULL) {
 						webserver_create_header(&p, "200 OK", mimetype, (unsigned int)size);
 						mg_write(conn, buffer, (int)(p-buffer));
-						size_t total = 0;
-						chunk = 0;
-						unsigned char buff[1024];
-						while(total < size) {
-							chunk = (unsigned int)fread(buff, sizeof(char), 1024, fp);
-							mg_write(conn, buff, (int)chunk);
-							total += chunk;
-						}
-						fclose(fp);
+						mg_write(conn, fcache_get_bytes(request), size);
+						FREE(mimetype);
+						FREE(request);
+						return MG_TRUE;
 					} else {
 						if(filehandler == NULL) {
 							filehandler = MALLOC(sizeof(struct filehandler_t));
-							filehandler->bytes = NULL;
+							filehandler->bytes = fcache_get_bytes(request);
 							filehandler->length = (unsigned int)size;
 							filehandler->ptr = 0;
 							filehandler->free = 0;
-							filehandler->fp = fp;
+							filehandler->fp = NULL;
 							conn->connection_param = filehandler;
 						}
-						char buff[WEBSERVER_CHUNK_SIZE];
+						chunk = WEBSERVER_CHUNK_SIZE;
 						if(filehandler != NULL) {
 							if((filehandler->length-filehandler->ptr) < chunk) {
 								chunk = (filehandler->length-filehandler->ptr);
 							}
-							chunk = (unsigned int)fread(buff, sizeof(char), WEBSERVER_CHUNK_SIZE, fp);
-							mg_send_data(conn, buff, (int)chunk);
+							mg_send_data(conn, &filehandler->bytes[filehandler->ptr], (int)chunk);
 							filehandler->ptr += chunk;
 
 							FREE(mimetype);
 							FREE(request);
 							if(filehandler->ptr == filehandler->length || conn->wsbits != 0) {
-								if(filehandler->fp != NULL) {
-									fclose(filehandler->fp);
-									filehandler->fp = NULL;
-								}
 								FREE(filehandler);
 								conn->connection_param = NULL;
 								return MG_TRUE;
@@ -830,53 +610,10 @@ static int webserver_request_handler(struct mg_connection *conn) {
 							}
 						}
 					}
-
-					FREE(mimetype);
-					FREE(request);
-					return MG_TRUE;
-				} else {
-					if(fcache_get_size(request, &size) == 0) {
-						if(strstr(mimetype, "text") != NULL) {
-							webserver_create_header(&p, "200 OK", mimetype, (unsigned int)size);
-							mg_write(conn, buffer, (int)(p-buffer));
-							mg_write(conn, fcache_get_bytes(request), size);
-							FREE(mimetype);
-							FREE(request);
-							return MG_TRUE;
-						} else {
-							if(filehandler == NULL) {
-								filehandler = MALLOC(sizeof(struct filehandler_t));
-								filehandler->bytes = fcache_get_bytes(request);
-								filehandler->length = (unsigned int)size;
-								filehandler->ptr = 0;
-								filehandler->free = 0;
-								filehandler->fp = NULL;
-								conn->connection_param = filehandler;
-							}
-							chunk = WEBSERVER_CHUNK_SIZE;
-							if(filehandler != NULL) {
-								if((filehandler->length-filehandler->ptr) < chunk) {
-									chunk = (filehandler->length-filehandler->ptr);
-								}
-								mg_send_data(conn, &filehandler->bytes[filehandler->ptr], (int)chunk);
-								filehandler->ptr += chunk;
-
-								FREE(mimetype);
-								FREE(request);
-								if(filehandler->ptr == filehandler->length || conn->wsbits != 0) {
-									FREE(filehandler);
-									conn->connection_param = NULL;
-									return MG_TRUE;
-								} else {
-									return MG_MORE;
-								}
-							}
-						}
-					}
 				}
-				FREE(mimetype);
-				FREE(request);
 			}
+			FREE(mimetype);
+			FREE(request);
 		}
 	} else if(webgui_websockets == 1) {
 		char input[conn->content_len+1];
@@ -1112,19 +849,6 @@ static int webserver_handler(struct mg_connection *conn, enum mg_event ev) {
 int webserver_start(void) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
-	if(which("php-cgi") != 0) {
-		webserver_php = 0;
-		logprintf(LOG_NOTICE, "php support disabled due to missing php-cgi executable");
-	}
-	if(which("cat") != 0) {
-		webserver_php = 0;
-		logprintf(LOG_NOTICE, "php support disabled due to missing cat executable");
-	}
-	if(which("base64") != 0) {
-		webserver_php = 0;
-		logprintf(LOG_NOTICE, "php support disabled due to missing base64 executable");
-	}
-
 	if(webqueue_init == 0) {
 		pthread_mutexattr_init(&webqueue_attr);
 		pthread_mutexattr_settype(&webqueue_attr, PTHREAD_MUTEX_RECURSIVE);
@@ -1156,15 +880,6 @@ int webserver_start(void) {
 	settings_find_number("webserver-cache", &webserver_cache);
 	settings_find_string("webserver-authentication-password", &webserver_authentication_password);
 	settings_find_string("webserver-authentication-username", &webserver_authentication_username);
-	if(settings_find_string("webserver-user", &webserver_user) != 0) {
-		/* If no webserver port was set, use the default webserver port */
-		if((webserver_user = MALLOC(strlen(WEBSERVER_USER)+1)) == NULL) {
-			fprintf(stderr, "out of memory\n");
-			exit(EXIT_FAILURE);
-		}
-		strcpy(webserver_user, WEBSERVER_USER);
-		webserver_user_free = 1;
-	}
 
 	int z = 0;
 #ifdef WEBSERVER_HTTPS
