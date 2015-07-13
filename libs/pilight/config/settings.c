@@ -369,22 +369,6 @@ static int settings_parse(JsonNode *root) {
 			} else {
 				settings_add_number(jsettings->key, (int)jsettings->number_);
 			}
-#ifndef _WIN32
-		} else if(strcmp(jsettings->key, "webserver-user") == 0) {
-			if(jsettings->tag != JSON_STRING) {
-				logprintf(LOG_ERR, "config setting \"%s\" must contain a valid system user", jsettings->key);
-				have_error = 1;
-				goto clear;
-			} else if(jsettings->string_ || strlen(jsettings->string_) > 0) {
-				if(name2uid(jsettings->string_) == -1) {
-					logprintf(LOG_ERR, "config setting \"%s\" must contain a valid system user", jsettings->key);
-					have_error = 1;
-					goto clear;
-				} else {
-					settings_add_string(jsettings->key, jsettings->string_);
-				}
-			}
-#endif
 		} else if(strcmp(jsettings->key, "webserver-authentication") == 0 && jsettings->tag == JSON_ARRAY) {
 			JsonNode *jtmp = json_first_child(jsettings);
 			unsigned short i = 0;
