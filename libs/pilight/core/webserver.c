@@ -683,6 +683,8 @@ static int webserver_request_handler(struct mg_connection *conn) {
 						char **array1 = NULL;
 						int b = explode(header, "\n\r", &array1), a = 0;
 						char type[255];
+						memset(&type, 0, 255);
+
 						for(a=0;a<b;a++) {
 							sscanf(array1[a], "Content-type:%*[ ]%s%*[ \n\r]", type);
 							sscanf(array1[a], "Content-Type:%*[ ]%s%*[ \n\r]", type);
@@ -741,15 +743,18 @@ static int webserver_request_handler(struct mg_connection *conn) {
 									FREE(filehandler);
 									conn->connection_param = NULL;
 									array_free(&array, n);
+									FREE(output);
 									return MG_TRUE;
 								} else {
 									array_free(&array, n);
+									FREE(output);
 									return MG_MORE;
 								}
 							}
 						}
 					}
 
+					FREE(output);
 					FREE(mimetype);
 					FREE(request);
 					array_free(&array, n);
