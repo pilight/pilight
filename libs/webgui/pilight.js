@@ -132,6 +132,9 @@ function alphaNum(string) {
 var iLatestTap1 = 0;
 var iLatestTap2 = 0;
 
+/*
+ * FIXME
+ */
 function toggleTabs() {
 	if(bShowTabs) {
 		var json = '{"action":"registry","type":"set","key":"webgui.tabs","value":0}';
@@ -247,16 +250,21 @@ function createSwitchElement(sTabId, sDevId, aValues) {
 					return false;
 				}
 			}
-			if('all' in aValues && aValues['all'] == 1) {
-				var json = '{"action":"control","code":{"device":"'+sDevId+'","state":"'+this.value+'","values":{"all": 1}}}';
-			} else {
-				var json = '{"action":"control","code":{"device":"'+sDevId+'","state":"'+this.value+'"}}';
-			}
+
 			if(oWebsocket) {
+				if('all' in aValues && aValues['all'] == 1) {
+					var json = '{"action":"control","code":{"device":"'+sDevId+'","state":"'+this.value+'","values":{"all": 1}}}';
+				} else {
+					var json = '{"action":"control","code":{"device":"'+sDevId+'","state":"'+this.value+'"}}';
+				}
 				oWebsocket.send(json);
 			} else {
 				bSending = true;
-				$.get(sHTTPProtocol+'://'+location.host+'/send?'+encodeURIComponent(json)+'&'+$.now());
+				if('all' in aValues && aValues['all'] == 1) {
+					$.get(sHTTPProtocol+'://'+location.host+'/control?device='+sDevId+'&state='+this.value+'&values[all]=1');
+				} else {
+					$.get(sHTTPProtocol+'://'+location.host+'/control?device='+sDevId+'&state='+this.value);
+				}
 				window.setTimeout(function() { bSending = false; }, 1000);
 			}
 		});
@@ -294,12 +302,13 @@ function createPendingSwitchElement(sTabId, sDevId, aValues) {
 			$('#'+sDevId+'_pendingsw').button('disable');
 			$('#'+sDevId+'_pendingsw').text(language.toggling);
 			$('#'+sDevId+'_pendingsw').button('refresh');
-			var json = '{"action":"control","code":{"device":"'+sDevId+'","state":"'+((aStates[sDevId] == "off") ? "on" : "off")+'"}}';
+			
 			if(oWebsocket) {
+				var json = '{"action":"control","code":{"device":"'+sDevId+'","state":"'+((aStates[sDevId] == "off") ? "on" : "off")+'"}}';
 				oWebsocket.send(json);
 			} else {
 				bSending = true;
-				$.get(sHTTPProtocol+'://'+location.host+'/send?'+encodeURIComponent(json)+'&'+$.now());
+				$.get(sHTTPProtocol+'://'+location.host+'/control?device='+sDevId+'&state='+((aStates[sDevId] == "off") ? "on" : "off"));
 				window.setTimeout(function() { bSending = false; }, 1000);
 			}
 		});
@@ -315,12 +324,12 @@ function createPendingSwitchElement(sTabId, sDevId, aValues) {
 				$('#'+sDevId+'_pendingsw').button('disable');
 				$('#'+sDevId+'_pendingsw').text(language.toggling);
 				$('#'+sDevId+'_pendingsw').button('refresh');
-				var json = '{"action":"control","code":{"device":"'+sDevId+'","state":"'+((aStates[sDevId] == "off") ? "on" : "off")+'"}}';
 				if(oWebsocket) {
+					var json = '{"action":"control","code":{"device":"'+sDevId+'","state":"'+((aStates[sDevId] == "off") ? "on" : "off")+'"}}';
 					oWebsocket.send(json);
 				} else {
 					bSending = true;
-					$.get(sHTTPProtocol+'://'+location.host+'/send?'+encodeURIComponent(json)+'&'+$.now());
+					$.get(sHTTPProtocol+'://'+location.host+'/control?device='+sDevId+'&state='+((aStates[sDevId] == "off") ? "on" : "off"));
 					window.setTimeout(function() { bSending = false; }, 1000);
 				}
 			}
@@ -368,16 +377,21 @@ function createScreenElement(sTabId, sDevId, aValues) {
 				if(i==2)
 					window.clearInterval(x);
 			}, 100);
-			if('all' in aValues && aValues['all'] == 1) {
-				var json = '{"action":"control","code":{"device":"'+sDevId+'","state":"'+this.value+'","values":{"all": 1}}}';
-			} else {
-				var json = '{"action":"control","code":{"device":"'+sDevId+'","state":"'+this.value+'"}}'
-			}
+
 			if(oWebsocket) {
+				if('all' in aValues && aValues['all'] == 1) {
+					var json = '{"action":"control","code":{"device":"'+sDevId+'","state":"'+this.value+'","values":{"all": 1}}}';
+				} else {
+					var json = '{"action":"control","code":{"device":"'+sDevId+'","state":"'+this.value+'"}}'
+				}
 				oWebsocket.send(json);
 			} else {
 				bSending = true;
-				$.get(sHTTPProtocol+'://'+location.host+'/send?'+encodeURIComponent(json)+'&'+$.now());
+				if('all' in aValues && aValues['all'] == 1) {
+					$.get(sHTTPProtocol+'://'+location.host+'/control/control?device='+sDevId+'&state='+this.value+'&values[all]=1');
+				} else {
+					$.get(sHTTPProtocol+'://'+location.host+'/control?device='+sDevId+'&state='+this.value);
+				}
 				window.setTimeout(function() { bSending = false; }, 1000);
 			}
 		});
@@ -400,16 +414,21 @@ function createScreenElement(sTabId, sDevId, aValues) {
 				if(i==2)
 					window.clearInterval(x);
 			}, 100);
-			if('all' in aValues && aValues['all'] == 1) {
-				var json = '{"action":"control","code":{"device":"'+sDevId+'","state":"'+this.value+'","values":{"all": 1}}}';
-			} else {
-				var json = '{"action":"control","code":{"device":"'+sDevId+'","state":"'+this.value+'"}}'
-			}
+
 			if(oWebsocket) {
+				if('all' in aValues && aValues['all'] == 1) {
+					var json = '{"action":"control","code":{"device":"'+sDevId+'","state":"'+this.value+'","values":{"all": 1}}}';
+				} else {
+					var json = '{"action":"control","code":{"device":"'+sDevId+'","state":"'+this.value+'"}}'
+				}
 				oWebsocket.send(json);
 			} else {
 				bSending = true;
-				$.get(sHTTPProtocol+'://'+location.host+'/send?'+encodeURIComponent(json)+'&'+$.now());
+				if('all' in aValues && aValues['all'] == 1) {
+					$.get(sHTTPProtocol+'://'+location.host+'/control?device='+sDevId+'&state='+this.value+'&values[all]=1');
+				} else {
+					$.get(sHTTPProtocol+'://'+location.host+'/control?device='+sDevId+'&state='+this.value);
+				}
 				window.setTimeout(function() { bSending = false; }, 1000);
 			}
 		});
@@ -450,16 +469,21 @@ function createDimmerElement(sTabId, sDevId, aValues) {
 					return false;
 				}
 			}
-			if('all' in aValues && aValues['all'] == 1) {
-				var json = '{"action":"control","code":{"device":"'+sDevId+'","state":"'+this.value+'","values":{"all": 1}}}';
-			} else {
-				var json = '{"action":"control","code":{"device":"'+sDevId+'","state":"'+this.value+'"}}';
-			}
+
 			if(oWebsocket) {
+				if('all' in aValues && aValues['all'] == 1) {
+					var json = '{"action":"control","code":{"device":"'+sDevId+'","state":"'+this.value+'","values":{"all": 1}}}';
+				} else {
+					var json = '{"action":"control","code":{"device":"'+sDevId+'","state":"'+this.value+'"}}';
+				}
 				oWebsocket.send(json);
 			} else {
 				bSending = true;
-				$.get(sHTTPProtocol+'://'+location.host+'/send?'+encodeURIComponent(json)+'&'+$.now());
+				if('all' in aValues && aValues['all'] == 1) {
+					$.get(sHTTPProtocol+'://'+location.host+'/control?device='+sDevId+'&state='+this.value+'&values[all]=1');
+				} else {
+					$.get(sHTTPProtocol+'://'+location.host+'/control?device='+sDevId+'&state='+this.value);
+				}
 				window.setTimeout(function() { bSending = false; }, 1000);
 			}
 		});
@@ -478,12 +502,12 @@ function createDimmerElement(sTabId, sDevId, aValues) {
 					aDimLevel[sDevId] = this.value;
 					$('#'+sDevId+'_switch')[0].selectedIndex = 1;
 					$('#'+sDevId+'_switch').slider('refresh');
-					var json = '{"action":"control","code":{"device":"'+sDevId+'","state":"on","values":{"dimlevel":'+this.value+'}}}';
 					if(oWebsocket) {
+						var json = '{"action":"control","code":{"device":"'+sDevId+'","state":"on","values":{"dimlevel":'+this.value+'}}}';
 						oWebsocket.send(json);
 					} else {
 						bSending = true;
-						$.get(sHTTPProtocol+'://'+location.host+'/send?'+encodeURIComponent(json)+'&'+$.now());
+						$.get(sHTTPProtocol+'://'+location.host+'/control?device='+sDevId+'&state=on&values[dimlevel]='+this.value);
 						window.setTimeout(function() { bSending = false; }, 1000);
 					}
 				}
@@ -535,12 +559,12 @@ function createWeatherElement(sTabId, sDevId, aValues) {
 			oTab.find('#'+sDevId+'_weather').append($('<div class="update_inactive" id="'+sDevId+'_upd" title="'+language.update+'">&nbsp;</div>'));
 			$('#'+sDevId+'_upd').click(function() {
 				if(this.className.indexOf('update_active') == 0) {
-					var json = '{"action":"control","code":{"device":"'+sDevId+'","values":{"update":1}}}';
 					if(oWebsocket) {
+						var json = '{"action":"control","code":{"device":"'+sDevId+'","values":{"update":1}}}';
 						oWebsocket.send(json);
 					} else {
 						bSending = true;
-						$.get(sHTTPProtocol+'://'+location.host+'/send?'+encodeURIComponent(json)+'&'+$.now());
+						$.get(sHTTPProtocol+'://'+location.host+'/control?device='+sDevId+'&values[update]=1');
 						window.setTimeout(function() { bSending = false; }, 1000);
 					}
 				}
@@ -1114,7 +1138,9 @@ function parseData(data) {
 			}
 			updateVersions();
 		}
-		oWebsocket.send("{\"action\":\"request values\"}");
+		if(oWebsocket) {
+			oWebsocket.send("{\"action\":\"request values\"}");
+		}
 	} else if(data.hasOwnProperty("origin")) {
 		if(data['origin'] == "update") {
 			parseValues(data);
