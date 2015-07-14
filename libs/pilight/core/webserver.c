@@ -37,6 +37,7 @@
 #endif
 
 #include "../config/settings.h"
+#include "../config/registry.h"
 #include "threads.h"
 #include "sha256cache.h"
 #include "pilight.h"
@@ -219,9 +220,9 @@ static int webserver_parse_rest(struct mg_connection *conn) {
 		char state[16], *p = NULL;
 		a = explode((char *)decoded, "&", &array), b = 0, c = 0;
 		memset(state, 0, 16);
-
+	
 		if(a > 1) {
-			int type = 0; //0 = SEND, 1 = CONTROL
+			int type = 0; //0 = SEND, 1 = CONTROL, 2 = REGISTRY
 			json_append_member(jobject, "code", jcode);
 
 			if(strcmp(conn->uri, "/send") == 0) {
@@ -230,6 +231,9 @@ static int webserver_parse_rest(struct mg_connection *conn) {
 			} else if(strcmp(conn->uri, "/control") == 0) {
 				type = 1;
 				json_append_member(jobject, "action", json_mkstring("control"));
+			} else if(strcmp(conn->uri, "/registry") == 0) {
+				type = 2;
+				json_append_member(jobject, "action", json_mkstring("registry"));
 			}
 
 			for(b=0;b<a;b++) {
@@ -269,6 +273,7 @@ static int webserver_parse_rest(struct mg_connection *conn) {
 				}
 				array_free(&array1, c);
 			}
+
 			if(type == 0) {
 				if(has_protocol == 0) {
 					char *z = "{\"message\":\"failed\",\"error\":\"no protocol was send\"}";
@@ -299,6 +304,105 @@ static int webserver_parse_rest(struct mg_connection *conn) {
 						}
 					}
 				}
+			} else if(type == 2) {
+				struct JsonNode *value = NULL;
+				char *type = NULL;
+				char *key = NULL;
+				char *sval = NULL;
+				double nval = 0.0;
+				int dec = 0;
+				if(json_find_string(jcode, "type", &type) != 0) {
+					logprintf(LOG_ERR, "client did not send a type of action");
+					char *z = "{\"message\":\"failed\",\"error\":\"client did not send a type of action\"}";
+					mg_send_data(conn, z, strlen(z));
+					goto clear2;
+				} else {
+					if(strcmp(type, "set") == 0) {
+						if(json_find_string(jcode, "key", &key) != 0) {
+							logprintf(LOG_ERR, "client did not send a registry key");
+							char *z = "{\"message\":\"failed\",\"error\":\"client did not send a registry key\"}";
+							mg_send_data(conn, z, strlen(z));
+							goto clear2;
+						} else if((value = json_find_member(jcode, "value")) == NULL) {
+							logprintf(LOG_ERR, "client did not send a registry value");
+							char *z = "{\"message\":\"failed\",\"error\":\"client did not send a registry value\"}";
+							mg_send_data(conn, z, strlen(z));
+							goto clear2;
+						} else {
+							if(value->tag == JSON_NUMBER) {
+								if(registry_set_number(key, value->number_, value->decimals_) == 0) {
+									char *z = "{\"message\":\"success\"}";
+									mg_send_data(conn, z, strlen(z));
+									goto clear2;
+								} else {
+									char *z = "{\"message\":\"failed\"}";
+									mg_send_data(conn, z, strlen(z));
+									goto clear2;
+								}
+							} else if(value->tag == JSON_STRING) {
+								if(registry_set_string(key, value->string_) == 0) {
+									char *z = "{\"message\":\"success\"}";
+									mg_send_data(conn, z, strlen(z));
+									goto clear2;
+								} else {
+									char *z = "{\"message\":\"failed\"}";
+									mg_send_data(conn, z, strlen(z));
+									goto clear2;
+								}
+							} else {
+								logprintf(LOG_ERR, "registry value can only be a string or number");
+								char *z = "{\"message\":\"failed\",\"error\":\"registry value can only be a string or number\"}";
+								mg_send_data(conn, z, strlen(z));
+								goto clear2;
+							}
+						}
+					} else if(strcmp(type, "remove") == 0) {
+						if(json_find_string(jcode, "key", &key) != 0) {
+							logprintf(LOG_ERR, "client did not send a registry key");
+							char *z = "{\"message\":\"failed\",\"error\":\"client did not send a registry key\"}";
+							mg_send_data(conn, z, strlen(z));
+							goto clear2;
+						} else {
+							if(registry_remove_value(key) == 0) {
+								char *z = "{\"message\":\"success\"}";
+								mg_send_data(conn, z, strlen(z));
+								goto clear2;
+							} else {
+								char *z = "{\"message\":\"failed\"}";
+								mg_send_data(conn, z, strlen(z));
+								goto clear2;
+							}
+						}
+					} else if(strcmp(type, "get") == 0) {
+						if(json_find_string(jcode, "key", &key) != 0) {
+							logprintf(LOG_ERR, "client did not send a registry key");
+							char *z = "{\"message\":\"failed\",\"error\":\"client did not send a registry key\"}";
+							mg_send_data(conn, z, strlen(z));
+							goto clear2;
+						} else {
+							if(registry_get_number(key, &nval, &dec) == 0) {
+								char *out = NULL;
+								int len = snprintf(NULL, 0, "%*.f", dec, nval);
+								if((out = MALLOC(len+1)) == NULL) {
+									fprintf(stderr, "out of memory\n");
+									exit(EXIT_FAILURE);
+								}
+								snprintf(out, len, "%*.f", dec, nval);
+								mg_send_data(conn, out, len);
+								FREE(out);
+								goto clear2;
+							} else if(registry_get_string(key, &sval) == 0) {
+								mg_send_data(conn, sval, strlen(sval));
+								goto clear2;
+							} else {
+								logprintf(LOG_ERR, "registry key '%s' doesn't exists", key);
+								char *z = "{\"message\":\"failed\",\"error\":\"registry key doesn't exists\"}";
+								mg_send_data(conn, z, strlen(z));
+								goto clear2;
+							}
+						}
+					}
+				}			
 			}
 			json_delete(jvalues);
 			json_delete(jobject);
@@ -362,7 +466,7 @@ static int webserver_request_handler(struct mg_connection *conn) {
 				return MG_MORE;
 			}
 		} else if(conn->uri != NULL) {
-			if(strcmp(conn->uri, "/send") == 0 || strcmp(conn->uri, "/control") == 0) {
+			if(strcmp(conn->uri, "/send") == 0 || strcmp(conn->uri, "/control") == 0 || strcmp(conn->uri, "/registry") == 0) {
 				return webserver_parse_rest(conn);
 			} else if(strcmp(conn->uri, "/config") == 0) {
 				char media[15];

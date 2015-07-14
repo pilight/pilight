@@ -132,23 +132,31 @@ function alphaNum(string) {
 var iLatestTap1 = 0;
 var iLatestTap2 = 0;
 
-/*
- * FIXME
- */
 function toggleTabs() {
-	if(bShowTabs) {
-		var json = '{"action":"registry","type":"set","key":"webgui.tabs","value":0}';
-	} else {
-		var json = '{"action":"registry","type":"set","key":"webgui.tabs","value":1}';
-	}
 	if(oWebsocket) {
+		if(bShowTabs) {
+			var json = '{"action":"registry","type":"set","key":"webgui.tabs","value":0}';
+		} else {
+			var json = '{"action":"registry","type":"set","key":"webgui.tabs","value":1}';
+		}
 		oWebsocket.send(json);
+		document.location = document.location;
 	} else {
 		bSending = true;
-		$.get(sHTTPProtocol+'://'+location.host+'/send?'+encodeURIComponent(json)+'&'+$.now());
-		window.setTimeout(function() { bSending = false; }, 1000);
+		if(bShowTabs) {
+			$.get(sHTTPProtocol+'://'+location.host+'/registry?type=set&key=webgui.tabs&value=0');
+		} else {
+			$.get(sHTTPProtocol+'://'+location.host+'/registry?type=set&key=webgui.tabs&value=1');
+		}
+		$.mobile.loading('show', {
+			'text': '',
+			'textVisible': true,
+			'theme': 'b'
+		});		
+		window.setTimeout(function() {
+			document.location = document.location;
+		}, 1000);
 	}
-	document.location = document.location;
 }
 
 $(document).click(function(e) {
