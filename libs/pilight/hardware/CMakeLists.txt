@@ -11,6 +11,8 @@ if(${MODULESPACK} MATCHES "OFF" OR WIN32)
 		list(REMOVE_ITEM ${PROJECT_NAME}_headers "${PROJECT_SOURCE_DIR}/433gpio.h")
 		list(REMOVE_ITEM ${PROJECT_NAME}_sources "${PROJECT_SOURCE_DIR}/433lirc.c")
 		list(REMOVE_ITEM ${PROJECT_NAME}_headers "${PROJECT_SOURCE_DIR}/433lirc.h")
+		list(REMOVE_ITEM ${PROJECT_NAME}_sources "${PROJECT_SOURCE_DIR}/IRgpio.c")
+		list(REMOVE_ITEM ${PROJECT_NAME}_headers "${PROJECT_SOURCE_DIR}/IRgpio.h")
 	endif()
 	
 	if(${ZWAVE} MATCHES "OFF")

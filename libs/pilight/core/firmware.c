@@ -67,6 +67,20 @@
 #include "common.h"
 #include "log.h"
 
+/*
+
+pgm_bits:				pgm_enable
+read_bits:			memory signature - read
+chip_erase:			chip_erase
+writepage_bits:	memory flash - writepage
+...
+*/
+ 
+#ifdef _WIN32
+	static int baudrate = 57600;
+#else
+	static int baudrate = B57600;
+#endif
 static int mptype = FW_MP_UNKNOWN;
 static char comport[255];
 
@@ -164,6 +178,101 @@ static void firmware_atmega328p(struct avrpart **p) {
 	(*p)->hfusemem->op[AVR_OP_WRITE] = avr_new_opcode();
 	parse_cmdbits((*p)->hfusemem->op[AVR_OP_WRITE], hfusewrite_bits);
 }
+
+// static void firmware_atmega32u4(struct avrpart **p) {
+	// logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
+	// char pgm_bits[] = "1 0 1 0 1 1 0 0 0 1 0 1 0 0 1 1 x x x x x x x x x x x x x x x x";
+	// char read_bits[] = "0 0 1 1 0 0 0 0 x x x x x x x x x x x x x x a1 a0 o o o o o o o o";
+	// char erase_bits[] = "1 0 1 0 1 1 0 0 1 0 0 0 0 0 0 0 x x x x x x x x x x x x x x x x";
+	// char writepage_bits[] = "0 1 0 0 1 1 0 0 a15 a14 a13 a12 a11 a10 a9 a8 a7 a6 x x x x x x x x x x x x x x";
+	// char readlo_bits[] = "0 0 1 0 0 0 0 0 0 a14 a13 a12 a11 a10 a9 a8 a7 a6 a5 a4 a3 a2 a1 a0 o o o o o o o o";
+	// char readhigh_bits[] = "0 0 1 0 1 0 0 0 0 a14 a13 a12 a11 a10 a9 a8 a7 a6 a5 a4 a3 a2 a1 a0 o o o o o o o o";
+	// char loadpagelo_bits[] = "0 1 0 0 0 0 0 0 x x x x x x x x x x a5 a4 a3 a2 a1 a0 i i i i i i i i";
+	// char loadpagehigh_bits[] = "0 1 0 0 1 0 0 0 0 0 0 x x x x x x x a5 a4 a3 a2 a1 a0 i i i i i i i i";
+	// char lfuseread_bits[] = "0 1 0 1 0 0 0 0 0 0 0 0 0 0 0 0 x x x x x x x x o o o o o o o o";
+	// char lfusewrite_bits[] = "1 0 1 0 1 1 0 0 1 0 1 0 0 0 0 0 x x x x x x x x i i i i i i i i";
+	// char hfuseread_bits[] = "0 1 0 1 1 0 0 0 0 0 0 0 1 0 0 0 x x x x x x x x o o o o o o o o";
+	// char hfusewrite_bits[] = "1 0 1 0 1 1 0 0 1 0 1 0 1 0 0 0 x x x x x x x x i i i i i i i i";
+
+	// *p = avr_new_part();
+	// strcpy((*p)->id, "m32u4");
+	// strcpy((*p)->desc, "ATmega32U4");
+
+	// (*p)->signature[0] = 0x1e;
+	// (*p)->signature[1] = 0x95;
+	// (*p)->signature[2] = 0x87;
+
+	// (*p)->op[AVR_OP_PGM_ENABLE] = avr_new_opcode();
+	// parse_cmdbits((*p)->op[AVR_OP_PGM_ENABLE], pgm_bits);
+
+	// (*p)->op[AVR_OP_CHIP_ERASE] = avr_new_opcode();
+	// parse_cmdbits((*p)->op[AVR_OP_CHIP_ERASE], erase_bits);
+
+	// (*p)->sigmem = avr_new_memtype();
+	// strcpy((*p)->sigmem->desc, "signature");
+	// (*p)->sigmem->size = 3;
+	// (*p)->sigmem->buf = MALLOC((size_t)(*p)->sigmem->size+(size_t)1);
+	// (*p)->sigmem->op[AVR_OP_READ] = avr_new_opcode();
+	// parse_cmdbits((*p)->sigmem->op[AVR_OP_READ], read_bits);
+
+	// (*p)->flashmem = avr_new_memtype();
+	// strcpy((*p)->flashmem->desc, "flash");
+
+	// (*p)->flashmem->paged = 1;
+	// (*p)->flashmem->size = 32768;
+	// (*p)->flashmem->page_size = 128;
+	// (*p)->flashmem->num_pages = 256;
+	// (*p)->flashmem->min_write_delay = 4500;
+	// (*p)->flashmem->max_write_delay = 4500;
+	// (*p)->flashmem->readback[0] = 0x00;
+	// (*p)->flashmem->readback[1] = 0x00;
+
+	// (*p)->flashmem->op[AVR_OP_WRITEPAGE] = avr_new_opcode();
+	// parse_cmdbits((*p)->flashmem->op[AVR_OP_WRITEPAGE], writepage_bits);
+
+	// (*p)->flashmem->op[AVR_OP_READ_LO] = avr_new_opcode();
+	// parse_cmdbits((*p)->flashmem->op[AVR_OP_READ_LO], readlo_bits);
+
+	// (*p)->flashmem->op[AVR_OP_READ_HI] = avr_new_opcode();
+	// parse_cmdbits((*p)->flashmem->op[AVR_OP_READ_HI], readhigh_bits);
+
+	// (*p)->flashmem->op[AVR_OP_LOADPAGE_LO] = avr_new_opcode();
+	// parse_cmdbits((*p)->flashmem->op[AVR_OP_LOADPAGE_LO], loadpagelo_bits);
+
+	// (*p)->flashmem->op[AVR_OP_LOADPAGE_HI] = avr_new_opcode();
+	// parse_cmdbits((*p)->flashmem->op[AVR_OP_LOADPAGE_HI], loadpagehigh_bits);
+
+	// (*p)->lfusemem = avr_new_memtype();
+	// strcpy((*p)->lfusemem->desc, "lfuse");
+
+	// (*p)->lfusemem->size = 1;
+	// (*p)->lfusemem->buf = MALLOC((size_t)(*p)->lfusemem->size+(size_t)1);
+
+	// (*p)->lfusemem->min_write_delay = 9000;
+	// (*p)->lfusemem->max_write_delay = 9000;
+
+	// (*p)->lfusemem->op[AVR_OP_READ] = avr_new_opcode();
+	// parse_cmdbits((*p)->lfusemem->op[AVR_OP_READ], lfuseread_bits);
+
+	// (*p)->lfusemem->op[AVR_OP_WRITE] = avr_new_opcode();
+	// parse_cmdbits((*p)->lfusemem->op[AVR_OP_WRITE], lfusewrite_bits);
+
+	// (*p)->hfusemem = avr_new_memtype();
+	// strcpy((*p)->hfusemem->desc, "hfuse");
+
+	// (*p)->hfusemem->size = 1;
+	// (*p)->hfusemem->buf = MALLOC((size_t)(*p)->hfusemem->size+(size_t)1);
+
+	// (*p)->hfusemem->min_write_delay = 9000;
+	// (*p)->hfusemem->max_write_delay = 9000;
+
+	// (*p)->hfusemem->op[AVR_OP_READ] = avr_new_opcode();
+	// parse_cmdbits((*p)->hfusemem->op[AVR_OP_READ], hfuseread_bits);
+
+	// (*p)->hfusemem->op[AVR_OP_WRITE] = avr_new_opcode();
+	// parse_cmdbits((*p)->hfusemem->op[AVR_OP_WRITE], hfusewrite_bits);
+// }
 
 static void firmware_attiny25(struct avrpart **p) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
@@ -471,9 +580,9 @@ static void firmware_init_pgm(PROGRAMMER **pgm) {
 #endif
 		arduino_initpgm(*pgm);
 #ifdef _WIN32
-		(*pgm)->baudrate = 57600;
+		(*pgm)->baudrate = baudrate;
 #else
-		(*pgm)->baudrate = B57600;
+		(*pgm)->baudrate = baudrate;
 	}
 #endif
 	if((*pgm)->setup) {
@@ -554,6 +663,11 @@ static int firmware_identifymp(struct avrpart **p) {
    * against 0xffffff / 0x000000 should ensure that the signature bytes
    * are valid.
    */
+	int attempt = 0;
+	int waittime = 10000;       /* 10 ms */
+
+sig_again:	 
+	usleep(waittime);
 	if(init_ok) {
 		if(avr_signature(pgm, *p) != 0) {
 			exitrc = FW_RD_SIG_FAIL;
@@ -574,6 +688,10 @@ static int firmware_identifymp(struct avrpart **p) {
 		}
 
 		if(ff == 1 || zz == 1) {
+			if(++attempt < 3) {
+				waittime *= 5;
+        goto sig_again;
+			}
 			exitrc = FW_INV_SIG_FAIL;
 			goto main_exit;
 		}
@@ -1036,8 +1154,31 @@ int firmware_getmp(char *port) {
 	unsigned int match = 0;
 
 	logprintf(LOG_INFO, "Indentifying microprocessor");
+	/*
+	mptype = FW_MP_ATMEL32U4;
+	firmware_atmega32u4(&p);
+	if(!match && firmware_identifymp(&p) != 0) {
+		logprintf(LOG_INFO, "Not an ATMega32u4");
+		mptype = FW_MP_ATMEL328P;
+		firmware_atmega328p(&p);	
+		match = 0;
+	} else {
+		return mptype;
+	}*/
 	mptype = FW_MP_ATMEL328P;
+	baudrate = 115200;
 	firmware_atmega328p(&p);
+	logprintf(LOG_INFO, "Checking for an ATMega328P @%d", baudrate);
+	if(!match && firmware_identifymp(&p) != 0) {
+		logprintf(LOG_INFO, "Not an ATMega328P");
+		mptype = FW_MP_ATMEL328P;
+		match = 0;
+		firmware_atmega328p(&p);
+	} else {
+		return mptype;
+	}
+	baudrate = 57600;
+	logprintf(LOG_INFO, "Checking for an ATMega328P @%d", baudrate);
 	if(!match && firmware_identifymp(&p) != 0) {
 		logprintf(LOG_INFO, "Not an ATMega328P");
 		mptype = FW_MP_ATTINY25;
@@ -1045,8 +1186,8 @@ int firmware_getmp(char *port) {
 		firmware_attiny25(&p);
 	} else {
 		return mptype;
-	}
-	firmware_attiny25(&p);
+	}	
+	logprintf(LOG_INFO, "Checking for an ATTiny25 @%d", baudrate);
 	if(!match && firmware_identifymp(&p) != 0) {
 		logprintf(LOG_INFO, "Not an ATTiny45");
 		mptype = FW_MP_ATTINY45;
@@ -1055,6 +1196,7 @@ int firmware_getmp(char *port) {
 	} else {
 		return mptype;
 	}
+	logprintf(LOG_INFO, "Checking for an ATTiny45 @%d", baudrate);
 	if(!match && firmware_identifymp(&p) != 0) {
 		logprintf(LOG_INFO, "Not an ATTiny85");
 		mptype = FW_MP_ATTINY85;
@@ -1063,6 +1205,7 @@ int firmware_getmp(char *port) {
 	} else {
 		return mptype;
 	}
+	logprintf(LOG_INFO, "Checking for an ATTiny85 @%d", baudrate);
 	if(!match && firmware_identifymp(&p) != 0) {
 		mptype = FW_MP_UNKNOWN;
 		logprintf(LOG_ERR, "AVR unknown");

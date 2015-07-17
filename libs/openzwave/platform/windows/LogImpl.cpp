@@ -27,6 +27,8 @@
 //-----------------------------------------------------------------------------
 #include <windows.h>
 #include <list>
+#include <sys/time.h>
+#include <time.h>
 
 #include "../../Defs.h"
 #include "LogImpl.h"

@@ -61,24 +61,8 @@ static int mingaplen = 10000;
 
 #ifdef _WIN32
 static HANDLE serial_433_fd;
-static unsigned short nrports = 16;
-static char comports[16][10]={"COM1",  "COM2",  "COM3",  "COM4",
-                       "COM5",  "COM6",  "COM7",  "COM8",
-                       "COM9",  "COM10", "COM11", "COM12",
-                       "COM13", "COM14", "COM15", "COM16"};
 #else
 static int serial_433_fd = 0;
-static unsigned short nrports = 44;
-static char comports[44][16]={"/dev/ttyS0","/dev/ttyS1","/dev/ttyS2","/dev/ttyS3","/dev/ttyS4","/dev/ttyS5",
-                       "/dev/ttyS6","/dev/ttyS7","/dev/ttyS8","/dev/ttyS9","/dev/ttyS10","/dev/ttyS11",
-                       "/dev/ttyS12","/dev/ttyS13","/dev/ttyS14","/dev/ttyS15","/dev/ttyUSB0",
-                       "/dev/ttyUSB1","/dev/ttyUSB2","/dev/ttyUSB3","/dev/ttyUSB4","/dev/ttyUSB5",
-                       "/dev/ttyAMA0","/dev/ttyAMA1","/dev/ttyACM0","/dev/ttyACM1",
-                       "/dev/rfcomm0","/dev/rfcomm1","/dev/ircomm0","/dev/ircomm1",
-                       "/dev/cuau0","/dev/cuau1","/dev/cuau2","/dev/cuau3",
-                       "/dev/cuaU0","/dev/cuaU1","/dev/cuaU2","/dev/cuaU3",
-											 "/dev/ttymxc0", "/dev/ttymxc1", "/dev/ttymxc2",
-											 "/dev/ttymxc3", "/dev/ttymxc4", "/dev/ttymxc5"};
 static int nano_433_initialized = 0;
 #endif
 
@@ -449,15 +433,10 @@ static int nano433Receive(struct rawcode_t *r) {
 }
 
 static unsigned short nano433Settings(JsonNode *json) {
-	int i = 0;
 	if(strcmp(json->key, "comport") == 0) {
 		if(json->tag == JSON_STRING) {
-			for(i=0;i<nrports;i++) {
-				if(strcmp(comports[i], json->string_) == 0) {
-					strcpy(com, json->string_);
-					return EXIT_SUCCESS;
-				}
-			}
+			strcpy(com, json->string_);
+			return EXIT_SUCCESS;
 		}
 		return EXIT_FAILURE;
 	}
@@ -485,7 +464,7 @@ void nano433Init(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "433nano";
-	module->version = "1.1";
+	module->version = "1.2";
 	module->reqversion = "7.0";
 	module->reqcommit = "10";
 }
