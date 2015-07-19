@@ -1,5 +1,5 @@
 /*
-	Copyright (C) 2014 CurlyMo and Edak (the author of this file)
+	Copyright (C) 2014 CurlyMo
 
 	This file is part of pilight.
 
@@ -36,27 +36,13 @@
 #define AVG_PULSE_LENGTH	284
 #define RAW_LENGTH				96
 
-
-// Message format for the kambrook power adaptors is  as follows:
-//	01010101 IIIIIIII IIIIIIII IIIIIIII CCCCCCCC 11111111
-//	Where:
-//		01010101 = start of message
-//		I = Device ID (A 24-bit number normally unique per pack of three switches and hardcoded in the remote contoller)
-//		C = Device Code (a combination of the Unit code and the state code)
-//		11111111 = end of message
-//
-//	The Unit code corresponds to the letters and numbers on the original remote, where A1=1, A5=5, B1=6, ... ,D5=20
-// 	To keep the code to a minimum only 16 bits were used for the device ID, the remainder are zeroed, this is also because I have never seen a remote with a code this high
-
-
 static int validate(void) {
 	if(kambrook->rawlen == RAW_LENGTH) {
 		if(kambrook->raw[kambrook->rawlen-1] >= (MIN_PULSE_LENGTH*PULSE_DIV) &&
-		   kambrook->raw[kambrook->rawlen-1] <= (MAX_PULSE_LENGTH*PULSE_DIV)) {
+			kambrook->raw[kambrook->rawlen-1] <= (MAX_PULSE_LENGTH*PULSE_DIV)) {
 			return 0;
 		}
 	}
-
 	return -1;
 }
 
@@ -71,84 +57,75 @@ static void createMessage(int id, int unit, int state) {
 	}
 }
 
-
 static void createLow(int s, int e) {
 	int i;
-
 	for(i=s;i<=e;i+=2) {
 		kambrook->raw[i]=(AVG_PULSE_LENGTH);
 		kambrook->raw[i+1]=(AVG_PULSE_LENGTH);
 	}
-
 }
 
 static void createHigh(int s, int e) {
 	int i;
-
 	for(i=s;i<=e;i+=2) {
 		kambrook->raw[i]=(PULSE_MULTIPLIER*AVG_PULSE_LENGTH);
 		kambrook->raw[i+1]=(AVG_PULSE_LENGTH);
 	}
 }
+
 static void clearCode(void) {
 	createLow(0,94);
 }
 
 static void createHeader(void){
-        int i;
-        for(i=2;i<16;i+=4) {
-                createHigh(i,i+1);
-        }
+	int i;
+	for(i=2;i<16;i+=4) {
+		createHigh(i,i+1);
+	}
 }
 
 static void createId(int id) {
-        int binary[255];
-        int length = 0;
-        int i=0, x=0;
-
-        length = decToBinRev(id, binary);
+	int binary[255];
+	int length = 0;
+	int i=0, x=0;
+	length = decToBinRev(id, binary);
 	for(i=0;i<=length;i++) {
-                if(binary[i]==1) {
-                        x=i*2;
-                        createHigh(62-x,62-x+1);
-                }
-        }
+		if(binary[i]==1) {
+			x=i*2;
+			createHigh(62-x,62-x+1);
+		}
+	}
 }
 
 static void createFooter(void) {
-        createHigh(80,94);
-        kambrook->raw[95]=(PULSE_DIV*AVG_PULSE_LENGTH);
+	createHigh(80,94);
+	kambrook->raw[95]=(PULSE_DIV*AVG_PULSE_LENGTH);
 }
 
 static void createOverallCode(int unit, int state) {
-        int binary[255];
-        int length = 0;
-        int i=0, x=0;
+	int binary[255];
+	int length = 0;
+	int i=0, x=0;
 	int overallcode=0;
-
 	while(unit>5) {
 		overallcode+=16;
 		unit-=5;
 	}
 	overallcode+=(unit*2)-1+state;
-
-        length = decToBinRev(overallcode, binary);
-        for(i=0;i<=length;i++) {
-                if(binary[i]==1) {
-                        x=i*2;
-                        createHigh(78-x, 78-x+1);
-                }
-        }
+	length = decToBinRev(overallcode, binary);
+	for(i=0;i<=length;i++) {
+		if(binary[i]==1) {
+			x=i*2;
+			createHigh(78-x, 78-x+1);
+		}
+	}
 }
-
-
 
 static int createCode(struct JsonNode *code) {
 	int id = -1;
 	int unit = -1;
 	int state = -1;
 	double itmp = 0;
-
 	if(json_find_number(code, "id", &itmp) == 0)
 		id = (int)round(itmp);
 	if(json_find_number(code, "unit", &itmp) == 0)
@@ -157,7 +134,6 @@ static int createCode(struct JsonNode *code) {
 		state=1;
 	else if(json_find_number(code, "on", &itmp) == 0)
 		state=0;
-
 	if(id == -1 || unit == -1 || state == -1) {
 		logprintf(LOG_ERR, "kambrook: insufficient number of arguments");
 		return EXIT_FAILURE;
@@ -170,27 +146,27 @@ static int createCode(struct JsonNode *code) {
 	} else {
 		createMessage(id, unit, state);
 		clearCode();
-        createHeader();
-        createId(id);
-        createOverallCode(unit,state);
-        createFooter();
+		createHeader();
+		createId(id);
+		createOverallCode(unit,state);
+		createFooter();
 		kambrook->rawlen = RAW_LENGTH;
 	}
 	return EXIT_SUCCESS;
 }
 
 static void printHelp(void) {
-        printf("\t -i --id=id\tcontrol a device with this id (id) (1-29999)\n");
-        printf("\t -u --unit=unit\t\tcontrol a device with this unit (1-19)\n");
-        printf("\t -t --on\t\t\tsend an on signal\n");
-        printf("\t -f --off\t\t\tsend an off signal\n");
+		printf("\t -i --id=id\tcontrol a device with this id (id) (1-29999)\n");
+		printf("\t -u --unit=unit\t\tcontrol a device with this unit (1-19)\n");
+		printf("\t -t --on\t\t\tsend an on signal\n");
+		printf("\t -f --off\t\t\tsend an off signal\n");
 }
 
 #if !defined(MODULE) && !defined(_WIN32)
 __attribute__((weak))
 #endif
-void kambrookInit(void) {
 
+void kambrookInit(void) {
 	protocol_register(&kambrook);
 	protocol_set_id(kambrook, "kambrook");
 	protocol_device_add(kambrook, "kambrook", "kambrook Switches");
@@ -200,17 +176,14 @@ void kambrookInit(void) {
 	kambrook->maxrawlen = RAW_LENGTH;
 	kambrook->maxgaplen = MAX_PULSE_LENGTH*PULSE_DIV;
 	kambrook->mingaplen = MIN_PULSE_LENGTH*PULSE_DIV;
-
 	options_add(&kambrook->options, 'i', "id", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^(([0-2][0-9][0-9][0-9][0-9])|\\d{4}|\\d{3}|\\d{2}|[1-9])$");
 	options_add(&kambrook->options, 'u', "unit", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^([0-1]?[0-9])$");
 	options_add(&kambrook->options, 't', "on", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
 	options_add(&kambrook->options, 'f', "off", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
-
 	options_add(&kambrook->options, 0, "readonly", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 	options_add(&kambrook->options, 0, "confirm", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
-
 	kambrook->createCode=&createCode;
-    kambrook->printHelp=&printHelp;
+	kambrook->printHelp=&printHelp;
 	kambrook->validate=&validate;
 }
 
@@ -225,4 +198,5 @@ void compatibility(struct module_t *module) {
 void init(void) {
 	kambrookInit();
 }
+
 #endif
