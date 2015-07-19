@@ -31,7 +31,7 @@
 #include "arctech_contact.h"
 
 #define PULSE_MULTIPLIER	4
-#define MIN_PULSE_LENGTH	290
+#define MIN_PULSE_LENGTH	250
 #define MAX_PULSE_LENGTH	320
 #define AVG_PULSE_LENGTH	300
 #define MIN_RAW_LENGTH		132
@@ -116,7 +116,7 @@ void arctechContactInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "arctech_contact";
-	module->version = "2.0";
+	module->version = "2.1";
 	module->reqversion = "6.0";
 	module->reqcommit = "38";
 }

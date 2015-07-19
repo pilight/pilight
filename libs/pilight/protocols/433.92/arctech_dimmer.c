@@ -33,7 +33,7 @@
 #define LEARN_REPEATS			40
 #define NORMAL_REPEATS		10
 #define PULSE_MULTIPLIER	4
-#define MIN_PULSE_LENGTH	275
+#define MIN_PULSE_LENGTH	250
 #define MAX_PULSE_LENGTH	320
 #define AVG_PULSE_LENGTH	300
 #define RAW_LENGTH				148
@@ -339,7 +339,7 @@ void arctechDimmerInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "arctech_dimmer";
-	module->version = "3.2";
+	module->version = "3.3";
 	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }

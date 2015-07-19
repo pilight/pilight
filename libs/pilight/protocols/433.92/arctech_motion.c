@@ -30,7 +30,7 @@
 #include "arctech_motion.h"
 
 #define PULSE_MULTIPLIER	3
-#define MIN_PULSE_LENGTH	274
+#define MIN_PULSE_LENGTH	250
 #define MAX_PULSE_LENGTH	284
 #define AVG_PULSE_LENGTH	279
 #define RAW_LENGTH				132
@@ -109,7 +109,7 @@ void arctechMotionInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "arctech_motion";
-	module->version = "2.0";
+	module->version = "2.1";
 	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }

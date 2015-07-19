@@ -30,7 +30,7 @@
 #include "arctech_dusk.h"
 
 #define PULSE_MULTIPLIER	3
-#define MIN_PULSE_LENGTH	272
+#define MIN_PULSE_LENGTH	250
 #define MAX_PULSE_LENGTH	282
 #define AVG_PULSE_LENGTH	277
 #define RAW_LENGTH				132
@@ -109,7 +109,7 @@ void arctechDuskInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "arctech_dusk";
-	module->version = "2.0";
+	module->version = "2.1";
 	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }
