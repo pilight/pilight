@@ -1,5 +1,5 @@
 /*
-	Copyright (C) 2014 CurlyMo and Edak (the author of this file)
+	Copyright (C) 2014 CurlyMo
 
 	This file is part of pilight.
 
@@ -36,89 +36,79 @@
 #define AVG_PULSE_LENGTH	403
 #define RAW_LENGTH				50
 
-
 static int validate(void) {
 	if(dogcollar->rawlen == RAW_LENGTH) {
 		if(dogcollar->raw[dogcollar->rawlen-1] >= (MIN_PULSE_LENGTH*PULSE_DIV) &&
-		   dogcollar->raw[dogcollar->rawlen-1] <= (MAX_PULSE_LENGTH*PULSE_DIV)) {
+			dogcollar->raw[dogcollar->rawlen-1] <= (MAX_PULSE_LENGTH*PULSE_DIV)) {
 			return 0;
 		}
 	}
-
 	return -1;
 }
 
 static void createMessage(int id, int function) {
-        dogcollar->message = json_mkobject();
-        json_append_member(dogcollar->message, "id", json_mknumber(id,0));
-        json_append_member(dogcollar->message, "function", json_mknumber(function,0));
+	dogcollar->message = json_mkobject();
+	json_append_member(dogcollar->message, "id", json_mknumber(id,0));
+	json_append_member(dogcollar->message, "function", json_mknumber(function,0));
 }
-
 
 static void createLow(int s, int e) {
 	int i;
-
 	for(i=s;i<=e;i+=2) {
 		dogcollar->raw[i]=(AVG_PULSE_LENGTH);
 		dogcollar->raw[i+1]=(PULSE_MULTIPLIER*AVG_PULSE_LENGTH);
 	}
-
 }
 
 static void createHigh(int s, int e) {
 	int i;
-
 	for(i=s;i<=e;i+=2) {
 		dogcollar->raw[i]=(PULSE_MULTIPLIER*AVG_PULSE_LENGTH);
 		dogcollar->raw[i+1]=(AVG_PULSE_LENGTH);
 	}
 }
 static void clearCode(void) {
-        createLow(0,48);
-        createHigh(36,37);
+	createLow(0,48);
+	createHigh(36,37);
 }
 
 static void createId(int id) {
-        int binary[255];
-        int length = 0;
-        int i=0, x=0;
-
-        length = decToBinRev(id, binary);
+	int binary[255];
+	int length = 0;
+	int i=0, x=0;
+	length = decToBinRev(id, binary);
 	for(i=0;i<=length;i++) {
-                if(binary[i]==1) {
-                        x=i*2;
-                        createHigh(x,x+1);
-                }
-        }
+		if(binary[i]==1) {
+			x=i*2;
+			createHigh(x,x+1);
+		}
+	}
 }
 
 static void createFooter(void) {
-        dogcollar->raw[48]=(2*AVG_PULSE_LENGTH);
-        dogcollar->raw[49]=(PULSE_DIV*AVG_PULSE_LENGTH);
+	dogcollar->raw[48]=(2*AVG_PULSE_LENGTH);
+	dogcollar->raw[49]=(PULSE_DIV*AVG_PULSE_LENGTH);
 }
 
 static void createFunction(int function) {
 	if(function == 1)
-     	createHigh(46,47);  //light
-    if(function == 2)
-        createHigh(44,45);  //beep
-    if(function == 3)
-        createHigh(42,43);  //vibrate low
-    if(function == 4)
-        createHigh(40,41);  //vibrate high
+		createHigh(46,47);  //light
+	if(function == 2)
+		createHigh(44,45);  //beep
+	if(function == 3)
+		createHigh(42,43);  //vibrate low
+	if(function == 4)
+		createHigh(40,41);  //vibrate high
 }
-
 
 static int createCode(struct JsonNode *code) {
 	int id = -1;
 	int function = -1;
 	double itmp = 0;
-
 	if(json_find_number(code, "id", &itmp) == 0)
 		id = (int)round(itmp);
 	if(json_find_number(code, "function", &itmp) == 0)
 		function = (int)round(itmp);
-
 	if(id == -1 || function == -1) {
 		logprintf(LOG_ERR, "dogcollar: insufficient number of arguments");
 		return EXIT_FAILURE;
@@ -129,26 +119,26 @@ static int createCode(struct JsonNode *code) {
 		logprintf(LOG_ERR, "dogcollar: invalid function");
 		return EXIT_FAILURE;
 	} else {
-        createMessage(id, function);
+		createMessage(id, function);
 		clearCode();
-        createId(id);
-        createFunction(function);
-        createFooter();
+		createId(id);
+		createFunction(function);
+		createFooter();
 		dogcollar->rawlen = RAW_LENGTH;
 	}
 	return EXIT_SUCCESS;
 }
 
 static void printHelp(void) {
-        printf("\t -i --id=id\t\tcontrol a device with this id (1-29999)\n");
-        printf("\t -f --function=function\t\t (1=light, 2=beep, 3=vibrate-low, 4=vibrate-high)\n");
+	printf("\t -i --id=id\t\tcontrol a device with this id (1-29999)\n");
+	printf("\t -f --function=function\t\t (1=light, 2=beep, 3=vibrate-low, 4=vibrate-high)\n");
 }
 
 #if !defined(MODULE) && !defined(_WIN32)
 __attribute__((weak))
 #endif
-void dogcollarInit(void) {
 
+void dogcollarInit(void) {
 	protocol_register(&dogcollar);
 	protocol_set_id(dogcollar, "dogcollar");
 	protocol_device_add(dogcollar, "dogcollar", "dogcollar Switches");
@@ -158,15 +148,12 @@ void dogcollarInit(void) {
 	dogcollar->maxrawlen = RAW_LENGTH;
 	dogcollar->maxgaplen = MAX_PULSE_LENGTH*PULSE_DIV;
 	dogcollar->mingaplen = MIN_PULSE_LENGTH*PULSE_DIV;
-
-        options_add(&dogcollar->options, 'i', "id", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^[0-9]+$");
-    options_add(&dogcollar->options, 'f', "function", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^[1-4]$");
-
+	options_add(&dogcollar->options, 'i', "id", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^[0-9]+$");
+	options_add(&dogcollar->options, 'f', "function", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^[1-4]$");
 	options_add(&dogcollar->options, 0, "readonly", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 	options_add(&dogcollar->options, 0, "confirm", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
-
 	dogcollar->createCode=&createCode;
-    dogcollar->printHelp=&printHelp;
+	dogcollar->printHelp=&printHelp;
 	dogcollar->validate=&validate;
 }
 
@@ -181,4 +168,5 @@ void compatibility(struct module_t *module) {
 void init(void) {
 	dogcollarInit();
 }
+
 #endif
