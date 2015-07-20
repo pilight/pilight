@@ -30,11 +30,11 @@
 #include "../../core/gc.h"
 #include "kambrook.h"
 
-#define PULSE_MULTIPLIER	2
-#define MIN_PULSE_LENGTH	288
-#define MAX_PULSE_LENGTH	280
-#define AVG_PULSE_LENGTH	284
-#define RAW_LENGTH				96
+#define PULSE_MULTIPLIER 2
+#define MIN_PULSE_LENGTH 288
+#define MAX_PULSE_LENGTH 280
+#define AVG_PULSE_LENGTH 284
+#define RAW_LENGTH 96
 
 static int validate(void) {
 	if(kambrook->rawlen == RAW_LENGTH) {
@@ -59,7 +59,7 @@ static void createMessage(int id, int unit, int state) {
 
 static void createLow(int s, int e) {
 	int i;
-	for(i=s;i<=e;i+=2) {
+	for(i = s;i <= e;i += 2) {
 		kambrook->raw[i]=(AVG_PULSE_LENGTH);
 		kambrook->raw[i+1]=(AVG_PULSE_LENGTH);
 	}
@@ -67,7 +67,7 @@ static void createLow(int s, int e) {
 
 static void createHigh(int s, int e) {
 	int i;
-	for(i=s;i<=e;i+=2) {
+	for(i = s;i <= e;i += 2) {
 		kambrook->raw[i]=(PULSE_MULTIPLIER*AVG_PULSE_LENGTH);
 		kambrook->raw[i+1]=(AVG_PULSE_LENGTH);
 	}
@@ -79,19 +79,17 @@ static void clearCode(void) {
 
 static void createHeader(void){
 	int i;
-	for(i=2;i<16;i+=4) {
+	for(i = 2;i < 16;i += 4) {
 		createHigh(i,i+1);
 	}
 }
 
 static void createId(int id) {
-	int binary[255];
-	int length = 0;
-	int i=0, x=0;
+	int binary[255], length = 0, i = 0, x = 0;
 	length = decToBinRev(id, binary);
-	for(i=0;i<=length;i++) {
-		if(binary[i]==1) {
-			x=i*2;
+	for(i = 0;i <= length;i++) {
+		if(binary[i] == 1) {
+			x = i*2;
 			createHigh(62-x,62-x+1);
 		}
 	}
@@ -103,37 +101,28 @@ static void createFooter(void) {
 }
 
 static void createOverallCode(int unit, int state) {
-	int binary[255];
-	int length = 0;
-	int i=0, x=0;
-	int overallcode=0;
-	while(unit>5) {
-		overallcode+=16;
-		unit-=5;
+	int binary[255], length = 0, i = 0, x = 0, overallcode = 0;
+	while(unit > 5) {
+		overallcode += 16;
+		unit -= 5;
 	}
 	overallcode+=(unit*2)-1+state;
 	length = decToBinRev(overallcode, binary);
-	for(i=0;i<=length;i++) {
-		if(binary[i]==1) {
-			x=i*2;
+	for(i = 0;i <= length;i++) {
+		if(binary[i] == 1) {
+			x = i*2;
 			createHigh(78-x, 78-x+1);
 		}
 	}
 }
 
 static int createCode(struct JsonNode *code) {
-	int id = -1;
-	int unit = -1;
-	int state = -1;
-	double itmp = 0;
-	if(json_find_number(code, "id", &itmp) == 0)
-		id = (int)round(itmp);
-	if(json_find_number(code, "unit", &itmp) == 0)
-		unit = (int)round(itmp);
-	if(json_find_number(code, "off", &itmp) == 0)
-		state=1;
-	else if(json_find_number(code, "on", &itmp) == 0)
-		state=0;
+	double itmp = 0.0;
+	int id = -1, unit = -1, state = -1;
+	if(json_find_number(code, "id", &itmp) == 0) id = (int)round(itmp);
+	if(json_find_number(code, "unit", &itmp) == 0) unit = (int)round(itmp);
+	if(json_find_number(code, "off", &itmp) == 0) state=1;
+	else if(json_find_number(code, "on", &itmp) == 0) state=0;
 	if(id == -1 || unit == -1 || state == -1) {
 		logprintf(LOG_ERR, "kambrook: insufficient number of arguments");
 		return EXIT_FAILURE;
@@ -172,10 +161,6 @@ void kambrookInit(void) {
 	protocol_device_add(kambrook, "kambrook", "kambrook Switches");
 	kambrook->devtype = SWITCH;
 	kambrook->hwtype = RF433;
-	kambrook->minrawlen = RAW_LENGTH;
-	kambrook->maxrawlen = RAW_LENGTH;
-	kambrook->maxgaplen = MAX_PULSE_LENGTH*PULSE_DIV;
-	kambrook->mingaplen = MIN_PULSE_LENGTH*PULSE_DIV;
 	options_add(&kambrook->options, 'i', "id", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^(([0-2][0-9][0-9][0-9][0-9])|\\d{4}|\\d{3}|\\d{2}|[1-9])$");
 	options_add(&kambrook->options, 'u', "unit", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^([0-1]?[0-9])$");
 	options_add(&kambrook->options, 't', "on", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
