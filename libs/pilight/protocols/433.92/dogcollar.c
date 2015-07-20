@@ -30,11 +30,11 @@
 #include "../../core/gc.h"
 #include "dogcollar.h"
 
-#define PULSE_MULTIPLIER	3
-#define MIN_PULSE_LENGTH	408
-#define MAX_PULSE_LENGTH	398
-#define AVG_PULSE_LENGTH	403
-#define RAW_LENGTH				50
+#define PULSE_MULTIPLIER 3
+#define MIN_PULSE_LENGTH 408
+#define MAX_PULSE_LENGTH 398
+#define AVG_PULSE_LENGTH 403
+#define RAW_LENGTH 50
 
 static int validate(void) {
 	if(dogcollar->rawlen == RAW_LENGTH) {
@@ -54,7 +54,7 @@ static void createMessage(int id, int function) {
 
 static void createLow(int s, int e) {
 	int i;
-	for(i=s;i<=e;i+=2) {
+	for(i = s;i <= e;i += 2) {
 		dogcollar->raw[i]=(AVG_PULSE_LENGTH);
 		dogcollar->raw[i+1]=(PULSE_MULTIPLIER*AVG_PULSE_LENGTH);
 	}
@@ -62,7 +62,7 @@ static void createLow(int s, int e) {
 
 static void createHigh(int s, int e) {
 	int i;
-	for(i=s;i<=e;i+=2) {
+	for(i = s;i <= e;i += 2) {
 		dogcollar->raw[i]=(PULSE_MULTIPLIER*AVG_PULSE_LENGTH);
 		dogcollar->raw[i+1]=(AVG_PULSE_LENGTH);
 	}
@@ -73,13 +73,11 @@ static void clearCode(void) {
 }
 
 static void createId(int id) {
-	int binary[255];
-	int length = 0;
-	int i=0, x=0;
+	int binary[255], length = 0, i = 0, x = 0;
 	length = decToBinRev(id, binary);
-	for(i=0;i<=length;i++) {
-		if(binary[i]==1) {
-			x=i*2;
+	for(i = 0;i <= length;i++) {
+		if(binary[i] == 1) {
+			x = i*2;
 			createHigh(x,x+1);
 		}
 	}
@@ -91,20 +89,15 @@ static void createFooter(void) {
 }
 
 static void createFunction(int function) {
-	if(function == 1)
-		createHigh(46,47);  //light
-	if(function == 2)
-		createHigh(44,45);  //beep
-	if(function == 3)
-		createHigh(42,43);  //vibrate low
-	if(function == 4)
-		createHigh(40,41);  //vibrate high
+	if(function == 1) createHigh(46,47);  //light
+	if(function == 2) createHigh(44,45);  //beep
+	if(function == 3) createHigh(42,43);  //vibrate low
+	if(function == 4) createHigh(40,41);  //vibrate high
 }
 
 static int createCode(struct JsonNode *code) {
-	int id = -1;
-	int function = -1;
 	double itmp = 0;
+	int id = -1, function = -1;
 	if(json_find_number(code, "id", &itmp) == 0)
 		id = (int)round(itmp);
 	if(json_find_number(code, "function", &itmp) == 0)
@@ -144,10 +137,6 @@ void dogcollarInit(void) {
 	protocol_device_add(dogcollar, "dogcollar", "dogcollar Switches");
 	dogcollar->devtype = SCREEN;
 	dogcollar->hwtype = RF433;
-	dogcollar->minrawlen = RAW_LENGTH;
-	dogcollar->maxrawlen = RAW_LENGTH;
-	dogcollar->maxgaplen = MAX_PULSE_LENGTH*PULSE_DIV;
-	dogcollar->mingaplen = MIN_PULSE_LENGTH*PULSE_DIV;
 	options_add(&dogcollar->options, 'i', "id", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^[0-9]+$");
 	options_add(&dogcollar->options, 'f', "function", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^[1-4]$");
 	options_add(&dogcollar->options, 0, "readonly", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
