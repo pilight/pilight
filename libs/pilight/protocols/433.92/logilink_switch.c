@@ -227,7 +227,7 @@ void logilinkSwitchInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "logilink_sitch";
-	module->version = "0.6";
+	module->version = "1.0";
 	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }

@@ -98,46 +98,53 @@ static void *thread(void *param) {
 }
 
 static struct threadqueue_t *initDev(JsonNode *jdevice) {
-	loop = 1;
-	wiringXSetup();
-	char *output = json_stringify(jdevice, NULL);
-	JsonNode *json = json_decode(output);
-	json_free(output);
+	if(wiringXSupported() == 0 && wiringXSetup() == 0) {
+		loop = 1;
+		char *output = json_stringify(jdevice, NULL);
+		JsonNode *json = json_decode(output);
+		json_free(output);
 
-	struct protocol_threads_t *node = protocol_thread_init(gpio_switch, json);
-	return threads_register("gpio_switch", &thread, (void *)node, 0);
+		struct protocol_threads_t *node = protocol_thread_init(gpio_switch, json);
+		return threads_register("gpio_switch", &thread, (void *)node, 0);
+	} else {
+		return NULL;
+	}
 }
 
 static int checkValues(struct JsonNode *jvalues) {
-	struct JsonNode *jid = NULL;
 	double readonly = 0.0;
 
-	if(wiringXSetup() < 0) {
-		logprintf(LOG_ERR, "unable to setup wiringX") ;
-		return -1;
-	} else if((jid = json_find_member(jvalues, "id"))) {
-		struct JsonNode *jchild = NULL;
-		struct JsonNode *jchild1 = NULL;
+	if(wiringXSupported() == 0) {
+		struct JsonNode *jid = NULL;
+		if(wiringXSetup() < 0) {
+			logprintf(LOG_ERR, "unable to setup wiringX") ;
+			return -1;
+		} else if((jid = json_find_member(jvalues, "id"))) {
+			struct JsonNode *jchild = NULL;
+			struct JsonNode *jchild1 = NULL;
 
-		jchild = json_first_child(jid);
-		while(jchild) {
-			jchild1 = json_first_child(jchild);
-			while(jchild1) {
-				if(strcmp(jchild1->key, "gpio") == 0) {
-					if(wiringXValidGPIO((int)round(jchild1->number_)) != 0) {
-						return -1;
+			jchild = json_first_child(jid);
+			while(jchild) {
+				jchild1 = json_first_child(jchild);
+				while(jchild1) {
+					if(strcmp(jchild1->key, "gpio") == 0) {
+						if(wiringXValidGPIO((int)round(jchild1->number_)) != 0) {
+							return -1;
+						}
 					}
+					jchild1 = jchild1->next;
 				}
-				jchild1 = jchild1->next;
+				jchild = jchild->next;
 			}
-			jchild = jchild->next;
 		}
 	}
+
 	if(json_find_number(jvalues, "readonly", &readonly) == 0) {
 		if((int)readonly != 1) {
 			return -1;
 		}
 	}
+
 	return 0;
 }
 
@@ -179,7 +186,7 @@ void gpioSwitchInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "gpio_switch";
-	module->version = "2.1";
+	module->version = "2.3";
 	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }

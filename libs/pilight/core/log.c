@@ -157,7 +157,7 @@ void logprintf(int prio, const char *format_str, ...) {
 	memset(&tm, '\0', sizeof(struct tm));
 
 	if(line == NULL) {
-		fprintf(stderr, "out of memory");
+		fprintf(stderr, "out of memory\n");
 		exit(EXIT_FAILURE);
 	}
 	save_errno = errno;
@@ -214,7 +214,7 @@ void logprintf(int prio, const char *format_str, ...) {
 		} else {
 			va_end(apcpy);
 			if((line = REALLOC(line, (size_t)bytes+(size_t)pos+3)) == NULL) {
-				fprintf(stderr, "out of memory");
+				fprintf(stderr, "out of memory\n");
 				exit(EXIT_FAILURE);
 			}
 			va_start(ap, format_str);
@@ -240,11 +240,11 @@ void logprintf(int prio, const char *format_str, ...) {
 			if(logqueue_number < 1024) {
 				struct logqueue_t *node = MALLOC(sizeof(logqueue_t));
 				if(node == NULL) {
-					fprintf(stderr, "out of memory");
+					fprintf(stderr, "out of memory\n");
 					exit(EXIT_FAILURE);
 				}
 				if((node->line = MALLOC((size_t)pos+1)) == NULL) {
-					fprintf(stderr, "out of memory");
+					fprintf(stderr, "out of memory\n");
 					exit(EXIT_FAILURE);
 				}
 				memset(node->line, '\0', (size_t)pos+1);
@@ -349,7 +349,10 @@ int log_file_set(char *log) {
 	atomicunlock();
 
 	size_t i = (strlen(log)-strlen(filename));
-	logpath = REALLOC(logpath, i+1);
+	if((logpath = REALLOC(logpath, i+1)) == NULL) {
+		fprintf(stderr, "out of memory\n");
+		exit(EXIT_FAILURE);
+	}
 	memset(logpath, '\0', i+1);
 	strncpy(logpath, log, i);
 
@@ -376,7 +379,10 @@ int log_file_set(char *log) {
 			}
 		} else {
 			if(S_ISDIR(s.st_mode)) {
-				logfile = REALLOC(logfile, strlen(log)+1);
+				if((logfile = REALLOC(logfile, strlen(log)+1)) == NULL) {
+					fprintf(stderr, "out of memory\n");
+					exit(EXIT_FAILURE);
+				}
 				strcpy(logfile, log);
 			} else {
 				logprintf(LOG_ERR, "the log folder %s does not exist", logpath);
@@ -385,7 +391,10 @@ int log_file_set(char *log) {
 			}
 		}
 	} else {
-		logfile = REALLOC(logfile, strlen(log)+1);
+		if((logfile = REALLOC(logfile, strlen(log)+1)) == NULL) {
+			fprintf(stderr, "out of memory\n");
+			exit(EXIT_FAILURE);
+		}
 		strcpy(logfile, log);
 	}
 

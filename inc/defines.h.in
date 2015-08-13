@@ -22,13 +22,15 @@
 #cmakedefine WEBSERVER
 #cmakedefine EVENTS
 
-#define PILIGHT_VERSION					"6.0"
+#define PILIGHT_VERSION					"7.0"
 #define PULSE_DIV								34
 #define MAXPULSESTREAMLENGTH		512
 #define EPSILON									0.00001
+#define SHA256_ITERATIONS				25000
 
 #ifdef WEBSERVER
-	#define WEBSERVER_PORT				5001
+	#define WEBSERVER_HTTP_PORT				5001
+	#define WEBSERVER_HTTPS_PORT			5002
 	#ifdef _WIN32
 		#define WEBSERVER_ROOT				"c:/pilight/web/"
 	#else
@@ -36,14 +38,12 @@
 	#endif
 	#define WEBSERVER_ENABLE			1
 	#define WEBSERVER_CACHE				1
-	#define WEBGUI_TEMPLATE				"default"
 	#define MAX_UPLOAD_FILESIZE 	5242880
 	#define MAX_CACHE_FILESIZE 		1048576
 	#define WEBSERVER_WORKERS			1
 	#define WEBSERVER_CHUNK_SIZE 	4096
-	#define WEBSERVER_USER 				"www-data"
 	#define WEBGUI_WEBSOCKETS			1
-	#cmakedefine WEBSERVER_SSL			
+	#cmakedefine WEBSERVER_HTTPS	1	
 #endif
 
 #define MAX_CLIENTS							30
@@ -60,7 +60,7 @@
 
 	#define CONFIG_FILE							"c:/pilight/config.json"
 	#define LOG_FILE								"c:/pilight/pilight.log"
-	#define TZDATA_FILE							"c:/pilight/tzdata.json"
+	#define PEM_FILE								"c:/pilight/pilight.pem"
 #else
 	#define PROTOCOL_ROOT						"/usr/local/lib/pilight/protocols/"
 	#define HARDWARE_ROOT						"/usr/local/lib/pilight/hardware/"
@@ -71,20 +71,19 @@
 	#define PID_FILE								"/var/run/pilight.pid"
 	#define CONFIG_FILE							"/etc/pilight/config.json"
 	#define LOG_FILE								"/var/log/pilight.log"
-	#define TZDATA_FILE							"/etc/pilight/tzdata.json"
+	#define PEM_FILE								"/etc/pilight/pilight.pem"
 #endif	
 #define LOG_MAX_SIZE 						1048576 // 1024*1024
 
-#define RECEIVE_REPEATS					1
 #define UUID_LENGTH							21
 
-#define FIRMWARE_PATH				"c:/Program Data/pilight/"
+#define FIRMWARE_PATH				"c:/pilight/"
 #define FIRMWARE_GPIO_RESET	10
 #define FIRMWARE_GPIO_SCK		14
 #define FIRMWARE_GPIO_MOSI	12
 #define FIRMWARE_GPIO_MISO	13
 
-#define PILIGHT_V						6
+#define PILIGHT_V						7
 
 #if !defined(PATH_MAX)
 	#if defined(_POSIX_PATH_MAX)

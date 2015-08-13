@@ -84,21 +84,26 @@ static void hardware_remove(char *name) {
 #endif
 
 void hardware_register(struct hardware_t **hw) {
-	*hw = MALLOC(sizeof(struct hardware_t));
-	if(!*hw) {
-		logprintf(LOG_ERR, "out of memory");
+	if((*hw = MALLOC(sizeof(struct hardware_t))) == NULL) {
+		fprintf(stderr, "out of memory\n");
 		exit(EXIT_FAILURE);
 	}
 	(*hw)->options = NULL;
 	(*hw)->wait = 0;
 	(*hw)->stop = 0;
 	(*hw)->running = 0;
+	(*hw)->minrawlen = 0;
+	(*hw)->maxrawlen = 0;
+	(*hw)->mingaplen = 0;
+	(*hw)->maxgaplen = 0;
 
 	(*hw)->init = NULL;
 	(*hw)->deinit = NULL;
 	(*hw)->receiveOOK = NULL;
 	(*hw)->receivePulseTrain = NULL;
-	(*hw)->send = NULL;
+	(*hw)->receiveAPI = NULL;
+	(*hw)->sendOOK = NULL;
+	(*hw)->sendAPI = NULL;
 	(*hw)->gc = NULL;
 	(*hw)->settings = NULL;
 
@@ -112,9 +117,8 @@ void hardware_register(struct hardware_t **hw) {
 }
 
 void hardware_set_id(hardware_t *hw, const char *id) {
-	hw->id = MALLOC(strlen(id)+1);
-	if(!hw->id) {
-		logprintf(LOG_ERR, "out of memory");
+	if((hw->id = MALLOC(strlen(id)+1)) == NULL) {
+		fprintf(stderr, "out of memory\n");
 		exit(EXIT_FAILURE);
 	}
 	strcpy(hw->id, id);
@@ -264,16 +268,14 @@ static int hardware_parse(JsonNode *root) {
 					char *stmp = NULL;
 
 					if(jvalues->tag == JSON_NUMBER) {
-						stmp = REALLOC(stmp, sizeof(jvalues->number_));
-						if(!stmp) {
-							logprintf(LOG_ERR, "out of memory");
+						if((stmp = REALLOC(stmp, sizeof(jvalues->number_))) == NULL) {
+							fprintf(stderr, "out of memory\n");
 							exit(EXIT_FAILURE);
 						}
 						sprintf(stmp, "%d", (int)jvalues->number_);
 					} else if(jvalues->tag == JSON_STRING) {
-						stmp = REALLOC(stmp, strlen(jvalues->string_)+1);
-						if(!stmp) {
-							logprintf(LOG_ERR, "out of memory");
+						if((stmp = REALLOC(stmp, strlen(jvalues->string_)+1)) == NULL) {
+							fprintf(stderr, "out of memory\n");
 							exit(EXIT_FAILURE);
 						}
 						strcpy(stmp, jvalues->string_);
@@ -291,9 +293,9 @@ static int hardware_parse(JsonNode *root) {
 							regfree(&regex);
 							goto clear;
 						}
-						FREE(stmp);
 						regfree(&regex);
 					}
+					FREE(stmp);
 #endif
 				}
 				hw_options = hw_options->next;
@@ -339,9 +341,8 @@ static int hardware_parse(JsonNode *root) {
 				}
 			}
 
-			hnode = MALLOC(sizeof(struct conf_hardware_t));
-			if(hnode == NULL) {
-				logprintf(LOG_ERR, "out of memory");
+			if((hnode = MALLOC(sizeof(struct conf_hardware_t))) == NULL) {
+				fprintf(stderr, "out of memory\n");
 				exit(EXIT_FAILURE);
 			}
 			hnode->hardware = hw;
@@ -389,8 +390,8 @@ void hardware_init(void) {
 
 	if(settings_find_string("hardware-root", &hardware_root) != 0) {
 		/* If no hardware root was set, use the default hardware root */
-		if(!(hardware_root = MALLOC(strlen(HARDWARE_ROOT)+2))) {
-			logprintf(LOG_ERR, "out of memory");
+		if((hardware_root = MALLOC(strlen(HARDWARE_ROOT)+2)) == NULL) {
+			fprintf(stderr, "out of memory\n");
 			exit(EXIT_FAILURE);
 		}
 		strcpy(hardware_root, HARDWARE_ROOT);

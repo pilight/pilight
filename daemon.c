@@ -48,10 +48,11 @@
 #include <ctype.h>
 #include <dirent.h>
 
-#include "libs/pilight/core/threads.h"
 #include "libs/pilight/core/pilight.h"
+#include "libs/pilight/core/threads.h"
 #include "libs/pilight/core/datetime.h"
 #include "libs/pilight/core/common.h"
+#include "libs/pilight/core/network.h"
 #include "libs/pilight/core/gc.h"
 #include "libs/pilight/core/log.h"
 #include "libs/pilight/core/options.h"
@@ -70,6 +71,9 @@
 #endif
 
 #ifdef WEBSERVER
+	#ifdef WEBSERVER_HTTPS	
+		#include "libs/polarssl/polarssl/md5.h"
+	#endif
 	#include "libs/pilight/core/webserver.h"
 #endif
 
@@ -79,9 +83,7 @@
 #include "libs/pilight/config/settings.h"
 #include "libs/pilight/config/gui.h"
 
-#ifndef _WIN32
-	#include "libs/wiringx/wiringX.h"
-#endif
+#include "libs/wiringx/wiringX.h"
 
 #ifdef _WIN32
 static char server_name[40];
@@ -144,7 +146,7 @@ static pthread_mutexattr_t recvqueue_attr;
 static unsigned short recvqueue_init = 0;
 
 typedef struct bcqueue_t {
-	JsonNode *jmessage;
+	struct JsonNode *jmessage;
 	char *protoname;
 	enum origin_t origin;
 	struct bcqueue_t *next;
@@ -178,8 +180,6 @@ static int threadprofiler = 0;
 static int running = 1;
 /* Are we currently sending code */
 static int sending = 0;
-/* How many times does a code need to received*/
-static int receive_repeat = RECEIVE_REPEATS;
 /* Socket identifier to the server if we are running as client */
 static int sockfd = 0;
 /* Thread pointers */
@@ -190,14 +190,6 @@ static unsigned short main_loop = 1;
 static struct timeval tv;
 /* Are we running standalone */
 static int standalone = 0;
-/* What is the minimum rawlenth to consider a pulse stream valid */
-static int minrawlen = 1000;
-/* What is the maximum rawlenth to consider a pulse stream valid */
-static int maxrawlen = 0;
-/* What is the minimum rawlenth to consider a pulse stream valid */
-static int maxgaplen = 5100;
-/* What is the maximum rawlenth to consider a pulse stream valid */
-static int mingaplen = 10000;
 /* Do we need to connect to a master server:port? */
 static char *master_server = NULL;
 static unsigned short master_port = 0;
@@ -217,12 +209,10 @@ struct socket_callback_t socket_callback;
 static int webserver_enable = WEBSERVER_ENABLE;
 static int webgui_websockets = WEBGUI_WEBSOCKETS;
 /* On what port does the webserver run */
-static int webserver_port = WEBSERVER_PORT;
+static int webserver_http_port = WEBSERVER_HTTP_PORT;
 /* The webroot of pilight */
-static char *webserver_root;
-static char *webgui_tpl = NULL;
+static char *webserver_root = NULL;
 static int webserver_root_free = 0;
-static int webgui_tpl_free = 0;
 #endif
 
 static void client_remove(int id) {
@@ -247,7 +237,7 @@ static void client_remove(int id) {
 	}
 }
 
-static void broadcast_queue(char *protoname, JsonNode *json, enum origin_t origin) {
+static void broadcast_queue(char *protoname, struct JsonNode *json, enum origin_t origin) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
 	if(main_loop == 1) {
@@ -255,7 +245,7 @@ static void broadcast_queue(char *protoname, JsonNode *json, enum origin_t origi
 		if(bcqueue_number <= 1024) {
 			struct bcqueue_t *bnode = MALLOC(sizeof(struct bcqueue_t));
 			if(bnode == NULL) {
-				logprintf(LOG_ERR, "out of memory");
+				fprintf(stderr, "out of memory\n");
 				exit(EXIT_FAILURE);
 			}
 
@@ -266,9 +256,8 @@ static void broadcast_queue(char *protoname, JsonNode *json, enum origin_t origi
 			}
 			json_free(jstr);
 
-			bnode->protoname = MALLOC(strlen(protoname)+1);
-			if(bnode->protoname == NULL) {
-				logprintf(LOG_ERR, "out of memory");
+			if((bnode->protoname = MALLOC(strlen(protoname)+1)) == NULL) {
+				fprintf(stderr, "out of memory\n");
 				exit(EXIT_FAILURE);
 			}
 			strcpy(bnode->protoname, protoname);
@@ -305,7 +294,7 @@ void *broadcast(void *param) {
 			logprintf(LOG_STACK, "%s::unlocked", __FUNCTION__);
 
 			broadcasted = 0;
-			JsonNode *jret = NULL;
+			struct JsonNode *jret = NULL;
 			char *origin = NULL;
 
 			if(json_find_string(bcqueue->jmessage, "origin", &origin) == 0) {
@@ -401,12 +390,12 @@ void *broadcast(void *param) {
 					   message part of the queue so we remove the settings */
 					char *internal = json_stringify(bcqueue->jmessage, NULL);
 
-					JsonNode *jsettings = NULL;
+					struct JsonNode *jsettings = NULL;
 					if((jsettings = json_find_member(bcqueue->jmessage, "settings"))) {
 						json_remove_from_parent(jsettings);
 						json_delete(jsettings);
 					}
-					JsonNode *tmp = json_find_member(bcqueue->jmessage, "action");
+					struct JsonNode *tmp = json_find_member(bcqueue->jmessage, "action");
 					if(tmp != NULL && tmp->tag == JSON_STRING && strcmp(tmp->string_, "update") == 0) {
 						json_remove_from_parent(tmp);
 						json_delete(tmp);
@@ -501,7 +490,7 @@ static void receive_queue(int *raw, int rawlen, int plslen, int hwtype) {
 		if(recvqueue_number <= 1024) {
 			struct recvqueue_t *rnode = MALLOC(sizeof(struct recvqueue_t));
 			if(rnode == NULL) {
-				logprintf(LOG_ERR, "out of memory");
+				fprintf(stderr, "out of memory\n");
 				exit(EXIT_FAILURE);
 			}
 			for(i=0;i<rawlen;i++) {
@@ -535,7 +524,7 @@ static void receiver_create_message(protocol_t *protocol) {
 		char *valid = json_stringify(protocol->message, NULL);
 		json_delete(protocol->message);
 		if(valid != NULL && json_validate(valid) == true) {
-			JsonNode *jmessage = json_mkobject();
+			struct JsonNode *jmessage = json_mkobject();
 
 			json_append_member(jmessage, "message", json_decode(valid));
 			json_append_member(jmessage, "origin", json_mkstring("receiver"));
@@ -547,7 +536,7 @@ static void receiver_create_message(protocol_t *protocol) {
 				json_append_member(jmessage, "repeats", json_mknumber(protocol->repeats, 0));
 			}
 			char *output = json_stringify(jmessage, NULL);
-			JsonNode *json = json_decode(output);
+			struct JsonNode *json = json_decode(output);
 			broadcast_queue(protocol->id, json, RECEIVER);
 			json_free(output);
 			json_delete(json);
@@ -557,6 +546,21 @@ static void receiver_create_message(protocol_t *protocol) {
 		json_free(valid);
 	}
 	protocol->message = NULL;
+}
+
+static void receive_parse_api(struct JsonNode *code, int hwtype) {
+	struct protocol_t *protocol = NULL;
+	struct protocols_t *pnode = protocols;
+
+	while(pnode != NULL) {
+		protocol = pnode->listener;
+
+		if(protocol->hwtype == hwtype && protocol->parseCommand != NULL) {
+			protocol->parseCommand(code);
+			receiver_create_message(protocol);
+		}		
+		pnode = pnode->next;
+	}
 }
 
 void *receive_parse_code(void *param) {
@@ -600,10 +604,7 @@ void *receive_parse_code(void *param) {
 						}
 
 						protocol->repeats++;
-						/* Continue if we have recognized enough repeated codes */
-						if((protocol->repeats >= (receive_repeat*protocol->rxrpt) ||
-						   strcmp(protocol->id, "pilight_firmware") == 0) &&
-							 protocol->parseCode != NULL) {
+						if(protocol->parseCode != NULL) {
 							logprintf(LOG_DEBUG, "recevied pulse length of %d", recvqueue->plslen);
 							logprintf(LOG_DEBUG, "caught minimum # of repeats %d of %s", protocol->repeats, protocol->id);
 							logprintf(LOG_DEBUG, "called %s parseRaw()", protocol->id);
@@ -656,7 +657,7 @@ void *send_code(void *param) {
 			struct protocol_t *protocol = sendqueue->protopt;
 			struct hardware_t *hw = NULL;
 
-			JsonNode *message = NULL;
+			struct JsonNode *message = NULL;
 
 			if(sendqueue->message != NULL && strcmp(sendqueue->message, "{}") != 0) {
 				if(json_validate(sendqueue->message) == true) {
@@ -689,52 +690,62 @@ void *send_code(void *param) {
 				}
 				tmp_confhw = tmp_confhw->next;
 			}
-			if(hw != NULL && hw->send != NULL) {
-				if(hw->receiveOOK != NULL || hw->receivePulseTrain != NULL) {
-					hw->wait = 1;
-					pthread_mutex_unlock(&hw->lock);
-					pthread_cond_signal(&hw->signal);
-				}
-				if (protocol->preAmbCode != NULL) {
-					logprintf(LOG_DEBUG, "sending preAmb %s sequence", protocol->id);
-					pamble = protocol->preAmbCode();
-					if(hw->send(++pamble, *protocol->preAmbCode(), 1) == 0) {
-						logprintf(LOG_DEBUG, "successfully send %s preAmb sequence. #: %d - %d %d", protocol->id,  *protocol->preAmbCode(), *(pamble), *(pamble+1));
-					} else {
-						logprintf(LOG_ERR, "failed to send %s preAmb sequence", protocol->id);
+			if(hw != NULL) {
+				if((hw->comtype == COMOOK || hw->comtype == COMPLSTRAIN) && hw->sendOOK != NULL) {
+					if(hw->receiveOOK != NULL || hw->receivePulseTrain != NULL) {
+						hw->wait = 1;
+						pthread_mutex_unlock(&hw->lock);
+						pthread_cond_signal(&hw->signal);
 					}
-				}
-				logprintf(LOG_DEBUG, "**** RAW CODE ****");
-				if(log_level_get() >= LOG_DEBUG) {
-					for(i=0;i<sendqueue->length;i++) {
-						printf("%d ", sendqueue->code[i]);
+					logprintf(LOG_DEBUG, "**** RAW CODE ****");
+					if(log_level_get() >= LOG_DEBUG) {
+						for(i=0;i<sendqueue->length;i++) {
+							printf("%d ", sendqueue->code[i]);
+						}
+						printf(" -#: %d\n",sendqueue->length);
 					}
-					printf(" -#: %d\n",sendqueue->length);
-				}
-				logprintf(LOG_DEBUG, "**** RAW CODE ****");
+					if (protocol->preAmbCode != NULL) {
+						logprintf(LOG_DEBUG, "sending preAmb %s sequence", protocol->id);
+						pamble = protocol->preAmbCode();
+						if(hw->sendOOK(++pamble, *protocol->preAmbCode(), 1) == 0) {
+							logprintf(LOG_DEBUG, "successfully send %s preAmb sequence. #: %d - %d %d", protocol->id,  *protocol->preAmbCode(), *(pamble), *(pamble+1));
+						} else {
+							logprintf(LOG_ERR, "failed to send %s preAmb sequence", protocol->id);
+						}
+					}
+					logprintf(LOG_DEBUG, "**** RAW CODE ****");
 
-				if(hw->send(sendqueue->code, sendqueue->length, protocol->txrpt) == 0) {
-					logprintf(LOG_DEBUG, "successfully send %s code", protocol->id);
-				} else {
-					logprintf(LOG_ERR, "failed to send code");
-				}
-				if (protocol->postAmbCode != NULL) {
-					logprintf(LOG_DEBUG, "sending postAmb %s sequence", protocol->id);
-					pamble = protocol->postAmbCode();
-					if(hw->send(++pamble, *protocol->postAmbCode(), 1) == 0) {
-						logprintf(LOG_DEBUG, "successfully send %s postAmb sequence. #: %d - %d %d", protocol->id,  *protocol->postAmbCode(), *(pamble), *(pamble+1));
+					if(hw->sendOOK(sendqueue->code, sendqueue->length, protocol->txrpt) == 0) {
+						logprintf(LOG_DEBUG, "successfully send %s code", protocol->id);
 					} else {
-						logprintf(LOG_ERR, "failed to send %s postAmb sequence", protocol->id);
+						logprintf(LOG_ERR, "failed to send code");
 					}
-				}
-				if(strcmp(protocol->id, "raw") == 0) {
-					int plslen = sendqueue->code[sendqueue->length-1]/PULSE_DIV;
-					receive_queue(sendqueue->code, sendqueue->length, plslen, -1);
-				}
-				if(hw->receiveOOK != NULL || hw->receivePulseTrain != NULL) {
-					hw->wait = 0;
-					pthread_mutex_unlock(&hw->lock);
-					pthread_cond_signal(&hw->signal);
+					if (protocol->postAmbCode != NULL) {
+						logprintf(LOG_DEBUG, "sending postAmb %s sequence", protocol->id);
+						pamble = protocol->postAmbCode();
+						if(hw->sendOOK(++pamble, *protocol->postAmbCode(), 1) == 0) {
+							logprintf(LOG_DEBUG, "successfully send %s postAmb sequence. #: %d - %d %d", protocol->id,  *protocol->postAmbCode(), *(pamble), *(pamble+1));
+						} else {
+							logprintf(LOG_ERR, "failed to send %s postAmb sequence", protocol->id);
+						}
+					}
+					if(strcmp(protocol->id, "raw") == 0) {
+						int plslen = sendqueue->code[sendqueue->length-1]/PULSE_DIV;
+						receive_queue(sendqueue->code, sendqueue->length, plslen, -1);
+					}
+					if(hw->receiveOOK != NULL || hw->receivePulseTrain != NULL) {
+						hw->wait = 0;
+						pthread_mutex_unlock(&hw->lock);
+						pthread_cond_signal(&hw->signal);
+					}
+				} else if(hw->comtype == COMAPI && hw->sendAPI != NULL) {
+					if(message != NULL) {
+						if(hw->sendAPI(message) == 0) {
+							logprintf(LOG_DEBUG, "successfully send %s command", protocol->id);
+						} else {
+							logprintf(LOG_ERR, "failed to send command");
+						}
+					}
 				}
 			} else {
 				if(strcmp(protocol->id, "raw") == 0) {
@@ -769,13 +780,14 @@ void *send_code(void *param) {
 }
 
 /* Send a specific code */
-static int send_queue(JsonNode *json, enum origin_t origin) {
+static int send_queue(struct JsonNode *json, enum origin_t origin) {
 	pthread_mutex_lock(&sendqueue_lock);
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
 	int match = 0, raw[MAXPULSESTREAMLENGTH-1];
 	struct timeval tcurrent;
-	char *uuid = NULL;
+	struct clients_t *tmp_clients = NULL;
+	char *uuid = NULL, *buffer = NULL;
 	/* Hold the final protocol struct */
 	struct protocol_t *protocol = NULL;
 
@@ -790,9 +802,19 @@ static int send_queue(JsonNode *json, enum origin_t origin) {
 	pthread_setschedparam(pthread_self(), SCHED_FIFO, &sched);
 #endif
 
-	JsonNode *jcode = NULL;
-	JsonNode *jprotocols = NULL;
-	JsonNode *jprotocol = NULL;
+	struct JsonNode *jcode = NULL;
+	struct JsonNode *jprotocols = NULL;
+	struct JsonNode *jprotocol = NULL;
+
+	buffer = json_stringify(json, NULL);
+	tmp_clients = clients;
+	while(tmp_clients) {
+		if(tmp_clients->forward == 1) {
+			socket_write(tmp_clients->id, buffer);
+		}
+		tmp_clients = tmp_clients->next;
+	}
+	json_free(buffer);
 
 	if((jcode = json_find_member(json, "code")) == NULL) {
 		logprintf(LOG_ERR, "sender did not send any codes");
@@ -834,7 +856,7 @@ static int send_queue(JsonNode *json, enum origin_t origin) {
 					if(sendqueue_number <= 1024) {
 						struct sendqueue_t *mnode = MALLOC(sizeof(struct sendqueue_t));
 						if(mnode == NULL) {
-							logprintf(LOG_ERR, "out of memory");
+							fprintf(stderr, "out of memory\n");
 							exit(EXIT_FAILURE);
 						}
 						gettimeofday(&tcurrent, NULL);
@@ -846,7 +868,7 @@ static int send_queue(JsonNode *json, enum origin_t origin) {
 							json_delete(protocol->message);
 							if(json_validate(jsonstr) == true) {
 								if((mnode->message = MALLOC(strlen(jsonstr)+1)) == NULL) {
-									logprintf(LOG_ERR, "out of memory");
+									fprintf(stderr, "out of memory\n");
 									exit(EXIT_FAILURE);
 								}
 								strcpy(mnode->message, jsonstr);
@@ -859,7 +881,7 @@ static int send_queue(JsonNode *json, enum origin_t origin) {
 						memcpy(mnode->code, protocol->raw, sizeof(int)*protocol->rawlen);
 
 						if((mnode->protoname = MALLOC(strlen(protocol->id)+1)) == NULL) {
-							logprintf(LOG_ERR, "out of memory");
+							fprintf(stderr, "out of memory\n");
 							exit(EXIT_FAILURE);
 						}
 						strcpy(mnode->protoname, protocol->id);
@@ -882,7 +904,10 @@ static int send_queue(JsonNode *json, enum origin_t origin) {
 							tmp_options = tmp_options->next;
 						}
 						char *strsett = json_stringify(jsettings, NULL);
-						mnode->settings = MALLOC(strlen(strsett)+1);
+						if((mnode->settings = MALLOC(strlen(strsett)+1)) == NULL) {
+							fprintf(stderr, "out of memory\n");
+							exit(EXIT_FAILURE);
+						}
 						strcpy(mnode->settings, strsett);
 						json_free(strsett);
 						json_delete(jsettings);
@@ -946,19 +971,19 @@ static void client_webserver_parse_code(int i, char buffer[BUFFER_SIZE]) {
 		}
 		p = buff;
 		if(strstr(buffer, "/logo.png") != NULL) {
-			if(!(path = MALLOC(strlen(webserver_root)+strlen(webgui_tpl)+strlen("logo.png")+2))) {
-				logprintf(LOG_ERR, "out of memory");
+			if((path = MALLOC(strlen(webserver_root)+strlen("logo.png")+2)) == NULL) {
+				fprintf(stderr, "out of memory\n");
 				exit(EXIT_FAILURE);
 			}
-			sprintf(path, "%s/%s/logo.png", webserver_root, webgui_tpl);
+			sprintf(path, "%s/logo.png", webserver_root);
 			if((f = fopen(path, "rb"))) {
 				fstat(fileno(f), &sb);
 				mimetype = webserver_mimetype("image/png");
 				webserver_create_header(&p, "200 OK", mimetype, (unsigned int)sb.st_size);
 				send(sd, (const char *)buff, (size_t)(p-buff), MSG_NOSIGNAL);
 				x = 0;
-				if(!(cache = MALLOC(BUFFER_SIZE))) {
-					logprintf(LOG_ERR, "out of memory");
+				if((cache = MALLOC(BUFFER_SIZE)) == NULL) {
+					fprintf(stderr, "out of memory\n");
 					exit(EXIT_FAILURE);
 				}
 				memset(cache, '\0', BUFFER_SIZE);
@@ -970,7 +995,7 @@ static void client_webserver_parse_code(int i, char buffer[BUFFER_SIZE]) {
 				FREE(cache);
 				FREE(mimetype);
 			} else {
-				logprintf(LOG_NOTICE, "pilight logo not found");
+				logprintf(LOG_WARNING, "pilight logo not found");
 			}
 			FREE(path);
 		} else {
@@ -980,7 +1005,7 @@ static void client_webserver_parse_code(int i, char buffer[BUFFER_SIZE]) {
 			send(sd, (const char *)buff, (size_t)(p-buff), MSG_NOSIGNAL);
 			if(webserver_enable == 1) {
 				if((cache = MALLOC(BUFFER_SIZE)) == NULL) {
-					logprintf(LOG_ERR, "out of memory");
+					fprintf(stderr, "out of memory\n");
 					exit(EXIT_FAILURE);
 				}
 				memset(cache, '\0', BUFFER_SIZE);
@@ -995,7 +1020,7 @@ static void client_webserver_parse_code(int i, char buffer[BUFFER_SIZE]) {
 							   "font-weight: 800px; font-family: Verdana; font-size:"
 							   "20px;\" href=\"http://%s:%d\">http://%s:%d</a></p>"
 							   "</center></body></html>",
-							   buf, webserver_port, buf, webserver_port);
+							   buf, webserver_http_port, buf, webserver_http_port);
 				send(sd, (const char *)cache, strlen(cache), MSG_NOSIGNAL);
 				FREE(cache);
 			} else {
@@ -1007,7 +1032,7 @@ static void client_webserver_parse_code(int i, char buffer[BUFFER_SIZE]) {
 }
 #endif
 
-static int control_device(struct devices_t *dev, char *state, JsonNode *values, enum origin_t origin) {
+static int control_device(struct devices_t *dev, char *state, struct JsonNode *values, enum origin_t origin) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
 	struct devices_settings_t *sett = NULL;
@@ -1015,9 +1040,9 @@ static int control_device(struct devices_t *dev, char *state, JsonNode *values, 
 	struct options_t *opt = NULL;
 	struct protocols_t *tmp_protocols = NULL;
 
-	JsonNode *code = json_mkobject();
-	JsonNode *json = json_mkobject();
-	JsonNode *jprotocols = json_mkarray();
+	struct JsonNode *code = json_mkobject();
+	struct JsonNode *json = json_mkobject();
+	struct JsonNode *jprotocols = json_mkarray();
 
 	/* Check all protocol options */
 	tmp_protocols = dev->protocols;
@@ -1100,7 +1125,7 @@ static int control_device(struct devices_t *dev, char *state, JsonNode *values, 
 		json_append_member(code, "uuid", json_mkstring(dev->dev_uuid));
 	}
 	json_append_member(json, "code", code);
-	json_append_member(json, "message", json_mkstring("send"));
+	json_append_member(json, "action", json_mkstring("send"));
 
 	if(send_queue(json, origin) == 0) {
 		json_delete(json);
@@ -1150,16 +1175,6 @@ static void socket_parse_data(int i, char *buffer) {
 #endif
 			json = json_decode(buffer);
 			if((json_find_string(json, "action", &action)) == 0) {
-				if(strcmp(action, "send") == 0 ||
-				   strcmp(action, "control") == 0) {
-					tmp_clients = clients;
-					while(tmp_clients) {
-						if(tmp_clients->forward == 1) {
-							socket_write(tmp_clients->id, buffer);
-						}
-						tmp_clients = tmp_clients->next;
-					}
-				}
 				tmp_clients = clients;
 				while(tmp_clients) {
 					if(tmp_clients->id == sd) {
@@ -1172,7 +1187,10 @@ static void socket_parse_data(int i, char *buffer) {
 				if(strcmp(action, "identify") == 0) {
 					/* Check if client doesn't already exist */
 					if(exists == 0) {
-						client = MALLOC(sizeof(struct clients_t));
+						if((client = MALLOC(sizeof(struct clients_t))) == NULL) {
+							fprintf(stderr, "out of memory\n");
+							exit(EXIT_FAILURE);
+						}
 						client->core = 0;
 						client->config = 0;
 						client->receiver = 0;
@@ -1269,7 +1287,7 @@ static void socket_parse_data(int i, char *buffer) {
 					struct JsonNode *code = NULL;
 					struct devices_t *dev = NULL;
 					char *device = NULL;
-					if(!(code = json_find_member(json, "code")) || code->tag != JSON_OBJECT) {
+					if((code = json_find_member(json, "code")) == NULL || code->tag != JSON_OBJECT) {
 						logprintf(LOG_ERR, "client did not send any codes");
 					} else {
 						/* Check if a location and device are given */
@@ -1522,23 +1540,23 @@ void *receiveOOK(void *param) {
 	struct hardware_t *hw = (hardware_t *)param;
 	pthread_mutex_lock(&hw->lock);
 	hw->running = 1;
+
 	while(main_loop == 1 && hw->receiveOOK != NULL && hw->stop == 0) {
 		if(hw->wait == 0) {
 			pthread_mutex_lock(&hw->lock);
 			logprintf(LOG_STACK, "%s::unlocked", __FUNCTION__);
 			duration = hw->receiveOOK();
-
 			if(duration > 0) {
 				r.pulses[r.length++] = duration;
 				if(r.length > MAXPULSESTREAMLENGTH-1) {
 					r.length = 0;
 				}
-				if(duration > mingaplen) {
-					if(duration < maxgaplen) { // Maximum footer pulse of 100000
+				if(duration > hw->mingaplen) {
+					if(duration < hw->maxgaplen) {
 						plslen = duration/PULSE_DIV;
 					}
 					/* Let's do a little filtering here as well */
-					if(r.length >= minrawlen && r.length <= maxrawlen) {
+					if(r.length >= hw->minrawlen && r.length <= hw->maxrawlen) {
 						receive_queue(r.pulses, r.length, plslen, hw->hwtype);
 						r.length = 0;
 					}
@@ -1591,7 +1609,7 @@ void *clientize(void *param) {
 		ssdp_list = NULL;
 		if(master_server != NULL && master_port > 0) {
 			if((sockfd = socket_connect(master_server, master_port)) == -1) {
-				logprintf(LOG_NOTICE, "could not connect to pilight-daemon");
+				logprintf(LOG_ERR, "could not connect to pilight-daemon");
 				continue;
 			}
 		} else if(ssdp_seek(&ssdp_list) == -1) {
@@ -1599,7 +1617,7 @@ void *clientize(void *param) {
 			continue;
 		} else {
 			if((sockfd = socket_connect(ssdp_list->ip, ssdp_list->port)) == -1) {
-				logprintf(LOG_NOTICE, "could not connect to pilight-daemon");
+				logprintf(LOG_ERR, "could not connect to pilight-daemon");
 				continue;
 			}
 		}
@@ -1654,6 +1672,8 @@ void *clientize(void *param) {
 #ifdef EVENTS
 							rules_gc();
 #endif
+							registry_gc();
+
 							int match = 1;
 							while(match) {
 								jchilds = json_first_child(jconfig);
@@ -1674,7 +1694,7 @@ void *clientize(void *param) {
 								logprintf(LOG_DEBUG, "loaded master configuration");
 								config_synced = 1;
 							} else {
-								logprintf(LOG_NOTICE, "failed to load master configuration");
+								logprintf(LOG_WARNING, "failed to load master configuration");
 							}
 						}
 					}
@@ -1720,11 +1740,8 @@ void *clientize(void *param) {
 					}
 					json_delete(json);
 				}
-				FREE(array[q]);
 			}
-			if(z > 0) {
-				FREE(array);
-			}
+			array_free(&array, z);
 		}
 	}
 
@@ -1747,7 +1764,7 @@ static void save_pid(pid_t npid) {
 		sprintf(buffer, "%d", npid);
 		ssize_t i = write(f, buffer, strlen(buffer));
 		if(i != strlen(buffer)) {
-			logprintf(LOG_ERR, "could not store pid in %s", pid_file);
+			logprintf(LOG_WARNING, "could not store pid in %s", pid_file);
 		}
 	}
 	close(f);
@@ -1781,6 +1798,8 @@ static void daemonize(void) {
 int main_gc(void) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
+	running = 0;
+	pilight.running = 0;
 	main_loop = 0;
 
 	/* If we are running in node mode, the clientize
@@ -1835,7 +1854,7 @@ int main_gc(void) {
 		/* Remove the stale pid file */
 		if(access(pid_file, F_OK) != -1) {
 			if(remove(pid_file) != -1) {
-				logprintf(LOG_DEBUG, "removed stale pid_file %s", pid_file);
+				logprintf(LOG_INFO, "removed stale pid_file %s", pid_file);
 			} else {
 				logprintf(LOG_ERR, "could not remove stale pid file %s", pid_file);
 			}
@@ -1852,9 +1871,6 @@ int main_gc(void) {
 	}
 	if(webserver_root_free == 1) {
 		FREE(webserver_root);
-	}
-	if(webgui_tpl_free == 1) {
-		FREE(webgui_tpl);
 	}
 #endif
 
@@ -1964,12 +1980,14 @@ void openconsole(void) {
 #endif
 
 void *pilight_stats(void *param) {
-	int checkram = 0, checkcpu = 0, i = -1, x = 0, watchdog = 0, stats = 1;
+	int checkram = 0, checkcpu = 0, i = -1, x = 0, watchdog = 1, stats = 1;
 	settings_find_number("watchdog-enable", &watchdog);
 	settings_find_number("stats-enable", &stats);
 
 	while(main_loop) {
-		registerVersion();
+		if(pilight.runmode == STANDALONE) {
+			registerVersion();
+		}
 
 		if(stats == 1) {
 			double cpu = 0.0, ram = 0.0;
@@ -1979,7 +1997,6 @@ void *pilight_stats(void *param) {
 			if(threadprofiler == 1) {
 				threads_cpu_usage(1);
 			}
-
 			if(watchdog == 1 && (i > -1) && (cpu > 60)) {
 				if(nodaemon == 1 && threadprofiler == 0) {
 					threads_cpu_usage(x);
@@ -1987,17 +2004,17 @@ void *pilight_stats(void *param) {
 				}
 				if(checkcpu == 0) {
 					if(cpu > 90) {
-						logprintf(LOG_ERR, "cpu usage way too high %f%%", cpu);
+						logprintf(LOG_CRIT, "cpu usage way too high %f%%", cpu);
 					} else {
-						logprintf(LOG_ERR, "cpu usage too high %f%%", cpu);
+						logprintf(LOG_WARNING, "cpu usage too high %f%%", cpu);
 					}
-					logprintf(LOG_ERR, "checking again in 10 seconds");
+					logprintf(LOG_WARNING, "checking again in 10 seconds");
 					sleep(10);
 				} else {
 					if(cpu > 90) {
-						logprintf(LOG_ERR, "cpu usage still way too high %f%%, exiting", cpu);
+						logprintf(LOG_ALERT, "cpu usage still way too high %f%%, exiting", cpu);
 					} else {
-						logprintf(LOG_ERR, "cpu usage still too high %f%%, stopping", cpu);
+						logprintf(LOG_CRIT, "cpu usage still too high %f%%, stopping", cpu);
 					}
 				}
 				if(checkcpu == 1) {
@@ -2012,18 +2029,18 @@ void *pilight_stats(void *param) {
 			} else if(watchdog == 1 && (i > -1) && (ram > 60)) {
 				if(checkram == 0) {
 					if(ram > 90) {
-						logprintf(LOG_ERR, "ram usage way too high %f%%", ram);
+						logprintf(LOG_CRIT, "ram usage way too high %f%%", ram);
 						exit(EXIT_FAILURE);
 					} else {
-						logprintf(LOG_ERR, "ram usage too high %f%%", ram);
+						logprintf(LOG_WARNING, "ram usage too high %f%%", ram);
 					}
-					logprintf(LOG_ERR, "checking again in 10 seconds");
+					logprintf(LOG_WARNING, "checking again in 10 seconds");
 					sleep(10);
 				} else {
 					if(ram > 90) {
-						logprintf(LOG_ERR, "ram usage still way too high %f%%, exiting", ram);
+						logprintf(LOG_ALERT, "ram usage still way too high %f%%, exiting", ram);
 					} else {
-						logprintf(LOG_ERR, "ram usage still too high %f%%, stopping", ram);
+						logprintf(LOG_CRIT, "ram usage still too high %f%%, stopping", ram);
 					}
 				}
 				if(checkram == 1) {
@@ -2040,7 +2057,7 @@ void *pilight_stats(void *param) {
 				checkram = 0;
 				if((i > 0 && i%3 == 0) || (i == -1)) {
 					procProtocol->message = json_mkobject();
-					JsonNode *code = json_mkobject();
+					struct JsonNode *code = json_mkobject();
 					json_append_member(code, "cpu", json_mknumber(cpu, 16));
 					if(ram > 0) {
 						json_append_member(code, "ram", json_mknumber(ram, 16));
@@ -2077,36 +2094,36 @@ int start_pilight(int argc, char **argv) {
 	struct ssdp_list_t *ssdp_list = NULL;
 
 	char buffer[BUFFER_SIZE];
-	int itmp = 0, show_default = 0;
+	int itmp = 0, show_default = 0, show_version = 0, show_help = 0;
 #ifndef _WIN32
-	int show_version = 0, show_help = 0, f = 0;
+	int f = 0;
 #endif
 	char *stmp = NULL, *args = NULL, *p = NULL;
 	int port = 0;
 
-#ifndef _WIN32
 	wiringXLog = logprintf;
-#endif
 
 	if((progname = MALLOC(16)) == NULL) {
-		logprintf(LOG_ERR, "out of memory");
+		fprintf(stderr, "out of memory\n");
 		exit(EXIT_FAILURE);
 	}
 	strcpy(progname, "pilight-daemon");
 
-	configtmp = MALLOC(strlen(CONFIG_FILE)+1);
+	if((configtmp = MALLOC(strlen(CONFIG_FILE)+1)) == NULL) {
+		fprintf(stderr, "out of memory\n");
+		exit(EXIT_FAILURE);
+	}
 	strcpy(configtmp, CONFIG_FILE);
 
-#ifndef _WIN32
 	options_add(&options, 'H', "help", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
 	options_add(&options, 'V', "version", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
-#endif
 	options_add(&options, 'D', "nodaemon", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
 	options_add(&options, 'C', "config", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, NULL);
 	options_add(&options, 'S', "server", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, "^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]).){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$");
 	options_add(&options, 'P', "port", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, "[0-9]{1,4}");
 	options_add(&options, 256, "stacktracer", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
 	options_add(&options, 257, "threadprofiler", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
+	options_add(&options, 258, "debuglevel", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, "[01]{1}");
 	// options_add(&options, 258, "memory-tracer", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
 
 	while(1) {
@@ -2115,27 +2132,23 @@ int start_pilight(int argc, char **argv) {
 			break;
 		}
 		if(c == -2) {
-#ifndef _WIN32
 			show_help = 1;
-#endif
 			break;
 		}
 		switch(c) {
-#ifndef _WIN32
 			case 'H':
 				show_help = 1;
 			break;
 			case 'V':
 				show_version = 1;
 			break;
-#endif
 			case 'C':
 				configtmp = REALLOC(configtmp, strlen(args)+1);
 				strcpy(configtmp, args);
 			break;
 			case 'S':
-				if(!(master_server = MALLOC(strlen(args)+1))) {
-					logprintf(LOG_ERR, "out of memory");
+				if((master_server = MALLOC(strlen(args)+1)) == NULL) {
+					fprintf(stderr, "out of memory\n");
 					exit(EXIT_FAILURE);
 				}
 				strcpy(master_server, args);
@@ -2157,37 +2170,70 @@ int start_pilight(int argc, char **argv) {
 				stacktracer = 1;
 				nodaemon = 1;
 			break;
+			case 258:
+				pilight.debuglevel = atoi(args);
+				nodaemon = 1;
+				verbosity = LOG_DEBUG;
+			break;
 			default:
 				show_default = 1;
 			break;
 		}
 	}
 	options_delete(options);
-#ifndef _WIN32
 	if(show_help == 1) {
-		printf("Usage: %s [options]\n", progname);
-		printf("\t -H --help\t\t\tdisplay usage summary\n");
-		printf("\t -V --version\t\t\tdisplay version\n");
-		printf("\t -C --config\t\t\tconfig file\n");
-		printf("\t -S --server=x.x.x.x\t\tconnect to server address\n");
-		printf("\t -P --port=xxxx\t\t\tconnect to server port\n");
-		printf("\t -D --nodaemon\t\t\tdo not daemonize and\n");
-		printf("\t\t\t\t\tshow debug information\n");
-		printf("\t    --stacktracer\t\tshow internal function calls\n");
-		printf("\t    --threadprofiler\t\tshow per thread cpu usage\n");
+		char help[1024];
+		char tabs[5];
+#ifdef _WIN32
+		strcpy(tabs, "\t");
+#else
+		strcpy(tabs, "\t\t");
+#endif
+		sprintf(help, "Usage: %s [options]\n"
+									"\t -H --help\t\t\tdisplay usage summary\n"
+									"\t -V --version\t%sdisplay version\n"
+									"\t -C --config\t%sconfig file\n"
+									"\t -S --server=x.x.x.x\t\tconnect to server address\n"
+									"\t -P --port=xxxx\t%sconnect to server port\n"
+									"\t -D --nodaemon\t%sdo not daemonize and\n"
+									"\t\t\t%sshow debug information\n"
+									"\t    --stacktracer\t\tshow internal function calls\n"
+									"\t    --threadprofiler\t\tshow per thread cpu usage\n"
+									"\t    --debuglevel\t\tshow additional development info\n",
+									progname, tabs, tabs, tabs, tabs, tabs);
+#ifdef _WIN32
+		MessageBox(NULL, help, "pilight :: info", MB_OK);
+#else
+		printf("%s", help);
+#endif
 		goto clear;
 	}
 	if(show_version == 1) {
 #ifdef HASH
+	#ifdef _WIN32
+			char version[50];
+			snprintf(version, 50, "%s version %s", progname, HASH);
+			MessageBox(NULL, version, "pilight :: info", MB_OK);
+	#else
 			printf("%s version %s\n", progname, HASH);
+	#endif
 #else
+	#ifdef _WIN32
+			char version[50];
+			snprintf(version, 50, "%s version %s", progname, PILIGHT_VERSION);
+			MessageBox(NULL, version, "pilight :: info", MB_OK);
+	#else
 			printf("%s version %s\n", progname, PILIGHT_VERSION);
+	#endif
 #endif
 		goto clear;
 	}
-#endif
 	if(show_default == 1) {
-#ifndef _WIN32
+#ifdef _WIN32
+		char def[50];
+		snprintf(def, 50, "Usage: %s [options]\n", progname);
+		MessageBox(NULL, def, "pilight :: info", MB_OK);
+#else
 		printf("Usage: %s [options]\n", progname);
 #endif
 		goto clear;
@@ -2200,6 +2246,7 @@ int start_pilight(int argc, char **argv) {
 	}
 #endif
 
+	datetime_init();
 	atomicinit();
 	procProtocolInit();
 
@@ -2230,10 +2277,7 @@ int start_pilight(int argc, char **argv) {
 			}
 		}
 	}
-	for(x=0;x<nrdevs;x++) {
-		FREE(devs[x]);
-	}
-	FREE(devs);
+	array_free(&devs, nrdevs);
 
 	firmware.version = 0;
 	firmware.lpf = 0;
@@ -2252,18 +2296,18 @@ int start_pilight(int argc, char **argv) {
 
 #ifdef _WIN32
 	if((pid = check_instances(L"pilight-daemon")) != -1) {
-		logprintf(LOG_ERR, "pilight is already running");
+		logprintf(LOG_NOTICE, "pilight is already running");
 		goto clear;
 	}
 #endif
 
 	if((pid = isrunning("pilight-raw")) != -1) {
-		logprintf(LOG_ERR, "pilight-raw instance found (%d)", (int)pid);
+		logprintf(LOG_NOTICE, "pilight-raw instance found (%d)", (int)pid);
 		goto clear;
 	}
 
 	if((pid = isrunning("pilight-debug")) != -1) {
-		logprintf(LOG_ERR, "pilight-debug instance found (%d)", (int)pid);
+		logprintf(LOG_NOTICE, "pilight-debug instance found (%d)", (int)pid);
 		goto clear;
 	}
 
@@ -2278,6 +2322,7 @@ int start_pilight(int argc, char **argv) {
 	pilight.broadcast = &broadcast_queue;
 	pilight.send = &send_queue;
 	pilight.control = &control_device;
+	pilight.receive = &receive_parse_api;
 
 	if(config_read() != EXIT_SUCCESS) {
 		goto clear;
@@ -2286,32 +2331,65 @@ int start_pilight(int argc, char **argv) {
 	registerVersion();
 
 #ifdef WEBSERVER
+	#ifdef WEBSERVER_HTTPS
+	char *pemfile = NULL;
+	int pem_free = 0;
+	if(settings_find_string("pem-file", &pemfile) != 0) {
+		if((pemfile = REALLOC(pemfile, strlen(PEM_FILE)+1)) == NULL) {
+			fprintf(stderr, "out of memory\n");
+			exit(EXIT_FAILURE);
+		}
+		strcpy(pemfile, PEM_FILE);
+		pem_free = 1;
+	}	
+	
+	char *content = NULL;
+	unsigned char md5sum[17];
+	char md5conv[33];
+	int i = 0;
+	p = (char *)md5sum;
+	if(file_exists(pemfile) != 0) {
+		logprintf(LOG_ERR, "missing webserver SSL private key %s", pemfile);
+		if(pem_free == 1) {
+			FREE(pemfile);
+		}
+		goto clear;
+	}
+	if(file_get_contents(pemfile, &content) == 0) {
+		md5((const unsigned char *)content, strlen((char *)content), (unsigned char *)p);
+		for(i = 0; i < 32; i+=2) {
+			sprintf(&md5conv[i], "%02x", md5sum[i/2] );
+		}
+		if(strcmp(md5conv, PILIGHT_PEM_MD5) == 0) {
+			registry_set_number("webserver.ssl.certificate.secure", 0, 0);
+		} else {
+			registry_set_number("webserver.ssl.certificate.secure", 1, 0);
+		}
+		registry_set_string("webserver.ssl.certificate.location", pemfile);
+		FREE(content);
+	}
+
+	if(pem_free == 1) {
+		FREE(pemfile);
+	}	
+	#endif
+
 	settings_find_number("webserver-enable", &webserver_enable);
-	settings_find_number("webserver-port", &webserver_port);
+	settings_find_number("webserver-http-port", &webserver_http_port);
 	if(settings_find_string("webserver-root", &webserver_root) != 0) {
 		if((webserver_root = REALLOC(webserver_root, strlen(WEBSERVER_ROOT)+1)) == NULL) {
-			logprintf(LOG_ERR, "out of memory");
+			fprintf(stderr, "out of memory\n");
 			exit(EXIT_FAILURE);
 		}
 		strcpy(webserver_root, WEBSERVER_ROOT);
 		webserver_root_free = 1;
 	}
-	if(settings_find_string("webgui-template", &webgui_tpl) != 0) {
-		/* If no webserver port was set, use the default webserver port */
-		if((webgui_tpl = MALLOC(strlen(WEBGUI_TEMPLATE)+1)) == NULL) {
-			logprintf(LOG_ERR, "out of memory");
-			exit(EXIT_FAILURE);
-		}
-		strcpy(webgui_tpl, WEBGUI_TEMPLATE);
-		webgui_tpl_free = 1;
-	}
 #endif
 
 #ifndef _WIN32
 	if(settings_find_string("pid-file", &pid_file) != 0) {
-		pid_file = REALLOC(pid_file, strlen(PID_FILE)+1);
-		if(!pid_file) {
-			logprintf(LOG_ERR, "out of memory");
+		if((pid_file = REALLOC(pid_file, strlen(PID_FILE)+1)) == NULL) {
+			fprintf(stderr, "out of memory\n");
 			exit(EXIT_FAILURE);
 		}
 		strcpy(pid_file, PID_FILE);
@@ -2341,7 +2419,6 @@ int start_pilight(int argc, char **argv) {
 #endif
 
 	if(settings_find_number("log-level", &itmp) == 0) {
-		itmp += 2;
 		log_level_set(itmp);
 	}
 
@@ -2368,8 +2445,6 @@ int start_pilight(int argc, char **argv) {
 		}
 	}
 
-	settings_find_number("receive-repeats", &receive_repeat);
-
 #ifndef _WIN32
 	if(running == 1) {
 		nodaemon = 1;
@@ -2380,29 +2455,35 @@ int start_pilight(int argc, char **argv) {
 	}
 #endif
 
-	struct protocols_t *tmp = protocols;
-	while(tmp) {
-		if(tmp->listener->maxrawlen > maxrawlen) {
-			logprintf(LOG_DEBUG, "%s: has set a new value for maxrawlen: %d", tmp->listener->id, tmp->listener->maxrawlen);
-			maxrawlen = tmp->listener->maxrawlen;
+	struct conf_hardware_t *tmp_confhw = conf_hardware;
+	while(tmp_confhw) {
+		if(tmp_confhw->hardware->init) {
+			if(tmp_confhw->hardware->comtype == COMOOK) {
+				struct protocols_t *tmp = protocols;
+				while(tmp) {
+					if(tmp->listener->hwtype == tmp_confhw->hardware->hwtype) {
+						if(tmp->listener->maxrawlen > tmp_confhw->hardware->maxrawlen) {
+							tmp_confhw->hardware->maxrawlen = tmp->listener->maxrawlen;
+						}
+						if(tmp->listener->minrawlen > 0 && tmp->listener->minrawlen < tmp_confhw->hardware->minrawlen) {
+							tmp_confhw->hardware->minrawlen = tmp->listener->minrawlen;
+						}
+						if(tmp->listener->maxgaplen > tmp_confhw->hardware->maxgaplen) {
+							tmp_confhw->hardware->maxgaplen = tmp->listener->maxgaplen;
+						}
+						if(tmp->listener->mingaplen > 0 && tmp->listener->mingaplen < tmp_confhw->hardware->mingaplen) {
+							tmp_confhw->hardware->mingaplen = tmp->listener->mingaplen;
+						}
+						if(tmp->listener->rawlen > 0) {
+							logprintf(LOG_EMERG, "%s: setting \"rawlen\" length is not allowed, use the \"minrawlen\" and \"maxrawlen\" instead", tmp->listener->id);
+							goto clear;
+						}
+					}
+					tmp = tmp->next;
+				}
+			}
 		}
-		if(tmp->listener->minrawlen > 0 && tmp->listener->minrawlen < minrawlen) {
-			logprintf(LOG_DEBUG, "%s: has set a new value for minrawlen: %d", tmp->listener->id, tmp->listener->minrawlen);
-			minrawlen = tmp->listener->minrawlen;
-		}
-		if(tmp->listener->maxgaplen > maxgaplen) {
-			logprintf(LOG_DEBUG, "%s: has set a new value for maxgaplen: %d", tmp->listener->id, tmp->listener->maxgaplen);
-			maxgaplen = tmp->listener->maxgaplen;
-		}
-		if(tmp->listener->mingaplen > 0 && tmp->listener->mingaplen < mingaplen) {
-			logprintf(LOG_DEBUG, "%s: has set a new value for mingaplen: %d", tmp->listener->id, tmp->listener->mingaplen);
-			mingaplen = tmp->listener->mingaplen;
-		}
-		if(tmp->listener->rawlen > 0) {
-			logprintf(LOG_ERR, "%s: setting \"rawlen\" length is not allowed, use the \"minrawlen\" and \"maxrawlen\" instead", tmp->listener->id);
-			goto clear;
-		}
-		tmp = tmp->next;
+		tmp_confhw = tmp_confhw->next;
 	}
 
 	settings_find_number("port", &port);
@@ -2414,11 +2495,11 @@ int start_pilight(int argc, char **argv) {
 			if((sockfd = socket_connect(master_server, master_port)) == -1) {
 				logprintf(LOG_NOTICE, "pilight daemon not found @%s, waiting for it to come online", master_server);
 			} else {
-				logprintf(LOG_NOTICE, "a pilight daemon was found, clientizing");
+				logprintf(LOG_INFO, "a pilight daemon was found, clientizing");
 			}
 			pilight.runmode = ADHOC;
 		} else if(ssdp_seek(&ssdp_list) == -1) {
-			logprintf(LOG_NOTICE, "no pilight daemon found, daemonizing");
+			logprintf(LOG_INFO, "no pilight daemon found, daemonizing");
 		} else {
 			logprintf(LOG_NOTICE, "a pilight daemon was found @%s, clientizing", ssdp_list->ip);
 			pilight.runmode = ADHOC;
@@ -2491,28 +2572,43 @@ int start_pilight(int argc, char **argv) {
 	threads_register("sender", &send_code, (void *)NULL, 0);
 	threads_register("broadcaster", &broadcast, (void *)NULL, 0);
 
-	struct conf_hardware_t *tmp_confhw = conf_hardware;
-	while(tmp_confhw) {
+	tmp_confhw = conf_hardware;
+	while(tmp_confhw && main_loop) {
 		if(tmp_confhw->hardware->init) {
 			if(tmp_confhw->hardware->init() == EXIT_FAILURE) {
-				logprintf(LOG_ERR, "could not initialize %s hardware module", tmp_confhw->hardware->id);
-				goto clear;
+				if(main_loop == 1) {
+					logprintf(LOG_ERR, "could not initialize %s hardware module", tmp_confhw->hardware->id);
+					goto clear;
+				} else {
+					break;
+				}
 			}
-			tmp_confhw->hardware->wait = 0;
-			tmp_confhw->hardware->stop = 0;
-			if(tmp_confhw->hardware->comtype == COMOOK) {
-				threads_register(tmp_confhw->hardware->id, &receiveOOK, (void *)tmp_confhw->hardware, 0);
-			} else if(tmp_confhw->hardware->comtype == COMPLSTRAIN) {
-				threads_register(tmp_confhw->hardware->id, &receivePulseTrain, (void *)tmp_confhw->hardware, 0);
+			if(main_loop == 1) {
+				tmp_confhw->hardware->wait = 0;
+				tmp_confhw->hardware->stop = 0;
+				if(tmp_confhw->hardware->comtype == COMOOK) {
+					threads_register(tmp_confhw->hardware->id, &receiveOOK, (void *)tmp_confhw->hardware, 0);
+				} else if(tmp_confhw->hardware->comtype == COMPLSTRAIN) {
+					threads_register(tmp_confhw->hardware->id, &receivePulseTrain, (void *)tmp_confhw->hardware, 0);
+				} else if(tmp_confhw->hardware->comtype == COMAPI) {
+					threads_register(tmp_confhw->hardware->id, tmp_confhw->hardware->receiveAPI, (void *)tmp_confhw->hardware, 0);
+				}
+			} else {
+				break;
 			}
 		}
+		if(main_loop == 0) {
+			break;
+		}
 		tmp_confhw = tmp_confhw->next;
+	}
+	if(main_loop == 0) {
+		goto clear;
 	}
 
 	threads_register("receive parser", &receive_parse_code, (void *)NULL, 0);
 
 #ifdef EVENTS
-	/* Register a seperate thread for the events parser */
 	if(pilight.runmode == STANDALONE) {
 		/* Register a seperate thread in which the daemon communicates the events library */
 		threads_register("events client", &events_clientize, (void *)NULL, 0);
@@ -2536,10 +2632,8 @@ int start_pilight(int argc, char **argv) {
 	}
 #endif
 
-	int ntpsync = 0;
-	settings_find_number("ntp-sync", &ntpsync);
-
-	if(ntpsync == 1) {
+	char *ntpsync = NULL;
+	if(settings_find_string("ntpserver0", &ntpsync) == 0) {
 		threads_register("ntp sync", &ntpthread, NULL, 0);
 	}
 
@@ -2627,10 +2721,10 @@ static LRESULT CALLBACK WindowProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lP
 					}
 				break;
 				case ID_WEBGUI:
-					if(webserver_port == 80) {
+					if(webserver_http_port == 80) {
 						snprintf(buf, sizeof(buf), "http://localhost");
 					} else {
-						snprintf(buf, sizeof(buf), "http://localhost:%d", webserver_port);
+						snprintf(buf, sizeof(buf), "http://localhost:%d", webserver_http_port);
 					}
 					ShellExecute(NULL, "open", buf, NULL, NULL, SW_SHOWNORMAL);
 				break;
@@ -2682,7 +2776,8 @@ static LRESULT CALLBACK WindowProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lP
 
 int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR cmdline, int show) {
 	pilight.running = 0;
-	
+	pilight.debuglevel = 0;
+
 	HWND hWnd;
   WNDCLASS cls;
   MSG msg;
@@ -2719,6 +2814,7 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR cmdline, int show) {
 #else
 int main(int argc, char **argv) {
 	pilight.running = 0;
+	pilight.debuglevel = 0;
 
 	int ret = start_pilight(argc, argv);
 	if(ret == EXIT_SUCCESS) {

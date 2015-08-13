@@ -50,7 +50,7 @@
 #endif
 
 #include "pilight.h"
-#include "common.h"
+#include "network.h"
 #include "log.h"
 #include "gc.h"
 #include "socket.h"
@@ -360,7 +360,7 @@ int socket_write(int sockfd, const char *msg, ...) {
 		va_end(ap);
 
 		if((sendBuff = MALLOC((size_t)n)) == NULL) {
-			logprintf(LOG_ERR, "out of memory");
+			fprintf(stderr, "out of memory\n");
 			exit(EXIT_FAILURE);
 		}
 		memset(sendBuff, '\0', (size_t)n);
@@ -469,7 +469,7 @@ int socket_read(int sockfd, char **message, time_t timeout) {
 				} else {
 					ptr+=bytes;
 					if((*message = REALLOC(*message, (size_t)ptr+1)) == NULL) {
-						logprintf(LOG_ERR, "out of memory");
+						fprintf(stderr, "out of memory\n");
 						exit(EXIT_FAILURE);
 					}
 					memset(&(*message)[(ptr-bytes)], '\0', (size_t)bytes+1);
@@ -623,11 +623,8 @@ void *socket_wait(void *param) {
 								unsigned int n = explode(waitMessage, "\n", &array), q = 0;
 								for(q=0;q<n;q++) {
 									socket_callback->client_data_callback(i, array[q]);
-									FREE(array[q]);
 								}
-								if(n > 0) {
-									FREE(array);
-								}
+								array_free(&array, n);
 							} else {
 								socket_callback->client_data_callback(i, waitMessage);
 							}

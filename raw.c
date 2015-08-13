@@ -29,7 +29,7 @@
 
 #include "libs/pilight/core/threads.h"
 #include "libs/pilight/core/pilight.h"
-#include "libs/pilight/core/common.h"
+#include "libs/pilight/core/network.h"
 #include "libs/pilight/core/config.h"
 #include "libs/pilight/core/log.h"
 #include "libs/pilight/core/datetime.h"
@@ -42,8 +42,7 @@
 
 #include "libs/pilight/protocols/protocol.h"
 
-#include "libs/pilight/events/action.h"
-#include "libs/pilight/events/operator.h"
+#include "libs/pilight/events/events.h"
 
 #include "libs/pilight/config/hardware.h"
 
@@ -61,8 +60,7 @@ int main_gc(void) {
 	datetime_gc();
 	ssdp_gc();
 #ifdef EVENTS
-	event_operator_gc();
-	event_action_gc();
+	events_gc();
 #endif
 	options_gc();
 	socket_gc();
@@ -91,16 +89,19 @@ int main_gc(void) {
 
 void *receiveOOK(void *param) {
 	int duration = 0, iLoop = 0;
+	long stream_duration = 0;
 
 	struct hardware_t *hw = (hardware_t *)param;
 	while(main_loop && hw->receiveOOK) {
 		duration = hw->receiveOOK();
+		stream_duration = stream_duration + duration;
 		iLoop++;
 		if(duration > 0) {
 			if(linefeed == 1) {
 				if(duration > 5100) {
-					printf(" %d -#: %d\n%s: ",duration, iLoop, hw->id);
+					printf(" %d -#: %d -d: %ld\n%s: ",duration, iLoop, stream_duration, hw->id);
 					iLoop = 0;
+					stream_duration = 0;
 				} else {
 					printf(" %d", duration);
 				}
@@ -154,6 +155,20 @@ int main(int argc, char **argv) {
 	/* Catch all exit signals for gc */
 	gc_catch();
 
+	if((progname = MALLOC(12)) == NULL) {
+		fprintf(stderr, "out of memory\n");
+		exit(EXIT_FAILURE);
+	}
+	strcpy(progname, "pilight-raw");
+
+#ifndef _WIN32
+	if(geteuid() != 0) {
+		printf("%s requires root privileges in order to run\n", progname);
+		FREE(progname);
+		exit(EXIT_FAILURE);
+	}
+#endif
+
 	log_shell_enable();
 	log_file_disable();
 	log_level_set(LOG_NOTICE);
@@ -161,12 +176,6 @@ int main(int argc, char **argv) {
 #ifndef _WIN32
 	wiringXLog = logprintf;
 #endif
-
-	if(!(progname = MALLOC(12))) {
-		logprintf(LOG_ERR, "out of memory");
-		exit(EXIT_FAILURE);
-	}
-	strcpy(progname, "pilight-raw");
 
 	options_add(&options, 'H', "help", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
 	options_add(&options, 'V', "version", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
@@ -210,18 +219,18 @@ int main(int argc, char **argv) {
 
 #ifdef _WIN32
 	if((pid = check_instances(L"pilight-raw")) != -1) {
-		logprintf(LOG_ERR, "pilight-raw is already running");
+		logprintf(LOG_NOTICE, "pilight-raw is already running");
 		goto close;
 	}
 #endif
 
 	if((pid = isrunning("pilight-daemon")) != -1) {
-		logprintf(LOG_ERR, "pilight-daemon instance found (%d)", (int)pid);
+		logprintf(LOG_NOTICE, "pilight-daemon instance found (%d)", (int)pid);
 		goto close;
 	}
 
 	if((pid = isrunning("pilight-debug")) != -1) {
-		logprintf(LOG_ERR, "pilight-debug instance found (%d)", (int)pid);
+		logprintf(LOG_NOTICE, "pilight-debug instance found (%d)", (int)pid);
 		goto close;
 	}
 

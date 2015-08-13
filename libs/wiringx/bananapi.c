@@ -335,15 +335,15 @@ static int bananapiWaitForInterrupt(int pin, int ms) {
 	polls.fd = sysFds[pin];
 	polls.events = POLLPRI;
 
+	(void)read(sysFds[pin], &c, 1);
+	lseek(sysFds[pin], 0, SEEK_SET);
+
 	x = poll(&polls, 1, ms);
 
 	/* Don't react to signals */
 	if(x == -1 && errno == EINTR) {
 		x = 0;
 	}
-
-	(void)read(sysFds[pin], &c, 1);
-	lseek(sysFds[pin], 0, SEEK_SET);
 
 	return x;
 }
@@ -397,7 +397,11 @@ static int setup(void)	{
 		physToGpio = physToGpioR3;
 	}
 
+#ifdef O_CLOEXEC
 	if((fd = open("/dev/mem", O_RDWR | O_SYNC | O_CLOEXEC)) < 0) {
+#else
+	if((fd = open("/dev/mem", O_RDWR | O_SYNC)) < 0) {
+#endif
 		wiringXLog(LOG_ERR, "bananapi->setup: Unable to open /dev/mem");
 		return -1;
 	}

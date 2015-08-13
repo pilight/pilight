@@ -35,27 +35,32 @@ static int gpio_433_in = 0;
 static int gpio_433_out = 0;
 
 static unsigned short gpio433HwInit(void) {
-	if(wiringXSetup() == -1) {
+	if(wiringXSupported() == 0) {
+		if(wiringXSetup() == -1) {
+			return EXIT_FAILURE;
+		}
+		if(gpio_433_out >= 0) {
+			if(wiringXValidGPIO(gpio_433_out) != 0) {
+				logprintf(LOG_ERR, "invalid sender pin: %d", gpio_433_out);
+				return EXIT_FAILURE;
+			}
+			pinMode(gpio_433_out, OUTPUT);
+		}
+		if(gpio_433_in >= 0) {
+			if(wiringXValidGPIO(gpio_433_in) != 0) {
+				logprintf(LOG_ERR, "invalid receiver pin: %d", gpio_433_in);
+				return EXIT_FAILURE;
+			}
+			if(wiringXISR(gpio_433_in, INT_EDGE_BOTH) < 0) {
+				logprintf(LOG_ERR, "unable to register interrupt for pin %d", gpio_433_in);
+				return EXIT_SUCCESS;
+			}
+		}
+		return EXIT_SUCCESS;
+	} else {
+		logprintf(LOG_ERR, "the 433gpio module is not supported on this hardware", gpio_433_in);
 		return EXIT_FAILURE;
 	}
-	if(gpio_433_out >= 0) {
-		if(wiringXValidGPIO(gpio_433_out) != 0) {
-			logprintf(LOG_ERR, "invalid sender pin: %d", gpio_433_out);
-			return EXIT_FAILURE;
-		}
-		pinMode(gpio_433_out, OUTPUT);
-	}
-	if(gpio_433_in >= 0) {
-		if(wiringXValidGPIO(gpio_433_in) != 0) {
-			logprintf(LOG_ERR, "invalid receiver pin: %d", gpio_433_in);
-			return EXIT_FAILURE;
-		}
-		if(wiringXISR(gpio_433_in, INT_EDGE_BOTH) < 0) {
-			logprintf(LOG_ERR, "unable to register interrupt for pin %d", gpio_433_in);
-			return EXIT_SUCCESS;
-		}
-	}
-	return EXIT_SUCCESS;
 }
 
 static unsigned short gpio433HwDeinit(void) {
@@ -123,11 +128,16 @@ void gpio433Init(void) {
 	options_add(&gpio433->options, 'r', "receiver", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9-]+$");
 	options_add(&gpio433->options, 's', "sender", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9-]+$");
 
+	gpio433->minrawlen = 1000;
+	gpio433->maxrawlen = 0;
+	gpio433->mingaplen = 5100;
+	gpio433->maxgaplen = 10000;
+	
 	gpio433->hwtype=RF433;
 	gpio433->comtype=COMOOK;
 	gpio433->init=&gpio433HwInit;
 	gpio433->deinit=&gpio433HwDeinit;
-	gpio433->send=&gpio433Send;
+	gpio433->sendOOK=&gpio433Send;
 	gpio433->receiveOOK=&gpio433Receive;
 	gpio433->settings=&gpio433Settings;
 }
@@ -135,9 +145,9 @@ void gpio433Init(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "433gpio";
-	module->version = "1.2";
-	module->reqversion = "5.0";
-	module->reqcommit = "86";
+	module->version = "1.3";
+	module->reqversion = "7.0";
+	module->reqcommit = "10";
 }
 
 void init(void) {

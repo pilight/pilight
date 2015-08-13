@@ -190,61 +190,41 @@ int config_write(int level, const char *media) {
 int config_read(void) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
-	FILE *fp = NULL;
 	char *content = NULL;
-	size_t bytes = 0;
 	struct JsonNode *root = NULL;
-	struct stat st;
 
 	/* Read JSON config file */
-	if((fp = fopen(configfile, "rb")) == NULL) {
-		logprintf(LOG_ERR, "cannot read config file: %s", configfile);
-		return EXIT_FAILURE;
-	}
+	if(file_get_contents(configfile, &content) == 0) {
+		/* Validate JSON and turn into JSON object */
+		if(json_validate(content) == false) {
+			logprintf(LOG_ERR, "config is not in a valid json format");
+			FREE(content);
+			return EXIT_FAILURE;
+		}
+		root = json_decode(content);
 
-	fstat(fileno(fp), &st);
-	bytes = (size_t)st.st_size;
-
-	if((content = CALLOC(bytes+1, sizeof(char))) == NULL) {
-		logprintf(LOG_ERR, "out of memory");
-		fclose(fp);
-		return EXIT_FAILURE;
-	}
-
-	if(fread(content, sizeof(char), bytes, fp) == -1) {
-		logprintf(LOG_ERR, "cannot read config file: %s", configfile);
-	}
-	fclose(fp);
-
-	/* Validate JSON and turn into JSON object */
-	if(json_validate(content) == false) {
-		logprintf(LOG_ERR, "config is not in a valid json format");
-		FREE(content);
-		return EXIT_FAILURE;
-	}
-	root = json_decode(content);
-
-	if(config_parse(root) != EXIT_SUCCESS) {
-		FREE(content);
+		if(config_parse(root) != EXIT_SUCCESS) {
+			FREE(content);
+			json_delete(root);
+			return EXIT_FAILURE;
+		}
 		json_delete(root);
-		return EXIT_FAILURE;
+		config_write(1, "all");
+		FREE(content);
 	}
-	json_delete(root);
-	config_write(1, "all");
-	FREE(content);
 	return EXIT_SUCCESS;
 }
 
 void config_register(config_t **listener, const char *name) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
-	if(!(*listener = MALLOC(sizeof(config_t)))) {
-		logprintf(LOG_ERR, "out of memory");
+	if((*listener = MALLOC(sizeof(config_t))) == NULL) {
+		fprintf(stderr, "out of memory\n");
 		exit(EXIT_FAILURE);
 	}
 
-	if(!((*listener)->name = MALLOC(strlen(name)+1))) {
-		logprintf(LOG_ERR, "out of memory");
+	if(((*listener)->name = MALLOC(strlen(name)+1)) == NULL) {
+		fprintf(stderr, "out of memory\n");
 		exit(EXIT_FAILURE);
 	}
 	strcpy((*listener)->name, name);
@@ -260,7 +240,7 @@ int config_set_file(char *settfile) {
 
 	if(access(settfile, R_OK | W_OK) != -1) {
 		if((configfile = REALLOC(configfile, strlen(settfile)+1)) == NULL) {
-			logprintf(LOG_ERR, "out of memory");
+			fprintf(stderr, "out of memory\n");
 			exit(EXIT_FAILURE);
 		}
 		strcpy(configfile, settfile);

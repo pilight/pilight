@@ -32,6 +32,7 @@
 #include "pgm.h"
 #include "avrbitbang.h"
 #include "../wiringx/wiringX.h"
+#include "../pilight/core/log.h"
 
 /*
  * GPIO user space helpers
@@ -143,8 +144,13 @@ static void gpio_close(PROGRAMMER *pgm) {
 void gpio_initpgm(PROGRAMMER *pgm)
 {
   strcpy(pgm->type, "GPIO");
-	if(wiringXSetup() != 0) {
-		exit(0);
+	if(wiringXSupported() == 0) {
+		if(wiringXSetup() != 0) {
+			exit(EXIT_FAILURE);
+		}
+	} else {
+		logprintf(LOG_WARNING, "gpio firmware flashing is not supported on this hardware");
+		exit(EXIT_FAILURE);
 	}
   pgm->rdy_led        = bitbang_rdy_led;
   pgm->err_led        = bitbang_err_led;

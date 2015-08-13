@@ -51,7 +51,7 @@
 #include "../../polarssl/polarssl/entropy.h"
 #include "../../polarssl/polarssl/ctr_drbg.h"
 
-#include "common.h"
+#include "network.h"
 #include "log.h"
 #include "mail.h"
 
@@ -140,7 +140,7 @@ int sendmail(char *host, char *login, char *pass, unsigned short port, struct ma
 
 	char *p = ip;
 	if(host2ip(host, p) == -1) {
-		logprintf(LOG_ERR, "SMTP: couldn't resolve smpt host name \"%s\"", host);
+		logprintf(LOG_NOTICE, "SMTP: couldn't resolve smpt host name \"%s\"", host);
 		error = -1;
 		goto close;
 	}
@@ -148,15 +148,15 @@ int sendmail(char *host, char *login, char *pass, unsigned short port, struct ma
 	inet_pton(AF_INET, ip, &serv_addr.sin_addr);
 	switch(socket_timeout_connect(sockfd, (struct sockaddr *)&serv_addr, 3)) {
 		case -1:
-			logprintf(LOG_ERR, "could not connect to mail server @%s:%d", host, port);
+			logprintf(LOG_NOTICE, "could not connect to mail server @%s:%d", host, port);
 			error = -1;
 			goto close;
 		case -2:
-			logprintf(LOG_ERR, "mail server connection timeout @%s:%d", host, port);
+			logprintf(LOG_NOTICE, "mail server connection timeout @%s:%d", host, port);
 			error = -1;
 			goto close;
 		case -3:
-			logprintf(LOG_ERR, "Error in mail server socket connection @%s:%d", host, port);
+			logprintf(LOG_NOTICE, "Error in mail server socket connection @%s:%d", host, port);
 			error = -1;
 			goto close;
 		default:
@@ -168,13 +168,13 @@ starttls:
 		entropy_init(&entropy);
 		entropyfree = 1;
 		if((ctr_drbg_init(&ctr_drbg, entropy_func, &entropy, (const unsigned char *)"pilight", 6)) != 0) {
-			logprintf(LOG_ERR, "SMTP: ctr_drbg_init failed");
+			logprintf(LOG_NOTICE, "SMTP: ctr_drbg_init failed");
 			error = -1;
 			goto close;
 		}
 
 		if((ssl_init(&ssl)) != 0) {
-			logprintf(LOG_ERR, "SMTP: ssl_init failed");
+			logprintf(LOG_NOTICE, "SMTP: ssl_init failed");
 			error = -1;
 			goto close;
 		}
@@ -186,9 +186,8 @@ starttls:
 
 		int ret = 0;
 		while((ret = ssl_handshake(&ssl)) != 0) {
-			printf("%d\n", ret);
 			if(ret != POLARSSL_ERR_NET_WANT_READ && ret != POLARSSL_ERR_NET_WANT_WRITE) {
-				logprintf(LOG_ERR, "SMTP: ssl_handshake failed");
+				logprintf(LOG_NOTICE, "SMTP: ssl_handshake failed");
 				error = -1;
 				goto close;
 			}
@@ -198,37 +197,46 @@ starttls:
 	if(authtype != STARTTLS) {
 		memset(recvBuff, '\0', sizeof(recvBuff));
 		if(sd_read(recvBuff) <= 0) {
-			logprintf(LOG_ERR, "SMTP: didn't see identification");
+			logprintf(LOG_NOTICE, "SMTP: didn't see identification");
 			error = -1;
 			goto close;
 		}
-		logprintf(LOG_DEBUG, "SMTP: %s", recvBuff);
+		if(pilight.debuglevel == 1) {
+			fprintf(stderr, "SMTP: %s", recvBuff);
+		}
 		if(strncmp(recvBuff, "220", 3) != 0) {
-			logprintf(LOG_ERR, "SMTP: didn't see identification");
+			logprintf(LOG_NOTICE, "SMTP: didn't see identification");
 			error = -1;
 			goto close;
 		}
 	}
 
 	len = strlen("EHLO ")+strlen(USERAGENT)+3;
-	out = REALLOC(out, len+4);
+	if((out = REALLOC(out, len+1)) == NULL) {
+		fprintf(stderr, "out of memory\n");
+		exit(EXIT_FAILURE);
+	}
 	len = (size_t)snprintf(out, len, "EHLO %s\r\n", USERAGENT);
-	logprintf(LOG_DEBUG, "SMTP: %s", out);
+	if(pilight.debuglevel == 1) {
+		fprintf(stderr, "SMTP: %s", out);
+	}
 	if(sd_write(out) != 0) {
-		logprintf(LOG_ERR, "SMTP: failed to send EHLO");
+		logprintf(LOG_NOTICE, "SMTP: failed to send EHLO");
 		error = -1;
 		goto close;
 	}
 
 	memset(recvBuff, '\0', sizeof(recvBuff));
 	while(sd_read(recvBuff) > 0) {
-		logprintf(LOG_DEBUG, "SMTP: %s", recvBuff);
+		if(pilight.debuglevel == 1) {
+			fprintf(stderr, "SMTP: %s", recvBuff);
+		}
 		if(sscanf(recvBuff, "%d%c%[^\r\n]", &val, &ch, testme) == 0) {
 			error = -1;
 			goto close;
 		}
 		if(val != 250) {
-			logprintf(LOG_ERR, "SMTP: expected 250 got %d", val);
+			logprintf(LOG_NOTICE, "SMTP: expected 250 got %d", val);
 			error = -1;
 			goto close;
 		}
@@ -259,22 +267,31 @@ starttls:
 	 */
 	if(authtype == STARTTLS) {
 		len = strlen("STARTTLS\r\n")+1;
-		out = REALLOC(out, len+1);
+		if((out = REALLOC(out, len+1)) == NULL) {
+			fprintf(stderr, "out of memory\n");
+			exit(EXIT_FAILURE);
+		}
 		strcpy(out, "STARTTLS\r\n");
-		logprintf(LOG_DEBUG, "SMTP: %s", out);
+		if(pilight.debuglevel == 1) {
+			fprintf(stderr, "SMTP: %s", out);
+		}
 		if(sd_write(out) != 0) {
-			logprintf(LOG_ERR, "SMTP: failed to send STARTTLS");
+			logprintf(LOG_NOTICE, "SMTP: failed to send STARTTLS");
 			error = -1;
 			goto close;
 		}
 
 		while(sd_read(recvBuff) > 0) {
-			logprintf(LOG_DEBUG, "SMTP: %s", recvBuff);
+			if(pilight.debuglevel == 1) {
+				fprintf(stderr, "SMTP: %s", recvBuff);
+			}
 			if(strncmp(recvBuff, "220", 3) == 0) {
 				/*
 				 * We restart our communcation encrypted by resending our EHLO
 				 */
-				logprintf(LOG_DEBUG, "SMTP: restart communication encrypted");
+				if(pilight.debuglevel == 1) {
+					fprintf(stderr, "SMTP: restart communication encrypted");
+				}
 				have_ssl = 1;
 				goto starttls;
 			}
@@ -283,7 +300,7 @@ starttls:
 	}
 
 	if(authtype == UNSUPPORTED) {
-		logprintf(LOG_ERR, "SMTP: no supported authentication method");
+		logprintf(LOG_NOTICE, "SMTP: no supported authentication method");
 		error = -1;
 		goto close;
 	}
@@ -291,6 +308,10 @@ starttls:
 	len = strlen(login)+strlen(pass)+2;
 
 	char *authstr = MALLOC(len), *hash = NULL;
+	if(authstr == NULL) {
+		fprintf(stderr, "out of memory\n");
+		exit(EXIT_FAILURE);
+	}
 	memset(authstr, '\0', len);
 	strncpy(&authstr[1], login, strlen(login));
 	strncpy(&authstr[2+strlen(login)], pass, len-strlen(login)-2);
@@ -298,36 +319,43 @@ starttls:
 	FREE(authstr);
 
 	len = strlen("AUTH PLAIN ")+strlen(hash)+3;
-	out = REALLOC(out, len+4);
+	if((out = REALLOC(out, len+4)) == NULL) {
+		fprintf(stderr, "out of memory\n");
+		exit(EXIT_FAILURE);
+	}
 	memset(out, '\0', len);
 	snprintf(out, len, "AUTH PLAIN %s\r\n", hash);
 	FREE(hash);
 
 	/* Don't put the password in the log */
-	logprintf(LOG_DEBUG, "SMTP: AUTH PLAIN xxxxxx\r\n");
+	if(pilight.debuglevel == 1) {
+		fprintf(stderr, "SMTP: AUTH PLAIN xxxxxx");
+	}
 	if(sd_write(out) != 0) {
-		logprintf(LOG_ERR, "SMTP: failed to send AUTH PLAIN");
+		logprintf(LOG_NOTICE, "SMTP: failed to send AUTH PLAIN");
 		goto close;
 	}
 
 	memset(recvBuff, '\0', sizeof(recvBuff));
 	while(sd_read(recvBuff) > 0) {
-		logprintf(LOG_DEBUG, "SMTP: %s", recvBuff);
+		if(pilight.debuglevel == 1) {
+			fprintf(stderr, "SMTP: %s", recvBuff);
+		}
 		if(strncmp(recvBuff, "235", 3) == 0) {
 			break;
 		}
 		if(strncmp(recvBuff, "451", 3) == 0) {
-			logprintf(LOG_ERR, "SMTP: protocol violation while authenticating");
+			logprintf(LOG_NOTICE, "SMTP: protocol violation while authenticating");
 			error = -1;
 			goto close;
 		}
 		if(strncmp(recvBuff, "501", 3) == 0) {
-			logprintf(LOG_ERR, "SMTP: cannot decode response");
+			logprintf(LOG_NOTICE, "SMTP: cannot decode response");
 			error = -1;
 			goto close;
 		}
 		if(strncmp(recvBuff, "535", 3) == 0) {
-			logprintf(LOG_ERR, "SMTP: authentication failed: wrong user/password");
+			logprintf(LOG_NOTICE, "SMTP: authentication failed: wrong user/password");
 			error = -1;
 			goto close;
 		}
@@ -335,18 +363,25 @@ starttls:
 	}
 
 	len = strlen("MAIL FROM: <>\r\n")+strlen(mail->from)+1;
-	out = REALLOC(out, len+1);
+	if((out = REALLOC(out, len+1)) == NULL) {
+		fprintf(stderr, "out of memory\n");
+		exit(EXIT_FAILURE);
+	}
 	len = (size_t)snprintf(out, len, "MAIL FROM: <%s>\r\n", mail->from);
-	logprintf(LOG_DEBUG, "SMTP: %s", out);
+	if(pilight.debuglevel == 1) {
+		fprintf(stderr, "SMTP: %s", out);
+	}
 	if(sd_write(out) != 0) {
-		logprintf(LOG_ERR, "SMTP: failed to send MAIL FROM");
+		logprintf(LOG_NOTICE, "SMTP: failed to send MAIL FROM");
 		error = -1;
 		goto close;
 	}
 
 	memset(recvBuff, '\0', sizeof(recvBuff));
 	while(sd_read(recvBuff) > 0) {
-		logprintf(LOG_DEBUG, "SMTP: %s", recvBuff);
+		if(pilight.debuglevel == 1) {
+			fprintf(stderr, "SMTP: %s", recvBuff);
+		}
 		if(strncmp(recvBuff, "250", 3) == 0) {
 			break;
 		}
@@ -354,18 +389,25 @@ starttls:
 	}
 
 	len = strlen("RCPT TO: <>\r\n")+strlen(mail->to)+1;
-	out = REALLOC(out, len+1);
+	if((out = REALLOC(out, len+1)) == NULL) {
+		fprintf(stderr, "out of memory\n");
+		exit(EXIT_FAILURE);
+	}
 	snprintf(out, len, "RCPT TO: <%s>\r\n", mail->to);
-	logprintf(LOG_DEBUG, "SMTP: %s", out);
+	if(pilight.debuglevel == 1) {
+		fprintf(stderr, "SMTP: %s", out);
+	}
 	if(sd_write(out) != 0) {
-		logprintf(LOG_ERR, "SMTP: failed to send RCPT");
+		logprintf(LOG_NOTICE, "SMTP: failed to send RCPT");
 		error = -1;
 		goto close;
 	}
 
 	memset(recvBuff, '\0', sizeof(recvBuff));
 	while(sd_read(recvBuff) > 0) {
-		logprintf(LOG_DEBUG, "SMTP: %s", recvBuff);
+		if(pilight.debuglevel == 1) {
+			fprintf(stderr, "SMTP: %s", recvBuff);
+		}
 		if(strncmp(recvBuff, "250", 3) == 0) {
 			break;
 		}
@@ -373,18 +415,25 @@ starttls:
 	}
 
 	len = strlen("DATA\r\n")+1;
-	out = REALLOC(out, len+1);
+	if((out = REALLOC(out, len+1)) == NULL) {
+		fprintf(stderr, "out of memory\n");
+		exit(EXIT_FAILURE);
+	}
 	strcpy(out, "DATA\r\n");
-	logprintf(LOG_DEBUG, "SMTP: %s", out);
+	if(pilight.debuglevel == 1) {
+		fprintf(stderr, "SMTP: %s", out);
+	}
 	if(sd_write(out) != 0) {
-		logprintf(LOG_ERR, "SMTP: failed to send DATA");
+		logprintf(LOG_NOTICE, "SMTP: failed to send DATA");
 		error = -1;
 		goto close;
 	}
 
 	memset(recvBuff, '\0', sizeof(recvBuff));
 	while(sd_read(recvBuff) > 0) {
-		logprintf(LOG_DEBUG, "SMTP: %s", recvBuff);
+		if(pilight.debuglevel == 1) {
+			fprintf(stderr, "SMTP: %s", recvBuff);
+		}
 		if(strncmp(recvBuff, "354", 3) == 0) {
 			break;
 		}
@@ -392,7 +441,10 @@ starttls:
 	}
 
 	len = 255+strlen(mail->to)+strlen(mail->from)+strlen(mail->subject)+strlen(mail->message);
-	out = REALLOC(out, len+1);
+	if((out = REALLOC(out, len+1)) == NULL) {
+		fprintf(stderr, "out of memory\n");
+		exit(EXIT_FAILURE);
+	}
 	len = (size_t)snprintf(out, len, "Subject: %s\r\n"
 										"From: <%s>\r\n"
 										"To: <%s>\r\n"
@@ -403,36 +455,46 @@ starttls:
 										"%s"
 										"\r\n.\r\n",
 										mail->subject, mail->from, mail->to, mail->message);
-	logprintf(LOG_DEBUG, "SMTP: %s", out);
+	if(pilight.debuglevel == 1) {
+		fprintf(stderr, "SMTP: %s", out);
+	}
 	if(sd_write(out) != 0) {
-		logprintf(LOG_ERR, "SMTP: failed to send MESSAGE");
+		logprintf(LOG_NOTICE, "SMTP: failed to send MESSAGE");
 		error = -1;
 		goto close;
 	}
 
 	memset(recvBuff, '\0', sizeof(recvBuff));
 	while(sd_read(recvBuff) > 0) {
-		logprintf(LOG_DEBUG, "SMTP: %s", recvBuff);
+		if(pilight.debuglevel == 1) {
+			fprintf(stderr, "SMTP: %s", recvBuff);
+		}
 		if(strncmp(recvBuff, "250", 3) == 0) {
 			break;
 		}
-		sleep(1);
 		memset(recvBuff, '\0', sizeof(recvBuff));
 	}
 
 	len = strlen("RSET\r\n");
-	out = REALLOC(out, len+1);
+	if((out = REALLOC(out, len+1)) == NULL) {
+		fprintf(stderr, "out of memory\n");
+		exit(EXIT_FAILURE);
+	}
 	strcpy(out, "RSET\r\n");
-	logprintf(LOG_DEBUG, "SMTP: %s", out);
+	if(pilight.debuglevel == 1) {
+		fprintf(stderr, "SMTP: %s", out);
+	}
 	if(sd_write(out) != 0) {
-		logprintf(LOG_ERR, "SMTP: failed to send RSET");
+		logprintf(LOG_NOTICE, "SMTP: failed to send RSET");
 		error = -1;
 		goto close;
 	}
 
 	memset(recvBuff, '\0', sizeof(recvBuff));
 	while(sd_read(recvBuff) > 0) {
-		logprintf(LOG_DEBUG, "SMTP: %s", recvBuff);
+		if(pilight.debuglevel == 1) {
+			fprintf(stderr, "SMTP: %s", recvBuff);
+		}
 		if(strncmp(recvBuff, "250", 3) == 0) {
 			break;
 		}
@@ -440,11 +502,16 @@ starttls:
 	}
 
 	len = strlen("QUIT\r\n");
-	out = REALLOC(out, len+1);
+	if((out = REALLOC(out, len+1)) == NULL) {
+		fprintf(stderr, "out of memory\n");
+		exit(EXIT_FAILURE);
+	}
 	strcpy(out, "QUIT\r\n");
-	logprintf(LOG_DEBUG, "SMTP: %s", out);
+	if(pilight.debuglevel == 1) {
+		fprintf(stderr, "SMTP: %s", out);
+	}
 	if(sd_write(out) != 0) {
-		logprintf(LOG_ERR, "failed to send QUIT");
+		logprintf(LOG_NOTICE, "failed to send QUIT");
 		error = -1;
 		goto close;
 	}

@@ -19,7 +19,9 @@
 #define _WIRING_X_H_
 
 #include <errno.h>
-#include <syslog.h>
+#ifndef _WIN32
+	#include <syslog.h>
+#endif
 
 #ifndef	TRUE
 #define	TRUE	(1==1)
@@ -103,5 +105,6 @@ int wiringXSPIDataRW(int channel, unsigned char *data, int len);
 int wiringXSPISetup(int channel, int speed);
 char *wiringXPlatform(void);
 int wiringXValidGPIO(int gpio);
+int wiringXSupported(void);
 
 #endif

@@ -88,10 +88,10 @@ void event_operator_init(void) {
 
 	memset(pilight_commit, '\0', 3);
 
-	if(settings_find_string("operator-root", &operator_root) != 0) {
+	if(settings_find_string("operators-root", &operator_root) != 0) {
 		/* If no operator root was set, use the default operator root */
-		if(!(operator_root = MALLOC(strlen(OPERATOR_ROOT)+1))) {
-			logprintf(LOG_ERR, "out of memory");
+		if((operator_root = MALLOC(strlen(OPERATOR_ROOT)+1)) == NULL) {
+			fprintf(stderr, "out of memory\n");
 			exit(EXIT_FAILURE);
 		}
 		strcpy(operator_root, OPERATOR_ROOT);
@@ -167,12 +167,12 @@ void event_operator_init(void) {
 void event_operator_register(struct event_operators_t **op, const char *name) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
-	if(!(*op = MALLOC(sizeof(struct event_operators_t)))) {
-		logprintf(LOG_ERR, "out of memory");
+	if((*op = MALLOC(sizeof(struct event_operators_t))) == NULL) {
+		fprintf(stderr, "out of memory\n");
 		exit(EXIT_FAILURE);
 	}
-	if(!((*op)->name = MALLOC(strlen(name)+1))) {
-		logprintf(LOG_ERR, "out of memory");
+	if(((*op)->name = MALLOC(strlen(name)+1)) == NULL) {
+		fprintf(stderr, "out of memory\n");
 		exit(EXIT_FAILURE);
 	}
 	strcpy((*op)->name, name);

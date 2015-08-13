@@ -79,14 +79,12 @@ static void *ds18b20Parse(void *param) {
 		jchild = json_first_child(jid);
 		while(jchild) {
 			if(json_find_string(jchild, "id", &stmp) == 0) {
-				id = REALLOC(id, (sizeof(char *)*(size_t)(nrid+1)));
-				if(!id) {
-					logprintf(LOG_ERR, "out of memory");
+				if((id = REALLOC(id, (sizeof(char *)*(size_t)(nrid+1)))) == NULL) {
+					fprintf(stderr, "out of memory\n");
 					exit(EXIT_FAILURE);
 				}
-				id[nrid] = MALLOC(strlen(stmp)+1);
-				if(!id[nrid]) {
-					logprintf(LOG_ERR, "out of memory");
+				if((id[nrid] = MALLOC(strlen(stmp)+1)) == NULL) {
+					fprintf(stderr, "out of memory\n");
 					exit(EXIT_FAILURE);
 				}
 				strcpy(id[nrid], stmp);
@@ -105,9 +103,8 @@ static void *ds18b20Parse(void *param) {
 #ifndef _WIN32
 			pthread_mutex_lock(&lock);
 			for(y=0;y<nrid;y++) {
-				ds18b20_sensor = REALLOC(ds18b20_sensor, strlen(source_path)+strlen(id[y])+5);
-				if(!ds18b20_sensor) {
-					logprintf(LOG_ERR, "out of memory");
+				if((ds18b20_sensor = REALLOC(ds18b20_sensor, strlen(source_path)+strlen(id[y])+5)) == NULL) {
+					fprintf(stderr, "out of memory\n");
 					exit(EXIT_FAILURE);
 				}
 				sprintf(ds18b20_sensor, "%s28-%s/", source_path, id[y]);
@@ -129,8 +126,8 @@ static void *ds18b20Parse(void *param) {
 								fstat(fileno(fp), &st);
 								bytes = (size_t)st.st_size;
 
-								if(!(content = REALLOC(content, bytes+1))) {
-									logprintf(LOG_ERR, "out of memory");
+								if((content = REALLOC(content, bytes+1)) == NULL) {
+									fprintf(stderr, "out of memory\n");
 									fclose(fp);
 									break;
 								}
@@ -145,7 +142,7 @@ static void *ds18b20Parse(void *param) {
 								w1valid = 0;
 
 								char **array = NULL;
-								unsigned int n = explode(content, "\n", &array), q = 0;
+								unsigned int n = explode(content, "\n", &array);
 								if(n > 0) {
 									sscanf(array[0], "%*x %*x %*x %*x %*x %*x %*x %*x %*x : crc=%*x %s", crcVar);
 									if(strncmp(crcVar, "YES", 3) == 0 && n > 1) {
@@ -154,10 +151,7 @@ static void *ds18b20Parse(void *param) {
 										w1temp = (w1temp/1000)+temp_offset;
 									}
 								}
-								for(q=0;q<n;q++) {
-									FREE(array[q]);
-								}
-								FREE(array);
+								array_free(&array, n);
 
 								if(w1valid) {
 									ds18b20->message = json_mkobject();

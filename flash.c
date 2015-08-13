@@ -35,8 +35,7 @@
 #include "libs/pilight/core/options.h"
 #include "libs/pilight/core/firmware.h"
 
-#include "libs/pilight/events/action.h"
-#include "libs/pilight/events/operator.h"
+#include "libs/pilight/events/events.h"
 
 #ifndef _WIN32
 	#include "libs/wiringx/wiringX.h"
@@ -48,7 +47,6 @@ int main(int argc, char **argv) {
 	atomicinit();
 	log_shell_enable();
 	log_file_disable();
-	log_level_set(LOG_DEBUG);
 
 #ifndef _WIN32
 	wiringXLog = logprintf;
@@ -64,9 +62,8 @@ int main(int argc, char **argv) {
 
 	strcpy(configtmp, CONFIG_FILE);
 
-	progname = MALLOC(15);
-	if(!progname) {
-		logprintf(LOG_ERR, "out of memory");
+	if((progname = MALLOC(15)) == NULL) {
+		fprintf(stderr, "out of memory\n");
 		exit(EXIT_FAILURE);
 	}
 	strcpy(progname, "pilight-flash");
@@ -144,6 +141,7 @@ int main(int argc, char **argv) {
 	}
 #endif
 
+	log_level_set(LOG_DEBUG);
 	firmware.version = 0;
 	logprintf(LOG_INFO, "**** START UPD. FW ****");
 	firmware_getmp(comport);
@@ -169,8 +167,7 @@ close:
 	protocol_gc();
 	options_gc();
 #ifdef EVENTS
-	event_operator_gc();
-	event_action_gc();
+	events_gc();
 #endif
 #ifndef _WIN32
 	wiringXGC();

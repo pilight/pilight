@@ -76,7 +76,7 @@ static void *thread(void *param) {
 	struct sockaddr_un addr;
 	struct timeval timeout;
 
-	int nrloops = 0, n = -1, bytes = 0;
+	int nrloops = 0, n = -1, bytes = 0, retry = 0;
 	char recvBuff[BUFFER_SIZE];
 	fd_set fdsread;
 	timeout.tv_sec = 1;
@@ -97,32 +97,36 @@ static void *thread(void *param) {
 		if(path_exists(socket_path) == EXIT_SUCCESS) {
 			/* Try to open a new socket */
 			if((sockfd = socket(AF_UNIX, SOCK_STREAM, 0)) < 0) {
-				logprintf(LOG_DEBUG, "could not create Lirc socket");
+				logprintf(LOG_NOTICE, "could not create Lirc socket");
 				break;
 			}
 
 			addr.sun_family=AF_UNIX;
 			strcpy(addr.sun_path, socket_path);
 
+			retry = 0;
 			/* Connect to the server */
 			switch(socket_timeout_connect(sockfd, (struct sockaddr *)&addr, 3)) {
 				case -1:
-					logprintf(LOG_ERR, "could not connect to Lirc socket @%s", socket_path);
+					logprintf(LOG_NOTICE, "could not connect to Lirc socket @%s", socket_path);
 					protocol_thread_wait(node, 3, &nrloops);
-					continue;
+					retry = 1;
 				break;
 				case -2:
-					logprintf(LOG_ERR, "Lirc socket timeout @%s", socket_path);
+					logprintf(LOG_NOTICE, "Lirc socket timeout @%s", socket_path);
 					protocol_thread_wait(node, 3, &nrloops);
-					continue;
+					retry = 1;
 				break;
 				case -3:
-					logprintf(LOG_ERR, "Error in Lirc socket connection @%s", socket_path);
+					logprintf(LOG_NOTICE, "Error in Lirc socket connection @%s", socket_path);
 					protocol_thread_wait(node, 3, &nrloops);
-					continue;
+					retry = 1;
 				break;
 				default:
 				break;
+			}
+			if(retry == 1) {
+				continue;
 			}
 
 			while(loop) {
@@ -162,7 +166,7 @@ static void *thread(void *param) {
 								}
 								if(nrspace >= 3) {
 									char **array = NULL;
-									unsigned int q = explode(nlarray[t], " ", &array), h = 0;
+									unsigned int q = explode(nlarray[t], " ", &array);
 									if(q == 4) {
 										char *code1 = array[0];
 										char *rep = array[1];
@@ -191,20 +195,10 @@ static void *thread(void *param) {
 										json_delete(lirc->message);
 										lirc->message = NULL;
 									}
-									if(q > 0) {
-										for(h=0;h<q;h++) {
-											FREE(array[h]);
-										}
-										FREE(array);
-									}
+									array_free(&array, q);
 								}
 							}
-							if(t > 0) {
-								for(t=0;t<e;t++) {
-									FREE(nlarray[t]);
-								}
-								FREE(nlarray);
-							}
+							array_free(&nlarray, t);
 							memset(recvBuff, '\0', BUFFER_SIZE);
 						}
 					}
@@ -274,7 +268,7 @@ void lircInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "lirc";
-	module->version = "1.9";
+	module->version = "1.10";
 	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }

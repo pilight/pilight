@@ -40,8 +40,11 @@
 
 #include "libs/pilight/protocols/protocol.h"
 
-#include "libs/pilight/events/operator.h"
-#include "libs/pilight/events/action.h"
+#include "libs/pilight/events/events.h"
+
+#ifndef _WIN32
+	#include "libs/wiringx/wiringX.h"
+#endif
 
 int main(int argc, char **argv) {
 	// memtrack();
@@ -62,8 +65,12 @@ int main(int argc, char **argv) {
 	log_shell_enable();
 	log_level_set(LOG_NOTICE);
 
-	if(!(progname = MALLOC(16))) {
-		logprintf(LOG_ERR, "out of memory");
+#ifndef _WIN32
+	wiringXLog = logprintf;
+#endif
+
+	if((progname = MALLOC(16)) == NULL) {
+		fprintf(stderr, "out of memory\n");
 		exit(EXIT_FAILURE);
 	}
 	strcpy(progname, "pilight-control");
@@ -100,21 +107,21 @@ int main(int argc, char **argv) {
 			break;
 			case 'd':
 				if((device = REALLOC(device, strlen(optarg)+1)) == NULL) {
-					logprintf(LOG_ERR, "out of memory");
+					fprintf(stderr, "out of memory\n");
 					exit(EXIT_FAILURE);
 				}
 				strcpy(device, optarg);
 			break;
 			case 's':
 				if((state = REALLOC(state, strlen(optarg)+1)) == NULL) {
-					logprintf(LOG_ERR, "out of memory");
+					fprintf(stderr, "out of memory\n");
 					exit(EXIT_FAILURE);
 				}
 				strcpy(state, optarg);
 			break;
 			case 'v':
 				if((values = REALLOC(values, strlen(optarg)+1)) == NULL) {
-					logprintf(LOG_ERR, "out of memory");
+					fprintf(stderr, "out of memory\n");
 					exit(EXIT_FAILURE);
 				}
 				strcpy(values, optarg);
@@ -127,7 +134,7 @@ int main(int argc, char **argv) {
 			break;
 			case 'S':
 				if(!(server = REALLOC(server, strlen(optarg)+1))) {
-					logprintf(LOG_ERR, "out of memory");
+					fprintf(stderr, "out of memory\n");
 					exit(EXIT_FAILURE);
 				}
 				strcpy(server, optarg);
@@ -171,7 +178,7 @@ int main(int argc, char **argv) {
 			goto close;
 		}
 	} else if(ssdp_seek(&ssdp_list) == -1) {
-		logprintf(LOG_ERR, "no pilight ssdp connections found");
+		logprintf(LOG_NOTICE, "no pilight ssdp connections found");
 		goto close;
 	} else {
 		if((sockfd = socket_connect(ssdp_list->ip, ssdp_list->port)) == -1) {
@@ -246,10 +253,7 @@ int main(int argc, char **argv) {
 									}
 									strcpy(name, array[q]);
 									if(q+1 == n) {
-										for(q=0;q<n;q++) {
-											FREE(array[q]);
-										}
-										FREE(array);
+										array_free(&array, n);
 										logprintf(LOG_ERR, "\"%s\" is missing a value for device \"%s\"", name, device);
 										FREE(name);
 										break;
@@ -262,22 +266,14 @@ int main(int argc, char **argv) {
 										strcpy(val, array[q+1]);
 										if(devices_valid_value(device, name, val) == 0) {
 											if(isNumeric(val) == EXIT_SUCCESS) {
-												char *ptr = strstr(array[q+1], ".");
-												int decimals = 0;
-												if(ptr != NULL) {
-													decimals = (int)(strlen(array[q+1])-((size_t)(ptr-array[q+1])+1));
-												}
-												json_append_member(jvalues, name, json_mknumber(atof(val), decimals));
+												json_append_member(jvalues, name, json_mknumber(atof(val), nrDecimals(val)));
 											} else {
 												json_append_member(jvalues, name, json_mkstring(val));
 											}
 											has_values = 1;
 										} else {
 											logprintf(LOG_ERR, "\"%s\" is an invalid value for device \"%s\"", name, device);
-											for(q=0;q<n;q++) {
-												FREE(array[q]);
-											}
-											FREE(array);
+											array_free(&array, n);
 											FREE(name);
 											json_delete(json);
 											goto close;
@@ -285,13 +281,7 @@ int main(int argc, char **argv) {
 									}
 									FREE(name);
 								}
-								unsigned int z = 0;
-								for(z=q;z<n;z++) {
-									FREE(array[z]);
-								}
-								if(n > 0) {
-									FREE(array);
-								}
+								array_free(&array, n);
 							}
 
 							if(devices_valid_state(device, state) == 0) {
@@ -353,8 +343,7 @@ close:
 	protocol_gc();
 	options_gc();
 #ifdef EVENTS
-	event_operator_gc();
-	event_action_gc();
+	events_gc();
 #endif
 	dso_gc();
 	log_gc();

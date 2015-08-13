@@ -169,7 +169,7 @@ static void *thread(void *param) {
 				if(ret == 200) {
 					logprintf(LOG_DEBUG, "pushbullet action succeeded with message: %s", data);
 				} else {
-					logprintf(LOG_ERR, "pushbullet action failed (%d) with message: %s", ret, data);
+					logprintf(LOG_NOTICE, "pushbullet action failed (%d) with message: %s", ret, data);
 				}
 				if(data != NULL) {
 					FREE(data);

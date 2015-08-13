@@ -61,22 +61,8 @@ static int mingaplen = 10000;
 
 #ifdef _WIN32
 static HANDLE serial_433_fd;
-static unsigned short nrports = 16;
-char comports[16][10]={"COM1",  "COM2",  "COM3",  "COM4",
-                       "COM5",  "COM6",  "COM7",  "COM8",
-                       "COM9",  "COM10", "COM11", "COM12",
-                       "COM13", "COM14", "COM15", "COM16"};
 #else
 static int serial_433_fd = 0;
-static unsigned short nrports = 38;
-char comports[38][16]={"/dev/ttyS0","/dev/ttyS1","/dev/ttyS2","/dev/ttyS3","/dev/ttyS4","/dev/ttyS5",
-                       "/dev/ttyS6","/dev/ttyS7","/dev/ttyS8","/dev/ttyS9","/dev/ttyS10","/dev/ttyS11",
-                       "/dev/ttyS12","/dev/ttyS13","/dev/ttyS14","/dev/ttyS15","/dev/ttyUSB0",
-                       "/dev/ttyUSB1","/dev/ttyUSB2","/dev/ttyUSB3","/dev/ttyUSB4","/dev/ttyUSB5",
-                       "/dev/ttyAMA0","/dev/ttyAMA1","/dev/ttyACM0","/dev/ttyACM1",
-                       "/dev/rfcomm0","/dev/rfcomm1","/dev/ircomm0","/dev/ircomm1",
-                       "/dev/cuau0","/dev/cuau1","/dev/cuau2","/dev/cuau3",
-                       "/dev/cuaU0","/dev/cuaU1","/dev/cuaU2","/dev/cuaU3"};
 static int nano_433_initialized = 0;
 #endif
 
@@ -98,22 +84,24 @@ void *syncFW(void *param) {
 #endif
 	char send[MAXPULSESTREAMLENGTH+1];
 	int len = 0;
-	
+
 	memset(&send, '\0', sizeof(send));
 
 	struct protocols_t *tmp = protocols;
 	while(tmp) {
-		if(tmp->listener->maxrawlen > maxrawlen) {
-			maxrawlen = tmp->listener->maxrawlen;
-		}
-		if(tmp->listener->minrawlen > 0 && tmp->listener->minrawlen < minrawlen) {
-			minrawlen = tmp->listener->minrawlen;
-		}
-		if(tmp->listener->maxgaplen > maxgaplen) {
-			maxgaplen = tmp->listener->maxgaplen;
-		}
-		if(tmp->listener->mingaplen > 0 && tmp->listener->mingaplen < mingaplen) {
-			mingaplen = tmp->listener->mingaplen;
+		if(tmp->listener->hwtype == RF433) {
+			if(tmp->listener->maxrawlen > maxrawlen) {
+				maxrawlen = tmp->listener->maxrawlen;
+			}
+			if(tmp->listener->minrawlen > 0 && tmp->listener->minrawlen < minrawlen) {
+				minrawlen = tmp->listener->minrawlen;
+			}
+			if(tmp->listener->maxgaplen > maxgaplen) {
+				maxgaplen = tmp->listener->maxgaplen;
+			}
+			if(tmp->listener->mingaplen > 0 && tmp->listener->mingaplen < mingaplen) {
+				mingaplen = tmp->listener->mingaplen;
+			}
 		}
 		tmp = tmp->next;
 	}
@@ -132,11 +120,11 @@ void *syncFW(void *param) {
 #endif
 
 	if(n != len) {
-		logprintf(LOG_ERR, "could not sync FW values");
+		logprintf(LOG_NOTICE, "could not sync FW values");
 	}
 
 	threads--;
-	
+
 	return NULL;
 }
 
@@ -185,7 +173,7 @@ static unsigned short int nano433HwInit(void) {
 	snprintf(tmp, 255, "\\\\.\\%s", com);
 
 	if((int)(serial_433_fd = CreateFile(tmp, GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_EXISTING, 0, NULL)) < 0) {
-		logprintf(LOG_INFO, "cannot open port %s", com);
+		logprintf(LOG_NOTICE, "cannot open port %s", com);
 		return EXIT_FAILURE;
 	}
 	logprintf(LOG_INFO, "connected to port %s", com);
@@ -216,6 +204,7 @@ static unsigned short int nano433HwInit(void) {
 
 	if(SetCommTimeouts(serial_433_fd, &timeouts) == FALSE) {
 		logprintf(LOG_ERR, "error setting port %s time-outs.", com);
+		return EXIT_FAILURE;
 	}
 #else
 	if((serial_433_fd = open(com, O_RDWR | O_SYNC)) >= 0) {
@@ -312,6 +301,7 @@ static int nano433Send(int *code, int rawlen, int repeats) {
 	gettimeofday(&tv, NULL);
 	timestamp.first = timestamp.second;
 	timestamp.second = 1000000 * (unsigned int)tv.tv_sec + (unsigned int)tv.tv_usec;
+
 	if(((int)timestamp.second-(int)timestamp.first) < 1000000) {
 		sleep(1);
 	}
@@ -376,11 +366,11 @@ static int nano433Receive(struct rawcode_t *r) {
 						start = 0;
 						startv = 0;
 						char **array = NULL;
-						int c = explode(&buffer[2], ",", &array), i = 0;
+						int c = explode(&buffer[2], ",", &array);
 						if(c == 7) {
-							if(!(minrawlen == atoi(array[0]) && maxrawlen == atoi(array[1]) && 
+							if(!(minrawlen == atoi(array[0]) && maxrawlen == atoi(array[1]) &&
 							     mingaplen == atoi(array[2]) && maxgaplen == atoi(array[3]))) {
-								logprintf(LOG_ERR, "could not sync FW values");
+								logprintf(LOG_WARNING, "could not sync FW values");
 							}
 							firmware.version = atof(array[4]);
 							firmware.lpf = atof(array[5]);
@@ -406,14 +396,9 @@ static int nano433Receive(struct rawcode_t *r) {
 								}
 								json_delete(jmessage);
 								jmessage = NULL;
-							}						
-						}
-						if(c > 0) {
-							for(i=0;i<c;i++) {
-								FREE(array[i]);
 							}
-							FREE(array);
 						}
+						array_free(&array, c);
 					} else {
 						x = strlen(&buffer[startp]);
 						s = startp;
@@ -448,20 +433,16 @@ static int nano433Receive(struct rawcode_t *r) {
 }
 
 static unsigned short nano433Settings(JsonNode *json) {
-	int i = 0;
 	if(strcmp(json->key, "comport") == 0) {
 		if(json->tag == JSON_STRING) {
-			for(i=0;i<nrports;i++) {
-				if(strcmp(comports[i], json->string_) == 0) {
-					strcpy(com, json->string_);
-					return EXIT_SUCCESS;
-				}
-			}
+			strcpy(com, json->string_);
+			return EXIT_SUCCESS;
 		}
 		return EXIT_FAILURE;
 	}
 	return EXIT_SUCCESS;
 }
+
 #if !defined(MODULE) && !defined(_WIN32)
 __attribute__((weak))
 #endif
@@ -475,7 +456,7 @@ void nano433Init(void) {
 	nano433->comtype=COMPLSTRAIN;
 	nano433->init=&nano433HwInit;
 	nano433->deinit=&nano433HwDeinit;
-	nano433->send=&nano433Send;
+	nano433->sendOOK=&nano433Send;
 	nano433->receivePulseTrain=&nano433Receive;
 	nano433->settings=&nano433Settings;
 }
@@ -483,9 +464,9 @@ void nano433Init(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "433nano";
-	module->version = "0.13";
-	module->reqversion = "6.0";
-	module->reqcommit = "40";
+	module->version = "1.2";
+	module->reqversion = "7.0";
+	module->reqcommit = "10";
 }
 
 void init(void) {

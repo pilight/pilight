@@ -169,7 +169,7 @@ static unsigned short lirc433Settings(JsonNode *json) {
 	if(strcmp(json->key, "socket") == 0) {
 		if(json->tag == JSON_STRING) {
 			if((lirc_433_socket = MALLOC(strlen(json->string_)+1)) == NULL) {
-				logprintf(LOG_ERR, "out of memory");
+				fprintf(stderr, "out of memory\n");
 				exit(EXIT_FAILURE);
 			}
 			strcpy(lirc_433_socket, json->string_);
@@ -199,11 +199,16 @@ void lirc433Init(void) {
 
 	options_add(&lirc433->options, 's', "socket", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_STRING, NULL, "^/dev/([a-z]+)[0-9]+$");
 
+	lirc433->minrawlen = 1000;
+	lirc433->maxrawlen = 0;
+	lirc433->mingaplen = 5100;
+	lirc433->maxgaplen = 10000;	
+	
 	lirc433->hwtype=RF433;
 	lirc433->comtype=COMOOK;
 	lirc433->init=&lirc433HwInit;
 	lirc433->deinit=&lirc433HwDeinit;
-	lirc433->send=&lirc433Send;
+	lirc433->sendOOK=&lirc433Send;
 	lirc433->receiveOOK=&lirc433Receive;
 	lirc433->settings=&lirc433Settings;
 	lirc433->gc=&lirc433gc;
@@ -212,9 +217,9 @@ void lirc433Init(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "433lirc";
-	module->version = "1.3";
-	module->reqversion = "5.0";
-	module->reqcommit = "238";
+	module->version = "1.4";
+	module->reqversion = "7.0";
+	module->reqcommit = "10";
 }
 
 void init(void) {

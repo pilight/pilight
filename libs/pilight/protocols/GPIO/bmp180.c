@@ -90,8 +90,8 @@ static void *thread(void *param) {
 	double itmp = -1, temp_offset = 0, pressure_offset = 0;
 	unsigned char oversampling = 1;
 
-	if (!bmp180data) {
-		logprintf(LOG_ERR, "out of memory");
+	if(bmp180data == NULL) {
+		fprintf(stderr, "out of memory\n");
 		exit(EXIT_FAILURE);
 	}
 
@@ -112,18 +112,16 @@ static void *thread(void *param) {
 
 	threads++;
 
-	if ((jid = json_find_member(json, "id"))) {
+	if((jid = json_find_member(json, "id"))) {
 		jchild = json_first_child(jid);
-		while (jchild) {
-			if (json_find_string(jchild, "id", &stmp) == 0) {
-				bmp180data->id = REALLOC(bmp180data->id, (sizeof(char *) * (size_t)(bmp180data->nrid + 1)));
-				if (!bmp180data->id) {
-					logprintf(LOG_ERR, "out of memory");
+		while(jchild) {
+			if(json_find_string(jchild, "id", &stmp) == 0) {
+				if((bmp180data->id = REALLOC(bmp180data->id, (sizeof(char *) * (size_t)(bmp180data->nrid + 1)))) == NULL) {
+					fprintf(stderr, "out of memory\n");
 					exit(EXIT_FAILURE);
 				}
-				bmp180data->id[bmp180data->nrid] = MALLOC(strlen(stmp) + 1);
-				if (!bmp180data->id[bmp180data->nrid]) {
-					logprintf(LOG_ERR, "out of memory");
+				if((bmp180data->id[bmp180data->nrid] = MALLOC(strlen(stmp) + 1)) == NULL) {
+					fprintf(stderr, "out of memory\n");
 					exit(EXIT_FAILURE);
 				}
 				strcpy(bmp180data->id[bmp180data->nrid], stmp);
@@ -133,11 +131,11 @@ static void *thread(void *param) {
 		}
 	}
 
-	if (json_find_number(json, "poll-interval", &itmp) == 0)
+	if(json_find_number(json, "poll-interval", &itmp) == 0)
 		interval = (int) round(itmp);
 	json_find_number(json, "temperature-offset", &temp_offset);
 	json_find_number(json, "pressure-offset", &pressure_offset);
-	if (json_find_number(json, "oversampling", &itmp) == 0) {
+	if(json_find_number(json, "oversampling", &itmp) == 0) {
 		oversampling = (unsigned char) itmp;
 	}
 
@@ -157,27 +155,27 @@ static void *thread(void *param) {
 	bmp180data->mb = REALLOC(bmp180data->mb, sizeShort);
 	bmp180data->mc = REALLOC(bmp180data->mc, sizeShort);
 	bmp180data->md = REALLOC(bmp180data->md, sizeShort);
-	if (!bmp180data->ac1 || !bmp180data->ac2 || !bmp180data->ac3 || !bmp180data->ac4 || !bmp180data->ac5
-			|| !bmp180data->ac6 || !bmp180data->b1 || !bmp180data->b2 || !bmp180data->mb || !bmp180data->mc
-			|| !bmp180data->md || !bmp180data->fd) {
-		logprintf(LOG_ERR, "out of memory");
+	if(bmp180data->ac1 == NULL || bmp180data->ac2 == NULL || bmp180data->ac3 == NULL || bmp180data->ac4 == NULL ||
+		bmp180data->ac5 == NULL || bmp180data->ac6 == NULL || bmp180data->b1 == NULL || bmp180data->b2 == NULL ||
+		bmp180data->mb == NULL || bmp180data->mc == NULL || bmp180data->md == NULL || bmp180data->fd == NULL) {
+		fprintf(stderr, "out of memory\n");
 		exit(EXIT_FAILURE);
 	}
 
-	for (y = 0; y < bmp180data->nrid; y++) {
+	for(y = 0; y < bmp180data->nrid; y++) {
 		// setup i2c
-		bmp180data->fd[y] = wiringXI2CSetup((int) strtol(bmp180data->id[y], NULL, 16));
-		if (bmp180data->fd[y] > 0) {
+		bmp180data->fd[y] = wiringXI2CSetup((int)strtol(bmp180data->id[y], NULL, 16));
+		if(bmp180data->fd[y] > 0) {
 			// read 0xD0 to check chip id: must equal 0x55 for BMP085/180
 			int id = wiringXI2CReadReg8(bmp180data->fd[y], 0xD0);
-			if (id != 0x55) {
+			if(id != 0x55) {
 				logprintf(LOG_ERR, "wrong device detected");
 				exit(EXIT_FAILURE);
 			}
 
 			// read 0xD1 to check chip version: must equal 0x01 for BMP085 or 0x02 for BMP180
 			int version = wiringXI2CReadReg8(bmp180data->fd[y], 0xD1);
-			if (version != 0x01 && version != 0x02) {
+			if(version != 0x01 && version != 0x02) {
 				logprintf(LOG_ERR, "wrong device detected");
 				exit(EXIT_FAILURE);
 			}
@@ -301,7 +299,7 @@ static void *thread(void *param) {
 					json_delete(bmp180->message);
 					bmp180->message = NULL;
 				} else {
-					logprintf(LOG_DEBUG, "error connecting to bmp180");
+					logprintf(LOG_NOTICE, "error connecting to bmp180");
 					logprintf(LOG_DEBUG, "(probably i2c bus error from wiringXI2CSetup)");
 					logprintf(LOG_DEBUG, "(maybe wrong id? use i2cdetect to find out)");
 					protocol_thread_wait(node, 1, &nrloops);
@@ -365,14 +363,17 @@ static void *thread(void *param) {
 }
 
 static struct threadqueue_t *initDev(JsonNode *jdevice) {
-	loop = 1;
-	wiringXSetup();
-	char *output = json_stringify(jdevice, NULL);
-	JsonNode *json = json_decode(output);
-	json_free(output);
+	if(wiringXSupported() == 0 && wiringXSetup() == 0) {
+		loop = 1;
+		char *output = json_stringify(jdevice, NULL);
+		JsonNode *json = json_decode(output);
+		json_free(output);
 
-	struct protocol_threads_t *node = protocol_thread_init(bmp180, json);
-	return threads_register("bmp180", &thread, (void *) node, 0);
+		struct protocol_threads_t *node = protocol_thread_init(bmp180, json);
+		return threads_register("bmp180", &thread, (void *) node, 0);
+	} else {
+		return NULL;
+	}
 }
 
 static void threadGC(void) {
@@ -425,7 +426,7 @@ void bmp180Init(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "bmp180";
-	module->version = "2.0";
+	module->version = "2.1";
 	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }

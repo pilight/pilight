@@ -46,6 +46,7 @@
 	#include <net/if.h>
 	#include <ifaddrs.h>
 	#include <pwd.h>
+	#include <sys/mount.h>
 	#include <sys/ioctl.h>
 #endif
 #include <dirent.h>
@@ -64,12 +65,14 @@
 #include "../config/settings.h"
 #include "mem.h"
 #include "common.h"
+#include "network.h"
 #include "log.h"
 
-char *progname;
+char *progname = NULL;
+#ifndef _WIN32
+static int procmounted = 0;
+#endif
 
-static unsigned int ***whitelist_cache = NULL;
-static unsigned int whitelist_number;
 static const char base64table[] = {
 	'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H',
 	'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P',
@@ -98,172 +101,14 @@ void atomicunlock(void) {
 	pthread_mutex_unlock(&atomic_lock);
 }
 
-int inetdevs(char ***array) {
-	unsigned int nrdevs = 0, i = 0, match = 0;
-
-#ifdef _WIN32
-	IP_ADAPTER_INFO *pAdapter = NULL;
-	ULONG buflen = sizeof(IP_ADAPTER_INFO);
-	IP_ADAPTER_INFO *pAdapterInfo = (IP_ADAPTER_INFO *)MALLOC(buflen);
-
-	if(GetAdaptersInfo(pAdapterInfo, &buflen) == ERROR_BUFFER_OVERFLOW) {
-		FREE(pAdapterInfo);
-		pAdapterInfo = MALLOC(buflen);
-	}
-
-	if(GetAdaptersInfo(pAdapterInfo, &buflen) == NO_ERROR) {
-		for(pAdapter = pAdapterInfo; pAdapter; pAdapter = pAdapter->Next) {
-			match = 0;
-
-			for(i=0;i<nrdevs;i++) {
-				if(strcmp((*array)[i], pAdapter->AdapterName) == 0) {
-					match = 1;
-					break;
-				}
-			}
-			if(match == 0 && strcmp(pAdapter->IpAddressList.IpAddress.String, "0.0.0.0") != 0) {
-				if((*array = REALLOC(*array, sizeof(char *)*(nrdevs+1))) == NULL) {
-					logprintf(LOG_ERR, "out of memory");
-					exit(EXIT_FAILURE);
-				}
-				if(((*array)[nrdevs] = MALLOC(strlen(pAdapter->AdapterName)+1)) == NULL) {
-					logprintf(LOG_ERR, "out of memory");
-					exit(EXIT_FAILURE);
-				}
-				strcpy((*array)[nrdevs], pAdapter->AdapterName);
-				nrdevs++;
-			}
+void array_free(char ***array, int len) {
+	int i = 0;
+	if(len > 0) {
+		for(i=0;i<len;i++) {
+			FREE((*array)[i]);
 		}
+		FREE((*array));
 	}
-	if(pAdapterInfo != NULL) {
-		FREE(pAdapterInfo);
-	}
-#else
-	int family = 0, s = 0;
-	char host[NI_MAXHOST];
-	struct ifaddrs *ifaddr, *ifa;
-
-#ifdef __FreeBSD__
-	if(rep_getifaddrs(&ifaddr) == -1) {
-		logprintf(LOG_ERR, "could not get network adapter information");
-		exit(EXIT_FAILURE);
-	}
-#else
-	if(getifaddrs(&ifaddr) == -1) {
-		perror("getifaddrs");
-		exit(EXIT_FAILURE);
-	}
-#endif
-
-	for(ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next) {
-		if(ifa->ifa_addr == NULL) {
-			continue;
-		}
-
-		family = ifa->ifa_addr->sa_family;
-
-		if((strstr(ifa->ifa_name, "lo") == NULL && strstr(ifa->ifa_name, "vbox") == NULL
-		    && strstr(ifa->ifa_name, "dummy") == NULL) && (family == AF_INET || family == AF_INET6)) {
-			memset(host, '\0', NI_MAXHOST);
-
-			s = getnameinfo(ifa->ifa_addr,
-                           (family == AF_INET) ? sizeof(struct sockaddr_in) :
-                                                 sizeof(struct sockaddr_in6),
-                           host, NI_MAXHOST, NULL, 0, NI_NUMERICHOST);
-			if(s != 0) {
-				logprintf(LOG_ERR, "getnameinfo() failed: %s", gai_strerror(s));
-				exit(EXIT_FAILURE);
-			}
-			if(strlen(host) > 0) {
-				match = 0;
-				for(i=0;i<nrdevs;i++) {
-					if(strcmp((*array)[i], ifa->ifa_name) == 0) {
-						match = 1;
-						break;
-					}
-				}
-				if(match == 0) {
-					if((*array = REALLOC(*array, sizeof(char *)*(nrdevs+1))) == NULL) {
-						logprintf(LOG_ERR, "out of memory");
-						exit(EXIT_FAILURE);
-					}
-					if(((*array)[nrdevs] = MALLOC(strlen(ifa->ifa_name)+1)) == NULL) {
-						logprintf(LOG_ERR, "out of memory");
-						exit(EXIT_FAILURE);
-					}
-					strcpy((*array)[nrdevs], ifa->ifa_name);
-					nrdevs++;
-				}
-			}
-		}
-	}
-
-#ifdef __FreeBSD__
-	rep_freeifaddrs(ifaddr);
-#else
-	freeifaddrs(ifaddr);
-#endif
-
-#endif // _WIN32
-	return (int)nrdevs;
-}
-
-#ifdef __FreeBSD__
-int dev2ip(char *dev, char **ip, __sa_family_t type) {
-#else
-int dev2ip(char *dev, char **ip, sa_family_t type) {
-#endif
-
-#ifdef _WIN32
-	IP_ADAPTER_INFO *pAdapter = NULL;
-	ULONG buflen = sizeof(IP_ADAPTER_INFO);
-	IP_ADAPTER_INFO *pAdapterInfo = MALLOC(buflen);
-
-	if(GetAdaptersInfo(pAdapterInfo, &buflen) == ERROR_BUFFER_OVERFLOW) {
-		FREE(pAdapterInfo);
-		pAdapterInfo = MALLOC(buflen);
-	}
-
-	if(GetAdaptersInfo(pAdapterInfo, &buflen) == NO_ERROR) {
-		for(pAdapter = pAdapterInfo; pAdapter; pAdapter = pAdapter->Next) {
-			if(strcmp(dev, pAdapter->AdapterName) == 0) {
-				strcpy(*ip, pAdapter->IpAddressList.IpAddress.String);
-				break;
-			}
-		}
-	}
-	if(pAdapterInfo != NULL) {
-		FREE(pAdapterInfo);
-	}
-#else
-	int fd = 0;
-	struct ifreq ifr;
-
-	if((fd = socket(AF_INET, SOCK_DGRAM, 0)) == 0) {
-		logprintf(LOG_ERR, "could not create socket");
-		return -1;
-	}
-
-	/* I want to get an IPv4 IP address */
-	ifr.ifr_addr.sa_family = type;
-
-	/* I want IP address attached to "eth0" */
-	strncpy(ifr.ifr_name, dev, IFNAMSIZ-1);
-
-	if(ioctl(fd, SIOCGIFADDR, &ifr) == -1) {
-		close(fd);
-		logprintf(LOG_ERR, "ioctl SIOCGIFADDR failed");
-		return -1;
-
-	}
-
-	close(fd);
-
-	struct sockaddr_in *ipaddr = (struct sockaddr_in *)(void *)&ifr.ifr_addr;
-	inet_ntop(AF_INET, (void *)&(ipaddr->sin_addr), *ip, INET_ADDRSTRLEN+1);
-#endif
-
-	return 0;
 }
 
 unsigned int explode(char *str, const char *delimiter, char ***output) {
@@ -299,36 +144,6 @@ unsigned int explode(char *str, const char *delimiter, char ***output) {
 	return n;
 }
 
-int host2ip(char *host, char *ip) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
-
-	int rv = 0;
-	struct addrinfo hints, *servinfo, *p;
-	struct sockaddr_in *h = NULL;
-
-	memset(&hints, 0, sizeof hints);
-	hints.ai_family = AF_INET;
-	hints.ai_socktype = SOCK_STREAM;
-
-	if((rv = getaddrinfo(host, NULL , NULL, &servinfo)) != 0) {
-		logprintf(LOG_NOTICE, "getaddrinfo: %s, %s", host, gai_strerror(rv));
-		return -1;
-	}
-
-	for(p = servinfo; p != NULL; p = p->ai_next) {
-		memcpy(&h, &p->ai_addr, sizeof(struct sockaddr_in *));
-		memset(ip, '\0', INET_ADDRSTRLEN+1);
-		inet_ntop(AF_INET, (void *)&(h->sin_addr), ip, INET_ADDRSTRLEN+1);
-		if(strlen(ip) > 0) {
-			freeaddrinfo(servinfo);
-			return 0;
-		}
-	}
-
-	freeaddrinfo(servinfo);
-	return -1;
-}
-
 #ifdef _WIN32
 int check_instances(const wchar_t *prog) {
 	HANDLE m_hStartEvent = CreateEventW(NULL, FALSE, FALSE, prog);
@@ -343,21 +158,6 @@ int check_instances(const wchar_t *prog) {
 		return 0;
 	}
 	return -1;
-}
-
-const char *inet_ntop(int af, const void *src, char *dst, int cnt) {
-	struct sockaddr_in srcaddr;
-
-	memset(&srcaddr, 0, sizeof(struct sockaddr_in));
-	memcpy(&(srcaddr.sin_addr), src, sizeof(srcaddr.sin_addr));
-
-	srcaddr.sin_family = af;
-	if(WSAAddressToString((struct sockaddr *)&srcaddr, sizeof(struct sockaddr_in), 0, dst, (LPDWORD)&cnt) != 0) {
-		DWORD rv = WSAGetLastError();
-		printf("WSAAddressToString() : %d\n", (int)rv);
-		return NULL;
-	}
-	return dst;
 }
 
 int setenv(const char *name, const char *value, int overwrite) {
@@ -376,31 +176,6 @@ int unsetenv(const char *name) {
 	strcat(c, name);
 	strcat(c, "=");
 	return putenv(c);
-}
-
-int inet_pton(int af, const char *src, void *dst) {
-	struct sockaddr_storage ss;
-	int size = sizeof(ss);
-	char src_copy[INET6_ADDRSTRLEN+1];
-
-	ZeroMemory(&ss, sizeof(ss));
-	/* stupid non-const API */
-	strncpy(src_copy, src, INET6_ADDRSTRLEN+1);
-	src_copy[INET6_ADDRSTRLEN] = 0;
-
-	if(WSAStringToAddress(src_copy, af, NULL, (struct sockaddr *)&ss, &size) == 0) {
-		switch(af) {
-			case AF_INET:
-				*(struct in_addr *)dst = ((struct sockaddr_in *)&ss)->sin_addr;
-				return 1;
-			case AF_INET6:
-				*(struct in6_addr *)dst = ((struct sockaddr_in6 *)&ss)->sin6_addr;
-				return 1;
-			default:
-				return 0;
-		}
-	}
-	return 0;
 }
 
 int isrunning(const char *program) {
@@ -445,7 +220,7 @@ int isrunning(const char *program) {
 	int pid = -1;
 	char *tmp = MALLOC(strlen(program)+1);
 	if(tmp == NULL) {
-		logprintf(LOG_ERR, "out of memory");
+		fprintf(stderr, "out of memory\n");
 		exit(EXIT_FAILURE);
 	}
 	strcpy(tmp, program);
@@ -457,7 +232,6 @@ int isrunning(const char *program) {
 	return -1;
 }
 #endif
-
 
 #ifdef __FreeBSD__
 int findproc(char *cmd, char *args, int loosely) {
@@ -472,62 +246,95 @@ pid_t findproc(char *cmd, char *args, int loosely) {
 	char fname[512], cmdline[1024];
 	int fd = 0, ptr = 0, match = 0, i = 0, y = '\n', x = 0;
 
-	if(!(dir = opendir("/proc"))) {
-	#ifdef __FreeBSD__
-		system("mount -t procfs proc /proc");
-		if(!(dir = opendir("/proc"))) {
+	if(procmounted == 0) {
+		if((dir = opendir("/proc"))) {
+			i = 0;
+			while((ent = readdir(dir)) != NULL) {
+				i++;
+			}
+			closedir(dir);
+			if(i == 2) {
+#ifdef __FreeBSD__
+				mount("procfs", "/proc", 0, "");
+#else
+				mount("proc", "/proc", "procfs", 0, "");
+#endif
+				if((dir = opendir("/proc"))) {
+					i = 0;
+					while((ent = readdir(dir)) != NULL) {
+						i++;
+					}
+					closedir(dir);
+					if(i == 2) {
+						logprintf(LOG_ERR, "/proc filesystem not properly mounted");
+						return -1;
+					}
+				}
+			}
+		} else {
+			logprintf(LOG_ERR, "/proc filesystem not properly mounted");
 			return -1;
 		}
-	#else
-       	return -1;
-	#endif
+		procmounted = 1;
 	}
-
-    while((ent = readdir(dir)) != NULL) {
-		if(isNumeric(ent->d_name) == 0) {
-			sprintf(fname, "/proc/%s/cmdline", ent->d_name);
-			if((fd = open(fname, O_RDONLY, 0)) > -1) {
-				memset(cmdline, '\0', sizeof(cmdline));
-				if((ptr = (int)read(fd, cmdline, sizeof(cmdline)-1)) > -1) {
-					i = 0, match = 0, y = '\n';
-					/* Replace all NULL terminators for newlines */
-					for(i=0;i<ptr;i++) {
-						if(i < ptr && cmdline[i] == '\0') {
-							cmdline[i] = (char)y;
-							y = ' ';
+	if((dir = opendir("/proc"))) {
+		while((ent = readdir(dir)) != NULL) {
+			if(isNumeric(ent->d_name) == 0) {
+				snprintf(fname, 512, "/proc/%s/cmdline", ent->d_name);
+				if((fd = open(fname, O_RDONLY, 0)) > -1) {
+					memset(cmdline, '\0', sizeof(cmdline));
+					if((ptr = (int)read(fd, cmdline, sizeof(cmdline)-1)) > -1) {
+						i = 0, match = 0, y = '\n';
+						/* Replace all NULL terminators for newlines */
+						for(i=0;i<ptr-1;i++) {
+							if(i < ptr && cmdline[i] == '\0') {
+								cmdline[i] = (char)y;
+								y = ' ';
+							}
 						}
-					}
-					cmdline[ptr] = '\0';
-					match = 0;
-					/* Check if program matches */
-					char **array = NULL;
-					unsigned int n = explode(cmdline, "\n", &array);
 
-					if(n == 0) {
-						close(fd);
-						continue;
-					}
-					if((strcmp(array[0], cmd) == 0 && loosely == 0)
-					   || (strstr(array[0], cmd) != NULL && loosely == 1)) {
-						match++;
-					}
+						match = 0;
+						/* Check if program matches */
+						char **array = NULL;
+						unsigned int n = explode(cmdline, "\n", &array);
 
-					if(args != NULL && match == 1) {
-						if(n <= 1) {
+						if(n == 0) {
 							close(fd);
-							for(x=0;x<n;x++) {
-								FREE(array[x]);
-							}
-							if(n > 0) {
-								FREE(array);
-							}
 							continue;
 						}
-						if(strcmp(array[1], args) == 0) {
+						if((strcmp(array[0], cmd) == 0 && loosely == 0)
+							 || (strstr(array[0], cmd) != NULL && loosely == 1)) {
 							match++;
 						}
 
-						if(match == 2) {
+						if(args != NULL && match == 1) {
+							if(n <= 1) {
+								close(fd);
+								for(x=0;x<n;x++) {
+									FREE(array[x]);
+								}
+								if(n > 0) {
+									FREE(array);
+								}
+								continue;
+							}
+							if(strcmp(array[1], args) == 0) {
+								match++;
+							}
+
+							if(match == 2) {
+								pid_t pid = (pid_t)atol(ent->d_name);
+								close(fd);
+								closedir(dir);
+								for(x=0;x<n;x++) {
+									FREE(array[x]);
+								}
+								if(n > 0) {
+									FREE(array);
+								}
+								return pid;
+							}
+						} else if(match > 0) {
 							pid_t pid = (pid_t)atol(ent->d_name);
 							close(fd);
 							closedir(dir);
@@ -539,30 +346,19 @@ pid_t findproc(char *cmd, char *args, int loosely) {
 							}
 							return pid;
 						}
-					} else if(match > 0) {
-						pid_t pid = (pid_t)atol(ent->d_name);
-						close(fd);
-						closedir(dir);
 						for(x=0;x<n;x++) {
 							FREE(array[x]);
 						}
 						if(n > 0) {
 							FREE(array);
 						}
-						return pid;
 					}
-					for(x=0;x<n;x++) {
-						FREE(array[x]);
-					}
-					if(n > 0) {
-						FREE(array);
-					}
+					close(fd);
 				}
-				close(fd);
 			}
 		}
+		closedir(dir);
 	}
-	closedir(dir);
 #endif
 	return -1;
 }
@@ -571,10 +367,11 @@ int isNumeric(char *s) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
 	if(s == NULL || *s == '\0' || *s == ' ')
-		return EXIT_FAILURE;
-	char *p;
+		return -1;
+
+	char *p = NULL;
 	strtod(s, &p);
-	return (*p == '\0') ? EXIT_SUCCESS : EXIT_FAILURE;
+	return (*p == '\0') ? 0 : -1;
 }
 
 int nrDecimals(char *s) {
@@ -606,7 +403,6 @@ int name2uid(char const *name) {
 #endif
 	return -1;
 }
-
 
 int which(const char *program) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
@@ -678,9 +474,9 @@ void alpha_random(char *s, const int len) {
 int urldecode(const char *s, char *dec) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
-	char *o;
+	char *o = NULL;
 	const char *end = s + strlen(s);
-	int c;
+	int c = 0;
 
 	for(o = dec; s <= end; o++) {
 		c = *s++;
@@ -876,8 +672,8 @@ char *hostname(void) {
 	if(strlen(name) > 0) {
 		n = explode(name, ".", &array);
 		if(n > 0) {
-			if(!(host = MALLOC(strlen(array[0])+1))) {
-				logprintf(LOG_ERR, "out of memory");
+			if((host = MALLOC(strlen(array[0])+1)) == NULL) {
+				fprintf(stderr, "out of memory\n");
 				exit(EXIT_FAILURE);
 			}
 			strcpy(host, array[0]);
@@ -891,7 +687,6 @@ char *hostname(void) {
 	}
 	return host;
 }
-
 
 char *distroname(void) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
@@ -922,8 +717,8 @@ char *distroname(void) {
 	}
 #endif
 	if(strlen(dist) > 0) {
-		if(!(distro = MALLOC(strlen(dist)+1))) {
-			logprintf(LOG_ERR, "out of memory");
+		if((distro = MALLOC(strlen(dist)+1)) == NULL) {
+			fprintf(stderr, "out of memory\n");
 			exit(EXIT_FAILURE);
 		}
 		strcpy(distro, dist);
@@ -939,7 +734,7 @@ char *distroname(void) {
 char *genuuid(char *ifname) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
-	char *mac = NULL, *upnp_id = NULL;
+	char mac[ETH_ALEN], *upnp_id = NULL, *p = mac;
 	char serial[UUID_LENGTH+1];
 
 	memset(serial, '\0', UUID_LENGTH+1);
@@ -964,7 +759,10 @@ char *genuuid(char *ifname) {
 					serial[10] = '-';
 					memmove(&serial[14], &serial[13], 7);
 					serial[13] = '-';
-					upnp_id = MALLOC(UUID_LENGTH+1);
+					if((upnp_id = MALLOC(UUID_LENGTH+1)) == NULL) {
+						fprintf(stderr, "out of memory\n");
+						exit(EXIT_FAILURE);
+					}
 					strcpy(upnp_id, serial);
 					fclose(fp);
 					return upnp_id;
@@ -975,375 +773,20 @@ char *genuuid(char *ifname) {
 	}
 
 #endif
-
-#ifdef _WIN32
-	int i = 0;
-
-	if(ifname == NULL) {
-		return NULL;
-	}
-
-	IP_ADAPTER_INFO *pAdapter = NULL;
-	ULONG buflen = sizeof(IP_ADAPTER_INFO);
-	IP_ADAPTER_INFO *pAdapterInfo = MALLOC(buflen);
-
-	if((mac = MALLOC(13)) == NULL) {
-		logprintf(LOG_ERR, "out of memory");
-		exit(EXIT_FAILURE);
-	}
-	memset(mac, '\0', 13);
-
-	if(GetAdaptersInfo(pAdapterInfo, &buflen) == ERROR_BUFFER_OVERFLOW) {
-		FREE(pAdapterInfo);
-		pAdapterInfo = MALLOC(buflen);
-	}
-
-	if(GetAdaptersInfo(pAdapterInfo, &buflen) == NO_ERROR) {
-		for(pAdapter = pAdapterInfo; pAdapter; pAdapter = pAdapter->Next) {
-			if(strcmp(ifname, pAdapter->AdapterName) == 0) {
-				for(i = 0; i < pAdapter->AddressLength; i++) {
-					sprintf(&mac[i*2], "%02x ", (unsigned char)pAdapter->Address[i]);
-				}
-				break;
-			}
+	if(dev2mac(ifname, &p) == 0) {
+		if((upnp_id = MALLOC(UUID_LENGTH+1)) == NULL) {
+			fprintf(stderr, "out of memory\n");
+			exit(EXIT_FAILURE);
 		}
-	}
-
-#elif defined(SIOCGIFHWADDR)
-	int i = 0;
-	int fd = socket(PF_INET, SOCK_DGRAM, IPPROTO_IP);
-	if(!(mac = MALLOC(13))) {
-		logprintf(LOG_ERR, "out of memory");
-		exit(EXIT_FAILURE);
-	}
-	memset(mac, '\0', 13);
-	struct ifreq s;
-
-	memset(&s, '\0', sizeof(struct ifreq));
-	strcpy(s.ifr_name, ifname);
-	if(ioctl(fd, SIOCGIFHWADDR, &s) == 0) {
-		for(i = 0; i < 12; i+=2) {
-			sprintf(&mac[i], "%02x", (unsigned char)s.ifr_addr.sa_data[i/2]);
-		}
-	}
-	close(fd);
-#elif defined(SIOCGIFADDR)
-	int fd = socket(PF_INET, SOCK_DGRAM, IPPROTO_IP);
-	if(!(mac = MALLOC(13))) {
-		logprintf(LOG_ERR, "out of memory");
-		exit(EXIT_FAILURE);
-	}
-	memset(mac, '\0', 13);
-	struct ifreq s;
-	memset(&s.ifr_name, '\0', sizeof(s.ifr_name));
-	memset(&s, '\0', sizeof(struct ifreq));
-	strcpy(s.ifr_name, ifname);
-	if(ioctl(fd, SIOCGIFADDR, &s) == 0) {
-		int i;
-		for(i = 0; i < 12; i+=2) {
-			sprintf(&mac[i], "%02x", (unsigned char)s.ifr_addr.sa_data[i/2]);
-		}
-	}
-	close(fd);
-#elif defined(HAVE_GETIFADDRS)
-	ifaddrs *iflist;
-	if(getifaddrs(&iflist) == 0) {
-		for(ifaddrs* cur = iflist; cur; cur = cur->ifa_next) {
-			if((cur->ifa_addr->sa_family == AF_LINK) && (strcmp(cur->ifa_name, if_name) == 0) && cur->ifa_addr) {
-				sockaddr_dl* sdl = (sockaddr_dl*)cur->ifa_addr;
-				memcpy(&mac[i], LLADDR(sdl), sdl->sdl_alen);
-				break;
-			}
-		}
-
-		freeifaddrs(iflist);
-	}
-#endif
-
-	if(strlen(mac) > 0) {
-		upnp_id = MALLOC(UUID_LENGTH+1);
 		memset(upnp_id, '\0', UUID_LENGTH+1);
-		sprintf(upnp_id,
-				"0000-%c%c-%c%c-%c%c-%c%c%c%c%c0",
-				mac[0], mac[1], mac[2],
-				mac[3], mac[4], mac[5],
-				mac[6], mac[7], mac[9],
-				mac[10], mac[11]);
-		FREE(mac);
+		snprintf(upnp_id, UUID_LENGTH,
+				"0000-%02x-%02x-%02x-%02x%02x%02x",
+				(unsigned char)p[0], (unsigned char)p[1], (unsigned char)p[2],
+				(unsigned char)p[3], (unsigned char)p[4], (unsigned char)p[5]);
 		return upnp_id;
 	}
+
 	return NULL;
-}
-
-#ifdef __FreeBSD__
-struct sockaddr *sockaddr_dup(struct sockaddr *sa) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
-
-	struct sockaddr *ret;
-	socklen_t socklen;
-#ifdef HAVE_SOCKADDR_SA_LEN
-	socklen = sa->sa_len;
-#else
-	socklen = sizeof(struct sockaddr_storage);
-#endif
-	if(!(ret = CALLOC(1, socklen))) {
-		logprintf(LOG_ERR, "out of memory");
-		exit(EXIT_FAILURE);
-	}
-	if (ret == NULL)
-		return NULL;
-	memcpy(ret, sa, socklen);
-	return ret;
-}
-
-int rep_getifaddrs(struct ifaddrs **ifap) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
-
-	struct ifconf ifc;
-	char buff[8192];
-	int fd, i, n;
-	struct ifreq ifr, *ifrp=NULL;
-	struct ifaddrs *curif = NULL, *ifa = NULL;
-	struct ifaddrs *lastif = NULL;
-
-	*ifap = NULL;
-
-	if ((fd = socket(AF_INET, SOCK_DGRAM, 0)) == -1) {
-		return -1;
-	}
-
-	ifc.ifc_len = sizeof(buff);
-	ifc.ifc_buf = buff;
-
-	if (ioctl(fd, SIOCGIFCONF, &ifc) != 0) {
-		close(fd);
-		return -1;
-	}
-
-#ifndef max
-#define max(a,b) ((a) > (b) ? (a) : (b))
-#endif
-#ifdef __FreeBSD__
-#define ifreq_size(i) max(sizeof(struct ifreq),\
-     sizeof((i).ifr_name)+(i).ifr_addr.sa_len)
-#else
-#define ifreq_size(i) sizeof(struct ifreq)
-#endif
-
-	n = ifc.ifc_len;
-
-	for (i = 0; i < n; i+= (int)ifreq_size(*ifrp) ) {
-		int match = 0;
-		ifrp = (struct ifreq *)((char *) ifc.ifc_buf+i);
-		for(ifa = *ifap; ifa != NULL; ifa = ifa->ifa_next) {
-			if(strcmp(ifrp->ifr_name, ifa->ifa_name) == 0) {
-				match = 1;
-				break;
-			}
-		}
-		if(match == 1) {
-			continue;
-		}
-		curif = CALLOC(1, sizeof(struct ifaddrs));
-		if(curif == NULL) {
-			freeifaddrs(*ifap);
-			close(fd);
-			return -1;
-		}
-
-		curif->ifa_name = MALLOC(sizeof(IFNAMSIZ)+1);
-		if(curif->ifa_name == NULL) {
-			FREE(curif);
-			freeifaddrs(*ifap);
-			close(fd);
-			return -1;
-		}
-		strncpy(curif->ifa_name, ifrp->ifr_name, IFNAMSIZ);
-		strncpy(ifr.ifr_name, ifrp->ifr_name, IFNAMSIZ);
-
-		curif->ifa_flags = (unsigned int)ifr.ifr_flags;
-		curif->ifa_dstaddr = NULL;
-		curif->ifa_data = NULL;
-		curif->ifa_next = NULL;
-
-		curif->ifa_addr = NULL;
-		if (ioctl(fd, SIOCGIFADDR, &ifr) != -1) {
-			curif->ifa_addr = sockaddr_dup(&ifr.ifr_addr);
-			if (curif->ifa_addr == NULL) {
-				FREE(curif->ifa_name);
-				FREE(curif);
-				freeifaddrs(*ifap);
-				close(fd);
-				return -1;
-			}
-		}
-
-		curif->ifa_netmask = NULL;
-		if (ioctl(fd, SIOCGIFNETMASK, &ifr) != -1) {
-			curif->ifa_netmask = sockaddr_dup(&ifr.ifr_addr);
-			if (curif->ifa_netmask == NULL) {
-				if (curif->ifa_addr != NULL) {
-					FREE(curif->ifa_addr);
-				}
-				FREE(curif->ifa_name);
-				FREE(curif);
-				freeifaddrs(*ifap);
-				close(fd);
-				return -1;
-			}
-		}
-
-		if (lastif == NULL) {
-			*ifap = curif;
-		} else {
-			lastif->ifa_next = curif;
-		}
-		lastif = curif;
-	}
-
-	close(fd);
-
-	return 0;
-}
-
-void rep_freeifaddrs(struct ifaddrs *ifaddr) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
-
-	struct ifaddrs *ifa;
-	while(ifaddr) {
-		ifa = ifaddr;
-		FREE(ifa->ifa_name);
-		FREE(ifa->ifa_addr);
-		FREE(ifa->ifa_netmask);
-		ifaddr = ifaddr->ifa_next;
-		FREE(ifa);
-	}
-	FREE(ifaddr);
-}
-#endif
-
-int whitelist_check(char *ip) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
-
-	char *whitelist = NULL;
-	unsigned int client[4] = {0};
-	int x = 0, i = 0, error = 1;
-	unsigned int n = 0;
-	char **array = NULL;
-	char wip[16] = {'\0'};
-
-	/* Check if there are any whitelisted ip address */
-	if(settings_find_string("whitelist", &whitelist) != 0) {
-		return 0;
-	}
-
-	if(strlen(whitelist) == 0) {
-		return 0;
-	}
-
-	/* Explode ip address to a 4 elements int array */
-	n = explode(ip, ".", &array);
-	x = 0;
-	for(x=0;x<n;x++) {
-		client[x] = (unsigned int)atoi(array[x]);
-		FREE(array[x]);
-	}
-	if(n > 0) {
-		FREE(array);
-	}
-
-
-	if(whitelist_cache == NULL) {
-		char *tmp = whitelist;
-		x = 0;
-		/* Loop through all whitelised ip addresses */
-		while(*tmp != '\0') {
-			/* Remove any comma's and spaces */
-			while(*tmp == ',' || *tmp == ' ') {
-				tmp++;
-			}
-			/* Save ip address in temporary char array */
-			wip[x] = *tmp;
-			x++;
-			tmp++;
-
-			/* Each ip address is either terminated by a comma or EOL delimiter */
-			if(*tmp == '\0' || *tmp == ',') {
-				x = 0;
-				if((whitelist_cache = REALLOC(whitelist_cache, (sizeof(unsigned int ***)*(whitelist_number+1)))) == NULL) {
-					logprintf(LOG_ERR, "out of memory");
-					exit(EXIT_FAILURE);
-				}
-				if((whitelist_cache[whitelist_number] = MALLOC(sizeof(unsigned int **)*2)) == NULL) {
-					logprintf(LOG_ERR, "out of memory");
-					exit(EXIT_FAILURE);
-				}
-				/* Lower boundary */
-				if((whitelist_cache[whitelist_number][0] = MALLOC(sizeof(unsigned int *)*4)) == NULL) {
-					logprintf(LOG_ERR, "out of memory");
-					exit(EXIT_FAILURE);
-				}
-				/* Upper boundary */
-				if((whitelist_cache[whitelist_number][1] = MALLOC(sizeof(unsigned int *)*4)) == NULL) {
-					logprintf(LOG_ERR, "out of memory");
-					exit(EXIT_FAILURE);
-				}
-
-				/* Turn the whitelist ip address into a upper and lower boundary.
-				   If the ip address doesn't contain a wildcard, then the upper
-				   and lower boundary are the same. If the ip address does contain
-				   a wildcard, then this lower boundary number will be 0 and the
-				   upper boundary number 255. */
-				i = 0;
-				n = explode(wip, ".", &array);
-				for(i=0;i<n;i++) {
-					if(strcmp(array[i], "*") == 0) {
-						whitelist_cache[whitelist_number][0][i] = 0;
-						whitelist_cache[whitelist_number][1][i] = 255;
-					} else {
-						whitelist_cache[whitelist_number][0][i] = (unsigned int)atoi(array[i]);
-						whitelist_cache[whitelist_number][1][i] = (unsigned int)atoi(array[i]);
-					}
-					FREE(array[i]);
-				}
-				if(n > 0) {
-					FREE(array);
-				}
-				memset(wip, '\0', 16);
-				whitelist_number++;
-			}
-		}
-	}
-
-	for(x=0;x<whitelist_number;x++) {
-		/* Turn the different ip addresses into one single number and compare those
-		   against each other to see if the ip address is inside the lower and upper
-		   whitelisted boundary */
-		unsigned int wlower = whitelist_cache[x][0][0] << 24 | whitelist_cache[x][0][1] << 16 | whitelist_cache[x][0][2] << 8 | whitelist_cache[x][0][3];
-		unsigned int wupper = whitelist_cache[x][1][0] << 24 | whitelist_cache[x][1][1] << 16 | whitelist_cache[x][1][2] << 8 | whitelist_cache[x][1][3];
-		unsigned int nip = client[0] << 24 | client[1] << 16 | client[2] << 8 | client[3];
-
-		/* Always allow 127.0.0.1 connections */
-		if((nip >= wlower && nip <= wupper) || (nip == 2130706433)) {
-			error = 0;
-		}
-	}
-
-	return error;
-}
-
-void whitelist_free(void) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
-
-	int i = 0;
-	if(whitelist_cache) {
-		for(i=0;i<whitelist_number;i++) {
-			FREE(whitelist_cache[i][0]);
-			FREE(whitelist_cache[i][1]);
-			FREE(whitelist_cache[i]);
-		}
-		FREE(whitelist_cache);
-	}
 }
 
 /* Check if a given file exists */
@@ -1519,7 +962,7 @@ int str_replace(char *search, char *replace, char **str) {
 			nlen = len - (slen - rlen);
 			if(len < nlen) {
 				if((target = REALLOC(target, (size_t)nlen+1)) == NULL) {
-					logprintf(LOG_ERR, "out of memory");
+					fprintf(stderr, "out of memory\n");
 					exit(EXIT_FAILURE);
 				}
 				memset(&target[len], '\0', (size_t)(nlen-len));
@@ -1548,4 +991,31 @@ int stricmp(char const *a, char const *b) {
 			if(d != 0 || !*a)
 				return d;
 	}
+}
+
+int file_get_contents(char *file, char **content) {
+	FILE *fp = NULL;
+	size_t bytes = 0;
+	struct stat st;
+
+	if((fp = fopen(file, "rb")) == NULL) {
+		logprintf(LOG_ERR, "cannot open file: %s", file);
+		return -1;
+	}
+
+	fstat(fileno(fp), &st);
+	bytes = (size_t)st.st_size;
+
+	if((*content = CALLOC(bytes+1, sizeof(char))) == NULL) {
+		fprintf(stderr, "out of memory\n");
+		fclose(fp);
+		exit(EXIT_FAILURE);
+	}
+
+	if(fread(*content, sizeof(char), bytes, fp) == -1) {
+		logprintf(LOG_ERR, "cannot read file: %s", file);
+		return -1;
+	}
+	fclose(fp);
+	return 0;
 }

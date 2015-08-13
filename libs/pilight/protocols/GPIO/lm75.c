@@ -71,8 +71,8 @@ static void *thread(void *param) {
 	char *stmp = NULL;
 	double itmp = -1, temp_offset = 0.0;
 
-	if(!lm75data) {
-		logprintf(LOG_ERR, "out of memory");
+	if(lm75data == NULL) {
+		fprintf(stderr, "out of memory\n");
 		exit(EXIT_FAILURE);
 	}
 
@@ -86,14 +86,12 @@ static void *thread(void *param) {
 		jchild = json_first_child(jid);
 		while(jchild) {
 			if(json_find_string(jchild, "id", &stmp) == 0) {
-				lm75data->id = REALLOC(lm75data->id, (sizeof(char *)*(size_t)(lm75data->nrid+1)));
-				if(!lm75data->id) {
-					logprintf(LOG_ERR, "out of memory");
+				if((lm75data->id = REALLOC(lm75data->id, (sizeof(char *)*(size_t)(lm75data->nrid+1)))) == NULL) {
+					fprintf(stderr, "out of memory\n");
 					exit(EXIT_FAILURE);
 				}
-				lm75data->id[lm75data->nrid] = MALLOC(strlen(stmp)+1);
-				if(!lm75data->id[lm75data->nrid]) {
-					logprintf(LOG_ERR, "out of memory");
+				if((lm75data->id[lm75data->nrid] = MALLOC(strlen(stmp)+1)) == NULL) {
+					fprintf(stderr, "out of memory\n");
 					exit(EXIT_FAILURE);
 				}
 				strcpy(lm75data->id[lm75data->nrid], stmp);
@@ -107,9 +105,8 @@ static void *thread(void *param) {
 		interval = (int)round(itmp);
 	json_find_number(json, "temperature-offset", &temp_offset);
 
-	lm75data->fd = REALLOC(lm75data->fd, (sizeof(int)*(size_t)(lm75data->nrid+1)));
-	if(!lm75data->fd) {
-		logprintf(LOG_ERR, "out of memory");
+	if((lm75data->fd = REALLOC(lm75data->fd, (sizeof(int)*(size_t)(lm75data->nrid+1)))) == NULL) {
+		fprintf(stderr, "out of memory\n");
 		exit(EXIT_FAILURE);
 	}
 	for(y=0;y<lm75data->nrid;y++) {
@@ -139,7 +136,7 @@ static void *thread(void *param) {
 					json_delete(lm75->message);
 					lm75->message = NULL;
 				} else {
-					logprintf(LOG_DEBUG, "error connecting to lm75");
+					logprintf(LOG_NOTICE, "error connecting to lm75");
 					logprintf(LOG_DEBUG, "(probably i2c bus error from wiringXI2CSetup)");
 					logprintf(LOG_DEBUG, "(maybe wrong id? use i2cdetect to find out)");
 					protocol_thread_wait(node, 1, &nrloops);
@@ -171,14 +168,17 @@ static void *thread(void *param) {
 }
 
 static struct threadqueue_t *initDev(JsonNode *jdevice) {
-	loop = 1;
-	wiringXSetup();
-	char *output = json_stringify(jdevice, NULL);
-	JsonNode *json = json_decode(output);
-	json_free(output);
+	if(wiringXSupported() == 0 && wiringXSetup() == 0) {
+		loop = 1;
+		char *output = json_stringify(jdevice, NULL);
+		JsonNode *json = json_decode(output);
+		json_free(output);
 
-	struct protocol_threads_t *node = protocol_thread_init(lm75, json);
-	return threads_register("lm75", &thread, (void *)node, 0);
+		struct protocol_threads_t *node = protocol_thread_init(lm75, json);
+		return threads_register("lm75", &thread, (void *)node, 0);
+	} else {
+		return NULL;
+	}
 }
 
 static void threadGC(void) {
@@ -223,7 +223,7 @@ void lm75Init(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "lm75";
-	module->version = "2.0";
+	module->version = "2.1";
 	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }

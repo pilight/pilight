@@ -95,7 +95,11 @@ static int changeOwner(char *file) {
 static int setup(void) {
 	int fd = 0;
 
+#ifdef O_CLOEXEC
 	if((fd = open("/dev/mem", O_RDWR | O_SYNC | O_CLOEXEC)) < 0) {
+#else
+	if((fd = open("/dev/mem", O_RDWR | O_SYNC)) < 0) {
+#endif
 		wiringXLog(LOG_ERR, "hummingboard->setup: Unable to open /dev/mem: %s", strerror(errno));
 		return -1;
 	}
@@ -336,15 +340,15 @@ static int hummingboardWaitForInterrupt(int pin, int ms) {
 	polls.fd = sysFds[pin];
 	polls.events = POLLPRI;
 
+	(void)read(sysFds[pin], &c, 1);
+	lseek(sysFds[pin], 0, SEEK_SET);
+
 	x = poll(&polls, 1, ms);
 
 	/* Don't react to signals */
 	if(x == -1 && errno == EINTR) {
 		x = 0;
 	}
-
-	(void)read(sysFds[pin], &c, 1);
-	lseek(sysFds[pin], 0, SEEK_SET);
 
 	return x;
 }
@@ -439,6 +443,12 @@ int hummingboardSPIDataRW(int channel, unsigned char *data, int len) {
 	spi.delay_usecs = spiDelay;
 	spi.speed_hz = spiSpeeds[channel];
 	spi.bits_per_word = spiBPW;
+#ifdef SPI_IOC_WR_MODE32
+	spi.tx_nbits = 0;
+#endif
+#ifdef SPI_IOC_RD_MODE32
+	spi.rx_nbits = 0;
+#endif
 
 	if(ioctl(spiFds[channel], SPI_IOC_MESSAGE(1), &spi) < 0) {
 		wiringXLog(LOG_ERR, "hummingboard->SPIDataRW: Unable to read/write from channel %d: %s", channel, strerror(errno));
@@ -499,7 +509,6 @@ int hummingboardSPISetup(int channel, int speed) {
 
 	return fd;
 }
-
 #endif
 
 void hummingboardInit(void) {

@@ -97,9 +97,14 @@ typedef struct protocol_t {
 	struct protocol_devices_t *devices;
 	struct protocol_threads_t *threads;
 
-	void (*parseCode)(void);
 	int *(*preAmbCode)(void);
 	int *(*postAmbCode)(void);
+
+	union {
+		void (*parseCode)(void);
+		void (*parseCommand)(struct JsonNode *code);
+	};
+
 	int (*validate)(void);
 	int (*createCode)(JsonNode *code);
 	int (*checkValues)(JsonNode *code);
