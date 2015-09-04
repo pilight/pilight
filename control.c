@@ -244,7 +244,7 @@ int main(int argc, char **argv) {
 
 							if(values != NULL) {
 								char **array = NULL;
-								unsigned int n = explode(values, ",=", &array), q = 0;
+								unsigned int n = explode(values, "=", &array), q = 0;
 								for(q=0;q<n;q+=2) {
 									char *name = MALLOC(strlen(array[q])+1);
 									if(name == NULL) {
