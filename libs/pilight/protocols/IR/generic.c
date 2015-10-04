@@ -21,6 +21,24 @@
 
 #define IR_REMOTES_ROOT "/etc/pilight/ir-remotes/"
 
+#define KEY_TELETEXT \
+    {2673, 862, 473, 413, 473, 413, 473, 826, 473, 826, 1419, 826, 473, 413,\
+     473, 413, 473, 413, 473, 413, 473, 413, 473, 413, 473, 413, 473, 413, 473,\
+     413, 473, 413, 946, 413, 473, 413, 473, 413, 473, 413, 473, 826, 473, 413,\
+     473, 413, 473, 413, 946, 826, 473, 413, 473, 413, 946, 826, 946, 413, 473,\
+     826, 946, 826, 473}
+
+#define KEY_TELETEXT_LENGTH 63
+
+#define KEY_MENU \
+    {2673, 862, 473, 413, 473, 413, 473, 826, 473, 826, 1419, 826, 473, 413,\
+     473, 413, 473, 413, 473, 413, 473, 413, 473, 413, 473, 413, 473, 413, 473,\
+     413, 473, 413, 946, 413, 473, 413, 473, 413, 473, 413, 473, 826, 473, 413,\
+     473, 413, 473, 413, 946, 826, 473, 413, 473, 413, 473, 413, 946, 826, 473,\
+     413, 946, 826, 473, 413, 473}
+
+#define KEY_MENU_LENGTH 65
+
 struct ir_keys_t {
 	char *name;
 	unsigned int id;
@@ -66,37 +84,38 @@ static int validateHead(struct ir_remotes_t *remote, int *bit) {
 	return -1;
 }
 
-// static int validatePreDataMC(struct ir_remotes_t *remote, int *bit) {
-	// int x = 0, pre_data = 0, iParity = 0;
-	// // printf("%d %d\n", remote->pone, remote->sone);
-	// for(x=*bit;x<*bit+remote->pre_data_bits*2;x+=2) {
-		// if((double)generic_ir->raw[x]/(double)remote->pone > 0.75) {
-			// printf("%d", iParity);
-		// }
-		// if((double)generic_ir->raw[x]/(double)remote->pone > 1.5) {
-			// printf("0");
-		// }
-		// if((double)generic_ir->raw[x+1]/(double)remote->pone > 1.5) {
-			// iParity ^= 1;
-		// }
-		// // printf("%f %f\n", (double)generic_ir->raw[x+1]/(double)remote->pone, (double)generic_ir->raw[x+1]/(double)remote->sone);
-		// // if((double)generic_ir->raw[x+1]/(double)remote->pone > 0.75 && (double)generic_ir->raw[x+1]/(double)remote->pone < 1.5) {
-			// // printf("1");
-			// // pre_data |= 1 << ((remote->pre_data_bits-1)-((x/2)-(*bit/2)));
-		// // } else {
-			// // printf("0");
-			// // pre_data &= ~(1 << ((remote->pre_data_bits-1)-((x/2)-(*bit/2))));
-		// // }
-	// }
-	// printf("\n");
-	// // printf("pre_data: %d\n", pre_data);
-	// *bit = x;
-	// // printf("bit: %d\n", *bit);
-	// if(pre_data == remote->pre_data) {
-		// return 0;
-	// }
-	// return -1;
-// }
+
+static int validatePreDataMC(struct ir_remotes_t *remote, int *bit, int *state) {
+	int x = 0, pre_data = 0, decBitCount = 0;
+    
+    *state = 0;
+    x = *bit;
+    
+    while(decBitCount < remote->pre_data_bits)
+    {
+        if((double)generic_ir->raw[x + 1] / (double)remote->pone < 1.5) {
+            pre_data |= *state << ((remote->pre_data_bits - 1) - decBitCount);
+            x += 2;
+        }
+        else if((double)generic_ir->raw[x + 1] / (double)remote->pone > 1.5) {
+            pre_data |= *state << ((remote->pre_data_bits - 1) - decBitCount);
+            *state ^= 1;
+            x += 1;
+        }
+        decBitCount++;
+    }
+    
+	//printf("pre_data: %d\n", pre_data);
+    //printf("remote->pre_data: %d\n", remote->pre_data);
+
+    *bit = x;
+
+	if((pre_data == remote->pre_data) || 
+       ((pre_data ^ (remote->toggle_bit_mask >> remote->bits)) == remote->pre_data)) {
+        return 0;
+	}
+    return -1;
+}
 
 static int validatePreData(struct ir_remotes_t *remote, int *bit) {
 	int x = 0, pre_data = 0;
@@ -119,25 +138,36 @@ static int validatePreData(struct ir_remotes_t *remote, int *bit) {
 	return -1;
 }
 
-// static int validateDataMC(struct ir_remotes_t *remote, struct ir_keys_t *key, int *bit) {
-	// int x = 0, keycode = 0;
-	// for(x=*bit;x<*bit+remote->bits*2;x+=2) {
-		// if((double)generic_ir->raw[x]/(double)remote->pone > 0.75 && (double)generic_ir->raw[x+1]/(double)remote->sone > 0.75) {
-			// keycode |= 1 << ((remote->bits-1)-((x/2)-(*bit/2)));
-		// } else if((double)generic_ir->raw[x]/(double)remote->pzero > 0.75 && (double)generic_ir->raw[x+1]/(double)remote->szero > 0.75) {
-			// keycode &= ~(1 << ((remote->bits-1)-((x/2)-(*bit/2))));
-		// } else {
-			// // Invalid code
-			// break;
-		// }
-	// }
-	// x = *bit;
-	// // printf("keycode: %d\n", keycode);
-	// if((int)key->id == keycode) {
-		// return 0;
-	// }
-	// return -1;
-// }
+static int validateDataMC(struct ir_remotes_t *remote, struct ir_keys_t *key, int *bit, int *state) {
+
+	int x = 0, keycode = 0, decBitCount = 0;
+    x=*bit;
+    
+    while(decBitCount < remote->bits)
+    {
+        if((double)generic_ir->raw[x + 1] / (double)remote->pone < 1.5) {
+            keycode |= *state << ((remote->bits - 1) - decBitCount);
+            x+=2;
+        }
+        else if((double)generic_ir->raw[x + 1] / (double)remote->pone > 1.5) {
+            keycode |= *state << ((remote->bits - 1) - decBitCount);
+            *state ^= 1;
+            x+=1;
+        }
+        
+        decBitCount++;
+    }
+    
+    *bit = x;
+    
+	//printf("keycode: %d\n", keycode);
+    //printf("(int)key->id: %d\n", (int)key->id);
+    
+	if((int)key->id == keycode) {
+		return 0;
+	}
+	return -1;
+}
 
 static int validateData(struct ir_remotes_t *remote, struct ir_keys_t *key, int *bit) {
 	int x = 0, keycode = 0;
@@ -164,14 +194,32 @@ static void parseCode(void) {
 	struct ir_remote t;
 	struct ir_keys_t *tmp_keys = NULL;
 	int bit = 0;
+    int state = 0;
 	int matches = 0;
 	int match = 0;
 
-	int i = 0;
-	// for(i=0;i<generic_ir->rawlen;i++) {
-		// printf("%d ", generic_ir->raw[i]);
-	// }
-	// printf("\n");
+//--------------------------------------------------------------//
+//--------------------- DEBUGGING ONLY -------------------------//
+//                                                              //
+//    printf("INPUT: KEY_MENU");//KEY_TELETEXT");
+//    int raw[100] = KEY_MENU;//KEY_TELETEXT;
+//    generic_ir->rawlen = KEY_MENU_LENGTH;//KEY_TELETEXT_LENGTH;
+//    
+//    int i = 0;
+//    for(i=0;i<generic_ir->rawlen;i++) {
+//		 generic_ir->raw[i] = raw[i];
+//    }
+//                                                              //
+//--------------------- DEBUGGING ONLY -------------------------//
+//--------------------------------------------------------------//
+    
+    printf("INPUT:");
+    int i = 0;
+    for(i=0;i<generic_ir->rawlen;i++) {
+		 printf("%d ", generic_ir->raw[i]);
+    }
+    printf("\n");
+    
 	while(tmp_remotes) {
 		t.flags = tmp_remotes->flags;
 		t.rc6_mask = tmp_remotes->rc6_mask;
@@ -180,7 +228,8 @@ static void parseCode(void) {
 			match = 0;
 			matches = 0;
 			bit = 0;
-			if(is_space_enc(&t)) {
+            state = 0;
+    		if(is_space_enc(&t)) {
 				matches++;
 				if(tmp_keys->length == (generic_ir->rawlen-1)) {
 					match++;
@@ -193,22 +242,22 @@ static void parseCode(void) {
 				}
 			}
 			if(is_rc6(&t) || is_rc5(&t)) {
-				logprintf(LOG_NOTICE, "RC6 and RC5 type remotes are not supported yet");
-				// if(tmp_remotes->pre_data > 0) {
-					// matches++;
-					// if(validatePreDataMC(tmp_remotes, &bit) == 0) {
-						// match++;
-					// }
-				// }
-				// if(tmp_remotes->bits > 0) {
-					// matches++;
-					// if(validateDataMC(tmp_remotes, tmp_keys, &bit) == 0) {
-						// match++;
-					// }
-				// }
-				// if(tmp_remotes->ptrail > 0 && bit > 0) {
-					// matches++;
-				// }
+                
+				if(tmp_remotes->pre_data > 0) {
+					matches++;
+					if(validatePreDataMC(tmp_remotes, &bit, &state) == 0) {
+						match++;
+					}
+				}
+				if(tmp_remotes->bits > 0) {
+					matches++;
+					if(validateDataMC(tmp_remotes, tmp_keys, &bit, &state) == 0) {
+						match++;
+					}
+				}
+				if(tmp_remotes->ptrail > 0 && bit > 0) {
+					matches++;
+				}
 			} else {
 				if(tmp_remotes->pre_data > 0) {
 					matches++;
@@ -226,13 +275,13 @@ static void parseCode(void) {
 					matches++;
 				}
 			}
-			// printf("bit: %d\n", bit);
-			// printf("ptrail: %d %d\n", generic_ir->raw[bit], tmp_remotes->ptrail);
-			if(bit > 0 && ((double)generic_ir->raw[bit]/(double)tmp_remotes->ptrail) > 0.75) {
+			//printf("bit: %d\n", bit);
+			//printf("ptrail: %d %d\n", generic_ir->raw[bit], tmp_remotes->ptrail);
+			if(tmp_remotes->ptrail > 0 && bit > 0 && ((double)generic_ir->raw[bit]/(double)tmp_remotes->ptrail) > 0.75) {
 				match++;
 			}
 			if(match == matches && match > 0 && matches > 0) {
-				printf("%s\n", tmp_keys->name);
+                printf("OUTPUT: Remote:%s Key:%s\n", tmp_remotes->name, tmp_keys->name);
 			}
 			tmp_keys = tmp_keys->next;
 		}
