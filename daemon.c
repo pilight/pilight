@@ -558,7 +558,7 @@ static void receive_parse_api(struct JsonNode *code, int hwtype) {
 		if(protocol->hwtype == hwtype && protocol->parseCommand != NULL) {
 			protocol->parseCommand(code);
 			receiver_create_message(protocol);
-		}		
+		}
 		pnode = pnode->next;
 	}
 }
@@ -2341,8 +2341,8 @@ int start_pilight(int argc, char **argv) {
 		}
 		strcpy(pemfile, PEM_FILE);
 		pem_free = 1;
-	}	
-	
+	}
+
 	char *content = NULL;
 	unsigned char md5sum[17];
 	char md5conv[33];
@@ -2371,7 +2371,7 @@ int start_pilight(int argc, char **argv) {
 
 	if(pem_free == 1) {
 		FREE(pemfile);
-	}	
+	}
 	#endif
 
 	settings_find_number("webserver-enable", &webserver_enable);

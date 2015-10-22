@@ -46,6 +46,7 @@ Change Log:
 0.99a - 0.99a21e - logging of add. parameters - MY behaviour
 0.99b - 0.99a21e - Initialize arryas before use
 0.99c - 0.99a21e - Various Checks
+0.99d - Removal of Debug logic
 */
 #include <stdio.h>
 #include <stdlib.h>
@@ -133,8 +134,6 @@ static struct settings_t *settings = NULL;
 static int validate(void) {
 	int i;
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
-
-	logprintf(LOG_DEBUG, "somfy_rts validate: rawlen: %d footer: %d SYNC: %d", somfy_rts->rawlen, somfy_rts->raw[somfy_rts->rawlen-1], somfy_rts->raw[2]);
 	if(log_level_get() >= LOG_DEBUG) {
 		for (i=0; i < somfy_rts->rawlen; i++) {
 			printf("%d ",somfy_rts->raw[i]);
@@ -731,7 +730,7 @@ void somfy_rtsInit(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name =  "somfy_rts";
-	module->version =  "0.99c";
+	module->version =  "0.99d";
 	module->reqversion =  "6.0";
 	module->reqcommit =  NULL;
 }
