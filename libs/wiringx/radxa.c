@@ -376,7 +376,7 @@ static char radxaKernelVer(void) {
 static int radxaISR(int pin, int mode) {
 	int i = 0, fd = 0, count = 0;
 	int match = 0;
-	char kernelVer = 0, pinbaseFlag = 0, edgeFlag = 0;
+	char kernelVer = 0, pinbaseFlag = 0;
 	const char *sMode = NULL;
 	char path[35], c, line[120];
 	FILE *f = NULL;
@@ -408,19 +408,13 @@ static int radxaISR(int pin, int mode) {
 
 	kernelVer = radxaKernelVer();
 	pinbaseFlag = kernelVer & 0x02;
-	edgeFlag = kernelVer & 0x01;
 
 	if(mode == INT_EDGE_FALLING) {
 		sMode = "falling" ;
 	} else if(mode == INT_EDGE_RISING) {
 		sMode = "rising" ;
 	} else if(mode == INT_EDGE_BOTH) {
-		if(edgeFlag != 0) {
-			wiringXLog(LOG_ERR, "radxa->isr: Kernel version below 3.12 doesn's support both edge interruption.", sMode);
-			return -1;
-		} else {
-			sMode = "both";
-		}
+		sMode = "both";
 	} else {
 		wiringXLog(LOG_ERR, "radxa->isr: Invalid mode. Should be INT_EDGE_RISING, INT_EDGE_FALLING, or INT_EDGE_BOTH");
 		return -1;
