@@ -422,7 +422,7 @@ int main(int argc, char **argv) {
 	}
 
 	printf("Press and hold one of the buttons on your remote or wait until\n");
-	printf("another device such as a weather station has send new codes\n");
+	printf("another device such as a weather station has sent new codes\n");
 	printf("The debugger will automatically reset itself after one second of\n");
 	printf("failed leads. It will keep running until you explicitly stop it.\n");
 	printf("This is done by pressing both the [CTRL] and C buttons on your keyboard.\n");
