@@ -136,6 +136,10 @@ static int run(struct rules_t *obj, struct JsonNode *arguments, char **ret, enum
 	tm.tm_sec = second;
 	tm.tm_wday = weekday;
 
+	if(mktime(&tm) < 0) {
+		logprintf(LOG_ERR, "DATE_FORMAT error on mktime()");
+		return -1;
+	}
 	strftime(p, BUFFER_SIZE, childs->string_, &tm);
 
 	return 0;
