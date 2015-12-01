@@ -12,12 +12,12 @@
 	along with pilight. If not, see	<http://www.gnu.org/licenses/>
 */
 
-#ifndef _PROTOCOL_GE-CHIP_H_
-#define _PROTOCOL_GE-CHIP_H_
+#ifndef _PROTOCOL_GE_CHIP_H_
+#define _PROTOCOL_GE_CHIP_H_
 
 #include "../protocol.h"
 
-struct protocol_t *ge-chip;
-void ge-chipInit(void);
+struct protocol_t *ge_chip;
+void ge_chipInit(void);
 
 #endif
