@@ -34,7 +34,7 @@
 
 typedef struct settings_t {
 	double id;
-	double ch,
+//	double ch,
 	double temp;
 	double humi;
 	struct settings_t *next;
@@ -55,7 +55,7 @@ static int validate(void) {
 
 static void parseCode(void) {
 	int i = 0, x = 0, binary[RAW_LENGTH/2];
-	int id = 0, battery = 0, channel = 0;
+	int id = 0, battery = 0, /*channel = 0*/;
 	double temperature = 0.0, humidity = 0.0;
 	double humi_offset = 0.0, temp_offset = 0.0;
 
@@ -68,7 +68,7 @@ static void parseCode(void) {
 	}
 
 	id = binToDecRev(binary, 0, 13);
-	channel = binToDecRev(binary, 14, 15);
+//	channel = binToDecRev(binary, 14, 15);
 	battery = binary[16];
 	temperature = binToDecRev(binary, 17, 27);
 	humidity = binToDecRev(binary, 28, 35);
@@ -88,7 +88,7 @@ static void parseCode(void) {
 
 	ge_chip->message = json_mkobject();
 	json_append_member(ge_chip->message, "id", json_mknumber(id, 1));
-	json_append_member(ge_chip->message, "channel", json_mknumber(channel, 1));
+//	json_append_member(ge_chip->message, "channel", json_mknumber(channel, 1));
 	json_append_member(ge_chip->message, "temperature", json_mknumber(temperature/10, 1));
 	json_append_member(ge_chip->message, "humidity", json_mknumber(humidity, 1));
 	json_append_member(ge_chip->message, "battery", json_mknumber(battery, 1));
@@ -170,8 +170,8 @@ void ge_chipInit(void) {
 	ge_chip->maxrawlen = RAW_LENGTH;
 	ge_chip->maxgaplen = MAX_PULSE_LENGTH*PULSE_DIV;
 	ge_chip->mingaplen = MIN_PULSE_LENGTH*PULSE_DIV;
-	
-	options_add(&ge_chip->options, 'c', "channel", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "[0-9]");
+
+//	options_add(&ge_chip->options, 'c', "channel", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "[0-9]");
 	options_add(&ge_chip->options, 't', "temperature", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9]{1,3}$");
 	options_add(&ge_chip->options, 'i', "id", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "[0-9]");
 	options_add(&ge_chip->options, 'h', "humidity", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "[0-9]");
