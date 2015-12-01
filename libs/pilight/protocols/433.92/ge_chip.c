@@ -55,7 +55,7 @@ static int validate(void) {
 
 static void parseCode(void) {
 	int i = 0, x = 0, binary[RAW_LENGTH/2];
-	int id = 0, battery = 0, /*channel = 0*/;
+	int id = 0, battery = 0/*, channel = 0*/;
 	double temperature = 0.0, humidity = 0.0;
 	double humi_offset = 0.0, temp_offset = 0.0;
 
