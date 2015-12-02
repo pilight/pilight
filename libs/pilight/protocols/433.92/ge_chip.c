@@ -27,10 +27,10 @@
 #include "ge_chip.h"
 
 #define PULSE_MULTIPLIER	20
-#define MIN_PULSE_LENGTH	261
-#define MAX_PULSE_LENGTH	271
+#define MIN_PULSE_LENGTH	265
+#define MAX_PULSE_LENGTH	268
 #define AVG_PULSE_LENGTH	266
-#define RAW_LENGTH				76
+#define RAW_LENGTH		76
 
 typedef struct settings_t {
 	double id;
