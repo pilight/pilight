@@ -1,5 +1,5 @@
 /*
-	Copyright (C) 2015 Prutsky
+	Copyright (C) 2014, 2015 CurlyMo, Prutsky
 	This file is part of pilight.
 	pilight is free software: you can redistribute it and/or modify it under the
 	terms of the GNU General Public License as published by the Free Software
@@ -34,7 +34,7 @@
 
 typedef struct settings_t {
 	double id;
-//	double ch,
+	double ch;
 	double temp;
 	double humi;
 	struct settings_t *next;
@@ -55,7 +55,7 @@ static int validate(void) {
 
 static void parseCode(void) {
 	int i = 0, x = 0, binary[RAW_LENGTH/2];
-	int id = 0, battery = 0/*, channel = 0*/;
+	int id = 0, battery = 0, channel = 0;
 	double temperature = 0.0, humidity = 0.0;
 	double humi_offset = 0.0, temp_offset = 0.0;
 
@@ -68,7 +68,7 @@ static void parseCode(void) {
 	}
 
 	id = binToDecRev(binary, 0, 13);
-//	channel = binToDecRev(binary, 14, 15);
+	channel = binToDecRev(binary, 14, 15) + 1;
 	battery = binary[16];
 	temperature = binToDecRev(binary, 17, 27);
 	humidity = binToDecRev(binary, 28, 35);
@@ -88,7 +88,7 @@ static void parseCode(void) {
 
 	ge_chip->message = json_mkobject();
 	json_append_member(ge_chip->message, "id", json_mknumber(id, 1));
-//	json_append_member(ge_chip->message, "channel", json_mknumber(channel, 1));
+	json_append_member(ge_chip->message, "channel", json_mknumber(channel, 1));
 	json_append_member(ge_chip->message, "temperature", json_mknumber(temperature/10, 1));
 	json_append_member(ge_chip->message, "humidity", json_mknumber(humidity, 1));
 	json_append_member(ge_chip->message, "battery", json_mknumber(battery, 1));
@@ -171,7 +171,7 @@ void ge_chipInit(void) {
 	ge_chip->maxgaplen = MAX_PULSE_LENGTH*PULSE_DIV;
 	ge_chip->mingaplen = MIN_PULSE_LENGTH*PULSE_DIV;
 
-//	options_add(&ge_chip->options, 'c', "channel", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "[0-9]");
+	options_add(&ge_chip->options, 'c', "channel", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "[0-9]");
 	options_add(&ge_chip->options, 't', "temperature", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9]{1,3}$");
 	options_add(&ge_chip->options, 'i', "id", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "[0-9]");
 	options_add(&ge_chip->options, 'h', "humidity", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "[0-9]");
@@ -185,6 +185,7 @@ void ge_chipInit(void) {
 	options_add(&ge_chip->options, 0, "show-humidity", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
 	options_add(&ge_chip->options, 0, "show-temperature", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
 	options_add(&ge_chip->options, 0, "show-battery", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
+	options_add(&ge_chip->options, 0, "show-channel", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
 
 	ge_chip->parseCode=&parseCode;
 	ge_chip->checkValues=&checkValues;
@@ -195,7 +196,7 @@ void ge_chipInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "ge_chip";
-	module->version = "0.1";
+	module->version = "0.2";
 	module->reqversion = "7.0";
 	module->reqcommit = "84";
 }
@@ -204,4 +205,3 @@ void init(void) {
 	ge_chipInit();
 }
 #endif
-
