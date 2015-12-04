@@ -1,5 +1,5 @@
 /*
-	Copyright (C) 2015 Prutsky
+	Copyright (C) 2014,2015 CurlyMo, Prutsky
 	This file is part of pilight.
 	pilight is free software: you can redistribute it and/or modify it under the
 	terms of the GNU General Public License as published by the Free Software
@@ -21,4 +21,3 @@ struct protocol_t *ge_chip;
 void ge_chipInit(void);
 
 #endif
-
