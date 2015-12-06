@@ -33,13 +33,16 @@
 #define PULSE_MULTIPLIER	3
 #define MIN_PULSE_LENGTH	385
 #define MAX_PULSE_LENGTH	395
-#define AVG_PULSE_LENGTH	390
+#define AVG_PULSE_LENGTH	480
 #define RAW_LENGTH				50
 
 static int validate(void) {
 	if(rsl366->rawlen == RAW_LENGTH) {
 		if(rsl366->raw[rsl366->rawlen-1] >= (MIN_PULSE_LENGTH*PULSE_DIV) &&
-		   rsl366->raw[rsl366->rawlen-1] <= (MAX_PULSE_LENGTH*PULSE_DIV)) {
+                   rsl366->raw[rsl366->rawlen-1] <= (MAX_PULSE_LENGTH*PULSE_DIV) &&
+                   rsl366->raw[rsl366->rawlen-3] <= (AVG_PULSE_LENGTH*PULSE_MULTIPLIER) &&
+                   rsl366->raw[rsl366->rawlen-7] <= (AVG_PULSE_LENGTH*PULSE_MULTIPLIER) &&
+                   rsl366->raw[rsl366->rawlen-11] <= (AVG_PULSE_LENGTH*PULSE_MULTIPLIER)) {
 			return 0;
 		}
 	}
@@ -63,16 +66,43 @@ static void parseCode(void) {
 
 	/* Convert the one's and zero's into binary */
 	for(x=0;x<rsl366->rawlen-2;x+=4) {
-		if(rsl366->raw[x+3] > (int)((double)AVG_PULSE_LENGTH*((double)PULSE_MULTIPLIER/2)) ||
-		  rsl366->raw[x+0] > (int)((double)AVG_PULSE_LENGTH*((double)PULSE_MULTIPLIER/2))) {
+		if(rsl366->raw[x+3] > (int)((double)AVG_PULSE_LENGTH*((double)PULSE_MULTIPLIER/2))) {
 			binary[i++]=1;
 		} else {
 			binary[i++]=0;
 		}
 	}
 
-	int systemcode = binToDec(binary, 0, 4);
-	int programcode = binToDec(binary, 5, 9);
+	int systemcode = 0;
+	//Check if there is a valid programcode
+        if ((binary[0] + binary[1] + binary[2] + binary[3]) > 1)
+                return;
+        if (binary[0] == 1)
+                systemcode = 1;
+        else if (binary[1] == 1)
+                systemcode = 2;
+        else if (binary[2] == 1)
+                systemcode = 3;
+        else if (binary[3] == 1)
+                systemcode = 4;
+
+        int programcode = 0;
+        //Check if there is a valid programcode
+        if ((binary[4] + binary[5] + binary[6] + binary[7]) > 1)
+                return;
+        if (binary[4] == 1)
+                programcode = 1;
+        else if (binary[5] == 1)
+                programcode = 2;
+        else if (binary[6] == 1)
+                programcode = 3;
+        else if (binary[7] == 1)
+                programcode = 4;
+        
+        //Check if a system and programcode was found
+        if (systemcode == 0 || programcode == 0)
+        	return;
+        
 	// There seems to be no check and binary[10] is always a low
 	int state = binary[11]^1;
 
@@ -97,7 +127,7 @@ static void createHigh(int s, int e) {
 		rsl366->raw[i]=AVG_PULSE_LENGTH;
 		rsl366->raw[i+1]=(PULSE_MULTIPLIER*AVG_PULSE_LENGTH);
 		rsl366->raw[i+2]=AVG_PULSE_LENGTH;
-		rsl366->raw[i+3]=(PULSE_MULTIPLIER*AVG_PULSE_LENGTH);
+		rsl366->raw[i+3]=AVG_PULSE_LENGTH;
 	}
 }
 
