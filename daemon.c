@@ -705,7 +705,6 @@ void *send_code(void *param) {
 						printf(" -#: %d\n",sendqueue->length);
 					}
 					if (protocol->preAmbCode != NULL) {
-						logprintf(LOG_DEBUG, "sending preAmb %s sequence", protocol->id);
 						pamble = protocol->preAmbCode();
 						if(hw->sendOOK(++pamble, *protocol->preAmbCode(), 1) == 0) {
 							logprintf(LOG_DEBUG, "successfully send %s preAmb sequence. #: %d - %d %d", protocol->id,  *protocol->preAmbCode(), *(pamble), *(pamble+1));
@@ -721,7 +720,6 @@ void *send_code(void *param) {
 						logprintf(LOG_ERR, "failed to send code");
 					}
 					if (protocol->postAmbCode != NULL) {
-						logprintf(LOG_DEBUG, "sending postAmb %s sequence", protocol->id);
 						pamble = protocol->postAmbCode();
 						if(hw->sendOOK(++pamble, *protocol->postAmbCode(), 1) == 0) {
 							logprintf(LOG_DEBUG, "successfully send %s postAmb sequence. #: %d - %d %d", protocol->id,  *protocol->postAmbCode(), *(pamble), *(pamble+1));
