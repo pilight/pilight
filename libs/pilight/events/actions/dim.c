@@ -166,11 +166,12 @@ static int checkArguments(struct rules_actions_t *obj) {
 								break;
 							}
 						}
-						array_free(&array, l);
 						if(match == 0) {
 							logprintf(LOG_ERR, "switch action \"%s\" is not a valid unit", array[1]);
+							array_free(&array, l);
 							return -1;
 						}
+						array_free(&array, l);
 					} else {
 						logprintf(LOG_ERR, "switch action \"FOR\" requires a positive number and a unit e.g. \"1 MINUTE\"");
 						if(l > 0) {
@@ -209,11 +210,12 @@ static int checkArguments(struct rules_actions_t *obj) {
 								break;
 							}
 						}
-						array_free(&array, l);
 						if(match == 0) {
 							logprintf(LOG_ERR, "switch action \"%s\" is not a valid unit", array[1]);
+							array_free(&array, l);
 							return -1;
 						}
+						array_free(&array, l);
 					} else {
 						logprintf(LOG_ERR, "switch action \"AFTER\" requires a positive number and a unit e.g. \"1 MINUTE\"");
 						if(l > 0) {
@@ -267,11 +269,12 @@ static int checkArguments(struct rules_actions_t *obj) {
 								break;
 							}
 						}
-						array_free(&array, l);
 						if(match == 0) {
 							logprintf(LOG_ERR, "switch action \"%s\" is not a valid unit", array[1]);
+							array_free(&array, l);
 							return -1;
 						}
+						array_free(&array, l);
 					} else {
 						logprintf(LOG_ERR, "switch action \"IN\" requires a positive number and a unit e.g. \"1 MINUTE\"");
 						if(l > 0) {
@@ -483,7 +486,9 @@ static void *thread(void *param) {
 							}
 						}
 					}
-					array_free(&array, l);
+					if(l > 0) {
+						array_free(&array, l);
+					}
 				}
 			}
 		}
@@ -504,7 +509,9 @@ static void *thread(void *param) {
 							}
 						}
 					}
-					array_free(&array, l);
+					if(l > 0) {
+						array_free(&array, l);
+					}
 				}
 			}
 		}
@@ -850,7 +857,7 @@ void actionDimInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "dim";
-	module->version = "3.4";
+	module->version = "3.5";
 	module->reqversion = "6.0";
 	module->reqcommit = "152";
 }
