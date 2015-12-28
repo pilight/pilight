@@ -107,13 +107,13 @@ static int checkArguments(struct rules_actions_t *obj) {
 	/**
 	 * read a parameter
 	 */
-static char* getParameter(char* key, arguments*) {
+static char* getParameter(char* key, struct JsonNode* arguments) {
 
   struct JsonNode *jvalueParam = json_find_member(arguments, key);
   char* value = NULL;
 
   if (jvalueParam != NULL) {
-    struct JsonNode jvalue = json_find_member(japikey, "value");
+    struct JsonNode jvalue = json_find_member(jvalueParam, "value");
 
     if (jvalue != NULL) {
       struct JsonNode jval = json_find_element(jvalue, 0);
@@ -127,6 +127,7 @@ static char* getParameter(char* key, arguments*) {
             char val[50];
             sprintf(val, "%.4f", jvalue->number_);
             value = val;
+            break;
           default:
             break;
         }
@@ -141,15 +142,21 @@ static char* getParameter(char* key, arguments*) {
  * read the three optional value parameters and provide and add them to the URL
  */
 static char* addKeyEventAndValueParamsToUrl(char* apikey, char* event,
-                                            arguments*) {
+                                            struct JsonNode* arguments) {
+
+  char* url = NULL;
 
   int urllen = strlen(MAKER_WEBREQUEST_URL_FRONT) +
                strlen(MAKER_WEBREQUEST_URL_MIDDLE) +
                strlen(apikey) +
                strlen(event);
 
-  char* url = (char*)malloc(urllen*sizeof(char));
-  strcat(url, MAKER_WEBREQUEST_URL_FRONT);
+  if ((url = (char*)malloc(urllen*sizeof(char))) == NULL) {
+    logerror("Out of Memory!");
+    exit(EXIT_FAILURE);
+  }
+
+  strcpy(url, MAKER_WEBREQUEST_URL_FRONT);
   strcat(url, event);
   strcat(url, MAKER_WEBREQUEST_URL_MIDDLE);
   strcat(url, apikey);
@@ -158,8 +165,10 @@ static char* addKeyEventAndValueParamsToUrl(char* apikey, char* event,
   for(int i=0;i<MAKER_VALUE_PARAMS_COUNT;++i) {
     char* pvalue = getParameter(MAKER_VALUE_PARAMS[i], arguments);
     if (pvalue != "") {
-      int urlen += strlen(pvalue) + strlen(MAKER_VALUE_PARAMS[i]) + 2;
-      url = (char*)realloc(url, urllen*sizeof(char));
+      urllen += strlen(pvalue) + strlen(MAKER_VALUE_PARAMS[i]) + 2;
+      if ((url = (char*)realloc(url, urllen*sizeof(char))) == NULL) {
+
+      }
 
       strcat(url, (valcount++ == 0) ? "?" : "&");
       strcat(strcat(strcat(url, MAKER_VALUE_PARAMS[i]), "="), pvalue);
@@ -187,7 +196,7 @@ static void *thread(void *param) {
     getParameter("EVENT",  arguments),
     arguments);
 
-  data = http_post_content(url, &tp, &ret, &size, "application/x-www-form-urlencoded", content);
+  data = http_post_content(url, &tp, &ret, &size, "application/x-www-form-urlencoded", '');
   if(ret == 200) {
     logprintf(LOG_DEBUG, "maker webrequest action succeeded with message: %s", data);
   } else {
@@ -215,16 +224,16 @@ static int run(struct rules_actions_t *obj) {
 __attribute__((weak))
 #endif
 void actionMakerInit(void) {
-	event_action_register(&action_pushover, "maker");
+	event_action_register(&action_maker, "maker");
 
-	options_add(&action_pushover->options, 'a', "APIKEY", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_STRING, NULL, NULL);
-	options_add(&action_pushover->options, 'b', "EVENT", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_STRING, NULL, NULL);
-	options_add(&action_pushover->options, 'c', "VALUE1", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_STRING, NULL, NULL);
-	options_add(&action_pushover->options, 'd', "VALUE2", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_STRING, NULL, NULL);
-  options_add(&action_pushover->options, 'e', "VALUE3", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_STRING, NULL, NULL);
+	options_add(&action_maker->options, 'a', "APIKEY", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_STRING, NULL, NULL);
+	options_add(&action_maker->options, 'b', "EVENT", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_STRING, NULL, NULL);
+	options_add(&action_maker->options, 'c', "VALUE1", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_STRING, NULL, NULL);
+	options_add(&action_maker->options, 'd', "VALUE2", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_STRING, NULL, NULL);
+  options_add(&action_maker->options, 'e', "VALUE3", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_STRING, NULL, NULL);
 
-	action_pushover->run = &run;
-	action_pushover->checkArguments = &checkArguments;
+	action_maker->run = &run;
+	action_maker->checkArguments = &checkArguments;
 }
 
 #if defined(MODULE) && !defined(_WIN32)
