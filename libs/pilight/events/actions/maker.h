@@ -16,22 +16,12 @@
 	along with pilight. If not, see	<http://www.gnu.org/licenses/>
 */
 
-#ifndef _EVENT_ACTION_PUSHOVER_H_
-#define _EVENT_ACTION_PUSHOVER_H_
+#ifndef _EVENT_ACTION_MAKER_H_
+#define _EVENT_ACTION_MAKER_H_
 
 #include "../action.h"
 
 struct event_actions_t *action_maker;
-const char* MAKER_WEBREQUEST_URL_FRONT = "https://maker.ifttt.com/trigger/";
-const char* MAKER_WEBREQUEST_URL_MIDDLE = "/with/key/";
-
-const char* MAKER_VALUE_PARAMS_COUNT = 3;
-const char* MAKER_VALUE_PARAMS = {
-  "VALUE1",
-  "VALUE2",
-  "VALUE3"
-};
-
 void actionMakerInit(void);
 
 #endif

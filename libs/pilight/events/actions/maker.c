@@ -32,6 +32,23 @@
 #include "../../core/common.h"
 #include "maker.h"
 
+const char* MAKER_WEBREQUEST_URL_FRONT = "https://maker.ifttt.com/trigger/";
+const char* MAKER_WEBREQUEST_URL_MIDDLE = "/with/key/";
+
+const int MAKER_VALUE_PARAMS_COUNT = 3;
+const char* MAKER_VALUE_PARAMS[] = {
+  "VALUE1",
+  "VALUE2",
+  "VALUE3"
+};
+const char* MAKER_VALUE_URLPARAMS[] = {
+  "value1",
+  "value2",
+  "value3"
+};
+
+
+
 static int checkArguments(struct rules_actions_t *obj) {
 	struct JsonNode *japikey = NULL;
 	struct JsonNode *jevent = NULL;
@@ -77,7 +94,8 @@ static int checkArguments(struct rules_actions_t *obj) {
 	}
 
 	//check the n different value parameters
-	for(int i=0;i<MAKER_VALUE_PARAMS_COUNT;++i) {
+	int i;
+	for(i=0;i<MAKER_VALUE_PARAMS_COUNT;++i) {
 	  struct JsonNode *jvalueParam = NULL;
 
 	  jvalueParam = json_find_member(obj->arguments, MAKER_VALUE_PARAMS[i]);
@@ -107,25 +125,27 @@ static int checkArguments(struct rules_actions_t *obj) {
 	/**
 	 * read a parameter
 	 */
-static char* getParameter(char* key, struct JsonNode* arguments) {
+static char* strcpyParameter(const char* key, struct JsonNode* arguments) {
 
   struct JsonNode *jvalueParam = json_find_member(arguments, key);
   char* value = NULL;
+  char* param = NULL;
+  char val[50];
 
   if (jvalueParam != NULL) {
-    struct JsonNode jvalue = json_find_member(jvalueParam, "value");
+    struct JsonNode *jvalue = json_find_member(jvalueParam, "value");
 
     if (jvalue != NULL) {
-      struct JsonNode jval = json_find_element(jvalue, 0);
+      struct JsonNode *jval = json_find_element(jvalue, 0);
 
-      if(jvalue != NULL) {
-         switch (jvalue->tag) {
+      if(jval != NULL) {
+
+         switch (jval->tag) {
           case JSON_STRING:
-            value = jvalue->string_;
+            value = jval->string_;
             break;
           case JSON_NUMBER:
-            char val[50];
-            sprintf(val, "%.4f", jvalue->number_);
+            sprintf(val, "%.4f", jval->number_);
             value = val;
             break;
           default:
@@ -135,7 +155,15 @@ static char* getParameter(char* key, struct JsonNode* arguments) {
     }
   }
 
-  return (value == NULL) ? "" : value;
+  if (value != NULL)
+  {
+    if ((param = (char*)MALLOC(strlen(value)+1)))
+    {
+      strcpy(param, value);
+    }
+  }
+
+  return param;
 }
 
 /**
@@ -151,7 +179,7 @@ static char* addKeyEventAndValueParamsToUrl(char* apikey, char* event,
                strlen(apikey) +
                strlen(event);
 
-  if ((url = (char*)malloc(urllen*sizeof(char))) == NULL) {
+  if ((url = (char*)MALLOC(urllen+1)) == NULL) {
     logerror("Out of Memory!");
     exit(EXIT_FAILURE);
   }
@@ -162,16 +190,25 @@ static char* addKeyEventAndValueParamsToUrl(char* apikey, char* event,
   strcat(url, apikey);
   int valcount = 0;
 
-  for(int i=0;i<MAKER_VALUE_PARAMS_COUNT;++i) {
-    char* pvalue = getParameter(MAKER_VALUE_PARAMS[i], arguments);
-    if (pvalue != "") {
+  int i;
+  for(i=0;i<MAKER_VALUE_PARAMS_COUNT;++i) {
+    char* pvalue = NULL;
+    pvalue = strcpyParameter(MAKER_VALUE_PARAMS[i], arguments);
+    if (pvalue) {
       urllen += strlen(pvalue) + strlen(MAKER_VALUE_PARAMS[i]) + 2;
-      if ((url = (char*)realloc(url, urllen*sizeof(char))) == NULL) {
 
+      char* newurl;
+      if ((newurl = MALLOC(urllen+1))) {
+
+        strcpy(newurl, url);
+        strcat(newurl, (valcount++ == 0) ? "?" : "&");
+        strcat(strcat(strcat(newurl, MAKER_VALUE_URLPARAMS[i]), "="), pvalue);
+
+        FREE(url);
+        url = newurl;
       }
+      FREE(pvalue);
 
-      strcat(url, (valcount++ == 0) ? "?" : "&");
-      strcat(strcat(strcat(url, MAKER_VALUE_PARAMS[i]), "="), pvalue);
     }
   }
 
@@ -184,26 +221,31 @@ static void *thread(void *param) {
 	struct rules_actions_t *pth = (struct rules_actions_t *)param;
 	struct JsonNode *arguments = pth->arguments;
 	action_maker->nrthreads++;
+  logprintf(LOG_INFO, "start maker message");
 
 	int ret = 0;
 	int size = 0;
   char typebuf[70];
   char *data;
   char *tp = typebuf;
+  char *apikey = NULL;
+  char *event = NULL;
 
-  char* url = addKeyEventAndValueParamsToUrl(
-    getParameter("APIKEY", arguments),
-    getParameter("EVENT",  arguments),
-    arguments);
+  apikey = strcpyParameter("APIKEY", arguments);
+  event = strcpyParameter("EVENT",  arguments);
 
-  data = http_post_content(url, &tp, &ret, &size, "application/x-www-form-urlencoded", '');
+  char* url = addKeyEventAndValueParamsToUrl(apikey, event, arguments);
+
+  data = http_post_content(url, &tp, &ret, &size, "application/x-www-form-urlencoded", "");
   if(ret == 200) {
-    logprintf(LOG_DEBUG, "maker webrequest action succeeded with message: %s", data);
+    logprintf(LOG_INFO, "maker webrequest action succeeded with message: %s", data);
   } else {
     logprintf(LOG_NOTICE, "maker webrequest action failed (%d) with message: %s", ret, data);
   }
 
   FREE(url);
+  FREE(apikey);
+  FREE(event);
   if(data != NULL) {
     FREE(data);
   }
@@ -228,9 +270,9 @@ void actionMakerInit(void) {
 
 	options_add(&action_maker->options, 'a', "APIKEY", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_STRING, NULL, NULL);
 	options_add(&action_maker->options, 'b', "EVENT", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_STRING, NULL, NULL);
-	options_add(&action_maker->options, 'c', "VALUE1", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_STRING, NULL, NULL);
-	options_add(&action_maker->options, 'd', "VALUE2", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_STRING, NULL, NULL);
-  options_add(&action_maker->options, 'e', "VALUE3", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_STRING, NULL, NULL);
+  options_add(&action_maker->options, 'c', "VALUE1", OPTION_OPT_VALUE, DEVICES_VALUE, JSON_STRING | JSON_NUMBER, NULL, NULL);
+  options_add(&action_maker->options, 'd', "VALUE2", OPTION_OPT_VALUE, DEVICES_VALUE, JSON_STRING | JSON_NUMBER, NULL, NULL);
+	options_add(&action_maker->options, 'e', "VALUE3", OPTION_OPT_VALUE, DEVICES_VALUE, JSON_STRING | JSON_NUMBER, NULL, NULL);
 
 	action_maker->run = &run;
 	action_maker->checkArguments = &checkArguments;
