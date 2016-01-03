@@ -55,8 +55,7 @@
 #define HTTP_POST			1
 #define HTTP_GET			0
 
-char *http_url_encode(char *url, char* encoded, int sizebuffer)
-{
+char *http_url_encode(char *url, char* encoded, int sizebuffer) {
   char *up, *ep;
   if ((encoded == NULL) || (sizebuffer == 0))
   {
