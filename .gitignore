@@ -1,0 +1,13 @@
+CMakeFiles
+*_header.h
+*_init.h
+*.o
+*.cmake
+pilight-*
+Makefile
+CMakeCache.txt
+cmake_uninstall.cmake.in
+inc/defines.h
+libpilight.a
+libpilight.so
+

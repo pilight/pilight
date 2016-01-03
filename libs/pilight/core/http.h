@@ -21,5 +21,6 @@
 
 char *http_get_content(char *url, char **type, int *code, int *size);
 char *http_post_content(char *url, char **type, int *code, int *size, const char *contype, char *post);
+char *http_url_encode(char *url, char* encoded, int sizebuffer);
 
 #endif

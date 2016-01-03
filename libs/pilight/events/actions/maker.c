@@ -157,10 +157,7 @@ static char* strcpyParameter(const char* key, struct JsonNode* arguments) {
 
   if (value != NULL)
   {
-    if ((param = (char*)MALLOC(strlen(value)+1)))
-    {
-      strcpy(param, value);
-    }
+    param = http_url_encode(value, NULL, 0);
   }
 
   return param;
@@ -194,6 +191,7 @@ static char* addKeyEventAndValueParamsToUrl(char* apikey, char* event,
   for(i=0;i<MAKER_VALUE_PARAMS_COUNT;++i) {
     char* pvalue = NULL;
     pvalue = strcpyParameter(MAKER_VALUE_PARAMS[i], arguments);
+
     if (pvalue) {
       urllen += strlen(pvalue) + strlen(MAKER_VALUE_PARAMS[i]) + 2;
 
@@ -203,12 +201,10 @@ static char* addKeyEventAndValueParamsToUrl(char* apikey, char* event,
         strcpy(newurl, url);
         strcat(newurl, (valcount++ == 0) ? "?" : "&");
         strcat(strcat(strcat(newurl, MAKER_VALUE_URLPARAMS[i]), "="), pvalue);
-
         FREE(url);
         url = newurl;
       }
       FREE(pvalue);
-
     }
   }
 
