@@ -55,7 +55,7 @@ static int validate(void) {
 
 static void parseCode(void) {
 	int i = 0, x = 0, binary[RAW_LENGTH/2];
-	int id = 0, battery = 0, channel = 0;
+	int id = 0, sign = 0, battery = 0, channel = 0;
 	double temperature = 0.0, humidity = 0.0;
 	double humi_offset = 0.0, temp_offset = 0.0;
 
@@ -69,10 +69,12 @@ static void parseCode(void) {
 
 	id = binToDecRev(binary, 0, 13);
 	channel = binToDecRev(binary, 14, 15) + 1;
-	battery = binary[16];
-	temperature = binToDecRev(binary, 17, 27);
+	battery = binToDecRev(binary, 16, 17);
+	sign = binary[18];
+	temperature = binToDecRev(binary, 19, 27);
 	humidity = binToDecRev(binary, 28, 35);
 
+	temperature = (double)(temperature - (sign*512))/10.0;
 	struct settings_t *tmp = settings;
 	while(tmp) {
 		if(fabs(tmp->id-id) < EPSILON) {
@@ -89,7 +91,7 @@ static void parseCode(void) {
 	ge_chip->message = json_mkobject();
 	json_append_member(ge_chip->message, "id", json_mknumber(id, 1));
 	json_append_member(ge_chip->message, "channel", json_mknumber(channel, 1));
-	json_append_member(ge_chip->message, "temperature", json_mknumber(temperature/10, 1));
+	json_append_member(ge_chip->message, "temperature", json_mknumber(temperature, 1));
 	json_append_member(ge_chip->message, "humidity", json_mknumber(humidity, 1));
 	json_append_member(ge_chip->message, "battery", json_mknumber(battery, 1));
 }
