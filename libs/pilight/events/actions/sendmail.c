@@ -110,7 +110,7 @@ static int checkArguments(struct rules_actions_t *obj) {
 		return -1;
 	} else if(strlen(jval->string_) > 0) {
 #if !defined(__FreeBSD__) && !defined(_WIN32)
-		char validate[] = "^[a-zA-Z0-9_.]+@[a-zA-Z0-9]+\\.+[a-zA-Z0-9]{2,3}$";
+		char validate[] = "[^@^\\.\\.]+@[^@^\\.\\.]+\\.[^@^\\.\\.]+";
 		reti = regcomp(&regex, validate, REG_EXTENDED);
 		if(reti) {
 			logprintf(LOG_ERR, "could not compile regex for \"TO\"");

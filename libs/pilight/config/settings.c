@@ -444,7 +444,7 @@ static int settings_parse(JsonNode *root) {
 				goto clear;
 			} else if(strlen(jsettings->string_) > 0) {
 #if !defined(__FreeBSD__) && !defined(_WIN32)
-				char validate[] = "^[a-zA-Z0-9_.]+@([a-zA-Z0-9]+\\.)+([a-zA-Z0-9]{2,3}){1,2}$";
+				char validate[] = "[^@^\\.\\.]+@[^@^\\.\\.]+\\.[^@^\\.\\.]+";
 				reti = regcomp(&regex, validate, REG_EXTENDED);
 				if(reti) {
 					logprintf(LOG_ERR, "could not compile regex for %s", jsettings->key);
