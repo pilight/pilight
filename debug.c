@@ -103,7 +103,7 @@ void *receivePulseTrain(void *param) {
 	struct hardware_t *hw = (hardware_t *)param;
 
 	while(main_loop) {
-		memset(&r.pulses, 0, MAXPULSESTREAMLENGTH);
+		memset(&r.pulses, 0, sizeof(r.pulses));
 		memset(&tm, '\0', sizeof(struct tm));
 		pulse = 0;
 		inner_loop = 1;
@@ -183,8 +183,8 @@ void *receiveOOK(void *param) {
 	struct hardware_t *hw = (hardware_t *)param;
 
 	while(main_loop) {
-		memset(&raw, '\0', MAXPULSESTREAMLENGTH);
-		memset(&pRaw, '\0', MAXPULSESTREAMLENGTH);
+		memset(&raw, '\0', sizeof(raw));
+		memset(&pRaw, '\0', sizeof(pRaw));
 		memset(&tm, '\0', sizeof(struct tm));
 		recording = 1;
 		bit = 0;
