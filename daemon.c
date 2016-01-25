@@ -830,7 +830,7 @@ static int send_queue(struct JsonNode *json, enum origin_t origin) {
 				}
 				jprotocol = jprotocol->next;
 			}
-			memset(raw, 0, MAXPULSESTREAMLENGTH-1);
+			memset(raw, 0, sizeof(raw));
 			protocol->raw = raw;
 			if(match == 1 && protocol->createCode != NULL) {
 				/* Let the protocol create his code */
