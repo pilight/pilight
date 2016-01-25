@@ -39,9 +39,9 @@
 static char *json_strdup(const char *str)
 {
 	char *ret = (char*) malloc(strlen(str) + 1);
-	memset(ret, 0, strlen(str) + 1);
 	if (ret == NULL)
 		out_of_memory();
+	memset(ret, 0, strlen(str) + 1);
 	strcpy(ret, str);
 	return ret;
 }
