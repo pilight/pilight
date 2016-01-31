@@ -161,10 +161,17 @@ int check_instances(const wchar_t *prog) {
 }
 
 int setenv(const char *name, const char *value, int overwrite) {
-	if(overwrite == 0) {
-		value = getenv(name);
+	if(name == NULL) {
+		errno = EINVAL;
+		return -1;
 	}
-	char c[strlen(name)+strlen(value)+1];
+	if(overwrite == 0 && getenv(name) != NULL) {
+		return 0; // name already defined and not allowed to overwrite. Treat as OK.
+	}
+	if(value == NULL) {
+		return unsetenv(name);
+	}
+	char c[strlen(name)+1+strlen(value)+1]; // one for "=" + one for term zero
 	strcat(c, name);
 	strcat(c, "=");
 	strcat(c, value);
@@ -172,7 +179,11 @@ int setenv(const char *name, const char *value, int overwrite) {
 }
 
 int unsetenv(const char *name) {
-	char c[strlen(name)+1];
+	if(name == NULL) {
+		errno = EINVAL;
+		return -1;
+	}
+	char c[strlen(name)+1+1]; // one for "=" + one for term zero
 	strcat(c, name);
 	strcat(c, "=");
 	return putenv(c);
