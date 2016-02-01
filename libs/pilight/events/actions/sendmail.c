@@ -34,10 +34,6 @@
 #include "../../core/mail.h"
 #include "sendmail.h"
 
-#ifndef _WIN32
-	#include <regex.h>
-#endif
-
 //check arguments and settings
 static int checkArguments(struct rules_actions_t *obj) {
 	struct JsonNode *jsubject = NULL;
@@ -48,10 +44,6 @@ static int checkArguments(struct rules_actions_t *obj) {
 	struct JsonNode *jchild = NULL;
 	char *stmp = NULL;
 	int nrvalues = 0, itmp = 0;
-#if !defined(__FreeBSD__) && !defined(_WIN32)
-	regex_t regex;
-	int reti;
-#endif
 	jsubject = json_find_member(obj->parsedargs, "SUBJECT");
 	jmessage = json_find_member(obj->parsedargs, "MESSAGE");
 	jto = json_find_member(obj->parsedargs, "TO");
@@ -108,22 +100,9 @@ static int checkArguments(struct rules_actions_t *obj) {
 	if(jval->tag != JSON_STRING || jval->string_ == NULL) {
 		logprintf(LOG_ERR, "sendmail action \"TO\" must contain an e-mail address");
 		return -1;
-	} else if(strlen(jval->string_) > 0) {
-#if !defined(__FreeBSD__) && !defined(_WIN32)
-		char validate[] = "^[a-zA-Z0-9_.]+@[a-zA-Z0-9]+\\.+[a-zA-Z0-9]{2,3}$";
-		reti = regcomp(&regex, validate, REG_EXTENDED);
-		if(reti) {
-			logprintf(LOG_ERR, "could not compile regex for \"TO\"");
-			return -1;
-		}
-		reti = regexec(&regex, jval->string_, 0, NULL, 0);
-		if(reti == REG_NOMATCH || reti != 0) {
-			logprintf(LOG_ERR, "sendmail action \"TO\" must contain an e-mail address");
-			regfree(&regex);
-			return -1;
-		}
-		regfree(&regex);
-#endif
+	} else if(strlen(jval->string_) > 0 && check_email_addr(jval->string_, 0, 0) < 0) {
+		logprintf(LOG_ERR, "sendmail action \"TO\" must contain an e-mail address");
+		return -1;
 	}
 	// Check if mandatory settings are present in config
 	if(settings_find_string("smtp-host", &stmp) != EXIT_SUCCESS) {
