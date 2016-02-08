@@ -100,6 +100,8 @@ static void parseCode(void) {
 	n1=binToDecRev(binary, 4, 7);
 	n0=binToDecRev(binary, 0, 3);
 
+	id = n3b;
+
 	struct settings_t *tmp = settings;
 	while(tmp) {
 		if(fabs(tmp->id-id) < EPSILON){
@@ -135,7 +137,6 @@ static void parseCode(void) {
 	tfa30->message = json_mkobject();
 	switch(type) {
 		case 1:
-			id = n3b;
 			temperature = (double)(n5-5)*10 + n6 + n7/10.0;
 			temperature += temp_offset;
 
@@ -143,7 +144,6 @@ static void parseCode(void) {
 			json_append_member(tfa30->message, "temperature", json_mknumber(temperature, 1));
 		break;
 		case 2:
-			id = n3b;
 			humidity = (double)(n5)*10 + n6;
 			humidity += humi_offset;
 

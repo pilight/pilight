@@ -31,15 +31,18 @@
 #include "rsl366.h"
 
 #define PULSE_MULTIPLIER	3
-#define MIN_PULSE_LENGTH	385
+#define MIN_PULSE_LENGTH	375
 #define MAX_PULSE_LENGTH	395
-#define AVG_PULSE_LENGTH	390
-#define RAW_LENGTH				50
+#define AVG_PULSE_LENGTH	480
+#define RAW_LENGTH		50
 
 static int validate(void) {
 	if(rsl366->rawlen == RAW_LENGTH) {
 		if(rsl366->raw[rsl366->rawlen-1] >= (MIN_PULSE_LENGTH*PULSE_DIV) &&
-		   rsl366->raw[rsl366->rawlen-1] <= (MAX_PULSE_LENGTH*PULSE_DIV)) {
+                   rsl366->raw[rsl366->rawlen-1] <= (MAX_PULSE_LENGTH*PULSE_DIV) &&
+                   rsl366->raw[rsl366->rawlen-3] <= (AVG_PULSE_LENGTH*PULSE_MULTIPLIER) &&
+                   rsl366->raw[rsl366->rawlen-7] <= (AVG_PULSE_LENGTH*PULSE_MULTIPLIER) &&
+                   rsl366->raw[rsl366->rawlen-11] <= (AVG_PULSE_LENGTH*PULSE_MULTIPLIER)) {
 			return 0;
 		}
 	}
@@ -62,17 +65,40 @@ static void parseCode(void) {
 	int x = 0, i = 0, binary[RAW_LENGTH/4];
 
 	/* Convert the one's and zero's into binary */
-	for(x=0;x<rsl366->rawlen-2;x+=4) {
-		if(rsl366->raw[x+3] > (int)((double)AVG_PULSE_LENGTH*((double)PULSE_MULTIPLIER/2)) ||
-		  rsl366->raw[x+0] > (int)((double)AVG_PULSE_LENGTH*((double)PULSE_MULTIPLIER/2))) {
+	for(x=0;x<rsl366->rawlen-1;x+=4) {
+		if(rsl366->raw[x+3] > (int)((double)AVG_PULSE_LENGTH*((double)PULSE_MULTIPLIER/2))) {
 			binary[i++]=1;
 		} else {
 			binary[i++]=0;
 		}
 	}
 
-	int systemcode = binToDec(binary, 0, 4);
-	int programcode = binToDec(binary, 5, 9);
+	//Check if there is a valid systemcode
+	if((binary[0]+binary[1]+binary[2]+binary[3]) > 1)
+                return;
+        
+        //Get systemcode: 1000=>1, 0100=>2, 0010=>3, 0001=>4
+        int systemcode = 0;
+        for(i=0;i<4;i++) {
+        	if(binary[i] == 1)
+        		systemcode = i+1;
+        }
+        
+        //Check if there is a valid programcode
+        if((binary[4]+binary[5]+binary[6]+binary[7]) > 1)
+                return;
+        
+        //Get programcode: 1000=>1, 0100=>2, 0010=>3, 0001=>4
+        int programcode = 0;
+        for(i=4;i<8;i++) {
+        	if(binary[i] == 1)
+        		programcode = i-3;
+        }
+        
+        //Check if a system and programcode was found
+        if(systemcode == 0 || programcode == 0)
+        	return;
+        
 	// There seems to be no check and binary[10] is always a low
 	int state = binary[11]^1;
 
@@ -200,7 +226,7 @@ void rsl366Init(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "rsl366";
-	module->version = "2.5";
+	module->version = "2.6";
 	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }
