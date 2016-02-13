@@ -74,7 +74,7 @@ static void createMessage(int id, int unit, double temperature, double humidity)
 }
 
 static void parseCode(void) {
-	int x = 0, pRaw = 0, binary[RAW_LENGTH/2];
+	int x = 0, pRaw = 0, binary[MAX_RAW_LENGTH/2];
 	int iParity = 1, iParityData = -1;	// init for even parity
 	int iHeaderSync = 12;				// 1100
 	int iDataSync = 6;					// 110
@@ -82,7 +82,7 @@ static void parseCode(void) {
 	double humi_offset = 0.0;
 
 	// Decode Biphase Mark Coded Differential Manchester (BMCDM) pulse stream into binary
-	for(x=0; x<=(RAW_LENGTH/2); x++) {
+	for(x=0; x<=(MAX_RAW_LENGTH/2); x++) {
 		if(ninjablocks_weather->raw[pRaw] > PULSE_NINJA_WEATHER_LOWER &&
 		  ninjablocks_weather->raw[pRaw] < PULSE_NINJA_WEATHER_UPPER) {
 			binary[x] = 1;
@@ -229,8 +229,8 @@ void ninjablocksWeatherInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "ninjablocks_weather";
-	module->version = "1.0";
-	module->reqversion = "6.0";
+	module->version = "1.1";
+	module->reqversion = "7.0";
 	module->reqcommit = "84";
 }
 
