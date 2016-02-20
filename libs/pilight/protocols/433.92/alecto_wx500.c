@@ -70,7 +70,7 @@ static void parseCode(void) {
 	int n4 = 0, n5 = 0, n6 = 0, n7 = 0, n8 = 0;
 	int checksum = 1;
 
-	for(x=1;x<alecto_wx500->rawlen-1;x+=2) {
+	for(x=1;x<alecto_wx500->rawlen;x+=2) {
 		if(alecto_wx500->raw[x] > AVG_PULSE) {
 			binary[i++] = 1;
 		} else {
