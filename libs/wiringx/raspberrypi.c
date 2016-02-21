@@ -448,8 +448,6 @@ static int raspberrypiISR(int pin, int mode) {
 		return -1;
 	}
 
-	pinModes[pin] = SYS;
-
 	if(mode == INT_EDGE_FALLING) {
 		sMode = "falling" ;
 	} else if(mode == INT_EDGE_RISING) {
@@ -461,12 +459,19 @@ static int raspberrypiISR(int pin, int mode) {
 		return -1;
 	}
 
+	if(sysFds[pin] != -1) {
+		wiringXLog(LOG_WARNING, "raspberrypi->isr: ISR for pin number %d already set. Detached now.", pin);
+		close(sysFds[pin]);
+		sysFds[pin] = -1;
+	}
+	pinModes[pin] = -1;
+
 	sprintf(path, "/sys/class/gpio/gpio%d/value", pinToGpio[pin]);
 	fd = open(path, O_RDWR);
 
 	if(fd < 0) {
 		if((f = fopen("/sys/class/gpio/export", "w")) == NULL) {
-			wiringXLog(LOG_ERR, "raspberrypi->isr: Unable to open GPIO export interface: %s", strerror(errno));
+			wiringXLog(LOG_ERR, "raspberrypi->isr: Unable to open GPIO export interface for pin %d: %s", pin, strerror(errno));
 			return -1;
 		}
 
@@ -477,6 +482,7 @@ static int raspberrypiISR(int pin, int mode) {
 	sprintf(path, "/sys/class/gpio/gpio%d/direction", pinToGpio[pin]);
 	if((f = fopen(path, "w")) == NULL) {
 		wiringXLog(LOG_ERR, "raspberrypi->isr: Unable to open GPIO direction interface for pin %d: %s", pin, strerror(errno));
+		close(fd);
 		return -1;
 	}
 
@@ -486,6 +492,7 @@ static int raspberrypiISR(int pin, int mode) {
 	sprintf(path, "/sys/class/gpio/gpio%d/edge", pinToGpio[pin]);
 	if((f = fopen(path, "w")) == NULL) {
 		wiringXLog(LOG_ERR, "raspberrypi->isr: Unable to open GPIO edge interface for pin %d: %s", pin, strerror(errno));
+		close(fd);
 		return -1;
 	}
 
@@ -499,12 +506,14 @@ static int raspberrypiISR(int pin, int mode) {
 		fprintf(f, "both\n");
 	} else {
 		wiringXLog(LOG_ERR, "raspberrypi->isr: Invalid mode: %s. Should be rising, falling or both", sMode);
+		close(fd);
 		return -1;
 	}
 	fclose(f);
 
 	if((f = fopen(path, "r")) == NULL) {
 		wiringXLog(LOG_ERR, "raspberrypi->isr: Unable to open GPIO edge interface for pin %d: %s", pin, strerror(errno));
+		close(fd);
 		return -1;
 	}
 
@@ -519,14 +528,18 @@ static int raspberrypiISR(int pin, int mode) {
 
 	if(match == 0) {
 		wiringXLog(LOG_ERR, "raspberrypi->isr: Failed to set interrupt edge to %s", sMode);
+		close(fd);
 		return -1;
 	}
 
 	sprintf(path, "/sys/class/gpio/gpio%d/value", pinToGpio[pin]);
 	if((sysFds[pin] = open(path, O_RDONLY)) < 0) {
 		wiringXLog(LOG_ERR, "raspberrypi->isr: Unable to open GPIO value interface: %s", strerror(errno));
+		close(fd);
 		return -1;
 	}
+	pinModes[pin] = SYS;
+
 	changeOwner(path);
 
 	sprintf(path, "/sys/class/gpio/gpio%d/edge", pinToGpio[pin]);
@@ -591,14 +604,16 @@ static int raspberrypiGC(void) {
 				if((f = fopen("/sys/class/gpio/unexport", "w")) == NULL) {
 					wiringXLog(LOG_ERR, "raspberrypi->gc: Unable to open GPIO unexport interface: %s", strerror(errno));
 				}
-
-				fprintf(f, "%d\n", pinToGpio[i]);
-				fclose(f);
+				else {
+					fprintf(f, "%d\n", pinToGpio[i]);
+					fclose(f);
+				}
 				close(fd);
 			}
 		}
-		if(sysFds[i] > 0) {
+		if(sysFds[i] >= 0) {
 			close(sysFds[i]);
+			sysFds[i] = -1;
 		}
 	}
 
@@ -745,7 +760,7 @@ int raspberrypiSPISetup(int channel, int speed) {
 
 void raspberrypiInit(void) {
 
-	memset(pinModes, -1, NUM_PINS);
+	memset(pinModes, -1, sizeof(pinModes));
 
 	platform_register(&raspberrypi, "raspberrypi");
 	raspberrypi->setup=&setup;
