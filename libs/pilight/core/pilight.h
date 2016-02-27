@@ -24,34 +24,64 @@ typedef enum runmode_t {
 	ADHOC
 } runmode_t;
 
+typedef enum process_t {
+	PROCESS_DAEMON,
+	PROCESS_CLIENT
+} process_t;
+
 typedef enum origin_t {
-	RECEIVER = 0,
-	SENDER,
-	MASTER,
-	NODE,
-	FW,
-	STATS,
-	ACTION,
-	RULE,
-	PROTOCOL,
-	HARDWARE
+	ORIGIN_RECEIVER = 0,
+	ORIGIN_SENDER,
+	ORIGIN_CONTROLLER,
+	ORIGIN_MASTER,
+	ORIGIN_NODE,
+	ORIGIN_FW,
+	ORIGIN_STATS,
+	ORIGIN_ACTION,
+	ORIGIN_RULE,
+	ORIGIN_PROTOCOL,
+	ORIGIN_HARDWARE,
+	ORIGIN_CONFIG,
+	ORIGIN_WEBSERVER,
+	ORIGIN_SSDP
 } origin_t;
 
 #include "defines.h"
+#include "eventpool.h"
 #include "json.h"
 #include "mem.h"
 
-#include "../config/devices.h"
+#include "../storage/storage.h"
+
+#include "../../mbedtls/mbedtls/error.h"
+#include "../../mbedtls/mbedtls/pk.h"
+#include "../../mbedtls/mbedtls/net.h"
+#include "../../mbedtls/mbedtls/x509_crt.h"
+#include "../../mbedtls/mbedtls/ctr_drbg.h"
+#include "../../mbedtls/mbedtls/entropy.h"
+#include "../../mbedtls/mbedtls/ssl.h"
+#include "../../mbedtls/mbedtls/ssl_cache.h"
+
+mbedtls_entropy_context ssl_entropy;
+mbedtls_ctr_drbg_context ssl_ctr_drbg;
+mbedtls_pk_context ssl_pk_key;
+mbedtls_x509_crt ssl_server_crt;
+mbedtls_ssl_cache_context ssl_cache;
+struct mbedtls_ssl_config ssl_client_conf;
+struct mbedtls_ssl_config ssl_server_conf;
 
 struct pilight_t {
-	void (*broadcast)(char *name, JsonNode *message, enum origin_t origin);
-	int (*send)(JsonNode *json, enum origin_t origin);
-	int (*control)(struct devices_t *dev, char *state, JsonNode *values, enum origin_t origin);
-	void (*receive)(struct JsonNode *code, int hwtype);
+	// void (*broadcast)(char *name, struct JsonNode *message, enum origin_t origin);
+	int (*send)(JsonNode *, enum origin_t);
+	int (*control)(char *, char *, struct JsonNode *, enum origin_t);
+	void (*receive)(struct JsonNode *, int);
+	int (*socket)(char *, char *, char **);
+
 	runmode_t runmode;
 	/* pilight actually runs in this stage and the configuration is fully validated */
 	int running;
 	int debuglevel;
+	process_t process;
 } pilight_t;
 
 extern struct pilight_t pilight;

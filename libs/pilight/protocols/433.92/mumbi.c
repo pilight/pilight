@@ -47,18 +47,19 @@ static int validate(void) {
 	return -1;
 }
 
-static void createMessage(int systemcode, int unitcode, int state) {
-	mumbi->message = json_mkobject();
-	json_append_member(mumbi->message, "systemcode", json_mknumber(systemcode, 0));
-	json_append_member(mumbi->message, "unitcode", json_mknumber(unitcode, 0));
+static void createMessage(char *message, int systemcode, int unitcode, int state) {
+	int x = snprintf(message, 255, "{\"systemcode\":%d,", systemcode);
+	x += snprintf(&message[x], 255-x, "\"unitcode\":%d,", unitcode);
+
 	if(state == 1) {
-		json_append_member(mumbi->message, "state", json_mkstring("on"));
+		x += snprintf(&message[x], 255-x, "\"state\":\"on\"");
 	} else {
-		json_append_member(mumbi->message, "state", json_mkstring("off"));
+		x += snprintf(&message[x], 255-x, "\"state\":\"off\"");
 	}
+	x += snprintf(&message[x], 255-x, "}");
 }
 
-static void parseCode(void) {
+static void parseCode(char *message) {
 	int binary[RAW_LENGTH/4], x = 0, i = 0;
 
 	for(x=0;x<mumbi->rawlen-2;x+=4) {
@@ -73,7 +74,7 @@ static void parseCode(void) {
 	int unitcode = binToDec(binary, 5, 9);
 	int state = binary[11];
 	if(unitcode > 0) {
-		createMessage(systemcode, unitcode, state);
+		createMessage(message, systemcode, unitcode, state);
 	}
 }
 
@@ -143,7 +144,7 @@ static void createFooter(void) {
 	mumbi->raw[49]=(PULSE_DIV*AVG_PULSE_LENGTH);
 }
 
-static int createCode(struct JsonNode *code) {
+static int createCode(struct JsonNode *code, char *message) {
 	int systemcode = -1;
 	int unitcode = -1;
 	int state = -1;
@@ -168,7 +169,7 @@ static int createCode(struct JsonNode *code) {
 		logprintf(LOG_ERR, "mumbi: invalid unitcode range");
 		return EXIT_FAILURE;
 	} else {
-		createMessage(systemcode, unitcode, state);
+		createMessage(message, systemcode, unitcode, state);
 		clearCode();
 		createSystemCode(systemcode);
 		createUnitCode(unitcode);
@@ -218,9 +219,9 @@ void mumbiInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "mumbi";
-	module->version = "2.3";
-	module->reqversion = "6.0";
-	module->reqcommit = "84";
+	module->version = "3.0";
+	module->reqversion = "7.0";
+	module->reqcommit = "94";
 }
 
 void init(void) {

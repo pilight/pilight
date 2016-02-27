@@ -33,7 +33,6 @@
 #include "../core/common.h"
 #include "../core/dso.h"
 #include "../core/log.h"
-#include "../config/settings.h"
 
 #include "operator.h"
 #include "operators/operator_header.h"
@@ -88,11 +87,10 @@ void event_operator_init(void) {
 
 	memset(pilight_commit, '\0', 3);
 
-	if(settings_find_string("operators-root", &operator_root) != 0) {
+	if(settings_select_string(ORIGIN_MASTER, "operators-root", &operator_root) != 0) {
 		/* If no operator root was set, use the default operator root */
 		if((operator_root = MALLOC(strlen(OPERATOR_ROOT)+1)) == NULL) {
-			fprintf(stderr, "out of memory\n");
-			exit(EXIT_FAILURE);
+			OUT_OF_MEMORY
 		}
 		strcpy(operator_root, OPERATOR_ROOT);
 		operator_root_free = 1;
@@ -168,12 +166,10 @@ void event_operator_register(struct event_operators_t **op, const char *name) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
 	if((*op = MALLOC(sizeof(struct event_operators_t))) == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(EXIT_FAILURE);
+		OUT_OF_MEMORY
 	}
 	if(((*op)->name = MALLOC(strlen(name)+1)) == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(EXIT_FAILURE);
+		OUT_OF_MEMORY
 	}
 	strcpy((*op)->name, name);
 

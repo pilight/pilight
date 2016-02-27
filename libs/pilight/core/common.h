@@ -27,6 +27,16 @@
 #include <pthread.h>
 #include <stdint.h>
 
+typedef struct varcont_t {
+	union {
+		char *string_;
+		double number_;
+	};
+	int decimals_;
+	int type_;
+	int free_;
+} varcont_t;
+
 #include "pilight.h"
 
 extern char *progname;
@@ -39,6 +49,7 @@ int unsetenv(const char *name);
 int isrunning(const char *program);
 #endif
 
+int getnrcpu(void);
 void array_free(char ***array, int len);
 int isrunning(const char *program);
 void atomicinit(void);

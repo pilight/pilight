@@ -20,24 +20,22 @@
 #define _SOCKETS_H_
 
 #include <time.h>
-
-typedef struct socket_callback_t {
-    void (*client_connected_callback)(int);
-    void (*client_disconnected_callback)(int);
-    void (*client_data_callback)(int, char*);
-} socket_callback_t;
+#include "eventpool.h"
 
 /* Start the socket server */
-int socket_start(unsigned short port);
-int socket_connect(char *address, unsigned short port);
-int socket_timeout_connect(int sockfd, struct sockaddr *serv_addr, int usec);
-void socket_close(int i);
-int socket_write(int sockfd, const char *msg, ...);
-int socket_read(int sockfd, char **out, time_t timeout);
-void *socket_wait(void *param);
+int socket_start(unsigned short);
+int socket_connect(char *, unsigned short);
+int socket_connect1(char *, unsigned short, int (*callback)(struct eventpool_fd_t *, int));
+int socket_timeout_connect(int, struct sockaddr *, int);
+void socket_close(int);
+int socket_write(int, const char *, ...);
+int socket_send(int, char *);
+int socket_recv(int, char **, size_t *);
+int socket_read(int, char **, time_t);
+void *socket_wait(void *);
 int socket_gc(void);
 unsigned int socket_get_port(void);
 int socket_get_fd(void);
-int socket_get_clients(int i);
+int socket_get_clients(int);
 
 #endif

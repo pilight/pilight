@@ -19,7 +19,7 @@
 #ifndef _HARDWARE_NONE_H_
 #define _HARDWARE_NONE_H_
 
-#include "../config/hardware.h"
+#include "../hardware/hardware.h"
 
 struct hardware_t *none;
 void noneInit(void);

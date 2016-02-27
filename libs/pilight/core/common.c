@@ -62,7 +62,6 @@
 #include <time.h>
 #include <pthread.h>
 
-#include "../config/settings.h"
 #include "mem.h"
 #include "common.h"
 #include "network.h"
@@ -85,12 +84,9 @@ static const char base64table[] = {
 };
 
 static pthread_mutex_t atomic_lock;
-static pthread_mutexattr_t atomic_attr;
 
 void atomicinit(void) {
-	pthread_mutexattr_init(&atomic_attr);
-	pthread_mutexattr_settype(&atomic_attr, PTHREAD_MUTEX_RECURSIVE);
-	pthread_mutex_init(&atomic_lock, &atomic_attr);
+	pthread_mutex_init(&atomic_lock, NULL);
 }
 
 void atomiclock(void) {
@@ -111,6 +107,37 @@ void array_free(char ***array, int len) {
 	}
 }
 
+int getnrcpu(void) {
+  long nprocs = -1;
+  long nprocs_max = -1;
+#ifdef _WIN32
+	#ifndef _SC_NPROCESSORS_ONLN
+		SYSTEM_INFO info;
+		GetSystemInfo(&info);
+		#define sysconf(a) info.dwNumberOfProcessors
+		#define _SC_NPROCESSORS_ONLN
+	#endif
+#endif
+
+#ifdef _SC_NPROCESSORS_ONLN
+  nprocs = sysconf(_SC_NPROCESSORS_ONLN);
+  if(nprocs < 1) {
+    logprintf(LOG_ERR, "could not determine number of CPU cores online, defaulting to one");
+		return 1;
+  }
+
+  nprocs_max = sysconf(_SC_NPROCESSORS_CONF);
+  if(nprocs_max < 1) {
+    logprintf(LOG_ERR, "could not determine number of CPU cores configured, defaulting to one");
+		return 1;
+  }
+  return nprocs;
+#else
+  logprintf(LOG_ERR, "could not determine number of CPU cores configured, defaulting to one");
+	return -1;
+#endif
+}
+
 unsigned int explode(char *str, const char *delimiter, char ***output) {
 	if(str == NULL || output == NULL) {
 		return 0;
@@ -124,8 +151,12 @@ unsigned int explode(char *str, const char *delimiter, char ***output) {
 	while(i < l) {
 		if(strncmp(&str[i], delimiter, p) == 0) {
 			if((i-y) > 0) {
-				*output = REALLOC(*output, sizeof(char *)*(n+1));
-				(*output)[n] = MALLOC((i-y)+1);
+				if((*output = REALLOC(*output, sizeof(char *)*(n+1))) == NULL) {
+					OUT_OF_MEMORY
+				}
+				if(((*output)[n] = MALLOC((i-y)+1)) == NULL) {
+					OUT_OF_MEMORY
+				}
 				strncpy((*output)[n], &str[y], i-y);
 				(*output)[n][(i-y)] = '\0';
 				n++;
@@ -135,8 +166,12 @@ unsigned int explode(char *str, const char *delimiter, char ***output) {
 		i++;
 	}
 	if(strlen(&str[y]) > 0) {
-		*output = REALLOC(*output, sizeof(char *)*(n+1));
-		(*output)[n] = MALLOC((i-y)+1);
+		if((*output = REALLOC(*output, sizeof(char *)*(n+1))) == NULL) {
+			OUT_OF_MEMORY
+		}
+		if(((*output)[n] = MALLOC((i-y)+1)) == NULL) {
+			OUT_OF_MEMORY
+		}
 		strncpy((*output)[n], &str[y], i-y);
 		(*output)[n][(i-y)] = '\0';
 		n++;
@@ -231,8 +266,7 @@ int isrunning(const char *program) {
 	int pid = -1;
 	char *tmp = MALLOC(strlen(program)+1);
 	if(tmp == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(EXIT_FAILURE);
+		OUT_OF_MEMORY
 	}
 	strcpy(tmp, program);
 	if((pid = findproc(tmp, NULL, 1)) > 0) {
@@ -249,8 +283,6 @@ int findproc(char *cmd, char *args, int loosely) {
 #else
 pid_t findproc(char *cmd, char *args, int loosely) {
 #endif
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
-
 #ifndef _WIN32
 	DIR* dir;
 	struct dirent* ent;
@@ -375,8 +407,6 @@ pid_t findproc(char *cmd, char *args, int loosely) {
 }
 
 int isNumeric(char *s) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
-
 	if(s == NULL || *s == '\0' || *s == ' ')
 		return -1;
 
@@ -386,8 +416,6 @@ int isNumeric(char *s) {
 }
 
 int nrDecimals(char *s) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
-
 	unsigned int b = 0, c = strlen(s), i = 0;
 	int a = 0;
 	for(i=0;i<c;i++) {
@@ -402,8 +430,6 @@ int nrDecimals(char *s) {
 }
 
 int name2uid(char const *name) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
-
 #ifndef _WIN32
 	if(name != NULL) {
 		struct passwd *pwd = getpwnam(name); /* don't free, see getpwnam() for details */
@@ -416,8 +442,6 @@ int name2uid(char const *name) {
 }
 
 int which(const char *program) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
-
 	char path[1024];
 	strcpy(path, getenv("PATH"));
 	char **array = NULL;
@@ -446,19 +470,15 @@ int which(const char *program) {
 }
 
 int ishex(int x) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
-
 	return(x >= '0' && x <= '9') || (x >= 'a' && x <= 'f') || (x >= 'A' && x <= 'F');
 }
 
 const char *rstrstr(const char* haystack, const char* needle) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
-
-	char* loc = 0;
-	char* found = 0;
+	char *loc = NULL;
+	char *found = NULL;
 	size_t pos = 0;
 
-	while ((found = strstr(haystack + pos, needle)) != 0) {
+	while((found = strstr(haystack + pos, needle)) != 0) {
 		loc = found;
 		pos = (size_t)((found - haystack) + 1);
 	}
@@ -467,8 +487,6 @@ const char *rstrstr(const char* haystack, const char* needle) {
 }
 
 void alpha_random(char *s, const int len) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
-
 	static const char alphanum[] =
 			"0123456789"
 			"ABCDEFGHIJKLMNOPQRSTUVWXYZ"
@@ -483,8 +501,6 @@ void alpha_random(char *s, const int len) {
 }
 
 int urldecode(const char *s, char *dec) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
-
 	char *o = NULL;
 	const char *end = s + strlen(s);
 	int c = 0;
@@ -664,8 +680,6 @@ char *base64encode(char *src, size_t len) {
 }
 
 void rmsubstr(char *s, const char *r) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
-
 	while((s=strstr(s, r))) {
 		size_t l = strlen(r);
 		memmove(s, s+l, 1+strlen(s+l));
@@ -673,8 +687,6 @@ void rmsubstr(char *s, const char *r) {
 }
 
 char *hostname(void) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
-
 	char name[255] = {'\0'};
 	char *host = NULL, **array = NULL;
 	unsigned int n = 0, i = 0;
@@ -684,8 +696,7 @@ char *hostname(void) {
 		n = explode(name, ".", &array);
 		if(n > 0) {
 			if((host = MALLOC(strlen(array[0])+1)) == NULL) {
-				fprintf(stderr, "out of memory\n");
-				exit(EXIT_FAILURE);
+				OUT_OF_MEMORY
 			}
 			strcpy(host, array[0]);
 		}
@@ -700,8 +711,6 @@ char *hostname(void) {
 }
 
 char *distroname(void) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
-
 	char dist[32];
 	memset(dist, '\0', 32);
 	char *distro = NULL;
@@ -729,8 +738,7 @@ char *distroname(void) {
 #endif
 	if(strlen(dist) > 0) {
 		if((distro = MALLOC(strlen(dist)+1)) == NULL) {
-			fprintf(stderr, "out of memory\n");
-			exit(EXIT_FAILURE);
+			OUT_OF_MEMORY
 		}
 		strcpy(distro, dist);
 		return distro;
@@ -743,8 +751,6 @@ char *distroname(void) {
    processor serial number or from the
    onboard LAN controller mac address */
 char *genuuid(char *ifname) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
-
 	char mac[ETH_ALEN], *upnp_id = NULL, *p = mac;
 	char serial[UUID_LENGTH+1];
 
@@ -771,8 +777,7 @@ char *genuuid(char *ifname) {
 					memmove(&serial[14], &serial[13], 7);
 					serial[13] = '-';
 					if((upnp_id = MALLOC(UUID_LENGTH+1)) == NULL) {
-						fprintf(stderr, "out of memory\n");
-						exit(EXIT_FAILURE);
+						OUT_OF_MEMORY
 					}
 					strcpy(upnp_id, serial);
 					fclose(fp);
@@ -786,8 +791,7 @@ char *genuuid(char *ifname) {
 #endif
 	if(dev2mac(ifname, &p) == 0) {
 		if((upnp_id = MALLOC(UUID_LENGTH+1)) == NULL) {
-			fprintf(stderr, "out of memory\n");
-			exit(EXIT_FAILURE);
+			OUT_OF_MEMORY
 		}
 		memset(upnp_id, '\0', UUID_LENGTH+1);
 		snprintf(upnp_id, UUID_LENGTH,
@@ -802,16 +806,12 @@ char *genuuid(char *ifname) {
 
 /* Check if a given file exists */
 int file_exists(char *filename) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
-
 	struct stat sb;
 	return stat(filename, &sb);
 }
 
 /* Check if a given path exists */
 int path_exists(char *fil) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
-
 	struct stat s;
 	char tmp[strlen(fil)+1];
 	strcpy(tmp, fil);
@@ -862,8 +862,6 @@ int path_exists(char *fil) {
 // -1: val < ref
 //  0: val == ref
 int vercmp(char *val, char *ref) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
-
 	int vc, rc;
 	long vl, rl;
 	char *vp, *rp;
@@ -952,18 +950,14 @@ char *uniq_space(char *str){
 }
 
 int str_replace(char *search, char *replace, char **str) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
-
-	char *target = *str;
 	unsigned short match = 0;
-	int len = (int)strlen(target);
+	int len = (int)strlen(*str);
 	int nlen = 0;
 	int slen = (int)strlen(search);
 	int rlen = (int)strlen(replace);
 	int x = 0;
-
 	while(x < len) {
-		if(strncmp(&target[x], search, (size_t)slen) == 0) {
+		if(strncmp(&(*str)[x], search, (size_t)slen) == 0) {
 			match = 1;
 			int rpos = (x + (slen - rlen));
 			if(rpos < 0) {
@@ -972,17 +966,15 @@ int str_replace(char *search, char *replace, char **str) {
 			}
 			nlen = len - (slen - rlen);
 			if(len < nlen) {
-				if((target = REALLOC(target, (size_t)nlen+1)) == NULL) {
-					fprintf(stderr, "out of memory\n");
-					exit(EXIT_FAILURE);
+				if(((*str) = REALLOC((*str), (size_t)nlen+1)) == NULL) {
+					OUT_OF_MEMORY
 				}
-				memset(&target[len], '\0', (size_t)(nlen-len));
+				memset(&(*str)[len], '\0', (size_t)(nlen-len));
 			}
 			len = nlen;
-
-			memmove(&target[x], &target[rpos], (size_t)(len-x));
-			strncpy(&target[x], replace, (size_t)rlen);
-			target[len] = '\0';
+			memmove(&(*str)[x], &(*str)[rpos], (size_t)(len-x));
+			strncpy(&(*str)[x], replace, (size_t)rlen);
+			(*str)[len] = '\0';
 			x += rlen-1;
 		}
 		x++;
@@ -995,8 +987,6 @@ int str_replace(char *search, char *replace, char **str) {
 }
 
 int stricmp(char const *a, char const *b) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
-
 	for(;; a++, b++) {
 			int d = tolower(*a) - tolower(*b);
 			if(d != 0 || !*a)
@@ -1018,9 +1008,7 @@ int file_get_contents(char *file, char **content) {
 	bytes = (size_t)st.st_size;
 
 	if((*content = CALLOC(bytes+1, sizeof(char))) == NULL) {
-		fprintf(stderr, "out of memory\n");
-		fclose(fp);
-		exit(EXIT_FAILURE);
+		OUT_OF_MEMORY
 	}
 
 	if(fread(*content, sizeof(char), bytes, fp) == -1) {

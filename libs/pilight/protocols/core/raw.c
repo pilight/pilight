@@ -29,7 +29,7 @@
 #include "../../core/gc.h"
 #include "raw.h"
 
-static int createCode(JsonNode *code) {
+static int createCode(struct JsonNode *code, char *message) {
 	char *rcode = NULL;
 	double repeats = 10;
 	char **array = NULL;
@@ -78,9 +78,9 @@ void rawInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "raw";
-	module->version = "1.4";
-	module->reqversion = "6.0";
-	module->reqcommit = "84";
+	module->version = "2.0";
+	module->reqversion = "7.0";
+	module->reqcommit = "94";
 }
 
 void init(void) {

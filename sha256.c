@@ -40,7 +40,7 @@
 #include <sys/time.h>
 #include <ctype.h>
 
-#include "libs/polarssl/polarssl/sha256.h"
+#include "libs/mbedtls/mbedtls/sha256.h"
 #include "libs/pilight/core/log.h"
 #include "libs/pilight/core/common.h"
 #include "libs/pilight/core/options.h"
@@ -64,6 +64,8 @@ int main(int argc, char **argv) {
 	atomicinit();
 	gc_attach(main_gc);
 
+	pilight.process = PROCESS_CLIENT;
+
 	/* Catch all exit signals for gc */
 	gc_catch();
 
@@ -74,12 +76,11 @@ int main(int argc, char **argv) {
 	struct options_t *options = NULL;
   unsigned char output[33];
 	char converted[65], *password = NULL, *args = NULL;
-	sha256_context ctx;
+	mbedtls_sha256_context ctx;
 	int i = 0, x = 0;
 
 	if((progname = MALLOC(15)) == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(EXIT_FAILURE);
+		OUT_OF_MEMORY
 	}
 	strcpy(progname, "pilight-sha256");
 
@@ -108,8 +109,7 @@ int main(int argc, char **argv) {
 			break;
 			case 'p':
 				if((password = MALLOC(strlen(args)+1)) == NULL) {
-					fprintf(stderr, "out of memory\n");
-					exit(EXIT_FAILURE);
+					OUT_OF_MEMORY
 				}
 				strcpy(password, args);
 			break;
@@ -131,26 +131,25 @@ int main(int argc, char **argv) {
 
 	if(strlen(password) < 64) {
 		if((password = REALLOC(password, 65)) == NULL) {
-			fprintf(stderr, "out of memory\n");
-			exit(EXIT_FAILURE);
-		}		
+			OUT_OF_MEMORY
+		}
 	}
 
 	for(i=0;i<SHA256_ITERATIONS;i++) {
-		sha256_init(&ctx);
-		sha256_starts(&ctx, 0);
-		sha256_update(&ctx, (unsigned char *)password, strlen((char *)password));
-		sha256_finish(&ctx, output);
+		mbedtls_sha256_init(&ctx);
+		mbedtls_sha256_starts(&ctx, 0);
+		mbedtls_sha256_update(&ctx, (unsigned char *)password, strlen((char *)password));
+		mbedtls_sha256_finish(&ctx, output);
 		for(x=0;x<64;x+=2) {
 			sprintf(&password[x], "%02x", output[x/2] );
 		}
-		sha256_free(&ctx);
+		mbedtls_sha256_free(&ctx);
 	}
 	for(x=0;x<64;x+=2) {
 		sprintf(&converted[x], "%02x", output[x/2] );
 	}
 	printf("%s\n", converted);
-	sha256_free(&ctx);
+	mbedtls_sha256_free(&ctx);
 
 close:
 	if(password != NULL) {

@@ -499,7 +499,7 @@ static int radxaISR(int pin, int mode) {
 
 	if(match == 0) {
 		wiringXLog(LOG_ERR, "radxa->isr: Failed to set interrupt edge to %s", sMode);
-		return -1;	
+		return -1;
 	}
 
 	if(pinbaseFlag != 0) {
@@ -568,8 +568,8 @@ static int radxaWaitForInterrupt(int pin, int ms) {
 	}
 
 	(void)read(sysFds[pin], &c, 1);
-	lseek(sysFds[pin], 0, SEEK_SET);	
-	
+	lseek(sysFds[pin], 0, SEEK_SET);
+
 	polls.fd = sysFds[pin];
 	polls.events = POLLPRI;
 
@@ -999,7 +999,7 @@ void radxaInit(void) {
 	radxa->identify=&radxaBoardRev;
 	radxa->isr=&radxaISR;
 	radxa->waitForInterrupt=&radxaWaitForInterrupt;
-#ifndef __FreeBSD__	
+#ifndef __FreeBSD__
 	radxa->I2CRead=&radxaI2CRead;
 	radxa->I2CReadReg8=&radxaI2CReadReg8;
 	radxa->I2CReadReg16=&radxaI2CReadReg16;
@@ -1010,7 +1010,7 @@ void radxaInit(void) {
 	radxa->SPIGetFd=&radxaSPIGetFd;
 	radxa->SPIDataRW=&radxaSPIDataRW;
 	radxa->SPISetup=&radxaSPISetup;
-#endif	
+#endif
 	radxa->gc=&radxaGC;
 	radxa->validGPIO=&radxaValidGPIO;
 }

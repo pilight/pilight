@@ -47,17 +47,19 @@ static int validate(void) {
 	return -1;
 }
 
-static void createMessage(const char *id, int unit, int state) {
-	clarus_switch->message = json_mkobject();
-	json_append_member(clarus_switch->message, "id", json_mkstring(id));
-	json_append_member(clarus_switch->message, "unit", json_mknumber(unit, 0));
-	if(state == 2)
-		json_append_member(clarus_switch->message, "state", json_mkstring("on"));
-	else
-		json_append_member(clarus_switch->message, "state", json_mkstring("off"));
+static void createMessage(char *message, const char *id, int unit, int state) {
+	int x = snprintf(message, 255, "{\"id\":\"%s\",", id);
+	x += snprintf(&message[x], 255-x, "\"unit\":%d,", unit);
+
+	if(state == 2) {
+		x += snprintf(&message[x], 255-x, "\"state\":\"on\"");
+	} else {
+		x += snprintf(&message[x], 255-x, "\"state\":\"off\"");
+	}
+	x += snprintf(&message[x], 255-x, "}");
 }
 
-static void parseCode(void) {
+static void parseCode(char *message) {
 	int x = 0, z = 65, binary[RAW_LENGTH/4];
 	char id[3];
 
@@ -84,7 +86,7 @@ static void parseCode(void) {
 	int y = binToDecRev(binary, 6, 9);
 	sprintf(&id[0], "%c%d", z, y);
 
-	createMessage(id, unit, state);
+	createMessage(message, id, unit, state);
 }
 
 static void createLow(int s, int e) {
@@ -171,7 +173,7 @@ static void createFooter(void) {
 	clarus_switch->raw[49]=(PULSE_DIV*AVG_PULSE_LENGTH);
 }
 
-static int createCode(struct JsonNode *code) {
+static int createCode(struct JsonNode *code, char *message) {
 	const char *id = NULL;
 	int unit = -1;
 	int state = -1;
@@ -200,7 +202,7 @@ static int createCode(struct JsonNode *code) {
 		logprintf(LOG_ERR, "clarus_switch: invalid unit range");
 		return EXIT_FAILURE;
 	} else {
-		createMessage(id, unit, ((state == 2 || state == 1) ? 2 : 0));
+		createMessage(message, id, unit, ((state == 2 || state == 1) ? 2 : 0));
 		clearCode();
 		createUnit(unit);
 		createId(id);
@@ -250,9 +252,9 @@ void clarusSwitchInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "clarus_switch";
-	module->version = "2.3";
-	module->reqversion = "6.0";
-	module->reqcommit = "84";
+	module->version = "3.0";
+	module->reqversion = "7.0";
+	module->reqcommit = "94";
 }
 
 void init(void) {

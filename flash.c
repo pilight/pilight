@@ -27,7 +27,6 @@
 #include <math.h>
 #include <string.h>
 
-#include "libs/pilight/core/threads.h"
 #include "libs/pilight/core/pilight.h"
 #include "libs/pilight/core/gc.h"
 #include "libs/pilight/core/common.h"
@@ -48,23 +47,27 @@ int main(int argc, char **argv) {
 	log_shell_enable();
 	log_file_disable();
 
+	pilight.process = PROCESS_CLIENT;
+
 #ifndef _WIN32
 	wiringXLog = logprintf;
 #endif
 
 	struct options_t *options = NULL;
-	char *configtmp = MALLOC(strlen(CONFIG_FILE)+1);
+	char *fconfig = NULL;
 	char *args = NULL;
 	char *fwfile = NULL;
 	char comport[255];
 
 	memset(&comport, '\0', 255);
 
-	strcpy(configtmp, CONFIG_FILE);
+	if((fconfig = MALLOC(strlen(CONFIG_FILE)+1)) == NULL) {
+		OUT_OF_MEMORY
+	}
+	strcpy(fconfig, CONFIG_FILE);
 
 	if((progname = MALLOC(15)) == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(EXIT_FAILURE);
+		OUT_OF_MEMORY
 	}
 	strcpy(progname, "pilight-flash");
 
@@ -96,8 +99,10 @@ int main(int argc, char **argv) {
 				goto close;
 			break;
 			case 'C':
-				configtmp = REALLOC(configtmp, strlen(args)+1);
-				strcpy(configtmp, args);
+				if((fconfig = REALLOC(fconfig, strlen(args)+1)) == NULL) {
+					OUT_OF_MEMORY
+				}
+				strcpy(fconfig, args);
 			break;
 			case 'p':
 				strcpy(comport, args);
@@ -118,14 +123,9 @@ int main(int argc, char **argv) {
 		}
 	}
 
-	if(config_set_file(configtmp) == EXIT_FAILURE) {
-		goto close;
-	}
-
-	protocol_init();
-	config_init();
-	if(config_read() != EXIT_SUCCESS) {
-		FREE(configtmp);
+	storage_init();
+	if(storage_read(fconfig, CONFIG_SETTINGS) != 0) {
+		FREE(fconfig);
 		goto close;
 	}
 
@@ -158,13 +158,10 @@ close:
 	if(fwfile != NULL) {
 		FREE(fwfile);
 	}
-	if(configtmp != NULL) {
-		FREE(configtmp);
-	}
+	FREE(fconfig);
 	log_shell_disable();
 	log_level_set(LOG_ERR);
-	config_gc();
-	protocol_gc();
+	storage_gc();
 	options_gc();
 #ifdef EVENTS
 	events_gc();
@@ -173,7 +170,6 @@ close:
 	wiringXGC();
 #endif
 	log_gc();
-	threads_gc();
 	gc_clear();
 	FREE(progname);
 	xfree();

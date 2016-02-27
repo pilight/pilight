@@ -47,17 +47,17 @@ static int validate(void) {
 	return -1;
 }
 
-static void createMessage(int id, int state) {
-	selectremote->message = json_mkobject();
-	json_append_member(selectremote->message, "id", json_mknumber(id, 0));
+static void createMessage(char *message, int id, int state) {
+	int x = snprintf(message, 255, "{\"id\":%d,", id);
 	if(state == 1) {
-		json_append_member(selectremote->message, "state", json_mkstring("on"));
+		x += snprintf(&message[x], 255-x, "\"state\":\"on\"");
 	} else {
-		json_append_member(selectremote->message, "state", json_mkstring("off"));
+		x += snprintf(&message[x], 255-x, "\"state\":\"off\"");
 	}
+	x += snprintf(&message[x], 255-x, "}");
 }
 
-static void parseCode(void) {
+static void parseCode(char *message) {
 	int binary[RAW_LENGTH/4], x = 0, i = 0;
 
 	for(x=0;x<selectremote->rawlen-2;x+=4) {
@@ -71,7 +71,7 @@ static void parseCode(void) {
 	int id = 7-binToDec(binary, 1, 3);
 	int state = binary[8];
 
-	createMessage(id, state);
+	createMessage(message, id, state);
 }
 
 static void createLow(int s, int e) {
@@ -126,7 +126,7 @@ static void createFooter(void) {
 	selectremote->raw[49]=(PULSE_DIV*AVG_PULSE_LENGTH);
 }
 
-static int createCode(struct JsonNode *code) {
+static int createCode(struct JsonNode *code, char *message) {
 	int id = -1;
 	int state = -1;
 	double itmp = 0;
@@ -145,7 +145,7 @@ static int createCode(struct JsonNode *code) {
 		logprintf(LOG_ERR, "selectremote: invalid id range");
 		return EXIT_FAILURE;
 	} else {
-		createMessage(id, state);
+		createMessage(message, id, state);
 		clearCode();
 		createId(id);
 		createState(state);
@@ -192,9 +192,9 @@ void selectremoteInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "selectremote";
-	module->version = "2.3";
-	module->reqversion = "6.0";
-	module->reqcommit = "84";
+	module->version = "3.0";
+	module->reqversion = "7.0";
+	module->reqcommit = "94";
 }
 
 void init(void) {

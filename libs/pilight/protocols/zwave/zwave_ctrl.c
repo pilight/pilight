@@ -29,29 +29,28 @@
 #include "../protocol.h"
 #include "zwave_ctrl.h"
 
-static void createCommandMessage(int state) {
-	zwave_ctrl->message = json_mkobject();
+static void createCommandMessage(char *message, int state) {
 	if(state == 1) {
-		json_append_member(zwave_ctrl->message, "command", json_mkstring("inclusion"));
+		snprintf(message, 255, "{\"command\":\"inclusion\"}");
 	} else if(state == 0) {
-		json_append_member(zwave_ctrl->message, "command", json_mkstring("exclusion"));
+		snprintf(message, 255, "{\"command\":\"exclusion\"}");
 	} else if(state == 2) {
-		json_append_member(zwave_ctrl->message, "command", json_mkstring("stop"));
+		snprintf(message, 255, "{\"command\":\"stop\"}");
 	} else if(state == 3) {
-		json_append_member(zwave_ctrl->message, "command", json_mkstring("soft-reset"));
+		snprintf(message, 255, "{\"command\":\"soft-reset\"}");
 	}
 }
 
-static void createParameterMessage(int nodeid, int parameter, int value) {
-	zwave_ctrl->message = json_mkobject();
-	json_append_member(zwave_ctrl->message, "nodeid", json_mknumber(nodeid, 0));
-	json_append_member(zwave_ctrl->message, "parameter", json_mknumber(parameter, 0));
+static void createParameterMessage(char *message, int nodeid, int parameter, int value) {
+	int x = snprintf(message, 255, "{\"nodeid\":%d,", nodeid);
+	x += snprintf(&message[x], 255-x, "\"parameter\":%d,", parameter);
 	if(value >= 0) {
-		json_append_member(zwave_ctrl->message, "value", json_mknumber(value, 0));
+		x += snprintf(&message[x], 255-x, "\"value\":%d,", value);
 	}
+	x += snprintf(&message[x-1], 255-x, "}");
 }
 
-static int createCode(struct JsonNode *code) {
+static int createCode(struct JsonNode *code, char *message) {
 	printf("%s\n", json_stringify(code, "\t"));
 	int state = -1;
 	int parameter = -1;
@@ -92,7 +91,7 @@ static int createCode(struct JsonNode *code) {
 		return EXIT_FAILURE;
 	}
 
-	if(strstr(progname, "daemon") != NULL) {	
+	if(pilight.process == PROCESS_DAEMON) {
 		if(parameter >= 0 && nodeid >= 0) {
 			if(value >= 0) {
 				int x = snprintf(NULL, 0, "%d", value);
@@ -100,7 +99,7 @@ static int createCode(struct JsonNode *code) {
 			} else {
 				zwaveGetConfigParam(nodeid, parameter);
 			}
-		} 
+		}
 		if(state == 1) {
 			zwaveStartInclusion();
 		} else if(state == 0) {
@@ -112,9 +111,9 @@ static int createCode(struct JsonNode *code) {
 		}
 	}
 	if(parameter >= 0 && nodeid >= 0) {
-		createParameterMessage(nodeid, parameter, value);
+		createParameterMessage(message, nodeid, parameter, value);
 	} else if(state > 0) {
-		createCommandMessage(state);		
+		createCommandMessage(message, state);
 	}
 
 	return EXIT_SUCCESS;
@@ -157,9 +156,9 @@ void zwaveCtrlInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "zwave_ctrl";
-	module->version = "1.0";
+	module->version = "2.0";
 	module->reqversion = "7.0";
-	module->reqcommit = "10";
+	module->reqcommit = "94";
 }
 
 void init(void) {

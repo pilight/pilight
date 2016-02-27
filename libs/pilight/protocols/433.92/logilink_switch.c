@@ -47,18 +47,19 @@ static int validate(void) {
 	return -1;
 }
 
-static void createMessage(int systemcode, int unitcode, int state) {
-	logilink_switch->message = json_mkobject();
-	json_append_member(logilink_switch->message, "systemcode", json_mknumber(systemcode, 0));
-	json_append_member(logilink_switch->message, "unitcode", json_mknumber(unitcode, 0));
+static void createMessage(char *message, int systemcode, int unitcode, int state) {
+	int x = snprintf(message, 255, "{\"systemcode\":%d,", systemcode);
+	x += snprintf(&message[x], 255-x, "\"unitcode\":%d,", unitcode);
+
 	if(state == 0) {
-		json_append_member(logilink_switch->message, "state", json_mkstring("on"));
+		x += snprintf(&message[x], 255-x, "\"state\":\"on\"");
 	} else {
-		json_append_member(logilink_switch->message, "state", json_mkstring("off"));
+		x += snprintf(&message[x], 255-x, "\"state\":\"off\"");
 	}
+	x += snprintf(&message[x], 255-x, "}");
 }
 
-static void parseCode(void) {
+static void parseCode(char *message) {
 	int i = 0, x = 0, binary[RAW_LENGTH/2];
 	int systemcode = 0, state = 0, unitcode = 0;
 
@@ -73,7 +74,7 @@ static void parseCode(void) {
 	state = binary[20];
 	unitcode = binToDecRev(binary, 21, 23);
 
-	createMessage(systemcode, unitcode, state);
+	createMessage(message, systemcode, unitcode, state);
 }
 
 static void createLow(int s, int e) {
@@ -152,7 +153,7 @@ static void createFooter(void) {
 	logilink_switch->raw[49]=(PULSE_DIV*AVG_PULSE_LENGTH);
 }
 
-static int createCode(struct JsonNode *code) {
+static int createCode(struct JsonNode *code, char *message) {
 	int systemcode = -1;
 	int unitcode = -1;
 	int state = -1;
@@ -177,7 +178,7 @@ static int createCode(struct JsonNode *code) {
 		logprintf(LOG_ERR, "logilink_switch: invalid unitcode range");
 		return EXIT_FAILURE;
 	} else {
-		createMessage(systemcode, unitcode, state);
+		createMessage(message, systemcode, unitcode, state);
 		clearCode();
 		createSystemCode(systemcode);
 		createUnitCode(unitcode);
@@ -227,9 +228,9 @@ void logilinkSwitchInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "logilink_sitch";
-	module->version = "1.0";
-	module->reqversion = "6.0";
-	module->reqcommit = "84";
+	module->version = "2.0";
+	module->reqversion = "7.0";
+	module->reqcommit = "94";
 }
 
 void init(void) {

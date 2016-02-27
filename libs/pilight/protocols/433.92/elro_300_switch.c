@@ -55,23 +55,20 @@ static int validate(void) {
  * state : either 2 (off) or 1 (on)
  * group : if 1 this affects a whole group of devices
  */
-static void createMessage(unsigned long long systemcode, int unitcode, int state, int group) {
-	elro_300_switch->message = json_mkobject();
-	//aka address
-	json_append_member(elro_300_switch->message, "systemcode", json_mknumber((double)systemcode, 0));
-	//toggle all or just one unit
+static void createMessage(char *message, unsigned long long systemcode, int unitcode, int state, int group) {
+	int x = snprintf(message, 255, "{\"systemcode\":%llu,", systemcode);
 	if(group == 1) {
-	    json_append_member(elro_300_switch->message, "all", json_mknumber(group, 0));
+		x += snprintf(&message[x], 255-x, "\"all\":1,");
 	} else {
-	    json_append_member(elro_300_switch->message, "unitcode", json_mknumber(unitcode, 0));
+		x += snprintf(&message[x], 255-x, "\"unitcode\":%d,", unitcode);
 	}
-	//aka command
+
 	if(state == 1) {
-		json_append_member(elro_300_switch->message, "state", json_mkstring("on"));
+		x += snprintf(&message[x], 255-x, "\"state\":\"on\"");
+	} else if(state == 2) {
+		x += snprintf(&message[x], 255-x, "\"state\":\"off\"");
 	}
-	else if(state == 2) {
-		json_append_member(elro_300_switch->message, "state", json_mkstring("off"));
-	}
+	x += snprintf(&message[x], 255-x, "}");
 }
 
 /**
@@ -79,7 +76,7 @@ static void createMessage(unsigned long long systemcode, int unitcode, int state
  * Decodes the received stream
  *
  */
-static void parseCode(void) {
+static void parseCode(char *message) {
 	int i = 0, x = 0, binary[RAW_LENGTH/2];
 	//utilize the "code" field
 	//at this point the code field holds translated "0" and "1" codes from the received pulses
@@ -111,7 +108,7 @@ static void parseCode(void) {
 	if(state < 1 || state > 2) {
 		return;
 	} else {
-		createMessage(systemcode, unitcode, state, groupRes);
+		createMessage(message, systemcode, unitcode, state, groupRes);
 	}
 }
 
@@ -252,7 +249,7 @@ static void createFooter(void) {
  *
  * returns : EXIT_SUCCESS or EXIT_FAILURE on obvious occasions
  */
-static int createCode(struct JsonNode *code) {
+static int createCode(struct JsonNode *code, char *message) {
 	unsigned long long systemcode = 0;
 	int unitcode = -1;
 	int group = 0;
@@ -285,7 +282,7 @@ static int createCode(struct JsonNode *code) {
 	} else if(systemcode > 4294967295u || unitcode > 99 || unitcode < 0) {
 		logprintf(LOG_ERR, "elro_300_switch: values out of valid range");
 	} else {
-		createMessage(systemcode, unitcode, state, group);
+		createMessage(message, systemcode, unitcode, state, group);
 		elro300ClearCode();
 		createPreamble();
 		createSystemCode(systemcode);
@@ -346,9 +343,9 @@ void elro300SwitchInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "elro_300_switch";
-	module->version = "2.2";
-	module->reqversion = "6.0";
-	module->reqcommit = "84";
+	module->version = "3.0";
+	module->reqversion = "7.0";
+	module->reqcommit = "94";
 }
 
 void init(void) {

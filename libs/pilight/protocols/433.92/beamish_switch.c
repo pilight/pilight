@@ -50,23 +50,23 @@ static int validate(void) {
 	return -1;
 }
 
-static void createMessage(int id, int unit, int state, int all) {
-	beamish_switch->message = json_mkobject();
-	json_append_member(beamish_switch->message, "id", json_mknumber(id, 0));
+static void createMessage(char *message, int id, int unit, int state, int all) {
+	int x = snprintf(message, 255, "{\"id\":%d,", id);
 	if(all == 1) {
-		json_append_member(beamish_switch->message, "all", json_mknumber(1, 0));
+		x += snprintf(&message[x], 255-x, "\"all\":1,");
 	} else {
-		json_append_member(beamish_switch->message, "unit", json_mknumber(unit, 0));
+		x += snprintf(&message[x], 255-x, "\"unit\":%d,", unit);
 	}
-	if(state == 0) {
-		json_append_member(beamish_switch->message, "state", json_mkstring("off"));
-	}
+
 	if(state == 1) {
-		json_append_member(beamish_switch->message, "state", json_mkstring("on"));
+		x += snprintf(&message[x], 255-x, "\"state\":\"on\"");
+	} else {
+		x += snprintf(&message[x], 255-x, "\"state\":\"off\"");
 	}
+	x += snprintf(&message[x], 255-x, "}");
 }
 
-static void parseCode(void) {
+static void parseCode(char *message) {
 	int i = 0, x = 0, y = 0, binary[RAW_LENGTH/2];
 	int id = -1, state = -1, unit = -1, all = 0, code = 0;
 
@@ -97,7 +97,7 @@ static void parseCode(void) {
 		all = 1;
 	}
 
-	createMessage(id, unit, state, all);
+	createMessage(message, id, unit, state, all);
 }
 
 static void createHigh(int s, int e) {
@@ -155,7 +155,7 @@ static void createFooter(void) {
 	beamish_switch->raw[49]=(PULSE_DIV*AVG_PULSE_LENGTH);
 }
 
-static int createCode(struct JsonNode *code) {
+static int createCode(struct JsonNode *code, char *message) {
 	int id = -1;
 	int unit = -1;
 	int state = -1;
@@ -188,7 +188,7 @@ static int createCode(struct JsonNode *code) {
 		if(all == 1 && state == 0)
 			unit = 6;
 
-		createMessage(id, unit, state, all);
+		createMessage(message, id, unit, state, all);
 		clearCode();
 		createId(id);
 		unit = map[unit];
@@ -241,9 +241,9 @@ void beamishSwitchInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "beamish_switch";
-	module->version = "1.1";
-	module->reqversion = "6.0";
-	module->reqcommit = "84";
+	module->version = "2.0";
+	module->reqversion = "7.0";
+	module->reqcommit = "94";
 }
 
 void init(void) {

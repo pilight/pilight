@@ -38,7 +38,8 @@
 #include "../../core/common.h"
 #include "../../core/dso.h"
 #include "../../core/log.h"
-#include "../../core/threads.h"
+#include "../../core/threadpool.h"
+#include "../../core/eventpool.h"
 #include "../../core/binary.h"
 #include "../../core/gc.h"
 #include "../../core/json.h"
@@ -49,145 +50,144 @@
 #include "lm75.h"
 
 #if !defined(__FreeBSD__) && !defined(_WIN32)
-typedef struct settings_t {
-	char **id;
-	int nrid;
-	int *fd;
-} settings_t;
+typedef struct data_t {
+	char *name;
+	unsigned int id;
+	int fd;
+	int interval;
 
-static unsigned short loop = 1;
-static int threads = 0;
+	double temp_offset;
 
-static pthread_mutex_t lock;
-static pthread_mutexattr_t attr;
+	struct data_t *next;
+} data_t;
+
+static struct data_t *data = NULL;
+
+static void *reason_code_received_free(void *param) {
+	struct reason_code_received_t *data = param;
+	FREE(data);
+	return NULL;
+}
 
 static void *thread(void *param) {
-	struct protocol_threads_t *node = (struct protocol_threads_t *)param;
-	struct JsonNode *json = (struct JsonNode *)node->param;
+	struct threadpool_tasks_t *task = param;
+	struct data_t *settings = task->userdata;
+
+	int raw = wiringXI2CReadReg16(settings->fd, 0x00);
+	float temp = ((float)((raw&0x00ff)+((raw>>15)?0:0.5))*10);
+
+	struct reason_code_received_t *data = MALLOC(sizeof(struct reason_code_received_t));
+	if(data == NULL) {
+		OUT_OF_MEMORY
+	}
+	snprintf(data->message, 1024, "{\"id\":%d,\"temperature\":%.3f}", settings->id, ((temp+settings->temp_offset)/10));
+	strncpy(data->origin, "receiver", 255);
+	data->protocol = lm75->id;
+	if(strlen(pilight_uuid) > 0) {
+		data->uuid = pilight_uuid;
+	} else {
+		data->uuid = NULL;
+	}
+	data->repeat = 1;
+	eventpool_trigger(REASON_CODE_RECEIVED, reason_code_received_free, data);
+
+	struct timeval tv;
+	tv.tv_sec = settings->interval;
+	tv.tv_usec = 0;
+	threadpool_add_scheduled_work(settings->name, thread, tv, (void *)settings);
+
+	return (void *)NULL;
+}
+
+static void *addDevice(void *param) {
+	struct threadpool_tasks_t *task = param;
+	struct JsonNode *jdevice = NULL;
+	struct JsonNode *jprotocols = NULL;
 	struct JsonNode *jid = NULL;
 	struct JsonNode *jchild = NULL;
-	struct settings_t *lm75data = MALLOC(sizeof(struct settings_t));
-	int y = 0, interval = 10, nrloops = 0;
-	char *stmp = NULL;
-	double itmp = -1, temp_offset = 0.0;
+	struct data_t *node = NULL;
+	struct timeval tv;
+	int match = 0, interval = 10;
+	double itmp = 0.0;
 
-	if(lm75data == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(EXIT_FAILURE);
+	if(task->userdata == NULL) {
+		return NULL;
 	}
 
-	lm75data->nrid = 0;
-	lm75data->id = NULL;
-	lm75data->fd = 0;
+	if((jdevice = json_first_child(task->userdata)) == NULL) {
+		return NULL;
+	}
 
-	threads++;
-
-	if((jid = json_find_member(json, "id"))) {
-		jchild = json_first_child(jid);
+	if((jprotocols = json_find_member(jdevice, "protocol")) != NULL) {
+		jchild = json_first_child(jprotocols);
 		while(jchild) {
-			if(json_find_string(jchild, "id", &stmp) == 0) {
-				if((lm75data->id = REALLOC(lm75data->id, (sizeof(char *)*(size_t)(lm75data->nrid+1)))) == NULL) {
-					fprintf(stderr, "out of memory\n");
-					exit(EXIT_FAILURE);
-				}
-				if((lm75data->id[lm75data->nrid] = MALLOC(strlen(stmp)+1)) == NULL) {
-					fprintf(stderr, "out of memory\n");
-					exit(EXIT_FAILURE);
-				}
-				strcpy(lm75data->id[lm75data->nrid], stmp);
-				lm75data->nrid++;
+			if(strcmp(lm75->id, jchild->string_) == 0) {
+				match = 1;
+				break;
 			}
 			jchild = jchild->next;
 		}
 	}
 
-	if(json_find_number(json, "poll-interval", &itmp) == 0)
-		interval = (int)round(itmp);
-	json_find_number(json, "temperature-offset", &temp_offset);
-
-	if((lm75data->fd = REALLOC(lm75data->fd, (sizeof(int)*(size_t)(lm75data->nrid+1)))) == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(EXIT_FAILURE);
-	}
-	for(y=0;y<lm75data->nrid;y++) {
-		lm75data->fd[y] = wiringXI2CSetup((int)strtol(lm75data->id[y], NULL, 16));
-	}
-
-	while(loop) {
-		if(protocol_thread_wait(node, interval, &nrloops) == ETIMEDOUT) {
-			pthread_mutex_lock(&lock);
-			for(y=0;y<lm75data->nrid;y++) {
-				if(lm75data->fd[y] > 0) {
-					int raw = wiringXI2CReadReg16(lm75data->fd[y], 0x00);
-					float temp = ((float)((raw&0x00ff)+((raw>>15)?0:0.5))*10);
-
-					lm75->message = json_mkobject();
-					JsonNode *code = json_mkobject();
-					json_append_member(code, "id", json_mkstring(lm75data->id[y]));
-					json_append_member(code, "temperature", json_mknumber((temp+temp_offset)/10, 1));
-
-					json_append_member(lm75->message, "message", code);
-					json_append_member(lm75->message, "origin", json_mkstring("receiver"));
-					json_append_member(lm75->message, "protocol", json_mkstring(lm75->id));
-
-					if(pilight.broadcast != NULL) {
-						pilight.broadcast(lm75->id, lm75->message, PROTOCOL);
-					}
-					json_delete(lm75->message);
-					lm75->message = NULL;
-				} else {
-					logprintf(LOG_NOTICE, "error connecting to lm75");
-					logprintf(LOG_DEBUG, "(probably i2c bus error from wiringXI2CSetup)");
-					logprintf(LOG_DEBUG, "(maybe wrong id? use i2cdetect to find out)");
-					protocol_thread_wait(node, 1, &nrloops);
-				}
-			}
-			pthread_mutex_unlock(&lock);
-		}
-	}
-	pthread_mutex_unlock(&lock);
-
-	if(lm75data->id) {
-		for(y=0;y<lm75data->nrid;y++) {
-			FREE(lm75data->id[y]);
-		}
-		FREE(lm75data->id);
-	}
-	if(lm75data->fd) {
-		for(y=0;y<lm75data->nrid;y++) {
-			if(lm75data->fd[y] > 0) {
-				close(lm75data->fd[y]);
-			}
-		}
-		FREE(lm75data->fd);
-	}
-	FREE(lm75data);
-	threads--;
-
-	return (void *)NULL;
-}
-
-static struct threadqueue_t *initDev(JsonNode *jdevice) {
-	if(wiringXSupported() == 0 && wiringXSetup() == 0) {
-		loop = 1;
-		char *output = json_stringify(jdevice, NULL);
-		JsonNode *json = json_decode(output);
-		json_free(output);
-
-		struct protocol_threads_t *node = protocol_thread_init(lm75, json);
-		return threads_register("lm75", &thread, (void *)node, 0);
-	} else {
+	if(match == 0) {
 		return NULL;
 	}
+
+	if((node = MALLOC(sizeof(struct data_t)))== NULL) {
+		OUT_OF_MEMORY
+	}
+	node->id = 0;
+	node->temp_offset = 0;
+
+	if((jid = json_find_member(jdevice, "id"))) {
+		jchild = json_first_child(jid);
+		while(jchild) {
+			if(json_find_number(jchild, "id", &itmp) == 0) {
+				node->id = (int)itmp;
+			}
+			jchild = jchild->next;
+		}
+	}
+
+	if(json_find_number(jdevice, "poll-interval", &itmp) == 0)
+		interval = (int)round(itmp);
+	json_find_number(jdevice, "temperature-offset", &node->temp_offset);
+
+	node->fd = wiringXI2CSetup(node->id);
+	if(node->fd <= 0) {
+		logprintf(LOG_NOTICE, "error connecting to lm75");
+		logprintf(LOG_DEBUG, "(probably i2c bus error from wiringXI2CSetup)");
+		logprintf(LOG_DEBUG, "(maybe wrong id? use i2cdetect to find out)");
+	}
+
+	if((node->name = MALLOC(strlen(jdevice->key)+1)) == NULL) {
+		OUT_OF_MEMORY
+	}
+	strcpy(node->name, jdevice->key);
+
+	node->interval = interval;
+
+	node->next = data;
+	data = node;
+
+	tv.tv_sec = interval;
+	tv.tv_usec = 0;
+	threadpool_add_scheduled_work(jdevice->key, thread, tv, (void *)node);
+
+	return NULL;
 }
 
-static void threadGC(void) {
-	loop = 0;
-	protocol_thread_stop(lm75);
-	while(threads > 0) {
-		usleep(10);
+static void gc(void) {
+	struct data_t *tmp = NULL;
+	while(data) {
+		tmp = data;
+		FREE(tmp);
+		data = data->next;
+		FREE(tmp);
 	}
-	protocol_thread_free(lm75);
+	if(data != NULL) {
+		FREE(data);
+	}
 }
 #endif
 
@@ -195,17 +195,13 @@ static void threadGC(void) {
 __attribute__((weak))
 #endif
 void lm75Init(void) {
-#if !defined(__FreeBSD__) && !defined(_WIN32)
-	pthread_mutexattr_init(&attr);
-	pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);
-	pthread_mutex_init(&lock, &attr);
-#endif
 
 	protocol_register(&lm75);
 	protocol_set_id(lm75, "lm75");
 	protocol_device_add(lm75, "lm75", "TI I2C Temperature Sensor");
 	lm75->devtype = WEATHER;
 	lm75->hwtype = SENSOR;
+	lm75->multipleId = 0;
 
 	options_add(&lm75->options, 't', "temperature", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9]{1,3}$");
 	options_add(&lm75->options, 'i', "id", OPTION_HAS_VALUE, DEVICES_ID, JSON_STRING, NULL, "0x[0-9a-f]{2}");
@@ -215,17 +211,19 @@ void lm75Init(void) {
 	options_add(&lm75->options, 0, "show-temperature", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
 
 #if !defined(__FreeBSD__) && !defined(_WIN32)
-	lm75->initDev=&initDev;
-	lm75->threadGC=&threadGC;
+	// lm75->initDev=&initDev;
+	lm75->gc=&gc;
+
+	eventpool_callback(REASON_DEVICE_ADDED, addDevice);
 #endif
 }
 
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "lm75";
-	module->version = "2.1";
-	module->reqversion = "6.0";
-	module->reqcommit = "84";
+	module->version = "3.0";
+	module->reqversion = "7.0";
+	module->reqcommit = "94";
 }
 
 void init(void) {

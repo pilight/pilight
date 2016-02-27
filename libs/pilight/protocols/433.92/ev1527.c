@@ -47,17 +47,7 @@ static int validate(void) {
 	return -1;
 }
 
-static void createMessage(int unitcode, int state) {
-	ev1527->message = json_mkobject();
-	json_append_member(ev1527->message, "unitcode", json_mknumber(unitcode, 0));
-	if(state == 0) {
-		json_append_member(ev1527->message, "state", json_mkstring("opened"));
-	} else {
-		json_append_member(ev1527->message, "state", json_mkstring("closed"));
-	}
-}
-
-static void parseCode(void) {
+static void parseCode(char *message) {
 	int binary[RAW_LENGTH/2], x = 0, i = 0;
 
 	for(x=0;x<ev1527->rawlen-2;x+=2) {
@@ -70,7 +60,15 @@ static void parseCode(void) {
 
 	int unitcode = binToDec(binary, 0, 19);
 	int state = binary[20];
-	createMessage(unitcode, state);
+
+	x = snprintf(message, 255, "{\"unitcode\":%d,", unitcode);
+
+	if(state == 0) {
+		x += snprintf(&message[x], 255-x, "\"state\":\"opened\"");
+	} else {
+		x += snprintf(&message[x], 255-x, "\"state\":\"closed\"");
+	}
+	x += snprintf(&message[x], 255-x, "}");
 }
 
 #if !defined(MODULE) && !defined(_WIN32)
@@ -99,9 +97,9 @@ void ev1527Init(void) {
 #if !defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "ev1527";
-	module->version = "1.1";
-	module->reqversion = "6.0";
-	module->reqcommit = "84";
+	module->version = "2.0";
+	module->reqversion = "7.0";
+	module->reqcommit = "94";
 }
 
 void init(void) {

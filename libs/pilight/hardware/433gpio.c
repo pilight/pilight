@@ -20,21 +20,108 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <sys/time.h>
 
 #include "../core/pilight.h"
 #include "../core/common.h"
 #include "../core/dso.h"
 #include "../core/log.h"
 #include "../core/json.h"
-#include "../core/irq.h"
-#include "../config/hardware.h"
+#include "../core/threadpool.h"
+#include "../core/eventpool.h"
+#include "../hardware/hardware.h"
 #include "../../wiringx/wiringX.h"
 #include "433gpio.h"
 
 static int gpio_433_in = 0;
 static int gpio_433_out = 0;
+static int doPause = 0;
 
-static unsigned short gpio433HwInit(void) {
+typedef struct timestamp_t {
+	unsigned long first;
+	unsigned long second;
+} timestamp_t;
+
+typedef struct data_t {
+	int rbuffer[1024];
+	int rptr;
+	void *(*callback)(void *);
+} data_t;
+
+struct timestamp_t timestamp;
+
+static void *reason_received_pulsetrain_free(void *param) {
+	struct reason_received_pulsetrain_t *data = param;
+	FREE(data);
+	return NULL;
+}
+
+static int client_callback(struct eventpool_fd_t *node, int event) {
+	struct data_t *data = node->userdata;
+	int duration = 0;
+
+#ifdef _WIN32
+	if(InterlockedExchangeAdd(&doPause, 0) == 1) {
+#else
+	if(__sync_add_and_fetch(&doPause, 0) == 1) {
+#endif
+		return 0;
+	}
+	switch(event) {
+		case EV_POLL: {
+			eventpool_fd_enable_highpri(node);
+		} break;
+		case EV_CONNECT_SUCCESS: {
+			eventpool_fd_enable_highpri(node);
+			timestamp.first = 0;
+			timestamp.second = 0;
+		} break;
+		case EV_HIGHPRI: {
+			uint8_t c = 0;
+
+			(void)read(node->fd, &c, 1);
+			lseek(node->fd, 0, SEEK_SET);
+
+			struct timeval tv;
+			gettimeofday(&tv, NULL);
+			timestamp.first = timestamp.second;
+			timestamp.second = 1000000 * (unsigned int)tv.tv_sec + (unsigned int)tv.tv_usec;
+
+			duration = (int)((int)timestamp.second-(int)timestamp.first);
+			if(duration > 0) {
+				data->rbuffer[data->rptr++] = duration;
+				if(data->rptr > MAXPULSESTREAMLENGTH-1) {
+					data->rptr = 0;
+				}
+				if(duration > gpio433->mingaplen) {
+					/* Let's do a little filtering here as well */
+					if(data->rptr >= gpio433->minrawlen && data->rptr <= gpio433->maxrawlen) {
+						struct reason_received_pulsetrain_t *data1 = MALLOC(sizeof(struct reason_received_pulsetrain_t));
+						if(data1 == NULL) {
+							OUT_OF_MEMORY
+						}
+						data1->length = data->rptr;
+						memcpy(data1->pulses, data->rbuffer, data->rptr*sizeof(int));
+						data1->hardware = gpio433->id;
+
+						eventpool_trigger(REASON_RECEIVED_PULSETRAIN, reason_received_pulsetrain_free, data1);
+					}
+					data->rptr = 0;
+				}
+			}
+
+			eventpool_fd_enable_highpri(node);
+		} break;
+		case EV_DISCONNECTED: {
+			close(node->fd);
+			FREE(node->userdata);
+			eventpool_fd_remove(node);
+		} break;
+	}
+	return 0;
+}
+
+static unsigned short gpio433HwInit(void *(*callback)(void *)) {
 	if(wiringXSupported() == 0) {
 		if(wiringXSetup() == -1) {
 			return EXIT_FAILURE;
@@ -56,6 +143,19 @@ static unsigned short gpio433HwInit(void) {
 				return EXIT_SUCCESS;
 			}
 		}
+		if(gpio_433_in > 0) {
+			int fd = wiringXSelectableFd(gpio_433_in);
+
+			struct data_t *data = MALLOC(sizeof(struct data_t));
+			if(data == NULL) {
+				OUT_OF_MEMORY;
+			}
+			memset(data->rbuffer, '\0', sizeof(data->rbuffer));
+			data->rptr = 0;
+			data->callback = callback;
+
+			eventpool_fd_add("433gpio", fd, client_callback, NULL, data);
+		}
 		return EXIT_SUCCESS;
 	} else {
 		logprintf(LOG_ERR, "the 433gpio module is not supported on this hardware", gpio_433_in);
@@ -63,9 +163,9 @@ static unsigned short gpio433HwInit(void) {
 	}
 }
 
-static unsigned short gpio433HwDeinit(void) {
-	return EXIT_SUCCESS;
-}
+// static unsigned short gpio433HwDeinit(void) {
+	// return EXIT_SUCCESS;
+// }
 
 static int gpio433Send(int *code, int rawlen, int repeats) {
 	int r = 0, x = 0;
@@ -82,18 +182,30 @@ static int gpio433Send(int *code, int rawlen, int repeats) {
 		}
 		digitalWrite(gpio_433_out, 0);
 	} else {
-		sleep(1);
+		usleep(10);
 	}
 	return EXIT_SUCCESS;
 }
 
-static int gpio433Receive(void) {
-	if(gpio_433_in >= 0) {
-		return irq_read(gpio_433_in);
-	} else {
-		sleep(1);
-		return 0;
-	}
+/*
+ * FIXME
+ */
+static void *receiveStop(void *param) {
+#ifdef _WIN32
+	InterlockedExchangeAdd(&doPause, 1);
+#else
+	__sync_add_and_fetch(&doPause, 1);
+#endif
+	return NULL;
+}
+
+static void *receiveStart(void *param) {
+#ifdef _WIN32
+	InterlockedExchangeAdd(&doPause, 0);
+#else
+	__sync_add_and_fetch(&doPause, 0);
+#endif
+	return NULL;
 }
 
 static unsigned short gpio433Settings(JsonNode *json) {
@@ -128,22 +240,25 @@ void gpio433Init(void) {
 	gpio433->maxrawlen = 0;
 	gpio433->mingaplen = 5100;
 	gpio433->maxgaplen = 10000;
-	
+
 	gpio433->hwtype=RF433;
 	gpio433->comtype=COMOOK;
 	gpio433->init=&gpio433HwInit;
-	gpio433->deinit=&gpio433HwDeinit;
+	// gpio433->deinit=&gpio433HwDeinit;
 	gpio433->sendOOK=&gpio433Send;
-	gpio433->receiveOOK=&gpio433Receive;
+	// gpio433->receiveOOK=&gpio433Receive;
 	gpio433->settings=&gpio433Settings;
+
+	eventpool_callback(REASON_SEND_BEGIN, receiveStop);
+	eventpool_callback(REASON_SEND_END, receiveStart);
 }
 
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "433gpio";
-	module->version = "1.3";
-	module->reqversion = "7.0";
-	module->reqcommit = "10";
+	module->version = "2.0";
+	module->reqversion = "8.0";
+	module->reqcommit = NULL;
 }
 
 void init(void) {

@@ -34,7 +34,8 @@
 
 #include <pthread.h>
 
-#include "../../core/threads.h"
+#include "../../core/threadpool.h"
+#include "../../core/eventpool.h"
 #include "../../core/pilight.h"
 #include "../../core/common.h"
 #include "../../core/dso.h"
@@ -45,188 +46,232 @@
 #include "../../core/gc.h"
 #include "ds18s20.h"
 
-static unsigned short loop = 1;
-static unsigned short threads = 0;
+typedef struct data_t {
+	char *name;
+
+	char *id;
+	char *sensor;
+	char *w1slave;
+
+	double temp_offset;
+	int interval;
+
+	struct data_t *next;
+} data_t;
+
+static struct data_t *data = NULL;
+
 static char source_path[21];
 
-static pthread_mutex_t lock;
-static pthread_mutexattr_t attr;
+static void *reason_code_received_free(void *param) {
+	struct reason_code_received_t *data = param;
+	FREE(data);
+	return NULL;
+}
 
 static void *thread(void *param) {
-	struct protocol_threads_t *node = (struct protocol_threads_t *)param;
-	struct JsonNode *json = (struct JsonNode *)node->param;
-	struct JsonNode *jid = NULL;
-	struct JsonNode *jchild = NULL;
+	struct threadpool_tasks_t *task = param;
+	struct data_t *settings = task->userdata;
+	char *content = NULL;
 
 #ifndef _WIN32
-	struct dirent *file = NULL;
 	struct stat st;
 
-	DIR *d = NULL;
 	FILE *fp = NULL;
 	char crcVar[5];
 	int w1valid = 0;
 	double w1temp = 0.0;
 	size_t bytes = 0;
+
+
+	if((fp = fopen(settings->w1slave, "rb")) == NULL) {
+		logprintf(LOG_NOTICE, "cannot read w1 file: %s", settings->w1slave);
+		return NULL;
+	}
+
+	fstat(fileno(fp), &st);
+	bytes = (size_t)st.st_size;
+
+	if((content = REALLOC(content, bytes+1)) == NULL) {
+		OUT_OF_MEMORY
+	}
+	memset(content, '\0', bytes+1);
+
+	if(fread(content, sizeof(char), bytes, fp) == -1) {
+		logprintf(LOG_NOTICE, "cannot read config file: %s", settings->w1slave);
+		fclose(fp);
+		return NULL;
+	}
+	fclose(fp);
+
+	w1valid = 0;
+
+	char **array = NULL;
+	unsigned int n = explode(content, "\n", &array);
+	if(n > 0) {
+		sscanf(array[0], "%*x %*x %*x %*x %*x %*x %*x %*x %*x : crc=%*x %s", crcVar);
+		if(strncmp(crcVar, "YES", 3) == 0 && n > 1) {
+			w1valid = 1;
+			sscanf(array[1], "%*x %*x %*x %*x %*x %*x %*x %*x %*x t=%lf", &w1temp);
+			w1temp = (w1temp/1000)+settings->temp_offset;
+		}
+	}
+	array_free(&array, n);
+
+	if(w1valid == 1) {
+		struct reason_code_received_t *data = MALLOC(sizeof(struct reason_code_received_t));
+		if(data == NULL) {
+			OUT_OF_MEMORY
+		}
+		snprintf(data->message, 1024, "{\"id\":\"%s\",\"temperature\":%.1f}", settings->id, w1temp);
+		strncpy(data->origin, "receiver", 255);
+		data->protocol = ds18s20->id;
+		if(strlen(pilight_uuid) > 0) {
+			data->uuid = pilight_uuid;
+		} else {
+			data->uuid = NULL;
+		}
+		data->repeat = 1;
+		eventpool_trigger(REASON_CODE_RECEIVED, reason_code_received_free, data);
+	}
+
+	struct timeval tv;
+	tv.tv_sec = settings->interval;
+	tv.tv_usec = 0;
+	threadpool_add_scheduled_work(settings->name, thread, tv, (void *)settings);
 #endif
-	char **id = NULL, *stmp = NULL, *content = NULL;
-	char *ds18s20_sensor = NULL;
-	int nrid = 0, interval = 10, nrloops = 0, y = 0;
-	double temp_offset = 0.0, itmp = 0.0;
 
-	threads++;
+	return (void *)NULL;
+}
 
-	if((jid = json_find_member(json, "id"))) {
-		jchild = json_first_child(jid);
+static void *addDevice(void *param) {
+	struct threadpool_tasks_t *task = param;
+	struct JsonNode *jdevice = NULL;
+	struct JsonNode *jprotocols = NULL;
+	struct JsonNode *jid = NULL;
+	struct JsonNode *jchild = NULL;
+	struct data_t *node = NULL;
+	struct timeval tv;
+	char *stmp = NULL;
+	int match = 0, interval = 10;
+	double itmp = 0.0;
+
+#ifndef _WIN32
+	struct dirent *file = NULL;
+	DIR *d = NULL;
+#endif
+
+	if(task->userdata == NULL) {
+		return NULL;
+	}
+
+	if((jdevice = json_first_child(task->userdata)) == NULL) {
+		return NULL;
+	}
+
+	if((jprotocols = json_find_member(jdevice, "protocol")) != NULL) {
+		jchild = json_first_child(jprotocols);
 		while(jchild) {
-			if(json_find_string(jchild, "id", &stmp) == 0) {
-				if((id = REALLOC(id, (sizeof(char *)*(size_t)(nrid+1)))) == NULL) {
-					fprintf(stderr, "out of memory\n");
-					exit(EXIT_FAILURE);
-				}
-				if((id[nrid] = MALLOC(strlen(stmp)+1)) == NULL) {
-					fprintf(stderr, "out of memory\n");
-					exit(EXIT_FAILURE);
-				}
-				strcpy(id[nrid], stmp);
-				nrid++;
+			if(strcmp(ds18s20->id, jchild->string_) == 0) {
+				match = 1;
+				break;
 			}
 			jchild = jchild->next;
 		}
 	}
 
-	if(json_find_number(json, "poll-interval", &itmp) == 0)
-		interval = (int)round(itmp);
-	json_find_number(json, "temperature-offset", &temp_offset);
+	if(match == 0) {
+		return NULL;
+	}
 
-	while(loop) {
-		if(protocol_thread_wait(node, interval, &nrloops) == ETIMEDOUT) {
-#ifndef _WIN32
-			pthread_mutex_lock(&lock);
-			for(y=0;y<nrid;y++) {
-				if((ds18s20_sensor = REALLOC(ds18s20_sensor, strlen(source_path)+strlen(id[y])+5)) == NULL) {
-					fprintf(stderr, "out of memory\n");
-					exit(EXIT_FAILURE);
+	if((node = MALLOC(sizeof(struct data_t)))== NULL) {
+		OUT_OF_MEMORY
+	}
+	node->id = NULL;
+	node->sensor = NULL;
+	node->w1slave = NULL;
+
+	if((jid = json_find_member(jdevice, "id"))) {
+		jchild = json_first_child(jid);
+		while(jchild) {
+			if(json_find_string(jchild, "id", &stmp) == 0) {
+				if((node->id = MALLOC(strlen(stmp)+1)) == NULL) {
+					OUT_OF_MEMORY
 				}
-				sprintf(ds18s20_sensor, "%s10-%s/", source_path, id[y]);
-				if((d = opendir(ds18s20_sensor))) {
-					while((file = readdir(d)) != NULL) {
-						if(file->d_type == DT_REG) {
-							if(strcmp(file->d_name, "w1_slave") == 0) {
-								size_t w1slavelen = strlen(ds18s20_sensor)+10;
-								char ds18s20_w1slave[w1slavelen];
-								memset(ds18s20_w1slave, '\0', w1slavelen);
-								strncpy(ds18s20_w1slave, ds18s20_sensor, strlen(ds18s20_sensor));
-								strcat(ds18s20_w1slave, "w1_slave");
-
-								if(!(fp = fopen(ds18s20_w1slave, "rb"))) {
-									logprintf(LOG_ERR, "cannot read w1 file: %s", ds18s20_w1slave);
-									break;
-								}
-
-								fstat(fileno(fp), &st);
-								bytes = (size_t)st.st_size;
-
-								if(!(content = REALLOC(content, bytes+1))) {
-									fprintf(stderr, "out of memory\n");
-									fclose(fp);
-									break;
-								}
-								memset(content, '\0', bytes+1);
-
-								if(fread(content, sizeof(char), bytes, fp) == -1) {
-									logprintf(LOG_ERR, "cannot read config file: %s", ds18s20_w1slave);
-									fclose(fp);
-									break;
-								}
-								fclose(fp);
-								w1valid = 0;
-
-								char **array = NULL;
-								unsigned int n = explode(content, "\n", &array);
-								if(n > 0) {
-									sscanf(array[0], "%*x %*x %*x %*x %*x %*x %*x %*x %*x : crc=%*x %s", crcVar);
-									if(strncmp(crcVar, "YES", 3) == 0 && n > 1) {
-										w1valid = 1;
-										sscanf(array[1], "%*x %*x %*x %*x %*x %*x %*x %*x %*x t=%lf", &w1temp);
-										w1temp = (w1temp/1000)+temp_offset;
-									}
-								}
-								array_free(&array, n);
-
-								if(w1valid) {
-									ds18s20->message = json_mkobject();
-
-									JsonNode *code = json_mkobject();
-
-									json_append_member(code, "id", json_mkstring(id[y]));
-									json_append_member(code, "temperature", json_mknumber(w1temp, 1));
-
-									json_append_member(ds18s20->message, "message", code);
-									json_append_member(ds18s20->message, "origin", json_mkstring("receiver"));
-									json_append_member(ds18s20->message, "protocol", json_mkstring(ds18s20->id));
-
-									if(pilight.broadcast != NULL) {
-										pilight.broadcast(ds18s20->id, ds18s20->message, PROTOCOL);
-									}
-									json_delete(ds18s20->message);
-									ds18s20->message = NULL;
-								}
-							}
-						}
-					}
-					closedir(d);
-				} else {
-					logprintf(LOG_ERR, "1-wire device %s does not exists", ds18s20_sensor);
-				}
+				strcpy(node->id, stmp);
 			}
-#endif
-			pthread_mutex_unlock(&lock);
+			jchild = jchild->next;
 		}
 	}
-	pthread_mutex_unlock(&lock);
 
-	if(ds18s20_sensor) {
-		FREE(ds18s20_sensor);
+	if(json_find_number(jdevice, "poll-interval", &itmp) == 0)
+		interval = (int)round(itmp);
+
+#ifndef _WIN32
+	if((node->sensor = REALLOC(node->sensor, strlen(source_path)+strlen(node->id)+5)) == NULL) {
+		OUT_OF_MEMORY
 	}
-	if(content) {
-		FREE(content);
+	sprintf(node->sensor, "%s10-%s/", source_path, node->id);
+	if((d = opendir(node->sensor))) {
+		while((file = readdir(d)) != NULL) {
+			if(file->d_type == DT_REG) {
+				if(strcmp(file->d_name, "w1_slave") == 0) {
+					size_t w1slavelen = strlen(node->sensor)+10;
+					if((node->w1slave = REALLOC(node->w1slave, w1slavelen+1)) == NULL) {
+						OUT_OF_MEMORY
+					}
+
+					memset(node->w1slave, '\0', w1slavelen);
+					strncpy(node->w1slave, node->sensor, strlen(node->sensor));
+					strcat(node->w1slave, "w1_slave");
+				}
+			}
+		}
+		closedir(d);
+	} else {
+		logprintf(LOG_NOTICE, "1-wire device %s does not exists", node->sensor);
+		return NULL;
 	}
-	for(y=0;y<nrid;y++) {
-		FREE(id[y]);
-	}
-	FREE(id);
-	threads--;
-	return (void *)NULL;
+#endif
+
+	json_find_number(jdevice, "temperature-offset", &node->temp_offset);
+
+	node->next = data;
+	data = node;
+
+	tv.tv_sec = interval;
+	tv.tv_usec = 0;
+	threadpool_add_scheduled_work(jdevice->key, thread, tv, (void *)node);
+
+	return NULL;
 }
 
-static struct threadqueue_t *initDev(JsonNode *jdevice) {
-	loop = 1;
-	char *output = json_stringify(jdevice, NULL);
-	JsonNode *json = json_decode(output);
-	json_free(output);
-
-	struct protocol_threads_t *node = protocol_thread_init(ds18s20, json);
-	return threads_register("ds18s20", &thread, (void *)node, 0);
-}
-
-static void theadGC(void) {
-	loop = 0;
-	protocol_thread_stop(ds18s20);
-	while(threads > 0) {
-		usleep(10);
+static void gc(void) {
+	struct data_t *tmp = NULL;
+	while(data) {
+		tmp = data;
+		FREE(tmp->name);
+		if(tmp->id != NULL) {
+			FREE(tmp->id);
+		}
+		if(tmp->sensor != NULL) {
+			FREE(tmp->sensor);
+		}
+		if(tmp->w1slave != NULL) {
+			FREE(tmp->w1slave);
+		}
+		data = data->next;
+		FREE(tmp);
 	}
-	protocol_thread_free(ds18s20);
+	if(data != NULL) {
+		FREE(data);
+	}
 }
 
 #if !defined(MODULE) && !defined(_WIN32)
 __attribute__((weak))
 #endif
 void ds18s20Init(void) {
-	pthread_mutexattr_init(&attr);
-	pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);
-	pthread_mutex_init(&lock, &attr);
-
 	protocol_register(&ds18s20);
 	protocol_set_id(ds18s20, "ds18s20");
 	protocol_device_add(ds18s20, "ds18s20", "1-wire Temperature Sensor");
@@ -245,16 +290,18 @@ void ds18s20Init(void) {
 	memset(source_path, '\0', 21);
 	strcpy(source_path, "/sys/bus/w1/devices/");
 
-	ds18s20->initDev=&initDev;
-	ds18s20->threadGC=&theadGC;
+	// ds18s20->initDev=&initDev;
+	ds18s20->gc=&gc;
+
+	eventpool_callback(REASON_DEVICE_ADDED, addDevice);
 }
 
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "ds18s20";
-	module->version = "2.0";
-	module->reqversion = "6.0";
-	module->reqcommit = "84";
+	module->version = "3.0";
+	module->reqversion = "7.0";
+	module->reqcommit = "94";
 }
 
 void init(void) {

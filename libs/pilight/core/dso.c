@@ -59,14 +59,12 @@ void *dso_load(char *object) {
 		return NULL;
 	} else {
 		struct dso_t *node = MALLOC(sizeof(struct dso_t));
-		if(!node) {
-			fprintf(stderr, "out of memory\n");
-			exit(EXIT_FAILURE);
+		if(node == NULL) {
+			OUT_OF_MEMORY
 		}
 		node->handle = handle;
 		if((node->name = MALLOC(strlen(object)+1)) == NULL) {
-			fprintf(stderr, "out of memory\n");
-			exit(EXIT_FAILURE);
+			OUT_OF_MEMORY
 		}
 		strcpy(node->name, object);
 		node->next = dso;

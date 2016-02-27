@@ -30,11 +30,8 @@
 
 #include "defines.h"
 #include "../core/options.h"
-#include "../core/threads.h"
 #include "../core/json.h"
-
-#include "../config/devices.h"
-#include "../config/hardware.h"
+#include "../hardware/hardware.h"
 
 typedef enum {
 	FIRMWARE = -2,
@@ -85,7 +82,6 @@ typedef struct protocol_t {
 	short config;
 	short masterOnly;
 	struct options_t *options;
-	struct JsonNode *message;
 
 	int repeats;
 	unsigned long first;
@@ -99,16 +95,16 @@ typedef struct protocol_t {
 	struct protocol_threads_t *threads;
 
 	union {
-		void (*parseCode)(void);
-		void (*parseCommand)(struct JsonNode *code);
+		void (*parseCode)(char *message);
+		void (*parseCommand)(struct JsonNode *code, char *message);
 	};
 	int (*validate)(void);
-	int (*createCode)(JsonNode *code);
-	int (*checkValues)(JsonNode *code);
-	struct threadqueue_t *(*initDev)(JsonNode *device);
+	int (*createCode)(struct JsonNode *code, char *message);
+	int (*checkValues)(struct JsonNode *code);
+	void (*initDev)(struct JsonNode *device);
 	void (*printHelp)(void);
 	void (*gc)(void);
-	void (*threadGC)(void);
+	// void (*threadGC)(void);
 } protocol_t;
 
 typedef struct protocols_t {

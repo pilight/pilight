@@ -30,17 +30,7 @@
 #include "../../core/gc.h"
 #include "generic_screen.h"
 
-static void createMessage(int id, int state) {
-	generic_screen->message = json_mkobject();
-	json_append_member(generic_screen->message, "id", json_mknumber(id, 1));
-	if(state == 1) {
-		json_append_member(generic_screen->message, "state", json_mkstring("up"));
-	} else {
-		json_append_member(generic_screen->message, "state", json_mkstring("down"));
-	}
-}
-
-static int createCode(JsonNode *code) {
+static int createCode(struct JsonNode *code, char *message) {
 	int id = -1;
 	int state = -1;
 	double itmp = 0;
@@ -56,7 +46,14 @@ static int createCode(JsonNode *code) {
 		logprintf(LOG_ERR, "generic_screen: insufficient number of arguments");
 		return EXIT_FAILURE;
 	} else {
-		createMessage(id, state);
+		int x = snprintf(message, 255, "{");
+		x += snprintf(&message[x], 255-x, "\"id\":%d,", id);
+		if(state == 1) {
+			x += snprintf(&message[x], 255-x, "\"state\":\"up\"");
+		}	else {
+			x += snprintf(&message[x], 255-x, "\"state\":\"down\"");
+		}
+		x += snprintf(&message[x], 255-x, "}");
 	}
 
 	return EXIT_SUCCESS;
@@ -92,9 +89,9 @@ void genericScreenInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "generic_screen";
-	module->version = "1.3";
-	module->reqversion = "6.0";
-	module->reqcommit = "84";
+	module->version = "2.0";
+	module->reqversion = "7.0";
+	module->reqcommit = "94";
 }
 
 void init(void) {

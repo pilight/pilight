@@ -47,23 +47,7 @@ static int validate(void) {
 	return -1;
 }
 
-static void createMessage(int id, int unit, int state, int all) {
-	arctech_dusk->message = json_mkobject();
-	json_append_member(arctech_dusk->message, "id", json_mknumber(id, 0));
-	if(all == 1) {
-		json_append_member(arctech_dusk->message, "all", json_mknumber(all, 0));
-	} else {
-		json_append_member(arctech_dusk->message, "unit", json_mknumber(unit, 0));
-	}
-
-	if(state == 1) {
-		json_append_member(arctech_dusk->message, "state", json_mkstring("dusk"));
-	} else {
-		json_append_member(arctech_dusk->message, "state", json_mkstring("dawn"));
-	}
-}
-
-static void parseCode(void) {
+static void parseCode(char *message) {
 	int binary[RAW_LENGTH/4], x = 0, i = 0;
 
 	for(x=0;x<arctech_dusk->rawlen;x+=4) {
@@ -79,7 +63,19 @@ static void parseCode(void) {
 	int all = binary[26];
 	int id = binToDecRev(binary, 0, 25);
 
-	createMessage(id, unit, state, all);
+	x = snprintf(message, 255, "{\"id\":%d,", id);
+	if(all == 1) {
+		x += snprintf(&message[x], 255-x, "\"all\":1,");
+	} else {
+		x += snprintf(&message[x], 255-x, "\"unit\":%d,", unit);
+	}
+
+	if(state == 1) {
+		x += snprintf(&message[x], 255-x, "\"state\":\"dusk\"");
+	} else {
+		x += snprintf(&message[x], 255-x, "\"state\":\"dawn\"");
+	}
+	x += snprintf(&message[x], 255-x, "}");
 }
 
 #if !defined(MODULE) && !defined(_WIN32)
@@ -109,9 +105,9 @@ void arctechDuskInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "arctech_dusk";
-	module->version = "2.1";
-	module->reqversion = "6.0";
-	module->reqcommit = "84";
+	module->version = "3.0";
+	module->reqversion = "7.0";
+	module->reqcommit = "94";
 }
 
 void init(void) {

@@ -63,7 +63,7 @@ static int validate(void) {
 	return -1;
 }
 
-static void parseCode(void) {
+static void parseCode(char *message) {
 	int i = 0, x = 0, type = 0, id = 0, binary[RAW_LENGTH/2];
 	double temp_offset = 0.0, humi_offset = 0.0;
 	double humidity = 0.0, temperature = 0.0;
@@ -134,26 +134,26 @@ static void parseCode(void) {
 		return;
 	}
 
-	tfa30->message = json_mkobject();
 	switch(type) {
 		case 1:
 			temperature = (double)(n5-5)*10 + n6 + n7/10.0;
 			temperature += temp_offset;
 
-			json_append_member(tfa30->message, "id", json_mknumber(id, 0));
-			json_append_member(tfa30->message, "temperature", json_mknumber(temperature, 1));
+			snprintf(message, 255,
+				"{\"id\":%d,\"temperature\":%.1f}",
+				id, temperature
+			);
 		break;
 		case 2:
 			humidity = (double)(n5)*10 + n6;
 			humidity += humi_offset;
 
-			json_append_member(tfa30->message, "id", json_mknumber(id, 0));
-			json_append_member(tfa30->message, "humidity", json_mknumber(humidity, 1));
+			snprintf(message, 255,
+				"{\"id\":%d,\"humidity\":%.1f}",
+				id, humidity
+			);
 		break;
 		default:
-			json_delete(tfa30->message);
-			tfa30->message = NULL;
-			return;
 		break;
 	}
 }
@@ -257,9 +257,9 @@ void tfa30Init(void) {
 #ifdef MODULAR
 void compatibility(const char **version, const char **commit) {
 	module->name = "tfa30";
-	module->version = "1.0";
-	module->reqversion = "6.0";
-	module->reqcommit = "84";
+	module->version = "2.0";
+	module->reqversion = "7.0";
+	module->reqcommit = "94";
 }
 
 void init(void) {

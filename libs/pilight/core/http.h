@@ -19,7 +19,7 @@
 #ifndef _HTTP_H_
 #define _HTTP_H_
 
-char *http_get_content(char *url, char **type, int *code, int *size);
-char *http_post_content(char *url, char **type, int *code, int *size, const char *contype, char *post);
+char *http_post_content(char *url, const char *contype, char *post, void (*callback)(int, char *, int, char *, void *), void *userdata);
+char *http_get_content(char *url, void (*callback)(int, char *, int, char *, void *), void *userdata);
 
 #endif

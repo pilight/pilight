@@ -60,9 +60,18 @@
  * at the end of this file.  Namely, in_cksum.
  */
 
-#ifndef _LIBPROC_H_
-#define _LIBPROC_H_
+#ifndef _PING_H_
+#define _PING_H_
 
-int ping(char *addr);
+typedef struct ping_list_t {
+	char ip[INET_ADDRSTRLEN];
+	int found;
+	int live;
+	unsigned long time;
+	struct ping_list_t *next;
+} ping_list_t;
+
+void ping_add_host(struct ping_list_t **iplist, const char *ip);
+int ping(struct ping_list_t *iplist, void (*callback)(char *, int));
 
 #endif

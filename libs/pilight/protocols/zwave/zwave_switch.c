@@ -29,64 +29,64 @@
 #include "../protocol.h"
 #include "zwave_switch.h"
 
-static void createStateMessage(unsigned int homeId, int nodeId, int state) {
-	zwave_switch->message = json_mkobject();
-	json_append_member(zwave_switch->message, "homeId", json_mknumber(homeId, 0));
-	json_append_member(zwave_switch->message, "nodeId", json_mknumber(nodeId, 0));
+static void createStateMessage(char *message, unsigned int homeId, int nodeId, int state) {
+	int x = snprintf(message, 255, "{\"homeId\":%d,", homeId);
+	x += snprintf(&message[x], 255-x, "\"nodeId\":%d,", nodeId);
 	if(state == 1) {
-		json_append_member(zwave_switch->message, "state", json_mkstring("on"));
-	} else {
-		json_append_member(zwave_switch->message, "state", json_mkstring("off"));
+		x += snprintf(&message[x], 255-x, "\"state\":\"on\",");
+	}	else {
+		x += snprintf(&message[x], 255-x, "\"state\":\"off\",");
 	}
+	x += snprintf(&message[x-1], 255-x, "}");
 }
 
-static void createConfigMessage(unsigned int homeId, int nodeId, char *label, int value) {
-	zwave_switch->message = json_mkobject();
-	json_append_member(zwave_switch->message, "homeId", json_mknumber(homeId, 0));
-	json_append_member(zwave_switch->message, "nodeId", json_mknumber(nodeId, 0));
-	json_append_member(zwave_switch->message, "label", json_mkstring(label));
-	json_append_member(zwave_switch->message, "value", json_mknumber(value, 0));
+static void createConfigMessage(char *message, unsigned int homeId, int nodeId, char *label, int value) {
+	int x = snprintf(message, 255, "{\"homeId\":%d,", homeId);
+	x += snprintf(&message[x], 255-x, "\"nodeId\":%d,", nodeId);
+	x += snprintf(&message[x], 255-x, "\"value\":%d", value);
+	x += snprintf(&message[x], 255-x, "\"value\":\"%s\"", label);
+	x += snprintf(&message[x], 255-x, "}");
 }
 
-static void parseCommand(struct JsonNode *code) {
-	struct JsonNode *message = NULL;
+static void parseCommand(struct JsonNode *code, char *message) {
+	struct JsonNode *jmsg = NULL;
 	char *label = NULL;
 	double itmp = 0.0;
 	int nodeId = 0, value = 0, cmdId = 0;
 	unsigned int homeId = 0;
 
-	if((message = json_find_member(code, "message")) != NULL) {
-		if(json_find_number(message, "nodeId", &itmp) == 0) {
+	if((jmsg = json_find_member(code, "message")) != NULL) {
+		if(json_find_number(jmsg, "nodeId", &itmp) == 0) {
 			nodeId = (int)round(itmp);
 		} else {
 			return;
 		}
-		if(json_find_number(message, "homeId", &itmp) == 0) {
+		if(json_find_number(jmsg, "homeId", &itmp) == 0) {
 			homeId = (unsigned int)round(itmp);
 		} else {
 			return;
 		}
-		if(json_find_number(message, "cmdId", &itmp) == 0) {
+		if(json_find_number(jmsg, "cmdId", &itmp) == 0) {
 			cmdId = (int)round(itmp);
 		} else {
 			return;
 		}
-		if(json_find_number(message, "value", &itmp) == 0) {
+		if(json_find_number(jmsg, "value", &itmp) == 0) {
 			value = (int)round(itmp);
 		} else {
 			return;
 		}
-		json_find_string(message, "label", &label);
+		json_find_string(jmsg, "label", &label);
 	}
 	if(cmdId == COMMAND_CLASS_SWITCH_BINARY) {
-		createStateMessage(homeId, nodeId, value);
+		createStateMessage(message, homeId, nodeId, value);
 	}
 	if(cmdId == COMMAND_CLASS_CONFIGURATION && label != NULL) {
-		createConfigMessage(homeId, nodeId, label, value);
+		createConfigMessage(message, homeId, nodeId, label, value);
 	}
 }
 
-static int createCode(struct JsonNode *code) {
+static int createCode(struct JsonNode *code, char *message) {
 	unsigned int homeId = 0;
 	int nodeId = 0;
 	char state = 0;
@@ -107,8 +107,7 @@ static int createCode(struct JsonNode *code) {
 	} else {
 		zwaveSetValue(nodeId, COMMAND_CLASS_SWITCH_BINARY, NULL, "true");
 	}
-	
-	createStateMessage(homeId, nodeId, state);		
+	createStateMessage(message, homeId, nodeId, state);
 
 	return EXIT_SUCCESS;
 }
@@ -144,9 +143,9 @@ void zwaveSwitchInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "zwave_switch";
-	module->version = "1.0";
+	module->version = "2.0";
 	module->reqversion = "7.0";
-	module->reqcommit = "10";
+	module->reqcommit = "94";
 }
 
 void init(void) {

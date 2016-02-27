@@ -46,17 +46,7 @@ static int validate(void) {
 	return -1;
 }
 
-static void createMessage(int id, int state) {
-	conrad_rsl_contact->message = json_mkobject();
-	json_append_member(conrad_rsl_contact->message, "id", json_mknumber(id, 0));
-	if(state == 1) {
-		json_append_member(conrad_rsl_contact->message, "state", json_mkstring("opened"));
-	} else {
-		json_append_member(conrad_rsl_contact->message, "state", json_mkstring("closed"));
-	}
-}
-
-static void parseCode(void) {
+static void parseCode(char *message) {
 	int x = 0, binary[RAW_LENGTH/2];
 
 	/* Convert the one's and zero's into binary */
@@ -74,7 +64,13 @@ static void parseCode(void) {
 	int state = binary[4];
 
 	if(check == 5 && check1 == 1) {
-		createMessage(id, state);
+		x = snprintf(message, 255, "{\"id\":%d,", id);
+		if(state == 1) {
+			x += snprintf(&message[x], 255-x, "\"state\":\"opened\"");
+		} else {
+			x += snprintf(&message[x], 255-x, "\"state\":\"closed\"");
+		}
+		x += snprintf(&message[x], 255-x, "}");
 	}
 }
 
@@ -104,9 +100,9 @@ void conradRSLContactInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "conrad_rsl_contact";
-	module->version = "2.2";
-	module->reqversion = "6.0";
-	module->reqcommit = "84";
+	module->version = "3.0";
+	module->reqversion = "7.0";
+	module->reqcommit = "94";
 }
 
 void init(void) {

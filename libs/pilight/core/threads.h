@@ -26,15 +26,15 @@
 #include "proc.h"
 
 struct threadqueue_t {
-	unsigned int ts;
 	pthread_t pth;
 #ifdef _WIN32
 	HANDLE handle;
 #endif
 	int force;
+	int join;
 	char *id;
 	void *param;
-	unsigned int running;
+	int running;
 	struct cpu_usage_t cpu_usage;
 	void *(*function)(void *param);
 	struct threadqueue_t *next;
@@ -44,6 +44,7 @@ struct threadqueue_t *threads_register(const char *id, void *(*function)(void* p
 void threads_create(pthread_t *pth, const pthread_attr_t *attr,  void *(*start_routine) (void *), void *arg);
 void threads_start(void);
 void thread_stop(char *id);
+int thread_exists(char *id);
 void threads_cpu_usage(int print);
 int threads_gc(void);
 void thread_signal(char *id, int signal);

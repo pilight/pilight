@@ -48,19 +48,19 @@ static int validate(void) {
 	return -1;
 }
 
-static void createMessage(int systemcode, int unitcode, int state) {
-	heitech->message = json_mkobject();
-	json_append_member(heitech->message, "systemcode", json_mknumber(systemcode, 0));
-	json_append_member(heitech->message, "unitcode", json_mknumber(unitcode, 0));
+static void createMessage(char *message, int systemcode, int unitcode, int state) {
+	int x = snprintf(message, 255, "{\"systemcode\":%d,", systemcode);
+	x += snprintf(&message[x], 255-x, "\"unitcode\":%d,", unitcode);
 
 	if(state == 0) {
-		json_append_member(heitech->message, "state", json_mkstring("on"));
+		x += snprintf(&message[x], 255-x, "\"state\":\"on\"");
 	} else {
-		json_append_member(heitech->message, "state", json_mkstring("off"));
+		x += snprintf(&message[x], 255-x, "\"state\":\"off\"");
 	}
+	x += snprintf(&message[x], 255-x, "}");
 }
 
-static void parseCode(void) {
+static void parseCode(char *message) {
 	int x = 0, binary[RAW_LENGTH/4];
 
 	for(x=0;x<heitech->rawlen-2;x+=4) {
@@ -77,7 +77,7 @@ static void parseCode(void) {
 	int state = binary[11];
 
 	if(check != state) {
-		createMessage(systemcode, unitcode, state);
+		createMessage(message, systemcode, unitcode, state);
 	}
 }
 
@@ -147,7 +147,7 @@ static void createFooter(void) {
 	heitech->raw[48]=(AVG_PULSE_LENGTH);
 	heitech->raw[49]=(PULSE_DIV*AVG_PULSE_LENGTH);
 }
-static int createCode(JsonNode *code) {
+static int createCode(struct JsonNode *code, char *message) {
 	int systemcode = -1;
 	int unitcode = -1;
 	int state = -1;
@@ -172,7 +172,7 @@ static int createCode(JsonNode *code) {
 		logprintf(LOG_ERR, "heitech: invalid unitcode range");
 		return EXIT_FAILURE;
 	} else {
-		createMessage(systemcode, unitcode, state);
+		createMessage(message, systemcode, unitcode, state);
 		clearCode();
 		createSystemCode(systemcode);
 		createUnitCode(unitcode);
@@ -221,9 +221,9 @@ void heitechInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "heitech";
-	module->version = "1.0";
-	module->reqversion = "6.0";
-	module->reqcommit = "187";
+	module->version = "2.0";
+	module->reqversion = "7.0";
+	module->reqcommit = "94";
 }
 
 void init(void) {

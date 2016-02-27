@@ -91,9 +91,17 @@
 #include <signal.h>
 
 #include "common.h"
+#include "ping.h"
 #include "network.h"
 #include "log.h"
 #include "mem.h"
+
+typedef struct data_t {
+	int t;
+	struct ping_list_t *nodes;
+	struct ping_list_t *iplist;
+	void (*callback)(char *, int);
+} data_t;
 
 #ifdef _WIN32
 	typedef unsigned char u_int8_t;
@@ -190,6 +198,20 @@
 	};
 #endif
 
+void ping_add_host(struct ping_list_t **iplist, const char *ip) {
+	struct ping_list_t *node = MALLOC(sizeof(struct ping_list_t));
+	if(node == NULL) {
+		OUT_OF_MEMORY
+	}
+	strncpy(node->ip, ip, INET_ADDRSTRLEN);
+	node->found = 0;
+	node->live = 0;
+	node->time = 0;
+
+	node->next = *iplist;
+	*iplist = node;
+}
+
 /*
  * in_cksum --
  *	Checksum routine for Internet Protocol family headers (C Version)
@@ -251,81 +273,129 @@ static int initpacket(char *buf) {
 	return icmplen;
 }
 
-int ping(char *addr) {
-	char buf[1500], buf1[INET_ADDRSTRLEN+1];
+static int client_callback(struct eventpool_fd_t *node, int event) {
+	struct data_t *data = node->userdata;
+	char buf[1500];
+	struct timeval tv;
 	struct ip *ip = (struct ip *)buf;
 	struct icmp *icmp = (struct icmp *)(ip + 1);
-	struct sockaddr_in dst;
 	int icmplen = 0;
-	int sockfd = 0, on = 1;
+	unsigned long now = 0;
 	long int fromlen = 0;
-
-#ifdef _WIN32
-	WSADATA wsa;
-
-	if(WSAStartup(0x202, &wsa) != 0) {
-		logprintf(LOG_ERR, "could not initialize new socket");
-		exit(EXIT_FAILURE);
-	}
-#endif
-
-	if((sockfd = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP)) < 0) {
-		logperror(LOG_DEBUG, "socket");
-		return -1;
-	}
-
-	if(setsockopt(sockfd, IPPROTO_IP, IP_HDRINCL, (const char *)&on, sizeof(on)) < 0) {
-		logperror(LOG_DEBUG, "IP_HDRINCL");
-		close(sockfd);
-		return -1;
-	}
-
-#ifndef _WIN32
-	struct timeval tv;
-	tv.tv_sec = 1;
-	tv.tv_usec = 0;
-
-	if(setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, (char *)&tv, sizeof(struct timeval)) < 0) {
-#else
-	int timeout = 1000;
-	if(setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, (const char *)&timeout, sizeof(struct timeval)) < 0) {
-#endif
-		logperror(LOG_DEBUG, "SO_RCVTIMEO");
-		close(sockfd);
-		return -1;
-	}
+	gettimeofday(&tv, NULL);
+	now = (1000000 * (unsigned int)tv.tv_sec + (unsigned int)tv.tv_usec);
 
 	memset(buf, '\0', 1500);
 	icmplen = initpacket(buf);
-	dst.sin_family = AF_INET;
 
-	ip->ip_dst.s_addr = inet_addr(addr);
-	dst.sin_addr.s_addr = inet_addr(addr);
-	dst.sin_port = htons(0);
-	icmp->icmp_cksum = 0;
-	icmp->icmp_cksum = in_cksum((int *)icmp, icmplen);
-	if(sendto(sockfd, buf, ip->ip_len, 0, (struct sockaddr *)&dst, sizeof(dst)) < 0) {
-		logperror(LOG_DEBUG, "sendto");
-		close(sockfd);
-		return -1;
+	switch(event) {
+		case EV_POLL: {
+			struct ping_list_t *tmp = data->iplist;
+			int match = 0, match1 = 0;
+			while(tmp) {
+				match1++;
+				if((now-tmp->time) > 1000000 && tmp->live == 1) {
+					tmp->live = 0;
+					if(tmp->found == 0) {
+						if(data->callback != NULL) {
+							data->callback(tmp->ip, (tmp->found == 1) ? 0 : -1);
+						}
+					}
+					match++;
+				}
+				tmp = tmp->next;
+			}
+			if(match == match1) {
+				return -1;
+			}
+		} break;
+		case EV_SOCKET_SUCCESS: {
+			data->t = 0;
+			int on = 1;
+			if(setsockopt(node->fd, IPPROTO_IP, IP_HDRINCL, (const char *)&on, sizeof(on)) < 0) {
+				logperror(LOG_DEBUG, "IP_HDRINCL");
+				return -1;
+			}
+			eventpool_fd_enable_write(node);
+			eventpool_fd_enable_read(node);
+		} break;
+		case EV_WRITE: {
+			if(data->nodes != NULL) {
+				struct timeval tv;
+				gettimeofday(&tv, NULL);
+				data->nodes->time = (1000000 * (unsigned int)tv.tv_sec + (unsigned int)tv.tv_usec);
+				data->t = 0;
+				struct sockaddr_in dst;
+				memset(&dst, 0, sizeof(struct sockaddr));
+
+				icmp->icmp_cksum = 0;
+				icmp->icmp_cksum = in_cksum((int *)icmp, icmplen);
+
+				dst.sin_family = AF_INET;
+				dst.sin_addr.s_addr = inet_addr(data->nodes->ip);
+				dst.sin_port = htons(0);
+				ip->ip_dst.s_addr = inet_addr(data->nodes->ip);
+				if(sendto(node->fd, buf, ip->ip_len, 0, (struct sockaddr *)&dst, sizeof(dst)) < 0) {
+					// perror("sendto");
+					// return -1;
+				}
+				data->nodes->live = 1;
+				data->nodes = data->nodes->next;
+				eventpool_fd_enable_write(node);
+			}
+		} break;
+		case EV_READ: {
+			char buf1[INET_ADDRSTRLEN+1];
+			memset(buf, '\0', sizeof(buf));
+			if((recvfrom(node->fd, buf, sizeof(buf), 0, NULL, (socklen_t *)&fromlen)) < 0) {
+				return -1;
+			}
+
+			icmp = (struct icmp *)(buf + (ip->ip_hl << 2));
+			memset(&buf1, '\0', INET_ADDRSTRLEN+1);
+			inet_ntop(AF_INET, (void *)&(ip->ip_src), buf1, INET_ADDRSTRLEN+1);
+			if(icmp->icmp_type == ICMP_ECHOREPLY || icmp->icmp_type == ICMP_ECHO) {
+				struct ping_list_t *tmp = data->iplist;
+				while(tmp) {
+					if(strcmp(tmp->ip, buf1) == 0 && tmp->found == 0) {
+						if(data->callback != NULL) {
+							data->callback(tmp->ip, 0);
+						}
+						tmp->found = 1;
+						break;
+					}
+					tmp = tmp->next;
+				}
+			}
+			eventpool_fd_enable_read(node);
+		} break;
+		case EV_DISCONNECTED: {
+			struct ping_list_t *tmp = NULL;
+			while(data->iplist) {
+				tmp = data->iplist;
+				data->iplist = data->iplist->next;
+				FREE(tmp);
+			}
+			if(data->iplist != NULL) {
+				FREE(data->iplist);
+			}
+			FREE(data);
+			eventpool_fd_remove(node);
+		} break;
 	}
+	return 0;
+}
 
-	memset(buf, '\0', sizeof(buf));
-	if((recvfrom(sockfd, buf, sizeof(buf), 0, NULL, (socklen_t *)&fromlen)) < 0) {
-		logperror(LOG_DEBUG, "recvfrom");
-		close(sockfd);
-		return -1;
+int ping(struct ping_list_t *iplist, void (*callback)(char *, int)) {
+	struct data_t *data = MALLOC(sizeof(struct data_t));
+	if(data == NULL) {
+		OUT_OF_MEMORY
 	}
+	data->t = 0;
+	data->callback = callback;
+	data->nodes = iplist;
+	data->iplist = iplist;
 
-	icmp = (struct icmp *)(buf + (ip->ip_hl << 2));
-	memset(&buf1, '\0', INET_ADDRSTRLEN+1);
-	inet_ntop(AF_INET, (void *)&(ip->ip_src), buf1, INET_ADDRSTRLEN+1);
-	if(!((icmp->icmp_type == ICMP_ECHOREPLY || icmp->icmp_type == ICMP_ECHO) && strcmp(buf1, addr) == 0)) {
-		logprintf(LOG_DEBUG, "unexpected status reply: %d code: %d at: %s from: %s",icmp->icmp_type, icmp->icmp_code, buf1, addr);
-		close(sockfd);
-		return -1;
-	}
-
-	close(sockfd);
+	eventpool_socket_add("ping", NULL, 0, AF_INET, SOCK_RAW, IPPROTO_ICMP, EVENTPOOL_TYPE_SOCKET_CLIENT, client_callback, NULL, data);
 	return 0;
 }

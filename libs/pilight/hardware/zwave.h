@@ -19,7 +19,7 @@
 #ifndef _HARDWARE_ZWAVE_H_
 #define _HARDWARE_ZWAVE_H_
 
-#include "../config/hardware.h"
+#include "../hardware/hardware.h"
 
 #define COMMAND_CLASS_SWITCH_BINARY 		0x25
 #define COMMAND_CLASS_SWITCH_MULTILEVEL 0x26

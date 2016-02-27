@@ -38,7 +38,8 @@
 #include "../../core/common.h"
 #include "../../core/dso.h"
 #include "../../core/log.h"
-#include "../../core/threads.h"
+#include "../../core/threadpool.h"
+#include "../../core/eventpool.h"
 #include "../../core/binary.h"
 #include "../../core/gc.h"
 #include "../../core/json.h"
@@ -48,29 +49,51 @@
 #if !defined(__FreeBSD__) && !defined(_WIN32)
 #include "../../../wiringx/wiringX.h"
 
-typedef struct settings_t {
-	char **id;
-	int nrid;
-	int *fd;
+#define STEP1		1
+#define STEP2		2
+#define STEP3		3
+
+typedef struct data_t {
+	char *name;
+	unsigned int id;
+	int fd;
 	// calibration values (stored in each BMP180/085)
-	short *ac1;
-	short *ac2;
-	short *ac3;
-	unsigned short *ac4;
-	unsigned short *ac5;
-	unsigned short *ac6;
-	short *b1;
-	short *b2;
-	short *mb;
-	short *mc;
-	short *md;
-} settings_t;
+	short ac1;
+	short ac2;
+	short ac3;
+	unsigned short ac4;
+	unsigned short ac5;
+	unsigned short ac6;
+	short b1;
+	short b2;
+	short mb;
+	short mc;
+	short md;
 
-static unsigned short loop = 1;
-static int threads = 0;
+	int x1;
+	int x2;
+	int temp;
+	unsigned int b5;
+	unsigned short up;
 
-static pthread_mutex_t lock;
-static pthread_mutexattr_t attr;
+	unsigned char oversampling;
+
+	int steps;
+	int interval;
+
+	double temp_offset;
+	double pressure_offset;
+
+	struct data_t *next;
+} data_t;
+
+static struct data_t *data = NULL;
+
+static void *reason_code_received_free(void *param) {
+	struct reason_code_received_t *data = param;
+	FREE(data);
+	return NULL;
+}
 
 // helper function with built-in result conversion
 static int readReg16(int fd, int reg) {
@@ -80,309 +103,300 @@ static int readReg16(int fd, int reg) {
 }
 
 static void *thread(void *param) {
-	struct protocol_threads_t *node = (struct protocol_threads_t *) param;
-	struct JsonNode *json = (struct JsonNode *) node->param;
-	struct JsonNode *jid = NULL;
-	struct JsonNode *jchild = NULL;
-	struct settings_t *bmp180data = MALLOC(sizeof(struct settings_t));
-	int y = 0, interval = 10, nrloops = 0;
-	char *stmp = NULL;
-	double itmp = -1, temp_offset = 0, pressure_offset = 0;
-	unsigned char oversampling = 1;
+	struct threadpool_tasks_t *task = param;
+	struct data_t *settings = task->userdata;
 
-	if(bmp180data == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(EXIT_FAILURE);
+	switch(settings->steps) {
+		case STEP1: {
+			// write 0x2E into Register 0xF4 to request a temperature reading.
+			wiringXI2CWriteReg8(settings->fd, 0xF4, 0x2E);
+
+			// wait at least 4.5ms: we suspend execution for 5000 microseconds.
+			settings->steps = STEP2;
+
+			struct timeval tv;
+			tv.tv_sec = 0;
+			tv.tv_usec = 5000;
+			threadpool_add_scheduled_work(bmp180->id, thread, tv, (void *)task);
+		} break;
+		case STEP2: {
+			// read the two byte result from address 0xF6.
+			unsigned short ut = (unsigned short)readReg16(settings->fd, 0xF6);
+			int delay = 0;
+
+			// calculate temperature (in units of 0.1 deg C) given uncompensated value
+			settings->x1 = (((int)ut - (int)settings->ac6)) * (int)settings->ac5 >> 15;
+			settings->x2 = ((int)settings->mc << 11) / (settings->x1 + settings->md);
+			settings->b5 = settings->x1 + settings->x2;
+			settings->temp = ((settings->b5 + 8) >> 4);
+
+			// uncompensated pressure value
+			settings->up = 0;
+
+			// write 0x34+(BMP085_OVERSAMPLING_SETTING<<6) into register 0xF4
+			// request a pressure reading with specified oversampling setting
+			wiringXI2CWriteReg8(settings->fd, 0xF4, 0x34 + (settings->oversampling << 6));
+
+			// wait for conversion, delay time dependent on oversampling setting
+			delay = (unsigned int)((2 + (3 << settings->oversampling)) * 1000);
+
+			settings->steps = STEP3;
+
+			struct timeval tv;
+			tv.tv_sec = 0;
+			tv.tv_usec = delay;
+			threadpool_add_scheduled_work(bmp180->id, thread, tv, (void *)task);
+		} break;
+		case STEP3: {
+			// read the three byte result (block data): 0xF6 = MSB, 0xF7 = LSB and 0xF8 = XLSB
+			int msb = wiringXI2CReadReg8(settings->fd, 0xF6);
+			int lsb = wiringXI2CReadReg8(settings->fd, 0xF7);
+			int xlsb = wiringXI2CReadReg8(settings->fd, 0xF8);
+			settings->up = (((unsigned int)msb << 16) | ((unsigned int)lsb << 8) | (unsigned int)xlsb) >> (8 - settings->oversampling);
+
+			// calculate B6
+			int b6 = settings->b5 - 4000;
+
+			// calculate B3
+			settings->x1 = (settings->b2 * (b6 * b6) >> 12) >> 11;
+			settings->x2 = (settings->ac2 * b6) >> 11;
+			int x3 = settings->x1 + settings->x2;
+			int b3 = (((settings->ac1 * 4 + x3) << settings->oversampling) + 2) >> 2;
+
+			// calculate B4
+			settings->x1 = (settings->ac3 * b6) >> 13;
+			settings->x2 = (settings->b1 * ((b6 * b6) >> 12)) >> 16;
+			x3 = ((settings->x1 + settings->x2) + 2) >> 2;
+			unsigned int b4 = (settings->ac4 * (unsigned int) (x3 + 32768)) >> 15;
+
+			// calculate B7
+			unsigned int b7 = ((settings->up - (unsigned int)b3) * ((unsigned int)50000 >> settings->oversampling));
+
+			// calculate pressure in Pa
+			int pressure = b7 < 0x80000000 ? (int) ((b7 << 1) / b4) : (int) ((b7 / b4) << 1);
+			settings->x1 = (pressure >> 8) * (pressure >> 8);
+			settings->x1 = (settings->x1 * 3038) >> 16;
+			settings->x2 = (-7357 * pressure) >> 16;
+			pressure += (settings->x1 + settings->x2 + 3791) >> 4;
+
+			struct reason_code_received_t *data = MALLOC(sizeof(struct reason_code_received_t));
+			if(data == NULL) {
+				OUT_OF_MEMORY
+			}
+			snprintf(data->message, 1024,
+				"{\"id\":%d,\"temperature\":%.1f,\"pressure\":%.1f}",
+				settings->id, (((double)settings->temp / 10) + settings->temp_offset), (((double)pressure / 100) + settings->pressure_offset)
+			);
+			strcpy(data->origin, "receiver");
+			data->protocol = bmp180->id;
+			if(strlen(pilight_uuid) > 0) {
+				data->uuid = pilight_uuid;
+			} else {
+				data->uuid = NULL;
+			}
+			data->repeat = 1;
+			eventpool_trigger(REASON_CODE_RECEIVED, reason_code_received_free, data);
+
+			struct timeval tv;
+			tv.tv_sec = settings->interval;
+			tv.tv_usec = 0;
+			threadpool_add_scheduled_work(settings->name, thread, tv, (void *)settings);
+		} break;
 	}
 
-	bmp180data->nrid = 0;
-	bmp180data->id = NULL;
-	bmp180data->fd = 0;
-	bmp180data->ac1 = 0;
-	bmp180data->ac2 = 0;
-	bmp180data->ac3 = 0;
-	bmp180data->ac4 = 0;
-	bmp180data->ac5 = 0;
-	bmp180data->ac6 = 0;
-	bmp180data->b1 = 0;
-	bmp180data->b2 = 0;
-	bmp180data->mb = 0;
-	bmp180data->mc = 0;
-	bmp180data->md = 0;
+	return (void *)NULL;
+}
 
-	threads++;
+static void *addDevice(void *param) {
+	struct threadpool_tasks_t *task = param;
+	struct JsonNode *jdevice = NULL;
+	struct JsonNode *jprotocols = NULL;
+	struct JsonNode *jid = NULL;
+	struct JsonNode *jchild = NULL;
+	struct data_t *node = NULL;
+	struct timeval tv;
+	int match = 0, interval = 10;
+	double itmp = 0.0;
 
-	if((jid = json_find_member(json, "id"))) {
+	if(task->userdata == NULL) {
+		return NULL;
+	}
+
+	if((jdevice = json_first_child(task->userdata)) == NULL) {
+		return NULL;
+	}
+
+	if((jprotocols = json_find_member(jdevice, "protocol")) != NULL) {
+		jchild = json_first_child(jprotocols);
+		while(jchild) {
+			if(strcmp(bmp180->id, jchild->string_) == 0) {
+				match = 1;
+				break;
+		}
+			jchild = jchild->next;
+		}
+	}
+
+	if(match == 0) {
+		return NULL;
+	}
+
+	if((node = MALLOC(sizeof(struct data_t))) == NULL) {
+		OUT_OF_MEMORY
+	}
+	memset(node, '\0', sizeof(struct data_t));
+	node->id = 0;
+	node->fd = 0;
+	// calibration values (stored in each BMP180/085)
+	node->ac1 = 0;
+	node->ac2 = 0;
+	node->ac3 = 0;
+	node->ac4 = 0;
+	node->ac5 = 0;
+	node->ac6 = 0;
+	node->b1 = 0;
+	node->b2 = 0;
+	node->mb = 0;
+	node->mc = 0;
+	node->md = 0;
+	node->x1 = 0;
+	node->x2 = 0;
+	node->temp = 0;
+	node->b5 = 0;
+	node->up = 0;
+	node->steps = STEP1;
+	node->oversampling = 0;
+	node->temp_offset = 0.0;
+	node->pressure_offset = 0.0;
+
+	if((jid = json_find_member(jdevice, "id"))) {
 		jchild = json_first_child(jid);
 		while(jchild) {
-			if(json_find_string(jchild, "id", &stmp) == 0) {
-				if((bmp180data->id = REALLOC(bmp180data->id, (sizeof(char *) * (size_t)(bmp180data->nrid + 1)))) == NULL) {
-					fprintf(stderr, "out of memory\n");
-					exit(EXIT_FAILURE);
-				}
-				if((bmp180data->id[bmp180data->nrid] = MALLOC(strlen(stmp) + 1)) == NULL) {
-					fprintf(stderr, "out of memory\n");
-					exit(EXIT_FAILURE);
-				}
-				strcpy(bmp180data->id[bmp180data->nrid], stmp);
-				bmp180data->nrid++;
+			if(json_find_number(jchild, "id", &itmp) == 0) {
+				node->id = (int)itmp;
 			}
 			jchild = jchild->next;
 		}
 	}
 
-	if(json_find_number(json, "poll-interval", &itmp) == 0)
-		interval = (int) round(itmp);
-	json_find_number(json, "temperature-offset", &temp_offset);
-	json_find_number(json, "pressure-offset", &pressure_offset);
-	if(json_find_number(json, "oversampling", &itmp) == 0) {
-		oversampling = (unsigned char) itmp;
+	if(json_find_number(jdevice, "poll-interval", &itmp) == 0) {
+		interval = (int)round(itmp);
 	}
 
-	// resize the memory blocks pointed to by the different pointers
-	size_t sz = (size_t) (bmp180data->nrid + 1);
-	unsigned long int sizeShort = sizeof(short) * sz;
-	unsigned long int sizeUShort = sizeof(unsigned short) * sz;
-	bmp180data->fd = REALLOC(bmp180data->fd, (sizeof(int) * sz));
-	bmp180data->ac1 = REALLOC(bmp180data->ac1, sizeShort);
-	bmp180data->ac2 = REALLOC(bmp180data->ac2, sizeShort);
-	bmp180data->ac3 = REALLOC(bmp180data->ac3, sizeShort);
-	bmp180data->ac4 = REALLOC(bmp180data->ac4, sizeUShort);
-	bmp180data->ac5 = REALLOC(bmp180data->ac5, sizeUShort);
-	bmp180data->ac6 = REALLOC(bmp180data->ac6, sizeUShort);
-	bmp180data->b1 = REALLOC(bmp180data->b1, sizeShort);
-	bmp180data->b2 = REALLOC(bmp180data->b2, sizeShort);
-	bmp180data->mb = REALLOC(bmp180data->mb, sizeShort);
-	bmp180data->mc = REALLOC(bmp180data->mc, sizeShort);
-	bmp180data->md = REALLOC(bmp180data->md, sizeShort);
-	if(bmp180data->ac1 == NULL || bmp180data->ac2 == NULL || bmp180data->ac3 == NULL || bmp180data->ac4 == NULL ||
-		bmp180data->ac5 == NULL || bmp180data->ac6 == NULL || bmp180data->b1 == NULL || bmp180data->b2 == NULL ||
-		bmp180data->mb == NULL || bmp180data->mc == NULL || bmp180data->md == NULL || bmp180data->fd == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(EXIT_FAILURE);
+	json_find_number(jdevice, "temperature-offset", &node->temp_offset);
+	json_find_number(jdevice, "pressure-offset", &node->pressure_offset);
+	if(json_find_number(jdevice, "oversampling", &itmp) == 0) {
+		node->oversampling = (unsigned char)itmp;
 	}
 
-	for(y = 0; y < bmp180data->nrid; y++) {
-		// setup i2c
-		bmp180data->fd[y] = wiringXI2CSetup((int)strtol(bmp180data->id[y], NULL, 16));
-		if(bmp180data->fd[y] > 0) {
-			// read 0xD0 to check chip id: must equal 0x55 for BMP085/180
-			int id = wiringXI2CReadReg8(bmp180data->fd[y], 0xD0);
-			if(id != 0x55) {
-				logprintf(LOG_ERR, "wrong device detected");
-				exit(EXIT_FAILURE);
-			}
-
-			// read 0xD1 to check chip version: must equal 0x01 for BMP085 or 0x02 for BMP180
-			int version = wiringXI2CReadReg8(bmp180data->fd[y], 0xD1);
-			if(version != 0x01 && version != 0x02) {
-				logprintf(LOG_ERR, "wrong device detected");
-				exit(EXIT_FAILURE);
-			}
-
-			// read calibration coefficients from register addresses
-			bmp180data->ac1[y] = (short) readReg16(bmp180data->fd[y], 0xAA);
-			bmp180data->ac2[y] = (short) readReg16(bmp180data->fd[y], 0xAC);
-			bmp180data->ac3[y] = (short) readReg16(bmp180data->fd[y], 0xAE);
-			bmp180data->ac4[y] = (unsigned short) readReg16(bmp180data->fd[y], 0xB0);
-			bmp180data->ac5[y] = (unsigned short) readReg16(bmp180data->fd[y], 0xB2);
-			bmp180data->ac6[y] = (unsigned short) readReg16(bmp180data->fd[y], 0xB4);
-			bmp180data->b1[y] = (short) readReg16(bmp180data->fd[y], 0xB6);
-			bmp180data->b2[y] = (short) readReg16(bmp180data->fd[y], 0xB8);
-			bmp180data->mb[y] = (short) readReg16(bmp180data->fd[y], 0xBA);
-			bmp180data->mc[y] = (short) readReg16(bmp180data->fd[y], 0xBC);
-			bmp180data->md[y] = (short) readReg16(bmp180data->fd[y], 0xBE);
-
-			// check communication: no result must equal 0 or 0xFFFF (=65535)
-			if (bmp180data->ac1[y] == 0 || bmp180data->ac1[y] == 0xFFFF ||
-					bmp180data->ac2[y] == 0 || bmp180data->ac2[y] == 0xFFFF ||
-					bmp180data->ac3[y] == 0 || bmp180data->ac3[y] == 0xFFFF ||
-					bmp180data->ac4[y] == 0 || bmp180data->ac4[y] == 0xFFFF ||
-					bmp180data->ac5[y] == 0 || bmp180data->ac5[y] == 0xFFFF ||
-					bmp180data->ac6[y] == 0 || bmp180data->ac6[y] == 0xFFFF ||
-					bmp180data->b1[y] == 0 || bmp180data->b1[y] == 0xFFFF ||
-					bmp180data->b2[y] == 0 || bmp180data->b2[y] == 0xFFFF ||
-					bmp180data->mb[y] == 0 || bmp180data->mb[y] == 0xFFFF ||
-					bmp180data->mc[y] == 0 || bmp180data->mc[y] == 0xFFFF ||
-					bmp180data->md[y] == 0 || bmp180data->md[y] == 0xFFFF) {
-				logprintf(LOG_ERR, "data communication error");
-				exit(EXIT_FAILURE);
-			}
-		}
+	node->fd = wiringXI2CSetup(node->id);
+	if(node->fd <= 0) {
+		logprintf(LOG_ERR, "%s could not open I2C device %02x", jdevice->key, node->id);
+		FREE(node);
+		return (void *)NULL;
 	}
 
-	while (loop) {
-		if (protocol_thread_wait(node, interval, &nrloops) == ETIMEDOUT) {
-			pthread_mutex_lock(&lock);
-			for (y = 0; y < bmp180data->nrid; y++) {
-				if (bmp180data->fd[y] > 0) {
-					// uncompensated temperature value
-					unsigned short ut = 0;
-
-					// write 0x2E into Register 0xF4 to request a temperature reading.
-					wiringXI2CWriteReg8(bmp180data->fd[y], 0xF4, 0x2E);
-
-					// wait at least 4.5ms: we suspend execution for 5000 microseconds.
-					usleep(5000);
-
-					// read the two byte result from address 0xF6.
-					ut = (unsigned short) readReg16(bmp180data->fd[y], 0xF6);
-
-					// calculate temperature (in units of 0.1 deg C) given uncompensated value
-					int x1, x2;
-					x1 = (((int) ut - (int) bmp180data->ac6[y])) * (int) bmp180data->ac5[y] >> 15;
-					x2 = ((int) bmp180data->mc[y] << 11) / (x1 + bmp180data->md[y]);
-					int b5 = x1 + x2;
-					int temp = ((b5 + 8) >> 4);
-
-					// uncompensated pressure value
-					unsigned int up = 0;
-
-					// write 0x34+(BMP085_OVERSAMPLING_SETTING<<6) into register 0xF4
-					// request a pressure reading with specified oversampling setting
-					wiringXI2CWriteReg8(bmp180data->fd[y], 0xF4,
-							0x34 + (oversampling << 6));
-
-					// wait for conversion, delay time dependent on oversampling setting
-					unsigned int delay = (unsigned int) ((2 + (3 << oversampling)) * 1000);
-					usleep(delay);
-
-					// read the three byte result (block data): 0xF6 = MSB, 0xF7 = LSB and 0xF8 = XLSB
-					int msb = wiringXI2CReadReg8(bmp180data->fd[y], 0xF6);
-					int lsb = wiringXI2CReadReg8(bmp180data->fd[y], 0xF7);
-					int xlsb = wiringXI2CReadReg8(bmp180data->fd[y], 0xF8);
-					up = (((unsigned int) msb << 16) | ((unsigned int) lsb << 8) | (unsigned int) xlsb)
-							>> (8 - oversampling);
-
-					// calculate pressure (in Pa) given uncompensated value
-					int x3, b3, b6, pressure;
-					unsigned int b4, b7;
-
-					// calculate B6
-					b6 = b5 - 4000;
-
-					// calculate B3
-					x1 = (bmp180data->b2[y] * (b6 * b6) >> 12) >> 11;
-					x2 = (bmp180data->ac2[y] * b6) >> 11;
-					x3 = x1 + x2;
-					b3 = (((bmp180data->ac1[y] * 4 + x3) << oversampling) + 2) >> 2;
-
-					// calculate B4
-					x1 = (bmp180data->ac3[y] * b6) >> 13;
-					x2 = (bmp180data->b1[y] * ((b6 * b6) >> 12)) >> 16;
-					x3 = ((x1 + x2) + 2) >> 2;
-					b4 = (bmp180data->ac4[y] * (unsigned int) (x3 + 32768)) >> 15;
-
-					// calculate B7
-					b7 = ((up - (unsigned int) b3) * ((unsigned int) 50000 >> oversampling));
-
-					// calculate pressure in Pa
-					pressure = b7 < 0x80000000 ? (int) ((b7 << 1) / b4) : (int) ((b7 / b4) << 1);
-					x1 = (pressure >> 8) * (pressure >> 8);
-					x1 = (x1 * 3038) >> 16;
-					x2 = (-7357 * pressure) >> 16;
-					pressure += (x1 + x2 + 3791) >> 4;
-
-					bmp180->message = json_mkobject();
-					JsonNode *code = json_mkobject();
-					json_append_member(code, "id", json_mkstring(bmp180data->id[y]));
-					json_append_member(code, "temperature", json_mknumber(((double) temp / 10) + temp_offset, 1)); // in deg C
-					json_append_member(code, "pressure", json_mknumber(((double) pressure / 100) + pressure_offset, 1)); // in hPa
-
-					json_append_member(bmp180->message, "message", code);
-					json_append_member(bmp180->message, "origin", json_mkstring("receiver"));
-					json_append_member(bmp180->message, "protocol", json_mkstring(bmp180->id));
-
-					if(pilight.broadcast != NULL) {
-						pilight.broadcast(bmp180->id, bmp180->message, PROTOCOL);
-					}
-					json_delete(bmp180->message);
-					bmp180->message = NULL;
-				} else {
-					logprintf(LOG_NOTICE, "error connecting to bmp180");
-					logprintf(LOG_DEBUG, "(probably i2c bus error from wiringXI2CSetup)");
-					logprintf(LOG_DEBUG, "(maybe wrong id? use i2cdetect to find out)");
-					protocol_thread_wait(node, 1, &nrloops);
-				}
-			}
-			pthread_mutex_unlock(&lock);
-		}
+// read 0xD0 to check chip id: must equal 0x55 for BMP085/180
+	int id = wiringXI2CReadReg8(node->fd, 0xD0);
+	if(id != 0x55) {
+		logprintf(LOG_ERR, "%s detected a wrong device %02x on I2C line %02x", jdevice->key, id, node->id);
+		FREE(node);
+		return (void *)NULL;
 	}
 
-	if (bmp180data->id) {
-		for (y = 0; y < bmp180data->nrid; y++) {
-			FREE(bmp180data->id[y]);
-		}
-		FREE(bmp180data->id);
+	// read 0xD1 to check chip version: must equal 0x01 for BMP085 or 0x02 for BMP180
+	int version = wiringXI2CReadReg8(node->fd, 0xD1);
+	if(version != 0x01 && version != 0x02) {
+		logprintf(LOG_ERR, "%s detected a wrong version %02x on I2C line %02x", jdevice->key, version, node->id);
+		FREE(node);
+		return (void *)NULL;
 	}
-	if (bmp180data->ac1) {
-		FREE(bmp180data->ac1);
-	}
-	if (bmp180data->ac2) {
-		FREE(bmp180data->ac2);
-	}
-	if (bmp180data->ac3) {
-		FREE(bmp180data->ac3);
-	}
-	if (bmp180data->ac4) {
-		FREE(bmp180data->ac4);
-	}
-	if (bmp180data->ac5) {
-		FREE(bmp180data->ac5);
-	}
-	if (bmp180data->ac6) {
-		FREE(bmp180data->ac6);
-	}
-	if (bmp180data->b1) {
-		FREE(bmp180data->b1);
-	}
-	if (bmp180data->b2) {
-		FREE(bmp180data->b2);
-	}
-	if (bmp180data->mb) {
-		FREE(bmp180data->mb);
-	}
-	if (bmp180data->mc) {
-		FREE(bmp180data->mc);
-	}
-	if (bmp180data->md) {
-		FREE(bmp180data->md);
-	}
-	if (bmp180data->fd) {
-		for (y = 0; y < bmp180data->nrid; y++) {
-			if (bmp180data->fd[y] > 0) {
-				close(bmp180data->fd[y]);
-			}
-		}
-		FREE(bmp180data->fd);
-	}
-	FREE(bmp180data);
-	threads--;
 
-	return (void *) NULL;
+	// read calibration coefficients from register addresses
+	if((node->ac1 = (short)readReg16(node->fd, 0xAA)) == 0x0 || node->ac1 == 0xFFFF) {
+		logprintf(LOG_ERR, "%s encountered an error while communicating on I2C line %02x", jdevice->key, node->id);
+		FREE(node);
+		return (void *)NULL;
+	}
+	if((node->ac2 = (short)readReg16(node->fd, 0xAC)) == 0x0 || node->ac1 == 0xFFFF) {
+		logprintf(LOG_ERR, "%s encountered an error while communicating on I2C line %02x", jdevice->key, node->id);
+		FREE(node);
+		return (void *)NULL;
+	}
+	if((node->ac3 = (short)readReg16(node->fd, 0xAE)) == 0x0 || node->ac1 == 0xFFFF) {
+		logprintf(LOG_ERR, "%s encountered an error while communicating on I2C line %02x", jdevice->key, node->id);
+		FREE(node);
+		return (void *)NULL;
+	}
+	if((node->ac4 = (unsigned short)readReg16(node->fd, 0xB0)) == 0x0 || node->ac1 == 0xFFFF) {
+		logprintf(LOG_ERR, "%s encountered an error while communicating on I2C line %02x", jdevice->key, node->id);
+		FREE(node);
+		return (void *)NULL;
+	}
+	if((node->ac5 = (unsigned short)readReg16(node->fd, 0xB2)) == 0x0 || node->ac1 == 0xFFFF) {
+		logprintf(LOG_ERR, "%s encountered an error while communicating on I2C line %02x", jdevice->key, node->id);
+		FREE(node);
+		return (void *)NULL;
+	}
+	if((node->ac6 = (unsigned short)readReg16(node->fd, 0xB4)) == 0x0 || node->ac1 == 0xFFFF) {
+		logprintf(LOG_ERR, "%s encountered an error while communicating on I2C line %02x", jdevice->key, node->id);
+		FREE(node);
+		return (void *)NULL;
+	}
+	if((node->b1 = (short)readReg16(node->fd, 0xB6)) == 0x0 || node->ac1 == 0xFFFF) {
+		logprintf(LOG_ERR, "%s encountered an error while communicating on I2C line %02x", jdevice->key, node->id);
+		FREE(node);
+		return (void *)NULL;
+	}
+	if((node->b2 = (short)readReg16(node->fd, 0xB8)) == 0x0 || node->ac1 == 0xFFFF) {
+		logprintf(LOG_ERR, "%s encountered an error while communicating on I2C line %02x", jdevice->key, node->id);
+		FREE(node);
+		return (void *)NULL;
+	}
+	if((node->mb = (short)readReg16(node->fd, 0xBA)) == 0x0 || node->ac1 == 0xFFFF) {
+		logprintf(LOG_ERR, "%s encountered an error while communicating on I2C line %02x", jdevice->key, node->id);
+		FREE(node);
+		return (void *)NULL;
+	}
+	if((node->mc = (short)readReg16(node->fd, 0xBC)) == 0x0 || node->ac1 == 0xFFFF) {
+		logprintf(LOG_ERR, "%s encountered an error while communicating on I2C line %02x", jdevice->key, node->id);
+		FREE(node);
+		return (void *)NULL;
+	}
+	if((node->md = (short)readReg16(node->fd, 0xBE)) == 0x0 || node->ac1 == 0xFFFF) {
+		logprintf(LOG_ERR, "%s encountered an error while communicating on I2C line %02x", jdevice->key, node->id);
+		FREE(node);
+		return (void *)NULL;
+	}
+
+	if((node->name = MALLOC(strlen(jdevice->key)+1)) == NULL) {
+		OUT_OF_MEMORY
+	}
+	strcpy(node->name, jdevice->key);
+
+	node->interval = interval;
+
+	node->next = data;
+	data = node;
+
+	tv.tv_sec = interval;
+	tv.tv_usec = 0;
+	threadpool_add_scheduled_work(jdevice->key, thread, tv, (void *)node);
+
+	return NULL;
 }
 
-static struct threadqueue_t *initDev(JsonNode *jdevice) {
-	if(wiringXSupported() == 0 && wiringXSetup() == 0) {
-		loop = 1;
-		char *output = json_stringify(jdevice, NULL);
-		JsonNode *json = json_decode(output);
-		json_free(output);
-
-		struct protocol_threads_t *node = protocol_thread_init(bmp180, json);
-		return threads_register("bmp180", &thread, (void *) node, 0);
-	} else {
-		return NULL;
+static void gc(void) {
+	struct data_t *tmp = NULL;
+	while(data) {
+		tmp = data;
+		FREE(tmp->name);
+		data = data->next;
+		FREE(tmp);
 	}
-}
-
-static void threadGC(void) {
-	loop = 0;
-	protocol_thread_stop(bmp180);
-	while (threads > 0) {
-		usleep(10);
+	if(data != NULL) {
+		FREE(data);
 	}
-	protocol_thread_free(bmp180);
 }
 #endif
 
@@ -390,20 +404,15 @@ static void threadGC(void) {
 __attribute__((weak))
 #endif
 void bmp180Init(void) {
-#if !defined(__FreeBSD__) && !defined(_WIN32)
-	pthread_mutexattr_init(&attr);
-	pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);
-	pthread_mutex_init(&lock, &attr);
-#endif
-
 	protocol_register(&bmp180);
 	protocol_set_id(bmp180, "bmp180");
 	protocol_device_add(bmp180, "bmp180", "I2C Barometric Pressure and Temperature Sensor");
 	protocol_device_add(bmp180, "bmp085", "I2C Barometric Pressure and Temperature Sensor");
 	bmp180->devtype = WEATHER;
 	bmp180->hwtype = SENSOR;
+	bmp180->multipleId = 0;
 
-	options_add(&bmp180->options, 'i', "id", OPTION_HAS_VALUE, DEVICES_ID, JSON_STRING, NULL, "0x[0-9a-f]{2}");
+	options_add(&bmp180->options, 'i', "id", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^([1-9]|1[1-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$");
 	options_add(&bmp180->options, 'o', "oversampling", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *) 1, "^[0123]$");
 	options_add(&bmp180->options, 'p', "pressure", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, (void *) 0, "^[0-9]{1,3}$");
 	options_add(&bmp180->options, 't', "temperature", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, (void *) 0, "^[0-9]{1,3}$");
@@ -418,17 +427,19 @@ void bmp180Init(void) {
 	options_add(&bmp180->options, 0, "show-temperature", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *) 1, "^[10]{1}$");
 
 #if !defined(__FreeBSD__) && !defined(_WIN32)
-	bmp180->initDev = &initDev;
-	bmp180->threadGC = &threadGC;
+	// bmp180->initDev = &initDev;
+	bmp180->gc = &gc;
+
+	eventpool_callback(REASON_DEVICE_ADDED, addDevice);
 #endif
 }
 
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "bmp180";
-	module->version = "2.1";
-	module->reqversion = "6.0";
-	module->reqcommit = "84";
+	module->version = "3.0";
+	module->reqversion = "7.0";
+	module->reqcommit = "94";
 }
 
 void init(void) {

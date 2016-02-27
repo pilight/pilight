@@ -47,18 +47,7 @@ static int validate(void) {
 	return -1;
 }
 
-static void createMessage(int systemcode, int unitcode, int state) {
-	elro_800_contact->message = json_mkobject();
-	json_append_member(elro_800_contact->message, "systemcode", json_mknumber(systemcode, 0));
-	json_append_member(elro_800_contact->message, "unitcode", json_mknumber(unitcode, 0));
-	if(state == 0) {
-		json_append_member(elro_800_contact->message, "state", json_mkstring("opened"));
-	} else {
-		json_append_member(elro_800_contact->message, "state", json_mkstring("closed"));
-	}
-}
-
-static void parseCode(void) {
+static void parseCode(char *message) {
 	int binary[RAW_LENGTH/4], x = 0, i = 0;
 
 	for(x=0;x<elro_800_contact->rawlen-2;x+=4) {
@@ -72,7 +61,16 @@ static void parseCode(void) {
 	int systemcode = binToDec(binary, 0, 4);
 	int unitcode = binToDec(binary, 5, 9);
 	int state = binary[11];
-	createMessage(systemcode, unitcode, state);
+
+	x = snprintf(message, 255, "{\"systemcode\":%d,", systemcode);
+	x += snprintf(&message[x], 255-x, "\"unitcode\":%d,", unitcode);
+
+	if(state == 0) {
+		x += snprintf(&message[x], 255-x, "\"state\":\"opened\"");
+	} else {
+		x += snprintf(&message[x], 255-x, "\"state\":\"closed\"");
+	}
+	x += snprintf(&message[x], 255-x, "}");
 }
 
 #if !defined(MODULE) && !defined(_WIN32)
@@ -102,9 +100,9 @@ void elro800ContactInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "elro_800_contact";
-	module->version = "2.3";
-	module->reqversion = "6.0";
-	module->reqcommit = "84";
+	module->version = "3.0";
+	module->reqversion = "7.0";
+	module->reqcommit = "94";
 }
 
 void init(void) {

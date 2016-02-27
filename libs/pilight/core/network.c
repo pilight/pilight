@@ -64,7 +64,7 @@
 	#include <net/if_dl.h>
 #endif
 
-#include "../config/settings.h"
+#include "../storage/storage.h"
 #include "mem.h"
 #include "network.h"
 #include "log.h"
@@ -97,12 +97,10 @@ int inetdevs(char ***array) {
 			}
 			if(match == 0 && strcmp(pAdapter->IpAddressList.IpAddress.String, "0.0.0.0") != 0) {
 				if((*array = REALLOC(*array, sizeof(char *)*(nrdevs+1))) == NULL) {
-					fprintf(stderr, "out of memory\n");
-					exit(EXIT_FAILURE);
+					OUT_OF_MEMORY
 				}
 				if(((*array)[nrdevs] = MALLOC(strlen(pAdapter->AdapterName)+1)) == NULL) {
-					fprintf(stderr, "out of memory\n");
-					exit(EXIT_FAILURE);
+					OUT_OF_MEMORY
 				}
 				strcpy((*array)[nrdevs], pAdapter->AdapterName);
 				nrdevs++;
@@ -115,7 +113,7 @@ int inetdevs(char ***array) {
 #else
 	int family = 0, s = 0;
 	char host[NI_MAXHOST];
-	struct ifaddrs *ifaddr, *ifa;
+	struct ifaddrs *ifaddr = NULL, *ifa = NULL;
 
 #ifdef __FreeBSD__
 	if(rep_getifaddrs(&ifaddr) == -1) {
@@ -136,8 +134,12 @@ int inetdevs(char ***array) {
 
 		family = ifa->ifa_addr->sa_family;
 
-		if((strstr(ifa->ifa_name, "lo") == NULL && strstr(ifa->ifa_name, "vbox") == NULL
-		    && strstr(ifa->ifa_name, "dummy") == NULL) && (family == AF_INET || family == AF_INET6)) {
+		if((strstr(ifa->ifa_name, "lo") == NULL &&
+		    strstr(ifa->ifa_name, "vbox") == NULL &&
+				strstr(ifa->ifa_name, "dummy") == NULL &&
+				strstr(ifa->ifa_name, "tap") == NULL &&
+				strstr(ifa->ifa_name, "tun") == NULL) &&
+			(family == AF_INET || family == AF_INET6)) {
 			memset(host, '\0', NI_MAXHOST);
 
 			s = getnameinfo(ifa->ifa_addr,
@@ -158,12 +160,10 @@ int inetdevs(char ***array) {
 				}
 				if(match == 0) {
 					if((*array = REALLOC(*array, sizeof(char *)*(nrdevs+1))) == NULL) {
-						fprintf(stderr, "out of memory\n");
-						exit(EXIT_FAILURE);
+						OUT_OF_MEMORY
 					}
 					if(((*array)[nrdevs] = MALLOC(strlen(ifa->ifa_name)+1)) == NULL) {
-						fprintf(stderr, "out of memory\n");
-						exit(EXIT_FAILURE);
+						OUT_OF_MEMORY
 					}
 					strcpy((*array)[nrdevs], ifa->ifa_name);
 					nrdevs++;
@@ -309,8 +309,6 @@ int dev2ip(char *dev, char **ip, sa_family_t type) {
 }
 
 int host2ip(char *host, char *ip) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
-
 	int rv = 0;
 	struct addrinfo hints, *servinfo, *p;
 	struct sockaddr_in *h = NULL;
@@ -382,8 +380,6 @@ int inet_pton(int af, const char *src, void *dst) {
 
 #ifdef __FreeBSD__
 struct sockaddr *sockaddr_dup(struct sockaddr *sa) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
-
 	struct sockaddr *ret;
 	socklen_t socklen;
 #ifdef HAVE_SOCKADDR_SA_LEN
@@ -392,8 +388,7 @@ struct sockaddr *sockaddr_dup(struct sockaddr *sa) {
 	socklen = sizeof(struct sockaddr_storage);
 #endif
 	if((ret = CALLOC(1, socklen)) == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(EXIT_FAILURE);
+		OUT_OF_MEMORY
 	}
 	if (ret == NULL)
 		return NULL;
@@ -402,20 +397,23 @@ struct sockaddr *sockaddr_dup(struct sockaddr *sa) {
 }
 
 int rep_getifaddrs(struct ifaddrs **ifap) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
-
 	struct ifconf ifc;
 	char buff[8192];
-	int fd, i, n;
-	struct ifreq ifr, *ifrp=NULL;
+	int fd = 0, i = 0, n = 0;
+	struct ifreq ifr, *ifrp = NULL;
 	struct ifaddrs *curif = NULL, *ifa = NULL;
 	struct ifaddrs *lastif = NULL;
+
+	memset(buff, 0, 8192);
 
 	*ifap = NULL;
 
 	if ((fd = socket(AF_INET, SOCK_DGRAM, 0)) == -1) {
 		return -1;
 	}
+
+	memset(&ifc, 0, sizeof(struct ifconf));
+	memset(&ifr, 0, sizeof(struct ifreq));
 
 	ifc.ifc_len = sizeof(buff);
 	ifc.ifc_buf = buff;
@@ -456,13 +454,14 @@ int rep_getifaddrs(struct ifaddrs **ifap) {
 			return -1;
 		}
 
-		curif->ifa_name = MALLOC(sizeof(IFNAMSIZ)+1);
+		curif->ifa_name = MALLOC(IFNAMSIZ+1);
 		if(curif->ifa_name == NULL) {
 			FREE(curif);
 			freeifaddrs(*ifap);
 			close(fd);
 			return -1;
 		}
+		memset(curif->ifa_name, 0, IFNAMSIZ+1);
 		strncpy(curif->ifa_name, ifrp->ifr_name, IFNAMSIZ);
 		strncpy(ifr.ifr_name, ifrp->ifr_name, IFNAMSIZ);
 
@@ -512,8 +511,6 @@ int rep_getifaddrs(struct ifaddrs **ifap) {
 }
 
 void rep_freeifaddrs(struct ifaddrs *ifaddr) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
-
 	struct ifaddrs *ifa;
 	while(ifaddr) {
 		ifa = ifaddr;
@@ -528,8 +525,6 @@ void rep_freeifaddrs(struct ifaddrs *ifaddr) {
 #endif
 
 int whitelist_check(char *ip) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
-
 	char *whitelist = NULL;
 	unsigned int client[4] = {0};
 	int x = 0, i = 0, error = 1;
@@ -538,7 +533,7 @@ int whitelist_check(char *ip) {
 	char wip[16] = {'\0'};
 
 	/* Check if there are any whitelisted ip address */
-	if(settings_find_string("whitelist", &whitelist) != 0) {
+	if(settings_select_string(ORIGIN_MASTER, "whitelist", &whitelist) != 0) {
 		return 0;
 	}
 
@@ -576,22 +571,18 @@ int whitelist_check(char *ip) {
 			if(*tmp == '\0' || *tmp == ',') {
 				x = 0;
 				if((whitelist_cache = REALLOC(whitelist_cache, (sizeof(unsigned int ***)*(whitelist_number+1)))) == NULL) {
-					fprintf(stderr, "out of memory\n");
-					exit(EXIT_FAILURE);
+					OUT_OF_MEMORY
 				}
 				if((whitelist_cache[whitelist_number] = MALLOC(sizeof(unsigned int **)*2)) == NULL) {
-					fprintf(stderr, "out of memory\n");
-					exit(EXIT_FAILURE);
+					OUT_OF_MEMORY
 				}
 				/* Lower boundary */
 				if((whitelist_cache[whitelist_number][0] = MALLOC(sizeof(unsigned int *)*4)) == NULL) {
-					fprintf(stderr, "out of memory\n");
-					exit(EXIT_FAILURE);
+					OUT_OF_MEMORY
 				}
 				/* Upper boundary */
 				if((whitelist_cache[whitelist_number][1] = MALLOC(sizeof(unsigned int *)*4)) == NULL) {
-					fprintf(stderr, "out of memory\n");
-					exit(EXIT_FAILURE);
+					OUT_OF_MEMORY
 				}
 
 				/* Turn the whitelist ip address into a upper and lower boundary.
@@ -638,8 +629,6 @@ int whitelist_check(char *ip) {
 }
 
 void whitelist_free(void) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
-
 	int i = 0;
 	if(whitelist_cache) {
 		for(i=0;i<whitelist_number;i++) {

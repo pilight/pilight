@@ -47,14 +47,7 @@ static int validate(void) {
 	return -1;
 }
 
-static void createMessage(int version, int high, int low) {
-	pilight_firmware_v3->message = json_mkobject();
-	json_append_member(pilight_firmware_v3->message, "version", json_mknumber(version, 2));
-	json_append_member(pilight_firmware_v3->message, "lpf", json_mknumber(high*10, 0));
-	json_append_member(pilight_firmware_v3->message, "hpf", json_mknumber(low*10, 0));
-}
-
-static void parseCode(void) {
+static void parseCode(char *message) {
 	int i = 0, x = 0, binary[RAW_LENGTH/4];
 
 	for(i=0;i<pilight_firmware_v3->rawlen;i+=4) {
@@ -87,7 +80,7 @@ static void parseCode(void) {
 	}
 
 	if((((ver&0xf)+(lpf&0xf)+(hpf&0xf))&0xf) == chk) {
-		createMessage(version, high, low);
+		snprintf(message, 255, "{\"version\":%d,\"lpf\":%d,\"hpf\":%d}", version, high*10, low*10);
 	}
 }
 
@@ -117,9 +110,9 @@ void pilightFirmwareV3Init(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "pilight_firmware";
-	module->version = "2.0";
-	module->reqversion = "6.0";
-	module->reqcommit = "84";
+	module->version = "3.0";
+	module->reqversion = "7.0";
+	module->reqcommit = "94";
 }
 
 void init(void) {

@@ -25,5 +25,20 @@
  *
  */
 
-void arp_add_host(const char *host_name);
-int arp_resolv(char *if_name, char *srcmac, char *dstmac, char **ip);
+#ifndef _ARP_H_
+#define _ARP_H_
+
+typedef struct arp_list_t {
+	char dstmac[19];
+	char dstip[INET_ADDRSTRLEN+1];
+	int tries;
+	int found;
+	int timeout;
+	unsigned long time;
+	struct arp_list_t *next;
+} arp_list_t;
+
+void arp_add_host(struct arp_list_t **, const char *);
+int arp_resolv(struct arp_list_t *, char *, char *, char *, int, void (*)(char *, char *));
+
+#endif

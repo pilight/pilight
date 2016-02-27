@@ -50,18 +50,19 @@ static int validate(void) {
 	return -1;
 }
 
-static void createMessage(int systemcode, int programcode, int state) {
-	rsl366->message = json_mkobject();
-	json_append_member(rsl366->message, "systemcode", json_mknumber(systemcode, 0));
-	json_append_member(rsl366->message, "programcode", json_mknumber(programcode, 0));
+static void createMessage(char *message, int systemcode, int programcode, int state) {
+	int x = snprintf(message, 255, "{\"systemcode\":%d,", systemcode);
+	x += snprintf(&message[x], 255-x, "\"programcode\":%d,", programcode);
+
 	if(state == 1) {
-		json_append_member(rsl366->message, "state", json_mkstring("on"));
+		x += snprintf(&message[x], 255-x, "\"state\":\"on\"");
 	} else {
-		json_append_member(rsl366->message, "state", json_mkstring("off"));
+		x += snprintf(&message[x], 255-x, "\"state\":\"off\"");
 	}
+	x += snprintf(&message[x], 255-x, "}");
 }
 
-static void parseCode(void) {
+static void parseCode(char *message) {
 	int x = 0, i = 0, binary[RAW_LENGTH/4];
 
 	/* Convert the one's and zero's into binary */
@@ -76,33 +77,33 @@ static void parseCode(void) {
 	//Check if there is a valid systemcode
 	if((binary[0]+binary[1]+binary[2]+binary[3]) > 1)
                 return;
-        
+
         //Get systemcode: 1000=>1, 0100=>2, 0010=>3, 0001=>4
         int systemcode = 0;
         for(i=0;i<4;i++) {
         	if(binary[i] == 1)
         		systemcode = i+1;
         }
-        
+
         //Check if there is a valid programcode
         if((binary[4]+binary[5]+binary[6]+binary[7]) > 1)
                 return;
-        
+
         //Get programcode: 1000=>1, 0100=>2, 0010=>3, 0001=>4
         int programcode = 0;
         for(i=4;i<8;i++) {
         	if(binary[i] == 1)
         		programcode = i-3;
         }
-        
+
         //Check if a system and programcode was found
         if(systemcode == 0 || programcode == 0)
         	return;
-        
+
 	// There seems to be no check and binary[10] is always a low
 	int state = binary[11]^1;
 
-	createMessage(systemcode, programcode, state);
+	createMessage(message, systemcode, programcode, state);
 }
 
 static void createLow(int s, int e) {
@@ -150,7 +151,7 @@ static void createFooter(void) {
 	rsl366->raw[49]=(PULSE_DIV*AVG_PULSE_LENGTH);
 }
 
-static int createCode(struct JsonNode *code) {
+static int createCode(struct JsonNode *code, char *message) {
 	int systemcode = -1;
 	int programcode = -1;
 	int state = -1;
@@ -175,7 +176,7 @@ static int createCode(struct JsonNode *code) {
 		logprintf(LOG_ERR, "rsl366: invalid programcode range");
 		return EXIT_FAILURE;
 	} else {
-		createMessage(systemcode, programcode, state);
+		createMessage(message, systemcode, programcode, state);
 		clearCode();
 		createSystemCode(systemcode);
 		createProgramCode(programcode);
@@ -226,9 +227,9 @@ void rsl366Init(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "rsl366";
-	module->version = "2.6";
-	module->reqversion = "6.0";
-	module->reqcommit = "84";
+	module->version = "4.0";
+	module->reqversion = "7.0";
+	module->reqcommit = "94";
 }
 
 void init(void) {

@@ -55,20 +55,20 @@ static int validate(void) {
 	return -1;
 }
 
-static void createMessage(int id, int state, int unit, int all, int learn) {
-	quigg_gt7000->message = json_mkobject();
-	json_append_member(quigg_gt7000->message, "id", json_mknumber(id, 0));
+static void createMessage(char *message, int id, int state, int unit, int all, int learn) {
+	int x = snprintf(message, 255, "{\"id\":%d,", id);
 	if(all == 1) {
-		json_append_member(quigg_gt7000->message, "all", json_mknumber(all, 0));
+		x += snprintf(&message[x], 255-x, "\"all\":1,");
 	} else {
-		json_append_member(quigg_gt7000->message, "unit", json_mknumber(unit, 0));
+		x += snprintf(&message[x], 255-x, "\"unit\":%d,", unit);
 	}
 
 	if(state == 1) {
-		json_append_member(quigg_gt7000->message, "state", json_mkstring("on"));
+		x += snprintf(&message[x], 255-x, "\"state\":\"on\"");
 	} else {
-		json_append_member(quigg_gt7000->message, "state", json_mkstring("off"));
+		x += snprintf(&message[x], 255-x, "\"state\":\"off\"");
 	}
+	x += snprintf(&message[x], 255-x, "}");
 
 	if(learn == 1) {
 		quigg_gt7000->txrpt = LEARN_REPEATS;
@@ -77,7 +77,7 @@ static void createMessage(int id, int state, int unit, int all, int learn) {
 	}
 }
 
-static void parseCode(void) {
+static void parseCode(char *message) {
 	int binary[RAW_LENGTH/2], x = 0, dec_unit[4] = {0, 3, 1, 2};
 	int iParity=1, iParityData=-1; // init for even parity
 
@@ -102,7 +102,6 @@ static void parseCode(void) {
 	int state = binToDecRev(binary, 15, 15);
 	int dimm = binToDecRev(binary, 16, 16);
 	int parity = binToDecRev(binary, 19, 19);
-	int learn = 0;
 
 	unit = dec_unit[unit];
 
@@ -111,7 +110,7 @@ static void parseCode(void) {
 	}
 
 	if (iParityData == parity && dimm < 1) {
-		createMessage(id, state, unit, all, learn);
+		createMessage(message, id, state, unit, all, 0);
 	}
 }
 
@@ -198,7 +197,7 @@ static void createParity(void) {
 	}
 }
 
-static int createCode(JsonNode *code) {
+static int createCode(struct JsonNode *code, char *message) {
 	double itmp = -1;
 	int unit = -1, id = -1, learn = -1, state = -1, all = 0;
 
@@ -229,7 +228,7 @@ static int createCode(JsonNode *code) {
 			unit = 4;
 		}
 		quigg_gt7000->rawlen = RAW_LENGTH;
-		createMessage(id, state, unit, all, learn);
+		createMessage(message, id, state, unit, all, learn);
 		clearCode();
 		createId(id);
 		createUnit(unit);
@@ -284,9 +283,9 @@ void quiggGT7000Init(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "quigg_gt7000";
-	module->version = "2.1";
-	module->reqversion = "6.0";
-	module->reqcommit = "84";
+	module->version = "3.0";
+	module->reqversion = "7.0";
+	module->reqcommit = "94";
 }
 
 void init(void) {

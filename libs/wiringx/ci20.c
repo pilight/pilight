@@ -382,6 +382,14 @@ static int ci20WaitForInterrupt(int pin, int ms) {
 	return x;
 }
 
+static int ci20SelectableFd(int pin) {
+	if(pinModes[pin] != SYS) {
+		wiringXLog(LOG_ERR, "ci20->selectableFd: Trying to read from pin %d, but it's not configured as interrupt", pin);
+		return -1;
+	}
+	return sysFds[pin];
+}
+
 static int ci20GC(void) {
 	int i = 0, fd = 0;
 	char path[35];
@@ -552,6 +560,7 @@ void ci20Init(void) {
 	ci20->identify=&identify;
 	ci20->isr=&ci20ISR;
 	ci20->waitForInterrupt=&ci20WaitForInterrupt;
+	ci20->selectableFd=&ci20SelectableFd;
 #ifndef __FreeBSD__
 	ci20->I2CRead=&ci20I2CRead;
 	ci20->I2CReadReg8=&ci20I2CReadReg8;

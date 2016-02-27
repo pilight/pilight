@@ -47,18 +47,19 @@ static int validate(void) {
 	return -1;
 }
 
-static void createMessage(int systemcode, int unitcode, int state) {
-	elro_400_switch->message = json_mkobject();
-	json_append_member(elro_400_switch->message, "systemcode", json_mknumber(systemcode, 0));
-	json_append_member(elro_400_switch->message, "unitcode", json_mknumber(unitcode, 0));
+static void createMessage(char *message, int systemcode, int unitcode, int state) {
+	int x = snprintf(message, 255, "{\"systemcode\":%d,", systemcode);
+	x += snprintf(&message[x], 255-x, "\"unitcode\":%d,", unitcode);
+
 	if(state == 1) {
-		json_append_member(elro_400_switch->message, "state", json_mkstring("on"));
+		x += snprintf(&message[x], 255-x, "\"state\":\"on\"");
 	} else {
-		json_append_member(elro_400_switch->message, "state", json_mkstring("off"));
+		x += snprintf(&message[x], 255-x, "\"state\":\"off\"");
 	}
+	x += snprintf(&message[x], 255-x, "}");
 }
 
-static void parseCode(void) {
+static void parseCode(char *message) {
 	int x = 0, i = 0, binary[RAW_LENGTH/4];
 
 	for(x=0;x<elro_400_switch->rawlen-2;x+=4) {
@@ -72,7 +73,8 @@ static void parseCode(void) {
 	int systemcode = binToDecRev(binary, 0, 4);
 	int unitcode = binToDecRev(binary, 5, 9);
 	int state = binary[11];
-	createMessage(systemcode, unitcode, state);
+
+	createMessage(message, systemcode, unitcode, state);
 }
 
 static void createLow(int s, int e) {
@@ -142,7 +144,7 @@ static void createFooter(void) {
 	elro_400_switch->raw[49]=(PULSE_DIV*AVG_PULSE_LENGTH);
 }
 
-static int createCode(struct JsonNode *code) {
+static int createCode(struct JsonNode *code, char *message) {
 	int systemcode = -1;
 	int unitcode = -1;
 	int state = -1;
@@ -167,7 +169,7 @@ static int createCode(struct JsonNode *code) {
 		logprintf(LOG_ERR, "elro_400_switch: invalid unitcode range");
 		return EXIT_FAILURE;
 	} else {
-		createMessage(systemcode, unitcode, state);
+		createMessage(message, systemcode, unitcode, state);
 		clearCode();
 		createSystemCode(systemcode);
 		createUnitCode(unitcode);
@@ -217,9 +219,9 @@ void elro400SwitchInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "elro_400_switch";
-	module->version = "2.3";
-	module->reqversion = "6.0";
-	module->reqcommit = "84";
+	module->version = "3.0";
+	module->reqversion = "7.0";
+	module->reqcommit = "94";
 }
 
 void init(void) {

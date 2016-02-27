@@ -47,19 +47,19 @@ static int validate(void) {
 	return -1;
 }
 
-static void createMessage(int id, int systemcode, int unit, int state) {
-	daycom->message = json_mkobject();
-	json_append_member(daycom->message, "id", json_mknumber(id, 0));
-	json_append_member(daycom->message, "systemcode", json_mknumber(systemcode, 0));
-	json_append_member(daycom->message, "unit", json_mknumber(unit, 0));
+static void createMessage(char *message, int id, int systemcode, int unit, int state) {
+	int x = snprintf(message, 255, "{\"id\":%d,", id);
+	x += snprintf(&message[x], 255-x, "\"systemcode\":%d,", systemcode);
+
 	if(state == 0) {
-		json_append_member(daycom->message, "state", json_mkstring("on"));
+		x += snprintf(&message[x], 255-x, "\"state\":\"on\"");
 	} else {
-		json_append_member(daycom->message, "state", json_mkstring("off"));
+		x += snprintf(&message[x], 255-x, "\"state\":\"off\"");
 	}
+	x += snprintf(&message[x], 255-x, "}");
 }
 
-static void parseCode(void) {
+static void parseCode(char *message) {
 	int binary[RAW_LENGTH/2], x = 0, i = 0;
 	int id = -1, state = -1, unit = -1, systemcode = -1;
 
@@ -75,7 +75,8 @@ static void parseCode(void) {
 	systemcode = binToDecRev(binary, 6, 19);
 	unit = binToDecRev(binary, 21, 23 );
 	state = binary[20];
-	createMessage(id, systemcode, unit, state);
+
+	createMessage(message, id, systemcode, unit, state);
 }
 
 static void createLow(int s, int e) {
@@ -146,13 +147,12 @@ static void createState(int state) {
 	}
 }
 
-
 static void createFooter(void) {
 	daycom->raw[48]=(AVG_PULSE_LENGTH);
 	daycom->raw[49]=(PULSE_DIV*AVG_PULSE_LENGTH);
 }
 
-static int createCode(JsonNode *code) {
+static int createCode(struct JsonNode *code, char *message) {
 	int id = -1;
 	int systemcode = -1;
 	int unit = -1;
@@ -183,7 +183,7 @@ static int createCode(JsonNode *code) {
 		logprintf(LOG_ERR, "daycom: invalid unit range");
 		return EXIT_FAILURE;
 	} else {
-		createMessage(id, systemcode, unit, state);
+		createMessage(message, id, systemcode, unit, state);
 		clearCode();
 		createId(id);
 		createSystemCode(systemcode);
@@ -235,9 +235,9 @@ void daycomInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "daycom";
-	module->version = "1.0";
-	module->reqversion = "6.0";
-	module->reqcommit = "187";
+	module->version = "2.0";
+	module->reqversion = "7.0";
+	module->reqcommit = "94";
 }
 
 void init(void) {

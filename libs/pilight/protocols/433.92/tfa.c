@@ -57,7 +57,7 @@ static int validate(void) {
 	return -1;
 }
 
-static void parseCode(void) {
+static void parseCode(char *message) {
 	int binary[RAW_LENGTH/2];
 	int temp1 = 0, temp2 = 0, temp3 = 0;
 	int humi1 = 0, humi2 = 0;
@@ -107,12 +107,10 @@ static void parseCode(void) {
 	temperature += temp_offset;
 	humidity += humi_offset;
 
-	tfa->message = json_mkobject();
-	json_append_member(tfa->message, "id", json_mknumber(id, 0));
-	json_append_member(tfa->message, "temperature", json_mknumber(temperature/100, 2));
-	json_append_member(tfa->message, "humidity", json_mknumber(humidity, 2));
-	json_append_member(tfa->message, "battery", json_mknumber(battery, 0));
-	json_append_member(tfa->message, "channel", json_mknumber(channel, 0));
+	snprintf(message, 255,
+		"{\"id\":%d,\"temperature\":%.2f,\"humidity\":%.2f,\"channel\":%d,\"battery\":%d}",
+		id, temperature/100, humidity, channel, battery
+	);
 }
 
 static int checkValues(struct JsonNode *jvalues) {
@@ -151,8 +149,7 @@ static int checkValues(struct JsonNode *jvalues) {
 
 		if(match == 0) {
 			if((snode = MALLOC(sizeof(struct settings_t))) == NULL) {
-				fprintf(stderr, "out of memory\n");
-				exit(EXIT_FAILURE);
+				OUT_OF_MEMORY
 			}
 			snode->id = id;
 			snode->channel = channel;
@@ -220,9 +217,9 @@ void tfaInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "tfa";
-	module->version = "1.0";
-	module->reqversion = "6.0";
-	module->reqcommit = "84";
+	module->version = "2.0";
+	module->reqversion = "7.0";
+	module->reqcommit = "94";
 }
 
 void init(void) {

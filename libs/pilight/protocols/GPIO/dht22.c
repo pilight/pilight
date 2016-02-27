@@ -38,7 +38,8 @@
 #include "../../core/common.h"
 #include "../../core/dso.h"
 #include "../../core/log.h"
-#include "../../core/threads.h"
+#include "../../core/threadpool.h"
+#include "../../core/eventpool.h"
 #include "../../core/binary.h"
 #include "../../core/gc.h"
 #include "../../core/json.h"
@@ -50,11 +51,25 @@
 #if !defined(__FreeBSD__) && !defined(_WIN32)
 #include "../../../wiringx/wiringX.h"
 
-static unsigned short loop = 1;
-static unsigned short threads = 0;
+typedef struct data_t {
+	char *name;
 
-static pthread_mutex_t lock;
-static pthread_mutexattr_t attr;
+	int id;
+	int interval;
+
+	double temp_offset;
+	double humi_offset;
+
+	struct data_t *next;
+} data_t;
+
+static struct data_t *data = NULL;
+
+static void *reason_code_received_free(void *param) {
+	struct reason_code_received_t *data = param;
+	FREE(data);
+	return NULL;
+}
 
 static uint8_t sizecvt(const int read_value) {
 	/* digitalRead() and friends from wiringx are defined as returning a value
@@ -68,154 +83,179 @@ static uint8_t sizecvt(const int read_value) {
 }
 
 static void *thread(void *param) {
-	struct protocol_threads_t *node = (struct protocol_threads_t *)param;
-	struct JsonNode *json = (struct JsonNode *)node->param;
+	struct threadpool_tasks_t *task = param;
+	struct data_t *settings = task->userdata;
+	uint8_t laststate = HIGH;
+	uint8_t counter = 0;
+	uint8_t j = 0, i = 0;
+
+	int x = 0, dht22_dat[5] = {0,0,0,0,0};
+
+	// pull pin down for 18 milliseconds
+	pinMode(settings->id, OUTPUT);
+	digitalWrite(settings->id, HIGH);
+	usleep(500000);  // 500 ms
+	// then pull it up for 40 microseconds
+	digitalWrite(settings->id, LOW);
+	usleep(20000);
+	// prepare to read the pin
+	pinMode(settings->id, INPUT);
+
+	// detect change and read data
+	for(i=0;(i<MAXTIMINGS);i++) {
+		counter = 0;
+		delayMicroseconds(10);
+
+		while((x = sizecvt(digitalRead(settings->id))) == laststate && x != -1) {
+			counter++;
+			delayMicroseconds(1);
+			if(counter == 255) {
+				break;
+			}
+		}
+		laststate = sizecvt(digitalRead(settings->id));
+
+		if(counter == 255) {
+			break;
+		}
+
+		// ignore first 3 transitions
+		if((i >= 4) && (i%2 == 0)) {
+
+			// shove each bit into the storage bytes
+			dht22_dat[(int)((double)j/8)] <<= 1;
+			if(counter > 16)
+				dht22_dat[(int)((double)j/8)] |= 1;
+			j++;
+		}
+	}
+
+	// check we read 40 bits (8bit x 5 ) + verify checksum in the last byte
+	// print it out if data is good
+	if((j >= 40) && (dht22_dat[4] == ((dht22_dat[0] + dht22_dat[1] + dht22_dat[2] + dht22_dat[3]) & 0xFF))) {
+		double h = dht22_dat[0] * 256 + dht22_dat[1];
+		double t = (dht22_dat[2] & 0x7F)* 256 + dht22_dat[3];
+		t += settings->temp_offset;
+		h += settings->humi_offset;
+
+		if((dht22_dat[2] & 0x80) != 0)
+			t *= -1;
+
+		struct reason_code_received_t *data = MALLOC(sizeof(struct reason_code_received_t));
+		if(data == NULL) {
+			OUT_OF_MEMORY
+		}
+		snprintf(data->message, 1024, "{\"gpio\":%d,\"temperature\":%.1f,\"humidity\":%.1f}", settings->id, t/10, h/10);
+		strncpy(data->origin, "receiver", 255);
+		data->protocol = dht22->id;
+		if(strlen(pilight_uuid) > 0) {
+			data->uuid = pilight_uuid;
+		} else {
+			data->uuid = NULL;
+		}
+		data->repeat = 1;
+		eventpool_trigger(REASON_CODE_RECEIVED, reason_code_received_free, data);
+	} else {
+		logprintf(LOG_DEBUG, "dht22 data checksum was wrong");
+	}
+
+	struct timeval tv;
+	tv.tv_sec = settings->interval;
+	tv.tv_usec = 0;
+	threadpool_add_scheduled_work(settings->name, thread, tv, (void *)settings);
+
+	return (void *)NULL;
+}
+
+static void *addDevice(void *param) {
+	struct threadpool_tasks_t *task = param;
+	struct JsonNode *jdevice = NULL;
+	struct JsonNode *jprotocols = NULL;
 	struct JsonNode *jid = NULL;
 	struct JsonNode *jchild = NULL;
-	int *id = 0;
-	int nrid = 0, y = 0, interval = 10, nrloops = 0, x = 0;
-	double temp_offset = 0.0, humi_offset = 0.0, itmp = 0.0;
+	struct data_t *node = NULL;
+	struct timeval tv;
+	int match = 0, interval = 10;
+	double itmp = 0.0;
 
-	threads++;
+	if(task->userdata == NULL) {
+		return NULL;
+	}
 
-	if((jid = json_find_member(json, "id"))) {
+	if((jdevice = json_first_child(task->userdata)) == NULL) {
+		return NULL;
+	}
+
+	if((jprotocols = json_find_member(jdevice, "protocol")) != NULL) {
+		jchild = json_first_child(jprotocols);
+		while(jchild) {
+			if(strcmp(dht22->id, jchild->string_) == 0) {
+				match = 1;
+				break;
+		}
+			jchild = jchild->next;
+		}
+	}
+
+	if(match == 0) {
+		return NULL;
+	}
+
+	if((node = MALLOC(sizeof(struct data_t)))== NULL) {
+		OUT_OF_MEMORY
+	}
+	node->id = 0;
+	node->temp_offset = 0;
+	node->humi_offset = 0;
+
+	if((jid = json_find_member(jdevice, "id"))) {
 		jchild = json_first_child(jid);
 		while(jchild) {
 			if(json_find_number(jchild, "gpio", &itmp) == 0) {
-				id = REALLOC(id, (sizeof(int)*(size_t)(nrid+1)));
-				id[nrid] = (int)round(itmp);
-				nrid++;
+				node->id = (int)round(itmp);
 			}
 			jchild = jchild->next;
 		}
 	}
 
-	if(json_find_number(json, "poll-interval", &itmp) == 0)
+	if(json_find_number(jdevice, "poll-interval", &itmp) == 0)
 		interval = (int)round(itmp);
-	json_find_number(json, "temperature-offset", &temp_offset);
-	json_find_number(json, "humidity-offset", &humi_offset);
 
-	while(loop) {
-		if(protocol_thread_wait(node, interval, &nrloops) == ETIMEDOUT) {
-			pthread_mutex_lock(&lock);
-			for(y=0;y<nrid;y++) {
-				int tries = 5;
-				unsigned short got_correct_date = 0;
-				while(tries && !got_correct_date && loop) {
+	json_find_number(jdevice, "temperature-offset", &node->temp_offset);
+	json_find_number(jdevice, "humidity-offset", &node->humi_offset);
 
-					uint8_t laststate = HIGH;
-					uint8_t counter = 0;
-					uint8_t j = 0, i = 0;
-
-					int dht22_dat[5] = {0,0,0,0,0};
-
-					// pull pin down for 18 milliseconds
-					pinMode(id[y], OUTPUT);
-					digitalWrite(id[y], HIGH);
-					usleep(500000);  // 500 ms
-					// then pull it up for 40 microseconds
-					digitalWrite(id[y], LOW);
-					usleep(20000);
-					// prepare to read the pin
-					pinMode(id[y], INPUT);
-
-					// detect change and read data
-					for(i=0; (i<MAXTIMINGS && loop); i++) {
-						counter = 0;
-						delayMicroseconds(10);
-
-						while((x = sizecvt(digitalRead(id[y]))) == laststate && x != -1 && loop) {
-							counter++;
-							delayMicroseconds(1);
-							if(counter == 255) {
-								break;
-							}
-						}
-						laststate = sizecvt(digitalRead(id[y]));
-
-						if(counter == 255) {
-							break;
-						}
-
-						// ignore first 3 transitions
-						if((i >= 4) && (i%2 == 0)) {
-							// shove each bit into the storage bytes
-							dht22_dat[(int)((double)j/8)] <<= 1;
-							if(counter > 16)
-								dht22_dat[(int)((double)j/8)] |= 1;
-							j++;
-						}
-					}
-
-					// check we read 40 bits (8bit x 5 ) + verify checksum in the last byte
-					// print it out if data is good
-					if((j >= 40) && (dht22_dat[4] == ((dht22_dat[0] + dht22_dat[1] + dht22_dat[2] + dht22_dat[3]) & 0xFF))) {
-						got_correct_date = 1;
-
-						double h = dht22_dat[0] * 256 + dht22_dat[1];
-						double t = (dht22_dat[2] & 0x7F)* 256 + dht22_dat[3];
-						t += temp_offset;
-						h += humi_offset;
-
-						if((dht22_dat[2] & 0x80) != 0)
-							t *= -1;
-
-						dht22->message = json_mkobject();
-						JsonNode *code = json_mkobject();
-						json_append_member(code, "gpio", json_mknumber(id[y], 0));
-						json_append_member(code, "temperature", json_mknumber(t/10, 1));
-						json_append_member(code, "humidity", json_mknumber(h/10, 1));
-
-						json_append_member(dht22->message, "message", code);
-						json_append_member(dht22->message, "origin", json_mkstring("receiver"));
-						json_append_member(dht22->message, "protocol", json_mkstring(dht22->id));
-
-						if(pilight.broadcast != NULL) {
-							pilight.broadcast(dht22->id, dht22->message, PROTOCOL);
-						}
-						json_delete(dht22->message);
-						dht22->message = NULL;
-					} else {
-						logprintf(LOG_DEBUG, "dht22 data checksum was wrong");
-						tries--;
-						protocol_thread_wait(node, 1, &nrloops);
-					}
-				}
-			}
-			pthread_mutex_unlock(&lock);
-		}
+	if((node->name = MALLOC(strlen(jdevice->key)+1)) == NULL) {
+		OUT_OF_MEMORY
 	}
-	pthread_mutex_unlock(&lock);
+	strcpy(node->name, jdevice->key);
 
-	FREE(id);
-	threads--;
-	return (void *)NULL;
+	node->interval = interval;
+
+	node->next = data;
+	data = node;
+
+	tv.tv_sec = interval;
+	tv.tv_usec = 0;
+	threadpool_add_scheduled_work(jdevice->key, thread, tv, (void *)node);
+
+	return NULL;
 }
 
-static struct threadqueue_t *initDev(JsonNode *jdevice) {
-	if(wiringXSupported() == 0 && wiringXSetup() == 0) {
-		loop = 1;
-		char *output = json_stringify(jdevice, NULL);
-		JsonNode *json = json_decode(output);
-		json_free(output);
-
-		struct protocol_threads_t *node = protocol_thread_init(dht22, json);
-		return threads_register("dht22", &thread, (void *)node, 0);
-	} else {
-		return NULL;
+static void gc(void) {
+	struct data_t *tmp = NULL;
+	while(data) {
+		tmp = data;
+		FREE(tmp->name);
+		data = data->next;
+		FREE(tmp);
+	}
+	if(data != NULL) {
+		FREE(data);
 	}
 }
 
-static void threadGC(void) {
-	loop = 0;
-	protocol_thread_stop(dht22);
-	while(threads > 0) {
-		usleep(10);
-	}
-	protocol_thread_free(dht22);
-}
 
-static int checkValues(JsonNode *code) {
+static int checkValues(struct JsonNode *code) {
 	struct JsonNode *jid = NULL;
 	struct JsonNode *jchild = NULL;
 	double itmp = -1;
@@ -246,18 +286,13 @@ static int checkValues(JsonNode *code) {
 __attribute__((weak))
 #endif
 void dht22Init(void) {
-#if !defined(__FreeBSD__) && !defined(_WIN32)
-	pthread_mutexattr_init(&attr);
-	pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);
-	pthread_mutex_init(&lock, &attr);
-#endif
-
 	protocol_register(&dht22);
 	protocol_set_id(dht22, "dht22");
 	protocol_device_add(dht22, "dht22", "1-wire Temperature and Humidity Sensor");
 	protocol_device_add(dht22, "am2302", "1-wire Temperature and Humidity Sensor");
 	dht22->devtype = WEATHER;
 	dht22->hwtype = SENSOR;
+	dht22->multipleId = 0;
 
 	options_add(&dht22->options, 't', "temperature", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9]{1,3}$");
 	options_add(&dht22->options, 'h', "humidity", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9]{1,3}$");
@@ -273,18 +308,20 @@ void dht22Init(void) {
 	options_add(&dht22->options, 0, "poll-interval", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *)10, "[0-9]");
 
 #if !defined(__FreeBSD__) && !defined(_WIN32)
-	dht22->initDev=&initDev;
-	dht22->threadGC=&threadGC;
+	// dht22->initDev=&initDev;
+	dht22->gc=&gc;
 	dht22->checkValues=&checkValues;
+
+	eventpool_callback(REASON_DEVICE_ADDED, addDevice);
 #endif
 }
 
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "dht22";
-	module->version = "2.4";
-	module->reqversion = "6.0";
-	module->reqcommit = "84";
+	module->version = "3.0";
+	module->reqversion = "7.0";
+	module->reqcommit = "94";
 }
 
 void init(void) {

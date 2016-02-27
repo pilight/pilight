@@ -67,6 +67,8 @@ int main(int argc, char **argv) {
 	/* Catch all exit signals for gc */
 	gc_catch();
 
+	pilight.process = PROCESS_CLIENT;
+
 	log_shell_enable();
 	log_file_disable();
 	log_level_set(LOG_NOTICE);
@@ -76,8 +78,7 @@ int main(int argc, char **argv) {
 	char *args = NULL;
 
 	if((progname = MALLOC(13)) == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(EXIT_FAILURE);
+		OUT_OF_MEMORY
 	}
 	strcpy(progname, "pilight-uuid");
 

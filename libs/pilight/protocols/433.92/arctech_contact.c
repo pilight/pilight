@@ -42,7 +42,7 @@ static int validate(void) {
 	if(arctech_contact->rawlen == MIN_RAW_LENGTH || arctech_contact->rawlen == MAX_RAW_LENGTH) {
 		if(arctech_contact->raw[arctech_contact->rawlen-1] >= (MIN_PULSE_LENGTH*PULSE_DIV) &&
 		   arctech_contact->raw[arctech_contact->rawlen-1] <= (MAX_PULSE_LENGTH*PULSE_DIV) &&
-			 arctech_contact->raw[1] >= AVG_PULSE_LENGTH*(PULSE_MULTIPLIER*2)) {
+			 arctech_contact->raw[1] >= AVG_PULSE_LENGTH*(PULSE_MULTIPLIER*1.5)) {
 			return 0;
 		}
 	}
@@ -50,23 +50,7 @@ static int validate(void) {
 	return -1;
 }
 
-static void createMessage(int id, int unit, int state, int all) {
-	arctech_contact->message = json_mkobject();
-	json_append_member(arctech_contact->message, "id", json_mknumber(id, 0));
-	if(all == 1) {
-		json_append_member(arctech_contact->message, "all", json_mknumber(all, 0));
-	} else {
-		json_append_member(arctech_contact->message, "unit", json_mknumber(unit, 0));
-	}
-
-	if(state == 1) {
-		json_append_member(arctech_contact->message, "state", json_mkstring("opened"));
-	} else {
-		json_append_member(arctech_contact->message, "state", json_mkstring("closed"));
-	}
-}
-
-static void parseCode(void) {
+static void parseCode(char *message) {
 	int binary[RAW_LENGTH/4], x = 0, i = 0;
 
 	for(x=0;x<arctech_contact->rawlen;x+=4) {
@@ -82,7 +66,19 @@ static void parseCode(void) {
 	int all = binary[26];
 	int id = binToDecRev(binary, 0, 25);
 
-	createMessage(id, unit, state, all);
+	x = snprintf(message, 255, "{\"id\":%d,", id);
+	if(all == 1) {
+		x += snprintf(&message[x], 255-x, "\"all\":1,");
+	} else {
+		x += snprintf(&message[x], 255-x, "\"unit\":%d,", unit);
+	}
+
+	if(state == 1) {
+		x += snprintf(&message[x], 255-x, "\"state\":\"opened\"");
+	} else {
+		x += snprintf(&message[x], 255-x, "\"state\":\"closed\"");
+	}
+	x += snprintf(&message[x], 255-x, "}");
 }
 
 #if !defined(MODULE) && !defined(_WIN32)
@@ -116,9 +112,9 @@ void arctechContactInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "arctech_contact";
-	module->version = "2.1";
-	module->reqversion = "6.0";
-	module->reqcommit = "38";
+	module->version = "3.0";
+	module->reqversion = "7.0";
+	module->reqcommit = "94";
 }
 
 void init(void) {

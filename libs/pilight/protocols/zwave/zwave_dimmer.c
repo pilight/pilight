@@ -29,66 +29,66 @@
 #include "../protocol.h"
 #include "zwave_dimmer.h"
 
-static void createDimMessage(unsigned int homeId, int nodeId, int dimlevel) {
-	zwave_dimmer->message = json_mkobject();
-	json_append_member(zwave_dimmer->message, "homeId", json_mknumber(homeId, 0));
-	json_append_member(zwave_dimmer->message, "nodeId", json_mknumber(nodeId, 0));
+static void createDimMessage(char *message, unsigned int homeId, int nodeId, int dimlevel) {
+	int x = snprintf(message, 255, "{\"homeId\":%d,", homeId);
+	x += snprintf(&message[x], 255-x, "\"nodeId\":%d,", nodeId);
 	if(dimlevel > 0) {
-		json_append_member(zwave_dimmer->message, "state", json_mkstring("on"));
-	} else {
-		json_append_member(zwave_dimmer->message, "state", json_mkstring("off"));
+		x += snprintf(&message[x], 255-x, "\"state\":\"on\",");
+	}	else {
+		x += snprintf(&message[x], 255-x, "\"state\":\"off\",");
 	}
-	json_append_member(zwave_dimmer->message, "dimlevel", json_mknumber(dimlevel, 0));
+	x += snprintf(&message[x], 255-x, "\"dimlevel\":%d", dimlevel);
+	x += snprintf(&message[x], 255-x, "}");
 }
 
-static void createConfigMessage(unsigned int homeId, int nodeId, char *label, int value) {
-	zwave_dimmer->message = json_mkobject();
-	json_append_member(zwave_dimmer->message, "homeId", json_mknumber(homeId, 0));
-	json_append_member(zwave_dimmer->message, "nodeId", json_mknumber(nodeId, 0));
-	json_append_member(zwave_dimmer->message, "label", json_mkstring(label));
-	json_append_member(zwave_dimmer->message, "value", json_mknumber(value, 0));
+static void createConfigMessage(char *message, unsigned int homeId, int nodeId, char *label, int value) {
+	int x = snprintf(message, 255, "{\"homeId\":%d,", homeId);
+	x += snprintf(&message[x], 255-x, "\"nodeId\":%d,", nodeId);
+	x += snprintf(&message[x], 255-x, "\"value\":%d", value);
+	x += snprintf(&message[x], 255-x, "\"value\":\"%s\"", label);
+	x += snprintf(&message[x], 255-x, "}");
 }
 
-static void parseCommand(struct JsonNode *code) {
-	struct JsonNode *message = NULL;
+static void parseCommand(struct JsonNode *code, char *message) {
+	struct JsonNode *jmsg = NULL;
 	char *label = NULL;
 	double itmp = 0.0;
 	int nodeId = 0, value = 0, cmdId = 0;
 	unsigned int homeId = 0;
 
-	if((message = json_find_member(code, "message")) != NULL) {
-		if(json_find_number(message, "nodeId", &itmp) == 0) {
+	if((jmsg = json_find_member(code, "message")) != NULL) {
+		if(json_find_number(jmsg, "nodeId", &itmp) == 0) {
 			nodeId = (int)round(itmp);
 		} else {
 			return;
 		}
-		if(json_find_number(message, "homeId", &itmp) == 0) {
+		if(json_find_number(jmsg, "homeId", &itmp) == 0) {
 			homeId = (unsigned int)round(itmp);
 		} else {
 			return;
 		}
-		if(json_find_number(message, "cmdId", &itmp) == 0) {
+		if(json_find_number(jmsg, "cmdId", &itmp) == 0) {
 			cmdId = (int)round(itmp);
 		} else {
 			return;
 		}
-		if(json_find_number(message, "value", &itmp) == 0) {
+		if(json_find_number(jmsg, "value", &itmp) == 0) {
 			value = (int)round(itmp);
 		} else {
 			return;
 		}
-		json_find_string(message, "label", &label);
+		json_find_string(jmsg, "label", &label);
 	}
 
 	if(cmdId == COMMAND_CLASS_SWITCH_MULTILEVEL) {
-		createDimMessage(homeId, nodeId, value);
+		createDimMessage(message, homeId, nodeId, value);
 	}
 	if(cmdId == COMMAND_CLASS_CONFIGURATION && label != NULL) {
-		createConfigMessage(homeId, nodeId, label, value);
+		createConfigMessage(message, homeId, nodeId, label, value);
 	}
 }
 
-static int createCode(struct JsonNode *code) {
+static int createCode(struct JsonNode *code, char *message) {
 	char out[255];
 	unsigned int homeId = 0;
 	int nodeId = 0;
@@ -101,7 +101,7 @@ static int createCode(struct JsonNode *code) {
 	if(json_find_number(code, "nodeId", &itmp) == 0)
 		nodeId = (int)round(itmp);
 	if(json_find_number(code, "dimlevel", &itmp) == 0)
-		dimlevel = (int)round(itmp);	
+		dimlevel = (int)round(itmp);
 
 	if(json_find_number(code, "off", &itmp) == 0)
 		state=0;
@@ -122,7 +122,7 @@ static int createCode(struct JsonNode *code) {
 	if(dimlevel > -1) {
 		snprintf(out, 255, "%d", dimlevel);
 		zwaveSetValue(nodeId, COMMAND_CLASS_SWITCH_MULTILEVEL, "Level", out);
-		createDimMessage(homeId, nodeId, dimlevel);
+		createDimMessage(message, homeId, nodeId, dimlevel);
 	}
 
 	return EXIT_SUCCESS;
@@ -154,8 +154,8 @@ void zwaveDimmerInit(void) {
 	options_add(&zwave_dimmer->options, 'd', "dimlevel", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, NULL);
 
 	options_add(&zwave_dimmer->options, 0, "dimlevel-minimum", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *)0, NULL);
-	options_add(&zwave_dimmer->options, 0, "dimlevel-maximum", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *)99, NULL);	
-	
+	options_add(&zwave_dimmer->options, 0, "dimlevel-maximum", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *)99, NULL);
+
 	zwave_dimmer->createCode=&createCode;
 	zwave_dimmer->parseCommand=&parseCommand;
 	zwave_dimmer->printHelp=&printHelp;
@@ -164,9 +164,9 @@ void zwaveDimmerInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "zwave_dimmer";
-	module->version = "1.0";
+	module->version = "2.0";
 	module->reqversion = "7.0";
-	module->reqcommit = "10";
+	module->reqcommit = "94";
 }
 
 void init(void) {

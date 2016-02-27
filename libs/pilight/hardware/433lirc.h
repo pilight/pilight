@@ -19,7 +19,7 @@
 #ifndef _HARDWARE_LIRC_433_H_
 #define _HARDWARE_LIRC_433_H_
 
-#include "../config/hardware.h"
+#include "../hardware/hardware.h"
 
 struct hardware_t *lirc433;
 void lirc433Init(void);

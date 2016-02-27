@@ -32,7 +32,7 @@
 
 #include "../function.h"
 #include "../events.h"
-#include "../../config/devices.h"
+#include "../../protocols/protocol.h"
 #include "../../core/options.h"
 #include "../../core/log.h"
 #include "../../core/dso.h"
@@ -79,13 +79,11 @@ static void add(struct tm *tm, int *values, int type) {
 
 static int run(struct rules_t *obj, struct JsonNode *arguments, char **ret, enum origin_t origin) {
 	struct JsonNode *childs = json_first_child(arguments);
-	struct devices_t *dev = NULL;
-	struct devices_settings_t *opt = NULL;
-	struct protocols_t *protocol = NULL;
+	struct protocol_t *protocol = NULL;
 	struct tm tm;
 	char *p = *ret, *datetime = NULL, *interval = NULL, **array = NULL;
 	int nrunits = (sizeof(units)/sizeof(units[0])), values[nrunits], error = 0;
-	int l = 0, i = 0, type = -1, match = 0;
+	int l = 0, i = 0, type = -1, match = 0, is_dev = 0;
 
 	memset(&values, 0, nrunits);
 
@@ -95,44 +93,47 @@ static int run(struct rules_t *obj, struct JsonNode *arguments, char **ret, enum
 		goto close;
 	}
 
-	if(devices_get(childs->string_, &dev) == 0) {
-		if(origin == RULE) {
+	if(devices_select(origin, childs->string_, NULL) == 0) {
+		is_dev = 1;
+		if(origin == ORIGIN_RULE) {
 			event_cache_device(obj, childs->string_);
 		}
-		protocol = dev->protocols;
-		if(protocol->listener->devtype == DATETIME) {
-			opt = dev->settings;
-			while(opt) {
-				if(strcmp(opt->name, "year") == 0) {
-					tm.tm_year = opt->values->number_-1900;
+		if(devices_select_protocol(origin, childs->string_, 0, &protocol) == 0) {
+			if(protocol->devtype == DATETIME) {
+				char *setting = NULL;
+				struct varcont_t val;
+				i = 0;
+				while(devices_select_settings(origin, childs->string_, i++, &setting, &val) == 0) {
+					if(strcmp(setting, "year") == 0) {
+						tm.tm_year = val.number_-1900;
+					}
+					if(strcmp(setting, "month") == 0) {
+						tm.tm_mon = val.number_-1;
+					}
+					if(strcmp(setting, "day") == 0) {
+						tm.tm_mday = val.number_;
+					}
+					if(strcmp(setting, "hour") == 0) {
+						tm.tm_hour = val.number_;
+					}
+					if(strcmp(setting, "minute") == 0) {
+						tm.tm_min = val.number_;
+					}
+					if(strcmp(setting, "second") == 0) {
+						tm.tm_sec = val.number_;
+					}
+					if(strcmp(setting, "weekday") == 0) {
+						tm.tm_wday = val.number_-1;
+					}
+					if(strcmp(setting, "dst") == 0) {
+						tm.tm_isdst = val.number_;
+					}
 				}
-				if(strcmp(opt->name, "month") == 0) {
-					tm.tm_mon = opt->values->number_-1;
-				}
-				if(strcmp(opt->name, "day") == 0) {
-					tm.tm_mday = opt->values->number_;
-				}
-				if(strcmp(opt->name, "hour") == 0) {
-					tm.tm_hour = opt->values->number_;
-				}
-				if(strcmp(opt->name, "minute") == 0) {
-					tm.tm_min = opt->values->number_;
-				}
-				if(strcmp(opt->name, "second") == 0) {
-					tm.tm_sec = opt->values->number_;
-				}
-				if(strcmp(opt->name, "weekday") == 0) {
-					tm.tm_wday = opt->values->number_-1;
-				}
-				if(strcmp(opt->name, "dst") == 0) {
-					tm.tm_isdst = opt->values->number_;
-				}
-				opt = opt->next;
+			} else {
+				logprintf(LOG_ERR, "device \"%s\" is not a datetime protocol", childs->string_);
+				error = -1;
+				goto close;
 			}
-		} else {
-			logprintf(LOG_ERR, "device \"%s\" is not a datetime protocol", childs->string_);
-			error = -1;
-			goto close;
 		}
 	} else {
 		datetime = childs->string_;
@@ -147,7 +148,7 @@ static int run(struct rules_t *obj, struct JsonNode *arguments, char **ret, enum
 	interval = childs->string_;
 
 	if(childs->next != NULL) {
-		if(dev == NULL) {
+		if(is_dev == 0) {
 			logprintf(LOG_ERR, "DATE_ADD requires two parameters e.g. DATE_ADD(2000-01-01 12:00:00, 1 DAY)");
 		} else {
 			logprintf(LOG_ERR, "DATE_ADD requires two parameters e.g. DATE_ADD(datetime, 1 DAY)");
@@ -182,7 +183,7 @@ static int run(struct rules_t *obj, struct JsonNode *arguments, char **ret, enum
 		error = -1;
 		goto close;
 	}
-	if(dev == NULL) {
+	if(is_dev == 0) {
 		if(strptime(datetime, "%Y-%m-%d %H:%M:%S", &tm) == NULL) {
 			logprintf(LOG_ERR, "DATE_ADD requires the datetime parameter to be formatted as \"%%Y-%%m-%%d %%H:%%M:%%S\"");
 			error = -1;
@@ -219,8 +220,8 @@ void functionDateAddInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "DATE_ADD";
-	module->version = "1.1";
-	module->reqversion = "6.0";
+	module->version = "2.0";
+	module->reqversion = "7.0";
 	module->reqcommit = "94";
 }
 

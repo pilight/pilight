@@ -27,88 +27,136 @@
 #include "../../core/common.h"
 #include "../../core/dso.h"
 #include "../../core/log.h"
-#include "../../core/irq.h"
 #include "../../core/gc.h"
+#include "../../core/eventpool.h"
+#include "../../core/threadpool.h"
 #include "../protocol.h"
 #include "gpio_switch.h"
 
 #if !defined(__FreeBSD__) && !defined(_WIN32)
 #include "../../../wiringx/wiringX.h"
 
-static unsigned short loop = 1;
-static int threads = 0;
+typedef struct data_t {
+	unsigned int id;
+	unsigned int state;
+
+	struct data_t *next;
+} data_t;
+
+static struct data_t *data = NULL;
+
+static void *reason_code_received_free(void *param) {
+	struct reason_code_received_t *data = param;
+	FREE(data);
+	return NULL;
+}
 
 static void createMessage(int gpio, int state) {
-	gpio_switch->message = json_mkobject();
-	JsonNode *code = json_mkobject();
-	json_append_member(code, "gpio", json_mknumber(gpio, 0));
-	if(state) {
-		json_append_member(code, "state", json_mkstring("on"));
+	struct reason_code_received_t *data = MALLOC(sizeof(struct reason_code_received_t));
+	if(data == NULL) {
+		OUT_OF_MEMORY
+	}
+	snprintf(data->message, 1024, "{\"gpio\":%d,\"state\":\"%s\"}", gpio, ((state == 1) ? "on" : "off"));
+	strncpy(data->origin, "receiver", 255);
+	data->protocol = gpio_switch->id;
+	if(strlen(pilight_uuid) > 0) {
+		data->uuid = pilight_uuid;
 	} else {
-		json_append_member(code, "state", json_mkstring("off"));
+		data->uuid = NULL;
 	}
-
-	json_append_member(gpio_switch->message, "message", code);
-	json_append_member(gpio_switch->message, "origin", json_mkstring("receiver"));
-	json_append_member(gpio_switch->message, "protocol", json_mkstring(gpio_switch->id));
-
-	if(pilight.broadcast != NULL) {
-		pilight.broadcast(gpio_switch->id, gpio_switch->message, PROTOCOL);
-	}
-	json_delete(gpio_switch->message);
-	gpio_switch->message = NULL;
+	data->repeat = 1;
+	eventpool_trigger(REASON_CODE_RECEIVED, reason_code_received_free, data);
 }
 
-static void *thread(void *param) {
-	struct protocol_threads_t *node = (struct protocol_threads_t *)param;
-	struct JsonNode *json = (struct JsonNode *)node->param;
+static int client_callback(struct eventpool_fd_t *node, int event) {
+	struct data_t *data = node->userdata;
+
+	switch(event) {
+		case EV_CONNECT_SUCCESS: {
+			eventpool_fd_enable_highpri(node);
+		} break;
+		case EV_HIGHPRI: {
+			uint8_t c = 0;
+			unsigned int nstate = 0;
+
+			(void)read(node->fd, &c, 1);
+			lseek(node->fd, 0, SEEK_SET);
+
+			nstate = digitalRead(data->id);
+
+			if(nstate != data->state) {
+				data->state = nstate;
+				createMessage(data->id, data->state);
+			}
+
+			eventpool_fd_enable_highpri(node);
+		} break;
+		case EV_DISCONNECTED: {
+			close(node->fd);
+			FREE(node->userdata);
+			eventpool_fd_remove(node);
+		} break;
+	}
+	return 0;
+}
+
+static void *addDevice(void *param) {
+	struct threadpool_tasks_t *task = param;
+	struct JsonNode *jdevice = NULL;
+	struct JsonNode *jprotocols = NULL;
 	struct JsonNode *jid = NULL;
 	struct JsonNode *jchild = NULL;
-	int id = 0, state = 0, nstate = 0;
+	struct data_t *node = NULL;
+	int match = 0;
 	double itmp = 0.0;
 
-	threads++;
-
-	if((jid = json_find_member(json, "id"))) {
-		jchild = json_first_child(jid);
-		if(json_find_number(jchild, "gpio", &itmp) == 0) {
-			id = (int)round(itmp);
-			if(wiringXISR(id, INT_EDGE_BOTH) < 0) {
-				threads--;
-				return NULL;
-			}
-			state = digitalRead(id);
-		}
-	}
-
-	createMessage(id, state);
-
-	while(loop) {
-		irq_read(id);
-		nstate = digitalRead(id);
-		if(nstate != state) {
-			state = nstate;
-			createMessage(id, state);
-			usleep(100000);
-		}
-	}
-
-	threads--;
-	return (void *)NULL;
-}
-
-static struct threadqueue_t *initDev(JsonNode *jdevice) {
-	if(wiringXSupported() == 0 && wiringXSetup() == 0) {
-		loop = 1;
-		char *output = json_stringify(jdevice, NULL);
-		JsonNode *json = json_decode(output);
-		json_free(output);
-
-		struct protocol_threads_t *node = protocol_thread_init(gpio_switch, json);
-		return threads_register("gpio_switch", &thread, (void *)node, 0);
-	} else {
+	if(task->userdata == NULL) {
 		return NULL;
 	}
+
+	if((jdevice = json_first_child(task->userdata)) == NULL) {
+		return NULL;
+	}
+
+	if((jprotocols = json_find_member(jdevice, "protocol")) != NULL) {
+		jchild = json_first_child(jprotocols);
+		while(jchild) {
+			if(strcmp(gpio_switch->id, jchild->string_) == 0) {
+				match = 1;
+				break;
+			}
+			jchild = jchild->next;
+		}
+	}
+
+	if(match == 0) {
+		return NULL;
+	}
+
+	if((node = MALLOC(sizeof(struct data_t)))== NULL) {
+		OUT_OF_MEMORY
+	}
+	node->id = 0;
+	node->state = 0;
+
+	if((jid = json_find_member(jdevice, "id"))) {
+		jchild = json_first_child(jid);
+		if(json_find_number(jchild, "gpio", &itmp) == 0) {
+			node->id = (int)round(itmp);
+			node->state = digitalRead(node->id);
+		}
+	}
+
+	createMessage(node->id, node->state);
+
+	int fd = wiringXSelectableFd(node->id);
+
+	node->next = data;
+	data = node;
+
+	eventpool_fd_add("gpio_switch", fd, client_callback, NULL, data);
+
+	return NULL;
 }
 
 static int checkValues(struct JsonNode *jvalues) {
@@ -147,15 +195,6 @@ static int checkValues(struct JsonNode *jvalues) {
 
 	return 0;
 }
-
-static void threadGC(void) {
-	loop = 0;
-	protocol_thread_stop(gpio_switch);
-	while(threads > 0) {
-		usleep(10);
-	}
-	protocol_thread_free(gpio_switch);
-}
 #endif
 
 #if !defined(MODULE) && !defined(_WIN32)
@@ -168,6 +207,7 @@ void gpioSwitchInit(void) {
 	protocol_device_add(gpio_switch, "gpio_switch", "GPIO as a switch");
 	gpio_switch->devtype = SWITCH;
 	gpio_switch->hwtype = SENSOR;
+	gpio_switch->multipleId = 0;
 
 	options_add(&gpio_switch->options, 't', "on", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
 	options_add(&gpio_switch->options, 'f', "off", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
@@ -177,18 +217,20 @@ void gpioSwitchInit(void) {
 	options_add(&gpio_switch->options, 0, "confirm", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
 
 #if !defined(__FreeBSD__) && !defined(_WIN32)
-	gpio_switch->initDev=&initDev;
-	gpio_switch->threadGC=&threadGC;
+	// gpio_switch->initDev=&initDev;
+	// gpio_switch->gc=&gc;
 	gpio_switch->checkValues=&checkValues;
+
+	eventpool_callback(REASON_DEVICE_ADDED, addDevice);
 #endif
 }
 
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "gpio_switch";
-	module->version = "2.3";
-	module->reqversion = "6.0";
-	module->reqcommit = "84";
+	module->version = "3.0";
+	module->reqversion = "7.0";
+	module->reqcommit = "94";
 }
 
 void init(void) {

@@ -511,7 +511,7 @@ char *coord2tz(double longitude, double latitude) {
 	int i = 0, a = 0, margin = 1, inside = 0;
 	int nrtz = sizeof(tzdata)/sizeof(tzdata[0]);
 	char *tz = NULL;
-	
+
 	margin *= (int)pow(10, PRECISION);
 	int y = (int)round(latitude*(int)pow(10, PRECISION));
 	int x = (int)round(longitude*(int)pow(10, PRECISION));
@@ -567,7 +567,7 @@ char *coord2tz(double longitude, double latitude) {
 	searchingtz--;
 	if(mutex_init == 1) {
 		pthread_mutex_unlock(&mutex_lock);
-	}	
+	}
 	return tz;
 }
 

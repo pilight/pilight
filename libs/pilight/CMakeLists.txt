@@ -8,9 +8,9 @@ if(${MODULESPACK} MATCHES "OFF" OR WIN32)
 	add_subdirectory(core)
 	set(${PROJECT_NAME}_files	${${PROJECT_NAME}_files} ${${PROJECT_NAME}_core_files} CACHE INTERNAL "")
 
-	add_subdirectory(config)
-	set(${PROJECT_NAME}_files	${${PROJECT_NAME}_files} ${${PROJECT_NAME}_config_files} CACHE INTERNAL "")
-
+	add_subdirectory(storage)
+	set(${PROJECT_NAME}_files	${${PROJECT_NAME}_files} ${${PROJECT_NAME}_storage_files} CACHE INTERNAL "")
+	
 	if(${EVENTS} MATCHES "ON")
 		add_subdirectory(events)
 		set(${PROJECT_NAME}_files	${${PROJECT_NAME}_files} ${${PROJECT_NAME}_events_files} CACHE INTERNAL "")

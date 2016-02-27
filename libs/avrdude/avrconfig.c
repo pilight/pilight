@@ -35,8 +35,7 @@ TOKEN * new_token(int primary)
 
   tkn = (TOKEN *)MALLOC(sizeof(TOKEN));
   if (tkn == NULL) {
-    fprintf(stderr, "out of memory\n");
-    exit(EXIT_FAILURE);
+    OUT_OF_MEMORY
   }
 
   memset(tkn, 0, sizeof(TOKEN));
@@ -101,8 +100,7 @@ TOKEN * string(char * text)
   tkn->value.type   = V_STR;
   tkn->value.string = (char *) MALLOC(len+1);
   if (tkn->value.string == NULL) {
-    fprintf(stderr, "out of memory\n");
-		return NULL;
+    OUT_OF_MEMORY
   }
   strcpy(tkn->value.string, text);
 

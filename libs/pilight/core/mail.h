@@ -26,6 +26,6 @@ typedef struct mail_t {
 	char *message;
 } mail_t;
 
-int sendmail(char *host, char *login, char *pass, unsigned short port, struct mail_t *mail);
+int sendmail(char *host, char *login, char *pass, unsigned short port, struct mail_t *mail, void (*callback)(int));
 
 #endif

@@ -50,26 +50,25 @@ static int validate(void) {
 	return -1;
 }
 
-static void createMessage(int id, int unit, int state, int all, int dimlevel, int learn) {
-	arctech_dimmer->message = json_mkobject();
-	json_append_member(arctech_dimmer->message, "id", json_mknumber(id, 0));
-
+static void createMessage(char *message, int id, int unit, int state, int all, int dimlevel, int learn) {
+	int x = snprintf(message, 255, "{\"id\":%d,", id);
 	if(all == 1) {
-		json_append_member(arctech_dimmer->message, "all", json_mknumber(all, 0));
+		x += snprintf(&message[x], 255-x, "\"all\":1,");
 	} else {
-		json_append_member(arctech_dimmer->message, "unit", json_mknumber(unit, 0));
+		x += snprintf(&message[x], 255-x, "\"unit\":%d,", unit);
 	}
 
 	if(dimlevel >= 0) {
 		state = 1;
-		json_append_member(arctech_dimmer->message, "dimlevel", json_mknumber(dimlevel, 0));
+		x += snprintf(&message[x], 255-x, "\"dimlevel\":%d,", dimlevel);
 	}
 
 	if(state == 1) {
-		json_append_member(arctech_dimmer->message, "state", json_mkstring("on"));
+		x += snprintf(&message[x], 255-x, "\"state\":\"on\"");
 	} else {
-		json_append_member(arctech_dimmer->message, "state", json_mkstring("off"));
+		x += snprintf(&message[x], 255-x, "\"state\":\"off\"");
 	}
+	x += snprintf(&message[x], 255-x, "}");
 
 	if(learn == 1) {
 		arctech_dimmer->txrpt = LEARN_REPEATS;
@@ -78,7 +77,7 @@ static void createMessage(int id, int unit, int state, int all, int dimlevel, in
 	}
 }
 
-static void parseCode(void) {
+static void parseCode(char *message) {
 	int binary[RAW_LENGTH/4], x = 0, i = 0;
 
 	for(x=0;x<arctech_dimmer->rawlen;x+=4) {
@@ -95,7 +94,7 @@ static void parseCode(void) {
 	int all = binary[26];
 	int id = binToDecRev(binary, 0, 25);
 
-	createMessage(id, unit, state, all, dimlevel, 0);
+	createMessage(message, id, unit, state, all, dimlevel, 0);
 }
 
 static void createLow(int s, int e) {
@@ -219,7 +218,7 @@ static int checkValues(struct JsonNode *code) {
 	return 0;
 }
 
-static int createCode(struct JsonNode *code) {
+static int createCode(struct JsonNode *code, char *message) {
 	int id = -1;
 	int unit = -1;
 	int state = -1;
@@ -276,7 +275,7 @@ static int createCode(struct JsonNode *code) {
 		if(dimlevel >= 0) {
 			state = -1;
 		}
-		createMessage(id, unit, state, all, dimlevel, learn);
+		createMessage(message, id, unit, state, all, dimlevel, learn);
 		createStart();
 		clearCode();
 		createId(id);
@@ -339,9 +338,9 @@ void arctechDimmerInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "arctech_dimmer";
-	module->version = "3.3";
-	module->reqversion = "6.0";
-	module->reqcommit = "84";
+	module->version = "4.0";
+	module->reqversion = "7.0";
+	module->reqcommit = "94";
 }
 
 void init(void) {

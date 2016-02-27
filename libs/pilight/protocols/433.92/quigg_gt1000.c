@@ -194,7 +194,7 @@ int supercodes[2*NRSUPERCODES] = {
 
 char bincode[BIN_LENGTH+1];
 
-static void createMessage(int id, int unit, int state, int seq, int learn) {
+static void createMessage(char *message, int id, int unit, int state, int seq, int learn) {
 	int i = 0;
 
 	for(i=0;i<BIN_LENGTH;i++) {
@@ -203,16 +203,18 @@ static void createMessage(int id, int unit, int state, int seq, int learn) {
 
 	bincode[BIN_LENGTH] = '\0'; /* end of string */
 
-	quigg_gt1000->message = json_mkobject();
-	json_append_member(quigg_gt1000->message, "id", json_mknumber(id, 0));
-	json_append_member(quigg_gt1000->message, "unit", json_mknumber(unit, 0));
-	json_append_member(quigg_gt1000->message, "seq", json_mknumber(seq, 0));
+	int x = snprintf(message, 255, "{\"id\":%d,", id);
+	x += snprintf(&message[x], 255-x, "\"unit\":%d,", unit);
+	x += snprintf(&message[x], 255-x, "\"seq\":%d,", seq);
+
 	if(state == 1) {
-		json_append_member(quigg_gt1000->message, "state", json_mkstring("on"));
+		x += snprintf(&message[x], 255-x, "\"state\":\"on\"");
 	} else {
-		json_append_member(quigg_gt1000->message, "state", json_mkstring("off"));
+		x += snprintf(&message[x], 255-x, "\"state\":\"off\"");
 	}
-	json_append_member(quigg_gt1000->message, "code", json_mkstring(bincode));
+	x += snprintf(&message[x], 255-x, "\"code\":\"%s\"", bincode);
+	x += snprintf(&message[x], 255-x, "}");
+
 }
 
 static int fillLow(int idx) {
@@ -304,7 +306,7 @@ static void fillSuperBinCode(int state, int codeseq) {
 }
 
 
-static int createCode(JsonNode *code) { // function to create the raw code
+static int createCode(struct JsonNode *code, char *message) { // function to create the raw code
 	int id = -1;
 	int unit = -1;
 	int all = 0;
@@ -366,7 +368,7 @@ static int createCode(JsonNode *code) { // function to create the raw code
 			return EXIT_FAILURE;
 		}
 		quigg_gt1000->rawlen = RAW_LENGTH;
-		createMessage(id, unit, state, seq, 0);
+		createMessage(message, id, unit, state, seq, 0);
 	}
 	return EXIT_SUCCESS;
 }
@@ -415,9 +417,9 @@ void quiggGT1000Init(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "quigg_gt1000";
-	module->version = "1.0";
-	module->reqversion = "6.0";
-	module->reqcommit = "84";
+	module->version = "2.0";
+	module->reqversion = "7.0";
+	module->reqcommit = "94";
 }
 
 void init(void) {

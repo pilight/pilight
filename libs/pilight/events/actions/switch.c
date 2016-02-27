@@ -25,11 +25,31 @@
 #include "../action.h"
 #include "../events.h"
 #include "../../core/options.h"
-#include "../../config/devices.h"
+#include "../../core/threadpool.h"
+#include "../../storage/storage.h"
+#include "../../protocols/protocol.h"
 #include "../../core/log.h"
 #include "../../core/dso.h"
 #include "../../core/pilight.h"
 #include "switch.h"
+
+#define INIT		0
+#define EXECUTE	1
+#define RESTORE	2
+
+typedef struct data_t {
+	char *device;
+	char old_state[4];
+	char new_state[4];
+	int steps;
+	int seconds_for;
+	int type_for;
+	int seconds_after;
+	int type_after;
+	unsigned long exec;
+
+	struct event_action_thread_t *pth;
+} data_t;
 
 static struct units_t {
 	char name[255];
@@ -202,17 +222,17 @@ static int checkArguments(struct rules_actions_t *obj) {
 		jbchild = json_first_child(jbvalues);
 		while(jbchild) {
 			if(jbchild->tag == JSON_STRING) {
-				struct devices_t *dev = NULL;
-				if(devices_get(jbchild->string_, &dev) == 0) {
+				if(devices_select(ORIGIN_ACTION, jbchild->string_, NULL) == 0) {
 					if((javalues = json_find_member(jto, "value")) != NULL) {
 						jachild = json_first_child(javalues);
 						while(jachild) {
 							if(jachild->tag == JSON_STRING) {
 								state = jachild->string_;
-								struct protocols_t *tmp = dev->protocols;
 								int match1 = 0;
-								while(tmp) {
-									struct options_t *opt = tmp->listener->options;
+								struct protocol_t *protocol = NULL;
+								i = 0;
+								while(devices_select_protocol(ORIGIN_ACTION, jbchild->string_, i++, &protocol) == 0) {
+									struct options_t *opt = protocol->options;
 									while(opt) {
 										if(opt->conftype == DEVICES_STATE) {
 											if(strcmp(opt->name, state) == 0) {
@@ -222,7 +242,9 @@ static int checkArguments(struct rules_actions_t *obj) {
 										}
 										opt = opt->next;
 									}
-									tmp = tmp->next;
+									if(match == 1) {
+										break;
+									}
 								}
 								if(match1 == 0) {
 									logprintf(LOG_ERR, "device \"%s\" can't be set to state \"%s\"", jbchild->string_, state);
@@ -249,9 +271,102 @@ static int checkArguments(struct rules_actions_t *obj) {
 	return 0;
 }
 
+static void *execute(void *param) {
+	struct threadpool_tasks_t *task = param;
+	struct data_t *data = task->userdata;
+	struct event_action_thread_t *pth = data->pth;
+	unsigned long exec = 0;
+
+	/*
+	 * Check if we are the last action for this device
+	 * or else skip execution.
+	 */
+	if(event_action_get_execution_id(data->device, &exec) == 0) {
+		if(exec != data->exec) {
+			logprintf(LOG_DEBUG, "skipping overridden action %s for device %s", action_switch->name, data->device);
+			goto close;
+		}
+	}
+
+	if(strcmp(data->old_state, data->new_state) == 0) {
+		logprintf(LOG_DEBUG, "device \"%s\" is already \"%s\", aborting action \"%s\"", data->device, data->new_state, action_switch->name);
+		data->steps = -1;
+	}
+
+	switch(data->steps) {
+		case INIT: {
+			data->steps = EXECUTE;
+
+			if(data->seconds_after > 0) {
+				struct timeval tv;
+				switch(data->type_after) {
+					case 1:
+						tv.tv_sec = 0;
+						tv.tv_usec = data->seconds_after;
+					break;
+					case 2:
+					case 3:
+					case 4:
+					case 5:
+						tv.tv_sec = data->seconds_after;
+						tv.tv_usec = 0;
+					break;
+				}
+				logprintf(LOG_DEBUG, "INIT %lu %lu", tv.tv_sec, tv.tv_usec);
+
+				threadpool_add_scheduled_work(pth->action->name, execute, tv, data);
+				goto end;
+			}
+		};
+		case EXECUTE: {
+			struct timeval tv;
+
+			if(pilight.control != NULL) {
+				pilight.control(data->device, data->new_state, NULL, ORIGIN_ACTION);
+			}
+			if(data->seconds_for > 0) {
+				switch(data->type_for) {
+					case 1:
+						tv.tv_sec = 0;
+						tv.tv_usec = data->seconds_for;
+					break;
+					case 2:
+					case 3:
+					case 4:
+					case 5:
+						tv.tv_sec = data->seconds_for;
+						tv.tv_usec = 0;
+					break;
+				}
+				data->steps = RESTORE;
+				logprintf(LOG_DEBUG, "EXECUTE %lu %lu", tv.tv_sec, tv.tv_usec);
+				threadpool_add_scheduled_work(pth->action->name, execute, tv, data);
+				goto end;
+			}
+		} break;
+		case RESTORE: {
+			logprintf(LOG_DEBUG, "RESTORE");
+			if(pilight.control != NULL) {
+				pilight.control(data->device, data->old_state, NULL, ORIGIN_ACTION);
+			}
+		} break;
+	}
+
+close:
+	FREE(data->device);
+	FREE(data);
+
+	event_action_stopped(pth);
+
+end:
+	return NULL;
+}
+
 static void *thread(void *param) {
-	struct event_action_thread_t *pth = (struct event_action_thread_t *)param;
+	struct threadpool_tasks_t *task = param;
+	struct event_action_thread_t *pth = task->userdata;
 	struct JsonNode *json = pth->obj->parsedargs;
+
 	struct JsonNode *jto = NULL;
 	struct JsonNode *jafter = NULL;
 	struct JsonNode *jfor = NULL;
@@ -260,35 +375,13 @@ static void *thread(void *param) {
 	struct JsonNode *jdvalues = NULL;
 	struct JsonNode *jstate = NULL;
 	struct JsonNode *jaseconds = NULL;
-	char *new_state = NULL, *old_state = NULL, *state = NULL, **array = NULL;
+	char *old_state = NULL;
+	char *state = NULL, **array = NULL;
 	int seconds_after = 0, type_after = 0;
 	int	l = 0, i = 0, nrunits = (sizeof(units)/sizeof(units[0]));
-	int seconds_for = 0, type_for = 0, timer = 0;
+	int seconds_for = 0, type_for = 0;
 
 	event_action_started(pth);
-
-	if((jfor = json_find_member(json, "FOR")) != NULL) {
-		if((jcvalues = json_find_member(jfor, "value")) != NULL) {
-			jaseconds = json_find_element(jcvalues, 0);
-			if(jaseconds != NULL) {
-				if(jaseconds->tag == JSON_STRING) {
-					l = explode(jaseconds->string_, " ", &array);
-					if(l == 2) {
-						for(i=0;i<nrunits;i++) {
-							if(strcmp(array[1], units[i].name) == 0) {
-								seconds_for = atoi(array[0]);
-								type_for = units[i].id;
-								break;
-							}
-						}
-					}
-					if(l > 0) {
-						array_free(&array, l);
-					}
-				}
-			}
-		}
-	}
 
 	if((jafter = json_find_member(json, "AFTER")) != NULL) {
 		if((jdvalues = json_find_member(jafter, "value")) != NULL) {
@@ -301,6 +394,29 @@ static void *thread(void *param) {
 							if(strcmp(array[1], units[i].name) == 0) {
 								seconds_after = atoi(array[0]);
 								type_after = units[i].id;
+								break;
+							}
+						}
+					}
+					if(l > 0) {
+						array_free(&array, l);
+					}
+				}
+			}
+		}
+	}
+
+	if((jfor = json_find_member(json, "FOR")) != NULL) {
+		if((jcvalues = json_find_member(jfor, "value")) != NULL) {
+			jaseconds = json_find_element(jcvalues, 0);
+			if(jaseconds != NULL) {
+				if(jaseconds->tag == JSON_STRING) {
+					l = explode(jaseconds->string_, " ", &array);
+					if(l == 2) {
+						for(i=0;i<nrunits;i++) {
+							if(strcmp(array[1], units[i].name) == 0) {
+								seconds_for = atoi(array[0]);
+								type_for = units[i].id;
 								break;
 							}
 						}
@@ -337,101 +453,61 @@ static void *thread(void *param) {
 		break;
 	}
 
-	/* Store current state */
-	struct devices_t *tmp = pth->device;
-	int match = 0;
-	while(tmp) {
-		struct devices_settings_t *opt = tmp->settings;
-		while(opt) {
-			if(strcmp(opt->name, "state") == 0) {
-				if(opt->values->type == JSON_STRING) {
-					if((old_state = MALLOC(strlen(opt->values->string_)+1)) == NULL) {
-						fprintf(stderr, "out of memory\n");
-						exit(EXIT_FAILURE);
-					}
-					strcpy(old_state, opt->values->string_);
-					match = 1;
-				}
-				break;
-			}
-			opt = opt->next;
-		}
-		if(match == 1) {
-			break;
-		}
-		tmp = tmp->next;
-	}
-	if(match == 0) {
-		logprintf(LOG_NOTICE, "could not store old state of \"%s\"\n", pth->device->id);
+	/* Select current state */
+	if(devices_select_string_setting(ORIGIN_ACTION, pth->device->id, "state", &old_state) != 0) {
+		logprintf(LOG_NOTICE, "could not select old state of \"%s\"\n", pth->device->id);
+		goto end;
 	}
 
-	timer = 0;
-	while(pth->loop == 1) {
-		if(timer == seconds_after) {
-			if((jto = json_find_member(json, "TO")) != NULL) {
-				if((javalues = json_find_member(jto, "value")) != NULL) {
-					jstate = json_find_element(javalues, 0);
-					if(jstate != NULL && jstate->tag == JSON_STRING) {
-						state = jstate->string_;
-						if((new_state = MALLOC(strlen(state)+1)) == NULL) {
-							fprintf(stderr, "out of memory\n");
-							exit(EXIT_FAILURE);
-						}
-						strcpy(new_state, state);
-						/*
-						 * We're not switching when current state is the same as
-						 * the old state.
-						 */
-						if(old_state == NULL || strcmp(old_state, new_state) != 0) {
-							if(pilight.control != NULL) {
-								pilight.control(pth->device, new_state, NULL, ACTION);
-							}
-						}
-					}
-				}
-			}
-			break;
-		}
-		timer++;
-		if(type_after > 1) {
-			sleep(1);
-		} else {
-			usleep(1000);
-		}
-	}
-
-	/*
-	 * We only need to restore the state if it was actually changed
-	 */
-	if(seconds_for > 0 && old_state != NULL && new_state != NULL && strcmp(old_state, new_state) != 0) {
-		timer = 0;
-		while(pth->loop == 1) {
-			if(seconds_for == timer) {
-				if(pilight.control != NULL) {
-					pilight.control(pth->device, old_state, NULL, ACTION);
-				}
-				break;
-			}
-			timer++;
-			if(type_for > 1) {
-				sleep(1);
-			} else {
-				usleep(1000);
+	if((jto = json_find_member(json, "TO")) != NULL) {
+		if((javalues = json_find_member(jto, "value")) != NULL) {
+			jstate = json_find_element(javalues, 0);
+			if(jstate != NULL && jstate->tag == JSON_STRING) {
+				state = jstate->string_;
 			}
 		}
 	}
 
-	if(old_state != NULL) {
-		FREE(old_state);
+	struct data_t *data = MALLOC(sizeof(struct data_t));
+	if(data == NULL) {
+		OUT_OF_MEMORY
 	}
-
-	if(new_state != NULL) {
-		FREE(new_state);
+	if((data->device = MALLOC(strlen(pth->device->id)+1)) == NULL) {
+		OUT_OF_MEMORY
 	}
+	strcpy(data->device, pth->device->id);
+	data->seconds_for = seconds_for;
+	data->type_for = type_for;
+	data->seconds_after = seconds_after;
+	data->type_after = type_after;
+	data->steps = INIT;
+	data->pth = pth;
+	strcpy(data->old_state, old_state);
+	strcpy(data->new_state, state);
 
-	event_action_stopped(pth);
+	pth->userdata = NULL;
+
+	data->exec = event_action_set_execution_id(pth->device->id);
+
+	threadpool_add_work(REASON_END, NULL, action_switch->name, 0, execute, NULL, (void *)data);
 
 	return (void *)NULL;
+
+end:
+	event_action_stopped(pth);
+	return (void *)NULL;
+}
+
+static void *gc(void *param) {
+	struct event_action_thread_t *pth = param;
+	struct data_t *data = pth->userdata;
+	if(data != NULL) {
+		if(data->device != NULL) {
+			FREE(data->device);
+		}
+		FREE(data);
+	}
+	return NULL;
 }
 
 static int run(struct rules_actions_t *obj) {
@@ -439,6 +515,7 @@ static int run(struct rules_actions_t *obj) {
 	struct JsonNode *jto = NULL;
 	struct JsonNode *jbvalues = NULL;
 	struct JsonNode *jbchild = NULL;
+	struct device_t *dev = NULL;
 
 	if((jdevice = json_find_member(obj->parsedargs, "DEVICE")) != NULL &&
 		 (jto = json_find_member(obj->parsedargs, "TO")) != NULL) {
@@ -446,9 +523,10 @@ static int run(struct rules_actions_t *obj) {
 			jbchild = json_first_child(jbvalues);
 			while(jbchild) {
 				if(jbchild->tag == JSON_STRING) {
-					struct devices_t *dev = NULL;
-					if(devices_get(jbchild->string_, &dev) == 0) {
-						event_action_thread_start(dev, action_switch->name, thread, obj);
+					if(devices_select(ORIGIN_ACTION, jbchild->string_, NULL) == 0) {
+						if(devices_select_struct(ORIGIN_ACTION, jbchild->string_, &dev) == 0) {
+							event_action_thread_start(dev, action_switch, thread, obj);
+						}
 					}
 				}
 				jbchild = jbchild->next;
@@ -471,14 +549,15 @@ void actionSwitchInit(void) {
 
 	action_switch->run = &run;
 	action_switch->checkArguments = &checkArguments;
+	action_switch->gc = &gc;
 }
 
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "switch";
-	module->version = "3.2";
-	module->reqversion = "6.0";
-	module->reqcommit = "152";
+	module->version = "4.0";
+	module->reqversion = "7.0";
+	module->reqcommit = "94";
 }
 
 void init(void) {

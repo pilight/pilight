@@ -19,6 +19,8 @@
 #ifndef _GC_H_
 #define _GC_H_
 
+#include <signal.h>
+
 typedef struct collectors_t {
 	int (*listener)(void);
 	struct collectors_t *next;
@@ -28,6 +30,9 @@ void gc_handler(int signal);
 void gc_attach(int (*fp)(void));
 void gc_catch(void);
 int gc_run(void);
+int running(void);
 void gc_clear(void);
+
+extern volatile sig_atomic_t gcloop;
 
 #endif

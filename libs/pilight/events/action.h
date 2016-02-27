@@ -21,17 +21,18 @@
 
 typedef struct event_action_thread_t event_action_thread_t;
 typedef struct event_actions_t event_actions_t;
+typedef struct rules_actions_t rules_actions_t;
 
 #include "../core/json.h"
 #include "../core/common.h"
-#include "../config/devices.h"
-#include "../config/rules.h"
+#include "../storage/storage.h"
 
 struct event_actions_t {
 	char *name;
 	int nrthreads;
-	int (*run)(struct rules_actions_t *obj);
-	int (*checkArguments)(struct rules_actions_t *obj);
+	int (*run)(struct rules_actions_t *);
+	int (*checkArguments)(struct rules_actions_t *);
+	void *(*gc)(void *);
 	struct options_t *options;
 
 	struct event_actions_t *next;
@@ -39,28 +40,25 @@ struct event_actions_t {
 
 struct event_action_thread_t {
 	int running;
-	int loop;
-	int initialized;
-	char *action;
-	pthread_t pth;
-	pthread_mutex_t mutex;
-	pthread_cond_t cond;
-	pthread_mutexattr_t attr;
+	void *userdata;
+
 	struct rules_actions_t *obj;
-	struct devices_t *device;
+	struct event_actions_t *action;
+	struct device_t *device;
 };
 
 struct event_actions_t *event_actions;
 
 void event_action_init(void);
-void event_action_register(struct event_actions_t **act, const char *name);
+void event_action_register(struct event_actions_t **, const char *);
 int event_action_gc(void);
-void event_action_thread_init(struct devices_t *dev);
-int event_action_thread_wait(struct devices_t *dev, int interval);
-void event_action_thread_start(struct devices_t *dev, char *name, void *(*func)(void *), struct rules_actions_t *obj);
-void event_action_thread_stop(struct devices_t *dev);
-void event_action_thread_free(struct devices_t *dev);
-void event_action_stopped(struct event_action_thread_t *thread);
-void event_action_started(struct event_action_thread_t *thread);
+unsigned long event_action_set_execution_id(char *);
+int event_action_get_execution_id(char *, unsigned long *);
+void event_action_thread_init(struct device_t *);
+void event_action_thread_start(struct device_t *, struct event_actions_t *, void *(*)(void *), struct rules_actions_t *);
+void event_action_thread_stop(struct device_t *);
+void event_action_thread_free(struct device_t *);
+void event_action_stopped(struct event_action_thread_t *);
+void event_action_started(struct event_action_thread_t *);
 
 #endif

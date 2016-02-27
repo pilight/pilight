@@ -40,7 +40,7 @@
 #include "../core/log.h"
 #include "../core/json.h"
 #include "../core/gc.h"
-#include "../config/hardware.h"
+#include "../hardware/hardware.h"
 #include "433lirc.h"
 
 #define FREQ433				433920
@@ -51,7 +51,7 @@ static int lirc_433_setfreq = 0;
 static int lirc_433_fd = 0;
 static char *lirc_433_socket = NULL;
 
-static unsigned short lirc433HwInit(void) {
+static unsigned short lirc433HwInit(void *(*callback)(void *)) {
 	unsigned int freq = 0;
 	int fd = 0, i = 0, count = 0;
 	int c = 0;
@@ -169,8 +169,7 @@ static unsigned short lirc433Settings(JsonNode *json) {
 	if(strcmp(json->key, "socket") == 0) {
 		if(json->tag == JSON_STRING) {
 			if((lirc_433_socket = MALLOC(strlen(json->string_)+1)) == NULL) {
-				fprintf(stderr, "out of memory\n");
-				exit(EXIT_FAILURE);
+				OUT_OF_MEMORY
 			}
 			strcpy(lirc_433_socket, json->string_);
 		} else {
@@ -189,6 +188,10 @@ static int lirc433gc(void) {
 	return 1;
 }
 
+/*
+ * FIXME
+ */
+
 #if !defined(MODULE) && !defined(_WIN32)
 __attribute__((weak))
 #endif
@@ -202,8 +205,8 @@ void lirc433Init(void) {
 	lirc433->minrawlen = 1000;
 	lirc433->maxrawlen = 0;
 	lirc433->mingaplen = 5100;
-	lirc433->maxgaplen = 10000;	
-	
+	lirc433->maxgaplen = 10000;
+
 	lirc433->hwtype=RF433;
 	lirc433->comtype=COMOOK;
 	lirc433->init=&lirc433HwInit;
@@ -217,9 +220,9 @@ void lirc433Init(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "433lirc";
-	module->version = "1.4";
-	module->reqversion = "7.0";
-	module->reqcommit = "10";
+	module->version = "2.0";
+	module->reqversion = "8.0";
+	module->reqcommit = NULL;
 }
 
 void init(void) {

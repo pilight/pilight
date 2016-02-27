@@ -51,9 +51,20 @@ static unsigned short initialized = 0;
 	static unsigned short mountproc = 1;
 #endif
 
-double getCPUUsage(void) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+static FILE *fstatus = NULL;
+static FILE *fmemory = NULL;
 
+int proc_gc(void) {
+	if(fstatus != NULL) {
+		fclose(fstatus);
+	}
+	if(fmemory != NULL) {
+		fclose(fmemory);
+	}
+	return 0;
+}
+
+double getCPUUsage(void) {
 	static struct cpu_usage_t cpu_usage;
 	if(!initialized) {
 		memset(&cpu_usage, '\0', sizeof(struct cpu_usage_t));
@@ -102,7 +113,6 @@ double getCPUUsage(void) {
 }
 
 void getThreadCPUUsage(pthread_t pth, struct cpu_usage_t *cpu_usage) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 #ifdef _WIN32
 	FILETIME createTime;
 	FILETIME exitTime;
@@ -145,8 +155,6 @@ void getThreadCPUUsage(pthread_t pth, struct cpu_usage_t *cpu_usage) {
 }
 
 double getRAMUsage(void) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
-
 #ifndef _WIN32
 	#if defined(_SC_PHYS_PAGES) && defined(_SC_PAGESIZE)
 	if(totalram == 0) {
@@ -155,80 +163,86 @@ double getRAMUsage(void) {
 	#endif
 
 	#ifdef __FreeBSD__
-	static char statusfile[] = "/compat/proc/self/status";
-	static char memfile[] = "/compat/proc/meminfo";
+		static char statusfile[] = "/compat/proc/self/status";
+		static char memfile[] = "/compat/proc/meminfo";
 	#else
-	static char statusfile[] = "/proc/self/status";
-	static char memfile[] = "/proc/meminfo";
+		static char statusfile[] = "/proc/self/status";
+		static char memfile[] = "/proc/meminfo";
 	#endif
 	unsigned long VmRSS = 0, value = 0, total = 0;
 	size_t len = 0;
 	ssize_t rd = 0;
 	char units[32], title[32], *line = NULL;
-	FILE *fp = NULL;
+
 
 	memset(title, '\0', 32);
 	memset(units, '\0', 32);
 
-	if((fp = fopen(statusfile, "r")) != NULL) {
-		while((rd = getline(&line, &len, fp)) != -1) {
-			if(strstr(line, "VmRSS:") != NULL) {
-				if(sscanf(line, "%31s %lu %s\n", title, &value, units) > 0) {
-					VmRSS = value * 1024;
-				}
-				if(line != NULL) {
-					free(line);
-					line = NULL;
-				}
-				break;
+	if(fstatus == NULL) {
+		if((fstatus = fopen(statusfile, "r")) == NULL) {
+			return 0.0;
+		}
+	}
+	rewind(fstatus);
+	while((rd = getline(&line, &len, fstatus)) != -1) {
+		if(strstr(line, "VmRSS:") != NULL) {
+			if(sscanf(line, "%31s %lu %s\n", title, &value, units) > 0) {
+				VmRSS = value * 1024;
 			}
+			if(line != NULL) {
+				free(line);
+				line = NULL;
+			}
+			break;
 		}
-		if(line != NULL) {
-			free(line);
-			line = NULL;
-		}
-		fclose(fp);
+	}
+	if(line != NULL) {
+		free(line);
+		line = NULL;
 	}
 	#ifdef __FreeBSD__
-	if(mountproc == 1) {
-		DIR* dir;
-		if(!(dir = opendir("/compat"))) {
-			mkdir("/compat", 0755);
-		} else {
-			closedir(dir);
-		}
-		if(!(dir = opendir("/compat/proc"))) {
-			mkdir("/compat/proc", 0755);
-		} else {
-			closedir(dir);
-		}
-		if(!(dir = opendir("/compat/proc/self"))) {
-			system("mount -t linprocfs none /compat/proc 2>/dev/null 1>/dev/null");
-			mountproc = 0;
-		} else {
-			closedir(dir);
-		}
-	}
-	#endif
-
-	if((fp = fopen(memfile, "r")) != NULL) {
-		while((rd = getline(&line, &len, fp)) != -1) {
-			if(strstr(line, "MemTotal:") != NULL) {
-				if(sscanf(line, "%31s %lu %s\n", title, &value, units) > 0) {
-					total = value * 1024;
-				}
-				if(line != NULL) {
-					free(line);
-					line = NULL;
-				}
-				break;
+		if(mountproc == 1) {
+			DIR* dir;
+			if(!(dir = opendir("/compat"))) {
+				mkdir("/compat", 0755);
+			} else {
+				closedir(dir);
+			}
+			if(!(dir = opendir("/compat/proc"))) {
+				mkdir("/compat/proc", 0755);
+			} else {
+				closedir(dir);
+			}
+			if(!(dir = opendir("/compat/proc/self"))) {
+				system("mount -t linprocfs none /compat/proc 2>/dev/null 1>/dev/null");
+				mountproc = 0;
+			} else {
+				closedir(dir);
 			}
 		}
-		if(line != NULL) {
-			free(line);
-			line = NULL;
+	#endif
+
+	if(fmemory == NULL) {
+		if((fmemory = fopen(memfile, "r")) != NULL) {
+			return 0.0;
 		}
-		fclose(fp);
+	}
+	rewind(fmemory);
+	while((rd = getline(&line, &len, fmemory)) != -1) {
+		if(strstr(line, "MemTotal:") != NULL) {
+			if(sscanf(line, "%31s %lu %s\n", title, &value, units) > 0) {
+				total = value * 1024;
+			}
+			if(line != NULL) {
+				free(line);
+				line = NULL;
+			}
+			break;
+		}
+	}
+	if(line != NULL) {
+		free(line);
+		line = NULL;
 	}
 	if(VmRSS > 0 && total > 0) {
 		return ((double)VmRSS*100)/(double)total;

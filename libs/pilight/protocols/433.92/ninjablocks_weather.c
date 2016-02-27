@@ -65,15 +65,7 @@ static int validate(void) {
 	return -1;
 }
 
-static void createMessage(int id, int unit, double temperature, double humidity) {
-	ninjablocks_weather->message = json_mkobject();
-	json_append_member(ninjablocks_weather->message, "id", json_mknumber(id, 0));
-	json_append_member(ninjablocks_weather->message, "unit", json_mknumber(unit, 0));
-	json_append_member(ninjablocks_weather->message, "temperature", json_mknumber(temperature/100, 2));
-	json_append_member(ninjablocks_weather->message, "humidity", json_mknumber(humidity, 0));
-}
-
-static void parseCode(void) {
+static void parseCode(char *message) {
 	int x = 0, pRaw = 0, binary[RAW_LENGTH/2];
 	int iParity = 1, iParityData = -1;	// init for even parity
 	int iHeaderSync = 12;				// 1100
@@ -122,7 +114,10 @@ static void parseCode(void) {
 	humidity += humi_offset;
 
 	if(iParityData == 0 && (iHeaderSync == headerSync || dataSync == iDataSync)) {
-		createMessage(id, unit, temperature, humidity);
+		snprintf(message, 255,
+			"{\"id\":%d,\"unit\":%d,\"temperature\":%.2f,\"humidity\":%.1f}",
+			id, unit, temperature/10, humidity
+		);
 	}
 }
 
@@ -162,8 +157,7 @@ static int checkValues(struct JsonNode *jvalues) {
 
 		if(match == 0) {
 			if((snode = MALLOC(sizeof(struct settings_t))) == NULL) {
-				fprintf(stderr, "out of memory\n");
-				exit(EXIT_FAILURE);
+				OUT_OF_MEMORY
 			}
 			snode->id = id;
 			snode->unit = unit;
@@ -229,9 +223,9 @@ void ninjablocksWeatherInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "ninjablocks_weather";
-	module->version = "1.0";
-	module->reqversion = "6.0";
-	module->reqcommit = "84";
+	module->version = "2.0";
+	module->reqversion = "7.0";
+	module->reqcommit = "94";
 }
 
 void init(void) {

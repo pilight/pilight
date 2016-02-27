@@ -21,17 +21,16 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "../../core/threads.h"
+#include "../../core/threadpool.h"
 #include "../action.h"
 #include "../../core/options.h"
-#include "../../config/devices.h"
 #include "../../core/dso.h"
 #include "../../core/pilight.h"
 #include "../../core/http.h"
 #include "../../core/common.h"
-#include "../../config/settings.h"
 #include "../../core/log.h"
 #include "../../core/mail.h"
+#include "../../storage/storage.h"
 #include "sendmail.h"
 
 #ifndef _WIN32
@@ -47,7 +46,8 @@ static int checkArguments(struct rules_actions_t *obj) {
 	struct JsonNode *jval = NULL;
 	struct JsonNode *jchild = NULL;
 	char *stmp = NULL;
-	int nrvalues = 0, itmp = 0;
+	double itmp = 0.0;
+	int nrvalues = 0;
 #if !defined(__FreeBSD__) && !defined(_WIN32)
 	regex_t regex;
 	int reti;
@@ -126,32 +126,42 @@ static int checkArguments(struct rules_actions_t *obj) {
 #endif
 	}
 	// Check if mandatory settings are present in config
-	if(settings_find_string("smtp-host", &stmp) != EXIT_SUCCESS) {
-		logprintf(LOG_ERR, "Sendmail: setting \"smtp-host\" is missing in config");
+	if(settings_select_string(ORIGIN_ACTION, "smtp-host", &stmp) != EXIT_SUCCESS) {
+		logprintf(LOG_ERR, "sendmail: setting \"smtp-host\" is missing in config");
 		return -1;
 	}
-	if(settings_find_number("smtp-port", &itmp) != EXIT_SUCCESS) {
-		logprintf(LOG_ERR, "Sendmail: setting \"smtp-port\" is missing in config");
+	if(settings_select_number(ORIGIN_ACTION, "smtp-port", &itmp) != EXIT_SUCCESS) {
+		logprintf(LOG_ERR, "sendmail: setting \"smtp-port\" is missing in config");
 		return -1;
 	}
-	if(settings_find_string("smtp-user", &stmp) != EXIT_SUCCESS) {
-		logprintf(LOG_ERR, "Sendmail: setting \"smtp-user\" is missing in config");
+	if(settings_select_string(ORIGIN_ACTION, "smtp-user", &stmp) != EXIT_SUCCESS) {
+		logprintf(LOG_ERR, "sendmail: setting \"smtp-user\" is missing in config");
 		return -1;
 	}
-	if(settings_find_string("smtp-password", &stmp) != EXIT_SUCCESS) {
-		logprintf(LOG_ERR, "Sendmail: setting \"smtp-password\" is missing in config");
+	if(settings_select_string(ORIGIN_ACTION, "smtp-password", &stmp) != EXIT_SUCCESS) {
+		logprintf(LOG_ERR, "sendmail: setting \"smtp-password\" is missing in config");
 		return -1;
 	}
-	if(settings_find_string("smtp-sender", &stmp) != EXIT_SUCCESS) {
-		logprintf(LOG_ERR, "Sendmail: setting \"smtp-sender\" is missing in config");
+	if(settings_select_string(ORIGIN_ACTION, "smtp-sender", &stmp) != EXIT_SUCCESS) {
+		logprintf(LOG_ERR, "sendmail: setting \"smtp-sender\" is missing in config");
 		return -1;
 	}
 	return 0;
 }
 
+static void callback(int status) {
+	if(status == 0) {
+		logprintf(LOG_INFO, "successfully send sendmail action message");
+	} else {
+		logprintf(LOG_INFO, "failed to send sendmail action message");
+	}
+}
+
 static void *thread(void *param) {
-	struct rules_actions_t *pth = (struct rules_actions_t *)param;
-	struct JsonNode *arguments = pth->parsedargs;
+	struct threadpool_tasks_t *task = param;
+	struct rules_actions_t *pth = task->userdata;
+	struct JsonNode *json = pth->parsedargs;
+
 	struct JsonNode *jsubject = NULL;
 	struct JsonNode *jmessage = NULL;
 	struct JsonNode *jto = NULL;
@@ -162,15 +172,20 @@ static void *thread(void *param) {
 	struct JsonNode *jval2 = NULL;
 	struct JsonNode *jval3 = NULL;
 
-	action_sendmail->nrthreads++;
+	// event_action_started(pth);
 
-	struct mail_t mail;
-	char *shost = NULL, *suser = NULL, *spassword = NULL;
+	struct mail_t *mail = MALLOC(sizeof(struct mail_t));
+	char *shost = NULL, *suser = NULL, *spassword = NULL, *stmp = NULL;
 	int sport = 0;
+	double itmp = 0.0;
 
-	jmessage = json_find_member(arguments, "MESSAGE");
-	jsubject = json_find_member(arguments, "SUBJECT");
-	jto = json_find_member(arguments, "TO");
+	if(mail == NULL) {
+		OUT_OF_MEMORY
+	}
+
+	jmessage = json_find_member(json, "MESSAGE");
+	jsubject = json_find_member(json, "SUBJECT");
+	jto = json_find_member(json, "TO");
 
 	if(jsubject != NULL && jmessage != NULL && jto != NULL) {
 		jvalues1 = json_find_member(jsubject, "value");
@@ -184,32 +199,46 @@ static void *thread(void *param) {
 				jval1->tag == JSON_STRING && jval2->tag == JSON_STRING && jval3->tag == JSON_STRING) {
 
 				//smtp settings
-				settings_find_string("smtp-sender", &mail.from);
-				settings_find_string("smtp-host", &shost);
-				settings_find_number("smtp-port", &sport);
-				settings_find_string("smtp-user", &suser);
-				settings_find_string("smtp-password", &spassword);
+				if(settings_select_string(ORIGIN_ACTION, "smtp-sender", &stmp) == 0) {
+					if((mail->from = MALLOC(strlen(stmp)+1)) == NULL) {
+						OUT_OF_MEMORY
+					}
+					strcpy(mail->from, stmp);
+				}
+				settings_select_string(ORIGIN_ACTION, "smtp-host", &shost);
+				if(settings_select_number(ORIGIN_ACTION, "smtp-port", &itmp) == 0) {
+					sport = (int)itmp;
+				}
+				settings_select_string(ORIGIN_ACTION, "smtp-user", &suser);
+				settings_select_string(ORIGIN_ACTION, "smtp-password", &spassword);
 
-				mail.subject = jval1->string_;
-				mail.message = jval2->string_;
-				mail.to = jval3->string_;
+				if((mail->subject = MALLOC(strlen(jval1->string_)+1)) == NULL) {
+					OUT_OF_MEMORY
+				}
+				if((mail->message = MALLOC(strlen(jval2->string_)+1)) == NULL) {
+					OUT_OF_MEMORY
+				}
+				if((mail->to = MALLOC(strlen(jval3->string_)+1)) == NULL) {
+					OUT_OF_MEMORY
+				}
+				strcpy(mail->subject, jval1->string_);
+				strcpy(mail->message, jval2->string_);
+				strcpy(mail->to, jval3->string_);
 
-				if(sendmail(shost, suser, spassword, sport, &mail) != 0) {
-					logprintf(LOG_ERR, "Sendmail failed to send message \"%s\"", jval2->string_);
+				if(sendmail(shost, suser, spassword, sport, mail, callback) != 0) {
+					logprintf(LOG_ERR, "sendmail action failed to send message \"%s\"", jval2->string_);
 				}
 			}
 		}
 	}
 
-	action_sendmail->nrthreads--;
+	// event_action_stopped(pth);
 
 	return (void *)NULL;
 }
 
 static int run(struct rules_actions_t *obj) {
-	pthread_t pth;
-	threads_create(&pth, NULL, thread, (void *)obj);
-	pthread_detach(pth);
+	threadpool_add_work(REASON_END, NULL, action_sendmail->name, 0, thread, NULL, (void *)obj);
 	return 0;
 }
 
@@ -230,9 +259,9 @@ void actionSendmailInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "sendmail";
-	module->version = "1.1";
-	module->reqversion = "6.0";
-	module->reqcommit = "152";
+	module->version = "2.0";
+	module->reqversion = "7.0";
+	module->reqcommit = "94";
 }
 
 void init(void) {

@@ -30,21 +30,7 @@
 #include "../../core/gc.h"
 #include "generic_dimmer.h"
 
-static void createMessage(int id, int state, int dimlevel) {
-	generic_dimmer->message = json_mkobject();
-	json_append_member(generic_dimmer->message, "id", json_mknumber(id, 0));
-	if(dimlevel >= 0) {
-		state = 1;
-		json_append_member(generic_dimmer->message, "dimlevel", json_mknumber(dimlevel, 0));
-	}
-	if(state == 1) {
-		json_append_member(generic_dimmer->message, "state", json_mkstring("on"));
-	} else {
-		json_append_member(generic_dimmer->message, "state", json_mkstring("off"));
-	}
-}
-
-static int checkValues(JsonNode *code) {
+static int checkValues(struct JsonNode *code) {
 	int dimlevel = -1;
 	int max = 15;
 	int min = 0;
@@ -71,7 +57,7 @@ static int checkValues(JsonNode *code) {
 	return 0;
 }
 
-static int createCode(JsonNode *code) {
+static int createCode(struct JsonNode *code, char *message) {
 	int id = -1;
 	int state = -1;
 	int dimlevel = -1;
@@ -106,7 +92,18 @@ static int createCode(JsonNode *code) {
 		if(dimlevel >= 0) {
 			state = -1;
 		}
-		createMessage(id, state, dimlevel);
+		int x = snprintf(message, 255, "{");
+		x += snprintf(&message[x], 255-x, "\"id\":%d,", id);
+		if(dimlevel >= 0) {
+			state = 1;
+			x += snprintf(&message[x], 255-x, "\"dimlevel\":%d,", dimlevel);
+		}
+		if(state == 1) {
+			x += snprintf(&message[x], 255-x, "\"state\":\"on\"");
+		}	else {
+			x += snprintf(&message[x], 255-x, "\"state\":\"off\"");
+		}
+		x += snprintf(&message[x], 255-x, "}");
 	}
 	return EXIT_SUCCESS;
 
@@ -147,9 +144,9 @@ void genericDimmerInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "generic_dimmer";
-	module->version = "1.4";
-	module->reqversion = "6.0";
-	module->reqcommit = "84";
+	module->version = "2.0";
+	module->reqversion = "7.0";
+	module->reqcommit = "94";
 }
 
 void init(void) {

@@ -19,7 +19,8 @@
 #ifndef _NTP_H_
 #define _NTP_H_
 
-void *ntpthread(void *param);
+void *ntpthread(void *);
+int ntpinterval(void *);
 int getntpdiff(void);
 int ntp_gc(void);
 int isntpsynced(void);

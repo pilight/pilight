@@ -41,8 +41,7 @@ OPCODE * avr_new_opcode(void)
 
   m = (OPCODE *)MALLOC(sizeof(*m));
   if (m == NULL) {
-    fprintf(stderr, "out of memory\n");
-    exit(EXIT_FAILURE);
+    OUT_OF_MEMORY
   }
 
   memset(m, 0, sizeof(*m));
@@ -174,8 +173,7 @@ AVRMEM * avr_new_memtype(void)
 
   m = (AVRMEM *)MALLOC(sizeof(*m));
   if (m == NULL) {
-    fprintf(stderr, "out of memory\n");
-    exit(EXIT_FAILURE);
+    OUT_OF_MEMORY
   }
 
   memset(m, 0, sizeof(*m));
@@ -194,8 +192,7 @@ AVRMEM * avr_dup_mem(AVRMEM * m)
 
   n->buf = (unsigned char *)MALLOC(n->size);
   if (n->buf == NULL) {
-    fprintf(stderr, "out of memory\n");
-    exit(EXIT_FAILURE);
+   OUT_OF_MEMORY
   }
   memset(n->buf, 0, n->size);
 
@@ -215,8 +212,7 @@ AVRPART * avr_new_part(void)
 
   p = (AVRPART *)MALLOC(sizeof(AVRPART));
   if (p == NULL) {
-    fprintf(stderr, "out of memory\n");
-    exit(EXIT_FAILURE);
+    OUT_OF_MEMORY
   }
 
   memset(p, 0, sizeof(*p));

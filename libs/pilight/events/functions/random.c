@@ -22,12 +22,11 @@
 #include <unistd.h>
 #include <sys/time.h>
 
-#include "../function.h"
 #include "../../core/options.h"
-#include "../../config/devices.h"
 #include "../../core/log.h"
 #include "../../core/dso.h"
 #include "../../core/pilight.h"
+#include "../function.h"
 #include "random.h"
 
 static int run(struct rules_t *obj, struct JsonNode *arguments, char **ret, enum origin_t origin) {
@@ -79,8 +78,8 @@ void functionRandomInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "random";
-	module->version = "1.0";
-	module->reqversion = "6.0";
+	module->version = "2.0";
+	module->reqversion = "7.0";
 	module->reqcommit = "94";
 }
 

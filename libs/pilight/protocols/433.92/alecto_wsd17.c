@@ -55,7 +55,7 @@ static int validate(void) {
 	return -1;
 }
 
-static void parseCode(void) {
+static void parseCode(char *message) {
 	int i = 0, x = 0, id = 0, binary[RAW_LENGTH/2];
 	double temp_offset = 0.0, temperature = 0.0;
 
@@ -81,9 +81,10 @@ static void parseCode(void) {
 
 	temperature += temp_offset;
 
-	alecto_wsd17->message = json_mkobject();
-	json_append_member(alecto_wsd17->message, "id", json_mknumber(id, 0));
-	json_append_member(alecto_wsd17->message, "temperature", json_mknumber(temperature/10, 1));
+	snprintf(message, 255,
+		"{\"id\":%d,\"temperature\":%.1f}",
+		id, temperature/10
+	);
 }
 
 static int checkValues(struct JsonNode *jvalues) {
@@ -119,8 +120,7 @@ static int checkValues(struct JsonNode *jvalues) {
 
 		if(match == 0) {
 			if((snode = MALLOC(sizeof(struct settings_t))) == NULL) {
-				fprintf(stderr, "out of memory\n");
-				exit(EXIT_FAILURE);
+				OUT_OF_MEMORY
 			}
 			snode->id = id;
 			snode->temp = 0;
@@ -177,9 +177,9 @@ void alectoWSD17Init(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "alecto_wsd17";
-	module->version = "1.0";
-	module->reqversion = "6.0";
-	module->reqcommit = "84";
+	module->version = "2.0";
+	module->reqversion = "7.0";
+	module->reqcommit = "94";
 }
 
 void init(void) {

@@ -157,8 +157,7 @@ void logprintf(int prio, const char *format_str, ...) {
 	memset(&tm, '\0', sizeof(struct tm));
 
 	if(line == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(EXIT_FAILURE);
+		OUT_OF_MEMORY
 	}
 	save_errno = errno;
 
@@ -214,8 +213,7 @@ void logprintf(int prio, const char *format_str, ...) {
 		} else {
 			va_end(apcpy);
 			if((line = REALLOC(line, (size_t)bytes+(size_t)pos+3)) == NULL) {
-				fprintf(stderr, "out of memory\n");
-				exit(EXIT_FAILURE);
+				OUT_OF_MEMORY
 			}
 			va_start(ap, format_str);
 			pos += vsprintf(&line[pos], format_str, ap);
@@ -238,17 +236,15 @@ void logprintf(int prio, const char *format_str, ...) {
 				pthread_mutex_lock(&logqueue_lock);
 			}
 			if(logqueue_number < 1024) {
-				struct logqueue_t *node = MALLOC(sizeof(logqueue_t));
+				struct logqueue_t *node = MALLOC(sizeof(struct logqueue_t));
 				if(node == NULL) {
-					fprintf(stderr, "out of memory\n");
-					exit(EXIT_FAILURE);
+					OUT_OF_MEMORY
 				}
 				if((node->line = MALLOC((size_t)pos+1)) == NULL) {
-					fprintf(stderr, "out of memory\n");
-					exit(EXIT_FAILURE);
+					OUT_OF_MEMORY
 				}
 				memset(node->line, '\0', (size_t)pos+1);
-				strcpy(node->line, line);
+				strncpy(node->line, line, pos);
 				node->next = NULL;
 
 				if(logqueue_number == 0) {
@@ -350,8 +346,7 @@ int log_file_set(char *log) {
 
 	size_t i = (strlen(log)-strlen(filename));
 	if((logpath = REALLOC(logpath, i+1)) == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(EXIT_FAILURE);
+		OUT_OF_MEMORY
 	}
 	memset(logpath, '\0', i+1);
 	strncpy(logpath, log, i);
@@ -380,8 +375,7 @@ int log_file_set(char *log) {
 		} else {
 			if(S_ISDIR(s.st_mode)) {
 				if((logfile = REALLOC(logfile, strlen(log)+1)) == NULL) {
-					fprintf(stderr, "out of memory\n");
-					exit(EXIT_FAILURE);
+					OUT_OF_MEMORY
 				}
 				strcpy(logfile, log);
 			} else {
@@ -392,8 +386,7 @@ int log_file_set(char *log) {
 		}
 	} else {
 		if((logfile = REALLOC(logfile, strlen(log)+1)) == NULL) {
-			fprintf(stderr, "out of memory\n");
-			exit(EXIT_FAILURE);
+			OUT_OF_MEMORY
 		}
 		strcpy(logfile, log);
 	}

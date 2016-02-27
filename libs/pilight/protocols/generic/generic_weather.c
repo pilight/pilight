@@ -30,21 +30,7 @@
 #include "../../core/gc.h"
 #include "generic_weather.h"
 
-static void createMessage(int id, double temperature, double humidity, int battery) {
-	generic_weather->message = json_mkobject();
-	json_append_member(generic_weather->message, "id", json_mknumber(id, 0));
-	if(temperature > -998.0) {
-		json_append_member(generic_weather->message, "temperature", json_mknumber(temperature, 2));
-	}
-	if(humidity > -1.0) {
-		json_append_member(generic_weather->message, "humidity", json_mknumber(humidity, 2));
-	}
-	if(battery > -1) {
-		json_append_member(generic_weather->message, "battery", json_mknumber(battery, 0));
-	}
-}
-
-static int createCode(JsonNode *code) {
+static int createCode(struct JsonNode *code, char *message) {
 	double itmp = 0;
 	int id = -999;
 	double temp = -999.0;
@@ -64,7 +50,17 @@ static int createCode(JsonNode *code) {
 		logprintf(LOG_ERR, "generic_weather: insufficient number of arguments");
 		return EXIT_FAILURE;
 	} else {
-		createMessage(id, temp, humi, batt);
+		int x = snprintf(message, 255, "{");
+		if(temp > -998.0) {
+			x += snprintf(&message[x], 255-x, "\"temperature\":%.2f,", temp);
+		}
+		if(humi > -1.0) {
+			x += snprintf(&message[x], 255-x, "\"humidity\":%.2f,", humi);
+		}
+		if(batt > -1) {
+			x += snprintf(&message[x], 255-x, "\"battery\":%d,", batt);
+		}
+		x += snprintf(&message[x-1], 255-x, "}");
 	}
 	return EXIT_SUCCESS;
 }
@@ -105,9 +101,9 @@ void genericWeatherInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "generic_weather";
-	module->version = "1.22";
-	module->reqversion = "6.0";
-	module->reqcommit = "84";
+	module->version = "2.0";
+	module->reqversion = "7.0";
+	module->reqcommit = "94";
 }
 
 void init(void) {

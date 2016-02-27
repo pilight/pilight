@@ -19,7 +19,7 @@
 #ifndef _HARDWARE_NANO_433_H_
 #define _HARDWARE_NANO_433_H_
 
-#include "../config/hardware.h"
+#include "../hardware/hardware.h"
 
 struct hardware_t *nano433;
 void nano433Init(void);
