@@ -52,6 +52,11 @@
 
 static unsigned short main_loop = 1;
 static unsigned short linefeed = 0;
+static int min_pulses = 0;
+static int pulses_per_line = 0;
+
+static const char pulse_fmt[] = " %5d";
+static const char line_fmt[] = "\n%*d:";
 
 int main_gc(void) {
 	log_shell_disable();
@@ -88,14 +93,50 @@ int main_gc(void) {
 }
 
 void *receiveOOK(void *param) {
-	int duration = 0, iLoop = 0;
+	int duration = 0, iLoop = 0, len = 0;
+	size_t lines = 0;
+
+	int pulses[min_pulses < 1 ? 1 : min_pulses];
 
 	struct hardware_t *hw = (hardware_t *)param;
 	while(main_loop && hw->receiveOOK) {
 		duration = hw->receiveOOK();
-		iLoop++;
 		if(duration > 0) {
-			if(linefeed == 1) {
+			iLoop++;
+			if(min_pulses > 0) {
+				if(iLoop < min_pulses) {
+					pulses[iLoop] = duration;
+				} else if(iLoop == min_pulses) {
+					len = printf("%6u %s:", ++lines, hw->id) - 1; // don't count the ':' - is added by line_fmt.
+					for(iLoop = 1; iLoop < min_pulses; iLoop++) {
+						if(iLoop > 1 && (iLoop-1)%pulses_per_line == 0) {
+							printf(line_fmt, len, (iLoop-1));
+						}
+						printf(pulse_fmt, pulses[iLoop]);
+					}
+					if(iLoop > 1 && (iLoop-1)%pulses_per_line == 0) {
+						printf(line_fmt, len, (iLoop-1));
+					}
+					printf(pulse_fmt, duration);
+				} else {
+					if((iLoop-1)%pulses_per_line == 0) {
+						printf(line_fmt, len, (iLoop-1));
+					}
+					printf(pulse_fmt, duration);
+				}
+
+				if(duration > 5100) {
+					if(iLoop >= min_pulses) {
+						printf(line_fmt, len, iLoop);
+						printf(" -#: %d\n", iLoop);
+						if(iLoop >= pulses_per_line) {
+							printf("\n");	// space line after large reports.
+						}
+					}
+					iLoop = 0;
+				}
+			}
+			else if(linefeed == 1) {
 				if(duration > 5100) {
 					printf(" %d -#: %d\n%s: ",duration, iLoop, hw->id);
 					iLoop = 0;
@@ -112,7 +153,8 @@ void *receiveOOK(void *param) {
 
 void *receivePulseTrain(void *param) {
 	struct rawcode_t r;
-	int i = 0;
+	size_t lines = 0;
+	int i = 0, len = 0;
 
 	struct hardware_t *hw = (hardware_t *)param;
 	while(main_loop && hw->receivePulseTrain) {
@@ -121,11 +163,32 @@ void *receivePulseTrain(void *param) {
 			main_gc();
 			break;
 		} else if(r.length > 0) {
+			if(min_pulses > 0) {
+				int have_nl = 0;
+				if(r.length >= min_pulses) {
+					len = printf("%6u %s:", ++lines, hw->id) - 1; // don't count the ':' - is added by line_fmt.
+					for(i = 0; i < r.length; i++) {
+						if((i > 0 && i%pulses_per_line == 0) || have_nl) {
+							printf(line_fmt, len, i);
+						}
+						printf(pulse_fmt, r.pulses[i]);
+						have_nl = 0;
+						if(r.pulses[i] > 5100) {
+							printf(" -#: %d\n", i+1);
+							have_nl = 1;
+						}
+					}
+				}
+				if(r.length >= pulses_per_line || !have_nl) {
+					printf("\n");
+				}
+				continue;
+			}
 			for(i=0;i<r.length;i++) {
 				if(linefeed == 1) {
 					printf(" %d", r.pulses[i]);
 					if(r.pulses[i] > 5100) {
-						printf(" -# %d\n %s:", i, hw->id);
+						printf(" -# %d\n %s:", i+1, hw->id);
 					}
 				} else {
 					printf("%s: %d\n", hw->id, r.pulses[i]);
@@ -178,6 +241,8 @@ int main(int argc, char **argv) {
 	options_add(&options, 'V', "version", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
 	options_add(&options, 'C', "config", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, NULL);
 	options_add(&options, 'L', "linefeed", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
+	options_add(&options, 'm', "minpulses", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, NULL);
+	options_add(&options, 'p', "pulsesperpline", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, NULL);
 
 	while (1) {
 		int c;
@@ -191,8 +256,10 @@ int main(int argc, char **argv) {
 				printf("Usage: %s [options]\n", progname);
 				printf("\t -H --help\t\tdisplay usage summary\n");
 				printf("\t -V --version\t\tdisplay version\n");
- 				printf("\t -L --linefeed\t\tstructure raw printout\n");
- 				printf("\t -C --config\t\tconfig file\n");
+				printf("\t -L --linefeed\t\tstructure raw printout\n");
+				printf("\t -m --minpulses count\t  Print nothing if not at least count pulses. Implies --linefeed.\n");
+				printf("\t -p --pulsesperline count Pulses to print per line (10 by default). Implies --linefeed.\n");
+				printf("\t -C --config\t\tconfig file\n");
 				goto close;
 			break;
 			case 'L':
@@ -206,6 +273,20 @@ int main(int argc, char **argv) {
 				configtmp = REALLOC(configtmp, strlen(args)+1);
 				strcpy(configtmp, args);
 			break;
+			case 'm':
+				min_pulses = atoi(args);
+				if(min_pulses < 1) {
+					printf("%s: --minpulses must be 1 or more.\n", progname);
+					goto close;
+				}
+				break;
+			case 'p':
+				pulses_per_line = atoi(args);
+				if(pulses_per_line < 1) {
+					printf("%s: --pulsesperline must be 1 or more.\n", progname);
+					goto close;
+				}
+				break;
 			default:
 				printf("Usage: %s [options]\n", progname);
 				goto close;
@@ -213,6 +294,19 @@ int main(int argc, char **argv) {
 		}
 	}
 	options_delete(options);
+
+	if(pulses_per_line > 0 || min_pulses > 0) {
+		linefeed = 1;
+	}
+	if(linefeed == 1) {
+		if(pulses_per_line > 0) {
+			if(min_pulses < 1) {
+				min_pulses = 1;
+			}
+		} else if(min_pulses > 0) {
+			pulses_per_line = 10;
+		}
+	}
 
 #ifdef _WIN32
 	if((pid = check_instances(L"pilight-raw")) != -1) {
