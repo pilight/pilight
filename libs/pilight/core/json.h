@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2013 - 2014 CurlyMo (curlymoo1@gmail.com)
+  Copyright (C) 2013 - 2016 CurlyMo
 								2011 Joseph A. Adams (joeyadams3.14159@gmail.com)
   All rights reserved.
 
