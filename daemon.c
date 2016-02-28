@@ -164,6 +164,11 @@ static int bcqueue_number = 0;
 
 static struct protocol_t *procProtocol;
 
+/* By default the reveiver is turned to wait-mode while
+	sending to prevent receivin the sent data.
+	For debug reasons this might be helpful.  */
+static int receive_while_sending = 0;
+
 /* The pid_file and pid of this daemon */
 #ifndef _WIN32
 static char *pid_file;
@@ -671,6 +676,9 @@ void *send_code(void *param) {
 						json_append_member(message, "uuid", json_mkstring(sendqueue->uuid));
 					}
 					json_append_member(message, "repeat", json_mknumber(1, 0));
+					if(receive_while_sending != 0) {
+						json_append_member(message, "receive-while-sending", json_mknumber(receive_while_sending, 0));
+					}
 				}
 			}
 			if(sendqueue->settings != NULL && strcmp(sendqueue->settings, "{}") != 0) {
@@ -692,7 +700,11 @@ void *send_code(void *param) {
 			}
 			if(hw != NULL) {
 				if((hw->comtype == COMOOK || hw->comtype == COMPLSTRAIN) && hw->sendOOK != NULL) {
-					if(hw->receiveOOK != NULL || hw->receivePulseTrain != NULL) {
+					int receiver_wait = hw->receiveOOK != NULL || hw->receivePulseTrain != NULL;
+					if(receive_while_sending) {
+						receiver_wait = 0;
+					}
+					if(receiver_wait) {
 						hw->wait = 1;
 						pthread_mutex_unlock(&hw->lock);
 						pthread_cond_signal(&hw->signal);
@@ -715,7 +727,7 @@ void *send_code(void *param) {
 						int plslen = sendqueue->code[sendqueue->length-1]/PULSE_DIV;
 						receive_queue(sendqueue->code, sendqueue->length, plslen, -1);
 					}
-					if(hw->receiveOOK != NULL || hw->receivePulseTrain != NULL) {
+					if(receiver_wait) {
 						hw->wait = 0;
 						pthread_mutex_unlock(&hw->lock);
 						pthread_cond_signal(&hw->signal);
@@ -2365,6 +2377,8 @@ int start_pilight(int argc, char **argv) {
 		webserver_root_free = 1;
 	}
 #endif
+
+	settings_find_number("receive-while-sending", &receive_while_sending);
 
 #ifndef _WIN32
 	if(settings_find_string("pid-file", &pid_file) != 0) {

@@ -528,6 +528,14 @@ static int settings_parse(JsonNode *root) {
 				settings_add_number(jsettings->key, (int)jsettings->number_);
 			}
 #endif //EVENTS
+		} else if(strcmp(jsettings->key, "receive-while-sending") == 0) {
+			if(jsettings->tag == JSON_NUMBER) {
+				settings_add_number(jsettings->key, (int)jsettings->number_);
+			} else {
+				logprintf(LOG_ERR, "config setting \"%s\" must be a number (0 disables, 1 enables)", jsettings->key);
+				have_error = 1;
+				goto clear;
+			}
 		} else {
 			logprintf(LOG_ERR, "config setting \"%s\" is invalid", jsettings->key);
 			have_error = 1;
