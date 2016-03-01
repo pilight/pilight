@@ -65,8 +65,8 @@ static void parseCode(void) {
 	int x = 0, i = 0, binary[RAW_LENGTH/4];
 
 	/* Convert the one's and zero's into binary */
-	for(x=0;x<rsl366->rawlen-1;x+=4) {
-		if(rsl366->raw[x+3] > (int)((double)AVG_PULSE_LENGTH*((double)PULSE_MULTIPLIER/2))) {
+	for(x=3;x<rsl366->rawlen;x+=4) {
+		if(rsl366->raw[x] > (int)((double)AVG_PULSE_LENGTH*((double)PULSE_MULTIPLIER/2))) {
 			binary[i++]=1;
 		} else {
 			binary[i++]=0;
