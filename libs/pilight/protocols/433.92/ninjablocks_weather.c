@@ -36,13 +36,13 @@
 #define AVG_PULSE_LENGTH	2120
 #define MIN_RAW_LENGTH		41
 #define MAX_RAW_LENGTH		70
-#define RAW_LENGTH				50
+#define RAW_LENGTH			50
 
-#define	PULSE_NINJA_WEATHER_SHORT		1000
+#define PULSE_NINJA_WEATHER_SHORT	1000
 #define PULSE_NINJA_WEATHER_LONG		2000
 #define PULSE_NINJA_WEATHER_FOOTER	AVG_PULSE_LENGTH	// 72080/PULSE_DIV
-#define PULSE_NINJA_WEATHER_LOWER		750		// SHORT*0,75
-#define PULSE_NINJA_WEATHER_UPPER		1250	// SHORT * 1,25
+#define PULSE_NINJA_WEATHER_LOWER	750	// SHORT*0,75
+#define PULSE_NINJA_WEATHER_UPPER	1250	// SHORT * 1,25
 
 typedef struct settings_t {
 	double id;
@@ -66,7 +66,7 @@ static int validate(void) {
 }
 
 static void parseCode(char *message) {
-	int x = 0, pRaw = 0, binary[RAW_LENGTH/2];
+	int x = 0, pRaw = 0, binary[MAX_RAW_LENGTH/2];
 	int iParity = 1, iParityData = -1;	// init for even parity
 	int iHeaderSync = 12;				// 1100
 	int iDataSync = 6;					// 110
@@ -74,7 +74,7 @@ static void parseCode(char *message) {
 	double humi_offset = 0.0;
 
 	// Decode Biphase Mark Coded Differential Manchester (BMCDM) pulse stream into binary
-	for(x=0; x<=(RAW_LENGTH/2); x++) {
+	for(x=0; x<=(MAX_RAW_LENGTH/2); x++) {
 		if(ninjablocks_weather->raw[pRaw] > PULSE_NINJA_WEATHER_LOWER &&
 		  ninjablocks_weather->raw[pRaw] < PULSE_NINJA_WEATHER_UPPER) {
 			binary[x] = 1;
