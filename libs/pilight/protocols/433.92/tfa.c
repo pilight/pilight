@@ -1,9 +1,9 @@
 /*
 	Copyright (C) 2014 - 2016 CurlyMo
 
-  This Source Code Form is subject to the terms of the Mozilla Public
-  License, v. 2.0. If a copy of the MPL was not distributed with this
-  file, You can obtain one at http://mozilla.org/MPL/2.0/.
+	This Source Code Form is subject to the terms of the Mozilla Public
+	License, v. 2.0. If a copy of the MPL was not distributed with this
+	file, You can obtain one at http://mozilla.org/MPL/2.0/.
 */
 
 #include <stdio.h>
@@ -24,7 +24,9 @@
 #define MIN_PULSE_LENGTH	220
 #define MAX_PULSE_LENGTH	250
 #define AVG_PULSE_LENGTH	235
-#define RAW_LENGTH				86
+#define RAW_LENGTH			86
+#define MIN_RAW_LENGTH		86
+#define MAX_RAW_LENGTH		88
 
 typedef struct settings_t {
 	double id;
@@ -37,7 +39,7 @@ typedef struct settings_t {
 static struct settings_t *settings = NULL;
 
 static int validate(void) {
-	if(tfa->rawlen == RAW_LENGTH) {
+	if(tfa->rawlen == MIN_RAW_LENGTH || tfa->rawlen == MAX_RAW_LENGTH) {
 		if(tfa->raw[tfa->rawlen-1] >= (MIN_PULSE_LENGTH*PULSE_DIV) &&
 		   tfa->raw[tfa->rawlen-1] <= (MAX_PULSE_LENGTH*PULSE_DIV)) {
 			return 0;
@@ -53,11 +55,15 @@ static void parseCode(char *message) {
 	int humi1 = 0, humi2 = 0;
 	int id = 0, battery = 0;
 	int channel = 0;
-	int i = 0, x = 0;
+	int i = 0, x = 0, xLoop = 1;
 	double humi_offset = 0.0, temp_offset = 0.0;
 	double temperature = 0.0, humidity = 0.0;
 
-	for(x=1;x<tfa->rawlen-2;x+=2) {
+	if (tfa->rawlen == MAX_RAW_LENGTH) {
+		xLoop = 3;	// Skip the two Header Pulses
+	}
+
+	for(x=xLoop;x<tfa->rawlen-2;x+=2) {
 		if(tfa->raw[x] > AVG_PULSE_LENGTH*PULSE_MULTIPLIER) {
 			binary[i++] = 1;
 		} else {
@@ -71,14 +77,15 @@ static void parseCode(char *message) {
 	temp1 = binToDecRev(binary, 14, 17);
 	temp2 = binToDecRev(binary, 18, 21);
 	temp3 = binToDecRev(binary, 22, 25);
-	                                                     /* Convert F to C */
-	temperature = (int)((float)(((((temp3*256) + (temp2*16) + (temp1))*10) - 9000) - 3200) * ((float)5/(float)9));
+
+	// Convert from °F to °C,  a zero value is equivalent to -90.00 °F with an exp of 10, we enlarge that to 2 digit
+	temperature = (double)(((((temp1 + temp2*16 + temp3*256) * 10) - 9000 - 3200) * 5) / 9);
 
 	humi1 = binToDecRev(binary, 26, 29);
 	humi2 = binToDecRev(binary, 30, 33);
-	humidity = ((humi1)+(humi2*16));
+	humidity = (double)(humi1 + humi2*16);
 
-	if(binToDecRev(binary, 34, 35) > 1) {
+	if(binToDecRev(binary, 35, 35) == 1) {
 		battery = 0;
 	} else {
 		battery = 1;
@@ -180,8 +187,8 @@ void tfaInit(void) {
 	tfa->hwtype = RF433;
 	tfa->maxgaplen = MAX_PULSE_LENGTH*PULSE_DIV;
 	tfa->mingaplen = MIN_PULSE_LENGTH*PULSE_DIV;
-	tfa->minrawlen = 86;
-	tfa->maxrawlen = 86;
+	tfa->minrawlen = MIN_RAW_LENGTH;
+	tfa->maxrawlen = MAX_RAW_LENGTH;
 
 	options_add(&tfa->options, 't', "temperature", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9]{1,3}$");
 	options_add(&tfa->options, 'i', "id", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "[0-9]");
