@@ -62,7 +62,7 @@ static void parseCode(void) {
 	int binary[RAW_LENGTH/2];
 	int temp1 = 0, temp2 = 0, temp3 = 0;
 	int humi1 = 0, humi2 = 0;
-	int id = 0, battery = 0;
+	int id = 0, battery = 0, crc = 0;
 	int channel = 0;
 	int i = 0, x = 0, xLoop = 1;
 	double humi_offset = 0.0, temp_offset = 0.0;
@@ -78,6 +78,18 @@ static void parseCode(void) {
 		} else {
 			binary[i++] = 0;
 		}
+	}
+
+	for(i=0;i<34;i++) {
+		if(binary[i] != (crc&1)) {
+			crc = (crc>>1) ^ 12;
+		} else {
+			crc = (crc>>1);
+		}
+	}
+	crc ^= binToDec(binary, 34, 37);
+	if (crc != binToDec(binary, 38, 41)) {
+		return; // incorrect checksum
 	}
 
 	id = binToDecRev(binary, 2, 9);
