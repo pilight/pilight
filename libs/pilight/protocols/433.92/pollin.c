@@ -1,19 +1,9 @@
 /*
-	Copyright (C) 2014 CurlyMo
+	Copyright (C) 2014 - 2016 CurlyMo
 
-	This file is part of pilight.
-
-	pilight is free software: you can redistribute it and/or modify it under the
-	terms of the GNU General Public License as published by the Free Software
-	Foundation, either version 3 of the License, or (at your option) any later
-	version.
-
-	pilight is distributed in the hope that it will be useful, but WITHOUT ANY
-	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
-	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
-
-	You should have received a copy of the GNU General Public License
-	along with pilight. If not, see	<http://www.gnu.org/licenses/>
+  This Source Code Form is subject to the terms of the Mozilla Public
+  License, v. 2.0. If a copy of the MPL was not distributed with this
+  file, You can obtain one at http://mozilla.org/MPL/2.0/.
 */
 
 #include <stdio.h>
@@ -47,18 +37,19 @@ static int validate(void) {
 	return -1;
 }
 
-static void createMessage(int systemcode, int unitcode, int state) {
-	pollin->message = json_mkobject();
-	json_append_member(pollin->message, "systemcode", json_mknumber(systemcode, 0));
-	json_append_member(pollin->message, "unitcode", json_mknumber(unitcode, 0));
+static void createMessage(char *message, int systemcode, int unitcode, int state) {
+	int x = snprintf(message, 255, "{\"systemcode\":%d,", systemcode);
+	x += snprintf(&message[x], 255-x, "\"unitcode\":%d,", unitcode);
+
 	if(state == 0) {
-		json_append_member(pollin->message, "state", json_mkstring("on"));
+		x += snprintf(&message[x], 255-x, "\"state\":\"on\"");
 	} else {
-		json_append_member(pollin->message, "state", json_mkstring("off"));
+		x += snprintf(&message[x], 255-x, "\"state\":\"off\"");
 	}
+	x += snprintf(&message[x], 255-x, "}");
 }
 
-static void parseCode(void) {
+static void parseCode(char *message) {
 	int binary[RAW_LENGTH/4], x = 0, i = 0;
 
 	for(x=0;x<pollin->rawlen-2;x+=4) {
@@ -72,7 +63,8 @@ static void parseCode(void) {
 	int systemcode = binToDec(binary, 0, 4);
 	int unitcode = binToDec(binary, 5, 9);
 	int state = binary[11];
-	createMessage(systemcode, unitcode, state);
+
+	createMessage(message, systemcode, unitcode, state);
 }
 
 static void createLow(int s, int e) {
@@ -139,7 +131,7 @@ static void createFooter(void) {
 	pollin->raw[49]=(PULSE_DIV*AVG_PULSE_LENGTH);
 }
 
-static int createCode(struct JsonNode *code) {
+static int createCode(struct JsonNode *code, char *message) {
 	int systemcode = -1;
 	int unitcode = -1;
 	int state = -1;
@@ -164,7 +156,7 @@ static int createCode(struct JsonNode *code) {
 		logprintf(LOG_ERR, "pollin: invalid unitcode range");
 		return EXIT_FAILURE;
 	} else {
-		createMessage(systemcode, unitcode, state);
+		createMessage(message, systemcode, unitcode, state);
 		clearCode();
 		createSystemCode(systemcode);
 		createUnitCode(unitcode);
@@ -214,9 +206,9 @@ void pollinInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "pollin";
-	module->version = "2.3";
-	module->reqversion = "6.0";
-	module->reqcommit = "84";
+	module->version = "3.0";
+	module->reqversion = "7.0";
+	module->reqcommit = "94";
 }
 
 void init(void) {

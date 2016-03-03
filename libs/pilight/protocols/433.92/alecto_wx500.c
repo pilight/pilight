@@ -60,7 +60,7 @@ static int validate(void) {
 	return -1;
 }
 
-static void parseCode(void) {
+static void parseCode(char *message) {
 	int i = 0, x = 0, type = 0, id = 0, binary[RAW_LENGTH/2];
 	double temp_offset = 0.0, humi_offset = 0.0;
 	double humidity = 0.0, temperature = 0.0;
@@ -134,35 +134,35 @@ static void parseCode(void) {
 		type = 0x5;
 		return;
 	}
-	
-	alecto_wx500->message = json_mkobject();
+
 	switch(type) {
 		case 1:
 			id = binToDec(binary, 0, 7);
 			temperature = (double)(binToDec(binary, 12, 23)) / 10.0;
 			humidity = (binToDec(binary, 28, 31) * 10) + binToDec(binary, 24,27);
 			battery = !binary[8];
-			
+
 			if ((int)(binToDec(binary, 23, 23)) == 1) {
 				temperature -= 409.6;
 			}
-			
+
 			temperature += temp_offset;
 			humidity += humi_offset;
 
-			json_append_member(alecto_wx500->message, "id", json_mknumber(id, 0));
-			json_append_member(alecto_wx500->message, "temperature", json_mknumber(temperature, 1));
-			json_append_member(alecto_wx500->message, "humidity", json_mknumber(humidity, 1));
-			json_append_member(alecto_wx500->message, "battery", json_mknumber(battery, 0));
+			snprintf(message, 255,
+				"{\"id\":%d,\"temperature\":%.1f,\"humidity\":%.1f,\"battery\":%d}",
+				id, temperature, humidity, battery
+			);
 		break;
 		case 2:
 			id = binToDec(binary, 0, 7);
 			windavg = binToDec(binary, 24, 31) * 2;
 			battery = !binary[8];
 
-			json_append_member(alecto_wx500->message, "id", json_mknumber(id, 0));
-			json_append_member(alecto_wx500->message, "windavg", json_mknumber((double)windavg/10, 1));
-			json_append_member(alecto_wx500->message, "battery", json_mknumber(battery, 0));
+			snprintf(message, 255,
+				"{\"id\":%d,\"windavg\":%.1f,\"battery\":%d}",
+				id, (double)windavg/10, battery
+			);
 		break;
 		case 3:
 			id = binToDec(binary, 0, 7);
@@ -170,23 +170,26 @@ static void parseCode(void) {
 			windgust = binToDec(binary, 24, 31) * 2;
 			battery = !binary[8];
 
-			json_append_member(alecto_wx500->message, "id", json_mknumber(id, 0));
-			json_append_member(alecto_wx500->message, "winddir", json_mknumber((double)winddir, 0));
-			json_append_member(alecto_wx500->message, "windgust", json_mknumber((double)windgust/10, 1));
-			json_append_member(alecto_wx500->message, "battery", json_mknumber(battery, 0));
+			snprintf(message, 255,
+				"{\"id\":%d,\"winddir\":%d,\"windgust\":%.1f,\"battery\":%d}",
+				id, winddir, (double)windgust/10, battery
+			);
 		break;
 		case 4:
 			id = binToDec(binary, 0, 7);
 			/*rain = binToDec(binary, 16, 30) * 5;*/
 			battery = !binary[8];
-			//json_append_member(alecto_wx500->message, "rain", json_mknumber((double)rain/10, 1));
-			json_append_member(alecto_wx500->message, "id", json_mknumber(id, 0));
-			json_append_member(alecto_wx500->message, "battery", json_mknumber(battery, 0));
+			snprintf(message, 255,
+				"{\"id\":%d,\"battery\":%d}",
+				id, battery
+			);
+			// snprintf(message, 255,
+				// "{\"id\":%d,\"rain\":%.1f,\"battery\":%d}",
+				// id, (double)rain/10, battery
+			// );
 		break;
 		default:
 			type=0x5;
-			json_delete(alecto_wx500->message);
-			alecto_wx500->message = NULL;
 			return;
 		break;
 	}
@@ -225,8 +228,7 @@ static int checkValues(struct JsonNode *jvalues) {
 
 		if(match == 0) {
 			if((snode = MALLOC(sizeof(struct settings_t))) == NULL) {
-				fprintf(stderr, "out of memory\n");
-				exit(EXIT_FAILURE);
+				OUT_OF_MEMORY
 			}
 			snode->id = id;
 			snode->temp = 0;
@@ -304,9 +306,9 @@ void alectoWX500Init(void) {
 #ifdef MODULAR
 void compatibility(const char **version, const char **commit) {
 	module->name = "alecto_wx500";
-	module->version = "1.0";
-	module->reqversion = "6.0";
-	module->reqcommit = "84";
+	module->version = "2.0";
+	module->reqversion = "7.0";
+	module->reqcommit = "94";
 }
 
 void init(void) {

@@ -66,8 +66,7 @@ PROGRAMMER * pgm_new(void)
 
   pgm = (PROGRAMMER *)MALLOC(sizeof(*pgm));
   if (pgm == NULL) {
-    fprintf(stderr, "out of memory\n");
-    exit(EXIT_FAILURE);
+    OUT_OF_MEMORY
   }
 
   memset(pgm, 0, sizeof(*pgm));

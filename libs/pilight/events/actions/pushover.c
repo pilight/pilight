@@ -1,19 +1,9 @@
 /*
-	Copyright (C) 2013 - 2014 CurlyMo
+	Copyright (C) 2013 - 2016 CurlyMo
 
-	This file is part of pilight.
-
-	pilight is free software: you can redistribute it and/or modify it under the
-	terms of the GNU General Public License as published by the Free Software
-	Foundation, either version 3 of the License, or (at your option) any later
-	version.
-
-	pilight is distributed in the hope that it will be useful, but WITHOUT ANY
-	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
-	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
-
-	You should have received a copy of the GNU General Public License
-	along with pilight. If not, see	<http://www.gnu.org/licenses/>
+  This Source Code Form is subject to the terms of the Mozilla Public
+  License, v. 2.0. If a copy of the MPL was not distributed with this
+  file, You can obtain one at http://mozilla.org/MPL/2.0/.
 */
 
 #include <stdio.h>
@@ -21,15 +11,14 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "../../core/threads.h"
-#include "../action.h"
+#include "../../core/threadpool.h"
 #include "../../core/options.h"
-#include "../../config/devices.h"
 #include "../../core/log.h"
 #include "../../core/dso.h"
 #include "../../core/pilight.h"
 #include "../../core/http.h"
 #include "../../core/common.h"
+#include "../action.h"
 #include "pushover.h"
 
 static int checkArguments(struct rules_actions_t *obj) {
@@ -113,10 +102,19 @@ static int checkArguments(struct rules_actions_t *obj) {
 	return 0;
 }
 
+static void callback(int ret, char *data, int len, char *mime, void *userdata) {
+	if(ret == 200) {
+		logprintf(LOG_DEBUG, "pushover action succeeded with message: %s", data);
+	} else {
+		logprintf(LOG_NOTICE, "pushover action failed (%d) with message: %s", ret, data);
+	}
+}
+
 static void *thread(void *param) {
-	struct rules_actions_t *pth = (struct rules_actions_t *)param;
-	// struct rules_t *obj = pth->obj;
-	struct JsonNode *arguments = pth->arguments;
+	struct threadpool_tasks_t *task = param;
+	struct rules_actions_t *pth = task->userdata;
+	struct JsonNode *json = pth->parsedargs;
+
 	struct JsonNode *jtitle = NULL;
 	struct JsonNode *jmessage = NULL;
 	struct JsonNode *juser = NULL;
@@ -130,16 +128,12 @@ static void *thread(void *param) {
 	struct JsonNode *jval3 = NULL;
 	struct JsonNode *jval4 = NULL;
 
-	action_pushover->nrthreads++;
+	char url[1024];
 
-	char url[1024], typebuf[70];
-	char *data = NULL, *tp = typebuf;
-	int ret = 0, size = 0;
-
-	jtitle = json_find_member(arguments, "TITLE");
-	jmessage = json_find_member(arguments, "MESSAGE");
-	jtoken = json_find_member(arguments, "TOKEN");
-	juser = json_find_member(arguments, "USER");
+	jtitle = json_find_member(json, "TITLE");
+	jmessage = json_find_member(json, "MESSAGE");
+	jtoken = json_find_member(json, "TOKEN");
+	juser = json_find_member(json, "USER");
 
 	if(jtitle != NULL && jmessage != NULL && jtoken != NULL && juser != NULL) {
 		jvalues1 = json_find_member(jtitle, "value");
@@ -154,8 +148,8 @@ static void *thread(void *param) {
 			if(jval1 != NULL && jval2 != NULL && jval3 != NULL && jval4 != NULL &&
 			 jval1->tag == JSON_STRING && jval2->tag == JSON_STRING &&
 			 jval3->tag == JSON_STRING && jval4->tag == JSON_STRING) {
-				data = NULL;
 				strcpy(url, "https://api.pushover.net/1/messages.json");
+
 				char *message = urlencode(jval2->string_);
 				char *token = urlencode(jval3->string_);
 				char *user = urlencode(jval4->string_);
@@ -166,19 +160,12 @@ static void *thread(void *param) {
 				l += strlen("&message=")+strlen("&title=");
 				char content[l+2];
 				sprintf(content, "token=%s&user=%s&title=%s&message=%s", token, user, title, message);
-				data = http_post_content(url, &tp, &ret, &size, "application/x-www-form-urlencoded", content);
-				if(ret == 200) {
-					logprintf(LOG_DEBUG, "pushover action succeeded with message: %s", data);
-				} else {
-					logprintf(LOG_NOTICE, "pushover action failed (%d) with message: %s", ret, data);
-				}
+
+				http_post_content(url, "application/x-www-form-urlencoded", content, callback, NULL);
 				FREE(message);
 				FREE(token);
 				FREE(user);
 				FREE(title);
-				if(data != NULL) {
-					FREE(data);
-				}
 			}
 		}
 	}
@@ -189,9 +176,8 @@ static void *thread(void *param) {
 }
 
 static int run(struct rules_actions_t *obj) {
-	pthread_t pth;
-	threads_create(&pth, NULL, thread, (void *)obj);
-	pthread_detach(pth);
+	threadpool_add_work(REASON_END, NULL, action_pushover->name, 0, thread, NULL, (void *)obj);
+
 	return 0;
 }
 
@@ -213,9 +199,9 @@ void actionPushoverInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "pushover";
-	module->version = "2.2";
-	module->reqversion = "5.0";
-	module->reqcommit = "87";
+	module->version = "3.0";
+	module->reqversion = "7.0";
+	module->reqcommit = "94";
 }
 
 void init(void) {

@@ -1,19 +1,9 @@
 /*
-	Copyright (C) 2013 CurlyMo
+	Copyright (C) 2013 - 2016 CurlyMo
 
-	This file is part of pilight.
-
-	pilight is free software: you can redistribute it and/or modify it under the
-	terms of the GNU General Public License as published by the Free Software
-	Foundation, either version 3 of the License, or (at your option) any later
-	version.
-
-	pilight is distributed in the hope that it will be useful, but WITHOUT ANY
-	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
-	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
-
-	You should have received a copy of the GNU General Public License
-	along with pilight. If not, see	<http://www.gnu.org/licenses/>
+  This Source Code Form is subject to the terms of the Mozilla Public
+  License, v. 2.0. If a copy of the MPL was not distributed with this
+  file, You can obtain one at http://mozilla.org/MPL/2.0/.
 */
 
 #include <stdlib.h>
@@ -498,7 +488,6 @@ int datetime_gc(void) {
 }
 
 char *coord2tz(double longitude, double latitude) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
 /*
 	Extra checks for gracefull (early)
@@ -511,7 +500,7 @@ char *coord2tz(double longitude, double latitude) {
 	int i = 0, a = 0, margin = 1, inside = 0;
 	int nrtz = sizeof(tzdata)/sizeof(tzdata[0]);
 	char *tz = NULL;
-	
+
 	margin *= (int)pow(10, PRECISION);
 	int y = (int)round(latitude*(int)pow(10, PRECISION));
 	int x = (int)round(longitude*(int)pow(10, PRECISION));
@@ -567,21 +556,21 @@ char *coord2tz(double longitude, double latitude) {
 	searchingtz--;
 	if(mutex_init == 1) {
 		pthread_mutex_unlock(&mutex_lock);
-	}	
+	}
 	return tz;
 }
 
 time_t datetime2ts(int year, int month, int day, int hour, int minutes, int seconds, char *tz) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
-	atomiclock();
  	time_t t;
  	struct tm tm = {0};
-	char oritz[64];
-	memset(oritz, '\0', 64);
-
-	if(getenv("TZ") != NULL) {
-		strcpy(oritz, getenv("TZ"));
+	char *oritz = NULL;
+	
+	atomiclock();
+	if((oritz = getenv("TZ")) != NULL) {
+		if((oritz = strdup(oritz)) == NULL) {
+			OUT_OF_MEMORY
+		}
 	}
 
 	tm.tm_sec = seconds;
@@ -598,7 +587,7 @@ time_t datetime2ts(int year, int month, int day, int hour, int minutes, int seco
 
 	t = mktime(&tm);
 
-	if(strlen(oritz) > 0) {
+	if(oritz != NULL) {
 		setenv("TZ", oritz, 1);
 	} else {
 		unsetenv("TZ");
@@ -606,28 +595,30 @@ time_t datetime2ts(int year, int month, int day, int hour, int minutes, int seco
 	tzset();
 
 	atomicunlock();
+	free(oritz);
 	return t;
 }
 
 int tzoffset(char *tz1, char *tz2) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+
+	if(strcmp(tz1, tz2) == 0) {
+		return 0;
+	}
+	
+	time_t utc, tzsearch, now;
+	struct tm tm = { 0 };
+	char *oritz = NULL;
 
 	atomiclock();
-
-	time_t utc, tzsearch, now;
-	struct tm tm;
-	char oritz[64];
-
-	memset(&tm, '\0', sizeof(struct tm));
-	memset(oritz, '\0', 64);
-
-	if(getenv("TZ") != NULL) {
-		strcpy(oritz, getenv("TZ"));
+	if((oritz = getenv("TZ")) != NULL) {
+		if((oritz = strdup(oritz)) == NULL) {
+			OUT_OF_MEMORY
+		}
 	}
 
 	now = time(NULL);
 #ifdef _WIN32
-	localtime(&now);
+	tm = *localtime(&now);
 #else
 	localtime_r(&now, &tm);
 #endif
@@ -640,7 +631,7 @@ int tzoffset(char *tz1, char *tz2) {
 	tzset();
 	tzsearch = mktime(&tm);
 
-	if(strlen(oritz) > 0) {
+	if(oritz != NULL) {
 		setenv("TZ", oritz, 1);
 	} else {
 		unsetenv("TZ");
@@ -648,44 +639,38 @@ int tzoffset(char *tz1, char *tz2) {
 	tzset();
 
 	atomicunlock();
+	free(oritz);
 
 	return (int)((utc-tzsearch)/3600);
 }
 
 int ctzoffset(void) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
 	time_t tm1, tm2;
-	struct tm t2, tmp;
-	memset(&tmp, '\0', sizeof(struct tm));
-
+	struct tm t2 = { 0 };
+	
 	tm1 = time(NULL);
 
-	memset(&t2, '\0', sizeof(struct tm));
 #ifdef _WIN32
-	gmtime(&tm1);
+	t2 = *gmtime(&tm1);
 #else
 	gmtime_r(&tm1, &t2);
 #endif
 
 	tm2 = mktime(&t2);
-#ifdef _WIN32
-	localtime(&tm1);
-#else
-	localtime_r(&tm1, &tmp);
-#endif
+
 	return (int)((tm1 - tm2)/3600);
 }
 
 int isdst(time_t t, char *tz) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
-	char oritz[64];
+	char *oritz = NULL;
 	int dst = 0;
 
-	memset(oritz, '\0', 64);
-	if(getenv("TZ") != NULL) {
-		strcpy(oritz, getenv("TZ"));
+	if((oritz = getenv("TZ")) != NULL) {
+		if((oritz = strdup(oritz)) == NULL) {
+			OUT_OF_MEMORY
+		}
 	}
 
 	atomiclock();
@@ -704,7 +689,7 @@ int isdst(time_t t, char *tz) {
 #endif
 	}
 
-	if(strlen(oritz) > 0) {
+	if(oritz != NULL) {
 		setenv("TZ", oritz, 1);
 	} else {
 		unsetenv("TZ");
@@ -712,6 +697,7 @@ int isdst(time_t t, char *tz) {
 	tzset();
 
 	atomicunlock();
+	free(oritz);
 
 	return dst;
 }

@@ -1,19 +1,9 @@
 /*
-	Copyright (C) 2013 - 2014 CurlyMo
+	Copyright (C) 2013 - 2016 CurlyMo
 
-	This file is part of pilight.
-
-	pilight is free software: you can redistribute it and/or modify it under the
-	terms of the GNU General Public License as published by the Free Software
-	Foundation, either version 3 of the License, or (at your option) any later
-	version.
-
-	pilight is distributed in the hope that it will be useful, but WITHOUT ANY
-	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
-	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
-
-	You should have received a copy of the GNU General Public License
-	along with pilight. If not, see	<http://www.gnu.org/licenses/>
+  This Source Code Form is subject to the terms of the Mozilla Public
+  License, v. 2.0. If a copy of the MPL was not distributed with this
+  file, You can obtain one at http://mozilla.org/MPL/2.0/.
 */
 
 #include <stdio.h>
@@ -33,7 +23,6 @@
 #include "../core/common.h"
 #include "../core/dso.h"
 #include "../core/log.h"
-#include "../config/settings.h"
 
 #include "operator.h"
 #include "operators/operator_header.h"
@@ -88,11 +77,10 @@ void event_operator_init(void) {
 
 	memset(pilight_commit, '\0', 3);
 
-	if(settings_find_string("operators-root", &operator_root) != 0) {
+	if(settings_select_string(ORIGIN_MASTER, "operators-root", &operator_root) != 0) {
 		/* If no operator root was set, use the default operator root */
 		if((operator_root = MALLOC(strlen(OPERATOR_ROOT)+1)) == NULL) {
-			fprintf(stderr, "out of memory\n");
-			exit(EXIT_FAILURE);
+			OUT_OF_MEMORY
 		}
 		strcpy(operator_root, OPERATOR_ROOT);
 		operator_root_free = 1;
@@ -168,12 +156,10 @@ void event_operator_register(struct event_operators_t **op, const char *name) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
 	if((*op = MALLOC(sizeof(struct event_operators_t))) == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(EXIT_FAILURE);
+		OUT_OF_MEMORY
 	}
 	if(((*op)->name = MALLOC(strlen(name)+1)) == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(EXIT_FAILURE);
+		OUT_OF_MEMORY
 	}
 	strcpy((*op)->name, name);
 

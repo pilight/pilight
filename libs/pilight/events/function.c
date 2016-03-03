@@ -1,19 +1,9 @@
 /*
-	Copyright (C) 2013 - 2014 CurlyMo
+	Copyright (C) 2013 - 2016 CurlyMo
 
-	This file is part of pilight.
-
-	pilight is free software: you can redistribute it and/or modify it under the
-	terms of the GNU General Public License as published by the Free Software
-	Foundation, either version 3 of the License, or (at your option) any later
-	version.
-
-	pilight is distributed in the hope that it will be useful, but WITHOUT ANY
-	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
-	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
-
-	You should have received a copy of the GNU General Public License
-	along with pilight. If not, see	<http://www.gnu.org/licenses/>
+  This Source Code Form is subject to the terms of the Mozilla Public
+  License, v. 2.0. If a copy of the MPL was not distributed with this
+  file, You can obtain one at http://mozilla.org/MPL/2.0/.
 */
 
 #include <stdio.h>
@@ -36,7 +26,6 @@
 #include "../core/options.h"
 #include "../core/dso.h"
 #include "../core/log.h"
-#include "../config/settings.h"
 
 #include "function.h"
 #include "functions/function_header.h"
@@ -91,11 +80,10 @@ void event_function_init(void) {
 
 	memset(pilight_commit, '\0', 3);
 
-	if(settings_find_string("functions-root", &functions_root) != 0) {
+	if(settings_select_string(ORIGIN_MASTER, "functions-root", &functions_root) != 0) {
 		/* If no function root was set, use the default function root */
 		if((functions_root = MALLOC(strlen(FUNCTION_ROOT)+1)) == NULL) {
-			fprintf(stderr, "out of memory\n");
-			exit(EXIT_FAILURE);
+			OUT_OF_MEMORY
 		}
 		strcpy(functions_root, FUNCTION_ROOT);
 		function_root_free = 1;
@@ -171,12 +159,10 @@ void event_function_register(struct event_functions_t **act, const char *name) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
 	if((*act = MALLOC(sizeof(struct event_functions_t))) == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(EXIT_FAILURE);
+		OUT_OF_MEMORY
 	}
 	if(((*act)->name = MALLOC(strlen(name)+1)) == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(EXIT_FAILURE);
+		OUT_OF_MEMORY
 	}
 	strcpy((*act)->name, name);
 

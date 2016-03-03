@@ -27,6 +27,7 @@
 #include <time.h>
 
 #include "../pilight/core/common.h"
+#include "../pilight/core/mem.h"
 #include "../pilight/core/log.h"
 #include "wiringX.h"
 #include "hummingboard.h"
@@ -34,6 +35,8 @@
 #include "bananapi.h"
 #include "radxa.h"
 #include "ci20.h"
+
+static struct platform_t *platforms = NULL;
 
 #ifdef _WIN32
 #define timeradd(a, b, result) \
@@ -68,7 +71,7 @@ void _fprintf(int prio, const char *format_str, ...) {
 	va_start(ap, format_str);
 	vsprintf(line, format_str, ap);
 	strcat(line, "\n");
-	fprintf(stderr, line);
+	fputs(line, stderr);
 	va_end(ap);
 }
 
@@ -110,7 +113,7 @@ void delayMicroseconds(unsigned int howLong) {
 #ifdef _WIN32
 		sleeper.tv_sec = wSecs;
 #else
-		sleeper.tv_sec = (__time_t)wSecs;	
+		sleeper.tv_sec = (__time_t)wSecs;
 #endif
 		sleeper.tv_nsec = (long)(uSecs * 1000L);
 		nanosleep(&sleeper, NULL);
@@ -136,8 +139,7 @@ void platform_register(struct platform_t **dev, const char *name) {
 	(*dev)->SPIDataRW = NULL;
 
 	if(((*dev)->name = malloc(strlen(name)+1)) == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(EXIT_FAILURE);
+		OUT_OF_MEMORY
 	}
 	strcpy((*dev)->name, name);
 	(*dev)->next = platforms;
@@ -161,7 +163,9 @@ int wiringXGC(void) {
 		free(platforms);
 	}
 
-	wiringXLog(LOG_DEBUG, "garbage collected wiringX library");
+	if(wiringXLog != NULL) {
+		wiringXLog(LOG_DEBUG, "garbage collected wiringX library");
+	}
 	return i;
 }
 
@@ -443,6 +447,18 @@ int wiringXValidGPIO(int gpio) {
 	return -1;
 }
 
+int wiringXSelectableFd(int gpio) {
+	if(platform != NULL) {
+		if(platform->selectableFd) {
+			return platform->selectableFd(gpio);
+		} else {
+			wiringXLog(LOG_ERR, "%s: platform doesn't support selectable fd's", platform->name);
+			wiringXGC();
+		}
+	}
+	return -1;
+}
+
 int wiringXSupported(void) {
 #if defined(__arm__) || defined(__mips__)
 	return 0;
@@ -452,7 +468,7 @@ int wiringXSupported(void) {
 }
 
 int wiringXSetup(void) {
-#ifndef _WIN32	
+#ifndef _WIN32
 	if(wiringXLog == NULL) {
 		wiringXLog = _fprintf;
 	}

@@ -47,18 +47,19 @@ static int validate(void) {
 	return -1;
 }
 
-static void createMessage(int systemcode, int programcode, int state) {
-	impuls->message = json_mkobject();
-	json_append_member(impuls->message, "systemcode", json_mknumber(systemcode, 0));
-	json_append_member(impuls->message, "programcode", json_mknumber(programcode, 0));
+static void createMessage(char *message, int systemcode, int programcode, int state) {
+	int x = snprintf(message, 255, "{\"systemcode\":%d,", systemcode);
+	x += snprintf(&message[x], 255-x, "\"programcode\":%d,", programcode);
+
 	if(state == 1) {
-		json_append_member(impuls->message, "state", json_mkstring("on"));
+		x += snprintf(&message[x], 255-x, "\"state\":\"on\"");
 	} else {
-		json_append_member(impuls->message, "state", json_mkstring("off"));
+		x += snprintf(&message[x], 255-x, "\"state\":\"off\"");
 	}
+	x += snprintf(&message[x], 255-x, "}");
 }
 
-static void parseCode(void) {
+static void parseCode(char *message) {
 	int x = 0, binary[RAW_LENGTH/4];
 
 	/* Convert the one's and zero's into binary */
@@ -77,7 +78,7 @@ static void parseCode(void) {
 	int state = binary[11];
 
 	if(check != state) {
-		createMessage(systemcode, programcode, state);
+		createMessage(message, systemcode, programcode, state);
 	}
 }
 
@@ -159,7 +160,7 @@ static void createFooter(void) {
 	impuls->raw[49]=(PULSE_DIV*AVG_PULSE_LENGTH);
 }
 
-static int createCode(struct JsonNode *code) {
+static int createCode(struct JsonNode *code, char *message) {
 	int systemcode = -1;
 	int programcode = -1;
 	int state = -1;
@@ -184,7 +185,7 @@ static int createCode(struct JsonNode *code) {
 		logprintf(LOG_ERR, "impuls: invalid programcode range");
 		return EXIT_FAILURE;
 	} else {
-		createMessage(systemcode, programcode, state);
+		createMessage(message, systemcode, programcode, state);
 		clearCode();
 		createSystemCode(systemcode);
 		createProgramCode(programcode);
@@ -234,9 +235,9 @@ void impulsInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "impuls";
-	module->version = "2.3";
-	module->reqversion = "6.0";
-	module->reqcommit = "84";
+	module->version = "3.0";
+	module->reqversion = "7.0";
+	module->reqcommit = "94";
 }
 
 void init(void) {

@@ -1,19 +1,9 @@
 /*
-	Copyright (C) 2013 CurlyMo
+	Copyright (C) 2013 - 2016 CurlyMo
 
-	This file is part of pilight.
-
-	pilight is free software: you can redistribute it and/or modify it under the
-	terms of the GNU General Public License as published by the Free Software
-	Foundation, either version 3 of the License, or (at your option) any later
-	version.
-
-	pilight is distributed in the hope that it will be useful, but WITHOUT ANY
-	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
-	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
-
-	You should have received a copy of the GNU General Public License
-	along with pilight. If not, see	<http://www.gnu.org/licenses/>
+  This Source Code Form is subject to the terms of the Mozilla Public
+  License, v. 2.0. If a copy of the MPL was not distributed with this
+  file, You can obtain one at http://mozilla.org/MPL/2.0/.
 */
 
 #include <stdio.h>
@@ -50,22 +40,20 @@ static int validate(void) {
 	return -1;
 }
 
-static void createMessage(int id, int unit, int state, int all, int learn) {
-	arctech_switch->message = json_mkobject();
-
-	json_append_member(arctech_switch->message, "id", json_mknumber(id, 0));
-
+static void createMessage(char *message, int id, int unit, int state, int all, int learn) {
+	int x = snprintf(message, 255, "{\"id\":%d,", id);
 	if(all == 1) {
-		json_append_member(arctech_switch->message, "all", json_mknumber(all, 0));
+		x += snprintf(&message[x], 255-x, "\"all\":1,");
 	} else {
-		json_append_member(arctech_switch->message, "unit", json_mknumber(unit, 0));
+		x += snprintf(&message[x], 255-x, "\"unit\":%d,", unit);
 	}
 
 	if(state == 1) {
-		json_append_member(arctech_switch->message, "state", json_mkstring("on"));
+		x += snprintf(&message[x], 255-x, "\"state\":\"on\"");
 	} else {
-		json_append_member(arctech_switch->message, "state", json_mkstring("off"));
+		x += snprintf(&message[x], 255-x, "\"state\":\"off\"");
 	}
+	x += snprintf(&message[x], 255-x, "}");
 
 	if(learn == 1) {
 		arctech_switch->txrpt = LEARN_REPEATS;
@@ -74,7 +62,7 @@ static void createMessage(int id, int unit, int state, int all, int learn) {
 	}
 }
 
-static void parseCode(void) {
+static void parseCode(char *message) {
 	int binary[RAW_LENGTH/4], x = 0, i = 0;
 
 	for(x=0;x<arctech_switch->rawlen;x+=4) {
@@ -90,7 +78,7 @@ static void parseCode(void) {
 	int all = binary[26];
 	int id = binToDecRev(binary, 0, 25);
 
-	createMessage(id, unit, state, all, 0);
+	createMessage(message, id, unit, state, all, 0);
 }
 
 static void createLow(int s, int e) {
@@ -168,7 +156,7 @@ static void createFooter(void) {
 	arctech_switch->raw[131]=(PULSE_DIV*AVG_PULSE_LENGTH);
 }
 
-static int createCode(struct JsonNode *code) {
+static int createCode(struct JsonNode *code, char *message) {
 	int id = -1;
 	int unit = -1;
 	int state = -1;
@@ -205,7 +193,7 @@ static int createCode(struct JsonNode *code) {
 		if(unit == -1 && all == 1) {
 			unit = 0;
 		}
-		createMessage(id, unit, state, all, learn);
+		createMessage(message, id, unit, state, all, learn);
 		createStart();
 		clearCode();
 		createId(id);
@@ -265,9 +253,9 @@ void arctechSwitchInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "arctech_switch";
-	module->version = "3.3";
-	module->reqversion = "6.0";
-	module->reqcommit = "84";
+	module->version = "4.0";
+	module->reqversion = "7.0";
+	module->reqcommit = "94";
 }
 
 void init(void) {

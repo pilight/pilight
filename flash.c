@@ -1,19 +1,9 @@
 /*
-	Copyright (C) 2013 - 2014 CurlyMo
+	Copyright (C) 2013 - 2016 CurlyMo
 
-	This file is part of pilight.
-
-	pilight is free software: you can redistribute it and/or modify it under the
-	terms of the GNU General Public License as published by the Free Software
-	Foundation, either version 3 of the License, or (at your option) any later
-	version.
-
-	pilight is distributed in the hope that it will be useful, but WITHOUT ANY
-	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
-	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
-
-	You should have received a copy of the GNU General Public License
-	along with pilight. If not, see	<http://www.gnu.org/licenses/>
+  This Source Code Form is subject to the terms of the Mozilla Public
+  License, v. 2.0. If a copy of the MPL was not distributed with this
+  file, You can obtain one at http://mozilla.org/MPL/2.0/.
 */
 
 #include <stdio.h>
@@ -27,7 +17,6 @@
 #include <math.h>
 #include <string.h>
 
-#include "libs/pilight/core/threads.h"
 #include "libs/pilight/core/pilight.h"
 #include "libs/pilight/core/gc.h"
 #include "libs/pilight/core/common.h"
@@ -48,23 +37,27 @@ int main(int argc, char **argv) {
 	log_shell_enable();
 	log_file_disable();
 
+	pilight.process = PROCESS_CLIENT;
+
 #ifndef _WIN32
 	wiringXLog = logprintf;
 #endif
 
 	struct options_t *options = NULL;
-	char *configtmp = MALLOC(strlen(CONFIG_FILE)+1);
+	char *fconfig = NULL;
 	char *args = NULL;
 	char *fwfile = NULL;
 	char comport[255];
 
 	memset(&comport, '\0', 255);
 
-	strcpy(configtmp, CONFIG_FILE);
+	if((fconfig = MALLOC(strlen(CONFIG_FILE)+1)) == NULL) {
+		OUT_OF_MEMORY
+	}
+	strcpy(fconfig, CONFIG_FILE);
 
 	if((progname = MALLOC(15)) == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(EXIT_FAILURE);
+		OUT_OF_MEMORY
 	}
 	strcpy(progname, "pilight-flash");
 
@@ -96,8 +89,10 @@ int main(int argc, char **argv) {
 				goto close;
 			break;
 			case 'C':
-				configtmp = REALLOC(configtmp, strlen(args)+1);
-				strcpy(configtmp, args);
+				if((fconfig = REALLOC(fconfig, strlen(args)+1)) == NULL) {
+					OUT_OF_MEMORY
+				}
+				strcpy(fconfig, args);
 			break;
 			case 'p':
 				strcpy(comport, args);
@@ -118,14 +113,9 @@ int main(int argc, char **argv) {
 		}
 	}
 
-	if(config_set_file(configtmp) == EXIT_FAILURE) {
-		goto close;
-	}
-
-	protocol_init();
-	config_init();
-	if(config_read() != EXIT_SUCCESS) {
-		FREE(configtmp);
+	storage_init();
+	if(storage_read(fconfig, CONFIG_SETTINGS) != 0) {
+		FREE(fconfig);
 		goto close;
 	}
 
@@ -158,13 +148,10 @@ close:
 	if(fwfile != NULL) {
 		FREE(fwfile);
 	}
-	if(configtmp != NULL) {
-		FREE(configtmp);
-	}
+	FREE(fconfig);
 	log_shell_disable();
 	log_level_set(LOG_ERR);
-	config_gc();
-	protocol_gc();
+	storage_gc();
 	options_gc();
 #ifdef EVENTS
 	events_gc();
@@ -173,7 +160,6 @@ close:
 	wiringXGC();
 #endif
 	log_gc();
-	threads_gc();
 	gc_clear();
 	FREE(progname);
 	xfree();

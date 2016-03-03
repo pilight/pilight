@@ -1,19 +1,9 @@
 /*
-	Copyright (C) 2013 - 2014 CurlyMo
+	Copyright (C) 2013 - 2016 CurlyMo
 
-	This file is part of pilight.
-
-	pilight is free software: you can redistribute it and/or modify it under the
-	terms of the GNU General Public License as published by the Free Software
-	Foundation, either version 3 of the License, or (at your option) any later
-	version.
-
-	pilight is distributed in the hope that it will be useful, but WITHOUT ANY
-	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
-	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
-
-	You should have received a copy of the GNU General Public License
-	along with pilight. If not, see	<http://www.gnu.org/licenses/>
+  This Source Code Form is subject to the terms of the Mozilla Public
+  License, v. 2.0. If a copy of the MPL was not distributed with this
+  file, You can obtain one at http://mozilla.org/MPL/2.0/.
 */
 
 #include <stdio.h>
@@ -31,20 +21,27 @@
 	#include <dlfcn.h>
 #endif
 
-#include "../core/threads.h"
+#include "../core/threadpool.h"
 #include "../core/pilight.h"
 #include "../core/common.h"
 #include "../core/options.h"
 #include "../core/dso.h"
 #include "../core/log.h"
-#include "../config/settings.h"
 
 #include "action.h"
 #include "actions/action_header.h"
 
+typedef struct execution_t {
+	char *name;
+	unsigned long id;
+
+	struct execution_t *next;
+} execution_t;
+
+static struct execution_t *executions = NULL;
+
 #ifndef _WIN32
 void event_action_remove(char *name) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
 	struct event_actions_t *currP, *prevP;
 
@@ -70,7 +67,6 @@ void event_action_remove(char *name) {
 #endif
 
 void event_action_init(void) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
 	#include "actions/action_init.h"
 
@@ -92,11 +88,10 @@ void event_action_init(void) {
 
 	memset(pilight_commit, '\0', 3);
 
-	if(settings_find_string("actions-root", &action_root) != 0) {
+	if(settings_select_string(ORIGIN_MASTER, "actions-root", &action_root) != 0) {
 		/* If no action root was set, use the default action root */
 		if((action_root = MALLOC(strlen(ACTION_ROOT)+1)) == NULL) {
-			fprintf(stderr, "out of memory\n");
-			exit(EXIT_FAILURE);
+			OUT_OF_MEMORY
 		}
 		strcpy(action_root, ACTION_ROOT);
 		action_root_free = 1;
@@ -169,20 +164,18 @@ void event_action_init(void) {
 }
 
 void event_action_register(struct event_actions_t **act, const char *name) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
 	if((*act = MALLOC(sizeof(struct event_actions_t))) == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(EXIT_FAILURE);
+		OUT_OF_MEMORY
 	}
 	if(((*act)->name = MALLOC(strlen(name)+1)) == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(EXIT_FAILURE);
+		OUT_OF_MEMORY
 	}
 	strcpy((*act)->name, name);
 
 	(*act)->options = NULL;
 	(*act)->run = NULL;
+	(*act)->gc = NULL;
 	(*act)->nrthreads = 0;
 	(*act)->checkArguments = NULL;
 
@@ -191,7 +184,6 @@ void event_action_register(struct event_actions_t **act, const char *name) {
 }
 
 int event_action_gc(void) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
 	struct event_actions_t *tmp_action = NULL;
 	while(event_actions) {
@@ -212,153 +204,119 @@ int event_action_gc(void) {
 	return 0;
 }
 
-void event_action_thread_init(struct devices_t *dev) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+unsigned long event_action_set_execution_id(char *name) {
+	struct timeval tv;
+	usleep(1);
+	gettimeofday(&tv, NULL);
+
+	int match = 0;
+	struct execution_t *tmp = executions;
+	while(tmp) {
+		if(strcmp(name, tmp->name) == 0) {
+			tmp->id = (unsigned int)tv.tv_sec + (unsigned int)tv.tv_usec;
+			match = 1;
+			break;
+		}
+		tmp = tmp->next;
+	}
+	if(match == 0) {
+		if((tmp = MALLOC(sizeof(struct execution_t))) == NULL) {
+			OUT_OF_MEMORY
+		}
+		if((tmp->name = MALLOC(strlen(name)+1)) == NULL) {
+			OUT_OF_MEMORY
+		}
+		strcpy(tmp->name, name);
+		tmp->id = (unsigned int)tv.tv_sec + (unsigned int)tv.tv_usec;
+
+		tmp->next = executions;
+		executions = tmp;
+	}
+	return tmp->id;
+}
+
+int event_action_get_execution_id(char *name, unsigned long *ret) {
+	struct execution_t *tmp = executions;
+	while(tmp) {
+		if(strcmp(tmp->name, name) == 0) {
+			*ret = tmp->id;
+			return 0;
+			break;
+		}
+		tmp = tmp->next;
+	}
+	return -1;
+}
+
+void event_action_thread_init(struct device_t *dev) {
 
 	if((dev->action_thread = MALLOC(sizeof(struct event_action_thread_t))) == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(EXIT_FAILURE);
+		OUT_OF_MEMORY
 	}
 
-	pthread_mutexattr_init(&dev->action_thread->attr);
-	pthread_mutexattr_settype(&dev->action_thread->attr, PTHREAD_MUTEX_RECURSIVE);
-	pthread_mutex_init(&dev->action_thread->mutex, &dev->action_thread->attr);
-	pthread_cond_init(&dev->action_thread->cond, NULL);
 	dev->action_thread->running = 0;
 	dev->action_thread->obj = NULL;
 	dev->action_thread->action = NULL;
-	dev->action_thread->loop = 0;
-	dev->action_thread->initialized = 0;
-	memset(&dev->action_thread->pth, '\0', sizeof(pthread_t));
 }
 
-void event_action_thread_start(struct devices_t *dev, char *name, void *(*func)(void *), struct rules_actions_t *obj) {
+void event_action_thread_start(struct device_t *dev, struct event_actions_t *action, void *(*func)(void *), struct rules_actions_t *obj) {
 	struct event_action_thread_t *thread = dev->action_thread;
 
-	if(thread->running == 1) {
-		logprintf(LOG_DEBUG, "aborting previous \"%s\" action for device \"%s\"", thread->action, dev->id);
+	if(__sync_add_and_fetch(&thread->running, 0) == 1) {
+		logprintf(LOG_DEBUG, "overriding previous \"%s\" action for device \"%s\"", thread->action->name, dev->id);
 	}
 
-	thread->loop = 0;
-
-	pthread_mutex_unlock(&thread->mutex);
-	pthread_cond_signal(&thread->cond);
-
-	while(thread->running > 0) {
-		usleep(10);
-	}
-
-	if(thread->initialized == 1) {
-		pthread_join(thread->pth, NULL);
-		thread->initialized = 0;
-	}
-
-	// if(thread->param != NULL) {
-		// json_delete(thread->param);
-		// thread->param = NULL;
-	// }
-
-	// if(param != NULL) {
-		// char *json = json_stringify(param, NULL);
-		// thread->param = json_decode(json);
-		// json_free(json);
-	// }
+	event_action_set_execution_id(dev->id);
 
 	thread->obj = obj;
 	thread->device = dev;
-	thread->loop = 1;
-	thread->action = REALLOC(thread->action, strlen(name)+1);
-	strcpy(thread->action, name);
+	thread->action = action;
 
-	thread->initialized = 1;
-	threads_create(&thread->pth, NULL, func, (void *)thread);
+	threadpool_add_work(REASON_END, NULL, thread->action->name, 0, func, NULL, (void *)thread);
 }
 
-int event_action_thread_wait(struct devices_t *dev, int interval) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
-
-	struct timeval tp;
-	struct timespec ts;
-
-	pthread_mutex_unlock(&dev->action_thread->mutex);
-
-	gettimeofday(&tp, NULL);
-	ts.tv_sec = tp.tv_sec;
-	ts.tv_nsec = tp.tv_usec * 1000;
-	ts.tv_sec += interval;
-
-	pthread_mutex_lock(&dev->action_thread->mutex);
-
-	return pthread_cond_timedwait(&dev->action_thread->cond, &dev->action_thread->mutex, &ts);
-}
-
-void event_action_thread_stop(struct devices_t *dev) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+void event_action_thread_stop(struct device_t *dev) {
 
 	struct event_action_thread_t *thread = NULL;
 
 	if(dev != NULL) {
 		thread = dev->action_thread;
-		if(thread->running == 1) {
-			logprintf(LOG_DEBUG, "aborting running \"%s\" action for device \"%s\"", thread->action, dev->id);
-
-			thread->loop = 0;
-			pthread_mutex_unlock(&thread->mutex);
-			pthread_cond_signal(&thread->cond);
-
-			while(thread->running > 0) {
-				usleep(10);
-			}
-		}
-		if(thread->initialized == 1) {
-			pthread_join(thread->pth, NULL);
-			thread->initialized = 0;
+		if(__sync_add_and_fetch(&thread->running, 0) == 1) {
+			logprintf(LOG_DEBUG, "aborting running \"%s\" action for device \"%s\"", thread->action->name, dev->id);
+			thread->action->gc((void *)thread);
+			event_action_set_execution_id(dev->id);
 		}
 	}
 }
 
-void event_action_thread_free(struct devices_t *dev) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+void event_action_thread_free(struct device_t *dev) {
 
 	struct event_action_thread_t *thread = NULL;
 
 	if(dev != NULL) {
 		thread = dev->action_thread;
-		if(thread->running == 1) {
-			logprintf(LOG_DEBUG, "aborting running \"%s\" action for device \"%s\"", thread->action, dev->id);
-
-			thread->loop = 0;
-			pthread_mutex_unlock(&thread->mutex);
-			pthread_cond_signal(&thread->cond);
-			while(thread->running > 0) {
-				usleep(10);
+		if(thread != NULL) {
+			if(__sync_add_and_fetch(&thread->running, 0) == 1) {
+				event_action_set_execution_id(dev->id);
+				logprintf(LOG_DEBUG, "aborted running actions for device \"%s\"", dev->id);
+				thread->action->gc((void *)thread);
 			}
+
+			FREE(dev->action_thread);
 		}
-		if(thread->action != NULL) {
-			FREE(thread->action);
-		}
-		// if(thread->param != NULL) {
-			// json_delete(thread->param);
-			// thread->param = NULL;
-		// }
-		if(thread->initialized == 1) {
-			pthread_join(thread->pth, NULL);
-			thread->initialized = 0;
-		}
-		FREE(dev->action_thread);
 	}
 }
 
 void event_action_started(struct event_action_thread_t *thread) {
-	logprintf(LOG_INFO, "started \"%s\" action for device \"%s\"", thread->action, thread->device->id);
-	pthread_mutex_lock(&thread->mutex);
-	thread->running = 1;
-	pthread_mutex_unlock(&thread->mutex);
+	if(__sync_add_and_fetch(&thread->running, 0) == 0) {
+		__sync_add_and_fetch(&thread->running, 1);
+	}
+	logprintf(LOG_INFO, "started \"%s\" action for device \"%s\"", thread->action->name, thread->device->id);
 }
 
 void event_action_stopped(struct event_action_thread_t *thread) {
-	logprintf(LOG_INFO, "stopped \"%s\" action for device \"%s\"", thread->action, thread->device->id);
-	pthread_mutex_lock(&thread->mutex);
-	thread->running = 0;
-	pthread_mutex_unlock(&thread->mutex);
+	if(__sync_add_and_fetch(&thread->running, 0) == 1) {
+		__sync_add_and_fetch(&thread->running, -1);
+	}
+	logprintf(LOG_INFO, "stopped \"%s\" action for device \"%s\"", thread->action->name, thread->device->id);
 }

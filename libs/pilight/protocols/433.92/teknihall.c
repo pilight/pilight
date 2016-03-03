@@ -1,19 +1,9 @@
 /*
-	Copyright (C) 2014 CurlyMo
+	Copyright (C) 2014 - 2016 CurlyMo
 
-	This file is part of pilight.
-
-	pilight is free software: you can redistribute it and/or modify it under the
-	terms of the GNU General Public License as published by the Free Software
-	Foundation, either version 3 of the License, or (at your option) any later
-	version.
-
-	pilight is distributed in the hope that it will be useful, but WITHOUT ANY
-	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
-	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
-
-	You should have received a copy of the GNU General Public License
-	along with pilight. If not, see	<http://www.gnu.org/licenses/>
+  This Source Code Form is subject to the terms of the Mozilla Public
+  License, v. 2.0. If a copy of the MPL was not distributed with this
+  file, You can obtain one at http://mozilla.org/MPL/2.0/.
 */
 
 #include <stdio.h>
@@ -56,7 +46,7 @@ static int validate(void) {
 	return -1;
 }
 
-static void parseCode(void) {
+static void parseCode(char *message) {
 	int i = 0, x = 0, binary[RAW_LENGTH/2];
 	int id = 0, battery = 0;
 	double temperature = 0.0, humidity = 0.0;
@@ -88,11 +78,10 @@ static void parseCode(void) {
 	temperature += temp_offset;
 	humidity += humi_offset;
 
-	teknihall->message = json_mkobject();
-	json_append_member(teknihall->message, "id", json_mknumber(id, 1));
-	json_append_member(teknihall->message, "temperature", json_mknumber(temperature/10, 1));
-	json_append_member(teknihall->message, "humidity", json_mknumber(humidity, 1));
-	json_append_member(teknihall->message, "battery", json_mknumber(battery, 1));
+	snprintf(message, 255,
+		"{\"id\":%d,\"temperature\":%.1f,\"humidity\":%.1f,\"battery\":%d}",
+		id, temperature/10, humidity, battery
+	);
 }
 
 static int checkValues(struct JsonNode *jvalues) {
@@ -128,8 +117,7 @@ static int checkValues(struct JsonNode *jvalues) {
 
 		if(match == 0) {
 			if((snode = MALLOC(sizeof(struct settings_t))) == NULL) {
-				fprintf(stderr, "out of memory\n");
-				exit(EXIT_FAILURE);
+				OUT_OF_MEMORY
 			}
 			snode->id = id;
 			snode->temp = 0;
@@ -195,9 +183,9 @@ void teknihallInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "teknihall";
-	module->version = "2.2";
-	module->reqversion = "6.0";
-	module->reqcommit = "84";
+	module->version = "3.0";
+	module->reqversion = "7.0";
+	module->reqcommit = "94";
 }
 
 void init(void) {

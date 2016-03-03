@@ -1,19 +1,9 @@
 /*
-	Copyright (C) 2013 - 2014 CurlyMo
+	Copyright (C) 2013 - 2016 CurlyMo
 
-	This file is part of pilight.
-
-	pilight is free software: you can redistribute it and/or modify it under the
-	terms of the GNU General Public License as published by the Free Software
-	Foundation, either version 3 of the License, or (at your option) any later
-	version.
-
-	pilight is distributed in the hope that it will be useful, but WITHOUT ANY
-	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
-	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
-
-	You should have received a copy of the GNU General Public License
-	along with pilight. If not, see	<http://www.gnu.org/licenses/>
+  This Source Code Form is subject to the terms of the Mozilla Public
+  License, v. 2.0. If a copy of the MPL was not distributed with this
+  file, You can obtain one at http://mozilla.org/MPL/2.0/.
 */
 
 #include <stdio.h>
@@ -24,7 +14,9 @@
 
 #include "../../core/pilight.h"
 #include "../../core/options.h"
-#include "../../config/devices.h"
+#include "../../core/threadpool.h"
+#include "../../core/timerpool.h"
+#include "../../protocols/protocol.h"
 #include "../../core/log.h"
 #include "../../core/dso.h"
 #include "../action.h"
@@ -33,6 +25,31 @@
 
 #define DECREASING 0
 #define INCREASING 1
+
+#define INIT						0
+#define EXECUTE					1
+#define EXECUTESTEPS		2
+#define RESTORE					3
+
+typedef struct data_t {
+	char *device;
+	char old_state[4];
+	int interval;
+	int from_dimlevel;
+	int to_dimlevel;
+	int old_dimlevel;
+	int steps;
+	int direction;
+	int seconds_for;
+	int type_for;
+	int seconds_in;
+	int type_in;
+	int seconds_after;
+	int type_after;
+	unsigned long exec;
+
+	struct event_action_thread_t *pth;
+} data_t;
 
 static struct units_t {
 	char name[255];
@@ -67,7 +84,7 @@ static int checkArguments(struct rules_actions_t *obj) {
 	char **array = NULL;
 	double nr1 = 0.0, nr2 = 0.0, nr3 = 0.0, nr4 = 0.0, nr5 = 0.0, nr6 = 0.0;
 	double dimfrom = 0.0, dimto = 0.0;
-	int nrvalues = 0, l = 0, i = 0, match = 0;
+	int nrvalues = 0, l = 0, i = 0, match = 0, match1 = 0, match2 = 0;
 	int	nrunits = (sizeof(units)/sizeof(units[0]));
 
 	jdevice = json_find_member(obj->parsedargs, "DEVICE");
@@ -296,142 +313,125 @@ static int checkArguments(struct rules_actions_t *obj) {
 		jbchild = json_first_child(jbvalues);
 		while(jbchild) {
 			if(jbchild->tag == JSON_STRING) {
-				struct devices_t *dev = NULL;
-				if(devices_get(jbchild->string_, &dev) == 0) {
-					if((javalues = json_find_member(jto, "value")) != NULL) {
-						jachild = json_first_child(javalues);
-						while(jachild) {
-							match = 0;
-							if(jachild->tag == JSON_NUMBER) {
-								dimto = jachild->number_;
-								match = 1;
-							}
-							if(match == 1) {
-								struct protocols_t *tmp_protocols = dev->protocols;
-								if(tmp_protocols->listener->devtype == DIMMER) {
-									struct devices_settings_t *tmp_settings = dev->settings;
-									int match1 = 0, match2 = 0;
-									while(tmp_settings) {
-										if(strcmp(tmp_settings->name, "dimlevel-maximum") == 0) {
-											if(tmp_settings->values->type == JSON_NUMBER &&
-												(int)tmp_settings->values->number_ < (int)dimto) {
+				char *setting = NULL;
+				struct varcont_t val;
+				struct protocol_t *protocol = NULL;
+				if((javalues = json_find_member(jto, "value")) != NULL) {
+					jachild = json_first_child(javalues);
+					while(jachild) {
+						match = 0;
+						if(jachild->tag == JSON_NUMBER) {
+							dimto = jachild->number_;
+							match = 1;
+						}
+						if(match == 1) {
+							if(devices_select_protocol(ORIGIN_ACTION, jbchild->string_, 0, &protocol) == 0) {
+								if(protocol->devtype == DIMMER) {
+									while(devices_select_settings(ORIGIN_ACTION, jbchild->string_, i++, &setting, &val) == 0) {
+										if(strcmp(setting, "dimlevel-maximum") == 0 && val.type_ == JSON_NUMBER) {
+											if((int)val.number_ < dimto) {
 												logprintf(LOG_ERR, "device \"%s\" can't be set to dimlevel \"%d\"", jbchild->string_, (int)dimto);
 												return -1;
 											}
 											match1 = 1;
 										}
-										if(strcmp(tmp_settings->name, "dimlevel-minimum") == 0) {
-											if(tmp_settings->values->type == JSON_NUMBER &&
-												(int)tmp_settings->values->number_ > (int)dimto) {
+										if(strcmp(setting, "dimlevel-minimum") == 0 && val.type_ == JSON_NUMBER) {
+											if((int)val.number_ > dimto) {
 												logprintf(LOG_ERR, "device \"%s\" can't be set to dimlevel \"%d\"", jbchild->string_, (int)dimto);
 												return -1;
 											}
 											match2 = 1;
 										}
-										tmp_settings = tmp_settings->next;
 									}
 									if(match1 == 0 || match2 == 0) {
-										while(tmp_protocols) {
-											struct options_t *opt = tmp_protocols->listener->options;
-											while(opt) {
-												if(match1 == 0 && strcmp(opt->name, "dimlevel-maximum") == 0 &&
-													opt->vartype == JSON_NUMBER && (int)(intptr_t)opt->def < (int)dimto) {
-													logprintf(LOG_ERR, "device \"%s\" can't be set to dimlevel \"%d\"", jbchild->string_, (int)dimto);
-													return -1;
-												}
-												if(match2 == 0 && strcmp(opt->name, "dimlevel-minimum") == 0 &&
-													opt->vartype == JSON_NUMBER && (int)(intptr_t)opt->def > (int)dimto) {
-													logprintf(LOG_ERR, "device \"%s\" can't be set to dimlevel \"%d\"", jbchild->string_, (int)dimto);
-													return -1;
-												}
-												opt = opt->next;
+										struct options_t *opt = protocol->options;
+										while(opt) {
+											if(match1 == 0 && strcmp(opt->name, "dimlevel-maximum") == 0 &&
+												opt->vartype == JSON_NUMBER && (int)(intptr_t)opt->def < (int)dimto) {
+												logprintf(LOG_ERR, "device \"%s\" can't be set to dimlevel \"%d\"", jbchild->string_, (int)dimto);
+												return -1;
 											}
-											tmp_protocols = tmp_protocols->next;
+											if(match2 == 0 && strcmp(opt->name, "dimlevel-minimum") == 0 &&
+												opt->vartype == JSON_NUMBER && (int)(intptr_t)opt->def > (int)dimto) {
+												logprintf(LOG_ERR, "device \"%s\" can't be set to dimlevel \"%d\"", jbchild->string_, (int)dimto);
+												return -1;
+											}
+											opt = opt->next;
 										}
 									}
 								} else {
 									logprintf(LOG_ERR, "device \"%s\" doesn't support dimming", jbchild->string_);
 									return -1;
 								}
-							} else {
-								logprintf(LOG_ERR, "internal error 1 in dim action", jbchild->string_);
-								return -1;
 							}
+						} else {
+							logprintf(LOG_ERR, "internal error 1 in dim action", jbchild->string_);
+							return -1;
+						}
 						jachild = jachild->next;
-						}
-					} else {
-						logprintf(LOG_ERR, "internal error 2 in dim action", jbchild->string_);
-						return -1;
-					}
-
-					if((jevalues = json_find_member(jfrom, "value")) != NULL) {
-						jechild = json_first_child(jevalues);
-						while(jechild) {
-							match = 0;
-							if(jechild->tag == JSON_NUMBER) {
-								dimfrom = jechild->number_;
-								match = 1;
-							}
-							if(match == 1) {
-								struct protocols_t *tmp_protocols = dev->protocols;
-								if(tmp_protocols->listener->devtype == DIMMER) {
-									struct devices_settings_t *tmp_settings = dev->settings;
-									int match1 = 0, match2 = 0;
-									while(tmp_settings) {
-										if(strcmp(tmp_settings->name, "dimlevel-maximum") == 0) {
-											if(tmp_settings->values->type == JSON_NUMBER &&
-												(int)tmp_settings->values->number_ < (int)dimfrom) {
-												logprintf(LOG_ERR, "device \"%s\" dimlevel can't be set to \"%d\"", jbchild->string_, (int)dimfrom);
-												return -1;
-											}
-											match1 = 1;
-										}
-										if(strcmp(tmp_settings->name, "dimlevel-minimum") == 0) {
-											if(tmp_settings->values->type == JSON_NUMBER &&
-												(int)tmp_settings->values->number_ > (int)dimfrom) {
-												logprintf(LOG_ERR, "device \"%s\" dimlevel can't be set to \"%d\"", jbchild->string_, (int)dimfrom);
-												return -1;
-											}
-											match2 = 1;
-										}
-										tmp_settings = tmp_settings->next;
-									}
-									if(match1 == 0 || match2 == 0) {
-										while(tmp_protocols) {
-											struct options_t *opt = tmp_protocols->listener->options;
-											while(opt) {
-												if(match1 == 0 && strcmp(opt->name, "dimlevel-maximum") == 0 &&
-													opt->vartype == JSON_NUMBER && (int)(intptr_t)opt->def < (int)dimfrom) {
-													logprintf(LOG_ERR, "device \"%s\" dimlevel can't be set to \"%d\"", jbchild->string_, (int)dimfrom);
-													return -1;
-												}
-												if(match2 == 0 && strcmp(opt->name, "dimlevel-minimum") == 0 &&
-													opt->vartype == JSON_NUMBER && (int)(intptr_t)opt->def > (int)dimfrom) {
-													logprintf(LOG_ERR, "device \"%s\" dimlevel can't be set to \"%d\"", jbchild->string_, (int)dimfrom);
-													return -1;
-												}
-												opt = opt->next;
-											}
-											tmp_protocols = tmp_protocols->next;
-										}
-									}
-								} else {
-									logprintf(LOG_ERR, "device \"%s\" doesn't support dimming", jbchild->string_);
-									return -1;
-								}
-							} else {
-								logprintf(LOG_ERR, "device \"%s\" doesn't exists", jbchild->string_);
-								return -1;
-							}
-						jechild = jechild->next;
-						}
 					}
 				} else {
-					logprintf(LOG_ERR, "internal error 3 in dim action", jbchild->string_);
+					logprintf(LOG_ERR, "internal error 2 in dim action", jbchild->string_);
 					return -1;
 				}
+
+				if((jevalues = json_find_member(jfrom, "value")) != NULL) {
+					jechild = json_first_child(jevalues);
+					while(jechild) {
+						match = 0;
+						if(jechild->tag == JSON_NUMBER) {
+							dimfrom = jechild->number_;
+							match = 1;
+						}
+						if(match == 1) {
+							if(devices_select_protocol(ORIGIN_ACTION, jbchild->string_, 0, &protocol) == 0) {
+								if(protocol->devtype == DIMMER) {
+									while(devices_select_settings(ORIGIN_ACTION, jbchild->string_, i++, &setting, &val) == 0) {
+										if(strcmp(setting, "dimlevel-maximum") == 0 && val.type_ == JSON_NUMBER) {
+											if((int)val.number_ < dimfrom) {
+												logprintf(LOG_ERR, "device \"%s\" can't be set to dimlevel \"%d\"", jbchild->string_, (int)dimfrom);
+												return -1;
+											}
+											match1 = 1;
+										}
+										if(strcmp(setting, "dimlevel-minimum") == 0 && val.type_ == JSON_NUMBER) {
+											if((int)val.number_ > dimfrom) {
+												logprintf(LOG_ERR, "device \"%s\" can't be set to dimlevel \"%d\"", jbchild->string_, (int)dimfrom);
+												return -1;
+											}
+											match2 = 1;
+										}
+									}
+									if(match1 == 0 || match2 == 0) {
+										struct options_t *opt = protocol->options;
+										while(opt) {
+											if(match1 == 0 && strcmp(opt->name, "dimlevel-maximum") == 0 &&
+											opt->vartype == JSON_NUMBER && (int)(intptr_t)opt->def < (int)dimfrom) {
+												logprintf(LOG_ERR, "device \"%s\" can't be set to dimlevel \"%d\"", jbchild->string_, (int)dimfrom);
+												return -1;
+											}
+											if(match2 == 0 && strcmp(opt->name, "dimlevel-minimum") == 0 &&
+											opt->vartype == JSON_NUMBER && (int)(intptr_t)opt->def > (int)dimfrom) {
+												logprintf(LOG_ERR, "device \"%s\" can't be set to dimlevel \"%d\"", jbchild->string_, (int)dimfrom);
+												return -1;
+											}
+											opt = opt->next;
+										}
+									}
+								} else {
+									logprintf(LOG_ERR, "device \"%s\" doesn't support dimming", jbchild->string_);
+									return -1;
+								}
+							}
+						} else {
+							logprintf(LOG_ERR, "device \"%s\" doesn't exists", jbchild->string_);
+							return -1;
+						}
+						jechild = jechild->next;
+					}
+				}
 			} else {
-				logprintf(LOG_ERR, "internal error 4 in dim action", jbchild->string_);
+				logprintf(LOG_ERR, "internal error 3 in dim action", jbchild->string_);
 				return -1;
 			}
 			jbchild = jbchild->next;
@@ -443,8 +443,165 @@ static int checkArguments(struct rules_actions_t *obj) {
 	return 0;
 }
 
+static void *execute(void *param) {
+	struct threadpool_tasks_t *task = param;
+	struct data_t *data = task->userdata;
+	struct event_action_thread_t *pth = data->pth;
+	unsigned long exec = 0;
+	char state[3];
+
+	/*
+	 * Check if we are the last action for this device
+	 * or else skip execution.
+	 */
+	if(event_action_get_execution_id(data->device, &exec) == 0) {
+		if(exec != data->exec) {
+			logprintf(LOG_DEBUG, "skipping overridden action %s for device %s", action_dim->name, data->device);
+			goto close;
+		}
+	}
+
+	if(data->from_dimlevel != data->to_dimlevel) {
+		logprintf(LOG_DEBUG, "device \"%s\" is already dimmed to \"%d\", aborting action \"%s\"", data->device, data->from_dimlevel, action_dim->name);
+		data->steps = -1;
+	}
+
+	switch(data->steps) {
+		case INIT: {
+			data->steps = EXECUTE;
+
+			if(data->seconds_after > 0) {
+				struct timeval tv;
+				switch(data->type_after) {
+					case 1:
+						tv.tv_sec = 0;
+						tv.tv_usec = data->seconds_after;
+					break;
+					case 2:
+					case 3:
+					case 4:
+					case 5:
+						tv.tv_sec = data->seconds_after;
+						tv.tv_usec = 0;
+					break;
+				}
+
+				threadpool_add_scheduled_work(pth->action->name, execute, tv, data);
+				goto end;
+			}
+		};
+		case EXECUTE: {
+			struct timeval tv;
+			strcpy(state, "on");
+
+			struct JsonNode *jvalues = json_mkobject();
+			json_append_member(jvalues, "dimlevel", json_mknumber(data->to_dimlevel, 0));
+			if(pilight.control != NULL) {
+				pilight.control(pth->device->id, state, json_first_child(jvalues), ORIGIN_ACTION);
+			}
+			json_delete(jvalues);
+			if(data->seconds_for > 0) {
+				switch(data->type_for) {
+					case 1:
+						tv.tv_sec = 0;
+						tv.tv_usec = data->seconds_for;
+					break;
+					case 2:
+					case 3:
+					case 4:
+					case 5:
+						tv.tv_sec = data->seconds_for;
+						tv.tv_usec = 0;
+					break;
+				}
+				data->steps = RESTORE;
+				threadpool_add_scheduled_work(pth->action->name, execute, tv, data);
+				goto end;
+			}
+		} break;
+		case EXECUTESTEPS: {
+			struct timeval tv;
+
+			switch(data->type_in) {
+				case 1:
+					tv.tv_sec = 0;
+					tv.tv_usec = data->interval;
+				break;
+				case 2:
+				case 3:
+				case 4:
+				case 5:
+					tv.tv_sec = data->interval;
+					tv.tv_usec = 0;
+				break;
+			}
+
+			strcpy(state, "on");
+
+			struct JsonNode *jvalues = json_mkobject();
+			json_append_member(jvalues, "dimlevel", json_mknumber(data->from_dimlevel, 0));
+			if(pilight.control != NULL) {
+				pilight.control(pth->device->id, state, json_first_child(jvalues), ORIGIN_ACTION);
+			}
+			json_delete(jvalues);
+			if(data->direction == 1) {
+				data->from_dimlevel++;
+			} else if(data->direction == 0) {
+				data->from_dimlevel--;
+			}
+			if((data->direction == 1 && data->from_dimlevel <= data->to_dimlevel) ||
+			 (data->direction == 0 && data->from_dimlevel >= data->to_dimlevel)) {
+				threadpool_add_scheduled_work(pth->action->name, execute, tv, data);
+				goto end;
+			} else {
+				if(data->seconds_for > 0) {
+					switch(data->type_for) {
+						case 1:
+							tv.tv_sec = 0;
+							tv.tv_usec = data->seconds_for;
+						break;
+						case 2:
+						case 3:
+						case 4:
+						case 5:
+							tv.tv_sec = data->seconds_for;
+							tv.tv_usec = 0;
+						break;
+					}
+					data->steps = RESTORE;
+					threadpool_add_scheduled_work(pth->action->name, execute, tv, data);
+					goto end;
+				}
+			}
+		} break;
+		case RESTORE: {
+			strcpy(state, "on");
+			struct JsonNode *jvalues = json_mkobject();
+			json_append_member(jvalues, "dimlevel", json_mknumber(data->old_dimlevel, 0));
+			if(pilight.control != NULL) {
+				if(strcmp(data->old_state, "off") == 0) {
+					pilight.control(pth->device->id, state, json_first_child(jvalues), ORIGIN_ACTION);
+					pilight.control(pth->device->id, data->old_state, NULL, ORIGIN_ACTION);
+				} else {
+					pilight.control(pth->device->id, data->old_state, json_first_child(jvalues), ORIGIN_ACTION);
+				}
+			}
+			json_delete(jvalues);
+		} break;
+	}
+
+close:
+	FREE(data->device);
+	FREE(data);
+	event_action_stopped(pth);
+
+end:
+	return NULL;
+}
+
 static void *thread(void *param) {
-	struct event_action_thread_t *pth = (struct event_action_thread_t *)param;
+	struct threadpool_tasks_t *task = param;
+	struct event_action_thread_t *pth = task->userdata;
 	struct JsonNode *json = pth->obj->parsedargs;
 	struct JsonNode *jedimlevel = NULL;
 	struct JsonNode *jsdimlevel = NULL;
@@ -460,12 +617,11 @@ static void *thread(void *param) {
 	struct JsonNode *jfvalues = NULL;
 	struct JsonNode *jaseconds = NULL;
 	struct JsonNode *jiseconds = NULL;
-	struct JsonNode *jvalues = NULL;
 	char *old_state = NULL, **array = NULL;
 	double dimlevel = 0.0, old_dimlevel = 0.0, new_dimlevel = 0.0, cur_dimlevel = 0.0;
 	int seconds_after = 0, seconds_for = 0, seconds_in = 0, has_in = 0, dimdiff = 0;
 	int type_for = 0, type_after = 0, type_in = 0;
-	int direction = 0, interval = 0, timer = 0;
+	int direction = 0, interval = 0;
 	int	l = 0, i = 0, nrunits = (sizeof(units)/sizeof(units[0]));
 	char state[3];
 
@@ -577,46 +733,18 @@ static void *thread(void *param) {
 		break;
 	}
 
-	if(pilight.debuglevel == 1) {
+	if(pilight.debuglevel >= 2) {
 		fprintf(stderr, "action dim: for %d:%d, after %d:%d, in: %d:%d\n", seconds_for, type_for, seconds_after, type_after, seconds_in, type_in);
 	}
 	/* Store current state and dimlevel */
-	struct devices_t *tmp = pth->device;
-	int match1 = 0, match2 = 0;
-	while(tmp) {
-		struct devices_settings_t *opt = tmp->settings;
-		while(opt) {
-			if(strcmp(opt->name, "state") == 0) {
-				if(opt->values->type == JSON_STRING) {
-					if((old_state = MALLOC(strlen(opt->values->string_)+1)) == NULL) {
-						fprintf(stderr, "out of memory\n");
-						exit(EXIT_FAILURE);
-					}
-					strcpy(old_state, opt->values->string_);
-					match1 = 1;
-				}
-			}
-			if(strcmp(opt->name, "dimlevel") == 0) {
-				if(opt->values->type == JSON_NUMBER) {
-					cur_dimlevel = opt->values->number_;
-					match2 = 1;
-				}
-			}
-			if(match1 == 1 && match2 == 1) {
-				break;
-			}
-			opt = opt->next;
-		}
-		if(match1 == 1 && match2 == 1) {
-			break;
-		}
-		tmp = tmp->next;
-	}
-	if(match1 == 0) {
+
+	if(devices_select_string_setting(ORIGIN_ACTION, pth->device->id, "state", &old_state) != 0) {
 		logprintf(LOG_NOTICE, "could not store old state of \"%s\"", pth->device->id);
+		goto end;
 	}
-	if(match2 == 0) {
+	if(devices_select_number_setting(ORIGIN_ACTION, pth->device->id, "dimlevel", &cur_dimlevel, NULL) != 0) {
 		logprintf(LOG_NOTICE, "could not store old dimlevel of \"%s\"", pth->device->id);
+		goto end;
 	}
 
 	if((jfrom = json_find_member(json, "FROM")) != NULL) {
@@ -637,13 +765,13 @@ static void *thread(void *param) {
 				if(jedimlevel->tag == JSON_NUMBER) {
 					new_dimlevel = (int)jedimlevel->number_;
 					dimlevel = (int)jedimlevel->number_;
-					strcpy(state,  "on");
+					strcpy(state, "on");
 				}
 			}
 		}
 	}
 
-	if(pilight.debuglevel == 1) {
+	if(pilight.debuglevel >= 2) {
 		fprintf(stderr, "action dim: old %d, new %d, direction %d\n", (int)old_dimlevel, (int)new_dimlevel, direction);
 	}
 
@@ -662,154 +790,39 @@ static void *thread(void *param) {
 		}
 	}
 
-	/*
-	 * We'll switch from first dimlevel to second dimlevel after X seconds
-	 * and switch back after X seconds.
-	 */
-	if(has_in == 0) {
-		if(old_state == NULL || ((strcmp(old_state, "on") != 0 || (int)cur_dimlevel != (int)new_dimlevel))) {
-			timer = 0;
-			while(pth->loop == 1) {
-				if(timer == seconds_after) {
-					jvalues = json_mkobject();
-					json_append_member(jvalues, "dimlevel", json_mknumber(dimlevel, 0));
-					if(pilight.control != NULL) {
-						pilight.control(pth->device, state, json_first_child(jvalues), ACTION);
-					}
-					json_delete(jvalues);
-					break;
-				}
-				timer++;
-				if(type_after > 1) {
-					sleep(1);
-				} else {
-					usleep(1000);
-				}
-			}
-
-			/*
-			 * We only need to restore the state if it was actually changed
-			 */
-			if(seconds_for > 0 && old_state != NULL && (strcmp(old_state, "on") != 0 || (int)cur_dimlevel != (int)new_dimlevel)) {
-				timer = 0;
-				while(pth->loop == 1) {
-					if(seconds_for == timer) {
-						jvalues = json_mkobject();
-						json_append_member(jvalues, "dimlevel", json_mknumber(cur_dimlevel, 0));
-						if(pilight.control != NULL) {
-							if(strcmp(old_state, "off") == 0) {
-								pilight.control(pth->device, state, json_first_child(jvalues), ACTION);
-								pilight.control(pth->device, old_state, NULL, ACTION);
-							} else {
-								pilight.control(pth->device, old_state, json_first_child(jvalues), ACTION);
-							}
-						}
-						json_delete(jvalues);
-						break;
-					}
-					timer++;
-					if(type_for > 1) {
-						sleep(1);
-					} else {
-						usleep(1000);
-					}
-				}
-			}
-		}
-	/* We'll gently start increasing / decreasing the dimlevel after X seconds in X seconds. */
-	} else if(interval > 0) {
-		timer = 0;
-		while(pth->loop == 1) {
-			if(timer == seconds_after) {
-				break;
-			}
-			timer++;
-			if(type_after > 1) {
-				sleep(1);
-			} else {
-				usleep(1000);
-			}
-		}
-		if(direction == INCREASING) {
-			for(i=(int)old_dimlevel;i<=(int)new_dimlevel;i++) {
-				timer = 0;
-				while(pth->loop == 1) {
-					if(interval == timer || i == (int)old_dimlevel) {
-						jvalues = json_mkobject();
-						json_append_member(jvalues, "dimlevel", json_mknumber(i, 0));
-						if(pilight.control != NULL) {
-							pilight.control(pth->device, state, json_first_child(jvalues), ACTION);
-						}
-						json_delete(jvalues);
-						break;
-					}
-					timer++;
-					if(type_in > 1) {
-						sleep(1);
-					} else {
-						usleep(1000);
-					}
-				}
-			}
-		} else {
-			for(i=(int)old_dimlevel;i>=(int)new_dimlevel;i--) {
-				timer = 0;
-				while(pth->loop == 1) {
-					if(interval == timer || i == (int)old_dimlevel) {
-						jvalues = json_mkobject();
-						json_append_member(jvalues, "dimlevel", json_mknumber(i, 0));
-						if(pilight.control != NULL) {
-							pilight.control(pth->device, state, json_first_child(jvalues), ACTION);
-						}
-						json_delete(jvalues);
-						break;
-					}
-					timer++;
-					if(type_in > 1) {
-						sleep(1);
-					} else {
-						usleep(1000);
-					}
-				}
-			}
-		}
-		/*
-		 * We only need to restore the state if it was actually changed
-		 */
-		if(seconds_for > 0 && old_state != NULL &&
-			 (strcmp(old_state, "on") != 0 || (int)cur_dimlevel != (int)new_dimlevel)) {
-			timer = 0;
-			while(pth->loop == 1) {
-				if(timer == seconds_for) {
-					jvalues = json_mkobject();
-					json_append_member(jvalues, "dimlevel", json_mknumber(cur_dimlevel, 0));
-					if(pilight.control != NULL) {
-						if(strcmp(old_state, "off") == 0) {
-							pilight.control(pth->device, state, json_first_child(jvalues), ACTION);
-							pilight.control(pth->device, old_state, NULL, ACTION);
-						} else {
-							pilight.control(pth->device, old_state, json_first_child(jvalues), ACTION);
-						}
-					}
-					json_delete(jvalues);
-					break;
-				}
-				timer++;
-				if(type_for > 1) {
-					sleep(1);
-				} else {
-					usleep(1000);
-				}
-			}
-		}
+	struct data_t *data = MALLOC(sizeof(struct data_t));
+	if(data == NULL) {
+		OUT_OF_MEMORY
 	}
-
-	if(old_state != NULL) {
-		FREE(old_state);
+	if((data->device = MALLOC(strlen(pth->device->id)+1)) == NULL) {
+		OUT_OF_MEMORY
 	}
+	strcpy(data->device, pth->device->id);
+	data->interval = interval;
+	data->old_dimlevel = cur_dimlevel;
+	data->from_dimlevel = old_dimlevel;
+	data->to_dimlevel = new_dimlevel;
+	data->direction = direction;
+	data->seconds_for = seconds_for;
+	data->type_for = type_for;
+	data->seconds_in = seconds_in;
+	data->type_in = type_in;
+	data->seconds_after = seconds_after;
+	data->type_after = type_after;
+	data->steps = INIT;
+	data->pth = pth;
+	strcpy(data->old_state, old_state);
 
+	pth->userdata = NULL;
+
+	data->exec = event_action_set_execution_id(pth->device->id);
+
+	threadpool_add_work(REASON_END, NULL, action_dim->name, 0, execute, NULL, (void *)data);
+
+	return (void *)NULL;
+
+end:
 	event_action_stopped(pth);
-
 	return (void *)NULL;
 }
 
@@ -818,6 +831,7 @@ static int run(struct rules_actions_t *obj) {
 	struct JsonNode *jto = NULL;
 	struct JsonNode *jbvalues = NULL;
 	struct JsonNode *jbchild = NULL;
+	struct device_t *dev = NULL;
 
 	if((jdevice = json_find_member(obj->parsedargs, "DEVICE")) != NULL &&
 		 (jto = json_find_member(obj->parsedargs, "TO")) != NULL) {
@@ -825,9 +839,10 @@ static int run(struct rules_actions_t *obj) {
 			jbchild = json_first_child(jbvalues);
 			while(jbchild) {
 				if(jbchild->tag == JSON_STRING) {
-					struct devices_t *dev = NULL;
-					if(devices_get(jbchild->string_, &dev) == 0) {
-						event_action_thread_start(dev, action_dim->name, thread, obj);
+					if(devices_select(ORIGIN_ACTION, jbchild->string_, NULL) == 0) {
+						if(devices_select_struct(ORIGIN_ACTION, jbchild->string_, &dev) == 0) {
+							event_action_thread_start(dev, action_dim, thread, obj);
+						}
 					}
 				}
 				jbchild = jbchild->next;
@@ -835,6 +850,18 @@ static int run(struct rules_actions_t *obj) {
 		}
 	}
 	return 0;
+}
+
+static void *gc(void *param) {
+	struct event_action_thread_t *pth = param;
+	struct data_t *data = pth->userdata;
+	if(data != NULL) {
+		if(data->device != NULL) {
+			FREE(data->device);
+		}
+		FREE(data);
+	}
+	return NULL;
 }
 
 #if !defined(MODULE) && !defined(_WIN32)
@@ -851,15 +878,16 @@ void actionDimInit(void) {
 	options_add(&action_dim->options, 'f', "IN", OPTION_OPT_VALUE, DEVICES_VALUE, JSON_STRING, NULL, NULL);
 
 	action_dim->run = &run;
+	action_dim->gc = &gc;
 	action_dim->checkArguments = &checkArguments;
 }
 
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "dim";
-	module->version = "3.5";
-	module->reqversion = "6.0";
-	module->reqcommit = "152";
+	module->version = "4.0";
+	module->reqversion = "7.0";
+	module->reqcommit = "94";
 }
 
 void init(void) {

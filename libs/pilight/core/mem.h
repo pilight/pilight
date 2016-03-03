@@ -1,26 +1,25 @@
 /*
-	Copyright (C) 2013 - 2015 CurlyMo
+	Copyright (C) 2013 - 2016 CurlyMo
 
-	This file is part of pilight.
-
-	pilight is free software: you can redistribute it and/or modify it under the
-	terms of the GNU General Public License as published by the Free Software
-	Foundation, either version 3 of the License, or (at your option) any later
-	version.
-
-	pilight is distributed in the hope that it will be useful, but WITHOUT ANY
-	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
-	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
-
-	You should have received a copy of the GNU General Public License
-	along with pilight. If not, see	<http://www.gnu.org/licenses/>
+  This Source Code Form is subject to the terms of the Mozilla Public
+  License, v. 2.0. If a copy of the MPL was not distributed with this
+  file, You can obtain one at http://mozilla.org/MPL/2.0/.
 */
 
 #ifndef _MEM_H_
 #define _MEM_H_
 
+#define OUT_OF_MEMORY fprintf(stderr, "out of memory in %s #%d\n", __FILE__, __LINE__),exit(EXIT_FAILURE);
+
 void xfree(void);
-void memtrack(void);
+void mempool_init(unsigned long, unsigned long);
+// void memtrack(void);
+
+
+void *_malloc(unsigned long, char *, int);
+void *_realloc(void *, unsigned long, char *, int);
+void *_calloc(unsigned long a, unsigned long b, char *file, int line);
+void _free(void *, char *, int);
 
 /*
   We only use these functions for extensive memory debugging
@@ -29,12 +28,11 @@ void *_malloc(unsigned long a, const char *file, int line);
 void *_realloc(void *a, unsigned long i, const char *file, int line);
 void *_calloc(unsigned long a, unsigned long b, const char *file, int line);
 void _free(void *a, const char *file, int line);
-
-#define MALLOC(a) _malloc(a, __FILE__, __LINE__)
-#define REALLOC(a, b) _realloc(a, b, __FILE__, __LINE__)
-#define CALLOC(a, b) _calloc(a, b, __FILE__, __LINE__)
-#define FREE(a) _free((void *)(a), __FILE__, __LINE__),(a)=NULL
 */
+// #define MALLOC(a) _malloc(a, __FILE__, __LINE__)
+// #define REALLOC(a, b) _realloc(a, b, __FILE__, __LINE__)
+// #define CALLOC(a, b) _calloc(a, b, __FILE__, __LINE__)
+// #define FREE(a) _free((void *)(a), __FILE__, __LINE__),(a)=NULL
 
 #define MALLOC(a) malloc(a)
 #define REALLOC(a, b) realloc(a, b)

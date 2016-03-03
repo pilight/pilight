@@ -66,6 +66,7 @@ typedef struct platform_t {
 	int (*digitalRead)(int pin);
 	int (*identify)(void);
 	int (*waitForInterrupt)(int pin, int ms);
+	int (*selectableFd)(int pin);
 	int (*isr)(int pin, int mode);
 	int (*I2CRead)(int fd);
 	int (*I2CReadReg8)(int fd, int reg);
@@ -81,8 +82,6 @@ typedef struct platform_t {
 	int (*gc)(void);
 	struct platform_t *next;
 } platform_t;
-
-struct platform_t *platforms;
 
 void platform_register(struct platform_t **platform, const char *name);
 void delayMicroseconds(unsigned int howLong);
@@ -106,5 +105,6 @@ int wiringXSPISetup(int channel, int speed);
 char *wiringXPlatform(void);
 int wiringXValidGPIO(int gpio);
 int wiringXSupported(void);
+int wiringXSelectableFd(int gpio);
 
 #endif

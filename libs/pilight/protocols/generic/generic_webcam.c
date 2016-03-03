@@ -69,9 +69,9 @@ void genericWebcamInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "generic_webcam";
-	module->version = "1.3";
-	module->reqversion = "6.0";
-	module->reqcommit = "84";
+	module->version = "2.0";
+	module->reqversion = "7.0";
+	module->reqcommit = "94";
 }
 
 void init(void) {

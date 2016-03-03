@@ -1,19 +1,9 @@
 /*
-	Copyright (C) 2014 CurlyMo
+	Copyright (C) 2014 - 2016 CurlyMo
 
-	This file is part of pilight.
-
-	pilight is free software: you can redistribute it and/or modify it under the
-	terms of the GNU General Public License as published by the Free Software
-	Foundation, either version 3 of the License, or (at your option) any later
-	version.
-
-	pilight is distributed in the hope that it will be useful, but WITHOUT ANY
-	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
-	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
-
-	You should have received a copy of the GNU General Public License
-	along with pilight. If not, see	<http://www.gnu.org/licenses/>
+  This Source Code Form is subject to the terms of the Mozilla Public
+  License, v. 2.0. If a copy of the MPL was not distributed with this
+  file, You can obtain one at http://mozilla.org/MPL/2.0/.
 */
 
 #include <stdio.h>
@@ -32,7 +22,7 @@
 #include <time.h>
 #include <math.h>
 
-#include "../../core/threads.h"
+#include "../../core/threadpool.h"
 #include "../../core/pilight.h"
 #include "../../core/common.h"
 #include "../../core/ntp.h"
@@ -48,8 +38,26 @@
 #define PIX 57.29578049044297 // 180 / PI
 #define ZENITH 90.83333333333333
 
-static unsigned short loop = 1;
-static unsigned short threads = 0;
+typedef struct data_t {
+	char *name;
+	int interval;
+	int target_offset;
+
+	double longitude;
+	double latitude;
+
+	char *tz;
+
+	struct data_t *next;
+} data_t;
+
+static struct data_t *data = NULL;
+
+static void *reason_code_received_free(void *param) {
+	struct reason_code_received_t *data = param;
+	FREE(data);
+	return NULL;
+}
 
 static double calculate(int year, int month, int day, double lon, double lat, int rising, int tz) {
 	int N = (int)((floor(275 * month / 9)) - ((floor((month + 9) / 12)) *
@@ -103,33 +111,191 @@ static double calculate(int year, int month, int day, double lon, double lat, in
 	return ((round(hour)+min)+tz)*100;
 }
 
+static unsigned long min(unsigned long a, unsigned long b, unsigned long c) {
+	unsigned long m = a;
+	if(m > b) {
+		m = b;
+	}
+	if(m > c) {
+		return c;
+	}
+	return m;
+}
+
 static void *thread(void *param) {
-	struct protocol_threads_t *thread = (struct protocol_threads_t *)param;
-	struct JsonNode *json = (struct JsonNode *)thread->param;
+	struct threadpool_tasks_t *task = param;
+	struct data_t *settings = task->userdata;
+	struct tm tm;
+	struct tm rise;
+	struct tm set;
+	struct tm midnight;
+	struct timeval tv;
+	time_t t;
+	int risetime = 0, settime = 0, hournow = 0, dst = 0;
+	int year = 0, month = 0, day = 0, hour = 0, minute = 0, second = 0;
+
+	t = time(NULL);
+	t -= getntpdiff();
+	dst = isdst(t, settings->tz);
+
+	/* Get UTC time */
+#ifdef _WIN32
+	struct tm *tm1;
+	if((tm1 = gmtime(&t)) != NULL) {
+		memcpy(&tm, tm1, sizeof(struct tm));
+#else
+	if(gmtime_r(&t, &tm) != NULL) {
+#endif
+		year = tm.tm_year+1900;
+		month = tm.tm_mon+1;
+		day = tm.tm_mday;
+		/* Add our hour difference to the UTC time */
+		tm.tm_hour += settings->target_offset;
+		/* Add possible daylist savings time hour */
+		tm.tm_hour += dst;
+		hour = tm.tm_hour;
+		minute = tm.tm_min;
+		second = tm.tm_sec;
+
+		datefix(&year, &month, &day, &hour, &minute, &second);
+
+		risetime = (int)calculate(year, month, day, settings->longitude, settings->latitude, 1, settings->target_offset);
+		settime = (int)calculate(year, month, day, settings->longitude, settings->latitude, 0, settings->target_offset);
+
+		if(dst == 1) {
+			risetime += 100;
+			settime += 100;
+			if(risetime > 2400) {
+				risetime -= 2400;
+			}
+			if(settime > 2400) {
+				settime -= 2400;
+			}
+		}
+
+		memcpy(&rise, &tm, sizeof(struct tm));
+		rise.tm_hour = risetime / 100;
+		rise.tm_min = risetime % 100;
+		rise.tm_sec = 0;
+
+		memcpy(&set, &tm, sizeof(struct tm));
+		set.tm_hour = settime / 100;
+		set.tm_min = settime % 100;
+		set.tm_sec = 0;
+
+		memcpy(&midnight, &tm, sizeof(struct tm));
+		midnight.tm_hour = 23;
+		midnight.tm_min = 59;
+		midnight.tm_sec = 59;
+		
+		unsigned long tset = mktime(&set);
+		unsigned long trise = mktime(&rise);
+		unsigned long tmidnight = mktime(&midnight);
+		unsigned long tnow = mktime(&tm);
+
+		/* To make sure we are always calculating ahead */
+		if(tset < tnow) {
+			tset += 86400;
+		}
+		if(trise < tnow) {
+			trise += 86400;
+		}
+		if(tmidnight < tnow) {
+			tmidnight += 86400;
+		}		
+		
+		unsigned long time2set = tset-tnow;
+		unsigned long time2rise = trise-tnow;
+		unsigned long time2midnight = (tmidnight+1)-tnow;
+
+		char *sun = NULL;
+		hournow = (hour*100)+minute;
+		if(hournow >= risetime && hournow < settime) {
+			sun = "rise";
+		} else {
+			sun = "set";
+		}
+
+		struct reason_code_received_t *data = MALLOC(sizeof(struct reason_code_received_t));
+		if(data == NULL) {
+			OUT_OF_MEMORY
+		}
+		snprintf(data->message, 1024,
+			"{\"longitude\":%.6f,\"latitude\":%.6f,\"sun\":\"%s\",\"sunrise\":%.2f,\"sunset\":%.2f}",
+			settings->longitude, settings->latitude, sun, ((double)risetime/100), ((double)settime/100)
+		);
+		strncpy(data->origin, "receiver", 255);
+		data->protocol = sunriseset->id;
+		if(strlen(pilight_uuid) > 0) {
+			data->uuid = pilight_uuid;
+		} else {
+			data->uuid = NULL;
+		}
+		data->repeat = 1;
+		eventpool_trigger(REASON_CODE_RECEIVED, reason_code_received_free, data);
+
+		tv.tv_sec = min(time2set, time2rise, time2midnight);
+		tv.tv_usec = 0;
+
+		threadpool_add_scheduled_work(settings->name, thread, tv, (void *)settings);
+	}
+
+	return (void *)NULL;
+}
+
+static void *addDevice(void *param) {
+	struct threadpool_tasks_t *task = param;
+	struct JsonNode *jdevice = NULL;
+	struct JsonNode *jprotocols = NULL;
 	struct JsonNode *jid = NULL;
 	struct JsonNode *jchild = NULL;
 	struct JsonNode *jchild1 = NULL;
-	double longitude = 0, latitude = 0;
-	char UTC[] = "UTC", *tz = NULL;
+	struct data_t *node = NULL;
+	struct timeval tv;
+	char UTC[] = "UTC";
+	int match = 0;
 
-	time_t timenow = 0;
-	struct tm tm;
-	int nrloops = 0, risetime = 0, settime = 0, hournow = 0, newdst = 0;
-	int firstrun = 0, target_offset = 0, x = 0, dst = 0, dstchange = 0;
-	int year = 0, month = 0, day = 0, hour = 0, minute = 0, second = 0;
+	if(task->userdata == NULL) {
+		return NULL;
+	}
 
-	threads++;
+	if(!(sunriseset->masterOnly == 0 || pilight.runmode == STANDALONE)) {
+		return NULL;
+	}
 
-	if((jid = json_find_member(json, "id"))) {
+	if((jdevice = json_first_child(task->userdata)) == NULL) {
+		return NULL;
+	}
+
+	if((jprotocols = json_find_member(jdevice, "protocol")) != NULL) {
+		jchild = json_first_child(jprotocols);
+		while(jchild) {
+			if(strcmp(sunriseset->id, jchild->string_) == 0) {
+				match = 1;
+				break;
+		}
+			jchild = jchild->next;
+		}
+	}
+	if(match == 0) {
+		return NULL;
+	}
+
+	if((node = MALLOC(sizeof(struct data_t)))== NULL) {
+		OUT_OF_MEMORY
+	}
+	memset(node, '\0', sizeof(struct data_t));
+
+	if((jid = json_find_member(jdevice, "id"))) {
 		jchild = json_first_child(jid);
 		while(jchild) {
 			jchild1 = json_first_child(jchild);
 			while(jchild1) {
 				if(strcmp(jchild1->key, "longitude") == 0) {
-					longitude = jchild1->number_;
+					node->longitude = jchild1->number_;
 				}
 				if(strcmp(jchild1->key, "latitude") == 0) {
-					latitude = jchild1->number_;
+					node->latitude = jchild1->number_;
 				}
 				jchild1 = jchild1->next;
 			}
@@ -137,135 +303,40 @@ static void *thread(void *param) {
 		}
 	}
 
-	if((tz = coord2tz(longitude, latitude)) == NULL) {
-		logprintf(LOG_DEBUG, "could not determine timezone");
-		tz = UTC;
+	if((node->tz = coord2tz(node->longitude, node->latitude)) == NULL) {
+		logprintf(LOG_INFO, "sunriseset %s, could not determine timezone", jdevice->key);
+		node->tz = UTC;
 	} else {
-		logprintf(LOG_DEBUG, "%.6f:%.6f seems to be in timezone: %s", longitude, latitude, tz);
+		logprintf(LOG_INFO, "sunriseset %s %.6f:%.6f seems to be in timezone: %s", jdevice->key, node->longitude, node->latitude, node->tz);
 	}
 
-	timenow = time(NULL);
-	timenow -= getntpdiff();
-	dst = isdst(timenow, tz);
-	if(isntpsynced() == 0) {
-		x = 1;
+	node->target_offset = tzoffset(UTC, node->tz);
+
+	if((node->name = MALLOC(strlen(jdevice->key)+1)) == NULL) {
+		OUT_OF_MEMORY
 	}
+	strcpy(node->name, jdevice->key);
 
-	/* Check how many hours we differ from UTC? */
-	target_offset = tzoffset(UTC, tz);
+	node->next = data;
+	data = node;
 
-	while(loop) {
-		protocol_thread_wait(thread, 1, &nrloops);
-		timenow = time(NULL);
-		timenow -= getntpdiff();
-
-			/* Get UTC time */
-#ifdef _WIN32
-		struct tm *tm1;
-		if((tm1 = gmtime(&timenow)) != NULL) {
-			memcpy(&tm, tm1, sizeof(struct tm));
-#else
-		if(gmtime_r(&timenow, &tm) != NULL) {
-#endif
-			year = tm.tm_year+1900;
-			month = tm.tm_mon+1;
-			day = tm.tm_mday;
-			/* Add our hour difference to the UTC time */
-			tm.tm_hour += target_offset;
-			/* Add possible daylist savings time hour */
-			tm.tm_hour += dst;
-			hour = tm.tm_hour;
-			minute = tm.tm_min;
-			second = tm.tm_sec;
-
-			datefix(&year, &month, &day, &hour, &minute, &second);
-
-			if((minute == 0 && second == 1) || (isntpsynced() == 0 && x == 0)) {
-				x = 1;
-				if((newdst = isdst(timenow, tz)) != dst) {
-					dstchange = 1;
-				} else {
-					dstchange = 0;
-				}
-				dst = newdst;
-			}
-
-			hournow = (hour*100)+minute;
-			if(((hournow == 0 || hournow == risetime || hournow == settime) && second == 0)
-				 || (settime == 0 && risetime == 0) || dstchange == 1) {
-
-				if(settime == 0 && risetime == 0) {
-					firstrun = 1;
-				}
-
-				sunriseset->message = json_mkobject();
-				JsonNode *code = json_mkobject();
-				risetime = (int)calculate(year, month, day, longitude, latitude, 1, target_offset);
-				settime = (int)calculate(year, month, day, longitude, latitude, 0, target_offset);
-
-				if(dst == 1) {
-					risetime += 100;
-					settime += 100;
-					if(risetime > 2400) {
-						risetime -= 2400;
-					}
-					if(settime > 2400) {
-						settime -= 2400;
-					}
-				}
-
-				json_append_member(code, "longitude", json_mknumber(longitude, 6));
-				json_append_member(code, "latitude", json_mknumber(latitude, 6));
-
-				/* Only communicate the sun state change when they actually occur,
-					 and only communicate the new times when the day changes */
-				if(hournow != 0 || firstrun == 1) {
-					if(hournow >= risetime && hournow < settime) {
-						json_append_member(code, "sun", json_mkstring("rise"));
-					} else {
-						json_append_member(code, "sun", json_mkstring("set"));
-					}
-				}
-				if(hournow == 0 || firstrun == 1) {
-					json_append_member(code, "sunrise", json_mknumber(((double)risetime/100), 2));
-					json_append_member(code, "sunset", json_mknumber(((double)settime/100), 2));
-				}
-
-				json_append_member(sunriseset->message, "message", code);
-				json_append_member(sunriseset->message, "origin", json_mkstring("receiver"));
-				json_append_member(sunriseset->message, "protocol", json_mkstring(sunriseset->id));
-
-				if(pilight.broadcast != NULL) {
-					pilight.broadcast(sunriseset->id, sunriseset->message, PROTOCOL);
-				}
-				json_delete(sunriseset->message);
-				sunriseset->message = NULL;
-				firstrun = 0;
-			}
-		}
-	}
-
-	threads--;
-	return (void *)NULL;
+	tv.tv_sec = 1;
+	tv.tv_usec = 0;
+	threadpool_add_scheduled_work(jdevice->key, thread, tv, (void *)node);
+	return NULL;
 }
 
-static struct threadqueue_t *initDev(JsonNode *jdevice) {
-	loop = 1;
-	char *output = json_stringify(jdevice, NULL);
-	JsonNode *json = json_decode(output);
-	json_free(output);
-
-	struct protocol_threads_t *node = protocol_thread_init(sunriseset, json);
-	return threads_register("sunriseset", &thread, (void *)node, 0);
-}
-
-static void threadGC(void) {
-	loop = 0;
-	protocol_thread_stop(sunriseset);
-	while(threads > 0) {
-		usleep(10);
+static void gc(void) {
+	struct data_t *tmp = NULL;
+	while(data) {
+		tmp = data;
+		FREE(tmp->name);
+		data = data->next;
+		FREE(tmp);
 	}
-	protocol_thread_free(sunriseset);
+	if(data != NULL) {
+		FREE(data);
+	}
 }
 
 static int checkValues(JsonNode *code) {
@@ -290,9 +361,7 @@ void sunRiseSetInit(void) {
 	sunriseset->devtype = WEATHER;
 	sunriseset->hwtype = API;
 	sunriseset->multipleId = 0;
-#if PILIGHT_V >= 6
 	sunriseset->masterOnly = 1;
-#endif
 
 	options_add(&sunriseset->options, 'o', "longitude", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, NULL);
 	options_add(&sunriseset->options, 'a', "latitude", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, NULL);
@@ -304,17 +373,19 @@ void sunRiseSetInit(void) {
 	options_add(&sunriseset->options, 0, "sunriseset-decimals", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)2, "[0-9]");
 	options_add(&sunriseset->options, 0, "show-sunriseset", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
 
-	sunriseset->initDev=&initDev;
-	sunriseset->threadGC=&threadGC;
+	// sunriseset->initDev=&initDev;
+	sunriseset->gc=&gc;
 	sunriseset->checkValues=&checkValues;
+
+	eventpool_callback(REASON_DEVICE_ADDED, addDevice);
 }
 
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "sunriseset";
-	module->version = "2.6";
-	module->reqversion = "6.0";
-	module->reqcommit = "115";
+	module->version = "4.0";
+	module->reqversion = "7.0";
+	module->reqcommit = "94";
 }
 
 void init(void) {

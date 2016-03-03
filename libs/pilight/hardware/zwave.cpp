@@ -41,13 +41,13 @@
 
 extern "C" {
 
-#include "../config/hardware.h"
+#include "../hardware/hardware.h"
 #include "../core/pilight.h"
 #include "../core/json.h"
 #include "../core/log.h"
 #include "../core/json.h"
 #include "../core/dso.h"
-#include "../config/settings.h"
+#include "../storage/storage.h"
 #include "zwave.h"
 
 }
@@ -364,10 +364,11 @@ void OnNotification(OpenZWave::Notification const *_notification, void *_context
 	}
 }
 
-static unsigned short zwaveHwInit(void) {
+static unsigned short zwaveHwInit(void *(*callback)(void *)) {
 	char *logfile = NULL;
 	int free_log_file = 0;
-	if(settings_find_string("log-file", &logfile) != 0) {
+	const char *setting = "log-file";
+	if(settings_select_string(ORIGIN_HARDWARE, (char *)setting, &logfile) != 0) {
 		if((logfile = (char *)MALLOC(strlen(LOG_FILE)+1)) == NULL) {
 			fprintf(stderr, "out of memory\n");
 			exit(EXIT_FAILURE);
@@ -440,7 +441,7 @@ static unsigned short zwaveHwDeinit(void) {
 	pthread_mutex_unlock(&init_lock);
 	pthread_cond_signal(&init_signal);
 
-	logprintf(LOG_NOTICE, "[Z-Wave]: closing and freeing z-wave modules, please wait...");
+	logprintf(LOG_DEBUG, "[Z-Wave]: closing and freeing z-wave modules, please wait...");
 	if(init == 1) {
 		OpenZWave::Manager::Get()->RemoveWatcher(OnNotification, NULL);
 		sleep(1);	
@@ -626,13 +627,13 @@ void zwaveSetConfigParam(int nodeId, int paramId, int valueId, int len) {
 static void *zwaveReceive(void *param) {
 	threads++;
 	
-	while(init_lock_init == 0 && zwave->stop == 0) {
+	while(init_lock_init == 0/* && zwave->stop == 0*/) {
 		usleep(10);
 	}
 
 	sleep(1);
 
-	if(zwave->stop == 0) {
+	// if(zwave->stop == 0) {
 			pthread_cond_wait(&init_signal, &init_lock);
 
 		if(driver_status == DRIVER_STATUS_NODES_QUERIED) {
@@ -641,10 +642,10 @@ static void *zwaveReceive(void *param) {
 			logprintf(LOG_INFO, "[Z-Wave]: nodes partially queried");
 		}
 		
-		while(zwave->stop == 0) {
+		// while(zwave->stop == 0) {
 			sleep(3);
-		}
-	}
+		// }
+	// }
 	threads--;
 	return (void *)NULL;
 }
@@ -686,9 +687,9 @@ void zwaveInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "zwave";
-	module->version = "1.0";
-	module->reqversion = "6.0";
-	module->reqcommit = "40";
+	module->version = "2.0";
+	module->reqversion = "8.0";
+	module->reqcommit = NULL;
 }
 
 void init(void) {

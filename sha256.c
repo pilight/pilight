@@ -1,19 +1,9 @@
 /*
-	Copyright (C) 2015 CurlyMo
+	Copyright (C) 2015 - 2016 CurlyMo
 
-	This file is part of pilight.
-
-	pilight is free software: you can redistribute it and/or modify it under the
-	terms of the GNU General Public License as published by the Free Software
-	Foundation, either version 3 of the License, or (at your option) any later
-	version.
-
-	pilight is distributed in the hope that it will be useful, but WITHOUT ANY
-	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
-	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
-
-	You should have received a copy of the GNU General Public License
-	along with pilight. If not, see	<http://www.gnu.org/licenses/>
+  This Source Code Form is subject to the terms of the Mozilla Public
+  License, v. 2.0. If a copy of the MPL was not distributed with this
+  file, You can obtain one at http://mozilla.org/MPL/2.0/.
 */
 
 #include <stdio.h>
@@ -40,7 +30,7 @@
 #include <sys/time.h>
 #include <ctype.h>
 
-#include "libs/polarssl/polarssl/sha256.h"
+#include "libs/mbedtls/mbedtls/sha256.h"
 #include "libs/pilight/core/log.h"
 #include "libs/pilight/core/common.h"
 #include "libs/pilight/core/options.h"
@@ -64,6 +54,8 @@ int main(int argc, char **argv) {
 	atomicinit();
 	gc_attach(main_gc);
 
+	pilight.process = PROCESS_CLIENT;
+
 	/* Catch all exit signals for gc */
 	gc_catch();
 
@@ -74,12 +66,11 @@ int main(int argc, char **argv) {
 	struct options_t *options = NULL;
   unsigned char output[33];
 	char converted[65], *password = NULL, *args = NULL;
-	sha256_context ctx;
+	mbedtls_sha256_context ctx;
 	int i = 0, x = 0;
 
 	if((progname = MALLOC(15)) == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(EXIT_FAILURE);
+		OUT_OF_MEMORY
 	}
 	strcpy(progname, "pilight-sha256");
 
@@ -108,8 +99,7 @@ int main(int argc, char **argv) {
 			break;
 			case 'p':
 				if((password = MALLOC(strlen(args)+1)) == NULL) {
-					fprintf(stderr, "out of memory\n");
-					exit(EXIT_FAILURE);
+					OUT_OF_MEMORY
 				}
 				strcpy(password, args);
 			break;
@@ -131,26 +121,25 @@ int main(int argc, char **argv) {
 
 	if(strlen(password) < 64) {
 		if((password = REALLOC(password, 65)) == NULL) {
-			fprintf(stderr, "out of memory\n");
-			exit(EXIT_FAILURE);
-		}		
+			OUT_OF_MEMORY
+		}
 	}
 
 	for(i=0;i<SHA256_ITERATIONS;i++) {
-		sha256_init(&ctx);
-		sha256_starts(&ctx, 0);
-		sha256_update(&ctx, (unsigned char *)password, strlen((char *)password));
-		sha256_finish(&ctx, output);
+		mbedtls_sha256_init(&ctx);
+		mbedtls_sha256_starts(&ctx, 0);
+		mbedtls_sha256_update(&ctx, (unsigned char *)password, strlen((char *)password));
+		mbedtls_sha256_finish(&ctx, output);
 		for(x=0;x<64;x+=2) {
 			sprintf(&password[x], "%02x", output[x/2] );
 		}
-		sha256_free(&ctx);
+		mbedtls_sha256_free(&ctx);
 	}
 	for(x=0;x<64;x+=2) {
 		sprintf(&converted[x], "%02x", output[x/2] );
 	}
 	printf("%s\n", converted);
-	sha256_free(&ctx);
+	mbedtls_sha256_free(&ctx);
 
 close:
 	if(password != NULL) {

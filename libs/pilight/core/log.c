@@ -1,19 +1,9 @@
 /*
-	Copyright (C) 2013 - 2014 CurlyMo
+	Copyright (C) 2013 - 2016 CurlyMo
 
-	This file is part of pilight.
-
-	pilight is free software: you can redistribute it and/or modify it under the
-	terms of the GNU General Public License as published by the Free Software
-	Foundation, either version 3 of the License, or (at your option) any later
-	version.
-
-	pilight is distributed in the hope that it will be useful, but WITHOUT ANY
-	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
-	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
-
-	You should have received a copy of the GNU General Public License
-	along with pilight. If not, see	<http://www.gnu.org/licenses/>
+  This Source Code Form is subject to the terms of the Mozilla Public
+  License, v. 2.0. If a copy of the MPL was not distributed with this
+  file, You can obtain one at http://mozilla.org/MPL/2.0/.
 */
 
 #include <stdio.h>
@@ -157,8 +147,7 @@ void logprintf(int prio, const char *format_str, ...) {
 	memset(&tm, '\0', sizeof(struct tm));
 
 	if(line == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(EXIT_FAILURE);
+		OUT_OF_MEMORY
 	}
 	save_errno = errno;
 
@@ -214,8 +203,7 @@ void logprintf(int prio, const char *format_str, ...) {
 		} else {
 			va_end(apcpy);
 			if((line = REALLOC(line, (size_t)bytes+(size_t)pos+3)) == NULL) {
-				fprintf(stderr, "out of memory\n");
-				exit(EXIT_FAILURE);
+				OUT_OF_MEMORY
 			}
 			va_start(ap, format_str);
 			pos += vsprintf(&line[pos], format_str, ap);
@@ -238,17 +226,15 @@ void logprintf(int prio, const char *format_str, ...) {
 				pthread_mutex_lock(&logqueue_lock);
 			}
 			if(logqueue_number < 1024) {
-				struct logqueue_t *node = MALLOC(sizeof(logqueue_t));
+				struct logqueue_t *node = MALLOC(sizeof(struct logqueue_t));
 				if(node == NULL) {
-					fprintf(stderr, "out of memory\n");
-					exit(EXIT_FAILURE);
+					OUT_OF_MEMORY
 				}
 				if((node->line = MALLOC((size_t)pos+1)) == NULL) {
-					fprintf(stderr, "out of memory\n");
-					exit(EXIT_FAILURE);
+					OUT_OF_MEMORY
 				}
 				memset(node->line, '\0', (size_t)pos+1);
-				strcpy(node->line, line);
+				strncpy(node->line, line, pos);
 				node->next = NULL;
 
 				if(logqueue_number == 0) {
@@ -350,8 +336,7 @@ int log_file_set(char *log) {
 
 	size_t i = (strlen(log)-strlen(filename));
 	if((logpath = REALLOC(logpath, i+1)) == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(EXIT_FAILURE);
+		OUT_OF_MEMORY
 	}
 	memset(logpath, '\0', i+1);
 	strncpy(logpath, log, i);
@@ -380,8 +365,7 @@ int log_file_set(char *log) {
 		} else {
 			if(S_ISDIR(s.st_mode)) {
 				if((logfile = REALLOC(logfile, strlen(log)+1)) == NULL) {
-					fprintf(stderr, "out of memory\n");
-					exit(EXIT_FAILURE);
+					OUT_OF_MEMORY
 				}
 				strcpy(logfile, log);
 			} else {
@@ -392,8 +376,7 @@ int log_file_set(char *log) {
 		}
 	} else {
 		if((logfile = REALLOC(logfile, strlen(log)+1)) == NULL) {
-			fprintf(stderr, "out of memory\n");
-			exit(EXIT_FAILURE);
+			OUT_OF_MEMORY
 		}
 		strcpy(logfile, log);
 	}

@@ -1,19 +1,9 @@
 /*
-	Copyright (C) 2013 CurlyMo
+	Copyright (C) 2013 - 2016 CurlyMo
 
-	This file is part of pilight.
-
-	pilight is free software: you can redistribute it and/or modify it under the
-	terms of the GNU General Public License as published by the Free Software
-	Foundation, either version 3 of the License, or (at your option) any later
-	version.
-
-	pilight is distributed in the hope that it will be useful, but WITHOUT ANY
-	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
-	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
-
-	You should have received a copy of the GNU General Public License
-	along with pilight. If not, see	<http://www.gnu.org/licenses/>
+  This Source Code Form is subject to the terms of the Mozilla Public
+  License, v. 2.0. If a copy of the MPL was not distributed with this
+  file, You can obtain one at http://mozilla.org/MPL/2.0/.
 */
 
 #include <stdio.h>
@@ -47,17 +37,19 @@ static int validate(void) {
 	return -1;
 }
 
-static void createMessage(int id, int unit, int state) {
-	arctech_screen_old->message = json_mkobject();
-	json_append_member(arctech_screen_old->message, "id", json_mknumber(id, 0));
-	json_append_member(arctech_screen_old->message, "unit", json_mknumber(unit, 0));
-	if(state == 1)
-		json_append_member(arctech_screen_old->message, "state", json_mkstring("up"));
-	else
-		json_append_member(arctech_screen_old->message, "state", json_mkstring("down"));
+static void createMessage(char *message, int id, int unit, int state) {
+	int x = snprintf(message, 255, "{\"id\":%d,", id);
+	x += snprintf(&message[x], 255-x, "\"unit\":%d,", unit);
+
+	if(state == 1) {
+		x += snprintf(&message[x], 255-x, "\"state\":\"up\"");
+	} else {
+		x += snprintf(&message[x], 255-x, "\"state\":\"down\"");
+	}
+	x += snprintf(&message[x], 255-x, "}");
 }
 
-static void parseCode(void) {
+static void parseCode(char *message) {
 	int binary[RAW_LENGTH/4], x = 0, i = 0;
 	int len = (int)((double)AVG_PULSE_LENGTH*((double)PULSE_MULTIPLIER/2));
 
@@ -72,7 +64,8 @@ static void parseCode(void) {
 	int unit = binToDec(binary, 0, 3);
 	int state = binary[11];
 	int id = binToDec(binary, 4, 8);
-	createMessage(id, unit, state);
+
+	createMessage(message, id, unit, state);
 }
 
 static void createLow(int s, int e) {
@@ -141,7 +134,7 @@ static void createFooter(void) {
 	arctech_screen_old->raw[49]=(PULSE_DIV*AVG_PULSE_LENGTH);
 }
 
-static int createCode(struct JsonNode *code) {
+static int createCode(struct JsonNode *code, char *message) {
 	int id = -1;
 	int unit = -1;
 	int state = -1;
@@ -166,7 +159,7 @@ static int createCode(struct JsonNode *code) {
 		logprintf(LOG_ERR, "arctech_screen_old: invalid unit range");
 		return EXIT_FAILURE;
 	} else {
-		createMessage(id, unit, state);
+		createMessage(message, id, unit, state);
 		clearCode();
 		createUnit(unit);
 		createId(id);
@@ -216,9 +209,9 @@ void arctechScreenOldInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "arctech_screen_old";
-	module->version = "2.4";
-	module->reqversion = "6.0";
-	module->reqcommit = "84";
+	module->version = "3.0";
+	module->reqversion = "7.0";
+	module->reqcommit = "94";
 }
 
 void init(void) {

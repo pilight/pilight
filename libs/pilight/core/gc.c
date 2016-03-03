@@ -1,19 +1,9 @@
 /*
-	Copyright (C) 2013 CurlyMo
+	Copyright (C) 2013 - 2016 CurlyMo
 
-	This file is part of pilight.
-
-	pilight is free software: you can redistribute it and/or modify it under the
-	terms of the GNU General Public License as published by the Free Software
-	Foundation, either version 3 of the License, or (at your option) any later
-	version.
-
-	pilight is distributed in the hope that it will be useful, but WITHOUT ANY
-	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
-	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
-
-	You should have received a copy of the GNU General Public License
-	along with pilight. If not, see	<http://www.gnu.org/licenses/>
+  This Source Code Form is subject to the terms of the Mozilla Public
+  License, v. 2.0. If a copy of the MPL was not distributed with this
+  file, You can obtain one at http://mozilla.org/MPL/2.0/.
 */
 
 #include <string.h>
@@ -39,13 +29,13 @@
 #include "log.h"
 #include "mem.h"
 #include "common.h"
-#include "config.h"
+#include "../storage/storage.h"
 
 static unsigned short gc_enable = 1;
+volatile sig_atomic_t gcloop = 1;
 static int (*gc)(void) = NULL;
 
 void gc_handler(int sig) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 #if !defined(_WIN32) && !defined(__mips__)
 	char name[256];
 	unw_cursor_t cursor; unw_context_t uc;
@@ -100,6 +90,7 @@ void gc_handler(int sig) {
 	if(((sig == SIGINT || sig == SIGTERM || sig == SIGTSTP) && gc_enable == 1) ||
 		(!(sig == SIGINT || sig == SIGTERM || sig == SIGTSTP) && gc_enable == 0)) {
 #endif
+		gcloop = 0;
 		if(sig == SIGINT) {
 			logprintf(LOG_DEBUG, "received interrupt signal, stopping pilight...");
 		} else if(sig == SIGTERM) {
@@ -107,15 +98,19 @@ void gc_handler(int sig) {
 		} else {
 			logprintf(LOG_DEBUG, "received stop signal, stopping pilight...");
 		}
-		if(config_get_file() != NULL && gc_enable == 1) {
+		if(gc_enable == 1) {
 			gc_enable = 0;
 			if(pilight.runmode == STANDALONE) {
-				config_write(1, "all");
+				storage_export();
 			}
 		}
 		gc_enable = 0;
 		gc_run();
 	}
+}
+
+int running(void) {
+	return gcloop;
 }
 
 /* Add function to gc */
@@ -174,5 +169,11 @@ void gc_catch(void) {
 	sigaction(SIGILL,  &act, NULL);
 	sigaction(SIGSEGV, &act, NULL);
 	sigaction(SIGFPE,  &act, NULL);
+
+	struct sigaction sa;
+	memset(&sa, 0, sizeof(sa));
+	sa.sa_handler = SIG_IGN;
+	sa.sa_flags = 0;
+	sigaction(SIGPIPE, &sa, NULL);
 #endif
 }

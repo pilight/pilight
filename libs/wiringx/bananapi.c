@@ -348,6 +348,14 @@ static int bananapiWaitForInterrupt(int pin, int ms) {
 	return x;
 }
 
+static int bananapiSelectableFd(int pin) {
+	if(pinModes[pin] != SYS) {
+		wiringXLog(LOG_ERR, "bananapi->selectableFd: Trying to read from pin %d, but it's not configured as interrupt", pin);
+		return -1;
+	}
+	return sysFds[pin];
+}
+
 static int piBoardRev(void) {
 	FILE *cpuFd;
 	char line[120];
@@ -648,6 +656,7 @@ void bananapiInit(void) {
 	bananapi->identify=&piBoardRev;
 	bananapi->isr=&bananapiISR;
 	bananapi->waitForInterrupt=&bananapiWaitForInterrupt;
+	bananapi->selectableFd=&bananapiSelectableFd;
 #ifndef __FreeBSD__
 	bananapi->I2CRead=&bananapiI2CRead;
 	bananapi->I2CReadReg8=&bananapiI2CReadReg8;

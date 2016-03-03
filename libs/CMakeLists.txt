@@ -5,8 +5,8 @@ include(../CMakeConfig.txt)
 if(${MODULESPACK} MATCHES "OFF" OR WIN32)
 	set(${PROJECT_NAME}_files "" CACHE INTERNAL "")
 
-	add_subdirectory(polarssl)
-	set(${PROJECT_NAME}_files ${${PROJECT_NAME}_files} ${polarssl_files} CACHE INTERNAL "")
+	add_subdirectory(mbedtls)
+	set(${PROJECT_NAME}_files ${${PROJECT_NAME}_files} ${mbedtls_files} CACHE INTERNAL "")
 
 	add_subdirectory(wiringx)
 	set(${PROJECT_NAME}_files ${${PROJECT_NAME}_files} ${wiringx_files} CACHE INTERNAL "")
@@ -17,6 +17,11 @@ if(${MODULESPACK} MATCHES "OFF" OR WIN32)
 	if(${ZWAVE} MATCHES "ON")
 		add_subdirectory(openzwave)	
 		set(${PROJECT_NAME}_files ${${PROJECT_NAME}_files} ${openzwave_files} CACHE INTERNAL "")
+	endif()
+
+	if(${IR} MATCHES "ON")
+		add_subdirectory(lirc)	
+		set(${PROJECT_NAME}_files ${${PROJECT_NAME}_files} ${lirc_files} CACHE INTERNAL "")
 	endif()
 
 	add_subdirectory(pilight)

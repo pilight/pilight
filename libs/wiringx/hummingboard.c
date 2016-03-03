@@ -353,6 +353,14 @@ static int hummingboardWaitForInterrupt(int pin, int ms) {
 	return x;
 }
 
+static int hummingboardSelectableFd(int pin) {
+	if(pinModes[pin] != SYS) {
+		wiringXLog(LOG_ERR, "hummingboard->selectableFd: Trying to read from pin %d, but it's not configured as interrupt", pin);
+		return -1;
+	}
+	return sysFds[pin];
+}
+
 static int hummingboardGC(void) {
 	int i = 0, fd = 0;
 	char path[35];
@@ -523,6 +531,7 @@ void hummingboardInit(void) {
 	hummingboard->identify=&identify;
 	hummingboard->isr=&hummingboardISR;
 	hummingboard->waitForInterrupt=&hummingboardWaitForInterrupt;
+	hummingboard->selectableFd=&hummingboardSelectableFd;
 #ifndef __FreeBSD__
 	hummingboard->I2CRead=&hummingboardI2CRead;
 	hummingboard->I2CReadReg8=&hummingboardI2CReadReg8;

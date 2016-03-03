@@ -1,19 +1,9 @@
 /*
-	Copyright (C) 2013 - 2015 CurlyMo
+	Copyright (C) 2013 - 2016 CurlyMo
 
-	This file is part of pilight.
-
-	pilight is free software: you can redistribute it and/or modify it under the
-	terms of the GNU General Public License as published by the Free Software
-	Foundation, either version 3 of the License, or (at your option) any later
-	version.
-
-	pilight is distributed in the hope that it will be useful, but WITHOUT ANY
-	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
-	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
-
-	You should have received a copy of the GNU General Public License
-	along with pilight. If not, see	<http://www.gnu.org/licenses/>
+  This Source Code Form is subject to the terms of the Mozilla Public
+  License, v. 2.0. If a copy of the MPL was not distributed with this
+  file, You can obtain one at http://mozilla.org/MPL/2.0/.
 */
 
 #include <stdio.h>
@@ -32,7 +22,7 @@
 
 #include "../function.h"
 #include "../events.h"
-#include "../../config/devices.h"
+#include "../../protocols/protocol.h"
 #include "../../core/options.h"
 #include "../../core/log.h"
 #include "../../core/dso.h"
@@ -42,54 +32,56 @@
 
 static int run(struct rules_t *obj, struct JsonNode *arguments, char **ret, enum origin_t origin) {
 	struct JsonNode *childs = json_first_child(arguments);
-	struct devices_t *dev = NULL;
-	struct devices_settings_t *opt = NULL;
-	struct protocols_t *protocol = NULL;
+	struct protocol_t *protocol = NULL;
 	struct tm tm;
 	char *p = *ret, *datetime = NULL, *format = NULL;
+	int i = 0, is_dev = 0;
 
 	if(childs == NULL) {
 		logprintf(LOG_ERR, "DATE_FORMAT requires at least two parameters e.g. DATE_FORMAT(datetime, %Y-%m-%d)");
 		return -1;
 	}
 
-	if(devices_get(childs->string_, &dev) == 0) {
-		if(origin == RULE) {
+	if(devices_select(origin, childs->string_, NULL) == 0) {
+		is_dev = 1;
+		if(origin == ORIGIN_RULE) {
 			event_cache_device(obj, childs->string_);
 		}
-		protocol = dev->protocols;
-		if(protocol->listener->devtype == DATETIME) {
-			opt = dev->settings;
-			while(opt) {
-				if(strcmp(opt->name, "year") == 0) {
-					tm.tm_year = opt->values->number_-1900;
+		if(devices_select_protocol(origin, childs->string_, 0, &protocol) == 0) {
+			if(protocol->devtype == DATETIME) {
+				char *setting = NULL;
+				struct varcont_t val;
+				i = 0;
+				while(devices_select_settings(origin, childs->string_, i++, &setting, &val) == 0) {
+					if(strcmp(setting, "year") == 0) {
+						tm.tm_year = val.number_-1900;
+					}
+					if(strcmp(setting, "month") == 0) {
+						tm.tm_mon = val.number_-1;
+					}
+					if(strcmp(setting, "day") == 0) {
+						tm.tm_mday = val.number_;
+					}
+					if(strcmp(setting, "hour") == 0) {
+						tm.tm_hour = val.number_;
+					}
+					if(strcmp(setting, "minute") == 0) {
+						tm.tm_min = val.number_;
+					}
+					if(strcmp(setting, "second") == 0) {
+						tm.tm_sec = val.number_;
+					}
+					if(strcmp(setting, "weekday") == 0) {
+						tm.tm_wday = val.number_-1;
+					}
+					if(strcmp(setting, "dst") == 0) {
+						tm.tm_isdst = val.number_;
+					}
 				}
-				if(strcmp(opt->name, "month") == 0) {
-					tm.tm_mon = opt->values->number_-1;
-				}
-				if(strcmp(opt->name, "day") == 0) {
-					tm.tm_mday = opt->values->number_;
-				}
-				if(strcmp(opt->name, "hour") == 0) {
-					tm.tm_hour = opt->values->number_;
-				}
-				if(strcmp(opt->name, "minute") == 0) {
-					tm.tm_min = opt->values->number_;
-				}
-				if(strcmp(opt->name, "second") == 0) {
-					tm.tm_sec = opt->values->number_;
-				}
-				if(strcmp(opt->name, "weekday") == 0) {
-					tm.tm_wday = opt->values->number_-1;
-				}
-				if(strcmp(opt->name, "dst") == 0) {
-					tm.tm_isdst = opt->values->number_;
-				}
-				opt = opt->next;
+			} else {
+				logprintf(LOG_ERR, "device \"%s\" is not a datetime protocol", childs->string_);
+				return -1;
 			}
-		} else {
-			logprintf(LOG_ERR, "device \"%s\" is not a datetime protocol", childs->string_);
-			return -1;
 		}
 	} else {
 		datetime = childs->string_;
@@ -102,16 +94,16 @@ static int run(struct rules_t *obj, struct JsonNode *arguments, char **ret, enum
 	}
 	format = childs->string_;
 
-	if(childs->next == NULL && dev == NULL) {
+	if(childs->next == NULL && is_dev == 0) {
 		logprintf(LOG_ERR, "DATE_FORMAT requires at least three parameters when passing a datetime string e.g. DATE_FORMAT(01-01-2015, %%d-%%m-%%Y, %%Y-%%m-%%d)");
 		return -1;
 	}
-	if(childs->next != NULL && dev != NULL) {
+	if(childs->next != NULL && is_dev == 1) {
 		logprintf(LOG_ERR, "DATE_FORMAT requires at least two parameters e.g. DATE_FORMAT(datetime, %%Y-%%m-%%d)");
 		return -1;
 	}
 
-	if(dev == NULL) {
+	if(is_dev == 0) {
 		childs = childs->next;
 		if(strptime(datetime, format, &tm) == NULL) {
 			logprintf(LOG_ERR, "DATE_FORMAT is unable to parse \"%s\" as \"%s\" ", datetime, format);
@@ -157,8 +149,8 @@ void functionDateFormatInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "date_format";
-	module->version = "1.1";
-	module->reqversion = "6.0";
+	module->version = "2.0";
+	module->reqversion = "7.0";
 	module->reqcommit = "94";
 }
 

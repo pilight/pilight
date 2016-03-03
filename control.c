@@ -1,19 +1,9 @@
 /*
-	Copyright (C) 2013 - 2014 CurlyMo
+	Copyright (C) 2013 - 2016 CurlyMo
 
-	This file is part of pilight.
-
-	pilight is free software: you can redistribute it and/or modify it under the
-	terms of the GNU General Public License as published by the Free Software
-	Foundation, either version 3 of the License, or (at your option) any later
-	version.
-
-	pilight is distributed in the hope that it will be useful, but WITHOUT ANY
-	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
-	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
-
-	You should have received a copy of the GNU General Public License
-	along with pilight. If not, see	<http://www.gnu.org/licenses/>
+  This Source Code Form is subject to the terms of the Mozilla Public
+  License, v. 2.0. If a copy of the MPL was not distributed with this
+  file, You can obtain one at http://mozilla.org/MPL/2.0/.
 */
 
 #include <stdio.h>
@@ -24,10 +14,11 @@
 #include <fcntl.h>
 #include <errno.h>
 
-#include "libs/pilight/core/threads.h"
+#include "libs/pilight/core/threadpool.h"
+#include "libs/pilight/core/eventpool.h"
+#include "libs/pilight/core/timerpool.h"
 #include "libs/pilight/core/pilight.h"
 #include "libs/pilight/core/common.h"
-#include "libs/pilight/core/config.h"
 #include "libs/pilight/core/log.h"
 #include "libs/pilight/core/options.h"
 #include "libs/pilight/core/socket.h"
@@ -36,30 +27,452 @@
 #include "libs/pilight/core/dso.h"
 #include "libs/pilight/core/gc.h"
 
-#include "libs/pilight/config/devices.h"
-
 #include "libs/pilight/protocols/protocol.h"
-
+#include "libs/pilight/storage/storage.h"
 #include "libs/pilight/events/events.h"
 
 #ifndef _WIN32
 	#include "libs/wiringx/wiringX.h"
 #endif
 
+#define IDENTIFY				0
+#define STATUS					1
+#define REQUESTCONFIG		2
+#define RECEIVECONFIG		3
+#define VALIDATE				4
+
+static unsigned short connected = 0;
+static unsigned short connecting = 0;
+static unsigned short found = 0;
+static char *instance = NULL;
+struct timers_t timer;
+
+static char *state = NULL, *values = NULL, *device = NULL;
+
+typedef struct ssdp_list_t {
+	char server[INET_ADDRSTRLEN+1];
+	unsigned short port;
+	char name[17];
+	struct ssdp_list_t *next;
+} ssdp_list_t;
+
+static struct ssdp_list_t *ssdp_list = NULL;
+static int ssdp_list_size = 0;
+
+int main_gc(void) {
+	log_shell_disable();
+
+	struct ssdp_list_t *tmp1 = NULL;
+	while(ssdp_list) {
+		tmp1 = ssdp_list;
+		ssdp_list = ssdp_list->next;
+		FREE(tmp1);
+	}
+
+	if(state != NULL) {
+		FREE(state);
+		state = NULL;
+	}
+
+	if(device != NULL) {
+		FREE(device);
+		device = NULL;
+	}
+
+	if(values != NULL) {
+		FREE(values);
+		values = NULL;
+	}
+
+	if(instance != NULL) {
+		FREE(instance);
+		instance = NULL;
+	}
+
+	protocol_gc();
+	storage_gc();
+
+	timer_thread_gc();
+	timer_gc(&timer);
+	eventpool_gc();
+	xfree();
+
+	log_shell_disable();
+	log_gc();
+
+	if(progname != NULL) {
+		FREE(progname);
+		progname = NULL;
+	}
+
+	return 0;
+}
+
+void *timeout(void *param) {
+	if(__sync_fetch_and_add(&connected, 0) == 0) {
+		signal(SIGALRM, SIG_IGN);
+		logprintf(LOG_ERR, "could not connect to the pilight instance");
+
+		kill(getpid(), SIGINT);
+	}
+	return NULL;
+}
+
+void *ssdp_not_found(void *param) {
+	if(__sync_fetch_and_add(&found, 0) == 0) {
+		signal(SIGALRM, SIG_IGN);
+		logprintf(LOG_ERR, "could not find pilight instance: %s", instance);
+
+		kill(getpid(), SIGINT);
+	}
+	return NULL;
+}
+
+static int client_callback(struct eventpool_fd_t *node, int event) {
+	switch(event) {
+		case EV_CONNECT_SUCCESS: {
+			__sync_fetch_and_add(&connected, 1);
+			switch(node->steps) {
+				case IDENTIFY:
+					socket_write(node->fd, "{\"action\":\"identify\"}");
+					node->steps = STATUS;
+				break;
+			}
+			eventpool_fd_enable_write(node);
+		} break;
+		case EV_WRITE: {
+			switch(node->steps) {
+				case REQUESTCONFIG: {
+					socket_write(node->fd, "{\"action\":\"request config\"}");
+					node->steps = RECEIVECONFIG;
+				} break;
+			}
+			eventpool_fd_enable_read(node);
+		}
+		break;
+		case EV_READ: {
+			switch(node->steps) {
+				case STATUS: {
+					int x = socket_recv(node->fd, &node->buffer, &node->len);
+					if(x == -1) {
+						return -1;
+					} else if(x == 0) {
+						eventpool_fd_enable_read(node);
+						return 0;
+					} else {
+						if(strcmp(node->buffer, "{\"status\":\"success\"}") == 0) {
+							node->steps = REQUESTCONFIG;
+							eventpool_fd_enable_write(node);
+						}
+						FREE(node->buffer);
+						node->len = 0;
+					}
+				} break;
+				case RECEIVECONFIG: {
+					char *message = NULL;
+					int x = socket_recv(node->fd, &node->buffer, &node->len);
+					if(x == -1) {
+						return -1;
+					} else if(x == 0) {
+						eventpool_fd_enable_read(node);
+						return 0;
+					} else {
+						int has_values = 0;
+						if(json_validate(node->buffer) == true) {
+							struct JsonNode *json = json_decode(node->buffer);
+							FREE(node->buffer);
+							node->len = 0;
+							if(json_find_string(json, "message", &message) == 0) {
+								if(strcmp(message, "config") == 0) {
+									struct JsonNode *jconfig = NULL;
+									if((jconfig = json_find_member(json, "config")) != NULL) {
+										int match = 1;
+										struct JsonNode *tmp = NULL;
+										while(match) {
+											struct JsonNode *jchilds = json_first_child(jconfig);
+											match = 0;
+											while(jchilds) {
+												if(strcmp(jchilds->key, "devices") != 0) {
+													json_remove_from_parent(jchilds);
+													tmp = jchilds;
+													match = 1;
+												}
+												jchilds = jchilds->next;
+												if(tmp != NULL) {
+													json_delete(tmp);
+												}
+												tmp = NULL;
+											}
+										}
+										storage_gc();
+										storage_import(jconfig);
+										if(devices_select(ORIGIN_CONTROLLER, device, &tmp) == 0) {
+											struct JsonNode *joutput = json_mkobject();
+											struct JsonNode *jcode = json_mkobject();
+											struct JsonNode *jvalues = json_mkobject();
+											json_append_member(joutput, "code", jcode);
+											json_append_member(jcode, "device", json_mkstring(device));
+
+											if(values != NULL) {
+												char **array = NULL;
+												unsigned int n = 0, q = 0;
+												if(strstr(values, ",") != NULL) {
+													n = explode(values, ",=", &array);
+												} else {
+													n = explode(values, "=", &array);
+												}
+												for(q=0;q<n;q+=2) {
+													char *name = MALLOC(strlen(array[q])+1);
+													if(name == NULL) {
+														OUT_OF_MEMORY
+													}
+													strcpy(name, array[q]);
+													if(q+1 == n) {
+														array_free(&array, n);
+														logprintf(LOG_ERR, "\"%s\" is missing a value for device \"%s\"", name, device);
+														FREE(name);
+														break;
+													} else {
+														char *val = MALLOC(strlen(array[q+1])+1);
+														if(val == NULL) {
+															OUT_OF_MEMORY
+														}
+														strcpy(val, array[q+1]);
+														struct JsonNode *jvalue = NULL;
+														if((jvalue = json_find_member(tmp, name)) == NULL) {
+															if(isNumeric(val) == 0) {
+																json_append_member(tmp, name, json_mknumber(atof(val), nrDecimals(val)));
+															} else {
+																json_append_member(tmp, name, json_mkstring(val));
+															}
+														} else {
+															if(jvalue->tag == JSON_NUMBER) {
+																jvalue->number_ = atof(val);
+																jvalue->decimals_ = nrDecimals(val);
+															} else {
+																if((jvalue->string_ = REALLOC(jvalue->string_, strlen(val)+1)) == NULL) {
+																	OUT_OF_MEMORY
+																}
+																strcpy(jvalue->string_, val);
+															}
+														}
+														if(devices_validate_settings(tmp, -1) == 0) {
+															if(isNumeric(val) == EXIT_SUCCESS) {
+																json_append_member(jvalues, name, json_mknumber(atof(val), nrDecimals(val)));
+															} else {
+																json_append_member(jvalues, name, json_mkstring(val));
+															}
+															has_values = 1;
+														} else {
+															logprintf(LOG_ERR, "\"%s\" is an invalid value for device \"%s\"", name, device);
+															array_free(&array, n);
+															FREE(name);
+															json_delete(json);
+															json_delete(joutput);
+															json_delete(jvalues);
+															return -1;
+														}
+													}
+													FREE(name);
+												}
+												array_free(&array, n);
+											}
+
+											struct JsonNode *jstate = json_find_member(tmp, "state");
+											if(jstate != NULL && jstate->tag == JSON_STRING) {
+												if((jstate->string_ = REALLOC(jstate->string_, strlen(state)+1)) == NULL) {
+													OUT_OF_MEMORY
+												}
+												strcpy(jstate->string_, state);
+											}
+											if(devices_validate_state(tmp, -1) == 0) {
+												json_append_member(jcode, "state", json_mkstring(state));
+											} else {
+												logprintf(LOG_ERR, "\"%s\" is an invalid state for device \"%s\"", state, device);
+												json_delete(json);
+												json_delete(joutput);
+												json_delete(jvalues);
+												return -1;
+											}
+
+											if(has_values == 1) {
+												json_append_member(jcode, "values", jvalues);
+											} else {
+												json_delete(jvalues);
+											}
+											json_append_member(joutput, "action", json_mkstring("control"));
+											char *output = json_stringify(joutput, NULL);
+											socket_write(node->fd, output);
+											json_free(output);
+											json_delete(joutput);
+											node->steps = VALIDATE;
+										} else {
+											logprintf(LOG_ERR, "the device \"%s\" does not exist", device);
+											json_delete(json);
+											return -1;
+										}
+									}
+								}
+							}
+							json_delete(json);
+						} else {
+							FREE(node->buffer);
+							node->len = 0;
+						}
+					}
+				} break;
+				case VALIDATE: {
+					int x = socket_recv(node->fd, &node->buffer, &node->len);
+					if(x == -1) {
+						return -1;
+					} else if(x == 0) {
+						eventpool_fd_enable_read(node);
+						return 0;
+					} else {
+						if(strcmp(node->buffer, "{\"status\":\"success\"}") != 0) {
+							logprintf(LOG_ERR, "failed to send command");
+						}
+						FREE(node->buffer);
+						node->len = 0;
+						return -1;
+					}
+				} break;
+			}
+			eventpool_fd_enable_read(node);
+		} break;
+		case EV_DISCONNECTED: {
+			kill(getpid(), SIGINT);
+		} break;
+	}
+	return 0;
+}
+
+static void *ssdp_reseek(void *node) {
+	if(__sync_fetch_and_add(&found, 0) == 0 &&
+		 __sync_fetch_and_add(&connecting, 0) == 0) {
+		struct timeval tv;
+		tv.tv_sec = 1;
+		tv.tv_usec = 0;
+		timer_add_task(&timer, "ssdp seek", tv, ssdp_reseek, NULL);
+		ssdp_seek();
+	}
+	return NULL;
+}
+
+static int user_input(struct eventpool_fd_t *node, int event) {
+	struct timeval tv;
+	switch(event) {
+		case EV_CONNECT_SUCCESS: {
+#ifdef _WIN32
+			unsigned long on = 1;
+			ioctlsocket(node->fd, FIONBIO, &on);
+#else
+			long arg = fcntl(node->fd, F_GETFL, NULL);
+			fcntl(node->fd, F_SETFL, arg | O_NONBLOCK);
+#endif
+			eventpool_fd_enable_read(node);
+		} break;
+		case EV_READ: {
+			char buf[BUFFER_SIZE];
+			memset(buf, '\0', BUFFER_SIZE);
+			int c = 0;
+			if((c = read(node->fd, buf, BUFFER_SIZE)) > 0) {
+				buf[c-1] = '\0';
+				if(isNumeric(buf) == 0) {
+					struct ssdp_list_t *tmp = ssdp_list;
+					int i = 0;
+					while(tmp) {
+						if((ssdp_list_size-i) == atoi(buf)) {
+							socket_connect1(tmp->server, tmp->port, client_callback);
+							tv.tv_sec = 1;
+							tv.tv_usec = 0;
+							timer_add_task(&timer, "socket timeout", tv, timeout, NULL);
+							__sync_fetch_and_add(&connecting, 1);
+							return -1;
+						}
+						i++;
+						tmp = tmp->next;
+					}
+				}
+			}
+			eventpool_fd_enable_read(node);
+		}
+	}
+	return 0;
+}
+
+static void *ssdp_found(void *param) {
+	struct threadpool_tasks_t *task = param;
+	struct reason_ssdp_received_t *data = task->userdata;
+	struct ssdp_list_t *node = NULL;
+	struct timeval tv;
+	int match = 0;
+
+	if(__sync_fetch_and_add(&connecting, 0) == 0 && data->ip != NULL && data->port > 0 && data->name != NULL) {
+		if(instance == NULL) {
+			struct ssdp_list_t *tmp = ssdp_list;
+			while(tmp) {
+				if(strcmp(tmp->server, data->ip) == 0 && tmp->port == data->port) {
+					match = 1;
+					break;
+				}
+				tmp = tmp->next;
+			}
+			if(match == 0) {
+				if((node = MALLOC(sizeof(struct ssdp_list_t))) == NULL) {
+					OUT_OF_MEMORY
+				}
+				strncpy(node->server, data->ip, INET_ADDRSTRLEN);
+				node->port = data->port;
+				strncpy(node->name, data->name, 16);
+
+				ssdp_list_size++;
+
+				printf("\r[%2d] %15s:%-5d %-16s\n", ssdp_list_size, node->server, node->port, node->name);
+				printf("To which server do you want to connect?: ");
+				fflush(stdout);
+
+				node->next = ssdp_list;
+				ssdp_list = node;
+			}
+		} else {
+			if(strcmp(data->name, instance) == 0) {
+				__sync_fetch_and_add(&found, 1);
+				__sync_fetch_and_add(&connecting, 1);
+				socket_connect1(data->ip, data->port, client_callback);
+				connected = 1;
+				tv.tv_sec = 1;
+				tv.tv_usec = 0;
+				timer_add_task(&timer, "socket timeout", tv, timeout, NULL);
+			}
+		}
+	}
+	return NULL;
+}
+
+static void *timer_func(struct timer_tasks_t *task) {
+	task->func(task);
+	return NULL;
+}
+
 int main(int argc, char **argv) {
 	// memtrack();
 
 	atomicinit();
+	gc_attach(main_gc);
+	gc_catch();
+
 	struct options_t *options = NULL;
-	struct ssdp_list_t *ssdp_list = NULL;
-	struct devices_t *dev = NULL;
-	struct JsonNode *json = NULL;
-	struct JsonNode *tmp = NULL;
-	char *recvBuff = NULL, *message = NULL, *output = NULL;
-	char *device = NULL, *state = NULL, *values = NULL;
-	char *server = NULL;
-	int has_values = 0, sockfd = 0, hasconfarg = 0;
+	struct timeval tv;
+	char *server = NULL, *fconfig = NULL;
 	unsigned short port = 0, showhelp = 0, showversion = 0;
+
+	pilight.process = PROCESS_CLIENT;
+
+	if((fconfig = MALLOC(strlen(CONFIG_FILE)+1)) == NULL) {
+		OUT_OF_MEMORY
+	}
+	strcpy(fconfig, CONFIG_FILE);
 
 	log_file_disable();
 	log_shell_enable();
@@ -70,8 +483,7 @@ int main(int argc, char **argv) {
 #endif
 
 	if((progname = MALLOC(16)) == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(EXIT_FAILURE);
+		OUT_OF_MEMORY
 	}
 	strcpy(progname, "pilight-control");
 
@@ -84,6 +496,7 @@ int main(int argc, char **argv) {
 	options_add(&options, 'S', "server", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, "^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]).){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$");
 	options_add(&options, 'P', "port", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, "[0-9]{1,4}");
 	options_add(&options, 'C', "config", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, NULL);
+	options_add(&options, 'I', "instance", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, NULL);
 
 	/* Store all CLI arguments for later usage
 	   and also check if the CLI arguments where
@@ -107,35 +520,37 @@ int main(int argc, char **argv) {
 			break;
 			case 'd':
 				if((device = REALLOC(device, strlen(optarg)+1)) == NULL) {
-					fprintf(stderr, "out of memory\n");
-					exit(EXIT_FAILURE);
+					OUT_OF_MEMORY
 				}
 				strcpy(device, optarg);
 			break;
 			case 's':
 				if((state = REALLOC(state, strlen(optarg)+1)) == NULL) {
-					fprintf(stderr, "out of memory\n");
-					exit(EXIT_FAILURE);
+					OUT_OF_MEMORY
 				}
 				strcpy(state, optarg);
 			break;
 			case 'v':
 				if((values = REALLOC(values, strlen(optarg)+1)) == NULL) {
-					fprintf(stderr, "out of memory\n");
-					exit(EXIT_FAILURE);
+					OUT_OF_MEMORY
 				}
 				strcpy(values, optarg);
 			break;
 			case 'C':
-				if(config_set_file(optarg) == EXIT_FAILURE) {
-					return EXIT_FAILURE;
+				if((fconfig = REALLOC(fconfig, strlen(optarg)+1)) == NULL) {
+					OUT_OF_MEMORY
 				}
-				hasconfarg = 1;
+				strcpy(fconfig, optarg);
+			break;
+			case 'I':
+				if((instance = MALLOC(strlen(optarg)+1)) == NULL) {
+					OUT_OF_MEMORY
+				}
+				strcpy(instance, optarg);
 			break;
 			case 'S':
-				if(!(server = REALLOC(server, strlen(optarg)+1))) {
-					fprintf(stderr, "out of memory\n");
-					exit(EXIT_FAILURE);
+				if((server = REALLOC(server, strlen(optarg)+1)) == NULL) {
+					OUT_OF_MEMORY
 				}
 				strcpy(server, optarg);
 			break;
@@ -149,6 +564,7 @@ int main(int argc, char **argv) {
 		}
 	}
 	options_delete(options);
+	options_gc();
 
 	if(showversion == 1) {
 		printf("%s v%s\n", progname, PILIGHT_VERSION);
@@ -166,199 +582,59 @@ int main(int argc, char **argv) {
 		printf("\t\t\t\t\t-v dimlevel=10\n");
 		goto close;
 	}
+
 	if(device == NULL || state == NULL ||
 	   strlen(device) == 0 || strlen(state) == 0) {
 		printf("Usage: %s -d device -s state\n", progname);
+		FREE(fconfig);
 		goto close;
-	}
-
-	if(server && port > 0) {
-		if((sockfd = socket_connect(server, port)) == -1) {
-			logprintf(LOG_ERR, "could not connect to pilight-daemon");
-			goto close;
-		}
-	} else if(ssdp_seek(&ssdp_list) == -1) {
-		logprintf(LOG_NOTICE, "no pilight ssdp connections found");
-		goto close;
-	} else {
-		if((sockfd = socket_connect(ssdp_list->ip, ssdp_list->port)) == -1) {
-			logprintf(LOG_ERR, "could not connect to pilight-daemon");
-			goto close;
-		}
-	}
-	if(ssdp_list) {
-		ssdp_free(ssdp_list);
 	}
 
 	protocol_init();
-	config_init();
-	if(hasconfarg == 1) {
-		if(config_read() != EXIT_SUCCESS) {
-			goto close;
-		}
-	}
+	storage_init();
 
-	socket_write(sockfd, "{\"action\":\"identify\"}");
-	if(socket_read(sockfd, &recvBuff, 0) != 0
-	   || strcmp(recvBuff, "{\"status\":\"success\"}") != 0) {
+	if(storage_read(fconfig, CONFIG_DEVICES) != EXIT_SUCCESS) {
+		FREE(fconfig);
 		goto close;
 	}
+	FREE(fconfig);
 
-	json = json_mkobject();
-	json_append_member(json, "action", json_mkstring("request config"));
-	output = json_stringify(json, NULL);
-	socket_write(sockfd, output);
-	json_free(output);
-	json_delete(json);
+	eventpool_init(EVENTPOOL_NO_THREADS);
+	eventpool_callback(REASON_SSDP_RECEIVED, ssdp_found);
 
-	if(socket_read(sockfd, &recvBuff, 0) == 0) {
-		if(json_validate(recvBuff) == true) {
-			json = json_decode(recvBuff);
-			if(json_find_string(json, "message", &message) == 0) {
-				if(strcmp(message, "config") == 0) {
-					struct JsonNode *jconfig = NULL;
-					if((jconfig = json_find_member(json, "config")) != NULL) {
-						int match = 1;
-						while(match) {
-							struct JsonNode *jchilds = json_first_child(jconfig);
-							match = 0;
-							while(jchilds) {
-								if(strcmp(jchilds->key, "devices") != 0) {
-									json_remove_from_parent(jchilds);
-									tmp = jchilds;
-									match = 1;
-								}
-								jchilds = jchilds->next;
-								if(tmp != NULL) {
-									json_delete(tmp);
-								}
-								tmp = NULL;
-							}
-						}
-						config_parse(jconfig);
-						if(devices_get(device, &dev) == 0) {
-							JsonNode *joutput = json_mkobject();
-							JsonNode *jcode = json_mkobject();
-							JsonNode *jvalues = json_mkobject();
-							json_append_member(jcode, "device", json_mkstring(device));
+	tv.tv_sec = 0;
+	tv.tv_usec = 0;
+	timer_thread_start();
+	timer_init(&timer, SIGRTMIN, timer_func, TIMER_ABSTIME, tv, tv);
 
-							if(values != NULL) {
-								char *sptr = NULL;
-								char *ptr1 = strtok_r(values, ",", &sptr);
-								while(ptr1) {
-									char **array = NULL;
-									int n = explode(ptr1, "=", &array), q = 0;
-									if(n == 2) {
-										char *name = MALLOC(strlen(array[0])+1);
-										if(name == NULL) {
-											logprintf(LOG_ERR, "out of memory\n");
-											exit(EXIT_FAILURE);
-										}
-										strcpy(name, array[q]);
-										char *val = MALLOC(strlen(array[q+1])+1);
-										if(val == NULL) {
-											logprintf(LOG_ERR, "out of memory\n");
-											exit(EXIT_FAILURE);
-										}
-										strcpy(val, array[1]);
-										if(devices_valid_value(device, name, val) == 0) {
-											if(isNumeric(val) == EXIT_SUCCESS) {
-												json_append_member(jvalues, name, json_mknumber(atof(val), nrDecimals(val)));
-											} else {
-												json_append_member(jvalues, name, json_mkstring(val));
-											}
-											has_values = 1;
-											FREE(name);
-											FREE(values);
-											array_free(&array, n);
-										} else {
-											logprintf(LOG_ERR, "\"%s\" is an invalid value for device \"%s\"", name, device);
-											array_free(&array, n);
-											FREE(name);
-											FREE(values);
-											json_delete(json);
-											goto close;
-										}								
-									} else {
-										array_free(&array, n);
-										logprintf(LOG_ERR, "\"%s\" requires a name=value format", ptr1);
-										break;
-									}
-									ptr1 = strtok_r(NULL, ",", &sptr);
-								}
-							}
-
-							if(devices_valid_state(device, state) == 0) {
-								json_append_member(jcode, "state", json_mkstring(state));
-							} else {
-								logprintf(LOG_ERR, "\"%s\" is an invalid state for device \"%s\"", state, device);
-								json_delete(json);
-								goto close;
-							}
-
-							if(has_values == 1) {
-								json_append_member(jcode, "values", jvalues);
-							} else {
-								json_delete(jvalues);
-							}
-							json_append_member(joutput, "action", json_mkstring("control"));
-							json_append_member(joutput, "code", jcode);
-							output = json_stringify(joutput, NULL);
-							socket_write(sockfd, output);
-							json_free(output);
-							json_delete(joutput);
-							if(socket_read(sockfd, &recvBuff, 0) != 0
-							   || strcmp(recvBuff, "{\"status\":\"success\"}") != 0) {
-								logprintf(LOG_ERR, "failed to control %s", device);
-							}
-						} else {
-							logprintf(LOG_ERR, "the device \"%s\" does not exist", device);
-							json_delete(json);
-							goto close;
-						}
-					}
-				}
-			}
-			json_delete(json);
+	tv.tv_sec = 1;
+	tv.tv_usec = 0;
+	if(server != NULL && port > 0) {
+		socket_connect1(server, port, client_callback);
+		timer_add_task(&timer, "socket timeout", tv, timeout, NULL);
+	} else {
+		ssdp_seek();
+		timer_add_task(&timer, "ssdp seek", tv, ssdp_reseek, NULL);
+		if(instance == NULL) {
+			printf("[%2s] %15s:%-5s %-16s\n", "#", "server", "port", "name");
+			printf("To which server do you want to connect?:\r");
+			fflush(stdout);
+		} else {
+			timer_add_task(&timer, "ssdp seek", tv, ssdp_not_found, NULL);
 		}
 	}
-close:
-	if(recvBuff) {
-		FREE(recvBuff);
-	}
-	if(sockfd > 0) {
-		socket_close(sockfd);
-	}
+
 	if(server != NULL) {
 		FREE(server);
+		server = NULL;
 	}
-	if(device != NULL) {
-		FREE(device);
-	}
-	if(state != NULL) {
-		FREE(state);
-	}
-	if(values != NULL) {
-		FREE(values);
-	}
-	log_shell_disable();
-	socket_gc();
-	config_gc();
-	protocol_gc();
-	options_gc();
-#ifdef EVENTS
-	events_gc();
-#endif
-	dso_gc();
-	log_gc();
-	threads_gc();
-	gc_clear();
-	FREE(progname);
-	xfree();
 
-#ifdef _WIN32
-	WSACleanup();
-#endif
+	eventpool_fd_add("stdin", fileno(stdin), user_input, NULL, NULL);
+	eventpool_process(NULL);
+
+close:
+
+	main_gc();
 
 	return EXIT_SUCCESS;
 }

@@ -1,19 +1,9 @@
 /*
-	Copyright (C) 2013 - 2014 CurlyMo
+	Copyright (C) 2013 - 2016 CurlyMo
 
-	This file is part of pilight.
-
-	pilight is free software: you can redistribute it and/or modify it under the
-	terms of the GNU General Public License as published by the Free Software
-	Foundation, either version 3 of the License, or (at your option) any later
-	version.
-
-	pilight is distributed in the hope that it will be useful, but WITHOUT ANY
-	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
-	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
-
-	You should have received a copy of the GNU General Public License
-	along with pilight. If not, see	<http://www.gnu.org/licenses/>
+  This Source Code Form is subject to the terms of the Mozilla Public
+  License, v. 2.0. If a copy of the MPL was not distributed with this
+  file, You can obtain one at http://mozilla.org/MPL/2.0/.
 */
 
 #include <stdio.h>
@@ -23,7 +13,9 @@
 
 #include "../action.h"
 #include "../../core/options.h"
-#include "../../config/devices.h"
+#include "../../core/threadpool.h"
+#include "../../storage/storage.h"
+#include "../../protocols/protocol.h"
 #include "../../core/log.h"
 #include "../../core/dso.h"
 #include "../../core/pilight.h"
@@ -70,34 +62,36 @@ static int checkArguments(struct rules_actions_t *obj) {
 		jdchild = json_first_child(jdvalues);
 		while(jdchild) {
 			if(jdchild->tag == JSON_STRING) {
-				struct devices_t *dev = NULL;
-				if(devices_get(jdchild->string_, &dev) == 0) {
+				if(devices_select(ORIGIN_ACTION, jdchild->string_, NULL) == 0) {
 					if((jsvalues = json_find_member(jbetween, "value")) != NULL) {
 						jschild = json_first_child(jsvalues);
 						while(jschild) {
 							if(jschild->tag == JSON_STRING) {
-									struct protocols_t *tmp = dev->protocols;
-									int match1 = 0;
-									while(tmp) {
-										struct options_t *opt = tmp->listener->options;
-										while(opt) {
-											if(opt->conftype == DEVICES_STATE) {
-												if(strcmp(opt->name, jschild->string_) == 0) {
-													match1 = 1;
-													break;
-												}
+								int match1 = 0;
+								int i = 0;
+								struct protocol_t *protocol = NULL;
+								while(devices_select_protocol(ORIGIN_CONFIG, jdchild->string_, i++, &protocol) == 0) {
+									struct options_t *opt = protocol->options;
+									while(opt) {
+										if(opt->conftype == DEVICES_STATE) {
+											if(strcmp(opt->name, jschild->string_) == 0) {
+												match1 = 1;
+												break;
 											}
-											opt = opt->next;
 										}
-										tmp = tmp->next;
+										opt = opt->next;
 									}
-									if(match1 == 0) {
-										logprintf(LOG_ERR, "device \"%s\" can't be set to state \"%s\"", jdchild->string_, jschild->string_);
-										return -1;
+									if(match1 == 1) {
+										break;
 									}
-								} else {
+								}
+								if(match1 == 0) {
+									logprintf(LOG_ERR, "device \"%s\" can't be set to state \"%s\"", jdchild->string_, jschild->string_);
 									return -1;
 								}
+							} else {
+								return -1;
+							}
 							jschild = jschild->next;
 						}
 					}
@@ -117,10 +111,10 @@ static int checkArguments(struct rules_actions_t *obj) {
 }
 
 static void *thread(void *param) {
-	struct event_action_thread_t *pth = (struct event_action_thread_t *)param;
-	// struct rules_t *obj = pth->obj;
-	struct JsonNode *json = pth->obj->arguments;
-	struct devices_settings_t *tmp_settings = pth->device->settings;
+	struct threadpool_tasks_t *task = param;
+	struct event_action_thread_t *pth = task->userdata;
+	struct JsonNode *json = pth->obj->parsedargs;
+
 	struct JsonNode *jbetween = NULL;
 	struct JsonNode *jsvalues = NULL;
 	struct JsonNode *jstate1 = NULL;
@@ -129,14 +123,9 @@ static void *thread(void *param) {
 
 	event_action_started(pth);
 
-	while(tmp_settings) {
-		if(strcmp(tmp_settings->name, "state") == 0) {
-			if(tmp_settings->values->type == JSON_STRING) {
-				cstate = tmp_settings->values->string_;
-				break;
-			}
-		}
-		tmp_settings = tmp_settings->next;
+	if(devices_select_string_setting(ORIGIN_ACTION, pth->device->id, "state", &cstate) != 0) {
+		logprintf(LOG_NOTICE, "could not select old state of \"%s\"\n", pth->device->id);
+		goto end;
 	}
 
 	if((jbetween = json_find_member(json, "BETWEEN")) != NULL) {
@@ -150,15 +139,16 @@ static void *thread(void *param) {
 
 				if(pilight.control != NULL) {
 					if(strcmp(state1, cstate) == 0) {
-						pilight.control(pth->device, state2, NULL, ACTION);
+						pilight.control(pth->device->id, state2, NULL, ORIGIN_ACTION);
 					} else if(strcmp(state2, cstate) == 0) {
-						pilight.control(pth->device, state1, NULL, ACTION);
+						pilight.control(pth->device->id, state1, NULL, ORIGIN_ACTION);
 					}
 				}
 			}
 		}
 	}
 
+end:
 	event_action_stopped(pth);
 
 	return (void *)NULL;
@@ -169,6 +159,7 @@ static int run(struct rules_actions_t *obj) {
 	struct JsonNode *jbetween = NULL;
 	struct JsonNode *jdvalues = NULL;
 	struct JsonNode *jdchild = NULL;
+	struct device_t *dev = NULL;
 
 	if((jdevice = json_find_member(obj->arguments, "DEVICE")) != NULL &&
 		 (jbetween = json_find_member(obj->arguments, "BETWEEN")) != NULL) {
@@ -176,9 +167,10 @@ static int run(struct rules_actions_t *obj) {
 			jdchild = json_first_child(jdvalues);
 			while(jdchild) {
 				if(jdchild->tag == JSON_STRING) {
-					struct devices_t *dev = NULL;
-					if(devices_get(jdchild->string_, &dev) == 0) {
-						event_action_thread_start(dev, action_toggle->name, thread, obj);
+					if(devices_select(ORIGIN_ACTION, jdchild->string_, NULL) == 0) {
+						if(devices_select_struct(ORIGIN_ACTION, jdchild->string_, &dev) == 0) {
+							event_action_thread_start(dev, action_toggle, thread, obj);
+						}
 					}
 				}
 				jdchild = jdchild->next;
@@ -204,9 +196,9 @@ void actionToggleInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "toggle";
-	module->version = "2.1";
-	module->reqversion = "6.0";
-	module->reqcommit = "58";
+	module->version = "3.0";
+	module->reqversion = "7.0";
+	module->reqcommit = "94";
 }
 
 void init(void) {

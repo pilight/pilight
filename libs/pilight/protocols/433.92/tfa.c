@@ -1,19 +1,9 @@
 /*
-	Copyright (C) 2014 CurlyMo
+	Copyright (C) 2014 - 2016 CurlyMo
 
-	This file is part of pilight.
-
-	pilight is free software: you can redistribute it and/or modify it under the
-	terms of the GNU General Public License as published by the Free Software
-	Foundation, either version 3 of the License, or (at your option) any later
-	version.
-
-	pilight is distributed in the hope that it will be useful, but WITHOUT ANY
-	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
-	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
-
-	You should have received a copy of the GNU General Public License
-	along with pilight. If not, see	<http://www.gnu.org/licenses/>
+	This Source Code Form is subject to the terms of the Mozilla Public
+	License, v. 2.0. If a copy of the MPL was not distributed with this
+	file, You can obtain one at http://mozilla.org/MPL/2.0/.
 */
 
 #include <stdio.h>
@@ -58,11 +48,11 @@ static int validate(void) {
 	return -1;
 }
 
-static void parseCode(void) {
+static void parseCode(char *message) {
 	int binary[RAW_LENGTH/2];
 	int temp1 = 0, temp2 = 0, temp3 = 0;
 	int humi1 = 0, humi2 = 0;
-	int id = 0, battery = 0;
+	int id = 0, battery = 0, crc = 0;
 	int channel = 0;
 	int i = 0, x = 0, xLoop = 1;
 	double humi_offset = 0.0, temp_offset = 0.0;
@@ -78,6 +68,18 @@ static void parseCode(void) {
 		} else {
 			binary[i++] = 0;
 		}
+	}
+
+	for(i=0;i<34;i++) {
+		if(binary[i] != (crc&1)) {
+			crc = (crc>>1) ^ 12;
+		} else {
+			crc = (crc>>1);
+		}
+	}
+	crc ^= binToDec(binary, 34, 37);
+	if (crc != binToDec(binary, 38, 41)) {
+		return; // incorrect checksum
 	}
 
 	id = binToDecRev(binary, 2, 9);
@@ -113,12 +115,10 @@ static void parseCode(void) {
 	temperature += temp_offset;
 	humidity += humi_offset;
 
-	tfa->message = json_mkobject();
-	json_append_member(tfa->message, "id", json_mknumber(id, 0));
-	json_append_member(tfa->message, "temperature", json_mknumber(temperature/100, 2));
-	json_append_member(tfa->message, "humidity", json_mknumber(humidity, 2));
-	json_append_member(tfa->message, "battery", json_mknumber(battery, 0));
-	json_append_member(tfa->message, "channel", json_mknumber(channel, 0));
+	snprintf(message, 255,
+		"{\"id\":%d,\"temperature\":%.2f,\"humidity\":%.2f,\"channel\":%d,\"battery\":%d}",
+		id, temperature/100, humidity, channel, battery
+	);
 }
 
 static int checkValues(struct JsonNode *jvalues) {
@@ -157,8 +157,7 @@ static int checkValues(struct JsonNode *jvalues) {
 
 		if(match == 0) {
 			if((snode = MALLOC(sizeof(struct settings_t))) == NULL) {
-				fprintf(stderr, "out of memory\n");
-				exit(EXIT_FAILURE);
+				OUT_OF_MEMORY
 			}
 			snode->id = id;
 			snode->channel = channel;
@@ -226,9 +225,9 @@ void tfaInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "tfa";
-	module->version = "1.1";
+	module->version = "2.0";
 	module->reqversion = "7.0";
-	module->reqcommit = "84";
+	module->reqcommit = "94";
 }
 
 void init(void) {

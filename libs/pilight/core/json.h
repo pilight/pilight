@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2013 - 2014 CurlyMo (curlymoo1@gmail.com)
+  Copyright (C) 2013 - 2016 CurlyMo
 								2011 Joseph A. Adams (joeyadams3.14159@gmail.com)
   All rights reserved.
 
@@ -120,5 +120,7 @@ bool json_check(const JsonNode *node, char errmsg[256]);
 
 int json_find_number(JsonNode *object, const char *name, double *out);
 int json_find_string(JsonNode *object, const char *name, char **out);
+
+int json_clone(struct JsonNode *a, struct JsonNode **b);
 
 #endif

@@ -6,13 +6,15 @@ project(pilight)
 set(VERSION 7.0)
 
 set(MODULESPACK OFF)
-set(CMAKE_BUILD_TYPE Debug)
+if(NOT CMAKE_BUILD_TYPE)
+	set(CMAKE_BUILD_TYPE Debug)
+endif()
 
 set(CMAKE_SKIP_RULE_DEPENDENCY TRUE)
 set(CPACK_DEB_COMPONENT_INSTALL TRUE)
 
 if(${ZWAVE} MATCHES "ON")
-	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-psabi")
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unknown-warning-option -Wno-psabi")
 endif()
 
 if(CMAKE_BUILD_TOOL MATCHES "(msdev|devenv|nmake)")
@@ -156,79 +158,6 @@ if(NOT WIN32)
 			message(STATUS "Looking for libpcap - found (${CMAKE_PCAP_LIBS_INIT})")
 		endif()
 	endif()
-
-
-	if(${WEBSERVER_HTTPS} MATCHES "ON")
-		set(CMAKE_SSL_LIBS_INIT)
-
-		find_library(CMAKE_SSL_LIBS_INIT
-			NAME ssl
-			PATHS
-				${CROSS_COMPILE_LIBS}
-				/usr/lib
-				/usr/lib32
-				/usr/lib64
-				/usr/lib/i386-linux-gnu		
-				/usr/lib/x86_64-linux-gnu
-				/usr/local/lib
-				/usr/local/lib32
-				/usr/local/lib64
-				/usr/lib/arm-linux-gnueabi
-				/usr/lib/arm-linux-gnueabihf
-			NO_DEFAULT_PATH)	
-
-		if(${CMAKE_SSL_LIBS_INIT} MATCHES "CMAKE_SSL_LIBS_INIT-NOTFOUND")
-			message(FATAL_ERROR "Looking for libssl - not found")
-		else()
-			message(STATUS "Looking for libssl - found (${CMAKE_SSL_LIBS_INIT})")
-		endif()
-		
-		set(CMAKE_CRYPTO_LIBS_INIT)
-
-		find_library(CMAKE_CRYPTO_LIBS_INIT
-			NAME crypto
-			PATHS
-				${CROSS_COMPILE_LIBS}
-				/usr/lib
-				/usr/lib32
-				/usr/lib64
-				/usr/lib/i386-linux-gnu		
-				/usr/lib/x86_64-linux-gnu
-				/usr/local/lib
-				/usr/local/lib32
-				/usr/local/lib64
-				/usr/lib/arm-linux-gnueabi
-				/usr/lib/arm-linux-gnueabihf
-			NO_DEFAULT_PATH)	
-
-		if(${CMAKE_CRYPTO_LIBS_INIT} MATCHES "CMAKE_CRYPTO_LIBS_INIT-NOTFOUND")
-			message(FATAL_ERROR "Looking for libcrypto - not found")
-		else()
-			message(STATUS "Looking for libcrypto - found (${CMAKE_CRYPTO_LIBS_INIT})")
-		endif()
-
-		find_library(CMAKE_ZLIB_LIBS_INIT
-			NAME z
-			PATHS
-				${CROSS_COMPILE_LIBS}
-				/usr/lib
-				/usr/lib32
-				/usr/lib64
-				/usr/lib/i386-linux-gnu		
-				/usr/lib/x86_64-linux-gnu
-				/usr/local/lib
-				/usr/local/lib32
-				/usr/local/lib64
-				/usr/lib/arm-linux-gnueabi
-				/usr/lib/arm-linux-gnueabihf
-			NO_DEFAULT_PATH)	
-
-		if(${CMAKE_ZLIB_LIBS_INIT} MATCHES "CMAKE_ZLIB_LIBS_INIT-NOTFOUND")
-			message(FATAL_ERROR "Looking for libz - not found")
-		else()
-			message(STATUS "Looking for libz - found (${CMAKE_ZLIB_LIBS_INIT})")
-		endif()	
-	endif()	
 	
 	set(CMAKE_UNWIND_LIBS_INIT)
 

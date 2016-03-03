@@ -1,19 +1,9 @@
 /*
-	Copyright (C) 2013 - 2015 CurlyMo
+	Copyright (C) 2013 - 2016 CurlyMo
 
-	This file is part of pilight.
-
-	pilight is free software: you can redistribute it and/or modify it under the
-	terms of the GNU General Public License as published by the Free Software
-	Foundation, either version 3 of the License, or (at your option) any later
-	version.
-
-	pilight is distributed in the hope that it will be useful, but WITHOUT ANY
-	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
-	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
-
-	You should have received a copy of the GNU General Public License
-	along with pilight. If not, see	<http://www.gnu.org/licenses/>
+  This Source Code Form is subject to the terms of the Mozilla Public
+  License, v. 2.0. If a copy of the MPL was not distributed with this
+  file, You can obtain one at http://mozilla.org/MPL/2.0/.
 */
 
 #include <stdio.h>
@@ -21,14 +11,13 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "../../core/threads.h"
-#include "../action.h"
+#include "../../core/threadpool.h"
 #include "../../core/options.h"
-#include "../../config/devices.h"
 #include "../../core/log.h"
 #include "../../core/dso.h"
 #include "../../core/pilight.h"
 #include "../../core/http.h"
+#include "../action.h"
 #include "pushbullet.h"
 
 static int checkArguments(struct rules_actions_t *obj) {
@@ -112,10 +101,19 @@ static int checkArguments(struct rules_actions_t *obj) {
 	return 0;
 }
 
+static void callback(int ret, char *data, int len, char *mime, void *userdata) {
+	if(ret == 200) {
+		logprintf(LOG_DEBUG, "pushbullet action succeeded with message: %s", data);
+	} else {
+		logprintf(LOG_NOTICE, "pushbullet action failed (%d) with message: %s", ret, data);
+	}
+}
+
 static void *thread(void *param) {
-	struct rules_actions_t *pth = (struct rules_actions_t *)param;
-	// struct rules_t *obj = pth->obj;
-	struct JsonNode *arguments = pth->parsedargs;
+	struct threadpool_tasks_t *task = param;
+	struct rules_actions_t *pth = task->userdata;
+	struct JsonNode *json = pth->parsedargs;
+
 	struct JsonNode *jtitle = NULL;
 	struct JsonNode *jbody = NULL;
 	struct JsonNode *jtype = NULL;
@@ -129,16 +127,12 @@ static void *thread(void *param) {
 	struct JsonNode *jval3 = NULL;
 	struct JsonNode *jval4 = NULL;
 
-	char url[1024], typebuf[70];
-	char *data = NULL, *tp = typebuf;
-	int ret = 0, size = 0;
+	char url[1024];
 
-	action_pushbullet->nrthreads++;
-
-	jtitle = json_find_member(arguments, "TITLE");
-	jbody = json_find_member(arguments, "BODY");
-	jtoken = json_find_member(arguments, "TOKEN");
-	jtype = json_find_member(arguments, "TYPE");
+	jtitle = json_find_member(json, "TITLE");
+	jbody = json_find_member(json, "BODY");
+	jtoken = json_find_member(json, "TOKEN");
+	jtype = json_find_member(json, "TYPE");
 
 	if(jtitle != NULL && jbody != NULL && jtoken != NULL && jtype != NULL) {
 		jvalues1 = json_find_member(jtitle, "value");
@@ -153,7 +147,6 @@ static void *thread(void *param) {
 			if(jval1 != NULL && jval2 != NULL && jval3 != NULL && jval4 != NULL &&
 			 jval1->tag == JSON_STRING && jval2->tag == JSON_STRING &&
 			 jval3->tag == JSON_STRING && jval4->tag == JSON_STRING) {
-				data = NULL;
 				snprintf(url, 1024, "https://%s@api.pushbullet.com/v2/pushes", jval3->string_);
 
 				struct JsonNode *code = json_mkobject();
@@ -164,30 +157,19 @@ static void *thread(void *param) {
 				char *content = json_stringify(code, "\t");
 				json_delete(code);
 
-				data = http_post_content(url, &tp, &ret, &size, "application/json", content);
+				http_post_content(url, "application/json", content, callback, NULL);
+
 				json_free(content);
-				if(ret == 200) {
-					logprintf(LOG_DEBUG, "pushbullet action succeeded with message: %s", data);
-				} else {
-					logprintf(LOG_NOTICE, "pushbullet action failed (%d) with message: %s", ret, data);
-				}
-				if(data != NULL) {
-					FREE(data);
-				}
 			}
 		}
 	}
-
-
-	action_pushbullet->nrthreads--;
 
 	return (void *)NULL;
 }
 
 static int run(struct rules_actions_t *obj) {
-	pthread_t pth;
-	threads_create(&pth, NULL, thread, (void *)obj);
-	pthread_detach(pth);
+	threadpool_add_work(REASON_END, NULL, action_pushbullet->name, 0, thread, NULL, (void *)obj);
+
 	return 0;
 }
 
@@ -209,9 +191,9 @@ void actionPushbulletInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "pushbullet";
-	module->version = "2.2";
-	module->reqversion = "5.0";
-	module->reqcommit = "87";
+	module->version = "3.0";
+	module->reqversion = "7.0";
+	module->reqcommit = "94";
 }
 
 void init(void) {

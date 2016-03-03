@@ -51,28 +51,32 @@ static int validate(void) {
 	return -1;
 }
 
-static void createMessage(int id, int unit, int state, int learn) {
-	conrad_rsl_switch->message = json_mkobject();
+static void createMessage(char *message, int id, int unit, int state, int learn) {
+	int x = 0;
 
 	if(id == 4) {
-		json_append_member(conrad_rsl_switch->message, "all", json_mknumber(1, 0));
+		x = snprintf(message, 255, "{\"all\":1,");
 	} else {
-		json_append_member(conrad_rsl_switch->message, "id", json_mknumber(id+1, 0));
+		x = snprintf(message, 255-x, "\"id\":%d,", id+1);
 	}
-	json_append_member(conrad_rsl_switch->message, "unit", json_mknumber(unit+1, 0));
+	x += snprintf(&message[x], 255, "\"unit\":%d,", unit+1);
 	if(state == 1) {
-		json_append_member(conrad_rsl_switch->message, "state", json_mkstring("on"));
+		x += snprintf(&message[x], 255-x, "\"state\":\"on\"");
 	} else {
-		json_append_member(conrad_rsl_switch->message, "state", json_mkstring("off"));
+		x += snprintf(&message[x], 255-x, "\"state\":\"off\"");
 	}
+
 	if(learn == 1) {
 		conrad_rsl_switch->txrpt = LEARN_REPEATS;
 	} else {
 		conrad_rsl_switch->txrpt = NORMAL_REPEATS;
 	}
+
+	x += snprintf(&message[x], 255-x, "}");
+
 }
 
-static void parseCode(void) {
+static void parseCode(char *message) {
 	int x = 0, binary[RAW_LENGTH/2];
 	int id = 0, unit = 0, state = 0;
 
@@ -97,15 +101,16 @@ static void parseCode(void) {
 				state = 1;
 				match = 1;
 			}
-			if(match) {
+			if(match == 1) {
 				break;
 			}
 		}
-		if(match) {
+		if(match == 1) {
 			break;
 		}
 	}
-	createMessage(id, unit, state, 0);
+
+	createMessage(message, id, unit, state, 0);
 }
 
 static void createLow(int s, int e) {
@@ -171,7 +176,7 @@ static void createFooter(void) {
 	conrad_rsl_switch->raw[65]=(PULSE_DIV*AVG_PULSE_LENGTH);
 }
 
-static int createCode(struct JsonNode *code) {
+static int createCode(struct JsonNode *code, char *message) {
 	int id = -1;
 	int state = -1;
 	int unit = -1;
@@ -207,7 +212,9 @@ static int createCode(struct JsonNode *code) {
 		}
 		id -= 1;
 		unit -= 1;
-		createMessage(id, unit, state, learn);
+
+		createMessage(message, id, unit, state, learn);
+
 		clearCode();
 		createId(id, unit, state);
 		createFooter();
@@ -300,9 +307,9 @@ void conradRSLSwitchInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "conrad_rsl_switch";
-	module->version = "2.2";
-	module->reqversion = "6.0";
-	module->reqcommit = "84";
+	module->version = "3.0";
+	module->reqversion = "7.0";
+	module->reqcommit = "94";
 }
 
 void init(void) {

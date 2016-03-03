@@ -1,19 +1,9 @@
 /*
-	Copyright (C) 2013 - 2014 CurlyMo
+	Copyright (C) 2013 - 2016 CurlyMo
 
-	This file is part of pilight.
-
-	pilight is free software: you can redistribute it and/or modify it under the
-	terms of the GNU General Public License as published by the Free Software
-	Foundation, either version 3 of the License, or (at your option) any later
-	version.
-
-	pilight is distributed in the hope that it will be useful, but WITHOUT ANY
-	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
-	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
-
-	You should have received a copy of the GNU General Public License
-	along with pilight. If not, see	<http://www.gnu.org/licenses/>
+  This Source Code Form is subject to the terms of the Mozilla Public
+  License, v. 2.0. If a copy of the MPL was not distributed with this
+  file, You can obtain one at http://mozilla.org/MPL/2.0/.
 */
 
 #include <stdio.h>
@@ -35,8 +25,6 @@
 #include "../core/options.h"
 #include "../core/log.h"
 
-#include "../config/settings.h"
-
 #include "protocol.h"
 #include "protocol_header.h"
 
@@ -44,7 +32,6 @@ struct protocols_t *protocols;
 
 #ifndef _WIN32
 void protocol_remove(char *name) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
 	struct protocols_t *currP, *prevP;
 
@@ -61,10 +48,6 @@ void protocol_remove(char *name) {
 
 			struct protocol_devices_t *dtmp;
 			logprintf(LOG_DEBUG, "removed protocol %s", currP->listener->id);
-			if(currP->listener->threadGC) {
-				currP->listener->threadGC();
-				logprintf(LOG_DEBUG, "stopped protocol threads");
-			}
 			if(currP->listener->gc) {
 				currP->listener->gc();
 				logprintf(LOG_DEBUG, "ran garbage collector");
@@ -91,8 +74,6 @@ void protocol_remove(char *name) {
 #endif
 
 void protocol_init(void) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
-
 	#include "protocol_init.h"
 
 #ifndef _WIN32
@@ -113,11 +94,10 @@ void protocol_init(void) {
 
 	memset(pilight_commit, '\0', 3);
 
-	if(settings_find_string("protocol-root", &protocol_root) != 0) {
+	if(settings_select_string(ORIGIN_MASTER, "protocol-root", &protocol_root) != 0) {
 		/* If no protocol root was set, use the default protocol root */
 		if((protocol_root = MALLOC(strlen(PROTOCOL_ROOT)+1)) == NULL) {
-			fprintf(stderr, "out of memory\n");
-			exit(EXIT_FAILURE);
+			OUT_OF_MEMORY
 		}
 		strcpy(protocol_root, PROTOCOL_ROOT);
 		protocol_root_free = 1;
@@ -192,11 +172,9 @@ void protocol_init(void) {
 }
 
 void protocol_register(protocol_t **proto) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
 	if((*proto = MALLOC(sizeof(struct protocol_t))) == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(EXIT_FAILURE);
+		OUT_OF_MEMORY
 	}
 	(*proto)->options = NULL;
 	(*proto)->devices = NULL;
@@ -218,9 +196,7 @@ void protocol_register(protocol_t **proto) {
 	(*proto)->checkValues = NULL;
 	(*proto)->initDev = NULL;
 	(*proto)->printHelp = NULL;
-	(*proto)->threadGC = NULL;
 	(*proto)->gc = NULL;
-	(*proto)->message = NULL;
 	(*proto)->threads = NULL;
 
 	(*proto)->repeats = 0;
@@ -231,8 +207,7 @@ void protocol_register(protocol_t **proto) {
 
 	struct protocols_t *pnode = MALLOC(sizeof(struct protocols_t));
 	if(pnode == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(EXIT_FAILURE);
+		OUT_OF_MEMORY
 	}
 	pnode->listener = *proto;
 	pnode->next = protocols;
@@ -240,12 +215,10 @@ void protocol_register(protocol_t **proto) {
 }
 
 struct protocol_threads_t *protocol_thread_init(protocol_t *proto, struct JsonNode *param) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
 	struct protocol_threads_t *node = MALLOC(sizeof(struct protocol_threads_t));
 	if(node == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(EXIT_FAILURE);
+		OUT_OF_MEMORY
 	}
 
 	node->param = param;
@@ -260,7 +233,6 @@ struct protocol_threads_t *protocol_thread_init(protocol_t *proto, struct JsonNo
 }
 
 int protocol_thread_wait(struct protocol_threads_t *node, int interval, int *nrloops) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
 	struct timeval tp;
 	struct timespec ts;
@@ -284,7 +256,6 @@ int protocol_thread_wait(struct protocol_threads_t *node, int interval, int *nrl
 }
 
 void protocol_thread_stop(protocol_t *proto) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
 	if(proto != NULL && proto->threads != NULL ) {
 		struct protocol_threads_t *tmp = proto->threads;
@@ -297,7 +268,6 @@ void protocol_thread_stop(protocol_t *proto) {
 }
 
 void protocol_thread_free(protocol_t *proto) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
 	if(proto != NULL && proto->threads != NULL) {
 		struct protocol_threads_t *tmp;
@@ -316,39 +286,32 @@ void protocol_thread_free(protocol_t *proto) {
 }
 
 void protocol_set_id(protocol_t *proto, const char *id) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
 	if((proto->id = MALLOC(strlen(id)+1)) == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(EXIT_FAILURE);
+		OUT_OF_MEMORY
 	}
 	strcpy(proto->id, id);
 }
 
 void protocol_device_add(protocol_t *proto, const char *id, const char *desc) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
 	struct protocol_devices_t *dnode = MALLOC(sizeof(struct protocol_devices_t));
 	if(dnode == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(EXIT_FAILURE);
+		OUT_OF_MEMORY
 	}
 	if((dnode->id = MALLOC(strlen(id)+1)) == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(EXIT_FAILURE);
+		OUT_OF_MEMORY
 	}
 	strcpy(dnode->id, id);
 	if((dnode->desc = MALLOC(strlen(desc)+1)) == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(EXIT_FAILURE);
+		OUT_OF_MEMORY
 	}
 	strcpy(dnode->desc, desc);
 	dnode->next	= proto->devices;
 	proto->devices = dnode;
 }
 
-int protocol_device_exists(protocol_t *proto, const char *id) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+int protocol_device_exists(struct protocol_t *proto, const char *id) {
 
 	struct protocol_devices_t *temp = proto->devices;
 
@@ -366,21 +329,20 @@ int protocol_device_exists(protocol_t *proto, const char *id) {
 }
 
 int protocol_gc(void) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
 	struct protocols_t *ptmp;
 	struct protocol_devices_t *dtmp;
 
 	while(protocols) {
 		ptmp = protocols;
-		logprintf(LOG_DEBUG, "protocol %s", ptmp->listener->id);
-		if(ptmp->listener->threadGC != NULL) {
-			ptmp->listener->threadGC();
-			logprintf(LOG_DEBUG, "stopped protocol threads");
+		if(pilight.debuglevel >= 2) {
+			fprintf(stderr, "protocol %s\n", ptmp->listener->id);
 		}
 		if(ptmp->listener->gc) {
 			ptmp->listener->gc();
-			logprintf(LOG_DEBUG, "ran garbage collector");
+			if(pilight.debuglevel >= 2) {
+				fprintf(stderr, "ran garbage collector\n");
+			}
 		}
 		FREE(ptmp->listener->id);
 		options_delete(ptmp->listener->options);

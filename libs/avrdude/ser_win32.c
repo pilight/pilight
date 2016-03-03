@@ -79,8 +79,7 @@ static int ser_open(char * port, union pinfo pinfo, union filedescriptor *fdp) {
 		newname = MALLOC(strlen("\\\\.\\") + strlen(port) + 1);
 
 		if(newname == NULL) {
-			fprintf(stderr, "out of memory\n");
-			exit(EXIT_FAILURE);
+			OUT_OF_MEMORY
 		}
 		strcpy(newname, "\\\\.\\");
 		strcat(newname, port);

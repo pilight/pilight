@@ -47,18 +47,19 @@ static int validate(void) {
 	return -1;
 }
 
-static void createMessage(int id, int unit, int state) {
-	rev3_switch->message = json_mkobject();
-	json_append_member(rev3_switch->message, "id", json_mknumber(id, 0));
-	json_append_member(rev3_switch->message, "unit", json_mknumber(unit, 0));
+static void createMessage(char *message, int id, int unit, int state) {
+	int x = snprintf(message, 255, "{\"id\":%d,", id);
+	x += snprintf(&message[x], 255-x, "\"unit\":%d,", unit);
+
 	if(state == 1) {
-		json_append_member(rev3_switch->message, "state", json_mkstring("on"));
+		x += snprintf(&message[x], 255-x, "\"state\":\"on\"");
 	} else {
-		json_append_member(rev3_switch->message, "state", json_mkstring("off"));
+		x += snprintf(&message[x], 255-x, "\"state\":\"off\"");
 	}
+	x += snprintf(&message[x], 255-x, "}");
 }
 
-static void parseCode(void) {
+static void parseCode(char *message) {
 	int x = 0, i = 0, binary[RAW_LENGTH/4];
 
 	/* Convert the one's and zero's into binary */
@@ -74,7 +75,7 @@ static void parseCode(void) {
 	int state = binary[11];
 	int id = binToDec(binary, 0, 5);
 
-	createMessage(id, unit, state);
+	createMessage(message, id, unit, state);
 }
 
 static void createLow(int s, int e) {
@@ -146,7 +147,7 @@ static void createFooter(void) {
 	rev3_switch->raw[49]=(PULSE_DIV*AVG_PULSE_LENGTH);
 }
 
-static int createCode(struct JsonNode *code) {
+static int createCode(struct JsonNode *code, char *message) {
 	int id = -1;
 	int unit = -1;
 	int state = -1;
@@ -173,7 +174,7 @@ static int createCode(struct JsonNode *code) {
 		logprintf(LOG_ERR, "rev3_switch: invalid unit range");
 		return EXIT_FAILURE;
 	} else {
-		createMessage(id, unit, state);
+		createMessage(message, id, unit, state);
 		clearCode();
 		createUnit(unit);
 		createId(id);
@@ -223,9 +224,9 @@ void rev3Init(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "rev3_switch";
-	module->version = "0.13";
-	module->reqversion = "6.0";
-	module->reqcommit = "84";
+	module->version = "0.14";
+	module->reqversion = "7.0";
+	module->reqcommit = "94";
 }
 
 void init(void) {

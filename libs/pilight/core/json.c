@@ -1436,3 +1436,10 @@ int json_find_string(JsonNode *object, const char *name, char **out) {
 void json_free(void *a) {
 	free(a);
 }
+
+int json_clone(struct JsonNode *a, struct JsonNode **b) {
+	char *out = json_stringify(a, NULL);
+	*b = json_decode(out);
+	json_free(out);
+	return 0;
+}

@@ -1,19 +1,9 @@
 /*
-	Copyright (C) 2013 - 2014 CurlyMo
+	Copyright (C) 2013 - 2016 CurlyMo
 
-	This file is part of pilight.
-
-	pilight is free software: you can redistribute it and/or modify it under the
-	terms of the GNU General Public License as published by the Free Software
-	Foundation, either version 3 of the License, or (at your option) any later
-	version.
-
-	pilight is distributed in the hope that it will be useful, but WITHOUT ANY
-	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
-	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
-
-	You should have received a copy of the GNU General Public License
-	along with pilight. If not, see	<http://www.gnu.org/licenses/>
+  This Source Code Form is subject to the terms of the Mozilla Public
+  License, v. 2.0. If a copy of the MPL was not distributed with this
+  file, You can obtain one at http://mozilla.org/MPL/2.0/.
 */
 
 #include <stdio.h>
@@ -21,41 +11,274 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <errno.h>
+#include <fcntl.h>
+#include <termios.h>
 
+#include "libs/pilight/core/eventpool.h"
+#include "libs/pilight/core/timerpool.h"
+#include "libs/pilight/core/threadpool.h"
 #include "libs/pilight/core/pilight.h"
 #include "libs/pilight/core/common.h"
-#include "libs/pilight/config/settings.h"
 #include "libs/pilight/core/log.h"
 #include "libs/pilight/core/options.h"
 #include "libs/pilight/core/socket.h"
 #include "libs/pilight/core/ssdp.h"
 #include "libs/pilight/core/gc.h"
+#include "libs/pilight/protocols/protocol.h"
 
-static int main_loop = 1;
-static int sockfd = 0;
-static char *recvBuff = NULL;
+static unsigned short stats = 0;
+static unsigned short connecting = 0;
+static unsigned short connected = 0;
+static unsigned short found = 0;
+static char *instance = NULL;
+struct timers_t timer;
 char **filters = NULL;
 unsigned int m = 0;
 
-int main_gc(void) {
-	main_loop = 0;
-	sleep(1);
+typedef struct ssdp_list_t {
+	char server[INET_ADDRSTRLEN+1];
+	unsigned short port;
+	char name[17];
+	struct ssdp_list_t *next;
+} ssdp_list_t;
 
-	if(recvBuff != NULL) {
-		FREE(recvBuff);
-		recvBuff = NULL;
+static struct ssdp_list_t *ssdp_list = NULL;
+static int ssdp_list_size = 0;
+static unsigned short filteropt = 0;
+
+int main_gc(void) {
+	char *filter = NULL;
+
+	if(filter != NULL) {
+		FREE(filter);
+		filter = NULL;
 	}
-	if(sockfd > 0) {
-		socket_write(sockfd, "HEART");
-		socket_close(sockfd);
+	if(filters != NULL) {
+		array_free(&filters, m);
 	}
+
+	struct ssdp_list_t *tmp = NULL;
+	while(ssdp_list) {
+		tmp = ssdp_list;
+		ssdp_list = ssdp_list->next;
+		FREE(tmp);
+	}
+
+	protocol_gc();
+	timer_thread_gc();
+	timer_gc(&timer);
+	eventpool_gc();
 	xfree();
 
-#ifdef _WIN32
-	WSACleanup();
-#endif
+
+	log_shell_disable();
+	log_gc();
+	FREE(progname);
 
 	return 0;
+}
+
+void *timeout(void *param) {
+	if(__sync_fetch_and_add(&connected, 0) == 0) {
+		signal(SIGALRM, SIG_IGN);
+		logprintf(LOG_ERR, "could not connect to the pilight instance");
+
+		kill(getpid(), SIGINT);
+	}
+	return NULL;
+}
+
+void *ssdp_not_found(void *param) {
+	if(__sync_fetch_and_add(&found, 0) == 0) {
+		signal(SIGALRM, SIG_IGN);
+		logprintf(LOG_ERR, "could not find pilight instance: %s", instance);
+
+		kill(getpid(), SIGINT);
+	}
+	return NULL;
+}
+
+static int client_callback(struct eventpool_fd_t *node, int event) {
+	switch(event) {
+		case EV_CONNECT_SUCCESS: {
+			__sync_fetch_and_add(&connected, 1);
+			struct JsonNode *jclient = json_mkobject();
+			struct JsonNode *joptions = json_mkobject();
+			json_append_member(jclient, "action", json_mkstring("identify"));
+			json_append_member(joptions, "receiver", json_mknumber(1, 0));
+			json_append_member(joptions, "stats", json_mknumber(stats, 0));
+			json_append_member(jclient, "options", joptions);
+			char *out = json_stringify(jclient, NULL);
+			socket_write(node->fd, out);
+			json_delete(jclient);
+			json_free(out);
+			eventpool_fd_enable_write(node);
+		} break;
+		case EV_WRITE: {
+			eventpool_fd_enable_read(node);
+		}	break;
+		case EV_READ: {
+			int x = socket_recv(node->fd, &node->buffer, &node->len);
+			if(x == -1) {
+				return -1;
+			} else if(x == 0) {
+				eventpool_fd_enable_read(node);
+				return 0;
+			} else {
+				if(strcmp(node->buffer, "{\"status\":\"success\"}") != 0) {
+					char **array = NULL;
+					char *protocol = NULL;
+					unsigned int n = explode(node->buffer, "\n", &array), i = 0;
+					for(i=0;i<n;i++) {
+						if(json_validate(array[i]) == true) {
+							struct JsonNode *jcontent = json_decode(array[i]);
+							struct JsonNode *jtype = json_find_member(jcontent, "type");
+							if(jtype != NULL) {
+								json_remove_from_parent(jtype);
+								json_delete(jtype);
+							}
+							if(filteropt == 1) {
+								int filtered = 0, j = 0;
+								if(json_find_string(jcontent, "protocol", &protocol) == 0) {
+									for(j=0;j<m;j++) {
+										if(strcmp(filters[j], protocol) == 0) {
+											filtered = 1;
+											break;
+										}
+									}
+								}
+								if(filtered == 0) {
+									char *content = json_stringify(jcontent, "\t");
+									printf("%s\n", content);
+									json_free(content);
+								}
+							} else {
+								char *content = json_stringify(jcontent, "\t");
+								printf("%s\n", content);
+								json_free(content);
+							}
+							json_delete(jcontent);
+						}
+					}
+					array_free(&array, n);
+				}
+				FREE(node->buffer);
+				node->len = 0;
+				eventpool_fd_enable_read(node);
+			}
+		} break;
+		case EV_DISCONNECTED: {
+			kill(getpid(), SIGINT);
+		} break;
+	}
+	return 0;
+}
+
+static void *ssdp_reseek(void *param) {
+	if(__sync_fetch_and_add(&found, 0) == 0 &&
+		 __sync_fetch_and_add(&connecting, 0) == 0) {
+		struct timeval tv;
+		tv.tv_sec = 1;
+		tv.tv_usec = 0;
+		timer_add_task(&timer, "ssdp seek", tv, ssdp_reseek, NULL);
+		ssdp_seek();
+	}
+	return NULL;
+}
+
+static int user_input(struct eventpool_fd_t *node, int event) {
+	struct timeval tv;
+	switch(event) {
+		case EV_CONNECT_SUCCESS: {
+#ifdef _WIN32
+			unsigned long on = 1;
+			ioctlsocket(node->fd, FIONBIO, &on);
+#else
+			long arg = fcntl(node->fd, F_GETFL, NULL);
+			fcntl(node->fd, F_SETFL, arg | O_NONBLOCK);
+#endif
+			eventpool_fd_enable_read(node);
+		} break;
+		case EV_READ: {
+			char buf[BUFFER_SIZE];
+			memset(buf, '\0', BUFFER_SIZE);
+			int c = 0;
+			if((c = read(node->fd, buf, BUFFER_SIZE)) > 0) {
+				buf[c-1] = '\0';
+				if(isNumeric(buf) == 0) {
+					struct ssdp_list_t *tmp = ssdp_list;
+					int i = 0;
+					while(tmp) {
+						if((ssdp_list_size-i) == atoi(buf)) {
+							socket_connect1(tmp->server, tmp->port, client_callback);
+							tv.tv_sec = 1;
+							tv.tv_usec = 0;
+							timer_add_task(&timer, "socket timeout", tv, timeout, NULL);
+							__sync_fetch_and_add(&connecting, 1);
+							return -1;
+						}
+						i++;
+						tmp = tmp->next;
+					}
+				}
+			}
+			eventpool_fd_enable_read(node);
+		}
+	}
+	return 0;
+}
+
+static void *ssdp_found(void *param) {
+	struct threadpool_tasks_t *task = param;
+	struct reason_ssdp_received_t *data = task->userdata;
+	struct timeval tv;
+	struct ssdp_list_t *node = NULL;
+	int match = 0;
+
+	if(__sync_fetch_and_add(&connecting, 0) == 0 && data->ip != NULL && data->port > 0 && data->name != NULL) {
+		if(instance == NULL) {
+			struct ssdp_list_t *tmp = ssdp_list;
+			while(tmp) {
+				if(strcmp(tmp->server, data->ip) == 0 && tmp->port == data->port) {
+					match = 1;
+					break;
+				}
+				tmp = tmp->next;
+			}
+			if(match == 0) {
+				if((node = MALLOC(sizeof(struct ssdp_list_t))) == NULL) {
+					OUT_OF_MEMORY
+				}
+				strncpy(node->server, data->ip, INET_ADDRSTRLEN);
+				node->port = data->port;
+				strncpy(node->name, data->name, 17);
+
+				ssdp_list_size++;
+
+				printf("\r[%2d] %15s:%-5d %-16s\n", ssdp_list_size, node->server, node->port, node->name);
+				printf("To which server do you want to connect?: ");
+				fflush(stdout);
+
+				node->next = ssdp_list;
+				ssdp_list = node;
+			}
+		} else {
+			if(strcmp(data->name, instance) == 0) {
+				__sync_fetch_and_add(&found, 1);
+				__sync_fetch_and_add(&connecting, 1);
+				socket_connect1(data->ip, data->port, client_callback);
+				tv.tv_sec = 1;
+				tv.tv_usec = 0;
+				timer_add_task(&timer, "socket timeout", tv, timeout, NULL);
+			}
+		}
+	}
+	return NULL;
+}
+
+static void *timer_func(struct timer_tasks_t *task) {
+	task->func(task);
+	return NULL;
 }
 
 int main(int argc, char **argv) {
@@ -63,8 +286,6 @@ int main(int argc, char **argv) {
 
 	atomicinit();
 	gc_attach(main_gc);
-
-	/* Catch all exit signals for gc */
 	gc_catch();
 
 	log_shell_enable();
@@ -72,26 +293,25 @@ int main(int argc, char **argv) {
 
 	log_level_set(LOG_NOTICE);
 
+	pilight.process = PROCESS_CLIENT;
+
 	if((progname = MALLOC(16)) == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(EXIT_FAILURE);
+		OUT_OF_MEMORY
 	}
 	strcpy(progname, "pilight-receive");
 	struct options_t *options = NULL;
-	struct ssdp_list_t *ssdp_list = NULL;
+	struct timeval tv;
 
+	char *args = NULL;
 	char *server = NULL;
 	char *filter = NULL;
 	unsigned short port = 0;
-	unsigned short stats = 0;
-	unsigned short filteropt = 0;
-
-	char *args = NULL;
 
 	options_add(&options, 'H', "help", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
 	options_add(&options, 'V', "version", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
 	options_add(&options, 'S', "server", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, "^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]).){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$");
 	options_add(&options, 'P', "port", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, "[0-9]{1,4}");
+	options_add(&options, 'I', "instance", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, NULL);
 	options_add(&options, 's', "stats", OPTION_NO_VALUE, 0, JSON_NULL, NULL, "[0-9]{1,4}");
 	options_add(&options, 'F', "filter", OPTION_HAS_VALUE, 0, JSON_STRING, NULL, NULL);
 
@@ -112,6 +332,7 @@ int main(int argc, char **argv) {
 				printf("\t -V --version\t\t\tdisplay version\n");
 				printf("\t -S --server=x.x.x.x\t\tconnect to server address\n");
 				printf("\t -P --port=xxxx\t\t\tconnect to server port\n");
+				printf("\t -I --instance=name\t\tconnect to pilight instance\n");
 				printf("\t -s --stats\t\t\tshow CPU and RAM statistics\n");
 				printf("\t -F --filter=protocol\t\tfilter out protocol(s)\n");
 				exit(EXIT_SUCCESS);
@@ -122,10 +343,15 @@ int main(int argc, char **argv) {
 			break;
 			case 'S':
 				if((server = MALLOC(strlen(args)+1)) == NULL) {
-					fprintf(stderr, "out of memory\n");
-					exit(EXIT_FAILURE);
+					OUT_OF_MEMORY
 				}
 				strcpy(server, args);
+			break;
+			case 'I':
+				if((instance = MALLOC(strlen(args)+1)) == NULL) {
+					OUT_OF_MEMORY
+				}
+				strcpy(instance, args);
 			break;
 			case 'P':
 				port = (unsigned short)atoi(args);
@@ -148,12 +374,13 @@ int main(int argc, char **argv) {
 		}
 	}
 	options_delete(options);
+	options_gc();
 
 	if(filteropt == 1) {
 		struct protocol_t *protocol = NULL;
 		m = explode(filter, ",", &filters);
 		int match = 0, j = 0;
-		
+
 		protocol_init();
 
 		for(j=0;j<m;j++) {
@@ -169,106 +396,49 @@ int main(int argc, char **argv) {
 					pnode = pnode->next;
 				}
 				if(match == 0) {
-					logprintf(LOG_ERR, "Invalid protocol: %s", filters[j]);
+					logprintf(LOG_ERR, "invalid protocol: %s", filters[j]);
 					goto close;
 				}
 			}
 		}
 	}
 
+	eventpool_init(EVENTPOOL_NO_THREADS);
+	eventpool_callback(REASON_SSDP_RECEIVED, ssdp_found);
+	tv.tv_sec = 0;
+	tv.tv_usec = 0;
+	timer_thread_start();
+	timer_init(&timer, SIGRTMIN, timer_func, TIMER_ABSTIME, tv, tv);
+
+	tv.tv_sec = 1;
+
 	if(server != NULL && port > 0) {
-		if((sockfd = socket_connect(server, port)) == -1) {
-			logprintf(LOG_ERR, "could not connect to pilight-daemon");
-			return EXIT_FAILURE;
-		}
-	} else if(ssdp_seek(&ssdp_list) == -1) {
-		logprintf(LOG_NOTICE, "no pilight ssdp connections found");
-		goto close;
+		socket_connect1(server, port, client_callback);
+		timer_add_task(&timer, "socket timeout", tv, timeout, NULL);
 	} else {
-		if((sockfd = socket_connect(ssdp_list->ip, ssdp_list->port)) == -1) {
-			logprintf(LOG_ERR, "could not connect to pilight-daemon");
-			goto close;
+		ssdp_seek();
+		timer_add_task(&timer, "ssdp seek", tv, ssdp_reseek, NULL);
+		if(instance == NULL) {
+			printf("[%2s] %15s:%-5s %-16s\n", "#", "server", "port", "name");
+			printf("To which server do you want to connect?:\r");
+			fflush(stdout);
+		} else {
+			timer_add_task(&timer, "ssdp seek", tv, ssdp_not_found, NULL);
 		}
 	}
-	if(ssdp_list != NULL) {
-		ssdp_free(ssdp_list);
-	}
+
+	eventpool_fd_add("stdin", fileno(stdin), user_input, NULL, NULL);
+	eventpool_process(NULL);
+
+close:
 	if(server != NULL) {
 		FREE(server);
 	}
-
-	struct JsonNode *jclient = json_mkobject();
-	struct JsonNode *joptions = json_mkobject();
-	json_append_member(jclient, "action", json_mkstring("identify"));
-	json_append_member(joptions, "receiver", json_mknumber(1, 0));
-	json_append_member(joptions, "stats", json_mknumber(stats, 0));
-	json_append_member(jclient, "options", joptions);
-	char *out = json_stringify(jclient, NULL);
-	socket_write(sockfd, out);
-	json_free(out);
-	json_delete(jclient);
-
-	if(socket_read(sockfd, &recvBuff, 0) != 0 ||
-		strcmp(recvBuff, "{\"status\":\"success\"}") != 0) {
-			goto close;
+	if(instance != NULL) {
+		FREE(instance);
 	}
 
-	while(main_loop) {
-		if(socket_read(sockfd, &recvBuff, 0) != 0) {
-			goto close;
-		}
-		char *protocol = NULL;
-		char **array = NULL;
-		unsigned int n = explode(recvBuff, "\n", &array), i = 0;
+	main_gc();
 
-		for(i=0;i<n;i++) {
-			struct JsonNode *jcontent = json_decode(array[i]);
-			struct JsonNode *jtype = json_find_member(jcontent, "type");
-			if(jtype != NULL) {
-				json_remove_from_parent(jtype);
-				json_delete(jtype);
-			}
-			if(filteropt == 1) {
-				int filtered = 0, j = 0;
-				json_find_string(jcontent, "protocol", &protocol);
-				for(j=0;j<m;j++) {
-					if(strcmp(filters[j], protocol) == 0) {
-						filtered = 1;
-						break;
-					}
-				}
-				if(filtered == 0) {
-					char *content = json_stringify(jcontent, "\t");
-					printf("%s\n", content);
-					json_free(content);
-				}
-			} else {
-				char *content = json_stringify(jcontent, "\t");
-				printf("%s\n", content);
-				json_free(content);
-			}
-			json_delete(jcontent);
-		}
-		array_free(&array, n);
-	}
-
-close:
-	if(sockfd > 0) {
-		socket_close(sockfd);
-	}
-	if(recvBuff != NULL) {
-		FREE(recvBuff);
-		recvBuff = NULL;
-	}
-	if(filter != NULL) {
-		FREE(filter);
-		filter = NULL;	
-	}
-	array_free(&filters, m);
-	protocol_gc();
-	options_gc();
-	log_shell_disable();
-	log_gc();
-	FREE(progname);
 	return EXIT_SUCCESS;
 }

@@ -1,19 +1,9 @@
 /*
-	Copyright (C) 2013 - 2014 CurlyMo
+	Copyright (C) 2013 - 2016 CurlyMo
 
-	This file is part of pilight.
-
-	pilight is free software: you can redistribute it and/or modify it under the
-	terms of the GNU General Public License as published by the Free Software
-	Foundation, either version 3 of the License, or (at your option) any later
-	version.
-
-	pilight is distributed in the hope that it will be useful, but WITHOUT ANY
-	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
-	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
-
-	You should have received a copy of the GNU General Public License
-	along with pilight. If not, see	<http://www.gnu.org/licenses/>
+  This Source Code Form is subject to the terms of the Mozilla Public
+  License, v. 2.0. If a copy of the MPL was not distributed with this
+  file, You can obtain one at http://mozilla.org/MPL/2.0/.
 */
 
 #include <stdlib.h>
@@ -57,23 +47,23 @@ struct threadqueue_t *threads_register(const char *id, void *(*function)(void *p
 
 	struct threadqueue_t *tnode = MALLOC(sizeof(struct threadqueue_t));
 	if(tnode == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(EXIT_FAILURE);
+		OUT_OF_MEMORY
 	}
 
 	struct timeval tcurrent;
 	memset(&tcurrent, '\0', sizeof(struct timeval));
 	gettimeofday(&tcurrent, NULL);
 
-	tnode->ts = 1000000 * (unsigned int)tcurrent.tv_sec + (unsigned int)tcurrent.tv_usec;
 	tnode->function = function;
 	tnode->running = 0;
+	tnode->join = 0;
 	tnode->force = force;
-	if((tnode->id = MALLOC(strlen(id)+1)) == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(EXIT_FAILURE);
+	if(id != NULL) {
+		if((tnode->id = MALLOC(strlen(id)+1)) == NULL) {
+			OUT_OF_MEMORY
+		}
+		strcpy(tnode->id, id);
 	}
-	strcpy(tnode->id, id);
 	tnode->param = param;
 	memset(&tnode->pth, '\0', sizeof(pthread_t));
 	tnode->next = NULL;
@@ -138,8 +128,40 @@ void thread_signal(char *id, int s) {
 	}
 }
 
+static void thread_remove(char *id) {
+	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+	if(threads_initialized == 1) {
+		pthread_mutex_lock(&threadqueue_lock);
+	}
+
+	struct threadqueue_t *currP, *prevP;
+
+	prevP = NULL;
+
+	for(currP = threadqueue; currP != NULL; prevP = currP, currP = currP->next) {
+
+		if(strcmp(currP->id, id) == 0) {
+			if(prevP == NULL) {
+				threadqueue = currP->next;
+			} else {
+				prevP->next = currP->next;
+			}
+
+			thread_running--;
+			FREE(currP->id);
+			FREE(currP);
+
+			break;
+		}
+	}
+	if(threads_initialized == 1) {
+		pthread_mutex_unlock(&threadqueue_lock);
+	}
+}
+
 static void *threads_loop(void *param) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+	int start = 0, join = 0;
 
 	struct threadqueue_t *tmp_threads = NULL;
 
@@ -151,20 +173,39 @@ static void *threads_loop(void *param) {
 
 			logprintf(LOG_STACK, "%s::unlocked", __FUNCTION__);
 
+			join = 0, start = 0;
 			tmp_threads = threadqueue;
 			while(tmp_threads) {
 				if(tmp_threads->running == 0) {
+					start = 1;
+					break;
+				} else if(tmp_threads->join == 1) {
+					join = 1;
 					break;
 				}
 				tmp_threads = tmp_threads->next;
 			}
-			threads_create(&tmp_threads->pth, NULL, tmp_threads->function, (void *)tmp_threads->param);
-			thread_running++;
-			tmp_threads->running = 1;
-			if(thread_running == 1) {
-				logprintf(LOG_DEBUG, "new thread %s, %d thread running", tmp_threads->id, thread_running);
-			} else {
-				logprintf(LOG_DEBUG, "new thread %s, %d threads running", tmp_threads->id, thread_running);
+			if(start == 1) {
+				threads_create(&tmp_threads->pth, NULL, tmp_threads->function, (void *)tmp_threads->param);
+				thread_running++;
+				tmp_threads->running = 1;
+				if(thread_running == 1) {
+					logprintf(LOG_DEBUG, "new thread \"%s\", %d thread running", tmp_threads->id, thread_running);
+				} else {
+					logprintf(LOG_DEBUG, "new thread \"%s\", %d threads running", tmp_threads->id, thread_running);
+				}
+			} else if(join == 1) {
+				if(tmp_threads->force == 1) {
+					pthread_cancel(tmp_threads->pth);
+				} else {
+					pthread_join(tmp_threads->pth, NULL);
+				}
+				if((thread_running-1) == 1) {
+					logprintf(LOG_DEBUG, "stopped thread %s, %d thread running", tmp_threads->id, (thread_running-1));
+				} else {
+					logprintf(LOG_DEBUG, "stopped thread %s, %d threads running", tmp_threads->id, (thread_running-1));
+				}
+				thread_remove(tmp_threads->id);
 			}
 
 			threadqueue_number--;
@@ -192,47 +233,45 @@ void threads_start() {
 	thread_started = 1;
 }
 
-void thread_stop(char *id) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+int thread_exists(char *id) {
 	if(threads_initialized == 1) {
 		pthread_mutex_lock(&threadqueue_lock);
 	}
-
-	struct threadqueue_t *currP, *prevP;
-
-	prevP = NULL;
-
-	for(currP = threadqueue; currP != NULL; prevP = currP, currP = currP->next) {
-
-		if(strcmp(currP->id, id) == 0) {
-			if(prevP == NULL) {
-				threadqueue = currP->next;
-			} else {
-				prevP->next = currP->next;
+	struct threadqueue_t *tmp_threads = threadqueue;
+	while(tmp_threads) {
+		if(strcmp(id, tmp_threads->id) == 0) {
+			if(threads_initialized == 1) {
+				pthread_mutex_unlock(&threadqueue_lock);
 			}
-
-			if(currP->running == 1) {
-				thread_running--;
-				logprintf(LOG_DEBUG, "stopping thread %s", currP->id);
-				if(currP->force == 1) {
-					pthread_cancel(currP->pth);
-				}
-				pthread_join(currP->pth, NULL);
-				if(thread_running == 1) {
-					logprintf(LOG_DEBUG, "stopped thread %s, %d thread running", currP->id, thread_running);
-				} else {
-					logprintf(LOG_DEBUG, "stopped thread %s, %d threads running", currP->id, thread_running);
-				}
-			}
-
-			FREE(currP->id);
-			FREE(currP);
-
-			break;
+			return 0;
 		}
+		tmp_threads = tmp_threads->next;
 	}
 	if(threads_initialized == 1) {
 		pthread_mutex_unlock(&threadqueue_lock);
+	}
+	return -1;
+}
+
+void thread_stop(char *id) {
+	if(threads_initialized == 1) {
+		pthread_mutex_lock(&threadqueue_lock);
+	}
+	struct threadqueue_t *tmp_threads = threadqueue;
+	while(tmp_threads) {
+		if(strcmp(id, tmp_threads->id) == 0) {
+			logprintf(LOG_DEBUG, "stopping thread \"%s\"", id);
+
+			tmp_threads->join = 1;
+
+			threadqueue_number++;
+			break;
+		}
+		tmp_threads = tmp_threads->next;
+	}
+	if(threads_initialized == 1) {
+		pthread_mutex_unlock(&threadqueue_lock);
+		pthread_cond_signal(&threadqueue_signal);
 	}
 }
 
@@ -277,15 +316,15 @@ int threads_gc(void) {
 			tmp_threads->running = 0;
 			thread_running--;
 
-			logprintf(LOG_DEBUG, "stopping %s thread", tmp_threads->id);
+			logprintf(LOG_DEBUG, "stopping \"%s\" thread", tmp_threads->id);
 			if(tmp_threads->force == 1) {
 				pthread_cancel(tmp_threads->pth);
 			}
 			pthread_join(tmp_threads->pth, NULL);
 			if(thread_running == 1) {
-				logprintf(LOG_DEBUG, "stopped thread %s, %d thread running", tmp_threads->id, thread_running);
+				logprintf(LOG_DEBUG, "stopped thread \"%s\", %d thread running", tmp_threads->id, thread_running);
 			} else {
-				logprintf(LOG_DEBUG, "stopped thread %s, %d threads running", tmp_threads->id, thread_running);
+				logprintf(LOG_DEBUG, "stopped thread \"%s\", %d threads running", tmp_threads->id, thread_running);
 			}
 		}
 		usleep(10000);
@@ -295,7 +334,9 @@ int threads_gc(void) {
 	struct threadqueue_t *ttmp = NULL;
 	while(threadqueue) {
 		ttmp = threadqueue;
-		FREE(ttmp->id);
+		if(ttmp->id != NULL) {
+			FREE(ttmp->id);
+		}
 		threadqueue = threadqueue->next;
 		FREE(ttmp);
 	}

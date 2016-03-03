@@ -47,17 +47,19 @@ static int validate(void) {
 	return -1;
 }
 
-static void createMessage(char *id, int unit, int state) {
-	rev1_switch->message = json_mkobject();
-	json_append_member(rev1_switch->message, "id", json_mkstring(id));
-	json_append_member(rev1_switch->message, "unit", json_mknumber(unit, 0));
-	if(state == 1)
-		json_append_member(rev1_switch->message, "state", json_mkstring("off"));
-	else
-		json_append_member(rev1_switch->message, "state", json_mkstring("on"));
+static void createMessage(char *message, char *id, int unit, int state) {
+	int x = snprintf(message, 255, "{\"id\":\"%s\",", id);
+	x += snprintf(&message[x], 255-x, "\"unit\":%d,", unit);
+
+	if(state == 1) {
+		x += snprintf(&message[x], 255-x, "\"state\":\"off\"");
+	} else {
+		x += snprintf(&message[x], 255-x, "\"state\":\"on\"");
+	}
+	x += snprintf(&message[x], 255-x, "}");
 }
 
-static void parseCode(void) {
+static void parseCode(char *message) {
 	int x = 0, z = 65, binary[RAW_LENGTH/4];
 	char id[3];
 
@@ -84,7 +86,7 @@ static void parseCode(void) {
 	int y = binToDecRev(binary, 6, 9);
 	sprintf(&id[0], "%c%d", z, y);
 
-	createMessage(id, unit, state);
+	createMessage(message, id, unit, state);
 }
 
 static void createLow(int s, int e) {
@@ -172,7 +174,7 @@ static void createFooter(void) {
 	rev1_switch->raw[49]=(PULSE_DIV*AVG_PULSE_LENGTH);
 }
 
-static int createCode(struct JsonNode *code) {
+static int createCode(struct JsonNode *code, char *message) {
 	char id[3] = {'\0'};
 	int unit = -1;
 	int state = -1;
@@ -205,7 +207,7 @@ static int createCode(struct JsonNode *code) {
 		logprintf(LOG_ERR, "rev1_switch: invalid unit range");
 		return EXIT_FAILURE;
 	} else {
-		createMessage(id, unit, state);
+		createMessage(message, id, unit, state);
 		clearCode();
 		createUnit(unit);
 		createId(id);
@@ -255,9 +257,9 @@ void rev1Init(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "rev1_switch";
-	module->version = "0.13";
-	module->reqversion = "6.0";
-	module->reqcommit = "84";
+	module->version = "0.14";
+	module->reqversion = "7.0";
+	module->reqcommit = "94";
 }
 
 void init(void) {

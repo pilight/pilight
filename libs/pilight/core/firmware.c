@@ -61,7 +61,7 @@
 #include "../../avrdude/avrconfig.h"
 #include "../../avrdude/avrupd.h"
 #include "../../avrdude/safemode.h"
-#include "../config/settings.h"
+#include "../storage/storage.h"
 #include "firmware.h"
 #include "pilight.h"
 #include "common.h"
@@ -75,7 +75,7 @@ chip_erase:			chip_erase
 writepage_bits:	memory flash - writepage
 ...
 */
- 
+
 #ifdef _WIN32
 	static int baudrate = 57600;
 #else
@@ -561,6 +561,7 @@ static void firmware_attiny85(struct avrpart **p) {
 
 static void firmware_init_pgm(PROGRAMMER **pgm) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
+	double itmp = 0.0;
 
 	*pgm = pgm_new();
 #ifndef _WIN32
@@ -572,10 +573,10 @@ static void firmware_init_pgm(PROGRAMMER **pgm) {
 		(*pgm)->pinno[6] = FIRMWARE_GPIO_MISO;
 		// (*pgm)->ispdelay = 50;
 
-		settings_find_number("firmware-gpio-reset", (int *)&(*pgm)->pinno[3]);
-		settings_find_number("firmware-gpio-sck", (int *)&(*pgm)->pinno[4]);
-		settings_find_number("firmware-gpio-mosi", (int *)&(*pgm)->pinno[5]);
-		settings_find_number("firmware-gpio-miso", (int *)&(*pgm)->pinno[6]);
+		if(settings_select_number(ORIGIN_MASTER, "firmware-gpio-reset", &itmp) == 0) { (*pgm)->pinno[3] = (int)itmp; }
+		if(settings_select_number(ORIGIN_MASTER, "firmware-gpio-sck", &itmp) == 0) { (*pgm)->pinno[4] = (int)itmp; }
+		if(settings_select_number(ORIGIN_MASTER, "firmware-gpio-mosi", &itmp) == 0) { (*pgm)->pinno[5] = (int)itmp; }
+		if(settings_select_number(ORIGIN_MASTER, "firmware-gpio-miso", &itmp) == 0) { (*pgm)->pinno[6] = (int)itmp; }
 	} else {
 #endif
 		arduino_initpgm(*pgm);
@@ -666,7 +667,7 @@ static int firmware_identifymp(struct avrpart **p) {
 	int attempt = 0;
 	int waittime = 10000;       /* 10 ms */
 
-sig_again:	 
+sig_again:
 	usleep(waittime);
 	if(init_ok) {
 		if(avr_signature(pgm, *p) != 0) {
@@ -1160,7 +1161,7 @@ int firmware_getmp(char *port) {
 	if(!match && firmware_identifymp(&p) != 0) {
 		logprintf(LOG_INFO, "Not an ATMega32u4");
 		mptype = FW_MP_ATMEL328P;
-		firmware_atmega328p(&p);	
+		firmware_atmega328p(&p);
 		match = 0;
 	} else {
 		return mptype;
@@ -1186,7 +1187,7 @@ int firmware_getmp(char *port) {
 		firmware_attiny25(&p);
 	} else {
 		return mptype;
-	}	
+	}
 	logprintf(LOG_INFO, "Checking for an ATTiny25 @%d", baudrate);
 	if(!match && firmware_identifymp(&p) != 0) {
 		logprintf(LOG_INFO, "Not an ATTiny45");

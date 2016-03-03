@@ -82,6 +82,8 @@ static volatile unsigned int	 BCM2708_PERI_BASE = 0x20000000;
 #define	PAGE_SIZE		(4*1024)
 #define	BLOCK_SIZE		(4*1024)
 
+static int wiringPiMode = WPI_MODE_UNINITIALISED;
+
 static int piModel2 = 0;
 
 static volatile uint32_t *gpio;
@@ -577,6 +579,14 @@ static int raspberrypiWaitForInterrupt(int pin, int ms) {
 	return x;
 }
 
+static int raspberrypiSelectableFd(int pin) {
+	if(pinModes[pin] != SYS) {
+		wiringXLog(LOG_ERR, "raspberrypi->selectableFd: Trying to read from pin %d, but it's not configured as interrupt", pin);
+		return -1;
+	}
+	return sysFds[pin];
+}
+
 static int raspberrypiGC(void) {
 	int i = 0, fd = 0;
 	char path[35];
@@ -755,6 +765,7 @@ void raspberrypiInit(void) {
 	raspberrypi->identify=&piBoardRev;
 	raspberrypi->isr=&raspberrypiISR;
 	raspberrypi->waitForInterrupt=&raspberrypiWaitForInterrupt;
+	raspberrypi->selectableFd=&raspberrypiSelectableFd;
 #ifndef __FreeBSD__
 	raspberrypi->I2CRead=&raspberrypiI2CRead;
 	raspberrypi->I2CReadReg8=&raspberrypiI2CReadReg8;

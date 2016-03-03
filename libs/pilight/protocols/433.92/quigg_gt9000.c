@@ -81,28 +81,29 @@ static int validate(void) {
 	return -1;
 }
 
-static void createMessage(int systemcode, int state, int unit) {
-	quigg_gt9000->message = json_mkobject();
-	json_append_member(quigg_gt9000->message, "id", json_mknumber(systemcode, 0));
-	if(unit==5) {
-		json_append_member(quigg_gt9000->message, "all", json_mknumber(1, 0));
+static void createMessage(char *message, int systemcode, int state, int unit) {
+	int x = snprintf(message, 255, "{\"id\":%d,", systemcode);
+	if(unit == 5) {
+		x += snprintf(&message[x], 255-x, "\"all\":1,");
 	} else {
-		json_append_member(quigg_gt9000->message, "unit", json_mknumber(unit, 0));
+		x += snprintf(&message[x], 255-x, "\"unit\":%d,", unit);
 	}
+
 	if(state == 1) {
-		json_append_member(quigg_gt9000->message, "state", json_mkstring("on"));
+		x += snprintf(&message[x], 255-x, "\"state\":\"on\"");
 	} else {
-		json_append_member(quigg_gt9000->message, "state", json_mkstring("off"));
+		x += snprintf(&message[x], 255-x, "\"state\":\"off\"");
 	}
+	x += snprintf(&message[x], 255-x, "}");
 }
 
 static int decodePayload(int payload, int index) {
 	int ret = -1;
 	int hash[16] = { 0x0, 0x9, 0xF, 0x4, 0xA, 0xD, 0x5, 0xB,
 			 0x3, 0x2, 0x1, 0x7, 0xE, 0x6, 0xC, 0x8 };
-	
+
 	ret = payload^hash[index];
-	
+
 	return ret;
 }
 
@@ -132,7 +133,7 @@ static void pulseToBinary(int *binary) {
 	}
 }
 
-static void parseCode(void) {
+static void parseCode(char *message) {
 	int binary[RAW_LENGTH/2], state = -1;
 
 	pulseToBinary(binary);
@@ -182,7 +183,7 @@ static void parseCode(void) {
 	if(unit == 3 || unit == 4)
 		state = state ? 0 : 1;
 
-	createMessage(systemcode, state, unit);
+	createMessage(message, systemcode, state, unit);
 }
 
 static void createZero(int s, int e) {
@@ -250,17 +251,17 @@ static void initAllCodes(int systemcode, int allcodes[16]) {
 	int systemcode1dec = 0, systemcode3dec = 0, systemcode4dec = 0, systemcode5dec = 0;
 	int hash[16] = { 0x0, 0x9, 0xF, 0x4, 0xA, 0xD, 0x5, 0xB,
 			 0x3, 0x2, 0x1, 0x7, 0xE, 0x6, 0xC, 0x8 };
-	
+
 	systemcode1dec = (systemcode >> 16) & 0xF;
 	//systemcode2dec is always 0, therefore it is not needed
 	//systemcode2dec = (systemcode >> 12) & 0xF;
 	systemcode3dec = (systemcode >> 8) & 0xF;
 	systemcode4dec = (systemcode >> 4) & 0xF;
 	systemcode5dec = systemcode & 0xF;
-	
+
 	//first 4 bits are not encrypted
 	systemcode1enc = systemcode1dec;
-	
+
 	//encrypt systemcode
 	for(i=0;i<16;i++) {
 		systemcode2enc = i;
@@ -271,7 +272,7 @@ static void initAllCodes(int systemcode, int allcodes[16]) {
 	}
 }
 
-static int createCode(JsonNode *code) {
+static int createCode(struct JsonNode *code, char *message) {
 	char on1[4] = {10,6,1,5};
 	char on2[4] = {0,3,14,15};
 	char off1[4] = {8,2,11,7};
@@ -326,7 +327,7 @@ static int createCode(JsonNode *code) {
 				statecode = on1[1];
 		}
 		int encrypteddata = allcodes[statecode];
-		
+
 		clearCode();
 		createEncryptedData(encrypteddata);
 		createUnit(unit);
@@ -339,7 +340,7 @@ static int createCode(JsonNode *code) {
 			return EXIT_FAILURE;
 		}
 
-		createMessage(systemcode, state, unit);
+		createMessage(message, systemcode, state, unit);
 	}
 	return EXIT_SUCCESS;
 }
@@ -383,9 +384,9 @@ void quiggGT9000Init(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "quigg_gt9000";
-	module->version = "1.0";
-	module->reqversion = "6.0";
-	module->reqcommit = "84";
+	module->version = "2.0";
+	module->reqversion = "7.0";
+	module->reqcommit = "94";
 }
 
 void init(void) {

@@ -56,19 +56,20 @@ static int validate(void) {
 }
 
 
-static void createMessage(int id, int state, int unit, int all, int learn) {
-	quigg_screen->message = json_mkobject();
-	json_append_member(quigg_screen->message, "id", json_mknumber(id, 0));
-	if(all==1) {
-		json_append_member(quigg_screen->message, "all", json_mknumber(all, 0));
+static void createMessage(char *message, int id, int state, int unit, int all, int learn) {
+	int x = snprintf(message, 255, "{\"id\":%d,", id);
+	if(all == 1) {
+		x += snprintf(&message[x], 255-x, "\"all\":1,");
 	} else {
-		json_append_member(quigg_screen->message, "unit", json_mknumber(unit, 0));
+		x += snprintf(&message[x], 255-x, "\"unit\":%d,", unit);
 	}
-	if(state==0) {
-		json_append_member(quigg_screen->message, "state", json_mkstring("up"));
+
+	if(state == 0) {
+		x += snprintf(&message[x], 255-x, "\"state\":\"up\"");
 	} else {
-		json_append_member(quigg_screen->message, "state", json_mkstring("down"));
+		x += snprintf(&message[x], 255-x, "\"state\":\"down\"");
 	}
+	x += snprintf(&message[x], 255-x, "}");
 
 	if(learn == 1) {
 		quigg_screen->txrpt = LEARN_REPEATS;
@@ -77,7 +78,7 @@ static void createMessage(int id, int state, int unit, int all, int learn) {
 	}
 }
 
-static void parseCode(void) {
+static void parseCode(char *message) {
 	int binary[RAW_LENGTH/2], x = 0, dec_unit[4] = {0, 3, 1, 2};
 	int iParity = 1, iParityData = -1;	// init for even parity
 	int iSwitch = 0;
@@ -104,7 +105,6 @@ static void parseCode(void) {
 	int state = binToDecRev(binary, 15, 15);
 	int screen = binToDecRev(binary, 16, 16);
 	int parity = binToDecRev(binary, 19, 19);
-	int learn = 0;
 
 	unit = dec_unit[unit];
 
@@ -122,7 +122,7 @@ static void parseCode(void) {
 		break;
 	}
 	if((iParityData == parity) && (screen != -1)) {
-		createMessage(id, state, unit, all, learn);
+		createMessage(message, id, state, unit, all, 0);
 	}
 }
 
@@ -215,7 +215,7 @@ static void createParity(void) {
 	}
 }
 
-static int createCode(JsonNode *code) {
+static int createCode(struct JsonNode *code, char *message) {
 	double itmp = -1;
 	int unit = -1, id = -1, learn = -1, state = -1, all = 0;
 
@@ -246,7 +246,7 @@ static int createCode(JsonNode *code) {
 			unit = 4;
 		}
 		quigg_screen->rawlen = RAW_LENGTH;
-		createMessage(id, state, unit, all, learn);
+		createMessage(message, id, state, unit, all, learn);
 		clearCode();
 		createId(id);
 		createUnit(unit);
@@ -301,9 +301,9 @@ void quiggScreenInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "quigg_screen";
-	module->version = "2.1";
-	module->reqversion = "6.0";
-	module->reqcommit = "84";
+	module->version = "3.0";
+	module->reqversion = "7.0";
+	module->reqcommit = "94";
 }
 
 void init(void) {

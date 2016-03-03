@@ -1,19 +1,9 @@
 /*
-	Copyright (C) 2013 CurlyMo
+	Copyright (C) 2013 - 2016 CurlyMo
 
-	This file is part of pilight.
-
-	pilight is free software: you can redistribute it and/or modify it under the
-	terms of the GNU General Public License as published by the Free Software
-	Foundation, either version 3 of the License, or (at your option) any later
-	version.
-
-	pilight is distributed in the hope that it will be useful, but WITHOUT ANY
-	WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
-	A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
-
-	You should have received a copy of the GNU General Public License
-	along with pilight. If not, see	<http://www.gnu.org/licenses/>
+  This Source Code Form is subject to the terms of the Mozilla Public
+  License, v. 2.0. If a copy of the MPL was not distributed with this
+  file, You can obtain one at http://mozilla.org/MPL/2.0/.
 */
 
 #include <stdio.h>
@@ -33,18 +23,23 @@
 
 #include "../../../wiringx/wiringX.h"
 
-static char *state = NULL;
+static char default_state[] = "off";
 
-static void createMessage(int gpio, int state) {
-	relay->message = json_mkobject();
-	json_append_member(relay->message, "gpio", json_mknumber(gpio, 0));
-	if(state == 1)
-		json_append_member(relay->message, "state", json_mkstring("on"));
-	else
-		json_append_member(relay->message, "state", json_mkstring("off"));
+static void *reason_code_received_free(void *param) {
+	struct reason_code_received_t *data = param;
+	FREE(data);
+	return NULL;
 }
 
-static int createCode(JsonNode *code) {
+static void createMessage(char *message, int gpio, int state) {
+	int x = snprintf(message, 255, "{\"gpio\":%d,", gpio);
+	if(state == 1)
+		x += snprintf(&message[x], 255-x, "\"state\":\"on\"}");
+	else
+		x += snprintf(&message[x], 255-x, "\"state\":\"off\"}");
+}
+
+static int createCode(struct JsonNode *code, char *message) {
 	int free_def = 0;
 	int gpio = -1;
 	int state = -1;
@@ -55,19 +50,20 @@ static int createCode(JsonNode *code) {
 	relay->rawlen = 0;
 	if(json_find_string(code, "default-state", &def) != 0) {
 		if((def = MALLOC(4)) == NULL) {
-			fprintf(stderr, "out of memory\n");
-			exit(EXIT_FAILURE);
+			OUT_OF_MEMORY
 		}
 		strcpy(def, "off");
 		free_def = 1;
 	}
 
-	if(json_find_number(code, "gpio", &itmp) == 0)
+	if(json_find_number(code, "gpio", &itmp) == 0) {
 		gpio = (int)round(itmp);
-	if(json_find_number(code, "off", &itmp) == 0)
+	}
+	if(json_find_number(code, "off", &itmp) == 0) {
 		state=0;
-	else if(json_find_number(code, "on", &itmp) == 0)
+	} else if(json_find_number(code, "on", &itmp) == 0) {
 		state=1;
+	}
 
 	if(gpio == -1 || state == -1) {
 		logprintf(LOG_ERR, "relay: insufficient number of arguments");
@@ -83,7 +79,7 @@ static int createCode(JsonNode *code) {
 				have_error = 1;
 				goto clear;
 			} else {
-				if(strstr(progname, "daemon") != NULL) {
+				if(pilight.process == PROCESS_DAEMON) {
 					pinMode(gpio, OUTPUT);
 					if(strcmp(def, "off") == 0) {
 						if(state == 1) {
@@ -101,10 +97,13 @@ static int createCode(JsonNode *code) {
 				} else {
 					wiringXGC();
 				}
-			createMessage(gpio, state);
-			goto clear;
+				createMessage(message, gpio, state);
+				goto clear;
 			}
 		}
+	} else {
+		createMessage(message, gpio, state);
+		goto clear;
 	}
 
 clear:
@@ -124,7 +123,7 @@ static void printHelp(void) {
 	printf("\t -g --gpio=gpio\t\t\tthe gpio the relay is connected to\n");
 }
 
-static int checkValues(JsonNode *code) {
+static int checkValues(struct JsonNode *code) {
 	char *def = NULL;
 	struct JsonNode *jid = NULL;
 	struct JsonNode *jchild = NULL;
@@ -133,8 +132,7 @@ static int checkValues(JsonNode *code) {
 
 	if(json_find_string(code, "default-state", &def) != 0) {
 		if((def = MALLOC(4)) == NULL) {
-			fprintf(stderr, "out of memory\n");
-			exit(EXIT_FAILURE);
+			OUT_OF_MEMORY
 		}
 		strcpy(def, "off");
 		free_def = 1;
@@ -166,23 +164,20 @@ static int checkValues(JsonNode *code) {
 							state ^= 1;
 						}
 
-						relay->message = json_mkobject();
-						JsonNode *code = json_mkobject();
-						json_append_member(code, "gpio", json_mknumber(gpio, 0));
-						if(state == 1) {
-							json_append_member(code, "state", json_mkstring("on"));
+						struct reason_code_received_t *data = MALLOC(sizeof(struct reason_code_received_t));
+						if(data == NULL) {
+							OUT_OF_MEMORY
+						}
+						snprintf(data->message, 1024, "{\"gpio\":%d,\"state\":\"%s\"}", gpio, ((state == 1) ? "on" : "off"));
+						strncpy(data->origin, "receiver", 256);
+						data->protocol = relay->id;
+						if(strlen(pilight_uuid) > 0) {
+							data->uuid = pilight_uuid;
 						} else {
-							json_append_member(code, "state", json_mkstring("off"));
+							data->uuid = NULL;
 						}
-
-						json_append_member(relay->message, "message", code);
-						json_append_member(relay->message, "origin", json_mkstring("sender"));
-						json_append_member(relay->message, "protocol", json_mkstring(relay->id));
-						if(pilight.broadcast != NULL) {
-							pilight.broadcast(relay->id, relay->message, PROTOCOL);
-						}
-						json_delete(relay->message);
-						relay->message = NULL;
+						data->repeat = 1;
+						eventpool_trigger(REASON_CODE_RECEIVED, reason_code_received_free, data);
 					}
 				}
 			}
@@ -193,10 +188,6 @@ static int checkValues(JsonNode *code) {
 		FREE(def);
 	}
 	return 0;
-}
-
-static void gc(void) {
-	FREE(state);
 }
 
 #if !defined(MODULE) && !defined(_WIN32)
@@ -215,24 +206,21 @@ void relayInit(void) {
 	options_add(&relay->options, 'f', "off", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
 	options_add(&relay->options, 'g', "gpio", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "[0-9]");
 
-	state = MALLOC(4);
-	strcpy(state, "off");
-	options_add(&relay->options, 0, "default-state", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_STRING, (void *)state, NULL);
+	options_add(&relay->options, 0, "default-state", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_STRING, (void *)default_state, NULL);
 	options_add(&relay->options, 0, "readonly", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 	options_add(&relay->options, 0, "confirm", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)0, "^[10]{1}$");
 
 	relay->checkValues=&checkValues;
 	relay->createCode=&createCode;
 	relay->printHelp=&printHelp;
-	relay->gc=&gc;
 }
 
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "relay";
-	module->version = "3.3";
-	module->reqversion = "6.0";
-	module->reqcommit = "84";
+	module->version = "4.0";
+	module->reqversion = "7.0";
+	module->reqcommit = "94";
 }
 
 void init(void) {
