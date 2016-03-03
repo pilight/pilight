@@ -74,8 +74,12 @@ static void parseCode(char *message) {
 
 	for(i=0; i < elro_300_switch->rawlen; i++) {
 		if(elro_300_switch->raw[i] > (int)((double)AVG_PULSE_LENGTH*((double)PULSE_MULTIPLIER/2))) {
-			binary[x++] = 1;
-		} else {
+			if(i&1) {
+				binary[x++] = 1;
+			} else {
+				return; // even pulse lengths must be low
+			}
+		} else if(i&1) {
 			binary[x++] = 0;
 		}
 	}
