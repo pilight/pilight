@@ -239,6 +239,7 @@ int event_lookup_variable(char *var, struct rules_t *obj, int type, struct varco
 			// }
 		}
 		if(cached == 0) {
+			unsigned int match1 = 0, match2 = 0, match3 = 0, has_state = 0;
 			recvtype = 0;
 			struct protocols_t *tmp_protocols = protocols;
 			if(devices_select(ORIGIN_MASTER, device, NULL) == 0) {
@@ -253,46 +254,79 @@ int event_lookup_variable(char *var, struct rules_t *obj, int type, struct varco
 					tmp_protocols = tmp_protocols->next;
 				}
 			}
-			if(recvtype > 0) {
+			if(recvtype == 2) {
 				if(validate == 1) {
 					if(origin == ORIGIN_RULE) {
 						event_cache_device(obj, device);
 					}
-					i = 0;
-					struct protocol_t *tmp = NULL;
-					unsigned int match1 = 0, match2 = 0, match3 = 0;
-					if(recvtype == 1) {
-						while(devices_select_protocol(ORIGIN_MASTER, device, i++, &tmp) == 0) {
-							struct options_t *opt = tmp->options;
-							while(opt) {
-								if(opt->conftype == DEVICES_STATE && strcmp("state", name) == 0) {
-									match1 = 1;
-									match2 = 1;
-									match3 = 1;
-									break;
-								} else if(strcmp(opt->name, name) == 0) {
-									match1 = 1;
-									if(opt->vartype == (JSON_NUMBER | JSON_STRING)) {
-										break;
-									}
-									if(opt->conftype == DEVICES_VALUE || opt->conftype == DEVICES_STATE || opt->conftype == DEVICES_SETTING) {
-										match2 = 1;
-										if(type == (JSON_STRING | JSON_NUMBER)) {
-											match3 = 1;
-										} else if(opt->vartype == JSON_STRING && type == JSON_STRING) {
-											match3 = 1;
-										} else if(opt->vartype == JSON_NUMBER && type == JSON_NUMBER) {
-											match3 = 1;
-										}
-										break;
-									}
-								}
-								opt = opt->next;
+					if(strcmp(name, "repeats") != 0 && strcmp(name, "uuid") != 0) {
+						struct options_t *options = tmp_protocols->listener->options;
+						while(options) {
+							if(options->conftype == DEVICES_STATE) {
+								has_state = 1;
 							}
+							if(strcmp(options->name, name) == 0) {
+								if(options->vartype != type) {
+									if(options->vartype == JSON_STRING) {
+										logprintf(LOG_ERR, "rule #%d invalid: trying to compare a string variable \"%s.%s\" to an integer", obj->nr, device, name);
+									} else {
+										logprintf(LOG_ERR, "rule #%d invalid: trying to compare an integer variable \"%s.%s\" to a string", obj->nr, device, name);
+									}
+									varcont->string_ = NULL;
+									varcont->number_ = 0;
+									varcont->decimals_ = 0;
+									*rtype = -1;
+									return -1;
+								}
+								match2 = 1;
+							}
+							options = options->next;
+						}
+						if(match2 == 0 && ((!(strcmp(name, "state") == 0 && has_state == 1)) || (strcmp(name, "state") != 0))) {
+							logprintf(LOG_ERR, "rule #%d invalid: protocol \"%s\" has no field \"%s\"", obj->nr, device, name);
+							varcont->string_ = NULL;
+							varcont->number_ = 0;
+							varcont->decimals_ = 0;
+							*rtype = -1;
+							return -1;
+						}
+					} else if(!(strcmp(name, "repeats") == 0 || strcmp(name, "uuid") == 0)) {
+						logprintf(LOG_ERR, "rule #%d invalid: protocol \"%s\" has no field \"%s\"", obj->nr, device, name);
+						varcont->string_ = NULL;
+						varcont->number_ = 0;
+						varcont->decimals_ = 0;
+						*rtype = -1;
+						return -1;
+					}
+				}
+				struct JsonNode *jmessage = NULL, *jnode = NULL;
+				if(obj->jtrigger != NULL) {
+					if(((jnode = json_find_member(obj->jtrigger, name)) != NULL) ||
+					   ((jmessage = json_find_member(obj->jtrigger, "message")) != NULL &&
+						 (jnode = json_find_member(jmessage, name)) != NULL)) {
+						if(jnode->tag == JSON_STRING) {
+							varcont->string_ = jnode->string_;
+							*rtype = JSON_STRING;
+							return 0;
+						} else if(jnode->tag == JSON_NUMBER) {
+							varcont->number_ = jnode->number_;
+							varcont->decimals_ = jnode->decimals_;
+							*rtype = JSON_NUMBER;
+							return 0;
 						}
 					}
-					if(recvtype == 2) {
-						struct options_t *opt = tmp_protocols->listener->options;
+				}
+				*rtype = -1;
+				return 1;				
+			} else if(recvtype == 1) {
+				if(validate == 1) {
+					if(origin == ORIGIN_RULE) {
+						event_cache_device(obj, device);
+					}
+					struct protocol_t *tmp = NULL;
+					i = 0;
+					while(devices_select_protocol(ORIGIN_MASTER, device, i++, &tmp) == 0) {
+						struct options_t *opt = tmp->options;
 						while(opt) {
 							if(opt->conftype == DEVICES_STATE && strcmp("state", name) == 0) {
 								match1 = 1;
@@ -334,81 +368,54 @@ int event_lookup_variable(char *var, struct rules_t *obj, int type, struct varco
 						return -1;
 					}
 				}
-				/*
-				 * FIXME
-				 */
 				char *setting = NULL;
 				struct varcont_t val;
-				int match = 0;
+				// int match = 0;
 				i = 0;
 
-				if(recvtype == 1) {
-					while(devices_select_settings(ORIGIN_MASTER, device, i++, &setting, &val) == 0) {
-						if(strcmp(setting, name) == 0) {
-							match = 1;
-							if(val.type_ == JSON_STRING) {
-								if(type == JSON_STRING || type == (JSON_NUMBER | JSON_STRING)) {
-									/* Cache values for faster future lookup */
-									// if(obj != NULL) {
-										// event_store_val_ptr(obj, device, name, tmp_settings);
-									// }
-									varcont->string_ = val.string_;
-									*rtype = JSON_STRING;
-									return 0;
-								} else {
-									logprintf(LOG_ERR, "rule #%d invalid: trying to compare integer variable \"%s.%s\" to a string", obj->nr, device, name);
-									varcont->string_ = NULL;
-									*rtype = -1;
-									return -1;
-								}
-							} else if(val.type_ == JSON_NUMBER) {
-								if(type == JSON_NUMBER || type == (JSON_NUMBER | JSON_STRING)) {
-									/* Cache values for faster future lookup */
-									// if(obj != NULL) {
-										// event_store_val_ptr(obj, device, name, tmp_settings);
-									// }
-									varcont->number_ = val.number_;
-									varcont->decimals_ = val.decimals_;
-									*rtype = JSON_NUMBER;
-									return 0;
-								} else {
-									logprintf(LOG_ERR, "rule #%d invalid: trying to compare string variable \"%s.%s\" to an integer", obj->nr, device, name);
-									varcont->number_ = 0;
-									varcont->decimals_ = 0;
-									*rtype = -1;
-									return -1;
-								}
-							}
-						}
-					}
-					if(match == 0) {
-						logprintf(LOG_ERR, "rule #%d invalid: device \"%s\" has no variable \"%s\"", obj->nr, device, name);
-						varcont->string_ = NULL;
-						varcont->number_ = 0;
-						varcont->decimals_ = 0;
-						*rtype = -1;
-						return -1;
-					}
-				}
-				if(recvtype == 2) {
-					struct JsonNode *jmessage = NULL, *jnode = NULL;
-					if(obj->jtrigger != NULL) {
-						if(((jnode = json_find_member(obj->jtrigger, name)) != NULL) ||
-							 ((jmessage = json_find_member(obj->jtrigger, "message")) != NULL &&
-							 (jnode = json_find_member(jmessage, name)) != NULL)) {
-							if(jnode->tag == JSON_STRING) {
-								varcont->string_ = jnode->string_;
+				while(devices_select_settings(ORIGIN_MASTER, device, i++, &setting, &val) == 0) {
+					if(strcmp(setting, name) == 0) {
+						if(val.type_ == JSON_STRING) {
+							if(type == JSON_STRING || type == (JSON_NUMBER | JSON_STRING)) {
+								/* Cache values for faster future lookup */
+								// if(obj != NULL) {
+									// event_store_val_ptr(obj, device, name, tmp_settings);
+								// }
+								varcont->string_ = val.string_;
 								*rtype = JSON_STRING;
 								return 0;
-							} else if(jnode->tag == JSON_NUMBER) {
-								varcont->number_ = jnode->number_;
-								varcont->decimals_ = jnode->decimals_;
+							} else {
+								logprintf(LOG_ERR, "rule #%d invalid: trying to compare integer variable \"%s.%s\" to a string", obj->nr, device, name);
+								varcont->string_ = NULL;
+								*rtype = -1;
+								return -1;
+							}
+						} else if(val.type_ == JSON_NUMBER) {
+							if(type == JSON_NUMBER || type == (JSON_NUMBER | JSON_STRING)) {
+								/* Cache values for faster future lookup */
+								// if(obj != NULL) {
+									// event_store_val_ptr(obj, device, name, tmp_settings);
+								// }
+								varcont->number_ = val.number_;
+								varcont->decimals_ = val.decimals_;
 								*rtype = JSON_NUMBER;
 								return 0;
+							} else {
+								logprintf(LOG_ERR, "rule #%d invalid: trying to compare string variable \"%s.%s\" to an integer", obj->nr, device, name);
+								varcont->number_ = 0;
+								varcont->decimals_ = 0;
+								*rtype = -1;
+								return -1;
 							}
 						}
 					}
 				}
+				logprintf(LOG_ERR, "rule #%d invalid: device \"%s\" has no variable \"%s\"", obj->nr, device, name);
+				varcont->string_ = NULL;
+				varcont->number_ = 0;
+				varcont->decimals_ = 0;
+				*rtype = -1;
+				return -1;
 			} /*else {
 				logprintf(LOG_ERR, "rule #%d invalid: device \"%s\" does not exist in the config", obj->nr, device);
 				varcont->string_ = NULL;
@@ -428,7 +435,7 @@ int event_lookup_variable(char *var, struct rules_t *obj, int type, struct varco
 	if(type == JSON_STRING) {
 		if(isNumeric(var) == 0) {
 			varcont->string_ = NULL;
-			logprintf(LOG_ERR, "a rule #%d invalid: trying to compare integer variable \"%s\" to a string", obj->nr, var);
+			logprintf(LOG_ERR, "rule #%d invalid: trying to compare integer variable \"%s\" to a string", obj->nr, var);
 			*rtype = -1;
 			return -1;
 		} else {
@@ -441,7 +448,7 @@ int event_lookup_variable(char *var, struct rules_t *obj, int type, struct varco
 			varcont->decimals_ = nrDecimals(var);
 			*rtype = JSON_NUMBER;
 		} else {
-			logprintf(LOG_ERR, "b rule #%d invalid: trying to compare string variable \"%s\" to an integer", obj->nr, var);
+			logprintf(LOG_ERR, "rule #%d invalid: trying to compare string variable \"%s\" to an integer", obj->nr, var);
 			varcont->number_ = 0;
 			varcont->decimals_ = 0;
 			*rtype = -1;
@@ -451,7 +458,7 @@ int event_lookup_variable(char *var, struct rules_t *obj, int type, struct varco
 		*rtype = -1;
 		return 1;
 	}
-	return 0;
+	return 0;				
 }
 
 static int event_parse_hooks(char **rule, struct rules_t *obj, int depth, unsigned short validate) {
