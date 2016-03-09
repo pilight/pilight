@@ -111,8 +111,8 @@ static double calculate(int year, int month, int day, double lon, double lat, in
 	return ((round(hour)+min)+tz)*100;
 }
 
-static unsigned int min(unsigned int a, unsigned int b, unsigned int c) {
-	unsigned int m = a;
+static unsigned long min(unsigned long a, unsigned long b, unsigned long c) {
+	unsigned long m = a;
 	if(m > b) {
 		m = b;
 	}
@@ -187,10 +187,26 @@ static void *thread(void *param) {
 		midnight.tm_hour = 23;
 		midnight.tm_min = 59;
 		midnight.tm_sec = 59;
+		
+		unsigned long tset = mktime(&set);
+		unsigned long trise = mktime(&rise);
+		unsigned long tmidnight = mktime(&midnight);
+		unsigned long tnow = mktime(&tm);
 
-		int time2set = mktime(&set)-mktime(&tm);
-		int time2rise = mktime(&rise)-mktime(&tm);
-		int time2midnight = (mktime(&midnight)-mktime(&tm))+1;
+		/* To make sure we are always calculating ahead */
+		if(tset < tnow) {
+			tset += 86400;
+		}
+		if(trise < tnow) {
+			trise += 86400;
+		}
+		if(tmidnight < tnow) {
+			tmidnight += 86400;
+		}		
+		
+		unsigned long time2set = tset-tnow;
+		unsigned long time2rise = trise-tnow;
+		unsigned long time2midnight = (tmidnight+1)-tnow;
 
 		char *sun = NULL;
 		hournow = (hour*100)+minute;
