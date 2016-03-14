@@ -67,6 +67,7 @@ typedef struct hardware_t {
 		int (*sendOOK)(int *code, int rawlen, int repeats);
 		int (*sendAPI)(struct JsonNode *code);
 	};
+	void (*reportCode)(int* code, int rawlen, unsigned long duration, struct timespec* endts);
 	int (*gc)(void);
 	unsigned short (*settings)(JsonNode *json);
 	struct hardware_t *next;

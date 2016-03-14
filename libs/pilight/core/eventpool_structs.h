@@ -10,7 +10,7 @@
 #define _EVENTPOOL_STRUCTS_H_
 
 #include "defines.h"
-#include "eventpool_structs.h"
+#include "../hardware/hardware.h"
 
 typedef struct reason_ssdp_received_t {
 	char name[17];
@@ -22,6 +22,8 @@ typedef struct reason_ssdp_received_t {
 typedef struct reason_received_pulsetrain_t {
 	int length;
 	int pulses[MAXPULSESTREAMLENGTH+1];
+	unsigned long duration;
+	struct timespec endts;
 	char *hardware;
 } reason_received_pulsetrain_t;
 

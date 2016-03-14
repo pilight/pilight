@@ -255,7 +255,7 @@ static void receive_parse_api(struct JsonNode *code, int hwtype) {
 	}
 }
 
-void receive_parse_code(int *raw, int rawlen, int plslen, int hwtype) {
+void receive_parse_code(int *raw, int rawlen, int plslen, unsigned long duration, struct timespec *endts, struct hardware_t *hw) {
 	struct protocol_t *protocol = NULL;
 	struct protocols_t *pnode = protocols;
 	struct timeval tv;
@@ -264,7 +264,7 @@ void receive_parse_code(int *raw, int rawlen, int plslen, int hwtype) {
 	while(pnode != NULL && main_loop == 1) {
 		protocol = pnode->listener;
 
-		if((protocol->hwtype == hwtype || protocol->hwtype == -1 || hwtype == -1) &&
+		if((hw == NULL || protocol->hwtype == hw->hwtype || protocol->hwtype == -1) &&
 			 (protocol->parseCode != NULL && protocol->validate != NULL)) {
 
 			if(rawlen < MAXPULSESTREAMLENGTH) {
@@ -273,6 +273,10 @@ void receive_parse_code(int *raw, int rawlen, int plslen, int hwtype) {
 			protocol->rawlen = rawlen;
 
 			if(protocol->validate() == 0) {
+				if(hw->reportCode != NULL) {
+					hw->reportCode(raw, rawlen, duration, endts);
+				}
+
 				logprintf(LOG_DEBUG, "possible %s protocol", protocol->id);
 				gettimeofday(&tv, NULL);
 				if(protocol->first > 0) {
@@ -315,7 +319,7 @@ void *receivePulseTrain(void *param) {
 		if(hardware_select_struct(ORIGIN_MASTER, data->hardware, &hw) == 0) {
 			plslen = data->pulses[data->length-1]/PULSE_DIV;
 			if(data->length > 0) {
-				receive_parse_code(data->pulses, data->length, plslen, hw->hwtype);
+				receive_parse_code(data->pulses, data->length, plslen, data->duration, &data->endts, hw);
 			}
 		}
 	}
@@ -411,7 +415,7 @@ void *send_code(void *param) {
 			}
 			if(strcmp(data->protocol, "raw") == 0) {
 				int plslen = data->pulses[data->rawlen-1]/PULSE_DIV;
-				receive_parse_code(data->pulses, data->rawlen, plslen, -1);
+				receive_parse_code(data->pulses, data->rawlen, plslen, 0, NULL, NULL);
 			}
 		} else if(hw->comtype == COMAPI && hw->sendAPI != NULL) {
 			/*
@@ -427,7 +431,7 @@ void *send_code(void *param) {
 		}
 	} else if(strcmp(data->protocol, "raw") == 0) {
 		int plslen = data->pulses[data->rawlen-1]/PULSE_DIV;
-		receive_parse_code(data->pulses, data->rawlen, plslen, -1);
+		receive_parse_code(data->pulses, data->rawlen, plslen, 0, NULL, NULL);
 	}
 	eventpool_trigger(REASON_SEND_END, NULL, NULL);
 
