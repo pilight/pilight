@@ -32,11 +32,12 @@
 
 #define PULSE_MULTIPLIER	13
 #define MIN_PULSE_LENGTH	220
-#define MAX_PULSE_LENGTH	250
-#define AVG_PULSE_LENGTH	235
-#define RAW_LENGTH			86
-#define MIN_RAW_LENGTH		86
-#define MAX_RAW_LENGTH		88
+#define MAX_PULSE_LENGTH	265
+#define AVG_PULSE_LENGTH	250
+#define RAW_LENGTH			88
+#define MIN_RAW_LENGTH		76	// SOENS
+#define MED_RAW_LENGTH		86	// TFA
+#define MAX_RAW_LENGTH		88	// DOSTMAN 32.3200
 
 typedef struct settings_t {
 	double id;
@@ -49,7 +50,7 @@ typedef struct settings_t {
 static struct settings_t *settings = NULL;
 
 static int validate(void) {
-	if(tfa->rawlen == MIN_RAW_LENGTH || tfa->rawlen == MAX_RAW_LENGTH) {
+	if(tfa->rawlen == MIN_RAW_LENGTH || tfa->rawlen == MED_RAW_LENGTH || tfa->rawlen == MAX_RAW_LENGTH) {
 		if(tfa->raw[tfa->rawlen-1] >= (MIN_PULSE_LENGTH*PULSE_DIV) &&
 		   tfa->raw[tfa->rawlen-1] <= (MAX_PULSE_LENGTH*PULSE_DIV)) {
 			return 0;
@@ -68,8 +69,17 @@ static void parseCode(void) {
 	double humi_offset = 0.0, temp_offset = 0.0;
 	double temperature = 0.0, humidity = 0.0;
 
+	if (tfa->rawlen == MIN_RAW_LENGTH) {
+		xLoop = 1;  // SOENS has 8 static pulses - binary: 1001
+	}
+
 	if (tfa->rawlen == MAX_RAW_LENGTH) {
-		xLoop = 3;	// Skip the two Header Pulses
+		xLoop = 3;  // Skip the two Header Pulses of DOSTMAN 32.3200
+	}
+
+	if(tfa->rawlen>RAW_LENGTH) {
+		logprintf(LOG_ERR, "tfa: parsecode - invalid parameter passed %d", tfa->rawlen);
+		return;
 	}
 
 	for(x=xLoop;x<tfa->rawlen-2;x+=2) {
@@ -80,36 +90,64 @@ static void parseCode(void) {
 		}
 	}
 
-	for(i=0;i<34;i++) {
-		if(binary[i] != (crc&1)) {
-			crc = (crc>>1) ^ 12;
-		} else {
-			crc = (crc>>1);
+	if(tfa->rawlen == MED_RAW_LENGTH || tfa->rawlen == MAX_RAW_LENGTH) {
+		for(i=0;i<34;i++) {
+			if(binary[i] != (crc&1)) {
+				crc = (crc>>1) ^ 12;
+			} else {
+				crc = (crc>>1);
+			}
 		}
-	}
-	crc ^= binToDec(binary, 34, 37);
-	if (crc != binToDec(binary, 38, 41)) {
-		return; // incorrect checksum
-	}
+		crc ^= binToDec(binary, 34, 37);
+		if (crc != binToDec(binary, 38, 41)) {
+			return; // incorrect checksum
+		}
 
-	id = binToDecRev(binary, 2, 9);
-	channel = binToDecRev(binary, 12, 13) + 1;
+		id = binToDecRev(binary, 2, 9);
+		channel = binToDecRev(binary, 12, 13) + 1;
 
-	temp1 = binToDecRev(binary, 14, 17);
-	temp2 = binToDecRev(binary, 18, 21);
-	temp3 = binToDecRev(binary, 22, 25);
+		temp1 = binToDecRev(binary, 14, 17);
+		temp2 = binToDecRev(binary, 18, 21);
+		temp3 = binToDecRev(binary, 22, 25);
 
-	// Convert from °F to °C,  a zero value is equivalent to -90.00 °F with an exp of 10, we enlarge that to 2 digit
-	temperature = (double)(((((temp1 + temp2*16 + temp3*256) * 10) - 9000 - 3200) * 5) / 9);
+		// Convert from °F to °C,  a zero value is equivalent to -90.00 °F with an exp of 10, we enlarge that to 2 digit
+		temperature = (double)(((((temp1 + temp2*16 + temp3*256) * 10) - 9000 - 3200) * 5) / 9);
 
-	humi1 = binToDecRev(binary, 26, 29);
-	humi2 = binToDecRev(binary, 30, 33);
-	humidity = (double)(humi1 + humi2*16);
+		humi1 = binToDecRev(binary, 26, 29);
+		humi2 = binToDecRev(binary, 30, 33);
+		humidity = (double)(humi1 + humi2*16);
 
-	if(binToDecRev(binary, 35, 35) == 1) {
-		battery = 0;
+		if(binToDecRev(binary, 35, 35) == 1) {
+			battery = 0;
+		} else {
+			battery = 1;
+		}
+
 	} else {
-		battery = 1;
+
+	// must be MIN_RAW_LENGTH, we can omit it here, as validate has checked that condition already
+	// SOENS has binary 1001 in the first 4 bits, if not we discard further processing of the protocol
+		id = binToDecRev(binary, 0, 3);
+		if(id == 9) {
+
+			id = binToDecRev(binary, 4, 11);		// 12 - 0, 13 - Tx Button
+			channel = binToDecRev(binary, 14, 15) + 1;
+
+			temp1 = binToDecRev (binary, 17, 27);
+			if(binary[16] == 1) temp1=temp1-2048;
+			temperature = (double)(temp1*10);
+
+			humi1 = binToDecRev(binary, 28, 35);
+			humidity = (double)humi1;
+
+			if(binToDecRev(binary, 36, 36) == 1) {
+				battery = 0;
+			} else {
+				battery = 1;
+			}
+		} else {
+			return;
+		}
 	}
 
 	struct settings_t *tmp = settings;
@@ -207,6 +245,7 @@ void tfaInit(void) {
 	protocol_set_id(tfa, "tfa");
 	protocol_device_add(tfa, "tfa", "TFA weather stations");
 	protocol_device_add(tfa, "conrad_weather", "Conrad Weather Stations");
+	protocol_device_add(tfa, "soens", "SOENS Weather Stations");
 	tfa->devtype = WEATHER;
 	tfa->hwtype = RF433;
 	tfa->maxgaplen = MAX_PULSE_LENGTH*PULSE_DIV;
@@ -238,7 +277,7 @@ void tfaInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "tfa";
-	module->version = "1.1";
+	module->version = "1.2";
 	module->reqversion = "7.0";
 	module->reqcommit = "84";
 }
