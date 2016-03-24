@@ -81,7 +81,7 @@ static int pending_command = 0;
 static unsigned short driver_status = -1;
 static char com[255];
 static int threads = 0;
-static int init = 0;
+static int isinit = 0;
 
 #ifdef _WIN32
 static unsigned short nrports = 16;
@@ -275,6 +275,7 @@ void OnNotification(OpenZWave::Notification const *_notification, void *_context
 		break;
 		case OpenZWave::Notification::Type_DriverReady:
 			gHomeId = _notification->GetHomeId();
+			logprintf(LOG_INFO, "[Z-Wave] homeID is %lu", gHomeId);
 			if(pilight.debuglevel == 1) {
 				printf("z-wave driver ready\n");
 			}
@@ -421,11 +422,12 @@ static unsigned short zwaveHwInit(void) {
 	OpenZWave::Options::Get()->AddOptionBool("IntervalBetweenPolls", true);
 	OpenZWave::Options::Get()->AddOptionBool("AppendLogFile", true);
 	OpenZWave::Options::Get()->AddOptionBool("ConsoleOutput", true);
+	OpenZWave::Options::Get()->AddOptionBool("NotifyTransactions", true);
 	OpenZWave::Options::Get()->Lock();
 	OpenZWave::Manager::Create();
 	OpenZWave::Manager::Get()->AddWatcher(OnNotification, NULL);
 	OpenZWave::Manager::Get()->AddDriver(com);
-	init = 1;
+	isinit = 1;
 
 	pthread_cond_wait(&init_signal, &init_lock);
 
@@ -441,7 +443,7 @@ static unsigned short zwaveHwDeinit(void) {
 	pthread_cond_signal(&init_signal);
 
 	logprintf(LOG_NOTICE, "[Z-Wave]: closing and freeing z-wave modules, please wait...");
-	if(init == 1) {
+	if(isinit == 1) {
 		OpenZWave::Manager::Get()->RemoveWatcher(OnNotification, NULL);
 		sleep(1);	
 		OpenZWave::Manager::Get()->RemoveDriver(com);
@@ -595,12 +597,14 @@ static void OnDeviceStatusUpdate(OpenZWave::Driver::ControllerState cs, OpenZWav
 
 void zwaveStartInclusion(void) {
 	if(pending_command == 0) {
+		// OpenZWave::Manager::Get()->AddNode(gHomeId);
 		OpenZWave::Manager::Get()->BeginControllerCommand(gHomeId, OpenZWave::Driver::ControllerCommand_AddDevice, OnDeviceStatusUpdate, NULL, true);
 	}
 }
 
 void zwaveStartExclusion(void) {
 	if(pending_command == 0) {
+		// OpenZWave::Manager::Get()->RemoveNode(gHomeId);
 		OpenZWave::Manager::Get()->BeginControllerCommand(gHomeId, OpenZWave::Driver::ControllerCommand_RemoveDevice, OnDeviceStatusUpdate, NULL, true);
 	}
 }
@@ -613,6 +617,10 @@ void zwaveStopCommand(void) {
 
 void zwaveSoftReset(void) {
 	OpenZWave::Manager::Get()->SoftReset(gHomeId);
+}
+
+void zwaveHardReset(void) {
+	// OpenZWave::Manager::Get()->ResetController(gHomeId);
 }
 
 void zwaveGetConfigParam(int nodeId, int paramId) {
