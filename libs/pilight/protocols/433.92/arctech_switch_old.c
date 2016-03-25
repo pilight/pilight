@@ -61,6 +61,11 @@ static void parseCode(void) {
 	int binary[RAW_LENGTH/4], x = 0, i = 0;
 	int len = (int)((double)AVG_PULSE_LENGTH*((double)PULSE_MULTIPLIER/2));
 
+	if(arctech_switch_old->rawlen>RAW_LENGTH) {
+		logprintf(LOG_ERR, "arctech_switch_old: parsecode - invalid parameter passed %d", arctech_switch_old->rawlen);
+		return;
+	}
+
 	for(x=0;x<arctech_switch_old->rawlen-3;x+=4) {
 		// valid telegrams must consist of 0110 and 1001 blocks
 		int low_high = 0;
@@ -240,7 +245,7 @@ void arctechSwitchOldInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "arctech_switch_old";
-	module->version = "2.4";
+	module->version = "2.5";
 	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }

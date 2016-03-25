@@ -123,6 +123,7 @@ static int parseSystemcode(int *binary) {
 
 static void pulseToBinary(int *binary) {
 	int x = 0;
+
 	for(x=0; x<quigg_gt9000->rawlen-1; x+=2) {
 		if(quigg_gt9000->raw[x+1] > AVG_PULSE_LENGTH) {
 			binary[x/2] = 0;
@@ -134,6 +135,11 @@ static void pulseToBinary(int *binary) {
 
 static void parseCode(void) {
 	int binary[RAW_LENGTH/2], state = -1;
+
+	if(quigg_gt9000->rawlen>RAW_LENGTH) {
+		logprintf(LOG_ERR, "quigg_gt9000: parsecode - invalid parameter passed %d", quigg_gt9000->rawlen);
+		return;
+	}
 
 	pulseToBinary(binary);
 
@@ -326,7 +332,7 @@ static int createCode(JsonNode *code) {
 				statecode = on1[1];
 		}
 		int encrypteddata = allcodes[statecode];
-		
+
 		clearCode();
 		createEncryptedData(encrypteddata);
 		createUnit(unit);
@@ -383,7 +389,7 @@ void quiggGT9000Init(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "quigg_gt9000";
-	module->version = "1.0";
+	module->version = "1.1";
 	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }

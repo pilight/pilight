@@ -66,6 +66,11 @@ static void createMessage(int id, int unit, int state, int all) {
 static void parseCode(void) {
 	int binary[RAW_LENGTH/4], x = 0, i = 0;
 
+	if(arctech_dusk->rawlen>RAW_LENGTH) {
+		logprintf(LOG_ERR, "arctech_dusk: parsecode - invalid parameter passed %d", arctech_dusk->rawlen);
+		return;
+	}
+
 	for(x=0;x<arctech_dusk->rawlen;x+=4) {
 		if(arctech_dusk->raw[x+3] > AVG_PULSE_LENGTH*PULSE_MULTIPLIER) {
 			binary[i++] = 1;
@@ -109,7 +114,7 @@ void arctechDuskInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "arctech_dusk";
-	module->version = "2.1";
+	module->version = "2.2";
 	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }

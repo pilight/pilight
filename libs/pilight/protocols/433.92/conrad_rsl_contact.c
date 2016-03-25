@@ -59,6 +59,11 @@ static void createMessage(int id, int state) {
 static void parseCode(void) {
 	int x = 0, binary[RAW_LENGTH/2];
 
+	if(conrad_rsl_contact->rawlen>RAW_LENGTH) {
+		logprintf(LOG_ERR, "conrad_rsl_contact: parsecode - invalid parameter passed %d", conrad_rsl_contact->rawlen);
+		return;
+	}
+
 	/* Convert the one's and zero's into binary */
 	for(x=0; x<conrad_rsl_contact->rawlen; x+=2) {
 		if(conrad_rsl_contact->raw[x+1] > (int)((double)AVG_PULSE_LENGTH*((double)PULSE_MULTIPLIER/2))) {
@@ -104,7 +109,7 @@ void conradRSLContactInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "conrad_rsl_contact";
-	module->version = "2.2";
+	module->version = "2.3";
 	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }

@@ -60,6 +60,11 @@ static void createMessage(int id, int state) {
 static void parseCode(void) {
 	int binary[RAW_LENGTH/4], x = 0, i = 0;
 
+	if(selectremote->rawlen>RAW_LENGTH) {
+		logprintf(LOG_ERR, "selectremote: parsecode - invalid parameter passed %d", selectremote->rawlen);
+		return;
+	}
+
 	for(x=0;x<selectremote->rawlen-2;x+=4) {
 		if(selectremote->raw[x] > (int)((double)AVG_PULSE_LENGTH*((double)PULSE_MULTIPLIER/2))) {
 			binary[i++] = 1;
@@ -192,7 +197,7 @@ void selectremoteInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "selectremote";
-	module->version = "2.3";
+	module->version = "2.4";
 	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }

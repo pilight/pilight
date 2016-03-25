@@ -66,6 +66,11 @@ static void createMessage(int id, int unit, int state, int all) {
 static void parseCode(void) {
 	int binary[RAW_LENGTH/4], x = 0, i = 0;
 
+	if(arctech_motion->rawlen>RAW_LENGTH) {
+		logprintf(LOG_ERR, "arctech_motion: parsecode - invalid parameter passed %d", arctech_motion->rawlen);
+		return;
+	}
+
 	for(x=0;x<arctech_motion->rawlen;x+=4) {
 		if(arctech_motion->raw[x+3] > AVG_PULSE_LENGTH*PULSE_MULTIPLIER) {
 			binary[i++] = 1;
@@ -109,7 +114,7 @@ void arctechMotionInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "arctech_motion";
-	module->version = "2.1";
+	module->version = "2.2";
 	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }

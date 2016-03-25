@@ -61,6 +61,11 @@ static void createMessage(int systemcode, int unitcode, int state) {
 static void parseCode(void) {
 	int x = 0, i = 0, binary[RAW_LENGTH/4];
 
+	if(elro_400_switch->rawlen>RAW_LENGTH) {
+		logprintf(LOG_ERR, "elro_400_switch: parsecode - invalid parameter passed %d", elro_400_switch->rawlen);
+		return;
+	}
+
 	for(x=0;x<elro_400_switch->rawlen-2;x+=4) {
 		if(elro_400_switch->raw[x+3] > (int)((double)AVG_PULSE_LENGTH*((double)PULSE_MULTIPLIER/2))) {
 			binary[i++] = 0;
@@ -217,7 +222,7 @@ void elro400SwitchInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "elro_400_switch";
-	module->version = "2.3";
+	module->version = "2.4";
 	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }

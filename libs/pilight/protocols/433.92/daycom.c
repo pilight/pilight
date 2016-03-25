@@ -63,6 +63,11 @@ static void parseCode(void) {
 	int binary[RAW_LENGTH/2], x = 0, i = 0;
 	int id = -1, state = -1, unit = -1, systemcode = -1;
 
+	if(daycom->rawlen>RAW_LENGTH) {
+		logprintf(LOG_ERR, "daycom: parsecode - invalid parameter passed %d", daycom->rawlen);
+		return;
+	}
+
 	for(x=0;x<daycom->rawlen;x+=2) {
 		if(daycom->raw[x] > AVG_PULSE_LENGTH*(PULSE_MULTIPLIER/2)) {
 			binary[i++] = 1;
@@ -235,7 +240,7 @@ void daycomInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "daycom";
-	module->version = "1.0";
+	module->version = "1.1";
 	module->reqversion = "6.0";
 	module->reqcommit = "187";
 }
