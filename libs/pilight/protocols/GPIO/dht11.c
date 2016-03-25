@@ -39,7 +39,7 @@
 #define MAXTIMINGS 100
 
 #if !defined(__FreeBSD__) && !defined(_WIN32)
-#include "../../../wiringx/wiringX.h"
+#include "../../../wiringx//wiringX.h"
 
 typedef struct data_t {
 	char *name;
@@ -85,14 +85,14 @@ static void *thread(void *param) {
 	int x = 0, dht11_dat[5] = {0,0,0,0,0};
 
 	// pull pin down for 18 milliseconds
-	pinMode(settings->id, OUTPUT);
+	pinMode(settings->id, PINMODE_OUTPUT);
 	digitalWrite(settings->id, HIGH);
 	usleep(500000);  // 500 ms
 	// then pull it up for 40 microseconds
 	digitalWrite(settings->id, LOW);
 	usleep(20000);
 	// prepare to read the pin
-	pinMode(settings->id, INPUT);
+	pinMode(settings->id, PINMODE_INPUT);
 
 	// detect change and read data
 	for(i=0;(i<MAXTIMINGS); i++) {
@@ -253,16 +253,22 @@ static int checkValues(struct JsonNode *code) {
 	if((jid = json_find_member(code, "id")) != NULL) {
 		if((jchild = json_find_element(jid, 0)) != NULL) {
 			if(json_find_number(jchild, "gpio", &itmp) == 0) {
-				if(wiringXSupported() == 0) {
-					int gpio = (int)itmp;
-					if(wiringXSetup() < 0) {
-						logprintf(LOG_ERR, "unable to setup wiringX") ;
-						return -1;
-					} else if(wiringXValidGPIO(gpio) != 0) {
-						logprintf(LOG_ERR, "relay: invalid gpio range");
-						return -1;
-					}
+#if defined(__arm__) || defined(__mips__)					
+				int gpio = (int)itmp;
+				char *platform = GPIO_PLATFORM;
+
+				if(settings_select_string(ORIGIN_MASTER, "gpio-platform", &platform) != 0 || strcmp(platform, "none") == 0) {
+					logprintf(LOG_ERR, "dht22: no gpio-platform configured");
+					return -1;
 				}
+				if(wiringXSetup(platform, logprintf) < 0) {
+					logprintf(LOG_ERR, "unable to setup wiringX") ;
+					return -1;
+				} else if(wiringXValidGPIO(gpio) != 0) {
+					logprintf(LOG_ERR, "relay: invalid gpio range");
+					return -1;
+				}
+#endif
 			}
 		}
 	}

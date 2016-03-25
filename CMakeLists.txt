@@ -14,7 +14,7 @@ set(CMAKE_SKIP_RULE_DEPENDENCY TRUE)
 set(CPACK_DEB_COMPONENT_INSTALL TRUE)
 
 if(${ZWAVE} MATCHES "ON")
-	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unknown-warning-option -Wno-psabi")
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unknown-warning-option -Wno-psabi -Wunknown-pragmas")
 endif()
 
 if(CMAKE_BUILD_TOOL MATCHES "(msdev|devenv|nmake)")

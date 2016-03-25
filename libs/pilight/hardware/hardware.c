@@ -34,10 +34,6 @@
 #include "../core/dso.h"
 #include "hardware.h"
 
-#ifndef _WIN32
-	#include "../../wiringx/wiringX.h"
-#endif
-
 struct hardware_t *hardware = NULL;
 
 #include "hardware_header.h"

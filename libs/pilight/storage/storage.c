@@ -39,6 +39,7 @@
 #include "../events/events.h"
 #include "../events/action.h"
 #include "../../wiringx/wiringX.h"
+#include "../../wiringx/platform/platform.h"
 #include "storage.h"
 
 #include "json.h"
@@ -1412,22 +1413,46 @@ int settings_validate_settings(struct JsonNode *jsettings, int i) {
 		|| strcmp(jsettings->key, "firmware-gpio-sck") == 0
 		|| strcmp(jsettings->key, "firmware-gpio-mosi") == 0
 		|| strcmp(jsettings->key, "firmware-gpio-miso") == 0) {
-		if(wiringXSupported() == 0) {
-			if(wiringXSetup() != 0) {
-				return -1;
-			}
-		}
+#if !defined(__arm__) || !defined(__mips__)				
+		return -1;
+#endif
 		if(jsettings->tag != JSON_NUMBER) {
 			if(i > 0) {
 				logprintf(LOG_ERR, "config setting #%d \"%s\" must contain a number larger than 0", i, jsettings->key);
 			}
 			return -1;
-		} else if((wiringXSupported() == 0 && wiringXValidGPIO((int)jsettings->number_) != 0) || wiringXSupported() != 0) {
+		} else if(wiringXValidGPIO((int)jsettings->number_) != 0) {
 			if(i > 0) {
 				logprintf(LOG_ERR, "config setting #%d \"%s\" must contain a valid GPIO number", i, jsettings->key);
 			}
 			return -1;
 		}
+	} else if(strcmp(jsettings->key, "gpio-platform") == 0) {
+		if(jsettings->tag != JSON_STRING) {
+			if(i > 0) {
+				logprintf(LOG_ERR, "config setting #%d \"%s\" must contain a supported gpio platform", i, jsettings->key);
+			}
+			return -1;
+		} else if(jsettings->string_ == NULL) {
+			if(i > 0) {
+				logprintf(LOG_ERR, "config setting #%d \"%s\" must contain a supported gpio platform", i, jsettings->key);
+			}
+			return -1;
+		} else {
+			if(strcmp(jsettings->key, "none") != 0) { 				
+				int z = 0, x = 0;
+				struct platform_t *tmp = NULL;
+				while((tmp = platform_iterate(z++)) != NULL) {
+					if(strcmp(tmp->name, jsettings->key) == 0) {
+						x = 1;
+						break;
+					}
+				}
+				if(x == 0 && i > 0) {
+					logprintf(LOG_ERR, "config setting #%d \"%s\" must contain a supported gpio platform", i, jsettings->key);
+				}
+			}
+		}		
 	} else if(strcmp(jsettings->key, "standalone") == 0 ||
 						strcmp(jsettings->key, "watchdog-enable") == 0 ||
 						strcmp(jsettings->key, "stats-enable") == 0) {

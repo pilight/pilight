@@ -21,15 +21,9 @@
 #include "../protocol.h"
 #include "relay.h"
 
-#include "../../../wiringx/wiringX.h"
+#include "../../../wiringx//wiringX.h"
 
 static char default_state[] = "off";
-
-static void *reason_code_received_free(void *param) {
-	struct reason_code_received_t *data = param;
-	FREE(data);
-	return NULL;
-}
 
 static void createMessage(char *message, int gpio, int state) {
 	int x = snprintf(message, 255, "{\"gpio\":%d,", gpio);
@@ -65,46 +59,54 @@ static int createCode(struct JsonNode *code, char *message) {
 		state=1;
 	}
 
-	if(gpio == -1 || state == -1) {
+	char *platform = NULL;
+	settings_select_string(ORIGIN_MASTER, "gpio-platform", &platform);
+	if(strcmp(platform, "none") == 0) {
+		logprintf(LOG_ERR, "relay: no gpio-platform configured");
+		have_error = 1;
+		goto clear;
+	} else if(gpio == -1 || state == -1) {
 		logprintf(LOG_ERR, "relay: insufficient number of arguments");
 		have_error = 1;
 		goto clear;
-	} else if(wiringXSupported() == 0) {
-		if(wiringXSetup() < 0) {
-			logprintf(LOG_ERR, "unable to setup wiringX") ;
-			return EXIT_FAILURE;
+#if defined(__arm__) || defined(__mips__)
+	} else if(wiringXSetup(platform, logprintf) < 0) {
+		logprintf(LOG_ERR, "unable to setup wiringX") ;
+		return EXIT_FAILURE;
+	} else {
+		if(wiringXValidGPIO(gpio) != 0) {
+			logprintf(LOG_ERR, "relay: invalid gpio range");
+			have_error = 1;
+			goto clear;
 		} else {
-			if(wiringXValidGPIO(gpio) != 0) {
-				logprintf(LOG_ERR, "relay: invalid gpio range");
-				have_error = 1;
-				goto clear;
-			} else {
-				if(pilight.process == PROCESS_DAEMON) {
-					pinMode(gpio, OUTPUT);
-					if(strcmp(def, "off") == 0) {
-						if(state == 1) {
-							digitalWrite(gpio, LOW);
-						} else if(state == 0) {
-							digitalWrite(gpio, HIGH);
-						}
-					} else {
-						if(state == 0) {
-							digitalWrite(gpio, LOW);
-						} else if(state == 1) {
-							digitalWrite(gpio, HIGH);
-						}
+			if(pilight.process == PROCESS_DAEMON) {
+				pinMode(gpio, PINMODE_OUTPUT);
+				if(strcmp(def, "off") == 0) {
+					if(state == 1) {
+						digitalWrite(gpio, LOW);
+					} else if(state == 0) {
+						digitalWrite(gpio, HIGH);
 					}
 				} else {
-					wiringXGC();
+					if(state == 0) {
+						digitalWrite(gpio, LOW);
+					} else if(state == 1) {
+						digitalWrite(gpio, HIGH);
+					}
 				}
-				createMessage(message, gpio, state);
-				goto clear;
+			} else {
+				wiringXGC();
 			}
+			createMessage(message, gpio, state);
+			goto clear;
 		}
+	}
+#else
 	} else {
 		createMessage(message, gpio, state);
 		goto clear;
 	}
+#endif
 
 clear:
 	if(free_def == 1) {
@@ -148,39 +150,21 @@ static int checkValues(struct JsonNode *code) {
 	if((jid = json_find_member(code, "id")) != NULL) {
 		if((jchild = json_find_element(jid, 0)) != NULL) {
 			if(json_find_number(jchild, "gpio", &itmp) == 0) {
-				if(wiringXSupported() == 0) {
-					int gpio = (int)itmp;
-					int state = -1;
-					if(wiringXSetup() < 0) {
-						logprintf(LOG_ERR, "unable to setup wiringX") ;
-						return -1;
-					} else if(wiringXValidGPIO(gpio) != 0) {
-						logprintf(LOG_ERR, "relay: invalid gpio range");
-						return -1;
-					} else {
-						pinMode(gpio, INPUT);
-						state = digitalRead(gpio);
-						if(strcmp(def, "on") == 0) {
-							state ^= 1;
-						}
-
-						struct reason_code_received_t *data = MALLOC(sizeof(struct reason_code_received_t));
-						if(data == NULL) {
-							OUT_OF_MEMORY
-						}
-						snprintf(data->message, 1024, "{\"gpio\":%d,\"state\":\"%s\"}", gpio, ((state == 1) ? "on" : "off"));
-						strncpy(data->origin, "receiver", 256);
-						data->protocol = relay->id;
-						if(strlen(pilight_uuid) > 0) {
-							data->uuid = pilight_uuid;
-						} else {
-							data->uuid = NULL;
-						}
-						data->repeat = 1;
-						eventpool_trigger(REASON_CODE_RECEIVED, reason_code_received_free, data);
-					}
+#if defined(__arm__) || defined(__mips__)					
+				int gpio = (int)itmp;
+				char *platform = GPIO_PLATFORM;
+				if(settings_select_string(ORIGIN_MASTER, "gpio-platform", &platform) != 0 || strcmp(platform, "none") == 0) {
+					logprintf(LOG_ERR, "relay: no gpio-platform configured");
+					return -1;
+				} else if(wiringXSetup(platform, logprintf) < 0) {
+					logprintf(LOG_ERR, "unable to setup wiringX") ;
+					return -1;
+				} else if(wiringXValidGPIO(gpio) != 0) {
+					logprintf(LOG_ERR, "relay: invalid gpio range");
+					return -1;
 				}
 			}
+#endif
 		}
 	}
 

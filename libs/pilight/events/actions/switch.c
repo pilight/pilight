@@ -302,8 +302,6 @@ static void *execute(void *param) {
 						tv.tv_usec = 0;
 					break;
 				}
-				logprintf(LOG_DEBUG, "INIT %lu %lu", tv.tv_sec, tv.tv_usec);
-
 				threadpool_add_scheduled_work(pth->action->name, execute, tv, data);
 				goto end;
 			}

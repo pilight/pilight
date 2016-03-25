@@ -104,6 +104,7 @@ static int callback(struct eventpool_fd_t *node, int event) {
 
 	switch(event) {
 		case EV_CONNECT_SUCCESS: {
+			printf("a\n");
 			if(__sync_add_and_fetch(&settings->connected, 0) == 0) {
 				__sync_add_and_fetch(&settings->connected, 1);
 			}
@@ -117,6 +118,7 @@ static int callback(struct eventpool_fd_t *node, int event) {
 				return -1;
 			} else {
 				if(json_validate(recvBuff) == true) {
+					printf("%s\n", recvBuff);
 					struct JsonNode *joutput = json_decode(recvBuff);
 					struct JsonNode *params = NULL;
 					struct JsonNode *data = NULL;
@@ -159,6 +161,7 @@ static int callback(struct eventpool_fd_t *node, int event) {
 		} break;
 		case EV_CONNECT_FAILED:
 		case EV_DISCONNECTED:
+		printf("b\n");
 			if(settings->reset == 1) {
 				createMessage(settings->server, settings->port, shut, none);
 				settings->reset = 0;

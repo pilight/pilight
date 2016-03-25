@@ -112,45 +112,50 @@ static int client_callback(struct eventpool_fd_t *node, int event) {
 }
 
 static unsigned short gpio433HwInit(void *(*callback)(void *)) {
-	if(wiringXSupported() == 0) {
-		if(wiringXSetup() == -1) {
-			return EXIT_FAILURE;
-		}
-		if(gpio_433_out >= 0) {
-			if(wiringXValidGPIO(gpio_433_out) != 0) {
-				logprintf(LOG_ERR, "invalid sender pin: %d", gpio_433_out);
-				return EXIT_FAILURE;
-			}
-			pinMode(gpio_433_out, OUTPUT);
-		}
-		if(gpio_433_in >= 0) {
-			if(wiringXValidGPIO(gpio_433_in) != 0) {
-				logprintf(LOG_ERR, "invalid receiver pin: %d", gpio_433_in);
-				return EXIT_FAILURE;
-			}
-			if(wiringXISR(gpio_433_in, INT_EDGE_BOTH) < 0) {
-				logprintf(LOG_ERR, "unable to register interrupt for pin %d", gpio_433_in);
-				return EXIT_SUCCESS;
-			}
-		}
-		if(gpio_433_in > 0) {
-			int fd = wiringXSelectableFd(gpio_433_in);
-
-			struct data_t *data = MALLOC(sizeof(struct data_t));
-			if(data == NULL) {
-				OUT_OF_MEMORY;
-			}
-			memset(data->rbuffer, '\0', sizeof(data->rbuffer));
-			data->rptr = 0;
-			data->callback = callback;
-
-			eventpool_fd_add("433gpio", fd, client_callback, NULL, data);
-		}
-		return EXIT_SUCCESS;
-	} else {
-		logprintf(LOG_ERR, "the 433gpio module is not supported on this hardware", gpio_433_in);
+#if defined(__arm__) || defined(__mips__)
+	char *platform = GPIO_PLATFORM;
+	if(settings_select_string(ORIGIN_MASTER, "gpio-platform", &platform) != 0 || strcmp(platform, "none") == 0) {
+		logprintf(LOG_ERR, "no gpio-platform configured");
 		return EXIT_FAILURE;
 	}
+	if(wiringXSetup(platform, logprintf) < 0) {
+		return EXIT_FAILURE;
+	}
+	if(gpio_433_out >= 0) {
+		if(wiringXValidGPIO(gpio_433_out) != 0) {
+			logprintf(LOG_ERR, "invalid sender pin: %d", gpio_433_out);
+			return EXIT_FAILURE;
+		}
+		pinMode(gpio_433_out, PINMODE_OUTPUT);
+	}
+	if(gpio_433_in >= 0) {
+		if(wiringXValidGPIO(gpio_433_in) != 0) {
+			logprintf(LOG_ERR, "invalid receiver pin: %d", gpio_433_in);
+			return EXIT_FAILURE;
+		}
+		if(wiringXISR(gpio_433_in, ISR_MODE_BOTH) < 0) {
+			logprintf(LOG_ERR, "unable to register interrupt for pin %d", gpio_433_in);
+			return EXIT_SUCCESS;
+		}
+	}
+	if(gpio_433_in > 0) {
+		int fd = wiringXSelectableFd(gpio_433_in);
+
+		struct data_t *data = MALLOC(sizeof(struct data_t));
+		if(data == NULL) {
+			OUT_OF_MEMORY;
+		}
+		memset(data->rbuffer, '\0', sizeof(data->rbuffer));
+		data->rptr = 0;
+		data->callback = callback;
+
+		eventpool_fd_add("433gpio", fd, client_callback, NULL, data);
+	}
+	return EXIT_SUCCESS;
+#else
+	logprintf(LOG_ERR, "the 433gpio module is not supported on this hardware", gpio_433_in);
+	return EXIT_FAILURE;
+#endif
 }
 
 // static unsigned short gpio433HwDeinit(void) {
