@@ -81,6 +81,11 @@ static void parseCode(void) {
 	double temp_offset = 0.0;
 	double humi_offset = 0.0;
 
+	if(ninjablocks_weather->rawlen>MAX_RAW_LENGTH) {
+		logprintf(LOG_ERR, "ninjablocks_weather: parsecode - invalid parameter passed %d", ninjablocks_weather->rawlen);
+		return;
+	}
+
 	// Decode Biphase Mark Coded Differential Manchester (BMCDM) pulse stream into binary
 	for(x=0; x<=(MAX_RAW_LENGTH/2); x++) {
 		if(ninjablocks_weather->raw[pRaw] > PULSE_NINJA_WEATHER_LOWER &&
@@ -229,7 +234,7 @@ void ninjablocksWeatherInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "ninjablocks_weather";
-	module->version = "1.1";
+	module->version = "1.2";
 	module->reqversion = "7.0";
 	module->reqcommit = "84";
 }

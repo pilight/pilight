@@ -81,6 +81,12 @@ static void createMessage(unsigned long long systemcode, int unitcode, int state
  */
 static void parseCode(void) {
 	int i = 0, x = 0, binary[RAW_LENGTH/2];
+
+	if(elro_300_switch->rawlen>RAW_LENGTH) {
+		logprintf(LOG_ERR, "elro_300_switch: parsecode - invalid parameter passed %d", elro_300_switch->rawlen);
+		return;
+	}
+
 	//utilize the "code" field
 	//at this point the code field holds translated "0" and "1" codes from the received pulses
 	//this means that we have to combine these ourselves into meaningful values in groups of 2
@@ -350,7 +356,7 @@ void elro300SwitchInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "elro_300_switch";
-	module->version = "2.2";
+	module->version = "2.3";
 	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }

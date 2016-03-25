@@ -64,6 +64,11 @@ static void createMessage(int systemcode, int programcode, int state) {
 static void parseCode(void) {
 	int x = 0, i = 0, binary[RAW_LENGTH/4];
 
+	if(rsl366->rawlen>RAW_LENGTH) {
+		logprintf(LOG_ERR, "rsl366: parsecode - invalid parameter passed %d", rsl366->rawlen);
+		return;
+	}
+
 	/* Convert the one's and zero's into binary */
 	for(x=3;x<rsl366->rawlen;x+=4) {
 		if(rsl366->raw[x] > (int)((double)AVG_PULSE_LENGTH*((double)PULSE_MULTIPLIER/2))) {
@@ -226,7 +231,7 @@ void rsl366Init(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "rsl366";
-	module->version = "2.6";
+	module->version = "2.7";
 	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }

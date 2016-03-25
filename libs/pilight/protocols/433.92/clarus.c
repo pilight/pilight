@@ -61,6 +61,11 @@ static void parseCode(void) {
 	int x = 0, z = 65, binary[RAW_LENGTH/4];
 	char id[3];
 
+	if(clarus_switch->rawlen>RAW_LENGTH) {
+		logprintf(LOG_ERR, "clarus_switch: parsecode - invalid parameter passed %d", clarus_switch->rawlen);
+		return;
+	}
+
 	/* Convert the one's and zero's into binary */
 	for(x=0;x<clarus_switch->rawlen-2;x+=4) {
 		if(clarus_switch->raw[x+3] > (int)((double)AVG_PULSE_LENGTH*((double)PULSE_MULTIPLIER/2))) {
@@ -250,7 +255,7 @@ void clarusSwitchInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "clarus_switch";
-	module->version = "2.3";
+	module->version = "2.4";
 	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }
