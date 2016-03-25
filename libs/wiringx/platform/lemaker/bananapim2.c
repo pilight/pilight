@@ -24,51 +24,47 @@
 struct platform_t *bananapim2 = NULL;
 
 /*
- PG10: Bananapi M2 LED D4 (green)
- PG11: Bananapi M2 LED D5 (blue)
- PH19: Bananapi M2 GPIO 2
- PH18: Bananapi M2 GPIO 3
- PH9:  Bananapi M2 GPIO 4
- PB0:  Bananapi M2 GPIO 5
- PB1:  Bananapi M2 GPIO 6
- PG12: Bananapi M2 GPIO 7
- PG13: Bananapi M2 GPIO 8
- PG16: Bananapi M2 GPIO 9
- PG15: Bananapi M2 GPIO 10
- PG14: Bananapi M2 GPIO 11
- PB7:  Bananapi M2 GPIO 12
- PB2:  Bananapi M2 GPIO 13
- PE4:  Bananapi M2 GPIO 14
- PE5:  Bananapi M2 GPIO 15
- PE6:  Bananapi M2 GPIO 16
- PG7:  Bananapi M2 GPIO 17
- PH10: Bananapi M2 GPIO 18
- PB3:  Bananapi M2 GPIO 19
- PE7:  Bananapi M2 GPIO 20
- PM2:  Bananapi M2 GPIO 21
- PG9:  Bananapi M2 GPIO 22
- PH11: Bananapi M2 GPIO 23
- PH12: Bananapi M2 GPIO 24
- PG8:  Bananapi M2 GPIO 24
- PB4:  Bananapi M2 GPIO 25
- PG6:  Bananapi M2 GPIO 26
+3v|5v
+ 8|5v
+ 9|0v
+ 7|15
+0v|16
+ 0| 1
+ 2|0v
+ 3| 4
+3v| 5
+12|0v
+13| 6
+14|10
+0v|11
+
+0v|0v
+21|0v
+22|23
+24|0v
+25|26
+27|28
+0v|29
 */
 
 static int map[] = {
-	/* 	PG10,	PG11,	PH19,	PH18 	*/										
-			116,	117,	135,	134,
-	/* 	PH9,	PB0,	PB1		PG12	*/
-			125,	 28,	 29, 	118,
-	/*	PG13,	PG16,	PG15,	PG14	*/
-			119,	122,	121,	120,
-	/*	PB7,	PB2,	PE4,	PE5		*/
-			 35,	 30,	 88,	 89,
-	/*	PE6		PG7,	PH10,	PB3		*/
-			 90,	113,	126,	 31,
-	/*	PE7,	PM2,	PG9,	PH11	*/
-			91,	  155,	115,	127,
-	/*	PH12,	PG8,	PB4,	PG6		*/
-			128,	114,	 32,	112
+	/* 	PG7,	PH10,	PG6		PG9		*/
+			113,	126,	112,	115,
+	/*	PH11, PH12,	PG8,	PH9		*/
+			127,	128,	114,	125,
+	/*  PH19, PH18,	PG13,	PG12	*/
+			135,	134,	119,	118,
+	/* 	PG15,	PG16,	PG14,	 PE4	*/
+			121,	122,	120,	 88,
+	/* 	PE5  										*/
+			 89,	 -1,   -1,   -1,
+	/* 				PB0,	 PB1,	 PB7	*/
+			 -1,	 28,	 29,	 35,
+	/* 	 PB2, PB3,	PE6,	PB4 	*/
+			 30,	 31,	 90,	 32,
+	/* 	PE7,	PM2,	PG10,	PG11	*/
+			 91,	155,	116,	117
+			
 };
 
 // SYSFS GPIO 132 LED D3 (red)
