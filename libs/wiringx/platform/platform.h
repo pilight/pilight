@@ -15,7 +15,8 @@
 #include "../soc/soc.h"
 
 typedef struct platform_t {
-	char name[255];
+	char **name;
+	int nralias;
 	
 	struct soc_t *soc;
 
@@ -36,7 +37,7 @@ typedef struct platform_t {
 } platform_t;
 
 void platform_register(struct platform_t *);
-struct platform_t *platform_get_by_name(char *);
+struct platform_t *platform_get_by_name(char *, int *);
 struct platform_t *platform_iterate(int);
 int platform_gc(void);
 

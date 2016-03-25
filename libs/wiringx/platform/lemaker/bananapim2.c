@@ -99,8 +99,19 @@ static int bananapiM2DigitalWrite(int i, enum digital_value_t value) {
 }
 
 void bananapiM2Init(void) {
-	bananapim2 = malloc(sizeof(struct platform_t));
-	strcpy(bananapim2->name, "bananapiM2");
+	if((bananapim2 = malloc(sizeof(struct platform_t))) == NULL) {
+		fprintf(stderr, "out of memory\n");
+		exit(EXIT_FAILURE);
+	}
+	bananapim2->nralias = 1;
+	if((bananapim2->name = malloc(bananapim2->nralias*sizeof(char *))) == NULL) {
+		fprintf(stderr, "out of memory\n");
+		exit(EXIT_FAILURE);
+	}
+	if((bananapim2->name[0] = strdup("bananapi_m2")) == NULL) {
+		fprintf(stderr, "out of memory\n");
+		exit(EXIT_FAILURE);
+	}
 
 	bananapim2->soc = soc_get("Allwinner", "A31s");
 	bananapim2->soc->setMap(map);

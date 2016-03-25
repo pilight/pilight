@@ -51,8 +51,19 @@ static int raspberrypi3ValidGPIO(int pin) {
 }
 
 void raspberrypi3Init(void) {
-	raspberrypi3 = malloc(sizeof(struct platform_t));
-	strcpy(raspberrypi3->name, "raspberrypi3");
+	if((raspberrypi3 = malloc(sizeof(struct platform_t))) == NULL) {
+		fprintf(stderr, "out of memory\n");
+		exit(EXIT_FAILURE);
+	}
+	raspberrypi3->nralias = 1;
+	if((raspberrypi3->name = malloc(raspberrypi3->nralias*sizeof(char *))) == NULL) {
+		fprintf(stderr, "out of memory\n");
+		exit(EXIT_FAILURE);
+	}
+	if((raspberrypi3->name[0] = strdup("raspberrypi3")) == NULL) {
+		fprintf(stderr, "out of memory\n");
+		exit(EXIT_FAILURE);
+	}
 
 	/* 
 	 * The Raspberry Pi 3 uses the Broadcom 2837,

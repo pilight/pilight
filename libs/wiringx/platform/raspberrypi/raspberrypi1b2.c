@@ -47,8 +47,19 @@ static int raspberrypi1b2ValidGPIO(int pin) {
 }
 
 void raspberrypi1b2Init(void) {
-	raspberrypi1b2 = malloc(sizeof(struct platform_t));
-	strcpy(raspberrypi1b2->name, "raspberrypi1b2");
+	if((raspberrypi1b2 = malloc(sizeof(struct platform_t))) == NULL) {
+		fprintf(stderr, "out of memory\n");
+		exit(EXIT_FAILURE);
+	}
+	raspberrypi1b2->nralias = 1;
+	if((raspberrypi1b2->name = malloc(raspberrypi1b2->nralias*sizeof(char *))) == NULL) {
+		fprintf(stderr, "out of memory\n");
+		exit(EXIT_FAILURE);
+	}
+	if((raspberrypi1b2->name[0] = strdup("raspberrypi1b2")) == NULL) {
+		fprintf(stderr, "out of memory\n");
+		exit(EXIT_FAILURE);
+	}
 
 	raspberrypi1b2->soc = soc_get("Broadcom", "2835");
 	raspberrypi1b2->soc->setMap(map);

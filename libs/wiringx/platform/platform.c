@@ -18,11 +18,15 @@ void platform_register(struct platform_t *platform) {
 	platforms = platform;
 }
 
-struct platform_t *platform_get_by_name(char *name) {
+struct platform_t *platform_get_by_name(char *name, int *nr) {
 	struct platform_t *tmp = platforms;
+	int i = 0;
 	while(tmp) {
-		if(strcmp(tmp->name, name) == 0) {
-			return tmp;
+		int len = tmp->nralias;
+		for(i=0;i<len;i++) {
+			if(strcmp(tmp->name[i], name) == 0) {
+				return tmp;
+			}
 		}
 		tmp = tmp->next;
 	}
@@ -44,8 +48,13 @@ struct platform_t *platform_iterate(int i) {
 
 int platform_gc(void) {
 	struct platform_t *tmp = NULL;
+	int i = 0;
 	while(platforms) {
 		tmp = platforms;
+		for(i=0;i<tmp->nralias;i++) {
+			free(tmp->name[i]);
+		}
+		free(tmp->name);
 		platforms = platforms->next;
 		free(tmp);
 	}

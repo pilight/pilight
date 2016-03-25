@@ -35,8 +35,10 @@
 
 #include "platform/linksprite/pcduino1.h"
 #include "platform/lemaker/bananapim2.h"
-#include "platform/solidrun/hummingboard_edge.h"
-#include "platform/solidrun/hummingboard_sdl.h"
+#include "platform/solidrun/hummingboard_gate_edge_sdl.h"
+#include "platform/solidrun/hummingboard_gate_edge_dq.h"
+#include "platform/solidrun/hummingboard_base_pro_sdl.h"
+#include "platform/solidrun/hummingboard_base_pro_dq.h"
 #include "platform/raspberrypi/raspberrypi1b1.h"
 #include "platform/raspberrypi/raspberrypi1b2.h"
 #include "platform/raspberrypi/raspberrypi1b+.h"
@@ -44,7 +46,10 @@
 #include "platform/raspberrypi/raspberrypi3.h"
 
 static struct platform_t *platform = NULL;
+static int namenr = 0;
 void (*wiringXLog)(int, const char *, ...) = NULL;
+
+static int issetup = 0;
 
 #ifndef __FreeBSD__
 /* SPI Bus Parameters */
@@ -217,23 +222,27 @@ int wiringXSetup(char *name, void (*func)(int, const char *, ...)) {
 	/* Init all platforms */
 	pcduino1Init();
 	bananapiM2Init();
-	hummingboardEdgeInit();
-	hummingboardSDLInit();
+	hummingboardBaseProSDLInit();
+	hummingboardBaseProDQInit();
+	hummingboardGateEdgeSDLInit();
+	hummingboardGateEdgeDQInit();
 	raspberrypi1b1Init();
 	raspberrypi1b2Init();
 	raspberrypi1bpInit();
 	raspberrypi2Init();
 	raspberrypi3Init();
 
-	if((platform = platform_get_by_name(name)) == NULL) {
+	if((platform = platform_get_by_name(name, &namenr)) == NULL) {
 		struct platform_t *tmp = NULL;
 		char message[1024];
 		int l = 0;
 		l = snprintf(message, 1023-l, "The %s is an unsupported or unknown platform\n", name);
 		l += snprintf(&message[l], 1023-l, "\tsupported wiringX platforms are:\n");
-		int i = 0;
+		int i = 0, x = 0;
 		while((tmp = platform_iterate(i++)) != NULL) {
-			l += snprintf(&message[l], 1023-l, "\t- %s\n", tmp->name);
+			for(x=0;x<tmp->nralias;x++) {
+				l += snprintf(&message[l], 1023-l, "\t- %s\n", tmp->name[x]);
+			}
 		}
 		wiringXLog(LOG_ERR, message);
 		return -1;
@@ -247,7 +256,7 @@ char *wiringXPlatform(void) {
 	if(platform == NULL) {
 		wiringXLog(LOG_ERR, "wiringX has not been properly setup (no platform has been selected)");
 	}
-	return platform->name;
+	return platform->name[namenr];
 }
 
 int pinMode(int pin, enum pinmode_t mode) {

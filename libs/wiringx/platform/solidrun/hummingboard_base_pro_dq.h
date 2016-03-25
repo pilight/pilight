@@ -6,13 +6,13 @@
   file, You can obtain one at http://mozilla.org/MPL/2.0/.
 */
 
-#ifndef __WIRINGX_HUMMINGBOARDEDGE_H_
-#define __WIRINGX_HUMMINGBOARDEDGE_H_
+#ifndef __WIRINGX_HUMMINGBOARDBASEPRODQ_H_
+#define __WIRINGX_HUMMINGBOARDBASEPRODQ_H_
 
 #include "../platform.h"
 
-extern struct platform_t *hummingboardEdge;
+extern struct platform_t *hummingboardBaseProDQ;
 
-void hummingboardEdgeInit(void);
+void hummingboardBaseProDQInit(void);
 
 #endif
