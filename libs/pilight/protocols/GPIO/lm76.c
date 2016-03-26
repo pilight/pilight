@@ -34,7 +34,7 @@
 #include "../../core/gc.h"
 #include "../../core/json.h"
 #ifndef _WIN32
-	#include "../../../wiringx/wiringX.h"
+	#include "../../../wiringx//wiringX.h"
 #endif
 #include "../protocol.h"
 #include "lm76.h"
@@ -44,6 +44,7 @@ typedef struct data_t {
 	char *name;
 
 	unsigned int id;
+	char path[PATH_MAX];
 	int fd;
 	int interval;
 
@@ -98,6 +99,7 @@ static void *addDevice(void *param) {
 	struct JsonNode *jchild = NULL;
 	struct data_t *node = NULL;
 	struct timeval tv;
+	char *stmp = NULL;
 	int match = 0, interval = 10;
 	double itmp = 0.0;
 
@@ -136,6 +138,9 @@ static void *addDevice(void *param) {
 			if(json_find_number(jchild, "id", &itmp) == 0) {
 				node->id = (int)itmp;
 			}
+			if(json_find_string(jchild, "i2c-path", &stmp) == 0) {
+				strcpy(node->path, stmp);
+			}
 			jchild = jchild->next;
 		}
 	}
@@ -144,7 +149,7 @@ static void *addDevice(void *param) {
 		interval = (int)round(itmp);
 	json_find_number(jdevice, "temperature-offset", &node->temp_offset);
 
-	node->fd = wiringXI2CSetup(node->id);
+	node->fd = wiringXI2CSetup(node->path, node->id);
 	if(node->fd <= 0) {
 		logprintf(LOG_NOTICE, "error connecting to lm76");
 		logprintf(LOG_DEBUG, "(probably i2c bus error from wiringXI2CSetup)");
@@ -195,6 +200,7 @@ void lm76Init(void) {
 
 	options_add(&lm76->options, 't', "temperature", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9]{1,3}$");
 	options_add(&lm76->options, 'i', "id", OPTION_HAS_VALUE, DEVICES_ID, JSON_STRING, NULL, "0x[0-9a-f]{2}");
+	options_add(&lm76->options, 'd', "i2c-path", OPTION_HAS_VALUE, DEVICES_ID, JSON_STRING, NULL, "^/dev/i2c-[0-9]{1,2}%");
 
 	// options_add(&lm76->options, 0, "decimals", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *)3, "[0-9]");
 	options_add(&lm76->options, 0, "temperature-decimals", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)3, "[0-9]");

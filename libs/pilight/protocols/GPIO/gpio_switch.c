@@ -24,7 +24,7 @@
 #include "gpio_switch.h"
 
 #if !defined(__FreeBSD__) && !defined(_WIN32)
-#include "../../../wiringx/wiringX.h"
+#include "../../../wiringx//wiringX.h"
 
 typedef struct data_t {
 	unsigned int id;
@@ -152,30 +152,35 @@ static void *addDevice(void *param) {
 static int checkValues(struct JsonNode *jvalues) {
 	double readonly = 0.0;
 
-	if(wiringXSupported() == 0) {
-		struct JsonNode *jid = NULL;
-		if(wiringXSetup() < 0) {
-			logprintf(LOG_ERR, "unable to setup wiringX") ;
-			return -1;
-		} else if((jid = json_find_member(jvalues, "id"))) {
-			struct JsonNode *jchild = NULL;
-			struct JsonNode *jchild1 = NULL;
+#if defined(__arm__) || defined(__mips__)	
+	struct JsonNode *jid = NULL;
+	char *platform = GPIO_PLATFORM;
+	if(settings_select_string(ORIGIN_MASTER, "gpio-platform", &platform) != 0 || strcmp(platform, "none") == 0) {
+		logprintf(LOG_ERR, "gpio_switch: no gpio-platform configured");
+		return -1;
+	}	
+	if(wiringXSetup(platform, logprintf) < 0) {
+		logprintf(LOG_ERR, "unable to setup wiringX") ;
+		return -1;
+	} else if((jid = json_find_member(jvalues, "id"))) {
+		struct JsonNode *jchild = NULL;
+		struct JsonNode *jchild1 = NULL;
 
-			jchild = json_first_child(jid);
-			while(jchild) {
-				jchild1 = json_first_child(jchild);
-				while(jchild1) {
-					if(strcmp(jchild1->key, "gpio") == 0) {
-						if(wiringXValidGPIO((int)round(jchild1->number_)) != 0) {
-							return -1;
-						}
+		jchild = json_first_child(jid);
+		while(jchild) {
+			jchild1 = json_first_child(jchild);
+			while(jchild1) {
+				if(strcmp(jchild1->key, "gpio") == 0) {
+					if(wiringXValidGPIO((int)round(jchild1->number_)) != 0) {
+						return -1;
 					}
-					jchild1 = jchild1->next;
 				}
-				jchild = jchild->next;
+				jchild1 = jchild1->next;
 			}
+			jchild = jchild->next;
 		}
 	}
+#endif
 
 	if(json_find_number(jvalues, "readonly", &readonly) == 0) {
 		if((int)readonly != 1) {

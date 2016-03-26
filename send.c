@@ -30,10 +30,6 @@
 
 #include "libs/pilight/protocols/protocol.h"
 
-#ifndef _WIN32
-	#include "libs/wiringx/wiringX.h"
-#endif
-
 #define CONNECT			1
 #define VALIDATE		2
 #define SEND				3
@@ -343,10 +339,6 @@ int main(int argc, char **argv) {
 	log_level_set(LOG_NOTICE);
 
 	pilight.process = PROCESS_CLIENT;
-
-#ifndef _WIN32
-	wiringXLog = logprintf;
-#endif
 
 	if((progname = MALLOC(13)) == NULL) {
 		OUT_OF_MEMORY

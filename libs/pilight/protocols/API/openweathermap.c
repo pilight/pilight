@@ -233,8 +233,7 @@ static void *thread(void *param) {
 	threadpool_add_scheduled_work(settings->name, update, tv, (void *)settings);
 
 	memset(url, '\0', 1024);
-	// snprintf(url, 1024, "http://api.openweathermap.org/data/2.5/weather?q=%s,%s&APPID=8db24c4ac56251371c7ea87fd3115493", settings->location, settings->country);
-	snprintf(url, 1024, "http://10.0.0.140/index.php");
+	snprintf(url, 1024, "http://api.openweathermap.org/data/2.5/weather?q=%s,%s&APPID=8db24c4ac56251371c7ea87fd3115493", urlencode(settings->location), settings->country);
 
 	http_get_content(url, callback, task->userdata);
 	return (void *)NULL;

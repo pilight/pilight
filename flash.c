@@ -39,10 +39,6 @@ int main(int argc, char **argv) {
 
 	pilight.process = PROCESS_CLIENT;
 
-#ifndef _WIN32
-	wiringXLog = logprintf;
-#endif
-
 	struct options_t *options = NULL;
 	char *fconfig = NULL;
 	char *args = NULL;

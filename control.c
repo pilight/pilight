@@ -31,10 +31,6 @@
 #include "libs/pilight/storage/storage.h"
 #include "libs/pilight/events/events.h"
 
-#ifndef _WIN32
-	#include "libs/wiringx/wiringX.h"
-#endif
-
 #define IDENTIFY				0
 #define STATUS					1
 #define REQUESTCONFIG		2
@@ -477,10 +473,6 @@ int main(int argc, char **argv) {
 	log_file_disable();
 	log_shell_enable();
 	log_level_set(LOG_NOTICE);
-
-#ifndef _WIN32
-	wiringXLog = logprintf;
-#endif
 
 	if((progname = MALLOC(16)) == NULL) {
 		OUT_OF_MEMORY

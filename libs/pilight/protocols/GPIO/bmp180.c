@@ -47,7 +47,7 @@
 #include "bmp180.h"
 
 #if !defined(__FreeBSD__) && !defined(_WIN32)
-#include "../../../wiringx/wiringX.h"
+#include "../../../wiringx//wiringX.h"
 
 #define STEP1		1
 #define STEP2		2
@@ -55,7 +55,9 @@
 
 typedef struct data_t {
 	char *name;
+
 	unsigned int id;
+	char path[PATH_MAX];
 	int fd;
 	// calibration values (stored in each BMP180/085)
 	short ac1;
@@ -215,6 +217,7 @@ static void *addDevice(void *param) {
 	struct JsonNode *jchild = NULL;
 	struct data_t *node = NULL;
 	struct timeval tv;
+	char *stmp = NULL;
 	int match = 0, interval = 10;
 	double itmp = 0.0;
 
@@ -275,6 +278,9 @@ static void *addDevice(void *param) {
 			if(json_find_number(jchild, "id", &itmp) == 0) {
 				node->id = (int)itmp;
 			}
+			if(json_find_string(jchild, "i2c-path", &stmp) == 0) {
+				strcpy(node->path, stmp);
+			}
 			jchild = jchild->next;
 		}
 	}
@@ -289,7 +295,7 @@ static void *addDevice(void *param) {
 		node->oversampling = (unsigned char)itmp;
 	}
 
-	node->fd = wiringXI2CSetup(node->id);
+	node->fd = wiringXI2CSetup(node->path, node->id);
 	if(node->fd <= 0) {
 		logprintf(LOG_ERR, "%s could not open I2C device %02x", jdevice->key, node->id);
 		FREE(node);
@@ -415,7 +421,8 @@ void bmp180Init(void) {
 	options_add(&bmp180->options, 'i', "id", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^([1-9]|1[1-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$");
 	options_add(&bmp180->options, 'o', "oversampling", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *) 1, "^[0123]$");
 	options_add(&bmp180->options, 'p', "pressure", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, (void *) 0, "^[0-9]{1,3}$");
-	options_add(&bmp180->options, 't', "temperature", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, (void *) 0, "^[0-9]{1,3}$");
+	options_add(&bmp180->options, 't', "temperature", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, (void *) 0, "^[0-9]{1,3}$");	
+	options_add(&bmp180->options, 'd', "i2c-path", OPTION_HAS_VALUE, DEVICES_ID, JSON_STRING, NULL, "^/dev/i2c-[0-9]{1,2}%");
 
 	options_add(&bmp180->options, 0, "poll-interval", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *) 10, "[0-9]");
 	options_add(&bmp180->options, 0, "pressure-offset", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *) 0, "[0-9]");

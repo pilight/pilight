@@ -6,6 +6,7 @@
 		"log-level": 6,
 		"pid-file": "/var/run/pilight.pid",
 		"log-file": "/var/log/pilight.log",
+		"gpio-platform": "none",
 		"webserver-enable": 1,
 		"webserver-root": "/usr/share/pilight/",
 		"webserver-http-port": 5001,
