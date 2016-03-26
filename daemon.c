@@ -632,7 +632,7 @@ void *send_code(void *param) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
 	int i = 0;
-
+	int *pamble = NULL, plen = 0;
 	/* Make sure the pilight sender gets
 	   the highest priority available */
 #ifdef _WIN32
@@ -704,12 +704,28 @@ void *send_code(void *param) {
 						}
 						printf("\n");
 					}
+					if(protocol->preAmbCode != NULL) {
+						plen = protocol->preAmbCode(pamble);
+						if(hw->sendOOK(pamble, plen, 1) == 0) {
+							logprintf(LOG_DEBUG, "successfully send %s preAmb sequence", protocol->id);
+						} else {
+							logprintf(LOG_ERR, "failed to send %s preAmb sequence", protocol->id);
+						}
+					}
 					logprintf(LOG_DEBUG, "**** RAW CODE ****");
 
 					if(hw->sendOOK(sendqueue->code, sendqueue->length, protocol->txrpt) == 0) {
 						logprintf(LOG_DEBUG, "successfully send %s code", protocol->id);
 					} else {
 						logprintf(LOG_ERR, "failed to send code");
+					}
+					if(protocol->postAmbCode != NULL) {
+						plen = protocol->postAmbCode(pamble);
+						if(hw->sendOOK(pamble, plen, 1) == 0) {
+							logprintf(LOG_DEBUG, "successfully send %s postAmb sequence.", protocol->id);
+						} else {
+							logprintf(LOG_ERR, "failed to send %s postAmb sequence", protocol->id);
+						}
 					}
 					if(strcmp(protocol->id, "raw") == 0) {
 						int plslen = sendqueue->code[sendqueue->length-1]/PULSE_DIV;
@@ -721,7 +737,7 @@ void *send_code(void *param) {
 						pthread_cond_signal(&hw->signal);
 					}
 				} else if(hw->comtype == COMAPI && hw->sendAPI != NULL) {
-					if(message != NULL) {				
+					if(message != NULL) {
 						if(hw->sendAPI(message) == 0) {
 							logprintf(LOG_DEBUG, "successfully send %s command", protocol->id);
 						} else {
@@ -1540,8 +1556,13 @@ void *receiveOOK(void *param) {
 					/* Let's do a little filtering here as well */
 					if(r.length >= hw->minrawlen && r.length <= hw->maxrawlen) {
 						receive_queue(r.pulses, r.length, plslen, hw->hwtype);
+						r.length = 0;
 					}
-					r.length = 0;
+					// Avoid that short footer pulses (X10, IMPULS, ...) interfere with long header /sync pulses
+					if(r.length > 20) {
+						// Avoid a buffer reset and preserve potential Header / SYNC / Start pulses
+						r.length = 0;
+					}
 				}
 			/* Hardware failure */
 			} else if(duration == -1) {
@@ -1570,7 +1591,7 @@ void *clientize(void *param) {
 	struct JsonNode *joptions = NULL;
 	struct JsonNode *jchilds = NULL;
 	struct JsonNode *tmp = NULL;
-  char *recvBuff = NULL, *output = NULL;
+	char *recvBuff = NULL, *output = NULL;
 	char *message = NULL, *action = NULL;
 	char *origin = NULL, *protocol = NULL;
 	int client_loop = 0, config_synced = 0;
@@ -2321,8 +2342,8 @@ int start_pilight(int argc, char **argv) {
 		}
 		strcpy(pemfile, PEM_FILE);
 		pem_free = 1;
-	}	
-	
+	}
+
 	char *content = NULL;
 	unsigned char md5sum[17];
 	char md5conv[33];
@@ -2351,7 +2372,7 @@ int start_pilight(int argc, char **argv) {
 
 	if(pem_free == 1) {
 		FREE(pemfile);
-	}	
+	}
 	#endif
 
 	settings_find_number("webserver-enable", &webserver_enable);
