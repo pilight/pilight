@@ -43,6 +43,12 @@ static void parseCode(char *message) {
 	int x = 0, i = 0;
 
 	int len = (AVG_PULSE_LENGTH*(PULSE_MULTIPLIER+1)) / 2;
+
+	if(secudo_smoke->rawlen>RAW_LENGTH) {
+		logprintf(LOG_ERR, "secudo_smoke: parsecode - invalid parameter passed %d", secudo_smoke->rawlen);
+		return;
+	}
+
 	for(x=1;x<secudo_smoke->rawlen-2;x+=2) {
 		if(secudo_smoke->raw[x] > len) {
 			binary[i++] = 1;

@@ -67,6 +67,11 @@ static void parseCode(char *message) {
 	int i = 0, x = 0, y = 0, binary[RAW_LENGTH/2];
 	int id = -1, state = -1, unit = -1, code = 0;
 
+	if(techlico_switch->rawlen>RAW_LENGTH) {
+		logprintf(LOG_ERR, "techlico_switch: parsecode - invalid parameter passed %d", techlico_switch->rawlen);
+		return;
+	}
+
 	for(x=0;x<techlico_switch->rawlen;x+=2) {
 		if(techlico_switch->raw[x] > (int)((double)AVG_PULSE_LENGTH*((double)PULSE_MULTIPLIER/2))) {
 			binary[i++] = 1;

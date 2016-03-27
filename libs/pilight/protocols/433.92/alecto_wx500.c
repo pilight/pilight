@@ -70,6 +70,11 @@ static void parseCode(char *message) {
 	int n4 = 0, n5 = 0, n6 = 0, n7 = 0, n8 = 0;
 	int checksum = 1;
 
+	if(alecto_wx500->rawlen>RAW_LENGTH) {
+		logprintf(LOG_ERR, "alecto_wx500: parsecode - invalid parameter passed %d", alecto_wx500->rawlen);
+		return;
+	}
+
 	for(x=1;x<alecto_wx500->rawlen;x+=2) {
 		if(alecto_wx500->raw[x] > AVG_PULSE) {
 			binary[i++] = 1;

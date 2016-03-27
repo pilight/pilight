@@ -52,6 +52,11 @@ static void createMessage(char *message, int systemcode, int unitcode, int state
 static void parseCode(char *message) {
 	int x = 0, i = 0, binary[RAW_LENGTH/4];
 
+	if(elro_400_switch->rawlen>RAW_LENGTH) {
+		logprintf(LOG_ERR, "elro_400_switch: parsecode - invalid parameter passed %d", elro_400_switch->rawlen);
+		return;
+	}
+
 	for(x=0;x<elro_400_switch->rawlen-2;x+=4) {
 		if(elro_400_switch->raw[x+3] > (int)((double)AVG_PULSE_LENGTH*((double)PULSE_MULTIPLIER/2))) {
 			binary[i++] = 0;

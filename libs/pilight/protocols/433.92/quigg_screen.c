@@ -83,6 +83,11 @@ static void parseCode(char *message) {
 	int iParity = 1, iParityData = -1;	// init for even parity
 	int iSwitch = 0;
 
+	if(quigg_screen->rawlen>RAW_LENGTH) {
+		logprintf(LOG_ERR, "quigg_screen: parsecode - invalid parameter passed %d", quigg_screen->rawlen);
+		return;
+	}
+
 	// 42 bytes are the number of raw bytes
 	// Byte 1,2 in raw buffer is the first logical byte, rawlen-3,-2 is the parity bit, rawlen-1 is the footer
 	for(x=0; x<quigg_screen->rawlen-1; x+=2) {

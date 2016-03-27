@@ -51,6 +51,11 @@ static void createMessage(char *message, int id, int state) {
 static void parseCode(char *message) {
 	int i = 0, binary[RAW_LENGTH/4];
 
+	if(ehome->rawlen>RAW_LENGTH) {
+		logprintf(LOG_ERR, "ehome: parsecode - invalid parameter passed %d", ehome->rawlen);
+		return;
+	}
+
 	for(i=0;i<ehome->rawlen-2;i+=4) {
 		if(ehome->raw[i+3] > (int)((double)AVG_PULSE_LENGTH*((double)PULSE_MULTIPLIER/2))) {
 			binary[i/4]=1;

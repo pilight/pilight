@@ -124,6 +124,7 @@ static int parseSystemcode(int *binary) {
 
 static void pulseToBinary(int *binary) {
 	int x = 0;
+
 	for(x=0; x<quigg_gt9000->rawlen-1; x+=2) {
 		if(quigg_gt9000->raw[x+1] > AVG_PULSE_LENGTH) {
 			binary[x/2] = 0;
@@ -135,6 +136,11 @@ static void pulseToBinary(int *binary) {
 
 static void parseCode(char *message) {
 	int binary[RAW_LENGTH/2], state = -1;
+
+	if(quigg_gt9000->rawlen>RAW_LENGTH) {
+		logprintf(LOG_ERR, "quigg_gt9000: parsecode - invalid parameter passed %d", quigg_gt9000->rawlen);
+		return;
+	}
 
 	pulseToBinary(binary);
 

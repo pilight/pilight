@@ -1440,12 +1440,14 @@ int settings_validate_settings(struct JsonNode *jsettings, int i) {
 			return -1;
 		} else {
 			if(strcmp(jsettings->key, "none") != 0) { 				
-				int z = 0, x = 0;
+				int z = 0, x = 0, y = 0;
 				struct platform_t *tmp = NULL;
 				while((tmp = platform_iterate(z++)) != NULL) {
-					if(strcmp(tmp->name, jsettings->key) == 0) {
-						x = 1;
-						break;
+					for(y=0;y<tmp->nralias;y++) {
+						if(strcmp(tmp->name[y], jsettings->key) == 0) {
+							x = 1;
+							break;
+						}
 					}
 				}
 				if(x == 0 && i > 0) {

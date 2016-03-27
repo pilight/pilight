@@ -51,7 +51,12 @@ static int validate(void) {
 }
 
 static void parseCode(char *message) {
-	int binary[RAW_LENGTH/4], x = 0, i = 0;
+	int binary[MAX_RAW_LENGTH/4], x = 0, i = 0;
+
+	if(arctech_contact->rawlen>MAX_RAW_LENGTH) {
+		logprintf(LOG_ERR, "arctech_contact: parsecode - invalid parameter passed %d", arctech_contact->rawlen);
+		return;
+	}
 
 	for(x=0;x<arctech_contact->rawlen;x+=4) {
 		if(arctech_contact->raw[x+3] > AVG_PULSE_LENGTH*PULSE_MULTIPLIER) {

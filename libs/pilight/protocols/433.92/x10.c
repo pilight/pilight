@@ -52,6 +52,11 @@ static void createMessage(char *message, char *id, int state) {
 static void parseCode(char *message) {
 	int x = 0, y = 0, binary[RAW_LENGTH/2];
 
+	if(x10->rawlen>RAW_LENGTH) {
+		logprintf(LOG_ERR, "x10: parsecode - invalid parameter passed %d", x10->rawlen);
+		return;
+	}
+
 	for(x=1;x<x10->rawlen-1;x+=2) {
 		if(x10->raw[x] > (int)((double)AVG_PULSE_LENGTH*((double)PULSE_MULTIPLIER/2))) {
 			binary[y++] = 1;

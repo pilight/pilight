@@ -65,6 +65,11 @@ static void createMessage(char *message, int systemcode, int programcode, int st
 static void parseCode(char *message) {
 	int x = 0, i = 0, binary[RAW_LENGTH/4];
 
+	if(rsl366->rawlen>RAW_LENGTH) {
+		logprintf(LOG_ERR, "rsl366: parsecode - invalid parameter passed %d", rsl366->rawlen);
+		return;
+	}
+
 	/* Convert the one's and zero's into binary */
 	for(x=3;x<rsl366->rawlen;x+=4) {
 		if(rsl366->raw[x] > (int)((double)AVG_PULSE_LENGTH*((double)PULSE_MULTIPLIER/2))) {

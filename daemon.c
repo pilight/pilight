@@ -2138,11 +2138,13 @@ int start_pilight(int argc, char **argv) {
 #if defined(__arm__) || defined(__mips__)
 		printf("\n\tThe following GPIO platforms are supported:\n");
 		struct platform_t *tmp = NULL;
-		int z = 0;
+		int z = 0, y = 0;
 		wiringXSetup("", logprintf);
 		printf("\t- none\n");
 		while((tmp = platform_iterate(z++)) != NULL) {
-			printf("\t- %s\n", tmp->name);
+			for(y=0;y<tmp->nralias;y++) {
+				printf("\t- %s\n", tmp->name[y]);
+			}
 		}
 		printf("\n");
 #endif
