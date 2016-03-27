@@ -22,9 +22,44 @@
 
 static struct soc_t *socs = NULL;
 
-void soc_register(struct soc_t *soc) {
-	soc->next = socs;
-	socs = soc;
+void soc_register(struct soc_t **soc, char *brand, char *type) {
+	if((*soc = malloc(sizeof(struct soc_t))) == NULL) {
+		fprintf(stderr, "out of memory\n");
+		exit(EXIT_FAILURE);
+	}
+
+	strcpy((*soc)->brand, brand);
+	strcpy((*soc)->chip, type);	
+
+	(*soc)->map = NULL;
+	(*soc)->layout = NULL;
+	(*soc)->support.isr_modes = 0;
+
+	(*soc)->gpio[0] = NULL;
+	(*soc)->gpio[1] = NULL;
+	(*soc)->fd = 0;	
+	
+	(*soc)->page_size = 0;
+	(*soc)->base_addr[0] = 0;
+	(*soc)->base_addr[1] = 0;
+	(*soc)->base_offs[0] = 0;
+	(*soc)->base_offs[1] = 0;
+
+	(*soc)->gc = NULL;
+	(*soc)->selectableFd = NULL;
+
+	(*soc)->pinMode = NULL;
+	(*soc)->setup = NULL;
+	(*soc)->digitalRead = NULL;
+	(*soc)->digitalWrite = NULL;
+	(*soc)->getPinName = NULL;
+	(*soc)->setMap = NULL;
+	(*soc)->validGPIO = NULL;
+	(*soc)->isr = NULL;
+	(*soc)->waitForInterrupt = NULL;
+
+	(*soc)->next = socs;
+	socs = *soc;
 }
 
 void soc_writel(unsigned long addr, unsigned long val) {

@@ -344,17 +344,12 @@ static int broadcom2836SelectableFd(int i) {
 }
 
 void broadcom2836Init(void) {
-	broadcom2836 = malloc(sizeof(struct soc_t));
-
 	/* 
 	 * The Broadcom 2837 uses the same
 	 * addressen as the Broadcom 2836.
-	 */
-	strcpy(broadcom2836->brand, "Broadcom");
-	strcpy(broadcom2836->chip, "2836");
+	 */	
+	soc_register(&broadcom2836, "Broadcom", "2836");
 
-	broadcom2836->map = NULL;
-	broadcom2836->irq = NULL;
 	broadcom2836->layout = layout;
 
 	broadcom2836->support.isr_modes = ISR_MODE_RISING | ISR_MODE_FALLING | ISR_MODE_BOTH | ISR_MODE_NONE;
@@ -375,6 +370,4 @@ void broadcom2836Init(void) {
 	broadcom2836->setIRQ = &broadcom2836SetIRQ;
 	broadcom2836->isr = &broadcom2836ISR;
 	broadcom2836->waitForInterrupt = &broadcom2836WaitForInterrupt;
-
-	soc_register(broadcom2836);
 }

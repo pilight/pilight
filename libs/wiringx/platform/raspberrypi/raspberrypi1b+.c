@@ -51,19 +51,7 @@ static int raspberrypi1bpValidGPIO(int pin) {
 }
 
 void raspberrypi1bpInit(void) {
-	if((raspberrypi1bp = malloc(sizeof(struct platform_t))) == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(EXIT_FAILURE);
-	}
-	raspberrypi1bp->nralias = 1;
-	if((raspberrypi1bp->name = malloc(raspberrypi1bp->nralias*sizeof(char *))) == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(EXIT_FAILURE);
-	}
-	if((raspberrypi1bp->name[0] = strdup("raspberrypi1b+")) == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(EXIT_FAILURE);
-	}
+	platform_register(&raspberrypi1bp, "raspberrypi1b+");
 
 	raspberrypi1bp->soc = soc_get("Broadcom", "2835");
 	raspberrypi1bp->soc->setMap(map);
@@ -80,6 +68,4 @@ void raspberrypi1bpInit(void) {
 	raspberrypi1bp->gc = raspberrypi1bp->soc->gc;
 
 	raspberrypi1bp->validGPIO = &raspberrypi1bpValidGPIO;
-
-	platform_register(raspberrypi1bp);
 }

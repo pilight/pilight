@@ -88,23 +88,8 @@ static int hummingboardBaseProDQISR(int i, enum isr_mode_t mode) {
 }
 
 void hummingboardBaseProDQInit(void) {
-	if((hummingboardBaseProDQ = malloc(sizeof(struct platform_t))) == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(EXIT_FAILURE);
-	}
-	hummingboardBaseProDQ->nralias = 2;
-	if((hummingboardBaseProDQ->name = malloc(hummingboardBaseProDQ->nralias*sizeof(char *))) == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(EXIT_FAILURE);
-	}
-	if((hummingboardBaseProDQ->name[0] = strdup("hummingboard_base_dq")) == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(EXIT_FAILURE);
-	}
-	if((hummingboardBaseProDQ->name[1] = strdup("hummingboard_pro_dq")) == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(EXIT_FAILURE);
-	}
+	platform_register(&hummingboardBaseProDQ, "hummingboard_base_dq");
+	platform_add_alias(&hummingboardBaseProDQ, "hummingboard_pro_dq");
 
 	hummingboardBaseProDQ->soc = soc_get("NXP", "IMX6DQRM");
 	hummingboardBaseProDQ->soc->setMap(map);
@@ -122,6 +107,4 @@ void hummingboardBaseProDQInit(void) {
 	hummingboardBaseProDQ->gc = hummingboardBaseProDQ->soc->gc;
 
 	hummingboardBaseProDQ->validGPIO = &hummingboardBaseProDQValidGPIO;
-
-	platform_register(hummingboardBaseProDQ);
 }

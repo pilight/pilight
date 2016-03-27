@@ -442,12 +442,8 @@ static int allwinnerA10SelectableFd(int i) {
 }
 
 void allwinnerA10Init(void) {
-	allwinnerA10 = malloc(sizeof(struct soc_t));
+	soc_register(&allwinnerA10, "Allwinner", "A10");
 
-	strcpy(allwinnerA10->brand, "Allwinner");
-	strcpy(allwinnerA10->chip, "A10");
-
-	allwinnerA10->map = NULL;
 	allwinnerA10->layout = layout;
 
 	allwinnerA10->support.isr_modes = ISR_MODE_RISING | ISR_MODE_FALLING | ISR_MODE_BOTH | ISR_MODE_NONE;
@@ -468,5 +464,4 @@ void allwinnerA10Init(void) {
 	allwinnerA10->isr = &allwinnerA10ISR;
 	allwinnerA10->waitForInterrupt = &allwinnerA10WaitForInterrupt;
 
-	soc_register(allwinnerA10);
 }

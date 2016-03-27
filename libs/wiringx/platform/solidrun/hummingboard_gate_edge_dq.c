@@ -106,23 +106,8 @@ static int hummingboardGateEdgeDQISR(int i, enum isr_mode_t mode) {
 }
 
 void hummingboardGateEdgeDQInit(void) {
-	if((hummingboardGateEdgeDQ = malloc(sizeof(struct platform_t))) == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(EXIT_FAILURE);
-	}
-	hummingboardGateEdgeDQ->nralias = 2;
-	if((hummingboardGateEdgeDQ->name = malloc(hummingboardGateEdgeDQ->nralias*sizeof(char *))) == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(EXIT_FAILURE);
-	}
-	if((hummingboardGateEdgeDQ->name[0] = strdup("hummingboard_edge_dq")) == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(EXIT_FAILURE);
-	}
-	if((hummingboardGateEdgeDQ->name[1] = strdup("hummingboard_gate_dq")) == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(EXIT_FAILURE);
-	}
+	platform_register(&hummingboardGateEdgeDQ, "hummingboard_edge_dq");
+	platform_add_alias(&hummingboardGateEdgeDQ, "hummingboard_gate_dq");
 
 	hummingboardGateEdgeDQ->soc = soc_get("NXP", "IMX6DQRM");
 	hummingboardGateEdgeDQ->soc->setMap(map);
@@ -141,5 +126,4 @@ void hummingboardGateEdgeDQInit(void) {
 
 	hummingboardGateEdgeDQ->validGPIO = &hummingboardGateEdgeDQValidGPIO;
 
-	platform_register(hummingboardGateEdgeDQ);
 }

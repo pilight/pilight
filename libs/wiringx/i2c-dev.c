@@ -6,6 +6,8 @@
   file, You can obtain one at http://mozilla.org/MPL/2.0/.
 */
 
+#ifndef __FreeBSD__
+
 #include <stdlib.h>
 #include <sys/ioctl.h>
 #include <linux/types.h>
@@ -67,3 +69,5 @@ extern inline __s32 i2c_smbus_write_word_data(int fd, int cmd, __u16 value) {
 
 	return i2c_smbus_access(fd, I2C_SMBUS_WRITE, cmd, I2C_SMBUS_WORD_DATA, &data);
 }
+
+#endif

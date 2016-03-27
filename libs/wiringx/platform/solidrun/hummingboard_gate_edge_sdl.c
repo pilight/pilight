@@ -106,23 +106,8 @@ static int hummingboardGateEdgeSDLISR(int i, enum isr_mode_t mode) {
 }
 
 void hummingboardGateEdgeSDLInit(void) {
-	if((hummingboardGateEdgeSDL = malloc(sizeof(struct platform_t))) == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(EXIT_FAILURE);
-	}
-	hummingboardGateEdgeSDL->nralias = 2;
-	if((hummingboardGateEdgeSDL->name = malloc(hummingboardGateEdgeSDL->nralias*sizeof(char *))) == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(EXIT_FAILURE);
-	}
-	if((hummingboardGateEdgeSDL->name[0] = strdup("hummingboard_edge_sdl")) == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(EXIT_FAILURE);
-	}
-	if((hummingboardGateEdgeSDL->name[1] = strdup("hummingboard_gate_sdl")) == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(EXIT_FAILURE);
-	}
+	platform_register(&hummingboardGateEdgeSDL, "hummingboard_edge_sdl");
+	platform_add_alias(&hummingboardGateEdgeSDL, "hummingboard_gate_sdl");
 
 	hummingboardGateEdgeSDL->soc = soc_get("NXP", "IMX6SDLRM");
 	hummingboardGateEdgeSDL->soc->setMap(map);
@@ -141,5 +126,4 @@ void hummingboardGateEdgeSDLInit(void) {
 
 	hummingboardGateEdgeSDL->validGPIO = &hummingboardGateEdgeSDLValidGPIO;
 
-	platform_register(hummingboardGateEdgeSDL);
 }

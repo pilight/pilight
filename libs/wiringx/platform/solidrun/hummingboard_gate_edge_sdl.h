@@ -6,8 +6,8 @@
   file, You can obtain one at http://mozilla.org/MPL/2.0/.
 */
 
-#ifndef __WIRINGX_HUMMINGBOARDGATEEDGEDQ_H_
-#define __WIRINGX_HUMMINGBOARDGATEEDGEDQ_H_
+#ifndef __WIRINGX_HUMMINGBOARDGATEEDGESDL_H_
+#define __WIRINGX_HUMMINGBOARDGATEEDGESDL_H_
 
 #include "../platform.h"
 

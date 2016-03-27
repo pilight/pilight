@@ -88,23 +88,8 @@ static int hummingboardBaseProSDLISR(int i, enum isr_mode_t mode) {
 }
 
 void hummingboardBaseProSDLInit(void) {
-	if((hummingboardBaseProSDL = malloc(sizeof(struct platform_t))) == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(EXIT_FAILURE);
-	}
-	hummingboardBaseProSDL->nralias = 2;
-	if((hummingboardBaseProSDL->name = malloc(hummingboardBaseProSDL->nralias*sizeof(char *))) == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(EXIT_FAILURE);
-	}
-	if((hummingboardBaseProSDL->name[0] = strdup("hummingboard_base_sdl")) == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(EXIT_FAILURE);
-	}
-	if((hummingboardBaseProSDL->name[1] = strdup("hummingboard_pro_sdl")) == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(EXIT_FAILURE);
-	}
+	platform_register(&hummingboardBaseProSDL, "hummingboard_base_sdl");
+	platform_add_alias(&hummingboardBaseProSDL, "hummingboard_pro_sdl");
 
 	hummingboardBaseProSDL->soc = soc_get("NXP", "IMX6SDLRM");
 	hummingboardBaseProSDL->soc->setMap(map);
@@ -123,5 +108,4 @@ void hummingboardBaseProSDLInit(void) {
 
 	hummingboardBaseProSDL->validGPIO = &hummingboardBaseProSDLValidGPIO;
 
-	platform_register(hummingboardBaseProSDL);
 }

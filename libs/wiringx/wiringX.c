@@ -233,16 +233,14 @@ int wiringXSetup(char *name, void (*func)(int, const char *, ...)) {
 	raspberrypi3Init();
 
 	if((platform = platform_get_by_name(name, &namenr)) == NULL) {
-		struct platform_t *tmp = NULL;
+		char *tmp = NULL;
 		char message[1024];
 		int l = 0;
 		l = snprintf(message, 1023-l, "The %s is an unsupported or unknown platform\n", name);
 		l += snprintf(&message[l], 1023-l, "\tsupported wiringX platforms are:\n");
-		int i = 0, x = 0;
-		while((tmp = platform_iterate(i++)) != NULL) {
-			for(x=0;x<tmp->nralias;x++) {
-				l += snprintf(&message[l], 1023-l, "\t- %s\n", tmp->name[x]);
-			}
+		int i = 0;
+		while((tmp = platform_iterate_name(i++)) != NULL) {
+			l += snprintf(&message[l], 1023-l, "\t- %s\n", tmp);
 		}
 		wiringXLog(LOG_ERR, message);
 		return -1;

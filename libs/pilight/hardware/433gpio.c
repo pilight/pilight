@@ -40,6 +40,7 @@ typedef struct data_t {
 
 struct timestamp_t timestamp;
 
+#if defined(__arm__) || defined(__mips__)
 static void *reason_received_pulsetrain_free(void *param) {
 	struct reason_received_pulsetrain_t *data = param;
 	FREE(data);
@@ -110,6 +111,7 @@ static int client_callback(struct eventpool_fd_t *node, int event) {
 	}
 	return 0;
 }
+#endif
 
 static unsigned short gpio433HwInit(void *(*callback)(void *)) {
 #if defined(__arm__) || defined(__mips__)

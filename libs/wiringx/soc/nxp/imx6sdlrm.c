@@ -476,13 +476,8 @@ static int nxpIMX6SDLRMSelectableFd(int i) {
 }
 
 void nxpIMX6SDLRMInit(void) {
-	nxpIMX6SDLRM = malloc(sizeof(struct soc_t));
+	soc_register(&nxpIMX6SDLRM, "NXP", "IMX6SDLRM");
 
-	strcpy(nxpIMX6SDLRM->brand, "NXP");
-	strcpy(nxpIMX6SDLRM->chip, "IMX6SDLRM");
-
-	nxpIMX6SDLRM->map = NULL;
-	nxpIMX6SDLRM->irq = NULL;
 	nxpIMX6SDLRM->layout = layout;
 
 	nxpIMX6SDLRM->support.isr_modes = ISR_MODE_RISING | ISR_MODE_FALLING | ISR_MODE_BOTH | ISR_MODE_NONE;
@@ -504,5 +499,4 @@ void nxpIMX6SDLRMInit(void) {
 	nxpIMX6SDLRM->isr = &nxpIMX6SDLRMISR;
 	nxpIMX6SDLRM->waitForInterrupt = &nxpIMX6SDLRMWaitForInterrupt;
 
-	soc_register(nxpIMX6SDLRM);
 }

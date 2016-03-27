@@ -87,19 +87,7 @@ static int pcduino1DigitalWrite(int i, enum digital_value_t value) {
 }
 
 void pcduino1Init(void) {
-	if((pcduino1 = malloc(sizeof(struct platform_t))) == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(EXIT_FAILURE);
-	}
-	pcduino1->nralias = 1;
-	if((pcduino1->name = malloc(pcduino1->nralias*sizeof(char *))) == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(EXIT_FAILURE);
-	}
-	if((pcduino1->name[0] = strdup("pcduino1")) == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(EXIT_FAILURE);
-	}
+	platform_register(&pcduino1, "pcduino1");
 
 	pcduino1->soc = soc_get("Allwinner", "A10");
 	pcduino1->soc->setMap(map);
@@ -117,5 +105,4 @@ void pcduino1Init(void) {
 
 	pcduino1->validGPIO = &pcduino1ValidGPIO;
 
-	platform_register(pcduino1);
 }
