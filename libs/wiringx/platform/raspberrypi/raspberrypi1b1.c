@@ -44,6 +44,12 @@ static int raspberrypi1b1ValidGPIO(int pin) {
 	}
 }
 
+static int raspberrypi1b1Setup(void) {
+	raspberrypi1b1->soc->setup();
+	raspberrypi1b1->soc->setMap(map);
+	return 0;
+}
+
 void raspberrypi1b1Init(void) {
 	platform_register(&raspberrypi1b1, "raspberrypi1b1");
 
@@ -53,7 +59,7 @@ void raspberrypi1b1Init(void) {
 	raspberrypi1b1->digitalRead = raspberrypi1b1->soc->digitalRead;
 	raspberrypi1b1->digitalWrite = raspberrypi1b1->soc->digitalWrite;
 	raspberrypi1b1->pinMode = raspberrypi1b1->soc->pinMode;
-	raspberrypi1b1->setup = raspberrypi1b1->soc->setup;
+	raspberrypi1b1->setup = &raspberrypi1b1Setup;
 
 	raspberrypi1b1->isr = raspberrypi1b1->soc->isr;
 	raspberrypi1b1->waitForInterrupt = raspberrypi1b1->soc->waitForInterrupt;

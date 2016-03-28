@@ -50,16 +50,21 @@ static int raspberrypi1bpValidGPIO(int pin) {
 	}
 }
 
+static int raspberrypi1bpSetup(void) {
+	raspberrypi1bp->soc->setup();
+	raspberrypi1bp->soc->setMap(map);
+	return 0;
+}
+
 void raspberrypi1bpInit(void) {
 	platform_register(&raspberrypi1bp, "raspberrypi1b+");
 
 	raspberrypi1bp->soc = soc_get("Broadcom", "2835");
-	raspberrypi1bp->soc->setMap(map);
 
 	raspberrypi1bp->digitalRead = raspberrypi1bp->soc->digitalRead;
 	raspberrypi1bp->digitalWrite = raspberrypi1bp->soc->digitalWrite;
 	raspberrypi1bp->pinMode = raspberrypi1bp->soc->pinMode;
-	raspberrypi1bp->setup = raspberrypi1bp->soc->setup;
+	raspberrypi1bp->setup = &raspberrypi1bpSetup;
 
 	raspberrypi1bp->isr = raspberrypi1bp->soc->isr;
 	raspberrypi1bp->waitForInterrupt = raspberrypi1bp->soc->waitForInterrupt;

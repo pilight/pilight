@@ -105,6 +105,13 @@ static int hummingboardGateEdgeDQISR(int i, enum isr_mode_t mode) {
 	return hummingboardGateEdgeDQ->soc->isr(i, mode);
 }
 
+static int hummingboardGateEdgeDQSetup(void) {
+	hummingboardGateEdgeDQ->soc->setup();
+	hummingboardGateEdgeDQ->soc->setMap(map);
+	hummingboardGateEdgeDQ->soc->setIRQ(irq);
+	return 0;
+}
+
 void hummingboardGateEdgeDQInit(void) {
 	platform_register(&hummingboardGateEdgeDQ, "hummingboard_edge_dq");
 	platform_add_alias(&hummingboardGateEdgeDQ, "hummingboard_gate_dq");
@@ -116,7 +123,7 @@ void hummingboardGateEdgeDQInit(void) {
 	hummingboardGateEdgeDQ->digitalRead = hummingboardGateEdgeDQ->soc->digitalRead;
 	hummingboardGateEdgeDQ->digitalWrite = hummingboardGateEdgeDQ->soc->digitalWrite;
 	hummingboardGateEdgeDQ->pinMode = hummingboardGateEdgeDQ->soc->pinMode;
-	hummingboardGateEdgeDQ->setup = hummingboardGateEdgeDQ->soc->setup;
+	hummingboardGateEdgeDQ->setup = &hummingboardGateEdgeDQSetup;
 
 	hummingboardGateEdgeDQ->isr = &hummingboardGateEdgeDQISR;
 	hummingboardGateEdgeDQ->waitForInterrupt = hummingboardGateEdgeDQ->soc->waitForInterrupt;

@@ -47,28 +47,29 @@ struct platform_t *hummingboardBaseProDQ = NULL;
  * Not all GPIO where usable through sysfs
  * from the kernel used.
  */
+ 
 static int irq[] = {
-	 -1,  -1,   1,
-	 -1,  -1,  73,
-	 72,  71,  70,
-	194, 195,  -1,
-	 -1,  67,  -1,
-	 -1,  -1
+	 73,	 72,	 71,
+	 70,	194,	195,
+	 67,    1,	 -1
+	 -1		 -1,	 -1,
+	 -1,   -1,	 -1,
+	 -1,	 -1
 };
 
 static int map[] = {
-	/*	GPIO3_IO18,	GPIO3_IO17,	GPIO1_IO01 */
-			 82,				 81,				  1,
-	/*	GPIO5_IO28,	GPIO5_IO29,	GPIO3_IO09 */
-			149,				150,				 73,
-	/*	GPIO3_IO08,	GPIO3_IO07,	GPIO3_IO06 */
-			 72,				 71,				 70,
-	/*	GPIO7_IO02,	GPIO7_IO03,	GPIO2_IO24 */
-			185,				186,				 56,
-	/*	GPIO2_IO25,	GPIO3_IO03,	GPIO2_IO23 */
-			 57,				 67,				 55,
-	/*	GPIO2_IO26,	GPIO2_IO27 */
-			 58,				 59
+	/*	GPIO3_IO09,	GPIO3_IO08,	GPIO3_IO07	*/
+			 73,				 72,				 71,
+	/*	GPIO3_IO06,	GPIO7_IO02,	GPIO7_IO03	*/
+			 70,				185,				186,
+	/*	GPIO3_IO03,	GPIO1_IO01,	GPIO3_IO18	*/
+			 67,				  1,			   82,
+	/*	GPIO3_IO17,	GPIO2_IO26,	GPIO2_IO27	*/
+			 81,				 58,				 59,
+	/*	GPIO2_IO24,	GPIO2_IO25,	GPIO2_IO23	*/
+			 56,				 57,				 55,
+	/*	GPIO5_IO28,	GPIO5_IO29							*/
+			149,				150
 };
 
 static int hummingboardBaseProDQValidGPIO(int pin) {
@@ -87,18 +88,23 @@ static int hummingboardBaseProDQISR(int i, enum isr_mode_t mode) {
 	return hummingboardBaseProDQ->soc->isr(i, mode);
 }
 
+static int hummingboardBaseProDQSetup(void) {
+	hummingboardBaseProDQ->soc->setup();
+	hummingboardBaseProDQ->soc->setMap(map);
+	hummingboardBaseProDQ->soc->setIRQ(irq);
+	return 0;
+}
+
 void hummingboardBaseProDQInit(void) {
 	platform_register(&hummingboardBaseProDQ, "hummingboard_base_dq");
 	platform_add_alias(&hummingboardBaseProDQ, "hummingboard_pro_dq");
 
 	hummingboardBaseProDQ->soc = soc_get("NXP", "IMX6DQRM");
-	hummingboardBaseProDQ->soc->setMap(map);
-	hummingboardBaseProDQ->soc->setIRQ(irq);
 
 	hummingboardBaseProDQ->digitalRead = hummingboardBaseProDQ->soc->digitalRead;
 	hummingboardBaseProDQ->digitalWrite = hummingboardBaseProDQ->soc->digitalWrite;
 	hummingboardBaseProDQ->pinMode = hummingboardBaseProDQ->soc->pinMode;
-	hummingboardBaseProDQ->setup = hummingboardBaseProDQ->soc->setup;
+	hummingboardBaseProDQ->setup = &hummingboardBaseProDQSetup;
 
 	hummingboardBaseProDQ->isr = &hummingboardBaseProDQISR;
 	hummingboardBaseProDQ->waitForInterrupt = hummingboardBaseProDQ->soc->waitForInterrupt;

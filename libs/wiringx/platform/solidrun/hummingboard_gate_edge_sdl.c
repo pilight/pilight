@@ -105,6 +105,13 @@ static int hummingboardGateEdgeSDLISR(int i, enum isr_mode_t mode) {
 	return hummingboardGateEdgeSDL->soc->isr(i, mode);
 }
 
+static int hummingboardGateEdgeSDLSetup(void) {
+	hummingboardGateEdgeSDL->soc->setup();
+	hummingboardGateEdgeSDL->soc->setMap(map);
+	hummingboardGateEdgeSDL->soc->setIRQ(irq);
+	return 0;
+}
+
 void hummingboardGateEdgeSDLInit(void) {
 	platform_register(&hummingboardGateEdgeSDL, "hummingboard_edge_sdl");
 	platform_add_alias(&hummingboardGateEdgeSDL, "hummingboard_gate_sdl");
@@ -116,7 +123,7 @@ void hummingboardGateEdgeSDLInit(void) {
 	hummingboardGateEdgeSDL->digitalRead = hummingboardGateEdgeSDL->soc->digitalRead;
 	hummingboardGateEdgeSDL->digitalWrite = hummingboardGateEdgeSDL->soc->digitalWrite;
 	hummingboardGateEdgeSDL->pinMode = hummingboardGateEdgeSDL->soc->pinMode;
-	hummingboardGateEdgeSDL->setup = hummingboardGateEdgeSDL->soc->setup;
+	hummingboardGateEdgeSDL->setup = &hummingboardGateEdgeSDLSetup;
 
 	hummingboardGateEdgeSDL->isr = &hummingboardGateEdgeSDLISR;
 	hummingboardGateEdgeSDL->waitForInterrupt = hummingboardGateEdgeSDL->soc->waitForInterrupt;
