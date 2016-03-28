@@ -214,6 +214,10 @@ void protocol_register(protocol_t **proto) {
 	(*proto)->masterOnly = 0;
 	(*proto)->parseCode = NULL;
 	(*proto)->parseCommand = NULL;
+
+	(*proto)->preAmbCode = NULL;
+	(*proto)->postAmbCode = NULL;
+
 	(*proto)->createCode = NULL;
 	(*proto)->checkValues = NULL;
 	(*proto)->initDev = NULL;

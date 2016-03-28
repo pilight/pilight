@@ -152,9 +152,9 @@ li.label .marquee {
 }
 
 div.screen {
-	right: -20px;
+	right: -60px;
 	top: -10px;
-	width: 205px;
+	width: 300px;
 }
 
 .ui-li .ui-btn-inner a.ui-link-inherit, .ui-li-static.ui-li {
@@ -163,7 +163,7 @@ div.screen {
 
 div.name {
 	padding-top: 4px;
-  position: relative;
+	position: relative;
 	float: left;
 }
 

@@ -705,7 +705,7 @@ void *send_code(void *param) {
 						printf("\n");
 					}
 					if(protocol->preAmbCode != NULL) {
-						plen = protocol->preAmbCode(pamble);
+						plen = protocol->preAmbCode(&pamble);
 						if(hw->sendOOK(pamble, plen, 1) == 0) {
 							logprintf(LOG_DEBUG, "successfully send %s preAmb sequence", protocol->id);
 						} else {
@@ -720,7 +720,7 @@ void *send_code(void *param) {
 						logprintf(LOG_ERR, "failed to send code");
 					}
 					if(protocol->postAmbCode != NULL) {
-						plen = protocol->postAmbCode(pamble);
+						plen = protocol->postAmbCode(&pamble);
 						if(hw->sendOOK(pamble, plen, 1) == 0) {
 							logprintf(LOG_DEBUG, "successfully send %s postAmb sequence.", protocol->id);
 						} else {
