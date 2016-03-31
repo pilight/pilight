@@ -118,11 +118,7 @@ static int client_callback(struct eventpool_fd_t *node, int event) {
 	struct data_t *data = node->userdata;
 	int n = 0, c = 0;
 
-#ifdef _WIN32
-	if(InterlockedExchangeAdd(&doPause, 0) == 1) {
-#else
-	if(__sync_add_and_fetch(&doPause, 0) == 1) {
-#endif
+	if(doPause == 1) {
 		return 0;
 	}
 	switch(event) {
@@ -409,24 +405,13 @@ static int nano433Send(int *code, int rawlen, int repeats) {
 	return 0;
 }
 
-/*
- * FIXME
- */
 static void *receiveStop(void *param) {
-#ifdef _WIN32
-	InterlockedExchangeAdd(&doPause, 1);
-#else
-	__sync_add_and_fetch(&doPause, 1);
-#endif
+	doPause = 1;
 	return NULL;
 }
 
 static void *receiveStart(void *param) {
-#ifdef _WIN32
-	InterlockedExchangeAdd(&doPause, -1);
-#else
-	__sync_add_and_fetch(&doPause, -1);
-#endif
+	doPause = 0;
 	return NULL;
 }
 

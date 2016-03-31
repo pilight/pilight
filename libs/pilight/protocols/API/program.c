@@ -68,11 +68,7 @@ static void *thread(void *param) {
 	struct data_t *settings = task->userdata;
 	int pid = 0;
 
-#ifdef _WIN32
-	if(InterlockedExchangeAdd(&settings->wait, 0) > 0) {
-#else
-	if(__sync_add_and_fetch(&settings->wait, 0) > 0) {
-#endif
+	if(settings->wait == 0) {
 		return NULL;
 	}
 
@@ -241,13 +237,8 @@ static void *execute(void *param) {
 		}
 	}
 
-#ifdef _WIN32
-	InterlockedExchangeAdd(&p->wait, -1);
-	InterlockedExchangeAdd(&p->thread, -1);
-#else
-	__sync_add_and_fetch(&p->wait, -1);
-	__sync_add_and_fetch(&p->thread, -1);
-#endif
+	p->wait = 0;
+	p->thread = 0;
 
 	p->laststate = -1;
 
@@ -265,11 +256,7 @@ static int createCode(struct JsonNode *code, char *message) {
 			struct data_t *tmp = data;
 			while(tmp) {
 				if(strcmp(tmp->name, name) == 0) {
-#ifdef _WIN32
-					if(InterlockedExchangeAdd(&tmp->wait, 0) == 0) {
-#else
-					if(__sync_add_and_fetch(&tmp->wait, 0) == 0) {
-#endif
+					if(tmp->wait == 0) {
 						if(tmp->name != NULL && tmp->stop != NULL && tmp->start != NULL) {
 							if(json_find_number(code, "running", &itmp) == 0) {
 								state = 1;
@@ -301,17 +288,9 @@ static int createCode(struct JsonNode *code, char *message) {
 								}
 								eventpool_trigger(REASON_CODE_RECEIVED, reason_code_received_free, data);
 
-#ifdef _WIN32
-								InterlockedExchangeAdd(&tmp->wait, 1);
-#else
-								__sync_add_and_fetch(&tmp->wait, 1);
-#endif
+								tmp->wait = 1;
 								pthread_create(&tmp->pth, NULL, execute, (void *)tmp);
-#ifdef _WIN32
-								InterlockedExchangeAdd(&tmp->thread, 1);
-#else
-								__sync_add_and_fetch(&tmp->thread, 1);
-#endif
+								tmp->thread = 1;
 							}
 						} else {
 							logprintf(LOG_NOTICE, "program \"%s\" cannot be controlled", tmp->name);
@@ -343,19 +322,11 @@ static void gc(void) {
 	struct data_t *tmp = NULL;
 	while(data) {
 		tmp = data;
-#ifdef _WIN32
-		while(InterlockedExchangeAdd(&tmp->wait, 0) > 0) {
-#else
-		while(__sync_add_and_fetch(&tmp->wait, 0) > 0) {
-#endif
+		while(tmp->wait > 0) {
 			logprintf(LOG_NOTICE, "waiting for program \"%s\" to finish it's state change", tmp->name);
 			sleep(1);
 		}
-	#ifdef _WIN32
-		while(InterlockedExchangeAdd(&tmp->thread, 0) > 0) {
-#else
-		while(__sync_add_and_fetch(&tmp->thread, 0) > 0) {
-#endif
+		while(tmp->thread > 0) {
 			logprintf(LOG_NOTICE, "waiting for program \"%s\" to finish it's state change", tmp->name);
 			sleep(1);
 		}

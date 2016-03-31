@@ -89,7 +89,7 @@ static int client_callback(struct eventpool_fd_t *node, int event) {
 		case EV_CONNECT_SUCCESS: {
 			switch(status) {
 				case CONNECT: {
-					__sync_fetch_and_add(&connected, 1);
+					connected = 1;
 					socket_write(node->fd, "{\"action\":\"identify\"}");
 					eventpool_fd_enable_write(node);
 					status = VALIDATE;
@@ -165,7 +165,7 @@ static int client_callback(struct eventpool_fd_t *node, int event) {
 }
 
 void *timeout(void *param) {
-	if(__sync_fetch_and_add(&connected, 0) == 0) {
+	if(connected == 0) {
 		signal(SIGALRM, SIG_IGN);
 		logprintf(LOG_ERR, "could not connect to the pilight instance");
 
@@ -175,7 +175,7 @@ void *timeout(void *param) {
 }
 
 void *ssdp_not_found(void *param) {
-	if(__sync_fetch_and_add(&found, 0) == 0) {
+	if(found == 0) {
 		signal(SIGALRM, SIG_IGN);
 		logprintf(LOG_ERR, "could not find pilight instance: %s", instance);
 
@@ -185,8 +185,7 @@ void *ssdp_not_found(void *param) {
 }
 
 static void *ssdp_reseek(void *param) {
-	if(__sync_fetch_and_add(&found, 0) == 0 &&
-		 __sync_fetch_and_add(&connecting, 0) == 0) {
+	if(found == 0 && connecting == 0) {
 		struct timeval tv;
 		tv.tv_sec = 1;
 		tv.tv_usec = 0;
@@ -224,7 +223,7 @@ static int user_input(struct eventpool_fd_t *node, int event) {
 							tv.tv_sec = 1;
 							tv.tv_usec = 0;
 							timer_add_task(&timer, "socket timeout", tv, timeout, NULL);
-							__sync_fetch_and_add(&connecting, 1);
+							connecting = 1;
 							return -1;
 						}
 						i++;
@@ -245,7 +244,7 @@ static void *ssdp_found(void *param) {
 	struct ssdp_list_t *node = NULL;
 	int match = 0;
 
-	if(__sync_fetch_and_add(&connecting, 0) == 0 && data->ip != NULL && data->port > 0 && data->name != NULL) {
+	if(connecting == 0 && data->ip != NULL && data->port > 0 && data->name != NULL) {
 		if(instance == NULL) {
 			struct ssdp_list_t *tmp = ssdp_list;
 			while(tmp) {
@@ -274,8 +273,8 @@ static void *ssdp_found(void *param) {
 			}
 		} else {
 			if(strcmp(data->name, instance) == 0) {
-				__sync_fetch_and_add(&found, 1);
-				__sync_fetch_and_add(&connecting, 1);
+				found = 1;
+				connecting = 1;
 				socket_connect1(data->ip, data->port, client_callback);
 				tv.tv_sec = 1;
 				tv.tv_usec = 0;

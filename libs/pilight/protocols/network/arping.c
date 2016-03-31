@@ -88,11 +88,7 @@ static void callback(char *a, char *b) {
 		settings = settings->next;
 	}
 
-#ifdef _WIN32
-	InterlockedExchangeAdd(&settings->polling, -1);
-#else
-	__sync_add_and_fetch(&settings->polling, -1);
-#endif
+	settings->polling = 0;
 
 	if(b != NULL && strcmp(b, "0.0.0.0") != 0) {
 		if(strlen(settings->dstip) > 0 && strcmp(settings->dstip, b) != 0) {
@@ -158,11 +154,7 @@ static void *thread(void *param) {
 	tv.tv_usec = 0;
 	threadpool_add_scheduled_work(settings->name, thread, tv, (void *)settings);
 
-#ifdef _WIN32
-	if(InterlockedExchangeAdd(&settings->polling, 0) == 1) {
-#else
-	if(__sync_add_and_fetch(&settings->polling, 0) == 1) {
-#endif
+	if(settings->polling == 1) {
 		logprintf(LOG_DEBUG, "arping is still searching for network device %s", settings->dstmac);
 		return NULL;
 	}
@@ -189,11 +181,7 @@ static void *thread(void *param) {
 		tries = 20;
 	}
 
-#ifdef _WIN32
-	InterlockedExchangeAdd(&settings->polling, 1);
-#else
-	__sync_add_and_fetch(&settings->polling, 1);
-#endif
+	settings->polling = 1;
 
 	// srcip = search ip
 	// srcmac = source mac

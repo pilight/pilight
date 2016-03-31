@@ -1437,7 +1437,7 @@ void *broadcast(void *param) {
 }
 
 static void *adhoc_reconnect(void *param) {
-	if(__sync_add_and_fetch(&adhoc_data->connected, 0) == 0) {
+	if(adhoc_data->connected == 0) {
 		struct timeval tv;
 		tv.tv_sec = 3;
 		tv.tv_usec = 0;
@@ -1455,9 +1455,7 @@ static int clientize(struct eventpool_fd_t *node, int event) {
 	adhoc_data->reading = 0;
 	switch(event) {
 		case EV_CONNECT_SUCCESS: {
-			if(__sync_add_and_fetch(&adhoc_data->connected, 0) == 0) {
-				__sync_add_and_fetch(&adhoc_data->connected, 1);
-			}
+			adhoc_data->connected = 1;
 			eventpool_fd_enable_write(node);
 		} break;
 		case EV_READ: {
@@ -1633,9 +1631,7 @@ static int clientize(struct eventpool_fd_t *node, int event) {
 		case EV_DISCONNECTED: {
 			clientize_client = NULL;
 			adhoc_data->steps = 0;
-			if(__sync_add_and_fetch(&adhoc_data->connected, 0) == 1) {
-				__sync_add_and_fetch(&adhoc_data->connected, -1);
-			}
+			adhoc_data->connected = 0;
 
 			tv.tv_sec = 3;
 			tv.tv_usec = 0;
@@ -1678,9 +1674,7 @@ static void *ssdp_found(void *param) {
 			logprintf(LOG_NOTICE, "pilight master daemon \"%s\" was found @%s, clientizing", data->name, data->ip);
 			pilight.runmode = ADHOC;
 
-			if(__sync_add_and_fetch(&adhoc_data->connected, 0) == 1) {
-				__sync_add_and_fetch(&adhoc_data->connected, -1);
-			}
+			adhoc_data->connected = 0;
 			adhoc_data->steps = 0;
 			if(clientize_client != NULL) {
 				eventpool_fd_remove(clientize_client);

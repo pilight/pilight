@@ -56,7 +56,7 @@ static int running = 0;
 int events_gc(void) {
 	loop = 0;
 
-	while(__sync_add_and_fetch(&running, 0) == 1) {
+	while(running == 1) {
 		usleep(10);
 	}
 
@@ -1675,7 +1675,7 @@ struct rule_list_t {
 } rule_list_t;
 
 void *events_iterate(void *param) {
-	__sync_add_and_fetch(&running, 1);
+	running = 1;
 	struct threadpool_tasks_t *task = param;
 	struct rule_list_t *list = task->userdata;
 	struct rules_t *tmp_rules = NULL;
@@ -1713,7 +1713,7 @@ void *events_iterate(void *param) {
 		FREE(list->rules);
 		FREE(list);
 	}
-	__sync_add_and_fetch(&running, -1);
+	running = 0;
 	return NULL;
 }
 
@@ -1727,7 +1727,7 @@ void *events_loop(void *param) {
 	unsigned short match = 0;
 	unsigned int i = 0, x = 0;
 
-	__sync_add_and_fetch(&running, 1);
+	running = 1;
 
 	switch(task->reason) {
 		case REASON_CODE_RECEIVED: {
@@ -1741,7 +1741,7 @@ void *events_loop(void *param) {
 		for(i=0;i<data1->nrdev;i++) {
 			if(devices_select_struct(ORIGIN_MASTER, data1->devices[i], &dev) == 0) {
 				struct event_action_thread_t *thread = dev->action_thread;
-				if(__sync_add_and_fetch(&thread->running, 0) == 1) {
+				if(thread->running == 1) {
 					event_action_thread_stop(dev);
 				}
 			}
@@ -1813,7 +1813,7 @@ void *events_loop(void *param) {
 		threadpool_add_work(REASON_END, NULL, "rules loop", 0, events_iterate, NULL, (void *)list);
 	}
 
-	__sync_add_and_fetch(&running, -1);
+	running = 0;
 
 	return (void *)NULL;
 }

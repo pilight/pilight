@@ -87,24 +87,23 @@ static void *worker(void *param) {
 	int linger = 0;
 
 	sem_wait(&node->running);
-	while(__sync_add_and_fetch(&node->loop, 0) == 1) {
+	while(node->loop == 1) {
 		pthread_mutex_lock(&node->lock);
 
-		while(__sync_add_and_fetch(&node->loop, 0) == 1 &&
-					__sync_add_and_fetch(&nrtasks, 0) == 0) {
+		while(node->loop == 1 && __sync_add_and_fetch(&nrtasks, 0) == 0) {
 			gettimeofday(&now, NULL);
 			timeToWait.tv_sec = now.tv_sec+1;
 			timeToWait.tv_nsec = 0;
 			pthread_cond_timedwait(&node->signal, &node->lock, &timeToWait);
-			if(__sync_add_and_fetch(&node->loop, 0) == 0) {
+			if(node->loop == 0) {
 				break;
 			}
 			linger++;
-			int l = __sync_add_and_fetch(&maxlinger, 0);
+			int l = maxlinger;
 
 			if(linger > l) {
 				pthread_mutex_lock(&workers_lock);
-				int mw = __sync_add_and_fetch(&minworkers, 0);
+				int mw = minworkers;
 				if(nrworkers > mw) {
 					pthread_detach(node->pth);
 					threadpool_remove_worker(node->id);
@@ -119,7 +118,7 @@ static void *worker(void *param) {
 		}
 		linger = 0;
 		pthread_mutex_unlock(&node->lock);
-		if(__sync_add_and_fetch(&node->loop, 0) == 0) {
+		if(node->loop == 0) {
 			break;
 		}
 
@@ -155,7 +154,7 @@ static void *worker(void *param) {
 
 			if(copy.ref == NULL ||
 				 (sem_trywait(copy.ref) == -1 && errno == EAGAIN) ||
-				 __sync_add_and_fetch(&node->loop, 0) == 0) {
+				 node->loop == 0) {
 				if(copy.free != NULL && copy.userdata != NULL && copy.reason != REASON_END) {
 					copy.free(copy.userdata);
 				}
@@ -229,7 +228,7 @@ void threadpool_add_worker(void) {
 	pthread_mutex_lock(&workers_lock);
 	struct threadpool_workers_t *tmp = threadpool_workers;
 	if(tmp) {
-		int mw = __sync_add_and_fetch(&maxworkers, 0);
+		int mw = maxworkers;
 		int list[mw+1], i = 0, x = 0;
 		memset(&list, 0, mw+1);
 		while(tmp) {
@@ -272,8 +271,7 @@ int threadpool_free_runs(int reason) {
 }
 
 unsigned long threadpool_add_work(int reason, sem_t *ref, char *name, int priority, void *(*func)(void *), void *(*free)(void *), void *userdata) {
-	if(__sync_add_and_fetch(&acceptwork, 0) == 0 &&
-		__sync_add_and_fetch(&init, 0) == 0) {
+	if(acceptwork == 0 && init == 0) {
 		// Adding work to uninitialized threadpool
 		return -1;
 	}
@@ -353,9 +351,9 @@ void threadpool_init(int min, int max, int linger) {
 
 	timer_init(&timer, SIGRTMIN, threadpool_timer_handler, TIMER_ABSTIME, tv1, tv2);
 
-	__sync_add_and_fetch(&maxworkers, max);
-	__sync_add_and_fetch(&minworkers, min);
-	__sync_add_and_fetch(&maxlinger, linger);
+	maxworkers = max;
+	minworkers = min;
+	maxlinger = linger;
 	// __sync_add_and_fetch(&acceptwork, 1);
 
 	pthread_mutexattr_init(&tasks_attr);
@@ -369,7 +367,7 @@ void threadpool_init(int min, int max, int linger) {
 	for(i=0;i<min;i++) {
 		threadpool_add_worker();
 	}
-	__sync_add_and_fetch(&init, 1);
+	init = 1;
 	while(ttasks) {
 		struct timer_list_t *tmp = ttasks;
 		timer_add_task(&timer, tmp->name, tmp->tv, tmp->task, tmp->userdata);
@@ -379,12 +377,12 @@ void threadpool_init(int min, int max, int linger) {
 }
 
 unsigned long threadpool_add_scheduled_work(char *name, void *(*task)(void *), struct timeval tv, void *userdata) {
-	if(__sync_add_and_fetch(&acceptwork, 0) == 0) {
+	if(acceptwork == 0) {
 		// Adding work to uninitialized threadpool
 		return -1;
 	}
 
-	if(__sync_add_and_fetch(&init, 0) == 0) {
+	if(init == 0) {
 		/*
 		 * We need to buffer any scheduled task until we are forked
 		 * and threadpool_init is run.
@@ -415,9 +413,7 @@ static void threadpool_workers_gc(void) {
 	struct threadpool_workers_t *tmp = threadpool_workers;
 	while(threadpool_workers != NULL) {
 		tmp = threadpool_workers;
-		while(__sync_add_and_fetch(&threadpool_workers->loop, 0) > 0) {
-			__sync_add_and_fetch(&threadpool_workers->loop, -1);
-		}
+		threadpool_workers->loop = 0;
 		pthread_mutex_unlock(&threadpool_workers->lock);
 		pthread_cond_signal(&threadpool_workers->signal);
 		sem_wait(&threadpool_workers->running);
@@ -450,10 +446,10 @@ static void threadpool_tasks_gc(void) {
 }
 
 void threadpool_gc() {
-	__sync_add_and_fetch(&acceptwork, -1);
+	acceptwork = 0;
 	threadpool_workers_gc();
 	threadpool_tasks_gc();
 
 	timer_gc(&timer);
-	__sync_add_and_fetch(&init, -1);
+	init = 0;
 }
