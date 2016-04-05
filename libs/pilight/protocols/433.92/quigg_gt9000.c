@@ -30,7 +30,7 @@
 #include "../../core/gc.h"
 #include "quigg_gt9000.h"
 
-#define PULSE_QUIGG_SHORT	400
+#define PULSE_QUIGG_SHORT	300
 #define PULSE_QUIGG_LONG	1100
 #define PULSE_QUIGG_FOOTER1	3000
 #define PULSE_QUIGG_FOOTER2	7000
@@ -44,6 +44,7 @@
 	0-3      First part of systemcode
 	4-19     Encrypted systemcode
 	16-19    ON/OFF statecodes (in encoded state, is also used decoded for systemcode)
+		 example based on 1110 firt part systemcode
 			ON2/OFF4        - 0000
 			OFF1/ON3/ONALL  - 1000
 			OFF2/ON4        - 0100
@@ -61,11 +62,6 @@
 			OFF1/ON3/ONALL  - 0111
 			ON2/OFF4        - 1111
 	20-24    Unit
-			Unit 1          - 1100
-			Unit 2          - 0101
-			Unit 3          - 1110
-			Unit 4          - 0111
-			ALL             - 0010
 	25       Footer (3000 7000)
 */
 
@@ -81,14 +77,23 @@ static int validate(void) {
 	return -1;
 }
 
-static void createMessage(int systemcode, int state, int unit) {
+static void createMessage(int *binary, int systemcode, int state, int unit) {
+	int i = 0;
+	char binaryCh[RAW_LENGTH/2];
 	quigg_gt9000->message = json_mkobject();
+	if(binary != NULL) {
+        	for(i=0;i<RAW_LENGTH/2;i++) {
+                	if(binary[i] == 0) {
+                		binaryCh[i] = '0';
+                	} else {
+                		binaryCh[i] = '1';
+                	}
+        	}
+        	binaryCh[RAW_LENGTH/2-1] = '\0';
+        	json_append_member(quigg_gt9000->message, "binary", json_mkstring(binaryCh));
+        }
 	json_append_member(quigg_gt9000->message, "id", json_mknumber(systemcode, 0));
-	if(unit==5) {
-		json_append_member(quigg_gt9000->message, "all", json_mknumber(1, 0));
-	} else {
-		json_append_member(quigg_gt9000->message, "unit", json_mknumber(unit, 0));
-	}
+	json_append_member(quigg_gt9000->message, "unit", json_mknumber(unit, 0));
 	if(state == 1) {
 		json_append_member(quigg_gt9000->message, "state", json_mkstring("on"));
 	} else {
@@ -96,12 +101,17 @@ static void createMessage(int systemcode, int state, int unit) {
 	}
 }
 
-static int decodePayload(int payload, int index) {
+static int decodePayload(int payload, int index, int syscodetype) {
 	int ret = -1;
 	int hash[16] = { 0x0, 0x9, 0xF, 0x4, 0xA, 0xD, 0x5, 0xB,
 			 0x3, 0x2, 0x1, 0x7, 0xE, 0x6, 0xC, 0x8 };
+	int hash2[16] = { 0x0, 0x9, 0x5, 0xF, 0x3, 0x6, 0xC, 0x7,
+			  0xE, 0xD, 0x1, 0xB, 0x2, 0xA, 0x4, 0x8 };
 	
-	ret = payload^hash[index];
+	if(syscodetype == 10 || syscodetype == 14)
+		ret = payload^hash[index];
+	else
+		ret = payload^hash2[index];
 	
 	return ret;
 }
@@ -111,11 +121,11 @@ static int parseSystemcode(int *binary) {
 	int systemcode2enc = binToDecRev(binary, 4, 7);
 	int systemcode2dec = 0; //calculate all codes with base syscode2 = 0
 	int systemcode3enc = binToDecRev(binary, 8, 11);
-	int systemcode3dec = decodePayload(systemcode3enc, systemcode2enc);
+	int systemcode3dec = decodePayload(systemcode3enc, systemcode2enc, systemcode1dec);
 	int systemcode4enc = binToDecRev(binary, 12, 15);
-	int systemcode4dec = decodePayload(systemcode4enc, systemcode3enc);
+	int systemcode4dec = decodePayload(systemcode4enc, systemcode3enc, systemcode1dec);
 	int systemcode5enc = binToDecRev(binary, 16, 19);
-	int systemcode5dec = decodePayload(systemcode5enc, systemcode4enc);
+	int systemcode5dec = decodePayload(systemcode5enc, systemcode4enc, systemcode1dec);
 	int systemcode = (systemcode1dec<<16) + (systemcode2dec<<12) + (systemcode3dec<<8) + (systemcode4dec<<4) + systemcode5dec;
 
 	return systemcode;
@@ -146,49 +156,39 @@ static void parseCode(void) {
 	int systemcode = parseSystemcode(binary);
 	int statecode = binToDecRev(binary, 16, 19);
 	int unit = binToDec(binary, 20, 23);
-	if(unit == 3)
-		unit = 1;
-	else if(unit == 10)
-		unit = 2;
-	else if(unit == 7)
-		unit = 3;
-	else if(unit == 14)
-		unit = 4;
-	else if(unit == 4)
-		unit = 5;
-	else
-		return;
 
 	//validate unit & statecode
-	if(unit == 1 || unit == 3) {
-		if(statecode == 10 || statecode == 6 || statecode == 1 || statecode == 5)
-			state = 1;
-		else if(statecode == 8 || statecode == 2 || statecode == 11 || statecode == 7)
-			state = 0;
-		else
-			return;
-	} else if(unit == 2 || unit == 4) {
-		if(statecode == 0 || statecode == 3 || statecode == 14 || statecode == 15)
-			state = 1;
-		else if(statecode == 4 || statecode == 9 || statecode == 12 || statecode == 13)
-			state = 0;
-		else
-			return;
-	} else if(unit == 5) {
-		if(statecode == 8 || statecode == 2 || statecode == 11 || statecode == 7)
-			state = 1;
-		else if(statecode == 10 || statecode == 6 || statecode == 1 || statecode == 5)
-			state = 0;
-		else
-			return;
+	if(binary[3] == 0) { //systemcode[3] = 1
+		if(unit == 3 || unit == 7) {
+			if(statecode == 10 || statecode == 6 || statecode == 1 || statecode == 5)
+				state = 1;
+			else if(statecode == 8 || statecode == 2 || statecode == 11 || statecode == 7)
+				state = 0;
+		} else if(unit == 10 || unit == 14) {
+			if(statecode == 0 || statecode == 3 || statecode == 14 || statecode == 15)
+				state = 1;
+			else if(statecode == 4 || statecode == 9 || statecode == 12 || statecode == 13)
+				state = 0;
+		} else if(unit == 4) {
+			if(statecode == 8 || statecode == 2 || statecode == 11 || statecode == 7)
+				state = 1;
+			else if(statecode == 10 || statecode == 6 || statecode == 1 || statecode == 5)
+				state = 0;
+		}
+		
+		if(unit == 7 || unit == 14)
+			state = state ? 0 : 1;
 	} else {
-		return;
+		if(statecode == 3 || statecode == 4 || statecode == 7 || statecode == 11)
+			state = 1;
+		else if(statecode == 2 || statecode == 1 || statecode == 9 || statecode == 10)
+			state = 0;
+		
+		if(unit == 2 || unit == 10)
+			state = state ? 0 : 1;
 	}
 
-	if(unit == 3 || unit == 4)
-		state = state ? 0 : 1;
-
-	createMessage(systemcode, state, unit);
+	createMessage(binary, systemcode, state, unit);
 }
 
 static void createZero(int s, int e) {
@@ -230,16 +230,6 @@ static void createEncryptedData(int encrypteddata) {
 
 static void createUnit(int unit) {
 	int binary[4], length = 0, i = 0, x = 20;
-	if(unit == 1)
-		unit = 3;
-	else if(unit == 2)
-		unit = 10;
-	else if(unit == 3)
-		unit = 7;
-	else if(unit == 4)
-		unit = 14;
-	else if(unit == 5)
-		unit = 4;
 
 	length = decToBinRev(unit, binary);
 	for(i=0;i<=length;i++) {
@@ -251,12 +241,15 @@ static void createUnit(int unit) {
 }
 
 static void initAllCodes(int systemcode, int allcodes[16]) {
-	int i = 0;
+	int i = 0, syscodetype = 0;
 	int systemcode1enc = 0, systemcode2enc = 0, systemcode3enc = 0, systemcode4enc = 0, systemcode5enc = 0;
 	int systemcode1dec = 0, systemcode3dec = 0, systemcode4dec = 0, systemcode5dec = 0;
 	int hash[16] = { 0x0, 0x9, 0xF, 0x4, 0xA, 0xD, 0x5, 0xB,
 			 0x3, 0x2, 0x1, 0x7, 0xE, 0x6, 0xC, 0x8 };
+	int hash2[16] = { 0x0, 0x9, 0x5, 0xF, 0x3, 0x6, 0xC, 0x7,
+			  0xE, 0xD, 0x1, 0xB, 0x2, 0xA, 0x4, 0x8 };
 	
+	syscodetype = (systemcode >> 16) & 0xF;
 	systemcode1dec = (systemcode >> 16) & 0xF;
 	//systemcode2dec is always 0, therefore it is not needed
 	//systemcode2dec = (systemcode >> 12) & 0xF;
@@ -270,18 +263,53 @@ static void initAllCodes(int systemcode, int allcodes[16]) {
 	//encrypt systemcode
 	for(i=0;i<16;i++) {
 		systemcode2enc = i;
-		systemcode3enc = hash[systemcode2enc]^systemcode3dec;
-		systemcode4enc = hash[systemcode3enc]^systemcode4dec;
-		systemcode5enc = hash[systemcode4enc]^systemcode5dec;
+		if(syscodetype == 10 || syscodetype == 14) {
+			systemcode3enc = hash[systemcode2enc]^systemcode3dec;
+			systemcode4enc = hash[systemcode3enc]^systemcode4dec;
+			systemcode5enc = hash[systemcode4enc]^systemcode5dec;
+		} else { //if(systemcodetype == 13 || systemcodetype == 12)
+			systemcode3enc = hash2[systemcode2enc]^systemcode3dec;
+			systemcode4enc = hash2[systemcode3enc]^systemcode4dec;
+			systemcode5enc = hash2[systemcode4enc]^systemcode5dec;
+		}
 		allcodes[systemcode5enc] = (systemcode1enc<<16) + (systemcode2enc<<12) + (systemcode3enc<<8) + (systemcode4enc<<4) + systemcode5enc;
 	}
 }
 
 static int createCode(JsonNode *code) {
-	char on1[4] = {10,6,1,5};
-	char on2[4] = {0,3,14,15};
-	char off1[4] = {8,2,11,7};
-	char off2[4] = {4,9,12,13};
+	int syscodetype = 0;
+	char unit_onoff_map[16][2][4] = {{{8,2,11,7},{10,6,1,5}},   //unit 0 (untested)
+					 {{8,2,11,7},{10,6,1,5}},   //unit 1 (untested)
+					 {{8,2,11,7},{10,6,1,5}},   //unit 2 (working)
+					 {{8,2,11,7},{10,6,1,5}},   //unit 3
+					 {{10,6,1,5},{8,2,11,7}},   //unit 4 (ALL-working)
+					 {{10,6,1,5},{8,2,11,7}},   //unit 5 (working)
+					 {{10,6,1,5},{8,2,11,7}},   //unit 6 (working)
+					 {{10,6,1,5},{8,2,11,7}},   //unit 7
+					 {{4,9,12,13},{0,3,14,15}}, //unit 8 (working)
+					 {{4,9,12,13},{0,3,14,15}}, //unit 9 (untested)
+					 {{4,9,12,13},{0,3,14,15}}, //unit 10
+					 {{4,9,12,13},{0,3,14,15}}, //unit 11 (untested)
+					 {{0,3,14,15},{4,9,12,13}}, //unit 12 (untested)
+					 {{0,3,14,15},{4,9,12,13}}, //unit 13 (untested)
+					 {{0,3,14,15},{4,9,12,13}}, //unit 14
+					 {{0,3,14,15},{4,9,12,13}}};//unit 15 (untested)
+	char unit_onoff_map2[16][2][4] = {{{1,2,9,10},{3,4,7,11}},  //unit 0
+					 {{1,2,9,10},{3,4,7,11}},   //unit 1 (untested)
+					 {{1,2,9,10},{3,4,7,11}},   //unit 2
+					 {{1,2,9,10},{3,4,7,11}},   //unit 3
+					 {{3,4,7,11},{1,2,9,10}},   //unit 4
+					 {{3,4,7,11},{1,2,9,10}},   //unit 5 (ALL-working)
+					 {{3,4,7,11},{1,2,9,10}},   //unit 6 (untested)
+					 {{3,4,7,11},{1,2,9,10}},   //unit 7 (untested)
+					 {{-1,-1,-1,-1},{-1,-1,-1,-1}},
+					 {{-1,-1,-1,-1},{-1,-1,-1,-1}},
+					 {{-1,-1,-1,-1},{-1,-1,-1,-1}},
+					 {{-1,-1,-1,-1},{-1,-1,-1,-1}},
+					 {{-1,-1,-1,-1},{-1,-1,-1,-1}},
+					 {{-1,-1,-1,-1},{-1,-1,-1,-1}},
+					 {{-1,-1,-1,-1},{-1,-1,-1,-1}},
+					 {{-1,-1,-1,-1},{-1,-1,-1,-1}}};
 	double itmp = -1;
 	int unit = -1, systemcode = -1, verifysyscode = -1, state = -1, all = 0, statecode = -1;
 	int allcodes[16], binary[RAW_LENGTH/2];
@@ -290,8 +318,6 @@ static int createCode(JsonNode *code) {
 		systemcode = (int)round(itmp);
 	if(json_find_number(code, "unit", &itmp) == 0)
 		unit = (int)round(itmp);
-	if(json_find_number(code, "all", &itmp) == 0)
-		all = (int)round(itmp);
 	if(json_find_number(code, "off", &itmp) == 0)
 		state=0;
 	else if(json_find_number(code, "on", &itmp) == 0)
@@ -303,34 +329,26 @@ static int createCode(JsonNode *code) {
 	} else if(systemcode == -1) {
 		logprintf(LOG_ERR, "quigg_gt9000: invalid id range");
 		return EXIT_FAILURE;
-	} else if((unit > 4 || unit < 0) && all == 0) {
+	} else if(unit < 0) {
 		logprintf(LOG_ERR, "quigg_gt9000: invalid unit code range");
 		return EXIT_FAILURE;
 	} else {
-		if(unit == -1 && all == 1) {
-			unit = 5;
-		}
 		quigg_gt9000->rawlen = RAW_LENGTH;
 		//create all 16 codes used by the remote
 		initAllCodes(systemcode, allcodes);
 		//it is possible to use 4 codes per state
 		//we stick to code number 1 in the on/off array
-		if(unit == 1 || unit == 3) {
-			if((state == 1 && unit == 1) || (state == 0 && unit == 3))
-				statecode = on1[1];
-			else
-				statecode = off1[1];
-		} else if(unit == 2 || unit == 4) {
-			if((state == 1 && unit == 2) || (state == 0 && unit == 4))
-				statecode = on2[1];
-			else
-				statecode = off2[1];
-		} else if(unit == 5) {
-			if(state == 1)
-				statecode = off1[1];
-			else
-				statecode = on1[1];
+		syscodetype = (systemcode >> 16) & 0x0F;
+		if(syscodetype == 10 || syscodetype == 14)
+			statecode = unit_onoff_map[unit][state][1];
+		else
+			statecode = unit_onoff_map2[unit][state][1];
+    
+		if(statecode==-1) {
+			logprintf(LOG_ERR, "quigg_gt9000: unit %d not supported, try 0-15.", unit);
+			return EXIT_FAILURE;
 		}
+    
 		int encrypteddata = allcodes[statecode];
 
 		clearCode();
@@ -345,7 +363,7 @@ static int createCode(JsonNode *code) {
 			return EXIT_FAILURE;
 		}
 
-		createMessage(systemcode, state, unit);
+		createMessage(NULL, systemcode, state, unit);
 	}
 	return EXIT_SUCCESS;
 }
@@ -354,7 +372,6 @@ static void printHelp(void) {
 	printf("\t -u --unit=unit\t\t\tcontrol the device unit with this code\n");
 	printf("\t -t --on\t\t\tsend an on signal to device\n");
 	printf("\t -f --off\t\t\tsend an off signal to device\n");
-	printf("\t -a --all\t\t\tcommand to all devices with this id\n");
 	printf("\t -i --id=id\t\t\tcontrol one or multiple devices with this id\n");
 }
 
@@ -371,12 +388,11 @@ void quiggGT9000Init(void) {
 	quigg_gt9000->txrpt = NORMAL_REPEATS;
 	quigg_gt9000->minrawlen = RAW_LENGTH;
 	quigg_gt9000->maxrawlen = RAW_LENGTH;
-	quigg_gt9000->maxgaplen = (int)(PULSE_QUIGG_FOOTER2*0.9);
-	quigg_gt9000->mingaplen = (int)(PULSE_QUIGG_FOOTER2*1.1);
+	quigg_gt9000->maxgaplen = (int)(PULSE_QUIGG_FOOTER2*1.1);
+	quigg_gt9000->mingaplen = (int)(PULSE_QUIGG_FOOTER2*0.9);
 
 	options_add(&quigg_gt9000->options, 't', "on", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
 	options_add(&quigg_gt9000->options, 'f', "off", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
-	options_add(&quigg_gt9000->options, 'a', "all", OPTION_NO_VALUE, DEVICES_OPTIONAL, JSON_NUMBER, NULL, NULL);
 	options_add(&quigg_gt9000->options, 'u', "unit", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, NULL);
 	options_add(&quigg_gt9000->options, 'i', "id", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, NULL);
 
