@@ -43,7 +43,8 @@ var language_en = {
 	connecting: "Connecting",
 	connection_lost: "Connection lost, touch to reload",
 	connection_failed: "Failed to connect, touch to reload",
-	unexpected_error: "An unexpected error occured"
+	unexpected_error: "An unexpected error occured",
+	insecure_certificate: "You are using the default pilight.pem certificate. This results in a highly insecure https connection! Please personalize your certificate to remove this message."
 }
 
 var language_de = {
@@ -61,7 +62,8 @@ var language_de = {
 	connecting: "Verbindung wird aufgebaut",
 	connection_lost: "Verbindung verloren! Hier berühren, um die Seite neu zu laden.",
 	connection_failed: "Verbindung fehlgeschlagen! Hier berühren, um die Seite neu zu laden.",
-	unexpected_error: "Es ist ein unerwarteter Fehler aufgetreten."
+	unexpected_error: "Es ist ein unerwarteter Fehler aufgetreten.",
+	insecure_certificate: "You are using the default {0} certificate. This is a highly insecure way of using https connections! Please personalize your certificate to remove this message."
 }
 
 var language_nl = {
@@ -78,7 +80,8 @@ var language_nl = {
 	confirm: "Weet u dat zeker?",
 	connection_lost: "Verbinding verloren, klik om te herladen",
 	connection_failed: "Kan niet verbinden, klik om te herhalen",
-	unexpected_error: "An unexpected error occured"
+	unexpected_error: "Er heeft zich een onverwachte fout voorgedaan",
+	insecure_certificate: "You are using the default {0} certificate. This is a highly insecure way of using https connections! Please personalize your certificate to remove this message."
 }
 
 var language_fr = {
@@ -96,7 +99,8 @@ var language_fr = {
 	connecting: "Connexion en cours",
 	connection_lost: "Connexion perdue, appuyez pour recharger",
 	connection_failed: "Connexion impossible, appuyez pour réessayer",
-	unexpected_error: "Une erreur inattendue s'est produite"
+	unexpected_error: "Une erreur inattendue s'est produite",
+	insecure_certificate: "You are using the default {0} certificate. This is a highly insecure way of using https connections! Please personalize your certificate to remove this message."
 }
 
 if(userLang.indexOf('nl') != -1) {
@@ -112,6 +116,15 @@ else {
 	language = language_en;
 }
 
+String.prototype.format = function() {
+    var formatted = this;
+    for (var i = 0; i < arguments.length; i++) {
+        var regexp = new RegExp('\\{'+i+'\\}', 'gi');
+        formatted = formatted.replace(regexp, arguments[i]);
+    }
+    return formatted;
+};
+
 function alphaNum(string) {
 	return string.replace(/\W/g, '');
 }
@@ -120,19 +133,30 @@ var iLatestTap1 = 0;
 var iLatestTap2 = 0;
 
 function toggleTabs() {
-	if(bShowTabs) {
-		var json = '{"action":"registry","type":"set","key":"webgui.tabs","value":0}';
-	} else {
-		var json = '{"action":"registry","type":"set","key":"webgui.tabs","value":1}';
-	}
 	if(oWebsocket) {
+		if(bShowTabs) {
+			var json = '{"action":"registry","type":"set","key":"webgui.tabs","value":0}';
+		} else {
+			var json = '{"action":"registry","type":"set","key":"webgui.tabs","value":1}';
+		}
 		oWebsocket.send(json);
+		document.location = document.location;
 	} else {
 		bSending = true;
-		$.get(sHTTPProtocol+'://'+location.host+'/send?'+encodeURIComponent(json)+'&'+$.now());
-		window.setTimeout(function() { bSending = false; }, 1000);
+		if(bShowTabs) {
+			$.get(sHTTPProtocol+'://'+location.host+'/registry?type=set&key=webgui.tabs&value=0');
+		} else {
+			$.get(sHTTPProtocol+'://'+location.host+'/registry?type=set&key=webgui.tabs&value=1');
+		}
+		$.mobile.loading('show', {
+			'text': '',
+			'textVisible': true,
+			'theme': 'b'
+		});		
+		window.setTimeout(function() {
+			document.location = document.location;
+		}, 1000);
 	}
-	document.location = document.location;
 }
 
 $(document).click(function(e) {
@@ -234,16 +258,21 @@ function createSwitchElement(sTabId, sDevId, aValues) {
 					return false;
 				}
 			}
-			if('all' in aValues && aValues['all'] == 1) {
-				var json = '{"action":"control","code":{"device":"'+sDevId+'","state":"'+this.value+'","values":{"all": 1}}}';
-			} else {
-				var json = '{"action":"control","code":{"device":"'+sDevId+'","state":"'+this.value+'"}}';
-			}
+
 			if(oWebsocket) {
+				if('all' in aValues && aValues['all'] == 1) {
+					var json = '{"action":"control","code":{"device":"'+sDevId+'","state":"'+this.value+'","values":{"all": 1}}}';
+				} else {
+					var json = '{"action":"control","code":{"device":"'+sDevId+'","state":"'+this.value+'"}}';
+				}
 				oWebsocket.send(json);
 			} else {
 				bSending = true;
-				$.get(sHTTPProtocol+'://'+location.host+'/send?'+encodeURIComponent(json)+'&'+$.now());
+				if('all' in aValues && aValues['all'] == 1) {
+					$.get(sHTTPProtocol+'://'+location.host+'/control?device='+sDevId+'&state='+this.value+'&values[all]=1');
+				} else {
+					$.get(sHTTPProtocol+'://'+location.host+'/control?device='+sDevId+'&state='+this.value);
+				}
 				window.setTimeout(function() { bSending = false; }, 1000);
 			}
 		});
@@ -281,12 +310,13 @@ function createPendingSwitchElement(sTabId, sDevId, aValues) {
 			$('#'+sDevId+'_pendingsw').button('disable');
 			$('#'+sDevId+'_pendingsw').text(language.toggling);
 			$('#'+sDevId+'_pendingsw').button('refresh');
-			var json = '{"action":"control","code":{"device":"'+sDevId+'","state":"'+((aStates[sDevId] == "off") ? "on" : "off")+'"}}';
+			
 			if(oWebsocket) {
+				var json = '{"action":"control","code":{"device":"'+sDevId+'","state":"'+((aStates[sDevId] == "off") ? "on" : "off")+'"}}';
 				oWebsocket.send(json);
 			} else {
 				bSending = true;
-				$.get(sHTTPProtocol+'://'+location.host+'/send?'+encodeURIComponent(json)+'&'+$.now());
+				$.get(sHTTPProtocol+'://'+location.host+'/control?device='+sDevId+'&state='+((aStates[sDevId] == "off") ? "on" : "off"));
 				window.setTimeout(function() { bSending = false; }, 1000);
 			}
 		});
@@ -302,12 +332,12 @@ function createPendingSwitchElement(sTabId, sDevId, aValues) {
 				$('#'+sDevId+'_pendingsw').button('disable');
 				$('#'+sDevId+'_pendingsw').text(language.toggling);
 				$('#'+sDevId+'_pendingsw').button('refresh');
-				var json = '{"action":"control","code":{"device":"'+sDevId+'","state":"'+((aStates[sDevId] == "off") ? "on" : "off")+'"}}';
 				if(oWebsocket) {
+					var json = '{"action":"control","code":{"device":"'+sDevId+'","state":"'+((aStates[sDevId] == "off") ? "on" : "off")+'"}}';
 					oWebsocket.send(json);
 				} else {
 					bSending = true;
-					$.get(sHTTPProtocol+'://'+location.host+'/send?'+encodeURIComponent(json)+'&'+$.now());
+					$.get(sHTTPProtocol+'://'+location.host+'/control?device='+sDevId+'&state='+((aStates[sDevId] == "off") ? "on" : "off"));
 					window.setTimeout(function() { bSending = false; }, 1000);
 				}
 			}
@@ -355,16 +385,21 @@ function createScreenElement(sTabId, sDevId, aValues) {
 				if(i==2)
 					window.clearInterval(x);
 			}, 100);
-			if('all' in aValues && aValues['all'] == 1) {
-				var json = '{"action":"control","code":{"device":"'+sDevId+'","state":"'+this.value+'","values":{"all": 1}}}';
-			} else {
-				var json = '{"action":"control","code":{"device":"'+sDevId+'","state":"'+this.value+'"}}'
-			}
+
 			if(oWebsocket) {
+				if('all' in aValues && aValues['all'] == 1) {
+					var json = '{"action":"control","code":{"device":"'+sDevId+'","state":"'+this.value+'","values":{"all": 1}}}';
+				} else {
+					var json = '{"action":"control","code":{"device":"'+sDevId+'","state":"'+this.value+'"}}'
+				}
 				oWebsocket.send(json);
 			} else {
 				bSending = true;
-				$.get(sHTTPProtocol+'://'+location.host+'/send?'+encodeURIComponent(json)+'&'+$.now());
+				if('all' in aValues && aValues['all'] == 1) {
+					$.get(sHTTPProtocol+'://'+location.host+'/control/control?device='+sDevId+'&state='+this.value+'&values[all]=1');
+				} else {
+					$.get(sHTTPProtocol+'://'+location.host+'/control?device='+sDevId+'&state='+this.value);
+				}
 				window.setTimeout(function() { bSending = false; }, 1000);
 			}
 		});
@@ -387,16 +422,21 @@ function createScreenElement(sTabId, sDevId, aValues) {
 				if(i==2)
 					window.clearInterval(x);
 			}, 100);
-			if('all' in aValues && aValues['all'] == 1) {
-				var json = '{"action":"control","code":{"device":"'+sDevId+'","state":"'+this.value+'","values":{"all": 1}}}';
-			} else {
-				var json = '{"action":"control","code":{"device":"'+sDevId+'","state":"'+this.value+'"}}'
-			}
+
 			if(oWebsocket) {
+				if('all' in aValues && aValues['all'] == 1) {
+					var json = '{"action":"control","code":{"device":"'+sDevId+'","state":"'+this.value+'","values":{"all": 1}}}';
+				} else {
+					var json = '{"action":"control","code":{"device":"'+sDevId+'","state":"'+this.value+'"}}'
+				}
 				oWebsocket.send(json);
 			} else {
 				bSending = true;
-				$.get(sHTTPProtocol+'://'+location.host+'/send?'+encodeURIComponent(json)+'&'+$.now());
+				if('all' in aValues && aValues['all'] == 1) {
+					$.get(sHTTPProtocol+'://'+location.host+'/control?device='+sDevId+'&state='+this.value+'&values[all]=1');
+				} else {
+					$.get(sHTTPProtocol+'://'+location.host+'/control?device='+sDevId+'&state='+this.value);
+				}
 				window.setTimeout(function() { bSending = false; }, 1000);
 			}
 		});
@@ -437,16 +477,21 @@ function createDimmerElement(sTabId, sDevId, aValues) {
 					return false;
 				}
 			}
-			if('all' in aValues && aValues['all'] == 1) {
-				var json = '{"action":"control","code":{"device":"'+sDevId+'","state":"'+this.value+'","values":{"all": 1}}}';
-			} else {
-				var json = '{"action":"control","code":{"device":"'+sDevId+'","state":"'+this.value+'"}}';
-			}
+
 			if(oWebsocket) {
+				if('all' in aValues && aValues['all'] == 1) {
+					var json = '{"action":"control","code":{"device":"'+sDevId+'","state":"'+this.value+'","values":{"all": 1}}}';
+				} else {
+					var json = '{"action":"control","code":{"device":"'+sDevId+'","state":"'+this.value+'"}}';
+				}
 				oWebsocket.send(json);
 			} else {
 				bSending = true;
-				$.get(sHTTPProtocol+'://'+location.host+'/send?'+encodeURIComponent(json)+'&'+$.now());
+				if('all' in aValues && aValues['all'] == 1) {
+					$.get(sHTTPProtocol+'://'+location.host+'/control?device='+sDevId+'&state='+this.value+'&values[all]=1');
+				} else {
+					$.get(sHTTPProtocol+'://'+location.host+'/control?device='+sDevId+'&state='+this.value);
+				}
 				window.setTimeout(function() { bSending = false; }, 1000);
 			}
 		});
@@ -465,12 +510,12 @@ function createDimmerElement(sTabId, sDevId, aValues) {
 					aDimLevel[sDevId] = this.value;
 					$('#'+sDevId+'_switch')[0].selectedIndex = 1;
 					$('#'+sDevId+'_switch').slider('refresh');
-					var json = '{"action":"control","code":{"device":"'+sDevId+'","state":"on","values":{"dimlevel":'+this.value+'}}}';
 					if(oWebsocket) {
+						var json = '{"action":"control","code":{"device":"'+sDevId+'","state":"on","values":{"dimlevel":'+this.value+'}}}';
 						oWebsocket.send(json);
 					} else {
 						bSending = true;
-						$.get(sHTTPProtocol+'://'+location.host+'/send?'+encodeURIComponent(json)+'&'+$.now());
+						$.get(sHTTPProtocol+'://'+location.host+'/control?device='+sDevId+'&state=on&values[dimlevel]='+this.value);
 						window.setTimeout(function() { bSending = false; }, 1000);
 					}
 				}
@@ -522,12 +567,12 @@ function createWeatherElement(sTabId, sDevId, aValues) {
 			oTab.find('#'+sDevId+'_weather').append($('<div class="update_inactive" id="'+sDevId+'_upd" title="'+language.update+'">&nbsp;</div>'));
 			$('#'+sDevId+'_upd').click(function() {
 				if(this.className.indexOf('update_active') == 0) {
-					var json = '{"action":"control","code":{"device":"'+sDevId+'","values":{"update":1}}}';
 					if(oWebsocket) {
+						var json = '{"action":"control","code":{"device":"'+sDevId+'","values":{"update":1}}}';
 						oWebsocket.send(json);
 					} else {
 						bSending = true;
-						$.get(sHTTPProtocol+'://'+location.host+'/send?'+encodeURIComponent(json)+'&'+$.now());
+						$.get(sHTTPProtocol+'://'+location.host+'/control?device='+sDevId+'&values[update]=1');
 						window.setTimeout(function() { bSending = false; }, 1000);
 					}
 				}
@@ -1101,7 +1146,9 @@ function parseData(data) {
 			}
 			updateVersions();
 		}
-		oWebsocket.send("{\"action\":\"request values\"}");
+		if(oWebsocket) {
+			oWebsocket.send("{\"action\":\"request values\"}");
+		}
 	} else if(data.hasOwnProperty("origin")) {
 		if(data['origin'] == "update") {
 			parseValues(data);
@@ -1238,9 +1285,26 @@ $(document).ready(function() {
 		   an AJAX connection, or if he wants to use websockets */
 		$.get(sHTTPProtocol+'://'+location.host+'/config?internal&'+$.now(), function(txt) {
 			var data = $.parseJSON(txt);
-			if('registry' in data && 'webgui' in data['registry'] &&
-				 'tabs' in data['registry']['webgui']) {
-				 bShowTabs = data['registry']['webgui']['tabs'];
+			if('registry' in data) {
+				if('webgui' in data['registry'] &&
+					'tabs' in data['registry']['webgui']) {
+					bShowTabs = data['registry']['webgui']['tabs'];
+				}
+	
+				if(sHTTPProtocol == "https") {
+					if('webserver' in data['registry'] &&
+						 'ssl' in data['registry']['webserver'] &&
+						 'certificate' in data['registry']['webserver']['ssl'] &&
+						 'secure' in data['registry']['webserver']['ssl']['certificate']) {
+					 if(data['registry']['webserver']['ssl']['certificate']['secure'] == 0) {
+						 pemfile = 'pilight.pem';
+						 if('location' in data['registry']['webserver']['ssl']['certificate']) {
+							 pemfile = data['registry']['webserver']['ssl']['certificate']['location'];
+						 }
+						 alert(language['insecure_certificate'].format(pemfile));
+						}
+					}
+				}
 			}
 			if('settings' in data && 'webgui-websockets' in data['settings']) {
 				if(data['settings']['webgui-websockets'] == 0) {

@@ -83,6 +83,8 @@ struct devices_t {
 #ifdef EVENTS
 	int lastrule;
 	int prevrule;
+	enum origin_t lastorigin;
+	enum origin_t prevorigin;
 	struct event_action_thread_t *action_thread;
 #endif
 	struct protocols_t *protocols;

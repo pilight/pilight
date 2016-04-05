@@ -3,7 +3,7 @@ Rules for contributing to pilight
 First of all, thanks for making this project better. Without your help, pilight wouldn't have come to what it is now!
 
 **BUT**, be aware that contributing to a big project shouldn't be considered a playground. It also isn't meant for you to learn `git`.
-So if you don't know what you are doing than don't do it. Instead open an [forum topic](http://forum.pilight.org), point to your code, and ask for help.
+So if you don't know what you are doing then don't do it. Instead open a [forum topic](http://forum.pilight.org), point to your code and ask for help.
 
 Checklist
 ---------
@@ -11,14 +11,14 @@ When you contribute to pilight make sure to follow this checklist:
 
 1. Is your pull request directed at the development branch?
 *pilight doesn't accept contributions to the master branch because this branch reflects the latest stable code.*
-2. Did you read [development](http://www.pilight.org/development/modules/) pages of pilight?
+2. Did you read the [development](http://www.pilight.org/development/) pages of pilight?
 *Even if you think you know all, please check and double check. There are always small syntax changes. Also check similar already existing modules for syntax.*
 3. Keep the coding style in sync with that of pilight (see below).
 4. First merge with the latest development code.
-5. Make a difference branch for each new feature you want to commit.
+5. Make a different branch for each new feature you want to commit.
 6. Test how pull-requests work on your own test repositories.
 7. Make sure your pull-request contains [one single commit](http://eli.thegreenplace.net/2014/02/19/squashing-github-pull-requests-into-a-single-commit).
-8. Open a pull-request when you indeed want to contribute and follow-up on our comments. If you don't want to implemented our requested changes after reviewing your pull-request, don't bother opening one.
+8. Open a pull-request when you indeed want to contribute and follow-up on our comments. If you don't want to implement our requested changes after reviewing your pull-request, don't bother opening one.
 9. Re-read this file before every pull-request, because it will be updated regularly.
 10. Don't forget to enjoy the appreciation of the end user!
 

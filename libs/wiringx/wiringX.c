@@ -32,6 +32,7 @@
 #include "hummingboard.h"
 #include "raspberrypi.h"
 #include "bananapi.h"
+#include "radxa.h"
 #include "ci20.h"
 
 #ifdef _WIN32
@@ -84,7 +85,6 @@ static void delayMicrosecondsHard(unsigned int howLong) {
 	tLong.tv_sec  = (__time_t)howLong / 1000000;
 	tLong.tv_usec = (__suseconds_t)howLong % 1000000;
 #endif
-	
 	timeradd(&tNow, &tLong, &tEnd);
 
 	while(timercmp(&tNow, &tEnd, <)) {
@@ -101,7 +101,6 @@ void delayMicroseconds(unsigned int howLong) {
 	long int uSecs = (__time_t)howLong % 1000000;
 	unsigned int wSecs = howLong / 1000000;
 #endif
-
 
 	if(howLong == 0) {
 		return;
@@ -464,6 +463,7 @@ int wiringXSetup(void) {
 			raspberrypiInit();
 			bananapiInit();
 			ci20Init();
+			radxaInit();
 
 			int match = 0;
 			struct platform_t *tmp = platforms;

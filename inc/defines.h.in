@@ -42,13 +42,8 @@
 	#define MAX_CACHE_FILESIZE 		1048576
 	#define WEBSERVER_WORKERS			1
 	#define WEBSERVER_CHUNK_SIZE 	4096
-	#ifdef __FreeBSD__
-		#define WEBSERVER_USER 				"www-data"
-	#else
-		#define WEBSERVER_USER 				"www"
-	#endif
 	#define WEBGUI_WEBSOCKETS			1
-	#cmakedefine WEBSERVER_HTTPS			
+	#cmakedefine WEBSERVER_HTTPS	1	
 #endif
 
 #define MAX_CLIENTS							30
@@ -65,7 +60,7 @@
 
 	#define CONFIG_FILE							"c:/pilight/config.json"
 	#define LOG_FILE								"c:/pilight/pilight.log"
-	#define TZDATA_FILE							"c:/pilight/tzdata.json"
+	#define PEM_FILE								"c:/pilight/pilight.pem"
 #else
 	#define PROTOCOL_ROOT						"/usr/local/lib/pilight/protocols/"
 	#define HARDWARE_ROOT						"/usr/local/lib/pilight/hardware/"
@@ -76,7 +71,7 @@
 	#define PID_FILE								"/var/run/pilight.pid"
 	#define CONFIG_FILE							"/etc/pilight/config.json"
 	#define LOG_FILE								"/var/log/pilight.log"
-	#define TZDATA_FILE							"/etc/pilight/tzdata.json"
+	#define PEM_FILE								"/etc/pilight/pilight.pem"
 #endif	
 #define LOG_MAX_SIZE 						1048576 // 1024*1024
 

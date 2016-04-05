@@ -240,17 +240,17 @@ static int settings_parse(JsonNode *root) {
 			} else {
 				settings_add_number(jsettings->key, (int)jsettings->number_);
 			}
-#ifndef _WIN32
-		} else if(strcmp(jsettings->key, "pid-file") == 0 || strcmp(jsettings->key, "log-file") == 0) {
-#else
-		} else if(strcmp(jsettings->key, "log-file") == 0) {
+		} else if(strcmp(jsettings->key, "log-file") == 0
+#ifndef _WIN32		
+			|| strcmp(jsettings->key, "pid-file") == 0
 #endif
+			|| strcmp(jsettings->key, "pem-file") == 0) {
 			if(jsettings->tag != JSON_STRING) {
-				logprintf(LOG_ERR, "config setting \"%s\" must contain an existing path", jsettings->key);
+				logprintf(LOG_ERR, "config setting \"%s\" must contain an existing file", jsettings->key);
 				have_error = 1;
 				goto clear;
-			} else if(!jsettings->string_) {
-				logprintf(LOG_ERR, "config setting \"%s\" must contain an existing file path", jsettings->key);
+			} else if(jsettings->string_ == NULL) {
+				logprintf(LOG_ERR, "config setting \"%s\" must contain an existing file", jsettings->key);
 				have_error = 1;
 				goto clear;
 			} else {
@@ -369,22 +369,6 @@ static int settings_parse(JsonNode *root) {
 			} else {
 				settings_add_number(jsettings->key, (int)jsettings->number_);
 			}
-#ifndef _WIN32
-		} else if(strcmp(jsettings->key, "webserver-user") == 0) {
-			if(jsettings->tag != JSON_STRING) {
-				logprintf(LOG_ERR, "config setting \"%s\" must contain a valid system user", jsettings->key);
-				have_error = 1;
-				goto clear;
-			} else if(jsettings->string_ || strlen(jsettings->string_) > 0) {
-				if(name2uid(jsettings->string_) == -1) {
-					logprintf(LOG_ERR, "config setting \"%s\" must contain a valid system user", jsettings->key);
-					have_error = 1;
-					goto clear;
-				} else {
-					settings_add_string(jsettings->key, jsettings->string_);
-				}
-			}
-#endif
 		} else if(strcmp(jsettings->key, "webserver-authentication") == 0 && jsettings->tag == JSON_ARRAY) {
 			JsonNode *jtmp = json_first_child(jsettings);
 			unsigned short i = 0;
@@ -449,8 +433,7 @@ static int settings_parse(JsonNode *root) {
 				settings_add_string(jsettings->key, jsettings->string_);
 			}
 #ifdef EVENTS
-		} else if(strcmp(jsettings->key, "smtp-sender") == 0 ||
-					strcmp(jsettings->key, "smtp-user") == 0) {
+		} else if(strcmp(jsettings->key, "smtp-sender") == 0) {
 			if(jsettings->tag != JSON_STRING) {
 				logprintf(LOG_ERR, "config setting \"%s\" must contain an e-mail address", jsettings->key);
 				have_error = 1;
@@ -478,6 +461,18 @@ static int settings_parse(JsonNode *root) {
 				regfree(&regex);
 #endif
 			settings_add_string(jsettings->key, jsettings->string_);
+			}
+		} else if(strcmp(jsettings->key, "smtp-user") == 0) {
+			if(jsettings->tag != JSON_STRING) {
+				logprintf(LOG_ERR, "config setting \"%s\" must contain a user id", jsettings->key);
+				have_error = 1;
+				goto clear;
+			} else if(jsettings->string_ == NULL) {
+				logprintf(LOG_ERR, "config setting \"%s\" must contain a user id", jsettings->key);
+				have_error = 1;
+				goto clear;
+			} else {
+				settings_add_string(jsettings->key, jsettings->string_);
 			}
 		} else if(strcmp(jsettings->key, "smtp-password") == 0) {
 			if(jsettings->tag != JSON_STRING) {
