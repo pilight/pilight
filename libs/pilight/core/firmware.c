@@ -85,8 +85,6 @@ static int mptype = FW_MP_UNKNOWN;
 static char comport[255];
 
 static void firmware_atmega328p(struct avrpart **p) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
-
 	char pgm_bits[] = "1 0 1 0 1 1 0 0 0 1 0 1 0 0 1 1 x x x x x x x x x x x x x x x x";
 	char read_bits[] = "0 0 1 1 0 0 0 0 0 0 0 x x x x x x x x x x x a1 a0 o o o o o o o o";
 	char erase_bits[] = "1 0 1 0 1 1 0 0 1 0 0 x x x x x x x x x x x x x x x x x x x x x";
@@ -180,7 +178,6 @@ static void firmware_atmega328p(struct avrpart **p) {
 }
 
 // static void firmware_atmega32u4(struct avrpart **p) {
-	// logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
 	// char pgm_bits[] = "1 0 1 0 1 1 0 0 0 1 0 1 0 0 1 1 x x x x x x x x x x x x x x x x";
 	// char read_bits[] = "0 0 1 1 0 0 0 0 x x x x x x x x x x x x x x a1 a0 o o o o o o o o";
@@ -275,8 +272,6 @@ static void firmware_atmega328p(struct avrpart **p) {
 // }
 
 static void firmware_attiny25(struct avrpart **p) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
-
 	char pgm_bits[] = "1 0 1 0 1 1 0 0 0 1 0 1 0 0 1 1 x x x x x x x x x x x x x x x x";
 	char read_bits[] = "0 0 1 1 0 0 0 0 0 0 0 x x x x x x x x x x x a1 a0 o o o o o o o o";
 	char erase_bits[] = "1 0 1 0 1 1 0 0 1 0 0 x x x x x x x x x x x x x x x x x x x x x";
@@ -370,8 +365,6 @@ static void firmware_attiny25(struct avrpart **p) {
 }
 
 static void firmware_attiny45(struct avrpart **p) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
-
 	char pgm_bits[] = "1 0 1 0 1 1 0 0 0 1 0 1 0 0 1 1 x x x x x x x x x x x x x x x x";
 	char read_bits[] = "0 0 1 1 0 0 0 0 0 0 0 x x x x x x x x x x x a1 a0 o o o o o o o o";
 	char erase_bits[] = "1 0 1 0 1 1 0 0 1 0 0 x x x x x x x x x x x x x x x x x x x x x";
@@ -465,8 +458,6 @@ static void firmware_attiny45(struct avrpart **p) {
 }
 
 static void firmware_attiny85(struct avrpart **p) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
-
 	char pgm_bits[] = "1 0 1 0 1 1 0 0 0 1 0 1 0 0 1 1 x x x x x x x x x x x x x x x x";
 	char read_bits[] = "0 0 1 1 0 0 0 0 0 0 0 x x x x x x x x x x x a1 a0 o o o o o o o o";
 	char erase_bits[] = "1 0 1 0 1 1 0 0 1 0 0 x x x x x x x x x x x x x x x x x x x x x";
@@ -560,7 +551,6 @@ static void firmware_attiny85(struct avrpart **p) {
 }
 
 static void firmware_init_pgm(PROGRAMMER **pgm) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 	double itmp = 0.0;
 
 	*pgm = pgm_new();
@@ -616,8 +606,6 @@ static void firmware_process(int percent, double etime, char *hdr) {
 }
 
 static int firmware_identifymp(struct avrpart **p) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
-
 	int exitrc = 0, i = 0;
 	int init_ok = 0;
 	PROGRAMMER *pgm = NULL;
@@ -766,8 +754,6 @@ main_exit:
 }
 
 static int firmware_write(char *filename, struct avrpart **p) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
-
 	int exitrc = 0, i = 0, erase = 1, nowrite = 0, verify = 1;
 	int safemode = 1, init_ok = 0;
 	unsigned char safemode_lfuse = 0xff, safemode_hfuse = 0xff;
@@ -1143,8 +1129,6 @@ main_exit:
 }
 
 int firmware_getmp(char *port) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
-
 	if(port != NULL) {
 		strncpy(comport, port, 255);
 	} else {
@@ -1218,8 +1202,6 @@ int firmware_getmp(char *port) {
 }
 
 int firmware_update(char *fwfile, char *port) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
-
 	if(port != NULL) {
 		strncpy(comport, port, 255);
 	} else {

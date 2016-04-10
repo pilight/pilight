@@ -32,6 +32,9 @@
 #include "soc/nxp/imx6sdlrm.h"
 #include "soc/broadcom/2835.h"
 #include "soc/broadcom/2836.h"
+#include "soc/amlogic/s805.h"
+#include "soc/amlogic/s905.h"
+#include "soc/samsung/exynos5422.h"
 
 #include "platform/linksprite/pcduino1.h"
 #include "platform/lemaker/bananapim2.h"
@@ -44,6 +47,9 @@
 #include "platform/raspberrypi/raspberrypi1b+.h"
 #include "platform/raspberrypi/raspberrypi2.h"
 #include "platform/raspberrypi/raspberrypi3.h"
+#include "platform/hardkernel/odroidc1.h"
+#include "platform/hardkernel/odroidc2.h"
+#include "platform/hardkernel/odroidxu4.h"
 
 static struct platform_t *platform = NULL;
 static int namenr = 0;
@@ -199,8 +205,8 @@ void wiringXDefaultLog(int prio, const char *format_str, ...) {
 }
 
 int wiringXSetup(char *name, void (*func)(int, const char *, ...)) {
-	if(__sync_add_and_fetch(&issetup, 0) == 0) {
-		__sync_add_and_fetch(&issetup, 1);
+	if(issetup == 0) {
+		issetup = 1;
 	} else {
 		return 0;
 	}
@@ -218,6 +224,9 @@ int wiringXSetup(char *name, void (*func)(int, const char *, ...)) {
 	nxpIMX6SDLRMInit();
 	broadcom2835Init();
 	broadcom2836Init();
+	amlogicS805Init();
+	amlogicS905Init();
+	exynos5422Init();
 
 	/* Init all platforms */
 	pcduino1Init();
@@ -231,6 +240,9 @@ int wiringXSetup(char *name, void (*func)(int, const char *, ...)) {
 	raspberrypi1bpInit();
 	raspberrypi2Init();
 	raspberrypi3Init();
+	odroidc1Init();
+	odroidc2Init();
+	odroidxu4Init();
 
 	if((platform = platform_get_by_name(name, &namenr)) == NULL) {
 		char *tmp = NULL;

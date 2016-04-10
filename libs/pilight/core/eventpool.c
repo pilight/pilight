@@ -71,6 +71,7 @@ static struct reasons_t {
 	{	REASON_ADHOC_DISCONNECTED,		"REASON_ADHOC_DISCONNECTED",		0 },
 	{	REASON_SEND_BEGIN,						"REASON_SEND_BEGIN",						0 },
 	{	REASON_SEND_END,							"REASON_SEND_END",							0 },
+	{	REASON_LOG,										"REASON_LOG",										0 },
 	{	REASON_END,										"REASON_END",										0 }
 };
 

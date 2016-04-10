@@ -1439,16 +1439,8 @@ int settings_validate_settings(struct JsonNode *jsettings, int i) {
 			}
 			return -1;
 		} else {
-			if(strcmp(jsettings->key, "none") != 0) { 				
-				int z = 0, x = 0;
-				char *tmp = NULL;
-				while((tmp = platform_iterate_name(z++)) != NULL) {
-					if(strcmp(tmp, jsettings->key) == 0) {
-						x = 1;
-						break;
-					}
-				}
-				if(x == 0 && i > 0) {
+			if(strcmp(jsettings->string_, "none") != 0) { 				
+				if(wiringXSetup(jsettings->string_, logprintf) != 0 && i > 0) {
 					logprintf(LOG_ERR, "config setting #%d \"%s\" must contain a supported gpio platform", i, jsettings->key);
 				}
 			}

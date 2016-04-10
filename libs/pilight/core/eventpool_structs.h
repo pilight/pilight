@@ -12,6 +12,10 @@
 #include "defines.h"
 #include "eventpool_structs.h"
 
+typedef struct reason_log_t {
+	char *buffer;
+} reason_log_t;
+
 typedef struct reason_ssdp_received_t {
 	char name[17];
 	char uuid[UUID_LENGTH+1];

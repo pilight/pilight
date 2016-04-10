@@ -20,8 +20,6 @@
 
 void *dso_load(char *object) {
 #ifndef _WIN32
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
-
 	void *handle = NULL;
 	int match = 0;
 	struct dso_t *tmp = dso;
@@ -68,8 +66,6 @@ void *dso_load(char *object) {
 }
 
 int dso_gc(void) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
-
 	struct dso_t *tmp = NULL;
 	while(dso) {
 		tmp = dso;
@@ -90,8 +86,6 @@ int dso_gc(void) {
 
 void *dso_function(void *handle, const char *name) {
 #ifndef _WIN32
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
-
 	void *init = (void *)dlsym(handle, name);
 	char *error = NULL;
 	atomiclock();

@@ -156,10 +156,6 @@ static unsigned short gpio433HwInit(void *(*callback)(void *)) {
 #endif
 }
 
-// static unsigned short gpio433HwDeinit(void) {
-	// return EXIT_SUCCESS;
-// }
-
 static int gpio433Send(int *code, int rawlen, int repeats) {
 	int r = 0, x = 0;
 	if(gpio_433_out >= 0) {
@@ -180,9 +176,6 @@ static int gpio433Send(int *code, int rawlen, int repeats) {
 	return EXIT_SUCCESS;
 }
 
-/*
- * FIXME
- */
 static void *receiveStop(void *param) {
 	doPause = 1;
 	return NULL;

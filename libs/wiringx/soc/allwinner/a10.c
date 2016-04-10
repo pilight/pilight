@@ -195,22 +195,24 @@ static struct layout_t {
  { "PI1", 0, { 0x120, 4 }, { 0x130, 1 }, FUNCTION_DIGITAL, PINMODE_NOT_SET, 0 },
  { "PI2", 0, { 0x120, 8 }, { 0x130, 2 }, FUNCTION_DIGITAL, PINMODE_NOT_SET, 0 },
  { "PI3", 0, { 0x120, 12 }, { 0x130, 3 }, FUNCTION_DIGITAL, PINMODE_NOT_SET, 0 },
- { "PI4", 0, { 0x120, 20 }, { 0x130, 4 }, FUNCTION_DIGITAL, PINMODE_NOT_SET, 0 },
- { "PI5", 0, { 0x120, 24 }, { 0x130, 5 }, FUNCTION_DIGITAL, PINMODE_NOT_SET, 0 },
- { "PI6", 0, { 0x120, 28 }, { 0x130, 6 }, FUNCTION_DIGITAL, PINMODE_NOT_SET, 0 },
- { "PI7", 0, { 0x124, 0 }, { 0x130, 7 }, FUNCTION_DIGITAL, PINMODE_NOT_SET, 0 },
- { "PI8", 0, { 0x124, 4 }, { 0x130, 8 }, FUNCTION_DIGITAL, PINMODE_NOT_SET, 0 },
- { "PI9", 0, { 0x124, 8 }, { 0x130, 9 }, FUNCTION_DIGITAL, PINMODE_NOT_SET, 0 },
- { "PI10", 0, { 0x124, 12 }, { 0x130, 10 }, FUNCTION_DIGITAL | FUNCTION_INTERRUPT, PINMODE_NOT_SET, 0 },
- { "PI11", 0, { 0x124, 16 }, { 0x130, 11 }, FUNCTION_DIGITAL | FUNCTION_INTERRUPT, PINMODE_NOT_SET, 0 },
- { "PI12", 0, { 0x124, 20 }, { 0x130, 12 }, FUNCTION_DIGITAL | FUNCTION_INTERRUPT, PINMODE_NOT_SET, 0 },
- { "PI13", 0, { 0x124, 24 }, { 0x130, 13 }, FUNCTION_DIGITAL | FUNCTION_INTERRUPT, PINMODE_NOT_SET, 0 },
- { "PI14", 0, { 0x124, 28 }, { 0x130, 14 }, FUNCTION_DIGITAL, PINMODE_NOT_SET, 0 },
- { "PI15", 0, { 0x128, 0 }, { 0x130, 15 }, FUNCTION_DIGITAL, PINMODE_NOT_SET, 0 },
- { "PI16", 0, { 0x128, 4 }, { 0x130, 16 }, FUNCTION_DIGITAL, PINMODE_NOT_SET, 0 },
- { "PI17", 0, { 0x128, 8 }, { 0x130, 17 }, FUNCTION_DIGITAL, PINMODE_NOT_SET, 0 },
- { "PI18", 0, { 0x128, 12 }, { 0x130, 18 }, FUNCTION_DIGITAL, PINMODE_NOT_SET, 0 },
- { "PI19", 0, { 0x128, 16 }, { 0x130, 19 }, FUNCTION_DIGITAL, PINMODE_NOT_SET, 0 }
+ { "PI4", 0, { 0x120, 16 }, { 0x130, 4 }, FUNCTION_DIGITAL, PINMODE_NOT_SET, 0 },
+ { "PI5", 0, { 0x120, 20 }, { 0x130, 5 }, FUNCTION_DIGITAL, PINMODE_NOT_SET, 0 },
+ { "PI6", 0, { 0x120, 24 }, { 0x130, 6 }, FUNCTION_DIGITAL, PINMODE_NOT_SET, 0 },
+ { "PI7", 0, { 0x124, 28 }, { 0x130, 7 }, FUNCTION_DIGITAL, PINMODE_NOT_SET, 0 },
+ { "PI8", 0, { 0x124, 0 }, { 0x130, 8 }, FUNCTION_DIGITAL, PINMODE_NOT_SET, 0 },
+ { "PI9", 0, { 0x124, 4 }, { 0x130, 9 }, FUNCTION_DIGITAL, PINMODE_NOT_SET, 0 },
+ { "PI10", 0, { 0x124, 8 }, { 0x130, 10 }, FUNCTION_DIGITAL | FUNCTION_INTERRUPT, PINMODE_NOT_SET, 0 },
+ { "PI11", 0, { 0x124, 12 }, { 0x130, 11 }, FUNCTION_DIGITAL | FUNCTION_INTERRUPT, PINMODE_NOT_SET, 0 },
+ { "PI12", 0, { 0x124, 16 }, { 0x130, 12 }, FUNCTION_DIGITAL | FUNCTION_INTERRUPT, PINMODE_NOT_SET, 0 },
+ { "PI13", 0, { 0x124, 20 }, { 0x130, 13 }, FUNCTION_DIGITAL | FUNCTION_INTERRUPT, PINMODE_NOT_SET, 0 },
+ { "PI14", 0, { 0x124, 24 }, { 0x130, 14 }, FUNCTION_DIGITAL, PINMODE_NOT_SET, 0 },
+ { "PI15", 0, { 0x128, 28 }, { 0x130, 15 }, FUNCTION_DIGITAL, PINMODE_NOT_SET, 0 },
+ { "PI16", 0, { 0x128, 0 }, { 0x130, 16 }, FUNCTION_DIGITAL, PINMODE_NOT_SET, 0 },
+ { "PI17", 0, { 0x128, 4 }, { 0x130, 17 }, FUNCTION_DIGITAL, PINMODE_NOT_SET, 0 },
+ { "PI18", 0, { 0x128, 8 }, { 0x130, 18 }, FUNCTION_DIGITAL, PINMODE_NOT_SET, 0 },
+ { "PI19", 0, { 0x128, 12 }, { 0x130, 19 }, FUNCTION_DIGITAL, PINMODE_NOT_SET, 0 },
+ { "PI20", 0, { 0x128, 16 }, { 0x130, 20 }, FUNCTION_DIGITAL, PINMODE_NOT_SET, 0 },
+ { "PI21", 0, { 0x128, 20 }, { 0x130, 21 }, FUNCTION_DIGITAL, PINMODE_NOT_SET, 0 }
 };
 
 static int allwinnerA10Setup(void) {
@@ -238,7 +240,7 @@ static void allwinnerA10SetMap(int *map) {
 static int allwinnerA10DigitalWrite(int i, enum digital_value_t value) {
 	struct layout_t *pin = NULL;
 	unsigned long addr = 0;
-	unsigned long val = 0; 
+	uint32_t val = 0;
 
 	pin = &allwinnerA10->layout[allwinnerA10->map[i]];
 
@@ -270,7 +272,7 @@ static int allwinnerA10DigitalRead(int i) {
 	void *gpio = NULL;
 	struct layout_t *pin = NULL;
 	unsigned long addr = 0;
-	unsigned long val = 0;
+	uint32_t val = 0;
 
 	pin = &allwinnerA10->layout[allwinnerA10->map[i]];
 	gpio = allwinnerA10->gpio[pin->addr];
@@ -297,7 +299,7 @@ static int allwinnerA10DigitalRead(int i) {
 static int allwinnerA10PinMode(int i, enum pinmode_t mode) {
 	struct layout_t *pin = NULL;
 	unsigned long addr = 0;
-	unsigned long val = 0;
+	uint32_t val = 0;
 
 	if(allwinnerA10->map == NULL) {
 		wiringXLog(LOG_ERR, "The %s %s has not yet been mapped", allwinnerA10->brand, allwinnerA10->chip);

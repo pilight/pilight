@@ -11,6 +11,7 @@
 
 #include <semaphore.h>
 #include "eventpool.h"
+#include "proc.h"
 
 struct threadpool_tasks_t {
 	unsigned long id;
@@ -39,6 +40,7 @@ struct threadpool_workers_t {
 	int working;
 	int haswork;
 	struct threadpool_tasks_t task;
+	struct cpu_usage_t cpu_usage;
 
 	pthread_t pth;
 	pthread_mutex_t lock;
@@ -58,6 +60,6 @@ void threadpool_gc(void);
 unsigned long threadpool_add_scheduled_work(char *, void *(*)(void *), struct timeval, void *);
 void threadpool_work_interval(unsigned long, struct timeval);
 void threadpool_work_stop(unsigned long);
-void *threadpool_delegate(void *param);
+void *threadpool_delegate(void *);
 
 #endif

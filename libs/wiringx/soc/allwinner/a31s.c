@@ -236,7 +236,7 @@ static void allwinnerA31sSetMap(int *map) {
 static int allwinnerA31sDigitalWrite(int i, enum digital_value_t value) {
 	struct layout_t *pin = NULL;
 	unsigned long addr = 0;
-	unsigned long val = 0; 
+	uint32_t val = 0;
 
 	pin = &allwinnerA31s->layout[allwinnerA31s->map[i]];
 
@@ -268,7 +268,7 @@ static int allwinnerA31sDigitalRead(int i) {
 	void *gpio = NULL;
 	struct layout_t *pin = NULL;
 	unsigned long addr = 0;
-	unsigned long val = 0;
+	uint32_t val = 0;
 
 	pin = &allwinnerA31s->layout[allwinnerA31s->map[i]];
 	gpio = allwinnerA31s->gpio[pin->addr];
@@ -295,7 +295,7 @@ static int allwinnerA31sDigitalRead(int i) {
 static int allwinnerA31sPinMode(int i, enum pinmode_t mode) {
 	struct layout_t *pin = NULL;
 	unsigned long addr = 0;
-	unsigned long val = 0;
+	uint32_t val = 0;
 
 	if(allwinnerA31s->map == NULL) {
 		wiringXLog(LOG_ERR, "The %s %s has not yet been mapped", allwinnerA31s->brand, allwinnerA31s->chip);

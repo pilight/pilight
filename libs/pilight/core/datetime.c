@@ -19,12 +19,13 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include <ctype.h>
-#include <pthread.h>
 #ifndef _WIN32
 	#ifdef __mips__
 		#define __USE_UNIX98
 	#endif
 #endif
+#define __USE_UNIX98
+#include <pthread.h>
 
 #include "json.h"
 #include "common.h"

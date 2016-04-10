@@ -41,7 +41,6 @@
 
 #include "libs/pilight/core/pilight.h"
 #include "libs/pilight/core/timerpool.h"
-#include "libs/pilight/core/threads.h"
 #include "libs/pilight/core/threadpool.h"
 #include "libs/pilight/core/eventpool.h"
 #include "libs/pilight/core/datetime.h"
@@ -132,18 +131,12 @@ static unsigned short pid_file_free = 0;
 static pid_t pid;
 /* Daemonize or not */
 static int nodaemon = 0;
-/* Run tracktracer */
-// static int stacktracer = 0;
-/* Run thread profiler */
-static int threadprofiler = 0;
 /* Are we already running */
 static int active = 1;
 /* Are we currently sending code */
 static int sending = 0;
 /* Socket identifier to the server if we are running as client */
 static int sockfd = 0;
-/* Thread pointers */
-static pthread_t logpth;
 /* While loop conditions */
 static unsigned short main_loop = 1;
 /* Are we running standalone */
@@ -1801,7 +1794,6 @@ int main_gc(void) {
 	protocol_gc();
 	ntp_gc();
 	whitelist_free();
-	threads_gc();
 #ifndef _WIN32
 	wiringXGC();
 #endif
@@ -1911,12 +1903,8 @@ void *pilight_stats(void *param) {
 		cpu = getCPUUsage();
 		ram = getRAMUsage();
 
-		if(threadprofiler == 1) {
-			threads_cpu_usage(1);
-		}
 		if(watchdog == 1 && (i > -1) && (cpu > 60)) {
-			if(nodaemon == 1 && threadprofiler == 0) {
-				threads_cpu_usage(x);
+			if(nodaemon == 1) {
 				x ^= 1;
 			}
 			if(checkcpu == 0) {
@@ -2043,8 +2031,6 @@ int start_pilight(int argc, char **argv) {
 	options_add(&options, 'C', "config", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, NULL);
 	options_add(&options, 'S', "server", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, "^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]).){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$");
 	options_add(&options, 'P', "port", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, "[0-9]{1,4}");
-	// options_add(&options, 256, "stacktracer", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
-	options_add(&options, 257, "threadprofiler", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
 	options_add(&options, 258, "debuglevel", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, "[012]{1}");
 	// options_add(&options, 258, "memory-tracer", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
 
@@ -2083,16 +2069,6 @@ int start_pilight(int argc, char **argv) {
 				nodaemon = 1;
 				verbosity = LOG_DEBUG;
 			break;
-			case 257:
-				threadprofiler = 1;
-				verbosity = LOG_ERR;
-				nodaemon = 1;
-			break;
-			// case 256:
-				// verbosity = LOG_STACK;
-				// stacktracer = 1;
-				// nodaemon = 1;
-			// break;
 			case 258:
 				pilight.debuglevel = atoi(args);
 				nodaemon = 1;
@@ -2121,8 +2097,6 @@ int start_pilight(int argc, char **argv) {
 									"\t -P --port=xxxx\t%sconnect to server port\n"
 									"\t -D --nodaemon\t%sdo not daemonize and\n"
 									"\t\t\t%sshow debug information\n"
-									// "\t    --stacktracer\t\tshow internal function calls\n"
-									"\t    --threadprofiler\t\tshow per thread cpu usage\n"
 									"\t    --debuglevel\t\tshow additional development info\n",
 									progname, tabs, tabs, tabs, tabs, tabs);
 #ifdef _WIN32
@@ -2474,10 +2448,6 @@ int start_pilight(int argc, char **argv) {
 
 	timer_thread_start();
 
-	/* Threads are unable to survive forks properly.
-	 * Therefor, we queue all messages until we're
-	 * able to fork properly.
-	 */
 	int nrcores = getnrcpu();
 	if(nrcores > 1) {
 		logprintf(LOG_INFO, "pilight will dynamically use between 1 and %d cores", nrcores);
@@ -2485,12 +2455,7 @@ int start_pilight(int argc, char **argv) {
 	threadpool_init(1, nrcores, 10);
 	eventpool_init(EVENTPOOL_THREADED);
 
-	/*
-	 * FIXME
-	 */
-	threads_create(&logpth, NULL, &logloop, (void *)NULL);
-	/* Start threads library that keeps track of all threads used */
-	threads_start();
+	log_init();
 
 	struct timeval tv;
 	char *adhoc_mode = NULL;

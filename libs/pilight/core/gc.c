@@ -115,7 +115,6 @@ int running(void) {
 
 /* Add function to gc */
 void gc_attach(int (*fp)(void)) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 	if(gc != NULL) {
 		logprintf(LOG_ERR, "multiple calls to gc_attach", __FUNCTION__);
 	}
@@ -123,14 +122,11 @@ void gc_attach(int (*fp)(void)) {
 }
 
 void gc_clear(void) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 	gc = NULL;
 }
 
 /* Run the GC manually */
 int gc_run(void) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
-
 	if(gc != NULL) {
 		if(gc() == 0) {
 			return EXIT_SUCCESS;
@@ -144,7 +140,6 @@ int gc_run(void) {
 
 /* Initialize the catch all gc */
 void gc_catch(void) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
 #ifdef _WIN32
 	// signal(SIGABRT, gc_handler);

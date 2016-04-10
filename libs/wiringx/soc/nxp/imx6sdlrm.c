@@ -282,7 +282,7 @@ static void nxpIMX6SDLRMSetIRQ(int *irq) {
 static int nxpIMX6SDLRMDigitalWrite(int i, enum digital_value_t value) {
 	struct layout_t *pin = NULL;
 	unsigned long addr = 0;
-	unsigned long val = 0; 
+	uint32_t val = 0;
 
 	pin = &nxpIMX6SDLRM->layout[nxpIMX6SDLRM->map[i]];
 
@@ -314,7 +314,7 @@ static int nxpIMX6SDLRMDigitalRead(int i) {
 	void *gpio = NULL;
 	struct layout_t *pin = NULL;
 	unsigned long addr = 0;
-	unsigned long val = 0;
+	uint32_t val = 0;
 
 	pin = &nxpIMX6SDLRM->layout[nxpIMX6SDLRM->map[i]];
 	gpio = nxpIMX6SDLRM->gpio[pin->addr];
@@ -342,7 +342,7 @@ static int nxpIMX6SDLRMPinMode(int i, enum pinmode_t mode) {
 	struct layout_t *pin = NULL;
 	unsigned long addrSel = 0;
 	unsigned long addrDat = 0;
-	unsigned long val = 0;
+	uint32_t val = 0;
 
 	if(nxpIMX6SDLRM->map == NULL) {
 		wiringXLog(LOG_ERR, "The %s %s has not yet been mapped", nxpIMX6SDLRM->brand, nxpIMX6SDLRM->chip);

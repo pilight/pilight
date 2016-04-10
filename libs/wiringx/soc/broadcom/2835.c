@@ -184,7 +184,7 @@ static int broadcom2835DigitalRead(int i) {
 	void *gpio = NULL;
 	struct layout_t *pin = NULL;
 	unsigned long addr = 0;
-	unsigned long val = 0;
+	uint32_t val = 0;
 
 	pin = &broadcom2835->layout[broadcom2835->map[i]];
 	gpio = broadcom2835->gpio[pin->addr];
@@ -211,7 +211,7 @@ static int broadcom2835DigitalRead(int i) {
 static int broadcom2835PinMode(int i, enum pinmode_t mode) {
 	struct layout_t *pin = NULL;
 	unsigned long addr = 0;
-	unsigned long val = 0;
+	uint32_t val = 0;
 
 	if(broadcom2835->map == NULL) {
 		wiringXLog(LOG_ERR, "The %s %s has not yet been mapped", broadcom2835->brand, broadcom2835->chip);

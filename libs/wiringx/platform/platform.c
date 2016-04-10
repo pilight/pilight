@@ -20,6 +20,7 @@ void platform_register(struct platform_t **platform, char *name) {
 	}
 
 	(*platform)->nralias = 0;
+	(*platform)->name = NULL;
 	
 	if(((*platform)->name = realloc((*platform)->name, ((*platform)->nralias+1)*sizeof(char *))) == NULL) {
 		fprintf(stderr, "out of memory\n");

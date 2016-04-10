@@ -7,7 +7,6 @@
 */
 
 
-#include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -18,9 +17,12 @@
 #ifdef _WIN32
 	#include <windows.h>
 #endif
+#define __USE_UNIX98
+#include <pthread.h>
 
 #include "gc.h"
 #include "log.h"
+#include "proc.h"
 #include "common.h"
 #include "errno.h"
 #include "threadpool.h"
@@ -143,9 +145,16 @@ static void *worker(void *param) {
 			if(pilight.debuglevel >= 1) {
 				clock_gettime(CLOCK_MONOTONIC, &copy.timestamp.first);
 			}
+			if(pilight.debuglevel >= 2) {
+				getThreadCPUUsage(node->pth, &node->cpu_usage);
+			}
 			copy.func(&copy);
 
 			if(pilight.debuglevel >= 1) {
+				if(pilight.debuglevel >= 2) {
+					getThreadCPUUsage(node->pth, &node->cpu_usage);
+					fprintf(stderr, "worker %d: %f%% CPU", node->nr, node->cpu_usage.cpu_per);
+				}
 				clock_gettime(CLOCK_MONOTONIC, &copy.timestamp.second);
 				logprintf(LOG_DEBUG, "task %s executed in %.6f seconds", copy.name,
 					((double)copy.timestamp.second.tv_sec + 1.0e-9*copy.timestamp.second.tv_nsec) -

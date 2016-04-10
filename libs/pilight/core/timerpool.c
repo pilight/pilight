@@ -17,6 +17,7 @@
 		#define __USE_UNIX98
 	#endif
 #endif
+#define __USE_UNIX98
 #include <pthread.h>
 #include <sys/time.h>
 
