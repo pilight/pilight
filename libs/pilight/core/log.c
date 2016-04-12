@@ -123,52 +123,53 @@ void logprintf(int prio, const char *str, ...) {
 	struct tm tm;
 	va_list ap, apcpy;
 	char fmt[64], *buffer = NULL;
-	int errcpy = errno, len = 0, pos = 0, bufsize = 0;
-	
-	memset(&tm, '\0', sizeof(struct tm));
-	gettimeofday(&tv, NULL);
+	int errcpy = -1, len = 0, pos = 0, bufsize = 0;
+
+	if(loglevel >= prio) {	
+		errcpy = errno;
+		memset(&tm, '\0', sizeof(struct tm));
+		gettimeofday(&tv, NULL);
 #ifdef _WIN32
-	struct tm *tm1 = NULL;
-	if((tm1 = gmtime(&tv.tv_sec)) != 0) {
-		memcpy(&tm, tm1, sizeof(struct tm));
+		struct tm *tm1 = NULL;
+		if((tm1 = gmtime(&tv.tv_sec)) != 0) {
+			memcpy(&tm, tm1, sizeof(struct tm));
 #else
-	if((gmtime_r(&tv.tv_sec, &tm)) != 0) {
-		strftime(fmt, sizeof(fmt), "%b %d %H:%M:%S", &tm);
+		if((gmtime_r(&tv.tv_sec, &tm)) != 0) {
+			strftime(fmt, sizeof(fmt), "%b %d %H:%M:%S", &tm);
 #endif
-	}
-	len = snprintf(NULL, 0, "[%s:%03u]", fmt, (unsigned int)tv.tv_usec);
-	
-	/* len + loglevel */
-	if(len+9 > bufsize) {
-		if((buffer = realloc(buffer, len+9+1)) == NULL) {
-			printf("out of memory\n");
-			exit(EXIT_FAILURE);
 		}
-		bufsize = len+9+1;
-	}
-	pos += snprintf(buffer, bufsize, "[%s:%03u] ", fmt, (unsigned int)tv.tv_usec);
+		len = snprintf(NULL, 0, "[%s:%03u]", fmt, (unsigned int)tv.tv_usec);
+		
+		/* len + loglevel */
+		if(len+9 > bufsize) {
+			if((buffer = realloc(buffer, len+9+1)) == NULL) {
+				printf("out of memory\n");
+				exit(EXIT_FAILURE);
+			}
+			bufsize = len+9+1;
+		}
+		pos += snprintf(buffer, bufsize, "[%s:%03u] ", fmt, (unsigned int)tv.tv_usec);
 
-	switch(prio) {
-		case LOG_WARNING:
-			pos += snprintf(&buffer[pos], bufsize-pos, "WARNING: ");
-		break;
-		case LOG_ERR:
-			pos += snprintf(&buffer[pos], bufsize-pos, "ERROR: ");
-		break;
-		case LOG_INFO:
-			pos += snprintf(&buffer[pos], bufsize-pos, "INFO: ");
-		break;
-		case LOG_NOTICE:
-			pos += snprintf(&buffer[pos], bufsize-pos, "NOTICE: ");
-		break;
-		case LOG_DEBUG:
-			pos += snprintf(&buffer[pos], bufsize-pos, "DEBUG: ");
-		break;
-		default:
-		break;
-	}
+		switch(prio) {
+			case LOG_WARNING:
+				pos += snprintf(&buffer[pos], bufsize-pos, "WARNING: ");
+			break;
+			case LOG_ERR:
+				pos += snprintf(&buffer[pos], bufsize-pos, "ERROR: ");
+			break;
+			case LOG_INFO:
+				pos += snprintf(&buffer[pos], bufsize-pos, "INFO: ");
+			break;
+			case LOG_NOTICE:
+				pos += snprintf(&buffer[pos], bufsize-pos, "NOTICE: ");
+			break;
+			case LOG_DEBUG:
+				pos += snprintf(&buffer[pos], bufsize-pos, "DEBUG: ");
+			break;
+			default:
+			break;
+		}
 
-	if(loglevel >= prio) {
 		va_copy(apcpy, ap);
 		va_start(apcpy, str);
 #ifdef _WIN32
@@ -193,53 +194,53 @@ void logprintf(int prio, const char *str, ...) {
 		}
 		buffer[pos++]='\n';
 		buffer[pos++]='\0';
-	}
-	if(shelllog == 1) {
-		fprintf(stderr, "%s", buffer);
-	}
-#ifdef _WIN32
-	if(prio == LOG_ERR && strstr(progname, "daemon") != NULL && pilight.running == 0) {
-		MessageBox(NULL, buffer, "pilight :: error", MB_OK);
-	}
-#endif
-	if(prio < LOG_DEBUG && stop == 0) {
-		if(init == 0) {
-			struct logqueue_t *node = MALLOC(sizeof(struct logqueue_t));
-			if(node == NULL) {
-				OUT_OF_MEMORY
-			}
-			if((node->buffer = MALLOC(pos+1)) == NULL) {
-				OUT_OF_MEMORY
-			}
-			strcpy(node->buffer, buffer);
-			node->next = NULL;
-
-			loginitlock();
-			pthread_mutex_lock(&logqueue_lock);
-			if(logqueuenr == 0) {
-				logqueue = node;
-				logqueue_head = node;
-			} else {
-				logqueue_head->next = node;
-				logqueue_head = node;
-			}
-			logqueuenr++;
-			pthread_mutex_unlock(&logqueue_lock);
-		} else {
-			struct reason_log_t *node = MALLOC(sizeof(struct reason_log_t));
-			if(node == NULL) {
-				OUT_OF_MEMORY
-			}
-			if((node->buffer = MALLOC(pos+1)) == NULL) {
-				OUT_OF_MEMORY
-			}
-			strcpy(node->buffer, buffer);
-			eventpool_trigger(REASON_LOG, reason_log_free, node);
+		if(shelllog == 1) {
+			fprintf(stderr, "%s", buffer);
 		}
+#ifdef _WIN32
+		if(prio == LOG_ERR && strstr(progname, "daemon") != NULL && pilight.running == 0) {
+			MessageBox(NULL, buffer, "pilight :: error", MB_OK);
+		}
+#endif
+		if(prio < LOG_DEBUG && stop == 0) {
+			if(init == 0) {
+				struct logqueue_t *node = MALLOC(sizeof(struct logqueue_t));
+				if(node == NULL) {
+					OUT_OF_MEMORY
+				}
+				if((node->buffer = MALLOC(pos+1)) == NULL) {
+					OUT_OF_MEMORY
+				}
+				strcpy(node->buffer, buffer);
+				node->next = NULL;
+
+				loginitlock();
+				pthread_mutex_lock(&logqueue_lock);
+				if(logqueuenr == 0) {
+					logqueue = node;
+					logqueue_head = node;
+				} else {
+					logqueue_head->next = node;
+					logqueue_head = node;
+				}
+				logqueuenr++;
+				pthread_mutex_unlock(&logqueue_lock);
+			} else {
+				struct reason_log_t *node = MALLOC(sizeof(struct reason_log_t));
+				if(node == NULL) {
+					OUT_OF_MEMORY
+				}
+				if((node->buffer = MALLOC(pos+1)) == NULL) {
+					OUT_OF_MEMORY
+				}
+				strcpy(node->buffer, buffer);
+				eventpool_trigger(REASON_LOG, reason_log_free, node);
+			}
+		}
+		FREE(buffer);
+		
+		errno = errcpy;
 	}
-	FREE(buffer);
-	
-	errno = errcpy;
 }
 
 void *logprocess(void *param) {
