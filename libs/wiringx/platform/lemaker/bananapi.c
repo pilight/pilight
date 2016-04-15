@@ -74,7 +74,7 @@ static int bananapiSetup(void) {
 }
 
 void bananapiInit(void) {
-	platform_register(&bananapi, "bananapi");
+	platform_register(&bananapi, "bananapi1");
 
 	bananapi->soc = soc_get("Allwinner", "A10");
 

@@ -7,7 +7,7 @@
 */
 
 #ifndef __WIRINGX_ODROIDC1_H_
-#define __WIRINGX_ODORIDC1_H_
+#define __WIRINGX_ODROIDC1_H_
 
 #include "../platform.h"
 

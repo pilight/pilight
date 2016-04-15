@@ -37,6 +37,7 @@
 #include "soc/samsung/exynos5422.h"
 
 #include "platform/linksprite/pcduino1.h"
+#include "platform/lemaker/bananapi.h"
 #include "platform/lemaker/bananapim2.h"
 #include "platform/solidrun/hummingboard_gate_edge_sdl.h"
 #include "platform/solidrun/hummingboard_gate_edge_dq.h"
@@ -230,6 +231,7 @@ int wiringXSetup(char *name, void (*func)(int, const char *, ...)) {
 
 	/* Init all platforms */
 	pcduino1Init();
+	bananapiInit();
 	bananapiM2Init();
 	hummingboardBaseProSDLInit();
 	hummingboardBaseProDQInit();

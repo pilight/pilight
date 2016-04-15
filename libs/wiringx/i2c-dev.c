@@ -12,7 +12,7 @@
 #include <sys/ioctl.h>
 #include <linux/types.h>
 #include <linux/i2c.h>
-#include <linux/i2c-dev.h>
+
 #include "i2c-dev.h"
 
 extern inline __s32 i2c_smbus_access(int fd, char rw, int cmd, int size, union i2c_smbus_data *data) {

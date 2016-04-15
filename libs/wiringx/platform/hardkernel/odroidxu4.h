@@ -7,7 +7,7 @@
 */
 
 #ifndef __WIRINGX_ODROIDXU4_H_
-#define __WIRINGX_ODORIDXU4_H_
+#define __WIRINGX_ODROIDXU4_H_
 
 #include "../platform.h"
 
