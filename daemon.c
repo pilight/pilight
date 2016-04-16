@@ -1355,36 +1355,6 @@ void *broadcast(void *param) {
 		free_conf = 0;
 		eventpool_trigger(REASON_BROADCAST_CORE, reason_broadcast_core_free, conf);
 	} else {
-		if(protocol != NULL && strcmp(protocol, "pilight_firmware") == 0) {
-			struct JsonNode *code = NULL;
-			struct JsonNode *jdata = json_decode(message);
-			if((code = json_find_member(jdata, "message")) != NULL) {
-				json_find_number(code, "version", &firmware.version);
-				json_find_number(code, "lpf", &firmware.lpf);
-				json_find_number(code, "hpf", &firmware.hpf);
-				if(firmware.version > 0 && firmware.lpf > 0 && firmware.hpf > 0) {
-					registry_update(ORIGIN_MASTER, "pilight.firmware.version", json_mknumber(firmware.version, 0));
-					registry_update(ORIGIN_MASTER, "pilight.firmware.lpf", json_mknumber(firmware.lpf, 0));
-					registry_update(ORIGIN_MASTER, "pilight.firmware.hpf", json_mknumber(firmware.hpf, 0));
-
-					struct JsonNode *jmessage = json_mkobject();
-					struct JsonNode *jcode = json_mkobject();
-					json_append_member(jcode, "version", json_mknumber(firmware.version, 0));
-					json_append_member(jcode, "lpf", json_mknumber(firmware.lpf, 0));
-					json_append_member(jcode, "hpf", json_mknumber(firmware.hpf, 0));
-					json_append_member(jmessage, "values", jcode);
-					json_append_member(jmessage, "origin", json_mkstring("core"));
-					json_append_member(jmessage, "type", json_mknumber(FIRMWARE, 0));
-					char pname[17];
-					strcpy(pname, "pilight-firmware");
-
-					free_conf = 0;
-					eventpool_trigger(REASON_BROADCAST, reason_broadcast_free, conf);
-					json_delete(jmessage);
-					jmessage = NULL;
-				}
-			}
-		}
 		broadcasted = 0;
 
 		// struct JsonNode *childs = json_first_child(jdata);
@@ -2188,10 +2158,6 @@ int start_pilight(int argc, char **argv) {
 		}
 	}
 	array_free(&devs, nrdevs);
-
-	firmware.version = 0;
-	firmware.lpf = 0;
-	firmware.hpf = 0;
 
 	memset(buffer, '\0', BUFFER_SIZE);
 

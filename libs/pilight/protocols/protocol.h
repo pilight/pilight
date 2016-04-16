@@ -24,7 +24,6 @@
 #include "../hardware/hardware.h"
 
 typedef enum {
-	FIRMWARE = -2,
 	PROCESS = -1,
 	RAW = 0,
 	SWITCH,
