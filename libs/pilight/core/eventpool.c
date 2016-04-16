@@ -337,13 +337,17 @@ struct eventpool_fd_t *eventpool_fd_add(char *name, int fd, int (*callback)(stru
 		if(pilight.debuglevel == 1) {
 			logprintf(LOG_DEBUG, "increasing eventpool_fd_t struct size to %d", nrfd+16);
 		}
-		eventpool_fds = REALLOC(eventpool_fds, sizeof(struct eventpool_fd_t *)*(nrfd+16));
+		if((eventpool_fds = REALLOC(eventpool_fds, sizeof(struct eventpool_fd_t *)*(nrfd+16))) == NULL) {
+			OUT_OF_MEMORY
+		}
 		for(i=nrfd;i<(nrfd+16);i++) {
-			eventpool_fds[i] = MALLOC(sizeof(struct eventpool_fd_t));
+			if((eventpool_fds[i] = MALLOC(sizeof(struct eventpool_fd_t))) == NULL) {
+				OUT_OF_MEMORY
+			}
 			memset(eventpool_fds[i], 0, sizeof(struct eventpool_fd_t));
 		}
-		freefd = nrfd+1;
-		nrfd += 16;
+		freefd = nrfd;
+		__sync_add_and_fetch(&nrfd, 16);
 	}
 
 	struct eventpool_fd_t *node = eventpool_fds[freefd];
@@ -406,8 +410,8 @@ struct eventpool_fd_t *eventpool_socket_add(char *name, char *server, unsigned i
 			eventpool_fds[i] = MALLOC(sizeof(struct eventpool_fd_t));
 			memset(eventpool_fds[i], 0, sizeof(struct eventpool_fd_t));
 		}
-		freefd = nrfd+1;
-		nrfd += 16;
+		freefd = nrfd;
+		__sync_add_and_fetch(&nrfd, 16);
 	}
 
 	struct eventpool_fd_t *node = eventpool_fds[freefd];
