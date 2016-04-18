@@ -50,6 +50,11 @@ static int validate(void) {
 static void parseCode(char *message) {
 	int binary[RAW_LENGTH/4], x = 0, i = 0;
 
+	if(arctech_dusk->rawlen>RAW_LENGTH) {
+		logprintf(LOG_ERR, "arctech_dusk: parsecode - invalid parameter passed %d", arctech_dusk->rawlen);
+		return;
+	}
+
 	for(x=0;x<arctech_dusk->rawlen;x+=4) {
 		if(arctech_dusk->raw[x+3] > AVG_PULSE_LENGTH*PULSE_MULTIPLIER) {
 			binary[i++] = 1;

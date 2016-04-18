@@ -98,36 +98,24 @@ static int bananapiM2DigitalWrite(int i, enum digital_value_t value) {
 	return bananapim2->soc->digitalWrite(i, value);	
 }
 
+static int bananapiM2Setup(void) {
+	bananapim2->soc->setup();
+	bananapim2->soc->setMap(map);
+	return 0;
+}
+
 void bananapiM2Init(void) {
-	if((bananapim2 = malloc(sizeof(struct platform_t))) == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(EXIT_FAILURE);
-	}
-	bananapim2->nralias = 1;
-	if((bananapim2->name = malloc(bananapim2->nralias*sizeof(char *))) == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(EXIT_FAILURE);
-	}
-	if((bananapim2->name[0] = strdup("bananapi_m2")) == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(EXIT_FAILURE);
-	}
+	platform_register(&bananapim2, "bananapi_m2");
 
 	bananapim2->soc = soc_get("Allwinner", "A31s");
-	bananapim2->soc->setMap(map);
 
 	bananapim2->digitalRead = bananapim2->soc->digitalRead;
 	bananapim2->digitalWrite = &bananapiM2DigitalWrite;
 	bananapim2->pinMode = &bananapiM2PinMode;
-	bananapim2->setup = bananapim2->soc->setup;
-
-	bananapim2->isr = NULL;
-	bananapim2->waitForInterrupt = NULL;
+	bananapim2->setup = &bananapiM2Setup;
 
 	bananapim2->selectableFd = bananapim2->soc->selectableFd;
 	bananapim2->gc = bananapim2->soc->gc;
 
 	bananapim2->validGPIO = &bananapiM2ValidGPIO;
-
-	platform_register(bananapim2);
 }

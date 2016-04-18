@@ -62,6 +62,11 @@ static void createMessage(char *message, int systemcode, int unitcode, int state
 static void parseCode(char *message) {
 	int x = 0, binary[RAW_LENGTH/4];
 
+	if(heitech->rawlen>RAW_LENGTH) {
+		logprintf(LOG_ERR, "heitech: parsecode - invalid parameter passed %d", heitech->rawlen);
+		return;
+	}
+
 	for(x=0;x<heitech->rawlen-2;x+=4) {
 		if(heitech->raw[x+3] > (int)((double)AVG_PULSE_LENGTH*((double)PULSE_MULTIPLIER/2))) {
 			binary[x/4]=1;

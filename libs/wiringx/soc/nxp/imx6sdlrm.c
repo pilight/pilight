@@ -282,7 +282,7 @@ static void nxpIMX6SDLRMSetIRQ(int *irq) {
 static int nxpIMX6SDLRMDigitalWrite(int i, enum digital_value_t value) {
 	struct layout_t *pin = NULL;
 	unsigned long addr = 0;
-	unsigned long val = 0; 
+	uint32_t val = 0;
 
 	pin = &nxpIMX6SDLRM->layout[nxpIMX6SDLRM->map[i]];
 
@@ -314,7 +314,7 @@ static int nxpIMX6SDLRMDigitalRead(int i) {
 	void *gpio = NULL;
 	struct layout_t *pin = NULL;
 	unsigned long addr = 0;
-	unsigned long val = 0;
+	uint32_t val = 0;
 
 	pin = &nxpIMX6SDLRM->layout[nxpIMX6SDLRM->map[i]];
 	gpio = nxpIMX6SDLRM->gpio[pin->addr];
@@ -342,7 +342,7 @@ static int nxpIMX6SDLRMPinMode(int i, enum pinmode_t mode) {
 	struct layout_t *pin = NULL;
 	unsigned long addrSel = 0;
 	unsigned long addrDat = 0;
-	unsigned long val = 0;
+	uint32_t val = 0;
 
 	if(nxpIMX6SDLRM->map == NULL) {
 		wiringXLog(LOG_ERR, "The %s %s has not yet been mapped", nxpIMX6SDLRM->brand, nxpIMX6SDLRM->chip);
@@ -476,13 +476,8 @@ static int nxpIMX6SDLRMSelectableFd(int i) {
 }
 
 void nxpIMX6SDLRMInit(void) {
-	nxpIMX6SDLRM = malloc(sizeof(struct soc_t));
+	soc_register(&nxpIMX6SDLRM, "NXP", "IMX6SDLRM");
 
-	strcpy(nxpIMX6SDLRM->brand, "NXP");
-	strcpy(nxpIMX6SDLRM->chip, "IMX6SDLRM");
-
-	nxpIMX6SDLRM->map = NULL;
-	nxpIMX6SDLRM->irq = NULL;
 	nxpIMX6SDLRM->layout = layout;
 
 	nxpIMX6SDLRM->support.isr_modes = ISR_MODE_RISING | ISR_MODE_FALLING | ISR_MODE_BOTH | ISR_MODE_NONE;
@@ -504,5 +499,4 @@ void nxpIMX6SDLRMInit(void) {
 	nxpIMX6SDLRM->isr = &nxpIMX6SDLRMISR;
 	nxpIMX6SDLRM->waitForInterrupt = &nxpIMX6SDLRMWaitForInterrupt;
 
-	soc_register(nxpIMX6SDLRM);
 }

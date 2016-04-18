@@ -71,6 +71,7 @@ static struct reasons_t {
 	{	REASON_ADHOC_DISCONNECTED,		"REASON_ADHOC_DISCONNECTED",		0 },
 	{	REASON_SEND_BEGIN,						"REASON_SEND_BEGIN",						0 },
 	{	REASON_SEND_END,							"REASON_SEND_END",							0 },
+	{	REASON_LOG,										"REASON_LOG",										0 },
 	{	REASON_END,										"REASON_END",										0 }
 };
 
@@ -209,10 +210,7 @@ void eventpool_fd_enable_write(struct eventpool_fd_t *node) {
 		return;
 	}
 
-	int nr = __sync_add_and_fetch(&node->dowrite, 0);
-	if(nr == 0) {
-		__sync_add_and_fetch(&node->dowrite, 1);
-	}
+	node->dowrite = 1;
 }
 
 void eventpool_fd_enable_flush(struct eventpool_fd_t *node) {
@@ -220,10 +218,7 @@ void eventpool_fd_enable_flush(struct eventpool_fd_t *node) {
 		return;
 	}
 
-	int nr = __sync_add_and_fetch(&node->doflush, 0);
-	if(nr == 0) {
-		__sync_add_and_fetch(&node->doflush, 1);
-	}
+	node->doflush = 1;
 }
 
 void eventpool_fd_enable_read(struct eventpool_fd_t *node) {
@@ -231,10 +226,7 @@ void eventpool_fd_enable_read(struct eventpool_fd_t *node) {
 		return;
 	}
 
-	int nr = __sync_add_and_fetch(&node->doread, 0);
-	if(nr == 0) {
-		__sync_add_and_fetch(&node->doread, 1);
-	}
+	node->doread = 1;
 }
 
 void eventpool_fd_enable_highpri(struct eventpool_fd_t *node) {
@@ -242,10 +234,7 @@ void eventpool_fd_enable_highpri(struct eventpool_fd_t *node) {
 		return;
 	}
 
-	int nr = __sync_add_and_fetch(&node->dohighpri, 0);
-	if(nr == 0) {
-		__sync_add_and_fetch(&node->dohighpri, 1);
-	}
+	node->dohighpri = 1;
 }
 
 void eventpool_fd_disable_flush(struct eventpool_fd_t *node) {
@@ -253,10 +242,7 @@ void eventpool_fd_disable_flush(struct eventpool_fd_t *node) {
 		return;
 	}
 
-	int nr = __sync_add_and_fetch(&node->doflush, 0);
-	if(nr == 1) {
-		__sync_add_and_fetch(&node->doflush, -1);
-	}
+	node->doflush = 0;
 }
 
 void eventpool_fd_disable_write(struct eventpool_fd_t *node) {
@@ -264,10 +250,7 @@ void eventpool_fd_disable_write(struct eventpool_fd_t *node) {
 		return;
 	}
 
-	int nr = __sync_add_and_fetch(&node->dowrite, 0);
-	if(nr == 1) {
-		__sync_add_and_fetch(&node->dowrite, -1);
-	}
+	node->dowrite = 0;
 }
 
 void eventpool_fd_disable_highpri(struct eventpool_fd_t *node) {
@@ -275,10 +258,7 @@ void eventpool_fd_disable_highpri(struct eventpool_fd_t *node) {
 		return;
 	}
 
-	int nr = __sync_add_and_fetch(&node->dohighpri, 0);
-	if(nr == 1) {
-		__sync_add_and_fetch(&node->dohighpri, -1);
-	}
+	node->dohighpri = 0;
 }
 
 void eventpool_fd_disable_read(struct eventpool_fd_t *node) {
@@ -286,10 +266,7 @@ void eventpool_fd_disable_read(struct eventpool_fd_t *node) {
 		return;
 	}
 
-	int nr = __sync_add_and_fetch(&node->doread, 0);
-	if(nr == 1) {
-		__sync_add_and_fetch(&node->doread, -1);
-	}
+	node->doread = 0;
 }
 
 int eventpool_fd_select(int fd, struct eventpool_fd_t **node) {
@@ -301,7 +278,7 @@ int eventpool_fd_select(int fd, struct eventpool_fd_t **node) {
 	struct eventpool_fd_t *nodes = NULL;
 	for(i=0;i<nrfd;i++) {
 		nodes = eventpool_fds[i];
-		if(nodes->fd == fd && __sync_add_and_fetch(&nodes->remove, 0) == 0) {
+		if(nodes->fd == fd && nodes->remove == 0) {
 			*node = nodes;
 			return 0;
 		}
@@ -314,9 +291,8 @@ void eventpool_fd_remove(struct eventpool_fd_t *node) {
 		return;
 	}
 
-	if(__sync_add_and_fetch(&node->remove, 0) == 0 &&
-	   __sync_add_and_fetch(&node->active, 0) == 1) {
-		__sync_add_and_fetch(&node->remove, 1);
+	if(node->remove == 0 && node->active == 1) {
+		node->remove = 1;
 	}
 }
 
@@ -338,8 +314,7 @@ void eventpool_socket_reconnect(struct eventpool_fd_t *node) {
 	if(node->fd > 0) {
 		close(node->fd);
 	}
-	int x = __sync_add_and_fetch(&node->remove, 0);
-	while(__sync_bool_compare_and_swap(&node->remove, x, 0) == 0) { };
+	node->remove = 0;
 	node->error = 0;
 	node->stage = EVENTPOOL_STAGE_SOCKET;
 }
@@ -353,7 +328,7 @@ struct eventpool_fd_t *eventpool_fd_add(char *name, int fd, int (*callback)(stru
 
 	int i = 0, freefd = -1;
 	for(i=0;i<nrfd;i++) {
-		if(__sync_add_and_fetch(&eventpool_fds[i]->active, 0) == 0) {
+		if(eventpool_fds[i]->active == 0) {
 			freefd = i;
 			break;
 		}
@@ -362,13 +337,17 @@ struct eventpool_fd_t *eventpool_fd_add(char *name, int fd, int (*callback)(stru
 		if(pilight.debuglevel == 1) {
 			logprintf(LOG_DEBUG, "increasing eventpool_fd_t struct size to %d", nrfd+16);
 		}
-		eventpool_fds = REALLOC(eventpool_fds, sizeof(struct eventpool_fd_t *)*(nrfd+16));
+		if((eventpool_fds = REALLOC(eventpool_fds, sizeof(struct eventpool_fd_t *)*(nrfd+16))) == NULL) {
+			OUT_OF_MEMORY
+		}
 		for(i=nrfd;i<(nrfd+16);i++) {
-			eventpool_fds[i] = MALLOC(sizeof(struct eventpool_fd_t));
+			if((eventpool_fds[i] = MALLOC(sizeof(struct eventpool_fd_t))) == NULL) {
+				OUT_OF_MEMORY
+			}
 			memset(eventpool_fds[i], 0, sizeof(struct eventpool_fd_t));
 		}
-		freefd = nrfd+1;
-		nrfd += 16;
+		freefd = nrfd;
+		__sync_add_and_fetch(&nrfd, 16);
 	}
 
 	struct eventpool_fd_t *node = eventpool_fds[freefd];
@@ -405,7 +384,7 @@ struct eventpool_fd_t *eventpool_fd_add(char *name, int fd, int (*callback)(stru
 		}
 	}
 
-	__sync_add_and_fetch(&node->active, 1);
+	node->active = 1;
 
 	return node;
 }
@@ -417,7 +396,7 @@ struct eventpool_fd_t *eventpool_socket_add(char *name, char *server, unsigned i
 
 	int i = 0, freefd = -1;
 	for(i=0;i<nrfd;i++) {
-		if(__sync_add_and_fetch(&eventpool_fds[i]->active, 0) == 0) {
+		if(eventpool_fds[i]->active == 0) {
 			freefd = i;
 			break;
 		}
@@ -431,8 +410,8 @@ struct eventpool_fd_t *eventpool_socket_add(char *name, char *server, unsigned i
 			eventpool_fds[i] = MALLOC(sizeof(struct eventpool_fd_t));
 			memset(eventpool_fds[i], 0, sizeof(struct eventpool_fd_t));
 		}
-		freefd = nrfd+1;
-		nrfd += 16;
+		freefd = nrfd;
+		__sync_add_and_fetch(&nrfd, 16);
 	}
 
 	struct eventpool_fd_t *node = eventpool_fds[freefd];
@@ -470,7 +449,7 @@ struct eventpool_fd_t *eventpool_socket_add(char *name, char *server, unsigned i
 	eventpool_iobuf_init(&node->send_iobuf, 0);
 	eventpool_iobuf_init(&node->recv_iobuf, 0);
 
-	__sync_add_and_fetch(&node->active, 1);
+	node->active = 1;
 
 	return node;
 }
@@ -591,14 +570,12 @@ static int eventpool_socket_connecting(struct eventpool_fd_t *node) {
 }
 
 static void eventpool_clear_nodes(void) {
-	int i = 0, x = 0;
+	int i = 0;
 	for(i=0;i<nrfd;i++) {
 		struct eventpool_fd_t *tmp = eventpool_fds[i];
-		if((x = __sync_add_and_fetch(&tmp->remove, 0)) == 1) {
-			while(__sync_bool_compare_and_swap(&tmp->remove, x, 0) == 0);
-
-			x = __sync_add_and_fetch(&tmp->active, 0);
-			while(__sync_bool_compare_and_swap(&tmp->active, x, 0) == 0);
+		if(tmp->remove == 1) {
+			tmp->remove = 0;
+			tmp->active = 0;
 
 			if(tmp->type == EVENTPOOL_TYPE_SOCKET_SERVER ||
 				tmp->type == EVENTPOOL_TYPE_SOCKET_CLIENT) {
@@ -636,29 +613,28 @@ void *eventpool_process(void *param) {
 
 		nrpoll = 0;
 		for(i=0;i<nrfd;i++) {
-			if(__sync_add_and_fetch(&eventpool_fds[i]->active, 0) == 1) {
-				// __sync_add_and_fetch(&eventpool_fds[i]->active, -1);
+			if(eventpool_fds[i]->active == 1) {
+				// eventpool_fds[i]->active = 0;
 				tmp = eventpool_fds[i];
 				if(tmp->fd >= 0) {
 					tmp->idx = nrpoll;
 					pollfds[tmp->idx].fd = tmp->fd;
 					pollfds[tmp->idx].events = 0;
 					pollfds[tmp->idx].revents = 0;
-					if(__sync_add_and_fetch(&tmp->dowrite, 0) == 1 ||
-						__sync_add_and_fetch(&tmp->doflush, 0) == 1) {
+					if(tmp->dowrite == 1 || tmp->doflush == 1) {
 						pollfds[tmp->idx].events |= POLLOUT;
 					}
-					if(__sync_add_and_fetch(&tmp->doread, 0) == 1) {
+					if(tmp->doread == 1) {
 						pollfds[tmp->idx].events |= POLLIN;
 					}
-					if(__sync_add_and_fetch(&tmp->dohighpri, 0) == 1) {
+					if(tmp->dohighpri == 1) {
 						pollfds[tmp->idx].events |= POLLPRI;
 					}
 					nrpoll++;
 				} else {
 					tmp->idx = -1;
 				}
-				// __sync_add_and_fetch(&eventpool_fds[i]->active, 1);
+				// eventpool_fds[i]->active = 1;
 			}
 		}
 		ret = poll(pollfds, nrpoll, 100);
@@ -681,8 +657,8 @@ void *eventpool_process(void *param) {
 
 		for(i=0;i<nrfd;i++) {
 			tmp = eventpool_fds[i];
-			if(__sync_add_and_fetch(&tmp->active, 0) == 1) {
-				// __sync_add_and_fetch(&tmp->active, -1);
+			if(tmp->active == 1) {
+				// tmp->active = 0;
 				if(tmp->error == 0) {
 					if(interval == 1) {
 						if(tmp->stage != EVENTPOOL_STAGE_DISCONNECT && tmp->callback(tmp, EV_POLL) == -1) {
@@ -774,7 +750,7 @@ void *eventpool_process(void *param) {
 										if(tmp->stage == EVENTPOOL_STAGE_CONNECTED &&
 											 tmp->callback(tmp, EV_READ) == -1) {
 											tmp->stage = EVENTPOOL_STAGE_DISCONNECT;
-											if(__sync_add_and_fetch(&tmp->doflush, 0) == 0) {
+											if(tmp->doflush == 0) {
 												tmp->error = -1;
 												tmp->callback(tmp, EV_DISCONNECTED);
 												if(tmp->fd > 0) {
@@ -789,7 +765,7 @@ void *eventpool_process(void *param) {
 										if(tmp->stage == EVENTPOOL_STAGE_CONNECTED &&
 											 tmp->callback(tmp, EV_HIGHPRI) == -1) {
 											tmp->stage = EVENTPOOL_STAGE_DISCONNECT;
-											if(__sync_add_and_fetch(&tmp->dohighpri, 0) == 0) {
+											if(tmp->dohighpri == 0) {
 												tmp->error = -1;
 												tmp->callback(tmp, EV_DISCONNECTED);
 												if(tmp->fd > 0) {
@@ -863,8 +839,7 @@ void *eventpool_process(void *param) {
 									}
 								}
 								if(tmp->stage == EVENTPOOL_STAGE_DISCONNECT &&
-									__sync_add_and_fetch(&tmp->dowrite, 0) == 0 &&
-									__sync_add_and_fetch(&tmp->doflush, 0) == 0) {
+									tmp->dowrite == 0 && tmp->doflush == 0) {
 									tmp->error = -1;
 									tmp->callback(tmp, EV_DISCONNECTED);
 									if(tmp->fd > 0) {
@@ -878,14 +853,14 @@ void *eventpool_process(void *param) {
 						}
 					}
 				}
-				// __sync_add_and_fetch(&tmp->active, 1);
+				// tmp->active = 1;
 			}
 		}
 	}
 
 	for(i=0;i<nrfd;i++) {
 		tmp = eventpool_fds[i];
-		if(__sync_add_and_fetch(&tmp->active, 0) == 1) {
+		if(tmp->active == 1) {
 			tmp->callback(tmp, EV_DISCONNECTED);
 			if(tmp->fd > 0) {
 				shutdown(tmp->fd, SHUT_RDWR);

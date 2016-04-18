@@ -86,28 +86,21 @@ static int pcduino1DigitalWrite(int i, enum digital_value_t value) {
 	return pcduino1->soc->digitalWrite(i, value);	
 }
 
+static int pcduino1Setup(void) {
+	pcduino1->soc->setup();
+	pcduino1->soc->setMap(map);
+	return 0;
+}
+
 void pcduino1Init(void) {
-	if((pcduino1 = malloc(sizeof(struct platform_t))) == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(EXIT_FAILURE);
-	}
-	pcduino1->nralias = 1;
-	if((pcduino1->name = malloc(pcduino1->nralias*sizeof(char *))) == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(EXIT_FAILURE);
-	}
-	if((pcduino1->name[0] = strdup("pcduino1")) == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(EXIT_FAILURE);
-	}
+	platform_register(&pcduino1, "pcduino1");
 
 	pcduino1->soc = soc_get("Allwinner", "A10");
-	pcduino1->soc->setMap(map);
 
 	pcduino1->digitalRead = pcduino1->soc->digitalRead;
 	pcduino1->digitalWrite = &pcduino1DigitalWrite;
 	pcduino1->pinMode = &pcduino1PinMode;
-	pcduino1->setup = pcduino1->soc->setup;
+	pcduino1->setup = &pcduino1Setup;
 
 	pcduino1->isr = pcduino1->soc->isr;
 	pcduino1->waitForInterrupt = pcduino1->soc->waitForInterrupt;
@@ -117,5 +110,4 @@ void pcduino1Init(void) {
 
 	pcduino1->validGPIO = &pcduino1ValidGPIO;
 
-	platform_register(pcduino1);
 }

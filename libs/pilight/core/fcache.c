@@ -20,8 +20,6 @@
 #include "gc.h"
 
 int fcache_gc(void) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
-
 	struct fcache_t *tmp = fcache;
 	while(fcache) {
 		tmp = fcache;
@@ -39,8 +37,6 @@ int fcache_gc(void) {
 }
 
 void fcache_remove_node(struct fcache_t **cache, char *name) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
-
 	struct fcache_t *currP, *prevP;
 
 	prevP = NULL;
@@ -64,16 +60,12 @@ void fcache_remove_node(struct fcache_t **cache, char *name) {
 }
 
 int fcache_rm(char *filename) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
-
 	fcache_remove_node(&fcache, filename);
 	logprintf(LOG_DEBUG, "removed %s from cache", filename);
 	return 1;
 }
 
 int fcache_add(char *filename) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
-
 	size_t filesize = 0;
 	FILE *fp = NULL;
 
@@ -126,8 +118,6 @@ int fcache_add(char *filename) {
 }
 
 short fcache_get_size(char *filename, int *out) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
-
 	struct fcache_t *ftmp = fcache;
 	while(ftmp) {
 		if(strcmp(ftmp->name, filename) == 0) {
@@ -140,8 +130,6 @@ short fcache_get_size(char *filename, int *out) {
 }
 
 unsigned char *fcache_get_bytes(char *filename) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
-
 	struct fcache_t *ftmp = fcache;
 	while(ftmp) {
 		if(strcmp(ftmp->name, filename) == 0) {

@@ -236,7 +236,7 @@ static void allwinnerA31sSetMap(int *map) {
 static int allwinnerA31sDigitalWrite(int i, enum digital_value_t value) {
 	struct layout_t *pin = NULL;
 	unsigned long addr = 0;
-	unsigned long val = 0; 
+	uint32_t val = 0;
 
 	pin = &allwinnerA31s->layout[allwinnerA31s->map[i]];
 
@@ -268,7 +268,7 @@ static int allwinnerA31sDigitalRead(int i) {
 	void *gpio = NULL;
 	struct layout_t *pin = NULL;
 	unsigned long addr = 0;
-	unsigned long val = 0;
+	uint32_t val = 0;
 
 	pin = &allwinnerA31s->layout[allwinnerA31s->map[i]];
 	gpio = allwinnerA31s->gpio[pin->addr];
@@ -295,7 +295,7 @@ static int allwinnerA31sDigitalRead(int i) {
 static int allwinnerA31sPinMode(int i, enum pinmode_t mode) {
 	struct layout_t *pin = NULL;
 	unsigned long addr = 0;
-	unsigned long val = 0;
+	uint32_t val = 0;
 
 	if(allwinnerA31s->map == NULL) {
 		wiringXLog(LOG_ERR, "The %s %s has not yet been mapped", allwinnerA31s->brand, allwinnerA31s->chip);
@@ -349,12 +349,8 @@ static int allwinnerA31sGC(void) {
 }
 
 void allwinnerA31sInit(void) {
-	allwinnerA31s = malloc(sizeof(struct soc_t));
+	soc_register(&allwinnerA31s, "Allwinner", "A31s");
 
-	strcpy(allwinnerA31s->brand, "Allwinner");
-	strcpy(allwinnerA31s->chip, "A31s");
-
-	allwinnerA31s->map = NULL;
 	allwinnerA31s->layout = layout;
 
 	allwinnerA31s->support.isr_modes = ISR_MODE_RISING | ISR_MODE_FALLING | ISR_MODE_BOTH | ISR_MODE_NONE;
@@ -367,7 +363,6 @@ void allwinnerA31sInit(void) {
 	allwinnerA31s->base_offs[1] = 0x00000C00;
 
 	allwinnerA31s->gc = &allwinnerA31sGC;
-	allwinnerA31s->selectableFd = NULL;
 
 	allwinnerA31s->pinMode = &allwinnerA31sPinMode;
 	allwinnerA31s->setup = &allwinnerA31sSetup;
@@ -375,8 +370,4 @@ void allwinnerA31sInit(void) {
 	allwinnerA31s->digitalWrite = &allwinnerA31sDigitalWrite;
 	allwinnerA31s->getPinName = &allwinnerA31sGetPinName;
 	allwinnerA31s->setMap = &allwinnerA31sSetMap;
-	allwinnerA31s->isr = NULL;
-	allwinnerA31s->waitForInterrupt = NULL;
-
-	soc_register(allwinnerA31s);
 }

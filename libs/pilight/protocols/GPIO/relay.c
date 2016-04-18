@@ -163,8 +163,8 @@ static int checkValues(struct JsonNode *code) {
 					logprintf(LOG_ERR, "relay: invalid gpio range");
 					return -1;
 				}
-			}
 #endif
+			}
 		}
 	}
 

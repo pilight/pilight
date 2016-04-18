@@ -50,20 +50,14 @@ static int raspberrypi3ValidGPIO(int pin) {
 	}
 }
 
+static int raspberrypi3Setup(void) {
+	raspberrypi3->soc->setup();
+	raspberrypi3->soc->setMap(map);
+	return 0;
+}
+
 void raspberrypi3Init(void) {
-	if((raspberrypi3 = malloc(sizeof(struct platform_t))) == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(EXIT_FAILURE);
-	}
-	raspberrypi3->nralias = 1;
-	if((raspberrypi3->name = malloc(raspberrypi3->nralias*sizeof(char *))) == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(EXIT_FAILURE);
-	}
-	if((raspberrypi3->name[0] = strdup("raspberrypi3")) == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(EXIT_FAILURE);
-	}
+	platform_register(&raspberrypi3, "raspberrypi3");
 
 	/* 
 	 * The Raspberry Pi 3 uses the Broadcom 2837,
@@ -76,7 +70,7 @@ void raspberrypi3Init(void) {
 	raspberrypi3->digitalRead = raspberrypi3->soc->digitalRead;
 	raspberrypi3->digitalWrite = raspberrypi3->soc->digitalWrite;
 	raspberrypi3->pinMode = raspberrypi3->soc->pinMode;
-	raspberrypi3->setup = raspberrypi3->soc->setup;
+	raspberrypi3->setup = &raspberrypi3Setup;
 
 	raspberrypi3->isr = raspberrypi3->soc->isr;
 	raspberrypi3->waitForInterrupt = raspberrypi3->soc->waitForInterrupt;
@@ -85,6 +79,4 @@ void raspberrypi3Init(void) {
 	raspberrypi3->gc = raspberrypi3->soc->gc;
 
 	raspberrypi3->validGPIO = &raspberrypi3ValidGPIO;
-
-	platform_register(raspberrypi3);
 }

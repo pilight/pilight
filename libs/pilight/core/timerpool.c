@@ -17,6 +17,7 @@
 		#define __USE_UNIX98
 	#endif
 #endif
+#define __USE_UNIX98
 #include <pthread.h>
 #include <sys/time.h>
 
@@ -101,12 +102,12 @@ static void timer_update(struct timers_t *node, struct timer_tasks_t *e) {
 
 	memset(&ts, 0, sizeof(struct timespec));
 
-	int a = __sync_add_and_fetch(&node->sec, 0);
-	int b = __sync_add_and_fetch(&node->nsec, 0);
+	int a = node->sec;
+	int b = node->nsec;
 
 	if((a == e->sec && b > e->nsec) || (a > e->sec) || (a == 0 && b == 0)) {
-		while(__sync_bool_compare_and_swap(&node->sec, node->sec, e->sec) == 0);
-		while(__sync_bool_compare_and_swap(&node->nsec, node->nsec, e->nsec) == 0);
+		node->sec = e->sec;
+		node->nsec = e->nsec;
 		timerspec.it_interval.tv_sec = 0 / 1000000000;
 		timerspec.it_interval.tv_nsec = 0 % 1000000000;
 		timerspec.it_value.tv_sec = e->sec;
@@ -121,12 +122,12 @@ void *timer_thread(void *param) {
 
 	sem_wait(&pthrunning);
 
-	while(__sync_add_and_fetch(&loop, 0) == 1) {
+	while(loop == 1) {
 		pthread_mutex_lock(&pthlock);
-		while(__sync_add_and_fetch(&loop, 0) == 1 && gtimer == NULL) {
+		while(loop == 1 && gtimer == NULL) {
 			pthread_cond_wait(&pthsignal, &pthlock);
 		}
-		if(__sync_add_and_fetch(&loop, 0) == 0) {
+		if(loop == 0) {
 			pthread_mutex_unlock(&pthlock);
 			break;
 		}
@@ -138,8 +139,8 @@ void *timer_thread(void *param) {
 			FREE(e.name);
 		}
 
-		while(__sync_bool_compare_and_swap(&gtimer->sec, gtimer->sec, 0) == 0);
-		while(__sync_bool_compare_and_swap(&gtimer->nsec, gtimer->nsec, 0) == 0);
+		gtimer->sec = 0;
+		gtimer->nsec = 0;
 
 		if(timer_tasks_top(gtimer, &e) == 0) {
 			timer_update(gtimer, &e);
@@ -286,8 +287,8 @@ void timer_add_task(struct timers_t *timer, char *name, struct timeval wait, voi
 	}
 	pthread_mutex_unlock(&timer->lock);
 
-	int a = __sync_add_and_fetch(&timer->sec, 0);
-	int b = __sync_add_and_fetch(&timer->nsec, 0);
+	int a = timer->sec;
+	int b = timer->nsec;
 
 	/* Only update timer if the latest tasks should be executed first */
 	if((a == ts.tv_sec && b > ts.tv_nsec) || (a > ts.tv_sec) || (a == 0 && b == 0)) {
@@ -301,12 +302,9 @@ void timer_add_task(struct timers_t *timer, char *name, struct timeval wait, voi
 
 void timer_thread_start(void) {
 	sem_init(&pthrunning, 0, 1);
-	if(__sync_add_and_fetch(&seminited, 0) == 0) {
-		__sync_add_and_fetch(&seminited, 1);
-	}
-	if(__sync_add_and_fetch(&loop, 0) == 0) {
-		__sync_add_and_fetch(&loop, 1);
-	}
+
+	seminited = 1;
+	loop = 1;
 
 	pthread_mutexattr_init(&pthattr);
 	pthread_mutexattr_settype(&pthattr, PTHREAD_MUTEX_RECURSIVE);
@@ -328,17 +326,15 @@ void timer_thread_start(void) {
 }
 
 void timer_thread_gc(void) {
-	while(__sync_add_and_fetch(&loop, 0) > 0) {
-		__sync_add_and_fetch(&loop, -1);
-	}
+	loop = 0;
 	pthread_mutex_lock(&pthlock);
 	gtimer = NULL;
 	pthread_cond_signal(&pthsignal);
 	pthread_mutex_unlock(&pthlock);
-	if(__sync_add_and_fetch(&seminited, 0) == 1) {
+	if(seminited == 1) {
 		sem_wait(&pthrunning);
 		sem_destroy(&pthrunning);
-		__sync_add_and_fetch(&seminited, -1);
+		seminited = 0;
 	}
 	pthread_join(pth, NULL);
 }

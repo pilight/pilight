@@ -264,25 +264,22 @@ int socket_recv(int fd, char **data, size_t *ptr) {
 	return 0;
 }
 
-/*
- * FIXME
- */
 static void *adhoc_mode(void *param) {
-	// if(socket_server != NULL) {
-		// eventpool_fd_remove(socket_server);
-		// logprintf(LOG_INFO, "shut down socket server due to adhoc mode");
-		// socket_server = NULL;
-	// }
+	if(socket_server != NULL) {
+		eventpool_fd_remove(socket_server);
+		logprintf(LOG_INFO, "shut down socket server due to adhoc mode");
+		socket_server = NULL;
+	}
 	return NULL;
 }
 
 static void *socket_restart(void *param) {
-	// if(socket_server != NULL) {
-		// eventpool_fd_remove(socket_server);
-		// socket_server = NULL;
-	// }
+	if(socket_server != NULL) {
+		eventpool_fd_remove(socket_server);
+		socket_server = NULL;
+	}
 
-	// socket_server = eventpool_socket_add("socket server", NULL, static_port, AF_INET, SOCK_STREAM, 0, EVENTPOOL_TYPE_SOCKET_SERVER, server_callback, NULL, NULL);
+	socket_server = eventpool_socket_add("socket server", NULL, static_port, AF_INET, SOCK_STREAM, 0, EVENTPOOL_TYPE_SOCKET_SERVER, server_callback, NULL, NULL);
 
 	return NULL;
 }

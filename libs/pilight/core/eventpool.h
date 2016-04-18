@@ -79,7 +79,8 @@ enum eventpool_threads_t {
 #define REASON_ADHOC_DISCONNECTED			23
 #define REASON_SEND_BEGIN							24
 #define REASON_SEND_END								25
-#define REASON_END										26
+#define REASON_LOG										26
+#define REASON_END										27
 
 typedef struct eventpool_listener_t {
 	void *(*func)(void *);

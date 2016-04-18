@@ -25,7 +25,6 @@ typedef struct platform_t {
 	int (*analogRead)(int);
 	int (*digitalWrite)(int, enum digital_value_t);
 	int (*digitalRead)(int);
-	int (*identify)(void);
 	int (*waitForInterrupt)(int, int);
 	int (*isr)(int, enum isr_mode_t);
 	int (*selectableFd)(int);
@@ -36,9 +35,11 @@ typedef struct platform_t {
 	struct platform_t *next;
 } platform_t;
 
-void platform_register(struct platform_t *);
+void platform_register(struct platform_t **, char *);
+void platform_add_alias(struct platform_t **, char *);
 struct platform_t *platform_get_by_name(char *, int *);
 struct platform_t *platform_iterate(int);
+char *platform_iterate_name(int);
 int platform_gc(void);
 
 #endif

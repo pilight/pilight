@@ -80,6 +80,11 @@ static void parseCode(char *message) {
 	int x = 0, binary[RAW_LENGTH/2];
 	int id = 0, unit = 0, state = 0;
 
+	if(conrad_rsl_switch->rawlen>RAW_LENGTH) {
+		logprintf(LOG_ERR, "conrad_rsl_switch: parsecode - invalid parameter passed %d", conrad_rsl_switch->rawlen);
+		return;
+	}
+
 	/* Convert the one's and zero's into binary */
 	for(x=0;x<conrad_rsl_switch->rawlen;x+=2) {
 		if(conrad_rsl_switch->raw[x+1] > (int)((double)AVG_PULSE_LENGTH*((double)PULSE_MULTIPLIER/2))) {

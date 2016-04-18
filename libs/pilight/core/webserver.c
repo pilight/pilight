@@ -41,7 +41,6 @@
 #include <stdarg.h>
 #include <errno.h>
 #include <ctype.h>
-#include <pthread.h>
 #include <arpa/inet.h>
 #ifdef _WIN32
 #else
@@ -50,6 +49,8 @@
 	#endif
 	#include <pwd.h>
 #endif
+#define __USE_UNIX98
+#include <pthread.h>
 
 #include "../storage/storage.h"
 #include "threadpool.h"

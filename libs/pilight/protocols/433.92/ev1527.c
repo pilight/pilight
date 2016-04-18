@@ -50,6 +50,11 @@ static int validate(void) {
 static void parseCode(char *message) {
 	int binary[RAW_LENGTH/2], x = 0, i = 0;
 
+	if(ev1527->rawlen>RAW_LENGTH) {
+		logprintf(LOG_ERR, "ev1527: parsecode - invalid parameter passed %d", ev1527->rawlen);
+		return;
+	}
+
 	for(x=0;x<ev1527->rawlen-2;x+=2) {
 		if(ev1527->raw[x+3] > (int)((double)AVG_PULSE_LENGTH*((double)PULSE_MULTIPLIER/2))) {
 			binary[i++] = 1;

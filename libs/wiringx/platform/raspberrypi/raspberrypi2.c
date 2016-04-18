@@ -50,20 +50,14 @@ static int raspberrypi2ValidGPIO(int pin) {
 	}
 }
 
+static int raspberrypi2Setup(void) {
+	raspberrypi2->soc->setup();
+	raspberrypi2->soc->setMap(map);
+	return 0;
+}
+
 void raspberrypi2Init(void) {
-	if((raspberrypi2 = malloc(sizeof(struct platform_t))) == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(EXIT_FAILURE);
-	}
-	raspberrypi2->nralias = 1;
-	if((raspberrypi2->name = malloc(raspberrypi2->nralias*sizeof(char *))) == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(EXIT_FAILURE);
-	}
-	if((raspberrypi2->name[0] = strdup("raspberrypi2")) == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(EXIT_FAILURE);
-	}
+	platform_register(&raspberrypi2, "raspberrypi2");
 
 	raspberrypi2->soc = soc_get("Broadcom", "2836");
 	raspberrypi2->soc->setMap(map);
@@ -71,7 +65,7 @@ void raspberrypi2Init(void) {
 	raspberrypi2->digitalRead = raspberrypi2->soc->digitalRead;
 	raspberrypi2->digitalWrite = raspberrypi2->soc->digitalWrite;
 	raspberrypi2->pinMode = raspberrypi2->soc->pinMode;
-	raspberrypi2->setup = raspberrypi2->soc->setup;
+	raspberrypi2->setup = raspberrypi2Setup;
 
 	raspberrypi2->isr = raspberrypi2->soc->isr;
 	raspberrypi2->waitForInterrupt = raspberrypi2->soc->waitForInterrupt;
@@ -81,5 +75,4 @@ void raspberrypi2Init(void) {
 
 	raspberrypi2->validGPIO = &raspberrypi2ValidGPIO;
 
-	platform_register(raspberrypi2);
 }

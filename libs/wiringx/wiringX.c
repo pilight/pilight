@@ -32,8 +32,12 @@
 #include "soc/nxp/imx6sdlrm.h"
 #include "soc/broadcom/2835.h"
 #include "soc/broadcom/2836.h"
+#include "soc/amlogic/s805.h"
+#include "soc/amlogic/s905.h"
+#include "soc/samsung/exynos5422.h"
 
 #include "platform/linksprite/pcduino1.h"
+#include "platform/lemaker/bananapi.h"
 #include "platform/lemaker/bananapim2.h"
 #include "platform/solidrun/hummingboard_gate_edge_sdl.h"
 #include "platform/solidrun/hummingboard_gate_edge_dq.h"
@@ -44,6 +48,9 @@
 #include "platform/raspberrypi/raspberrypi1b+.h"
 #include "platform/raspberrypi/raspberrypi2.h"
 #include "platform/raspberrypi/raspberrypi3.h"
+#include "platform/hardkernel/odroidc1.h"
+#include "platform/hardkernel/odroidc2.h"
+#include "platform/hardkernel/odroidxu4.h"
 
 static struct platform_t *platform = NULL;
 static int namenr = 0;
@@ -199,8 +206,8 @@ void wiringXDefaultLog(int prio, const char *format_str, ...) {
 }
 
 int wiringXSetup(char *name, void (*func)(int, const char *, ...)) {
-	if(__sync_add_and_fetch(&issetup, 0) == 0) {
-		__sync_add_and_fetch(&issetup, 1);
+	if(issetup == 0) {
+		issetup = 1;
 	} else {
 		return 0;
 	}
@@ -218,9 +225,13 @@ int wiringXSetup(char *name, void (*func)(int, const char *, ...)) {
 	nxpIMX6SDLRMInit();
 	broadcom2835Init();
 	broadcom2836Init();
+	amlogicS805Init();
+	amlogicS905Init();
+	exynos5422Init();
 
 	/* Init all platforms */
 	pcduino1Init();
+	bananapiInit();
 	bananapiM2Init();
 	hummingboardBaseProSDLInit();
 	hummingboardBaseProDQInit();
@@ -231,18 +242,19 @@ int wiringXSetup(char *name, void (*func)(int, const char *, ...)) {
 	raspberrypi1bpInit();
 	raspberrypi2Init();
 	raspberrypi3Init();
+	odroidc1Init();
+	odroidc2Init();
+	odroidxu4Init();
 
 	if((platform = platform_get_by_name(name, &namenr)) == NULL) {
-		struct platform_t *tmp = NULL;
+		char *tmp = NULL;
 		char message[1024];
 		int l = 0;
 		l = snprintf(message, 1023-l, "The %s is an unsupported or unknown platform\n", name);
 		l += snprintf(&message[l], 1023-l, "\tsupported wiringX platforms are:\n");
-		int i = 0, x = 0;
-		while((tmp = platform_iterate(i++)) != NULL) {
-			for(x=0;x<tmp->nralias;x++) {
-				l += snprintf(&message[l], 1023-l, "\t- %s\n", tmp->name[x]);
-			}
+		int i = 0;
+		while((tmp = platform_iterate_name(i++)) != NULL) {
+			l += snprintf(&message[l], 1023-l, "\t- %s\n", tmp);
 		}
 		wiringXLog(LOG_ERR, message);
 		return -1;

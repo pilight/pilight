@@ -184,7 +184,7 @@ static int broadcom2835DigitalRead(int i) {
 	void *gpio = NULL;
 	struct layout_t *pin = NULL;
 	unsigned long addr = 0;
-	unsigned long val = 0;
+	uint32_t val = 0;
 
 	pin = &broadcom2835->layout[broadcom2835->map[i]];
 	gpio = broadcom2835->gpio[pin->addr];
@@ -211,7 +211,7 @@ static int broadcom2835DigitalRead(int i) {
 static int broadcom2835PinMode(int i, enum pinmode_t mode) {
 	struct layout_t *pin = NULL;
 	unsigned long addr = 0;
-	unsigned long val = 0;
+	uint32_t val = 0;
 
 	if(broadcom2835->map == NULL) {
 		wiringXLog(LOG_ERR, "The %s %s has not yet been mapped", broadcom2835->brand, broadcom2835->chip);
@@ -344,13 +344,8 @@ static int broadcom2835SelectableFd(int i) {
 }
 
 void broadcom2835Init(void) {
-	broadcom2835 = malloc(sizeof(struct soc_t));
+	soc_register(&broadcom2835, "Broadcom", "2835");
 
-	strcpy(broadcom2835->brand, "Broadcom");
-	strcpy(broadcom2835->chip, "2835");
-
-	broadcom2835->map = NULL;
-	broadcom2835->irq = NULL;
 	broadcom2835->layout = layout;
 
 	broadcom2835->support.isr_modes = ISR_MODE_RISING | ISR_MODE_FALLING | ISR_MODE_BOTH | ISR_MODE_NONE;
@@ -371,6 +366,4 @@ void broadcom2835Init(void) {
 	broadcom2835->setIRQ = &broadcom2835SetIRQ;
 	broadcom2835->isr = &broadcom2835ISR;
 	broadcom2835->waitForInterrupt = &broadcom2835WaitForInterrupt;
-
-	soc_register(broadcom2835);
 }

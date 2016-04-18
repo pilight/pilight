@@ -44,20 +44,14 @@ static int raspberrypi1b1ValidGPIO(int pin) {
 	}
 }
 
+static int raspberrypi1b1Setup(void) {
+	raspberrypi1b1->soc->setup();
+	raspberrypi1b1->soc->setMap(map);
+	return 0;
+}
+
 void raspberrypi1b1Init(void) {
-	if((raspberrypi1b1 = malloc(sizeof(struct platform_t))) == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(EXIT_FAILURE);
-	}
-	raspberrypi1b1->nralias = 1;
-	if((raspberrypi1b1->name = malloc(raspberrypi1b1->nralias*sizeof(char *))) == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(EXIT_FAILURE);
-	}
-	if((raspberrypi1b1->name[0] = strdup("raspberrypi1b1")) == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(EXIT_FAILURE);
-	}
+	platform_register(&raspberrypi1b1, "raspberrypi1b1");
 
 	raspberrypi1b1->soc = soc_get("Broadcom", "2835");
 	raspberrypi1b1->soc->setMap(map);
@@ -65,7 +59,7 @@ void raspberrypi1b1Init(void) {
 	raspberrypi1b1->digitalRead = raspberrypi1b1->soc->digitalRead;
 	raspberrypi1b1->digitalWrite = raspberrypi1b1->soc->digitalWrite;
 	raspberrypi1b1->pinMode = raspberrypi1b1->soc->pinMode;
-	raspberrypi1b1->setup = raspberrypi1b1->soc->setup;
+	raspberrypi1b1->setup = &raspberrypi1b1Setup;
 
 	raspberrypi1b1->isr = raspberrypi1b1->soc->isr;
 	raspberrypi1b1->waitForInterrupt = raspberrypi1b1->soc->waitForInterrupt;
@@ -75,5 +69,4 @@ void raspberrypi1b1Init(void) {
 
 	raspberrypi1b1->validGPIO = &raspberrypi1b1ValidGPIO;
 
-	platform_register(raspberrypi1b1);
 }

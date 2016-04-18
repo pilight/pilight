@@ -21,6 +21,7 @@
 		#define __USE_UNIX98
 	#endif
 #endif
+#define __USE_UNIX98
 #include <pthread.h>
 
 #include "pilight.h"
@@ -29,28 +30,31 @@
 #include "log.h"
 
 struct logqueue_t {
-	char *line;
+	char *buffer;
 	struct logqueue_t *next;
 } logqueue_t;
 
 static pthread_mutex_t logqueue_lock;
-static pthread_cond_t logqueue_signal;
 static pthread_mutexattr_t logqueue_attr;
+static int pthinitialized = 0;
 
 static struct logqueue_t *logqueue;
 static struct logqueue_t *logqueue_head;
-static unsigned int logqueue_number = 0;
-static unsigned int loop = 1;
-static unsigned int stop = 0;
-static unsigned int pthinitialized = 0;
-static unsigned int pthactive = 0;
-static unsigned int pthfree = 0;
-static pthread_t pth;
+static int logqueuenr = 0;
 
 static char *logfile = NULL;
 static int filelog = 1;
 static int shelllog = 0;
 static int loglevel = LOG_DEBUG;
+static int init = 0;
+static int stop = 0;
+
+static void *reason_log_free(void *param) {
+	struct reason_log_t *data = param;
+	FREE(data->buffer);
+	FREE(data);
+	return NULL;
+}
 
 void logwrite(char *line) {
 	struct stat sb;
@@ -82,209 +86,195 @@ int log_gc(void) {
 	if(shelllog == 1) {
 		fprintf(stderr, "DEBUG: garbage collected log library\n");
 	}
-
+	
 	stop = 1;
-	loop = 0;
-
-	if(pthinitialized == 1) {
-		pthread_mutex_unlock(&logqueue_lock);
-		pthread_cond_signal(&logqueue_signal);
-	}
 
 	/* Flush log queue to pilight.err file */
-	if(pthactive == 0) {
-		struct logqueue_t *tmp;
-		while(logqueue) {
-			tmp = logqueue;
-			if(tmp->line != NULL) {
-				if(filelog == 1 && logfile != NULL) {
-					logwrite(tmp->line);
-				} else {
-					/* [ Datetime ] Progname: */
-					/*  24 + 14 + 2 */
-					size_t pos = 24+strlen(progname)+3;
-					size_t len = strlen(tmp->line);
-					memmove(&tmp->line[0], &tmp->line[pos], len-pos);
-					/* Remove newline */
-					tmp->line[(len-pos)-1] = '\0';
-					logerror(tmp->line);
-				}
-				FREE(tmp->line);
-			}
-			logqueue = logqueue->next;
-			FREE(tmp);
-			logqueue_number--;
-		}
-		if(logqueue != NULL) {
-			FREE(logqueue);
-		}
-		if(pthfree == 1) {
-			pthread_join(pth, NULL);
-		}
-	} else {
-		/* Flush log queue by log thread */
-		while(logqueue_number > 0) {
-			usleep(10);
-		}
-		while(pthactive > 0) {
-			usleep(10);
-		}
-		pthread_join(pth, NULL);
+	pthread_mutex_lock(&logqueue_lock);
+	while(logqueue) {
+		struct logqueue_t *tmp = logqueue;
+		
+		logwrite(tmp->buffer);
+		
+		logqueue = logqueue->next;
+		FREE(tmp->buffer);
+		FREE(tmp);
+		logqueuenr--;
 	}
+	pthread_mutex_unlock(&logqueue_lock);
+	
 	if(logfile != NULL) {
 		FREE(logfile);
 	}
 	return 1;
 }
 
-void logprintf(int prio, const char *format_str, ...) {
+static void loginitlock(void) {
+	if(pthinitialized == 0) {
+		pthread_mutexattr_init(&logqueue_attr);
+		pthread_mutexattr_settype(&logqueue_attr, PTHREAD_MUTEX_RECURSIVE);
+		pthread_mutex_init(&logqueue_lock, &logqueue_attr);
+		pthinitialized = 1;
+	}	
+}
+
+void logprintf(int prio, const char *str, ...) {
 	struct timeval tv;
 	struct tm tm;
 	va_list ap, apcpy;
-	char fmt[64], buf[64], *line = MALLOC(128);
-	int save_errno = -1, pos = 0, bytes = 0;
+	char fmt[64], *buffer = NULL;
+	int errcpy = -1, len = 0, pos = 0, bufsize = 0;
 
-	memset(&tm, '\0', sizeof(struct tm));
-
-	if(line == NULL) {
-		OUT_OF_MEMORY
-	}
-	save_errno = errno;
-
-	memset(line, '\0', 128);
-	memset(buf, '\0',  64);
-
-	if(loglevel >= prio) {
+	if(loglevel >= prio) {	
+		errcpy = errno;
+		memset(&tm, '\0', sizeof(struct tm));
 		gettimeofday(&tv, NULL);
 #ifdef _WIN32
-		struct tm *tm1;
+		struct tm *tm1 = NULL;
 		if((tm1 = gmtime(&tv.tv_sec)) != 0) {
 			memcpy(&tm, tm1, sizeof(struct tm));
 #else
 		if((gmtime_r(&tv.tv_sec, &tm)) != 0) {
-#endif
 			strftime(fmt, sizeof(fmt), "%b %d %H:%M:%S", &tm);
-			snprintf(buf, sizeof(buf), "%s:%03u", fmt, (unsigned int)tv.tv_usec);
+#endif
 		}
-		pos += sprintf(line, "[%22.22s] %s: ", buf, progname);
+		len = snprintf(NULL, 0, "[%s:%03u]", fmt, (unsigned int)tv.tv_usec);
+		
+		/* len + loglevel */
+		if(len+9 > bufsize) {
+			if((buffer = realloc(buffer, len+9+1)) == NULL) {
+				printf("out of memory\n");
+				exit(EXIT_FAILURE);
+			}
+			bufsize = len+9+1;
+		}
+		pos += snprintf(buffer, bufsize, "[%s:%03u] ", fmt, (unsigned int)tv.tv_usec);
 
 		switch(prio) {
 			case LOG_WARNING:
-				pos += sprintf(&line[pos], "WARNING: ");
+				pos += snprintf(&buffer[pos], bufsize-pos, "WARNING: ");
 			break;
 			case LOG_ERR:
-				pos += sprintf(&line[pos], "ERROR: ");
+				pos += snprintf(&buffer[pos], bufsize-pos, "ERROR: ");
 			break;
 			case LOG_INFO:
-				pos += sprintf(&line[pos], "INFO: ");
+				pos += snprintf(&buffer[pos], bufsize-pos, "INFO: ");
 			break;
 			case LOG_NOTICE:
-				pos += sprintf(&line[pos], "NOTICE: ");
+				pos += snprintf(&buffer[pos], bufsize-pos, "NOTICE: ");
 			break;
 			case LOG_DEBUG:
-				pos += sprintf(&line[pos], "DEBUG: ");
-			break;
-			case LOG_STACK:
-				pos += sprintf(&line[pos], "STACK: ");
+				pos += snprintf(&buffer[pos], bufsize-pos, "DEBUG: ");
 			break;
 			default:
 			break;
 		}
 
 		va_copy(apcpy, ap);
-		va_start(apcpy, format_str);
+		va_start(apcpy, str);
 #ifdef _WIN32
-		bytes = _vscprintf(format_str, apcpy);
+		len = _vscprintf(str, apcpy);
 #else
-		bytes = vsnprintf(NULL, 0, format_str, apcpy);
+		len = vsnprintf(NULL, 0, str, apcpy);
 #endif
-		if(bytes == -1) {
-			fprintf(stderr, "ERROR: unproperly formatted logprintf message %s\n", format_str);
+		if(len == -1) {
+			fprintf(stderr, "ERROR: unproperly formatted logprintf message %s\n", str);
 		} else {
 			va_end(apcpy);
-			if((line = REALLOC(line, (size_t)bytes+(size_t)pos+3)) == NULL) {
-				OUT_OF_MEMORY
+			if(len+pos+3 > bufsize) {
+				if((buffer = realloc(buffer, len+pos+3)) == NULL) {
+					printf("out of memory\n");
+					exit(EXIT_FAILURE);
+				}
+				bufsize = len+pos+3;
 			}
-			va_start(ap, format_str);
-			pos += vsprintf(&line[pos], format_str, ap);
+			va_start(ap, str);
+			pos += vsnprintf(&buffer[pos], bufsize-pos, str, ap);
 			va_end(ap);
 		}
-		line[pos++]='\n';
-		line[pos++]='\0';
-	}
-	if(shelllog == 1) {
-		fprintf(stderr, "%s", line);
-	}
+		buffer[pos++]='\n';
+		buffer[pos++]='\0';
+		if(shelllog == 1) {
+			fprintf(stderr, "%s", buffer);
+		}
 #ifdef _WIN32
-	if(prio == LOG_ERR && strstr(progname, "daemon") != NULL && pilight.running == 0) {
-		MessageBox(NULL, line, "pilight :: error", MB_OK);
-	}
+		if(prio == LOG_ERR && strstr(progname, "daemon") != NULL && pilight.running == 0) {
+			MessageBox(NULL, buffer, "pilight :: error", MB_OK);
+		}
 #endif
-	if(stop == 0 && pos > 0) {
-		if(prio < LOG_DEBUG) {
-			if(pthinitialized == 1) {
-				pthread_mutex_lock(&logqueue_lock);
-			}
-			if(logqueue_number < 1024) {
+		if(prio < LOG_DEBUG && stop == 0) {
+			if(init == 0) {
 				struct logqueue_t *node = MALLOC(sizeof(struct logqueue_t));
 				if(node == NULL) {
 					OUT_OF_MEMORY
 				}
-				if((node->line = MALLOC((size_t)pos+1)) == NULL) {
+				if((node->buffer = MALLOC(pos+1)) == NULL) {
 					OUT_OF_MEMORY
 				}
-				memset(node->line, '\0', (size_t)pos+1);
-				strncpy(node->line, line, pos);
+				strcpy(node->buffer, buffer);
 				node->next = NULL;
 
-				if(logqueue_number == 0) {
+				loginitlock();
+				pthread_mutex_lock(&logqueue_lock);
+				if(logqueuenr == 0) {
 					logqueue = node;
 					logqueue_head = node;
 				} else {
 					logqueue_head->next = node;
 					logqueue_head = node;
 				}
-
-				logqueue_number++;
-			} else {
-				fprintf(stderr, "log queue full\n");
-			}
-			if(pthinitialized == 1) {
+				logqueuenr++;
 				pthread_mutex_unlock(&logqueue_lock);
-				pthread_cond_signal(&logqueue_signal);
+			} else {
+				struct reason_log_t *node = MALLOC(sizeof(struct reason_log_t));
+				if(node == NULL) {
+					OUT_OF_MEMORY
+				}
+				if((node->buffer = MALLOC(pos+1)) == NULL) {
+					OUT_OF_MEMORY
+				}
+				strcpy(node->buffer, buffer);
+				eventpool_trigger(REASON_LOG, reason_log_free, node);
 			}
 		}
+		FREE(buffer);
+		
+		errno = errcpy;
 	}
-	FREE(line);
-	errno = save_errno;
 }
 
-void *logloop(void *param) {
-	pth = pthread_self();
+void *logprocess(void *param) {
+	struct threadpool_tasks_t *task = param;
+	struct reason_log_t *data = task->userdata;
 
-	pthactive = 1;
-	pthfree = 1;
+	logwrite(data->buffer);
 
+	return NULL;
+}
+
+void log_init(void) {
+	init = 1;
+
+	loginitlock();
+	eventpool_callback(REASON_LOG, logprocess);
 	pthread_mutex_lock(&logqueue_lock);
-	while(loop) {
-		if(logqueue_number > 0) {
-			pthread_mutex_lock(&logqueue_lock);
-
-			logwrite(logqueue->line);
-
-			struct logqueue_t *tmp = logqueue;
-			FREE(tmp->line);
-			logqueue = logqueue->next;
-			FREE(tmp);
-			logqueue_number--;
-			pthread_mutex_unlock(&logqueue_lock);
-		} else {
-			pthread_cond_wait(&logqueue_signal, &logqueue_lock);
+	while(logqueue) {
+		struct logqueue_t *tmp = logqueue;
+		struct reason_log_t *node = MALLOC(sizeof(struct reason_log_t));
+		if(node == NULL) {
+			OUT_OF_MEMORY
 		}
+		if((node->buffer = MALLOC(strlen(tmp->buffer)+1)) == NULL) {
+			OUT_OF_MEMORY
+		}
+		strcpy(node->buffer, tmp->buffer);
+		eventpool_trigger(REASON_LOG, reason_log_free, node);
+		logqueue = logqueue->next;
+		FREE(tmp->buffer);
+		FREE(tmp);
+		logqueuenr--;
 	}
-
-	pthactive = 0;
-	return (void *)NULL;
+	pthread_mutex_unlock(&logqueue_lock);
 }
 
 void logperror(int prio, const char *s) {
@@ -302,13 +292,6 @@ void logperror(int prio, const char *s) {
 
 void log_file_enable(void) {
 	filelog = 1;
-	if(pthinitialized == 0) {
-		pthread_mutexattr_init(&logqueue_attr);
-		pthread_mutexattr_settype(&logqueue_attr, PTHREAD_MUTEX_RECURSIVE);
-		pthread_mutex_init(&logqueue_lock, &logqueue_attr);
-		pthread_cond_init(&logqueue_signal, NULL);
-		pthinitialized = 1;
-	}
 }
 
 void log_file_disable(void) {

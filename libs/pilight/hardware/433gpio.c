@@ -138,6 +138,7 @@ static void sendqueue_push_back(sendqueue_t* entry) {
 	csmadata->sendqueue_tail = entry;
 }
 
+#if defined(__arm__) || defined(__mips__)
 static void *reason_received_pulsetrain_free(void *param) {
 	struct reason_received_pulsetrain_t *data = param;
 	FREE(data);
@@ -147,11 +148,7 @@ static void *reason_received_pulsetrain_free(void *param) {
 static int client_callback(struct eventpool_fd_t *node, int event) {
 	struct data_t *data = node->userdata;
 
-#ifdef _WIN32
-	if(InterlockedExchangeAdd(&doPause, 0) == 1) {
-#else
-	if(__sync_add_and_fetch(&doPause, 0) == 1) {
-#endif
+	if(doPause == 1) {
 		return 0;
 	}
 	switch(event) {
@@ -216,6 +213,7 @@ static int client_callback(struct eventpool_fd_t *node, int event) {
 	}
 	return 0;
 }
+#endif
 
 static unsigned short gpio433HwInit(void *(*callback)(void *)) {
 #if defined(__arm__) || defined(__mips__)
@@ -561,24 +559,13 @@ collision:
 	return EXIT_FAILURE;
 }
 
-/*
- * FIXME
- */
 static void *receiveStop(void *param) {
-#ifdef _WIN32
-	InterlockedExchangeAdd(&doPause, 1);
-#else
-	__sync_add_and_fetch(&doPause, 1);
-#endif
+	doPause = 1;
 	return NULL;
 }
 
 static void *receiveStart(void *param) {
-#ifdef _WIN32
-	InterlockedExchangeAdd(&doPause, 0);
-#else
-	__sync_add_and_fetch(&doPause, 0);
-#endif
+	doPause = 0;
 	return NULL;
 }
 

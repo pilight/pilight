@@ -14,7 +14,6 @@ var aStates = new Array();
 var bShowTabs = true;
 var iPLVersion = 0;
 var iPLNVersion = 0;
-var iFWVersion = 0;
 var aTimers = new Array();
 var sDateTimeFormat = "HH:mm:ss YYYY-MM-DD";
 var aDateTimeFormats = new Array();
@@ -786,17 +785,9 @@ function createDateTimeElement(sTabId, sDevId, aValues) {
 
 function updateVersions() {
 	if(iPLVersion < iPLNVersion) {
-		if(iFWVersion > 0) {
-			var obj = $('#version').text("pilight v"+iPLVersion+" - "+language.available+" v"+iPLNVersion+" / filter firmware v"+iFWVersion);
-		} else {
-			var obj = $('#version').text("pilight v"+iPLVersion+" - "+language.available+" v"+iPLNVersion);
-		}
+		var obj = $('#version').text("pilight v"+iPLVersion+" - "+language.available+" v"+iPLNVersion);
 	} else {
-		if(iFWVersion > 0) {
-			var obj = $('#version').text("pilight v"+iPLVersion+" / filter firmware  v"+iFWVersion);
-		} else {
-			var obj = $('#version').text("pilight v"+iPLVersion);
-		}
+		var obj = $('#version').text("pilight v"+iPLVersion);
 	}
 	obj.html(obj.html().replace(/\n/g,'<br/>'));
 }
@@ -1142,11 +1133,6 @@ function parseData(data) {
 						iNPLVersion = config['registry']['pilight']['version']['available'];
 					}
 				}
-				if('firmware' in config['registry']['pilight']) {
-					if('version' in config['registry']['pilight']['firmware']) {
-						iFWVersion = config['registry']['pilight']['firmware']['version'];
-					}
-				}
 				updateVersions();
 			}
 		}
@@ -1159,9 +1145,6 @@ function parseData(data) {
 		} else if(data['origin'] == "core") {
 			if(data['type'] == -1) {
 				updateProcStatus(data['values']);
-			} else if(data['type'] == -2) {
-				iFWVersion = data['values']['version'];
-				updateVersions();
 			}
 		}
 	} else if(data.hasOwnProperty("values")) {

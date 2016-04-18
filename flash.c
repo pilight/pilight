@@ -128,7 +128,6 @@ int main(int argc, char **argv) {
 #endif
 
 	log_level_set(LOG_DEBUG);
-	firmware.version = 0;
 	logprintf(LOG_INFO, "**** START UPD. FW ****");
 	firmware_getmp(comport);
 

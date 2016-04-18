@@ -32,8 +32,6 @@
 
 #ifndef _WIN32
 void event_function_remove(char *name) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
-
 	struct event_functions_t *currP, *prevP;
 
 	prevP = NULL;
@@ -58,8 +56,6 @@ void event_function_remove(char *name) {
 #endif
 
 void event_function_init(void) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
-
 	#include "functions/function_init.h"
 
 #ifndef _WIN32
@@ -156,8 +152,6 @@ void event_function_init(void) {
 }
 
 void event_function_register(struct event_functions_t **act, const char *name) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
-
 	if((*act = MALLOC(sizeof(struct event_functions_t))) == NULL) {
 		OUT_OF_MEMORY
 	}
@@ -172,8 +166,6 @@ void event_function_register(struct event_functions_t **act, const char *name) {
 }
 
 int event_function_gc(void) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
-
 	struct event_functions_t *tmp_function = NULL;
 	while(event_functions) {
 		tmp_function = event_functions;

@@ -97,11 +97,7 @@ static int process_cursor(void) {
 	struct timeval tv;
 	cursor++;
 
-#ifdef _WIN32
-	InterlockedExchangeAdd(&running, -1);
-#else
-	__sync_add_and_fetch(&running, -1);
-#endif
+	running = 0;
 
 	if(ntptime == -1) {
 		if(cursor >= nrservers) {
@@ -151,11 +147,7 @@ static int callback(struct eventpool_fd_t *node, int event) {
 					(msg.rec).Ul_i.Xl_ui = ntohl((msg.rec).Ul_i.Xl_ui);
 					(msg.rec).Ul_f.Xl_f = (int)ntohl((unsigned int)(msg.rec).Ul_f.Xl_f);
 
-#ifdef _WIN32
-					InterlockedExchangeAdd(&processing, 1);
-#else
-					__sync_add_and_fetch(&processing, 1);
-#endif
+					processing = 1;
 
 					unsigned int adj = 2208988800u;
 					ntptime = (time_t)(msg.rec.Ul_i.Xl_ui - adj);
@@ -163,11 +155,7 @@ static int callback(struct eventpool_fd_t *node, int event) {
 					diff = (int)(time(NULL) - ntptime);
 					logprintf(LOG_INFO, "time offset found of %d seconds", diff);
 					synced = 1;
-#ifdef _WIN32
-					InterlockedExchangeAdd(&processing, -1);
-#else
-					__sync_add_and_fetch(&processing, -1);
-#endif
+					processing = 0;
 				} else {
 					logprintf(LOG_INFO, "could not sync with ntp server: %s", node->data.socket.server);
 				}
@@ -190,11 +178,7 @@ static int callback(struct eventpool_fd_t *node, int event) {
 void *ntpthread(void *param) {
 	char *tmp = NULL;
 
-#ifdef _WIN32
-	if(InterlockedExchangeAdd(&running, 0) == 1) {
-#else
-	if(__sync_add_and_fetch(&running, 0) == 1) {
-#endif
+	if(running == 1) {
 		struct timeval tv;
 
 		tv.tv_sec = 60;
@@ -205,11 +189,7 @@ void *ntpthread(void *param) {
 		return NULL;
 	}
 
-#ifdef _WIN32
-	InterlockedExchangeAdd(&running, 1);
-#else
-	__sync_add_and_fetch(&running, 1);
-#endif
+	running = 1;
 
 	if(ntpservers == NULL) {
 		while(settings_select_string_element(ORIGIN_MASTER, "ntp-servers", nrservers, &tmp) == 0) {
@@ -239,22 +219,14 @@ void *ntpthread(void *param) {
 }
 
 int getntpdiff(void) {
-#ifdef _WIN32
-	if(InterlockedExchangeAdd(&processing, 0) == 1) {
-#else
-	if(__sync_add_and_fetch(&processing, 0) == 1) {
-#endif
+	if(processing == 1) {
 		return 0;
 	}
 	return diff;
 }
 
 int isntpsynced(void) {
-#ifdef _WIN32
-	if(InterlockedExchangeAdd(&processing, 0) == 1) {
-#else
-	if(__sync_add_and_fetch(&processing, 0) == 1) {
-#endif
+	if(processing == 1) {
 		return -1;
 	}
 	return synced;

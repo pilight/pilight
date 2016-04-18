@@ -40,6 +40,11 @@ static int validate(void) {
 static void parseCode(char *message) {
 	int binary[RAW_LENGTH/4], x = 0, i = 0;
 
+	if(elro_800_contact->rawlen>RAW_LENGTH) {
+		logprintf(LOG_ERR, "elro_800_contact: parsecode - invalid parameter passed %d", elro_800_contact->rawlen);
+		return;
+	}
+
 	for(x=0;x<elro_800_contact->rawlen-2;x+=4) {
 		if(elro_800_contact->raw[x+3] > (int)((double)AVG_PULSE_LENGTH*((double)PULSE_MULTIPLIER/2))) {
 			binary[i++] = 1;

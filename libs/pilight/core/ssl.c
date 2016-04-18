@@ -19,19 +19,11 @@ static int client_success = -1;
 static int server_success = -1;
 
 int ssl_client_init_status(void) {
-#ifdef _WIN32
-		return InterlockedExchangeAdd(&client_success, 0);
-#else
-		return __sync_add_and_fetch(&client_success, 0);
-#endif
+	return client_success;
 }
 
 int ssl_server_init_status(void) {
-#ifdef _WIN32
-		return InterlockedExchangeAdd(&server_success, 0);
-#else
-		return __sync_add_and_fetch(&server_success, 0);
-#endif
+	return server_success;
 }
 
 void ssl_init(void) {
@@ -122,13 +114,8 @@ void ssl_init(void) {
 }
 
 void ssl_gc(void) {
-#ifdef _WIN32
-	InterlockedExchangeAdd(&client_success, -1);
-	InterlockedExchangeAdd(&server_success, -1);
-#else
-	__sync_add_and_fetch(&client_success, -1);
-	__sync_add_and_fetch(&server_success, -1);
-#endif
+	client_success = 0;
+	server_success = 0;
 
 	mbedtls_entropy_free(&ssl_entropy);
 	mbedtls_ssl_config_free(&ssl_server_conf);
