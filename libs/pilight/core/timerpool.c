@@ -37,6 +37,7 @@ static struct timers_t *gtimer = NULL;
 static volatile int loop = 0;
 static sem_t pthrunning;
 static volatile int seminited = 0;
+static volatile int pthinit = 0;
 
 int timer_tasks_top(struct timers_t *node, struct timer_tasks_t *el) {
 	pthread_mutex_lock(&node->lock);
@@ -320,6 +321,7 @@ void timer_thread_start(void) {
 	pthread_sigmask(SIG_BLOCK, &new, &old);
 #endif
 	pthread_create(&pth, NULL, timer_thread, NULL);
+	pthinit = 1;
 #ifndef _WIN32
 	pthread_sigmask(SIG_SETMASK, &old, NULL);
 #endif
@@ -336,7 +338,9 @@ void timer_thread_gc(void) {
 		sem_destroy(&pthrunning);
 		seminited = 0;
 	}
-	pthread_join(pth, NULL);
+	if(pthinit == 1) {
+		pthread_join(pth, NULL);
+	}
 }
 
 void timer_gc(struct timers_t *timer) {
