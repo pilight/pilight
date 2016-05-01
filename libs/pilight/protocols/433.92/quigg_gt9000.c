@@ -65,6 +65,51 @@
 	25       Footer (3000 7000)
 */
 
+char gt9000_unit_offon_map[16][2][4] = {{{8,2,11,7},{10,6,1,5}},   //unit 0 (untested)
+         {{8,2,11,7},{10,6,1,5}},   //unit 1 (untested)
+         {{8,2,11,7},{10,6,1,5}},   //unit 2 (working)
+         {{8,2,11,7},{10,6,1,5}},   //unit 3
+         {{10,6,1,5},{8,2,11,7}},   //unit 4 (ALL-working)
+         {{10,6,1,5},{8,2,11,7}},   //unit 5 (working)
+         {{10,6,1,5},{8,2,11,7}},   //unit 6 (working)
+         {{10,6,1,5},{8,2,11,7}},   //unit 7
+         {{4,9,12,13},{0,3,14,15}}, //unit 8 (working)
+         {{4,9,12,13},{0,3,14,15}}, //unit 9 (untested)
+         {{4,9,12,13},{0,3,14,15}}, //unit 10
+         {{4,9,12,13},{0,3,14,15}}, //unit 11 (untested)
+         {{0,3,14,15},{4,9,12,13}}, //unit 12 (untested)
+         {{0,3,14,15},{4,9,12,13}}, //unit 13 (untested)
+         {{0,3,14,15},{4,9,12,13}}, //unit 14
+         {{0,3,14,15},{4,9,12,13}}};//unit 15 (untested)
+char gt9000_unit_offon_map2[16][2][4] = {{{1,2,9,10},{3,4,7,11}},  //unit 0
+         {{1,2,9,10},{3,4,7,11}},   //unit 1 (untested)
+         {{1,2,9,10},{3,4,7,11}},   //unit 2
+         {{1,2,9,10},{3,4,7,11}},   //unit 3
+         {{3,4,7,11},{1,2,9,10}},   //unit 4
+         {{3,4,7,11},{1,2,9,10}},   //unit 5 (ALL-working)
+         {{3,4,7,11},{1,2,9,10}},   //unit 6 (untested)
+         {{3,4,7,11},{1,2,9,10}},   //unit 7 (untested)
+         {{-1,-1,-1,-1},{-1,-1,-1,-1}},
+         {{-1,-1,-1,-1},{-1,-1,-1,-1}},
+         {{-1,-1,-1,-1},{-1,-1,-1,-1}},
+         {{-1,-1,-1,-1},{-1,-1,-1,-1}},
+         {{-1,-1,-1,-1},{-1,-1,-1,-1}},
+         {{-1,-1,-1,-1},{-1,-1,-1,-1}},
+         {{-1,-1,-1,-1},{-1,-1,-1,-1}},
+         {{-1,-1,-1,-1},{-1,-1,-1,-1}}};
+         
+int gt9000_hash[16] = { 0x0, 0x9, 0xF, 0x4, 0xA, 0xD, 0x5, 0xB,
+			0x3, 0x2, 0x1, 0x7, 0xE, 0x6, 0xC, 0x8 };
+int gt9000_hash2[16] = { 0x0, 0x9, 0x5, 0xF, 0x3, 0x6, 0xC, 0x7,
+			 0xE, 0xD, 0x1, 0xB, 0x2, 0xA, 0x4, 0x8 };
+
+static int isSyscodeType1(int syscodetype) {
+	if(syscodetype == 14 || syscodetype == 10 || syscodetype == 7 || syscodetype == 1)
+		return 1;
+	
+	return 0;
+}
+
 static int validate(void) {
 	if(quigg_gt9000->rawlen == RAW_LENGTH) {
 		if(quigg_gt9000->raw[quigg_gt9000->rawlen-1] >= (int)(PULSE_QUIGG_FOOTER2*0.9) &&
@@ -103,15 +148,11 @@ static void createMessage(int *binary, int systemcode, int state, int unit) {
 
 static int decodePayload(int payload, int index, int syscodetype) {
 	int ret = -1;
-	int hash[16] = { 0x0, 0x9, 0xF, 0x4, 0xA, 0xD, 0x5, 0xB,
-			 0x3, 0x2, 0x1, 0x7, 0xE, 0x6, 0xC, 0x8 };
-	int hash2[16] = { 0x0, 0x9, 0x5, 0xF, 0x3, 0x6, 0xC, 0x7,
-			  0xE, 0xD, 0x1, 0xB, 0x2, 0xA, 0x4, 0x8 };
 	
-	if(syscodetype == 10 || syscodetype == 14)
-		ret = payload^hash[index];
+	if(isSyscodeType1(syscodetype))
+		ret = payload^gt9000_hash[index];
 	else
-		ret = payload^hash2[index];
+		ret = payload^gt9000_hash2[index];
 	
 	return ret;
 }
@@ -133,59 +174,39 @@ static int parseSystemcode(int *binary) {
 
 static void pulseToBinary(int *binary) {
 	int x = 0;
-
 	for(x=0; x<quigg_gt9000->rawlen-1; x+=2) {
 		if(quigg_gt9000->raw[x+1] > AVG_PULSE_LENGTH) {
-			binary[x/2] = 0;
+  			binary[x/2] = 0;
 		} else {
-			binary[x/2] = 1;
+  			binary[x/2] = 1;
 		}
 	}
 }
 
 static void parseCode(void) {
-	int binary[RAW_LENGTH/2], state = -1;
-
-	if(quigg_gt9000->rawlen>RAW_LENGTH) {
-		logprintf(LOG_ERR, "quigg_gt9000: parsecode - invalid parameter passed %d", quigg_gt9000->rawlen);
-		return;
-	}
+	int binary[RAW_LENGTH/2], state = 0;
+  	int i = 0;
 
 	pulseToBinary(binary);
 
+  	int syscodetype = binToDecRev(binary, 0, 3);
 	int systemcode = parseSystemcode(binary);
 	int statecode = binToDecRev(binary, 16, 19);
 	int unit = binToDec(binary, 20, 23);
 
 	//validate unit & statecode
-	if(binary[3] == 0) { //systemcode[3] = 1
-		if(unit == 3 || unit == 7) {
-			if(statecode == 10 || statecode == 6 || statecode == 1 || statecode == 5)
+	if(isSyscodeType1(syscodetype)) {
+		for(i=0;i<4;i++) {
+			if(statecode == gt9000_unit_offon_map[unit][1][i]) {
 				state = 1;
-			else if(statecode == 8 || statecode == 2 || statecode == 11 || statecode == 7)
-				state = 0;
-		} else if(unit == 10 || unit == 14) {
-			if(statecode == 0 || statecode == 3 || statecode == 14 || statecode == 15)
-				state = 1;
-			else if(statecode == 4 || statecode == 9 || statecode == 12 || statecode == 13)
-				state = 0;
-		} else if(unit == 4) {
-			if(statecode == 8 || statecode == 2 || statecode == 11 || statecode == 7)
-				state = 1;
-			else if(statecode == 10 || statecode == 6 || statecode == 1 || statecode == 5)
-				state = 0;
+			}
 		}
-		
-		if(unit == 7 || unit == 14)
-			state = state ? 0 : 1;
 	} else {
-		if(statecode == 3 || statecode == 4 || statecode == 7 || statecode == 11)
-			state = 1;
-		else if(statecode == 2 || statecode == 1 || statecode == 9 || statecode == 10)
-			state = 0;
-		
-		if(unit == 2 || unit == 10)
-			state = state ? 0 : 1;
+		for(i=0;i<4;i++) {
+			if(statecode == gt9000_unit_offon_map2[unit][1][i]) {
+				state = 1;
+			}
+		}    
 	}
 
 	createMessage(binary, systemcode, state, unit);
@@ -221,7 +242,7 @@ static void createEncryptedData(int encrypteddata) {
 
 	length = decToBin(encrypteddata, binary);
 	for(i=0;i<=length;i++) {
-		x = i*2;
+		x = (i+19-length)*2;
 		if(binary[i] == 1) {
 			createOne(x, x+1);
 		}
@@ -244,10 +265,6 @@ static void initAllCodes(int systemcode, int allcodes[16]) {
 	int i = 0, syscodetype = 0;
 	int systemcode1enc = 0, systemcode2enc = 0, systemcode3enc = 0, systemcode4enc = 0, systemcode5enc = 0;
 	int systemcode1dec = 0, systemcode3dec = 0, systemcode4dec = 0, systemcode5dec = 0;
-	int hash[16] = { 0x0, 0x9, 0xF, 0x4, 0xA, 0xD, 0x5, 0xB,
-			 0x3, 0x2, 0x1, 0x7, 0xE, 0x6, 0xC, 0x8 };
-	int hash2[16] = { 0x0, 0x9, 0x5, 0xF, 0x3, 0x6, 0xC, 0x7,
-			  0xE, 0xD, 0x1, 0xB, 0x2, 0xA, 0x4, 0x8 };
 	
 	syscodetype = (systemcode >> 16) & 0xF;
 	systemcode1dec = (systemcode >> 16) & 0xF;
@@ -263,14 +280,14 @@ static void initAllCodes(int systemcode, int allcodes[16]) {
 	//encrypt systemcode
 	for(i=0;i<16;i++) {
 		systemcode2enc = i;
-		if(syscodetype == 10 || syscodetype == 14) {
-			systemcode3enc = hash[systemcode2enc]^systemcode3dec;
-			systemcode4enc = hash[systemcode3enc]^systemcode4dec;
-			systemcode5enc = hash[systemcode4enc]^systemcode5dec;
+		if(isSyscodeType1(syscodetype)) {
+			systemcode3enc = gt9000_hash[systemcode2enc]^systemcode3dec;
+			systemcode4enc = gt9000_hash[systemcode3enc]^systemcode4dec;
+			systemcode5enc = gt9000_hash[systemcode4enc]^systemcode5dec;
 		} else { //if(systemcodetype == 13 || systemcodetype == 12)
-			systemcode3enc = hash2[systemcode2enc]^systemcode3dec;
-			systemcode4enc = hash2[systemcode3enc]^systemcode4dec;
-			systemcode5enc = hash2[systemcode4enc]^systemcode5dec;
+			systemcode3enc = gt9000_hash2[systemcode2enc]^systemcode3dec;
+			systemcode4enc = gt9000_hash2[systemcode3enc]^systemcode4dec;
+			systemcode5enc = gt9000_hash2[systemcode4enc]^systemcode5dec;
 		}
 		allcodes[systemcode5enc] = (systemcode1enc<<16) + (systemcode2enc<<12) + (systemcode3enc<<8) + (systemcode4enc<<4) + systemcode5enc;
 	}
@@ -278,38 +295,6 @@ static void initAllCodes(int systemcode, int allcodes[16]) {
 
 static int createCode(JsonNode *code) {
 	int syscodetype = 0;
-	char unit_onoff_map[16][2][4] = {{{8,2,11,7},{10,6,1,5}},   //unit 0 (untested)
-					 {{8,2,11,7},{10,6,1,5}},   //unit 1 (untested)
-					 {{8,2,11,7},{10,6,1,5}},   //unit 2 (working)
-					 {{8,2,11,7},{10,6,1,5}},   //unit 3
-					 {{10,6,1,5},{8,2,11,7}},   //unit 4 (ALL-working)
-					 {{10,6,1,5},{8,2,11,7}},   //unit 5 (working)
-					 {{10,6,1,5},{8,2,11,7}},   //unit 6 (working)
-					 {{10,6,1,5},{8,2,11,7}},   //unit 7
-					 {{4,9,12,13},{0,3,14,15}}, //unit 8 (working)
-					 {{4,9,12,13},{0,3,14,15}}, //unit 9 (untested)
-					 {{4,9,12,13},{0,3,14,15}}, //unit 10
-					 {{4,9,12,13},{0,3,14,15}}, //unit 11 (untested)
-					 {{0,3,14,15},{4,9,12,13}}, //unit 12 (untested)
-					 {{0,3,14,15},{4,9,12,13}}, //unit 13 (untested)
-					 {{0,3,14,15},{4,9,12,13}}, //unit 14
-					 {{0,3,14,15},{4,9,12,13}}};//unit 15 (untested)
-	char unit_onoff_map2[16][2][4] = {{{1,2,9,10},{3,4,7,11}},  //unit 0
-					 {{1,2,9,10},{3,4,7,11}},   //unit 1 (untested)
-					 {{1,2,9,10},{3,4,7,11}},   //unit 2
-					 {{1,2,9,10},{3,4,7,11}},   //unit 3
-					 {{3,4,7,11},{1,2,9,10}},   //unit 4
-					 {{3,4,7,11},{1,2,9,10}},   //unit 5 (ALL-working)
-					 {{3,4,7,11},{1,2,9,10}},   //unit 6 (untested)
-					 {{3,4,7,11},{1,2,9,10}},   //unit 7 (untested)
-					 {{-1,-1,-1,-1},{-1,-1,-1,-1}},
-					 {{-1,-1,-1,-1},{-1,-1,-1,-1}},
-					 {{-1,-1,-1,-1},{-1,-1,-1,-1}},
-					 {{-1,-1,-1,-1},{-1,-1,-1,-1}},
-					 {{-1,-1,-1,-1},{-1,-1,-1,-1}},
-					 {{-1,-1,-1,-1},{-1,-1,-1,-1}},
-					 {{-1,-1,-1,-1},{-1,-1,-1,-1}},
-					 {{-1,-1,-1,-1},{-1,-1,-1,-1}}};
 	double itmp = -1;
 	int unit = -1, systemcode = -1, verifysyscode = -1, state = -1, all = 0, statecode = -1;
 	int allcodes[16], binary[RAW_LENGTH/2];
@@ -338,11 +323,11 @@ static int createCode(JsonNode *code) {
 		initAllCodes(systemcode, allcodes);
 		//it is possible to use 4 codes per state
 		//we stick to code number 1 in the on/off array
-		syscodetype = (systemcode >> 16) & 0x0F;
-		if(syscodetype == 10 || syscodetype == 14)
-			statecode = unit_onoff_map[unit][state][1];
+		syscodetype = (systemcode >> 16) & 0xF;
+		if(isSyscodeType1(syscodetype))
+			statecode = gt9000_unit_offon_map[unit][state][1];
 		else
-			statecode = unit_onoff_map2[unit][state][1];
+			statecode = gt9000_unit_offon_map2[unit][state][1];
     
 		if(statecode==-1) {
 			logprintf(LOG_ERR, "quigg_gt9000: unit %d not supported, try 0-15.", unit);
@@ -350,7 +335,7 @@ static int createCode(JsonNode *code) {
 		}
     
 		int encrypteddata = allcodes[statecode];
-
+		
 		clearCode();
 		createEncryptedData(encrypteddata);
 		createUnit(unit);
@@ -405,7 +390,7 @@ void quiggGT9000Init(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "quigg_gt9000";
-	module->version = "1.1";
+	module->version = "1.2";
 	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }
