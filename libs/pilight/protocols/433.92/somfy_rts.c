@@ -15,40 +15,6 @@
 	You should have received a copy of the GNU General Public License
 	along with pilight. If not, see	<http://www.gnu.org/licenses/>
 */
-/*
-Change Log:
-0.90a	- special version of daemon.c (increased window for footer length variation +/-25 instead +/-5)
-	- rollover of rollingcode at 65535
-	- rename somfySw... to SomfyScreen..
-	- Help Text
-	- more meaningful abbreviated letters for options MY (-m) and -PROG (-g)
-0.90b	- Footer Bug fixed
-0.90c	- Adaption of pulse length in Somfy Documentation, additions to debug log
-	- decode of all 16 commands on receive
-0.90d	- Bugfixing, Adaption of parameters, additional error checking, more log information
-0.90e	- Cleanup of pulse values
-	  Handling of all 15 commands using the new optional command "-n ##"
-	  ## is the decimal command equivalent (range 0 to 15)
-	  Hooks for handling of new generation data frame
-0.91	- modified Rollingkey and Footer handling
-0.91a	- more debug info
-0.92a	- 150121 adaption to nightlies
-0.92c	- 150316 focus on rts protocol
-0.93	- 150430 port to pilight 7.0
-0.94  - Bugfixing
-0.94b - Bugfixing GAP Length
-0.99a21a - 9ab0e4f - Step a21a - Add Bufferlength checks (pMaxBin, pMaxRaw)
-0.99a21b - 9ab0e4f - Step a21b - Fix the buffer overflow loop bug
-0.99a21c - 9ab0e4f - Step a21c - modify the wakeup pulses
-0.99a21d - 9ab0e4f - Step a21d - Add 2nd wakeup pulse.  0-10750/17750  1-9450/89565
-0.99a21e - 9ab0e4f - Step a21e - Change # of repetitive pulsestreams from default 10 to 4
-0.99a21e - 9ab0e4f - Step a21f - Add 2nd Footer pulse 32500
-0.99a - 0.99a21e - logging of add. parameters - MY behaviour
-0.99b - 0.99a21e - Initialize arryas before use
-0.99c - 0.99a21e - Various Checks
-0.99d - Removal of Debug logic
-0.999 - Removal of Debug logic
-*/
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -381,15 +347,15 @@ static void parseCode(void) {
 	}
 }
 
-static int preAmbCode (int *preAmb) {
+static int preAmbCode (int **preAmb) {
 // Wakeup sequence called by daemon.c
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
+	*preAmb = preAmb_wakeup;
 	if (wakeup_type == 1)	{
-		preAmb = preAmb_wakeup_1;
+		*preAmb = preAmb_wakeup_1;
 	}
 
-	preAmb = preAmb_wakeup;
 	return VALUE_LEN_WAKEUP;
 }
 
@@ -682,7 +648,7 @@ void somfy_rtsInit(void) {
 	somfy_rts->parseCode=&parseCode;
 	somfy_rts->createCode=&createCode;
 	somfy_rts->validate=&validate;
-	somfy_rts->preAmbCode=preAmbCode;
+	somfy_rts->preAmbCode=&preAmbCode;
 	somfy_rts->checkValues=&checkValues;
 	somfy_rts->printHelp=&printHelp;
 	somfy_rts->gc=&gc;
@@ -692,7 +658,7 @@ void somfy_rtsInit(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name =  "somfy_rts";
-	module->version =  "0.999";
+	module->version =  "1.0";
 	module->reqversion =  "7.0";
 	module->reqcommit =  NULL;
 }
