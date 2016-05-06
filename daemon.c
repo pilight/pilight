@@ -558,7 +558,7 @@ static void receive_parse_api(struct JsonNode *code, int hwtype) {
 		if(protocol->hwtype == hwtype && protocol->parseCommand != NULL) {
 			protocol->parseCommand(code);
 			receiver_create_message(protocol);
-		}		
+		}
 		pnode = pnode->next;
 	}
 }
@@ -721,7 +721,7 @@ void *send_code(void *param) {
 						pthread_cond_signal(&hw->signal);
 					}
 				} else if(hw->comtype == COMAPI && hw->sendAPI != NULL) {
-					if(message != NULL) {				
+					if(message != NULL) {
 						if(hw->sendAPI(message) == 0) {
 							logprintf(LOG_DEBUG, "successfully send %s command", protocol->id);
 						} else {
@@ -1505,6 +1505,31 @@ void *receiveOOK(void *param) {
 	struct rawcode_t r;
 	r.length = 0;
 	int plslen = 0, duration = 0;
+
+#define WAIT_FOR_END_OF_HEADER	0
+#define WAIT_FOR_END_OF_DATA	1
+#define WAIT_FOR_END_OF_DATA_2	4
+#define WAIT_FOR_END_OF_DATA_3	5
+#define PREAMB_SYNC_L			488	// V2.1 - clk = 1024 Hz
+#define PREAMB_SYNC_L_MAX		586	// PREAMB_SYNC_L * 1,2
+#define PREAMB_SYNC_MIN			732
+#define PREAMB_SYNC_H			976	// V2.1 - clk = 1024 Hz
+#define PREAMB_SYNC_MAX			1120	// A single value above this value is added to the next value
+#define PREAMB_SYNC_DMAX		PREAMB_SYNC_H+PREAMB_SYNC_L
+#define O21_FOOTER				11018	// GAP pulse Oregon V2.1
+#define PRE_AMB_HEADER_CNT_MAX	33		// Max # of preamb pulses
+#define PRE_AMB_HEADER_CNT		22
+#define L_HEADER_21				12
+
+int preamb_pulse_counter = 0;
+int latch_duration = 0;
+int preamb_duration = 0;
+int preamb_state = 0;
+int duration_next = 0;
+int header_21[L_HEADER_21] = {PREAMB_SYNC_L,PREAMB_SYNC_L,PREAMB_SYNC_H,PREAMB_SYNC_L,PREAMB_SYNC_L,PREAMB_SYNC_H,PREAMB_SYNC_L,PREAMB_SYNC_L,PREAMB_SYNC_H,PREAMB_SYNC_L,PREAMB_SYNC_L,PREAMB_SYNC_H};
+int p_header_21 = 0;
+int flag_oregon_21 = 0;
+
 	struct timeval tp;
 	struct timespec ts;
 
@@ -1529,9 +1554,133 @@ void *receiveOOK(void *param) {
 			logprintf(LOG_STACK, "%s::unlocked", __FUNCTION__);
 			duration = hw->receiveOOK();
 			if(duration > 0) {
-				r.pulses[r.length++] = duration;
+				r.pulses[r.length] = duration;
+// --------------------------------------------------------------------------------------------------------------------
+// Convert RAW STREAM into compatible pilight format
+// Support for header/sync detection:
+// oregon21: length 36: minimum length we want to receive is 35 (35 clock duration pulses)
+//           SYNC is coded as 10101010 and handled by the protocol itself (footer 11018, 31232)
+// Planned to be added support for
+// oregon30: length 24: mimimum length we want to receive is 23 (46 half clock duration pulses)
+//           SYNC is coded as 0101 and handled ny the protocol itself (footer 23424)
+// Maybe:
+// oregon10: length 12: minimum length we want to receive is 11 (22 half clock duration pulses)
+//           SYNC is coded as three pulses and handled by the protocol itself (footer 35088)
+// Analyse stream for repetitive pulses with half the duration of the clock frequency 2924µS for V1.0
+// Analyse stream for repetitive pulses with the duration of the clock frequency 976µS for V2.1
+// Analyse stream for repetitive pulses with half the duration of the clock frequency 976µS for V3.0
+//  - they are in V2.1 members of the Pre-Amb sequence
+//  - they are uncommon in regular header/footer based streams and other protocols
+//  -> Other protocols will never get beyhond the WAIT_FOR_END_OF_HEADER state
+//
+// oregon_space: 9000µS footer pulses: 500/2000 - ONE, 500/4000 - ZERO
+// This protocol dies not require modification in daemon.c
+//  - devices: SL-109H, AcuRite 09955
+// Marker criteria is the first deviating pulse:
+// - distance of pulses between marker is rawlen of pulse stream
+// - duration of repetitive pulses is footer
+// As pilight will only accept footer values that do not deviate by more than -/+170µS the protocol driver has to
+// cover an extended footer value range (two additional protocol_plslen_add function calls with a difference of +/- 11)
+// 15/01/15
+// --------------------------------------------------------------------------------------------------------------------
+				switch (preamb_state) {
+					case WAIT_FOR_END_OF_HEADER:
+						flag_oregon_21 = 0;
+						if ( duration > PREAMB_SYNC_MIN && duration < PREAMB_SYNC_MAX) {	// Check for pulses with clock duration
+							preamb_pulse_counter++;
+							preamb_duration += r.pulses[r.length];
+						} else {
+							// Check if we found the deviating pulse after a series of consecutive pulses
+							// and that the deviating pulse qualifies as a SYNC pulse
+							if (preamb_pulse_counter > PRE_AMB_HEADER_CNT
+								&& preamb_pulse_counter < PRE_AMB_HEADER_CNT_MAX
+								&& duration < PREAMB_SYNC_L_MAX) {
+								flag_oregon_21 = 1;					// flag for footer based protocols: 2nd transmission
+								preamb_state = WAIT_FOR_END_OF_DATA;
+								preamb_pulse_counter = 0;
+								r.length = 0;						// Reset Pointer
+								r.pulses[r.length] = duration;		// Store the 1st SYNC pulse
+							} else {
+								// Below threshold, so we have to reset and will continue to check
+								preamb_duration = 0;
+								preamb_pulse_counter = 0;
+							}
+						}
+						break;
+					case WAIT_FOR_END_OF_DATA_2:
+						r.length = 0;				// Restore 1st SYNC byte already received
+						preamb_pulse_counter = 1;
+						duration_next = 0;
+						r.pulses[r.length++] = latch_duration;
+						if (duration > O21_FOOTER) {		// A footer is a footer
+							duration = O21_FOOTER;
+							r.pulses[r.length]   = duration;
+						} else {
+							// pilight may have missed significant a number of pulses
+							// The length of the pulse is not correct
+							// to resynchronize, lets get the next pulse as well
+							// both length together are close to absolute duration
+							// and based on our knowledge of the SYNC structure
+							// we can recreate the header pulse sequence
+							if (duration  > PREAMB_SYNC_DMAX) {
+								duration_next = hw->receiveOOK();
+								duration += duration_next;
+								p_header_21 = 1;	// The next pulse is short
+							}
+							// Rebuild missing SYNC Header: 488, 976, 488 488 976 488 488 976
+							while ( (duration > 100) && (p_header_21 < (unsigned int)L_HEADER_21) ) {
+								r.pulses[r.length++] = header_21[p_header_21];
+								duration -= header_21[p_header_21];
+								preamb_pulse_counter++;
+								p_header_21++;
+							}
+							r.length--; // Adjust pointer
+							preamb_pulse_counter--; // Adjust counter
+						}
+						preamb_state = WAIT_FOR_END_OF_DATA_3;
+						break;
+					case WAIT_FOR_END_OF_DATA:
+						if ( duration > 5100) {				// Regular GAP detected search for Header
+							if (flag_oregon_21 == 1) {		// 2nd footer is also oregon_21
+								duration = O21_FOOTER;
+								r.pulses[r.length]   = duration;
+							}
+							preamb_state = WAIT_FOR_END_OF_HEADER;
+						}
+						if ( duration > PREAMB_SYNC_MIN ) {
+							preamb_pulse_counter++;
+							preamb_duration += r.pulses[r.length];
+						} else {
+							// Check if we found the deviating pulse after a series of consecutive pulses
+							if (preamb_pulse_counter > PRE_AMB_HEADER_CNT) {
+								latch_duration = duration;			// Remember this pulse for WFD2
+								r.pulses[r.length] = O21_FOOTER;	// Emulate Footer
+								duration = O21_FOOTER;
+								preamb_state = WAIT_FOR_END_OF_DATA_2;
+							} else {
+							// Below threshold, so we continue to wait
+								preamb_duration = 0;
+								preamb_pulse_counter = 0;
+							}
+						}
+						break;
+					case WAIT_FOR_END_OF_DATA_3:
+						if ( duration > 5100) {
+							preamb_state = WAIT_FOR_END_OF_HEADER;
+							duration = O21_FOOTER;    // Replace GAP with defined footer value
+							r.pulses[r.length]   = duration;
+						}
+						break;
+
+					default:
+						break;
+				} // Switch
+				r.length++;
 				if(r.length > MAXPULSESTREAMLENGTH-1) {
 					r.length = 0;
+					preamb_duration = 0;
+					preamb_pulse_counter = 0;
+					preamb_state = WAIT_FOR_END_OF_HEADER;
 				}
 				if(duration > hw->mingaplen) {
 					if(duration < hw->maxgaplen) {
@@ -1542,7 +1691,12 @@ void *receiveOOK(void *param) {
 						receive_queue(r.pulses, r.length, plslen, hw->hwtype);
 					}
 					r.length = 0;
-				}
+					preamb_duration = 0;
+					preamb_pulse_counter = 0;
+					if (preamb_state == WAIT_FOR_END_OF_DATA) {
+						preamb_state = WAIT_FOR_END_OF_DATA_2;
+					}
+				} // if duration > 5100
 			/* Hardware failure */
 			} else if(duration == -1) {
 				pthread_mutex_unlock(&hw->lock);
@@ -1570,7 +1724,7 @@ void *clientize(void *param) {
 	struct JsonNode *joptions = NULL;
 	struct JsonNode *jchilds = NULL;
 	struct JsonNode *tmp = NULL;
-  char *recvBuff = NULL, *output = NULL;
+	char *recvBuff = NULL, *output = NULL;
 	char *message = NULL, *action = NULL;
 	char *origin = NULL, *protocol = NULL;
 	int client_loop = 0, config_synced = 0;
