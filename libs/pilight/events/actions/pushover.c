@@ -114,7 +114,6 @@ static void *thread(void *param) {
 	struct threadpool_tasks_t *task = param;
 	struct rules_actions_t *pth = task->userdata;
 	struct JsonNode *json = pth->parsedargs;
-
 	struct JsonNode *jtitle = NULL;
 	struct JsonNode *jmessage = NULL;
 	struct JsonNode *juser = NULL;
