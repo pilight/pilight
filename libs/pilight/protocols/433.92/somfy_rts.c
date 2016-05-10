@@ -214,10 +214,10 @@ static void parseCode(void) {
 			rDataLow = -rDataLow;
 			if( somfy_rts->raw[pRaw] > PULSE_SOMFY_FOOTER_L && somfy_rts->raw[pRaw] < PULSE_SOMFY_FOOTER_H) {
 				if (pBin==56) {
-					protocol_sync=4;	// We received all 56 classic frame bits
+					protocol_sync=4;	// We received all 56 classic frame bits plus 24 supplementary bits
 				} else {
-					if (pBin==56) {
-						protocol_sync=3;	// We received all 56 classic frame bits
+					if (pBin==80) {
+						protocol_sync=3;	// We received all 56 classic frame bits plus 24 supplementary bits
 					} else {
 						protocol_sync=96; // We should never end up here as binary bits are missing
 					}
@@ -246,8 +246,8 @@ static void parseCode(void) {
 			// Determine if we have a rising/falling edge in the middle
 			rDataLow = -rDataLow;
 			if(somfy_rts->raw[pRaw] > PULSE_SOMFY_FOOTER_L && somfy_rts->raw[pRaw] < PULSE_SOMFY_FOOTER_H) {
-				if (pBin==112) {
-					protocol_sync=4;	// We received (56 classic) + (56 extended) frame bits
+				if (pBin==80) {
+					protocol_sync=4;	// We received (56 classic) + (24 supplementary) frame bits
 				} else {
 					protocol_sync=97;	// We have to check why we end up here
 				}
