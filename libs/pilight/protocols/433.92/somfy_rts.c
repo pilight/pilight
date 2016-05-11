@@ -126,7 +126,7 @@ static uint8_t codeChkSum (uint8_t *p_frame) {
 	return cksum;
 }
 
-static void createMessage(int address, int command, int rollingcode, int rollingkey) {
+static void createMessage(int address, int command, int rollingcode, int rollingkey, int repeats) {
 	char str [9];
 	somfy_rts->message = json_mkobject();
 	json_append_member(somfy_rts->message, "address", json_mknumber(address,0));
@@ -158,7 +158,12 @@ static void createMessage(int address, int command, int rollingcode, int rolling
 	if (rollingkey != -1) {
 		json_append_member(somfy_rts->message, "rollingkey", json_mknumber(rollingkey,0));
 	}
-	somfy_rts->txrpt = NORMAL_REPEATS;
+	if(repeats != -1) {
+		somfy_rts->txrpt = repeats;
+	}
+	else {
+		somfy_rts->txrpt = NORMAL_REPEATS;
+	}
 }
 
 static void parseCode(void) {
@@ -342,7 +347,7 @@ static void parseCode(void) {
 		}
 
 		if ( ( key_left == 10 && 0 == cksum)) {
-			createMessage(address, command, rollingcode, rollingkey);
+			createMessage(address, command, rollingcode, rollingkey, -1);
 		}
 	}
 }
@@ -509,6 +514,7 @@ static int createCode(JsonNode *code) {
 	int command = -1, command_code = -1;
 	int rollingcode = -1;
 	int address = -1;
+	int repeats = NORMAL_REPEATS;
 	double itmp = -1;
 	uint8_t dec_frame[BIN_ARRAY_SOMFY_PROT] = { 0 }, frame[BIN_ARRAY_SOMFY_PROT] = { 0 }, i;
 
@@ -527,6 +533,7 @@ static int createCode(JsonNode *code) {
 	}
 	if(json_find_number(code, "command_code", &itmp) == 0)	command_code = (int)round(itmp);
 	if(json_find_number(code, "wakeup", &itmp) == 0)	wakeup_type = (int)round(itmp);
+	if(json_find_number(code, "repeats", &itmp) == 0)	repeats = (int)round(itmp);
 
 	if(command != -1 && command_code != -1) {
 		logprintf(LOG_ERR, "too many arguments: either command or command_code");
@@ -570,7 +577,7 @@ static int createCode(JsonNode *code) {
 			tmp = tmp->next;
 			}
 		}
-		createMessage(address, command, rollingcode, rollingkey);
+		createMessage(address, command, rollingcode, rollingkey, repeats);
 		createHeader();
 
 		dec_frame[0] = (uint8_t) ((key_left & 0xf0) | (rollingkey & 0xf));
@@ -606,6 +613,7 @@ static void printHelp(void) {
 	printf("\t -k --rollingkey=rollingkey\t\t\tset rollingkey\n");
 	printf("\t -n --command_code=command\t\t\tNumeric Command Code\n");
 	printf("\t -w --wakeup=command\t\t\tType of Wakeup Pulse\n");
+	printf("\t -r --repeats=number from 1-50\t\t\tNumber of retries when sending data\n");
 }
 
 #ifndef MODULE
@@ -636,8 +644,9 @@ void somfy_rtsInit(void) {
 	options_add(&somfy_rts->options, 't', "up", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
 	options_add(&somfy_rts->options, 'f', "down", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
 	options_add(&somfy_rts->options, 'm', "my", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
-	options_add(&somfy_rts->options, 'g', "prog", OPTION_NO_VALUE,DEVICES_STATE, JSON_STRING, NULL, NULL);
+	options_add(&somfy_rts->options, 'g', "prog", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
 	options_add(&somfy_rts->options, 'w', "wakeup", OPTION_HAS_VALUE, DEVICES_OPTIONAL, JSON_NUMBER, (void *)0, "^([01])$");
+	options_add(&somfy_rts->options, 'r', "repeats", OPTION_HAS_VALUE, DEVICES_OPTIONAL, JSON_NUMBER, NULL, "^(1|[0-9][0-4]|50)$");
 	options_add(&somfy_rts->options, 0, "my+up", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
 	options_add(&somfy_rts->options, 0, "my+down", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
 	options_add(&somfy_rts->options, 0, "up+down", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
