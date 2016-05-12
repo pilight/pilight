@@ -64,7 +64,6 @@
 	20-24    Unit
 	25       Footer (3000 7000)
 */
-
 char gt9000_unit_offon_map[16][2][4] = {
 	{ { 8, 2, 11,  7}, {10, 6,  1,  5} },	//unit 0 (untested)
 	{ { 8, 2, 11,  7}, {10, 6,  1,  5} },	//unit 1 (untested)
@@ -158,6 +157,7 @@ static void createMessage(char *message, int *binary, int systemcode, int state,
 		x += snprintf(&message[x], 255-x, "\"binary\":\"%s\"", binaryCh);
 	}
 */
+
 	if(state == 1) {
 		x += snprintf(&message[x], 255-x, "\"state\":\"on\"");
 	} else {
