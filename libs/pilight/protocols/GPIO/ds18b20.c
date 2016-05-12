@@ -225,7 +225,7 @@ static void *addDevice(void *param) {
 
 	json_find_number(jdevice, "temperature-offset", &node->temp_offset);
 
-	data->interval = interval;
+	node->interval = interval;
 
 	node->next = data;
 	data = node;
