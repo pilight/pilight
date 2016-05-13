@@ -101,7 +101,7 @@ static void parseCode(void) {
 	int id = -1;
 	int unit = -1;
 	int battery = -1;
-	double temp = -300.0;
+	double temp = -274.0;
 	double humidity = -1.0;
 	int uv = -1;
 	int wind_dir = -1;
@@ -152,7 +152,7 @@ static void parseCode(void) {
 	for  (i=0;i<BINLEN_OREGON_21_PROT;i++) {
 		binary[i]=0;
 	}
-	while (pRaw<=OREGON_21->rawlen) {
+	while (pRaw<=MAXRAWLEN_OREGON_21_PROT) {
 		switch (protocol_sync) {
 			case 0:									// Wait for end of Pre-Amble pulses, or terminate if more than 36 Pre-Amble bits found
 				rDataTime = OREGON_21->raw[pRaw++];
@@ -457,7 +457,7 @@ void oregon_21WeatherInit(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name =  "oregon_21";
-	module->version =  "1.10c";
+	module->version =  "1.11";
 	module->reqversion =  "7.0";
 	module->reqcommit =  NULL;
 }
