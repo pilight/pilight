@@ -99,7 +99,7 @@ static int hummingboardGateEdgeSDLValidGPIO(int pin) {
 
 static int hummingboardGateEdgeSDLISR(int i, enum isr_mode_t mode) {
 	if(irq[i] == -1) {
-		wiringXLog(LOG_ERR, "The %s gpio %d cannot be used as interrupt", hummingboardGateEdgeSDL->name, i);
+		wiringXLog(LOG_ERR, "The %s gpio %d cannot be used as interrupt", hummingboardGateEdgeSDL->name[0], i);
 		return -1;
 	}
 	return hummingboardGateEdgeSDL->soc->isr(i, mode);

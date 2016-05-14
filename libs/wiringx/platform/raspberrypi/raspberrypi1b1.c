@@ -27,11 +27,11 @@ static int map[] = {
 	/* 	FSEL17,	FSEL18,	FSEL27,	FSEL22 	*/
 			17, 		18, 		21, 		22,
 	/* 	FSEL23,	FSEL24,	FSEL25,	FSEL4 	*/
-			23, 		24, 		25, 		4,
+			23, 		24, 		25, 		 4,
 	/* 	FSEL2,	FSEL3,	FSEL8,	FSEL7 	*/
-			0, 			1, 			8, 			7,
+			 0, 		 1, 		 8, 		 7,
 	/*	FSEL10,	FSEL9,	FSEL11,	FSEL14	*/
-			10,			9,			11,			14,
+			10,			 9,			11,			14,
 	/*	FSEL15	*/
 			15
 };
@@ -47,6 +47,7 @@ static int raspberrypi1b1ValidGPIO(int pin) {
 static int raspberrypi1b1Setup(void) {
 	raspberrypi1b1->soc->setup();
 	raspberrypi1b1->soc->setMap(map);
+	raspberrypi1b1->soc->setIRQ(map);
 	return 0;
 }
 

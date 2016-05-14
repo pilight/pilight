@@ -233,6 +233,10 @@ static void allwinnerA31sSetMap(int *map) {
 	allwinnerA31s->map = map;
 }
 
+static void allwinnerA31sSetIRQ(int *irq) {
+	allwinnerA31s->irq = irq;
+}
+
 static int allwinnerA31sDigitalWrite(int i, enum digital_value_t value) {
 	struct layout_t *pin = NULL;
 	unsigned long addr = 0;
@@ -370,4 +374,5 @@ void allwinnerA31sInit(void) {
 	allwinnerA31s->digitalWrite = &allwinnerA31sDigitalWrite;
 	allwinnerA31s->getPinName = &allwinnerA31sGetPinName;
 	allwinnerA31s->setMap = &allwinnerA31sSetMap;
+	allwinnerA31s->setIRQ = &allwinnerA31sSetIRQ;
 }

@@ -37,7 +37,7 @@
 #include "soc/samsung/exynos5422.h"
 
 #include "platform/linksprite/pcduino1.h"
-#include "platform/lemaker/bananapi.h"
+#include "platform/lemaker/bananapi1.h"
 #include "platform/lemaker/bananapim2.h"
 #include "platform/solidrun/hummingboard_gate_edge_sdl.h"
 #include "platform/solidrun/hummingboard_gate_edge_dq.h"

@@ -404,7 +404,7 @@ static int exynos5422ISR(int i, enum isr_mode_t mode) {
 	struct layout_t *pin = NULL;
 	char path[PATH_MAX];
 
-	if(exynos5422->map == NULL) {
+	if(exynos5422->irq == NULL) {
 		wiringXLog(LOG_ERR, "The %s %s has not yet been mapped", exynos5422->brand, exynos5422->chip);
 		return -1;
 	}
@@ -413,27 +413,27 @@ static int exynos5422ISR(int i, enum isr_mode_t mode) {
 		return -1;
 	}
 
-	pin = &exynos5422->layout[exynos5422->map[i]];
+	pin = &exynos5422->layout[exynos5422->irq[i]];
 
-	sprintf(path, "/sys/class/gpio/gpio%d", exynos5422->map[i]);
+	sprintf(path, "/sys/class/gpio/gpio%d", exynos5422->irq[i]);
 	if((soc_sysfs_check_gpio(exynos5422, path)) == -1) {
 		sprintf(path, "/sys/class/gpio/export");
-		if(soc_sysfs_gpio_export(exynos5422, path, exynos5422->map[i]) == -1) {
+		if(soc_sysfs_gpio_export(exynos5422, path, exynos5422->irq[i]) == -1) {
 			return -1;
 		}
 	}
 
-	sprintf(path, "/sys/class/gpio/gpio%d/direction", exynos5422->map[i]);
+	sprintf(path, "/sys/class/gpio/gpio%d/direction", exynos5422->irq[i]);
 	if(soc_sysfs_set_gpio_direction(exynos5422, path, "in") == -1) {
 		return -1;
 	}
 
-	sprintf(path, "/sys/class/gpio/gpio%d/edge", exynos5422->map[i]);
+	sprintf(path, "/sys/class/gpio/gpio%d/edge", exynos5422->irq[i]);
 	if(soc_sysfs_set_gpio_interrupt_mode(exynos5422, path, mode) == -1) {
 		return -1;
 	}
 
-	sprintf(path, "/sys/class/gpio/gpio%d/value", exynos5422->map[i]);
+	sprintf(path, "/sys/class/gpio/gpio%d/value", exynos5422->irq[i]);
 	if((pin->fd = soc_sysfs_gpio_reset_value(exynos5422, path)) == -1) {
 		return -1;
 	}
@@ -443,7 +443,7 @@ static int exynos5422ISR(int i, enum isr_mode_t mode) {
 }
 
 static int exynos5422WaitForInterrupt(int i, int ms) {
-	struct layout_t *pin = &exynos5422->layout[exynos5422->map[i]];
+	struct layout_t *pin = &exynos5422->layout[exynos5422->irq[i]];
 
 	if(pin->mode != PINMODE_INTERRUPT) {
 		wiringXLog(LOG_ERR, "The %s %s GPIO %d is not set to interrupt mode", exynos5422->brand, exynos5422->chip, i);
@@ -470,7 +470,7 @@ static int exynos5422GC(void) {
 			if(pin->mode == PINMODE_OUTPUT) {
 				pinMode(i, PINMODE_INPUT);
 			} else if(pin->mode == PINMODE_INTERRUPT) {
-				sprintf(path, "/sys/class/gpio/gpio%d", exynos5422->map[i]);
+				sprintf(path, "/sys/class/gpio/gpio%d", exynos5422->irq[i]);
 				if((soc_sysfs_check_gpio(exynos5422, path)) == 0) {
 					sprintf(path, "/sys/class/gpio/unexport");
 					soc_sysfs_gpio_unexport(exynos5422, path, i);
@@ -491,7 +491,7 @@ static int exynos5422GC(void) {
 static int exynos5422SelectableFd(int i) {
 	struct layout_t *pin = NULL;
 
-	if(exynos5422->map == NULL) {
+	if(exynos5422->irq == NULL) {
 		wiringXLog(LOG_ERR, "The %s %s has not yet been mapped", exynos5422->brand, exynos5422->chip);
 		return -1;
 	}
@@ -500,7 +500,7 @@ static int exynos5422SelectableFd(int i) {
 		return -1;
 	}
 
-	pin = &exynos5422->layout[exynos5422->map[i]];
+	pin = &exynos5422->layout[exynos5422->irq[i]];
 	return pin->fd;
 }
 

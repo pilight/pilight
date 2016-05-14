@@ -370,12 +370,11 @@ static int nxpIMX6SDLRMPinMode(int i, enum pinmode_t mode) {
 	return 0;
 }
 
-
 static int nxpIMX6SDLRMISR(int i, enum isr_mode_t mode) {
 	struct layout_t *pin = NULL;
 	char path[PATH_MAX];
 
-	if(nxpIMX6SDLRM->map == NULL) {
+	if(nxpIMX6SDLRM->irq == NULL) {
 		wiringXLog(LOG_ERR, "The %s %s has not yet been mapped", nxpIMX6SDLRM->brand, nxpIMX6SDLRM->chip);
 		return -1; 
 	} 
@@ -384,7 +383,7 @@ static int nxpIMX6SDLRMISR(int i, enum isr_mode_t mode) {
 		return -1;
 	}
 
-	pin = &nxpIMX6SDLRM->layout[nxpIMX6SDLRM->map[i]];
+	pin = &nxpIMX6SDLRM->layout[nxpIMX6SDLRM->irq[i]];
 
 	sprintf(path, "/sys/class/gpio/gpio%d", nxpIMX6SDLRM->irq[i]);
 	if((soc_sysfs_check_gpio(nxpIMX6SDLRM, path)) == -1) {
@@ -414,7 +413,7 @@ static int nxpIMX6SDLRMISR(int i, enum isr_mode_t mode) {
 }
 
 static int nxpIMX6SDLRMWaitForInterrupt(int i, int ms) {
-	struct layout_t *pin = &nxpIMX6SDLRM->layout[nxpIMX6SDLRM->map[i]];
+	struct layout_t *pin = &nxpIMX6SDLRM->layout[nxpIMX6SDLRM->irq[i]];
 
 	if(pin->mode != PINMODE_INTERRUPT) {
 		wiringXLog(LOG_ERR, "The %s %s GPIO %d is not set to interrupt mode", nxpIMX6SDLRM->brand, nxpIMX6SDLRM->chip, i);
@@ -462,7 +461,7 @@ static int nxpIMX6SDLRMGC(void) {
 static int nxpIMX6SDLRMSelectableFd(int i) {
 	struct layout_t *pin = NULL;
 
-	if(nxpIMX6SDLRM->map == NULL) {
+	if(nxpIMX6SDLRM->irq == NULL) {
 		wiringXLog(LOG_ERR, "The %s %s has not yet been mapped", nxpIMX6SDLRM->brand, nxpIMX6SDLRM->chip);
 		return -1; 
 	} 
@@ -471,7 +470,7 @@ static int nxpIMX6SDLRMSelectableFd(int i) {
 		return -1;
 	}
 
-	pin = &nxpIMX6SDLRM->layout[nxpIMX6SDLRM->map[i]];
+	pin = &nxpIMX6SDLRM->layout[nxpIMX6SDLRM->irq[i]];
 	return pin->fd;
 }
 

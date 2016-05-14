@@ -302,7 +302,7 @@ static int amlogicS805ISR(int i, enum isr_mode_t mode) {
 	struct layout_t *pin = NULL;
 	char path[PATH_MAX];
 
-	if(amlogicS805->map == NULL) {
+	if(amlogicS805->irq == NULL) {
 		wiringXLog(LOG_ERR, "The %s %s has not yet been mapped", amlogicS805->brand, amlogicS805->chip);
 		return -1;
 	}
@@ -311,27 +311,27 @@ static int amlogicS805ISR(int i, enum isr_mode_t mode) {
 		return -1;
 	}
 
-	pin = &amlogicS805->layout[amlogicS805->map[i]];
+	pin = &amlogicS805->layout[amlogicS805->irq[i]];
 
-	sprintf(path, "/sys/class/gpio/gpio%d", amlogicS805->map[i]);
+	sprintf(path, "/sys/class/gpio/gpio%d", amlogicS805->irq[i]);
 	if((soc_sysfs_check_gpio(amlogicS805, path)) == -1) {
 		sprintf(path, "/sys/class/gpio/export");
-		if(soc_sysfs_gpio_export(amlogicS805, path, amlogicS805->map[i]) == -1) {
+		if(soc_sysfs_gpio_export(amlogicS805, path, amlogicS805->irq[i]) == -1) {
 			return -1;
 		}
 	}
 
-	sprintf(path, "/sys/class/gpio/gpio%d/direction", amlogicS805->map[i]);
+	sprintf(path, "/sys/class/gpio/gpio%d/direction", amlogicS805->irq[i]);
 	if(soc_sysfs_set_gpio_direction(amlogicS805, path, "in") == -1) {
 		return -1;
 	}
 
-	sprintf(path, "/sys/class/gpio/gpio%d/edge", amlogicS805->map[i]);
+	sprintf(path, "/sys/class/gpio/gpio%d/edge", amlogicS805->irq[i]);
 	if(soc_sysfs_set_gpio_interrupt_mode(amlogicS805, path, mode) == -1) {
 		return -1;
 	}
 
-	sprintf(path, "/sys/class/gpio/gpio%d/value", amlogicS805->map[i]);
+	sprintf(path, "/sys/class/gpio/gpio%d/value", amlogicS805->irq[i]);
 	if((pin->fd = soc_sysfs_gpio_reset_value(amlogicS805, path)) == -1) {
 		return -1;
 	}
@@ -341,7 +341,7 @@ static int amlogicS805ISR(int i, enum isr_mode_t mode) {
 }
 
 static int amlogicS805WaitForInterrupt(int i, int ms) {
-	struct layout_t *pin = &amlogicS805->layout[amlogicS805->map[i]];
+	struct layout_t *pin = &amlogicS805->layout[amlogicS805->irq[i]];
 
 	if(pin->mode != PINMODE_INTERRUPT) {
 		wiringXLog(LOG_ERR, "The %s %s GPIO %d is not set to interrupt mode", amlogicS805->brand, amlogicS805->chip, i);
@@ -368,7 +368,7 @@ static int amlogicS805GC(void) {
 			if(pin->mode == PINMODE_OUTPUT) {
 				pinMode(i, PINMODE_INPUT);
 			} else if(pin->mode == PINMODE_INTERRUPT) {
-				sprintf(path, "/sys/class/gpio/gpio%d", amlogicS805->map[i]);
+				sprintf(path, "/sys/class/gpio/gpio%d", amlogicS805->irq[i]);
 				if((soc_sysfs_check_gpio(amlogicS805, path)) == 0) {
 					sprintf(path, "/sys/class/gpio/unexport");
 					soc_sysfs_gpio_unexport(amlogicS805, path, i);
@@ -389,7 +389,7 @@ static int amlogicS805GC(void) {
 static int amlogicS805SelectableFd(int i) {
 	struct layout_t *pin = NULL;
 
-	if(amlogicS805->map == NULL) {
+	if(amlogicS805->irq == NULL) {
 		wiringXLog(LOG_ERR, "The %s %s has not yet been mapped", amlogicS805->brand, amlogicS805->chip);
 		return -1;
 	}
@@ -398,7 +398,7 @@ static int amlogicS805SelectableFd(int i) {
 		return -1;
 	}
 
-	pin = &amlogicS805->layout[amlogicS805->map[i]];
+	pin = &amlogicS805->layout[amlogicS805->irq[i]];
 	return pin->fd;
 }
 

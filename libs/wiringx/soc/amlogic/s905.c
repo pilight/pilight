@@ -21,8 +21,6 @@
 
 struct soc_t *amlogicS905 = NULL;
 
-#define GPIO_START_NUM	122
-
 static struct layout_t {
 	char *name;
 
@@ -204,7 +202,7 @@ static int amlogicS905Setup(void) {
 }
 
 static char *amlogicS905GetPinName(int pin) {
-	return amlogicS905->layout[pin - GPIO_START_NUM].name;
+	return amlogicS905->layout[pin].name;
 }
 
 static void amlogicS905SetMap(int *map) {
@@ -229,7 +227,7 @@ static int amlogicS905DigitalWrite(int i, enum digital_value_t value) {
 		return -1;
 	}
 
-	pin = &amlogicS905->layout[amlogicS905->map[i] - GPIO_START_NUM];
+	pin = &amlogicS905->layout[amlogicS905->map[i]];
 	if(pin->mode != PINMODE_OUTPUT) {
 		wiringXLog(LOG_ERR, "The %s %s GPIO %d is not set to output mode", amlogicS905->brand, amlogicS905->chip, i);
 		return -1;
@@ -261,7 +259,7 @@ static int amlogicS905DigitalRead(int i) {
 		return -1;
 	}
 
-	pin = &amlogicS905->layout[amlogicS905->map[i] - GPIO_START_NUM];
+	pin = &amlogicS905->layout[amlogicS905->map[i]];
 	if(pin->mode != PINMODE_INPUT) {
 		wiringXLog(LOG_ERR, "The %s %s GPIO %d is not set to input mode", amlogicS905->brand, amlogicS905->chip, i);
 		return -1;
@@ -289,7 +287,7 @@ static int amlogicS905PinMode(int i, enum pinmode_t mode) {
 		return -1;
 	}
 
-	pin = &amlogicS905->layout[amlogicS905->map[i] - GPIO_START_NUM];
+	pin = &amlogicS905->layout[amlogicS905->map[i]];
 	addr = (unsigned long)(amlogicS905->gpio[pin->addr] + amlogicS905->base_offs[pin->addr] + pin->select.offset);
 	pin->mode = mode;
 
@@ -308,7 +306,7 @@ static int amlogicS905ISR(int i, enum isr_mode_t mode) {
 	struct layout_t *pin = NULL;
 	char path[PATH_MAX];
 
-	if(amlogicS905->map == NULL) {
+	if(amlogicS905->irq == NULL) {
 		wiringXLog(LOG_ERR, "The %s %s has not yet been mapped", amlogicS905->brand, amlogicS905->chip);
 		return -1;
 	}
@@ -317,27 +315,27 @@ static int amlogicS905ISR(int i, enum isr_mode_t mode) {
 		return -1;
 	}
 
-	pin = &amlogicS905->layout[amlogicS905->map[i] - GPIO_START_NUM];
+	pin = &amlogicS905->layout[amlogicS905->irq[i]];
 
-	sprintf(path, "/sys/class/gpio/gpio%d", amlogicS905->map[i]);
+	sprintf(path, "/sys/class/gpio/gpio%d", amlogicS905->irq[i]);
 	if((soc_sysfs_check_gpio(amlogicS905, path)) == -1) {
 		sprintf(path, "/sys/class/gpio/export");
-		if(soc_sysfs_gpio_export(amlogicS905, path, amlogicS905->map[i]) == -1) {
+		if(soc_sysfs_gpio_export(amlogicS905, path, amlogicS905->irq[i]) == -1) {
 			return -1;
 		}
 	}
 
-	sprintf(path, "/sys/class/gpio/gpio%d/direction", amlogicS905->map[i]);
+	sprintf(path, "/sys/class/gpio/gpio%d/direction", amlogicS905->irq[i]);
 	if(soc_sysfs_set_gpio_direction(amlogicS905, path, "in") == -1) {
 		return -1;
 	}
 
-	sprintf(path, "/sys/class/gpio/gpio%d/edge", amlogicS905->map[i]);
+	sprintf(path, "/sys/class/gpio/gpio%d/edge", amlogicS905->irq[i]);
 	if(soc_sysfs_set_gpio_interrupt_mode(amlogicS905, path, mode) == -1) {
 		return -1;
 	}
 
-	sprintf(path, "/sys/class/gpio/gpio%d/value", amlogicS905->map[i]);
+	sprintf(path, "/sys/class/gpio/gpio%d/value", amlogicS905->irq[i]);
 	if((pin->fd = soc_sysfs_gpio_reset_value(amlogicS905, path)) == -1) {
 		return -1;
 	}
@@ -347,7 +345,7 @@ static int amlogicS905ISR(int i, enum isr_mode_t mode) {
 }
 
 static int amlogicS905WaitForInterrupt(int i, int ms) {
-	struct layout_t *pin = &amlogicS905->layout[amlogicS905->map[i] - GPIO_START_NUM];
+	struct layout_t *pin = &amlogicS905->layout[amlogicS905->irq[i]];
 
 	if(pin->mode != PINMODE_INTERRUPT) {
 		wiringXLog(LOG_ERR, "The %s %s GPIO %d is not set to interrupt mode", amlogicS905->brand, amlogicS905->chip, i);
@@ -370,11 +368,11 @@ static int amlogicS905GC(void) {
 		l = sizeof(amlogicS905->map)/sizeof(amlogicS905->map[0]);
 
 		for(i=0;i<l;i++) {
-			pin = &amlogicS905->layout[amlogicS905->map[i] - GPIO_START_NUM];
+			pin = &amlogicS905->layout[amlogicS905->map[i]];
 			if(pin->mode == PINMODE_OUTPUT) {
 				pinMode(i, PINMODE_INPUT);
 			} else if(pin->mode == PINMODE_INTERRUPT) {
-				sprintf(path, "/sys/class/gpio/gpio%d", amlogicS905->map[i]);
+				sprintf(path, "/sys/class/gpio/gpio%d", amlogicS905->irq[i]);
 				if((soc_sysfs_check_gpio(amlogicS905, path)) == 0) {
 					sprintf(path, "/sys/class/gpio/unexport");
 					soc_sysfs_gpio_unexport(amlogicS905, path, i);
@@ -395,7 +393,7 @@ static int amlogicS905GC(void) {
 static int amlogicS905SelectableFd(int i) {
 	struct layout_t *pin = NULL;
 
-	if(amlogicS905->map == NULL) {
+	if(amlogicS905->irq == NULL) {
 		wiringXLog(LOG_ERR, "The %s %s has not yet been mapped", amlogicS905->brand, amlogicS905->chip);
 		return -1;
 	}
@@ -404,7 +402,7 @@ static int amlogicS905SelectableFd(int i) {
 		return -1;
 	}
 
-	pin = &amlogicS905->layout[amlogicS905->map[i] - GPIO_START_NUM];
+	pin = &amlogicS905->layout[amlogicS905->irq[i]];
 	return pin->fd;
 }
 

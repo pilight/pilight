@@ -237,6 +237,10 @@ static void allwinnerA10SetMap(int *map) {
 	allwinnerA10->map = map;
 }
 
+static void allwinnerA10SetIRQ(int *irq) {
+	allwinnerA10->irq = irq;
+}
+
 static int allwinnerA10DigitalWrite(int i, enum digital_value_t value) {
 	struct layout_t *pin = NULL;
 	unsigned long addr = 0;
@@ -331,7 +335,7 @@ static int allwinnerA10ISR(int i, enum isr_mode_t mode) {
 	char path[PATH_MAX];
 	int x = 0;
 
-	if(allwinnerA10->map == NULL) {
+	if(allwinnerA10->irq == NULL) {
 		wiringXLog(LOG_ERR, "The %s %s has not yet been mapped", allwinnerA10->brand, allwinnerA10->chip);
 		return -1; 
 	} 
@@ -340,7 +344,7 @@ static int allwinnerA10ISR(int i, enum isr_mode_t mode) {
 		return -1;
 	}
 
-	pin = &allwinnerA10->layout[allwinnerA10->map[i]];
+	pin = &allwinnerA10->layout[allwinnerA10->irq[i]];
 	char name[strlen(pin->name)+1];
 
 	memset(&name, '\0', strlen(pin->name)+1);
@@ -376,7 +380,7 @@ static int allwinnerA10ISR(int i, enum isr_mode_t mode) {
 }
 
 static int allwinnerA10WaitForInterrupt(int i, int ms) {
-	struct layout_t *pin = &allwinnerA10->layout[allwinnerA10->map[i]];
+	struct layout_t *pin = &allwinnerA10->layout[allwinnerA10->irq[i]];
 
 	if(pin->mode != PINMODE_INTERRUPT) {
 		wiringXLog(LOG_ERR, "The %s %s GPIO %d is not set to interrupt mode", allwinnerA10->brand, allwinnerA10->chip, i);
@@ -430,7 +434,7 @@ static int allwinnerA10GC(void) {
 static int allwinnerA10SelectableFd(int i) {
 	struct layout_t *pin = NULL;
 
-	if(allwinnerA10->map == NULL) {
+	if(allwinnerA10->irq == NULL) {
 		wiringXLog(LOG_ERR, "The %s %s has not yet been mapped", allwinnerA10->brand, allwinnerA10->chip);
 		return -1; 
 	} 
@@ -439,7 +443,7 @@ static int allwinnerA10SelectableFd(int i) {
 		return -1;
 	}
 
-	pin = &allwinnerA10->layout[allwinnerA10->map[i]];
+	pin = &allwinnerA10->layout[allwinnerA10->irq[i]];
 	return pin->fd;
 }
 
@@ -463,6 +467,7 @@ void allwinnerA10Init(void) {
 	allwinnerA10->digitalWrite = &allwinnerA10DigitalWrite;
 	allwinnerA10->getPinName = &allwinnerA10GetPinName;
 	allwinnerA10->setMap = &allwinnerA10SetMap;
+	allwinnerA10->setIRQ = &allwinnerA10SetIRQ;
 	allwinnerA10->isr = &allwinnerA10ISR;
 	allwinnerA10->waitForInterrupt = &allwinnerA10WaitForInterrupt;
 

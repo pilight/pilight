@@ -89,6 +89,7 @@ static int pcduino1DigitalWrite(int i, enum digital_value_t value) {
 static int pcduino1Setup(void) {
 	pcduino1->soc->setup();
 	pcduino1->soc->setMap(map);
+	pcduino1->soc->setIRQ(map);
 	return 0;
 }
 

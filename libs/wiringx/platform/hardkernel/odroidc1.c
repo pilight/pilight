@@ -26,8 +26,8 @@ struct platform_t *odroidc1 = NULL;
 /*
  * |-----|
  * |3v|5v|
- * |I2|5v|
- * |I2|0v|
+ * | 8|5v|
+ * | 9|0v|
  * | 7|TX|
  * |0v|RX|
  * | 0| 1|
@@ -38,7 +38,7 @@ struct platform_t *odroidc1 = NULL;
  * |13| 6|
  * |14|10|
  * |0v|11|
- * |I2|I2|
+ * |17|18|
  * |21|0v|
  * |22|26|
  * |23|0v|
@@ -49,24 +49,27 @@ struct platform_t *odroidc1 = NULL;
  * */
 
 static int map[] = {
-	/* 	GPIOY_8,	GPIOY_7,	GPIOX_19,	GPIOX_18	*/
-		88,		87,		116,		115,
-	/* 	GPIOX_7,	GPIOX_5,	GPIOX_6,	GPIOY_3		*/
-		104,		102,		103,		83,
-	/* 	(Padding),	(Padding),	GPIOX_20,	GPIOX_21	*/
-		-1,		-1,		117,		118,
-	/* 	GPIOX_10,	GPIOX_9,	GPIOX_8,	(Padding)	*/
-		107,		106,		105,		-1,
-	/*	(Padding),	(Padding),	(Padding),	(Padding)	*/
-		-1,		-1,		-1,		-1,
-	/*	(Padding),	GPIOX_4,	GPIOX_3,	GPIOX_11	*/
-		-1,		101,		100,		108,
-	/*	GPIOX_0,	(Padding),	GPIOX_2,	GPIOX_1		*/
-		97,		-1,		99,		98,
+	/* 	GPIOY_8,		GPIOY_7,		GPIOX_19,		GPIOX_18	*/
+			 88,				 87,				116,				115,
+	/* 	GPIOX_7,		GPIOX_5,		GPIOX_6,		GPIOY_3		*/
+			104,				102,				103,				 83,
+	/* 	GPIODV_24,	GPIODV_25,	GPIOX_20,		GPIOX_21	*/
+			 74,				 75,				117,				118,
+	/* 	GPIOX_10,		GPIOX_9,		GPIOX_8,		(Padding)	*/
+			107,				106,				105,				 -1,
+	/*	(Padding),	GPIODV_26,	GPIODV_27,	(Padding)	*/
+			 -1,				 76,				 77,				 -1,
+	/*	(Padding),	GPIOX_4,		GPIOX_3,		GPIOX_11		*/
+			 -1,				101,				100,				108,
+	/*	GPIOX_0,	 	(Padding),	GPIOX_2,		GPIOX_1	*/
+			 97,				 -1,				 99,				 98
 };
 
 static int odroidc1ValidGPIO(int pin) {
 	if(pin >= 0 && pin < (sizeof(map)/sizeof(map[0]))) {
+		if(map[pin] == -1) {
+			return -1;
+		}
 		return 0;
 	} else {
 		return -1;
@@ -76,6 +79,7 @@ static int odroidc1ValidGPIO(int pin) {
 static int odroidc1Setup(void) {
 	odroidc1->soc->setup();
 	odroidc1->soc->setMap(map);
+	odroidc1->soc->setIRQ(map);
 	return 0;
 }
 

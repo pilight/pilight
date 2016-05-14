@@ -25,18 +25,18 @@ struct platform_t *hummingboardBaseProSDL = NULL;
 
 /*
 |3v|5v|
-| 0|5v|
-| 1|0v|
-| 2| 3|
-|0v| 4|
-| 5| 6|
-| 7|0v|
-| 8| 9|
-|3v|10|
-|11|0v|
-|12|13|
-|14|15|
+| 8|5v|
+| 9|0v|
+| 7|15|
 |0v|16|
+| 0| 1|
+| 2|0v|
+| 3| 4|
+|3v| 5|
+|12|0v|
+|13| 6|
+|14|10|
+|0v|11|
 
 |-----|
 |SPDIF|
@@ -81,7 +81,7 @@ static int hummingboardBaseProSDLValidGPIO(int pin) {
 
 static int hummingboardBaseProSDLISR(int i, enum isr_mode_t mode) {
 	if(irq[i] == -1) {
-		wiringXLog(LOG_ERR, "The %s gpio %d cannot be used as interrupt", hummingboardBaseProSDL->name, i);
+		wiringXLog(LOG_ERR, "The %s gpio %d cannot be used as interrupt", hummingboardBaseProSDL->name[0], i);
 		return -1;
 	}
 	return hummingboardBaseProSDL->soc->isr(i, mode);

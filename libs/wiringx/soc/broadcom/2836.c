@@ -243,7 +243,7 @@ static int broadcom2836ISR(int i, enum isr_mode_t mode) {
 	struct layout_t *pin = NULL;
 	char path[PATH_MAX];
 
-	if(broadcom2836->map == NULL) {
+	if(broadcom2836->irq == NULL) {
 		wiringXLog(LOG_ERR, "The %s %s has not yet been mapped", broadcom2836->brand, broadcom2836->chip);
 		return -1; 
 	} 
@@ -252,27 +252,27 @@ static int broadcom2836ISR(int i, enum isr_mode_t mode) {
 		return -1;
 	}
 
-	pin = &broadcom2836->layout[broadcom2836->map[i]];
+	pin = &broadcom2836->layout[broadcom2836->irq[i]];
 
-	sprintf(path, "/sys/class/gpio/gpio%d", broadcom2836->map[i]);
+	sprintf(path, "/sys/class/gpio/gpio%d", broadcom2836->irq[i]);
 	if((soc_sysfs_check_gpio(broadcom2836, path)) == -1) {
 		sprintf(path, "/sys/class/gpio/export");
-		if(soc_sysfs_gpio_export(broadcom2836, path, broadcom2836->map[i]) == -1) {
+		if(soc_sysfs_gpio_export(broadcom2836, path, broadcom2836->irq[i]) == -1) {
 			return -1;
 		}
 	}
 
-	sprintf(path, "/sys/class/gpio/gpio%d/direction", broadcom2836->map[i]);
+	sprintf(path, "/sys/class/gpio/gpio%d/direction", broadcom2836->irq[i]);
 	if(soc_sysfs_set_gpio_direction(broadcom2836, path, "in") == -1) {
 		return -1;
 	}
 
-	sprintf(path, "/sys/class/gpio/gpio%d/edge", broadcom2836->map[i]);
+	sprintf(path, "/sys/class/gpio/gpio%d/edge", broadcom2836->irq[i]);
 	if(soc_sysfs_set_gpio_interrupt_mode(broadcom2836, path, mode) == -1) {
 		return -1;
 	}
 
-	sprintf(path, "/sys/class/gpio/gpio%d/value", broadcom2836->map[i]);
+	sprintf(path, "/sys/class/gpio/gpio%d/value", broadcom2836->irq[i]);
 	if((pin->fd = soc_sysfs_gpio_reset_value(broadcom2836, path)) == -1) {
 		return -1;
 	}
@@ -282,7 +282,7 @@ static int broadcom2836ISR(int i, enum isr_mode_t mode) {
 }
 
 static int broadcom2836WaitForInterrupt(int i, int ms) {
-	struct layout_t *pin = &broadcom2836->layout[broadcom2836->map[i]];
+	struct layout_t *pin = &broadcom2836->layout[broadcom2836->irq[i]];
 
 	if(pin->mode != PINMODE_INTERRUPT) {
 		wiringXLog(LOG_ERR, "The %s %s GPIO %d is not set to interrupt mode", broadcom2836->brand, broadcom2836->chip, i);
@@ -309,7 +309,7 @@ static int broadcom2836GC(void) {
 			if(pin->mode == PINMODE_OUTPUT) {
 				pinMode(i, PINMODE_INPUT);
 			} else if(pin->mode == PINMODE_INTERRUPT) {
-				sprintf(path, "/sys/class/gpio/gpio%d", broadcom2836->map[i]);
+				sprintf(path, "/sys/class/gpio/gpio%d", broadcom2836->irq[i]);
 				if((soc_sysfs_check_gpio(broadcom2836, path)) == 0) {
 					sprintf(path, "/sys/class/gpio/unexport");
 					soc_sysfs_gpio_unexport(broadcom2836, path, i);
@@ -330,7 +330,7 @@ static int broadcom2836GC(void) {
 static int broadcom2836SelectableFd(int i) {
 	struct layout_t *pin = NULL;
 
-	if(broadcom2836->map == NULL) {
+	if(broadcom2836->irq == NULL) {
 		wiringXLog(LOG_ERR, "The %s %s has not yet been mapped", broadcom2836->brand, broadcom2836->chip);
 		return -1; 
 	} 
@@ -339,7 +339,7 @@ static int broadcom2836SelectableFd(int i) {
 		return -1;
 	}
 
-	pin = &broadcom2836->layout[broadcom2836->map[i]];
+	pin = &broadcom2836->layout[broadcom2836->irq[i]];
 	return pin->fd;
 }
 

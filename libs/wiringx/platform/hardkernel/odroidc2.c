@@ -49,24 +49,29 @@ struct platform_t *odroidc2 = NULL;
  * */
 
 static int map[] = {
-	/* 	GPIOX_19,	GPIOX_10,	GPIOX_11,	GPIOX_9		*/
-		247,		238,		239,		237,
-	/* 	GPIOX_8,	GPIOX_5,	GPIOX_3,	GPIOX_21	*/
-		236,		233,		231,		249,
-	/* 	(Padding),	(Padding),	GPIOX_1,	GPIOY_11	*/
-		-1,		-1,		229,		225,
-	/* 	GPIOX_7,	GPIOX_4,	GPIOX_2,	(Padding)	*/
-		235,		232,		230,		-1,
+	/* 	GPIOX_19,		GPIOX_10,		GPIOX_11,		GPIOX_9		*/
+			125,				116,				117,				115,
+	/* 	GPIOX_8,		GPIOX_5,		GPIOX_3,		GPIOX_21	*/
+			114,				111,				109,				127,
+	/* 	GPIODV_24,	GPIODV_25,	GPIOX_1,		GPIOY_11	*/
+			 83,				 84,				107,				103,
+	/* 	GPIOX_7,		GPIOX_4,		GPIOX_2,		(Padding)	*/
+			113,				110,				108,				 -1,
 	/*	(Padding),	(Padding),	(Padding),	(Padding)	*/
-		-1,		-1,		-1,		-1,
-	/*	(Padding),	GPIOX_0,	GPIOY_8,	GPIOX_6		*/
-		-1,		228,		219,		234,
-	/*	GPIOY_3,	(Padding),	GPIOY_13,	GPIOY_7		*/
-		214,		-1,		224,		218,
+			 -1,				 -1,				 -1,				 -1,
+	/*	(Padding),	GPIOX_0,		GPIOY_8,		GPIOX_6		*/
+			 -1,				106,				 97,				112,
+	/*	GPIOY_3,		(Padding),	GPIOY_13,		GPIOY_7		*/
+			92,				 	 -1,				102,				 96
 };
+
+static int irq[sizeof(map)/sizeof(map[0])];
 
 static int odroidc2ValidGPIO(int pin) {
 	if(pin >= 0 && pin < (sizeof(map)/sizeof(map[0]))) {
+		if(map[pin] == -1) {
+			return -1;
+		}
 		return 0;
 	} else {
 		return -1;
@@ -74,8 +79,19 @@ static int odroidc2ValidGPIO(int pin) {
 }
 
 static int odroidc2Setup(void) {
+	int i = 0;
 	odroidc2->soc->setup();
 	odroidc2->soc->setMap(map);
+
+	for(i=0;i<(sizeof(map)/sizeof(map[0]));i++) {
+		if(map[i] != -1) {
+			irq[i] = map[i]+122;
+		} else {
+			irq[i] = -1;
+		}
+	}
+	odroidc2->soc->setIRQ(irq);
+
 	return 0;
 }
 

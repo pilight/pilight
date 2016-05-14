@@ -219,6 +219,7 @@ int soc_sysfs_gpio_reset_value(struct soc_t *soc, char *path) {
 				continue;
 			}
 		}
+		lseek(fd, 0, SEEK_SET);
 	}
 
 	return fd;
