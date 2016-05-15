@@ -2127,6 +2127,17 @@ int storage_read(char *file, unsigned long objects) {
 		return -1;
 	}
 
+	/*
+	 * We have to validate the settings first to know the gpio-platform setting.
+	 */
+	if(((objects & CONFIG_SETTINGS) == CONFIG_SETTINGS || (objects & CONFIG_ALL) == CONFIG_ALL) &&
+		storage->settings_select(ORIGIN_CONFIG, NULL, &json) == 0) {
+		json_clone(json, &jsettings_cache);
+		if(storage_settings_validate(jsettings_cache) == -1) {
+			return -1;
+		}
+	}
+
 	if(((objects & CONFIG_DEVICES) == CONFIG_DEVICES || (objects & CONFIG_ALL) == CONFIG_ALL) &&
 		storage->devices_select(ORIGIN_CONFIG, NULL, &json) == 0) {
 		json_clone(json, &jdevices_cache);
@@ -2147,14 +2158,6 @@ int storage_read(char *file, unsigned long objects) {
 		storage->hardware_select(ORIGIN_CONFIG, NULL, &json) == 0) {
 		json_clone(json, &jhardware_cache);
 		if(storage_hardware_validate(jhardware_cache) == -1) {
-			return -1;
-		}
-	}
-
-	if(((objects & CONFIG_SETTINGS) == CONFIG_SETTINGS || (objects & CONFIG_ALL) == CONFIG_ALL) &&
-		storage->settings_select(ORIGIN_CONFIG, NULL, &json) == 0) {
-		json_clone(json, &jsettings_cache);
-		if(storage_settings_validate(jsettings_cache) == -1) {
 			return -1;
 		}
 	}
