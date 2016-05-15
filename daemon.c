@@ -1510,10 +1510,10 @@ void *receiveOOK(void *param) {
 #define WAIT_FOR_END_OF_DATA	1
 #define WAIT_FOR_END_OF_DATA_2	4
 #define WAIT_FOR_END_OF_DATA_3	5
-#define PREAMB_SYNC_L			488	// V2.1 - clk = 1024 Hz
-#define PREAMB_SYNC_L_MAX		586	// PREAMB_SYNC_L * 1,2
+#define PREAMB_SYNC_L			488		// V2.1 - clk = 1024 Hz
+#define PREAMB_SYNC_L_MAX		586		// PREAMB_SYNC_L * 1,2
 #define PREAMB_SYNC_MIN			732
-#define PREAMB_SYNC_H			976	// V2.1 - clk = 1024 Hz
+#define PREAMB_SYNC_H			976		// V2.1 - clk = 1024 Hz
 #define PREAMB_SYNC_MAX			1120	// A single value above this value is added to the next value
 #define PREAMB_SYNC_DMAX		PREAMB_SYNC_H+PREAMB_SYNC_L
 #define O21_FOOTER				11018	// GAP pulse Oregon V2.1
@@ -1586,7 +1586,7 @@ int flag_oregon_21 = 0;
 				switch (preamb_state) {
 					case WAIT_FOR_END_OF_HEADER:
 						flag_oregon_21 = 0;
-						if ( duration > PREAMB_SYNC_MIN && duration < PREAMB_SYNC_MAX) {	// Check for pulses with clock duration
+						if (duration > PREAMB_SYNC_MIN && duration < PREAMB_SYNC_MAX) {	// Check for pulses with clock duration
 							preamb_pulse_counter++;
 							preamb_duration += r.pulses[r.length];
 						} else {
@@ -1608,13 +1608,13 @@ int flag_oregon_21 = 0;
 						}
 						break;
 					case WAIT_FOR_END_OF_DATA_2:
-						r.length = 0;				// Restore 1st SYNC byte already received
+						r.length = 0;					// Restore 1st SYNC byte already received
 						preamb_pulse_counter = 1;
 						duration_next = 0;
 						r.pulses[r.length++] = latch_duration;
-						if (duration > O21_FOOTER) {		// A footer is a footer
+						if (duration > O21_FOOTER) {	// A footer is a footer
 							duration = O21_FOOTER;
-							r.pulses[r.length]   = duration;
+							r.pulses[r.length] = duration;
 						} else {
 							// pilight may have missed significant a number of pulses
 							// The length of the pulse is not correct
@@ -1640,14 +1640,14 @@ int flag_oregon_21 = 0;
 						preamb_state = WAIT_FOR_END_OF_DATA_3;
 						break;
 					case WAIT_FOR_END_OF_DATA:
-						if ( duration > 5100) {				// Regular GAP detected search for Header
+						if (duration > 5100) {				// Regular GAP detected search for Header
 							if (flag_oregon_21 == 1) {		// 2nd footer is also oregon_21
 								duration = O21_FOOTER;
 								r.pulses[r.length]   = duration;
 							}
 							preamb_state = WAIT_FOR_END_OF_HEADER;
 						}
-						if ( duration > PREAMB_SYNC_MIN ) {
+						if (duration > PREAMB_SYNC_MIN) {
 							preamb_pulse_counter++;
 							preamb_duration += r.pulses[r.length];
 						} else {
@@ -1665,7 +1665,7 @@ int flag_oregon_21 = 0;
 						}
 						break;
 					case WAIT_FOR_END_OF_DATA_3:
-						if ( duration > 5100) {
+						if (duration > 5100) {
 							preamb_state = WAIT_FOR_END_OF_HEADER;
 							duration = O21_FOOTER;    // Replace GAP with defined footer value
 							r.pulses[r.length]   = duration;

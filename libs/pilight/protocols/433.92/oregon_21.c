@@ -15,11 +15,6 @@
     You should have received a copy of the GNU General Public License
     along with pilight. If not, see <http://www.gnu.org/licenses/>
 */
-/*
-Change Log:
-0.9     - 1st release
-0.97	- port to V7
-*/
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -91,7 +86,7 @@ static void createMessage(	int device_id, int id, int unit, int battery, double 
 static void parseCode(void) {
 	int binary [BINLEN_OREGON_21_PROT];
 
-	int i, s_0;
+	int i, s_0, b_unknown;
 
 	int pBin = 0, pRaw = 0;
 	int protocol_sync = 1;
@@ -148,6 +143,7 @@ static void parseCode(void) {
 // and remove all inverted bits
 	pRaw = 0;
 	s_0 = 0;
+	b_unknown = 1;	// Assume protocol is valid and known
 	rf_state = 1;
 	for  (i=0;i<BINLEN_OREGON_21_PROT;i++) {
 		binary[i]=0;
@@ -213,7 +209,7 @@ static void parseCode(void) {
 						protocol_sync = 3;
 					}
 				}
-				if ( rDataLow == 1 ) {
+				if (rDataLow == 1) {
 					binary[pBin]=0;
 				} else {
 					binary[pBin]=1;
@@ -228,7 +224,7 @@ static void parseCode(void) {
 						// No Data pulse yet, Sync only, there must be another Short pulse
 						rDataTime=OREGON_21->raw[pRaw++];
 						rf_state ^= 1;
-							if( (rDataTime > dur_short[rf_state][0]) && (rDataTime < dur_short[rf_state][1])) {
+						if( (rDataTime > dur_short[rf_state][0]) && (rDataTime < dur_short[rf_state][1])) {
 							// Data pulse, No Toogle
 						} else {
 							// Protocol Error, there is no single short pulse
@@ -243,7 +239,7 @@ static void parseCode(void) {
 							protocol_sync = 92;
 						}
 					}
-					if ( rDataLow == 1 ) {
+					if (rDataLow == 1) {
 						if (binary[pBin]==1) {
 							binary[pBin++]=0;
 						} else {
@@ -266,8 +262,8 @@ static void parseCode(void) {
 				if ( (rDataTime > PULSE_OREGON_21_FOOTER_L) && (rDataTime < PULSE_OREGON_21_FOOTER_H) ) {
 					protocol_sync = 98;
 				} else {
-				protocol_sync = 91;
-			}
+					protocol_sync = 91;
+				}
 			break;
 			case 89:
 			// Tha max. of bits in binary data array was exceeded
@@ -396,20 +392,22 @@ static void parseCode(void) {
 			break;
 
 			default:
+				// Do not create a receive message for unknown protocol ID's, but list them in debug mode 
 				logprintf(LOG_DEBUG, "OREGON_21: Unknown device_id: %d", device_id);
+				b_unknown = 0;
 			break;
 		}
-
 
 		if(log_level_get() >= LOG_DEBUG) {
 			fprintf(stderr,"\n device: %d - id: %d - unit: %d - batt: %d - temp: %f - humi: %f - uv: %d",device_id, id, unit, battery, temp, humidity, uv);
 			fprintf(stderr,"\n wind_dir: %d - wind_speed: %d - wind_avg: %d - rain: %d - rain_total: %d - pressure: %d\n", wind_dir, wind_speed, wind_avg, rain, rain_total, pressure);
 		}
-
-		createMessage(device_id, id, unit, battery, temp, humidity, uv, wind_dir, wind_speed, wind_avg, rain, rain_total, pressure);
+		if (b_unknown) {
+			createMessage(device_id, id, unit, battery, temp, humidity, uv, wind_dir, wind_speed, wind_avg, rain, rain_total, pressure);
+		}
 
 	} else {
-	}
+	} // End if > 97
 }
 
 #ifndef MODULE
