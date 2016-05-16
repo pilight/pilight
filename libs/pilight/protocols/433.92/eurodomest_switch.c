@@ -296,7 +296,7 @@ static int createCode(struct JsonNode *code) {
 	} else if (id > 1048575 || id < 0) {
 		logprintf(LOG_ERR, "eurodomest_switch: invalid id range");
 		return EXIT_FAILURE;
-	} else if ((unit > 3 || unit < 0) && all == 0) {
+	} else if ((unit > 4 || unit < 1) && all == 0) {
 		logprintf(LOG_ERR, "eurodomest_switch: invalid unit range");
 		return EXIT_FAILURE;
 	} else {
@@ -340,7 +340,7 @@ void eurodomestSwitchInit(void) {
 
 	options_add(&eurodomest_switch->options, 't', "on", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
 	options_add(&eurodomest_switch->options, 'f', "off", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
-	options_add(&eurodomest_switch->options, 'u', "unit", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^([0-3])$");
+	options_add(&eurodomest_switch->options, 'u', "unit", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^([1-4])$");
 	options_add(&eurodomest_switch->options, 'i', "id", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^([0-9]{1}|[0-9]{2}|[0-9]{3}|[0-9]{4}|[0-9]{5}|[0-9]{6}|[0-9]{7})$");
 	options_add(&eurodomest_switch->options, 'a', "all", OPTION_OPT_VALUE, DEVICES_OPTIONAL, JSON_NUMBER, NULL, NULL);
 	options_add(&eurodomest_switch->options, 'l', "learn", OPTION_NO_VALUE, DEVICES_OPTIONAL, JSON_NUMBER, NULL, NULL);
