@@ -1586,15 +1586,13 @@ int flag_oregon_21 = 0;
 				switch (preamb_state) {
 					case WAIT_FOR_END_OF_HEADER:
 						flag_oregon_21 = 0;
-						if (duration > PREAMB_SYNC_MIN && duration < PREAMB_SYNC_MAX) {	// Check for pulses with clock duration
+						if (duration > PREAMB_SYNC_MIN) {	// Check for pulses with at least clock duration
 							preamb_pulse_counter++;
 							preamb_duration += r.pulses[r.length];
 						} else {
 							// Check if we found the deviating pulse after a series of consecutive pulses
 							// and that the deviating pulse qualifies as a SYNC pulse
-							if (preamb_pulse_counter > PRE_AMB_HEADER_CNT
-								&& preamb_pulse_counter < PRE_AMB_HEADER_CNT_MAX
-								&& duration < PREAMB_SYNC_L_MAX) {
+							if (preamb_pulse_counter > PRE_AMB_HEADER_CNT) {
 								flag_oregon_21 = 1;					// flag for footer based protocols: 2nd transmission
 								preamb_state = WAIT_FOR_END_OF_DATA;
 								preamb_pulse_counter = 0;

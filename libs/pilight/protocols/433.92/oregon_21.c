@@ -455,7 +455,7 @@ void oregon_21WeatherInit(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name =  "oregon_21";
-	module->version =  "1.11";
+	module->version =  "1.12";
 	module->reqversion =  "7.0";
 	module->reqcommit =  NULL;
 }
