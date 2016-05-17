@@ -637,7 +637,7 @@ void somfy_rtsInit(void) {
 	options_add(&somfy_rts->options, 'a', "address", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^([0-9]{1,6}|[1-5][0-9]{6}|16[0-6][0-9]{5}|167[0-6][0-9]{4}|1677[0-6][0-9]{3}| 16777[0-1][0-9]{2}|1677720[0-9]|1677721[0-6])$");
 	options_add(&somfy_rts->options, 'c', "rollingcode", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^([0-9]{1,4}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5])$");
 	options_add(&somfy_rts->options, 'k', "rollingkey", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^([0-9]|1[0-5])$");
-	options_add(&somfy_rts->options, 'r', "repeats", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_STRING, NULL, "^([4-9]|1[0-9])$");
+	options_add(&somfy_rts->options, 'r', "repeats", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^([4-9]|1[0-9])$");
 	options_add(&somfy_rts->options, 'n', "command_code", OPTION_HAS_VALUE, DEVICES_OPTIONAL, JSON_NUMBER, NULL,  "^([0-9]|1[0-5])$");
 	options_add(&somfy_rts->options, 't', "up", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
 	options_add(&somfy_rts->options, 'f', "down", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);

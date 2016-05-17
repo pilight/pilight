@@ -65,6 +65,11 @@ static void parseCode(void) {
 	int i = 0, x = 0, binary[RAW_LENGTH/2];
 	int id = 0, state = 0, unit = 0, all = 0;
 
+	if(cleverwatts->rawlen>RAW_LENGTH) {
+		logprintf(LOG_ERR, "cleverwatts: parsecode - invalid parameter passed %d", cleverwatts->rawlen);
+		return;
+	}
+
 	for(x=1;x<cleverwatts->rawlen-1;x+=2) {
 		if(cleverwatts->raw[x] > (int)((double)AVG_PULSE_LENGTH*((double)PULSE_MULTIPLIER/2))) {
 			binary[i++] = 1;
@@ -232,7 +237,7 @@ void cleverwattsInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "cleverwatts";
-	module->version = "1.0";
+	module->version = "1.1";
 	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }

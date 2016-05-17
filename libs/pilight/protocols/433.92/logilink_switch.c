@@ -62,6 +62,11 @@ static void parseCode(void) {
 	int i = 0, x = 0, binary[RAW_LENGTH/2];
 	int systemcode = 0, state = 0, unitcode = 0;
 
+	if(logilink_switch->rawlen>RAW_LENGTH) {
+		logprintf(LOG_ERR, "logilink_switch: parsecode - invalid parameter passed %d", logilink_switch->rawlen);
+		return;
+	}
+
 	for(x=0;x<logilink_switch->rawlen-1;x+=2) {
 		if(logilink_switch->raw[x] > (int)((double)AVG_PULSE_LENGTH*((double)PULSE_MULTIPLIER/2))) {
 			binary[i++] = 1;
@@ -227,7 +232,7 @@ void logilinkSwitchInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "logilink_sitch";
-	module->version = "1.0";
+	module->version = "1.1";
 	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }

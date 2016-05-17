@@ -70,6 +70,11 @@ static void parseCode(void) {
 	int i = 0, x = 0, y = 0, binary[RAW_LENGTH/2];
 	int id = -1, state = -1, unit = -1, all = 0, code = 0;
 
+	if(beamish_switch->rawlen>RAW_LENGTH) {
+		logprintf(LOG_ERR, "beamish_switch: parsecode - invalid parameter passed %d", beamish_switch->rawlen);
+		return;
+	}
+
 	for(x=0;x<beamish_switch->rawlen;x+=2) {
 		if(beamish_switch->raw[x] > (int)((double)AVG_PULSE_LENGTH*((double)PULSE_MULTIPLIER/2))) {
 			binary[i++] = 1;
@@ -241,7 +246,7 @@ void beamishSwitchInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "beamish_switch";
-	module->version = "1.1";
+	module->version = "1.2";
 	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }
