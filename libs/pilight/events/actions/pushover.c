@@ -116,7 +116,7 @@ static int checkArguments(struct rules_actions_t *obj) {
 static void *thread(void *param) {
 	struct rules_actions_t *pth = (struct rules_actions_t *)param;
 	// struct rules_t *obj = pth->obj;
-	struct JsonNode *arguments = pth->arguments;
+	struct JsonNode *arguments = pth->parsedargs;
 	struct JsonNode *jtitle = NULL;
 	struct JsonNode *jmessage = NULL;
 	struct JsonNode *juser = NULL;
@@ -213,7 +213,7 @@ void actionPushoverInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "pushover";
-	module->version = "2.2";
+	module->version = "2.3";
 	module->reqversion = "5.0";
 	module->reqcommit = "87";
 }
