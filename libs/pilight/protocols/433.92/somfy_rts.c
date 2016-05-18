@@ -55,8 +55,8 @@
 // #define PULSE_SOMFY_FOOTER	221	// 7531/PULSE_DIV, if last symbol is low plus _SHORT
 #define PULSE_SOMFY_FOOTER_L	(PULSE_SOMFY_FOOTER-25)*PULSE_DIV
 #define PULSE_SOMFY_FOOTER_H	(PULSE_SOMFY_FOOTER+25)*PULSE_DIV+PULSE_SOMFY_SHORT_H
-#define PULSE_SOMFY_FOOTER_L_1	(PULSE_SOMFY_FOOTER_1-5)*PULSE_DIV
-#define PULSE_SOMFY_FOOTER_H_1	(PULSE_SOMFY_FOOTER_1+5)*PULSE_DIV+PULSE_SOMFY_SHORT_H
+#define PULSE_SOMFY_FOOTER_L_1	(PULSE_SOMFY_FOOTER_1-25)*PULSE_DIV
+#define PULSE_SOMFY_FOOTER_H_1	(PULSE_SOMFY_FOOTER_1+25)*PULSE_DIV+PULSE_SOMFY_SHORT_H
 // Bin / Rawlength definitions
 // binlen Classic protocol: 56 - new_gen protocol: 56+24=80
 // rawlen Classic protocol: 73 .. 129  - new_gen protocol: 97 .. 177
@@ -102,6 +102,7 @@ static int validate(void) {
 
 	if((somfy_rts->rawlen > MINRAWLEN_SOMFY_PROT) &&
 		(somfy_rts->rawlen < MAXRAWLEN_SOMFY_PROT)) {
+		// 27500, 32500 support
 		if(((somfy_rts->raw[somfy_rts->rawlen-1] > PULSE_SOMFY_FOOTER_L) &&
 				(somfy_rts->raw[somfy_rts->rawlen-1] < PULSE_SOMFY_FOOTER_H)) ||
 			((somfy_rts->raw[somfy_rts->rawlen-1] > PULSE_SOMFY_FOOTER_L_1) &&
@@ -212,7 +213,8 @@ static void parseCode(void) {
 			case 2:
 			// Determine if we have a rising/falling edge in the middle
 			rDataLow = -rDataLow;
-			if( somfy_rts->raw[pRaw] > PULSE_SOMFY_FOOTER_L && somfy_rts->raw[pRaw] < PULSE_SOMFY_FOOTER_H) {
+			if(    (somfy_rts->raw[pRaw] > PULSE_SOMFY_FOOTER_L && somfy_rts->raw[pRaw] < PULSE_SOMFY_FOOTER_H)
+				|| (somfy_rts->raw[pRaw] > PULSE_SOMFY_FOOTER_L_1 && somfy_rts->raw[pRaw] < PULSE_SOMFY_FOOTER_H_1) ) {
 				if (pBin==56) {
 					protocol_sync=4;	// We received all 56 classic frame bits plus 24 supplementary bits
 				} else {
@@ -245,7 +247,8 @@ static void parseCode(void) {
 			case 3:
 			// Determine if we have a rising/falling edge in the middle
 			rDataLow = -rDataLow;
-			if(somfy_rts->raw[pRaw] > PULSE_SOMFY_FOOTER_L && somfy_rts->raw[pRaw] < PULSE_SOMFY_FOOTER_H) {
+			if(    (somfy_rts->raw[pRaw] > PULSE_SOMFY_FOOTER_L && somfy_rts->raw[pRaw] < PULSE_SOMFY_FOOTER_H)
+				|| (somfy_rts->raw[pRaw] > PULSE_SOMFY_FOOTER_L_1 && somfy_rts->raw[pRaw] < PULSE_SOMFY_FOOTER_H_1) ) {
 				if (pBin==80) {
 					protocol_sync=4;	// We received (56 classic) + (24 supplementary) frame bits
 				} else {
@@ -625,7 +628,7 @@ void somfy_rtsInit(void) {
 	somfy_rts->minrawlen = MINRAWLEN_SOMFY_PROT;
 	somfy_rts->maxrawlen = MAXRAWLEN_SOMFY_PROT;
 	somfy_rts->mingaplen = PULSE_SOMFY_FOOTER_L;
-	somfy_rts->maxgaplen = PULSE_SOMFY_FOOTER_H;
+	somfy_rts->maxgaplen = PULSE_SOMFY_FOOTER_H_1;
 	// Wakeup sequence
 	// Hardware Sync: 2416.2416 or 2416.2416.2416.2416.2416.2416.2416: 1st short Sync not yet implemented at send time
 	// START 4550.604.604 1st Data bit=0 or 4550.1208 1st Data bit=1
@@ -664,7 +667,7 @@ void somfy_rtsInit(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name =  "somfy_rts";
-	module->version =  "1.01";
+	module->version =  "1.02";
 	module->reqversion =  "7.0";
 	module->reqcommit =  NULL;
 }
