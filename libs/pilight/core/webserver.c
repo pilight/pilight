@@ -63,7 +63,6 @@
 #include "json.h"
 #include "webserver.h"
 #include "ssdp.h"
-#include "fcache.h"
 
 #include "../../mbedtls/mbedtls/sha1.h"
 
@@ -113,17 +112,17 @@ typedef struct websocket_clients_t {
 	struct websocket_clients_t *next;
 } websocket_clients_t;
 
+typedef struct fcache_t {
+	char *name;
+	unsigned long size;
+	unsigned char *bytes;
+	struct fcache_t *next;
+} fcaches_t;
+
+static struct fcache_t *fcache;
+
 static pthread_mutex_t websocket_lock;
 static pthread_mutexattr_t websocket_attr;
-
-typedef struct filehandler_t {
-	unsigned char *bytes;
-	FILE *fp;
-	unsigned int ptr;
-	unsigned int length;
-	unsigned short free;
-} filehandler_t;
-
 struct websocket_clients_t *websocket_clients = NULL;
 
 static void *reason_socket_received_free(void *param) {
@@ -173,13 +172,24 @@ int webserver_gc(void) {
 		FREE(websocket_clients);
 	}
 
-	fcache_gc();
+	struct fcache_t *tmp = fcache;
+	while(fcache) {
+		tmp = fcache;
+		FREE(tmp->name);
+		FREE(tmp->bytes);
+		fcache = fcache->next;
+		FREE(tmp);
+	}
+	if(fcache != NULL) {
+		FREE(fcache);
+	}
+
 	sha256cache_gc();
 	logprintf(LOG_DEBUG, "garbage collected webserver library");
 	return 1;
 }
 
-void webserver_create_header(char **p, const char *message, char *mimetype, unsigned int len) {
+void webserver_create_header(char **p, const char *message, char *mimetype, unsigned long len) {
 	*p += sprintf((char *)*p,
 		"HTTP/1.0 %s\r\n"
 		"Server: pilight\r\n"
@@ -187,13 +197,13 @@ void webserver_create_header(char **p, const char *message, char *mimetype, unsi
 		"Content-Type: %s\r\n",
 		message, mimetype);
 	*p += sprintf((char *)*p,
-		"Content-Length: %u\r\n\r\n",
+		"Content-Length: %lu\r\n\r\n",
 		len);
 }
 
 static void create_404_header(const char *in, char **p) {
 	char mimetype[] = "text/html";
-	webserver_create_header(p, "404 Not Found", mimetype, (unsigned int)(204+strlen((const char *)in)));
+	webserver_create_header(p, "404 Not Found", mimetype, (unsigned long)(204+strlen((const char *)in)));
 	*p += sprintf((char *)*p, "<!DOCTYPE HTML PUBLIC \"-//IETF//DTD HTML 2.0//EN\">\x0d\x0a"
 		"<html><head>\x0d\x0a"
 		"<title>404 Not Found</title>\x0d\x0a"
@@ -342,7 +352,7 @@ static void write_chunk(struct connection_t *conn, char *buf, int len) {
 	eventpool_fd_write(conn->fd, "\r\n", 2);
 }
 
-static size_t send_data(struct connection_t *conn, void *data, int data_len) {
+static size_t send_data(struct connection_t *conn, void *data, unsigned long data_len) {
 	if(conn->flags == 0) {
 		char *a = "HTTP/1.1 200 OK\r\nKeep-Alive: timeout=15, max=100\r\nTransfer-Encoding: chunked\r\n\r\n";
 		eventpool_fd_write(conn->fd, a, strlen(a));
@@ -477,47 +487,89 @@ clear:
 	return MG_TRUE;
 }
 
+static int file_callback(struct eventpool_fd_t *node, int event) {
+	struct connection_t *conn = node->userdata;
+	struct eventpool_fd_t *tmp = NULL;
+	char buffer[WEBSERVER_CHUNK_SIZE];
+	int bytes = 0;
+
+	switch(event) {
+		case EV_CONNECT_SUCCESS: {
+			eventpool_fd_enable_read(node);
+		} break;
+		case EV_READ: {
+			bytes = read(node->fd, buffer, WEBSERVER_CHUNK_SIZE);
+			if(bytes == 0) {
+				if(conn->flags == 1) {
+					conn->pull = 1;
+					eventpool_fd_write(conn->fd, "0\r\n\r\n", 5);
+				}
+				return -1;
+			}
+			if(bytes < 0) {
+				if(errno == EINTR || errno == EAGAIN) {
+					eventpool_fd_enable_read(node);
+					return 0;
+				}
+				perror("read");
+				return -1;
+			}
+
+			if(cache == 1) {
+				int match = 0;
+				struct fcache_t *tmp = fcache;
+				while(tmp) {
+					if(strcmp(tmp->name, conn->request) == 0) {
+						match = 1;
+						break;
+					}
+					tmp = tmp->next;
+				}
+				struct fcache_t *node = NULL;
+				if(match == 0) {
+					node = MALLOC(sizeof(struct fcache_t));
+					if(node == NULL) {
+						OUT_OF_MEMORY
+					}
+					node->size = 0;
+					node->bytes = NULL;
+					if((node->name = MALLOC(strlen(conn->request)+1)) == NULL) {
+						OUT_OF_MEMORY
+					}
+					strcpy(node->name, conn->request);
+					node->next = fcache;
+					fcache = node;
+				} else {
+					node = tmp;
+				}
+				if((node->bytes = REALLOC(node->bytes, node->size+bytes)) == NULL) {
+					OUT_OF_MEMORY
+				}
+				memcpy(&node->bytes[node->size], buffer, bytes);
+				node->size += bytes;
+			}
+			send_data(conn, &buffer, bytes);
+			eventpool_fd_enable_read(node);
+		} break;
+		case EV_DISCONNECTED: {
+			if(eventpool_fd_select(conn->fd, &tmp) == 0) {
+				tmp->stage = EVENTPOOL_STAGE_DISCONNECT;
+			}
+			eventpool_fd_remove(node);
+		} break;
+	}
+	return 0;
+}
+
 static int request_handler(struct connection_t *conn) {
-	char *request = NULL;
 	char *ext = NULL;
 	char *mimetype = NULL;
-	int size = 0;
 	char buffer[4096], *p = buffer;
-	struct filehandler_t *filehandler = (struct filehandler_t *)conn->connection_param;
-	unsigned int chunk = WEBSERVER_CHUNK_SIZE;
-	struct stat st;
 
 	memset(buffer, '\0', 4096);
 
 	if(conn->is_websocket == 0) {
-		if(filehandler != NULL) {
-			char buff[WEBSERVER_CHUNK_SIZE];
-			if((filehandler->length-filehandler->ptr) < chunk) {
-				chunk = (unsigned int)(filehandler->length-filehandler->ptr);
-			}
-			if(filehandler->fp != NULL) {
-				chunk = (unsigned int)fread(buff, sizeof(char), WEBSERVER_CHUNK_SIZE-1, filehandler->fp);
-				send_data(conn, buff, (int)chunk);
-			} else {
-				send_data(conn, &filehandler->bytes[filehandler->ptr], (int)chunk);
-			}
-			filehandler->ptr += chunk;
-
-			if(filehandler->ptr == filehandler->length) {
-				if(filehandler->fp != NULL) {
-					fclose(filehandler->fp);
-					filehandler->fp = NULL;
-				}
-				if(filehandler->free == 1) {
-					FREE(filehandler->bytes);
-				}
-				FREE(filehandler);
-				conn->connection_param = NULL;
-				return MG_TRUE;
-			} else {
-				return MG_MORE;
-			}
-		} else if(conn->uri != NULL && strlen(conn->uri) > 0) {
+		if(conn->uri != NULL && strlen(conn->uri) > 0) {
 			if(strcmp(conn->uri, "/send") == 0 || strcmp(conn->uri, "/control") == 0) {
 				return parse_rest(conn);
 			} else if(strcmp(conn->uri, "/config") == 0) {
@@ -561,50 +613,50 @@ static int request_handler(struct connection_t *conn) {
 				/* Check if the root is terminated by a slash. If not, than add it */
 				for(q=0;q<5;q++) {
 					size_t l = strlen(root)+strlen(conn->uri)+strlen(indexes[q])+4;
-					if((request = REALLOC(request, l)) == NULL) {
+					if((conn->request = REALLOC(conn->request, l)) == NULL) {
 						OUT_OF_MEMORY
 					}
-					memset(request, '\0', l);
+					memset(conn->request, '\0', l);
 					if(root[strlen(root)-1] == '/') {
 #ifdef __FreeBSD__
-						sprintf(request, "%s/%s%s", root, conn->uri, indexes[q]);
+						sprintf(conn->request, "%s/%s%s", root, conn->uri, indexes[q]);
 #else
-						sprintf(request, "%s%s%s", root, conn->uri, indexes[q]);
+						sprintf(conn->request, "%s%s%s", root, conn->uri, indexes[q]);
 #endif
 					} else {
-						sprintf(request, "%s/%s%s", root, conn->uri, indexes[q]);
+						sprintf(conn->request, "%s/%s%s", root, conn->uri, indexes[q]);
 					}
-					if(access(request, F_OK) == 0) {
+					if(access(conn->request, F_OK) == 0) {
 						break;
 					}
 				}
 			} else if(root != NULL && conn->uri != NULL) {
 				size_t wlen = strlen(root)+strlen(conn->uri)+2;
-				if((request = MALLOC(wlen)) == NULL) {
+				if((conn->request = MALLOC(wlen)) == NULL) {
 					OUT_OF_MEMORY
 				}
-				memset(request, '\0', wlen);
+				memset(conn->request, '\0', wlen);
 				/* If a file was requested add it to the webserver path to create the absolute path */
 				if(root[strlen(root)-1] == '/') {
 					if(conn->uri[0] == '/')
-						sprintf(request, "%s%s", root, conn->uri);
+						sprintf(conn->request, "%s%s", root, conn->uri);
 					else
-						sprintf(request, "%s/%s", root, conn->uri);
+						sprintf(conn->request, "%s/%s", root, conn->uri);
 				} else {
 					if(conn->uri[0] == '/')
-						sprintf(request, "%s/%s", root, conn->uri);
+						sprintf(conn->request, "%s/%s", root, conn->uri);
 					else
-						sprintf(request, "%s/%s", root, conn->uri);
+						sprintf(conn->request, "%s/%s", root, conn->uri);
 				}
 			}
-			if(request == NULL) {
+			if(conn->request == NULL) {
 				return MG_FALSE;
 			}
 
 			char *dot = NULL;
 			/* Retrieve the extension of the requested file and create a mimetype accordingly */
-			dot = strrchr(request, '.');
-			if(dot == NULL || dot == request) {
+			dot = strrchr(conn->request, '.');
+			if(dot == NULL || dot == conn->request) {
 				mimetype = strdup("text/plain");
 			} else {
 				if((ext = REALLOC(ext, strlen(dot)+1)) == NULL) {
@@ -640,14 +692,7 @@ static int request_handler(struct connection_t *conn) {
 			memset(buffer, '\0', 4096);
 			p = buffer;
 
-			if(access(request, F_OK) == 0) {
-				stat(request, &st);
-				if(cache == 1 && st.st_size <= MAX_CACHE_FILESIZE &&
-				  fcache_get_size(request, &size) != 0 && fcache_add(request) != 0) {
-					FREE(mimetype);
-					goto filenotfound;
-				}
-			} else {
+			if(access(conn->request, F_OK) != 0) {
 				FREE(mimetype);
 				goto filenotfound;
 			}
@@ -658,85 +703,42 @@ static int request_handler(struct connection_t *conn) {
 					char line[1024] = {'\0'};
 					FREE(mimetype);
 					sprintf(line, "Webserver Warning: POST Content-Length of %d bytes exceeds the limit of %d bytes in Unknown on line 0", MAX_UPLOAD_FILESIZE, atoi(cl));
-					webserver_create_header(&p, "200 OK", "text/plain", (unsigned int)strlen(line));
+					webserver_create_header(&p, "200 OK", "text/plain", strlen(line));
 					eventpool_fd_write(conn->fd, buffer, (int)(p-buffer));
 					eventpool_fd_write(conn->fd, line, (int)strlen(line));
-					FREE(request);
+					FREE(conn->request);
+					conn->request = NULL;
 					return MG_TRUE;
 				}
 			}
 
-			/* If webserver caching is enabled, first load all files in the memory */
-			stat(request, &st);
-			if(cache == 0 || st.st_size > MAX_CACHE_FILESIZE) {
-				FILE *fp = fopen(request, "rb");
-				fseek(fp, 0, SEEK_END);
-				size = (int)ftell(fp);
-				fseek(fp, 0, SEEK_SET);
-
-				if(strstr(mimetype, "text") != NULL && st.st_size < WEBSERVER_CHUNK_SIZE) {
-					webserver_create_header(&p, "200 OK", mimetype, (unsigned int)size);
-					eventpool_fd_write(conn->fd, buffer, (int)(p-buffer));
-					size_t total = 0;
-					chunk = 0;
-					unsigned char buff[1024];
-					while(total < size) {
-						chunk = (unsigned int)fread(buff, sizeof(char), 1024, fp);
-						eventpool_fd_write(conn->fd, (char *)buff, (int)chunk);
-						total += chunk;
+			int match = 0;
+			if(cache == 1) {
+				struct fcache_t *tmp = fcache;
+				while(tmp) {
+					if(strcmp(tmp->name, conn->request) == 0) {
+						match = 1;
+						break;
 					}
-					fclose(fp);
-				} else {
-					if(filehandler == NULL) {
-						if((filehandler = MALLOC(sizeof(struct filehandler_t))) == NULL) {
-							OUT_OF_MEMORY
-						}
-						filehandler->bytes = NULL;
-						filehandler->length = (unsigned int)size;
-						filehandler->ptr = 0;
-						filehandler->free = 0;
-						filehandler->fp = fp;
-						conn->connection_param = filehandler;
-					}
-					if(filehandler != NULL) {
-						FREE(mimetype);
-						FREE(request);
-						return MG_MORE;
-					}
+					tmp = tmp->next;
 				}
-
-				FREE(mimetype);
-				FREE(request);
-				return MG_TRUE;
-			} else {
-				if(fcache_get_size(request, &size) == 0) {
-					if(strstr(mimetype, "text") != NULL && size < WEBSERVER_CHUNK_SIZE) {
-						webserver_create_header(&p, "200 OK", mimetype, (unsigned int)size);
-						eventpool_fd_write(conn->fd, buffer, (int)(p-buffer));
-						eventpool_fd_write(conn->fd, (char *)fcache_get_bytes(request), size);
-						FREE(mimetype);
-						FREE(request);
-						return MG_TRUE;
-					} else {
-						if(filehandler == NULL) {
-							if((filehandler = MALLOC(sizeof(struct filehandler_t))) == NULL) {
-								OUT_OF_MEMORY
-							}
-							filehandler->bytes = fcache_get_bytes(request);
-							filehandler->length = (unsigned int)size;
-							filehandler->ptr = 0;
-							filehandler->free = 0;
-							filehandler->fp = NULL;
-							conn->connection_param = filehandler;
-						}
-						if(filehandler != NULL) {
-							return MG_MORE;
-						}
-					}
+				if(match == 1) {
+					send_data(conn, tmp->bytes, tmp->size);
+					eventpool_fd_write(conn->fd, "0\r\n\r\n", 5);
+					return MG_TRUE;
 				}
 			}
+			if(match == 0) {
+				int fd = open(conn->request, O_RDWR | O_NONBLOCK);
+				if(fd < 0) {
+					goto filenotfound;
+				}
+
+				eventpool_fd_add(conn->request, fd, file_callback, NULL, conn);
+			}
+
 			FREE(mimetype);
-			FREE(request);
+			return MG_MORE;
 		}
 	} else if(websockets == 1) {
 		char input[conn->content_len+1];
@@ -757,13 +759,11 @@ static int request_handler(struct connection_t *conn) {
 		}
 		return MG_TRUE;
 	}
-	return MG_MORE;
 
 filenotfound:
-	logprintf(LOG_WARNING, "(webserver) could not read %s", request);
+	logprintf(LOG_WARNING, "(webserver) could not read %s", conn->request);
 	create_404_header(conn->uri, &p);
 	FREE(mimetype);
-	FREE(request);
 
 	eventpool_fd_write(conn->fd, buffer, (int)(p-buffer));
 
@@ -1083,11 +1083,6 @@ static int client_send(struct eventpool_fd_t *node) {
 				c->push = 1;
 			}
 		}
-		// if(c != NULL && c->fin_size > 0) {
-			// if(memcmp(&node->send_iobuf.buf[ret-c->fin_size], c->fin, c->fin_size) == 0) {
-				// return -1;
-			// }
-		// }
 		return ret;
 #ifdef WEBSERVER_HTTPS
 	} else {
@@ -1117,11 +1112,6 @@ static int client_send(struct eventpool_fd_t *node) {
 					c->push = 1;
 				}
 			}
-			// if(c != NULL && c->fin_size > 0) {
-				// if(memcmp(&node->send_iobuf.buf[ret-c->fin_size], c->fin, c->fin_size) == 0) {
-					// return -1;
-				// }
-			// }
 			return ret;
 		}
 	}
@@ -1138,28 +1128,6 @@ static int client_callback(struct eventpool_fd_t *node, int event) {
 	memset(buffer, '\0', BUFFER_SIZE);
 
 	switch(event) {
-		case EV_POLL: {
-			if(node->userdata != NULL) {
-				struct connection_t *c = (struct connection_t *)node->userdata;
-				c->timer++;
-				if(c->timer > 10) {
-					c->timer = 0;
-					if(c->is_websocket == 1) {
-						websocket_write(c, WEBSOCKET_OPCODE_PING, NULL, 0);
-						struct timeval tv;
-						gettimeofday(&tv, NULL);
-						int now = 1000000 * (unsigned int)tv.tv_sec + (unsigned int)tv.tv_usec;
-						if((now - c->ping) > 3000000 && (now - c->ping) != now) {
-							return -1;
-						}
-						c->ping = now;
-					}
-				}
-				if(c->push == 1 && c->pull == 1) {
-					return -1;
-				}
-			}
-		} break;
 		case EV_CONNECT_SUCCESS:
 			eventpool_fd_enable_read(node);
 			struct connection_t *c = MALLOC(sizeof(struct connection_t));
@@ -1168,6 +1136,7 @@ static int client_callback(struct eventpool_fd_t *node, int event) {
 			}
 			memset(c, 0, sizeof(struct connection_t));
 			node->userdata = (void *)c;
+			c->request = NULL;
 			c->is_websocket = 0;
 			c->fd = node->fd;
 			c->flags = 0;
@@ -1238,14 +1207,9 @@ static int client_callback(struct eventpool_fd_t *node, int event) {
 			}
 			int x = request_handler(c);
 			if(x == MG_MORE) {
-				c->push = 0;
-				eventpool_fd_enable_write(node);
+				return 0;
 			}
 			if(x == MG_TRUE) {
-				if(c->flags == 1) {
-					c->pull = 1;
-					eventpool_fd_write(c->fd, "0\r\n\r\n", 5);
-				}
 				if(c->is_websocket == 1) {
 					eventpool_fd_enable_read(node);
 					return 0;
@@ -1253,23 +1217,6 @@ static int client_callback(struct eventpool_fd_t *node, int event) {
 				return -1;
 			}
 			eventpool_fd_enable_read(node);
-		} break;
-		case EV_WRITE: {
-			struct connection_t *c = (struct connection_t *)node->userdata;
-			if(c->is_websocket == 0) {
-				int x = request_handler(c);
-				if(x == MG_TRUE) {
-					if(c->flags == 1) {
-						c->pull = 1;
-						eventpool_fd_write(c->fd, "0\r\n\r\n", 5);
-					}
-					return -1;
-				}
-				if(x == MG_MORE) {
-					eventpool_fd_enable_write(node);
-					return 0;
-				}
-			}
 		} break;
 		case EV_DISCONNECTED: {
 			if(node->userdata != NULL) {
@@ -1286,10 +1233,11 @@ static int client_callback(struct eventpool_fd_t *node, int event) {
 				if(c->connection_param != NULL) {
 					FREE(c->connection_param);
 				}
+				if(c->request != NULL) {
+					FREE(c->request);
+				}
 				FREE(node->userdata);
 			}
-			shutdown(node->fd, SHUT_WR);
-			close(node->fd);
 			eventpool_fd_remove(node);
 		} break;
 	}
@@ -1369,8 +1317,6 @@ static int server_callback(struct eventpool_fd_t *node, int event) {
 					websocket_write(c, WEBSOCKET_OPCODE_CONNECTION_CLOSE, NULL, 0);
 				}
 			}
-			shutdown(node->fd, SHUT_WR);
-			close(node->fd);
 			eventpool_fd_remove(node);
 		} break;
 	}

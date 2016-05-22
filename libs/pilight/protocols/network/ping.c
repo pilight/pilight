@@ -116,7 +116,6 @@ static void *thread(void *param) {
 	tv.tv_sec = settings->interval;
 	tv.tv_usec = 0;
 	threadpool_add_scheduled_work(settings->name, thread, tv, (void *)settings);
-
 	if(settings->polling == 1) {
 		logprintf(LOG_DEBUG, "ping is still searching for network device %s", settings->ip);
 		return NULL;
@@ -124,8 +123,8 @@ static void *thread(void *param) {
 
 	settings->polling = 1;
 
+	logprintf(LOG_DEBUG, "ping is starting search for network device %s", settings->ip);
 	ping_add_host(&iplist, settings->ip);
-
 	ping(iplist, callback);
 
 	return (void *)NULL;

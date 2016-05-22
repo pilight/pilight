@@ -115,14 +115,12 @@ static int client_callback(struct eventpool_fd_t *node, int event) {
 		return 0;
 	}
 	switch(event) {
-		case EV_POLL: {
-			eventpool_fd_enable_read(node);
-		} break;
 		case EV_CONNECT_SUCCESS: {
 			fd = node->fd;
 			eventpool_fd_enable_read(node);
 		} break;
 		case EV_READ: {
+			eventpool_fd_enable_read(node);
 			n = read(node->fd, &c, 1);
 			if(c == '\n') {
 				data->rptr = 0;
@@ -156,7 +154,7 @@ static int client_callback(struct eventpool_fd_t *node, int event) {
 							double hpf = atof(array[6]);
 
 							if(version > 0 && lpf > 0 && hpf > 0) {
-								logprintf(LOG_DEBUG, "filter version: %.0f, lpf: %.0f, hpf: %.0f}", version, lpf, hpf);
+								logprintf(LOG_DEBUG, "filter version: %.0f, lpf: %.0f, hpf: %.0f", version, lpf, hpf);
 							}
 						}
 					}
@@ -239,9 +237,9 @@ static int client_callback(struct eventpool_fd_t *node, int event) {
 				n = write(node->fd, send, len);
 				data->syncfw = 2;
 			}
+			eventpool_fd_enable_read(node);
 		} break;
 		case EV_DISCONNECTED: {
-			close(node->fd);
 			fd = 0;
 			FREE(node->userdata);
 			eventpool_fd_remove(node);

@@ -5,7 +5,7 @@
 
 	pilight is free software: you can redistribute it and/or modify it under the
 	terms of the GNU General Public License as published by the Free Software
-	Foundation, either version 3 of the License, or (at your option) any later
+	Foundation, either version 3 of the License, or(at your option) any later
 	version.
 
 	pilight is distributed in the hope that it will be useful, but WITHOUT ANY
@@ -61,8 +61,8 @@
 #define NORMAL_REPEATS		10
 
 static int validate(void) {
-	if (eurodomest_switch->rawlen == RAW_LENGTH) {
-		if (eurodomest_switch->raw[eurodomest_switch->rawlen - 1] >= MIN_LONG_PULSE_LENGTH &&
+	if(eurodomest_switch->rawlen == RAW_LENGTH) {
+		if(eurodomest_switch->raw[eurodomest_switch->rawlen - 1] >= MIN_LONG_PULSE_LENGTH &&
 		    eurodomest_switch->raw[eurodomest_switch->rawlen - 1] <= MAX_LONG_PULSE_LENGTH) {
 			return 0;
 		}
@@ -71,40 +71,38 @@ static int validate(void) {
 	return -1;
 }
 
-static void createMessage(int id, int unit, int state, int all, int learn) {
-	eurodomest_switch->message = json_mkobject();
-
-	json_append_member(eurodomest_switch->message, "id", json_mknumber(id, 0));
-
-	if (all == 1) {
-		json_append_member(eurodomest_switch->message, "all", json_mknumber(all, 0));
+static void createMessage(char *message, int id, int unit, int state, int all, int learn) {
+	int x = snprintf(message, 255, "{\"id\":%d,", id);
+	if(all == 1) {
+		x += snprintf(&message[x], 255-x, "\"all\":1,");
 	} else {
-		json_append_member(eurodomest_switch->message, "unit", json_mknumber(unit, 0));
+		x += snprintf(&message[x], 255-x, "\"unit\":%d,", unit);
 	}
 
-	if (state == 1) {
-		json_append_member(eurodomest_switch->message, "state", json_mkstring("on"));
+	if(state == 1) {
+		x += snprintf(&message[x], 255-x, "\"state\":\"on\"");
 	} else {
-		json_append_member(eurodomest_switch->message, "state", json_mkstring("off"));
+		x += snprintf(&message[x], 255-x, "\"state\":\"off\"");
 	}
+	x += snprintf(&message[x], 255-x, "}");
 
-	if (learn == 1) {
+	if(learn == 1) {
 		eurodomest_switch->txrpt = LEARN_REPEATS;
 	} else {
 		eurodomest_switch->txrpt = NORMAL_REPEATS;
 	}
 }
 
-static void parseCode(void) {
+static void parseCode(char *message) {
 	int binary[BINARY_LENGTH], x = 0, i = 0;
 
-	for (x = 0; x < eurodomest_switch->rawlen - 2; x += 2) {
-		if ((eurodomest_switch->raw[x] >= MIN_MEDIUM_PULSE_LENGTH) &&
+	for(x = 0; x < eurodomest_switch->rawlen - 2; x += 2) {
+		if((eurodomest_switch->raw[x] >= MIN_MEDIUM_PULSE_LENGTH) &&
 		    (eurodomest_switch->raw[x] <= MAX_MEDIUM_PULSE_LENGTH) &&
 		    (eurodomest_switch->raw[x + 1] >= MIN_SHORT_PULSE_LENGTH) &&
 		    (eurodomest_switch->raw[x + 1] <= MAX_SHORT_PULSE_LENGTH)) {
 			binary[i++] = 0;
-		} else if ((eurodomest_switch->raw[x] >= MIN_SHORT_PULSE_LENGTH) &&
+		} else if((eurodomest_switch->raw[x] >= MIN_SHORT_PULSE_LENGTH) &&
 			   (eurodomest_switch->raw[x] <= MAX_SHORT_PULSE_LENGTH) &&
 			   (eurodomest_switch->raw[x + 1] >= MIN_MEDIUM_PULSE_LENGTH) &&
 			   (eurodomest_switch->raw[x + 1] <= MAX_MEDIUM_PULSE_LENGTH)) {
@@ -120,58 +118,58 @@ static void parseCode(void) {
 	int all = 0;
 	int state = 0;
 
-	if (binary[20] == 0 && binary[21] == 0 && binary[22] == 0 && binary[23] == 0) {
-	  	unit = 1;
-	  	all = 0;
-	  	state = 1; // on
-	} else if (binary[20] == 0 && binary[21] == 0 && binary[22] == 0 && binary[23] == 1) {
-	  	unit = 1;
-	  	all = 0;
-	  	state = 0; // off
-	} else if (binary[20] == 0 && binary[21] == 0 && binary[22] == 1 && binary[23] == 1) {
-	  	unit = 2;
-	  	all = 0;
-	  	state = 0; // off
-	} else if (binary[20] == 0 && binary[21] == 0 && binary[22] == 1 && binary[23] == 0) {
-	  	unit = 2;
-	  	all = 0;
-	  	state = 1; // on
-	} else if (binary[20] == 0 && binary[21] == 1 && binary[22] == 0 && binary[23] == 1) {
-	  	unit = 3;
-	  	all = 0;
-	  	state = 0; // off
-	} else if (binary[20] == 0 && binary[21] == 1 && binary[22] == 0 && binary[23] == 0) {
-	  	unit = 3;
-	  	all = 0;
-	  	state = 1; // on
-	} else if (binary[20] == 1 && binary[21] == 0 && binary[22] == 0 && binary[23] == 1) {
-	  	unit = 4;
-	  	all = 0;
-	  	state = 0; // off
-	} else if (binary[20] == 1 && binary[21] == 0 && binary[22] == 0 && binary[23] == 0) {
-	  	unit = 4;
-	  	all = 0;
-	  	state = 1; // on
-	} else if (binary[20] == 1 && binary[21] == 1 && binary[22] == 1 && binary[23] == 0) {
-	  	unit = 0; // not used, all = 1
-	  	all = 1;
-	  	state = 0; // off
-	} else if (binary[20] == 1 && binary[21] == 1 && binary[22] == 0 && binary[23] == 1) {
-	  	unit = 0; // not used, all = 1
-	  	all = 1;
-	  	state = 1; // on
+	if(binary[20] == 0 && binary[21] == 0 && binary[22] == 0 && binary[23] == 0) {
+		unit = 1;
+		all = 0;
+		state = 1; // on
+	} else if(binary[20] == 0 && binary[21] == 0 && binary[22] == 0 && binary[23] == 1) {
+		unit = 1;
+		all = 0;
+		state = 0; // off
+	} else if(binary[20] == 0 && binary[21] == 0 && binary[22] == 1 && binary[23] == 1) {
+		unit = 2;
+		all = 0;
+		state = 0; // off
+	} else if(binary[20] == 0 && binary[21] == 0 && binary[22] == 1 && binary[23] == 0) {
+		unit = 2;
+		all = 0;
+		state = 1; // on
+	} else if(binary[20] == 0 && binary[21] == 1 && binary[22] == 0 && binary[23] == 1) {
+		unit = 3;
+		all = 0;
+		state = 0; // off
+	} else if(binary[20] == 0 && binary[21] == 1 && binary[22] == 0 && binary[23] == 0) {
+		unit = 3;
+		all = 0;
+		state = 1; // on
+	} else if(binary[20] == 1 && binary[21] == 0 && binary[22] == 0 && binary[23] == 1) {
+		unit = 4;
+		all = 0;
+		state = 0; // off
+	} else if(binary[20] == 1 && binary[21] == 0 && binary[22] == 0 && binary[23] == 0) {
+		unit = 4;
+		all = 0;
+		state = 1; // on
+	} else if(binary[20] == 1 && binary[21] == 1 && binary[22] == 1 && binary[23] == 0) {
+		unit = 0; // not used, all = 1
+		all = 1;
+		state = 0; // off
+	} else if(binary[20] == 1 && binary[21] == 1 && binary[22] == 0 && binary[23] == 1) {
+		unit = 0; // not used, all = 1
+		all = 1;
+		state = 1; // on
 	} else {
 		return; // decoding failed, return without creating message
 	}
 
 	int id = binToDec(binary, 0, 19);
-	createMessage(id, unit, state, all, 0);
+	createMessage(message, id, unit, state, all, 0);
 }
 
 static void createLow(int s, int e) {
 	int i;
 
-	for (i = s; i <= e; i += 2) { // medium - short
+	for(i = s; i <= e; i += 2) { // medium - short
 		eurodomest_switch->raw[i] = AVG_MEDIUM_PULSE_LENGTH;
 		eurodomest_switch->raw[i + 1] = AVG_SHORT_PULSE_LENGTH;
 	}
@@ -180,7 +178,7 @@ static void createLow(int s, int e) {
 static void createHigh(int s, int e) {
 	int i;
 
-	for (i = s; i <= e; i += 2) { // short - medium
+	for(i = s; i <= e; i += 2) { // short - medium
 		eurodomest_switch->raw[i] = AVG_SHORT_PULSE_LENGTH;
 		eurodomest_switch->raw[i + 1] = AVG_MEDIUM_PULSE_LENGTH;
 	}
@@ -192,8 +190,8 @@ static void createId(int id) {
 	int i = 0, x = 0;
 
 	length = decToBinRev(id, binary);
-	for (i = 0; i <= length; i++) {
-		if (binary[i] == 0) {
+	for(i = 0; i <= length; i++) {
+		if(binary[i] == 0) {
 			x = i * 2;
 			createLow(x, x+1);
 		} else { //so binary[i] == 1
@@ -204,52 +202,52 @@ static void createId(int id) {
 }
 
 static int createUnitAndStateAndAll(int unit, int state, int all) {
-	if (unit == 1 && state == 0 && all == 0) {
+	if(unit == 1 && state == 0 && all == 0) {
 		createLow(40, 41);
 		createLow(42, 43);
 		createLow(44, 45);
 		createHigh(46, 47);
-	} else if (unit == 1 && state == 1 && all == 0) {
+	} else if(unit == 1 && state == 1 && all == 0) {
 		createLow(40, 41);
 		createLow(42, 43);
 		createLow(44, 45);
 		createLow(46, 47);
-	} else if (unit == 2 && state == 0 && all == 0) {
+	} else if(unit == 2 && state == 0 && all == 0) {
 		createLow(40, 41);
 		createLow(42, 43);
 		createHigh(44, 45);
 		createHigh(46, 47);
-	} else if (unit == 2 && state == 1 && all == 0) {
+	} else if(unit == 2 && state == 1 && all == 0) {
 		createLow(40, 41);
 		createLow(42, 43);
 		createHigh(44, 45);
 		createLow(46, 47);
-	} else if (unit == 3 && state == 0 && all == 0) {
+	} else if(unit == 3 && state == 0 && all == 0) {
 		createLow(40, 41);
 		createHigh(42, 43);
 		createLow(44, 45);
 		createHigh(46, 47);
-	} else if (unit == 3 && state == 1 && all == 0) {
+	} else if(unit == 3 && state == 1 && all == 0) {
 		createLow(40, 41);
 		createHigh(42, 43);
 		createLow(44, 45);
 		createLow(46, 47);
-	} else if (unit == 4 && state == 0 && all == 0) {
+	} else if(unit == 4 && state == 0 && all == 0) {
 		createHigh(40, 41);
 		createLow(42, 43);
 		createLow(44, 45);
 		createHigh(46, 47);
-	} else if (unit == 4 && state == 1 && all == 0) {
+	} else if(unit == 4 && state == 1 && all == 0) {
 		createHigh(40, 41);
 		createLow(42, 43);
 		createLow(44, 45);
 		createLow(46, 47);
-	} else if (unit == 0 && state == 0 && all == 1) {
+	} else if(unit == 0 && state == 0 && all == 1) {
 		createHigh(40, 41);
 		createHigh(42, 43);
 		createHigh(44, 45);
 		createLow(46, 47);
-	} else if (unit == 0 && state == 1 && all == 1) {
+	} else if(unit == 0 && state == 1 && all == 1) {
 		createHigh(40, 41);
 		createHigh(42, 43);
 		createLow(44, 45);
@@ -266,7 +264,7 @@ static void createFooter(void) {
 	eurodomest_switch->raw[49] = AVG_LONG_PULSE_LENGTH;
 }
 
-static int createCode(struct JsonNode *code) {
+static int createCode(struct JsonNode *code, char *message) {
 	int id = -1;
 	int unit = -1;
 	int state = -1;
@@ -274,38 +272,38 @@ static int createCode(struct JsonNode *code) {
 	int learn = -1;
 	double itmp = -1;
 
-	if (json_find_number(code, "id", &itmp) == 0)
+	if(json_find_number(code, "id", &itmp) == 0)
 		id = (int)round(itmp);
-	if (json_find_number(code, "unit", &itmp) == 0)
+	if(json_find_number(code, "unit", &itmp) == 0)
 		unit = (int)round(itmp);
-	if (json_find_number(code, "all", &itmp)	== 0)
+	if(json_find_number(code, "all", &itmp)	== 0)
 		all = (int)round(itmp);
-	if (json_find_number(code, "off", &itmp) == 0)
+	if(json_find_number(code, "off", &itmp) == 0)
 		state = 0;
-	else if (json_find_number(code, "on", &itmp) == 0)
+	else if(json_find_number(code, "on", &itmp) == 0)
 		state = 1;
-	if (json_find_number(code, "learn", &itmp) == 0)
+	if(json_find_number(code, "learn", &itmp) == 0)
 		learn = 1;
 
-	if (all > 0 && learn > -1) {
+	if(all > 0 && learn > -1) {
 		logprintf(LOG_ERR, "eurodomest_switch: all and learn cannot be combined");
 		return EXIT_FAILURE;
-	} else if (id == -1 || (unit == -1 && all == 0) || state == -1) {
+	} else if(id == -1 || (unit == -1 && all == 0) || state == -1) {
 		logprintf(LOG_ERR, "eurodomest_switch: insufficient number of arguments");
 		return EXIT_FAILURE;
-	} else if (id > 1048575 || id < 0) {
+	} else if(id > 1048575 || id < 0) {
 		logprintf(LOG_ERR, "eurodomest_switch: invalid id range");
 		return EXIT_FAILURE;
-	} else if ((unit > 3 || unit < 0) && all == 0) {
+	} else if((unit > 3 || unit < 0) && all == 0) {
 		logprintf(LOG_ERR, "eurodomest_switch: invalid unit range");
 		return EXIT_FAILURE;
 	} else {
-		if (unit == -1 && all == 1) {
+		if(unit == -1 && all == 1) {
 			unit = 0;
 		}
-		createMessage(id, unit, state, all, learn);
+		createMessage(message, id, unit, state, all, learn);
 		createId(id);
-		if (createUnitAndStateAndAll(unit, state, all) == EXIT_FAILURE)
+		if(createUnitAndStateAndAll(unit, state, all) == EXIT_FAILURE)
 			return EXIT_FAILURE;
 		createFooter();
 		eurodomest_switch->rawlen = RAW_LENGTH;

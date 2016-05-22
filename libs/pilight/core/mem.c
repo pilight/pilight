@@ -44,9 +44,9 @@ void mempool_init(unsigned long num, unsigned long size) {
 	}
 }
 
-void xfree(void) {
-	free(mempool_block);
-}
+// void xfree(void) {
+	// free(mempool_block);
+// }
 
 void *_malloc(unsigned long size, char *f, int l) {
 	struct mempool_unit_t *unit = __sync_val_compare_and_swap(&mempool_freeblocks, NULL, NULL);

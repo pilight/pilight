@@ -1777,7 +1777,6 @@ int main_gc(void) {
 	proc_gc();
 	gc_clear();
 	FREE(progname);
-	xfree();
 
 #ifdef _WIN32
 	WSACleanup();
@@ -1981,7 +1980,7 @@ int start_pilight(int argc, char **argv) {
 	char *stmp = NULL, *args = NULL, *p = NULL;
 	int port = 0;
 
-	mempool_init(8192, 1024);
+	// mempool_init(8192, 1024);
 
 	pilight.process = PROCESS_DAEMON;
 

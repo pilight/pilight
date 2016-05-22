@@ -11,8 +11,8 @@
 
 #include "../platform.h"
 
-extern struct platform_t *bananapi;
+extern struct platform_t *bananapi1;
 
-void bananapiInit(void);
+void bananapi1Init(void);
 
 #endif

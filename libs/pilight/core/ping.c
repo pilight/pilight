@@ -93,13 +93,15 @@
 #include "common.h"
 #include "ping.h"
 #include "network.h"
+#include "timerpool.h"
 #include "log.h"
 #include "mem.h"
 
 typedef struct data_t {
-	int t;
 	struct ping_list_t *nodes;
 	struct ping_list_t *iplist;
+	struct eventpool_fd_t *server;
+
 	void (*callback)(char *, int);
 } data_t;
 
@@ -206,7 +208,7 @@ void ping_add_host(struct ping_list_t **iplist, const char *ip) {
 	strncpy(node->ip, ip, INET_ADDRSTRLEN);
 	node->found = 0;
 	node->live = 0;
-	node->time = 0;
+	node->called = 0;
 
 	node->next = *iplist;
 	*iplist = node;
@@ -273,44 +275,81 @@ static int initpacket(char *buf) {
 	return icmplen;
 }
 
-static int client_callback(struct eventpool_fd_t *node, int event) {
+static void ping_data_gc(struct data_t *data) {
+	struct ping_list_t *tmp = NULL;
+	while(data->iplist) {
+		tmp = data->iplist;
+		data->iplist = data->iplist->next;
+		FREE(tmp);
+	}
+	if(data->iplist != NULL) {
+		FREE(data->iplist);
+	}
+	data->server = NULL;
+	FREE(data);
+}
+
+static void *ping_timeout(void *param) {
+	struct threadpool_tasks_t *node = param;
 	struct data_t *data = node->userdata;
-	char buf[1500];
+	struct ping_list_t *tmp = data->iplist;
 	struct timeval tv;
-	struct ip *ip = (struct ip *)buf;
-	struct icmp *icmp = (struct icmp *)(ip + 1);
-	int icmplen = 0;
 	unsigned long now = 0;
-	long int fromlen = 0;
+	int match = 0, match1 = 0;
+
 	gettimeofday(&tv, NULL);
 	now = (1000000 * (unsigned int)tv.tv_sec + (unsigned int)tv.tv_usec);
 
+	while(tmp) {
+		match1++;
+		if((now-tmp->time) > 1000000 && tmp->live == 1) {
+			tmp->live = 0;
+			if(tmp->found == 0) {
+				if(data->callback != NULL && tmp->called == 0) {
+					tmp->called = 1;
+					data->callback(tmp->ip, (tmp->found == 1) ? 0 : -1);
+				}
+			}
+			match++;
+		}
+		tmp = tmp->next;
+	}
+
+	if(match1 == match) {
+		tmp = data->iplist;
+		while(tmp) {
+			if(tmp->found == 0) {
+				if(data->callback != NULL && tmp->called == 0) {
+					tmp->called = 1;
+					data->callback(tmp->ip, (tmp->found == 1) ? 0 : -1);
+				}
+				logprintf(LOG_DEBUG, "ping did not find the network device %s", tmp->ip);
+			}
+			tmp = tmp->next;
+		}
+		eventpool_fd_remove(data->server);
+		ping_data_gc(data);
+	}	else {
+		tv.tv_sec = 1;
+		tv.tv_usec = 0;
+		threadpool_add_scheduled_work("aap", ping_timeout, tv, data);
+	}
+	
+	return NULL;
+}
+
+static int client_callback(struct eventpool_fd_t *node, int event) {
+	struct data_t *data = node->userdata;
+	char buf[1500];
+	struct ip *ip = (struct ip *)buf;
+	struct icmp *icmp = (struct icmp *)(ip + 1);
+	int icmplen = 0;
+	long int fromlen = 0;
+
 	memset(buf, '\0', 1500);
 	icmplen = initpacket(buf);
-
 	switch(event) {
-		case EV_POLL: {
-			struct ping_list_t *tmp = data->iplist;
-			int match = 0, match1 = 0;
-			while(tmp) {
-				match1++;
-				if((now-tmp->time) > 1000000 && tmp->live == 1) {
-					tmp->live = 0;
-					if(tmp->found == 0) {
-						if(data->callback != NULL) {
-							data->callback(tmp->ip, (tmp->found == 1) ? 0 : -1);
-						}
-					}
-					match++;
-				}
-				tmp = tmp->next;
-			}
-			if(match == match1) {
-				return -1;
-			}
-		} break;
 		case EV_SOCKET_SUCCESS: {
-			data->t = 0;
 			int on = 1;
 			if(setsockopt(node->fd, IPPROTO_IP, IP_HDRINCL, (const char *)&on, sizeof(on)) < 0) {
 				logperror(LOG_DEBUG, "IP_HDRINCL");
@@ -324,9 +363,11 @@ static int client_callback(struct eventpool_fd_t *node, int event) {
 				struct timeval tv;
 				gettimeofday(&tv, NULL);
 				data->nodes->time = (1000000 * (unsigned int)tv.tv_sec + (unsigned int)tv.tv_usec);
-				data->t = 0;
+
 				struct sockaddr_in dst;
 				memset(&dst, 0, sizeof(struct sockaddr));
+				tv.tv_sec = 1;
+				tv.tv_usec = 0;
 
 				icmp->icmp_cksum = 0;
 				icmp->icmp_cksum = in_cksum((int *)icmp, icmplen);
@@ -341,7 +382,11 @@ static int client_callback(struct eventpool_fd_t *node, int event) {
 				}
 				data->nodes->live = 1;
 				data->nodes = data->nodes->next;
-				eventpool_fd_enable_write(node);
+
+				eventpool_fd_enable_read(node);
+				if(data->nodes != NULL) {
+					eventpool_fd_enable_write(node);
+				}
 			}
 		} break;
 		case EV_READ: {
@@ -358,6 +403,7 @@ static int client_callback(struct eventpool_fd_t *node, int event) {
 				struct ping_list_t *tmp = data->iplist;
 				while(tmp) {
 					if(strcmp(tmp->ip, buf1) == 0 && tmp->found == 0) {
+						logprintf(LOG_DEBUG, "ping found network device %s", tmp->ip);						
 						if(data->callback != NULL) {
 							data->callback(tmp->ip, 0);
 						}
@@ -370,16 +416,7 @@ static int client_callback(struct eventpool_fd_t *node, int event) {
 			eventpool_fd_enable_read(node);
 		} break;
 		case EV_DISCONNECTED: {
-			struct ping_list_t *tmp = NULL;
-			while(data->iplist) {
-				tmp = data->iplist;
-				data->iplist = data->iplist->next;
-				FREE(tmp);
-			}
-			if(data->iplist != NULL) {
-				FREE(data->iplist);
-			}
-			FREE(data);
+			ping_data_gc(data);
 			eventpool_fd_remove(node);
 		} break;
 	}
@@ -387,15 +424,22 @@ static int client_callback(struct eventpool_fd_t *node, int event) {
 }
 
 int ping(struct ping_list_t *iplist, void (*callback)(char *, int)) {
+	if(iplist == NULL) {
+		return -1;
+	}
+	struct timeval tv;
 	struct data_t *data = MALLOC(sizeof(struct data_t));
 	if(data == NULL) {
 		OUT_OF_MEMORY
 	}
-	data->t = 0;
+	memset(data, 0, sizeof(struct data_t));
 	data->callback = callback;
 	data->nodes = iplist;
 	data->iplist = iplist;
 
-	eventpool_socket_add("ping", NULL, 0, AF_INET, SOCK_RAW, IPPROTO_ICMP, EVENTPOOL_TYPE_SOCKET_CLIENT, client_callback, NULL, data);
+	tv.tv_sec = 1;
+	tv.tv_usec = 0;
+	threadpool_add_scheduled_work("ping", ping_timeout, tv, data);
+	data->server = eventpool_socket_add("ping", NULL, 0, AF_INET, SOCK_RAW, IPPROTO_ICMP, EVENTPOOL_TYPE_SOCKET_CLIENT, client_callback, NULL, data);
 	return 0;
 }

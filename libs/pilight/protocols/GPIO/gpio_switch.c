@@ -82,7 +82,6 @@ static int client_callback(struct eventpool_fd_t *node, int event) {
 			eventpool_fd_enable_highpri(node);
 		} break;
 		case EV_DISCONNECTED: {
-			close(node->fd);
 			FREE(node->userdata);
 			eventpool_fd_remove(node);
 		} break;

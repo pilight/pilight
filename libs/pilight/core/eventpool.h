@@ -51,7 +51,7 @@ enum eventpool_threads_t {
 #define EV_HIGHPRI									10
 #define EV_IDLE											11
 #define EV_DISCONNECTED							12
-#define EV_POLL											13
+// #define EV_POLL											13
 
 #define REASON_SEND_CODE							0
 #define REASON_CODE_SENT							1

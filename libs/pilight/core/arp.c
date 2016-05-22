@@ -66,7 +66,7 @@ typedef struct data_t {
 	pcap_t *handle;
 	int buffer;
 	int nrips;
-	int found;
+	int called;
 	int tries;
 	unsigned long stop;
 	struct arp_list_t *iplist;
@@ -75,6 +75,7 @@ typedef struct data_t {
 	char srcip[INET_ADDRSTRLEN];
 	char dstmac[19];
 	void (*callback)(char *, char *);
+	struct eventpool_fd_t *server;
 } data_t;
 
 typedef struct ether_hdr {
@@ -102,7 +103,6 @@ void arp_add_host(struct arp_list_t **iplist, const char *ip) {
 	}
 	memset(node, '\0', sizeof(struct arp_list_t));
 	strncpy(node->dstip, ip, INET_ADDRSTRLEN);
-	node->found = 0;
 	node->tries = 0;
 	node->time = 0;
 	node->next = NULL;
@@ -144,6 +144,74 @@ static void initpacket(char *dstip, char *srcip, unsigned char srcmac[6], char *
   memcpy(&packet[ETHER_HDRLEN], &pkt, ARP_PKTLEN);
 }
 
+static void arp_data_gc(struct data_t *data) {
+	pcap_t *pcap_handle = data->handle;
+	struct arp_list_t *tmp = NULL;
+	while(data->iplist) {
+		tmp = data->iplist;
+		data->iplist = data->iplist->next;
+		FREE(tmp);
+	}
+	if(data->iplist != NULL) {
+		FREE(data->iplist);
+	}
+	FREE(data);
+	data = NULL;
+	pcap_close(pcap_handle);
+}
+
+static void *arp_timeout(void *param) {
+	struct threadpool_tasks_t *node = param;
+	struct data_t *data = node->userdata;
+	struct arp_list_t *tmp = data->iplist;
+	struct timeval tv;
+	unsigned long now = 0;
+	int match = 0, match1 = 0;
+
+	if(data == NULL) {
+		return NULL;
+	}
+
+	gettimeofday(&tv, NULL);
+	now = (1000000 * (unsigned int)tv.tv_sec + (unsigned int)tv.tv_usec);
+
+	while(tmp) {
+		match1++;
+		if(((now-tmp->time) > 1000000 && tmp->time > 0) || tmp->time == 0) {
+			match++;
+		}
+		tmp = tmp->next;
+	}
+
+	if(match1 == match) {
+		if(data->callback != NULL && data->called == 0) {
+			data->called = 1;
+			data->callback(data->dstmac, NULL);
+		}
+		data->server->stage = EVENTPOOL_STAGE_DISCONNECT;
+		data->server->dowrite = 0;
+		data->server->doflush = 0;
+		return NULL;
+	}	else if(data->stop == 0) {
+		tv.tv_sec = 1;
+		tv.tv_usec = 0;
+		threadpool_add_scheduled_work("aap", arp_timeout, tv, data);
+	}
+	if(data->stop == 1) {
+		data->server->stage = EVENTPOOL_STAGE_DISCONNECT;
+		data->server->dowrite = 0;
+		data->server->doflush = 0;
+		return NULL;
+	}
+
+	if(data->buffer > BUFFER || data->nrips == data->buffer) {
+		eventpool_fd_enable_write(data->server);
+		data->buffer = 0;
+	}
+	
+	return NULL;
+}
+
 static int client_callback(struct eventpool_fd_t *node, int event) {
 	struct data_t *data = node->userdata;
 	struct arp_list_t *tmp = NULL;
@@ -156,31 +224,6 @@ static int client_callback(struct eventpool_fd_t *node, int event) {
 	now = (1000000 * (unsigned int)tv.tv_sec + (unsigned int)tv.tv_usec);
 
 	switch(event) {
-		case EV_POLL: {
-			struct arp_list_t *tmp = data->iplist;
-			int match = 0, match1 = 0;
-			while(tmp) {
-				match1++;
-				/* Wait at least 1 second after the last arp request was sent */
-				if((int)(now-tmp->time) > 1000000 && tmp->time > 0) {
-					match++;
-				}
-				tmp = tmp->next;
-			}
-			if(match == match1) {
-				if(data->callback != NULL) {
-					data->callback(data->dstmac, NULL);
-				}
-				return -1;
-			}
-			if(data->stop == 1) {
-				return 0;
-			}
-			if(data->buffer > BUFFER || data->nrips == data->buffer) {
-				eventpool_fd_enable_write(node);
-				data->buffer = 0;
-			}
-		} break;
 		case EV_CONNECT_SUCCESS: {
 			eventpool_fd_enable_write(node);
 			eventpool_fd_enable_read(node);
@@ -190,7 +233,6 @@ static int client_callback(struct eventpool_fd_t *node, int event) {
 			if(data->stop == 1) {
 				return 0;
 			}
-
 			if(data->nodes == NULL) {
 				data->nodes = data->iplist;
 			}
@@ -205,17 +247,19 @@ static int client_callback(struct eventpool_fd_t *node, int event) {
 				initpacket(data->nodes->dstip, data->srcip, data->srcmac, (char *)&packet);
 				pcap_sendpacket(pcap_handle, packet, ETHER_HDRLEN + ARP_PKTLEN);
 
-				data->nodes->time = now;
+				if(now > 0) {
+					data->nodes->time = now;
 
-				tmp = data->nodes;
-				while(tmp) {
-					tmp->time = now+tmp->timeout;
-					tmp = tmp->next;
+					tmp = data->nodes;
+					while(tmp) {
+						tmp->time = now+tmp->timeout;
+						tmp = tmp->next;
+					}
 				}
 			}
 			data->nodes = data->nodes->next;
 
-			/* Only allows BUFFER bulk request at one time to safe CPU resources */
+			/* Only allows BUFFER bulk request at one time to save CPU resources */
 			if(data->buffer <= BUFFER) {
 				eventpool_fd_enable_write(node);
 			}
@@ -254,22 +298,19 @@ static int client_callback(struct eventpool_fd_t *node, int event) {
 					if(pilight.debuglevel == 3) {
 						fprintf(stderr, "%s %s %s %s\n", src, dst, srcmac, dstmac);
 					}
-					if(strcmp(dstmac, data->dstmac) == 0) {
-						if(data->callback != NULL) {
-							data->callback(data->dstmac, dst);
-						}
-						return -1;
-					} else if(strcmp(srcmac, data->dstmac) == 0) {
-						if(data->callback != NULL) {
+					if(strcmp(srcmac, data->dstmac) == 0) {
+						if(data->callback != NULL && data->called == 0) {
+							data->called = 1;
+							data->stop = 1;
 							data->callback(data->dstmac, src);
 						}
-						return -1;
+						return 0;
 					}
 				}
 			}
 			tmp = data->iplist;
 			while(tmp) {
-				if(tmp->found == 0 && tmp->tries < data->tries) {
+				if(tmp->tries < data->tries) {
 					loop++;
 				}
 				tmp = tmp->next;
@@ -281,17 +322,8 @@ static int client_callback(struct eventpool_fd_t *node, int event) {
 			eventpool_fd_enable_read(node);
 		} break;
 		case EV_DISCONNECTED: {
-			struct arp_list_t *tmp = NULL;
-			while(data->iplist) {
-				tmp = data->iplist;
-				data->iplist = data->iplist->next;
-				FREE(tmp);
-			}
-			if(data->iplist != NULL) {
-				FREE(data->iplist);
-			}
-			FREE(data);
-			pcap_close(pcap_handle);
+			node->stage = EVENTPOOL_STAGE_DISCONNECTED;
+			arp_data_gc(data);
 			eventpool_fd_remove(node);
 		} break;
 	}
@@ -303,6 +335,9 @@ static int client_callback(struct eventpool_fd_t *node, int event) {
  * Use 5 repeats for a ip range
  */
 int arp_resolv(struct arp_list_t *iplist, char *if_name, char *srcmac, char *dstmac, int tries, void (*callback)(char *, char *)) {
+	if(iplist == NULL) {
+		return -1;
+	}
 	pcap_t *pcap_handle = NULL;
 	char *if_cpy = NULL, error[PCAP_ERRBUF_SIZE];
 	char *p = NULL, *e = error;
@@ -362,6 +397,7 @@ int arp_resolv(struct arp_list_t *iplist, char *if_name, char *srcmac, char *dst
 		return -1;
 	}
 
+	struct timeval tv;
 	struct data_t *data = MALLOC(sizeof(struct data_t));
 	if(data == NULL) {
 		OUT_OF_MEMORY
@@ -371,7 +407,7 @@ int arp_resolv(struct arp_list_t *iplist, char *if_name, char *srcmac, char *dst
 	data->callback = callback;
 	data->buffer = 0;
 	data->nrips = 0;
-	data->found = 0;
+	data->called = 0;
 	data->tries = tries;
 	data->stop = 0;
 	data->nodes = NULL;
@@ -389,7 +425,11 @@ int arp_resolv(struct arp_list_t *iplist, char *if_name, char *srcmac, char *dst
 
 	fd = pcap_get_selectable_fd(pcap_handle);
 
-	eventpool_fd_add("arp", fd, client_callback, NULL, data);
+	tv.tv_sec = 1;
+	tv.tv_usec = 0;
+
+	data->server = eventpool_fd_add("arp", fd, client_callback, NULL, data);
+	threadpool_add_scheduled_work("arp", arp_timeout, tv, data);
 
 	FREE(if_cpy);
 

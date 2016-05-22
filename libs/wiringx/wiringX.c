@@ -231,7 +231,7 @@ int wiringXSetup(char *name, void (*func)(int, const char *, ...)) {
 
 	/* Init all platforms */
 	pcduino1Init();
-	bananapiInit();
+	bananapi1Init();
 	bananapiM2Init();
 	hummingboardBaseProSDLInit();
 	hummingboardBaseProDQInit();

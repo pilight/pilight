@@ -63,8 +63,7 @@ static int map[] = {
 	/*	PB3,	PB4,	PB7,	PE6		*/
 			 31,	 32,	 35,	 90,
 	/* 	PE7,	PM2,	PG10,	PG11	*/
-			 91,	155,	116,	117
-			
+			 91,	155,	116,	117		
 };
 
 // SYSFS GPIO 132 LED D3 (red)
@@ -82,10 +81,6 @@ static int bananapiM2ValidGPIO(int pin) {
 
 static int bananapiM2PinMode(int i, enum pinmode_t mode) {
 	if(map[i] == -1) {
-		return -1;
-	}
-	if((i == 0 || i == 1) && (mode != PINMODE_OUTPUT)) {
-		wiringXLog(LOG_ERR, "The %s pin %d can only be used as output", bananapim2->name[0], i);
 		return -1;
 	}
 	return bananapim2->soc->pinMode(i, mode);

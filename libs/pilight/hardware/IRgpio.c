@@ -54,13 +54,11 @@ static int client_callback(struct eventpool_fd_t *node, int event) {
 		return 0;
 	}
 	switch(event) {
-		case EV_POLL: {
-			eventpool_fd_enable_highpri(node);
-		} break;
 		case EV_CONNECT_SUCCESS: {
 			eventpool_fd_enable_highpri(node);
 		} break;
 		case EV_HIGHPRI: {
+			eventpool_fd_enable_highpri(node);
 			uint8_t c = 0;
 
 			(void)read(node->fd, &c, 1);
@@ -97,7 +95,6 @@ static int client_callback(struct eventpool_fd_t *node, int event) {
 			eventpool_fd_enable_highpri(node);
 		} break;
 		case EV_DISCONNECTED: {
-			close(node->fd);
 			FREE(node->userdata);
 			eventpool_fd_remove(node);
 		} break;

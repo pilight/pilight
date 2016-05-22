@@ -276,7 +276,7 @@ static int allwinnerA31sDigitalRead(int i) {
 
 	pin = &allwinnerA31s->layout[allwinnerA31s->map[i]];
 	gpio = allwinnerA31s->gpio[pin->addr];
-	addr = (unsigned long)(gpio + allwinnerA31s->base_offs[pin->addr] + pin->select.offset);
+	addr = (unsigned long)(gpio + allwinnerA31s->base_offs[pin->addr] + pin->data.offset);
 
 	if(allwinnerA31s->map == NULL) {
 		wiringXLog(LOG_ERR, "The %s %s has not yet been mapped", allwinnerA31s->brand, allwinnerA31s->chip);

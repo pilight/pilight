@@ -15,6 +15,7 @@
 
 typedef struct connection_t {
 	int fd;
+	char *request;
   const char *request_method;
   const char *uri;
   const char *http_version;
@@ -53,7 +54,7 @@ typedef struct connection_t {
 int webserver_gc(void);
 int webserver_start(void);
 void *webserver_broadcast(void *param);
-void webserver_create_header(char **p, const char *message, char *mimetype, unsigned int len);
+void webserver_create_header(char **p, const char *message, char *mimetype, unsigned long len);
 int http_parse_request(char *buffer, struct connection_t *c);
 const char *http_get_header(const struct connection_t *conn, const char *s);
 

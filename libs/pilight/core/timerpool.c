@@ -277,11 +277,10 @@ void timer_add_task(struct timers_t *timer, char *name, struct timeval wait, voi
 		x = i; // parent becomes child
 		i /= 2; // new parent
 	}
+
 	timer->nrtasks++;
 
 	if(pilight.debuglevel >= 2) {
-		fprintf(stderr, "\n");
-		fprintf(stderr, "= %d\n", timer->nrtasks);
 		for(i=1;i<=timer->nrtasks;i++) {
 			fprintf(stderr, "%s %lu %lu\n", timer->tasks[i]->name, timer->tasks[i]->sec, timer->tasks[i]->nsec);
 		}

@@ -58,7 +58,6 @@ static unsigned short connected = 0;
 static unsigned short connecting = 0;
 static unsigned short found = 0;
 static char *instance = NULL;
-struct timers_t timer;
 static struct JsonNode *code = NULL;
 static char *uuid = NULL;
 
@@ -73,9 +72,7 @@ int main_gc(void) {
 	log_gc();
 
 	timer_thread_gc();
-	timer_gc(&timer);
 	eventpool_gc();
-	xfree();
 
 	log_shell_disable();
 	log_gc();
@@ -189,7 +186,7 @@ static void *ssdp_reseek(void *param) {
 		struct timeval tv;
 		tv.tv_sec = 1;
 		tv.tv_usec = 0;
-		timer_add_task(&timer, "ssdp seek", tv, ssdp_reseek, NULL);
+		threadpool_add_scheduled_work("ssdp seek", ssdp_reseek, tv, NULL);
 		ssdp_seek();
 	}
 	return NULL;
@@ -222,7 +219,7 @@ static int user_input(struct eventpool_fd_t *node, int event) {
 							socket_connect1(tmp->server, tmp->port, client_callback);
 							tv.tv_sec = 1;
 							tv.tv_usec = 0;
-							timer_add_task(&timer, "socket timeout", tv, timeout, NULL);
+							threadpool_add_scheduled_work("socket timeout", timeout, tv, NULL);
 							connecting = 1;
 							return -1;
 						}
@@ -278,7 +275,7 @@ static void *ssdp_found(void *param) {
 				socket_connect1(data->ip, data->port, client_callback);
 				tv.tv_sec = 1;
 				tv.tv_usec = 0;
-				timer_add_task(&timer, "socket timeout", tv, timeout, NULL);
+				threadpool_add_scheduled_work("socket timeout", timeout, tv, NULL);
 			}
 		}
 	}
@@ -321,14 +318,7 @@ static void sort_list(void) {
 	}
 }
 
-static void *timer_func(struct timer_tasks_t *task) {
-	task->func(task);
-	return NULL;
-}
-
 int main(int argc, char **argv) {
-	// memtrack();
-
 	atomicinit();
 	gc_attach(main_gc);
 	gc_catch();
@@ -575,12 +565,13 @@ int main(int argc, char **argv) {
 	options_delete(options);
 	options_gc();
 
-	eventpool_init(EVENTPOOL_NO_THREADS);
+	threadpool_init(1, 1, 10);
+	eventpool_init(EVENTPOOL_THREADED);
 	eventpool_callback(REASON_SSDP_RECEIVED, ssdp_found);
+
 	tv.tv_sec = 0;
 	tv.tv_usec = 0;
 	timer_thread_start();
-	timer_init(&timer, SIGRTMIN, timer_func, TIMER_ABSTIME, tv, tv);
 
 	tv.tv_sec = 1;
 	memset(raw, 0, MAXPULSESTREAMLENGTH-1);
@@ -589,16 +580,16 @@ int main(int argc, char **argv) {
 	if(protocol->createCode(code, message) == 0) {
 		if(server != NULL && port > 0) {
 			socket_connect1(server, port, client_callback);
-			timer_add_task(&timer, "socket timeout", tv, timeout, NULL);
+			threadpool_add_scheduled_work("socket timeout", timeout, tv, NULL);
 		} else {
 			ssdp_seek();
-			timer_add_task(&timer, "ssdp seek", tv, ssdp_reseek, NULL);
+			threadpool_add_scheduled_work("ssdp seek", ssdp_reseek, tv, NULL);
 			if(instance == NULL) {
 				printf("[%2s] %15s:%-5s %-16s\n", "#", "server", "port", "name");
 				printf("To which server do you want to send?:\r");
 				fflush(stdout);
 			} else {
-				timer_add_task(&timer, "ssdp seek", tv, ssdp_not_found, NULL);
+				threadpool_add_scheduled_work("ssdp seek", ssdp_not_found, tv, NULL);
 			}
 		}
 

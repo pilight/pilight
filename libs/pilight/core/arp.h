@@ -13,9 +13,10 @@ typedef struct arp_list_t {
 	char dstmac[19];
 	char dstip[INET_ADDRSTRLEN+1];
 	int tries;
-	int found;
 	int timeout;
+	int called;
 	unsigned long time;
+
 	struct arp_list_t *next;
 } arp_list_t;
 

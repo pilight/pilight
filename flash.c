@@ -31,8 +31,6 @@
 #endif
 
 int main(int argc, char **argv) {
-	// memtrack();
-
 	atomicinit();
 	log_shell_enable();
 	log_file_disable();
@@ -157,6 +155,5 @@ close:
 	log_gc();
 	gc_clear();
 	FREE(progname);
-	xfree();
 	return (EXIT_SUCCESS);
 }
