@@ -442,25 +442,12 @@ static int settings_parse(JsonNode *root) {
 				logprintf(LOG_ERR, "config setting \"%s\" must contain an e-mail address", jsettings->key);
 				have_error = 1;
 				goto clear;
-			} else if(strlen(jsettings->string_) > 0) {
-#if !defined(__FreeBSD__) && !defined(_WIN32)
-				char validate[] = "^[a-zA-Z0-9_.]+@([a-zA-Z0-9]+\\.)+([a-zA-Z0-9]{2,3}){1,2}$";
-				reti = regcomp(&regex, validate, REG_EXTENDED);
-				if(reti) {
-					logprintf(LOG_ERR, "could not compile regex for %s", jsettings->key);
-					have_error = 1;
-					goto clear;
-				}
-				reti = regexec(&regex, jsettings->string_, 0, NULL, 0);
-				if(reti == REG_NOMATCH || reti != 0) {
-					logprintf(LOG_ERR, "config setting \"%s\" must contain an e-mail address", jsettings->key);
-					have_error = 1;
-					regfree(&regex);
-					goto clear;
-				}
-				regfree(&regex);
-#endif
-			settings_add_string(jsettings->key, jsettings->string_);
+			} else if(strlen(jsettings->string_) > 0 && check_email_addr(jsettings->string_, 0, 0) < 0) {
+				logprintf(LOG_ERR, "config setting \"%s\" must contain an e-mail address", jsettings->key);
+				have_error = 1;
+				goto clear;
+			} else {
+				settings_add_string(jsettings->key, jsettings->string_);
 			}
 		} else if(strcmp(jsettings->key, "smtp-user") == 0) {
 			if(jsettings->tag != JSON_STRING) {
