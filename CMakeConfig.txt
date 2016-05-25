@@ -82,6 +82,7 @@ set(PROTOCOL_SUNRISESET ON CACHE BOOL "support for the Sunrise / Sunset calculat
 set(PROTOCOL_TCM ON CACHE BOOL "support for the TCM 218943 weather station protocol")
 set(PROTOCOL_TECHLICO ON CACHE BOOL "support for TechLiCo Lamps protocol")
 set(PROTOCOL_TEKNIHALL ON CACHE BOOL "support for the Teknihall weather station protocol")
+set(PROTOCOL_TELETASTER ON CACHE BOOL "support for Tedsen Teletaster protocol")
 set(PROTOCOL_TFA ON CACHE BOOL "support for the TFA weather station protocol")
 set(PROTOCOL_WUNDERGROUND ON CACHE BOOL "support for the Weather Underground API")
 set(PROTOCOL_X10 ON CACHE BOOL "support for the X10 protocol")
