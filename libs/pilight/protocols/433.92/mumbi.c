@@ -31,8 +31,8 @@
 #include "mumbi.h"
 
 #define PULSE_MULTIPLIER	3
-#define MIN_PULSE_LENGTH	317
-#define MAX_PULSE_LENGTH	307
+#define MIN_PULSE_LENGTH	307
+#define MAX_PULSE_LENGTH	317
 #define AVG_PULSE_LENGTH	312
 #define RAW_LENGTH				50
 

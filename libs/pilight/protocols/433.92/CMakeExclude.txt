@@ -243,7 +243,7 @@ endif()
 
 if(${PROTOCOL_SECUDO_SMOKE} MATCHES "OFF")
 	list(REMOVE_ITEM ${PROJECT_NAME}_sources "${PROJECT_SOURCE_DIR}/secudo_smoke.c")
-	list(REMOVE_ITEM ${PROJECT_NAME}_headers "${PROJECT_SOURCE_DIR}/secudo_smoke_h")
+	list(REMOVE_ITEM ${PROJECT_NAME}_headers "${PROJECT_SOURCE_DIR}/secudo_smoke.h")
 endif()
 
 if(${PROTOCOL_TCM} MATCHES "OFF")
