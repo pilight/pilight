@@ -101,7 +101,7 @@ void ev1527Init(void) {
 	ev1527->validate=&validate;
 }
 
-#if !defined(MODULE) && !defined(_WIN32)
+#if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "ev1527";
 	module->version = "1.2";
