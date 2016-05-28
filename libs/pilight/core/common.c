@@ -49,6 +49,7 @@
 	#include <sys/mount.h>
 	#include <sys/ioctl.h>
 #endif
+
 #include <dirent.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -111,7 +112,7 @@ void array_free(char ***array, int len) {
 	}
 }
 
-unsigned int explode(char *str, const char *delimiter, char ***output) {
+unsigned int explode(const char *str, const char *delimiter, char ***output) {
 	if(str == NULL || output == NULL) {
 		return 0;
 	}
@@ -1029,4 +1030,94 @@ int file_get_contents(char *file, char **content) {
 	}
 	fclose(fp);
 	return 0;
+}
+
+char *str_trim_right(char *str, const char *trim_away) {
+	char *end = str;
+	if (str != NULL && trim_away != NULL && *trim_away != '\0') {
+		for (end += strlen(str); end > str && strchr(trim_away, end[-1]) != NULL; --end)
+			;
+		*end = '\0';
+	}
+	return str;
+}
+
+int checkdnsrr(const char *domain, const char *type)
+{
+	logprintf(LOG_STACK, "%s(%s,%s)", __FUNCTION__, domain ? domain : "(NULL)", type ? type : "(NULL)");
+	return 0;	// NYI.
+}
+
+/**
+ * Check if an email address is valid.
+ * @param char* address The email address to check. Leading+trailing white spaces are accepted.
+ * @param bool allow_lists If true, addr is allowed to be a comma separated list of email addresses.
+ * @param bool check_domain_can_mail If true, check if domain exists in DNS system and accepts email.
+ * @return int Values < 0 indicate error. Values >= 0 indicate success.
+ * Where -1: syntax error, -2: DNS check for a domain failed, -8: severe internal error.
+ */
+int check_email_addr(const char *address, int allow_lists, int check_domain_can_mail) {
+	if(address == NULL) {
+		return -1;
+	}
+
+	#define ALPHANUMERICS "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
+
+	static const char white_spaces[] = " \t";
+	static const char local_valid_chars[] = ALPHANUMERICS ".!#$%&'*+-\\/=?^_`{|}~";
+	static const char domain_valid_chars[] = ALPHANUMERICS ".-"; // . and - are not allowed everywhere.
+
+	const char *at = NULL, *domain_name = NULL;
+	char *addr = NULL;
+	char **addr_list = NULL;
+	size_t addr_count = explode(address, ",", &addr_list), ii = 0;
+	int ret = -1;
+	for(ii = 0; ii < addr_count; ii++) {
+		ret = -1;	// assume error
+		if (allow_lists == 0 && addr_count > 1) {
+			break;	// only one address allowed.
+		}
+		addr = addr_list[ii];
+		addr += strspn(addr, white_spaces);	// trim left
+		str_trim_right(addr, white_spaces);
+
+		// Now check addr. First some quick pre-checks:
+		at = strchr(addr, '@');
+		if(at == NULL || strstr(addr, "..") != NULL) {
+			break;	// no @ found or two consecutive dots found somewhere.
+		}
+		domain_name = at+1;
+
+		if(at == addr || at[-1] == '.' || addr[0] == '.') {
+			break;	// local part emtpy, or starts or ends with a dot.
+		}
+		if(addr+strspn(addr, local_valid_chars) < at) {
+			break;	// local part contains invalid chars.
+		}
+		if(strchr(domain_name, '.') == NULL || strlen(domain_name) < 5) {
+			break;	// not at least one dot in domain or domain is not at least 2 x 2 chars.
+		}
+		if(strchr(".-", domain_name[0]) != NULL || strchr(".-", domain_name[strlen(domain_name)-1]) != NULL) {
+			break;	// domain starts or ends with a dot or dash.
+		}
+		if(strstr(domain_name, ".-") != NULL || strstr(domain_name, "-.") != NULL) {
+			break;	// a dot delimited domain part starts or ends with a dash.
+		}
+		if(domain_name[strspn(domain_name, domain_valid_chars)] != '\0') {
+			break;	// domain contains invalid chars.
+		}
+
+		// Finally check domain name against DNS if desired:
+
+		if(check_domain_can_mail != 0 && checkdnsrr(domain_name, "MX") < 0) {
+			ret = -2;
+			break;	// domain not found or does not accept emails.
+		}
+
+		ret = 0; // Address ok (and all ok if this is the last one in the list).
+	}
+	array_free(&addr_list, addr_count);
+	return ret;
+
+	#undef ALPHANUMERICS
 }
