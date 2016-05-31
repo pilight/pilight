@@ -253,7 +253,7 @@ static void parseCode(void) {
 							protocol_sync = 90;
 						}
 					}
-					if (pBin < BINLEN_OREGON_21_HEADER || pBin>BINLEN_OREGON_21_PROT) {
+					if (pBin>BINLEN_OREGON_21_PROT) {
 						protocol_sync = 89;
 					}
 				}
@@ -267,7 +267,7 @@ static void parseCode(void) {
 				}
 			break;
 			case 89:
-			// Tha min # of binary bits was not decoded, or the max. of bits in binary data array was exceeded
+			// Tha max. # of bits in binary data array was exceeded
 			logprintf(LOG_DEBUG, "OREGON_21: State 89: Number of binary bits decoded invalid #: %d", pBin);
 			protocol_sync = 96;
 			break;
