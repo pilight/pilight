@@ -59,6 +59,8 @@
 #define MINRAWLEN_OREGON_21_PROT	140     // all Data bit toogle
 #define MAXRAWLEN_OREGON_21_PROT	428     // all Data bit equal
 
+static int pChksum = 0, chksum = 0, pChkcrc = 0, chkcrc = 0;
+
 static int validate(void) {
 	if(OREGON_21->rawlen >= MINRAWLEN_OREGON_21_PROT && OREGON_21->rawlen <= MAXRAWLEN_OREGON_21_PROT) {
 			return 0;
@@ -66,29 +68,36 @@ static int validate(void) {
 	return -1;
 }
 
-static void createMessage(	int device_id, int id, int unit, int battery, double temp, double humidity,
-					  						int uv, int wind_dir, int wind_speed, int wind_avg, int rain, int rain_total, int pressure) {
+static void createMessage(	int device_id, int id, int unit, int battery, double temp, double humidity, int uv, int wind_dir, int wind_speed, int wind_avg, int rain, int rain_total, int pressure) {
 	OREGON_21->message = json_mkobject();
 	json_append_member(OREGON_21->message, "device_id", json_mknumber(device_id,0));
 	json_append_member(OREGON_21->message, "id", json_mknumber(id,0));
 	json_append_member(OREGON_21->message, "unit", json_mknumber(unit,0));
 	json_append_member(OREGON_21->message, "battery", json_mknumber(battery,0));
-	if (temp > -274.0) json_append_member(OREGON_21->message, "temperature", json_mknumber(temp/100,2));
-	if (humidity > 0.0) json_append_member(OREGON_21->message, "humidity", json_mknumber(humidity,2));
-	if (uv != -1) json_append_member(OREGON_21->message, "uv", json_mknumber(uv,0));
-	if (wind_dir != -1) json_append_member(OREGON_21->message, "winddir", json_mknumber(wind_dir,0));
-	if (wind_speed != -1) json_append_member(OREGON_21->message, "windgust", json_mknumber(wind_speed,0));
-	if (wind_avg != -1) json_append_member(OREGON_21->message, "windavg", json_mknumber(wind_avg,0));
-	if (rain != -1) json_append_member(OREGON_21->message, "rain", json_mknumber(rain,0));
-	if (rain_total != -1) json_append_member(OREGON_21->message, "raintotal", json_mknumber(rain_total,0));
-	if (pressure != -1) json_append_member(OREGON_21->message, "pressure", json_mknumber(pressure,0));
+	if (temp-274.0 > EPSILON)
+		json_append_member(OREGON_21->message, "temperature", json_mknumber(temp/100.0,2));
+	if (humidity-1.0 > EPSILON)
+		json_append_member(OREGON_21->message, "humidity", json_mknumber(humidity,2));
+	if (uv != -1)
+		json_append_member(OREGON_21->message, "uv", json_mknumber(uv,0));
+	if (wind_dir != -1)
+		json_append_member(OREGON_21->message, "winddir", json_mknumber(wind_dir,0));
+	if (wind_speed != -1)
+		json_append_member(OREGON_21->message, "windgust", json_mknumber(wind_speed,0));
+	if (wind_avg != -1)
+		json_append_member(OREGON_21->message, "windavg", json_mknumber(wind_avg,0));
+	if (rain != -1)
+		json_append_member(OREGON_21->message, "rain", json_mknumber(rain,0));
+	if (rain_total != -1)
+		json_append_member(OREGON_21->message, "raintotal", json_mknumber(rain_total,0));
+	if (pressure != -1)
+		json_append_member(OREGON_21->message, "pressure", json_mknumber(pressure,0));
 }
 
 static void parseCode(void) {
 	int binary [BINLEN_OREGON_21_PROT];
 
-	int i, s_0, b_unknown;
-
+	int i, s_0, b_unknown, x;
 	int pBin = 0, pRaw = 0;
 	int protocol_sync = 1;
 	int rDataLow = 0, rDataTime = 0;
@@ -327,6 +336,8 @@ static void parseCode(void) {
 			battery = 0;
 		}
 
+		pChksum = 0;						// Reset Checksum and CRC pointers
+		pChkcrc = 0;
 		// Decode the payload of various V2.1 devices
 		switch (device_id) {
 			case 7456:						// 1D20, F824, F8B4
@@ -339,9 +350,11 @@ static void parseCode(void) {
 				temp    += (double)((binToDec(binary, 40,43)*100));
 				temp    = temp * 10;
 				sign    =  (binToDec(binary, 44,47));		// If set Temp is negative
-			if(sign!=0)temp = -temp;
+				if(sign!=0)temp = -temp;
 				humidity =  (double)((binToDec(binary, 48,51)));		// Humidity
 				humidity += (double)((binToDec(binary, 52,55)*10));
+				pChksum = 56;
+				pChkcrc = 64;
 			break;
 			case 60480:						// EC40, C844
 			case 51268:
@@ -350,12 +363,16 @@ static void parseCode(void) {
 				temp    += (double)((binToDec(binary, 40,43)*100));
 				temp    = temp * 10;
 				sign    =  (binToDec(binary, 44,47));		// If set Temp is negative
-			if(sign!=0)temp = -temp;
+				if(sign!=0)temp = -temp;
+				pChksum = 48;
+				pChkcrc = 56;
 			break;
 			case 60526:						// EC70, D874
 			case 55412:
 				uv      =  (binToDec(binary, 32,35));		// uv index
 				uv      += (binToDec(binary, 36,39)*10);
+				pChksum = 0;
+				pChkcrc = 0;
 			break;
 			case 6532:						// 1984, 1994
 			case 6548:
@@ -366,6 +383,8 @@ static void parseCode(void) {
 				wind_avg    =  (binToDec(binary, 56,59));		// wind average speed
 				wind_avg   +=  (binToDec(binary, 60,63)*10);	// wind average speed
 				wind_avg   +=  (binToDec(binary, 64,67)*100);	// wind average speed
+				pChksum = 0;
+				pChkcrc = 0;
 			break;
 			case 10516:						// 2914
 				rain     =  (binToDec(binary, 32,35));		// rain rate 0,01 inch
@@ -376,6 +395,8 @@ static void parseCode(void) {
 				rain_total   +=  (binToDec(binary, 56,59)*10);
 				rain_total   +=  (binToDec(binary, 60,63)*100);
 				rain_total   +=  (binToDec(binary, 64,67)*1000);
+				pChksum = 0;
+				pChkcrc = 0;
 			break;
 			case 11536:						// 2D10
 				rain     =  (binToDec(binary, 32,35));		// rain rate 0,1 mm
@@ -386,6 +407,8 @@ static void parseCode(void) {
 				rain_total   +=  (binToDec(binary, 52,55)*100);
 				rain_total   +=  (binToDec(binary, 56,59)*1000);
 				rain_total   +=  (binToDec(binary, 60,63)*10000);
+				pChksum = 0;
+				pChkcrc = 0;
 			break;
 			case 23904:						// 5D60
 				temp    =  (double)((binToDec(binary, 32,35)));		// Temp
@@ -399,6 +422,8 @@ static void parseCode(void) {
 				pressure	=  (binToDec(binary, 64,67) << 8);	// pressure Hg
 				pressure	+= (binToDec(binary, 68,71) << 4);
 				pressure	+= (binToDec(binary, 72,75));
+				pChksum = 0;
+				pChkcrc = 0;
 			break;
 
 			default:
@@ -408,14 +433,39 @@ static void parseCode(void) {
 			break;
 		}
 
+		if (b_unknown) {
+			// Compute checksum and do not broadcast incorrect data packets
+			if (pBin+7 > pChksum) {
+				if (pChksum != 0) {
+					chksum = binToDec(binary, 0, 3);
+					for (x=4;x<pChksum;x+=4) {
+						chksum += binToDec(binary, x, x+3);
+					}
+					if ((chksum - binToDec(binary, pChksum, pChksum+7)) != 0) {
+						logprintf(LOG_DEBUG, "OREGON_21: Error in Chksum: %x - expected: %x", chksum, binToDec(binary, pChksum, pChksum+7));
+						b_unknown = 0;	// Disable forwarding of packets with incorrect checksum
+					}
+				}
+			} else {
+				logprintf(LOG_DEBUG, "OREGON_21: No Checksum data available: pbin %d, pChksum: %d", pBin, pChksum+7);
+			}
+
+			if (pBin+7 > pChkcrc) {
+				// Add CRC code later on here
+			} else {
+				logprintf(LOG_DEBUG, "OREGON_21: No CRC data available: pbin %d, pChkcrc: %d", pBin, pChkcrc+7);
+			}
+		}
 		if(log_level_get() >= LOG_DEBUG) {
 			fprintf(stderr,"\n device: %d - id: %d - unit: %d - batt: %d - temp: %f - humi: %f - uv: %d",device_id, id, unit, battery, temp, humidity, uv);
 			fprintf(stderr,"\n wind_dir: %d - wind_speed: %d - wind_avg: %d - rain: %d - rain_total: %d - pressure: %d\n", wind_dir, wind_speed, wind_avg, rain, rain_total, pressure);
+			if (pChksum != 0) fprintf(stderr," Chksum: %d %x %x at %d ", pChksum, chksum, binToDec(binary,pChksum, pChksum+7), pBin);
+			if (pChkcrc != 0) fprintf(stderr," Chkcrc: %d %x %x at %d", pChkcrc, chkcrc, binToDec(binary,pChkcrc, pChkcrc+7), pBin);
+			fprintf(stderr,"\n");
 		}
 		if (b_unknown) {
 			createMessage(device_id, id, unit, battery, temp, humidity, uv, wind_dir, wind_speed, wind_avg, rain, rain_total, pressure);
 		}
-
 	} else {
 	} // End if > 97
 }
@@ -441,17 +491,14 @@ void oregon_21WeatherInit(void) {
 	options_add(&OREGON_21->options, 'b', "battery", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^([0-4])$");
 
 	options_add(&OREGON_21->options, 't', "temperature", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9]{1,3}$");
-	options_add(&OREGON_21->options, 'h', "humidity", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9]{1,2}$");
-
-//	options_add(&OREGON_21->options, 't', "temperature", OPTION_OPT_VALUE, DEVICES_OPTIONAL, JSON_NUMBER, NULL, "^[0-9]{1,3}$");
-//	options_add(&OREGON_21->options, 'h', "humidity", OPTION_OPT_VALUE, DEVICES_OPTIONAL, JSON_NUMBER, NULL, "^[0-9]{1,2}$");
-	options_add(&OREGON_21->options, 'v', "uv", OPTION_OPT_VALUE, DEVICES_OPTIONAL, JSON_NUMBER, NULL, "^[0-9]{1,2}$");
-	options_add(&OREGON_21->options, 'w', "winddir", OPTION_OPT_VALUE, DEVICES_OPTIONAL, JSON_NUMBER, NULL, "^[0-9]{1,3}$");
-	options_add(&OREGON_21->options, 'j', "windgust", OPTION_OPT_VALUE, DEVICES_OPTIONAL, JSON_NUMBER, NULL, "^[0-9]{1,3}$");
-	options_add(&OREGON_21->options, 'k', "windavg", OPTION_OPT_VALUE, DEVICES_OPTIONAL, JSON_NUMBER, NULL, "^[0-9]{1,3}$");
-	options_add(&OREGON_21->options, 'l', "rain", OPTION_OPT_VALUE, DEVICES_OPTIONAL, JSON_NUMBER, NULL, "^[0-9]{1,4}$");
-	options_add(&OREGON_21->options, 'm', "raintotal", OPTION_OPT_VALUE, DEVICES_OPTIONAL, JSON_NUMBER, NULL, "^[0-9]{1,5}$");
-	options_add(&OREGON_21->options, 'n', "pressure", OPTION_OPT_VALUE, DEVICES_OPTIONAL, JSON_NUMBER, NULL, "^[0-9]{1,3}$");
+	options_add(&OREGON_21->options, 'h', "humidity", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9]{1,3}$");
+	options_add(&OREGON_21->options, 'v', "uv", OPTION_HAS_VALUE, DEVICES_OPTIONAL, JSON_NUMBER, NULL, "^[0-9]{1,2}$");
+	options_add(&OREGON_21->options, 'w', "winddir", OPTION_HAS_VALUE, DEVICES_OPTIONAL, JSON_NUMBER, NULL, "^[0-9]{1,3}$");
+	options_add(&OREGON_21->options, 'j', "windgust", OPTION_HAS_VALUE, DEVICES_OPTIONAL, JSON_NUMBER, NULL, "^[0-9]{1,3}$");
+	options_add(&OREGON_21->options, 'k', "windavg", OPTION_HAS_VALUE, DEVICES_OPTIONAL, JSON_NUMBER, NULL, "^[0-9]{1,3}$");
+	options_add(&OREGON_21->options, 'l', "rain", OPTION_HAS_VALUE, DEVICES_OPTIONAL, JSON_NUMBER, NULL, "^[0-9]{1,4}$");
+	options_add(&OREGON_21->options, 'm', "raintotal", OPTION_HAS_VALUE, DEVICES_OPTIONAL, JSON_NUMBER, NULL, "^[0-9]{1,5}$");
+	options_add(&OREGON_21->options, 'n', "pressure", OPTION_HAS_VALUE, DEVICES_OPTIONAL, JSON_NUMBER, NULL, "^[0-9]{1,4}$");
 
 	options_add(&OREGON_21->options, 0, "temperature-decimals", OPTION_OPT_VALUE, GUI_SETTING, JSON_NUMBER, (void *)2, "[0-3]");
 	options_add(&OREGON_21->options, 0, "humidity-decimals", OPTION_OPT_VALUE, GUI_SETTING, JSON_NUMBER, (void *)1, "[0-3]");
@@ -471,7 +518,7 @@ void oregon_21WeatherInit(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name =  "oregon_21";
-	module->version =  "1.15";
+	module->version =  "1.16";
 	module->reqversion =  "7.0";
 	module->reqcommit =  NULL;
 }
