@@ -1628,6 +1628,14 @@ int flag_oregon_21 = 0;
 							// Rebuild missing SYNC Header: 488, 976, 488 488 976 488 488 976
 							while ( (duration > 100) && (p_header_21 < (unsigned int)L_HEADER_21) ) {
 								r.pulses[r.length++] = header_21[p_header_21];
+									// panic - take the exit, set state to WFH
+									if(r.length > MAXPULSESTREAMLENGTH-1) {
+									r.length = 0;
+									preamb_duration = 0;
+									preamb_pulse_counter = 0;
+									preamb_state = WAIT_FOR_END_OF_HEADER;
+									break;
+								}
 								duration -= header_21[p_header_21];
 								preamb_pulse_counter++;
 								p_header_21++;
@@ -1635,7 +1643,9 @@ int flag_oregon_21 = 0;
 							r.length--; // Adjust pointer
 							preamb_pulse_counter--; // Adjust counter
 						}
-						preamb_state = WAIT_FOR_END_OF_DATA_3;
+                        // if panic - ensure that we do not override the WFH state
+                        if (preamb_state!=WAIT_FOR_END_OF_HEADER)
+							preamb_state = WAIT_FOR_END_OF_DATA_3;
 						break;
 					case WAIT_FOR_END_OF_DATA:
 						if (duration > 5100) {				// Regular GAP detected search for Header
