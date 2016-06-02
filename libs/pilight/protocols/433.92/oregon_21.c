@@ -465,6 +465,21 @@ static void parseCode(void) {
 		}
 		if (b_unknown) {
 			createMessage(device_id, id, unit, battery, temp, humidity, uv, wind_dir, wind_speed, wind_avg, rain, rain_total, pressure);
+		} else {
+			if(log_level_get() >= LOG_DEBUG) {
+				fprintf(stderr,"\nOREGON_21: DEBUG **** BIN Array pBin: %d Hexa ****",pBin);
+				fprintf(stderr,"\n --- 00 01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 ");
+				i=30;
+				for(x=0;x<=BINLEN_OREGON_21_PROT;x=x+4) {
+					if(i==30) {
+						fprintf(stderr,"\n %03i ",x);
+						i=0;
+					}
+					fprintf(stderr,"%2x ",(binToDec(binary,x,x+3)));
+					i++;
+				}
+			fprintf(stderr,"\n");
+			}
 		}
 	} else {
 	} // End if > 97
@@ -518,7 +533,7 @@ void oregon_21WeatherInit(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name =  "oregon_21";
-	module->version =  "1.16";
+	module->version =  "1.17";
 	module->reqversion =  "7.0";
 	module->reqcommit =  NULL;
 }
