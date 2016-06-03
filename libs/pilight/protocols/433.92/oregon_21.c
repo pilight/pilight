@@ -341,10 +341,22 @@ static void parseCode(void) {
 		// Decode the payload of various V2.1 devices
 		switch (device_id) {
 			case 7456:						// 1D20, F824, F8B4
-			case 7472:						// 1D30
 			case 63524:
 			case 63668:
 			case 52259:						// THGR 328N - CC23
+				temp    =  (double)((binToDec(binary, 32,35)));		// Temp
+				temp    += (double)((binToDec(binary, 36,39)*10));
+				temp    += (double)((binToDec(binary, 40,43)*100));
+				temp    = temp * 10;
+				sign    =  (binToDec(binary, 44,47));		// If set Temp is negative
+				if(sign!=0)temp = -temp;
+				humidity =  (double)((binToDec(binary, 48,51)));		// Humidity
+				humidity += (double)((binToDec(binary, 52,55)*10));
+				humidity += (double)((binToDec(binary, 56,59)*100));
+				pChksum = 60;
+				pChkcrc = 68;
+			break;
+			case 7472:						// 1D30
 				temp    =  (double)((binToDec(binary, 32,35)));		// Temp
 				temp    += (double)((binToDec(binary, 36,39)*10));
 				temp    += (double)((binToDec(binary, 40,43)*100));
@@ -533,7 +545,7 @@ void oregon_21WeatherInit(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name =  "oregon_21";
-	module->version =  "1.17";
+	module->version =  "1.18";
 	module->reqversion =  "7.0";
 	module->reqcommit =  NULL;
 }
