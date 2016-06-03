@@ -77,7 +77,7 @@ static void createMessage(	int device_id, int id, int unit, int battery, double 
 	if (temp-274.0 > EPSILON)
 		json_append_member(OREGON_21->message, "temperature", json_mknumber(temp/100.0,2));
 	if (humidity-1.0 > EPSILON)
-		json_append_member(OREGON_21->message, "humidity", json_mknumber(humidity,2));
+		json_append_member(OREGON_21->message, "humidity", json_mknumber(humidity/10.0,1));
 	if (uv != -1)
 		json_append_member(OREGON_21->message, "uv", json_mknumber(uv,0));
 	if (wind_dir != -1)
@@ -341,7 +341,6 @@ static void parseCode(void) {
 		// Decode the payload of various V2.1 devices
 		switch (device_id) {
 			case 7456:						// 1D20, F824, F8B4
-			case 7472:						// 1D30
 			case 63524:
 			case 63668:
 			case 52259:						// THGR 328N - CC23
@@ -353,8 +352,22 @@ static void parseCode(void) {
 				if(sign!=0)temp = -temp;
 				humidity =  (double)((binToDec(binary, 48,51)));		// Humidity
 				humidity += (double)((binToDec(binary, 52,55)*10));
-				pChksum = 56;
-				pChkcrc = 64;
+				humidity += (double)((binToDec(binary, 56,59)*100));
+				pChksum = 60;
+				pChkcrc = 68;
+			break;
+			case 7472:						// 1D30
+				temp    =  (double)((binToDec(binary, 32,35)));		// Temp
+				temp    += (double)((binToDec(binary, 36,39)*10));
+				temp    += (double)((binToDec(binary, 40,43)*100));
+				temp    = temp * 10;
+				sign    =  (binToDec(binary, 44,47));		// If set Temp is negative
+				if(sign!=0)temp = -temp;
+				humidity =  (double)((binToDec(binary, 48,51)));		// Humidity
+				humidity += (double)((binToDec(binary, 52,55)*10));
+				humidity += (double)((binToDec(binary, 56,59)*100));
+				pChksum = 60;
+				pChkcrc = 68;
 			break;
 			case 60480:						// EC40, C844
 			case 51268:
@@ -395,6 +408,7 @@ static void parseCode(void) {
 				rain_total   +=  (binToDec(binary, 56,59)*10);
 				rain_total   +=  (binToDec(binary, 60,63)*100);
 				rain_total   +=  (binToDec(binary, 64,67)*1000);
+				rain_total   *=  10;
 				pChksum = 0;
 				pChkcrc = 0;
 			break;
@@ -419,6 +433,7 @@ static void parseCode(void) {
 				if(sign!=0)temp = -temp;
 				humidity =  (double)((binToDec(binary, 48,51)));		// Humidity
 				humidity += (double)((binToDec(binary, 52,55)*10));
+				humidity += (double)((binToDec(binary, 56,59)*100));
 				pressure	=  (binToDec(binary, 64,67) << 8);	// pressure Hg
 				pressure	+= (binToDec(binary, 68,71) << 4);
 				pressure	+= (binToDec(binary, 72,75));
@@ -456,7 +471,7 @@ static void parseCode(void) {
 				logprintf(LOG_DEBUG, "OREGON_21: No CRC data available: pbin %d, pChkcrc: %d", pBin, pChkcrc+7);
 			}
 		}
-		if(log_level_get() >= LOG_DEBUG) {
+		if(log_level_get() >= LOG_DEBUG && pBin > 8) {
 			fprintf(stderr,"\n device: %d - id: %d - unit: %d - batt: %d - temp: %f - humi: %f - uv: %d",device_id, id, unit, battery, temp, humidity, uv);
 			fprintf(stderr,"\n wind_dir: %d - wind_speed: %d - wind_avg: %d - rain: %d - rain_total: %d - pressure: %d\n", wind_dir, wind_speed, wind_avg, rain, rain_total, pressure);
 			if (pChksum != 0) fprintf(stderr," Chksum: %d %x %x at %d ", pChksum, chksum, binToDec(binary,pChksum, pChksum+7), pBin);
@@ -466,7 +481,7 @@ static void parseCode(void) {
 		if (b_unknown) {
 			createMessage(device_id, id, unit, battery, temp, humidity, uv, wind_dir, wind_speed, wind_avg, rain, rain_total, pressure);
 		} else {
-			if(log_level_get() >= LOG_DEBUG) {
+			if(log_level_get() >= LOG_DEBUG && pBin > 8) {
 				fprintf(stderr,"\nOREGON_21: DEBUG **** BIN Array pBin: %d Hexa ****",pBin);
 				fprintf(stderr,"\n --- 00 04 08 12 16 20 24 28 32 36 40 44 48 52 56 60 64 68 72 76 80 84 88 92 96 ");
 				i=25;
@@ -478,7 +493,7 @@ static void parseCode(void) {
 					fprintf(stderr,"%2x ",(binToDec(binary,x,x+3)));
 					i++;
 				}
-			fprintf(stderr,"\n");
+				fprintf(stderr,"\n");
 			}
 		}
 	} else {
@@ -533,7 +548,7 @@ void oregon_21WeatherInit(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name =  "oregon_21";
-	module->version =  "1.17";
+	module->version =  "1.18";
 	module->reqversion =  "7.0";
 	module->reqcommit =  NULL;
 }
