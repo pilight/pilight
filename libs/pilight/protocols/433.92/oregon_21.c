@@ -59,7 +59,7 @@
 #define MINRAWLEN_OREGON_21_PROT	140     // all Data bit toogle
 #define MAXRAWLEN_OREGON_21_PROT	428     // all Data bit equal
 
-static int pChksum = 0, chksum = 0, pChkcrc = 0, chkcrc = 0;
+static int pChksum = 0, chksum = 0, pChkcrc = 0;
 
 static int validate(void) {
 	if(OREGON_21->rawlen >= MINRAWLEN_OREGON_21_PROT && OREGON_21->rawlen <= MAXRAWLEN_OREGON_21_PROT) {
@@ -98,7 +98,7 @@ static void parseCode(void) {
 	int binary [BINLEN_OREGON_21_PROT];
 
 	int i, s_0, b_unknown, x;
-	int pBin = 0, pRaw = 0;
+	int eBin= 0, pBin = 0, pRaw = 0;
 	int protocol_sync = 1;
 	int rDataLow = 0, rDataTime = 0;
 	int sign;
@@ -276,18 +276,16 @@ static void parseCode(void) {
 				}
 			break;
 			case 89:
-			// Tha max. # of bits in binary data array was exceeded
-			logprintf(LOG_DEBUG, "OREGON_21: State 89: Number of binary bits decoded invalid #: %d", pBin);
+			// No end in decoding binary bits.
 			protocol_sync = 96;
 			break;
 			case 90:
-			// Inverted and regular Bit do not match. Error in payload
+			// Invalid parity bit found
 			case 91:
 			// Unknown Footer Length
 			// some devices send a spike before the footer, check if next pulse is footer
 				protocol_sync = 91;
 				if ( (OREGON_21->raw[pRaw+1] > PULSE_OREGON_21_FOOTER_L) && (OREGON_21->raw[pRaw+1] < PULSE_OREGON_21_FOOTER_H) ) {
-					logprintf(LOG_DEBUG, "OREGON_21: State 91: Ignore spike: %d at pRaw: %d before footer with length: %d", rDataTime, pRaw, OREGON_21->raw[pRaw+1]);
 					rDataTime=OREGON_21->raw[pRaw++];
 					protocol_sync = 98;
 				}
@@ -299,14 +297,11 @@ static void parseCode(void) {
 			// Short pulse missing 2nd data bit
 			case 95:
 			// We did not find valid Pre-Amble data
-				logprintf(LOG_DEBUG, "OREGON_21: State %d: No further valid data found.", protocol_sync);
 			case 96:
 				protocol_sync = 99;
-				logprintf(LOG_DEBUG, "OREGON_21: State 96: End of data with last pulse: %d - #of pRaw: %d - #of bin: %d", rDataTime, pRaw, pBin);
 			break;
 			case 97:
 			// We decoded a footer pulse without decoding the correct number of binary bits
-				logprintf(LOG_DEBUG, "OREGON_21: State 97: Unexpected EOF.");
 			case 98:
 				logprintf(LOG_DEBUG, "OREGON_21: State 98: End of data with last pulse: %d - #of pRaw: %d - #of bin: %d", rDataTime, pRaw, pBin);
 			// We have reached the end of processing raw data
@@ -355,6 +350,7 @@ static void parseCode(void) {
 				humidity += (double)((binToDec(binary, 56,59)*100));
 				pChksum = 60;
 				pChkcrc = 68;
+				eBin = 76;
 			break;
 			case 7472:						// 1D30
 				temp    =  (double)((binToDec(binary, 32,35)));		// Temp
@@ -368,6 +364,7 @@ static void parseCode(void) {
 				humidity += (double)((binToDec(binary, 56,59)*100));
 				pChksum = 60;
 				pChkcrc = 68;
+				eBin = 76;
 			break;
 			case 60480:						// EC40, C844
 			case 51268:
@@ -379,6 +376,7 @@ static void parseCode(void) {
 				if(sign!=0)temp = -temp;
 				pChksum = 48;
 				pChkcrc = 56;
+				eBin = 64;
 			break;
 			case 60526:						// EC70, D874
 			case 55412:
@@ -386,6 +384,7 @@ static void parseCode(void) {
 				uv      += (binToDec(binary, 36,39)*10);
 				pChksum = 0;
 				pChkcrc = 0;
+				eBin = 0;
 			break;
 			case 6532:						// 1984, 1994
 			case 6548:
@@ -398,6 +397,7 @@ static void parseCode(void) {
 				wind_avg   +=  (binToDec(binary, 64,67)*100);	// wind average speed
 				pChksum = 0;
 				pChkcrc = 0;
+				eBin = 0;
 			break;
 			case 10516:						// 2914
 				rain     =  (binToDec(binary, 32,35));		// rain rate 0,01 inch
@@ -411,6 +411,7 @@ static void parseCode(void) {
 				rain_total   *=  10;
 				pChksum = 0;
 				pChkcrc = 0;
+				eBin = 0;
 			break;
 			case 11536:						// 2D10
 				rain     =  (binToDec(binary, 32,35));		// rain rate 0,1 mm
@@ -423,6 +424,7 @@ static void parseCode(void) {
 				rain_total   +=  (binToDec(binary, 60,63)*10000);
 				pChksum = 0;
 				pChkcrc = 0;
+				eBin = 0;
 			break;
 			case 23904:						// 5D60
 				temp    =  (double)((binToDec(binary, 32,35)));		// Temp
@@ -439,6 +441,7 @@ static void parseCode(void) {
 				pressure	+= (binToDec(binary, 72,75));
 				pChksum = 0;
 				pChkcrc = 0;
+				eBin = 0;
 			break;
 
 			default:
@@ -457,21 +460,21 @@ static void parseCode(void) {
 						chksum += binToDec(binary, x, x+3);
 					}
 					if ((chksum - binToDec(binary, pChksum, pChksum+7)) != 0) {
-						logprintf(LOG_DEBUG, "OREGON_21: Error in Chksum: %x - expected: %x", chksum, binToDec(binary, pChksum, pChksum+7));
 						b_unknown = 0;	// Disable forwarding of packets with incorrect checksum
 					}
 				}
 			} else {
-				logprintf(LOG_DEBUG, "OREGON_21: No Checksum data available: pbin %d, pChksum: %d", pBin, pChksum+7);
+				// No checksum available
 			}
 
 			if (pBin+7 > pChkcrc) {
 				// Add CRC code later on here
 			} else {
-				logprintf(LOG_DEBUG, "OREGON_21: No CRC data available: pbin %d, pChkcrc: %d", pBin, pChkcrc+7);
+				// No CRC available
 			}
 		}
-		if (b_unknown) {
+
+		if (b_unknown && eBin == pBin) {
 			createMessage(device_id, id, unit, battery, temp, humidity, uv, wind_dir, wind_speed, wind_avg, rain, rain_total, pressure);
 
 		}
@@ -527,7 +530,7 @@ void oregon_21WeatherInit(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name =  "oregon_21";
-	module->version =  "1.19";
+	module->version =  "1.20";
 	module->reqversion =  "7.0";
 	module->reqcommit =  NULL;
 }
