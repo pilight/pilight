@@ -30,7 +30,7 @@
 #include "../../core/gc.h"
 #include "quigg_gt9000.h"
 
-#define PULSE_QUIGG_SHORT	300
+#define PULSE_QUIGG_SHORT	500
 #define PULSE_QUIGG_LONG	1100
 #define PULSE_QUIGG_FOOTER1	3000
 #define PULSE_QUIGG_FOOTER2	7000
@@ -390,7 +390,7 @@ void quiggGT9000Init(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "quigg_gt9000";
-	module->version = "1.2";
+	module->version = "1.3";
 	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }
