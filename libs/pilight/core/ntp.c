@@ -95,26 +95,30 @@ int ntp_gc(void) {
 
 static int process_cursor(void) {
 	struct timeval tv;
-	cursor++;
 
 	running = 0;
 
+	if(cursor+1 >= nrservers) {
+		cursor = 0;
+	} else {
+		__sync_add_and_fetch(&cursor, 1);
+	}
+
 	if(ntptime == -1) {
-		if(cursor >= nrservers) {
-			cursor = 0;
+		if(cursor == 0) {
 			tv.tv_sec = 10;
 			tv.tv_usec = 0;
-			threadpool_add_scheduled_work("ntp sync", ntpthread, tv, NULL);
-		}	else {
+		} else {
 			tv.tv_sec = 1;
 			tv.tv_usec = 0;
-			threadpool_add_scheduled_work("ntp sync", ntpthread, tv, NULL);
 		}
 	} else {
 		tv.tv_sec = 86400;
 		tv.tv_usec = 0;
-		threadpool_add_scheduled_work("ntp sync", ntpthread, tv, NULL);
 	}
+
+	threadpool_add_scheduled_work("ntp sync", ntpthread, tv, NULL);
+
 	return 0;
 }
 
@@ -177,7 +181,7 @@ static int callback(struct eventpool_fd_t *node, int event) {
 
 void *ntpthread(void *param) {
 	char *tmp = NULL;
-
+	
 	if(running == 1) {
 		struct timeval tv;
 
@@ -211,9 +215,13 @@ void *ntpthread(void *param) {
 		}
 	}
 
-	logprintf(LOG_DEBUG, "trying to sync with ntp-server %s", ntpservers[cursor]);
+	if(cursor < nrservers) {
+		logprintf(LOG_DEBUG, "trying to sync with ntp-server %s", ntpservers[cursor]);
 
-	eventpool_socket_add("ping", ntpservers[cursor], 123, AF_INET, SOCK_DGRAM, 0, EVENTPOOL_TYPE_SOCKET_CLIENT, callback, NULL, NULL);
+		eventpool_socket_add("ping", ntpservers[cursor], 123, AF_INET, SOCK_DGRAM, 0, EVENTPOOL_TYPE_SOCKET_CLIENT, callback, NULL, NULL);
+	} else {
+		process_cursor();
+	}
 
 	return (void *)NULL;
 }
