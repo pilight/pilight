@@ -74,10 +74,10 @@ static void createMessage(	int device_id, int id, int unit, int battery, double 
 	json_append_member(OREGON_21->message, "id", json_mknumber(id,0));
 	json_append_member(OREGON_21->message, "unit", json_mknumber(unit,0));
 	json_append_member(OREGON_21->message, "battery", json_mknumber(battery,0));
-	if (temp-274.0 > EPSILON)
+	if (!((temp+27400.0) < EPSILON))
 		json_append_member(OREGON_21->message, "temperature", json_mknumber(temp/100.0,2));
-	if (humidity-1.0 > EPSILON)
-		json_append_member(OREGON_21->message, "humidity", json_mknumber(humidity/10.0,1));
+	if (!((humidity+1.0) < EPSILON))
+		json_append_member(OREGON_21->message, "humidity", json_mknumber(humidity,1));
 	if (uv != -1)
 		json_append_member(OREGON_21->message, "uv", json_mknumber(uv,0));
 	if (wind_dir != -1)
@@ -106,7 +106,7 @@ static void parseCode(void) {
 	int id = -1;
 	int unit = -1;
 	int battery = -1;
-	double temp = -274.0;
+	double temp = -27400.0;
 	double humidity = -1.0;
 	int uv = -1;
 	int wind_dir = -1;
@@ -347,7 +347,6 @@ static void parseCode(void) {
 				if(sign!=0)temp = -temp;
 				humidity =  (double)((binToDec(binary, 48,51)));		// Humidity
 				humidity += (double)((binToDec(binary, 52,55)*10));
-				humidity += (double)((binToDec(binary, 56,59)*100));
 				pChksum = 60;
 				pChkcrc = 68;
 				eBin = 76;
@@ -361,7 +360,6 @@ static void parseCode(void) {
 				if(sign!=0)temp = -temp;
 				humidity =  (double)((binToDec(binary, 48,51)));		// Humidity
 				humidity += (double)((binToDec(binary, 52,55)*10));
-				humidity += (double)((binToDec(binary, 56,59)*100));
 				pChksum = 60;
 				pChkcrc = 68;
 				eBin = 76;
@@ -435,7 +433,6 @@ static void parseCode(void) {
 				if(sign!=0)temp = -temp;
 				humidity =  (double)((binToDec(binary, 48,51)));		// Humidity
 				humidity += (double)((binToDec(binary, 52,55)*10));
-				humidity += (double)((binToDec(binary, 56,59)*100));
 				pressure	=  (binToDec(binary, 64,67) << 8);	// pressure Hg
 				pressure	+= (binToDec(binary, 68,71) << 4);
 				pressure	+= (binToDec(binary, 72,75));
@@ -548,7 +545,7 @@ void oregon_21WeatherInit(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name =  "oregon_21";
-	module->version =  "1.21";
+	module->version =  "1.22";
 	module->reqversion =  "7.0";
 	module->reqcommit =  NULL;
 }
