@@ -477,7 +477,7 @@ static void parseCode(void) {
 		}
 		if (b_unknown) {
 			createMessage(device_id, id, unit, battery, temp, humidity, uv, wind_dir, wind_speed, wind_avg, rain, rain_total, pressure);
-		} else {
+//		} else {
 			if(log_level_get() >= LOG_DEBUG) {
 				fprintf(stderr,"\nOREGON_21: DEBUG **** BIN Array pBin: %d Hexa ****",pBin);
 				fprintf(stderr,"\n --- 00 04 08 12 16 20 24 28 32 36 40 44 48 52 56 60 64 68 72 76 80 84 88 92 96 ");
