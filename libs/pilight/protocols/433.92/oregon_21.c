@@ -467,18 +467,36 @@ static void parseCode(void) {
 				// No checksum available
 			}
 
-			if (pBin+7 > pChkcrc) {
-				// Add CRC code later on here
-			} else {
-				// No CRC available
-			}
 		}
 
 		if (b_unknown && eBin == pBin) {
 			createMessage(device_id, id, unit, battery, temp, humidity, uv, wind_dir, wind_speed, wind_avg, rain, rain_total, pressure);
 
+            if(log_level_get() >= LOG_DEBUG) {
+                fprintf(stderr,"\n device: %d - id: %d - unit: %d - batt: %d - temp: %f - humi: %f - uv: %d",device_id, id, unit, battery, temp, humidity, uv);
+                fprintf(stderr,"\n wind_dir: %d - wind_speed: %d - wind_avg: %d - rain: %d - rain_total: %d - pressure: %d\n", wind_dir, wind_speed, wind_avg, rain, rain_total, pressure);
+                if (pChksum != 0) fprintf(stderr," Chksum: %d %x %x at %d ", pChksum, chksum, binToDec(binary,pChksum, pChksum+7), pBin);
+                fprintf(stderr,"\n");
+            }
+
+            if(log_level_get() >= LOG_DEBUG) {
+                fprintf(stderr,"\nOREGON_21: DEBUG **** BIN Array pBin: %d Hexa ****",pBin);
+                fprintf(stderr,"\n --- 00 04 08 12 16 20 24 28 32 36 40 44 48 52 56 60 64 68 72 76 80 84 88 92 96 ");
+                i=25;
+                for(x=0;x<BINLEN_OREGON_21_PROT;x=x+4) {
+                    if(i==25) {
+                        fprintf(stderr,"\n %03i ",x);
+                        i=0;
+                    }
+                    fprintf(stderr,"%2x ",(binToDec(binary,x,x+3)));
+                    i++;
+                }
+                fprintf(stderr,"\n");
+            }
 		}
 	} else {
+
+
 	} // End if > 97
 }
 
@@ -530,7 +548,7 @@ void oregon_21WeatherInit(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name =  "oregon_21";
-	module->version =  "1.20";
+	module->version =  "1.21";
 	module->reqversion =  "7.0";
 	module->reqcommit =  NULL;
 }
