@@ -74,10 +74,10 @@ static void createMessage(	int device_id, int id, int unit, int battery, double 
 	json_append_member(OREGON_21->message, "id", json_mknumber(id,0));
 	json_append_member(OREGON_21->message, "unit", json_mknumber(unit,0));
 	json_append_member(OREGON_21->message, "battery", json_mknumber(battery,0));
-	if (temp-274.0 > EPSILON)
+	if (!((temp+27400.0) < EPSILON))
 		json_append_member(OREGON_21->message, "temperature", json_mknumber(temp/100.0,2));
-	if (humidity-1.0 > EPSILON)
-		json_append_member(OREGON_21->message, "humidity", json_mknumber(humidity/10.0,1));
+	if (!((humidity+1.0) < EPSILON))
+		json_append_member(OREGON_21->message, "humidity", json_mknumber(humidity,1));
 	if (uv != -1)
 		json_append_member(OREGON_21->message, "uv", json_mknumber(uv,0));
 	if (wind_dir != -1)
@@ -98,7 +98,7 @@ static void parseCode(void) {
 	int binary [BINLEN_OREGON_21_PROT];
 
 	int i, s_0, b_unknown, x;
-	int eBin= 0, pBin = 0, pRaw = 0;
+	int eBin= -1, pBin = 0, pRaw = 0;
 	int protocol_sync = 1;
 	int rDataLow = 0, rDataTime = 0;
 	int sign;
@@ -106,7 +106,7 @@ static void parseCode(void) {
 	int id = -1;
 	int unit = -1;
 	int battery = -1;
-	double temp = -274.0;
+	double temp = -27400.0;
 	double humidity = -1.0;
 	int uv = -1;
 	int wind_dir = -1;
@@ -347,7 +347,6 @@ static void parseCode(void) {
 				if(sign!=0)temp = -temp;
 				humidity =  (double)((binToDec(binary, 48,51)));		// Humidity
 				humidity += (double)((binToDec(binary, 52,55)*10));
-				humidity += (double)((binToDec(binary, 56,59)*100));
 				pChksum = 60;
 				pChkcrc = 68;
 				eBin = 76;
@@ -361,7 +360,6 @@ static void parseCode(void) {
 				if(sign!=0)temp = -temp;
 				humidity =  (double)((binToDec(binary, 48,51)));		// Humidity
 				humidity += (double)((binToDec(binary, 52,55)*10));
-				humidity += (double)((binToDec(binary, 56,59)*100));
 				pChksum = 60;
 				pChkcrc = 68;
 				eBin = 76;
@@ -435,7 +433,6 @@ static void parseCode(void) {
 				if(sign!=0)temp = -temp;
 				humidity =  (double)((binToDec(binary, 48,51)));		// Humidity
 				humidity += (double)((binToDec(binary, 52,55)*10));
-				humidity += (double)((binToDec(binary, 56,59)*100));
 				pressure	=  (binToDec(binary, 64,67) << 8);	// pressure Hg
 				pressure	+= (binToDec(binary, 68,71) << 4);
 				pressure	+= (binToDec(binary, 72,75));
@@ -469,34 +466,32 @@ static void parseCode(void) {
 
 		}
 
-		if (b_unknown && eBin == pBin) {
+		if (b_unknown && (eBin == pBin || eBin == 0)) {
 			createMessage(device_id, id, unit, battery, temp, humidity, uv, wind_dir, wind_speed, wind_avg, rain, rain_total, pressure);
+		}
 
-            if(log_level_get() >= LOG_DEBUG) {
-                fprintf(stderr,"\n device: %d - id: %d - unit: %d - batt: %d - temp: %f - humi: %f - uv: %d",device_id, id, unit, battery, temp, humidity, uv);
-                fprintf(stderr,"\n wind_dir: %d - wind_speed: %d - wind_avg: %d - rain: %d - rain_total: %d - pressure: %d\n", wind_dir, wind_speed, wind_avg, rain, rain_total, pressure);
-                if (pChksum != 0) fprintf(stderr," Chksum: %d %x %x at %d ", pChksum, chksum, binToDec(binary,pChksum, pChksum+7), pBin);
-                fprintf(stderr,"\n");
-            }
+		if(log_level_get() >= LOG_DEBUG) {
+			fprintf(stderr,"\n device: %d - id: %d - unit: %d - batt: %d - temp: %f - humi: %f - uv: %d",device_id, id, unit, battery, temp, humidity, uv);
+			fprintf(stderr,"\n wind_dir: %d - wind_speed: %d - wind_avg: %d - rain: %d - rain_total: %d - pressure: %d\n", wind_dir, wind_speed, wind_avg, rain, rain_total, pressure);
+			if (pChksum != 0) fprintf(stderr," pChksum at: %d, calc: %x, expected: %x, bin end at: %d, crc: %x", pChksum, chksum, binToDec(binary,pChksum, pChksum+7), pBin, binToDec(binary,pChksum+8, pChksum+15));
+			fprintf(stderr,"\n");
+		}
 
-            if(log_level_get() >= LOG_DEBUG) {
-                fprintf(stderr,"\nOREGON_21: DEBUG **** BIN Array pBin: %d Hexa ****",pBin);
-                fprintf(stderr,"\n --- 00 04 08 12 16 20 24 28 32 36 40 44 48 52 56 60 64 68 72 76 80 84 88 92 96 ");
-                i=25;
-                for(x=0;x<BINLEN_OREGON_21_PROT;x=x+4) {
-                    if(i==25) {
-                        fprintf(stderr,"\n %03i ",x);
-                        i=0;
-                    }
-                    fprintf(stderr,"%2x ",(binToDec(binary,x,x+3)));
-                    i++;
-                }
-                fprintf(stderr,"\n");
-            }
+		if(log_level_get() >= LOG_DEBUG) {
+			fprintf(stderr,"\nOREGON_21: DEBUG **** BIN Array pBin: %d Hexa ****",pBin);
+			fprintf(stderr,"\n --- 00 04 08 12 16 20 24 28 32 36 40 44 48 52 56 60 64 68 72 76 80 84 88 92 96 ");
+			i=25;
+			for(x=0;x<BINLEN_OREGON_21_PROT;x=x+4) {
+				if(i==25) {
+					fprintf(stderr,"\n %03i ",x);
+					i=0;
+				}
+				fprintf(stderr,"%2x ",(binToDec(binary,x,x+3)));
+				i++;
+			}
+			fprintf(stderr,"\n");
 		}
 	} else {
-
-
 	} // End if > 97
 }
 
@@ -520,8 +515,8 @@ void oregon_21WeatherInit(void) {
 	options_add(&OREGON_21->options, 'i', "id", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^([0-4])$");
 	options_add(&OREGON_21->options, 'b', "battery", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^([0-4])$");
 
-	options_add(&OREGON_21->options, 't', "temperature", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9]{1,3}$");
-	options_add(&OREGON_21->options, 'h', "humidity", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9]{1,3}$");
+	options_add(&OREGON_21->options, 't', "temperature", OPTION_HAS_VALUE, DEVICES_OPTIONAL, JSON_NUMBER, NULL, "^[0-9]{1,3}$");
+	options_add(&OREGON_21->options, 'h', "humidity", OPTION_HAS_VALUE, DEVICES_OPTIONAL, JSON_NUMBER, NULL, "^[0-9]{1,3}$");
 	options_add(&OREGON_21->options, 'v', "uv", OPTION_HAS_VALUE, DEVICES_OPTIONAL, JSON_NUMBER, NULL, "^[0-9]{1,2}$");
 	options_add(&OREGON_21->options, 'w', "winddir", OPTION_HAS_VALUE, DEVICES_OPTIONAL, JSON_NUMBER, NULL, "^[0-9]{1,3}$");
 	options_add(&OREGON_21->options, 'j', "windgust", OPTION_HAS_VALUE, DEVICES_OPTIONAL, JSON_NUMBER, NULL, "^[0-9]{1,3}$");
@@ -548,7 +543,7 @@ void oregon_21WeatherInit(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name =  "oregon_21";
-	module->version =  "1.21";
+	module->version =  "1.24";
 	module->reqversion =  "7.0";
 	module->reqcommit =  NULL;
 }
