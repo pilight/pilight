@@ -472,7 +472,7 @@ static void parseCode(void) {
             if(log_level_get() >= LOG_DEBUG) {
                 fprintf(stderr,"\n device: %d - id: %d - unit: %d - batt: %d - temp: %f - humi: %f - uv: %d",device_id, id, unit, battery, temp, humidity, uv);
                 fprintf(stderr,"\n wind_dir: %d - wind_speed: %d - wind_avg: %d - rain: %d - rain_total: %d - pressure: %d\n", wind_dir, wind_speed, wind_avg, rain, rain_total, pressure);
-                if (pChksum != 0) fprintf(stderr," Chksum: %d %x %x at %d ", pChksum, chksum, binToDec(binary,pChksum, pChksum+7), pBin);
+                if (pChksum != 0) fprintf(stderr," pChksum at: %d, calc: %x, expected: %x, bin end at: %d, crc: %x", pChksum, chksum, binToDec(binary,pChksum, pChksum+7), pBin, binToDec(binary,pChksum+8, pChksum+15));
                 fprintf(stderr,"\n");
             }
 
@@ -517,8 +517,8 @@ void oregon_21WeatherInit(void) {
 	options_add(&OREGON_21->options, 'i', "id", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^([0-4])$");
 	options_add(&OREGON_21->options, 'b', "battery", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^([0-4])$");
 
-	options_add(&OREGON_21->options, 't', "temperature", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9]{1,3}$");
-	options_add(&OREGON_21->options, 'h', "humidity", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9]{1,3}$");
+	options_add(&OREGON_21->options, 't', "temperature", OPTION_HAS_VALUE, DEVICES_OPTIONAL, JSON_NUMBER, NULL, "^[0-9]{1,3}$");
+	options_add(&OREGON_21->options, 'h', "humidity", OPTION_HAS_VALUE, DEVICES_OPTIONAL, JSON_NUMBER, NULL, "^[0-9]{1,3}$");
 	options_add(&OREGON_21->options, 'v', "uv", OPTION_HAS_VALUE, DEVICES_OPTIONAL, JSON_NUMBER, NULL, "^[0-9]{1,2}$");
 	options_add(&OREGON_21->options, 'w', "winddir", OPTION_HAS_VALUE, DEVICES_OPTIONAL, JSON_NUMBER, NULL, "^[0-9]{1,3}$");
 	options_add(&OREGON_21->options, 'j', "windgust", OPTION_HAS_VALUE, DEVICES_OPTIONAL, JSON_NUMBER, NULL, "^[0-9]{1,3}$");
@@ -545,7 +545,7 @@ void oregon_21WeatherInit(void) {
 #ifdef MODULE
 void compatibility(struct module_t *module) {
 	module->name =  "oregon_21";
-	module->version =  "1.22";
+	module->version =  "1.23";
 	module->reqversion =  "7.0";
 	module->reqcommit =  NULL;
 }
