@@ -98,10 +98,10 @@ static int process_cursor(void) {
 
 	running = 0;
 
-	if(cursor+1 >= nrservers) {
-		cursor = 0;
-	} else {
+	if(cursor < nrservers) {
 		__sync_add_and_fetch(&cursor, 1);
+	} else {
+		cursor = 0;
 	}
 
 	if(ntptime == -1) {
@@ -215,10 +215,11 @@ void *ntpthread(void *param) {
 		}
 	}
 
-	if(cursor < nrservers) {
-		logprintf(LOG_DEBUG, "trying to sync with ntp-server %s", ntpservers[cursor]);
+	int x = cursor;
+	if(x < nrservers) {
+		logprintf(LOG_DEBUG, "trying to sync with ntp-server %s", ntpservers[x]);
 
-		eventpool_socket_add("ping", ntpservers[cursor], 123, AF_INET, SOCK_DGRAM, 0, EVENTPOOL_TYPE_SOCKET_CLIENT, callback, NULL, NULL);
+		eventpool_socket_add("ping", ntpservers[x], 123, AF_INET, SOCK_DGRAM, 0, EVENTPOOL_TYPE_SOCKET_CLIENT, callback, NULL, NULL);
 	} else {
 		process_cursor();
 	}
