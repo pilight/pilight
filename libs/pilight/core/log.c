@@ -142,11 +142,11 @@ void logprintf(int prio, const char *str, ...) {
 		
 		/* len + loglevel */
 		if(len+9 > bufsize) {
-			if((buffer = realloc(buffer, len+9+1)) == NULL) {
+			if((buffer = realloc(buffer, len+10)) == NULL) {
 				printf("out of memory\n");
 				exit(EXIT_FAILURE);
 			}
-			bufsize = len+9+1;
+			bufsize = len+10+1;
 		}
 		pos += snprintf(buffer, bufsize, "[%s:%03u] ", fmt, (unsigned int)tv.tv_usec);
 
