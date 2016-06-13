@@ -30,7 +30,7 @@
 #include "../../core/gc.h"
 #include "quigg_gt9000.h"
 
-#define PULSE_QUIGG_SHORT	300
+#define PULSE_QUIGG_SHORT	500
 #define PULSE_QUIGG_LONG	1100
 #define PULSE_QUIGG_FOOTER1	3000
 #define PULSE_QUIGG_FOOTER2	7000
@@ -104,7 +104,7 @@ int gt9000_hash2[16] = { 0x0, 0x9, 0x5, 0xF, 0x3, 0x6, 0xC, 0x7,
 			 0xE, 0xD, 0x1, 0xB, 0x2, 0xA, 0x4, 0x8 };
 
 static int isSyscodeType1(int syscodetype) {
-	if(syscodetype == 14 || syscodetype == 10 || syscodetype == 7 || syscodetype == 1)
+	if(syscodetype & 0x13)
 		return 1;
 	
 	return 0;
@@ -390,7 +390,7 @@ void quiggGT9000Init(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "quigg_gt9000";
-	module->version = "1.2";
+	module->version = "1.3";
 	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }
