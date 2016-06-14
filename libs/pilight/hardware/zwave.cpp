@@ -558,7 +558,7 @@ static void OnDeviceStatusUpdate(OpenZWave::Driver::ControllerState cs, OpenZWav
 			logprintf(LOG_INFO, "[Z-Wave]: Starting controller command");
 		break;
 		case OpenZWave::Driver::ControllerState_Cancel:
-			logprintf(LOG_INFO, "[Z-Wave]: The command was canceled");
+			logprintf(LOG_INFO, "[Z-Wave]: The command was cancelled");
 			pending_command = 0;
 		break;
 		case OpenZWave::Driver::ControllerState_Error:
@@ -695,7 +695,7 @@ void zwaveInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "zwave";
-	module->version = "2.0";
+	module->version = "2.0.1";
 	module->reqversion = "8.0";
 	module->reqcommit = NULL;
 }

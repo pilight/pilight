@@ -176,7 +176,7 @@ static int checkArguments(struct rules_actions_t *obj) {
 							if(strcmp(array[1], units[i].name) == 0) {
 								match = 1;
 								if(isNumeric(array[0]) != 0 && atoi(array[0]) <= 0) {
-									logprintf(LOG_ERR, "switch action \"FOR\" requires a positive number and a unit e.g. \"1 MINUTE\"");
+									logprintf(LOG_ERR, "dim action \"FOR\" requires a positive number and a unit e.g. \"1 MINUTE\"");
 									array_free(&array, l);
 									return -1;
 								}
@@ -184,13 +184,13 @@ static int checkArguments(struct rules_actions_t *obj) {
 							}
 						}
 						if(match == 0) {
-							logprintf(LOG_ERR, "switch action \"%s\" is not a valid unit", array[1]);
+							logprintf(LOG_ERR, "dim action \"%s\" is not a valid unit", array[1]);
 							array_free(&array, l);
 							return -1;
 						}
 						array_free(&array, l);
 					} else {
-						logprintf(LOG_ERR, "switch action \"FOR\" requires a positive number and a unit e.g. \"1 MINUTE\"");
+						logprintf(LOG_ERR, "dim action \"FOR\" requires a positive number and a unit e.g. \"1 MINUTE\"");
 						if(l > 0) {
 							array_free(&array, l);
 						}
@@ -220,7 +220,7 @@ static int checkArguments(struct rules_actions_t *obj) {
 							if(strcmp(array[1], units[i].name) == 0) {
 								match = 1;
 								if(isNumeric(array[0]) != 0 && atoi(array[0]) <= 0) {
-									logprintf(LOG_ERR, "switch action \"AFTER\" requires a positive number and a unit e.g. \"1 MINUTE\"");
+									logprintf(LOG_ERR, "dim action \"AFTER\" requires a positive number and a unit e.g. \"1 MINUTE\"");
 									array_free(&array, l);
 									return -1;
 								}
@@ -228,13 +228,13 @@ static int checkArguments(struct rules_actions_t *obj) {
 							}
 						}
 						if(match == 0) {
-							logprintf(LOG_ERR, "switch action \"%s\" is not a valid unit", array[1]);
+							logprintf(LOG_ERR, "dim action \"%s\" is not a valid unit", array[1]);
 							array_free(&array, l);
 							return -1;
 						}
 						array_free(&array, l);
 					} else {
-						logprintf(LOG_ERR, "switch action \"AFTER\" requires a positive number and a unit e.g. \"1 MINUTE\"");
+						logprintf(LOG_ERR, "dim action \"AFTER\" requires a positive number and a unit e.g. \"1 MINUTE\"");
 						if(l > 0) {
 							array_free(&array, l);
 						}
@@ -279,7 +279,7 @@ static int checkArguments(struct rules_actions_t *obj) {
 							if(strcmp(array[1], units[i].name) == 0) {
 								match = 1;
 								if(isNumeric(array[0]) != 0 && atoi(array[0]) <= 0) {
-									logprintf(LOG_ERR, "switch action \"IN\" requires a positive number and a unit e.g. \"1 MINUTE\"");
+									logprintf(LOG_ERR, "dim action \"IN\" requires a positive number and a unit e.g. \"1 MINUTE\"");
 									array_free(&array, l);
 									return -1;
 								}
@@ -287,13 +287,13 @@ static int checkArguments(struct rules_actions_t *obj) {
 							}
 						}
 						if(match == 0) {
-							logprintf(LOG_ERR, "switch action \"%s\" is not a valid unit", array[1]);
+							logprintf(LOG_ERR, "dim action \"%s\" is not a valid unit", array[1]);
 							array_free(&array, l);
 							return -1;
 						}
 						array_free(&array, l);
 					} else {
-						logprintf(LOG_ERR, "switch action \"IN\" requires a positive number and a unit e.g. \"1 MINUTE\"");
+						logprintf(LOG_ERR, "dim action \"IN\" requires a positive number and a unit e.g. \"1 MINUTE\"");
 						if(l > 0) {
 							array_free(&array, l);
 						}
@@ -330,14 +330,14 @@ static int checkArguments(struct rules_actions_t *obj) {
 									while(devices_select_settings(ORIGIN_ACTION, jbchild->string_, i++, &setting, &val) == 0) {
 										if(strcmp(setting, "dimlevel-maximum") == 0 && val.type_ == JSON_NUMBER) {
 											if((int)val.number_ < dimto) {
-												logprintf(LOG_ERR, "device \"%s\" can't be set to dimlevel \"%d\"", jbchild->string_, (int)dimto);
+												logprintf(LOG_ERR, "device \"%s\" cannot be set to dimlevel \"%d\"", jbchild->string_, (int)dimto);
 												return -1;
 											}
 											match1 = 1;
 										}
 										if(strcmp(setting, "dimlevel-minimum") == 0 && val.type_ == JSON_NUMBER) {
 											if((int)val.number_ > dimto) {
-												logprintf(LOG_ERR, "device \"%s\" can't be set to dimlevel \"%d\"", jbchild->string_, (int)dimto);
+												logprintf(LOG_ERR, "device \"%s\" cannot be set to dimlevel \"%d\"", jbchild->string_, (int)dimto);
 												return -1;
 											}
 											match2 = 1;
@@ -348,19 +348,19 @@ static int checkArguments(struct rules_actions_t *obj) {
 										while(opt) {
 											if(match1 == 0 && strcmp(opt->name, "dimlevel-maximum") == 0 &&
 												opt->vartype == JSON_NUMBER && (int)(intptr_t)opt->def < (int)dimto) {
-												logprintf(LOG_ERR, "device \"%s\" can't be set to dimlevel \"%d\"", jbchild->string_, (int)dimto);
+												logprintf(LOG_ERR, "device \"%s\" cannot be set to dimlevel \"%d\"", jbchild->string_, (int)dimto);
 												return -1;
 											}
 											if(match2 == 0 && strcmp(opt->name, "dimlevel-minimum") == 0 &&
 												opt->vartype == JSON_NUMBER && (int)(intptr_t)opt->def > (int)dimto) {
-												logprintf(LOG_ERR, "device \"%s\" can't be set to dimlevel \"%d\"", jbchild->string_, (int)dimto);
+												logprintf(LOG_ERR, "device \"%s\" cannot be set to dimlevel \"%d\"", jbchild->string_, (int)dimto);
 												return -1;
 											}
 											opt = opt->next;
 										}
 									}
 								} else {
-									logprintf(LOG_ERR, "device \"%s\" doesn't support dimming", jbchild->string_);
+									logprintf(LOG_ERR, "device \"%s\" does not support dimming", jbchild->string_);
 									return -1;
 								}
 							}
@@ -389,14 +389,14 @@ static int checkArguments(struct rules_actions_t *obj) {
 									while(devices_select_settings(ORIGIN_ACTION, jbchild->string_, i++, &setting, &val) == 0) {
 										if(strcmp(setting, "dimlevel-maximum") == 0 && val.type_ == JSON_NUMBER) {
 											if((int)val.number_ < dimfrom) {
-												logprintf(LOG_ERR, "device \"%s\" can't be set to dimlevel \"%d\"", jbchild->string_, (int)dimfrom);
+												logprintf(LOG_ERR, "device \"%s\" cannot be set to dimlevel \"%d\"", jbchild->string_, (int)dimfrom);
 												return -1;
 											}
 											match1 = 1;
 										}
 										if(strcmp(setting, "dimlevel-minimum") == 0 && val.type_ == JSON_NUMBER) {
 											if((int)val.number_ > dimfrom) {
-												logprintf(LOG_ERR, "device \"%s\" can't be set to dimlevel \"%d\"", jbchild->string_, (int)dimfrom);
+												logprintf(LOG_ERR, "device \"%s\" cannot be set to dimlevel \"%d\"", jbchild->string_, (int)dimfrom);
 												return -1;
 											}
 											match2 = 1;
@@ -407,24 +407,24 @@ static int checkArguments(struct rules_actions_t *obj) {
 										while(opt) {
 											if(match1 == 0 && strcmp(opt->name, "dimlevel-maximum") == 0 &&
 											opt->vartype == JSON_NUMBER && (int)(intptr_t)opt->def < (int)dimfrom) {
-												logprintf(LOG_ERR, "device \"%s\" can't be set to dimlevel \"%d\"", jbchild->string_, (int)dimfrom);
+												logprintf(LOG_ERR, "device \"%s\" cannot be set to dimlevel \"%d\"", jbchild->string_, (int)dimfrom);
 												return -1;
 											}
 											if(match2 == 0 && strcmp(opt->name, "dimlevel-minimum") == 0 &&
 											opt->vartype == JSON_NUMBER && (int)(intptr_t)opt->def > (int)dimfrom) {
-												logprintf(LOG_ERR, "device \"%s\" can't be set to dimlevel \"%d\"", jbchild->string_, (int)dimfrom);
+												logprintf(LOG_ERR, "device \"%s\" cannot be set to dimlevel \"%d\"", jbchild->string_, (int)dimfrom);
 												return -1;
 											}
 											opt = opt->next;
 										}
 									}
 								} else {
-									logprintf(LOG_ERR, "device \"%s\" doesn't support dimming", jbchild->string_);
+									logprintf(LOG_ERR, "device \"%s\" does not support dimming", jbchild->string_);
 									return -1;
 								}
 							}
 						} else {
-							logprintf(LOG_ERR, "device \"%s\" doesn't exists", jbchild->string_);
+							logprintf(LOG_ERR, "device \"%s\" does not exist", jbchild->string_);
 							return -1;
 						}
 						jechild = jechild->next;
@@ -885,7 +885,7 @@ void actionDimInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "dim";
-	module->version = "4.0";
+	module->version = "4.0.1";
 	module->reqversion = "7.0";
 	module->reqcommit = "94";
 }

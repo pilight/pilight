@@ -334,9 +334,9 @@ int options_parse(struct options_t **opt, int argc, char **argv, int error_check
 		} else if(strlen(*optarg) != 0 && options_get_argtype(opt, c, &itmp) == 0 && itmp == 1) {
 			if(error_check == 1) {
 				if(strcmp(longarg,shortarg) == 0) {
-					logprintf(LOG_ERR, "option '-%c' doesn't take an argument", c);
+					logprintf(LOG_ERR, "option '-%c' does not take an argument", c);
 				} else {
-					logprintf(LOG_ERR, "option '%s' doesn't take an argument", longarg);
+					logprintf(LOG_ERR, "option '%s' does not take an argument", longarg);
 				}
 				goto gc;
 			} else {

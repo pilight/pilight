@@ -283,7 +283,7 @@ static int client_callback(struct eventpool_fd_t *node, int event) {
 			addr.sin_addr.s_addr = inet_addr("239.255.255.250");
 
 			if(sendto(node->fd, header, BUFFER_SIZE, 0, (struct sockaddr *)&addr, sizeof(addr)) >= 0) {
-				logprintf(LOG_DEBUG, "ssdp sent search");
+				logprintf(LOG_DEBUG, "ssdp search sent");
 			}
 			eventpool_fd_enable_read(node);
 		} break;

@@ -945,7 +945,7 @@ static int socket_parse_responses(char *buffer, char *media, char **respons) {
 									json_delete(json);
 									return 0;
 								} else {
-									logprintf(LOG_ERR, "registry key '%s' doesn't exists", key);
+									logprintf(LOG_ERR, "registry key '%s' does not exist", key);
 									if((*respons = MALLOC(strlen("{\"status\":\"failed\"}")+1)) == NULL) {
 										OUT_OF_MEMORY
 									}
@@ -1231,7 +1231,7 @@ static void *socket_parse_data(void *param) {
 		json_delete(json);
 		return NULL;
 	} else {
-		logprintf(LOG_ERR, "could not parse respons to: %s", data->buffer);
+		logprintf(LOG_ERR, "could not parse response to: %s", data->buffer);
 		client_remove(sd);
 		socket_close(sd);
 		json_delete(json);
@@ -2363,7 +2363,7 @@ int start_pilight(int argc, char **argv) {
 									hardware->mingaplen = tmp->listener->mingaplen;
 								}
 								if(tmp->listener->rawlen > 0) {
-									logprintf(LOG_EMERG, "%s: setting \"rawlen\" length is not allowed, use the \"minrawlen\" and \"maxrawlen\" instead", tmp->listener->id);
+									logprintf(LOG_EMERG, "%s: setting \"rawlen\" length is not allowed, use \"minrawlen\" and \"maxrawlen\" instead", tmp->listener->id);
 									goto clear;
 								}
 							}
