@@ -178,7 +178,7 @@ void logprintf(int prio, const char *str, ...) {
 		len = vsnprintf(NULL, 0, str, apcpy);
 #endif
 		if(len == -1) {
-			fprintf(stderr, "ERROR: unproperly formatted logprintf message %s\n", str);
+			fprintf(stderr, "ERROR: improperly formatted logprintf message %s\n", str);
 		} else {
 			va_end(apcpy);
 			if(len+pos+3 > bufsize) {

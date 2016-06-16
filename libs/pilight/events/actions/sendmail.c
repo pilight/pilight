@@ -151,7 +151,7 @@ static int checkArguments(struct rules_actions_t *obj) {
 
 static void callback(int status) {
 	if(status == 0) {
-		logprintf(LOG_INFO, "successfully send sendmail action message");
+		logprintf(LOG_INFO, "successfully sent sendmail action message");
 	} else {
 		logprintf(LOG_INFO, "failed to send sendmail action message");
 	}
@@ -259,7 +259,7 @@ void actionSendmailInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "sendmail";
-	module->version = "2.0";
+	module->version = "2.0.1";
 	module->reqversion = "7.0";
 	module->reqcommit = "94";
 }
