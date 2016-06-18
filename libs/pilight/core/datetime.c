@@ -482,7 +482,11 @@ int datetime_gc(void) {
 		pthread_mutex_unlock(&mutex_lock);
 	}
 	while(searchingtz > 0) {
-		usleep(10);
+#ifdef _WIN32
+  SleepEx(10, TRUE);
+#else
+  usleep(10);
+#endif
 	}
 	logprintf(LOG_DEBUG, "garbage collected datetime library");
 	return EXIT_SUCCESS;

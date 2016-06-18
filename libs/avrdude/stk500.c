@@ -42,6 +42,10 @@
 #include "stk500_private.h"
 #include "serial.h"
 
+#ifdef _WIN32
+	#include <windows.h>
+#endif
+
 #define STK500_XTAL 7372800U
 #define MAX_SYNC_ATTEMPTS 1
 
@@ -178,7 +182,11 @@ static int stk500_chip_erase(PROGRAMMER *pgm, AVRPART *p) {
 
 	avr_set_bits(p->op[AVR_OP_CHIP_ERASE], cmd);
 	pgm->cmd(pgm, cmd, res);
+#ifdef _WIN32
+	SleepEx(p->chip_erase_delay, TRUE);
+#else
 	usleep(p->chip_erase_delay);
+#endif	
 	pgm->initialize(pgm, p);
 
 	pgm->pgm_led(pgm, OFF);

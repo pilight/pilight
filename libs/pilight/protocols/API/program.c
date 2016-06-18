@@ -324,11 +324,19 @@ static void gc(void) {
 		tmp = data;
 		while(tmp->wait > 0) {
 			logprintf(LOG_NOTICE, "waiting for program \"%s\" to finish it's state change", tmp->name);
+#ifdef _WIN32
+			SleepEx(1000, True);
+#else
 			sleep(1);
+#endif
 		}
 		while(tmp->thread > 0) {
 			logprintf(LOG_NOTICE, "waiting for program \"%s\" to finish it's state change", tmp->name);
+#ifdef _WIN32
+			SleepEx(1000, True);
+#else
 			sleep(1);
+#endif
 		}
 		pthread_join(tmp->pth, NULL);
 		FREE(tmp->name);

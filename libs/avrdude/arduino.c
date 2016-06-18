@@ -37,6 +37,10 @@
 #include "arduino.h"
 #include "../pilight/core/log.h"
 
+#ifdef _WIN32
+	#include <windows.h>
+#endif
+
 /* read signature bytes - arduino version */
 static int arduino_read_sig_bytes(PROGRAMMER *pgm, AVRPART *p, AVRMEM *m) {
 	unsigned char buf[32];
@@ -87,10 +91,18 @@ static int arduino_open(PROGRAMMER * pgm, char * port) {
 	/* Clear DTR and RTS to unload the RESET capacitor
 	* (for example in Arduino) */
 	serial_set_dtr_rts(&pgm->fd, 0);
+#ifdef _WIN32
+	SleepEx(250*1000, TRUE);
+#else
 	usleep(250*1000);
+#endif
 	/* Set DTR and RTS back to high */
 	serial_set_dtr_rts(&pgm->fd, 1);
+#ifdef _WIN32
+	SleepEx(50*1000, TRUE);
+#else
 	usleep(50*1000);
+#endif
 
 	/*
 	* drain any extraneous input

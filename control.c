@@ -103,20 +103,28 @@ int main_gc(void) {
 
 void *timeout(void *param) {
 	if(connected == 0) {
+#ifndef _WIN32
 		signal(SIGALRM, SIG_IGN);
+#endif
 		logprintf(LOG_ERR, "could not connect to the pilight instance");
 
+#ifndef _WIN32
 		kill(getpid(), SIGINT);
+#endif
 	}
 	return NULL;
 }
 
 void *ssdp_not_found(void *param) {
 	if(found == 0) {
+#ifndef _WIN32
 		signal(SIGALRM, SIG_IGN);
+#endif
 		logprintf(LOG_ERR, "could not find pilight instance: %s", instance);
 
+#ifndef _WIN32
 		kill(getpid(), SIGINT);
+#endif
 	}
 	return NULL;
 }
@@ -334,7 +342,9 @@ static int client_callback(struct eventpool_fd_t *node, int event) {
 			eventpool_fd_enable_read(node);
 		} break;
 		case EV_DISCONNECTED: {
+#ifndef _WIN32
 			kill(getpid(), SIGINT);
+#endif
 		} break;
 	}
 	return 0;

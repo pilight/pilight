@@ -428,7 +428,7 @@ int mbedtls_net_set_nonblock( mbedtls_net_context *ctx )
 void mbedtls_net_usleep( unsigned long usec )
 {
 #if defined(_WIN32)
-    Sleep( ( usec + 999 ) / 1000 );
+    SleepEx( ( usec + 999 ) / 1000, TRUE);
 #else
     struct timeval tv;
     tv.tv_sec  = usec / 1000000;

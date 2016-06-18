@@ -11,18 +11,34 @@
 #include <pthread.h>
 #include <sys/time.h>
 #include <sys/types.h>
-#include <sys/select.h>
-#include <sys/socket.h>
+// #include <sys/select.h>
+#ifdef _WIN32
+	#define WIN32_LEAN_AND_MEAN
+	#include <winsock2.h>
+	#include <ws2tcpip.h>
+	#include <mstcpip.h>
+	#include <windows.h>
+	struct pollfd {
+		int fd;
+		short events;
+		short revents;
+	};
+	#define POLLIN	0x0001
+	#define POLLPRI	0x0002
+	#define POLLOUT	0x0004
+#else
+	#include <sys/socket.h>
+	#include <arpa/inet.h>
+	#include <poll.h>
+#endif
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include <arpa/inet.h>
 #include <errno.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <signal.h>
 #include <assert.h>
-#include <poll.h>
 
 #include "log.h"
 #include "gc.h"
@@ -404,7 +420,11 @@ static int eventpool_socket_connect(struct eventpool_fd_t *node) {
 	}
 
 	if((ret = connect(node->fd, (struct sockaddr *)&servaddr, sizeof(struct sockaddr))) < 0) {
+#ifdef _WIN32
+		if(WSAGetLastError() == WSAEWOULDBLOCK || WSAGetLastError() == WSAEISCONN) {
+#else
 		if(errno == EINPROGRESS || errno == EISCONN) {
+#endif
 			node->stage = EVENTPOOL_STAGE_CONNECTING;
 			eventpool_fd_enable_write(node);
 			return 0;
@@ -465,13 +485,22 @@ static int eventpool_socket_bind(struct eventpool_fd_t *node) {
 static int eventpool_socket_create(struct eventpool_fd_t *node) {
 	char *p = node->data.socket.ip;
 
+#ifdef _WIN32
+	WSADATA wsa;
+
+	if(WSAStartup(0x202, &wsa) != 0) {
+		logprintf(LOG_ERR, "could not initialize new socket");
+		exit(EXIT_FAILURE);
+	}
+#endif
+	
 	if(node->data.socket.server == NULL || host2ip(node->data.socket.server, p) > -1) {
 		if((node->fd = socket(node->data.socket.domain, node->data.socket.type, node->data.socket.protocol)) == -1) {
 			return -1;
 		}
 #ifdef _WIN32
 		unsigned long on = 1;
-		ioctlsocket(sockfd, FIONBIO, &on);
+		ioctlsocket(node->fd, FIONBIO, &on);
 #else
 		long arg = fcntl(node->fd, F_GETFL, NULL);
 		fcntl(node->fd, F_SETFL, arg | O_NONBLOCK);
@@ -608,7 +637,7 @@ struct eventpool_fd_t *eventpool_socket_add(char *name, char *server, unsigned i
 			break;
 		}
 	}	
-	
+
 	return node;
 }
 
@@ -616,10 +645,11 @@ static int eventpool_socket_connecting(struct eventpool_fd_t *node) {
 	socklen_t lon = 0;
 	int valopt = 0;
 	lon = sizeof(int);
-	getsockopt(node->fd, SOL_SOCKET, SO_ERROR, (void*)(&valopt), &lon);
-	if(valopt <= 0) {
-		node->stage = EVENTPOOL_STAGE_CONNECTED;
-		return 0;
+	if(getsockopt(node->fd, SOL_SOCKET, SO_ERROR, (void *)(&valopt), &lon) == 0) {
+		if(valopt == 0) {
+			node->stage = EVENTPOOL_STAGE_CONNECTED;
+			return 0;
+		}
 	}
 	return -1;
 }
@@ -641,7 +671,11 @@ static void eventpool_clear_nodes(void) {
 			eventpool_iobuf_free(&tmp->send_iobuf);
 			eventpool_iobuf_free(&tmp->recv_iobuf);
 			if(tmp->fd > 0) {
+#ifdef _WIN32
+				shutdown(tmp->fd, SD_BOTH);
+#else
 				shutdown(tmp->fd, SHUT_RDWR);
+#endif
 				close(tmp->fd);
 				tmp->fd = 0;
 			}
@@ -653,9 +687,38 @@ void *eventpool_process(void *param) {
 	struct eventpool_fd_t *tmp = NULL;
 	int ret = 0, i = 0, nrpoll = 0;
 	struct pollfd *pollfds = NULL;
+#ifdef _WIN32
+	struct timeval timeout;
+	fd_set readset;
+	fd_set writeset;
+	int maxfd = 0;
+
+	WSADATA wsa;
+
+	if(WSAStartup(0x202, &wsa) != 0) {
+		logprintf(LOG_ERR, "could not initialize new socket");
+		exit(EXIT_FAILURE);
+	}
+	
+	int dummy = 0;
+	if((dummy = socket(AF_INET, SOCK_STREAM, 0)) == INVALID_SOCKET) {
+		logprintf(LOG_ERR, "Could not create dummy socket: %d", WSAGetLastError());
+		exit(EXIT_FAILURE);
+   }
+#endif
+
 	while(running() == 1) {
 		eventpool_clear_nodes();
 
+#ifdef _WIN32
+		FD_ZERO(&readset);
+		FD_ZERO(&writeset);
+		FD_SET(dummy, &readset);
+		timeout.tv_sec = 1;
+		timeout.tv_usec = 1000;
+		maxfd = 0;
+#endif
+		
 		if(nrpollfds <= nrfd) {
 			if((pollfds = REALLOC(pollfds, (nrpollfds + 16)*sizeof(struct pollfd *))) == NULL) {
 				OUT_OF_MEMORY
@@ -670,6 +733,19 @@ void *eventpool_process(void *param) {
 				tmp = eventpool_fds[i];
 				if(tmp->fd >= 0) {
 					tmp->idx = nrpoll;
+#ifdef _WIN32
+					if(tmp->doread == 1 || tmp->dohighpri == 1) {
+						FD_SET(tmp->fd, &readset);
+					}
+					if(tmp->dowrite == 1 || tmp->doflush == 1) {
+						FD_SET(tmp->fd, &writeset);
+					}
+					if(tmp->dowrite == 1 || tmp->doflush == 1 ||
+						 tmp->doread == 1 || tmp->dohighpri == 1 ||
+						 maxfd < tmp->fd) {
+						maxfd = tmp->fd;
+					}
+#else
 					pollfds[tmp->idx].fd = tmp->fd;
 					pollfds[tmp->idx].events = 0;
 					pollfds[tmp->idx].revents = 0;
@@ -682,6 +758,7 @@ void *eventpool_process(void *param) {
 					if(tmp->dohighpri == 1) {
 						pollfds[tmp->idx].events |= POLLPRI;
 					}
+#endif
 					nrpoll++;
 				} else {
 					tmp->idx = -1;
@@ -689,11 +766,18 @@ void *eventpool_process(void *param) {
 				// eventpool_fds[i]->active = 1;
 			}
 		}
+
+#ifdef _WIN32
+		ret = select(maxfd+1, &readset, &writeset, NULL, &timeout);
+		if((ret == -1 && errno == EINTR) || ret == 0) {
+			continue;
+		}
+#else
 		ret = poll(pollfds, nrpoll, 1000);
 		if((ret == -1 && errno == EINTR) || ret == 0) {
 			continue;
 		}
-
+#endif
 		for(i=0;i<nrfd;i++) {
 			tmp = eventpool_fds[i];
 			if(tmp->active == 1 && tmp->stage != EVENTPOOL_STAGE_DISCONNECTED) {
@@ -704,7 +788,11 @@ void *eventpool_process(void *param) {
 						 tmp->type == EVENTPOOL_TYPE_IO) {
 						switch(tmp->stage) {
 							case EVENTPOOL_STAGE_CONNECTING:
+#ifdef _WIN32
+								if(tmp->fd >= 0 && ret > 0 && FD_ISSET(tmp->fd, &writeset)) {
+#else
 								if(tmp->fd >= 0 && ret > 0 && pollfds[tmp->idx].revents & POLLOUT) {
+#endif
 									eventpool_fd_disable_write(tmp);
 									if((tmp->error = eventpool_socket_connecting(tmp)) == 0) {
 										if(tmp->callback(tmp, EV_CONNECT_SUCCESS) == -1) {
@@ -723,7 +811,11 @@ void *eventpool_process(void *param) {
 							break;
 							case EVENTPOOL_STAGE_LISTENING:
 								if(ret > 0 && tmp->fd >= 0) {
+#ifdef _WIN32
+									if(FD_ISSET(tmp->fd, &readset)) {
+#else
 									if(pollfds[tmp->idx].revents & POLLIN) {
+#endif
 										if(tmp->callback(tmp, EV_READ) == -1) {
 											tmp->error = -1;
 											tmp->stage = EVENTPOOL_STAGE_DISCONNECTED;
@@ -736,10 +828,29 @@ void *eventpool_process(void *param) {
 									}
 								}
 							break;
-							case EVENTPOOL_STAGE_DISCONNECT:
+							case EVENTPOOL_STAGE_DISCONNECT: {
+								/*
+								 * In case the other end disconnected
+								 * we won't flush the socket.
+								 */
+								char c = 0;
+								if(recv(tmp->fd, &c, 1, MSG_PEEK | MSG_DONTWAIT) <= 0) {
+									if(errno == ECONNRESET) {
+										if(tmp->fd > 0) {
+											logprintf(LOG_DEBUG, "client disconnected, fd %d", tmp->fd);
+										}
+										eventpool_fd_remove(tmp);
+										continue;
+									}
+								}
+							}
 							case EVENTPOOL_STAGE_CONNECTED: {
 								if(ret > 0 && tmp->fd >= 0) {
+#ifdef _WIN32
+									if(FD_ISSET(tmp->fd, &readset) && tmp->stage == EVENTPOOL_STAGE_CONNECTED) {
+#else
 									if(pollfds[tmp->idx].revents & POLLIN && tmp->stage == EVENTPOOL_STAGE_CONNECTED) {
+#endif
 										eventpool_fd_disable_read(tmp);
 										if(tmp->stage == EVENTPOOL_STAGE_CONNECTED &&
 											 tmp->callback(tmp, EV_READ) == -1) {
@@ -755,7 +866,11 @@ void *eventpool_process(void *param) {
 											}
 										}
 									}
+#ifdef _WIN32
+									if(FD_ISSET(tmp->fd, &readset) && tmp->stage == EVENTPOOL_STAGE_CONNECTED) {
+#else
 									if(pollfds[tmp->idx].revents & POLLPRI && tmp->stage == EVENTPOOL_STAGE_CONNECTED) {
+#endif
 										eventpool_fd_disable_highpri(tmp);
 										if(tmp->stage == EVENTPOOL_STAGE_CONNECTED &&
 											 tmp->callback(tmp, EV_HIGHPRI) == -1) {
@@ -771,7 +886,11 @@ void *eventpool_process(void *param) {
 											}
 										}
 									}
+#ifdef _WIN32
+									if(FD_ISSET(tmp->fd, &writeset)) {
+#else
 									if(pollfds[tmp->idx].revents & POLLOUT) {
+#endif
 										eventpool_fd_disable_write(tmp);
 										eventpool_fd_disable_flush(tmp);
 										if(tmp->send_iobuf.len > 0) {
@@ -797,12 +916,21 @@ void *eventpool_process(void *param) {
 													// }
 													// continue;
 												// }
-											} else if(n == -1 && errno != EAGAIN) {
-												tmp->error = -1;
-												tmp->callback(tmp, EV_DISCONNECTED);
-												if(tmp->fd > 0) {
-													close(tmp->fd);
-													tmp->fd = 0;
+											} else if(n == 0) {
+												eventpool_fd_remove(tmp);
+												continue;
+											}
+											if(n < 0 && errno != EAGAIN && errno != EINTR) {
+												if(errno == ECONNRESET) {
+													eventpool_fd_remove(tmp);
+													continue;
+												} else {
+													tmp->error = -1;
+													tmp->callback(tmp, EV_DISCONNECTED);
+													if(tmp->fd > 0) {
+														close(tmp->fd);
+														tmp->fd = 0;
+													}
 												}
 												continue;
 											}
@@ -862,7 +990,11 @@ void *eventpool_process(void *param) {
 		if(tmp->active == 1) {
 			tmp->callback(tmp, EV_DISCONNECTED);
 			if(tmp->fd > 0) {
+#ifdef _WIN32
+				shutdown(tmp->fd, SD_BOTH);
+#else
 				shutdown(tmp->fd, SHUT_RDWR);
+#endif
 				close(tmp->fd);
 				tmp->fd = 0;
 			}

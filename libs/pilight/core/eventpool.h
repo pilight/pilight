@@ -9,7 +9,18 @@
 #ifndef _EVENTPOOL_H_
 #define _EVENTPOOL_H_
 
-#include <netinet/in.h>
+#ifdef _WIN32
+	#if _WIN32_WINNT < 0x0501
+		#undef _WIN32_WINNT
+		#define _WIN32_WINNT 0x0501
+	#endif
+	#define WIN32_LEAN_AND_MEAN
+	#include <winsock2.h>
+	#include <ws2tcpip.h>
+	#define MSG_NOSIGNAL 0
+#else
+	#include <netinet/in.h>
+#endif
 #include <signal.h>
 #include <time.h>
 #include <pthread.h>

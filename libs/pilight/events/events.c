@@ -42,6 +42,10 @@
 #include "function.h"
 #include "action.h"
 
+#ifdef _WIN32
+	#include <windows.h>
+#endif
+
 #define NONE 0
 #define AND	2
 #define OR 1
@@ -57,7 +61,11 @@ int events_gc(void) {
 	loop = 0;
 
 	while(running == 1) {
+#ifdef _WIN32
+		SleepEx(10, TRUE);
+#else
 		usleep(10);
+#endif
 	}
 
 	event_operator_gc();

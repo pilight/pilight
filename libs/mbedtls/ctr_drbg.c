@@ -547,7 +547,7 @@ int mbedtls_ctr_drbg_self_test( int verbose )
      * Based on a NIST CTR_DRBG test vector (PR = True)
      */
     if( verbose != 0 )
-        mbedtls_printf( "  CTR_DRBG (PR = TRUE) : " );
+        mbedtls_printf( "  CTR_DRBG (PR = True) : " );
 
     test_offset = 0;
     CHK( mbedtls_ctr_drbg_seed_entropy_len( &ctx, ctr_drbg_self_test_entropy,

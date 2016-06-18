@@ -31,6 +31,10 @@
 #include "action.h"
 #include "actions/action_header.h"
 
+#ifdef _WIN32
+	#include <windows.h>
+#endif
+
 typedef struct execution_t {
 	char *name;
 	unsigned long id;
@@ -206,7 +210,11 @@ int event_action_gc(void) {
 
 unsigned long event_action_set_execution_id(char *name) {
 	struct timeval tv;
+#ifdef _WIN32
+	SleepEx(1, TRUE);
+#else
 	usleep(1);
+#endif
 	gettimeofday(&tv, NULL);
 
 	int match = 0;

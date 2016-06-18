@@ -16,13 +16,25 @@
 #include "../hardware/hardware.h"
 #include "none.h"
 
+#ifdef _WIN32
+	#include <windows.h>
+#endif
+
 static int noneSend(int *code, int rawlen, int repeats) {
+#ifdef _WIN32
+	SleepEx(1000, TRUE);
+#else
 	sleep(1);
+#endif
 	return EXIT_SUCCESS;
 }
 
 static int noneReceive(void) {
+#ifdef _WIN32
+	SleepEx(1000, TRUE);
+#else
 	sleep(1);
+#endif
 	return EXIT_SUCCESS;
 }
 

@@ -220,16 +220,27 @@ static int client_callback(struct eventpool_fd_t *node, int event) {
 	switch(event) {
 		case EV_SOCKET_SUCCESS: {
 			node->stage = EVENTPOOL_STAGE_CONNECTED;
-			eventpool_fd_enable_write(node);
-		} break;
-		case EV_CONNECT_SUCCESS: {
-			eventpool_fd_enable_write(node);
+			memset(header, '\0', BUFFER_SIZE);
+			strcpy(header, "M-SEARCH * HTTP/1.1\r\n"
+					"Host:239.255.255.250:1900\r\n"
+					"ST:urn:schemas-upnp-org:service:pilight:1\r\n"
+					"MAN:\"ssdp:discover\"\r\n"
+					"MX:3\r\n\r\n");
+
+			memset((void *)&node->data.socket.addr, '\0', sizeof(node->data.socket.addr));
+			node->data.socket.addr.sin_family = AF_INET;
+			node->data.socket.addr.sin_port = htons(1900);
+			node->data.socket.addr.sin_addr.s_addr = inet_addr("239.255.255.250");
+
+			eventpool_fd_write(node->fd, header, strlen(header));
+			eventpool_fd_enable_read(node);
 		}	break;
 		case EV_READ: {
 			memset(message, '\0', BUFFER_SIZE);
 			if(recvfrom(node->fd, message, sizeof(message), 0, (struct sockaddr *)&addr, &socklen) < 1) {
 				return -1;
 			}
+
 			if(strstr(message, "pilight") > 0) {
 				char **array = NULL, uuid[21], *x = uuid;
 				unsigned short int nip[4], port = 0, match1 = 0, match2 = 0, match3 = 0;
@@ -266,24 +277,6 @@ static int client_callback(struct eventpool_fd_t *node, int event) {
 
 					eventpool_trigger(REASON_SSDP_RECEIVED, reason_ssdp_received_free, data);
 				}
-			}
-			eventpool_fd_enable_read(node);
-		} break;
-		case EV_WRITE: {
-			memset(header, '\0', BUFFER_SIZE);
-			strcpy(header, "M-SEARCH * HTTP/1.1\r\n"
-					"Host:239.255.255.250:1900\r\n"
-					"ST:urn:schemas-upnp-org:service:pilight:1\r\n"
-					"Man:\"ssdp:discover\"\r\n"
-					"MX:3\r\n\r\n");
-
-			memset((void *)&addr, '\0', sizeof(addr));
-			addr.sin_family = AF_INET;
-			addr.sin_port = htons(1900);
-			addr.sin_addr.s_addr = inet_addr("239.255.255.250");
-
-			if(sendto(node->fd, header, BUFFER_SIZE, 0, (struct sockaddr *)&addr, sizeof(addr)) >= 0) {
-				logprintf(LOG_DEBUG, "ssdp sent search");
 			}
 			eventpool_fd_enable_read(node);
 		} break;
@@ -347,7 +340,7 @@ void ssdp_seek(void) {
 	}
 	pthread_mutex_unlock(&client_lock);
 
-	tv.tv_sec = 1;
+	tv.tv_sec = 3;
 	tv.tv_usec = 0;
 	threadpool_add_scheduled_work("ssdp client", client_timeout, tv, NULL);
 	ssdp_client = eventpool_socket_add("ssdp client", "239.255.255.250", 1900, AF_INET, SOCK_DGRAM, 0, EVENTPOOL_TYPE_SOCKET_CLIENT, client_callback, NULL, NULL);

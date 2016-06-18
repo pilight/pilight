@@ -45,7 +45,11 @@ struct threadpool_workers_t {
 	pthread_t pth;
 	pthread_mutex_t lock;
 	pthread_mutexattr_t attr;
+#ifdef _WIN32
+	HANDLE signal;
+#else
 	pthread_cond_t signal;
+#endif
 
 	struct threadpool_workers_t *next;
 } threadpool_workers_t;

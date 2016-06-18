@@ -15,11 +15,13 @@
 #include <string.h>
 #include <fcntl.h>
 #include <time.h>
-#include <termios.h>
+#ifndef _WIN32
+	#include <termios.h>
+	#include <sys/ioctl.h>
+#endif
 #include <sys/time.h>
 #include <sys/types.h>
-#include <sys/ioctl.h>
-#ifndef __FreeBSD__
+#if !defined(__FreeBSD__) && !defined(_WIN32)
 	#include <linux/spi/spidev.h>
 	#include "i2c-dev.h"
 #endif
@@ -58,7 +60,7 @@ void (*wiringXLog)(int, const char *, ...) = NULL;
 
 static int issetup = 0;
 
-#ifndef __FreeBSD__
+#if !defined(__FreeBSD__) && !defined(_WIN32)
 /* SPI Bus Parameters */
 
 struct spi_t {
@@ -211,7 +213,7 @@ int wiringXSetup(char *name, void (*func)(int, const char *, ...)) {
 	} else {
 		return 0;
 	}
-
+#ifndef _WIN32
 	if(func != NULL) {
 		wiringXLog = func;
 	} else {
@@ -260,7 +262,7 @@ int wiringXSetup(char *name, void (*func)(int, const char *, ...)) {
 		return -1;
 	}
 	platform->setup();
-	
+#endif
 	return 0;
 }
 
@@ -331,7 +333,7 @@ int wiringXValidGPIO(int pin) {
 	return platform->validGPIO(pin);
 }
 
-#ifndef __FreeBSD__
+#if !defined(__FreeBSD__) && !defined(_WIN32)
 int wiringXI2CRead(int fd) {
 	return i2c_smbus_read_byte(fd);
 }
@@ -457,7 +459,6 @@ int wiringXSPISetup(int channel, int speed) {
 
 	return spi[channel].fd;
 }
-#endif
 
 int wiringXSerialOpen(char *device, struct wiringXSerial_t wiringXSerial) {
 	struct termios options;
@@ -665,6 +666,7 @@ int wiringXSerialGetChar(int fd) {
 		return -1;
 	}
 }
+#endif
 
 int wiringXSelectableFd(int gpio) {
 	if(platform == NULL) {
@@ -677,10 +679,12 @@ int wiringXSelectableFd(int gpio) {
 }
 
 int wiringXGC(void) {
+#ifndef _WIN32
 	if(platform != NULL) {
 		platform->gc();
 	}
 	platform_gc();
 	soc_gc();
+#endif
 	return 0;
 }

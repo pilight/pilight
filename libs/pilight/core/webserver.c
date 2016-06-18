@@ -41,13 +41,13 @@
 #include <stdarg.h>
 #include <errno.h>
 #include <ctype.h>
-#include <arpa/inet.h>
 #ifdef _WIN32
 #else
 	#ifdef __mips__
 		#define __USE_UNIX98
 	#endif
-	#include <pwd.h>
+	#include <pwd.h>	
+	#include <arpa/inet.h>
 #endif
 #define __USE_UNIX98
 #include <pthread.h>
@@ -729,7 +729,14 @@ static int request_handler(struct connection_t *conn) {
 				}
 			}
 			if(match == 0) {
-				int fd = open(conn->request, O_RDWR | O_NONBLOCK);
+				int fd = open(conn->request, O_RDWR);
+#ifdef _WIN32
+				unsigned long on = 1;
+				ioctlsocket(fd, FIONBIO, &on);
+#else
+				long arg = fcntl(fd, F_GETFL, NULL);
+				fcntl(fd, F_SETFL, arg | O_NONBLOCK);
+#endif				
 				if(fd < 0) {
 					goto filenotfound;
 				}
@@ -1073,8 +1080,7 @@ static int client_send(struct eventpool_fd_t *node) {
 			len = node->send_iobuf.len;
 		}
 		if(node->data.socket.port > 0 && strlen(node->data.socket.ip) > 0) {
-			ret = (int)sendto(node->fd, node->send_iobuf.buf, len, 0,
-					(struct sockaddr *)&node->data.socket.addr, sizeof(node->data.socket.addr));
+			ret = (int)sendto(node->fd, node->send_iobuf.buf, len, 0, (struct sockaddr *)&node->data.socket.addr, sizeof(node->data.socket.addr));
 		} else {
 			ret = (int)send(node->fd, node->send_iobuf.buf, len, 0);
 		}

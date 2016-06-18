@@ -262,7 +262,7 @@ static DWORD alarmMs;
 static DWORD WINAPI TimerProc( LPVOID TimerContext )
 {
     ((void) TimerContext);
-    Sleep( alarmMs );
+    SleepEx( alarmMs , TRUE);
     mbedtls_timing_alarmed = 1;
     return( TRUE );
 }

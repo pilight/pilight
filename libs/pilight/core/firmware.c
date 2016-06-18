@@ -551,10 +551,9 @@ static void firmware_attiny85(struct avrpart **p) {
 }
 
 static void firmware_init_pgm(PROGRAMMER **pgm) {
-	double itmp = 0.0;
-
 	*pgm = pgm_new();
 #ifndef _WIN32
+	double itmp = 0.0;
 	if(strlen(comport) == 0) {
 		gpio_initpgm(*pgm);
 		(*pgm)->pinno[3] = FIRMWARE_GPIO_RESET;
@@ -656,7 +655,11 @@ static int firmware_identifymp(struct avrpart **p) {
 	int waittime = 10000;       /* 10 ms */
 
 sig_again:
+#ifdef _WIN32
+	SleepEx(waittime, TRUE);
+#else
 	usleep(waittime);
+#endif
 	if(init_ok) {
 		if(avr_signature(pgm, *p) != 0) {
 			exitrc = FW_RD_SIG_FAIL;

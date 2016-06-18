@@ -133,6 +133,7 @@ void logprintf(int prio, const char *str, ...) {
 		struct tm *tm1 = NULL;
 		if((tm1 = gmtime(&tv.tv_sec)) != 0) {
 			memcpy(&tm, tm1, sizeof(struct tm));
+			strftime(fmt, sizeof(fmt), "%b %d %H:%M:%S", &tm);
 #else
 		if((gmtime_r(&tv.tv_sec, &tm)) != 0) {
 			strftime(fmt, sizeof(fmt), "%b %d %H:%M:%S", &tm);

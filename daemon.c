@@ -1426,7 +1426,11 @@ static int clientize(struct eventpool_fd_t *node, int event) {
 				case 1: {
 					char c = 0;
 					/* Connection lost */
+#ifdef _WIN32
+					if(recv(node->fd, &c, 1, MSG_PEEK) == 0) {
+#else
 					if(recv(node->fd, &c, 1, MSG_PEEK | MSG_DONTWAIT) == 0) {
+#endif
 						return -1;
 					}
 

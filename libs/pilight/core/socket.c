@@ -18,7 +18,9 @@
 #include <string.h>
 #include <sys/types.h>
 #include <sys/time.h>
-#include <arpa/inet.h>
+#ifndef _WIN32
+	#include <arpa/inet.h>
+#endif
 
 #include "pilight.h"
 #include "eventpool.h"
@@ -214,9 +216,20 @@ int socket_recv(int fd, char **data, size_t *ptr) {
 
 	memset(buffer, '\0', BUFFER_SIZE);
 
+#ifdef _WIN32
 	bytes = recv(fd, buffer, BUFFER_SIZE, 0);
+#else
+	bytes = read(fd, buffer, BUFFER_SIZE);
+#endif
 
 	if(bytes <= 0) {
+#ifdef _WIN32
+		if(bytes < 0 && (WSAGetLastError() == EAGAIN || WSAGetLastError() == EINTR)) {
+#else
+		if(bytes < 0 && (errno == EAGAIN || errno == EINTR)) {
+#endif
+			return 0;
+		}
 		return -1;
 	} else {
 		*ptr += bytes;
@@ -387,7 +400,11 @@ void socket_close(int sockfd) {
 		if(eventpool_fd_select(sockfd, &node) == 0) {
 			eventpool_fd_remove(node);
 		} else {
-			shutdown(sockfd, SHUT_WR);
+#ifdef _WIN32
+				shutdown(sockfd, SD_BOTH);
+#else
+				shutdown(sockfd, SHUT_RDWR);
+#endif
 			close(sockfd);
 		}
 	}

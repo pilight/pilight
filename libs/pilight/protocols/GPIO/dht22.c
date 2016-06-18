@@ -87,10 +87,18 @@ static void *thread(void *param) {
 	// pull pin down for 18 milliseconds
 	pinMode(settings->id, PINMODE_OUTPUT);
 	digitalWrite(settings->id, HIGH);
+#ifdef _WIN32
+	SleepEx(500000, True);  // 500 ms
+#else	
 	usleep(500000);  // 500 ms
+#endif
 	// then pull it up for 40 microseconds
 	digitalWrite(settings->id, LOW);
-	usleep(20000);
+#ifdef _WIN32
+	SleepEx(20000, True);  // 500 ms
+#else	
+	usleep(20000);  // 500 ms
+#endif
 	// prepare to read the pin
 	pinMode(settings->id, PINMODE_INPUT);
 

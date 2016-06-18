@@ -34,10 +34,12 @@ static pthread_mutex_t pthlock;
 static pthread_cond_t pthsignal;
 static pthread_mutexattr_t pthattr;
 static struct timers_t *gtimer = NULL;
-static volatile int loop = 0;
 static sem_t pthrunning;
 static volatile int seminited = 0;
 static volatile int pthinit = 0;
+static volatile int loop = 0;
+
+static void timer_update(struct timers_t *node, struct timer_tasks_t *e);
 
 int timer_tasks_top(struct timers_t *node, struct timer_tasks_t *el) {
 	pthread_mutex_lock(&node->lock);
@@ -97,24 +99,82 @@ int timer_tasks_pop(struct timers_t *node, struct timer_tasks_t *el) {
 	return 0;
 }
 
+#ifdef _WIN32
+void timer_handler(LPVOID lpParameter, DWORD dwTimerLowValue, DWORD dwTimerHighValue) {
+	struct timers_t *timer = lpParameter;
+	struct timer_tasks_t e;
+
+	if(timer_tasks_pop(timer, &e) == 0) {
+		// double check if we are executing the correct task
+		if(e.sec == timer->sec && e.nsec == timer->nsec) {
+			timer->func(&e);
+		}
+		FREE(e.name);
+	}
+
+	timer->sec = 0;
+	timer->nsec = 0;
+
+	if(timer_tasks_top(timer, &e) == 0) {
+		timer_update(timer, &e);
+		FREE(e.name);
+	}
+}
+#else
+static void timer_handler(int a, siginfo_t *sig, void *c) {
+	struct timers_t *timer = sig->si_value.sival_ptr;
+
+	pthread_mutex_lock(&pthlock);
+	gtimer = timer;
+	pthread_cond_signal(&pthsignal);
+	pthread_mutex_unlock(&pthlock);
+}
+#endif
+
 static void timer_update(struct timers_t *node, struct timer_tasks_t *e) {
+#ifndef _WIN32
 	struct itimerspec timerspec;
 	struct timespec ts;
-
 	memset(&ts, 0, sizeof(struct timespec));
+#endif
 
-	int a = node->sec;
-	int b = node->nsec;
+	unsigned long a = node->sec;
+	unsigned long b = node->nsec;
 
 	if((a == e->sec && b > e->nsec) || (a > e->sec) || (a == 0 && b == 0)) {
 		node->sec = e->sec;
 		node->nsec = e->nsec;
+
+#ifdef _WIN32
+		struct timespec ts;
+		LARGE_INTEGER li;
+		unsigned long sec = 0, usec = 0;
+		long c = 0;
+		clock_gettime(CLOCK_REALTIME, &ts);
+		
+		if(e->sec >= ts.tv_sec) {
+			sec = e->sec-ts.tv_sec;
+			if(e->nsec >= ts.tv_nsec) {
+				usec = (e->nsec-ts.tv_nsec)/1000;
+			} else {
+				usec = 0;
+			}
+		} else {
+			sec = 0;
+		}
+		c = (sec*1000)+usec;
+
+		li.QuadPart = -(c*1000*10);
+
+		SetWaitableTimer(node->timer, &li, 0, (PTIMERAPCROUTINE)timer_handler, node, FALSE);
+#else
 		timerspec.it_interval.tv_sec = 0 / 1000000000;
 		timerspec.it_interval.tv_nsec = 0 % 1000000000;
 		timerspec.it_value.tv_sec = e->sec;
 		timerspec.it_value.tv_nsec = e->nsec;
 
 		timer_settime(node->timer, TIMER_ABSTIME, &timerspec, NULL);
+#endif
 	}
 }
 
@@ -142,7 +202,7 @@ void *timer_thread(void *param) {
 
 		gtimer->sec = 0;
 		gtimer->nsec = 0;
-
+	
 		if(timer_tasks_top(gtimer, &e) == 0) {
 			timer_update(gtimer, &e);
 			FREE(e.name);
@@ -155,20 +215,13 @@ void *timer_thread(void *param) {
 	return NULL;
 }
 
-void timer_handler(int a, siginfo_t *sig, void *c) {
-	struct timers_t *timer = sig->si_value.sival_ptr;
-
-	pthread_mutex_lock(&pthlock);
-	gtimer = timer;
-	pthread_cond_signal(&pthsignal);
-	pthread_mutex_unlock(&pthlock);
-}
-
 int timer_init(struct timers_t *node, int signo, void *(*func)(struct timer_tasks_t *), int type, struct timeval expire, struct timeval interval) {
+#ifndef _WIN32
 	struct sigevent event;
 	struct itimerspec timerspec;
 	struct sigaction sa;
 	sigset_t mask;
+#endif
 
 	node->hsize = 64;
 	if((node->tasks = MALLOC(sizeof(struct timer_tasks_t *)*node->hsize)) == 0) {
@@ -181,13 +234,16 @@ int timer_init(struct timers_t *node, int signo, void *(*func)(struct timer_task
 	pthread_mutexattr_settype(&node->attr, PTHREAD_MUTEX_RECURSIVE);
 	pthread_mutex_init(&node->lock, &node->attr);
 
+	node->nsec = 0;
+	node->sec = 0;
+	
+#ifdef _WIN32
+	node->timer = CreateWaitableTimer(NULL, FALSE, NULL);
+#else
 	memset(&node->timer, 0, sizeof(timer_t));
 	memset(&timerspec, 0, sizeof(struct itimerspec));
 	memset(&mask, 0, sizeof(sigset_t));
 	memset(&sa, 0, sizeof(struct sigaction));
-
-	node->nsec = 0;
-	node->sec = 0;
 
 	sa.sa_flags = SA_SIGINFO;
   sa.sa_sigaction = timer_handler;
@@ -220,6 +276,7 @@ int timer_init(struct timers_t *node, int signo, void *(*func)(struct timer_task
 		timer_delete(node->timer);
 		return -1;
 	}
+#endif	
 	node->func = func;
 	node->init = 1;
 	return 0;
@@ -311,19 +368,15 @@ void timer_thread_start(void) {
 	pthread_mutex_init(&pthlock, &pthattr);
 	pthread_cond_init(&pthsignal, NULL);
 
-#ifndef _WIN32
-	sigset_t new, old;
-	sigemptyset(&new);
-	sigaddset(&new, SIGINT);
-	sigaddset(&new, SIGQUIT);
-	sigaddset(&new, SIGTERM);
-	pthread_sigmask(SIG_BLOCK, &new, &old);
-#endif
+	// sigset_t new, old;
+	// sigemptyset(&new);
+	// sigaddset(&new, SIGINT);
+	// sigaddset(&new, SIGQUIT);
+	// sigaddset(&new, SIGTERM);
+	// pthread_sigmask(SIG_BLOCK, &new, &old);
 	pthread_create(&pth, NULL, timer_thread, NULL);
 	pthinit = 1;
-#ifndef _WIN32
-	pthread_sigmask(SIG_SETMASK, &old, NULL);
-#endif
+	// pthread_sigmask(SIG_SETMASK, &old, NULL);
 }
 
 void timer_thread_gc(void) {
@@ -344,6 +397,7 @@ void timer_thread_gc(void) {
 
 void timer_gc(struct timers_t *timer) {
 	pthread_mutex_lock(&timer->lock);
+
 	int i = 0;
 	for(i=1;i<=timer->nrtasks;i++) {
 		FREE(timer->tasks[i]->name);
@@ -353,7 +407,11 @@ void timer_gc(struct timers_t *timer) {
 	FREE(timer->tasks);
 	if(timer->init == 1) {
 		timer->init = 0;
+#ifdef _WIN32
+		// FIXME
+#else
 		timer_delete(timer->timer);
+#endif
 	}
 	pthread_mutex_unlock(&timer->lock);
 	return;

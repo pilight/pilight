@@ -15,7 +15,9 @@
 #include <limits.h>
 #include <sys/time.h>
 #ifdef _WIN32
+	#include <winsock2.h>
 	#include <windows.h>
+	#define SIGRTMIN 34
 #endif
 #define __USE_UNIX98
 #include <pthread.h>
@@ -93,10 +95,18 @@ static void *worker(void *param) {
 		pthread_mutex_lock(&node->lock);
 
 		while(node->loop == 1 && __sync_add_and_fetch(&nrtasks, 0) == 0) {
+#ifdef _WIN32
+			/*
+			 * Somehow the pthread_cond_timedwait doesn't work well on windows
+			 * when we also use the SetWaitableTimer elsewhere.
+			 */
+			WaitForSingleObjectEx(node->signal, 1000L, TRUE);
+#else
 			gettimeofday(&now, NULL);
 			timeToWait.tv_sec = now.tv_sec+1;
-			timeToWait.tv_nsec = 0;
+			timeToWait.tv_nsec = 0;	
 			pthread_cond_timedwait(&node->signal, &node->lock, &timeToWait);
+#endif
 			if(node->loop == 0) {
 				break;
 			}
@@ -207,13 +217,21 @@ void threadpool_add_worker(void) {
 	}
 	memset(node, 0, sizeof(struct threadpool_workers_t));
 
+#ifdef _WIN32
+	SleepEx(1, TRUE);
+#else
 	usleep(1);
+#endif
 	gettimeofday(&tv, NULL);
 
 	pthread_mutexattr_init(&node->attr);
 	pthread_mutexattr_settype(&node->attr, PTHREAD_MUTEX_RECURSIVE);
 	pthread_mutex_init(&node->lock, &node->attr);
+#ifdef _WIN32
+	node->signal = CreateEvent(NULL, FALSE, FALSE, NULL);
+#else
 	pthread_cond_init(&node->signal, NULL);
+#endif
 
 #ifndef _WIN32
 	sigset_t new, old;
@@ -294,7 +312,11 @@ unsigned long threadpool_add_work(int reason, sem_t *ref, char *name, int priori
 		OUT_OF_MEMORY
 	}
 
+#ifdef _WIN32
+	SleepEx(1, TRUE);
+#else
 	usleep(1);
+#endif
 	gettimeofday(&tv, NULL);
 
 	if((node->name = MALLOC(strlen(name)+1)) == NULL) {
@@ -332,7 +354,11 @@ unsigned long threadpool_add_work(int reason, sem_t *ref, char *name, int priori
 	struct threadpool_workers_t *workers = threadpool_workers;
 	while(workers) {
 		pthread_mutex_unlock(&workers->lock);
+#ifdef _WIN32
+		SetEvent(workers->signal);
+#else
 		pthread_cond_signal(&workers->signal);
+#endif
 		workers = workers->next;
 	}
 	pthread_mutex_unlock(&workers_lock);
@@ -424,7 +450,11 @@ static void threadpool_workers_gc(void) {
 		tmp = threadpool_workers;
 		threadpool_workers->loop = 0;
 		pthread_mutex_unlock(&threadpool_workers->lock);
+#ifdef _WIN32
+		SetEvent(threadpool_workers->signal);
+#else
 		pthread_cond_signal(&threadpool_workers->signal);
+#endif
 		sem_wait(&threadpool_workers->running);
 		pthread_join(threadpool_workers->pth, NULL);
 		sem_destroy(&threadpool_workers->running);

@@ -370,7 +370,11 @@ static int nano433Send(int *code, int rawlen, int repeats) {
 	timestamp.second = 1000000 * (unsigned int)tv.tv_sec + (unsigned int)tv.tv_usec;
 
 	if(((int)timestamp.second-(int)timestamp.first) < 1000000) {
+#ifdef _WIN32
+		SleepEx(1000, TRUE);
+#else
 		sleep(1);
+#endif
 	}
 
 	return 0;

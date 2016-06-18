@@ -12,8 +12,14 @@
 #include <unistd.h>
 #include <errno.h>
 #include <fcntl.h>
-#include <termios.h>
+#ifndef _WIN32
+	#include <termios.h>
+#else
+	#include <conio.h>
+	#include <pthread.h>
+#endif
 
+#include "libs/pilight/core/http.h"
 #include "libs/pilight/core/eventpool.h"
 #include "libs/pilight/core/timerpool.h"
 #include "libs/pilight/core/threadpool.h"
@@ -33,6 +39,10 @@ static unsigned short found = 0;
 static char *instance = NULL;
 char **filters = NULL;
 unsigned int m = 0;
+
+#ifdef _WIN32
+pthread_t thr_user_input;
+#endif
 
 typedef struct ssdp_list_t {
 	char server[INET_ADDRSTRLEN+1];
@@ -76,20 +86,28 @@ int main_gc(void) {
 
 void *timeout(void *param) {
 	if(connected == 0) {
+#ifndef _WIN32
 		signal(SIGALRM, SIG_IGN);
+#endif
 		logprintf(LOG_ERR, "could not connect to the pilight instance");
 
+#ifndef _WIN32
 		kill(getpid(), SIGINT);
+#endif
 	}
 	return NULL;
 }
 
 void *ssdp_not_found(void *param) {
 	if(found == 0) {
+#ifndef _WIN32
 		signal(SIGALRM, SIG_IGN);
+#endif
 		logprintf(LOG_ERR, "could not find pilight instance: %s", instance);
 
+#ifndef _WIN32
 		kill(getpid(), SIGINT);
+#endif
 	}
 	return NULL;
 }
@@ -164,7 +182,9 @@ static int client_callback(struct eventpool_fd_t *node, int event) {
 			}
 		} break;
 		case EV_DISCONNECTED: {
+#ifndef _WIN32
 			kill(getpid(), SIGINT);
+#endif
 		} break;
 	}
 	return 0;
@@ -173,7 +193,7 @@ static int client_callback(struct eventpool_fd_t *node, int event) {
 static void *ssdp_reseek(void *param) {
 	if(found == 0 && connecting == 0) {
 		struct timeval tv;
-		tv.tv_sec = 1;
+		tv.tv_sec = 3;
 		tv.tv_usec = 0;
 		threadpool_add_scheduled_work("ssdp seek", ssdp_reseek, tv, NULL);
 		ssdp_seek();
@@ -181,17 +201,31 @@ static void *ssdp_reseek(void *param) {
 	return NULL;
 }
 
+static int select_server(int server) {
+	struct timeval tv;	
+	struct ssdp_list_t *tmp = ssdp_list;
+	int i = 0;
+	while(tmp) {
+		if((ssdp_list_size-i) == server) {
+			socket_connect1(tmp->server, tmp->port, client_callback);
+			tv.tv_sec = 1;
+			tv.tv_usec = 0;
+			threadpool_add_scheduled_work("socket timeout", timeout, tv, NULL);
+			connecting = 1;
+			return 0;
+		}
+		i++;
+		tmp = tmp->next;
+	}
+	return -1;
+}
+
+#ifndef _WIN32
 static int user_input(struct eventpool_fd_t *node, int event) {
-	struct timeval tv;
 	switch(event) {
 		case EV_CONNECT_SUCCESS: {
-#ifdef _WIN32
-			unsigned long on = 1;
-			ioctlsocket(node->fd, FIONBIO, &on);
-#else
 			long arg = fcntl(node->fd, F_GETFL, NULL);
 			fcntl(node->fd, F_SETFL, arg | O_NONBLOCK);
-#endif
 			eventpool_fd_enable_read(node);
 		} break;
 		case EV_READ: {
@@ -201,20 +235,7 @@ static int user_input(struct eventpool_fd_t *node, int event) {
 			if((c = read(node->fd, buf, BUFFER_SIZE)) > 0) {
 				buf[c-1] = '\0';
 				if(isNumeric(buf) == 0) {
-					struct ssdp_list_t *tmp = ssdp_list;
-					int i = 0;
-					while(tmp) {
-						if((ssdp_list_size-i) == atoi(buf)) {
-							socket_connect1(tmp->server, tmp->port, client_callback);
-							tv.tv_sec = 1;
-							tv.tv_usec = 0;
-							threadpool_add_scheduled_work("socket timeout", timeout, tv, NULL);
-							connecting = 1;
-							return -1;
-						}
-						i++;
-						tmp = tmp->next;
-					}
+					return select_server(atoi(buf));
 				}
 			}
 			eventpool_fd_enable_read(node);
@@ -222,6 +243,34 @@ static int user_input(struct eventpool_fd_t *node, int event) {
 	}
 	return 0;
 }
+#else
+static void *user_input(void *param) {
+	int i = 0;
+	char buffer[1024];
+	while(1) {
+		i = 0;
+		while(1) {
+			if(_kbhit()) {
+				buffer[i] = _getch();
+				printf("%c", buffer[i]);
+				if(buffer[i] == 13) {
+					buffer[i] = '\0';
+					break;
+				}
+				i++;
+				if(i > 1023) {
+					i = 0;
+				}
+			}
+			SleepEx(10, TRUE);
+		}
+		if(select_server(atoi(buffer)) == 0) {
+			break;
+		}
+	}
+	return NULL;
+}
+#endif
 
 static void *ssdp_found(void *param) {
 	struct threadpool_tasks_t *task = param;
@@ -398,24 +447,29 @@ int main(int argc, char **argv) {
 	tv.tv_usec = 0;
 	timer_thread_start();
 
-	tv.tv_sec = 1;
-
 	if(server != NULL && port > 0) {
 		socket_connect1(server, port, client_callback);
+		tv.tv_sec = 1;
 		threadpool_add_scheduled_work("socket timeout", timeout, tv, NULL);
 	} else {
 		ssdp_seek();
+		tv.tv_sec = 3;
 		threadpool_add_scheduled_work("ssdp seek", ssdp_reseek, tv, NULL);
 		if(instance == NULL) {
 			printf("[%2s] %15s:%-5s %-16s\n", "#", "server", "port", "name");
 			printf("To which server do you want to connect?:\r");
 			fflush(stdout);
 		} else {
+			tv.tv_sec = 1;			
 			threadpool_add_scheduled_work("ssdp seek", ssdp_not_found, tv, NULL);
 		}
 	}
 
+#ifdef _WIN32
+	pthread_create(&thr_user_input, NULL, user_input, NULL);
+#else
 	eventpool_fd_add("stdin", fileno(stdin), user_input, NULL, NULL);
+#endif
 	eventpool_process(NULL);
 
 close:
