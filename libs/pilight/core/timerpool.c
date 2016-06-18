@@ -202,7 +202,7 @@ void *timer_thread(void *param) {
 
 		gtimer->sec = 0;
 		gtimer->nsec = 0;
-	
+
 		if(timer_tasks_top(gtimer, &e) == 0) {
 			timer_update(gtimer, &e);
 			FREE(e.name);

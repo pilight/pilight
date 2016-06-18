@@ -834,7 +834,11 @@ void *eventpool_process(void *param) {
 								 * we won't flush the socket.
 								 */
 								char c = 0;
+#ifdef _WIN32
+								if(recv(tmp->fd, &c, 1, MSG_PEEK) <= 0) {
+#else
 								if(recv(tmp->fd, &c, 1, MSG_PEEK | MSG_DONTWAIT) <= 0) {
+#endif									
 									if(errno == ECONNRESET) {
 										if(tmp->fd > 0) {
 											logprintf(LOG_DEBUG, "client disconnected, fd %d", tmp->fd);

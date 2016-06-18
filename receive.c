@@ -12,9 +12,7 @@
 #include <unistd.h>
 #include <errno.h>
 #include <fcntl.h>
-#ifndef _WIN32
-	#include <termios.h>
-#else
+#ifdef _WIN32
 	#include <conio.h>
 	#include <pthread.h>
 #endif
@@ -93,6 +91,8 @@ void *timeout(void *param) {
 
 #ifndef _WIN32
 		kill(getpid(), SIGINT);
+#else
+		GenerateConsoleCtrlEvent(CTRL_C_EVENT, 0);
 #endif
 	}
 	return NULL;
@@ -107,6 +107,8 @@ void *ssdp_not_found(void *param) {
 
 #ifndef _WIN32
 		kill(getpid(), SIGINT);
+#else
+		GenerateConsoleCtrlEvent(CTRL_C_EVENT, 0);
 #endif
 	}
 	return NULL;
@@ -184,6 +186,8 @@ static int client_callback(struct eventpool_fd_t *node, int event) {
 		case EV_DISCONNECTED: {
 #ifndef _WIN32
 			kill(getpid(), SIGINT);
+#else
+			GenerateConsoleCtrlEvent(CTRL_C_EVENT, 0);
 #endif
 		} break;
 	}
