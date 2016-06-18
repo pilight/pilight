@@ -84,11 +84,11 @@ static int prepare_request(struct request_t **request, int method, char *url, co
 		(*request)->port = 443;
 		plen = 9;
 		if(ssl_client_init_status() == -1) {
-			logprintf(LOG_ERR, "https url's require a properly initialized ssl library");
+			logprintf(LOG_ERR, "HTTPS URL's require a properly initialized SSL library");
 			return -1;
 		}
 	} else {
-		logprintf(LOG_ERR, "an url should start with either http:// or https://");
+		logprintf(LOG_ERR, "A URL should start with either http:// or https://");
 		FREE((*request));
 		return -1;
 	}
@@ -161,7 +161,7 @@ static void append_to_header(char **header, char *data, ...) {
 	bytes = vsnprintf(NULL, 0, data, apcpy);
 #endif
 	if(bytes == -1) {
-		fprintf(stderr, "ERROR: unproperly formatted logprintf message %s\n", data);
+		fprintf(stderr, "ERROR: improperly formatted logprintf message %s\n", data);
 	} else {
 		va_end(apcpy);
 		if((*header = REALLOC(*header, pos+bytes+1)) == NULL) {

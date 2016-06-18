@@ -953,7 +953,7 @@ int devices_validate_id(struct JsonNode *jdevices, int i) {
 		if((x-1) != valid_values) {
 			if(etype == 1) {
 				if(i > 0) {
-					logprintf(LOG_ERR, "protocol \"%s\" used in \"%s\" doesn't support multiple id's", protocol->id, jdevices->key);
+					logprintf(LOG_ERR, "protocol \"%s\" used in \"%s\" does not support multiple id's", protocol->id, jdevices->key);
 				}
 			} else {
 				if(i > 0) {

@@ -1141,7 +1141,7 @@ int firmware_getmp(char *port) {
 	struct avrpart *p = NULL;
 	unsigned int match = 0;
 
-	logprintf(LOG_INFO, "Indentifying microprocessor");
+	logprintf(LOG_INFO, "Identifying microprocessor");
 	/*
 	mptype = FW_MP_ATMEL32U4;
 	firmware_atmega32u4(&p);

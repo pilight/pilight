@@ -376,7 +376,7 @@ int arp_resolv(struct arp_list_t *iplist, char *if_name, char *srcmac, char *dst
 		pcap_freealldevs(alldevs);
 	}
 	if(match == 0) {
-		logprintf(LOG_ERR, "could not full interface name for %s", if_name);
+		logprintf(LOG_ERR, "could not find interface name for %s", if_name);
 		FREE(if_cpy);
 		return -1;
 	}

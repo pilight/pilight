@@ -414,7 +414,7 @@ static int parse_rest(struct connection_t *conn) {
 					} else if(strcmp(array1[0], "device") == 0) {
 						dev = array1[1];
 						if(devices_select(ORIGIN_WEBSERVER, array1[1], NULL) != 0) {
-							char *z = "{\"message\":\"failed\",\"error\":\"device does not exists\"}";
+							char *z = "{\"message\":\"failed\",\"error\":\"device does not exist\"}";
 							send_data(conn, z, strlen(z));
 							goto clear;
 						}
@@ -440,7 +440,7 @@ static int parse_rest(struct connection_t *conn) {
 			}
 			if(type == 0) {
 				if(has_protocol == 0) {
-					char *z = "{\"message\":\"failed\",\"error\":\"no protocol was send\"}";
+					char *z = "{\"message\":\"failed\",\"error\":\"no protocol was sent\"}";
 					send_data(conn, z, strlen(z));
 					goto clear;
 				}
@@ -454,7 +454,7 @@ static int parse_rest(struct connection_t *conn) {
 			} else if(type == 1) {
 				if(pilight.control != NULL) {
 					if(dev == NULL) {
-						char *z = "{\"message\":\"failed\",\"error\":\"no device was send\"}";
+						char *z = "{\"message\":\"failed\",\"error\":\"no device was sent\"}";
 						send_data(conn, z, strlen(z));
 						goto clear;
 					} else {

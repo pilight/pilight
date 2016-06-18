@@ -475,7 +475,7 @@ void datetime_init(void) {
 
 int datetime_gc(void) {
 /*
-	Extra checks for gracefull (early)
+	Extra checks for graceful (early)
   stopping of pilight
 */
 	if(mutex_init == 1) {
@@ -495,7 +495,7 @@ int datetime_gc(void) {
 char *coord2tz(double longitude, double latitude) {
 
 /*
-	Extra checks for gracefull (early)
+	Extra checks for graceful (early)
   stopping of pilight
 */
 	if(mutex_init == 1) {

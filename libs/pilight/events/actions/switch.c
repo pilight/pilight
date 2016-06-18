@@ -237,7 +237,7 @@ static int checkArguments(struct rules_actions_t *obj) {
 									}
 								}
 								if(match1 == 0) {
-									logprintf(LOG_ERR, "device \"%s\" can't be set to state \"%s\"", jbchild->string_, state);
+									logprintf(LOG_ERR, "device \"%s\" cannot be set to state \"%s\"", jbchild->string_, state);
 									return -1;
 								}
 							} else {
@@ -249,7 +249,7 @@ static int checkArguments(struct rules_actions_t *obj) {
 						return -1;
 					}
 				} else {
-					logprintf(LOG_ERR, "device \"%s\" doesn't exists", jbchild->string_);
+					logprintf(LOG_ERR, "device \"%s\" does not exist", jbchild->string_);
 					return -1;
 				}
 			} else {
@@ -543,7 +543,7 @@ void actionSwitchInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "switch";
-	module->version = "4.0";
+	module->version = "4.0.1";
 	module->reqversion = "7.0";
 	module->reqcommit = "94";
 }

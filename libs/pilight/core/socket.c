@@ -168,7 +168,7 @@ static int server_callback(struct eventpool_fd_t *node, int event) {
 				perror("getsockname");
 			} else {
 				socket_port = ntohs(servaddr.sin_port);
-				logprintf(LOG_INFO, "daemon listening to port: %d", socket_port);
+				logprintf(LOG_INFO, "daemon listening on port: %d", socket_port);
 			}
 		} break;
 		case EV_READ: {
@@ -488,7 +488,7 @@ int socket_read(int sockfd, char **message, time_t timeout) {
 		if(timeout > 0 && n == 0) {
 			return 1;
 		}
-		/* Immediatly stop loop if the select was waken up by the garbage collector */
+		/* Immediately stop loop if the select was waken up by the garbage collector */
 		if(socket_loop == 0) {
 			break;
 		}

@@ -926,7 +926,7 @@ static int event_parse_formula(char **rule, struct rules_t *obj, int depth, unsi
 						unsigned long r = 0;
 						// printf("replace %s with %s in %s\n", search, p, tmp);
 						if((r = (unsigned long)str_replace(search, p, &tmp)) == -1) {
-							logprintf(LOG_ERR, "rule #%d: an unexpected error occured while parsing", obj->nr);
+							logprintf(LOG_ERR, "rule #%d: an unexpected error occurred while parsing", obj->nr);
 							FREE(p);
 							error = -1;
 							goto close;
@@ -1155,7 +1155,7 @@ static int event_parse_action(char *action, struct rules_t *obj, int validate) {
 		}
 
 		if(match == 0) {
-			logprintf(LOG_ERR, "action \"%s\" doesn't exists", func);
+			logprintf(LOG_ERR, "action \"%s\" does not exist", func);
 			error = 1;
 			break;
 		}
@@ -1352,7 +1352,7 @@ static int event_parse_action(char *action, struct rules_t *obj, int validate) {
 								opt = opt->next;
 							}
 							if(match == 0) {
-								logprintf(LOG_ERR, "action \"%s\" doesn't accept option \"%s\"", node->action->name, jchild->key);
+								logprintf(LOG_ERR, "action \"%s\" does not accept option \"%s\"", node->action->name, jchild->key);
 								error = 1;
 								break;
 							}

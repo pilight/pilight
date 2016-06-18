@@ -143,11 +143,11 @@ void logprintf(int prio, const char *str, ...) {
 		
 		/* len + loglevel */
 		if(len+9 > bufsize) {
-			if((buffer = realloc(buffer, len+9+1)) == NULL) {
+			if((buffer = realloc(buffer, len+10)) == NULL) {
 				printf("out of memory\n");
 				exit(EXIT_FAILURE);
 			}
-			bufsize = len+9+1;
+			bufsize = len+10+1;
 		}
 		pos += snprintf(buffer, bufsize, "[%s:%03u] ", fmt, (unsigned int)tv.tv_usec);
 
@@ -179,7 +179,7 @@ void logprintf(int prio, const char *str, ...) {
 		len = vsnprintf(NULL, 0, str, apcpy);
 #endif
 		if(len == -1) {
-			fprintf(stderr, "ERROR: unproperly formatted logprintf message %s\n", str);
+			fprintf(stderr, "ERROR: improperly formatted logprintf message %s\n", str);
 		} else {
 			va_end(apcpy);
 			if(len+pos+3 > bufsize) {

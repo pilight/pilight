@@ -86,7 +86,7 @@ static int checkArguments(struct rules_actions_t *obj) {
 									}
 								}
 								if(match1 == 0) {
-									logprintf(LOG_ERR, "device \"%s\" can't be set to state \"%s\"", jdchild->string_, jschild->string_);
+									logprintf(LOG_ERR, "device \"%s\" cannot be set to state \"%s\"", jdchild->string_, jschild->string_);
 									return -1;
 								}
 							} else {
@@ -96,7 +96,7 @@ static int checkArguments(struct rules_actions_t *obj) {
 						}
 					}
 				} else {
-					logprintf(LOG_ERR, "device \"%s\" doesn't exists", jdchild->string_);
+					logprintf(LOG_ERR, "device \"%s\" does not exist", jdchild->string_);
 					return -1;
 				}
 			} else {
@@ -196,7 +196,7 @@ void actionToggleInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "toggle";
-	module->version = "3.0";
+	module->version = "3.0.1";
 	module->reqversion = "7.0";
 	module->reqcommit = "94";
 }

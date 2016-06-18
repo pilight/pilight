@@ -450,7 +450,7 @@ int main(int argc, char **argv) {
 			}
 			/* If no protocols matches the requested protocol */
 			if(match == 0) {
-				logprintf(LOG_ERR, "this protocol is not supported or doesn't support sending");
+				logprintf(LOG_ERR, "this protocol is not supported or does not support sending");
 				goto close;
 			}
 		}
