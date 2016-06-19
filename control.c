@@ -13,6 +13,10 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <errno.h>
+#ifdef _WIN32
+	#include <conio.h>
+	#include <pthread.h>
+#endif
 
 #include "libs/pilight/core/threadpool.h"
 #include "libs/pilight/core/eventpool.h"
@@ -41,8 +45,11 @@ static unsigned short connected = 0;
 static unsigned short connecting = 0;
 static unsigned short found = 0;
 static char *instance = NULL;
-
 static char *state = NULL, *values = NULL, *device = NULL;
+
+#ifdef _WIN32
+pthread_t thr_user_input;
+#endif
 
 typedef struct ssdp_list_t {
 	char server[INET_ADDRSTRLEN+1];
@@ -110,6 +117,8 @@ void *timeout(void *param) {
 
 #ifndef _WIN32
 		kill(getpid(), SIGINT);
+#else
+		GenerateConsoleCtrlEvent(CTRL_C_EVENT, 0);
 #endif
 	}
 	return NULL;
@@ -124,6 +133,8 @@ void *ssdp_not_found(void *param) {
 
 #ifndef _WIN32
 		kill(getpid(), SIGINT);
+#else
+		GenerateConsoleCtrlEvent(CTRL_C_EVENT, 0);
 #endif
 	}
 	return NULL;
@@ -206,111 +217,114 @@ static int client_callback(struct eventpool_fd_t *node, int event) {
 											}
 										}
 										storage_gc();
-										storage_import(jconfig);
-										if(devices_select(ORIGIN_CONTROLLER, device, &tmp) == 0) {
-											struct JsonNode *joutput = json_mkobject();
-											struct JsonNode *jcode = json_mkobject();
-											struct JsonNode *jvalues = json_mkobject();
-											json_append_member(joutput, "code", jcode);
-											json_append_member(jcode, "device", json_mkstring(device));
+										struct JsonNode *jdevices = NULL;
+										if((jdevices = json_find_member(jconfig, "devices")) != NULL) {
+											devices_import(jdevices);
+											if(devices_select(ORIGIN_CONTROLLER, device, &tmp) == 0) {
+												struct JsonNode *joutput = json_mkobject();
+												struct JsonNode *jcode = json_mkobject();
+												struct JsonNode *jvalues = json_mkobject();
+												json_append_member(joutput, "code", jcode);
+												json_append_member(jcode, "device", json_mkstring(device));
 
-											if(values != NULL) {
-												char **array = NULL;
-												unsigned int n = 0, q = 0;
-												if(strstr(values, ",") != NULL) {
-													n = explode(values, ",=", &array);
-												} else {
-													n = explode(values, "=", &array);
-												}
-												for(q=0;q<n;q+=2) {
-													char *name = MALLOC(strlen(array[q])+1);
-													if(name == NULL) {
-														OUT_OF_MEMORY
-													}
-													strcpy(name, array[q]);
-													if(q+1 == n) {
-														array_free(&array, n);
-														logprintf(LOG_ERR, "\"%s\" is missing a value for device \"%s\"", name, device);
-														FREE(name);
-														break;
+												if(values != NULL) {
+													char **array = NULL;
+													unsigned int n = 0, q = 0;
+													if(strstr(values, ",") != NULL) {
+														n = explode(values, ",=", &array);
 													} else {
-														char *val = MALLOC(strlen(array[q+1])+1);
-														if(val == NULL) {
+														n = explode(values, "=", &array);
+													}
+													for(q=0;q<n;q+=2) {
+														char *name = MALLOC(strlen(array[q])+1);
+														if(name == NULL) {
 															OUT_OF_MEMORY
 														}
-														strcpy(val, array[q+1]);
-														struct JsonNode *jvalue = NULL;
-														if((jvalue = json_find_member(tmp, name)) == NULL) {
-															if(isNumeric(val) == 0) {
-																json_append_member(tmp, name, json_mknumber(atof(val), nrDecimals(val)));
-															} else {
-																json_append_member(tmp, name, json_mkstring(val));
-															}
-														} else {
-															if(jvalue->tag == JSON_NUMBER) {
-																jvalue->number_ = atof(val);
-																jvalue->decimals_ = nrDecimals(val);
-															} else {
-																if((jvalue->string_ = REALLOC(jvalue->string_, strlen(val)+1)) == NULL) {
-																	OUT_OF_MEMORY
-																}
-																strcpy(jvalue->string_, val);
-															}
-														}
-														if(devices_validate_settings(tmp, -1) == 0) {
-															if(isNumeric(val) == EXIT_SUCCESS) {
-																json_append_member(jvalues, name, json_mknumber(atof(val), nrDecimals(val)));
-															} else {
-																json_append_member(jvalues, name, json_mkstring(val));
-															}
-															has_values = 1;
-														} else {
-															logprintf(LOG_ERR, "\"%s\" is an invalid value for device \"%s\"", name, device);
+														strcpy(name, array[q]);
+														if(q+1 == n) {
 															array_free(&array, n);
+															logprintf(LOG_ERR, "\"%s\" is missing a value for device \"%s\"", name, device);
 															FREE(name);
-															json_delete(json);
-															json_delete(joutput);
-															json_delete(jvalues);
-															return -1;
+															break;
+														} else {
+															char *val = MALLOC(strlen(array[q+1])+1);
+															if(val == NULL) {
+																OUT_OF_MEMORY
+															}
+															strcpy(val, array[q+1]);
+															struct JsonNode *jvalue = NULL;
+															if((jvalue = json_find_member(tmp, name)) == NULL) {
+																if(isNumeric(val) == 0) {
+																	json_append_member(tmp, name, json_mknumber(atof(val), nrDecimals(val)));
+																} else {
+																	json_append_member(tmp, name, json_mkstring(val));
+																}
+															} else {
+																if(jvalue->tag == JSON_NUMBER) {
+																	jvalue->number_ = atof(val);
+																	jvalue->decimals_ = nrDecimals(val);
+																} else {
+																	if((jvalue->string_ = REALLOC(jvalue->string_, strlen(val)+1)) == NULL) {
+																		OUT_OF_MEMORY
+																	}
+																	strcpy(jvalue->string_, val);
+																}
+															}
+															if(devices_validate_settings(tmp, -1) == 0) {
+																if(isNumeric(val) == EXIT_SUCCESS) {
+																	json_append_member(jvalues, name, json_mknumber(atof(val), nrDecimals(val)));
+																} else {
+																	json_append_member(jvalues, name, json_mkstring(val));
+																}
+																has_values = 1;
+															} else {
+																logprintf(LOG_ERR, "\"%s\" is an invalid value for device \"%s\"", name, device);
+																array_free(&array, n);
+																FREE(name);
+																json_delete(json);
+																json_delete(joutput);
+																json_delete(jvalues);
+																return -1;
+															}
 														}
+														FREE(name);
 													}
-													FREE(name);
+													array_free(&array, n);
 												}
-												array_free(&array, n);
-											}
 
-											struct JsonNode *jstate = json_find_member(tmp, "state");
-											if(jstate != NULL && jstate->tag == JSON_STRING) {
-												if((jstate->string_ = REALLOC(jstate->string_, strlen(state)+1)) == NULL) {
-													OUT_OF_MEMORY
+												struct JsonNode *jstate = json_find_member(tmp, "state");
+												if(jstate != NULL && jstate->tag == JSON_STRING) {
+													if((jstate->string_ = REALLOC(jstate->string_, strlen(state)+1)) == NULL) {
+														OUT_OF_MEMORY
+													}
+													strcpy(jstate->string_, state);
 												}
-												strcpy(jstate->string_, state);
-											}
-											if(devices_validate_state(tmp, -1) == 0) {
-												json_append_member(jcode, "state", json_mkstring(state));
-											} else {
-												logprintf(LOG_ERR, "\"%s\" is an invalid state for device \"%s\"", state, device);
-												json_delete(json);
+												if(devices_validate_state(tmp, -1) == 0) {
+													json_append_member(jcode, "state", json_mkstring(state));
+												} else {
+													logprintf(LOG_ERR, "\"%s\" is an invalid state for device \"%s\"", state, device);
+													json_delete(json);
+													json_delete(joutput);
+													json_delete(jvalues);
+													return -1;
+												}
+
+												if(has_values == 1) {
+													json_append_member(jcode, "values", jvalues);
+												} else {
+													json_delete(jvalues);
+												}
+												json_append_member(joutput, "action", json_mkstring("control"));
+												char *output = json_stringify(joutput, NULL);
+												socket_write(node->fd, output);
+												json_free(output);
 												json_delete(joutput);
-												json_delete(jvalues);
+												node->steps = VALIDATE;
+											} else {
+												logprintf(LOG_ERR, "the device \"%s\" does not exist", device);
+												json_delete(json);
 												return -1;
 											}
-
-											if(has_values == 1) {
-												json_append_member(jcode, "values", jvalues);
-											} else {
-												json_delete(jvalues);
-											}
-											json_append_member(joutput, "action", json_mkstring("control"));
-											char *output = json_stringify(joutput, NULL);
-											socket_write(node->fd, output);
-											json_free(output);
-											json_delete(joutput);
-											node->steps = VALIDATE;
-										} else {
-											logprintf(LOG_ERR, "the device \"%s\" does not exist", device);
-											json_delete(json);
-											return -1;
 										}
 									}
 								}
@@ -344,6 +358,8 @@ static int client_callback(struct eventpool_fd_t *node, int event) {
 		case EV_DISCONNECTED: {
 #ifndef _WIN32
 			kill(getpid(), SIGINT);
+#else
+			GenerateConsoleCtrlEvent(CTRL_C_EVENT, 0);
 #endif
 		} break;
 	}
@@ -353,7 +369,7 @@ static int client_callback(struct eventpool_fd_t *node, int event) {
 static void *ssdp_reseek(void *node) {
 	if(found == 0 && connecting == 0) {
 		struct timeval tv;
-		tv.tv_sec = 1;
+		tv.tv_sec = 3;
 		tv.tv_usec = 0;
 		threadpool_add_scheduled_work("ssdp seek", ssdp_reseek, tv, NULL);
 		ssdp_seek();
@@ -361,17 +377,31 @@ static void *ssdp_reseek(void *node) {
 	return NULL;
 }
 
+static int select_server(int server) {
+	struct timeval tv;	
+	struct ssdp_list_t *tmp = ssdp_list;
+	int i = 0;
+	while(tmp) {
+		if((ssdp_list_size-i) == server) {
+			socket_connect1(tmp->server, tmp->port, client_callback);
+			tv.tv_sec = 1;
+			tv.tv_usec = 0;
+			threadpool_add_scheduled_work("socket timeout", timeout, tv, NULL);
+			connecting = 1;
+			return 0;
+		}
+		i++;
+		tmp = tmp->next;
+	}
+	return -1;
+}
+
+#ifndef _WIN32
 static int user_input(struct eventpool_fd_t *node, int event) {
-	struct timeval tv;
 	switch(event) {
 		case EV_CONNECT_SUCCESS: {
-#ifdef _WIN32
-			unsigned long on = 1;
-			ioctlsocket(node->fd, FIONBIO, &on);
-#else
 			long arg = fcntl(node->fd, F_GETFL, NULL);
 			fcntl(node->fd, F_SETFL, arg | O_NONBLOCK);
-#endif
 			eventpool_fd_enable_read(node);
 		} break;
 		case EV_READ: {
@@ -381,20 +411,7 @@ static int user_input(struct eventpool_fd_t *node, int event) {
 			if((c = read(node->fd, buf, BUFFER_SIZE)) > 0) {
 				buf[c-1] = '\0';
 				if(isNumeric(buf) == 0) {
-					struct ssdp_list_t *tmp = ssdp_list;
-					int i = 0;
-					while(tmp) {
-						if((ssdp_list_size-i) == atoi(buf)) {
-							socket_connect1(tmp->server, tmp->port, client_callback);
-							tv.tv_sec = 1;
-							tv.tv_usec = 0;
-							threadpool_add_scheduled_work("socket timeout", timeout, tv, NULL);
-							connecting = 1;
-							return -1;
-						}
-						i++;
-						tmp = tmp->next;
-					}
+					return select_server(atoi(buf));
 				}
 			}
 			eventpool_fd_enable_read(node);
@@ -402,6 +419,34 @@ static int user_input(struct eventpool_fd_t *node, int event) {
 	}
 	return 0;
 }
+#else
+static void *user_input(void *param) {
+	int i = 0;
+	char buffer[1024];
+	while(1) {
+		i = 0;
+		while(1) {
+			if(_kbhit()) {
+				buffer[i] = _getch();
+				printf("%c", buffer[i]);
+				if(buffer[i] == 13) {
+					buffer[i] = '\0';
+					break;
+				}
+				i++;
+				if(i > 1023) {
+					i = 0;
+				}
+			}
+			SleepEx(10, TRUE);
+		}
+		if(select_server(atoi(buffer)) == 0) {
+			break;
+		}
+	}
+	return NULL;
+}
+#endif
 
 static void *ssdp_found(void *param) {
 	struct threadpool_tasks_t *task = param;
@@ -598,19 +643,20 @@ int main(int argc, char **argv) {
 	tv.tv_usec = 0;
 	timer_thread_start();
 
-	tv.tv_sec = 1;
-	tv.tv_usec = 0;
 	if(server != NULL && port > 0) {
 		socket_connect1(server, port, client_callback);
+		tv.tv_sec = 1;
 		threadpool_add_scheduled_work("socket timeout", timeout, tv, NULL);
 	} else {
 		ssdp_seek();
+		tv.tv_sec = 3;
 		threadpool_add_scheduled_work("ssdp seek", ssdp_reseek, tv, NULL);
 		if(instance == NULL) {
 			printf("[%2s] %15s:%-5s %-16s\n", "#", "server", "port", "name");
 			printf("To which server do you want to connect?:\r");
 			fflush(stdout);
 		} else {
+			tv.tv_sec = 1;
 			threadpool_add_scheduled_work("ssdp seek", ssdp_not_found, tv, NULL);
 		}
 	}
@@ -620,7 +666,11 @@ int main(int argc, char **argv) {
 		server = NULL;
 	}
 
+#ifdef _WIN32
+	pthread_create(&thr_user_input, NULL, user_input, NULL);
+#else
 	eventpool_fd_add("stdin", fileno(stdin), user_input, NULL, NULL);
+#endif
 	eventpool_process(NULL);
 
 close:

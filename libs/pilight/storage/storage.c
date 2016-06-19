@@ -2028,6 +2028,19 @@ int hardware_validate_settings(struct JsonNode *jhardware, int i) {
 	return 0;
 }
 
+void devices_import(struct JsonNode *jdevices) {
+	int i = 0;
+	json_clone(jdevices, &jdevices_cache);
+
+	jdevices = json_first_child(jdevices);
+	while(jdevices) {
+		i++;
+		devices_struct_parse(jdevices, i);
+
+		jdevices = jdevices->next;
+	}
+}
+
 int storage_devices_validate(struct JsonNode *jdevices) {
 	int i = 0;
 	jdevices = json_first_child(jdevices);
