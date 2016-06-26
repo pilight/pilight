@@ -58,7 +58,7 @@ static int validate(void) {
 
 static void parseCode(void) {
 	int i = 0, x = 0, binary[RAW_LENGTH/2];
-	int id = 0, battery = 0;
+	int id = 0, battery = 0, header = 0;
 	double humi_offset = 0.0, temp_offset = 0.0;
 	double temperature = 0.0, humidity = 0.0;
 
@@ -75,13 +75,17 @@ static void parseCode(void) {
 		}
 	}
 
-	id = binToDecRev(binary, 0, 11);
+	header = binToDecRev(binary, 0, 3);
+	if (header != 5) {
+		return;
+	}
+	id = binToDecRev(binary, 4, 11);
 	battery = binary[12];
-	temperature = ((double)binToDecRev(binary, 18, 27));
+	temperature = (double)binToDecRev(binary, 16, 27);
 	humidity = (double)binToDecRev(binary, 28, 35);
 
-	if(temperature > 511) {
-		temperature -= 1023;
+	if (binary[16]) {
+		temperature -= 4096;
 	}
 	temperature /= 10;
 
@@ -206,7 +210,7 @@ void alectoWS1700Init(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "alecto_ws1700";
-	module->version = "2.3";
+	module->version = "2.4";
 	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }
