@@ -370,7 +370,7 @@ int avr_write_page(PROGRAMMER * pgm, AVRPART * p, AVRMEM * mem,
    * conservative and delay the max amount the spec says to wait
    */
 #ifdef _WIN32
-  SleepEx(mem->max_write_delay, TRUE);
+  SleepEx(1, TRUE);
 #else
   usleep(mem->max_write_delay);
 #endif
@@ -472,7 +472,7 @@ int avr_write_byte_default(PROGRAMMER * pgm, AVRPART * p, AVRMEM * mem,
      * the max programming time and then return
      */
 #ifdef _WIN32
-		SleepEx(mem->max_write_delay, TRUE);
+		SleepEx(1, TRUE);
 #else
 		usleep(mem->max_write_delay); /* maximum write delay */
 #endif
@@ -492,7 +492,7 @@ int avr_write_byte_default(PROGRAMMER * pgm, AVRPART * p, AVRMEM * mem,
        * specified for the chip.
        */
 #ifdef _WIN32
-			SleepEx(mem->max_write_delay, TRUE);
+			SleepEx(1, TRUE);
 #else
 			usleep(mem->max_write_delay); /* maximum write delay */
 #endif
@@ -539,7 +539,7 @@ int avr_write_byte_default(PROGRAMMER * pgm, AVRPART * p, AVRMEM * mem,
         logprintf(LOG_NOTICE, "attempting to do this now ...");
         pgm->powerdown(pgm);
 #ifdef _WIN32
-				SleepEx(250000, TRUE);
+				SleepEx(250, TRUE);
 #else
 				usleep(250000); /* maximum write delay */
 #endif

@@ -243,7 +243,7 @@ int bitbang_chip_erase(PROGRAMMER * pgm, AVRPART * p)
   avr_set_bits(p->op[AVR_OP_CHIP_ERASE], cmd);
   pgm->cmd(pgm, cmd, res);
 #ifdef _WIN32
-  SleepEx(p->chip_erase_delay, TRUE);
+  SleepEx(1, TRUE);
 #else
 	usleep(p->chip_erase_delay);
 #endif
@@ -289,7 +289,7 @@ int bitbang_initialize(PROGRAMMER * pgm, AVRPART * p)
 
   pgm->powerup(pgm);
 #ifdef _WIN32
-  SleepEx(20000, TRUE);
+  SleepEx(20, TRUE);
 #else
   usleep(20000);
 #endif
@@ -297,7 +297,7 @@ int bitbang_initialize(PROGRAMMER * pgm, AVRPART * p)
   pgm->setpin(pgm, pgm->pinno[PIN_AVR_SCK], 0);
   pgm->setpin(pgm, pgm->pinno[PIN_AVR_RESET], 0);
 #ifdef _WIN32
-  SleepEx(20000, TRUE);
+  SleepEx(20, TRUE);
 #else
   usleep(20000);
 #endif
@@ -305,7 +305,7 @@ int bitbang_initialize(PROGRAMMER * pgm, AVRPART * p)
   pgm->highpulsepin(pgm, pgm->pinno[PIN_AVR_RESET]);
 
 #ifdef _WIN32
-  SleepEx(20000, TRUE);
+  SleepEx(20, TRUE);
 #else
   usleep(20000);
 #endif /* 20 ms XXX should be a per-chip parameter */

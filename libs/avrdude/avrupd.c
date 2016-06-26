@@ -25,6 +25,23 @@
 #include <errno.h>
 #include <string.h>
 #include <time.h>
+#ifndef _WIN32
+	#define _GNU_SOURCE
+	#include <string.h>
+#endif
+
+#ifdef _WIN32
+char *basename(char *path) {
+	char *pfile = path + strlen(path);
+	for(;pfile > path;pfile--) {
+		if((*pfile == '\\') || (*pfile == '/')) {
+			pfile++;
+			break;
+		}
+	}
+	return pfile;
+}
+#endif
 
 #include "../pilight/core/log.h"
 #include "../pilight/core/mem.h"
@@ -48,7 +65,7 @@ AVRUPD * parse_op(char * s)
   }
 
   i = 0;
-  p = s;
+  p = basename(s);
   while ((i < (sizeof(buf)-1) && *p && (*p != ':')))
     buf[i++] = *p++;
   buf[i] = 0;

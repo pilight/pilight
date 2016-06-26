@@ -652,13 +652,13 @@ static int firmware_identifymp(struct avrpart **p) {
    * are valid.
    */
 	int attempt = 0;
-	int waittime = 10000;       /* 10 ms */
+	int waittime = 10;       /* 10 ms */
 
 sig_again:
 #ifdef _WIN32
 	SleepEx(waittime, TRUE);
 #else
-	usleep(waittime);
+	usleep(waittime*1000);
 #endif
 	if(init_ok) {
 		if(avr_signature(pgm, *p) != 0) {

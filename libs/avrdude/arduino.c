@@ -92,14 +92,14 @@ static int arduino_open(PROGRAMMER * pgm, char * port) {
 	* (for example in Arduino) */
 	serial_set_dtr_rts(&pgm->fd, 0);
 #ifdef _WIN32
-	SleepEx(250*1000, TRUE);
+	SleepEx(250, TRUE);
 #else
 	usleep(250*1000);
 #endif
 	/* Set DTR and RTS back to high */
 	serial_set_dtr_rts(&pgm->fd, 1);
 #ifdef _WIN32
-	SleepEx(50*1000, TRUE);
+	SleepEx(50, TRUE);
 #else
 	usleep(50*1000);
 #endif
