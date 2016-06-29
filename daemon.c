@@ -1499,6 +1499,38 @@ void *receivePulseTrain(void *param) {
 	return (void *)NULL;
 }
 
+int sys_parseHeader(struct hardware_t *hw, struct rawcode_t r, struct timeval tp, struct timespec ts, int duration) {
+int plslen = 0;
+
+	if(duration > 0) {
+		r.pulses[r.length] = duration;
+		r.length++;
+		if(r.length > MAXPULSESTREAMLENGTH-1) {
+			r.length = 0;
+		}
+		if(duration > hw->mingaplen) {
+			if(duration < hw->maxgaplen) {
+				plslen = duration/PULSE_DIV;
+			}
+			// Let's do a little filtering here as well
+			if(r.length >= hw->minrawlen && r.length <= hw->maxrawlen) {
+				receive_queue(r.pulses, r.length, plslen, hw->hwtype);
+			}
+			r.length = 0;
+		} // if duration > 5100
+	// Hardware failure
+	} else if(duration == -1) {
+		pthread_mutex_unlock(&hw->lock);
+		gettimeofday(&tp, NULL);
+		ts.tv_sec = tp.tv_sec;
+		ts.tv_nsec = tp.tv_usec * 1000;
+		ts.tv_sec += 1;
+		pthread_mutex_lock(&hw->lock);
+		pthread_cond_timedwait(&hw->signal, &hw->lock, &ts);
+	}
+	return r.length;
+}
+
 void *receiveOOK(void *param) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
@@ -1528,31 +1560,13 @@ void *receiveOOK(void *param) {
 			pthread_mutex_lock(&hw->lock);
 			logprintf(LOG_STACK, "%s::unlocked", __FUNCTION__);
 			duration = hw->receiveOOK();
-			if(duration > 0) {
-				r.pulses[r.length++] = duration;
-				if(r.length > MAXPULSESTREAMLENGTH-1) {
-					r.length = 0;
-				}
-				if(duration > hw->mingaplen) {
-					if(duration < hw->maxgaplen) {
-						plslen = duration/PULSE_DIV;
-					}
-					/* Let's do a little filtering here as well */
-					if(r.length >= hw->minrawlen && r.length <= hw->maxrawlen) {
-						receive_queue(r.pulses, r.length, plslen, hw->hwtype);
-					}
-					r.length = 0;
-				}
-			/* Hardware failure */
-			} else if(duration == -1) {
-				pthread_mutex_unlock(&hw->lock);
-				gettimeofday(&tp, NULL);
-				ts.tv_sec = tp.tv_sec;
-				ts.tv_nsec = tp.tv_usec * 1000;
-				ts.tv_sec += 1;
-				pthread_mutex_lock(&hw->lock);
-				pthread_cond_timedwait(&hw->signal, &hw->lock, &ts);
-			}
+//
+//          if protocol->parseHeader != NULL {
+//				&protocol->user_parseHeader();
+//          } else {
+                r.length = sys_parseHeader(hw, r, tp, ts, duration);
+//          }
+//
 			pthread_mutex_unlock(&hw->lock);
 		} else {
 			pthread_cond_wait(&hw->signal, &hw->lock);
