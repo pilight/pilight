@@ -68,6 +68,8 @@ typedef struct hardware_t {
 	int mingaplen;
 	int maxgaplen;
 
+	int usr_parseHeader;
+
 	unsigned short (*init)(void);
 	unsigned short (*deinit)(void);
 	union {

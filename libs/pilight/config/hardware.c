@@ -97,6 +97,8 @@ void hardware_register(struct hardware_t **hw) {
 	(*hw)->mingaplen = 0;
 	(*hw)->maxgaplen = 0;
 
+	(*hw)->usr_parseHeader = 0;
+
 	(*hw)->init = NULL;
 	(*hw)->deinit = NULL;
 	(*hw)->receiveOOK = NULL;
