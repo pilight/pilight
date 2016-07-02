@@ -55,7 +55,8 @@ typedef enum {
 	DUSK,
 	PING,
 	LABEL,
-	ALARM
+	ALARM,
+	GPSENSOR
 } devtype_t;
 
 typedef struct protocol_devices_t {

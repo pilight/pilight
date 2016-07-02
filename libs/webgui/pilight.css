@@ -168,6 +168,7 @@ div.name {
 }
 
 div.humidity, div.temperature, div.pressure,
+div.sensorvalue, div.munit,
 div.rain, div.windavg, div.windgust, div.winddir,
 div.temperature_icon, div.humidity_icon, div.pressure_icon,
 div.rain_icon, div.windavg_icon,
