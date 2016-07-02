@@ -19,7 +19,7 @@ var aTimers = new Array();
 var sDateTimeFormat = "HH:mm:ss YYYY-MM-DD";
 var aDateTimeFormats = new Array();
 var aWebcamUrl = new Array();
-var aDecimalTypes = ["temperature", "humidity", "wind", "pressure", "sunriseset"];
+var aDecimalTypes = ["temperature", "humidity", "wind", "pressure", "sunriseset", "sensorvalue"];
 var userLang = navigator.language || navigator.userLanguage;
 var language;
 
@@ -609,6 +609,43 @@ function createWeatherElement(sTabId, sDevId, aValues) {
 	oTab.listview("refresh");
 }
 
+function createGpsensorElement(sTabId, sDevId, aValues) {
+	$.each(aDecimalTypes, function(index, value) {
+		if(!(sDevId in aDecimals)) {
+			aDecimals[sDevId] = new Array();
+		}
+		if(value+'-decimals' in aValues) {
+			aDecimals[sDevId][value] = aValues[value+'-decimals'];
+		} else {
+			aDecimals[sDevId][value] = 0;
+		}
+	});
+
+	if($('#'+sDevId+'_gpsensor').length == 0) {
+		if(bShowTabs) {
+			oTab = $('#'+sTabId).find('ul');
+		} else {
+			oTab = $('#all');
+		}
+		if('name' in aValues) {
+			oTab.append($('<li class="gpsensor" id="'+sDevId+'_gpsensor" data-icon="false"><div class="name">'+aValues['name']+'</div></li>'));
+		}
+		if('show-battery' in aValues && aValues['show-battery'] && 'battery' in aValues) {
+			oTab.find('#'+sDevId+'_gpsensor').append($('<div id="'+sDevId+'_batt" class="battery green"></div>'));
+		} else {
+			oTab.find('#'+sDevId+'_gpsensor').append($('<div id="'+sDevId+'_batt" class="battery nodisplay"></div>'));
+		}
+		if('munit' in aValues) {
+			oTab.find('#'+sDevId+'_gpsensor').append($('<div id="'+sDevId+'_munit" class="munit">'+aValues['munit']+'&nbsp;</div>'));
+		}
+		if('sensorvalue' in aValues) {
+			oTab.find('#'+sDevId+'_gpsensor').append($('<div id="'+sDevId+'_sensorvalue" class="sensorvalue">&nbsp;'+aValues['sensorvalue']+'&nbsp;&nbsp;</div>'));
+		}
+	}
+	oTab.listview();
+	oTab.listview("refresh");
+}
+
 function updateProcStatus(aValues) {
 	if('ram' in aValues && 'cpu' in aValues) {
 		var obj = $('#proc').text("CPU: "+aValues['cpu'].toFixed(2)+"% / RAM: "+aValues['ram'].toFixed(2)+"%");
@@ -863,6 +900,8 @@ function createGUI(data) {
 			createWebcamElement(alphaNum(lindex), dindex, aValues);
 		} else if(aValues['type'] == 15) {
 			createLabelElement(alphaNum(lindex), dindex, aValues);
+		} else if(aValues['type'] == 17) {
+			createGpsensorElement(alphaNum(lindex), dindex, aValues);
 		}
 		if(bShowTabs) {
 			$(document).delegate('[data-role="navbar"] a', 'click', function(e) {
@@ -1120,6 +1159,10 @@ function parseValues(data) {
 						$('#'+dvalues+' div.marquee .text').text(vvalues);
 					} else if(vindex == 'color') {
 						$('#'+dvalues+' div.marquee .text').css('color', vvalues);
+					}
+				} else if(iType == 17) {
+					if(vindex == 'gpsensor') {
+						$('#'+dvalues+' div.marquee .text').text(vvalues);
 					}
 				}
 			});
