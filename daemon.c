@@ -1499,37 +1499,252 @@ void *receivePulseTrain(void *param) {
 	return (void *)NULL;
 }
 
+int usr_parseHeader(struct hardware_t *hw, struct rawcode_t *r, struct timeval *tp, struct timespec *ts, int *duration) {
+// --------------------------------------------------------------------------------------------------------------------
+// Convert OREGON RAW STREAM into compatible pilight format
+// Support for pre-amb header/sync detection:
+// oregon21: length 32: maximum length of valid pre-amb pulses is 32 (32 clock duration pulses)
+//	   SYNC is coded as 10101010 and handled by the protocol itself (possible intergap value is 11018, 31232)
+// Planned to be added pre-amb support for
+// oregon30: length 24: maximum valid length
+//	   SYNC is coded as 0101 and handled ny the protocol itself (possible intergap value 23424)
+// Maybe:
+// oregon10: length 12: maximum length
+//	   SYNC is coded as three pulses and handled by the protocol itself (footer 35088)
+// Analyse stream for repetitive pulses with half the duration of the clock frequency 2924µS for V1.0
+// Analyse stream for repetitive pulses with the duration of the clock frequency 976µS for V2.1
+// Analyse stream for repetitive pulses with half the duration of the clock frequency 976µS for V3.0
+//  - they are in V2.1 members of the Pre-Amb sequence
+//  - they are uncommon in regular header/footer based streams and other protocols
+//  -> Other protocols will never get beyhond the WAIT_FOR_END_OF_HEADER state
+//
+// oregon_space: 9000µS footer pulses: 500/2000 - ONE, 500/4000 - ZERO
+// The followign oregon devices do not require modification in daemon.c
+//  - devices: SL-109H, AcuRite 09955
+// Marker criteria is the first deviating pulse:
+// - distance of pulses between marker is rawlen of pulse stream
+// - duration of repetitive pulses is footer
+// As pilight will only accept footer values that do not deviate by more than -/+170µS the protocol driver has to
+// cover an extended footer value range (two additional protocol_plslen_add function calls with a difference of +/- 11)
+// Date: 15/01/15
+// --------------------------------------------------------------------------------------------------------------------
+// Ignore Footer pulses at the beginning of a pulsestream by not resetting the buffer.
+// Allow at least the buffer to fill up with 20 pulses, as the shortest valid payload stream currently known has more
+// This may lead to not detecting the 1st pulsetrain properly, but it allows handling of protocols with Header values
+// --------------------------------------------------------------------------------------------------------------------
+
+#define WAIT_FOR_END_OF_HEADER  0
+#define WAIT_FOR_END_OF_DATA    1
+#define WAIT_FOR_END_OF_DATA_2  4
+#define WAIT_FOR_END_OF_DATA_3  5
+#define PREAMB_SYNC_L	488	// V2.1 - clk = 1024 Hz
+#define PREAMB_SYNC_L_MAX	586	// PREAMB_SYNC_L * 1,2
+#define PREAMB_SYNC_MIN	732
+#define PREAMB_SYNC_H	976	// V2.1 - clk = 1024 Hz
+#define PREAMB_SYNC_MAX	1120	// A single value above this value is added to the next value
+#define PREAMB_SYNC_DMAX	PREAMB_SYNC_H+PREAMB_SYNC_L
+#define O21_FOOTER	11018	// GAP pulse Oregon V2.1
+#define PRE_AMB_HEADER_CNT_MAX	33	// Max # of preamb pulses
+#define PRE_AMB_HEADER_CNT	22
+#define L_HEADER_21	12
+
+int header_21[L_HEADER_21] = {PREAMB_SYNC_L,PREAMB_SYNC_L,PREAMB_SYNC_H,PREAMB_SYNC_L,PREAMB_SYNC_L,PREAMB_SYNC_H,PREAMB_SYNC_L,PREAMB_SYNC_L,PREAMB_SYNC_H,PREAMB_SYNC_L,PREAMB_SYNC_L,PREAMB_SYNC_H};
+int duration_next = 0;
+int flag_oregon_21 = 0;
+int latch_duration = 0;
+int plslen = 0;
+int preamb_pulse_counter = 0;
+int preamb_duration = 0;
+int preamb_state = 0;
+int p_header_21 = 0;
+
+	if(*duration > 0) {
+		r->pulses[r->length] = *duration;
+
+		switch (preamb_state) {
+
+			case WAIT_FOR_END_OF_HEADER:
+			flag_oregon_21 = 0;
+			if (*duration > PREAMB_SYNC_MIN) {	// Check for pulses with at least clock duration
+				preamb_pulse_counter++;
+				preamb_duration += r->pulses[r->length];
+			} else {
+				// Check if we found the deviating pulse after a series of consecutive pulses
+				// and that the deviating pulse qualifies as a SYNC pulse
+				if (preamb_pulse_counter > PRE_AMB_HEADER_CNT) {
+					flag_oregon_21 = 1;	// flag for footer based protocols: 2nd transmission
+					preamb_state = WAIT_FOR_END_OF_DATA;
+					preamb_pulse_counter = 0;
+					r->length = 0;	// Reset Pointer
+					r->pulses[r->length] = *duration;	// Restore the 1st SYNC pulse
+				} else {
+					// Below threshold, so we have to reset and will continue to check
+					preamb_duration = 0;
+					preamb_pulse_counter = 0;
+				}
+			}
+			break;
+
+			case WAIT_FOR_END_OF_DATA:
+			if (*duration > 5100) {	// Regular GAP detected search for Header
+				if (flag_oregon_21 == 1) {	// 2nd footer is also oregon_21
+					*duration = O21_FOOTER;
+					r->pulses[r->length]   = *duration;
+				}
+				preamb_state = WAIT_FOR_END_OF_HEADER;
+			}
+			if (*duration > PREAMB_SYNC_MIN) {
+				preamb_pulse_counter++;
+				preamb_duration += r->pulses[r->length];
+			} else {
+				// Check if we found the deviating pulse after a series of consecutive pulses
+				if (preamb_pulse_counter > PRE_AMB_HEADER_CNT) {
+					latch_duration = *duration;	// Remember this pulse for WFD2
+					r->pulses[r->length] = O21_FOOTER;	// Emulate Footer
+					*duration = O21_FOOTER;
+					preamb_state = WAIT_FOR_END_OF_DATA_2;
+				} else {
+				// Below threshold, so we continue to wait
+					preamb_duration = 0;
+					preamb_pulse_counter = 0;
+				}
+			}
+			break;
+
+			case WAIT_FOR_END_OF_DATA_2:
+			r->length = 0;	// Restore 1st SYNC byte already received
+			preamb_pulse_counter = 1;
+			duration_next = 0;
+			r->pulses[r->length++] = latch_duration;
+			if (*duration > O21_FOOTER) {	// A footer is a footer
+				*duration = O21_FOOTER;
+				r->pulses[r->length] = *duration;
+			} else {
+				// pilight may have missed significant a number of pulses
+				// The length of the pulse is not correct
+				// to resynchronize, lets get the next pulse as well
+				// both length together are close to absolute duration
+				// and based on our knowledge of the SYNC structure
+				// we can recreate the header pulse sequence
+				if (*duration  > PREAMB_SYNC_DMAX) {
+					duration_next = hw->receiveOOK();
+					*duration += duration_next;
+					p_header_21 = 1;	// The next pulse is short
+				}
+				// Rebuild missing SYNC Header: 488, 976, 488 488 976 488 488 976
+				while ( (*duration > 100) && (p_header_21 < (unsigned int)L_HEADER_21) ) {
+					r->pulses[r->length++] = header_21[p_header_21];
+					// panic - take the exit, set state to WFH
+					if(r->length > MAXPULSESTREAMLENGTH-1) {
+						r->length = 1;	// Get's set to zero after end of the loop
+						preamb_duration = 0;
+						preamb_pulse_counter = 1; //Get's set to zero after end of the loop
+						preamb_state = WAIT_FOR_END_OF_HEADER;
+						break;
+					}
+					*duration -= header_21[p_header_21];
+					preamb_pulse_counter++;
+					p_header_21++;
+				}
+				r->length--;	// Adjust pointer
+				preamb_pulse_counter--;	// Adjust counter
+			}
+			// if panic - ensure that we do not override the WFH state
+			if (preamb_state!=WAIT_FOR_END_OF_HEADER) {
+				preamb_state = WAIT_FOR_END_OF_DATA_3;
+			}
+			break;
+
+			case WAIT_FOR_END_OF_DATA_3:
+			if (*duration > 5100) {
+				preamb_state = WAIT_FOR_END_OF_HEADER;
+				*duration = O21_FOOTER;	// Replace GAP with defined footer value
+				r->pulses[r->length]   = *duration;
+			}
+			break;
+
+			default:
+			break;
+		} // Switch preamb_state
+
+		r->length++;
+		if(r->length > MAXPULSESTREAMLENGTH-1) {
+			r->length = 0;
+			preamb_duration = 0;
+			preamb_pulse_counter = 0;
+			preamb_state = WAIT_FOR_END_OF_HEADER;
+		}
+		if(*duration > hw->mingaplen) {
+			if(*duration < hw->maxgaplen) {
+				plslen = *duration/PULSE_DIV;
+			}
+			// Let's do a little filtering here as well
+			if(r->length >= hw->minrawlen && r->length <= hw->maxrawlen) {
+				receive_queue(r->pulses, r->length, plslen, hw->hwtype);
+				r->length = 0;
+			}
+			// Avoid that short footer pulses (X10, IMPULS, ...) interfere with long header /sync pulses
+			if(r->length > 20) {
+				// Avoid a buffer reset and preserve potential Header / SYNC / Start pulses
+				r->length = 0;
+				preamb_duration = 0;
+				preamb_pulse_counter = 0;
+				if (preamb_state == WAIT_FOR_END_OF_DATA) {
+					preamb_state = WAIT_FOR_END_OF_DATA_2;
+				}
+			}
+		} // if duration > 5100
+	// Hardware failure
+	} else if(*duration == -1) {
+		pthread_mutex_unlock(&hw->lock);
+		gettimeofday(tp, NULL);
+		ts->tv_sec = tp->tv_sec;
+		ts->tv_nsec = tp->tv_usec * 1000;
+		ts->tv_sec += 1;
+		pthread_mutex_lock(&hw->lock);
+		pthread_cond_timedwait(&hw->signal, &hw->lock, ts);
+	}
+	return r->length;
+}
+
+int sys_parseHeader(struct hardware_t *hw, struct rawcode_t *r, struct timeval *tp, struct timespec *ts, int *duration) {
+int plslen = 0;
+
+	if(*duration > 0) {
+		r->pulses[r->length] = *duration;
+		r->length++;
+		if(r->length > MAXPULSESTREAMLENGTH-1) {
+			r->length = 0;
+		}
+		if(*duration > hw->mingaplen) {
+			if(*duration < hw->maxgaplen) {
+				plslen = *duration/PULSE_DIV;
+			}
+			// Let's do a little filtering here as well
+			if(r->length >= hw->minrawlen && r->length <= hw->maxrawlen) {
+				receive_queue(r->pulses, r->length, plslen, hw->hwtype);
+			}
+			r->length = 0;
+		} // if duration > 5100
+	// Hardware failure
+	} else if(*duration == -1) {
+		pthread_mutex_unlock(&hw->lock);
+		gettimeofday(tp, NULL);
+		ts->tv_sec = tp->tv_sec;
+		ts->tv_nsec = tp->tv_usec * 1000;
+		ts->tv_sec += 1;
+		pthread_mutex_lock(&hw->lock);
+		pthread_cond_timedwait(&hw->signal, &hw->lock, ts);
+	}
+	return r->length;
+}
+
 void *receiveOOK(void *param) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
 	struct rawcode_t r;
 	r.length = 0;
-	int plslen = 0, duration = 0;
-
-#define WAIT_FOR_END_OF_HEADER	0
-#define WAIT_FOR_END_OF_DATA	1
-#define WAIT_FOR_END_OF_DATA_2	4
-#define WAIT_FOR_END_OF_DATA_3	5
-#define PREAMB_SYNC_L			488		// V2.1 - clk = 1024 Hz
-#define PREAMB_SYNC_L_MAX		586		// PREAMB_SYNC_L * 1,2
-#define PREAMB_SYNC_MIN			732
-#define PREAMB_SYNC_H			976		// V2.1 - clk = 1024 Hz
-#define PREAMB_SYNC_MAX			1120	// A single value above this value is added to the next value
-#define PREAMB_SYNC_DMAX		PREAMB_SYNC_H+PREAMB_SYNC_L
-#define O21_FOOTER				11018	// GAP pulse Oregon V2.1
-#define PRE_AMB_HEADER_CNT_MAX	33		// Max # of preamb pulses
-#define PRE_AMB_HEADER_CNT		22
-#define L_HEADER_21				12
-
-int preamb_pulse_counter = 0;
-int latch_duration = 0;
-int preamb_duration = 0;
-int preamb_state = 0;
-int duration_next = 0;
-int header_21[L_HEADER_21] = {PREAMB_SYNC_L,PREAMB_SYNC_L,PREAMB_SYNC_H,PREAMB_SYNC_L,PREAMB_SYNC_L,PREAMB_SYNC_H,PREAMB_SYNC_L,PREAMB_SYNC_L,PREAMB_SYNC_H,PREAMB_SYNC_L,PREAMB_SYNC_L,PREAMB_SYNC_H};
-int p_header_21 = 0;
-int flag_oregon_21 = 0;
-
+	int duration = 0;
 	struct timeval tp;
 	struct timespec ts;
 
@@ -1553,167 +1768,11 @@ int flag_oregon_21 = 0;
 			pthread_mutex_lock(&hw->lock);
 			logprintf(LOG_STACK, "%s::unlocked", __FUNCTION__);
 			duration = hw->receiveOOK();
-			if(duration > 0) {
-				r.pulses[r.length] = duration;
-// --------------------------------------------------------------------------------------------------------------------
-// Convert RAW STREAM into compatible pilight format
-// Support for header/sync detection:
-// oregon21: length 36: minimum length we want to receive is 35 (35 clock duration pulses)
-//           SYNC is coded as 10101010 and handled by the protocol itself (footer 11018, 31232)
-// Planned to be added support for
-// oregon30: length 24: mimimum length we want to receive is 23 (46 half clock duration pulses)
-//           SYNC is coded as 0101 and handled ny the protocol itself (footer 23424)
-// Maybe:
-// oregon10: length 12: minimum length we want to receive is 11 (22 half clock duration pulses)
-//           SYNC is coded as three pulses and handled by the protocol itself (footer 35088)
-// Analyse stream for repetitive pulses with half the duration of the clock frequency 2924µS for V1.0
-// Analyse stream for repetitive pulses with the duration of the clock frequency 976µS for V2.1
-// Analyse stream for repetitive pulses with half the duration of the clock frequency 976µS for V3.0
-//  - they are in V2.1 members of the Pre-Amb sequence
-//  - they are uncommon in regular header/footer based streams and other protocols
-//  -> Other protocols will never get beyhond the WAIT_FOR_END_OF_HEADER state
-//
-// oregon_space: 9000µS footer pulses: 500/2000 - ONE, 500/4000 - ZERO
-// This protocol dies not require modification in daemon.c
-//  - devices: SL-109H, AcuRite 09955
-// Marker criteria is the first deviating pulse:
-// - distance of pulses between marker is rawlen of pulse stream
-// - duration of repetitive pulses is footer
-// As pilight will only accept footer values that do not deviate by more than -/+170µS the protocol driver has to
-// cover an extended footer value range (two additional protocol_plslen_add function calls with a difference of +/- 11)
-// 15/01/15
-// --------------------------------------------------------------------------------------------------------------------
-				switch (preamb_state) {
-					case WAIT_FOR_END_OF_HEADER:
-						flag_oregon_21 = 0;
-						if (duration > PREAMB_SYNC_MIN) {	// Check for pulses with at least clock duration
-							preamb_pulse_counter++;
-							preamb_duration += r.pulses[r.length];
-						} else {
-							// Check if we found the deviating pulse after a series of consecutive pulses
-							// and that the deviating pulse qualifies as a SYNC pulse
-							if (preamb_pulse_counter > PRE_AMB_HEADER_CNT) {
-								flag_oregon_21 = 1;					// flag for footer based protocols: 2nd transmission
-								preamb_state = WAIT_FOR_END_OF_DATA;
-								preamb_pulse_counter = 0;
-								r.length = 0;						// Reset Pointer
-								r.pulses[r.length] = duration;		// Store the 1st SYNC pulse
-							} else {
-								// Below threshold, so we have to reset and will continue to check
-								preamb_duration = 0;
-								preamb_pulse_counter = 0;
-							}
-						}
-						break;
-					case WAIT_FOR_END_OF_DATA_2:
-						r.length = 0;					// Restore 1st SYNC byte already received
-						preamb_pulse_counter = 1;
-						duration_next = 0;
-						r.pulses[r.length++] = latch_duration;
-						if (duration > O21_FOOTER) {	// A footer is a footer
-							duration = O21_FOOTER;
-							r.pulses[r.length] = duration;
-						} else {
-							// pilight may have missed significant a number of pulses
-							// The length of the pulse is not correct
-							// to resynchronize, lets get the next pulse as well
-							// both length together are close to absolute duration
-							// and based on our knowledge of the SYNC structure
-							// we can recreate the header pulse sequence
-							if (duration  > PREAMB_SYNC_DMAX) {
-								duration_next = hw->receiveOOK();
-								duration += duration_next;
-								p_header_21 = 1;	// The next pulse is short
-							}
-							// Rebuild missing SYNC Header: 488, 976, 488 488 976 488 488 976
-							while ( (duration > 100) && (p_header_21 < (unsigned int)L_HEADER_21) ) {
-								r.pulses[r.length++] = header_21[p_header_21];
-									// panic - take the exit, set state to WFH
-									if(r.length > MAXPULSESTREAMLENGTH-1) {
-									r.length = 0;
-									preamb_duration = 0;
-									preamb_pulse_counter = 0;
-									preamb_state = WAIT_FOR_END_OF_HEADER;
-									break;
-								}
-								duration -= header_21[p_header_21];
-								preamb_pulse_counter++;
-								p_header_21++;
-							}
-							r.length--; // Adjust pointer
-							preamb_pulse_counter--; // Adjust counter
-						}
-                        // if panic - ensure that we do not override the WFH state
-                        if (preamb_state!=WAIT_FOR_END_OF_HEADER)
-							preamb_state = WAIT_FOR_END_OF_DATA_3;
-						break;
-					case WAIT_FOR_END_OF_DATA:
-						if (duration > 5100) {				// Regular GAP detected search for Header
-							if (flag_oregon_21 == 1) {		// 2nd footer is also oregon_21
-								duration = O21_FOOTER;
-								r.pulses[r.length]   = duration;
-							}
-							preamb_state = WAIT_FOR_END_OF_HEADER;
-						}
-						if (duration > PREAMB_SYNC_MIN) {
-							preamb_pulse_counter++;
-							preamb_duration += r.pulses[r.length];
-						} else {
-							// Check if we found the deviating pulse after a series of consecutive pulses
-							if (preamb_pulse_counter > PRE_AMB_HEADER_CNT) {
-								latch_duration = duration;			// Remember this pulse for WFD2
-								r.pulses[r.length] = O21_FOOTER;	// Emulate Footer
-								duration = O21_FOOTER;
-								preamb_state = WAIT_FOR_END_OF_DATA_2;
-							} else {
-							// Below threshold, so we continue to wait
-								preamb_duration = 0;
-								preamb_pulse_counter = 0;
-							}
-						}
-						break;
-					case WAIT_FOR_END_OF_DATA_3:
-						if (duration > 5100) {
-							preamb_state = WAIT_FOR_END_OF_HEADER;
-							duration = O21_FOOTER;    // Replace GAP with defined footer value
-							r.pulses[r.length]   = duration;
-						}
-						break;
 
-					default:
-						break;
-				} // Switch
-				r.length++;
-				if(r.length > MAXPULSESTREAMLENGTH-1) {
-					r.length = 0;
-					preamb_duration = 0;
-					preamb_pulse_counter = 0;
-					preamb_state = WAIT_FOR_END_OF_HEADER;
-				}
-				if(duration > hw->mingaplen) {
-					if(duration < hw->maxgaplen) {
-						plslen = duration/PULSE_DIV;
-					}
-					/* Let's do a little filtering here as well */
-					if(r.length >= hw->minrawlen && r.length <= hw->maxrawlen) {
-						receive_queue(r.pulses, r.length, plslen, hw->hwtype);
-					}
-					r.length = 0;
-					preamb_duration = 0;
-					preamb_pulse_counter = 0;
-					if (preamb_state == WAIT_FOR_END_OF_DATA) {
-						preamb_state = WAIT_FOR_END_OF_DATA_2;
-					}
-				} // if duration > 5100
-			/* Hardware failure */
-			} else if(duration == -1) {
-				pthread_mutex_unlock(&hw->lock);
-				gettimeofday(&tp, NULL);
-				ts.tv_sec = tp.tv_sec;
-				ts.tv_nsec = tp.tv_usec * 1000;
-				ts.tv_sec += 1;
-				pthread_mutex_lock(&hw->lock);
-				pthread_cond_timedwait(&hw->signal, &hw->lock, &ts);
+			if (hw->usr_parseHeader == 0) {
+				r.length = sys_parseHeader(hw, &r, &tp, &ts, &duration);
+			} else {
+				r.length = usr_parseHeader(hw, &r, &tp, &ts, &duration);
 			}
 			pthread_mutex_unlock(&hw->lock);
 		} else {
@@ -2826,12 +2885,12 @@ static LRESULT CALLBACK WindowProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lP
 		break;
     case WM_COMMAND:
       switch(LOWORD(wParam)) {
-        case ID_QUIT:
+	case ID_QUIT:
 					if(main_loop == 1) {
 						main_gc();
 					}
-          Shell_NotifyIcon(NIM_DELETE, &TrayIcon);
-          PostQuitMessage(0);
+	  Shell_NotifyIcon(NIM_DELETE, &TrayIcon);
+	  PostQuitMessage(0);
 				break;
 				case ID_STOP:
 					if(running == 1) {
@@ -2874,14 +2933,14 @@ static LRESULT CALLBACK WindowProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lP
 		break;
     case WM_USER:
       switch(lParam) {
-        case WM_RBUTTONUP:
-        case WM_LBUTTONUP:
-        case WM_LBUTTONDBLCLK:
-          hMenu = CreatePopupMenu();
+	case WM_RBUTTONUP:
+	case WM_LBUTTONUP:
+	case WM_LBUTTONDBLCLK:
+	  hMenu = CreatePopupMenu();
 
-          AppendMenu(hMenu, MF_STRING | MF_GRAYED, ID_SEPARATOR, server_name);
+	  AppendMenu(hMenu, MF_STRING | MF_GRAYED, ID_SEPARATOR, server_name);
 					AppendMenu(hMenu, MF_SEPARATOR, ID_SEPARATOR, "");
-          AppendMenu(hMenu, MF_STRING | MF_GRAYED, ID_SEPARATOR, ((pilight.runmode == ADHOC) ? "Ad-Hoc mode" : "Standalone mode"));
+	  AppendMenu(hMenu, MF_STRING | MF_GRAYED, ID_SEPARATOR, ((pilight.runmode == ADHOC) ? "Ad-Hoc mode" : "Standalone mode"));
 					AppendMenu(hMenu, MF_SEPARATOR, ID_SEPARATOR, "");
 					if(pilight.runmode == STANDALONE) {
 						AppendMenu(hMenu, MF_STRING | (running ? 0 : MF_GRAYED), ID_WEBGUI, "Open webGUI");
@@ -2891,23 +2950,23 @@ static LRESULT CALLBACK WindowProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lP
 					} else {
 						AppendMenu(hMenu, MF_STRING, ID_CONSOLE, "Close console");
 					}
-          AppendMenu(hMenu, MF_SEPARATOR, ID_SEPARATOR, "");
+	  AppendMenu(hMenu, MF_SEPARATOR, ID_SEPARATOR, "");
 
 					// snprintf(buf, sizeof(buf), "pilight is %s", running ? "running" : "stopped");
 
 					// AppendMenu(hMenu, MF_STRING | MF_GRAYED, ID_SEPARATOR, buf);
-          // AppendMenu(hMenu, MF_SEPARATOR, ID_SEPARATOR, "");
+	  // AppendMenu(hMenu, MF_SEPARATOR, ID_SEPARATOR, "");
 
 					// AppendMenu(hMenu, MF_STRING | (running ? 0 : MF_GRAYED), ID_STOP, "Stop pilight");
 					// AppendMenu(hMenu, MF_STRING | (running ? MF_GRAYED : 0), ID_START, "Start pilight");
 
-          AppendMenu(hMenu, MF_STRING, ID_QUIT, "Exit");
+	  AppendMenu(hMenu, MF_STRING, ID_QUIT, "Exit");
 
-          GetCursorPos(&pt);
-          SetForegroundWindow(hWnd);
-          TrackPopupMenu(hMenu, 0, pt.x, pt.y, 0, hWnd, NULL);
-          PostMessage(hWnd, WM_NULL, 0, 0);
-          DestroyMenu(hMenu);
+	  GetCursorPos(&pt);
+	  SetForegroundWindow(hWnd);
+	  TrackPopupMenu(hMenu, 0, pt.x, pt.y, 0, hWnd, NULL);
+	  PostMessage(hWnd, WM_NULL, 0, 0);
+	  DestroyMenu(hMenu);
 				break;
       }
 		break;
