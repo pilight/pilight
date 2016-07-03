@@ -163,12 +163,20 @@ div.screen {
 
 div.name {
 	padding-top: 4px;
-  position: relative;
+	position: relative;
 	float: left;
 }
 
+div.munit {
+	padding-top: 6px;
+	padding-right: 8px;
+	padding-left: 2px;
+	position: relative;
+	float: right;
+}
+
 div.humidity, div.temperature, div.pressure,
-div.sensorvalue, div.munit,
+div.sensorvalue,
 div.rain, div.windavg, div.windgust, div.winddir,
 div.temperature_icon, div.humidity_icon, div.pressure_icon,
 div.rain_icon, div.windavg_icon,
@@ -177,14 +185,14 @@ div.update_active, div.update_inactive,
 div.sunrise, div.sunset, div.sunset_icon.gray,
 div.sunrise_icon.gray, div.sunset_icon.blue,
 div.sunrise_icon.yellow, div.media_icon, div.action_icon,
-div.battery.red, div.battery.green,
+div.battery.red, div.battery.green, div.battery.nodisplay,
 div.datetime {
 	position: relative;
 	float: right;
 	padding: 6px 0px 0px 0px;
 }
 
-div.battery.red, div.battery.green {
+div.battery.red, div.battery.green, div.battery.nodisplay {
 	margin: 6px 0px 0px 0px;
 }
 
@@ -234,7 +242,7 @@ div.media_icon, div.action_icon {
 	margin: 5px 10px 0px 4px;
 }
 
-div.battery.red, div.battery.green {
+div.battery.red, div.battery.green, div.battery.nodisplay {
 	width: 10px;
 	height: 16px;
 }

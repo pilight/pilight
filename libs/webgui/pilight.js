@@ -610,7 +610,6 @@ function createWeatherElement(sTabId, sDevId, aValues) {
 }
 
 function createGpsensorElement(sTabId, sDevId, aValues) {
-	aPollInterval[sDevId] = new Array();
 	$.each(aDecimalTypes, function(index, value) {
 		if(!(sDevId in aDecimals)) {
 			aDecimals[sDevId] = new Array();
@@ -633,27 +632,14 @@ function createGpsensorElement(sTabId, sDevId, aValues) {
 		}
 		if('show-battery' in aValues && aValues['show-battery'] && 'battery' in aValues) {
 			oTab.find('#'+sDevId+'_gpsensor').append($('<div id="'+sDevId+'_batt" class="battery green"></div>'));
+		} else {
+			oTab.find('#'+sDevId+'_gpsensor').append($('<div id="'+sDevId+'_batt" class="battery nodisplay"></div>'));
+		}
+		if('munit' in aValues) {
+			oTab.find('#'+sDevId+'_gpsensor').append($('<div id="'+sDevId+'_munit" class="munit">'+aValues['munit']+'&nbsp;</div>'));
 		}
 		if('sensorvalue' in aValues) {
 			oTab.find('#'+sDevId+'_gpsensor').append($('<div id="'+sDevId+'_sensorvalue" class="sensorvalue">&nbsp;'+aValues['sensorvalue']+'&nbsp;&nbsp;</div>'));
-		}
-		if('munit' in aValues) {
-			oTab.find('#'+sDevId+'_gpsensor').append($('<div id="'+sDevId+'_munit" class="text">'+aValues['munit']+'</div>'));
-		}
-		if('show-update' in aValues && aValues['show-update']) {
-			oTab.find('#'+sDevId+'_gpsensor').append($('<div class="update_inactive" id="'+sDevId+'_upd" title="'+language.update+'">&nbsp;</div>'));
-			$('#'+sDevId+'_upd').click(function() {
-				if(this.className.indexOf('update_active') == 0) {
-					if(oWebsocket) {
-						var json = '{"action":"control","code":{"device":"'+sDevId+'","values":{"update":1}}}';
-						oWebsocket.send(json);
-					} else {
-						bSending = true;
-						$.get(sHTTPProtocol+'://'+location.host+'/control?device='+sDevId+'&values[update]=1');
-						window.setTimeout(function() { bSending = false; }, 1000);
-					}
-				}
-			});
 		}
 	}
 	oTab.listview();
@@ -1175,10 +1161,8 @@ function parseValues(data) {
 						$('#'+dvalues+' div.marquee .text').css('color', vvalues);
 					}
 				} else if(iType == 17) {
-					if(vindex == 'label') {
+					if(vindex == 'gpsensor') {
 						$('#'+dvalues+' div.marquee .text').text(vvalues);
-					} else if(vindex == 'color') {
-						$('#'+dvalues+' div.marquee .text').css('color', vvalues);
 					}
 				}
 			});

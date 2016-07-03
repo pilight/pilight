@@ -1,5 +1,5 @@
 /*
-	Copyright (C) 2014 CurlyMo & TheWheel 
+	Copyright (C) 2014 CurlyMo & TheWheel
 
 	This file is part of pilight.
 
@@ -214,9 +214,8 @@ void gpsensorInit(void) {
 	options_add(&gpsensor->options, 'i', "id", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "[0-9]");
 	options_add(&gpsensor->options, 'c', "channel", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "[0-9]");
 	options_add(&gpsensor->options, 't', "sensorvalue", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9]{1,20}$");
-	//options_add(&gpsensor->options, 'd', "powof10", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "[0-9]");
 	options_add(&gpsensor->options, 'b', "battery", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[01]$");
-	//options_add(&gpsensor->options, 'm', "munit", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_STRING, NULL, "^[[:alnum:]_]+$");
+	options_add(&gpsensor->options, 'm', "munit", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_STRING, NULL, "^[[:alnum:]_]+$");
 
 	options_add(&gpsensor->options, 0, "sensorvalue-offset", OPTION_HAS_VALUE, DEVICES_SETTING, JSON_NUMBER, (void *)0, "[0-9]");
 	options_add(&gpsensor->options, 0, "show-battery", OPTION_HAS_VALUE, GUI_SETTING, JSON_NUMBER, (void *)1, "^[10]{1}$");
