@@ -215,6 +215,34 @@ static char *webserver_root = NULL;
 static int webserver_root_free = 0;
 #endif
 
+// Definitions for usr_parseHeader
+
+#define WAIT_FOR_END_OF_HEADER  0
+#define WAIT_FOR_END_OF_DATA    1
+#define WAIT_FOR_END_OF_DATA_2  4
+#define WAIT_FOR_END_OF_DATA_3  5
+#define PREAMB_SYNC_L	488	// V2.1 - clk = 1024 Hz
+#define PREAMB_SYNC_L_MAX	586	// PREAMB_SYNC_L * 1,2
+#define PREAMB_SYNC_MIN	732
+#define PREAMB_SYNC_H	976	// V2.1 - clk = 1024 Hz
+#define PREAMB_SYNC_MAX	1120	// A single value above this value is added to the next value
+#define PREAMB_SYNC_DMAX	PREAMB_SYNC_H+PREAMB_SYNC_L
+#define O21_FOOTER	11018	// GAP pulse Oregon V2.1
+#define PRE_AMB_HEADER_CNT_MAX	33	// Max # of preamb pulses
+#define PRE_AMB_HEADER_CNT	22
+#define L_HEADER_21	12
+
+int header_21[L_HEADER_21] = {PREAMB_SYNC_L,PREAMB_SYNC_L,PREAMB_SYNC_H,PREAMB_SYNC_L,PREAMB_SYNC_L,PREAMB_SYNC_H,PREAMB_SYNC_L,PREAMB_SYNC_L,PREAMB_SYNC_H,PREAMB_SYNC_L,PREAMB_SYNC_L,PREAMB_SYNC_H};
+int duration_next = 0;
+int flag_oregon_21 = 0;
+int latch_duration = 0;
+int preamb_pulse_counter = 0;
+int preamb_duration = 0;
+int preamb_state = 0;
+int p_header_21 = 0;
+
+// End definitions for usr_parseHeader
+
 static void client_remove(int id) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
@@ -1533,30 +1561,7 @@ int usr_parseHeader(struct hardware_t *hw, struct rawcode_t *r, struct timeval *
 // This may lead to not detecting the 1st pulsetrain properly, but it allows handling of protocols with Header values
 // --------------------------------------------------------------------------------------------------------------------
 
-#define WAIT_FOR_END_OF_HEADER  0
-#define WAIT_FOR_END_OF_DATA    1
-#define WAIT_FOR_END_OF_DATA_2  4
-#define WAIT_FOR_END_OF_DATA_3  5
-#define PREAMB_SYNC_L	488	// V2.1 - clk = 1024 Hz
-#define PREAMB_SYNC_L_MAX	586	// PREAMB_SYNC_L * 1,2
-#define PREAMB_SYNC_MIN	732
-#define PREAMB_SYNC_H	976	// V2.1 - clk = 1024 Hz
-#define PREAMB_SYNC_MAX	1120	// A single value above this value is added to the next value
-#define PREAMB_SYNC_DMAX	PREAMB_SYNC_H+PREAMB_SYNC_L
-#define O21_FOOTER	11018	// GAP pulse Oregon V2.1
-#define PRE_AMB_HEADER_CNT_MAX	33	// Max # of preamb pulses
-#define PRE_AMB_HEADER_CNT	22
-#define L_HEADER_21	12
-
-int header_21[L_HEADER_21] = {PREAMB_SYNC_L,PREAMB_SYNC_L,PREAMB_SYNC_H,PREAMB_SYNC_L,PREAMB_SYNC_L,PREAMB_SYNC_H,PREAMB_SYNC_L,PREAMB_SYNC_L,PREAMB_SYNC_H,PREAMB_SYNC_L,PREAMB_SYNC_L,PREAMB_SYNC_H};
-int duration_next = 0;
-int flag_oregon_21 = 0;
-int latch_duration = 0;
 int plslen = 0;
-int preamb_pulse_counter = 0;
-int preamb_duration = 0;
-int preamb_state = 0;
-int p_header_21 = 0;
 
 	if(*duration > 0) {
 		r->pulses[r->length] = *duration;
