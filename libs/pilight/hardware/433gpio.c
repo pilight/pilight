@@ -124,11 +124,16 @@ void gpio433Init(void) {
 	options_add(&gpio433->options, 'r', "receiver", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9-]+$");
 	options_add(&gpio433->options, 's', "sender", OPTION_HAS_VALUE, DEVICES_VALUE, JSON_NUMBER, NULL, "^[0-9-]+$");
 
+	gpio433->minrawlen = 1000;
+	gpio433->maxrawlen = 0;
+	gpio433->mingaplen = 5100;
+	gpio433->maxgaplen = 10000;
+	
 	gpio433->hwtype=RF433;
 	gpio433->comtype=COMOOK;
 	gpio433->init=&gpio433HwInit;
 	gpio433->deinit=&gpio433HwDeinit;
-	gpio433->send=&gpio433Send;
+	gpio433->sendOOK=&gpio433Send;
 	gpio433->receiveOOK=&gpio433Receive;
 	gpio433->settings=&gpio433Settings;
 }
@@ -136,9 +141,9 @@ void gpio433Init(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "433gpio";
-	module->version = "1.2";
-	module->reqversion = "5.0";
-	module->reqcommit = "86";
+	module->version = "1.3";
+	module->reqversion = "7.0";
+	module->reqcommit = "10";
 }
 
 void init(void) {

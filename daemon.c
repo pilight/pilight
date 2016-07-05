@@ -48,8 +48,8 @@
 #include <ctype.h>
 #include <dirent.h>
 
-#include "libs/pilight/core/threads.h"
 #include "libs/pilight/core/pilight.h"
+#include "libs/pilight/core/threads.h"
 #include "libs/pilight/core/datetime.h"
 #include "libs/pilight/core/common.h"
 #include "libs/pilight/core/network.h"
@@ -71,6 +71,9 @@
 #endif
 
 #ifdef WEBSERVER
+	#ifdef WEBSERVER_HTTPS	
+		#include "libs/polarssl/polarssl/md5.h"
+	#endif
 	#include "libs/pilight/core/webserver.h"
 #endif
 
@@ -187,14 +190,6 @@ static unsigned short main_loop = 1;
 static struct timeval tv;
 /* Are we running standalone */
 static int standalone = 0;
-/* What is the minimum rawlenth to consider a pulse stream valid */
-static int minrawlen = 1000;
-/* What is the maximum rawlenth to consider a pulse stream valid */
-static int maxrawlen = 0;
-/* What is the minimum rawlenth to consider a pulse stream valid */
-static int maxgaplen = 5100;
-/* What is the maximum rawlenth to consider a pulse stream valid */
-static int mingaplen = 10000;
 /* Do we need to connect to a master server:port? */
 static char *master_server = NULL;
 static unsigned short master_port = 0;
@@ -553,6 +548,21 @@ static void receiver_create_message(protocol_t *protocol) {
 	protocol->message = NULL;
 }
 
+static void receive_parse_api(struct JsonNode *code, int hwtype) {
+	struct protocol_t *protocol = NULL;
+	struct protocols_t *pnode = protocols;
+
+	while(pnode != NULL) {
+		protocol = pnode->listener;
+
+		if(protocol->hwtype == hwtype && protocol->parseCommand != NULL) {
+			protocol->parseCommand(code);
+			receiver_create_message(protocol);
+		}		
+		pnode = pnode->next;
+	}
+}
+
 void *receive_parse_code(void *param) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
@@ -680,34 +690,44 @@ void *send_code(void *param) {
 				}
 				tmp_confhw = tmp_confhw->next;
 			}
-			if(hw != NULL && hw->send != NULL) {
-				if(hw->receiveOOK != NULL || hw->receivePulseTrain != NULL) {
-					hw->wait = 1;
-					pthread_mutex_unlock(&hw->lock);
-					pthread_cond_signal(&hw->signal);
-				}
-				logprintf(LOG_DEBUG, "**** RAW CODE ****");
-				if(log_level_get() >= LOG_DEBUG) {
-					for(i=0;i<sendqueue->length;i++) {
-						printf("%d ", sendqueue->code[i]);
+			if(hw != NULL) {
+				if((hw->comtype == COMOOK || hw->comtype == COMPLSTRAIN) && hw->sendOOK != NULL) {
+					if(hw->receiveOOK != NULL || hw->receivePulseTrain != NULL) {
+						hw->wait = 1;
+						pthread_mutex_unlock(&hw->lock);
+						pthread_cond_signal(&hw->signal);
 					}
-					printf("\n");
-				}
-				logprintf(LOG_DEBUG, "**** RAW CODE ****");
+					logprintf(LOG_DEBUG, "**** RAW CODE ****");
+					if(log_level_get() >= LOG_DEBUG) {
+						for(i=0;i<sendqueue->length;i++) {
+							printf("%d ", sendqueue->code[i]);
+						}
+						printf("\n");
+					}
+					logprintf(LOG_DEBUG, "**** RAW CODE ****");
 
-				if(hw->send(sendqueue->code, sendqueue->length, protocol->txrpt) == 0) {
-					logprintf(LOG_DEBUG, "successfully send %s code", protocol->id);
-				} else {
-					logprintf(LOG_ERR, "failed to send code");
-				}
-				if(strcmp(protocol->id, "raw") == 0) {
-					int plslen = sendqueue->code[sendqueue->length-1]/PULSE_DIV;
-					receive_queue(sendqueue->code, sendqueue->length, plslen, -1);
-				}
-				if(hw->receiveOOK != NULL || hw->receivePulseTrain != NULL) {
-					hw->wait = 0;
-					pthread_mutex_unlock(&hw->lock);
-					pthread_cond_signal(&hw->signal);
+					if(hw->sendOOK(sendqueue->code, sendqueue->length, protocol->txrpt) == 0) {
+						logprintf(LOG_DEBUG, "successfully send %s code", protocol->id);
+					} else {
+						logprintf(LOG_ERR, "failed to send code");
+					}
+					if(strcmp(protocol->id, "raw") == 0) {
+						int plslen = sendqueue->code[sendqueue->length-1]/PULSE_DIV;
+						receive_queue(sendqueue->code, sendqueue->length, plslen, -1);
+					}
+					if(hw->receiveOOK != NULL || hw->receivePulseTrain != NULL) {
+						hw->wait = 0;
+						pthread_mutex_unlock(&hw->lock);
+						pthread_cond_signal(&hw->signal);
+					}
+				} else if(hw->comtype == COMAPI && hw->sendAPI != NULL) {
+					if(message != NULL) {				
+						if(hw->sendAPI(message) == 0) {
+							logprintf(LOG_DEBUG, "successfully send %s command", protocol->id);
+						} else {
+							logprintf(LOG_ERR, "failed to send command");
+						}
+					}
 				}
 			} else {
 				if(strcmp(protocol->id, "raw") == 0) {
@@ -810,7 +830,7 @@ static int send_queue(struct JsonNode *json, enum origin_t origin) {
 				}
 				jprotocol = jprotocol->next;
 			}
-			memset(raw, 0, MAXPULSESTREAMLENGTH-1);
+			memset(raw, 0, sizeof(raw));
 			protocol->raw = raw;
 			if(match == 1 && protocol->createCode != NULL) {
 				/* Let the protocol create his code */
@@ -1502,23 +1522,23 @@ void *receiveOOK(void *param) {
 	struct hardware_t *hw = (hardware_t *)param;
 	pthread_mutex_lock(&hw->lock);
 	hw->running = 1;
+
 	while(main_loop == 1 && hw->receiveOOK != NULL && hw->stop == 0) {
 		if(hw->wait == 0) {
 			pthread_mutex_lock(&hw->lock);
 			logprintf(LOG_STACK, "%s::unlocked", __FUNCTION__);
 			duration = hw->receiveOOK();
-
 			if(duration > 0) {
 				r.pulses[r.length++] = duration;
 				if(r.length > MAXPULSESTREAMLENGTH-1) {
 					r.length = 0;
 				}
-				if(duration > mingaplen) {
-					if(duration < maxgaplen) {
+				if(duration > hw->mingaplen) {
+					if(duration < hw->maxgaplen) {
 						plslen = duration/PULSE_DIV;
 					}
 					/* Let's do a little filtering here as well */
-					if(r.length >= minrawlen && r.length <= maxrawlen) {
+					if(r.length >= hw->minrawlen && r.length <= hw->maxrawlen) {
 						receive_queue(r.pulses, r.length, plslen, hw->hwtype);
 					}
 					r.length = 0;
@@ -1940,7 +1960,7 @@ void openconsole(void) {
 #endif
 
 void *pilight_stats(void *param) {
-	int checkram = 0, checkcpu = 0, i = -1, x = 0, watchdog = 0, stats = 1;
+	int checkram = 0, checkcpu = 0, i = -1, x = 0, watchdog = 1, stats = 1;
 	settings_find_number("watchdog-enable", &watchdog);
 	settings_find_number("stats-enable", &stats);
 
@@ -1957,7 +1977,6 @@ void *pilight_stats(void *param) {
 			if(threadprofiler == 1) {
 				threads_cpu_usage(1);
 			}
-
 			if(watchdog == 1 && (i > -1) && (cpu > 60)) {
 				if(nodaemon == 1 && threadprofiler == 0) {
 					threads_cpu_usage(x);
@@ -2165,7 +2184,7 @@ int start_pilight(int argc, char **argv) {
 #ifdef _WIN32
 		MessageBox(NULL, help, "pilight :: info", MB_OK);
 #else
-		printf(help);
+		printf("%s", help);
 #endif
 		goto clear;
 	}
@@ -2207,6 +2226,7 @@ int start_pilight(int argc, char **argv) {
 	}
 #endif
 
+	datetime_init();
 	atomicinit();
 	procProtocolInit();
 
@@ -2282,6 +2302,7 @@ int start_pilight(int argc, char **argv) {
 	pilight.broadcast = &broadcast_queue;
 	pilight.send = &send_queue;
 	pilight.control = &control_device;
+	pilight.receive = &receive_parse_api;
 
 	if(config_read() != EXIT_SUCCESS) {
 		goto clear;
@@ -2290,6 +2311,49 @@ int start_pilight(int argc, char **argv) {
 	registerVersion();
 
 #ifdef WEBSERVER
+	#ifdef WEBSERVER_HTTPS
+	char *pemfile = NULL;
+	int pem_free = 0;
+	if(settings_find_string("pem-file", &pemfile) != 0) {
+		if((pemfile = REALLOC(pemfile, strlen(PEM_FILE)+1)) == NULL) {
+			fprintf(stderr, "out of memory\n");
+			exit(EXIT_FAILURE);
+		}
+		strcpy(pemfile, PEM_FILE);
+		pem_free = 1;
+	}	
+	
+	char *content = NULL;
+	unsigned char md5sum[17];
+	char md5conv[33];
+	int i = 0;
+	p = (char *)md5sum;
+	if(file_exists(pemfile) != 0) {
+		logprintf(LOG_ERR, "missing webserver SSL private key %s", pemfile);
+		if(pem_free == 1) {
+			FREE(pemfile);
+		}
+		goto clear;
+	}
+	if(file_get_contents(pemfile, &content) == 0) {
+		md5((const unsigned char *)content, strlen((char *)content), (unsigned char *)p);
+		for(i = 0; i < 32; i+=2) {
+			sprintf(&md5conv[i], "%02x", md5sum[i/2] );
+		}
+		if(strcmp(md5conv, PILIGHT_PEM_MD5) == 0) {
+			registry_set_number("webserver.ssl.certificate.secure", 0, 0);
+		} else {
+			registry_set_number("webserver.ssl.certificate.secure", 1, 0);
+		}
+		registry_set_string("webserver.ssl.certificate.location", pemfile);
+		FREE(content);
+	}
+
+	if(pem_free == 1) {
+		FREE(pemfile);
+	}	
+	#endif
+
 	settings_find_number("webserver-enable", &webserver_enable);
 	settings_find_number("webserver-http-port", &webserver_http_port);
 	if(settings_find_string("webserver-root", &webserver_root) != 0) {
@@ -2371,25 +2435,35 @@ int start_pilight(int argc, char **argv) {
 	}
 #endif
 
-	struct protocols_t *tmp = protocols;
-	while(tmp) {
-		if(tmp->listener->maxrawlen > maxrawlen) {
-			maxrawlen = tmp->listener->maxrawlen;
+	struct conf_hardware_t *tmp_confhw = conf_hardware;
+	while(tmp_confhw) {
+		if(tmp_confhw->hardware->init) {
+			if(tmp_confhw->hardware->comtype == COMOOK) {
+				struct protocols_t *tmp = protocols;
+				while(tmp) {
+					if(tmp->listener->hwtype == tmp_confhw->hardware->hwtype) {
+						if(tmp->listener->maxrawlen > tmp_confhw->hardware->maxrawlen) {
+							tmp_confhw->hardware->maxrawlen = tmp->listener->maxrawlen;
+						}
+						if(tmp->listener->minrawlen > 0 && tmp->listener->minrawlen < tmp_confhw->hardware->minrawlen) {
+							tmp_confhw->hardware->minrawlen = tmp->listener->minrawlen;
+						}
+						if(tmp->listener->maxgaplen > tmp_confhw->hardware->maxgaplen) {
+							tmp_confhw->hardware->maxgaplen = tmp->listener->maxgaplen;
+						}
+						if(tmp->listener->mingaplen > 0 && tmp->listener->mingaplen < tmp_confhw->hardware->mingaplen) {
+							tmp_confhw->hardware->mingaplen = tmp->listener->mingaplen;
+						}
+						if(tmp->listener->rawlen > 0) {
+							logprintf(LOG_EMERG, "%s: setting \"rawlen\" length is not allowed, use the \"minrawlen\" and \"maxrawlen\" instead", tmp->listener->id);
+							goto clear;
+						}
+					}
+					tmp = tmp->next;
+				}
+			}
 		}
-		if(tmp->listener->minrawlen > 0 && tmp->listener->minrawlen < minrawlen) {
-			minrawlen = tmp->listener->minrawlen;
-		}
-		if(tmp->listener->maxgaplen > maxgaplen) {
-			maxgaplen = tmp->listener->maxgaplen;
-		}
-		if(tmp->listener->mingaplen > 0 && tmp->listener->mingaplen < mingaplen) {
-			mingaplen = tmp->listener->mingaplen;
-		}
-		if(tmp->listener->rawlen > 0) {
-			logprintf(LOG_EMERG, "%s: setting \"rawlen\" length is not allowed, use the \"minrawlen\" and \"maxrawlen\" instead", tmp->listener->id);
-			goto clear;
-		}
-		tmp = tmp->next;
+		tmp_confhw = tmp_confhw->next;
 	}
 
 	settings_find_number("port", &port);
@@ -2478,22 +2552,38 @@ int start_pilight(int argc, char **argv) {
 	threads_register("sender", &send_code, (void *)NULL, 0);
 	threads_register("broadcaster", &broadcast, (void *)NULL, 0);
 
-	struct conf_hardware_t *tmp_confhw = conf_hardware;
-	while(tmp_confhw) {
+	tmp_confhw = conf_hardware;
+	while(tmp_confhw && main_loop) {
 		if(tmp_confhw->hardware->init) {
 			if(tmp_confhw->hardware->init() == EXIT_FAILURE) {
-				logprintf(LOG_ERR, "could not initialize %s hardware module", tmp_confhw->hardware->id);
-				goto clear;
+				if(main_loop == 1) {
+					logprintf(LOG_ERR, "could not initialize %s hardware module", tmp_confhw->hardware->id);
+					goto clear;
+				} else {
+					break;
+				}
 			}
-			tmp_confhw->hardware->wait = 0;
-			tmp_confhw->hardware->stop = 0;
-			if(tmp_confhw->hardware->comtype == COMOOK) {
-				threads_register(tmp_confhw->hardware->id, &receiveOOK, (void *)tmp_confhw->hardware, 0);
-			} else if(tmp_confhw->hardware->comtype == COMPLSTRAIN) {
-				threads_register(tmp_confhw->hardware->id, &receivePulseTrain, (void *)tmp_confhw->hardware, 0);
+			if(main_loop == 1) {
+				tmp_confhw->hardware->wait = 0;
+				tmp_confhw->hardware->stop = 0;
+				if(tmp_confhw->hardware->comtype == COMOOK) {
+					threads_register(tmp_confhw->hardware->id, &receiveOOK, (void *)tmp_confhw->hardware, 0);
+				} else if(tmp_confhw->hardware->comtype == COMPLSTRAIN) {
+					threads_register(tmp_confhw->hardware->id, &receivePulseTrain, (void *)tmp_confhw->hardware, 0);
+				} else if(tmp_confhw->hardware->comtype == COMAPI) {
+					threads_register(tmp_confhw->hardware->id, tmp_confhw->hardware->receiveAPI, (void *)tmp_confhw->hardware, 0);
+				}
+			} else {
+				break;
 			}
 		}
+		if(main_loop == 0) {
+			break;
+		}
 		tmp_confhw = tmp_confhw->next;
+	}
+	if(main_loop == 0) {
+		goto clear;
 	}
 
 	threads_register("receive parser", &receive_parse_code, (void *)NULL, 0);

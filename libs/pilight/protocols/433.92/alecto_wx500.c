@@ -70,7 +70,12 @@ static void parseCode(void) {
 	int n4 = 0, n5 = 0, n6 = 0, n7 = 0, n8 = 0;
 	int checksum = 1;
 
-	for(x=1;x<alecto_wx500->rawlen-1;x+=2) {
+	if(alecto_wx500->rawlen>RAW_LENGTH) {
+		logprintf(LOG_ERR, "alecto_wx500: parsecode - invalid parameter passed %d", alecto_wx500->rawlen);
+		return;
+	}
+
+	for(x=1;x<alecto_wx500->rawlen;x+=2) {
 		if(alecto_wx500->raw[x] > AVG_PULSE) {
 			binary[i++] = 1;
 		} else {
@@ -134,15 +139,19 @@ static void parseCode(void) {
 		type = 0x5;
 		return;
 	}
-
+	
 	alecto_wx500->message = json_mkobject();
 	switch(type) {
 		case 1:
 			id = binToDec(binary, 0, 7);
-			temperature = (double)(binToDec(binary, 12, 22))/10.0;
+			temperature = (double)(binToDec(binary, 12, 23)) / 10.0;
 			humidity = (binToDec(binary, 28, 31) * 10) + binToDec(binary, 24,27);
 			battery = !binary[8];
-
+			
+			if ((int)(binToDec(binary, 23, 23)) == 1) {
+				temperature -= 409.6;
+			}
+			
 			temperature += temp_offset;
 			humidity += humi_offset;
 
@@ -300,7 +309,7 @@ void alectoWX500Init(void) {
 #ifdef MODULAR
 void compatibility(const char **version, const char **commit) {
 	module->name = "alecto_wx500";
-	module->version = "1.0";
+	module->version = "1.1";
 	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }

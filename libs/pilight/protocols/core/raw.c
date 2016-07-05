@@ -49,6 +49,8 @@ static int createCode(JsonNode *code) {
 	array_free(&array, n);
 
 	raw->rawlen=(int)i;
+	raw->txrpt = repeats;
+
 	return EXIT_SUCCESS;
 }
 
@@ -78,7 +80,7 @@ void rawInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "raw";
-	module->version = "1.4";
+	module->version = "1.5";
 	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }

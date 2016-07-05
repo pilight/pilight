@@ -82,6 +82,11 @@ static void parseCode(void) {
 	int iParity = 1, iParityData = -1;	// init for even parity
 	int iSwitch = 0;
 
+	if(quigg_screen->rawlen>RAW_LENGTH) {
+		logprintf(LOG_ERR, "quigg_screen: parsecode - invalid parameter passed %d", quigg_screen->rawlen);
+		return;
+	}
+
 	// 42 bytes are the number of raw bytes
 	// Byte 1,2 in raw buffer is the first logical byte, rawlen-3,-2 is the parity bit, rawlen-1 is the footer
 	for(x=0; x<quigg_screen->rawlen-1; x+=2) {
@@ -301,7 +306,7 @@ void quiggScreenInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "quigg_screen";
-	module->version = "2.1";
+	module->version = "2.2";
 	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }

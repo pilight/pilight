@@ -29,5 +29,6 @@ int tzoffset(char *tz1, char *tz2);
 int ctzoffset(char *tz);
 int isdst(time_t t, char *tz);
 void datefix(int *year, int *month, int *day, int *hour, int *minute, int *second);
+void datetime_init(void);
 
 #endif
