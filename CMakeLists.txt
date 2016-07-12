@@ -148,6 +148,7 @@ if(NOT WIN32)
 				/usr/local/lib64
 				/usr/lib/arm-linux-gnueabi
 				/usr/lib/arm-linux-gnueabihf
+				/usr/lib/aarch64-linux-gnu
 			NO_DEFAULT_PATH)	
 
 		if(${CMAKE_PCAP_LIBS_INIT} MATCHES "CMAKE_PCAP_LIBS_INIT-NOTFOUND")
@@ -175,6 +176,7 @@ if(NOT WIN32)
 				/usr/local/lib64
 				/usr/lib/arm-linux-gnueabi
 				/usr/lib/arm-linux-gnueabihf
+				/usr/lib/aarch64-linux-gnu
 			NO_DEFAULT_PATH)	
 
 		if(${CMAKE_SSL_LIBS_INIT} MATCHES "CMAKE_SSL_LIBS_INIT-NOTFOUND")
@@ -199,6 +201,7 @@ if(NOT WIN32)
 				/usr/local/lib64
 				/usr/lib/arm-linux-gnueabi
 				/usr/lib/arm-linux-gnueabihf
+				/usr/lib/aarch64-linux-gnu
 			NO_DEFAULT_PATH)	
 
 		if(${CMAKE_CRYPTO_LIBS_INIT} MATCHES "CMAKE_CRYPTO_LIBS_INIT-NOTFOUND")
@@ -221,6 +224,7 @@ if(NOT WIN32)
 				/usr/local/lib64
 				/usr/lib/arm-linux-gnueabi
 				/usr/lib/arm-linux-gnueabihf
+				/usr/lib/aarch64-linux-gnu
 			NO_DEFAULT_PATH)	
 
 		if(${CMAKE_ZLIB_LIBS_INIT} MATCHES "CMAKE_ZLIB_LIBS_INIT-NOTFOUND")
@@ -247,6 +251,7 @@ if(NOT WIN32)
 			/usr/local/lib64
 			/usr/lib/arm-linux-gnueabi
 			/usr/lib/arm-linux-gnueabihf
+			/usr/lib/aarch64-linux-gnu
 		NO_DEFAULT_PATH)
 
 		if(${CMAKE_UNWIND_LIBS_INIT} MATCHES "CMAKE_UNWIND_LIBS_INIT-NOTFOUND")
