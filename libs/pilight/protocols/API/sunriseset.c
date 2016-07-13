@@ -111,6 +111,7 @@ static double calculate(int year, int month, int day, double lon, double lat, in
 	return ((round(hour)+min)+tz)*100;
 }
 
+#undef min
 static unsigned long min(unsigned long a, unsigned long b, unsigned long c) {
 	unsigned long m = a;
 	if(m > b) {

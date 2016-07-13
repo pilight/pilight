@@ -953,7 +953,7 @@ int devices_validate_id(struct JsonNode *jdevices, int i) {
 		if((x-1) != valid_values) {
 			if(etype == 1) {
 				if(i > 0) {
-					logprintf(LOG_ERR, "protocol \"%s\" used in \"%s\" doesn't support multiple id's", protocol->id, jdevices->key);
+					logprintf(LOG_ERR, "protocol \"%s\" used in \"%s\" does not support multiple id's", protocol->id, jdevices->key);
 				}
 			} else {
 				if(i > 0) {
@@ -1439,16 +1439,8 @@ int settings_validate_settings(struct JsonNode *jsettings, int i) {
 			}
 			return -1;
 		} else {
-			if(strcmp(jsettings->key, "none") != 0) { 				
-				int z = 0, x = 0;
-				struct platform_t *tmp = NULL;
-				while((tmp = platform_iterate(z++)) != NULL) {
-					if(strcmp(tmp->name, jsettings->key) == 0) {
-						x = 1;
-						break;
-					}
-				}
-				if(x == 0 && i > 0) {
+			if(strcmp(jsettings->string_, "none") != 0) { 				
+				if(wiringXSetup(jsettings->string_, logprintf) != 0 && i > 0) {
 					logprintf(LOG_ERR, "config setting #%d \"%s\" must contain a supported gpio platform", i, jsettings->key);
 				}
 			}
@@ -2036,6 +2028,19 @@ int hardware_validate_settings(struct JsonNode *jhardware, int i) {
 	return 0;
 }
 
+void devices_import(struct JsonNode *jdevices) {
+	int i = 0;
+	json_clone(jdevices, &jdevices_cache);
+
+	jdevices = json_first_child(jdevices);
+	while(jdevices) {
+		i++;
+		devices_struct_parse(jdevices, i);
+
+		jdevices = jdevices->next;
+	}
+}
+
 int storage_devices_validate(struct JsonNode *jdevices) {
 	int i = 0;
 	jdevices = json_first_child(jdevices);
@@ -2135,6 +2140,17 @@ int storage_read(char *file, unsigned long objects) {
 		return -1;
 	}
 
+	/*
+	 * We have to validate the settings first to know the gpio-platform setting.
+	 */
+	if(((objects & CONFIG_SETTINGS) == CONFIG_SETTINGS || (objects & CONFIG_ALL) == CONFIG_ALL) &&
+		storage->settings_select(ORIGIN_CONFIG, NULL, &json) == 0) {
+		json_clone(json, &jsettings_cache);
+		if(storage_settings_validate(jsettings_cache) == -1) {
+			return -1;
+		}
+	}
+
 	if(((objects & CONFIG_DEVICES) == CONFIG_DEVICES || (objects & CONFIG_ALL) == CONFIG_ALL) &&
 		storage->devices_select(ORIGIN_CONFIG, NULL, &json) == 0) {
 		json_clone(json, &jdevices_cache);
@@ -2155,14 +2171,6 @@ int storage_read(char *file, unsigned long objects) {
 		storage->hardware_select(ORIGIN_CONFIG, NULL, &json) == 0) {
 		json_clone(json, &jhardware_cache);
 		if(storage_hardware_validate(jhardware_cache) == -1) {
-			return -1;
-		}
-	}
-
-	if(((objects & CONFIG_SETTINGS) == CONFIG_SETTINGS || (objects & CONFIG_ALL) == CONFIG_ALL) &&
-		storage->settings_select(ORIGIN_CONFIG, NULL, &json) == 0) {
-		json_clone(json, &jsettings_cache);
-		if(storage_settings_validate(jsettings_cache) == -1) {
 			return -1;
 		}
 	}

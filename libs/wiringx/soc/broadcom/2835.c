@@ -184,7 +184,7 @@ static int broadcom2835DigitalRead(int i) {
 	void *gpio = NULL;
 	struct layout_t *pin = NULL;
 	unsigned long addr = 0;
-	unsigned long val = 0;
+	uint32_t val = 0;
 
 	pin = &broadcom2835->layout[broadcom2835->map[i]];
 	gpio = broadcom2835->gpio[pin->addr];
@@ -211,7 +211,7 @@ static int broadcom2835DigitalRead(int i) {
 static int broadcom2835PinMode(int i, enum pinmode_t mode) {
 	struct layout_t *pin = NULL;
 	unsigned long addr = 0;
-	unsigned long val = 0;
+	uint32_t val = 0;
 
 	if(broadcom2835->map == NULL) {
 		wiringXLog(LOG_ERR, "The %s %s has not yet been mapped", broadcom2835->brand, broadcom2835->chip);
@@ -243,7 +243,7 @@ static int broadcom2835ISR(int i, enum isr_mode_t mode) {
 	struct layout_t *pin = NULL;
 	char path[PATH_MAX];
 
-	if(broadcom2835->map == NULL) {
+	if(broadcom2835->irq == NULL) {
 		wiringXLog(LOG_ERR, "The %s %s has not yet been mapped", broadcom2835->brand, broadcom2835->chip);
 		return -1; 
 	} 
@@ -252,27 +252,27 @@ static int broadcom2835ISR(int i, enum isr_mode_t mode) {
 		return -1;
 	}
 
-	pin = &broadcom2835->layout[broadcom2835->map[i]];
+	pin = &broadcom2835->layout[broadcom2835->irq[i]];
 
-	sprintf(path, "/sys/class/gpio/gpio%d", broadcom2835->map[i]);
+	sprintf(path, "/sys/class/gpio/gpio%d", broadcom2835->irq[i]);
 	if((soc_sysfs_check_gpio(broadcom2835, path)) == -1) {
 		sprintf(path, "/sys/class/gpio/export");
-		if(soc_sysfs_gpio_export(broadcom2835, path, broadcom2835->map[i]) == -1) {
+		if(soc_sysfs_gpio_export(broadcom2835, path, broadcom2835->irq[i]) == -1) {
 			return -1;
 		}
 	}
 
-	sprintf(path, "/sys/class/gpio/gpio%d/direction", broadcom2835->map[i]);
+	sprintf(path, "/sys/class/gpio/gpio%d/direction", broadcom2835->irq[i]);
 	if(soc_sysfs_set_gpio_direction(broadcom2835, path, "in") == -1) {
 		return -1;
 	}
 
-	sprintf(path, "/sys/class/gpio/gpio%d/edge", broadcom2835->map[i]);
+	sprintf(path, "/sys/class/gpio/gpio%d/edge", broadcom2835->irq[i]);
 	if(soc_sysfs_set_gpio_interrupt_mode(broadcom2835, path, mode) == -1) {
 		return -1;
 	}
 
-	sprintf(path, "/sys/class/gpio/gpio%d/value", broadcom2835->map[i]);
+	sprintf(path, "/sys/class/gpio/gpio%d/value", broadcom2835->irq[i]);
 	if((pin->fd = soc_sysfs_gpio_reset_value(broadcom2835, path)) == -1) {
 		return -1;
 	}
@@ -282,7 +282,7 @@ static int broadcom2835ISR(int i, enum isr_mode_t mode) {
 }
 
 static int broadcom2835WaitForInterrupt(int i, int ms) {
-	struct layout_t *pin = &broadcom2835->layout[broadcom2835->map[i]];
+	struct layout_t *pin = &broadcom2835->layout[broadcom2835->irq[i]];
 
 	if(pin->mode != PINMODE_INTERRUPT) {
 		wiringXLog(LOG_ERR, "The %s %s GPIO %d is not set to interrupt mode", broadcom2835->brand, broadcom2835->chip, i);
@@ -309,7 +309,7 @@ static int broadcom2835GC(void) {
 			if(pin->mode == PINMODE_OUTPUT) {
 				pinMode(i, PINMODE_INPUT);
 			} else if(pin->mode == PINMODE_INTERRUPT) {
-				sprintf(path, "/sys/class/gpio/gpio%d", broadcom2835->map[i]);
+				sprintf(path, "/sys/class/gpio/gpio%d", broadcom2835->irq[i]);
 				if((soc_sysfs_check_gpio(broadcom2835, path)) == 0) {
 					sprintf(path, "/sys/class/gpio/unexport");
 					soc_sysfs_gpio_unexport(broadcom2835, path, i);
@@ -330,7 +330,7 @@ static int broadcom2835GC(void) {
 static int broadcom2835SelectableFd(int i) {
 	struct layout_t *pin = NULL;
 
-	if(broadcom2835->map == NULL) {
+	if(broadcom2835->irq == NULL) {
 		wiringXLog(LOG_ERR, "The %s %s has not yet been mapped", broadcom2835->brand, broadcom2835->chip);
 		return -1; 
 	} 
@@ -339,18 +339,13 @@ static int broadcom2835SelectableFd(int i) {
 		return -1;
 	}
 
-	pin = &broadcom2835->layout[broadcom2835->map[i]];
+	pin = &broadcom2835->layout[broadcom2835->irq[i]];
 	return pin->fd;
 }
 
 void broadcom2835Init(void) {
-	broadcom2835 = malloc(sizeof(struct soc_t));
+	soc_register(&broadcom2835, "Broadcom", "2835");
 
-	strcpy(broadcom2835->brand, "Broadcom");
-	strcpy(broadcom2835->chip, "2835");
-
-	broadcom2835->map = NULL;
-	broadcom2835->irq = NULL;
 	broadcom2835->layout = layout;
 
 	broadcom2835->support.isr_modes = ISR_MODE_RISING | ISR_MODE_FALLING | ISR_MODE_BOTH | ISR_MODE_NONE;
@@ -371,6 +366,4 @@ void broadcom2835Init(void) {
 	broadcom2835->setIRQ = &broadcom2835SetIRQ;
 	broadcom2835->isr = &broadcom2835ISR;
 	broadcom2835->waitForInterrupt = &broadcom2835WaitForInterrupt;
-
-	soc_register(broadcom2835);
 }

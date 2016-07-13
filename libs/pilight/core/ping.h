@@ -63,15 +63,19 @@
 #ifndef _PING_H_
 #define _PING_H_
 
+#include <pthread.h>
+
 typedef struct ping_list_t {
 	char ip[INET_ADDRSTRLEN];
 	int found;
 	int live;
-	unsigned long time;
+	int called;
+	unsigned int time;
+
 	struct ping_list_t *next;
 } ping_list_t;
 
-void ping_add_host(struct ping_list_t **iplist, const char *ip);
-int ping(struct ping_list_t *iplist, void (*callback)(char *, int));
+void ping_add_host(struct ping_list_t **, const char *);
+int ping(struct ping_list_t *, void (*)(char *, int));
 
 #endif

@@ -53,6 +53,11 @@ static void parseCode(char *message) {
 	int binary[RAW_LENGTH/4], x = 0, i = 0;
 	int len = (int)((double)AVG_PULSE_LENGTH*((double)PULSE_MULTIPLIER/2));
 
+	if(arctech_switch_old->rawlen>RAW_LENGTH) {
+		logprintf(LOG_ERR, "arctech_switch_old: parsecode - invalid parameter passed %d", arctech_switch_old->rawlen);
+		return;
+	}
+
 	for(x=0;x<arctech_switch_old->rawlen-3;x+=4) {
 		// valid telegrams must consist of 0110 and 1001 blocks
 		int low_high = 0;
@@ -208,7 +213,6 @@ void arctechSwitchOldInit(void) {
 	protocol_device_add(arctech_switch_old, "intertechno_old", "Old Intertechno Switches");
 	protocol_device_add(arctech_switch_old, "byebyestandby", "Bye Bye Standby Switches");
 	protocol_device_add(arctech_switch_old, "duwi", "Düwi Terminal Switches");
-	protocol_device_add(arctech_switch_old, "eurodomest", "Eurodomest Switches");
 	arctech_switch_old->devtype = SWITCH;
 	arctech_switch_old->hwtype = RF433;
 	arctech_switch_old->minrawlen = RAW_LENGTH;

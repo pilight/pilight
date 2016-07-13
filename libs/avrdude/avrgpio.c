@@ -51,6 +51,7 @@
 /*
 * an array which holds open FDs to /sys/class/gpio/gpioXX/value for all needed pins
 */
+#if defined(__arm__) || defined(__mips__)
 static int gpio_fds[N_GPIO];
 
 static int gpio_setpin(PROGRAMMER * pgm, int pin, int value) {
@@ -141,6 +142,7 @@ static void gpio_close(PROGRAMMER *pgm) {
 
   return;
 }
+#endif
 
 void gpio_initpgm(PROGRAMMER *pgm)
 {

@@ -178,7 +178,11 @@ static int _registry_select(enum origin_t origin, char *id, struct JsonNode **jr
 	return 0;
 }
 
-static int _read(char *file, int objects) {
+/*
+ * To prevent conflicts with windows _read
+ * we add double underscores
+ */
+static int __read(char *file, int objects) {
 	struct JsonNode *jelement = NULL;
 	char *content = NULL;
 
@@ -288,7 +292,7 @@ static int _gc(void) {
 void jsonInit(void) {
 	storage_register(&json, "json");
 
-	json->read=&_read;
+	json->read=&__read;
 	json->sync=&_sync;
 	json->gc=&_gc;
 

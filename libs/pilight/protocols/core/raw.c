@@ -39,6 +39,8 @@ static int createCode(struct JsonNode *code, char *message) {
 	array_free(&array, n);
 
 	raw->rawlen=(int)i;
+	raw->txrpt = repeats;
+
 	return EXIT_SUCCESS;
 }
 

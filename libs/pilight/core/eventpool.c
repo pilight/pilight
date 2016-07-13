@@ -11,18 +11,34 @@
 #include <pthread.h>
 #include <sys/time.h>
 #include <sys/types.h>
-#include <sys/select.h>
-#include <sys/socket.h>
+// #include <sys/select.h>
+#ifdef _WIN32
+	#define WIN32_LEAN_AND_MEAN
+	#include <winsock2.h>
+	#include <ws2tcpip.h>
+	#include <mstcpip.h>
+	#include <windows.h>
+	struct pollfd {
+		int fd;
+		short events;
+		short revents;
+	};
+	#define POLLIN	0x0001
+	#define POLLPRI	0x0002
+	#define POLLOUT	0x0004
+#else
+	#include <sys/socket.h>
+	#include <arpa/inet.h>
+	#include <poll.h>
+#endif
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include <arpa/inet.h>
 #include <errno.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <signal.h>
 #include <assert.h>
-#include <poll.h>
 
 #include "log.h"
 #include "gc.h"
@@ -71,6 +87,7 @@ static struct reasons_t {
 	{	REASON_ADHOC_DISCONNECTED,		"REASON_ADHOC_DISCONNECTED",		0 },
 	{	REASON_SEND_BEGIN,						"REASON_SEND_BEGIN",						0 },
 	{	REASON_SEND_END,							"REASON_SEND_END",							0 },
+	{	REASON_LOG,										"REASON_LOG",										0 },
 	{	REASON_END,										"REASON_END",										0 }
 };
 
@@ -110,6 +127,9 @@ void eventpool_trigger(int reason, void *(*free)(void *), void *data) {
 			sem_init(ref, 0, nr1-1);
 		}
 
+		if(listeners == NULL) {
+			free((void *)data);
+		}
 		while(listeners) {
 			if(listeners->reason == reason) {
 				nr++;
@@ -150,6 +170,7 @@ int eventpool_gc(void) {
 	if(eventpool_listeners != NULL) {
 		FREE(eventpool_listeners);
 	}
+	threads = EVENTPOOL_NO_THREADS;
 	pthread_mutex_unlock(&listeners_lock);
 	return 0;
 }
@@ -209,10 +230,7 @@ void eventpool_fd_enable_write(struct eventpool_fd_t *node) {
 		return;
 	}
 
-	int nr = __sync_add_and_fetch(&node->dowrite, 0);
-	if(nr == 0) {
-		__sync_add_and_fetch(&node->dowrite, 1);
-	}
+	node->dowrite = 1;
 }
 
 void eventpool_fd_enable_flush(struct eventpool_fd_t *node) {
@@ -220,10 +238,7 @@ void eventpool_fd_enable_flush(struct eventpool_fd_t *node) {
 		return;
 	}
 
-	int nr = __sync_add_and_fetch(&node->doflush, 0);
-	if(nr == 0) {
-		__sync_add_and_fetch(&node->doflush, 1);
-	}
+	node->doflush = 1;
 }
 
 void eventpool_fd_enable_read(struct eventpool_fd_t *node) {
@@ -231,10 +246,7 @@ void eventpool_fd_enable_read(struct eventpool_fd_t *node) {
 		return;
 	}
 
-	int nr = __sync_add_and_fetch(&node->doread, 0);
-	if(nr == 0) {
-		__sync_add_and_fetch(&node->doread, 1);
-	}
+	node->doread = 1;
 }
 
 void eventpool_fd_enable_highpri(struct eventpool_fd_t *node) {
@@ -242,10 +254,7 @@ void eventpool_fd_enable_highpri(struct eventpool_fd_t *node) {
 		return;
 	}
 
-	int nr = __sync_add_and_fetch(&node->dohighpri, 0);
-	if(nr == 0) {
-		__sync_add_and_fetch(&node->dohighpri, 1);
-	}
+	node->dohighpri = 1;
 }
 
 void eventpool_fd_disable_flush(struct eventpool_fd_t *node) {
@@ -253,10 +262,7 @@ void eventpool_fd_disable_flush(struct eventpool_fd_t *node) {
 		return;
 	}
 
-	int nr = __sync_add_and_fetch(&node->doflush, 0);
-	if(nr == 1) {
-		__sync_add_and_fetch(&node->doflush, -1);
-	}
+	node->doflush = 0;
 }
 
 void eventpool_fd_disable_write(struct eventpool_fd_t *node) {
@@ -264,10 +270,7 @@ void eventpool_fd_disable_write(struct eventpool_fd_t *node) {
 		return;
 	}
 
-	int nr = __sync_add_and_fetch(&node->dowrite, 0);
-	if(nr == 1) {
-		__sync_add_and_fetch(&node->dowrite, -1);
-	}
+	node->dowrite = 0;
 }
 
 void eventpool_fd_disable_highpri(struct eventpool_fd_t *node) {
@@ -275,10 +278,7 @@ void eventpool_fd_disable_highpri(struct eventpool_fd_t *node) {
 		return;
 	}
 
-	int nr = __sync_add_and_fetch(&node->dohighpri, 0);
-	if(nr == 1) {
-		__sync_add_and_fetch(&node->dohighpri, -1);
-	}
+	node->dohighpri = 0;
 }
 
 void eventpool_fd_disable_read(struct eventpool_fd_t *node) {
@@ -286,10 +286,7 @@ void eventpool_fd_disable_read(struct eventpool_fd_t *node) {
 		return;
 	}
 
-	int nr = __sync_add_and_fetch(&node->doread, 0);
-	if(nr == 1) {
-		__sync_add_and_fetch(&node->doread, -1);
-	}
+	node->doread = 0;
 }
 
 int eventpool_fd_select(int fd, struct eventpool_fd_t **node) {
@@ -301,7 +298,7 @@ int eventpool_fd_select(int fd, struct eventpool_fd_t **node) {
 	struct eventpool_fd_t *nodes = NULL;
 	for(i=0;i<nrfd;i++) {
 		nodes = eventpool_fds[i];
-		if(nodes->fd == fd && __sync_add_and_fetch(&nodes->remove, 0) == 0) {
+		if(nodes->fd == fd && nodes->remove == 0) {
 			*node = nodes;
 			return 0;
 		}
@@ -314,9 +311,8 @@ void eventpool_fd_remove(struct eventpool_fd_t *node) {
 		return;
 	}
 
-	if(__sync_add_and_fetch(&node->remove, 0) == 0 &&
-	   __sync_add_and_fetch(&node->active, 0) == 1) {
-		__sync_add_and_fetch(&node->remove, 1);
+	if(node->remove == 0 && node->active == 1) {
+		node->remove = 1;
 	}
 }
 
@@ -334,16 +330,6 @@ int eventpool_fd_write(int fd, char *data, unsigned long len) {
 	return -1;
 }
 
-void eventpool_socket_reconnect(struct eventpool_fd_t *node) {
-	if(node->fd > 0) {
-		close(node->fd);
-	}
-	int x = __sync_add_and_fetch(&node->remove, 0);
-	while(__sync_bool_compare_and_swap(&node->remove, x, 0) == 0) { };
-	node->error = 0;
-	node->stage = EVENTPOOL_STAGE_SOCKET;
-}
-
 struct eventpool_fd_t *eventpool_fd_add(char *name, int fd, int (*callback)(struct eventpool_fd_t *, int), int (*send)(struct eventpool_fd_t *), void *userdata) {
 	if(running() == 0) {
 		return NULL;
@@ -353,7 +339,7 @@ struct eventpool_fd_t *eventpool_fd_add(char *name, int fd, int (*callback)(stru
 
 	int i = 0, freefd = -1;
 	for(i=0;i<nrfd;i++) {
-		if(__sync_add_and_fetch(&eventpool_fds[i]->active, 0) == 0) {
+		if(eventpool_fds[i]->active == 0) {
 			freefd = i;
 			break;
 		}
@@ -362,13 +348,17 @@ struct eventpool_fd_t *eventpool_fd_add(char *name, int fd, int (*callback)(stru
 		if(pilight.debuglevel == 1) {
 			logprintf(LOG_DEBUG, "increasing eventpool_fd_t struct size to %d", nrfd+16);
 		}
-		eventpool_fds = REALLOC(eventpool_fds, sizeof(struct eventpool_fd_t *)*(nrfd+16));
+		if((eventpool_fds = REALLOC(eventpool_fds, sizeof(struct eventpool_fd_t *)*(nrfd+16))) == NULL) {
+			OUT_OF_MEMORY
+		}
 		for(i=nrfd;i<(nrfd+16);i++) {
-			eventpool_fds[i] = MALLOC(sizeof(struct eventpool_fd_t));
+			if((eventpool_fds[i] = MALLOC(sizeof(struct eventpool_fd_t))) == NULL) {
+				OUT_OF_MEMORY
+			}
 			memset(eventpool_fds[i], 0, sizeof(struct eventpool_fd_t));
 		}
-		freefd = nrfd+1;
-		nrfd += 16;
+		freefd = nrfd;
+		__sync_add_and_fetch(&nrfd, 16);
 	}
 
 	struct eventpool_fd_t *node = eventpool_fds[freefd];
@@ -402,12 +392,150 @@ struct eventpool_fd_t *eventpool_fd_add(char *name, int fd, int (*callback)(stru
 		node->callback(node, EV_DISCONNECTED);
 		if(node->fd > 0) {
 			close(node->fd);
+			node->fd = 0;
 		}
 	}
 
-	__sync_add_and_fetch(&node->active, 1);
+	node->active = 1;
 
 	return node;
+}
+
+static int eventpool_socket_connect(struct eventpool_fd_t *node) {
+	int ret = 0;
+	struct sockaddr_in servaddr;
+
+	memset(&servaddr, '\0', sizeof(servaddr));
+	servaddr.sin_family = AF_INET;
+	if(node->data.socket.port == -1) {
+		servaddr.sin_port = 0;
+	} else {
+		servaddr.sin_port = htons(node->data.socket.port);
+	}
+
+	if(node->data.socket.server == NULL) {
+		servaddr.sin_addr.s_addr = INADDR_ANY;
+	} else {
+		inet_pton(AF_INET, node->data.socket.ip, &servaddr.sin_addr);
+	}
+
+	if((ret = connect(node->fd, (struct sockaddr *)&servaddr, sizeof(struct sockaddr))) < 0) {
+#ifdef _WIN32
+		if(WSAGetLastError() == WSAEWOULDBLOCK || WSAGetLastError() == WSAEISCONN) {
+#else
+		if(errno == EINPROGRESS || errno == EISCONN) {
+#endif
+			node->stage = EVENTPOOL_STAGE_CONNECTING;
+			eventpool_fd_enable_write(node);
+			return 0;
+		} else {
+			return -1;
+		}
+	} else if(ret == 0) {
+		node->stage = EVENTPOOL_STAGE_CONNECTING;
+		eventpool_fd_enable_write(node);
+		return 0;
+	} else {
+		return -1;
+	}
+
+	return -1;
+}
+
+static int eventpool_socket_listen(struct eventpool_fd_t *node) {
+	if(listen(node->fd, 3) < 0) {
+		return -1;
+	}	else {
+		node->stage = EVENTPOOL_STAGE_LISTENING;
+		return 0;
+	}
+}
+
+static int eventpool_socket_bind(struct eventpool_fd_t *node) {
+	struct sockaddr_in servaddr;
+
+	memset(&servaddr, '\0', sizeof(servaddr));
+	servaddr.sin_family = AF_INET;
+	if(node->data.socket.port == -1) {
+		servaddr.sin_port = 0;
+	} else {
+		servaddr.sin_port = htons(node->data.socket.port);
+	}
+
+	if(node->data.socket.server == NULL) {
+		servaddr.sin_addr.s_addr = INADDR_ANY;
+	} else {
+		inet_pton(AF_INET, node->data.socket.ip, &servaddr.sin_addr);
+	}
+
+	if(bind(node->fd, (struct sockaddr *)&servaddr, sizeof(servaddr)) < 0) {
+		return -1;
+	}	else {
+		node->stage = EVENTPOOL_STAGE_LISTEN;
+		if((node->error = eventpool_socket_listen(node)) == -1) {
+			node->callback(node, EV_LISTEN_FAILED);
+		} else {
+			node->callback(node, EV_LISTEN_SUCCESS);
+			eventpool_fd_enable_read(node);
+		}		
+		return 0;
+	}
+}
+
+static int eventpool_socket_create(struct eventpool_fd_t *node) {
+	char *p = node->data.socket.ip;
+
+#ifdef _WIN32
+	WSADATA wsa;
+
+	if(WSAStartup(0x202, &wsa) != 0) {
+		logprintf(LOG_ERR, "could not initialize new socket");
+		exit(EXIT_FAILURE);
+	}
+#endif
+	
+	if(node->data.socket.server == NULL || host2ip(node->data.socket.server, p) > -1) {
+		if((node->fd = socket(node->data.socket.domain, node->data.socket.type, node->data.socket.protocol)) == -1) {
+			return -1;
+		}
+#ifdef _WIN32
+		unsigned long on = 1;
+		ioctlsocket(node->fd, FIONBIO, &on);
+#else
+		long arg = fcntl(node->fd, F_GETFL, NULL);
+		fcntl(node->fd, F_SETFL, arg | O_NONBLOCK);
+#endif
+
+		int opt = 1;
+		setsockopt(node->fd, SOL_SOCKET, SO_REUSEADDR, (char *)&opt, sizeof(int));
+
+		if(node->data.socket.protocol == IPPROTO_ICMP) {
+			node->stage = EVENTPOOL_STAGE_CONNECTED;
+		} else if(node->type == EVENTPOOL_TYPE_SOCKET_CLIENT) {
+			node->stage = EVENTPOOL_STAGE_CONNECT;
+		} else if(node->type == EVENTPOOL_TYPE_SOCKET_SERVER) {
+			node->stage = EVENTPOOL_STAGE_BIND;
+		}
+		return 0;
+	} else {
+		return -1;
+	}
+	return -1;
+}
+
+void eventpool_socket_reconnect(struct eventpool_fd_t *node) {
+	if(node->fd > 0) {
+		close(node->fd);
+		node->fd = 0;
+	}
+	node->remove = 0;
+	node->error = 0;
+	node->stage = EVENTPOOL_STAGE_SOCKET;
+	if((node->error = eventpool_socket_create(node)) == -1) {
+		node->callback(node, EV_SOCKET_FAILED);
+	} else {
+		node->callback(node, EV_SOCKET_SUCCESS);
+	}
 }
 
 struct eventpool_fd_t *eventpool_socket_add(char *name, char *server, unsigned int port, int domain, int socktype, int protocol, int fdtype, int (*callback)(struct eventpool_fd_t *, int), int (*send)(struct eventpool_fd_t *), void *userdata) {
@@ -417,7 +545,7 @@ struct eventpool_fd_t *eventpool_socket_add(char *name, char *server, unsigned i
 
 	int i = 0, freefd = -1;
 	for(i=0;i<nrfd;i++) {
-		if(__sync_add_and_fetch(&eventpool_fds[i]->active, 0) == 0) {
+		if(eventpool_fds[i]->active == 0) {
 			freefd = i;
 			break;
 		}
@@ -431,8 +559,8 @@ struct eventpool_fd_t *eventpool_socket_add(char *name, char *server, unsigned i
 			eventpool_fds[i] = MALLOC(sizeof(struct eventpool_fd_t));
 			memset(eventpool_fds[i], 0, sizeof(struct eventpool_fd_t));
 		}
-		freefd = nrfd+1;
-		nrfd += 16;
+		freefd = nrfd;
+		__sync_add_and_fetch(&nrfd, 16);
 	}
 
 	struct eventpool_fd_t *node = eventpool_fds[freefd];
@@ -470,135 +598,69 @@ struct eventpool_fd_t *eventpool_socket_add(char *name, char *server, unsigned i
 	eventpool_iobuf_init(&node->send_iobuf, 0);
 	eventpool_iobuf_init(&node->recv_iobuf, 0);
 
-	__sync_add_and_fetch(&node->active, 1);
+	node->active = 1;
+
+	if((node->error = eventpool_socket_create(node)) == -1) {
+		node->callback(node, EV_SOCKET_FAILED);
+	} else {
+		node->callback(node, EV_SOCKET_SUCCESS);
+		switch(node->stage) {
+			case EVENTPOOL_STAGE_CONNECT: {
+				if((node->error = eventpool_socket_connect(node)) == -1) {
+					node->callback(node, EV_CONNECT_FAILED);
+				}
+			} break;
+			case EVENTPOOL_STAGE_BIND: {
+				if((node->error = eventpool_socket_bind(node)) == -1) {
+					if(node->callback(node, EV_BIND_FAILED) == -1) {
+						node->error = -1;
+						node->stage = EVENTPOOL_STAGE_DISCONNECTED;
+						node->callback(node, EV_DISCONNECTED);
+						if(node->fd > 0) {
+							close(node->fd);
+							node->fd = 0;
+						}
+					}
+				} else {
+					if(node->callback(node, EV_BIND_SUCCESS) == -1) {
+						node->error = -1;
+						node->stage = EVENTPOOL_STAGE_DISCONNECTED;
+						node->callback(node, EV_DISCONNECTED);
+						if(node->fd > 0) {
+							close(node->fd);
+							node->fd = 0;
+						}
+					}
+				}
+			} break;
+			default:
+			break;
+		}
+	}	
 
 	return node;
-}
-
-static int eventpool_socket_create(struct eventpool_fd_t *node) {
-	char *p = node->data.socket.ip;
-
-	if(node->data.socket.server == NULL || host2ip(node->data.socket.server, p) > -1) {
-		if((node->fd = socket(node->data.socket.domain, node->data.socket.type, node->data.socket.protocol)) == -1) {
-			return -1;
-		}
-#ifdef _WIN32
-		unsigned long on = 1;
-		ioctlsocket(sockfd, FIONBIO, &on);
-#else
-		long arg = fcntl(node->fd, F_GETFL, NULL);
-		fcntl(node->fd, F_SETFL, arg | O_NONBLOCK);
-#endif
-
-		int opt = 1;
-		setsockopt(node->fd, SOL_SOCKET, SO_REUSEADDR, (char *)&opt, sizeof(int));
-
-		if(node->data.socket.protocol == IPPROTO_ICMP) {
-			node->stage = EVENTPOOL_STAGE_CONNECTED;
-		} else if(node->type == EVENTPOOL_TYPE_SOCKET_CLIENT) {
-			node->stage = EVENTPOOL_STAGE_CONNECT;
-		} else if(node->type == EVENTPOOL_TYPE_SOCKET_SERVER) {
-			node->stage = EVENTPOOL_STAGE_BIND;
-		}
-		return 0;
-	} else {
-		return -1;
-	}
-	return -1;
-}
-
-static int eventpool_socket_bind(struct eventpool_fd_t *node) {
-	struct sockaddr_in servaddr;
-
-	memset(&servaddr, '\0', sizeof(servaddr));
-	servaddr.sin_family = AF_INET;
-	if(node->data.socket.port == -1) {
-		servaddr.sin_port = 0;
-	} else {
-		servaddr.sin_port = htons(node->data.socket.port);
-	}
-
-	if(node->data.socket.server == NULL) {
-		servaddr.sin_addr.s_addr = INADDR_ANY;
-	} else {
-		inet_pton(AF_INET, node->data.socket.ip, &servaddr.sin_addr);
-	}
-
-	if(bind(node->fd, (struct sockaddr *)&servaddr, sizeof(servaddr)) < 0) {
-		return -1;
-	}	else {
-		node->stage = EVENTPOOL_STAGE_LISTEN;
-		return 0;
-	}
-}
-
-static int eventpool_socket_listen(struct eventpool_fd_t *node) {
-	if(listen(node->fd, 3) < 0) {
-		return -1;
-	}	else {
-		node->stage = EVENTPOOL_STAGE_LISTENING;
-		return 0;
-	}
-}
-
-static int eventpool_socket_connect(struct eventpool_fd_t *node) {
-	int ret = 0;
-	struct sockaddr_in servaddr;
-
-	memset(&servaddr, '\0', sizeof(servaddr));
-	servaddr.sin_family = AF_INET;
-	if(node->data.socket.port == -1) {
-		servaddr.sin_port = 0;
-	} else {
-		servaddr.sin_port = htons(node->data.socket.port);
-	}
-
-	if(node->data.socket.server == NULL) {
-		servaddr.sin_addr.s_addr = INADDR_ANY;
-	} else {
-		inet_pton(AF_INET, node->data.socket.ip, &servaddr.sin_addr);
-	}
-
-	if((ret = connect(node->fd, (struct sockaddr *)&servaddr, sizeof(struct sockaddr))) < 0) {
-		if(errno == EINPROGRESS || errno == EISCONN) {
-			node->stage = EVENTPOOL_STAGE_CONNECTING;
-			eventpool_fd_enable_write(node);
-			return 0;
-		} else {
-			return -1;
-		}
-	} else if(ret == 0) {
-		node->stage = EVENTPOOL_STAGE_CONNECTING;
-		eventpool_fd_enable_write(node);
-		return 0;
-	} else {
-		return -1;
-	}
-
-	return -1;
 }
 
 static int eventpool_socket_connecting(struct eventpool_fd_t *node) {
 	socklen_t lon = 0;
 	int valopt = 0;
 	lon = sizeof(int);
-	getsockopt(node->fd, SOL_SOCKET, SO_ERROR, (void*)(&valopt), &lon);
-	if(valopt <= 0) {
-		node->stage = EVENTPOOL_STAGE_CONNECTED;
-		return 0;
+	if(getsockopt(node->fd, SOL_SOCKET, SO_ERROR, (void *)(&valopt), &lon) == 0) {
+		if(valopt == 0) {
+			node->stage = EVENTPOOL_STAGE_CONNECTED;
+			return 0;
+		}
 	}
 	return -1;
 }
 
 static void eventpool_clear_nodes(void) {
-	int i = 0, x = 0;
+	int i = 0;
 	for(i=0;i<nrfd;i++) {
 		struct eventpool_fd_t *tmp = eventpool_fds[i];
-		if((x = __sync_add_and_fetch(&tmp->remove, 0)) == 1) {
-			while(__sync_bool_compare_and_swap(&tmp->remove, x, 0) == 0);
-
-			x = __sync_add_and_fetch(&tmp->active, 0);
-			while(__sync_bool_compare_and_swap(&tmp->active, x, 0) == 0);
+		if(tmp->remove == 1) {
+			tmp->remove = 0;
+			tmp->active = 0;
 
 			if(tmp->type == EVENTPOOL_TYPE_SOCKET_SERVER ||
 				tmp->type == EVENTPOOL_TYPE_SOCKET_CLIENT) {
@@ -609,8 +671,13 @@ static void eventpool_clear_nodes(void) {
 			eventpool_iobuf_free(&tmp->send_iobuf);
 			eventpool_iobuf_free(&tmp->recv_iobuf);
 			if(tmp->fd > 0) {
+#ifdef _WIN32
+				shutdown(tmp->fd, SD_BOTH);
+#else
 				shutdown(tmp->fd, SHUT_RDWR);
+#endif
 				close(tmp->fd);
+				tmp->fd = 0;
 			}
 		}
 	}
@@ -618,15 +685,40 @@ static void eventpool_clear_nodes(void) {
 
 void *eventpool_process(void *param) {
 	struct eventpool_fd_t *tmp = NULL;
-	int ret = 0, i = 0, timeout = 0, nrpoll = 0;
+	int ret = 0, i = 0, nrpoll = 0;
 	struct pollfd *pollfds = NULL;
-	struct timeval tv;
-	int interval = 0;
-	unsigned long now = 0, then = 0;
+#ifdef _WIN32
+	struct timeval timeout;
+	fd_set readset;
+	fd_set writeset;
+	int maxfd = 0;
+
+	WSADATA wsa;
+
+	if(WSAStartup(0x202, &wsa) != 0) {
+		logprintf(LOG_ERR, "could not initialize new socket");
+		exit(EXIT_FAILURE);
+	}
+	
+	int dummy = 0;
+	if((dummy = socket(AF_INET, SOCK_STREAM, 0)) == INVALID_SOCKET) {
+		logprintf(LOG_ERR, "Could not create dummy socket: %d", WSAGetLastError());
+		exit(EXIT_FAILURE);
+   }
+#endif
 
 	while(running() == 1) {
 		eventpool_clear_nodes();
 
+#ifdef _WIN32
+		FD_ZERO(&readset);
+		FD_ZERO(&writeset);
+		FD_SET(dummy, &readset);
+		timeout.tv_sec = 1;
+		timeout.tv_usec = 1000;
+		maxfd = 0;
+#endif
+		
 		if(nrpollfds <= nrfd) {
 			if((pollfds = REALLOC(pollfds, (nrpollfds + 16)*sizeof(struct pollfd *))) == NULL) {
 				OUT_OF_MEMORY
@@ -636,107 +728,71 @@ void *eventpool_process(void *param) {
 
 		nrpoll = 0;
 		for(i=0;i<nrfd;i++) {
-			if(__sync_add_and_fetch(&eventpool_fds[i]->active, 0) == 1) {
-				// __sync_add_and_fetch(&eventpool_fds[i]->active, -1);
+			if(eventpool_fds[i]->active == 1 && eventpool_fds[i]->stage != EVENTPOOL_STAGE_DISCONNECTED) {
+				// eventpool_fds[i]->active = 0;
 				tmp = eventpool_fds[i];
 				if(tmp->fd >= 0) {
 					tmp->idx = nrpoll;
+#ifdef _WIN32
+					if(tmp->doread == 1 || tmp->dohighpri == 1) {
+						FD_SET(tmp->fd, &readset);
+					}
+					if(tmp->dowrite == 1 || tmp->doflush == 1) {
+						FD_SET(tmp->fd, &writeset);
+					}
+					if(tmp->dowrite == 1 || tmp->doflush == 1 ||
+						 tmp->doread == 1 || tmp->dohighpri == 1 ||
+						 maxfd < tmp->fd) {
+						maxfd = tmp->fd;
+					}
+#else
 					pollfds[tmp->idx].fd = tmp->fd;
 					pollfds[tmp->idx].events = 0;
 					pollfds[tmp->idx].revents = 0;
-					if(__sync_add_and_fetch(&tmp->dowrite, 0) == 1 ||
-						__sync_add_and_fetch(&tmp->doflush, 0) == 1) {
+					if(tmp->dowrite == 1 || tmp->doflush == 1) {
 						pollfds[tmp->idx].events |= POLLOUT;
 					}
-					if(__sync_add_and_fetch(&tmp->doread, 0) == 1) {
+					if(tmp->doread == 1) {
 						pollfds[tmp->idx].events |= POLLIN;
 					}
-					if(__sync_add_and_fetch(&tmp->dohighpri, 0) == 1) {
+					if(tmp->dohighpri == 1) {
 						pollfds[tmp->idx].events |= POLLPRI;
 					}
+#endif
 					nrpoll++;
 				} else {
 					tmp->idx = -1;
 				}
-				// __sync_add_and_fetch(&eventpool_fds[i]->active, 1);
+				// eventpool_fds[i]->active = 1;
 			}
 		}
-		ret = poll(pollfds, nrpoll, 100);
 
-		interval = 0;
-		gettimeofday(&tv, NULL);
-		now = (1000000 * (unsigned int)tv.tv_sec + (unsigned int)tv.tv_usec);
-		if(then == 0) {
-			then = now;
+#ifdef _WIN32
+		ret = select(maxfd+1, &readset, &writeset, NULL, &timeout);
+		if((ret == -1 && errno == EINTR) || ret == 0) {
+			continue;
 		}
-
-		if((now - then) > 100000) {
-			interval = 1;
-			timeout++;
-			if(timeout >= 10) {
-				timeout = 0;
-			}
-			then = now;
+#else
+		ret = poll(pollfds, nrpoll, 1000);
+		if((ret == -1 && errno == EINTR) || ret == 0) {
+			continue;
 		}
-
+#endif
 		for(i=0;i<nrfd;i++) {
 			tmp = eventpool_fds[i];
-			if(__sync_add_and_fetch(&tmp->active, 0) == 1) {
-				// __sync_add_and_fetch(&tmp->active, -1);
+			if(tmp->active == 1 && tmp->stage != EVENTPOOL_STAGE_DISCONNECTED) {
+				// tmp->active = 0;
 				if(tmp->error == 0) {
-					if(interval == 1) {
-						if(tmp->stage != EVENTPOOL_STAGE_DISCONNECT && tmp->callback(tmp, EV_POLL) == -1) {
-							tmp->stage = EVENTPOOL_STAGE_DISCONNECT;
-							continue;
-						}
-					}
 					if(tmp->type == EVENTPOOL_TYPE_SOCKET_SERVER ||
 						 tmp->type == EVENTPOOL_TYPE_SOCKET_CLIENT ||
 						 tmp->type == EVENTPOOL_TYPE_IO) {
 						switch(tmp->stage) {
-							case EVENTPOOL_STAGE_SOCKET:
-								if((tmp->error = eventpool_socket_create(tmp)) == -1) {
-									tmp->callback(tmp, EV_SOCKET_FAILED);
-								} else {
-									tmp->callback(tmp, EV_SOCKET_SUCCESS);
-								}
-							break;
-							case EVENTPOOL_STAGE_BIND: {
-								if((tmp->error = eventpool_socket_bind(tmp)) == -1) {
-									if(tmp->callback(tmp, EV_BIND_FAILED) == -1) {
-										tmp->error = -1;
-										tmp->stage = EVENTPOOL_STAGE_DISCONNECTED;
-										tmp->callback(tmp, EV_DISCONNECTED);
-										if(tmp->fd > 0) {
-											close(tmp->fd);
-										}
-									}
-								} else {
-									if(tmp->callback(tmp, EV_BIND_SUCCESS) == -1) {
-										tmp->error = -1;
-										tmp->stage = EVENTPOOL_STAGE_DISCONNECTED;
-										tmp->callback(tmp, EV_DISCONNECTED);
-										if(tmp->fd > 0) {
-											close(tmp->fd);
-										}
-									}
-								}
-							} break;
-							case EVENTPOOL_STAGE_LISTEN: {
-								if((tmp->error = eventpool_socket_listen(tmp)) == -1) {
-									tmp->callback(tmp, EV_LISTEN_FAILED);
-								} else {
-									tmp->callback(tmp, EV_LISTEN_SUCCESS);
-									eventpool_fd_enable_read(tmp);
-								}
-							} break;
-							case EVENTPOOL_STAGE_CONNECT:
-								if((tmp->error = eventpool_socket_connect(tmp)) == -1) {
-									tmp->callback(tmp, EV_CONNECT_FAILED);
-								}
-							break;
 							case EVENTPOOL_STAGE_CONNECTING:
+#ifdef _WIN32
+								if(tmp->fd >= 0 && ret > 0 && FD_ISSET(tmp->fd, &writeset)) {
+#else
 								if(tmp->fd >= 0 && ret > 0 && pollfds[tmp->idx].revents & POLLOUT) {
+#endif
 									eventpool_fd_disable_write(tmp);
 									if((tmp->error = eventpool_socket_connecting(tmp)) == 0) {
 										if(tmp->callback(tmp, EV_CONNECT_SUCCESS) == -1) {
@@ -745,6 +801,7 @@ void *eventpool_process(void *param) {
 											tmp->callback(tmp, EV_DISCONNECTED);
 											if(tmp->fd > 0) {
 												close(tmp->fd);
+												tmp->fd = 0;
 											}
 										}
 									} else {
@@ -754,52 +811,90 @@ void *eventpool_process(void *param) {
 							break;
 							case EVENTPOOL_STAGE_LISTENING:
 								if(ret > 0 && tmp->fd >= 0) {
+#ifdef _WIN32
+									if(FD_ISSET(tmp->fd, &readset)) {
+#else
 									if(pollfds[tmp->idx].revents & POLLIN) {
+#endif
 										if(tmp->callback(tmp, EV_READ) == -1) {
 											tmp->error = -1;
 											tmp->stage = EVENTPOOL_STAGE_DISCONNECTED;
 											tmp->callback(tmp, EV_DISCONNECTED);
 											if(tmp->fd > 0) {
 												close(tmp->fd);
+												tmp->fd = 0;
 											}
 										}
 									}
 								}
 							break;
-							case EVENTPOOL_STAGE_DISCONNECT:
+							case EVENTPOOL_STAGE_DISCONNECT: {
+								/*
+								 * In case the other end disconnected
+								 * we won't flush the socket.
+								 */
+								char c = 0;
+#ifdef _WIN32
+								if(recv(tmp->fd, &c, 1, MSG_PEEK) <= 0) {
+#else
+								if(recv(tmp->fd, &c, 1, MSG_PEEK | MSG_DONTWAIT) <= 0) {
+#endif									
+									if(errno == ECONNRESET) {
+										if(tmp->fd > 0) {
+											logprintf(LOG_DEBUG, "client disconnected, fd %d", tmp->fd);
+										}
+										eventpool_fd_remove(tmp);
+										continue;
+									}
+								}
+							}
 							case EVENTPOOL_STAGE_CONNECTED: {
 								if(ret > 0 && tmp->fd >= 0) {
+#ifdef _WIN32
+									if(FD_ISSET(tmp->fd, &readset) && tmp->stage == EVENTPOOL_STAGE_CONNECTED) {
+#else
 									if(pollfds[tmp->idx].revents & POLLIN && tmp->stage == EVENTPOOL_STAGE_CONNECTED) {
+#endif
 										eventpool_fd_disable_read(tmp);
 										if(tmp->stage == EVENTPOOL_STAGE_CONNECTED &&
 											 tmp->callback(tmp, EV_READ) == -1) {
 											tmp->stage = EVENTPOOL_STAGE_DISCONNECT;
-											if(__sync_add_and_fetch(&tmp->doflush, 0) == 0) {
+											if(tmp->doflush == 0) {
 												tmp->error = -1;
 												tmp->callback(tmp, EV_DISCONNECTED);
 												if(tmp->fd > 0) {
 													close(tmp->fd);
+													tmp->fd = 0;
 												}
 												continue;
 											}
 										}
 									}
+#ifdef _WIN32
+									if(FD_ISSET(tmp->fd, &readset) && tmp->stage == EVENTPOOL_STAGE_CONNECTED) {
+#else
 									if(pollfds[tmp->idx].revents & POLLPRI && tmp->stage == EVENTPOOL_STAGE_CONNECTED) {
+#endif
 										eventpool_fd_disable_highpri(tmp);
 										if(tmp->stage == EVENTPOOL_STAGE_CONNECTED &&
 											 tmp->callback(tmp, EV_HIGHPRI) == -1) {
 											tmp->stage = EVENTPOOL_STAGE_DISCONNECT;
-											if(__sync_add_and_fetch(&tmp->dohighpri, 0) == 0) {
+											if(tmp->dohighpri == 0) {
 												tmp->error = -1;
 												tmp->callback(tmp, EV_DISCONNECTED);
 												if(tmp->fd > 0) {
 													close(tmp->fd);
+													tmp->fd = 0;
 												}
 												continue;
 											}
 										}
 									}
+#ifdef _WIN32
+									if(FD_ISSET(tmp->fd, &writeset)) {
+#else
 									if(pollfds[tmp->idx].revents & POLLOUT) {
+#endif
 										eventpool_fd_disable_write(tmp);
 										eventpool_fd_disable_flush(tmp);
 										if(tmp->send_iobuf.len > 0) {
@@ -820,17 +915,26 @@ void *eventpool_process(void *param) {
 													// tmp->error = -1;
 													// tmp->callback(tmp, EV_DISCONNECTED);
 													// if(tmp->fd > 0) {
-														// close(tmp->fd);
+														//close(tmp->fd);
+														// tmp->fd = 0;
 													// }
 													// continue;
 												// }
-												eventpool_fd_enable_flush(tmp);
+											} else if(n == 0) {
+												eventpool_fd_remove(tmp);
 												continue;
-											} else if(n == -1 && errno != EAGAIN) {
-												tmp->error = -1;
-												tmp->callback(tmp, EV_DISCONNECTED);
-												if(tmp->fd > 0) {
-													close(tmp->fd);
+											}
+											if(n < 0 && errno != EAGAIN && errno != EINTR) {
+												if(errno == ECONNRESET) {
+													eventpool_fd_remove(tmp);
+													continue;
+												} else {
+													tmp->error = -1;
+													tmp->callback(tmp, EV_DISCONNECTED);
+													if(tmp->fd > 0) {
+														close(tmp->fd);
+														tmp->fd = 0;
+													}
 												}
 												continue;
 											}
@@ -842,6 +946,7 @@ void *eventpool_process(void *param) {
 													tmp->callback(tmp, EV_DISCONNECTED);
 													if(tmp->fd > 0) {
 														close(tmp->fd);
+														tmp->fd = 0;
 													}
 													continue;
 												}
@@ -852,6 +957,7 @@ void *eventpool_process(void *param) {
 												tmp->callback(tmp, EV_DISCONNECTED);
 												if(tmp->fd > 0) {
 													close(tmp->fd);
+													tmp->fd = 0;
 												}
 												continue;
 											}
@@ -863,12 +969,12 @@ void *eventpool_process(void *param) {
 									}
 								}
 								if(tmp->stage == EVENTPOOL_STAGE_DISCONNECT &&
-									__sync_add_and_fetch(&tmp->dowrite, 0) == 0 &&
-									__sync_add_and_fetch(&tmp->doflush, 0) == 0) {
+									tmp->dowrite == 0 && tmp->doflush == 0) {
 									tmp->error = -1;
 									tmp->callback(tmp, EV_DISCONNECTED);
 									if(tmp->fd > 0) {
 										close(tmp->fd);
+										tmp->fd = 0;
 									}
 									continue;
 								}
@@ -878,18 +984,23 @@ void *eventpool_process(void *param) {
 						}
 					}
 				}
-				// __sync_add_and_fetch(&tmp->active, 1);
+				// tmp->active = 1;
 			}
 		}
 	}
 
 	for(i=0;i<nrfd;i++) {
 		tmp = eventpool_fds[i];
-		if(__sync_add_and_fetch(&tmp->active, 0) == 1) {
+		if(tmp->active == 1) {
 			tmp->callback(tmp, EV_DISCONNECTED);
 			if(tmp->fd > 0) {
+#ifdef _WIN32
+				shutdown(tmp->fd, SD_BOTH);
+#else
 				shutdown(tmp->fd, SHUT_RDWR);
+#endif
 				close(tmp->fd);
+				tmp->fd = 0;
 			}
 			if(tmp->type == EVENTPOOL_TYPE_SOCKET_SERVER ||
 				 tmp->type == EVENTPOOL_TYPE_SOCKET_CLIENT) {

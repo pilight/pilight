@@ -9,7 +9,18 @@
 #ifndef _EVENTPOOL_H_
 #define _EVENTPOOL_H_
 
-#include <netinet/in.h>
+#ifdef _WIN32
+	#if _WIN32_WINNT < 0x0501
+		#undef _WIN32_WINNT
+		#define _WIN32_WINNT 0x0501
+	#endif
+	#define WIN32_LEAN_AND_MEAN
+	#include <winsock2.h>
+	#include <ws2tcpip.h>
+	#define MSG_NOSIGNAL 0
+#else
+	#include <netinet/in.h>
+#endif
 #include <signal.h>
 #include <time.h>
 #include <pthread.h>
@@ -51,7 +62,7 @@ enum eventpool_threads_t {
 #define EV_HIGHPRI									10
 #define EV_IDLE											11
 #define EV_DISCONNECTED							12
-#define EV_POLL											13
+// #define EV_POLL											13
 
 #define REASON_SEND_CODE							0
 #define REASON_CODE_SENT							1
@@ -79,7 +90,8 @@ enum eventpool_threads_t {
 #define REASON_ADHOC_DISCONNECTED			23
 #define REASON_SEND_BEGIN							24
 #define REASON_SEND_END								25
-#define REASON_END										26
+#define REASON_LOG										26
+#define REASON_END										27
 
 typedef struct eventpool_listener_t {
 	void *(*func)(void *);

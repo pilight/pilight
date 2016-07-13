@@ -248,8 +248,6 @@ static void parseCode(char *message) {
 }
 
 static void loadFiles(void) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
-
 	struct ir_remote *r = NULL;
 	struct ir_ncode *c = NULL;
 	struct dirent *file = NULL;

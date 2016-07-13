@@ -49,6 +49,11 @@ static void parseCode(char *message) {
 	int i = 0, x = 0, id = 0, binary[RAW_LENGTH/2];
 	double temp_offset = 0.0, temperature = 0.0;
 
+	if(alecto_wsd17->rawlen>RAW_LENGTH) {
+		logprintf(LOG_ERR, "alecto_wsd17: parsecode - invalid parameter passed %d", alecto_wsd17->rawlen);
+		return;
+	}
+
 	for(x=1;x<alecto_wsd17->rawlen-1;x+=2) {
 		if(alecto_wsd17->raw[x] > (int)((double)AVG_PULSE_LENGTH*((double)PULSE_MULTIPLIER/2))) {
 			binary[i++] = 1;

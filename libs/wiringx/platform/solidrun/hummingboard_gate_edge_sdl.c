@@ -99,30 +99,22 @@ static int hummingboardGateEdgeSDLValidGPIO(int pin) {
 
 static int hummingboardGateEdgeSDLISR(int i, enum isr_mode_t mode) {
 	if(irq[i] == -1) {
-		wiringXLog(LOG_ERR, "The %s gpio %d cannot be used as interrupt", hummingboardGateEdgeSDL->name, i);
+		wiringXLog(LOG_ERR, "The %s gpio %d cannot be used as interrupt", hummingboardGateEdgeSDL->name[0], i);
 		return -1;
 	}
 	return hummingboardGateEdgeSDL->soc->isr(i, mode);
 }
 
+static int hummingboardGateEdgeSDLSetup(void) {
+	hummingboardGateEdgeSDL->soc->setup();
+	hummingboardGateEdgeSDL->soc->setMap(map);
+	hummingboardGateEdgeSDL->soc->setIRQ(irq);
+	return 0;
+}
+
 void hummingboardGateEdgeSDLInit(void) {
-	if((hummingboardGateEdgeSDL = malloc(sizeof(struct platform_t))) == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(EXIT_FAILURE);
-	}
-	hummingboardGateEdgeSDL->nralias = 2;
-	if((hummingboardGateEdgeSDL->name = malloc(hummingboardGateEdgeSDL->nralias*sizeof(char *))) == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(EXIT_FAILURE);
-	}
-	if((hummingboardGateEdgeSDL->name[0] = strdup("hummingboard_edge_sdl")) == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(EXIT_FAILURE);
-	}
-	if((hummingboardGateEdgeSDL->name[1] = strdup("hummingboard_gate_sdl")) == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(EXIT_FAILURE);
-	}
+	platform_register(&hummingboardGateEdgeSDL, "hummingboard_edge_sdl");
+	platform_add_alias(&hummingboardGateEdgeSDL, "hummingboard_gate_sdl");
 
 	hummingboardGateEdgeSDL->soc = soc_get("NXP", "IMX6SDLRM");
 	hummingboardGateEdgeSDL->soc->setMap(map);
@@ -131,7 +123,7 @@ void hummingboardGateEdgeSDLInit(void) {
 	hummingboardGateEdgeSDL->digitalRead = hummingboardGateEdgeSDL->soc->digitalRead;
 	hummingboardGateEdgeSDL->digitalWrite = hummingboardGateEdgeSDL->soc->digitalWrite;
 	hummingboardGateEdgeSDL->pinMode = hummingboardGateEdgeSDL->soc->pinMode;
-	hummingboardGateEdgeSDL->setup = hummingboardGateEdgeSDL->soc->setup;
+	hummingboardGateEdgeSDL->setup = &hummingboardGateEdgeSDLSetup;
 
 	hummingboardGateEdgeSDL->isr = &hummingboardGateEdgeSDLISR;
 	hummingboardGateEdgeSDL->waitForInterrupt = hummingboardGateEdgeSDL->soc->waitForInterrupt;
@@ -141,5 +133,4 @@ void hummingboardGateEdgeSDLInit(void) {
 
 	hummingboardGateEdgeSDL->validGPIO = &hummingboardGateEdgeSDLValidGPIO;
 
-	platform_register(hummingboardGateEdgeSDL);
 }

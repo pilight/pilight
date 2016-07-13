@@ -63,6 +63,11 @@ static void parseCode(char *message) {
 	int x = 0, z = 65, binary[RAW_LENGTH/4];
 	char id[3];
 
+	if(rev1_switch->rawlen>RAW_LENGTH) {
+		logprintf(LOG_ERR, "rev1_switch: parsecode - invalid parameter passed %d", rev1_switch->rawlen);
+		return;
+	}
+
 	/* Convert the one's and zero's into binary */
 	for(x=0;x<rev1_switch->rawlen-2;x+=4) {
 		if(rev1_switch->raw[x+3] > (int)((double)AVG_PULSE_LENGTH*((double)PULSE_MULTIPLIER/2))) {

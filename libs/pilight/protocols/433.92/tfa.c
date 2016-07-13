@@ -22,10 +22,10 @@
 
 #define PULSE_MULTIPLIER	13
 #define MIN_PULSE_LENGTH	220
-#define MAX_PULSE_LENGTH	265
-#define AVG_PULSE_LENGTH	250
+#define MAX_PULSE_LENGTH	280	// FREETEC NC7104-675, Globaltronics GT-WT-01
+#define AVG_PULSE_LENGTH	235
 #define RAW_LENGTH			88
-#define MIN_RAW_LENGTH		76	// SOENS
+#define MIN_RAW_LENGTH		76	// SOENS, NC7104-675, GT-WT-01
 #define MED_RAW_LENGTH		86	// TFA
 #define MAX_RAW_LENGTH		88	// DOSTMAN 32.3200
 
@@ -233,6 +233,8 @@ void tfaInit(void) {
 	protocol_device_add(tfa, "tfa", "TFA weather stations");
 	protocol_device_add(tfa, "conrad_weather", "Conrad Weather Stations");
 	protocol_device_add(tfa, "soens", "SOENS Weather Stations");
+	protocol_device_add(tfa, "NC7104", "Freetec NC7104-675 Weather Station");
+	protocol_device_add(tfa, "GT-WT-01", "Globaltronics GT-WT-01 Weather Station");
 	tfa->devtype = WEATHER;
 	tfa->hwtype = RF433;
 	tfa->maxgaplen = MAX_PULSE_LENGTH*PULSE_DIV;

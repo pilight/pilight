@@ -41,7 +41,6 @@
 
 #include "libs/pilight/core/pilight.h"
 #include "libs/pilight/core/timerpool.h"
-#include "libs/pilight/core/threads.h"
 #include "libs/pilight/core/threadpool.h"
 #include "libs/pilight/core/eventpool.h"
 #include "libs/pilight/core/datetime.h"
@@ -132,18 +131,12 @@ static unsigned short pid_file_free = 0;
 static pid_t pid;
 /* Daemonize or not */
 static int nodaemon = 0;
-/* Run tracktracer */
-// static int stacktracer = 0;
-/* Run thread profiler */
-static int threadprofiler = 0;
 /* Are we already running */
 static int active = 1;
 /* Are we currently sending code */
 static int sending = 0;
 /* Socket identifier to the server if we are running as client */
 static int sockfd = 0;
-/* Thread pointers */
-static pthread_t logpth;
 /* While loop conditions */
 static unsigned short main_loop = 1;
 /* Are we running standalone */
@@ -956,7 +949,7 @@ static int socket_parse_responses(char *buffer, char *media, char **respons) {
 									json_delete(json);
 									return 0;
 								} else {
-									logprintf(LOG_ERR, "registry key '%s' doesn't exists", key);
+									logprintf(LOG_ERR, "registry key '%s' does not exist", key);
 									if((*respons = MALLOC(strlen("{\"status\":\"failed\"}")+1)) == NULL) {
 										OUT_OF_MEMORY
 									}
@@ -1242,7 +1235,7 @@ static void *socket_parse_data(void *param) {
 		json_delete(json);
 		return NULL;
 	} else {
-		logprintf(LOG_ERR, "could not parse respons to: %s", data->buffer);
+		logprintf(LOG_ERR, "could not parse response to: %s", data->buffer);
 		client_remove(sd);
 		socket_close(sd);
 		json_delete(json);
@@ -1366,36 +1359,6 @@ void *broadcast(void *param) {
 		free_conf = 0;
 		eventpool_trigger(REASON_BROADCAST_CORE, reason_broadcast_core_free, conf);
 	} else {
-		if(protocol != NULL && strcmp(protocol, "pilight_firmware") == 0) {
-			struct JsonNode *code = NULL;
-			struct JsonNode *jdata = json_decode(message);
-			if((code = json_find_member(jdata, "message")) != NULL) {
-				json_find_number(code, "version", &firmware.version);
-				json_find_number(code, "lpf", &firmware.lpf);
-				json_find_number(code, "hpf", &firmware.hpf);
-				if(firmware.version > 0 && firmware.lpf > 0 && firmware.hpf > 0) {
-					registry_update(ORIGIN_MASTER, "pilight.firmware.version", json_mknumber(firmware.version, 0));
-					registry_update(ORIGIN_MASTER, "pilight.firmware.lpf", json_mknumber(firmware.lpf, 0));
-					registry_update(ORIGIN_MASTER, "pilight.firmware.hpf", json_mknumber(firmware.hpf, 0));
-
-					struct JsonNode *jmessage = json_mkobject();
-					struct JsonNode *jcode = json_mkobject();
-					json_append_member(jcode, "version", json_mknumber(firmware.version, 0));
-					json_append_member(jcode, "lpf", json_mknumber(firmware.lpf, 0));
-					json_append_member(jcode, "hpf", json_mknumber(firmware.hpf, 0));
-					json_append_member(jmessage, "values", jcode);
-					json_append_member(jmessage, "origin", json_mkstring("core"));
-					json_append_member(jmessage, "type", json_mknumber(FIRMWARE, 0));
-					char pname[17];
-					strcpy(pname, "pilight-firmware");
-
-					free_conf = 0;
-					eventpool_trigger(REASON_BROADCAST, reason_broadcast_free, conf);
-					json_delete(jmessage);
-					jmessage = NULL;
-				}
-			}
-		}
 		broadcasted = 0;
 
 		// struct JsonNode *childs = json_first_child(jdata);
@@ -1441,7 +1404,7 @@ void *broadcast(void *param) {
 }
 
 static void *adhoc_reconnect(void *param) {
-	if(__sync_add_and_fetch(&adhoc_data->connected, 0) == 0) {
+	if(adhoc_data->connected == 0) {
 		struct timeval tv;
 		tv.tv_sec = 3;
 		tv.tv_usec = 0;
@@ -1459,9 +1422,7 @@ static int clientize(struct eventpool_fd_t *node, int event) {
 	adhoc_data->reading = 0;
 	switch(event) {
 		case EV_CONNECT_SUCCESS: {
-			if(__sync_add_and_fetch(&adhoc_data->connected, 0) == 0) {
-				__sync_add_and_fetch(&adhoc_data->connected, 1);
-			}
+			adhoc_data->connected = 1;
 			eventpool_fd_enable_write(node);
 		} break;
 		case EV_READ: {
@@ -1469,7 +1430,11 @@ static int clientize(struct eventpool_fd_t *node, int event) {
 				case 1: {
 					char c = 0;
 					/* Connection lost */
+#ifdef _WIN32
+					if(recv(node->fd, &c, 1, MSG_PEEK) == 0) {
+#else
 					if(recv(node->fd, &c, 1, MSG_PEEK | MSG_DONTWAIT) == 0) {
+#endif
 						return -1;
 					}
 
@@ -1637,9 +1602,7 @@ static int clientize(struct eventpool_fd_t *node, int event) {
 		case EV_DISCONNECTED: {
 			clientize_client = NULL;
 			adhoc_data->steps = 0;
-			if(__sync_add_and_fetch(&adhoc_data->connected, 0) == 1) {
-				__sync_add_and_fetch(&adhoc_data->connected, -1);
-			}
+			adhoc_data->connected = 0;
 
 			tv.tv_sec = 3;
 			tv.tv_usec = 0;
@@ -1682,9 +1645,7 @@ static void *ssdp_found(void *param) {
 			logprintf(LOG_NOTICE, "pilight master daemon \"%s\" was found @%s, clientizing", data->name, data->ip);
 			pilight.runmode = ADHOC;
 
-			if(__sync_add_and_fetch(&adhoc_data->connected, 0) == 1) {
-				__sync_add_and_fetch(&adhoc_data->connected, -1);
-			}
+			adhoc_data->connected = 0;
 			adhoc_data->steps = 0;
 			if(clientize_client != NULL) {
 				eventpool_fd_remove(clientize_client);
@@ -1811,7 +1772,6 @@ int main_gc(void) {
 	protocol_gc();
 	ntp_gc();
 	whitelist_free();
-	threads_gc();
 #ifndef _WIN32
 	wiringXGC();
 #endif
@@ -1825,7 +1785,6 @@ int main_gc(void) {
 	proc_gc();
 	gc_clear();
 	FREE(progname);
-	xfree();
 
 #ifdef _WIN32
 	WSACleanup();
@@ -1921,12 +1880,8 @@ void *pilight_stats(void *param) {
 		cpu = getCPUUsage();
 		ram = getRAMUsage();
 
-		if(threadprofiler == 1) {
-			threads_cpu_usage(1);
-		}
 		if(watchdog == 1 && (i > -1) && (cpu > 60)) {
-			if(nodaemon == 1 && threadprofiler == 0) {
-				threads_cpu_usage(x);
+			if(nodaemon == 1) {
 				x ^= 1;
 			}
 			if(checkcpu == 0) {
@@ -2033,7 +1988,7 @@ int start_pilight(int argc, char **argv) {
 	char *stmp = NULL, *args = NULL, *p = NULL;
 	int port = 0;
 
-	mempool_init(8192, 1024);
+	// mempool_init(8192, 1024);
 
 	pilight.process = PROCESS_DAEMON;
 
@@ -2053,8 +2008,6 @@ int start_pilight(int argc, char **argv) {
 	options_add(&options, 'C', "config", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, NULL);
 	options_add(&options, 'S', "server", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, "^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]).){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$");
 	options_add(&options, 'P', "port", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, "[0-9]{1,4}");
-	// options_add(&options, 256, "stacktracer", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
-	options_add(&options, 257, "threadprofiler", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
 	options_add(&options, 258, "debuglevel", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, "[012]{1}");
 	// options_add(&options, 258, "memory-tracer", OPTION_NO_VALUE, 0, JSON_NULL, NULL, NULL);
 
@@ -2093,16 +2046,6 @@ int start_pilight(int argc, char **argv) {
 				nodaemon = 1;
 				verbosity = LOG_DEBUG;
 			break;
-			case 257:
-				threadprofiler = 1;
-				verbosity = LOG_ERR;
-				nodaemon = 1;
-			break;
-			// case 256:
-				// verbosity = LOG_STACK;
-				// stacktracer = 1;
-				// nodaemon = 1;
-			// break;
 			case 258:
 				pilight.debuglevel = atoi(args);
 				nodaemon = 1;
@@ -2131,8 +2074,6 @@ int start_pilight(int argc, char **argv) {
 									"\t -P --port=xxxx\t%sconnect to server port\n"
 									"\t -D --nodaemon\t%sdo not daemonize and\n"
 									"\t\t\t%sshow debug information\n"
-									// "\t    --stacktracer\t\tshow internal function calls\n"
-									"\t    --threadprofiler\t\tshow per thread cpu usage\n"
 									"\t    --debuglevel\t\tshow additional development info\n",
 									progname, tabs, tabs, tabs, tabs, tabs);
 #ifdef _WIN32
@@ -2141,12 +2082,12 @@ int start_pilight(int argc, char **argv) {
 		printf("%s", help);
 #if defined(__arm__) || defined(__mips__)
 		printf("\n\tThe following GPIO platforms are supported:\n");
-		struct platform_t *tmp = NULL;
+		char *tmp = NULL;
 		int z = 0;
 		wiringXSetup("", logprintf);
 		printf("\t- none\n");
-		while((tmp = platform_iterate(z++)) != NULL) {
-			printf("\t- %s\n", tmp->name);
+		while((tmp = platform_iterate_name(z++)) != NULL) {
+			printf("\t- %s\n", tmp);
 		}
 		printf("\n");
 #endif
@@ -2224,10 +2165,6 @@ int start_pilight(int argc, char **argv) {
 		}
 	}
 	array_free(&devs, nrdevs);
-
-	firmware.version = 0;
-	firmware.lpf = 0;
-	firmware.hpf = 0;
 
 	memset(buffer, '\0', BUFFER_SIZE);
 
@@ -2434,7 +2371,7 @@ int start_pilight(int argc, char **argv) {
 									hardware->mingaplen = tmp->listener->mingaplen;
 								}
 								if(tmp->listener->rawlen > 0) {
-									logprintf(LOG_EMERG, "%s: setting \"rawlen\" length is not allowed, use the \"minrawlen\" and \"maxrawlen\" instead", tmp->listener->id);
+									logprintf(LOG_EMERG, "%s: setting \"rawlen\" length is not allowed, use \"minrawlen\" and \"maxrawlen\" instead", tmp->listener->id);
 									goto clear;
 								}
 							}
@@ -2484,10 +2421,6 @@ int start_pilight(int argc, char **argv) {
 
 	timer_thread_start();
 
-	/* Threads are unable to survive forks properly.
-	 * Therefor, we queue all messages until we're
-	 * able to fork properly.
-	 */
 	int nrcores = getnrcpu();
 	if(nrcores > 1) {
 		logprintf(LOG_INFO, "pilight will dynamically use between 1 and %d cores", nrcores);
@@ -2495,12 +2428,7 @@ int start_pilight(int argc, char **argv) {
 	threadpool_init(1, nrcores, 10);
 	eventpool_init(EVENTPOOL_THREADED);
 
-	/*
-	 * FIXME
-	 */
-	threads_create(&logpth, NULL, &logloop, (void *)NULL);
-	/* Start threads library that keeps track of all threads used */
-	threads_start();
+	log_init();
 
 	struct timeval tv;
 	char *adhoc_mode = NULL;

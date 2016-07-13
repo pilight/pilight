@@ -29,6 +29,10 @@
 #include <signal.h>
 #include <sys/time.h>
 
+#ifdef _WIN32
+	#include <windows.h>
+#endif
+
 #include "../pilight/core/log.h"
 #include "../pilight/core/mem.h"
 #include "avrdude.h"
@@ -238,7 +242,11 @@ int bitbang_chip_erase(PROGRAMMER * pgm, AVRPART * p)
 
   avr_set_bits(p->op[AVR_OP_CHIP_ERASE], cmd);
   pgm->cmd(pgm, cmd, res);
-  usleep(p->chip_erase_delay);
+#ifdef _WIN32
+  SleepEx(1, TRUE);
+#else
+	usleep(p->chip_erase_delay);
+#endif
   pgm->initialize(pgm, p);
 
   pgm->pgm_led(pgm, OFF);
@@ -280,15 +288,27 @@ int bitbang_initialize(PROGRAMMER * pgm, AVRPART * p)
   bitbang_calibrate_delay();
 
   pgm->powerup(pgm);
+#ifdef _WIN32
+  SleepEx(20, TRUE);
+#else
   usleep(20000);
+#endif
 
   pgm->setpin(pgm, pgm->pinno[PIN_AVR_SCK], 0);
   pgm->setpin(pgm, pgm->pinno[PIN_AVR_RESET], 0);
+#ifdef _WIN32
+  SleepEx(20, TRUE);
+#else
   usleep(20000);
+#endif
 
   pgm->highpulsepin(pgm, pgm->pinno[PIN_AVR_RESET]);
 
-  usleep(20000); /* 20 ms XXX should be a per-chip parameter */
+#ifdef _WIN32
+  SleepEx(20, TRUE);
+#else
+  usleep(20000);
+#endif /* 20 ms XXX should be a per-chip parameter */
 
   /*
    * Enable programming mode.  If we are programming an AT90S1200, we

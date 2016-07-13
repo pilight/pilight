@@ -54,13 +54,11 @@ int main_gc(void) {
 	gc_clear();
 
 	FREE(progname);
-	xfree();
 
 	return EXIT_SUCCESS;
 }
 
 int main(int argc, char **argv) {
-	// memtrack();
 	atomicinit();
 	gc_attach(main_gc);
 

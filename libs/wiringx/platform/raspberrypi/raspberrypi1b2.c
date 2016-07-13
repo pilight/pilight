@@ -27,11 +27,11 @@ static int map[] = {
 	/* 	FSEL17,	FSEL18,	FSEL27,	FSEL22 	*/
 			17, 		18, 		27, 		22,
 	/* 	FSEL23,	FSEL24,	FSEL25,	FSEL4 	*/
-			23, 		24, 		25, 		4,
+			23, 		24, 		25, 		 4,
 	/* 	FSEL2,	FSEL3,	FSEL8,	FSEL7 	*/
-			2, 			3, 			8, 			7,
+			 2, 		 3, 		 8, 		 7,
 	/*	FSEL10,	FSEL9,	FSEL11,	FSEL14	*/
-			10,			9,			11,			14,
+			10,			 9,			11,			14,
 	/*	FSEL15, FSEL28,	FSEL29,	FSEL30	*/
 			15,			28,			29,			30,
 	/*	FSEL31		*/
@@ -46,20 +46,15 @@ static int raspberrypi1b2ValidGPIO(int pin) {
 	}
 }
 
+static int raspberrypi1b2Setup(void) {
+	raspberrypi1b2->soc->setup();
+	raspberrypi1b2->soc->setMap(map);
+	raspberrypi1b2->soc->setIRQ(map);
+	return 0;
+}
+
 void raspberrypi1b2Init(void) {
-	if((raspberrypi1b2 = malloc(sizeof(struct platform_t))) == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(EXIT_FAILURE);
-	}
-	raspberrypi1b2->nralias = 1;
-	if((raspberrypi1b2->name = malloc(raspberrypi1b2->nralias*sizeof(char *))) == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(EXIT_FAILURE);
-	}
-	if((raspberrypi1b2->name[0] = strdup("raspberrypi1b2")) == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(EXIT_FAILURE);
-	}
+	platform_register(&raspberrypi1b2, "raspberrypi1b2");
 
 	raspberrypi1b2->soc = soc_get("Broadcom", "2835");
 	raspberrypi1b2->soc->setMap(map);
@@ -67,7 +62,7 @@ void raspberrypi1b2Init(void) {
 	raspberrypi1b2->digitalRead = raspberrypi1b2->soc->digitalRead;
 	raspberrypi1b2->digitalWrite = raspberrypi1b2->soc->digitalWrite;
 	raspberrypi1b2->pinMode = raspberrypi1b2->soc->pinMode;
-	raspberrypi1b2->setup = raspberrypi1b2->soc->setup;
+	raspberrypi1b2->setup = raspberrypi1b2Setup;
 
 	raspberrypi1b2->isr = raspberrypi1b2->soc->isr;
 	raspberrypi1b2->waitForInterrupt = raspberrypi1b2->soc->waitForInterrupt;
@@ -76,6 +71,4 @@ void raspberrypi1b2Init(void) {
 	raspberrypi1b2->gc = raspberrypi1b2->soc->gc;
 
 	raspberrypi1b2->validGPIO = &raspberrypi1b2ValidGPIO;
-
-	platform_register(raspberrypi1b2);
 }

@@ -9,13 +9,6 @@
 #ifndef _FIRMWARE_H_
 #define _FIRMWARE_H_
 
-typedef struct firmware_t {
-	double lpf;
-	double hpf;
-	double version;
-} firmware_t;
-struct firmware_t firmware;
-
 typedef enum {
 	FW_PROG_OP_FAIL = 1,
 	FW_INIT_FAIL,

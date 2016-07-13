@@ -52,6 +52,11 @@ static void createMessage(char *message, int systemcode, int unitcode, int state
 static void parseCode(char *message) {
 	int binary[RAW_LENGTH/4], x = 0, i = 0;
 
+	if(pollin->rawlen>RAW_LENGTH) {
+		logprintf(LOG_ERR, "pollin: parsecode - invalid parameter passed %d", pollin->rawlen);
+		return;
+	}
+
 	for(x=0;x<pollin->rawlen-2;x+=4) {
 		if(pollin->raw[x+3] > (int)((double)AVG_PULSE_LENGTH*((double)PULSE_MULTIPLIER/2))) {
 			binary[i++] = 1;

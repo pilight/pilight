@@ -17,8 +17,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <libgen.h>
-#include <sys/socket.h>
-#include <sys/un.h>
+
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <fcntl.h>

@@ -195,22 +195,24 @@ static struct layout_t {
  { "PI1", 0, { 0x120, 4 }, { 0x130, 1 }, FUNCTION_DIGITAL, PINMODE_NOT_SET, 0 },
  { "PI2", 0, { 0x120, 8 }, { 0x130, 2 }, FUNCTION_DIGITAL, PINMODE_NOT_SET, 0 },
  { "PI3", 0, { 0x120, 12 }, { 0x130, 3 }, FUNCTION_DIGITAL, PINMODE_NOT_SET, 0 },
- { "PI4", 0, { 0x120, 20 }, { 0x130, 4 }, FUNCTION_DIGITAL, PINMODE_NOT_SET, 0 },
- { "PI5", 0, { 0x120, 24 }, { 0x130, 5 }, FUNCTION_DIGITAL, PINMODE_NOT_SET, 0 },
- { "PI6", 0, { 0x120, 28 }, { 0x130, 6 }, FUNCTION_DIGITAL, PINMODE_NOT_SET, 0 },
- { "PI7", 0, { 0x124, 0 }, { 0x130, 7 }, FUNCTION_DIGITAL, PINMODE_NOT_SET, 0 },
- { "PI8", 0, { 0x124, 4 }, { 0x130, 8 }, FUNCTION_DIGITAL, PINMODE_NOT_SET, 0 },
- { "PI9", 0, { 0x124, 8 }, { 0x130, 9 }, FUNCTION_DIGITAL, PINMODE_NOT_SET, 0 },
- { "PI10", 0, { 0x124, 12 }, { 0x130, 10 }, FUNCTION_DIGITAL | FUNCTION_INTERRUPT, PINMODE_NOT_SET, 0 },
- { "PI11", 0, { 0x124, 16 }, { 0x130, 11 }, FUNCTION_DIGITAL | FUNCTION_INTERRUPT, PINMODE_NOT_SET, 0 },
- { "PI12", 0, { 0x124, 20 }, { 0x130, 12 }, FUNCTION_DIGITAL | FUNCTION_INTERRUPT, PINMODE_NOT_SET, 0 },
- { "PI13", 0, { 0x124, 24 }, { 0x130, 13 }, FUNCTION_DIGITAL | FUNCTION_INTERRUPT, PINMODE_NOT_SET, 0 },
- { "PI14", 0, { 0x124, 28 }, { 0x130, 14 }, FUNCTION_DIGITAL, PINMODE_NOT_SET, 0 },
- { "PI15", 0, { 0x128, 0 }, { 0x130, 15 }, FUNCTION_DIGITAL, PINMODE_NOT_SET, 0 },
- { "PI16", 0, { 0x128, 4 }, { 0x130, 16 }, FUNCTION_DIGITAL, PINMODE_NOT_SET, 0 },
- { "PI17", 0, { 0x128, 8 }, { 0x130, 17 }, FUNCTION_DIGITAL, PINMODE_NOT_SET, 0 },
- { "PI18", 0, { 0x128, 12 }, { 0x130, 18 }, FUNCTION_DIGITAL, PINMODE_NOT_SET, 0 },
- { "PI19", 0, { 0x128, 16 }, { 0x130, 19 }, FUNCTION_DIGITAL, PINMODE_NOT_SET, 0 }
+ { "PI4", 0, { 0x120, 16 }, { 0x130, 4 }, FUNCTION_DIGITAL, PINMODE_NOT_SET, 0 },
+ { "PI5", 0, { 0x120, 20 }, { 0x130, 5 }, FUNCTION_DIGITAL, PINMODE_NOT_SET, 0 },
+ { "PI6", 0, { 0x120, 24 }, { 0x130, 6 }, FUNCTION_DIGITAL, PINMODE_NOT_SET, 0 },
+ { "PI7", 0, { 0x124, 28 }, { 0x130, 7 }, FUNCTION_DIGITAL, PINMODE_NOT_SET, 0 },
+ { "PI8", 0, { 0x124, 0 }, { 0x130, 8 }, FUNCTION_DIGITAL, PINMODE_NOT_SET, 0 },
+ { "PI9", 0, { 0x124, 4 }, { 0x130, 9 }, FUNCTION_DIGITAL, PINMODE_NOT_SET, 0 },
+ { "PI10", 0, { 0x124, 8 }, { 0x130, 10 }, FUNCTION_DIGITAL | FUNCTION_INTERRUPT, PINMODE_NOT_SET, 0 },
+ { "PI11", 0, { 0x124, 12 }, { 0x130, 11 }, FUNCTION_DIGITAL | FUNCTION_INTERRUPT, PINMODE_NOT_SET, 0 },
+ { "PI12", 0, { 0x124, 16 }, { 0x130, 12 }, FUNCTION_DIGITAL | FUNCTION_INTERRUPT, PINMODE_NOT_SET, 0 },
+ { "PI13", 0, { 0x124, 20 }, { 0x130, 13 }, FUNCTION_DIGITAL | FUNCTION_INTERRUPT, PINMODE_NOT_SET, 0 },
+ { "PI14", 0, { 0x124, 24 }, { 0x130, 14 }, FUNCTION_DIGITAL, PINMODE_NOT_SET, 0 },
+ { "PI15", 0, { 0x128, 28 }, { 0x130, 15 }, FUNCTION_DIGITAL, PINMODE_NOT_SET, 0 },
+ { "PI16", 0, { 0x128, 0 }, { 0x130, 16 }, FUNCTION_DIGITAL, PINMODE_NOT_SET, 0 },
+ { "PI17", 0, { 0x128, 4 }, { 0x130, 17 }, FUNCTION_DIGITAL, PINMODE_NOT_SET, 0 },
+ { "PI18", 0, { 0x128, 8 }, { 0x130, 18 }, FUNCTION_DIGITAL, PINMODE_NOT_SET, 0 },
+ { "PI19", 0, { 0x128, 12 }, { 0x130, 19 }, FUNCTION_DIGITAL, PINMODE_NOT_SET, 0 },
+ { "PI20", 0, { 0x128, 16 }, { 0x130, 20 }, FUNCTION_DIGITAL, PINMODE_NOT_SET, 0 },
+ { "PI21", 0, { 0x128, 20 }, { 0x130, 21 }, FUNCTION_DIGITAL, PINMODE_NOT_SET, 0 }
 };
 
 static int allwinnerA10Setup(void) {
@@ -235,10 +237,14 @@ static void allwinnerA10SetMap(int *map) {
 	allwinnerA10->map = map;
 }
 
+static void allwinnerA10SetIRQ(int *irq) {
+	allwinnerA10->irq = irq;
+}
+
 static int allwinnerA10DigitalWrite(int i, enum digital_value_t value) {
 	struct layout_t *pin = NULL;
 	unsigned long addr = 0;
-	unsigned long val = 0; 
+	uint32_t val = 0;
 
 	pin = &allwinnerA10->layout[allwinnerA10->map[i]];
 
@@ -270,7 +276,7 @@ static int allwinnerA10DigitalRead(int i) {
 	void *gpio = NULL;
 	struct layout_t *pin = NULL;
 	unsigned long addr = 0;
-	unsigned long val = 0;
+	uint32_t val = 0;
 
 	pin = &allwinnerA10->layout[allwinnerA10->map[i]];
 	gpio = allwinnerA10->gpio[pin->addr];
@@ -297,7 +303,7 @@ static int allwinnerA10DigitalRead(int i) {
 static int allwinnerA10PinMode(int i, enum pinmode_t mode) {
 	struct layout_t *pin = NULL;
 	unsigned long addr = 0;
-	unsigned long val = 0;
+	uint32_t val = 0;
 
 	if(allwinnerA10->map == NULL) {
 		wiringXLog(LOG_ERR, "The %s %s has not yet been mapped", allwinnerA10->brand, allwinnerA10->chip);
@@ -329,7 +335,7 @@ static int allwinnerA10ISR(int i, enum isr_mode_t mode) {
 	char path[PATH_MAX];
 	int x = 0;
 
-	if(allwinnerA10->map == NULL) {
+	if(allwinnerA10->irq == NULL) {
 		wiringXLog(LOG_ERR, "The %s %s has not yet been mapped", allwinnerA10->brand, allwinnerA10->chip);
 		return -1; 
 	} 
@@ -338,7 +344,7 @@ static int allwinnerA10ISR(int i, enum isr_mode_t mode) {
 		return -1;
 	}
 
-	pin = &allwinnerA10->layout[allwinnerA10->map[i]];
+	pin = &allwinnerA10->layout[allwinnerA10->irq[i]];
 	char name[strlen(pin->name)+1];
 
 	memset(&name, '\0', strlen(pin->name)+1);
@@ -374,7 +380,7 @@ static int allwinnerA10ISR(int i, enum isr_mode_t mode) {
 }
 
 static int allwinnerA10WaitForInterrupt(int i, int ms) {
-	struct layout_t *pin = &allwinnerA10->layout[allwinnerA10->map[i]];
+	struct layout_t *pin = &allwinnerA10->layout[allwinnerA10->irq[i]];
 
 	if(pin->mode != PINMODE_INTERRUPT) {
 		wiringXLog(LOG_ERR, "The %s %s GPIO %d is not set to interrupt mode", allwinnerA10->brand, allwinnerA10->chip, i);
@@ -428,7 +434,7 @@ static int allwinnerA10GC(void) {
 static int allwinnerA10SelectableFd(int i) {
 	struct layout_t *pin = NULL;
 
-	if(allwinnerA10->map == NULL) {
+	if(allwinnerA10->irq == NULL) {
 		wiringXLog(LOG_ERR, "The %s %s has not yet been mapped", allwinnerA10->brand, allwinnerA10->chip);
 		return -1; 
 	} 
@@ -437,17 +443,13 @@ static int allwinnerA10SelectableFd(int i) {
 		return -1;
 	}
 
-	pin = &allwinnerA10->layout[allwinnerA10->map[i]];
+	pin = &allwinnerA10->layout[allwinnerA10->irq[i]];
 	return pin->fd;
 }
 
 void allwinnerA10Init(void) {
-	allwinnerA10 = malloc(sizeof(struct soc_t));
+	soc_register(&allwinnerA10, "Allwinner", "A10");
 
-	strcpy(allwinnerA10->brand, "Allwinner");
-	strcpy(allwinnerA10->chip, "A10");
-
-	allwinnerA10->map = NULL;
 	allwinnerA10->layout = layout;
 
 	allwinnerA10->support.isr_modes = ISR_MODE_RISING | ISR_MODE_FALLING | ISR_MODE_BOTH | ISR_MODE_NONE;
@@ -465,8 +467,8 @@ void allwinnerA10Init(void) {
 	allwinnerA10->digitalWrite = &allwinnerA10DigitalWrite;
 	allwinnerA10->getPinName = &allwinnerA10GetPinName;
 	allwinnerA10->setMap = &allwinnerA10SetMap;
+	allwinnerA10->setIRQ = &allwinnerA10SetIRQ;
 	allwinnerA10->isr = &allwinnerA10ISR;
 	allwinnerA10->waitForInterrupt = &allwinnerA10WaitForInterrupt;
 
-	soc_register(allwinnerA10);
 }

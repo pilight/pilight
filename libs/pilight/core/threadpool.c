@@ -7,7 +7,6 @@
 */
 
 
-#include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -16,11 +15,16 @@
 #include <limits.h>
 #include <sys/time.h>
 #ifdef _WIN32
+	#include <winsock2.h>
 	#include <windows.h>
+	#define SIGRTMIN 34
 #endif
+#define __USE_UNIX98
+#include <pthread.h>
 
 #include "gc.h"
 #include "log.h"
+#include "proc.h"
 #include "common.h"
 #include "errno.h"
 #include "threadpool.h"
@@ -87,24 +91,31 @@ static void *worker(void *param) {
 	int linger = 0;
 
 	sem_wait(&node->running);
-	while(__sync_add_and_fetch(&node->loop, 0) == 1) {
+	while(node->loop == 1) {
 		pthread_mutex_lock(&node->lock);
 
-		while(__sync_add_and_fetch(&node->loop, 0) == 1 &&
-					__sync_add_and_fetch(&nrtasks, 0) == 0) {
+		while(node->loop == 1 && __sync_add_and_fetch(&nrtasks, 0) == 0) {
+#ifdef _WIN32
+			/*
+			 * Somehow the pthread_cond_timedwait doesn't work well on windows
+			 * when we also use the SetWaitableTimer elsewhere.
+			 */
+			WaitForSingleObjectEx(node->signal, 1000L, TRUE);
+#else
 			gettimeofday(&now, NULL);
 			timeToWait.tv_sec = now.tv_sec+1;
-			timeToWait.tv_nsec = 0;
+			timeToWait.tv_nsec = 0;	
 			pthread_cond_timedwait(&node->signal, &node->lock, &timeToWait);
-			if(__sync_add_and_fetch(&node->loop, 0) == 0) {
+#endif
+			if(node->loop == 0) {
 				break;
 			}
 			linger++;
-			int l = __sync_add_and_fetch(&maxlinger, 0);
+			int l = maxlinger;
 
 			if(linger > l) {
 				pthread_mutex_lock(&workers_lock);
-				int mw = __sync_add_and_fetch(&minworkers, 0);
+				int mw = minworkers;
 				if(nrworkers > mw) {
 					pthread_detach(node->pth);
 					threadpool_remove_worker(node->id);
@@ -119,7 +130,7 @@ static void *worker(void *param) {
 		}
 		linger = 0;
 		pthread_mutex_unlock(&node->lock);
-		if(__sync_add_and_fetch(&node->loop, 0) == 0) {
+		if(node->loop == 0) {
 			break;
 		}
 
@@ -144,9 +155,16 @@ static void *worker(void *param) {
 			if(pilight.debuglevel >= 1) {
 				clock_gettime(CLOCK_MONOTONIC, &copy.timestamp.first);
 			}
+			if(pilight.debuglevel >= 2) {
+				getThreadCPUUsage(node->pth, &node->cpu_usage);
+			}
 			copy.func(&copy);
 
 			if(pilight.debuglevel >= 1) {
+				if(pilight.debuglevel >= 2) {
+					getThreadCPUUsage(node->pth, &node->cpu_usage);
+					fprintf(stderr, "worker %d: %f%% CPU", node->nr, node->cpu_usage.cpu_per);
+				}
 				clock_gettime(CLOCK_MONOTONIC, &copy.timestamp.second);
 				logprintf(LOG_DEBUG, "task %s executed in %.6f seconds", copy.name,
 					((double)copy.timestamp.second.tv_sec + 1.0e-9*copy.timestamp.second.tv_nsec) -
@@ -155,7 +173,7 @@ static void *worker(void *param) {
 
 			if(copy.ref == NULL ||
 				 (sem_trywait(copy.ref) == -1 && errno == EAGAIN) ||
-				 __sync_add_and_fetch(&node->loop, 0) == 0) {
+				 node->loop == 0) {
 				if(copy.free != NULL && copy.userdata != NULL && copy.reason != REASON_END) {
 					copy.free(copy.userdata);
 				}
@@ -199,13 +217,21 @@ void threadpool_add_worker(void) {
 	}
 	memset(node, 0, sizeof(struct threadpool_workers_t));
 
+#ifdef _WIN32
+	SleepEx(1, TRUE);
+#else
 	usleep(1);
+#endif
 	gettimeofday(&tv, NULL);
 
 	pthread_mutexattr_init(&node->attr);
 	pthread_mutexattr_settype(&node->attr, PTHREAD_MUTEX_RECURSIVE);
 	pthread_mutex_init(&node->lock, &node->attr);
+#ifdef _WIN32
+	node->signal = CreateEvent(NULL, FALSE, FALSE, NULL);
+#else
 	pthread_cond_init(&node->signal, NULL);
+#endif
 
 #ifndef _WIN32
 	sigset_t new, old;
@@ -229,7 +255,7 @@ void threadpool_add_worker(void) {
 	pthread_mutex_lock(&workers_lock);
 	struct threadpool_workers_t *tmp = threadpool_workers;
 	if(tmp) {
-		int mw = __sync_add_and_fetch(&maxworkers, 0);
+		int mw = maxworkers;
 		int list[mw+1], i = 0, x = 0;
 		memset(&list, 0, mw+1);
 		while(tmp) {
@@ -272,8 +298,7 @@ int threadpool_free_runs(int reason) {
 }
 
 unsigned long threadpool_add_work(int reason, sem_t *ref, char *name, int priority, void *(*func)(void *), void *(*free)(void *), void *userdata) {
-	if(__sync_add_and_fetch(&acceptwork, 0) == 0 &&
-		__sync_add_and_fetch(&init, 0) == 0) {
+	if(acceptwork == 0 && init == 0) {
 		// Adding work to uninitialized threadpool
 		return -1;
 	}
@@ -287,7 +312,11 @@ unsigned long threadpool_add_work(int reason, sem_t *ref, char *name, int priori
 		OUT_OF_MEMORY
 	}
 
+#ifdef _WIN32
+	SleepEx(1, TRUE);
+#else
 	usleep(1);
+#endif
 	gettimeofday(&tv, NULL);
 
 	if((node->name = MALLOC(strlen(name)+1)) == NULL) {
@@ -325,7 +354,11 @@ unsigned long threadpool_add_work(int reason, sem_t *ref, char *name, int priori
 	struct threadpool_workers_t *workers = threadpool_workers;
 	while(workers) {
 		pthread_mutex_unlock(&workers->lock);
+#ifdef _WIN32
+		SetEvent(workers->signal);
+#else
 		pthread_cond_signal(&workers->signal);
+#endif
 		workers = workers->next;
 	}
 	pthread_mutex_unlock(&workers_lock);
@@ -353,9 +386,9 @@ void threadpool_init(int min, int max, int linger) {
 
 	timer_init(&timer, SIGRTMIN, threadpool_timer_handler, TIMER_ABSTIME, tv1, tv2);
 
-	__sync_add_and_fetch(&maxworkers, max);
-	__sync_add_and_fetch(&minworkers, min);
-	__sync_add_and_fetch(&maxlinger, linger);
+	maxworkers = max;
+	minworkers = min;
+	maxlinger = linger;
 	// __sync_add_and_fetch(&acceptwork, 1);
 
 	pthread_mutexattr_init(&tasks_attr);
@@ -369,7 +402,7 @@ void threadpool_init(int min, int max, int linger) {
 	for(i=0;i<min;i++) {
 		threadpool_add_worker();
 	}
-	__sync_add_and_fetch(&init, 1);
+	init = 1;
 	while(ttasks) {
 		struct timer_list_t *tmp = ttasks;
 		timer_add_task(&timer, tmp->name, tmp->tv, tmp->task, tmp->userdata);
@@ -379,12 +412,12 @@ void threadpool_init(int min, int max, int linger) {
 }
 
 unsigned long threadpool_add_scheduled_work(char *name, void *(*task)(void *), struct timeval tv, void *userdata) {
-	if(__sync_add_and_fetch(&acceptwork, 0) == 0) {
+	if(acceptwork == 0) {
 		// Adding work to uninitialized threadpool
 		return -1;
 	}
 
-	if(__sync_add_and_fetch(&init, 0) == 0) {
+	if(init == 0) {
 		/*
 		 * We need to buffer any scheduled task until we are forked
 		 * and threadpool_init is run.
@@ -415,11 +448,13 @@ static void threadpool_workers_gc(void) {
 	struct threadpool_workers_t *tmp = threadpool_workers;
 	while(threadpool_workers != NULL) {
 		tmp = threadpool_workers;
-		while(__sync_add_and_fetch(&threadpool_workers->loop, 0) > 0) {
-			__sync_add_and_fetch(&threadpool_workers->loop, -1);
-		}
+		threadpool_workers->loop = 0;
 		pthread_mutex_unlock(&threadpool_workers->lock);
+#ifdef _WIN32
+		SetEvent(threadpool_workers->signal);
+#else
 		pthread_cond_signal(&threadpool_workers->signal);
+#endif
 		sem_wait(&threadpool_workers->running);
 		pthread_join(threadpool_workers->pth, NULL);
 		sem_destroy(&threadpool_workers->running);
@@ -450,10 +485,10 @@ static void threadpool_tasks_gc(void) {
 }
 
 void threadpool_gc() {
-	__sync_add_and_fetch(&acceptwork, -1);
+	acceptwork = 0;
 	threadpool_workers_gc();
 	threadpool_tasks_gc();
 
 	timer_gc(&timer);
-	__sync_add_and_fetch(&init, -1);
+	init = 0;
 }

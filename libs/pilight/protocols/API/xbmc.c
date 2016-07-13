@@ -104,10 +104,7 @@ static int callback(struct eventpool_fd_t *node, int event) {
 
 	switch(event) {
 		case EV_CONNECT_SUCCESS: {
-			printf("a\n");
-			if(__sync_add_and_fetch(&settings->connected, 0) == 0) {
-				__sync_add_and_fetch(&settings->connected, 1);
-			}
+			settings->connected = 1;
 			settings->reset = 1;
 			createMessage(settings->server, settings->port, home, none);
 			eventpool_fd_enable_read(node);
@@ -161,15 +158,12 @@ static int callback(struct eventpool_fd_t *node, int event) {
 		} break;
 		case EV_CONNECT_FAILED:
 		case EV_DISCONNECTED:
-		printf("b\n");
 			if(settings->reset == 1) {
 				createMessage(settings->server, settings->port, shut, none);
 				settings->reset = 0;
 			}
 			eventpool_fd_remove(node);
-			if(__sync_add_and_fetch(&settings->connected, 0) == 1) {
-				__sync_add_and_fetch(&settings->connected, -1);
-			}
+			settings->connected = 0;
 			return -1;
 		break;
 	}
@@ -180,7 +174,7 @@ static void *thread(void *param) {
 	struct threadpool_tasks_t *task = param;
 	struct data_t *settings = task->userdata;
 
-	if(__sync_add_and_fetch(&settings->connected, 0) == 0) {
+	if(settings->connected == 0) {
 		eventpool_socket_add("xbmc", settings->server, settings->port, AF_INET, SOCK_STREAM, 0, EVENTPOOL_TYPE_SOCKET_CLIENT, callback, NULL, settings);
 		struct timeval tv;
 		tv.tv_sec = 1;

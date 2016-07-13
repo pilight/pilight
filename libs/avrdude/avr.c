@@ -34,6 +34,10 @@
 #include "pindefs.h"
 #include "safemode.h"
 
+#ifdef _WIN32
+	#include <windows.h>
+#endif
+
 FP_UpdateProgress avr_update_progress;
 
 void avr_set_update_progress(FP_UpdateProgress callback) {
@@ -365,7 +369,11 @@ int avr_write_page(PROGRAMMER * pgm, AVRPART * p, AVRMEM * mem,
    * since we don't know what voltage the target AVR is powered by, be
    * conservative and delay the max amount the spec says to wait
    */
+#ifdef _WIN32
+  SleepEx(1, TRUE);
+#else
   usleep(mem->max_write_delay);
+#endif
 
   return 0;
 }
@@ -463,7 +471,11 @@ int avr_write_byte_default(PROGRAMMER * pgm, AVRPART * p, AVRMEM * mem,
      * read operation not supported for this memory type, just wait
      * the max programming time and then return
      */
-    usleep(mem->max_write_delay); /* maximum write delay */
+#ifdef _WIN32
+		SleepEx(1, TRUE);
+#else
+		usleep(mem->max_write_delay); /* maximum write delay */
+#endif
     return 0;
   }
 
@@ -479,7 +491,11 @@ int avr_write_byte_default(PROGRAMMER * pgm, AVRPART * p, AVRMEM * mem,
        * doesn't work, and we need to delay the worst case write time
        * specified for the chip.
        */
-      usleep(mem->max_write_delay);
+#ifdef _WIN32
+			SleepEx(1, TRUE);
+#else
+			usleep(mem->max_write_delay); /* maximum write delay */
+#endif
       rc = pgm->read_byte(pgm, p, mem, addr, &r);
       if (rc != 0) {
         return -5;
@@ -522,7 +538,11 @@ int avr_write_byte_default(PROGRAMMER * pgm, AVRPART * p, AVRMEM * mem,
       if (pgm->pinno[PPI_AVR_VCC]) {
         logprintf(LOG_NOTICE, "attempting to do this now ...");
         pgm->powerdown(pgm);
-        usleep(250000);
+#ifdef _WIN32
+				SleepEx(250, TRUE);
+#else
+				usleep(250000); /* maximum write delay */
+#endif
         rc = pgm->initialize(pgm, p);
         if (rc < 0) {
           logprintf(LOG_ERR, "initialization failed, rc=%d", rc);

@@ -27,43 +27,41 @@ static int map[] = {
 	/* 	FSEL17,	FSEL18,	FSEL27,	FSEL22 	*/
 			17, 		18, 		27, 		22,
 	/* 	FSEL23,	FSEL24,	FSEL25,	FSEL4 	*/
-			23, 		24, 		25, 		4,
+			23, 		24, 		25, 		 4,
 	/* 	FSEL2,	FSEL3,	FSEL8,	FSEL7 	*/
-			2, 			3, 			8, 			7,
+			 2, 		 3, 		 8, 		 7,
 	/*	FSEL10,	FSEL9,	FSEL11,	FSEL14	*/
-			10,			9,			11,			14,
-	/*	FSEL15, FSEL28,	FSEL29,	FSEL30	*/
-			15,			28,			29,			30,
-	/*	FSEL31,	FSEL5,	FSEL6,	FSEL13	*/
-			31,			5,			6,			13,
+			10,			 9,			11,			14,
+	/*	FSEL15													*/
+			15,			-1,			-1,			-1,
+	/*					FSEL5,	FSEL6,	FSEL13	*/
+			-1,			 5,			 6,			13,
 	/*	FSEL19,	FSEL26,	FSEL12,	FSEL16	*/
 			19,			26,			12,			16,
 	/*	FSEL20,	FSEL21,	FSEL0,	FSEL1		*/
-			20,			21,			0,			1
+			20,			21,			 0,			 1
 };
 
 static int raspberrypi3ValidGPIO(int pin) {
 	if(pin >= 0 && pin < (sizeof(map)/sizeof(map[0]))) {
+		if(map[pin] == -1) {
+			return -1;
+		}		
 		return 0;
 	} else {
 		return -1;
 	}
 }
 
+static int raspberrypi3Setup(void) {
+	raspberrypi3->soc->setup();
+	raspberrypi3->soc->setMap(map);
+	raspberrypi3->soc->setIRQ(map);
+	return 0;
+}
+
 void raspberrypi3Init(void) {
-	if((raspberrypi3 = malloc(sizeof(struct platform_t))) == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(EXIT_FAILURE);
-	}
-	raspberrypi3->nralias = 1;
-	if((raspberrypi3->name = malloc(raspberrypi3->nralias*sizeof(char *))) == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(EXIT_FAILURE);
-	}
-	if((raspberrypi3->name[0] = strdup("raspberrypi3")) == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(EXIT_FAILURE);
-	}
+	platform_register(&raspberrypi3, "raspberrypi3");
 
 	/* 
 	 * The Raspberry Pi 3 uses the Broadcom 2837,
@@ -76,7 +74,7 @@ void raspberrypi3Init(void) {
 	raspberrypi3->digitalRead = raspberrypi3->soc->digitalRead;
 	raspberrypi3->digitalWrite = raspberrypi3->soc->digitalWrite;
 	raspberrypi3->pinMode = raspberrypi3->soc->pinMode;
-	raspberrypi3->setup = raspberrypi3->soc->setup;
+	raspberrypi3->setup = &raspberrypi3Setup;
 
 	raspberrypi3->isr = raspberrypi3->soc->isr;
 	raspberrypi3->waitForInterrupt = raspberrypi3->soc->waitForInterrupt;
@@ -85,6 +83,4 @@ void raspberrypi3Init(void) {
 	raspberrypi3->gc = raspberrypi3->soc->gc;
 
 	raspberrypi3->validGPIO = &raspberrypi3ValidGPIO;
-
-	platform_register(raspberrypi3);
 }

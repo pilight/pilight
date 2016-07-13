@@ -31,6 +31,10 @@
 #include "action.h"
 #include "actions/action_header.h"
 
+#ifdef _WIN32
+	#include <windows.h>
+#endif
+
 typedef struct execution_t {
 	char *name;
 	unsigned long id;
@@ -206,7 +210,11 @@ int event_action_gc(void) {
 
 unsigned long event_action_set_execution_id(char *name) {
 	struct timeval tv;
+#ifdef _WIN32
+	SleepEx(1, TRUE);
+#else
 	usleep(1);
+#endif
 	gettimeofday(&tv, NULL);
 
 	int match = 0;
@@ -262,7 +270,7 @@ void event_action_thread_init(struct device_t *dev) {
 void event_action_thread_start(struct device_t *dev, struct event_actions_t *action, void *(*func)(void *), struct rules_actions_t *obj) {
 	struct event_action_thread_t *thread = dev->action_thread;
 
-	if(__sync_add_and_fetch(&thread->running, 0) == 1) {
+	if(thread->running == 1) {
 		logprintf(LOG_DEBUG, "overriding previous \"%s\" action for device \"%s\"", thread->action->name, dev->id);
 	}
 
@@ -281,7 +289,7 @@ void event_action_thread_stop(struct device_t *dev) {
 
 	if(dev != NULL) {
 		thread = dev->action_thread;
-		if(__sync_add_and_fetch(&thread->running, 0) == 1) {
+		if(thread->running == 1) {
 			logprintf(LOG_DEBUG, "aborting running \"%s\" action for device \"%s\"", thread->action->name, dev->id);
 			thread->action->gc((void *)thread);
 			event_action_set_execution_id(dev->id);
@@ -296,7 +304,7 @@ void event_action_thread_free(struct device_t *dev) {
 	if(dev != NULL) {
 		thread = dev->action_thread;
 		if(thread != NULL) {
-			if(__sync_add_and_fetch(&thread->running, 0) == 1) {
+			if(thread->running == 1) {
 				event_action_set_execution_id(dev->id);
 				logprintf(LOG_DEBUG, "aborted running actions for device \"%s\"", dev->id);
 				thread->action->gc((void *)thread);
@@ -308,15 +316,11 @@ void event_action_thread_free(struct device_t *dev) {
 }
 
 void event_action_started(struct event_action_thread_t *thread) {
-	if(__sync_add_and_fetch(&thread->running, 0) == 0) {
-		__sync_add_and_fetch(&thread->running, 1);
-	}
+	thread->running = 1;
 	logprintf(LOG_INFO, "started \"%s\" action for device \"%s\"", thread->action->name, thread->device->id);
 }
 
 void event_action_stopped(struct event_action_thread_t *thread) {
-	if(__sync_add_and_fetch(&thread->running, 0) == 1) {
-		__sync_add_and_fetch(&thread->running, -1);
-	}
+	thread->running = 0;
 	logprintf(LOG_INFO, "stopped \"%s\" action for device \"%s\"", thread->action->name, thread->device->id);
 }

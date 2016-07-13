@@ -9,7 +9,18 @@
 #ifndef _TIMERPOOL_H_
 #define _TIMERPOOL_H_
 
-#include <netinet/in.h>
+#ifdef _WIN32
+	#if _WIN32_WINNT < 0x0501
+		#undef _WIN32_WINNT
+		#define _WIN32_WINNT 0x0501
+	#endif
+	#define WIN32_LEAN_AND_MEAN
+	#include <winsock2.h>
+	#include <ws2tcpip.h>
+	#define MSG_NOSIGNAL 0
+#else
+	#include <netinet/in.h>
+#endif
 #include <signal.h>
 #include <time.h>
 #include <pthread.h>
@@ -29,7 +40,13 @@ struct timer_tasks_t {
 
 struct timers_t {
 	int init;
+#ifdef _WIN32
+	HANDLE timer;
+	HANDLE queue;
+	int active;
+#else
 	timer_t timer;
+#endif
 	unsigned long sec;
 	unsigned long nsec;
 	pthread_mutex_t lock;

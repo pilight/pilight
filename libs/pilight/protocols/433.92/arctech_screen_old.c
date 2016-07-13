@@ -53,6 +53,11 @@ static void parseCode(char *message) {
 	int binary[RAW_LENGTH/4], x = 0, i = 0;
 	int len = (int)((double)AVG_PULSE_LENGTH*((double)PULSE_MULTIPLIER/2));
 
+	if(arctech_screen_old->rawlen>RAW_LENGTH) {
+		logprintf(LOG_ERR, "arctech_screen_old: parsecode - invalid parameter passed %d", arctech_screen_old->rawlen);
+		return;
+	}
+
 	for(x=0;x<arctech_screen_old->rawlen-2;x+=4) {
 		if(arctech_screen_old->raw[x+3] > len) {
 			binary[i++] = 0;

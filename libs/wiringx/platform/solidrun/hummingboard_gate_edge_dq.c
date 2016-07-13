@@ -99,30 +99,22 @@ static int hummingboardGateEdgeDQValidGPIO(int pin) {
 
 static int hummingboardGateEdgeDQISR(int i, enum isr_mode_t mode) {
 	if(irq[i] == -1) {
-		wiringXLog(LOG_ERR, "The %s gpio %d cannot be used as interrupt", hummingboardGateEdgeDQ->name, i);
+		wiringXLog(LOG_ERR, "The %s gpio %d cannot be used as interrupt", hummingboardGateEdgeDQ->name[0], i);
 		return -1;
 	}
 	return hummingboardGateEdgeDQ->soc->isr(i, mode);
 }
 
+static int hummingboardGateEdgeDQSetup(void) {
+	hummingboardGateEdgeDQ->soc->setup();
+	hummingboardGateEdgeDQ->soc->setMap(map);
+	hummingboardGateEdgeDQ->soc->setIRQ(irq);
+	return 0;
+}
+
 void hummingboardGateEdgeDQInit(void) {
-	if((hummingboardGateEdgeDQ = malloc(sizeof(struct platform_t))) == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(EXIT_FAILURE);
-	}
-	hummingboardGateEdgeDQ->nralias = 2;
-	if((hummingboardGateEdgeDQ->name = malloc(hummingboardGateEdgeDQ->nralias*sizeof(char *))) == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(EXIT_FAILURE);
-	}
-	if((hummingboardGateEdgeDQ->name[0] = strdup("hummingboard_edge_dq")) == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(EXIT_FAILURE);
-	}
-	if((hummingboardGateEdgeDQ->name[1] = strdup("hummingboard_gate_dq")) == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(EXIT_FAILURE);
-	}
+	platform_register(&hummingboardGateEdgeDQ, "hummingboard_edge_dq");
+	platform_add_alias(&hummingboardGateEdgeDQ, "hummingboard_gate_dq");
 
 	hummingboardGateEdgeDQ->soc = soc_get("NXP", "IMX6DQRM");
 	hummingboardGateEdgeDQ->soc->setMap(map);
@@ -131,7 +123,7 @@ void hummingboardGateEdgeDQInit(void) {
 	hummingboardGateEdgeDQ->digitalRead = hummingboardGateEdgeDQ->soc->digitalRead;
 	hummingboardGateEdgeDQ->digitalWrite = hummingboardGateEdgeDQ->soc->digitalWrite;
 	hummingboardGateEdgeDQ->pinMode = hummingboardGateEdgeDQ->soc->pinMode;
-	hummingboardGateEdgeDQ->setup = hummingboardGateEdgeDQ->soc->setup;
+	hummingboardGateEdgeDQ->setup = &hummingboardGateEdgeDQSetup;
 
 	hummingboardGateEdgeDQ->isr = &hummingboardGateEdgeDQISR;
 	hummingboardGateEdgeDQ->waitForInterrupt = hummingboardGateEdgeDQ->soc->waitForInterrupt;
@@ -141,5 +133,4 @@ void hummingboardGateEdgeDQInit(void) {
 
 	hummingboardGateEdgeDQ->validGPIO = &hummingboardGateEdgeDQValidGPIO;
 
-	platform_register(hummingboardGateEdgeDQ);
 }

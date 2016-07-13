@@ -16,7 +16,16 @@
 #include <sys/ioctl.h>
 #include <linux/types.h>
 #include <linux/i2c.h>
-#include <linux/i2c-dev.h>
+
+#define I2C_SLAVE	0x0703
+#define I2C_SMBUS	0x0720
+
+struct i2c_smbus_ioctl_data {
+	__u8 read_write;
+	__u8 command;
+	__u32 size;
+	union i2c_smbus_data *data;
+};
 
 inline __s32 i2c_smbus_access(int fd, char rw, int cmd, int size, union i2c_smbus_data *data);
 inline __s32 i2c_smbus_read_byte(int fd);

@@ -584,7 +584,7 @@ int sendmail(char *host, char *login, char *pass, unsigned short port, struct ma
 			request->is_ssl = 0;
 		break;
 		default:
-			logprintf(LOG_ERR, "port %d is not an valid SMTP port", port);
+			logprintf(LOG_ERR, "port %d is not a valid SMTP port", port);
 			FREE(request);
 			if(request->callback != NULL) {
 				request->callback(-1);
@@ -593,7 +593,7 @@ int sendmail(char *host, char *login, char *pass, unsigned short port, struct ma
 		break;
 	}
 	if(request->is_ssl == 1 && ssl_client_init_status() == -1) {
-		logprintf(LOG_ERR, "secure mails require a properly initialized ssl library");
+		logprintf(LOG_ERR, "secure e-mails require a properly initialized SSL library");
 		FREE(request);
 		if(request->callback != NULL) {
 			request->callback(-1);

@@ -216,9 +216,9 @@ void cpuTempInit(void) {
 #ifndef _WIN32
 	// cpuTemp->initDev=&initDev;
 	cpuTemp->gc=&gc;
-#endif
 
 	eventpool_callback(REASON_DEVICE_ADDED, addDevice);
+#endif
 }
 
 #if defined(MODULE) && !defined(_WIN32)

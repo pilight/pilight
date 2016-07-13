@@ -60,7 +60,6 @@ int main_gc(void) {
 	gc_clear();
 
 	FREE(progname);
-	xfree();
 
 #ifdef _WIN32
 	WSACleanup();
@@ -144,8 +143,6 @@ void *receivePulseTrain(void *param) {
 // }
 
 int main(int argc, char **argv) {
-	// memtrack();
-
 	atomicinit();
 	struct options_t *options = NULL;
 	char *args = NULL;

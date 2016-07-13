@@ -111,6 +111,7 @@ struct JsonNode *config_print(int, const char *);
 struct JsonNode *values_print(const char *);
 void *config_values_update(void *param);
 
+void devices_import(struct JsonNode *);
 int devices_select(enum origin_t, char *, struct JsonNode **);
 int devices_select_struct(enum origin_t, char *, struct device_t **);
 int devices_select_protocol(enum origin_t, char *, int, struct protocol_t **);

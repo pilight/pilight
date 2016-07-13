@@ -21,8 +21,6 @@
 #include "../../mbedtls/mbedtls/sha256.h"
 
 int sha256cache_gc(void) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
-
 	struct sha256cache_t *tmp = sha256cache;
 	while(sha256cache) {
 		tmp = sha256cache;
@@ -39,8 +37,6 @@ int sha256cache_gc(void) {
 }
 
 void sha256cache_remove_node(struct sha256cache_t **cache, char *name) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
-
 	struct sha256cache_t *currP, *prevP;
 
 	prevP = NULL;
@@ -63,8 +59,6 @@ void sha256cache_remove_node(struct sha256cache_t **cache, char *name) {
 }
 
 int sha256cache_rm(char *name) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
-
 	sha256cache_remove_node(&sha256cache, name);
 
 	logprintf(LOG_DEBUG, "removed %s from cache", name);
@@ -72,9 +66,7 @@ int sha256cache_rm(char *name) {
 }
 
 int sha256cache_add(char *name) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
-
-	logprintf(LOG_INFO, "chached new sha256 hash");
+	logprintf(LOG_INFO, "cached new sha256 hash");
 
 	unsigned char output[33];
 	char *password = NULL;
@@ -123,8 +115,6 @@ int sha256cache_add(char *name) {
 }
 
 char *sha256cache_get_hash(char *name) {
-	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
-
 	struct sha256cache_t *ftmp = sha256cache;
 	while(ftmp) {
 		if(strcmp(ftmp->name, name) == 0) {

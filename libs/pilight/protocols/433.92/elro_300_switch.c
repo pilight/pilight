@@ -68,6 +68,12 @@ static void createMessage(char *message, unsigned long long systemcode, int unit
  */
 static void parseCode(char *message) {
 	int i = 0, x = 0, binary[RAW_LENGTH/2];
+
+	if(elro_300_switch->rawlen>RAW_LENGTH) {
+		logprintf(LOG_ERR, "elro_300_switch: parsecode - invalid parameter passed %d", elro_300_switch->rawlen);
+		return;
+	}
+
 	//utilize the "code" field
 	//at this point the code field holds translated "0" and "1" codes from the received pulses
 	//this means that we have to combine these ourselves into meaningful values in groups of 2

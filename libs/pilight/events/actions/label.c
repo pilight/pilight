@@ -163,13 +163,13 @@ static int checkArguments(struct rules_actions_t *obj) {
 							}
 						}
 						if(match == 0) {
-							logprintf(LOG_ERR, "switch action \"%s\" is not a valid unit", array[1]);
+							logprintf(LOG_ERR, "label action \"%s\" is not a valid unit", array[1]);
 							array_free(&array, l);
 							return -1;
 						}
 						array_free(&array, l);
 					} else {
-						logprintf(LOG_ERR, "switch action \"FOR\" requires a positive number and a unit e.g. \"1 MINUTE\"");
+						logprintf(LOG_ERR, "label action \"FOR\" requires a positive number and a unit e.g. \"1 MINUTE\"");
 						if(l > 0) {
 							array_free(&array, l);
 						}
@@ -199,7 +199,7 @@ static int checkArguments(struct rules_actions_t *obj) {
 							if(strcmp(array[1], units[i].name) == 0) {
 								match = 1;
 								if(isNumeric(array[0]) != 0) {
-									logprintf(LOG_ERR, "switch action \"AFTER\" requires a positive number and a unit e.g. \"1 MINUTE\"");
+									logprintf(LOG_ERR, "label action \"AFTER\" requires a positive number and a unit e.g. \"1 MINUTE\"");
 									array_free(&array, l);
 									return -1;
 								}
@@ -207,13 +207,13 @@ static int checkArguments(struct rules_actions_t *obj) {
 							}
 						}
 						if(match == 0) {
-							logprintf(LOG_ERR, "switch action \"%s\" is not a valid unit", array[1]);
+							logprintf(LOG_ERR, "label action \"%s\" is not a valid unit", array[1]);
 							array_free(&array, l);
 							return -1;
 						}
 						array_free(&array, l);
 					} else {
-						logprintf(LOG_ERR, "switch action \"AFTER\" requires a positive number and a unit e.g. \"1 MINUTE\"");
+						logprintf(LOG_ERR, "label action \"AFTER\" requires a positive number and a unit e.g. \"1 MINUTE\"");
 						if(l > 0) {
 							array_free(&array, l);
 						}
@@ -257,11 +257,11 @@ static int checkArguments(struct rules_actions_t *obj) {
 						}
 					}
 					if(match == 0) {
-						logprintf(LOG_ERR, "the label action only works with the label devices");
+						logprintf(LOG_ERR, "the label action only works with label devices");
 						return -1;
 					}
 				} else {
-					logprintf(LOG_ERR, "device \"%s\" doesn't exists", jbchild->string_);
+					logprintf(LOG_ERR, "device \"%s\" does not exist", jbchild->string_);
 					return -1;
 				}
 			} else {
@@ -291,7 +291,7 @@ static void *execute(void *param) {
 	}
 
 	if(strcmp(data->old_label, data->new_label) == 0 && data->new_color != NULL && strcmp(data->old_color, data->new_color) == 0) {
-		logprintf(LOG_DEBUG, "device \"%s\" is already labeled \"%s\" with color \"%s\", aborting action \"%s\"", data->device, data->new_label, data->new_color, action_label->name);
+		logprintf(LOG_DEBUG, "device \"%s\" is already labelled \"%s\" with color \"%s\", aborting action \"%s\"", data->device, data->new_label, data->new_color, action_label->name);
 		data->steps = -1;
 	}
 	switch(data->steps) {
@@ -690,7 +690,7 @@ void actionLabelInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "label";
-	module->version = "3.0";
+	module->version = "3.0.1";
 	module->reqversion = "7.0";
 	module->reqcommit = "94";
 }

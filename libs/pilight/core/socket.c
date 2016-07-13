@@ -18,7 +18,9 @@
 #include <string.h>
 #include <sys/types.h>
 #include <sys/time.h>
-#include <arpa/inet.h>
+#ifndef _WIN32
+	#include <arpa/inet.h>
+#endif
 
 #include "pilight.h"
 #include "eventpool.h"
@@ -166,7 +168,7 @@ static int server_callback(struct eventpool_fd_t *node, int event) {
 				perror("getsockname");
 			} else {
 				socket_port = ntohs(servaddr.sin_port);
-				logprintf(LOG_INFO, "daemon listening to port: %d", socket_port);
+				logprintf(LOG_INFO, "daemon listening on port: %d", socket_port);
 			}
 		} break;
 		case EV_READ: {
@@ -214,9 +216,20 @@ int socket_recv(int fd, char **data, size_t *ptr) {
 
 	memset(buffer, '\0', BUFFER_SIZE);
 
+#ifdef _WIN32
 	bytes = recv(fd, buffer, BUFFER_SIZE, 0);
+#else
+	bytes = read(fd, buffer, BUFFER_SIZE);
+#endif
 
 	if(bytes <= 0) {
+#ifdef _WIN32
+		if(bytes < 0 && (WSAGetLastError() == EAGAIN || WSAGetLastError() == EINTR)) {
+#else
+		if(bytes < 0 && (errno == EAGAIN || errno == EINTR)) {
+#endif
+			return 0;
+		}
 		return -1;
 	} else {
 		*ptr += bytes;
@@ -264,25 +277,22 @@ int socket_recv(int fd, char **data, size_t *ptr) {
 	return 0;
 }
 
-/*
- * FIXME
- */
 static void *adhoc_mode(void *param) {
-	// if(socket_server != NULL) {
-		// eventpool_fd_remove(socket_server);
-		// logprintf(LOG_INFO, "shut down socket server due to adhoc mode");
-		// socket_server = NULL;
-	// }
+	if(socket_server != NULL) {
+		eventpool_fd_remove(socket_server);
+		logprintf(LOG_INFO, "shut down socket server due to adhoc mode");
+		socket_server = NULL;
+	}
 	return NULL;
 }
 
 static void *socket_restart(void *param) {
-	// if(socket_server != NULL) {
-		// eventpool_fd_remove(socket_server);
-		// socket_server = NULL;
-	// }
+	if(socket_server != NULL) {
+		eventpool_fd_remove(socket_server);
+		socket_server = NULL;
+	}
 
-	// socket_server = eventpool_socket_add("socket server", NULL, static_port, AF_INET, SOCK_STREAM, 0, EVENTPOOL_TYPE_SOCKET_SERVER, server_callback, NULL, NULL);
+	socket_server = eventpool_socket_add("socket server", NULL, static_port, AF_INET, SOCK_STREAM, 0, EVENTPOOL_TYPE_SOCKET_SERVER, server_callback, NULL, NULL);
 
 	return NULL;
 }
@@ -390,7 +400,11 @@ void socket_close(int sockfd) {
 		if(eventpool_fd_select(sockfd, &node) == 0) {
 			eventpool_fd_remove(node);
 		} else {
-			shutdown(sockfd, SHUT_WR);
+#ifdef _WIN32
+				shutdown(sockfd, SD_BOTH);
+#else
+				shutdown(sockfd, SHUT_RDWR);
+#endif
 			close(sockfd);
 		}
 	}
@@ -474,7 +488,7 @@ int socket_read(int sockfd, char **message, time_t timeout) {
 		if(timeout > 0 && n == 0) {
 			return 1;
 		}
-		/* Immediatly stop loop if the select was waken up by the garbage collector */
+		/* Immediately stop loop if the select was waken up by the garbage collector */
 		if(socket_loop == 0) {
 			break;
 		}

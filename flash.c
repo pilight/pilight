@@ -31,8 +31,6 @@
 #endif
 
 int main(int argc, char **argv) {
-	// memtrack();
-
 	atomicinit();
 	log_shell_enable();
 	log_file_disable();
@@ -98,7 +96,7 @@ int main(int argc, char **argv) {
 					fwfile = REALLOC(fwfile, strlen(args)+1);
 					strcpy(fwfile, args);
 				} else {
-					fprintf(stderr, "%s: the firmware file %s does not exists\n", progname, args);
+					fprintf(stderr, "%s: the firmware file %s does not exist\n", progname, args);
 					goto close;
 				}
 			break;
@@ -128,7 +126,6 @@ int main(int argc, char **argv) {
 #endif
 
 	log_level_set(LOG_DEBUG);
-	firmware.version = 0;
 	logprintf(LOG_INFO, "**** START UPD. FW ****");
 	firmware_getmp(comport);
 
@@ -158,6 +155,5 @@ close:
 	log_gc();
 	gc_clear();
 	FREE(progname);
-	xfree();
 	return (EXIT_SUCCESS);
 }

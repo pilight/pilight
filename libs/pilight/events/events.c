@@ -42,6 +42,10 @@
 #include "function.h"
 #include "action.h"
 
+#ifdef _WIN32
+	#include <windows.h>
+#endif
+
 #define NONE 0
 #define AND	2
 #define OR 1
@@ -56,8 +60,12 @@ static int running = 0;
 int events_gc(void) {
 	loop = 0;
 
-	while(__sync_add_and_fetch(&running, 0) == 1) {
+	while(running == 1) {
+#ifdef _WIN32
+		SleepEx(10, TRUE);
+#else
 		usleep(10);
+#endif
 	}
 
 	event_operator_gc();
@@ -918,7 +926,7 @@ static int event_parse_formula(char **rule, struct rules_t *obj, int depth, unsi
 						unsigned long r = 0;
 						// printf("replace %s with %s in %s\n", search, p, tmp);
 						if((r = (unsigned long)str_replace(search, p, &tmp)) == -1) {
-							logprintf(LOG_ERR, "rule #%d: an unexpected error occured while parsing", obj->nr);
+							logprintf(LOG_ERR, "rule #%d: an unexpected error occurred while parsing", obj->nr);
 							FREE(p);
 							error = -1;
 							goto close;
@@ -1147,7 +1155,7 @@ static int event_parse_action(char *action, struct rules_t *obj, int validate) {
 		}
 
 		if(match == 0) {
-			logprintf(LOG_ERR, "action \"%s\" doesn't exists", func);
+			logprintf(LOG_ERR, "action \"%s\" does not exist", func);
 			error = 1;
 			break;
 		}
@@ -1344,7 +1352,7 @@ static int event_parse_action(char *action, struct rules_t *obj, int validate) {
 								opt = opt->next;
 							}
 							if(match == 0) {
-								logprintf(LOG_ERR, "action \"%s\" doesn't accept option \"%s\"", node->action->name, jchild->key);
+								logprintf(LOG_ERR, "action \"%s\" does not accept option \"%s\"", node->action->name, jchild->key);
 								error = 1;
 								break;
 							}
@@ -1675,7 +1683,7 @@ struct rule_list_t {
 } rule_list_t;
 
 void *events_iterate(void *param) {
-	__sync_add_and_fetch(&running, 1);
+	running = 1;
 	struct threadpool_tasks_t *task = param;
 	struct rule_list_t *list = task->userdata;
 	struct rules_t *tmp_rules = NULL;
@@ -1713,7 +1721,7 @@ void *events_iterate(void *param) {
 		FREE(list->rules);
 		FREE(list);
 	}
-	__sync_add_and_fetch(&running, -1);
+	running = 0;
 	return NULL;
 }
 
@@ -1727,7 +1735,7 @@ void *events_loop(void *param) {
 	unsigned short match = 0;
 	unsigned int i = 0, x = 0;
 
-	__sync_add_and_fetch(&running, 1);
+	running = 1;
 
 	switch(task->reason) {
 		case REASON_CODE_RECEIVED: {
@@ -1741,7 +1749,7 @@ void *events_loop(void *param) {
 		for(i=0;i<data1->nrdev;i++) {
 			if(devices_select_struct(ORIGIN_MASTER, data1->devices[i], &dev) == 0) {
 				struct event_action_thread_t *thread = dev->action_thread;
-				if(__sync_add_and_fetch(&thread->running, 0) == 1) {
+				if(thread->running == 1) {
 					event_action_thread_stop(dev);
 				}
 			}
@@ -1813,7 +1821,7 @@ void *events_loop(void *param) {
 		threadpool_add_work(REASON_END, NULL, "rules loop", 0, events_iterate, NULL, (void *)list);
 	}
 
-	__sync_add_and_fetch(&running, -1);
+	running = 0;
 
 	return (void *)NULL;
 }

@@ -65,6 +65,11 @@ static void createMessage(char *message, int id, int unit, int state, int all, i
 static void parseCode(char *message) {
 	int binary[RAW_LENGTH/4], x = 0, i = 0;
 
+	if(arctech_switch->rawlen>RAW_LENGTH) {
+		logprintf(LOG_ERR, "arctech_switch: parsecode - invalid parameter passed %d", arctech_switch->rawlen);
+		return;
+	}
+
 	for(x=0;x<arctech_switch->rawlen;x+=4) {
 		if(arctech_switch->raw[x+3] > (int)((double)AVG_PULSE_LENGTH*((double)PULSE_MULTIPLIER/2))) {
 			binary[i++] = 1;

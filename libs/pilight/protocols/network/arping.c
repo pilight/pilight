@@ -66,7 +66,7 @@ typedef struct data_t {
 	int nrdevs;
 	int interval;
 	int state;
-	int lastrange;
+	// int lastrange;
 
 	struct data_t *next;
 } data_t;
@@ -88,11 +88,7 @@ static void callback(char *a, char *b) {
 		settings = settings->next;
 	}
 
-#ifdef _WIN32
-	InterlockedExchangeAdd(&settings->polling, -1);
-#else
-	__sync_add_and_fetch(&settings->polling, -1);
-#endif
+	settings->polling = 0;
 
 	if(b != NULL && strcmp(b, "0.0.0.0") != 0) {
 		if(strlen(settings->dstip) > 0 && strcmp(settings->dstip, b) != 0) {
@@ -119,8 +115,8 @@ static void callback(char *a, char *b) {
 			data->repeat = 1;
 			eventpool_trigger(REASON_CODE_RECEIVED, reason_code_received_free, data);
 
-			iprange -= nrips;
-			settings->lastrange = iprange;
+			// iprange -= nrips;
+			// settings->lastrange = iprange;
 		}
 	} else {
 		logprintf(LOG_DEBUG, "arping did not find network device %s", settings->dstmac);
@@ -145,6 +141,7 @@ static void callback(char *a, char *b) {
 			memset(&settings->dstip, '\0', INET_ADDRSTRLEN+1);
 		}
 	}
+	iprange = 0;
 }
 
 static void *thread(void *param) {
@@ -158,15 +155,12 @@ static void *thread(void *param) {
 	tv.tv_usec = 0;
 	threadpool_add_scheduled_work(settings->name, thread, tv, (void *)settings);
 
-#ifdef _WIN32
-	if(InterlockedExchangeAdd(&settings->polling, 0) == 1) {
-#else
-	if(__sync_add_and_fetch(&settings->polling, 0) == 1) {
-#endif
+	if(settings->polling == 1) {
 		logprintf(LOG_DEBUG, "arping is still searching for network device %s", settings->dstmac);
 		return NULL;
 	}
 
+	// strcpy(settings->dstip, "10.0.0.141");
 	if(strlen(settings->dstip) == 0) {
 		logprintf(LOG_DEBUG, "arping is starting search for network device %s in iprange %d.%d.%d.%d to %d.%d.%d.%d",
 				settings->dstmac,
@@ -189,11 +183,7 @@ static void *thread(void *param) {
 		tries = 20;
 	}
 
-#ifdef _WIN32
-	InterlockedExchangeAdd(&settings->polling, 1);
-#else
-	__sync_add_and_fetch(&settings->polling, 1);
-#endif
+	settings->polling = 1;
 
 	// srcip = search ip
 	// srcmac = source mac
@@ -269,6 +259,7 @@ static void *addDevice(void *param) {
 			jchild = jchild->next;
 		}
 	}
+
 
 	if(json_find_number(jdevice, "poll-interval", &itmp) == 0)
 		node->interval = (int)round(itmp);

@@ -19,12 +19,13 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include <ctype.h>
-#include <pthread.h>
 #ifndef _WIN32
 	#ifdef __mips__
 		#define __USE_UNIX98
 	#endif
 #endif
+#define __USE_UNIX98
+#include <pthread.h>
 
 #include "json.h"
 #include "common.h"
@@ -474,14 +475,18 @@ void datetime_init(void) {
 
 int datetime_gc(void) {
 /*
-	Extra checks for gracefull (early)
+	Extra checks for graceful (early)
   stopping of pilight
 */
 	if(mutex_init == 1) {
 		pthread_mutex_unlock(&mutex_lock);
 	}
 	while(searchingtz > 0) {
-		usleep(10);
+#ifdef _WIN32
+  SleepEx(10, TRUE);
+#else
+  usleep(10);
+#endif
 	}
 	logprintf(LOG_DEBUG, "garbage collected datetime library");
 	return EXIT_SUCCESS;
@@ -490,7 +495,7 @@ int datetime_gc(void) {
 char *coord2tz(double longitude, double latitude) {
 
 /*
-	Extra checks for gracefull (early)
+	Extra checks for graceful (early)
   stopping of pilight
 */
 	if(mutex_init == 1) {

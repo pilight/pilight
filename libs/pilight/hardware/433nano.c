@@ -52,18 +52,11 @@ typedef struct timestamp_t {
 timestamp_t timestamp;
 
 static char com[255];
-static char *pilight_firmware = "pilight_firmware";
 static int fd = 0;
 static int doPause = 0;
 
 static void *reason_received_pulsetrain_free(void *param) {
 	struct reason_received_pulsetrain_t *data = param;
-	FREE(data);
-	return NULL;
-}
-
-static void *reason_code_received_free(void *param) {
-	struct reason_code_received_t *data = param;
 	FREE(data);
 	return NULL;
 }
@@ -118,22 +111,16 @@ static int client_callback(struct eventpool_fd_t *node, int event) {
 	struct data_t *data = node->userdata;
 	int n = 0, c = 0;
 
-#ifdef _WIN32
-	if(InterlockedExchangeAdd(&doPause, 0) == 1) {
-#else
-	if(__sync_add_and_fetch(&doPause, 0) == 1) {
-#endif
+	if(doPause == 1) {
 		return 0;
 	}
 	switch(event) {
-		case EV_POLL: {
-			eventpool_fd_enable_read(node);
-		} break;
 		case EV_CONNECT_SUCCESS: {
 			fd = node->fd;
 			eventpool_fd_enable_read(node);
 		} break;
 		case EV_READ: {
+			eventpool_fd_enable_read(node);
 			n = read(node->fd, &c, 1);
 			if(c == '\n') {
 				data->rptr = 0;
@@ -162,32 +149,12 @@ static int client_callback(struct eventpool_fd_t *node, int event) {
 								nano433->mingaplen == atoi(array[2]) && nano433->maxgaplen == atoi(array[3]))) {
 							logprintf(LOG_WARNING, "could not sync FW values");
 						} else {
-							firmware.version = atof(array[4]);
-							firmware.lpf = atof(array[5]);
-							firmware.hpf = atof(array[6]);
+							double version = atof(array[4]);
+							double lpf = atof(array[5]);
+							double hpf = atof(array[6]);
 
-							if(firmware.version > 0 && firmware.lpf > 0 && firmware.hpf > 0) {
-								registry_update(ORIGIN_FW, "pilight.firmware.version", json_mknumber(firmware.version, 0));
-								registry_update(ORIGIN_FW, "pilight.firmware.lpf", json_mknumber(firmware.lpf, 0));
-								registry_update(ORIGIN_FW, "pilight.firmware.hpf", json_mknumber(firmware.hpf, 0));
-
-								struct reason_code_received_t *data = MALLOC(sizeof(struct reason_code_received_t));
-								if(data == NULL) {
-									OUT_OF_MEMORY
-								}
-								snprintf(data->message, 1024,
-									"{\"version\":%.0f,\"lpf\":%.0f,\"hpf\":%.0f}",
-									firmware.version, firmware.lpf, firmware.hpf
-								);
-								strcpy(data->origin, "receiver");
-								data->protocol = pilight_firmware;
-								if(strlen(pilight_uuid) > 0) {
-									data->uuid = pilight_uuid;
-								} else {
-									data->uuid = NULL;
-								}
-								data->repeat = 1;
-								eventpool_trigger(REASON_CODE_RECEIVED, reason_code_received_free, data);
+							if(version > 0 && lpf > 0 && hpf > 0) {
+								logprintf(LOG_DEBUG, "filter version: %.0f, lpf: %.0f, hpf: %.0f", version, lpf, hpf);
 							}
 						}
 					}
@@ -270,9 +237,9 @@ static int client_callback(struct eventpool_fd_t *node, int event) {
 				n = write(node->fd, send, len);
 				data->syncfw = 2;
 			}
+			eventpool_fd_enable_read(node);
 		} break;
 		case EV_DISCONNECTED: {
-			close(node->fd);
 			fd = 0;
 			FREE(node->userdata);
 			eventpool_fd_remove(node);
@@ -403,30 +370,23 @@ static int nano433Send(int *code, int rawlen, int repeats) {
 	timestamp.second = 1000000 * (unsigned int)tv.tv_sec + (unsigned int)tv.tv_usec;
 
 	if(((int)timestamp.second-(int)timestamp.first) < 1000000) {
+#ifdef _WIN32
+		SleepEx(1000, TRUE);
+#else
 		sleep(1);
+#endif
 	}
 
 	return 0;
 }
 
-/*
- * FIXME
- */
 static void *receiveStop(void *param) {
-#ifdef _WIN32
-	InterlockedExchangeAdd(&doPause, 1);
-#else
-	__sync_add_and_fetch(&doPause, 1);
-#endif
+	doPause = 1;
 	return NULL;
 }
 
 static void *receiveStart(void *param) {
-#ifdef _WIN32
-	InterlockedExchangeAdd(&doPause, -1);
-#else
-	__sync_add_and_fetch(&doPause, -1);
-#endif
+	doPause = 0;
 	return NULL;
 }
 

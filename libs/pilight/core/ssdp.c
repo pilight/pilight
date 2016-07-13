@@ -39,10 +39,9 @@
 
 static struct eventpool_fd_t *ssdp_server = NULL;
 static struct eventpool_fd_t *ssdp_client = NULL;
-
-typedef struct timeout_t {
-	int time;
-} timeout_t;
+static int client_lock_init = 0;
+static pthread_mutex_t client_lock;
+static pthread_mutexattr_t client_attr;
 
 void *reason_ssdp_received_free(void *param) {
 	struct reason_ssdp_received_t *data = param;
@@ -192,8 +191,25 @@ static int extract_name(char *message, char **name) {
 	return -1;
 }
 
+static void *client_timeout(void *param) {
+	pthread_mutex_lock(&client_lock);
+
+	if(ssdp_client != NULL) {
+		struct reason_ssdp_disconnected_t *data = MALLOC(sizeof(struct reason_ssdp_disconnected_t));
+		if(data == NULL) {
+			OUT_OF_MEMORY
+		}
+		data->fd = ssdp_client->fd;
+		eventpool_trigger(REASON_SSDP_DISCONNECTED, reason_ssdp_disconnected_free, data);
+
+		eventpool_fd_remove(ssdp_client);
+		ssdp_client = NULL;
+	}
+	pthread_mutex_unlock(&client_lock);
+	return NULL;
+}
+
 static int client_callback(struct eventpool_fd_t *node, int event) {
-	struct timeout_t *timeout = node->userdata;
 	struct sockaddr_in addr;
 	socklen_t socklen = sizeof(addr);
 	char header[BUFFER_SIZE];
@@ -202,18 +218,22 @@ static int client_callback(struct eventpool_fd_t *node, int event) {
 	char *p = name;
 
 	switch(event) {
-		case EV_POLL: {
-			timeout->time++;
-			if(timeout->time > 20) {
-				return -1;
-			}
-		} break;
 		case EV_SOCKET_SUCCESS: {
 			node->stage = EVENTPOOL_STAGE_CONNECTED;
-			eventpool_fd_enable_write(node);
-		} break;
-		case EV_CONNECT_SUCCESS: {
-			eventpool_fd_enable_write(node);
+			memset(header, '\0', BUFFER_SIZE);
+			strcpy(header, "M-SEARCH * HTTP/1.1\r\n"
+					"Host:239.255.255.250:1900\r\n"
+					"ST:urn:schemas-upnp-org:service:pilight:1\r\n"
+					"MAN:\"ssdp:discover\"\r\n"
+					"MX:3\r\n\r\n");
+
+			memset((void *)&node->data.socket.addr, '\0', sizeof(node->data.socket.addr));
+			node->data.socket.addr.sin_family = AF_INET;
+			node->data.socket.addr.sin_port = htons(1900);
+			node->data.socket.addr.sin_addr.s_addr = inet_addr("239.255.255.250");
+
+			eventpool_fd_write(node->fd, header, strlen(header));
+			eventpool_fd_enable_read(node);
 		}	break;
 		case EV_READ: {
 			memset(message, '\0', BUFFER_SIZE);
@@ -260,34 +280,23 @@ static int client_callback(struct eventpool_fd_t *node, int event) {
 			}
 			eventpool_fd_enable_read(node);
 		} break;
-		case EV_WRITE: {
-			memset(header, '\0', BUFFER_SIZE);
-			strcpy(header, "M-SEARCH * HTTP/1.1\r\n"
-					"Host:239.255.255.250:1900\r\n"
-					"ST:urn:schemas-upnp-org:service:pilight:1\r\n"
-					"Man:\"ssdp:discover\"\r\n"
-					"MX:3\r\n\r\n");
-
-			memset((void *)&addr, '\0', sizeof(addr));
-			addr.sin_family = AF_INET;
-			addr.sin_port = htons(1900);
-			addr.sin_addr.s_addr = inet_addr("239.255.255.250");
-
-			if(sendto(node->fd, header, BUFFER_SIZE, 0, (struct sockaddr *)&addr, sizeof(addr)) >= 0) {
-				logprintf(LOG_DEBUG, "ssdp sent search");
-			}
-			eventpool_fd_enable_read(node);
-		} break;
 		case EV_DISCONNECTED: {
-			FREE(timeout);
-			struct reason_ssdp_disconnected_t *data = MALLOC(sizeof(struct reason_ssdp_disconnected_t));
-			if(data == NULL) {
-				OUT_OF_MEMORY
-			}
-			data->fd = node->fd;
-			eventpool_trigger(REASON_SSDP_DISCONNECTED, reason_ssdp_disconnected_free, data);
+			pthread_mutex_lock(&client_lock);
+			if(ssdp_client != NULL) {
+				struct reason_ssdp_disconnected_t *data = MALLOC(sizeof(struct reason_ssdp_disconnected_t));
+				if(data == NULL) {
+					OUT_OF_MEMORY
+				}
+				data->fd = node->fd;
+				eventpool_trigger(REASON_SSDP_DISCONNECTED, reason_ssdp_disconnected_free, data);
 
-			eventpool_fd_remove(node);
+				eventpool_fd_remove(ssdp_client);
+				ssdp_client = NULL;
+				pthread_mutex_unlock(&client_lock);
+			} else {
+				pthread_mutex_unlock(&client_lock);
+				break;
+			}
 		} break;
 	}
 	return 0;
@@ -315,16 +324,26 @@ static void *ssdp_restart(void *param) {
 }
 
 void ssdp_seek(void) {
+	struct timeval tv;
+
+	if(client_lock_init == 0) {	
+		pthread_mutexattr_init(&client_attr);
+		pthread_mutexattr_settype(&client_attr, PTHREAD_MUTEX_RECURSIVE);
+		pthread_mutex_init(&client_lock, &client_attr);	
+		client_lock_init = 1;
+	}
+	
+	pthread_mutex_lock(&client_lock);
 	if(ssdp_client != NULL) {
 		eventpool_fd_remove(ssdp_client);
 		ssdp_client = NULL;
 	}
-	struct timeout_t *timeout = MALLOC(sizeof(struct timeout_t));
-	if(timeout == NULL) {
-		OUT_OF_MEMORY
-	}
-	timeout->time = 0;
-	ssdp_client = eventpool_socket_add("ssdp client", "239.255.255.250", 1900, AF_INET, SOCK_DGRAM, 0, EVENTPOOL_TYPE_SOCKET_CLIENT, client_callback, NULL, timeout);
+	pthread_mutex_unlock(&client_lock);
+
+	tv.tv_sec = 3;
+	tv.tv_usec = 0;
+	threadpool_add_scheduled_work("ssdp client", client_timeout, tv, NULL);
+	ssdp_client = eventpool_socket_add("ssdp client", "239.255.255.250", 1900, AF_INET, SOCK_DGRAM, 0, EVENTPOOL_TYPE_SOCKET_CLIENT, client_callback, NULL, NULL);
 }
 
 void ssdp_start(void) {

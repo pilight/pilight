@@ -1,7 +1,7 @@
 {
-	"devices": { },
-	"gui": { },
-	"rules": { },
+	"devices": {},
+	"gui": {},
+	"rules": {},
 	"settings": {
 		"log-level": 6,
 		"pid-file": "/var/run/pilight.pid",
@@ -20,5 +20,5 @@
 			"receiver": 1
 		}
 	},
-	"registry": { }
+	"registry": {}
 }

@@ -27,51 +27,48 @@ static int map[] = {
 	/* 	FSEL17,	FSEL18,	FSEL27,	FSEL22 	*/
 			17, 		18, 		27, 		22,
 	/* 	FSEL23,	FSEL24,	FSEL25,	FSEL4 	*/
-			23, 		24, 		25, 		4,
+			23, 		24, 		25, 		 4,
 	/* 	FSEL2,	FSEL3,	FSEL8,	FSEL7 	*/
-			2, 			3, 			8, 			7,
+			 2, 		 3, 		 8, 		 7,
 	/*	FSEL10,	FSEL9,	FSEL11,	FSEL14	*/
-			10,			9,			11,			14,
-	/*	FSEL15, FSEL28,	FSEL29,	FSEL30	*/
-			15,			28,			29,			30,
-	/*	FSEL31,	FSEL5,	FSEL6,	FSEL13	*/
-			31,			5,			6,			13,
+			10,			 9,			11,			14,
+	/*	FSEL15													*/
+			15,			-1,			-1,			-1,
+	/*					FSEL5,	FSEL6,	FSEL13	*/
+			-1,			 5,			 6,			13,
 	/*	FSEL19,	FSEL26,	FSEL12,	FSEL16	*/
 			19,			26,			12,			16,
 	/*	FSEL20,	FSEL21,	FSEL0,	FSEL1		*/
-			20,			21,			0,			1
+			20,			21,			 0,			 1
 };
 
 static int raspberrypi1bpValidGPIO(int pin) {
 	if(pin >= 0 && pin < (sizeof(map)/sizeof(map[0]))) {
+		if(map[pin] == -1) {
+			return -1;
+		}		
 		return 0;
 	} else {
 		return -1;
 	}
 }
 
+static int raspberrypi1bpSetup(void) {
+	raspberrypi1bp->soc->setup();
+	raspberrypi1bp->soc->setMap(map);
+	raspberrypi1bp->soc->setIRQ(map);
+	return 0;
+}
+
 void raspberrypi1bpInit(void) {
-	if((raspberrypi1bp = malloc(sizeof(struct platform_t))) == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(EXIT_FAILURE);
-	}
-	raspberrypi1bp->nralias = 1;
-	if((raspberrypi1bp->name = malloc(raspberrypi1bp->nralias*sizeof(char *))) == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(EXIT_FAILURE);
-	}
-	if((raspberrypi1bp->name[0] = strdup("raspberrypi1b+")) == NULL) {
-		fprintf(stderr, "out of memory\n");
-		exit(EXIT_FAILURE);
-	}
+	platform_register(&raspberrypi1bp, "raspberrypi1b+");
 
 	raspberrypi1bp->soc = soc_get("Broadcom", "2835");
-	raspberrypi1bp->soc->setMap(map);
 
 	raspberrypi1bp->digitalRead = raspberrypi1bp->soc->digitalRead;
 	raspberrypi1bp->digitalWrite = raspberrypi1bp->soc->digitalWrite;
 	raspberrypi1bp->pinMode = raspberrypi1bp->soc->pinMode;
-	raspberrypi1bp->setup = raspberrypi1bp->soc->setup;
+	raspberrypi1bp->setup = &raspberrypi1bpSetup;
 
 	raspberrypi1bp->isr = raspberrypi1bp->soc->isr;
 	raspberrypi1bp->waitForInterrupt = raspberrypi1bp->soc->waitForInterrupt;
@@ -80,6 +77,4 @@ void raspberrypi1bpInit(void) {
 	raspberrypi1bp->gc = raspberrypi1bp->soc->gc;
 
 	raspberrypi1bp->validGPIO = &raspberrypi1bpValidGPIO;
-
-	platform_register(raspberrypi1bp);
 }
