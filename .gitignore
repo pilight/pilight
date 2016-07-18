@@ -1,0 +1,35 @@
+#Make and build files
+*.o
+build/
+CMakeFiles/
+Makefile
+*.cmake
+CMakeCache.txt
+cmake_uninstall.cmake.in
+
+#Eclipse project files
+.project
+.settings/
+.cproject
+
+#Libraries and pilight executables
+*.a
+*.so
+pilight-control
+pilight-daemon
+pilight-debug
+pilight-flash
+pilight-raw
+pilight-receive
+pilight-send
+pilight-sha256
+pilight-uuid
+*.exe
+
+#json files in base directory - often used for local testing of different configs
+/*.json
+
+#Headers created when running cmake
+inc/defines.h
+*_header.h
+*_init.h
