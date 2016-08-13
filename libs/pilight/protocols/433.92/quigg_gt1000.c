@@ -104,7 +104,11 @@ int codetab[16][40] = {
 	 * If a code is unknown 0 is substituted, f.e. for group-id 0 no codes are known, so all 40 values are 0
 	 */
 	/* code 0 */
-	{ 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0 },
+	{ 0xBB42,0x4301,0x00F9,0x8EBA, 0xE4C3,0x1924,0x6CDB,0x9D57, 
+	  0x00F9,0x4301,0x00F9,0x8EBA, 0x9D57,0xE4C3,0x6CDB,0x1924, 
+	  0x8EBA,0x00F9,0x4301,0xBB42, 0x1924,0xE4C3,0x6CDB,0x9D57, 
+	  0xE4C3,0x1924,0x9D57,0x6CDB, 0x8EBA,0xBB42,0x4301,0x00F9, 
+	  0xE4C3,0x1924,0x9D57,0x6CDB, 0x4301,0x00F9,0x8EBA,0xBB42 },
 	/* code 1 */
 	{ 0x616A,0xCF71,0x7AE2,0xB639, 0xF59B,0xE923,0x14C4,0x32A7,
 	  0x616A,0xB639,0xCF71,0x7AE2, 0x14C4,0x32A7,0xF59B,0xE923,
@@ -180,7 +184,7 @@ int gentab[16] =
 	 * A 0 at location x means group-id x belongs to first generation, and a 1 means second generation
 	 */
 	 /* for now only group-id 1,5,9 and 12 are first generation */
-	{1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 0, 1, 1, 1};
+	{0, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 0, 1, 1, 1};
 
 #define NRSUPERMASK 0x07
 #define NRSUPERCODES (NRSUPERMASK+1)	/* we will use 8 on and 8 off supercodes */
