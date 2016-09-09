@@ -39,6 +39,14 @@ int unsetenv(const char *name);
 int isrunning(const char *program);
 #endif
 
+/**
+ * Calculate number of elements (not bytes like sizeof) in a
+ * compile time allocated buffer. Do not use it for pointers.
+ */
+#ifndef countof
+#define countof(buffer) (sizeof(buffer) / sizeof(buffer[0]))
+#endif
+
 void array_free(char ***array, int len);
 int isrunning(const char *program);
 void atomicinit(void);
