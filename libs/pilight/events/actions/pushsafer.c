@@ -1,7 +1,5 @@
 /*
-	Copyright (C) 2013 - 2014 CurlyMo
-	
-	Copyright (C) 2016 Pushsafer.com Kevin Siml > Appzer.de
+	Copyright (C) 2013 - 2016 CurlyMo & Pushsafer.com Kevin Siml
 
 	This file is part of pilight.
 
