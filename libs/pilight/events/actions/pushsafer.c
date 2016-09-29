@@ -52,44 +52,12 @@ static int checkArguments(struct rules_actions_t *obj) {
 	jsound = json_find_member(obj->arguments, "SOUND");
 	jvibration = json_find_member(obj->arguments, "VIBRATION");
 
-	if(jtitle == NULL) {
-		logprintf(LOG_ERR, "pushsafer action is missing a \"TITLE\"");
-		return -1;
-	}
 	if(jmessage == NULL) {
 		logprintf(LOG_ERR, "pushsafer action is missing a \"MESSAGE\"");
 		return -1;
 	}
-	if(jdevice == NULL) {
-		logprintf(LOG_ERR, "pushsafer action is missing a \"DEVICE\"");
-		return -1;
-	}
-	if(jicon == NULL) {
-		logprintf(LOG_ERR, "pushsafer action is missing a \"ICON\"");
-		return -1;
-	}
-	if(jsound == NULL) {
-		logprintf(LOG_ERR, "pushsafer action is missing a \"SOUND\"");
-		return -1;
-	}
-	if(jvibration == NULL) {
-		logprintf(LOG_ERR, "pushsafer action is missing a \"VIBRATION\"");
-		return -1;
-	}	
 	if(jprivatekey == NULL) {
 		logprintf(LOG_ERR, "pushsafer action is missing a \"PRIVATEKEY\"");
-		return -1;
-	}
-	nrvalues = 0;
-	if((jvalues = json_find_member(jtitle, "value")) != NULL) {
-		jchild = json_first_child(jvalues);
-		while(jchild) {
-			nrvalues++;
-			jchild = jchild->next;
-		}
-	}
-	if(nrvalues != 1) {
-		logprintf(LOG_ERR, "pushsafer action \"TITLE\" only takes one argument");
 		return -1;
 	}
 	nrvalues = 0;
@@ -116,54 +84,6 @@ static int checkArguments(struct rules_actions_t *obj) {
 		logprintf(LOG_ERR, "pushsafer action \"PRIVATEKEY\" only takes one argument");
 		return -1;
 	}
-	nrvalues = 0;
-	if((jvalues = json_find_member(jdevice, "value")) != NULL) {
-		jchild = json_first_child(jvalues);
-		while(jchild) {
-			nrvalues++;
-			jchild = jchild->next;
-		}
-	}
-	if(nrvalues != 1) {
-		logprintf(LOG_ERR, "pushsafer action \"DEVICE\" only takes one argument");
-		return -1;
-	}
-	nrvalues = 0;
-	if((jvalues = json_find_member(jicon, "value")) != NULL) {
-		jchild = json_first_child(jvalues);
-		while(jchild) {
-			nrvalues++;
-			jchild = jchild->next;
-		}
-	}
-	if(nrvalues != 1) {
-		logprintf(LOG_ERR, "pushsafer action \"ICON\" only takes one argument");
-		return -1;
-	}
-	nrvalues = 0;
-	if((jvalues = json_find_member(jsound, "value")) != NULL) {
-		jchild = json_first_child(jvalues);
-		while(jchild) {
-			nrvalues++;
-			jchild = jchild->next;
-		}
-	}
-	if(nrvalues != 1) {
-		logprintf(LOG_ERR, "pushsafer action \"SOUND\" only takes one argument");
-		return -1;
-	}
-	nrvalues = 0;
-	if((jvalues = json_find_member(jvibration, "value")) != NULL) {
-		jchild = json_first_child(jvalues);
-		while(jchild) {
-			nrvalues++;
-			jchild = jchild->next;
-		}
-	}
-	if(nrvalues != 1) {
-		logprintf(LOG_ERR, "pushsafer action \"VIBRATION\" only takes one argument");
-		return -1;
-	}	
 	return 0;
 }
 
@@ -207,7 +127,7 @@ static void *thread(void *param) {
 	jsound = json_find_member(arguments, "SOUND");
 	jvibration = json_find_member(arguments, "VIBRATION");
 
-	if(jtitle != NULL && jmessage != NULL && jprivatekey != NULL && jdevice != NULL && jicon != NULL && jsound != NULL && jvibration != NULL) {
+	if(jmessage != NULL && jprivatekey != NULL) {
 		jvalues1 = json_find_member(jtitle, "value");
 		jvalues2 = json_find_member(jmessage, "value");
 		jvalues3 = json_find_member(jprivatekey, "value");
@@ -215,7 +135,7 @@ static void *thread(void *param) {
 		jvalues5 = json_find_member(jicon, "value");
 		jvalues6 = json_find_member(jsound, "value");
 		jvalues7 = json_find_member(jvibration, "value");
-		if(jvalues1 != NULL && jvalues2 != NULL && jvalues3 != NULL && jvalues4 != NULL && jvalues5 != NULL && jvalues6 != NULL && jvalues7 != NULL) {
+		if(jvalues2 != NULL && jvalues3 != NULL) {
 			jval1 = json_find_element(jvalues1, 0);
 			jval2 = json_find_element(jvalues2, 0);
 			jval3 = json_find_element(jvalues3, 0);
@@ -223,20 +143,17 @@ static void *thread(void *param) {
 			jval5 = json_find_element(jvalues5, 0);
 			jval6 = json_find_element(jvalues6, 0);
 			jval7 = json_find_element(jvalues7, 0);
-			if(jval1 != NULL && jval2 != NULL && jval3 != NULL && jval4 != NULL && jval5 != NULL && jval6 != NULL && jval7 != NULL &&
-			 jval1->tag == JSON_STRING && jval2->tag == JSON_STRING &&
-			 jval3->tag == JSON_STRING && jval4->tag == JSON_STRING &&
-			 jval5->tag == JSON_STRING && jval6->tag == JSON_STRING &&
-			 jval7->tag == JSON_STRING) {
+			if(jval2 != NULL && jval3 != NULL &&
+			   jval2->tag == JSON_STRING && jval3->tag == JSON_STRING) {
 				data = NULL;
 				strcpy(url, "https://www.pushsafer.com/api");
-				char *message = urlencode(jval2->string_);
-				char *privatekey = urlencode(jval3->string_);
-				char *device = urlencode(jval4->string_);
-				char *icon = urlencode(jval5->string_);
-				char *sound = urlencode(jval6->string_);
-				char *vibration = urlencode(jval7->string_);
-				char *title = urlencode(jval1->string_);
+				char *message = jval2->string_;
+				char *privatekey = jval3->string_;
+				char *device = jval4->string_;
+				char *icon = jval5->string_;
+				char *sound = jval6->string_;
+				char *vibration = jval7->string_;
+				char *title = jval1->string_;
 				size_t l = strlen(message)+strlen(privatekey);
 				l += strlen(device)+strlen(title);
 				l += strlen(icon)+strlen(sound)+strlen(vibration);
@@ -245,7 +162,7 @@ static void *thread(void *param) {
 				l += strlen("&i=")+strlen("&s=")+strlen("&v=");
 				char content[l+2];
 				sprintf(content, "k=%s&d=%s&i=%s&s=%s&v=%s&t=%s&m=%s", privatekey, device, icon, sound, vibration, title, message);
-				data = http_post_content(url, &tp, &ret, &size, "application/x-www-form-urlencoded", content);
+				data = http_post_content(url, &tp, &ret, &size, "application/x-www-form-urlencoded", urlencode(content));
 				if(ret == 200) {
 					logprintf(LOG_DEBUG, "pushsafer action succeeded with message: %s", data);
 				} else {
