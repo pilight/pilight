@@ -89,7 +89,6 @@ static int checkArguments(struct rules_actions_t *obj) {
 
 static void *thread(void *param) {
 	struct rules_actions_t *pth = (struct rules_actions_t *)param;
-	// struct rules_t *obj = pth->obj;
 	struct JsonNode *arguments = pth->parsedargs;
 	struct JsonNode *jtitle = NULL;
 	struct JsonNode *jmessage = NULL;
