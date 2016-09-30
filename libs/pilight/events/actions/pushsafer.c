@@ -61,6 +61,18 @@ static int checkArguments(struct rules_actions_t *obj) {
 		return -1;
 	}
 	nrvalues = 0;
+	if((jvalues = json_find_member(jtitle, "value")) != NULL) {
+		jchild = json_first_child(jvalues);
+		while(jchild) {
+			nrvalues++;
+			jchild = jchild->next;
+		}
+	}
+	if(nrvalues != 1) {
+		logprintf(LOG_ERR, "pushsafer action \"TITLE\" only takes one argument");
+		return -1;
+	}
+	nrvalues = 0;
 	if((jvalues = json_find_member(jmessage, "value")) != NULL) {
 		jchild = json_first_child(jvalues);
 		while(jchild) {
@@ -84,6 +96,54 @@ static int checkArguments(struct rules_actions_t *obj) {
 		logprintf(LOG_ERR, "pushsafer action \"PRIVATEKEY\" only takes one argument");
 		return -1;
 	}
+	nrvalues = 0;
+	if((jvalues = json_find_member(jdevice, "value")) != NULL) {
+		jchild = json_first_child(jvalues);
+		while(jchild) {
+			nrvalues++;
+			jchild = jchild->next;
+		}
+	}
+	if(nrvalues != 1) {
+		logprintf(LOG_ERR, "pushsafer action \"DEVICE\" only takes one argument");
+		return -1;
+	}
+	nrvalues = 0;
+	if((jvalues = json_find_member(jicon, "value")) != NULL) {
+		jchild = json_first_child(jvalues);
+		while(jchild) {
+			nrvalues++;
+			jchild = jchild->next;
+		}
+	}
+	if(nrvalues != 1) {
+		logprintf(LOG_ERR, "pushsafer action \"ICON\" only takes one argument");
+		return -1;
+	}
+	nrvalues = 0;
+	if((jvalues = json_find_member(jsound, "value")) != NULL) {
+		jchild = json_first_child(jvalues);
+		while(jchild) {
+			nrvalues++;
+			jchild = jchild->next;
+		}
+	}
+	if(nrvalues != 1) {
+		logprintf(LOG_ERR, "pushsafer action \"SOUND\" only takes one argument");
+		return -1;
+	}
+	nrvalues = 0;
+	if((jvalues = json_find_member(jvibration, "value")) != NULL) {
+		jchild = json_first_child(jvalues);
+		while(jchild) {
+			nrvalues++;
+			jchild = jchild->next;
+		}
+	}
+	if(nrvalues != 1) {
+		logprintf(LOG_ERR, "pushsafer action \"VIBRATION\" only takes one argument");
+		return -1;
+	}	
 	return 0;
 }
 
