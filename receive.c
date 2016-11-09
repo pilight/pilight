@@ -34,6 +34,8 @@
 static int main_loop = 1;
 static int sockfd = 0;
 static char *recvBuff = NULL;
+char **filters = NULL;
+unsigned int m = 0;
 
 int main_gc(void) {
 	main_loop = 0;
@@ -79,8 +81,10 @@ int main(int argc, char **argv) {
 	struct ssdp_list_t *ssdp_list = NULL;
 
 	char *server = NULL;
+	char *filter = NULL;
 	unsigned short port = 0;
 	unsigned short stats = 0;
+	unsigned short filteropt = 0;
 
 	char *args = NULL;
 
@@ -89,6 +93,7 @@ int main(int argc, char **argv) {
 	options_add(&options, 'S', "server", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, "^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]).){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$");
 	options_add(&options, 'P', "port", OPTION_HAS_VALUE, 0, JSON_NULL, NULL, "[0-9]{1,4}");
 	options_add(&options, 's', "stats", OPTION_NO_VALUE, 0, JSON_NULL, NULL, "[0-9]{1,4}");
+	options_add(&options, 'F', "filter", OPTION_HAS_VALUE, 0, JSON_STRING, NULL, NULL);
 
 	/* Store all CLI arguments for later usage
 	   and also check if the CLI arguments where
@@ -108,6 +113,7 @@ int main(int argc, char **argv) {
 				printf("\t -S --server=x.x.x.x\t\tconnect to server address\n");
 				printf("\t -P --port=xxxx\t\t\tconnect to server port\n");
 				printf("\t -s --stats\t\t\tshow CPU and RAM statistics\n");
+				printf("\t -F --filter=protocol\t\tfilter out protocol(s)\n");
 				exit(EXIT_SUCCESS);
 			break;
 			case 'V':
@@ -127,13 +133,48 @@ int main(int argc, char **argv) {
 			case 's':
 				stats = 1;
 			break;
+			case 'F':
+				if((filter = REALLOC(filter, strlen(args)+1)) == NULL) {
+					fprintf(stderr, "out of memory\n");
+					exit(EXIT_FAILURE);
+				}
+				strcpy(filter, args);
+				filteropt = 1;
+			break;
 			default:
-				printf("Usage: %s -l location -d device\n", progname);
+				printf("Usage: %s \n", progname);
 				exit(EXIT_SUCCESS);
 			break;
 		}
 	}
 	options_delete(options);
+
+	if(filteropt == 1) {
+		struct protocol_t *protocol = NULL;
+		m = explode(filter, ",", &filters);
+		int match = 0, j = 0;
+		
+		protocol_init();
+
+		for(j=0;j<m;j++) {
+			match = 0;
+			struct protocols_t *pnode = protocols;
+			if(filters[j] != NULL && strlen(filters[j]) > 0) {
+				while(pnode) {
+					protocol = pnode->listener;
+					if(protocol_device_exists(protocol, filters[j]) == 0 && match == 0) {
+						match = 1;
+						break;
+					}
+					pnode = pnode->next;
+				}
+				if(match == 0) {
+					logprintf(LOG_ERR, "Invalid protocol: %s", filters[j]);
+					goto close;
+				}
+			}
+		}
+	}
 
 	if(server != NULL && port > 0) {
 		if((sockfd = socket_connect(server, port)) == -1) {
@@ -168,16 +209,18 @@ int main(int argc, char **argv) {
 	json_delete(jclient);
 
 	if(socket_read(sockfd, &recvBuff, 0) != 0 ||
-     strcmp(recvBuff, "{\"status\":\"success\"}") != 0) {
-		goto close;
+		strcmp(recvBuff, "{\"status\":\"success\"}") != 0) {
+			goto close;
 	}
 
 	while(main_loop) {
 		if(socket_read(sockfd, &recvBuff, 0) != 0) {
 			goto close;
 		}
+		char *protocol = NULL;
 		char **array = NULL;
 		unsigned int n = explode(recvBuff, "\n", &array), i = 0;
+
 		for(i=0;i<n;i++) {
 			struct JsonNode *jcontent = json_decode(array[i]);
 			struct JsonNode *jtype = json_find_member(jcontent, "type");
@@ -185,10 +228,26 @@ int main(int argc, char **argv) {
 				json_remove_from_parent(jtype);
 				json_delete(jtype);
 			}
-			char *content = json_stringify(jcontent, "\t");
-			printf("%s\n", content);
+			if(filteropt == 1) {
+				int filtered = 0, j = 0;
+				json_find_string(jcontent, "protocol", &protocol);
+				for(j=0;j<m;j++) {
+					if(strcmp(filters[j], protocol) == 0) {
+						filtered = 1;
+						break;
+					}
+				}
+				if(filtered == 0) {
+					char *content = json_stringify(jcontent, "\t");
+					printf("%s\n", content);
+					json_free(content);
+				}
+			} else {
+				char *content = json_stringify(jcontent, "\t");
+				printf("%s\n", content);
+				json_free(content);
+			}
 			json_delete(jcontent);
-			json_free(content);
 		}
 		array_free(&array, n);
 	}
@@ -201,6 +260,12 @@ close:
 		FREE(recvBuff);
 		recvBuff = NULL;
 	}
+	if(filter != NULL) {
+		FREE(filter);
+		filter = NULL;	
+	}
+	array_free(&filters, m);
+	protocol_gc();
 	options_gc();
 	log_shell_disable();
 	log_gc();

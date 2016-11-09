@@ -92,12 +92,18 @@ void hardware_register(struct hardware_t **hw) {
 	(*hw)->wait = 0;
 	(*hw)->stop = 0;
 	(*hw)->running = 0;
+	(*hw)->minrawlen = 0;
+	(*hw)->maxrawlen = 0;
+	(*hw)->mingaplen = 0;
+	(*hw)->maxgaplen = 0;
 
 	(*hw)->init = NULL;
 	(*hw)->deinit = NULL;
 	(*hw)->receiveOOK = NULL;
 	(*hw)->receivePulseTrain = NULL;
-	(*hw)->send = NULL;
+	(*hw)->receiveAPI = NULL;
+	(*hw)->sendOOK = NULL;
+	(*hw)->sendAPI = NULL;
 	(*hw)->gc = NULL;
 	(*hw)->settings = NULL;
 
@@ -287,9 +293,9 @@ static int hardware_parse(JsonNode *root) {
 							regfree(&regex);
 							goto clear;
 						}
-						FREE(stmp);
 						regfree(&regex);
 					}
+					FREE(stmp);
 #endif
 				}
 				hw_options = hw_options->next;

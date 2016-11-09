@@ -161,10 +161,17 @@ int check_instances(const wchar_t *prog) {
 }
 
 int setenv(const char *name, const char *value, int overwrite) {
-	if(overwrite == 0) {
-		value = getenv(name);
+	if(name == NULL) {
+		errno = EINVAL;
+		return -1;
 	}
-	char c[strlen(name)+strlen(value)+1];
+	if(overwrite == 0 && getenv(name) != NULL) {
+		return 0; // name already defined and not allowed to overwrite. Treat as OK.
+	}
+	if(value == NULL) {
+		return unsetenv(name);
+	}
+	char c[strlen(name)+1+strlen(value)+1]; // one for "=" + one for term zero
 	strcat(c, name);
 	strcat(c, "=");
 	strcat(c, value);
@@ -172,7 +179,11 @@ int setenv(const char *name, const char *value, int overwrite) {
 }
 
 int unsetenv(const char *name) {
-	char c[strlen(name)+1];
+	if(name == NULL) {
+		errno = EINVAL;
+		return -1;
+	}
+	char c[strlen(name)+1+1]; // one for "=" + one for term zero
 	strcat(c, name);
 	strcat(c, "=");
 	return putenv(c);
@@ -474,9 +485,9 @@ void alpha_random(char *s, const int len) {
 int urldecode(const char *s, char *dec) {
 	logprintf(LOG_STACK, "%s(...)", __FUNCTION__);
 
-	char *o;
+	char *o = NULL;
 	const char *end = s + strlen(s);
-	int c;
+	int c = 0;
 
 	for(o = dec; s <= end; o++) {
 		c = *s++;
@@ -991,4 +1002,31 @@ int stricmp(char const *a, char const *b) {
 			if(d != 0 || !*a)
 				return d;
 	}
+}
+
+int file_get_contents(char *file, char **content) {
+	FILE *fp = NULL;
+	size_t bytes = 0;
+	struct stat st;
+
+	if((fp = fopen(file, "rb")) == NULL) {
+		logprintf(LOG_ERR, "cannot open file: %s", file);
+		return -1;
+	}
+
+	fstat(fileno(fp), &st);
+	bytes = (size_t)st.st_size;
+
+	if((*content = CALLOC(bytes+1, sizeof(char))) == NULL) {
+		fprintf(stderr, "out of memory\n");
+		fclose(fp);
+		exit(EXIT_FAILURE);
+	}
+
+	if(fread(*content, sizeof(char), bytes, fp) == -1) {
+		logprintf(LOG_ERR, "cannot read file: %s", file);
+		return -1;
+	}
+	fclose(fp);
+	return 0;
 }
