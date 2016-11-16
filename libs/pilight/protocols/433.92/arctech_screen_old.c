@@ -30,7 +30,7 @@
 #include "../../core/gc.h"
 #include "arctech_screen_old.h"
 
-#define PULSE_MULTIPLIER	5
+#define PULSE_MULTIPLIER	3
 #define MIN_PULSE_LENGTH	310
 #define MAX_PULSE_LENGTH	350
 #define AVG_PULSE_LENGTH	335
