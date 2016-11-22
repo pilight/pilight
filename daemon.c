@@ -606,10 +606,15 @@ void *receive_parse_code(void *param) {
 						protocol->repeats++;
 						if(protocol->parseCode != NULL) {
 							logprintf(LOG_DEBUG, "recevied pulse length of %d", recvqueue->plslen);
-							logprintf(LOG_DEBUG, "caught minimum # of repeats %d of %s", protocol->repeats, protocol->id);
 							logprintf(LOG_DEBUG, "called %s parseRaw()", protocol->id);
 							protocol->parseCode();
-							receiver_create_message(protocol);
+							if (protocol->repeats < protocol->rxrpt ) {
+								logprintf(LOG_DEBUG, "message discarded after %d repeats as minimum # of repeats %d of %s not reached", protocol->repeats, protocol->rxrpt, protocol->id);
+							}
+							else {
+								logprintf(LOG_DEBUG, "caught minimum # of repeats %d of %s", protocol->repeats, protocol->id);
+								receiver_create_message(protocol);
+							}
 						}
 					}
 				}
