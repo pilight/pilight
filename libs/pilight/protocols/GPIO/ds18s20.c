@@ -177,7 +177,7 @@ static void *thread(void *param) {
 					}
 					closedir(d);
 				} else {
-					logprintf(LOG_ERR, "1-wire device %s does not exists", ds18s20_sensor);
+					logprintf(LOG_ERR, "1-wire device %s does not exist", ds18s20_sensor);
 				}
 			}
 #endif
