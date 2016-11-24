@@ -107,7 +107,7 @@ int main(int argc, char **argv) {
 					fwfile = REALLOC(fwfile, strlen(args)+1);
 					strcpy(fwfile, args);
 				} else {
-					fprintf(stderr, "%s: the firmware file %s does not exists\n", progname, args);
+					fprintf(stderr, "%s: the firmware file %s does not exist\n", progname, args);
 					goto close;
 				}
 			break;

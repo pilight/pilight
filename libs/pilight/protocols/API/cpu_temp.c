@@ -129,7 +129,7 @@ static void *thread(void *param) {
 						cpuTemp->message = NULL;
 					}
 				} else {
-					logprintf(LOG_NOTICE, "CPU sysfs \"%s\" does not exists", cpu_path);
+					logprintf(LOG_NOTICE, "CPU sysfs \"%s\" does not exist", cpu_path);
 				}
 			}
 			pthread_mutex_unlock(&lock);
