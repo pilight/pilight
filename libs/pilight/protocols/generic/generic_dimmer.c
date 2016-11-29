@@ -30,6 +30,9 @@
 #include "../../core/gc.h"
 #include "generic_dimmer.h"
 
+#define MIN_DIMMER_VALUE 0
+#define MAX_DIMMER_VALUE 15
+
 static void createMessage(int id, int state, int dimlevel) {
 	generic_dimmer->message = json_mkobject();
 	json_append_member(generic_dimmer->message, "id", json_mknumber(id, 0));
@@ -46,8 +49,8 @@ static void createMessage(int id, int state, int dimlevel) {
 
 static int checkValues(JsonNode *code) {
 	int dimlevel = -1;
-	int max = 15;
-	int min = 0;
+	int max = MAX_DIMMER_VALUE;
+	int min = MIN_DIMMER_VALUE;
 	double itmp = -1;
 
 	if(json_find_number(code, "dimlevel-maximum", &itmp) == 0)
@@ -75,8 +78,8 @@ static int createCode(JsonNode *code) {
 	int id = -1;
 	int state = -1;
 	int dimlevel = -1;
-	int max = 10;
-	int min = 0;
+	int max = MAX_DIMMER_VALUE;
+	int min = MIN_DIMMER_VALUE;
 	double itmp = -1;
 
 	if(json_find_number(code, "dimlevel-maximum", &itmp) == 0)
@@ -147,7 +150,7 @@ void genericDimmerInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "generic_dimmer";
-	module->version = "1.4";
+	module->version = "1.5";
 	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }
