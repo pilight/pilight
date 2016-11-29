@@ -461,7 +461,7 @@ function createDimmerElement(sTabId, sDevId, aValues) {
 			oTab = $('#all');
 		}
 		if('name' in aValues && 'dimlevel-minimum' in aValues && 'dimlevel-maximum' in aValues) {
-			oTab.append($('<li id="'+sDevId+'" class="dimmer" data-icon="false"><div class="name">'+aValues['name']+'</div><select id="'+sDevId+'_switch" data-role="slider"><option value="off">'+language.off+'</option><option value="on">'+language.on+'</option></select><div id="'+sDevId+'_dimmer" min="'+aValues['dimlevel-minimum']+'" max="'+aValues['dimlevel-maximum']+'" data-highlight="true" ><input type="value" id="'+sDevId+'_value" class="slider-value dimmer-slider ui-slider-input ui-input-text ui-body-c ui-corner-all ui-shadow-inset" /></div></li>'));
+			oTab.append($('<li id="'+sDevId+'" class="dimmer" data-icon="false"><div class="name">'+aValues['name']+'</div><select id="'+sDevId+'_switch" data-role="slider"><option value="off">'+language.off+'</option><option value="on">'+language.on+'</option></select><div id="'+sDevId+'_dimmer" min="'+aValues['dimlevel-minimum']+'" max="'+aValues['dimlevel-maximum']+'" data-highlight="true" ><input type="value" id="'+sDevId+'_value" class="slider-value dimmer-slider ui-slider-input ui-input-text ui-body-c ui-corner-all ui-shadow-inset" disabled="true"/></div></li>'));
 		}
 		$('#'+sDevId+'_switch').slider();
 		$('#'+sDevId+'_switch').bind("change", function(event, ui) {
@@ -921,6 +921,7 @@ function parseValues(data) {
 					}
 					if(vindex == 'dimlevel') {
 						aDimLevel[dvalues] = vvalues;
+						$('#'+dvalues+'_value').val(vvalues);
 						$('#'+dvalues+'_dimmer').val(vvalues);
 						$('#'+dvalues+'_dimmer').slider('refresh');
 					}
