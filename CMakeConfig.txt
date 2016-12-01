@@ -81,6 +81,7 @@ set(PROTOCOL_TCM ON CACHE BOOL "support for the TCM 218943 weather station proto
 set(PROTOCOL_TECHLICO ON CACHE BOOL "support for TechLiCo Lamps protocol")
 set(PROTOCOL_TEKNIHALL ON CACHE BOOL "support for the Teknihall weather station protocol")
 set(PROTOCOL_TFA ON CACHE BOOL "support for the TFA weather station protocol")
+set(PROTOCOL_TSL2561 ON CACHE BOOL "support for the TSL2561 i2c illuminance sensor")
 set(PROTOCOL_WUNDERGROUND ON CACHE BOOL "support for the Weather Underground API")
 set(PROTOCOL_X10 ON CACHE BOOL "support for the X10 protocol")
 set(PROTOCOL_XBMC ON CACHE BOOL "support for the XBMC API")
