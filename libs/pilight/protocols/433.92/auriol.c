@@ -76,7 +76,7 @@ static void parseCode(void) {
 	id = binToDecRev(binary, 0, 7);
 	battery = binary[8];
 	channel = 1 + binToDecRev(binary, 10, 11); // channel as id
-	temperature = (double)binToDecRev(binary, 12, 23)/10;
+	temperature = (double)binToSignedRev(binary, 12, 23)/10;
 	// checksum = (double)binToDecRev(binary, 24, 31); been unable to deciper it
 	struct settings_t *tmp = settings;
 	while(tmp) {
@@ -193,7 +193,7 @@ void auriolInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "auriol";
-	module->version = "2.2";
+	module->version = "2.3";
 	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }

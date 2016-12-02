@@ -81,12 +81,9 @@ static void parseCode(void) {
 	}
 	id = binToDecRev(binary, 4, 11);
 	battery = binary[12];
-	temperature = (double)binToDecRev(binary, 16, 27);
+	temperature = (double)binToSignedRev(binary, 16, 27);
 	humidity = (double)binToDecRev(binary, 28, 35);
 
-	if (binary[16]) {
-		temperature -= 4096;
-	}
 	temperature /= 10;
 
 	struct settings_t *tmp = settings;
@@ -210,7 +207,7 @@ void alectoWS1700Init(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "alecto_ws1700";
-	module->version = "2.4";
+	module->version = "2.5";
 	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }

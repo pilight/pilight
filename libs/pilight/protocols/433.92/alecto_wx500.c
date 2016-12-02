@@ -144,13 +144,9 @@ static void parseCode(void) {
 	switch(type) {
 		case 1:
 			id = binToDec(binary, 0, 7);
-			temperature = (double)(binToDec(binary, 12, 23)) / 10.0;
+			temperature = (double)(binToSigned(binary, 12, 23)) / 10.0;
 			humidity = (binToDec(binary, 28, 31) * 10) + binToDec(binary, 24,27);
 			battery = !binary[8];
-			
-			if ((int)(binToDec(binary, 23, 23)) == 1) {
-				temperature -= 409.6;
-			}
 			
 			temperature += temp_offset;
 			humidity += humi_offset;
@@ -309,7 +305,7 @@ void alectoWX500Init(void) {
 #ifdef MODULAR
 void compatibility(const char **version, const char **commit) {
 	module->name = "alecto_wx500";
-	module->version = "1.1";
+	module->version = "1.2";
 	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }

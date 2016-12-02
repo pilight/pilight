@@ -70,7 +70,7 @@ static void parseCode(void) {
 	double humi_offset = 0.0, temp_offset = 0.0;
 	double temperature = 0.0, humidity = 0.0;
 	int binary[RAW_LENGTH/2];
-	int id = 0, temp = 0, button = 0, battery = 0;
+	int id = 0, button = 0, battery = 0;
 	int i = 0, x = 0;
 
 	if(tcm->rawlen>RAW_LENGTH) {
@@ -92,11 +92,7 @@ static void parseCode(void) {
 
 	humidity = binToDecRev(binary, 16, 23);
 
-	temp = binToDecRev(binary, 24, 35);
-	if(binary[24]) {
-		temp -= 4096;
-	}
-	temperature = temp;
+	temperature = binToSignedRev(binary, 24, 35);
 
 	struct settings_t *tmp = settings;
 	while(tmp) {
@@ -217,7 +213,7 @@ void tcmInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "tcm";
-	module->version = "1.2";
+	module->version = "1.3";
 	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }
