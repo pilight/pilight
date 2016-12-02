@@ -101,3 +101,19 @@ int decToBinRevUl(unsigned long long n, int *binary) {
 	VALUE_TO_BITS_LSB_FIRST(n, binary, len);
 	return len - 1; // return index, not count.
 }
+
+int binToSignedRev(const int *binary, int s, int e) { //  0<=s<=e, binary[s(msb) .. e(lsb)]
+	int result = binToDecRev(binary, s, e);
+	if (binary[s]) {
+		result -= 1<<(e-s+1);
+	}
+	return result;
+}
+
+int binToSigned(const int *binary, int s, int e) { //  0<=s<=e, binary[s(lsb) .. e(msb)]
+	int result = binToDec(binary, s, e);
+	if (binary[e]) {
+		result -= 1<<(e-s+1);
+	}
+	return result;
+}
