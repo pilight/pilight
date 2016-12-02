@@ -59,7 +59,7 @@ static void createMessage(int systemcode, int unitcode, int state) {
 }
 
 static void parseCode(void) {
-	int binary[RAW_LENGTH/4], x = 0, i = 0;
+	int binary[RAW_LENGTH/4], x = 0;
 
 	if(elro_800_switch->rawlen>RAW_LENGTH) {
 		logprintf(LOG_ERR, "elro_800_switch: parsecode - invalid parameter passed %d", elro_800_switch->rawlen);
@@ -68,16 +68,32 @@ static void parseCode(void) {
 
 	for(x=0;x<elro_800_switch->rawlen-2;x+=4) {
 		if(elro_800_switch->raw[x+3] > (int)((double)AVG_PULSE_LENGTH*((double)PULSE_MULTIPLIER/2))) {
-			binary[i++] = 1;
+			binary[x/4] = 1;
 		} else {
-			binary[i++] = 0;
+			binary[x/4] = 0;
 		}
 	}
 
 	int systemcode = binToDec(binary, 0, 4);
 	int unitcode = binToDec(binary, 5, 9);
+	int check = binary[10];
 	int state = binary[11];
-	createMessage(systemcode, unitcode, state);
+
+	// second part of systemcode based on Med
+	for(x=0;x<=16;x+=4) {
+		if(elro_800_switch->raw[x+0] > (int)((double)AVG_PULSE_LENGTH*((double)PULSE_MULTIPLIER/2))) {
+			binary[x/4] = 1;
+		} else {
+			binary[x/4] = 0;
+		}
+	}
+	int systemcode2 = binToDec(binary, 0, 4);
+
+	systemcode |= (systemcode2<<5);
+
+	if(check != state) {
+		createMessage(systemcode, unitcode, state);
+	}
 }
 
 static void createLow(int s, int e) {
@@ -86,6 +102,17 @@ static void createLow(int s, int e) {
 	for(i=s;i<=e;i+=4) {
 		elro_800_switch->raw[i]=(AVG_PULSE_LENGTH);
 		elro_800_switch->raw[i+1]=(PULSE_MULTIPLIER*AVG_PULSE_LENGTH);
+		elro_800_switch->raw[i+2]=(PULSE_MULTIPLIER*AVG_PULSE_LENGTH);
+		elro_800_switch->raw[i+3]=(AVG_PULSE_LENGTH);
+	}
+}
+
+static void createMed(int s, int e) {
+	int i;
+
+	for(i=s;i<=e;i+=4) {
+		elro_800_switch->raw[i]=(PULSE_MULTIPLIER*AVG_PULSE_LENGTH);
+		elro_800_switch->raw[i+1]=(AVG_PULSE_LENGTH);
 		elro_800_switch->raw[i+2]=(PULSE_MULTIPLIER*AVG_PULSE_LENGTH);
 		elro_800_switch->raw[i+3]=(AVG_PULSE_LENGTH);
 	}
@@ -110,11 +137,19 @@ static void createSystemCode(int systemcode) {
 	int length = 0;
 	int i=0, x=0;
 
-	length = decToBinRev(systemcode, binary);
+	length = decToBinRev(systemcode & 0x1F, binary);
 	for(i=0;i<=length;i++) {
 		if(binary[i]==1) {
 			x=i*4;
 			createHigh(x, x+3);
+		}
+	}
+
+	length = decToBinRev((systemcode>>5) & 0x1F, binary);
+	for(i=0;i<=length;i++) {
+		if(binary[i]==1) {
+			x=i*4;
+			createMed(x, x+3);
 		}
 	}
 }
@@ -164,7 +199,7 @@ static int createCode(struct JsonNode *code) {
 	if(systemcode == -1 || unitcode == -1 || state == -1) {
 		logprintf(LOG_ERR, "elro_800_switch: insufficient number of arguments");
 		return EXIT_FAILURE;
-	} else if(systemcode > 31 || systemcode < 0) {
+	} else if(systemcode > 1023 || systemcode < 0) {
 		logprintf(LOG_ERR, "elro_800_switch: invalid systemcode range");
 		return EXIT_FAILURE;
 	} else if(unitcode > 31 || unitcode < 0) {
@@ -198,6 +233,7 @@ void elro800SwitchInit(void) {
 	protocol_set_id(elro_800_switch, "elro_800_switch");
 	protocol_device_add(elro_800_switch, "elro_800_switch", "Elro 800 series Switches");
 	protocol_device_add(elro_800_switch, "brennenstuhl", "Brennenstuhl Comfort");
+	protocol_device_add(elro_800_switch, "maxitronic", "Maxi-Tronic FUNK-LIGHT switches");
 	elro_800_switch->devtype = SWITCH;
 	elro_800_switch->hwtype = RF433;
 	elro_800_switch->minrawlen = RAW_LENGTH;
@@ -205,7 +241,7 @@ void elro800SwitchInit(void) {
 	elro_800_switch->maxgaplen = MAX_PULSE_LENGTH*PULSE_DIV;
 	elro_800_switch->mingaplen = MIN_PULSE_LENGTH*PULSE_DIV;
 
-	options_add(&elro_800_switch->options, 's', "systemcode", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^(3[012]?|[012][0-9]|[0-9]{1})$");
+	options_add(&elro_800_switch->options, 's', "systemcode", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^102[0-3]|10[01][0-9]|[0-9]{1,3}$");
 	options_add(&elro_800_switch->options, 'u', "unitcode", OPTION_HAS_VALUE, DEVICES_ID, JSON_NUMBER, NULL, "^(3[012]?|[012][0-9]|[0-9]{1})$");
 	options_add(&elro_800_switch->options, 't', "on", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
 	options_add(&elro_800_switch->options, 'f', "off", OPTION_NO_VALUE, DEVICES_STATE, JSON_STRING, NULL, NULL);
@@ -222,7 +258,7 @@ void elro800SwitchInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "elro_800_switch";
-	module->version = "2.4";
+	module->version = "2.5";
 	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }
