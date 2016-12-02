@@ -77,7 +77,7 @@ static void parseCode(void) {
 
 	id = binToDecRev(binary, 0, 7);
 	battery = binary[8];
-	temperature = binToDecRev(binary, 14, 23);
+	temperature = binToSignedRev(binary, 14, 23);
 	humidity = binToDecRev(binary, 24, 30);
 
 	struct settings_t *tmp = settings;
@@ -200,7 +200,7 @@ void teknihallInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "teknihall";
-	module->version = "2.3";
+	module->version = "2.4";
 	module->reqversion = "6.0";
 	module->reqcommit = "84";
 }
