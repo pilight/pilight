@@ -133,8 +133,7 @@ static void parseCode(void) {
 			id = binToDecRev(binary, 4, 11);		// 12 - 0, 13 - Tx Button
 			channel = binToDecRev(binary, 14, 15) + 1;
 
-			temp1 = binToDecRev (binary, 17, 27);
-			if(binary[16] == 1) temp1=temp1-2048;
+			temp1 = binToSignedRev(binary, 16, 27);
 			temperature = (double)(temp1*10);
 
 			humi1 = binToDecRev(binary, 28, 35);
@@ -279,7 +278,7 @@ void tfaInit(void) {
 #if defined(MODULE) && !defined(_WIN32)
 void compatibility(struct module_t *module) {
 	module->name = "tfa";
-	module->version = "1.3";
+	module->version = "1.4";
 	module->reqversion = "7.0";
 	module->reqcommit = "84";
 }
