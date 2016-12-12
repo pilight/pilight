@@ -77,7 +77,7 @@ static void parseCode(void) {
 
 	id = binToDecRev(binary, 0, 7);
 	battery = binary[8];
-	temperature = binToSignedRev(binary, 14, 23);
+	temperature = binToSignedRev(binary, 13, 23);
 	humidity = binToDecRev(binary, 24, 30);
 
 	struct settings_t *tmp = settings;
